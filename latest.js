@@ -22,6 +22,14 @@
 //   },
 window.RELAY_LATEST = [
   {
+    date: "2026-09-21",
+    kind: "new room",
+    room: "entertainment",
+    title: "Entertainment",
+    description: "Three hundred and sixty-odd films and shows — everything watched, and everything still queued up with a note saying where to actually find it. Search it, or let it pick one for you.",
+    href: "entertainment.html",
+  },
+  {
     date: "2026-08-17",
     kind: "new room",
     room: "training",

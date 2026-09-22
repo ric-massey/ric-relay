@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>The library — every title on the list</title>
+  <meta name="description" content="The whole catalog: every film and show Ric has watched or queued, filterable by service, genre, decade and status, as posters or as a dense list.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0f0f0f">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Entertainment">
+  <meta property="og:title" content="The library — every title on the list">
+  <meta property="og:description" content="The whole catalog, filterable.">
+  <meta property="og:url" content="https://ricmassey.com/entertainment-library.html">
+  <link rel="canonical" href="https://ricmassey.com/entertainment-library.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f0f0f'/><rect x='18' y='26' width='64' height='48' rx='6' fill='none' stroke='%23f5c518' stroke-width='6'/><path d='M18 40h64M18 60h64' stroke='%23f5c518' stroke-width='4'/><path d='M44 44v12l11-6z' fill='%23f5c518'/></svg>">
+
+  <style>
+    /* THE LIBRARY
+       ────────────────────────────────────────────────────────────────────────
+       The other half of the room. entertainment.html is for deciding — a
+       billboard and a dozen shelves, nothing exhaustive. This page is for
+       looking something up, and it is exhaustive on purpose: every title, every
+       filter, two densities.
+
+       It shares the room's palette and its core (assets/entertainment-room.js),
+       so the merge rules, the detail sheet and the export have one definition
+       between the two pages. What is different here is only the arrangement:
+       no hero, no shelves, a filter bar that stays put and a grid that does not
+       end until the list does.
+
+       Same contrast rules: --dim clears 7:1 on --bg, nothing under 11px. */
+    :root {
+      --bg:      #0f0f0f;
+      --panel:   #171717;
+      --raised:  #1e1e1e;
+      --line:    #2e2e2e;
+      --line-hi: #3d3d3d;
+      --ink:     #f2f2f2;
+      --dim:     #a8a8a8;
+      --gold:    #f5c518;
+      --gold-dk: #c9a013;
+      --queue:   #7dd3fc;
+      --ease:    cubic-bezier(0.22, 0.61, 0.36, 1);
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      /* ── type ──
+         A condensed grotesque for anything that names a film, because that is
+         what film titles are actually set in — on a spine, on a poster, on a
+         marquee — and because condensed buys the letters room on a spine.
+         Avenir Next Condensed is on every Mac and iPhone, and the stack falls
+         through Windows and Android before it gives up.
+
+         No webfont: hard rule 4, and a face that has to be downloaded before
+         the page can say a title is a face that is sometimes not there. */
+      --display: "Avenir Next Condensed", "HelveticaNeue-CondensedBold",
+                 "Helvetica Neue", "Roboto Condensed", "Segoe UI Semibold",
+                 "Arial Narrow", var(--sans);
+      --tile: 132px;
+      --gut: 14px;
+      --case-w: 17px;         /* a DVD spine: ~14mm against a 135mm cover */
+      --case-h: 212px;
+      --front-w: 148px;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+    a { color: inherit; }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
+
+    .strip {
+      background: var(--gold);
+      color: #0f0f0f;
+      font: 700 0.72rem/1 var(--mono);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-align: center;
+      padding: 8px 12px;
+    }
+
+    .barwrap { position: sticky; top: 0; z-index: 40; }
+    .bar {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 10px 20px;
+      background: rgba(15, 15, 15, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    .mark {
+      font: 800 0.95rem/1 var(--sans);
+      letter-spacing: -0.01em;
+      background: var(--gold);
+      color: #0f0f0f;
+      padding: 7px 11px;
+      border-radius: 6px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .marquee {
+      display: flex;
+      gap: 2px;
+      margin-left: auto;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .marquee::-webkit-scrollbar { display: none; }
+    .marquee a, .marquee .here {
+      position: relative;
+      padding: 8px 10px 12px;
+      font: 600 0.8rem/1 var(--sans);
+      color: var(--dim);
+      text-decoration: none;
+      white-space: nowrap;
+      transition: color 0.15s var(--ease);
+    }
+    .marquee a:hover { color: var(--ink); }
+    .marquee .here { color: var(--gold); }
+    .marquee .here::after {
+      content: "";
+      position: absolute;
+      left: 8px; right: 8px; bottom: 5px;
+      height: 3px;
+      border-radius: 3px;
+      background-image: radial-gradient(circle, var(--gold) 45%, transparent 47%);
+      background-size: 7px 3px;
+      background-repeat: repeat-x;
+    }
+
+    /* ── the head ── */
+    .head { padding: 26px 20px 4px; }
+    .head .kicker {
+      margin: 0 0 8px;
+      font: 700 0.7rem/1 var(--mono);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+    .head h1 {
+      font-family: var(--display, var(--sans));
+      margin: 0 0 8px;
+      font-size: clamp(1.9rem, 5vw, 2.7rem);
+      line-height: 1.04;
+      letter-spacing: -0.03em;
+      font-weight: 800;
+    }
+    .head p {
+      margin: 0;
+      color: var(--dim);
+      max-width: 62ch;
+      font-size: 0.92rem;
+    }
+    .head .back {
+      display: inline-block;
+      margin-top: 12px;
+      font: 700 0.8rem/1 var(--sans);
+      color: var(--gold);
+      text-decoration: none;
+    }
+    .head .back:hover { text-decoration: underline; }
+
+    /* ── the filter bar ── stays put, because this page is used by scrolling ── */
+    .filters {
+      position: sticky;
+      top: 53px;
+      z-index: 30;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 9px;
+      padding: 14px 20px;
+      margin: 18px 0 0;
+      background: rgba(15, 15, 15, 0.94);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .seg {
+      display: flex;
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid var(--line-hi);
+      border-radius: 8px;
+      background: var(--raised);
+    }
+    .seg button {
+      font-family: var(--display, var(--sans));
+      letter-spacing: 0.03em;
+      padding: 7px 12px;
+      border: 0;
+      border-radius: 6px;
+      background: none;
+      color: var(--dim);
+      font: 700 0.79rem/1 var(--sans);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .seg button[aria-pressed="true"] { background: var(--gold); color: #0f0f0f; }
+    .seg button:hover:not([aria-pressed="true"]) { color: var(--ink); }
+
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex: 1 1 200px;
+      min-width: 160px;
+      padding: 8px 12px;
+      border: 1px solid var(--line-hi);
+      border-radius: 8px;
+      background: var(--raised);
+      color: var(--dim);
+    }
+    .search input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      background: none;
+      color: var(--ink);
+      font: 500 0.87rem/1.2 var(--sans);
+      outline: none;
+    }
+    .search input::placeholder { color: #8c8c8c; }
+
+    select.pick {
+      padding: 9px 11px;
+      border: 1px solid var(--line-hi);
+      border-radius: 8px;
+      background: var(--raised);
+      color: var(--ink);
+      font: 600 0.8rem/1 var(--sans);
+      cursor: pointer;
+    }
+    select.pick:disabled { color: #6a6a6a; cursor: not-allowed; }
+
+    :where(button, a, input, select):focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: 2px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 14px;
+      border: 1px solid var(--line-hi);
+      border-radius: 7px;
+      background: var(--raised);
+      color: var(--ink);
+      font: 700 0.82rem/1 var(--sans);
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn:hover { background: #262626; border-color: #4a4a4a; }
+    .btn-gold { background: var(--gold); border-color: var(--gold); color: #0f0f0f; }
+    .btn-gold:hover { background: #ffd230; border-color: #ffd230; }
+
+    /* ── the count line ── */
+    .tally {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 14px;
+      padding: 16px 20px 0;
+      font: 600 0.74rem/1 var(--mono);
+      color: var(--dim);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .tally .clearfilter {
+      padding: 5px 11px;
+      border: 1px solid var(--line-hi);
+      border-radius: 20px;
+      background: var(--raised);
+      color: var(--dim);
+      font: 700 0.72rem/1.4 var(--sans);
+      text-transform: none;
+      letter-spacing: 0;
+      cursor: pointer;
+    }
+    .tally .clearfilter:hover { color: var(--ink); }
+
+    /* ── the grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(var(--tile), 1fr));
+      gap: 22px var(--gut);
+      margin: 0;
+      padding: 18px 20px 50px;
+      list-style: none;
+    }
+
+    .tile {
+      display: block;
+      width: auto;
+      border: 0;
+      padding: 0;
+      background: none;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+    }
+    .art {
+      position: relative;
+      display: block;
+      aspect-ratio: 2 / 3;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      transition: transform 0.16s var(--ease), border-color 0.16s var(--ease), box-shadow 0.16s var(--ease);
+    }
+    .tile:hover .art, .tile:focus-visible .art {
+      transform: translateY(-4px) scale(1.03);
+      border-color: var(--line-hi);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.55);
+    }
+    .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .art::after {
+      content: "";
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 3px;
+      background: var(--queue);
+    }
+    .is-watched .art::after { background: var(--gold); }
+
+    .art:has(.badge) .plate { padding-top: 36px; }
+    .plate {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12px 11px 14px;
+      background:
+        linear-gradient(160deg, rgba(255,255,255,0.05), rgba(0,0,0,0.25)),
+        var(--plate-bg, #1a1a1a);
+    }
+    .plate b {
+      font-size: 0.98rem;
+      line-height: 1.16;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      overflow-wrap: anywhere;
+      display: -webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .plate span {
+      font: 600 0.7rem/1.3 var(--mono);
+      color: var(--dim);
+      letter-spacing: 0.04em;
+    }
+    .badge {
+      position: absolute;
+      top: 8px; left: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 7px;
+      border-radius: 5px;
+      font: 800 0.7rem/1 var(--mono);
+      background: var(--gold);
+      color: #0f0f0f;
+    }
+    .badge.seen { background: rgba(15,15,15,0.82); color: var(--gold); }
+    .tile-name {
+      display: block;
+      margin: 8px 2px 0;
+      font-size: 0.82rem;
+      font-weight: 600;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .tile-sub {
+      display: block;
+      margin: 2px 2px 0;
+      font: 600 0.7rem/1.3 var(--mono);
+      color: var(--dim);
+    }
+    .rank { display: none; }        /* the library does not rank anything */
+
+    /* ── the list view ──
+       363 rows of the same height, which is the fastest thing to read when you
+       already know the name you are looking for. */
+    .rows {
+      margin: 0;
+      padding: 10px 20px 50px;
+      list-style: none;
+    }
+    .rows .tile {
+      display: grid;
+      grid-template-columns: 8px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+    }
+    .rows .tile:hover { background: var(--panel); }
+    .rows .edge {
+      width: 4px;
+      height: 26px;
+      border-radius: 3px;
+      background: var(--queue);
+    }
+    .rows .is-watched .edge, .rows .tile.is-watched .edge { background: var(--gold); }
+    .rows .who { min-width: 0; }
+    .rows .who b {
+      display: block;
+      font-size: 0.94rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .rows .who span {
+      display: block;
+      margin-top: 1px;
+      font: 600 0.72rem/1.3 var(--mono);
+      color: var(--dim);
+    }
+    .rows .tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .chip {
+      padding: 4px 8px;
+      border-radius: 5px;
+      border: 1px solid var(--line-hi);
+      font: 700 0.7rem/1.2 var(--mono);
+      color: var(--dim);
+      white-space: nowrap;
+    }
+    .chip.star { background: var(--gold); border-color: var(--gold); color: #0f0f0f; }
+    .chip.seen { color: var(--gold); border-color: #4a4126; }
+    .chip.where { color: var(--queue); border-color: #2c4a5a; }
+
+    /* the letter the list has reached, when it is in alphabetical order */
+    .letter {
+      position: sticky;
+      top: 118px;
+      z-index: 10;
+      padding: 14px 12px 6px;
+      font: 800 0.78rem/1 var(--mono);
+      letter-spacing: 0.14em;
+      color: var(--gold);
+      background: linear-gradient(to bottom, var(--bg) 62%, transparent);
+    }
+
+    .empty {
+      grid-column: 1 / -1;
+      padding: 40px 0;
+      color: var(--dim);
+    }
+    .empty a { color: var(--gold); }
+
+
+    /* ── the catalogue, stacked ── */
+    .shelves { margin: 0; padding: 0 0 60px; list-style: none; }
+    .shelf-row { margin: 0 0 30px; }
+    .shelves .rack {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      /* 22px either side so the cases clear the bay's uprights */
+      padding: 46px 22px 0;
+      perspective: 1500px;
+      perspective-origin: 50% 65%;
+      overflow: visible;
+    }
+    .shelves .shelf-board { margin: 0 8px; }
+
+    /* ── the detail sheet ── same dialog as the app page ── */
+    dialog.sheet {
+      width: min(760px, calc(100vw - 32px));
+      /* It has to be able to scroll. `overflow: hidden` was here to keep the
+         corners round, and it also meant a sheet taller than the window simply
+         could not be read past its bottom edge — which is most of them now
+         that a franchise lists its run and every film lists what it is like. */
+      max-height: min(86vh, 900px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 0;
+      border: 1px solid var(--line-hi);
+      border-radius: 14px;
+      background: var(--panel);
+      color: var(--ink);
+    }
+    dialog.sheet::backdrop { background: rgba(0,0,0,0.72); backdrop-filter: blur(3px); }
+    .sheet-in { display: flex; gap: 20px; padding: 20px; }
+    .sheet-art {
+      flex: 0 0 170px;
+      aspect-ratio: 2 / 3;
+      border-radius: 9px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      position: relative;
+      background: var(--raised);
+    }
+    .sheet-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .sheet-body { min-width: 0; flex: 1; }
+    .sheet-body h3 {
+      margin: 0 0 6px;
+      font-size: 1.5rem;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+      font-weight: 800;
+    }
+    .sheet-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      margin: 0 0 12px;
+      font: 600 0.78rem/1.3 var(--sans);
+      color: var(--dim);
+    }
+    .sheet-meta .score { color: var(--gold); }
+    .sheet-meta .sep { color: #6b6b6b; }
+    .sheet-body p.blurb { margin: 0 0 16px; color: #d6d6d6; }
+    .sheet-cast {
+      margin: -6px 0 14px;
+      font-size: 0.84rem;
+      color: #c4c4c4;
+    }
+    /* Each name is its own element so it can become a button when Ric signs
+       in — which means they need a separator of their own, or the line reads
+       "Mark HamillHarrison FordCarrie Fisher". */
+    .sheet-cast .actor + .actor::before {
+      content: "·";
+      margin: 0 7px;
+      color: #6b6b6b;
+    }
+    .sheet-cast button.actor {
+      border: 0;
+      padding: 0;
+      background: none;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .sheet-cast button.actor:hover { color: var(--gold); }
+    .sheet-cast button.actor.on { color: var(--gold); }
+    .sheet-cast button.actor svg { opacity: 0.55; }
+    .sheet-cast button.actor.on svg { opacity: 1; }
+    .sheet-body p.thin {
+      margin: 0 0 16px;
+      color: var(--dim);
+      font-size: 0.85rem;
+      border-left: 2px solid var(--line-hi);
+      padding-left: 10px;
+    }
+    .sheet-body p.thin code { font-family: var(--mono); font-size: 0.95em; color: #cfcfcf; }
+    .sheet-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+    .sheet-own {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0 0;
+      padding: 14px 0 0;
+      border-top: 1px solid var(--line);
+    }
+    .sheet-own button {
+      padding: 7px 11px;
+      font-size: 0.78rem;
+      border-radius: 6px;
+      border: 1px solid var(--line-hi);
+      background: var(--raised);
+      color: var(--dim);
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .sheet-own button:hover { color: var(--ink); border-color: #4a4a4a; }
+    .sheet-own button.danger:hover { color: #ff8f8f; border-color: #6d3535; }
+    .sheet-x {
+      position: sticky;
+      float: right;
+      top: 12px;
+      margin: 12px 12px -42px 0;
+      width: 30px; height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1px solid var(--line-hi);
+      background: rgba(15,15,15,0.7);
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      z-index: 2;
+    }
+    @media (max-width: 640px) {
+      .sheet-in { flex-direction: column; }
+      .sheet-art { flex: none; width: 128px; }
+    }
+
+
+
+    /* ── where to watch ── the answer, in the sheet, not a link to the answer ── */
+    .where {
+      margin: 0 0 18px;
+      padding: 14px 0 16px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .where h4 {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 8px;
+      margin: 0 0 12px;
+      font: 800 0.72rem/1 var(--mono);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .where .stamp {
+      font: 600 0.7rem/1 var(--mono);
+      letter-spacing: 0.04em;
+      text-transform: none;
+      color: #8a8a8a;
+    }
+    .where .stamp code { font-size: 0.95em; color: #aeaeae; }
+    .wrow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 10px;
+      margin: 0 0 9px;
+    }
+    .wrow > span {
+      flex: 0 0 96px;
+      font: 600 0.73rem/1.3 var(--mono);
+      color: var(--dim);
+    }
+    .wrow > div { display: flex; flex-wrap: wrap; gap: 7px; }
+    .wchip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 7px;
+      border: 1px solid var(--line-hi);
+      background: var(--raised);
+      color: var(--ink);
+      font: 700 0.82rem/1 var(--sans);
+      text-decoration: none;
+      transition: transform 0.12s var(--ease), border-color 0.12s var(--ease);
+    }
+    .wchip:hover { transform: translateY(-1px); border-color: var(--face, var(--gold)); }
+    /* Streaming is the answer you wanted; renting is the consolation prize. */
+    .wchip.on {
+      background: linear-gradient(150deg, var(--tint, #262626), #1a1a1a 80%);
+      border-color: #3f3f3f;
+      color: var(--face, var(--ink));
+    }
+    .wchip.on svg { opacity: 0.9; }
+    .wchip.rent { color: var(--dim); }
+    .wlive {
+      display: inline-block;
+      margin-top: 4px;
+      font: 700 0.76rem/1 var(--sans);
+      color: var(--dim);
+      text-decoration: none;
+    }
+    .wlive:hover { color: var(--gold); text-decoration: underline; }
+
+    /* the service, readable off a wall of tiles without opening anything */
+    .svc {
+      position: absolute;
+      left: 6px; right: 6px; bottom: 8px;
+      padding: 4px 6px;
+      border-radius: 4px;
+      background: rgba(12,12,12,0.82);
+      color: var(--face, var(--ink));
+      font: 800 0.7rem/1.1 var(--mono);
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── the chooser ── asked at the moment he adds a title, because "Moments"
+       is nine films and only he knows which one he watched ── */
+    dialog.finder { width: min(560px, calc(100vw - 32px)); }
+    .finder-in { padding: 20px; }
+    .finder-in h3 {
+      margin: 0 0 6px;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .finder-q { margin: 0 0 14px; color: var(--dim); font-size: 0.88rem; }
+    .finder-q b { color: var(--ink); }
+    .finder-search { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+    .finder-search input {
+      flex: 1 1 200px;
+      min-width: 0;
+      padding: 9px 11px;
+      border: 1px solid var(--line-hi);
+      border-radius: 7px;
+      background: var(--raised);
+      color: var(--ink);
+      font: 500 0.9rem/1.2 var(--sans);
+    }
+    .finder-note {
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      border-left: 2px solid var(--line-hi);
+      color: var(--dim);
+      font-size: 0.85rem;
+    }
+    .finder-list {
+      margin: 0 0 16px;
+      padding: 0;
+      list-style: none;
+      max-height: 46vh;
+      overflow-y: auto;
+    }
+    .finder-list button {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      padding: 9px;
+      margin-bottom: 6px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--raised);
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+    }
+    .finder-list button:hover { border-color: var(--gold); background: #242424; }
+    .finder-list button[disabled] { opacity: 0.6; cursor: progress; }
+    /* Wikipedia's thumbnail, shown only to tell two films apart, only in this
+       panel, only to Ric. It is never saved and never served to a visitor. */
+    .finder-list img {
+      flex: none;
+      width: 46px;
+      height: 69px;
+      object-fit: cover;
+      border-radius: 4px;
+      background: var(--panel);
+    }
+    .finder-list .noart {
+      flex: none;
+      width: 46px;
+      height: 69px;
+      display: grid;
+      place-items: center;
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--dim);
+      font-weight: 800;
+    }
+    .finder-who { min-width: 0; }
+    .finder-who b { display: block; font-size: 0.92rem; font-weight: 700; }
+    .finder-who span {
+      display: block;
+      margin-top: 1px;
+      font: 600 0.72rem/1.3 var(--mono);
+      color: var(--gold-dk);
+    }
+    .finder-who em {
+      margin-top: 4px;
+      font-style: normal;
+      font-size: 0.8rem;
+      color: var(--dim);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .finder-wait { margin-left: auto; color: var(--gold); }
+    .finder-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    /* ── owner panel ── */
+    .owner {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 26px 20px 40px;
+      border-top: 1px solid var(--line);
+    }
+    .owner h2 { margin: 0 0 6px; font-size: 1.05rem; }
+    .owner > p { margin: 0 0 16px; color: var(--dim); font-size: 0.9rem; }
+    .ownerstate {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 11px 13px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--panel);
+      font-size: 0.85rem;
+      color: var(--dim);
+      margin-bottom: 14px;
+    }
+    .ownerstate .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex: none; }
+    .ownerstate .dot.off { background: #3f6f42; }
+    .ownerstate button { margin-left: auto; }
+    .addbox {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 11px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--panel);
+      margin-bottom: 14px;
+    }
+    .addbox label {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font: 700 0.72rem/1 var(--mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .addbox label.wide { grid-column: 1 / -1; }
+    .addbox label.check {
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 0.8rem;
+    }
+    .addbox input, .addbox select {
+      padding: 9px 10px;
+      border: 1px solid var(--line-hi);
+      border-radius: 7px;
+      background: var(--raised);
+      color: var(--ink);
+      font: 500 0.9rem/1.2 var(--sans);
+    }
+    .addbox input[type="checkbox"] { padding: 0; width: 16px; height: 16px; accent-color: var(--gold); }
+    .export {
+      width: 100%;
+      min-height: 190px;
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid var(--line-hi);
+      border-radius: 9px;
+      background: #0b0b0b;
+      color: #cfcfcf;
+      font: 500 0.75rem/1.5 var(--mono);
+      resize: vertical;
+    }
+
+    footer.foot {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      align-items: center;
+      padding: 20px;
+      border-top: 1px solid var(--line);
+      color: var(--dim);
+      font-size: 0.82rem;
+    }
+    footer.foot a { color: var(--dim); }
+    footer.foot a:hover { color: var(--gold); }
+    footer.foot #src-note { margin-left: auto; }
+    /* Wikipedia's extracts are CC BY-SA and TMDB's terms ask to be named, so
+       the credit is not decoration — it is the price of the data. It stays
+       hidden until there is actually something borrowed on the page. */
+    footer.foot .credit { flex: 1 1 100%; color: #8f8f8f; font-size: 0.76rem; }
+    footer.foot .credit a { color: #8f8f8f; text-decoration: underline; }
+    footer.foot .credit a:hover { color: var(--gold); }
+
+    @media (max-width: 760px) {
+      :root { --tile: 112px; }
+      .filters { top: 53px; }
+      .letter { top: 156px; }
+    }
+  </style>
+  <link rel="stylesheet" href="assets/entertainment-room.css">
+</head>
+<body>
+  <div class="strip" id="strip">The library</div>
+
+  <div class="barwrap">
+    <header class="bar">
+      <a class="ticket" href="entertainment.html" aria-label="Ric's Movie List — back to the shelves">
+        <span class="stub" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M4 5h16a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7a2 2 0 0 1 2-2Z"/>
+          </svg>
+          ADMIT<br>ONE
+        </span>
+        <span class="words"><b>Ric's Movie List</b><span>the whole shelf</span></span>
+      </a>
+      <nav class="marquee" aria-label="Terminal rooms">
+        <a href="index.html">terminal</a>
+        <a href="orrin.html">orrin</a>
+        <a href="psyche.html">psyche</a>
+        <a href="climbing.html">climbing</a>
+        <a href="training.html">training</a>
+        <a href="exploration.html">exploration</a>
+        <a href="gaming.html">gaming</a>
+        <a href="workbench.html">workbench</a>
+        <a href="captures.html">captures</a>
+        <span class="here" aria-current="page">entertainment</span>
+      </nav>
+    </header>
+  </div>
+
+  <main>
+    <section class="head">
+      <p class="kicker">The catalog</p>
+      <h1>Every title on the list.</h1>
+      <p>The other page is for picking something. This one is for looking something
+         up — all of it, in one place, cut by service, genre, decade or state.</p>
+      <a class="back" href="entertainment.html">← back to the app</a>
+    </section>
+
+    <div class="filters">
+      <div class="seg" role="group" aria-label="Which list">
+        <button type="button" data-view="all"       aria-pressed="true">All</button>
+        <button type="button" data-view="watchlist" aria-pressed="false">Queue</button>
+        <button type="button" data-view="watched"   aria-pressed="false">Watched</button>
+        <button type="button" data-view="together"  aria-pressed="false">Together</button>
+      </div>
+
+      <label class="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+        </svg>
+        <input type="search" id="q" placeholder="Search titles…" aria-label="Search titles">
+      </label>
+
+      <select class="pick" id="f-where" aria-label="Where it is"><option value="">Anywhere</option></select>
+      <select class="pick" id="f-genre" aria-label="Genre"><option value="">Any genre</option></select>
+      <select class="pick" id="f-decade" aria-label="Decade"><option value="">Any decade</option></select>
+      <select class="pick" id="sort" aria-label="Sort order">
+        <option value="az">A–Z</option>
+        <option value="za">Z–A</option>
+        <option value="recent">Recently watched</option>
+        <option value="year">Newest first</option>
+        <option value="yearup">Oldest first</option>
+        <option value="where">By where it is</option>
+      </select>
+
+      <div class="seg" role="group" aria-label="How to show it">
+        <button type="button" data-mode="shelf" aria-pressed="true">Store</button>
+        <button type="button" data-mode="grid" aria-pressed="false">Posters</button>
+        <button type="button" data-mode="list" aria-pressed="false">List</button>
+      </div>
+    </div>
+
+    <p class="tally" id="tally"></p>
+    <ul class="grid" id="out"></ul>
+
+    <!-- Same owner panel as the app page, same rules: signed out it is a
+         password box and nothing else. -->
+    <section class="owner" id="owner">
+      <h2>Keeping the list</h2>
+      <p id="owner-blurb">Ric's end of the page. Everyone else just gets the list.</p>
+      <div id="owner-box"></div>
+      <div id="owner-tools" hidden></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>Ric's own internet.</span>
+    <a href="entertainment.html">← what's on tonight</a>
+    <a href="index.html">back to the terminal</a>
+    <span id="src-note"></span>
+    <span class="credit" id="credit" hidden>Facts from <a href="https://www.wikidata.org" target="_blank" rel="noopener noreferrer">Wikidata</a> and <a href="https://en.wikipedia.org" target="_blank" rel="noopener noreferrer">Wikipedia</a> (CC BY-SA); posters and ratings from <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">TMDB</a>, which did not endorse this page.</span>
+  </footer>
+
+  <dialog class="sheet finder" id="finder" aria-label="Which film is this?">
+    <div class="finder-in" id="finder-in"></div>
+  </dialog>
+
+  <dialog class="sheet" id="sheet" aria-label="Title details">
+    <button class="sheet-x" type="button" id="sheet-x" aria-label="Close">✕</button>
+    <div class="sheet-in" id="sheet-in"></div>
+  </dialog>
+
+  <script src="entertainment-data.js"></script>
+  <script src="assets/owner.js"></script>
+  <script src="assets/entertainment-room.js"></script>
+  <script>
+  /* The library page. The list itself — merging, writing, the sheet, the owner
+     panel, the export — is entertainment-room.js, shared with the app page.
+     What is here is the filtering and the two densities. */
+  const el = id => document.getElementById(id);
+  const esc = Room.esc;
+
+  const state = { view: 'all', q: '', where: '', genre: '', decade: '', sort: 'az', mode: 'shelf' };
+
+  /* The app page links in here with a hash — #queue, #watched, #starred,
+     #genre=Action — so a "see all →" lands on the same cut of the list the
+     shelf was showing. */
+  function readHash() {
+    const h = decodeURIComponent(location.hash.replace(/^#/, ''));
+    if (!h) return;
+    if (h === 'queue') state.view = 'watchlist';
+    else if (h === 'together' || h === 'starred') state.view = 'together';
+    else if (h === 'watched') state.view = h;
+    else if (h.startsWith('genre=')) state.genre = h.slice(6);
+  }
+
+  /* Only offer a filter the data can actually answer. Genre and decade are
+     TMDB's to fill, so until pull-entertainment.py has run those two selects hold
+     nothing — and a select with one option in it is disabled rather than left
+     there looking broken. */
+  function fillFilters() {
+    const all = Room.all();
+
+    const wheres = [...new Set(all.flatMap(Room.places))].sort();
+    el('f-where').innerHTML = '<option value="">Anywhere</option>' +
+      wheres.map(w => '<option value="' + esc(w) + '"' + (state.where === w ? ' selected' : '') +
+        '>' + esc(/^buy$/i.test(w) ? 'Have to buy' : w) + '</option>').join('');
+
+    const genres = [...new Set(all.flatMap(e => e.genres || []))].sort();
+    el('f-genre').innerHTML = '<option value="">Any genre</option>' +
+      genres.map(g => '<option value="' + esc(g) + '"' + (state.genre === g ? ' selected' : '') +
+        '>' + esc(g) + '</option>').join('');
+    el('f-genre').disabled = !genres.length;
+
+    const decades = [...new Set(all.filter(e => e.year).map(e => Math.floor(e.year / 10) * 10))]
+      .sort((a, b) => b - a);
+    el('f-decade').innerHTML = '<option value="">Any decade</option>' +
+      decades.map(d => '<option value="' + d + '"' + (String(state.decade) === String(d) ? ' selected' : '') +
+        '>' + d + 's</option>').join('');
+    el('f-decade').disabled = !decades.length;
+  }
+
+  function visible() {
+    const needle = state.q.toLowerCase();
+    let list = Room.all().filter(e => {
+      if (state.view === 'together' && !e.pick) return false;
+      if (state.view === 'watchlist' && e.status !== 'watchlist') return false;
+      if (state.view === 'watched' && e.status !== 'watched') return false;
+      if (state.where && !Room.places(e).includes(state.where)) return false;
+      if (state.genre && !(e.genres || []).includes(state.genre)) return false;
+      if (state.decade && (!e.year || Math.floor(e.year / 10) * 10 !== Number(state.decade))) return false;
+      if (needle && !(e.title.toLowerCase().includes(needle) ||
+                      (e.where || '').toLowerCase().includes(needle) ||
+                      (e.director || '').toLowerCase().includes(needle) ||
+                      (e.cast || []).some(a => a.toLowerCase().includes(needle)) ||
+                      (e.genres || []).some(g => g.toLowerCase().includes(needle)))) return false;
+      return true;
+    });
+
+    const az = (a, b) => a.title.localeCompare(b.title, 'en', { sensitivity: 'base' });
+    /* Watched rows sit in the committed file in the order Ric watched them,
+       oldest at the top (confirmed 2026-09-21), and a `seen` date beats any of
+       them because it was stamped here and now. Queued rows have no watch order
+       at all, so they sort after everything that does. */
+    const recency = e => e.seen ? Date.parse(e.seen)
+      : e.status === 'watched' ? -1e12 + (e.ord || 0)
+      : -1e13;
+    const sorts = {
+      az: az,
+      za: (a, b) => az(b, a),
+      recent: (a, b) => recency(b) - recency(a) || az(a, b),
+      /* An undated title sorts last either way round — it is unknown, not old
+         and not new, and putting it at the top of "newest" would be a claim. */
+      year: (a, b) => (b.year || -Infinity) - (a.year || -Infinity) || az(a, b),
+      yearup: (a, b) => (a.year || Infinity) - (b.year || Infinity) || az(a, b),
+      where: (a, b) => (a.where || '~').localeCompare(b.where || '~') || az(a, b)
+    };
+    return list.sort(sorts[state.sort] || az);
+  }
+
+  /* The A–Z wall is long enough that you lose your place in it, so in
+     alphabetical order the list view calls out the letter it has reached. */
+  const letterOf = e => {
+    const c = e.title.replace(/^(the|a|an)\s+/i, '').trim()[0] || '#';
+    return /[a-z]/i.test(c) ? c.toUpperCase() : '#';
+  };
+
+  function row(e) {
+    const tags = [];
+    if (e.pick) tags.push('<span class="chip star">★ starred</span>');
+    if (e.status === 'watched') tags.push('<span class="chip seen">✓ seen</span>');
+    for (const w of Room.places(e))
+      tags.push('<span class="chip where">' + esc(/^buy$/i.test(w) ? 'have to buy' : w) + '</span>');
+    if (e.count) tags.push('<span class="chip">' + e.count + ' films</span>');
+    if (e.series) tags.push('<span class="chip">the lot</span>');
+    if (e.local) tags.push('<span class="chip">not committed</span>');
+
+    /* The chips already name the service, so the sub-line under the title must
+       not repeat it — it carries what the chips cannot. */
+    const sub = [e.year, e.runtime ? Room.hhmm(e.runtime) : '',
+                 e.director || ''].filter(Boolean).join(' · ');
+    return '<li><button class="tile ' + (e.status === 'watched' ? 'is-watched' : 'is-queue') + '"' +
+      ' type="button" data-id="' + esc(e.id) + '">' +
+      '<span class="edge"></span>' +
+      '<span class="who"><b>' + esc(e.title) + '</b>' +
+        (sub ? '<span>' + esc(sub) + '</span>' : '') + '</span>' +
+      '<span class="tags">' + tags.join('') + '</span></button></li>';
+  }
+
+  function render() {
+    const all = Room.all();
+    const watched = all.filter(e => e.status === 'watched').length;
+    el('strip').textContent = all.length + ' titles · ' + watched + ' watched · ' +
+      (all.length - watched) + ' waiting';
+    el('q').placeholder = 'Search ' + all.length + ' titles…';
+
+    fillFilters();
+    const list = visible();
+    const on = state.view !== 'all' || state.q || state.where || state.genre || state.decade;
+    el('tally').innerHTML =
+      '<span>' + list.length + (list.length === all.length ? ' titles' : ' of ' + all.length + ' titles') + '</span>' +
+      (on ? '<button class="clearfilter" type="button" id="clearf">clear filters ✕</button>' : '');
+    const c = el('clearf');
+    if (c) c.addEventListener('click', () => {
+      state.view = 'all'; state.q = ''; state.where = ''; state.genre = ''; state.decade = '';
+      el('q').value = '';
+      for (const b of document.querySelectorAll('.seg button[data-view]'))
+        b.setAttribute('aria-pressed', String(b.dataset.view === 'all'));
+      history.replaceState(null, '', location.pathname);
+      render();
+    });
+
+    const out = el('out');
+    out.className = state.mode === 'list' ? 'rows'
+      : state.mode === 'shelf' ? 'piles' : 'grid';   /* renderShelves may swap this */
+
+    if (!list.length) {
+      out.innerHTML = '<li class="empty">Nothing matches that. ' +
+        '<a href="#" id="resetf">Clear the filters</a> and start again.</li>';
+      const r = document.getElementById('resetf');
+      if (r) r.addEventListener('click', ev => { ev.preventDefault(); if (c) c.click(); });
+      return;
+    }
+
+    if (state.mode === 'shelf') {
+      renderShelves(list, out);
+    } else if (state.mode === 'list') {
+      let letter = '';
+      out.innerHTML = list.map(e => {
+        let head = '';
+        if (state.sort === 'az' || state.sort === 'za') {
+          const l = letterOf(e);
+          if (l !== letter) { letter = l; head = '<li class="letter">' + esc(l) + '</li>'; }
+        }
+        return head + row(e);
+      }).join('');
+    } else {
+      out.innerHTML = list.map(e => '<li>' + Room.tile(e) + '</li>').join('');
+    }
+
+    const n = Room.pending();
+    el('src-note').textContent = n ? n + ' edit' + (n === 1 ? '' : 's') + ' not committed yet' : '';
+  }
+
+  /* ── the whole catalogue, stacked ──
+     Every title as a spine, in rows, each row standing on its own plank. The
+     rows are cut in JavaScript rather than by flex-wrap because a wrapped row
+     has nothing to stand on: the plank has to know where the row ends. It
+     re-cuts on resize for the same reason.
+
+     Cases are rendered once and moved between rows on a re-cut — rebuilding
+     363 3D boxes on every resize tick is how a page melts a phone. */
+  /* One pile, all the way down. It used to be cut into stacks of thirty,
+     which made sense when they sat side by side in a grid — in a single
+     column all that did was leave a band of empty page between each stack,
+     exactly where the shelf used to be. */
+
+  /* ── stacked, until you narrow it ──
+     The whole catalogue at rest is a pile: nobody stands 363 cases up to look
+     at all of them, they sit in stacks. The moment you ask a QUESTION of the
+     list — search it, pick a service, a genre, a decade, one of the lists —
+     the answer is small enough to stand up, so it goes onto shelves where you
+     can see the artwork down the spines.
+
+     Re-SORTING is not a question. A-Z or newest-first is the same pile in a
+     different order, so it stays a pile. */
+  function narrowed() {
+    return state.view !== 'all' || !!state.q || !!state.where ||
+           !!state.genre || !!state.decade;
+  }
+
+  function perRow() {
+    const w = el('out').clientWidth - 44;       // the bay's padding and uprights
+    const one = parseFloat(getComputedStyle(document.documentElement)
+      .getPropertyValue('--case-w')) + 3;
+    return Math.max(4, Math.floor(w / one));
+  }
+
+  /* Standing on shelves: rows cut in JavaScript, because a flex-wrapped row
+     has nothing to stand on — the plank has to know where the row ends. */
+  function renderStanding(list, out) {
+    const n = perRow();
+    const rows = [];
+    for (let i = 0; i < list.length; i += n) rows.push(list.slice(i, i + n));
+    out.innerHTML = rows.map(r =>
+      '<li class="shelf-row">' +
+        '<div class="rack">' + r.map(e => Room.dvdCase(e)).join('') + '</div>' +
+        '<div class="shelf-board"></div>' +
+      '</li>').join('');
+  }
+
+  let lastPerRow = 0;
+  addEventListener('resize', () => {
+    if (state.mode !== 'shelf' || !narrowed()) return;
+    const n = perRow();
+    if (n === lastPerRow) return;
+    lastPerRow = n;
+    render();
+  });
+
+  function renderShelves(list, out) {
+    if (narrowed()) {
+      out.className = 'shelves';
+      renderStanding(list, out);
+      return;
+    }
+    out.className = 'piles';
+    out.innerHTML =
+      '<li class="pile"><div class="rack stacked">' +
+        list.map(e => Room.dvdCase(e, 'stacked')).join('') +
+      '</div></li>';
+  }
+
+  /* ── controls ── */
+  for (const b of document.querySelectorAll('.seg button[data-view]')) {
+    b.addEventListener('click', () => {
+      state.view = b.dataset.view;
+      for (const o of document.querySelectorAll('.seg button[data-view]'))
+        o.setAttribute('aria-pressed', String(o === b));
+      render();
+    });
+  }
+  for (const b of document.querySelectorAll('.seg button[data-mode]')) {
+    b.addEventListener('click', () => {
+      state.mode = b.dataset.mode;
+      for (const o of document.querySelectorAll('.seg button[data-mode]'))
+        o.setAttribute('aria-pressed', String(o === b));
+      render();
+    });
+  }
+  let qt;
+  el('q').addEventListener('input', ev => {
+    clearTimeout(qt);
+    const v = ev.target.value.trim();
+    qt = setTimeout(() => { state.q = v; render(); }, 90);
+  });
+  el('f-where').addEventListener('change', ev => { state.where = ev.target.value; render(); });
+  el('f-genre').addEventListener('change', ev => { state.genre = ev.target.value; render(); });
+  el('f-decade').addEventListener('change', ev => { state.decade = ev.target.value; render(); });
+  el('sort').addEventListener('change', ev => { state.sort = ev.target.value; render(); });
+  window.addEventListener('hashchange', () => { readHash(); syncSeg(); render(); });
+
+  function syncSeg() {
+    for (const b of document.querySelectorAll('.seg button[data-view]'))
+      b.setAttribute('aria-pressed', String(b.dataset.view === state.view));
+  }
+
+  readHash();
+  syncSeg();
+  Room.boot({ render: render });
+  </script>
+  <script src="effects.js"></script>
+</body>
+</html>

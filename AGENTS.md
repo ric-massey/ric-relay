@@ -53,7 +53,7 @@ There is intentionally **no shared nav component**. Each page has its own `<nav>
 labels** so navigation stays predictable:
 
 ```
-terminal · orrin · psyche · climbing · training · exploration · gaming · workbench · captures
+terminal · orrin · psyche · climbing · training · exploration · gaming · workbench · captures · entertainment
 ```
 
 **This set matches the home page's `#dir` listing on purpose.** The room navs used to
@@ -131,6 +131,7 @@ Per-room nav treatments (class on the `<nav>`):
 | gaming | understated top-bar text links | `nav.launcher` |
 | workbench | blueprint sheet-index chips | `nav.sheets` |
 | captures | darkroom film strip | `nav.filmstrip` |
+| entertainment | cinema marquee tab strip (bulbs under the current room) | `nav.marquee` |
 | log | newspaper section bar | `nav.sections` |
 | index | terminal directory listing + `ls`/`open` commands | `#dir` |
 
@@ -315,6 +316,181 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   pulled properly onto the climbing page — a watch ticking climbing too would
   double-count the site's one real source.
 
+**Entertainment is written from the page, and falls back to this browser.**
+`entertainment.html` reads `entertainment-data.js` — 363 titles, each `watched` or
+`watchlist`. Rules for it:
+
+- **The committed file is the archive and always renders on its own.** Everything else
+  is a layer on top of it, merged at read time: the Worker's `/movies` first, then this
+  browser's `localStorage`. Same shape as the climbing pages, for the same reason — a
+  page showing the real list is right, and an error page is not. If the service is
+  unreachable the page must still come up complete.
+- **`/movies` is written and tested but not deployed.** Until it is, every edit lands in
+  `localStorage` and the card says **not committed**. Don't "fix" that by deleting the
+  local layer — it is the only thing holding those edits. The owner panel's Export
+  button prints a replacement data file with them folded in; that is how they get
+  committed.
+- **A removal is a tombstone, not a delete** (`{ removed: true }`), in the Worker and in
+  the local layer both. This is the one place `/movies` differs from `/todo`, which it
+  is otherwise a copy of, and the reason is the committed file underneath: a real delete
+  is undone by the next page load.
+- **The export must keep the data file's header.** It reads it back off the real file
+  rather than keeping a second copy, because two copies of a comment is how a comment
+  starts lying — export once with a stale duplicate and the rules at the top of the data
+  file are quietly replaced.
+- **The titles are his, not IMDb's.** They were corrected for spelling and casing only.
+  Several were deliberately left as typed because the right film was not guessable —
+  don't "fix" `Curtis`, `Moments`, `The Sound`, `Greater good`, `RIP`, `Code 3`,
+  `Mercy` or `Obsession` without asking him which ones they are.
+- **The room's data is pulled in two stages, and they are separate on purpose.**
+  `projects/entertainment/pull-entertainment.py`:
+  - **Stage 1, facts — no key, nothing to sign up for.** Wikipedia finds the article,
+    Wikidata answers: year, runtime, director, genre, IMDb id and **the TMDB id**.
+    Wikidata is CC0; the one-line synopsis is the Wikipedia extract (CC BY-SA).
+  - **Stage 2, art — needs the free TMDB key** in the Keychain (`tmdb`, account
+    `ricmassey`), never in the repo, same rule as `apex-als`. It never *searches*
+    TMDB: stage 1 already handed it the exact id, so there is no fuzzy matching and
+    no chance of a stranger's poster.
+- **Poster art is downloaded and committed — never hotlinked.** Images land in
+  `assets/posters/` (and `assets/backdrops/` for starred titles) and the pages read
+  files out of this repo, so the live room still makes **no external request** and still
+  works opened off disk. That is hard rule 4's actual line: a CDN `<img src>` is a
+  dependency and is out; a file in `assets/` is not. Ric asked for the pictures
+  (2026-09-21) — the "unless asked" clause — but that bought art, not a CDN.
+- **Identity comes from an id, never from a title.** Titles on this list are short and
+  collide brutally: `Greater`, `Moments`, `Obsession`, `Mercy`, `RIP` are all real films
+  *and* real other things. The matcher requires the article title to equal the row title
+  once Wikipedia's "(2016 film)" is stripped — nothing looser. An earlier, looser rule
+  matched `Moments` to *Defining Moments*, which is exactly the failure this guards.
+  Titles it cannot settle are **reported, not guessed**; exact matches on a name
+  Wikipedia considers ambiguous are matched but flagged for Ric's eye.
+- **`--audit` is the check that scales.** Finding wrong matches by noticing that
+  *13 Hours* is a war film and not a Scorsese comedy does not work at 363 titles. The
+  audit asks TMDB — a different catalogue with its own idea of which film a name means —
+  and flags two things: a stored film whose own title is not what Ric wrote (catches
+  redirects and near-misses), and a far better-known film with exactly that name
+  (catches remakes: 2025's *Junior* over 1994's, 1932's *Scarface* over 1983's).
+  `--fix` takes the suggestion and clears the old film's facts and poster with it.
+  Rows Ric confirmed himself are never questioned. Run it after any bulk `--facts`.
+- **Wikipedia redirects are a trap for a title matcher.** "13 Hours" is a *redirect* to
+  "After Hours (film)", so the article NAME matched while the entity behind it was a
+  different film entirely. Always compare against what the page resolved to — the entity
+  label and the post-redirect title — never the search term. And never carry a summary
+  between loop iterations; that turned one candidate's name into another's identity.
+- **`entertainment-data.js` is strict JSON, and it is parsed, never pattern-matched.**
+  This file lost data three separate times, and every time it was the same failure: the
+  reader could not see a field, so the writer dropped it, silently.
+  1. the reader named `genres` as the only list, so `cast`, `streams` and `rents` were
+     invisible — one whole pass of availability data gone;
+  2. `parts` put braces inside a row and the row pattern forbade nesting, so every
+     franchise row stopped being a row — 23 rows deleted, Star Wars among them;
+  3. scanning a whole row for scalars picked up the `id` of a nested recommendation and
+     overwrote the row's own.
+
+  A regex has to be taught each new shape and fails quietly when it has not been. A JSON
+  parser knows every shape there will ever be and fails LOUDLY on anything it does not.
+  JSON is still valid JS, so the page loads it unchanged, and quoted keys are no harder
+  to hand-edit. **Do not reintroduce a pattern-based reader.**
+- **`write_rows` refuses to write anything it cannot read back.** It serialises,
+  re-parses what it just built, and compares to what it had; on any difference the file
+  is not touched and the run stops with the row that differs. A bug can still exist — it
+  can no longer destroy anything quietly. `read_rows` is the same on the way in: invalid
+  JSON, a row with no id, or a duplicate id all stop the run rather than returning a
+  partial list that the next write would make permanent.
+- **Unknown fields are preserved.** Anything on a row that `FIELDS` has never heard of is
+  written back untouched, so adding a field to the data by hand is safe and forgetting to
+  add it to `FIELDS` costs nothing but ordering.
+- **The page's Export button emits the same JSON**, and `FIELDS` appears in both
+  `pull-entertainment.py` and `assets/entertainment-room.js`. They have to agree or every
+  export fights the last pull.
+- **A hand-set `wd:` or `tmdb:` id is never overwritten.** That is how an ambiguous
+  title gets settled once and stays settled through every re-run.
+- **The page asks Ric which film it is, at the moment he adds it.** Adding a title from
+  the owner panel opens a chooser: it searches Wikipedia, shows the candidates with
+  their thumbnails, years and first lines, and he picks. "Keep it as I typed" is always
+  an option — an obscure film that is on nobody's list is still on his — and backing out
+  cancels the add rather than saving a half-answered row. Any row already on the list can
+  be corrected the same way from its detail sheet ("Not the right film?"), which clears
+  the old facts before writing the new ones so 1969's runtime never ends up on 2003's
+  film. This is the right place for the question: he is the only one who knows which
+  *Moments* he watched, and he knows it then, not six months later.
+- **The chooser's fetch does not break hard rule 4.** Nothing runs on load, no visitor
+  can trigger it, and the page opens off disk and renders all 363 titles with the network
+  unplugged. It fires when the signed-in owner clicks a button — the same category as a
+  "Watch on Hulu" link, and a weaker claim than the `/movies` read the room already does
+  on load.
+- **Never commit the chooser's thumbnails.** They come from Wikipedia and are non-free
+  fair-use files; they are shown in the owner's own panel for the seconds it takes to
+  tell two films apart, and are never saved, never committed and never served to a
+  visitor. The poster that lands on the site comes from TMDB, whose terms allow it.
+- **The script writes as it goes** (every ten rows) and skips rows already filled in, so
+  stopping it halfway costs nothing and a re-run is cheap.
+- **`urllib` needs its certificates pointed at.** A python.org install ships `certifi`
+  but only wires it up if someone runs *Install Certificates.command*, which nobody
+  does — so `urllib` gets `CERTIFICATE_VERIFY_FAILED` while `curl` in the same shell is
+  fine. The script builds its own SSL context from `certifi` when it can. Any new script
+  here that talks https should do the same rather than "fixing" the Python install.
+- **The credit line in the footer is not decoration.** Wikipedia extracts are CC BY-SA
+  and TMDB's terms ask to be named. It is hidden until there is actually borrowed data
+  on the page; don't delete it once there is.
+- **No poster file yet? Then no `<img>` at all.** The tile falls back to a typographic
+  plate, tinted by a hash of the id. This is a designed state, not a broken one: the
+  page has to be right on the day it ships, not only after a script gets run. Never
+  emit an `<img>` that might 404 — 363 broken frames is worse than no pictures.
+- **Links out are not dependencies.** Every tile offers "Watch on <service>" (a title
+  *search* URL, never a per-title deep link — those rot) plus a JustWatch fallback.
+  Nothing loads until it is clicked, so the page still opens off disk with no network.
+  Availability itself is never stored: things leave Hulu monthly, and a confidently
+  stale answer is worse than resolving it at click time.
+- **Two pages, one core.** `entertainment.html` is the app (billboard, service row,
+  shelves); `entertainment-library.html` is the catalog (every title, filters, posters
+  or dense list). Both load `assets/entertainment-room.js`, which owns the merge rules,
+  the write path, the detail sheet, the owner panel and the export. Hard rule 3 is about
+  not flattening the *site* into one template — inside one room, one core is how the two
+  pages keep telling the same truth. Don't fork it.
+- **The room is a video store, and the case is a real box.** A DVD case is drawn in
+  CSS 3D: the spine faces out (all you see on a full shelf) and the front cover is
+  hinged to the spine's right edge, folded back at 90° where it is invisible edge-on.
+  Pulling it out rotates the whole box about that hinge. Don't "simplify" it to a
+  cross-fade between two images — the hinge is why it reads as an object.
+- **Hover is not available on a phone**, so the gesture is the real one: first tap pulls
+  the case off the shelf, second tap opens it. That handler runs in the CAPTURE phase,
+  ahead of the room's own click handler, or the first tap falls through and opens the
+  sheet immediately.
+- **`.board` was already the billboard.** Naming the shelf plank `.board` too painted
+  the hero section in wood grain. It is `.shelf-board`. Check for a collision before
+  adding a generic class name to a page this size.
+- **The furniture lives in `assets/entertainment-room.css`** and the case markup in
+  `Room.dvdCase` — one definition, both pages. Hard rule 3 is about not flattening the
+  SITE into one template; this is one room's furniture, like `assets/climbing.css`.
+- **The mark on a film is a PERSON, not a star.** That list is what Ric and his partner
+  are going to watch together, which is a different thing from a favourite. The data
+  field is still `pick` — it is in the committed file, the Worker and the export, and
+  renaming a field to change a label is how a schema grows two of everything. Only the
+  words and the icon changed; the label is `PARTNER_LABEL` in the core, one line.
+- **Favourite actors ride under a reserved id** (`_people`) in the same store as the
+  films, and `all()` filters ids starting with an underscore out of the film list. They
+  are not written to entertainment-data.js — that file is a list of films.
+- **A front-page shelf shows thirty cases, not the whole shelf.** 1,300 3D boxes on one
+  page is a phone running hot for nothing. The whole catalogue is the library page,
+  which cuts its rows in JavaScript because a flex-wrapped row has nothing to stand on —
+  the plank has to know where the row ends.
+- **Shelves are ordered by fact, never by mood.** Starred, recently watched, queued,
+  on-a-service, franchise, genre, decade. No "cosy Sunday" rows.
+- **`FIELDS` appears twice on purpose and must match** — in `pull-entertainment.py` and in
+  `entertainment-room.js`'s export. The script and the Export button both rewrite the
+  data file; if the two lists disagree, every export fights the last pull.
+- **The order of the watched block IS the order he watched them** — oldest at the top,
+  most recent at the bottom (Ric, 2026-09-21). There are no watch *dates* for the
+  original 238 (they came off a piece of paper, not a log), but `ord` is real data, not
+  a guess. Two consequences, both load-bearing:
+  - **Never alphabetise the watched block.** The export sorts by status then `ord`, and
+    the title only breaks ties. Sort that block by name — as an earlier version of the
+    export did — and the only record of what he watched when is gone and unrecoverable.
+  - A title marked watched from the page gets a real `seen` date and sorts above the
+    whole paper backlog, which is correct: it happened today. On export it lands at the
+    bottom of the watched block, which is where the most recent thing belongs.
+
 **Apex is pulled, not written.** `apex.html` reads `projects/apex/apex-data.js`, which
 `projects/apex/pull-apex.py` generates from the Apex Legends Status API. Rules:
 
@@ -397,7 +573,7 @@ python3 -m http.server 8912
 ```sh
 node projects/kondrite/test/smoke.js      # syntax, transport, room service
 node projects/kondrite/test/campaign.js   # headless play-through of all three missions
-node projects/training/test/rules.js       # plan/tick rules
+node projects/training/server/test.mjs     # worker rules: auth, strava, media, todo, movies
 node projects/climbing/test/parse-parity.js  # build-data.py and climb-parse.js agree
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
 for t in atlas/test/*.test.mjs; do node "$t" || break; done

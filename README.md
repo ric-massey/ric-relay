@@ -33,6 +33,8 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `exploration.html` | Exploration | Space deck — experiments dock here |
 | `workbench.html` | Workbench | Blueprint board of random / half-finished projects |
 | `captures.html` | Captures | Darkroom contact sheet for photos |
+| `entertainment.html` | Entertainment | The films-and-shows app — a billboard, a row of services, and shelves of poster tiles (starred first, then most recently watched). Every tile opens a detail sheet with a way through to whichever service it is on. Ric can add a title or move one between the lists from the page itself |
+| `entertainment-library.html` | — | The whole catalogue as stacked DVD spines on shelves, and the catalog half of the same room: every title, filterable by service, genre, decade and state, as posters or as a dense list · *linked from `entertainment.html`, not a room of its own* |
 | `log.html` | Log | Long-form write-ups, trip reports, Apex VOD reviews · *unlisted on the home directory* |
 | `updates.html` | — | Legacy redirect to the homepage's latest-signal banner |
 | `systems.html` | — | Legacy redirect from the former Orrin URL to `orrin.html` |
@@ -43,6 +45,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `projects/` | — | Self-contained sub-projects, each linked from a room (see below) |
 | `photos/` | — | Web-optimized images (originals stay out of git in `_photo-originals/`) |
 | `captures-data.js` | — | Generated `[filename, date]` pairs for the 1,300+ photos `captures.html` draws |
+| `entertainment-data.js` | — | The committed list both entertainment pages read — 363 titles, each with a status, where to find the queued ones, and whatever `pull-entertainment.py` has filled in (year, runtime, genre, director, synopsis, poster) |
 | `assets/` | — | Everything that isn't a photograph: Mochi's 82 sprite frames, the game covers and clips in `assets/games/`, the generated `training-plan.json`, and `owner.js` |
 | `notes.js` | — | Homepage "transmissions" — the one file you edit by hand to post a note |
 | `latest.js` | — | Curated newest additions shown in the homepage's NOTIFICATION banner |
@@ -61,6 +64,7 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | `projects/how-speed-affects-time/` | Exploration | "How Speed Affects Time" — two clocks and a real-sky special-relativity exhibit |
 | `projects/how-big-everything-is/` | Exploration | "How Big Everything Is" — a 45-decade scale ladder you zoom out through, from an electron to the observable universe |
 | `projects/apex/` | Apex (room data) | Not a page — the sync tooling and generated `apex-data.js` that `apex.html` reads |
+| `projects/entertainment/` | Entertainment (room data) | Not a page — `pull-entertainment.py`, which fills `entertainment-data.js` with years, runtimes, genres, directors and synopses from Wikidata (no key needed), then downloads the poster art from TMDB into `assets/posters/` |
 | `projects/the-shape-of-harm/` | Psyche | Evidence-informed interactive research framework for comparing psychoactive-substance harms |
 | `projects/siege-conductor/` | Workbench | Star Wars viewing-companion PWA (add-to-home-screen app) |
 | `projects/offramp/` | Gaming | "OFFRAMP" — Interstate 40 as an arcade cabinet. The real corridor, all 2,551 miles Barstow→Wilmington, extracted from OpenStreetMap: true geometry and curves, 1,201 real exits at their real mile markers, real lane counts (85% of I-40 is two lanes each way), and mile posts that reset at each state line the way the real ones do. Only a 20-mile window of road is built at a time and slides as you drive, because the whole thing is 2.9M stations. Built into that window: the 350 surveyed interchanges as they were walked, 234 real rest areas and truck stops, a generated diamond for every other signed exit, a cross road bridged over each one with the ramp meeting it at a signalised junction, and the I-40/I-75 wye west of Knoxville as a two-lane left exit — signed, open, and closed for construction two thirds of the way down. The generated exits are not invented: their depth and their whole lateral profile are drawn from the 349 ramps the survey walked, so an interchange reaches a median 512 px off the freeway rather than the same 268 px every time, and the travel centres that a diamond crowds out are signed on the blue panel under its guide sign, which is where a real one is advertised. Every ramp puts you back on I-40; that rule is the whole design and it is asserted, not assumed. Crashes go through one SI impulse-momentum solver (`src/impact.js`, `test/impact.test.js`, checked against published crash figures); `test/corridor.js` sweeps every window of the route for two roads sharing tarmac. `data/osm/` holds the extractor and the raw OSM; `data/i40.js` is the generated corridor. See `projects/offramp/PLAN.md` and `projects/offramp/CRASH-MODEL.md` |
@@ -251,6 +255,9 @@ file — copy the example block, edit, done.
 - **Add a climb:** don't hand-edit the climbing pages. Edit `projects/climbing/climbs.md`
   and run `python3 projects/climbing/build-data.py`. See
   [`projects/climbing/readme.md`](projects/climbing/readme.md).
+- **Add a film or move one to watched:** you don't have to edit anything. Sign in at the
+  foot of `entertainment.html` and use the form and the buttons on the cards. Editing
+  `entertainment-data.js` by hand still works and is what a bulk change should do.
 - **Change the clickable newest-item banner:** edit `latest.js`. Only the homepage
   shows it now — the rooms no longer carry one — so a new addition is announced once.
   Still give each entry a `room`: it is what a room banner would use to pick its own
@@ -296,6 +303,78 @@ belong here.
   Keychain, never in this repo. `board-sync.plist` polls hourly and `board-tick.mjs`
   posts the dates to the Worker so a board night ticks its climbing session. Board grades
   stay on their own scale and never merge into the outdoor ledger.
+- **Entertainment** (`entertainment.html`) is live and works with nothing deployed.
+  `entertainment-data.js` is the committed list and renders on its own; edits made on the
+  page are layered on top of it at read time, from whichever of two places answers:
+
+  1. the Worker's `/movies`, if it is deployed. Then an edit is real — it follows Ric
+     between phone and laptop, and visitors see it.
+  2. this browser's `localStorage`, if it is not. The edit shows up immediately, is
+     marked **not committed** on the card, and stays in that browser.
+
+  The endpoint is written and tested (`projects/training/server/worker.mjs`, and the
+  `/movies` rules in `projects/training/server/test.mjs`) but **has not been deployed** —
+  until someone runs the deploy from the Mac, every edit takes route 2. That is not a
+  broken state: the page says which edits are uncommitted, and the owner panel's
+  **Export** button prints a replacement `entertainment-data.js` with them folded in.
+  Paste it over the file, commit, and the "not committed" chips clear themselves.
+
+  **The facts and the art are pulled in two stages**, by
+  `projects/entertainment/pull-entertainment.py`, and only the second one needs anything
+  from you.
+
+  ```
+  python3 projects/entertainment/pull-entertainment.py --facts   # no key needed
+  ```
+
+  Stage 1 asks Wikipedia for the article and Wikidata for the answers: year, runtime,
+  director, genre, IMDb id — and the TMDB id, which is the part that matters. Wikidata
+  is CC0, so there is nothing to sign up for and nothing to be careful about.
+
+  ```
+  # free key, 2 minutes, no card: https://www.themoviedb.org/settings/api
+  security add-generic-password -s tmdb -a ricmassey -U -w
+  python3 projects/entertainment/pull-entertainment.py --art
+  ```
+
+  Stage 2 fetches the posters. Because stage 1 already found the exact TMDB id, it never
+  searches by title — so it cannot put the wrong film's poster on a row. Images are
+  **downloaded into `assets/posters/`**, not hotlinked: the live room makes no external
+  request and works opened straight off disk, which is what hard rule 4 actually asks
+  for.
+
+  **Adding a title asks you which film you mean.** Type the name in the owner panel and
+  the page searches Wikipedia, shows you the candidates with their posters, years and
+  first lines, and lets you pick — or keep the name exactly as you typed it. Picking
+  fills in the id, so the poster that arrives later is the right film's. Anything already
+  on the list can be corrected the same way: open it and use **Not the right film?**.
+  That is the fix for the handful the script had to guess at — *The Italian Job* resolved
+  to the 1969 one, for instance.
+
+  **Check the matches with `--audit`.** It asks TMDB for a second opinion on every
+  title and prints the ones worth a look — a film whose real name is not what you wrote,
+  or a much better-known film of the same name (which is how remakes sneak in). Add
+  `--fix` to take its suggestions:
+
+  ```
+  python3 projects/entertainment/pull-entertainment.py --audit
+  python3 projects/entertainment/pull-entertainment.py --audit --fix
+  python3 projects/entertainment/pull-entertainment.py --art --where
+  ```
+
+  Anything you have confirmed yourself on the page is never questioned by it.
+
+  Both stages skip what is already filled in and write as they go, so a re-run is cheap
+  and stopping one halfway costs nothing. A title it cannot settle is **left alone and
+  reported** rather than guessed at — put the right `wd: "Q42047"` on the row and re-run;
+  a hand-set id is never overwritten. Until stage 2 has run, tiles fall back to a
+  typographic plate; that is a designed state, not a broken one.
+
+  Titles are Ric's list, lightly corrected for spelling and casing. A few were left
+  exactly as typed because correcting them would have been a guess — `Curtis`,
+  `Moments`, `The Sound`, `Greater good`, `RIP`, `Code 3`, `Mercy` and `Obsession` are
+  all ambiguous enough that the wrong film could end up on the page. Fix them when he
+  says which ones they are.
 - **ATLAS** (`atlas/`) talks to Supabase. The publishable key in `atlas/config.js` is
   public by design; the **service_role** key must never be in this repo — it bypasses
   every row-level-security policy.
@@ -312,7 +391,7 @@ python3 -m http.server 8912
 ```bash
 node projects/kondrite/test/smoke.js
 node projects/kondrite/test/campaign.js
-node projects/training/test/rules.js
+node projects/training/server/test.mjs
 node projects/climbing/test/parse-parity.js
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
 for t in atlas/test/*.test.mjs; do node "$t" || break; done

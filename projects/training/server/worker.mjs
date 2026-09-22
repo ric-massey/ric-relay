@@ -676,6 +676,74 @@ export class TrainingLog {
       return json({ error: 'method not allowed' }, 405, origin);
     }
 
+    /* ── /movies ──
+       The Entertainment room's list. Same shape as /todo above, for the same
+       reason /todo was shaped like /climb: GET for everyone, POST behind the
+       token, and the client merge is the one every other page already does.
+       A wish has no date here either, so the key is a slug of the title.
+
+       The committed entertainment-data.js is the archive; this holds everything
+       added or moved since. A REMOVAL is stored as a tombstone rather than a
+       delete, because the committed file underneath would otherwise put the row
+       back on the very next load — the one way this differs from /todo, and
+       only because it has a file under it that /todo does not. */
+    if (parts[0] === 'movies') {
+      const id = parts[1];
+
+      if (request.method === 'GET') {
+        const all = await this.state.storage.list({ prefix: 'm:' });
+        const out = {};
+        for (const [k, v] of all) out[k.slice(2)] = v;
+        return json({ items: out }, 200, origin, { 'cache-control': 'public, max-age=30' });
+      }
+
+      if (request.method === 'POST') {
+        if (!authed()) return json({ error: 'nope' }, 401, origin);
+
+        let body;
+        try { body = await request.json(); } catch { return json({ error: 'body must be JSON' }, 400, origin); }
+
+        /* Same slug rule as the page uses, so saving an edit lands on the row it
+           came from instead of quietly creating a second one. */
+        const slug = String(id || body.title || '')
+          .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 120);
+        if (!slug) return json({ error: 'a title is needed' }, 400, origin);
+
+        const existing = await this.state.storage.get('m:' + slug);
+
+        if (body.removed === true) {
+          /* Tombstone, not a delete. See the note above. */
+          await this.state.storage.put('m:' + slug, {
+            id: slug, removed: true, updated: new Date().toISOString()
+          });
+          return json({ ok: true, removed: slug }, 200, origin);
+        }
+
+        const title = String(body.title || (existing && existing.title) || '').trim().slice(0, 200);
+        if (!title) return json({ error: 'a title is needed' }, 400, origin);
+
+        const count = Math.floor(Number(body.count));
+        const entry = {
+          id: slug,
+          title,
+          status: body.status === 'watched' ? 'watched' : 'watchlist',
+          where: String(body.where || '').trim().slice(0, 60),
+          pick: body.pick === true,
+          count: Number.isFinite(count) && count > 1 ? Math.min(count, 99) : null,
+          series: body.series === true,
+          note: String(body.note || '').slice(0, 300),
+          added: (existing && existing.added) || new Date().toISOString(),
+          source: 'web',
+          updated: new Date().toISOString()
+        };
+        await this.state.storage.put('m:' + slug, entry);
+        return json({ ok: true, item: entry }, 200, origin);
+      }
+
+      return json({ error: 'method not allowed' }, 405, origin);
+    }
+
     if (parts[0] === 'climb') {
       if (date && !DAY.test(date)) return json({ error: 'date must be YYYY-MM-DD' }, 400, origin);
 
@@ -995,7 +1063,7 @@ function mediaRecord(obj) {
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies']);
 
 export default {
   async fetch(request, env, ctx) {
