@@ -64,6 +64,7 @@
       --tile: 152px;          /* poster width; the shelf math follows from it */
       --gut: 14px;
       --case-w: 17px;         /* a DVD spine: ~14mm against a 135mm cover */
+      --faced-w: 132px;       /* a cover on the new-release rack */
       --case-h: 212px;
       --front-w: 148px;
     }
@@ -1242,7 +1243,7 @@
         '</div>' +
         '<div class="rail-wrap">' +
           '<button class="nudge left" type="button" data-dir="-1" aria-label="Scroll left" hidden>' + ARROW('m15 5-7 7 7 7') + '</button>' +
-          '<div class="rack">' + s.items.map(Room.dvdCase).join('') + '</div>' +
+          '<div class="rack faced">' + s.items.map(e => Room.dvdCase(e, true)).join('') + '</div>' +
           '<div class="shelf-board"></div>' +
           '<button class="nudge right" type="button" data-dir="1" aria-label="Scroll right">' + ARROW('m9 5 7 7-7 7') + '</button>' +
         '</div>' +

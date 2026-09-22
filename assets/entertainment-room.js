@@ -302,6 +302,7 @@
        top     the sliver you see because you are looking slightly down at a
                shelf. This one does most of the work: it is the surface that
                says "box" rather than "picture of a box"
+       bottom  the matching lower plane, visible when the case tilts upward
        under   the contact shadow where it meets the plank
 
      Nothing on a real shelf is identical either, so thickness, height and
@@ -322,13 +323,21 @@
     };
   }
 
-  function dvdCase(e) {
+  /* `faced` builds the same box turned cover-out, for a display stand. A
+     Blockbuster had both and used them for different jobs: new releases faced
+     out on angled racks where the art does the selling, and the back-wall
+     catalogue spine-out because that is how you fit thousands of them. */
+  function dvdCase(e, faced) {
     const art = e.poster ? 'assets/posters/' + e.id + '.jpg' : '';
     const sub = [e.year, e.runtime ? hhmm(e.runtime) : ''].filter(Boolean).join(' · ');
+    /* The mark goes on whichever face you are actually looking at: the spine
+       on a catalogue shelf, the cover on a display rack. */
     const mark = e.pick ? '<span class="together">' + PERSON + '</span>' : '';
+    const spineMark = faced ? '' : mark;
+    const frontMark = faced ? mark : '';
     const v = caseVary(e.id);
     const bg = art ? 'background-image:url(&quot;' + esc(art) + '&quot;)' : '';
-    return '<button class="case" type="button" data-id="' + esc(e.id) + '"' +
+    return '<button class="case' + (faced ? ' faced' : '') + '" type="button" data-id="' + esc(e.id) + '"' +
         ' style="--tint:' + hue(e, 26) + ';--t:' + v.t + 'px;--dh:' + v.dh +
         'px;--lean:' + v.lean.toFixed(2) + 'deg"' +
         ' aria-label="' + esc(e.title) + (sub ? ', ' + esc(sub) : '') + '">' +
@@ -336,12 +345,13 @@
         '<span class="face spine">' +
           (art ? '<span class="spine-art" style="' + bg + '"></span>' : '') +
           '<span class="spine-txt">' + esc(e.title) + '</span>' +
-          '<span class="spine-foot"></span>' + mark +
+          '<span class="spine-foot"></span>' + spineMark +
         '</span>' +
         '<span class="face front">' +
           (art
             ? '<img src="' + esc(art) + '" alt="" loading="lazy" decoding="async" width="342" height="513">'
             : '<span class="noart">' + esc(e.title) + '</span>') +
+          frontMark +
           '<span class="crease" aria-hidden="true"></span>' +
           '<span class="gloss" aria-hidden="true"></span>' +
           '<span class="front-tag"><b>' + esc(e.title) + '</b>' +
@@ -356,6 +366,7 @@
         '</span>' +
         '<span class="face edge" aria-hidden="true"></span>' +
         '<span class="face top" aria-hidden="true"></span>' +
+        '<span class="face bottom" aria-hidden="true"></span>' +
       '</span>' +
       '<span class="under" aria-hidden="true"></span>' +
       '</button>';
