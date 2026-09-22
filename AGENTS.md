@@ -377,10 +377,32 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   different film entirely. Always compare against what the page resolved to — the entity
   label and the post-redirect title — never the search term. And never carry a summary
   between loop iterations; that turned one candidate's name into another's identity.
-- **Every list field must be in the reader's regex.** It named `genres` alone, so
-  `cast`, `streams` and `rents` were invisible to `read_rows` — and a field the reader
-  cannot see is one the next `write_rows` silently DELETES. It cost a whole pass of
-  availability data. The reader now takes any `key: [...]`; keep it that way.
+- **`entertainment-data.js` is strict JSON, and it is parsed, never pattern-matched.**
+  This file lost data three separate times, and every time it was the same failure: the
+  reader could not see a field, so the writer dropped it, silently.
+  1. the reader named `genres` as the only list, so `cast`, `streams` and `rents` were
+     invisible — one whole pass of availability data gone;
+  2. `parts` put braces inside a row and the row pattern forbade nesting, so every
+     franchise row stopped being a row — 23 rows deleted, Star Wars among them;
+  3. scanning a whole row for scalars picked up the `id` of a nested recommendation and
+     overwrote the row's own.
+
+  A regex has to be taught each new shape and fails quietly when it has not been. A JSON
+  parser knows every shape there will ever be and fails LOUDLY on anything it does not.
+  JSON is still valid JS, so the page loads it unchanged, and quoted keys are no harder
+  to hand-edit. **Do not reintroduce a pattern-based reader.**
+- **`write_rows` refuses to write anything it cannot read back.** It serialises,
+  re-parses what it just built, and compares to what it had; on any difference the file
+  is not touched and the run stops with the row that differs. A bug can still exist — it
+  can no longer destroy anything quietly. `read_rows` is the same on the way in: invalid
+  JSON, a row with no id, or a duplicate id all stop the run rather than returning a
+  partial list that the next write would make permanent.
+- **Unknown fields are preserved.** Anything on a row that `FIELDS` has never heard of is
+  written back untouched, so adding a field to the data by hand is safe and forgetting to
+  add it to `FIELDS` costs nothing but ordering.
+- **The page's Export button emits the same JSON**, and `FIELDS` appears in both
+  `pull-entertainment.py` and `assets/entertainment-room.js`. They have to agree or every
+  export fights the last pull.
 - **A hand-set `wd:` or `tmdb:` id is never overwritten.** That is how an ambiguous
   title gets settled once and stays settled through every re-run.
 - **The page asks Ric which film it is, at the moment he adds it.** Adding a title from

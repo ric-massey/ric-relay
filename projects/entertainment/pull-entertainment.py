@@ -227,63 +227,106 @@ def download(url: str, dest: Path) -> bool:
 # row, the reader silently skipped it, and the next write deleted it. That cost
 # 23 rows including Star Wars before it was caught. If a field ever nests two
 # deep, this has to grow again or the same thing happens.
-ROW = re.compile(r"\{(?:[^{}]|\{[^{}]*\})*\}", re.S)
-FIELD = re.compile(r"(\w+)\s*:\s*(\"(?:[^\"\\]|\\.)*\"|true|false|-?\d+(?:\.\d+)?)")
-# Every list-valued field, not just genres. This used to name `genres` alone,
-# which meant `cast`, `streams` and `rents` were invisible to the reader — and a
-# field this file cannot read is a field the next write DELETES.
+# ── the data file ─────────────────────────────────────────────────────────
 #
-# `parts` holds objects rather than strings, so the pattern has to survive the
-# braces inside the brackets — hence the non-greedy run up to the first `]`
-# that is followed by a comma or a closing brace.
-LISTS = re.compile(r"(\w+)\s*:\s*(\[.*?\])\s*(?=,\s*\w+\s*:|,?\s*\})", re.S)
+# The rows are STRICT JSON inside the assignment, and they are read with a JSON
+# parser rather than with regular expressions. That is the whole point.
+#
+# This file used to be hand-shaped JS read back with a pattern per field, and
+# it ate data three times: once when the reader named `genres` as the only list
+# and so could not see `cast`, `streams` or `rents`; once when `parts` put
+# braces inside a row and the row pattern forbade nesting, which deleted 23
+# rows including Star Wars; and once when scanning a whole row for scalars
+# picked up the `id` of a nested recommendation and overwrote the row's own.
+#
+# Every one of those was the same failure: the reader could not see a field, so
+# the writer dropped it, silently. A regex has to be taught each new shape and
+# fails quietly when it has not been. A JSON parser knows every shape there
+# will ever be, and fails LOUDLY on anything it does not.
+#
+# JSON is still valid JS, so the page loads this exactly as before. It is still
+# hand-editable — quoted keys and nothing else different.
 
-# Order matters: this is the order fields are written back out in, and it has to
-# match FIELDS in assets/entertainment-room.js.
 FIELDS = ["id", "title", "status", "count", "series", "where", "pick", "note",
           "seen", "wd", "wdok", "tmdb", "kind", "imdb", "year", "runtime", "genres", "director",
           "overview", "rating", "cast", "parts", "like", "poster", "backdrop",
           "streams", "rents", "checked"]
 
+ASSIGN = "window.ENTERTAINMENT_DATA"
+
 
 def read_rows() -> tuple[str, list[dict]]:
+    """The header comment, and the rows — parsed, never pattern-matched."""
     text = DATA.read_text()
-    cut = text.index("window.ENTERTAINMENT_DATA")
+    cut = text.index(ASSIGN)
     head = text[:cut].rstrip()
-    rows = []
-    for m in ROW.finditer(text[cut:]):
-        chunk = m.group(0)
-        # Lists come out FIRST and are then cut out of the text, because the
-        # objects inside `parts` and `like` carry their own `id`, `t` and `y`.
-        # Scanning the whole chunk for scalars picks those up as if they were
-        # the row's own fields — which silently replaced a row's id with the
-        # id of the last film recommended to it.
-        row = {}
-        for k, v in LISTS.findall(chunk):
-            row[k] = json.loads(v)
-            chunk = chunk.replace(v, "", 1)
-        for k, v in FIELD.findall(chunk):
-            row[k] = json.loads(v)
-        if row.get("id"):
-            rows.append(row)
-    if not rows:
+    body = text[text.index("[", cut):text.rindex("]") + 1]
+    try:
+        rows = json.loads(body)
+    except json.JSONDecodeError as e:
+        raise Failed(
+            f"entertainment-data.js is not valid JSON at line {e.lineno}: {e.msg}\n"
+            "The rows must be strict JSON — quoted keys, no trailing commas.\n"
+            "Nothing has been read and nothing will be written.") from None
+
+    if not isinstance(rows, list) or not rows:
         raise Failed("parsed no rows out of entertainment-data.js — refusing to write.")
+    missing = [i for i, r in enumerate(rows) if not isinstance(r, dict) or not r.get("id")]
+    if missing:
+        raise Failed(f"{len(missing)} row(s) have no id, first at index {missing[0]}.")
+    ids = [r["id"] for r in rows]
+    if len(set(ids)) != len(ids):
+        dupe = next(i for i in ids if ids.count(i) > 1)
+        raise Failed(f"duplicate row id {dupe!r} — refusing to work on this file.")
     return head, rows
 
 
 def write_rows(head: str, rows: list[dict]) -> None:
+    """Write the rows, and refuse to write anything we cannot read back.
+
+    This is the guard that makes the old failures impossible rather than just
+    unlikely. Whatever the shape of the data, if serialising and re-parsing it
+    does not give back exactly what we had, the file is not touched. A bug can
+    still exist; it can no longer destroy anything quietly.
+    """
     out = []
     for e in rows:
-        parts = []
-        for k in FIELDS:
-            v = e.get(k)
-            if v in (None, "", False, [], 0):
-                continue
-            parts.append(f"{k}: {json.dumps(v, ensure_ascii=False)}")
-        for k in sorted(set(e) - set(FIELDS)):          # anything hand-added
-            parts.append(f"{k}: {json.dumps(e[k], ensure_ascii=False)}")
-        out.append("  { " + ", ".join(parts) + " },")
-    DATA.write_text(f"{head}\nwindow.ENTERTAINMENT_DATA = [\n" + "\n".join(out) + "\n];\n")
+        ordered = {k: e[k] for k in FIELDS if k in e and e[k] not in (None, "", False, [], 0)}
+        # anything hand-added that FIELDS does not know about is kept
+        for k in sorted(set(e) - set(FIELDS)):
+            if k != "ord":
+                ordered[k] = e[k]
+        try:
+            out.append("  " + json.dumps(ordered, ensure_ascii=False))
+        except TypeError as err:
+            # Something got onto a row that is not data — a set, a date object,
+            # a numpy anything. Better to stop than to write half a file.
+            raise Failed(f"refusing to write: row {e.get('id')!r} holds a value "
+                         f"JSON cannot represent ({err}).") from None
+    text = f"{head}\n{ASSIGN} = [\n" + ",\n".join(out) + "\n];\n"
+
+    # read it back before it goes anywhere near the disk
+    body = text[text.index("[", text.index(ASSIGN)):text.rindex("]") + 1]
+    try:
+        back = json.loads(body)
+    except json.JSONDecodeError as e:
+        raise Failed(f"refusing to write: what I built is not valid JSON ({e.msg}).") from None
+
+    expect = []
+    for e in rows:
+        keep = {k: v for k, v in e.items()
+                if k != "ord" and v not in (None, "", False, [], 0)}
+        expect.append(keep)
+    if back != expect:
+        bad = next((i for i, (a, b) in enumerate(zip(back, expect)) if a != b), None)
+        where = f" first at row {bad} ({expect[bad].get('id')})" if bad is not None else ""
+        raise Failed(
+            "refusing to write: the file would not read back the same."
+            f"{where}\nIn memory: {len(expect)} rows. Read back: {len(back)}.\n"
+            "Nothing was written. This is the guard that exists because this\n"
+            "file has silently lost data three times.")
+
+    DATA.write_text(text)
 
 
 # ── stage 1: who is this film ──────────────────────────────────────────────

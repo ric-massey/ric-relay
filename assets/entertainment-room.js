@@ -967,9 +967,10 @@
      fights the last pull. `ord` is not in it — that is read-time index, not
      data. */
   const FIELDS = ['count', 'series', 'where', 'pick', 'note', 'seen',
-                  'wd', 'wdok', 'tmdb', 'imdb',
+                  'wd', 'wdok', 'tmdb', 'kind', 'imdb',
                   'year', 'runtime', 'genres', 'director', 'overview', 'rating',
-                  'cast', 'poster', 'backdrop', 'streams', 'rents', 'checked'];
+                  'cast', 'parts', 'like', 'poster', 'backdrop',
+                  'streams', 'rents', 'checked'];
 
   const FALLBACK_HEAD =
     '/* The Entertainment room\'s list — committed truth; the pages layer edits on top.\n' +
@@ -1000,17 +1001,26 @@
                       (a.ord || 0) - (b.ord || 0) ||
                       a.title.localeCompare(b.title))
       .map(e => {
-        const parts = ['id: ' + JSON.stringify(e.id), 'title: ' + JSON.stringify(e.title),
-                       'status: ' + JSON.stringify(e.status)];
-        for (const k of FIELDS) {
+        /* Strict JSON, exactly what pull-entertainment.py writes. The two have
+           to agree character for character or every export fights the last
+           pull — and JSON is the shape because a regex reader has now eaten
+           this file's data three times. */
+        const out = {};
+        for (const k of ['id', 'title', 'status'].concat(FIELDS)) {
           const v = e[k];
           if (v === undefined || v === null || v === '' || v === false) continue;
           if (Array.isArray(v) && !v.length) continue;
-          parts.push(k + ': ' + JSON.stringify(v));
+          out[k] = v;
         }
-        return '  { ' + parts.join(', ') + ' },';
+        for (const k of Object.keys(e).sort()) {      // anything hand-added
+          if (k === 'ord' || k === 'local' || k in out) continue;
+          const v = e[k];
+          if (v === undefined || v === null || v === '' || v === false) continue;
+          out[k] = v;
+        }
+        return '  ' + JSON.stringify(out);
       });
-    return head + '\nwindow.ENTERTAINMENT_DATA = [\n' + rows.join('\n') + '\n];\n';
+    return head + '\nwindow.ENTERTAINMENT_DATA = [\n' + rows.join(',\n') + '\n];\n';
   }
 
   /* ── boot ──
