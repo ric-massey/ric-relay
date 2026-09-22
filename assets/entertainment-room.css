@@ -11,36 +11,50 @@
    --front-w for the case itself. */
 
 /* ── the ticket ──
-   The room's sign is a cinema ticket standing slightly off the page:
-   two notches punched out of the sides, a perforated stub, and enough
-   of a tilt to read as an object rather than a rectangle. */
+   The room's sign is a slightly worn picture-house ticket rather than a gold
+   button: printed border, paper grain, numbered stub, side punches and a
+   shallow curl where it has been sitting on the counter. */
 .ticket {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  padding: 13px 22px 13px 18px;
-  border-radius: 7px;
+  min-height: 66px;
+  padding: 11px 18px 11px 15px;
+  border: 1px solid rgba(92,62,0,0.72);
+  border-radius: 6px;
   background:
-    linear-gradient(160deg, #ffe066 0%, #f5c518 38%, #d9a406 78%, #b98a04 100%);
+    radial-gradient(circle at 1px 1px, rgba(91,59,0,0.14) 0 0.7px, transparent 0.9px) 0 0 / 5px 5px,
+    linear-gradient(103deg, transparent 0 57%, rgba(255,255,255,0.23) 64%, transparent 72%),
+    linear-gradient(160deg, #ffe477 0%, #f5c518 40%, #dca907 78%, #bd8c03 100%);
   color: #1a1204;
   text-decoration: none;
-  transform: perspective(700px) rotateX(11deg) rotateZ(-1.4deg);
+  transform: perspective(700px) rotateX(9deg) rotateZ(-1.25deg);
   transform-origin: 50% 100%;
   box-shadow:
-    0 1px 0 rgba(255,255,255,0.65) inset,
-    0 -2px 0 rgba(120,88,0,0.45) inset,
-    0 10px 22px rgba(0,0,0,0.55),
-    0 2px 0 #8d6a03;
-  transition: transform 0.22s var(--ease), box-shadow 0.22s var(--ease);
+    0 0 0 2px rgba(255,239,159,0.58) inset,
+    0 0 0 4px rgba(74,46,0,0.24) inset,
+    0 1px 0 rgba(255,255,255,0.72) inset,
+    0 -3px 2px rgba(101,68,0,0.38) inset,
+    0 12px 24px rgba(0,0,0,0.58),
+    0 3px 0 #8d6802;
+  transition: transform 0.28s cubic-bezier(0.22,0.72,0.2,1),
+              box-shadow 0.28s var(--ease), filter 0.28s var(--ease);
 }
 .ticket:hover {
-  transform: perspective(700px) rotateX(6deg) rotateZ(-0.6deg) translateY(-2px);
+  transform: perspective(700px) rotateX(3deg) rotateZ(-0.45deg) translateY(-4px) scale(1.012);
+  filter: saturate(1.04) brightness(1.025);
   box-shadow:
-    0 1px 0 rgba(255,255,255,0.7) inset,
-    0 -2px 0 rgba(120,88,0,0.45) inset,
-    0 14px 28px rgba(0,0,0,0.6),
-    0 2px 0 #8d6a03;
+    0 0 0 2px rgba(255,244,186,0.66) inset,
+    0 0 0 4px rgba(74,46,0,0.22) inset,
+    0 1px 0 rgba(255,255,255,0.78) inset,
+    0 -3px 2px rgba(101,68,0,0.34) inset,
+    0 18px 32px rgba(0,0,0,0.64),
+    0 2px 0 #8d6802;
+}
+.ticket:focus-visible {
+  outline: 2px solid #fff4ba;
+  outline-offset: 4px;
 }
 /* the two punched notches */
 .ticket::before, .ticket::after {
@@ -57,20 +71,49 @@
 .ticket::after { right: -7px; }
 
 .ticket .stub {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  justify-content: center;
+  gap: 3px;
+  min-width: 40px;
   padding-right: 12px;
-  border-right: 2px dashed rgba(26,18,4,0.42);
+  border-right: 1px dashed rgba(26,18,4,0.62);
   font: 800 0.58rem/1 var(--mono);
   letter-spacing: 0.14em;
+  text-align: center;
+  text-shadow: 0 1px rgba(255,255,255,0.26);
 }
-.ticket .stub svg { display: block; }
-.ticket .words { display: flex; flex-direction: column; line-height: 1.05; }
+.ticket .stub::after {
+  content: "No. 019";
+  position: absolute;
+  right: -6px;
+  bottom: -7px;
+  padding: 0 2px;
+  background: #e7b20d;
+  font: 700 0.42rem/1 var(--mono);
+  letter-spacing: 0.06em;
+  opacity: 0.72;
+}
+.ticket .stub svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+  padding: 3px;
+  border: 1px solid rgba(26,18,4,0.55);
+  border-radius: 50%;
+}
+.ticket .words {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.05;
+}
 .ticket .words b {
-  font: 700 1.14rem/1 var(--display, var(--sans));
-  letter-spacing: -0.02em;
+  font: 800 1.08rem/0.96 var(--display, var(--sans));
+  letter-spacing: -0.015em;
+  text-shadow: 0 1px rgba(255,255,255,0.3);
 }
 .ticket .words span {
   font: 700 0.6rem/1 var(--mono);
@@ -79,10 +122,21 @@
   opacity: 0.72;
   margin-top: 3px;
 }
+.ticket .words::after {
+  content: "PICTURE HOUSE  ·  SCREEN 01";
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(26,18,4,0.24);
+  font: 700 0.43rem/1 var(--mono);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  opacity: 0.64;
+}
 @media (max-width: 520px) {
-  .ticket { padding: 10px 14px 10px 12px; gap: 9px; }
+  .ticket { min-height: 60px; padding: 9px 12px 9px 10px; gap: 8px; }
   .ticket .words b { font-size: 0.9rem; }
-  .ticket .stub { font-size: 0.52rem; padding-right: 9px; }
+  .ticket .stub { min-width: 34px; font-size: 0.5rem; padding-right: 8px; }
+  .ticket .stub::after, .ticket .words::after { display: none; }
 }
 
 /* ── THE VIDEO STORE ──────────────────────────────────────────────────
@@ -156,6 +210,8 @@
   scroll-padding-inline: 20px;
   scroll-behavior: smooth;
   scrollbar-width: none;
+  perspective: 1500px;
+  perspective-origin: 50% 28%;
 }
 .rack::-webkit-scrollbar { display: none; }
 .case {
@@ -188,6 +244,10 @@
   inset: 0;
   transform-style: preserve-3d;
   pointer-events: none;
+  /* Returning a case happens in reverse: the cover closes first, then the
+     case settles into its slot. The delay here is the second half of that
+     small piece of choreography. */
+  transition: transform 0.32s cubic-bezier(0.3,0.72,0.22,1) 0.10s;
 }
 /* decoration, never a target */
 .under { pointer-events: none; }
@@ -517,9 +577,16 @@
 .case.out, .case:focus-visible { z-index: 6; }
 .case.out .box,
 .case:focus-visible .box {
-  transition-duration: 0.52s;
-  transition-timing-function: cubic-bezier(0.34, 1.14, 0.42, 1);
-  transform: translate3d(-16px, -34px, 96px) rotateY(-70deg) rotateX(2.5deg) rotate(0deg);
+  transition-duration: 0.5s;
+  transition-delay: 0.07s;
+  transition-timing-function: cubic-bezier(0.2, 0.86, 0.26, 1.08);
+  transform: translate3d(-11px, -19px, 34px) rotateY(-74deg) rotateX(2deg) rotate(0deg);
+}
+.case.out .lift,
+.case:focus-visible .lift {
+  transform: translate3d(0, -13px, 72px);
+  transition-duration: 0.36s;
+  transition-delay: 0s;
 }
 .case.out .gloss, .case:focus-visible .gloss { opacity: 1; }
 .case.out .front, .case:focus-visible .front {
@@ -534,9 +601,15 @@
 @media (hover: hover) {
   .case:hover { z-index: 6; }
   .case:hover .box {
-    transition-duration: 0.52s;
-    transition-timing-function: cubic-bezier(0.34, 1.14, 0.42, 1);
-    transform: translate3d(-16px, -34px, 96px) rotateY(-70deg) rotateX(2.5deg) rotate(0deg);
+    transition-duration: 0.5s;
+    transition-delay: 0.07s;
+    transition-timing-function: cubic-bezier(0.2, 0.86, 0.26, 1.08);
+    transform: translate3d(-11px, -19px, 34px) rotateY(-74deg) rotateX(2deg) rotate(0deg);
+  }
+  .case:hover .lift {
+    transform: translate3d(0, -13px, 72px);
+    transition-duration: 0.36s;
+    transition-delay: 0s;
   }
   .case:hover .gloss { opacity: 1; }
   .case:hover .front {
@@ -557,17 +630,23 @@
 .rail-wrap,
 .shelf-row {
   position: relative;
-  border-radius: 4px;
+  border-radius: 8px 8px 4px 4px;
+  border: 1px solid rgba(129,91,53,0.18);
   background:
-    /* the wash of light falling in from above */
-    radial-gradient(120% 70% at 50% -8%, rgba(255,226,160,0.10), transparent 62%),
-    /* the back boards */
+    /* warm pools from the little lamps above a shop display */
+    radial-gradient(34% 74% at 18% -8%, rgba(255,224,159,0.16), transparent 62%),
+    radial-gradient(34% 74% at 52% -8%, rgba(255,224,159,0.12), transparent 62%),
+    radial-gradient(34% 74% at 86% -8%, rgba(255,224,159,0.14), transparent 62%),
+    /* old veneered back boards */
     repeating-linear-gradient(90deg,
-      rgba(0,0,0,0.30) 0 1px, transparent 1px 74px),
-    linear-gradient(#241a12, #181009 62%, #120b06);
+      rgba(0,0,0,0.34) 0 1px, transparent 1px 76px),
+    repeating-linear-gradient(0deg,
+      rgba(255,255,255,0.012) 0 1px, transparent 1px 17px),
+    linear-gradient(#2b1e14, #1a110b 64%, #100906);
   box-shadow:
-    inset 0 18px 26px -14px rgba(0,0,0,0.85),
-    inset 0 0 0 1px rgba(255,255,255,0.03);
+    inset 0 18px 30px -16px rgba(0,0,0,0.9),
+    inset 0 0 0 1px rgba(255,236,196,0.035),
+    0 12px 30px rgba(0,0,0,0.26);
 }
 /* the uprights the shelf is fixed between */
 .rail-wrap::before, .rail-wrap::after,
@@ -575,19 +654,25 @@
   content: "";
   position: absolute;
   top: 0; bottom: 0;
-  width: 9px;
+  width: 12px;
   z-index: 4;
   pointer-events: none;
 }
 .rail-wrap::before, .shelf-row::before {
   left: 0;
-  background: linear-gradient(90deg, #4a3422, #2c1d10 70%, rgba(0,0,0,0.6));
-  box-shadow: 1px 0 6px rgba(0,0,0,0.6);
+  border-radius: 7px 0 0 3px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 19px, rgba(0,0,0,0.28) 20px 21px),
+    linear-gradient(90deg, #6b4a2f, #382414 72%, #1a0e07);
+  box-shadow: inset 1px 0 rgba(255,255,255,0.12), 2px 0 8px rgba(0,0,0,0.68);
 }
 .rail-wrap::after, .shelf-row::after {
   right: 0;
-  background: linear-gradient(270deg, #4a3422, #2c1d10 70%, rgba(0,0,0,0.6));
-  box-shadow: -1px 0 6px rgba(0,0,0,0.6);
+  border-radius: 0 7px 3px 0;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 19px, rgba(0,0,0,0.28) 20px 21px),
+    linear-gradient(270deg, #6b4a2f, #382414 72%, #1a0e07);
+  box-shadow: inset -1px 0 rgba(255,255,255,0.12), -2px 0 8px rgba(0,0,0,0.68);
 }
 
 /* ── the plank ──
@@ -596,39 +681,44 @@
    is the thing that looks drawn rather than built. */
 .shelf-board {
   position: relative;
-  height: 15px;
-  margin: 0 9px;
-  border-radius: 0 0 3px 3px;
+  height: 18px;
+  margin: 0 11px;
+  border-radius: 0 0 4px 4px;
   /* the front edge: sawn timber, darker at the bottom where it turns away */
   background:
-    repeating-linear-gradient(90deg,
-      rgba(0,0,0,0.22) 0 1px, transparent 1px 7px,
-      rgba(255,255,255,0.04) 8px 9px, transparent 9px 23px),
-    linear-gradient(#6a4a2e 0 2px, #54391f 3px, #3d2814 60%, #241708);
+    repeating-linear-gradient(91deg,
+      rgba(0,0,0,0.24) 0 1px, transparent 1px 11px,
+      rgba(255,255,255,0.035) 12px 13px, transparent 13px 31px),
+    linear-gradient(#805c39 0 2px, #624324 3px, #442b16 58%, #251507);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.28),
-    inset 0 -2px 3px rgba(0,0,0,0.6),
-    0 3px 0 #1b1008,
-    0 14px 22px rgba(0,0,0,0.65);
+    inset 0 1px 0 rgba(255,255,255,0.32),
+    inset 0 -3px 4px rgba(0,0,0,0.64),
+    0 3px 0 #190d05,
+    0 16px 24px rgba(0,0,0,0.7);
 }
 /* the top surface, seen almost edge-on */
 .shelf-board::before {
   content: "";
   position: absolute;
-  left: -2px; right: -2px;
-  top: -4px;
-  height: 5px;
+  left: -3px; right: -3px;
+  top: -6px;
+  height: 7px;
   border-radius: 3px 3px 0 0;
-  background: linear-gradient(#8a6440, #6b4a2c 55%, #4b331c);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);
+  background:
+    repeating-linear-gradient(92deg, transparent 0 32px, rgba(0,0,0,0.14) 33px 34px),
+    linear-gradient(#a1784c, #755230 56%, #4c3019);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.48), 0 -1px 0 rgba(0,0,0,0.5);
 }
 /* the dark under the shelf, which is what gives the bay depth */
 .shelf-board::after {
   content: "";
   position: absolute;
-  left: 4px; right: 4px; top: 100%;
-  height: 26px;
-  background: linear-gradient(rgba(0,0,0,0.6), transparent);
+  left: 5px; right: 5px; top: 100%;
+  height: 34px;
+  background:
+    radial-gradient(12px 24px at 12% 0, rgba(34,19,8,0.95) 0 32%, transparent 35%),
+    radial-gradient(12px 24px at 88% 0, rgba(34,19,8,0.95) 0 32%, transparent 35%),
+    linear-gradient(rgba(0,0,0,0.68), transparent 76%);
   pointer-events: none;
 }
 
@@ -640,23 +730,28 @@
 .rack.faced {
   background:
     /* the light that falls on a display */
-    radial-gradient(90% 120% at 50% -20%, rgba(255,228,168,0.10), transparent 58%),
+    radial-gradient(32% 110% at 18% -18%, rgba(255,232,183,0.15), transparent 62%),
+    radial-gradient(32% 110% at 52% -18%, rgba(255,232,183,0.11), transparent 62%),
+    radial-gradient(32% 110% at 86% -18%, rgba(255,232,183,0.13), transparent 62%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.018) 0 1px, transparent 1px 16px),
     /* the raked deck the cases sit on, darker at the back */
-    linear-gradient(#1b1310 0%, #241a14 62%, #2f2118 100%);
-  box-shadow: inset 0 22px 26px -20px rgba(0,0,0,0.9);
+    linear-gradient(#17100d 0%, #261a13 62%, #352318 100%);
+  box-shadow: inset 0 24px 30px -20px rgba(0,0,0,0.92),
+              inset 0 -22px 28px -22px rgba(201,145,82,0.34);
 }
 /* the rail: a moulded strip standing proud of the deck, catching the light
    along its top edge the way a real one does */
 .rack.faced + .shelf-board {
-  height: 17px;
+  height: 20px;
   background:
     linear-gradient(90deg, rgba(0,0,0,0.2) 0 1px, transparent 1px 11px),
-    linear-gradient(#a87d50 0 2px, #7d5a35 3px, #533a1f 42%, #33210f);
+    repeating-linear-gradient(91deg, transparent 0 27px, rgba(0,0,0,0.2) 28px 29px),
+    linear-gradient(#b78a59 0 2px, #805b36 3px, #58391e 44%, #301b0b);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.5),
     inset 0 -2px 3px rgba(0,0,0,0.55),
     0 3px 0 #1d1208,
-    0 14px 22px rgba(0,0,0,0.6);
+    0 17px 25px rgba(0,0,0,0.68);
 }
 .rack.faced + .shelf-board::before {
   top: -11px;
@@ -674,7 +769,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .box { transition: none; }
+  .lift, .box, .under, .gloss { transition: none; }
 }
 
 /* ── FACED OUT ────────────────────────────────────────────────────────────
@@ -761,9 +856,16 @@
 .case.faced.out, .case.faced:focus-visible { z-index: 6; }
 .case.faced.out .box,
 .case.faced:focus-visible .box {
-  transition-duration: 0.46s;
-  transition-timing-function: cubic-bezier(0.34, 1.2, 0.42, 1);
-  transform: translate3d(0, -16px, 70px) rotateX(-2deg);
+  transition-duration: 0.44s;
+  transition-delay: 0.06s;
+  transition-timing-function: cubic-bezier(0.2, 0.86, 0.26, 1.08);
+  transform: translate3d(0, -7px, 24px) rotateX(-1.5deg) scale(1.025);
+}
+.case.faced.out .lift,
+.case.faced:focus-visible .lift {
+  transform: translate3d(0, -11px, 54px);
+  transition-duration: 0.34s;
+  transition-delay: 0s;
 }
 .case.faced.out .front-tag, .case.faced:focus-visible .front-tag { opacity: 1; }
 .case.faced.out .gloss, .case.faced:focus-visible .gloss { opacity: 1; }
@@ -774,9 +876,15 @@
 @media (hover: hover) {
   .case.faced:hover { z-index: 6; }
   .case.faced:hover .box {
-    transition-duration: 0.46s;
-    transition-timing-function: cubic-bezier(0.34, 1.2, 0.42, 1);
-    transform: translate3d(0, -16px, 70px) rotateX(-2deg);
+    transition-duration: 0.44s;
+    transition-delay: 0.06s;
+    transition-timing-function: cubic-bezier(0.2, 0.86, 0.26, 1.08);
+    transform: translate3d(0, -7px, 24px) rotateX(-1.5deg) scale(1.025);
+  }
+  .case.faced:hover .lift {
+    transform: translate3d(0, -11px, 54px);
+    transition-duration: 0.34s;
+    transition-delay: 0s;
   }
   .case.faced:hover .front-tag { opacity: 1; }
   .case.faced:hover .gloss { opacity: 1; }
@@ -790,8 +898,11 @@
   left: 0; right: 0; top: -7px;
   height: 8px;
   border-radius: 3px 3px 0 0;
-  background: linear-gradient(#6b4d31, #4a3320 60%, #33220f);
-  box-shadow: 0 -1px 0 rgba(255,255,255,0.16) inset;
+  background:
+    repeating-linear-gradient(91deg, transparent 0 29px, rgba(0,0,0,0.14) 30px 31px),
+    linear-gradient(#987047, #654525 58%, #3b240f);
+  box-shadow: 0 -1px 0 rgba(255,255,255,0.24) inset,
+              0 -3px 8px rgba(0,0,0,0.46);
 }
 
 @media (max-width: 760px) {
@@ -1004,4 +1115,90 @@
                rotateY(-76deg) translateX(-6px);
   }
   .case.stacked.out .front-tag { opacity: 1; }
+}
+
+/* ── the SEEN sticker ──
+   The label a rental shop slaps on a case. Slightly off-square, because one
+   applied by hand never is, and worn enough to look stuck on rather than
+   printed in. It answers the only question you have about a title you half
+   recognise. */
+.seen-tag {
+  position: absolute;
+  z-index: 4;
+  padding: 3px 6px;
+  border-radius: 2px;
+  background: linear-gradient(#f6efdc, #ddd2b4);
+  color: #23180a;
+  font: 800 0.66rem/1 var(--display, var(--sans));
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(0,0,0,0.16);
+  pointer-events: none;
+}
+/* on a cover it goes in the corner, as a sticker does */
+.front .seen-tag {
+  top: 9px;
+  right: 8px;
+  transform: rotate(3.5deg);
+}
+/* on a spine there is only the foot to spare */
+.spine .seen-tag {
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%) rotate(-1.5deg) scale(0.82);
+  padding: 2px 4px;
+  letter-spacing: 0.08em;
+}
+/* laid flat the spine runs the other way, so the sticker goes to its end */
+.stacked .spine .seen-tag {
+  left: auto;
+  bottom: auto;
+  right: 34px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-1.5deg) scale(0.8);
+}
+
+/* ── the aisle sign ──
+   A shelf label in a video shop is a sign, not a paragraph: a plate bolted
+   above the run, lit from the front, with the category in condensed caps
+   because that is what fits on a sign. */
+.shelf-head {
+  position: relative;
+  align-items: center !important;
+  gap: 0 14px !important;
+  padding: 30px 20px 12px !important;
+}
+.shelf-head h2 {
+  position: relative;
+  padding: 9px 18px 8px;
+  border-radius: 3px;
+  color: #ffd84a !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.09), transparent 55%),
+    linear-gradient(#1d2b47, #142036 60%, #0d1524);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,216,74,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.16),
+    0 6px 14px rgba(0,0,0,0.6);
+  text-shadow: 0 0 14px rgba(255,216,74,0.45), 0 1px 0 rgba(0,0,0,0.5);
+}
+/* the brackets holding the plate up */
+.shelf-head h2::before,
+.shelf-head h2::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 5px; height: 5px;
+  margin-top: -2.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #d8c48a, #6d5a2c);
+  box-shadow: 0 1px 1px rgba(0,0,0,0.7);
+}
+.shelf-head h2::before { left: 6px; }
+.shelf-head h2::after { right: 6px; }
+.shelf-head h2 svg { vertical-align: -1px; margin-right: 4px; }
+
+@media (max-width: 560px) {
+  .shelf-head h2 { padding: 7px 13px 6px; font-size: 0.98rem !important; }
+  .shelf-head h2::before, .shelf-head h2::after { display: none; }
 }

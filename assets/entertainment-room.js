@@ -339,13 +339,20 @@
     const mark = e.pick ? '<span class="together">' + PERSON + '</span>' : '';
     const spineMark = faced ? '' : mark;
     const frontMark = faced ? mark : '';
+    /* The shop sticker. A rental case always carried one, and here it answers
+       the only question you have about a title you half-recognise: have I
+       already seen this. Goes on whichever face is showing, same as the
+       partner mark. */
+    const seen = e.status === 'watched'
+      ? '<span class="seen-tag" aria-hidden="true">Seen</span>' : '';
     const v = caseVary(e.id);
     const bg = art ? 'background-image:url(&quot;' + esc(art) + '&quot;)' : '';
     return '<button class="case' + (faced ? ' faced' : stacked ? ' stacked' : '') +
         '" type="button" data-id="' + esc(e.id) + '"' +
         ' style="--tint:' + hue(e, 26) + ';--t:' + v.t + 'px;--dh:' + v.dh +
         'px;--lean:' + v.lean.toFixed(2) + 'deg"' +
-        ' aria-label="' + esc(e.title) + (sub ? ', ' + esc(sub) : '') + '">' +
+        ' aria-label="' + esc(e.title) + (sub ? ', ' + esc(sub) : '') +
+          (e.status === 'watched' ? ', seen' : '') + '">' +
       /* `lift` carries the slide, `box` carries the turn — two elements so the
          two can be timed apart, and BOTH inside the case so the case's own
          hit area never moves. Move the case itself and it slides out from
@@ -355,14 +362,14 @@
         '<span class="face spine">' +
           (art ? '<span class="spine-art" style="' + bg + '"></span>' : '') +
           '<span class="spine-txt">' + esc(e.title) + '</span>' +
-          '<span class="spine-foot"></span>' + spineMark +
+          '<span class="spine-foot"></span>' + spineMark + (faced ? '' : seen) +
 
         '</span>' +
         '<span class="face front">' +
           (art
             ? '<img src="' + esc(art) + '" alt="" loading="lazy" decoding="async" width="342" height="513">'
             : '<span class="noart">' + esc(e.title) + '</span>') +
-          frontMark +
+          frontMark + (faced ? seen : '') +
           '<span class="crease" aria-hidden="true"></span>' +
           '<span class="gloss" aria-hidden="true"></span>' +
           '<span class="front-tag"><b>' + esc(e.title) + '</b>' +
