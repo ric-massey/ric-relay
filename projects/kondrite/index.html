@@ -18225,6 +18225,31 @@
      other and the sites are dealt round a circle, so "first in the list" is an
      arbitrary heading — while *nearest* is the answer to the only question the
      arrow is being asked. Order does not matter; distance does. */
+  /* ── where a manifest part actually is ────────────────────────────────────
+     Not where it was *put*. A part you found and then died carrying is lying
+     where you fell (see `surv.dropped`), which can be a very long way from the
+     site that made it — and until this existed, both the chooser below and the
+     arrow read `partSites` and sent you back to the wreck field you had
+     already emptied. You had the thing in your hands; the only mark on the
+     board still pointed at where it used to be.
+
+     `mod` is what separates the two kinds in `dropped`: a spare you were
+     carrying is a fitted part and has nothing to do with the manifest, so only
+     an entry without it can stand in for one of these six. */
+  const partDropped = key =>
+    (surv.dropped || []).find(d => d && !d.mod && d.key === key) || null;
+  const partWhere = b => {
+    if (!b) return null;
+    const fell = partDropped(b.key);
+    if (fell) return { x: fell.x, y: fell.y, name: b.name, fell: true };
+    if (b.inside === "leviathan") {
+      const lev = surv.landmarks.find(l => l.key === "leviathan");
+      return lev ? { x: lev.x, y: lev.y, name: "THE LEVIATHAN" } : null;
+    }
+    const site = surv.partSites.find(p => p.key === b.key);
+    return site ? { x: site.x, y: site.y, name: site.name } : null;
+  };
+
   const nextPart = () => {
     const left = BUILD.filter(b => !surv.built.has(b.key) &&
                                    !surv.carrying.has(b.key));
@@ -18235,10 +18260,11 @@
     for (const b of left) {
       /* The plate has no site of its own — it is inside the Leviathan, which
          has one. A part whose place is not known yet simply does not compete,
-         and the fallback below covers the case where none of them is. */
-      const at = b.inside === "leviathan"
-        ? surv.landmarks.find(l => l.key === "leviathan")
-        : surv.partSites.find(p => p.key === b.key);
+         and the fallback below covers the case where none of them is.
+
+         Measured from where the part *is*, so one you dropped on the far side
+         of the sector stops reading as the nearest thing to go and get. */
+      const at = partWhere(b);
       if (!at) continue;
       const d = dist2(at.x, at.y, me.x, me.y);
       if (d < bd) { bd = d; best = b; }
@@ -18324,12 +18350,13 @@
     }
     const n = nextPart();
     if (!n) return null;
-    if (n.inside === "leviathan") {
-      const lev = surv.landmarks.find(l => l.key === "leviathan");
-      return lev ? { key: "plate", name: "THE LEVIATHAN", x: lev.x, y: lev.y } : null;
-    }
-    const site = surv.partSites.find(p => p.key === n.key);
-    return site ? { key: site.key, name: site.name, x: site.x, y: site.y } : null;
+    /* `partWhere`, not `partSites`: if this is one you died carrying, the arrow
+       goes to where it fell. The name goes with it — being sent to "a wreck
+       field" you have already stripped is the same wrong answer said twice. */
+    const at = partWhere(n);
+    if (!at) return null;
+    return { key: n.key, name: at.fell ? n.name : at.name,
+             x: at.x, y: at.y, fell: !!at.fell };
   }
 
   const bearingTo = (me, t) =>
@@ -18378,6 +18405,15 @@
       }
     }
     const n = nextPart();
+    /* A part you found, carried and died with is not something to go and find
+       again, and its clue is a description of a place you have already emptied.
+       "Among the dead. Somewhere a lot of ships stopped at once." is a fine
+       line to read once and a lie to read twice. */
+    if (partDropped(n.key)) {
+      return { text: "GO BACK FOR THE " + n.name,
+               sub: "you were carrying it when you died — it is where you fell",
+               colour: NEBULA };
+    }
     return { text: "FIND THE " + n.name, sub: n.clue, colour: NEBULA };
   }
 
@@ -18512,13 +18548,18 @@
          By `id` where there is one: two spare coils from the same death are two
          objects, and matching them by key would take both off the floor for one
          pickup. */
+      /* And the chart forgets it, wherever it was standing when you took it.
+         This used to happen only on the dropped branch below, so a part found
+         by scanning and then picked up off its original site left a PART mark
+         at that site for the rest of the run: you emptied the place yourself
+         and the chart went on pointing at it. Worst after dying with one —
+         the part is now lying where you fell, and the only mark on the board
+         was the stale one, back where it started. */
+      surv.known.delete(knownId("part", pt.x, pt.y));
       const back = pt.id
         ? surv.dropped.findIndex(d => d.id === pt.id)
         : surv.dropped.findIndex(d => d.key === pt.key);
-      if (back >= 0) {
-        surv.dropped.splice(back, 1);
-        surv.known.delete(knownId("part", pt.x, pt.y));
-      }
+      if (back >= 0) surv.dropped.splice(back, 1);
       burst(pt.x, pt.y, CASH, 26, 260 * U);
       gameSound("win", pt.x);
       addShake(5);
