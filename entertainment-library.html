@@ -15,6 +15,7 @@
   <link rel="canonical" href="https://ricmassey.com/entertainment-library.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f0f0f'/><rect x='18' y='26' width='64' height='48' rx='6' fill='none' stroke='%23f5c518' stroke-width='6'/><path d='M18 40h64M18 60h64' stroke='%23f5c518' stroke-width='4'/><path d='M44 44v12l11-6z' fill='%23f5c518'/></svg>">
 
+  <link rel="stylesheet" href="assets/entertainment-room.css">
   <style>
     /* THE LIBRARY
        ────────────────────────────────────────────────────────────────────────
@@ -46,6 +47,9 @@
       --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       --tile: 132px;
       --gut: 14px;
+      --case-w: 30px;         /* a DVD spine, to scale against the cover */
+      --case-h: 212px;
+      --front-w: 148px;
     }
 
     * { box-sizing: border-box; }
@@ -456,6 +460,21 @@
     }
     .empty a { color: var(--gold); }
 
+
+    /* ── the catalogue, stacked ── */
+    .shelves { margin: 0; padding: 0 0 60px; list-style: none; }
+    .shelf-row { margin: 0 0 30px; }
+    .shelves .rack {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      padding: 52px 20px 0;
+      perspective: 1500px;
+      perspective-origin: 50% 65%;
+      overflow: visible;
+    }
+    .shelves .shelf-board { margin: 0 8px; }
+
     /* ── the detail sheet ── same dialog as the app page ── */
     dialog.sheet {
       width: min(760px, calc(100vw - 32px));
@@ -839,7 +858,15 @@
 
   <div class="barwrap">
     <header class="bar">
-      <a class="mark" href="index.html" aria-label="Ric's Terminal">Entertainment</a>
+      <a class="ticket" href="entertainment.html" aria-label="Ric's Movie List — back to the shelves">
+        <span class="stub" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M4 5h16a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7a2 2 0 0 1 2-2Z"/>
+          </svg>
+          ADMIT<br>ONE
+        </span>
+        <span class="words"><b>Ric's Movie List</b><span>the whole shelf</span></span>
+      </a>
       <nav class="marquee" aria-label="Terminal rooms">
         <a href="index.html">terminal</a>
         <a href="orrin.html">orrin</a>
@@ -869,7 +896,7 @@
         <button type="button" data-view="all"       aria-pressed="true">All</button>
         <button type="button" data-view="watchlist" aria-pressed="false">Queue</button>
         <button type="button" data-view="watched"   aria-pressed="false">Watched</button>
-        <button type="button" data-view="starred"   aria-pressed="false">Starred</button>
+        <button type="button" data-view="together"  aria-pressed="false">Together</button>
       </div>
 
       <label class="search">
@@ -892,7 +919,8 @@
       </select>
 
       <div class="seg" role="group" aria-label="How to show it">
-        <button type="button" data-mode="grid" aria-pressed="true">Posters</button>
+        <button type="button" data-mode="shelf" aria-pressed="true">Shelf</button>
+        <button type="button" data-mode="grid" aria-pressed="false">Posters</button>
         <button type="button" data-mode="list" aria-pressed="false">List</button>
       </div>
     </div>
@@ -937,7 +965,7 @@
   const el = id => document.getElementById(id);
   const esc = Room.esc;
 
-  const state = { view: 'all', q: '', where: '', genre: '', decade: '', sort: 'az', mode: 'grid' };
+  const state = { view: 'all', q: '', where: '', genre: '', decade: '', sort: 'az', mode: 'shelf' };
 
   /* The app page links in here with a hash — #queue, #watched, #starred,
      #genre=Action — so a "see all →" lands on the same cut of the list the
@@ -946,7 +974,8 @@
     const h = decodeURIComponent(location.hash.replace(/^#/, ''));
     if (!h) return;
     if (h === 'queue') state.view = 'watchlist';
-    else if (h === 'watched' || h === 'starred') state.view = h;
+    else if (h === 'together' || h === 'starred') state.view = 'together';
+    else if (h === 'watched') state.view = h;
     else if (h.startsWith('genre=')) state.genre = h.slice(6);
   }
 
@@ -979,7 +1008,7 @@
   function visible() {
     const needle = state.q.toLowerCase();
     let list = Room.all().filter(e => {
-      if (state.view === 'starred' && !e.pick) return false;
+      if (state.view === 'together' && !e.pick) return false;
       if (state.view === 'watchlist' && e.status !== 'watchlist') return false;
       if (state.view === 'watched' && e.status !== 'watched') return false;
       if (state.where && !Room.places(e).includes(state.where)) return false;
@@ -1067,7 +1096,8 @@
     });
 
     const out = el('out');
-    out.className = state.mode === 'list' ? 'rows' : 'grid';
+    out.className = state.mode === 'list' ? 'rows'
+      : state.mode === 'shelf' ? 'shelves' : 'grid';
 
     if (!list.length) {
       out.innerHTML = '<li class="empty">Nothing matches that. ' +
@@ -1077,7 +1107,9 @@
       return;
     }
 
-    if (state.mode === 'list') {
+    if (state.mode === 'shelf') {
+      renderShelves(list, out);
+    } else if (state.mode === 'list') {
       let letter = '';
       out.innerHTML = list.map(e => {
         let head = '';
@@ -1094,6 +1126,43 @@
     const n = Room.pending();
     el('src-note').textContent = n ? n + ' edit' + (n === 1 ? '' : 's') + ' not committed yet' : '';
   }
+
+  /* ── the whole catalogue, stacked ──
+     Every title as a spine, in rows, each row standing on its own plank. The
+     rows are cut in JavaScript rather than by flex-wrap because a wrapped row
+     has nothing to stand on: the plank has to know where the row ends. It
+     re-cuts on resize for the same reason.
+
+     Cases are rendered once and moved between rows on a re-cut — rebuilding
+     363 3D boxes on every resize tick is how a page melts a phone. */
+  function perRow() {
+    const box = el('out');
+    const w = box.clientWidth - 40;            // the rack's own padding
+    const one = parseFloat(getComputedStyle(document.documentElement)
+      .getPropertyValue('--case-w')) + 3;      // spine plus the gap beside it
+    return Math.max(4, Math.floor(w / one));
+  }
+
+  function renderShelves(list, out) {
+    const n = perRow();
+    const rows = [];
+    for (let i = 0; i < list.length; i += n) rows.push(list.slice(i, i + n));
+    out.innerHTML = rows.map(r =>
+      '<li class="shelf-row">' +
+        '<div class="rack">' + r.map(Room.dvdCase).join('') + '</div>' +
+        '<div class="shelf-board"></div>' +
+      '</li>').join('');
+  }
+
+  /* Re-cut only when the number that fits actually changes. */
+  let lastPerRow = 0;
+  addEventListener('resize', () => {
+    if (state.mode !== 'shelf') return;
+    const n = perRow();
+    if (n === lastPerRow) return;
+    lastPerRow = n;
+    render();
+  });
 
   /* ── controls ── */
   for (const b of document.querySelectorAll('.seg button[data-view]')) {

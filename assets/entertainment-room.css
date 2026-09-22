@@ -1,0 +1,331 @@
+/* The Entertainment room's furniture — the DVD case, the shelf it stands on,
+   and the ticket that names the room. Shared by entertainment.html (the store
+   front) and entertainment-library.html (the whole catalogue), because a case
+   drawn two different ways in one room is two cases.
+
+   Hard rule 3 forbids flattening the SITE into one stylesheet. This is one
+   ROOM's furniture, the same way assets/climbing.css is the climbing room's.
+
+   The tokens it expects from the page: --bg --panel --raised --line --line-hi
+   --ink --dim --gold --gold-dk --ease --sans --mono, plus --case-w --case-h
+   --front-w for the case itself. */
+
+/* ── the ticket ──
+   The room's sign is a cinema ticket standing slightly off the page:
+   two notches punched out of the sides, a perforated stub, and enough
+   of a tilt to read as an object rather than a rectangle. */
+.ticket {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 22px 13px 18px;
+  border-radius: 7px;
+  background:
+    linear-gradient(160deg, #ffe066 0%, #f5c518 38%, #d9a406 78%, #b98a04 100%);
+  color: #1a1204;
+  text-decoration: none;
+  transform: perspective(700px) rotateX(11deg) rotateZ(-1.4deg);
+  transform-origin: 50% 100%;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.65) inset,
+    0 -2px 0 rgba(120,88,0,0.45) inset,
+    0 10px 22px rgba(0,0,0,0.55),
+    0 2px 0 #8d6a03;
+  transition: transform 0.22s var(--ease), box-shadow 0.22s var(--ease);
+}
+.ticket:hover {
+  transform: perspective(700px) rotateX(6deg) rotateZ(-0.6deg) translateY(-2px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.7) inset,
+    0 -2px 0 rgba(120,88,0,0.45) inset,
+    0 14px 28px rgba(0,0,0,0.6),
+    0 2px 0 #8d6a03;
+}
+/* the two punched notches */
+.ticket::before, .ticket::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 13px; height: 13px;
+  margin-top: -6.5px;
+  border-radius: 50%;
+  background: var(--bg);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.35) inset;
+}
+.ticket::before { left: -7px; }
+.ticket::after { right: -7px; }
+
+.ticket .stub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-right: 12px;
+  border-right: 2px dashed rgba(26,18,4,0.42);
+  font: 800 0.58rem/1 var(--mono);
+  letter-spacing: 0.14em;
+}
+.ticket .stub svg { display: block; }
+.ticket .words { display: flex; flex-direction: column; line-height: 1.05; }
+.ticket .words b {
+  font: 800 1.02rem/1 var(--sans);
+  letter-spacing: -0.02em;
+}
+.ticket .words span {
+  font: 700 0.6rem/1 var(--mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.72;
+  margin-top: 3px;
+}
+@media (max-width: 520px) {
+  .ticket { padding: 10px 14px 10px 12px; gap: 9px; }
+  .ticket .words b { font-size: 0.9rem; }
+  .ticket .stub { font-size: 0.52rem; padding-right: 9px; }
+}
+
+/* ── THE VIDEO STORE ──────────────────────────────────────────────────
+   The room is a shelf of DVDs, because that is how anybody has ever
+   actually chosen a film: you walk along a wall of spines, something
+   catches you, you pull it out and turn it over.
+
+   A case is a real box in 3D, not a picture of one. The spine faces out
+   — that is all you see on a full shelf — and the front cover is hinged
+   to the spine's right edge, folded back at 90° where it is invisible
+   edge-on. Pulling the case out rotates the whole box about that hinge,
+   so the cover swings round to face you and the spine narrows to a
+   sliver, exactly as it does in your hand.
+
+   Hover does it on a mouse. On a touch screen there is no hover, so the
+   first tap pulls the case out and the second opens it — which is also
+   what you do with a real one. */
+.store {
+  /* the wall behind the shelves */
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(245,197,24,0.07), transparent 60%),
+    linear-gradient(#131313, #0d0d0d);
+  padding: 8px 0 60px;
+}
+
+.shelf { margin: 0 0 6px; }
+.shelf-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  padding: 26px 20px 0;
+}
+.shelf-head h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.shelf-head .n {
+  font: 600 0.72rem/1 var(--mono);
+  color: var(--dim);
+  letter-spacing: 0.06em;
+}
+.shelf-head .all {
+  margin-left: auto;
+  font: 700 0.75rem/1 var(--sans);
+  color: var(--dim);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.shelf-head .all:hover { color: var(--gold); }
+
+.rack-wrap { position: relative; }
+.rack {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  /* the pulled-out case needs headroom above and air in front */
+  padding: 52px 20px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  perspective: 1500px;
+  perspective-origin: 50% 65%;
+  scrollbar-width: none;
+  scroll-padding-inline: 20px;
+}
+.rack::-webkit-scrollbar { display: none; }
+
+.case {
+  flex: 0 0 auto;
+  width: var(--case-w);
+  height: var(--case-h);
+  position: relative;
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  font: inherit;
+  color: inherit;
+}
+.box {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform-origin: right center;
+  transition: transform 0.5s cubic-bezier(0.2, 0.75, 0.2, 1);
+}
+.face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 2px 3px 3px 2px;
+  overflow: hidden;
+  backface-visibility: hidden;
+}
+
+/* ── the spine ── */
+.spine {
+  width: var(--case-w);
+  background: linear-gradient(90deg, #000 0%, rgba(0,0,0,0.25) 16%,
+              rgba(255,255,255,0.10) 46%, rgba(0,0,0,0.30) 88%, #000 100%),
+              var(--tint, #1d1d1d);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07),
+              inset -2px 0 4px rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* a slice of the artwork, which is what gives a spine its colour */
+.spine-art {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: 50% 40%;
+  opacity: 0.55;
+  filter: saturate(1.25) contrast(1.1);
+}
+.spine::after {                       /* the plastic catching the light */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0.16) 0 2px,
+              transparent 3px 60%, rgba(255,255,255,0.07) 78%, transparent);
+  pointer-events: none;
+}
+.spine-txt {
+  position: relative;
+  z-index: 2;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);          /* read bottom-to-top, as they sit */
+  max-height: calc(var(--case-h) - 34px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 800 0.72rem/1 var(--sans);    /* 11.5px — clears the floor */
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.7);
+  color: #fff;
+}
+/* the coloured band every distributor puts at the foot of a spine */
+.spine-foot {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 12px;
+  background: var(--tint, #333);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
+  z-index: 2;
+}
+
+/* ── the front cover, hinged on the spine's right edge ── */
+.front {
+  width: var(--front-w);
+  left: 100%;
+  transform-origin: left center;
+  transform: rotateY(90deg);
+  background: #161616;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset;
+}
+.front img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.front .noart {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: 12px;
+  font: 800 1rem/1.15 var(--sans);
+  background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(0,0,0,0.3)), var(--tint, #1a1a1a);
+}
+.front-tag {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 18px 8px 7px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.9));
+  font: 700 0.72rem/1.25 var(--sans);
+  text-align: center;
+}
+.front-tag b { display: block; font-size: 0.78rem; }
+.front-tag span { color: var(--dim); font: 600 0.68rem/1.3 var(--mono); }
+
+/* the mark for a film his partner put on the list */
+.together {
+  position: absolute;
+  top: 6px; left: 6px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: var(--gold);
+  color: #0f0f0f;
+  font: 800 0.66rem/1 var(--mono);
+}
+.spine .together { top: 5px; left: 50%; transform: translateX(-50%); padding: 3px; }
+
+/* ── pulling one off the shelf ── */
+@media (hover: hover) {
+  .case:hover { z-index: 6; }
+  .case:hover .box {
+    transform: translate3d(-14px, -30px, 90px) rotateY(-72deg) rotateX(2deg);
+  }
+  .case:hover .front { box-shadow: 0 24px 40px rgba(0,0,0,0.65); }
+}
+.case.out { z-index: 6; }
+.case.out .box {
+  transform: translate3d(-14px, -30px, 90px) rotateY(-72deg) rotateX(2deg);
+}
+.case.out .front { box-shadow: 0 24px 40px rgba(0,0,0,0.65); }
+.case:focus-visible { outline: none; }
+.case:focus-visible .box {
+  transform: translate3d(-14px, -30px, 90px) rotateY(-72deg) rotateX(2deg);
+}
+
+/* ── the shelf itself ──
+   Called shelf-board, not board: `.board` is already the billboard at the
+   top of this page, and giving the plank the same name painted the hero
+   section in wood grain. */
+.shelf-board {
+  position: relative;
+  height: 20px;
+  margin: 0 8px;
+  border-radius: 2px 2px 4px 4px;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.16) 0 2px, transparent 2px 9px),
+    linear-gradient(#5a4029, #3b2817 42%, #2a1a0e);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.18) inset,
+    0 10px 18px rgba(0,0,0,0.6),
+    0 2px 0 #1a1008;
+}
+.shelf-board::after {                       /* the dark under-shelf */
+  content: "";
+  position: absolute;
+  left: 6px; right: 6px; top: 100%;
+  height: 22px;
+  background: linear-gradient(rgba(0,0,0,0.55), transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .box { transition: none; }
+}
+

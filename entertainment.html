@@ -15,6 +15,7 @@
   <link rel="canonical" href="https://ricmassey.com/entertainment.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f0f0f'/><rect x='18' y='26' width='64' height='48' rx='6' fill='none' stroke='%23f5c518' stroke-width='6'/><path d='M18 40h64M18 60h64' stroke='%23f5c518' stroke-width='4'/><path d='M44 44v12l11-6z' fill='%23f5c518'/></svg>">
 
+  <link rel="stylesheet" href="assets/entertainment-room.css">
   <style>
     /* ENTERTAINMENT — the app
        ────────────────────────────────────────────────────────────────────────
@@ -62,6 +63,9 @@
       --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       --tile: 152px;          /* poster width; the shelf math follows from it */
       --gut: 14px;
+      --case-w: 30px;         /* a DVD spine, to scale against the cover */
+      --case-h: 212px;
+      --front-w: 148px;
     }
 
     * { box-sizing: border-box; }
@@ -76,6 +80,11 @@
       line-height: 1.5;
       overflow-x: hidden;
     }
+
+    /* A case swings out of the shelf and toward the reader. The rack scrolls
+       sideways, so it cannot also clip vertically — hence visible overflow on
+       one axis and the padding above each rack that gives the case its room. */
+    .rack { overflow-y: visible; }
 
     a { color: inherit; }
 
@@ -955,7 +964,15 @@
 
   <div class="barwrap">
     <header class="bar">
-      <a class="mark" href="index.html" aria-label="Ric's Terminal">Entertainment</a>
+      <a class="ticket" href="index.html" aria-label="Ric's Movie List — back to the terminal">
+        <span class="stub" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M4 5h16a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7a2 2 0 0 1 2-2Z"/>
+          </svg>
+          ADMIT<br>ONE
+        </span>
+        <span class="words"><b>Ric's Movie List</b><span>now showing</span></span>
+      </a>
       <label class="find">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
           <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
@@ -996,7 +1013,7 @@
       <ul class="grid" id="found"></ul>
     </div>
 
-    <div class="shelves" id="shelves"></div>
+    <div class="store" id="shelves"></div>
 
     <!-- ══════════════════════════════════════════════════════════════════════
          EDITING — unchanged in kind from the first build of this room.
@@ -1119,12 +1136,14 @@
     const az = (a, b) => a.title.localeCompare(b.title, 'en', { sensitivity: 'base' });
     const out = [];
 
+    /* His partner's list gets the top shelf and its own mark. These are not
+       "favourites" — they are the ones the two of them are going to watch
+       together, which is why the tag is a person and not a star. */
     out.push({
-      label: 'Starred — start here',
-      note: 'the ones he actually wants',
-      ranked: true,
+      label: Room.PARTNER_LABEL,
+      note: 'on the list for the two of you',
       items: all.filter(e => e.pick).sort(az),
-      all: 'entertainment-library.html#starred'
+      all: 'entertainment-library.html#together'
     });
 
     out.push({
@@ -1180,6 +1199,20 @@
       });
     }
 
+    /* A shelf per starred actor. Sign in, open anything, click a name in the
+       cast, and their films get their own shelf here — which is the other half
+       of "I want to be able to star a person, not just a film". */
+    for (const who of Room.actors()) {
+      const theirs = all.filter(e => (e.cast || [])
+        .some(a => a.toLowerCase() === who.toLowerCase()));
+      if (theirs.length) out.push({
+        label: who,
+        note: theirs.length + (theirs.length === 1 ? ' film' : ' films'),
+        person: true,
+        items: theirs.sort((a, b) => (b.year || 0) - (a.year || 0) || az(a, b))
+      });
+    }
+
     out.push({
       label: 'Everything he has seen',
       note: seen.length + ' titles',
@@ -1187,7 +1220,11 @@
       all: 'entertainment-library.html#watched'
     });
 
-    return out.filter(s => s.items.length);
+    /* A shelf is a window display, not the stockroom: thirty cases is already
+       more than anyone scans, and 1,300 3D boxes on one page is a phone
+       running hot for nothing. The whole catalogue is next door. */
+    return out.filter(s => s.items.length)
+      .map(s => ({ ...s, total: s.items.length, items: s.items.slice(0, 30) }));
   }
 
   const ARROW = d => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" ' +
@@ -1197,19 +1234,22 @@
     el('shelves').innerHTML = shelves(Room.all()).map(s =>
       '<section class="shelf">' +
         '<div class="shelf-head">' +
-          '<h2>' + esc(s.label) + '</h2>' +
+          '<h2>' + (s.person ? Room.PERSON + ' ' : '') + esc(s.label) + '</h2>' +
           (s.note ? '<span class="n">' + esc(s.note) + '</span>' : '') +
+          (s.total > s.items.length
+            ? '<span class="n">showing ' + s.items.length + ' of ' + s.total + '</span>' : '') +
           '<a class="all" href="' + esc(s.all || 'entertainment-library.html') + '">see all →</a>' +
         '</div>' +
         '<div class="rail-wrap">' +
           '<button class="nudge left" type="button" data-dir="-1" aria-label="Scroll left" hidden>' + ARROW('m15 5-7 7 7 7') + '</button>' +
-          '<div class="rail">' + s.items.map((e, i) => Room.tile(e, s.ranked ? i + 1 : 0)).join('') + '</div>' +
+          '<div class="rack">' + s.items.map(Room.dvdCase).join('') + '</div>' +
+          '<div class="shelf-board"></div>' +
           '<button class="nudge right" type="button" data-dir="1" aria-label="Scroll right">' + ARROW('m9 5 7 7-7 7') + '</button>' +
         '</div>' +
       '</section>').join('');
 
     for (const wrap of document.querySelectorAll('.rail-wrap')) {
-      const rail = wrap.querySelector('.rail');
+      const rail = wrap.querySelector('.rack');
       const left = wrap.querySelector('.nudge.left');
       const right = wrap.querySelector('.nudge.right');
       const mark = () => {
@@ -1239,7 +1279,7 @@
     el('board-art').style.backgroundImage =
       e.backdrop ? 'url("assets/backdrops/' + e.id + '.jpg")' : '';
     el('board-kicker').textContent = e.status === 'watched'
-      ? 'Starred — and already seen' : 'Starred — top of the list';
+      ? Room.PARTNER_LABEL + ' — already seen' : Room.PARTNER_LABEL + ' — up next';
     el('board-title').textContent = e.title;
 
     const meta = [];
@@ -1313,6 +1353,28 @@
     const v = ev.target.value.trim();
     qt = setTimeout(() => { state.q = v; renderResults(); }, 90);
   });
+
+  /* ── pulling a case out on a touch screen ──
+     There is no hover on a phone, so the gesture is the real one: first tap
+     pulls it off the shelf and turns it round, second tap opens it. Captured
+     before the room's own click handler so the first tap cannot fall through
+     and open the sheet straight away. */
+  const HOVERS = window.matchMedia('(hover: hover)').matches;
+  if (!HOVERS) {
+    document.addEventListener('click', ev => {
+      const c = ev.target.closest('.case');
+      if (!c) {                                  // tapping away puts it back
+        for (const o of document.querySelectorAll('.case.out')) o.classList.remove('out');
+        return;
+      }
+      if (c.classList.contains('out')) return;   // second tap — let it open
+      ev.stopPropagation();
+      ev.preventDefault();
+      for (const o of document.querySelectorAll('.case.out')) o.classList.remove('out');
+      c.classList.add('out');
+      c.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    }, true);
+  }
 
   function render() {
     const all = Room.all();

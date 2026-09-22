@@ -101,10 +101,38 @@
         by.set(id, Object.assign({}, prev, patch, { local: src === LOCAL || prev.local }));
       }
     }
-    return [...by.values()];
+    /* Reserved ids are bookkeeping, not films. */
+    return [...by.values()].filter(e => !String(e.id).startsWith('_'));
   }
 
   const pending = () => Object.keys(LOCAL).length;
+
+  /* ── things that are not films ──
+     Favourite actors need somewhere to live, and the room already has exactly
+     one write path worth having: the Worker when it answers, this browser when
+     it does not. So they ride in the same store under a reserved id, and `all()`
+     keeps anything starting with an underscore out of the film list.
+
+     They are NOT written into entertainment-data.js. That file is the list of
+     films; a list of actors is not a film, and the export would have to grow a
+     shape for it. Until /movies is deployed they live in this browser — same
+     deal as every other edit made here. */
+  const META = '_people';
+
+  function meta() {
+    const m = { ...(REMOTE[META] || {}), ...(LOCAL[META] || {}) };
+    return Array.isArray(m.names) ? m.names : [];
+  }
+
+  const isFavActor = name => meta().some(n => n.toLowerCase() === name.toLowerCase());
+
+  async function toggleActor(name) {
+    const cur = meta();
+    const next = isFavActor(name)
+      ? cur.filter(n => n.toLowerCase() !== name.toLowerCase())
+      : cur.concat([name]);
+    await save(META, { names: next });
+  }
 
   /* ── where to actually watch it ──
      A link is not a dependency: nothing here loads until it is clicked, and the
@@ -197,7 +225,7 @@
   }
 
   function badge(e) {
-    if (e.pick) return '<span class="badge">★ starred</span>';
+    if (e.pick) return '<span class="badge">' + PERSON + ' together</span>';
     if (e.status === 'watched') return '<span class="badge seen">✓ seen</span>';
     return '';
   }
@@ -249,6 +277,42 @@
 
   const PLAY = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" ' +
     'aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+
+  /* The list Ric starred is not a list of favourites — it is what he and his
+     partner are going to watch together, which is a different thing and wants a
+     different mark. The DATA still calls it `pick`: that name is in the
+     committed file, in the Worker and in the export, and renaming a field to
+     rename a label is how a schema gets two of everything. Only the words and
+     the icon change. */
+  const PARTNER_LABEL = 'Watch together';
+  const PERSON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" ' +
+    'aria-hidden="true"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.5-9 5.5V22h18v-2.5c0-3-4-5.5-9-5.5Z"/></svg>';
+
+  /* One DVD case: a spine you read side-on and a cover hinged to its right
+     edge, folded back out of sight until the case is pulled off the shelf. */
+  function dvdCase(e) {
+    const art = e.poster ? 'assets/posters/' + e.id + '.jpg' : '';
+    const sub = [e.year, e.runtime ? hhmm(e.runtime) : ''].filter(Boolean).join(' · ');
+    const mark = e.pick
+      ? '<span class="together">' + PERSON + '</span>' : '';
+    return '<button class="case" type="button" data-id="' + esc(e.id) + '"' +
+        ' style="--tint:' + hue(e, 26) + '"' +
+        ' aria-label="' + esc(e.title) + (sub ? ', ' + esc(sub) : '') + '">' +
+      '<span class="box">' +
+        '<span class="face spine">' +
+          (art ? '<span class="spine-art" style="background-image:url(&quot;' + esc(art) + '&quot;)"></span>' : '') +
+          '<span class="spine-txt">' + esc(e.title) + '</span>' +
+          '<span class="spine-foot"></span>' + mark +
+        '</span>' +
+        '<span class="face front">' +
+          (art
+            ? '<img src="' + esc(art) + '" alt="" loading="lazy" decoding="async" width="342" height="513">'
+            : '<span class="noart">' + esc(e.title) + '</span>') +
+          '<span class="front-tag"><b>' + esc(e.title) + '</b>' +
+            (sub ? '<span>' + esc(sub) + '</span>' : '') + '</span>' +
+        '</span>' +
+      '</span></button>';
+  }
 
   /* ── where to watch ──
      The point of the room. Opening a title should ANSWER "where is this", not
@@ -332,18 +396,28 @@
     meta.push(e.status === 'watched' ? '✓ seen' : 'in the queue');
     /* Who is in it is how a person actually recognises a film — Ric caught a
        wrong match by remembering one had "the guy from the office" in it. */
+    /* Signed in, every name is a button: star the actor and a shelf of their
+       films appears on the front page. Signed out it is just the cast. */
+    const own = window.Owner && Owner.on();
     const cast = (e.cast || []).length
-      ? '<p class="sheet-cast">' + esc(e.cast.join(' · ')) + '</p>' : '';
+      ? '<p class="sheet-cast">' + e.cast.map(a => own
+          ? '<button type="button" class="actor' + (isFavActor(a) ? ' on' : '') + '" ' +
+            'data-actor="' + esc(a) + '" title="' +
+            (isFavActor(a) ? 'Remove from your people' : 'Add to your people') + '">' +
+            PERSON + esc(a) + '</button>'
+          : '<span class="actor">' + esc(a) + '</span>').join('') + '</p>'
+      : '';
     if (e.seen) meta.push('watched ' + esc(new Date(e.seen).toLocaleDateString('en-US',
       { month: 'short', day: 'numeric', year: 'numeric' })));
 
     const links = watchLinks(e);
-    const own = window.Owner && Owner.on()
+    const ownBlock = own
       ? '<div class="sheet-own">' +
           (e.status === 'watchlist'
             ? '<button type="button" data-act="watched" data-id="' + esc(e.id) + '">Mark watched</button>'
             : '<button type="button" data-act="watchlist" data-id="' + esc(e.id) + '">Back to queue</button>') +
-          '<button type="button" data-act="pick" data-id="' + esc(e.id) + '">' + (e.pick ? 'Unstar' : 'Star it') + '</button>' +
+          '<button type="button" data-act="pick" data-id="' + esc(e.id) + '">' +
+            (e.pick ? 'Not a together one' : 'Mark “' + PARTNER_LABEL + '”') + '</button>' +
           '<button type="button" data-act="identify" data-id="' + esc(e.id) + '">' +
             (e.wd ? 'Not the right film?' : 'Which film is this?') + '</button>' +
           '<button type="button" class="danger" data-act="remove" data-id="' + esc(e.id) + '">Remove</button>' +
@@ -365,7 +439,7 @@
             '<code>projects/entertainment/pull-entertainment.py --facts</code>.</p>') +
         (e.note ? '<p class="thin">' + esc(e.note) + '</p>' : '') +
         (e.local ? '<p class="thin">This edit is saved in this browser only — not committed yet.</p>' : '') +
-        own +
+        ownBlock +
       '</div>';
     if (!sheet.open) sheet.showModal();
   }
@@ -626,7 +700,14 @@
         openSheet(id);                          // reopen showing the new state
         return;
       }
-      const t = ev.target.closest('.tile, [data-more]');
+      const who = ev.target.closest('button[data-actor]');
+      if (who) {
+        await toggleActor(who.dataset.actor);
+        const open = el('sheet-in').querySelector('[data-act]');
+        if (open) openSheet(open.dataset.id);   // redraw with the new state
+        return;
+      }
+      const t = ev.target.closest('.tile, .case, [data-more]');
       if (!t) return;
       openSheet(t.dataset.more || t.dataset.id);
     });
@@ -674,7 +755,7 @@
           'placeholder="2016" autocomplete="off"></label>' +
         '<label>Where is it<input id="a-where" placeholder="Netflix, Prime, Buy…" autocomplete="off" list="wherelist">' +
           '<datalist id="wherelist"></datalist></label>' +
-        '<label class="check"><input type="checkbox" id="a-pick"> Star it</label>' +
+        '<label class="check"><input type="checkbox" id="a-pick"> ' + PARTNER_LABEL + '</label>' +
         '<div class="wide"><button class="btn btn-gold" type="submit">Add to the list</button></div>' +
       '</form>' +
       '<button class="btn" type="button" id="doexport">Export a new entertainment-data.js</button>' +
@@ -841,10 +922,12 @@
 
   window.Room = {
     boot: boot, all: all, save: save, pending: pending,
-    tile: tile, artHtml: artHtml, badge: badge, subline: subline, hue: hue,
+    tile: tile, dvdCase: dvdCase, artHtml: artHtml, badge: badge, subline: subline, hue: hue,
     openSheet: openSheet, watchLinks: watchLinks, places: places,
     tintOf: tintOf, rgba: rgba, hhmm: hhmm,
     esc: esc, slug: slug, exportFile: exportFile, PLAY: PLAY, metaLine: metaLine,
-    chooseFilm: chooseFilm
+    chooseFilm: chooseFilm,
+    actors: meta, isFavActor: isFavActor, toggleActor: toggleActor,
+    PERSON: PERSON, PARTNER_LABEL: PARTNER_LABEL
   };
 })();

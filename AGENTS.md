@@ -426,6 +426,33 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   the write path, the detail sheet, the owner panel and the export. Hard rule 3 is about
   not flattening the *site* into one template — inside one room, one core is how the two
   pages keep telling the same truth. Don't fork it.
+- **The room is a video store, and the case is a real box.** A DVD case is drawn in
+  CSS 3D: the spine faces out (all you see on a full shelf) and the front cover is
+  hinged to the spine's right edge, folded back at 90° where it is invisible edge-on.
+  Pulling it out rotates the whole box about that hinge. Don't "simplify" it to a
+  cross-fade between two images — the hinge is why it reads as an object.
+- **Hover is not available on a phone**, so the gesture is the real one: first tap pulls
+  the case off the shelf, second tap opens it. That handler runs in the CAPTURE phase,
+  ahead of the room's own click handler, or the first tap falls through and opens the
+  sheet immediately.
+- **`.board` was already the billboard.** Naming the shelf plank `.board` too painted
+  the hero section in wood grain. It is `.shelf-board`. Check for a collision before
+  adding a generic class name to a page this size.
+- **The furniture lives in `assets/entertainment-room.css`** and the case markup in
+  `Room.dvdCase` — one definition, both pages. Hard rule 3 is about not flattening the
+  SITE into one template; this is one room's furniture, like `assets/climbing.css`.
+- **The mark on a film is a PERSON, not a star.** That list is what Ric and his partner
+  are going to watch together, which is a different thing from a favourite. The data
+  field is still `pick` — it is in the committed file, the Worker and the export, and
+  renaming a field to change a label is how a schema grows two of everything. Only the
+  words and the icon changed; the label is `PARTNER_LABEL` in the core, one line.
+- **Favourite actors ride under a reserved id** (`_people`) in the same store as the
+  films, and `all()` filters ids starting with an underscore out of the film list. They
+  are not written to entertainment-data.js — that file is a list of films.
+- **A front-page shelf shows thirty cases, not the whole shelf.** 1,300 3D boxes on one
+  page is a phone running hot for nothing. The whole catalogue is the library page,
+  which cuts its rows in JavaScript because a flex-wrapped row has nothing to stand on —
+  the plank has to know where the row ends.
 - **Shelves are ordered by fact, never by mood.** Starred, recently watched, queued,
   on-a-service, franchise, genre, decade. No "cosy Sunday" rows.
 - **`FIELDS` appears twice on purpose and must match** — in `pull-entertainment.py` and in
