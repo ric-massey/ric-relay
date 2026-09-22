@@ -4637,10 +4637,14 @@
       const boxCx = plusCx - stepW / 2 - 6 - boxW / 2;
       const minusCx = boxCx - boxW / 2 - 6 - stepW / 2;
 
-      // The chevron says there is more to read, and is the thing you press.
+      /* The chevron says there is more to read, and is the thing you press.
+         Bigger and brighter than the row's text rather than dimmer than it:
+         at `SIZE.cap` in `AMBER_DIM` it was the faintest mark on a busy row
+         and read as punctuation, so nobody could tell the row opened. A
+         control has to look like it does something. */
       if (r.note) {
-        label(open ? "▾" : "▸", bx0 + 232, y, SIZE.cap, AMBER_DIM,
-              "left", open ? 0.95 : 0.6);
+        label(open ? "▾" : "▸", bx0 + 230, y + 1, SIZE.val, AMBER,
+              "left", open ? 1 : 0.8);
       }
       fitText(said, bx0 + 250, y, SIZE.cap, VIOLET_DIM, "left", 0.62,
               minusCx - stepW / 2 - 186 - (bx0 + 250));

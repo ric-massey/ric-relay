@@ -6772,50 +6772,50 @@
   const MODULES = [
     // ── engines: how fast ──────────────────────────────────────────────────
     { key: "sparthruster", name: "DRIVE SPAR", cat: "engine", rarity: "common",
-      cost: 220, deep: 0, get: ["buy", "craft"],
+      cost: 650, deep: 0, get: ["buy", "craft"],
       note: "a longer spar and a wider throat: +14% top speed",
       eff: { speed: 0.14 } },
     { key: "overburner", name: "OVERBURNER", cat: "engine", rarity: "rare",
-      cost: 1450, deep: 0.34, get: ["buy"],
+      cost: 5100, deep: 0.34, get: ["buy"],
       note: "runs the drive past what it was rated for: +34% top speed and " +
             "+20% off the mark",
       eff: { speed: 0.34, thrust: 0.2 } },
 
     // ── thrusters: how it handles ──────────────────────────────────────────
     { key: "vernier", name: "VERNIER SET", cat: "thruster", rarity: "common",
-      cost: 240, deep: 0, get: ["buy", "craft"],
+      cost: 700, deep: 0, get: ["buy", "craft"],
       note: "little jets at the nose and tail: +22% turn rate",
       eff: { turn: 0.22 } },
     { key: "reverser", name: "REVERSE THRUSTERS", cat: "thruster",
-      rarity: "uncommon", cost: 620, deep: 0.12, get: ["buy"],
+      rarity: "uncommon", cost: 2000, deep: 0.12, get: ["buy"],
       note: "thrust out of the front of the ship — back straight off a rock " +
             "without turning round first  [S]",
       eff: { reverse: 1 } },
 
     // ── scanners: how far a pulse reaches ─────────────────────────────────
     { key: "pulsecoil", name: "PULSE COIL", cat: "scanner", rarity: "common",
-      cost: 260, deep: 0, get: ["buy", "craft"],
+      cost: 800, deep: 0, get: ["buy", "craft"],
       note: "a louder pulse: the scan reaches 70% further",
       eff: { scan: 0.7 } },
     { key: "coolantloop", name: "COOLANT LOOP", cat: "scanner",
-      rarity: "uncommon", cost: 700, deep: 0.14, get: ["buy", "craft"],
+      rarity: "uncommon", cost: 2300, deep: 0.14, get: ["buy", "craft"],
       note: "the scanner sheds its heat instead of waiting to. Recharges in " +
             "nine seconds rather than twelve — the rate it ran at before " +
             "anybody worked out what was slowing it down",
       eff: { recharge: 0.25 } },
     { key: "deepear", name: "DEEP EAR", cat: "scanner", rarity: "rare",
-      cost: 1600, deep: 0.4, get: ["buy"],
+      cost: 5600, deep: 0.4, get: ["buy"],
       note: "hears the returns a pulse coil throws away: the scan reaches " +
             "190% further",
       eff: { scan: 1.9 } },
 
     // ── armour: how many hits ─────────────────────────────────────────────
     { key: "layerplate", name: "LAYERED PLATE", cat: "armour", rarity: "common",
-      cost: 300, deep: 0, get: ["buy", "craft"],
+      cost: 900, deep: 0, get: ["buy", "craft"],
       note: "scrap plate welded over the hull: +2 hull",
       eff: { hull: 2 } },
     { key: "ablativeshell", name: "ABLATIVE SHELL", cat: "armour",
-      rarity: "rare", cost: 1700, deep: 0.36, get: ["buy"],
+      rarity: "rare", cost: 6000, deep: 0.36, get: ["buy"],
       note: "a shell that burns away instead of you: +5 hull",
       eff: { hull: 5 } },
 
@@ -6835,7 +6835,7 @@
        nine, and little enough that MK2 is a real step. MK2 is the beam as it
        was. MK3 is the hot one, which used to be called the HEAVY BEAM. */
     { key: "tractormk1", name: "TRACTOR BEAM MK1", cat: "tractor",
-      rarity: "common", cost: 180, deep: 0, get: ["find", "craft"],
+      rarity: "common", cost: 550, deep: 0, get: ["find", "craft"],
       where: "out in the dark, on its own \u2014 the first thing worth looking " +
              "for once the station is whole",
       note: "a grapple field on the nose, at half the reach of the mark two. " +
@@ -6843,7 +6843,7 @@
             " units comes in on its own",
       eff: { tractor: 1, reach: -0.5 } },
     { key: "tractorrig", name: "TRACTOR BEAM MK2", cat: "tractor",
-      rarity: "common", cost: 340, deep: 0, get: ["find", "craft"],
+      rarity: "common", cost: 1000, deep: 0, get: ["find", "craft"],
       where: "in caches — the commonest part out there, and the first one that " +
              "changes how you play",
       note: "the same field at its full reach. Loose salvage inside " +
@@ -6851,7 +6851,7 @@
             "broken rock is one pass instead of nine",
       eff: { tractor: 1 } },
     { key: "heavyrig", name: "TRACTOR BEAM MK3", cat: "tractor",
-      rarity: "uncommon", cost: 780, deep: 0.16, get: ["buy"],
+      rarity: "uncommon", cost: 2500, deep: 0.16, get: ["buy"],
       note: "the field run hot: 60% further out than the mark two and a harder " +
             "pull, so a field of debris comes in while you are still crossing it",
       eff: { tractor: 1, reach: 0.6, pull: 0.5 } },
@@ -6860,20 +6860,20 @@
        Each fires on the trigger you already have, at its own rate, on top of the
        cannon. See `WEAPONS` for what each one does. */
     { key: "scattergun", name: "SCATTER GUN", cat: "weapon", rarity: "common",
-      cost: 420, deep: 0, get: ["buy", "craft"],
+      cost: 1250, deep: 0, get: ["buy", "craft"],
       note: "three rounds at once on the same trigger, none of them go far",
       eff: { weapon: "scatter" } },
     { key: "seekerrack", name: "SEEKER RACK", cat: "weapon", rarity: "uncommon",
-      cost: 940, deep: 0.14, get: ["buy", "craft"],
+      cost: 3100, deep: 0.14, get: ["buy", "craft"],
       note: "a missile that turns after whatever is nearest — fire it and look " +
             "somewhere else",
       eff: { weapon: "seeker" } },
     { key: "burstcharge", name: "BURST CHARGE", cat: "weapon", rarity: "rare",
-      cost: 1800, deep: 0.38, get: ["buy", "craft"],
+      cost: 6300, deep: 0.38, get: ["buy", "craft"],
       note: "goes off where it lands and takes whatever was standing next to it",
       eff: { weapon: "burster" } },
     { key: "raillance", name: "RAIL LANCE", cat: "weapon", rarity: "exotic",
-      cost: 3600, deep: 0.62, get: ["buy"],
+      cost: 14400, deep: 0.62, get: ["buy"],
       note: "one heavy slug, straight through three things and out the far side",
       eff: { weapon: "lance" } },
 
@@ -6882,12 +6882,12 @@
        going rather than to keep grinding: each one changes a rule rather than a
        number. */
     { key: "starsiphon", name: "STAR SIPHON", cat: "odd", rarity: "rare",
-      cost: 1500, deep: 0.42, get: ["buy", "craft"],
+      cost: 5200, deep: 0.42, get: ["buy", "craft"],
       note: "a wider throat on the intake: skimming an atmosphere fills the " +
             "tank half again as fast",
       eff: { skim: 0.6 } },
     { key: "coldlarder", name: "COLD LARDER", cat: "odd", rarity: "exotic",
-      cost: 3200, deep: 0.6, get: ["buy"],
+      cost: 12800, deep: 0.6, get: ["buy"],
       note: "keeps what you are carrying cold: water and food both last a " +
             "third longer",
       eff: { life: -0.25 } }
@@ -6908,7 +6908,7 @@
      damage home. */
   MODULES.push(
     { key: "solarwing", name: "SOLAR PANELS", cat: "solar", rarity: "uncommon",
-      cost: 900, deep: 0.1, get: ["buy", "craft"],
+      cost: 2900, deep: 0.1, get: ["buy", "craft"],
       note: "wings that drink a star. Sit in the light of a sun and the hull " +
             "knits itself back together — without them, damage is permanent " +
             "until you pay somebody to beat it out",
@@ -7327,26 +7327,26 @@
      say so before you have read a word of the description. */
   MODULES.push(
     { key: "ejector", name: "CARGO EJECTOR", cat: "device", rarity: "common",
-      cost: 320, deep: 0, get: ["buy", "craft"],
+      cost: 950, deep: 0, get: ["buy", "craft"],
       note: "a hopper that opens on the hold. Everything you are carrying goes " +
             "out of the back at once \u2014 the answer to a full hold a long way " +
             "from a shop, and to somebody who only ever wanted the cargo",
       eff: { device: "eject" } },
     { key: "decoylauncher", name: "DECOY LAUNCHER", cat: "device",
-      rarity: "uncommon", cost: 880, deep: 0.18, get: ["buy", "craft"],
+      rarity: "uncommon", cost: 2900, deep: 0.18, get: ["buy", "craft"],
       note: "a shell that burns like a hull and lies about being one. It does " +
             "not draw attention \u2014 it takes what is already on you: sentries " +
             "fly at it, an angry ship shoots at it, and a missile turns onto it",
       eff: { device: "decoy" } },
     { key: "minelayer", name: "MINE LAYER", cat: "device", rarity: "uncommon",
-      cost: 1020, deep: 0.24, get: ["buy", "craft"],
+      cost: 3300, deep: 0.24, get: ["buy", "craft"],
       note: "drops something behind you that goes off when anything comes near " +
             "it. It arms a second and a half after it leaves the rack, and " +
             "once you have flown clear of it, it stops knowing whose side " +
             "it is on",
       eff: { device: "mine" } },
     { key: "jumpcore", name: "EMERGENCY JUMP", cat: "device", rarity: "rare",
-      cost: 2800, deep: 0.46, get: ["buy"],
+      cost: 9800, deep: 0.46, get: ["buy"],
       note: "one hard throw down the way you are pointing, tens of thousands " +
             "of units, and nothing about where you land is chosen. You arrive " +
             "stopped, blind and somewhere else \u2014 which beats not arriving",
@@ -7358,7 +7358,7 @@
        hunting ships and a seeker in the air; the burst moves sentries, mines
        and every engine in reach, your own included. */
     { key: "grappleline", name: "GRAPPLE LINE", cat: "device", rarity: "common",
-      cost: 540, deep: 0, get: ["buy", "craft"],
+      cost: 1600, deep: 0, get: ["buy", "craft"],
       note: "a line and a winch. It does not pull things to you \u2014 it " +
             "pulls you to them, hard, at whatever is in front of the nose. " +
             "A way out of a well that is not a bigger engine, and the fastest " +
@@ -7370,13 +7370,13 @@
        of it never is. Ten seconds of not being there is the most a device has
        ever changed about a fight, so it is the top and it costs a trip. */
     { key: "silentrig", name: "SILENT RUNNING", cat: "device", rarity: "exotic",
-      cost: 4200, deep: 0.62, get: ["buy"],
+      cost: 16800, deep: 0.62, get: ["buy"],
       note: "ten seconds of not being there. Sentries lose you, whoever is " +
             "chasing you forgets, and a missile in the air goes looking " +
             "somewhere else. Fire once and it is over",
       eff: { device: "cloak" } },
     { key: "empcharge", name: "EMP CHARGE", cat: "device", rarity: "rare",
-      cost: 2600, deep: 0.4, get: ["buy", "craft"],
+      cost: 9100, deep: 0.4, get: ["buy", "craft"],
       note: "one burst, and everything electric inside it stops \u2014 " +
             "sentries, mines, and the engines and guns of every ship in reach. " +
             "Your own four slots and your scanner go down with them",
@@ -7394,31 +7394,31 @@
      cache. Only off the boss that carries it. */
   MODULES.push(
     { key: "warfan", name: "WAR FAN", cat: "weapon", rarity: "exotic",
-      cost: 5200, deep: 0, get: ["boss"],
+      cost: 20800, deep: 0, get: ["boss"],
       where: "only off a warlord. It is what they fight with",
       note: "five rounds fanned across the nose on every pull of the trigger. " +
             "What a warlord sprays at you, bolted to your own ship",
       eff: { weapon: "fan" } },
     { key: "corsairburner", name: "CORSAIR BURNER", cat: "device",
-      rarity: "exotic", cost: 4800, deep: 0, get: ["boss"],
+      rarity: "exotic", cost: 19200, deep: 0, get: ["boss"],
       where: "only off a corsair. It is how they are gone before you turn",
       note: "one hard shove down the way you are pointing, well past your top " +
             "speed, and it bleeds off like a slingshot. Six seconds between",
       eff: { device: "burner" } },
     { key: "flagscreen", name: "FLAGSHIP SCREEN", cat: "armour",
-      rarity: "exotic", cost: 6000, deep: 0, get: ["boss"],
+      rarity: "exotic", cost: 24000, deep: 0, get: ["boss"],
       where: "only off an admiral. It is why its hull would not go down",
       note: "a field that takes the next hit for you, whatever it is, then " +
             "takes twelve seconds to come back up",
       eff: { screen: 1 } },
     { key: "wardenswarm", name: "WARDEN'S SWARM", cat: "weapon",
-      rarity: "exotic", cost: 5600, deep: 0, get: ["boss"],
+      rarity: "exotic", cost: 22400, deep: 0, get: ["boss"],
       where: "only off a Warden. It is what was following you round",
       note: "two missiles a volley, each after its own target. A seeker rack " +
             "that learned to share",
       eff: { weapon: "swarm" } },
     { key: "broodbay", name: "BROOD BAY", cat: "device", rarity: "exotic",
-      cost: 5000, deep: 0, get: ["boss"],
+      cost: 20000, deep: 0, get: ["boss"],
       where: "only off a salvage queen. It is where her bugs came from",
       note: "three of her bugs, yours now. They find whatever is after you " +
             "and fly into it. Eight seconds between",
@@ -14183,9 +14183,15 @@
       if (m.life <= 0) { surv.motes.splice(i, 1); continue; }
       m.spin += dt * 3;
 
+      /* `beam` is the ring's *radius*, so it is the same number for every mote
+         and says nothing about this one. Whether this mote is actually in the
+         field is its own fact, and both the pull and the damping below have to
+         be asked it — see the note on `beamDamp`. */
+      let inBeam = false;
       if (me.alive && beam) {
         const d = Math.hypot(me.x - m.x, me.y - m.y);
         if (d < beam && d > 1) {
+          inBeam = true;
           const grab = (1 - d / beam) * TRACTOR_PULL * (1 + mod.pull) * U;
           m.vx += ((me.x - m.x) / d) * grab * dt;
           m.vy += ((me.y - m.y) / d) * grab * dt;
@@ -14203,12 +14209,20 @@
          ring and leave it oscillating around the ship. Its extra pull therefore
          brings extra field damping with it; loose motes outside a beam keep the
          old drift exactly. */
-      const beamDamp = beam ? 0.55 + 0.9 * (mod.pull || 0) : 0.55;
+      /* Asked of `inBeam`, not of `beam`. This read `beam` — the radius, which
+         is simply "is a beam fitted" — so **fitting a tractor beam changed how
+         every mote in the sector moved**, at any distance: each one had its
+         velocity damped towards the ship's, so salvage nowhere near the ring
+         slid along with you instead of drifting, and a well could no longer
+         take it because the damping kept handing it your velocity back. The
+         line above already promised loose motes keep the old drift exactly;
+         this is the line that broke the promise. */
+      const beamDamp = inBeam ? 0.55 + 0.9 * (mod.pull || 0) : 0.55;
       const damp = Math.exp(-beamDamp * dt);
       /* Inside the field, damp motion relative to the collector. Damping toward
          zero made debris lag behind a ship that gravity was moving, which could
          turn the heavy beam into a permanent orbit. */
-      if (beam) {
+      if (inBeam) {
         m.vx = me.vx + (m.vx - me.vx) * damp;
         m.vy = me.vy + (m.vy - me.vy) * damp;
       } else {
@@ -17707,7 +17721,36 @@
     const pirateShare = space.kind === "territory"
       ? (inner <= 1 ? 0.06 : inner === 2 ? 0.01 : 0)
       : space.pirates;
-    if (roll < pirateShare * calm) {
+    /* ── and the tutorial is not where you learn about raiders ──────────────
+       Ric: "you shouldnt be running into too many pirates in the opening part
+       getting the jump drive parts."
+
+       The `calm` bowl above stops four chunks out — 10,400 units — and it was
+       written for the front door, which is what it is still for. But the
+       manifest runs from the drive spar at 7,000 to the beacon at 52,000, so
+       every part after the first is fetched well outside the bowl at the
+       sector's open rate. The quiet ends one part into the only thread that
+       tells you where to go.
+
+       So while the manifest is unfinished there is a second, much wider bowl
+       over the whole of it: a third of the usual raiders at the middle of it,
+       easing back to the full rate at its edge. It is a *share*, not a cap —
+       lawless space is still the worst sky in the opening and the Deep Void is
+       still emptier than either — so the shape of the danger curve survives;
+       it is only shallower while you are being taught.
+
+       Finish the manifest and this is gone: the sector becomes exactly as
+       dangerous as it always was, in the same flight, which is the moment the
+       tutorial stops holding the handlebars. */
+    const OPENING_REACH = 52000;   // the beacon, the furthest thing it asks for
+    const OPENING_FADE  = 26000;   // and half as far again to become itself
+    let opening = 1;
+    if (surv && surv.built && surv.built.size < BUILD.length) {
+      const d = Math.hypot(cx, cy) * CHUNK;
+      const past = Math.max(0, d - OPENING_REACH) / OPENING_FADE;
+      opening = 0.34 + 0.66 * Math.min(1, past) ** 2;
+    }
+    if (roll < pirateShare * calm * opening) {
       faction = "pirate"; role = "pirate";
     } else {
       const powers = FACTIONS.map(f => f.key);
