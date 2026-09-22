@@ -799,6 +799,15 @@
     if (!sheet) return;
     const x = el('sheet-x');
     if (x) x.addEventListener('click', () => sheet.close());
+    /* Opening a title leaves the case it came from pulled out behind the
+       dialog, and on the way back the browser restores focus to it — so it
+       stays out, looking stuck, until something else is clicked. Reset on
+       close and there is nothing to get stuck. */
+    sheet.addEventListener('close', () => {
+      for (const o of document.querySelectorAll('.case.out')) o.classList.remove('out');
+      if (document.activeElement && document.activeElement.classList.contains('case'))
+        document.activeElement.blur();
+    });
     sheet.addEventListener('click', ev => {     // click the backdrop to close
       if (ev.target === sheet) sheet.close();
     });

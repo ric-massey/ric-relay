@@ -168,12 +168,23 @@
   color: inherit;
 }
 /* Transparent to every layout below it: same box as the case, and it must
-   preserve 3D or wrapping the box in it would flatten the whole thing. */
+   preserve 3D or wrapping the box in it would flatten the whole thing.
+
+   It also takes no pointer events, and that is not a detail. Once a case is
+   pulled out, its artwork is drawn hundreds of pixels from the slot it came
+   from — right on top of other cases' slots. If that artwork is hoverable it
+   holds its OWN case open while the cursor has long since moved on, and it
+   steals the hover from whatever it is covering: two cases open at once and
+   one of them apparently stuck. Only the case's own stationary box decides
+   what is being pointed at. */
 .lift {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
+  pointer-events: none;
 }
+/* decoration, never a target */
+.under { pointer-events: none; }
 .box {
   position: absolute;
   inset: 0;
