@@ -311,8 +311,10 @@
     let h = 0;
     for (let i = 0; i < id.length; i++) h = (h * 33 + id.charCodeAt(i)) & 0xffff;
     return {
-      /* 26–35px: a single disc is thinner than a box set */
-      t: 26 + (h % 10),
+      /* A real case is 14mm on a 135mm cover — about a tenth of its width, so
+         15px against a 148px front. 14–20px covers a single disc up to a
+         double; a box set is wider than that but there are none on the shelf. */
+      t: 14 + (h % 7),
       /* a couple of px of height difference is plenty to break the ruler line */
       dh: (h >> 4) % 7,
       /* leaning cases are what a used shelf looks like */
@@ -345,8 +347,10 @@
           '<span class="front-tag"><b>' + esc(e.title) + '</b>' +
             (sub ? '<span>' + esc(sub) + '</span>' : '') + '</span>' +
         '</span>' +
-        /* the reverse of the wrap: same art, dimmed and flipped, the way the
-           back of a printed sleeve actually looks */
+        /* The back of the wrap. Its only real job is that you cannot see
+           through the case as it turns — and a back cover generally shares the
+           front's artwork and palette anyway, so it gets the same image rather
+           than an invented one. */
         '<span class="face back">' +
           (art ? '<span class="back-art" style="' + bg + '"></span>' : '') +
         '</span>' +

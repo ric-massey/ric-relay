@@ -300,8 +300,11 @@
   inset: 0;
   background-size: cover;
   background-position: 50% 40%;
-  opacity: 0.16;
-  filter: grayscale(0.5) blur(1px);
+  /* The same artwork, turned the way you would be looking at it and a shade
+     down because this face is away from the light. Not greyed or blurred: a
+     back cover generally matches the front. */
+  opacity: 0.82;
+  filter: brightness(0.62) saturate(0.9);
   transform: scaleX(-1);
 }
 
@@ -340,21 +343,22 @@
    so an unpositioned badge lands in the middle of the title. */
 .together {
   position: absolute;
-  top: 5px;
+  top: 4px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 17px;
-  height: 17px;
-  border-radius: 4px;
+  /* has to sit inside a 15px spine without crowding the title */
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
   background: var(--gold);
   color: #0f0f0f;
   box-shadow: 0 1px 3px rgba(0,0,0,0.6);
 }
-.together svg { width: 11px; height: 11px; }
+.together svg { width: 9px; height: 9px; }
 /* on the cover there is room for it to sit in the corner */
 .front .together {
   top: 7px;
