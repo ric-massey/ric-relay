@@ -346,7 +346,12 @@
         ' style="--tint:' + hue(e, 26) + ';--t:' + v.t + 'px;--dh:' + v.dh +
         'px;--lean:' + v.lean.toFixed(2) + 'deg"' +
         ' aria-label="' + esc(e.title) + (sub ? ', ' + esc(sub) : '') + '">' +
-      '<span class="box">' +
+      /* `lift` carries the slide, `box` carries the turn — two elements so the
+         two can be timed apart, and BOTH inside the case so the case's own
+         hit area never moves. Move the case itself and it slides out from
+         under the cursor, un-hovers, slides back under it and re-hovers,
+         forever. */
+      '<span class="lift"><span class="box">' +
         '<span class="face spine">' +
           (art ? '<span class="spine-art" style="' + bg + '"></span>' : '') +
           '<span class="spine-txt">' + esc(e.title) + '</span>' +
@@ -373,7 +378,7 @@
         '<span class="face edge" aria-hidden="true"></span>' +
         '<span class="face top" aria-hidden="true"></span>' +
         '<span class="face bottom" aria-hidden="true"></span>' +
-      '</span>' +
+      '</span></span>' +
       '<span class="under" aria-hidden="true"></span>' +
       '</button>';
   }

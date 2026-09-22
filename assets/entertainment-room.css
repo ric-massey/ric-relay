@@ -167,6 +167,13 @@
   font: inherit;
   color: inherit;
 }
+/* Transparent to every layout below it: same box as the case, and it must
+   preserve 3D or wrapping the box in it would flatten the whole thing. */
+.lift {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
 .box {
   position: absolute;
   inset: 0;
@@ -786,8 +793,6 @@
 }
 .case.stacked {
   display: block;
-  /* going back, the slide waits for the turn to finish */
-  transition: transform 0.42s var(--ease-pull) 0.1s;
   /* Lying down, its length is its height standing up — scaled up so a single
      column is worth looking at. Length and thickness scale TOGETHER, so it is
      still a DVD case, just a nearer one. */
@@ -797,6 +802,10 @@
 }
 /* The box keeps its standing dimensions and is turned in place, which is why
    every face, gradient and hinge inside it still works untouched. */
+.stacked .lift {
+  /* going back, the slide waits for the turn to finish */
+  transition: transform 0.42s var(--ease-pull) 0.1s;
+}
 .stacked .box {
   /* ── never put a filter on this element ──
      `filter` forces transform-style: flat, whatever preserve-3d says. A
@@ -827,8 +836,8 @@
    local axes, because it is the same box */
 .case.stacked.out, .case.stacked:focus-visible { z-index: 8; }
 /* coming out, the slide goes first and the turn follows it */
-.case.stacked.out,
-.case.stacked:focus-visible {
+.case.stacked.out .lift,
+.case.stacked:focus-visible .lift {
   transform: translate3d(var(--pull, 210px), 0, 0);
   transition-delay: 0s;
 }
@@ -848,7 +857,7 @@
 }
 @media (hover: hover) {
   .case.stacked:hover { z-index: 8; }
-  .case.stacked:hover {
+  .case.stacked:hover .lift {
     transform: translate3d(var(--pull, 210px), 0, 0);
     transition-delay: 0s;
   }
@@ -930,9 +939,9 @@
   .case.stacked.out {
     /* as tall as the case is standing, so the cover has somewhere to be */
     height: calc((var(--case-h) + var(--dh, 0px)) * var(--stack-scale, 1.05) + 14px);
-    transform: none;
     z-index: 3;
   }
+  .case.stacked.out .lift { transform: none; }
   .case.stacked.out .box,
   .case.stacked:focus-visible .box {
     /* At rotate(0) it is the SPINE that faces you — the cover is hinged and
