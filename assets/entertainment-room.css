@@ -1043,7 +1043,11 @@
      cover has somewhere to come out to. */
   grid-template-columns: max-content;
   justify-content: start;
-  gap: 40px;
+  /* No gap: there is one pile now. The catalogue used to be cut into stacks
+     of thirty, which left a band of empty page between each one — exactly
+     where the shelf used to be, which is what made it look like a shelf was
+     missing rather than deliberately absent. */
+  gap: 0;
   margin: 0;
   padding: 26px 20px 60px;
   list-style: none;

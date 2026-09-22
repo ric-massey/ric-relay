@@ -1182,9 +1182,10 @@
 
      Cases are rendered once and moved between rows on a re-cut — rebuilding
      363 3D boxes on every resize tick is how a page melts a phone. */
-  /* How tall a pile before it starts a new one. Thirty is about what you can
-     take in at a glance and about as high as anyone actually stacks them. */
-  const PILE = 30;
+  /* One pile, all the way down. It used to be cut into stacks of thirty,
+     which made sense when they sat side by side in a grid — in a single
+     column all that did was leave a band of empty page between each stack,
+     exactly where the shelf used to be. */
 
   /* ── stacked, until you narrow it ──
      The whole catalogue at rest is a pile: nobody stands 363 cases up to look
@@ -1236,15 +1237,10 @@
       return;
     }
     out.className = 'piles';
-    const piles = [];
-    for (let i = 0; i < list.length; i += PILE) piles.push(list.slice(i, i + PILE));
-    out.innerHTML = piles.map(p =>
-      /* No plank. A pile is not standing on anything — it is a pile. */
-      '<li class="pile">' +
-        '<div class="rack stacked">' +
-          p.map(e => Room.dvdCase(e, 'stacked')).join('') +
-        '</div>' +
-      '</li>').join('');
+    out.innerHTML =
+      '<li class="pile"><div class="rack stacked">' +
+        list.map(e => Room.dvdCase(e, 'stacked')).join('') +
+      '</div></li>';
   }
 
   /* ── controls ── */
