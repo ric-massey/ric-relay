@@ -1378,28 +1378,6 @@
     qt = setTimeout(() => { state.q = v; renderResults(); }, 90);
   });
 
-  /* ── pulling a case out on a touch screen ──
-     There is no hover on a phone, so the gesture is the real one: first tap
-     pulls it off the shelf and turns it round, second tap opens it. Captured
-     before the room's own click handler so the first tap cannot fall through
-     and open the sheet straight away. */
-  const HOVERS = window.matchMedia('(hover: hover)').matches;
-  if (!HOVERS) {
-    document.addEventListener('click', ev => {
-      const c = ev.target.closest('.case');
-      if (!c) {                                  // tapping away puts it back
-        for (const o of document.querySelectorAll('.case.out')) o.classList.remove('out');
-        return;
-      }
-      if (c.classList.contains('out')) return;   // second tap — let it open
-      ev.stopPropagation();
-      ev.preventDefault();
-      for (const o of document.querySelectorAll('.case.out')) o.classList.remove('out');
-      c.classList.add('out');
-      c.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-    }, true);
-  }
-
   function render() {
     const all = Room.all();
     const watched = all.filter(e => e.status === 'watched').length;

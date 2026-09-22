@@ -9276,8 +9276,23 @@ const storeOf = (cf, key) => {
         rich + " rows can be climbed but only " + stocked + " have more than one in stock");
 
   /* The basket half. Fill the cheapest row to its limit and the others have to
-     tighten, because the money is spoken for. */
-  surv.cash = 700;
+     tighten, because the money is spoken for.
+
+     The purse is *found* rather than written down. It was 700, which was three
+     or four of the cheapest thing on the shelf when it was written — and the
+     day parts got dearer it became not quite one of anything, so every row was
+     already at its ceiling, "before" was zero, and the check failed reporting
+     that zero rows could climb. A number that only works at one price list is
+     a test that goes off when somebody touches the price list. So: the
+     smallest purse on a wide ladder that leaves more than one row with
+     somewhere to climb, which is the state this half actually needs. */
+  let purse = 0;
+  for (const c of [200, 400, 700, 1200, 2000, 3500, 6000, 10000, 20000, 50000]) {
+    surv.cash = c;
+    if (canClimb() > 1) { purse = c; break; }
+  }
+  check(purse > 0, "no purse on the ladder leaves two rows able to climb");
+  surv.cash = purse;
   cf.draw();
   const tick = cf.taps().filter(t => t.w === 232 && t.live).sort((a, b) => a.y - b.y);
   check(tick.length > 1, "the shop drew " + tick.length + " tickable rows");
@@ -9298,7 +9313,7 @@ const storeOf = (cf, key) => {
 
   console.log("  purse      the counter stops at what you can afford · " +
               seen.join(" · ") + " · filling one row tightens the rest (" +
-              before + " → " + after + ")");
+              before + " → " + after + " on a purse of " + purse + ")");
 }
 
 // ── what a place will not buy, said once ─────────────────────────────────

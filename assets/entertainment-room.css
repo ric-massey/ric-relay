@@ -173,7 +173,9 @@
   transform-style: preserve-3d;
   transform-origin: right center;
   transform: rotate(var(--lean, 0deg));   /* a used shelf leans */
-  transition: transform 0.55s cubic-bezier(0.22, 0.8, 0.2, 1);
+  /* Out slower than back. A pull wants weight; a release wants to be over —
+     matching the two durations is the commonest way motion feels wooden. */
+  transition: transform 0.34s cubic-bezier(0.3, 0.7, 0.2, 1);
 }
 .face {
   position: absolute;
@@ -182,7 +184,14 @@
   height: 100%;
   overflow: hidden;
   backface-visibility: hidden;
+  /* Nudge each face onto its own layer so a turn composites instead of
+     repainting. NOT will-change: three hundred cases each demanding a
+     permanent layer is how a page runs out of memory and stutters — this
+     costs nothing until something actually moves. */
+  transform-style: preserve-3d;
 }
+/* Only the one being pointed at is promoted, and only while it moves. */
+.case:hover .box, .case.out .box, .case:focus-visible .box { will-change: transform; }
 
 /* ── the spine: what faces you on a full shelf ── */
 .spine {
@@ -484,6 +493,8 @@
 .case.out, .case:focus-visible { z-index: 6; }
 .case.out .box,
 .case:focus-visible .box {
+  transition-duration: 0.52s;
+  transition-timing-function: cubic-bezier(0.34, 1.14, 0.42, 1);
   transform: translate3d(-16px, -34px, 96px) rotateY(-70deg) rotateX(2.5deg) rotate(0deg);
 }
 .case.out .gloss, .case:focus-visible .gloss { opacity: 1; }
@@ -499,6 +510,8 @@
 @media (hover: hover) {
   .case:hover { z-index: 6; }
   .case:hover .box {
+    transition-duration: 0.52s;
+    transition-timing-function: cubic-bezier(0.34, 1.14, 0.42, 1);
     transform: translate3d(-16px, -34px, 96px) rotateY(-70deg) rotateX(2.5deg) rotate(0deg);
   }
   .case:hover .gloss { opacity: 1; }
@@ -689,6 +702,8 @@
 .case.faced.out, .case.faced:focus-visible { z-index: 6; }
 .case.faced.out .box,
 .case.faced:focus-visible .box {
+  transition-duration: 0.46s;
+  transition-timing-function: cubic-bezier(0.34, 1.2, 0.42, 1);
   transform: translate3d(0, -16px, 70px) rotateX(-1deg) rotateY(-4deg) rotate(0deg);
 }
 .case.faced.out .front-tag, .case.faced:focus-visible .front-tag { opacity: 1; }
@@ -700,6 +715,8 @@
 @media (hover: hover) {
   .case.faced:hover { z-index: 6; }
   .case.faced:hover .box {
+    transition-duration: 0.46s;
+    transition-timing-function: cubic-bezier(0.34, 1.2, 0.42, 1);
     transform: translate3d(0, -16px, 70px) rotateX(-1deg) rotateY(-4deg) rotate(0deg);
   }
   .case.faced:hover .front-tag { opacity: 1; }
@@ -746,7 +763,21 @@
    imitation of the movement, useless as an interface: you want to SEE what
    you are pointing at, and sliding shows you the same spine slightly further
    along. */
+/* ── how things move ──
+   One pull is two movements, not one: the case comes clear of the pile, and
+   then it turns. Firing both at once reads as a single blunt slide, and the
+   difference between that and staggering them by nine hundredths of a second
+   is the whole of whether this feels like a hand or a CSS transition.
+
+   Coming back it unwinds in the opposite order — it turns flat FIRST, then
+   drops back into the stack — which is why the delays live on both the rest
+   and hover states rather than only on hover.
+
+   The turn is given a little overshoot so it settles rather than stopping
+   dead. The slide is not: a case that overshoots its slot looks dropped. */
 .rack.stacked {
+  --ease-pull: cubic-bezier(0.22, 0.72, 0.24, 1);
+  --ease-turn: cubic-bezier(0.34, 1.16, 0.42, 1);
   display: block;
   padding: 0;
   perspective: 1700px;
@@ -755,6 +786,8 @@
 }
 .case.stacked {
   display: block;
+  /* going back, the slide waits for the turn to finish */
+  transition: transform 0.42s var(--ease-pull) 0.1s;
   /* Lying down, its length is its height standing up — scaled up so a single
      column is worth looking at. Length and thickness scale TOGETHER, so it is
      still a DVD case, just a nearer one. */
@@ -765,6 +798,12 @@
 /* The box keeps its standing dimensions and is turned in place, which is why
    every face, gradient and hinge inside it still works untouched. */
 .stacked .box {
+  /* ── never put a filter on this element ──
+     `filter` forces transform-style: flat, whatever preserve-3d says. A
+     drop-shadow here silently collapses the case into a plane, so the cover
+     stays edge-on at 90° and all you see is the spine. The shadow belongs on
+     a face, as a box-shadow, which does not flatten anything. */
+  transition: transform 0.52s var(--ease-turn) 0s;
   inset: auto;
   top: 50%;
   left: 50%;
@@ -787,29 +826,39 @@
 /* turning one to look at it — the same move the shelf makes, in the same
    local axes, because it is the same box */
 .case.stacked.out, .case.stacked:focus-visible { z-index: 8; }
+/* coming out, the slide goes first and the turn follows it */
+.case.stacked.out,
+.case.stacked:focus-visible {
+  transform: translate3d(var(--pull, 210px), 0, 0);
+  transition-delay: 0s;
+}
 .case.stacked.out .box,
 .case.stacked:focus-visible .box {
+  transition-delay: 0.09s;
   /* Out to the SIDE, not up over the pile. Running the mouse down a column
      should show you one cover after another with the stack still readable
      beside it — a case that rears up over its neighbours hides the very
      thing you are scanning. rotate(0) unwinds the pile's quarter turn on the
      way, so the artwork arrives upright. */
-  transform: translate(-50%, -50%) rotate(0deg)
-             translate3d(var(--pull, 210px), 0, 120px) rotateY(-68deg);
+  transform: translate(-50%, -50%) rotate(0deg) translateZ(120px) rotateY(-68deg);
 }
 .case.stacked.out .gloss, .case.stacked:focus-visible .gloss { opacity: 1; }
 .case.stacked.out .front, .case.stacked:focus-visible .front {
-  box-shadow: 0 26px 46px rgba(0,0,0,0.75), inset 0 0 0 1px rgba(255,255,255,0.09);
+  box-shadow: 0 22px 40px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.09);
 }
 @media (hover: hover) {
   .case.stacked:hover { z-index: 8; }
+  .case.stacked:hover {
+    transform: translate3d(var(--pull, 210px), 0, 0);
+    transition-delay: 0s;
+  }
   .case.stacked:hover .box {
-    transform: translate(-50%, -50%) rotate(0deg)
-               translate3d(var(--pull, 210px), 0, 120px) rotateY(-68deg);
+    transition-delay: 0.09s;
+    transform: translate(-50%, -50%) rotate(0deg) translateZ(120px) rotateY(-68deg);
   }
   .case.stacked:hover .gloss { opacity: 1; }
   .case.stacked:hover .front {
-    box-shadow: 0 26px 46px rgba(0,0,0,0.75), inset 0 0 0 1px rgba(255,255,255,0.09);
+    box-shadow: 0 22px 40px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.09);
   }
 }
 
@@ -858,6 +907,40 @@
 }
 @media (max-width: 560px) {
   .piles { padding: 20px 10px 50px; justify-content: center; }
-  /* no room beside the column on a phone, so it comes up over it instead */
   .rack.stacked { --stack-scale: 1.05; --pull: 0px; }
+}
+
+/* ── on a phone, the column opens ──
+   There is nowhere beside a column on a phone, and a case that rears up over
+   its neighbours is worse there than anywhere. So instead the pile makes room:
+   the case turns face-up where it lies and the stack parts around it, the ones
+   above riding up and the ones below pushed down. Nothing overlaps anything,
+   and you never lose your place in the list.
+
+   Height is the one thing here that costs layout rather than just compositing,
+   so it is the ONLY property allowed to change — the turn is still a transform,
+   the list is plain blocks with nothing to reflow, and `contain` stops the
+   work escaping the pile. */
+@media (hover: none) {
+  .rack.stacked { contain: layout paint; }
+  .case.stacked {
+    transition: height 0.4s cubic-bezier(0.3, 0.72, 0.22, 1),
+                transform 0.4s cubic-bezier(0.3, 0.72, 0.22, 1);
+  }
+  .case.stacked.out {
+    /* as tall as the case is standing, so the cover has somewhere to be */
+    height: calc((var(--case-h) + var(--dh, 0px)) * var(--stack-scale, 1.05) + 14px);
+    transform: none;
+    z-index: 3;
+  }
+  .case.stacked.out .box,
+  .case.stacked:focus-visible .box {
+    /* At rotate(0) it is the SPINE that faces you — the cover is hinged and
+       folded back, so it takes the same ~75° turn as everywhere else to bring
+       it round. Square-ish on, because a phone has no room for a dramatic
+       angle and the artwork is the point. */
+    transform: translate(-50%, -50%) rotate(0deg) translateZ(30px)
+               rotateY(-76deg) translateX(-6px);
+  }
+  .case.stacked.out .front-tag { opacity: 1; }
 }

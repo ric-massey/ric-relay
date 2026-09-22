@@ -445,6 +445,7 @@
 
   /* ── the detail sheet ── what a title is, when the name is not enough ── */
   const el = id => document.getElementById(id);
+  const HOVERS = window.matchMedia('(hover: hover)').matches;
   let sheet = null;
 
   function openSheet(id) {
@@ -772,7 +773,21 @@
         return;
       }
       const t = ev.target.closest('.tile, .case, [data-more]');
-      if (!t) return;
+      if (!t) {
+        /* tapped away — put any open case back */
+        for (const o of document.querySelectorAll('.case.out')) o.classList.remove('out');
+        return;
+      }
+      /* ── two taps on a touch screen ──
+         There is no hover on a phone, so the gesture is the real one: the
+         first tap turns the case so you can see it, the second opens it. This
+         lives here rather than on a page because it is how a CASE behaves,
+         and both pages have cases. */
+      if (!HOVERS && t.classList.contains('case') && !t.classList.contains('out')) {
+        for (const o of document.querySelectorAll('.case.out')) o.classList.remove('out');
+        t.classList.add('out');
+        return;
+      }
       openSheet(t.dataset.more || t.dataset.id);
     });
 
