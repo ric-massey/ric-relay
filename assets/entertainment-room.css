@@ -1202,3 +1202,52 @@
   .shelf-head h2 { padding: 7px 13px 6px; font-size: 0.98rem !important; }
   .shelf-head h2::before, .shelf-head h2::after { display: none; }
 }
+
+/* ── a franchise's run of films ──
+   The row wears the first film's cover because a series has none of its own,
+   so opening one has to show what it actually stands for. */
+.run { margin: 0 0 18px; }
+.run h4 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 11px;
+  font: 800 0.72rem/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.run-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 12px 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.run-list li { min-width: 0; }
+.run-art {
+  display: block;
+  aspect-ratio: 2 / 3;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--raised);
+  border: 1px solid var(--line);
+}
+.run-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.run-list b {
+  display: block;
+  margin-top: 5px;
+  font: 700 0.74rem/1.2 var(--display, var(--sans));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.run-list span {
+  display: block;
+  font: 600 0.68rem/1.2 var(--mono);
+  color: var(--dim);
+}

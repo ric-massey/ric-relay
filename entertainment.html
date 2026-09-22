@@ -580,6 +580,29 @@
       font-size: 0.84rem;
       color: #c4c4c4;
     }
+    /* Each name is its own element so it can become a button when Ric signs
+       in — which means they need a separator of their own, or the line reads
+       "Mark HamillHarrison FordCarrie Fisher". */
+    .sheet-cast .actor + .actor::before {
+      content: "·";
+      margin: 0 7px;
+      color: #6b6b6b;
+    }
+    .sheet-cast button.actor {
+      border: 0;
+      padding: 0;
+      background: none;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .sheet-cast button.actor:hover { color: var(--gold); }
+    .sheet-cast button.actor.on { color: var(--gold); }
+    .sheet-cast button.actor svg { opacity: 0.55; }
+    .sheet-cast button.actor.on svg { opacity: 1; }
     .sheet-body p.thin {
       margin: 0 0 16px;
       color: var(--dim);

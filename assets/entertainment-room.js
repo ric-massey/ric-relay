@@ -336,9 +336,12 @@
     const sub = [e.year, e.runtime ? hhmm(e.runtime) : ''].filter(Boolean).join(' · ');
     /* The mark goes on whichever face you are actually looking at: the spine
        on a catalogue shelf, the cover on a display rack. */
-    const mark = e.pick ? '<span class="together">' + PERSON + '</span>' : '';
-    const spineMark = faced ? '' : mark;
-    const frontMark = faced ? mark : '';
+    /* The partner mark is off the cases for now — Ric's call. The shelf it
+       names is still there, and so is the toggle in the detail sheet; it is
+       only the badge on the artwork that has gone. Put it back by restoring
+       `mark` here rather than rebuilding it. */
+    const spineMark = '';
+    const frontMark = '';
     /* The shop sticker. A rental case always carried one, and here it answers
        the only question you have about a title you half-recognise: have I
        already seen this. Goes on whichever face is showing, same as the
@@ -487,6 +490,26 @@
     if (e.seen) meta.push('watched ' + esc(new Date(e.seen).toLocaleDateString('en-US',
       { month: 'short', day: 'numeric', year: 'numeric' })));
 
+    /* ── a franchise opens onto its films ──
+       A row like "Saw(1-10)" stands for ten of them and wears the first one's
+       face, because a series has no cover of its own. Opening it should show
+       the run, in order, rather than pretending the first film is the whole
+       thing. */
+    const parts = (e.parts || []).length
+      ? '<section class="run">' +
+          '<h4>All ' + e.parts.length + ' of them ' +
+            '<span class="stamp">in order</span></h4>' +
+          '<ol class="run-list">' + e.parts.map(f =>
+            '<li><span class="run-art">' +
+              '<img src="assets/posters/p' + f.id + '.jpg" alt="" loading="lazy" ' +
+                'decoding="async" onerror="this.remove()">' +
+            '</span>' +
+            '<b>' + esc(f.t) + '</b>' +
+            (f.y ? '<span>' + f.y + '</span>' : '') + '</li>').join('') +
+          '</ol>' +
+        '</section>'
+      : '';
+
     const links = watchLinks(e);
     const ownBlock = own
       ? '<div class="sheet-own">' +
@@ -509,7 +532,7 @@
         /* Where to watch comes FIRST, above the synopsis. Opening a title is
            almost always "can I put this on tonight", and the answer to that
            should not sit below three paragraphs about the plot. */
-        whereBlock(e) +
+        whereBlock(e) + parts +
         (e.overview
           ? '<p class="blurb">' + esc(e.overview) + '</p>'
           : '<p class="thin">No synopsis yet — run ' +

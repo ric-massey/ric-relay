@@ -226,13 +226,17 @@ FIELD = re.compile(r"(\w+)\s*:\s*(\"(?:[^\"\\]|\\.)*\"|true|false|-?\d+(?:\.\d+)
 # Every list-valued field, not just genres. This used to name `genres` alone,
 # which meant `cast`, `streams` and `rents` were invisible to the reader — and a
 # field this file cannot read is a field the next write DELETES.
-LISTS = re.compile(r"(\w+)\s*:\s*(\[[^\]]*\])")
+#
+# `parts` holds objects rather than strings, so the pattern has to survive the
+# braces inside the brackets — hence the non-greedy run up to the first `]`
+# that is followed by a comma or a closing brace.
+LISTS = re.compile(r"(\w+)\s*:\s*(\[.*?\])\s*(?=,\s*\w+\s*:|,?\s*\})", re.S)
 
 # Order matters: this is the order fields are written back out in, and it has to
 # match FIELDS in assets/entertainment-room.js.
 FIELDS = ["id", "title", "status", "count", "series", "where", "pick", "note",
           "seen", "wd", "wdok", "tmdb", "kind", "imdb", "year", "runtime", "genres", "director",
-          "overview", "rating", "cast", "poster", "backdrop",
+          "overview", "rating", "cast", "parts", "poster", "backdrop",
           "streams", "rents", "checked"]
 
 
@@ -819,6 +823,35 @@ def stage_art(rows: list[dict], head: str, args) -> int:
             actors = [c["name"] for c in (credits.get("cast") or [])[:3]]
             if actors:
                 row["cast"] = actors
+
+        # ── a franchise row is a run of films, not one film ──
+        # "Saw(1-10)" and "Star Wars(all)" stand for ten and nine of them. The
+        # row wears the first film's face because a series has none of its own,
+        # but opening it should show the whole run — so the collection's
+        # members are pulled once and stored on the row.
+        if (row.get("count") or row.get("series")) and not row.get("parts"):
+            coll = (m.get("belongs_to_collection") or {}).get("id")
+            if coll:
+                # NOT `got` — that is the loop's own counter, and shadowing
+                # it made the next `got += 1` a dict plus an int.
+                series = tmdb_get(f"/collection/{coll}", key)
+                parts = []
+                for f in series.get("parts") or []:
+                    date = f.get("release_date") or ""
+                    parts.append({
+                        "id": f["id"],
+                        "t": f.get("title") or "",
+                        "y": int(date[:4]) if date[:4].isdigit() else 0,
+                    })
+                    if f.get("poster_path"):
+                        download(f"{TMDB_IMG}/w185{f['poster_path']}",
+                                 POSTERS / f"p{f['id']}.jpg")
+                # Unreleased entries have no date; they sort to the end rather
+                # than the front, where a 0 would put them.
+                parts.sort(key=lambda x: x["y"] or 9999)
+                if parts:
+                    row["parts"] = parts
+                    print(f"      ✓ {len(parts)} in the {series.get('name', 'collection')}")
         # The billboard only ever shows starred titles, so that is the only
         # place a 780px-wide image earns its bytes.
         if row.get("pick") and m.get("backdrop_path"):
