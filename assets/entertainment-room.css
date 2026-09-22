@@ -510,29 +510,98 @@
   .case:hover .under { opacity: 0.35; transform: translateY(10px) scaleX(1.5); }
 }
 
-/* ── the shelf itself ──
-   Called shelf-board, not board: `.board` is already the billboard at the
-   top of this page, and giving the plank the same name painted the hero
-   section in wood grain. */
-.shelf-board {
+/* The library stacks row after row of these, so its rows are bays too. */
+.shelf-row { position: relative; }
+
+/* ── the bay ──
+   A shelf is not a plank floating on a page: it is a recess with a back to it,
+   uprights either side and light coming from above. Without the back panel the
+   cases read as stickers; with it they are standing in something. */
+.rail-wrap,
+.shelf-row {
   position: relative;
-  height: 20px;
-  margin: 0 8px;
-  border-radius: 2px 2px 4px 4px;
+  border-radius: 4px;
   background:
-    repeating-linear-gradient(90deg, rgba(0,0,0,0.16) 0 2px, transparent 2px 9px),
-    linear-gradient(#5a4029, #3b2817 42%, #2a1a0e);
+    /* the wash of light falling in from above */
+    radial-gradient(120% 70% at 50% -8%, rgba(255,226,160,0.10), transparent 62%),
+    /* the back boards */
+    repeating-linear-gradient(90deg,
+      rgba(0,0,0,0.30) 0 1px, transparent 1px 74px),
+    linear-gradient(#241a12, #181009 62%, #120b06);
   box-shadow:
-    0 1px 0 rgba(255,255,255,0.18) inset,
-    0 10px 18px rgba(0,0,0,0.6),
-    0 2px 0 #1a1008;
+    inset 0 18px 26px -14px rgba(0,0,0,0.85),
+    inset 0 0 0 1px rgba(255,255,255,0.03);
 }
-.shelf-board::after {                       /* the dark under-shelf */
+/* the uprights the shelf is fixed between */
+.rail-wrap::before, .rail-wrap::after,
+.shelf-row::before, .shelf-row::after {
   content: "";
   position: absolute;
-  left: 6px; right: 6px; top: 100%;
-  height: 22px;
-  background: linear-gradient(rgba(0,0,0,0.55), transparent);
+  top: 0; bottom: 0;
+  width: 9px;
+  z-index: 4;
+  pointer-events: none;
+}
+.rail-wrap::before, .shelf-row::before {
+  left: 0;
+  background: linear-gradient(90deg, #4a3422, #2c1d10 70%, rgba(0,0,0,0.6));
+  box-shadow: 1px 0 6px rgba(0,0,0,0.6);
+}
+.rail-wrap::after, .shelf-row::after {
+  right: 0;
+  background: linear-gradient(270deg, #4a3422, #2c1d10 70%, rgba(0,0,0,0.6));
+  box-shadow: -1px 0 6px rgba(0,0,0,0.6);
+}
+
+/* ── the plank ──
+   Two surfaces you can actually see: the top it stands on, foreshortened to a
+   sliver, and the front edge showing the board's thickness. A single flat bar
+   is the thing that looks drawn rather than built. */
+.shelf-board {
+  position: relative;
+  height: 15px;
+  margin: 0 9px;
+  border-radius: 0 0 3px 3px;
+  /* the front edge: sawn timber, darker at the bottom where it turns away */
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(0,0,0,0.22) 0 1px, transparent 1px 7px,
+      rgba(255,255,255,0.04) 8px 9px, transparent 9px 23px),
+    linear-gradient(#6a4a2e 0 2px, #54391f 3px, #3d2814 60%, #241708);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.28),
+    inset 0 -2px 3px rgba(0,0,0,0.6),
+    0 3px 0 #1b1008,
+    0 14px 22px rgba(0,0,0,0.65);
+}
+/* the top surface, seen almost edge-on */
+.shelf-board::before {
+  content: "";
+  position: absolute;
+  left: -2px; right: -2px;
+  top: -4px;
+  height: 5px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(#8a6440, #6b4a2c 55%, #4b331c);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);
+}
+/* the dark under the shelf, which is what gives the bay depth */
+.shelf-board::after {
+  content: "";
+  position: absolute;
+  left: 4px; right: 4px; top: 100%;
+  height: 26px;
+  background: linear-gradient(rgba(0,0,0,0.6), transparent);
+  pointer-events: none;
+}
+
+/* a display rack's lip stands proud of the plank so the covers lean on it */
+.rack.faced + .shelf-board::before {
+  top: -9px;
+  height: 10px;
+  background: linear-gradient(#8a6440, #5d4026 45%, #3a2715);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45),
+              0 -1px 5px rgba(0,0,0,0.5);
 }
 
 @media (prefers-reduced-motion: reduce) {

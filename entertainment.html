@@ -1140,9 +1140,14 @@
     /* His partner's list gets the top shelf and its own mark. These are not
        "favourites" — they are the ones the two of them are going to watch
        together, which is why the tag is a person and not a star. */
+    /* Faced out or spine out, per shelf, the way the shop did it: the short
+       displays show their covers because the art is what picks a film you have
+       not chosen yet, and the long ones stand spine out because that is how a
+       hundred of anything fits on a shelf. */
     out.push({
       label: Room.PARTNER_LABEL,
       note: 'on the list for the two of you',
+      faced: true,
       items: all.filter(e => e.pick).sort(az),
       all: 'entertainment-library.html#together'
     });
@@ -1150,6 +1155,7 @@
     out.push({
       label: 'Recently watched',
       note: 'newest first — the order he watched them',
+      faced: true,
       items: seen.slice().sort((a, b) => recency(b) - recency(a)).slice(0, 40),
       all: 'entertainment-library.html#watched'
     });
@@ -1167,6 +1173,7 @@
     if (onSomething.length) out.push({
       label: 'On something already',
       note: 'no rental needed',
+      faced: true,
       items: onSomething.slice().sort((a, b) => (a.where || '').localeCompare(b.where || '') || az(a, b))
     });
 
@@ -1210,6 +1217,7 @@
         label: who,
         note: theirs.length + (theirs.length === 1 ? ' film' : ' films'),
         person: true,
+        faced: true,
         items: theirs.sort((a, b) => (b.year || 0) - (a.year || 0) || az(a, b))
       });
     }
@@ -1225,7 +1233,8 @@
        more than anyone scans, and 1,300 3D boxes on one page is a phone
        running hot for nothing. The whole catalogue is next door. */
     return out.filter(s => s.items.length)
-      .map(s => ({ ...s, total: s.items.length, items: s.items.slice(0, 30) }));
+      .map(s => ({ ...s, total: s.items.length,
+                   items: s.items.slice(0, s.faced ? 16 : 34) }));
   }
 
   const ARROW = d => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" ' +
@@ -1243,7 +1252,8 @@
         '</div>' +
         '<div class="rail-wrap">' +
           '<button class="nudge left" type="button" data-dir="-1" aria-label="Scroll left" hidden>' + ARROW('m15 5-7 7 7 7') + '</button>' +
-          '<div class="rack faced">' + s.items.map(e => Room.dvdCase(e, true)).join('') + '</div>' +
+          '<div class="rack' + (s.faced ? ' faced' : '') + '">' +
+            s.items.map(e => Room.dvdCase(e, s.faced)).join('') + '</div>' +
           '<div class="shelf-board"></div>' +
           '<button class="nudge right" type="button" data-dir="1" aria-label="Scroll right">' + ARROW('m9 5 7 7-7 7') + '</button>' +
         '</div>' +

@@ -468,7 +468,8 @@
       display: flex;
       align-items: flex-end;
       gap: 3px;
-      padding: 52px 20px 0;
+      /* 22px either side so the cases clear the bay's uprights */
+      padding: 46px 22px 0;
       perspective: 1500px;
       perspective-origin: 50% 65%;
       overflow: visible;
@@ -1149,7 +1150,9 @@
     for (let i = 0; i < list.length; i += n) rows.push(list.slice(i, i + n));
     out.innerHTML = rows.map(r =>
       '<li class="shelf-row">' +
-        '<div class="rack">' + r.map(Room.dvdCase).join('') + '</div>' +
+        /* map passes the INDEX as the second argument, which dvdCase reads as
+           `faced` — so every case after the first came out cover-out. */
+        '<div class="rack">' + r.map(e => Room.dvdCase(e)).join('') + '</div>' +
         '<div class="shelf-board"></div>' +
       '</li>').join('');
   }
