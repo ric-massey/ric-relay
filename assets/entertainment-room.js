@@ -211,7 +211,10 @@
     return 'hsl(' + h + ' 22% ' + light + '%)';
   }
 
-  function artHtml(e) {
+  function artHtml(e, bare) {
+    /* `bare` drops the plate's lettering, for places that already say the
+       title right next to it — the detail sheet printed "The Backrooms" on
+       the stand-in cover and then again as the heading underneath it. */
     if (e.poster) {
       return '<img src="assets/posters/' + esc(e.id) + '.jpg" alt="" loading="lazy" ' +
              'decoding="async" width="342" height="513">';
@@ -220,12 +223,19 @@
       : e.count ? e.count + ' films'
       : e.series ? 'the lot'
       : e.status === 'watched' ? 'seen' : 'queued';
+    if (bare) {
+      return '<span class="plate is-bare" style="--plate-bg:' +
+             hue(e, e.status === 'watched' ? 13 : 16) + '">' +
+             '<span class="no-cover">no cover</span></span>';
+    }
     return '<span class="plate" style="--plate-bg:' + hue(e, e.status === 'watched' ? 13 : 16) + '">' +
            '<b>' + esc(e.title) + '</b><span>' + esc(sub) + '</span></span>';
   }
 
   function badge(e) {
-    if (e.pick) return '<span class="badge">' + PERSON + ' together</span>';
+    /* The partner mark is off the artwork everywhere, not just on the cases —
+       the poster grid was still showing it, which is the sort of thing that
+       makes two views of one list look like two lists. */
     if (e.status === 'watched') return '<span class="badge seen">✓ seen</span>';
     return '';
   }
@@ -431,14 +441,16 @@
         rents.map(n => chip(n, 'rent')).join('') + '</div></div>');
 
     if (!rows.length) {
+      /* The stamp beside the heading already says whether this was looked up,
+         so the row says what to DO rather than repeating it. */
       rows.push('<div class="wrow"><span>' +
-        (e.checked ? 'Not streaming anywhere' : 'Not looked up yet') +
+        (e.checked ? 'Not streaming' : 'Have a look') +
         '</span><div>' + chip('Search everywhere', 'rent') + '</div></div>');
     }
 
     const stamp = e.checked
       ? 'checked ' + esc(niceDate(e.checked))
-      : 'availability has not been pulled yet — run <code>--where</code>';
+      : 'not looked up yet';
 
     return '<section class="where">' +
       '<h4>Where to watch <span class="stamp">' + stamp + '</span></h4>' +
@@ -541,7 +553,7 @@
       : '';
 
     el('sheet-in').innerHTML =
-      '<div class="sheet-art">' + artHtml(e) + '</div>' +
+      '<div class="sheet-art">' + artHtml(e, true) + '</div>' +
       '<div class="sheet-body">' +
         '<h3>' + esc(e.title) + '</h3>' +
         '<p class="sheet-meta">' + metaLine(meta) + '</p>' + cast +
@@ -551,8 +563,7 @@
         whereBlock(e) + parts + like +
         (e.overview
           ? '<p class="blurb">' + esc(e.overview) + '</p>'
-          : '<p class="thin">No synopsis yet — run ' +
-            '<code>projects/entertainment/pull-entertainment.py --facts</code>.</p>') +
+          : '<p class="thin">No synopsis for this one.</p>') +
         (e.note ? '<p class="thin">' + esc(e.note) + '</p>' : '') +
         (e.local ? '<p class="thin">This edit is saved in this browser only — not committed yet.</p>' : '') +
         ownBlock +

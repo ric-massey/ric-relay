@@ -1409,3 +1409,28 @@ select.pick:hover,
   outline: 2px solid var(--gold);
   outline-offset: 2px;
 }
+
+/* ── the type floor ──
+   The room's rule is that nothing sets type under 11px, and three things had
+   drifted under it: the ticket's stub at 8px, its strapline at 9.6, and the
+   SEEN sticker at 10.6 — that last one on 336 cases, so it was the rule's
+   biggest breach by a distance. Raised, with the padding brought in to match
+   so nothing grew. */
+.ticket .stub { font-size: 0.7rem; letter-spacing: 0.1em; }
+.ticket .words span { font-size: 0.7rem; letter-spacing: 0.14em; }
+.seen-tag { font-size: 0.7rem; padding: 3px 5px; }
+.spine .seen-tag { transform: translateX(-50%) rotate(-1.5deg); padding: 2px 4px; }
+.stacked .spine .seen-tag { transform: translateY(-50%) rotate(-1.5deg); }
+@media (max-width: 520px) {
+  .ticket .stub { font-size: 0.7rem; }
+}
+
+/* a cover that does not exist says so once, rather than repeating the title
+   the sheet is already showing */
+.plate.is-bare { align-items: center; justify-content: center; }
+.no-cover {
+  font: 700 0.72rem/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7c7c7c;
+}

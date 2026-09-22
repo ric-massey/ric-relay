@@ -124,7 +124,7 @@ GENRE_ORDER = [
     ("action", "Action"), ("adventure", "Adventure"),
     ("science fiction", "Science fiction"), ("sci-fi", "Science fiction"),
     ("horror", "Horror"), ("thriller", "Thriller"), ("crime", "Crime"),
-    ("comedy", "Comedy"), ("drama", "Drama"),
+    ("comedy", "Comedy"), ("sitcom", "Comedy"), ("drama", "Drama"),
     ("romantic", "Romance"), ("romance", "Romance"),
     ("fantasy", "Fantasy"), ("animated", "Animation"), ("animation", "Animation"),
     ("documentary", "Documentary"), ("western", "Western"), ("war", "War"),

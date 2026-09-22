@@ -1393,7 +1393,8 @@
 
     el('found').innerHTML = hits.length
       ? hits.map(e => Room.tile(e)).join('')
-      : '<li class="empty">Nothing here yet. ' +
+      : '<li class="empty">Nothing on the list matches ' +
+        (state.q ? '“' + esc(state.q) + '”' : 'that') + '. ' +
         '<a href="entertainment-library.html">Try the library →</a></li>';
   }
 
