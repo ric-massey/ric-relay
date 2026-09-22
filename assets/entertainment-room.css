@@ -69,7 +69,7 @@
 .ticket .stub svg { display: block; }
 .ticket .words { display: flex; flex-direction: column; line-height: 1.05; }
 .ticket .words b {
-  font: 800 1.02rem/1 var(--sans);
+  font: 700 1.14rem/1 var(--display, var(--sans));
   letter-spacing: -0.02em;
 }
 .ticket .words span {
@@ -254,8 +254,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font: 800 0.72rem/1 var(--sans);
-  letter-spacing: 0.02em;
+  font: 700 0.78rem/1 var(--display, var(--sans));
+  letter-spacing: 0.03em;
   text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.8);
   color: #fff;
 }
@@ -755,9 +755,11 @@
 }
 .case.stacked {
   display: block;
-  /* lying down, its length is its height standing up */
-  width: calc(var(--case-h) + var(--dh, 0px));
-  height: calc(var(--t, 16px) + 2px);
+  /* Lying down, its length is its height standing up — scaled up so a single
+     column is worth looking at. Length and thickness scale TOGETHER, so it is
+     still a DVD case, just a nearer one. */
+  width: calc((var(--case-h) + var(--dh, 0px)) * var(--stack-scale, 1.5));
+  height: calc((var(--t, 16px) + 2px) * var(--stack-scale, 1.5));
   margin: 0;
 }
 /* The box keeps its standing dimensions and is turned in place, which is why
@@ -766,11 +768,20 @@
   inset: auto;
   top: 50%;
   left: 50%;
-  width: var(--t, 16px);
-  height: calc(var(--case-h) + var(--dh, 0px));
+  width: calc(var(--t, 16px) * var(--stack-scale, 1.5));
+  height: calc((var(--case-h) + var(--dh, 0px)) * var(--stack-scale, 1.5));
   transform-origin: 50% 50%;
   transform: translate(-50%, -50%) rotate(90deg);
 }
+/* the cover comes up at the same scale as the case it came out of */
+.stacked .front, .stacked .back {
+  width: calc(var(--front-w) * var(--stack-scale, 1.5));
+}
+.stacked .top { height: calc(var(--front-w) * var(--stack-scale, 1.5)); }
+.stacked .edge {
+  transform: translateZ(calc(var(--front-w) * var(--stack-scale, 1.5) * -1)) rotateY(180deg);
+}
+.stacked .spine-txt { font-size: 0.82rem; letter-spacing: 0.01em; }
 .stacked .under { display: none; }
 
 /* turning one to look at it — the same move the shelf makes, in the same
@@ -778,9 +789,13 @@
 .case.stacked.out, .case.stacked:focus-visible { z-index: 8; }
 .case.stacked.out .box,
 .case.stacked:focus-visible .box {
-  /* rotate(0) — the pile's quarter turn unwinds as it comes up */
+  /* Out to the SIDE, not up over the pile. Running the mouse down a column
+     should show you one cover after another with the stack still readable
+     beside it — a case that rears up over its neighbours hides the very
+     thing you are scanning. rotate(0) unwinds the pile's quarter turn on the
+     way, so the artwork arrives upright. */
   transform: translate(-50%, -50%) rotate(0deg)
-             translate3d(-18px, 0, 130px) rotateY(-70deg);
+             translate3d(var(--pull, 210px), 0, 120px) rotateY(-68deg);
 }
 .case.stacked.out .gloss, .case.stacked:focus-visible .gloss { opacity: 1; }
 .case.stacked.out .front, .case.stacked:focus-visible .front {
@@ -790,7 +805,7 @@
   .case.stacked:hover { z-index: 8; }
   .case.stacked:hover .box {
     transform: translate(-50%, -50%) rotate(0deg)
-               translate3d(-18px, 0, 130px) rotateY(-70deg);
+               translate3d(var(--pull, 210px), 0, 120px) rotateY(-68deg);
   }
   .case.stacked:hover .gloss { opacity: 1; }
   .case.stacked:hover .front {
@@ -803,31 +818,29 @@
    a six-thousand-pixel scroll, and nobody stacks them that high anyway. */
 .piles {
   display: grid;
-  /* One column. A pile is a pile — putting two side by side made it a shelf
-     unit again, which is the thing the pile exists not to be. */
-  grid-template-columns: minmax(0, 260px);
-  justify-content: center;
-  gap: 34px 26px;
+  /* One column, as wide as a case is long, and pushed left of centre so the
+     cover has somewhere to come out to. */
+  grid-template-columns: max-content;
+  justify-content: start;
+  gap: 40px;
   margin: 0;
   padding: 26px 20px 60px;
   list-style: none;
 }
 .pile {
   position: relative;
-  /* a case standing up out of the pile is taller than its slot */
   overflow: visible;
-  padding: 10px 10px 0;
-  border-radius: 5px 5px 0 0;
-  background:
-    radial-gradient(120% 60% at 50% -10%, rgba(255,226,160,0.07), transparent 60%),
-    linear-gradient(#241a12, #170f08);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+  padding: 0;
+  /* A pile is a pile. It was sitting in a lit wooden bay, which is furniture
+     for cases that STAND — a stack just rests on a surface, and the cabinet
+     around it was the thing that looked wrong. */
+  background: none;
+  box-shadow: none;
 }
-/* the surface the pile rests on */
 .pile-base {
   position: relative;
   height: 13px;
-  margin: 0 -10px;
+  margin: 0;
   border-radius: 0 0 4px 4px;
   background:
     repeating-linear-gradient(90deg,
@@ -838,6 +851,13 @@
     0 3px 0 #17100a,
     0 12px 20px rgba(0,0,0,0.6);
 }
+/* how far out, and how big — the column wants to suit the screen it is on */
+.rack.stacked { --stack-scale: 1.5; --pull: 210px; }
+@media (min-width: 900px) {
+  .rack.stacked { --stack-scale: 1.9; --pull: 300px; }
+}
 @media (max-width: 560px) {
-  .piles { padding: 20px 8px 50px; }
+  .piles { padding: 20px 10px 50px; justify-content: center; }
+  /* no room beside the column on a phone, so it comes up over it instead */
+  .rack.stacked { --stack-scale: 1.05; --pull: 0px; }
 }

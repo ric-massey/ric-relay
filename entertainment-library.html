@@ -45,6 +45,18 @@
       --ease:    cubic-bezier(0.22, 0.61, 0.36, 1);
       --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      /* ── type ──
+         A condensed grotesque for anything that names a film, because that is
+         what film titles are actually set in — on a spine, on a poster, on a
+         marquee — and because condensed buys the letters room on a spine.
+         Avenir Next Condensed is on every Mac and iPhone, and the stack falls
+         through Windows and Android before it gives up.
+
+         No webfont: hard rule 4, and a face that has to be downloaded before
+         the page can say a title is a face that is sometimes not there. */
+      --display: "Avenir Next Condensed", "HelveticaNeue-CondensedBold",
+                 "Helvetica Neue", "Roboto Condensed", "Segoe UI Semibold",
+                 "Arial Narrow", var(--sans);
       --tile: 132px;
       --gut: 14px;
       --case-w: 17px;         /* a DVD spine: ~14mm against a 135mm cover */
@@ -140,6 +152,7 @@
       color: var(--gold);
     }
     .head h1 {
+      font-family: var(--display, var(--sans));
       margin: 0 0 8px;
       font-size: clamp(1.9rem, 5vw, 2.7rem);
       line-height: 1.04;
@@ -187,6 +200,8 @@
       background: var(--raised);
     }
     .seg button {
+      font-family: var(--display, var(--sans));
+      letter-spacing: 0.03em;
       padding: 7px 12px;
       border: 0;
       border-radius: 6px;
