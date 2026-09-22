@@ -351,7 +351,7 @@
           (art ? '<span class="spine-art" style="' + bg + '"></span>' : '') +
           '<span class="spine-txt">' + esc(e.title) + '</span>' +
           '<span class="spine-foot"></span>' + spineMark +
-          (stacked && sub ? '<span class="stack-sub">' + esc(sub) + '</span>' : '') +
+
         '</span>' +
         '<span class="face front">' +
           (art
