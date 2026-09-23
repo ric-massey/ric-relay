@@ -1,0 +1,51 @@
+# Run the checks, so that a test existing and a test passing stay the same thing.
+#
+# There were 43 test files in this repo and nothing that ran them. They all
+# passed, as it happens — but three live bugs in the entertainment write path
+# were still found by hand, in code with tests either side of the hole, because
+# "did anyone run those" was a question nobody was being asked.
+#
+# Split by how long the answer takes. The quick job is one second for 14
+# suites and blocks nothing. The games' simulations are minutes, because what
+# they assert — a lane gradient, an hour of a front page that has to keep
+# moving — cannot be observed in less; those get their own jobs and run
+# alongside each other.
+
+name: Checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read              # this one only ever reads
+
+concurrency:
+  # A newer push makes an older run's answer stale rather than wrong, so drop it.
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"       # the write-path check is half Python
+      - run: node .github/checks.mjs
+
+  # The two games' long-running simulations, side by side rather than one after
+  # the other — they are about eight minutes each and have nothing to say to
+  # each other. Named in the matrix so a red one says which game in the run list.
+  simulations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false        # one game breaking is not news about the other
+      matrix:
+        game: [kondrite, offramp]
+    steps:
+      - uses: actions/checkout@v4
+      - run: node .github/checks.mjs --only ${{ matrix.game }} --slow

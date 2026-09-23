@@ -69,6 +69,12 @@ jobs:
           TMDB_KEY: ${{ secrets.TMDB_KEY }}
         run: python3 projects/entertainment/pull-entertainment.py --where --refresh
 
+      # The merge that just ran is the one that writes the data file. It is a
+      # third of a second to check it still behaves before committing what it
+      # produced — and the write path is where three live bugs were found.
+      - name: Check the write path before trusting what it wrote
+        run: node projects/entertainment/test/write-path.mjs
+
       - name: Commit and publish, if anything changed
         run: |
           set -e

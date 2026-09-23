@@ -379,6 +379,21 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   Several were deliberately left as typed because the right film was not guessable —
   don't "fix" `Curtis`, `Moments`, `The Sound`, `Greater good`, `RIP`, `Code 3`,
   `Mercy` or `Obsession` without asking him which ones they are.
+- **`node .github/checks.mjs` runs every check in the repo**, and
+  `.github/workflows/checks.yml` runs it on every push. This was added on
+  2026-09-23 because there were 43 test files here and **nothing that ran them** —
+  they all passed, and three live bugs were still found by hand in code with tests
+  either side of the hole. Quick suites are a second; the two games' simulations
+  take minutes and need `--slow`. **Add a test, add it to that list**, or it joins
+  the pile that used to pass.
+- **`projects/entertainment/test/write-path.mjs` walks one film the whole way**:
+  page → Worker → the pull script's merge, with a Map for storage and no network.
+  It is the check that would have caught all three of the bugs above, and each one
+  was put back to prove it goes red. It builds its sample row **from the page's own
+  `FIELDS`**, so a field added tomorrow is covered the same day rather than whenever
+  somebody remembers — and it asserts the two `FIELDS` lists still match, which
+  until now was a comment asking nicely. The entertainment job runs it before
+  committing anything to the data file.
 - **The room's data is pulled in two stages, and they are separate on purpose.**
   `projects/entertainment/pull-entertainment.py`:
   - **Stage 1, facts — no key, nothing to sign up for.** Wikipedia finds the article,
