@@ -10,11 +10,15 @@ different rules.
     there is nothing to attribute and nothing to be careful about. The one-line
     synopsis comes from the Wikipedia extract (CC BY-SA, credited on the page).
 
-  STAGE 2 — ART. Needs a free TMDB key in the Keychain.
+  STAGE 2 — ART. Needs a free TMDB key: $TMDB_KEY, or the Keychain.
     By the time this runs, stage 1 has already handed it the exact TMDB id, so
     there is no searching and no guessing: it fetches that film's poster and
     downloads it into assets/posters/. TMDB's terms allow this with attribution,
     which the pages carry.
+
+Nobody runs this by hand any more: .github/workflows/entertainment.yml runs it
+every three hours and commits whatever changed. Running it here still works
+exactly as before, and is the fast way to see a title land.
 
 Why not just search TMDB by title? Because "Greater" is three films and
 "Obsession" is nine, and a fuzzy title match puts a stranger's poster on Ric's
@@ -22,7 +26,8 @@ list. Wikidata's id is an identity, not a guess. It also means an ambiguous
 title is settled ONCE, by hand, on the row — and both stages then agree forever.
 
 House rules this follows, same as pull-apex.py:
-  * The API key lives in the Keychain, never in the repo.
+  * The API key lives in the Keychain (or, on the scheduled GitHub run, an
+    encrypted repository secret) — never in the repo.
   * Anything typed in by hand wins. Set `wd` or `tmdb` on a row yourself and
     neither stage will second-guess it.
   * A re-run is cheap: a row that already has its facts is skipped unless
@@ -49,6 +54,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import ssl
 import subprocess
@@ -749,7 +755,17 @@ def stage_facts(rows: list[dict], head: str, args) -> int:
 # ── stage 2: the art ───────────────────────────────────────────────────────
 
 def api_key() -> str:
-    """Read the TMDB key out of the Keychain. Never printed, never stored."""
+    """The TMDB key: from the environment if set, else the Keychain.
+
+    The environment comes first so this can run somewhere that has no Keychain
+    — a scheduled job on GitHub, where the key is an encrypted repository
+    secret. On Ric's Mac nothing changes: no TMDB_KEY is set, so it falls
+    through to the Keychain exactly as before.
+    """
+    from_env = os.environ.get("TMDB_KEY", "").strip()
+    if from_env:
+        return from_env
+
     add = (f"    security add-generic-password -s {KEYCHAIN_SERVICE} "
            f"-a {KEYCHAIN_ACCOUNT} -U -w\n")
     try:

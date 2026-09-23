@@ -357,6 +357,24 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
     `ricmassey`), never in the repo, same rule as `apex-als`. It never *searches*
     TMDB: stage 1 already handed it the exact id, so there is no fuzzy matching and
     no chance of a stranger's poster.
+- **Nobody runs the script. A clock does.** `.github/workflows/entertainment.yml`
+  runs the whole pull every three hours, and again on Sunday mornings with
+  `--where --refresh` (streaming is the one fact that rots on its own — a film leaves
+  Netflix without telling anyone). It commits **only if something changed**, so most
+  runs are silent, and a push is a publish, so a film Ric adds on the site has its
+  poster on ricmassey.com within a few hours with no command typed anywhere. The key
+  is a repository secret named `TMDB_KEY`; `api_key()` reads the environment first and
+  falls back to the Keychain, so running it by hand on the Mac is unchanged.
+  - **It cannot be triggered from the page, and that is not a limitation to fix.**
+    Firing it from the browser means a token with write access to this repo inside a
+    public web page. If instant is ever wanted, the answer is a `repository_dispatch`
+    from the Worker, where the token can actually be kept — not from the site.
+  - **The concurrency group is load-bearing.** Two runs writing
+    `entertainment-data.js` at once is the one remaining way to lose a film. Never set
+    `cancel-in-progress`, and never add a second workflow that writes this file.
+  - GitHub disables scheduled workflows after 60 days with no repo activity. A quiet
+    room plus a quiet repo means it stops; the Actions tab says so, and a push or the
+    "Enable workflow" button starts it again.
 - **Poster art is downloaded and committed — never hotlinked.** Images land in
   `assets/posters/` (and `assets/backdrops/` for starred titles) and the pages read
   files out of this repo, so the live room still makes **no external request** and still

@@ -1,0 +1,89 @@
+# Keep the Entertainment room fed, without Ric running anything.
+#
+# A title added on the site goes into the Worker, so it shows up on the page
+# straight away — but its poster, year, cast and streaming do not, because
+# those come from a script that talks to TMDB and writes files into this
+# repository. A browser can do neither: the TMDB key cannot live in a public
+# page, and a page cannot make a commit. So this runs instead.
+#
+# It is on a clock rather than on sign-in, for the same reason. Letting the
+# site trigger it would mean shipping a token with write access to this repo
+# inside a public web page.
+#
+# Every run: fold in whatever was added on the site, look up anything new,
+# fetch its artwork, ask where the new titles are streaming — then commit,
+# but only if something actually changed, which most days is nothing.
+
+name: Entertainment
+
+on:
+  schedule:
+    # Every three hours. A film added after breakfast has its poster by lunch.
+    - cron: "17 */3 * * *"
+    # And once a week, re-ask where all 363 are streaming, because that is the
+    # one fact that rots on its own — a film leaves Netflix without telling us.
+    - cron: "40 9 * * 0"
+  workflow_dispatch:        # plus a button, for when he does not want to wait
+
+permissions:
+  contents: write           # it commits the artwork and the data file
+
+concurrency:
+  # Two runs writing entertainment-data.js at once is the one way this could
+  # lose a film. Queue them; never overlap them.
+  group: entertainment
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Pull edits, facts, art and availability
+        env:
+          TMDB_KEY: ${{ secrets.TMDB_KEY }}
+        run: |
+          if [ -z "$TMDB_KEY" ]; then
+            echo "::error::No TMDB_KEY secret, so there is no way to fetch artwork."
+            echo "Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          python3 projects/entertainment/pull-entertainment.py
+
+      - name: Re-check streaming for everything (Sundays only)
+        if: github.event.schedule == '40 9 * * 0'
+        env:
+          TMDB_KEY: ${{ secrets.TMDB_KEY }}
+        run: python3 projects/entertainment/pull-entertainment.py --where --refresh
+
+      - name: Commit and publish, if anything changed
+        run: |
+          set -e
+          WATCH="entertainment-data.js assets/posters assets/backdrops"
+          if [ -z "$(git status --porcelain -- $WATCH)" ]; then
+            echo "Nothing new. Not committing."
+            exit 0
+          fi
+
+          git config user.name  "ric-massey"
+          git config user.email "rmbuster82@gmail.com"
+          git add -- $WATCH
+
+          # Say what happened in the message, so the history stays readable
+          # from the commit list alone.
+          ART=$(git diff --cached --name-only -- assets/posters assets/backdrops | wc -l | tr -d ' ')
+          git commit -m "Entertainment: fetch what the site had waiting
+
+          Ran from the clock, not from a keyboard. Folded in the edits sitting
+          on the Worker, looked up whatever was new, and brought back $ART
+          image(s) with it."
+
+          # A push from Ric's Mac between checkout and here would reject this.
+          # Rebase onto it and try once more; the data file is regenerated
+          # every run, so nothing is lost if the retry also fails.
+          git push || { git pull --rebase && git push; }
