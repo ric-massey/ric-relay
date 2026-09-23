@@ -1105,6 +1105,80 @@ def stage_where(rows: list[dict], head: str, args) -> int:
     return got
 
 
+# ── stage 0: bring in what was added on the page ──────────────────────────
+#
+# A title added through the site goes into the Worker, not into this file. The
+# page merges the two at read time so it looks right immediately — but this
+# script only ever read the committed file, which meant a film added on a phone
+# was invisible to it and would never get a poster, a year or anything else.
+#
+# So this runs FIRST: fold the Worker's edits into the rows, and the stages
+# after it then treat a film added five minutes ago exactly like one that has
+# been in the file for a year.
+#
+# The merge rules are the page's, because two different answers to "what is on
+# the list" is how the two drift apart: a patch merges onto the row it names, a
+# patch for an id with no row creates one, and `removed: true` is a tombstone
+# rather than a deletion.
+#
+# The Worker keeps its copy afterwards. Clearing it would be tidier and is not
+# worth the risk: if this script fails between reading and writing, the only
+# copy of those edits would be gone.
+
+WORKER = "https://training-log.rmbuster82.workers.dev"
+
+
+def stage_sync(rows: list[dict], head: str, args) -> int:
+    try:
+        d = get_json(f"{WORKER}/movies")
+    except Failed as e:
+        print(f"STAGE 0 · page edits — could not reach the Worker ({e}).\n"
+              "  Carrying on with the committed file alone.\n")
+        return 0
+
+    items = (d or {}).get("items") or {}
+    if not items:
+        print("STAGE 0 · page edits — nothing waiting on the Worker.\n")
+        return 0
+
+    by = {r["id"]: r for r in rows}
+    added = changed = removed = 0
+    for rid, patch in items.items():
+        if not isinstance(patch, dict) or str(rid).startswith("_"):
+            continue                      # reserved ids are bookkeeping, not films
+        if patch.get("removed"):
+            if rid in by:
+                rows.remove(by.pop(rid))
+                print(f"  − {rid}")
+                removed += 1
+            continue
+        # The Worker stamps its own bookkeeping on every write. `added` is
+        # worth keeping — it is the only record of when a title arrived — but
+        # `source` and `updated` are noise in a file a person reads.
+        clean = {k: v for k, v in patch.items()
+                 if k not in ("removed", "source", "updated")}
+        if rid in by:
+            before = dict(by[rid])
+            by[rid].update(clean)
+            if by[rid] != before:
+                print(f"  ~ {by[rid].get('title', rid)}")
+                changed += 1
+        else:
+            row = {"id": rid, "title": clean.get("title", rid),
+                   "status": clean.get("status", "watchlist")}
+            row.update(clean)
+            rows.append(row)
+            by[rid] = row
+            print(f"  + {row['title']}")
+            added += 1
+
+    if (added or changed or removed) and not args.dry_run:
+        write_rows(head, rows)
+    print(f"\nSTAGE 0 · page edits — {added} added, {changed} changed, "
+          f"{removed} removed{' (dry run)' if args.dry_run else ''}\n")
+    return added + changed + removed
+
+
 # ── the audit ──────────────────────────────────────────────────────────────
 #
 # Checking 363 films by hand is not a plan, and spotting the wrong ones by
@@ -1287,6 +1361,11 @@ def stage_audit(rows: list[dict], head: str, args) -> int:
         for k in DERIVED:
             row.pop(k, None)
         row["tmdb"] = h["better"][3]
+        # SETTLED, not guessed. Without this the next --facts run sees a row
+        # with no Wikidata id, re-identifies it from scratch, and lands on the
+        # very film the audit just corrected away from — which is exactly what
+        # happened: seven of nine fixes silently reverted on the next run.
+        row["wdok"] = True
         old_poster = POSTERS / f"{row['id']}.jpg"
         if old_poster.exists():
             old_poster.unlink()                # it is the wrong film's face
@@ -1327,6 +1406,12 @@ def main() -> int:
         stage_audit(rows, head, args)
         return 0
     every = not (args.facts or args.art or args.where)
+
+    # Always first, and always: a film added on the page is the whole reason
+    # anyone runs this, and it has to be in the rows before anything looks at
+    # them. Skipped only when told to look at one specific row.
+    if args.only is None:
+        stage_sync(rows, head, args)
 
     if args.facts or every:
         stage_facts(rows, head, args)
