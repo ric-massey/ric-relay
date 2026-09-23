@@ -1421,3 +1421,22 @@ select.pick:hover,
   text-transform: uppercase;
   color: #7c7c7c;
 }
+
+/* ── a film in a run that is not out yet ──
+   A run holds the whole series, which includes films nobody has seen. Left
+   looking like the rest, a row marked "seen" appears to claim them. */
+.run-list li.soon { opacity: 0.55; }
+.run-list li.soon .run-art { border-style: dashed; }
+.run-list li.soon b { color: var(--dim); }
+.soon-tag {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 3px 2px;
+  background: rgba(10,10,10,0.86);
+  color: var(--gold);
+  font: 800 0.7rem/1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.run-art { position: relative; }

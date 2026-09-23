@@ -904,6 +904,11 @@ def stage_art(rows: list[dict], head: str, args) -> int:
                         "id": f["id"],
                         "t": f.get("title") or "",
                         "y": int(date[:4]) if date[:4].isdigit() else 0,
+                        # The full date, not a "released" flag: a flag is true
+                        # on the day it is written and wrong a month later,
+                        # whereas a date stays true and the page can compare it
+                        # to today every time it draws.
+                        "d": date,
                     })
                     if f.get("poster_path"):
                         download(f"{TMDB_IMG}/w185{f['poster_path']}",

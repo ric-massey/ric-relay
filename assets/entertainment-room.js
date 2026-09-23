@@ -460,6 +460,28 @@
     '</section>';
   }
 
+  /* One film in a run. A run holds everything in the series, which includes
+     films that are not out yet — and a row marked "seen" listing a film nobody
+     has seen is a small lie the page should not tell. The date decides,每 time
+     it draws, so it cannot go stale the way a flag would. */
+  const TODAY = new Date().toISOString().slice(0, 10);
+
+  function runEntry(f) {
+    const unreleased = f.d && f.d > TODAY;
+    const when = unreleased
+      ? new Date(f.d + 'T00:00:00').toLocaleDateString('en-US',
+          { month: 'short', year: 'numeric' })
+      : (f.y || '');
+    return '<li' + (unreleased ? ' class="soon"' : '') + '>' +
+      '<span class="run-art">' +
+        '<img src="assets/posters/p' + f.id + '.jpg" alt="" loading="lazy" ' +
+          'decoding="async" onerror="this.remove()">' +
+        (unreleased ? '<span class="soon-tag">soon</span>' : '') +
+      '</span>' +
+      '<b>' + esc(f.t) + '</b>' +
+      (when ? '<span>' + esc(when) + '</span>' : '') + '</li>';
+  }
+
   function niceDate(iso) {
     const d = new Date(iso + 'T00:00:00');
     if (isNaN(d)) return iso;
@@ -511,13 +533,7 @@
       ? '<section class="run">' +
           '<h4>All ' + e.parts.length + ' of them ' +
             '<span class="stamp">in order</span></h4>' +
-          '<ol class="run-list">' + e.parts.map(f =>
-            '<li><span class="run-art">' +
-              '<img src="assets/posters/p' + f.id + '.jpg" alt="" loading="lazy" ' +
-                'decoding="async" onerror="this.remove()">' +
-            '</span>' +
-            '<b>' + esc(f.t) + '</b>' +
-            (f.y ? '<span>' + f.y + '</span>' : '') + '</li>').join('') +
+          '<ol class="run-list">' + e.parts.map(runEntry).join('') +
           '</ol>' +
         '</section>'
       : '';
