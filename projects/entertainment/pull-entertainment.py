@@ -727,9 +727,14 @@ def stage_facts(rows: list[dict], head: str, args) -> int:
             print(f"  {row['title']}")
             if tried:
                 print(f"      looked at: {', '.join(tried[:4])}")
-        print("\n  Find the right one on wikidata.org and put its id on the row —\n"
-              "  `wd: \"Q42047\"` — then run this again. A hand-set id is never\n"
-              "  overwritten, and stage 2 reads the TMDB id straight off it.")
+        print("\n  Two ways to settle one:\n"
+              "    · point it at the film — put `\"tmdb\": 27205` (from\n"
+              "      themoviedb.org) or `\"wd\": \"Q42047\"` on the row, plus\n"
+              "      `\"wdok\": true`. A settled id is never second-guessed.\n"
+              "    · leave it as just a name — put `\"wdok\": true` on its own.\n"
+              "      The title keeps its place on the list with a typographic\n"
+              "      cover, and this stops asking about it every run.\n"
+              "  A question you cannot answer, asked every time, is noise.")
 
     if check:
         print(f"\n{len(check)} matched on an ambiguous name — worth Ric's eye (~ above):\n")
