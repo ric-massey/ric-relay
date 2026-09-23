@@ -52,8 +52,19 @@ const log = new TrainingLog({
      see it land on a day the plan has a run scheduled. */
   STRAVA_CLIENT_ID: 'dev', STRAVA_CLIENT_SECRET: 'dev', STRAVA_REFRESH_TOKEN: 'dev',
   STRAVA_ATHLETE_ID: '7',
+  /* A GitHub that is not GitHub, for the same reason. The doorbell on
+     /movies/_pull fires a repository_dispatch at the real Actions job; here it
+     is caught and printed, so the page's end of it — add a film, one ring,
+     debounced, none for an actor — can be exercised without a token and
+     without kicking off a run on the real repository. */
+  GH_TOKEN: 'dev-github-token',
   FETCH: async (u, init) => {
     const url = String(u);
+    if (url.includes('api.github.com')) {
+      const body = JSON.parse(init.body || '{}');
+      console.log(`  ding — ${url.split('/repos/')[1]} · ${body.event_type}`);
+      return { ok: true, status: 204, text: async () => '' };
+    }
     if (url.includes('/oauth/token')) {
       return Response.json({ access_token: 'dev', refresh_token: 'dev', expires_at: 1e12 });
     }
@@ -127,7 +138,7 @@ createServer(async (req, res) => {
      rehearse the case that actually matters on a phone: the page loads fine and
      the log is unreachable. A total blackout is untestable through a browser —
      the HTML would not arrive either — so this is the realistic half. */
-  if (process.env.DEV_OFFLINE && /^\/(log|climb|auth|strava|board|media)(?=$|[/?])/.test(u.pathname)) {
+  if (process.env.DEV_OFFLINE && /^\/(log|climb|auth|strava|board|media|todo|movies)(?=$|[/?])/.test(u.pathname)) {
     res.socket.destroy();               // hang up, exactly like no signal
     return;
   }
@@ -142,7 +153,7 @@ createServer(async (req, res) => {
      the dev server. `/climbing.html` escaped only by luck, because `climb` is
      followed by a letter there. The lookahead ends the match at a real path
      separator instead. */
-  if (/^\/(log|climb|auth|strava|board|media)(?=$|[/?])/.test(u.pathname)) {
+  if (/^\/(log|climb|auth|strava|board|media|todo|movies)(?=$|[/?])/.test(u.pathname)) {
     /* Which day the invented run lands on. Dev scaffolding for the fake Strava
        above; the deployed Worker has no such thing — a real run brings its own
        date and there is nothing to choose. */

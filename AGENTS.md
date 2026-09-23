@@ -336,6 +336,37 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   those cards say **not committed**. Don't "fix" that by deleting the local layer — it
   is the only thing holding them. The owner panel's Export button prints a replacement
   data file with them folded in; that is how they reach the committed list.
+- **A write to `/movies` is a PATCH, not a replacement, and the page sends identity with
+  it.** This seam was quietly broken until 2026-09-23 and every part of it looked like
+  it worked, because the page renders the local layer and says "not committed":
+  - The Worker rebuilt the whole record from the body each time, so every field it had
+    no slot for — `seen`, `wd`, `tmdb`, `year`, `genres` — was **dropped**. Picking the
+    right film in the chooser and then watching the puller re-guess it from the title is
+    that bug, and it defeats the one question the page exists to ask.
+  - It required a title, so the first edit to any of the 363 **committed** films — every
+    "mark watched" — was refused with a 400 and kept in that browser alone.
+  - It defaulted what the caller had not sent, so a patch saying only `pick: true`
+    arrived with `status: 'watchlist'` attached and **moved a film watched years ago
+    back onto the queue**.
+  The rules now: the Worker applies only the keys actually sent, clamps the ones whose
+  shape it knows, passes the rest through untouched, and **never invents a value it was
+  not given** — absent means "no opinion", and the merge leaves the committed value
+  alone. The page sends `title` and `status` from the current row with every film patch,
+  because the service cannot see the committed file and must not have to guess.
+- **`added` is when a title arrived on the list**, so stage 0 drops it when merging onto
+  a row that is already in the file. Otherwise every old film picks up the 2026 date the
+  Worker first heard of it.
+- **Reserved ids (`_people`) are stored as given.** The slug rule turns `_people` into
+  `people`, which would file a list of favourite actors on the list of films as a title
+  called People, and the film shaping demanded a title it does not have — so starring an
+  actor 400d and never left the browser. They now take a pass-through branch before the
+  slug: an object, bounded, owner-only, and never bumping the poster counter.
+- **`dev.mjs` serves `/todo` and `/movies` too.** Its route list had gone stale, so the
+  entertainment room could not be exercised locally at all — the page silently fell
+  through to the live Worker. It also carries a fake GitHub, so the doorbell can be rung
+  without a token and without starting a run on the real repository. **If you add a
+  route to the Worker, add it to that regex**, or the next person debugs against
+  production without noticing.
 - **A removal is a tombstone, not a delete** (`{ removed: true }`), in the Worker and in
   the local layer both. This is the one place `/movies` differs from `/todo`, which it
   is otherwise a copy of, and the reason is the committed file underneath: a real delete

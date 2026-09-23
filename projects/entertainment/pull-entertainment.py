@@ -1184,6 +1184,11 @@ def stage_sync(rows: list[dict], head: str, args) -> int:
         clean = {k: v for k, v in patch.items()
                  if k not in ("removed", "source", "updated")}
         if rid in by:
+            # `added` is when a title arrived on the list. A row already in this
+            # file arrived long before the service first heard of it, so the
+            # stamp it puts on a row it merely EDITED is not that date — and
+            # writing it would put a 2026 timestamp on a film from 1995.
+            clean.pop("added", None)
             before = dict(by[rid])
             by[rid].update(clean)
             if by[rid] != before:

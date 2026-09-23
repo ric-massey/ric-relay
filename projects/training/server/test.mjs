@@ -1080,6 +1080,78 @@ console.log('\nRULE  a deploy with no GitHub token still works, quietly');
   ok((await hit('GET', '/movies')).body.items.heat.title === 'Heat', 'the list is untouched');
 }
 
+console.log('\nRULE  a write is a patch — it never drops or invents a field');
+{
+  const m = fresh();
+  const hit = async (...a) => { const r = await m.fetch(req(...a)); return { status: r.status, body: await r.json() }; };
+
+  /* The committed file holds 363 films this service has never seen. An edit to
+     one of them arrives as a patch for an id with no record here, which used to
+     be refused outright — the page sends the title now, so it lands. */
+  const first = await hit('POST', '/movies/se7en', { title: 'Se7en', status: 'watched', pick: true }, TOKEN);
+  ok(first.status === 200, 'the first edit to a film only the committed file knows is accepted');
+
+  /* The chooser's answer is the whole point of asking Ric which film it is.
+     These used to be thrown away, and the pull script then re-guessed from the
+     title — which is exactly the guess the chooser exists to replace. */
+  const rich = await hit('POST', '/movies/sicario',
+    { title: 'Sicario', status: 'watchlist', wd: 'Q17087904', tmdb: 273481, kind: 'movie', year: 2015, seen: '' }, TOKEN);
+  ok(rich.body.item.tmdb === 273481 && rich.body.item.wd === 'Q17087904' && rich.body.item.year === 2015,
+     'the identity Ric picked survives the write');
+
+  const after = await hit('POST', '/movies/sicario', { title: 'Sicario', where: 'Netflix' }, TOKEN);
+  ok(after.body.item.tmdb === 273481, 'and a later patch does not drop it');
+  ok(after.body.item.where === 'Netflix', 'while still applying what it came to say');
+  ok(after.body.item.status === 'watchlist', 'and leaving alone what it did not mention');
+
+  /* The corruption this rule exists for: a patch that says only `pick` used to
+     arrive with status defaulted, which put a film watched years ago back on
+     the queue. */
+  const pick = await hit('POST', '/movies/heat', { title: 'Heat', pick: true }, TOKEN);
+  ok(pick.body.item.status === undefined,
+     'a patch with no status gets none invented — the committed value stands');
+  ok(pick.body.item.pick === true, 'and the thing it did say is stored');
+
+  /* `note` is clamped by name; the cap is what stands behind the fields that
+     ride through unrecognised, which is most of them. */
+  const bad = await hit('POST', '/movies/heat', { title: 'Heat', overview: 'x'.repeat(40000) }, TOKEN);
+  ok(bad.status === 413, 'a field this end does not know is still not allowed to be a megabyte');
+  ok((await hit('GET', '/movies')).body.items.heat.overview === undefined, 'and it was not stored');
+}
+
+console.log('\nRULE  a favourite actor is kept, and is not filed as a film');
+{
+  const gh = fakeGitHub();
+  const m = fresh({ GH_TOKEN: 'gh-secret', FETCH: gh });
+  const hit = async (...a) => { const r = await m.fetch(req(...a)); return { status: r.status, body: await r.json() }; };
+
+  ok((await hit('POST', '/movies/_people', { names: ['Michael Mann'] })).status === 401,
+     'a stranger cannot set one');
+
+  const w = await hit('POST', '/movies/_people', { id: '_people', names: ['Michael Mann'] }, TOKEN);
+  ok(w.status === 200, 'the owner can');
+  const items = (await hit('GET', '/movies')).body.items;
+  ok(items._people && items._people.names[0] === 'Michael Mann', 'it comes back under its own id');
+  ok(items.people === undefined,
+     'and NOT slugged to `people`, which would put a list of actors on the list of films');
+
+  /* This is the bug this rule exists for: before reserved records were let
+     through, the film shaping demanded a title, so this 400d, the page fell
+     back to localStorage, and the star silently stopped following him
+     between devices. */
+  ok(w.body.item.title === undefined, 'a list of actors is never given a title to satisfy the film shape');
+
+  ok((await hit('POST', '/movies/_pull', null, TOKEN)).body.rang === false && gh.calls.length === 0,
+     'and starring an actor rings nothing — the pull script skips reserved ids anyway');
+
+  ok((await hit('POST', '/movies/_people', 'not an object', TOKEN)).status === 400,
+     'nonsense is still refused');
+  ok((await hit('POST', '/movies/_people', { names: Array(400).fill('x'.repeat(60)) }, TOKEN)).status === 413,
+     'and so is something far too big to be a list of actors');
+  ok((await hit('GET', '/movies')).body.items._people.names[0] === 'Michael Mann',
+     'neither of which disturbed what was already there');
+}
+
 console.log('\nRULE  the list is reachable from outside and unknown paths are not');
 {
   const m = fresh();

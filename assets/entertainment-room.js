@@ -785,6 +785,24 @@
      there looking like it did nothing. */
   async function save(id, patch) {
     const body = { id: id };
+    /* The title always goes with the patch. 363 of these films exist only in
+       the committed file, so the service has never heard of them — and it
+       refuses a record with no title, which it has to, or a typo in an id
+       silently creates a nameless row. Without this, the FIRST edit to any
+       committed film was rejected and quietly kept in this browser alone: it
+       looked saved, because the page renders the local layer, and it followed
+       him to no other device. Reserved records have no title and are not
+       films, so they are handed over exactly as they came. */
+    if (!String(id).startsWith('_')) {
+      const cur = all().find(e => e.id === id);
+      if (cur && cur.title) body.title = cur.title;
+      /* Status rides along for the same reason, one step worse: the service
+         cannot see the committed file, so a patch that only says `pick: true`
+         arrives with no idea which list the film is on. It used to answer that
+         itself, and the answer was "watchlist" — which took a film watched in
+         2009 and put it back on the queue. */
+      if (cur && cur.status) body.status = cur.status;
+    }
     for (const k in patch) body[k] = patch[k];
     if (window.Owner && Owner.on()) {
       const out = await Owner.post('/movies/' + id, body, { queue: true });
@@ -793,7 +811,10 @@
         delete LOCAL[id];
         writeLocal(LOCAL);
         onRender();
-        ring();
+        /* Reserved records are not films, so there is no poster to go and get.
+           The Worker knows this too and would refuse to ring — this just saves
+           the round trip. */
+        if (!String(id).startsWith('_')) ring();
         return;
       }
       /* queued (no signal) or refused (no endpoint yet) — keep it here, and

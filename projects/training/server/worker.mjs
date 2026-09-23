@@ -806,6 +806,40 @@ export class TrainingLog {
         let body;
         try { body = await request.json(); } catch { return json({ error: 'body must be JSON' }, 400, origin); }
 
+        /* ── reserved records ──
+           `_people` is the room's list of favourite actors. It is not a film
+           and has no title, so the film shaping below rejected it outright —
+           which meant starring an actor got a 400, fell back to localStorage,
+           and never followed Ric to another device. It looked like it worked,
+           because the page shows the local layer.
+
+           Two reasons it belongs here rather than in a route of its own: the
+           page already has exactly one write path worth having, and the slug
+           rule below would turn `_people` into `people` and file a list of
+           actors on the list of films as a title called People.
+
+           Stored as given, because the shape is the page's business and this
+           end only refuses nonsense: an object, bounded, owner-only. It is
+           NOT a film, so it never bumps the poster counter — the pull script
+           skips reserved ids, so ringing GitHub about one would spend a run
+           finding nothing. */
+        if (/^_[a-z0-9-]{1,40}$/.test(String(id || ''))) {
+          if (!body || typeof body !== 'object' || Array.isArray(body)) {
+            return json({ error: 'a reserved record must be an object' }, 400, origin);
+          }
+          const clean = {};
+          for (const [k, v] of Object.entries(body)) {
+            if (k === 'id' || k === 'source' || k === 'updated') continue;
+            clean[k] = v;
+          }
+          if (JSON.stringify(clean).length > 8000) {
+            return json({ error: 'that record is too big' }, 413, origin);
+          }
+          const rec = { id, ...clean, source: 'web', updated: new Date().toISOString() };
+          await this.state.storage.put('m:' + id, rec);
+          return json({ ok: true, item: rec }, 200, origin);
+        }
+
         /* Same slug rule as the page uses, so saving an edit lands on the row it
            came from instead of quietly creating a second one. */
         const slug = String(id || body.title || '')
@@ -827,20 +861,60 @@ export class TrainingLog {
         const title = String(body.title || (existing && existing.title) || '').trim().slice(0, 200);
         if (!title) return json({ error: 'a title is needed' }, 400, origin);
 
-        const count = Math.floor(Number(body.count));
-        const entry = {
-          id: slug,
-          title,
-          status: body.status === 'watched' ? 'watched' : 'watchlist',
-          where: String(body.where || '').trim().slice(0, 60),
-          pick: body.pick === true,
-          count: Number.isFinite(count) && count > 1 ? Math.min(count, 99) : null,
-          series: body.series === true,
-          note: String(body.note || '').slice(0, 300),
-          added: (existing && existing.added) || new Date().toISOString(),
-          source: 'web',
-          updated: new Date().toISOString()
-        };
+        /* ── a patch, not a replacement ──
+           This used to rebuild the whole entry from the body every time, which
+           dropped everything it had no field for and re-defaulted everything
+           the caller did not resend. Both halves of that were wrong, and the
+           second is the dangerous one: this record is merged onto the committed
+           row by pull-entertainment.py, so a defaulted `where` is not an empty
+           string arriving, it is a real one leaving.
+
+           So: start from what is already stored, apply only the keys the caller
+           actually sent, and clamp the ones whose shape is known. Everything
+           else rides along untouched — `seen`, `wd`, `tmdb`, `year`, `genres`
+           and the rest of FIELDS in the pull script, which is the authority on
+           what they mean. This end is not, and should not start guessing.
+
+           Whoever adds a field to the page gets it stored here for free. That
+           is deliberate: the alternative is a list to forget to update, and
+           forgetting it loses data silently, which is the failure this room has
+           already had three times in the data file. */
+        const has = k => Object.prototype.hasOwnProperty.call(body, k);
+        const entry = { ...(existing || {}) };
+
+        for (const [k, v] of Object.entries(body)) {
+          if (k === 'id' || k === 'source' || k === 'updated' || k === 'added') continue;
+          entry[k] = v;
+        }
+
+        entry.id = slug;
+        entry.title = title;
+        /* Only if it was actually sent. A default here is not a tidy fallback,
+           it is an answer this end does not have: the film may well be one of
+           the 363 in the committed file that this service has never seen, and
+           writing `watchlist` onto it would move a film Ric watched years ago
+           back onto the queue. Absent means "no opinion", and the merge in
+           pull-entertainment.py leaves the committed value alone. */
+        if (has('status')) entry.status = body.status === 'watched' ? 'watched' : 'watchlist';
+        if (has('where')) entry.where = String(body.where || '').trim().slice(0, 60);
+        if (has('note')) entry.note = String(body.note || '').slice(0, 300);
+        if (has('pick')) entry.pick = body.pick === true;
+        if (has('series')) entry.series = body.series === true;
+        if (has('count')) {
+          const n = Math.floor(Number(body.count));
+          entry.count = Number.isFinite(n) && n > 1 ? Math.min(n, 99) : null;
+        }
+        entry.added = (existing && existing.added) || new Date().toISOString();
+        entry.source = 'web';
+        entry.updated = new Date().toISOString();
+
+        /* One film is not a megabyte. A cap here is not about storage, it is
+           about this being the one write path a mistake in the page can point
+           at the service. */
+        if (JSON.stringify(entry).length > 12000) {
+          return json({ error: 'that is too much for one title' }, 413, origin);
+        }
+
         await this.state.storage.put('m:' + slug, entry);
         await this.bumpMovies();
         return json({ ok: true, item: entry }, 200, origin);
