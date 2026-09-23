@@ -893,9 +893,118 @@
     });
   }
 
+  /* ── quick add ──
+     The owner panel sits at the foot of the page, behind seventeen shelves and
+     four hundred odd cases. That is the right place for the panel and the wrong
+     place for the one thing Ric does often: scrolling the length of the store
+     to type a title is what stops a list getting kept.
+
+     So the same add lives in a button that is always in the bar, opens onto a
+     focused field, and — the part that matters for a list — stays open after
+     each one with the field cleared, because titles arrive in handfuls. */
+  function addDialog() {
+    let d = el('quickadd-dlg');
+    if (d) return d;
+    d = document.createElement('dialog');
+    d.className = 'sheet quick';
+    d.id = 'quickadd-dlg';
+    d.innerHTML =
+      '<form class="quick-in" id="quickadd-form">' +
+        '<h3>Add a title</h3>' +
+        '<label class="wide">Title' +
+          '<input id="qa-title" required autocomplete="off" placeholder="e.g. The Departed">' +
+        '</label>' +
+        '<label>Year <span class="hint">helps pick the right one</span>' +
+          '<input id="qa-year" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="2006">' +
+        '</label>' +
+        '<label>List' +
+          '<select id="qa-status">' +
+            '<option value="watchlist">Queue it</option>' +
+            '<option value="watched">Already watched</option>' +
+          '</select>' +
+        '</label>' +
+        '<label class="check"><input type="checkbox" id="qa-pick"> ' + PARTNER_LABEL + '</label>' +
+        '<p class="quick-said" id="qa-said"></p>' +
+        '<div class="quick-acts">' +
+          '<button class="btn btn-gold" type="submit">Add</button>' +
+          '<button class="btn" type="button" id="qa-done">Done</button>' +
+        '</div>' +
+      '</form>';
+    document.body.appendChild(d);
+
+    d.querySelector('#qa-done').addEventListener('click', () => d.close());
+    d.addEventListener('click', ev => { if (ev.target === d) d.close(); });
+    d.querySelector('#quickadd-form').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const title = el('qa-title').value.trim();
+      if (!title) return;
+      const year = (el('qa-year').value || '').trim();
+      const said = el('qa-said');
+      said.textContent = 'looking…';
+
+      const id = slug(title);
+      const dup = all().find(e => e.id === id);
+      if (dup) {
+        said.textContent = '“' + dup.title + '” is already on the ' +
+          (dup.status === 'watched' ? 'watched list' : 'queue') + '.';
+        el('qa-title').select();
+        return;
+      }
+
+      const patch = { title: title, status: el('qa-status').value,
+                      pick: el('qa-pick').checked };
+      if (/^\d{4}$/.test(year)) patch.year = Number(year);
+      if (patch.status === 'watched') patch.seen = today();
+
+      const chosen = await chooseFilm(title, year);
+      if (chosen === null) { said.textContent = ''; return; }
+      Object.assign(patch, chosen);
+      await save(id, patch);
+
+      /* Cleared and refocused, because nobody adds exactly one. */
+      said.textContent = 'Added ' + title + '.';
+      el('qa-title').value = '';
+      el('qa-year').value = '';
+      el('qa-pick').checked = false;
+      el('qa-title').focus();
+    });
+    return d;
+  }
+
+  function openAdd() {
+    if (!(window.Owner && Owner.on())) return;
+    const d = addDialog();
+    el('qa-said').textContent = '';
+    if (!d.open) d.showModal();
+    el('qa-title').focus();
+  }
+
+  /* The button only exists for Ric, and `a` opens it from anywhere that is not
+     already a text field. */
+  function wireAdd() {
+    const b = el('addbtn');
+    if (b) {
+      b.hidden = !(window.Owner && Owner.on());
+      if (!b.dataset.wired) { b.dataset.wired = '1'; b.addEventListener('click', openAdd); }
+    }
+    if (!document.body.dataset.addKey) {
+      document.body.dataset.addKey = '1';
+      document.addEventListener('keydown', ev => {
+        if (ev.key !== 'a' || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+        const t = ev.target;
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' ||
+                  t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+        if (!(window.Owner && Owner.on())) return;
+        ev.preventDefault();
+        openAdd();
+      });
+    }
+  }
+
   /* ── the owner panel ── */
   function paintOwner() {
     const box = el('owner-box'), tools = el('owner-tools'), blurb = el('owner-blurb');
+    wireAdd();
     if (!box || !tools || !window.Owner) return;
     if (!Owner.on()) {
       tools.hidden = true;
@@ -1109,7 +1218,7 @@
     openSheet: openSheet, watchLinks: watchLinks, places: places,
     tintOf: tintOf, rgba: rgba, hhmm: hhmm,
     esc: esc, slug: slug, exportFile: exportFile, PLAY: PLAY, metaLine: metaLine,
-    chooseFilm: chooseFilm,
+    chooseFilm: chooseFilm, openAdd: openAdd,
     actors: meta, isFavActor: isFavActor, toggleActor: toggleActor,
     PERSON: PERSON, PARTNER_LABEL: PARTNER_LABEL
   };

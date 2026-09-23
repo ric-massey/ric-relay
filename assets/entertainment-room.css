@@ -1440,3 +1440,88 @@ select.pick:hover,
   text-align: center;
 }
 .run-art { position: relative; }
+
+/* ── the add button ──
+   Always in the bar, because the owner panel is at the foot of a very long
+   page and scrolling the length of the store to type a title is what stops a
+   list getting kept. Only Ric ever sees it. */
+.addbtn {
+  flex: none;
+  margin-left: auto;
+  padding: 8px 14px;
+  border: 1px solid #b9900c;
+  border-radius: 7px;
+  background: linear-gradient(#ffe066 0%, #f5c518 42%, #d9a406 100%);
+  color: #1a1204;
+  font: 700 0.84rem/1 var(--display, var(--sans));
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 5px rgba(0,0,0,0.45);
+}
+.addbtn:hover { background: linear-gradient(#fff08c, #ffd230 42%, #e3ae09 100%); }
+.addbtn[hidden] { display: none; }
+/* the room list keeps its own right-hand slot */
+.bar .addbtn + .marquee { margin-left: 14px; }
+
+/* ── the quick-add sheet ── */
+dialog.quick { width: min(440px, calc(100vw - 32px)); }
+.quick-in {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 20px;
+}
+.quick-in h3 {
+  grid-column: 1 / -1;
+  margin: 0;
+  font: 700 1.3rem/1 var(--display, var(--sans));
+  letter-spacing: -0.01em;
+}
+.quick-in label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font: 700 0.72rem/1 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.quick-in label.wide { grid-column: 1 / -1; }
+.quick-in label.check {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  text-transform: none;
+  letter-spacing: 0;
+  font: 600 0.85rem/1 var(--sans);
+  color: var(--ink);
+}
+.quick-in .hint {
+  text-transform: none;
+  letter-spacing: 0;
+  font: 500 0.68rem/1 var(--sans);
+  color: #7c7c7c;
+}
+.quick-in input, .quick-in select {
+  padding: 10px 11px;
+  border: 1px solid #3a3a3a;
+  border-radius: 7px;
+  background: #141414;
+  color: var(--ink);
+  font: 500 0.95rem/1.2 var(--sans);
+}
+.quick-in input[type="checkbox"] { padding: 0; width: 16px; height: 16px; accent-color: var(--gold); }
+.quick-in input:focus, .quick-in select:focus { border-color: var(--gold-dk); outline: none; }
+.quick-said {
+  grid-column: 1 / -1;
+  margin: 0;
+  min-height: 1.2em;
+  font: 600 0.8rem/1.3 var(--sans);
+  color: var(--gold);
+}
+.quick-acts { grid-column: 1 / -1; display: flex; gap: 9px; }
+@media (max-width: 460px) {
+  .quick-in { grid-template-columns: 1fr; }
+}
