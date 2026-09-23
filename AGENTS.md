@@ -365,10 +365,24 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   poster on ricmassey.com within a few hours with no command typed anywhere. The key
   is a repository secret named `TMDB_KEY`; `api_key()` reads the environment first and
   falls back to the Keychain, so running it by hand on the Mac is unchanged.
-  - **It cannot be triggered from the page, and that is not a limitation to fix.**
-    Firing it from the browser means a token with write access to this repo inside a
-    public web page. If instant is ever wanted, the answer is a `repository_dispatch`
-    from the Worker, where the token can actually be kept — not from the site.
+  - **The doorbell means it usually does not wait three hours.** `POST /movies/_pull`
+    on the Worker fires a `repository_dispatch`, so a film added on the site has its
+    poster in about a minute. The page rings it after any write the Worker took
+    (debounced, never queued) and once per sign-in. **The page has no GitHub
+    credential and must never get one** — firing it from the browser means a token
+    with write access to this repo inside a public web page. The Worker has one,
+    where a secret is not readable by everyone who loads the site.
+  - **The clock is the backstop, not the fallback.** A ring that never happens —
+    Worker down, token expired, film added with no signal — costs a delay and never
+    a film. Don't delete the schedule because the doorbell works.
+  - **`_pull`, not `pull`.** A film called *Pull* slugs to `pull` and would quietly
+    take the route over. Reserved ids start with an underscore and no title can slug
+    into one; `_people` already relies on this. There is a test.
+  - **The doorbell counts writes, it does not compare timestamps.** Two edits can
+    land in the same millisecond and an ISO string cannot tell them apart, so the
+    second would read as "already asked" and wait for the clock. `gh:seq` counts,
+    `gh:movies` remembers the count last acted on, and a ring that GitHub refused is
+    never recorded as done.
   - **The concurrency group is load-bearing.** Two runs writing
     `entertainment-data.js` at once is the one remaining way to lose a film. Never set
     `cancel-in-progress`, and never add a second workflow that writes this file.

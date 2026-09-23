@@ -15,7 +15,7 @@ const TOKEN = 'test-token-long-enough-to-be-real';
 let failures = 0;
 const ok = (cond, msg) => { console.log((cond ? '  PASS  ' : '  FAIL  ') + msg); if (!cond) failures++; };
 
-function fresh() {
+function fresh(extra) {
   const mem = new Map();
   return new TrainingLog({
     storage: {
@@ -24,7 +24,7 @@ function fresh() {
       delete: async k => { mem.delete(k); },
       list: async ({ prefix }) => new Map([...mem].filter(([k]) => k.startsWith(prefix)))
     }
-  }, { LOG_TOKEN: TOKEN });
+  }, { LOG_TOKEN: TOKEN, ...extra });
 }
 
 const req = (method, path, body, token) => new Request('https://x' + path, {
@@ -973,6 +973,111 @@ console.log('\nRULE  a title is required, and the slug is derived the way the pa
   ok(junk.body.item.status === 'watchlist', 'an unknown status falls back to the queue');
   ok(junk.body.item.count === null, 'a non-numeric count is dropped rather than stored');
   ok(junk.body.item.pick === false, 'pick is a boolean or it is false');
+}
+
+/* ── the doorbell ──
+   /movies/_pull asks GitHub to run the poster job now rather than at the top
+   of the next three-hour slot. The rules worth pinning are about restraint: it
+   must not ring when nothing changed, it must not record a ring that failed,
+   and a film must never be able to take the route over. */
+
+/* A GitHub that says what it was asked, and can be told to refuse. */
+function fakeGitHub(reply = { ok: true, status: 204, body: '' }) {
+  const calls = [];
+  const fn = async (url, init) => {
+    calls.push({ url, init, body: JSON.parse(init.body) });
+    return { ok: reply.ok, status: reply.status, text: async () => reply.body };
+  };
+  fn.calls = calls;
+  return fn;
+}
+
+console.log('\nRULE  only the owner can ring the doorbell');
+{
+  const gh = fakeGitHub();
+  const m = fresh({ GH_TOKEN: 'gh-secret', FETCH: gh });
+  const hit = async (...a) => { const r = await m.fetch(req(...a)); return { status: r.status, body: await r.json() }; };
+
+  ok((await hit('POST', '/movies/_pull')).status === 401, 'a stranger cannot');
+  ok((await hit('POST', '/movies/_pull', null, 'wrong')).status === 401, 'nor with the wrong token');
+  ok((await hit('GET', '/movies/_pull')).status === 405, 'and it is not a GET');
+  ok(gh.calls.length === 0, 'GitHub was never called');
+}
+
+console.log('\nRULE  a film cannot take the doorbell over');
+{
+  const gh = fakeGitHub();
+  const m = fresh({ GH_TOKEN: 'gh-secret', FETCH: gh });
+  const hit = async (...a) => { const r = await m.fetch(req(...a)); return { status: r.status, body: await r.json() }; };
+
+  const film = await hit('POST', '/movies/pull', { title: 'Pull', status: 'watchlist' }, TOKEN);
+  ok(film.status === 200 && film.body.item.id === 'pull', 'a film called Pull saves as a film');
+  ok(gh.calls.length === 0, 'and saving it rang nothing');
+  ok((await hit('GET', '/movies')).body.items.pull.title === 'Pull', 'it is on the list');
+  ok((await hit('POST', '/movies/_pull', null, TOKEN)).body.rang === true,
+     'the underscore is still the doorbell');
+  ok((await hit('GET', '/movies')).body.items._pull === undefined,
+     'and ringing it did not create a film');
+}
+
+console.log('\nRULE  the doorbell rings GitHub, once, for what actually changed');
+{
+  const gh = fakeGitHub();
+  const m = fresh({ GH_TOKEN: 'gh-secret', FETCH: gh });
+  const hit = async (...a) => { const r = await m.fetch(req(...a)); return { status: r.status, body: await r.json() }; };
+
+  const quiet = await hit('POST', '/movies/_pull', null, TOKEN);
+  ok(quiet.body.rang === false && gh.calls.length === 0, 'an empty list rings nothing');
+
+  await hit('POST', '/movies/heat', { title: 'Heat', status: 'watchlist' }, TOKEN);
+  const first = await hit('POST', '/movies/_pull', null, TOKEN);
+  ok(first.body.rang === true && gh.calls.length === 1, 'a new film rings it');
+
+  const c = gh.calls[0];
+  ok(c.url === 'https://api.github.com/repos/ric-massey/ric-relay/dispatches',
+     'at the repository that holds the site');
+  ok(c.body.event_type === 'entertainment', 'asking for the entertainment job');
+  ok(c.init.headers.authorization === 'Bearer gh-secret', 'with the GitHub token, not the log token');
+  ok(!JSON.stringify(c.body).includes(TOKEN), 'and the log token is nowhere in the request');
+
+  const again = await hit('POST', '/movies/_pull', null, TOKEN);
+  ok(again.body.rang === false && gh.calls.length === 1,
+     'ringing again with nothing new does not ring GitHub again');
+
+  /* This edit lands in the same millisecond as the one above, which is the
+     case an ISO timestamp cannot tell apart and a write counter can. */
+  await hit('POST', '/movies/heat', { title: 'Heat', status: 'watched' }, TOKEN);
+  ok((await hit('POST', '/movies/_pull', null, TOKEN)).body.rang === true && gh.calls.length === 2,
+     'but a fresh edit does, even one made in the same millisecond as the ring');
+}
+
+console.log('\nRULE  a ring that failed is not remembered as done');
+{
+  const gh = fakeGitHub({ ok: false, status: 403, body: '{"message":"Resource not accessible by personal access token"}' });
+  const m = fresh({ GH_TOKEN: 'gh-secret', FETCH: gh });
+  const hit = async (...a) => { const r = await m.fetch(req(...a)); return { status: r.status, body: await r.json() }; };
+
+  await hit('POST', '/movies/heat', { title: 'Heat' }, TOKEN);
+  const bad = await hit('POST', '/movies/_pull', null, TOKEN);
+  ok(bad.body.rang === false && bad.body.ok === false, 'it says it failed');
+  ok(/403/.test(bad.body.why) && /not accessible/.test(bad.body.why),
+     "and passes on GitHub's own words, which name the missing permission");
+  ok(!JSON.stringify(bad.body).includes('gh-secret'), 'without ever echoing the token');
+  ok((await hit('POST', '/movies/_pull', null, TOKEN)).body.rang === false && gh.calls.length === 2,
+     'and tries again next time rather than counting it done');
+}
+
+console.log('\nRULE  a deploy with no GitHub token still works, quietly');
+{
+  const gh = fakeGitHub();
+  const m = fresh({ FETCH: gh });                      // no GH_TOKEN at all
+  const hit = async (...a) => { const r = await m.fetch(req(...a)); return { status: r.status, body: await r.json() }; };
+
+  await hit('POST', '/movies/heat', { title: 'Heat' }, TOKEN);
+  const r = await hit('POST', '/movies/_pull', null, TOKEN);
+  ok(r.status === 200 && r.body.rang === false, 'the doorbell answers instead of throwing');
+  ok(gh.calls.length === 0, 'and nothing was called');
+  ok((await hit('GET', '/movies')).body.items.heat.title === 'Heat', 'the list is untouched');
 }
 
 console.log('\nRULE  the list is reachable from outside and unknown paths are not');

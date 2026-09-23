@@ -793,6 +793,7 @@
         delete LOCAL[id];
         writeLocal(LOCAL);
         onRender();
+        ring();
         return;
       }
       /* queued (no signal) or refused (no endpoint yet) — keep it here, and
@@ -801,6 +802,31 @@
     LOCAL[id] = Object.assign({}, LOCAL[id] || {}, patch);
     writeLocal(LOCAL);
     onRender();
+  }
+
+  /* ── the doorbell ──
+     A film added here is on the page immediately, because the Worker has it.
+     What is NOT immediate is everything that makes it look like a film: the
+     poster, the year, the director, where it streams. Those come from a script
+     that talks to TMDB and commits files into the repo — neither of which a web
+     page can do — run by a scheduled job on GitHub every three hours.
+
+     So this asks the Worker to tell GitHub to run it now. The page has no
+     GitHub credential and must never have one; the Worker does, where a secret
+     is not readable by everyone who loads the site.
+
+     Debounced, because ticking off six films in a row is one thing that
+     happened, not six. Never queued: a doorbell rung an hour late is just the
+     three-hour clock with extra steps, and the clock already covers it. And
+     never awaited by a caller — nothing on screen should wait on GitHub. */
+  let ringing = 0;
+  let greeted = false;
+  function ring(after) {
+    if (!(window.Owner && Owner.on())) return;
+    clearTimeout(ringing);
+    ringing = setTimeout(() => {
+      Owner.post('/movies/_pull', {}).catch(() => {});
+    }, after == null ? 4000 : after);
   }
 
   const today = () => new Date().toISOString().slice(0, 10);
@@ -1011,11 +1037,19 @@
       box.hidden = false;
       Owner.mountBox(box, { title: 'Sign in to keep the list' });
       if (blurb) blurb.textContent = "Ric's end of the page. Everyone else just gets the list.";
+      greeted = false;
       onRender();
       return;
     }
     box.hidden = true;
     tools.hidden = false;
+    /* Signing in is itself worth a ring: an edit made on his phone with no
+       signal, or from a browser he then closed, is sitting on the Worker with
+       nothing scheduled to notice it for up to three hours. Once per sign-in,
+       not once per repaint — this runs again on every queue flush. The Worker
+       answers "already asked" when nothing has changed, which is most of the
+       time, so a quiet sign-in costs one request and starts nothing. */
+    if (!greeted) { greeted = true; ring(0); }
     const n = pending();
     if (blurb) blurb.textContent =
       'Add a title below, or open any tile to move it between the two lists.';

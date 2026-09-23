@@ -22,6 +22,24 @@
   //                            at the door before costing an API call
   // Leave them unset and the Worker runs exactly as it did before: the /strava
   // endpoint records nothing and everything else is untouched.
+
+  // GitHub, for the doorbell on POST /movies/_pull. Adding a film to the
+  // Entertainment room is instant; its poster is not, because that comes from
+  // a Python script that commits files into the repo, run by a scheduled job.
+  // This lets the page skip the wait — it asks this Worker, and this Worker
+  // asks GitHub, because a token with write access to the repo cannot live in
+  // a public web page and can live here.
+  //     npx wrangler@latest secret put GH_TOKEN
+  // A fine-grained personal access token on ric-massey/ric-relay, with one
+  // permission: Contents → read and write (which is what carries the right to
+  // fire a repository_dispatch). It is a secret, not a var, and must never
+  // appear in this file. Leave it unset and the route answers "no GitHub
+  // token here" and everything else is untouched — so this deploys safely
+  // before the token exists.
+  //
+  // GH_REPO overrides which repository is rung; the default is the site's.
+  // A public repository's name is not a credential, so if it ever needs
+  // setting it belongs in "vars" below, not in a secret.
   "name": "training-log",
   "main": "worker.mjs",
   "compatibility_date": "2026-08-01",

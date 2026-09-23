@@ -184,6 +184,16 @@ export class TrainingLog {
       seed: env.STRAVA_REFRESH_TOKEN || '',
       athlete: env.STRAVA_ATHLETE_ID || ''
     };
+    /* GitHub, for the doorbell on /movies/_pull. Absent on a deploy that has
+       never been given a token, which is fine: the route then says so instead
+       of throwing, and the scheduled run picks the film up anyway. The repo is
+       a var and not a secret — a public repository's name is not a credential
+       — but the token is a secret and must never appear in this file. */
+    this.gh = {
+      token: env.GH_TOKEN || '',
+      repo: env.GH_REPO || 'ric-massey/ric-relay',
+      event: 'entertainment'
+    };
     /* A test seam, and the only one. Both of these are the real thing in
        production; the tests swap them for a fake Strava and a fixture plan so
        the matching rules can be asserted without a network or an account. */
@@ -222,6 +232,78 @@ export class TrainingLog {
     return this.fails.length >= LIMIT;
   }
   noteFail() { this.fails.push(Date.now()); }
+
+  /* One more edit the poster job has not seen. Counted rather than flagged so
+     that clearing it can never swallow a write that arrived while GitHub was
+     being asked about the one before. */
+  async bumpMovies() {
+    await this.state.storage.put('gh:seq', ((await this.state.storage.get('gh:seq')) || 0) + 1);
+  }
+
+  /* ══ THE DOORBELL ════════════════════════════════════════════════════════
+     Tell GitHub that the movie list has something new, so the job that fetches
+     posters runs now instead of at the top of the next three-hour slot.
+
+     Two things keep this from being noisy. First, it only rings if an item has
+     actually changed since the last successful ring — signing in on a quiet
+     day rings nothing. Second, GitHub coalesces the rest: the workflow's
+     concurrency group holds one run and one waiting run, and a new ring
+     replaces the waiting one. So ticking off ten films fires ten of these and
+     still produces one pull, which reads every change at once anyway.
+
+     `at` is only written when GitHub accepted the ring. A failed ring must
+     stay unrecorded, or one 500 would mean those edits were never asked for
+     again — the three-hour clock would still get them, but hours late and for
+     no reason. */
+  async ringGitHub() {
+    if (!this.gh.token) return { ok: true, rang: false, why: 'no GitHub token here' };
+
+    /* `gh:seq` counts writes to the list; `gh:movies` remembers the count we
+       last got GitHub to act on. Comparing counts and not timestamps is
+       deliberate: two edits can land in the same millisecond, and an ISO string
+       cannot tell them apart, so the second one would be read as "already
+       asked" and wait three hours for no reason.
+
+       It also makes the obvious race safe. An edit that arrives while the
+       fetch below is in flight bumps the counter past the value being stored,
+       so the next ring sees a difference and rings. Nothing is lost by
+       recording a number we have already read. */
+    const seq = (await this.state.storage.get('gh:seq')) || 0;
+    const last = (await this.state.storage.get('gh:movies')) || {};
+    if (!seq) return { ok: true, rang: false, why: 'nothing here yet' };
+    if (last.seq === seq) return { ok: true, rang: false, why: 'already asked' };
+
+    let r;
+    try {
+      r = await this.fetch_(`https://api.github.com/repos/${this.gh.repo}/dispatches`, {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer ' + this.gh.token,
+          accept: 'application/vnd.github+json',
+          'content-type': 'application/json',
+          /* GitHub refuses a request with no user-agent. */
+          'user-agent': 'ricmassey-training-log'
+        },
+        body: JSON.stringify({ event_type: this.gh.event })
+      });
+    } catch (e) {
+      return { ok: false, rang: false, why: 'could not reach GitHub' };
+    }
+
+    if (!r.ok) {
+      /* GitHub's own words are worth passing on — "Resource not accessible by
+         personal access token" is the difference between a broken deploy and a
+         token missing one checkbox. This route is behind the log token, so the
+         only person reading it is Ric. */
+      const said = await r.text().catch(() => '');
+      let why = `GitHub said ${r.status}`;
+      try { const m = JSON.parse(said).message; if (m) why += ': ' + m; } catch (e) {}
+      return { ok: false, rang: false, why };
+    }
+
+    await this.state.storage.put('gh:movies', { seq, rang: new Date().toISOString() });
+    return { ok: true, rang: true, edits: seq - (last.seq || 0) };
+  }
 
   /* ══ STRAVA ══════════════════════════════════════════════════════════════
      A run finishes, the watch syncs, Strava POSTs here, and the session on the
@@ -690,6 +772,27 @@ export class TrainingLog {
     if (parts[0] === 'movies') {
       const id = parts[1];
 
+      /* ── POST /movies/_pull — the doorbell ──
+         Adding a film here is instant, but the poster, the year and the
+         director are not: those come from a Python script that talks to TMDB
+         and commits files into the repo, and neither of those is something a
+         web page can do. A scheduled job on GitHub does it every three hours.
+
+         This is how the page skips the wait. It cannot ring GitHub itself —
+         that would mean a token with write access to the repo sitting in a
+         public web page — but this end can, because a Worker secret is not
+         readable by anyone who loads the site.
+
+         `_pull` and not `pull`: a film called Pull would slug to `pull` and
+         quietly take this route over. Reserved ids start with an underscore
+         and no title can ever slug into one, which is the same rule `_people`
+         already relies on. */
+      if (id === '_pull') {
+        if (request.method !== 'POST') return json({ error: 'method not allowed' }, 405, origin);
+        if (!authed()) return json({ error: 'nope' }, 401, origin);
+        return json(await this.ringGitHub(), 200, origin);
+      }
+
       if (request.method === 'GET') {
         const all = await this.state.storage.list({ prefix: 'm:' });
         const out = {};
@@ -717,6 +820,7 @@ export class TrainingLog {
           await this.state.storage.put('m:' + slug, {
             id: slug, removed: true, updated: new Date().toISOString()
           });
+          await this.bumpMovies();
           return json({ ok: true, removed: slug }, 200, origin);
         }
 
@@ -738,6 +842,7 @@ export class TrainingLog {
           updated: new Date().toISOString()
         };
         await this.state.storage.put('m:' + slug, entry);
+        await this.bumpMovies();
         return json({ ok: true, item: entry }, 200, origin);
       }
 

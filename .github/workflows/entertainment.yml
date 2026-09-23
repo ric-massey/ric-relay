@@ -25,6 +25,13 @@ on:
     - cron: "40 9 * * 0"
   workflow_dispatch:        # plus a button, for when he does not want to wait
 
+  # The doorbell. The Worker rings this the moment a film is added on the site,
+  # so the poster arrives in about a minute instead of within three hours. The
+  # clock above stays as the backstop: a ring that never arrives — Worker down,
+  # token expired, film added with no signal — costs a delay, never the film.
+  repository_dispatch:
+    types: [entertainment]
+
 permissions:
   contents: write           # it commits the artwork and the data file
 
@@ -53,6 +60,7 @@ jobs:
             echo "Add it under Settings → Secrets and variables → Actions."
             exit 1
           fi
+          echo "Triggered by: ${{ github.event_name }}"
           python3 projects/entertainment/pull-entertainment.py
 
       - name: Re-check streaming for everything (Sundays only)
