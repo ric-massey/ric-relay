@@ -28,7 +28,15 @@ const glob = (dir, ends) => readdirSync(join(ROOT, dir))
 
 /* `slow` is measured, not guessed: the traffic simulation alone is seven
    minutes, because what it asserts — a lane gradient, a lorry share — cannot
-   be observed in less. Worth running, not worth waiting for on every save. */
+   be observed in less. Worth running, not worth waiting for on every save.
+
+   They are also the only ones here that are deterministic on one machine and
+   not across two: an arm64 Mac and an x86_64 runner fly kondrite's front page
+   identically for two minutes and differently by the ninetieth, because a
+   one-ulp difference in a transcendental compounds over 300,000 frames. A
+   threshold with a few percent of headroom will go red on the other machine
+   eventually, and the answer to that is slack in the thing being measured, not
+   a constant nudged until it passes. See .github/workflows/simulations.yml. */
 const SUITES = [
   ['the entertainment write path', ['projects/entertainment/test/write-path.mjs']],
   ['the training worker', ['projects/training/server/test.mjs']],

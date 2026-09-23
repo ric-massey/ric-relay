@@ -379,6 +379,16 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   Several were deliberately left as typed because the right film was not guessable —
   don't "fix" `Curtis`, `Moments`, `The Sound`, `Greater good`, `RIP`, `Code 3`,
   `Mercy` or `Obsession` without asking him which ones they are.
+- **A simulation's numbers are one machine's.** kondrite's front page and
+  offramp's traffic fly identically on an arm64 Mac and an x86_64 runner for the
+  first two minutes — same events, same tally — and have diverged by the
+  ninetieth, because a one-ulp difference in a transcendental compounds over
+  300,000 frames. Ric's Mac says the front page's longest silence is 11.5s
+  against a 12s limit; a runner flying the same code says 14.3s. Both are true.
+  So those suites live in `simulations.yml`, run when their game changes rather
+  than on every push, and **a threshold that goes red on the other machine is
+  fixed by putting slack in the game or flying several seeds — never by nudging
+  the constant until it passes**, which throws the finding away.
 - **`node .github/checks.mjs` runs every check in the repo**, and
   `.github/workflows/checks.yml` runs it on every push. This was added on
   2026-09-23 because there were 43 test files here and **nothing that ran them** —

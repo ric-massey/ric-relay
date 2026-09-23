@@ -1,0 +1,62 @@
+# The two games' long simulations, in their own lane.
+#
+# These are not slow because they are badly written. They are slow because of
+# what they assert: a lane gradient across a motorway's worth of traffic, and
+# an hour and a half of a front page that has to keep being worth looking at.
+# Neither can be observed in less time than it takes to happen.
+#
+# WHY THEY DO NOT RUN ON EVERY PUSH, and must not be moved back into checks.yml:
+# they are deterministic on one machine and not across two. Flown on Ric's Mac
+# (arm64) and on a runner (x86_64), kondrite's front page is bit-identical for
+# the first two minutes — same events, same tally — and has drifted apart by
+# the ninetieth, because a one-ulp difference in a transcendental compounds over
+# 300,000 frames. That is chaos working correctly, not a bug in either machine.
+#
+# It means a number measured here is a number from ONE valid run of the system,
+# so a threshold with a few percent of headroom will go red on the other
+# machine sooner or later. The fix for that is a front page with slack in it,
+# or a test that flies several seeds and judges the worst — NOT a constant
+# nudged upward until the run goes green, which throws away the finding.
+#
+# So: they run when the game they are about changes, once a night, and on
+# demand. A push to the website is never held up by a property of a game, and a
+# real regression in a game still turns this red.
+
+name: Simulations
+
+on:
+  push:
+    paths:
+      - 'projects/kondrite/**'
+      - 'projects/offramp/**'
+      - '.github/workflows/simulations.yml'
+      - '.github/checks.mjs'
+  schedule:
+    - cron: "20 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: simulations-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false        # one game breaking is not news about the other
+      matrix:
+        game: [kondrite, offramp]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # Pinned, and printed below. It does not make the two machines agree
+          # — the architectures do that, or do not — but it removes one reason
+          # for them to disagree, and says which one ran when they do.
+          node-version: '24'
+      - run: node -v && uname -m
+      - run: node .github/checks.mjs --only ${{ matrix.game }} --slow
