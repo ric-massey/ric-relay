@@ -325,11 +325,17 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   browser's `localStorage`. Same shape as the climbing pages, for the same reason — a
   page showing the real list is right, and an error page is not. If the service is
   unreachable the page must still come up complete.
-- **`/movies` is written and tested but not deployed.** Until it is, every edit lands in
-  `localStorage` and the card says **not committed**. Don't "fix" that by deleting the
-  local layer — it is the only thing holding those edits. The owner panel's Export
-  button prints a replacement data file with them folded in; that is how they get
-  committed.
+- **`/movies` is deployed** (2026-09-22), so an edit made on the page is real straight
+  away and follows Ric between devices. It is one route on the `training-log` Worker,
+  which also serves `/todo`, `/climb` and `/strava` — there is one Worker, so you cannot
+  ship one route without shipping all of them. Deploy with
+  `npx wrangler@latest deploy` from `projects/training/server`; it goes from the Mac
+  straight to Cloudflare and has nothing to do with the GitHub push that publishes the
+  site.
+- **The localStorage layer is still the fallback**, for edits made with no signal, and
+  those cards say **not committed**. Don't "fix" that by deleting the local layer — it
+  is the only thing holding them. The owner panel's Export button prints a replacement
+  data file with them folded in; that is how they reach the committed list.
 - **A removal is a tombstone, not a delete** (`{ removed: true }`), in the Worker and in
   the local layer both. This is the one place `/movies` differs from `/todo`, which it
   is otherwise a copy of, and the reason is the committed file underneath: a real delete

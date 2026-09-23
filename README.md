@@ -312,12 +312,19 @@ belong here.
   2. this browser's `localStorage`, if it is not. The edit shows up immediately, is
      marked **not committed** on the card, and stays in that browser.
 
-  The endpoint is written and tested (`projects/training/server/worker.mjs`, and the
-  `/movies` rules in `projects/training/server/test.mjs`) but **has not been deployed** —
-  until someone runs the deploy from the Mac, every edit takes route 2. That is not a
-  broken state: the page says which edits are uncommitted, and the owner panel's
-  **Export** button prints a replacement `entertainment-data.js` with them folded in.
-  Paste it over the file, commit, and the "not committed" chips clear themselves.
+  `/movies` is **deployed** (2026-09-22), so route 1 is the live one: add a title on the
+  page and it is real immediately — it follows Ric between phone and laptop and visitors
+  see it. No export, no commit, no push.
+
+  Route 2 is the fallback for when there is no signal. The page marks those edits **not
+  committed** on their own card, and the owner panel's **Export** button prints a
+  replacement `entertainment-data.js` with them folded in; paste it over the file and
+  commit to fold them into the committed list for good.
+
+  One thing a new title does NOT get on its own is its artwork and facts — those come
+  from `projects/entertainment/pull-entertainment.py`, which has to be run. Until then a
+  newly added film shows as a typographic plate with just its name, which is a designed
+  state rather than a broken one.
 
   **The facts and the art are pulled in two stages**, by
   `projects/entertainment/pull-entertainment.py`, and only the second one needs anything
