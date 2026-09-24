@@ -274,6 +274,13 @@
      costs nothing until something actually moves. */
   transform-style: preserve-3d;
 }
+/* Off-screen cases keep their slot and drop their box. The case sets its own
+   width and height and .lift and .under are absolutely positioned inside it,
+   so nothing on the shelf moves when a case comes near and fills in. The
+   contact shadow goes too: it overlaps the 3D box, so it is a layer of its
+   own on every case. See NEAR in the core. */
+.case.far .lift, .case.far .under { display: none; }
+
 /* Only the one being pointed at is promoted, and only while it moves. */
 .case:hover .box, .case.out .box, .case:focus-visible .box { will-change: transform; }
 
