@@ -7,20 +7,23 @@
   if (!window.HermiscusAuth.ensureProfileRoute()) return;
 
   // Everyone runs Victoria's app (shared/original/, imported unchanged from her index.html by
-  // scripts/import-original.py). For Ric and Sydney, Ric's layer (shared/ric-layer.js) then
-  // loads ON TOP of it: her screens, styles and code stay the base, so anything she adds
-  // reaches them too. Both sit on one data layer, shared/data.js.
+  // scripts/import-original.py), with Ric's Notes screen on top (shared/notes-layer.js —
+  // Victoria asked for it on every profile). Ric and Sydney can switch on Ric's race-day
+  // version in Settings; then shared/ric-layer.js loads on top of that too. Her screens,
+  // styles and code stay the base, so anything she adds reaches everyone. One data layer,
+  // shared/data.js, under all of it.
   const RIC_VERSION = ['Ric', 'Sydney'];
   const person = window.HermiscusAuth.profileName();
-  // Either of them can tick "use Victoria's version" in Settings and get her app, the same as
-  // everyone else. It's remembered on this device only, and the same box switches it back.
-  const originalKey = `hermiscus_use_original_${String(person).toLowerCase()}`;
+  // Ric and Sydney start on Victoria's version like everyone else; the "Ric's race-day
+  // version" switch in Settings turns Ric's on. Remembered on this device only.
+  const ricKey = `hermiscus_use_ric_${String(person).toLowerCase()}`;
   const canChoose = RIC_VERSION.includes(person);
-  let wantsOriginal = false;
-  try { wantsOriginal = canChoose && localStorage.getItem(originalKey) === '1'; } catch (_) {}
-  const ricVersion = canChoose && !wantsOriginal;
+  let wantsRic = false;
+  try { wantsRic = canChoose && localStorage.getItem(ricKey) === '1'; } catch (_) {}
+  const ricVersion = canChoose && wantsRic;
+  window.HERMISCUS_LAYER = ricVersion;
   const herBase = new URL('original/', sharedBase);
-  const V = '?v=20260924-03';
+  const V = '?v=20260924-04';
   // Added to whichever app is running, so her code stays exactly as she wrote it.
   const addVersionChoice = () => {
     const settings = document.getElementById('page-settings');
@@ -33,35 +36,36 @@
     box.className = 'card';
     box.style.cssText = 'display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer';
     box.innerHTML = '<input type="checkbox" style="width:22px;height:22px;margin:0;flex:none">' +
-      "<span><b>Use Victoria's version</b><br><small>The crew app as she built it, the same one everyone else sees.</small></span>";
+      "<span><b>Ric's race-day version</b><br><small>Overview, Crew Stop, Pace Dad and Prep, on top of Victoria's app.</small></span>";
     const check = box.querySelector('input');
-    check.checked = wantsOriginal;
+    check.checked = wantsRic;
     check.addEventListener('change', () => {
       try {
-        if (check.checked) localStorage.setItem(originalKey, '1');
-        else localStorage.removeItem(originalKey);
+        if (check.checked) localStorage.setItem(ricKey, '1');
+        else localStorage.removeItem(ricKey);
       } catch (_) {}
       window.location.reload();
     });
     const hint = document.createElement('div');
     hint.className = 'save-hint';
-    hint.textContent = 'Remembered on this device. Untick to come back.';
+    hint.textContent = "Remembered on this device. Untick for Victoria's version.";
     settings.append(title, box, hint);
   };
-  // Her stylesheet always; Ric's after it for Ric and Sydney, so his rules win where they differ.
+  // Her stylesheet, then the Notes styles for everyone, then Ric's when his version is on.
   const sheet = document.querySelector('link[rel="stylesheet"][href*="shared/styles.css"]');
   if (sheet) {
     sheet.href = new URL('styles.css' + V, herBase).href;
-    if (ricVersion) {
-      const ric = document.createElement('link');
-      ric.rel = 'stylesheet';
-      ric.href = new URL('styles.css' + V, sharedBase).href;
-      sheet.after(ric);
-    }
+    const extra = ['notes.css', ...(ricVersion ? ['styles.css'] : [])].map(name => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = new URL(name + V, sharedBase).href;
+      return link;
+    });
+    sheet.after(...extra);
   }
-  // Her start-up waits on this, so Ric's layer is in place before anything is drawn.
+  // Her start-up waits on this, so the Notes (and Ric's) layer is in place before anything is drawn.
   let release = () => {};
-  if (ricVersion) window.HermiscusBeforeStart = new Promise(resolve => { release = resolve; });
+  window.HermiscusBeforeStart = new Promise(resolve => { release = resolve; });
 
   fetch(new URL('app-shell.html' + V, herBase))
     .then(response => {
@@ -94,11 +98,10 @@
       // Her functions are captured the moment her file has run, before Ric's layer replaces
       // any of them, so the layer can hand her pages back to her (HER.goPage and friends).
       const layer = () => {
-        if (!ricVersion) return ready();
         window.HERMISCUS_HER = Object.freeze({
           goPage: window.goPage, loadAppData: window.loadAppData, liveSyncTick: window.liveSyncTick,
         });
-        loadScript(shared('ric-layer.js'), ready);
+        loadScript(shared('notes-layer.js'), () => (ricVersion ? loadScript(shared('ric-layer.js'), ready) : ready()));
       };
       const start = () => loadScript(shared('ric-dashboard-logic.js'), () =>
         loadScript(shared('data.js'), () => loadScript(new URL('app.js' + V, herBase), layer)));

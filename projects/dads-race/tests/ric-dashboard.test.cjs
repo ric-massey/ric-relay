@@ -7,8 +7,8 @@ const logic = require('../shared/ric-dashboard-logic.js');
 const raceStartMs = new Date(2026,9,9,7,0,0).getTime();
 
 
-// Ric and Sydney run Victoria's app with Ric's layer on top: read the two together.
-const ricApp = () => ['original/app.js','ric-layer.js']
+// Ric and Sydney run Victoria's app with the Notes layer and Ric's layer on top: read them together.
+const ricApp = () => ['original/app.js','notes-layer.js','ric-layer.js']
   .map(f=>fs.readFileSync(path.join(__dirname,'../shared',f),'utf8')).join('\n');
 
 test('race-night boundaries use the Abingdon sunset and sunrise window', () => {
@@ -434,8 +434,8 @@ test('shared messages preserve flag state without a database schema change', () 
 
 test('Notes is a sender-labelled message feed with yellow flags and red admin messages', () => {
   const app = ricApp();
-  const shell = app.slice(app.indexOf('function applyRicShell('));
-  const css = fs.readFileSync(path.join(__dirname,'../shared/styles.css'),'utf8');
+  const shell = app.slice(app.indexOf('function applyNotesShell('));
+  const css = fs.readFileSync(path.join(__dirname,'../shared/notes.css'),'utf8');
   assert.ok(shell.indexOf('notes-general-wrap') < shell.indexOf('notes-course-title'),'shared messages come before race updates');
   assert.match(shell,/id="note-flag-input"/);
   assert.match(shell,/onkeydown="submitNoteOnEnter\(event\)"/);
@@ -454,8 +454,10 @@ test('Ric layer never redeclares one of her top-level variables', () => {
   const read = f=>fs.readFileSync(path.join(__dirname,'../shared',f),'utf8');
   const names = src=>new Set([...src.matchAll(/^(?:let|const|var)\s+(\w+)/gm)].map(m=>m[1]));
   const hers = new Set([...names(read('original/app.js')), ...names(read('data.js')), ...names(read('ric-dashboard-logic.js'))]);
-  const clash = [...names(read('ric-layer.js'))].filter(n=>hers.has(n));
+  const clash = [...names(read('ric-layer.js')), ...names(read('notes-layer.js'))].filter(n=>hers.has(n));
   assert.deepEqual(clash, []);
+  const notes = names(read('notes-layer.js'));
+  assert.deepEqual([...names(read('ric-layer.js'))].filter(n=>notes.has(n)), [], 'the two layers load together too');
 });
 
 test('her app loads first, waits for the layer, and hands unknown pages back to her', () => {
@@ -471,4 +473,19 @@ test('her app loads first, waits for the layer, and hands unknown pages back to 
   assert.match(layer, /await HER\.liveSyncTick\(\)/);
   // "More" is built from her nav each time, so a page she adds shows up without a change here.
   assert.match(layer, /querySelectorAll\('\.standard-nav-btn\[data-page\]'\)/);
+});
+
+// Victoria wanted Ric's Notes on every profile; his race-day version is opt-in for Ric and Sydney.
+test('Notes load for everyone, and Ric\'s race-day version starts off behind a switch', () => {
+  const read = f=>fs.readFileSync(path.join(__dirname,'../shared',f),'utf8');
+  const boot = read('bootstrap.js');
+  assert.match(boot, /loadScript\(shared\('notes-layer\.js'\), \(\) => \(ricVersion \? loadScript\(shared\('ric-layer\.js'\)/);
+  assert.match(boot, /\['notes\.css', \.\.\.\(ricVersion \? \['styles\.css'\] : \[\]\)\]/);
+  assert.match(boot, /const ricVersion = canChoose && wantsRic;/);
+  assert.match(boot, /Ric's race-day version/);
+  assert.match(read('notes-layer.js'), /function usesMissionShell\(\)\{ return !!\(window\.HERMISCUS_LAYER && ME/);
+  const build = fs.readFileSync(path.join(__dirname,'../scripts/build-open-site.py'),'utf8');
+  assert.match(build, /run\('notes-layer-src'\);/);
+  assert.match(build, /hermiscus_use_ric_/);
+  assert.doesNotMatch(build + boot, /hermiscus_use_original_/);
 });

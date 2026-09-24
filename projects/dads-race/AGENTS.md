@@ -35,18 +35,22 @@ other way round. So:
 
 ## 1. What Ric built (so nothing surprises you)
 
-- **Everyone runs Victoria's app.** When Ric or Sydney is the person picked, Ric's extras
-  (the `data-ric` blocks) switch on over the top of it and add a race-day dashboard
-  (Overview · Crew Stop · Pace Dad · Notes · Prep) with a stop countdown timer, an "18hr
-  pace" readout and their pacing legs. For everyone else they do nothing.
+- **Everyone runs Victoria's app.** Two things of Ric's ride on top (the `data-ric` blocks):
+  - **The Notes screen, for everyone** — the message feed with flags and the race-update
+    log. Victoria asked for it on every profile, so her own Notes page is replaced by it.
+    If she wants Notes changed, the change has to go to Ric (it's his code); say so in one
+    line rather than editing the `data-ric` block.
+  - **Ric's race-day version, for Ric and Sydney only, off by default.** They switch it on
+    in Settings ("Ric's race-day version"): Overview · Crew Stop · Pace Dad · Notes · Prep,
+    with a stop countdown timer, an "18hr pace" readout and their pacing legs.
 - Ric also keeps a copy in his website's repo. When Victoria sends him her file, his import
   takes her parts and drops his, so her changes come through untouched.
 - **So work on her app exactly as you normally would.** A new page with a nav button shows
   up for Ric and Sydney by itself (under "More" in their bar). New features and fixes reach
   them too. Nobody has to do anything on Ric's side for that.
-- A few of her screens — Home, Notes, and the check-in logic — are replaced by Ric's own
-  versions on Ric's and Sydney's dashboard. Changes she makes there still reach everyone
-  else; they just won't show on Ric's dashboard. That's expected, nothing to flag.
+- A few of her screens — Home and the check-in logic — are replaced by Ric's own versions
+  on Ric's race-day dashboard. Changes she makes there still reach everyone else; they
+  just won't show on that dashboard. That's expected, nothing to flag.
 - **Both apps read and write the same live database.** Anything entered in Victoria's app
   shows up on Ric's and Sydney's screens within a few seconds, and the other way round.
   That's why the data format in section 3 matters.

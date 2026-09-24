@@ -56,29 +56,33 @@ The current profile URLs are:
 - `/profiles/sydney/`
 - `/profiles/aubrey/`
 
-## Her app, with Ric's layer on top
+## Her app, with Ric's layers on top
 
-The crew app is Victoria's, and **everyone runs it**. Ric's changes are a layer that loads
-on top of it for Ric and Sydney only:
+The crew app is Victoria's, and **everyone runs it**. Two layers of Ric's load on top:
 
 - `shared/original/` is her app — screens, styles and code — imported from her deployed
   `index.html` by `scripts/import-original.py`. Don't edit it by hand.
-- `shared/ric-layer.js` is Ric's layer: his race-day screens (Overview, Crew Stop, Pace Dad,
-  Prep), his Notes and Settings additions, and his versions of the few of her functions he
-  changes. `shared/styles.css` is his stylesheet, loaded after hers.
-- `shared/bootstrap.js` always loads her shell, styles and code. For Ric and Sydney it then
-  captures her `goPage`, `loadAppData` and `liveSyncTick` (as `HER.*`), loads the layer, and
-  only then lets her start-up run — her `init` waits on `window.HermiscusBeforeStart`.
-- **What she adds reaches Ric automatically.** A new page and nav button in her app appears
-  under **More** in Ric's bar; a new function, or a fix to any function the layer doesn't
-  redefine, is simply live. Only the functions `ric-layer.js` redefines hide hers — keep that
+- `shared/notes-layer.js` + `shared/notes.css` — **Ric's Notes screen, for everyone.**
+  Victoria liked it and wanted it on every profile. It replaces her Notes page and the
+  functions behind it. Its "For Ric" filters and pinned note only appear on the race-day
+  dashboard (`usesMissionShell()`, which is true only while Ric's layer is running).
+- `shared/ric-layer.js` + `shared/styles.css` — **Ric's race-day version** (Overview, Crew
+  Stop, Pace Dad, Prep, More, his Settings additions and his versions of a few of her
+  functions). **Off by default**: Ric and Sydney start on Victoria's version and switch it
+  on in Settings ("Ric's race-day version", remembered per device in
+  `hermiscus_use_ric_<name>`).
+- `shared/bootstrap.js` always loads her shell, styles and code, captures her `goPage`,
+  `loadAppData` and `liveSyncTick` (as `HER.*`), loads the Notes layer, then Ric's layer if
+  it is switched on, and only then lets her start-up run — her `init` waits on
+  `window.HermiscusBeforeStart`.
+- **What she adds reaches everyone.** A new page and nav button in her app appears under
+  **More** in Ric's bar; a new function, or a fix to any function the layers don't
+  redefine, is simply live. Only the functions the layers redefine hide hers — keep that
   list short, and call `HER.<name>()` where her behaviour will do.
-- Never redeclare one of her top-level `let`/`const` names in the layer: the two files share
-  one global scope and that is a load-stopping error. There is a test for it.
-- Both sit on one data layer, `shared/data.js` (sign-in headers, offline queue, demo
+- Never redeclare one of her top-level `let`/`const` names in a layer (or one layer's in
+  the other): they share one global scope and that is a load-stopping error. Tested.
+- Everything sits on one data layer, `shared/data.js` (sign-in headers, offline queue, demo
   store). That replaced her data layer, which is where her database key lived.
-- Ric and Sydney can tick **Use Victoria's version** in Settings to run her app with no
-  layer. It is remembered per device (`hermiscus_use_original_<name>` in localStorage).
 
 When she ships a new version, download her `index.html` (or the deploy zip) and run:
 
@@ -101,8 +105,9 @@ python3 scripts/build-open-site.py ~/Downloads/hermesco-deploy.zip
 It writes `~/Desktop/HERMISCUS for Victoria/` (index.html plus AGENTS.md and CLAUDE.md for
 her AI) — **outside the repo, because it holds the real key** (the same one her page always
 published). Her code stays hers; the top of her script becomes this repo's connection
-(`data.js`, `ric-dashboard-logic.js`), and Ric's stylesheet and layer ride in `data-ric`
-blocks that switch on only when Ric or Sydney is picked. Her built-in copy of the race data
+(`data.js`, `ric-dashboard-logic.js`), and Ric's two layers ride in `data-ric` blocks: the
+Notes layer for everyone, the race-day layer when Ric or Sydney switches it on. Picking Ric
+or Sydney on the name screen reloads the page so it is set up for them. Her built-in copy of the race data
 is not carried over. `--demo` builds a keyless copy on the made-up race for testing.
 
 When she sends a file back, `import-original.py` takes it as usual: it drops the `data-ric`
