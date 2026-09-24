@@ -141,12 +141,6 @@
     return new URL('login.html', appRoot).href;
   }
 
-  // Demo sign-in is just a name: there is nothing private behind it to protect.
-  function demoProfileUrl(name) {
-    const slug = nameSlug(name);
-    return demo && knownNames[slug] ? new URL(`profiles/${slug}/`, appRoot).href : '';
-  }
-
   function profileUrl() {
     if (demo) return directoryUrl();
     const path = profilePath();
@@ -244,7 +238,7 @@
   window.HermiscusAuth = Object.freeze({
     readSession, signIn, signOut, freshSession, requireSession,
     ensureProfileRoute, authorizedHeaders, profileName, profileUrl,
-    loginUrl, directoryUrl, demoProfileUrl, clearPrivateState, demo,
+    loginUrl, directoryUrl, clearPrivateState, demo,
     demoAccess, siteGate
   });
 })();

@@ -39,9 +39,6 @@
     .message { min-height:18px; margin:13px 0 0; color:var(--danger); font-size:12px; }
     .demo p { margin:0 0 12px; color:var(--dim); font-size:13px; line-height:1.6; }
     .demo p b { color:var(--phosphor); font-weight:400; }
-    .demo-list { margin:14px 0 0; font-size:12px; text-align:center; }
-    .demo-list a { color:var(--dim); display:inline-block; padding:12px 4px; }
-    .demo-list a:hover, .demo-list a:focus-visible { color:var(--phosphor); }
     [hidden] { display:none !important; }
     .caret { animation:blink 1s steps(1,end) infinite; }
     @keyframes blink { 50% { opacity:0; } }
@@ -67,12 +64,11 @@ handshake required<span class="caret">_</span></p>
         <button id="login-submit" type="submit">enter</button>
         <p class="message" id="login-message" role="alert" aria-live="polite"></p>
       </form>
-      <p class="demo-list" id="demo-list" hidden><a href="index.html">or see the whole crew →</a></p>
     </section>
   </main>
   <script src="./shared/config.js?v=20260923-03"></script>
-  <script src="./shared/auth.js?v=20260923-06"></script>
-  <script src="./shared/login.js?v=20260924-02"></script>
+  <script src="./shared/auth.js?v=20260924-01"></script>
+  <script src="./shared/login.js?v=20260924-03"></script>
   <script src="../relay-return.js" data-home="../../index.html"></script>
 </body>
 </html>
