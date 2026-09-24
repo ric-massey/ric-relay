@@ -1,0 +1,2 @@
+# The real database address and key. Never commit it: the website runs the demo.
+shared/config.local.js

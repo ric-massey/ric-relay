@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <!-- This is the one page on the site where a password is typed. The policy says the page
+       can only run its own scripts and only talk to Supabase, so even a compromised or
+       injected script has nowhere to send what it reads. The project's own address is
+       deliberately not named here: it lives only in the git-ignored config.local.js. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co http://127.0.0.1:54321; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="Crew access.">
+  <title>HERMISCUS</title>
+  <style>
+    /* The terminal's own phosphor, so the door looks like it belongs to the house.
+       Dim is the terminal's --phosphor-dim and clears AA on --bg. */
+    :root { color-scheme: dark; --bg:#0a0a0a; --phosphor:#ffb000; --dim:#b07d00; --faint:#6b4d00; --danger:#ff8f6b; }
+    * { box-sizing:border-box; }
+    html, body { min-height:100%; }
+    body { margin:0; display:grid; place-items:center; padding:24px 16px 88px; background:var(--bg); color:var(--phosphor);
+           font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; text-shadow:0 0 6px rgba(255,176,0,.25); }
+    main { width:min(100%, 400px); }
+    .boot { color:var(--dim); font-size:12px; line-height:1.7; margin:0 0 18px; white-space:pre-wrap; }
+    .boot b { color:var(--phosphor); font-weight:400; }
+    .panel { border:1px solid var(--faint); padding:26px 24px; }
+    h1 { margin:0; font-size:clamp(28px, 9vw, 40px); letter-spacing:.14em; font-weight:600; }
+    .sub { margin:6px 0 22px; color:var(--dim); font-size:12px; letter-spacing:.08em; }
+    label { display:block; margin:16px 0 6px; color:var(--dim); font-size:12px; }
+    label::before { content:"> "; }
+    input { width:100%; border:1px solid var(--faint); border-radius:0; background:#000; color:var(--phosphor); caret-color:var(--phosphor);
+            padding:12px 13px; font:inherit; font-size:16px; outline:none; }
+    input:focus { border-color:var(--phosphor); box-shadow:0 0 0 1px var(--phosphor); }
+    button { width:100%; min-height:44px; margin-top:22px; border:1px solid var(--phosphor); border-radius:0; background:var(--phosphor); color:#0a0a0a;
+             padding:12px; font:700 14px/1 ui-monospace,"SF Mono",Menlo,Consolas,monospace; letter-spacing:.12em; text-transform:lowercase; cursor:pointer; }
+    button:hover, button:focus-visible { background:#ffc233; }
+    button:focus-visible { outline:2px solid var(--phosphor); outline-offset:3px; }
+    button:disabled { cursor:wait; opacity:.62; }
+    .message { min-height:18px; margin:13px 0 0; color:var(--danger); font-size:12px; }
+    .demo p { margin:0 0 12px; color:var(--dim); font-size:13px; line-height:1.6; }
+    .demo p b { color:var(--phosphor); font-weight:400; }
+    .demo-list { margin:14px 0 0; font-size:12px; text-align:center; }
+    .demo-list a { color:var(--dim); display:inline-block; padding:12px 4px; }
+    .demo-list a:hover, .demo-list a:focus-visible { color:var(--phosphor); }
+    [hidden] { display:none !important; }
+    .caret { animation:blink 1s steps(1,end) infinite; }
+    @keyframes blink { 50% { opacity:0; } }
+    @media (prefers-reduced-motion: reduce) { .caret { animation:none; } }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="boot" aria-hidden="true">guest@ric-terminal:~$ <b>hermiscus</b>
+private channel · yeti crew
+handshake required<span class="caret">_</span></p>
+    <section class="panel" aria-labelledby="login-title">
+      <h1 id="login-title">HERMISCUS</h1>
+      <p class="sub" id="login-sub">crew only · sign in with your first name</p>
+      <div class="demo" id="demo-panel" hidden>
+        <p><b>demo mode.</b> the crew app for Dad's race, running on a made-up race so it can be shown off without the real plan leaving the family. anything you change stays in this browser.</p>
+      </div>
+      <form id="login-form">
+        <label for="login-name">name</label>
+        <input id="login-name" name="name" autocomplete="username" autocapitalize="words" spellcheck="false" required autofocus>
+        <label for="login-password">password</label>
+        <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+        <button id="login-submit" type="submit">enter</button>
+        <p class="message" id="login-message" role="alert" aria-live="polite"></p>
+      </form>
+      <p class="demo-list" id="demo-list" hidden><a href="index.html">or see the whole crew →</a></p>
+    </section>
+  </main>
+  <script src="./shared/config.js?v=20260923-03"></script>
+  <script src="./shared/auth.js?v=20260923-06"></script>
+  <script src="./shared/login.js?v=20260923-06"></script>
+  <script src="../relay-return.js" data-home="../../index.html"></script>
+</body>
+</html>

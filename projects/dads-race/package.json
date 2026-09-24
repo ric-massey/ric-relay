@@ -1,0 +1,7 @@
+{
+  "name": "yeti-going-together",
+  "private": true,
+  "scripts": {
+    "test": "TZ=America/New_York node --test tests/*.test.cjs"
+  }
+}

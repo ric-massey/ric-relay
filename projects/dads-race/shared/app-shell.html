@@ -1,0 +1,357 @@
+<!-- ===================== PROFILE SELECT ===================== -->
+<div id="profile-screen">
+  <div class="logo-block">
+    <div class="logo-title"><span class="lt-word">Yeti</span><span class="logo-dot" aria-hidden="true"></span><span class="lt-word">Going Together</span></div>
+    <div class="logo-quote">
+      <div class="lq-eyebrow">Start again.</div>
+      <div class="lq-main">Go far. Go together.</div>
+      <div class="lq-rule"></div>
+    </div>
+    <div class="logo-sub">Crew HQ &middot; Yeti 100 &middot; Grady Massey</div>
+  </div>
+  <div class="profile-grid" id="profile-grid"></div>
+</div>
+
+<!-- ===================== MAIN APP ===================== -->
+<div id="app" class="hidden">
+  <div class="site-header">
+    <div class="header-row">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div class="mascot-logo-wrap"><img id="mascot-logo" class="mascot-logo" alt="Yeti mascot" aria-hidden="true"></div>
+        <div>
+        <div class="header-title">Yeti<span class="logo-dot" aria-hidden="true"></span>Going Together</div>
+        <div class="header-quote"><span class="hq-eyebrow">Start again.</span> <span class="hq-main">Go far. Go together.</span></div>
+        <div class="header-sub">Crew HQ for Grady's Yeti 100</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="header-me" style="padding:9px" onclick="goPage('settings')" title="Settings"><i class="ti ti-settings" style="font-size:16px;color:var(--ink)"></i></button>
+        <button class="header-me" id="header-team-button" style="padding:9px" onclick="goPage('team')" title="Team"><i class="ti ti-users" style="font-size:16px;color:var(--ink)"></i></button>
+        <button type="button" class="header-me" id="header-me" onclick="switchProfile()" title="Sign out">
+          <div class="avatar" id="me-avatar"></div>
+          <span id="me-name"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div id="ric-connection-status" class="connection-chip hidden" aria-live="polite"></div>
+
+    <!-- HOME -->
+    <div class="page" id="page-home">
+      <div class="runtime-card" id="home-running-total"></div>
+      <div id="ric-home-dashboard" class="hidden">
+        <div id="ric-overview"></div>
+      </div>
+
+      <div id="standard-home-dashboard">
+      <div id="home-next-stop"></div>
+      <div class="hero">
+        <div class="hero-race" id="home-race-name">Yeti 100 Mile Endurance Run</div>
+        <div class="hero-loc" id="home-race-loc">Abingdon, Virginia</div>
+        <div class="hero-loc" id="home-race-desc" style="font-style:italic;opacity:.75"></div>
+        <div class="hero-count"><b id="home-days">--</b><span>days to go &middot; <span id="home-race-dates"></span></span></div>
+      </div>
+
+      <div class="sec-title">Quick Links</div>
+      <div class="quick-links" id="home-links"></div>
+
+      <div class="sec-title">Checklist Progress</div>
+      <div class="card ring-wrap">
+        <div class="ring" id="home-ring"><div class="ring-inner" id="home-ring-pct">0%</div></div>
+        <div>
+          <div style="font-weight:bold" id="home-ring-count">0 of 0 packed</div>
+          <div style="font-size:12px;color:var(--ink-soft)" id="home-ring-sub">across every category</div>
+        </div>
+      </div>
+
+      <div class="sec-title">Team On Deck</div>
+      <div class="card">
+        <div class="avatar-strip" id="home-avatars"></div>
+      </div>
+      </div>
+    </div>
+
+    <!-- RIC: CREW STOP -->
+    <div class="page" id="page-ric-stop">
+      <div id="ric-crew-mission"></div>
+    </div>
+
+    <!-- RIC: PACING -->
+    <div class="page" id="page-ric-pace">
+      <div id="ric-pacer-mission"></div>
+    </div>
+
+    <!-- RIC: BEFORE THE RACE -->
+    <div class="page" id="page-ric-before">
+      <div id="ric-before-body"></div>
+    </div>
+
+    <!-- CHECKLIST -->
+    <div class="page" id="page-checklist">
+      <div id="checklist-body"></div>
+    </div>
+
+    <!-- CREW SHEET -->
+    <div class="page" id="page-crew">
+      <details class="crew-ref" id="crew-ref">
+        <summary><i class="ti ti-clipboard-text"></i> The Plan — tap if you need it <i class="ti ti-chevron-down cr-chev"></i></summary>
+        <div class="cr-body" id="crew-ref-body"></div>
+      </details>
+      <div id="crew-pace-hero"></div>
+      <div class="sec-title">Your Stops</div>
+      <div id="my-stops-list"></div>
+
+      <div id="manager-edit-section">
+        <div class="field-block">
+          <label>Crew Can First Reach Grady At Mile</label>
+          <input type="text" id="cs-crew-mile" placeholder="16" inputmode="decimal" style="max-width:120px">
+          <div class="save-hint">Stops before this mile hide the questions and rest-time notes — there's no crewing him there.</div>
+        </div>
+
+        <div class="field-block">
+          <label>Reasons To Actually Stop</label>
+          <textarea id="cs-reasons-edit" placeholder="The only reasons that count as a real stop, decided now..."></textarea>
+          <div class="save-hint">Updates the banner everyone sees above.</div>
+        </div>
+
+        <div class="sec-title">Questions To Ask At Every Stop</div>
+        <div class="card" id="questions-card"></div>
+
+        <div class="field-block">
+          <label>Estimated Rest Time</label>
+          <textarea id="cs-sit" placeholder="e.g. max 10 minutes unless doing foot care..."></textarea>
+        </div>
+
+        <div class="field-block">
+          <label>If He Says He Wants To Quit</label>
+          <textarea id="cs-quit" placeholder="The plan for that moment, decided now, not in the moment..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPLITS -->
+    <div class="page" id="page-splits">
+      <div class="runtime-card" id="splits-running-total"></div>
+      <div class="seg-toggle">
+        <button class="seg-btn active" id="splits-toggle-goal" onclick="setSplitsView('goal')"><i class="ti ti-target-arrow"></i> Goal Plan</button>
+        <button class="seg-btn" id="splits-toggle-raceday" onclick="setSplitsView('raceday')"><i class="ti ti-broadcast"></i> Race Day</button>
+      </div>
+      <div class="splits-summary" id="splits-summary"></div>
+      <div class="splits-list-wrap" id="splits-list"></div>
+      <div id="goal-add-wrap" style="text-align:center;margin-top:12px"><button class="btn ghost sm" onclick="addSplitRow()"><i class="ti ti-plus"></i> Add Station</button></div>
+
+      <div id="plan-details-wrap">
+        <div class="sec-title">Plan Details</div>
+        <div class="card detail-card" id="plan-details"></div>
+      </div>
+    </div>
+
+    <!-- WEEKEND -->
+    <div class="page" id="page-weekend">
+      <div class="sec-title">Lodging</div>
+      <div class="card" style="margin-bottom:20px" id="lodging-card">
+        <div class="field-block"><label>Place / Airbnb Name</label><input type="text" id="lg-name" placeholder="e.g. Creeper Trail Cabin"></div>
+        <div class="field-block"><label>Address</label><input type="text" id="lg-address" placeholder="Street, Abingdon VA"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="field-block"><label>Check-in</label><input type="text" id="lg-checkin" placeholder="Thu, 4:00 PM"></div>
+          <div class="field-block"><label>Check-out</label><input type="text" id="lg-checkout" placeholder="Sun, 11:00 AM"></div>
+        </div>
+        <div class="field-block"><label>Door Code / Notes</label><textarea id="lg-notes" placeholder="Lockbox code, wifi, parking..."></textarea></div>
+      </div>
+
+      <div class="sec-title">Weekend Plan</div>
+      <div class="seg-toggle">
+        <button class="seg-btn active" id="wk-toggle-list" onclick="setWeekendView('list')"><i class="ti ti-list-details"></i> List</button>
+        <button class="seg-btn" id="wk-toggle-cal" onclick="setWeekendView('calendar')"><i class="ti ti-calendar-week"></i> Calendar</button>
+      </div>
+      <div id="weekend-list-wrap"></div>
+      <div id="weekend-cal-wrap" class="hidden"></div>
+      <div class="wk-cal-hint hidden" id="weekend-cal-hint"><i class="ti ti-hand-finger"></i> Tap any open time on the grid to add an event there</div>
+      <button class="btn sm" style="width:100%;margin-top:14px" onclick="openEventModal()"><i class="ti ti-plus"></i> Add an event</button>
+    </div>
+
+    <!-- NOTES -->
+    <div class="page" id="page-notes">
+      <div id="notes-resources-wrap">
+        <div class="sec-title">Resources</div>
+        <div class="card" style="margin-bottom:20px">
+          <div class="link-row"><i class="ti ti-brand-youtube"></i><a href="https://youtu.be/nxZaNrxT3hU" target="_blank" rel="noopener">Crewing 101 — watch before race weekend</a></div>
+          <div class="link-row"><i class="ti ti-world"></i><a id="notes-official" href="#" target="_blank" rel="noopener">Official Yeti 100 site</a></div>
+          <div class="link-row"><i class="ti ti-map-pin"></i><a id="notes-ultrapacer" href="#" target="_blank" rel="noopener">ultraPacer splits (login required)</a></div>
+        </div>
+      </div>
+
+      <div id="notes-general-wrap">
+        <div class="sec-title" id="notes-general-title">Have To Remember / Notes</div>
+        <div class="card message-composer">
+          <textarea id="note-input" placeholder="Message everyone..." rows="2" onkeydown="submitNoteOnEnter(event)"></textarea>
+          <div class="message-compose-row">
+            <label class="message-flag-toggle" for="note-flag-input">
+              <input type="checkbox" id="note-flag-input">
+              <i class="ti ti-flag-3"></i> Flag
+            </label>
+            <span class="message-enter-hint">Enter to send · Shift+Enter for a new line</span>
+            <button class="btn sm" onclick="submitNote()"><i class="ti ti-send"></i> Send</button>
+          </div>
+        </div>
+        <div id="notes-list" class="message-feed"></div>
+      </div>
+
+      <div class="notes-race-updates">
+        <div class="sec-title" id="notes-course-title">From The Course</div>
+        <div class="save-hint" id="notes-course-hint" style="margin:-4px 0 10px">Every race-day note and answered question, newest stop first — you don't have to open each stop to find them.</div>
+        <div id="ric-notes-tools" class="hidden">
+          <div id="ric-pinned-note"></div>
+          <div class="seg-toggle ric-note-filters">
+            <button class="seg-btn" data-ric-note-filter="flagged" onclick="setRicNotesFilter('flagged')">Flagged</button>
+            <button class="seg-btn active" data-ric-note-filter="for-ric" onclick="setRicNotesFilter('for-ric')">For Ric</button>
+            <button class="seg-btn" data-ric-note-filter="all" onclick="setRicNotesFilter('all')">All</button>
+          </div>
+        </div>
+        <div id="course-log" style="margin-bottom:20px"></div>
+      </div>
+    </div>
+
+    <!-- TEAM -->
+    <div class="page" id="page-team">
+      <div class="sec-title">Crew Team</div>
+      <div class="team-grid" id="team-grid"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="sec-title">Appearance</div>
+      <div class="seg-toggle">
+        <button class="seg-btn" id="theme-toggle-dark" onclick="setThemeMode('dark')"><i class="ti ti-moon"></i> Dark</button>
+        <button class="seg-btn" id="theme-toggle-light" onclick="setThemeMode('light')"><i class="ti ti-sun"></i> Light</button>
+        <button class="seg-btn" id="theme-toggle-outside" onclick="setThemeMode('outside')"><i class="ti ti-sun-high"></i> Outside</button>
+      </div>
+      <div class="save-hint ric-settings-help">Switches instantly, and remembers your choice on this device. <b>Outside</b> is max-contrast black-on-white for reading the phone in direct sun at the race.</div>
+
+      <div class="sec-title settings-subtitle">Your Color</div>
+      <div class="card personal-color-card">
+        <label class="personal-color-control" for="personal-color-picker">
+          <input type="color" id="personal-color-picker" aria-label="Choose your dashboard color" oninput="previewPersonalColor(this.value)" onchange="savePersonalColor(this.value)">
+          <span>
+            <b>Dashboard accent</b>
+            <small id="personal-color-value"></small>
+          </span>
+        </label>
+        <button class="btn ghost sm" type="button" onclick="resetPersonalColor()">Use original</button>
+      </div>
+      <div class="save-hint ric-settings-help">Changes only your dashboard on this device. The crew sign-in page keeps its original colors.</div>
+    </div>
+
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn standard-nav-btn active" data-page="home" onclick="goPage('home')"><i class="ti ti-home"></i>Home</button>
+    <button class="nav-btn standard-nav-btn" data-page="checklist" onclick="goPage('checklist')"><i class="ti ti-checklist"></i>Gear</button>
+    <button class="nav-btn standard-nav-btn" data-page="splits" onclick="goPage('splits')"><i class="ti ti-clock"></i>Splits</button>
+    <button class="nav-btn standard-nav-btn" data-page="crew" onclick="goPage('crew')"><i class="ti ti-map-2"></i>Crew Sheet</button>
+    <button class="nav-btn standard-nav-btn" data-page="weekend" onclick="goPage('weekend')"><i class="ti ti-calendar-event"></i>Weekend</button>
+    <button class="nav-btn standard-nav-btn" data-page="notes" onclick="goPage('notes')"><i class="ti ti-notes"></i>Notes</button>
+    <button class="nav-btn ric-nav-btn hidden active" data-page="home" onclick="goPage('home')"><i class="ti ti-layout-dashboard"></i>Overview</button>
+    <button class="nav-btn ric-nav-btn hidden" data-page="ric-stop" onclick="goPage('ric-stop')"><i class="ti ti-map-pin"></i>Crew Stop</button>
+    <button class="nav-btn ric-nav-btn hidden" id="mission-pace-nav" data-page="ric-pace" onclick="openRicPaceAssignment(null)"><i class="ti ti-run"></i>Pace Dad</button>
+    <button class="nav-btn ric-nav-btn hidden" data-page="notes" onclick="goPage('notes')"><i class="ti ti-notes"></i>Notes</button>
+    <button class="nav-btn ric-nav-btn hidden" data-page="ric-before" onclick="goPage('ric-before')"><i class="ti ti-calendar-event"></i>Prep</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Add Person modal -->
+<div class="modal-backdrop hidden" id="add-person-modal">
+  <div class="modal">
+    <h3>Add Someone To The Crew</h3>
+    <div class="field"><label>Name</label><input type="text" id="np-name" placeholder="e.g. Auston"></div>
+    <div class="field">
+      <label>Role</label>
+      <select id="np-role"></select>
+    </div>
+    <div class="save-hint" id="np-role-hint" style="margin-bottom:12px"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" style="flex:1" onclick="closeAddPerson()">Cancel</button>
+      <button class="btn" style="flex:1" onclick="submitAddPerson()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Person modal -->
+<div class="modal-backdrop hidden" id="edit-person-modal">
+  <div class="modal">
+    <h3>Edit Crew Member</h3>
+    <div class="field"><label>Name</label><input type="text" id="ep-name"></div>
+    <div class="field">
+      <label>Role</label>
+      <select id="ep-role"></select>
+    </div>
+    <div class="save-hint" id="ep-role-hint" style="margin-bottom:12px"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" style="flex:1" onclick="closeEditPerson()">Cancel</button>
+      <button class="btn" style="flex:1" onclick="submitEditPerson()">Save</button>
+    </div>
+    <div style="text-align:center;margin-top:14px">
+      <button class="rd-clear-tiny" style="color:#E5484D;font-size:11px" onclick="removeEditPerson()">Remove from crew</button>
+    </div>
+  </div>
+</div>
+
+<!-- Weekend Event modal -->
+<div class="modal-backdrop hidden" id="event-modal">
+  <div class="modal" style="text-align:left;max-width:380px;max-height:88vh;overflow-y:auto">
+    <h3 id="em-heading">Add an event</h3>
+
+    <div id="em-view" hidden></div>
+
+    <div id="em-form">
+      <div class="field"><label>What</label><input type="text" id="em-title" placeholder="e.g. Team dinner"></div>
+      <div class="field">
+        <label>Day</label>
+        <select id="em-day"></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field"><label>Start</label><input type="time" id="em-start" onchange="updateEndHint()"></div>
+        <div class="field"><label>End</label><input type="time" id="em-end" onchange="updateEndHint()"></div>
+      </div>
+      <div class="save-hint" id="em-endhint" style="margin-top:-8px;margin-bottom:4px"></div>
+      <div class="field"><label>Where (optional)</label><input type="text" id="em-addr" placeholder="Address, or paste a Maps link"></div>
+      <div class="field"><label>Notes (optional)</label><textarea id="em-notes" placeholder="Anything else people should know..."></textarea></div>
+      <div class="field" id="em-vis-row">
+        <label>Who sees it</label>
+        <div class="seg-toggle" style="margin-bottom:0">
+          <button type="button" class="seg-btn" id="em-vis-public" onclick="setEventVis('public')"><i class="ti ti-users"></i> Everyone</button>
+          <button type="button" class="seg-btn" id="em-vis-private" onclick="setEventVis('private')"><i class="ti ti-lock"></i> Just me</button>
+        </div>
+        <div class="save-hint">Private events only show on your own calendar.</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Who's going</label>
+      <div class="ev-pills" id="em-attendees"></div>
+    </div>
+
+    <div class="modal-actions" id="em-actions-edit">
+      <button class="btn ghost" style="flex:1;color:#E5484D;border-color:#E5484D" id="em-discard" onclick="discardEvent()">Discard</button>
+      <button class="btn" style="flex:1" onclick="saveEvent()">Save</button>
+    </div>
+    <div class="modal-actions" id="em-actions-view" hidden>
+      <button class="btn" style="flex:1" onclick="closeEventModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Stop Detail modal -->
+<div class="modal-backdrop hidden" id="stop-detail-modal">
+  <div class="modal" style="max-width:420px;text-align:left">
+    <h3 id="sd-title">Station</h3>
+    <div id="sd-body" style="max-height:60vh;overflow-y:auto;margin-top:4px"></div>
+    <div class="modal-actions">
+      <button class="btn" style="flex:1" onclick="closeStopDetail()">Close</button>
+    </div>
+  </div>
+</div>
