@@ -7,7 +7,7 @@
    near it, and it could stop answering mid-match without anybody noticing.
 
    This file knows nothing about the game. It moves messages and reports who is
-   connected. Everything about ships and rocks lives in index.html.
+   connected. Everything about ships and rocks lives in game/.
 
    ── the two external things ──
    A STUN server, which is not a script and downloads nothing: the browser asks

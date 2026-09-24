@@ -21,7 +21,7 @@
    well that pulls on all three, and a pilot flying it who wants things.
 
    ── it is the game's model, not a model of it ───────────────────────────────
-   Every constant below is copied from index.html rather than invented, because
+   Every constant below is copied from the game rather than invented, because
    the failure mode of art-that-looks-like-a-game is that it moves wrong and
    nobody can say why. TURN is 3.2 because a Kondrite ship turns at 3.2. Gravity
    is `mass / (d² + soft²)` with the star's own mass and softening, so a pass at
@@ -470,7 +470,7 @@
     if (d > h.reach * 1.15) { s.graze = 0; return null; }
     const safe = h.kill * (tight ? 2.6 : 4.5);
     // No room left for a curve: straight out, which the softening guarantees an
-    // engine can always win — see the comment on HAZARD in index.html.
+    // engine can always win — see the comment on HAZARD in game/setup.js.
     if (d < safe) { flagGraze(s, h, d); return Math.atan2(s.y - h.y, s.x - h.x); }
     const fc = forecast(s, h);
     if (fc >= safe) { s.graze = 0; return null; }

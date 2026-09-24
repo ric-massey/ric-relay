@@ -384,7 +384,7 @@ const guestHandlers = {
 
    The old worker is `server/passthrough/`, and it is deleted when its logs
    go quiet. Until then, never point this at anything the shim does not also
-   reach. See RENAME-KONDRITE.md §2. */
+   reach. See archive/RENAME-KONDRITE.md §2. */
 const ROOM_HOST = "https://kondrite-rooms.rmbuster82.workers.dev";
 
 const ROOM_SERVICE =

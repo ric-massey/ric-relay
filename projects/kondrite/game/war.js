@@ -1931,7 +1931,7 @@ function surveyTick(dt) {
   if (surveyHUD) {
     surveyHUD.reveal(me.x, me.y, SURVEY_SIGHT);
     // The trail is gone from the chart, so there is nothing to track for.
-    // See SURVEY-PLAN.md, "Next up — the places", item E.
+    // See archive/SURVEY-BUILT.md, "The places", item E.
     t.charted = surveyHUD.charted();
   }
 

@@ -310,7 +310,7 @@ function damageShip(ship, cause, shooter, dmg = 1) {
      Zero is survivable and is meant to be terrifying: you can still fly, you
      can still get to a star and mend, and the next thing that touches you
      kills you. That single point of grace is what makes it a decision rather
-     than an ambush. See SURVEY-PLAN.md phase 2.1. */
+     than an ambush. See archive/SURVEY-BUILT.md, phase 2.1. */
   /* The Flagship Screen takes the hit instead, whatever it was, and is down
      for twelve seconds. */
   if (mode.survey && surv && ship === ships[0] && surv.screenUp && mods().screen) {

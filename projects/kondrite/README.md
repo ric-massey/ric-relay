@@ -874,7 +874,7 @@ campaign fire, mining, a busy fight, a run of misses — each with a LOOP, and
 plain-word buttons under every one: fine, too loud, too quiet, too sharp, too
 dull, too long, gets old fast, sounds wrong for it. COPY ANSWERS turns them
 into a short list to paste to whoever is fixing them. It borrows the engine out
-of `index.html` at load rather than keeping a copy, so it always plays what the
+of `game/sound.js` at load rather than keeping a copy, so it always plays what the
 game plays; `test/sounds.js` checks it still finds it. Served only — it cannot
 fetch the game off disk, and says so. Not linked from the game.
 
@@ -1044,7 +1044,7 @@ npx wrangler@latest deploy
 ```
 
 That prints a `https://kondrite-rooms.<subdomain>.workers.dev` address. Put it
-in `ROOM_HOST` in `index.html`, and make sure the site's origin is in `ALLOWED`
+in `ROOM_HOST` in `game/lobby.js`, and make sure the site's origin is in `ALLOWED`
 in `server/rooms-core.mjs`. Until `ROOM_HOST` is set, the online panel reports
 that there is no room service rather than showing a list.
 

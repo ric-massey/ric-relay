@@ -39,7 +39,7 @@ window.KondriteSurveySave = function (env) {
      save from a build that is not this one.
 
      Reached through `env` rather than pulled out of it, because they are not
-     all defined yet. index.html declares FACTIONS six thousand lines below the
+     all defined yet. The game declares FACTIONS (game/factions.js) long after the
      book, and inside one closure that never mattered — the validator only read
      it when somebody loaded a save. Destructuring here read it at boot instead
      and the game would not start. A getter each on the way in, and the binding
@@ -708,7 +708,7 @@ function write(book) {
   return kept;
 }
 
-  /* What index.html calls. `bookHooks` is the seam the tests reach through to
+  /* What the game calls. `bookHooks` is the seam the tests reach through to
      stand in for the reader; it is kept as an object rather than a function so
      a harness can swap `read` and have the loader pick it up. */
   return {

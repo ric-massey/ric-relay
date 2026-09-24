@@ -9,7 +9,7 @@
    It is a mirror and never the source. The run reads and writes the local copy
    at full speed and this is told afterwards; nothing in the game ever waits for
    a network, because a game that stutters on a bad train in exchange for a save
-   file is a bad trade. See `bookStore` in index.html for the seam.
+   file is a bad trade. See `bookStore` in survey-save.js for the seam.
 
    ── why there is no SDK here ──
    Supabase publishes a fine JavaScript client and this does not use it. The
