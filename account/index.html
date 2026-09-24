@@ -112,6 +112,14 @@
       <p class="sub" id="me-email"></p>
       <p id="me-status"></p>
       <ul class="pages" id="me-pages"></ul>
+      <form id="more-form" hidden novalidate>
+        <h2 style="margin-top:22px" id="more-title">ask for more</h2>
+        <div class="checks" id="more-pages" role="group" aria-labelledby="more-title"></div>
+        <label class="field" for="more-note">anything Ric should know?</label>
+        <textarea id="more-note" maxlength="500"></textarea>
+        <button class="wide" id="more-go" type="submit">ask Ric</button>
+        <p class="message" id="more-msg" role="alert" aria-live="polite"></p>
+      </form>
       <div class="row"><button class="ghost" id="signout" type="button">sign out</button></div>
     </section>
 

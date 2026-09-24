@@ -113,6 +113,25 @@ page *shows*. A page whose content is committed to this public repo is only
 curtained. Real privacy needs the content in this database, behind
 `has_page_access('<key>')`.
 
+**Asking for more.** Somebody already let in asks for another page from their
+account page. Their request goes back to pending; they keep what they have while
+you decide, and approving from the card adds the new page.
+
+**Email when somebody asks** (migration `20260924010000_ask_for_more_and_tell_ric.sql`).
+Every request that reaches the queue sends you an email through Resend, at most
+one per account per ten minutes. It stays silent until two secrets exist in
+Supabase Vault. Put them in with the SQL editor, never in this repo:
+
+```sql
+select vault.create_secret('re_...your Resend API key...', 'resend_api_key');
+select vault.create_secret('you@example.com',            'admin_notify_email');
+```
+
+The sender is Resend's `onboarding@resend.dev`, which needs no domain setup and
+can only deliver to the email address the Resend account was made with — so
+use that same address for `admin_notify_email`. To change either later,
+`select vault.update_secret(id, 'new value') from vault.secrets where name = '...';`
+
 **If the admin panel does not appear for you**, the migration looked for the
 username `rmbuster82` and did not find it. In the SQL editor:
 `insert into site_admins select id from auth.users where email = '<your email>';`

@@ -173,6 +173,20 @@ test('site accounts: request, approve, per-page access', { skip: !up && 'no loca
     assert.deepEqual((await rows('pins', stranger)).json, []);
   });
 
+  await t.test('somebody already let in can ask for more, and keeps what they have meanwhile', async () => {
+    const r = await rpc('request_access', stranger, { who: '', why: 'could I see the map too?', wanted: ['atlas'] });
+    assert.ok(r.ok, JSON.stringify(r.json));
+    const mine = (await rows('access_requests', stranger)).json[0];
+    assert.equal(mine.status, 'pending');
+    assert.deepEqual(mine.pages, ['atlas']);
+    assert.equal(mine.name, 'Bob', 'an empty name does not wipe the one given before');
+    assert.equal((await rpc('has_page_access', stranger, { page: 'hermiscus' })).json, true, 'still has HERMISCUS while waiting');
+    const bob = (await rpc('admin_people', ric)).json.find((p) => p.user_id === strangerId);
+    assert.equal(bob.status, 'pending');
+    assert.deepEqual(bob.pages, ['hermiscus']);
+    assert.deepEqual(bob.requested, ['atlas']);
+  });
+
   await t.test('adding ATLAS opens the map', async () => {
     await rpc('admin_set_access', ric, { target: strangerId, new_status: 'approved', grant_pages: ['hermiscus', 'atlas'] });
     const pins = (await rows('pins', stranger)).json;

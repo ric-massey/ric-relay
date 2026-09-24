@@ -554,7 +554,7 @@ async function start() {
       $('waiting-sub').textContent = denied ? 'no access' : 'waiting for Ric';
       $('waiting-note').textContent = denied
         ? 'This account has not been given access to the map.'
-        : "Your account is made. Ric decides who sees the map; once he lets you in, this page opens straight onto it.";
+        : "Your account does not have the map yet. Ask for it on your account page; once Ric lets you in, this page opens straight onto it.";
       $('gate').hidden = true;
       $('app').hidden = true;
       $('waiting').hidden = false;

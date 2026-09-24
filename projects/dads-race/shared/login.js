@@ -55,7 +55,7 @@
       panel.hidden = false;
       panel.innerHTML = state === 'denied'
         ? '<p>this account has not been given HERMISCUS.</p><p><a href="../../account/">your account →</a></p>'
-        : '<p>your account is made; Ric decides who sees HERMISCUS. once he switches it on, this page opens.</p><p><a href="../../account/">your account →</a></p>';
+        : '<p>your account does not have HERMISCUS yet. ask for it on your account page; once Ric switches it on, this page opens.</p><p><a href="../../account/">your account →</a></p>';
     };
     const decide = async () => {
       form.hidden = true;

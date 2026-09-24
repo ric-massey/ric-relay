@@ -59,17 +59,24 @@
     ]);
     const mine = new Set((access || []).map((a) => a.page_key));
     const status = isAdmin ? 'admin' : (request && request.status) || 'pending';
+    const asked = (request && request.status === 'pending' ? request.pages || [] : []).filter((k) => !mine.has(k));
 
     $('me-email').textContent = `signed in as ${session.user.email || ''}`;
-    $('me-status').innerHTML = {
-      admin: '<b>you run the place.</b> every page is open to you.',
-      approved: mine.size ? '<b>approved.</b> here is what you can open:' : '<b>approved</b>, but nothing is switched on for you yet.',
-      pending: '<b>waiting for Ric.</b> your request is with him; this page will show what you can open once he decides.',
-      denied: 'this account has not been given access.',
-    }[status] || '';
+    const waitingOn = asked.length ? `<b>waiting for Ric</b> on ${esc(asked.map(labelOf).join(', '))}.` : '';
+    $('me-status').innerHTML = status === 'admin' ? '<b>you run the place.</b> every page is open to you.'
+      : status === 'denied' ? 'this account has not been given access.'
+      : mine.size ? `${waitingOn ? waitingOn + ' meanwhile, ' : ''}here is what you can open:`
+      : waitingOn || '<b>waiting for Ric.</b> your request is with him; this page will show what you can open once he decides.';
     const open = PAGES.filter((p) => isAdmin || mine.has(p.key));
     $('me-pages').innerHTML = open.map((p) =>
       `<li><a href="${esc(pageHref(p))}">${esc(p.label)} →</a> <small>${esc(p.blurb)}</small></li>`).join('');
+
+    // Ask for more: whatever you do not have and are not already waiting on.
+    const more = PAGES.filter((p) => !mine.has(p.key) && !asked.includes(p.key));
+    $('more-form').hidden = isAdmin || status === 'denied' || !more.length;
+    $('more-pages').innerHTML = more.map((p) => `
+      <label><input type="checkbox" value="${esc(p.key)}"><span>${esc(p.label)} <small>· ${esc(p.blurb)}</small></span></label>`).join('');
+    $('more-form').dataset.asked = JSON.stringify(asked);
 
     $('admin-panel').hidden = !isAdmin;
     show('me-panel');
@@ -86,10 +93,12 @@
     const when = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const tag = p.is_admin ? '<span class="tag">admin</span>'
       : p.status === 'approved' ? '' : `<span class="tag ${esc(p.status)}">${esc(p.status)}</span>`;
-    const checked = pending ? (p.requested.length ? p.requested : []) : p.pages;
+    // Pending ticks what they have plus what they asked for, so approving adds.
+    const checked = pending ? [...new Set([...p.pages, ...p.requested])] : p.pages;
+    const has = p.pages.length ? ` · has ${esc(p.pages.map(labelOf).join(', '))}` : '';
     return `<div class="person" data-person="${esc(p.user_id)}">
       <div class="who">${esc(p.name || p.username || p.email)}${tag}</div>
-      <div class="meta">${esc(p.email)} · joined ${esc(when)}${pending && p.requested.length ? ` · asked for ${esc(p.requested.map(labelOf).join(', '))}` : ''}</div>
+      <div class="meta">${esc(p.email)} · joined ${esc(when)}${pending ? has : ''}${pending && p.requested.length ? ` · asked for ${esc(p.requested.map(labelOf).join(', '))}` : ''}</div>
       ${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}
       ${p.is_admin ? '' : `${pageChecks(p.user_id, checked)}
       <div class="row">
@@ -186,6 +195,25 @@
     if (sw) { show(sw.dataset.show); const first = $(sw.dataset.show).querySelector('input'); if (first) first.focus(); return; }
     const act = e.target.closest('button[data-act]');
     if (act) decide(act);
+  });
+
+  $('more-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    say('more-msg', '');
+    const wanted = [...document.querySelectorAll('#more-pages input:checked')].map((i) => i.value);
+    if (!wanted.length) return say('more-msg', 'tick what you would like');
+    // One request per account: asking again replaces it, so carry anything
+    // still waiting along with the new ticks.
+    const already = JSON.parse($('more-form').dataset.asked || '[]');
+    $('more-go').disabled = true;
+    const { error } = await db.rpc('request_access', {
+      who: '', why: $('more-note').value.trim(), wanted: [...new Set([...already, ...wanted])],
+    });
+    $('more-go').disabled = false;
+    if (error) return say('more-msg', error.message);
+    $('more-note').value = '';
+    await render();
+    say('more-msg', 'sent — Ric will see it.', true);
   });
 
   $('signout').addEventListener('click', async () => {
