@@ -777,6 +777,16 @@ so no two are identical, and plays the same sound twice inside 35ms once, so six
 bots firing on one frame is one volley rather than a spike. None of this is a
 substitute for somebody listening — the levels are matched, not tuned by ear.
 
+**Somebody listening is `sounds/listen.html`**, the listening booth. Every sound
+alone, and nine scenes played at the game's real timing — the cannon's bursts,
+campaign fire, mining, a busy fight, a run of misses — each with a LOOP, and
+plain-word buttons under every one: fine, too loud, too quiet, too sharp, too
+dull, too long, gets old fast, sounds wrong for it. COPY ANSWERS turns them
+into a short list to paste to whoever is fixing them. It borrows the engine out
+of `index.html` at load rather than keeping a copy, so it always plays what the
+game plays; `test/sounds.js` checks it still finds it. Served only — it cannot
+fetch the game off disk, and says so. Not linked from the game.
+
 Sound starts on the first keypress or tap and can be muted
 from the title, Settings or pause menu; that preference is saved locally.
 Fullscreen is available from those same screens when the browser supports the
@@ -972,6 +982,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `menu.js` | The mode cards' moving pictures — five dioramas, drawn rather than filmed |
 | `attract.js` | The front page: a run being flown, on the game's own flight model and gravity |
 | `sounds/make-lasers.py` | Writes the five gun sounds beside it, from nothing but the standard library |
+| `sounds/listen.html` | The listening booth: every sound and nine real-timing scenes, rated in plain words |
 | `server/rooms-core.mjs` | The room service: every rule, no plumbing |
 | `server/worker.mjs` | Runs it on Cloudflare, in one Durable Object |
 | `server/rooms.js` | Runs it on a laptop, with nothing installed |

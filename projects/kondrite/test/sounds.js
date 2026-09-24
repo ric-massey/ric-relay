@@ -69,7 +69,8 @@ function serve() {
       if (!file.startsWith(DIR)) { res.writeHead(403); return res.end(); }
       fs.readFile(file, (err, buf) => {
         if (err) { res.writeHead(404); return res.end(); }
-        res.writeHead(200, { "content-type": file.endsWith(".wav") ? "audio/wav" : "text/html" });
+        res.writeHead(200, { "content-type": file.endsWith(".wav") ? "audio/wav"
+                                           : file.endsWith(".js") ? "text/javascript" : "text/html" });
         res.end(buf);
       });
     });
@@ -147,9 +148,20 @@ async function main() {
     const half = Math.round(0.5 * RATE);
     let differ = 0;
     for (let i = 0; i < half; i++) differ += Math.abs(pair[i] - pair[i + half]);
-    const one = measure(await render([["rock", 0]])).energy;
-    const stacked = measure(await render([["rock", 0], ["rock", 0.01], ["rock", 0.02]])).energy;
-    const apart = measure(await render([["rock", 0], ["rock", 0.3]])).energy;
+    /* One render, so all three share one noise buffer (it is made from
+       Math.random per context, and comparing two renders compared two
+       different noises — which failed about one run in five). A volley at 0,
+       a single hit at 0.8, two hits 0.3 apart from 1.4. Each hit still varies
+       up to 15% in level, so the limits below leave room for that and nothing
+       else: an unlimited volley measures well over 3x. */
+    const seq = await render([["rock", 0], ["rock", 0.01], ["rock", 0.02],
+                              ["rock", 0.8], ["rock", 1.4], ["rock", 1.7]]);
+    const win = (a, b) => {
+      let e = 0;
+      for (let i = Math.round(a * RATE); i < Math.round(b * RATE); i++) e += seq[i] * seq[i];
+      return e;
+    };
+    const stacked = win(0, 0.5), one = win(0.8, 1.3), apart = win(1.4, 2.0);
     const muted = measure(await render([["laser", 0], ["rock", 0]], { vol: { weapons: 0, impacts: 0 } })).peak;
     const master = measure(await render([["laser", 0]], { master: 0 })).peak;
     return { each, differ, one, stacked, apart, muted, master };
@@ -171,11 +183,40 @@ async function main() {
   // The lance fires every few seconds and is allowed to be bigger than the cannon.
   check(loud("lance") > loud("laser"), "the rail lance is no bigger than the cannon");
   check(got.differ > 1, "two cannon shots came out identical — every one sounds the same");
-  check(got.stacked < got.one * 1.2,
+  check(got.stacked < got.one * 1.6,
         "three rock hits inside 20ms played " + (got.stacked / got.one).toFixed(1) + "x as loud as one");
-  check(got.apart > got.one * 1.5, "two rock hits 0.3s apart did not both play");
+  check(got.apart > got.one * 1.4, "two rock hits 0.3s apart did not both play");
   check(got.muted === 0, "a channel turned to zero still made a sound");
   check(got.master === 0, "the master turned to zero still made a sound");
+
+  // ── the listening booth still plays the game's sounds ────────────────────
+  /* sounds/listen.html lifts the engine out of index.html at load, so a
+     rename or a moved function there breaks it silently — a page of buttons
+     that play nothing. Counted at the source: the audio nodes it makes. */
+  const booth = await browser.newPage();
+  const boothErrors = [];
+  booth.on("pageerror", e => boothErrors.push(e.message));
+  booth.on("response", r => { if (r.status() >= 400) boothErrors.push(r.status() + " " + r.url()); });
+  await booth.addInitScript(() => {
+    window.__made = { osc: 0, buf: 0 };
+    const P = (window.AudioContext || window.webkitAudioContext).prototype;
+    const o = P.createOscillator, b = P.createBufferSource;
+    P.createOscillator = function () { window.__made.osc++; return o.apply(this, arguments); };
+    P.createBufferSource = function () { window.__made.buf++; return b.apply(this, arguments); };
+  });
+  await booth.goto("http://127.0.0.1:" + server.address().port + "/sounds/listen.html");
+  const ready = await booth.waitForFunction(() => window.__listenReady, null, { timeout: 10000 })
+    .then(() => true, () => false);
+  check(ready, "the listening booth did not find the game's sound code");
+  if (ready) {
+    await booth.locator("button.play", { hasText: "PLAY" }).nth(4).click();   // a busy fight
+    await booth.waitForTimeout(1500);
+    const made = await booth.evaluate(() => window.__made);
+    check(made.buf > 3 && made.osc > 0,
+          "the booth's busy fight made " + made.buf + " samples and " + made.osc + " tones");
+  }
+  check(boothErrors.length === 0, "the listening booth reported: " + boothErrors.join(" | "));
+  console.log("  booth      sounds/listen.html plays the game's own engine, lasers and all");
 
   const worstHarsh = Object.entries(got.each).sort((a, b) => b[1].harsh - a[1].harsh)[0];
   const worstHiss = Object.entries(got.each).sort((a, b) => b[1].hiss - a[1].hiss)[0];
