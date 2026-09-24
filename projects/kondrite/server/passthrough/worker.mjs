@@ -8,7 +8,7 @@
 
    So the old address keeps answering, and everything it is asked it asks the
    new one. Both URLs feed one list. This exists only for as long as somebody
-   still has the old page open — see RENAME-KONDRITE.md §2 — and is deleted
+   still has the old page open — see archive/RENAME-KONDRITE.md §2 — and is deleted
    when the logs go quiet.
 
    ── why a service binding and not a fetch ──
