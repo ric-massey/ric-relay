@@ -89,6 +89,26 @@ python3 scripts/import-original.py ~/Downloads/hermesco-deploy.zip
 It refuses to write anything if a patch no longer fits or a key would survive, and it
 stamps a new cache version into `bootstrap.js` and every page so phones fetch her new files.
 
+## Victoria's open website (the export)
+
+Victoria's live site is one `index.html` she uploads herself: no sign-in, you open it and
+pick your name. `scripts/build-open-site.py` makes that file from hers:
+
+```sh
+python3 scripts/build-open-site.py ~/Downloads/hermesco-deploy.zip
+```
+
+It writes `~/Desktop/HERMISCUS for Victoria/` (index.html plus AGENTS.md and CLAUDE.md for
+her AI) — **outside the repo, because it holds the real key** (the same one her page always
+published). Her code stays hers; the top of her script becomes this repo's connection
+(`data.js`, `ric-dashboard-logic.js`), and Ric's stylesheet and layer ride in `data-ric`
+blocks that switch on only when Ric or Sydney is picked. Her built-in copy of the race data
+is not carried over. `--demo` builds a keyless copy on the made-up race for testing.
+
+When she sends a file back, `import-original.py` takes it as usual: it drops the `data-ric`
+blocks and everything above STATE, so only her part lands in `shared/original/`. Rebuild
+the export from her latest file whenever Ric's layer changes, and send it back to her.
+
 Each profile page declares its identity with a `data-profile` attribute on `<body>`. This allows a page to be customized independently while the common race features remain shared.
 
 Each person's Settings screen also has a dashboard color picker. That choice is stored locally per profile and does not alter the original colors on the crew directory.

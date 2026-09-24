@@ -7,8 +7,16 @@
 
 You are helping **Victoria** with **HERMISCUS** ("Yeti ● Going Together"), the crew app
 she built for her dad Grady's Yeti 100-mile race. It is her app: one `index.html` with
-one `<style>` and one inline `<script>`, talking to a Supabase database. Read this whole
+her `<style>` and her inline `<script>`, talking to a Supabase database. Read this whole
 file before you change anything.
+
+**Three parts of the file are Ric's, and are rebuilt by his script — never edit them:**
+- the top of her `<script>`, from `RIC'S DATABASE CONNECTION` down to the line
+  `/* ================= STATE ================= */` (the database connection);
+- the `<style data-ric …>` block at the end of `<head>` (Ric's stylesheet);
+- the `<script … data-ric …>` blocks at the end of `<body>` (Ric's extras).
+
+Everything else is Victoria's. Put new code, styles and screens in her parts, below STATE.
 
 ## The one rule that matters most
 
@@ -27,12 +35,12 @@ other way round. So:
 
 ## 1. What Ric built (so nothing surprises you)
 
-- Ric keeps a copy of HERMISCUS in his website's repo. A script **imports Victoria's
-  `index.html` as-is** — her screens, styles and code — and cuts off her data-layer
-  section at the top (the part with the database key) so his copy can supply its own.
-- **Everyone runs Victoria's app.** For Ric and Sydney only, a layer of Ric's loads on top
-  of it and adds a race-day dashboard (Overview · Crew Stop · Pace Dad · Notes · Prep) with
-  a stop countdown timer, an "18hr pace" readout and their pacing legs.
+- **Everyone runs Victoria's app.** When Ric or Sydney is the person picked, Ric's extras
+  (the `data-ric` blocks) switch on over the top of it and add a race-day dashboard
+  (Overview · Crew Stop · Pace Dad · Notes · Prep) with a stop countdown timer, an "18hr
+  pace" readout and their pacing legs. For everyone else they do nothing.
+- Ric also keeps a copy in his website's repo. When Victoria sends him her file, his import
+  takes her parts and drops his, so her changes come through untouched.
 - **So work on her app exactly as you normally would.** A new page with a nav button shows
   up for Ric and Sydney by itself (under "More" in their bar). New features and fixes reach
   them too. Nobody has to do anything on Ric's side for that.
@@ -101,17 +109,21 @@ new screens and new features is always fine.
   recognise are Ric's** (like `ric_meet_…`, `…_pace_pickup_…`) — leave them alone, never
   "clean them up".
 
-## 4. The few spots in `index.html` Ric's import looks for
+## 4. The few spots in `index.html` Ric's scripts look for
 
 Keep these recognisable. If one has to change, change it and add the one-line heads-up —
-Ric's import stops with a clear error rather than breaking anything, and he fixes it.
+Ric's scripts stop with a clear error rather than breaking anything, and he fixes it.
 
-- One `<style>` block and one inline `<script>` block — put new code inside them.
-- The line `/* ================= STATE ================= */` exactly as it is. **Anything
-  above it is dropped in Ric's copy**, so put new app code *below* it.
+- Her one `<style>` block and her one inline `<script>` block — put new code inside them,
+  not in new blocks, and don't put anything in the `data-ric` blocks.
+- The line `/* ================= STATE ================= */` exactly as it is. **Everything
+  above it is Ric's connection and is replaced on every build**, so put app code *below* it.
 - `function enterAs(p){` (followed by a line starting `ME =`), `function switchProfile(){`,
-  the start-up lines `if(ME){ await showApp(); }` / `else { await renderProfileScreen(); }`,
-  and the crew-sheet line that shows the leg's plan pace.
+  the start-up lines `if(ME){ await showApp(); }` / `else { await renderProfileScreen(); }`
+  (and the `HermiscusBeforeStart` line just above them), and the crew-sheet line that shows
+  the leg's pace.
+- Keep calling the functions by their normal names (`goPage`, `enterAs`, `loadAppData`,
+  `liveSyncTick`…). Ric's extras hook in by those names.
 
 ## 5. If you're working in Ric's repo instead
 

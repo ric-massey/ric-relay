@@ -142,3 +142,16 @@ test('the original app keeps its own screens and drops only its data layer', () 
   // Her screens, untouched: none of Ric's additions leak in.
   assert.doesNotMatch(original, /usesMissionShell|renderRicHomeDashboard|MISSION_PROFILES/);
 });
+
+// Victoria's open site is built from her file by scripts/build-open-site.py, and comes back
+// through import-original.py. The two must agree on what is Ric's, and the build (which
+// writes the real key) must never write inside this repo.
+test('the open-site build and the import agree on what is Ric\'s, and the key stays out of the repo', () => {
+  const build = read('scripts/build-open-site.py');
+  const imp = read('scripts/import-original.py');
+  const strip = /re\.sub\(r'(\\s\*<\(style\|script\)[^']+)'/;
+  assert.equal(build.match(strip)[1], imp.match(strip)[1]);
+  assert.match(build, /write it outside the website repo/);
+  assert.match(build, /not a browser key\. Refusing/);
+  assert.match(imp, /await window\.HermiscusBeforeStart/);
+});

@@ -44,6 +44,13 @@ def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
     html = read_source(sys.argv[1])
+    # A file built by scripts/build-open-site.py carries Ric's blocks (data-ric) and two
+    # lines of his in her code; take them out so only her part is imported.
+    html = re.sub(r'\s*<(style|script)\b[^>]*\bdata-ric(?=[\s>])[^>]*>.*?</\1>', '', html, flags=re.S)
+    html = html.replace("  // Ric's layer (Ric and Sydney only) loads after this file; wait for it before drawing.\n"
+                        "  if(window.HermiscusBeforeStart) await window.HermiscusBeforeStart;\n", '')
+    html = html.replace("bits.push(`${CONFIG.goal_finish_hours||18}hr pace: ${fmtPace(planPace)}`);",
+                        "bits.push(`plan for this leg: ${fmtPace(planPace)}`);")
 
     styles = re.findall(r'<style[^>]*>(.*?)</style>', html, re.S)
     scripts = [body for attrs, body in re.findall(r'<script([^>]*)>(.*?)</script>', html, re.S) if 'src=' not in attrs]
