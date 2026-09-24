@@ -7,13 +7,15 @@ it gets a tick and a commit hash, so the list is also the record.
 **Status key** — `[ ]` not started · `[~]` in progress · `[x]` done · `[?]` needs
 an answer before it can be built.
 
-Batch of 2026-09-13, which has been added to since: **30 items, 28 done.**
+Batch of 2026-09-13, which has been added to since: **30 items, 30 done.**
 Counted from the boxes rather than kept by hand — the line that used to live
 here said 27 items and 26 done and named A3 as the only one left, which had
 stopped being true twice over: C4 and C5 were added to SETTINGS after it was
 written, and C6 was added open.
 
-**Left: A3 (the Vault) and C6 (read a gamepad).**
+**Left: nothing on this list.** The open briefs are elsewhere and are not
+bugs: `LIVING-WORLD.md`, `PLAYER-HISTORY.md`, and "the Leviathan is a ship you
+can buy" in `SURVEY-PLAN.md`.
 
 ---
 
@@ -66,9 +68,24 @@ written, and C6 was added open.
   not matter. This is what fixes the arrow bugging out when you die carrying
   one.
 - [x] **A2 · That arrow must be a single arrow, not a double.**
-- [ ] **A3 · The Vault is a mess.** Lines, hit markers, bots flying behind the
+- [x] **A3 · The Vault is a mess.** Lines, hit markers, bots flying behind the
   walls, bullets passing through them. Everything the Leviathan got right and
   this did not. Use the Leviathan as the reference implementation.
+  *Two causes, neither visible from outside (2026-09-24).* The walls were
+  drawn as two-pixel lines down the middle of 300-unit disc rows, so a round
+  stopped and sparked 150 units short of anything you could see and a ship
+  bounced off nothing — that is "lines", "hit markers" and "bullets passing
+  through" in one. They are plates now, as wide as their discs, through the
+  same chained-run stroke the Leviathan uses (`strokePlates`). And both built
+  things were painted *after* the traffic, so their dark fill covered every
+  ship inside them — "bots flying behind the walls". They are drawn first now.
+  Found on the way, and worse than any of those: the inner shell's gaps were
+  centred on the spokes instead of between them, so every spoke was sealed at
+  its mouth and the core was unreachable on every seed; and the core's own
+  mouth was 27 units wide once the discs were counted. The same flood fill
+  that keeps the Leviathan honest now runs on the Vault in `test/survey.js`:
+  a route to the core, all three caches reachable, every spoke enterable, and
+  bricking up the real spoke seals the core.
 - [x] **A4 · Planet names should ride the planet.** The name and the word
   INHABITED move around the rim the way a station's words rotate. Bigger
   planets can carry more than one so they are easier to spot. *One `rimWord`
@@ -168,9 +185,17 @@ written, and C6 was added open.
   touchscreen tab, because what it decides is whether the pad turns up. And most
   rows lost their explanatory line — `SOUND: ON` does not need telling you the
   sound is on.
-- [ ] **C6 · Read a gamepad.** The CONTROLLER tab says COMING SOON because
+- [x] **C6 · Read a gamepad.** The CONTROLLER tab says COMING SOON because
   nothing in the game reads one. Sticks to turn and thrust, a trigger to fire,
   buttons on the four Survey slots, and the tab naming what is plugged in.
+  *Built 2026-09-24, in the standard layout.* Polled once a frame (`gpad` in
+  `game/input.js`): the held things — turn, thrust, reverse, fire — are OR-ed
+  into the local ship's input beside touch and the mouse; the pressed things —
+  a menu move, a choice, a slot — go through `menuKey` with the key code a
+  keyboard would have sent, so a pad presses the same menus and there is no
+  second copy. Fixed mapping, no binding screen; the tab names the pad, lists
+  the layout and shows what is being pressed. `test/gamepad.js` drives a fake
+  one through the title, the cockpit and an unplug.
 
 ---
 

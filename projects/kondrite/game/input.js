@@ -3,8 +3,8 @@
 /* KONDRITE — INPUT
    ─────────────────────────────────────────────────────────────────────────────
    The glass from the first touch, orientation, the way out of a page, the
-   controls screen, driving settings from the keyboard, and the raw input
-   layer.
+   controls screen, driving settings from the keyboard, the raw input layer,
+   and the gamepad.
 
    One chapter of the game. The chapters share the page's global scope and run
    in the order index.html lists them — see README.md, "Where it lives". */
@@ -451,6 +451,7 @@ function standDown() {
   keys.clear();
   touch.l = touch.r = touch.th = touch.f = false;
   padRelease();
+  gpadRelease();
   if (!inMatch()) return;
   if (net.on) { if (document.hidden) bgTicker.start(); }
   else if (state === "playing") { state = "paused"; localPause = true; }
@@ -461,6 +462,109 @@ document.addEventListener("visibilitychange", () => {
 });
 
 const held = k => Array.isArray(k) ? k.some(c => keys.has(c)) : keys.has(k);
+
+/* ── the gamepad ─────────────────────────────────────────────────────────
+   `gpad`, because `pad` is already the on-screen thumb pad. Polled, not
+   evented: the Gamepad API hands out a snapshot and nothing else, so
+   `readGamepad` runs once a frame ahead of the input read and turns the
+   snapshot into the same two kinds of thing a keyboard produces — something
+   *held* (turn, thrust, fire, reverse), which is OR-ed into the local ship's
+   input beside touch and the mouse, and something *pressed* (a menu move, a
+   choice, a slot), which goes through `menuKey` with the key code a keyboard
+   would have sent, so a pad presses the same buttons a keyboard does and
+   there is no second copy of any menu.
+
+   The mapping is the W3C standard layout and is fixed — there is no binding
+   screen for it, because every pad that reports "standard" agrees on where A
+   and the sticks are, and a pad that does not is a pad this cannot read
+   anyway. The CONTROLLER tab says what is plugged in and what does what.
+
+   Nothing shows in `getGamepads()` until a button has been pressed on it —
+   that is the browser's rule, not ours — so the tab says so. (C6.) */
+const gpad = { on: false, id: "", l: false, r: false, th: false, f: false,
+               rev: false, held: [], last: "" };
+const GPAD_DEAD = 0.28;       // a stick at rest is not exactly at zero
+const GPAD_MENU = 0.6;        // a stick has to be pushed to count as a press
+/* Standard mapping: 0 A · 1 B · 2 X · 3 Y · 4 LB · 5 RB · 6 LT · 7 RT ·
+   8 BACK · 9 START · 12 UP · 13 DOWN · 14 LEFT · 15 RIGHT. */
+const GPAD_SLOTS = [2, 3, 4, 5];         // X, Y, LB, RB: the four Survey slots
+const GPAD_NAMES = { 0: "A", 1: "B", 2: "X", 3: "Y", 4: "LB", 5: "RB", 6: "LT", 7: "RT",
+                     8: "BACK", 9: "START", 12: "UP", 13: "DOWN", 14: "LEFT", 15: "RIGHT" };
+let gpadWas = new Set();     // what was down last frame, for edges
+
+function gpadDevice() {
+  if (typeof navigator === "undefined" || typeof navigator.getGamepads !== "function") return null;
+  let list;
+  try { list = navigator.getGamepads() || []; } catch (_) { return null; }
+  for (const g of list) if (g && g.connected !== false && g.buttons) return g;
+  return null;
+}
+
+/* A pad's id is "Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e
+   Product: 0b13)" — the first half is the name and the rest is for a driver. */
+const gpadName = id => String(id || "").replace(/\s*\(.*$/, "").trim() || "a controller";
+
+function gpadRelease() {
+  gpad.l = gpad.r = gpad.th = gpad.f = gpad.rev = false;
+  gpad.held = [];
+  gpadWas = new Set();
+}
+
+/* A press the way a keyboard would have made it. Not while a panel that takes
+   typing is up — the same rule the keydown handler has — and not a menu move
+   while the ship is being flown, where A is the trigger and not "choose". */
+function gpadPress(code) {
+  gpad.last = code;
+  const lob = document.getElementById("lobby");
+  if (lob && !lob.hidden) return;
+  const acct = document.getElementById("account");
+  if (acct && !acct.hidden) return;
+  menuKey(code);
+}
+
+function readGamepad() {
+  const gp = gpadDevice();
+  if (!gp) {
+    if (gpad.on) gpadRelease();
+    gpad.on = false; gpad.id = "";
+    return;
+  }
+  gpad.on = true; gpad.id = gp.id || "";
+  const btn = i => { const b = gp.buttons[i]; return !!b && (b.pressed || b.value > 0.5); };
+  const ax = i => { const v = gp.axes[i]; return typeof v === "number" && isFinite(v) ? v : 0; };
+  const x = ax(0), y = ax(1);
+
+  // Held: the stick, the D-pad and the triggers, as the flying inputs.
+  gpad.l = x < -GPAD_DEAD || btn(14);
+  gpad.r = x > GPAD_DEAD || btn(15);
+  gpad.th = y < -GPAD_DEAD || btn(12) || btn(7);
+  gpad.rev = y > GPAD_DEAD || btn(13) || btn(6);
+  gpad.f = btn(0);
+
+  // Pressed: edges, this frame against last.
+  const down = new Set();
+  for (let i = 0; i < 16; i++) if (btn(i)) down.add(i);
+  if (x < -GPAD_MENU) down.add("sl"); if (x > GPAD_MENU) down.add("sr");
+  if (y < -GPAD_MENU) down.add("su"); if (y > GPAD_MENU) down.add("sd");
+  const edge = k => down.has(k) && !gpadWas.has(k);
+  const flying = state === "playing";
+  if (edge(9)) gpadPress("Escape");                      // START pauses, or resumes
+  if (!flying) {
+    if (edge(0)) gpadPress("Enter");
+    if (edge(1)) gpadPress("Escape");
+    if (edge(12) || edge("su")) gpadPress("ArrowUp");
+    if (edge(13) || edge("sd")) gpadPress("ArrowDown");
+    if (edge(14) || edge("sl")) gpadPress("ArrowLeft");
+    if (edge(15) || edge("sr")) gpadPress("ArrowRight");
+  } else {
+    GPAD_SLOTS.forEach((b, i) => {
+      if (edge(b) && DEVICE_KEYS[i] && DEVICE_KEYS[i].length) gpadPress(DEVICE_KEYS[i][0]);
+    });
+  }
+  if (down.size && !gpadWas.size) audioUnlock();
+  gpad.held = [...down].filter(k => typeof k === "number").map(k => GPAD_NAMES[k] || String(k));
+  gpadWas = down;
+}
 // `?debug=1`: the harness hooks, and the one place a swallowed error speaks up.
 const debugOn = new URLSearchParams(location.search).get("debug") === "1";
 const digit = code => {

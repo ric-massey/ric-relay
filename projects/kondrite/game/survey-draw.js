@@ -820,6 +820,77 @@ function drawCash() {
   }
 }
 
+/* ── plates joined into runs ───────────────────────────────────────────────
+   A wall list is stroked as chained runs rather than one segment at a time,
+   and that is what closes the corners: a square-ended plate drawn as its own
+   path gets a butt cap at each end and `lineJoin` only applies within one
+   path, so every angle had a wedge of nothing at its outside. Walking the
+   shared vertices and stroking each run as a single path lets the join do
+   its job. Shared by the Leviathan and the Vault, which are built from the
+   same `wall` primitive. */
+function chainPlates(list) {
+const runs = [];
+const left = list.slice();
+const near = (ax, ay, bx, by) => Math.abs(ax - bx) < 0.5 && Math.abs(ay - by) < 0.5;
+while (left.length) {
+  const w = left.shift();
+  const run = [[w.u0, w.v0], [w.u1, w.v1]];
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (let i = 0; i < left.length; i++) {
+      const c = left[i];
+      const head = run[0], tail = run[run.length - 1];
+      if (near(c.u0, c.v0, tail[0], tail[1])) run.push([c.u1, c.v1]);
+      else if (near(c.u1, c.v1, tail[0], tail[1])) run.push([c.u0, c.v0]);
+      else if (near(c.u1, c.v1, head[0], head[1])) run.unshift([c.u0, c.v0]);
+      else if (near(c.u0, c.v0, head[0], head[1])) run.unshift([c.u1, c.v1]);
+      else continue;
+      left.splice(i, 1);
+      grew = true;
+      break;
+    }
+  }
+  runs.push(run);
+}
+return runs;
+}
+
+/* The two passes that make a wall read as a *plate* — a lit rim and a solid
+   body exactly as wide as the collision discs — for a structure
+   whose walls are all one kind. The Leviathan does its own, because it also
+   has frames. `seg` is the disc radius, so the body is drawn at twice it:
+   the drawn wall and the physical wall are the same wall. The Vault used to
+   stroke a two-pixel line down the centre of a 300-unit disc row, so rounds
+   stopped and sparked a hundred and fifty units short of anything visible
+   and ships bounced off nothing (A3). */
+function strokePlates(walls, wx, wy, seg) {
+  ctx.save();
+  ctx.lineJoin = "miter";
+  ctx.lineCap = "butt";
+  ctx.miterLimit = 24;
+  const runs = chainPlates(walls);
+  const pass = (colour, extra, alpha) => {
+    ctx.strokeStyle = colour;
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = seg * 2 + extra;
+    ctx.beginPath();
+    for (const run of runs) {
+      run.forEach((pt, i) => {
+        const x = wx(pt[0], pt[1]), y = wy(pt[0], pt[1]);
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      });
+    }
+    ctx.stroke();
+  };
+  pass("#8fa0ba", 18, 0.95);      // the lit rim
+  pass("#39424f", 0, 1);          // the body, at the discs' width
+  /* No seam. Ric took the centreline off the Leviathan's plates — a bright
+     line up the middle of a two-edged thing read as a pipe — and the same
+     holds here. */
+  ctx.restore();
+}
+
 /* The Leviathan. Drawn from the same local geometry `buildLeviathan` puts its
    collision discs on, so the plates and the physics cannot drift apart: two
    flanks, a bow cap, and a stern quarter left open on one side that is the
@@ -890,33 +961,6 @@ function drawLeviathan(lev) {
      corner. Walking the shared vertices and stroking each run as a single path
      lets the join do its job: the corner closes, and it closes to a point
      rather than to a blob, which is the whole reason for square ends. */
-  const chainUp = list => {
-    const runs = [];
-    const left = list.slice();
-    const near = (ax, ay, bx, by) => Math.abs(ax - bx) < 0.5 && Math.abs(ay - by) < 0.5;
-    while (left.length) {
-      const w = left.shift();
-      const run = [[w.u0, w.v0], [w.u1, w.v1]];
-      let grew = true;
-      while (grew) {
-        grew = false;
-        for (let i = 0; i < left.length; i++) {
-          const c = left[i];
-          const head = run[0], tail = run[run.length - 1];
-          if (near(c.u0, c.v0, tail[0], tail[1])) run.push([c.u1, c.v1]);
-          else if (near(c.u1, c.v1, tail[0], tail[1])) run.push([c.u0, c.v0]);
-          else if (near(c.u1, c.v1, head[0], head[1])) run.unshift([c.u0, c.v0]);
-          else if (near(c.u0, c.v0, head[0], head[1])) run.unshift([c.u1, c.v1]);
-          else continue;
-          left.splice(i, 1);
-          grew = true;
-          break;
-        }
-      }
-      runs.push(run);
-    }
-    return runs;
-  };
   const byWeight = new Map();
   for (const w of lev.walls) {
     const t = w.r || seg;
@@ -975,7 +1019,7 @@ function drawLeviathan(lev) {
     for (const [t, list] of set) {
       ctx.lineWidth = t * 2 + (extra || 0);
       ctx.beginPath();
-      for (const run of chainUp(list)) {
+      for (const run of chainPlates(list)) {
         run.forEach((pt, i) => {
           const x = wx(pt[0], pt[1]), y = wy(pt[0], pt[1]);
           i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
@@ -1193,14 +1237,8 @@ function drawVault(v) {
   ctx.fill();
   ctx.restore();
 
-  glow("#7a86a0", 2.2, 0.9, () => {
-    for (const w of v.walls) {
-      ctx.beginPath();
-      ctx.moveTo(wx(w.u0, w.v0), wy(w.u0, w.v0));
-      ctx.lineTo(wx(w.u1, w.v1), wy(w.u1, w.v1));
-      ctx.stroke();
-    }
-  });
+  // Plates, as wide as the discs underneath them — see `strokePlates`.
+  strokePlates(v.walls, wx, wy, VAULT_SEG);
 
   /* A flag on the shell, because somebody built this and the sector should be
      able to say so without a word. It is the only thing out here wearing a
@@ -1229,9 +1267,16 @@ function drawSurveyWorld() {
   for (const g of surv.gates) drawGate(g);
   for (const p of surv.planets) drawPlanet(p);
   drawWellNames();
-  for (const t of surv.traffic) drawTraffic(t);
+  /* The two built things go down before anything that can be inside them.
+     Each fills its footprint dark, and drawn after the traffic that fill
+     painted over every ship inside the box — a raider chasing you into the
+     Vault vanished at the door and shot at you from under the deck (A3,
+     "bots flying behind the walls"). The plates are drawn over a ship that
+     overlaps one, which is the right way round: a hull is behind a wall,
+     not in front of it. */
   if (surv.leviathan) drawLeviathan(surv.leviathan);
   if (surv.vault) drawVault(surv.vault);
+  for (const t of surv.traffic) drawTraffic(t);
   drawCave();
   for (const h of surv.hulks) drawHulk(h);
   for (const b of surv.battles) drawBattle(b);

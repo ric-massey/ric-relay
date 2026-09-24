@@ -31,6 +31,9 @@ let last = performance.now();
 function tick(now, painting) {
   const elapsed = Math.max(0, (now - last) / 1000);
   last = now;
+  // The gamepad is a snapshot, so it is read once here — menus included,
+  // because a pad presses those too.
+  readGamepad();
   // Beyond CATCHUP the world simply skips. A laptop that was asleep for
   // ten minutes should not spend ten minutes catching up.
   const span = Math.min(elapsed, CATCHUP);

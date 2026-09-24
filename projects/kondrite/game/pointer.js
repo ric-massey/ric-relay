@@ -461,7 +461,7 @@ function readLocalInput() {
     // A key on a keyboard, a button on the pad, and either will do — the same
     // rule the turn and the throttle already follow.
     if (me0 && me0.localKeys) {
-      me0.input.rev = held(["KeyS", "ArrowDown"]) || touch.rev;
+      me0.input.rev = held(["KeyS", "ArrowDown"]) || touch.rev || gpad.rev;
     }
   }
 
@@ -469,8 +469,9 @@ function readLocalInput() {
   // whatever the keyboard is doing.
   const me = ships[localSeat()];
   if (me && me.localKeys) {
-    me.input.l = me.input.l || touch.l;
-    me.input.r = me.input.r || touch.r;
+    // The keys, the thumb pad and the gamepad, any of which will do.
+    me.input.l = me.input.l || touch.l || gpad.l;
+    me.input.r = me.input.r || touch.r || gpad.r;
     let stickGas = false;
     if (padCfg.scheme === "stick" && stick.on && me.alive) {
       // The stick points in screen space; undo the camera rotation to get
@@ -500,8 +501,8 @@ function readLocalInput() {
         me.input.r = t.r;
       }
     }
-    me.input.th = me.input.th || touch.th || stickGas;
-    me.input.f = me.input.f || touch.f || autoFire() ||
+    me.input.th = me.input.th || touch.th || stickGas || gpad.th;
+    me.input.f = me.input.f || touch.f || gpad.f || autoFire() ||
                  (flyingByMouse() && mouseFiring);
   }
   readSimulationInput();

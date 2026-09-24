@@ -197,6 +197,8 @@ if (debugOn) {
     // The key table for the four slots, so a rebind can be checked against
     // what the game actually reads.
     deviceKeys: () => DEVICE_KEYS.map(k => k.slice()),
+    // The gamepad as the game last read it, and the last key code it pressed.
+    gamepad: () => ({ ...gpad, held: gpad.held.slice() }),
     // The refit, driven the way the station screen drives it, so a harness
     // can prove salvage actually turns into a better ship.
     // Buying one off a shelf, the way the market row does it.

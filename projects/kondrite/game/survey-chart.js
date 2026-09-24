@@ -1598,7 +1598,16 @@ function buildLeviathan(lm, out, R, rnd) {
    the discs are the physics, the line list is the drawing, and there is only one
    of them so they cannot disagree. That primitive existing is most of why this
    was an afternoon rather than a week, which is the argument for authored places
-   in 6.6 — the second one is cheap once the first has paid for the machinery. */
+   in 6.6 — the second one is cheap once the first has paid for the machinery.
+
+   **Every opening is sized against the discs, not against the line.** A wall is
+   drawn as a line and *is* a row of 150-unit discs, so a gap that looks 350
+   wide on the drawing is 50 wide to a hull. That is how the Vault shipped with
+   no way in: the inner shell's gaps and the core's mouth were both narrower
+   than a ship once the discs were counted, every spoke was blind, and the best
+   cache in the sector sat behind a door that did not open (A3, found by the
+   same flood fill that keeps the Leviathan honest, 2026-09-24). The numbers
+   below are the clear widths, with the discs already subtracted. */
 const VAULT_R  = 2300;    // half the width of the box
 const VAULT_SEG = 150;
 
@@ -1643,13 +1652,21 @@ function buildVault(lm, out, R, rnd) {
      walls running inward from the inner shell with a gap in the shell behind
      it; three of them end in a wall and one opens into the core. */
   const real = Math.floor(R() * 4);
-  const SPOKE = 260;                 // half the width of a spoke
+  const SPOKE = 300;                 // half the width of a spoke: 300 clear inside
+  /* The inner shell opens where a spoke meets it, and the opening has to be at
+     least as wide as the spoke's outer edges (SPOKE + VAULT_SEG each side) or
+     the spoke is sealed at its own mouth. As an angle on the shell, with a
+     little over. */
+  const GAP = Math.asin((SPOKE + VAULT_SEG + 40) / RING);
   for (let k = 0; k < 4; k++) {
     const ang = (k / 4) * Math.PI * 2 + Math.PI / 4;
     const nx = Math.cos(ang), ny = Math.sin(ang);
     const tx = -ny, ty = nx;         // across the spoke
-    // The inner shell, in four arcs with a gap at each spoke.
-    const A0 = ang - Math.PI / 4 + 0.14, A1 = ang + Math.PI / 4 - 0.14;
+    /* The inner shell, in four arcs with a gap at each spoke. The arc runs
+       from just past this spoke to just short of the next one — it used to be
+       centred ON the spoke, which put the gaps between the spokes (facing
+       the ring caches) and a solid wall across every spoke's mouth. */
+    const A0 = ang + GAP, A1 = ang + Math.PI / 2 - GAP;
     let pu = Math.cos(A0) * RING, pv = Math.sin(A0) * RING;
     for (let t = 1; t <= 8; t++) {
       const aa = A0 + (A1 - A0) * (t / 8);
@@ -1670,15 +1687,18 @@ function buildVault(lm, out, R, rnd) {
   }
 
   /* ── the core wall ─────────────────────────────────────────────────────
-     A ring around the middle, open only where the real spoke meets it. */
+     A ring around the middle, open only where the real spoke meets it. The
+     mouth is the spoke's own clear width plus a disc each side, as an angle
+     on the core — 0.30 rad here was 27 units of daylight. */
   const realAng = (real / 4) * Math.PI * 2 + Math.PI / 4;
+  const MOUTH_A = Math.asin(Math.min(0.95, (SPOKE + 60) / CORE));
   let cu = null, cv = null, first = null;
   for (let t = 0; t <= 48; t++) {
     const aa = (t / 48) * Math.PI * 2;
     let d = aa - realAng;
     while (d > Math.PI) d -= Math.PI * 2;
     while (d < -Math.PI) d += Math.PI * 2;
-    const open = Math.abs(d) < 0.30;
+    const open = Math.abs(d) < MOUTH_A;
     const qu = Math.cos(aa) * CORE, qv = Math.sin(aa) * CORE;
     if (!open && cu !== null) wall(cu, cv, qu, qv);
     cu = open ? null : qu; cv = open ? null : qv;

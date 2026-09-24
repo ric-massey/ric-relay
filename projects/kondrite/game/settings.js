@@ -46,15 +46,39 @@ function drawMouseTab(sh) {
     act: toggleMouseFly }, TAB_TOP);
 }
 
-/* Nothing in the game reads a gamepad yet. A tab that quietly did nothing
-   would be worse than no tab, so it says what it is. */
+/* What is plugged in, and what it does. The mapping is fixed (see `gpad`), so
+   this is a page to read rather than a page to edit: the pad's own name at the
+   top, the layout under it, and what is being pressed right now — which is
+   how you find out the pad is being read at all. */
+const GPAD_MAP = [
+  ["LEFT STICK · D-PAD", "turn · push up to thrust · pull back to reverse"],
+  ["RT",                 "thrust"],
+  ["LT",                 "reverse"],
+  ["A",                  "fire · choose, in a menu"],
+  ["X · Y · LB · RB",    "the four survey slots"],
+  ["START",              "pause"],
+  ["B",                  "back, in a menu"],
+];
 function drawControllerTab(sh) {
   const mid = sh.px + sh.pw / 2;
-  text("COMING SOON", mid, sh.top + 200, 30, "#a08cff", "center", 0.9);
-  text("Kondrite does not read a controller yet.",
-       mid, sh.top + 236, 16, "#ffcb42", "center", 0.7);
-  text("Keys, mouse and touch all work today.",
-       mid, sh.top + 260, 16, "#ffcb42", "center", 0.7);
+  const y0 = sh.top + TAB_TOP;
+  if (!gpad.on) {
+    text("NOTHING PLUGGED IN", mid, y0 + 40, 24, "#a08cff", "center", 0.9);
+    text("Plug a controller in and press any button on it.",
+         mid, y0 + 76, 16, "#ffcb42", "center", 0.7);
+    text("The browser will not show a pad until it has been touched.",
+         mid, y0 + 100, 14, "#ffcb42", "center", 0.55);
+  } else {
+    text(gpadName(gpad.id).toUpperCase(), mid, y0 + 40, 22, "#a08cff", "center", 0.95);
+    text(gpad.held.length ? "pressing " + gpad.held.join(" · ") : "ready",
+         mid, y0 + 68, 14, "#6dffbf", "center", 0.8);
+  }
+  const top = y0 + 130, step = 30;
+  text("STANDARD LAYOUT", sh.px, top - 8, 13, "#ffcb42", "left", 0.55);
+  GPAD_MAP.forEach(([what, does], i) => {
+    text(what, sh.px, top + 20 + i * step, 15, "#ffe56d", "left");
+    text(does, sh.px + 210, top + 20 + i * step, 14, "#ffcb42", "left", 0.75);
+  });
 }
 
 /* ── the keys ─────────────────────────────────────────────────────────────

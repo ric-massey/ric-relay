@@ -747,8 +747,16 @@ graph — the one the browser resolved, not the one a test read out of the marku
   CONTROLLER and TOUCHSCREEN), **GAME** and **ACCOUNT** — with EXIT GAME and
   BACK at its foot, and one panel to the right of it. Arrows walk a list, right
   steps from the rail into the panel, left comes back out, `Enter` presses what
-  is under the mark, and `Escape` leaves. Nothing reads a gamepad yet; the
-  CONTROLLER tab says so.
+  is under the mark, and `Escape` leaves.
+- **A gamepad**, in the standard layout, read from the moment a button on it
+  has been pressed (a browser shows nothing before that). Left stick or D-pad
+  turns; push forward, `RT` or D-pad up thrusts; pull back or `LT` reverses;
+  `A` fires; `X` `Y` `LB` `RB` are the four Survey slots; `START` pauses. In a
+  menu the stick or D-pad moves, `A` chooses and `B` goes back — a pad presses
+  the same keys a keyboard would, so there is no second copy of any menu. The
+  mapping is fixed; the CONTROLLER tab names what is plugged in, lists the
+  layout and shows what is being pressed. Nothing is read by anything but the
+  ship on this machine: online, your pad flies your seat.
 - In a Survey: `F` sweeps a scan, `M` opens the sector chart, `L` opens the
   almanac, `E` docks at a station you are sitting in, and `Escape` leaves
   whichever page you are on. On the chart, drag or arrow to pan, `±` zooms, `C`
@@ -1009,7 +1017,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `game/setup.js` | THE ARENA — Canvas, the two coordinate spaces, the modes, the base tuning, the stationary hazards and the players. Everything else is built on the numbers here. |
 | `game/controls.js` | CONTROLS — Thumb controls, the four slots as keys, key names, the settings-page state and how the ship is flown. |
 | `game/sound.js` | SOUND — The synthesised sound engine: how loud, which dial, the compressor and the limiter. sounds/listen.html lifts this file at load, so its section markers are load-bearing. |
-| `game/input.js` | INPUT — The glass from the first touch, orientation, the way out of a page, the controls screen, driving settings from the keyboard, and the raw input layer. |
+| `game/input.js` | INPUT — The glass from the first touch, orientation, the way out of a page, the controls screen, driving settings from the keyboard, the raw input layer, and the gamepad. |
 | `game/world.js` | THE WORLD STATE — The world record, how far out Survey sits, the empty room, wrecked hulls, the 3.4 ramp and the clock a menu runs on. |
 | `game/physics.js` | PHYSICS — Camera, walls, the edge of the world, gravity, debris, deaths, the claw, firing what you bolted on, shoving and rock contact. |
 | `game/campaign.js` | CAMPAIGN — The three scripted missions as one war: mission feel, what interrupts you, the campaign flight AI. |
@@ -1064,6 +1072,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/save.js` | The book: parse, migrate, validate and the loader that decides what to do when one says no. An old save lands where a new one does, a future one is refused, a corrupt primary falls back to the backup, and a bug in the reader is not a corrupt save |
 | `test/fog.js` | The chart's round trip through storage, on its own and in milliseconds: a refused import may not damage the chart it declined to replace |
 | `test/warrens.js` | The cave region: that its rock agrees with itself across a chunk line, that the passages join up, and that nothing — the ship included — is ever left inside solid rock. Takes a seed |
+| `test/gamepad.js` | The gamepad, with a fake `navigator.getGamepads` the test owns: nothing plugged in changes nothing; the CONTROLLER tab names the pad without its driver id, lists the layout and shows what is pressed; at the title A is Enter exactly once however long it is held; in the cockpit the stick turns, the stick and RT thrust, A fires without pressing Enter, X is slot one and START pauses; and unplugging lets go of everything |
 | `test/door.js` | The account layer and the boards, which every other suite stubs off: that a copy with no account service is a whole game, that the guest door is gone from the markup as well as the logic, that signed out neither the game nor the machines open, that a cached session plays with every request failing, that being unreachable does not sign anybody out while a refusal does, and that an email never becomes the public name · and for step 5: that `saves` stayed private while `scores` became public, that no policy lets a score be edited or deleted, that a local game reports nothing, that you can only ever be the reporter, and that a report survives a closed tab |
 | `test/browser.js` | The only suite that needs a browser, and it asks only what one can answer: does the page load its own modules, does the canvas draw, does the account panel take typing, does the wheel move a page, does a part drag into a slot, does a run survive a real reload, and does it lay out on a phone. Needs Playwright — see below |
 

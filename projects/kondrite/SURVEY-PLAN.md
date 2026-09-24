@@ -1956,7 +1956,9 @@ gameplay is one toggle, video is two and audio is one.
 
 with **EXIT GAME** and **BACK** below a rule at the foot of the rail.
 
-**CONTROLLER says COMING SOON.** Nothing in the game reads a gamepad. A tab that
+**CONTROLLER reads a gamepad** since 2026-09-24 (C6 on the list; `gpad` in
+`game/input.js`). What follows is the note from when it did not — nothing in
+the game read one. A tab that
 quietly did nothing would be worse than no tab, so it says what it is.
 
 **`INPUT` stopped being a global.** It used to sit above everything as "which kind

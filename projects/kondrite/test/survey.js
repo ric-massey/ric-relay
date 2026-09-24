@@ -1375,6 +1375,123 @@ const storeOf = (cf, key) => {
   console.log("  caches     sealed while guarded · opens and pays once the post is clear");
 }
 
+// ── 10b. the Vault: a way in, one way to the middle, walls that are walls ──
+/* The second authored place, held to the Leviathan's standard. A3 on the list
+   called it "a mess — lines, hit markers, bots flying behind the walls,
+   bullets passing through them", and every one of those was one of two things:
+   the walls were drawn as hairlines down the middle of 300-unit disc rows, so
+   what stopped a round and a ship was 150 units from anything visible; and the
+   inner shell's gaps were between the spokes rather than at them, so no spoke
+   could be entered and the core — the best cache in the sector — was sealed on
+   every seed. Neither could be seen from the outside. Both can be measured. */
+{
+  const { cf } = boot("?debug=1&seed=8888");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const lv = cf.live();
+  const me = lv.ships[0];
+  const lm = surv.landmarks.find(l => l.key === "vault");
+  check(!!lm, "the sector has no Vault");
+  if (lm) {
+    me.x = lm.x; me.y = lm.y; me.vx = me.vy = 0;
+    now += 1000 / 60; cf.step();
+    const vt = surv.vault;
+    check(!!vt, "standing on the Vault did not stream it in");
+    if (vt) {
+      const R = lv.shipR;
+      const blocked = (px, py, pad, extra) =>
+        vt.segs.some(g => Math.hypot(px - g.x, py - g.y) < g.r + (pad || 0)) ||
+        (extra || []).some(g => Math.hypot(px - g.x, py - g.y) < g.r + (pad || 0));
+      const local = (x, y) => {
+        const dx = x - vt.x, dy = y - vt.y;
+        return [dx * vt.ca + dy * vt.sa, -dx * vt.sa + dy * vt.ca];
+      };
+      const world = (u, v) => [vt.x + u * vt.ca - v * vt.sa, vt.y + u * vt.sa + v * vt.ca];
+
+      /* Flood fill from outside the box, the same question the Leviathan is
+         asked: not "is this line clear" but "can a ship of this size get
+         there". `extra` lets a check brick up a doorway and ask again. */
+      const CELL = 60, reach = vt.r + 600, n = Math.ceil(reach * 2 / CELL);
+      const fill = extra => {
+        const open = [];
+        for (let i = 0; i <= n; i++) {
+          open[i] = [];
+          for (let j = 0; j <= n; j++) {
+            open[i][j] = !blocked(...world(-reach + i * CELL, -reach + j * CELL), R, extra);
+          }
+        }
+        const seen = new Set(), q = [[0, 0]];
+        while (q.length) {
+          const [i, j] = q.pop();
+          if (i < 0 || j < 0 || i > n || j > n) continue;
+          const k = i * 10000 + j;
+          if (seen.has(k) || !open[i][j]) continue;
+          seen.add(k);
+          q.push([i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]);
+        }
+        return (x, y) => {
+          const [u, v] = local(x, y);
+          const i = Math.round((u + reach) / CELL), j = Math.round((v + reach) / CELL);
+          for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+            if (seen.has((i + a) * 10000 + (j + b))) return true;
+          }
+          return false;
+        };
+      };
+      const canReach = fill();
+      check(canReach(...world(0, 0)), "the Vault's core cannot be reached from outside");
+      const inside = surv.caches.filter(c => {
+        const [u, v] = local(c.x, c.y);
+        return Math.abs(u) < vt.r && Math.abs(v) < vt.r;
+      });
+      check(inside.length === 3, "the Vault holds " + inside.length + " caches, not three");
+      for (const c of inside) {
+        check(!blocked(c.x, c.y, c.r + R), "a cache in the Vault is buried in a wall");
+        check(canReach(c.x, c.y), "a cache in the Vault cannot be flown to");
+      }
+      /* Three spokes are blind and one is real. Every spoke can be entered
+         (a blind spoke you cannot enter is a wall with a drawing of a spoke on
+         it), and bricking up the real one seals the core — which is what makes
+         "which spoke is it" a question at all. */
+      const spokeAng = k => (k / 4) * Math.PI * 2 + Math.PI / 4;
+      for (let k = 0; k < 4; k++) {
+        const a = spokeAng(k);
+        check(canReach(...world(Math.cos(a) * (vt.core + 260), Math.sin(a) * (vt.core + 260))),
+              "spoke " + k + " of the Vault cannot be entered");
+      }
+      const a = spokeAng(vt.real);
+      const brick = [];
+      for (let t = -420; t <= 420; t += 100) {
+        const [x, y] = world(Math.cos(a) * (vt.ring + 120) - Math.sin(a) * t,
+                             Math.sin(a) * (vt.ring + 120) + Math.cos(a) * t);
+        brick.push({ x, y, r: 150 });
+      }
+      check(!fill(brick)(...world(0, 0)),
+            "the core is reachable without the real spoke — a blind spoke is not blind");
+
+      // Walls are walls: a round stops on a disc and flies in the corridor.
+      check(cf.solidHit(vt.segs[0].x, vt.segs[0].y), "a round passes through a Vault wall");
+      check(!cf.solidHit(...world(0, (vt.ring + vt.r) / 2)), "the ring corridor stops rounds");
+
+      /* And the drawing agrees with the physics. Read rather than run: the
+         plate helper draws at twice the disc radius, the Vault uses it, and
+         both built things are painted before the traffic that could be inside
+         them. A stub canvas cannot see a pixel; the source can say this much. */
+      const src = page.page().inline;
+      check(/strokePlates\(v\.walls, wx, wy, VAULT_SEG\)/.test(src),
+            "drawVault no longer draws its walls as plates the width of its discs");
+      check(/ctx\.lineWidth = seg \* 2 \+ extra;/.test(src),
+            "strokePlates no longer draws the body at the discs' width");
+      const order = src.indexOf("if (surv.vault) drawVault(surv.vault);");
+      const traffic = src.indexOf("for (const t of surv.traffic) drawTraffic(t);");
+      check(order > 0 && traffic > order,
+            "the Vault is drawn after the traffic, so a ship inside it is painted over");
+      console.log("  vault      a route in · the core behind one spoke of four · three " +
+                  "caches reachable · rounds stop on the plates · drawn under the traffic");
+    }
+  }
+}
+
 // ── 11. a gate goes somewhere ─────────────────────────────────────────────
 {
   const { cf } = boot("?debug=1&seed=606");
