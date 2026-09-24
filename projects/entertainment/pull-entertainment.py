@@ -220,23 +220,14 @@ def download(url: str, dest: Path) -> bool:
     return True
 
 
-# ── the data file ──────────────────────────────────────────────────────────
-#
-# The file is JS, not JSON, and hand-editable on purpose — so it is read with a
-# parser that tolerates what a person types, and written back in exactly the
-# format the page's own Export button produces. Those two have to agree or every
-# run fights the last export.
-
-# A row is a brace pair that may contain ONE level of nested braces, because
-# `parts` and `like` hold lists of little objects. The old pattern forbade any
-# nesting at all — so the moment a row grew a `parts` list it stopped being a
-# row, the reader silently skipped it, and the next write deleted it. That cost
-# 23 rows including Star Wars before it was caught. If a field ever nests two
-# deep, this has to grow again or the same thing happens.
 # ── the data file ─────────────────────────────────────────────────────────
 #
 # The rows are STRICT JSON inside the assignment, and they are read with a JSON
-# parser rather than with regular expressions. That is the whole point.
+# parser rather than with regular expressions. That is the whole point. (A
+# comment describing the old regex reader — "the file is JS, not JSON", "a row
+# is a brace pair that may contain ONE level of nesting" — sat directly above
+# this one for a while after that reader was gone. It was a lie about the code
+# below it, and it is the kind of comment that gets a pattern reader put back.)
 #
 # This file used to be hand-shaped JS read back with a pattern per field, and
 # it ate data three times: once when the reader named `genres` as the only list

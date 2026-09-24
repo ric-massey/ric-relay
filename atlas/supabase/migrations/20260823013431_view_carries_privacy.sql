@@ -4,8 +4,14 @@
 -- never affected — the view is security_invoker, so private rows were already
 -- being withheld. This was a missing column, not a leak.)
 --
--- Recreated with every column named, so the next ALTER TABLE fails loudly here
--- instead of going quietly missing.
+-- Recreated with every column named. That does NOT make the next ALTER TABLE
+-- fail loudly — a column added to pins after this simply does not appear in
+-- the view, exactly as before. (An earlier version of this comment claimed
+-- otherwise.) What naming the columns buys is that the omission is visible in
+-- the migration that adds the column: whoever adds one has to come here and
+-- add it to the view, and the view's definition says so instead of hiding it
+-- behind `p.*`. Every later migration that adds a pins column recreates the
+-- view (see drop_parking.sql, parking_is_a_pin.sql, say_what_other_is.sql).
 
 drop view if exists public.pins_with_author;
 

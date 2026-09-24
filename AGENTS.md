@@ -89,10 +89,9 @@ With JS off nothing is injected and the nav renders exactly as it always did.
 **`apex`, `log` and `map` are deliberately unlisted** — in `#dir` *and* in the room
 navs. They are the thin rooms and Ric does not want the front door advertising work
 that isn't done. They are *not* removed: `ls`, `tree`, `find`, `open <room>`, typing
-the room name and the plain URL all still reach them, and Tab completion offers
-`apex` and `log` (`map` is left out of completions only, since it answers `[LOCKED]`
-— completing to a dead end is just untidy). Don't "fix" this by putting them back.
-If one gets built out properly, that's the moment to re-list it.
+the room name and the plain URL all still reach them, and Tab completion offers all
+three. Don't "fix" this by putting them back. If one gets built out properly, that's
+the moment to re-list it.
 
 **There is one room list, in `index.html`.** The `ROOMS` array near the top of its script
 is the single source for the `#dir` markup (rendered from it), `PAGES`, `ls`, `tree`,
@@ -101,17 +100,18 @@ drifted (two typos lived in the page twice each). Add, rename or unlist a room b
 `ROOMS` and nothing else in that file: `listed: true` puts it on the front door,
 `locked: true` marks it `[LOCKED]` and keeps it out of `random` and completions.
 
-`locked` means the room is a dead end, and right now `map` still carries it even though
-ATLAS is live and `map.html` says `status: ONLINE`. So `ls` describes it as "being
-built", `tree` prints `[LOCKED]` and Tab completion skips it, all of which are now
-untrue. Clearing that flag and rewriting its `desc` is the fix — the room being
-*unlisted* is separate and stays.
+`locked` means the room is a dead end. No room carries it today: `map` did, long after
+ATLAS was live and `map.html` said `status: ONLINE`, so `ls` called it "being built",
+`tree` printed `[LOCKED]` and Tab completion skipped it — all untrue, and cleared on
+2026-09-24. Being *unlisted* is a separate flag and `map` keeps that one. Put `locked`
+back only on a room that really answers nothing.
 
 **There is a second list too: `PROJECTS`.** `ROOMS` covers the rooms; `PROJECTS`, right
 below it, is what `projects`, `open <shortcut>`, `find` and the project branches of
 `tree` read. Linking a project from its room is only half of shipping it — if it is not
-in `PROJECTS`, the terminal cannot see it at all. (`projects/how-big-everything-is/` is
-live and linked from Exploration and is missing from this array today; that is a bug, not
+in `PROJECTS`, the terminal cannot see it at all. (`projects/how-big-everything-is/` was
+live and linked from Exploration for weeks with no entry here, so `open scale`, `find`
+and `projects` did not know it existed; that was a bug, fixed 2026-09-24.)
 (The boards page is the one deliberate exception: it stays out of `PROJECTS`
 and answers to its own `tension` / `kilter` / `boards` / `woodshed` commands instead.
 It is called Boards now; `woodshed` still works because that is what the
@@ -184,13 +184,13 @@ everywhere — the navs must agree with each other *and* with the front door.
   room data rather than pages. Each is self-contained and may carry its own assets/fonts;
   the "no dependencies" rule is for the terminal's own room pages, not embedded projects.
   Keep their internal links relative.
-- **The games moved to Gaming and their old cards were left behind.** `workbench.html`
-  still carries FARLIGHT, KONDRITE and Interstate 40 as bench items, and
-  `exploration.html` still carries Starfield as MODULE 004 — so four projects are
-  advertised from two rooms each, and the Workbench copy for Interstate 40 ("Nothing to
-  hit yet, and no way off it — the ramps are the next thing") describes a version of
-  OFFRAMP that hasn't existed for months. Moving a project means removing the old card,
-  not just adding the new one.
+- **Moving a project means removing the old card, not just adding the new one.** When
+  the games moved to Gaming, `workbench.html` kept FARLIGHT, KONDRITE and Interstate 40
+  as bench items and `exploration.html` kept Starfield as MODULE 004 for weeks, so four
+  projects were advertised from two rooms each — and the Workbench copy for Interstate
+  40 described a version of OFFRAMP that had not existed for months. Those cards came
+  out on 2026-09-24; the Workbench is Siege Conductor and an empty slot, and Exploration
+  is three modules and a berth.
 - **`projects/dads-race/` (HERMISCUS) is the one project with no room.** It is the
   crew app for Dad's race, mostly built by Ric's sister, and the only way in is the
   undocumented `hermiscus` terminal command — like the boards, don't promote it. **The
@@ -204,8 +204,9 @@ everywhere — the navs must agree with each other *and* with the front door.
   fixed “← Ric's Terminal” control works from desktop and mobile. The optional `data-egg`
   value may add a project-themed typed easter egg — but **the value has to exist in the
   `eggs` map inside `relay-return.js`**, or the page declares an egg that silently never
-  fires. `projects/offramp/index.html` sets `data-egg="offramp"` and there is no
-  `offramp` entry, so that one is dead today. Every egg also belongs in
+  fires. `projects/offramp/index.html` declared `data-egg="offramp"` for months with no
+  `offramp` entry; it has one now (`exit`). A typed egg on a game page must avoid the
+  letters that drive it — no W, A, S or D on OFFRAMP. Every egg also belongs in
   `EASTER_EGGS.md`.
 - **Photos** go in `photos/`, web-optimized (resize to ~1600px, convert HEIC→JPG). Do
   **not** commit full-res originals — they belong in `_photo-originals/`, which is
@@ -315,10 +316,24 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   Images only — no map library, no API key, no script. If tiles fail the route still
   draws on the background colour. Attribution is required and is in the corner of the
   map; do not remove it.
-- **The webhook body is never believed.** It carries only an activity id; the date,
-  sport and distance are read back from the API with Ric's token. The endpoint is public
-  and unauthenticated because Strava does not sign its events, and that is only safe as
-  long as nothing trusts the payload. Keep it that way.
+- **The webhook body is never believed — deletes included.** It carries only an activity
+  id; the date, sport and distance are read back from the API with Ric's token. The
+  endpoint is public and unauthenticated because Strava does not sign its events, and
+  that is only safe as long as nothing trusts the payload. Keep it that way. The delete
+  branch was the one place that did trust it: until 2026-09-24 `{aspect_type: 'delete'}`
+  with Ric's athlete id (in his profile URL) and an activity id (in the public `/strava`
+  feed) wiped a run and un-ticked its session with no API call, from anyone. A delete is
+  now honoured only when the API answers 404 for the activity; "still there" is a forgery
+  and "could not ask" keeps the run.
+- **The login throttle refuses the right password too.** Ten misses in five minutes and
+  the Worker answers 429 to every credential it is shown — a wrong bearer, the correct
+  bearer, the correct password on `/auth` — without examining it. The first version let
+  the correct one through so the owner could never be locked out, and that made the
+  throttle decorative: a guesser got 429 for a miss and 200 for the hit, at full speed.
+  Anybody can now keep Ric out for five minutes by hammering `/auth`; that is the
+  accepted price. A request with no credential is never throttled, and a lockout is a
+  429 that says so, never a 200 with the private notes stripped. `assets/owner.js` tells
+  him "wait five minutes" rather than "that is not it".
 - **Only runs tick, and only sessions that match them.** Board sessions are already
   pulled properly onto the climbing page — a watch ticking climbing too would
   double-count the site's one real source.
@@ -390,12 +405,22 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   offramp's traffic fly identically on an arm64 Mac and an x86_64 runner for the
   first two minutes — same events, same tally — and have diverged by the
   ninetieth, because a one-ulp difference in a transcendental compounds over
-  300,000 frames. Ric's Mac says the front page's longest silence is 11.5s
-  against a 12s limit; a runner flying the same code says 14.3s. Both are true.
+  300,000 frames. Ric's Mac said the front page's longest silence was 11.5s
+  against a 12s limit; a runner flying the same code said 14.3s. Both were true.
   So those suites live in `simulations.yml`, run when their game changes rather
   than on every push, and **a threshold that goes red on the other machine is
   fixed by putting slack in the game or flying several seeds — never by nudging
-  the constant until it passes**, which throws the finding away.
+  the constant until it passes**, which throws the finding away. That rule was
+  written and then not followed for a while: the nightly job stayed red until
+  2026-09-24, when the 14.3s turned out to be a stale brawl the tally could not
+  see and a pilot thrashing at its brake threshold on every slingshot approach.
+  `attract.js` now has a dead-air clock (`DEAD_AIR`) that reads the same counters
+  the test does, and the test flies three seeds and judges the worst; the 12 did
+  not move. **`projects/kondrite/game.js` is the game.** It was the inline script
+  at the foot of `index.html` — twenty-eight thousand lines in one HTML file — and
+  moved out byte for byte the same day; `test/smoke.js` refuses any inline script
+  on that page so it cannot creep back, and runs in the quick lane so a game that
+  does not parse is caught on the push, not the nightly.
 - **`node .github/checks.mjs` runs every check in the repo**, and
   `.github/workflows/checks.yml` runs it on every push. This was added on
   2026-09-23 because there were 43 test files here and **nothing that ran them** —
@@ -620,13 +645,13 @@ more, so an addition is not repeated eight times. The per-room support is still 
 `latest.js` (`data-latest-room` for a room's own wording, `data-latest-skip-linked`
 to pass over an item the page already links to outside its `<nav>`) — if a room
 takes a banner back, use it. Give each entry the `room` it belongs to and **keep that
-value right when a project moves** — KONDRITE, FARLIGHT and Starfield are still filed
-under `workbench`/`exploration` in `latest.js` after moving to Gaming, which is harmless
-only for as long as no room carries a banner again. `latest.js` is also the thing that
-goes stale quietest: its newest entry is still the Training Log from 2026-08-17, so the
-front door announces that as the new thing while the Gaming room, the KONDRITE campaign
-and ATLAS have all shipped since. If you ship something family would care about, put it
-at the top of that list. `orrin.html` is self-updating — leave its GitHub data logic
+value right when a project moves** — KONDRITE, FARLIGHT and Starfield sat filed under
+`workbench`/`exploration` for weeks after moving to Gaming, which was harmless only
+because no room carried a banner; they say `gaming` now. `latest.js` is also the thing
+that goes stale quietest: the Gaming room, the KONDRITE campaign and ATLAS all shipped
+without an entry and the front door announced older things over them until 2026-09-24.
+If you ship something family would care about, put it at the top of that list the same
+day. `orrin.html` is self-updating — leave its GitHub data logic
 alone unless fixing a bug. `systems.html` and `updates.html` are legacy redirects, not
 rooms.
 
@@ -644,7 +669,16 @@ exception, not a new one.
 of this repo that is an application rather than a page: Supabase, a real login,
 row-level security, migrations in `atlas/supabase/migrations/`, and a test suite in
 `atlas/test/`. Read [`atlas/README.md`](atlas/README.md) before touching it, and
-remember hard rule 1: code here, places there. `map.html` is only the door.
+remember hard rule 1: code here, places there. `map.html` is only the door. Two things
+about its tests: `site-accounts.test.mjs` is the only suite that runs the policies
+against a real Postgres and it skips without a local Supabase, which is every CI run —
+`checks.mjs` prints it as `skip`, not `ok`, so nobody reads that line as proof. The
+static `security.test.mjs` therefore also reads the migrations as Postgres would apply
+them and fails if any table that holds places loses its restrictive
+`has_page_access('atlas')` policy — deleting the one on `pins` used to leave every
+suite green. And there is no `atlas/schema.sql` any more: it was a copy of the first
+migration marked "safe to re-run", and re-running it would have put the original
+`crew reads pins … using (true)` policy back over the private-pin one.
 
 ## House style
 
@@ -678,12 +712,17 @@ remember hard rule 1: code here, places there. `map.html` is only the door.
 
 ## Verifying a change
 
-There is no build and no test runner, so verification is: serve the folder, open the
-pages you touched, and run whichever suites cover the code you touched.
+There is no build. There is a test runner — `node .github/checks.mjs` runs every quick
+suite in the repo in a couple of seconds and `--slow` adds the two games' simulations —
+and CI runs it on every push. So verification is: run that, serve the folder, and open
+the pages you touched.
 
 ```sh
+node .github/checks.mjs            # every quick suite; --slow adds the simulations
 python3 -m http.server 8912
 ```
+
+Or one suite at a time:
 
 ```sh
 node projects/kondrite/test/smoke.js      # syntax, transport, room service

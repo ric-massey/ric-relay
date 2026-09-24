@@ -37,12 +37,12 @@ const hudSrc = page.source("survey-hud.js");
 
 /* The load order is the page's now rather than a copy of it — see
    test/page.js — but the fact it protects is still worth saying out
-   loud: the inline script captures `window.KondriteSurveyHUD` once at
+   loud: game.js captures `window.KondriteSurveyHUD` once at
    boot, so a HUD loaded after it would test the null-HUD path. */
 assert.ok(
   html.indexOf('src="survey-hud.js"') > 0 &&
-  html.indexOf('src="survey-hud.js"') < html.search(/<script(?![^>]*\bsrc=)/i),
-  "survey-hud.js must be loaded before the inline game script"
+  html.indexOf('src="survey-hud.js"') < html.indexOf('src="game.js"'),
+  "survey-hud.js must be loaded before game.js"
 );
 
 let now = 0;

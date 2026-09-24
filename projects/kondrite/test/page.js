@@ -3,10 +3,10 @@
 /* KONDRITE — WHAT THE PAGE LOADS
    ─────────────────────────────────────────────────────────────────────────────
    Every harness in here boots the game the same way: run the modules the page
-   pulls in, then run the inline script, all inside one `vm` sandbox. Each of
+   pulls in, then run the game script, all inside one `vm` sandbox. Each of
    them used to name those modules itself — `survey-hud.js` here, `menu.js`
-   there, and an assertion in six files that the HUD is loaded before the inline
-   script because the inline script captures the global once at boot.
+   there, and an assertion in six files that the HUD is loaded before the game
+   script because the game script captures the global once at boot.
 
    Six copies of one fact is six places to forget. Splitting a module out of
    index.html meant editing every harness that had never heard of it, and a
@@ -36,19 +36,26 @@ const OFF_BY_DEFAULT = ["net.js", "config.js", "cloud.js"];
 
 const html = () => fs.readFileSync(path.join(DIR, "index.html"), "utf8");
 
-/* The inline game script: the first `<script>` with no `src`. */
+/* The game script. It was the page's one inline <script> until 2026-09-24 and
+   is game.js now; the property is still called `inline` because that is what
+   every harness calls it, and renaming a field in fourteen files to say where
+   the bytes live is not worth a diff. The page is still asked which file: the
+   last local `<script src>` is the game, so a rename would be found here. */
+const GAME = "game.js";
 function inlineOf(markup) {
-  const m = [...markup.matchAll(
-    /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi
-  )][0];
-  if (!m) throw new Error("index.html has no inline game script");
-  return m[1];
+  if (markup.indexOf('src="' + GAME + '"') < 0) {
+    throw new Error("index.html does not load " + GAME + " — the game has moved");
+  }
+  if (/<script(?![^>]*\bsrc=)[^>]*>\s*\S/i.test(markup)) {
+    throw new Error("index.html has grown an inline script again; the game lives in " + GAME);
+  }
+  return fs.readFileSync(path.join(DIR, GAME), "utf8");
 }
 
-/* Every `<script src>` the page loads before the inline script, in page order.
-   Only local files — a CDN would not be a module of this game. */
+/* Every `<script src>` the page loads before the game, in page order. Only
+   local files — a CDN would not be a module of this game. */
 function srcsOf(markup) {
-  const upto = markup.slice(0, markup.search(/<script(?![^>]*\bsrc=)[^>]*>/i));
+  const upto = markup.slice(0, markup.indexOf('src="' + GAME + '"'));
   return [...upto.matchAll(/<script[^>]*\bsrc="([^"]+)"/gi)]
     .map(m => m[1])
     .filter(s => !/^https?:|^\/\//.test(s));
@@ -79,7 +86,7 @@ function boot(sandbox, opts) {
                     sandbox, { filename: name });
     ran.push(name);
   }
-  vm.runInContext(p.inline, sandbox, { filename: "index.inline.js" });
+  vm.runInContext(p.inline, sandbox, { filename: GAME });
   return ran;
 }
 
@@ -87,4 +94,4 @@ function boot(sandbox, opts) {
    run it — "this string is not drawn any more", and the like. */
 const source = name => fs.readFileSync(path.join(DIR, name), "utf8");
 
-module.exports = { DIR, page, boot, source, OFF_BY_DEFAULT };
+module.exports = { DIR, GAME, page, boot, source, OFF_BY_DEFAULT };

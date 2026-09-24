@@ -224,8 +224,10 @@ export class TrainingLog {
      thing standing there.
 
      Ten is generous for a human typo and brutal for a script, and a lockout is
-     the same five minutes for the owner, which is the right trade for a page
-     that ticks boxes. */
+     the same five minutes for the owner — the right password is refused too,
+     because a throttle that waves it through tells the guesser which guess
+     was right. See the note above authed() in fetch(). The right trade for a
+     page that ticks boxes. */
   throttled() {
     const now = Date.now(), WINDOW = 5 * 60 * 1000, LIMIT = 10;
     this.fails = this.fails.filter(t => now - t < WINDOW);
@@ -314,7 +316,15 @@ export class TrainingLog {
      from the API afterwards, with Ric's own token, and NOT from the webhook
      body. That is what makes a forged POST at this endpoint harmless: the only
      thing an attacker controls is which activity id gets looked up, and the
-     token only ever returns activities belonging to the person who issued it. */
+     token only ever returns activities belonging to the person who issued it.
+
+     A DELETE event is held to the same rule. It used to be believed on the
+     strength of `owner_id`, which is Ric's athlete id and is in his public
+     Strava profile URL, while the activity id is in this Worker's own public
+     `/strava` feed — so anybody could un-tick a run and wipe it off the log
+     with one unauthenticated POST (found 2026-09-24). Now a delete is looked
+     up like everything else: the run goes only when the API says the activity
+     is gone. A forged delete for a run that still exists changes nothing. */
 
   /* Strava rotates the refresh token — "expect that this value can change any
      time you retrieve a new access token", and the old one dies immediately. So
@@ -350,13 +360,22 @@ export class TrainingLog {
   }
 
   async activity(id) {
+    const { raw } = await this.lookup(id);
+    return raw;
+  }
+
+  /* The API's answer about one activity, with the status kept, because a
+     delete has to tell "gone" (404) apart from "could not ask" (no token,
+     rate-limited, Strava down). Only the first of those is grounds to forget
+     a run. */
+  async lookup(id) {
     const token = await this.accessToken();
-    if (!token) return null;
+    if (!token) return { status: 0, raw: null };
     const r = await this.fetch_('https://www.strava.com/api/v3/activities/' + id, {
       headers: { authorization: 'Bearer ' + token }
     });
-    if (!r.ok) return null;
-    return await r.json();
+    if (!r.ok) return { status: r.status, raw: null };
+    return { status: r.status, raw: await r.json() };
   }
 
   /* The published plan, as any visitor would read it. Held for a few minutes
@@ -544,7 +563,17 @@ export class TrainingLog {
       if (this.strava.athlete && String(ev.owner_id) !== String(this.strava.athlete)) return;
       if (this.hookFlood()) { console.error('strava: webhook flood, dropping'); return; }
 
-      if (ev.aspect_type === 'delete') return await this.forget(id);
+      if (ev.aspect_type === 'delete') {
+        /* Nothing stored under this id means nothing to forget, and no reason
+           to spend an API call finding out. */
+        if (!(await this.state.storage.get('sa:' + id))) return;
+        /* Believed only once the API says the activity is gone. "Still there"
+           is a forged event; "could not ask" keeps the run, and Strava will
+           retry a real delete three times before giving up on it. */
+        const { status } = await this.lookup(id);
+        if (status === 404) return await this.forget(id);
+        return;
+      }
 
       const raw = await this.activity(id);
       if (!raw) return;
@@ -582,20 +611,24 @@ export class TrainingLog {
        token on any write — counts toward the same limit. Checking them
        separately would leave the write path as an unthrottled oracle.
 
-       A CORRECT credential is never refused, throttle or no throttle. Two
-       reasons, and the second is the important one:
+       WHILE THE LIMIT IS TRIPPED, NO CREDENTIAL IS EXAMINED AT ALL. Not a
+       password on /auth, not a bearer on a read, not a bearer on a write. The
+       first version of this checked the credential before the throttle so
+       that the owner could never be locked out, and that made the throttle
+       decorative: after ten misses a wrong guess got 429 and the right guess
+       still got 200, so a guesser lost nothing and gained a clean yes-or-no
+       on every attempt. A throttle that lets the correct password through is
+       an oracle with a delay on it. (Found 2026-09-24; the test below it used
+       to assert the bug as the rule.)
 
-       1. On a read, refusing the owner does not deny an attacker anything —
-          they were getting the public view regardless — it just silently
-          empties Ric's own private notes and returns 200, which reads as data
-          loss rather than as a lockout.
-       2. If a right password could be locked out, then anybody in the world
-          could lock Ric out of his own site indefinitely by hammering /auth
-          with rubbish. That is a denial of service handed out for free, in
-          exchange for delaying a guesser who is already bounded by the counter.
-
-       The rate limit's job is to cap how fast WRONG guesses can be made. It is
-       not to punish the person who knows the password. */
+       The cost is real and accepted: anybody can keep Ric out of his own
+       ticks for five minutes at a time by hammering /auth with rubbish. That
+       is a nuisance. The alternative was a password that could be searched at
+       full speed by anyone who had noticed the status code. A request that
+       carries no credential is not touched by any of this — the public view
+       never counted toward the limit and still does not — and a lockout is
+       always a 429 that says so, never a 200 with the owner's own notes
+       quietly stripped out of it. */
     const authed = () => {
       const given = bearer();
       if (!given) return false;
@@ -603,6 +636,12 @@ export class TrainingLog {
       this.noteFail();
       return false;
     };
+    const lockout = () => json({ error: 'too many attempts — wait five minutes' }, 429, origin,
+      { 'retry-after': '300' });
+    /* Before any route: a credential presented during a lockout is refused
+       unread. This is the whole throttle — everything below it may assume that
+       a credential it gets to compare arrived while the door was open. */
+    if (bearer() && this.throttled()) return lockout();
 
     /* ---------- POST /auth ----------
        The password IS the token; this endpoint only exists so the page can say
@@ -613,15 +652,12 @@ export class TrainingLog {
       let body = {};
       try { body = await request.json(); } catch {}
       const given = String(body.password || '');
-      /* Correctness first, so the right password works even mid-lockout —
-         see the note on authed() above for why that matters more than it
-         looks. Only wrong guesses meet the throttle. */
+      /* Throttle first, then correctness. The other order is the oracle
+         described above authed(): it only ever slowed down the guesses that
+         were wrong. */
+      if (this.throttled()) return lockout();
       if (given && this.token && sameSecret(given, this.token)) {
         return json({ ok: true }, 200, origin);
-      }
-      if (this.throttled()) {
-        return json({ error: 'too many attempts — wait five minutes' }, 429, origin,
-          { 'retry-after': '300' });
       }
       /* A wrong password is a 401 with no detail — not "too short", not "close",
          nothing that narrows the search. */

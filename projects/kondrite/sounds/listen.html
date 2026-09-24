@@ -9,11 +9,11 @@
 <!-- The listening booth. Not linked from anywhere a visitor walks: it is for
      Ric, and for whoever he hands it to, to say which sounds bother them.
 
-     It plays the GAME'S OWN sound code. On load it fetches ../index.html and
+     It plays the GAME'S OWN sound code. On load it fetches ../game.js and
      lifts the engine out of it — the same slice test/sounds.js measures — so
      what you rate here is exactly what the game plays, at the game's level,
      through the game's compressor, with the game's 35ms limiter and pitch
-     variation. Change a sound in index.html and this page changes with it;
+     variation. Change a sound in game.js and this page changes with it;
      there is no second copy to drift.
 
      That needs a fetch, so it only works served (the website, or
@@ -128,7 +128,7 @@
   /* ── what there is to hear ────────────────────────────────────────────────
      A scene is a list of [kind, seconds, pan]. Times are real: the cannon's
      burst is three rounds 0.12s apart and 0.62s of recovery (BURST_GAP and
-     FIRE_GAP in index.html), campaign fire is one every 0.12s, and so on. */
+     FIRE_GAP in game.js), campaign fire is one every 0.12s, and so on. */
   const burst = (kind, start, pan) => [[kind, start, pan], [kind, start + 0.12, pan],
                                        [kind, start + 0.24, pan]];
   const every = (kind, from, to, gap, pan) => {
@@ -228,7 +228,7 @@
       return;
     }
     let html;
-    try { html = await (await fetch("../index.html", { cache: "no-store" })).text(); }
+    try { html = await (await fetch("../game.js", { cache: "no-store" })).text(); }
     catch (_) { say("Could not load the game to borrow its sounds.", true); return; }
     const a = html.indexOf("  function audioUnlock() {");
     const b = html.indexOf("  function toggleSound() {", a);

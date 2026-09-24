@@ -7,7 +7,7 @@
 
    Nobody can listen to a test, so this measures the things that make game
    sound grating, and holds every sound to them. Each one is rendered through
-   the game's own code — the functions are lifted out of index.html, not
+   the game's own code — the functions are lifted out of game.js, not
    re-typed — into an OfflineAudioContext, and then taken apart:
 
      · HARSH   energy between 2 and 5 kHz, where hearing is most sensitive.
@@ -46,10 +46,10 @@ function check(ok, why) {
   return ok;
 }
 
-const html = fs.readFileSync(path.join(DIR, "index.html"), "utf8");
+const html = fs.readFileSync(path.join(DIR, "game.js"), "utf8");
 function grab(start, end) {
   const a = html.indexOf(start), b = html.indexOf(end, a);
-  if (a < 0 || b < 0) throw new Error("index.html no longer has " + JSON.stringify(start));
+  if (a < 0 || b < 0) throw new Error("game.js no longer has " + JSON.stringify(start));
   return html.slice(a, b);
 }
 const ENGINE = grab("  /* ── how loud, and which dial", "  function toggleSound() {");
@@ -190,7 +190,7 @@ async function main() {
   check(got.master === 0, "the master turned to zero still made a sound");
 
   // ── the listening booth still plays the game's sounds ────────────────────
-  /* sounds/listen.html lifts the engine out of index.html at load, so a
+  /* sounds/listen.html lifts the engine out of game.js at load, so a
      rename or a moved function there breaks it silently — a page of buttons
      that play nothing. Counted at the source: the audio nodes it makes. */
   const booth = await browser.newPage();

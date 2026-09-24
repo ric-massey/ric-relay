@@ -21,6 +21,13 @@ supabase db push
 ```
 
 Schema changes are migrations in `supabase/migrations/`, not copy-paste.
+There is deliberately no `schema.sql` to paste into the SQL editor any more.
+There used to be one — a copy of the first migration, marked "safe to re-run" —
+and re-running it on a migrated database would have recreated the original
+`crew reads pins` policy with `using (true)`, over the top of the private-pin
+policy of the same name from `personal_pins.sql`. That is every personal pin
+shown to every approved account. Removed 2026-09-24; the migrations are the
+only schema.
 
 ### 2. Custom SMTP
 

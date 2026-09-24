@@ -207,7 +207,7 @@ console.log('\nRULE  the tick list is public to read and token-gated to write');
   ok(!(await call('GET', '/todo')).body.items['cobra-crack-squamish'], 'and it is gone');
 }
 
-console.log('\nRULE  guessing gets throttled, and the right password still works before that');
+console.log('\nRULE  guessing gets throttled, and the throttle refuses the right password too');
 {
   const t = fresh();
   const hit = async (...a) => { const r = await t.fetch(req(...a)); return { status: r.status, body: await r.json() }; };
@@ -222,12 +222,34 @@ console.log('\nRULE  guessing gets throttled, and the right password still works
   for (let i = 0; i < 10; i++) await hit2('POST', '/auth', { password: 'guess' + i });
   ok((await hit2('POST', '/auth', { password: 'guess-again' })).status === 429, 'the tenth miss closes the door on wrong guesses');
 
-  /* The throttle must never refuse a CORRECT credential. If it did, anyone
-     could lock Ric out of his own site indefinitely by hammering /auth with
-     rubbish — a free denial of service, in exchange for delaying a guesser who
-     the counter already bounds. */
-  ok((await hit2('POST', '/auth', { password: TOKEN })).status === 200, 'but the right password still works mid-lockout');
-  ok((await hit2('POST', '/log/2026-08-21', { done: { 0: true } }, TOKEN)).status === 200, 'and so does a write');
+  /* THE ORACLE. This suite used to assert the opposite of the next three lines
+     — "the right password still works mid-lockout" — on the argument that the
+     owner must never be locked out. With that rule a script needed only to keep
+     guessing through the lockout: every wrong guess got a 429 and the right one
+     got a 200, so the throttle delayed nothing and the status code announced
+     the hit. It was reproduced on 2026-09-24 with the token `hunter42`: guess
+     43 returned 200 while the door was "closed". A throttle that examines the
+     credential at all while it is tripped is not a throttle. */
+  const right = await hit2('POST', '/auth', { password: TOKEN });
+  const wrong = await hit2('POST', '/auth', { password: 'guess-again' });
+  ok(right.status === 429, 'mid-lockout the RIGHT password is refused too');
+  ok(right.status === wrong.status && JSON.stringify(right.body) === JSON.stringify(wrong.body),
+     'and a right guess is indistinguishable from a wrong one');
+  ok((await hit2('POST', '/log/2026-08-21', { done: { 0: true } }, TOKEN)).status === 429,
+     'a write with the right token is refused unread during the lockout');
+  ok((await hit2('GET', '/log/2026-08-21', null, TOKEN)).status === 429,
+     'and so is a read that presents it');
+  ok((await hit2('GET', '/log/2026-08-21')).status === 200,
+     'while a visitor presenting nothing is not throttled at all');
+
+  /* The lockout is five minutes, not forever: this is what keeps "anyone can
+     lock Ric out" a nuisance rather than a denial of service. */
+  const realNow = Date.now;
+  Date.now = () => realNow() + 5 * 60 * 1000 + 1;
+  try {
+    ok((await hit2('POST', '/auth', { password: TOKEN })).status === 200, 'five minutes later the right password works again');
+    ok((await hit2('POST', '/log/2026-08-21', { done: { 0: true } }, TOKEN)).status === 200, 'and so does a write');
+  } finally { Date.now = realNow; }
 
   /* The write path must share the counter, or it is an unthrottled oracle. */
   const t3 = fresh();
@@ -236,19 +258,32 @@ console.log('\nRULE  guessing gets throttled, and the right password still works
   ok((await hit3('POST', '/auth', { password: 'another-guess' })).status === 429, 'bad bearer tokens count toward the same limit');
 }
 
-console.log('\nRULE  a lockout never empties the owner\'s own private notes');
+console.log('\nRULE  a lockout is said out loud, never served as an emptied page');
 {
-  /* This is the bug the throttle introduced: authed() returned false while
-     throttled, so an owner read fell through to the public view and returned
-     200 with the private notes stripped. It reads as data loss, not a lockout. */
+  /* Two wrong ways to handle the owner during a lockout, both seen here:
+       - authed() returning false and the read falling through to the public
+         view: a 200 with his private notes stripped, which reads as data loss;
+       - the right token being examined and let through, which is the oracle
+         above.
+     The right shape is a 429 for anyone presenting a credential, and the
+     public view, unchanged, for anyone presenting none. */
   const t = fresh();
   const hit = async (...a) => { const r = await t.fetch(req(...a)); return { status: r.status, body: await r.json() }; };
   await hit('POST', '/log/2026-08-22', { notes: [{ id: 'x', text: 'LOCKOUT-CANARY', public: false }] }, TOKEN);
   for (let i = 0; i < 12; i++) await hit('POST', '/auth', { password: 'nope' + i });
   const mine = await hit('GET', '/log/2026-08-22', null, TOKEN);
-  ok(JSON.stringify(mine.body).includes('LOCKOUT-CANARY'), 'the owner still sees his private note during a lockout');
+  ok(mine.status === 429, 'the owner is told he is locked out');
+  ok(!JSON.stringify(mine.body).includes('LOCKOUT-CANARY') && mine.body.done === undefined,
+     'and is not handed a page that looks like his notes vanished');
   const theirs = await hit('GET', '/log/2026-08-22');
-  ok(!JSON.stringify(theirs.body).includes('LOCKOUT-CANARY'), 'and a visitor still does not');
+  ok(theirs.status === 200 && !JSON.stringify(theirs.body).includes('LOCKOUT-CANARY'),
+     'a visitor still gets the public view, without the note');
+  const realNow = Date.now;
+  Date.now = () => realNow() + 5 * 60 * 1000 + 1;
+  try {
+    const later = await hit('GET', '/log/2026-08-22', null, TOKEN);
+    ok(JSON.stringify(later.body).includes('LOCKOUT-CANARY'), 'and once the window passes the owner sees his note');
+  } finally { Date.now = realNow; }
 }
 
 console.log('\nRULE  malformed input is refused rather than stored');
@@ -341,6 +376,9 @@ function stravaRig(opts = {}) {
     if (url.includes('/api/v3/activities/')) {
       const id = url.split('/').pop();
       const a = activities[id];
+      /* `{ down: true }` stands in for Strava being unreachable for that id —
+         a 503, which is neither "here it is" nor "gone". */
+      if (a && a.down) return new Response('{}', { status: 503 });
       return a ? Response.json(a) : new Response('{}', { status: 404 });
     }
     if (url.includes('plan')) return Response.json(opts.plan || PLAN);
@@ -386,7 +424,7 @@ function stravaRig(opts = {}) {
   const event = (over = {}) => hit('POST', '/strava',
     { aspect_type: 'create', object_type: 'activity', object_id: 900001, owner_id: ATHLETE, ...over });
 
-  return { hit, event, mem, calls, storage: () => mem, refreshNow: () => refresh };
+  return { hit, event, mem, calls, activities, storage: () => mem, refreshNow: () => refresh };
 }
 
 console.log('\nRULE  a finished run ticks the session that was planned for that day');
@@ -624,6 +662,35 @@ console.log('\nRULE  a forged webhook achieves nothing');
   await lie.event();
   ok(Object.keys((await lie.hit('GET', '/strava')).body.days).length === 0,
     "an activity the API says belongs to someone else is refused");
+
+  /* A forged DELETE. Both ids it needs are public: Ric's athlete id is in his
+     Strava profile URL and the activity id is in this Worker's own /strava
+     feed. Until 2026-09-24 this one POST un-ticked the session and wiped the
+     run without a single API call — the delete path was the one branch of
+     ingest() that trusted the body. */
+  const vandal = stravaRig();
+  await vandal.event();
+  const before = vandal.calls.length;
+  ok((await vandal.hit('GET', '/log/2026-08-17')).body.done['morning-run'] === true, '(a real run is on the log)');
+  await vandal.event({ aspect_type: 'delete' });
+  ok((await vandal.hit('GET', '/log/2026-08-17')).body.done['morning-run'] === true,
+    'a delete event for a run Strava still has does not un-tick it');
+  ok((await vandal.hit('GET', '/strava/2026-08-17')).body.length === 1, 'and the run stays on the log');
+  ok(vandal.calls.length === before + 1, 'having been checked against the API, once');
+  /* And a delete for an id nothing was ever stored under costs no API call at
+     all — the feed is public, so the ids to try are free, and each lookup is
+     a slice of the Strava rate limit. */
+  await vandal.event({ aspect_type: 'delete', object_id: 123456 });
+  ok(vandal.calls.length === before + 1, 'a delete for an unknown id is dropped before it costs an API call');
+
+  /* "Could not ask" is not "gone". Strava being down, or the token being
+     dead, must not turn a stale delete into a deletion. */
+  const deaf = stravaRig();
+  await deaf.event();
+  deaf.activities[900001] = { down: true };
+  await deaf.event({ aspect_type: 'delete' });
+  ok((await deaf.hit('GET', '/strava/2026-08-17')).body.length === 1,
+    'a delete the API cannot confirm keeps the run');
 }
 
 console.log('\nRULE  the webhook endpoint gives nothing else away');
@@ -648,6 +715,9 @@ console.log('\nRULE  deleting a run on Strava takes back its own tick and no oth
   await r.event();
   await r.hit('POST', '/log/2026-08-17', { done: { 'morning-body': true } }, TOKEN);
 
+  /* The activity really is gone from Strava — the rig's API 404s it — because
+     a delete event is checked before it is believed. */
+  delete r.activities[900001];
   await r.event({ aspect_type: 'delete' });
   const after = await r.hit('GET', '/log/2026-08-17');
   ok(after.body.done['morning-run'] === undefined, 'the auto tick is gone');
@@ -666,6 +736,7 @@ console.log('\nRULE  a tick the owner has touched is his, and Strava cannot take
   const mid = await r.hit('GET', '/log/2026-08-17');
   ok(mid.body.auto['morning-run'] === undefined, 'touching it clears the Strava mark');
 
+  delete r.activities[900001];
   await r.event({ aspect_type: 'delete' });
   const after = await r.hit('GET', '/log/2026-08-17');
   ok(after.body.done['morning-run'] === true, 'and the tick survives the deletion');

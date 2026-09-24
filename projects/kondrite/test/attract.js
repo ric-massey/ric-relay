@@ -59,7 +59,7 @@ function check(ok, why) {
   check(p.srcs.indexOf("attract.js") >= 0,
         "index.html does not load attract.js — the front page has no art");
   check(p.inline.indexOf("KondriteAttract") > 0,
-        "the inline script never reaches for window.KondriteAttract");
+        "game.js never reaches for window.KondriteAttract");
 }
 
 /* ── a context that records nothing and refuses nothing ──────────────────── */
@@ -132,6 +132,10 @@ function fly(A, minutes, box) {
     if (W.tally.ports > last.ports) mark(t, "called at a station");
     if (W.tally.brawls > last.brawls) mark(t, "joined a fight");
     if (W.tally.downed > last.downed) mark(t, "a ship went up");
+    /* A rock falling into the well bursts at the horizon, and the game counts
+       it — its own dead-air clock reads the same counters this loop does, so
+       the two have to agree on what an event is. */
+    if (W.tally.eaten > last.eaten) mark(t, "a well ate a rock");
     if (W.tally.slings > last.slings) {
       mark(t, "slung round a " + (W.well ? W.well.kind : "?"));
     }
@@ -261,17 +265,36 @@ function fly(A, minutes, box) {
    run of the same code reported six out of thirty-two. Nothing had changed but
    the order the seeded numbers came out in. Ninety minutes takes about five
    seconds to fly and says something. */
+/* And on three seeds, judged on the worst. One run is one sample of a chaotic
+   system: the same code flew its longest silence at 11.5s on an arm64 Mac and
+   14.3s on an x86_64 runner, both against this twelve-second line, because a
+   one-ulp difference in a transcendental had compounded over 300,000 frames.
+   Three seeds do not make the machines agree — nothing does — but a page that
+   stays under the line on three different runs has headroom, and one that
+   scrapes under on the one seed a visitor happens to get does not. The line
+   itself is not moved; the slack lives in the game (see DEAD_AIR in
+   attract.js). */
 {
   const A = load();
   const r = fly(A, 60);
-  check(r.quiet < 12,
-        "the page went " + r.quiet.toFixed(1) + "s with nothing happening on " +
-        "it, starting at " + Math.round(r.quietAt) + "s");
+  const runs = [["the page", r]];
+  for (const seed of [0x51ed5eed, 0x9e3779b9]) {
+    const B = load();
+    B.start(seed);
+    runs.push(["seed " + seed.toString(16), fly(B, 60)]);
+  }
+  for (const [who, run] of runs) {
+    check(run.quiet < 12,
+          who + " went " + run.quiet.toFixed(1) + "s with nothing happening on " +
+          "it, starting at " + Math.round(run.quietAt) + "s");
+    check(run.events.length / 60 > 60,
+          "only " + (run.events.length / 60).toFixed(0) + " things happen a minute on " + who);
+  }
   const perMin = r.events.length / 60;
-  check(perMin > 60,
-        "only " + perMin.toFixed(0) + " things happen a minute on the front page");
   console.log("  pace       " + perMin.toFixed(0) + " things a minute over an " +
-              "hour · longest silence " + r.quiet.toFixed(1) + "s");
+              "hour · longest silence " +
+              runs.map(([, run]) => run.quiet.toFixed(1) + "s").join(" / ") +
+              " over three seeds");
 
   /* ── 4. and it does not leak ──────────────────────────────────────────── */
   check(r.maxList < 500,

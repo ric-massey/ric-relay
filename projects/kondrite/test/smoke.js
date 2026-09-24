@@ -11,6 +11,7 @@ const { spawn } = require("node:child_process");
 const ROOT = path.resolve(__dirname, "../../..");
 const PROJECT = path.join(ROOT, "projects/kondrite");
 const INDEX = path.join(PROJECT, "index.html");
+const GAME = path.join(PROJECT, "game.js");
 const NET = path.join(PROJECT, "net.js");
 const SURVEY_HUD = path.join(PROJECT, "survey-hud.js");
 const MENU = path.join(PROJECT, "menu.js");
@@ -29,22 +30,34 @@ function checkSyntax() {
   new vm.Script(read(MENU), { filename: "menu.js" });
   new vm.Script(read(ROOMS), { filename: "rooms.js" });
 
-  const html = read(INDEX);
-  const scripts = [...html.matchAll(
+  /* `page` is the markup; `html` is the markup with the game after it, which is
+     what every string check below was written against when the game was the
+     page's inline script — a match that asks for a CSS rule and one that asks
+     for a line of the simulation both still find it. */
+  const page = read(INDEX);
+  const html = page + "\n" + read(GAME);
+  /* The game is game.js, loaded last, and the page has NO inline script: the
+     twenty-eight thousand lines that used to sit at the foot of index.html
+     moved out on 2026-09-24, and this is what stops them quietly moving back
+     one function at a time. */
+  const inline = [...page.matchAll(
     /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi
-  )];
-  assert.equal(scripts.length, 1, "expected one inline game script");
-  new vm.Script(scripts[0][1], { filename: "index.inline.js" });
+  )].filter(m => m[1].trim());
+  assert.equal(inline.length, 0, "index.html has an inline script; the game lives in game.js");
+  new vm.Script(read(GAME), { filename: "game.js" });
+  const gameAt = page.indexOf('<script src="game.js">');
+  assert.ok(gameAt > 0, "index.html must load game.js");
+  assert.ok(!/<script[^>]*\bsrc="[^"]+"/i.test(page.slice(gameAt + 1)),
+    "game.js must be the last script on the page — it captures every module at boot");
 
-  /* Survey's three modules are separate files, and the inline script captures
+  /* Survey's three modules are separate files, and the game script captures
      each global once at boot — so every one of them has to be loaded before,
      not after. Loading one late is silent: the mode plays with no chart and no
      catalogue readout, or it does not boot at all. */
-  const inlineAt = html.search(/<script(?![^>]*\bsrc=)/i);
   for (const mod of ["survey-world.js", "survey-save.js", "survey-hud.js"]) {
-    const at = html.indexOf('src="' + mod + '"');
+    const at = page.indexOf('src="' + mod + '"');
     assert.ok(at > 0, "index.html must load " + mod);
-    assert.ok(at < inlineAt, mod + " must be loaded before the inline game script");
+    assert.ok(at < gameAt, mod + " must be loaded before game.js");
   }
   /* The one line the mode gets to introduce itself with, on the menu card. It
      used to say "no enemies · endless space · chart it and fill the almanac",
@@ -56,9 +69,9 @@ function checkSyntax() {
   /* The menu's dioramas are a separate file for the same reason the survey
      panel is, and they are captured by the same boot, so they carry the same
      ordering rule. A card with no picture is the failure this catches. */
-  assert.match(html, /<script src="menu\.js"><\/script>/,
+  assert.match(page, /<script src="menu\.js"><\/script>/,
     "index.html must load menu.js");
-  assert.ok(html.indexOf('src="menu.js"') < inlineAt,
+  assert.ok(page.indexOf('src="menu.js"') < gameAt,
     "menu.js must be loaded before the inline game script");
 
   /* Every mode card names a scene, and every named scene must exist. A card

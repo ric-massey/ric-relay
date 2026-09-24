@@ -188,7 +188,7 @@
     /* What actually happened. Read by test/attract.js, which is the only way to
        find out whether a front page is ever boring — see the header there. */
     tally: { broke: 0, slings: 0, ports: 0, brawls: 0, downed: 0,
-             fired: 0, struck: 0, hurt: 0, saved: 0 }
+             fired: 0, struck: 0, hurt: 0, saved: 0, eaten: 0 }
   };
   A.world = W;
 
@@ -202,8 +202,11 @@
              hp: 1, flash: 0, kind: kind || "skiff", alive: true, angry: false };
   }
 
-  function start() {
-    seed = 0x6d2b79f5;
+  /* `seedIn` is for the test: the front page a visitor sees always flies the
+     same seed, but a property of the page — never quiet, everything turns up
+     soon — is not a property of one run of it, so the suite flies several. */
+  function start(seedIn) {
+    seed = (seedIn >>> 0) || 0x6d2b79f5;
     W.t = 0;
     W.ship = newShip(0, 0, -0.6);
     W.cam.x = 0; W.cam.y = 0;
@@ -215,6 +218,7 @@
        page should show is the ordinary business of the game. */
     W.goal = { kind: "hunt", until: between(7, 11) };
     for (const k in W.tally) W.tally[k] = 0;
+    W.told = 0; W.stage = ""; W.toldAt = 0;
   }
   A.start = start;
   start();
@@ -567,8 +571,21 @@
       const h = W.well;
       const d = Math.hypot(h.x - s.x, h.y - s.y);
       const rad = ((h.x - s.x) * s.vx + (h.y - s.y) * s.vy) / (d || 1);  // closing
-      if (g.phase === "in" && Math.hypot(s.vx, s.vy) > MAX_SPEED * 1.12 &&
-          d > h.reach * 1.1) {
+      /* The brake has hysteresis. It used to be a bare threshold — burn
+         retrograde whenever the speed was over 1.12× cruise and the well was
+         still ahead — and the approach burn below pushes the speed to exactly
+         that, so the pilot flipped: over the line, nose round, burn, under
+         the line, nose back, burn, over the line. Measured on 2026-09-24 as
+         eleven seconds of a ship turning in place a well's-reach-and-a-half
+         out, not closing, not shooting — the longest silence on the page.
+         Now a brake, once released, does not come back on for an ordinary
+         approach speed: only for a real throw carried in from the last well. */
+      const sp = Math.hypot(s.vx, s.vy);
+      if (g.phase === "in" && d > h.reach * 1.1) {
+        if (!g.brake && sp > MAX_SPEED * (g.braked ? 1.5 : 1.12)) g.brake = true;
+        if (g.brake && sp < MAX_SPEED * 0.95) { g.brake = false; g.braked = true; }
+      } else g.brake = false;
+      if (g.phase === "in" && g.brake) {
         /* Coming off the gas to line it up. A pilot arriving at a black hole
            still carrying the throw from the last one has no authority to steer
            with: at six hundred and fifty units a second there is a quarter of a
@@ -593,6 +610,20 @@
            here. */
         const err = clampv((h.peri - forecast(s, h)) / h.peri, -1, 1);
         want = Math.atan2(s.vy, s.vx) + wellSide(s, h) * err * 0.7;
+        /* Far out — more than two reaches from the well — the pass
+           cannot be arranged to better than the clamp above anyway, so a rock
+           near the nose is worth a third of a radian of yaw, the way it is on
+           a hunt. Without this an approach was the one stretch of the page
+           where the ship flew through a field with the gun on nothing, and a
+           long one — a boulder shove at the start of one was measured at
+           twelve seconds of a wide arc under full burn, shooting nothing. */
+        if (d > h.reach * 2) {
+          const r = nearestRock(s, RANGE * 0.9, true);
+          if (r) {
+            const la = lead(s, r);
+            if (Math.abs(wrapAngle(la - want)) < 0.35) want = la;
+          }
+        }
         /* The engine stays lit while the pass is still being arranged, and only
            then does it go quiet. Turning the nose with the throttle shut does
            not move the ship an inch — the first version cut thrust at eight
@@ -806,9 +837,63 @@
     W.goal = { kind: "hunt", until: W.t + between(6.5, 10.5) };
   }
 
+  /* How long the page may go with nothing happening on it before the sector
+     does something about it. "Nothing happening" is the tally's word, not a
+     guess: the same counters and stage changes that test/attract.js reads as
+     events. Five seconds is under half the twelve the test allows, so a machine
+     whose floating point drifts the run differently — an x86 runner against an
+     arm64 Mac, which is where 14.3s was measured against a Mac's 11.5s — still
+     has the whole margin in hand. The slack lives here, in the game, and not in
+     the number in the test. */
+  const DEAD_AIR = 5;
+
+  function noticed() {
+    const t = W.tally;
+    return t.broke + t.struck + t.hurt + t.ports + t.brawls + t.downed + t.slings + t.eaten;
+  }
+
   function director(dt) {
     const s = W.ship;
     const g = W.goal;
+
+    /* The dead-air clock. Reset by anything a viewer would have noticed — a
+       counter moving or a set piece changing phase — and read below. */
+    const told = noticed(), stage = g.kind + ":" + (g.phase || "");
+    if (told !== W.told || stage !== W.stage) { W.told = told; W.stage = stage; W.toldAt = W.t; }
+    if (W.t - W.toldAt > DEAD_AIR) {
+      /* Wound back rather than reset: if the nudge below is not taken up —
+         the nose swung off the rock, or the pilot was busy escaping a well —
+         the next one comes two and a half seconds later, not five. */
+      W.toldAt = W.t - DEAD_AIR + 2.5;
+      if (g.kind === "brawl") {
+        /* A fight in which nothing has landed for six seconds is two ships
+           chasing each other round the page, and the raiders lose interest
+           the same way they do when the clock runs out — measured, the longest
+           silence on the whole front page was the back half of one of these. */
+        g.until = W.t;
+      } else if (g.kind !== "sling" || g.phase === "in") {
+        /* Otherwise the sector puts a small rock across the nose, inside gun
+           range, drifting slowly so it stays in the cone — something to shoot
+           on the way to wherever the ship is going. The hunt already does this
+           for itself when the field is thick; this is for when it is not, and
+           for the long approach to a well, which is the one stretch the pilot
+           flies through a field it is not steering towards. */
+        if (W.rocks.length < 40) {
+          /* On the NOSE, not the track, because the gun is on the nose and
+             fires only inside a tenth of a radian of it — and nearly matching
+             the ship's own velocity, so it hangs there long enough to be hit
+             rather than being overtaken in the time a burst takes. */
+          const d = RANGE * 0.5, off = between(-25, 25);
+          const x = s.x + Math.cos(s.a) * d - Math.sin(s.a) * off;
+          const y = s.y + Math.sin(s.a) * d + Math.cos(s.a) * off;
+          const across = s.a + Math.PI / 2, sp = between(15, 35) * (rnd() < 0.5 ? 1 : -1);
+          if (!(W.well && Math.hypot(x - W.well.x, y - W.well.y) < W.well.kill * 3)) {
+            W.rocks.push(newRock("small", x, y,
+              s.vx * 0.95 + Math.cos(across) * sp, s.vy * 0.95 + Math.sin(across) * sp));
+          }
+        }
+      }
+    }
 
     if (g.kind === "hunt" && W.t >= g.until) {
       if (!W.bag.length) {
@@ -822,6 +907,18 @@
             const tmp = W.bag[i]; W.bag[i] = W.bag[j]; W.bag[j] = tmp;
           }
           if (W.bag[W.bag.length - 1] !== W.lastPiece) break;
+        }
+        /* The FIRST bag deals each kind once before any repeat. The brief is
+           that everything turns up inside a first look at the title screen,
+           and a plain shuffle of six can put the star sling sixth — measured
+           at 158s on one machine against 150s on the brief, with the same
+           code at 140s on another. The bag is popped from the end, so the four
+           distinct kinds go to the back, in the order the shuffle gave them,
+           and the two repeats come out last. */
+        if (!W.lastPiece) {
+          const seen = new Set(), firsts = [], repeats = [];
+          for (const k of W.bag) (seen.has(k) ? repeats : (seen.add(k), firsts)).push(k);
+          W.bag = repeats.concat(firsts);
         }
       }
       const next = W.lastPiece = W.bag.pop();
@@ -995,6 +1092,12 @@
           if ((b.x - o.x) ** 2 + (b.y - o.y) ** 2 > HULL_R ** 2) continue;
           o.hp -= 1; o.flash = 0.18;
           burst(b.x, b.y, FLASH, 4, 150, 0.35);
+          /* The pilot's round landing on a hull is a round telling, and it is
+             counted as one. It was not, until 2026-09-24: `struck` only ever
+             counted rocks, so a fourteen-second stretch of a brawl in which the
+             Skiff landed round after round on a raider without finishing it
+             read, on the page's own tally, as nothing happening at all. */
+          if (!b.foe) W.tally.struck++;
           if (o.hp <= 0) downed(o);
           spent = true;
           break;
@@ -1018,6 +1121,7 @@
       // place rather than a circle.
       if (h && Math.hypot(h.x - r.x, h.y - r.y) < h.kill + r.r * 0.5) {
         burst(r.x, r.y, h.kind === "hole" ? WARN : AMBER, 7, 190);
+        W.tally.eaten++;
         W.rocks.splice(i, 1);
         continue;
       }

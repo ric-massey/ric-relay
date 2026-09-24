@@ -30,6 +30,24 @@ window.RELAY_LATEST = [
     href: "entertainment.html",
   },
   {
+    /* The earliest date this checkout can vouch for — the room is a little
+       older than the shallow history reaches. Order is what the banner reads. */
+    date: "2026-09-19",
+    kind: "new room",
+    room: "gaming",
+    title: "The Arcade",
+    description: "The games have a room of their own: KONDRITE, now with a three-mission campaign, plus Starfield, FARLIGHT and Interstate 40. Real gameplay on every cover — click one to play.",
+    href: "gaming.html",
+  },
+  {
+    date: "2026-08-21",
+    kind: "new room",
+    room: "map",
+    title: "ATLAS",
+    description: "The private crew map is live behind a real login. Pins, notes and photos live in the database and nowhere else — ask Ric for access at the account page.",
+    href: "map.html",
+  },
+  {
     date: "2026-08-17",
     kind: "new room",
     room: "training",
@@ -40,7 +58,7 @@ window.RELAY_LATEST = [
   {
     date: "2026-08-04",
     kind: "interactive",
-    room: "workbench",
+    room: "gaming",
     title: "KONDRITE",
     description: "Asteroids, with walls. Share one pile of lives against the rocks, or fight it out on a map sixteen screens wide while the wall closes in around you.",
     href: "projects/kondrite/index.html",
@@ -56,7 +74,7 @@ window.RELAY_LATEST = [
   {
     date: "2026-07-24",
     kind: "game update",
-    room: "exploration",
+    room: "gaming",
     title: "Starfield: A Relativistic Rocket",
     description: "Rebuilt on real physics. Burn at one gravity through the actual solar neighborhood and watch twelve years of your life cross the galaxy.",
     href: "projects/starfield/index.html",
@@ -64,7 +82,7 @@ window.RELAY_LATEST = [
   {
     date: "2026-07-24",
     kind: "interactive",
-    room: "workbench",
+    room: "gaming",
     title: "FARLIGHT",
     description: "A playable experiment in momentum, contact, and clean landings.",
     href: "projects/farlight/index.html",

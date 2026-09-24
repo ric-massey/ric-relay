@@ -60,6 +60,7 @@ No prompt is required.
 | Starfield | `warp` | `NAV COMPUTER: THE SCENIC ROUTE IS FASTER` |
 | How Big Everything Is | `googol` | `THAT IS A 1 WITH A HUNDRED ZEROES // STILL NOT ON THE LADDER` |
 | Boards (board log) | `beta` | `BETA RECEIVED // PULL HARDER` |
+| Interstate 40 (OFFRAMP) | `exit` | `EXIT NOT FOUND // THE ROAD JUST KEEPS GOING` |
 
 ## Playful controls that are not hidden
 

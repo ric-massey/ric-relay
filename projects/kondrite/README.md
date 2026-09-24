@@ -688,13 +688,21 @@ Reading it at construction stopped the game booting. The content tables go in as
 getters.
 
 What did **not** move is the runtime: streaming, the ships, the devices, the
-flight loop and the state the interface is handed all still live in the inline
+flight loop and the state the interface is handed all still live in the game
 script, because they are woven through the shared engine that the other three
 modes use too. Pulling them out is a different job from moving a pure function.
 
+That script is `game.js` since 2026-09-24. It was the inline `<script>` at the
+foot of `index.html` — twenty-eight thousand lines inside one HTML file — and it
+moved out byte for byte: same closure, same load order, nothing about how it runs
+changed. What changed is that a diff of the game is a diff of a JavaScript file,
+an editor can open it as one, and `test/smoke.js` refuses an inline script on the
+page so it cannot drift back one function at a time. Cutting the closure itself
+along its `═══ SECTION ═══` markers is the next job and a different one.
+
 `menu.js` is loaded the same way for the same reason.
 
-All of them must be loaded **before** the inline script, which captures each
+All of them must be loaded **before** `game.js`, which captures each
 global once. Loading one late is silent: the mode would play with no chart and
 no almanac, and the menu would draw cards with nothing moving inside them. The
 ordering is asserted in `test/smoke.js`, and `test/browser.js` checks the real
@@ -971,7 +979,8 @@ eligible, and the backend cannot be changed after the namespace is created.
 
 | File | Responsibility |
 |---|---|
-| `index.html` | UI, settings, simulation, rendering, bots, campaign, survey and match rules |
+| `index.html` | The page: markup, styles, and the script tags in the order the game needs |
+| `game.js` | UI, settings, simulation, rendering, bots, campaign, survey and match rules — one closure, loaded last |
 | `net.js` | WebRTC links and compact session-description encoding |
 | `cloud.js` | The account, and the book kept in it. No SDK, no request until asked |
 | `config.js` | The account service's URL and publishable key. Blank means no accounts |

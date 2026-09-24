@@ -123,3 +123,70 @@ test('everything that reads auth.uid() is at least STABLE', () => {
       `public.${fn}() is not STABLE — it is called from a policy and will be re-evaluated per row`);
   }
 });
+
+/* ── the lock on the room ─────────────────────────────────────────────────────
+ * Since sign-up opened (site_accounts.sql), `authenticated` means "has an
+ * account", not "is crew". What keeps a stranger with an account out of the
+ * pins is one RESTRICTIVE policy per table, ANDed with every permissive rule
+ * already there, each asking has_page_access('atlas').
+ *
+ * On 2026-09-24 somebody deleted the one on public.pins and every test in this
+ * directory stayed green — the only suite that runs the policies for real,
+ * site-accounts.test.mjs, skips without a local Postgres and CI has none. So
+ * the migrations are read the way Postgres would apply them: every CREATE and
+ * DROP POLICY in order, last word wins, and at the end each table that holds
+ * places must still be wearing its lock. */
+const POLICY_RE = /(create|drop)\s+policy\s+(?:if exists\s+)?"([^"]+)"\s+on\s+([\w.]+)([\s\S]*?);/g;
+const policies = new Map();                       // "schema.table" -> Map(name -> body)
+for (const m of sql.matchAll(POLICY_RE)) {
+  const [, verb, name, rawTable, body] = m;
+  const table = rawTable.includes('.') ? rawTable : `public.${rawTable}`;
+  if (!policies.has(table)) policies.set(table, new Map());
+  if (verb === 'drop') policies.get(table).delete(name);
+  else policies.get(table).set(name, body);
+}
+
+/* Every table with row-level security on, minus the gate's own tables: the
+ * request queue and the approvals are what a waiting account HAS to be able
+ * to reach, and site_pages is the sign-up form's menu. */
+const GATE_TABLES = new Set(['public.access_requests', 'public.site_access',
+                             'public.site_admins', 'public.site_pages']);
+const rlsTables = [...new Set([...sql.matchAll(/alter table (public\.\w+)\s+enable row level security/g)]
+  .map((m) => m[1]))].filter((t) => !GATE_TABLES.has(t));
+
+const locked = (body) => /\bas restrictive\b/.test(body)
+  && /\bfor all\b/.test(body)
+  && /\bto authenticated\b/.test(body)
+  && /using \([\s\S]*has_page_access\('atlas'\)/.test(body)
+  && /with check \([\s\S]*has_page_access\('atlas'\)/.test(body);
+
+test('every table that holds places is behind a restrictive has_page_access policy', () => {
+  assert.ok(rlsTables.includes('public.pins'), 'the pins table is not RLS-enabled — or the test cannot see it');
+  for (const table of rlsTables) {
+    const mine = policies.get(table) || new Map();
+    const lock = [...mine.values()].find(locked);
+    assert.ok(lock,
+      `${table} has no surviving restrictive policy asking has_page_access('atlas') — ` +
+      `an account that was merely created, never approved, can read it`);
+  }
+});
+
+test('the photo buckets are behind the same lock', () => {
+  const mine = policies.get('storage.objects') || new Map();
+  const lock = [...mine.values()].find((b) => /\bas restrictive\b/.test(b) && /has_page_access\('atlas'\)/.test(b));
+  assert.ok(lock, 'storage.objects has no restrictive policy — pin photos and avatars are open to any account');
+  for (const bucket of ['pin-photos', 'avatars']) {
+    assert.match(lock, new RegExp(`'${bucket}'`), `the storage lock does not name the ${bucket} bucket`);
+  }
+});
+
+test('a restrictive policy is restrictive on every table it is on', () => {
+  // A copy-paste that drops `as restrictive` turns the lock into one more
+  // permissive rule — ORed in, so it opens a door instead of closing one.
+  for (const [table, mine] of policies) {
+    for (const [name, body] of mine) {
+      if (!/approved people/.test(name)) continue;
+      assert.match(body, /\bas restrictive\b/, `"${name}" on ${table} is not restrictive — it is ORed in, not ANDed`);
+    }
+  }
+});

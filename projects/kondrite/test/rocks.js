@@ -34,11 +34,11 @@ function check(ok, why) {
 const fs = require("node:fs");
 const path = require("node:path");
 const src = fs.readFileSync(
-  path.join(__dirname, "..", "index.html"), "utf8");
+  path.join(__dirname, "..", "game.js"), "utf8");
 
 function lift(name) {
   const at = src.indexOf("function " + name + "(");
-  assert.ok(at > 0, "index.html has no " + name);
+  assert.ok(at > 0, "game.js has no " + name);
   let depth = 0, i = src.indexOf("{", at);
   const from = i;
   for (; i < src.length; i++) {

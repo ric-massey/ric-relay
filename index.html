@@ -488,7 +488,7 @@ type Sydney's cat's name for a surprise!</div>
       { name: "captures",      href: "captures.html",      hue: "--flash-captures",      desc: "photographs",                             listed: true },
       { name: "entertainment", href: "entertainment.html", hue: "--flash-entertainment", desc: "films · shows · what is queued up",       listed: true },
       { name: "log",           href: "log.html",           hue: "--flash-log",           desc: "notes · theories · written",              listed: false },
-      { name: "map",           href: "map.html",           hue: "--flash-map",           desc: "crew access only (being built)",          listed: false, locked: true },
+      { name: "map",           href: "map.html",           hue: "--flash-map",           desc: "crew access only · ATLAS, the private map", listed: false },
     ];
 
     const PAGES = Object.fromEntries(ROOMS.map((room) => [room.name, room.href]));
@@ -572,6 +572,12 @@ type Sydney's cat's name for a surprise!</div>
         room: "exploration",
         title: "How Speed Affects Time", description: "one slider, two clocks, the real sky",
         href: "projects/how-speed-affects-time/index.html",
+      },
+      {
+        command: "scale", aliases: ["how-big", "how-big-everything-is", "ladder", "size", "big"],
+        room: "exploration",
+        title: "How Big Everything Is", description: "one rail from a quark to the observable universe, to scale",
+        href: "projects/how-big-everything-is/index.html",
       },
     ];
 

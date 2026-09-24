@@ -387,12 +387,17 @@ belong here.
 
 ## Checking your work
 
-There is no build and no test runner, so verification is: serve the folder and open the
-pages, then run the suites the sub-projects carry.
+There is no build. There is a test runner: `node .github/checks.mjs` runs every quick
+suite in the repo in a couple of seconds, `--slow` adds the two games' simulations, and
+`.github/workflows/checks.yml` runs it on every push. So: run that, serve the folder,
+and open the pages you touched.
 
 ```bash
+node .github/checks.mjs
 python3 -m http.server 8912
 ```
+
+Or one suite at a time:
 
 ```bash
 node projects/kondrite/test/smoke.js

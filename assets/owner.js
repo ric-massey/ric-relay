@@ -72,6 +72,11 @@ window.Owner = (function () {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ password })
       });
+      /* 429 is the throttle: ten wrong guesses in five minutes and the
+         Worker refuses every password unread — the right one included, on
+         purpose, so a guesser cannot tell a hit from a miss. Told apart from
+         "wrong" so the owner is not left retyping a password that is fine. */
+      if (r.status === 429) return 'locked';
       return r.ok;
     } catch (e) { return null; }        // null = could not reach the server
   }
@@ -96,6 +101,7 @@ window.Owner = (function () {
     async signIn(password) {
       const ok = await check(password);
       if (ok === null) return 'offline';
+      if (ok === 'locked') return 'locked';
       if (!ok) return 'wrong';
       token = password;
       write(password);
@@ -226,6 +232,7 @@ window.Owner = (function () {
         const r = await this.signIn(pw);
         if (r === 'ok') { msg.textContent = ''; input.value = ''; }
         else if (r === 'offline') msg.textContent = 'could not reach the log — try again in a moment.';
+        else if (r === 'locked') msg.textContent = 'too many tries just now — wait five minutes.';
         else { msg.textContent = 'that is not it.'; input.select(); }
       });
     }

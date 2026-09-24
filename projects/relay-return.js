@@ -21,6 +21,8 @@
     starfield: ["warp", "NAV COMPUTER: THE SCENIC ROUTE IS FASTER"],
     board: ["beta", "BETA RECEIVED // PULL HARDER"],
     scale: ["googol", "THAT IS A 1 WITH A HUNDRED ZEROES // STILL NOT ON THE LADDER"],
+    /* Interstate 40. No W, A, S or D in the word, because those drive the car. */
+    offramp: ["exit", "EXIT NOT FOUND // THE ROAD JUST KEEPS GOING"],
   };
 
   function install() {
