@@ -1879,9 +1879,10 @@
      They are fetched, and a page opened straight off disk cannot fetch — so each
      gun keeps a synthesised voice underneath (`fallback`), and until a file has
      decoded, or if it never does, that is what plays. The game is never silent
-     for want of a file. `gain` is set by ear against the synth voices around
-     it: the cannon fires constantly and stays small, the lance fires every few
-     seconds and gets to be the loudest thing on screen. */
+     for want of a file. `gain` is matched to the level of the synth voices
+     around it, not tuned by listening — change it freely: the cannon fires
+     constantly and stays small, the lance fires every few seconds and gets to
+     be the loudest thing on screen. */
   const LASERS = {
     laser:   { file: "sounds/laser-cannon.wav",  gain: 0.075, fallback: "shot" },
     beam:    { file: "sounds/laser-beam.wav",    gain: 0.07,  fallback: "shot" },
