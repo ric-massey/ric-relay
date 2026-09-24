@@ -1468,7 +1468,7 @@ function legPaceHeroHTML(engine, mode){
   const bits = [];
   if(mode === 'next'){
     if(why) bits.push(why);
-    bits.push(`plan for this leg: ${fmtPace(planPace)}`);
+    bits.push(`${CONFIG.goal_finish_hours||18}hr pace: ${fmtPace(planPace)}`);
   }
   if(trend) bits.push(trend);
   const line2 = bits.join(' &nbsp;·&nbsp; ');

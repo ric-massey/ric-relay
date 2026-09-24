@@ -690,6 +690,7 @@ function ricPaceDirectiveHTML(engine, fromStop){
     <strong>${fmtPace(leg.target)}</strong>
     <span class="pace-command">${liveFromCheckIn?'LIVE · ':''}${command}</span>
     <small>${esc(fromStop.station)} → ${esc(leg.to.station)} · ${leg.miles} mi${liveFromCheckIn?` · from mi ${engine.anchor.mile} check-in`:''}</small>
+    <small>${CONFIG.goal_finish_hours||18}hr pace: ${fmtPace(leg.plan)}</small>
   </div>`;
 }
 
@@ -823,6 +824,8 @@ function ricPacerMissionHTML(engine){
       <div class="mission-stage ${activelyPacing||waitingAtStart?'live':''}"><i class="ti ti-${done?'circle-check':activelyPacing?'activity-heartbeat':waitingAtStart?'hourglass':'clock'}"></i> ${done?'Done':activelyPacing?'Pacing now':waitingAtStart?'Dad here':'Upcoming'}</div>
     </div>
     <div class="mission-body">
+      ${shortNote ? `<div class="rd-banner official" style="margin-bottom:12px"><i class="ti ti-backpack"></i> ${esc(shortNote)}</div>` : ''}
+      ${carryHTML}
       <div class="mission-section mission-main-action">
         <div class="mission-section-title"><i class="ti ti-stopwatch"></i> Arrival & departure</div>
         <div class="planned-stop-time"><b>${Math.round(RIC_LOGIC.stopRestSeconds(group.start.mile)/60)} min stop</b><span>Countdown starts when Dad arrives</span></div>
@@ -833,8 +836,6 @@ function ricPacerMissionHTML(engine){
         <div class="pacer-stat"><b>${fmtPace(shownPace).replace('/mi','')}</b><span>${raceIsLive&&engine.anchor?'Live pace':'Pace'}</span></div>
         <div class="pacer-stat"><b>${startTime}</b><span>Start</span></div>
       </div>
-      ${carryHTML}
-      ${shortNote ? `<div class="rd-banner official"><i class="ti ti-backpack"></i> ${esc(shortNote)}</div>` : ''}
       <div class="mission-section">
         <div class="mission-section-title"><i class="ti ti-route"></i> Pacing logistics</div>
         <div class="pace-logistics">
@@ -1256,6 +1257,7 @@ async function renderRicHomeDashboard(prefetchedSplits){
         ${stage==='Ready' ? '' : `<div class="mission-stage ${arrived&&!left?'live':''}"><i class="ti ti-${arrived&&!left?'clock-play':'route'}"></i> ${stage}</div>`}
       </div>
       <div class="mission-body">
+        ${nextUp.official_note ? `<div class="rd-banner official" style="margin-bottom:12px"><i class="ti ti-speakerphone"></i> ${esc(nextUp.official_note)}</div>` : ''}
         ${carryNote ? `<div class="urgent-carry"><i class="ti ti-flag-3-filled"></i><div><b>From ${esc(carryNote.station)}</b><span>${esc(carryNote.station_note)}</span></div></div>` : ''}
         <div class="mission-section mission-main-action">
           <div class="mission-section-title"><i class="ti ti-stopwatch"></i> Arrival & departure</div>
@@ -1285,7 +1287,6 @@ async function renderRicHomeDashboard(prefetchedSplits){
           <div class="mission-section-title"><i class="ti ti-gauge"></i> Pace out</div>
           ${ricPaceDirectiveHTML(engine,nextUp)}
         </div>
-        ${nextUp.official_note ? `<div class="rd-banner official" style="margin-top:14px"><i class="ti ti-speakerphone"></i> ${esc(nextUp.official_note)}</div>` : ''}
       </div>
     </div>`;
   }
@@ -2390,7 +2391,7 @@ function legPaceHeroHTML(engine, mode){
   const bits = [];
   if(mode === 'next'){
     if(why) bits.push(why);
-    bits.push(`plan for this leg: ${fmtPace(planPace)}`);
+    bits.push(`${CONFIG.goal_finish_hours||18}hr pace: ${fmtPace(planPace)}`);
   }
   if(trend) bits.push(trend);
   const line2 = bits.join(' &nbsp;·&nbsp; ');

@@ -12,7 +12,7 @@
   const RIC_VERSION = ['Ric', 'Sydney'];
   const ricVersion = RIC_VERSION.includes(window.HermiscusAuth.profileName());
   const appBase = ricVersion ? sharedBase : new URL('original/', sharedBase);
-  const V = '?v=20260923-05';
+  const V = '?v=20260924-01';
   if (!ricVersion) {
     const sheet = document.querySelector('link[rel="stylesheet"][href*="shared/styles.css"]');
     if (sheet) sheet.href = new URL('styles.css' + V, appBase).href;

@@ -104,7 +104,11 @@ function enterAs(p){
     await renderProfileScreen();
   }''', 'init')
 
-    # 5. Send anything saved while offline once the signal comes back.
+    # 5. Ric's wording: the crew sheet names the plan pace by the goal it comes from.
+    app = replace_once(app, "bits.push(`plan for this leg: ${fmtPace(planPace)}`);",
+                       "bits.push(`${CONFIG.goal_finish_hours||18}hr pace: ${fmtPace(planPace)}`);", 'plan pace label')
+
+    # 6. Send anything saved while offline once the signal comes back.
     app += '''
 /* ================= OFFLINE SYNC (added on import) ================= */
 window.addEventListener('online', async ()=>{ if(await flushOfflineQueue()) await loadAppData(); });
