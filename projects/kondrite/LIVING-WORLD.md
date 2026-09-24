@@ -1,8 +1,9 @@
 # Kondrite: Survey — Living World System
 
-**Status: first version built, 2026-09-24.** Written by Ric; the estimate at the
-foot was written before anything existed. What is in the game now is `game/living.js`
-(the simulation) and its pages, and it covers **§27 with §16 and the front of §28**:
+**Status: first version and first expansion built, 2026-09-24.** Written by Ric; the
+estimate at the foot was written before anything existed. What is in the game now is
+`game/living.js` (the simulation) and its pages, and it covers **§27 with §16, and §28
+short of civil war**:
 
 - **Three powers** with resources (the sector's own ice, iron and alloy), stability,
   three traits rolled per seed, and an opinion of each other (§4).
@@ -24,21 +25,36 @@ foot was written before anything existed. What is in the game now is `game/livin
   changed hands near you is on your chart as the moment it moved.
 - **Trouble** (§13) as a badge, not a sentence: a scan return that is in trouble wears
   an amber triangle, one making it a red strike.
+- **Leaders and elections** (§7): a name, a title, two traits (`hawk`, `open`) that
+  pull the power's temper, and a popularity that follows the numbers. An election every
+  forty-five turns; the challenger is rolled against the problems of the day, so a war
+  going badly puts a dove up, and a dove makes peace. A leader whose power collapses
+  under them falls, and the next one gets a honeymoon.
+- **Laws** (§6): privateers, borders, conscription — each a switch with a cost the game
+  already charges. Letters of marque triple the raiders in that power's sky (war.js);
+  a closed border is a tariff at its stations (sector.js) and no trade deals across it;
+  conscription grows the fleet and eats the calm. A leader changes one law at a time.
+- **Revolt** (§8, first half): a firmly held province whose unrest has nowhere else to
+  go, under a power that is coming apart, throws the flag off. Cells go to nobody, it
+  is on the chart, and it cannot rise again for thirty turns. No new faction yet.
+- **Bounties**: a raider that gets away from you in held sky gets a price on its name
+  from whoever holds that sky — the same name the grudge carries — paid on the kill.
 - **Visuals over words**, on Ric's rule: in flight the whole thing is one wordless
   strip under the minimap — three flags, how much fight each has, a red tie between
-  the two at war. The RECORD page has THE SECTOR (three tiles of bars and a
-  relationship triangle) and HISTORY (a glyph and one line each). The chart marks raids,
-  captures and reliefs where they happened.
+  the two at war. Tap it and the SECTOR page opens: THE SECTOR (three tiles of bars,
+  a leader row, a law row of glyphs, and a relationship triangle), HISTORY (a glyph
+  and one line each) and BOUNTIES (a name, a flag, a figure). The chart marks raids,
+  captures, reliefs and revolts where they happened.
 - **Run it without a player**: `test/living.js` boots a sector headless, runs four
   hundred turns on a seeded generator and asserts the history is sane, has inertia,
   frames the same fact three ways, survives the book and reaches the pages. Every
   seed comes out different: measured, one sector trades and settles, one is raided
   raw, one has three wars.
 
-**Not built yet**, in the brief's order: laws, leaders and elections, rebellion and
-civil war (the rest of §28); NPC careers (§29); society (§30); information travel
-(§31); imperfect knowledge (§32); culture and mysteries (§33–34). The sections below
-are unchanged and still the spec for those.
+**Not built yet**, in the brief's order: civil war that births a new faction (the
+second half of §8) and important NPCs (the last of §28); NPC careers (§29); society
+(§30); information travel (§31); imperfect knowledge (§32); culture and mysteries
+(§33–34). The sections below are unchanged and still the spec for those.
 
 ## Simple first version
 

@@ -412,8 +412,12 @@ function buildTraffic(cx, cy, R, rnd, deep, out, space) {
      its outer cells see any, and its heartland none at all; a pirate three
      systems deep into Cordon space is a pirate that has already been caught. */
   const inner = space.inner || 0;
+  /* Unless the owner has licensed them (living.js, §6): letters of marque
+     make raiders three times as common in that power's sky, and its
+     heartland is no longer clean — that is what the law costs the pilot. */
+  const marque = space.kind === "territory" && space.owner && livingLaw(space.owner, "privateers");
   const pirateShare = space.kind === "territory"
-    ? (inner <= 1 ? 0.06 : inner === 2 ? 0.01 : 0)
+    ? (inner <= 1 ? 0.06 : inner === 2 ? 0.01 : 0) * (marque ? 3 : 1) + (marque && inner >= 3 ? 0.01 : 0)
     : space.pirates;
   /* ── and the tutorial is not where you learn about raiders ──────────────
      Ric: "you shouldnt be running into too many pirates in the opening part

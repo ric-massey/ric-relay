@@ -786,6 +786,19 @@ function menuKey(code) {
     if (code === "KeyM") {
       state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
     }
+  } else if (state === "sector") {
+    if (code === "ArrowDown") {
+      surveyHUD.sectorScrollBy(60, surveyHUD.sectorHeight, surveyHUD.sectorView);
+      return;
+    }
+    if (code === "ArrowUp") {
+      surveyHUD.sectorScrollBy(-60, surveyHUD.sectorHeight, surveyHUD.sectorView);
+      return;
+    }
+    if (code === "Escape" || code === "Backspace" || code === "KeyN") { state = "playing"; return; }
+    if (code === "KeyM") {
+      state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
+    }
   } else if (state === "ship") {
     if (code === "ArrowDown") {
       surveyHUD.shipScrollBy(60, surveyHUD.shipHeight, surveyHUD.shipView);
@@ -919,6 +932,8 @@ function menuKey(code) {
         surveyHUD.cargoScrollBy(by, surveyHUD.cargoHeight, surveyHUD.cargoView);
       } else if (sub === "record") {
         surveyHUD.recordScrollBy(by, surveyHUD.recordHeight, surveyHUD.recordView);
+      } else if (sub === "sector") {
+        surveyHUD.sectorScrollBy(by, surveyHUD.sectorHeight, surveyHUD.sectorView);
       } else if (sub === "ship") {
         surveyHUD.shipScrollBy(by, surveyHUD.shipHeight, surveyHUD.shipView);
       }
@@ -1010,6 +1025,10 @@ function menuKey(code) {
         state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
       }
       if (code === "KeyL") { state = "almanac"; return; }
+      // N for the news: the sector page, which the strip under the minimap also opens.
+      if (code === "KeyN") {
+        state = "sector"; surveyHUD && surveyHUD.sectorOpened && surveyHUD.sectorOpened(); return;
+      }
       // Docking is a keypress rather than a trigger volume: a station that
       // opened itself as you flew past would be a station you learned to
       // steer around.

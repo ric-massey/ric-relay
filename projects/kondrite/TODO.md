@@ -15,9 +15,10 @@ written, and C6 was added open.
 
 **Left: nothing on this list.** The open briefs are elsewhere and are not
 bugs: `PLAYER-HISTORY.md`, and "the Leviathan is a ship you can buy" in
-`SURVEY-PLAN.md`. `LIVING-WORLD.md` has its first version built (2026-09-24, see
-its status line): §27, §16 and the front of §28, with the visuals doing the
-talking on Ric's instruction.
+`SURVEY-PLAN.md`. `LIVING-WORLD.md` has its first version and its first
+expansion built (2026-09-24, see its status line): §27, §16 and §28 — leaders,
+laws, revolt, bounties — with the visuals doing the talking on Ric's instruction.
+Civil war that births a faction (§8's second half) and §29 onward are still brief.
 
 ---
 

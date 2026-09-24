@@ -121,7 +121,7 @@ let carrying = false;
 const scrollingPage = () =>
   state === "almanac" || state === "chart" || state === "hangar" ||
   state === "inventory" || state === "craft" || state === "refit" ||
-  state === "record" || state === "ship" ||
+  state === "record" || state === "ship" || state === "sector" ||
   // The wormhole map is not on this list: it does not scroll, and a page that
   // claims a drag is a page whose taps arrive as drags.
   state === "stationinv";
@@ -152,6 +152,10 @@ canvas.addEventListener("wheel", e => {
     surveyHUD.recordScrollBy(px, surveyHUD.recordHeight || 0,
                              surveyHUD.recordView || 1);
     e.preventDefault();
+  } else if (state === "sector") {
+    surveyHUD.sectorScrollBy(px, surveyHUD.sectorHeight || 0,
+                             surveyHUD.sectorView || 1);
+    e.preventDefault();
   } else if (state === "craft") {
     surveyHUD.craftDragBy(px);
     e.preventDefault();
@@ -163,6 +167,9 @@ canvas.addEventListener("wheel", e => {
     } else if (sub === "record") {
       surveyHUD.recordScrollBy(px, surveyHUD.recordHeight || 0,
                                surveyHUD.recordView || 1);
+    } else if (sub === "sector") {
+      surveyHUD.sectorScrollBy(px, surveyHUD.sectorHeight || 0,
+                               surveyHUD.sectorView || 1);
     } else if (sub === "ship") {
       surveyHUD.shipScrollBy(px, surveyHUD.shipHeight || 0,
                              surveyHUD.shipView || 1);
@@ -256,6 +263,10 @@ canvas.addEventListener("pointermove", e => {
     surveyHUD.recordScrollBy(-dy, surveyHUD.recordHeight || 0,
                              surveyHUD.recordView || 1);
   }
+  else if (state === "sector") {
+    surveyHUD.sectorScrollBy(-dy, surveyHUD.sectorHeight || 0,
+                             surveyHUD.sectorView || 1);
+  }
   else if (state === "craft") surveyHUD.craftDragBy(-dy);
   else if (state === "refit" || state === "landed") {
     surveyHUD.marketScrollBy(-dy, surveyHUD.marketHeight || 0,
@@ -272,6 +283,8 @@ canvas.addEventListener("pointermove", e => {
       surveyHUD.cargoScrollBy(-dy, surveyHUD.cargoHeight || 0, surveyHUD.cargoView || 1);
     } else if (sub === "record") {
       surveyHUD.recordScrollBy(-dy, surveyHUD.recordHeight || 0, surveyHUD.recordView || 1);
+    } else if (sub === "sector") {
+      surveyHUD.sectorScrollBy(-dy, surveyHUD.sectorHeight || 0, surveyHUD.sectorView || 1);
     } else if (sub === "ship") {
       surveyHUD.shipScrollBy(-dy, surveyHUD.shipHeight || 0, surveyHUD.shipView || 1);
     } else if (sub === "craft") surveyHUD.craftDragBy(-dy);

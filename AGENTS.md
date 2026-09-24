@@ -429,10 +429,17 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   the push, not the nightly. **The living world (`game/living.js`) is the
   political simulation over the war** — LIVING-WORLD.md's first version, and the
   rule Ric set for it is that the player-facing side is visual: a wordless strip
-  in flight, bars and a triangle on the RECORD page, glyphs on the chart, one
+  in flight, bars and a triangle on its own SECTOR page, glyphs on the chart, one
   headline on docking. Don't add a page of prose to it; add a mark. The news
-  reports the record and never creates an event. `test/living.js` runs it without
-  a player for four hundred turns.
+  reports the record and never creates an event. §28 is in too — leaders who
+  face an election every forty-five turns and fall when a power collapses, three
+  laws that each change something the player can feel (letters of marque put
+  raiders in a power's heartland, a closed border is a tariff at its stations,
+  conscription grows the fleet and eats the calm), provinces that rise from
+  pressure rather than a roll, and a price on any raider that gets away from you
+  in held sky, paid on the kill. Every threshold in it was measured, not guessed:
+  the comments say what the number was before and what it did. `test/living.js`
+  runs it without a player for four hundred turns.
 - **`node .github/checks.mjs` runs every check in the repo**, and
   `.github/workflows/checks.yml` runs it on every push. This was added on
   2026-09-23 because there were 43 test files here and **nothing that ran them** —

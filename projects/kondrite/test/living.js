@@ -17,7 +17,10 @@
        and never make anything up (§21);
      · does the player's own action land in the same record (§16);
      · does it survive the book;
-     · and do the pages draw it — the board, the history, the strip.
+     · do the pages draw it — the board, the history, the strip;
+     · and §28: do leaders come and go for reasons, do laws change things
+       the player can feel, does a province rise from pressure rather than
+       a roll, and is a price on a name paid on the kill.
 
    Run it:  node test/living.js                                               */
 
@@ -113,7 +116,9 @@ function boot(search, store) {
            drawn: () => { const out = drawn.slice(); drawn.length = 0; return out; } };
 }
 
-const KINDS = ["trade", "claim", "raid", "war", "peace", "taken", "battle", "kill", "relief", "rescue", "loss", "arrived"];
+const KINDS = ["trade", "claim", "raid", "war", "peace", "taken", "battle", "kill", "relief", "rescue", "loss", "arrived",
+               "election", "fall", "law", "revolt", "bounty", "claimed"];
+const LAWS = ["privateers", "borders", "conscription"];
 const ACTS = ["trade", "claim", "raid", "invade", "peace"];
 const POWERS = ["cordon", "hallow", "morrow"];
 const inRange = v => typeof v === "number" && v >= 0 && v <= 1;
@@ -184,7 +189,9 @@ const inRange = v => typeof v === "number" && v >= 0 && v <= 1;
   g.cf.start("survey", 1);
   for (let i = 0; i < 200; i++) g.cf.living.turn(1, 7 + i);
   const events = g.cf.living.events();
-  const war = events.find(e => e.kind === "war");
+  /* The newest war: the feed says each fact once, so an older war between
+     the same two is folded into the newer one. */
+  const war = events.filter(e => e.kind === "war").pop();
   check(!!war, "(no war to frame on this seed)");
   if (war) {
     const A = war.actor, T = war.target, N = POWERS.find(k => k !== A && k !== T);
@@ -261,13 +268,21 @@ const inRange = v => typeof v === "number" && v >= 0 && v <= 1;
     check(Math.abs(raw2.powers[k].ice - P[k].ice) < 1e-9 && Math.abs(raw2.powers[k].stability - P[k].stability) < 1e-9,
           k + "'s numbers changed through the book");
     check(Math.abs(raw2.powers[k].aggression - P[k].aggression) < 1e-9, k + "'s temper changed through the book");
+    check(raw2.powers[k].leader && raw2.powers[k].leader.name === P[k].leader.name &&
+          Math.abs(raw2.powers[k].leader.popularity - P[k].leader.popularity) < 1e-9,
+          k + "'s leader did not survive the book");
+    check(LAWS.every(law => !!raw2.powers[k].laws[law] === !!P[k].laws[law]), k + "'s laws changed through the book");
   }
   // The validator refuses what does not belong.
   const book = g2.cf.book.parse(g.store[g2.cf.book.keys.store]);
   book.living.events.push({ kind: "coup", actor: "cordon" });
   book.living.events.push({ kind: "war", actor: "atlantis", target: "hallow" });
   book.living.powers.cordon.ice = 42;
+  book.living.powers.cordon.leader.title = "GOD-EMPEROR";
+  book.living.bounties = [{ name: "NOBODY", by: "atlantis", amount: 1e12 }, { name: "SOMEBODY", by: "hallow", amount: 900, turn: 3 }];
   const ok = g2.cf.book.validate(book);
+  check(ok.living.powers.cordon.leader && !("title" in ok.living.powers.cordon.leader), "a title was read from the book");
+  check(ok.living.bounties.length === 1 && ok.living.bounties[0].by === "hallow", "a bounty posted by nobody got through the validator");
   check(!ok.living.events.some(e => e.kind === "coup"), "an unknown kind of event got through the validator");
   check(!ok.living.events.some(e => e.actor === "atlantis"), "a power that does not exist got through the validator");
   check(ok.living.powers.cordon.ice === 1, "an out-of-range number was not clamped: " + ok.living.powers.cordon.ice);
@@ -284,22 +299,25 @@ const inRange = v => typeof v === "number" && v >= 0 && v <= 1;
         "the state for the board is not three powers with bars");
   check(st.history.length > 0 && st.history.every(h => h.line && h.glyph && h.colour), "the history for the page is empty or unlit");
   check(st.here && typeof st.here.control === "number", "the state does not say where you are");
-  // The record page.
-  g.cf.screen("record");
+  // The sector page.
+  g.cf.screen("sector");
   g.drawn();
   g.cf.draw();
   const words = g.drawn();
   const text = words.join(" | ");
-  check(/THE SECTOR/.test(text), "the record page has no sector board");
-  check(/HISTORY/.test(text), "the record page has no history");
+  check(/THE SECTOR/.test(text), "the sector page has no board");
+  check(/HISTORY/.test(text), "the sector page has no history");
+  check(/BOUNTIES/.test(text), "the sector page has no bounties");
   check(/TURN \d+/.test(text), "the history does not say which turn it is");
   check(st.history.every(h => text.indexOf(h.line) >= 0 || words.some(w => h.line.startsWith(w.replace(/…$/, "")))),
         "a history line did not reach the page");
   /* Visuals over words: the board is bars and a triangle, and the only
      words on it are three names and three tiny captions. Counted rather
      than eyeballed. */
-  const boardWords = words.filter(w => /^(CORDON|HALLOW|MORROW|FIGHT|SKY HELD|ICE · IRON · ALLOY)$/.test(w));
+  const boardWords = words.filter(w => /^(CORDON|HALLOW|MORROW|FIGHT|SKY HELD|GOODS|LEADER|LAWS)$/.test(w));
   check(boardWords.length <= 8, "the sector board is drowning in words: " + boardWords.length);
+  check(/LEADER/.test(text) && /LAWS/.test(text), "the board has no leader or law row");
+  check(st.powers.every(p => words.some(w => w.startsWith(p.leader.name.slice(0, 6)))), "a leader's name did not reach the board");
   // In flight, the strip draws with the living state and says nothing.
   g.cf.screen("playing");
   g.drawn();
@@ -307,6 +325,165 @@ const inRange = v => typeof v === "number" && v >= 0 && v <= 1;
   const flight = g.drawn().join(" | ");
   check(!/THE SECTOR|HISTORY|CORDON AND|RAIDED/.test(flight), "the flight HUD is printing the living world in words");
   console.log("  pages      the board is bars and a triangle · the history is one line each · the strip in flight says nothing");
+}
+
+
+// ── 6. §28: leaders, laws, revolt, bounties ────────────────────────────────
+{
+  const g = boot("?debug=1&seed=771177");
+  g.cf.start("survey", 1);
+  const raw = g.cf.living.raw();
+  /* By id, not by index: a full record drops an old line when a new one
+     lands, so `slice(lengthBefore)` misses the very thing that was written. */
+  const lastId = () => (raw.events.length ? raw.events[raw.events.length - 1].id : 0);
+  const since = id => raw.events.filter(e => e.id > id);
+  const first = {};
+  for (const k of POWERS) {
+    const l = raw.powers[k].leader;
+    check(l && typeof l.name === "string" && l.name.length > 2 && inRange(l.hawk) && inRange(l.open) && inRange(l.popularity),
+          k + " has no leader rolled");
+    first[k] = l.name;
+  }
+  check(new Set(POWERS.map(k => raw.powers[k].leader.term)).size === 3, "the three powers all vote on the same day");
+  for (let i = 0; i < 400; i++) g.cf.living.turn(1, 5 + i);
+  const events = g.cf.living.events();
+  const elections = events.filter(e => e.kind === "election");
+  check(elections.length >= 6, "four hundred turns held only " + elections.length + " elections");
+  check(POWERS.some(k => raw.powers[k].leader.name !== first[k]), "nobody ever lost an election or fell");
+  check(elections.every(e => POWERS.indexOf(e.actor) >= 0 && e.what.length > 2), "an election with no power or no name");
+  // A leader changes the temper: a hawk's power scores raids higher than a dove's would.
+  const laws = events.filter(e => e.kind === "law");
+  check(laws.length >= 3, "the law never changed: " + laws.length);
+  check(laws.every(e => LAWS.indexOf(e.what) >= 0 && (e.n === 0 || e.n === 1)), "a law event names no law");
+  for (const k of POWERS) {
+    check(LAWS.every(law => typeof raw.powers[k].laws[law] === "boolean"), k + "'s laws are not three switches");
+    check(raw.powers[k].cool.law >= 0 && raw.powers[k].cool.law <= 20, k + "'s law cooldown is off: " + raw.powers[k].cool.law);
+  }
+  // Inertia: no power changes the law twice inside its cooldown — unless
+  // whoever runs it changed in between, which is the point of an election.
+  const rule = events.filter(e => (e.kind === "election" && e.n === 1) || e.kind === "fall");
+  for (let i = 0; i < laws.length; i++) {
+    for (let j = i + 1; j < laws.length; j++) {
+      const a = laws[i], b = laws[j];
+      if (a.actor !== b.actor || b.turn - a.turn >= 20 || b.turn === a.turn) continue;
+      if (rule.some(r => r.actor === a.actor && r.turn >= a.turn && r.turn <= b.turn)) continue;
+      check(false, a.actor + " changed the law again after " + (b.turn - a.turn) + " turns"); break;
+    }
+  }
+  // Every fall came from a collapse, never a good year.
+  const falls = events.filter(e => e.kind === "fall");
+  check(falls.length < 30, "governments fall every few minutes: " + falls.length + " in 400 turns");
+  console.log("  rule       " + elections.length + " elections · " + falls.length + " falls · " + laws.length + " law changes · " +
+              events.filter(e => e.kind === "revolt").length + " revolts, in 400 turns");
+
+  /* The laws are felt. A closed border is a tariff at that power's stations;
+     letters of marque put raiders in its heartland. Both are read through
+     the same functions the game uses, with the switch thrown by hand. */
+  const surv = g.cf.survey();
+  // Home's stations fly no flag, so dress one: the price is a function of the station and the law.
+  const st = surv.stations.length ? Object.assign({}, surv.stations[0], { faction: "hallow" }) : null;
+  check(!!st, "(no station loaded)");
+  if (st) {
+    const p = raw.powers[st.faction];
+    p.laws.borders = false;
+    const open = g.sandbox.stationPrices(st);
+    p.laws.borders = true;
+    const closed = g.sandbox.stationPrices(st);
+    check(g.cf.living.law(st.faction, "borders"), "the law hook does not read the switch");
+    check(Object.keys(open).every(k => closed[k] <= open[k]) && Object.keys(open).some(k => closed[k] < open[k]),
+          "a closed border did not tariff the station's prices");
+    const quietA = g.sandbox.stationPrices(st, true);
+    p.laws.borders = false;
+    const quietB = g.sandbox.stationPrices(st, true);
+    check(JSON.stringify(quietA) === JSON.stringify(quietB), "the quiet price moved with the law — the ranging fold is not a fact about where a station is any more");
+  }
+
+  // A revolt comes from pressure: set it up and it happens; leave calm alone and it never does.
+  {
+    const near = g.sandbox.provincesNear().near;
+    const held = near.filter(pv => pv.owner && pv.control >= 0.5);
+    check(held.length > 0, "(no firmly held province near the ship)");
+    if (held.length) {
+      const pv = held[0], key = pv.owner, p = raw.powers[key];
+      const n0 = lastId();
+      const known0 = surv.known.size;
+      p.stability = 0.1;
+      let rose = false;
+      for (let i = 0; i < 40 && !rose; i++) {
+        pv.unrest = 0.95; pv.security = 0.05; pv.rose = -999; p.stability = Math.min(p.stability, 0.1);
+        g.sandbox.livingRevoltTurn([pv], g.sandbox.seeded(77 + i));
+        rose = since(n0).some(e => e.kind === "revolt" && e.actor === key);
+      }
+      check(rose, "a province at 0.95 unrest under a collapsing power never rose");
+      if (rose) {
+        const ev = since(n0).find(e => e.kind === "revolt");
+        check(ev.n >= 2, "a revolt freed nothing");
+        check(surv.known.size > known0 && [...surv.known.values()].some(q => q.k === "revolt"), "the revolt is not on the chart");
+        check(g.sandbox.provinceRead(pv).control < 1, "the province is still wholly held after it rose");
+        // And not again straight away.
+        const n1 = lastId();
+        pv.unrest = 0.95; pv.security = 0.05;
+        for (let i = 0; i < 40; i++) g.sandbox.livingRevoltTurn([pv], g.sandbox.seeded(900 + i));
+        check(!since(n1).some(e => e.kind === "revolt"), "the same province rose again inside its cooldown");
+      }
+      // Calm sky never rises, whatever the roll.
+      const calm = near.find(q => q.owner && q !== pv);
+      if (calm) {
+        const n2 = lastId();
+        raw.powers[calm.owner].stability = 0.9; calm.unrest = 0.2; calm.security = 0.8;
+        for (let i = 0; i < 40; i++) g.sandbox.livingRevoltTurn([calm], g.sandbox.seeded(1 + i));
+        check(!since(n2).some(e => e.kind === "revolt"), "a calm province rose");
+      }
+    }
+  }
+
+  // A price on a name: posted by whoever holds this sky when a raider gets away, paid on the kill.
+  {
+    const me = g.cf.live().ships[0];
+    const WORLD = vm.runInContext("WORLD", g.sandbox);   // a top-level const, so not on the sandbox
+    // Home is nobody's by construction, so fly to the nearest cell somebody holds.
+    let by = "";
+    for (const pv of g.sandbox.provincesNear().near) {
+      for (let j = 0; j < 6 && !by; j++) for (let i = 0; i < 6 && !by; i++) {
+        const cx = pv.px * 6 + i, cy = pv.py * 6 + j;
+        const o = WORLD.holderOf(cx, cy);
+        if (o) { const at = WORLD.regionSite(cx, cy); me.x = at.x; me.y = at.y; by = o; }
+      }
+      if (by) break;
+    }
+    check(!!by, "(no power holds the sky the ship is in)");
+    if (by) {
+      const cash0 = surv.cash;
+      const n0 = lastId();
+      const raider = { name: "THE TEST OF ASH", hull: "needle", hp: 40, maxHp: 120, x: me.x + 500, y: me.y, faction: "pirate", role: "pirate" };
+      g.sandbox.rememberGrudge(raider);
+      const posted = g.cf.living.bounties().slice();   // a copy: the live list empties when it is paid
+      const price = posted.length ? posted[0].amount : 0;
+      check(posted.length === 1 && posted[0].name === raider.name && posted[0].by === by && price > 0,
+            "a raider that got away in held sky was not priced");
+      check(since(n0).some(e => e.kind === "bounty" && e.actor === by && e.what === raider.name), "the bounty is not in the record");
+      g.sandbox.rememberGrudge(raider);
+      check(g.cf.living.bounties().length === 1, "the same name was priced twice");
+      const bst = g.cf.living.state();
+      check(bst.bounties.length === 1 && bst.bounties[0].name === raider.name && bst.bounties[0].colour, "the page does not get the bounty");
+      // A kill of somebody else pays nothing; the kill of the wanted ship pays.
+      g.sandbox.repForKill({ role: "pirate", kind: "pirate", faction: "pirate", x: me.x, y: me.y, name: "SOME OTHER" });
+      check(surv.cash === cash0 && g.cf.living.bounties().length === 1, "a kill of an unwanted ship touched the bounty");
+      g.sandbox.repForKill({ role: "hunter", kind: "hunter", faction: "pirate", grudge: true, name: raider.name, x: me.x, y: me.y });
+      check(surv.cash === cash0 + price, "the bounty was not paid on the kill: " + (surv.cash - cash0) + " vs " + price);
+      check(g.cf.living.bounties().length === 0, "the price stood after it was paid");
+      check(raw.events.some(e => e.kind === "claimed" && e.actor === "you" && e.target === by), "the payment is not in the record");
+      const line = g.cf.living.news(by, 60).find(n => n.kind === "claimed");
+      check(!!line && /COLLECTED OUR PRICE/.test(line.text), "the poster's own news does not say it paid: " + (line && line.text));
+      // The sector page names the wanted ship while it is wanted.
+      g.sandbox.rememberGrudge({ name: "THE SECOND", hull: "needle", hp: 30, maxHp: 100, x: me.x, y: me.y });
+      g.cf.screen("sector");
+      g.drawn(); g.cf.draw();
+      const text = g.drawn().join(" | ");
+      check(/THE SECOND/.test(text) && /PAID ON THE KILL/.test(text), "a posted bounty is not on the sector page");
+    }
+  }
+  console.log("  §28        leaders change for reasons · a closed border is a tariff · a province rises from pressure and not twice · a price is paid on the kill");
 }
 
 if (problems.length) {

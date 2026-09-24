@@ -929,6 +929,9 @@ function render(dt) {
   if (state === "record" && surv && surveyHUD) {
     surveyHUD.drawRecord(surveyState(), dt || 0); return;
   }
+  if (state === "sector" && surv && surveyHUD) {
+    surveyHUD.drawSector(surveyState(), dt || 0); return;
+  }
   if (state === "ship" && surv && surveyHUD) {
     surveyHUD.drawShip(surveyState(), dt || 0); return;
   }

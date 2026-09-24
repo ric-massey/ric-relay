@@ -377,15 +377,38 @@ change hands.
 
 It is shown before it is said. In flight, one strip under the minimap: three flags,
 how much fight each has, a red tie between the two at war, and a second colour inside
-a flag's square if the province you are in is contested. The RECORD page has **THE
-SECTOR** — three tiles of bars and a triangle of who feels what about whom — and
-**HISTORY**, a glyph and one line each. Raids, captures and reliefs go on the chart where
-they happened. When you dock, you hear the sector's headline once, the way that
-station's owner would put it. A scan return in trouble wears an amber triangle; one
-making trouble wears a red strike.
+a flag's square if the province you are in is contested. Tap it, or press N, and the
+**SECTOR** page opens — its own tab beside RECORD: **THE SECTOR** is three tiles of
+bars and a triangle of who feels what about whom, **HISTORY** is a glyph and one line
+each, **BOUNTIES** is a name, a flag and a figure. Raids, captures, reliefs and
+revolts go on the chart where they happened. When you dock, you hear the sector's
+headline once, the way that station's owner would put it. A scan return in trouble
+wears an amber triangle; one making trouble wears a red strike.
+
+The first expansion (§28) is in, and every piece of it is a number that moves a number
+that was already there:
+
+- **Leaders.** Each power has one — a name, a title, and two traits, `hawk` and `open`,
+  that pull the power's temper. Popularity follows the numbers; an election comes every
+  forty-five turns and the challenger is rolled *against the problems of the day* (a
+  war going badly gets a dove); a leader whose power is collapsing under them falls.
+  The board's LEADER row is the name and a popularity bar.
+- **Laws.** Three switches, each felt somewhere else in the game: **privateers** make
+  raiders three times as common in that power's sky and its heartland no longer clean;
+  **borders** closed is a tariff at its stations (you are paid 12% less) and no trade
+  deals across it; **conscription** grows the fleet every turn and eats the calm. A
+  leader changes the one law they feel most strongly about, then waits. The LAWS row is
+  three glyphs, lit or ghosted.
+- **Revolt.** A firmly held province whose unrest has nowhere else to go, under a power
+  that is coming apart, throws the flag off: cells go to nobody and it is on your chart.
+  Pressure, never a roll — the thresholds are the whole rule. Not a civil war yet: no
+  new faction is born of it.
+- **Bounties.** A raider that gets away from you in somebody's sky gets a price on its
+  name from whoever holds that sky. It is the same name the grudge carries, so the ship
+  that comes back to find you is the ship that is wanted. Paid on the kill.
 
 `test/living.js` runs a sector without a player for four hundred turns and holds the
-result to the brief.
+result to the brief, §28 included.
 
 ### And then the hours after it
 
@@ -1053,7 +1076,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `game/sector.js` | THE WORLD — The two tracks, salvage, selling, stations that want something, what a place deals in, who pays best, solid things, gates, sentries, the devices driven, caches and remembering. |
 | `game/bosses.js` | BOSSES — The bosses, the queen's bugs, five ways to fight, handing water across and asking what a thing is. |
 | `game/factions.js` | THE FACTIONS — Where the parts go, the first two minutes, company, a galaxy already at war, what the sector thinks of you, fitting and building, the ice melter, and how battles end. |
-| `game/living.js` | THE LIVING WORLD — Powers with needs, provinces with resources, five actions and the events they leave behind; the record, the framed news, the player's own actions in the same record. First version of LIVING-WORLD.md. |
+| `game/living.js` | THE LIVING WORLD — Powers with needs, provinces with resources, five actions and the events they leave behind; the record, the framed news, the player's own actions in the same record. Then §28: leaders and elections, three laws with real effects, revolt from pressure, and bounties posted on the raiders that got away. First version of LIVING-WORLD.md and its first expansion. |
 | `game/war.js` | THE WAR MOVES — Battles in progress, ships with names, what a scan calls a ship, the hangar, the manifest, the gazetteer, mapping the sky, the warning, the background and the tick. |
 | `game/survey-draw.js` | SURVEY — DRAWING — Drawing the sector and the world, words around circles, what a thing is at a glance, what the devices leave behind, the rock of the Warrens, the front page line and where a ship may appear. |
 | `game/multiplayer.js` | MULTIPLAYER — Networking, which pages stop the clock, what this client saw, and the bots. |
@@ -1095,7 +1118,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/save.js` | The book: parse, migrate, validate and the loader that decides what to do when one says no. An old save lands where a new one does, a future one is refused, a corrupt primary falls back to the backup, and a bug in the reader is not a corrupt save |
 | `test/fog.js` | The chart's round trip through storage, on its own and in milliseconds: a refused import may not damage the chart it declined to replace |
 | `test/warrens.js` | The cave region: that its rock agrees with itself across a chunk line, that the passages join up, and that nothing — the ship included — is ever left inside solid rock. Takes a seed |
-| `test/living.js` | The living world, run without a player: four hundred political turns on a seeded generator, then the record is asked whether anything happened and only the five things, whether every number stayed in range, whether it has inertia (no war inside the cooldown after a peace, no raid on the same neighbour inside its cooldown), whether the news frames one war three ways without changing the facts and never writes anything, whether a kill, a delivery into a shortage and a rescue land as yours, whether it survives the book and the validator refuses what does not belong, and whether the board is bars and a triangle rather than words |
+| `test/living.js` | The living world, run without a player: four hundred political turns on a seeded generator, then the record is asked whether anything happened and only the five things, whether every number stayed in range, whether it has inertia (no war inside the cooldown after a peace, no raid on the same neighbour inside its cooldown), whether the news frames one war three ways without changing the facts and never writes anything, whether a kill, a delivery into a shortage and a rescue land as yours, whether it survives the book and the validator refuses what does not belong, whether the board is bars and a triangle rather than words, and §28: whether leaders come and go for reasons and never change the law twice inside a cooldown, whether a closed border tariffs a station's live price and leaves the quiet one alone, whether a province at the bar rises and one below it never does, and whether a price posted on a raider is paid on that kill and no other |
 | `test/gamepad.js` | The gamepad, with a fake `navigator.getGamepads` the test owns: nothing plugged in changes nothing; the CONTROLLER tab names the pad without its driver id, lists the layout and shows what is pressed; at the title A is Enter exactly once however long it is held; in the cockpit the stick turns, the stick and RT thrust, A fires without pressing Enter, X is slot one and START pauses; and unplugging lets go of everything |
 | `test/door.js` | The account layer and the boards, which every other suite stubs off: that a copy with no account service is a whole game, that the guest door is gone from the markup as well as the logic, that signed out neither the game nor the machines open, that a cached session plays with every request failing, that being unreachable does not sign anybody out while a refusal does, and that an email never becomes the public name · and for step 5: that `saves` stayed private while `scores` became public, that no policy lets a score be edited or deleted, that a local game reports nothing, that you can only ever be the reporter, and that a report survives a closed tab |
 | `test/browser.js` | The only suite that needs a browser, and it asks only what one can answer: does the page load its own modules, does the canvas draw, does the account panel take typing, does the wheel move a page, does a part drag into a slot, does a run survive a real reload, and does it lay out on a phone. Needs Playwright — see below |

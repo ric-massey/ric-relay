@@ -614,7 +614,7 @@
      rather than pages about your ship, which is why they belong on this strip
      and not on the amber one. See `HUD.drawStationInv`. */
   const PLACE_TABS = ["refit", "hangar", "stationinv", "wormhole", "arcade"];
-  const SHIP_TABS  = ["ship", "inventory", "record", "craft", "chart"];
+  const SHIP_TABS  = ["ship", "inventory", "record", "sector", "craft", "chart"];
   const SHIP_TONE  = { bright: AMBER, dim: AMBER_DIM, low: RULE };
   const PLACE_TONE = { bright: VIOLET, dim: VIOLET_DIM, low: VIOLET_LOW };
 
@@ -745,6 +745,10 @@
       { key: "ship",      name: "SHIP",     live: true, act: st.onShip },
       { key: "inventory", name: "CARGO",    live: true, act: st.onInventory },
       { key: "record",    name: "RECORD",   live: true, act: st.onRecord },
+      /* The living world's own page: the powers, what happened, who is
+         wanted. It is yours wherever you are, like the record, and it is the
+         thing the strip under the minimap opens. */
+      { key: "sector",    name: "SECTOR",   live: true, act: st.onSector },
       { key: "craft",     name: "CRAFTING", live: true, act: st.onCraftPage },
       { key: "missions",  name: "MISSIONS", live: true, act: st.onMissions },
       { key: "chart",     name: "MAP",      live: true, act: st.onChart }
@@ -1224,7 +1228,8 @@
        from somebody, a shortage you broke. */
     raid:      { name: "RAID",     colour: "#ff8f77" },
     taken:     { name: "TAKEN",    colour: "#ffcb42" },
-    relief:    { name: "RELIEF",   colour: "#6dffbf" }
+    relief:    { name: "RELIEF",   colour: "#6dffbf" },
+    revolt:    { name: "REVOLT",   colour: "#ff5555" }
   };
 
   function markGlyph(ctx, k, x, y, r) {
@@ -1329,6 +1334,42 @@
         // A V, pointing down: something went in and did not come out.
         ctx.beginPath();
         ctx.moveTo(x - r, y - r * 0.7); ctx.lineTo(x, y + r); ctx.lineTo(x + r, y - r * 0.7);
+        ctx.stroke();
+        break;
+      case "vote":
+        // A box with a tick in it.
+        ctx.beginPath(); ctx.rect(x - r, y - r, r * 2, r * 2); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x - r * 0.6, y); ctx.lineTo(x - r * 0.1, y + r * 0.55); ctx.lineTo(x + r * 0.7, y - r * 0.6);
+        ctx.stroke();
+        break;
+      case "fall":
+        // A column going over.
+        ctx.beginPath();
+        ctx.moveTo(x - r, y + r); ctx.lineTo(x + r, y + r);
+        ctx.moveTo(x - r * 0.4, y + r); ctx.lineTo(x + r * 0.8, y - r);
+        ctx.stroke();
+        break;
+      case "law":
+        // A tablet with two lines on it.
+        ctx.beginPath(); ctx.rect(x - r * 0.8, y - r, r * 1.6, r * 2); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x - r * 0.4, y - r * 0.35); ctx.lineTo(x + r * 0.4, y - r * 0.35);
+        ctx.moveTo(x - r * 0.4, y + r * 0.25); ctx.lineTo(x + r * 0.4, y + r * 0.25);
+        ctx.stroke();
+        break;
+      case "revolt":
+        // A ring broken open at the top, and what came out of it.
+        ctx.beginPath(); ctx.arc(x, y, r, -Math.PI * 0.25, Math.PI * 1.25); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, y - r * 0.2); ctx.lineTo(x, y - r * 1.5); ctx.stroke();
+        break;
+      case "bounty":
+        // A ring with a dot and the four ticks of a sight.
+        ctx.beginPath(); ctx.arc(x, y, r * 0.8, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, r * 0.2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x - r * 1.3, y); ctx.lineTo(x - r * 0.5, y); ctx.moveTo(x + r * 0.5, y); ctx.lineTo(x + r * 1.3, y);
+        ctx.moveTo(x, y - r * 1.3); ctx.lineTo(x, y - r * 0.5); ctx.moveTo(x, y + r * 0.5); ctx.lineTo(x, y + r * 1.3);
         ctx.stroke();
         break;
       case "memorial":
@@ -1697,6 +1738,8 @@
     const n = L.powers.length;
     const gw = Math.floor(b.w / n), sq = 8, barW = gw - sq - 8;
     const at = {};
+    // Tap it and the sector page opens: the strip is the door, not a readout.
+    if (st.onSector) tap({ x: b.x - 4, y: y - 4, w: b.w + 8, h: 22, act: st.onSector });
     ctx.save();
     ctx.lineWidth = 1;
     L.powers.forEach((pw, i) => {
@@ -4883,6 +4926,7 @@
     ["ship",      "SHIP",     st => st.onShip],
     ["inventory", "CARGO",    st => st.onInventory],
     ["record",    "RECORD",   st => st.onRecord],
+    ["sector",    "SECTOR",   st => st.onSector],
     ["craft",     "CRAFTING", st => st.onCraftPage],
     ["chart",     "MAP",      st => st.onChart]
   ];
@@ -4918,7 +4962,7 @@
        leave every other page in the game laid out forty-four pixels low. */
     const base = PAGE.TOP;
     const body = { ship: HUD.drawShip, inventory: HUD.drawInventory,
-                   record: HUD.drawRecord, craft: HUD.drawCraft,
+                   record: HUD.drawRecord, sector: HUD.drawSector, craft: HUD.drawCraft,
                    chart: HUD.drawChart }[stationTab] || HUD.drawShip;
     embedded++;
     PAGE.TOP = base + EMBED_BUMP;
@@ -6586,10 +6630,31 @@
      about whom: an edge per pair, red and thick for a war, red-thin for bad
      blood, green for friends, dim for nothing much. (LIVING-WORLD.md, with
      Ric's rule that the visuals do the talking.) */
+  /* The three laws, as glyphs: letters of marque are the raid strike, a
+     closed border is a barred gate, conscription is a chevron. Lit when the
+     law is on, a ghost when it is off, so a tile reads at a glance. */
+  function lawGlyph(ctx, law, x, y, r) {
+    switch (law) {
+      case "privateers": markGlyph(ctx, "raid", x, y, r); break;
+      case "borders":
+        ctx.beginPath();
+        ctx.moveTo(x - r, y - r); ctx.lineTo(x - r, y + r);
+        ctx.moveTo(x + r, y - r); ctx.lineTo(x + r, y + r);
+        ctx.moveTo(x - r * 1.3, y); ctx.lineTo(x + r * 1.3, y);
+        ctx.stroke();
+        break;
+      case "conscription":
+        ctx.beginPath();
+        ctx.moveTo(x - r, y + r * 0.7); ctx.lineTo(x, y - r * 0.6); ctx.lineTo(x + r, y + r * 0.7);
+        ctx.moveTo(x - r, y + r * 1.4); ctx.lineTo(x, y + r * 0.1); ctx.lineTo(x + r, y + r * 1.4);
+        ctx.stroke();
+        break;
+    }
+  }
   function sectorBoard(st, full, y0) {
     const { ctx } = api;
     const L = st.living;
-    const rows = 4;
+    const rows = 6;
     const h = PANEL_H(rows);
     const here = L.here || {};
     const hereWord = here.owner
@@ -6625,11 +6690,26 @@
       // The three goods, side by side, in the goods' own colours.
       const gw = Math.floor((bw - 8) / 3);
       pw.goods.forEach((g, k) => bar(x + k * (gw + 4), ROW(y0, 3) - 6, gw, g.v, g.colour, 0.8));
+      // Who is in charge, and how much anybody wants them to be: the name in
+      // the flag's colour, the popularity as a bar beside it (§7).
+      if (pw.leader) {
+        const nameW = Math.floor(bw * 0.62);
+        fitText(pw.leader.name, x, ROW(y0, 4), 11, pw.colour, "left", 0.9, nameW, "0.04em");
+        bar(x + nameW + 6, ROW(y0, 4) - 6, bw - nameW - 6, pw.leader.popularity, VIOLET, 0.85);
+      }
+      // The law (§6): three glyphs, lit or ghosted.
+      (pw.laws || []).forEach((law, k) => {
+        ctx.save();
+        ctx.strokeStyle = law.on ? AMBER : VIOLET_LOW; ctx.fillStyle = ctx.strokeStyle;
+        ctx.lineWidth = law.on ? 1.5 : 1; ctx.globalAlpha = law.on ? 0.95 : 0.3;
+        lawGlyph(ctx, law.key, x + 7 + k * 22, ROW(y0, 5) - 6, 5);
+        ctx.restore();
+      });
     });
     // Row captions, once, small and dim, in their own column at the left.
     const cap = (row, word) =>
       label(word, full.x + PAGE.PAD, ROW(y0, row) - 1, 11, VIOLET_LOW, "left", 0.6, "0.12em");
-    cap(1, "FIGHT"); cap(2, "SKY HELD"); cap(3, "GOODS");
+    cap(1, "FIGHT"); cap(2, "SKY HELD"); cap(3, "GOODS"); cap(4, "LEADER"); cap(5, "LAWS");
 
     // The triangle.
     const cx = full.x + full.w - PAGE.PAD - triW / 2, cy = y0 + h / 2 + 6, r = 34;
@@ -6661,10 +6741,10 @@
      The record, newest first, one line each: a glyph for the kind of thing,
      the flag's colour on the glyph, the line, and how long ago. The glyphs
      are the same ones the chart uses for the same things. */
-  function historyPanel(st, full, y0) {
+  function historyPanel(st, full, y0, rows) {
     const { ctx } = api;
     const L = st.living;
-    const list = L.history || [];
+    const list = (L.history || []).slice(0, rows || 8);
     const h = PANEL_H(Math.max(1, list.length));
     panel(full.x, y0, full.w, h, AMBER, "HISTORY", "TURN " + (L.turn || 0));
     if (!list.length) {
@@ -6685,6 +6765,86 @@
       const ago = ev.ago < 60 ? "just now" : ev.ago < 3600 ? Math.round(ev.ago / 60) + "m ago"
                 : Math.round(ev.ago / 3600) + "h ago";
       label(ago, full.x + full.w - PAGE.PAD, y, SIZE.cap, VIOLET_LOW, "right", 0.6);
+    });
+    return y0 + h;
+  }
+
+  /* ═══ THE SECTOR ═════════════════════════════════════════════════════════
+     The living world's page (LIVING-WORLD.md). Everything on it is drawn
+     before it is said: the board of the three powers, the history as glyphs
+     with one line each, and the bounties. It scrolls like the record does. */
+  let secPg = { scroll: 0 };
+  HUD.sectorOpened = function () { secPg.scroll = 0; };
+  HUD.sectorScrollBy = function (dy, total, view) {
+    const max = Math.max(0, total - view);
+    secPg.scroll = Math.max(0, Math.min(max, secPg.scroll + dy));
+  };
+  HUD.drawSector = function (st, dt) {
+    const { ctx, SCREEN_W, SCREEN_H } = api;
+    st = st || {};
+    const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
+    const L = st.living;
+    const here = L && L.here;
+    pageFrame("THE SECTOR",
+              here && here.owner
+                ? (here.contested ? "CONTESTED SKY" : here.control > 0.7 ? "HELD SKY" : "LOOSELY HELD SKY")
+                : "NOBODY'S SKY",
+              "", SHIP_TONE);
+    const viewTop = PAGE.TOP - 4;
+    const viewH = SCREEN_H - viewTop - 16;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, viewTop, SCREEN_W, viewH);
+    ctx.clip();
+    tapClip({ x: 0, y: viewTop, w: SCREEN_W, h: viewH });
+    let y = PAGE.TOP - secPg.scroll;
+    const gap = PAGE.STEP;
+    if (!L) {
+      fitText("the sector is still waking up", full.x + PAGE.PAD, y + 20, SIZE.cap,
+              VIOLET_LOW, "left", 0.6, full.w);
+      y += 40;
+    } else {
+      y = sectorBoard(st, full, y) + gap;
+      y = historyPanel(st, full, y, 12) + gap;
+      y = bountyPanel(st, full, y) + gap;
+    }
+    const total = (y + secPg.scroll) - PAGE.TOP;
+    secPg.scroll = Math.max(0, Math.min(Math.max(0, total - viewH), secPg.scroll));
+    HUD.sectorHeight = total;
+    HUD.sectorView = viewH;
+    tapClipOff();
+    ctx.restore();
+    if (total > viewH) {
+      scrollHint(SCREEN_W - 14, viewTop + 6, viewH - 12,
+                 secPg.scroll / Math.max(1, total - viewH));
+    }
+    pageNav(st, "sector", SHIP_TABS, SHIP_TONE);
+    closeButton(st.onClose || (() => {}));
+  };
+
+  /* ── who is wanted ─────────────────────────────────────────────────────
+     A name, a flag and a figure. Posted by a power when a raider got away
+     from you in its sky; paid when you finish it. */
+  function bountyPanel(st, full, y0) {
+    const { ctx } = api;
+    const list = (st.living && st.living.bounties) || [];
+    const h = PANEL_H(Math.max(1, list.length));
+    panel(full.x, y0, full.w, h, WARN, "BOUNTIES", list.length ? "PAID ON THE KILL" : "");
+    if (!list.length) {
+      fitText("nobody is wanted — a raider that gets away from you is",
+              full.x + PAGE.PAD, ROW(y0, 0) + 2, SIZE.cap, VIOLET_LOW, "left", 0.6,
+              full.w - PAGE.PAD * 2);
+      return y0 + h;
+    }
+    list.forEach((b, i) => {
+      const y = ROW(y0, i) + 2;
+      ctx.save();
+      ctx.fillStyle = b.colour; ctx.globalAlpha = 0.9;
+      ctx.fillRect(full.x + PAGE.PAD, y - 9, 9, 9);
+      ctx.restore();
+      fitText(b.name, full.x + PAGE.PAD + 18, y, SIZE.cap, WARN, "left", 0.95, 300, "0.06em");
+      label(b.by, full.x + PAGE.PAD + 330, y, SIZE.cap, b.colour, "left", 0.8, "0.08em");
+      label(money(b.amount), full.x + full.w - PAGE.PAD, y, SIZE.cap, CASH, "right", 0.95);
     });
     return y0 + h;
   }
@@ -6716,10 +6876,6 @@
        used to be a door at the bottom of the scroll saying only that it was
        there. */
     y = missionBands(st, full, y) + gap;
-    if (st.living) {
-      y = sectorBoard(st, full, y) + gap;
-      y = historyPanel(st, full, y) + gap;
-    }
 
     /* ── who you are to them ─────────────────────────────────────────────── */
     const repH = PANEL_H(flags.length * 2 + others.length);

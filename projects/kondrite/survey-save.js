@@ -507,16 +507,27 @@ function validateSurveyBook(b) {
           }
           if (s.cool) {
             p.cool.act = num(s.cool.act, 0, 99) | 0; p.cool.war = num(s.cool.war, 0, 99) | 0;
+            p.cool.law = num(s.cool.law, 0, 99) | 0;
             p.cool.raid = {}; p.cool.trade = {};
             for (const g of FACTIONS()) {
               if (s.cool.raid && typeof s.cool.raid[g.key] === "number") p.cool.raid[g.key] = num(s.cool.raid[g.key], 0, 99) | 0;
               if (s.cool.trade && typeof s.cool.trade[g.key] === "number") p.cool.trade[g.key] = num(s.cool.trade[g.key], 0, 99) | 0;
             }
           }
+          /* §28: the laws are three switches, the leader is a name and
+             three numbers. A title is never read from the book. */
+          p.laws = {};
+          for (const law of ["privateers", "borders", "conscription"]) p.laws[law] = !!(s.laws && s.laws[law]);
+          if (s.leader && typeof s.leader === "object" && typeof s.leader.name === "string") {
+            p.leader = { name: s.leader.name.slice(0, 40), hawk: num(s.leader.hawk, 0, 1),
+                         open: num(s.leader.open, 0, 1), popularity: num(s.leader.popularity, 0, 1),
+                         since: num(s.leader.since, 0, 1e7) | 0, term: num(s.leader.term, 0, 1e7) | 0 };
+          }
           powers[f.key] = p;
         }
         const KINDS = ["trade", "claim", "raid", "war", "peace", "taken", "battle",
-                       "kill", "relief", "rescue", "loss", "arrived"];
+                       "kill", "relief", "rescue", "loss", "arrived",
+                       "election", "fall", "law", "revolt", "bounty", "claimed"];
         return {
           turn: num(L.turn, 0, 1e7) | 0, clock: num(L.clock, 0, 1e9),
           seq: num(L.seq, 0, 1e9) | 0, warSince: num(L.warSince, 0, 1e7) | 0,
@@ -526,7 +537,12 @@ function validateSurveyBook(b) {
             .slice(0, 400)
             .map(p => ({ px: p.px | 0, py: p.py | 0, ice: num(p.ice, 0, 1), iron: num(p.iron, 0, 1),
                          alloy: num(p.alloy, 0, 1), unrest: num(p.unrest, 0, 1),
-                         security: num(p.security, 0, 1) })),
+                         security: num(p.security, 0, 1), rose: num(p.rose, -999, 1e7) | 0 })),
+          bounties: (Array.isArray(L.bounties) ? L.bounties : [])
+            .filter(b => b && typeof b.name === "string" && flag(b.by))
+            .slice(-6)
+            .map(b => ({ name: b.name.slice(0, 40), by: b.by, amount: num(b.amount, 0, 1e7) | 0,
+                         turn: num(b.turn, 0, 1e7) | 0 })),
           events: (Array.isArray(L.events) ? L.events : [])
             .filter(e => e && KINDS.indexOf(e.kind) >= 0)
             .slice(-240)

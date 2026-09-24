@@ -8856,8 +8856,9 @@ const storeOf = (cf, key) => {
     const taps = cf.live().taps;
     check(taps.length > 4, pg + " drew only " + taps.length + " things to press");
     const nav = taps.filter(t => t.h === 38 && t.y < 60);
-    /* Five carried tabs and a close on a ship page; a shop shows only the two
-       that are places. Four is the floor either way. */
+    /* Six carried tabs and a close on a ship page (the sector's page joined
+       the strip on 2026-09-24); a shop shows only the two that are places.
+       Four is the floor either way. */
     check(nav.length >= 4,
           pg + ": the navigation strip is not at the top (" + nav.length +
           " buttons above y=60)");
@@ -8868,7 +8869,7 @@ const storeOf = (cf, key) => {
   }
 
   /* The strip splits by where you are standing. On one of the ship's own pages
-     it offers the five things you carry with you and a way out; at a shop it
+     it offers the six things you carry with you and a way out; at a shop it
      offers the two that are *places*, because a jobs board and a star chart are
      things you read on your own ship rather than things the counter hands you.
      Counted from the almanac, which is deliberately not a tab — on a page that
@@ -8877,8 +8878,8 @@ const storeOf = (cf, key) => {
   cf.screen("almanac");
   cf.draw();
   const strip = cf.live().taps.filter(t => t.h === 38 && t.y < 60);
-  check(strip.length === 6,
-        "the ship's strip has " + strip.length + " buttons; it should be five " +
+  check(strip.length === 7,
+        "the ship's strip has " + strip.length + " buttons; it should be six " +
         "tabs and a close");
   cf.screen("refit");
   cf.draw();

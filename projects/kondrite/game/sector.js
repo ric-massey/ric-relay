@@ -395,12 +395,16 @@ function stationPrices(st, quiet) {
   const out = {};
   if (!st) return out;
   const band = 1 + depthAt(st.x, st.y) * 1.1;
+  /* A closed border (living.js, §6) is a tariff on foreign pilots, and you
+     are one: its stations pay less. Live prices only — the ranging lens's
+     quiet fold is a fact about where a station is, not about this week's law. */
+  const tariff = !quiet && st.faction && livingLaw(st.faction, "borders") ? 0.88 : 1;
   for (const m of MATERIALS) {
     const R = seeded(chunkSeed(Math.round(st.x / 11) + m.key.length * 7919,
                                Math.round(st.y / 11) - m.key.charCodeAt(0) * 131));
     // What it is short of, it pays more for. That is the whole signal.
     const want = quiet ? 1 : 1 + shortageOf(st, m.key) * SHORT_MAX;
-    out[m.key] = Math.max(1, Math.round(m.value * band * want *
+    out[m.key] = Math.max(1, Math.round(m.value * band * want * tariff *
                                         (0.78 + R() * 0.64)));
   }
   return out;
@@ -1656,6 +1660,8 @@ function rememberGrudge(t) {
                       // Long enough that it is not the next thing that happens.
                       cool: rand(90, 260) });
   if (surv.grudges.length > GRUDGE_KEEP) surv.grudges.shift();
+  // And whoever holds this sky puts a price on the name (living.js, §28).
+  livingBounty(t);
   saveSurveyBook();
 }
 

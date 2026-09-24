@@ -239,6 +239,8 @@ if (debugOn) {
       news: (flag, n) => livingNews(flag, n),
       events: () => (surv && surv.living ? surv.living.events : []),
       powers: () => (surv && surv.living ? surv.living.powers : null),
+      bounties: () => (surv && surv.living ? surv.living.bounties : []),
+      law: (key, law) => livingLaw(key, law),
       raw: () => surv && surv.living
     },
     dockable: (st, faction) => dockableBy(st, faction),

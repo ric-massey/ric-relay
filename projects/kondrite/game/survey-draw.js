@@ -2073,6 +2073,10 @@ function surveyState() {
       state = "record";
       surveyHUD && surveyHUD.recordOpened && surveyHUD.recordOpened();
     },
+    onSector: () => {
+      state = "sector";
+      surveyHUD && surveyHUD.sectorOpened && surveyHUD.sectorOpened();
+    },
     // The loadout was always this page; it just had the cargo bolted to it.
     onLoadout: () => { state = "ship"; surveyHUD && surveyHUD.shipOpened(); },
     onCraftPage: () => { state = "craft"; surveyHUD && surveyHUD.craftOpened(); },
