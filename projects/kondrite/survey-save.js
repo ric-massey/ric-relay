@@ -289,6 +289,13 @@ function validateSurveyBook(b) {
   const empty = freshBook();
   {
     const strs = v => Array.isArray(v) ? v.filter(k => typeof k === "string") : [];
+    /* The flags a seceded freehold flies (living.js, §8). Read first, because
+       a cell, a war and a power below may name one; a freehold must name a
+       real parent and a key no title could slug into. */
+    const causeKeys = (b.living && Array.isArray(b.living.causes) ? b.living.causes : [])
+      .filter(c => c && typeof c.key === "string" && /^c:[a-z]{2,20}$/.test(c.key) &&
+                   FACTIONS().some(f => f.key === c.from))
+      .map(c => c.key);
     return {
       version: SAVE_VERSION,
       seed: Number(b.seed) || 0,
@@ -321,8 +328,9 @@ function validateSurveyBook(b) {
       rep: (() => {
         const out = {};
         const src = b.rep && typeof b.rep === "object" ? b.rep : {};
-        for (const f of FACTIONS()) {
-          out[f.key] = Math.max(-240, Math.min(240, Number(src[f.key]) || 0));
+        // A freehold you have dealings with keeps your standing too.
+        for (const k of FACTIONS().map(f => f.key).concat(causeKeys)) {
+          out[k] = Math.max(-240, Math.min(240, Number(src[k]) || 0));
         }
         return out;
       })(),
@@ -461,7 +469,7 @@ function validateSurveyBook(b) {
          that does not exist on the map. */
       claims: (Array.isArray(b.claims) ? b.claims : [])
         .filter(e => Array.isArray(e) && cellKeyOk(e[0]) &&
-                     (e[1] === "" || FACTIONS().some(f => f.key === e[1])))
+                     (e[1] === "" || FACTIONS().some(f => f.key === e[1]) || causeKeys.indexOf(e[1]) >= 0))
         .slice(0, 4000)
         .map(e => [e[0], e[1]]),
       /* The war as it stands: who is fighting whom, and what each power has
@@ -469,7 +477,7 @@ function validateSurveyBook(b) {
       war: (() => {
         const w = b.war && typeof b.war === "object" ? b.war : null;
         if (!w) return null;
-        const ok = k => FACTIONS().some(f => f.key === k);
+        const ok = k => FACTIONS().some(f => f.key === k) || causeKeys.indexOf(k) >= 0;
         const pairs = {};
         for (const k of Object.keys(w.pairs || {})) {
           if (ok(k) && ok(w.pairs[k]) && k !== w.pairs[k]) pairs[k] = w.pairs[k];
@@ -477,9 +485,9 @@ function validateSurveyBook(b) {
         const belligerents = (Array.isArray(w.belligerents) ? w.belligerents : [])
           .filter(ok).slice(0, 2);
         const strength = {};
-        for (const f of FACTIONS()) {
-          const v = Number((w.strength || {})[f.key]);
-          strength[f.key] = Number.isFinite(v) ? Math.max(0.2, Math.min(1.4, v)) : 1;
+        for (const k of FACTIONS().map(f => f.key).concat(causeKeys)) {
+          const v = Number((w.strength || {})[k]);
+          strength[k] = Number.isFinite(v) ? Math.max(0.2, Math.min(1.4, v)) : 1;
         }
         return { pairs, belligerents: belligerents.length === 2 ? belligerents : [],
                  strength, calm: Math.max(0, Number(w.calm) || 0) };
@@ -492,26 +500,27 @@ function validateSurveyBook(b) {
         const L = b.living && typeof b.living === "object" ? b.living : null;
         if (!L) return null;
         const num = (v, lo, hi) => Math.max(lo, Math.min(hi, Number(v) || 0));
-        const flag = k => FACTIONS().some(f => f.key === k) ? k : "";
+        const keys = FACTIONS().map(f => f.key).concat(causeKeys);
+        const flag = k => keys.indexOf(k) >= 0 ? k : "";
         const who = k => k === "you" || k === "free" || k === "pirate" ? k : flag(k);
         const powers = {};
-        for (const f of FACTIONS()) {
-          const s = L.powers && L.powers[f.key];
+        for (const key of keys) {
+          const s = L.powers && L.powers[key];
           if (!s || typeof s !== "object") continue;
           const p = { rel: {}, cool: { act: 0, war: 0, raid: {}, trade: {} } };
           for (const k of ["ice", "iron", "alloy", "stability", "aggression", "expansion", "trade"]) {
             if (typeof s[k] === "number") p[k] = num(s[k], 0, 1);
           }
-          for (const g of FACTIONS()) {
-            if (g.key !== f.key && s.rel && typeof s.rel[g.key] === "number") p.rel[g.key] = num(s.rel[g.key], -1, 1);
+          for (const g of keys) {
+            if (g !== key && s.rel && typeof s.rel[g] === "number") p.rel[g] = num(s.rel[g], -1, 1);
           }
           if (s.cool) {
             p.cool.act = num(s.cool.act, 0, 99) | 0; p.cool.war = num(s.cool.war, 0, 99) | 0;
-            p.cool.law = num(s.cool.law, 0, 99) | 0;
+            p.cool.law = num(s.cool.law, 0, 99) | 0; p.cool.enforce = num(s.cool.enforce, 0, 99) | 0;
             p.cool.raid = {}; p.cool.trade = {};
-            for (const g of FACTIONS()) {
-              if (s.cool.raid && typeof s.cool.raid[g.key] === "number") p.cool.raid[g.key] = num(s.cool.raid[g.key], 0, 99) | 0;
-              if (s.cool.trade && typeof s.cool.trade[g.key] === "number") p.cool.trade[g.key] = num(s.cool.trade[g.key], 0, 99) | 0;
+            for (const g of keys) {
+              if (s.cool.raid && typeof s.cool.raid[g] === "number") p.cool.raid[g] = num(s.cool.raid[g], 0, 99) | 0;
+              if (s.cool.trade && typeof s.cool.trade[g] === "number") p.cool.trade[g] = num(s.cool.trade[g], 0, 99) | 0;
             }
           }
           /* §28: the laws are three switches, the leader is a name and
@@ -523,11 +532,12 @@ function validateSurveyBook(b) {
                          open: num(s.leader.open, 0, 1), popularity: num(s.leader.popularity, 0, 1),
                          since: num(s.leader.since, 0, 1e7) | 0, term: num(s.leader.term, 0, 1e7) | 0 };
           }
-          powers[f.key] = p;
+          powers[key] = p;
         }
         const KINDS = ["trade", "claim", "raid", "war", "peace", "taken", "battle",
                        "kill", "relief", "rescue", "loss", "arrived",
-                       "election", "fall", "law", "revolt", "bounty", "claimed"];
+                       "election", "fall", "law", "bounty", "claimed",
+                       "cause", "enforce", "secede", "absorbed"];
         return {
           turn: num(L.turn, 0, 1e7) | 0, clock: num(L.clock, 0, 1e9),
           seq: num(L.seq, 0, 1e9) | 0, warSince: num(L.warSince, 0, 1e7) | 0,
@@ -537,7 +547,17 @@ function validateSurveyBook(b) {
             .slice(0, 400)
             .map(p => ({ px: p.px | 0, py: p.py | 0, ice: num(p.ice, 0, 1), iron: num(p.iron, 0, 1),
                          alloy: num(p.alloy, 0, 1), unrest: num(p.unrest, 0, 1),
-                         security: num(p.security, 0, 1), rose: num(p.rose, -999, 1e7) | 0 })),
+                         security: num(p.security, 0, 1),
+                         loyalty: num(typeof p.loyalty === "number" ? p.loyalty : 0.7, 0, 1),
+                         cause: typeof p.cause === "string" && /^c:[a-z]{2,20}$/.test(p.cause) ? p.cause : "",
+                         withheld: num(p.withheld, 0, 1e6) | 0,
+                         hurt: num(p.hurt, 0, 1), relief: num(p.relief, 0, 1), guard: num(p.guard, 0, 1),
+                         garrison: num(p.garrison, 0, 1) })),
+          causes: causeKeys.map(k => {
+            const c = b.living.causes.find(x => x && x.key === k);
+            return { key: k, from: c.from, since: num(c.since, 0, 1e7) | 0,
+                     strength: num(typeof c.strength === "number" ? c.strength : 1, 0.2, 1.4) };
+          }),
           bounties: (Array.isArray(L.bounties) ? L.bounties : [])
             .filter(b => b && typeof b.name === "string" && flag(b.by))
             .slice(-6)

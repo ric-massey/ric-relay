@@ -435,9 +435,15 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   face an election every forty-five turns and fall when a power collapses, three
   laws that each change something the player can feel (letters of marque put
   raiders in a power's heartland, a closed border is a tariff at its stations,
-  conscription grows the fleet and eats the calm), provinces that rise from
-  pressure rather than a roll, and a price on any raider that gets away from you
-  in held sky, paid on the kill. Every threshold in it was measured, not guessed:
+  conscription grows the fleet and eats the calm), and a price on any raider that
+  gets away from you in held sky, paid on the kill. **Civil war is never
+  scripted** — Ric: "it needs to be able to happen through the collectives of
+  the people. Nothing forced or faked." Provinces have a loyalty moved only by
+  what happens to them; under the line with no guns over them they stop paying;
+  neighbours that stop together are a cause; a cause nobody brings back holds
+  its own sky as a fourth flag. Don't add a function that starts a civil war,
+  and don't tune the numbers until one shows up: measured over twenty seeds and
+  twenty hours of play each, one sector seceded, and that is the point. Every threshold in it was measured, not guessed:
   the comments say what the number was before and what it did. `test/living.js`
   runs it without a player for four hundred turns.
 - **`node .github/checks.mjs` runs every check in the repo**, and

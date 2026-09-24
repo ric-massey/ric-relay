@@ -451,7 +451,9 @@ function buildTraffic(cx, cy, R, rnd, deep, out, space) {
   if (roll < pirateShare * calm * opening) {
     faction = "pirate"; role = "pirate";
   } else {
-    const powers = FACTIONS.map(f => f.key);
+    /* A freehold's ships fly in its own sky (it is `space.owner` there), not
+       as passers-by two hundred thousand units away. */
+    const powers = FACTIONS.filter(f => !f.cause).map(f => f.key);
     const w = { belligerents: warSides() };
     const pick = R();
     const free = (space.kind === "territory" ? 0.18 :

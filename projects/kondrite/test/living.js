@@ -18,9 +18,13 @@
      · does the player's own action land in the same record (§16);
      · does it survive the book;
      · do the pages draw it — the board, the history, the strip;
-     · and §28: do leaders come and go for reasons, do laws change things
-       the player can feel, does a province rise from pressure rather than
-       a roll, and is a price on a name paid on the kill.
+     · §28: do leaders come and go for reasons, do laws change things the
+       player can feel, and is a price on a name paid on the kill;
+     · and the people (§8): is contentment the resting point, does real
+       pressure — and only real pressure — make a province stop paying,
+       do the guns stop it, do neighbours that stop together become a
+       cause, and does a cause that nobody brings back hold its own sky,
+       survive the book, and vanish when its last cell is taken back.
 
    Run it:  node test/living.js                                               */
 
@@ -117,7 +121,7 @@ function boot(search, store) {
 }
 
 const KINDS = ["trade", "claim", "raid", "war", "peace", "taken", "battle", "kill", "relief", "rescue", "loss", "arrived",
-               "election", "fall", "law", "revolt", "bounty", "claimed"];
+               "election", "fall", "law", "bounty", "claimed", "cause", "enforce", "secede", "absorbed"];
 const LAWS = ["privateers", "borders", "conscription"];
 const ACTS = ["trade", "claim", "raid", "invade", "peace"];
 const POWERS = ["cordon", "hallow", "morrow"];
@@ -328,7 +332,7 @@ const inRange = v => typeof v === "number" && v >= 0 && v <= 1;
 }
 
 
-// ── 6. §28: leaders, laws, revolt, bounties ────────────────────────────────
+// ── 6. §28: leaders, laws, bounties ────────────────────────────────
 {
   const g = boot("?debug=1&seed=771177");
   g.cf.start("survey", 1);
@@ -373,8 +377,7 @@ const inRange = v => typeof v === "number" && v >= 0 && v <= 1;
   // Every fall came from a collapse, never a good year.
   const falls = events.filter(e => e.kind === "fall");
   check(falls.length < 30, "governments fall every few minutes: " + falls.length + " in 400 turns");
-  console.log("  rule       " + elections.length + " elections · " + falls.length + " falls · " + laws.length + " law changes · " +
-              events.filter(e => e.kind === "revolt").length + " revolts, in 400 turns");
+  console.log("  rule       " + elections.length + " elections · " + falls.length + " falls · " + laws.length + " law changes, in 400 turns");
 
   /* The laws are felt. A closed border is a tariff at that power's stations;
      letters of marque put raiders in its heartland. Both are read through
@@ -396,45 +399,6 @@ const inRange = v => typeof v === "number" && v >= 0 && v <= 1;
     p.laws.borders = false;
     const quietB = g.sandbox.stationPrices(st, true);
     check(JSON.stringify(quietA) === JSON.stringify(quietB), "the quiet price moved with the law — the ranging fold is not a fact about where a station is any more");
-  }
-
-  // A revolt comes from pressure: set it up and it happens; leave calm alone and it never does.
-  {
-    const near = g.sandbox.provincesNear().near;
-    const held = near.filter(pv => pv.owner && pv.control >= 0.5);
-    check(held.length > 0, "(no firmly held province near the ship)");
-    if (held.length) {
-      const pv = held[0], key = pv.owner, p = raw.powers[key];
-      const n0 = lastId();
-      const known0 = surv.known.size;
-      p.stability = 0.1;
-      let rose = false;
-      for (let i = 0; i < 40 && !rose; i++) {
-        pv.unrest = 0.95; pv.security = 0.05; pv.rose = -999; p.stability = Math.min(p.stability, 0.1);
-        g.sandbox.livingRevoltTurn([pv], g.sandbox.seeded(77 + i));
-        rose = since(n0).some(e => e.kind === "revolt" && e.actor === key);
-      }
-      check(rose, "a province at 0.95 unrest under a collapsing power never rose");
-      if (rose) {
-        const ev = since(n0).find(e => e.kind === "revolt");
-        check(ev.n >= 2, "a revolt freed nothing");
-        check(surv.known.size > known0 && [...surv.known.values()].some(q => q.k === "revolt"), "the revolt is not on the chart");
-        check(g.sandbox.provinceRead(pv).control < 1, "the province is still wholly held after it rose");
-        // And not again straight away.
-        const n1 = lastId();
-        pv.unrest = 0.95; pv.security = 0.05;
-        for (let i = 0; i < 40; i++) g.sandbox.livingRevoltTurn([pv], g.sandbox.seeded(900 + i));
-        check(!since(n1).some(e => e.kind === "revolt"), "the same province rose again inside its cooldown");
-      }
-      // Calm sky never rises, whatever the roll.
-      const calm = near.find(q => q.owner && q !== pv);
-      if (calm) {
-        const n2 = lastId();
-        raw.powers[calm.owner].stability = 0.9; calm.unrest = 0.2; calm.security = 0.8;
-        for (let i = 0; i < 40; i++) g.sandbox.livingRevoltTurn([calm], g.sandbox.seeded(1 + i));
-        check(!since(n2).some(e => e.kind === "revolt"), "a calm province rose");
-      }
-    }
   }
 
   // A price on a name: posted by whoever holds this sky when a raider gets away, paid on the kill.
@@ -483,7 +447,170 @@ const inRange = v => typeof v === "number" && v >= 0 && v <= 1;
       check(/THE SECOND/.test(text) && /PAID ON THE KILL/.test(text), "a posted bounty is not on the sector page");
     }
   }
-  console.log("  §28        leaders change for reasons · a closed border is a tariff · a province rises from pressure and not twice · a price is paid on the kill");
+  console.log("  §28        leaders change for reasons · a closed border is a tariff · a price is paid on the kill");
+}
+
+// ── 7. the people (§8): nothing forced, nothing faked ──────────────────────
+/* Ric: civil war "needs to be able to happen through the collectives of the
+   people. Nothing forced or faked." So these tests never call a function
+   that makes a civil war. They set up what the provinces feel, run the same
+   turn the game runs, and look at what the people did about it. */
+{
+  // Contentment is the resting point: a sector left alone is mostly loyal.
+  {
+    const g = boot("?debug=1&seed=8888");
+    g.cf.start("survey", 1);
+    for (let i = 0; i < 400; i++) g.cf.living.turn(1, 40 + i);
+    const held = [...g.cf.living.raw().provinces.values()].filter(p => p.owner);
+    const mean = held.reduce((a, p) => a + p.loyalty, 0) / Math.max(1, held.length);
+    check(held.length > 0 && held.every(p => inRange(p.loyalty)), "a province's loyalty is out of range");
+    check(mean > 0.5, "an ordinary sector's people are not loyal on the whole: " + mean.toFixed(2));
+  }
+  // Structurally: across a long run on several seeds, every secession that
+  // happened came after its people had been withholding under their own name
+  // for at least the full term. No other road to one exists.
+  for (const seed of [113, 2, 6]) {
+    const g = boot("?debug=1&seed=" + seed);
+    g.cf.start("survey", 1);
+    const seen = [];
+    for (let i = 0; i < 600; i++) {
+      g.cf.living.turn(1, seed + i);
+      for (const e of g.cf.living.events()) if (e.kind === "secede" && seen.indexOf(e.id) < 0) seen.push(e.id);
+    }
+    const events = g.cf.living.events();
+    for (const e of events.filter(x => x.kind === "secede")) {
+      // The cause is named on the first turn its provinces withhold together,
+      // so a full term of forty is thirty-nine turns after the name.
+      const cause = events.find(x => x.kind === "cause" && x.thread === e.thread);
+      check(!!cause && e.turn - cause.turn >= 39, "a secession with no cause behind it long enough: " + e.what);
+    }
+  }
+
+  const g = boot("?debug=1&seed=771177");
+  g.cf.start("survey", 1);
+  for (let i = 0; i < 30; i++) g.cf.living.turn(1, 900 + i);
+  const raw = g.cf.living.raw(), surv = g.cf.survey();
+  const WORLD = vm.runInContext("WORLD", g.sandbox);
+  const lastId = () => (raw.events.length ? raw.events[raw.events.length - 1].id : 0);
+  const since = id => raw.events.filter(e => e.id > id);
+  // Two neighbouring provinces of one flag, each with some of its sky.
+  const near = g.sandbox.provincesNear().near;
+  let pair = null;
+  for (const a of near) {
+    if (!a.owner || a.control < 0.3) continue;
+    const b = near.find(q => q !== a && q.owner === a.owner && q.control >= 0.3 && Math.abs(q.px - a.px) + Math.abs(q.py - a.py) === 1);
+    if (b) { pair = [a, b]; break; }
+  }
+  check(!!pair, "(no two neighbouring provinces of one flag near the ship)");
+  if (pair) {
+    const [a, b] = pair, owner = a.owner, P = raw.powers[owner];
+    const R = i => g.sandbox.seeded(500 + i);
+    const turn = (n, press) => { for (let i = 0; i < n; i++) { press(); raw.turn++; g.sandbox.livingPeopleTurn(pair, R(i)); } };
+
+    // Calm ground never stops paying, however long you wait.
+    const calm = () => { P.stability = 0.8; P.laws.conscription = false; for (const q of pair) { q.security = 0.6; q.hurt = 0; } };
+    turn(80, calm);
+    check(!a.withholding && !b.withholding && !a.cause, "a contented province stopped paying");
+
+    // Hard times — a collapsing power, a draft, raids its patrols are too
+    // thin to stop — turn the people against it, but while there are guns
+    // enough over them they keep paying. (Security over 0.6 would mean the
+    // raids were defended, and a defended raid is barely a grievance.)
+    const guns = () => { P.stability = 0; P.laws.conscription = true; for (const q of pair) { q.security = 0.55; q.hurt = 1; } };
+    turn(120, guns);
+    check(a.loyalty < 0.3, "a raided, drafted province under a collapsing power still loves it: " + a.loyalty.toFixed(2));
+    check(!a.withholding, "a province stopped paying with the fleet over it");
+
+    // Take the guns off and they stop paying, together, under a name.
+    const n0 = lastId(), known0 = [...surv.known.values()].filter(q => q.k === "cause").length;
+    P.leader.hawk = 0.1;   // a dove: no fleet will come
+    const bare = () => { P.stability = 0; P.laws.conscription = true; for (const q of pair) { q.security = 0.1; q.hurt = 1; } };
+    turn(3, bare);
+    check(a.withholding && b.withholding, "a disloyal province with no guns over it kept paying");
+    const cause = since(n0).find(e => e.kind === "cause");
+    check(!!cause && a.cause && a.cause === b.cause, "two neighbours that stopped together are not one cause");
+    check([...surv.known.values()].filter(q => q.k === "cause").length > known0, "the cause is not on the chart");
+    check(!since(n0).some(e => e.kind === "secede"), "a cause seceded the moment it formed");
+
+    // A withholding province pays its owner nothing: the same turn with and
+    // without it, every power held still, and the difference is the yield.
+    {
+      const h = boot("?debug=1&seed=771177"), h2 = boot("?debug=1&seed=771177");
+      for (const x of [h, h2]) { x.cf.start("survey", 1); for (let i = 0; i < 30; i++) x.cf.living.turn(1, 900 + i); }
+      const withhold = x => { for (const q of x.cf.living.raw().provinces.values()) if (q.owner === owner) { q.withholding = true; } };
+      withhold(h2);
+      for (const x of [h, h2]) for (const k of Object.keys(x.cf.living.raw().powers)) x.cf.living.raw().powers[k].cool.act = 99;
+      h.cf.living.turn(1, 4242); h2.cf.living.turn(1, 4242);
+      const got = x => x.cf.living.raw().powers[owner].ice;
+      check(got(h2) < got(h), "a province that stopped paying still paid: " + got(h2) + " vs " + got(h));
+    }
+
+    // A hawk with a fleet sends it, and the guns start them paying again.
+    {
+      const saved = { hawk: P.leader.hawk, st: g.cf.war().strength[owner] };
+      P.leader.hawk = 0.9; g.cf.war().strength[owner] = 1.2; P.cool.enforce = 0;
+      const n1 = lastId();
+      turn(1, bare);
+      check(since(n1).some(e => e.kind === "enforce" && e.actor === owner), "a hawk with a fleet did not send it");
+      check(a.garrison > 0.9, "the fleet is not over the province");
+      P.leader.hawk = saved.hawk; g.cf.war().strength[owner] = saved.st;
+    }
+
+    // Left alone long enough with nobody coming, the cause holds its own sky.
+    const n2 = lastId();
+    const factions0 = vm.runInContext("FACTIONS", g.sandbox).length;
+    turn(60, bare);
+    const sec = since(n2).find(e => e.kind === "secede");
+    check(!!sec && sec.target === owner, "a cause withholding for sixty turns with nobody coming did not hold its own sky");
+    if (sec) {
+      const key = sec.actor;
+      check(/^c:[a-z]+$/.test(key), "the freehold's key is not a cause key: " + key);
+      check(vm.runInContext("FACTIONS", g.sandbox).length === factions0 + 1 && vm.runInContext("FACTIONS", g.sandbox).some(f => f.key === key), "the freehold is not a flag the game knows");
+      check([...surv.claims.values()].some(v => v === key), "the freehold holds no sky");
+      check(typeof g.cf.war().strength[key] === "number", "the freehold has no fleet");
+      check(!!raw.powers[key] && raw.powers[key].rel[owner] < 0, "the freehold has no grievance against its old flag");
+      const st = g.cf.living.state();
+      const tile = st.powers.find(p => p.key === key);
+      check(st.powers.length === 4 && !!tile && tile.cause && tile.from === owner, "the board does not show the freehold and where it came from");
+      // It is on the page, and the pages draw with four flags.
+      g.cf.screen("sector"); g.drawn(); g.cf.draw();
+      check(g.drawn().some(w => w.indexOf(key.slice(2).toUpperCase()) >= 0), "the freehold is not on the sector page");
+      for (const pg of ["record", "chart", "playing"]) { g.cf.screen(pg); g.cf.draw(); }
+      for (let i = 0; i < 120; i++) g.step();
+
+      // It survives the book: the flag, its sky, its fleet, your standing with it.
+      g.cf.survey().rep[key] = 30;
+      g.sandbox.saveSurveyBook();
+      const g2 = boot("?debug=1&seed=771177", g.store);
+      g2.cf.start("survey", 1);
+      g2.step(2);
+      const raw2 = g2.cf.living.raw();
+      check(raw2.causes.some(c => c.key === key) && vm.runInContext("FACTIONS", g2.sandbox).some(f => f.key === key), "the freehold did not survive the book");
+      check([...g2.cf.survey().claims.values()].some(v => v === key), "the freehold's sky did not survive the book");
+      check(Math.abs((g2.cf.war().strength[key] || 0) - g.cf.war().strength[key]) < 1e-9, "the freehold's fleet did not survive the book");
+      // Standing cools a little every frame, so near is right, not equal.
+      check(Math.abs((g2.cf.survey().rep[key] || 0) - 30) < 1, "your standing with the freehold did not survive the book: " + g2.cf.survey().rep[key]);
+      // And a hand-edited book cannot invent one.
+      const book = g2.cf.book.parse(g.store[g2.cf.book.keys.store]);
+      book.living.causes.push({ key: "c:atlantis", from: "atlantis" }, { key: "Robert'); DROP", from: "cordon" });
+      book.claims.push(["0,0", "c:atlantis"]);
+      const ok = g2.cf.book.validate(book);
+      check(ok.living.causes.length === raw.causes.length, "a freehold with no real parent, or a bad key, got through the validator");
+      check(!ok.claims.some(e => e[1] === "c:atlantis"), "sky held by an invented freehold got through the validator");
+
+      // Taken back cell by cell, it holds nothing and is gone.
+      for (const [k, v] of [...surv.claims.entries()]) if (v === key) surv.claims.set(k, owner);
+      WORLD.territoryChanged();
+      const n3 = lastId();
+      g.sandbox.livingCausesTurn([], R(1));
+      check(since(n3).some(e => e.kind === "absorbed" && e.actor === owner), "a freehold that holds nothing was not recorded as gone");
+      check(!vm.runInContext("FACTIONS", g.sandbox).some(f => f.key === key) && !raw.powers[key] && !(key in g.cf.war().strength),
+            "a freehold that holds nothing is still a flag");
+      const line = g.cf.living.news(owner, 60).find(n => n.kind === "absorbed");
+      check(!!line && /IS OURS AGAIN/.test(line.text), "the old flag's own news does not say it is theirs again: " + (line && line.text));
+    }
+  }
+  console.log("  people     content at rest · pressure without guns makes a cause · the guns hold it · nobody coming lets it hold its own sky · it survives the book · taken back, it is gone");
 }
 
 if (problems.length) {

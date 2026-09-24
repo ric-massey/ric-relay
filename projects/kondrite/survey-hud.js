@@ -1229,7 +1229,8 @@
     raid:      { name: "RAID",     colour: "#ff8f77" },
     taken:     { name: "TAKEN",    colour: "#ffcb42" },
     relief:    { name: "RELIEF",   colour: "#6dffbf" },
-    revolt:    { name: "REVOLT",   colour: "#ff5555" }
+    cause:     { name: "WITHHELD", colour: "#ffb347" },
+    secede:    { name: "SECESSION", colour: "#ffb347" }
   };
 
   function markGlyph(ctx, k, x, y, r) {
@@ -1358,10 +1359,17 @@
         ctx.moveTo(x - r * 0.4, y + r * 0.25); ctx.lineTo(x + r * 0.4, y + r * 0.25);
         ctx.stroke();
         break;
-      case "revolt":
-        // A ring broken open at the top, and what came out of it.
+      case "cause":
+        // A ring broken open at the top: the people, and what is leaving it.
         ctx.beginPath(); ctx.arc(x, y, r, -Math.PI * 0.25, Math.PI * 1.25); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(x, y - r * 0.2); ctx.lineTo(x, y - r * 1.5); ctx.stroke();
+        break;
+      case "secede":
+        // The pennant, turned the other way: a flag of their own.
+        ctx.beginPath();
+        ctx.moveTo(x + r * 0.7, y + r); ctx.lineTo(x + r * 0.7, y - r);
+        ctx.lineTo(x - r, y - r * 0.55); ctx.lineTo(x + r * 0.7, y - r * 0.1);
+        ctx.stroke();
         break;
       case "bounty":
         // A ring with a dot and the four ticks of a sight.
@@ -1748,10 +1756,14 @@
       ctx.globalAlpha = 0.95;
       ctx.fillStyle = pw.colour;
       ctx.fillRect(x, y, sq, sq);
-      // The province's second colour, if somebody else is in it too.
+      // The province's second colour, if somebody else is in it too; a
+      // freehold's square carries the flag it left inside it.
       if (L.here && L.here.contested === pw.key && L.here.contestedColour) {
         ctx.fillStyle = L.here.colour || VIOLET;
         ctx.fillRect(x + 2, y + 2, sq - 4, sq - 4);
+      } else if (pw.cause && pw.fromColour) {
+        ctx.fillStyle = pw.fromColour;
+        ctx.fillRect(x + 3, y + 3, sq - 6, sq - 6);
       }
       ctx.globalAlpha = 0.5;
       ctx.strokeStyle = VIOLET_LOW;
@@ -6677,6 +6689,7 @@
       ctx.save();
       ctx.fillStyle = pw.colour; ctx.globalAlpha = 0.95;
       ctx.fillRect(x, y - 9, 9, 9);
+      if (pw.cause && pw.fromColour) { ctx.fillStyle = pw.fromColour; ctx.fillRect(x + 3, y - 6, 3, 3); }
       ctx.restore();
       fitText(pw.short, x + 16, y, SIZE.cap, pw.colour, "left", 1, tileW - 40, "0.08em");
       if (pw.atWar) {
@@ -6831,7 +6844,7 @@
     const h = PANEL_H(Math.max(1, list.length));
     panel(full.x, y0, full.w, h, WARN, "BOUNTIES", list.length ? "PAID ON THE KILL" : "");
     if (!list.length) {
-      fitText("nobody is wanted — a raider that gets away from you is",
+      fitText("nobody is wanted yet — a raider that escapes you in held sky will be",
               full.x + PAGE.PAD, ROW(y0, 0) + 2, SIZE.cap, VIOLET_LOW, "left", 0.6,
               full.w - PAGE.PAD * 2);
       return y0 + h;

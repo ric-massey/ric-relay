@@ -57,7 +57,11 @@ const LIVING_WAR_MIN  = 15;       // turns a war runs before anybody tires of it
 /* §28 */
 const LIVING_TERM        = 45;    // turns a leader serves before facing an election
 const LIVING_LAW_COOL    = 20;    // turns between one power's law changes
-const LIVING_REVOLT_COOL = 30;    // turns before the same province rises again
+const LIVING_WITHHOLD  = 0.3;     // loyalty under which a province stops paying — if the guns are not on it
+const LIVING_GUNS      = 0.5;     // security over which nobody withholds, whatever they feel
+const LIVING_SECEDE    = 40;      // turns a bloc withholds, unenforced, before it holds its own sky
+const LIVING_ENFORCE_COOL = 6;    // turns between one power's fleets being sent home
+const LIVING_CAUSE_COLOURS = ["#ffb347", "#f0f08a", "#8fe3ff", "#f7f7f7"];
 const LIVING_BOUNTY_CAP  = 6;     // prices posted at once
 const LIVING_BOUNTY_TURNS = 150;  // turns a price stands before it lapses
 
@@ -82,9 +86,14 @@ const LIVING_KINDS = {
   election: { glyph: "vote",   base: 0.55, colour: "#a08cff" },
   fall:     { glyph: "fall",   base: 0.80, colour: "#ff8f77" },
   law:      { glyph: "law",    base: 0.50, colour: "#ffe56d" },
-  revolt:   { glyph: "revolt", base: 0.80, colour: "#ff5555" },
   bounty:   { glyph: "bounty", base: 0.40, colour: "#ffcb42" },
-  claimed:  { glyph: "bounty", base: 0.50, colour: "#ffe56d" }
+  claimed:  { glyph: "bounty", base: 0.50, colour: "#ffe56d" },
+  /* The people (§8): a bloc of provinces that stopped paying, the fleet sent
+     to it, the day it held its own sky, and the day that sky was taken back. */
+  cause:    { glyph: "cause",  base: 0.50, colour: "#ffb347" },
+  enforce:  { glyph: "battle", base: 0.35, colour: "#ff8f77" },
+  secede:   { glyph: "secede", base: 1.00, colour: "#ffb347" },
+  absorbed: { glyph: "fall",   base: 0.70, colour: "#a08cff" }
 };
 const LIVING_LAWS   = ["privateers", "borders", "conscription"];
 const LIVING_TITLES = { cordon: "MARSHAL", hallow: "WARDEN", morrow: "CHAIR" };
@@ -92,25 +101,29 @@ const LIVING_TITLES = { cordon: "MARSHAL", hallow: "WARDEN", morrow: "CHAIR" };
 /* ── the powers, rolled ─────────────────────────────────────────────────
    Every seed gives the three powers different tempers. The names and colours
    are the sector's (`FACTIONS`); what is rolled is how they behave. */
+function livingPower(R, key, turn) {
+  const p = { ice: 0.4 + R() * 0.4, iron: 0.4 + R() * 0.4, alloy: 0.3 + R() * 0.4,
+              stability: 0.55 + R() * 0.35,
+              aggression: 0.2 + R() * 0.7, expansion: 0.2 + R() * 0.7,
+              trade: 0.2 + R() * 0.7,
+              rel: {}, cool: { act: 0, war: 0, law: 0, enforce: 0, raid: {}, trade: {} }, pressures: [],
+              laws: { privateers: false, borders: false, conscription: false } };
+  for (const g of FACTIONS) if (g.key !== key) p.rel[g.key] = -0.3 + R() * 0.6;
+  /* Somebody is in charge, and the three do not all vote the same week. */
+  p.leader = livingLeader(R, key, turn | 0);
+  p.leader.term = (turn | 0) + Math.round(LIVING_TERM * (0.4 + R() * 0.8));
+  return p;
+}
 function livingFresh(seed) {
   const R = seeded(((seed | 0) ^ 0x6c1f9d33) >>> 0);
+  /* A new sector has the three flags the world rolled and no others: a
+     freehold that seceded in the last sector does not follow you here. */
+  livingClearCauses();
   const powers = {};
-  for (const f of FACTIONS) {
-    const p = { ice: 0.4 + R() * 0.4, iron: 0.4 + R() * 0.4, alloy: 0.3 + R() * 0.4,
-                stability: 0.55 + R() * 0.35,
-                aggression: 0.2 + R() * 0.7, expansion: 0.2 + R() * 0.7,
-                trade: 0.2 + R() * 0.7,
-                rel: {}, cool: { act: 0, war: 0, law: 0, raid: {}, trade: {} }, pressures: [],
-                laws: { privateers: false, borders: false, conscription: false } };
-    for (const g of FACTIONS) if (g.key !== f.key) p.rel[g.key] = -0.3 + R() * 0.6;
-    /* Somebody is in charge, and the three do not all vote the same week. */
-    p.leader = livingLeader(R, f.key, 0);
-    p.leader.term = Math.round(LIVING_TERM * (0.4 + R() * 0.8));
-    powers[f.key] = p;
-  }
+  for (const f of FACTIONS) powers[f.key] = livingPower(R, f.key, 0);
   /* The war the world rolled is already a fact between two of them. */
   return { turn: 0, clock: 0, seq: 0, powers, provinces: new Map(), events: [],
-           bounties: [], lastDock: null };
+           bounties: [], causes: [], lastDock: null };
 }
 
 /* Numbers that must stay numbers: everything a turn touches is clamped on
@@ -130,7 +143,12 @@ function provinceOf(px, py) {
   if (!pv) {
     const R = seeded(chunkSeed(px ^ 0x3a7f11c5, py ^ 0x5d9b2e73));
     pv = { px, py, ice: R(), iron: R(), alloy: R(),
-           owner: "", control: 0, contested: "", security: 0.5, unrest: 0.1, rose: -999 };
+           owner: "", control: 0, contested: "", security: 0.5, unrest: 0.1,
+           /* The people (§8): how they feel about the flag over them, what has
+              lately been done to them and for them, and whether they are
+              still paying. */
+           loyalty: 0.7 + R() * 0.15, cause: "", withheld: 0, withholding: false,
+           hurt: 0, relief: 0, guard: 0, garrison: 0 };
     L.provinces.set(key, pv);
   }
   return pv;
@@ -356,7 +374,12 @@ function livingAct(key, opt, R) {
     // And a station of theirs near you feels it.
     let hit = null;
     for (const st of surv.stations) if (st.faction === o && (!hit || R() < 0.5)) hit = st;
-    if (hit) { moveMarket(hit, best, 0.25); }
+    if (hit) {
+      moveMarket(hit, best, 0.25);
+      // And the people there remember whether anybody was defending them.
+      const pv = provinceOfSite(hit.x, hit.y);
+      if (pv) pv.hurt = 1;
+    }
     // Beside the station rather than on it, or the two marks share a label.
     const off = R() * Math.PI * 2;
     const at = hit ? { x: hit.x + Math.cos(off) * 700, y: hit.y + Math.sin(off) * 700 } : where;
@@ -461,8 +484,9 @@ function livingTurn(R) {
      is the spread that makes the other four actions worth taking. */
   for (const pv of near) {
     const p = pv.owner ? L.powers[pv.owner] : null;
-    if (p) {
-      // A closed border keeps some of the yield at home, unsold (§6).
+    if (p && !pv.withholding) {
+      // A closed border keeps some of the yield at home, unsold (§6). A
+      // province that has stopped paying keeps all of it (§8).
       const yield_ = livingLaw(pv.owner, "borders") ? 0.9 : 1;
       for (const g of LIVING_GOODS) {
         p[g] = liveClamp(p[g] + pv[g] * pv.control * 0.006 * yield_ * (1.2 - p[g]), 0, 1);
@@ -470,15 +494,18 @@ function livingTurn(R) {
     }
     const front = pv.contested && sides.length && sides.indexOf(pv.owner) >= 0;
     /* Unrest is the ground's own condition plus its owner's: a province of a
-       power that is broke, coming apart and drafting its people is where a
-       revolt comes from (§8) — pressure, never a dice roll. */
+       power that is broke, coming apart and drafting its people is unquiet
+       ground, and unquiet ground is where its people's loyalty starts to go
+       (`livingPeopleTurn`). */
     let want = front ? 0.6 : pv.owner ? 0.25 - pv.control * 0.2 : 0.4;
     if (p) {
       want += (1 - p.stability) * 0.3 + (LIVING_GOODS.some(g => p[g] < 0.2) ? 0.1 : 0) +
               (livingLaw(pv.owner, "conscription") ? 0.1 : 0);
     }
     pv.unrest = liveClamp(pv.unrest + (want - pv.unrest) * 0.15, 0, 1);
-    pv.security = liveClamp((pv.owner ? (st[pv.owner] || 1) * pv.control : 0.2) - pv.unrest * 0.3, 0, 1);
+    pv.garrison = (pv.garrison || 0) * 0.85;
+    pv.security = liveClamp((pv.owner ? (st[pv.owner] || 1) * pv.control : 0.2) - pv.unrest * 0.3 +
+                            pv.garrison * 0.4, 0, 1);
   }
   // 2. Being a power costs goods every turn; a war eats metal and calm, and
   //    a shortage eats calm too.
@@ -517,6 +544,7 @@ function livingTurn(R) {
     p.cool.act = Math.max(0, p.cool.act - 1);
     p.cool.war = Math.max(0, p.cool.war - 1);
     p.cool.law = Math.max(0, (p.cool.law || 0) - 1);
+    p.cool.enforce = Math.max(0, (p.cool.enforce || 0) - 1);
     for (const k of Object.keys(p.cool.raid || {})) p.cool.raid[k] = Math.max(0, p.cool.raid[k] - 1);
     for (const k of Object.keys(p.cool.trade || {})) p.cool.trade[k] = Math.max(0, p.cool.trade[k] - 1);
   }
@@ -538,7 +566,8 @@ function livingTurn(R) {
   //    which prices have stood too long.
   livingLeadersTurn(near, R);
   livingLawsTurn(near, R);
-  livingRevoltTurn(near, R);
+  livingPeopleTurn(near, R);
+  livingCausesTurn(near, R);
   L.bounties = (L.bounties || []).filter(b => L.turn - b.turn < LIVING_BOUNTY_TURNS);
   return acted;
 }
@@ -549,6 +578,12 @@ function livingTurn(R) {
 function livingTick(dt) {
   const L = surv && surv.living;
   if (!L) return;
+  if (L.pendingStrength) {
+    /* A cause restored from the book: `surv.war` did not exist when the
+       living world was read, so its strength lands here, once. */
+    L.pendingStrength = false;
+    for (const c of L.causes) if (typeof surv.war.strength[c.key] !== "number") surv.war.strength[c.key] = c.strength || 1;
+  }
   L.clock += dt;
   if (L.clock - (L.turnAt || 0) >= LIVING_TURN) {
     L.turnAt = L.clock;
@@ -567,6 +602,8 @@ function livingTick(dt) {
 function livingKill(t) {
   if (!surv || !surv.living || !t) return;
   livingBountyPaid(t);
+  // A raider shot down over a province is a province somebody defended.
+  if (t.faction === "pirate") { const pv = provinceOfSite(t.x, t.y); if (pv) pv.guard = 1; }
   const armed = ROLES[t.role] && ROLES[t.role].armed;
   recordEvent({ kind: "kill", actor: "you", target: t.faction || "", what: t.role || t.kind || "",
                 x: t.x, y: t.y, importance: t.faction === "pirate" ? 0.2 : armed ? 0.4 : 0.3,
@@ -576,6 +613,8 @@ function livingDelivery(st, key, n, shortBefore) {
   if (!surv || !surv.living || !st || shortBefore < 0.3) return;
   const p = surv.living.powers[st.faction];
   if (p && LIVING_GOODS.indexOf(key) >= 0) p[key] = liveClamp(p[key] + 0.03, 0, 1);
+  const pv = provinceOfSite(st.x, st.y);
+  if (pv) pv.relief = 1;
   const ev = recordEvent({ kind: "relief", actor: "you", target: st.faction || "free",
                            what: key, n, x: st.x, y: st.y, thread: "you:" + (st.faction || "free") });
   if (ev) noteKnown("relief", st.x, st.y, "RELIEF");
@@ -613,11 +652,11 @@ function livingTaken(cx, cy, power, was) {
 }
 
 
-/* ═══ §28 — LEADERS, LAWS, REVOLT, BOUNTIES ═════════════════════════════
+/* ═══ §28 — LEADERS, LAWS, THE PEOPLE, BOUNTIES ═════════════════════════════
    The first expansion, cut the way the first version was: each of these is
    a number that moves a number that was already here. A leader is two
    traits that pull a power's temper; a law is a switch with a cost the game
-   already knows how to charge; a revolt is unrest with somewhere to go; a
+   already knows how to charge; the people are provinces that feel things; a
    bounty is a price on a name the sector already remembers. None of it adds
    words to the flight. Each is a bar, a glyph, a mark or a figure. */
 
@@ -633,7 +672,7 @@ function livingName(R) {
 }
 function livingLeader(R, key, turn, lean) {
   lean = lean || {};
-  return { name: livingName(R), title: LIVING_TITLES[key] || "LEADER",
+  return { name: livingName(R), title: LIVING_TITLES[key] || (key.indexOf("c:") === 0 ? "SPEAKER" : "LEADER"),
            hawk: liveClamp(lean.hawk !== undefined ? lean.hawk : R(), 0, 1),
            open: liveClamp(lean.open !== undefined ? lean.open : R(), 0, 1),
            popularity: 0.6, since: turn | 0, term: (turn | 0) + LIVING_TERM };
@@ -733,10 +772,15 @@ function livingLawsTurn(near, R) {
     const short = LIVING_GOODS.some(g => p[g] < 0.3);
     const raided = p.pressures.indexOf("raided") >= 0;
     const losing = atWar && (st[key] || 1) < (st[enemy] || 1);
+    /* Provinces that have stopped paying are an argument against the laws
+       that made them stop — to a dove. A hawk sends the fleet instead
+       (`livingPeopleTurn`). */
+    const withholding = near.some(pv => pv.owner === key && pv.withholding);
+    const concede = withholding ? (1 - l.hawk) * 0.5 : 0;
     const wants = {
       privateers:   l.hawk * 0.6 + (atWar ? 0.3 : 0) + (raided ? 0.15 : 0) - l.open * 0.4,
-      borders:      (raided ? 0.3 : 0) + (1 - l.open) * 0.5 + (atWar ? 0.2 : 0) - (short ? 0.35 : 0),
-      conscription: (atWar ? 0.5 : 0) + l.hawk * 0.3 + (losing ? 0.2 : 0) - (p.stability < 0.35 ? 0.3 : 0)
+      borders:      (raided ? 0.3 : 0) + (1 - l.open) * 0.5 + (atWar ? 0.2 : 0) - (short ? 0.35 : 0) - concede,
+      conscription: (atWar ? 0.5 : 0) + l.hawk * 0.3 + (losing ? 0.2 : 0) - (p.stability < 0.35 ? 0.3 : 0) - concede
     };
     // The one it feels most strongly about, if it feels strongly at all.
     let pick = null, gap = 0;
@@ -761,46 +805,239 @@ function livingLawsTurn(near, R) {
   }
 }
 
-/* ── revolt (§8, the first half) ──────────────────────────────────────────
-   A province whose unrest has nowhere else to go throws the flag off: some
-   of its cells go to nobody, the power loses calm, and it is on your chart
-   where it happened. It is not yet a civil war — no new faction is born of
-   it — but it is where one would come from. Pressure, never a roll: the
-   thresholds are the whole of the rule and the chance only spreads it out. */
-function livingRevoltTurn(near, R) {
-  const L = surv.living;
-  const rose = {};   // one province per power per turn, or a collapse is forty lines
+/* ── the people (§8) ─────────────────────────────────────────────────────
+   Ric's rule for this: civil war is not a feature. "It needs to be able to
+   happen through the collectives of the people. Nothing forced or faked.
+   You make the elements and the world exists through randomness." So there
+   is no line here that decides a civil war happens. There are provinces
+   that feel things, and what they do about it, and a power that answers
+   from its own temper; secession is only the name for a shape the map can
+   end up in. Most sectors never get there, the way most countries do not.
+
+   The elements:
+     LOYALTY     how a province feels about the flag over it. Moved only by
+                 things that happened to it — raided with nobody defending
+                 it, drafted, starved behind a closed border, left short,
+                 sat on a front — and things done for it: a fleet that
+                 stood over it, a raider shot down over it, a shortage a
+                 pilot broke. Its leader's popularity counts for a little.
+     TALK        neighbours of one flag pull each other's loyalty toward
+                 their own. People talk; a grievance spreads or is talked
+                 down.
+     WITHHOLDING a province whose loyalty is under the line stops paying its
+                 owner — if the guns are not on it. That is its only action,
+                 and it is a real one: the owner is poorer for it, and poor
+                 is where every other action starts.
+     A BLOC      withholding provinces of one flag that touch are one thing,
+                 named for the place the way ships are named. Nothing creates
+                 it; it is the shape of the map.
+     THE ANSWER  a hawk with a fleet to spare sends it: the guns go on, and
+                 the people pay again, resentfully, until the fleet leaves.
+                 A dove lifts the law that caused it (`livingLawsTurn`).
+     SECESSION   a bloc that has withheld long enough with no fleet over it
+                 holds its own sky: its cells are its own, a fourth flag is
+                 on the lattice, ships crewed from there fly it, and the old
+                 owner may make war on it or not, by the same arithmetic as
+                 any other war. It is taken back the same way, cell by cell,
+                 and when it holds nothing it is gone. */
+
+/* Which province a point is in, if it has been looked at. */
+function provinceOfSite(x, y) {
+  const L = surv && surv.living;
+  if (!L) return null;
+  const site = WORLD.siteAt(x, y);
+  const [px, py] = provinceAtCell(site.cx, site.cy);
+  return provinceOf(px, py);
+}
+/* A place name off the sector's own gazetteer, rolled once for the spot. */
+function causeName(px, py) {
+  const R = seeded(chunkSeed(px ^ 0x1c3d5e7f, py ^ 0x7e5d3c1b));
+  const w = SYL_HEAD[Math.floor(R() * SYL_HEAD.length)] + SYL_TAIL[Math.floor(R() * SYL_TAIL.length)];
+  return w.toUpperCase();
+}
+const adjacent = (a, b) => Math.abs(a.px - b.px) + Math.abs(a.py - b.py) === 1;
+
+function livingPeopleTurn(near, R) {
+  const L = surv.living, st = surv.war.strength, sides = warSides();
+  // 1. Loyalty follows what happened to each province.
   for (const pv of near) {
+    pv.hurt = (pv.hurt || 0) * 0.85; pv.relief = (pv.relief || 0) * 0.9; pv.guard = (pv.guard || 0) * 0.9;
     const key = pv.owner, p = key ? L.powers[key] : null;
-    if (!p || rose[key]) continue;
-    /* A province barely held has nothing to rise against, and the bar is
-       high on purpose: measured at 0.8 / 0.35 / 0.4 a sector had forty
-       revolts in four hundred turns and every power fell apart. */
-    if (pv.unrest < 0.85 || pv.security > 0.3 || p.stability > 0.35 || pv.control < 0.3) continue;
-    if (L.turn - (pv.rose === undefined ? -999 : pv.rose) < LIVING_REVOLT_COOL) continue;
-    if (R() > 0.25) continue;
-    /* The cells are freed directly rather than through `claimCell`, or the
-       province says "pulled out" six times and the record gets six lines of
-       ground lost for one thing that happened. One event, one line, one mark. */
-    let freed = 0;
-    for (let j = 0; j < LIVING_BLOCK && freed < 6; j++) {
-      for (let i = 0; i < LIVING_BLOCK && freed < 6; i++) {
-        const cx = pv.px * LIVING_BLOCK + i, cy = pv.py * LIVING_BLOCK + j;
-        if (WORLD.holderOf(cx, cy) !== key || WORLD.homeCell(cx, cy) || R() < 0.5) continue;
-        surv.claims.set(cx + "," + cy, "");
-        freed++;
+    if (!p) { pv.withholding = false; pv.withheld = 0; pv.cause = ""; continue; }
+    const front = pv.contested && sides.indexOf(key) >= 0;
+    const short = LIVING_GOODS.some(g => p[g] < 0.2);
+    const pop = p.leader ? p.leader.popularity : 0.5;
+    /* People are loyal by habit. The resting point is contented, and only
+       real things pull it down — each one small, so it takes several at once
+       and for a long time. Measured: with the resting point at 0.35 plus
+       security, the average province sat near 0.3, every seed seceded and
+       one seceded ten times. A sector is not a country on the brink. */
+    const want = 0.8 + (pop - 0.5) * 0.15 -
+                 Math.max(0, 0.45 - p.stability) * 0.6 -
+                 (livingLaw(key, "conscription") ? 0.1 : 0) - (livingLaw(key, "borders") ? 0.04 : 0) -
+                 (short ? 0.08 : 0) - (front ? 0.08 : 0) -
+                 pv.hurt * (pv.security > 0.6 ? 0.03 : 0.2) + pv.relief * 0.1 + pv.guard * 0.08 -
+                 /* A movement has momentum: provinces that have stopped paying
+                    together and have a name for themselves are partly held
+                    there by the name. It fades when they pay again. */
+                 (pv.cause ? 0.08 : 0);
+    // Slowly: a grievance is a season, not an afternoon.
+    pv.loyalty = liveClamp((typeof pv.loyalty === "number" ? pv.loyalty : 0.75) + (want - pv.loyalty) * 0.04, 0, 1);
+  }
+  // 2. People talk.
+  for (const pv of near) {
+    if (!pv.owner) continue;
+    const nb = near.filter(o => o !== pv && o.owner === pv.owner && adjacent(o, pv));
+    if (!nb.length) continue;
+    const mean = nb.reduce((sum, o) => sum + o.loyalty, 0) / nb.length;
+    pv.loyalty = liveClamp(pv.loyalty + (mean - pv.loyalty) * 0.05, 0, 1);
+  }
+  // 3. Withholding, and how long for.
+  for (const pv of near) {
+    if (!pv.owner) continue;
+    const w = pv.loyalty < LIVING_WITHHOLD && pv.security < LIVING_GUNS;
+    pv.withholding = w;
+    pv.withheld = w ? (pv.withheld | 0) + 1 : Math.max(0, (pv.withheld | 0) - 2);
+    if (!w && !pv.withheld) pv.cause = "";
+  }
+  // 4. Blocs: withholding provinces of one flag that touch.
+  const seen = new Set(), blocs = [];
+  for (const pv of near) {
+    if (!pv.withholding || seen.has(pv)) continue;
+    const bloc = [], stack = [pv];
+    seen.add(pv);
+    while (stack.length) {
+      const q = stack.pop();
+      bloc.push(q);
+      for (const o of near) {
+        if (seen.has(o) || !o.withholding || o.owner !== q.owner || !adjacent(o, q)) continue;
+        seen.add(o); stack.push(o);
       }
     }
-    if (freed < 2) continue;
-    WORLD.territoryChanged();
-    rose[key] = true;
-    pv.rose = L.turn;
-    pv.unrest = 0.35;
-    p.stability = liveClamp(p.stability - 0.05, 0, 1);
-    const site = provinceSite(pv);
-    const ev = recordEvent({ kind: "revolt", actor: key, x: site.x, y: site.y, n: freed, thread: "rule:" + key });
-    if (ev) noteKnown("revolt", site.x, site.y, "REVOLT");
-    chatter("A " + factionOf(key).short + " province has risen.", factionOf(key).colour, { x: site.x, y: site.y });
+    if (bloc.length >= 2) blocs.push(bloc);
+  }
+  for (const bloc of blocs) {
+    const owner = bloc[0].owner, p = L.powers[owner];
+    const anchor = bloc.slice().sort((a, b) => a.py - b.py || a.px - b.px)[0];
+    const site = provinceSite(anchor);
+    // Its name is the one its people already had, or the place's.
+    let key = bloc.map(q => q.cause).find(c => c);
+    if (!key) {
+      const place = causeName(anchor.px, anchor.py);
+      key = "c:" + place.toLowerCase();
+      recordEvent({ kind: "cause", actor: owner, what: place, n: bloc.length, x: site.x, y: site.y,
+                    thread: "cause:" + key });
+      noteKnown("cause", site.x, site.y, place + " WITHHOLDS");
+      chatter("The " + place + " provinces have stopped paying " + factionOf(owner).short + ".",
+              LIVING_KINDS.cause.colour, { x: site.x, y: site.y });
+    }
+    for (const q of bloc) q.cause = key;
+    // 5. The owner answers from its own temper: a hawk with a fleet sends it.
+    const l = p.leader || { hawk: 0.5 };
+    if (l.hawk >= 0.5 && (st[owner] || 1) > 0.8 && !(p.cool.enforce > 0)) {
+      p.cool.enforce = LIVING_ENFORCE_COOL;
+      st[owner] = Math.max(0.2, (st[owner] || 1) - 0.02);
+      p.stability = liveClamp(p.stability - 0.01, 0, 1);
+      for (const q of bloc) { q.garrison = 1; q.loyalty = liveClamp(q.loyalty - 0.03, 0, 1); }
+      recordEvent({ kind: "enforce", actor: owner, what: key.slice(2).toUpperCase(), n: bloc.length,
+                    x: site.x, y: site.y, thread: "cause:" + key });
+    }
+    // 6. Secession is a state the map reaches, not a step anybody takes.
+    const held = bloc.reduce((sum, q) => sum + (q.withheld | 0), 0) / bloc.length;
+    if (held >= LIVING_SECEDE && bloc.every(q => q.security < 0.35)) livingSecede(bloc, key, owner, R);
+  }
+}
+
+/* ── a fourth flag ────────────────────────────────────────────────────────
+   A cause that holds its own sky is a faction like any other: it is pushed
+   onto `FACTIONS`, so every loop in the game that asks "for each power"
+   finds it — traffic flies its colours, the standings list it, the strip and
+   the board give it a tile, the war can be against it. It is a power in the
+   living world too, born from its parent's numbers and its people's
+   grievance. `livingClearCauses` takes them all off for a new sector. */
+function livingClearCauses() {
+  for (let i = FACTIONS.length - 1; i >= 0; i--) if (FACTIONS[i].cause) FACTIONS.splice(i, 1);
+}
+function registerCause(c) {
+  if (FACTIONS.some(f => f.key === c.key)) return;
+  FACTIONS.push({ key: c.key, name: c.name, short: c.short, colour: c.colour, cause: true, from: c.from,
+                  note: "held its own sky against " + (factionOf(c.from).short || "its old flag").toLowerCase(),
+                  long: "Provinces that stopped paying " + factionOf(c.from).name + " and were never " +
+                        "brought back. Their ships fly this now." });
+}
+function livingSecede(bloc, key, owner, R) {
+  const L = surv.living, st = surv.war.strength;
+  if (L.powers[key]) return;
+  // The sky first: a bloc with none of its owner's cells in it has nothing to hold.
+  const cells = [];
+  for (const q of bloc) {
+    for (let j = 0; j < LIVING_BLOCK; j++) for (let i = 0; i < LIVING_BLOCK; i++) {
+      const cx = q.px * LIVING_BLOCK + i, cy = q.py * LIVING_BLOCK + j;
+      if (WORLD.holderOf(cx, cy) === owner && !WORLD.homeCell(cx, cy)) cells.push(cx + "," + cy);
+    }
+  }
+  if (!cells.length) return;
+  const place = key.slice(2).toUpperCase();
+  const c = { key, short: place, name: "THE " + place + " FREEHOLD",
+              colour: LIVING_CAUSE_COLOURS[L.causes.length % LIVING_CAUSE_COLOURS.length],
+              from: owner, since: L.turn };
+  L.causes.push(c);
+  registerCause(c);
+  // What the bloc's provinces held for the owner, they hold for themselves.
+  for (const k of cells) surv.claims.set(k, key);
+  const took = cells.length;
+  WORLD.territoryChanged();
+  // The power: its parent's goods in part, its people's grievance as temper.
+  const p = L.powers[owner];
+  const grievance = bloc.reduce((sum, q) => sum + (1 - q.loyalty), 0) / bloc.length;
+  const n = livingPower(R || Math.random, key, L.turn);
+  for (const g of LIVING_GOODS) n[g] = liveClamp(p[g] * 0.6 + 0.1, 0, 1);
+  n.stability = 0.5;
+  n.aggression = liveClamp(0.25 + grievance * 0.4, 0, 1);
+  n.expansion = 0.3;
+  n.trade = p.trade;
+  for (const f of FACTIONS) {
+    if (f.key === key) continue;
+    n.rel[f.key] = f.key === owner ? -0.7 : 0.1;
+    if (L.powers[f.key]) L.powers[f.key].rel[key] = f.key === owner ? -0.7 : 0;
+  }
+  n.leader.popularity = 0.7;
+  L.powers[key] = n;
+  // The fleet: ships crewed from there go over with it.
+  const share = bloc.length / Math.max(1, provincesNear().near.filter(q => q.owner === owner || q.owner === key).length);
+  const strength = liveClamp(0.4 + (st[owner] || 1) * share, 0.2, 1.4);
+  st[key] = strength;
+  st[owner] = Math.max(0.2, (st[owner] || 1) - strength * 0.4);
+  c.strength = strength;
+  for (const q of bloc) { q.loyalty = 0.7; q.cause = ""; q.withheld = 0; q.withholding = false; }
+  const site = provinceSite(bloc[0]);
+  recordEvent({ kind: "secede", actor: key, target: owner, what: c.name, n: took, x: site.x, y: site.y,
+                thread: "cause:" + key });
+  noteKnown("secede", site.x, site.y, place + " SECEDED");
+  chatter(c.name + " has seceded from " + factionOf(owner).name + ".", c.colour, false);
+}
+/* A cause that holds nothing any more is gone: the last of its sky was taken
+   back, cell by cell, by the war or the frontier. */
+function livingCausesTurn(near, R) {
+  const L = surv.living;
+  if (!L.causes || !L.causes.length) return;
+  const holds = {};
+  for (const v of surv.claims.values()) if (v) holds[v] = (holds[v] || 0) + 1;
+  for (let i = L.causes.length - 1; i >= 0; i--) {
+    const c = L.causes[i];
+    if (holds[c.key]) continue;
+    L.causes.splice(i, 1);
+    delete L.powers[c.key];
+    for (let k = FACTIONS.length - 1; k >= 0; k--) if (FACTIONS[k].key === c.key) FACTIONS.splice(k, 1);
+    for (const f of FACTIONS) if (L.powers[f.key]) delete L.powers[f.key].rel[c.key];
+    for (const pv of L.provinces.values()) if (pv.cause === c.key) pv.cause = "";
+    const war = surv.war;
+    if (war.belligerents.indexOf(c.key) >= 0) { war.pairs = {}; war.belligerents = []; war.calm = 0; }
+    delete surv.war.strength[c.key];
+    const at = livingPlaceOf(c.from);
+    recordEvent({ kind: "absorbed", actor: c.from, target: "", what: c.name, x: at.x, y: at.y,
+                  thread: "cause:" + c.key });
+    chatter(c.name + " holds nothing now.", LIVING_KINDS.absorbed.colour, false);
   }
 }
 
@@ -851,6 +1088,8 @@ function livingLine(ev, flag) {
   const us = flag && (ev.actor === flag || ev.target === flag);
   const weActed = flag && ev.actor === flag, weSuffered = flag && ev.target === flag;
   const a = you ? "A pilot" : A.short, t = T.short;
+  /* A cause that was absorbed is UNALIGNED to `factionOf` now; its lines
+     keep its name because the event carries it. */
   switch (ev.kind) {
     case "war":
       return weActed ? "WE ARE AT WAR WITH " + t
@@ -900,8 +1139,17 @@ function livingLine(ev, flag) {
       const said = w ? w[ev.n ? 0 : 1] : "THE LAW HAS CHANGED";
       return weActed ? said + " AT HOME" : a + " — " + said;
     }
-    case "revolt":
-      return weActed ? "A PROVINCE OF OURS HAS RISEN" : "REVOLT IN " + a + " SKY";
+    case "cause":
+      return weActed ? "THE " + ev.what + " PROVINCES HAVE STOPPED PAYING"
+           : "THE " + ev.what + " PROVINCES WITHHOLD FROM " + a;
+    case "enforce":
+      return weActed ? "THE FLEET IS OVER " + ev.what : a + " HAS SENT THE FLEET TO " + ev.what;
+    case "secede":
+      return weActed ? "WE ARE OUR OWN NOW"
+           : weSuffered ? "WE HAVE LOST " + ev.what + " — IT FLIES ITS OWN FLAG"
+           : ev.what + " HAS SECEDED FROM " + t;
+    case "absorbed":
+      return weActed ? ev.what + " IS OURS AGAIN" : ev.what + " HOLDS NOTHING NOW";
     case "bounty":
       return weActed ? "WE HAVE PUT A PRICE ON " + ev.what : a + " WANTS " + ev.what + " DEAD";
     case "claimed":
@@ -952,6 +1200,7 @@ function livingState() {
              stability: p.stability, rel: Object.assign({}, p.rel),
              atWar: sides.indexOf(f.key) >= 0, enemy: warPairs()[f.key] || "",
              pressures: p.pressures.slice(),
+             cause: !!f.cause, from: f.from || "", fromColour: f.from ? factionOf(f.from).colour : "",
              leader: p.leader ? { name: p.leader.name, title: p.leader.title, popularity: p.leader.popularity,
                                   hawk: p.leader.hawk, open: p.leader.open,
                                   since: p.leader.since, term: p.leader.term } : null,
@@ -979,7 +1228,9 @@ function livingState() {
     here: { owner: here.owner, colour: here.owner ? factionOf(here.owner).colour : "",
             control: here.control, contested: here.contested,
             contestedColour: here.contested ? factionOf(here.contested).colour : "",
-            unrest: here.unrest, security: here.security },
+            unrest: here.unrest, security: here.security,
+            loyalty: typeof here.loyalty === "number" ? here.loyalty : 0.7,
+            withholding: !!here.withholding, cause: here.cause || "" },
     history: recent, bounties,
     news: surv.docked ? livingNews(surv.docked.faction, 3) : []
   };
@@ -994,9 +1245,14 @@ function livingToBook() {
     powers: L.powers,
     provinces: [...L.provinces.values()].slice(-400).map(pv => ({
       px: pv.px, py: pv.py, ice: pv.ice, iron: pv.iron, alloy: pv.alloy,
-      unrest: pv.unrest, security: pv.security, rose: pv.rose })),
+      unrest: pv.unrest, security: pv.security,
+      loyalty: pv.loyalty, cause: pv.cause || "", withheld: pv.withheld | 0,
+      hurt: pv.hurt || 0, relief: pv.relief || 0, guard: pv.guard || 0, garrison: pv.garrison || 0 })),
     events: L.events,
-    bounties: L.bounties || []
+    bounties: L.bounties || [],
+    causes: (L.causes || []).map(c => ({ key: c.key, short: c.short, name: c.name, colour: c.colour,
+                                          from: c.from, since: c.since | 0,
+                                          strength: surv.war.strength[c.key] || c.strength || 1 }))
   };
 }
 function livingFromBook(seed, saved) {
@@ -1007,6 +1263,22 @@ function livingFromBook(seed, saved) {
   L.turnAt = L.clock;
   L.seq = Math.max(0, saved.seq | 0);
   L.warSince = Math.max(0, saved.warSince | 0);
+  /* The causes first, so the loop over `FACTIONS` below finds them. The
+     validator has already checked the keys; the parent must be a real flag. */
+  const R = seeded(((seed | 0) ^ 0x5ca11ed) >>> 0);
+  for (const c of (Array.isArray(saved.causes) ? saved.causes : [])) {
+    if (!c || typeof c.key !== "string" || !/^c:[a-z]{2,20}$/.test(c.key)) continue;
+    if (!FACTIONS.some(f => f.key === c.from && !f.cause)) continue;
+    const place = c.key.slice(2).toUpperCase();
+    const cc = { key: c.key, short: place, name: "THE " + place + " FREEHOLD",
+                 colour: LIVING_CAUSE_COLOURS[L.causes.length % LIVING_CAUSE_COLOURS.length],
+                 from: c.from, since: Math.max(0, c.since | 0),
+                 strength: liveClamp(typeof c.strength === "number" ? c.strength : 1, 0.2, 1.4) };
+    L.causes.push(cc);
+    registerCause(cc);
+    L.powers[c.key] = livingPower(R, c.key, L.turn);
+  }
+  L.pendingStrength = L.causes.length > 0;
   for (const f of FACTIONS) {
     const s = saved.powers && saved.powers[f.key];
     if (!s) continue;
@@ -1039,8 +1311,11 @@ function livingFromBook(seed, saved) {
   for (const pv of (saved.provinces || [])) {
     if (!pv || !Number.isFinite(pv.px) || !Number.isFinite(pv.py)) continue;
     const got = provinceOfFresh(L, pv.px | 0, pv.py | 0);
-    for (const k of ["ice", "iron", "alloy", "unrest", "security"]) if (typeof pv[k] === "number") got[k] = liveClamp(pv[k], 0, 1);
-    if (typeof pv.rose === "number") got.rose = pv.rose | 0;
+    for (const k of ["ice", "iron", "alloy", "unrest", "security", "loyalty", "hurt", "relief", "guard", "garrison"]) {
+      if (typeof pv[k] === "number") got[k] = liveClamp(pv[k], 0, 1);
+    }
+    got.withheld = Math.max(0, pv.withheld | 0);
+    got.cause = typeof pv.cause === "string" && /^c:[a-z]{2,20}$/.test(pv.cause) ? pv.cause : "";
   }
   for (const ev of (saved.events || [])) {
     if (!ev || !LIVING_KINDS[ev.kind]) continue;
@@ -1060,7 +1335,9 @@ function provinceOfFresh(L, px, py) {
   if (!pv) {
     const R = seeded(chunkSeed(px ^ 0x3a7f11c5, py ^ 0x5d9b2e73));
     pv = { px, py, ice: R(), iron: R(), alloy: R(), owner: "", control: 0, contested: "",
-           security: 0.5, unrest: 0.1, rose: -999 };
+           security: 0.5, unrest: 0.1,
+           loyalty: 0.7 + R() * 0.15, cause: "", withheld: 0, withholding: false,
+           hurt: 0, relief: 0, guard: 0, garrison: 0 };
     L.provinces.set(key, pv);
   }
   return pv;

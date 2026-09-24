@@ -17,8 +17,9 @@ written, and C6 was added open.
 bugs: `PLAYER-HISTORY.md`, and "the Leviathan is a ship you can buy" in
 `SURVEY-PLAN.md`. `LIVING-WORLD.md` has its first version and its first
 expansion built (2026-09-24, see its status line): §27, §16 and §28 — leaders,
-laws, revolt, bounties — with the visuals doing the talking on Ric's instruction.
-Civil war that births a faction (§8's second half) and §29 onward are still brief.
+laws, bounties, and the people, whose provinces can add up to a cause and, rarely,
+a flag of their own — with the visuals doing the talking on Ric's instruction.
+Important NPCs and §29 onward are still brief.
 
 ---
 
