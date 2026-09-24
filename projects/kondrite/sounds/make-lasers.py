@@ -117,35 +117,38 @@ def write(name, samples):
 
 def cannon():
     """Short, bright, falling zap. Fired constantly, so it stays small."""
-    dur, phase = 0.16, 0.0
+    dur, phase = 0.13, 0.0
     hiss = Noise(1)
 
     def v(t, dt):
         nonlocal phase
-        f = sweep(1900, 240, t, dur * 0.8)
+        f = sweep(1500, 220, t, dur * 0.8)
         phase += 2 * math.pi * f * dt
-        tone = square(phase, f, 9) * 0.55 + math.sin(phase * 0.5) * 0.35
-        crack = hiss.next(6000) * math.exp(-t / 0.012) * 0.6
-        return (tone + crack) * env(t, 0.002, 0.045)
+        tone = square(phase, f, 5) * 0.5 + math.sin(phase * 0.5) * 0.4
+        crack = hiss.next(3500) * math.exp(-t / 0.01) * 0.5
+        return (tone + crack) * env(t, 0.002, 0.04)
     return render(dur, v)
 
 
 def beam():
-    """A hum, not a shot: two detuned saws with a fast wobble, sustained."""
-    dur, p1, p2 = 0.45, 0.0, 0.0
+    """A hum, not a shot: two detuned saws with a fast wobble. The beam is an
+    industrial's cannon and fires at the cannon's rate, three to eight times a
+    second, so it has to be over before the next one starts — a long hum
+    stacked eight deep is a drone, and a drone is the most annoying sound a
+    game can make."""
+    dur, p1, p2 = 0.17, 0.0, 0.0
     hiss = Noise(2)
 
     def v(t, dt):
         nonlocal p1, p2
-        wob = 1 + 0.035 * math.sin(2 * math.pi * 28 * t)
-        f = sweep(640, 430, t, dur) * wob
+        wob = 1 + 0.03 * math.sin(2 * math.pi * 34 * t)
+        f = sweep(520, 360, t, dur) * wob
         p1 += 2 * math.pi * f * dt
         p2 += 2 * math.pi * f * 1.012 * dt
-        tone = saw(p1, f) * 0.5 + saw(p2, f * 1.012) * 0.5
-        tone += math.sin(p1 * 2) * 0.25
-        fizz = hiss.next(4500) * 0.18
-        shape = min(1.0, t / 0.02) * (1 if t < dur - 0.18 else (dur - t) / 0.18)
-        return (tone + fizz) * shape
+        tone = saw(p1, f, 8) * 0.5 + saw(p2, f * 1.012, 8) * 0.5
+        tone += math.sin(p1 * 0.5) * 0.35
+        fizz = hiss.next(2500) * 0.1
+        return (tone + fizz) * env(t, 0.008, 0.05)
     return render(dur, v)
 
 
@@ -153,7 +156,9 @@ def scatter():
     """Three rounds at once: three short chirps a hair apart, each a little
     off pitch from the others, over a crackle."""
     dur = 0.24
-    shots = [(0.000, 2600, 1.00), (0.022, 2250, 0.85), (0.041, 2950, 0.75)]
+    # Lower than they started out: three bright squares at 2.6-3 kHz sat right
+    # where hearing is most sensitive and measured as the harshest thing here.
+    shots = [(0.000, 1500, 1.00), (0.022, 1300, 0.85), (0.041, 1700, 0.75)]
     phases = [0.0, 0.0, 0.0]
     hiss = Noise(3)
 
@@ -163,10 +168,11 @@ def scatter():
             u = t - start
             if u < 0:
                 continue
-            f = sweep(f0, 380, u, 0.09)
+            f = sweep(f0, 300, u, 0.09)
             phases[i] += 2 * math.pi * f * dt
-            out += square(phases[i], f, 7) * env(u, 0.0015, 0.03) * level
-        out += hiss.next(7000) * math.exp(-t / 0.05) * 0.45
+            tone = square(phases[i], f, 3) * 0.5 + math.sin(phases[i]) * 0.5
+            out += tone * env(u, 0.0015, 0.03) * level
+        out += hiss.next(2500) * math.exp(-t / 0.03) * 0.3
         return out
     return render(dur, v)
 
@@ -183,7 +189,7 @@ def seeker():
         f *= 1 + 0.06 * math.sin(2 * math.pi * 17 * t)
         phase += 2 * math.pi * f * dt
         tone = saw(phase, f, 10) * 0.45
-        whoosh = air.next(800 + 5000 * min(1.0, t / 0.3)) * 0.9
+        whoosh = air.next(600 + 2400 * min(1.0, t / 0.3)) * 0.9
         thump = math.sin(2 * math.pi * 70 * t) * math.exp(-t / 0.04) * 0.8
         shape = min(1.0, t / 0.03) * math.exp(-max(0.0, t - 0.12) / 0.16)
         return (tone + whoosh) * shape + thump
@@ -201,16 +207,16 @@ def lance():
     def v(t, dt):
         nonlocal phase, sub
         if t < charge:
-            f = sweep(420, 3200, t, charge)
+            f = sweep(420, 2200, t, charge)
             phase += 2 * math.pi * f * dt
             return math.sin(phase) * (t / charge) * 0.35
         u = t - charge
-        f = sweep(3400, 70, u, 0.35)
+        f = sweep(2200, 70, u, 0.35)
         phase += 2 * math.pi * f * dt
         sub += 2 * math.pi * 55 * dt
-        tone = square(phase, f, 11) * 0.6 * env(u, 0.001, 0.12)
+        tone = square(phase, f, 5) * 0.5 * env(u, 0.001, 0.1)
         body = math.sin(sub) * 0.7 * env(u, 0.004, 0.2)
-        snap = crack.next(9000) * math.exp(-u / 0.02) * 1.2
+        snap = crack.next(3500) * math.exp(-u / 0.015) * 1.0
         roll = rumble.next(300) * math.exp(-u / 0.25) * 2.5
         return tone + body + snap + roll
     return render(dur, v)

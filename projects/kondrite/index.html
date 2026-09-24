@@ -1813,7 +1813,7 @@
     if (!audioCtx) {
       audioCtx = new Audio();
       audioMaster = audioCtx.createGain();
-      audioMaster.gain.value = 0.24;
+      audioMaster.gain.value = MASTER_GAIN * audioVol.master;
       /* A war on screen can put a dozen sounds on one frame. The compressor is
          what keeps that loud rather than painful. */
       if (typeof audioCtx.createDynamicsCompressor === "function") {
@@ -1828,6 +1828,70 @@
     if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
     return audioCtx;
   }
+
+  /* ── how loud, and which dial ─────────────────────────────────────────────
+     Every sound belongs to one of four channels, each with its own volume in
+     SETTINGS → AUDIO under a master. A sound with no place in the world is
+     INTERFACE whatever it is — a "hit" that means you cannot afford it is a
+     menu noise, not a collision. */
+  const AUDIO_STORE = "kondrite.audio.v1";
+  const AUDIO_CHANNELS = [
+    { key: "weapons", name: "WEAPONS" },
+    { key: "impacts", name: "IMPACTS" },
+    { key: "ship",    name: "SHIP & GADGETS" },
+    { key: "ui",      name: "INTERFACE" }
+  ];
+  const SFX_CHANNEL = {
+    laser: "weapons", beam: "weapons", scatter: "weapons", seeker: "weapons",
+    lance: "weapons", shot: "weapons",
+    hit: "impacts", rock: "impacts", boom: "impacts", tink: "impacts",
+    fizz: "impacts", explode: "impacts",
+    warp: "ship", thrust: "ship", pickup: "ship",
+    start: "ui", win: "ui", lose: "ui"
+  };
+  const VOLUME_STEPS = [0, 0.1, 0.25, 0.4, 0.55, 0.7, 0.85, 1];
+  const audioVol = { master: 0.85, weapons: 0.85, impacts: 0.85, ship: 0.85, ui: 0.85 };
+  try {
+    const saved = JSON.parse(localStorage.getItem(AUDIO_STORE) || "null");
+    if (saved && typeof saved === "object") {
+      for (const k of Object.keys(audioVol)) {
+        if (typeof saved[k] === "number" && saved[k] >= 0 && saved[k] <= 1) audioVol[k] = saved[k];
+      }
+    }
+  } catch (_) {}
+  const MASTER_GAIN = 0.24;
+  function applyVolume() {
+    if (audioMaster) audioMaster.gain.value = soundEnabled ? MASTER_GAIN * audioVol.master : 0;
+  }
+  function setVolume(key, v) {
+    audioVol[key] = Math.max(0, Math.min(1, v));
+    try { localStorage.setItem(AUDIO_STORE, JSON.stringify(audioVol)); } catch (_) {}
+    applyVolume();
+  }
+
+  /* ── not annoying ─────────────────────────────────────────────────────────
+     What makes game sound grating is rarely one sound. It is the same sound,
+     identical, forty times a minute — and five of them landing on one frame.
+     So, measured with test/sounds.js rather than asserted:
+
+       · Nothing repeats exactly. Every in-world sound is nudged up to 5% in
+         pitch and 15% in level, which is the difference between a machine gun
+         and a stuck record. The jingles are left alone: they are tunes.
+       · The same sound twice inside 35ms plays once. Six bots on one frame is
+         one volley, not a spike six times as loud.
+       · Noise is filtered. Raw white noise put over half of every impact's
+         energy above 5 kHz, which is hiss, not a hit.
+       · The variation has its own generator, so a sound never takes a number
+         out of Math.random that the game was going to use. */
+  let sfxScale = 1, sfxPitch = 1;
+  let sfxSeed = 0x2f6b66;
+  const sfxRand = () => {
+    sfxSeed = (sfxSeed * 1664525 + 1013904223) >>> 0;
+    return sfxSeed / 4294967296;
+  };
+  const sfxLast = {};
+  const SFX_GAP = 0.035;
+  const SFX_STILL = { start: true, win: true, lose: true };
 
   function soundOutput(pan, gain) {
     const g = audioCtx.createGain();
@@ -1844,19 +1908,25 @@
 
   function soundTone(freq, endFreq, duration, gain, type, pan, delay) {
     if (!audioUnlock()) return;
+    gain *= sfxScale;
+    if (gain <= 0) return;
+    freq *= sfxPitch; endFreq = (endFreq || freq / sfxPitch) * sfxPitch;
     const now = audioCtx.currentTime + (delay || 0);
     const osc = audioCtx.createOscillator();
     const out = soundOutput(pan, gain);
     osc.type = type || "square";
     osc.frequency.setValueAtTime(Math.max(20, freq), now);
-    osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq || freq), now + duration);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), now + duration);
     out.gain.setValueAtTime(gain, now);
     out.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     osc.connect(out); osc.start(now); osc.stop(now + duration + 0.02);
   }
 
-  function soundNoise(duration, gain, pan) {
+  // `cutoff` is where the hiss stops: a low one is a thud, a high one a crackle.
+  function soundNoise(duration, gain, pan, cutoff) {
     if (!audioUnlock()) return;
+    gain *= sfxScale;
+    if (gain <= 0) return;
     if (!audioNoise) {
       audioNoise = audioCtx.createBuffer(1, Math.ceil(audioCtx.sampleRate * 0.45),
                                          audioCtx.sampleRate);
@@ -1867,9 +1937,19 @@
     const src = audioCtx.createBufferSource();
     const out = soundOutput(pan, gain);
     src.buffer = audioNoise;
+    src.playbackRate.value = sfxPitch;
     out.gain.setValueAtTime(gain, now);
     out.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    src.connect(out); src.start(now); src.stop(now + duration);
+    if (cutoff && typeof audioCtx.createBiquadFilter === "function") {
+      const lp = audioCtx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = cutoff * sfxPitch;
+      lp.Q.value = 0.7;
+      src.connect(lp); lp.connect(out);
+    } else {
+      src.connect(out);
+    }
+    src.start(now); src.stop(now + duration);
   }
 
   /* The guns are recorded sounds rather than oscillators: five .wav files made
@@ -1908,41 +1988,66 @@
   }
 
   function soundSample(buf, gain, pan) {
+    gain *= sfxScale;
+    if (gain <= 0) return;
     const src = audioCtx.createBufferSource();
     src.buffer = buf;
+    src.playbackRate.value = sfxPitch;
     src.connect(soundOutput(pan, gain));
     src.start();
   }
 
-  function playSfx(kind, pan) {
+  /* `where` is false for a sound with no place in the world, which files it
+     under INTERFACE whatever kind it is. */
+  function playSfx(kind, pan, where) {
     if (!soundEnabled || !audioUnlock()) return;
+    const now = audioCtx.currentTime;
+    if (sfxLast[kind] != null && now - sfxLast[kind] < SFX_GAP && now >= sfxLast[kind]) return;
+    sfxLast[kind] = now;
+    const channel = where === false ? "ui" : (SFX_CHANNEL[kind] || "impacts");
+    sfxScale = audioVol[channel] == null ? 1 : audioVol[channel];
+    if (sfxScale <= 0) return;
+    if (SFX_STILL[kind]) sfxPitch = 1;
+    else { sfxPitch = 0.95 + sfxRand() * 0.1; sfxScale *= 0.85 + sfxRand() * 0.15; }
+    try { sfxVoice(kind, pan); } finally { sfxScale = 1; sfxPitch = 1; }
+  }
+
+  function sfxVoice(kind, pan) {
     const laser = LASERS[kind];
     if (laser) {
       if (laserBuffers[kind]) { soundSample(laserBuffers[kind], laser.gain, pan); return; }
       kind = laser.fallback;
     }
-    if (kind === "shot") soundTone(210, 75, 0.07, 0.055, "square", pan);
+    if (kind === "shot") soundTone(210, 75, 0.07, 0.05, "square", pan);
     else if (kind === "hit") {
-      soundNoise(0.1, 0.045, pan); soundTone(120, 62, 0.12, 0.05, "sawtooth", pan);
+      soundNoise(0.09, 0.05, pan, 3400); soundTone(180, 90, 0.11, 0.045, "triangle", pan);
     } else if (kind === "rock") {
-      soundNoise(0.16, 0.055, pan); soundTone(95, 48, 0.16, 0.04, "triangle", pan);
+      // Mining: the commonest sound in Survey. A dull crunch, not a hiss.
+      soundNoise(0.12, 0.055, pan, 2600); soundTone(150, 72, 0.13, 0.04, "triangle", pan);
     } else if (kind === "boom") {
       // A burst charge or a ship going up: lower and shorter than your own death.
-      soundNoise(0.28, 0.1, pan); soundTone(90, 38, 0.3, 0.075, "sawtooth", pan);
+      soundNoise(0.28, 0.11, pan, 2000); soundTone(90, 38, 0.3, 0.07, "triangle", pan);
     } else if (kind === "tink") {
-      // A round stopping against something that is not a ship.
-      soundTone(1500, 700, 0.045, 0.022, "square", pan);
+      // A round stopping against something that is not a ship. Plays for most
+      // misses, so it is the smallest sound in the game.
+      soundTone(900, 520, 0.04, 0.016, "triangle", pan);
     } else if (kind === "fizz") {
       // Something small running out: a mine, a decoy, a drone's time.
-      soundNoise(0.09, 0.03, pan); soundTone(600, 180, 0.1, 0.025, "triangle", pan);
+      soundNoise(0.08, 0.03, pan, 3400); soundTone(520, 180, 0.09, 0.022, "triangle", pan);
     } else if (kind === "warp") {
-      soundNoise(0.4, 0.06, pan);
-      soundTone(90, 900, 0.35, 0.05, "sawtooth", pan);
-      soundTone(1200, 300, 0.3, 0.035, "triangle", pan, 0.25);
+      soundNoise(0.4, 0.055, pan, 2800);
+      soundTone(90, 700, 0.35, 0.04, "sawtooth", pan);
+      soundTone(900, 300, 0.3, 0.03, "triangle", pan, 0.25);
     } else if (kind === "thrust") {
-      soundNoise(0.18, 0.05, pan); soundTone(70, 140, 0.18, 0.035, "triangle", pan);
+      soundNoise(0.16, 0.055, pan, 1500); soundTone(70, 140, 0.16, 0.03, "triangle", pan);
+    } else if (kind === "pickup") {
+      // Ore into the hold. One soft note off a pentatonic, so a run of them is
+      // a little tune rather than the same blip.
+      const PENTA = [523, 587, 659, 784, 880];
+      const f = PENTA[Math.floor(sfxRand() * PENTA.length)];
+      soundTone(f, f, 0.07, 0.022, "sine", pan);
     } else if (kind === "explode") {
-      soundNoise(0.34, 0.13, pan); soundTone(105, 32, 0.38, 0.09, "sawtooth", pan);
+      soundNoise(0.34, 0.14, pan, 2200); soundTone(105, 32, 0.38, 0.085, "triangle", pan);
     } else if (kind === "start") {
       soundTone(220, 220, 0.11, 0.045, "triangle", 0, 0);
       soundTone(330, 330, 0.11, 0.045, "triangle", 0, 0.1);
@@ -1951,16 +2056,16 @@
       soundTone(330, 440, 0.18, 0.06, "triangle", 0, 0);
       soundTone(440, 660, 0.24, 0.07, "triangle", 0, 0.16);
     } else if (kind === "lose") {
-      soundTone(220, 110, 0.28, 0.065, "sawtooth", 0, 0);
-      soundTone(140, 55, 0.34, 0.055, "sawtooth", 0, 0.2);
+      soundTone(220, 110, 0.28, 0.06, "triangle", 0, 0);
+      soundTone(140, 55, 0.34, 0.055, "triangle", 0, 0.2);
     }
   }
 
   function toggleSound() {
     soundEnabled = !soundEnabled;
     try { localStorage.setItem(SOUND_STORE, soundEnabled ? "on" : "off"); } catch (_) {}
-    if (audioMaster) audioMaster.gain.value = soundEnabled ? 0.24 : 0;
-    if (soundEnabled) { audioUnlock(); playSfx("start", 0); }
+    applyVolume();
+    if (soundEnabled) { audioUnlock(); playSfx("start", 0, false); }
   }
 
   const fullscreenElement = () =>
@@ -2653,7 +2758,7 @@
   }
 
   function gameSound(kind, x, y) {
-    if (audible(x, y)) playSfx(kind, soundPan(x));
+    if (audible(x, y)) playSfx(kind, soundPan(x), typeof x === "number");
     /* The host sends every sound, seen or not: a guest has its own camera and
        decides for itself what it can see. */
     if (net.role === "host") {
@@ -14331,7 +14436,7 @@
       if (me.alive && dist2(m.x, m.y, me.x, me.y) < reach * reach) {
         if (addMaterial(m.mat || "iron", 1)) {
           burst(m.x, m.y, matSpec(m.mat).colour, 3, 90 * U);
-          if (Math.random() < 0.25) gameSound("start", m.x, m.y);
+          if (Math.random() < 0.25) gameSound("pickup", m.x, m.y);
           surv.motes.splice(i, 1);
         }
       }
@@ -22190,7 +22295,7 @@
       for (const e of msg.fx) {
         if (!Number.isInteger(e[0]) || e[0] <= net.lastSoundSeq) continue;
         net.lastSoundSeq = e[0];
-        if (audible(e[2], e[3])) playSfx(e[1], soundPan(e[2]));
+        if (audible(e[2], e[3])) playSfx(e[1], soundPan(e[2]), typeof e[3] === "number");
       }
     }
 
@@ -25966,13 +26071,15 @@
   // rather than being set to something: RESET ALL KEYS, SWAP SIDES.
   const setActY = sh => sh.bot - 26;
 
-  /* Three, which is where almost every game lands: what you drive it with,
-     what the game does, and who you are. The usual five — gameplay, controls,
-     video, audio, account — collapse to this at Kondrite's size, because
-     gameplay is one toggle, video is two and audio is one. */
+  /* Four: what you drive it with, what the game does, what it sounds like,
+     and who you are. Audio used to be one toggle inside GAME; it has its own
+     page now that it has a volume per kind of sound, because "the guns are too
+     loud" is a question somebody should be able to answer without muting the
+     whole game. */
   const SET_CATS = [
     { key: "controls", name: "CONTROLS", blurb: "what you are driving it with" },
-    { key: "game",     name: "GAME",     blurb: "what the game does, and what it sounds like" },
+    { key: "game",     name: "GAME",     blurb: "what the game does" },
+    { key: "audio",    name: "AUDIO",    blurb: "what it sounds like, and how loud" },
     { key: "account",  name: "ACCOUNT",  blurb: "who you are, and what is saved" }
   ];
 
@@ -26330,9 +26437,9 @@
   }
 
   /* ── the game ─────────────────────────────────────────────────────────────
-     What the game does and what it sounds like — gameplay, video and audio in
-     the usual taxonomy, which at this size is five rows rather than three
-     pages.
+     What the game does — gameplay and video in the usual taxonomy, which at
+     this size is four rows rather than two pages. What it sounds like is
+     AUDIO, next door.
 
      Two of them mean something in one mode and nothing in the other three. The
      zoom is Survey's, because the other arenas are framed for you and a zoom
@@ -26357,16 +26464,74 @@
       colour: survivalFriendlyFire ? "#ff8f77" : "#6dffbf",
       on: survivalFriendlyFire, act: toggleFriendlyFire });
     setRow(sh, 3, {
-      label: "SOUND", value: soundEnabled ? "ON" : "OFF",
-      colour: soundEnabled ? "#ffe56d" : "#ffcb42", on: soundEnabled,
-      act: toggleSound });
-    setRow(sh, 4, {
       label: "SCREEN", value: fullscreenLabel(),
       colour: "#ffe56d", on: !!fullscreenElement(),
       enabled: fullscreenSupported(),
       // Only when the button is dead, because then it owes you a reason.
       note: fullscreenSupported() ? null : "Not supported here.",
       act: toggleFullscreen });
+  }
+
+  /* ── what it sounds like ──────────────────────────────────────────────────
+     The switch, then a master, then one dial per kind of sound. Each step
+     plays a sound off the channel it just changed, so you hear the level you
+     picked rather than guessing at a bar. With the sound off the dials still
+     move and remember — they just have nothing to play through yet. */
+  const AUDIO_SAMPLE = { master: "laser", weapons: "laser", impacts: "rock",
+                         ship: "pickup", ui: "start" };
+  function volumeStep(key, dir) {
+    const v = audioVol[key];
+    let i = 0;
+    for (let k = 0; k < VOLUME_STEPS.length; k++) {
+      if (Math.abs(VOLUME_STEPS[k] - v) < Math.abs(VOLUME_STEPS[i] - v)) i = k;
+    }
+    i = Math.max(0, Math.min(VOLUME_STEPS.length - 1, i + dir));
+    setVolume(key, VOLUME_STEPS[i]);
+    // A room with the volume at zero has nothing to say; it would only be the
+    // same silence you just asked for.
+    if (soundEnabled && audioVol[key] > 0 && audioVol.master > 0) {
+      const kind = AUDIO_SAMPLE[key];
+      playSfx(kind, 0, key !== "ui");
+    }
+  }
+
+  function volumeRow(sh, i, label, key) {
+    const y = setRowY(sh, i);
+    const v = audioVol[key];
+    const live = soundEnabled;
+    const colour = live ? "#6dffbf" : "#ffcb42";
+    text(label, sh.px, y + 6, 17, "#ffe56d", "left", live ? 1 : 0.6);
+    const bw = 52, gap = 10;
+    const right = sh.px + sh.pw;
+    const plusX = right - bw / 2, minusX = right - bw - gap - bw / 2;
+    const mw = Math.max(70, Math.min(220, sh.pw - 190 - 2 * bw - 3 * gap - 52));
+    const mx = right - 2 * bw - 2 * gap - 52 - mw;
+    ctx.save();
+    ctx.strokeStyle = colour;
+    ctx.globalAlpha = live ? 0.6 : 0.3;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(mx, y - 7, mw, 14);
+    ctx.fillStyle = colour;
+    ctx.globalAlpha = live ? 0.85 : 0.35;
+    ctx.fillRect(mx + 2, y - 5, (mw - 4) * v, 10);
+    ctx.restore();
+    text(v === 0 ? "OFF" : Math.round(v * 100) + "%", mx + mw + 44, y + 6, 15,
+         colour, "right", live ? 1 : 0.6);
+    panelButton("\u2212", minusX, y, bw, 40, colour, () => volumeStep(key, -1),
+                i, 0, false, v > 0);
+    panelButton("+", plusX, y, bw, 40, colour, () => volumeStep(key, 1),
+                i, 1, false, v < 1);
+  }
+
+  function drawAudioPanel(sh) {
+    panelHead(sh, "AUDIO", null, "#6dffbf");
+    setRow(sh, 0, {
+      label: "SOUND", value: soundEnabled ? "ON" : "OFF",
+      colour: soundEnabled ? "#6dffbf" : "#ffcb42", on: soundEnabled,
+      note: "You hear what is on the screen, and nothing that is not.",
+      act: toggleSound });
+    volumeRow(sh, 1, "MASTER", "master");
+    AUDIO_CHANNELS.forEach((c, k) => volumeRow(sh, 2 + k, c.name, c.key));
   }
 
   /* ── you ──────────────────────────────────────────────────────────────────
@@ -26400,7 +26565,7 @@
   }
 
   const SET_PANELS = { controls: drawControlsPanel, game: drawGamePanel,
-                       account: drawAccountPanel };
+                       audio: drawAudioPanel, account: drawAccountPanel };
 
   /* ── the rail ─────────────────────────────────────────────────────────────
      Left-aligned and full width, with a bar down the lit edge of whichever one
@@ -29301,6 +29466,8 @@
          the tap list for SOUND — see the label on a tap rectangle — rather
          than measuring a y band, which is what made these tests fail every
          time the page was re-spaced by two pixels. */
+      // The volume dials, as numbers, and whether the sound is on at all.
+      audio: () => ({ ...audioVol, on: soundEnabled }),
       settings: () => {
         const sh = settingsShell();
         return { cat: settingsCat, tab: controlTab,

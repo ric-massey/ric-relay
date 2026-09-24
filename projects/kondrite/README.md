@@ -760,6 +760,23 @@ screens away is silent until you fly into it. Sounds with no place — menus,
 purchases, the round starting — always play. Online, the host sends every sound
 and each guest decides by its own camera.
 
+**SETTINGS → AUDIO** has the switch, a master volume, and one volume each for
+weapons, impacts, ship & gadgets, and the interface. Every step plays a sound
+off the channel it changed, so you hear the level you picked. Saved locally
+(`kondrite.audio.v1`), like the other preferences.
+
+**Not annoying, and measured rather than promised.** `test/sounds.js` renders
+every sound through the game's own code and holds it to limits: no more than
+20% of its energy in the 2–5 kHz band hearing is most sensitive to, no more than
+15% above 5 kHz (that is hiss), and nothing that plays several times a second
+lasting longer than 0.2s. What those limits caught the first time: a scatter gun
+that was 38% harsh, every impact over 30% hiss from unfiltered white noise, a
+beam that hummed for 0.44s at eight shots a second, and ore pickups playing the
+round-start jingle. The engine also nudges every in-world sound up to 5% in pitch
+so no two are identical, and plays the same sound twice inside 35ms once, so six
+bots firing on one frame is one volley rather than a spike. None of this is a
+substitute for somebody listening — the levels are matched, not tuned by ear.
+
 Sound starts on the first keypress or tap and can be muted
 from the title, Settings or pause menu; that preference is saved locally.
 Fullscreen is available from those same screens when the browser supports the
@@ -967,6 +984,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/attract.js` | An hour of the front page: what turns up and when, how long it goes quiet, whether a slingshot throws |
 | `test/ui.js` | Every control on every page, at four shapes of glass, on a desk and on a phone: on the screen, big enough to press, and not buried under something drawn later |
 | `test/biomes.js` | The geography of a sector, measured: how many patches are in reach, how big one is, and what a line out of home crosses. Takes a seed |
+| `test/sounds.js` | Every sound rendered and measured: how harsh, how much hiss, how long for something that repeats, whether repeats vary, whether a volley stacks, and whether every volume dial reaches silence. Needs Playwright |
 | `test/rocks.js` | Which rocks might be touching: the real broad-phase finder lifted out of the game and run against all-pairs on the same fields. Counts, never milliseconds |
 | `test/save.js` | The book: parse, migrate, validate and the loader that decides what to do when one says no. An old save lands where a new one does, a future one is refused, a corrupt primary falls back to the backup, and a bug in the reader is not a corrupt save |
 | `test/fog.js` | The chart's round trip through storage, on its own and in milliseconds: a refused import may not damage the chart it declined to replace |

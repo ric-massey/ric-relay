@@ -524,12 +524,12 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
 
   /* The rail is the page's table of contents. */
   const cats = cf.settings().cats;
-  check(cats.join(",") === "controls,game,account",
+  check(cats.join(",") === "controls,game,audio,account",
         "the settings rail is [" + cats.join(", ") + "]");
 
   const rooms = [["controls", "mouse"], ["controls", "keys"],
                  ["controls", "pad"], ["controls", "touch"],
-                 ["game", null], ["account", null]];
+                 ["game", null], ["audio", null], ["account", null]];
   for (const [cat, tab] of rooms) {
     cf.setCat(cat);
     if (tab) cf.setTab(tab);
@@ -595,7 +595,37 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
   const game = labels();
   check(game.includes("STANDARD"), "the zoom is not on the page");
   check(game.some(l => l === "ON" || l === "OFF"),
-        "friendly fire and sound are not on the page");
+        "friendly fire is not on the page");
+
+  /* ── audio has a page of its own ────────────────────────────────────────
+     A switch, a master and a dial per kind of sound. One press is one step,
+     the dial cannot go past either end, and a reload keeps what was set —
+     "the guns are too loud" answered once, not every time the page opens. */
+  cf.setCat("audio");
+  cf.draw();
+  const audio = labels();
+  check(audio.includes("ON") || audio.includes("OFF"), "AUDIO has no sound switch");
+  check(audio.filter(l => l === "+").length + audio.filter(l => l === "\u2212").length >= 5,
+        "AUDIO does not have a dial for the master and each kind of sound");
+  const vol0 = cf.audio().master;
+  press("+", "AUDIO has no way to turn it up");
+  check(cf.audio().master > vol0, "turning the master up did nothing");
+  for (let k = 0; k < 12; k++) {
+    cf.draw();
+    const up = cf.live().taps.find(t => t.label === "+");
+    if (!up) break;
+    up.act();
+  }
+  check(cf.audio().master <= 1, "the master went past full");
+  press("\u2212"); press("\u2212");
+  const vol1 = cf.audio().master;
+  check(vol1 < 1, "turning the master down did nothing");
+  const kept = bootKeepingStorage("?debug=1");
+  check(Math.abs(kept.cf.audio().master - vol1) < 1e-9,
+        "a reload came back with the master at " + kept.cf.audio().master +
+        " instead of " + vol1);
+  cf.setCat("game");
+  cf.draw();
 
   /* ── one page, not two ──────────────────────────────────────────────────
      Sound, fullscreen and the way out used to be written twice — once on the
@@ -641,7 +671,8 @@ const check = (ok, msg) => { if (!ok) problems.push(msg); };
         cf.settings().rail[cf.settings().focus.i]);
 
   console.log("  settings   CONTROLS [mouse keys controller touchscreen] · GAME · " +
-              "ACCOUNT · every room furnished · the camera is one answer and " +
+              "AUDIO · ACCOUNT · every room furnished · the volume steps, stops at " +
+              "both ends and survives a reload · the camera is one answer and " +
               "an old four-answer save collapses into it · walkable from the keyboard");
 }
 

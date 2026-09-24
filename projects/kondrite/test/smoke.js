@@ -186,7 +186,7 @@ function checkSyntax() {
     "ship destruction must produce sound");
   /* If you can see it you can hear it, and not otherwise. The rule itself is
      checked in a real browser (browser.js); this only keeps it wired in. */
-  assert.match(html, /if \(audible\(x, y\)\) playSfx\(kind, soundPan\(x\)\)/,
+  assert.match(html, /if \(audible\(x, y\)\) playSfx\(kind, soundPan\(x\)/,
     "in-world sounds must be culled when off screen");
   assert.match(html, /if \(audible\(e\[2\], e\[3\]\)\) playSfx/,
     "a guest must cull the host's sounds by its own camera");
