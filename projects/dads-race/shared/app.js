@@ -327,8 +327,7 @@ function enterAs(p){
 async function switchProfile(){
   if(getOfflineQueue().length && !window.confirm('Unsynced race changes are still on this phone. Sign out and remove them?')) return;
   stopLiveSync();
-  await window.HermiscusAuth.signOut();
-  window.location.replace(window.HermiscusAuth.loginUrl());
+  await window.HermiscusAuth.leaveProfile();
 }
 
 /* ================= APP SHELL ================= */
@@ -638,17 +637,6 @@ function missionBringListHTML(stop){
       <span class="box">${it.checked?'<i class="ti ti-check"></i>':''}</span>
       <span>${esc(it.label)}${it.checked && it.checked_by ? ` <small>— ${esc(it.checked_by)}</small>` : ''}</span>
     </button>`).join('')}</div>`;
-}
-
-function shortCrewQuestion(text){
-  const raw = String(text||'').trim();
-  const t = raw.toLowerCase();
-  if(t.includes('pee')) return 'Pee in last 2–3 hours?';
-  if(/pain|blister|chaf|medical|feeling/.test(t)) return 'Pain, blisters, or chafing?';
-  if(/eat|food|hungry/.test(t)) return 'What does he want to eat?';
-  if(/stretch/.test(t)) return 'Need to stretch?';
-  if(/relax|shoulder/.test(t)) return 'Relax shoulders';
-  return raw.length > 48 ? `${raw.slice(0,45).trim()}…` : raw;
 }
 
 function ricPaceLegData(engine, fromStop){
@@ -1234,7 +1222,7 @@ async function renderRicHomeDashboard(prefetchedSplits){
     const crewable = (nextUp.mile??0)>=crewAccessMile()-0.001;
     const questionHTML = !crewable
       ? `<div class="sd-empty">Questions begin at mile ${crewAccessMile()}, when crew access starts.</div>`
-      : questions.map(q=>buildQuestionAnswerHTML(nextUp,{...q,text:shortCrewQuestion(q.text)})).join('');
+      : questions.map(q=>buildQuestionAnswerHTML(nextUp,q)).join('');
     const proj = engine.rows.find(r=>r.id===nextUp.id);
     const raceIsLive = window.raceIsLive();
     const stopElapsed = raceIsLive && proj ? proj.projected_elapsed : (proj ? proj.goal_elapsed_sec : nextUp.elapsed_seconds);
@@ -1298,7 +1286,7 @@ async function renderHome(){
   document.getElementById('home-running-total').classList.toggle('hidden',missionHome);
   document.getElementById('ric-home-dashboard').classList.toggle('hidden',!missionHome);
   document.getElementById('standard-home-dashboard').classList.toggle('hidden',missionHome);
-  if(missionHome) await renderRicHomeDashboard();
+  if(missionHome){ renderCrewReference(); await renderRicHomeDashboard(); }
   else {
     await renderRunningTotal('home-running-total');
     await renderHomeNextStop();
@@ -1414,11 +1402,20 @@ async function addItem(cat, inputEl){
 }
 
 /* ================= CREW SHEET ================= */
+// Whatever Victoria's editor (or anyone writing the list by hand) saves in crew_questions is
+// shown exactly as written. A bare string or a {question:…} row is read as a question too, so
+// a list typed up some other way still turns up rather than vanishing.
 function getCrewQuestions(){
   if(!CONFIG.crew_questions) return DEFAULT_CREW_QUESTIONS.map(q=>({...q}));
   try{
     const parsed = JSON.parse(CONFIG.crew_questions);
-    return Array.isArray(parsed) ? parsed : [];
+    if(!Array.isArray(parsed)) return [];
+    return parsed.map((q,i)=>{
+      if(typeof q === 'string') q = {text:q};
+      if(!q || typeof q !== 'object') return null;
+      const text = String(q.text ?? q.question ?? q.q ?? q.label ?? '').trim();
+      return text ? {...q, id:q.id || `q${i}-${text.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,40)}`, text} : null;
+    }).filter(Boolean);
   }catch(e){ return []; }
 }
 // The widget for a question is mostly derived from keywords in its text (so it survives edits
@@ -1588,8 +1585,8 @@ function restTimerSinceMs(s){
     : raceSessionStartDateTime().getTime() + s.actual_elapsed_seconds*1000;
 }
 function fmtCountdownSeconds(sec){
-  const safe = Math.max(0,Math.round(sec||0));
-  return `${Math.floor(safe/60)}:${String(safe%60).padStart(2,'0')}`;
+  const s = Math.round(sec||0), a = Math.abs(s);
+  return `${s<0?'-':''}${Math.floor(a/60)}:${String(a%60).padStart(2,'0')}`;
 }
 function restCountdownHTML(s,extraClass=''){
   const sinceMs = restTimerSinceMs(s);
@@ -2009,17 +2006,19 @@ function crewAccessMile(){
   const m = parseFloat(raw);
   return isFinite(m) && m >= 0 ? m : 16;
 }
-// The collapsed "the plan" reference at the top of the Crew Sheet — rest-time rule, the
-// what-to-say-if-he-quits line, and the real reasons to stop. Everyone sees it; it's folded
-// away so it doesn't crowd the screen mid-stop.
+// The collapsed "the plan" reference at the top of the Crew Sheet (and of Ric's and Sydney's
+// Overview) — rest-time rule, the what-to-say-if-he-quits line, and the real reasons to stop.
+// It's folded away so it doesn't crowd the screen mid-stop.
 function renderCrewReference(){
-  const body = document.getElementById('crew-ref-body');
-  if(!body) return;
   const sec = (title, val) => `<div class="sd-section-title">${title}</div>`
     + `<div class="sd-text">${val ? esc(val) : '<span class="sd-empty">Not set yet.</span>'}</div>`;
-  body.innerHTML = sec('Estimated Rest Time', CONFIG.sit_time_rule)
+  const html = sec('Estimated Rest Time', CONFIG.sit_time_rule)
     + sec('If He Wants To Quit', CONFIG.quit_protocol)
     + sec('Reasons To Actually Stop', CONFIG.reasons_to_stop);
+  ['crew-ref-body','ric-plan-ref-body'].forEach(id=>{
+    const body = document.getElementById(id);
+    if(body) body.innerHTML = html;
+  });
 }
 async function renderCrewSheet(){
   document.getElementById('manager-edit-section').classList.toggle('hidden', !isManager());

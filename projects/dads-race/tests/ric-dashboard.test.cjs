@@ -261,7 +261,7 @@ test('rest countdown reaches zero without going negative', () => {
   const since = 1_000_000;
   assert.deepEqual(logic.restCountdown(since,120,since+30_000),{elapsedSec:30,remainingSec:90,expired:false});
   assert.deepEqual(logic.restCountdown(since,120,since+120_000),{elapsedSec:120,remainingSec:0,expired:true});
-  assert.deepEqual(logic.restCountdown(since,120,since+180_000),{elapsedSec:180,remainingSec:0,expired:true});
+  assert.deepEqual(logic.restCountdown(since,120,since+180_000),{elapsedSec:180,remainingSec:-60,expired:true});
 });
 
 test('rest alerts triple-beep at one minute and beep through the final ten seconds', () => {

@@ -122,12 +122,22 @@ test('only Ric and Sydney get the modified app; everyone else gets the original'
   assert.doesNotMatch(read('shared/app.js'), /ME\.role==='Crew'\); \}/);
 });
 
+// Tapping your name: back to the crew list on the website (it must not sign you out of the
+// site account), but in the real app — one login per person — it still signs out.
+test('leaving a profile signs out in the real app and only goes back to the list in the demo', () => {
+  const auth = read('shared/auth.js');
+  const leave = auth.slice(auth.indexOf('async function leaveProfile'), auth.indexOf('window.HermiscusAuth = '));
+  assert.match(leave, /if \(demo\) \{ window\.location\.assign\(directoryUrl\(\)\); return; \}/);
+  assert.match(leave, /await signOut\(\);\s*window\.location\.replace\(loginUrl\(\)\);/);
+  assert.match(read('shared/app.js'), /await window\.HermiscusAuth\.leaveProfile\(\)/);
+});
+
 test('the original app keeps its own screens and drops only its data layer', () => {
   const original = read('shared/original/app.js');
   assert.match(original, /^\/\* Imported from the original crew app/);
   assert.doesNotMatch(original, /DATA LAYER|SUPABASE_KEY|function sbHeaders|function seedLocalDB/);
   assert.match(original, /const requestedProfile = window\.HermiscusAuth\.profileName\(\)/);
-  assert.match(original, /await window\.HermiscusAuth\.signOut\(\)/);
+  assert.match(original, /await window\.HermiscusAuth\.leaveProfile\(\)/);
   assert.doesNotMatch(original, /Start — Abingdon|ultrapacer_url:/);
   // Her screens, untouched: none of Ric's additions leak in.
   assert.doesNotMatch(original, /usesMissionShell|renderRicHomeDashboard|MISSION_PROFILES/);

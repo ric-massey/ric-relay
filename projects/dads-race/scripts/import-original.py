@@ -76,14 +76,13 @@ function enterAs(p){
   }
   ME =''', 'enterAs')
 
-    # 3. Switching profile is signing out.
+    # 3. Tapping your name leaves the profile (the crew list on the website, sign out in the real app).
     start = app.index('function switchProfile(){')
     end = app.index('\n}\n', start) + 3
     app = app[:start] + '''async function switchProfile(){
   if(getOfflineQueue().length && !window.confirm('Unsynced race changes are still on this phone. Sign out and remove them?')) return;
   stopLiveSync();
-  await window.HermiscusAuth.signOut();
-  window.location.replace(window.HermiscusAuth.loginUrl());
+  await window.HermiscusAuth.leaveProfile();
 }
 ''' + app[end:]
 

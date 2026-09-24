@@ -66,6 +66,10 @@ The crew app is the sister's. Ric's changes are for Ric and Sydney only, so:
   store). That replaced her data layer, which is where her database key lived.
 - `shared/bootstrap.js` picks the version from who is signed in (on the website, which
   page you opened) and loads it.
+- Ric and Sydney can tick **Use Victoria's version** in Settings to run her app instead.
+  It is remembered per device (`hermiscus_use_original_<name>` in localStorage), and
+  `bootstrap.js` adds the same box to her Settings screen so they can untick it — her
+  code is not touched for it.
 
 When she ships a new version, download her `index.html` (or the deploy zip) and run:
 

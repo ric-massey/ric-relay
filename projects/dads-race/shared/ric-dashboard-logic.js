@@ -220,8 +220,9 @@
 
   function restCountdown(sinceMs,durationSec,nowMs=Date.now()){
     const elapsedSec = Math.max(0,Math.floor((Number(nowMs)-Number(sinceMs))/1000));
-    const remainingSec = Math.max(0,Number(durationSec)-elapsedSec);
-    return {elapsedSec,remainingSec,expired:remainingSec===0};
+    // Keeps counting past zero (-0:45, -1:30…) so the crew can see how far over the stop ran.
+    const remainingSec = Number(durationSec)-elapsedSec;
+    return {elapsedSec,remainingSec,expired:remainingSec<=0};
   }
 
   function restAlertBeeps(remainingSec){

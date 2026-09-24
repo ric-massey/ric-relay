@@ -235,10 +235,19 @@
     }
   }
 
+  // Tapping your own name. On the website that is "back to everyone" — the crew list — and
+  // must not sign you out of your site account. In the real app each person has their own
+  // login, so it stays what it always was: sign out.
+  async function leaveProfile() {
+    if (demo) { window.location.assign(directoryUrl()); return; }
+    await signOut();
+    window.location.replace(loginUrl());
+  }
+
   window.HermiscusAuth = Object.freeze({
     readSession, signIn, signOut, freshSession, requireSession,
     ensureProfileRoute, authorizedHeaders, profileName, profileUrl,
-    loginUrl, directoryUrl, clearPrivateState, demo,
+    loginUrl, directoryUrl, leaveProfile, clearPrivateState, demo,
     demoAccess, siteGate
   });
 })();

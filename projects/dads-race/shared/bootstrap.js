@@ -10,9 +10,43 @@
   // run the original crew app exactly as it was written (shared/original/, brought in by
   // scripts/import-original.py). Both sit on the same data layer, shared/data.js.
   const RIC_VERSION = ['Ric', 'Sydney'];
-  const ricVersion = RIC_VERSION.includes(window.HermiscusAuth.profileName());
+  const person = window.HermiscusAuth.profileName();
+  // Either of them can tick "use Victoria's version" in Settings and get her app, the same as
+  // everyone else. It's remembered on this device only, and the same box switches it back.
+  const originalKey = `hermiscus_use_original_${String(person).toLowerCase()}`;
+  const canChoose = RIC_VERSION.includes(person);
+  let wantsOriginal = false;
+  try { wantsOriginal = canChoose && localStorage.getItem(originalKey) === '1'; } catch (_) {}
+  const ricVersion = canChoose && !wantsOriginal;
   const appBase = ricVersion ? sharedBase : new URL('original/', sharedBase);
-  const V = '?v=20260924-01';
+  const V = '?v=20260924-02';
+  // Added to whichever app is running, so her code stays exactly as she wrote it.
+  const addVersionChoice = () => {
+    const settings = document.getElementById('page-settings');
+    if (!canChoose || !settings) return;
+    const title = document.createElement('div');
+    title.className = 'sec-title';
+    title.style.marginTop = '22px';
+    title.textContent = 'App version';
+    const box = document.createElement('label');
+    box.className = 'card';
+    box.style.cssText = 'display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer';
+    box.innerHTML = '<input type="checkbox" style="width:22px;height:22px;margin:0;flex:none">' +
+      "<span><b>Use Victoria's version</b><br><small>The crew app as she built it, the same one everyone else sees.</small></span>";
+    const check = box.querySelector('input');
+    check.checked = wantsOriginal;
+    check.addEventListener('change', () => {
+      try {
+        if (check.checked) localStorage.setItem(originalKey, '1');
+        else localStorage.removeItem(originalKey);
+      } catch (_) {}
+      window.location.reload();
+    });
+    const hint = document.createElement('div');
+    hint.className = 'save-hint';
+    hint.textContent = 'Remembered on this device. Untick to come back.';
+    settings.append(title, box, hint);
+  };
   if (!ricVersion) {
     const sheet = document.querySelector('link[rel="stylesheet"][href*="shared/styles.css"]');
     if (sheet) sheet.href = new URL('styles.css' + V, appBase).href;
@@ -25,6 +59,7 @@
     })
     .then(markup => {
       mount.innerHTML = markup;
+      addVersionChoice();
       const showBootError = () => {
         mount.innerHTML = '<main class="boot-error"><h1>Could not start the app</h1><p>Reload the page or check the local server.</p></main>';
       };

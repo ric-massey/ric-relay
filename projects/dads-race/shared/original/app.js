@@ -255,8 +255,7 @@ function enterAs(p){
 async function switchProfile(){
   if(getOfflineQueue().length && !window.confirm('Unsynced race changes are still on this phone. Sign out and remove them?')) return;
   stopLiveSync();
-  await window.HermiscusAuth.signOut();
-  window.location.replace(window.HermiscusAuth.loginUrl());
+  await window.HermiscusAuth.leaveProfile();
 }
 
 /* ================= APP SHELL ================= */
