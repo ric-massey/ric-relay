@@ -38,6 +38,9 @@ const glob = (dir, ends) => readdirSync(join(ROOT, dir))
    eventually, and the answer to that is slack in the thing being measured, not
    a constant nudged until it passes. See .github/workflows/simulations.yml. */
 const SUITES = [
+  /* First, because a page that does not parse is the one failure that takes
+     a whole room down and that no other suite here would ever see. */
+  ['every inline script parses', ['.github/test/inline-scripts.mjs']],
   ['the entertainment write path', ['projects/entertainment/test/write-path.mjs']],
   ['the training worker', ['projects/training/server/test.mjs']],
   ["orrin's server", ['projects/orrin/server/test.mjs']],

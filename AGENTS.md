@@ -403,6 +403,10 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   either side of the hole. Quick suites are a second; the two games' simulations
   take minutes and need `--slow`. **Add a test, add it to that list**, or it joins
   the pile that used to pass.
+  The first suite in it parses every inline `<script>` on every committed page
+  (`.github/test/inline-scripts.mjs`). It exists because on 2026-09-24 a single
+  line break written into a string literal stopped `index.html` running at all,
+  with every other suite green — none of them loads the front door.
 - **`projects/entertainment/test/write-path.mjs` walks one film the whole way**:
   page → Worker → the pull script's merge, with a Map for storage and no network.
   It is the check that would have caught all three of the bugs above, and each one
