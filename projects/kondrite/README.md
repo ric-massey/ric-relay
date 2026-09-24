@@ -746,8 +746,21 @@ drawn only on screens that have no world of their own, so a paused match and a
 result screen still sit over the real thing. It is deliberately faint enough for
 menu text to read over, and it stops moving under `prefers-reduced-motion`.
 
-Sound effects are synthesized in the browser with Web Audio, so there are no
-audio files to load. Sound starts on the first keypress or tap and can be muted
+Sound effects are synthesized in the browser with Web Audio — all but the guns.
+Each kind of gun has its own laser, five small `.wav` files in `sounds/` made by
+`sounds/make-lasers.py` (standard library only; run it again to change them, and
+it writes the same bytes every time). Cannon, industrial beam, scatter gun and
+war fan, seeker rack and swarm, rail lance: you can hear what just fired at you.
+Opened straight off disk the page cannot fetch them, so every gun keeps a
+synthesized voice underneath and plays that instead.
+
+**If you can see it, you can hear it; if you cannot, you cannot.** A sound with a
+place in the world is dropped when that place is off the screen, so a war two
+screens away is silent until you fly into it. Sounds with no place — menus,
+purchases, the round starting — always play. Online, the host sends every sound
+and each guest decides by its own camera.
+
+Sound starts on the first keypress or tap and can be muted
 from the title, Settings or pause menu; that preference is saved locally.
 Fullscreen is available from those same screens when the browser supports the
 Fullscreen API. The whole page enters fullscreen so phone controls remain visible.
@@ -941,6 +954,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `survey-hud.js` | Survey's interface: the flight panel, the chart page, the illustrated almanac, the station |
 | `menu.js` | The mode cards' moving pictures — five dioramas, drawn rather than filmed |
 | `attract.js` | The front page: a run being flown, on the game's own flight model and gravity |
+| `sounds/make-lasers.py` | Writes the five gun sounds beside it, from nothing but the standard library |
 | `server/rooms-core.mjs` | The room service: every rule, no plumbing |
 | `server/worker.mjs` | Runs it on Cloudflare, in one Durable Object |
 | `server/rooms.js` | Runs it on a laptop, with nothing installed |

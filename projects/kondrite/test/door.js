@@ -101,7 +101,7 @@ function boot(opts) {
   const D = makeDoc();
   const timers = [];
   let now = 0;
-  const calls = [];
+  const calls = [], ownFiles = [];
 
   const windowStub = {
     addEventListener: noop, removeEventListener: noop,
@@ -139,6 +139,16 @@ function boot(opts) {
     /* Every request the game makes, answered by the test. Recorded first, so a
        check can say "it played without asking anybody anything". */
     fetch: async (url, init) => {
+      /* The game's own files are not somebody. The gun sounds are fetched out
+         of the game's folder the way its scripts are, and asking a server for
+         the page you are already on is not "asking anybody anything" — so they
+         are kept off the list the checks count, and refused the way a missing
+         file is, which leaves the synth voices playing. Only a relative path
+         into `sounds/` gets this; anything with a host is still a call. */
+      if (/^sounds\/[\w-]+\.wav$/.test(String(url))) {
+        ownFiles.push(String(url));
+        throw new TypeError("Failed to fetch");
+      }
       calls.push({ url: String(url), method: (init && init.method) || "GET",
                    headers: (init && init.headers) || {},
                    body: init && init.body ? JSON.parse(init.body) : null });

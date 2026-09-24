@@ -180,10 +180,16 @@ function checkSyntax() {
     "sound preference must persist");
   assert.match(html, /window\.AudioContext \|\| window\.webkitAudioContext/,
     "sound effects must use the dependency-free Web Audio path");
-  assert.match(html, /gameSound\("shot", ship\.x\)/,
+  assert.match(html, /gameSound\(ship\.weapon === "beam" \? "beam" : "laser", ship\.x, ship\.y\)/,
     "weapon fire must produce sound");
-  assert.match(html, /gameSound\("explode", ship\.x\)/,
+  assert.match(html, /gameSound\("explode", ship\.x, ship\.y\)/,
     "ship destruction must produce sound");
+  /* If you can see it you can hear it, and not otherwise. The rule itself is
+     checked in a real browser (browser.js); this only keeps it wired in. */
+  assert.match(html, /if \(audible\(x, y\)\) playSfx\(kind, soundPan\(x\)\)/,
+    "in-world sounds must be culled when off screen");
+  assert.match(html, /if \(audible\(e\[2\], e\[3\]\)\) playSfx/,
+    "a guest must cull the host's sounds by its own camera");
   assert.match(html, /fx: soundEvents\.filter/,
     "online snapshots must carry recent sound events");
   assert.match(html, /e\[0\] <= net\.lastSoundSeq/,

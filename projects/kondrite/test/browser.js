@@ -65,7 +65,8 @@ function check(ok, why) {
    partitioned differently there and the reload check is about a real origin. */
 const TYPES = { ".html": "text/html", ".js": "text/javascript",
                 ".css": "text/css", ".json": "application/json",
-                ".png": "image/png", ".svg": "image/svg+xml" };
+                ".png": "image/png", ".svg": "image/svg+xml",
+                ".wav": "audio/wav" };
 
 function serve() {
   return new Promise(resolve => {
@@ -166,6 +167,25 @@ async function main() {
               drawn.vw + "×" + drawn.vh + " · " +
               (drawn.lit / 1000).toFixed(0) + "k pixels lit of " +
               (drawn.px / 1000).toFixed(0) + "k");
+
+  // ── it sounds ─────────────────────────────────────────────────────────────
+  /* The guns are .wav files, fetched and decoded — the one part of the sound
+     that can fail to load, and it fails silently by design (the synth voice
+     stands in). So this is the only place anyone would notice a file gone
+     missing or a script that wrote a header the browser will not decode. And
+     the rule Ric set: on screen you hear it, off screen you do not. */
+  await page.waitForFunction(() => window.__cf.sound().loaded.length ===
+                                   window.__cf.sound().kinds.length,
+                             null, { timeout: 8000 }).catch(() => {});
+  const snd = await page.evaluate(() => window.__cf.sound());
+  check(snd.loaded.join() === snd.kinds.join(),
+        "gun sounds decoded: [" + snd.loaded + "] of [" + snd.kinds + "]");
+  check(snd.here, "a sound where the camera is was not audible");
+  check(snd.rim, "a sound just over the rim of the screen was not audible");
+  check(!snd.far, "a sound four screens away was audible");
+  check(snd.nowhere, "a sound with no place in the world (a menu) was culled");
+  console.log("  sounds     " + snd.loaded.length + " gun sounds decoded · " +
+              "on screen heard, off screen silent");
 
   // ── it takes typing ───────────────────────────────────────────────────────
   /* The one that shipped. A canvas game preventDefaults the keys it flies with,

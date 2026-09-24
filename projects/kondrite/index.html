@@ -1814,7 +1814,16 @@
       audioCtx = new Audio();
       audioMaster = audioCtx.createGain();
       audioMaster.gain.value = 0.24;
-      audioMaster.connect(audioCtx.destination);
+      /* A war on screen can put a dozen sounds on one frame. The compressor is
+         what keeps that loud rather than painful. */
+      if (typeof audioCtx.createDynamicsCompressor === "function") {
+        const squash = audioCtx.createDynamicsCompressor();
+        squash.threshold.value = -18; squash.ratio.value = 6;
+        audioMaster.connect(squash); squash.connect(audioCtx.destination);
+      } else {
+        audioMaster.connect(audioCtx.destination);
+      }
+      loadLasers();
     }
     if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
     return audioCtx;
@@ -1863,13 +1872,74 @@
     src.connect(out); src.start(now); src.stop(now + duration);
   }
 
+  /* The guns are recorded sounds rather than oscillators: five .wav files made
+     by `sounds/make-lasers.py` (standard library only — run it again to change
+     them). One file per kind of gun, so you can hear what just fired at you.
+
+     They are fetched, and a page opened straight off disk cannot fetch — so each
+     gun keeps a synthesised voice underneath (`fallback`), and until a file has
+     decoded, or if it never does, that is what plays. The game is never silent
+     for want of a file. `gain` is set by ear against the synth voices around
+     it: the cannon fires constantly and stays small, the lance fires every few
+     seconds and gets to be the loudest thing on screen. */
+  const LASERS = {
+    laser:   { file: "sounds/laser-cannon.wav",  gain: 0.075, fallback: "shot" },
+    beam:    { file: "sounds/laser-beam.wav",    gain: 0.07,  fallback: "shot" },
+    scatter: { file: "sounds/laser-scatter.wav", gain: 0.085, fallback: "shot" },
+    seeker:  { file: "sounds/laser-seeker.wav",  gain: 0.1,   fallback: "shot" },
+    lance:   { file: "sounds/laser-lance.wav",   gain: 0.16,  fallback: "hit" }
+  };
+  const laserBuffers = {};
+  let lasersAsked = false;
+  function loadLasers() {
+    if (lasersAsked || typeof fetch !== "function") return;
+    lasersAsked = true;
+    // Off disk a fetch cannot work and says so in red, once per file. Don't ask.
+    if (location.protocol === "file:") return;
+    for (const [kind, l] of Object.entries(LASERS)) {
+      fetch(l.file)
+        .then(r => r.ok ? r.arrayBuffer() : Promise.reject(r.status))
+        // The callback form: Safari before 14.1 has no promise from this.
+        .then(bytes => new Promise((ok, no) => audioCtx.decodeAudioData(bytes, ok, no)))
+        .then(buf => { laserBuffers[kind] = buf; })
+        .catch(() => {});
+    }
+  }
+
+  function soundSample(buf, gain, pan) {
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(soundOutput(pan, gain));
+    src.start();
+  }
+
   function playSfx(kind, pan) {
     if (!soundEnabled || !audioUnlock()) return;
+    const laser = LASERS[kind];
+    if (laser) {
+      if (laserBuffers[kind]) { soundSample(laserBuffers[kind], laser.gain, pan); return; }
+      kind = laser.fallback;
+    }
     if (kind === "shot") soundTone(210, 75, 0.07, 0.055, "square", pan);
     else if (kind === "hit") {
       soundNoise(0.1, 0.045, pan); soundTone(120, 62, 0.12, 0.05, "sawtooth", pan);
     } else if (kind === "rock") {
       soundNoise(0.16, 0.055, pan); soundTone(95, 48, 0.16, 0.04, "triangle", pan);
+    } else if (kind === "boom") {
+      // A burst charge or a ship going up: lower and shorter than your own death.
+      soundNoise(0.28, 0.1, pan); soundTone(90, 38, 0.3, 0.075, "sawtooth", pan);
+    } else if (kind === "tink") {
+      // A round stopping against something that is not a ship.
+      soundTone(1500, 700, 0.045, 0.022, "square", pan);
+    } else if (kind === "fizz") {
+      // Something small running out: a mine, a decoy, a drone's time.
+      soundNoise(0.09, 0.03, pan); soundTone(600, 180, 0.1, 0.025, "triangle", pan);
+    } else if (kind === "warp") {
+      soundNoise(0.4, 0.06, pan);
+      soundTone(90, 900, 0.35, 0.05, "sawtooth", pan);
+      soundTone(1200, 300, 0.3, 0.035, "triangle", pan, 0.25);
+    } else if (kind === "thrust") {
+      soundNoise(0.18, 0.05, pan); soundTone(70, 140, 0.18, 0.035, "triangle", pan);
     } else if (kind === "explode") {
       soundNoise(0.34, 0.13, pan); soundTone(105, 32, 0.38, 0.09, "sawtooth", pan);
     } else if (kind === "start") {
@@ -2569,10 +2639,24 @@
     return Math.max(-1, Math.min(1, (x - cam.x) / halfView));
   }
 
-  function gameSound(kind, x) {
-    playSfx(kind, soundPan(x));
+  /* If you can see it you can hear it, and if you cannot, you cannot. A sound
+     with a place in the world is dropped when that place is off the screen —
+     a war two screens away is silent until you fly into it. A sound with no
+     place (a menu, a purchase, the round starting) is not in the world and
+     always plays. A thing right on the rim still counts: it is half in view,
+     and SOUND_RIM is how much of a half. */
+  const SOUND_RIM = 24;   // screen pixels
+  function audible(x, y) {
+    if (!mode.camera || typeof x !== "number" || typeof y !== "number") return true;
+    return onScreen(x, y, SOUND_RIM / Math.max(0.01, cam.scale));
+  }
+
+  function gameSound(kind, x, y) {
+    if (audible(x, y)) playSfx(kind, soundPan(x));
+    /* The host sends every sound, seen or not: a guest has its own camera and
+       decides for itself what it can see. */
     if (net.role === "host") {
-      soundEvents.push({ q: ++soundEventSeq, k: kind, x, at: clock });
+      soundEvents.push({ q: ++soundEventSeq, k: kind, x, y, at: clock });
       if (soundEvents.length > 32) soundEvents.shift();
     }
   }
@@ -3644,6 +3728,7 @@
       if (r.x < bounds.x0 - r.r || r.x > bounds.x1 + r.r ||
           r.y < bounds.y0 - r.r || r.y > bounds.y1 + r.r) {
         burst(r.x, r.y, "#ffcb42", 8, 130 * U);
+        gameSound("rock", r.x, r.y);
         rocks.splice(i, 1);
       }
     }
@@ -3797,7 +3882,7 @@
       surv.screenT = 12;
       ship.invuln = Math.max(ship.invuln, HIT_SHIELD);
       burst(ship.x, ship.y, "#ff4dd2", 14, 180 * U);
-      gameSound("hit", ship.x);
+      gameSound("hit", ship.x, ship.y);
       return false;
     }
     if (mode.survey) {
@@ -3814,7 +3899,7 @@
         ship.invuln = Math.max(ship.invuln, HIT_SHIELD);
         burst(ship.x, ship.y, ship.hull > 0 ? ship.colour : "#ff8f77",
               ship.hull > 0 ? 10 : 22, (ship.hull > 0 ? 150 : 260) * U);
-        gameSound("hit", ship.x);
+        gameSound("hit", ship.x, ship.y);
         if (ship.hull === 0) {
           addShake(7);
           chatter("Hull gone. The next one kills you — find a star.", "#ff8f77");
@@ -3830,7 +3915,7 @@
       if (ship.shielded && twoHitCause) {
         ship.invuln = Math.max(ship.invuln, HIT_SHIELD * 0.5);
         burst(ship.x, ship.y, "#87d8ff", 6, 120 * U);
-        if (Math.random() < 0.3) gameSound("hit", ship.x);
+        if (Math.random() < 0.3) gameSound("hit", ship.x, ship.y);
         return false;
       }
       // Everything in a mission has a hull; a hit spends one point of it (a
@@ -3841,7 +3926,7 @@
         ship.hull -= dmg;
         ship.invuln = Math.max(ship.invuln, ship.kind === "fighter" ? HIT_SHIELD : 0.12);
         burst(ship.x, ship.y, ship.colour, ship.kind === "fighter" ? 10 : 6, 150 * U);
-        gameSound("hit", ship.x);
+        gameSound("hit", ship.x, ship.y);
         return false;
       }
       // The core doesn't just die — it comes apart. Hand it to the finale and
@@ -3855,7 +3940,7 @@
       ship.hull--;
       ship.invuln = Math.max(ship.invuln, HIT_SHIELD);
       burst(ship.x, ship.y, ship.colour, 10, 150 * U);
-      gameSound("hit", ship.x);
+      gameSound("hit", ship.x, ship.y);
       return false;
     }
     killShip(ship, cause, shooter);
@@ -3887,7 +3972,7 @@
     ship.killedBy = shooter && shooter !== ship ? shooter.id : null;
     if (cause !== "shot" && cause !== "ff") ship.envDeaths++;
     burst(ship.x, ship.y, ship.colour, 22, 240 * U);
-    gameSound("explode", ship.x);
+    gameSound("explode", ship.x, ship.y);
 
     if (mode.campaign) { campaignKill(ship, cause, shooter); return; }
 
@@ -4024,7 +4109,7 @@
     burst(ship.x + Math.cos(ship.a) * reach * 0.7,
           ship.y + Math.sin(ship.a) * reach * 0.7,
           bit ? "#ffcb42" : "#a08cff", bit ? 8 : 3, 120 * U);
-    gameSound(bit ? "rock" : "shot", ship.x);
+    gameSound(bit ? "rock" : "shot", ship.x, ship.y);
     return true;
   }
 
@@ -4086,7 +4171,7 @@
       rends: ship.weapon === "beam",
       beam: ship.weapon === "beam"
     });
-    gameSound("shot", ship.x);
+    gameSound(ship.weapon === "beam" ? "beam" : "laser", ship.x, ship.y);
     return true;
   }
 
@@ -4150,7 +4235,8 @@
         big: !!(spec.boom || spec.pierce)
       });
     }
-    gameSound("shot", ship.x);
+    gameSound(spec.pierce ? "lance" : spec.seek || spec.boom ? "seeker"
+              : n > 1 ? "scatter" : "laser", ship.x, ship.y);
     if (spec.boom || spec.pierce) addShake(2);
   }
 
@@ -4206,7 +4292,7 @@
     const R = b.boom * U;
     burst(b.x, b.y, b.colour, 30, R * 1.4);
     addShake(5);
-    gameSound("boom", b.x);
+    gameSound("boom", b.x, b.y);
     const share = d => Math.max(0.35, 1 - d / R);
     /* The rocks are gathered before any of them is hit. `hitRock` can split one,
        which removes it and pushes its pieces, so walking the live list while
@@ -4232,7 +4318,7 @@
       // Your round, on something taking a ship apart: that is what being owed for
       // a rescue means. See the distress branch in `surveyTraffic`.
       if (dr.prey) dr.prey.helped = true;
-      if (dr.hp <= 0) killDrone(i); else gameSound("hit", dr.x);
+      if (dr.hp <= 0) killDrone(i); else gameSound("hit", dr.x, dr.y);
     }
     for (let i = surv.traffic.length - 1; i >= 0; i--) {
       const t = surv.traffic[i];
@@ -4242,7 +4328,7 @@
       if (ROLES[t.role || t.kind] && ROLES[t.role || t.kind].armed) t.angry = true;
       // And it may decide it has had enough of you. See `hurtBySomebody`.
       hurtBySomebody(t, null);
-      if (t.hp <= 0) killTraffic(i, true); else gameSound("hit", t.x);
+      if (t.hp <= 0) killTraffic(i, true); else gameSound("hit", t.x, t.y);
     }
     for (let i = surv.hulks.length - 1; i >= 0; i--) {
       const h = surv.hulks[i];
@@ -4269,7 +4355,7 @@
     rock.flash = 0.13;
     if (rock.hp > 0) {
       burst(b.x, b.y, "#ffcb42", 4, 120 * U);
-      gameSound("hit", rock.x);
+      gameSound("hit", rock.x, rock.y);
       const sp = Math.hypot(b.vx, b.vy) || 1;
       const knock = 26 * U / Math.max(1, rock.r / 30);
       rock.vx += (b.vx / sp) * knock;
@@ -4318,7 +4404,7 @@
        big rock is worth the same however carefully it is taken apart. */
     if (mode.survey && !next) dropMote(rock.x, rock.y, YIELD.rock, 26, "rock");
     burst(rock.x, rock.y, "#ffcb42", rock.size === "big" ? 16 : 10, 170 * U);
-    gameSound("rock", rock.x);
+    gameSound("rock", rock.x, rock.y);
     const i = rocks.indexOf(rock);
     if (i >= 0) rocks.splice(i, 1);
     if (next) {
@@ -4347,7 +4433,7 @@
     const spec = rockSpec(rock.size);
     const colour = well.kind === "star" ? "#ffd76d" : "#a08cff";
     burst(rock.x, rock.y, colour, rock.size === "big" ? 18 : 10, 200 * U);
-    if (Math.random() < 0.3) gameSound("rock", rock.x);
+    if (Math.random() < 0.3) gameSound("rock", rock.x, rock.y);
     rocks.splice(i, 1);
     if (!spec.next) return;
     for (let k = 0; k < 2; k++) {
@@ -5226,7 +5312,7 @@
         burst(ship.x + rand(-1, 1) * rad * 0.5, ship.y + rand(-1, 1) * rad * 0.5,
               ship.colour, 22, 320 * U);
       }
-      gameSound("explode", ship.x);
+      gameSound("explode", ship.x, ship.y);
       addShake(ship.kind === "flagship" ? 24 : capital ? 16 : 8);
       killFeed.unshift({ source: shooter && shooter.team !== ship.team
                          ? shooter.name : "DESTROYED",
@@ -5368,7 +5454,10 @@
       if (m && Math.random() < 0.7) {
         const rr = m.radius;
         const col = ["#ffe56d", "#ff8f77", "#ffffff"][Math.floor(Math.random() * 3)];
-        burst(m.x + rand(-1, 1) * rr, m.y + rand(-1, 1) * rr * 0.6, col, 16, 260 * U);
+        const fx = m.x + rand(-1, 1) * rr, fy = m.y + rand(-1, 1) * rr * 0.6;
+        burst(fx, fy, col, 16, 260 * U);
+        // Not one per flash — that is forty a second. A couple of bangs a second.
+        if (Math.random() < 0.05) gameSound("boom", fx, fy);
       }
       if (camp.finale <= 0) { camp.finale = 0; campaignWin(); }
     }
@@ -7104,7 +7193,7 @@
           life: DECOY_LIFE, full: DECOY_LIFE, spin: rand(0, 6.28)
         });
         burst(me.x, me.y, "#ffe56d", 8, 140 * U);
-        gameSound("start", me.x);
+        gameSound("start", me.x, me.y);
         chatter("Decoy away \u2014 it is you for the next " + DECOY_LIFE +
                 " seconds.", "#ffe56d");
       }
@@ -7120,6 +7209,7 @@
         if (surv.mines.length >= MINE_MAX) {
           const old = surv.mines.shift();
           burst(old.x, old.y, WRECK, 4, 70 * U);
+          gameSound("fizz", old.x, old.y);
         }
         surv.mines.push({
           x: me.x - Math.cos(me.a) * 30 * U,
@@ -7135,7 +7225,7 @@
              see coming, because the ring is drawn. */
           clear: false
         });
-        gameSound("shot", me.x);
+        gameSound("shot", me.x, me.y);
       }
     },
 
@@ -7149,7 +7239,7 @@
       use(me) {
         const n = ejectHold(me);
         addShake(3);
-        gameSound("rock", me.x);
+        gameSound("rock", me.x, me.y);
         chatter(n + " units over the side.", CASH);
         baitPirates(me.x, me.y);
       }
@@ -7184,7 +7274,7 @@
         me.vy += ((a.y - me.y) / d) * GRAPPLE_PULL * U;
         surv.grappleTo = { x: a.x, y: a.y, t: 0.45 };
         addShake(2);
-        gameSound("thrust", me.x);
+        gameSound("thrust", me.x, me.y);
         chatter("Line away — " + a.what + ".", NEBULA);
       }
     },
@@ -7196,7 +7286,7 @@
       key: "cloak", name: "SILENT RUNNING", tag: "CLOAK", cool: 75,
       use(me) {
         surv.cloak = CLOAK_TIME;
-        gameSound("start", me.x);
+        gameSound("start", me.x, me.y);
         chatter("Dark. Ten seconds, and firing ends it.", "#87d8ff");
       }
     },
@@ -7283,7 +7373,7 @@
     surv.empRing = { x: me.x, y: me.y, t: 0 };
     burst(me.x, me.y, "#87d8ff", 26, EMP_REACH * 0.5 * U);
     addShake(6);
-    gameSound("hit", me.x);
+    gameSound("hit", me.x, me.y);
     chatter(hit ? "Burst — " + hit + " dead in the water, and so are you."
                 : "Burst — nothing out there to stop, and your own kit is down.",
             "#87d8ff");
@@ -7300,7 +7390,7 @@
       me.boost = Math.max(me.boost || 0, k);
       burst(me.x - Math.cos(me.a) * 20 * U, me.y - Math.sin(me.a) * 20 * U,
             "#ff4dd2", 16, 220 * U);
-      gameSound("shot", me.x);
+      gameSound("shot", me.x, me.y);
     }
   };
 
@@ -7316,7 +7406,7 @@
                            post: { x: me.x, y: me.y }, hp: 1, cool: 99, awake: true,
                            hit: 0, slot: k, life: 14 });
       }
-      gameSound("shot", me.x);
+      gameSound("shot", me.x, me.y);
     }
   };
 
@@ -10572,7 +10662,7 @@
       for (const pl of surv.planets) {
         if (dist2(r.x, r.y, pl.x, pl.y) > (pl.r + r.r) ** 2) continue;
         burst(r.x, r.y, "#ffcb42", 10, 180 * U);
-        if (onScreen(r.x, r.y, 400)) gameSound("rock", r.x);
+        if (onScreen(r.x, r.y, 400)) gameSound("rock", r.x, r.y);
         rocks.splice(i, 1);
         break;
       }
@@ -11220,7 +11310,7 @@
       surveyHUD.logged({ name: entry.name, note: entry.note,
                          n: surv.found.size, of: SURVEY_TOTAL });
     }
-    gameSound("win", ships[0] ? ships[0].x : 0);
+    gameSound("win", ships[0] && ships[0].x, ships[0] && ships[0].y);
     saveSurveyBook();
   }
 
@@ -11279,7 +11369,7 @@
     if (surv.scan.charge < 1) return;
     surv.scan.charge = 0;
     if (surveyHUD) surveyHUD.ping();
-    gameSound("shot", ships[0].x);
+    gameSound("shot", ships[0].x, ships[0].y);
 
     const me = ships[0];
     const reach = scanRange();
@@ -11723,7 +11813,7 @@
             addRep(t.faction, REP.RESCUE);
             chatter("They made it — that distress call is under way again. " +
                     money(pay) + " and their thanks.", CASH, t);
-            gameSound("win", t.x);
+            gameSound("win", t.x, t.y);
           } else {
             // Somebody else cleared it. You get to watch them leave.
             chatter("Somebody got there first. That hauler is under way again.",
@@ -12449,7 +12539,8 @@
                  silhouettes. */
               rends: guns.weapon === "beam", beam: guns.weapon === "beam"
             });
-            gameSound("shot", t.x);
+            gameSound(t.boss === "warlord" ? "scatter"
+                      : guns.weapon === "beam" ? "beam" : "laser", t.x, t.y);
           } else t.cool = 1.2;
         }
       }
@@ -12838,6 +12929,7 @@
       if (i >= 0) {
         const d = surv.dropped[i];
         burst(d.x, d.y, "#ff8f77", 14, 210 * U);
+        gameSound("rock", d.x, d.y);
         surv.dropped.splice(i, 1);
         surv.known.delete(knownId("part", d.x, d.y));
         chatter((t.faction === "pirate" ? "A pirate has taken your "
@@ -12857,6 +12949,7 @@
       const i = surv.hulks.indexOf(t.mark);
       if (i >= 0) {
         burst(t.mark.x, t.mark.y, WRECK, 12, 200 * U);
+        gameSound("rock", t.mark.x, t.mark.y);
         if (t.mark.id) surv.stripped.add(t.mark.id);
         surv.hulks.splice(i, 1);
         chatter("A scavenger got to that one first.", "#ff8f77", t);
@@ -12936,7 +13029,7 @@
   function killTraffic(i, byYou, swallowed) {
     const t = surv.traffic[i];
     burst(t.x, t.y, trafficColour(t), 26, 300 * U);
-    gameSound("boom", t.x);
+    gameSound("boom", t.x, t.y);
     addShake(4);
     let dropped = 0;
     for (const key of t.cargo) { dropKnownMote(t.x, t.y, key, 90); dropped++; }
@@ -13050,7 +13143,7 @@
     }
     surv.lightRun = 0.0001;
     surv.lightHit = null;
-    gameSound("win", me.x);
+    gameSound("win", me.x, me.y);
     chatter("Light drive engaged — hold your heading.", ICE_C);
     return true;
   }
@@ -13474,7 +13567,7 @@
     }
     burst(ship.x, ship.y, "#ff8f77", 40, 420 * U);
     addShake(12);
-    gameSound("lose", ship.x);
+    gameSound("lose", ship.x, ship.y);
     ship.vx = ship.vy = 0;
     ship.alive = false;
     state = "died";
@@ -14237,7 +14330,7 @@
       if (me.alive && dist2(m.x, m.y, me.x, me.y) < reach * reach) {
         if (addMaterial(m.mat || "iron", 1)) {
           burst(m.x, m.y, matSpec(m.mat).colour, 3, 90 * U);
-          if (Math.random() < 0.25) gameSound("start", m.x);
+          if (Math.random() < 0.25) gameSound("start", m.x, m.y);
           surv.motes.splice(i, 1);
         }
       }
@@ -14282,7 +14375,7 @@
       surv.bumpCool = 0.25;
       burst(ship.x, ship.y, "#ffcb42", impact > STRIKE_SPEED ? 12 : 5,
             140 * U);
-      gameSound("rock", ship.x);
+      gameSound("rock", ship.x, ship.y);
       addShake(impact > STRIKE_SPEED ? 5 : 2);
     }
     if (hard && impact > STRIKE_SPEED && ship.invuln <= 0) {
@@ -14398,7 +14491,7 @@
       }
 
       burst(me.x, me.y, NEBULA, 26, 300 * U);
-      gameSound("lose", me.x);
+      gameSound("lose", me.x, me.y);
       /* Out of the far side, not on top of it. Every gate now has a twin
          standing at its exit, and landing dead centre on that twin would mean
          being swallowed again the moment the cooldown lapsed — so you are set
@@ -14424,6 +14517,7 @@
       streamChunks(true);
       streamRocks();
       burst(me.x, me.y, NEBULA, 26, 300 * U);
+      gameSound("warp", me.x, me.y);
       addShake(7);
       chatter(tuned ? "Gate tuned — somewhere you have not been" : "Through.",
               NEBULA);
@@ -14588,7 +14682,7 @@
     const d = rand(14000, 34000);
     burst(me.x, me.y, ICE_C, 30, 340 * U);
     addShake(8);
-    gameSound("lose", me.x);
+    gameSound("lose", me.x, me.y);
     me.x += Math.cos(a) * d;
     me.y += Math.sin(a) * d;
     // You arrive stopped. A jump that kept your speed would be a way of going
@@ -14618,6 +14712,7 @@
     // for a minute is what makes the landing somewhere rather than nowhere.
     surv.scan.charge = 0;
     burst(me.x, me.y, ICE_C, 30, 340 * U);
+    gameSound("warp", me.x, me.y);
     chatter("Emergency jump \u2014 a long way from where you were, and the " +
             "scanner is cold.", ICE_C);
   }
@@ -14642,7 +14737,7 @@
     surv.mines.splice(i, 1);
     burst(mn.x, mn.y, "#ffcb42", 26, MINE_BOOM * U * 1.3);
     addShake(5);
-    gameSound("boom", mn.x);
+    gameSound("boom", mn.x, mn.y);
     const R = MINE_BOOM * U;
     for (let j = surv.drones.length - 1; j >= 0; j--) {
       const d = surv.drones[j];
@@ -14698,6 +14793,7 @@
       dc.vx *= Math.exp(-0.5 * dt); dc.vy *= Math.exp(-0.5 * dt);
       if (dc.life <= 0 || hazardAt(dc.x, dc.y, 0)) {
         burst(dc.x, dc.y, "#ffe56d", 6, 110 * U);
+        gameSound("fizz", dc.x, dc.y);
         surv.decoys.splice(i, 1);
       }
     }
@@ -14714,6 +14810,7 @@
       mn.vx *= Math.exp(-0.8 * dt); mn.vy *= Math.exp(-0.8 * dt);
       if (mn.life <= 0 || hazardAt(mn.x, mn.y, 0)) {
         burst(mn.x, mn.y, WRECK, 4, 80 * U);
+        gameSound("fizz", mn.x, mn.y);
         surv.mines.splice(i, 1);
         continue;
       }
@@ -14817,6 +14914,7 @@
       if (solidBounce(d, 16 * U)) bounceOff(d, 1.2);
       if (hazardAt(d.x, d.y, 12 * U)) {
         burst(d.x, d.y, DRONE_COLOUR, 12, 180 * U);
+        gameSound("boom", d.x, d.y);
         if (d.id) surv.deadGuards.add(d.id);
         surv.drones.splice(i, 1);
         continue;
@@ -14843,7 +14941,7 @@
                           // Aimed at a freighter or at a decoy, not at you: it
                           // must not clip the player on its way past.
                           atPrey: !!(prey || lure) });
-        gameSound("shot", d.x);
+        gameSound("laser", d.x, d.y);
       }
 
       // Ramming a sentry hurts you both.
@@ -14857,7 +14955,7 @@
   function killDrone(i) {
     const d = surv.drones[i];
     burst(d.x, d.y, DRONE_COLOUR, 14, 200 * U);
-    gameSound("boom", d.x);
+    gameSound("boom", d.x, d.y);
     dropMote(d.x, d.y, YIELD.drone, 40, "drone");
     // Remembered for as long as its chunk stays loaded, or the next re-stream
     // would put it straight back on its post with a full hull.
@@ -14941,7 +15039,7 @@
           d.hit = 0.12;
           d.awake = true;
           burst(b.x, b.y, DRONE_COLOUR, 5, 120 * U);
-          if (d.hp <= 0) killDrone(k); else gameSound("hit", d.x);
+          if (d.hp <= 0) killDrone(k); else gameSound("hit", d.x, d.y);
         }
         /* And it can hit somebody else's ship, which is what makes the war
            visible: hulls actually come apart out there without you. */
@@ -14961,7 +15059,7 @@
              hit has a more urgent problem than you. */
           hurtBySomebody(o, b.from);
           burst(b.x, b.y, trafficColour(o), 5, 120 * U);
-          if (o.hp <= 0) killTraffic(k, false); else gameSound("hit", o.x);
+          if (o.hp <= 0) killTraffic(k, false); else gameSound("hit", o.x, o.y);
         }
         continue;
       }
@@ -14978,6 +15076,7 @@
         surv.shots.splice(i, 1);
         dc.life -= 2;
         burst(b.x, b.y, "#ffe56d", 4, 110 * U);
+        gameSound("hit", b.x, b.y);
         ate = true;
         break;
       }
@@ -15001,7 +15100,7 @@
         takeHit(o, b.dmg || 1);
         hurtBySomebody(o, b.from);
         burst(b.x, b.y, trafficColour(o), 5, 120 * U);
-        if (o.hp <= 0) killTraffic(k, false); else gameSound("hit", o.x);
+        if (o.hp <= 0) killTraffic(k, false); else gameSound("hit", o.x, o.y);
         struck = true;
         break;
       }
@@ -15050,7 +15149,7 @@
 
       const worth = c.rich ? YIELD.cache * 2 : YIELD.cache;
       burst(c.x, c.y, CASH, 26, 260 * U);
-      gameSound("win", c.x);
+      gameSound("win", c.x, c.y);
       addShake(5);
       dropMote(c.x, c.y, worth, 90, "cache");
       spawnPickup(c.x, c.y, PICKUP_KINDS[Math.floor(Math.random() * PICKUP_KINDS.length)]);
@@ -15214,7 +15313,7 @@
       surv.water = Math.min(WATER_FULL, surv.water + REPAY_WATER);
       chatter(t.name + " — they saw your tank. Water across, and they are " +
               "square with you.", ICE_C);
-      gameSound("win", t.x);
+      gameSound("win", t.x, t.y);
       saveSurveyBook();
     }
   }
@@ -15249,7 +15348,7 @@
       phase: Math.random() * 6.28, angry: true
     });
     chatter(g.name + " — the one that got away. It found you.", "#ff8f77");
-    gameSound("alarm", me.x);
+    gameSound("alarm", me.x, me.y);
     saveSurveyBook();
   }
 
@@ -15514,7 +15613,7 @@
       surv.lairWarned = L.id;
       noteKnown("boss", L.x, L.y, L.name, L.r);
       chatter("You are in " + L.name + "'s sky." + stance(L), BOSS_COLOUR);
-      gameSound("alarm", me.x);
+      gameSound("alarm", me.x, me.y);
     } else if (!inside && was) {
       if (!surv.bossesDown.has(was)) {
         chatter("Out of " + surv.inLair.name + "'s sky.", NEBULA);
@@ -15558,7 +15657,7 @@
           });
         }
         chatter(live.name + " is calling the pack in.", BOSS_COLOUR, live);
-        gameSound("alarm", live.x);
+        gameSound("alarm", live.x, live.y);
       }
       return;
     }
@@ -15584,6 +15683,7 @@
     if (!q || surv.traffic.indexOf(q) < 0) {
       // Their queen is gone, and so are they, all at once.
       burst(d.x, d.y, BOSS_COLOUR, 8, 140 * U);
+      gameSound("fizz", d.x, d.y);
       surv.drones.splice(i, 1);
       return;
     }
@@ -15615,7 +15715,7 @@
         // Contact.
         burst(d.x, d.y, BOSS_COLOUR, 22, 260 * U);
         addShake(5);
-        gameSound("boom", d.x);
+        gameSound("boom", d.x, d.y);
         if (me.invuln <= 0) damageShip(me, "shot", null, 1);
         surv.drones.splice(i, 1);
         return;
@@ -15657,6 +15757,7 @@
     d.life -= dt;
     if (d.life <= 0 || !me.alive) {
       burst(d.x, d.y, CASH, 6, 110 * U);
+      gameSound("fizz", d.x, d.y);
       surv.drones.splice(i, 1);
       return;
     }
@@ -15691,7 +15792,7 @@
     const reach = (tg.hull ? hullR(tg) : 18 * U) + 10 * U;
     if (Math.hypot(tg.x - d.x, tg.y - d.y) > reach) return;
     burst(d.x, d.y, CASH, 20, 240 * U);
-    gameSound("boom", d.x);
+    gameSound("boom", d.x, d.y);
     surv.drones.splice(i, 1);
     const di = surv.drones.indexOf(tg);
     if (di >= 0) {
@@ -15879,6 +15980,7 @@
               if (o.id) surv.goneTraffic.add(o.id);
               surv.drones.push(makeBug(t, o.x, o.y, o.hull));
               burst(o.x, o.y, BOSS_COLOUR, 14, 200 * U);
+              gameSound("boom", o.x, o.y);
               chatter(t.name + " took a " + shipSpec(o.hull).name.toLowerCase() + ".",
                       BOSS_COLOUR, t);
               t.taking = null;
@@ -15937,7 +16039,7 @@
             seek: 2.6, target: foe, missile: true
           });
         }
-        gameSound("shot", t.x);
+        gameSound("seeker", t.x, t.y);
       }
     }
   }
@@ -15951,6 +16053,7 @@
       if (surv.inLair && surv.inLair.id === t.lairId) surv.inLair = null;
     }
     burst(t.x, t.y, BOSS_COLOUR, 60, 700 * U);
+    gameSound("explode", t.x, t.y);
     addShake(12);
     // What made it powerful, lying where it died.
     const part = moduleSpec(BOSS_PARTS[t.boss]);
@@ -15980,7 +16083,7 @@
     if (pay) surv.cash += pay;
     chatter(t.name + " is dead." + (pay ? " " + money(pay) + " bounty." : "") +
             (part ? " It dropped " + part.name + "." : ""), BOSS_COLOUR, t);
-    gameSound("win", t.x);
+    gameSound("win", t.x, t.y);
     saveSurveyBook();
   }
 
@@ -16024,7 +16127,7 @@
     rememberFriend(t, "water");
     chatter("Water across. They can make the next station. " +
             money(WATER_THANKS) + ".", CASH);
-    gameSound("win", t.x);
+    gameSound("win", t.x, t.y);
     saveSurveyBook();
     return true;
   }
@@ -16379,10 +16482,10 @@
        bullet is. */
     h.hp -= Math.max(1, Math.round(b && b.dmg ? b.dmg : 1));
     burst(h.x, h.y, WRECK, 8, 150 * U);
-    gameSound("hit", h.x);
+    gameSound("hit", h.x, h.y);
     if (h.hp > 0) return;
     burst(h.x, h.y, WRECK, 20, 240 * U);
-    gameSound("boom", h.x);
+    gameSound("boom", h.x, h.y);
     dropMote(h.x, h.y, YIELD.hulk, 70, "hulk");
     surv.stripped.add(h.id);
     surv.hulks.splice(i, 1);
@@ -16407,7 +16510,7 @@
         d.hit = 0.12;
         d.awake = true;
         burst(b.x, b.y, DRONE_COLOUR, 5, 120 * U);
-        if (d.hp <= 0) killDrone(i); else gameSound("hit", d.x);
+        if (d.hp <= 0) killDrone(i); else gameSound("hit", d.x, d.y);
       }
       /* Traffic can be shot. Deliberately: "you can rob it" is half of what
          makes company mean anything, and a neutral you are physically unable to
@@ -16438,7 +16541,7 @@
           if (!t.name) t.name = shipName(true);
         }
         burst(b.x, b.y, trafficColour(t), 5, 120 * U);
-        if (t.hp <= 0) killTraffic(i, true); else gameSound("hit", t.x);
+        if (t.hp <= 0) killTraffic(i, true); else gameSound("hit", t.x, t.y);
       }
       /* Hulks are not asked about here. The bullet loop's own solid sweep gets
          to them first — it steps along the round's travel rather than sampling
@@ -16449,6 +16552,7 @@
         for (const g of surv.leviathan.segs) {
           if (dist2(b.x, b.y, g.x, g.y) < g.r * g.r) {
             burst(b.x, b.y, WRECK, 3, 90 * U);
+            gameSound("hit", b.x, b.y);
             spent = true;
             break;
           }
@@ -16497,6 +16601,7 @@
     const me = ships[0];
     if (!me || !me.alive) return false;
     burst(me.x, me.y, CASH, 30, 320 * U);
+    gameSound("warp", me.x, me.y);
     // Aimed by hand at a point on the chart, which may well be solid rock.
     const land = outOfRock(x, y);
     me.x = land.x; me.y = land.y;
@@ -16507,7 +16612,7 @@
     streamRocks();
     burst(x, y, CASH, 30, 320 * U);
     addShake(8);
-    gameSound("win", x);
+    gameSound("win", x, y);
     chatter("Light drive — arrived.", CASH);
     saveSurveyBook();
     return true;
@@ -18487,7 +18592,7 @@
       if (!clear(x, y) && tries < 23) continue;
       burst(x, y, "#a08cff", 40, 420 * U);
       addShake(11);
-      gameSound("lose", x);
+      gameSound("lose", x, y);
       banner = { text: "THE COIL FIRED", t: 4.2, colour: "#a08cff",
                  sub: "you are somewhere else" };
       chatter("It went off in your hands — " + Math.round(d / 1000) +
@@ -18561,7 +18666,7 @@
         : surv.dropped.findIndex(d => d.key === pt.key);
       if (back >= 0) surv.dropped.splice(back, 1);
       burst(pt.x, pt.y, CASH, 26, 260 * U);
-      gameSound("win", pt.x);
+      gameSound("win", pt.x, pt.y);
       addShake(5);
       /* "Take it home" is the manifest's instruction and it is wrong for a
          spare: nobody is waiting for your second pulse coil at the yard. A spare
@@ -18615,7 +18720,7 @@
     }
     surv.carrying.clear();
     burst(HOME_STATION.x, HOME_STATION.y, CASH, 40, 320 * U);
-    gameSound("win", HOME_STATION.x);
+    gameSound("win", HOME_STATION.x, HOME_STATION.y);
     addShake(9);
     if (stationWhole()) {
       surveyFind("finished");
@@ -21649,13 +21754,17 @@
   // than spawned inside. This is the same end a rock meets at the wall, and it
   // only ever runs when every candidate point was under one.
   function clearRocksAt(x, y, radius) {
+    let any = false;
     for (let i = rocks.length - 1; i >= 0; i--) {
       const r = rocks[i];
       if (gap2(x, y, r.x, r.y) < (r.r + radius) ** 2) {
         burst(r.x, r.y, "#ffcb42", 8, 130 * U);
         rocks.splice(i, 1);
+        any = true;
       }
     }
+    // One crunch for the lot: they all go on the same frame.
+    if (any) gameSound("rock", x, y);
   }
 
   function respawnPoint(ship) {
@@ -21956,7 +22065,9 @@
                             Math.round(b.vx), Math.round(b.vy), b.owner]),
       kf: killFeed.map(e => [e.source, e.victim, e.colour, +e.until.toFixed(2)]),
       fx: soundEvents.filter(e => clock - e.at < 1.25)
-        .map(e => [e.q, e.k, Math.round(e.x == null ? arena.w / 2 : e.x)]),
+        .map(e => e.y == null
+          ? [e.q, e.k, Math.round(e.x == null ? arena.w / 2 : e.x)]
+          : [e.q, e.k, Math.round(e.x), Math.round(e.y)]),
       o: outcome ? { k: outcome.kind, s: outcome.ship ? outcome.ship.id : -1 } : null,
       bn: banner ? { x: banner.text, s: banner.sub, t: banner.t, c: banner.colour } : null
     };
@@ -22078,7 +22189,7 @@
       for (const e of msg.fx) {
         if (!Number.isInteger(e[0]) || e[0] <= net.lastSoundSeq) continue;
         net.lastSoundSeq = e[0];
-        playSfx(e[1], soundPan(e[2]));
+        if (audible(e[2], e[3])) playSfx(e[1], soundPan(e[2]));
       }
     }
 
@@ -23158,6 +23269,7 @@
         }
         if (struck) {
           burst(struck.x, struck.y, b.colour, 3, 90 * U);
+          gameSound("tink", struck.x, struck.y);
           // A dead hull is a target as well as cover. See `solidHit`.
           if (struck.hulk && b.owner === ships[0].id) hitHulk(struck.hulk, struck.at, b);
           if (b.boom) { b.x = struck.x; b.y = struck.y; explode(b); }
@@ -23171,7 +23283,7 @@
       } else if (b.life <= 0 ||
                  b.x < bounds.x0 || b.x > bounds.x1 ||
                  b.y < bounds.y0 || b.y > bounds.y1) {
-        if (b.life > 0) burst(b.x, b.y, b.colour, 2, 70 * U);
+        if (b.life > 0) { burst(b.x, b.y, b.colour, 2, 70 * U); gameSound("tink", b.x, b.y); }
         /* A charge that reaches the end of its run still goes off. That is what a
            charge is, and it means a round fired at nothing is a round you can
            still place — which is most of what makes it worth a slot. */
@@ -23183,6 +23295,7 @@
       // So do stars and black holes.
       if (hazardAt(b.x, b.y, 0)) {
         burst(b.x, b.y, b.colour, 3, 90 * U);
+        gameSound("fizz", b.x, b.y);
         bullets.splice(i, 1);
         continue;
       }
@@ -23307,7 +23420,7 @@
         if (!touching) continue;
         if (light) {
           burst(r.x, r.y, "#ffcb42", 12, 260 * U);
-          if (Math.random() < 0.25) gameSound("rock", r.x);
+          if (Math.random() < 0.25) gameSound("rock", r.x, r.y);
           rocks.splice(ri, 1);
           continue;                       // and keep going; there may be more
         }
@@ -28804,6 +28917,17 @@
                         actually is rather than assuming a thousand. */
                      screenW: SCREEN_W, screenH: SCREEN_H,
                      }),
+      /* Which gun sounds decoded, and the on-screen rule asked at three points:
+         where the camera is, just past the rim, and a long way off. */
+      sound: () => {
+        audioUnlock();
+        const half = SCREEN_W / (2 * Math.max(0.01, cam.scale));
+        return { loaded: Object.keys(laserBuffers).sort(), kinds: Object.keys(LASERS).sort(),
+                 here: audible(cam.x, cam.y),
+                 rim: audible(cam.x + half * 1.01, cam.y),
+                 far: audible(cam.x + half * 4, cam.y),
+                 nowhere: audible(undefined, undefined) };
+      },
       step: () => tick(performance.now(), true),
       // Start a match straight from a harness, skipping the menus, read the
       // campaign controller, force a screen, and draw one frame. Behind ?debug=1
