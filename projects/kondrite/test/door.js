@@ -218,21 +218,63 @@ const FAKE = { url: "https://example.invalid", anonKey: "sb_publishable_test" };
   console.log("  noservice  a blank config.js is a whole game, and asks nobody anything");
 }
 
-// ── 2. the guest door is closed ────────────────────────────────────────────
-/* Not "the button is hidden" — gone. The markup, the flag it wrote, and the
-   handler behind it are all asserted absent, because a hidden guest button is
-   one `show()` away from being a guest button again. */
+// ── 2. the guest door is open, and it is a real answer ─────────────────────
+/* Closed for a while, on the argument that a board needs a name; reopened on
+   2026-09-24 because a game that will not start without an email is a game
+   people close. What "real answer" means: the button is on the panel at the
+   door and only there, pressing it starts the game, the choice is remembered
+   so the door does not come back, a guest's scores go nowhere, and signing in
+   or out clears the choice so the question gets asked again. */
 {
+  const GUEST_KEY = "kondrite.account.guest";
+  const g = boot({ cloud: FAKE });
+  g.cf.screen("title");
+  g.cf.key("Enter");
+  check(!g.el("account").hidden, "the door did not open for a signed-out player");
+  check(g.shown("acctGuestRow"), "the guest button is not on the door");
+  g.el("btnAcctGuest").click();
+  check(g.el("account").hidden, "choosing guest did not close the door");
+  check(g.cf.peek().mode === "SURVEY", "choosing guest did not start the game");
+  check(g.store[GUEST_KEY] === "yes", "the guest choice was not remembered");
+  check(g.calls.length === 0, "choosing guest made " + g.calls.length + " requests");
+
+  /* Not queued, not sent: a guest has no reporter id, and rows that waited
+     for one would land on whoever signs in next. */
+  const took = g.cloud.reportMatch("match-1", [{ subject: "a", game: "rocks", value: 9 }]);
+  check(took === 0 && g.cloud.scoresWaiting() === 0, "a guest's score was queued");
+
+  /* Remembered: the next visit goes straight in, to the game and to online,
+     which are the two doors the front page has. The stub document's elements
+     are not `hidden` until something says so, unlike the real markup, so the
+     panel is closed by hand first and "the door did not open" means it stayed
+     that way. */
+  const g2 = boot({ cloud: FAKE, store: { [GUEST_KEY]: "yes" } });
+  g2.cf.screen("title");
+  g2.el("account").hidden = true;
+  g2.cf.key("Enter");
+  check(g2.el("account").hidden, "a remembered guest was asked again");
+  check(g2.cf.peek().mode === "SURVEY", "a remembered guest could not start the game");
+  const g3 = boot({ cloud: FAKE, store: { [GUEST_KEY]: "yes" } });
+  g3.cf.screen("title");
+  g3.el("account").hidden = true;
+  g3.el("lobby").hidden = true;
+  // No net module in this sandbox, so the lobby may not finish drawing; what
+  // matters is which panel opened.
+  try { g3.cf.key("KeyO"); } catch (_) {}
+  check(g3.el("account").hidden, "a remembered guest was asked again on the way online");
+  check(!g3.el("lobby").hidden, "a remembered guest could not open the lobby");
+
+  /* Opened from a menu rather than at the door, the panel does not offer it:
+     there is no question being asked there to answer. */
+  const g4 = boot({ cloud: FAKE });
+  g4.cf.account();
+  check(!g4.shown("acctGuestRow"), "the guest button is offered where nothing is being asked");
+
+  /* The markup only ever says it once, and the panel's copy says the trade. */
   const html = page.page().html;
-  const inline = page.page().inline;
-  check(!/btnAcctGuest/.test(html), "the guest button is still in the markup");
-  check(!/acctGuestRow/.test(html), "the guest row is still in the markup");
-  check(!/play as a guest/i.test(html), "the panel still offers to play as a guest");
-  check(!/kondrite\.account\.guest/.test(inline),
-        "the guest flag is still written to storage");
-  check(!/guestChosen|chooseGuest/.test(inline),
-        "the guest choice is still part of the door");
-  console.log("  noguest    the guest button, its row, its flag and its handler are gone");
+  check((html.match(/id="btnAcctGuest"/g) || []).length === 1, "the guest button is in the markup more than once");
+  check(/Nothing goes on a board/.test(html), "the guest button does not say what a guest gives up");
+  console.log("  guest      the guest door is open: it starts the game, is remembered, posts nothing, and is only offered at the door");
 }
 
 // ── 3. signed out, the door stands in front of both of them ────────────────
@@ -250,14 +292,19 @@ const FAKE = { url: "https://example.invalid", anonKey: "sb_publishable_test" };
         "the game started with nobody signed in");
   check(!g.el("account").hidden, "pressing the game did not open the door");
 
+  /* The other door on the front page is online (`O`): the machines are one
+     floor down inside a sector now, behind the same door as the game. An
+     earlier version of this check pressed ArrowRight-Enter — which is
+     CONTROLS — and asserted the screen was not "sims", a state that no longer
+     exists, so it passed without testing anything. */
   const g2 = boot({ cloud: FAKE });
   g2.cf.screen("title");
-  g2.cf.key("ArrowRight");                 // onto SIMULATORS
-  g2.cf.key("Enter");
-  check(g2.cf.screenNow() !== "sims",
-        "the machines opened with nobody signed in: " + g2.cf.screenNow());
-  check(!g2.el("account").hidden, "pressing the machines did not open the door");
-  console.log("  bothdoors  signed out, neither the game nor the machines open");
+  g2.el("account").hidden = true;
+  g2.el("lobby").hidden = true;
+  g2.cf.key("KeyO");
+  check(g2.el("lobby").hidden, "the lobby opened with nobody signed in");
+  check(!g2.el("account").hidden, "pressing online did not open the door");
+  console.log("  bothdoors  signed out, neither the game nor the lobby opens");
 }
 
 // ── 4. a cached session plays, and plays with no network at all ────────────
@@ -539,7 +586,27 @@ async function refreshChecks() {
 
 
 
-refreshChecks().then(witnessChecks).then(() => {
+/* ── 14. the guest choice does not outlive an account ─────────────────────
+   Signing out says "not this account", which is not "no account": the guest
+   flag goes with the session, so the next start asks the question again. A
+   sign-in clears it too (nowSignedIn), which section 2's flag would otherwise
+   leave standing under a real account and turn the next sign-out into a
+   doorless drop back into the sector. */
+async function guestChecks() {
+  const GUEST_KEY = "kondrite.account.guest";
+  const g = boot({ cloud: FAKE, store: { [GUEST_KEY]: "yes", [SESSION_KEY]: cached() } });
+  g.cf.screen("title");
+  g.cf.account();
+  await g.el("btnAcctOut").click();
+  check(!g.cloud.session(), "signing out left a session behind");
+  check(g.store[GUEST_KEY] === undefined, "signing out left the guest choice standing");
+  g.el("account").hidden = true;
+  g.cf.key("Enter");
+  check(!g.el("account").hidden, "after signing out, the door did not come back");
+  console.log("  guestgone  signing out clears the guest choice, and the door is asked again");
+}
+
+refreshChecks().then(witnessChecks).then(guestChecks).then(() => {
   if (problems.length) {
     console.log("KONDRITE door checks FAILED");
     for (const p of problems) console.log("  · " + p);

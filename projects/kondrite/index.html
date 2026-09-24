@@ -716,7 +716,8 @@
      and beat a bare `[hidden]` — without it `display: flex` shows the signed-in
      block and the clash block at the same time as the form. That is exactly what
      it did: one panel with every state on it at once. */
-  #account.door .panel > div:not([hidden]) {
+  #account.door .panel > div:not([hidden]),
+  #account.door #acctGuestRow:not([hidden]) {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -750,10 +751,14 @@
   }
   #account.door button.quiet { border-color: rgba(160, 140, 255, 0.22); }
   #account.door h2 { margin: 0.2rem 0 1.6rem; }
-  #account.door #btnAcctForgot {
+  #account.door #btnAcctForgot,
+  #account.door #btnAcctGuest {
     width: var(--door-w);
     margin: 0.45rem 0 0;
   }
+  /* A gap above the guest button, so it reads as the other answer and not as
+     the third button of the sign-in form. */
+  #account.door #btnAcctGuest { margin-top: 1.5rem; }
   #account.door .note {
     margin-top: 0.55rem;
     font-size: 0.8rem;
@@ -955,6 +960,17 @@
       </div>
       <button id="btnAcctForgot" type="button" class="quiet">forgot password</button>
 
+      <!-- Only at the door, and deliberately last: an account is the better
+           answer and the page should say so first. But it is a full-width,
+           ordinary button and not a line of small print, because refusing to
+           sign up must not feel like the awkward option. The note is the whole
+           trade in one line: a guest keeps everything on this device and
+           nothing a guest does reaches a board. -->
+      <div id="acctGuestRow" hidden>
+        <span class="step">or don't</span>
+        <button id="btnAcctGuest" type="button">play as a guest</button>
+        <p class="note">Saves on this device only. Nothing goes on a board.</p>
+      </div>
     </div>
 
     <!-- Signed in, and nobody knows what to call you. Asked here rather than

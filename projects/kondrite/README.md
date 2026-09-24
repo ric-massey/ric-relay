@@ -589,14 +589,21 @@ because it only has a good answer *beforehand*. Asked after two hours, either
 answer is bad news: sign in and there are two surveys to reconcile, stay a guest
 and you have already built something one cleared history will take.
 
-**Two ways through it** — **sign in** and **create account** — and a third that
-goes back to the front page having started nothing. There used to be a way past
-without an account, and it is closed: the simulators keep leaderboards, a board
-needs a name to put on it, and a guest has none. It is asked once, and it stands
-in front of the game *and* the machines, which is every way into a match. It is
-reversible from SETTINGS, under **ACCOUNT**, where SIGN IN and SIGN OUT sit beside
-RESET SURVEY — both answer the same question, which is what the game remembers
-about you. Signing out puts the question back, and leaves a survey already
+**Three ways through it** — **sign in**, **create account** and **play as a
+guest** — and a way back to the front page having started nothing. The guest
+door was closed for a while, on the argument that the simulators keep
+leaderboards, a board needs a name and a guest has none; it reopened on
+2026-09-24 because a game that will not start until you have typed an email into
+it is a game a lot of people close. A guest plays everything. The trade is on
+the button: the survey lives on this device only, and nothing a guest does
+reaches a board — `reportMatch` sends nothing without a session, and does not
+queue anything to land on whoever signs in next. Choosing guest is remembered
+(`kondrite.account.guest`), so the door stops appearing. The door is asked once,
+and it stands in front of the game *and* the machines, which is every way into a
+match. It is reversible from SETTINGS, under **ACCOUNT**, where SIGN IN and SIGN
+OUT sit beside RESET SURVEY — both answer the same question, which is what the
+game remembers about you. Signing in clears the guest choice; signing out clears
+it too and puts the question back, and leaves a survey already
 running alone: you meet the door on the way into the next thing, not in the
 middle of the sector you are flying.
 

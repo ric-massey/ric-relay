@@ -145,6 +145,8 @@ function paintAccount() {
   el("acctPilot").placeholder = gate ? "pilot name" : "3 to 16 characters";
   el("btnAcctClose").textContent = "back";
   el("btnAcctPlay").hidden = !gate;
+  // The third answer is only offered where the question is being asked.
+  show("acctGuestRow", !!gate && up && !who && !clash);
   /* At the door there is no way past this one: a name is what the boards
      print, and the door is the moment the plan chose to ask for it. From
      SETTINGS it is an edit like any other and `back` still works. */
@@ -188,13 +190,20 @@ function paintAccount() {
    surveys to reconcile, stay a guest and you have already built something that
    one cleared history will take.
 
-   Asked once, and there are two answers rather than three: sign in, or make
-   an account. **The guest door is closed** — there was a third button that
-   let you past without one, and a storage key that remembered you had used
-   it. Both are gone. The boards are the
-   whole reward a simulator has, every board needs a name to put on it, and a
-   guest has none. Reversible from SETTINGS, and signing out puts the question
-   back.
+   Asked once, and there are three answers: sign in, make an account, or
+   play as a guest. The guest door was closed for a while (step 3 of
+   archive/SIMULATIONS.md) on the argument that the boards are the whole
+   reward a simulator has and a guest has no name to put on one. Ric reopened
+   it on 2026-09-24: a game that will not start until you have typed an email
+   into it is a game a lot of people close, and the boards are still there for
+   anybody who wants them. So a guest plays everything — the sector, the
+   machines, online — with the one trade said out loud on the button: the
+   survey lives on this device only, and nothing a guest does reaches a board
+   (`cloud.reportMatch` sends nothing without a session, so a guest's rows are
+   not even queued to land on whoever signs in next). Choosing guest is
+   remembered, so the door stops appearing; signing in clears it; signing out
+   clears it too, because "not this account" is not "no account" and the
+   question is worth asking again.
 
    What a required sign-in must never become is a required *connection*. The
    requirement is having signed in **on this device**, not being online now:
@@ -207,14 +216,30 @@ function paintAccount() {
    door you can close onto nothing is a mode that cannot be started. */
 let gate = null;
 
-/* Nobody signed in, or signed in and not yet named. With no account service
-   at all there is nothing to ask and no door — a fork of this repo with a
-   blank `config.js` is a whole game, which is that file's own promise and is
-   not something a sign-in wall gets to revoke. */
+/* The guest answer, remembered. Storage that cannot be read counts as
+   "already answered": a browser with storage switched off would otherwise
+   ask at every start and never be able to remember the reply. */
+const GUEST_KEY = "kondrite.account.guest";
+const guestChosen = () => {
+  try { return localStorage.getItem(GUEST_KEY) === "yes"; } catch (_) { return true; }
+};
+const chooseGuest = on => {
+  try {
+    if (on) localStorage.setItem(GUEST_KEY, "yes");
+    else localStorage.removeItem(GUEST_KEY);
+  } catch (_) {}
+};
+
+/* Nobody signed in and nobody has said they would rather not be, or signed
+   in and not yet named. With no account service at all there is nothing to
+   ask and no door — a fork of this repo with a blank `config.js` is a whole
+   game, which is that file's own promise and is not something a sign-in wall
+   gets to revoke. */
 const needsDoor = () => {
   if (!(cloud && cloud.enabled())) return false;
   const who = cloud.session();
-  return !who || !who.name;
+  if (!who) return !guestChosen();
+  return !who.name;
 };
 
 /* ── the field behind the door ────────────────────────────────────────────
@@ -310,8 +335,8 @@ function openAccount(then) {
    There was briefly a "not now, just fly" here as well, which played without
    remembering the answer. It sat next to the guest button looking like the
    same button, and the difference between them — whether you get asked again —
-   is not something anybody should have to work out from two labels. Both are
-   gone now; see the door, where the third way through was closed. */
+   is not something anybody should have to work out from two labels. That one
+   is gone; the guest button, which remembers, is the third way through. */
 function closeAccount() {
   if (!accountEl) return;
   accountEl.hidden = true;
@@ -372,7 +397,11 @@ async function afterSignIn() {
 }
 
 // Signed in, and the door can close — once there is a name to close it on.
+/* Signing in is also an answer to "would you rather not": choosing guest and
+   then signing in must not leave the guest flag standing, or signing out
+   later would drop straight back into the sector with no door. */
 function nowSignedIn() {
+  chooseGuest(false);
   doorAnswered();
 }
 
@@ -403,6 +432,11 @@ el("btnAcctClose").addEventListener("click", () => {
   if (gate) cancelAccount(); else closeAccount();
 });
 el("btnAcctPlay").addEventListener("click", closeAccount);
+
+el("btnAcctGuest").addEventListener("click", () => {
+  chooseGuest(true);
+  closeAccount();
+});
 
 /* The name, and the reason this is local-first. A player at the door with no
    network still has to be able to get into the game: the name is set on the
@@ -503,11 +537,15 @@ async function signOutNow(say) {
   }
   await cloud.signOut();
   /* The door comes back, because `needsDoor` asks the session and there is
-     no longer one. Not immediately, though: a survey already running is left
-     alone. Signing out says "not this account", which is not a reason to
+     no longer one — and the guest flag is cleared with it: somebody who has
+     just signed out has not said they want to be a guest, they have said they
+     do not want to be *this* account, which is a different answer and a
+     question worth asking again. Not immediately, though: a survey already
+     running is left alone. Signing out says "not this account", which is not a reason to
      take somebody out of the sector they are flying — the door is asked at
      the front page, on the way into something, and that is where they will
      meet it. */
+  chooseGuest(false);
   syncMirror();
   paintAccount();
   // Said plainly, because it is the thing about this that surprises people.
