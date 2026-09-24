@@ -337,6 +337,38 @@
      Blockbuster had both and used them for different jobs: new releases faced
      out on angled racks where the art does the selling, and the back-wall
      catalogue spine-out because that is how you fit thousands of them. */
+  /* ── only the cases near the screen are boxes ──
+     Every case is about ten composited 3D layers, and once the puller had filled
+     in years and genres the front page grew its genre and decade shelves and
+     stood 486 of them up at once — ~4,900 layers, well over a gigabyte of
+     texture at a phone's pixel density. iOS does not stutter at that, it kills
+     the tab: "the entertainment room crashes when you open it".
+
+     So a case is born `far` — its outline holds its slot, its insides are
+     display:none and cost nothing — and it becomes a box only while it is
+     within a screen or so of being seen. Nothing is capped: every shelf still
+     holds everything it held, it just stops paying for what nobody is looking
+     at. Watching the DOM rather than asking each page to call something means
+     a new page or a new shelf gets this without anyone remembering to. */
+  const NEAR = 'IntersectionObserver' in window && 'MutationObserver' in window
+    ? new IntersectionObserver(entries => {
+        for (const en of entries) en.target.classList.toggle('far', !en.isIntersecting);
+      }, { rootMargin: '50% 0px', scrollMargin: '200px' })
+    : null;
+  if (NEAR) {
+    const each = (node, fn) => {
+      if (node.nodeType !== 1) return;
+      if (node.classList.contains('case')) fn(node);
+      for (const c of node.querySelectorAll('.case')) fn(c);
+    };
+    new MutationObserver(muts => {
+      for (const m of muts) {
+        for (const n of m.removedNodes) each(n, c => NEAR.unobserve(c));
+        for (const n of m.addedNodes) each(n, c => NEAR.observe(c));
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+
   function dvdCase(e, mode) {
     /* mode: 'stacked' lays the case flat in a pile, anything else truthy
        faces it out on a rack, nothing stands it spine-out on a shelf. */
@@ -360,7 +392,7 @@
       ? '<span class="seen-tag" aria-hidden="true">Seen</span>' : '';
     const v = caseVary(e.id);
     const bg = art ? 'background-image:url(&quot;' + esc(art) + '&quot;)' : '';
-    return '<button class="case' + (faced ? ' faced' : stacked ? ' stacked' : '') +
+    return '<button class="case' + (faced ? ' faced' : stacked ? ' stacked' : '') + (NEAR ? ' far' : '') +
         '" type="button" data-id="' + esc(e.id) + '"' +
         ' style="--tint:' + hue(e, 26) + ';--t:' + v.t + 'px;--dh:' + v.dh +
         'px;--lean:' + v.lean.toFixed(2) + 'deg"' +
