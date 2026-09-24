@@ -29,7 +29,7 @@
       passwordInput.required = true;
       form.hidden = false;
       panel.hidden = false;
-      panel.innerHTML = '<p><a href="../../account/#request">no account? ask Ric for one →</a></p>';
+      panel.innerHTML = '<p><a href="../../account/?for=hermiscus#request">no account? ask Ric for one →</a></p>';
     };
     const useWaiting = (state, asked) => {
       mode = 'waiting';

@@ -113,6 +113,12 @@ page *shows*. A page whose content is committed to this public repo is only
 curtained. Real privacy needs the content in this database, behind
 `has_page_access('<key>')`.
 
+**Signing up asks for the page they found.** A locked page's "no account?" link
+carries it (`account/?for=atlas`), and the sign-up form asks for that page only —
+no list to tick, no note. Arriving with no `for` (the terminal's `login`) just
+makes the account, and they ask from the page itself later. A new page's own
+"no account?" link needs its `?for=<key>`.
+
 **Asking for more.** There is no "ask for more" list anywhere — Ric wanted people
 to ask only for a page they have actually gone to. A signed-in account that opens
 a locked page it lacks gets a **request permission** button on that page's

@@ -12,6 +12,11 @@
   const siteRoot = new URL('../', location.href);
   const PENDING_KEY = 'site-account-pending-request';
   let PAGES = [];
+  // The page that sent them here (?for=atlas). A new account asks for that page and only
+  // that one — there is no list to choose from. Arriving from nowhere in particular (the
+  // terminal's `login`) makes an account with nothing asked for; opening a locked page
+  // later offers "request permission" there.
+  const forKey = new URLSearchParams(location.search).get('for') || '';
 
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -25,10 +30,13 @@
   async function loadPages() {
     const { data } = await db.from('site_pages').select('key,label,blurb,path,sort').order('sort');
     PAGES = data || [];
-    $('rq-pages').innerHTML = PAGES.map((p) => `
-      <label><input type="checkbox" name="page" value="${esc(p.key)}">
-        <span>${esc(p.label)} <small>· ${esc(p.blurb)}</small></span></label>`).join('');
+    const page = PAGES.find((p) => p.key === forKey);
+    $('rq-for').innerHTML = page
+      ? `asking for <b>${esc(page.label)}</b>`
+      : 'makes your account — open the page you are after and ask for it there';
+    $('rq-go').textContent = page ? 'send request' : 'make account';
   }
+  const requestedPages = () => (PAGES.some((p) => p.key === forKey) ? [forKey] : []);
 
   // A request typed before an email-confirmation step still has to reach Ric.
   async function sendStoredRequest() {
@@ -155,12 +163,11 @@
     const name = $('rq-name').value.trim();
     const email = $('rq-email').value.trim().toLowerCase();
     const password = $('rq-pass').value;
-    const wanted = [...document.querySelectorAll('#rq-pages input:checked')].map((i) => i.value);
+    const wanted = requestedPages();
     if (!name) return say('rq-msg', 'your name, so Ric knows who is asking');
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say('rq-msg', 'that email does not look right');
     if (password.length < 8) return say('rq-msg', 'password needs at least 8 characters');
-    if (!wanted.length) return say('rq-msg', 'tick at least one thing you would like to see');
-    const request = { who: name, why: $('rq-note').value.trim(), wanted };
+    const request = { who: name, why: '', wanted };
     $('rq-go').disabled = true;
     try {
       try { localStorage.setItem(PENDING_KEY, JSON.stringify(request)); } catch (_) {}
