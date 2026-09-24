@@ -59,7 +59,7 @@ function check(ok, why) {
   check(p.srcs.indexOf("attract.js") >= 0,
         "index.html does not load attract.js — the front page has no art");
   check(p.inline.indexOf("KondriteAttract") > 0,
-        "game.js never reaches for window.KondriteAttract");
+        "the game never reaches for window.KondriteAttract");
 }
 
 /* ── a context that records nothing and refuses nothing ──────────────────── */

@@ -31,14 +31,11 @@ function check(ok, why) {
    would pass this file forever while the shipped one drifted away from it, and
    the whole value here is that the thing running in the game is the thing being
    checked. It is a pure function of a list, so it needs nothing else to run. */
-const fs = require("node:fs");
-const path = require("node:path");
-const src = fs.readFileSync(
-  path.join(__dirname, "..", "game.js"), "utf8");
+const src = require("./page.js").page().inline;
 
 function lift(name) {
   const at = src.indexOf("function " + name + "(");
-  assert.ok(at > 0, "game.js has no " + name);
+  assert.ok(at > 0, "the game has no " + name);
   let depth = 0, i = src.indexOf("{", at);
   const from = i;
   for (; i < src.length; i++) {

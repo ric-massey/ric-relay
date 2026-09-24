@@ -692,17 +692,35 @@ flight loop and the state the interface is handed all still live in the game
 script, because they are woven through the shared engine that the other three
 modes use too. Pulling them out is a different job from moving a pure function.
 
-That script is `game.js` since 2026-09-24. It was the inline `<script>` at the
-foot of `index.html` — twenty-eight thousand lines inside one HTML file — and it
-moved out byte for byte: same closure, same load order, nothing about how it runs
-changed. What changed is that a diff of the game is a diff of a JavaScript file,
-an editor can open it as one, and `test/smoke.js` refuses an inline script on the
-page so it cannot drift back one function at a time. Cutting the closure itself
-along its `═══ SECTION ═══` markers is the next job and a different one.
+That script is the thirty files under `game/` since 2026-09-24. It was the inline
+`<script>` at the foot of `index.html` — twenty-eight thousand lines in one closure
+inside one HTML file — and it came out in two steps the same day: first as one file,
+byte for byte, then cut into chapters along its own `═══ SECTION ═══` markers, one
+indent shallower, the way `survey-world.js` came out before it.
 
-`menu.js` is loaded the same way for the same reason.
+The chapters are **classic scripts sharing the page's global scope**, not modules,
+and that is the whole trick: a `const` or `function` at the top of one chapter is
+visible to every chapter loaded after it, exactly as it was visible to everything
+below it in the closure. Nothing was renamed and no function was moved. Two rules
+fall out of it, and `test/smoke.js` holds both:
 
-All of them must be loaded **before** `game.js`, which captures each
+- **The order in `index.html` is the program.** A chapter may use anything a chapter
+  above it declared. Hoisting no longer crosses files: a function called *at load
+  time* has to be declared in the same chapter or an earlier one. (Called from a
+  handler or the frame loop, anything anywhere is fine — by then every chapter has
+  run.) The split was checked for this with a parser before it was made, and every
+  harness boots the chapters one script at a time, so a chapter that reaches too far
+  fails in `node` the way it would in a browser.
+- **A chapter is a file in `game/` and a line in `index.html`, always both.** The
+  smoke test fails if the folder and the page disagree, if a chapter is loaded twice,
+  if any module is loaded after the first chapter, or if `boot.js` is not last.
+
+Adding to the game: find the chapter whose header describes the thing, and write it
+there. A new chapter is a new file, a new `<script>` line in the right place, and a
+row in the table below. The names are on the tin; `boot.js` is the only one whose
+position is fixed, because it is the boot.
+
+All of them must be loaded **before** the chapters, which capture each
 global once. Loading one late is silent: the mode would play with no chart and
 no almanac, and the menu would draw cards with nothing moving inside them. The
 ordering is asserted in `test/smoke.js`, and `test/browser.js` checks the real
@@ -980,7 +998,37 @@ eligible, and the backend cannot be changed after the namespace is created.
 | File | Responsibility |
 |---|---|
 | `index.html` | The page: markup, styles, and the script tags in the order the game needs |
-| `game.js` | UI, settings, simulation, rendering, bots, campaign, survey and match rules — one closure, loaded last |
+| `game/` | The game, in thirty chapters that share one global scope and run in this order: |
+| `game/setup.js` | THE ARENA — Canvas, the two coordinate spaces, the modes, the base tuning, the stationary hazards and the players. Everything else is built on the numbers here. |
+| `game/controls.js` | CONTROLS — Thumb controls, the four slots as keys, key names, the settings-page state and how the ship is flown. |
+| `game/sound.js` | SOUND — The synthesised sound engine: how loud, which dial, the compressor and the limiter. sounds/listen.html lifts this file at load, so its section markers are load-bearing. |
+| `game/input.js` | INPUT — The glass from the first touch, orientation, the way out of a page, the controls screen, driving settings from the keyboard, and the raw input layer. |
+| `game/world.js` | THE WORLD STATE — The world record, how far out Survey sits, the empty room, wrecked hulls, the 3.4 ramp and the clock a menu runs on. |
+| `game/physics.js` | PHYSICS — Camera, walls, the edge of the world, gravity, debris, deaths, the claw, firing what you bolted on, shoving and rock contact. |
+| `game/campaign.js` | CAMPAIGN — The three scripted missions as one war: mission feel, what interrupts you, the campaign flight AI. |
+| `game/survey.js` | SURVEY — The fourth mode, introduced, and where its book lives. |
+| `game/ships.js` | THE SHIPS — The roster, what each hull looks like, and what a boss looks like. |
+| `game/survey-outfit.js` | SURVEY — OUTFITTING — Two axes, life support, the furniture of a world, worlds and where they may stand, cargo, the refit, parts and their slots, weights, and the devices you press: grapple, cloak, EMP. |
+| `game/survey-sector.js` | SURVEY — THE SECTOR — What makes a boss a boss, weapons as parts, builds, the almanac, the station and what it is short of, the light drive, landmarks, the ladder, what kind of sector this is and how big the war is. |
+| `game/survey-chart.js` | SURVEY — THE CHART — The book, naming pins, wiping a survey, the gate lattice, one chunk, the Leviathan and the Vault. |
+| `game/survey-streaming.js` | SURVEY — STREAMING — Streaming chunks in and out, solidity for everybody, what a round runs into, finding things, the pulse, and what everybody else is doing. |
+| `game/pilots.js` | WHO IS FLYING IT — How a good pilot fights, hull against hull, gravity for everybody, wants turned into somewhere to be, salvage lying about, running at light, the low-tank warning, repairs and dying. |
+| `game/sector.js` | THE WORLD — The two tracks, salvage, selling, stations that want something, what a place deals in, who pays best, solid things, gates, sentries, the devices driven, caches and remembering. |
+| `game/bosses.js` | BOSSES — The bosses, the queen's bugs, five ways to fight, handing water across and asking what a thing is. |
+| `game/factions.js` | THE FACTIONS — Where the parts go, the first two minutes, company, a galaxy already at war, what the sector thinks of you, fitting and building, the ice melter, and how battles end. |
+| `game/war.js` | THE WAR MOVES — Battles in progress, ships with names, what a scan calls a ship, the hangar, the manifest, the gazetteer, mapping the sky, the warning, the background and the tick. |
+| `game/survey-draw.js` | SURVEY — DRAWING — Drawing the sector and the world, words around circles, what a thing is at a glance, what the devices leave behind, the rock of the Warrens, the front page line and where a ship may appear. |
+| `game/multiplayer.js` | MULTIPLAYER — Networking, which pages stop the clock, what this client saw, and the bots. |
+| `game/pointer.js` | POINTER AND TOUCH — Pointer and touch, flying with the mouse, pages that scroll, two fingers on a map, and a button you can lean on. |
+| `game/update.js` | UPDATE — One step of the simulation. |
+| `game/draw.js` | DRAWING — Drawing a frame, one hull drawn the same way for everybody, the field behind the menus, the minimap, tapping the menus, and the machines one floor down. |
+| `game/front-page.js` | THE FRONT PAGE — The attract loop, wired to attract.js. |
+| `game/machines.js` | THE MACHINES — The arcade machines, their boards, the real board, the competition, the settings page and registering a control. |
+| `game/settings.js` | SETTINGS — The controls page: keys, the touchscreen, the game, what it sounds like, you, the rail and moving the pad. |
+| `game/loop.js` | THE LOOP — The frame loop, and keeping the host alive in the background. |
+| `game/lobby.js` | THE LOBBY — The lobby, who is sitting where, the room service and the list. |
+| `game/account.js` | THE ACCOUNT — The account, the door, the field behind it and the save button. |
+| `game/boot.js` | BOOT — The opt-in debug API for the harnesses, then the boot: read the keys, size the canvas, hand the modules the engine, start the frame loop. Loaded last on purpose. |
 | `net.js` | WebRTC links and compact session-description encoding |
 | `cloud.js` | The account, and the book kept in it. No SDK, no request until asked |
 | `config.js` | The account service's URL and publishable key. Blank means no accounts |

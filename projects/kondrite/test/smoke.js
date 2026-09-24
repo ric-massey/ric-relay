@@ -11,7 +11,6 @@ const { spawn } = require("node:child_process");
 const ROOT = path.resolve(__dirname, "../../..");
 const PROJECT = path.join(ROOT, "projects/kondrite");
 const INDEX = path.join(PROJECT, "index.html");
-const GAME = path.join(PROJECT, "game.js");
 const NET = path.join(PROJECT, "net.js");
 const SURVEY_HUD = path.join(PROJECT, "survey-hud.js");
 const MENU = path.join(PROJECT, "menu.js");
@@ -30,34 +29,49 @@ function checkSyntax() {
   new vm.Script(read(MENU), { filename: "menu.js" });
   new vm.Script(read(ROOMS), { filename: "rooms.js" });
 
-  /* `page` is the markup; `html` is the markup with the game after it, which is
-     what every string check below was written against when the game was the
-     page's inline script — a match that asks for a CSS rule and one that asks
-     for a line of the simulation both still find it. */
+  /* `page` is the markup; `html` is the markup with the game's chapters after
+     it, in page order — which is what every string check below was written
+     against when the game was the page's inline script. A match that asks for a
+     CSS rule and one that asks for a line of the simulation both still find it. */
   const page = read(INDEX);
-  const html = page + "\n" + read(GAME);
-  /* The game is game.js, loaded last, and the page has NO inline script: the
-     twenty-eight thousand lines that used to sit at the foot of index.html
-     moved out on 2026-09-24, and this is what stops them quietly moving back
-     one function at a time. */
+  const chapters = [...page.matchAll(/<script src="(game\/[^"]+)"><\/script>/g)].map(m => m[1]);
+  const html = page + "\n" + chapters.map(f => read(path.join(PROJECT, f))).join("\n");
+
+  /* The game is the chapters under game/, and the page has NO inline script.
+     The twenty-eight thousand lines that used to sit at the foot of index.html
+     moved out on 2026-09-24, first as one file and then as thirty; this is what
+     stops them quietly moving back one function at a time. */
   const inline = [...page.matchAll(
     /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi
   )].filter(m => m[1].trim());
-  assert.equal(inline.length, 0, "index.html has an inline script; the game lives in game.js");
-  new vm.Script(read(GAME), { filename: "game.js" });
-  const gameAt = page.indexOf('<script src="game.js">');
-  assert.ok(gameAt > 0, "index.html must load game.js");
-  assert.ok(!/<script[^>]*\bsrc="[^"]+"/i.test(page.slice(gameAt + 1)),
-    "game.js must be the last script on the page — it captures every module at boot");
+  assert.equal(inline.length, 0, "index.html has an inline script; the game lives in game/");
+  assert.ok(chapters.length > 1, "index.html loads no chapters from game/");
+  for (const f of chapters) new vm.Script(read(path.join(PROJECT, f)), { filename: f });
 
-  /* Survey's three modules are separate files, and the game script captures
-     each global once at boot — so every one of them has to be loaded before,
-     not after. Loading one late is silent: the mode plays with no chart and no
+  /* The chapters share one global scope, so the page's order is the program.
+     Three things hold that together: every file in the folder is on the page
+     (a chapter written and not listed is dead code that looks alive), nothing
+     is on the page twice, and the chapters come last and together — a module
+     loaded after a chapter is a module the chapter captured as undefined. */
+  const onDisk = fs.readdirSync(path.join(PROJECT, "game")).filter(f => f.endsWith(".js")).map(f => "game/" + f).sort();
+  assert.deepEqual([...chapters].sort(), onDisk,
+    "game/ on disk and game/ on the page disagree — add the chapter to index.html, or delete the file");
+  assert.equal(new Set(chapters).size, chapters.length, "a chapter is loaded twice");
+  const scripts = [...page.matchAll(/<script[^>]*\bsrc="([^"]+)"/gi)].map(m => m[1]);
+  const firstChapter = scripts.findIndex(s => s.startsWith("game/"));
+  assert.ok(scripts.slice(firstChapter).every(s => s.startsWith("game/")),
+    "a module is loaded after the game's chapters — it must come before all of them");
+  assert.equal(scripts[scripts.length - 1], "game/boot.js", "game/boot.js must be the last script on the page");
+  const gameAt = page.indexOf('<script src="game/');
+
+  /* Survey's three modules are separate files, and the chapters capture each
+     global once at boot — so every one of them has to be loaded before, not
+     after. Loading one late is silent: the mode plays with no chart and no
      catalogue readout, or it does not boot at all. */
   for (const mod of ["survey-world.js", "survey-save.js", "survey-hud.js"]) {
     const at = page.indexOf('src="' + mod + '"');
     assert.ok(at > 0, "index.html must load " + mod);
-    assert.ok(at < gameAt, mod + " must be loaded before game.js");
+    assert.ok(at < gameAt, mod + " must be loaded before the game's chapters");
   }
   /* The one line the mode gets to introduce itself with, on the menu card. It
      used to say "no enemies · endless space · chart it and fill the almanac",

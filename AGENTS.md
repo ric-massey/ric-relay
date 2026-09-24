@@ -416,11 +416,17 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   see and a pilot thrashing at its brake threshold on every slingshot approach.
   `attract.js` now has a dead-air clock (`DEAD_AIR`) that reads the same counters
   the test does, and the test flies three seeds and judges the worst; the 12 did
-  not move. **`projects/kondrite/game.js` is the game.** It was the inline script
-  at the foot of `index.html` — twenty-eight thousand lines in one HTML file — and
-  moved out byte for byte the same day; `test/smoke.js` refuses any inline script
-  on that page so it cannot creep back, and runs in the quick lane so a game that
-  does not parse is caught on the push, not the nightly.
+  not move. **`projects/kondrite/game/` is the game, in thirty chapters.** It was the
+  inline script at the foot of `index.html` — twenty-eight thousand lines in one
+  HTML file — and came out the same day, first as one file byte for byte and then
+  cut along its section markers. The chapters are classic scripts sharing the
+  page's global scope, so **the `<script>` order in `index.html` is the program**:
+  a function called at load time must be declared in the same chapter or an
+  earlier one, because hoisting stops at the file. Read "Where it lives" in
+  `projects/kondrite/README.md` before adding one. `test/smoke.js` refuses any
+  inline script on that page, holds the folder to the page and the page to the
+  order, and runs in the quick lane so a chapter that does not parse is caught on
+  the push, not the nightly.
 - **`node .github/checks.mjs` runs every check in the repo**, and
   `.github/workflows/checks.yml` runs it on every push. This was added on
   2026-09-23 because there were 43 test files here and **nothing that ran them** —

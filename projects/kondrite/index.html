@@ -1012,8 +1012,40 @@
   For two on one screen, open it on a laptop and bring someone with you.
 </p>
 
-<!-- The game itself. One file, one closure, loaded last so that every module
-     above is already on window when it captures them — see game.js. -->
-<script src="game.js"></script>
+<!-- The game itself, in chapters. They share the page's global scope, so the
+     order here IS the program: a chapter may use anything a chapter above it
+     declared, and every module above them is already on window when the
+     chapters capture it. test/smoke.js holds this list to the folder and the
+     README. -->
+<script src="game/setup.js"></script>
+<script src="game/controls.js"></script>
+<script src="game/sound.js"></script>
+<script src="game/input.js"></script>
+<script src="game/world.js"></script>
+<script src="game/physics.js"></script>
+<script src="game/campaign.js"></script>
+<script src="game/survey.js"></script>
+<script src="game/ships.js"></script>
+<script src="game/survey-outfit.js"></script>
+<script src="game/survey-sector.js"></script>
+<script src="game/survey-chart.js"></script>
+<script src="game/survey-streaming.js"></script>
+<script src="game/pilots.js"></script>
+<script src="game/sector.js"></script>
+<script src="game/bosses.js"></script>
+<script src="game/factions.js"></script>
+<script src="game/war.js"></script>
+<script src="game/survey-draw.js"></script>
+<script src="game/multiplayer.js"></script>
+<script src="game/pointer.js"></script>
+<script src="game/update.js"></script>
+<script src="game/draw.js"></script>
+<script src="game/front-page.js"></script>
+<script src="game/machines.js"></script>
+<script src="game/settings.js"></script>
+<script src="game/loop.js"></script>
+<script src="game/lobby.js"></script>
+<script src="game/account.js"></script>
+<script src="game/boot.js"></script>
 </body>
 </html>

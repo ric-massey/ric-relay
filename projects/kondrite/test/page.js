@@ -3,7 +3,7 @@
 /* KONDRITE — WHAT THE PAGE LOADS
    ─────────────────────────────────────────────────────────────────────────────
    Every harness in here boots the game the same way: run the modules the page
-   pulls in, then run the game script, all inside one `vm` sandbox. Each of
+   pulls in, then the game's chapters, all inside one `vm` sandbox. Each of
    them used to name those modules itself — `survey-hud.js` here, `menu.js`
    there, and an assertion in six files that the HUD is loaded before the game
    script because the game script captures the global once at boot.
@@ -36,27 +36,29 @@ const OFF_BY_DEFAULT = ["net.js", "config.js", "cloud.js"];
 
 const html = () => fs.readFileSync(path.join(DIR, "index.html"), "utf8");
 
-/* The game script. It was the page's one inline <script> until 2026-09-24 and
-   is game.js now; the property is still called `inline` because that is what
-   every harness calls it, and renaming a field in fourteen files to say where
-   the bytes live is not worth a diff. The page is still asked which file: the
-   last local `<script src>` is the game, so a rename would be found here. */
-const GAME = "game.js";
-function inlineOf(markup) {
-  if (markup.indexOf('src="' + GAME + '"') < 0) {
-    throw new Error("index.html does not load " + GAME + " — the game has moved");
-  }
+/* The game is the chapters under game/, loaded by the page in order after every
+   module. `inline` is still the name every harness uses for "the game's source"
+   — it was the page's one inline <script> until 2026-09-24 — and it is now the
+   chapters joined in page order, for the checks that read code rather than run
+   it. Booting runs them one by one, as the browser does. */
+const GAME_DIR = "game/";
+function gameFilesOf(markup) {
+  const files = srcsOf(markup).filter(s => s.startsWith(GAME_DIR));
+  if (!files.length) throw new Error("index.html loads nothing from game/ — the game has moved");
   if (/<script(?![^>]*\bsrc=)[^>]*>\s*\S/i.test(markup)) {
-    throw new Error("index.html has grown an inline script again; the game lives in " + GAME);
+    throw new Error("index.html has grown an inline script again; the game lives in game/");
   }
-  return fs.readFileSync(path.join(DIR, GAME), "utf8");
+  return files;
+}
+function inlineOf(markup) {
+  return gameFilesOf(markup).map(f => fs.readFileSync(path.join(DIR, f), "utf8")).join("\n");
 }
 
-/* Every `<script src>` the page loads before the game, in page order. Only
-   local files — a CDN would not be a module of this game. */
+/* Every local `<script src>` the page loads, in page order — the modules first,
+   then the chapters. Only local files; a CDN would not be a module of this
+   game. */
 function srcsOf(markup) {
-  const upto = markup.slice(0, markup.indexOf('src="' + GAME + '"'));
-  return [...upto.matchAll(/<script[^>]*\bsrc="([^"]+)"/gi)]
+  return [...markup.matchAll(/<script[^>]*\bsrc="([^"]+)"/gi)]
     .map(m => m[1])
     .filter(s => !/^https?:|^\/\//.test(s));
 }
@@ -64,7 +66,7 @@ function srcsOf(markup) {
 /* Read the page once and hand back what a harness needs from it. */
 function page() {
   const markup = html();
-  return { html: markup, inline: inlineOf(markup), srcs: srcsOf(markup) };
+  return { html: markup, inline: inlineOf(markup), srcs: srcsOf(markup), game: gameFilesOf(markup) };
 }
 
 /* Run the game into a prepared sandbox: the modules first, in the page's order,
@@ -79,14 +81,16 @@ function boot(sandbox, opts) {
 
   const p = page();
   const ran = [];
+  /* Modules and chapters alike, each as its own script in the one context —
+     which is what a browser does, and what makes a chapter that reaches for a
+     later chapter's function at load time fail here the way it would there. */
   for (const src of p.srcs) {
     const name = src.split("/").pop();
     if (skip.has(name)) continue;
     vm.runInContext(fs.readFileSync(path.join(DIR, src), "utf8"),
-                    sandbox, { filename: name });
+                    sandbox, { filename: src });
     ran.push(name);
   }
-  vm.runInContext(p.inline, sandbox, { filename: GAME });
   return ran;
 }
 
@@ -94,4 +98,4 @@ function boot(sandbox, opts) {
    run it — "this string is not drawn any more", and the like. */
 const source = name => fs.readFileSync(path.join(DIR, name), "utf8");
 
-module.exports = { DIR, GAME, page, boot, source, OFF_BY_DEFAULT };
+module.exports = { DIR, GAME_DIR, page, boot, source, OFF_BY_DEFAULT };
