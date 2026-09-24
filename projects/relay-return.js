@@ -14,7 +14,6 @@
   }
 
   const eggs = {
-    shape: ["harm", "UNCERTAINTY DETECTED // MODEL BEHAVING NORMALLY"],
     spacetime: ["now", "NOW LOST // TRY ANOTHER REFERENCE FRAME"],
     siege: ["66", "COMMAND REJECTED // NICE TRY, PALPATINE"],
     mind: ["mood", "SIGNAL RECEIVED // WEATHER IS NOT CLIMATE"],

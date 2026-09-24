@@ -37,8 +37,7 @@ don't ask it to. `AGENTS.md:74-78` and `README.md:60`:
 The single-file rule (`AGENTS.md:13`) governs the themed *room* pages, so the
 site never flattens into one shared template. Projects are exempt and already
 multi-file in practice: `siege-conductor/` ships `index.html` + `sw.js` +
-`manifest.json` + four icons; `spacetime/` is five pages;
-`the-shape-of-harm/` is 122 files.
+`manifest.json` + four icons; `spacetime/` is five pages.
 
 ### Proposed move: `playground/starfield.html` → `projects/starfield/`
 

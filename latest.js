@@ -74,16 +74,8 @@ window.RELAY_LATEST = [
     kind: "new room",
     room: "psyche",
     title: "Psyche: Human Systems",
-    description: "Mood, criteria, substances, and the imperfect tools we use to understand them.",
+    description: "Mood, criteria, and the imperfect tools we use to understand them.",
     href: "psyche.html",
-  },
-  {
-    date: "2026-07-23",
-    kind: "research",
-    room: "psyche",
-    title: "The Shape of Harm",
-    description: "An evidence framework for comparing psychoactive-substance harms without hiding the uncertainty.",
-    href: "projects/the-shape-of-harm/start.html",
   },
   {
     date: "2026-07-23",

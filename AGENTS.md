@@ -178,8 +178,7 @@ everywhere — the navs must agree with each other *and* with the front door.
 - **Sub-projects** live in `projects/<name>/` (or a single `.html`) and are **linked
   from the room that fits them — from exactly one room.** Current: `spacetime`,
   `how-speed-affects-time` and `how-big-everything-is` → Exploration;
-  `the-shape-of-harm`,
-  `autism-reflection.html`, and `state-of-mind-line` → Psyche; `siege-conductor` →
+  `autism-reflection.html` and `state-of-mind-line` → Psyche; `siege-conductor` →
   Workbench; `farlight`, `offramp`, `kondrite`, and `starfield` → Gaming; `climbing`
   → Climbing (including the unlisted `climbing/board.html`); `training` and `apex` are
   room data rather than pages. Each is self-contained and may carry its own assets/fonts;
