@@ -78,11 +78,12 @@ async function renderCourseLog(){
     const paceEngine = computePaceEngine(splits);
     ricPacingAssignments(paceEngine).forEach(g=>paceEngine.rows.slice(g.startIndex,g.endIndex+1).forEach(s=>missionIds.add(s.id)));
   }
+  const courseOrder = [...splits].filter(r=>Number(r.mile)>0).sort((a,b)=>Number(a.sort_order??a.mile)-Number(b.sort_order??b.mile));
   const qText = {};
   getCrewQuestions().forEach(q => { qText[q.id] = q.text; });
   const entries = [];
   splits.forEach(s => {
-    const where = `${s.station} · mi ${s.mile}`;
+    const where = `${stopLabelFor(splits, s.id)} · mi ${s.mile}`;
     const forRic = missionIds.has(s.id);
     const ans = s.question_answers || {};
     Object.entries(ans).forEach(([qid, a]) => {
@@ -94,13 +95,15 @@ async function renderCourseLog(){
       const forPerson = isSydney
         ? RIC_LOGIC.flaggedNoteTargetsPerson(splits,s,ME.id)
         : forRic||s.station_note_by===ME.name||ownName.test(s.station_note);
-      entries.push({ id:`${s.id}:note`,stopId:s.id,mile:s.mile,sort:s.sort_order,where,label:'Note',value:s.station_note.trim(),by:s.station_note_by||'',flagged:!!s.flag_forward,forRic:forPerson });
+      // A flagged note is for the next stop along the course: say which.
+      const onward = s.flag_forward ? courseOrder.slice(courseOrder.findIndex(r=>r.id===s.id)+1).find(r=>!r.skipped) : null;
+      entries.push({ id:`${s.id}:note`,stopId:s.id,mile:s.mile,sort:s.sort_order,where,label:'Note',value:s.station_note.trim(),by:s.station_note_by||'',flagged:!!s.flag_forward,forWhere:onward?stopLabelFor(splits,onward.id):'',forRic:forPerson });
     }
   });
   entries.sort((a,b)=>b.sort-a.sort);
   const pinned = ric ? entries.find(e=>e.flagged && e.forRic) : null;
   const pinnedEl = document.getElementById('ric-pinned-note');
-  if(pinnedEl) pinnedEl.innerHTML = pinned ? `<button type="button" class="ric-pinned-alert" onclick="openStopDetail('${pinned.stopId}')"><i class="ti ti-flag-3-filled"></i><span><b>${esc(pinned.where)}</b>${esc(pinned.value)}</span><i class="ti ti-chevron-right"></i></button>` : '';
+  if(pinnedEl) pinnedEl.innerHTML = pinned ? `<button type="button" class="ric-pinned-alert" onclick="openStopDetail('${pinned.stopId}')"><i class="ti ti-flag-3-filled"></i><span><b>${pinned.forWhere ? `For ${esc(pinned.forWhere)}` : esc(pinned.where)}</b>${esc(pinned.value)}</span><i class="ti ti-chevron-right"></i></button>` : '';
   let shown = entries;
   if(ric){
     document.querySelectorAll('[data-ric-note-filter]').forEach(btn=>btn.classList.toggle('active',btn.dataset.ricNoteFilter===RIC_NOTES_FILTER));
@@ -118,7 +121,7 @@ async function renderCourseLog(){
     const admin=noteAuthorIsAdmin(e.by);
     return `
     <div class="clog-item${e.flagged?' flagged':''}${admin?' admin':''}">
-      <div class="clog-where">${e.flagged?'<i class="ti ti-flag-3-filled"></i> ':''}${esc(e.where)}</div>
+      <div class="clog-where">${e.flagged?'<i class="ti ti-flag-3-filled"></i> ':''}${e.forWhere ? `<b>For ${esc(e.forWhere)}</b> · from ${esc(e.where)}` : esc(e.where)}</div>
       <div class="clog-q">${esc(e.label)}</div>
       <div class="clog-a">${esc(e.value)}</div>
       ${e.by ? `<div class="clog-by">${admin?'<span class="message-admin-label">ADMIN</span> ':''}— ${esc(e.by)}</div>` : ''}
@@ -126,10 +129,35 @@ async function renderCourseLog(){
   }).join('');
 }
 
+// Stops are numbered along the course (the start isn't one): "Stop 3 · Damascus".
+function stopLabelFor(rows, id){
+  const row = (rows||[]).find(r=>r.id===id);
+  if(!row) return '';
+  const n = RIC_LOGIC.courseStopNumber(rows, id);
+  return `${n ? `Stop ${n} · ` : ''}${row.station}`;
+}
+// The stop a new flag is for, unless you pick another: the next one Dad hasn't reached yet.
+function nextUnreachedStop(rows){
+  return [...(rows||[])].filter(r=>Number(r.mile)>0 && !r.skipped && r.actual_elapsed_seconds==null)
+    .sort((a,b)=>Number(a.sort_order??a.mile)-Number(b.sort_order??b.mile))[0] || null;
+}
+async function raceStopsForNotes(){
+  const raw = await dbList('splits', 'sort_order.asc');
+  return RIC_LOGIC.sanitizeRaceRows(raw, raceSessionStartDateTime().getTime());
+}
 async function renderNotes(){
   document.getElementById('notes-official').href = safeUrl(CONFIG.official_site_url);
   document.getElementById('notes-ultrapacer').href = safeUrl(CONFIG.ultrapacer_url);
   await renderCourseLog();
+  const stops = await raceStopsForNotes();
+  const picker = document.getElementById('note-flag-stop');
+  if(picker){
+    const keep = picker.value, next = nextUnreachedStop(stops);
+    picker.innerHTML = [...stops].filter(r=>Number(r.mile)>0)
+      .sort((a,b)=>Number(a.sort_order??a.mile)-Number(b.sort_order??b.mile))
+      .map(r=>`<option value="${esc(r.id)}">For ${esc(stopLabelFor(stops,r.id))}</option>`).join('');
+    picker.value = keep && stops.some(r=>r.id===keep) ? keep : (next ? next.id : picker.value);
+  }
   const notes = await dbList('notes', 'created_at.asc');
   const list = document.getElementById('notes-list');
   if(!notes.length){ list.innerHTML = '<div class="profile-empty">No messages yet. Send the first one above.</div>'; return; }
@@ -150,7 +178,7 @@ async function renderNotes(){
            <span class="message-author">From ${esc(n.author)}</span>
            <span class="message-time">${esc(dateStr)}</span>
          </div>
-         ${(decoded.flagged||admin)?`<div class="message-badges">${decoded.flagged?'<span class="message-flag-label"><i class="ti ti-flag-3-filled"></i> FLAGGED</span>':''}${admin?'<span class="message-admin-label">ADMIN</span>':''}</div>`:''}
+         ${(decoded.flagged||admin)?`<div class="message-badges">${decoded.flagged?`<span class="message-flag-label"><i class="ti ti-flag-3-filled"></i> FLAGGED${decoded.stopId && stopLabelFor(stops,decoded.stopId) ? ` · FOR ${esc(stopLabelFor(stops,decoded.stopId).toUpperCase())}` : ''}</span>`:''}${admin?'<span class="message-admin-label">ADMIN</span>':''}</div>`:''}
          <div class="note-body">${linkifyNoteText(decoded.body)}</div>
          <div class="note-footer">
            <div class="note-actions">
@@ -174,9 +202,12 @@ async function submitNote(){
   const body = el.value.trim();
   if(!body) return;
   const flagInput=document.getElementById('note-flag-input');
-  await dbInsert('notes', {author: ME.name, body:RIC_LOGIC.encodeSharedMessage(body,!!(flagInput&&flagInput.checked))});
+  const flagged=!!(flagInput&&flagInput.checked);
+  const picker=document.getElementById('note-flag-stop');
+  await dbInsert('notes', {author: ME.name, body:RIC_LOGIC.encodeSharedMessage(body,flagged,flagged&&picker?picker.value:null)});
   el.value = '';
   if(flagInput) flagInput.checked=false;
+  if(picker) picker.hidden=true;
   await renderNotes();
   toast('Message sent');
 }
@@ -199,8 +230,8 @@ async function saveEditNote(id, value){
   const notes=await dbList('notes',null,{fresh:true});
   const note=notes.find(n=>n.id===id);
   if(!note) return;
-  const flagged=RIC_LOGIC.decodeSharedMessage(note.body).flagged;
-  await dbUpdate('notes', id, {body:RIC_LOGIC.encodeSharedMessage(body,flagged)});
+  const was=RIC_LOGIC.decodeSharedMessage(note.body);
+  await dbUpdate('notes', id, {body:RIC_LOGIC.encodeSharedMessage(body,was.flagged,was.stopId)});
   editingNoteId = null;
   await renderNotes();
   toast('Message updated');
@@ -212,9 +243,10 @@ async function toggleNoteFlag(id){
   const note=notes.find(n=>n.id===id);
   if(!note) return;
   const decoded=RIC_LOGIC.decodeSharedMessage(note.body);
-  await dbUpdate('notes',id,{body:RIC_LOGIC.encodeSharedMessage(decoded.body,!decoded.flagged)});
+  const next = decoded.flagged ? null : nextUnreachedStop(await raceStopsForNotes());
+  await dbUpdate('notes',id,{body:RIC_LOGIC.encodeSharedMessage(decoded.body,!decoded.flagged,next&&next.id)});
   await renderNotes();
-  toast(decoded.flagged?'Flag removed':'Message flagged');
+  toast(decoded.flagged?'Flag removed':`Flagged for ${next ? stopLabelFor(await raceStopsForNotes(), next.id) : 'the next stop'}`);
 }
 
 async function deleteNote(id){
@@ -245,9 +277,10 @@ function applyNotesShell(){
           <textarea id="note-input" placeholder="Message everyone..." rows="2" onkeydown="submitNoteOnEnter(event)"></textarea>
           <div class="message-compose-row">
             <label class="message-flag-toggle" for="note-flag-input">
-              <input type="checkbox" id="note-flag-input">
+              <input type="checkbox" id="note-flag-input" onchange="document.getElementById('note-flag-stop').hidden=!this.checked">
               <i class="ti ti-flag-3"></i> Flag
             </label>
+            <select id="note-flag-stop" class="message-flag-stop" aria-label="Which stop the flag is for" hidden></select>
             <span class="message-enter-hint">Enter to send · Shift+Enter for a new line</span>
             <button class="btn sm" onclick="submitNote()"><i class="ti ti-send"></i> Send</button>
           </div>

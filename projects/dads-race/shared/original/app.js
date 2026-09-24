@@ -386,7 +386,7 @@ async function renderRunningTotal(elId){
     sub = `Finished ${fmtLoggedClock(finishRow.actual_elapsed_seconds, finishRow.actual_logged_at)}`;
   } else if(live){
     seconds = (Date.now()-startedMs)/1000;
-    sub = lastActual ? `Last check-in: ${lastActual.station}, ${fmtLoggedClock(lastActual.actual_elapsed_seconds, lastActual.actual_logged_at)}` : 'Running — no check-ins logged yet';
+    sub = lastActual ? `Last check-in: ${stopTag(rows, lastActual)}${lastActual.station}, ${fmtLoggedClock(lastActual.actual_elapsed_seconds, lastActual.actual_logged_at)}` : 'Running — no check-ins logged yet';
   } else {
     seconds = goalTotal;
     sub = "Race hasn't started yet — showing goal time";
@@ -415,7 +415,7 @@ async function renderHomeNextStop(){
       <div class="next-stop-cta" onclick="goPage('crew')">
         <div class="nsc-label"><i class="ti ti-${grace ? 'clock-pause' : 'map-pin-check'}"></i> ${grace ? 'Just Left — Wrap Up' : 'Your Next Stop'}</div>
         <div class="nsc-top">
-          <div class="nsc-station">${nextUp.mile}mi · ${esc(nextUp.station)}</div>
+          <div class="nsc-station">${esc(stopTag(splits, nextUp))}${nextUp.mile}mi · ${esc(nextUp.station)}</div>
           <div class="nsc-time">${mystopTimeDisplay(nextUp, projMap.get(nextUp.id), stopKind(nextUp, splits))}</div>
         </div>
         <div class="nsc-cta-row">
@@ -855,7 +855,7 @@ function buildStopDetailHTML(s, splits){
     const nextStop = here>=0 ? er.slice(here+1).find(r=>!r.skipped) : null;
     if(nextStop && nextStop.goal_pace_sec_per_mi){
       outHTML = `<div class="sd-section-title">Send Him Out At</div>
-        <div class="sd-text" style="font-family:var(--font-mono);font-size:15px;font-weight:bold;color:var(--accent)">${fmtPace(nextStop.goal_pace_sec_per_mi)}<span style="font-weight:normal;font-size:12px;color:var(--ink-soft)"> &rarr; ${esc(nextStop.station)}</span></div>`;
+        <div class="sd-text" style="font-family:var(--font-mono);font-size:15px;font-weight:bold;color:var(--accent)">${fmtPace(nextStop.goal_pace_sec_per_mi)}<span style="font-weight:normal;font-size:12px;color:var(--ink-soft)"> &rarr; ${esc(stopTag(er, nextStop))}${esc(nextStop.station)}</span></div>`;
     }
   }catch(e){}
   return `
@@ -927,6 +927,20 @@ function getMyNextStop(splits, personId){
   const nextUp = mine.find(s => !isStopResolved(s) && s.sort_order >= anchorSort);
   return {mine, nextUp};
 }
+/* ================= STOP NUMBERS ================= */
+// The stops are numbered along the course (the start isn't one), so "Stop 3" means the same
+// stop on every screen and in every message. `rows` is the splits list the screen already has.
+function stopNumber(rows, id){
+  const course = [...(rows||[])].filter(r=>Number(r.mile)>0)
+    .sort((a,b)=>Number(a.sort_order??a.mile)-Number(b.sort_order??b.mile));
+  const i = course.findIndex(r=>r.id===id);
+  return i>=0 ? i+1 : null;
+}
+function stopTag(rows, stop){
+  const n = stop ? stopNumber(rows, stop.id) : null;
+  return n ? `Stop ${n} · ` : '';
+}
+
 async function renderMyStops(){
   const container = document.getElementById('my-stops-list');
   const splits = await dbList('splits', 'sort_order.asc');
@@ -946,7 +960,7 @@ async function renderMyStops(){
       ${graceLeft > 0 ? `<div class="grace-note" data-grace-until-ms="${Date.now() + graceLeft}"><i class="ti ti-clock-pause"></i> This stop clears in ${Math.max(1, Math.ceil(graceLeft/60000))} min — enter anything left, then it moves to your next stop.</div>` : ''}
       <div class="mystop-top">
         <div class="mystop-mile">${nextUp.mile}mi</div>
-        <div class="mystop-station">${esc(nextUp.station)}</div>
+        <div class="mystop-station">${esc(stopTag(splits, nextUp))}${esc(nextUp.station)}</div>
         <div class="mystop-time">${mystopTimeDisplay(nextUp, projMap.get(nextUp.id), kindOf(nextUp))}</div>
       </div>
       ${buildStopDetailHTML(nextUp, splits)}
@@ -963,7 +977,7 @@ async function renderMyStops(){
     <div class="mystop-card ${done?'done':''}" onclick="openStopDetail('${s.id}')">
       <div class="mystop-top">
         <div class="mystop-mile">${s.mile}mi</div>
-        <div class="mystop-station">${esc(s.station)}</div>
+        <div class="mystop-station">${esc(stopTag(splits, s))}${esc(s.station)}</div>
         <div class="mystop-time">${mystopTimeDisplay(s, projMap.get(s.id), kindOf(s))}</div>
       </div>
       ${s.address ? `<div style="margin-top:6px">${addressBlock(s.address)}</div>` : ''}
@@ -1024,7 +1038,7 @@ async function openStopDetail(id){
   const splits = await dbList('splits', 'sort_order.asc');
   const s = splits.find(r=>r.id===id);
   if(!s) return;
-  document.getElementById('sd-title').textContent = `${s.station} — mi ${s.mile}`;
+  document.getElementById('sd-title').textContent = `${stopTag(splits, s)}${s.station} — mi ${s.mile}`;
   document.getElementById('sd-body').innerHTML = buildStopDetailHTML(s, splits);
   const modal = document.getElementById('stop-detail-modal');
   modal.dataset.stopId = id;
@@ -1461,7 +1475,10 @@ function legPaceHeroHTML(engine, mode){
   }
   // several stops on this course share a name ("Damascus" x3) — tag the mile whenever a name isn't unique.
   const dup = st => engine.rows.filter(r => r.station === st).length > 1;
-  const tag = (st, mi) => esc(st) + (dup(st) ? ` (mi ${mi})` : '');
+  const tag = (st, mi) => {
+    const row = engine.rows.find(r => r.station === st && Number(r.mile) === Number(mi));
+    return esc((row ? stopTag(engine.rows, row) : '') + st) + (dup(st) ? ` (mi ${mi})` : '');
+  };
   const lbl = mode === 'next' ? `Send him out at — leaving ${tag(leg.fromStation, leg.fromMile)}` : 'Run this now';
   const trend = engine.recentLegPct!=null ? `last leg ${engine.recentLegPct>0?'+':''}${engine.recentLegPct}% vs plan` : '';
   const bits = [];
@@ -1522,6 +1539,7 @@ function renderGoalSplits(rows){
       <div class="split-row">
         <div class="split-mile"><input class="mile-input" type="text" value="${r.mile}" onchange="editSplitMile('${r.id}', this.value)"><span>mi</span></div>
         <div class="split-mid">
+          ${stopNumber(engine.rows, r.id) ? `<div class="split-stop-no">Stop ${stopNumber(engine.rows, r.id)}</div>` : ''}
           <input class="station-input" type="text" value="${esc(r.station)}" onchange="editSplit('${r.id}','station',this.value)">
           ${r.sub ? `<div class="split-sub">${esc(r.sub.replace(/\s*·\s*\d{1,2}:\d{2}\s*\/\s*mi\s*$/,''))}</div>` : ''}
           <input type="text" class="split-note-input" placeholder="Notes for this stop..." value="${esc(r.note||'')}" onchange="editSplit('${r.id}','note', this.value)">
@@ -1608,14 +1626,14 @@ function renderRaceDaySplits(rows){
   const nextCheckpoint = engine.checkpointRooms.find(c => !anchor || c.mile > anchor.mile+0.01) || engine.checkpointRooms[engine.checkpointRooms.length-1] || null;
   const paceNeededLabel = !nextCheckpoint || nextCheckpoint.roomSec==null ? '—' : nextCheckpoint.roomSec<=0 ? `Over cutoff by ${fmtElapsed(-nextCheckpoint.roomSec)}` : `${fmtElapsed(nextCheckpoint.roomSec)} to spare`;
   const paceNeededClass = !nextCheckpoint || nextCheckpoint.roomSec==null ? '' : nextCheckpoint.roomSec<=0 ? 'pace-bad' : nextCheckpoint.roomSec<30*60 ? 'pace-bad' : 'pace-good';
-  const paceNeededSub = nextCheckpoint ? `Room Before mi ${nextCheckpoint.mile}${nextCheckpoint.station ? ' · '+esc(nextCheckpoint.station) : ''} Cutoff` : 'Cutoff Room';
+  const paceNeededSub = nextCheckpoint ? `Room Before ${esc(stopTag(engine.rows, engine.rows.find(r=>Number(r.mile)===Number(nextCheckpoint.mile))))}mi ${nextCheckpoint.mile}${nextCheckpoint.station ? ' · '+esc(nextCheckpoint.station) : ''} Cutoff` : 'Cutoff Room';
 
   const goalHrs = CONFIG.goal_finish_hours || 18;
   document.getElementById('splits-summary').innerHTML = `
     ${legPaceHeroHTML(engine, 'current')}
     <div class="ss-tile"><div class="ss-lbl">Live Status</div><div class="ss-val ${paceClass}">${paceLabel}</div></div>
     <div class="ss-tile"><div class="ss-lbl">${paceNeededSub}</div><div class="ss-val ${paceNeededClass}">${paceNeededLabel}</div></div>
-    <div class="ss-tile"><div class="ss-lbl">Last Check-in</div><div class="ss-val">${anchor ? esc(anchor.station) : '—'}</div></div>
+    <div class="ss-tile"><div class="ss-lbl">Last Check-in</div><div class="ss-val">${anchor ? esc(stopTag(engine.rows, anchor) + anchor.station) : '—'}</div></div>
     <div class="ss-tile"><div class="ss-lbl">Projected Finish (${goalHrs}h goal)</div><div class="ss-val">${proj.length ? fmtClock(proj[proj.length-1].projected_elapsed) : '—'}</div></div>
   `;
   document.getElementById('splits-list').innerHTML = proj.map((r,i)=>{
@@ -1626,7 +1644,7 @@ function renderRaceDaySplits(rows){
       <div class="rd-top">
         <div class="rd-mile"><b>${r.mile}</b><span>mi</span></div>
         <div class="rd-mid">
-          <div class="rd-station">${esc(r.station)}${anchor && r.id===anchor.id ? '<span class="rd-pos-badge current">Current</span>' : ''}${nextUp && r.id===nextUp.id ? '<span class="rd-pos-badge next">Next</span>' : ''}</div>
+          <div class="rd-station">${esc(stopTag(engine.rows, r))}${esc(r.station)}${anchor && r.id===anchor.id ? '<span class="rd-pos-badge current">Current</span>' : ''}${nextUp && r.id===nextUp.id ? '<span class="rd-pos-badge next">Next</span>' : ''}</div>
           ${r.address ? `<div class="rd-address" style="min-width:0"><i class="ti ti-map-pin"></i> <span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${addressLine(r.address)}</span></div>` : ''}
         </div>
         <div class="rd-status">
@@ -2307,7 +2325,7 @@ async function renderCourseLog(){
   getCrewQuestions().forEach(q => { qText[q.id] = q.text; });
   const entries = [];
   splits.forEach(s => {
-    const where = `${esc(s.station)} · mi ${s.mile}`;
+    const where = `${esc(stopTag(splits, s))}${esc(s.station)} · mi ${s.mile}`;
     const ans = s.question_answers || {};
     Object.entries(ans).forEach(([qid, a]) => {
       if(!a || a.value == null || a.value === '') return;

@@ -23,7 +23,7 @@
   const ricVersion = canChoose && wantsRic;
   window.HERMISCUS_LAYER = ricVersion;
   const herBase = new URL('original/', sharedBase);
-  const V = '?v=20260924-04';
+  const V = '?v=imp-20260924011153';
   // Added to whichever app is running, so her code stays exactly as she wrote it.
   const addVersionChoice = () => {
     const settings = document.getElementById('page-settings');

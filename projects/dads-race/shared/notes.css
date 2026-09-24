@@ -48,3 +48,6 @@
 html[data-theme="outside"] .crew-message{border-width:2px}
 html[data-theme="outside"] .message-time{color:#000 !important;font-style:normal}
 html[data-theme="outside"] .note-link{color:#000;border-color:#000}
+/* the stop a flagged message is for */
+.message-flag-stop{min-height:40px;max-width:100%;flex:1 1 170px;padding:0 10px;border:1px solid #D59B00;border-radius:var(--rp);background:#FFF1A8;color:#4B3700;font:inherit;font-size:12px;font-weight:bold}
+.message-flag-stop[hidden]{display:none}

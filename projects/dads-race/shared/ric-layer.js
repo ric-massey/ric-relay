@@ -16,6 +16,11 @@
  *  - Top-level `let`/`const` in her file are shared globals; never redeclare one here.
  */
 const HER = window.HERMISCUS_HER || {};
+// "Stop 3 · Mi 16 · Damascus" — every stop Ric's screens name carries its course number.
+function stopPlace(rows, stop){
+  const n = stop ? RIC_LOGIC.courseStopNumber(rows, stop.id) : null;
+  return stop ? `${n ? `Stop ${n} · ` : ''}Mi ${stop.mile} · ${stop.station}` : '';
+}
 
 const PERSONAL_COLOR_KEY = 'hermesco_personal_colors_v1';
 
@@ -295,7 +300,7 @@ async function renderRunningTotal(elId){
     sub = `Finished ${fmtLoggedClock(finishRow.actual_elapsed_seconds, finishRow.actual_logged_at)}`;
   } else if(live){
     seconds = (Date.now()-startedMs)/1000;
-    sub = lastActual ? `Last check-in: ${lastActual.station}, ${fmtLoggedClock(lastActual.actual_elapsed_seconds, lastActual.actual_logged_at)}` : 'Running — no check-ins logged yet';
+    sub = lastActual ? `Last check-in: ${stopLabelFor(rows, lastActual.id)}, ${fmtLoggedClock(lastActual.actual_elapsed_seconds, lastActual.actual_logged_at)}` : 'Running — no check-ins logged yet';
   } else {
     seconds = goalTotal;
     sub = "Race hasn't started yet — showing goal time";
@@ -355,7 +360,7 @@ function ricPaceDirectiveHTML(engine, fromStop){
     <i class="ti ti-${icon}"></i>
     <strong>${fmtPace(leg.target)}</strong>
     <span class="pace-command">${liveFromCheckIn?'LIVE · ':''}${command}</span>
-    <small>${esc(fromStop.station)} → ${esc(leg.to.station)} · ${leg.miles} mi${liveFromCheckIn?` · from mi ${engine.anchor.mile} check-in`:''}</small>
+    <small>${esc(stopLabelFor(engine.rows, fromStop.id) || fromStop.station)} → ${esc(stopLabelFor(engine.rows, leg.to.id) || leg.to.station)} · ${leg.miles} mi${liveFromCheckIn?` · from mi ${engine.anchor.mile} check-in`:''}</small>
     <small>${CONFIG.goal_finish_hours||18}hr pace: ${fmtPace(leg.plan)}</small>
   </div>`;
 }
@@ -444,7 +449,7 @@ function ricPacerMissionHTML(engine){
     const liveLeg = ricPaceLegData(engine,from);
     const pace = liveLeg && liveLeg.to.id===to.id ? liveLeg.target : to.goal_pace_sec_per_mi;
     return `<div class="pacer-leg">
-      <div class="pacer-leg-route">${esc(from.station)} → ${esc(to.station)}</div>
+      <div class="pacer-leg-route">${esc(stopLabelFor(engine.rows, from.id) || from.station)} → ${esc(stopLabelFor(engine.rows, to.id) || to.station)}</div>
       <div class="pacer-leg-pace">${fmtPace(pace)}</div>
       <div class="pacer-leg-meta">${miles} mi · ${legTerrain(engine.rows, from.mile, to.mile)} · ETA ${fmtClock(raceIsLive?to.projected_elapsed:to.goal_elapsed_sec)}</div>
     </div>`;
@@ -467,14 +472,14 @@ function ricPacerMissionHTML(engine){
     return `<div class="mission-card pacer-mission active-pacing">
       <div class="mission-head">
         <div class="mission-job"><i class="ti ti-run"></i> Pacing Now</div>
-        <div class="mission-place">${esc(currentTo.station)}</div>
+        <div class="mission-place">${esc(stopLabelFor(engine.rows, currentTo.id) || currentTo.station)}</div>
       </div>
       ${carryHTML?`<div style="padding:12px 12px 0">${carryHTML}</div>`:''}
       ${needsHeadlamps?`<div style="padding:12px 12px 0">${nightGearHTML(group.start.id,requiredHeadlamps)}</div>`:''}
       <div class="active-pace-grid">
         <div><span>Miles left</span><b>${milesRemaining}</b></div>
         <div><span>Live pace</span><b>${fmtPace(liveLeg?liveLeg.target:currentTo.goal_pace_sec_per_mi).replace('/mi','')}</b></div>
-        <div><span>Destination</span><b>${esc(currentTo.station)}</b></div>
+        <div><span>Destination</span><b>${esc(stopLabelFor(engine.rows, currentTo.id) || currentTo.station)}</b></div>
         <div><span>ETA</span><b>${fmtClock(currentTo.projected_elapsed)}</b></div>
       </div>
     </div>`;
@@ -490,7 +495,7 @@ function ricPacerMissionHTML(engine){
         <div class="mission-place">Stop ${courseStopNo||'—'} · Mi ${group.start.mile} → ${group.end.mile}</div>
         <div class="mission-eta">${startTime}</div>
       </div>
-      <div class="mission-route">${esc(group.start.station)} → ${esc(group.end.station)}</div>
+      <div class="mission-route">${esc(group.start.station)} → ${esc(stopLabelFor(engine.rows, group.end.id) || group.end.station)}</div>
       <div class="mission-stage ${activelyPacing||waitingAtStart?'live':''}"><i class="ti ti-${done?'circle-check':activelyPacing?'activity-heartbeat':waitingAtStart?'hourglass':'clock'}"></i> ${done?'Done':activelyPacing?'Pacing now':waitingAtStart?'Dad here':'Upcoming'}</div>
     </div>
     <div class="mission-body">
@@ -509,8 +514,8 @@ function ricPacerMissionHTML(engine){
       <div class="mission-section">
         <div class="mission-section-title"><i class="ti ti-route"></i> Pacing logistics</div>
         <div class="pace-logistics">
-          <div><span>Start</span><b>Mi ${group.start.mile} · ${esc(group.start.station)}</b>${group.start.address?addressBlock(group.start.address):''}<input type="text" class="split-note-input" placeholder="Start meeting details…" value="${esc(startMeet)}" onblur="saveSharedPlanText('ric_meet_${group.start.id}',this.value)"></div>
-          <div><span>Exit</span><b>Mi ${group.end.mile} · ${esc(group.end.station)}</b>${group.end.address?addressBlock(group.end.address):''}<input type="text" class="split-note-input" placeholder="Exit meeting details…" value="${esc(exitMeet)}" onblur="saveSharedPlanText('ric_meet_${group.end.id}',this.value)"></div>
+          <div><span>Start</span><b>${esc(stopPlace(engine.rows, group.start))}</b>${group.start.address?addressBlock(group.start.address):''}<input type="text" class="split-note-input" placeholder="Start meeting details…" value="${esc(startMeet)}" onblur="saveSharedPlanText('ric_meet_${group.start.id}',this.value)"></div>
+          <div><span>Exit</span><b>${esc(stopPlace(engine.rows, group.end))}</b>${group.end.address?addressBlock(group.end.address):''}<input type="text" class="split-note-input" placeholder="Exit meeting details…" value="${esc(exitMeet)}" onblur="saveSharedPlanText('ric_meet_${group.end.id}',this.value)"></div>
         </div>
         <input type="text" class="split-note-input" style="font-style:normal;color:var(--ink);width:100%;margin-top:9px" placeholder="Who retrieves ${esc(ME.name)} / pickup plan…" value="${esc(CONFIG[pickupKey]||'')}" onblur="saveSharedPlanText('${pickupKey}',this.value)">
       </div>
@@ -546,7 +551,7 @@ function ricOverviewHTML(engine, nextUp, mine){
   const eta = !dutyStop ? '—' : nextStopStats.here ? 'Here now' : fmtClock(nextStopStats.etaElapsed);
   const lastStopNumber = lastStop ? RIC_LOGIC.courseStopNumber(engine.rows,lastStop.id) : null;
   const lastStopText = lastStop
-    ? (isSydney ? (lastStopNumber ? `Stop ${lastStopNumber}` : 'Start') : `Mi ${lastStop.mile} · ${esc(lastStop.station)}`)
+    ? (isSydney ? (lastStopNumber ? `Stop ${lastStopNumber}` : 'Start') : esc(stopPlace(engine.rows, lastStop)))
     : 'Not started';
   let nextJobHTML = '';
   if(nextDuty){
@@ -555,7 +560,7 @@ function ricOverviewHTML(engine, nextUp, mine){
     const stopNo = RIC_LOGIC.courseStopNumber(engine.rows,jobStop.id);
     const jobLabel = nextDuty.kind==='crew' ? 'Crew Stop' : nextDuty.kind==='pace-active' ? 'Pacing Now' : 'Pace Dad';
     const place = nextDuty.kind==='pace-active' && group
-      ? `To mi ${group.end.mile} · ${group.end.station}`
+      ? `To ${stopPlace(engine.rows, group.end)}`
       : `Stop ${stopNo||'—'} · Mi ${dutyStop.mile} · ${dutyStop.station}`;
     const action = nextDuty.kind==='crew' ? "goPage('ric-stop')" : `openRicPaceAssignment('${group.start.id}')`;
     const stopSeconds = nextDuty.kind==='pace-active' ? null : RIC_LOGIC.stopRestSeconds(jobStop.mile);
@@ -619,7 +624,7 @@ function ricOverviewHTML(engine, nextUp, mine){
         <span class="ric-timeline-mile">${group.start.mile}<small>MI</small></span>
         <span class="ric-timeline-copy">
           <span class="ric-timeline-kind"><i class="ti ti-run"></i> Stop __STOP_NUMBER__ · Pace Dad</span>
-          <strong>${esc(group.start.station)} → ${esc(group.end.station)}</strong>
+          <strong>${esc(group.start.station)} → ${esc(stopLabelFor(engine.rows, group.end.id) || group.end.station)}</strong>
           <small>${meta}</small>
           __ASSIGNMENTS__
         </span>
@@ -707,7 +712,7 @@ async function renderRicBeforeRace(){
       .forEach(url=>videoUrls.add(url.replace(/[),.;]+$/,'')));
   });
   const videos = [...videoUrls];
-  const generalNotes = notes.filter(n=>{
+  const generalNotes = notes.map(n=>({...n, body: RIC_LOGIC.decodeSharedMessage(n.body).body})).filter(n=>{
     const body=String(n.body||'');
     return !/(?:youtu\.be|youtube\.com)/i.test(body) && !/^random needs\b/i.test(body.trim());
   });
@@ -1158,7 +1163,7 @@ function buildStopDetailHTML(s, splits){
     const nextStop = here>=0 ? er.slice(here+1).find(r=>!r.skipped) : null;
     if(nextStop && nextStop.goal_pace_sec_per_mi){
       outHTML = `<div class="sd-section-title">Send Him Out At</div>
-        <div class="sd-text" style="font-family:var(--font-mono);font-size:15px;font-weight:bold;color:var(--accent)">${fmtPace(nextStop.goal_pace_sec_per_mi)}<span style="font-weight:normal;font-size:12px;color:var(--ink-soft)"> &rarr; ${esc(nextStop.station)}</span></div>`;
+        <div class="sd-text" style="font-family:var(--font-mono);font-size:15px;font-weight:bold;color:var(--accent)">${fmtPace(nextStop.goal_pace_sec_per_mi)}<span style="font-weight:normal;font-size:12px;color:var(--ink-soft)"> &rarr; ${esc(stopLabelFor(er, nextStop.id) || nextStop.station)}</span></div>`;
     }
   }catch(e){}
   return `

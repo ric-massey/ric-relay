@@ -285,18 +285,22 @@
   // Keep shared-message flags compatible with the existing notes table. The marker lives in
   // the body, so the feature requires no Supabase migration and older notes remain valid.
   const SHARED_MESSAGE_FLAG = '[[HERMESCO_FLAGGED]]';
-  function encodeSharedMessage(body,flagged){
-    const clean=String(body==null?'':body).replace(/^\[\[HERMESCO_FLAGGED\]\]\s*/,'').trim();
-    return flagged ? `${SHARED_MESSAGE_FLAG}\n${clean}` : clean;
+  // A flagged message is stored as "[[HERMESCO_FLAGGED]]" on its own line, optionally followed
+  // by "[[FOR_STOP:<split id>]]" — the stop the flag is for — then the message itself.
+  const FOR_STOP = /^\[\[FOR_STOP:([^\]\s]+)\]\]\s*/;
+  function encodeSharedMessage(body,flagged,stopId){
+    const clean=decodeSharedMessage(body).body.trim();
+    if(!flagged) return clean;
+    return stopId ? `${SHARED_MESSAGE_FLAG}\n[[FOR_STOP:${stopId}]]\n${clean}` : `${SHARED_MESSAGE_FLAG}\n${clean}`;
   }
 
   function decodeSharedMessage(storedBody){
     const stored=String(storedBody==null?'':storedBody);
     const flagged=stored.startsWith(SHARED_MESSAGE_FLAG);
-    return {
-      body: flagged ? stored.slice(SHARED_MESSAGE_FLAG.length).replace(/^\s+/,'') : stored,
-      flagged,
-    };
+    let body = flagged ? stored.slice(SHARED_MESSAGE_FLAG.length).replace(/^\s+/,'') : stored;
+    const forStop = flagged ? body.match(FOR_STOP) : null;
+    if(forStop) body = body.slice(forStop[0].length);
+    return { body, flagged, stopId: forStop ? forStop[1] : null };
   }
 
   return {

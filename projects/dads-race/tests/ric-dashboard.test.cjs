@@ -426,10 +426,31 @@ test('Sydney Prep is a read-only four-section crew briefing in the requested ord
 
 test('shared messages preserve flag state without a database schema change', () => {
   const plain=logic.decodeSharedMessage(logic.encodeSharedMessage('Bring dry socks',false));
-  assert.deepEqual(plain,{body:'Bring dry socks',flagged:false});
+  assert.deepEqual(plain,{body:'Bring dry socks',flagged:false,stopId:null});
   const flagged=logic.decodeSharedMessage(logic.encodeSharedMessage('Meet on trail side',true));
-  assert.deepEqual(flagged,{body:'Meet on trail side',flagged:true});
+  assert.deepEqual(flagged,{body:'Meet on trail side',flagged:true,stopId:null});
   assert.equal(logic.encodeSharedMessage(flagged.body,false),'Meet on trail side');
+});
+
+test('a flagged message remembers which stop it is for, and older flags still read', () => {
+  const stored=logic.encodeSharedMessage('Blue shoes in the bin',true,'stop-7');
+  assert.deepEqual(logic.decodeSharedMessage(stored),{body:'Blue shoes in the bin',flagged:true,stopId:'stop-7'});
+  // re-encoding a stored message never stacks markers
+  assert.equal(logic.encodeSharedMessage(stored,true,'stop-8'),'[[HERMESCO_FLAGGED]]\n[[FOR_STOP:stop-8]]\nBlue shoes in the bin');
+  assert.equal(logic.encodeSharedMessage(stored,false),'Blue shoes in the bin');
+  assert.deepEqual(logic.decodeSharedMessage('[[HERMESCO_FLAGGED]]\nold flag'),{body:'old flag',flagged:true,stopId:null});
+});
+
+test('every screen that names a stop gives its number', () => {
+  const her = fs.readFileSync(path.join(__dirname,'../shared/original/app.js'),'utf8');
+  assert.match(her, /function stopNumber\(rows, id\)/);
+  for (const spot of ['nsc-station','mystop-station','rd-station','split-stop-no','sd-title']) {
+    const line = her.split('\n').find(l=>l.includes(spot) && /stopTag|stopNumber/.test(l));
+    assert.ok(line, `${spot} shows the stop number`);
+  }
+  const notes = fs.readFileSync(path.join(__dirname,'../shared/notes-layer.js'),'utf8');
+  assert.match(notes, /For \$\{esc\(e\.forWhere\)\}/, 'a flagged course note says which stop it is for');
+  assert.match(notes, /FOR \$\{esc\(stopLabelFor\(stops,decoded\.stopId\)\.toUpperCase\(\)\)\}/, 'a flagged message says which stop it is for');
 });
 
 test('Notes is a sender-labelled message feed with yellow flags and red admin messages', () => {
