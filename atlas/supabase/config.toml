@@ -1,9 +1,14 @@
 # ATLAS project config.
 #
 # WARNING: `supabase config push` overwrites the LIVE project's auth settings
-# with everything in this file. The dangerous default is enable_signup — this
-# app is invite-only, and pushing a file with signup enabled reopens the front
-# door to anyone who finds the URL. It is set false below; keep it that way.
+# with everything in this file. Push it only on purpose.
+#
+# Sign-up is ON since 2026-09-23, deliberately. This project is the one account
+# for the whole site (ATLAS, HERMISCUS, later pages): anybody may make an
+# account, and a new account opens NOTHING until Ric approves it at /account/.
+# The lock is has_page_access() in the database (migration site_accounts), not
+# the sign-up switch. Do not "fix" enable_signup back to false without also
+# taking away the request form at /account/.
 #
 # SMTP credentials are deliberately NOT in here. They live in the dashboard so
 # an API key never lands in the repo — which also means a careless push can
@@ -171,7 +176,7 @@ site_url = "https://ricmassey.com/atlas/"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://ricmassey.com/atlas/", "http://localhost:8912/atlas/"]
+additional_redirect_urls = ["https://ricmassey.com/atlas/", "http://localhost:8912/atlas/", "https://ricmassey.com/account/", "http://localhost:8912/account/"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -184,7 +189,8 @@ enable_refresh_token_rotation = true
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
-enable_signup = false
+# ON: accounts arrive as requests Ric approves (see the warning at the top).
+enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
@@ -231,7 +237,7 @@ web3 = 30
 [auth.email]
 # NOTE: despite the wording, this is the email provider's master switch — setting
 # it false returns "Email logins are disabled" and nobody can sign in at all.
-# Registration is blocked by [auth] enable_signup = false above, not by this.
+# Registration is governed by [auth] enable_signup above, not by this.
 enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.

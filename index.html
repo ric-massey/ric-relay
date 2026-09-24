@@ -746,6 +746,22 @@ type Sydney's cat's name for a surprise!</div>
         "→ reviews land in /log · the numbers live in /apex",
       sudo: () => "nice try. this terminal answers to ric only.",
       unlock: () => "crew authentication required.\nif you are the brother or the friend: you know who to ask.",
+      // The crew app for Dad's race. Unlisted on purpose; the lock is the login
+      // and the database behind it, not this command being hard to guess.
+      hermiscus: () => {
+        setTimeout(() => (location.href = "projects/dads-race/login.html"), 650);
+        return "HERMISCUS · private channel · yeti crew\nhandshake required. crew only.\nopening the door ...";
+      },
+      // One account for the private corners of the site (ATLAS, HERMISCUS):
+      // sign in, ask Ric for access, or — for Ric — approve people.
+      login: () => {
+        setTimeout(() => (location.href = "account/"), 450);
+        return "opening account ...\none sign-in for the private corners. new here? ask Ric for access.";
+      },
+      account: () => {
+        setTimeout(() => (location.href = "account/"), 450);
+        return "opening account ...";
+      },
       coffee: () => "brewing... ☕ dispensed. carry on.",
       exit: () => "there is no exit. there is only the terminal.",
       lsd: () => {

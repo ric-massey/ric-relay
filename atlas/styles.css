@@ -340,6 +340,9 @@ button { cursor: pointer; border: none; background: none; }
 .icon-btn:active { background: var(--panel-2); transform: scale(0.92); }
 @media (hover: hover) { .icon-btn:hover { background: var(--panel-2); } }
 
+/* The waiting screen's "your account" is a link dressed as the primary button. */
+a.btn-primary { display: grid; place-items: center; text-decoration: none; }
+
 .linkish {
   color: var(--ink-dim); font-weight: 600; font-size: var(--t-sm);
   text-decoration: underline; text-underline-offset: 3px;

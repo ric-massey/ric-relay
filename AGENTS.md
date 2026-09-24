@@ -192,6 +192,14 @@ everywhere — the navs must agree with each other *and* with the front door.
   hit yet, and no way off it — the ramps are the next thing") describes a version of
   OFFRAMP that hasn't existed for months. Moving a project means removing the old card,
   not just adding the new one.
+- **`projects/dads-race/` (HERMISCUS) is the one project with no room.** It is the
+  crew app for Dad's race, mostly built by Ric's sister, and the only way in is the
+  undocumented `hermiscus` terminal command — like the boards, don't promote it. **The
+  website only ever runs its demo**: the real Supabase key lives in the git-ignored
+  `shared/config.local.js`, loaded on localhost only, and with no key the app runs on the
+  made-up `shared/demo-data.js`. Never commit the key, the project address, or real race
+  data (lodging, addresses, notes) — its `tests/auth-security.test.cjs` goes red if you do.
+  Read its `README.md` first.
 - **Every standalone project HTML page needs a visible route back to the terminal.** Use
   `projects/relay-return.js` with the correct relative `src` and `data-home` paths so the
   fixed “← Ric's Terminal” control works from desktop and mobile. The optional `data-egg`
@@ -618,6 +626,16 @@ and ATLAS have all shipped since. If you ship something family would care about,
 at the top of that list. `orrin.html` is self-updating — leave its GitHub data logic
 alone unless fixing a bug. `systems.html` and `updates.html` are legacy redirects, not
 rooms.
+
+**One account for the whole site lives in ATLAS's Supabase project.** Since
+2026-09-23 anybody may sign up at `account/` (terminal: `login`), the account
+arrives as a request, and Ric approves it and ticks which pages it opens —
+ATLAS and HERMISCUS today. The lock is `has_page_access()` in the database;
+`assets/site-gate.js` is what a page asks. Read "The door" in `atlas/README.md`
+before locking another page: a gate cannot hide content that is committed to
+this public repo, only content kept in the database behind that function.
+`account/` loads supabase-js from unpkg, as ATLAS does; that is the same
+exception, not a new one.
 
 **ATLAS (`atlas/`) plays by its own rules and has its own README.** It is the one part
 of this repo that is an application rather than a page: Supabase, a real login,

@@ -43,6 +43,8 @@ const SUITES = [
   ["orrin's server", ['projects/orrin/server/test.mjs']],
   ['the two climbing parsers agree', ['projects/climbing/test/parse-parity.js']],
   ['atlas', glob('atlas/test', '.test.mjs')],
+  /* auth-security is also what keeps the real database key off the website. */
+  ['hermiscus (dads-race)', glob('projects/dads-race/tests', '.test.cjs')],
   ['kondrite', glob('projects/kondrite/test', '.js')
     /* browser.js is the Playwright one; package.json is not a test. */
     .filter(f => !/browser\.js$/.test(f)), 'slow'],

@@ -71,17 +71,51 @@ RESEND_API_KEY=re_... supabase config push
 Push without it and SMTP is cleared — no error, just invitations that stop
 arriving.
 
-### 3. Lock the door
+### 3. The door: sign-up is open, and your approval is the lock
+
+Since 2026-09-23 this project is **one account for the whole site**: ATLAS,
+HERMISCUS, and any page added later. Anybody may make an account at
+`ricmassey.com/account/` (or type `login` at the terminal). A new account opens
+**nothing** until you approve it there and tick which pages it gets.
 
 Authentication → Sign In / Providers → Email:
 
 | Setting | Value | Why |
 |---|---|---|
-| Allow new users to sign up | **OFF** | Invite-only. Nobody can register, ever. |
-| Confirm email | OFF | Invites confirm the address by themselves. |
+| Allow new users to sign up | **ON** | Accounts arrive as requests. The lock is below, not this switch. |
+| Confirm email | OFF | No SMTP yet (step 2). With it on, strangers' confirmation mail goes nowhere. |
 
-Set **Site URL** and **Redirect URLs** to wherever ATLAS is actually served, or
-the links in invite and reset emails will point at the wrong place.
+Site URL and Redirect URLs must include both `https://ricmassey.com/atlas/` and
+`https://ricmassey.com/account/`.
+
+**How the lock works** (migration `20260923200000_site_accounts.sql`):
+
+- `site_pages` lists the pages; `site_access` says who may open which;
+  `access_requests` holds each account's request and your decision;
+  `site_admins` is you.
+- `has_page_access('atlas')` is a **restrictive** policy on every ATLAS table and
+  on the photo and avatar buckets. Restrictive policies are ANDed with the
+  permissive ones already there, so every older rule still applies — only now to
+  somebody you let in. The three DEFINER functions that read past policies
+  (`lookup_username`, `people_i_can_draw`, `set_username`) check it themselves.
+- An account you **invite** from the dashboard is approved for ATLAS on the spot,
+  as before. An account that signs itself up waits.
+- `test/site-accounts.test.mjs` runs all of this against a real local database:
+  `supabase start && supabase db reset --local`, then run the file. Without the
+  local stack it skips. With it, a stranger is shown to get nothing, asking,
+  approving, per-page access and denying are all walked through, and removing
+  one lock makes it fail.
+
+**Adding a page later** is one row: `insert into site_pages (key, label, blurb,
+path, sort) values (...)`, then the page asks `SiteGate.check('<key>')`
+(`assets/site-gate.js`). Remember what that can and cannot do: it decides what a
+page *shows*. A page whose content is committed to this public repo is only
+curtained. Real privacy needs the content in this database, behind
+`has_page_access('<key>')`.
+
+**If the admin panel does not appear for you**, the migration looked for the
+username `rmbuster82` and did not find it. In the SQL editor:
+`insert into site_admins select id from auth.users where email = '<your email>';`
 
 ### 4. Invite the others
 

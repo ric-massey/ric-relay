@@ -141,8 +141,24 @@
 
     <button id="login-btn" class="btn-primary" type="submit">sign in</button>
     <button id="forgot" class="linkish" type="button">forgot my password</button>
+    <a class="linkish" href="../account/#request">no account? ask Ric for one</a>
     <p id="login-error" class="gate-error" role="alert" hidden></p>
   </form>
+</div>
+
+<!-- ── signed in, not let in yet ─────────────────────────────────────────── -->
+<div id="waiting" class="gate" hidden>
+  <div class="gate-card">
+    <div class="gate-mark">
+      <span class="gate-badge"><svg class="icon"><use href="#i-lock"/></svg></span>
+      <div class="mark">ATLAS</div>
+      <p class="gate-sub" id="waiting-sub">waiting for Ric</p>
+    </div>
+    <p class="gate-note" id="waiting-note">Your account is made. Ric decides who sees the map;
+      once he lets you in, this page opens straight onto it.</p>
+    <a class="btn-primary" href="../account/">your account</a>
+    <button id="waiting-out" class="linkish" type="button">sign out</button>
+  </div>
 </div>
 
 <!-- ── first sign-in: pick your own password ─────────────────────────────── -->

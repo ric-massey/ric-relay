@@ -14,6 +14,8 @@ completion.
 | `vod` | Pretends to retrieve the Apex VOD archive, then points at the real numbers. (`apex` itself is a listed project shortcut now — it opens the Apex banner.) |
 | `sudo` | Politely denies administrative access. |
 | `unlock` | Asks for crew authentication without revealing the private map. |
+| `hermiscus` | Opens the crew sign-in for Dad's race (`projects/dads-race/login.html`). The lock is the login and the database rules behind it, not the command being secret. |
+| `login` / `account` | Opens the site account page (`account/`): one sign-in for ATLAS and HERMISCUS, a form to ask Ric for access, and Ric's approval panel. |
 | `coffee` | Dispenses one terminal-grade coffee. |
 | `exit` | Explains the architectural problem with leaving the Terminal. |
 | `404` | Deliberately loses the signal and opens a special version of the Terminal's 404 page. |

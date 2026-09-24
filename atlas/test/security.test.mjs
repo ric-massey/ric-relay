@@ -86,7 +86,13 @@ test('the DEFINER functions that take an argument justify it', () => {
   // at somebody else. Anything DEFINER that DOES take an argument is on a short
   // list that has been thought about one at a time.
   const argued = [...defined].filter(([, f]) => f.definer && f.args.trim() && !/\btrigger\b/.test(f.head));
-  assert.deepEqual(argued.map(([n]) => n).sort(), ['lookup_username', 'set_username'],
+  //   has_page_access(page) — the argument is a page, not a person; the answer
+  //     is still only about the caller.
+  //   request_access(...)    — writes the caller's own request row, nobody else's.
+  //   admin_set_access(target, ...) — the one that points at somebody else, and
+  //     it refuses anybody who is not in site_admins before it reads a thing.
+  assert.deepEqual(argued.map(([n]) => n).sort(),
+    ['admin_set_access', 'has_page_access', 'lookup_username', 'request_access', 'set_username'],
     'a SECURITY DEFINER function now takes an argument that nobody has argued for — see docs/audiences.md');
 });
 

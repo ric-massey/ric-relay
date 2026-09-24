@@ -9,7 +9,7 @@
  *      data would be rude.
  */
 
-const SHELL_VERSION = 'atlas-shell-v41';
+const SHELL_VERSION = 'atlas-shell-v42';
 const TILE_CACHE    = 'atlas-tiles-v1';
 
 const SHELL = [
@@ -82,6 +82,8 @@ self.addEventListener('fetch', (event) => {
   // Never cache Supabase. Stale pins are worse than no pins, and the app keeps
   // its own copy in IndexedDB for when there's no signal.
   if (url.hostname.endsWith('.supabase.co')) return;
+  // ...nor the local Supabase stack a developer points config.js at.
+  if (url.hostname === '127.0.0.1' && url.port === '54321') return;
 
   // An ArcGIS /query is not a tile — it is an answer about one point. gis.blm.gov
   // is in TILE_HOSTS, so without this the ownership lookups would be filed in the

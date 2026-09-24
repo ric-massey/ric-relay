@@ -538,6 +538,31 @@ async function start() {
     }
   }
 
+  // Signed in is not let in. Since accounts became open to anybody (2026-09-23)
+  // a new one waits for Ric at /account/. The database refuses such an account
+  // every ATLAS row regardless; this only saves them a map full of nothing.
+  // Offline there is no asking, and anybody with a map cached was let in once.
+  if (online()) {
+    const [{ data: allowed, error: accessError }, { data: request }] = await Promise.all([
+      db.rpc('has_page_access', { page: 'atlas' }),
+      db.from('access_requests').select('status').eq('user_id', session.user.id).maybeSingle(),
+    ]);
+    // An error means the question could not be asked (say, the function is not
+    // live yet), not that the answer is no — fall through and let RLS decide.
+    if (!accessError && allowed === false) {
+      const denied = request && request.status === 'denied';
+      $('waiting-sub').textContent = denied ? 'no access' : 'waiting for Ric';
+      $('waiting-note').textContent = denied
+        ? 'This account has not been given access to the map.'
+        : "Your account is made. Ric decides who sees the map; once he lets you in, this page opens straight onto it.";
+      $('gate').hidden = true;
+      $('app').hidden = true;
+      $('waiting').hidden = false;
+      return;
+    }
+  }
+  $('waiting').hidden = true;
+
   // No row and no signal — something has to go on the byline until the real one
   // arrives. Not the email: a username is what other people see and type, and
   // the front of your address is nobody's business but yours. Same string the
@@ -4633,6 +4658,7 @@ function setTheme(theme) {
 $('login-form').addEventListener('submit', handleLogin);
 $('newpass-form').addEventListener('submit', setNewPassword);
 $('forgot').addEventListener('click', forgotPassword);
+$('waiting-out').addEventListener('click', async () => { await db.auth.signOut(); location.reload(); });
 // Tapping your own name used to sign you out — a destructive action on the
 // smallest target in the app, behind a tooltip nobody reads on a phone. It
 // opens settings now, where signing out is a labelled button.
