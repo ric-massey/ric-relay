@@ -861,3 +861,12 @@ html[data-theme="outside"] .wk-cal-dayhead.today{background:#FFF;border:2px soli
 .toast.error{background:#4A1414;border-color:#E5484D;color:#FFD9D9;font-weight:bold}
 .toast-undo{background:var(--accent);color:var(--on-grad-text);border:none;border-radius:var(--rp);padding:5px 14px;font-size:12px;font-weight:bold;cursor:pointer;font-family:var(--font);flex-shrink:0}
 .rd-undo-link{background:none;border:1px solid var(--warn);color:var(--warn);border-radius:var(--rp);padding:5px 12px;font-size:12px;font-weight:bold;cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:4px}
+
+/* "More" in Ric's bottom bar: Victoria's pages his bar doesn't carry, read off her nav. */
+.ric-more-menu{position:absolute;right:8px;bottom:calc(100% + 8px);min-width:190px;padding:6px;display:grid;gap:2px;
+  background:var(--card);border:1px solid var(--border);border-radius:var(--rs);box-shadow:0 12px 30px rgba(0,0,0,.35);z-index:60}
+.ric-more-item{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:0;border-radius:10px;
+  background:none;color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer}
+.ric-more-item:hover,.ric-more-item:focus-visible{background:var(--grad-soft)}
+.ric-more-item i{font-size:18px;color:var(--accent)}
+.ric-more-empty{padding:12px;color:var(--ink-soft);font-size:13px}

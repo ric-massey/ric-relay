@@ -6,6 +6,11 @@ const path = require('node:path');
 const logic = require('../shared/ric-dashboard-logic.js');
 const raceStartMs = new Date(2026,9,9,7,0,0).getTime();
 
+
+// Ric and Sydney run Victoria's app with Ric's layer on top: read the two together.
+const ricApp = () => ['original/app.js','ric-layer.js']
+  .map(f=>fs.readFileSync(path.join(__dirname,'../shared',f),'utf8')).join('\n');
+
 test('race-night boundaries use the Abingdon sunset and sunrise window', () => {
   assert.equal(logic.isDarkAtElapsed(raceStartMs,0),true,'7:00 AM is before sunrise');
   assert.equal(logic.isDarkAtElapsed(raceStartMs,30*60),false,'7:30 AM is daylight');
@@ -76,7 +81,7 @@ test('Overview switches between assigned stops and the full course', () => {
 });
 
 test('Overview distinguishes Ric lead jobs from broader stop assignments', () => {
-  const app = fs.readFileSync(path.join(__dirname,'../shared/app.js'),'utf8');
+  const app = ricApp();
   assert.match(app,/>Your jobs<\/button>/);
   assert.match(app,/>All stops<\/button>/);
 });
@@ -300,34 +305,34 @@ test('an old walkthrough answer cannot hide a live race-day note', () => {
   assert.deepEqual(row.question_answers,{});
 });
 
-test('Ric shell keeps the five intended tabs with Prep last', () => {
-  const shell = fs.readFileSync(path.join(__dirname,'../shared/app-shell.html'),'utf8');
+test('Ric shell keeps the five intended tabs with Prep last, then More', () => {
+  const shell = ricApp();
   const labels = [...shell.matchAll(/<button class="nav-btn ric-nav-btn[^>]*>.*?<\/button>/g)]
     .map(match=>match[0].replace(/<[^>]+>/g,'').trim());
-  assert.deepEqual(labels,['Overview','Crew Stop','Pace Dad','Notes','Prep']);
+  assert.deepEqual(labels,['Overview','Crew Stop','Pace Dad','Notes','Prep','More']);
 });
 
 test('Ric notes provide all three required filters', () => {
-  const shell = fs.readFileSync(path.join(__dirname,'../shared/app-shell.html'),'utf8');
+  const shell = ricApp();
   assert.match(shell,/data-ric-note-filter="flagged"/);
   assert.match(shell,/data-ric-note-filter="for-ric"/);
   assert.match(shell,/data-ric-note-filter="all"/);
 });
 
 test('general note actions are limited to the author or a manager', () => {
-  const app = fs.readFileSync(path.join(__dirname,'../shared/app.js'),'utf8');
+  const app = ricApp();
   assert.match(app,/isManager\(\) \|\| n\.author===ME\.name/);
   assert.match(app,/Only the author or a manager can delete this note/);
 });
 
 test('Crew Stop questions stay answerable before Dad arrives', () => {
-  const app = fs.readFileSync(path.join(__dirname,'../shared/app.js'),'utf8');
+  const app = ricApp();
   assert.match(app,/questions\.map\(q=>buildQuestionAnswerHTML\(nextUp/);
   assert.doesNotMatch(app,/arrived\s*\?\s*questions\.map\(q=>buildQuestionAnswerHTML\(nextUp/);
 });
 
 test('Crew Stop shows the logged departure time instead of Just left', () => {
-  const app = fs.readFileSync(path.join(__dirname,'../shared/app.js'),'utf8');
+  const app = ricApp();
   assert.match(app,/Left at \$\{fmtLoggedClock\(nextUp\.departed_elapsed_seconds,nextUp\.departed_logged_at\)\}/);
 });
 
@@ -356,7 +361,7 @@ test('offline config uses the newest queued value', () => {
 });
 
 test('Ric usability upgrades include offline queueing, tappable note links, and a prominent arrival deadline', () => {
-  const app = ['data.js','app.js'].map(f=>fs.readFileSync(path.join(__dirname,'../shared',f),'utf8')).join('\n');
+  const app = fs.readFileSync(path.join(__dirname,'../shared/data.js'),'utf8') + '\n' + ricApp();
   assert.match(app,/hermesco_offline_write_queue_v1/);
   assert.match(app,/flushOfflineQueue/);
   assert.match(app,/linkifyNoteText\(decoded\.body\)/);
@@ -364,7 +369,7 @@ test('Ric usability upgrades include offline queueing, tappable note links, and 
 });
 
 test('tab changes start at the top and arrival reveals the running countdown', () => {
-  const app = fs.readFileSync(path.join(__dirname,'../shared/app.js'),'utf8');
+  const app = ricApp();
   assert.match(app,/window\.scrollTo\(\{top:0,left:0,behavior:'auto'\}\)/);
   assert.match(app,/function revealStopCountdown\(id\)/);
   assert.match(app,/timer\.scrollIntoView\(\{behavior:'smooth',block:'center'\}\)/);
@@ -372,7 +377,7 @@ test('tab changes start at the top and arrival reveals the running countdown', (
 });
 
 test('rehearsal start uses its own race clock without changing the official schedule', () => {
-  const app = fs.readFileSync(path.join(__dirname,'../shared/app.js'),'utf8');
+  const app = ricApp();
   assert.match(app,/function simulationStartDateTime\(\)/);
   assert.match(app,/function raceSessionStartDateTime\(\)/);
   assert.match(app,/CONFIG\.simulation_started_at/);
@@ -381,7 +386,7 @@ test('rehearsal start uses its own race clock without changing the official sche
 });
 
 test('Ric notes keep shared-stop entries, flags, filters, links, and author permissions', () => {
-  const app = fs.readFileSync(path.join(__dirname,'../shared/app.js'),'utf8');
+  const app = ricApp();
   assert.match(app,/splits\.filter\(s=>RIC_LOGIC\.isAssignedToStop\(s,ME\.id\)\)/);
   assert.match(app,/entries\.find\(e=>e\.flagged && e\.forRic\)/);
   assert.match(app,/RIC_NOTES_FILTER==='flagged'/);
@@ -391,7 +396,7 @@ test('Ric notes keep shared-stop entries, flags, filters, links, and author perm
 });
 
 test('Sydney overview is compact and Enter saves a shared station note', () => {
-  const app = fs.readFileSync(path.join(__dirname,'../shared/app.js'),'utf8');
+  const app = ricApp();
   const css = fs.readFileSync(path.join(__dirname,'../shared/styles.css'),'utf8');
   assert.match(app,/isSydney \? \(lastStopNumber \? `Stop \$\{lastStopNumber\}` : 'Start'\)/);
   assert.match(app,/isSydney\?'':`<div><span>Miles to next stop/);
@@ -401,14 +406,14 @@ test('Sydney overview is compact and Enter saves a shared station note', () => {
 });
 
 test('Sydney Meet Here is map-only and her personal notes are flagged handoffs for her stops', () => {
-  const app = fs.readFileSync(path.join(__dirname,'../shared/app.js'),'utf8');
+  const app = ricApp();
   assert.match(app,/\$\{isSydney\?'':`<textarea class="split-note-input meet-instructions"/);
   assert.match(app,/isSydney\s*\? RIC_LOGIC\.flaggedNoteTargetsPerson\(splits,s,ME\.id\)/);
   assert.match(app,/forRic:isSydney\?false:/);
 });
 
 test('Sydney Prep is a read-only four-section crew briefing in the requested order', () => {
-  const app = fs.readFileSync(path.join(__dirname,'../shared/app.js'),'utf8');
+  const app = ricApp();
   const start=app.indexOf('if(isSydney){',app.indexOf('async function renderRicBeforeRace'));
   const end=app.indexOf('\n    return;\n  }',start);
   const branch=app.slice(start,end);
@@ -428,8 +433,8 @@ test('shared messages preserve flag state without a database schema change', () 
 });
 
 test('Notes is a sender-labelled message feed with yellow flags and red admin messages', () => {
-  const shell = fs.readFileSync(path.join(__dirname,'../shared/app-shell.html'),'utf8');
-  const app = fs.readFileSync(path.join(__dirname,'../shared/app.js'),'utf8');
+  const app = ricApp();
+  const shell = app.slice(app.indexOf('function applyRicShell('));
   const css = fs.readFileSync(path.join(__dirname,'../shared/styles.css'),'utf8');
   assert.ok(shell.indexOf('notes-general-wrap') < shell.indexOf('notes-course-title'),'shared messages come before race updates');
   assert.match(shell,/id="note-flag-input"/);
@@ -441,4 +446,29 @@ test('Notes is a sender-labelled message feed with yellow flags and red admin me
   assert.match(css,/\.crew-message\.admin\{background:#FFE2E2/);
   assert.match(css,/\.clog-item\.flagged\{background:#FFF1A8/);
   assert.match(css,/\.clog-item\.admin\{background:#FFE2E2/);
+});
+
+// The layer runs on top of her file in the same global scope. Redeclaring one of her
+// top-level let/const names there is a SyntaxError that would stop Ric's app loading.
+test('Ric layer never redeclares one of her top-level variables', () => {
+  const read = f=>fs.readFileSync(path.join(__dirname,'../shared',f),'utf8');
+  const names = src=>new Set([...src.matchAll(/^(?:let|const|var)\s+(\w+)/gm)].map(m=>m[1]));
+  const hers = new Set([...names(read('original/app.js')), ...names(read('data.js')), ...names(read('ric-dashboard-logic.js'))]);
+  const clash = [...names(read('ric-layer.js'))].filter(n=>hers.has(n));
+  assert.deepEqual(clash, []);
+});
+
+test('her app loads first, waits for the layer, and hands unknown pages back to her', () => {
+  const read = f=>fs.readFileSync(path.join(__dirname,'../shared',f),'utf8');
+  const boot = read('bootstrap.js'), layer = read('ric-layer.js');
+  assert.match(boot, /fetch\(new URL\('app-shell\.html' \+ V, herBase\)\)/);
+  assert.match(boot, /window\.HermiscusBeforeStart = new Promise/);
+  assert.match(boot, /HERMISCUS_HER = Object\.freeze\(\{\s*goPage: window\.goPage/);
+  assert.match(read('original/app.js'), /if\(window\.HermiscusBeforeStart\) await window\.HermiscusBeforeStart;/);
+  assert.match(fs.readFileSync(path.join(__dirname,'../scripts/import-original.py'),'utf8'), /await window\.HermiscusBeforeStart/);
+  assert.match(layer, /if\(!mine\)\{\s*HER\.goPage\(name\)/);
+  assert.match(layer, /await HER\.loadAppData\(\)/);
+  assert.match(layer, /await HER\.liveSyncTick\(\)/);
+  // "More" is built from her nav each time, so a page she adds shows up without a change here.
+  assert.match(layer, /querySelectorAll\('\.standard-nav-btn\[data-page\]'\)/);
 });

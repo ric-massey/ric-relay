@@ -6,9 +6,10 @@
   if (!window.HermiscusAuth || !(await window.HermiscusAuth.requireSession())) return;
   if (!window.HermiscusAuth.ensureProfileRoute()) return;
 
-  // Ric and Sydney run Ric's version of the app. Everyone else, and the crew directory,
-  // run the original crew app exactly as it was written (shared/original/, brought in by
-  // scripts/import-original.py). Both sit on the same data layer, shared/data.js.
+  // Everyone runs Victoria's app (shared/original/, imported unchanged from her index.html by
+  // scripts/import-original.py). For Ric and Sydney, Ric's layer (shared/ric-layer.js) then
+  // loads ON TOP of it: her screens, styles and code stay the base, so anything she adds
+  // reaches them too. Both sit on one data layer, shared/data.js.
   const RIC_VERSION = ['Ric', 'Sydney'];
   const person = window.HermiscusAuth.profileName();
   // Either of them can tick "use Victoria's version" in Settings and get her app, the same as
@@ -18,8 +19,8 @@
   let wantsOriginal = false;
   try { wantsOriginal = canChoose && localStorage.getItem(originalKey) === '1'; } catch (_) {}
   const ricVersion = canChoose && !wantsOriginal;
-  const appBase = ricVersion ? sharedBase : new URL('original/', sharedBase);
-  const V = '?v=20260924-02';
+  const herBase = new URL('original/', sharedBase);
+  const V = '?v=20260924-03';
   // Added to whichever app is running, so her code stays exactly as she wrote it.
   const addVersionChoice = () => {
     const settings = document.getElementById('page-settings');
@@ -47,19 +48,28 @@
     hint.textContent = 'Remembered on this device. Untick to come back.';
     settings.append(title, box, hint);
   };
-  if (!ricVersion) {
-    const sheet = document.querySelector('link[rel="stylesheet"][href*="shared/styles.css"]');
-    if (sheet) sheet.href = new URL('styles.css' + V, appBase).href;
+  // Her stylesheet always; Ric's after it for Ric and Sydney, so his rules win where they differ.
+  const sheet = document.querySelector('link[rel="stylesheet"][href*="shared/styles.css"]');
+  if (sheet) {
+    sheet.href = new URL('styles.css' + V, herBase).href;
+    if (ricVersion) {
+      const ric = document.createElement('link');
+      ric.rel = 'stylesheet';
+      ric.href = new URL('styles.css' + V, sharedBase).href;
+      sheet.after(ric);
+    }
   }
+  // Her start-up waits on this, so Ric's layer is in place before anything is drawn.
+  let release = () => {};
+  if (ricVersion) window.HermiscusBeforeStart = new Promise(resolve => { release = resolve; });
 
-  fetch(new URL('app-shell.html' + V, appBase))
+  fetch(new URL('app-shell.html' + V, herBase))
     .then(response => {
       if (!response.ok) throw new Error(`Unable to load the app shell (${response.status})`);
       return response.text();
     })
     .then(markup => {
       mount.innerHTML = markup;
-      addVersionChoice();
       const showBootError = () => {
         mount.innerHTML = '<main class="boot-error"><h1>Could not start the app</h1><p>Reload the page or check the local server.</p></main>';
       };
@@ -80,8 +90,18 @@
         document.body.appendChild(script);
       };
       const shared = name => new URL(name + V, sharedBase);
+      const ready = () => { addVersionChoice(); release(); };
+      // Her functions are captured the moment her file has run, before Ric's layer replaces
+      // any of them, so the layer can hand her pages back to her (HER.goPage and friends).
+      const layer = () => {
+        if (!ricVersion) return ready();
+        window.HERMISCUS_HER = Object.freeze({
+          goPage: window.goPage, loadAppData: window.loadAppData, liveSyncTick: window.liveSyncTick,
+        });
+        loadScript(shared('ric-layer.js'), ready);
+      };
       const start = () => loadScript(shared('ric-dashboard-logic.js'), () =>
-        loadScript(shared('data.js'), () => loadScript(new URL('app.js' + V, appBase))));
+        loadScript(shared('data.js'), () => loadScript(new URL('app.js' + V, herBase), layer)));
       if (window.HermiscusAuth.demo) loadScript(shared('demo-data.js'), start);
       else start();
     })

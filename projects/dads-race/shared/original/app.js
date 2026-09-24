@@ -2582,6 +2582,8 @@ setInterval(()=>{
 }, 1000);
 (async function init(){
   document.documentElement.setAttribute('data-theme', THEME_MODE);
+  // Ric's layer (Ric and Sydney only) loads after this file; wait for it before drawing.
+  if(window.HermiscusBeforeStart) await window.HermiscusBeforeStart;
   const requestedProfile = window.HermiscusAuth.profileName();
   if(requestedProfile){
     PROFILES = await dbList('profiles', 'created_at.asc');

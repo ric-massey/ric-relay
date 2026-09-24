@@ -38,13 +38,13 @@ test('direct race pages require a session and canonical authenticated profile', 
   const bootstrap = read('shared/bootstrap.js');
   assert.match(bootstrap, /HermiscusAuth\.requireSession\(\)/);
   assert.match(bootstrap, /HermiscusAuth\.ensureProfileRoute\(\)/);
-  const app = (read('shared/data.js') + read('shared/app.js'));
+  const app = (read('shared/data.js') + read('shared/original/app.js') + read('shared/ric-layer.js'));
   assert.match(app, /requestedProfile = window\.HermiscusAuth\.profileName\(\)/);
   assert.doesNotMatch(app, /requestedProfile = document\.body\.dataset\.profile/);
 });
 
 test('database calls use the signed-in access token, never the anonymous key as bearer', () => {
-  const app = (read('shared/data.js') + read('shared/app.js'));
+  const app = (read('shared/data.js') + read('shared/original/app.js') + read('shared/ric-layer.js'));
   assert.match(app, /HermiscusAuth\.authorizedHeaders/);
   assert.doesNotMatch(app, /'Authorization':'Bearer '\+SUPABASE_KEY/);
   const auth = read('shared/auth.js');
@@ -60,7 +60,7 @@ test('no password or privileged Supabase key is stored in source', () => {
 });
 
 test('the publishable app source has no embedded race schedule fallback', () => {
-  const app = (read('shared/data.js') + read('shared/app.js'));
+  const app = (read('shared/data.js') + read('shared/original/app.js') + read('shared/ric-layer.js'));
   assert.match(app, /Private race details belong in Supabase behind RLS/);
   assert.doesNotMatch(app, /Start — Abingdon/);
   assert.doesNotMatch(app, /ultrapacer_url:/);
@@ -109,7 +109,7 @@ test('with no key the app runs the made-up demo, never the live database', () =>
   assert.match(bootstrap, /HermiscusAuth\.demo\) loadScript\(shared\('demo-data\.js'\)/);
   const demo = read('shared/demo-data.js');
   assert.match(demo, /Everything in this file is MADE UP/);
-  assert.match((read('shared/data.js') + read('shared/app.js')), /window\.HermiscusDemo\.build\(Date\.now\(\)\)/);
+  assert.match((read('shared/data.js') + read('shared/original/app.js') + read('shared/ric-layer.js')), /window\.HermiscusDemo\.build\(Date\.now\(\)\)/);
 });
 
 // Only Ric and Sydney run Ric's version. Everyone else runs the original crew app,
@@ -118,8 +118,8 @@ test('only Ric and Sydney get the modified app; everyone else gets the original'
   const bootstrap = read('shared/bootstrap.js');
   assert.match(bootstrap, /const RIC_VERSION = \['Ric', 'Sydney'\];/);
   assert.match(bootstrap, /new URL\('original\/', sharedBase\)/);
-  assert.match(read('shared/app.js'), /const MISSION_PROFILES = \['ric','sydney'\];/);
-  assert.doesNotMatch(read('shared/app.js'), /ME\.role==='Crew'\); \}/);
+  assert.match(read('shared/ric-layer.js'), /const MISSION_PROFILES = \['ric','sydney'\];/);
+  assert.doesNotMatch(read('shared/ric-layer.js'), /ME\.role==='Crew'\); \}/);
 });
 
 // Tapping your name: back to the crew list on the website (it must not sign you out of the
@@ -129,7 +129,7 @@ test('leaving a profile signs out in the real app and only goes back to the list
   const leave = auth.slice(auth.indexOf('async function leaveProfile'), auth.indexOf('window.HermiscusAuth = '));
   assert.match(leave, /if \(demo\) \{ window\.location\.assign\(directoryUrl\(\)\); return; \}/);
   assert.match(leave, /await signOut\(\);\s*window\.location\.replace\(loginUrl\(\)\);/);
-  assert.match(read('shared/app.js'), /await window\.HermiscusAuth\.leaveProfile\(\)/);
+  assert.match(read('shared/original/app.js'), /await window\.HermiscusAuth\.leaveProfile\(\)/);
 });
 
 test('the original app keeps its own screens and drops only its data layer', () => {

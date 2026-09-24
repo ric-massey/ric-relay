@@ -88,7 +88,9 @@ function enterAs(p){
 
     # 4. Start-up: the signed-in person (or, in the demo, the page's person).
     app = replace_once(app, '''  if(ME){ await showApp(); }
-  else { await renderProfileScreen(); }''', '''  const requestedProfile = window.HermiscusAuth.profileName();
+  else { await renderProfileScreen(); }''', '''  // Ric's layer (Ric and Sydney only) loads after this file; wait for it before drawing.
+  if(window.HermiscusBeforeStart) await window.HermiscusBeforeStart;
+  const requestedProfile = window.HermiscusAuth.profileName();
   if(requestedProfile){
     PROFILES = await dbList('profiles', 'created_at.asc');
     const profile = PROFILES.find(p=>p.name.toLowerCase()===requestedProfile.toLowerCase());
@@ -125,6 +127,24 @@ setInterval(()=>{ if(ME && getOfflineQueue().length && navigator.onLine) flushOf
         '<!-- Imported from the original crew app by scripts/import-original.py. Do not edit by hand. -->\n'
         + shell.group(1).strip() + '\n', encoding='utf-8')
     print(f'import-original: wrote {OUT.relative_to(ROOT)}/ (app.js, styles.css, app-shell.html)')
+    bump_versions()
+
+
+def bump_versions():
+    """New files under the same ?v= would be served from every phone's cache, so a page she
+    added would not appear. Stamp a fresh version into bootstrap.js and every page loading it."""
+    import datetime
+    stamp = 'imp-' + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+    boot = ROOT / 'shared' / 'bootstrap.js'
+    text = boot.read_text(encoding='utf-8')
+    text, n = re.subn(r"const V = '\?v=[^']*';", f"const V = '?v={stamp}';", text)
+    if n != 1:
+        sys.exit('import-original: could not find the version line in shared/bootstrap.js.')
+    boot.write_text(text, encoding='utf-8')
+    for page in [ROOT / 'index.html', *sorted((ROOT / 'profiles').glob('*/index.html'))]:
+        html = page.read_text(encoding='utf-8')
+        page.write_text(re.sub(r'bootstrap\.js\?v=[^"]*', f'bootstrap.js?v={stamp}', html), encoding='utf-8')
+    print(f'import-original: cache version is now {stamp}')
 
 
 if __name__ == '__main__':

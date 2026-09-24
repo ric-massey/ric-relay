@@ -30,10 +30,15 @@ other way round. So:
 - Ric keeps a copy of HERMISCUS in his website's repo. A script **imports Victoria's
   `index.html` as-is** — her screens, styles and code — and cuts off her data-layer
   section at the top (the part with the database key) so his copy can supply its own.
-- **Everyone except Ric and Sydney sees Victoria's app, unchanged.** Ric and Sydney get
-  an extra race-day dashboard of Ric's (Overview · Crew Stop · Pace Dad · Notes · Prep)
-  with a stop countdown timer, an "18hr pace" readout and their pacing legs. They can
-  switch to Victoria's version from their Settings.
+- **Everyone runs Victoria's app.** For Ric and Sydney only, a layer of Ric's loads on top
+  of it and adds a race-day dashboard (Overview · Crew Stop · Pace Dad · Notes · Prep) with
+  a stop countdown timer, an "18hr pace" readout and their pacing legs.
+- **So work on her app exactly as you normally would.** A new page with a nav button shows
+  up for Ric and Sydney by itself (under "More" in their bar). New features and fixes reach
+  them too. Nobody has to do anything on Ric's side for that.
+- A few of her screens — Home, Notes, and the check-in logic — are replaced by Ric's own
+  versions on Ric's and Sydney's dashboard. Changes she makes there still reach everyone
+  else; they just won't show on Ric's dashboard. That's expected, nothing to flag.
 - **Both apps read and write the same live database.** Anything entered in Victoria's app
   shows up on Ric's and Sydney's screens within a few seconds, and the other way round.
   That's why the data format in section 3 matters.
@@ -113,10 +118,19 @@ Ric's import stops with a clear error rather than breaking anything, and he fixe
 If this file is sitting in `projects/dads-race/` of Ric's website repo, you're editing
 **Ric's** copy. Also read the repo's root `AGENTS.md` and this folder's `README.md`. In
 short: a `git push` publishes ricmassey.com (don't push unless asked); never commit the
-real key or real race data (`tests/auth-security.test.cjs` checks); don't hand-edit
-`shared/original/` — it's generated from Victoria's file by
-`scripts/import-original.py`, so changes to her screens go in as patches there; and run
-`npm test` before finishing.
+real key or real race data (`tests/auth-security.test.cjs` checks); and run `npm test`
+before finishing.
+
+- **Her app is the base, Ric's is a layer.** `shared/original/` is Victoria's app, generated
+  from her file by `scripts/import-original.py` — never hand-edit it. Ric's changes live in
+  `shared/ric-layer.js` (and `shared/styles.css`), which loads on top of hers for Ric and
+  Sydney only.
+- **Keep the layer thin.** Every function redefined in `ric-layer.js` hides her version of
+  it, so her later fixes to it won't reach Ric. Add new functions rather than redefining
+  hers, and call her originals through `HER.goPage/loadAppData/liveSyncTick` where they'll
+  do. Never redeclare one of her top-level `let`/`const` names — it stops the app loading.
+- Don't hard-code her page list in the layer. Ric's "More" menu reads her nav buttons, and
+  unknown pages go to `HER.goPage`, which is what lets her new pages through.
 
 ## When in doubt
 

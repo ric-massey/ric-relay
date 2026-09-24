@@ -56,23 +56,29 @@ The current profile URLs are:
 - `/profiles/sydney/`
 - `/profiles/aubrey/`
 
-## Two versions of the app, on purpose
+## Her app, with Ric's layer on top
 
-The crew app is the sister's. Ric's changes are for Ric and Sydney only, so:
+The crew app is Victoria's, and **everyone runs it**. Ric's changes are a layer that loads
+on top of it for Ric and Sydney only:
 
-- **Ric and Sydney** run Ric's version: `shared/app-shell.html`, `shared/styles.css`,
-  `shared/app.js` (the race-day dashboard, pacing, prep, messages).
-- **Everyone else, and the crew directory,** run her original app, unchanged in look:
-  `shared/original/` holds her screens, styles and code, imported from her deployed
-  `index.html` by `scripts/import-original.py`. Don't edit those files by hand.
+- `shared/original/` is her app — screens, styles and code — imported from her deployed
+  `index.html` by `scripts/import-original.py`. Don't edit it by hand.
+- `shared/ric-layer.js` is Ric's layer: his race-day screens (Overview, Crew Stop, Pace Dad,
+  Prep), his Notes and Settings additions, and his versions of the few of her functions he
+  changes. `shared/styles.css` is his stylesheet, loaded after hers.
+- `shared/bootstrap.js` always loads her shell, styles and code. For Ric and Sydney it then
+  captures her `goPage`, `loadAppData` and `liveSyncTick` (as `HER.*`), loads the layer, and
+  only then lets her start-up run — her `init` waits on `window.HermiscusBeforeStart`.
+- **What she adds reaches Ric automatically.** A new page and nav button in her app appears
+  under **More** in Ric's bar; a new function, or a fix to any function the layer doesn't
+  redefine, is simply live. Only the functions `ric-layer.js` redefines hide hers — keep that
+  list short, and call `HER.<name>()` where her behaviour will do.
+- Never redeclare one of her top-level `let`/`const` names in the layer: the two files share
+  one global scope and that is a load-stopping error. There is a test for it.
 - Both sit on one data layer, `shared/data.js` (sign-in headers, offline queue, demo
   store). That replaced her data layer, which is where her database key lived.
-- `shared/bootstrap.js` picks the version from who is signed in (on the website, which
-  page you opened) and loads it.
-- Ric and Sydney can tick **Use Victoria's version** in Settings to run her app instead.
-  It is remembered per device (`hermiscus_use_original_<name>` in localStorage), and
-  `bootstrap.js` adds the same box to her Settings screen so they can untick it — her
-  code is not touched for it.
+- Ric and Sydney can tick **Use Victoria's version** in Settings to run her app with no
+  layer. It is remembered per device (`hermiscus_use_original_<name>` in localStorage).
 
 When she ships a new version, download her `index.html` (or the deploy zip) and run:
 
@@ -80,7 +86,8 @@ When she ships a new version, download her `index.html` (or the deploy zip) and 
 python3 scripts/import-original.py ~/Downloads/hermesco-deploy.zip
 ```
 
-It refuses to write anything if a patch no longer fits or a key would survive.
+It refuses to write anything if a patch no longer fits or a key would survive, and it
+stamps a new cache version into `bootstrap.js` and every page so phones fetch her new files.
 
 Each profile page declares its identity with a `data-profile` attribute on `<body>`. This allows a page to be customized independently while the common race features remain shared.
 
