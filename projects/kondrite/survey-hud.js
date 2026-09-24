@@ -828,6 +828,7 @@
     }
     drawSector(st);
     drawPanelChart(st);
+    drawPowers(st);
     drawCounters(st);
     drawWarnBand(st);
     drawStrip(st);
@@ -1143,6 +1144,19 @@
         ctx.arc(x, y, R, 0, Math.PI * 2);
         ctx.fill();
       }
+      /* The badge: in trouble is an amber triangle above the return, making
+         trouble is a red slash through a ring beside it. Neither says a word;
+         see `e.trouble` in the scan. */
+      if (e.trouble === "in") {
+        ctx.strokeStyle = AMBER; ctx.fillStyle = AMBER; ctx.lineWidth = 1.2;
+        const s = big ? 5 : 3.5;
+        ctx.beginPath();
+        ctx.moveTo(x, y - R - s * 2.2); ctx.lineTo(x + s, y - R - 3); ctx.lineTo(x - s, y - R - 3);
+        ctx.closePath(); ctx.stroke();
+      } else if (e.trouble === "making") {
+        ctx.strokeStyle = WARN; ctx.lineWidth = 1.2;
+        markGlyph(ctx, "raid", x + R + (big ? 8 : 6), y - R, big ? 4 : 3);
+      }
     }
     ctx.restore();
   }
@@ -1204,7 +1218,13 @@
     battle:    { name: "BATTLE",   colour: "#ff8f77" },
     memorial:  { name: "MEMORIAL", colour: "#a08cff" },
     // A boss's sky, drawn to its size.
-    boss:      { name: "BOSS",     colour: "#ff4dd2" }
+    boss:      { name: "BOSS",     colour: "#ff4dd2" },
+    /* Things that happened, on the map where they happened. The living
+       world writes these (living.js): a raid on a station, ground taken
+       from somebody, a shortage you broke. */
+    raid:      { name: "RAID",     colour: "#ff8f77" },
+    taken:     { name: "TAKEN",    colour: "#ffcb42" },
+    relief:    { name: "RELIEF",   colour: "#6dffbf" }
   };
 
   function markGlyph(ctx, k, x, y, r) {
@@ -1250,6 +1270,66 @@
         ctx.moveTo(x - 5, y + 3); ctx.lineTo(x - 5, y - 3); ctx.lineTo(x - 2, y);
         ctx.lineTo(x, y - 4); ctx.lineTo(x + 2, y); ctx.lineTo(x + 5, y - 3);
         ctx.lineTo(x + 5, y + 3); ctx.closePath(); ctx.stroke();
+        break;
+      case "raid":
+        // A strike: a slash through a ring.
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x - r * 1.3, y + r * 1.3); ctx.lineTo(x + r * 1.3, y - r * 1.3);
+        ctx.stroke();
+        break;
+      case "taken":
+        // A pennant on a pole.
+        ctx.beginPath();
+        ctx.moveTo(x - r * 0.7, y + r); ctx.lineTo(x - r * 0.7, y - r);
+        ctx.lineTo(x + r, y - r * 0.55); ctx.lineTo(x - r * 0.7, y - r * 0.1);
+        ctx.stroke();
+        break;
+      case "relief":
+        // A plus.
+        ctx.beginPath();
+        ctx.moveTo(x - r, y); ctx.lineTo(x + r, y);
+        ctx.moveTo(x, y - r); ctx.lineTo(x, y + r);
+        ctx.stroke();
+        break;
+      case "war":
+        // Two bars crossed inside a ring: a fight that is a state, not a place.
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x - r * 0.6, y - r * 0.6); ctx.lineTo(x + r * 0.6, y + r * 0.6);
+        ctx.moveTo(x + r * 0.6, y - r * 0.6); ctx.lineTo(x - r * 0.6, y + r * 0.6);
+        ctx.stroke();
+        break;
+      case "peace":
+        // A ring, open at the top.
+        ctx.beginPath(); ctx.arc(x, y, r, -Math.PI * 0.3, Math.PI * 1.3); ctx.stroke();
+        break;
+      case "trade":
+        // Two arrows passing.
+        ctx.beginPath();
+        ctx.moveTo(x - r, y - r * 0.4); ctx.lineTo(x + r, y - r * 0.4);
+        ctx.lineTo(x + r * 0.5, y - r * 0.9);
+        ctx.moveTo(x + r, y + r * 0.4); ctx.lineTo(x - r, y + r * 0.4);
+        ctx.lineTo(x - r * 0.5, y + r * 0.9);
+        ctx.stroke();
+        break;
+      case "kill":
+        // A small x.
+        ctx.beginPath();
+        ctx.moveTo(x - r * 0.7, y - r * 0.7); ctx.lineTo(x + r * 0.7, y + r * 0.7);
+        ctx.moveTo(x + r * 0.7, y - r * 0.7); ctx.lineTo(x - r * 0.7, y + r * 0.7);
+        ctx.stroke();
+        break;
+      case "rescue":
+        // A ring with a heart-beat dot: somebody kept.
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, r * 0.3, 0, Math.PI * 2); ctx.fill();
+        break;
+      case "loss":
+        // A V, pointing down: something went in and did not come out.
+        ctx.beginPath();
+        ctx.moveTo(x - r, y - r * 0.7); ctx.lineTo(x, y + r); ctx.lineTo(x + r, y - r * 0.7);
+        ctx.stroke();
         break;
       case "memorial":
         // A stone.
@@ -1598,6 +1678,57 @@
     ctx.globalAlpha = 0.85;
     ctx.fillRect(right - bw + 1, barY + 1,
                  Math.max(1, (bw - 2) * (pl.danger || 0)), 3);
+    ctx.restore();
+  }
+
+  /* ── the powers, at a glance ────────────────────────────────────────────
+     One strip along the foot of the minimap, and no words on it: three
+     squares in the three flags' colours, each with a bar for how much fight
+     that power has left, and a red tie under the two that are at war. If the
+     province you are in is contested, a second colour sits inside its
+     square. This is the living world's whole front-page presence in flight —
+     the pages have the rest. */
+  function drawPowers(st) {
+    const L = st.living;
+    if (!L || !st.ship || !L.powers || !L.powers.length) return;
+    const { ctx } = api;
+    const b = panelBox();
+    const y = b.y + b.h + 24;          // under the "charted" line
+    const n = L.powers.length;
+    const gw = Math.floor(b.w / n), sq = 8, barW = gw - sq - 8;
+    const at = {};
+    ctx.save();
+    ctx.lineWidth = 1;
+    L.powers.forEach((pw, i) => {
+      const x = b.x + i * gw;
+      at[pw.key] = x + sq / 2;
+      ctx.globalAlpha = 0.95;
+      ctx.fillStyle = pw.colour;
+      ctx.fillRect(x, y, sq, sq);
+      // The province's second colour, if somebody else is in it too.
+      if (L.here && L.here.contested === pw.key && L.here.contestedColour) {
+        ctx.fillStyle = L.here.colour || VIOLET;
+        ctx.fillRect(x + 2, y + 2, sq - 4, sq - 4);
+      }
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = VIOLET_LOW;
+      ctx.strokeRect(x + sq + 4, y + 1.5, barW, 5);
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = pw.colour;
+      ctx.fillRect(x + sq + 5, y + 2.5, Math.max(1, (barW - 2) * pw.strength), 3);
+    });
+    // The war, as a tie between the two fighting it.
+    const fighting = L.powers.filter(pw => pw.atWar);
+    if (fighting.length === 2) {
+      const a = at[fighting[0].key], c = at[fighting[1].key];
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = WARN;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(a, y + sq + 3); ctx.lineTo(a, y + sq + 6);
+      ctx.lineTo(c, y + sq + 6); ctx.lineTo(c, y + sq + 3);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -1981,7 +2112,7 @@
     const b = panelBox();
     return [
       // Top right: the sector readout and the chart under it, as one column.
-      { x: b.x - 12, y: 0, w: SCREEN_W - b.x + 12, h: b.y + b.h + 16 },
+      { x: b.x - 12, y: 0, w: SCREEN_W - b.x + 12, h: b.y + b.h + 40 },
       // Top left: cash and storage.
       { x: 0, y: 0, w: 210, h: 118 },
       /* Bottom centre: the hull bar, and above it the one line that holds
@@ -6447,6 +6578,117 @@
     recPg.scroll = Math.max(0, Math.min(max, recPg.scroll + dy));
   };
 
+  /* ── the sector, as a board ─────────────────────────────────────────────
+     Three tiles and a triangle, and the only words on it are the three
+     names. Each tile: the flag's square and name, then bars — how much
+     fight it has left, how much of the sky around you it holds, and the
+     three goods it trades in. The triangle at the right is who feels what
+     about whom: an edge per pair, red and thick for a war, red-thin for bad
+     blood, green for friends, dim for nothing much. (LIVING-WORLD.md, with
+     Ric's rule that the visuals do the talking.) */
+  function sectorBoard(st, full, y0) {
+    const { ctx } = api;
+    const L = st.living;
+    const rows = 4;
+    const h = PANEL_H(rows);
+    const here = L.here || {};
+    const hereWord = here.owner
+      ? (here.contested ? "CONTESTED" : here.control > 0.7 ? "HELD" : "LOOSELY HELD")
+      : "NOBODY'S";
+    panel(full.x, y0, full.w, h, VIOLET, "THE SECTOR", hereWord);
+    const triW = 150, capW = 92;
+    const tileW = Math.floor((full.w - PAGE.PAD * 2 - triW - capW) / L.powers.length);
+    const bar = (x, y, w, v, colour, alpha) => {
+      ctx.save();
+      ctx.globalAlpha = 0.45; ctx.strokeStyle = VIOLET_LOW; ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, w, 6);
+      ctx.globalAlpha = alpha || 0.9; ctx.fillStyle = colour;
+      ctx.fillRect(x + 1, y + 1, Math.max(1, (w - 2) * Math.max(0, Math.min(1, v))), 4);
+      ctx.restore();
+    };
+    L.powers.forEach((pw, i) => {
+      const x = full.x + PAGE.PAD + capW + i * tileW;
+      const y = ROW(y0, 0);
+      ctx.save();
+      ctx.fillStyle = pw.colour; ctx.globalAlpha = 0.95;
+      ctx.fillRect(x, y - 9, 9, 9);
+      ctx.restore();
+      fitText(pw.short, x + 16, y, SIZE.cap, pw.colour, "left", 1, tileW - 40, "0.08em");
+      if (pw.atWar) {
+        ctx.save(); ctx.strokeStyle = WARN; ctx.lineWidth = 1.4; ctx.globalAlpha = 0.9;
+        markGlyph(ctx, "war", x + tileW - 30, y - 5, 5);
+        ctx.restore();
+      }
+      const bw = tileW - 24;
+      bar(x, ROW(y0, 1) - 6, bw, pw.strength, pw.colour);
+      bar(x, ROW(y0, 2) - 6, bw, pw.holdings, pw.colour, 0.55);
+      // The three goods, side by side, in the goods' own colours.
+      const gw = Math.floor((bw - 8) / 3);
+      pw.goods.forEach((g, k) => bar(x + k * (gw + 4), ROW(y0, 3) - 6, gw, g.v, g.colour, 0.8));
+    });
+    // Row captions, once, small and dim, in their own column at the left.
+    const cap = (row, word) =>
+      label(word, full.x + PAGE.PAD, ROW(y0, row) - 1, 11, VIOLET_LOW, "left", 0.6, "0.12em");
+    cap(1, "FIGHT"); cap(2, "SKY HELD"); cap(3, "GOODS");
+
+    // The triangle.
+    const cx = full.x + full.w - PAGE.PAD - triW / 2, cy = y0 + h / 2 + 6, r = 34;
+    const pts = L.powers.map((pw, i) => {
+      const a = -Math.PI / 2 + (i / L.powers.length) * Math.PI * 2;
+      return { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, pw };
+    });
+    ctx.save();
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const a = pts[i], b2 = pts[j];
+        const rel = ((a.pw.rel[b2.pw.key] || 0) + (b2.pw.rel[a.pw.key] || 0)) / 2;
+        const war = a.pw.enemy === b2.pw.key;
+        ctx.strokeStyle = war ? WARN : rel < -0.3 ? WARN : rel > 0.3 ? CASH : VIOLET_LOW;
+        ctx.globalAlpha = war ? 0.95 : 0.35 + Math.min(0.5, Math.abs(rel));
+        ctx.lineWidth = war ? 3 : 1 + Math.abs(rel) * 2;
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b2.x, b2.y); ctx.stroke();
+      }
+    }
+    for (const q of pts) {
+      ctx.globalAlpha = 1; ctx.fillStyle = q.pw.colour;
+      ctx.beginPath(); ctx.arc(q.x, q.y, 6, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    return y0 + h;
+  }
+
+  /* ── what happened ─────────────────────────────────────────────────────
+     The record, newest first, one line each: a glyph for the kind of thing,
+     the flag's colour on the glyph, the line, and how long ago. The glyphs
+     are the same ones the chart uses for the same things. */
+  function historyPanel(st, full, y0) {
+    const { ctx } = api;
+    const L = st.living;
+    const list = L.history || [];
+    const h = PANEL_H(Math.max(1, list.length));
+    panel(full.x, y0, full.w, h, AMBER, "HISTORY", "TURN " + (L.turn || 0));
+    if (!list.length) {
+      fitText("nothing has happened yet — give it a minute",
+              full.x + PAGE.PAD, ROW(y0, 0) + 2, SIZE.cap, VIOLET_LOW, "left", 0.6,
+              full.w - PAGE.PAD * 2);
+      return y0 + h;
+    }
+    list.forEach((ev, i) => {
+      const y = ROW(y0, i) + 2;
+      ctx.save();
+      ctx.strokeStyle = ev.actor || ev.colour; ctx.fillStyle = ev.actor || ev.colour;
+      ctx.lineWidth = 1.4; ctx.globalAlpha = 0.95;
+      markGlyph(ctx, ev.glyph, full.x + PAGE.PAD + 6, y - 5, 5);
+      ctx.restore();
+      fitText(ev.line, full.x + PAGE.PAD + 22, y, SIZE.cap, ev.colour, "left",
+              0.5 + ev.importance * 0.5, full.w - PAGE.PAD * 2 - 110, "0.04em");
+      const ago = ev.ago < 60 ? "just now" : ev.ago < 3600 ? Math.round(ev.ago / 60) + "m ago"
+                : Math.round(ev.ago / 3600) + "h ago";
+      label(ago, full.x + full.w - PAGE.PAD, y, SIZE.cap, VIOLET_LOW, "right", 0.6);
+    });
+    return y0 + h;
+  }
+
   HUD.drawRecord = function (st, dt) {
     const { ctx, SCREEN_W, SCREEN_H } = api;
     st = st || {};
@@ -6474,6 +6716,10 @@
        used to be a door at the bottom of the scroll saying only that it was
        there. */
     y = missionBands(st, full, y) + gap;
+    if (st.living) {
+      y = sectorBoard(st, full, y) + gap;
+      y = historyPanel(st, full, y) + gap;
+    }
 
     /* ── who you are to them ─────────────────────────────────────────────── */
     const repH = PANEL_H(flags.length * 2 + others.length);

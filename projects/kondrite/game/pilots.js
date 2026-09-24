@@ -1334,6 +1334,7 @@ function arrived(t, goal) {
        less short of — which is 6.2's good news, and the only way a shortage
        ever eases apart from time. */
     for (const key of t.cargo) moveMarket(t.mark, key, -0.3);
+    livingConvoy(t, false);
     t.cargo = [];
     t.lastDock = t.mark;
     t.delivered = (t.delivered || 0) + 1;
@@ -1488,6 +1489,7 @@ function killTraffic(i, byYou, swallowed) {
     }
     const aim = t.markKind === "station" && t.mark ? t.mark : near;
     if (aim) for (const key of t.cargo) moveMarket(aim, key, 0.22);
+    livingConvoy(t, true);
   }
   /* **A ship does not leave a hulk.** It used to, for 6.5's sake — a convoy
      you destroyed leaving a wreck field is exactly the kind of consequence that

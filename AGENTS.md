@@ -426,7 +426,13 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   `projects/kondrite/README.md` before adding one. `test/smoke.js` refuses any
   inline script on that page, holds the folder to the page and the page to the
   order, and runs in the quick lane so a chapter that does not parse is caught on
-  the push, not the nightly.
+  the push, not the nightly. **The living world (`game/living.js`) is the
+  political simulation over the war** — LIVING-WORLD.md's first version, and the
+  rule Ric set for it is that the player-facing side is visual: a wordless strip
+  in flight, bars and a triangle on the RECORD page, glyphs on the chart, one
+  headline on docking. Don't add a page of prose to it; add a mark. The news
+  reports the record and never creates an event. `test/living.js` runs it without
+  a player for four hundred turns.
 - **`node .github/checks.mjs` runs every check in the repo**, and
   `.github/workflows/checks.yml` runs it on every push. This was added on
   2026-09-23 because there were 43 test files here and **nothing that ran them** —

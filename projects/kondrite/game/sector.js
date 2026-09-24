@@ -485,6 +485,10 @@ function sellSome(key, n) {
   const prices = surv.docked ? stationPrices(surv.docked) : null;
   const each = prices ? (prices[key] || m.value) : m.value;
   const got = Math.round(take * each);
+  // A sale into a shortage is a relief the owner notices — see the living world.
+  const shortBefore = surv.docked ? shortageOf(surv.docked, key) : 0;
+  if (surv.docked) moveMarket(surv.docked, key, -0.04 * take);
+  livingDelivery(surv.docked, key, take, shortBefore);
   surv.hold[key] = have - take;
   surv.cash += got;
   surv.t.sold = true;
@@ -1640,6 +1644,7 @@ function rememberFriend(t, why) {
   if (surv.friends.some(f => f.name === t.name)) return;
   surv.friends.push({ name: t.name, faction: t.faction,
                       hull: t.hull, why: why || "saved", repaid: false });
+  livingRescue(t);
   if (surv.friends.length > FRIEND_KEEP) surv.friends.shift();
 }
 

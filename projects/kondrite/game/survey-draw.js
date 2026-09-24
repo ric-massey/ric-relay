@@ -1811,6 +1811,8 @@ function surveyState() {
       }
     },
     warn: surv.warn,
+    // The powers, the province you are in, the record, and the docked news.
+    living: livingState(),
     /* `snap` is a world-space radius the chart works out from its own zoom —
        the same finger-width on screen is a very different distance when the
        map is zoomed out, and the interface is the only thing that knows the

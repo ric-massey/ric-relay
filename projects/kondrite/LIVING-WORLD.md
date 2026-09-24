@@ -1,7 +1,44 @@
 # Kondrite: Survey — Living World System
 
-**Status: a brief, not yet built.** Written by Ric. Nothing in this document is
-implemented; see `SURVEY-PLAN.md` for what is. The estimate at the foot is mine.
+**Status: first version built, 2026-09-24.** Written by Ric; the estimate at the
+foot was written before anything existed. What is in the game now is `game/living.js`
+(the simulation) and its pages, and it covers **§27 with §16 and the front of §28**:
+
+- **Three powers** with resources (the sector's own ice, iron and alloy), stability,
+  three traits rolled per seed, and an opinion of each other (§4).
+- **Provinces**: a 6×6 block of the region cells the war already moves, with an owner
+  read off the lattice, a control figure, seeded resources, unrest and security (§5).
+  Only the provinces near you are worked, the same rule the war follows.
+- **Pressures** read off the numbers each turn — short, weak, dispute, raided, weary —
+  and **five actions** scored against them: TRADE, CLAIM, RAID, INVADE, MAKE PEACE.
+  Each has a cost, a bar of its own and a cooldown; a power remembers who raided it
+  (§25). A war started here is the same war `war.js` grinds the front with.
+- **The record**: every event with who, whom, where, importance and a thread; the
+  least important go first when it fills (§14, §18, §19).
+- **News**, templated over real events and framed by whoever is telling it — a power
+  says "we", its rival says the name coldly, an unaligned station says it straight
+  (§20). Reading it writes nothing (§21). You hear the sector's headline once, when
+  you dock, the way that station's owner would put it.
+- **The player is in it** (§16): a kill weakens the fleet and is recorded, a sale into
+  a shortage is a relief the owner notices, a rescue is remembered, and ground that
+  changed hands near you is on your chart as the moment it moved.
+- **Trouble** (§13) as a badge, not a sentence: a scan return that is in trouble wears
+  an amber triangle, one making it a red strike.
+- **Visuals over words**, on Ric's rule: in flight the whole thing is one wordless
+  strip under the minimap — three flags, how much fight each has, a red tie between
+  the two at war. The RECORD page has THE SECTOR (three tiles of bars and a
+  relationship triangle) and HISTORY (a glyph and one line each). The chart marks raids,
+  captures and reliefs where they happened.
+- **Run it without a player**: `test/living.js` boots a sector headless, runs four
+  hundred turns on a seeded generator and asserts the history is sane, has inertia,
+  frames the same fact three ways, survives the book and reaches the pages. Every
+  seed comes out different: measured, one sector trades and settles, one is raided
+  raw, one has three wars.
+
+**Not built yet**, in the brief's order: laws, leaders and elections, rebellion and
+civil war (the rest of §28); NPC careers (§29); society (§30); information travel
+(§31); imperfect knowledge (§32); culture and mysteries (§33–34). The sections below
+are unchanged and still the spec for those.
 
 ## Simple first version
 

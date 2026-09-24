@@ -14,8 +14,10 @@ stopped being true twice over: C4 and C5 were added to SETTINGS after it was
 written, and C6 was added open.
 
 **Left: nothing on this list.** The open briefs are elsewhere and are not
-bugs: `LIVING-WORLD.md`, `PLAYER-HISTORY.md`, and "the Leviathan is a ship you
-can buy" in `SURVEY-PLAN.md`.
+bugs: `PLAYER-HISTORY.md`, and "the Leviathan is a ship you can buy" in
+`SURVEY-PLAN.md`. `LIVING-WORLD.md` has its first version built (2026-09-24, see
+its status line): §27, §16 and the front of §28, with the visuals doing the
+talking on Ric's instruction.
 
 ---
 

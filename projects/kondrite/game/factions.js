@@ -477,6 +477,7 @@ function addRep(key, n) {
    value, because helping by accident is worth less than helping on purpose. */
 function repForKill(t) {
   const n = REP[t.role || t.kind] || 0;
+  livingKill(t);
   if (t.faction === "pirate") {
     for (const f of FACTIONS) addRep(f.key, REP.pirate);
     return;

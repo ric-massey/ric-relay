@@ -225,6 +225,22 @@ if (debugOn) {
     spaceAt: (x, y) => spaceAt(x, y),
     placeAt: (x, y) => placeAt(x, y),
     war: () => surv.war,
+    /* The living world, for a harness that wants to run it fast: `turn` runs
+       n political turns on a seeded generator, `state` is what the pages
+       read, `news` is the framed feed, `events` the record itself. */
+    living: {
+      turn: (n, seed) => {
+        const R = seeded((seed | 0) || 1);
+        const out = [];
+        for (let i = 0; i < (n || 1); i++) out.push(livingTurn(R));
+        return out;
+      },
+      state: () => livingState(),
+      news: (flag, n) => livingNews(flag, n),
+      events: () => (surv && surv.living ? surv.living.events : []),
+      powers: () => (surv && surv.living ? surv.living.powers : null),
+      raw: () => surv && surv.living
+    },
     dockable: (st, faction) => dockableBy(st, faction),
     warTurn: R => surveyWarTurn(R),
     claim: (cx, cy, owner) => {

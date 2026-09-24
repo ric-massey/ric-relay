@@ -134,7 +134,8 @@ function surveyBook() {
       claims: [...surv.claims],
       mapped: [...surv.mapped],
       war: { pairs: surv.war.pairs, belligerents: surv.war.belligerents,
-             strength: surv.war.strength, calm: Math.round(surv.war.calm) }
+             strength: surv.war.strength, calm: Math.round(surv.war.calm) },
+      living: livingToBook()
   };
 }
 

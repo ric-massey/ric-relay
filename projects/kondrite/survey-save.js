@@ -234,6 +234,7 @@ function freshBook() {
                   memorials: [], bossesDown: [],
                   dropped: [], coilFired: false,
                   friends: [], grudges: [], claims: [], mapped: [], war: null,
+                  living: null,
            alert: { water: { taught: 0 }, food: { taught: 0 } } };
 }
 
@@ -482,6 +483,59 @@ function validateSurveyBook(b) {
         }
         return { pairs, belligerents: belligerents.length === 2 ? belligerents : [],
                  strength, calm: Math.max(0, Number(w.calm) || 0) };
+      })(),
+      /* The living world (living.js). Shapes checked here, values clamped
+         again on the way in by `livingFromBook`: a hand-edited book can put a
+         number out of range, and it cannot put a power that does not exist
+         in the record. */
+      living: (() => {
+        const L = b.living && typeof b.living === "object" ? b.living : null;
+        if (!L) return null;
+        const num = (v, lo, hi) => Math.max(lo, Math.min(hi, Number(v) || 0));
+        const flag = k => FACTIONS().some(f => f.key === k) ? k : "";
+        const who = k => k === "you" || k === "free" || k === "pirate" ? k : flag(k);
+        const powers = {};
+        for (const f of FACTIONS()) {
+          const s = L.powers && L.powers[f.key];
+          if (!s || typeof s !== "object") continue;
+          const p = { rel: {}, cool: { act: 0, war: 0, raid: {}, trade: {} } };
+          for (const k of ["ice", "iron", "alloy", "stability", "aggression", "expansion", "trade"]) {
+            if (typeof s[k] === "number") p[k] = num(s[k], 0, 1);
+          }
+          for (const g of FACTIONS()) {
+            if (g.key !== f.key && s.rel && typeof s.rel[g.key] === "number") p.rel[g.key] = num(s.rel[g.key], -1, 1);
+          }
+          if (s.cool) {
+            p.cool.act = num(s.cool.act, 0, 99) | 0; p.cool.war = num(s.cool.war, 0, 99) | 0;
+            p.cool.raid = {}; p.cool.trade = {};
+            for (const g of FACTIONS()) {
+              if (s.cool.raid && typeof s.cool.raid[g.key] === "number") p.cool.raid[g.key] = num(s.cool.raid[g.key], 0, 99) | 0;
+              if (s.cool.trade && typeof s.cool.trade[g.key] === "number") p.cool.trade[g.key] = num(s.cool.trade[g.key], 0, 99) | 0;
+            }
+          }
+          powers[f.key] = p;
+        }
+        const KINDS = ["trade", "claim", "raid", "war", "peace", "taken", "battle",
+                       "kill", "relief", "rescue", "loss", "arrived"];
+        return {
+          turn: num(L.turn, 0, 1e7) | 0, clock: num(L.clock, 0, 1e9),
+          seq: num(L.seq, 0, 1e9) | 0, warSince: num(L.warSince, 0, 1e7) | 0,
+          powers,
+          provinces: (Array.isArray(L.provinces) ? L.provinces : [])
+            .filter(p => p && Number.isFinite(p.px) && Number.isFinite(p.py))
+            .slice(0, 400)
+            .map(p => ({ px: p.px | 0, py: p.py | 0, ice: num(p.ice, 0, 1), iron: num(p.iron, 0, 1),
+                         alloy: num(p.alloy, 0, 1), unrest: num(p.unrest, 0, 1),
+                         security: num(p.security, 0, 1) })),
+          events: (Array.isArray(L.events) ? L.events : [])
+            .filter(e => e && KINDS.indexOf(e.kind) >= 0)
+            .slice(-240)
+            .map(e => ({ id: num(e.id, 0, 1e9) | 0, turn: num(e.turn, 0, 1e7) | 0, t: num(e.t, 0, 1e9) | 0,
+                         kind: e.kind, actor: who(String(e.actor || "")), target: who(String(e.target || "")),
+                         x: num(e.x, -1e9, 1e9) | 0, y: num(e.y, -1e9, 1e9) | 0,
+                         what: String(e.what || "").slice(0, 60), thread: String(e.thread || "").slice(0, 40),
+                         n: num(e.n, 0, 1e6) | 0, importance: num(e.importance, 0, 1) }))
+        };
       })(),
       mapped: (Array.isArray(b.mapped) ? b.mapped : [])
         .filter(e => Array.isArray(e) && cellKeyOk(e[0]) && e[1] &&

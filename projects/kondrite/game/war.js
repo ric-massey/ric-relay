@@ -51,6 +51,7 @@ function claimCell(cx, cy, power, why) {
   if (was === power) return false;
   surv.claims.set(cx + "," + cy, power || "");
   WORLD.territoryChanged();
+  livingTaken(cx, cy, power, was);
   const site = WORLD.regionSite(cx, cy);
   const f = power ? factionOf(power) : null, g = was ? factionOf(was) : null;
   const line = why ||
@@ -137,11 +138,11 @@ function surveyWarTurn(R) {
       chatter(factionOf(a).name + " and " + factionOf(b).name +
               " have stopped fighting \u2014 neither has the ships left to " +
               "keep it up.", "#a08cff", false);
-      chatter("CEASEFIRE \u2014 " + factionOf(a).short + " and " +
-              factionOf(b).short, "#a08cff");
       war.pairs = {};
       war.belligerents = [];
       war.calm = 0;
+      // Written down with the reason, and said. See the living world.
+      livingPeace(a, b, "worn down");
     }
   } else {
     war.calm += WAR_TICK;
@@ -153,8 +154,7 @@ function surveyWarTurn(R) {
       war.pairs = { [a]: b, [b]: a };
       war.belligerents = [a, b];
       war.calm = 0;
-      chatter(factionOf(a).name + " has gone to war with " +
-              factionOf(b).name + ".", factionOf(a).colour);
+      livingWar(a, b, "recovered");
     }
   }
   WORLD.territoryChanged();
@@ -241,6 +241,7 @@ function endBattle(b, left) {
     weaken(winner, -0.03);
     takeGround(b.x, b.y, winner, b.name);
   }
+  livingBattle(b, winner);
   b.over = true;
   surv.battleAge[b.id] = 0;
   for (let i = surv.traffic.length - 1; i >= 0; i--) {
@@ -1786,6 +1787,7 @@ function surveyTick(dt) {
   streamRocks();
   mapHere();
   surveyWar(dt);
+  livingTick(dt);
 
   /* How long the engine has been cold. Running dark reads off this rather
      than off the key, so a tap of thrust lights you up again and holding

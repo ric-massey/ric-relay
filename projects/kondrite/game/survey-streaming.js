@@ -809,6 +809,9 @@ function setupSurvey() {
        this is only the cells that have changed hands since, keyed "cx,cy",
        with "" for a cell nobody holds any more. See `WORLD.holderOf`. */
     claims: new Map(carried && Array.isArray(book.claims) ? book.claims : []),
+    /* The living world: the powers' tempers and needs, the provinces anybody
+       has looked at, and the record of what happened. See living.js. */
+    living: livingFromBook(seed, carried ? book.living : null),
     /* The war as it stands, which is not the war the world rolled once it has
        been running a while. `strength` is each power's ability to keep
        fighting, 1 being whole; see `surveyWar`. */
@@ -1465,6 +1468,13 @@ function surveyScan() {
        names the ship; the sentence counts the kind. */
     e.group = ship ? (CALLSIGNS[ship.role || ship.kind] || "SHIP")
             : mat ? mat.name : spec.name;
+    /* Whether it is in trouble or making it, read off what it is doing —
+       the two words LIVING-WORLD.md §13 asks a meaningful contact to carry.
+       Drawn as a badge, not said: the ring already has a name on it. */
+    e.trouble = !ship ? ""
+      : ship.role === "distress" || (ship.maxHp && ship.hp / ship.maxHp < 0.45) ? "in"
+      : ship.role === "pirate" || ship.role === "hunter" || ship.angry ? "making"
+      : "";
   }
 
   /* A scan writes what it finds into the gazetteer. Half the value of
