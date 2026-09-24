@@ -1,6 +1,9 @@
 # HERMISCUS · Yeti Going Together
 
 This is a static, multi-page race crew app backed by the family's shared Supabase database.
+
+**AI assistants: read [`AGENTS.md`](AGENTS.md) first.** It is written to travel — Victoria
+keeps a copy next to her `index.html` so any AI she works with gets the same rules.
 The private entrance is `login.html`; the public terminal opens it with the undocumented
 `hermiscus` command.
 
