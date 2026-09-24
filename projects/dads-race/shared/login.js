@@ -48,14 +48,30 @@
       document.getElementById('demo-list').hidden = false;
       nameInput.focus();
     };
-    const useWaiting = (state) => {
+    const useWaiting = (state, asked) => {
       mode = 'waiting';
       form.hidden = true;
-      sub.textContent = state === 'denied' ? 'no access' : 'waiting for Ric';
       panel.hidden = false;
-      panel.innerHTML = state === 'denied'
-        ? '<p>this account has not been given HERMISCUS.</p><p><a href="../../account/">your account →</a></p>'
-        : '<p>your account does not have HERMISCUS yet. ask for it on your account page; once Ric switches it on, this page opens.</p><p><a href="../../account/">your account →</a></p>';
+      if (state === 'denied') {
+        sub.textContent = 'no access';
+        panel.innerHTML = '<p>this account has not been given HERMISCUS.</p><p><a href="../../account/">your account →</a></p>';
+        return;
+      }
+      sub.textContent = asked ? 'waiting for Ric' : 'not switched on for you';
+      panel.innerHTML = asked
+        ? '<p>your request is with Ric. once he switches HERMISCUS on, this page opens.</p><p><a href="../../account/">your account →</a></p>'
+        : '<p>your account does not have HERMISCUS yet.</p><button type="button" id="ask-access" style="width:100%;min-height:44px;margin-top:6px;border:1px solid var(--phosphor);background:var(--phosphor);color:#0a0a0a;font:700 14px/1 ui-monospace,monospace;letter-spacing:.12em;cursor:pointer">request permission</button><p class="message" id="ask-msg" role="alert"></p>';
+      const ask = document.getElementById('ask-access');
+      if (ask) ask.addEventListener('click', async () => {
+        ask.disabled = true;
+        try {
+          await (await window.HermiscusAuth.siteGate()).requestAccess('hermiscus');
+          useWaiting('waiting', true);
+        } catch (_) {
+          ask.disabled = false;
+          document.getElementById('ask-msg').textContent = 'could not send that — try again in a moment.';
+        }
+      });
     };
     const decide = async () => {
       form.hidden = true;
@@ -65,7 +81,7 @@
         if (access.state === 'ok') useNameForm();
         else if (access.state === 'signed-out') useAccountForm();
         else if (access.state === 'error') { useAccountForm(); message.textContent = 'could not check your access — try again in a moment.'; }
-        else useWaiting(access.state);
+        else useWaiting(access.state, access.asked);
       } catch (_) {
         useAccountForm();
         message.textContent = 'could not reach the account service.';

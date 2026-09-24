@@ -71,13 +71,6 @@
     $('me-pages').innerHTML = open.map((p) =>
       `<li><a href="${esc(pageHref(p))}">${esc(p.label)} →</a> <small>${esc(p.blurb)}</small></li>`).join('');
 
-    // Ask for more: whatever you do not have and are not already waiting on.
-    const more = PAGES.filter((p) => !mine.has(p.key) && !asked.includes(p.key));
-    $('more-form').hidden = isAdmin || status === 'denied' || !more.length;
-    $('more-pages').innerHTML = more.map((p) => `
-      <label><input type="checkbox" value="${esc(p.key)}"><span>${esc(p.label)} <small>· ${esc(p.blurb)}</small></span></label>`).join('');
-    $('more-form').dataset.asked = JSON.stringify(asked);
-
     $('admin-panel').hidden = !isAdmin;
     show('me-panel');
     if (isAdmin) await renderAdmin();
@@ -195,25 +188,6 @@
     if (sw) { show(sw.dataset.show); const first = $(sw.dataset.show).querySelector('input'); if (first) first.focus(); return; }
     const act = e.target.closest('button[data-act]');
     if (act) decide(act);
-  });
-
-  $('more-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    say('more-msg', '');
-    const wanted = [...document.querySelectorAll('#more-pages input:checked')].map((i) => i.value);
-    if (!wanted.length) return say('more-msg', 'tick what you would like');
-    // One request per account: asking again replaces it, so carry anything
-    // still waiting along with the new ticks.
-    const already = JSON.parse($('more-form').dataset.asked || '[]');
-    $('more-go').disabled = true;
-    const { error } = await db.rpc('request_access', {
-      who: '', why: $('more-note').value.trim(), wanted: [...new Set([...already, ...wanted])],
-    });
-    $('more-go').disabled = false;
-    if (error) return say('more-msg', error.message);
-    $('more-note').value = '';
-    await render();
-    say('more-msg', 'sent — Ric will see it.', true);
   });
 
   $('signout').addEventListener('click', async () => {

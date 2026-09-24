@@ -516,6 +516,34 @@ async function signOut() {
 
 /* ── boot ────────────────────────────────────────────────────────────────── */
 
+/* The screen for a signed-in account that does not have the map. "ask" offers
+ * the request button; "asked" says it is with Ric; "denied" says no. */
+let waitingRequest = null;
+function showWaiting(kind) {
+  $('waiting-sub').textContent = kind === 'denied' ? 'no access' : kind === 'asked' ? 'waiting for Ric' : 'not switched on for you';
+  $('waiting-note').textContent = kind === 'denied'
+    ? 'This account has not been given access to the map.'
+    : kind === 'asked'
+      ? 'Your request is with Ric. Once he lets you in, this page opens straight onto the map.'
+      : "Your account doesn't have the map yet. Ask Ric for it here.";
+  $('waiting-ask').hidden = kind !== 'ask';
+  $('waiting-account').hidden = kind === 'ask';
+}
+
+async function requestAtlas() {
+  const btn = $('waiting-ask');
+  btn.disabled = true;
+  // One request per person, replaced on each ask: carry anything still waiting.
+  const r = waitingRequest;
+  const waiting = r && r.status === 'pending' ? r.pages || [] : [];
+  const { error } = await db.rpc('request_access', {
+    who: '', why: (r && r.note) || '', wanted: [...new Set([...waiting, 'atlas'])],
+  });
+  btn.disabled = false;
+  if (error) { toast("couldn't send that — try again"); return; }
+  showWaiting('asked');
+}
+
 async function start() {
   const { data: { session } } = await db.auth.getSession();
   if (!session) {
@@ -545,16 +573,15 @@ async function start() {
   if (online()) {
     const [{ data: allowed, error: accessError }, { data: request }] = await Promise.all([
       db.rpc('has_page_access', { page: 'atlas' }),
-      db.from('access_requests').select('status').eq('user_id', session.user.id).maybeSingle(),
+      db.from('access_requests').select('status,pages,note').eq('user_id', session.user.id).maybeSingle(),
     ]);
+    waitingRequest = request;
     // An error means the question could not be asked (say, the function is not
     // live yet), not that the answer is no — fall through and let RLS decide.
     if (!accessError && allowed === false) {
       const denied = request && request.status === 'denied';
-      $('waiting-sub').textContent = denied ? 'no access' : 'waiting for Ric';
-      $('waiting-note').textContent = denied
-        ? 'This account has not been given access to the map.'
-        : "Your account does not have the map yet. Ask for it on your account page; once Ric lets you in, this page opens straight onto it.";
+      const asked = !!(request && request.status === 'pending' && (request.pages || []).includes('atlas'));
+      showWaiting(denied ? 'denied' : asked ? 'asked' : 'ask');
       $('gate').hidden = true;
       $('app').hidden = true;
       $('waiting').hidden = false;
@@ -4658,6 +4685,7 @@ function setTheme(theme) {
 $('login-form').addEventListener('submit', handleLogin);
 $('newpass-form').addEventListener('submit', setNewPassword);
 $('forgot').addEventListener('click', forgotPassword);
+$('waiting-ask').addEventListener('click', requestAtlas);
 $('waiting-out').addEventListener('click', async () => { await db.auth.signOut(); location.reload(); });
 // Tapping your own name used to sign you out — a destructive action on the
 // smallest target in the app, behind a tooltip nobody reads on a phone. It

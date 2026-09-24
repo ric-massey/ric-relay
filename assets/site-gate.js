@@ -34,11 +34,28 @@
     const email = session.user.email || '';
     const [{ data: allowed, error }, { data: request }] = await Promise.all([
       db().rpc('has_page_access', { page }),
-      db().from('access_requests').select('status').eq('user_id', session.user.id).maybeSingle(),
+      db().from('access_requests').select('status,pages').eq('user_id', session.user.id).maybeSingle(),
     ]);
     if (error) return { state: 'error', email, error };
     if (allowed) return { state: 'ok', email };
-    return { state: request && request.status === 'denied' ? 'denied' : 'waiting', email };
+    if (request && request.status === 'denied') return { state: 'denied', email };
+    // 'asked': this page is in a request Ric has not answered yet.
+    const asked = !!(request && request.status === 'pending' && (request.pages || []).includes(page));
+    return { state: 'waiting', email, asked };
+  }
+
+  // The "request permission" button on a locked page. A person has one request
+  // at a time, and asking replaces it, so anything already waiting rides along.
+  async function requestAccess(page) {
+    const { data: { session } } = await db().auth.getSession();
+    if (!session) throw new Error('not signed in');
+    const { data: request } = await db().from('access_requests')
+      .select('status,pages,note').eq('user_id', session.user.id).maybeSingle();
+    const waiting = request && request.status === 'pending' ? request.pages || [] : [];
+    const { error } = await db().rpc('request_access', {
+      who: '', why: (request && request.note) || '', wanted: [...new Set([...waiting, page])],
+    });
+    if (error) throw error;
   }
 
   async function signIn(email, password) {
@@ -51,7 +68,7 @@
   async function signOut() { await db().auth.signOut(); }
 
   window.SiteGate = Object.freeze({
-    check, signIn, signOut, db,
+    check, signIn, signOut, requestAccess, db,
     accountUrl: new URL('account/', root).href,
   });
 })();

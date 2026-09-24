@@ -113,9 +113,12 @@ page *shows*. A page whose content is committed to this public repo is only
 curtained. Real privacy needs the content in this database, behind
 `has_page_access('<key>')`.
 
-**Asking for more.** Somebody already let in asks for another page from their
-account page. Their request goes back to pending; they keep what they have while
-you decide, and approving from the card adds the new page.
+**Asking for more.** There is no "ask for more" list anywhere — Ric wanted people
+to ask only for a page they have actually gone to. A signed-in account that opens
+a locked page it lacks gets a **request permission** button on that page's
+waiting screen (ATLAS's own, and `SiteGate.requestAccess(page)` for the rest).
+Their request goes back to pending; they keep what they have while you decide,
+and approving from the card adds the new page.
 
 **Email when somebody asks** (migration `20260924010000_ask_for_more_and_tell_ric.sql`).
 Every request that reaches the queue sends you an email through Resend, at most
