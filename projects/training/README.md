@@ -337,7 +337,7 @@ The consequence, recorded here rather than discovered later: the published file
 is a forward-looking calendar of where this person will be. `2026-11-08` says
 Obed, and it says so in advance. If that ever stops being the intent, the
 switches are `PRIVATE_SESSION` and `PUBLIC_FIELDS` in `export.mjs`, and the
-`publicView` filter in `server/worker.mjs`.
+`publicView` filter in `worker/worker.mjs`.
 
 **That intent narrowed on 2026-09-18, and this is the half that changed.** The home
 crag no longer publishes by name. Ijams is five minutes from the house and turns up
@@ -391,5 +391,5 @@ again.
 
 Should it ever need undoing, the switch is one line — drop `average_heartrate`
 and `max_heartrate` from `ACTIVITY_FIELDS`, and `average_heartrate` from
-`SPLIT_FIELDS`, in `server/worker.mjs`. The cells disappear on their own,
+`SPLIT_FIELDS`, in `worker/worker.mjs`. The cells disappear on their own,
 because the page draws only the fields that arrive.

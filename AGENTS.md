@@ -386,7 +386,7 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   them to see my location when I'm training" — a map appearing the instant a watch syncs
   says where he is *now*. Timestamps publish as normal; only the route waits, only for
   visitors, and only briefly. Signed in he sees it at once. The constant is
-  `ROUTE_HOLD_MS` in `server/worker.mjs`, counted from `at` — the moment the Worker took
+  `ROUTE_HOLD_MS` in `worker/worker.mjs`, counted from `at` — the moment the Worker took
   the activity in, not `start_date_local`, which is a local time wearing a `Z` and can
   be a timezone out in either direction. `at` survives re-ingest so a rename does not
   send an old map back behind the hold.

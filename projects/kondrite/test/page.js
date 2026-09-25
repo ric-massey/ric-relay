@@ -55,12 +55,15 @@ function inlineOf(markup) {
 }
 
 /* Every local `<script src>` the page loads, in page order — the modules first,
-   then the chapters. Only local files; a CDN would not be a module of this
-   game. */
+   then the chapters. Only this game's own files: a CDN would not be a module
+   of it, and neither is anything reached with `../` — that is the site's
+   effects.js, which brings Mochi, touches a real DOM and has no business in a
+   headless flight (it took eleven suites down on 2026-09-25 by asking for a
+   URL constructor the sandbox does not have). */
 function srcsOf(markup) {
   return [...markup.matchAll(/<script[^>]*\bsrc="([^"]+)"/gi)]
     .map(m => m[1])
-    .filter(s => !/^https?:|^\/\//.test(s));
+    .filter(s => !/^https?:|^\/\/|^\.\.\//.test(s));
 }
 
 /* Read the page once and hand back what a harness needs from it. */

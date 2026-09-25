@@ -321,7 +321,9 @@ belong here.
   commit to fold them into the committed list for good.
 
   One thing a new title does NOT get on its own is its artwork and facts — those come
-  from `projects/entertainment/pull-entertainment.py`, which has to be run. Until then a
+  from `projects/entertainment/pull-entertainment.py`. A GitHub job runs it every three
+  hours and fills in the facts; posters need the TMDB key, so until it is added as the
+  `TMDB_KEY` repository secret they arrive when the script is run on the Mac. Until then a
   newly added film shows as a typographic plate with just its name, which is a designed
   state rather than a broken one.
 
