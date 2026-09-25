@@ -76,7 +76,7 @@
       "relay-cat-climb-land.png",
       "relay-cat-climb-recover.png",
     ],
-  }).map(([pose, files]) => [pose, files.map((file) => new URL(`assets/${file}`, document.currentScript?.src || location.href).href)]));
+  }).map(([pose, files]) => [pose, files.map((file) => new URL(`assets/cat/${file}`, document.currentScript?.src || location.href).href)]));
   const CAT_FRAME_Y = {
     "relay-cat-walk-2.png": -.172,
     "relay-cat-walk-3.png": -1.04,

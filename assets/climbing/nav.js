@@ -5,7 +5,7 @@
    them end up right and one of them quietly points at a page that moved — so
    the bar is built once, here, and each page says only which tab it is on.
 
-       <script src="assets/climbing-nav.js" data-nav="home"></script>
+       <script src="assets/climbing/nav.js" data-nav="home"></script>
 
    The depth is read off this script's own src rather than off location.pathname,
    because the dev server, a file:// open and the deployed site disagree about
@@ -29,8 +29,8 @@
   const me = document.currentScript;
   const here = me.dataset.nav || '';
 
-  /* "…/assets/climbing-nav.js" → "…/" — the site root, however we got here. */
-  const root = me.src.replace(/assets\/climbing-nav\.js.*$/, '');
+  /* "…/assets/climbing/nav.js" → "…/" — the site root, however we got here. */
+  const root = me.src.replace(/assets\/climbing\/nav\.js.*$/, '');
 
   const TABS = [
     ['home',  'Home',     'climbing.html'],

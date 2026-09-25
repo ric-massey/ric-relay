@@ -18,12 +18,12 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%233a5a40'/><text y='.85em' font-size='68' x='16'>🧗</text></svg>">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/climbing-nav.css">
-  <link rel="stylesheet" href="assets/climbing.css">
+  <link rel="stylesheet" href="assets/climbing/nav.css">
+  <link rel="stylesheet" href="assets/climbing/climbing.css">
 </head>
 <body>
 
-<script src="assets/climbing-nav.js" data-nav="home"></script>
+<script src="assets/climbing/nav.js" data-nav="home"></script>
 
 <!-- The headline sits ON the photo rather than after it: the old page spent a
      whole phone screen on a picture and then started the page underneath it. -->
@@ -145,7 +145,7 @@
   /* ── next day out ─────────────────────────────────────
      From the crag plan, and only when there is one. */
   try {
-    const plan = await (await fetch("assets/crag-plan.json", { cache: "no-store" })).json();
+    const plan = await (await fetch("assets/training/crag-plan.json", { cache: "no-store" })).json();
     /* Today where he is, not in UTC. toISOString() is UTC, and Knoxville runs
        four or five hours behind it — so from about 8pm the filter below was
        already on tomorrow's date and dropped the day out he had not had yet.

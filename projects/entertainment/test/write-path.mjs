@@ -3,7 +3,7 @@
    Three programs handle a change Ric makes on the page, and none of them can
    see the other two:
 
-     assets/entertainment-room.js   decides what to send
+     assets/entertainment/room.js   decides what to send
      projects/training/server/      stores it, with no sight of the data file
      pull-entertainment.py          merges it back into the committed file
 
@@ -69,7 +69,7 @@ function service() {
    Read out of the page rather than retyped here. A copy of a rule is a rule
    that goes green after somebody edits the original — the trap atlas's
    prefs-matches-app.test.mjs was written for. */
-const roomJs = read('assets/entertainment-room.js');
+const roomJs = read('assets/entertainment/room.js');
 const saveFn = roomJs.slice(roomJs.indexOf('async function save(id, patch)'),
                             roomJs.indexOf('const today = ()'));
 

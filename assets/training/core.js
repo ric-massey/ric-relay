@@ -23,7 +23,7 @@
        assets/owner.js            Owner.*  — the sign-in and the write queue
        projects/climbing/climb-host.js
        projects/climbing/climb-media.js
-       assets/training-core.js    this file
+       assets/training/core.js    this file
    then the page's own script, which calls Training.load().
 
    Owner mode is a rendering hint; assets/owner.js says why at length. The
@@ -47,13 +47,13 @@
      a blank page rather than an error — so it failed silently, which is worse.
 
      The root is read off this script's own src, the same trick and for the same
-     reason as assets/training-nav.js: the dev server, a file:// open and the
+     reason as assets/training/nav.js: the dev server, a file:// open and the
      deployed site disagree about what location.pathname looks like, and the
      script's own URL is the one thing correct in all three. */
   const ROOT = (document.currentScript ? document.currentScript.src : '')
-    .replace(/assets\/training-core\.js.*$/, '');
+    .replace(/assets\/training\/core\.js.*$/, '');
   const PLAN_URL = ROOT + 'assets/training-plan.json';
-  const CLIMB_URL = ROOT + 'assets/climb-days.json';
+  const CLIMB_URL = ROOT + 'assets/climbing/climb-days.json';
   const BOARD_URL = ROOT + 'projects/climbing/board-data.js';
 
   const ICON = { climb: '🧗', run: '🏃', body: '🧘', rest: '😴' };

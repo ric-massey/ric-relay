@@ -167,7 +167,7 @@ Climbing gets the same treatment from the other direction. On `climbing.html` Mo
 stops walking the page and **climbs** it: he grabs the side edges of the page's own
 features, works up them hand-over-hand in alternating step frames, turns, hops between
 holds, plays around on them, and sometimes falls and recovers — a separate sprite set
-again (`assets/relay-cat-climb-*.png`). Clicking him there makes him fall rather than
+again (`assets/cat/relay-cat-climb-*.png`). Clicking him there makes him fall rather than
 bolt, and scrolling past him puts him back on the wall in the part of the page you can
 now see.
 

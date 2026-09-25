@@ -36,7 +36,7 @@ const OUT = join(ROOT, 'assets', 'training-plan.json');
 /* The climbing page asks one question of the plan — when is the next day out
    and where — and the plan is 200 kB. Same reasoning as climb-days.json going
    the other way: a small file for the small question. */
-const CRAG_OUT = join(ROOT, 'assets', 'crag-plan.json');
+const CRAG_OUT = join(ROOT, 'assets', 'training', 'crag-plan.json');
 
 /* Which protocols mean "actually going somewhere to climb outside". The gym
    sessions are climbing too, so kind alone cannot answer this. */

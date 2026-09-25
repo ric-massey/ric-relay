@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
-const OUT = join(ROOT, 'assets', 'climb-days.json');
+const OUT = join(ROOT, 'assets', 'climbing', 'climb-days.json');
 
 /* climbs-data.js assigns to window; give it one. */
 const sandbox = { window: {} };
@@ -46,5 +46,5 @@ mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT, JSON.stringify({ generated: new Date().toISOString().slice(0, 10), days }));
 
 const n = Object.keys(days).length;
-console.log(`wrote assets/climb-days.json — ${n} dated days out of ${trips.length} trips`);
+console.log(`wrote assets/climbing/climb-days.json — ${n} dated days out of ${trips.length} trips`);
 console.log(`size: ${(Buffer.byteLength(JSON.stringify({ days })) / 1024).toFixed(1)} kB`);

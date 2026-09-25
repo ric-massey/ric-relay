@@ -23,7 +23,7 @@
        looking something up, and it is exhaustive on purpose: every title, every
        filter, two densities.
 
-       It shares the room's palette and its core (assets/entertainment-room.js),
+       It shares the room's palette and its core (assets/entertainment/room.js),
        so the merge rules, the detail sheet and the export have one definition
        between the two pages. What is different here is only the arrangement:
        no hero, no shelves, a filter bar that stays put and a grid that does not
@@ -898,7 +898,7 @@
       .letter { top: 156px; }
     }
   </style>
-  <link rel="stylesheet" href="assets/entertainment-room.css">
+  <link rel="stylesheet" href="assets/entertainment/room.css">
 </head>
 <body>
   <div class="strip" id="strip">The library</div>
@@ -1006,10 +1006,10 @@
 
   <script src="entertainment-data.js"></script>
   <script src="assets/owner.js"></script>
-  <script src="assets/entertainment-room.js"></script>
+  <script src="assets/entertainment/room.js"></script>
   <script>
   /* The library page. The list itself — merging, writing, the sheet, the owner
-     panel, the export — is entertainment-room.js, shared with the app page.
+     panel, the export — is assets/entertainment/room.js, shared with the app page.
      What is here is the filtering and the two densities. */
   const el = id => document.getElementById(id);
   const esc = Room.esc;

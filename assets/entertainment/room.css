@@ -4,7 +4,7 @@
    drawn two different ways in one room is two cases.
 
    Hard rule 3 forbids flattening the SITE into one stylesheet. This is one
-   ROOM's furniture, the same way assets/climbing.css is the climbing room's.
+   ROOM's furniture, the same way assets/climbing/climbing.css is the climbing room's.
 
    The tokens it expects from the page: --bg --panel --raised --line --line-hi
    --ink --dim --gold --gold-dk --ease --sans --mono, plus --case-w --case-h

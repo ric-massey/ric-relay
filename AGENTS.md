@@ -156,15 +156,15 @@ rule exists to protect.
 Each bar is built once and each page declares only which tab it is on:
 
 ```
-<script src="assets/climbing-nav.js" data-nav="log"></script>
-<script src="assets/training-nav.js" data-nav="calendar"></script>
+<script src="assets/climbing/nav.js" data-nav="log"></script>
+<script src="assets/training/nav.js" data-nav="calendar"></script>
 ```
 
 Both read the site root off their own `src` rather than `location.pathname`, because the
 dev server, a `file://` open and Pages disagree about the path and the script's own URL
-is the one thing right in all three. Styling is `assets/climbing-nav.css` and
-`assets/training-nav.css`; the sections' page styles are `assets/climbing.css` and
-`assets/training.css`. That is a shared stylesheet **within one room**, which is what
+is the one thing right in all three. Styling is `assets/climbing/nav.css` and
+`assets/training/nav.css`; the sections' page styles are `assets/climbing/climbing.css` and
+`assets/training/training.css`. That is a shared stylesheet **within one room**, which is what
 hard rule 3 forbids doing **across** rooms — the two bars look different from each other
 on purpose, and neither resembles any other room.
 
@@ -257,7 +257,7 @@ so the newest day out leads the "latest" banner without anyone editing a list.
 **A day can also be logged from a phone at the crag.** `projects/climbing/add.html`
 takes either a day out or a route for the to-do. You get to it by signing in at the
 foot of `climbing.html` — that is the only password box in the section, and the Add
-tab appears in the climbing bar beside Boards the moment it takes (`assets/climbing-nav.js`,
+tab appears in the climbing bar beside Boards the moment it takes (`assets/climbing/nav.js`,
 `ClimbNav.refresh()`). The page
 writes the markdown block it *would* have written into `climbs.md` to the Worker;
 `web-trips.js` is the one place that fetches those days and folds them into the archive's
@@ -560,7 +560,7 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   written back untouched, so adding a field to the data by hand is safe and forgetting to
   add it to `FIELDS` costs nothing but ordering.
 - **The page's Export button emits the same JSON**, and `FIELDS` appears in both
-  `pull-entertainment.py` and `assets/entertainment-room.js`. They have to agree or every
+  `pull-entertainment.py` and `assets/entertainment/room.js`. They have to agree or every
   export fights the last pull.
 - **A hand-set `wd:` or `tmdb:` id is never overwritten.** That is how an ambiguous
   title gets settled once and stays settled through every re-run.
@@ -603,7 +603,7 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   stale answer is worse than resolving it at click time.
 - **Two pages, one core.** `entertainment.html` is the app (billboard, service row,
   shelves); `entertainment-library.html` is the catalog (every title, filters, posters
-  or dense list). Both load `assets/entertainment-room.js`, which owns the merge rules,
+  or dense list). Both load `assets/entertainment/room.js`, which owns the merge rules,
   the write path, the detail sheet, the owner panel and the export. Hard rule 3 is about
   not flattening the *site* into one template — inside one room, one core is how the two
   pages keep telling the same truth. Don't fork it.
@@ -619,9 +619,9 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
 - **`.board` was already the billboard.** Naming the shelf plank `.board` too painted
   the hero section in wood grain. It is `.shelf-board`. Check for a collision before
   adding a generic class name to a page this size.
-- **The furniture lives in `assets/entertainment-room.css`** and the case markup in
+- **The furniture lives in `assets/entertainment/room.css`** and the case markup in
   `Room.dvdCase` — one definition, both pages. Hard rule 3 is about not flattening the
-  SITE into one template; this is one room's furniture, like `assets/climbing.css`.
+  SITE into one template; this is one room's furniture, like `assets/climbing/climbing.css`.
 - **The mark on a film is a PERSON, not a star.** That list is what Ric and his partner
   are going to watch together, which is a different thing from a favourite. The data
   field is still `pick` — it is in the committed file, the Worker and the export, and
@@ -720,7 +720,7 @@ migration marked "safe to re-run", and re-running it would have put the original
 - **Mochi has three worlds and they are room-aware, not global.** Ordinary rooms get the
   walking resident. `climbing.html` swaps him onto the wall — he grabs the side edges of
   the page's own features, steps up them, turns, hops, plays and falls
-  (`assets/relay-cat-climb-*.png`). Starfield puts him in a bubble helmet in zero
+  (`assets/cat/relay-cat-climb-*.png`). Starfield puts him in a bubble helmet in zero
   gravity. Each set has its own sprite list in `CAT_FRAMES` and its own per-frame
   offset/scale tuning in `CAT_FRAME_X` / `CAT_FRAME_Y` / `CAT_FRAME_SCALE`, keyed by
   filename — a new frame with no entry silently renders at the wrong offset, so add its

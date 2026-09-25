@@ -5,12 +5,12 @@
    end up right and one quietly points at a page that moved — so the bar is
    built once, here, and each page says only which tab it is on.
 
-       <script src="assets/training-nav.js" data-nav="home"></script>
+       <script src="assets/training/nav.js" data-nav="home"></script>
 
    Depth is read off this script's own src rather than location.pathname,
    because the dev server, a file:// open and the deployed site disagree about
    what the path looks like, and the script's URL is the one thing correct in
-   all three. Same reasoning, same shape, as assets/climbing-nav.js — if you fix
+   all three. Same reasoning, same shape, as assets/climbing/nav.js — if you fix
    a bug in one, look at the other.
 
    There is no owner-only tab here. The climbing bar has Add because logging a
@@ -21,8 +21,8 @@
   const me = document.currentScript;
   const here = me.dataset.nav || '';
 
-  /* "…/assets/training-nav.js" → "…/" — the site root, however we got here. */
-  const root = me.src.replace(/assets\/training-nav\.js.*$/, '');
+  /* "…/assets/training/nav.js" → "…/" — the site root, however we got here. */
+  const root = me.src.replace(/assets\/training\/nav\.js.*$/, '');
 
   const TABS = [
     ['home',     'Home',     'training.html'],

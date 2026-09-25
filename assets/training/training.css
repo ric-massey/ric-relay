@@ -5,7 +5,7 @@
    cards, session rows, tick boxes and run panels, so the rules for them live
    here once rather than in four <style> blocks drifting apart.
 
-   The section's nav bar is NOT here — that is assets/training-nav.css, for the
+   The section's nav bar is NOT here — that is assets/training/nav.css, for the
    same reason the climbing bar is split out: the bar has to sit on pages at two
    different depths and is styled against .traintop / .trainnav so it cannot
    collide with whatever else a page calls its header. */
@@ -49,7 +49,7 @@ a { color: var(--brand-ink); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* The room nav that used to live here is gone. These pages carry the section
-   bar from assets/training-nav.css instead — the terminal strip with the way
+   bar from assets/training/nav.css instead — the terminal strip with the way
    back up, then Home / Calendar / Workouts / History — so the .topbar and
    .roomnav rules that sat here had nothing left to style. effects.js only
    injects its room menu where it finds .topbar .roomnav, so it now quietly
