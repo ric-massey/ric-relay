@@ -12,7 +12,6 @@ const ROOT = path.resolve(__dirname, "../../..");
 const PROJECT = path.join(ROOT, "projects/kondrite");
 const INDEX = path.join(PROJECT, "index.html");
 const NET = path.join(PROJECT, "net.js");
-const SURVEY_HUD = path.join(PROJECT, "survey-hud.js");
 const MENU = path.join(PROJECT, "menu.js");
 const ROOMS = path.join(PROJECT, "server/rooms.js");
 const CORE = path.join(PROJECT, "server/rooms-core.mjs");
@@ -25,7 +24,8 @@ function read(file) {
 
 function checkSyntax() {
   new vm.Script(read(NET), { filename: "net.js" });
-  new vm.Script(read(SURVEY_HUD), { filename: "survey-hud.js" });
+  const hudFiles = require("./page.js").hudFilesOf(read(path.join(PROJECT, "index.html")));
+  for (const f of hudFiles) new vm.Script(read(path.join(PROJECT, f)), { filename: f });
   new vm.Script(read(MENU), { filename: "menu.js" });
   new vm.Script(read(ROOMS), { filename: "rooms.js" });
 
@@ -78,8 +78,20 @@ function checkSyntax() {
      global once at boot — so every one of them has to be loaded before, not
      after. Loading one late is silent: the mode plays with no chart and no
      catalogue readout, or it does not boot at all. */
-  for (const mod of ["survey-world.js", "survey-save.js", "survey-hud.js"]) {
-    const at = page.indexOf('src="' + mod + '"');
+  /* The interface is a folder of its own, held the way game/ is: every file on
+     disk is on the page, once, and together. */
+  const hudOnDisk = fs.readdirSync(path.join(PROJECT, "survey-hud")).filter(f => f.endsWith(".js")).map(f => "survey-hud/" + f).sort();
+  assert.deepEqual([...hudFiles].sort(), hudOnDisk,
+    "survey-hud/ on disk and survey-hud/ on the page disagree — add the file to index.html, or delete it");
+  assert.equal(new Set(hudFiles).size, hudFiles.length, "an interface file is loaded twice");
+  const hudAt = scripts.indexOf(hudFiles[0]);
+  assert.deepEqual(scripts.slice(hudAt, hudAt + hudFiles.length), hudFiles,
+    "survey-hud/ must be loaded together, with nothing between its files");
+  assert.equal(hudFiles[hudFiles.length - 1], "survey-hud/machines.js",
+    "survey-hud/machines.js publishes the interface and must be its last file");
+
+  for (const mod of ["survey-world.js", "survey-save.js", "survey-hud/"]) {
+    const at = page.indexOf('src="' + mod);
     assert.ok(at > 0, "index.html must load " + mod);
     assert.ok(at < gameAt, mod + " must be loaded before the game's chapters");
   }

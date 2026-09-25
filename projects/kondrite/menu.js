@@ -1,9 +1,8 @@
 /* KONDRITE — MENU DIORAMAS
    ─────────────────────────────────────────────────────────────────────────────
-   The little moving pictures behind the mode cards. Loaded like `net.js` and
-   `survey-hud.js` — a script tag and one global — because index.html is already
-   the biggest file in the project and five animated scenes is not a small
-   tenant.
+   The little moving pictures behind the mode cards. Loaded like `net.js` — a
+   script tag and one global — because the game was already the biggest thing
+   in the project and five animated scenes is not a small tenant.
 
    ── why these are drawn and not filmed ──────────────────────────────────────
    The obvious way to show a player what a mode looks like is a clip. A clip

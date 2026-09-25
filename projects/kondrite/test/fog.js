@@ -11,7 +11,7 @@
    millions of chunks, which is the wrong place to find out that a corrupt
    import ate somebody's map.
 
-   This loads `survey-hud.js` alone — no game, no canvas, no sector — because
+   This loads the interface (survey-hud/) alone — no game, no canvas, no sector — because
    the chart's round trip is a pure function of two functions.
 
    The bug this file exists to keep dead: `importFog` used to clear `fog` on its
@@ -53,10 +53,12 @@ function hud() {
   };
   sandbox.self = sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
-  vm.runInContext(fs.readFileSync(path.join(DIR, "survey-hud.js"), "utf8"),
-                  sandbox, { filename: "survey-hud.js" });
+  const page = require("./page.js");
+  for (const f of page.hudFilesOf(page.page().html)) {
+    vm.runInContext(fs.readFileSync(path.join(DIR, f), "utf8"), sandbox, { filename: f });
+  }
   const H = sandbox.window.KondriteSurveyHUD;
-  assert.ok(H, "survey-hud.js did not publish KondriteSurveyHUD");
+  assert.ok(H, "survey-hud/ did not publish KondriteSurveyHUD");
   H.init({ ctx: null, SCREEN_W: 1000, SCREEN_H: 700, touchOnly: false,
            glow: (c, w, a, f) => f && f(), addTap: noop });
   return H;

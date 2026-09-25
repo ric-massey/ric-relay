@@ -38,9 +38,9 @@ const hudSrc = page.source("survey-hud.js");
    loud: the game's chapters capture `window.KondriteSurveyHUD` once at
    boot, so a HUD loaded after it would test the null-HUD path. */
 assert.ok(
-  html.indexOf('src="survey-hud.js"') > 0 &&
-  html.indexOf('src="survey-hud.js"') < html.indexOf('src="game/'),
-  "survey-hud.js must be loaded before the game's chapters"
+  html.indexOf('src="survey-hud/') > 0 &&
+  html.indexOf('src="survey-hud/') < html.indexOf('src="game/'),
+  "survey-hud/ must be loaded before the game's chapters"
 );
 
 let now = 0;

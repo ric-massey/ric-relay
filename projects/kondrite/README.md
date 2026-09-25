@@ -734,7 +734,7 @@ each loaded the way `net.js` is:
 |---|---|---|
 | `survey-world.js` | Chunk identity, the danger curve, the region lattice, the Warrens, the made-up boards | `seeded`, the chunk size, and calls that read the run's seed and world |
 | `survey-save.js` | The book, and everywhere it is kept | Constants, five content tables, an empty hold |
-| `survey-hud.js` | The interface | The engine's drawing primitives |
+| `survey-hud/` | The interface, one file per page | The engine's drawing primitives |
 
 Each is a factory handed exactly what it needs, and the list is the point of the
 split as much as the file is. A dependency you can read is a dependency you can
@@ -743,6 +743,16 @@ argue with — and one of them was a trap the shared closure had been hiding:
 never mattered while the validator read it at load time out of a shared scope.
 Reading it at construction stopped the game booting. The content tables go in as
 getters.
+
+The interface was one 8,000-line `survey-hud.js` until 2026-09-24. It is eleven
+files in `survey-hud/` now — `core.js` (palette, pins, the log, type, the page
+grid, moving between pages), then `panel`, `chart`, `almanac`, `station`,
+`workbench`, `ship`, `record`, `death-and-lore`, `hangar` and `machines`, which is
+last and publishes the global. Like the chapters they share the page's scope
+rather than a closure, so the same rules hold, and the smoke test holds the
+folder to the page the way it does `game/`. Three of its names carry a prefix
+the game's do not — `HUD_CASH`, `hudMoney`, `drawPanelDevices` — because the
+game already had a `CASH`, a `money` and a `drawDevices` of its own.
 
 What did **not** move is the runtime: streaming, the ships, the devices, the
 flight loop and the state the interface is handed all still live in the game
@@ -1105,7 +1115,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `supabase/schema.sql` | Three tables: the private save, and the two the boards are made of. Run once in the SQL editor |
 | `survey-world.js` | Where you are and what that means: chunk identity, the danger curve, the region lattice and the Warrens' rock. Pure functions of a seed and a pair of coordinates |
 | `survey-save.js` | The book: where it is kept, the four pieces a read is made of, and the write |
-| `survey-hud.js` | Survey's interface: the flight panel, the chart page, the illustrated almanac, the station |
+| `survey-hud/` | Survey's interface, one file per page: the flight panel, the chart, the almanac, the station, the workbench, the ship, the record, the hangar, the machines |
 | `menu.js` | The mode cards' moving pictures — five dioramas, drawn rather than filmed |
 | `attract.js` | The front page: a run being flown, on the game's own flight model and gravity |
 | `sounds/make-lasers.py` | Writes the five gun sounds beside it, from nothing but the standard library |

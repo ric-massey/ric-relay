@@ -94,16 +94,30 @@ function boot(sandbox, opts) {
   return ran;
 }
 
+/* Survey's interface is the files under survey-hud/, one per page, loaded
+   together before the game. They were one survey-hud.js until 2026-09-24, and
+   that name still means "the interface's source": all of them joined in page
+   order. */
+const HUD_DIR = "survey-hud/";
+function hudFilesOf(markup) {
+  const files = srcsOf(markup).filter(s => s.startsWith(HUD_DIR));
+  if (!files.length) throw new Error("index.html loads nothing from survey-hud/");
+  return files;
+}
+
 /* One module's source, for the handful of checks that read the code rather than
    run it — "this string is not drawn any more", and the like. */
-const source = name => fs.readFileSync(path.join(DIR, name), "utf8");
+const source = name => name === "survey-hud.js"
+  ? hudFilesOf(html()).map(f => fs.readFileSync(path.join(DIR, f), "utf8")).join("\n")
+  : fs.readFileSync(path.join(DIR, name), "utf8");
 
-/* The names each chapter declares at its top level — one global scope between
-   all of them. The chapters are written flush left, so a top-level declaration
+/* The names each chapter and each interface file declares at its top level —
+   one global scope between all of them. The chapters are written flush left, so a top-level declaration
    is one that starts in column 0 and no parser is needed. */
 function topLevelNames() {
   const out = [];
-  for (const f of gameFilesOf(html())) {
+  const markup = html();
+  for (const f of hudFilesOf(markup).concat(gameFilesOf(markup))) {
     for (const line of fs.readFileSync(path.join(DIR, f), "utf8").split("\n")) {
       const m = /^(?:async\s+)?(?:function\*?|class|const|let|var)\s+([A-Za-z_$][\w$]*)/.exec(line);
       if (!m) continue;
@@ -119,4 +133,5 @@ function topLevelNames() {
   return out;
 }
 
-module.exports = { DIR, GAME_DIR, page, boot, source, topLevelNames, OFF_BY_DEFAULT };
+module.exports = { DIR, GAME_DIR, HUD_DIR, page, boot, source, hudFilesOf,
+                   topLevelNames, OFF_BY_DEFAULT };

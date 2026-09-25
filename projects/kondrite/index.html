@@ -31,7 +31,19 @@
 <script src="net.js"></script>
 <script src="survey-world.js"></script>
 <script src="survey-save.js"></script>
-<script src="survey-hud.js"></script>
+<!-- Survey's interface, one file per page. It shares one scope with game/;
+     see the top of survey-hud/core.js. -->
+<script src="survey-hud/core.js"></script>
+<script src="survey-hud/panel.js"></script>
+<script src="survey-hud/chart.js"></script>
+<script src="survey-hud/almanac.js"></script>
+<script src="survey-hud/station.js"></script>
+<script src="survey-hud/workbench.js"></script>
+<script src="survey-hud/ship.js"></script>
+<script src="survey-hud/record.js"></script>
+<script src="survey-hud/death-and-lore.js"></script>
+<script src="survey-hud/hangar.js"></script>
+<script src="survey-hud/machines.js"></script>
 <!-- The account service, and the module that talks to it. Both optional: with
      no config.js, or one still holding the blanks it ships with, the game never
      makes a request and Survey saves to this browser exactly as it always has.

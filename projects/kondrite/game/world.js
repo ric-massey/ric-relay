@@ -704,7 +704,7 @@ function checkControls() {
    across a title screen it reads as exactly what it is, which is what Ric
    said: *"why not make it move … just have it continue moving."*
 
-   The wall clock, then, the same one `survey-hud.js` reaches for when it has
+   The wall clock, then, the same one `survey-hud/` reaches for when it has
    to animate something on a parked page. It never stops and it does not care
    whether a match is running. */
 const menuClock = () => Date.now() / 1000;
