@@ -402,7 +402,7 @@ Or one suite at a time:
 ```bash
 node projects/kondrite/test/smoke.js
 node projects/kondrite/test/campaign.js
-node projects/training/server/test.mjs
+node worker/test.mjs
 node projects/climbing/test/parse-parity.js
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
 for t in atlas/test/*.test.mjs; do node "$t" || break; done

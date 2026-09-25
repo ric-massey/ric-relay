@@ -105,7 +105,7 @@ flow in `parse()` and `route()` is hand-ported, and this is what catches drift.
 The write end is `/climb/:date` on the training Worker: public to read, token to
 write, with the route fields clamped rather than computed — working out whether
 a line was a flash is the parser's job, done once, on the client that has the
-vocabulary. `node projects/training/server/test.mjs` covers that.
+vocabulary. `node worker/test.mjs` covers that.
 
 ## The boards
 

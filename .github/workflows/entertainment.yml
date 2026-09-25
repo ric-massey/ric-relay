@@ -78,7 +78,7 @@ jobs:
       - name: Commit and publish, if anything changed
         run: |
           set -e
-          WATCH="entertainment-data.js assets/posters assets/backdrops"
+          WATCH="projects/entertainment/entertainment-data.js assets/posters assets/backdrops"
           if [ -z "$(git status --porcelain -- $WATCH)" ]; then
             echo "Nothing new. Not committing."
             exit 0

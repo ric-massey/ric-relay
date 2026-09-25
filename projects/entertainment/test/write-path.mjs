@@ -4,7 +4,7 @@
    see the other two:
 
      assets/entertainment/room.js   decides what to send
-     projects/training/server/      stores it, with no sight of the data file
+     worker/      stores it, with no sight of the data file
      pull-entertainment.py          merges it back into the committed file
 
    Each was individually correct and the path between them was not. On
@@ -33,7 +33,7 @@ import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
-import { TrainingLog } from '../../training/server/worker.mjs';
+import { TrainingLog } from '../../../worker/worker.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const read = p => readFileSync(join(ROOT, p), 'utf8');
@@ -201,8 +201,8 @@ console.log('\nRULE  the dev server can still exercise every route the Worker an
      list is a separate regex and it had gone stale — /movies and /todo fell
      through to the deployed Worker, so the room could not be tested locally at
      all and nobody noticed for months. */
-  const worker = read('projects/training/server/worker.mjs');
-  const dev = read('projects/training/server/dev.mjs');
+  const worker = read('worker/worker.mjs');
+  const dev = read('worker/dev.mjs');
   const paths = [...worker.match(/const PUBLIC_PATHS = new Set\(\[([^\]]*)\]/)[1]
     .matchAll(/'([a-z-]+)'/g)].map(m => m[1]);
   const regex = dev.match(/\/\^\\\/\(([a-z|]+)\)/)[1].split('|');

@@ -3,7 +3,7 @@
    Serves the site AND the log API from one origin, so training.html can be
    exercised end to end without deploying anything or holding a real token.
 
-       node projects/training/server/dev.mjs
+       node worker/dev.mjs
        open http://localhost:8799/training.html?key=local-dev-token
 
    The token below is a fixture, not a secret — it only ever unlocks this
@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 import worker, { TrainingLog } from './worker.mjs';
 import { memoryBucket } from './r2-memory.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
 const TOKEN = 'local-dev-token';
 

@@ -55,10 +55,14 @@ projects/kondrite/server/.wrangler/
 # private field added to the plan is excluded by default rather than leaked.
 projects/training/index.html
 projects/training/test/
+worker/.wrangler/
+# the Worker lived in projects/training/server/ until 2026-09-25; a checkout
+# made before then may still hold these there
 projects/training/server/.wrangler/
 # Strava auto-tick: the client id is a local input, the client secret and the
 # webhook verify token live in the macOS Keychain, and the refresh token lives
 # in Cloudflare. None of the three are ever in this repo.
+worker/strava-account.json
 projects/training/server/strava-account.json
 
 # Python bytecode from the entertainment puller

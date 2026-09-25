@@ -4,7 +4,7 @@
    writes without the token", so that claim is worth a test that runs without a
    Cloudflare account.
 
-       node projects/training/server/test.mjs
+       node worker/test.mjs
 
    Exits non-zero on any failure. */
 

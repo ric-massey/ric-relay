@@ -42,7 +42,7 @@ const SUITES = [
      a whole room down and that no other suite here would ever see. */
   ['every inline script parses', ['.github/test/inline-scripts.mjs']],
   ['the entertainment write path', ['projects/entertainment/test/write-path.mjs']],
-  ['the training worker', ['projects/training/server/test.mjs']],
+  ['the worker (training-log)', ['worker/test.mjs']],
   ["orrin's server", ['projects/orrin/server/test.mjs']],
   /* Quick, and here rather than in the slow lane below because it is what
      parses game.js: the game moved out of index.html on 2026-09-24, so the

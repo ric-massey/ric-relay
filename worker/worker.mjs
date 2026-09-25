@@ -5,7 +5,7 @@
    from Pages, so this never holds a schedule, a venue or a rota — only ticks
    and prose, keyed by date.
 
-       cd projects/training/server
+       cd worker
        npx wrangler@latest secret put LOG_TOKEN     # once, pick something long
        npx wrangler@latest deploy
 

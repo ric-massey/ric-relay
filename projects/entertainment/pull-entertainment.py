@@ -66,7 +66,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DATA = ROOT / "entertainment-data.js"
+DATA = ROOT / "projects" / "entertainment" / "entertainment-data.js"
 POSTERS = ROOT / "assets" / "posters"
 BACKDROPS = ROOT / "assets" / "backdrops"
 

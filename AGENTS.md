@@ -355,7 +355,7 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   away and follows Ric between devices. It is one route on the `training-log` Worker,
   which also serves `/todo`, `/climb` and `/strava` — there is one Worker, so you cannot
   ship one route without shipping all of them. Deploy with
-  `npx wrangler@latest deploy` from `projects/training/server`; it goes from the Mac
+  `npx wrangler@latest deploy` from `worker`; it goes from the Mac
   straight to Cloudflare and has nothing to do with the GitHub push that publishes the
   site.
 - **The localStorage layer is still the fallback**, for edits made with no signal, and
@@ -756,7 +756,7 @@ Or one suite at a time:
 ```sh
 node projects/kondrite/test/smoke.js      # syntax, transport, room service
 node projects/kondrite/test/campaign.js   # headless play-through of all three missions
-node projects/training/server/test.mjs     # worker rules: auth, strava, media, todo, movies
+node worker/test.mjs     # worker rules: auth, strava, media, todo, movies
 node projects/climbing/test/parse-parity.js  # build-data.py and climb-parse.js agree
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
 for t in atlas/test/*.test.mjs; do node "$t" || break; done

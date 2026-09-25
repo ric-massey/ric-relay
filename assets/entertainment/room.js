@@ -1210,7 +1210,7 @@
 
   async function readHeader() {
     try {
-      const r = await fetch('entertainment-data.js', { cache: 'no-store' });
+      const r = await fetch('projects/entertainment/entertainment-data.js', { cache: 'no-store' });
       if (!r.ok) return FALLBACK_HEAD;
       const txt = await r.text();
       const cut = txt.indexOf('window.ENTERTAINMENT_DATA');

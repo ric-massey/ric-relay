@@ -4,10 +4,10 @@
    the session on the plan for that date ticks itself off with nobody opening
    the site.
 
-       node projects/training/server/strava-setup.mjs authorize
-       node projects/training/server/strava-setup.mjs subscribe
-       node projects/training/server/strava-setup.mjs status
-       node projects/training/server/strava-setup.mjs unsubscribe
+       node worker/strava-setup.mjs authorize
+       node worker/strava-setup.mjs subscribe
+       node worker/strava-setup.mjs status
+       node worker/strava-setup.mjs unsubscribe
 
    ── what is a secret and what is not ──
    The client id is not (it appears in a URL a browser visits). The client
@@ -27,7 +27,7 @@
        different thing and is not checked against this field.)
    Then, once:
 
-       echo '{"client_id":"YOUR_ID"}' > projects/training/server/strava-account.json
+       echo '{"client_id":"YOUR_ID"}' > worker/strava-account.json
        security add-generic-password -s strava-api -a YOUR_ID -U -w
 
    The second one prompts for the client secret without echoing it. Do not pass
@@ -154,7 +154,7 @@ pasting the value when each one prompts:
          security add-generic-password -s strava-verify -a ${id} -U -w )
 
 Then:  npx wrangler@latest deploy
-And:   node projects/training/server/strava-setup.mjs subscribe
+And:   node worker/strava-setup.mjs subscribe
 
 The refresh token above is a SEED. Strava rotates it, and from the first
 refresh onward the live one lives in the Worker's storage, not here.

@@ -11,8 +11,8 @@ and writes notes.
 | Its rule harness | `projects/training/test/rules.js` | **no** — gitignored |
 | The exporter | `projects/training/export.mjs` | yes |
 | The generated plan | `assets/training-plan.json` | yes |
-| The log service | `projects/training/server/` | yes (no secrets in it) |
-| The Strava wiring | `projects/training/server/strava-setup.mjs` | yes (run once, keys in the Keychain) |
+| The log service | `worker/` | yes (no secrets in it) |
+| The Strava wiring | `worker/strava-setup.mjs` | yes (run once, keys in the Keychain) |
 | The feed page | `training.html` | yes |
 
 ## Why it is split this way
@@ -51,7 +51,7 @@ about the schedule lives in the Worker, so nothing needs redeploying.
 Once:
 
 ```bash
-cd projects/training/server
+cd worker
 npx wrangler@latest secret put LOG_TOKEN
 ```
 
@@ -226,7 +226,7 @@ one-time authorize below; the webhook callback is a different field and is not
 checked against it. Then:
 
 ```bash
-echo '{"client_id":"YOUR_ID"}' > projects/training/server/strava-account.json
+echo '{"client_id":"YOUR_ID"}' > worker/strava-account.json
 ```
 ```bash
 security add-generic-password -s strava-api -a YOUR_ID -U -w
@@ -236,14 +236,14 @@ The second prompts for the client secret without echoing it. Never pass `-w` a
 value on the command line — that puts the secret in your shell history.
 
 ```bash
-node projects/training/server/strava-setup.mjs authorize
+node worker/strava-setup.mjs authorize
 ```
 
 Opens a browser, catches the code on localhost, and prints the exact `wrangler
 secret put` commands with the values filled in. Run those, then deploy, then:
 
 ```bash
-node projects/training/server/strava-setup.mjs subscribe
+node worker/strava-setup.mjs subscribe
 ```
 
 Strava validates the callback during that request and expects an answer in two
@@ -302,7 +302,7 @@ training page uses to spot a climbing day. Run the second after `build-data.py`.
 ## Tests
 
 ```bash
-node projects/training/server/test.mjs
+node worker/test.mjs
 ```
 
 Asserts the part that actually matters: writes without the token change nothing,
@@ -321,7 +321,7 @@ only if you have the private `index.html`.
 ## Local development
 
 ```bash
-node projects/training/server/dev.mjs
+node worker/dev.mjs
 ```
 
 Serves the site and the log API on one origin at `localhost:8799`, using the
