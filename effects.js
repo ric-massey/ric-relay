@@ -2854,7 +2854,20 @@
     active: () => catsEnabled,
   };
 
+  /* A game that wants Mochi and nothing else says so with
+     <html data-mochi-only>. KONDRITE is the one that does: a trip mode is a
+     filter over every element on the page, which over a full-screen canvas is
+     a second renderer fighting the first. So none of it starts here — no
+     filters, no scene, no menu, no link rewriting — and the saved mode is left
+     alone rather than cleared, so it is still on when the player goes back to
+     the site. */
+  const mochiOnly = document.documentElement.hasAttribute("data-mochi-only");
+
   function start() {
+    if (mochiOnly) {
+      if (recallCats()) setCats(true, false);
+      return;
+    }
     installFilters();
     cleanIndexRoutes();
     installRoomScene();

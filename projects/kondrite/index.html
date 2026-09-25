@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- data-mochi-world="space" puts Mochi in his bubble helmet, floating, the
+     same as Starfield; data-mochi-only tells effects.js to bring the cat and
+     nothing else. See the note on effects.js below. -->
+<html lang="en" data-mochi-world="space" data-mochi-only>
 <head>
 <meta charset="UTF-8">
 <!-- `viewport-fit=cover` lets the canvas reach under a notch, and the scale
@@ -23,7 +26,15 @@
 
      The way back to the site is EXIT GAME, in the settings, where you go
      looking for it rather than where it can be hit by accident. `HOME_URL`
-     below is the same address the pill used. -->
+     below is the same address the pill used.
+
+     Mochi is the exception. He comes straight from effects.js — no pill — and
+     only if the visitor woke him somewhere on the site, the same rule as
+     every other room. `data-mochi-only` above keeps the trip modes off the
+     canvas. In flight he goes on drifting but cannot be touched (see
+     body.flying .relay-cat-layer below): a cat that eats a tap meant for the
+     stick is the thumb problem the pill was removed for. -->
+<script src="../../effects.js" defer></script>
 <!-- The rename. This has to run before anything reads storage: cloud.js reads
      the session at load, and survey-save.js is handed its key names when it is
      constructed. See migrate.js. -->
@@ -447,6 +458,12 @@
 
   /* The way home has no business under a thumb mid-match. */
   body.flying .relay-return, body.arranging .relay-return { display: none; }
+  /* Mochi floats through a match but is not part of it: every tap and click
+     goes straight through him to the game. Laying out the thumb controls is
+     the one screen where the whole window is the controls, so he waits
+     that out. */
+  body.flying .relay-cat-layer, body.flying .relay-cat-layer * { pointer-events: none !important; }
+  body.arranging .relay-cat-layer { display: none; }
 
   @media (hover: none) and (pointer: coarse) {
     .keyboard-note { display: block; padding-bottom: 3.4rem; }

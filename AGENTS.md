@@ -515,8 +515,10 @@ migration marked "safe to re-run", and re-running it would have put the original
 - **Mochi has three worlds and they are room-aware, not global.** Ordinary rooms get the
   walking resident. `climbing.html` swaps him onto the wall — he grabs the side edges of
   the page's own features, steps up them, turns, hops, plays and falls
-  (`assets/cat/relay-cat-climb-*.png`). Starfield puts him in a bubble helmet in zero
-  gravity. Each set has its own sprite list in `CAT_FRAMES` and its own per-frame
+  (`assets/cat/relay-cat-climb-*.png`). Starfield and KONDRITE put him in a bubble helmet in
+  zero gravity (`data-mochi-world="space"` on the `<html>`). KONDRITE also carries
+  `data-mochi-only`, which makes `effects.js` bring the cat and none of the trip modes,
+  and its page makes him click-through while `body.flying`. Each set has its own sprite list in `CAT_FRAMES` and its own per-frame
   offset/scale tuning in `CAT_FRAME_X` / `CAT_FRAME_Y` / `CAT_FRAME_SCALE`, keyed by
   filename — a new frame with no entry silently renders at the wrong offset, so add its
   row when you add the art, and every referenced file must exist in `assets/cat/`.
