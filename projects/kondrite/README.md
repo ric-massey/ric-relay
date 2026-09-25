@@ -744,9 +744,9 @@ never mattered while the validator read it at load time out of a shared scope.
 Reading it at construction stopped the game booting. The content tables go in as
 getters.
 
-The interface was one 8,000-line `survey-hud.js` until 2026-09-24. It is eleven
+The interface was one 8,000-line `survey-hud.js` until 2026-09-24. It is twelve
 files in `survey-hud/` now — `core.js` (palette, pins, the log, type, the page
-grid, moving between pages), then `panel`, `chart`, `almanac`, `station`,
+grid, moving between pages), then `panel`, `panel-strip`, `chart`, `almanac`, `station`,
 `workbench`, `ship`, `record`, `death-and-lore`, `hangar` and `machines`, which is
 last and publishes the global. Like the chapters they share the page's scope
 rather than a closure, so the same rules hold, and the smoke test holds the
@@ -759,7 +759,7 @@ flight loop and the state the interface is handed all still live in the game
 script, because they are woven through the shared engine that the other three
 modes use too. Pulling them out is a different job from moving a pure function.
 
-That script is the thirty files under `game/` since 2026-09-24. It was the inline
+That script is the files under `game/` since 2026-09-24 — thirty at first, forty once the longest were halved so none is much over 1,500 lines. It was the inline
 `<script>` at the foot of `index.html` — twenty-eight thousand lines in one closure
 inside one HTML file — and it came out in two steps the same day: first as one file,
 byte for byte, then cut into chapters along its own `═══ SECTION ═══` markers, one
@@ -1077,7 +1077,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | File | Responsibility |
 |---|---|
 | `index.html` | The page: markup, styles, and the script tags in the order the game needs |
-| `game/` | The game, in thirty chapters that share one global scope and run in this order: |
+| `game/` | The game, in forty chapters that share one global scope and run in this order: |
 | `game/setup.js` | THE ARENA — Canvas, the two coordinate spaces, the modes, the base tuning, the stationary hazards and the players. Everything else is built on the numbers here. |
 | `game/controls.js` | CONTROLS — Thumb controls, the four slots as keys, key names, the settings-page state and how the ship is flown. |
 | `game/sound.js` | SOUND — The synthesised sound engine: how loud, which dial, the compressor and the limiter. sounds/listen.html lifts this file at load, so its section markers are load-bearing. |
@@ -1089,19 +1089,28 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `game/ships.js` | THE SHIPS — The roster, what each hull looks like, and what a boss looks like. |
 | `game/survey-outfit.js` | SURVEY — OUTFITTING — Two axes, life support, the furniture of a world, worlds and where they may stand, cargo, the refit, parts and their slots, weights, and the devices you press: grapple, cloak, EMP. |
 | `game/survey-sector.js` | SURVEY — THE SECTOR — What makes a boss a boss, weapons as parts, builds, the almanac, the station and what it is short of, the light drive, landmarks, the ladder, what kind of sector this is and how big the war is. |
-| `game/survey-chart.js` | SURVEY — THE CHART — The book, naming pins, wiping a survey, the gate lattice, one chunk, the Leviathan and the Vault. |
-| `game/survey-streaming.js` | SURVEY — STREAMING — Streaming chunks in and out, solidity for everybody, what a round runs into, finding things, the pulse, and what everybody else is doing. |
-| `game/pilots.js` | WHO IS FLYING IT — How a good pilot fights, hull against hull, gravity for everybody, wants turned into somewhere to be, salvage lying about, running at light, the low-tank warning, repairs and dying. |
-| `game/sector.js` | THE WORLD — The two tracks, salvage, selling, stations that want something, what a place deals in, who pays best, solid things, gates, sentries, the devices driven, caches and remembering. |
+| `game/survey-chart.js` | SURVEY — THE CHART — The book, asking for a word, naming pins, wiping a survey, the gate lattice, one chunk, stations as places ships pass through, and landmarks. |
+| `game/survey-leviathan.js` | SURVEY — THE LEVIATHAN AND THE VAULT — Building the two made places: the Leviathan's bays, flanks, bulkheads, hold and wreckage, its outline as data, and the Vault's shells and core. |
+| `game/survey-streaming.js` | SURVEY — STREAMING — Streaming chunks in and out, ships that follow you out of their chunk, the rock index, solidity for everybody, and what a round runs into. |
+| `game/survey-setup.js` | SURVEY — SETUP AND THE SCAN — setupSurvey, the sandbox loadout, the arrow once the gate is open, finding things, the pulse, what each return is called, and what everybody else is doing. |
+| `game/pilots.js` | WHO IS FLYING IT — How a good pilot fights, hull against hull, gravity for everybody, wants turned into somewhere to be, and what is lying about. |
+| `game/survival.js` | SURVEY — STAYING ALIVE — Running at light, the low-tank warning, repairs, dying, what a part does when you die, and the spares in the hold. |
+| `game/sector.js` | THE WORLD — TRADE — The two tracks, salvage, selling, stations that want something, what a place deals in, who pays best, and who takes the strange ones. |
+| `game/sector-places.js` | THE WORLD — PLACES — Solid things, gates, sentries, the devices driven (drones and shots included), caches, stations, worlds you can put down on, and remembering. |
 | `game/bosses.js` | BOSSES — The bosses, the queen's bugs, five ways to fight, handing water across and asking what a thing is. |
 | `game/factions.js` | THE FACTIONS — Where the parts go, the first two minutes, company, a galaxy already at war, what the sector thinks of you, fitting and building, the ice melter, and how battles end. |
-| `game/living.js` | THE LIVING WORLD — Powers with needs, provinces with resources, five actions and the events they leave behind; the record, the framed news, the player's own actions in the same record. Then §28: leaders and elections, three laws with real effects, bounties posted on the raiders that got away, and the people — provinces with a loyalty that can add up to a cause and, rarely, a fourth flag. First version of LIVING-WORLD.md and its first expansion. |
-| `game/war.js` | THE WAR MOVES — Battles in progress, ships with names, what a scan calls a ship, the hangar, the manifest, the gazetteer, mapping the sky, the warning, the background and the tick. |
-| `game/survey-draw.js` | SURVEY — DRAWING — Drawing the sector and the world, words around circles, what a thing is at a glance, what the devices leave behind, the rock of the Warrens, the front page line and where a ship may appear. |
+| `game/war.js` | THE WAR MOVES — The war's turn, traffic built from it, a quiet home, company, battles in progress, ships with names, what a scan calls a ship, and the hangar. |
+| `game/survey-bearings.js` | SURVEY — BEARINGS — Where things are: the nearest part left, where a manifest part actually is, what the arrow points at once the manifest is done, the gazetteer, mapping the sky, and the warning. |
+| `game/survey-tick.js` | SURVEY — THE TICK — The background, the sky knowing where it is, and surveyTick: one frame of Survey. |
+| `game/living.js` | THE LIVING WORLD — Powers with needs, provinces with resources, five actions and the events they leave behind. Nothing here writes a story: rules make pressures, pressures pick actions, actions make events, events change the world, and the world remembers. The player is one more actor in it. LIVING-WORLD.md is the brief; this is its first version — §27 with §16 and the front of §28 — built on the war that already moves the borders (war.js) rather than beside it. |
+| `game/survey-draw.js` | SURVEY — DRAWING — Drawing the sector and the world: nebulae, stations, words around circles, what a thing is at a glance, a working engine, what the devices leave behind, and the Leviathan's plates. |
+| `game/survey-warrens.js` | SURVEY — THE WARRENS, AND THE ORDER IT IS DRAWN IN — The Warrens' rock, traced rather than stamped; the Vault; and drawSurveyWorld, which draws everything in survey-draw.js and here in the order it stacks. |
+| `game/survey-state.js` | SURVEY — WHAT THE INTERFACE IS HANDED — surveyState(): everything survey-hud/ reads, gathered once a frame. A new thing on a Survey page is a field here and a line in its survey-hud/ file. Then what the front page says about your sector, and where a ship is allowed to appear. |
 | `game/multiplayer.js` | MULTIPLAYER — Networking, which pages stop the clock, what this client saw, and the bots. |
 | `game/pointer.js` | POINTER AND TOUCH — Pointer and touch, flying with the mouse, pages that scroll, two fingers on a map, and a button you can lean on. |
 | `game/update.js` | UPDATE — One step of the simulation. |
-| `game/draw.js` | DRAWING — Drawing a frame, one hull drawn the same way for everybody, the field behind the menus, the minimap, tapping the menus, and the machines one floor down. |
+| `game/draw.js` | DRAWING — Drawing a frame, and one hull drawn the same way for everybody: ships, turrets, motherships, planets. |
+| `game/menus-and-hud.js` | MENUS AND THE HUD — The field behind the menus, the minimap, tapping the menus, the campaign and match HUDs, the menu in two steps, and the machines one floor down. |
 | `game/front-page.js` | THE FRONT PAGE — The attract loop, wired to attract.js. |
 | `game/machines.js` | THE MACHINES — The arcade machines, their boards, the real board, the competition, the settings page and registering a control. |
 | `game/settings.js` | SETTINGS — The controls page: keys, the touchscreen, the game, what it sounds like, you, the rail and moving the pad. |

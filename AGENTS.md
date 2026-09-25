@@ -416,7 +416,7 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   see and a pilot thrashing at its brake threshold on every slingshot approach.
   `attract.js` now has a dead-air clock (`DEAD_AIR`) that reads the same counters
   the test does, and the test flies three seeds and judges the worst; the 12 did
-  not move. **`projects/kondrite/game/` is the game, in thirty chapters.** It was the
+  not move. **`projects/kondrite/game/` is the game, in forty chapters.** It was the
   inline script at the foot of `index.html` — twenty-eight thousand lines in one
   HTML file — and came out the same day, first as one file byte for byte and then
   cut along its section markers. The chapters are classic scripts sharing the
