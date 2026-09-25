@@ -41,12 +41,12 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `map.html` | Map | The themed door into ATLAS — the private crew map. The door is public; everything behind it needs a login · *unlisted everywhere; reachable by typing `map`* |
 | `404.html` | — | On-brand "signal lost" page for mistyped URLs |
 | `atlas/` | — | ATLAS, the private crew map — a whole app in this repo, served from `ricmassey.com/atlas/`. Code only: every pin, coordinate and photo lives in Supabase behind a login. See [`atlas/README.md`](atlas/README.md) |
-| `playground/` | — | Scratch space for experiments and working design docs |
+| `worker/` | — | The one Cloudflare Worker behind every room that writes anything — training, climbing and entertainment. See [`worker/README.md`](worker/README.md) |
+| `docs/` | — | Notes, audits, design mockups and plans that are about the site rather than part of it |
 | `projects/` | — | Self-contained sub-projects, each linked from a room (see below) |
 | `photos/` | — | Web-optimized images (originals stay out of git in `_photo-originals/`) |
 | `captures-data.js` | — | Generated `[filename, date]` pairs for the 1,300+ photos `captures.html` draws |
-| `entertainment-data.js` | — | The committed list both entertainment pages read — 363 titles, each with a status, where to find the queued ones, and whatever `pull-entertainment.py` has filled in (year, runtime, genre, director, synopsis, poster) |
-| `assets/` | — | Everything that isn't a photograph: Mochi's 82 sprite frames, the game covers and clips in `assets/games/`, the generated `training-plan.json`, and `owner.js` |
+| `assets/` | — | Everything that isn't a photograph. Sitewide files sit at the top (`owner.js`, `site-gate.js`, the share image, and `training-plan.json`, which stays there because the deployed Worker fetches it by its full URL). Everything else has a folder: `cat/` (Mochi's sprite frames), `climbing/`, `training/` and `entertainment/` (each room's own styles, scripts and generated JSON), `games/` (covers and clips), `posters/` and `backdrops/` |
 | `notes.js` | — | Homepage "transmissions" — the one file you edit by hand to post a note |
 | `latest.js` | — | Curated newest additions shown in the homepage's NOTIFICATION banner |
 | `effects.js` | — | Persistent visual modes, the shared mobile room-menu behaviour (`installRoomMenu()`), and Mochi — the reduced-motion-aware resident cat with progressively loaded, decoded instant frame swaps; calibrated visible-body scale; collision-safe placements; relaxed multi-angle movement; feature entrances and stretching; element interactions; occasional walk-offs; page-aware returns; a wall-climbing mode on the Climbing room; and a helmeted zero-gravity mode used only by compatible games |
@@ -64,7 +64,7 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | `projects/how-speed-affects-time/` | Exploration | "How Speed Affects Time" — two clocks and a real-sky special-relativity exhibit |
 | `projects/how-big-everything-is/` | Exploration | "How Big Everything Is" — a 45-decade scale ladder you zoom out through, from an electron to the observable universe |
 | `projects/apex/` | Apex (room data) | Not a page — the sync tooling and generated `apex-data.js` that `apex.html` reads |
-| `projects/entertainment/` | Entertainment (room data) | Not a page — `pull-entertainment.py`, which fills `entertainment-data.js` with years, runtimes, genres, directors and synopses from Wikidata (no key needed), then downloads the poster art from TMDB into `assets/posters/` |
+| `projects/entertainment/` | Entertainment (room data) | Not a page — the room's committed list, `entertainment-data.js`, and `pull-entertainment.py`, which fills it with years, runtimes, genres, directors and synopses from Wikidata (no key needed), then downloads the poster art from TMDB into `assets/posters/` |
 | `projects/siege-conductor/` | Workbench | Star Wars viewing-companion PWA (add-to-home-screen app) |
 | `projects/offramp/` | Gaming | "OFFRAMP" — Interstate 40 as an arcade cabinet. The real corridor, all 2,551 miles Barstow→Wilmington, extracted from OpenStreetMap: true geometry and curves, 1,201 real exits at their real mile markers, real lane counts (85% of I-40 is two lanes each way), and mile posts that reset at each state line the way the real ones do. Only a 20-mile window of road is built at a time and slides as you drive, because the whole thing is 2.9M stations. Built into that window: the 350 surveyed interchanges as they were walked, 234 real rest areas and truck stops, a generated diamond for every other signed exit, a cross road bridged over each one with the ramp meeting it at a signalised junction, and the I-40/I-75 wye west of Knoxville as a two-lane left exit — signed, open, and closed for construction two thirds of the way down. The generated exits are not invented: their depth and their whole lateral profile are drawn from the 349 ramps the survey walked, so an interchange reaches a median 512 px off the freeway rather than the same 268 px every time, and the travel centres that a diamond crowds out are signed on the blue panel under its guide sign, which is where a real one is advertised. Every ramp puts you back on I-40; that rule is the whole design and it is asserted, not assumed. Crashes go through one SI impulse-momentum solver (`src/impact.js`, `test/impact.test.js`, checked against published crash figures); `test/corridor.js` sweeps every window of the route for two roads sharing tarmac. `data/osm/` holds the extractor and the raw OSM; `data/i40.js` is the generated corridor. See `projects/offramp/PLAN.md` and `projects/offramp/CRASH-MODEL.md` |
 | `projects/kondrite/` | Gaming | "KONDRITE" — bright vector-space combat for 1–5 ships in three modes: cooperative Survival with optional friendly fire, a no-time-limit Battle Royale with three lives, two-hit hulls, a following camera, minimap, closing wall, stationary suns and black holes and randomized moving asteroids, and a three-mission **Campaign** — escort a convoy, raid a fleeing enemy, break a mothership — fought in sides rather than a free-for-all, with an allied fleet, squad orders, salvage, named aces, three difficulties, and veterans and fleet strength carried between missions. Local keyboard play, bots, synthesized sound, fullscreen, configurable phone controls and peer-to-peer online play. Online needs the room service in `projects/kondrite/server/` — a Cloudflare Worker. See [`projects/kondrite/README.md`](projects/kondrite/README.md) |
@@ -256,7 +256,7 @@ file — copy the example block, edit, done.
   [`projects/climbing/readme.md`](projects/climbing/readme.md).
 - **Add a film or move one to watched:** you don't have to edit anything. Sign in at the
   foot of `entertainment.html` and use the form and the buttons on the cards. Editing
-  `entertainment-data.js` by hand still works and is what a bulk change should do.
+  `projects/entertainment/entertainment-data.js` by hand still works and is what a bulk change should do.
 - **Change the clickable newest-item banner:** edit `latest.js`. Only the homepage
   shows it now — the rooms no longer carry one — so a new addition is announced once.
   Still give each entry a `room`: it is what a room banner would use to pick its own
@@ -303,7 +303,7 @@ belong here.
   posts the dates to the Worker so a board night ticks its climbing session. Board grades
   stay on their own scale and never merge into the outdoor ledger.
 - **Entertainment** (`entertainment.html`) is live and works with nothing deployed.
-  `entertainment-data.js` is the committed list and renders on its own; edits made on the
+  `projects/entertainment/entertainment-data.js` is the committed list and renders on its own; edits made on the
   page are layered on top of it at read time, from whichever of two places answers:
 
   1. the Worker's `/movies`, if it is deployed. Then an edit is real — it follows Ric
