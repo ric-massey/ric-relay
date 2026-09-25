@@ -99,7 +99,10 @@ day after one of them. Read them before changing the page, the data file, the pu
   runs are silent, and a push is a publish, so a film Ric adds on the site has its
   poster on ricmassey.com within a few hours with no command typed anywhere. The key
   is a repository secret named `TMDB_KEY`; `api_key()` reads the environment first and
-  falls back to the Keychain, so running it by hand on the Mac is unchanged.
+  falls back to the Keychain, so running it by hand on the Mac is unchanged. With
+  no secret the job still folds in the site's edits and their facts (`--facts`) and
+  finishes with a yellow warning rather than failing: it failed in red on all ten
+  runs before the secret existed, and that is an email every three hours.
   - **The doorbell means it usually does not wait three hours.** `POST /movies/_pull`
     on the Worker fires a `repository_dispatch`, so a film added on the site has its
     poster in about a minute. The page rings it after any write the Worker took

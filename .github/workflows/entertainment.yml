@@ -54,20 +54,30 @@ jobs:
       - name: Pull edits, facts, art and availability
         env:
           TMDB_KEY: ${{ secrets.TMDB_KEY }}
+        # Without the key, do what needs no key — fold in the films added on
+        # the site and look up their facts from Wikidata — and say so in
+        # yellow. It used to stop in red, and a job that fails every three
+        # hours for want of a setting is an alarm nobody can act on from the
+        # inbox it lands in. Posters and streaming wait for the key.
         run: |
-          if [ -z "$TMDB_KEY" ]; then
-            echo "::error::No TMDB_KEY secret, so there is no way to fetch artwork."
-            echo "Add it under Settings → Secrets and variables → Actions."
-            exit 1
-          fi
           echo "Triggered by: ${{ github.event_name }}"
-          python3 projects/entertainment/pull-entertainment.py
+          if [ -z "$TMDB_KEY" ]; then
+            echo "::warning::No TMDB_KEY secret: films and facts only, no posters or streaming. Add it under Settings → Secrets and variables → Actions."
+            python3 projects/entertainment/pull-entertainment.py --facts
+          else
+            python3 projects/entertainment/pull-entertainment.py
+          fi
 
       - name: Re-check streaming for everything (Sundays only)
         if: github.event.schedule == '40 9 * * 0'
         env:
           TMDB_KEY: ${{ secrets.TMDB_KEY }}
-        run: python3 projects/entertainment/pull-entertainment.py --where --refresh
+        run: |
+          if [ -z "$TMDB_KEY" ]; then
+            echo "::warning::No TMDB_KEY secret, so streaming was not re-checked."
+          else
+            python3 projects/entertainment/pull-entertainment.py --where --refresh
+          fi
 
       # The merge that just ran is the one that writes the data file. It is a
       # third of a second to check it still behaves before committing what it
