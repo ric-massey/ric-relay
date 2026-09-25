@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" 2>/dev/null && git fetch -q 2>/dev/null && n=$(git rev-list --count HEAD..@{u} 2>/dev/null) && [ \"${n:-0}\" -gt 0 ] && { git pull -q --ff-only 2>/dev/null && echo \"Pulled $n new commit(s) from origin before this session.\" || echo \"origin is $n commit(s) ahead and could not fast-forward (local changes or diverged) - resolve before working.\"; }; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

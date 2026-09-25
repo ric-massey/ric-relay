@@ -3,6 +3,9 @@
 # Local Claude config stays private, but the sync skills are worth versioning.
 .claude/*
 !.claude/skills/
+# The shared settings: the start-of-session pull hook. Permissions stay in the
+# ignored settings.local.json.
+!.claude/settings.json
 
 # Full-resolution photo originals — optimized web copies live in photos/
 _photo-originals/

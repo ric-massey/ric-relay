@@ -14,8 +14,12 @@ step and no dependencies** — each page is a single self-contained `.html` file
 CSS in a `<style>` tag and its JS in a `<script>` tag. Keep it that way unless Ric
 explicitly asks to add tooling.
 
-Deploy = `git push` to `main` → GitHub Pages. So **a push is a publish.** Don't push
-unless Ric asks.
+Deploy = `git push` to `main` → GitHub Pages. So **a push is a publish.** Ric's
+rule (2026-09-25): **push to `main` when a project's worth of work is done and
+verified** — one push per finished piece of work, not one per commit and not
+mid-task — unless he says otherwise. Other sessions (cloud and desktop) push to
+`main` too: a SessionStart hook in `.claude/settings.json` pulls on startup, and
+before a push, `git fetch` and fast-forward first.
 
 ## Hard rules — do not break these
 
