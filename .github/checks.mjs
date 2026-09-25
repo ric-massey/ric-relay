@@ -56,7 +56,10 @@ const SUITES = [
   ['kondrite', glob('projects/kondrite/test', '.js')
     /* browser.js is the Playwright one; smoke.js ran above; page.js is the
        harnesses' shared loader, not a test. */
-    .filter(f => !/(browser|smoke|page)\.js$/.test(f)), 'slow'],
+    /* traffic-trace.js is a tool, not a suite: it prints hashes to compare
+       before and after a refactor and asserts nothing, so running it here
+       would be four minutes of proving nothing. */
+    .filter(f => !/(browser|smoke|page|traffic-trace)\.js$/.test(f)), 'slow'],
   ['offramp', glob('projects/offramp/test', '.test.js'), 'slow']
 ];
 

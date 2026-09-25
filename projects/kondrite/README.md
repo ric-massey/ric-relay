@@ -1077,7 +1077,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | File | Responsibility |
 |---|---|
 | `index.html` | The page: markup, styles, and the script tags in the order the game needs |
-| `game/` | The game, in forty chapters that share one global scope and run in this order: |
+| `game/` | The game, in forty-one chapters that share one global scope and run in this order: |
 | `game/setup.js` | THE ARENA — Canvas, the two coordinate spaces, the modes, the base tuning, the stationary hazards and the players. Everything else is built on the numbers here. |
 | `game/controls.js` | CONTROLS — Thumb controls, the four slots as keys, key names, the settings-page state and how the ship is flown. |
 | `game/sound.js` | SOUND — The synthesised sound engine: how loud, which dial, the compressor and the limiter. sounds/listen.html lifts this file at load, so its section markers are load-bearing. |
@@ -1093,7 +1093,8 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `game/survey-leviathan.js` | SURVEY — THE LEVIATHAN AND THE VAULT — Building the two made places: the Leviathan's bays, flanks, bulkheads, hold and wreckage, its outline as data, and the Vault's shells and core. |
 | `game/survey-streaming.js` | SURVEY — STREAMING — Streaming chunks in and out, ships that follow you out of their chunk, the rock index, solidity for everybody, and what a round runs into. |
 | `game/survey-setup.js` | SURVEY — SETUP AND THE SCAN — setupSurvey, the sandbox loadout, the arrow once the gate is open, finding things, the pulse, what each return is called, and what everybody else is doing. |
-| `game/pilots.js` | WHO IS FLYING IT — How a good pilot fights, hull against hull, gravity for everybody, wants turned into somewhere to be, and what is lying about. |
+| `game/pilots.js` | WHO IS FLYING IT — How a good pilot fights, hull against hull, gravity for everybody, wants turned into somewhere to be, and what is lying about. surveyTraffic is the spine: what a ship notices, where it wants to be and how it steers there are here; what happens to it and what it fires are in traffic.js. |
+| `game/traffic.js` | WHAT A TRAFFIC SHIP DOES, BESIDES FLY — The phases of one traffic ship's frame that surveyTraffic (pilots.js) hands off, in the order it calls them: swallowed by a star, adrift, a distress call, stunned — each of which ends the ship's frame and says so by returning true — then bumping into you, and firing. |
 | `game/survival.js` | SURVEY — STAYING ALIVE — Running at light, the low-tank warning, repairs, dying, what a part does when you die, and the spares in the hold. |
 | `game/sector.js` | THE WORLD — TRADE — The two tracks, salvage, selling, stations that want something, what a place deals in, who pays best, and who takes the strange ones. |
 | `game/sector-places.js` | THE WORLD — PLACES — Solid things, gates, sentries, the devices driven (drones and shots included), caches, stations, worlds you can put down on, and remembering. |
@@ -1296,6 +1297,29 @@ Two traps, both of which caught this work:
 - **Measure with the machine to yourself.** A suite run against three other node
   processes reported 2,469 seconds of wall clock for 348 seconds of CPU. Compare
   `real` against `user`; if they disagree, the number is about the machine.
+
+### Changing the traffic: trace it
+
+The traffic AI has the same problem as the generator from the other side: the
+suites ask whether a raider *eventually* attacks, so a change that moves one
+decision by one frame passes all of them. `test/traffic-trace.js` hashes every
+traffic ship, the player, every round in the air and the purse, every frame, over
+sixteen ninety-second flights — four seeds, and on each a home start, the busiest
+safe lane, the busiest contested sky and the most dangerous sky with anybody in
+it, with a fixed pair of hands on the controls. Time and `Math.random` are the
+harness's, so a flight is the same flight every run.
+
+```sh
+node test/traffic-trace.js          # about four minutes
+```
+
+**A refactor must leave every hash as it was.** A change in behaviour will not,
+and should not — then the other suites are the judge. It prints how many ships,
+kinds and rounds each flight saw, because a trace of an empty sky proves nothing.
+It reaches about four fifths of `surveyTraffic`'s loop; the rest is rare (a ship
+swallowed by a star, an EMP stun, a ram), so when moving code in those branches,
+also check that every name it uses still resolves — that is how the phases in
+`game/traffic.js` were moved out of the loop.
 
 `test/survey.js` also proves all seventeen telemetry conditions can fire and
 that none fire on an empty block, that every almanac entry has its own picture,
