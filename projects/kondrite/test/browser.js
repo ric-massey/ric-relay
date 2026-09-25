@@ -130,6 +130,27 @@ async function main() {
   console.log("  loads      " + mods.tags.length + " modules, all of them there · " +
               "nothing thrown, nothing logged, nothing 404");
 
+  /* The chapters share the page's global scope, so a top-level name the
+     browser already owns is taken away from it — and from every other script
+     on the page. A `const top` would not even load; a `function stop` would
+     load fine and quietly replace `window.stop`. Asked of a blank page, because
+     the game's own page already has the game's names on it. */
+  const blank = await ctx.newPage();
+  const owned = new Set(await blank.evaluate(() => {
+    const names = [];
+    for (let o = window; o; o = Object.getPrototypeOf(o)) {
+      names.push(...Object.getOwnPropertyNames(o));
+    }
+    return names;
+  }));
+  await blank.close();
+  const declared = require("./page.js").topLevelNames();
+  const taken = declared.filter(n => owned.has(n.name));
+  check(taken.length === 0, "a chapter shadows a browser global: " +
+        taken.map(n => n.name + " (" + n.file + ")").join(", "));
+  console.log("  globals    " + declared.length +
+              " top-level names across the chapters, none of them the browser's");
+
   // ── it draws ──────────────────────────────────────────────────────────────
   /* A no-op context never painted a pixel, so no other suite has ever checked
      that the canvas is the size of the window or that anything reaches it. */

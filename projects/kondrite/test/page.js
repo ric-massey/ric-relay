@@ -98,4 +98,25 @@ function boot(sandbox, opts) {
    run it — "this string is not drawn any more", and the like. */
 const source = name => fs.readFileSync(path.join(DIR, name), "utf8");
 
-module.exports = { DIR, GAME_DIR, page, boot, source, OFF_BY_DEFAULT };
+/* The names each chapter declares at its top level — one global scope between
+   all of them. The chapters are written flush left, so a top-level declaration
+   is one that starts in column 0 and no parser is needed. */
+function topLevelNames() {
+  const out = [];
+  for (const f of gameFilesOf(html())) {
+    for (const line of fs.readFileSync(path.join(DIR, f), "utf8").split("\n")) {
+      const m = /^(?:async\s+)?(?:function\*?|class|const|let|var)\s+([A-Za-z_$][\w$]*)/.exec(line);
+      if (!m) continue;
+      out.push({ name: m[1], file: f });
+      // `const A = 1, B = 2;` on one line declares both.
+      if (/^(const|let|var) /.test(line)) {
+        for (const more of line.matchAll(/,\s*([A-Za-z_$][\w$]*)\s*=(?!=)/g)) {
+          out.push({ name: more[1], file: f });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+module.exports = { DIR, GAME_DIR, page, boot, source, topLevelNames, OFF_BY_DEFAULT };

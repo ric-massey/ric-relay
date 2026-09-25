@@ -62,6 +62,16 @@ function checkSyntax() {
   assert.ok(scripts.slice(firstChapter).every(s => s.startsWith("game/")),
     "a module is loaded after the game's chapters — it must come before all of them");
   assert.equal(scripts[scripts.length - 1], "game/boot.js", "game/boot.js must be the last script on the page");
+
+  /* One scope, so one of each name. A second `let` of a name throws at load,
+     loudly. A second `function` does not: the later chapter's quietly replaces
+     the earlier one for every caller in every chapter. */
+  const declared = new Map();
+  for (const { name, file } of require("./page.js").topLevelNames()) {
+    assert.ok(!declared.has(name),
+      "`" + name + "` is declared at the top of both " + declared.get(name) + " and " + file);
+    declared.set(name, file);
+  }
   const gameAt = page.indexOf('<script src="game/');
 
   /* Survey's three modules are separate files, and the chapters capture each

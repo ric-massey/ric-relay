@@ -758,8 +758,8 @@ indent shallower, the way `survey-world.js` came out before it.
 The chapters are **classic scripts sharing the page's global scope**, not modules,
 and that is the whole trick: a `const` or `function` at the top of one chapter is
 visible to every chapter loaded after it, exactly as it was visible to everything
-below it in the closure. Nothing was renamed and no function was moved. Two rules
-fall out of it, and `test/smoke.js` holds both:
+below it in the closure. Nothing was renamed and no function was moved. Three rules
+fall out of it, and the tests hold all three:
 
 - **The order in `index.html` is the program.** A chapter may use anything a chapter
   above it declared. Hoisting no longer crosses files: a function called *at load
@@ -771,6 +771,10 @@ fall out of it, and `test/smoke.js` holds both:
 - **A chapter is a file in `game/` and a line in `index.html`, always both.** The
   smoke test fails if the folder and the page disagree, if a chapter is loaded twice,
   if any module is loaded after the first chapter, or if `boot.js` is not last.
+- **A top-level name belongs to the whole page.** `test/smoke.js` fails if two
+  chapters declare the same name — a second `function` would otherwise quietly
+  replace the first for every caller — and `test/browser.js` fails if one takes a
+  name the browser already owns (`stop`, `top`, `name`, …).
 
 Adding to the game: find the chapter whose header describes the thing, and write it
 there. A new chapter is a new file, a new `<script>` line in the right place, and a
