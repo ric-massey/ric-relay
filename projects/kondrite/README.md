@@ -496,6 +496,11 @@ Survey shipped as a sector you flew *through*: the only thing that could touch
 you was a gravity well, and every planet, wreck and marker was painted on. An
 endless sector still felt small, and this is why — nothing in it pushed back.
 
+**A hulk is called a CACHE on screen** (Ric, 2026-09-25), the same word as the
+loot caches — he chose to let the two share it. The code, the save and the
+tests still say `hulk`, because renaming a field to change a label is how a
+save file grows two of everything.
+
 Everything is solid now. Planets, drifting hulks and the Leviathan's plates all
 resolve against one collision, and the rule they are drawn by is that **the shape
 you can see is the shape that stops you**: the first time a player clips a hull
@@ -1187,6 +1192,12 @@ into a slot, and every headless suite passed throughout. What is checked here is
 always the gesture, never the method.
 
 ## Verification
+
+A fresh survey opens on the intro card (`surveyIntro`, once per book). Every
+headless harness sets `KONDRITE_NO_INTRO` on its window stub so the checks that
+press a key the moment a survey starts are not eaten by the card; the one check
+about the card sets `globalThis.KONDRITE_INTRO` to let it through. A new harness
+needs the same line.
 
 ```sh
 node projects/kondrite/test/smoke.js

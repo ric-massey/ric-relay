@@ -84,6 +84,7 @@ const documentStub = {
 function boot(seed) {
   const store = {};
   const win = {
+    KONDRITE_NO_INTRO: true,
     addEventListener: noop, removeEventListener: noop,
     requestAnimationFrame: noop, cancelAnimationFrame: noop,
     matchMedia: () => ({ matches: false, addEventListener: noop, addListener: noop }),

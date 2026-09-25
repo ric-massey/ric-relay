@@ -89,6 +89,7 @@ function boot(seed) {
   const store = {};
   const search = "?debug=1&seed=" + seed;
   const windowStub = {
+    KONDRITE_NO_INTRO: !globalThis.KONDRITE_INTRO,
     addEventListener: noop, removeEventListener: noop,
     requestAnimationFrame: noop, cancelAnimationFrame: noop,
     matchMedia: () => ({ matches: false, addEventListener: noop, addListener: noop }),

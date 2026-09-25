@@ -364,6 +364,30 @@ HUD.notify = function (text, sub, colour, life) {
   }
 };
 
+/* Something picked up, as one line that counts: "ICE x3: put in CARGO". Salvage
+   comes aboard a mote at a time, and a line per mote would be twenty lines for
+   one broken rock — so a pickup of the same thing to the same place while its
+   line is still up adds to the count instead of adding a line. Not written to
+   the log per mote either; the log gets the line once, when it first appears. */
+HUD.pickup = function (name, n, where, colour) {
+  if (!name) return;
+  const key = name + "|" + where;
+  const span = 4.5;
+  const had = notes.find(x => x.pick === key);
+  if (had) {
+    had.count += n || 1;
+    had.text = name + " x" + had.count + ": put " + where;
+    /* Held up rather than restarted: `life - t` is the fade-in, so resetting
+       both to the same number would blink the line out and back on. */
+    if (!had.open) { had.t = Math.max(had.t, 3); had.life = had.t + 1; }
+    return;
+  }
+  const text = name + " x" + (n || 1) + ": put " + where;
+  HUD.notify(text, "", colour, span);
+  const made = notes.find(x => x.text === text && !x.pick);
+  if (made) { made.pick = key; made.count = n || 1; }
+};
+
 HUD.logged = function (entry) {
   HUD.notify(entry.name,
              "LOGGED  " + String(entry.n || 0).padStart(2, "0") + "   " +

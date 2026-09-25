@@ -597,7 +597,7 @@ const ECHO_KINDS = {
   sealed:  { name: "GUARDED",   colour: DRONE_COLOUR,  bad: true },
   station: { name: "STATION",   colour: CASH,          bad: false },
   gate:    { name: "GATE",      colour: "#5ce1ff",     bad: false },
-  hulk:    { name: "HULK",      colour: WRECK,         bad: false },
+  hulk:    { name: "CACHE",     colour: WRECK,         bad: false },
   /* Not "CASH". A scan return is a thing in the sky, and the thing is ice or
      iron or a reactor core — cash is what it becomes at a counter two hours
      later. The name is filled in from the mote itself; this is the fallback
@@ -609,6 +609,19 @@ const ECHO_KINDS = {
   distress:{ name: "DISTRESS",  colour: "#ffcb42",     bad: false },
   hunter:  { name: "HUNTER",    colour: "#ff6b6b",     bad: true }
 };
+
+/* A thing the scan reported is gone — picked up, opened, stripped — so its
+   return goes with it. Tracked returns (ships, sentries, motes) already did
+   this every frame; the still ones sat there for their whole twenty seconds,
+   so a part you had just picked up kept its ring on the world, its dot on the
+   minimap and its arrow on the edge of the screen, all pointing at nothing. */
+function dropEchoAt(x, y) {
+  if (!surv || !surv.echoes) return;
+  for (let i = surv.echoes.length - 1; i >= 0; i--) {
+    const e = surv.echoes[i];
+    if (!e.ref && Math.abs(e.x - x) < 1 && Math.abs(e.y - y) < 1) surv.echoes.splice(i, 1);
+  }
+}
 
 function surveyScan() {
   if (!surv) return;
@@ -727,8 +740,8 @@ function surveyScan() {
   surv.echoes = found;
   surv.scan.reach = reach;
   surv.scan.flash = 1;
-  // And the arrows are up, for as long as the returns are.
-  surv.scan.lit = ECHO_LIFE;
+  // And the arrows are up for a few seconds; the chart keeps the returns longer.
+  surv.scan.lit = SCAN_ARROWS;
   surv.t.scanned = true;
 
   if (!found.length) {

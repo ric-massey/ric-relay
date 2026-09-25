@@ -122,6 +122,7 @@ function bootKeepingStorage(search) {
      holding when the held set is cleared) was the one part no test could reach. */
   const listeners = {};
   const windowStub = {
+    KONDRITE_NO_INTRO: !globalThis.KONDRITE_INTRO,
     addEventListener: (kind, fn) => { (listeners[kind] = listeners[kind] || []).push(fn); },
     removeEventListener: (kind, fn) => {
       const list = listeners[kind] || [];

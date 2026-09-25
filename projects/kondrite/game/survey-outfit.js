@@ -390,7 +390,7 @@ const MATERIALS = [
            "every build wants some." },
   { key: "alloy",   name: "ALLOY",   colour: "#ffcb42", value: 9,
     note: "refined — it comes out of things that were built",
-    where: "Strip hulks, wrecks and dead drones — about half of what comes " +
+    where: "Strip caches, wrecks and dead drones — about half of what comes " +
            "out of anything built is alloy. Rocks almost never have it." },
   { key: "iridium", name: "IRIDIUM", colour: "#a08cff", value: 22,
     note: "deep, dense and rare; the reason to go somewhere bad",
@@ -403,12 +403,12 @@ const MATERIALS = [
      from four units of iron is a part you buy by flying in circles. */
   { key: "electronics", name: "ELECTRONICS", colour: "#6dffbf", value: 16,
     note: "pulled out of things that were wired; never out of a rock",
-    where: "Strip drones and hulks. Never a rock — no amount of mining will " +
+    where: "Strip drones and caches. Never a rock — no amount of mining will " +
            "find one, and the builds that want them are why you stop." },
   { key: "core", name: "REACTOR CORE", colour: "#ff8f77", value: 48,
     note: "the heart of something that used to run; rare and always salvage",
-    where: "The rarest thing there is: a few in a hundred from a cache, a " +
-           "hulk or a drone, and never from a rock." }
+    where: "The rarest thing there is: a few in a hundred from a cache or a " +
+           "drone, and never from a rock." }
 ];
 const matSpec = k => MATERIALS.find(m => m.key === k) || MATERIALS[1];
 const freshHold = () =>
@@ -884,7 +884,7 @@ function grappleAnchor(me) {
   for (const r of rocks) consider(r.x, r.y, r.r, "rock");
   if (surv) {
     for (const p of surv.planets) consider(p.x, p.y, p.r, p.name || "a world");
-    for (const h of surv.hulks) consider(h.x, h.y, h.r, "a dead hull");
+    for (const h of surv.hulks) consider(h.x, h.y, h.r, "a cache");
     for (const w of surv.wrecks) consider(w.x, w.y, w.r || 40, "a wreck");
     for (const st of surv.stations) consider(st.x, st.y, st.r, "the station");
     const lev = surv.leviathan;

@@ -331,6 +331,7 @@ function surveyParts(dt) {
       continue;
     }
     surv.parts.splice(i, 1);
+    dropEchoAt(pt.x, pt.y);
     if (pt.mod) storeAdd(pt.key, 1); else surv.carrying.add(pt.key);
     /* A spare that came from a site in the sector is remembered as taken, or
        the next time its chunk is rebuilt from the seed it grows back. Only
@@ -363,10 +364,7 @@ function surveyParts(dt) {
     /* "Take it home" is the manifest's instruction and it is wrong for a
        spare: nobody is waiting for your second pulse coil at the yard. A spare
        is simply back in the hold. */
-    chatter(pt.mod
-      ? pt.name + " back in the hold."
-      : pt.name + (back >= 0 ? " back aboard \u2014 take it home"
-                             : " recovered \u2014 take it home"), CASH);
+    picked(pt.name, 1, pt.mod ? "in CARGO" : "aboard \u2014 take it home", CASH);
     surveyFind("salvor");
     /* The coil is not a component until it is bolted down. Pulling it off the
        gate it was wound around discharges the thing, and the sector folds:

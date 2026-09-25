@@ -105,6 +105,7 @@ function boot(search) {
 function bootKeepingStorage(search) {
   now = 0;
   const windowStub = {
+    KONDRITE_NO_INTRO: true,
     addEventListener: noop, removeEventListener: noop,
     requestAnimationFrame: noop, cancelAnimationFrame: noop,
     matchMedia: q => ({ matches: TOUCH && /coarse/.test(String(q)),

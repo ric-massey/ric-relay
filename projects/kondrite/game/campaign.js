@@ -85,6 +85,13 @@ function chatter(text, colour, where) {
   comms.unshift({ text, colour: colour || "#ffcb42", until: clock + 6 });
   comms.length = Math.min(comms.length, 4);
 }
+/* A pickup, said the way the right-hand stack says every pickup:
+   "ICE x3: put in CARGO". Repeats of the same thing add to the count on the
+   line that is already up. Survey only; the arenas have no hold. */
+function picked(name, n, where, colour) {
+  if (!(mode && mode.survey && surveyHUD && surveyHUD.pickup)) return;
+  surveyHUD.pickup(name, n || 1, where, colour || CASH);
+}
 function addShake(m) { shake = Math.min(64, shake + m); }
 function slowmo(scale, secs) { slowScale = scale; slowTimer = secs; }
 
@@ -155,7 +162,9 @@ function collectPickup(p, s) {
   else if (p.kind === "rapid") s.buffRapid = 9;
   else if (p.kind === "heavy") s.buffHeavy = 9;
   burst(p.x, p.y, PICKUPS[p.kind].colour, 12, 160 * U);
-  chatter(p.kind.toUpperCase() + " salvaged", PICKUPS[p.kind].colour);
+  if (mode && mode.survey) {
+    picked(p.kind.toUpperCase(), 1, "to use on the spot", PICKUPS[p.kind].colour);
+  } else chatter(p.kind.toUpperCase() + " salvaged", PICKUPS[p.kind].colour);
 }
 function updatePickups(dt) {
   for (let i = pickups.length - 1; i >= 0; i--) {

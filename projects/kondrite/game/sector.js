@@ -78,6 +78,11 @@ const scanRange = () => {
   return SCAN_BASE * (1 + mods().scan) * (me ? regionScan(me.x, me.y) : 1);
 };
 const ECHO_LIFE = 20;        // seconds a return stays on the chart
+/* And how long the scan's arrows stay on the ring. Much shorter than the
+   returns: the chart keeps the answer for twenty seconds, but an arrow on
+   the edge of the screen is only worth the glance you give it straight after
+   pressing the key, and twenty seconds of them was clutter (Ric, 2026-09-25). */
+const SCAN_ARROWS = 5;
 
 /* The hull's own numbers, and the parts bolted to it. Nothing else — a hull is
    exactly what the shipyard said it was, for as long as you own it, and every
@@ -711,6 +716,8 @@ function surveyMotes(dt) {
 
     if (me.alive && dist2(m.x, m.y, me.x, me.y) < reach * reach) {
       if (addMaterial(m.mat || "iron", 1)) {
+        const got = matSpec(m.mat || "iron");
+        picked(got.name, 1, "in CARGO", got.colour);
         burst(m.x, m.y, matSpec(m.mat).colour, 3, 90 * U);
         if (Math.random() < 0.25) gameSound("pickup", m.x, m.y);
         surv.motes.splice(i, 1);

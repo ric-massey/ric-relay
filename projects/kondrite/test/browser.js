@@ -155,7 +155,7 @@ async function main() {
   /* A no-op context never painted a pixel, so no other suite has ever checked
      that the canvas is the size of the window or that anything reaches it. */
   await page.evaluate(async () => {
-    window.__cf.start("survey", 1);
+    window.KONDRITE_NO_INTRO = true; window.__cf.start("survey", 1);
     await new Promise(r => setTimeout(r, 1800));
   });
   const drawn = await page.evaluate(() => {
@@ -374,7 +374,7 @@ async function main() {
   await page.reload({ waitUntil: "load" });
   await page.waitForFunction(() => !!window.__cf, null, { timeout: 15000 });
   const after = await page.evaluate(async () => {
-    window.__cf.start("survey", 1);
+    window.KONDRITE_NO_INTRO = true; window.__cf.start("survey", 1);
     await new Promise(r => setTimeout(r, 1800));
     const s = window.__cf.survey();
     return { seed: s.seed, cash: Math.round(s.cash), iridium: s.hold.iridium };
@@ -395,7 +395,7 @@ async function main() {
   await phone.goto(base + "?debug=1", { waitUntil: "load" });
   await phone.waitForFunction(() => !!window.__cf, null, { timeout: 15000 });
   const small = await phone.evaluate(async () => {
-    window.__cf.start("survey", 1);
+    window.KONDRITE_NO_INTRO = true; window.__cf.start("survey", 1);
     await new Promise(r => setTimeout(r, 1800));
     const c = document.getElementById("game");
     const r = c.getBoundingClientRect();

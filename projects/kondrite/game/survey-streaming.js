@@ -510,6 +510,10 @@ function solidBounce(o, r) {
     o.a = along + (Math.sin(o.a - along) >= 0 ? 1.35 : -1.35) + turn * 0;
   };
   for (const pl of surv.planets) clear(pl.x, pl.y, pl.r);
+  /* And the dead hulls, which the comment on every caller has always said were
+     here and were not: a freighter, a pirate and a sentry all flew straight
+     through a cache (a hulk, in the code) while you bounced off it. */
+  for (const h of surv.hulks) clear(h.x, h.y, h.r);
   /* The Leviathan is a hundred and seventy discs now rather than twenty-six,
      and every ship in the sector was being tested against all of them every
      frame. One bounding check first: if you are not within a hull length of it,
@@ -673,6 +677,23 @@ function surveyRockSolids() {
     }
     if (handled) continue;
 
+    /* A cache (a hulk, in the code) is a dead hull, and a rock that meets one
+       bounces off it rather than sailing through the middle — which it did,
+       because nothing had ever asked. Hulks do not move, so the rock takes
+       all of it: put back on the outline, the part heading in reflected. */
+    for (const h of surv.hulks) {
+      const dx = r.x - h.x, dy = r.y - h.y;
+      const min = h.r + r.r;
+      if (dx > min || dx < -min || dy > min || dy < -min) continue;
+      const d = Math.hypot(dx, dy);
+      if (d >= min) continue;
+      const nx = d > 1 ? dx / d : 1, ny = d > 1 ? dy / d : 0;
+      r.x = h.x + nx * min;
+      r.y = h.y + ny * min;
+      const into = r.vx * nx + r.vy * ny;
+      if (into < 0) { r.vx -= into * nx * 1.6; r.vy -= into * ny * 1.6; }
+    }
+
     // Everywhere else, a world simply breaks it.
     for (const pl of surv.planets) {
       if (dist2(r.x, r.y, pl.x, pl.y) > (pl.r + r.r) ** 2) continue;
@@ -709,6 +730,50 @@ function surveyRockSolids() {
       b.vx += nx * push * (ma / tot); b.vy += ny * push * (ma / tot);
     }
   });
+
+  /* **And the ships.** Traffic and sentries flew through every rock in the
+     sector — only your hull ever asked whether it was touching one. Now each
+     pair is parted by mass, the way two rocks are, and the closing part of
+     their velocity is traded with a little lost: a Kite glances off a
+     boulder, a Gantry shoulders a pebble aside. No damage either way. The
+     pilots do not steer round rocks, and a field that quietly killed every
+     hauler routed through it would empty the lanes rather than make them
+     feel solid. */
+  const rockMass = r => {
+    const k = r.r / (SHIP_R * U);
+    return Math.max(0.2, k * k * 1.3);
+  };
+  const shove = (o, or, om, useDrift) => {
+    const ox0 = o.x - or, ox1 = o.x + or, oy0 = o.y - or, oy1 = o.y + or;
+    for (const r of rocks) {
+      if (r.x + r.r < ox0 || r.x - r.r > ox1 ||
+          r.y + r.r < oy0 || r.y - r.r > oy1) continue;
+      const dx = o.x - r.x, dy = o.y - r.y;
+      const min = or + r.r;
+      const d2 = dx * dx + dy * dy;
+      if (d2 >= min * min) continue;
+      const d = Math.sqrt(d2);
+      const nx = d > 0.001 ? dx / d : 1, ny = d > 0.001 ? dy / d : 0;
+      const rm = rockMass(r);
+      const wo = rm / (om + rm), wr = om / (om + rm);
+      const over = min - d;
+      o.x += nx * over * wo; o.y += ny * over * wo;
+      r.x -= nx * over * wr; r.y -= ny * over * wr;
+      const ovx = (o.vx || 0) + (useDrift ? (o.dvx || 0) : 0);
+      const ovy = (o.vy || 0) + (useDrift ? (o.dvy || 0) : 0);
+      const closing = (r.vx - ovx) * nx + (r.vy - ovy) * ny;
+      if (closing <= 0) continue;
+      const j = closing * 1.5;
+      o.vx = (o.vx || 0) + nx * j * wo; o.vy = (o.vy || 0) + ny * j * wo;
+      r.vx -= nx * j * wr; r.vy -= ny * j * wr;
+      r.flash = 0.1;
+    }
+  };
+  for (const t of surv.traffic) {
+    const spec = specOf(t);
+    shove(t, hullR(t), hullMass(spec) * (t.scale || 1) ** 2, true);
+  }
+  for (const dr of surv.drones) shove(dr, 16 * U, 0.8, false);
 }
 
 /* Rocks are not part of a chunk. They drift, so a chunk that regenerated them

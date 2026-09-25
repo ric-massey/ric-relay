@@ -833,11 +833,11 @@ function surveyCaches(dt) {
        be a worse moment than being told. */
     if (c.part) {
       storeAdd(c.part, 1);
-      chatter(moduleSpec(c.part).name +
-              " \u2014 in the hold, and nobody sells these.", "#a08cff");
+      picked(moduleSpec(c.part).name, 1, "in CARGO", "#a08cff");
     }
     surv.opened.add(c.id || ("lev" + i));
     surv.caches.splice(i, 1);
+    dropEchoAt(c.x, c.y);
     surv.t.looted = true;
     chatter(c.rich ? "The deep hold — it was worth the flight" : "Cache open",
             CASH);

@@ -357,7 +357,11 @@ function surveyTraffic(dt) {
       }
     }
     const place = !running && !chase && !follow;
-    if (place && Math.hypot(goal.x - t.x, goal.y - t.y) < 220) {
+    /* A cache is solid now, so a scavenger can only get as close as its
+       outline — arriving is measured from the edge of the thing, not its
+       middle. */
+    const reach = 220 + (t.markKind === "hulk" && t.mark ? t.mark.r || 0 : 0);
+    if (place && Math.hypot(goal.x - t.x, goal.y - t.y) < reach) {
       arrived(t, goal);
       t.leg = -t.leg;
     }
@@ -675,7 +679,10 @@ function trafficBumps() {
    wherever the engine was taking them, and bled off once they are clear. A ship
    under power out-flies a shallow pull and cannot out-fly a deep one — the same
    arithmetic the warning already does for you, with the same answer. */
-const DRIFT_BLEED = 0.6;         // per second, once clear of every well
+/* 1.5, not 0.6. At 0.6 a ship that came out of a deep well still had half
+   its banked drift three seconds later, and flew off at its cruise plus
+   that — twice its own top speed on a slow hull, measured. */
+const DRIFT_BLEED = 1.5;         // per second, once clear of every well
 function trafficDrift(t, dt) {
   let pull = 0;
   t.dvx = t.dvx || 0; t.dvy = t.dvy || 0;
@@ -696,6 +703,19 @@ function trafficDrift(t, dt) {
     const k = Math.max(0, 1 - DRIFT_BLEED * dt);
     t.dvx *= k; t.dvy *= k;
   }
+  /* **Capped at a little over what the hull can fly.** The drift is gravity
+     summed over time, and nothing ever limited it: a ship crossing the deep
+     middle of a sun on its engine sat in the steepest pull there is for as
+     long as it took to fly through, banked all of it, and came out the far
+     side going several times faster than its hull can go — then coasted off
+     at that speed for seconds. That is the "ships go extremely fast after
+     going into a sun" Ric saw (2026-09-25). A well can still out-pull any
+     drive, because the cap is above cruise; it just cannot hand out speed
+     no hull has. The slingshot is yours alone — see `boost`. */
+  const cruise = MAX_SPEED * (specOf(t).speed || 1) * U;
+  const most = cruise * 1.3;
+  const dv = Math.hypot(t.dvx, t.dvy);
+  if (dv > most) { t.dvx *= most / dv; t.dvy *= most / dv; }
   t.x += t.dvx * dt;
   t.y += t.dvy * dt;
   return pull;
@@ -1007,6 +1027,7 @@ function arrived(t, goal) {
       gameSound("rock", t.mark.x, t.mark.y);
       if (t.mark.id) surv.stripped.add(t.mark.id);
       surv.hulks.splice(i, 1);
+      dropEchoAt(t.mark.x, t.mark.y);
       chatter("A scavenger got to that one first.", "#ff8f77", t);
     }
     t.mark = null; t.markKind = ""; t.think = 0;

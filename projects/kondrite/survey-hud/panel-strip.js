@@ -589,7 +589,7 @@ const OBJECTIVE = "#5fd8ff";
 function scanLit(st) {
   const lit = (st.scan && st.scan.lit) || 0;
   if (lit <= 0) return 0;
-  return Math.max(0, Math.min(1, lit / 3));     // the last three seconds fade
+  return Math.max(0, Math.min(1, lit / 1.5));   // the last second and a half fade
 }
 
 function drawContacts(st) {
@@ -645,9 +645,19 @@ function drawEchoArrows(st) {
   const cam = st.cam || { x: st.ship.x, y: st.ship.y, rot: 0, scale: 1 };
   const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
   const cos = Math.cos(cam.rot), sin = Math.sin(cam.rot);
+  /* Anything the blue arrows already point at. A scan that found the part
+     you are looking for drew a green V exactly on top of the objective's blue
+     one, and a return on the thing you picked off the chart did the same with
+     the selected arrow — two arrows, one bearing, and the louder one half
+     hidden. The blue one wins; the return still shows on the minimap. */
+  const taken = [];
+  if (st.selected) taken.push(st.selected);
+  for (const c of (st.contacts || [])) if (!c.resolved) taken.push(c);
+  const claimed = e => taken.some(t => Math.abs(t.x - e.x) < 300 && Math.abs(t.y - e.y) < 300);
   let n = 0;
   for (const e of (st.echoes || [])) {
     if (n >= 8) break;
+    if (claimed(e)) continue;
     const wx = e.x - cam.x, wy = e.y - cam.y;
     const sx = wx * cos - wy * sin, sy = wx * sin + wy * cos;
     const px = cx + sx * cam.scale, py = cy + sy * cam.scale;

@@ -180,6 +180,36 @@ const OPENING = [
     colour: "#a08cff" }
 ];
 
+/* ── the first thing a new pilot is told ──────────────────────────────────
+   Why the station is dead and what the six parts are, once, before the first
+   flight. Everything after this is the objective line's job; this is only the
+   reason for it. Shown on the lore card, so it looks like every other card in
+   the mode, and remembered in `taught` like the beats below. A book that has
+   already brought a part home has lived the story and does not need it told. */
+const INTRO_CARD = {
+  kind: "WHILE YOU WERE GONE", name: "KONDRITE", colour: NEBULA,
+  lines: [
+    "The galaxy's war wrecked a lot while you were out on an expedition. " +
+    "Your station was part of it.",
+    "Nobody aimed at it. It was just in the way.",
+    "Good thing you put trackers on the few parts that matter. Find them, " +
+    "bring them home, and get the station running again."
+  ]
+};
+function surveyIntro() {
+  if (!surv || LEV_ONLY || surv.taught.has("intro")) return false;
+  /* The headless harnesses set this. Hundreds of their checks press a key the
+     moment a survey starts, and a card in the way would eat the first one;
+     the one suite that is about the card turns it back on. */
+  if (window.KONDRITE_NO_INTRO) return false;
+  surv.taught.add("intro");
+  if (surv.built.size) return false;
+  surv.lore = INTRO_CARD;
+  state = "lore";
+  saveSurveyBook();
+  return true;
+}
+
 function surveyOpening() {
   /* The second act's beats read the ship's position — how far out you are is
      most of what they are about — so the ship has to be there. It always is

@@ -104,6 +104,7 @@ function boot(opts) {
   const calls = [], ownFiles = [];
 
   const windowStub = {
+    KONDRITE_NO_INTRO: !globalThis.KONDRITE_INTRO,
     addEventListener: noop, removeEventListener: noop,
     requestAnimationFrame: noop, cancelAnimationFrame: noop,
     matchMedia: () => ({ matches: false, addEventListener: noop, addListener: noop }),

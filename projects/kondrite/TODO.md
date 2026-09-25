@@ -101,6 +101,19 @@ Important NPCs and §29 onward are still brief.
   verified in a running game. What Ric actually wants here is the constructive
   half, which is **P1**: after the gate, the arrow should lead to TRACTOR BEAM
   MK1. If a STATION arrow does still turn up, it needs a repro.
+- [ ] **A6 · Three kinds of arrow, dialled down.** Ric, 2026-09-25: "there
+  should only be 3 different types of arrows". Today there are three *draw
+  paths* but about a dozen looks: the objective (single blue V, pulses, range
+  or band), the chart pick (double blue V, name and range, never fades) and the
+  scan returns (a solid ship-dart for traffic, patrol, distress and hunter; a
+  single V for everything else, in one of ~10 colours). Three blues are nearly
+  the same — objective `#5fd8ff`, GATE `#5ce1ff`, ICE `#87d8ff` — and green
+  `#6dffbf` is shared by COMPONENT, CACHE, STATION, ELECTRONICS and a faction.
+  The full inventory went to Ric; **waiting on his pick of the three** before
+  any shape or colour changes. Fixed meanwhile: a return for something picked
+  up, opened or stripped kept its arrow for twenty seconds (`dropEchoAt`); a
+  return on the objective or the chart pick drew a second arrow on top of the
+  blue one; scan arrows now last 5s (`SCAN_ARROWS`), the returns still 20s.
 
 ## STATION HUD
 

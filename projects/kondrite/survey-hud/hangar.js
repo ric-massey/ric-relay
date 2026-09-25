@@ -298,64 +298,106 @@ HUD.drawHangar = function (st, dt) {
      "how does this compare to everything else on the page" is the only
      question a shipyard is ever asked. */
   const sh = list[hangar.pick];
+  /* **Against the one you are flying.** The bars say where a hull sits in the
+     whole roster, which is a catalogue's question; the one you actually ask
+     standing in a hangar is "is this better than what I have". So every stat
+     carries the difference from your current hull, coloured by which way it
+     goes, and a mark on its bar where your hull sits — and the line under the
+     name counts them up, so the answer is readable before any number is. */
+  const cur = list.find(o => o.flying) || null;
+  const vs = cur && cur !== sh ? cur : null;
   const dy = gridTop + rowsShown * (cardH + PAGE.STEP);
-  const statCols = api.touchOnly ? 5 : 9;
-  const detailH = PANEL_H(api.touchOnly ? 7 : 5);
+  const best = k => list.reduce((m, o) => Math.max(m, o[k] || 0), 0.0001);
+  /* [label, the field the bar compares, the number shown, how to print it].
+     The bar reads the roster-relative field; the number and the difference
+     are in the units you fly in. */
+  const stats = [
+    ["HULL",   "hull",  o => o.hull,             v => String(Math.round(v))],
+    ["DAMAGE", "dmg",   o => o.dmg,              v => v.toFixed(2) + "x"],
+    ["RATE",   "rate",  o => o.rate,             v => v.toFixed(2) + "x"],
+    ["CARGO",  "cargo", o => o.cargo,            v => String(Math.round(v))],
+    ["SPEED",  "speed", o => o.topSpeed || 0,    v => Math.round(v) + " u/s"],
+    ["ACCEL",  "accel", o => o.push || 0,        v => Math.round(v) + " u/s²"],
+    ["TURN",   "turn",  o => o.turnRate || 0,    v => Math.round(v) + "°/s"],
+    /* GRIP: how hard the hull holds the line you point it on. More is more,
+       like every other bar here. */
+    ["GRIP",   "drag",  o => o.drag,             v => v.toFixed(2)]
+  ];
+  /* BURST only when it says something. It is three on nearly every hull, so
+     it was a full bar on almost every card — a ninth thing to read that
+     almost never changed the answer. */
+  if ((sh.burst || 3) !== 3 || (vs && (vs.burst || 3) !== 3)) {
+    stats.push(["BURST", "burst", o => o.burst || 3, v => String(Math.round(v))]);
+  }
+  const diff = st0 => {
+    if (!vs) return 0;
+    const d = st0[2](sh) - st0[2](vs);
+    return Math.abs(d) < 1e-6 ? 0 : d;
+  };
+  const up = stats.filter(x => diff(x) > 0).length;
+  const down = stats.filter(x => diff(x) < 0).length;
+
+  const statCols = api.touchOnly ? 4 : stats.length;
+  const statRows = Math.ceil(stats.length / statCols);
+  const detailH = PANEL_H(Math.max(5, 1 + statRows * 3 + 1));
   panel(PAGE.EDGE, dy, SCREEN_W - PAGE.EDGE * 2, detailH,
         sh.flying ? HUD_CASH : tone, sh.name,
-        "BEST · " + (sh.best === "FIRE RATE" ? "RATE" : sh.best));
+        vs ? "AGAINST YOUR " + vs.name
+           : "BEST · " + (sh.best === "FIRE RATE" ? "RATE" : sh.best));
 
-  /* The cards already identify each hull by silhouette. Repeating it here
-     made the definition panel lopsided, so the category colour becomes a
-     quiet rail and the information begins on one clean left edge. */
   ctx.save();
   ctx.fillStyle = sh.flying ? HUD_CASH : tone;
   ctx.globalAlpha = 0.75;
   ctx.fillRect(PAGE.EDGE, dy + PAGE.HEAD, 4, detailH - PAGE.HEAD);
   ctx.restore();
-  label(sh.flying ? "FLYING"
-      : sh.owned ? "OWNED"
-      : sh.afford ? "AFFORDABLE" : "LOCKED",
-        PAGE.EDGE + PAGE.PAD, ROW(dy, 0), SIZE.cap,
+  const status = sh.flying ? "FLYING" : sh.owned ? "OWNED"
+               : sh.afford ? "AFFORDABLE" : "LOCKED";
+  label(status, PAGE.EDGE + PAGE.PAD, ROW(dy, 0), SIZE.cap,
         sh.flying ? HUD_CASH : sh.owned ? VIOLET_DIM : sh.afford ? CASH_DIM : WARN,
         "left", 0.8, "0.12em");
+  if (vs) {
+    /* The verdict, in two words and two colours. */
+    const vx = PAGE.EDGE + PAGE.PAD + 150;
+    label("BETTER AT " + up, vx, ROW(dy, 0), SIZE.cap, HUD_CASH, "left", 0.9, "0.08em");
+    label("WORSE AT " + down, vx + 150, ROW(dy, 0), SIZE.cap, WARN, "left", 0.9, "0.08em");
+    if (!api.touchOnly) {
+      label("│ = YOUR " + vs.name, vx + 300, ROW(dy, 0), SIZE.cap, WRECKC, "left", 0.7);
+    }
+  }
 
-  const best = k => list.reduce((m, o) => Math.max(m, o[k]), 0.0001);
-  const stats = [
-    ["HULL",  sh.hull / best("hull"),   String(sh.hull)],
-    ["DAMAGE", sh.dmg / best("dmg"), sh.dmg.toFixed(2) + "x"],
-    ["RATE", sh.rate / best("rate"), sh.rate.toFixed(2) + "x"],
-    ["CARGO", sh.cargo / best("cargo"), String(sh.cargo)],
-    /* In units, not multiples. A hull's speed is how far it covers in a
-       second, its push is how much speed it gains in one, and its turn is
-       how far round it comes. The bars still compare it with the roster;
-       the number is now a fact about the sector you fly in. */
-    ["SPEED", sh.speed / best("speed"), (sh.topSpeed || 0) + " u/s"],
-    ["ACCEL", sh.accel / best("accel"), (sh.push || 0) + " u/s\u00b2"],
-    ["TURN",  sh.turn / best("turn"),   (sh.turnRate || 0) + "\u00b0/s"],
-    /* "GRIP", and the bar runs the same way as every other bar on this page.
-       It read DRAG with the fill inverted — longest for the *lowest* number —
-       which was right while drag was friction and less of it was better. It
-       is how hard the hull is glued to where you point it now, so more of it
-       is more of something, and a bar that fills backwards next to seven that
-       do not is a bar nobody reads correctly. */
-    ["GRIP", sh.drag / best("drag"), sh.drag.toFixed(2)],
-    /* What one pull of the trigger sends. Three on almost everything, so the
-       bar is nearly always full and the two hulls that send four are the only
-       thing on this row worth seeing — which is exactly what it is for. */
-    ["BURST", (sh.burst || 3) / best("burst"), String(sh.burst || 3)]
-  ];
   const statX = PAGE.EDGE + PAGE.PAD;
   const statArea = SCREEN_W - PAGE.EDGE * 2 - PAGE.PAD * 2;
   const gap = api.touchOnly ? 8 : 12;
   const sw = (statArea - gap * (statCols - 1)) / statCols;
-  stats.forEach(([name, frac, val], i) => {
+  stats.forEach((row0, i) => {
+    const [name, key, read, fmt] = row0;
     const row = Math.floor(i / statCols);
     const x = statX + (i % statCols) * (sw + gap);
-    const y = ROW(dy, 1 + row * 2) - 4;
+    const y = ROW(dy, 1 + row * 3) - 4;
+    const bar = sh.flying ? HUD_CASH : tone;
     fitText(name, x, y, SIZE.cap, tone, "left", 0.78, sw, "0.08em");
+    const d = diff(row0);
+    const val = fmt(read(sh));
     label(val, x, y + 18, SIZE.cap, WRECKC, "left", 0.95);
-    barAt(x, y + 25, sw, 7, frac, sh.flying ? HUD_CASH : tone, false);
+    if (d) {
+      const dtext = (d > 0 ? "+" : "−") + fmt(Math.abs(d)).replace(/ .*$/, "")
+                    .replace(/x$/, "");
+      // Under the bar, on a line of its own, so it never fights the value.
+      fitText(dtext, x, y + 50, SIZE.cap, d > 0 ? HUD_CASH : WARN, "left", 1, sw);
+    }
+    barAt(x, y + 25, sw, 7, (sh[key] || 0) / best(key), bar, false);
+    if (vs) {
+      // Where your hull sits on the same bar: a white tick through it.
+      const mx = x + 1 + (sw - 2) * Math.min(1, (vs[key] || 0) / best(key));
+      ctx.save();
+      ctx.strokeStyle = "#ffffff";
+      ctx.globalAlpha = 0.9;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(mx, y + 22); ctx.lineTo(mx, y + 35);
+      ctx.stroke();
+      ctx.restore();
+    }
   });
 
   const reach = sh.owned || sh.afford;

@@ -894,7 +894,7 @@ function battleCard(b, stone) {
       age < 180 ? "The metal is still warm. You missed it by very little."
       : age < 1200 ? "The metal has gone cold. Recent, but not just now."
       : "Old cold metal. Whatever this was about was settled a long time ago.",
-      "The hulks can be stripped, and nobody is left to object."
+      "The caches can be stripped, and nobody is left to object."
     ]
   } : {
     kind: "A BATTLE, HAPPENING NOW", name: b.name, colour: "#ff8f77",
@@ -1144,6 +1144,7 @@ function hitHulk(h, i, b) {
   dropMote(h.x, h.y, YIELD.hulk, 70, "hulk");
   surv.stripped.add(h.id);
   surv.hulks.splice(i, 1);
+  dropEchoAt(h.x, h.y);
   saveSurveyBook();
 }
 

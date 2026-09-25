@@ -621,6 +621,7 @@ function startGame(modeKey, n, botCount) {
     // every time the loaded block moves — so it goes through neither
     // placeHazards nor the one-shot seedMotes here.
     setupSurvey();
+    surveyIntro();
   } else if (mode.campaign) {
     // The humans are placed already; the mission builds the fleets, the
     // objective and the reinforcement reserves around them.

@@ -162,6 +162,7 @@ function bootKeepingStorage(search) {
      holding when the held set is cleared) was the one part no test could reach. */
   const listeners = {};
   const windowStub = {
+    KONDRITE_NO_INTRO: !globalThis.KONDRITE_INTRO,
     addEventListener: (kind, fn) => { (listeners[kind] = listeners[kind] || []).push(fn); },
     removeEventListener: (kind, fn) => {
       const list = listeners[kind] || [];
@@ -12563,6 +12564,137 @@ const storeOf = (cf, key) => {
               " with both sides of its borders · the chart names it · an even war " +
               "moves " + even + " cells in 90 min, two-to-one " + lopsided +
               " · worn out is a ceasefire · a long peace ends · all of it saved");
+}
+
+
+/* ── 2026-09-25: the intro, pickups, the scan's arrows, hitboxes, a sun ──────
+   Ric's list from one sitting, each held to what he asked for. */
+{
+  // The intro: once, on a fresh book, on the lore card, and never again.
+  globalThis.KONDRITE_INTRO = true;
+  const { cf } = boot("?debug=1&seed=20260925");
+  cf.start("survey", 1);
+  const first = cf.peek().state;
+  const card = cf.survey().lore;
+  cf.key("Enter");
+  const after = cf.peek().state;
+  cf.saveBook();
+  const again = bootKeepingStorage("?debug=1&seed=20260925");
+  again.cf.start("survey", 1);
+  const second = again.cf.peek().state;
+  globalThis.KONDRITE_INTRO = false;
+  check(first === "lore" && card && /WHILE YOU WERE GONE/.test(card.kind),
+        "a fresh survey opened on " + first + ", not the intro card");
+  check(card && /station/i.test(card.lines.join(" ")) && /trackers/i.test(card.lines.join(" ")),
+        "the intro does not say what happened to the station or about the trackers");
+  check(after === "playing", "Enter left the intro on " + after);
+  check(second === "playing", "the intro came back on the second start (" + second + ")");
+}
+{
+  const { cf } = boot("?debug=1&seed=20260925");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const live = cf.live();
+  const me = live.ships[0];
+  const step = n => {
+    for (let i = 0; i < n; i++) {
+      me.invuln = 999; surv.water = 9e5; surv.food = 9e5;
+      now += 1000 / 60; cf.step();
+    }
+  };
+  step(5);
+
+  // Pickups: one line per thing and place, counting.
+  for (const k of Object.keys(surv.hold)) surv.hold[k] = 0;
+  for (let i = 0; i < 4; i++) {
+    surv.motes.push({ x: me.x + i, y: me.y, vx: 0, vy: 0, spin: 0, life: 90, mat: "ice" });
+  }
+  surv.motes.push({ x: me.x, y: me.y + 1, vx: 0, vy: 0, spin: 0, life: 90, mat: "iron" });
+  step(3);
+  const said = cf.hud().notes().map(n => n.text);
+  check(said.includes("ICE x4: put in CARGO"),
+        "four ice said " + JSON.stringify(said) + ", not ICE x4: put in CARGO");
+  check(said.includes("IRON x1: put in CARGO"), "one iron was not said on its own line");
+
+  // The scan's arrows are up for about five seconds; the returns last longer.
+  surv.scan.charge = 1;
+  cf.scan();
+  const lit = surv.scan.lit;
+  step(60 * 6);
+  check(lit > 4 && lit <= 6, "the scan lit its arrows for " + lit + "s, not about five");
+  check(surv.scan.lit === 0, "the arrows were still up six seconds after a scan");
+
+  // A return goes when its thing is picked up.
+  me.x = 400000; me.y = -300000; me.vx = me.vy = 0;
+  step(2);
+  const partAt = { key: "spar", name: "TEST", x: me.x, y: me.y, r: 10, id: "t-part" };
+  surv.echoes.push({ kind: "part", x: partAt.x, y: partAt.y, t: 20, ref: null });
+  surv.parts.push(partAt);
+  step(1);
+  check(!surv.parts.includes(partAt), "the test part was never picked up");
+  check(!surv.echoes.some(e => Math.abs(e.x - partAt.x) < 1 && Math.abs(e.y - partAt.y) < 1),
+        "a picked-up part left its scan return (and its arrow) behind");
+
+  // Hitboxes. A rock does not go through a cache (a hulk, in the code).
+  me.x = 900000; me.y = -900000; me.vx = me.vy = 0;
+  step(2);
+  surv.traffic.length = 0; surv.drones.length = 0; live.rocks.length = 0;
+  const h = { id: "t-hulk", x: me.x + 3000, y: me.y + 3000, r: 80, a: 0, spin: 0, hp: 6 };
+  surv.hulks.push(h);
+  const rock = cf.makeRock("mid", h.x - 500, h.y);
+  rock.vx = 320; rock.vy = 0;
+  live.rocks.push(rock);
+  let gap = Infinity;
+  for (let i = 0; i < 150; i++) {
+    step(1);
+    if (live.rocks.includes(rock)) {
+      gap = Math.min(gap, Math.hypot(rock.x - h.x, rock.y - h.y) - rock.r - h.r);
+    }
+  }
+  check(gap > -2, "a rock went " + Math.round(-gap) + " units into a cache");
+
+  // Traffic does not go through a rock or a cache.
+  surv.hulks.length = 0;
+  const ship = { id: "t-hauler", kind: "freight", faction: "free", hull: "drayman",
+                 x: me.x + 2500, y: me.y - 2500, a: 0,
+                 from: { x: me.x + 2500, y: me.y - 2500 }, to: { x: me.x + 2600, y: me.y - 2500 },
+                 leg: 1, speed: 0, hp: 5, maxHp: 5, cargo: [], phase: 0 };
+  surv.traffic.push(ship);
+  step(1);
+  if (ship) {
+    live.rocks.length = 0;
+    const r2 = cf.makeRock("big", ship.x + 1, ship.y);
+    r2.vx = r2.vy = 0;
+    live.rocks.push(r2);
+    step(2);
+    const into = r2.r - Math.hypot(ship.x - r2.x, ship.y - r2.y);
+    check(into < r2.r * 0.5, "a " + (ship.role || ship.kind) + " sat " + Math.round(into) +
+          " units inside a rock");
+    live.rocks.length = 0;
+    const h2 = { id: "t-hulk2", x: ship.x + 1, y: ship.y, r: 90, a: 0, spin: 0, hp: 6 };
+    surv.hulks.push(h2);
+    step(2);
+    check(Math.hypot(ship.x - h2.x, ship.y - h2.y) > h2.r * 0.9,
+          "a ship flew through a cache");
+
+    // A sun does not hand out speed: the drift a well gives is capped.
+    ship.dvx = 6000; ship.dvy = 0;
+    step(1);
+    const dv = Math.hypot(ship.dvx, ship.dvy);
+    check(dv < 360 * 2.8 * 1.31, "a ship kept " + Math.round(dv) + " u/s of gravity drift");
+  }
+
+  // "Hulk" is gone from what the player reads.
+  surv.hulks.push({ id: "t-hulk3", x: me.x + 300, y: me.y, r: 60, a: 0, spin: 0, hp: 6 });
+  surv.scan.charge = 1;
+  cf.scan();
+  check(!surv.echoes.some(e => /HULK/.test(e.name || "")), "a scan return still says HULK");
+  check(surv.echoes.some(e => e.kind === "hulk" && e.name === "CACHE"),
+        "a hulk's scan return is not called CACHE");
+
+  console.log("  ric-0925   intro once on a fresh book · ICE x4: put in CARGO · scan arrows " +
+              lit + "s · picked-up returns go · rocks bounce off caches · ships off rocks " +
+              "and caches · well drift capped");
 }
 
 if (problems.length) {
