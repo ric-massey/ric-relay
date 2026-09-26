@@ -7249,7 +7249,7 @@ const storeOf = (cf, key) => {
     surv.target = { key: "t", name: "TARGET", r: 40,
                     x: me.x + Math.cos(a) * R, y: me.y + Math.sin(a) * R };
     surv.echoes = [
-      { kind: "salvage", x: me.x + Math.cos(a + 0.7) * R,
+      { kind: "drone", x: me.x + Math.cos(a + 0.7) * R,
         y: me.y + Math.sin(a + 0.7) * R, t: 20 },
       { kind: "cache", x: me.x + Math.cos(a - 1.4) * R,
         y: me.y + Math.sin(a - 1.4) * R, t: 20 }
@@ -12695,6 +12695,58 @@ const storeOf = (cf, key) => {
   console.log("  ric-0925   intro once on a fresh book · ICE x4: put in CARGO · scan arrows " +
               lit + "s · picked-up returns go · rocks bounce off caches · ships off rocks " +
               "and caches · well drift capped");
+}
+
+/* ── three kinds of arrow ─────────────────────────────────────────────────
+   Ric, 2026-09-25: GO HERE (blue: objective, chart pick, pins), GOOD (green),
+   DANGER (red). Nothing else gets an arrow. */
+{
+  const { cf } = boot("?debug=1&seed=20260926");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  for (let i = 0; i < 5; i++) { me.invuln = 9; now += 1000 / 60; cf.step(); }
+  const hud = cf.hud();
+  const R = 40000;
+  const at = a => ({ x: me.x + Math.cos(a) * R, y: me.y + Math.sin(a) * R });
+  const kinds = { part: "#6dffbf", cache: "#6dffbf", station: "#6dffbf", gate: "#6dffbf",
+                  hulk: "#6dffbf", distress: "#6dffbf", drone: "#ff5a5a",
+                  sealed: "#ff5a5a", hunter: "#ff5a5a", salvage: null, traffic: null,
+                  patrol: null };
+  const wrong = [];
+  Object.keys(kinds).forEach((k, i) => {
+    surv.target = null; surv.contacts = []; surv.selected = null; surv.pins.length = 0;
+    surv.echoes = [Object.assign({ kind: k, t: 20, name: k, colour: "#123456" }, at(i))];
+    surv.scan.lit = 5;
+    hud.arrows = [];
+    cf.draw();
+    const got = hud.arrows.map(q => q.colour);
+    const want = kinds[k];
+    if (want ? !(got.length === 1 && got[0] === want) : got.length) {
+      wrong.push(k + " drew " + JSON.stringify(got));
+    }
+  });
+  check(!wrong.length, "arrows off the three types: " + wrong.join(", "));
+
+  // A pirate caught making trouble is DANGER whatever its kind.
+  surv.echoes = [Object.assign({ kind: "traffic", t: 20, trouble: "making" }, at(1))];
+  hud.arrows = []; cf.draw();
+  check(hud.arrows.length === 1 && hud.arrows[0].colour === "#ff5a5a",
+        "a ship making trouble did not get the DANGER arrow");
+
+  // Pins are GO HERE, with their name on, on a scan; not once it goes cold.
+  surv.echoes = [];
+  surv.pins.push(Object.assign({ kind: "star", name: "HOME ROCK", colour: "#fff" }, at(2)));
+  surv.scan.lit = 5;
+  hud.arrows = []; cf.draw();
+  check(hud.arrows.some(q => q.colour === "#5fd8ff" && /HOME ROCK/.test(q.label)),
+        "a pin got no GO HERE arrow on a scan");
+  surv.scan.lit = 0;
+  hud.arrows = []; cf.draw();
+  check(!hud.arrows.length, "a pin kept its arrow after the scan went cold");
+  surv.pins.length = 0;
+  console.log("  arrows3    go here · good · danger — twelve kinds of return, three looks, " +
+              "ore and quiet traffic get none · pins point on a scan");
 }
 
 if (problems.length) {

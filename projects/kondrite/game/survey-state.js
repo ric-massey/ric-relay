@@ -464,7 +464,9 @@ function surveyState() {
     echoes: surv.echoes.map(e => {
       // Named and coloured when the scan was made; see `surveyScan`.
       return { kind: e.kind, x: e.x, y: e.y, t: e.t, life: ECHO_LIFE,
-               name: e.name, colour: e.colour, bad: !!e.bad };
+               name: e.name, colour: e.colour, bad: !!e.bad,
+               // Read by the arrows: a ship making trouble is DANGER.
+               trouble: e.trouble || "" };
     }),
     scanReach: scanRange(),
     pins: surv.pins,

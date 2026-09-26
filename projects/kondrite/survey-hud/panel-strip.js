@@ -568,156 +568,163 @@ function edgeArrow(st, ang, colour, text, opts) {
   return at;
 }
 
-/* What you are looking for, and which way it is. This is the arrow you fly by
-   when the objective is off screen, so it is the loudest thing on the ring: full
-   alpha, half again the size, and a range beside it. */
-/* The objective's own colour. It was VIOLET, which is the colour of every
-   panel, every border and half the interface — the one arrow you are actually
-   flying by should not be the same colour as the furniture, and it should not
-   be a warning colour either. A light blue nothing else on the flight screen
-   uses. */
-const OBJECTIVE = "#5fd8ff";
+/* ═══ THREE KINDS OF ARROW ════════════════════════════════════════════════
+   Ric, 2026-09-25: "there should only be 3 different types of arrows." There
+   were three draw paths and about a dozen looks — two shapes, ten colours, and
+   three blues nobody could tell apart — so an arrow said *something is that
+   way* and nothing about whether you wanted it. Now each arrow is one of three
+   things, and its colour and its shape both say which:
 
-/* A scan is a *pulse*. What it turns up should fade with it rather than
-   sitting on the edge of the screen for the rest of the run — an arrow that is
-   always there stops being information and becomes furniture, and the one
-   thing this ring must never become is furniture.
+     GO HERE   blue, a big V with a range beside it. Where you are going: the
+               objective, the thing you picked off the chart, and your own
+               pins. The only kind that can outlast a scan (the chart pick).
+     GOOD      green, a small V. Worth flying to: parts, caches, stations,
+               gates, a ship calling for help.
+     DANGER    red, a solid barbed dart. Wants you dead: sentries, guarded
+               caches, hunters, pirates, anybody spoiling for a fight.
 
-   So the objective's arrow comes up when you press scan and goes down when the
-   returns do. The two things that outlive it are the two you *chose*: a
-   a feature you tapped on the chart. */
+   Everything else a scan finds — loose ore, traffic minding its business, a
+   patrol — gets no arrow at all. It is still on the minimap and still ringed
+   on the world; an arrow is for a decision, and those are not one. */
+const OBJECTIVE = "#5fd8ff";       // GO HERE
+const GOOD_ARROW = "#6dffbf";      // GOOD
+const DANGER_ARROW = "#ff5a5a";    // DANGER
+const GOOD_KINDS = new Set(["part", "cache", "station", "gate", "hulk", "distress"]);
+const DANGER_KINDS = new Set(["sealed", "drone", "hunter"]);
+/* Which of the three a scan return is, or null for no arrow. A ship that was
+   making trouble when the scan caught it is danger whatever its kind. */
+function arrowType(e) {
+  if (DANGER_KINDS.has(e.kind) || e.trouble === "making") return "danger";
+  if (GOOD_KINDS.has(e.kind)) return "good";
+  return null;
+}
+
+/* The one look every GO HERE arrow wears, so the objective, the chart pick and
+   a pin cannot be told apart by anything but their label. */
+function goHereArrow(st, ang, text, alpha) {
+  return edgeArrow(st, ang, OBJECTIVE, text,
+                   { scale: 1.3, beat: true, single: true, alpha, inset: 50 });
+}
+
+/* A scan is a *pulse*. What it turns up fades with it rather than sitting on
+   the edge of the screen for the rest of the run — an arrow that is always
+   there stops being information and becomes furniture. The one exception is
+   the thing you picked off the chart, which you asked to be shown. */
 function scanLit(st) {
   const lit = (st.scan && st.scan.lit) || 0;
   if (lit <= 0) return 0;
   return Math.max(0, Math.min(1, lit / 1.5));   // the last second and a half fade
 }
 
-function drawContacts(st) {
+/* World point to where it lands on screen, through the camera's rotation.
+   `+rot`, not `-rot`: the world is drawn with `ctx.rotate(cam.rot)`, so a world
+   vector at angle t appears on screen at t + rot. */
+function toScreen(st, x, y) {
   const { SCREEN_W, SCREEN_H } = api;
-  const lit = scanLit(st);
-  if (!lit) return;
   const cam = st.cam || { x: st.ship.x, y: st.ship.y, rot: 0, scale: 1 };
-  const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
-  /* `+rot`, not `-rot`. The world is drawn with `ctx.rotate(cam.rot)`, so a
-     world vector at angle t appears on screen at t + rot; rotating by -rot is
-     the screen-to-world direction and points every arrow the wrong way round
-     the compass. It could never show while this module was being handed a
-     camera of `rot: 0` — which it was, always, because the state never sent
-     one — so the sign has been wrong since the arrows were written and this is
-     the first frame it has ever mattered. */
   const cos = Math.cos(cam.rot), sin = Math.sin(cam.rot);
-  let n = 0;
+  const wx = x - cam.x, wy = y - cam.y;
+  const sx = wx * cos - wy * sin, sy = wx * sin + wy * cos;
+  return { px: SCREEN_W / 2 + sx * cam.scale, py: SCREEN_H / 2 + sy * cam.scale,
+           ang: Math.atan2(sy, sx), dist: Math.hypot(wx, wy) };
+}
+const offScreen = (p, m) => {
+  const { SCREEN_W, SCREEN_H } = api;
+  return !(p.px > m && p.px < SCREEN_W - m && p.py > m && p.py < SCREEN_H - m);
+};
+
+/* GO HERE, from a scan: the objective, and your nearest pins. A delivery gets
+   a number and a search gets a band — a bearing plus an exact range to
+   somewhere you have never been is a position, which this mode's navigation
+   has never handed over. The state says which; the ring does not guess. */
+function drawContacts(st) {
+  const lit = scanLit(st);
+  if (!lit || !st.ship) return;
   for (const c of (st.contacts || [])) {
-    if (c.resolved || n >= 4) continue;
-    const wx = c.x - cam.x, wy = c.y - cam.y;
-    const sx = wx * cos - wy * sin, sy = wx * sin + wy * cos;
-    const px = cx + sx * cam.scale, py = cy + sy * cam.scale;
-    if (px > 60 && px < SCREEN_W - 60 && py > 60 && py < SCREEN_H - 60) continue;
-    n++;
-    const ang = Math.atan2(sy, sx);
-    const dist = Math.round(Math.hypot(wx, wy));
-    /* One V, not two. The double is the loud one and it belongs to the
-       arrow you *chose* — a thing picked off the chart, which you asked to
-       be shown and which stays until you let it go. The manifest's arrow is
-       the game telling you where to go next, which is a quieter thing, and
-       two of them on the ring at once said they were the same kind of
-       instruction. */
-    /* A delivery gets a number and a search gets a band. The manifest's
-       arrow is pointing at somewhere you are *taking* something, so the
-       range is the useful fact; the book's arrow is pointing at somewhere
-       you have never been, and a bearing plus an exact range is a position —
-       which is the one thing this mode's navigation has never handed over.
-       The state says which kind it is; the ring does not guess. */
-    edgeArrow(st, ang, OBJECTIVE,
-              c.vague ? (c.band || "") : fmtCells(dist) + "u",
-              { scale: 1.35, beat: true, single: true, alpha: lit });
+    if (c.resolved) continue;
+    const p = toScreen(st, c.x, c.y);
+    if (!offScreen(p, 60)) continue;
+    goHereArrow(st, p.ang, c.vague ? (c.band || "") : fmtCells(Math.round(p.dist)) + "u", lit);
+  }
+  /* Your pins are places you said mattered, so a scan points at them too —
+     the nearest three, or a chart with forty pins on it would ring the whole
+     screen in blue. The chart pick is drawn by `drawSelectedArrow`, so a pin
+     that is also the pick is left to it. */
+  const sel = st.selected;
+  const pins = (st.pins || [])
+    .filter(q => !(sel && Math.abs(sel.x - q.x) < 2 && Math.abs(sel.y - q.y) < 2))
+    .map(q => ({ q, p: toScreen(st, q.x, q.y) }))
+    .filter(o => offScreen(o.p, 60))
+    .sort((a, b) => a.p.dist - b.p.dist)
+    .slice(0, 3);
+  for (const { q, p } of pins) {
+    const name = shortName(q.name || "PIN", 12);
+    goHereArrow(st, p.ang, name + "  " + fmtCells(Math.round(p.dist)) + "u", lit);
   }
 }
 
-/* And what a scan turned up. A return that is off screen used to be a dot on
-   the panel chart and nothing else — which made the scan a thing you read
-   rather than a thing you fly by. Each one gets an arrow in its own colour, on
-   the same ring, smaller than the objective because it is a suggestion rather
-   than the plan. */
+/* GOOD and DANGER, from a scan. Danger first and nearest first, so the thing
+   coming for you is never the one pushed off the ring by a pile of caches. */
 function drawEchoArrows(st) {
-  const { SCREEN_W, SCREEN_H } = api;
   if (!st.ship) return;
-  const cam = st.cam || { x: st.ship.x, y: st.ship.y, rot: 0, scale: 1 };
-  const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
-  const cos = Math.cos(cam.rot), sin = Math.sin(cam.rot);
-  /* Anything the blue arrows already point at. A scan that found the part
-     you are looking for drew a green V exactly on top of the objective's blue
-     one, and a return on the thing you picked off the chart did the same with
-     the selected arrow — two arrows, one bearing, and the louder one half
-     hidden. The blue one wins; the return still shows on the minimap. */
+  const lit = scanLit(st);
+  if (!lit) return;
+  /* Anything a GO HERE arrow already points at. A scan that found the part you
+     are looking for drew a second arrow exactly on top of the objective's, and
+     a return on the chart pick did the same — two arrows, one bearing, the
+     louder one half hidden. GO HERE wins; the return stays on the minimap. */
   const taken = [];
   if (st.selected) taken.push(st.selected);
   for (const c of (st.contacts || [])) if (!c.resolved) taken.push(c);
+  for (const q of (st.pins || [])) taken.push(q);
   const claimed = e => taken.some(t => Math.abs(t.x - e.x) < 300 && Math.abs(t.y - e.y) < 300);
-  let n = 0;
+  const list = [];
   for (const e of (st.echoes || [])) {
-    if (n >= 8) break;
-    if (claimed(e)) continue;
-    const wx = e.x - cam.x, wy = e.y - cam.y;
-    const sx = wx * cos - wy * sin, sy = wx * sin + wy * cos;
-    const px = cx + sx * cam.scale, py = cy + sy * cam.scale;
-    if (px > 60 && px < SCREEN_W - 60 && py > 60 && py < SCREEN_H - 60) continue;
-    n++;
-    // Fading with the return itself, so the ring empties as the scan goes cold
-    // rather than all at once.
-    const fade = Math.max(0.55, Math.min(1, (e.t || 0) / 4)) * scanLit(st);
+    const type = arrowType(e);
+    if (!type || claimed(e)) continue;
+    const p = toScreen(st, e.x, e.y);
+    if (!offScreen(p, 60)) continue;
+    list.push({ e, p, type });
+  }
+  list.sort((a, b) => (a.type === b.type ? a.p.dist - b.p.dist
+                                         : a.type === "danger" ? -1 : 1));
+  let danger = 0, good = 0;
+  for (const { e, p, type } of list) {
+    if (type === "danger" ? danger >= 4 : good >= 5) continue;
+    if (type === "danger") danger++; else good++;
+    // Fading with the return itself, so the ring empties as the scan goes cold.
+    const fade = Math.max(0.55, Math.min(1, (e.t || 0) / 4)) * lit;
     if (fade <= 0.02) continue;
-    /* **The glyph says what kind of thing it is.** The barbed dart is a
-       silhouette — it reads as a ship, because it is shaped like one — and
-       every return on the ring was wearing it: a hulk, a cache, a gate and a
-       pile of ore all pointed at you with a little ship. One shape for two
-       dozen meanings teaches nothing, and the one meaning it does suggest was
-       wrong for most of them.
-
-       So a ship gets the ship, and a thing gets a V. */
-    const isShip = e.kind === "traffic" || e.kind === "patrol" ||
-                   e.kind === "hunter"  || e.kind === "distress";
-    edgeArrow(st, Math.atan2(sy, sx), e.colour || VIOLET, null,
-              { scale: 0.85, alpha: fade, inset: 74, single: !isShip });
+    edgeArrow(st, p.ang, type === "danger" ? DANGER_ARROW : GOOD_ARROW, null,
+              type === "danger" ? { scale: 0.95, alpha: fade, inset: 74 }
+                                : { scale: 0.85, alpha: fade, inset: 74, single: true });
   }
 }
 
-
-/* ── something you picked off the chart ───────────────────────────────────
-   **The** arrow that stays, and the only one. "I want to know where that is" —
-   a station you will need later, the well you are routing around, the memorial
-   you mean to come back to. One at a time, in the blue the objective used to own
-   outright, and it keeps its arrow until you pick another or tap it again to let
-   it go. Everything else on the ring is a pulse and fades like one. */
+/* ── GO HERE, the one that stays ──────────────────────────────────────────
+   Something you picked off the chart — a station you will need later, a pin,
+   the memorial you mean to come back to. One at a time, and it keeps its arrow
+   until you pick another or tap it again to let it go. */
 function drawSelectedArrow(st) {
   const sel = st.selected;
   if (!sel || !st.ship) return;
-  const { ctx, SCREEN_W, SCREEN_H } = api;
-  const cam = st.cam || { x: st.ship.x, y: st.ship.y, rot: 0, scale: 1 };
-  const cx = SCREEN_W / 2, cy = SCREEN_H / 2;
-  const wx = sel.x - cam.x, wy = sel.y - cam.y;
-  const cos = Math.cos(cam.rot), sin = Math.sin(cam.rot);
-  const sx = wx * cos - wy * sin, sy = wx * sin + wy * cos;
-  const px = cx + sx * cam.scale, py = cy + sy * cam.scale;
-  const dist = Math.round(Math.hypot(wx, wy));
+  const { ctx } = api;
+  const p = toScreen(st, sel.x, sel.y);
   const name = shortName(sel.name || "", 14);
-
-  if (px > 30 && px < SCREEN_W - 30 && py > 30 && py < SCREEN_H - 30) {
+  if (!offScreen(p, 30)) {
     // In front of you: say what it is rather than pointing at it.
     ctx.save();
     ctx.strokeStyle = OBJECTIVE;
     ctx.globalAlpha = 0.5 + 0.25 * Math.abs(Math.sin(Date.now() / 520));
     ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.arc(px, py, 13, 0, Math.PI * 2);
+    ctx.arc(p.px, p.py, 13, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
-    label(name, px, py - 22, SIZE.cap, OBJECTIVE, "center", 0.85);
+    label(name, p.px, p.py - 22, SIZE.cap, OBJECTIVE, "center", 0.85);
     return;
   }
-  edgeArrow(st, Math.atan2(sy, sx), OBJECTIVE,
-            (name ? name + "  " : "") + fmtCells(dist) + "u",
-            { scale: 1.2, vee: true, inset: 58 });
+  goHereArrow(st, p.ang, (name ? name + "  " : "") + fmtCells(Math.round(p.dist)) + "u", 1);
 }
 
 /* The pulse has no gameplay effect — the contacts are already in the list —

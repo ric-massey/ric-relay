@@ -42,6 +42,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const DIR = path.join(__dirname, "..");
+const SITE = path.join(DIR, "..", "..");
 
 let chromium;
 try {
@@ -72,9 +73,12 @@ function serve() {
   return new Promise(resolve => {
     const server = http.createServer((req, res) => {
       const rel = decodeURIComponent(req.url.split("?")[0]).replace(/^\/+/, "");
-      const file = path.join(DIR, rel || "index.html");
-      // Never outside the project, however the URL is spelled.
-      if (!file.startsWith(DIR)) { res.writeHead(403); return res.end(); }
+      /* The site root, not the game's folder: the page loads the site's own
+         effects.js for Mochi (`../../effects.js`), and serving only this folder
+         404'd it. Served at its real path, the way Pages serves it. */
+      const file = path.join(SITE, rel || "index.html");
+      // Never outside the site, however the URL is spelled.
+      if (!file.startsWith(SITE)) { res.writeHead(403); return res.end(); }
       fs.readFile(file, (err, buf) => {
         if (err) { res.writeHead(404); return res.end("no"); }
         res.writeHead(200, {
@@ -92,7 +96,8 @@ function serve() {
 async function main() {
   const server = await serve();
   const port = server.address().port;
-  const base = "http://127.0.0.1:" + port + "/index.html";
+  const base = "http://127.0.0.1:" + port + "/" +
+               path.relative(SITE, DIR).split(path.sep).join("/") + "/index.html";
 
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 860 } });
