@@ -267,7 +267,7 @@ mechanical fact rather than decorating a name.**
 | | what you see | the fact underneath |
 |---|---|---|
 | **the Rime** | the asteroids are pale blue | they are ice, and a melter turns them into range |
-| **the Murk** | static across the interface, heavier the further in you go | the scan is down to a tenth: the instrument is what should look broken |
+| **the Murk** | static across the interface, and the world itself sinking into two colours and a dither, both heavier the further in you go | the scan is down to a tenth: the instrument is what should look broken |
 | **the Violet Cloud** | nebulae everywhere | it is thick, and you can see about half as far |
 | **the Belt, Shards, Rounds** | rocks are lumpy, sharp or round | three different mining grounds |
 | **the Long Empty** | the starfield itself thins out | the one region where even the backdrop has nothing to offer |
@@ -360,6 +360,13 @@ thicker the deeper in you are, with the occasional horizontal tear. At the worst
 of one it is most of what you can see. `reduceMotion` turns the noise off and
 leaves the rule, because flickering static across a whole screen is exactly what
 that setting is for.
+
+Since 2026-09-27 the *world* goes too, not just the interface: the deeper in, the
+more of the sector is redrawn in two colours with an ordered dither and hard edge
+lines, until at the middle it looks like a 1-bit photograph of itself (`drawMurk`
+in `game/survey-draw.js`). It runs between the world and the interface, so the
+panel stays sharp and in colour over it, and it is a WebGL shader on a shrunk copy
+of the frame so it costs almost nothing — the first CPU version lagged.
 
 **The rime** is small ice bodies as far as the scan reaches and almost nothing
 else — no wrecks worth the name, few worlds, hardly anybody living there. Every

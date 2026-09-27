@@ -658,7 +658,9 @@ function drawRock(r) {
   // A rime's bodies are ice, and they look like it. The one region whose
   // contents are a single material should be obvious from the window.
   const body = r.ice ? "#bfe8ff" : "#ffcb42";
-  glow(hit ? "#fff2bf" : body, hit ? 2 : 1.5, 1, () => {
+  // In a murk a rock is hard to see until it is hit. See `murkVeil`.
+  const veil = hit || !mode.survey ? 1 : murkVeil();
+  glow(hit ? "#fff2bf" : body, hit ? 2 : 1.5, veil, () => {
     ctx.beginPath();
     for (let i = 0; i < r.shape.length; i++) {
       const t = (i / r.shape.length) * Math.PI * 2;
@@ -674,7 +676,7 @@ function drawRock(r) {
   const shown = r.maxHp - r.hp;
   if (shown > 0) {
     ctx.strokeStyle = hit ? "#fff2bf" : "#ffcb42";
-    ctx.globalAlpha = 0.75;
+    ctx.globalAlpha = 0.75 * veil;
     ctx.lineWidth = 1.1 / wScale;
     ctx.beginPath();
     for (let i = 0; i < shown && i < r.cracks.length; i++) {

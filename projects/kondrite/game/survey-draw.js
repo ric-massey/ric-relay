@@ -1099,3 +1099,117 @@ function drawLeviathan(lev) {
 /* A box somebody sealed. Drawn from its own wall list, like the Leviathan, so
    what you can see is what you hit — and lit from the inside so the one gate in
    the shell reads as a way in rather than as a gap somebody left. */
+
+/* ── the Murk, in two colours ─────────────────────────────────────────────
+   The Murk lies to instruments, and until now only the interface showed it:
+   static over the panel. This is the world going the same way. The deeper
+   in you fly, the more of the picture is redrawn as two colours and an
+   ordered dither — every shade a pattern, every edge a hard line — until at
+   the middle the sector looks like a 1-bit photograph of itself (Ric's call,
+   2026-09-27, from the looks sheet at test/looks.html).
+
+   It follows the same depth as the scan (`regionScan`), so it deepens toward
+   the middle rather than switching on at a border, and it is smoothed over a
+   few seconds on top of that, so it creeps in rather than arriving.
+
+   Only the world is converted: this runs after the world and before the
+   interface, so the panel, its static and the arrows stay sharp and in colour
+   over the top. The instrument is broken; the thing you read it through is not.
+
+   Per-pixel work, which the static deliberately avoided on phones — and the
+   first version did it on the CPU with getImageData, which forces the GPU to
+   hand the frame back every frame and lagged badly on a real screen. So it is
+   a small WebGL shader now: the frame is shrunk on the GPU, the shader
+   thresholds it against an 8×8 Bayer pattern and draws the edges, and the
+   result is drawn straight back — nothing ever comes back to the CPU. The
+   shrink is to roughly ninety thousand pixels, scaled back up with hard
+   edges, so the cost is small and flat whatever the screen and the chunky
+   pixels are part of the look. Nothing runs outside a murk, and without
+   WebGL it simply does not run: the scan is still cut, so the rule holds.
+   The pattern is fixed, not animated, so it does not flicker; the tears are
+   the moving part and `reduceMotion` skips them. */
+const MURK_DARK = [5, 7, 11], MURK_LIGHT = [200, 212, 232];   // the static's own grey-blue
+let murkLevel = 0, murkMid = null, murkMidCtx = null, murkGL = null;
+function murkInit() {
+  const c = document.createElement("canvas");
+  const gl = c.getContext("webgl", { alpha: false, antialias: false, premultipliedAlpha: false });
+  if (!gl) return (murkGL = false);
+  const sh = (type, src) => { const o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o); return o; };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, "attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }"));
+  gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, `
+    precision mediump float;
+    uniform sampler2D src; uniform vec2 res; uniform vec3 dark, light; uniform vec3 tear;
+    float b2(vec2 a) { a = floor(a); return fract(dot(a, vec2(0.5, a.y * 0.75))); }
+    float b4(vec2 a) { return b2(0.5 * a) * 0.25 + b2(a); }
+    float b8(vec2 a) { return b4(0.5 * a) * 0.25 + b2(a); }
+    float lum(vec2 u) { return dot(texture2D(src, u).rgb, vec3(0.3, 0.59, 0.11)); }
+    void main() {
+      vec2 px = floor(gl_FragCoord.xy), u = (px + 0.5) / res, d = 1.0 / res;
+      if (px.y >= tear.x && px.y < tear.y) u.x = fract(u.x - tear.z * d.x);
+      float l = lum(u);
+      bool on = clamp(l * 2.4 - 0.04, 0.0, 1.0) > b8(px);
+      // A hard line wherever the picture changes sharply, as the edges of things.
+      float e = abs(lum(u + vec2(d.x, 0.0)) - lum(u - vec2(d.x, 0.0))) + abs(lum(u + vec2(0.0, d.y)) - lum(u - vec2(0.0, d.y)));
+      if (on && e > 0.5) on = false;
+      gl_FragColor = vec4(on ? light : dark, 1.0);
+    }`));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return (murkGL = false);
+  gl.useProgram(prog);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+  for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  const U = (n) => gl.getUniformLocation(prog, n);
+  gl.uniform3f(U("dark"), MURK_DARK[0] / 255, MURK_DARK[1] / 255, MURK_DARK[2] / 255);
+  gl.uniform3f(U("light"), MURK_LIGHT[0] / 255, MURK_LIGHT[1] / 255, MURK_LIGHT[2] / 255);
+  murkMid = document.createElement("canvas"); murkMidCtx = murkMid.getContext("2d");
+  return (murkGL = { c, gl, res: U("res"), tear: U("tear") });
+}
+/* How far the murk has taken hold, 0 to 1, with the edge of it left clear. */
+function murkK() { return Math.min(1, Math.max(0, (murkLevel - 0.12) / 0.7)); }
+/* And rocks fade with it, before the dither sees them: a rock outline drawn at
+   a sixth of its strength comes out of the threshold as a scatter of dots
+   rather than a line, so in the middle of a murk you find the rocks by flying
+   into them — or by shooting them, because a hit still flashes at full
+   strength (Ric, 2026-09-27: "the asteroids should be harder to see"). */
+function murkVeil() { return 1 - 0.84 * murkK(); }
+function drawMurk(dt) {
+  const me = ships[0];
+  const want = me ? Math.max(0, Math.min(1, (1 - regionScan(me.x, me.y)) / 0.9)) : 0;
+  // About two and a half seconds to catch up: it should be noticed, not seen.
+  murkLevel += (want - murkLevel) * Math.min(1, dt * 0.4);
+  const k = murkK();
+  if (k <= 0) return;
+  if (murkGL === null) murkInit();
+  if (!murkGL) return;
+  const { c, gl } = murkGL;
+  const s = Math.max(2, Math.round(Math.sqrt((SCREEN_W * SCREEN_H) / 90000)));
+  const w = Math.ceil(SCREEN_W / s), h = Math.ceil(SCREEN_H / s);
+  // Shrunk to twice the target on the GPU first, so the upload is small and a
+  // thin line averages into the pixel rather than falling between samples.
+  if (murkMid.width !== w * 2 || murkMid.height !== h * 2) { murkMid.width = w * 2; murkMid.height = h * 2; }
+  murkMidCtx.imageSmoothingEnabled = true;
+  murkMidCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, w * 2, h * 2);
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  gl.viewport(0, 0, w, h);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, murkMid);
+  gl.uniform2f(murkGL.res, w, h);
+  // A picture that is not being received properly tears: now and then a band
+  // of rows slips sideways. Only once it is well in, and never under reduceMotion.
+  if (!reduceMotion && k > 0.5 && Math.random() < k * 0.08) {
+    const y0 = Math.floor(Math.random() * h);
+    gl.uniform3f(murkGL.tear, y0, y0 + 1 + Math.floor(Math.random() * 6), Math.round((Math.random() * 2 - 1) * 12 * k));
+  } else gl.uniform3f(murkGL.tear, -1, -1, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  ctx.save();
+  // Never quite all the way: at the very middle a trace of colour still
+  // bleeds through, so a hostile's red is a hint rather than gone.
+  ctx.globalAlpha = 0.9 * k * k * (3 - 2 * k);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(c, 0, 0, SCREEN_W, SCREEN_H);
+  ctx.restore();
+}

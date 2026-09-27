@@ -1012,6 +1012,9 @@ function render(dt) {
   ctx.restore();
   wScale = 1;
 
+  // Deep in a murk the world itself goes to two colours. See `drawMurk`.
+  if (mode.survey) drawMurk(dt || 0);
+
   drawHUD(dt || 0);
   // A banner's fade is driven by the clock, and the clock is what pausing
   // stops — so a banner caught mid-fade would sit under the pause menu for
