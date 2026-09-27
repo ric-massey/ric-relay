@@ -4016,6 +4016,28 @@ const storeOf = (cf, key) => {
   check(fastest < stated * 4.2,
         "a well threw the ship to " + Math.round(fastest) +
         ", past the ceiling of " + Math.round(stated * 4));
+  /* And the engine cannot feed the allowance, even inside a well. The version
+     before 2026-09-27 granted *all* the excess whenever any pull was felt, and a
+     well's pull is felt across its whole reach — so holding thrust in the outer
+     edge of one pushed you over the cap, which raised the cap, which let the next
+     frame push further. Measured here it ran the engine alone to the full
+     four-times ceiling, and that is what made a slingshot last forever. What is
+     left after the fix is what the well itself adds as you fall. */
+  {
+    me.x = well.x + well.reach * 0.85; me.y = well.y; me.vx = me.vy = 0; me.boost = 0;
+    cf.hold("KeyW", true);
+    let top = 0;
+    for (let i = 0; i < 60 * 15 && cf.peek().state === "playing"; i++) {
+      me.a = Math.atan2(me.x - well.x, -(me.y - well.y));   // along the tangent, so it hovers rather than falls
+      step(1);
+      top = Math.max(top, speed());
+    }
+    cf.hold("KeyW", false);
+    check(top < stated * 3.4,
+          "the engine alone, in the outer reach of a well, ran up to " +
+          Math.round(top) + " against a top speed of " + Math.round(stated) +
+          " — thrust is feeding the allowance again");
+  }
   console.log("  slingshot  engine tops out at " + Math.round(stated) +
               " · gravity granted " + Math.round(bestBoost) + " and reached " +
               Math.round(fastest) + " · kept through the frame it arrives in, " +

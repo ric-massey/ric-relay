@@ -148,6 +148,9 @@ function update(dt) {
     // Capitals and structures are too massive for the wells to move; only
     // fighters get pulled (and dodge). Everywhere but the campaign, every ship
     // is a fighter, so this is the same call it always was.
+    // Taken before the well acts, so what gravity added can be told apart from
+    // what the engine added. See `boost` below.
+    const beforeWell = Math.hypot(ship.vx, ship.vy);
     const pull = (mode.campaign && ship.radius) ? 0 : applyGravity(ship, dt);
 
     /* ── being thrown, and keeping it ────────────────────────────────────
@@ -189,8 +192,18 @@ function update(dt) {
     if (mode.survey && !runningLight) {
       ship.boost = Math.max(0, (ship.boost || 0) * Math.exp(-COAST_DRAG * dt));
       const excess = before - ordinary;
-      if (pull > 0.05 && excess > ship.boost) {
-        ship.boost = Math.min(excess, ordinary * (THROWN_CEILING - 1));
+      /* Only what the *well* added this frame. The version before this granted
+         the whole excess whenever any pull was felt, and a well's pull is felt
+         across its whole reach — so holding thrust anywhere near one pushed you
+         a little over the cap, which raised the cap, which let the next frame's
+         thrust push further: the latch described above, surviving inside every
+         well. Measured, the engine alone in the outer reach of a supermassive
+         well climbed to the full four-times ceiling and took ten seconds and
+         more to come back down (Ric, 2026-09-27: "the slingshot lasts wayyy too
+         long"). The engine's share is never an allowance. */
+      const thrown = Math.max(0, before - beforeWell);
+      if (pull > 0.05 && excess > ship.boost && thrown > 0) {
+        ship.boost = Math.min(excess, ship.boost + thrown, ordinary * (THROWN_CEILING - 1));
       }
     } else if (!mode.survey) {
       ship.boost = 0;
