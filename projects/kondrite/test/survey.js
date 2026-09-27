@@ -3971,12 +3971,27 @@ const storeOf = (cf, key) => {
      measurement was of a parked ship.
 
      So: collect the heavy ones, and take the first whose approach is clear. */
+  /* And room means nothing else in it, either. Checking for worlds only, seed
+     828282 picked a hole with a dozen other stars and holes within three reaches
+     of it, and started the ship almost on top of one of them, 1.28 reaches out.
+     Held invulnerable, the ship sat pinned in that star's core, bouncing, and
+     "reached 483, granted 160" was the pin. It passed for the wrong reason.
+
+     The heaviest wells come in crowds, so the search keeps going until it has
+     a good many to choose from, and it keeps each one once — `chunk` hands back
+     fresh objects every call, so a hazard is known by where it is, never by
+     identity. */
+  const CHUNK = cf.chunkSize();
   const heavy = [];
-  for (let ring = 30; ring < 520 && heavy.length < 40; ring += 3) {
+  for (let ring = 30; ring < 520 && heavy.length < 160; ring += 3) {
     for (let k = 0; k < 24; k++) {
       const a = (k / 24) * Math.PI * 2;
       const cx = Math.round(Math.cos(a) * ring), cy = Math.round(Math.sin(a) * ring);
-      for (const h of cf.chunk(cx, cy).hazards) if (h.k >= 2) heavy.push({ h, cx, cy });
+      for (const h of cf.chunk(cx, cy).hazards) {
+        if (h.k >= 2 && !heavy.some(o => Math.hypot(o.h.x - h.x, o.h.y - h.y) < 1)) {
+          heavy.push({ h, cx, cy });
+        }
+      }
     }
   }
   check(heavy.length > 0, "no supermassive well anywhere in the sector");
@@ -3985,32 +4000,79 @@ const storeOf = (cf, key) => {
   let well = null;
   for (const cand of heavy) {
     const h = cand.h;
-    // Nothing solid within the run-up, in the chunks the approach crosses.
+    // Nothing solid within the run-up, and no other well's core near the path,
+    // in every chunk the flight can cross.
+    const span = Math.ceil(h.reach * 2.5 / CHUNK) + 1;
     let clear = true;
-    for (let dx = -2; dx <= 2 && clear; dx++) {
-      for (let dy = -2; dy <= 2 && clear; dy++) {
-        for (const p of cf.chunk(cand.cx + dx, cand.cy + dy).planets) {
+    for (let dx = -span; dx <= span && clear; dx++) {
+      for (let dy = -span; dy <= span && clear; dy++) {
+        const c = cf.chunk(cand.cx + dx, cand.cy + dy);
+        for (const p of c.planets) {
           if (Math.hypot(p.x - h.x, p.y - h.y) < h.reach * 2.2 + p.r) clear = false;
+        }
+        for (const o of c.hazards) {
+          const d = Math.hypot(o.x - h.x, o.y - h.y);
+          if (d > 1 && d < h.reach * 1.8 + o.kill * 4) clear = false;
         }
       }
     }
     if (clear) { well = h; break; }
   }
-  check(!!well, "every supermassive well in the sector has a world in the way");
-  me.x = well.x - well.reach * 1.3; me.y = well.y - well.kill * 3;
+  check(!!well, "every supermassive well in the sector has a world or another well in the way");
+
+  /* A flyby: in, round, and out. Burning along a line that passes three tenths
+     of a reach from the centre, the way a pilot would take it, and letting go of
+     the throttle the moment the ship is clear of the reach. Two ways this used to
+     not be a slingshot at all: coasting in from outside the reach, ordinary drag
+     had the ship all but stopped by the rim, so it fell in radially from rest and
+     never came out; and three kill-radii off the line, even under power, it came
+     too close to be anything but captured by the softened core. The engine's
+     share of what happens in here is never an allowance (see below), so the
+     boost this measures is the well's. */
+  me.x = well.x - well.reach * 1.3; me.y = well.y - well.reach * 0.3;
   me.vx = stated; me.vy = 0; me.a = 0;
   me.boost = 0;
-  let fastest = 0, bestBoost = 0;
-  for (let i = 0; i < 60 * 40 && cf.peek().state === "playing"; i++) {
+  let fastest = 0, bestBoost = 0, closest = Infinity;
+  let entered = false, left = -1, leftAt = 0, leftBoost = 0, settled = -1;
+  cf.hold("KeyW", true);
+  for (let i = 0; i < 60 * 40 && cf.peek().state === "playing" &&
+                  cf.live().ships[0] === me; i++) {
     step(1);
+    const d = Math.hypot(me.x - well.x, me.y - well.y);
+    closest = Math.min(closest, d);
     fastest = Math.max(fastest, speed());
     bestBoost = Math.max(bestBoost, me.boost || 0);
+    if (d < well.reach) entered = true;
+    if (entered && left < 0 && d > well.reach) {
+      left = i; leftAt = speed(); leftBoost = me.boost || 0;
+      cf.hold("KeyW", false);
+    }
+    if (left >= 0 && speed() < stated * 1.05) { settled = (i - left) / 60; break; }
   }
+  cf.hold("KeyW", false);
+  check(cf.peek().state === "playing" && cf.live().ships[0] === me,
+        "the slingshot run lost the ship — it is " + cf.peek().state);
+  check(entered, "the flyby never reached the well");
+  check(closest > well.kill * 1.5,
+        "the flyby came within " + Math.round(closest) + " of a core " +
+        Math.round(well.kill) + " across — that is falling in, not swinging past");
+  check(left >= 0, "the ship went into a supermassive well and never came out");
   check(fastest > stated * 1.3,
         "falling into a supermassive well only reached " + Math.round(fastest) +
         " against a top speed of " + Math.round(stated));
   check(bestBoost > stated * 0.2,
         "gravity granted an allowance of only " + Math.round(bestBoost));
+  // What makes it a slingshot rather than a fall: you leave with it.
+  check(leftAt > stated * 1.1,
+        "the ship left the well at " + Math.round(leftAt) +
+        ", not faster than its top speed of " + Math.round(stated));
+  check(leftBoost > stated * 0.1,
+        "the ship left the well holding an allowance of only " + Math.round(leftBoost));
+  // And it is spent over seconds, not kept.
+  check(settled >= 0 && settled < 8,
+        "after leaving the well the ship took " +
+        (settled < 0 ? "forever" : settled.toFixed(1) + "s") +
+        " to come back to its top speed");
 
   // The ceiling holds: no well may accelerate a ship without bound.
   check(fastest < stated * 4.2,
@@ -4022,7 +4084,13 @@ const storeOf = (cf, key) => {
      edge of one pushed you over the cap, which raised the cap, which let the next
      frame push further. Measured here it ran the engine alone to the full
      four-times ceiling, and that is what made a slingshot last forever. What is
-     left after the fix is what the well itself adds as you fall. */
+     left after the fix is what the well itself adds as you fall.
+
+     The bar moved when the well did. Against the crowded hole this used to pick,
+     3.4 was the line; the isolated well chosen now is lighter, and on it the old
+     rule ran the hover to 890 against a top speed of 324 — under 3.4 — while
+     the fixed one holds it at 324. 1.6 leaves room for the pull and none for
+     the latch. */
   {
     me.x = well.x + well.reach * 0.85; me.y = well.y; me.vx = me.vy = 0; me.boost = 0;
     cf.hold("KeyW", true);
@@ -4033,15 +4101,16 @@ const storeOf = (cf, key) => {
       top = Math.max(top, speed());
     }
     cf.hold("KeyW", false);
-    check(top < stated * 3.4,
+    check(top < stated * 1.6,
           "the engine alone, in the outer reach of a well, ran up to " +
           Math.round(top) + " against a top speed of " + Math.round(stated) +
           " — thrust is feeding the allowance again");
   }
   console.log("  slingshot  engine tops out at " + Math.round(stated) +
-              " · gravity granted " + Math.round(bestBoost) + " and reached " +
-              Math.round(fastest) + " · kept through the frame it arrives in, " +
-              "spent over seconds, ceiling holds");
+              " · a flyby reached " + Math.round(fastest) + ", left at " +
+              Math.round(leftAt) + " holding " + Math.round(leftBoost) +
+              ", back to top speed " + settled.toFixed(1) + "s later · " +
+              "kept through the frame it arrives in, ceiling holds");
 }
 
 // ── the one thing you point the ship at ──────────────────────────────────
