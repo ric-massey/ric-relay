@@ -13,12 +13,14 @@ is historical — every room that writes anything writes here:
 | `/media` | Climbing | photos and clips for the media tab |
 | `/todo` | Climbing | the route to-do list |
 | `/movies` | Entertainment | edits on top of `projects/entertainment/entertainment-data.js` |
-| `/garmin` | none — private | Ric's Garmin export, token to read **and** write (`projects/training/garmin/`) |
+| `/garmin` | Training (owner bar) | Ric's Garmin export, token to read **and** write; `/garmin/_pull` starts the Actions job (`projects/training/garmin/`) |
 | `/auth` | all of them | Ric's sign-in (`assets/owner.js`) |
 
 It lived in `projects/training/server/` until 2026-09-25. The deployed name
 stays `training-log` because that name is in the live URL every page calls —
 renaming it is a redeploy plus an edit to every client, not a tidy-up.
+
+Or from a phone: Actions → **Deploy Worker** → Run workflow (`.github/workflows/worker-deploy.yml`, needs the `CLOUDFLARE_API_TOKEN` secret).
 
 ```sh
 cd worker

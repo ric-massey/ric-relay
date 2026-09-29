@@ -38,7 +38,7 @@ projects/<name>/            sub-projects, and room data that has a generator nex
 worker/                     the one Cloudflare Worker (deployed as training-log) — see its README
 atlas/, account/            ATLAS and the site account — an app, not a page: see atlas/README.md
 docs/                       notes, audits, mockups and plans about the site, not part of it
-.github/                    checks.mjs (every test) and the three workflows
+.github/                    checks.mjs (every test) and the five workflows
 ```
 
 Two rules keep it that way. **Generated data lives beside the thing that generates it**
@@ -417,9 +417,11 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   pulled properly onto the climbing page — a watch ticking climbing too would
   double-count the site's one real source.
 
-**Garmin is pushed from a button, and none of it is public.** `projects/training/garmin/Garmin.command`
-on the Mac pulls sleep, HRV, resting HR, readiness and every activity and POSTs it to the
-Worker's `/garmin`, the one route that needs a token to *read*. A Claude session reads it with
+**Garmin is pulled from a button, and none of it is public.** "pull Garmin" on the training
+page (signed in) asks the Worker to start `.github/workflows/garmin.yml`, which pulls sleep, HRV,
+resting HR, readiness and every activity and POSTs them to the Worker's `/garmin`, the one route
+that needs a token to *read*. The Actions log is public, so that job commits nothing, caches
+nothing and prints no values. A Claude session reads it with
 `GARMIN_READ_TOKEN` (the `garmin` skill). Never write that export, or anything derived from it,
 into this repo. Its README has the rest.
 

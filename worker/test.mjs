@@ -1305,6 +1305,48 @@ console.log('\nRULE  a guessed reader token counts toward the same throttle');
   ok((await g.obj.fetch(req('POST', '/auth', { password: TOKEN }))).status === 429, 'and so is the owner\'s password, because it is one limit');
 }
 
+console.log('\nRULE  the pull button is Ric\'s, and rings GitHub');
+{
+  const calls = [];
+  const FETCH = async (url, init) => { calls.push({ url, init }); return new Response(null, { status: 204 }); };
+  const obj = fresh({ GARMIN_READ_TOKEN: READER });
+  const env = { LOG: { idFromName: () => 'training', get: () => obj }, MEDIA: memoryBucket(), GH_TOKEN: 'gh-secret', FETCH };
+  const press = token => worker.fetch(new Request('https://x/garmin/_pull', {
+    method: 'POST', headers: token ? { authorization: 'Bearer ' + token } : {}
+  }), env, null);
+  ok((await press()).status === 401, 'nobody without a token can press it');
+  ok((await press(READER)).status === 403, 'the reader token cannot press it');
+  ok(calls.length === 0, 'and neither rang GitHub');
+  const r = await press(TOKEN);
+  ok(r.status === 200 && (await r.json()).ok, 'Ric can');
+  ok(calls.length === 1 && calls[0].url.endsWith('/repos/ric-massey/ric-relay/dispatches'), 'which rings the repo\'s dispatch');
+  ok(JSON.parse(calls[0].init.body).event_type === 'garmin', 'with the garmin event');
+  ok(calls[0].init.headers.authorization === 'Bearer gh-secret', 'using the Worker\'s GitHub token, not anything the page sent');
+
+  const noGh = { ...env, GH_TOKEN: '' };
+  const n = await worker.fetch(new Request('https://x/garmin/_pull', { method: 'POST', headers: { authorization: 'Bearer ' + TOKEN } }), noGh, null);
+  ok(n.status === 503 && /Actions tab/.test((await n.json()).why), 'with no GitHub token it says where else to press');
+}
+
+console.log('\nRULE  Garmin\'s session tokens are the owner\'s alone');
+{
+  const g = garminRig();
+  const at = (method, token, body) => worker.fetch(new Request('https://x/garmin/session', {
+    method, headers: token ? { authorization: 'Bearer ' + token } : {}, ...(body != null ? { body } : {})
+  }), { LOG: { idFromName: () => 'training', get: () => g.obj }, MEDIA: g.bucket }, null);
+  ok((await at('GET', TOKEN)).status === 404, 'nothing there to begin with');
+  ok((await at('POST', TOKEN, '{"di_token":"SESSION-CANARY"}')).status === 200, 'the pull can park them');
+  ok((await (await at('GET', TOKEN)).json()).di_token === 'SESSION-CANARY', 'and get them back');
+  ok((await at('GET', READER)).status === 403, 'the reader token cannot read them');
+  ok((await at('GET')).status === 401, 'nor can anybody else');
+  await g.hit('POST', TOKEN, EXPORT);
+  ok(!(await (await g.hit('GET', READER)).text()).includes('SESSION-CANARY'), 'and they are not inside the export the reader gets');
+  ok((await at('POST', TOKEN, 'nope')).status === 400, 'a body that is not JSON is refused');
+  const odd = await worker.fetch(new Request('https://x/garmin/other', { headers: { authorization: 'Bearer ' + TOKEN } }),
+    { LOG: { idFromName: () => 'training', get: () => g.obj }, MEDIA: g.bucket }, null);
+  ok(odd.status === 404, 'and any other path under /garmin is a 404');
+}
+
 console.log('\nRULE  the internal auth path is not reachable from outside');
 {
   const g = garminRig();

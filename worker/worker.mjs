@@ -1254,6 +1254,7 @@ const MAX_MEDIA_BYTES = 100 * 1024 * 1024;
 /* The Garmin export. Years of days and activities come to a few megabytes; the
    cap is only there so a runaway script cannot fill the bucket. */
 const GARMIN_KEY = 'garmin/export.json';
+const GARMIN_SESSION_KEY = 'garmin/session.json';
 const MAX_GARMIN_BYTES = 50 * 1024 * 1024;
 /* An allowlist, and it decides the extension too — the filename is whatever the
    phone called it and is not trusted to name the format. */
@@ -1361,8 +1362,9 @@ export default {
     /* ── /garmin ──
        Ric's Garmin history — sleep, HRV, resting heart rate, Body Battery,
        training readiness and every activity's numbers — pushed as one JSON file
-       by projects/training/garmin/pull-garmin.py when he presses the button on
-       his Mac. It exists so a Claude session can read the lot in one request.
+       by projects/training/garmin/pull-garmin.py, run on GitHub Actions when he
+       presses the button on the training page. It exists so a Claude session
+       can read the lot in one request.
 
        NOTHING HERE IS PUBLIC, which makes it the one route on this Worker that
        is private in both directions. Sleep times are a nightly record of when
@@ -1370,7 +1372,7 @@ export default {
        chose on 2026-09-29 to keep them behind the password rather than in the
        repo. So both reading and writing need a token:
 
-         LOG_TOKEN          Ric — may upload and read
+         LOG_TOKEN          Ric — may upload and read, and press the button
          GARMIN_READ_TOKEN  a Claude session — may only read. Its own secret so
                             the thing handed to a cloud environment cannot tick,
                             write notes or replace the export.
@@ -1383,7 +1385,8 @@ export default {
     if (parts[0] === 'garmin') {
       const origin = request.headers.get('origin');
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(origin) });
-      if (parts[1]) return json({ error: 'not found' }, 404, origin);
+      const sub = parts[1] || '';
+      if (parts[2] || !['', '_pull', 'session'].includes(sub)) return json({ error: 'not found' }, 404, origin);
       if (request.method !== 'GET' && request.method !== 'POST') {
         return json({ error: 'method not allowed' }, 405, origin);
       }
@@ -1399,8 +1402,65 @@ export default {
       const role = who.status === 200 ? (await who.json()).role : null;
       if (!role) return json({ error: 'nope' }, 401, origin);
 
-      if (!env.MEDIA) return json({ error: 'storage is not configured — the R2 binding is missing' }, 503, origin);
+      /* Everything below the bare route is Ric's alone: the reader token reads
+         the export and nothing else. */
+      if (sub && role !== 'owner') return json({ error: 'this token can read, not write' }, 403, origin);
       const priv = { 'cache-control': 'private, no-store' };
+
+      /* ---------- POST /garmin/_pull — the button ----------
+         The pull runs on GitHub Actions (.github/workflows/garmin.yml), so a
+         phone can start it: the training page asks this, this asks GitHub,
+         for the same reason /movies/_pull does — a token that can start a
+         workflow cannot live in a public page and can live here. The
+         workflow's concurrency group turns a burst of presses into one run. */
+      if (sub === '_pull') {
+        if (request.method !== 'POST') return json({ error: 'method not allowed' }, 405, origin);
+        const gh = env.GH_TOKEN || '';
+        if (!gh) return json({ ok: false, why: 'no GitHub token on the Worker — run it from the Actions tab instead' }, 503, origin);
+        let r;
+        try {
+          r = await (env.FETCH || fetch)(`https://api.github.com/repos/${env.GH_REPO || 'ric-massey/ric-relay'}/dispatches`, {
+            method: 'POST',
+            headers: {
+              authorization: 'Bearer ' + gh, accept: 'application/vnd.github+json',
+              'content-type': 'application/json', 'user-agent': 'ricmassey-training-log'
+            },
+            body: JSON.stringify({ event_type: 'garmin' })
+          });
+        } catch (e) {
+          return json({ ok: false, why: 'could not reach GitHub' }, 502, origin);
+        }
+        if (!r.ok) {
+          const said = await r.text().catch(() => '');
+          let why = `GitHub said ${r.status}`;
+          try { const m = JSON.parse(said).message; if (m) why += ': ' + m; } catch (e) {}
+          return json({ ok: false, why }, 502, origin);
+        }
+        return json({ ok: true, started: new Date().toISOString() }, 200, origin);
+      }
+
+      if (!env.MEDIA) return json({ error: 'storage is not configured — the R2 binding is missing' }, 503, origin);
+
+      /* ---------- /garmin/session — Garmin's own login tokens ----------
+         The pull runs on a fresh GitHub machine every time, and logging into
+         Garmin with a password from a new datacenter address on every press
+         is how an account gets challenged or locked. So after each run the
+         script parks Garmin's session tokens here and the next run starts from
+         them. They are a credential: owner only, never the reader token. */
+      if (sub === 'session') {
+        if (request.method === 'GET') {
+          const obj = await env.MEDIA.get(GARMIN_SESSION_KEY);
+          if (!obj) return json({ error: 'no session yet' }, 404, origin, priv);
+          return new Response(obj.body, { status: 200, headers: {
+            'content-type': 'application/json; charset=utf-8', ...cors(origin), ...priv } });
+        }
+        const text = await request.text();
+        if (text.length > 64 * 1024) return json({ error: 'too big' }, 413, origin);
+        try { if (!JSON.parse(text) || typeof JSON.parse(text) !== 'object') throw 0; }
+        catch (e) { return json({ error: 'that is not a JSON object' }, 400, origin); }
+        await env.MEDIA.put(GARMIN_SESSION_KEY, text, { httpMetadata: { contentType: 'application/json' } });
+        return json({ ok: true }, 200, origin);
+      }
 
       if (request.method === 'GET') {
         const obj = await env.MEDIA.get(GARMIN_KEY);

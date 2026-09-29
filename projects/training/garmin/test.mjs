@@ -8,7 +8,10 @@
 
        node projects/training/garmin/test.mjs                                    */
 
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { createServer } from 'node:http';
+import worker, { TrainingLog } from '../../../worker/worker.mjs';
+import { memoryBucket } from '../../../worker/r2-memory.mjs';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -90,6 +93,73 @@ console.log('\nRULE  a wrong login is said plainly');
   const r = run(h, { GARMIN_EMAIL: 'someone@else.com', GARMIN_PAUSE: '0' });
   ok(r.code === 1 && /refused the login/.test(r.stderr), 'exit 1 with a sentence, not a traceback');
 }
+
+/* ── on GitHub: state on the Worker ──
+   The real worker.mjs, served on localhost with an in-memory bucket, and the
+   script in GARMIN_REMOTE mode: what a press from the phone does. */
+const TOKEN = 'test-log-token-long-enough';
+const mem = new Map();
+const obj = new TrainingLog({ storage: {
+  get: async k => mem.get(k), put: async (k, v) => { mem.set(k, v); },
+  delete: async k => { mem.delete(k); },
+  list: async ({ prefix }) => new Map([...mem].filter(([k]) => k.startsWith(prefix)))
+} }, { LOG_TOKEN: TOKEN });
+const bucket = memoryBucket();
+const server = createServer(async (req, res) => {
+  const chunks = []; for await (const c of req) chunks.push(c);
+  const body = chunks.length ? Buffer.concat(chunks) : undefined;
+  const r = await worker.fetch(new Request('http://w' + req.url, {
+    method: req.method, headers: req.headers, ...(body && req.method !== 'GET' ? { body } : {})
+  }), { LOG: { idFromName: () => 'training', get: () => obj }, MEDIA: bucket }, null);
+  res.writeHead(r.status, Object.fromEntries(r.headers));
+  res.end(Buffer.from(await r.arrayBuffer()));
+});
+await new Promise(ok => server.listen(0, '127.0.0.1', ok));
+const WORKER = `http://127.0.0.1:${server.address().port}`;
+
+/* Async, because the Worker it talks to is running in this same process. */
+function remote(home, env = {}) {
+  return new Promise(done => {
+    const p = spawn('python3', [SCRIPT], { env: { ...process.env,
+      PYTHONPATH: join(HERE, 'test', 'fake'), RIC_GARMIN_HOME: home, GARMIN_REMOTE: '1',
+      GARMIN_WORKER: WORKER, LOG_TOKEN: TOKEN, GARMIN_EMAIL: 'ric@example.com', GARMIN_PASSWORD: 'x',
+      GARMIN_PAUSE: '0', FAKE_HISTORY_DAYS: '90', ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '', stderr = '';
+    p.stdout.on('data', d => { stdout += d; });
+    p.stderr.on('data', d => { stderr += d; });
+    p.on('close', code => done({ code, stdout, stderr }));
+  });
+}
+
+console.log('\nRULE  on GitHub, the export and the Garmin session live on the Worker');
+{
+  const r1 = await remote(home());
+  ok(r1.code === 0, 'a first run from a blank machine uploads' + (r1.code ? ' — ' + r1.stderr.slice(-300) : ''));
+  ok(/logged in with the password/.test(r1.stdout), 'logging in with the password the first time');
+  const up = bucket._map.get('garmin/export.json');
+  const exp = up && JSON.parse(new TextDecoder().decode(up.bytes));
+  ok(exp && exp.counts.days === 91 && exp.empty.length === 60, 'the export holds every worn day and the empty ones it checked');
+  ok(bucket._map.has('garmin/session.json'), 'and Garmin\'s session is parked on the Worker');
+
+  /* A fresh machine, a wrong password, and a Garmin that rate-limits after 30
+     calls: only a run that reused both the session and the last export gets
+     through that. */
+  const r2 = await remote(home(), { GARMIN_PASSWORD: 'wrong', GARMIN_EMAIL: 'nobody@example.com', FAKE_RATE_LIMIT_AFTER: '30' });
+  ok(r2.code === 0, 'the next run, on a new machine, finishes' + (r2.code ? ' — ' + (r2.stderr + r2.stdout).slice(-400) : ''));
+  ok(/logged in from a parked session/.test(r2.stdout), 'from the parked session, without the password');
+  ok(/Picked up 91 days/.test(r2.stdout), 'and from the last export, asking Garmin only for the last few days');
+
+  const mfa = await remote(home(), { FAKE_MFA: '1' });
+  ok(mfa.code === 0, 'a parked session means a two-step code is never asked for');
+  bucket._map.delete('garmin/session.json');
+  const mfa2 = await remote(home(), { FAKE_MFA: '1' });
+  ok(mfa2.code === 1 && /two-step verification code/.test(mfa2.stderr), 'and with none, a code request is a sentence, not a hang');
+
+  const leak = r1.stdout + r1.stderr + r2.stdout + r2.stderr;
+  ok(!/\b48\b|sleepScores|restingHeartRate|fresh-session|test-log-token/.test(leak.replace(/Picked up \d+ days/g, '')),
+     'nothing it prints is a value, a token or a password — Actions logs are public');
+}
+server.close();
 
 for (const h of homes) rmSync(h, { recursive: true, force: true });
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL GARMIN RULES PASS'));

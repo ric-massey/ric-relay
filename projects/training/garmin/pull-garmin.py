@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """GARMIN — pull the whole useful history and put it behind the password.
 
-    projects/training/garmin/Garmin.command     the button: double-click it
+    the button on training.html (signed in)     → .github/workflows/garmin.yml
+    projects/training/garmin/Garmin.command     the same thing from a Mac
     python3 projects/training/garmin/pull-garmin.py [--days N] [--since DATE] [--dry]
 
 Logs into Garmin Connect, pulls every activity's numbers and, for every day
@@ -9,6 +10,20 @@ the watch has data, sleep, HRV, resting heart rate, stress, Body Battery,
 training readiness and training status, then POSTs the lot as one JSON file to
 the Worker's /garmin. A Claude session reads it back from there with its own
 read-only token (see README.md beside this file).
+
+── where it runs ──
+Normally on GitHub Actions, started from a phone: the training page asks the
+Worker, the Worker asks GitHub. There, GARMIN_REMOTE=1 and the machine is new
+every time, so the two things that must survive between runs live on the
+Worker behind the site password rather than on disk: the day cache is rebuilt
+from the last export, and Garmin's session tokens are fetched from and parked
+at /garmin/session — so Garmin sees a returning session, not a password typed
+in from a new datacenter on every press. Credentials come from the
+workflow's secrets. The repo is public and so are its Actions logs, which is
+why this prints counts and dates and never a value.
+
+On a Mac (Garmin.command) the same script keeps its state in ~/.ric-garmin
+and its credentials in the Keychain, as below.
 
 ── nothing from this goes in the repo ──
 Sleep times are a nightly record of when the house is asleep, and HRV and
@@ -46,6 +61,7 @@ rule 1 says coordinates do not travel, and nothing about fatigue needs them.
 import argparse
 import datetime as dt
 import json
+import logging
 import os
 import re
 import subprocess
@@ -67,6 +83,8 @@ LOG_KEYCHAIN = {"service": "training-log", "account": "rmbuster82"}
 # Days this recent are fetched again every run: last night's sleep lands in
 # the morning, and readiness and training status move through the day.
 REFRESH_DAYS = 3
+# On GitHub Actions: state on the Worker instead of in ~/.ric-garmin.
+REMOTE = os.environ.get("GARMIN_REMOTE") == "1"
 # Walking back through history, this many days in a row with nothing on them
 # means the watch had not been bought yet. Long enough to cross a holiday with
 # the watch in a drawer.
@@ -149,7 +167,7 @@ def garmin_login_details():
                 "password, so it never lands in your shell history):\n\n"
                 f"    security add-generic-password -s {GARMIN_KEYCHAIN} -a YOUR@EMAIL -w\n")
         email = m.group(1)
-    if os.environ.get("GARMIN_PASSWORD"):     # the tests; the button never sets it
+    if os.environ.get("GARMIN_PASSWORD"):     # the workflow's secret, and the tests
         return email, os.environ["GARMIN_PASSWORD"]
     code, out, _ = keychain("-s", GARMIN_KEYCHAIN, "-a", email, "-w")
     if code:
@@ -170,23 +188,65 @@ def log_token():
     return out.strip()
 
 
+def ask_code():
+    try:
+        return input("Garmin sent you a code — type it here: ").strip()
+    except EOFError:
+        raise Stop("Garmin asked for a two-step verification code, and nobody is here to\n"
+                   "type it. Run Garmin.command once from a Mac (or turn off two-step for\n"
+                   "Garmin); the session it makes is parked on the Worker and reused here.")
+
+
 def connect():
     try:
         from garminconnect import Garmin, GarminConnectAuthenticationError
     except ImportError:
         raise Stop("garminconnect is not installed. Run Garmin.command, which sets it up.")
-    email, password = garmin_login_details()
     TOKENS.mkdir(parents=True, exist_ok=True)
     os.chmod(HOME, 0o700)
-    api = Garmin(email, password,
-                 prompt_mfa=lambda: input("Garmin sent you a code — type it here: ").strip())
+    if REMOTE:
+        parked = worker("GET", "/garmin/session")
+        if parked:
+            (TOKENS / "garmin_tokens.json").write_text(json.dumps(parked))
+    email, password = garmin_login_details()
+    api = Garmin(email, password, prompt_mfa=ask_code)
     try:
         api.login(str(TOKENS))
     except GarminConnectAuthenticationError as e:
-        raise Stop(f"Garmin refused the login: {e}\n"
-                   "If the password changed, update it in the Keychain. If it is right,\n"
-                   "Garmin may have changed its login — run Garmin.command --upgrade.")
+        # On Actions the log is public, and Garmin's own words are not ours to vet.
+        raise Stop(f"Garmin refused the login{'' if REMOTE else ': ' + str(e)}.\n"
+                   "If the password changed, update it where it is stored (the Keychain, or\n"
+                   "the GARMIN_PASSWORD secret). If it is right, Garmin may have changed its\n"
+                   "login — Garmin.command --upgrade, or just press again: the workflow always\n"
+                   "installs the newest library.")
     return api
+
+
+def park_session(api):
+    """Hand Garmin's (possibly refreshed) session back to the Worker for the
+    next run. Losing it costs one password login, so a failure is a warning."""
+    if not REMOTE:
+        return
+    try:
+        worker("POST", "/garmin/session", api.client.dumps().encode())
+    except Exception as e:
+        print(f"(could not park the Garmin session: {type(e).__name__})", flush=True)
+
+
+def seed_cache(cache):
+    """On a fresh machine the last export IS the cache: every day in it, and
+    every day it checked and found empty, needs no call to Garmin."""
+    if cache["days"] or not REMOTE:
+        return
+    prev = worker("GET", "/garmin")
+    if not prev:
+        return
+    cache["days"].update({d: {} for d in prev.get("empty", [])})
+    cache["days"].update(prev.get("days", {}))
+    for a in prev.get("activities", []):
+        cache["activities"][str(a.get("activityId"))] = a
+    print(f"Picked up {len(prev.get('days', {}))} days and "
+          f"{len(prev.get('activities', []))} activities from the last export.", flush=True)
 
 
 def call(fn, *args):
@@ -288,6 +348,8 @@ def pull_activities(api, cache):
 
 def build(api, cache):
     days = {d: v for d, v in sorted(cache["days"].items()) if v}
+    # Checked and empty — kept so a fresh machine does not ask Garmin again.
+    empty = sorted(d for d, v in cache["days"].items() if not v)
     acts = sorted(cache["activities"].values(),
                   key=lambda a: str(a.get("startTimeLocal", "")))
     return {
@@ -299,24 +361,33 @@ def build(api, cache):
         "records": trim(soft(api.get_personal_record)),
         "race_predictions": trim(soft(api.get_race_predictions)),
         "days": days,
+        "empty": empty,
         "activities": acts,
     }
 
 
-def upload(body):
-    req = urllib.request.Request(WORKER + "/garmin", data=body, method="POST", headers={
+def worker(method, path, body=None):
+    """One call to the Worker with the site password. A 404 is None — nothing
+    parked yet, which is normal on the first run."""
+    req = urllib.request.Request(WORKER + path, data=body, method=method, headers={
         "authorization": "Bearer " + log_token(),
         "content-type": "application/json",
     })
     try:
-        with urllib.request.urlopen(req, timeout=120) as r:
+        with urllib.request.urlopen(req, timeout=180) as r:
             return json.loads(r.read())
     except urllib.error.HTTPError as e:
+        if e.code == 404 and method == "GET":
+            return None
         if e.code == 401:
-            raise Stop("The Worker did not accept the site password from the Keychain.")
+            raise Stop("The Worker did not accept the site password (LOG_TOKEN).")
         if e.code == 429:
             raise Stop("The Worker is locked for five minutes after wrong passwords. Try again after.")
-        raise Stop(f"The Worker said {e.code}: {e.read()[:300].decode('utf-8', 'replace')}")
+        raise Stop(f"The Worker said {e.code} to {method} {path}.")
+
+
+def upload(body):
+    return worker("POST", "/garmin", body)
 
 
 def main():
@@ -332,7 +403,12 @@ def main():
         raise Stop("garminconnect is not installed. Run Garmin.command, which sets it up.")
     today = dt.date.today()
     oldest = dt.date.fromisoformat(args.since) if args.since else dt.date(2010, 1, 1)
+    if REMOTE:
+        # The library logs response details at warning level, and an Actions
+        # log is public. Everything this script means to say, it prints.
+        logging.disable(logging.CRITICAL)
     cache = load_cache()
+    seed_cache(cache)
     first = not cache["days"]
     api = connect()
     if first:
@@ -352,6 +428,7 @@ def main():
         print("\nGarmin is rate-limiting. Uploading what is in so far — press the button\n"
               "again in an hour and it carries on from where it stopped.", flush=True)
 
+    park_session(api)
     out = build(api, cache)
     body = json.dumps(out, separators=(",", ":")).encode()
     EXPORT.write_bytes(body)

@@ -2,6 +2,7 @@
 was bought on FIRST_DAY, carries coordinates and time series in every payload
 (so the test can prove they are dropped), and can be told to rate-limit."""
 import datetime as dt
+import json
 import os
 
 
@@ -17,13 +18,35 @@ FIRST_DAY = dt.date.today() - dt.timedelta(days=int(os.environ.get("FAKE_HISTORY
 CALLS = {"n": 0}
 
 
+class _Client:
+    def __init__(self):
+        self.di_token = None
+
+    def dumps(self):
+        return json.dumps({"di_token": self.di_token, "di_refresh_token": "r", "di_client_id": "c"})
+
+
 class Garmin:
+    """Logs in from a parked session if one is in the token store — and then
+    ignores the password, which is how the test proves the session was used."""
     def __init__(self, email=None, password=None, prompt_mfa=None, **_):
         self.email = email
+        self.prompt_mfa = prompt_mfa
+        self.client = _Client()
 
     def login(self, tokenstore=None):
+        f = os.path.join(tokenstore or "", "garmin_tokens.json")
+        if tokenstore and os.path.exists(f):
+            self.client.di_token = json.load(open(f)).get("di_token")
+            if self.client.di_token:
+                print("FAKE: logged in from a parked session")
+                return None, None
         if self.email != "ric@example.com":
             raise GarminConnectAuthenticationError("bad login")
+        if os.environ.get("FAKE_MFA"):
+            self.prompt_mfa()
+        self.client.di_token = "fresh-session"
+        print("FAKE: logged in with the password")
         return None, None
 
     def _tick(self):

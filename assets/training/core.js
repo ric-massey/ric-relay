@@ -856,8 +856,21 @@
       bar.innerHTML = `<strong>Signed in.</strong> <span id="ownerstate">${q
           ? `${q} tick${q === 1 ? '' : 's'} waiting for signal — they'll send themselves.`
           : 'ticks and notes save as you tap.'}</span>
+        <button type="button" class="ownerbtn" id="garminpull">pull Garmin</button>
         <button type="button" class="ownerbtn" id="signout">sign out</button>`;
       $('#signout').onclick = () => Owner.signOut();
+      /* Starts .github/workflows/garmin.yml through the Worker, which puts the
+         whole Garmin history behind the password for Claude to read. Nothing
+         from it comes back to this page. projects/training/garmin/README.md */
+      $('#garminpull').onclick = async e => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        const out = await Owner.post('/garmin/_pull', {});
+        say(out && out.ok
+          ? 'Garmin pull started — about a minute (the very first one can take an hour).'
+          : 'Could not start the Garmin pull. Run "Garmin" from the Actions tab on GitHub instead.');
+        setTimeout(() => { btn.disabled = false; }, 30000);
+      };
     } else {
       Owner.mountBox(bar, { title: 'Password', note: '' });
     }

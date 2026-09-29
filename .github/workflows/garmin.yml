@@ -1,0 +1,72 @@
+# Pull Ric's Garmin history and put it behind the site password.
+#
+# Started from his phone: the "pull Garmin" button on training.html (signed in)
+# asks the Worker, and the Worker fires the `garmin` repository_dispatch below.
+# The Run workflow button in the Actions tab does the same thing, for when the
+# Worker has no GitHub token.
+#
+# This repo is PUBLIC, and so is this job's log. So:
+#   - nothing is committed and nothing is uploaded as an artifact — the export
+#     goes to the Worker's private /garmin and nowhere else;
+#   - no cache: an Actions cache on a public repo can be restored by a
+#     workflow in someone else's pull request. The script's memory between
+#     runs is the last export and a parked Garmin session, both on the Worker;
+#   - pull-garmin.py prints counts and dates, never a value, and in this mode
+#     silences the library's own logging.
+# projects/training/garmin/README.md has the rest.
+
+name: Garmin
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [garmin]
+
+permissions:
+  contents: read
+
+concurrency:
+  # Five presses in a row are one pull, not five logins to Garmin.
+  group: garmin
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    # The first pull walks back through years of days, paced so Garmin does not
+    # lock the account. Later ones take a minute.
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: projects/training/garmin
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Always the newest: when Garmin changes its login, this library is what
+      # catches up, and a fresh install every press is the upgrade.
+      - run: pip install --quiet garminconnect
+
+      - name: Pull and upload
+        env:
+          GARMIN_REMOTE: "1"
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          LOG_TOKEN: ${{ secrets.LOG_TOKEN }}
+        run: |
+          if [ -z "$GARMIN_EMAIL" ] || [ -z "$GARMIN_PASSWORD" ] || [ -z "$LOG_TOKEN" ]; then
+            echo "::error::Set the GARMIN_EMAIL, GARMIN_PASSWORD and LOG_TOKEN secrets (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          set +e
+          python3 projects/training/garmin/pull-garmin.py
+          code=$?
+          # 2 = Garmin rate-limited partway. What was in is uploaded and the next
+          # press carries on, so it is a warning, not a failure.
+          if [ "$code" = 2 ]; then
+            echo "::warning::Garmin rate-limited this run. What it got is uploaded; press again in an hour to carry on."
+            exit 0
+          fi
+          exit $code

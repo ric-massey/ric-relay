@@ -5,8 +5,8 @@ description: Read Ric's Garmin history (sleep, HRV, resting heart rate, Body Bat
 
 # Read the Garmin export
 
-Ric presses `Garmin.command` on his Mac. That uploads his whole history to the
-Worker's private `/garmin` route. This session reads it with a read-only token.
+Ric presses "pull Garmin" on the training page. A GitHub Actions job then uploads
+his whole history to the Worker's private `/garmin` route. This session reads it with a read-only token.
 Everything about how it's built is in `projects/training/garmin/README.md`.
 
 ## Fetch
@@ -22,11 +22,12 @@ python3 projects/training/garmin/recent.py "$SCRATCH/garmin.json" --days 21
 
 - `x-uploaded` is when he last pressed the button. If it's more than a day
   old, say so, because last night's sleep won't be in it.
-- `404` means the button has never been pressed. `401` means
+- `404` means the button has never been pressed, or the run hasn't finished. The
+  first one can take an hour. `401` means
   `GARMIN_READ_TOKEN` isn't set in this environment or is wrong. A proxy
   `403` / CONNECT failure means the environment's network settings don't allow
-  `training-log.rmbuster82.workers.dev`. Point him to steps 4–5 of the README
-  for the last two.
+  `training-log.rmbuster82.workers.dev`. Point him to step 4 of the README for the
+  last two.
 - Ten wrong tokens lock the Worker for five minutes for everyone, Ric
   included, so don't retry a 401 in a loop.
 

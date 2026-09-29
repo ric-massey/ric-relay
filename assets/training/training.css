@@ -489,6 +489,7 @@ button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; 
   display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
 }
 .owner .ownerbtn { margin-left: auto; background: #fff; color: var(--brand-ink); }
+.owner .ownerbtn + .ownerbtn { margin-left: 0; }
 
 /* ── the calendar ──
    Seven columns at every width. A month of a training plan is only useful
