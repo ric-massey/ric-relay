@@ -40,6 +40,10 @@
   // GH_REPO overrides which repository is rung; the default is the site's.
   // A public repository's name is not a credential, so if it ever needs
   // setting it belongs in "vars" below, not in a secret.
+  //
+  // Garmin, for GET /garmin (projects/training/garmin/README.md):
+  //     GARMIN_READ_TOKEN      read-only, for a Claude session. 24+ characters
+  //                            or it is ignored. Unset, only LOG_TOKEN reads.
   "name": "training-log",
   "main": "worker.mjs",
   "compatibility_date": "2026-08-01",

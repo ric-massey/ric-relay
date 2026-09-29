@@ -417,6 +417,12 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   pulled properly onto the climbing page — a watch ticking climbing too would
   double-count the site's one real source.
 
+**Garmin is pushed from a button, and none of it is public.** `projects/training/garmin/Garmin.command`
+on the Mac pulls sleep, HRV, resting HR, readiness and every activity and POSTs it to the
+Worker's `/garmin`, the one route that needs a token to *read*. A Claude session reads it with
+`GARMIN_READ_TOKEN` (the `garmin` skill). Never write that export, or anything derived from it,
+into this repo. Its README has the rest.
+
 **Entertainment is written from the page, and falls back to this browser.**
 `entertainment.html` and `entertainment-library.html` read
 `projects/entertainment/entertainment-data.js` — 363 titles, each `watched` or

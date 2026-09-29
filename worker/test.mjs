@@ -1233,5 +1233,85 @@ console.log('\nRULE  the list is reachable from outside and unknown paths are no
   ok(no.status === 404, 'a near miss still 404s');
 }
 
+/* ── /garmin ──
+   The one route that is private in both directions: sleep, HRV and resting
+   heart rate are behind the password, and the reader token handed to a Claude
+   session can read them and do nothing else. */
+const READER = 'reader-token-that-is-long-enough-0123';
+function garminRig(extra = {}) {
+  const obj = fresh({ GARMIN_READ_TOKEN: READER, ...extra });
+  const bucket = memoryBucket();
+  const env = { LOG: { idFromName: () => 'training', get: () => obj }, MEDIA: bucket };
+  const hit = (method, token, body) => worker.fetch(new Request('https://x/garmin', {
+    method,
+    headers: token ? { authorization: 'Bearer ' + token } : {},
+    ...(body != null ? { body } : {})
+  }), env, null);
+  return { bucket, hit, obj };
+}
+const EXPORT = JSON.stringify({ generated: '2026-09-29T12:00:00Z', days: { '2026-09-28': { sleep: { score: 71 } } }, activities: [] });
+
+console.log('\nRULE  the Garmin export is readable by nobody without a token');
+{
+  const g = garminRig();
+  ok((await g.hit('POST', TOKEN, EXPORT)).status === 200, 'the owner can upload it');
+  const anon = await g.hit('GET');
+  ok(anon.status === 401, 'a visitor with no token gets a 401');
+  ok(!(await anon.text()).includes('sleep'), 'and not a byte of it');
+  ok((await g.hit('GET', 'wrong')).status === 401, 'a wrong token gets a 401');
+  const other = await worker.fetch(new Request('https://x/media'), { LOG: { idFromName: () => 'training', get: () => g.obj }, MEDIA: g.bucket }, null);
+  ok(!JSON.stringify(await other.json()).includes('garmin'), 'and the public media listing does not see it');
+}
+
+console.log('\nRULE  the reader token reads, and only reads');
+{
+  const g = garminRig();
+  await g.hit('POST', TOKEN, EXPORT);
+  const r = await g.hit('GET', READER);
+  ok(r.status === 200, 'the reader token can read the export');
+  ok((await r.json()).days['2026-09-28'].sleep.score === 71, 'and gets back exactly what was uploaded');
+  ok(r.headers.get('cache-control') === 'private, no-store', 'marked private so nothing in between caches it');
+  ok(!!r.headers.get('x-uploaded'), 'with the time it was uploaded');
+  ok((await g.hit('POST', READER, '{"days":{}}')).status === 403, 'but cannot replace it');
+  ok((await (await g.hit('GET', TOKEN)).json()).generated === '2026-09-29T12:00:00Z', 'which is still the owner\'s upload');
+  const log = await g.obj.fetch(req('POST', '/log/2026-09-28', { done: { 0: true } }, READER));
+  ok(log.status === 401, 'and it opens nothing else on the Worker');
+}
+
+console.log('\nRULE  a short reader token is not a reader token');
+{
+  const g = garminRig({ GARMIN_READ_TOKEN: 'short' });
+  await g.hit('POST', TOKEN, EXPORT);
+  ok((await g.hit('GET', 'short')).status === 401, 'a reader token under 24 characters is ignored');
+}
+
+console.log('\nRULE  the upload has to be a JSON object');
+{
+  const g = garminRig();
+  ok((await g.hit('POST', TOKEN, '')).status === 400, 'an empty body is refused');
+  ok((await g.hit('POST', TOKEN, '<html></html>')).status === 400, 'so is something that is not JSON');
+  ok((await g.hit('POST', TOKEN, '[1,2]')).status === 400, 'and a JSON array');
+  ok((await g.hit('GET', TOKEN)).status === 404, 'none of which stored anything');
+  ok((await g.hit('POST', TOKEN, '  \n' + EXPORT + '\n')).status === 200, 'surrounding whitespace is fine');
+  ok((await g.hit('DELETE', TOKEN)).status === 405, 'and there is no delete');
+}
+
+console.log('\nRULE  a guessed reader token counts toward the same throttle');
+{
+  const g = garminRig();
+  await g.hit('POST', TOKEN, EXPORT);
+  for (let i = 0; i < 10; i++) await g.hit('GET', 'guess-' + i);
+  ok((await g.hit('GET', READER)).status === 429, 'after ten misses even the right reader token is refused');
+  ok((await g.obj.fetch(req('POST', '/auth', { password: TOKEN }))).status === 429, 'and so is the owner\'s password, because it is one limit');
+}
+
+console.log('\nRULE  the internal auth path is not reachable from outside');
+{
+  const g = garminRig();
+  const r = await worker.fetch(new Request('https://x/garmin-auth', { method: 'POST', headers: { authorization: 'Bearer ' + TOKEN } }),
+    { LOG: { idFromName: () => 'training', get: () => g.obj }, MEDIA: g.bucket }, null);
+  ok(r.status === 404, '/garmin-auth 404s from the internet');
+}
+
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKER RULES PASS'));
 process.exit(failures ? 1 : 0);

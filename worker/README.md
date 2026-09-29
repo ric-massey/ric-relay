@@ -13,6 +13,7 @@ is historical — every room that writes anything writes here:
 | `/media` | Climbing | photos and clips for the media tab |
 | `/todo` | Climbing | the route to-do list |
 | `/movies` | Entertainment | edits on top of `projects/entertainment/entertainment-data.js` |
+| `/garmin` | none — private | Ric's Garmin export, token to read **and** write (`projects/training/garmin/`) |
 | `/auth` | all of them | Ric's sign-in (`assets/owner.js`) |
 
 It lived in `projects/training/server/` until 2026-09-25. The deployed name

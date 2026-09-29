@@ -643,6 +643,24 @@ export class TrainingLog {
        a credential it gets to compare arrived while the door was open. */
     if (bearer() && this.throttled()) return lockout();
 
+    /* ---------- POST /garmin-auth — internal only ----------
+       Who is asking for the Garmin export: Ric (LOG_TOKEN, may read and
+       write) or the reader token (GARMIN_READ_TOKEN, may only read). The
+       outer Worker asks this rather than comparing tokens itself for the same
+       reason /media does — a compare out there would be an unthrottled oracle
+       for the password /auth rate-limits. PUBLIC_PATHS keeps the internet off
+       this path; only the outer Worker can reach it. */
+    if (parts[0] === 'garmin-auth') {
+      const given = bearer();
+      if (given && this.token && sameSecret(given, this.token)) return json({ role: 'owner' }, 200, origin);
+      /* A short reader token is treated as unset rather than trusted: this one
+         opens health data, and it is typed by hand into two settings pages. */
+      const reader = this.env.GARMIN_READ_TOKEN || '';
+      if (given && reader.length >= 24 && sameSecret(given, reader)) return json({ role: 'reader' }, 200, origin);
+      if (given) this.noteFail();
+      return json({ error: 'nope' }, 401, origin);
+    }
+
     /* ---------- POST /auth ----------
        The password IS the token; this endpoint only exists so the page can say
        "wrong password" the moment it is typed rather than silently failing on
@@ -1233,6 +1251,10 @@ const MEDIA_PREFIX = 'climb/';
    would only ever fail later and less clearly. A phone clip of a boulder sits
    far inside it; a ten-minute 4K multipitch does not, and is told so up front. */
 const MAX_MEDIA_BYTES = 100 * 1024 * 1024;
+/* The Garmin export. Years of days and activities come to a few megabytes; the
+   cap is only there so a runaway script cannot fill the bucket. */
+const GARMIN_KEY = 'garmin/export.json';
+const MAX_GARMIN_BYTES = 50 * 1024 * 1024;
 /* An allowlist, and it decides the extension too — the filename is whatever the
    phone called it and is not trusted to name the format. */
 const MEDIA_TYPES = {
@@ -1278,7 +1300,7 @@ function mediaRecord(obj) {
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin']);
 
 export default {
   async fetch(request, env, ctx) {
@@ -1334,6 +1356,83 @@ export default {
         if (ctx && ctx.waitUntil) ctx.waitUntil(work); else await work;
         return new Response('ok', { status: 200 });
       }
+    }
+
+    /* ── /garmin ──
+       Ric's Garmin history — sleep, HRV, resting heart rate, Body Battery,
+       training readiness and every activity's numbers — pushed as one JSON file
+       by projects/training/garmin/pull-garmin.py when he presses the button on
+       his Mac. It exists so a Claude session can read the lot in one request.
+
+       NOTHING HERE IS PUBLIC, which makes it the one route on this Worker that
+       is private in both directions. Sleep times are a nightly record of when
+       the house is asleep, and HRV and resting heart rate are health data; Ric
+       chose on 2026-09-29 to keep them behind the password rather than in the
+       repo. So both reading and writing need a token:
+
+         LOG_TOKEN          Ric — may upload and read
+         GARMIN_READ_TOKEN  a Claude session — may only read. Its own secret so
+                            the thing handed to a cloud environment cannot tick,
+                            write notes or replace the export.
+
+       The file lives in the R2 bucket beside the climbing media, under its own
+       prefix. The public /media routes only ever build keys under `climb/`, so
+       no path through them reaches it. Stored whole and served whole: parsing a
+       few megabytes of JSON would blow the free plan's CPU budget, and the
+       reader filters it far more cheaply than this could. */
+    if (parts[0] === 'garmin') {
+      const origin = request.headers.get('origin');
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(origin) });
+      if (parts[1]) return json({ error: 'not found' }, 404, origin);
+      if (request.method !== 'GET' && request.method !== 'POST') {
+        return json({ error: 'method not allowed' }, 405, origin);
+      }
+
+      const auth = request.headers.get('authorization') || '';
+      if (!auth.startsWith('Bearer ') || auth.length <= 7) return json({ error: 'nope' }, 401, origin);
+      const who = await stub.fetch(new Request('https://internal/garmin-auth', {
+        method: 'POST', headers: { authorization: auth }
+      }));
+      if (who.status === 429) {
+        return json({ error: 'too many attempts — wait five minutes' }, 429, origin, { 'retry-after': '300' });
+      }
+      const role = who.status === 200 ? (await who.json()).role : null;
+      if (!role) return json({ error: 'nope' }, 401, origin);
+
+      if (!env.MEDIA) return json({ error: 'storage is not configured — the R2 binding is missing' }, 503, origin);
+      const priv = { 'cache-control': 'private, no-store' };
+
+      if (request.method === 'GET') {
+        const obj = await env.MEDIA.get(GARMIN_KEY);
+        if (!obj) return json({ error: 'nothing uploaded yet — press the button on the Mac' }, 404, origin, priv);
+        const at = (obj.customMetadata && obj.customMetadata.at)
+          || (obj.uploaded && new Date(obj.uploaded).toISOString()) || '';
+        return new Response(obj.body, { status: 200, headers: {
+          'content-type': 'application/json; charset=utf-8', ...cors(origin), ...priv,
+          ...(at ? { 'x-uploaded': at } : {})
+        } });
+      }
+
+      if (role !== 'owner') return json({ error: 'this token can read, not write' }, 403, origin);
+      const declared = Number(request.headers.get('content-length') || 0);
+      if (declared > MAX_GARMIN_BYTES) return json({ error: 'too big' }, 413, origin);
+      const bytes = new Uint8Array(await request.arrayBuffer());
+      if (bytes.length > MAX_GARMIN_BYTES) return json({ error: 'too big' }, 413, origin);
+      /* A shape check, not a parse (see above): a JSON object, first byte to
+         last. Enough to stop a wrong file or an empty body replacing a good
+         export; the script that writes it is the one that knows its fields. */
+      let i = 0, j = bytes.length - 1;
+      while (i <= j && bytes[i] <= 32) i++;
+      while (j >= i && bytes[j] <= 32) j--;
+      if (i > j || bytes[i] !== 0x7b || bytes[j] !== 0x7d) {
+        return json({ error: 'that is not a JSON object' }, 400, origin);
+      }
+      const at = new Date().toISOString();
+      await env.MEDIA.put(GARMIN_KEY, bytes, {
+        httpMetadata: { contentType: 'application/json' },
+        customMetadata: { at }
+      });
+      return json({ ok: true, bytes: bytes.length, at }, 200, origin);
     }
 
     /* ── /media ──

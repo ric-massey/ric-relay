@@ -14,6 +14,7 @@ and writes notes.
 | The log service | `worker/` | yes (no secrets in it) |
 | The Strava wiring | `worker/strava-setup.mjs` | yes (run once, keys in the Keychain) |
 | The feed page | `training.html` | yes |
+| The Garmin export | `projects/training/garmin/` → the Worker's `/garmin` | **no** — token to read; see its README |
 
 ## Why it is split this way
 
