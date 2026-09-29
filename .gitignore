@@ -67,3 +67,7 @@ projects/training/server/strava-account.json
 
 # Python bytecode from the entertainment puller
 projects/entertainment/__pycache__/
+
+# Garmin: nothing it pulls is ever here (it lives in ~/.ric-garmin); only
+# Python caches from running its test.
+projects/training/garmin/**/__pycache__/
