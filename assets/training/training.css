@@ -495,22 +495,31 @@ button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; 
    Seven columns at every width. A month of a training plan is only useful
    as a shape — which days are heavy, where the rest falls — and that shape
    only reads when the week is a row. So the cells shrink rather than the
-   grid reflowing, and detail moves into the day panel below. */
-.calwrap { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0.9rem 1rem 1rem; }
-.calhead { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
+   grid reflowing, and detail moves into the day panel below.
+
+   Two densities. On a phone a cell is a number and a dot or two, because
+   that is all that fits at 40px wide. From 640px a cell names its sessions
+   ("Tempo 5 mi", "Hard bouldering") and each row grows a gutter with the
+   week's number and its running against target — the two things you used to
+   have to open a day to find out. */
+.calwrap { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 0.9rem 1rem 1rem; }
+.calhead { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.caltitle { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: center; }
 /* The month is a button now — it opens the month/year picker — but it still has
    to read as the calendar's heading rather than as a third control competing
    with the two arrows either side of it. So: no border, no fill, and the only
    affordance is the caret and what happens on hover. */
 .calmonth {
-  flex: 1 1 auto; text-align: center; font: inherit; font-weight: 700;
+  font: inherit; font-size: 1.1rem; font-weight: 800; letter-spacing: -0.01em;
   color: var(--ink); background: none; border: 0; cursor: pointer;
-  padding: 0.35rem 0.4rem; min-height: 40px; border-radius: 8px;
+  padding: 0.25rem 0.6rem; min-height: 40px; border-radius: 8px;
 }
-.calmonth::after { content: " ▾"; color: var(--soft); font-size: 0.8em; }
+.calmonth::after { content: " ▾"; color: var(--soft); font-size: 0.75em; }
 .calmonth:hover { background: #fff2ec; }
 .calmonth[aria-expanded="true"] { background: #fff2ec; }
 .calmonth:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.calphase { font-size: 0.74rem; color: var(--soft); margin-top: -0.2rem; text-align: center; }
+.calphase:empty { display: none; }
 
 /* Sits under the header rather than floating over the grid: the grid is the
    thing you are navigating and covering it while you choose is disorienting.
@@ -533,70 +542,202 @@ button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; 
 }
 .calpick select:focus-visible { outline: 2px solid var(--brand); outline-offset: -1px; }
 .calnav {
-  min-width: 44px; min-height: 44px; font: inherit; font-size: 1.3rem; line-height: 1;
+  flex: 0 0 auto; min-width: 44px; min-height: 44px; font: inherit; font-size: 1.3rem; line-height: 1;
   cursor: pointer; color: var(--brand-ink); background: #fff;
   border: 1px solid var(--line); border-radius: 10px;
 }
+.calnav:hover:not(:disabled) { border-color: var(--brand); }
 .calnav:active { background: #fff2ec; }
 .calnav:disabled { opacity: 0.35; cursor: default; }
+.calnav:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+/* Sits between the month name and the forward arrow, and hides itself when
+   today is already what you are looking at. */
+.caltoday {
+  flex: 0 0 auto;
+  font: inherit; font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; cursor: pointer; color: var(--brand-ink);
+  background: #ffe8de; border: 0; border-radius: 999px; padding: 0.3rem 0.75rem;
+  min-height: 34px;
+}
+.caltoday:hover { background: var(--brand-dark); color: #fff; }
 
-.caldow, .calgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
-.caldow { margin-bottom: 3px; }
+/* The month in one line: what it holds, and how the part that has happened
+   went. Quiet type — it is a caption for the grid, not a scoreboard. */
+.calsum {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 0.3rem 0.9rem;
+  font-size: 0.76rem; color: var(--soft); margin: 0 0 0.75rem;
+}
+.calsum:empty { display: none; }
+.calsum b { color: var(--ink); font-weight: 700; }
+.calsum .sum-done.all b { color: var(--good-ink); }
+.calsum .sum-owed b { color: #8a5a12; }
+
+.caldow, .calrow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.calgrid { display: flex; flex-direction: column; gap: 3px; }
+.caldow { margin-bottom: 4px; }
 .caldow span {
   text-align: center; font-size: 0.69rem; font-weight: 700; color: var(--soft);
   text-transform: uppercase; letter-spacing: 0.04em;
 }
+.caldow b { font-weight: inherit; }
+.caldow em { font-style: normal; display: none; }
+.caldow .dow-wk, .calwk { display: none; }
+
 .calcell {
-  position: relative; min-height: 52px; padding: 0.2rem 0.1rem 0.35rem;
-  font: inherit; cursor: pointer; text-align: center;
-  background: #fcfcfd; border: 1px solid var(--line); border-radius: 8px;
-  display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+  position: relative; min-height: 54px; min-width: 0; padding: 0.25rem 0.1rem 0.35rem;
+  font: inherit; color: var(--ink); cursor: pointer; text-align: center;
+  background: #fcfcfd; border: 1px solid var(--line); border-radius: 9px;
+  display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+  transition: border-color 0.12s, background-color 0.12s;
 }
-.calcell.blank { background: transparent; border-color: transparent; cursor: default; }
-.calcell.outside { opacity: 0.4; cursor: default; }
-.calcell .cd { font-size: 0.8rem; font-weight: 700; }
-.calcell .cdots { display: flex; gap: 2px; justify-content: center; min-height: 6px; }
-.calcell .cdots i { width: 6px; height: 6px; border-radius: 50%; display: block; }
-.calcell.today { border-color: var(--brand); border-width: 2px; background: #fff8f5; }
-.calcell.sel { outline: 2px solid var(--brand); outline-offset: 1px; }
+.calcell:hover:not(.outside) { border-color: #f3b497; }
+.calcell:focus-visible { outline: 2px solid var(--brand-ink); outline-offset: 1px; z-index: 1; }
+.calcell.outside { background: transparent; border-color: transparent; cursor: default; }
+.calcell.outside .cd { color: #9a9aa5; font-weight: 500; }
+/* Days from the months either side. Still the plan, still tappable — they go
+   there — but quieter, so the month reads as the month. Colour rather than
+   opacity, so the number keeps its contrast. */
+.calcell.adj { background: transparent; border-style: dashed; }
+.calcell.adj .cd { color: var(--soft); font-weight: 500; }
+.calcell.adj .cdots, .calcell.adj .chips { opacity: 0.55; }
+/* Their done/owed wash is left off: that is the other month's business, and
+   four amber cells at the top of October read as October's gaps. */
+.calcell.adj.owed, .calcell.adj.isdone { background: transparent; border-color: var(--line); box-shadow: none; }
+.calcell.adj.sel { border-color: var(--brand-ink); box-shadow: inset 0 0 0 1px var(--brand-ink); }
+
+.calcell .ctop { display: flex; align-items: center; justify-content: center; gap: 0.2rem; width: 100%; }
+.calcell .cd {
+  font-size: 0.8rem; font-weight: 700; line-height: 1;
+  min-width: 1.6rem; height: 1.6rem; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px;
+}
+.calcell .cdots { display: flex; gap: 3px; justify-content: center; align-items: center; min-height: 8px; }
+.calcell .cdots i { width: 6px; height: 6px; border-radius: 50%; display: block; background: currentColor; color: #c9c9d2; }
+/* A key session is the bigger dot, ringed — the day that matters that week. */
+.calcell .cdots i.key { width: 8px; height: 8px; box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.5px currentColor; }
+.calcell .cdots i.climb { color: #6b5bd6; }
+.calcell .cdots i.run { color: var(--brand); }
+.calcell .chips { display: none; }
+
+/* Today is the filled number, the way every phone calendar marks it, so it
+   still reads when another day is the one open. The fill is --brand-dark,
+   not --brand: white on Strava orange is 3.4:1. */
+.calcell.today .cd { background: var(--brand-dark); color: #fff; }
+.calcell.today { border-color: #f3b497; }
+.calcell.sel { border-color: var(--brand-ink); box-shadow: inset 0 0 0 1px var(--brand-ink); background: #fff6f1; }
 .calcell.isdone { background: #f2fbf5; border-color: #bfe6cd; }
+.calcell.isdone.sel { border-color: var(--good-ink); box-shadow: inset 0 0 0 1px var(--good-ink); }
 /* A past day still owing real work. Deliberately quiet — a wash and a bar down
    the left, not a red badge: on a page where most of the past is caught up,
-   the eye should find the few that are not without the grid looking alarmed.
-   `isdone` wins by coming first in specificity order below. */
+   the eye should find the few that are not without the grid looking alarmed. */
 .calcell.owed { background: #fffaf3; border-color: #f0dcc2; box-shadow: inset 3px 0 0 #e8a33d; }
-.calcell.owed .cd { color: #8a5a12; }
+.calcell.owed.sel { box-shadow: inset 3px 0 0 #e8a33d, inset 0 0 0 1px var(--brand-ink); border-color: var(--brand-ink); }
+.calcell.owed:not(.today):not(.adj) .cd { color: #8a5a12; }
 .calcell.deload::after {
-  content: ""; position: absolute; inset: auto 4px 3px; height: 2px;
+  content: ""; position: absolute; inset: auto 6px 3px; height: 2px;
   background: repeating-linear-gradient(90deg, var(--soft) 0 3px, transparent 3px 6px);
   opacity: 0.5;
 }
-.calcell .ctick { position: absolute; top: 1px; right: 3px; font-size: 0.69rem; color: var(--good-ink); font-weight: 800; }
-.calcell .cevent { position: absolute; top: 1px; left: 3px; font-size: 0.69rem; }
+.calcell .ctick { position: absolute; top: 2px; right: 4px; font-size: 0.69rem; color: var(--good-ink); font-weight: 800; }
+.calcell .cevent { position: absolute; top: 2px; left: 3px; font-size: 0.69rem; }
 
-.k-climb, .calcell .cdots i.climb { background: #6b5bd6; }
-.k-run, .calcell .cdots i.run { background: var(--brand); }
-.k-rest, .calcell .cdots i.rest { background: #c9c9d2; }
+/* Turning the month slides the new one in from the side you went. */
+@keyframes cal-in-l { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+@keyframes cal-in-r { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+.calgrid.slide-l { animation: cal-in-l 0.18s ease-out; }
+.calgrid.slide-r { animation: cal-in-r 0.18s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .calgrid.slide-l, .calgrid.slide-r { animation: none; }
+  .calcell { transition: none; }
+}
+
+@media (min-width: 640px) {
+  .caldow, .calrow { grid-template-columns: repeat(7, minmax(0, 1fr)) 5.6rem; gap: 4px; }
+  .calgrid { gap: 4px; }
+  .caldow b { text-transform: none; }
+  .caldow em { display: inline; text-transform: none; }
+  .caldow span { text-transform: none; font-size: 0.74rem; }
+  .caldow .dow-wk { display: block; text-align: left; padding-left: 0.4rem; }
+
+  .calcell {
+    min-height: 92px; padding: 0.3rem 0.35rem 0.45rem; text-align: left;
+    align-items: stretch; gap: 0.25rem;
+  }
+  .calcell .ctop { justify-content: flex-start; }
+  .calcell .cevent { position: static; order: 2; }
+  .calcell .ctick { top: 6px; right: 6px; font-size: 0.78rem; }
+  .calcell .cdots { display: none; }
+  .calcell .chips { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .chip {
+    display: block; font-size: 0.69rem; font-weight: 600; line-height: 1.25;
+    padding: 0.15rem 0.3rem 0.15rem 0.35rem; border-radius: 4px;
+    overflow: hidden; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    border-left: 3px solid transparent;
+  }
+  .chip.climb { background: #f0eefc; color: #4a3db8; border-left-color: #6b5bd6; }
+  .chip.run { background: #fff0e8; color: #a33500; border-left-color: var(--brand); }
+  .chip.body { background: #eef5f8; color: #2d5e72; border-left-color: #5b9bb5; }
+  .chip.rest { color: var(--soft); font-weight: 500; padding-left: 0; }
+  .chip.key { font-weight: 800; }
+  .chip.did::before { content: "✓ "; }
+  .chip.more { color: var(--soft); background: none; padding-left: 0; }
+
+  .calwk {
+    display: flex; flex-direction: column; justify-content: center; gap: 0.15rem;
+    padding: 0.3rem 0.4rem; min-width: 0;
+    font-size: 0.72rem; color: var(--soft); border-left: 1px solid var(--line);
+  }
+  .calwk .wk-phase {
+    font-size: 0.69rem; font-weight: 800; color: var(--brand-ink);
+    text-transform: uppercase; letter-spacing: 0.04em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .calwk .wk-n { font-weight: 700; color: var(--ink); }
+  .calwk .wk-mi { font-variant-numeric: tabular-nums; }
+  .calwk .wk-mi span { color: var(--soft); }
+  .calwk .wk-bar { display: block; height: 4px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .calwk .wk-bar i { display: block; height: 100%; background: var(--brand); border-radius: inherit; }
+  .calwk.deload .wk-n::after { content: " · deload"; font-weight: 500; color: var(--soft); }
+}
+
+.calkey { display: flex; gap: 0.4rem 0.9rem; flex-wrap: wrap; margin-top: 0.8rem; font-size: 0.72rem; color: var(--soft); }
+.calkey span { display: inline-flex; align-items: center; }
+.calkey i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 0.35rem; }
+.k-climb { background: #6b5bd6; }
+.k-run { background: var(--brand); }
+.k-rest { background: #c9c9d2; }
 .k-done { background: var(--good); }
 .k-owed { background: #e8a33d; }
-/* Sits between the month name and the forward arrow, and hides itself when
-   today is already what you are looking at. */
-.caltoday {
-  font: inherit; font-size: 0.74rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.06em; cursor: pointer; color: var(--brand-ink);
-  background: #ffe8de; border: 0; border-radius: 999px; padding: 0.3rem 0.7rem;
-  min-height: 32px; margin-left: 0.5rem;
+.calkey i.k-key { width: 8px; height: 8px; background: var(--ink); box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.5px var(--ink); margin-right: 0.45rem; margin-left: 2px; }
+.calkey i.k-deload {
+  width: 14px; height: 2px; border-radius: 0; opacity: 0.6;
+  background: repeating-linear-gradient(90deg, var(--soft) 0 3px, transparent 3px 6px);
 }
-.caltoday:hover { background: var(--brand); color: #fff; }
-
-.calkey { display: flex; gap: 0.9rem; flex-wrap: wrap; margin-top: 0.7rem; font-size: 0.72rem; color: var(--soft); }
-.calkey i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 0.25rem; }
 
 .calday {
-  margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid var(--line);
+  margin-top: 0.9rem; padding-top: 0.8rem; border-top: 1px solid var(--line);
 }
-.calday h3 { font-size: 0.95rem; margin-bottom: 0.1rem; }
-.calday .sub { color: var(--soft); font-size: 0.8rem; margin-bottom: 0.4rem; }
+.calday-head { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.4rem; }
+.calday-title { flex: 1 1 auto; min-width: 0; }
+.daystep {
+  flex: 0 0 auto; width: 40px; height: 40px; font: inherit; font-size: 1.15rem; line-height: 1;
+  color: var(--brand-ink); background: #fff; border: 1px solid var(--line); border-radius: 10px; cursor: pointer;
+}
+.daystep:hover:not(:disabled) { border-color: var(--brand); }
+.daystep:disabled { opacity: 0.35; cursor: default; }
+.calday h3 { font-size: 1rem; margin-bottom: 0.1rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.45rem; }
+.calday h3 .rel {
+  font-size: 0.69rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  color: #fff; background: var(--brand-dark); border-radius: 999px; padding: 0.1rem 0.5rem;
+}
+.calday h3 .dstat {
+  font-size: 0.69rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  border-radius: 999px; padding: 0.1rem 0.5rem;
+}
+.calday h3 .dstat.ok { color: var(--good-ink); background: #eef9f1; }
+.calday h3 .dstat.owe { color: #8a5a12; background: #fdf0dc; }
+.calday .sub { color: var(--soft); font-size: 0.8rem; }
 .calday .cs { display: flex; gap: 0.55rem; padding: 0.35rem 0; border-top: 1px solid var(--line); }
 .calday .cs:first-of-type { border-top: 0; }
 .calday .cs .slot { flex: 0 0 5.4rem; color: var(--soft); font-size: 0.69rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 0.15rem; }

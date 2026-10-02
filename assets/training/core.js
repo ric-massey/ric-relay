@@ -86,6 +86,37 @@
 
   Owner.init({ host: LOG_HOST, onChange: () => changed() });
 
+  /* ── the day turning over ──
+     "Today" was read once, when the page drew, and never again. A phone keeps
+     a tab alive for days — Safari even restores it whole from its back/forward
+     cache — so a calendar opened on the 30th was still sitting on September,
+     with the 30th ringed as today, well into October. Nothing was wrong with
+     the plan; the page had simply stopped looking at the clock.
+
+     So the page looks again whenever it could have been away: coming back to
+     the tab, being restored from the cache, regaining focus, and once a minute
+     for a page left open on a desk across midnight. If the date moved, every
+     page gets onNewDay(was, now) to re-anchor itself, then a normal repaint.
+
+     Repaint only — no refetch. A refetch would replace LOG under any ticks
+     still sitting in the offline queue, and the plan itself does not change
+     at midnight. */
+  let SEEN_DAY = todayISO();
+  let ONNEWDAY = () => {};
+  function checkDay() {
+    const now = todayISO();
+    if (now === SEEN_DAY) return;
+    const was = SEEN_DAY;
+    SEEN_DAY = now;
+    if (!PLAN) return;
+    ONNEWDAY(was, now);
+    changed();
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkDay(); });
+  global.addEventListener('pageshow', checkDay);
+  global.addEventListener('focus', checkDay);
+  setInterval(checkDay, 60 * 1000);
+
   /* ---------- data ---------- */
   async function load() {
     const plan = fetch(PLAN_URL, { cache: 'no-cache' }).then(r => r.ok ? r.json() : Promise.reject(r.status));
@@ -1067,6 +1098,7 @@
   global.Training = {
     /* lifecycle */
     load, onChange(fn) { ONCHANGE = fn || (() => {}); }, changed,
+    onNewDay(fn) { ONNEWDAY = fn || (() => {}); },
     ready: () => !!PLAN,
     stale: () => LOG_STALE,
 

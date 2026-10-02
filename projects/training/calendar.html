@@ -9,7 +9,7 @@
   <link rel="canonical" href="https://ricmassey.com/projects/training/calendar.html">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fc4c02'/><text y='.85em' font-size='64' x='18'>📅</text></svg>">
   <link rel="stylesheet" href="../../assets/training/nav.css">
-  <link rel="stylesheet" href="../../assets/training/training.css">
+  <link rel="stylesheet" href="../../assets/training/training.css?v=2">
 </head>
 <body>
 <script src="../../assets/training/nav.js" data-nav="calendar"></script>
@@ -27,9 +27,12 @@
              next June was eight taps on the arrow; now the label opens and you
              pick. The arrows stay because one month either way is the common
              move and a dropdown is the slower way to do it. -->
-        <button type="button" class="calmonth" id="calmonth"
-                aria-expanded="false" aria-controls="calpick"
-                aria-label="Choose month and year">—</button>
+        <div class="caltitle">
+          <button type="button" class="calmonth" id="calmonth"
+                  aria-expanded="false" aria-controls="calpick"
+                  aria-label="Choose month and year">—</button>
+          <span class="calphase" id="calphase"></span>
+        </div>
         <button type="button" class="caltoday" id="caltoday" hidden>Today</button>
         <button type="button" class="calnav" id="calnext" aria-label="Next month">›</button>
       </div>
@@ -37,14 +40,17 @@
         <label>Month <select id="pickmonth"></select></label>
         <label>Year <select id="pickyear"></select></label>
       </div>
+      <div class="calsum" id="calsum" aria-live="polite"></div>
       <div class="caldow" aria-hidden="true"></div>
-      <div class="calgrid" id="calgrid" role="grid"></div>
+      <div class="calgrid" id="calgrid" role="grid" aria-labelledby="calmonth"></div>
       <div class="calkey">
         <span><i class="k-climb"></i> climbing</span>
         <span><i class="k-run"></i> running</span>
         <span><i class="k-rest"></i> rest</span>
+        <span><i class="k-key"></i> key session</span>
         <span><i class="k-done"></i> done</span>
         <span><i class="k-owed"></i> not ticked</span>
+        <span><i class="k-deload"></i> deload week</span>
       </div>
       <div id="calday"></div>
     </div>
@@ -63,7 +69,7 @@
   <script src="../../assets/owner.js"></script>
   <script src="../../projects/climbing/climb-host.js?v=1"></script>
   <script src="../../projects/climbing/climb-media.js?v=4"></script>
-  <script src="../../assets/training/core.js?v=1"></script>
+  <script src="../../assets/training/core.js?v=2"></script>
   <script>
   /* TRAINING — calendar
      ──────────────────────────────────────────────────────────────────────────
@@ -82,69 +88,208 @@
   const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   let CAL_MONTH = null;     // first of the month being shown
   let CAL_SEL = null;       // the day whose detail panel is open
-
-  /* Which dot to draw. A day is climbing if it has a climbing session, and so
-     on — the morning practice and the wind-down are on every single day and
-     would make every cell look identical, so they do not get a dot. */
-  function dotsFor(d) {
-    const kinds = new Set(d.sessions.map(s => s.kind).filter(k => k === 'climb' || k === 'run'));
-    if (!kinds.size) kinds.add('rest');
-    return [...kinds];
-  }
+  let SLIDE = 0;            // -1 / +1 for the month that was just turned, for the animation
 
   /* The standing morning practice is on every day in the plan, so it can never
      be what makes a day interesting. Same test the home page and the workout
      index use. */
   const substantive = s => s.kind !== 'rest' && !(s.kind === 'body' && !s.key);
 
+  /* What a day is FOR — the sessions worth naming in its cell. The morning
+     practice is on every day and would make every cell say the same thing, so
+     it does not count; a rest day keeps its rest so the cell is not blank. */
+  const headline = d => {
+    const real = d.sessions.filter(substantive);
+    return real.length ? real : d.sessions.filter(s => s.kind === 'rest');
+  };
+
+  /* Which dot to draw on a phone, where there is no room for words. A day is
+     climbing if it has a climbing session, and so on; a key session gets the
+     bigger dot. */
+  function dotsFor(d) {
+    const seen = new Map();
+    for (const s of d.sessions) {
+      if (s.kind !== 'climb' && s.kind !== 'run') continue;
+      seen.set(s.kind, seen.get(s.kind) || !!s.key);
+    }
+    if (!seen.size) seen.set('rest', false);
+    return [...seen].map(([k, key]) => `<i class="${k}${key ? ' key' : ''}"></i>`).join('');
+  }
+
+  /* A short name for a cell. "Long run — 10 mi" is the plan's prose; in a
+     cell eight characters wide "Long 10 mi" is the same information. */
+  const shortTitle = (iso, s) => String(T.titleOf(iso, s))
+    .replace(/\s+\/\s+.*$/, '')
+    .replace(/\s+[—–-]\s+(?=[\d.]+\s*mi\b)/g, ' ')
+    .replace(/\s+[—–]\s+/g, ' · ')
+    .replace(/(\w)\s+run\s+(?=\d)/i, '$1 ')
+    .replace(/\s+/g, ' ').trim();
+
+  const addDays = (iso, n) => {
+    const d = new Date(iso + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    return T.isoOf(d);
+  };
+  const monthOf = iso => {
+    const d = new Date(iso + 'T00:00:00');
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  };
+
+  function dayCell(date, inMonth) {
+    const iso = T.isoOf(date), n = date.getDate();
+    const d = T.dayOf(iso);
+    const today = T.todayISO();
+    if (!d) {
+      return `<div class="calcell outside${inMonth ? '' : ' adj'}" role="gridcell" aria-disabled="true">
+        <span class="cd">${n}</span></div>`;
+    }
+    const st = T.stateOf(iso);
+    const doneCount = T.doneCountOf(st, d.sessions);
+    const allDone = doneCount === d.sessions.length && d.sessions.length > 0;
+    /* A past day still carrying real work nobody ticked. This is the whole
+       point of the grid for catching up: glance, find the gaps, tap them.
+
+       "Real work" excludes the standing morning practice, because it is on
+       every single day of the year — counting it would paint the entire past
+       as owed and the signal would mean nothing. A rest day cannot be owed
+       either. */
+    const owed = iso < today
+      && d.sessions.filter(substantive).some(x => !T.doneOf(st, x));
+    const heads = headline(d);
+    const cls = ['calcell'];
+    if (!inMonth) cls.push('adj');
+    if (iso === today) cls.push('today');
+    else if (iso < today) cls.push('past');
+    if (iso === CAL_SEL) cls.push('sel');
+    if (allDone) cls.push('isdone');
+    if (owed) cls.push('owed');
+    if (d.deload) cls.push('deload');
+    const climbed = T.climbOn(iso) ? '<span class="cevent" aria-hidden="true">🧗</span>' : '';
+    const chips = heads.slice(0, 2).map(s =>
+      `<span class="chip ${s.kind}${s.key ? ' key' : ''}${T.doneOf(st, s) ? ' did' : ''}">${T.esc(shortTitle(iso, s))}</span>`).join('')
+      + (heads.length > 2 ? `<span class="chip more">+${heads.length - 2}</span>` : '');
+    const said = heads.map(s => T.titleOf(iso, s) + (s.key ? ' (key)' : '')).join(', ');
+    return `<button type="button" class="${cls.join(' ')}" data-cal="${iso}" role="gridcell"
+        tabindex="${iso === focusDay() ? 0 : -1}"
+        aria-selected="${iso === CAL_SEL}"
+        ${iso === today ? 'aria-current="date"' : ''}
+        aria-label="${T.esc(T.pretty(iso))}: ${T.esc(said)}${allDone ? ', done' : owed ? ', not ticked' : ''}">
+      <span class="ctop">${climbed}<span class="cd">${n}</span>${allDone ? '<span class="ctick" aria-hidden="true">✓</span>' : ''}</span>
+      <span class="cdots" aria-hidden="true">${dotsFor(d)}</span>
+      <span class="chips" aria-hidden="true">${chips}</span>
+    </button>`;
+  }
+
+  /* The right-hand edge of each row on a wide screen: which week of the plan
+     it is and how the running is going against the week's target. A week
+     row is a plan week — both start on Sunday — so this is one number per
+     row, not an average. Hidden on a phone; the day panel says the same. */
+  function weekGutter(rowStart) {
+    let d = null;
+    for (let i = 0; i < 7 && !d; i++) d = T.dayOf(addDays(rowStart, i));
+    if (!d) return '<div class="calwk" aria-hidden="true"></div>';
+    const wk = T.weeks()[d.week] || {};
+    const phase = T.phases().find(p => p.w0 === d.week);
+    const ran = T.weekMetres(d.week) / 1609.344;
+    const target = wk.miles || 0;
+    const started = rowStart <= T.todayISO();
+    const pct = target ? Math.min(100, Math.round(ran / target * 100)) : 0;
+    return `<div class="calwk${wk.deload ? ' deload' : ''}" aria-hidden="true">
+      ${phase ? `<span class="wk-phase">${T.esc(phase.name)}</span>` : ''}
+      <span class="wk-n">Week ${d.week}</span>
+      <span class="wk-mi">${started ? `${T.miles(ran * 1609.344) || 0}<span>/${target}</span>` : `${target}`} mi</span>
+      ${started && target ? `<span class="wk-bar"><i style="width:${pct}%"></i></span>` : ''}
+    </div>`;
+  }
+
+  /* One line over the grid: what the month holds, and — for the part of it
+     that has happened — how much got done. */
+  function monthSummary(y, m) {
+    const today = T.todayISO();
+    const inMonth = T.days().filter(d => {
+      const [yy, mm] = d.date.split('-').map(Number);
+      return yy === y && mm - 1 === m;
+    });
+    if (!inMonth.length) return '';
+    let climbs = 0, runs = 0, keys = 0, owed = 0, due = 0, did = 0;
+    for (const d of inMonth) {
+      const real = d.sessions.filter(substantive);
+      if (real.some(s => s.kind === 'climb')) climbs++;
+      if (real.some(s => s.kind === 'run')) runs++;
+      keys += real.filter(s => s.key).length;
+      if (d.date <= today) {
+        const st = T.stateOf(d.date);
+        due += real.length;
+        did += real.filter(s => T.doneOf(st, s)).length;
+        if (d.date < today && real.some(s => !T.doneOf(st, s))) owed++;
+      }
+    }
+    const bits = [
+      `<span><b>${climbs}</b> climbing day${climbs === 1 ? '' : 's'}</span>`,
+      `<span><b>${runs}</b> run${runs === 1 ? '' : 's'}</span>`,
+      `<span><b>${keys}</b> key</span>`
+    ];
+    if (due) bits.push(`<span class="sum-done${did === due ? ' all' : ''}"><b>${did}</b>/${due} done so far</span>`);
+    if (owed) bits.push(`<span class="sum-owed"><b>${owed}</b> to tick</span>`);
+    return bits.join('');
+  }
+
+  /* Which phases this month falls in, for the line under its name. */
+  function monthPhases(y, m) {
+    const names = [];
+    for (const d of T.days()) {
+      const [yy, mm] = d.date.split('-').map(Number);
+      if (yy === y && mm - 1 === m && !names.includes(d.phase)) names.push(d.phase);
+    }
+    return names.join(' → ');
+  }
+
+  /* The day keyboard focus lives on. Arrow keys move it; Tab lands on it. The
+     open day if there is one in this month, else today, else the 1st. */
+  let FOCUS = null;
+  function focusDay() {
+    const y = CAL_MONTH.getFullYear(), m = CAL_MONTH.getMonth();
+    const inView = iso => iso && monthOf(iso).getTime() === new Date(y, m, 1).getTime() && T.dayOf(iso);
+    if (inView(FOCUS)) return FOCUS;
+    if (inView(CAL_SEL)) return CAL_SEL;
+    if (inView(T.todayISO())) return T.todayISO();
+    const first = T.days().find(d => inView(d.date));
+    return first ? first.date : null;
+  }
+
   function renderCal() {
     if (!T.ready() || !T.days().length) return;
     const first = T.days()[0].date, last = T.days()[T.days().length - 1].date;
     if (!CAL_MONTH) {
-      const t = new Date(T.todayISO() + 'T00:00:00');
-      const inPlan = T.dayOf(T.todayISO());
-      const anchor = inPlan ? t : new Date(first + 'T00:00:00');
-      CAL_MONTH = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+      const anchor = T.dayOf(T.todayISO()) ? T.todayISO() : first;
+      CAL_MONTH = monthOf(anchor);
     }
     const y = CAL_MONTH.getFullYear(), m = CAL_MONTH.getMonth();
     $('#calmonth').textContent = `${MONTH_NAMES[m]} ${y}`;
-    $('.caldow').innerHTML = ['S','M','T','W','T','F','S'].map(x => `<span>${x}</span>`).join('');
+    $('#calphase').textContent = monthPhases(y, m);
+    $('#calsum').innerHTML = monthSummary(y, m);
+    $('.caldow').innerHTML = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+      .map(x => `<span><b>${x[0]}</b><em>${x.slice(1)}</em></span>`).join('') + '<span class="dow-wk">Week</span>';
 
-    const start = new Date(y, m, 1).getDay();
-    const days = new Date(y, m + 1, 0).getDate();
-    const cells = [];
-    for (let i = 0; i < start; i++) cells.push('<div class="calcell blank"></div>');
-    for (let n = 1; n <= days; n++) {
-      const iso = T.isoOf(new Date(y, m, n));
-      const d = T.dayOf(iso);
-      if (!d) { cells.push(`<div class="calcell outside"><span class="cd">${n}</span></div>`); continue; }
-      const st = T.stateOf(iso);
-      const doneCount = T.doneCountOf(st, d.sessions);
-      const allDone = doneCount === d.sessions.length && d.sessions.length > 0;
-      /* A past day still carrying real work nobody ticked. This is the whole
-         point of the grid for catching up: glance, find the gaps, tap them.
-
-         "Real work" excludes the standing morning practice, because it is on
-         every single day of the year — counting it would paint the entire past
-         as owed and the signal would mean nothing. A rest day cannot be owed
-         either. */
-      const owed = iso < T.todayISO()
-        && d.sessions.filter(substantive).some(x => !T.doneOf(st, x));
-      const cls = ['calcell'];
-      if (iso === T.todayISO()) cls.push('today');
-      if (iso === CAL_SEL) cls.push('sel');
-      if (allDone) cls.push('isdone');
-      if (owed) cls.push('owed');
-      if (d.deload) cls.push('deload');
-      const climbed = T.climbOn(iso) ? '<span class="cevent" title="climbed">🧗</span>' : '';
-      cells.push(`<button type="button" class="${cls.join(' ')}" data-cal="${iso}" role="gridcell"
-          aria-label="${T.esc(T.pretty(iso))}${allDone ? ', done' : owed ? ', not ticked' : ''}">
-        ${allDone ? '<span class="ctick">✓</span>' : ''}${climbed}
-        <span class="cd">${n}</span>
-        <span class="cdots">${dotsFor(d).map(k => `<i class="${k}"></i>`).join('')}</span>
-      </button>`);
+    /* Whole weeks, Sunday to Saturday, with the neighbouring months' days
+       filling the ends of the first and last rows. They are the plan too —
+       tapping one goes there — just quieter, so the month still reads as the
+       month. */
+    const gridStart = new Date(y, m, 1 - new Date(y, m, 1).getDay());
+    const monthEnd = new Date(y, m + 1, 0);
+    const rows = [];
+    for (let row = new Date(gridStart); row <= monthEnd; row.setDate(row.getDate() + 7)) {
+      const cells = [];
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(row.getFullYear(), row.getMonth(), row.getDate() + i);
+        cells.push(dayCell(day, day.getMonth() === m));
+      }
+      rows.push(`<div class="calrow" role="row">${cells.join('')}${weekGutter(T.isoOf(row))}</div>`);
     }
-    $('#calgrid').innerHTML = cells.join('');
+    const grid = $('#calgrid');
+    grid.innerHTML = rows.join('');
+    grid.classList.remove('slide-l', 'slide-r');
+    if (SLIDE) { void grid.offsetWidth; grid.classList.add(SLIDE > 0 ? 'slide-l' : 'slide-r'); SLIDE = 0; }
 
     /* Do not offer months the plan does not cover. */
     const prevEnd = new Date(y, m, 0), nextStart = new Date(y, m + 1, 1);
@@ -156,21 +301,33 @@
        second set every time a month is turned. */
     if (CAL_SEL) T.wire($('#calday'));
 
-    $('#calprev').onclick = () => { CAL_MONTH = new Date(y, m - 1, 1); CAL_SEL = null; renderCal(); };
-    $('#calnext').onclick = () => { CAL_MONTH = new Date(y, m + 1, 1); CAL_SEL = null; renderCal(); };
     /* Three months out and the only way home was tapping ‹ until you got there.
        Hidden when today is already the open day on screen, so it is never a
        button that does nothing. */
-    const todayBtn = $('#caltoday');
-    const onToday = CAL_SEL === T.todayISO()
-      && y === new Date().getFullYear() && m === new Date().getMonth();
-    todayBtn.hidden = onToday || !T.dayOf(T.todayISO());
-    todayBtn.onclick = () => openDay(T.todayISO());
-    document.querySelectorAll('[data-cal]').forEach(b => b.onclick = () => {
+    const today = T.todayISO();
+    const onToday = CAL_SEL === today && CAL_MONTH.getTime() === monthOf(today).getTime();
+    $('#caltoday').hidden = onToday || !T.dayOf(today);
+    grid.querySelectorAll('[data-cal]').forEach(b => b.onclick = () => {
+      FOCUS = b.dataset.cal;
       /* Tapping the open day closes it; tapping any other opens that one. */
-      if (CAL_SEL === b.dataset.cal) { CAL_SEL = null; renderCal(); return; }
-      openDay(b.dataset.cal);
+      if (CAL_SEL === b.dataset.cal) { CAL_SEL = null; renderCal(); refocus(); return; }
+      openDay(b.dataset.cal, { focus: true });
     });
+  }
+
+  function turn(by) {
+    const btn = by < 0 ? $('#calprev') : $('#calnext');
+    if (btn.disabled) return;
+    SLIDE = by;
+    CAL_MONTH = new Date(CAL_MONTH.getFullYear(), CAL_MONTH.getMonth() + by, 1);
+    CAL_SEL = null;
+    FOCUS = null;
+    renderCal();
+  }
+
+  function refocus() {
+    const el = $(`#calgrid [data-cal="${focusDay()}"]`);
+    if (el) el.focus({ preventScroll: true });
   }
 
   function calDayPanel(iso) {
@@ -178,10 +335,24 @@
     if (!d) return '';
     const st = T.stateOf(iso);
     const wk = T.weeks()[d.week] || {};
+    const today = T.todayISO();
+    const rel = iso === today ? 'Today' : iso === addDays(today, 1) ? 'Tomorrow'
+              : iso === addDays(today, -1) ? 'Yesterday' : '';
+    const real = d.sessions.filter(substantive);
+    const did = real.filter(s => T.doneOf(st, s)).length;
+    const status = !real.length ? ''
+      : did === real.length ? '<span class="dstat ok">done</span>'
+      : iso < today ? `<span class="dstat owe">${did}/${real.length} ticked</span>` : '';
     return `<div class="calday">
-      <h3>${T.esc(T.pretty(iso))}</h3>
-      <div class="sub">${T.esc(d.phase)} · week ${d.week}${d.deload ? ' · deload' : ''} · ${
-        T.miles(T.weekMetres(d.week))} of ${wk.miles ?? '—'} mi run that week</div>
+      <div class="calday-head">
+        <button type="button" class="daystep" data-step="-1" aria-label="Previous day"${T.dayOf(addDays(iso, -1)) ? '' : ' disabled'}>‹</button>
+        <div class="calday-title">
+          <h3>${rel ? `<span class="rel">${rel}</span> ` : ''}${T.esc(T.pretty(iso))} ${status}</h3>
+          <div class="sub">${T.esc(d.phase)} · week ${d.week}${d.deload ? ' · deload' : ''} · ${
+            T.miles(T.weekMetres(d.week)) || 0} of ${wk.miles ?? '—'} mi run that week</div>
+        </div>
+        <button type="button" class="daystep" data-step="1" aria-label="Next day"${T.dayOf(addDays(iso, 1)) ? '' : ' disabled'}>›</button>
+      </div>
       ${T.runLink(iso)}
       ${d.sessions.map((s, i) => T.sessionRow(iso, s, i)).join('')}
       ${Owner.on() && d.sessions.length > 1 ? `<button type="button" class="allbtn" data-all="${T.esc(iso)}">Did all of it</button>` : ''}
@@ -189,8 +360,6 @@
       ${T.climbLink(iso)}
     </div>`;
   }
-
-  /* Pulled out of render() so the load-failure path can still draw it. */
 
     /* ── the month picker ──
        The label opens two selects. They are built from the plan's own first and
@@ -284,24 +453,122 @@
     });
 
     /* A link in with a date on it opens that day. Read once, on the first
-       render after the plan lands, and then forgotten — re-reading it on every
-       repaint would fight the taps that come after. */
-    let wantDay = /^#d-\d{4}-\d{2}-\d{2}$/.test(location.hash) ? location.hash.slice(3) : null;
+       render after the plan lands, and then taken OUT of the address bar.
+
+       Leaving it there was the "stuck on September" bug's second half: the
+       home page's last-workout card links here as #d-<that day>, and with the
+       hash still in the URL every reload — and any home-screen shortcut saved
+       from it — reopened that same September day forever, however far the
+       season had moved on. A link is a request to look at a day once, not a
+       new front door. */
+    const hashDay = () => /^#d-\d{4}-\d{2}-\d{2}$/.test(location.hash) ? location.hash.slice(3) : null;
+    let wantDay = hashDay();
     let firstRender = true;
+    const dropHash = () => {
+      if (location.hash) history.replaceState(history.state, '', location.pathname + location.search);
+    };
 
     /* Selecting a day, wherever the request came from — a tap, the Today
-       button, or a #d- link. One function so all three land the same way:
-       the month containing it, the day open, and the panel brought into view.
-       This used to be inlined in the tap handler, which is why the Today
-       button had nothing to call. */
-    function openDay(iso) {
+       button, a day-step arrow, the keyboard, or a #d- link. One function so
+       they all land the same way: the month containing it, the day open, and
+       the panel brought into view. */
+    function openDay(iso, opts = {}) {
       if (!T.dayOf(iso)) return;
+      const to = monthOf(iso);
+      if (CAL_MONTH && to.getTime() !== CAL_MONTH.getTime()) SLIDE = to > CAL_MONTH ? 1 : -1;
       CAL_SEL = iso;
-      CAL_MONTH = monthOf(iso);
+      FOCUS = iso;
+      CAL_MONTH = to;
       renderCal();
-      const el = $('#calday');
-      if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      if (opts.focus) refocus();
+      if (opts.scroll !== false) {
+        const el = $('#calday');
+        if (el) el.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      }
     }
+
+    $('#calprev').addEventListener('click', () => turn(-1));
+    $('#calnext').addEventListener('click', () => turn(1));
+    $('#caltoday').addEventListener('click', () => openDay(T.todayISO(), { focus: true }));
+
+    /* The day panel's own ‹ › — walking a week day by day without going back
+       up to the grid, which on a phone is a scroll away. Delegated, because
+       the panel is redrawn on every tick. */
+    $('#calday').addEventListener('click', e => {
+      const b = e.target.closest('[data-step]');
+      if (!b || b.disabled || !CAL_SEL) return;
+      openDay(addDays(CAL_SEL, +b.dataset.step), { scroll: false });
+    });
+
+    /* Arrow keys walk the grid the way every calendar does: a day sideways, a
+       week up and down, Home/End to the ends of the week, Page Up/Down a
+       month. Walking off the month turns it. Enter and Space are the
+       buttons' own. */
+    $('#calgrid').addEventListener('keydown', e => {
+      const at = e.target.closest('[data-cal]');
+      if (!at) return;
+      const iso = at.dataset.cal;
+      const dow = new Date(iso + 'T00:00:00').getDay();
+      const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7, Home: -dow, End: 6 - dow }[e.key];
+      let to = null;
+      if (step !== undefined) to = addDays(iso, step);
+      else if (e.key === 'PageUp' || e.key === 'PageDown') {
+        const d = new Date(iso + 'T00:00:00');
+        d.setMonth(d.getMonth() + (e.key === 'PageUp' ? -1 : 1));
+        to = T.isoOf(d);
+      }
+      if (!to) return;
+      e.preventDefault();
+      if (!T.dayOf(to)) return;
+      FOCUS = to;
+      const mo = monthOf(to);
+      if (mo.getTime() !== CAL_MONTH.getTime()) {
+        SLIDE = mo > CAL_MONTH ? 1 : -1;
+        CAL_MONTH = mo;
+        renderCal();
+      } else {
+        $('#calgrid').querySelectorAll('[data-cal]').forEach(b => b.tabIndex = b.dataset.cal === to ? 0 : -1);
+      }
+      refocus();
+    });
+
+    /* A sideways swipe on the grid turns the month — the gesture a phone
+       calendar has taught everyone. Only a clearly horizontal one, so a
+       thumb scrolling the page past the grid never turns it by accident. */
+    let touch = null;
+    $('#calgrid').addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) { touch = null; return; }
+      touch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }, { passive: true });
+    $('#calgrid').addEventListener('touchend', e => {
+      if (!touch) return;
+      const dx = e.changedTouches[0].clientX - touch.x;
+      const dy = e.changedTouches[0].clientY - touch.y;
+      touch = null;
+      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      turn(dx < 0 ? 1 : -1);
+    }, { passive: true });
+
+    /* A #d- link followed while already on this page arrives as a hashchange,
+       not a load. */
+    window.addEventListener('hashchange', () => {
+      const iso = hashDay();
+      dropHash();
+      if (iso && T.ready()) openDay(iso);
+    });
+
+    /* Midnight, or coming back to a tab that has been asleep since yesterday.
+       If the page was sitting on the old today — its day open, or its month
+       showing with nothing chosen — it follows the clock. If you had walked
+       off somewhere else on purpose, it leaves you there. */
+    T.onNewDay((was, now) => {
+      const onOld = CAL_SEL === was
+        || (!CAL_SEL && CAL_MONTH && CAL_MONTH.getTime() === monthOf(was).getTime());
+      if (!onOld || !T.dayOf(now)) return;
+      if (CAL_SEL === was || CAL_SEL === null) CAL_SEL = now;
+      FOCUS = now;
+      CAL_MONTH = monthOf(now);
+    });
 
     function render() {
       if (!T.ready()) return;
@@ -314,8 +581,9 @@
       if (firstRender) {
         const want = (wantDay && T.dayOf(wantDay)) ? wantDay
                    : T.dayOf(T.todayISO()) ? T.todayISO() : null;
-        if (want) { CAL_SEL = want; CAL_MONTH = monthOf(want); }
+        if (want) { CAL_SEL = want; FOCUS = want; CAL_MONTH = monthOf(want); }
         firstRender = false;
+        dropHash();
       }
       renderCal();
       if (wantDay) {
@@ -324,11 +592,6 @@
         wantDay = null;
       }
     }
-
-    const monthOf = iso => {
-      const d = new Date(iso + 'T00:00:00');
-      return new Date(d.getFullYear(), d.getMonth(), 1);
-    };
 
     T.onChange(render);
     T.load();
