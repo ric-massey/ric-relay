@@ -38,7 +38,7 @@ projects/<name>/            sub-projects, and room data that has a generator nex
 worker/                     the one Cloudflare Worker (deployed as training-log) — see its README
 atlas/, account/            ATLAS and the site account — an app, not a page: see atlas/README.md
 docs/                       notes, audits, mockups and plans about the site, not part of it
-.github/                    checks.mjs (every test) and the five workflows
+.github/                    checks.mjs (every test) and the six workflows
 ```
 
 Two rules keep it that way. **Generated data lives beside the thing that generates it**

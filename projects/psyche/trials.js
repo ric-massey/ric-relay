@@ -64,14 +64,19 @@
   ];
 
   /* aggFilters codes — the same ones clinicaltrials.gov puts in its own search
-     URLs (…&aggFilters=phase:2 3,results:with). */
+     URLs (…&aggFilters=phase:2 3,results:with).
+     `key` is what the address bar carries; `agg` is what the API takes. They
+     differ once: "no phase" is `NA`, and the API matches it case-sensitively —
+     `phase:na` matches nothing, and because the chips are ORed together, it
+     used to take every other phase down to zero with it. Found against the
+     live API on 2026-10-03 (test/live.mjs). */
   const PHASE_CHIPS = [
-    { key: '0',  label: 'Early 1', enum: 'EARLY_PHASE1' },
-    { key: '1',  label: 'Phase 1', enum: 'PHASE1' },
-    { key: '2',  label: 'Phase 2', enum: 'PHASE2' },
-    { key: '3',  label: 'Phase 3', enum: 'PHASE3' },
-    { key: '4',  label: 'Phase 4', enum: 'PHASE4' },
-    { key: 'na', label: 'No phase', enum: 'NA' }
+    { key: '0',  agg: '0',  label: 'Early 1', enum: 'EARLY_PHASE1' },
+    { key: '1',  agg: '1',  label: 'Phase 1', enum: 'PHASE1' },
+    { key: '2',  agg: '2',  label: 'Phase 2', enum: 'PHASE2' },
+    { key: '3',  agg: '3',  label: 'Phase 3', enum: 'PHASE3' },
+    { key: '4',  agg: '4',  label: 'Phase 4', enum: 'PHASE4' },
+    { key: 'na', agg: 'NA', label: 'No phase', enum: 'NA' }
   ];
   const PHASE_LABEL = Object.fromEntries(PHASE_CHIPS.map(p => [p.enum, p.label]));
   const phaseText = phases => {
@@ -111,19 +116,102 @@
     return m ? 'NCT' + m[1] : null;
   };
 
+  /* ── names people actually use ──
+     The registry is written in generic names. Its search expands some brands
+     on its own and misses others badly — measured 2026-10-03, query.term:
+
+        Spravato 368 · esketamine 368      (expanded: harmless to rewrite)
+        Adderall  59 · amphetamine 735
+        Prozac   188 · fluoxetine  445
+        Ozempic  116 · semaglutide 797
+        shrooms    1 · psilocybin  324
+        acid  83,710 · LSD         159     (every "folic acid" trial)
+
+     So a known brand or street name is swapped for its generic before the
+     search goes out, and the page says so ("showing results for…") with a way
+     to search the word exactly. Rewriting the ones the registry already
+     expands changes no count and teaches the generic name.
+
+     `whole` entries are ordinary words as well as street names: they are
+     rewritten only when they are the entire search, so "acid" is LSD but
+     "folic acid" is folic acid, and "Molly" in "Molly Smith" is a person.
+     Lower-case keys; a key may be several words. Only the Anything and Drug
+     scopes are rewritten — Condition, Title and Sponsor mean what was typed. */
+  const BRANDS = {
+    // ketamine and the psychedelics
+    spravato: 'esketamine', ketalar: 'ketamine',
+    shrooms: 'psilocybin', 'magic mushrooms': 'psilocybin', 'magic mushroom': 'psilocybin',
+    ecstasy: 'MDMA', 'special k': 'ketamine',
+    // ADHD and wakefulness
+    adderall: 'amphetamine', mydayis: 'amphetamine', vyvanse: 'lisdexamfetamine', dexedrine: 'dextroamphetamine',
+    ritalin: 'methylphenidate', concerta: 'methylphenidate', focalin: 'dexmethylphenidate',
+    strattera: 'atomoxetine', intuniv: 'guanfacine', qelbree: 'viloxazine',
+    provigil: 'modafinil', nuvigil: 'armodafinil',
+    // antidepressants
+    prozac: 'fluoxetine', zoloft: 'sertraline', lexapro: 'escitalopram', celexa: 'citalopram',
+    paxil: 'paroxetine', luvox: 'fluvoxamine', effexor: 'venlafaxine', pristiq: 'desvenlafaxine',
+    cymbalta: 'duloxetine', wellbutrin: 'bupropion', zyban: 'bupropion', remeron: 'mirtazapine',
+    trintellix: 'vortioxetine', viibryd: 'vilazodone', desyrel: 'trazodone',
+    auvelity: 'dextromethorphan bupropion', zurzuvae: 'zuranolone', zulresso: 'brexanolone',
+    // anxiety and sleep
+    xanax: 'alprazolam', valium: 'diazepam', ativan: 'lorazepam', klonopin: 'clonazepam',
+    buspar: 'buspirone', ambien: 'zolpidem', lunesta: 'eszopiclone', belsomra: 'suvorexant',
+    // mood stabilisers and anticonvulsants
+    lithobid: 'lithium', lamictal: 'lamotrigine', depakote: 'valproate', tegretol: 'carbamazepine',
+    trileptal: 'oxcarbazepine', topamax: 'topiramate', neurontin: 'gabapentin', lyrica: 'pregabalin',
+    keppra: 'levetiracetam', epidiolex: 'cannabidiol',
+    // antipsychotics
+    seroquel: 'quetiapine', abilify: 'aripiprazole', risperdal: 'risperidone', zyprexa: 'olanzapine',
+    clozaril: 'clozapine', latuda: 'lurasidone', vraylar: 'cariprazine', rexulti: 'brexpiprazole',
+    caplyta: 'lumateperone', cobenfy: 'xanomeline trospium', haldol: 'haloperidol', invega: 'paliperidone',
+    geodon: 'ziprasidone', ingrezza: 'valbenazine', austedo: 'deutetrabenazine',
+    // addiction
+    suboxone: 'buprenorphine naloxone', subutex: 'buprenorphine', sublocade: 'buprenorphine',
+    vivitrol: 'naltrexone', narcan: 'naloxone', chantix: 'varenicline', antabuse: 'disulfiram',
+    // dementia, and the drugs half the country is asking about
+    aricept: 'donepezil', namenda: 'memantine', leqembi: 'lecanemab', kisunla: 'donanemab',
+    ozempic: 'semaglutide', wegovy: 'semaglutide', rybelsus: 'semaglutide',
+    mounjaro: 'tirzepatide', zepbound: 'tirzepatide'
+  };
+  const WHOLE = {
+    acid: 'LSD', molly: 'MDMA', weed: 'cannabis', pot: 'cannabis', marijuana: 'cannabis',
+    mushrooms: 'psilocybin', speed: 'amphetamine', ice: 'methamphetamine',
+    meth: 'methamphetamine', coke: 'cocaine', dope: 'heroin', benzos: 'benzodiazepines'
+  };
+  const BRAND_KEYS = Object.keys(BRANDS).sort((a, b) => b.length - a.length);
+  const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const BRAND_RE = new RegExp('(^|[^\\w-])(' + BRAND_KEYS.map(escRe).join('|') + ')(?![\\w-])', 'gi');
+  const REWRITES = new Set(['term', 'intr']);
+
+  /* { q: what is sent, from: [[as typed, sent instead], …] } — `from` empty
+     when nothing was changed. `state.exact` turns it off. */
+  function effectiveQuery(state) {
+    const typed = String(state.q || '').trim();
+    if (!typed || state.exact || !REWRITES.has(state.scope || 'term') || asNct(typed)) return { q: typed, from: [] };
+    const whole = WHOLE[typed.toLowerCase()];
+    if (whole) return { q: whole, from: [[typed, whole]] };
+    const from = [];
+    const q = typed.replace(BRAND_RE, (m, lead, word) => {
+      const generic = BRANDS[word.toLowerCase()];
+      from.push([word, generic]);
+      return lead + generic;
+    });
+    return { q, from };
+  }
+
   /* ── the search, as API parameters ──
      `state` is what the page holds and what the address bar carries:
-       { q, scope, status: [chip keys], phase: [chip keys], results, country, sort } */
+       { q, scope, exact, status: [chip keys], phase: [chip keys], results, country, sort } */
   function buildParams(state, { pageToken, pageSize = 20, fields = true } = {}) {
     const p = new URLSearchParams();
-    const q = String(state.q || '').trim();
+    const q = effectiveQuery(state).q;
     if (q) p.set((SCOPES[state.scope] || SCOPES.term).param, q);
 
     const statuses = STATUS_CHIPS.filter(c => (state.status || []).includes(c.key)).flatMap(c => c.values);
     if (statuses.length) p.set('filter.overallStatus', statuses.join(','));
 
     const agg = [];
-    const phases = PHASE_CHIPS.filter(c => (state.phase || []).includes(c.key)).map(c => c.key);
+    const phases = PHASE_CHIPS.filter(c => (state.phase || []).includes(c.key)).map(c => c.agg);
     if (phases.length) agg.push('phase:' + phases.join(' '));
     if (state.results) agg.push('results:with');
     if (agg.length) p.set('aggFilters', agg.join(','));
@@ -192,7 +280,170 @@
         ages: el.stdAges || []
       },
       primaryOutcomes: (oc.primaryOutcomes || []).map(o => ({ measure: o.measure || '', timeFrame: o.timeFrame || '' })),
+      results: resultsOf(study && study.resultsSection),
       url: STUDY_URL(id.nctId || '')
+    };
+  }
+
+  /* ── what a finished study found ──
+     The resultsSection of a full record, flattened into the three things the
+     detail sheet answers: who finished, what was measured and how each group
+     did, and what went wrong for people. Search cards never ask for it (it is
+     not in LIST_FIELDS); only study() fetches the whole record.
+
+     Shapes surveyed over 300 psychiatry trials with results on 2026-10-03, so
+     this is built for their spread rather than one example: up to 16 groups,
+     records up to 850 KB, a measurement as `value` with a `spread` or a
+     `lowerLimit`/`upperLimit`, the string "NA" where a group was not measured
+     (with a `comment` saying why), and a row label that can come from a class
+     (a time point), a category (an answer), or both.
+
+     Each module names its groups with its own ids (FG…, OG…, EG…), so groups
+     are carried by title within a section and never matched across sections. */
+  const PARAM = {
+    MEAN: 'average', MEDIAN: 'median', LEAST_SQUARES_MEAN: 'adjusted average',
+    GEOMETRIC_MEAN: 'geometric average', GEOMETRIC_LEAST_SQUARES_MEAN: 'adjusted geometric average',
+    COUNT_OF_PARTICIPANTS: 'number of people', COUNT_OF_UNITS: 'count', NUMBER: ''
+  };
+  const DISPERSION = {
+    'Standard Deviation': 'SD', 'Standard Error': 'SE', 'Inter-Quartile Range': 'IQR', 'Full Range': 'range',
+    'Geometric Coefficient of Variation': 'CV%'
+  };
+  const OUTCOME_ROWS = 40;          // a 12-time-point outcome is fine; a 300-row one is not a summary
+  const OUTCOMES = 30;
+  const intOf = v => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : null; };
+  const absent = v => v == null || v === '' || /^NA$/i.test(String(v));
+
+  function resultsOf(rs) {
+    if (!rs || typeof rs !== 'object') return null;
+    const flow = flowOf(rs.participantFlowModule);
+    const outcomes = ((rs.outcomeMeasuresModule && rs.outcomeMeasuresModule.outcomeMeasures) || [])
+      .slice(0, OUTCOMES).map(outcomeOf);
+    const harms = harmsOf(rs.adverseEventsModule);
+    const lim = rs.moreInfoModule && rs.moreInfoModule.limitationsAndCaveats;
+    if (!flow && !outcomes.length && !harms) return null;
+    const total = ((rs.outcomeMeasuresModule && rs.outcomeMeasuresModule.outcomeMeasures) || []).length;
+    return { flow, outcomes, moreOutcomes: Math.max(0, total - outcomes.length), harms, limitations: (lim && lim.description) || '' };
+  }
+
+  /* STARTED in the first period, COMPLETED in the last — a study with a
+     follow-up period completes people at its end, not after randomisation.
+     Reasons for leaving are summed over every period. */
+  function flowOf(pf) {
+    if (!pf || !(pf.groups || []).length || !(pf.periods || []).length) return null;
+    const milestone = (period, type) => {
+      const m = (period.milestones || []).find(x => String(x.type).toUpperCase() === type);
+      return m ? Object.fromEntries((m.achievements || []).map(a => [a.groupId, intOf(a.numSubjects)])) : {};
+    };
+    const started = milestone(pf.periods[0], 'STARTED');
+    const completed = milestone(pf.periods[pf.periods.length - 1], 'COMPLETED');
+    const reasons = new Map();
+    for (const p of pf.periods) for (const w of p.dropWithdraws || []) {
+      const n = (w.reasons || []).reduce((t, r) => t + (intOf(r.numSubjects) || 0), 0);
+      if (n) reasons.set(w.type, (reasons.get(w.type) || 0) + n);
+    }
+    const groups = pf.groups.map(g => ({
+      title: g.title || '', started: started[g.id] != null ? started[g.id] : null,
+      completed: completed[g.id] != null ? completed[g.id] : null
+    }));
+    if (!groups.some(g => g.started != null)) return null;
+    return {
+      groups,
+      reasons: [...reasons].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([type, n]) => ({ type, n }))
+    };
+  }
+
+  function cellOf(m, dispersion) {
+    if (!m || absent(m.value)) return { value: null, note: (m && m.comment) || '' };
+    const c = { value: String(m.value) };
+    if (!absent(m.lowerLimit) || !absent(m.upperLimit)) {
+      c.lower = absent(m.lowerLimit) ? null : String(m.lowerLimit);
+      c.upper = absent(m.upperLimit) ? null : String(m.upperLimit);
+    } else if (!absent(m.spread)) c.spread = String(m.spread);
+    if (m.comment) c.note = m.comment;
+    return c;
+  }
+
+  function outcomeOf(o) {
+    const groups = (o.groups || []).map(g => g.id);
+    const n = {};
+    for (const d of (o.denoms || []).slice(0, 1)) for (const c of d.counts || []) n[c.groupId] = intOf(c.value);
+    const rows = [];
+    let truncated = 0;
+    for (const cls of o.classes || []) {
+      for (const cat of cls.categories || []) {
+        if (rows.length >= OUTCOME_ROWS) { truncated++; continue; }
+        const by = Object.fromEntries((cat.measurements || []).map(m => [m.groupId, m]));
+        rows.push({
+          label: [cls.title, cat.title].filter(Boolean).join(' · '),
+          cells: groups.map(id => cellOf(by[id]))
+        });
+      }
+    }
+    const title = id => ((o.groups || []).find(g => g.id === id) || {}).title || id;
+    const disp = o.dispersionType || '';
+    return {
+      type: o.type || '',
+      title: o.title || '',
+      description: o.description || '',
+      timeFrame: o.timeFrame || '',
+      unit: o.unitOfMeasure || '',
+      param: o.paramType || '',
+      paramLabel: PARAM[o.paramType] != null ? PARAM[o.paramType] : String(o.paramType || '').toLowerCase().replace(/_/g, ' '),
+      dispersion: disp,
+      spreadLabel: DISPERSION[disp] || (/confidence/i.test(disp) ? disp.replace(/ Confidence Interval/i, ' CI') : disp),
+      posted: o.reportingStatus !== 'NOT_POSTED',
+      groups: (o.groups || []).map(g => ({ title: g.title || '', n: n[g.id] != null ? n[g.id] : null })),
+      rows, truncated,
+      analyses: (o.analyses || []).slice(0, 6).map(a => ({
+        groups: (a.groupIds || []).map(title),
+        p: a.pValue || '',
+        method: a.statisticalMethod || '',
+        estimate: a.paramType ? {
+          kind: a.paramType, value: a.paramValue || '',
+          ci: a.ciLowerLimit || a.ciUpperLimit ? { pct: a.ciPctValue || '', lower: a.ciLowerLimit || '', upper: a.ciUpperLimit || '' } : null
+        } : null
+      }))
+    };
+  }
+
+  /* Harms: per group, how many were at risk and how many had a serious event,
+     any other event, or died; then the commonest events by the highest rate
+     in any group, so a side effect that only the drug arm had comes first. */
+  function harmsOf(ae) {
+    if (!ae || !(ae.eventGroups || []).length) return null;
+    const ids = ae.eventGroups.map(g => g.id);
+    const groups = ae.eventGroups.map(g => ({
+      title: g.title || '',
+      atRisk: intOf(g.seriousNumAtRisk != null ? g.seriousNumAtRisk : g.otherNumAtRisk),
+      serious: intOf(g.seriousNumAffected), other: intOf(g.otherNumAffected),
+      deaths: intOf(g.deathsNumAffected), deathsAtRisk: intOf(g.deathsNumAtRisk)
+    }));
+    const events = (list, keep) => {
+      const merged = new Map();
+      for (const e of list || []) {
+        const term = e.term || '';
+        const by = merged.get(term) || {};
+        for (const st of e.stats || []) {
+          const prev = by[st.groupId] || { affected: 0, atRisk: intOf(st.numAtRisk) };
+          prev.affected += intOf(st.numAffected) || 0;
+          by[st.groupId] = prev;
+        }
+        merged.set(term, by);
+      }
+      return [...merged].map(([term, by]) => {
+        const cells = ids.map(id => by[id] || { affected: 0, atRisk: null });
+        const top = Math.max(0, ...cells.map(c => (c.atRisk ? c.affected / c.atRisk : 0)));
+        return { term, cells, top };
+      }).filter(e => e.top > 0).sort((a, b) => b.top - a.top).slice(0, keep);
+    };
+    return {
+      groups,
+      threshold: ae.frequencyThreshold || '',
+      timeFrame: ae.timeFrame || '',
+      common: events(ae.otherEvents, 8),
+      serious: events(ae.seriousEvents, 5),
+      seriousTotal: new Set((ae.seriousEvents || []).map(e => e.term)).size
     };
   }
 
@@ -287,7 +538,7 @@
     const params = buildParams(state, { ...opts, fields: !fieldsRefused });
     try {
       const { data, via } = await getJSON('/search', params, opts.signal);
-      return { studies: (data.studies || []).map(normalize), next: data.nextPageToken || null, total: data.totalCount, via };
+      return { studies: (data.studies || []).map(normalize), next: data.nextPageToken || null, total: data.totalCount, via, rewrite: effectiveQuery(state) };
     } catch (e) {
       if (e.status === 400 && !fieldsRefused && /field/i.test(e.message)) {
         fieldsRefused = true;
@@ -429,7 +680,7 @@
 
   const api = {
     STATUS, STATUS_CHIPS, PHASE_CHIPS, SCOPES, SORTS, LIST_FIELDS, WATCH_FIELDS, NCT,
-    statusOf, phaseText, asNct, buildParams, normalize, placeSummary, fmtDate, snapshot, changes,
+    statusOf, phaseText, asNct, effectiveQuery, BRANDS, WHOLE, buildParams, normalize, resultsOf, placeSummary, fmtDate, snapshot, changes,
     search, study, byIds, hasSession, access, signIn, signOut, requestAccess, accountUrl,
     watchList, track, acknowledge, untrack, checkWatch, TrialError,
     studyUrl: STUDY_URL, host

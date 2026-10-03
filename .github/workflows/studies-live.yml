@@ -1,0 +1,44 @@
+# The Studies page against the real ClinicalTrials.gov API.
+#
+# The page's own tests run on fixtures, in checks.yml, on every push. They
+# cannot tell whether a parameter name is one the API actually accepts — the
+# page shipped green with the "No phase" chip sending a code the API does not
+# match, so that chip found nothing. projects/psyche/test/live.mjs asks the
+# real API, and reads what comes back rather than trusting a 200.
+#
+# It needs the network, so it is its own lane rather than part of checks.mjs.
+# It runs when the Studies code changes, once a day (the API can change under
+# a page that has not), and on demand. About forty requests, one at a time.
+
+name: Studies live check
+
+on:
+  push:
+    paths:
+      - 'projects/psyche/trials.js'
+      - 'projects/psyche/studies.html'
+      - 'projects/psyche/test/live.mjs'
+      - '.github/workflows/studies-live.yml'
+  schedule:
+    - cron: "40 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: studies-live-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: projects/psyche
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node projects/psyche/test/live.mjs

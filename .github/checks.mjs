@@ -43,6 +43,8 @@ const SUITES = [
   ['every inline script parses', ['.github/test/inline-scripts.mjs']],
   ['the entertainment write path', ['projects/entertainment/test/write-path.mjs']],
   ['the worker (training-log)', ['worker/test.mjs']],
+  /* Not live.mjs: that one asks the real ClinicalTrials.gov, so it runs in
+     its own lane (.github/workflows/studies-live.yml), not here. */
   ['the psyche studies client', ['projects/psyche/test/trials.test.mjs', 'projects/psyche/test/watch-policy.test.mjs']],
   ['the garmin puller', ['projects/training/garmin/test.mjs']],
   ["orrin's server", ['projects/orrin/server/test.mjs']],
