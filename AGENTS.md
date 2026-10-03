@@ -490,7 +490,7 @@ rooms.
 **One account for the whole site lives in ATLAS's Supabase project.** Since
 2026-09-23 anybody may sign up at `account/` (terminal: `login`), the account
 arrives as a request, and Ric approves it and ticks which pages it opens —
-ATLAS and HERMISCUS today. The lock is `has_page_access()` in the database;
+ATLAS, HERMISCUS and Studies' trial alerts today. The lock is `has_page_access()` in the database;
 `assets/site-gate.js` is what a page asks. Read "The door" in `atlas/README.md`
 before locking another page: a gate cannot hide content that is committed to
 this public repo, only content kept in the database behind that function.

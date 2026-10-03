@@ -154,19 +154,32 @@ const GATE_TABLES = new Set(['public.access_requests', 'public.site_access',
 const rlsTables = [...new Set([...sql.matchAll(/alter table (public\.\w+)\s+enable row level security/g)]
   .map((m) => m[1]))].filter((t) => !GATE_TABLES.has(t));
 
-const locked = (body) => /\bas restrictive\b/.test(body)
+/* The tables in this project that belong to another page on the site account,
+ * not to ATLAS. Each is still held to the same rule — a restrictive lock on
+ * every row — only asking for its own page. Anything not named here is ATLAS's
+ * and must ask for 'atlas', so a new table can never slip through unlocked by
+ * being left off a list. */
+const OTHER_PAGE = new Map([
+  ['public.trial_watch', 'studies'],      // Psyche → Studies, the trial watchlist
+]);
+
+const locked = (body, page) => /\bas restrictive\b/.test(body)
   && /\bfor all\b/.test(body)
   && /\bto authenticated\b/.test(body)
-  && /using \([\s\S]*has_page_access\('atlas'\)/.test(body)
-  && /with check \([\s\S]*has_page_access\('atlas'\)/.test(body);
+  /* Each clause on its own: the USING match may not run on into WITH CHECK,
+   * or a policy whose using asks the wrong page passes on the strength of a
+   * right with check. */
+  && new RegExp(`using \\((?:(?!with check)[\\s\\S])*has_page_access\\('${page}'\\)`).test(body)
+  && new RegExp(`with check \\([\\s\\S]*has_page_access\\('${page}'\\)`).test(body);
 
 test('every table that holds places is behind a restrictive has_page_access policy', () => {
   assert.ok(rlsTables.includes('public.pins'), 'the pins table is not RLS-enabled — or the test cannot see it');
   for (const table of rlsTables) {
     const mine = policies.get(table) || new Map();
-    const lock = [...mine.values()].find(locked);
+    const page = OTHER_PAGE.get(table) || 'atlas';
+    const lock = [...mine.values()].find((body) => locked(body, page));
     assert.ok(lock,
-      `${table} has no surviving restrictive policy asking has_page_access('atlas') — ` +
+      `${table} has no surviving restrictive policy asking has_page_access('${page}') — ` +
       `an account that was merely created, never approved, can read it`);
   }
 });

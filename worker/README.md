@@ -14,7 +14,7 @@ is historical — every room that writes anything writes here:
 | `/todo` | Climbing | the route to-do list |
 | `/movies` | Entertainment | edits on top of `projects/entertainment/entertainment-data.js` |
 | `/garmin` | Training (owner bar) | Ric's Garmin export, token to read **and** write; `/garmin/_pull` starts the Actions job (`projects/training/garmin/`) |
-| `/trials` | Psyche → Studies | `/trials/search` and `/trials/study/<NCT>` pass ClinicalTrials.gov API v2 through, cached five minutes; `/trials/watch` is Ric's private watchlist, token to read **and** write (`projects/psyche/README.md`) |
+| `/trials` | Psyche → Studies | `/trials/search` and `/trials/study/<NCT>` pass ClinicalTrials.gov API v2 through, cached five minutes. The watchlist is on the site account, not here (`projects/psyche/README.md`) |
 | `/auth` | all of them | Ric's sign-in (`assets/owner.js`) |
 
 It lived in `projects/training/server/` until 2026-09-25. The deployed name

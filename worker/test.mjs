@@ -1393,36 +1393,5 @@ console.log('\nRULE  /trials passes ClinicalTrials.gov through, filtered and cac
   ok((await worker.fetch(new Request('https://x/trials/search?query.term=down'), down, null)).status === 502, 'an unreachable API is a 502');
 }
 
-console.log('\nRULE  the trial watchlist is private in both directions');
-{
-  const obj = fresh();
-  const env = { LOG: { idFromName: () => 'training', get: () => obj } };
-  const at = (method, path, body, token) => worker.fetch(new Request('https://x' + path, {
-    method, headers: { ...(token ? { authorization: 'Bearer ' + token } : {}), 'content-type': 'application/json' },
-    ...(body ? { body: JSON.stringify(body) } : {})
-  }), env, null);
-
-  ok((await at('GET', '/trials/watch')).status === 401, 'a visitor cannot read the list');
-  ok((await at('POST', '/trials/watch/NCT01234567', { title: 'x' })).status === 401, 'nor add to it');
-  const seen = { status: 'NOT_YET_RECRUITING', hasResults: false, primaryCompletion: '2027-06', note: '<script>' };
-  const w = await at('POST', '/trials/watch/nct01234567', { title: 'Psilocybin for X', seen }, TOKEN);
-  const item = (await w.json()).item;
-  ok(w.status === 200 && item.id === 'NCT01234567', 'Ric can track a study');
-  ok(item.seen.status === 'NOT_YET_RECRUITING' && item.seen.primaryCompletion === '2027-06', 'with the snapshot it was tracked at');
-  ok(!('note' in item.seen), 'and nothing the snapshot was not meant to hold');
-  const list = await at('GET', '/trials/watch', null, TOKEN);
-  ok(list.status === 200 && list.headers.get('cache-control').includes('no-store'), 'he can read it back, uncached');
-  const items = (await list.json()).items;
-  ok(items.NCT01234567 && items.NCT01234567.title === 'Psilocybin for X', 'and it is there');
-
-  const ack = await at('POST', '/trials/watch/NCT01234567', { seen: { status: 'RECRUITING', hasResults: false } }, TOKEN);
-  const acked = (await ack.json()).item;
-  ok(acked.seen.status === 'RECRUITING' && acked.title === 'Psilocybin for X' && acked.added === item.added,
-     'acknowledging a change moves the snapshot and keeps the rest');
-  ok((await at('POST', '/trials/watch/NCT1', { seen }, TOKEN)).status === 400, 'a malformed number is refused');
-  ok((await at('POST', '/trials/watch/NCT01234567', { remove: true }, TOKEN)).status === 200, 'it can be untracked');
-  ok(!(await (await at('GET', '/trials/watch', null, TOKEN)).json()).items.NCT01234567, 'and it is gone');
-}
-
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKER RULES PASS'));
 process.exit(failures ? 1 : 0);

@@ -81,7 +81,7 @@ arriving.
 ### 3. The door: sign-up is open, and your approval is the lock
 
 Since 2026-09-23 this project is **one account for the whole site**: ATLAS,
-HERMISCUS, and any page added later. Anybody may make an account at
+HERMISCUS, Studies' trial alerts (`projects/psyche/README.md`), and any page added later. Anybody may make an account at
 `ricmassey.com/account/` (or type `login` at the terminal). A new account opens
 **nothing** until you approve it there and tick which pages it gets.
 

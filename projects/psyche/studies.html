@@ -172,13 +172,15 @@
     footer.credit{margin:34px 0 0;padding:16px 0 0;border-top:2px solid var(--ink);font-size:14px;color:#4b4450;display:grid;gap:8px}
     footer.credit strong{color:var(--ink)}
     footer.credit .warn{padding:10px 12px;border-left:3px solid var(--red);background:rgba(166,64,77,.06)}
-    .ownerbox{margin-top:10px;font:700 11px/1.4 var(--mono);color:var(--pencil)}
-    .ownerbox summary{cursor:pointer;min-height:32px;display:inline-flex;align-items:center;letter-spacing:.08em;text-transform:uppercase}
-    .ownerform{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
-    .ownerform label{width:100%}
-    .ownerform input{min-height:40px;padding:0 10px;border:1px solid var(--line);background:var(--card);font-size:16px}
-    .ownerform button{min-height:40px;padding:0 13px;border:1px solid var(--ink);background:var(--ink);color:var(--white);font:700 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;cursor:pointer}
-    .ownermsg{width:100%;color:var(--red-text)}
+    /* The site account — the same one as ATLAS and HERMISCUS. */
+    .account{margin-top:6px;padding:12px 14px;background:var(--card);border:1px solid var(--line);font-size:15px}
+    .account summary{cursor:pointer;min-height:36px;display:flex;align-items:center;font:700 11px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--violet-dark)}
+    .account p{margin:8px 0}
+    .acctform{display:grid;gap:8px;margin-top:8px;max-width:380px}
+    .acctform label{font:700 11px/1.2 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--pencil)}
+    .acctform input{min-height:44px;padding:0 10px;border:1px solid var(--line);background:var(--white);font-size:16px}
+    .acct-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+    .acct-msg{color:var(--red-text);font-size:14px;min-height:1em;margin:0}
     .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
     .toast{position:fixed;left:50%;bottom:76px;z-index:30;transform:translate(-50%,10px);padding:10px 14px;background:var(--ink);color:var(--white);font:700 11px/1.4 var(--mono);letter-spacing:.06em;opacity:0;pointer-events:none;transition:.2s;max-width:88vw}
     .toast.on{opacity:1;transform:translate(-50%,0)}
@@ -261,7 +263,7 @@
       <footer class="credit">
         <p>Study records from <a href="https://clinicaltrials.gov/">ClinicalTrials.gov</a>, the registry run by the U.S. National Library of Medicine, through its public API (v2). <span id="retrieved">Retrieved live each time you search.</span> Records are written by each study's sponsor and may lag what is actually happening at a site.</p>
         <p class="warn"><strong>Not medical advice.</strong> This page finds and summarises public study records. It cannot tell you whether a trial is right for you, safe for you, or still open to you — talk to a doctor and to the study's own contacts before acting on anything here.</p>
-        <details class="ownerbox" id="ownerbox"><summary>Ric's sign-in</summary><div id="owner-slot"></div></details>
+        <details class="account" id="account"><summary id="account-sum">Sign in to track studies</summary><div id="account-body"></div></details>
       </footer>
     </main>
   </div>
@@ -272,7 +274,6 @@
   </dialog>
   <div class="toast" id="toast" role="status"></div>
 
-  <script src="../../assets/owner.js"></script>
   <script src="trials.js"></script>
   <script>
   (() => {
@@ -634,7 +635,7 @@
         <div class="d-actions">
           <a class="btn primary" href="${esc(s.url)}" target="_blank" rel="noopener">Official record ↗</a>
           ${s.hasResults ? `<a class="btn" href="${esc(s.url)}?tab=results" target="_blank" rel="noopener">Read the results ↗</a>` : ''}
-          ${T.signedIn() ? `<button class="btn ${tracked ? 'tracking' : ''}" type="button" id="track" aria-pressed="${!!tracked}">${tracked ? '✓ Tracking' : 'Track this study'}</button>` : ''}
+          <button class="btn ${tracked ? 'tracking' : ''}" type="button" id="track" aria-pressed="${!!tracked}">${tracked ? '✓ Tracking' : 'Track this study'}</button>
           <button class="btn" type="button" id="share">Copy link</button>
         </div>
         ${s.whyStopped ? `<p class="note">Stopped: ${esc(s.whyStopped)}</p>` : ''}
@@ -677,6 +678,15 @@
           else { await navigator.clipboard.writeText(url); toast('Link copied'); }
         } catch (err) { /* dismissed */ }
       }
+      if (e.target.id === 'track' && current && acct.state !== 'ok') {
+        /* Not in yet: take them to the account box, which says what is
+           missing — an account, Ric's yes, or nothing but a sign-in. */
+        closeStudy(false);
+        $('account').open = true;
+        $('account').scrollIntoView({ block: 'center' });
+        toast(acct.state === 'signed-out' ? 'Sign in to track studies' : 'Your account does not have Studies yet');
+        return;
+      }
       if (e.target.id === 'track' && current) {
         const btn = e.target; btn.disabled = true;
         const was = !!(watch.items && watch.items[current.id]);
@@ -687,7 +697,7 @@
           btn.setAttribute('aria-pressed', String(!was));
           paintWatch(); repaintTrackedTags();
         } catch (err) {
-          toast(err.status === 401 ? 'Signed out — sign in at the foot of the page' : 'Could not save that: ' + err.message);
+          toast('Could not save that: ' + err.message);
         } finally { btn.disabled = false; }
       }
     });
@@ -695,15 +705,20 @@
     /* ── the watch card ── */
     const watch = { items: null, now: new Map(), alerts: [] };
 
+    let acct = { state: 'signed-out' };
+
     async function loadWatch() {
-      if (!T.signedIn()) { watch.items = null; paintWatch(); return; }
+      try { acct = await T.access(); }
+      catch (e) { acct = { state: 'error' }; }
+      paintAccount();
+      if (current) $('d-body').innerHTML = detailHTML(current);
+      if (acct.state !== 'ok') { watch.items = null; paintWatch(); repaintTrackedTags(); return; }
       $('watch').hidden = false;
       $('watch-body').innerHTML = '<p class="watch-empty">Checking your studies…</p>';
       try {
         const r = await T.checkWatch();
         Object.assign(watch, r || { items: null, now: new Map(), alerts: [] });
       } catch (e) {
-        if (e.status === 401) { Owner.signOut(); return; }
         $('watch-body').innerHTML = `<p class="watch-empty">${esc(e.message)}</p>`;
         return;
       }
@@ -714,7 +729,7 @@
     }
 
     function paintWatch() {
-      if (!T.signedIn() || !watch.items) { $('watch').hidden = true; return; }
+      if (acct.state !== 'ok' || !watch.items) { $('watch').hidden = true; return; }
       $('watch').hidden = false;
       const ids = Object.keys(watch.items);
       const changedIds = new Set();
@@ -781,15 +796,71 @@
       clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 3000);
     }
 
-    /* ── Ric's sign-in ── the same box as climbing and training, the same
-       password, and the only thing it unlocks here is the watchlist. */
-    Owner.init({ host: T.host(), onChange: () => {
-      if (T.signedIn() && $('ownerbox')) $('ownerbox').remove();
-      loadWatch();
-      if (current) $('d-body').innerHTML = detailHTML(current);
-    } });
-    if (T.signedIn()) $('ownerbox').remove();
-    else Owner.mountBox($('owner-slot'), { title: 'Sign in to track studies' });
+    /* ── the site account ──
+       The same account as ATLAS and HERMISCUS, made at /account/ and switched
+       on for Studies by Ric. Searching needs none of it; tracking does. */
+    function paintAccount() {
+      const who = acct.email ? `Signed in as <strong>${esc(acct.email)}</strong>.` : '';
+      const out = '<div class="acct-row"><button class="btn small" type="button" data-acct="out">Sign out</button></div>';
+      const sum = $('account-sum'), body = $('account-body');
+      if (acct.state === 'ok') {
+        sum.textContent = 'Trial alerts on · ' + (acct.email || 'signed in');
+        body.innerHTML = `<p>${who} Studies you track are listed at the top of this page, and the front page tells you when one changes.</p>${out}`;
+      } else if (acct.state === 'waiting') {
+        sum.textContent = 'Trial alerts — waiting on Ric';
+        body.innerHTML = acct.asked
+          ? `<p>${who} Your request for Studies is with Ric. Once he says yes, the Track buttons work.</p>${out}`
+          : `<p>${who} This account does not have Studies yet.</p>
+             <div class="acct-row"><button class="btn small primary" type="button" data-acct="ask">Request access</button>
+             <button class="btn small" type="button" data-acct="out">Sign out</button></div>`;
+      } else if (acct.state === 'denied') {
+        sum.textContent = 'Trial alerts — not on this account';
+        body.innerHTML = `<p>${who} This account was not given Studies. Searching works the same without it.</p>${out}`;
+      } else if (acct.state === 'error') {
+        sum.textContent = 'Trial alerts — account unavailable';
+        body.innerHTML = '<p>Could not check your account just now — try again in a moment.</p><div class="acct-row"><button class="btn small" type="button" data-acct="retry">Try again</button></div>';
+      } else {
+        sum.textContent = 'Sign in to track studies';
+        body.innerHTML = `
+          <p>Track a study and get an alert on the front page when its results come out or its status changes. It uses your ricmassey.com account — the same one as ATLAS and HERMISCUS.</p>
+          <form class="acctform" id="acct-form">
+            <label for="acct-email">Email</label>
+            <input id="acct-email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+            <label for="acct-pw">Password</label>
+            <input id="acct-pw" type="password" autocomplete="current-password" required>
+            <div class="acct-row"><button class="btn primary" type="submit">Sign in</button>
+              <a class="btn" href="${esc(T.accountUrl())}">No account? Make one</a></div>
+            <p class="acct-msg" id="acct-msg" role="alert" aria-live="polite"></p>
+          </form>`;
+      }
+    }
+
+    $('account').addEventListener('submit', async e => {
+      if (e.target.id !== 'acct-form') return;
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type=submit]');
+      btn.disabled = true; btn.textContent = 'Checking…'; $('acct-msg').textContent = '';
+      try {
+        await T.signIn($('acct-email').value, $('acct-pw').value);
+        await loadWatch();
+        if (acct.state === 'ok') toast('Signed in — trial alerts on');
+      } catch (err) {
+        $('acct-pw').value = '';
+        $('acct-msg').textContent = /fetch|load|network/i.test(err.message || '')
+          ? 'Could not reach the account service.' : 'Email or password not recognised.';
+        btn.disabled = false; btn.textContent = 'Sign in';
+      }
+    });
+    $('account').addEventListener('click', async e => {
+      const b = e.target.closest('[data-acct]');
+      if (!b) return;
+      b.disabled = true;
+      try {
+        if (b.dataset.acct === 'out') { await T.signOut(); toast('Signed out'); }
+        if (b.dataset.acct === 'ask') { await T.requestAccess(); toast('Asked — Ric will see it'); }
+      } catch (err) { toast(err.message || 'That did not work'); }
+      await loadWatch();
+    });
 
     /* ── follow the address bar ── */
     function fromLocation() {

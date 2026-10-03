@@ -319,44 +319,104 @@
     return out;
   }
 
-  /* ── Ric's token ──
-     Read the same way assets/owner.js reads it. The studies page loads Owner
-     for the sign-in box; the front door does not need all of that to ask one
-     question, so this reads localStorage itself when Owner is absent. */
-  const token = () => {
-    if (root.Owner && root.Owner.token) return root.Owner.token();
-    try { return root.localStorage.getItem('ownerToken'); } catch (e) { return null; }
-  };
-  const signedIn = () => !!token();
-  const authHeaders = () => (token() ? { authorization: 'Bearer ' + token() } : {});
+  /* ── the site account ──
+     Tracking belongs to the site account — the same one as ATLAS and
+     HERMISCUS (assets/site-gate.js), approved by Ric for the `studies` page.
+     The list lives in Supabase (atlas/supabase/migrations/…_studies_watchlist.sql),
+     one row per study per person, readable only by its owner.
+
+     supabase-js comes from unpkg, so it is loaded only when it is needed: when
+     this browser already holds an account session, or when somebody reaches
+     for the sign-in. A visitor without an account loads none of it. */
+  const SITE_ROOT = (() => {
+    try { return new URL('../../', document.currentScript.src).href; } catch (e) { return ''; }
+  })();
+  const PAGE = 'studies';
+
+  /* supabase-js keeps its session in localStorage as sb-<project>-auth-token.
+     Looked for by shape rather than by name, so the local stack's key counts. */
+  function hasSession() {
+    try {
+      for (let i = 0; i < root.localStorage.length; i++) {
+        if (/^sb-.+-auth-token$/.test(root.localStorage.key(i))) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = src;
+      el.onload = resolve;
+      el.onerror = () => reject(new TrialError('could not load ' + src, 0));
+      document.head.appendChild(el);
+    });
+  }
+  let gatePromise = null;
+  function gate() {
+    if (root.SiteGate) return Promise.resolve(root.SiteGate);
+    if (!gatePromise) {
+      gatePromise = (async () => {
+        if (!root.supabase) await loadScript('https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js');
+        if (!root.CONFIG) await loadScript(SITE_ROOT + 'atlas/config.js');
+        await loadScript(SITE_ROOT + 'assets/site-gate.js');
+        return root.SiteGate;
+      })();
+      gatePromise.catch(() => { gatePromise = null; });
+    }
+    return gatePromise;
+  }
+
+  /* 'signed-out' | 'waiting' | 'denied' | 'error' | 'ok', plus the email. */
+  async function access() {
+    if (!hasSession() && !root.SiteGate) return { state: 'signed-out' };
+    return (await gate()).check(PAGE);
+  }
+
+  const fail = e => { throw new TrialError((e && e.message) || 'the watchlist is unavailable right now', (e && e.code) || 0); };
+  async function table() { return (await gate()).db().from('trial_watch'); }
 
   async function watchList() {
-    if (!signedIn()) return null;
-    const r = await fetch(host() + '/trials/watch', { headers: authHeaders(), cache: 'no-store' });
-    if (r.status === 401) throw new TrialError('signed out', 401);
-    if (!r.ok) throw new TrialError('the watchlist is unavailable right now', r.status);
-    return (await r.json()).items || {};
+    const { data, error } = await (await table()).select('nct_id,title,seen,seen_at,added_at');
+    if (error) fail(error);
+    const items = {};
+    for (const r of data || []) items[r.nct_id] = { id: r.nct_id, title: r.title, seen: r.seen, seenAt: r.seen_at, added: r.added_at };
+    return items;
+  }
+  const row = r => ({ id: r.nct_id, title: r.title, seen: r.seen, seenAt: r.seen_at, added: r.added_at });
+
+  async function track(n) {
+    const { data, error } = await (await table())
+      .upsert({ nct_id: n.id, title: String(n.title || '').slice(0, 300), seen: snapshot(n), seen_at: new Date().toISOString() },
+              { onConflict: 'user_id,nct_id' })
+      .select().single();
+    if (error) fail(error);
+    return { item: row(data) };
+  }
+  async function acknowledge(n) {
+    const { data, error } = await (await table())
+      .update({ seen: snapshot(n), seen_at: new Date().toISOString() })
+      .eq('nct_id', n.id).select().single();
+    if (error) fail(error);
+    return { item: row(data) };
+  }
+  async function untrack(id) {
+    const { error } = await (await table()).delete().eq('nct_id', id);
+    if (error) fail(error);
+    return { removed: id };
   }
 
-  async function watchWrite(id, body) {
-    if (!signedIn()) return null;
-    const r = await fetch(host() + '/trials/watch/' + id, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...authHeaders() },
-      body: JSON.stringify(body)
-    });
-    if (!r.ok) throw new TrialError(await readError(r), r.status);
-    return r.json();
-  }
-  const track = n => watchWrite(n.id, { title: n.title, seen: snapshot(n) });
-  const acknowledge = n => watchWrite(n.id, { seen: snapshot(n) });
-  const untrack = id => watchWrite(id, { remove: true });
+  async function signIn(email, password) { await (await gate()).signIn(email, password); return access(); }
+  async function signOut() { if (root.SiteGate || hasSession()) await (await gate()).signOut(); }
+  async function requestAccess() { await (await gate()).requestAccess(PAGE); return access(); }
+  const accountUrl = () => SITE_ROOT + 'account/?for=' + PAGE;
 
   /* The whole check, for the front door and the watch card alike: the list,
      each study as it is now, and which of them moved since last seen. */
   async function checkWatch(signal) {
+    if ((await access()).state !== 'ok') return null;
     const items = await watchList();
-    if (!items) return null;
     const ids = Object.keys(items);
     const now = ids.length ? await byIds(ids, signal) : new Map();
     const alerts = [];
@@ -370,7 +430,8 @@
   const api = {
     STATUS, STATUS_CHIPS, PHASE_CHIPS, SCOPES, SORTS, LIST_FIELDS, WATCH_FIELDS, NCT,
     statusOf, phaseText, asNct, buildParams, normalize, placeSummary, fmtDate, snapshot, changes,
-    search, study, byIds, signedIn, watchList, track, acknowledge, untrack, checkWatch, TrialError,
+    search, study, byIds, hasSession, access, signIn, signOut, requestAccess, accountUrl,
+    watchList, track, acknowledge, untrack, checkWatch, TrialError,
     studyUrl: STUDY_URL, host
   };
   root.Trials = api;

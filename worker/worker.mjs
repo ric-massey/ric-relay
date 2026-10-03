@@ -683,64 +683,6 @@ export class TrainingLog {
       return json({ error: 'nope' }, 401, origin);
     }
 
-    /* ---------- /trials/watch ----------
-       The studies Ric is tracking from the Psyche room's Studies page, each
-       with a snapshot of how it looked the last time he acknowledged it. The
-       page and the front door compare that snapshot against ClinicalTrials.gov
-       and raise an alert when a status changes or results are posted.
-
-       PRIVATE IN BOTH DIRECTIONS, like /garmin and unlike /todo. The studies
-       are public; which ones one person is watching is a list of health
-       interests, and nobody asked for that to be published. So a read needs
-       the token as much as a write does.
-
-       POST /trials/watch/NCT01234567  { title, seen }   track, or re-acknowledge
-       POST /trials/watch/NCT01234567  { remove: true }  stop tracking */
-    if (parts[0] === 'trials' && parts[1] === 'watch') {
-      if (!authed()) return json({ error: 'nope' }, 401, origin);
-      const priv = { 'cache-control': 'private, no-store' };
-
-      if (request.method === 'GET') {
-        if (parts[2]) return json({ error: 'not found' }, 404, origin);
-        const all = await this.state.storage.list({ prefix: 'ct:' });
-        const items = {};
-        for (const [k, v] of all) items[k.slice(3)] = v;
-        return json({ items }, 200, origin, priv);
-      }
-
-      if (request.method === 'POST') {
-        const id = String(parts[2] || '').toUpperCase();
-        if (!NCT.test(id) || parts[3]) return json({ error: 'POST needs an NCT number: /trials/watch/NCT01234567' }, 400, origin);
-        let body;
-        try { body = await request.json(); } catch { return json({ error: 'body must be JSON' }, 400, origin); }
-        if (!body || typeof body !== 'object') return json({ error: 'body must be JSON' }, 400, origin);
-
-        if (body.remove === true) {
-          await this.state.storage.delete('ct:' + id);
-          return json({ ok: true, removed: id }, 200, origin);
-        }
-
-        const existing = await this.state.storage.get('ct:' + id);
-        if (!existing) {
-          const count = (await this.state.storage.list({ prefix: 'ct:' })).size;
-          if (count >= 200) return json({ error: 'two hundred studies is the limit — untrack one first' }, 400, origin);
-        }
-        const now = new Date().toISOString();
-        const entry = {
-          id,
-          title: String(body.title || (existing && existing.title) || '').trim().slice(0, 300),
-          added: (existing && existing.added) || now,
-          seen: body.seen !== undefined ? cleanSnapshot(body.seen) : ((existing && existing.seen) || null),
-          seenAt: body.seen !== undefined ? now : ((existing && existing.seenAt) || null),
-          updated: now
-        };
-        await this.state.storage.put('ct:' + id, entry);
-        return json({ ok: true, item: entry }, 200, origin);
-      }
-
-      return json({ error: 'method not allowed' }, 405, origin);
-    }
-
     /* ---------- /board ----------
        A board session ticking off the climbing session planned for its date.
 
@@ -1372,21 +1314,6 @@ const NCT = /^NCT\d{8}$/;
 const TRIAL_PARAMS = ['query.term', 'query.cond', 'query.intr', 'query.titles', 'query.spons',
   'query.locn', 'filter.overallStatus', 'filter.ids', 'filter.advanced', 'aggFilters', 'sort',
   'pageSize', 'pageToken', 'countTotal', 'fields'];
-/* What "how it looked last time" may hold. Copied field by field, like every
-   other allowlist on this Worker: a status, whether results are up, and the
-   dates the page compares. Nothing free-form. */
-const TRIAL_DATE = /^\d{4}-\d{2}(-\d{2})?$/;
-function cleanSnapshot(s) {
-  if (!s || typeof s !== 'object') return null;
-  const date = v => (typeof v === 'string' && TRIAL_DATE.test(v) ? v : null);
-  return {
-    status: typeof s.status === 'string' && /^[A-Z_]{1,40}$/.test(s.status) ? s.status : null,
-    hasResults: s.hasResults === true,
-    resultsFirst: date(s.resultsFirst),
-    primaryCompletion: date(s.primaryCompletion),
-    lastUpdate: date(s.lastUpdate)
-  };
-}
 const TRIAL_TTL_S = 300;                      // "a few minutes"
 const TRIAL_MEMO_MAX = 200;
 /* Per-isolate memory in front of the Cache API: free, and the only cache the
@@ -1497,10 +1424,10 @@ export default {
       });
     }
 
-    /* The search and study reads are handled out here, in front of the
-       Durable Object: they hold nothing of Ric's and need no token. The
-       watchlist (/trials/watch) is his, and falls through to the object. */
-    if (parts[0] === 'trials' && parts[1] !== 'watch') return trialsProxy(request, env, ctx, parts, url);
+    /* Handled out here, in front of the Durable Object: these reads hold
+       nothing of anybody's and need no token. The watchlist that goes with
+       them is on the site account in Supabase, not on this Worker. */
+    if (parts[0] === 'trials') return trialsProxy(request, env, ctx, parts, url);
 
     /* ── the Strava callback ──
        Two different requests arrive on this one URL, and they are told apart by

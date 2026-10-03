@@ -31,22 +31,39 @@ Terminal: `studies` (or `trials`).
 The state lives in the address bar (`?q=…&status=recruiting&phase=2,3&results=1&country=…&sort=…`),
 and an open study is `#NCT01234567`, so any search or study can be linked.
 
-## Trial alerts — Ric only
+## Trial alerts — on the site account
 
-Signed in (the same password as climbing and training, `assets/owner.js`),
-every study has a **Track this study** button. Tracking stores the NCT number
-and a snapshot — status, results yes/no, a few dates — at `POST /trials/watch/<NCT>`.
+Tracking belongs to the **site account**: the same account as ATLAS and
+HERMISCUS (`assets/site-gate.js`), made at `/account/` and switched on per page
+by Ric. Studies is the page `studies` in `site_pages`; approving an account for
+it is the same tick on the account page as approving HERMISCUS.
 
-The watch card at the top of the page and a `TRIAL ALERT` line under the front
-door's NOTIFICATION banner compare that snapshot with the live record. Two
-things raise an alert: **results posted** and **status changed**. Sliding
-estimated dates do not, on purpose — they move on most studies every few
-months. "Got it" moves the snapshot forward.
+- **Searching needs no account.** Everyone gets the search, the cards and the
+  detail sheet.
+- **Track this study** is on every study. Signed out, it opens the sign-in box
+  at the foot of the page (email and password, and "No account? Make one" →
+  `account/?for=studies`). Signed in but not approved, the box says so and
+  offers **Request access**. Approved, it saves the study.
+- The list is the table `trial_watch` (migration
+  `atlas/supabase/migrations/20261003120000_studies_watchlist.sql`): one row per
+  study per person, with a snapshot of how the study looked when it was last
+  acknowledged. **Each person reads and writes only their own rows — Ric
+  included** — and a restrictive `has_page_access('studies')` policy means an
+  unapproved account stores nothing. Two hundred studies an account.
+  `test/watch-policy.test.mjs` fails if either lock goes missing.
+- The watch card at the top of the page and a `TRIAL ALERT` line under the front
+  door's NOTIFICATION banner compare each snapshot with the live record. Two
+  things raise an alert: **results posted** and **status changed**. Sliding
+  estimated dates do not. "Got it" moves the snapshot forward.
+- supabase-js is loaded from unpkg (the exception `account/` and ATLAS already
+  make) **only when needed**: when the browser already holds an account
+  session, or when somebody reaches for the sign-in. A visitor with no account
+  loads none of it, on this page or the front door.
+- Nothing is pushed: the check runs when the front door or the page is opened.
 
-- **The watchlist is private in both directions.** Which trials one person
-  follows is health information. `GET /trials/watch` needs the token too, and a
-  visitor's front door makes no request at all.
-- Nothing is pushed: the check runs when Ric opens the front door or the page.
+It first shipped on 2026-10-03 as a single list on the Worker behind Ric's
+password, and moved to the account the same day so each approved person has
+their own. The Worker keeps only the search proxy.
 
 ## Things to know before changing it
 
@@ -55,8 +72,10 @@ months. "Got it" moves the snapshot forward.
   fixture records shaped like v2 responses. The likeliest thing to be wrong is
   a parameter spelling. If the API refuses `fields`, `search()` drops it and
   asks again; any other 400 shows the API's own message on the page.
-- The Worker change is **not live until it is deployed** (Actions → Deploy
-  Worker). Until then search works directly, and tracking does not.
+- **Two deploys, both manual.** The Worker's `/trials` proxy goes live with
+  Actions → Deploy Worker; until then search goes straight to the API, which
+  works. The watchlist needs the migration: `supabase db push` from `atlas/`
+  (see `atlas/README.md`, step 1). Until then Track reports an error.
 - Location data: study *sites* are public facility names and cities from the
   registry, nothing of Ric's. `geoPoint` coordinates are never requested for
   cards and never drawn.

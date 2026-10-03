@@ -353,10 +353,11 @@ type Sydney's cat's name for a surprise!</div>
            an entry here — it goes stale the moment anything newer lands. -->
       <section id="latest" class="hidden" aria-label="Newest addition">
         <a class="latest-relay" data-latest-banner data-latest-prefix="NOTIFICATION"></a>
-        <!-- Ric's trial alerts: a tracked study whose status moved or whose
-             results came out. Filled by the script under latest.js, and only
-             ever when his sign-in token is in this browser — the watchlist is
-             private (/trials/watch), so a visitor never sees this exist. -->
+        <!-- Trial alerts: a study this account tracks whose status moved or
+             whose results came out. Filled by the script under latest.js, and
+             only for a site account approved for Studies — each list is its
+             owner's alone (trial_watch in Supabase), so a visitor never sees
+             this exist. -->
         <a class="latest-relay trial-alert" id="trial-alert" href="projects/psyche/studies.html#watch" hidden></a>
       </section>
 
@@ -401,13 +402,15 @@ type Sydney's cat's name for a surprise!</div>
   <script src="projects/psyche/trials.js?v=1"></script>
   <script>
     /* ─── trial alerts ─────────────────────────────────────
-       The studies Ric tracks from Psyche → Studies, checked against
-       ClinicalTrials.gov on every visit. Nothing is fetched at all without his
-       token; with it, one private read of the list and one cached search. */
+       The studies this browser's site account tracks from Psyche → Studies,
+       checked against ClinicalTrials.gov on every visit. Without an account
+       session in this browser nothing loads and nothing is fetched; with one,
+       supabase-js comes in, the account is checked for Studies, and it costs
+       one read of the list and one cached search. */
     (() => {
       const T = window.Trials;
       const el = document.getElementById("trial-alert");
-      if (!T || !el || !T.signedIn()) return;
+      if (!T || !el || !T.hasSession()) return;
       T.checkWatch().then((r) => {
         if (!r || !r.alerts.length) return;
         const a = r.alerts;
