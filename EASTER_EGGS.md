@@ -55,6 +55,7 @@ No prompt is required.
 |---|---|---|
 | State of Mind Line | `mood` | `SIGNAL RECEIVED // WEATHER IS NOT CLIMATE` |
 | DSM-5 autism reflection | `spectrum` | `HUMANS: STILL MORE COMPLICATED THAN CHECKBOXES` |
+| Studies (Psyche) | `placebo` | `CONTROL GROUP DETECTED // YOU FEEL BETTER ANYWAY` |
 | Geometry of Spacetime / How Speed Affects Time | `now` | `NOW LOST // TRY ANOTHER REFERENCE FRAME` |
 | Siege Conductor | `66` | `COMMAND REJECTED // NICE TRY, PALPATINE` |
 | Starfield | `warp` | `NAV COMPUTER: THE SCENIC ROUTE IS FASTER` |

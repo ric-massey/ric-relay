@@ -43,6 +43,7 @@ const SUITES = [
   ['every inline script parses', ['.github/test/inline-scripts.mjs']],
   ['the entertainment write path', ['projects/entertainment/test/write-path.mjs']],
   ['the worker (training-log)', ['worker/test.mjs']],
+  ['the psyche studies client', ['projects/psyche/test/trials.test.mjs']],
   ['the garmin puller', ['projects/training/garmin/test.mjs']],
   ["orrin's server", ['projects/orrin/server/test.mjs']],
   /* Quick, and here rather than in the slow lane below because it is what

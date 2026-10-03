@@ -138,7 +138,7 @@ createServer(async (req, res) => {
      rehearse the case that actually matters on a phone: the page loads fine and
      the log is unreachable. A total blackout is untestable through a browser —
      the HTML would not arrive either — so this is the realistic half. */
-  if (process.env.DEV_OFFLINE && /^\/(log|climb|auth|strava|board|media|todo|movies|garmin)(?=$|[/?])/.test(u.pathname)) {
+  if (process.env.DEV_OFFLINE && /^\/(log|climb|auth|strava|board|media|todo|movies|garmin|trials)(?=$|[/?])/.test(u.pathname)) {
     res.socket.destroy();               // hang up, exactly like no signal
     return;
   }
@@ -153,7 +153,7 @@ createServer(async (req, res) => {
      the dev server. `/climbing.html` escaped only by luck, because `climb` is
      followed by a letter there. The lookahead ends the match at a real path
      separator instead. */
-  if (/^\/(log|climb|auth|strava|board|media|todo|movies|garmin)(?=$|[/?])/.test(u.pathname)) {
+  if (/^\/(log|climb|auth|strava|board|media|todo|movies|garmin|trials)(?=$|[/?])/.test(u.pathname)) {
     /* Which day the invented run lands on. Dev scaffolding for the fake Strava
        above; the deployed Worker has no such thing — a real run brings its own
        date and there is nothing to choose. */

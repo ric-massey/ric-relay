@@ -1355,5 +1355,74 @@ console.log('\nRULE  the internal auth path is not reachable from outside');
   ok(r.status === 404, '/garmin-auth 404s from the internet');
 }
 
+console.log('\nRULE  /trials passes ClinicalTrials.gov through, filtered and cached');
+{
+  const asked = [];
+  let reply = { status: 200, body: '{"studies":[],"totalCount":0}' };
+  const FETCH = async (u) => { asked.push(String(u)); return new Response(reply.body, { status: reply.status }); };
+  const env = { LOG: { idFromName: () => 'training', get: () => fresh() }, FETCH };
+  const hit = path => worker.fetch(new Request('https://x' + path), env, null);
+
+  const r = await hit('/trials/search?query.term=psilocybin&pageSize=20&evil=1&countTotal=true');
+  ok(r.status === 200, 'a search answers');
+  ok(asked.length === 1 && asked[0].startsWith('https://clinicaltrials.gov/api/v2/studies?'), 'from the v2 studies endpoint');
+  ok(asked[0].includes('query.term=psilocybin') && !asked[0].includes('evil'), 'with the known parameters and nothing else');
+  ok(r.headers.get('cache-control').includes('max-age=300'), 'and says it may be kept five minutes');
+  ok(r.headers.get('access-control-allow-origin') === '*', 'readable from the page');
+
+  const again = await hit('/trials/search?countTotal=true&pageSize=20&query.term=psilocybin');
+  ok(asked.length === 1 && again.headers.get('x-trials-cache') === 'hit', 'the same search in another order is served from cache');
+
+  await hit('/trials/search?query.term=lithium&pageSize=5000');
+  ok(asked[1].includes('pageSize=100'), 'a page size is capped at a hundred');
+
+  await hit('/trials/study/nct01234567');
+  ok(asked[2] === 'https://clinicaltrials.gov/api/v2/studies/NCT01234567', 'a study is read by its NCT number');
+  ok((await hit('/trials/study/NCT123')).status === 404, 'a malformed number never leaves the Worker');
+  ok((await hit('/trials/other')).status === 404, 'nor does any other path');
+  ok(asked.length === 3, '— neither of those cost an upstream call');
+  ok((await worker.fetch(new Request('https://x/trials/search', { method: 'POST' }), env, null)).status === 405, 'it is read-only');
+
+  reply = { status: 400, body: '{"message":"bad filter"}' };
+  const bad = await hit('/trials/search?query.term=bad');
+  ok(bad.status === 400 && (await bad.text()).includes('bad filter'), "the API's own refusal is passed on");
+  await hit('/trials/search?query.term=bad');
+  ok(asked.filter(u => u.includes('query.term=bad')).length === 2, 'and never cached');
+
+  const down = { LOG: env.LOG, FETCH: async () => { throw new Error('offline'); } };
+  ok((await worker.fetch(new Request('https://x/trials/search?query.term=down'), down, null)).status === 502, 'an unreachable API is a 502');
+}
+
+console.log('\nRULE  the trial watchlist is private in both directions');
+{
+  const obj = fresh();
+  const env = { LOG: { idFromName: () => 'training', get: () => obj } };
+  const at = (method, path, body, token) => worker.fetch(new Request('https://x' + path, {
+    method, headers: { ...(token ? { authorization: 'Bearer ' + token } : {}), 'content-type': 'application/json' },
+    ...(body ? { body: JSON.stringify(body) } : {})
+  }), env, null);
+
+  ok((await at('GET', '/trials/watch')).status === 401, 'a visitor cannot read the list');
+  ok((await at('POST', '/trials/watch/NCT01234567', { title: 'x' })).status === 401, 'nor add to it');
+  const seen = { status: 'NOT_YET_RECRUITING', hasResults: false, primaryCompletion: '2027-06', note: '<script>' };
+  const w = await at('POST', '/trials/watch/nct01234567', { title: 'Psilocybin for X', seen }, TOKEN);
+  const item = (await w.json()).item;
+  ok(w.status === 200 && item.id === 'NCT01234567', 'Ric can track a study');
+  ok(item.seen.status === 'NOT_YET_RECRUITING' && item.seen.primaryCompletion === '2027-06', 'with the snapshot it was tracked at');
+  ok(!('note' in item.seen), 'and nothing the snapshot was not meant to hold');
+  const list = await at('GET', '/trials/watch', null, TOKEN);
+  ok(list.status === 200 && list.headers.get('cache-control').includes('no-store'), 'he can read it back, uncached');
+  const items = (await list.json()).items;
+  ok(items.NCT01234567 && items.NCT01234567.title === 'Psilocybin for X', 'and it is there');
+
+  const ack = await at('POST', '/trials/watch/NCT01234567', { seen: { status: 'RECRUITING', hasResults: false } }, TOKEN);
+  const acked = (await ack.json()).item;
+  ok(acked.seen.status === 'RECRUITING' && acked.title === 'Psilocybin for X' && acked.added === item.added,
+     'acknowledging a change moves the snapshot and keeps the rest');
+  ok((await at('POST', '/trials/watch/NCT1', { seen }, TOKEN)).status === 400, 'a malformed number is refused');
+  ok((await at('POST', '/trials/watch/NCT01234567', { remove: true }, TOKEN)).status === 200, 'it can be untracked');
+  ok(!(await (await at('GET', '/trials/watch', null, TOKEN)).json()).items.NCT01234567, 'and it is gone');
+}
+
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKER RULES PASS'));
 process.exit(failures ? 1 : 0);

@@ -22,6 +22,14 @@
 //   },
 window.RELAY_LATEST = [
   {
+    date: "2026-10-03",
+    kind: "new page",
+    room: "psyche",
+    title: "Studies",
+    description: "A search engine over every registered clinical trial — psilocybin, ketamine, lithium, anything. Filter by status, phase and country, and see which ones have published results.",
+    href: "projects/psyche/studies.html",
+  },
+  {
     date: "2026-09-21",
     kind: "new room",
     room: "entertainment",

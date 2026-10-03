@@ -204,6 +204,8 @@
     .latest-relay .latest-description { color: var(--phosphor-dim); font-size: .78rem; }
     .latest-relay .latest-meta { grid-column: 3; grid-row: 1 / 3; display: grid; gap: .25rem; color: var(--phosphor-dim); font-size: 0.69rem; text-align: right; }
     .latest-relay:hover,.latest-relay:focus-visible { border-color: var(--flash-psyche); color: var(--flash-psyche); outline: none; text-shadow: 0 0 12px rgba(184,137,200,.65); }
+    .latest-relay[hidden] { display: none; }
+    .trial-alert { margin-top: .6rem; }
 
     /* command line */
     #cmdline {
@@ -351,6 +353,11 @@ type Sydney's cat's name for a surprise!</div>
            an entry here — it goes stale the moment anything newer lands. -->
       <section id="latest" class="hidden" aria-label="Newest addition">
         <a class="latest-relay" data-latest-banner data-latest-prefix="NOTIFICATION"></a>
+        <!-- Ric's trial alerts: a tracked study whose status moved or whose
+             results came out. Filled by the script under latest.js, and only
+             ever when his sign-in token is in this browser — the watchlist is
+             private (/trials/watch), so a visitor never sees this exist. -->
+        <a class="latest-relay trial-alert" id="trial-alert" href="projects/psyche/studies.html#watch" hidden></a>
       </section>
 
       <p id="places-intro" class="places-intro hidden">I made these places based on things that I enjoy. If you like them too, you may like the information in those areas!</p>
@@ -391,6 +398,38 @@ type Sydney's cat's name for a surprise!</div>
   <script src="projects/climbing/climb-parse.js?v=2"></script>
   <script src="projects/climbing/web-trips.js?v=4"></script>
   <script src="latest.js?v=2"></script>
+  <script src="projects/psyche/trials.js?v=1"></script>
+  <script>
+    /* ─── trial alerts ─────────────────────────────────────
+       The studies Ric tracks from Psyche → Studies, checked against
+       ClinicalTrials.gov on every visit. Nothing is fetched at all without his
+       token; with it, one private read of the list and one cached search. */
+    (() => {
+      const T = window.Trials;
+      const el = document.getElementById("trial-alert");
+      if (!T || !el || !T.signedIn()) return;
+      T.checkWatch().then((r) => {
+        if (!r || !r.alerts.length) return;
+        const a = r.alerts;
+        const span = (cls, text) => { const s = document.createElement("span"); s.className = cls; s.textContent = text; return s; };
+        const title = document.createElement("strong");
+        title.className = "latest-title";
+        /* Registry titles run to thirty words; the alert says which study and
+           what moved, and the Studies page has the rest. */
+        const clip = (s, n) => (s.length > n ? s.slice(0, n).replace(/\s+\S*$/, "") + "…" : s);
+        title.textContent = a.length === 1 ? clip(a[0].title.replace(/:.*$/, "") || a[0].title, 64) : `${a.length} tracked studies changed`;
+        const desc = a.slice(0, 3).map((x) => `${x.id} — ${x.changes.map((c) => c.text).join(", ")}`).join(" · ");
+        el.replaceChildren(
+          span("latest-kicker", "TRIAL ALERT // " + (a.some((x) => x.changes.some((c) => c.kind === "results")) ? "results posted" : "status changed")),
+          title,
+          span("latest-description", desc + (a.length > 3 ? ` · and ${a.length - 3} more` : "")),
+          span("latest-meta", "open →"),
+        );
+        el.setAttribute("aria-label", `Trial alert: ${title.textContent}`);
+        el.hidden = false;
+      }).catch(() => {});
+    })();
+  </script>
   <script>
     // ─── boot sequence ───────────────────────────────────
     const BOOT_LINES = [
@@ -531,6 +570,11 @@ type Sydney's cat's name for a surprise!</div>
         command: "dsm5", aliases: ["dsm-5", "autism", "criteria"], room: "psyche",
         title: "DSM-5 Reflection", description: "guided autism-criteria reflection",
         href: "projects/autism-reflection.html",
+      },
+      {
+        command: "studies", aliases: ["trials", "clinical-trials", "trial", "registry", "ctgov"], room: "psyche",
+        title: "Studies", description: "search every registered clinical trial",
+        href: "projects/psyche/studies.html",
       },
       {
         command: "spacetime", aliases: ["relativity"], room: "exploration",

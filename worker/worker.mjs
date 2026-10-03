@@ -683,6 +683,64 @@ export class TrainingLog {
       return json({ error: 'nope' }, 401, origin);
     }
 
+    /* ---------- /trials/watch ----------
+       The studies Ric is tracking from the Psyche room's Studies page, each
+       with a snapshot of how it looked the last time he acknowledged it. The
+       page and the front door compare that snapshot against ClinicalTrials.gov
+       and raise an alert when a status changes or results are posted.
+
+       PRIVATE IN BOTH DIRECTIONS, like /garmin and unlike /todo. The studies
+       are public; which ones one person is watching is a list of health
+       interests, and nobody asked for that to be published. So a read needs
+       the token as much as a write does.
+
+       POST /trials/watch/NCT01234567  { title, seen }   track, or re-acknowledge
+       POST /trials/watch/NCT01234567  { remove: true }  stop tracking */
+    if (parts[0] === 'trials' && parts[1] === 'watch') {
+      if (!authed()) return json({ error: 'nope' }, 401, origin);
+      const priv = { 'cache-control': 'private, no-store' };
+
+      if (request.method === 'GET') {
+        if (parts[2]) return json({ error: 'not found' }, 404, origin);
+        const all = await this.state.storage.list({ prefix: 'ct:' });
+        const items = {};
+        for (const [k, v] of all) items[k.slice(3)] = v;
+        return json({ items }, 200, origin, priv);
+      }
+
+      if (request.method === 'POST') {
+        const id = String(parts[2] || '').toUpperCase();
+        if (!NCT.test(id) || parts[3]) return json({ error: 'POST needs an NCT number: /trials/watch/NCT01234567' }, 400, origin);
+        let body;
+        try { body = await request.json(); } catch { return json({ error: 'body must be JSON' }, 400, origin); }
+        if (!body || typeof body !== 'object') return json({ error: 'body must be JSON' }, 400, origin);
+
+        if (body.remove === true) {
+          await this.state.storage.delete('ct:' + id);
+          return json({ ok: true, removed: id }, 200, origin);
+        }
+
+        const existing = await this.state.storage.get('ct:' + id);
+        if (!existing) {
+          const count = (await this.state.storage.list({ prefix: 'ct:' })).size;
+          if (count >= 200) return json({ error: 'two hundred studies is the limit — untrack one first' }, 400, origin);
+        }
+        const now = new Date().toISOString();
+        const entry = {
+          id,
+          title: String(body.title || (existing && existing.title) || '').trim().slice(0, 300),
+          added: (existing && existing.added) || now,
+          seen: body.seen !== undefined ? cleanSnapshot(body.seen) : ((existing && existing.seen) || null),
+          seenAt: body.seen !== undefined ? now : ((existing && existing.seenAt) || null),
+          updated: now
+        };
+        await this.state.storage.put('ct:' + id, entry);
+        return json({ ok: true, item: entry }, 200, origin);
+      }
+
+      return json({ error: 'method not allowed' }, 405, origin);
+    }
+
     /* ---------- /board ----------
        A board session ticking off the climbing session planned for its date.
 
@@ -1298,10 +1356,131 @@ function mediaRecord(obj) {
   };
 }
 
+/* ── /trials — ClinicalTrials.gov, passed through ──
+   The Studies page in the Psyche room searches the ClinicalTrials.gov API v2.
+   That API is public and keyless, and the page calls it directly if this route
+   is down — so this is a convenience, not a gate. It exists for two reasons:
+   the API has been known to refuse requests it decides look automated, and a
+   search repeated within a few minutes (the back button, a second phone, the
+   front door checking the watchlist) should not go to the NLM twice.
+
+   Only the parameters the page actually sends are passed on, each capped in
+   length. Anything else on the query string is dropped rather than forwarded,
+   so this is not an open proxy onto the rest of clinicaltrials.gov. */
+const CTGOV = 'https://clinicaltrials.gov/api/v2';
+const NCT = /^NCT\d{8}$/;
+const TRIAL_PARAMS = ['query.term', 'query.cond', 'query.intr', 'query.titles', 'query.spons',
+  'query.locn', 'filter.overallStatus', 'filter.ids', 'filter.advanced', 'aggFilters', 'sort',
+  'pageSize', 'pageToken', 'countTotal', 'fields'];
+/* What "how it looked last time" may hold. Copied field by field, like every
+   other allowlist on this Worker: a status, whether results are up, and the
+   dates the page compares. Nothing free-form. */
+const TRIAL_DATE = /^\d{4}-\d{2}(-\d{2})?$/;
+function cleanSnapshot(s) {
+  if (!s || typeof s !== 'object') return null;
+  const date = v => (typeof v === 'string' && TRIAL_DATE.test(v) ? v : null);
+  return {
+    status: typeof s.status === 'string' && /^[A-Z_]{1,40}$/.test(s.status) ? s.status : null,
+    hasResults: s.hasResults === true,
+    resultsFirst: date(s.resultsFirst),
+    primaryCompletion: date(s.primaryCompletion),
+    lastUpdate: date(s.lastUpdate)
+  };
+}
+const TRIAL_TTL_S = 300;                      // "a few minutes"
+const TRIAL_MEMO_MAX = 200;
+/* Per-isolate memory in front of the Cache API: free, and the only cache the
+   tests and dev.mjs have. caches.default sits behind it in production, which is
+   what carries a hit across isolates in the same colo. */
+const trialMemo = new Map();
+
+function trialUpstream(parts, params) {
+  if (parts[1] === 'study') {
+    const id = String(parts[2] || '').toUpperCase();
+    if (!NCT.test(id) || parts[3]) return null;
+    const out = new URLSearchParams();
+    const f = params.get('fields');
+    if (f) out.set('fields', f.slice(0, 2000));
+    const qs = out.toString();
+    return `${CTGOV}/studies/${id}${qs ? '?' + qs : ''}`;
+  }
+  if (parts[1] === 'search' && !parts[2]) {
+    const out = new URLSearchParams();
+    for (const k of TRIAL_PARAMS) {
+      const v = params.get(k);
+      if (v == null || v === '') continue;
+      out.set(k, v.slice(0, k === 'filter.ids' ? 2000 : 1000));
+    }
+    const size = Math.floor(Number(out.get('pageSize')) || 20);
+    out.set('pageSize', String(Math.min(Math.max(size, 1), 100)));
+    /* Sorted so the same search spelled in a different order is one cache entry. */
+    out.sort();
+    return `${CTGOV}/studies?${out}`;
+  }
+  return null;
+}
+
+async function trialsProxy(request, env, ctx, parts, url) {
+  const origin = request.headers.get('origin');
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(origin) });
+  if (request.method !== 'GET') return json({ error: 'method not allowed' }, 405, origin);
+  const upstream = trialUpstream(parts, url.searchParams);
+  if (!upstream) return json({ error: 'not found' }, 404, origin);
+
+  const reply = (body, status, hit) => new Response(body, {
+    status,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': status === 200 ? `public, max-age=${TRIAL_TTL_S}` : 'no-store',
+      'x-trials-cache': hit,
+      ...cors(origin)
+    }
+  });
+
+  const memo = trialMemo.get(upstream);
+  if (memo && memo.until > Date.now()) return reply(memo.body, 200, 'hit');
+  if (memo) trialMemo.delete(upstream);
+
+  const edge = typeof caches !== 'undefined' && caches.default ? caches.default : null;
+  const key = new Request(upstream);
+  if (edge) {
+    const c = await edge.match(key).catch(() => null);
+    if (c) return reply(await c.text(), 200, 'hit');
+  }
+
+  const get = env.FETCH || ((...a) => fetch(...a));
+  let r;
+  try {
+    r = await get(upstream, {
+      headers: { accept: 'application/json', 'user-agent': 'ricmassey.com studies search (+https://ricmassey.com)' },
+      ...(typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(12000) } : {})
+    });
+  } catch (e) {
+    return json({ error: 'could not reach ClinicalTrials.gov' }, 502, origin);
+  }
+  const body = await r.text();
+  if (!r.ok) {
+    /* Passed on as it came, so a bad filter reads as the API's own words on
+       the page rather than as a generic failure here. Never cached. */
+    const status = r.status === 404 ? 404 : r.status >= 500 ? 502 : r.status;
+    return reply(body.slice(0, 4000) || JSON.stringify({ error: 'upstream ' + r.status }), status, 'miss');
+  }
+
+  if (trialMemo.size >= TRIAL_MEMO_MAX) trialMemo.delete(trialMemo.keys().next().value);
+  trialMemo.set(upstream, { body, until: Date.now() + TRIAL_TTL_S * 1000 });
+  if (edge) {
+    const put = edge.put(key, new Response(body, {
+      headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${TRIAL_TTL_S}` }
+    })).catch(() => {});
+    if (ctx && ctx.waitUntil) ctx.waitUntil(put);
+  }
+  return reply(body, 200, 'miss');
+}
+
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials']);
 
 export default {
   async fetch(request, env, ctx) {
@@ -1317,6 +1496,11 @@ export default {
         status: 404, headers: { 'content-type': 'application/json; charset=utf-8' }
       });
     }
+
+    /* The search and study reads are handled out here, in front of the
+       Durable Object: they hold nothing of Ric's and need no token. The
+       watchlist (/trials/watch) is his, and falls through to the object. */
+    if (parts[0] === 'trials' && parts[1] !== 'watch') return trialsProxy(request, env, ctx, parts, url);
 
     /* ── the Strava callback ──
        Two different requests arrive on this one URL, and they are told apart by

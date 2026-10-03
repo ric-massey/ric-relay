@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Studies — Psyche</title>
+  <meta name="description" content="Search every registered clinical trial on ClinicalTrials.gov — by drug, condition, phase, status and country — from the Psyche room of Ric's Terminal.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ric's Terminal">
+  <meta property="og:title" content="Studies — Psyche">
+  <meta property="og:description" content="Search the clinical-trial registry: what is being tested, where, and whether the results are out.">
+  <meta property="og:url" content="https://ricmassey.com/projects/psyche/studies.html">
+  <meta property="og:image" content="https://ricmassey.com/assets/og-terminal.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://ricmassey.com/projects/psyche/studies.html">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%2360436f'/><text y='.85em' font-size='66' x='17'>🧪</text></svg>">
+  <style>
+    /* The Psyche room's case file, turned into a registry. Same paper, same
+       violet, same Georgia-and-monospace pairing as psyche.html — this is a
+       page inside that room, not a room of its own. */
+    :root{
+      --desk:#17131a;--paper:#eee8dc;--paper-deep:#ded3c1;--card:#fffdf7;--ink:#231d29;
+      --violet:#60436f;--violet-dark:#382640;--red:#a6404d;--red-text:#8f2f3b;--blue:#315a70;
+      --pencil:#625a53;--line:rgba(65,49,70,.22);--white:#fffdf7;
+      --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      /* Status badges. Every pair is dark text on its own tint and clears
+         4.5:1 — the colour helps, the word carries it. */
+      --go-fg:#1d5f34;--go-bg:#dcefe1;
+      --soon-fg:#21507a;--soon-bg:#dde9f4;
+      --active-fg:#563b66;--active-bg:#ebe2f0;
+      --done-fg:#33303a;--done-bg:#e4ded4;
+      --stop-fg:#8a2c37;--stop-bg:#f5dfe1;
+      --muted-fg:#57514f;--muted-bg:#ebe7e0;
+      --results-fg:#6d4a07;--results-bg:#f6e7c4;
+    }
+    *{box-sizing:border-box}
+    html{background:var(--desk)}
+    html.sheet-open{overflow:hidden}
+    body{margin:0;color:var(--ink);font:16px/1.5 Georgia,"Times New Roman",serif;background:
+      radial-gradient(circle at 13% 4%,rgba(96,67,111,.22),transparent 24rem),var(--desk);min-height:100vh}
+    a{color:inherit}
+    button,input,select{font:inherit;color:inherit}
+    .sheet{width:100%;max-width:1180px;margin:0 auto;background:
+      repeating-linear-gradient(0deg,transparent 0,transparent 31px,rgba(49,90,112,.07) 31px,rgba(49,90,112,.07) 32px),var(--paper);
+      min-height:100vh;padding-bottom:84px}
+    .top{padding:14px 16px 0;border-bottom:1px solid var(--line);background:rgba(238,232,220,.95)}
+    .crumbs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:700 11px/1.3 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--pencil);padding-bottom:12px}
+    .crumbs a{color:var(--violet-dark);text-decoration:none}
+    .crumbs a:hover{text-decoration:underline}
+    main{padding:22px 16px 0}
+    .case-no{color:var(--red-text);font:700 11px/1.2 var(--mono);letter-spacing:.16em;text-transform:uppercase}
+    h1{margin:8px 0 6px;font-size:clamp(46px,12vw,92px);line-height:.85;letter-spacing:-.06em;font-weight:400;text-transform:uppercase}
+    .lede{margin:12px 0 0;max-width:62ch;font-size:clamp(16px,2.4vw,19px)}
+
+    /* ── the watch card ── */
+    .watch{margin:22px 0 0;padding:14px 14px 10px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--violet);box-shadow:4px 5px 0 rgba(56,38,64,.08)}
+    .watch-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+    .watch-head h2{margin:0;font:700 12px/1.3 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--violet-dark)}
+    .watch-head .count{font:700 11px/1.3 var(--mono);color:var(--pencil);letter-spacing:.06em}
+    .watch-list{list-style:none;margin:10px 0 0;padding:0}
+    .watch-list li{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 0;border-top:1px solid var(--line)}
+    .watch-list li.changed{background:linear-gradient(90deg,rgba(246,231,196,.55),transparent);margin:0 -14px;padding-left:14px;padding-right:14px}
+    .watch-title{appearance:none;background:none;border:0;padding:0;text-align:left;cursor:pointer;font-size:15px;line-height:1.3;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+    .watch-title:hover{text-decoration-color:var(--violet)}
+    .watch-meta{grid-column:1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font:700 11px/1.3 var(--mono);color:var(--pencil)}
+    .watch-change{grid-column:1/-1;font:700 11px/1.4 var(--mono);color:var(--results-fg);letter-spacing:.04em}
+    .watch-actions{grid-column:2;grid-row:1/3;display:flex;align-items:start}
+    .watch-empty{margin:10px 0 4px;color:var(--pencil);font-style:italic;font-size:15px}
+    .watch-foot{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+
+    /* ── the search ── */
+    form.search{margin:22px 0 0;padding:10px 0 8px;background:rgba(238,232,220,.97);border-bottom:1px solid var(--line)}
+    .box{display:flex;align-items:stretch;background:var(--card);border:2px solid var(--ink);box-shadow:4px 4px 0 var(--violet-dark)}
+    .box:focus-within{box-shadow:4px 4px 0 var(--violet)}
+    .scope{flex:0 0 auto;max-width:34%;border:0;border-right:1px solid var(--line);background:var(--paper-deep);padding:0 8px;font:700 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--violet-dark);border-radius:0;min-height:48px}
+    .box input{flex:1;min-width:0;border:0;background:none;padding:12px;font-size:17px;outline:none;min-height:48px}
+    .box input::placeholder{color:#7a716a}
+    .box .go{flex:0 0 auto;border:0;background:var(--ink);color:var(--white);padding:0 16px;font:700 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;cursor:pointer;min-height:48px}
+    .box .go:hover{background:var(--violet)}
+    .filters{display:grid;gap:6px;margin-top:10px}
+    .row{display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+    .row::-webkit-scrollbar{display:none}
+    .row-label{flex:0 0 auto;width:52px;font:700 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--pencil)}
+    .chip{flex:0 0 auto;appearance:none;display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);font:700 12px/1 var(--mono);cursor:pointer;white-space:nowrap;color:var(--ink)}
+    .chip:hover{border-color:var(--violet)}
+    .chip[aria-pressed="true"]{background:var(--violet-dark);border-color:var(--violet-dark);color:var(--white)}
+    .chip[aria-pressed="true"]::before{content:"✓";font-size:11px}
+    .chip.results-chip[aria-pressed="true"]{background:var(--results-fg);border-color:var(--results-fg)}
+    select.chip{padding-right:28px;-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+    select.chip.set{background-color:var(--violet-dark);color:var(--white);border-color:var(--violet-dark)}
+    .chip.clear{border-style:dashed;color:var(--red-text)}
+    .chip:focus-visible,.box .go:focus-visible,.scope:focus-visible,.btn:focus-visible,.watch-title:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+    .hints{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center}
+    .hints .row-label{width:auto}
+    .hint{appearance:none;border:0;background:none;padding:6px 4px;font-size:15px;font-style:italic;color:var(--violet-dark);text-decoration:underline;text-decoration-color:rgba(96,67,111,.35);text-underline-offset:3px;cursor:pointer;min-height:32px}
+    .hint:hover{text-decoration-color:var(--violet)}
+
+    /* ── results ── */
+    .resultbar{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin:16px 0 10px;font:700 11px/1.4 var(--mono);letter-spacing:.06em;color:var(--pencil);text-transform:uppercase}
+    .resultbar strong{color:var(--ink);font-size:13px}
+    .results{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+    .results > .state{grid-column:1/-1}
+    .card{position:relative;background:var(--card);border:1px solid var(--line);box-shadow:3px 4px 0 rgba(56,38,64,.08);padding:14px 14px 12px;transition:box-shadow .15s,transform .15s}
+    .card:hover{box-shadow:5px 7px 0 rgba(56,38,64,.13);transform:translateY(-1px)}
+    .card-link{position:absolute;inset:0;z-index:1}
+    .card-link:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+    .tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:3px;font:700 11px/1.1 var(--mono);letter-spacing:.04em;text-transform:uppercase}
+    .badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+    .t-go{color:var(--go-fg);background:var(--go-bg)}
+    .t-soon{color:var(--soon-fg);background:var(--soon-bg)}
+    .t-active{color:var(--active-fg);background:var(--active-bg)}
+    .t-done{color:var(--done-fg);background:var(--done-bg)}
+    .t-stop{color:var(--stop-fg);background:var(--stop-bg)}
+    .t-muted{color:var(--muted-fg);background:var(--muted-bg)}
+    .phase{font:700 11px/1.1 var(--mono);padding:4px 8px;border:1px solid var(--line);border-radius:3px;color:var(--violet-dark)}
+    .resultstag{font:700 11px/1.1 var(--mono);padding:4px 8px;border-radius:3px;color:var(--results-fg);background:var(--results-bg);text-transform:uppercase;letter-spacing:.04em}
+    .tracked-tag{font:700 11px/1.1 var(--mono);color:var(--violet);letter-spacing:.04em}
+    .card h2{margin:10px 0 6px;font-size:19px;line-height:1.25;font-weight:400}
+    mark{background:rgba(246,231,196,.95);color:inherit;padding:0 1px}
+    .ids{font:700 11px/1.4 var(--mono);color:var(--pencil);letter-spacing:.03em}
+    .what{margin:8px 0 0;font-size:15px;color:#3e3742}
+    .facts{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:10px 0 0;font-size:14px}
+    .facts dt{font:700 11px/1.7 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--pencil)}
+    .facts dd{margin:0;min-width:0;overflow-wrap:anywhere}
+    .skeleton .card{min-height:150px;background:linear-gradient(100deg,var(--card) 30%,#f4efe6 50%,var(--card) 70%);background-size:300% 100%;animation:shimmer 1.4s infinite linear}
+    @keyframes shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
+    .state{padding:26px 18px;background:var(--card);border:1px dashed var(--violet);text-align:left}
+    .state h2{margin:0 0 6px;font-size:22px;font-weight:400}
+    .state p{margin:0 0 10px;color:#4b4450}
+    .more{display:block;margin:16px auto 0;min-height:48px;padding:0 22px;border:2px solid var(--ink);background:var(--card);font:700 12px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;cursor:pointer;box-shadow:3px 3px 0 var(--violet-dark)}
+    .more:hover{background:var(--paper-deep)}
+    .more[disabled]{opacity:.6;cursor:progress}
+    .btn{appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 13px;border:1px solid var(--ink);background:var(--card);font:700 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-decoration:none;color:var(--ink)}
+    .btn:hover{background:var(--paper-deep)}
+    .btn.primary{background:var(--ink);color:var(--white)}
+    .btn.primary:hover{background:var(--violet)}
+    .btn.tracking{background:var(--violet-dark);color:var(--white);border-color:var(--violet-dark)}
+    .btn.small{min-height:36px;padding:0 10px}
+
+    /* ── the detail sheet ── */
+    dialog.detail{padding:0;border:0;margin:0;width:100%;max-width:100%;height:100%;max-height:100%;background:var(--paper);color:var(--ink)}
+    dialog.detail::backdrop{background:rgba(23,19,26,.62)}
+    .d-bar{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;background:var(--ink);color:var(--white);font:700 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase}
+    .d-bar button{appearance:none;border:1px solid rgba(255,253,247,.4);background:none;color:var(--white);min-height:40px;padding:0 14px;font:inherit;cursor:pointer}
+    .d-bar button:hover{background:rgba(255,253,247,.12)}
+    .d-body{padding:18px 16px 60px;max-width:760px}
+    .d-body h2{margin:12px 0 4px;font-size:clamp(23px,4.6vw,31px);line-height:1.15;font-weight:400}
+    .d-official{margin:0 0 10px;font-size:14px;color:var(--pencil);font-style:italic}
+    .d-actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+    .d-body section{margin-top:24px}
+    .d-body h3{margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line);font:700 11px/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--red-text)}
+    .d-body p{margin:0 0 10px}
+    .prose{white-space:pre-line}
+    .glance{display:grid;grid-template-columns:minmax(0,9.5em) 1fr;gap:6px 14px;margin:0;font-size:15px}
+    .glance dt{font:700 11px/1.7 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--pencil)}
+    .glance dd{margin:0;min-width:0;overflow-wrap:anywhere}
+    .elig-facts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+    .elig-facts span{font:700 11px/1.1 var(--mono);padding:6px 8px;background:var(--card);border:1px solid var(--line)}
+    .criteria h4{margin:14px 0 6px;font:700 12px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+    .criteria h4.inc{color:var(--go-fg)}
+    .criteria h4.exc{color:var(--stop-fg)}
+    .criteria ul{margin:0;padding-left:20px}
+    .criteria li{margin:0 0 5px}
+    .criteria li.sub{margin-left:18px;list-style:circle}
+    .sites{list-style:none;margin:0;padding:0;font-size:14px}
+    .sites li{padding:7px 0;border-top:1px solid var(--line)}
+    .sites li:first-child{border-top:0}
+    .sites .where{font:700 11px/1.4 var(--mono);color:var(--pencil)}
+    .note{font-size:14px;color:var(--pencil);font-style:italic}
+
+    footer.credit{margin:34px 0 0;padding:16px 0 0;border-top:2px solid var(--ink);font-size:14px;color:#4b4450;display:grid;gap:8px}
+    footer.credit strong{color:var(--ink)}
+    footer.credit .warn{padding:10px 12px;border-left:3px solid var(--red);background:rgba(166,64,77,.06)}
+    .ownerbox{margin-top:10px;font:700 11px/1.4 var(--mono);color:var(--pencil)}
+    .ownerbox summary{cursor:pointer;min-height:32px;display:inline-flex;align-items:center;letter-spacing:.08em;text-transform:uppercase}
+    .ownerform{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+    .ownerform label{width:100%}
+    .ownerform input{min-height:40px;padding:0 10px;border:1px solid var(--line);background:var(--card);font-size:16px}
+    .ownerform button{min-height:40px;padding:0 13px;border:1px solid var(--ink);background:var(--ink);color:var(--white);font:700 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;cursor:pointer}
+    .ownermsg{width:100%;color:var(--red-text)}
+    .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+    .toast{position:fixed;left:50%;bottom:76px;z-index:30;transform:translate(-50%,10px);padding:10px 14px;background:var(--ink);color:var(--white);font:700 11px/1.4 var(--mono);letter-spacing:.06em;opacity:0;pointer-events:none;transition:.2s;max-width:88vw}
+    .toast.on{opacity:1;transform:translate(-50%,0)}
+
+    @media(min-width:700px){
+      .top{padding:18px 34px 0}main{padding:30px 34px 0}
+      /* Sticky only with room to spare: on a phone the box and three chip
+         rows would hold half the screen while the results scroll under it. */
+      form.search{position:sticky;top:0;z-index:5}
+      .card{padding:16px 18px 14px}
+      .card h2{font-size:21px}
+      .scope{max-width:none;padding:0 12px}
+      .row-label{width:60px}
+      .d-body{padding:24px 30px 60px}
+    }
+    @media(min-width:980px){
+      .results{grid-template-columns:1fr 1fr}
+      .sheet{margin-top:26px;min-height:calc(100vh - 26px);border-radius:10px 10px 0 0}
+      dialog.detail{margin:0 0 0 auto;width:min(780px,92vw);box-shadow:-20px 0 60px rgba(0,0,0,.35)}
+    }
+    @media(prefers-reduced-motion:reduce){
+      .card,.toast{transition:none}.card:hover{transform:none}
+      .skeleton .card{animation:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <header class="top">
+      <div class="crumbs">
+        <a href="../../index.html">Ric's Terminal</a><span aria-hidden="true">/</span>
+        <a href="../../psyche.html">Psyche</a><span aria-hidden="true">/</span>
+        <span>Studies</span>
+      </div>
+    </header>
+
+    <main>
+      <div class="case-no">Instrument 03 · The registry</div>
+      <h1>Studies</h1>
+      <p class="lede">Every clinical trial registered with ClinicalTrials.gov — what is being tested, on whom, where, and whether anybody has published what they found.</p>
+
+      <!-- Ric's trial alerts. Drawn only when he is signed in; the list itself
+           lives behind the Worker's password (/trials/watch). -->
+      <section id="watch" class="watch" hidden aria-labelledby="watch-h">
+        <div class="watch-head">
+          <h2 id="watch-h">Trial alerts</h2>
+          <span class="count" id="watch-count"></span>
+        </div>
+        <div id="watch-body"></div>
+      </section>
+
+      <form class="search" id="search" role="search" autocomplete="off">
+        <label class="sr" for="q">Search clinical trials</label>
+        <div class="box">
+          <label class="sr" for="scope">Search in</label>
+          <select class="scope" id="scope"></select>
+          <input id="q" type="search" enterkeyhint="search" spellcheck="false"
+                 placeholder="ketamine, PTSD, NCT04…" aria-describedby="hint-keys">
+          <button class="go" type="submit">Search</button>
+        </div>
+        <span class="sr" id="hint-keys">Press slash to jump here from anywhere on the page.</span>
+        <div class="filters" aria-label="Filters">
+          <div class="row" role="group" aria-label="Status" id="row-status"><span class="row-label" aria-hidden="true">Status</span></div>
+          <div class="row" role="group" aria-label="Phase" id="row-phase"><span class="row-label" aria-hidden="true">Phase</span></div>
+          <div class="row" role="group" aria-label="Where and order" id="row-more">
+            <span class="row-label" aria-hidden="true">Where</span>
+            <label class="sr" for="country">Country</label>
+            <select class="chip" id="country"><option value="">Any country</option></select>
+            <label class="sr" for="sort">Sort by</label>
+            <select class="chip" id="sort"></select>
+            <button class="chip clear" type="button" id="clear" hidden>Clear filters</button>
+          </div>
+        </div>
+      </form>
+
+      <div class="resultbar" aria-live="polite"><span id="count"></span><span id="via"></span></div>
+      <ol class="results" id="results"></ol>
+      <button class="more" id="more" type="button" hidden>Load more</button>
+
+      <footer class="credit">
+        <p>Study records from <a href="https://clinicaltrials.gov/">ClinicalTrials.gov</a>, the registry run by the U.S. National Library of Medicine, through its public API (v2). <span id="retrieved">Retrieved live each time you search.</span> Records are written by each study's sponsor and may lag what is actually happening at a site.</p>
+        <p class="warn"><strong>Not medical advice.</strong> This page finds and summarises public study records. It cannot tell you whether a trial is right for you, safe for you, or still open to you — talk to a doctor and to the study's own contacts before acting on anything here.</p>
+        <details class="ownerbox" id="ownerbox"><summary>Ric's sign-in</summary><div id="owner-slot"></div></details>
+      </footer>
+    </main>
+  </div>
+
+  <dialog class="detail" id="detail" aria-labelledby="d-title">
+    <div class="d-bar"><span id="d-id">Study</span><button type="button" id="d-close">Close</button></div>
+    <div class="d-body" id="d-body"></div>
+  </dialog>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="../../assets/owner.js"></script>
+  <script src="trials.js"></script>
+  <script>
+  (() => {
+    const T = window.Trials;
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const store = {
+      get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+      set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+    };
+
+    /* Where somebody might start, given what the Psyche room is turning into. */
+    const STARTERS = ['psilocybin', 'ketamine depression', 'MDMA PTSD', 'lithium bipolar', 'ADHD stimulant', 'autism', 'schizophrenia', 'esketamine'];
+    const COUNTRIES = ['United States', 'Canada', 'United Kingdom', 'Australia', 'Germany', 'France', 'Netherlands',
+      'Spain', 'Italy', 'Switzerland', 'Sweden', 'Denmark', 'Norway', 'Finland', 'Belgium', 'Austria', 'Ireland',
+      'Poland', 'Israel', 'Japan', 'China', 'Korea, Republic of', 'Taiwan', 'India', 'Brazil', 'Mexico',
+      'Argentina', 'South Africa', 'New Zealand', 'Egypt', 'Turkey (Türkiye)'];
+
+    /* ── state, and the address bar that carries it ──
+       The URL is the state: a search can be bookmarked, sent to somebody, and
+       the back button undoes the last thing changed. */
+    const blank = () => ({ q: '', scope: 'term', status: [], phase: [], results: false, country: '', sort: 'relevance' });
+    let state = blank();
+
+    function readURL() {
+      const u = new URL(location.href);
+      const list = k => (u.searchParams.get(k) || '').split(',').filter(Boolean);
+      return {
+        q: u.searchParams.get('q') || '',
+        scope: T.SCOPES[u.searchParams.get('in')] ? u.searchParams.get('in') : 'term',
+        status: list('status').filter(k => T.STATUS_CHIPS.some(c => c.key === k)),
+        phase: list('phase').filter(k => T.PHASE_CHIPS.some(c => c.key === k)),
+        results: u.searchParams.get('results') === '1',
+        country: u.searchParams.get('country') || '',
+        sort: T.SORTS[u.searchParams.get('sort')] ? u.searchParams.get('sort') : 'relevance'
+      };
+    }
+    function writeURL(push) {
+      const p = new URLSearchParams();
+      if (state.q) p.set('q', state.q);
+      if (state.scope !== 'term') p.set('in', state.scope);
+      if (state.status.length) p.set('status', state.status.join(','));
+      if (state.phase.length) p.set('phase', state.phase.join(','));
+      if (state.results) p.set('results', '1');
+      if (state.country) p.set('country', state.country);
+      if (state.sort !== 'relevance') p.set('sort', state.sort);
+      const url = location.pathname + (String(p) ? '?' + p : '') + location.hash;
+      if (url === location.pathname + location.search + location.hash) return;
+      history[push ? 'pushState' : 'replaceState'](null, '', url);
+    }
+    const hasFilters = () => state.status.length || state.phase.length || state.results || state.country;
+    const isActive = () => !!(state.q.trim() || hasFilters());
+
+    /* ── the controls ── */
+    const q = $('q');
+    for (const [k, v] of Object.entries(T.SCOPES)) $('scope').add(new Option(v.label, k));
+    for (const [k, v] of Object.entries(T.SORTS)) $('sort').add(new Option(v.label, k));
+    for (const c of COUNTRIES) $('country').add(new Option(c, c));
+
+    const chip = (label, onClick, cls = '') => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip ' + cls; b.textContent = label;
+      b.setAttribute('aria-pressed', 'false');
+      b.addEventListener('click', onClick);
+      return b;
+    };
+    const statusChips = T.STATUS_CHIPS.map(c => {
+      const b = chip(c.label, () => toggle('status', c.key)); b.dataset.key = c.key; $('row-status').appendChild(b); return b;
+    });
+    const resultsChip = chip('Has results', () => { state.results = !state.results; changed(); }, 'results-chip');
+    $('row-status').appendChild(resultsChip);
+    const phaseChips = T.PHASE_CHIPS.map(c => {
+      const b = chip(c.label, () => toggle('phase', c.key)); b.dataset.key = c.key; $('row-phase').appendChild(b); return b;
+    });
+
+    function toggle(group, key) {
+      const set = new Set(state[group]);
+      set.has(key) ? set.delete(key) : set.add(key);
+      state[group] = [...set];
+      changed();
+    }
+
+    function paintControls() {
+      if (document.activeElement !== q) q.value = state.q;
+      $('scope').value = state.scope;
+      $('sort').value = state.sort;
+      $('country').value = state.country;
+      $('country').classList.toggle('set', !!state.country);
+      $('sort').classList.toggle('set', state.sort !== 'relevance');
+      for (const b of statusChips) b.setAttribute('aria-pressed', String(state.status.includes(b.dataset.key)));
+      for (const b of phaseChips) b.setAttribute('aria-pressed', String(state.phase.includes(b.dataset.key)));
+      resultsChip.setAttribute('aria-pressed', String(state.results));
+      $('clear').hidden = !hasFilters();
+    }
+
+    /* A filter is a deliberate act and searches at once, as its own history
+       step. Typing waits for a pause and replaces the step it is in. */
+    function changed() { paintControls(); writeURL(true); run(); }
+    let typing;
+    q.addEventListener('input', () => {
+      clearTimeout(typing);
+      typing = setTimeout(() => {
+        const v = q.value.trim();
+        if (v === state.q) return;
+        if (T.asNct(v)) return;                 // a number opens on Enter, not mid-typing
+        state.q = v; writeURL(false); run();
+      }, 380);
+    });
+    $('search').addEventListener('submit', e => {
+      e.preventDefault();
+      clearTimeout(typing);
+      const v = q.value.trim();
+      const nct = T.asNct(v);
+      if (nct) { openStudy(nct, true); return; }
+      state.q = v; remember(v); writeURL(true); run();
+      if (matchMedia('(pointer: coarse)').matches) q.blur();   // put the keyboard away so the results show
+    });
+    $('scope').addEventListener('change', () => { state.scope = $('scope').value; if (state.q) changed(); else paintControls(); });
+    $('sort').addEventListener('change', () => { state.sort = $('sort').value; changed(); });
+    $('country').addEventListener('change', () => { state.country = $('country').value; changed(); });
+    $('clear').addEventListener('click', () => { Object.assign(state, { status: [], phase: [], results: false, country: '' }); changed(); });
+
+    /* "/" from anywhere jumps to the box, the way search pages people already
+       know behave. */
+    document.addEventListener('keydown', e => {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.target.matches('input, textarea, select, [contenteditable="true"]') || $('detail').open) return;
+      e.preventDefault(); q.focus(); q.select();
+    });
+
+    /* ── recent searches, this browser only ── */
+    function remember(v) {
+      if (!v || v.length < 2) return;
+      const list = store.get('studiesRecent', []).filter(x => x.toLowerCase() !== v.toLowerCase());
+      store.set('studiesRecent', [v, ...list].slice(0, 6));
+    }
+
+    /* ── the search itself ── */
+    let ctrl = null, seq = 0, next = null, shown = 0, total = null;
+    const results = $('results');
+
+    function terms() {
+      return state.q.replace(/["()]/g, ' ').split(/\s+/)
+        .filter(w => w.length >= 3 && !/^(and|or|not)$/i.test(w))
+        .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    }
+    function highlight(text, re) {
+      if (!re) return esc(text);
+      return String(text).split(re).map((part, i) => (i % 2 ? '<mark>' + esc(part) + '</mark>' : esc(part))).join('');
+    }
+
+    function skeleton(n) {
+      results.classList.add('skeleton');
+      results.innerHTML = Array.from({ length: n }, () => '<li><div class="card" aria-hidden="true"></div></li>').join('');
+    }
+
+    function startState() {
+      results.classList.remove('skeleton');
+      const recent = store.get('studiesRecent', []);
+      const hints = (label, words) => !words.length ? '' :
+        `<div class="hints"><span class="row-label">${label}</span>${words.map(w => `<button class="hint" type="button" data-q="${esc(w)}">${esc(w)}</button>`).join('')}</div>`;
+      results.innerHTML = `<li class="state"><h2>Start anywhere.</h2>
+        <p>Type a drug, a condition, a sponsor or a trial's NCT number. Narrow it with the chips — recruiting near you, phase 3 only, finished with results posted.</p>
+        ${hints('Recent', recent)}${hints('Try', STARTERS)}</li>`;
+      $('count').textContent = ''; $('via').textContent = '';
+      $('more').hidden = true;
+    }
+    results.addEventListener('click', e => {
+      const h = e.target.closest('.hint');
+      if (!h) return;
+      state.q = h.dataset.q; q.value = state.q; remember(state.q); changed();
+    });
+
+    async function run(append = false) {
+      if (!isActive()) { if (ctrl) ctrl.abort(); startState(); return; }
+      if (ctrl) ctrl.abort();
+      ctrl = new AbortController();
+      const mine = ++seq;
+      if (!append) { next = null; shown = 0; total = null; skeleton(4); $('more').hidden = true; }
+      else { $('more').disabled = true; $('more').textContent = 'Loading…'; }
+      try {
+        const page = await T.search(state, { pageToken: append ? next : null, pageSize: 20, signal: ctrl.signal });
+        if (mine !== seq) return;
+        if (!append) { results.classList.remove('skeleton'); results.innerHTML = ''; total = page.total; }
+        next = page.next;
+        draw(page.studies);
+        stamp(page.via);
+      } catch (e) {
+        if (e.name === 'AbortError' || mine !== seq) return;
+        results.classList.remove('skeleton');
+        const msg = e.status === 400
+          ? 'ClinicalTrials.gov could not read that search: ' + e.message
+          : e.message || 'Something went wrong.';
+        if (append) toast(msg);
+        else results.innerHTML = `<li class="state" role="alert"><h2>No answer from the registry.</h2><p>${esc(msg)}</p><button class="btn" type="button" id="retry">Try again</button></li>`;
+        const retry = $('retry'); if (retry) retry.addEventListener('click', () => run());
+      } finally {
+        if (mine === seq) { $('more').disabled = false; $('more').textContent = 'Load more'; }
+      }
+    }
+
+    function draw(studies) {
+      if (!shown && !studies.length) {
+        results.innerHTML = `<li class="state"><h2>Nothing matches that.</h2>
+          <p>${hasFilters() ? 'Try loosening a filter — ' : ''}check the spelling, try a broader word (“depression” rather than a subtype), or search the drug's generic name.</p>
+          ${hasFilters() ? '<button class="btn" type="button" id="loosen">Clear filters</button>' : ''}</li>`;
+        const l = $('loosen'); if (l) l.addEventListener('click', () => $('clear').click());
+        $('count').textContent = '0 studies';
+        $('more').hidden = true;
+        return;
+      }
+      const re = terms().length ? new RegExp('(' + terms().join('|') + ')', 'gi') : null;
+      const frag = document.createDocumentFragment();
+      for (const s of studies) {
+        const li = document.createElement('li');
+        li.innerHTML = cardHTML(s, re);
+        frag.appendChild(li);
+      }
+      results.appendChild(frag);
+      shown += studies.length;
+      const n = total != null ? total : shown;
+      $('count').innerHTML = `<strong>${n.toLocaleString()}</strong> stud${n === 1 ? 'y' : 'ies'}` +
+        (total != null && shown < total ? ` · showing ${shown.toLocaleString()}` : '');
+      $('more').hidden = !next;
+    }
+
+    const badge = code => { const s = T.statusOf(code); return `<span class="badge t-${s.tone}">${esc(s.label)}</span>`; };
+
+    function cardHTML(s, re) {
+      const phase = T.phaseText(s.phases);
+      const treat = s.interventions.slice(0, 3).map(i => i.name).filter(Boolean);
+      const what = [s.conditions.slice(0, 3).join(', '), treat.length ? treat.join(', ') : ''].filter(Boolean).join(' — ');
+      const place = T.placeSummary(s.locations, state.country);
+      const dates = [s.start && 'Start ' + T.fmtDate(s.start, s.startType),
+                     (s.completion || s.primaryCompletion) && 'Ends ' + T.fmtDate(s.completion || s.primaryCompletion, s.completion ? s.completionType : s.primaryCompletionType)]
+        .filter(Boolean).join(' → ');
+      return `<article class="card">
+        <a class="card-link" href="#${esc(s.id)}" data-open="${esc(s.id)}" aria-label="${esc(s.title)} — open details"></a>
+        <div class="tags">${badge(s.status)}${phase ? `<span class="phase">${esc(phase)}</span>` : ''}
+          ${s.hasResults ? '<span class="resultstag">Results posted</span>' : ''}
+          ${watch.items && watch.items[s.id] ? '<span class="tracked-tag">● Tracking</span>' : ''}</div>
+        <h2>${highlight(s.title, re)}</h2>
+        <div class="ids">${esc(s.id)}${s.acronym ? ' · ' + esc(s.acronym) : ''}${s.sponsor ? ' · ' + esc(s.sponsor) : ''}</div>
+        ${what ? `<p class="what">${highlight(what, re)}</p>` : ''}
+        <dl class="facts">
+          ${place ? `<dt>Sites</dt><dd>${esc(place)}</dd>` : ''}
+          ${dates ? `<dt>Dates</dt><dd>${esc(dates)}</dd>` : ''}
+          ${s.enrollment ? `<dt>People</dt><dd>${s.enrollment.toLocaleString()}${s.enrollmentType === 'ESTIMATED' ? ' (target)' : ''}</dd>` : ''}
+        </dl>
+      </article>`;
+    }
+
+    $('more').addEventListener('click', () => { if (next) run(true); });
+
+    function stamp(via) {
+      const now = new Date();
+      $('retrieved').textContent = 'Retrieved ' + now.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) +
+        ' at ' + now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) + '.';
+      $('via').textContent = via === 'direct' ? 'live from clinicaltrials.gov' : 'via ClinicalTrials.gov';
+    }
+
+    /* Open on a tap, and start fetching on a hover or a touch so the sheet is
+       usually full by the time it slides in. */
+    results.addEventListener('click', e => {
+      const a = e.target.closest('[data-open]');
+      if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
+      e.preventDefault(); openStudy(a.dataset.open, true);
+    });
+    const warm = e => { const a = e.target.closest && e.target.closest('[data-open]'); if (a) T.study(a.dataset.open).catch(() => {}); };
+    results.addEventListener('pointerover', warm);
+    results.addEventListener('touchstart', warm, { passive: true });
+
+    /* ── the detail sheet ── */
+    const dlg = $('detail');
+    let current = null, detailCtrl = null, openedHere = false;
+
+    function openStudy(id, push) {
+      id = String(id).toUpperCase();
+      if (push) openedHere = true;
+      if (push && location.hash !== '#' + id) history.pushState(null, '', location.pathname + location.search + '#' + id);
+      $('d-id').textContent = id;
+      $('d-body').innerHTML = '<p class="note">Fetching the record…</p>';
+      if (!dlg.open) { dlg.showModal(); document.documentElement.classList.add('sheet-open'); }
+      dlg.scrollTop = 0;
+      if (detailCtrl) detailCtrl.abort();
+      detailCtrl = new AbortController();
+      T.study(id, detailCtrl.signal).then(s => {
+        if ($('d-id').textContent !== id) return;
+        current = s;
+        $('d-body').innerHTML = detailHTML(s);
+        stamp();
+        dlg.querySelector('h2').focus({ preventScroll: true });
+      }).catch(e => {
+        if (e.name === 'AbortError') return;
+        $('d-body').innerHTML = e.status === 404
+          ? `<h2 tabindex="-1">No study ${esc(id)}.</h2><p>ClinicalTrials.gov has no record under that number. Check the digits — every NCT number is NCT followed by eight.</p>`
+          : `<h2 tabindex="-1">Could not load ${esc(id)}.</h2><p>${esc(e.message)}</p><p><a href="${esc(T.studyUrl(id))}" target="_blank" rel="noopener">Try it on ClinicalTrials.gov ↗</a></p>`;
+      });
+    }
+
+    function closeStudy(fromHistory) {
+      if (detailCtrl) detailCtrl.abort();
+      if (dlg.open) dlg.close();
+      document.documentElement.classList.remove('sheet-open');
+      current = null;
+      /* Opened from this page, it pushed a history step: go back, so Back does
+         not reopen it. Arrived on a link with the hash: just drop the hash. */
+      if (!fromHistory && /^#NCT\d{8}$/i.test(location.hash)) {
+        if (openedHere) history.back();
+        else history.replaceState(null, '', location.pathname + location.search);
+      }
+      openedHere = false;
+    }
+    $('d-close').addEventListener('click', () => closeStudy(false));
+    dlg.addEventListener('cancel', e => { e.preventDefault(); closeStudy(false); });
+    dlg.addEventListener('click', e => { if (e.target === dlg) closeStudy(false); });
+
+    function renderCriteria(text) {
+      let html = '', open = false;
+      const close = () => { if (open) { html += '</ul>'; open = false; } };
+      for (const raw of String(text).split(/\r?\n/)) {
+        const line = raw.replace(/\s+$/, '');
+        const t = line.trim();
+        if (!t) continue;
+        const bullet = t.match(/^(?:[*\-•]|\d+[.)])\s+(.*)$/);
+        if (bullet) {
+          if (!open) { html += '<ul>'; open = true; }
+          const deep = /^\s{2,}/.test(line);      // the registry nests with two spaces
+          html += `<li${deep ? ' class="sub"' : ''}>${esc(bullet[1])}</li>`;
+        } else if (/:$/.test(t) && t.length < 90) {
+          close();
+          const cls = /^inclusion/i.test(t) ? ' class="inc"' : /^exclusion/i.test(t) ? ' class="exc"' : '';
+          html += `<h4${cls}>${esc(t.replace(/:$/, ''))}</h4>`;
+        } else {
+          close();
+          html += `<p>${esc(t)}</p>`;
+        }
+      }
+      close();
+      return html;
+    }
+
+    function detailHTML(s) {
+      const phase = T.phaseText(s.phases);
+      const tracked = watch.items && watch.items[s.id];
+      const sex = { ALL: 'All sexes', FEMALE: 'Female only', MALE: 'Male only' }[s.eligibility.sex] || '';
+      const ages = [s.eligibility.minAge && 'from ' + s.eligibility.minAge, s.eligibility.maxAge && 'to ' + s.eligibility.maxAge].filter(Boolean).join(' ');
+      const row = (k, v) => v ? `<dt>${k}</dt><dd>${v}</dd>` : '';
+      const sites = s.locations.slice().sort((a, b) =>
+        (state.country && b.country === state.country) - (state.country && a.country === state.country));
+      const SHOW = 25;
+      const siteLi = l => `<li>${esc(l.facility || 'Site')}<div class="where">${esc([l.city, l.state, l.country].filter(Boolean).join(', '))}${l.status ? ' · ' + esc(T.statusOf(l.status).label) : ''}</div></li>`;
+      return `
+        <div class="tags">${badge(s.status)}${phase ? `<span class="phase">${esc(phase)}</span>` : ''}
+          ${s.hasResults ? '<span class="resultstag">Results posted</span>' : ''}</div>
+        <h2 id="d-title" tabindex="-1">${esc(s.title)}</h2>
+        ${s.officialTitle && s.officialTitle !== s.title ? `<p class="d-official">${esc(s.officialTitle)}</p>` : ''}
+        <div class="ids">${esc(s.id)}${s.acronym ? ' · ' + esc(s.acronym) : ''}</div>
+        <div class="d-actions">
+          <a class="btn primary" href="${esc(s.url)}" target="_blank" rel="noopener">Official record ↗</a>
+          ${s.hasResults ? `<a class="btn" href="${esc(s.url)}?tab=results" target="_blank" rel="noopener">Read the results ↗</a>` : ''}
+          ${T.signedIn() ? `<button class="btn ${tracked ? 'tracking' : ''}" type="button" id="track" aria-pressed="${!!tracked}">${tracked ? '✓ Tracking' : 'Track this study'}</button>` : ''}
+          <button class="btn" type="button" id="share">Copy link</button>
+        </div>
+        ${s.whyStopped ? `<p class="note">Stopped: ${esc(s.whyStopped)}</p>` : ''}
+        ${s.summary ? `<section><h3>Brief summary</h3><p class="prose">${esc(s.summary)}</p></section>` : ''}
+        <section><h3>At a glance</h3><dl class="glance">
+          ${row('Condition', esc(s.conditions.join(', ')))}
+          ${row('Treatment', s.interventions.map(i => esc(i.name) + (i.type ? ` <span class="note">(${esc(i.type.toLowerCase().replace(/_/g, ' '))})</span>` : '')).join('<br>'))}
+          ${row('Sponsor', esc(s.sponsor))}
+          ${row('Study type', esc(s.type.toLowerCase().replace(/_/g, ' ')))}
+          ${row('Participants', s.enrollment ? s.enrollment.toLocaleString() + (s.enrollmentType === 'ESTIMATED' ? ' (target)' : '') : '')}
+          ${row('Started', esc(T.fmtDate(s.start, s.startType)))}
+          ${row('Primary completion', esc(T.fmtDate(s.primaryCompletion, s.primaryCompletionType)))}
+          ${row('Study completion', esc(T.fmtDate(s.completion, s.completionType)))}
+          ${row('Results posted', esc(T.fmtDate(s.resultsFirst)))}
+          ${row('Last updated', esc(T.fmtDate(s.lastUpdate)))}
+        </dl></section>
+        <section><h3>Who can take part</h3>
+          <div class="elig-facts">${sex ? `<span>${sex}</span>` : ''}${ages ? `<span>Ages ${esc(ages)}</span>` : ''}
+            <span>${s.eligibility.healthy ? 'Accepts healthy volunteers' : 'No healthy volunteers'}</span></div>
+          <div class="criteria">${s.eligibility.criteria ? renderCriteria(s.eligibility.criteria) : '<p class="note">The record lists no criteria.</p>'}</div>
+        </section>
+        ${s.primaryOutcomes.length ? `<section><h3>What it measures</h3><ul>${s.primaryOutcomes.map(o =>
+          `<li>${esc(o.measure)}${o.timeFrame ? ` <span class="note">— ${esc(o.timeFrame)}</span>` : ''}</li>`).join('')}</ul></section>` : ''}
+        ${sites.length ? `<section><h3>Where (${sites.length.toLocaleString()} site${sites.length === 1 ? '' : 's'})</h3>
+          <ul class="sites">${sites.slice(0, SHOW).map(siteLi).join('')}</ul>
+          ${sites.length > SHOW ? `<button class="btn small" type="button" id="all-sites" style="margin-top:8px">Show all ${sites.length.toLocaleString()}</button>` : ''}</section>` : ''}
+        <p class="note" style="margin-top:28px">Summarised from the public record. Not medical advice — the official record and the study team are the authority.</p>`;
+    }
+
+    $('d-body').addEventListener('click', async e => {
+      if (e.target.id === 'all-sites' && current) {
+        const list = $('d-body').querySelector('.sites');
+        list.innerHTML = current.locations.map(l => `<li>${esc(l.facility || 'Site')}<div class="where">${esc([l.city, l.state, l.country].filter(Boolean).join(', '))}</div></li>`).join('');
+        e.target.remove();
+      }
+      if (e.target.id === 'share' && current) {
+        const url = location.origin + location.pathname + '#' + current.id;
+        try {
+          if (navigator.share && matchMedia('(pointer: coarse)').matches) await navigator.share({ title: current.title, url });
+          else { await navigator.clipboard.writeText(url); toast('Link copied'); }
+        } catch (err) { /* dismissed */ }
+      }
+      if (e.target.id === 'track' && current) {
+        const btn = e.target; btn.disabled = true;
+        const was = !!(watch.items && watch.items[current.id]);
+        try {
+          if (was) { await T.untrack(current.id); delete watch.items[current.id]; toast('No longer tracking ' + current.id); }
+          else { const r = await T.track(current); watch.items = watch.items || {}; watch.items[current.id] = r.item; watch.now.set(current.id, current); toast('Tracking — you will see an alert when it changes'); }
+          btn.classList.toggle('tracking', !was); btn.textContent = was ? 'Track this study' : '✓ Tracking';
+          btn.setAttribute('aria-pressed', String(!was));
+          paintWatch(); repaintTrackedTags();
+        } catch (err) {
+          toast(err.status === 401 ? 'Signed out — sign in at the foot of the page' : 'Could not save that: ' + err.message);
+        } finally { btn.disabled = false; }
+      }
+    });
+
+    /* ── the watch card ── */
+    const watch = { items: null, now: new Map(), alerts: [] };
+
+    async function loadWatch() {
+      if (!T.signedIn()) { watch.items = null; paintWatch(); return; }
+      $('watch').hidden = false;
+      $('watch-body').innerHTML = '<p class="watch-empty">Checking your studies…</p>';
+      try {
+        const r = await T.checkWatch();
+        Object.assign(watch, r || { items: null, now: new Map(), alerts: [] });
+      } catch (e) {
+        if (e.status === 401) { Owner.signOut(); return; }
+        $('watch-body').innerHTML = `<p class="watch-empty">${esc(e.message)}</p>`;
+        return;
+      }
+      paintWatch(); repaintTrackedTags();
+      /* Arrived from the front door's alert: bring the card into view now that
+         it has something in it. */
+      if (location.hash === '#watch') $('watch').scrollIntoView({ block: 'start' });
+    }
+
+    function paintWatch() {
+      if (!T.signedIn() || !watch.items) { $('watch').hidden = true; return; }
+      $('watch').hidden = false;
+      const ids = Object.keys(watch.items);
+      const changedIds = new Set();
+      const rows = ids.map(id => {
+        const saved = watch.items[id];
+        const now = watch.now.get(id);
+        const c = T.changes(saved.seen, now);
+        if (c.length) changedIds.add(id);
+        const live = now || { status: saved.seen && saved.seen.status, hasResults: saved.seen && saved.seen.hasResults };
+        return { id, saved, now, c, live };
+      }).sort((a, b) => (b.c.length > 0) - (a.c.length > 0) || String(b.saved.added).localeCompare(String(a.saved.added)));
+      $('watch-count').textContent = ids.length
+        ? `${ids.length} tracked${changedIds.size ? ' · ' + changedIds.size + ' changed' : ''}` : '';
+      if (!ids.length) {
+        $('watch-body').innerHTML = '<p class="watch-empty">Nothing tracked yet. Open any study and press “Track this study” — when its status moves or results are posted, it shows up here and on the front page.</p>';
+        return;
+      }
+      $('watch-body').innerHTML = `<ul class="watch-list">${rows.map(r => `
+        <li class="${r.c.length ? 'changed' : ''}">
+          <button class="watch-title" type="button" data-watch-open="${esc(r.id)}">${esc((r.now && r.now.title) || r.saved.title || r.id)}</button>
+          <div class="watch-meta">${r.live.status ? badge(r.live.status) : ''}<span>${esc(r.id)}</span>
+            <span>${r.live.hasResults ? 'results are out' : 'waiting on results'}</span></div>
+          ${r.c.length ? `<div class="watch-change">NEW: ${r.c.map(x => esc(x.text)).join(' · ')}</div>
+            <div class="watch-actions"><button class="btn small" type="button" data-ack="${esc(r.id)}">Got it</button></div>` : ''}
+        </li>`).join('')}</ul>
+        ${changedIds.size > 1 ? '<div class="watch-foot"><button class="btn small" type="button" id="ack-all">Mark all seen</button></div>' : ''}`;
+    }
+
+    function repaintTrackedTags() {
+      if (!isActive()) return;
+      for (const a of results.querySelectorAll('[data-open]')) {
+        const tags = a.parentElement.querySelector('.tags');
+        const has = tags.querySelector('.tracked-tag');
+        const want = !!(watch.items && watch.items[a.dataset.open]);
+        if (want && !has) tags.insertAdjacentHTML('beforeend', '<span class="tracked-tag">● Tracking</span>');
+        if (!want && has) has.remove();
+      }
+    }
+
+    async function ack(ids) {
+      for (const id of ids) {
+        const now = watch.now.get(id);
+        if (!now) continue;
+        try { const r = await T.acknowledge(now); watch.items[id] = r.item; }
+        catch (e) { toast('Could not mark ' + id + ' seen: ' + e.message); }
+      }
+      paintWatch();
+    }
+    $('watch').addEventListener('click', e => {
+      const o = e.target.closest('[data-watch-open]');
+      if (o) { openStudy(o.dataset.watchOpen, true); return; }
+      const a = e.target.closest('[data-ack]');
+      if (a) { a.disabled = true; ack([a.dataset.ack]); return; }
+      if (e.target.id === 'ack-all') {
+        e.target.disabled = true;
+        ack(Object.keys(watch.items).filter(id => T.changes(watch.items[id].seen, watch.now.get(id)).length));
+      }
+    });
+
+    /* ── odds and ends ── */
+    let toastTimer;
+    function toast(msg) {
+      const t = $('toast'); t.textContent = msg; t.classList.add('on');
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 3000);
+    }
+
+    /* ── Ric's sign-in ── the same box as climbing and training, the same
+       password, and the only thing it unlocks here is the watchlist. */
+    Owner.init({ host: T.host(), onChange: () => {
+      if (T.signedIn() && $('ownerbox')) $('ownerbox').remove();
+      loadWatch();
+      if (current) $('d-body').innerHTML = detailHTML(current);
+    } });
+    if (T.signedIn()) $('ownerbox').remove();
+    else Owner.mountBox($('owner-slot'), { title: 'Sign in to track studies' });
+
+    /* ── follow the address bar ── */
+    function fromLocation() {
+      state = readURL();
+      paintControls();
+      run();
+      const m = location.hash.match(/^#(NCT\d{8})$/i);
+      if (m) openStudy(m[1], false);
+      else if (dlg.open) closeStudy(true);
+    }
+    window.addEventListener('popstate', () => {
+      const prev = JSON.stringify(state);
+      const nextState = readURL();
+      if (JSON.stringify(nextState) !== prev) { state = nextState; paintControls(); run(); }
+      const m = location.hash.match(/^#(NCT\d{8})$/i);
+      if (m) openStudy(m[1], false); else if (dlg.open) closeStudy(true);
+    });
+    fromLocation();
+    loadWatch();
+  })();
+  </script>
+  <script src="../relay-return.js" data-home="../../index.html" data-egg="studies" defer></script>
+</body>
+</html>
