@@ -48,6 +48,7 @@ const SUITES = [
   ['the psyche studies client', ['projects/psyche/test/trials.test.mjs', 'projects/psyche/test/watch-policy.test.mjs']],
   ['the garmin puller', ['projects/training/garmin/test.mjs']],
   ["orrin's server", ['projects/orrin/server/test.mjs']],
+  ["orrin's progress notes", ['.github/test/orrin-updates.mjs']],
   /* Quick, and here rather than in the slow lane below because it is what
      parses game.js: the game moved out of index.html on 2026-09-24, so the
      inline-scripts suite above no longer sees it, and a game that does not

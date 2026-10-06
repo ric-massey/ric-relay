@@ -24,7 +24,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | File | Room | What it is |
 |---|---|---|
 | `index.html` | Terminal | Landing terminal — boot sequence + working command line (try `help`) |
-| `orrin.html` | Orrin | Plain-language tour of Orrin plus live public project activity from GitHub |
+| `orrin.html` | Orrin | Plain-language tour of Orrin, progress notes after each run (`orrin-updates.js`), plus live public project activity from GitHub |
 | `psyche.html` | Psyche | Human-systems field notebook — mood, criteria, and evidence |
 | `climbing.html` | Climbing | Mountain-Project-style route ledger — projects, ticks, objectives |
 | `training.html` | Training | Strava-style feed — the generated plan, ticks and notes from a Worker, and runs pushed in by Strava as they finish |

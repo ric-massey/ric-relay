@@ -242,6 +242,19 @@
     .said .line .m { display: block; color: var(--whisper); font-size: 0.69rem; letter-spacing: 0.14em; margin-top: 0.15rem; }
     .said .line + .line { border-top: 1px solid rgba(35, 32, 72, 0.55); }
 
+    /* progress notes — written up by hand after each run or build, not pulled */
+    .note { padding: 0.85rem 0; }
+    .note + .note { border-top: 1px solid rgba(35, 32, 72, 0.55); }
+    .note .meta { display: block; color: var(--whisper); font-size: 0.69rem; letter-spacing: 0.18em; margin-bottom: 0.25rem; }
+    .note .meta .kind { color: var(--dendrite); }
+    .note h3 { font: inherit; font-weight: 700; color: var(--axon); margin: 0 0 0.3rem; }
+    .note p { color: var(--thought); line-height: 1.6; margin: 0; }
+    .note a { color: var(--axon); font-size: 0.8rem; display: inline-block; margin-top: 0.35rem; }
+    .note a:hover { text-shadow: 0 0 10px var(--axon); }
+    .notes-more { margin-top: 0.6rem; padding: 0.4rem 0.9rem; min-height: 44px; font: inherit; font-size: 0.75rem; letter-spacing: 0.18em;
+      color: var(--axon); background: rgba(16, 14, 34, 0.7); border: 1px solid var(--membrane); border-radius: 999px; cursor: pointer; }
+    .notes-more:hover { border-color: var(--axon); box-shadow: 0 0 12px rgba(77, 232, 255, 0.25); }
+
     /* engram + firing rows */
     .row { padding: 0.32rem 0; display: flex; gap: 0.8rem; align-items: baseline; }
     .row .tag { color: var(--dendrite); flex-shrink: 0; font-size: 0.8rem; }
@@ -331,6 +344,16 @@
       </div>
     </div>
 
+    <!-- Written, not pulled: orrin-updates.js is a plain-English log added to
+         after each test run or build (scripts/site_update.py in the Orrin repo).
+         The GitHub regions further down show the raw code changes. -->
+    <div class="region" id="notes-region">
+      <div class="region-head"><h2>PROGRESS NOTES</h2><span>WRITTEN UP AFTER EACH RUN</span></div>
+      <div class="region-body">
+        <div id="notes"><div class="muted">no notes yet.</div></div>
+      </div>
+    </div>
+
     <!-- The only region fed by Orrin's own machine rather than by GitHub. It
          pushes a snapshot out once a minute while a run is up; nothing here
          reaches back toward him, and there is no way to send him anything. When
@@ -390,6 +413,7 @@
   </div>
 
   <script src="effects.js"></script>
+  <script src="orrin-updates.js"></script>
   <script>
     // ═══ synapse field ══════════════════════════════════
     const canvas = document.getElementById("synapses");
@@ -501,6 +525,41 @@
     requestAnimationFrame(frame);
 
     // ═══ live telemetry (GitHub API) ═════════════════════
+    // ═══ progress notes (orrin-updates.js) ═══════════════
+    // textContent only: the notes are prose, never markup.
+    (function notes() {
+      const list = Array.isArray(window.ORRIN_UPDATES) ? window.ORRIN_UPDATES : [];
+      const box = document.getElementById("notes");
+      if (!list.length) return;
+      const SHOWN = 4;
+      const fmt = (d) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      const make = (n) => {
+        const el = document.createElement("article"); el.className = "note";
+        const meta = document.createElement("span"); meta.className = "meta";
+        const kind = document.createElement("span"); kind.className = "kind"; kind.textContent = String(n.kind || "note").toUpperCase();
+        meta.append(kind, ` · ${fmt(n.date)}`);
+        const h = document.createElement("h3"); h.textContent = n.title;
+        const p = document.createElement("p"); p.textContent = n.body;
+        el.append(meta, h, p);
+        if (n.href) {
+          const a = document.createElement("a"); a.href = n.href; a.textContent = "→ the full write-up";
+          el.appendChild(a);
+        }
+        return el;
+      };
+      box.innerHTML = "";
+      list.slice(0, SHOWN).forEach((n) => box.appendChild(make(n)));
+      if (list.length > SHOWN) {
+        const more = document.createElement("button"); more.type = "button"; more.className = "notes-more";
+        more.textContent = `SHOW ${list.length - SHOWN} OLDER`;
+        more.addEventListener("click", () => {
+          list.slice(SHOWN).forEach((n) => box.insertBefore(make(n), more));
+          more.remove();
+        });
+        box.appendChild(more);
+      }
+    })();
+
     const GH_USER = "ric-massey", REPO = "orrin_v3", API = "https://api.github.com";
 
     // Unauthenticated GitHub allows 60 requests an hour PER IP, and this page

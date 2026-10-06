@@ -27,6 +27,7 @@ before a push, `git fetch` and fast-forward first.
 index.html, <room>.html     the terminal and the rooms — one self-contained page each
 effects.js                  sitewide: visual modes, the mobile room menu, Mochi
 latest.js, notes.js         the front door's banner and transmissions (hand-edited)
+orrin-updates.js            the Orrin page's progress notes (written by orrin_v3's scripts/site_update.py, or by hand)
 captures-data.js            the photo dates captures.html draws (made off-repo from the originals)
 systems.html, updates.html  redirects from old URLs — keep them, links out there still use them
 assets/                     sitewide files at the top: owner.js, site-gate.js, training-plan.json
@@ -484,7 +485,13 @@ that goes stale quietest: the Gaming room, the KONDRITE campaign and ATLAS all s
 without an entry and the front door announced older things over them until 2026-09-24.
 If you ship something family would care about, put it at the top of that list the same
 day. `orrin.html` is self-updating — leave its GitHub data logic
-alone unless fixing a bug. `systems.html` and `updates.html` are legacy redirects, not
+alone unless fixing a bug. Its PROGRESS NOTES region is the one written part: `orrin-updates.js`, newest
+first, plain English, appended after each Orrin run or build by
+`scripts/site_update.py --publish` in the orrin_v3 repo. That script pushes only
+its own note (a commit on top of `origin/main` in a throwaway worktree), so it is
+the one thing allowed to publish without waiting for the rest of the checkout.
+`.github/test/orrin-updates.mjs` checks the shape; `href` must stay inside
+`ric-massey/orrin_v3` (hard rule 2). `systems.html` and `updates.html` are legacy redirects, not
 rooms.
 
 **One account for the whole site lives in ATLAS's Supabase project.** Since
