@@ -491,7 +491,13 @@ first, plain English, appended after each Orrin run or build by
 its own note (a commit on top of `origin/main` in a throwaway worktree), so it is
 the one thing allowed to publish without waiting for the rest of the checkout.
 `.github/test/orrin-updates.mjs` checks the shape; `href` must stay inside
-`ric-massey/orrin_v3` (hard rule 2). `systems.html` and `updates.html` are legacy redirects, not
+`ric-massey/orrin_v3` (hard rule 2).
+Its IS ORRIN RUNNING? region reads the `orrin-status` Worker (`projects/orrin/server/`,
+deployed 2026-10-06). The producer that feeds it is `projects/orrin/producer/push_status.py`:
+it runs on the Orrin machine, reads his state files read-only and pushes once a minute
+with the token in `~/.config/orrin-status/token` (never in this repo). It needs a named
+User-Agent (Cloudflare bans `Python-urllib`, error 1010) and a CA bundle (python.org
+builds ship none) — both handled in the script. `systems.html` and `updates.html` are legacy redirects, not
 rooms.
 
 **One account for the whole site lives in ATLAS's Supabase project.** Since
