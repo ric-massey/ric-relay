@@ -11,6 +11,13 @@
 // kind: "run result" | "build" | "design" | "note"
 window.ORRIN_UPDATES = [
   {
+    date: "2026-10-06",
+    kind: "build",
+    title: "The rest of the Run 13 fixes, and a laptop that stays awake",
+    body: "Eight more fixes from the Run 12 write-up. When the Mac sleeps, Orrin now notices and doesn't count that time against its lifespan (Run 12 lost 15 of its 28 hours that way), and the launcher checks it's actually being kept awake. Its notes to Ric now have to say something real, drawn from what it researched. 610 of 617 last time were empty. A self-check that was muting its own research as 'avoidance' was pointed at the right thing. And five junk 'best work' examples that had sat in its quality standard since July, actually its own internal log lines, were removed. Next: a fresh Run 13.",
+    href: "https://github.com/ric-massey/orrin_v3/commit/bf7ffb3",
+  },
+  {
     date: "2026-10-04",
     kind: "build",
     title: "Fixes for the next run: honest answers, deeper research",
