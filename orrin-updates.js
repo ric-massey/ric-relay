@@ -11,6 +11,13 @@
 // kind: "run result" | "build" | "design" | "note"
 window.ORRIN_UPDATES = [
   {
+    date: "2026-10-07",
+    kind: "run result",
+    title: "Run 13: the first time Orrin actually learned something",
+    body: "The thirteenth test ran 29 hours and ended on schedule, with no crashes and the computer awake the whole time. For the first time, his 'I answered a question' counts are real: 26 questions answered with things he didn't already know, and twice he made a guess about his own behavior (his memory use goes up after he reads a book), tested it on data recorded afterwards, and was right. It still didn't pass. His research went quiet for up to four hours at a stretch, and a few old bugs came back. The bigger lesson is about what he thinks about: mostly himself. Three-quarters of his long-term memories are notes about his own activity, his 'world' was just his own folder, and he kept circling the same few topics. Next: give him a real world to wander, and make most of his memories about it.",
+    href: "https://github.com/ric-massey/orrin_v3/blob/main/docs/Behavioral%20Evaluation%20%26%20Runtime%20Diagnostics/demo_runs/2026-10-06-run/DEMO_RUN_2026-10-06.md",
+  },
+  {
     date: "2026-10-06",
     kind: "note",
     title: "Run 13 has started",
