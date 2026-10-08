@@ -11,6 +11,13 @@
 // kind: "run result" | "build" | "design" | "note"
 window.ORRIN_UPDATES = [
   {
+    date: "2026-10-08",
+    kind: "build",
+    title: "Status card now starts with each life",
+    body: "Housekeeping before the Run 14 build. The small read-only program that feeds the 'Is Orrin running?' card on this page used to be started by hand. The launcher now starts it with each life and stops it when the life ends, sending one final update so the card shows the stop right away instead of after three minutes. It only reads Orrin's state files and never writes into them, so it cannot affect a run's results. That closes the post-Run-13 housekeeping list; next is the Run 14 fix list.",
+    href: "https://github.com/ric-massey/orrin_v3/commit/96990f6",
+  },
+  {
     date: "2026-10-07",
     kind: "run result",
     title: "Run 13: the first time Orrin actually learned something",
