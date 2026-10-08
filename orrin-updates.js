@@ -13,6 +13,13 @@ window.ORRIN_UPDATES = [
   {
     date: "2026-10-08",
     kind: "build",
+    title: "Run 14 fixes built: less churn, a fed research lane, memory about the world",
+    body: "The Run 13 life showed a list of problems; all 28 fixes for them are now built and tested against files from that life. The largest: a goal that waits hours for fresh measurements is no longer picked up and abandoned every 15 minutes, which was behind all 18 bookkeeping mismatches and most of the goal log. Goal-making is no longer blocked by a one-cycle rule, and new research topics now come from subjects his own reading defined in passing. His working memory stops holding his own selection logs and alarms, which had filled 74 percent of long memory; findings about the outside world are now kept preferentially. Rewards stop paying for an action that cannot work without a language model, for no-op calls, and for garbled drafts from his small language model. Next: a short test life to check the research lane stays fed, then Run 14.",
+    href: "https://github.com/ric-massey/orrin_v3/commit/be077f4",
+  },
+  {
+    date: "2026-10-08",
+    kind: "build",
     title: "Status card now starts with each life",
     body: "Housekeeping before the Run 14 build. The small read-only program that feeds the 'Is Orrin running?' card on this page used to be started by hand. The launcher now starts it with each life and stops it when the life ends, sending one final update so the card shows the stop right away instead of after three minutes. It only reads Orrin's state files and never writes into them, so it cannot affect a run's results. That closes the post-Run-13 housekeeping list; next is the Run 14 fix list.",
     href: "https://github.com/ric-massey/orrin_v3/commit/96990f6",
