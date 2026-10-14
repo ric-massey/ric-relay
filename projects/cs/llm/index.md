@@ -4,16 +4,16 @@ Ric Massey's CS2 record from https://ricmassey.com/cs.html, as plain text. Gener
 
 Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed, and Leetify for games whose demo Valve already deleted. Other players appear under their in-game names.
 
-## Career
+## Career (ranked games)
 
 | Stat | Value |
 |---|---|
-| Matches | 17 |
-| Won / lost / drawn | 4 / 11 / 2 |
-| Win rate | 24% |
-| Kills / deaths | 172 / 239 |
-| K/D | 0.72 |
-| Headshot % | 45% |
+| Matches | 16 |
+| Won / lost / drawn | 3 / 11 / 2 |
+| Win rate | 19% |
+| Kills / deaths | 164 / 236 |
+| K/D | 0.69 |
+| Headshot % | 46% |
 | Matches with full demo data | 16 |
 
 **Leetify skill ratings** (read 2026-10-14): aim 52/100, positioning 31/100, utility 3/100.
@@ -52,6 +52,127 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Anubis | 2 | 1-1-0 | 0.56 |
 | Cache | 1 | 0-1-0 | 1.00 |
 | Rush 001 | 1 | 1-0-0 | 2.67 |
+
+## Breakdown (every game with a saved demo)
+
+16 games, 297 rounds, 164 kills and 236 deaths of Ric's, each with the callout both players stood at.
+
+| Stat | Value |
+|---|---|
+| Rounds won as CT | 43% (62/143) |
+| Rounds won as T | 36% (55/154) |
+| Pistol rounds won | 37% (11/30) |
+| Opening duels won | 43% (12/28) |
+| Rounds won after Ric's team got the first kill | 49% (65/132) |
+| Rounds won after the enemy got the first kill | 32% (52/163) |
+| Rounds survived | 21% (61/297) |
+| Deaths that were traded | 14% (33/236) |
+| Kills that traded a teammate | 15% (24/164) |
+| 1v1 clutches won | 50% (6/12) |
+| 1v2 clutches won | 19% (3/16) |
+| 1v3 clutches won | 0% (0/12) |
+| 1v4 clutches won | 0% (0/14) |
+| 1v5 clutches won | 0% (0/7) |
+
+### Anubis: where Ric dies and kills
+
+| Callout (where Ric stood) | Deaths | % of deaths | Kills | % of kills | K/D there |
+|---|---|---|---|---|---|
+| Outside Long | 7 | 22% | 2 | 11% | 0.29 |
+| Middle | 6 | 19% | 1 | 6% | 0.17 |
+| Walkway | 4 | 12% | 4 | 22% | 1.00 |
+| Bombsite B | 3 | 9% | 1 | 6% | 0.33 |
+| Canal | 3 | 9% | 0 | 0% | 0.00 |
+| Heaven | 2 | 6% | 1 | 6% | 0.50 |
+| Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
+| Bridge | 2 | 6% | 1 | 6% | 0.50 |
+| Main | 1 | 3% | 1 | 6% | 1.00 |
+| Bricks | 1 | 3% | 0 | 0% | 0.00 |
+| Fountain | 1 | 3% | 0 | 0% | 0.00 |
+| Bombsite A | 0 | 0% | 3 | 17% | — |
+| Ruins | 0 | 0% | 2 | 11% | — |
+| Street | 0 | 0% | 1 | 6% | — |
+
+### Cache: where Ric dies and kills
+
+| Callout (where Ric stood) | Deaths | % of deaths | Kills | % of kills | K/D there |
+|---|---|---|---|---|---|
+| Bombsite A | 3 | 25% | 2 | 17% | 0.67 |
+| BHalls | 2 | 17% | 1 | 8% | 0.50 |
+| Mid | 2 | 17% | 0 | 0% | 0.00 |
+| Outside A | 1 | 8% | 3 | 25% | 3.00 |
+| Bombsite B | 1 | 8% | 1 | 8% | 1.00 |
+| Heaven | 1 | 8% | 0 | 0% | 0.00 |
+| TSpawn | 1 | 8% | 0 | 0% | 0.00 |
+| CTLane | 1 | 8% | 0 | 0% | 0.00 |
+| TYard | 0 | 0% | 2 | 17% | — |
+| AStairs | 0 | 0% | 1 | 8% | — |
+| Vents | 0 | 0% | 1 | 8% | — |
+| BMain | 0 | 0% | 1 | 8% | — |
+
+### Dust II: where Ric dies and kills
+
+| Callout (where Ric stood) | Deaths | % of deaths | Kills | % of kills | K/D there |
+|---|---|---|---|---|---|
+| Bombsite B | 7 | 19% | 7 | 30% | 1.00 |
+| Long Doors | 5 | 14% | 3 | 13% | 0.60 |
+| Outside Long | 4 | 11% | 3 | 13% | 0.75 |
+| Long A | 4 | 11% | 3 | 13% | 0.75 |
+| Topof Mid | 3 | 8% | 0 | 0% | 0.00 |
+| BDoors | 2 | 5% | 0 | 0% | 0.00 |
+| Extended A | 2 | 5% | 0 | 0% | 0.00 |
+| Middle | 2 | 5% | 0 | 0% | 0.00 |
+| Hole | 2 | 5% | 0 | 0% | 0.00 |
+| Catwalk | 2 | 5% | 0 | 0% | 0.00 |
+| Under A | 1 | 3% | 2 | 9% | 2.00 |
+| Mid Doors | 1 | 3% | 1 | 4% | 1.00 |
+| Bombsite A | 1 | 3% | 0 | 0% | 0.00 |
+| ARamp | 1 | 3% | 0 | 0% | 0.00 |
+| Short Stairs | 0 | 0% | 2 | 9% | — |
+| Upper Tunnel | 0 | 0% | 2 | 9% | — |
+
+### Mirage: where Ric dies and kills
+
+| Callout (where Ric stood) | Deaths | % of deaths | Kills | % of kills | K/D there |
+|---|---|---|---|---|---|
+| Bombsite A | 16 | 17% | 9 | 13% | 0.56 |
+| Apartments | 13 | 14% | 22 | 31% | 1.69 |
+| Palace Interior | 12 | 13% | 10 | 14% | 0.83 |
+| Truck | 8 | 9% | 4 | 6% | 0.50 |
+| Catwalk | 6 | 6% | 4 | 6% | 0.67 |
+| Bombsite B | 6 | 6% | 3 | 4% | 0.50 |
+| Connector | 6 | 6% | 2 | 3% | 0.33 |
+| TRamp | 4 | 4% | 1 | 1% | 0.25 |
+| Shop | 4 | 4% | 0 | 0% | 0.00 |
+| CTSpawn | 3 | 3% | 3 | 4% | 1.00 |
+| Scaffolding | 2 | 2% | 2 | 3% | 1.00 |
+| Underpass | 2 | 2% | 2 | 3% | 1.00 |
+| Middle | 2 | 2% | 2 | 3% | 1.00 |
+| House | 2 | 2% | 1 | 1% | 0.50 |
+| Stairs | 2 | 2% | 0 | 0% | 0.00 |
+| Snipers Nest | 2 | 2% | 0 | 0% | 0.00 |
+| Palace Alley | 1 | 1% | 4 | 6% | 4.00 |
+| Back Alley | 1 | 1% | 1 | 1% | 1.00 |
+| Jungle | 1 | 1% | 0 | 0% | 0.00 |
+
+### Train: where Ric dies and kills
+
+| Callout (where Ric stood) | Deaths | % of deaths | Kills | % of kills | K/D there |
+|---|---|---|---|---|---|
+| Tunnels | 13 | 21% | 10 | 24% | 0.77 |
+| Bombsite B | 10 | 16% | 8 | 20% | 0.80 |
+| Ivy | 10 | 16% | 2 | 5% | 0.20 |
+| Bombsite A | 9 | 15% | 5 | 12% | 0.56 |
+| Backof B | 6 | 10% | 2 | 5% | 0.33 |
+| Long Dog | 4 | 6% | 0 | 0% | 0.00 |
+| TMain | 3 | 5% | 6 | 15% | 2.00 |
+| Connector | 3 | 5% | 4 | 10% | 1.33 |
+| Alley | 2 | 3% | 0 | 0% | 0.00 |
+| Entrance | 1 | 2% | 2 | 5% | 2.00 |
+| Dumpster | 1 | 2% | 0 | 0% | 0.00 |
+| Electrical Box | 0 | 0% | 1 | 2% | — |
+| TSide Upper | 0 | 0% | 1 | 2% | — |
+
 
 ## Reading the raw 2D data
 

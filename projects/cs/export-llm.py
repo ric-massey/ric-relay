@@ -21,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import csdata  # noqa: E402
+import stats  # noqa: E402
 
 OUT = csdata.HERE / "llm"
 SITE = "https://ricmassey.com"
@@ -33,6 +34,8 @@ RANKS = ["Unranked", "Silver I", "Silver II", "Silver III", "Silver IV", "Silver
          "Distinguished Master Guardian", "Legendary Eagle", "Legendary Eagle Master",
          "Supreme Master First Class", "The Global Elite"]
 
+
+UNRANKED = ("rush", "casual", "deathmatch", "custom", "retake", "armsrace", "gungame")
 
 LABELS = {
     "acc": "Accuracy, all shots (%)", "acc_spotted": "Accuracy when enemy spotted (%)",
@@ -368,7 +371,7 @@ Times are seconds since the round went live. Coordinates are CS2 map units.
 """
 
 
-def index_md(data, matches):
+def index_md(data, matches, breakdown=""):
     player = data.get("player") or "Ric"
     L = [f"# {player} — Counter-Strike 2, every match",
          "",
@@ -378,12 +381,14 @@ def index_md(data, matches):
          "Sources: Valve's match demos (full detail, 2D positions), Valve's live game "
          "feed, and Leetify for games whose demo Valve already deleted. Other players "
          "appear under their in-game names."]
-    n = len(matches)
-    tally = Counter(m["result"] for m in matches)
-    k = sum(m["me"].get("k") or 0 for m in matches)
-    d = sum(m["me"].get("d") or 0 for m in matches)
-    hsk = sum(m["me"].get("hsk") or 0 for m in matches)
-    L += ["", "## Career", "",
+    # ranked games only, as on the page: a custom Rush would skew every average
+    ranked = [m for m in matches if not any(w in (m.get("mode") or "") for w in UNRANKED)]
+    n = len(ranked)
+    tally = Counter(m["result"] for m in ranked)
+    k = sum(m["me"].get("k") or 0 for m in ranked)
+    d = sum(m["me"].get("d") or 0 for m in ranked)
+    hsk = sum(m["me"].get("hsk") or 0 for m in ranked)
+    L += ["", "## Career (ranked games)", "",
           table(["Stat", "Value"], [
               ("Matches", n), ("Won / lost / drawn", f"{tally['W']} / {tally['L']} / {tally['T']}"),
               ("Win rate", f"{100 * tally['W'] / n:.0f}%" if n else "—"),
@@ -417,6 +422,8 @@ def index_md(data, matches):
           table(["Map", "Played", "W-L-D", "K/D"],
                 [(map_name(mp), g["n"], f"{g['W']}-{g['L']}-{g['T']}", f"{g['k'] / g['d']:.2f}" if g["d"] else "—")
                  for mp, g in sorted(by.items(), key=lambda x: -x[1]["n"])])]
+    if breakdown:
+        L += ["", breakdown]
     L += ["", SCHEMA]
     return "\n".join(L) + "\n"
 
@@ -463,7 +470,9 @@ def main():
         name = f"{m['id']}.md"
         keep.add(name)
         (OUT / name).write_text(match_md(m, player), encoding="utf-8", newline="\n")
-    (OUT / "index.md").write_text(index_md(data, matches), encoding="utf-8", newline="\n")
+    S = stats.write(matches)            # stats.js, the page's Stats section
+    (OUT / "index.md").write_text(index_md(data, matches, stats.breakdown_md(S, map_name)),
+                                  encoding="utf-8", newline="\n")
     by_map = {}
     for m in matches:
         R = load_replay(m["id"]) if m.get("replay") else None

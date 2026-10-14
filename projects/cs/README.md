@@ -14,6 +14,15 @@ Three sources, most complete first. Every match records which ones it has.
 | **Leetify** (public API) | `pull-leetify.py` | Games whose demo Valve already deleted; aim/utility measurements and ratings |
 | **Steam Web API** (match history) | `steam.py` | Valve's own list of every match — used to list demos still to download |
 
+**The Stats section.** `stats.py` (run by `export-llm.py`, so by every sync)
+boils every saved demo down to `stats.js`: each round Ric played (side, result,
+how it ended, opening kill, clutch, his kills and damage, both teams' buy) and
+each of his kills and deaths (both players' callouts and positions, weapon,
+headshot/wallbang/smoke/flash, range, men alive, traded), plus every hit by
+hitgroup. The page slices it by map and side. The replays are ~600 KB each;
+`stats.js` is the one small file the page can load whole. Its damage runs a few
+percent under Leetify's ADR, so the page labels it as the demo's.
+
 **Plain text for machines.** `export-llm.py` (run by every sync) rewrites
 `llm/index.md` and one `llm/<id>.md` per match: the same data as the page, every
 fight in every round written out, for LLMs and anything else that reads the site

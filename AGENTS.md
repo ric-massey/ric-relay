@@ -510,6 +510,11 @@ that must never break:
   in step.
 - **A held map always fills its frame**: the view is clamped to the radar, so zooming
   out near an edge slides back over the map rather than opening empty space.
+- **Stats are sliced in the browser from `stats.js`**, which `stats.py` writes from
+  the replays on every sync (called by `export-llm.py`; `sync.py` commits it). Its
+  breakdown also lands in `llm/index.md`. Career numbers on the page count ranked
+  games only — a custom Rush or casual lobby stays in the match list but not in
+  the averages.
 - **LLMs read the plain-text copy.** `export-llm.py` writes `projects/cs/llm/*.md`
   from the same data on every sync, and `/llms.txt` points at it. Anything new the
   page shows should also land in that export, or machines only get half the room.

@@ -12,9 +12,9 @@ Steam key yet, a demo that won't parse) never stops the others.
   2. gsi     — fold matches the live listener finished into cs-data.js
   3. steam   — ask Valve's match list what's new; list demos still to download
   4. leetify — backfill and the measurements only Leetify makes
-  5. llm     — rewrite the plain-text reports in llm/ for machines that read the site
+  5. llm     — rewrite stats.js (the Stats section) and the plain-text reports in llm/
 
-Then, if anything in the room's data changed (cs-data.js, matches/, llm/), it
+Then, if anything in the room's data changed (cs-data.js, matches/, llm/, stats.js), it
 commits those files and only those (on main, never mid-merge). It never pushes — on this repo a push is a
 publish, and that stays Ric's call.
 """
@@ -28,7 +28,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 PY = sys.executable
-DATA = ["projects/cs/cs-data.js", "projects/cs/matches", "projects/cs/llm"]
+DATA = ["projects/cs/cs-data.js", "projects/cs/matches", "projects/cs/llm", "projects/cs/stats.js"]
 # Run from pythonw (no console), every child would otherwise flash a window.
 QUIET = {"creationflags": 0x08000000} if sys.platform == "win32" else {}
 
