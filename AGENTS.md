@@ -162,6 +162,8 @@ Per-room nav treatments (class on the `<nav>`):
 | climbing | its own section bar — see below | `.climbtop` + `.climbnav` |
 | training | its own section bar — see below | `.traintop` + `.trainnav` |
 | apex | Apex lobby tab strip (scrolls sideways, red underline on the current room) | `nav.lobbytabs` |
+| cs | CS2 main-menu strip (white underline) | `nav.mainmenu` |
+| val | VALORANT client tabs (red underline) | `nav.clienttabs` |
 | exploration | star-chart waypoints | `nav.starchart` |
 | gaming | understated top-bar text links | `nav.launcher` |
 | workbench | blueprint sheet-index chips | `nav.sheets` |

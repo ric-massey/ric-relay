@@ -31,6 +31,7 @@
 - [Gaming](https://ricmassey.com/gaming.html): games Ric has built, playable in the browser
 - [Workbench](https://ricmassey.com/workbench.html): side projects
 - [Captures](https://ricmassey.com/captures.html): photographs
+- [Entertainment](https://ricmassey.com/entertainment.html): films and shows, and what is queued up
 - [Apex](https://ricmassey.com/apex.html): Apex Legends stats
 - [CS](https://ricmassey.com/cs.html): Counter-Strike 2, every match
 - [VAL](https://ricmassey.com/val.html): VALORANT, every match and every fight on the minimap
