@@ -88,11 +88,11 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Bombsite B | 3 | 9% | 1 | 6% | 0.33 |
 | Canal | 3 | 9% | 0 | 0% | 0.00 |
 | Bridge | 2 | 6% | 1 | 6% | 0.50 |
-| Heaven | 2 | 6% | 1 | 6% | 0.50 |
 | Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
+| Heaven | 2 | 6% | 1 | 6% | 0.50 |
 | Main | 1 | 3% | 1 | 6% | 1.00 |
-| Bricks | 1 | 3% | 0 | 0% | 0.00 |
 | Fountain | 1 | 3% | 0 | 0% | 0.00 |
+| Bricks | 1 | 3% | 0 | 0% | 0.00 |
 | Bombsite A | 0 | 0% | 3 | 17% | — |
 | Ruins | 0 | 0% | 2 | 11% | — |
 | Street | 0 | 0% | 1 | 6% | — |
@@ -106,13 +106,13 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Mid | 2 | 17% | 0 | 0% | 0.00 |
 | Outside A | 1 | 8% | 3 | 25% | 3.00 |
 | Bombsite B | 1 | 8% | 1 | 8% | 1.00 |
-| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | CTLane | 1 | 8% | 0 | 0% | 0.00 |
 | TSpawn | 1 | 8% | 0 | 0% | 0.00 |
+| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | TYard | 0 | 0% | 2 | 17% | — |
 | BMain | 0 | 0% | 1 | 8% | — |
-| AStairs | 0 | 0% | 1 | 8% | — |
 | Vents | 0 | 0% | 1 | 8% | — |
+| AStairs | 0 | 0% | 1 | 8% | — |
 
 ### Dust II: where Ric dies and kills
 
@@ -120,20 +120,20 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 |---|---|---|---|---|---|
 | Bombsite B | 7 | 19% | 7 | 30% | 1.00 |
 | Long Doors | 5 | 14% | 3 | 13% | 0.60 |
-| Outside Long | 4 | 11% | 3 | 13% | 0.75 |
 | Long A | 4 | 11% | 3 | 13% | 0.75 |
+| Outside Long | 4 | 11% | 3 | 13% | 0.75 |
 | Topof Mid | 3 | 8% | 0 | 0% | 0.00 |
 | BDoors | 2 | 5% | 0 | 0% | 0.00 |
-| Extended A | 2 | 5% | 0 | 0% | 0.00 |
-| Hole | 2 | 5% | 0 | 0% | 0.00 |
 | Middle | 2 | 5% | 0 | 0% | 0.00 |
 | Catwalk | 2 | 5% | 0 | 0% | 0.00 |
+| Extended A | 2 | 5% | 0 | 0% | 0.00 |
+| Hole | 2 | 5% | 0 | 0% | 0.00 |
 | Under A | 1 | 3% | 2 | 9% | 2.00 |
 | Mid Doors | 1 | 3% | 1 | 4% | 1.00 |
 | ARamp | 1 | 3% | 0 | 0% | 0.00 |
 | Bombsite A | 1 | 3% | 0 | 0% | 0.00 |
-| Upper Tunnel | 0 | 0% | 2 | 9% | — |
 | Short Stairs | 0 | 0% | 2 | 9% | — |
+| Upper Tunnel | 0 | 0% | 2 | 9% | — |
 
 ### Mirage: where Ric dies and kills
 
@@ -149,9 +149,9 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | TRamp | 4 | 4% | 1 | 1% | 0.25 |
 | Shop | 4 | 4% | 0 | 0% | 0.00 |
 | CTSpawn | 3 | 3% | 3 | 4% | 1.00 |
-| Underpass | 2 | 2% | 2 | 3% | 1.00 |
-| Middle | 2 | 2% | 2 | 3% | 1.00 |
 | Scaffolding | 2 | 2% | 2 | 3% | 1.00 |
+| Middle | 2 | 2% | 2 | 3% | 1.00 |
+| Underpass | 2 | 2% | 2 | 3% | 1.00 |
 | House | 2 | 2% | 1 | 1% | 0.50 |
 | Stairs | 2 | 2% | 0 | 0% | 0.00 |
 | Snipers Nest | 2 | 2% | 0 | 0% | 0.00 |
@@ -174,8 +174,8 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Alley | 2 | 3% | 0 | 0% | 0.00 |
 | Entrance | 1 | 2% | 2 | 5% | 2.00 |
 | Dumpster | 1 | 2% | 0 | 0% | 0.00 |
-| Electrical Box | 0 | 0% | 1 | 2% | — |
 | TSide Upper | 0 | 0% | 1 | 2% | — |
+| Electrical Box | 0 | 0% | 1 | 2% | — |
 
 
 ## What the numbers mean

@@ -12,7 +12,7 @@ sync and writes the same numbers into llm/index.md.
             a clutch if Ric was last alive, his kills and damage, both teams'
             buy after the freeze time
   fights[]  every kill and death of Ric's: where both players stood (callout
-            and map units), weapon, headshot/wallbang/smoke/flash, distance,
+            and map units) and which way each was facing, weapon, headshot/wallbang/smoke/flash, distance,
             men alive before, opening, traded
   hits[]    every bullet of damage given and taken, by hitgroup
   nades[]   every grenade Ric threw: [game, round, side, kind, x, y, t], where and
@@ -122,6 +122,7 @@ def build(matches):
                     continue
                 row["k"] += mine_k
                 ka, va = f.get("killer_at") or {}, f.get("victim_at") or {}
+                yaw_of = {q.get("seat"): q.get("yaw") for q in f.get("snapshot") or []}
                 at_me, at_them = (ka, va) if mine_k else (va, ka)
                 # a kill of Ric's is a trade when that enemy had just killed a teammate
                 trade = mine_k and any(p.get("killer") == v and p.get("victim") in us and p.get("victim") != me
@@ -131,6 +132,8 @@ def build(matches):
                     "me": at_me.get("place"), "them": at_them.get("place"),
                     "mx": at_me.get("x"), "my": at_me.get("y"), "mz": at_me.get("z"),
                     "ox": at_them.get("x"), "oy": at_them.get("y"),
+                    # which way each was looking at that moment (degrees, CCW from +x)
+                    "myaw": yaw_of.get(me), "oyaw": yaw_of.get(v if mine_k else a),
                     "w": f.get("weapon"), "hs": bool(f.get("headshot")), "wall": bool(f.get("wallbang")),
                     "smoke": bool(f.get("through_smoke")), "blind": bool(f.get("killer_blind")),
                     "ns": bool(f.get("noscope")), "air": bool(f.get("killer_in_air")),
