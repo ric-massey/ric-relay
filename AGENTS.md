@@ -503,6 +503,13 @@ that must never break:
   positions and facing on the radar, everyone's HP / armor / weapon, smokes and fires
   in the air, who was flashed, the bomb. Anything added to them belongs in the text
   export too (`in the air:` / `everyone at that moment:` lines).
+- **The bomb** is a per-round timeline from Valve's own events (`bomb.timeline`:
+  pickup, drop, plant start, planted, defuse start with kit or not, defused,
+  exploded). `bombAt()` on the page and `bomb_at()` in the export replay it to any
+  moment with the same rules (3.2 s plant, 40 s fuse, 5 / 10 s defuse); keep the two
+  in step.
+- **A held map always fills its frame**: the view is clamped to the radar, so zooming
+  out near an edge slides back over the map rather than opening empty space.
 - **LLMs read the plain-text copy.** `export-llm.py` writes `projects/cs/llm/*.md`
   from the same data on every sync, and `/llms.txt` points at it. Anything new the
   page shows should also land in that export, or machines only get half the room.

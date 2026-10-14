@@ -256,6 +256,10 @@ def parse(path, me):
     plants = (ev("bomb_planted", player=["X", "Y", "last_place_name"])
               or ev("bomb_planted", player=["X", "Y"]))
     defuses = ev("bomb_defused")
+    bomb_pick = ev("bomb_pickup", player=["X", "Y"])
+    bomb_drop = ev("bomb_dropped", player=["X", "Y"])
+    bomb_beginplant = ev("bomb_beginplant", player=["X", "Y"])
+    bomb_begindefuse = ev("bomb_begindefuse", player=["X", "Y"])
     explodes = ev("bomb_exploded")
     shots = ev("weapon_fire")
     blinds = ev("player_blind")
@@ -479,6 +483,24 @@ def parse(path, me):
         b = next((b for b in explodes if t0 <= b["tick"] <= r["end"] + 6 * TICKRATE), None)
         if b:
             bomb["exploded"] = {"t": sec(b["tick"])}
+        # The bomb's whole round: who carried it, where it was dropped, every
+        # plant and defuse attempt (finished or not), and how it ended.
+        # [t, kind, seat, x, y, extra] — extra is the site for a plant attempt
+        # and whether the defuser had a kit.
+        timeline = []
+        for kind, rows_, extra in (("pickup", bomb_pick, None), ("drop", bomb_drop, None),
+                                   ("plant_start", bomb_beginplant, "site"), ("planted", plants, "site"),
+                                   ("defuse_start", bomb_begindefuse, "haskit"), ("defused", defuses, None),
+                                   ("exploded", explodes, None)):
+            for e in rows_:
+                if t0 - 15 * TICKRATE <= e["tick"] <= r["end"] + 6 * TICKRATE:
+                    x = e.get(extra) if extra else None
+                    timeline.append([sec(e["tick"]), kind, seat(e.get("user_steamid")),
+                                     _i(e.get("user_X")), _i(e.get("user_Y")),
+                                     bool(x) if extra == "haskit" else (x if x == x else None)])
+        timeline.sort(key=lambda e: e[0])
+        if timeline:
+            bomb["timeline"] = timeline
 
         replay_rounds.append({"side": my_side[i], "w": strip[i]["w"], "dur": sec(r["end"]),
                               "winner": r["winner"], "reason": _reason(r["reason"]),

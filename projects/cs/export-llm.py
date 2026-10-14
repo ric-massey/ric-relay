@@ -69,7 +69,56 @@ def rating(r):
     return "—" if r is None else f"{r * 100:+.2f}"
 
 
+def bomb_at(r, t, nm):
+    """The bomb at one moment, replayed from the round's timeline (the same
+    rules the page uses)."""
+    b = r.get("bomb") or {}
+    carrier = ground = planting = planted = defusing = defused = exploded = None
+    for et, kind, seat, x, y, extra in b.get("timeline") or []:
+        if et > t:
+            break
+        if kind == "pickup":
+            carrier, ground = seat, None
+        elif kind == "drop":
+            carrier, ground = None, (x, y)
+        elif kind == "plant_start":
+            planting = (et, seat)
+        elif kind == "planted":
+            planting, carrier, ground, planted = None, None, None, et
+        elif kind == "defuse_start":
+            defusing = (et, seat, bool(extra))
+        elif kind == "defused":
+            defusing, defused = None, seat
+        elif kind == "exploded":
+            exploded = et
+    dead = {f["victim"] for f in r.get("fights") or [] if f["t"] <= t}
+    if planting and (t - planting[0] > 3.2 or planting[1] in dead):
+        planting = None
+    if defusing and (t - defusing[0] > (5 if defusing[2] else 10) or defusing[1] in dead):
+        defusing = None
+    if carrier in dead:
+        carrier = None
+    if exploded is not None:
+        return "exploded"
+    if defused is not None:
+        return f"defused by {nm(defused)}"
+    if defusing:
+        return (f"{nm(defusing[1])} defusing {'with' if defusing[2] else 'without'} a kit, "
+                f"{max(0, 40 - (t - planted)):.1f}s on the timer")
+    if planted is not None:
+        return f"planted, {max(0, 40 - (t - planted)):.0f}s on the timer"
+    if planting:
+        return f"{nm(planting[1])} planting"
+    if ground:
+        return f"on the ground at ({ground[0]}, {ground[1]})"
+    if carrier is not None:
+        return f"carried by {nm(carrier)}"
+    return None
+
+
 def mmss(t):
+    if t < 0:
+        return "buy time"
     return f"{int(t // 60)}:{int(t % 60):02d}"
 
 
@@ -198,7 +247,18 @@ def match_md(m, player):
                 parts.append(f"defused at {mmss(b['defused']['t'])} by {nm(b['defused'].get('by'))}")
             if b.get("exploded"):
                 parts.append(f"exploded at {mmss(b['exploded']['t'])}")
-            L += ["", "**Bomb:** " + "; ".join(parts)]
+            if parts:
+                L += ["", "**Bomb:** " + "; ".join(parts)]
+            words = {"pickup": "picked up by", "drop": "dropped by", "plant_start": "plant started by",
+                     "planted": "planted by", "defuse_start": "defuse started by", "defused": "defused by",
+                     "exploded": "exploded"}
+            if b.get("timeline"):
+                L += ["", "**Bomb timeline:** " + "; ".join(
+                    f"{mmss(e[0])} {words.get(e[1], e[1])}"
+                    + (f" {nm(e[2])}" if e[1] != "exploded" and e[2] is not None else "")
+                    + (f" at ({e[3]}, {e[4]})" if e[3] is not None and e[1] != "pickup" else "")
+                    + ((" with a kit" if e[5] else " without a kit") if e[1] == "defuse_start" else "")
+                    for e in b["timeline"])]
 
         if r.get("fights"):
             L += ["", "**Fights**", ""]
@@ -254,6 +314,9 @@ def match_md(m, player):
                     L.append("   - in the air: " + "; ".join(
                         [f"{n[2]} at ({n[3]}, {n[4]}) from {nm(n[1])}" for n in up]
                         + [f"{nm(f[2])} flashed by {nm(f[1])}" for f in blind]))
+                state = bomb_at(r, t_, nm)
+                if state:
+                    L.append("   - bomb: " + state)
         else:
             L += ["", "_No kills this round._"]
 

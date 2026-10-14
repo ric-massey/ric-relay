@@ -182,6 +182,7 @@
     .pl.dead{opacity:.45}
     .pl .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .pl .fl{color:var(--bright);font-size:11px}
+    .pl .c4{display:inline-block;padding:0 4px;background:#d6413a;color:#fff;font-size:11px;font-weight:700;line-height:15px}
     .pl .hp{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
     .pl .hpbar{grid-column:1/-1;height:3px;background:rgba(255,255,255,.08)}
     .pl .hpbar i{display:block;height:100%;background:var(--text)}
@@ -658,6 +659,39 @@
   const nameOf = (seats, seat) => seat == null ? "the world" : seats[seat] ? (seats[seat].me ? "Ric" : (seats[seat].name || `player ${seat}`)) : "?";
   const nadeEnd = (n) => n[5] != null ? n[5] : n[0] + ({ smoke: 20, fire: 7, flash: 0.5, he: 0.5 }[n[2]] || 0);
 
+
+  /* ══ the bomb ═══════════════════════════════════════════
+     Valve's demo logs every pickup, drop, plant attempt and defuse attempt.
+     bombAt replays that log to any moment of the round. */
+  const PLANT_S = 3.2, BOMB_S = 40;
+  function bombAt(r, t) {
+    const b = r.bomb || {}, tl = b.timeline || [];
+    const s = { carrier: null, ground: null, planting: null, planted: null, defusing: null, defused: null, exploded: null };
+    for (const [et, kind, seat, x, y, extra] of tl) {
+      if (et > t) break;
+      if (kind === "pickup") { s.carrier = seat; s.ground = null; }
+      else if (kind === "drop") { s.carrier = null; s.ground = x != null ? { x, y } : null; }
+      else if (kind === "plant_start") s.planting = { t: et, seat };
+      else if (kind === "planted") { s.planting = null; s.carrier = null; s.ground = null; s.planted = { t: et, seat, x, y }; }
+      else if (kind === "defuse_start") s.defusing = { t: et, seat, kit: !!extra };
+      else if (kind === "defused") { s.defusing = null; s.defused = { t: et, seat }; }
+      else if (kind === "exploded") s.exploded = { t: et };
+    }
+    if (!tl.length && b.planted && b.planted.t <= t) s.planted = b.planted;      // older data: the plant only
+    if (s.planted && b.planted && b.planted.x != null) { s.planted.x = b.planted.x; s.planted.y = b.planted.y; s.planted.place = b.planted.place; }
+    const dead = new Set((r.fights || []).filter((f) => f.t <= t).map((f) => f.victim));
+    if (s.planting && (t - s.planting.t > PLANT_S || dead.has(s.planting.seat))) s.planting = null;     // let go, or died
+    if (s.defusing && (t - s.defusing.t > (s.defusing.kit ? 5 : 10) || dead.has(s.defusing.seat))) s.defusing = null;
+    if (s.carrier != null && dead.has(s.carrier)) s.carrier = null;
+    return s;
+  }
+  const bombText = (B, seats, t) => B.exploded ? "The bomb exploded"
+    : B.defused ? `Bomb defused by ${nameOf(seats, B.defused.seat)}`
+    : B.defusing ? `${nameOf(seats, B.defusing.seat)} defusing${B.defusing.kit ? " with a kit" : ", no kit"} · ${Math.max(0, BOMB_S - (t - B.planted.t)).toFixed(1)}s left`
+    : B.planted ? `Bomb planted${B.planted.place ? ` at ${B.planted.place}` : ""} · ${Math.max(0, BOMB_S - (t - B.planted.t)).toFixed(0)}s left`
+    : B.planting ? `${nameOf(seats, B.planting.seat)} planting`
+    : B.ground ? "Bomb dropped" : B.carrier != null ? `Bomb carried by ${nameOf(seats, B.carrier)}` : "";
+
   function drawMoment(ctx, S, o) {
     const { cal, img, lower, players, nades, flashes, bomb, line, view, labels, footsteps, seats, r, t } = o;
     const [vx, vy, vw] = view, k = S / vw;
@@ -676,10 +710,21 @@
         : kind === "flash" ? `rgba(255,255,255,${0.7 * (1 - age / life)})` : `rgba(255,170,60,${0.55 * (1 - age / life)})`;
       ctx.beginPath(); ctx.arc(cx, cy, Math.max(5, rad * u), 0, 7); ctx.fill();
     }
-    if (bomb && bomb.x != null) {
-      const [bx, by] = P(bomb.x, bomb.y), s = 13 * scaleUI;
-      ctx.fillStyle = "#d6413a"; ctx.fillRect(bx - s / 2, by - s / 2, s, s);
-      ctx.fillStyle = "#fff"; ctx.font = `bold ${12 * scaleUI}px system-ui`; ctx.fillText("C4", bx + s * 0.8, by + 4 * scaleUI);
+    const B = bomb || {};
+    const c4 = (x, y, fill, text) => {
+      const [bx, by] = P(x, y), s = 14 * scaleUI;
+      ctx.fillStyle = fill; ctx.fillRect(bx - s / 2, by - s / 2, s, s);
+      ctx.lineWidth = 2 * scaleUI; ctx.strokeStyle = "#07090c"; ctx.strokeRect(bx - s / 2, by - s / 2, s, s);
+      ctx.font = `bold ${11 * scaleUI}px system-ui`; ctx.fillStyle = "#fff"; ctx.strokeStyle = "rgba(0,0,0,.85)"; ctx.lineWidth = 3 * scaleUI;
+      ctx.strokeText(text, bx + s * 0.75, by + 4 * scaleUI); ctx.fillText(text, bx + s * 0.75, by + 4 * scaleUI);
+    };
+    if (B.ground) c4(B.ground.x, B.ground.y, "#e0a03a", "C4");
+    if (B.planted && B.planted.x != null) {
+      if (B.exploded) {
+        const age = t - B.exploded.t, [bx, by] = P(B.planted.x, B.planted.y);
+        if (age < 3) { ctx.fillStyle = `rgba(255,140,40,${0.6 * (1 - age / 3)})`; ctx.beginPath(); ctx.arc(bx, by, Math.max(20, 500 * u), 0, 7); ctx.fill(); }
+        c4(B.planted.x, B.planted.y, "#5a2a1a", "BOOM");
+      } else c4(B.planted.x, B.planted.y, B.defused ? "#3aa0d8" : "#d6413a", B.defused ? "DEFUSED" : "C4");
     }
     if (line) {
       const [ax, ay] = P(line[0], line[1]), [bx, by] = P(line[2], line[3]);
@@ -711,6 +756,33 @@
         ctx.strokeText(label, px + dotR + 4, py - dotR + 2); ctx.fillText(label, px + dotR + 4, py - dotR + 2);
       }
     }
+    const spot = (seat) => { const p = players.find((q) => q.seat === seat && !q.dead && q.x != null); return p ? P(p.x, p.y) : null; };
+    const ring = (seat, frac, col) => {
+      const at = spot(seat); if (!at) return;
+      ctx.strokeStyle = "rgba(0,0,0,.6)"; ctx.lineWidth = 5 * scaleUI; ctx.beginPath(); ctx.arc(at[0], at[1], dotR * 2.2, 0, 7); ctx.stroke();
+      ctx.strokeStyle = col; ctx.lineWidth = 4 * scaleUI; ctx.beginPath();
+      ctx.arc(at[0], at[1], dotR * 2.2, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, frac)); ctx.stroke();
+    };
+    if (B.carrier != null) {
+      const at = spot(B.carrier);
+      if (at) {
+        const w = 22 * scaleUI, h = 13 * scaleUI, x = at[0] - w / 2, y = at[1] + dotR + 3 * scaleUI;
+        ctx.fillStyle = "#d6413a"; ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = "#fff"; ctx.font = `bold ${10 * scaleUI}px system-ui`; ctx.textAlign = "center";
+        ctx.fillText("C4", at[0], y + h - 3 * scaleUI); ctx.textAlign = "start";
+      }
+    }
+    if (B.planting) ring(B.planting.seat, (t - B.planting.t) / PLANT_S, "#d6413a");
+    if (B.defusing) ring(B.defusing.seat, (t - B.defusing.t) / (B.defusing.kit ? 5 : 10), "#5fb6ea");
+    // the round's bomb state, top left, the way the game shows it
+    const hud = o.hudText;
+    if (hud) {
+      ctx.font = `bold ${17 * scaleUI}px system-ui`;
+      const w = ctx.measureText(hud).width + 20 * scaleUI, h = 30 * scaleUI;
+      ctx.fillStyle = B.planted && !B.defused && !B.exploded ? "rgba(140,22,22,.85)" : "rgba(10,12,15,.8)";
+      ctx.fillRect(8 * scaleUI, 8 * scaleUI, w, h);
+      ctx.fillStyle = "#fff"; ctx.fillText(hud, 18 * scaleUI, 8 * scaleUI + h - 9 * scaleUI);
+    }
   }
 
   // The bit of the radar worth looking at: everyone in the fight, with margin.
@@ -732,10 +804,12 @@
   function RadarView(wrap, { draw, onHold }) {
     const cv = wrap.querySelector("canvas");
     let view = [0, 0, 1024];
+    // The map always fills the frame: zooming out near an edge slides the view
+    // back over the map instead of opening up empty space beside it.
     const set = (v) => {
       const w = Math.max(96, Math.min(1024, v[2]));
-      const x = Math.max(-w * 0.3, Math.min(1024 - w * 0.7, v[0]));
-      const y = Math.max(-w * 0.3, Math.min(1024 - w * 0.7, v[1]));
+      const x = Math.max(0, Math.min(1024 - w, v[0]));
+      const y = Math.max(0, Math.min(1024 - w, v[1]));
       view = [x, y, w]; draw(view);
     };
     const toR = (cx, cy) => { const b = cv.getBoundingClientRect(); return [view[0] + (cx - b.left) / b.width * view[2], view[1] + (cy - b.top) / b.height * view[2]]; };
@@ -898,17 +972,16 @@
     const cls = (seat, side) => `who-${side.toLowerCase()}${seats[seat] && seats[seat].me ? " who-me" : ""}`;
     const flags = [f.headshot && ICON.hs, f.wallbang && ICON.wall, f.through_smoke && ICON.smoke, f.killer_blind && ICON.blind, f.noscope && ICON.noscope].filter(Boolean).join("");
     const at = Object.fromEntries((f.snapshot || []).map((p) => [p.seat, p]));
-    const econ = r.economy || {};
+    const econ = r.economy || {}, Bk = bombAt(r, t), btxt = bombText(Bk, seats, t);
     const flashed = new Set((r.flashes || []).filter((x) => x[0] <= t && t <= x[0] + x[3]).map((x) => x[2]));
     const team = (side) => R.seats.filter((s) => sideOf(seats, s.seat, r) === side && (at[s.seat] || s.seat === f.victim || econ[String(s.seat)])).map((s) => {
       const p = at[s.seat], dead = !p || s.seat === f.victim || !p.hp, hp = dead ? 0 : p.hp, e = econ[String(s.seat)] || {};
       const gear = [p && p.weapon && !dead ? weaponName(p.weapon) : null, p && p.armor && !dead ? `${p.armor} armor` : null, e.money != null ? `$${e.money}` : null].filter(Boolean).join(" · ");
-      return `<div class="pl${dead ? " dead" : ""}"><span class="nm${s.me ? " who-me" : ""}">${esc(nameOf(seats, s.seat))}${flashed.has(s.seat) && !dead ? ' <span class="fl">· flashed</span>' : ""}</span>
+      return `<div class="pl${dead ? " dead" : ""}"><span class="nm${s.me ? " who-me" : ""}">${esc(nameOf(seats, s.seat))}${Bk.carrier === s.seat ? ' <span class="c4">C4</span>' : ""}${flashed.has(s.seat) && !dead ? ' <span class="fl">· flashed</span>' : ""}</span>
         <span class="hp">${dead ? "✕" : hp}</span><span class="hpbar"><i style="width:${hp}%"></i></span>${gear ? `<span class="gear">${esc(gear)}</span>` : ""}</div>`;
     }).join("");
     const active = (r.nades || []).filter((n) => n[0] <= t && t <= nadeEnd(n));
     const smokes = active.filter((n) => n[2] === "smoke").length, fires = active.filter((n) => n[2] === "fire").length;
-    const planted = r.bomb && r.bomb.planted && r.bomb.planted.t <= t;
     const ex = (f.exchange || []).reduce((a, e) => { if (e[1] === f.killer) a.k += e[4]; else a.v += e[4]; return a; }, { k: 0, v: 0 });
     const place = (p) => p && p.place ? esc(p.place) : "?";
     return `<article class="snap" data-i="${i}" aria-label="Round ${ri + 1}, ${mmss(t)}: ${esc(nameOf(seats, f.killer))} killed ${esc(nameOf(seats, f.victim))}">
@@ -926,7 +999,7 @@
         <div class="roster"><h4 class="t">Terrorists</h4>${team("T")}<h4 class="ct">Counter-Terrorists</h4>${team("CT")}</div></div>
       <div class="util"><span><i style="background:rgba(205,212,222,.8)"></i>${smokes} smoke${smokes === 1 ? "" : "s"} up</span>
         <span><i style="background:rgba(235,110,35,.85)"></i>${fires} fire${fires === 1 ? "" : "s"}</span>
-        <span><i style="background:#fff"></i>${flashed.size} flashed</span>${planted ? `<span><i style="background:#d6413a;border-radius:0"></i>bomb planted at ${mmss(r.bomb.planted.t)}</span>` : ""}</div>
+        <span><i style="background:#fff"></i>${flashed.size} flashed</span>${btxt ? `<span><i style="background:#d6413a;border-radius:0"></i>${esc(btxt)}</span>` : ""}</div>
       ${ex.k || ex.v ? `<div class="exch">Damage between them before the kill: <b>${esc(nameOf(seats, f.killer))} ${ex.k}</b> · <b>${esc(nameOf(seats, f.victim))} ${ex.v}</b></div>` : ""}
     </article>`;
   }
@@ -945,9 +1018,9 @@
       const S = cv.width, ctx = cv.getContext("2d");
       if (!cal) { ctx.fillStyle = "#07090c"; ctx.fillRect(0, 0, S, S); ctx.fillStyle = "#a0a8b2"; ctx.font = "20px system-ui"; ctx.fillText("No radar for this map", 20, 40); return; }
       const t = clock.t, exact = Math.abs(t - f.t) < 0.3;
-      const planted = r.bomb && r.bomb.planted && r.bomb.planted.t <= t ? r.bomb.planted : null;
+      const B = bombAt(r, t);
       const recent = (r.fights || []).filter((x) => x.t <= t && t - x.t < 1.5 && x.killer_at && x.victim_at && x.killer_at.x != null).pop();
-      drawMoment(ctx, S, { cal, img, lower, players: exact ? frozen : momentAt(R, r, t), nades: r.nades, flashes: r.flashes, bomb: planted,
+      drawMoment(ctx, S, { cal, img, lower, players: exact ? frozen : momentAt(R, r, t), nades: r.nades, flashes: r.flashes, bomb: B, hudText: bombText(B, seats, t),
         line: exact ? kline : recent ? [recent.killer_at.x, recent.killer_at.y, recent.victim_at.x, recent.victim_at.y] : null,
         view: view || rv.view, labels: true, seats, r, t });
       killfeed(kf, seats, r, t);
@@ -1180,10 +1253,10 @@
       if (!rv) return;
       const r = R.rounds[ri], t = clock.t, players = momentAt(R, r, t);
       const recent = (r.fights || []).filter((f) => f.t <= t && t - f.t < 1.5 && f.killer_at && f.victim_at && f.killer_at.x != null).pop();
-      const planted = r.bomb && r.bomb.planted && r.bomb.planted.t <= t ? r.bomb.planted : null;
+      const B = bombAt(r, t);
       const ric = players.find((p) => p.seat === 0 && !p.dead);
       const lv = level === "auto" ? (ric && lowerAt(cal, ric.z) && imgs[1] ? 1 : 0) : +level;
-      drawMoment(ctx, S, { cal: calX, img: cal ? imgs[lv] : null, lower: lv === 1, players, nades: r.nades, flashes: r.flashes, bomb: planted,
+      drawMoment(ctx, S, { cal: calX, img: cal ? imgs[lv] : null, lower: lv === 1, players, nades: r.nades, flashes: r.flashes, bomb: B, hudText: bombText(B, seats, t),
         line: recent ? [recent.killer_at.x, recent.killer_at.y, recent.victim_at.x, recent.victim_at.y] : null,
         view: rv.view, labels: box.querySelector("[data-names]").checked,
         footsteps: box.querySelector("[data-steps]").checked ? steps : null, seats, r, t });
