@@ -329,11 +329,14 @@ def parse(path, me):
     split = radar_split(mapname)
     stride = 3 if split is not None else 2
     pos = defaultdict(dict)            # tick -> seat -> (x, y[, z])
-    for r in rows(p.parse_ticks(["X", "Y", "Z", "is_alive"], ticks=sample)):
+    look = defaultdict(dict)           # tick -> seat -> yaw, whole degrees
+    for r in rows(p.parse_ticks(["X", "Y", "Z", "is_alive", "yaw"], ticks=sample)):
         s = sid(r.get("steamid"))
         if s in seat_of and r.get("is_alive"):
             xy = (round(r["X"]), round(r["Y"]))
             pos[r["tick"]][seat_of[s]] = xy + ((round(r["Z"]),) if stride == 3 else ())
+            if r.get("yaw") == r.get("yaw") and r.get("yaw") is not None:
+                look[r["tick"]][seat_of[s]] = round(r["yaw"])
 
     # Everyone, at the instant of every kill: where they stood and how much HP
     # they had. This is what makes a fight readable without watching it.
@@ -398,6 +401,15 @@ def parse(path, me):
                     flat += [None] * stride
             if alive:
                 tracks[seat] = flat
+        # which way each player faced at every sample, beside the tracks (not
+        # inside them, so the packed track format is untouched)
+        yaws = {}
+        for seat in tracks:
+            ys = [look[t].get(seat) for t in ticks]
+            while ys and ys[-1] is None:
+                ys.pop()
+            if any(y is not None for y in ys):
+                yaws[seat] = ys
         kills = [[sec(d["tick"]), seat_of.get(sid(d.get("attacker_steamid"))),
                   seat_of.get(sid(d.get("user_steamid"))), d.get("weapon"), bool(d.get("headshot")),
                   _i(d.get("attacker_X")), _i(d.get("attacker_Y")),
@@ -504,7 +516,7 @@ def parse(path, me):
 
         replay_rounds.append({"side": my_side[i], "w": strip[i]["w"], "dur": sec(r["end"]),
                               "winner": r["winner"], "reason": _reason(r["reason"]),
-                              "tracks": tracks, "kills": kills, "nades": nades, "plant": plant,
+                              "tracks": tracks, "yaws": yaws, "kills": kills, "nades": nades, "plant": plant,
                               "fights": fights, "damage": damage, "shots": fired,
                               "flashes": flashed, "bomb": bomb or None,
                               "economy": {str(k_): v_ for k_, v_ in sorted(econ[i].items())}})

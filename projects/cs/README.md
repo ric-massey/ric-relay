@@ -147,6 +147,15 @@ gitignored — demos are 100+ MB) and parses it. `demos/DOWNLOAD-THESE.txt` list
 match Valve still has that isn't saved yet. You can also drop any `.dem` /
 `.dem.bz2` into `projects/cs/demos/`.
 
+Each round also stores `yaws`: which way every player faced at each sample
+(whole degrees, beside the tracks so their packing is untouched). The page draws
+it as a cone and aim line. Replays parsed before 2026-10-14 have none; rebuild
+them once from the archived demos to add it:
+
+```
+projects/cs/.cs-venv/Scripts/python projects/cs/parse-demos.py --rebuild
+```
+
 Replays are sampled twice a second (~350 KB a match). `HZ` in `parse-demos.py`
 trades size for smoothness.
 
