@@ -322,7 +322,9 @@
 
     /* ══ maps ════════════════════════════════════════════════ */
     .maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
-    .mapcard{position:relative;overflow:hidden;border:1px solid var(--line);background:var(--panel-solid)}
+    .mapcard{position:relative;overflow:hidden;border:1px solid var(--line);background:var(--panel-solid);cursor:pointer;transition:border-color .12s,transform .12s}
+    .mapcard:hover,.mapcard:focus-visible{border-color:var(--line-hot);transform:translateY(-2px)}
+    .mapcard:hover h3{color:var(--t-ink)}
     .mapcard .art{height:120px;background:#07090c center/cover no-repeat;position:relative}
     .mapcard .art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,9,12,.1),rgba(20,23,28,1))}
     .mapcard h3{position:absolute;left:14px;bottom:8px;z-index:1;font-size:26px;color:var(--bright);text-shadow:0 2px 8px #000}
@@ -1370,19 +1372,24 @@
     const rank = Object.fromEntries((((D.leetify || {}).ranks || {}).competitive || []).map((r) => [r.map_name, r.rank]));
     $("maplist").innerHTML = [...by].sort((a, b) => b[1].n - a[1].n).map(([map, g]) => {
       const cal = radarFor(map);
-      return `<div class="mapcard"><div class="art" style="${cal ? `background-image:url('projects/cs/${cal.img}')` : ""}"><h3>${esc(mapName(map))}</h3></div>
+      return `<div class="mapcard" data-mlist="${esc(map)}" role="link" tabindex="0" aria-label="${esc(mapName(map))}: show its ${g.n} game${g.n === 1 ? "" : "s"}"><div class="art" style="${cal ? `background-image:url('projects/cs/${cal.img}')` : ""}"><h3>${esc(mapName(map))}</h3></div>
         <div class="info"><div class="wl">${g.n} game${g.n === 1 ? "" : "s"} · ${g.W}W ${g.L}L${g.T ? ` ${g.T}D` : ""}</div>
         <div class="wbar" role="img" aria-label="${g.W} wins, ${g.L} losses, ${g.T} draws"><i class="W" style="flex:${g.W}"></i><i class="L" style="flex:${g.L}"></i><i class="T" style="flex:${g.T}"></i></div>
         <div class="kv"><span>Win rate</span><b>${pct(100 * g.W / g.n)}</b></div><div class="kv"><span>K/D</span><b>${g.d ? fix(g.k / g.d, 2) : "—"}</b></div>
         <div class="kv"><span>ADR</span><b>${g.r ? fix(g.dmg / g.r, 0) : "—"}</b></div>
         ${rank[map] != null ? `<div class="kv"><span>Rank</span><b>${esc(RANKS[rank[map]] || rank[map])}</b></div>` : ""}
         <div style="display:flex;gap:6px;margin-top:10px"><button type="button" class="btn ghost" data-mstats="${esc(map)}" style="min-height:32px;font-size:13px;padding:0 12px">Stats</button>
-        <button type="button" class="btn ghost" data-mlist="${esc(map)}" style="min-height:32px;font-size:13px;padding:0 12px">Matches</button></div></div></div>`;
+        <button type="button" class="btn ghost" style="min-height:32px;font-size:13px;padding:0 12px" tabindex="-1">Games →</button></div></div></div>`;
     }).join("") || `<div class="panel empty">No maps yet.</div>`;
     $("maplist").addEventListener("click", (e) => {
+      // the card is the link to that map's games; its Stats button goes to Stats
       const a = e.target.closest("[data-mstats]"), b = e.target.closest("[data-mlist]");
-      if (a && statsApi) { statsApi.setMap(a.dataset.mstats); go("stats"); }
+      if (a) { if (statsApi) { statsApi.setMap(a.dataset.mstats); go("stats"); } return; }
       if (b) { setMapFilter(b.dataset.mlist); go("matches"); }
+    });
+    $("maplist").addEventListener("keydown", (e) => {
+      const b = e.target.closest(".mapcard"); if (!b || e.target !== b || (e.key !== "Enter" && e.key !== " ")) return;
+      e.preventDefault(); setMapFilter(b.dataset.mlist); go("matches");
     });
   })();
 
