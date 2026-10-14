@@ -41,6 +41,8 @@
       --flash-map: #ff3b30;
       --flash-training: #ff6a3d;
       --flash-apex: #e8422f;
+      --flash-cs: #e8b85a;
+      --flash-val: #ff4655;
     }
 
     * { box-sizing: border-box; margin: 0; }
@@ -524,6 +526,8 @@ type Sydney's cat's name for a surprise!</div>
       { name: "climbing",      href: "climbing.html",      hue: "--flash-climbing",      desc: "routes · projects · mountaineering",      listed: true },
       { name: "training",      href: "training.html",      hue: "--flash-training",      desc: "runs · sessions · the 52-week plan",      listed: true },
       { name: "apex",          href: "apex.html",          hue: "--flash-apex",          desc: "the drop · rank · career kills",          listed: false },
+      { name: "cs",            href: "cs.html",            hue: "--flash-cs",            desc: "counter-strike · every match · 2D replays", listed: false },
+      { name: "val",           href: "val.html",           hue: "--flash-val",           desc: "valorant · every fight on the minimap",     listed: false },
       { name: "exploration",   href: "exploration.html",   hue: "--flash-exploration",   desc: "space · physics · science",               listed: true },
       { name: "gaming",        href: "gaming.html",        hue: "--flash-gaming",        desc: "games · launches · playable builds",      listed: true },
       { name: "workbench",     href: "workbench.html",     hue: "--flash-workbench",     desc: "random projects · ideas · hobbies",       listed: true },
@@ -536,7 +540,7 @@ type Sydney's cat's name for a surprise!</div>
     const PAGES = Object.fromEntries(ROOMS.map((room) => [room.name, room.href]));
     // What someone types when they aren't thinking in room names: the page is
     // called /training, but the thing they came for is the run.
-    const PAGE_ALIASES = { psyche: "mind", run: "training" };
+    const PAGE_ALIASES = { psyche: "mind", run: "training", cs2: "cs", "counter-strike": "cs", valorant: "val" };
 
     // render the front-door directory from the same list
     (() => {

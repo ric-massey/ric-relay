@@ -1,0 +1,10 @@
+{
+  "name": "ric-terminal-cs-fetcher",
+  "private": true,
+  "type": "module",
+  "description": "Downloads Ric's CS2 demos through a bot Steam account. See ../README.md.",
+  "dependencies": {
+    "globaloffensive": "^3.3.0",
+    "steam-user": "^5.3.0"
+  }
+}

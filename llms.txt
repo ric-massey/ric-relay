@@ -1,0 +1,36 @@
+# Ric's Terminal
+
+> Ric Massey's personal website for friends and family. The home page is a
+> terminal; every other page is a "room" styled like the real app for that part
+> of his life. Most rooms draw themselves with JavaScript, so where a room has
+> plain-text data it is linked below.
+
+## Counter-Strike 2
+
+- [Every CS2 match, as plain text](https://ricmassey.com/projects/cs/llm/index.md): career numbers, ranks, every match with a link to its full report
+- Each match report (`/projects/cs/llm/<match id>.md`) has the scoreboard with player names, every round, and — for matches whose demo was saved — every fight: where both players stood (callout and map coordinates), weapon, headshot/wallbang/smoke flags, distance, damage exchanged, shots fired, who was alive, and a 2D snapshot of all ten players at the moment of the kill; plus grenades, flashes, the bomb, the damage log, and every player's money and loadout
+- Raw 2D data per match (positions twice a second for every player, every round): `/projects/cs/matches/<match id>.js`, schema at the end of the index
+- [The page itself](https://ricmassey.com/cs.html)
+
+## VALORANT
+
+- [Every VALORANT match, as plain text](https://ricmassey.com/projects/val/llm/index.md): rank, career numbers, every match with a link to its full report
+- Each match report (`/projects/val/llm/<match id>.md`) has every round and every fight: killer and victim with exact game coordinates (x, y), the same point on the minimap image (u, v), which way each player was facing, the nearest callout, distance, weapon, who was alive — and the position of all ten players at that moment; plus spike plants and defuses with everyone's positions, damage by body part, and every player's buy
+- Map references (`/projects/val/llm/maps/<map>.md`): every callout on the map with its coordinates and minimap position, and the formula for converting coordinates to the minimap image
+- Raw data per match: `/projects/val/matches/<match id>.js`
+- [The page itself](https://ricmassey.com/val.html)
+
+## Rooms
+
+- [Terminal (home)](https://ricmassey.com/)
+- [Orrin](https://ricmassey.com/orrin.html): Ric's long-running computer program with memory and goals
+- [Psyche](https://ricmassey.com/psyche.html): mood, diagnostic criteria, psychoactive substances, and the evidence behind them
+- [Climbing](https://ricmassey.com/climbing.html): routes and climbing days
+- [Training](https://ricmassey.com/training.html): runs and the training plan
+- [Exploration](https://ricmassey.com/exploration.html): space, physics, science explainers
+- [Gaming](https://ricmassey.com/gaming.html): games Ric has built, playable in the browser
+- [Workbench](https://ricmassey.com/workbench.html): side projects
+- [Captures](https://ricmassey.com/captures.html): photographs
+- [Apex](https://ricmassey.com/apex.html): Apex Legends stats
+- [CS](https://ricmassey.com/cs.html): Counter-Strike 2, every match
+- [VAL](https://ricmassey.com/val.html): VALORANT, every match and every fight on the minimap

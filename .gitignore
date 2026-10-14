@@ -74,3 +74,29 @@ projects/training/garmin/**/__pycache__/
 
 # Cloudflare wrangler local cache (worker deploys)
 .wrangler/
+
+# CS: the room's data (cs-data.js, matches/) and its scripts are committed.
+# What stays on this machine: the venv, the SteamID/GSI token config, local
+# state (which holds share codes — enough to download a demo, names and all),
+# the live-feed spool, and the raw demos, which are 100+ MB each.
+projects/cs/.cs-venv/
+projects/cs/cs-account.json
+projects/cs/.cs-state.json
+projects/cs/.gsi-spool.jsonl
+projects/cs/demos/
+projects/cs/__pycache__/
+projects/cs/*.tmp
+
+projects/cs/fetcher/node_modules/
+
+# VALORANT: the room's data (val-data.js, matches/, llm/, maps/) is committed.
+# raw/ holds Riot's untouched match JSON, which carries every player's account
+# id — local only. So do the state file, the content cache and the account
+# config (which says whether other players' names are shown).
+projects/val/raw/
+projects/val/.val-state.json
+projects/val/.content.json
+projects/val/val-account.json
+projects/val/__pycache__/
+projects/val/*.tmp
+projects/val/matches/*.tmp

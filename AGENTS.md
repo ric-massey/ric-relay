@@ -471,6 +471,58 @@ that must never break:
   `career` block by hand and the script preserves them. The page labels them as hand-read;
   keep that honesty intact.
 
+**CS is pulled from Valve, and only while the game is open.** `cs.html` reads
+`projects/cs/cs-data.js` plus `projects/cs/matches/<id>.js` replays. Rules
+(`projects/cs/README.md` has the rest):
+
+- **Nothing runs between sessions.** `cs-session.pyw` is CS2's Steam launch-option
+  wrapper: it starts the game first, listens for Game State Integration on
+  `127.0.0.1:3010`, runs `sync.py` every 30 minutes until `cs2.exe` closes, syncs once
+  more and exits. Don't turn it into a login task or a service — Ric asked for exactly
+  this.
+- **The archive only grows.** Valve deletes demos after a few weeks; `cs-data.js` is the
+  permanent record and no script removes a match from it. Sources merge on Valve's
+  match id, else on map + score + Ric's K/D.
+- **Other players are shown by in-game name** — Ric decided this on 2026-10-13,
+  since Leetify and the public stats sites already show them. Steam ids and share
+  codes still never reach the committed files (a share code downloads the whole
+  demo). This is CS only; Apex's LiveAPI rule is unchanged.
+- Raw demos, the venv, `cs-account.json`, `.cs-state.json` and the GSI spool are
+  gitignored. Steam Web API secrets live in Windows Credential Manager.
+- `sync.py` commits `cs-data.js` and `matches/` only, on `main`, and never pushes.
+- The replay has no radar art: the floor plan is drawn from where players stood, and
+  callout names are placed at the average of every position Valve tagged with them
+  (`llm/maps/<map>.md` is the same table for machines).
+- **LLMs read the plain-text copy.** `export-llm.py` writes `projects/cs/llm/*.md`
+  from the same data on every sync, and `/llms.txt` points at it. Anything new the
+  page shows should also land in that export, or machines only get half the room.
+
+**CS2 demos download themselves through a bot account.** `projects/cs/fetcher/`
+signs a second Steam account into Valve's game coordinator to turn share codes into
+demo links. Never point it at Ric's own account (it would kick him from his game),
+and never store the bot's password: `login.mjs` keeps only Steam's login token, in
+Windows Credential Manager.
+
+**VALORANT is read from Riot's own client, only while the game is open.** `val.html`
+reads `projects/val/val-data.js` and `matches/<id>.js`; `projects/val/README.md` has
+the rest. Rules:
+
+- **Not an official API, by Ric's choice.** VALORANT has no personal keys, so
+  `riot.py` uses the signed-in Riot Client's local endpoints: GETs only, for Ric's own
+  matches, with a token that is never stored. No game memory is read (Riot blocks that
+  from 2026-10-06). Don't add writes, don't call other players' histories, and don't
+  persist the token.
+- **The desktop shortcut is the trigger** (`VALORANT + Terminal`, made by
+  `install.py`); the Riot Client has no launch-option wrapper. Nothing runs between
+  sessions, and a missed session costs nothing because Riot's history is caught up on.
+- **Other players are shown by agent, not Riot ID** — VALORANT stat sites only name
+  players who opted in. `show_others_names` in `val-account.json` is the switch; it
+  defaults off. `raw/` (every player's account id) stays gitignored.
+- **Every position is stored three ways**: game `x, y`, minimap `u, v`, and the nearest
+  Riot callout — the page draws on the real minimap, and `llm/maps/<map>.md` gives an
+  AI the callout table and the transform. Keep all three in anything new.
+- The archive only grows; `sync.py` commits the room's data only and never pushes.
+
 Homepage "transmissions" live in `notes.js`. Curated newest additions live
 in `latest.js` and are announced in exactly one place: the NOTIFICATION banner on
 `index.html`. Every room used to carry one in its own native style; they don't any

@@ -1,0 +1,7 @@
+{
+  "steam64": "PUT-YOUR-STEAMID64-HERE",
+  "display_name": "RicGoneCrazy",
+  "cs2_dir": "C:/Program Files (x86)/Steam/steamapps/common/Counter-Strike Global Offensive",
+  "demo_inbox": "demos",
+  "keep_demos_in": "demos/archive"
+}

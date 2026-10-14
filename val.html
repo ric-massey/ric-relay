@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>/val — career</title>
+  <meta name="description" content="Ric's VALORANT room — every match, every round, and every fight on the minimap with where all ten players stood, from Riot's own match data.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ric's Terminal">
+  <meta property="og:title" content="VALORANT — Ric's Terminal">
+  <meta property="og:description" content="Every VALORANT match, every fight on the minimap.">
+  <meta property="og:url" content="https://ricmassey.com/val.html">
+  <meta property="og:image" content="https://ricmassey.com/assets/og-terminal.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Ric's Terminal — amber text on a black CRT screen">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://ricmassey.com/val.html">
+  <link rel="alternate" type="text/markdown" title="Every match as plain text" href="projects/val/llm/index.md">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230f1923'/><path d='M14 22l30 56h14L28 22zM86 22L62 66h-14l24-44z' fill='%23ff4655'/></svg>">
+  <style>
+    :root{
+      /* the client's Career screen: deep blue-black, the red, bone white.
+         Ally teal / enemy red are fills only and passed the colour-blind
+         check as a pair; text uses the *-ink versions, which clear 4.5:1
+         on --panel. */
+      --bg:#0f1923;
+      --bg-2:#111c27;
+      --panel:#14202b;
+      --panel-2:#1a2835;
+      --line:#2a3a4a;
+      --line-hot:#3f5468;
+      --bone:#ece8e1;
+      --dim:#a9b3bd;        /* 7.6:1 on --panel */
+      --dimmer:#8e9aa6;     /* 5.6:1 */
+      --red:#ff4655;
+      --red-ink:#ff7a85;
+      --ally:#22a39b;  --ally-ink:#5fd6cb;
+      --enemy:#e8505b; --enemy-ink:#ff8790;
+      --tie:#7a8794;
+      --gold:#f5d76e;
+
+      --display:"Arial Narrow","Roboto Condensed","Helvetica Neue Condensed Bold",
+                "Liberation Sans Narrow",Impact,system-ui,sans-serif;
+      --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+      --gut:clamp(14px,3.4vw,32px);
+    }
+    *{box-sizing:border-box;margin:0}
+    html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+    body{background:var(--bg);color:var(--bone);font-family:var(--sans);font-size:15px;line-height:1.55;overflow-x:hidden}
+    ::selection{background:var(--red);color:#fff}
+    a{color:inherit}
+    button{font:inherit;color:inherit}
+    :focus-visible{outline:2px solid var(--red);outline-offset:2px}
+    h1,h2,h3{font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+    @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}html{scroll-behavior:auto}}
+
+    /* backdrop: the client's angled panels */
+    .scene{position:fixed;inset:0;z-index:-1;pointer-events:none;
+      background:
+        linear-gradient(115deg,transparent 0 62%,rgba(255,70,85,.07) 62% 63%,transparent 63%),
+        linear-gradient(115deg,transparent 0 70%,rgba(255,255,255,.025) 70% 86%,transparent 86%),
+        radial-gradient(90% 60% at 10% 0%,rgba(255,70,85,.10),transparent 60%),
+        linear-gradient(180deg,#111c27,#0c141c)}
+
+    /* ══ top bar: the client's nav ═════════════════════════════ */
+    .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:stretch;gap:12px;min-height:58px;
+      padding:0 var(--gut);background:rgba(12,20,28,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      border-bottom:1px solid var(--line)}
+    .brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex:none}
+    .brand .t{font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.14em;text-transform:uppercase;
+      line-height:1.05;color:var(--dim)}
+    .brand .t b{display:block;color:var(--bone);font-size:17px}
+    .navwrap{flex:1;min-width:0;display:flex;justify-content:flex-end;align-items:stretch;position:relative}
+    nav.clienttabs{display:flex;align-items:stretch;overflow-x:auto;scrollbar-width:none}
+    nav.clienttabs::-webkit-scrollbar{display:none}
+    nav.clienttabs a,nav.clienttabs .here{display:flex;align-items:center;padding:0 13px;font-family:var(--display);
+      font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;text-decoration:none;color:var(--dim);
+      white-space:nowrap;position:relative}
+    nav.clienttabs a:hover{color:var(--bone)}
+    nav.clienttabs .here{color:var(--bone)}
+    nav.clienttabs .here::after{content:"";position:absolute;left:10px;right:10px;bottom:0;height:3px;background:var(--red)}
+    .roomnav-toggle{display:none}
+    @media (max-width:1100px){
+      .navwrap{align-items:center}
+      .roomnav-toggle{display:inline-flex;align-items:center;gap:9px;min-height:44px;padding:0 14px;cursor:pointer;
+        background:var(--panel);border:1px solid var(--line);font-family:var(--display);font-weight:700;font-size:13px;
+        letter-spacing:.12em;text-transform:uppercase;clip-path:polygon(0 0,100% 0,100% 70%,92% 100%,0 100%)}
+      .roomnav-toggle[aria-expanded="true"]{border-color:var(--red)}
+      .roomnav-toggle-bars{position:relative;width:15px;height:11px;border-top:2px solid currentColor;border-bottom:2px solid currentColor}
+      .roomnav-toggle-bars::after{content:"";position:absolute;inset:calc(50% - 1px) 0 auto;border-top:2px solid currentColor}
+      nav.clienttabs[data-roomnav]{display:none}
+      nav.clienttabs[data-roomnav].roomnav-open{display:flex;flex-direction:column;position:absolute;top:100%;right:0;
+        min-width:220px;background:#0e1720;border:1px solid var(--line);box-shadow:0 18px 40px rgba(0,0,0,.6);padding:6px 0}
+      nav.clienttabs[data-roomnav].roomnav-open a{min-height:44px;padding:0 18px}
+    }
+    .subbar{position:sticky;top:58px;z-index:19;display:flex;gap:4px;padding:0 var(--gut);overflow-x:auto;scrollbar-width:none;
+      background:rgba(15,25,35,.94);border-bottom:1px solid var(--line)}
+    .subbar::-webkit-scrollbar{display:none}
+    .subbar a{padding:11px 14px;font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.14em;
+      text-transform:uppercase;color:var(--dimmer);text-decoration:none;white-space:nowrap;border-bottom:2px solid transparent}
+    .subbar a:hover{color:var(--bone)}
+    .subbar a.on{color:var(--bone);border-bottom-color:var(--red)}
+
+    main{max-width:1240px;margin:0 auto;padding:0 var(--gut) 60px}
+    section{padding-top:34px;scroll-margin-top:112px}
+    .shead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px;
+      padding-bottom:8px;border-bottom:1px solid var(--line)}
+    .shead h2{font-size:24px;letter-spacing:.1em}
+    .shead p{font-size:13px;color:var(--dimmer)}
+    .panel{background:linear-gradient(180deg,rgba(26,40,53,.92),rgba(20,32,43,.92));border:1px solid var(--line)}
+    .empty{padding:22px;color:var(--dim);font-size:14px}
+    .note{font-size:12px;color:var(--dimmer)}
+    .num{font-variant-numeric:tabular-nums}
+
+    /* ══ career card ═══════════════════════════════════════════ */
+    .hero{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;padding-top:28px}
+    @media (max-width:820px){.hero{grid-template-columns:1fr}}
+    .card{padding:22px;display:flex;flex-direction:column;gap:16px;position:relative;
+      clip-path:polygon(0 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%)}
+    .kicker{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:var(--red-ink)}
+    .card h1{font-size:clamp(32px,6vw,54px);line-height:1;text-transform:none;overflow-wrap:anywhere}
+    .card h1 small{font-size:.45em;color:var(--dim);letter-spacing:.02em}
+    .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px}
+    .chip{background:rgba(0,0,0,.25);border-left:3px solid var(--red);padding:9px 12px}
+    .chip b{display:block;font-family:var(--display);font-size:26px;line-height:1.05;font-variant-numeric:tabular-nums}
+    .chip span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dimmer)}
+    .form{display:flex;gap:4px;flex-wrap:wrap}
+    .form i{width:22px;height:22px;display:grid;place-items:center;font-style:normal;font-family:var(--display);
+      font-weight:700;font-size:12px;color:#061014}
+    .W{background:var(--ally)} .L{background:var(--enemy)} .T{background:var(--tie)}
+    .rank{display:flex;align-items:center;gap:16px}
+    .rank .tier{font-family:var(--display);font-weight:700;font-size:30px;text-transform:uppercase;letter-spacing:.06em}
+    .rr{height:8px;background:rgba(255,255,255,.08);flex:1;min-width:80px}
+    .rr i{display:block;height:100%;background:linear-gradient(90deg,var(--ally),var(--ally-ink))}
+    .agents{display:flex;flex-direction:column;gap:6px}
+    .agent{display:grid;grid-template-columns:110px 1fr 70px;gap:10px;align-items:center;font-size:13px}
+    .agent .bar{height:8px;background:rgba(255,255,255,.06)}
+    .agent .bar i{display:block;height:100%;background:var(--red)}
+    .agent span:last-child{text-align:right;color:var(--dim);font-variant-numeric:tabular-nums}
+
+    /* ══ match history ═════════════════════════════════════════ */
+    .filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+    .filters button{min-height:34px;padding:0 12px;background:var(--panel);border:1px solid var(--line);cursor:pointer;
+      font-size:13px;color:var(--dim)}
+    .filters button[aria-pressed="true"]{color:var(--bone);border-color:var(--red)}
+    .mlist{display:flex;flex-direction:column;gap:4px}
+    .mhead,.mrow{display:grid;align-items:center;gap:10px;
+      grid-template-columns:120px 110px minmax(100px,1fr) 80px 96px 56px 56px 56px 70px}
+    .mhead{padding:0 14px 6px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dimmer)}
+    .match{background:rgba(20,32,43,.9);border:1px solid var(--line)}
+    .match.open{border-color:var(--line-hot)}
+    .mrow{width:100%;padding:10px 14px;background:none;border:0;border-left:5px solid var(--tie);text-align:left;cursor:pointer;font-size:14px}
+    .mrow.rW{border-left-color:var(--ally)} .mrow.rL{border-left-color:var(--enemy)}
+    .mrow:hover{background:rgba(255,255,255,.03)}
+    .mrow .agentname{font-family:var(--display);font-weight:700;font-size:17px;text-transform:uppercase;letter-spacing:.05em}
+    .mrow .map{font-family:var(--display);font-weight:700;font-size:16px;text-transform:uppercase}
+    .mrow .q{display:block;font-family:var(--sans);font-weight:400;font-size:11px;letter-spacing:.1em;color:var(--dimmer);text-transform:uppercase}
+    .score{font-family:var(--display);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+    .score.W{background:none;color:var(--ally-ink)} .score.L{background:none;color:var(--enemy-ink)} .score.T{background:none;color:var(--dim)}
+    .lbl{display:none}
+    .rrd{font-size:12px;font-variant-numeric:tabular-nums}
+    .up{color:var(--ally-ink)} .down{color:var(--enemy-ink)}
+    @media (max-width:900px){
+      .mhead{display:none}
+      .mrow{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:6px}
+      .mrow .when{grid-column:1/3;order:-2;color:var(--dim);font-size:13px}
+      .mrow .rrc{grid-column:3/5;order:-1;text-align:right}
+      .mrow .agentc,.mrow .mapc{grid-column:span 2}
+      .mrow .scorec{grid-column:span 4}
+      .lbl{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dimmer)}
+    }
+
+    .detail{padding:6px 14px 18px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:16px}
+    .detail h3{font-size:14px;letter-spacing:.16em;color:var(--dim);margin:12px 0 8px}
+    .rounds{display:flex;gap:3px;flex-wrap:wrap;align-items:flex-end}
+    .rd{width:26px;display:flex;flex-direction:column;align-items:center;gap:2px}
+    .rd .cell{width:26px;height:30px;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:12px;color:#061014;position:relative}
+    .rd .cell.dead::after{content:"";position:absolute;right:2px;top:2px;width:5px;height:5px;border-radius:50%;background:#061014;opacity:.7}
+    .rd .sd{width:100%;height:3px}
+    .rd .n{font-size:11px;color:var(--dimmer)}
+    .half{width:10px}
+    .rkey{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--dim);margin-top:8px}
+    .rkey i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px}
+    .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+    .tile{background:rgba(0,0,0,.22);border:1px solid var(--line);padding:12px}
+    .tile h4{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--red-ink);margin-bottom:6px;font-weight:600}
+    .kv{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:2px 0}
+    .kv span{color:var(--dim)} .kv b{font-weight:600;font-variant-numeric:tabular-nums}
+    .boards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:760px){.boards{grid-template-columns:1fr}}
+    .sbwrap{overflow-x:auto;min-width:0}
+    table.sb{width:100%;border-collapse:collapse;font-size:13px}
+    table.sb caption{text-align:left;font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;padding:6px 8px}
+    table.sb caption.us{background:rgba(34,163,155,.18);color:var(--ally-ink)}
+    table.sb caption.them{background:rgba(232,80,91,.16);color:var(--enemy-ink)}
+    table.sb th{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dimmer);font-weight:600;text-align:right;padding:5px 8px;border-bottom:1px solid var(--line)}
+    table.sb th:first-child,table.sb td:first-child{text-align:left}
+    table.sb td{padding:6px 8px;text-align:right;border-bottom:1px solid rgba(42,58,74,.6);font-variant-numeric:tabular-nums}
+    table.sb td:first-child{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    table.sb tr.me td{background:rgba(245,215,110,.1);color:var(--gold);font-weight:600}
+    @media (max-width:480px){table.sb{font-size:12px}table.sb th,table.sb td{padding:5px 4px}table.sb .opt{display:none}}
+    .btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 18px;cursor:pointer;border:0;
+      background:var(--red);color:#fff;font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase;
+      clip-path:polygon(0 0,100% 0,100% 70%,94% 100%,0 100%)}
+    .btn:hover{filter:brightness(1.1)}
+    .btn.ghost{background:var(--panel-2);color:var(--bone)}
+
+    /* ══ the timeline: fights on the minimap ═══════════════════ */
+    .tl{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px}
+    @media (max-width:960px){.tl{grid-template-columns:1fr}}
+    .stage{padding:10px;position:relative}
+    .stage canvas{display:block;width:100%;aspect-ratio:1;background:#0b131b}
+    .ttitle{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;margin-bottom:10px}
+    .ttitle b{font-family:var(--display);font-size:22px;text-transform:uppercase;letter-spacing:.06em}
+    .rpicks{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:10px}
+    .rpicks button{width:34px;height:34px;border:1px solid var(--line);border-bottom-width:3px;background:var(--panel);cursor:pointer;font-size:12px}
+    .rpicks button.w{border-bottom-color:var(--ally)} .rpicks button.l{border-bottom-color:var(--enemy)}
+    .rpicks button[aria-pressed="true"]{background:var(--panel-2);border-color:var(--red);color:var(--bone)}
+    .toggles{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--dim);margin-top:8px}
+    .toggles label{display:flex;gap:6px;align-items:center;cursor:pointer;min-height:32px}
+    .side{padding:12px;display:flex;flex-direction:column;gap:6px;max-height:820px;overflow:auto}
+    .ev{display:grid;grid-template-columns:44px 1fr;gap:8px;width:100%;text-align:left;padding:7px 9px;cursor:pointer;
+      background:rgba(0,0,0,.28);border:1px solid transparent;border-left:3px solid var(--line);font-size:13px}
+    .ev:hover{background:rgba(255,255,255,.04)}
+    .ev[aria-pressed="true"]{border-color:var(--red)}
+    .ev .t{color:var(--dimmer);font-variant-numeric:tabular-nums}
+    .who-us{color:var(--ally-ink)} .who-them{color:var(--enemy-ink)} .who-me{color:var(--gold);font-weight:600}
+    .coords{margin-top:10px;overflow-x:auto}
+    .coords table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+    .coords th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dimmer);padding:4px 6px;border-bottom:1px solid var(--line);font-weight:600}
+    .coords td{padding:4px 6px;border-bottom:1px solid rgba(42,58,74,.5);white-space:nowrap}
+    .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--dim)}
+    .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+
+    .maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+    .mapcard{padding:16px;clip-path:polygon(0 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%)}
+    .mapcard h3{font-size:24px}
+    .mapcard .wl{font-size:13px;color:var(--dim);margin:2px 0 10px}
+    .wbar{display:flex;height:6px;gap:2px;margin-bottom:10px}
+    .method{padding:20px;display:grid;gap:12px;font-size:14px;color:var(--dim);max-width:840px}
+    .method b{color:var(--bone)}
+    footer{text-align:center;color:var(--dimmer);font-size:12px;padding:20px var(--gut) 40px}
+  </style>
+</head>
+<body>
+<div class="scene" aria-hidden="true"></div>
+
+<header class="topbar">
+  <a class="brand" href="index.html">
+    <svg width="30" height="26" viewBox="0 0 30 26" aria-hidden="true">
+      <path d="M2 2l11 22h5L7 2zM28 2L19 18h-5L23 2z" fill="#ff4655"/>
+    </svg>
+    <span class="t">Ric's<b>Terminal</b></span>
+  </a>
+  <div class="navwrap">
+    <nav class="clienttabs" aria-label="Terminal rooms">
+      <a href="index.html">terminal</a>
+      <a href="orrin.html">orrin</a>
+      <a href="psyche.html">psyche</a>
+      <a href="climbing.html">climbing</a>
+      <a href="training.html">training</a>
+      <a href="exploration.html">exploration</a>
+      <a href="gaming.html">gaming</a>
+      <a href="workbench.html">workbench</a>
+      <a href="captures.html">captures</a>
+    </nav>
+  </div>
+</header>
+
+<nav class="subbar" aria-label="Sections">
+  <a href="#career" class="on">Career</a>
+  <a href="#matches">Match History</a>
+  <a href="#timeline">Timeline</a>
+  <a href="#maps">Maps</a>
+  <a href="#method">How</a>
+</nav>
+
+<main>
+  <noscript><p class="panel empty" style="margin-top:20px">This page draws itself with JavaScript.
+    Every match is also written out as plain text: <a href="projects/val/llm/index.md">projects/val/llm/index.md</a>.</p></noscript>
+
+  <section id="career" class="hero" aria-label="Career">
+    <div class="panel card">
+      <div>
+        <div class="kicker">VALORANT · Career</div>
+        <h1 id="name">RicGoneCrazy<small>#2001</small></h1>
+        <p class="note" id="since" style="font-size:14px"></p>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div><div class="note" style="margin-bottom:6px">Last games, newest on the left</div><div class="form" id="form"></div></div>
+    </div>
+    <div class="panel card">
+      <h2 style="font-size:16px;color:var(--dim);letter-spacing:.16em">Competitive rank</h2>
+      <div id="rank"></div>
+      <h2 style="font-size:16px;color:var(--dim);letter-spacing:.16em">Agents</h2>
+      <div class="agents" id="agents"></div>
+    </div>
+  </section>
+
+  <section id="matches" aria-labelledby="mh">
+    <div class="shead"><h2 id="mh">Match History</h2><p id="mcount"></p></div>
+    <div class="filters" id="filters" role="group" aria-label="Filter by map"></div>
+    <div class="mhead" aria-hidden="true"><span>Date</span><span>Agent</span><span>Map</span><span>Score</span>
+      <span>K / D / A</span><span>ACS</span><span>ADR</span><span>HS%</span><span style="text-align:right">RR</span></div>
+    <div class="mlist" id="mlist"></div>
+  </section>
+
+  <section id="timeline" aria-labelledby="th">
+    <div class="shead"><h2 id="th">Timeline</h2><p>Every kill on the minimap, with where all ten players stood and which way they faced.</p></div>
+    <div id="tlbox"></div>
+  </section>
+
+  <section id="maps" aria-labelledby="maph">
+    <div class="shead"><h2 id="maph">Maps</h2><p>Every map played.</p></div>
+    <div class="maps" id="maplist"></div>
+  </section>
+
+  <section id="method" aria-labelledby="howh">
+    <div class="shead"><h2 id="howh">Where this comes from</h2></div>
+    <div class="panel method">
+      <p><b>Riot's own match data.</b> After each game the VALORANT client keeps a full
+        record of the match: every kill, where every player was standing when it
+        happened and which way they were facing, the damage each player did to each
+        other player, every buy, and the spike. This room reads that record from the
+        game on Ric's computer while he plays.</p>
+      <p><b>Exact positions.</b> Every position is the game's own coordinates, drawn on
+        the map's real minimap and labelled with Riot's callout names: the same picture
+        as the timeline in the game's match report.</p>
+      <p><b>Other players are shown by agent.</b> VALORANT stat sites only name players who
+        opted in, so this room does the same.</p>
+      <p><b>Plain text too.</b> All of it, every fight with every coordinate included, is
+        written out for anything that reads the site without running it:
+        <a href="projects/val/llm/index.md">the full record</a>, a report per match, and a
+        callout map for each map.</p>
+    </div>
+  </section>
+</main>
+
+<footer id="stamp"></footer>
+
+<script src="effects.js"></script>
+<script src="projects/val/val-data.js?v=1"></script>
+<script>
+(() => {
+  const D = window.VAL_DATA || { matches: [] };
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const fix = (n, d = 0) => (typeof n === "number" && isFinite(n)) ? n.toFixed(d) : "—";
+  const pct = (n) => (typeof n === "number" && isFinite(n)) ? `${Math.round(n)}%` : "—";
+  const QUEUES = { competitive: "Competitive", unrated: "Unrated", swiftplay: "Swiftplay", spikerush: "Spike Rush", premier: "Premier", "": "Custom" };
+  const HOW = { "Eliminated": "Elimination", "Bomb detonated": "Spike detonated", "Bomb defused": "Spike defused", "Round timer expired": "Time ran out", "Surrendered": "Surrender" };
+  const when = (iso, long) => !iso ? "date unknown" : new Date(iso).toLocaleString("en-US", long
+    ? { weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }
+    : { month: "short", day: "numeric", year: "numeric" });
+  const matches = (D.matches || []).slice().sort((a, b) => (b.at || "").localeCompare(a.at || ""));
+
+  /* ══ career ════════════════════════════════════════════════ */
+  (() => {
+    if (D.player) {
+      const [n, tag] = D.player.split("#");
+      $("name").innerHTML = `${esc(n)}${tag ? `<small>#${esc(tag)}</small>` : ""}`;
+    }
+    const n = matches.length, t = { W: 0, L: 0, T: 0 };
+    let k = 0, d = 0, a = 0, acs = 0, adr = 0, hs = 0, hsn = 0;
+    for (const m of matches) {
+      t[m.result]++; k += m.me.k; d += m.me.d; a += m.me.a; acs += m.me.acs; adr += m.me.adr;
+      if (m.me.hs != null) { hs += m.me.hs; hsn++; }
+    }
+    const oldest = matches.map((m) => m.at).filter(Boolean).sort()[0];
+    $("since").textContent = n ? `${n} match${n === 1 ? "" : "es"} on record${oldest ? ` since ${when(oldest)}` : ""}`
+      : "No matches on record yet. They arrive the first time VALORANT is played with the tracker running.";
+    const chip = (v, l) => `<div class="chip"><b>${v}</b><span>${l}</span></div>`;
+    $("chips").innerHTML = [chip(n, "Matches"), chip(`${t.W}-${t.L}${t.T ? `-${t.T}` : ""}`, t.T ? "W-L-D" : "W-L"),
+      chip(n ? pct(100 * t.W / n) : "—", "Win rate"), chip(d ? (k / d).toFixed(2) : "—", "K/D"),
+      chip(n ? fix(acs / n) : "—", "ACS"), chip(n ? fix(adr / n) : "—", "ADR"), chip(hsn ? pct(hs / hsn) : "—", "Headshot %"),
+      chip(n ? `${fix(k / n, 1)}` : "—", "Kills / game")].join("");
+    $("form").innerHTML = matches.slice(0, 20).map((m) => `<i class="${m.result}" title="${esc(m.map)} ${m.score[0]}-${m.score[1]} as ${esc(m.me.agent)}">${m.result === "T" ? "D" : m.result}</i>`).join("");
+    const R = D.rank;
+    $("rank").innerHTML = R ? `<div class="rank"><span class="tier">${esc(R.tier)}</span>
+        <div class="rr" role="img" aria-label="${R.rr} of 100 rank rating"><i style="width:${Math.min(100, R.rr || 0)}%"></i></div>
+        <span class="num">${R.rr ?? "—"} RR</span></div><p class="note" style="margin-top:6px">Read ${esc(R.read)}.</p>`
+      : `<p class="note">No competitive rank read yet.</p>`;
+    const ag = {};
+    for (const m of matches) { const g = ag[m.me.agent] ||= { n: 0, w: 0 }; g.n++; if (m.result === "W") g.w++; }
+    const top = Object.entries(ag).sort((a, b) => b[1].n - a[1].n);
+    $("agents").innerHTML = top.length ? top.slice(0, 6).map(([name, g]) => `<div class="agent"><span>${esc(name)}</span>
+      <div class="bar" role="img" aria-label="${g.n} games"><i style="width:${100 * g.n / top[0][1].n}%"></i></div>
+      <span>${g.n} · ${pct(100 * g.w / g.n)}</span></div>`).join("") : `<p class="note">None yet.</p>`;
+  })();
+
+  /* ══ match history ═════════════════════════════════════════ */
+  let filter = "all";
+  function row(m) {
+    const me = m.me, rr = m.rr;
+    return `<div class="match" id="m-${esc(m.id)}">
+      <button class="mrow r${m.result}" aria-expanded="false" data-id="${esc(m.id)}">
+        <span class="when">${esc(when(m.at))}</span>
+        <span class="agentc"><span class="agentname">${esc(me.agent)}</span></span>
+        <span class="mapc"><span class="map">${esc(m.map)}</span><span class="q">${esc(QUEUES[m.queue] || m.queue)}</span></span>
+        <span class="scorec"><span class="score ${m.result}">${m.score[0]} : ${m.score[1]}</span></span>
+        <span class="num"><span class="lbl">K / D / A</span>${me.k} / ${me.d} / ${me.a}</span>
+        <span class="num"><span class="lbl">ACS</span>${me.acs}</span>
+        <span class="num"><span class="lbl">ADR</span>${fix(me.adr)}</span>
+        <span class="num"><span class="lbl">HS%</span>${pct(me.hs)}</span>
+        <span class="rrc rrd">${rr && rr.earned != null ? `<span class="${rr.earned >= 0 ? "up" : "down"}">${rr.earned >= 0 ? "+" : ""}${rr.earned} RR</span>` : ""}</span>
+      </button>
+      <div class="detail" hidden></div></div>`;
+  }
+  function renderList() {
+    const list = matches.filter((m) => filter === "all" || m.map === filter);
+    $("mlist").innerHTML = list.length ? list.map(row).join("") : `<div class="panel empty">No matches yet.</div>`;
+    $("mcount").textContent = `${list.length} match${list.length === 1 ? "" : "es"}`;
+  }
+  (() => {
+    const maps = [...new Set(matches.map((m) => m.map))];
+    $("filters").innerHTML = [["all", "All maps"], ...maps.map((m) => [m, m])]
+      .map(([v, l]) => `<button type="button" data-map="${esc(v)}" aria-pressed="${v === filter}">${esc(l)}</button>`).join("");
+    $("filters").addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      filter = b.dataset.map;
+      for (const x of $("filters").children) x.setAttribute("aria-pressed", String(x === b));
+      renderList();
+    });
+    renderList();
+    $("mlist").addEventListener("click", (e) => {
+      const b = e.target.closest(".mrow"); if (b) return openMatch(b.dataset.id);
+      const t = e.target.closest("[data-timeline]"); if (t) showTimeline(t.dataset.timeline, +t.dataset.round || 0, true);
+    });
+  })();
+
+  function openMatch(id, scroll) {
+    const card = document.getElementById(`m-${id}`); if (!card) return;
+    const btn = card.querySelector(".mrow"), det = card.querySelector(".detail");
+    const open = btn.getAttribute("aria-expanded") !== "true";
+    for (const c of document.querySelectorAll(".match.open")) {
+      c.classList.remove("open"); c.querySelector(".mrow").setAttribute("aria-expanded", "false"); c.querySelector(".detail").hidden = true;
+    }
+    if (!open) return;
+    det.innerHTML = detail(matches.find((m) => m.id === id));
+    det.hidden = false; card.classList.add("open"); btn.setAttribute("aria-expanded", "true");
+    if (scroll) card.scrollIntoView({ block: "start" });
+    history.replaceState(null, "", `#match-${id}`);
+  }
+
+  function detail(m) {
+    const me = m.me, out = [];
+    out.push(`<h3>${esc(when(m.at, true))} · ${esc(QUEUES[m.queue] || m.queue)} · ${m.minutes} min · started on ${m.start_side === "ATK" ? "attack" : "defense"}${m.rr ? ` · ${esc(m.rr.tier)} ${m.rr.after} RR` : ""}</h3>`);
+    const half = m.rounds.length > 24 ? 12 : Math.min(12, Math.floor((m.rounds.length + 1) / 2));
+    out.push(`<div><h3>Rounds</h3><div class="rounds">${m.rounds.map((r, i) => {
+      const title = `Round ${i + 1}: ${r.w ? "won" : "lost"} on ${r.side === "ATK" ? "attack" : "defense"} (${HOW[r.how] || r.how || "?"}), ${r.k} kill${r.k === 1 ? "" : "s"}${r.dead ? ", died" : ", survived"}`;
+      return `${i === half && m.rounds.length > half ? '<span class="half" aria-hidden="true"></span>' : ""}<button type="button" class="rd" style="background:none;border:0;padding:0;cursor:pointer" data-timeline="${esc(m.id)}" data-round="${i}" title="${title}" aria-label="${title} — open on the timeline">
+        <span class="cell ${r.w ? "W" : "L"}${r.dead ? " dead" : ""}">${r.k || ""}</span>
+        <span class="sd" style="background:${r.side === "ATK" ? "var(--red)" : "var(--ally)"}"></span><span class="n">${i + 1}</span></button>`;
+    }).join("")}</div><div class="rkey"><span><i class="W"></i>won</span><span><i class="L"></i>lost</span>
+      <span>number = Ric's kills · dot = died</span><span><i style="background:var(--red)"></i>attack</span><span><i style="background:var(--ally)"></i>defense</span>
+      <span>click a round to see it on the map</span></div></div>`);
+    const kv = (k, v) => v == null || v === "—" ? "" : `<div class="kv"><span>${k}</span><b>${v}</b></div>`;
+    const sh = me.shots || {}, hits = (sh.head || 0) + (sh.body || 0) + (sh.legs || 0);
+    out.push(`<div><h3>Ric's game · ${esc(me.agent)}</h3><div class="tiles">
+      <div class="tile"><h4>Combat</h4>${kv("Kills / deaths / assists", `${me.k} / ${me.d} / ${me.a}`)}${kv("Combat score (ACS)", me.acs)}
+        ${kv("Damage per round", fix(me.adr))}${kv("Damage taken per round", fix(me.dmg_received))}${kv("KAST", pct(me.kast))}
+        ${kv("First bloods", me.fb)}${kv("First deaths", me.fd)}</div>
+      <div class="tile"><h4>Accuracy</h4>${kv("Headshots", pct(me.hs))}${kv("Hits to the head", sh.head)}${kv("Hits to the body", sh.body)}
+        ${kv("Hits to the legs", sh.legs)}${kv("Leg %", hits ? pct(100 * sh.legs / hits) : null)}</div>
+      <div class="tile"><h4>Rounds with…</h4>${Object.entries(me.multi || {}).map(([k, v]) => kv(k === "5k" ? "Ace" : `${k.replace("k", "")} kills`, v)).join("")}
+        ${kv("Spike plants", me.plants)}${kv("Spike defuses", me.defuses)}</div>
+      <div class="tile"><h4>Economy & abilities</h4>${kv("Average loadout", me.avg_loadout != null ? me.avg_loadout.toLocaleString() : null)}
+        ${kv("Credits spent", me.spent != null ? me.spent.toLocaleString() : null)}
+        ${Object.entries(me.abilities || {}).map(([k, v]) => kv(`${k.replace("Casts", "").replace(/^\w/, (c) => c.toUpperCase())} casts`, v)).join("")}</div>
+    </div></div>`);
+    const table = (us) => {
+      const rows = m.board.filter((s) => s.us === us).sort((a, b) => b.acs - a.acs);
+      return `<div class="sbwrap"><table class="sb"><caption class="${us ? "us" : "them"}">${us ? "Ric's team" : "Opponents"} · ${m.score[us ? 0 : 1]}</caption>
+        <thead><tr><th scope="col">Agent</th><th scope="col" class="opt">Rank</th><th scope="col">ACS</th><th scope="col">K</th><th scope="col">D</th><th scope="col">A</th><th scope="col">ADR</th><th scope="col" class="opt">HS%</th><th scope="col" class="opt">FB</th></tr></thead>
+        <tbody>${rows.map((s) => `<tr${s.me ? ' class="me"' : ""}><td>${s.me ? `Ric · ${esc(s.agent)}` : esc(s.name ? `${s.name} · ${s.agent}` : s.agent)}</td>
+          <td class="opt">${esc(s.tier || "—")}</td><td>${s.acs}</td><td>${s.k}</td><td>${s.d}</td><td>${s.a}</td><td>${fix(s.adr)}</td><td class="opt">${pct(s.hs)}</td><td class="opt">${s.fb}</td></tr>`).join("")}</tbody></table></div>`;
+    };
+    out.push(`<div><h3>Scoreboard</h3><div class="boards">${table(true)}${table(false)}</div></div>`);
+    out.push(`<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><button class="btn" type="button" data-timeline="${esc(m.id)}">▶ Open the timeline</button>
+      <a class="note" href="projects/val/llm/${encodeURIComponent(m.id)}.md">Full report as text</a></div>`);
+    return out.join("");
+  }
+
+  /* ══ maps ═════════════════════════════════════════════════ */
+  (() => {
+    const by = {};
+    for (const m of matches) {
+      const g = by[m.map] ||= { n: 0, W: 0, L: 0, T: 0, k: 0, d: 0, acs: 0 };
+      g.n++; g[m.result]++; g.k += m.me.k; g.d += m.me.d; g.acs += m.me.acs;
+    }
+    $("maplist").innerHTML = Object.entries(by).sort((a, b) => b[1].n - a[1].n).map(([map, g]) => `<div class="panel mapcard">
+      <h3>${esc(map)}</h3><div class="wl">${g.n} game${g.n === 1 ? "" : "s"} · ${g.W}W ${g.L}L${g.T ? ` ${g.T}D` : ""}</div>
+      <div class="wbar" role="img" aria-label="${g.W} wins, ${g.L} losses"><i class="W" style="flex:${g.W}"></i><i class="L" style="flex:${g.L}"></i><i class="T" style="flex:${g.T}"></i></div>
+      <div class="kv"><span>Win rate</span><b>${pct(100 * g.W / g.n)}</b></div><div class="kv"><span>K/D</span><b>${g.d ? (g.k / g.d).toFixed(2) : "—"}</b></div>
+      <div class="kv"><span>ACS</span><b>${fix(g.acs / g.n)}</b></div></div>`).join("") || `<div class="panel empty">No maps yet.</div>`;
+  })();
+
+  /* ══ the timeline ═════════════════════════════════════════ */
+  const loaded = {};
+  const loadMatch = (id) => (window.VAL_MATCH && window.VAL_MATCH[id]) ? Promise.resolve(window.VAL_MATCH[id])
+    : (loaded[id] ||= new Promise((ok, bad) => {
+      const s = document.createElement("script");
+      s.src = `projects/val/matches/${encodeURIComponent(id)}.js`;
+      s.onload = () => (window.VAL_MATCH && window.VAL_MATCH[id]) ? ok(window.VAL_MATCH[id]) : bad();
+      s.onerror = bad; document.head.appendChild(s);
+    }));
+
+  function showTimeline(id, round = 0, scroll) {
+    const m = matches.find((x) => x.id === id); if (!m) return;
+    $("tlbox").innerHTML = `<div class="panel empty">Loading…</div>`;
+    if (scroll) $("timeline").scrollIntoView();
+    loadMatch(id).then((M) => Timeline($("tlbox"), m, M, round),
+      () => { $("tlbox").innerHTML = `<div class="panel empty">That match didn't load.</div>`; });
+  }
+
+  function Timeline(box, m, M, startRound) {
+    const seats = Object.fromEntries(M.seats.map((s) => [s.seat, s]));
+    const who = (i) => { const s = seats[i]; return !s ? "?" : s.me ? `Ric (${s.agent})` : s.name ? `${s.name} (${s.agent})` : s.agent; };
+    const cls = (i) => { const s = seats[i]; return !s ? "" : s.me ? "who-me" : s.us ? "who-us" : "who-them"; };
+    const sideOf = (i, r) => (seats[i] && seats[i].us) ? r.side : (r.side === "ATK" ? "DEF" : "ATK");
+    box.innerHTML = `<div class="tl"><div class="panel stage">
+        <div class="ttitle"><b>${esc(m.map)} · ${m.score[0]} : ${m.score[1]}</b><span class="note">${esc(when(m.at, true))} · Ric as ${esc(m.me.agent)}</span></div>
+        <div class="rpicks" role="group" aria-label="Round">${M.rounds.map((r, i) => `<button type="button" class="${r.w ? "w" : "l"}" data-r="${i}" aria-label="Round ${r.n}, ${r.w ? "won" : "lost"}">${r.n}</button>`).join("")}</div>
+        <canvas width="1024" height="1024" aria-label="Minimap with every player's position at the selected moment"></canvas>
+        <div class="toggles"><label><input type="checkbox" data-callouts checked> Callout names</label>
+          <label><input type="checkbox" data-view checked> Facing</label></div>
+        <div class="legend" style="margin-top:6px"><span><i style="background:var(--gold);box-shadow:0 0 0 2px #fff"></i>Ric</span>
+          <span><i style="background:var(--ally)"></i>Ric's team</span><span><i style="background:var(--enemy)"></i>Opponents</span>
+          <span>✕ just died · line = the kill · cone = facing</span></div>
+        <div class="coords" id="coords"></div>
+      </div><div class="panel side" id="events"></div></div>`;
+    const cv = box.querySelector("canvas"), ctx = cv.getContext("2d"), S = cv.width;
+    const T = M.transform || {};
+    const uv = (p) => (p && p.u != null) ? [p.u * S, p.v * S]
+      : (p && T.xm != null) ? [(p.y * T.xm + T.xa) * S, (p.x * T.ym + T.ya) * S] : null;
+    const img = new Image();
+    let ready = false, ri = startRound, ei = 0;
+    img.onload = () => { ready = true; draw(); };
+    img.onerror = () => { ready = false; draw(); };
+    if (M.minimap) img.src = `projects/val/${M.minimap}`;
+
+    const events = (r) => {
+      const ev = r.fights.map((f) => ({ kind: "kill", t: f.t, f }));
+      const sp = r.spike || {};
+      if (sp.plant) ev.push({ kind: "plant", t: sp.plant.t, x: sp.plant });
+      if (sp.defuse) ev.push({ kind: "defuse", t: sp.defuse.t, x: sp.defuse });
+      return ev.sort((a, b) => a.t - b.t);
+    };
+    const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+
+    function dot(p, seat, r, dead) {
+      const xy = uv(p); if (!xy) return;
+      const s = seats[seat] || {}, me = s.me;
+      const col = s.us ? "#22a39b" : "#e8505b";
+      if (box.querySelector("[data-view]").checked && p.view != null && !dead) {
+        // VALORANT's facing is in game space; on the minimap the axes swap,
+        // so a game angle θ points along (sin θ · xm-sign, cos θ · ym-sign).
+        const dx = Math.sin(p.view) * Math.sign(T.xm || 1), dy = Math.cos(p.view) * Math.sign(T.ym || -1);
+        const a = Math.atan2(dy, dx);
+        ctx.fillStyle = s.us ? "rgba(34,163,155,.28)" : "rgba(232,80,91,.28)";
+        ctx.beginPath(); ctx.moveTo(xy[0], xy[1]); ctx.arc(xy[0], xy[1], 46, a - 0.42, a + 0.42); ctx.closePath(); ctx.fill();
+      }
+      if (dead) {
+        ctx.strokeStyle = col; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(xy[0] - 9, xy[1] - 9); ctx.lineTo(xy[0] + 9, xy[1] + 9); ctx.moveTo(xy[0] + 9, xy[1] - 9); ctx.lineTo(xy[0] - 9, xy[1] + 9); ctx.stroke();
+      } else {
+        ctx.fillStyle = me ? "#f5d76e" : col;
+        ctx.beginPath(); ctx.arc(xy[0], xy[1], me ? 12 : 10, 0, 7); ctx.fill();
+        ctx.lineWidth = me ? 3 : 2; ctx.strokeStyle = me ? "#fff" : "#0b131b"; ctx.stroke();
+      }
+      ctx.font = "bold 17px system-ui"; ctx.fillStyle = "#fff"; ctx.strokeStyle = "rgba(0,0,0,.85)"; ctx.lineWidth = 4;
+      const label = me ? "Ric" : (s.agent || "?");
+      ctx.strokeText(label, xy[0] + 14, xy[1] - 10); ctx.fillText(label, xy[0] + 14, xy[1] - 10);
+    }
+
+    function draw() {
+      const r = M.rounds[ri], ev = events(r)[ei];
+      ctx.fillStyle = "#0b131b"; ctx.fillRect(0, 0, S, S);
+      if (ready) ctx.drawImage(img, 0, 0, S, S);
+      if (box.querySelector("[data-callouts]").checked) {
+        ctx.font = "14px system-ui"; ctx.textAlign = "center";
+        for (const c of M.callouts || []) {
+          const xy = uv(c); if (!xy) continue;
+          ctx.fillStyle = "rgba(236,232,225,.75)"; ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.lineWidth = 3;
+          ctx.strokeText(c.name, xy[0], xy[1]); ctx.fillText(c.name, xy[0], xy[1]);
+        }
+        ctx.textAlign = "start";
+      }
+      let rows = [];
+      if (ev && ev.kind === "kill") {
+        const f = ev.f;
+        const a = uv(f.killer_at), b = uv(f.victim_at);
+        if (a && b) { ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = 3; ctx.setLineDash([10, 6]);
+          ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.setLineDash([]); }
+        for (const p of f.snapshot) dot(p, p.seat, r, p.seat === f.victim);
+        if (f.victim_at && !f.snapshot.some((p) => p.seat === f.victim)) dot(f.victim_at, f.victim, r, true);
+        rows = f.snapshot.map((p) => ({ ...p, dead: p.seat === f.victim }));
+      } else if (ev) {
+        for (const p of ev.x.players || []) dot(p, p.seat, r, false);
+        const xy = uv(ev.x.at);
+        if (xy) { ctx.fillStyle = ev.kind === "plant" ? "#ff4655" : "#5fd6cb"; ctx.fillRect(xy[0] - 10, xy[1] - 10, 20, 20);
+          ctx.font = "bold 16px system-ui"; ctx.fillStyle = "#fff"; ctx.fillText(ev.kind === "plant" ? "SPIKE" : "DEFUSED", xy[0] + 14, xy[1] + 6); }
+        rows = ev.x.players || [];
+      }
+      // the exact numbers behind the picture
+      $("coords").innerHTML = rows.length ? `<table><thead><tr><th>Player</th><th>Side</th><th>Callout</th><th>x</th><th>y</th>
+        <th>map u</th><th>map v</th><th>Facing</th></tr></thead><tbody>${rows.map((p) => `<tr><td class="${cls(p.seat)}">${esc(who(p.seat))}${p.dead ? " ✕" : ""}</td>
+        <td>${sideOf(p.seat, r)}</td><td>${esc(p.place || "—")}</td><td>${p.x}</td><td>${p.y}</td><td>${p.u != null ? p.u.toFixed(3) : "—"}</td>
+        <td>${p.v != null ? p.v.toFixed(3) : "—"}</td><td>${p.view != null ? `${Math.round(p.view * 180 / Math.PI) % 360}°` : "—"}</td></tr>`).join("")}</tbody></table>` : "";
+    }
+
+    function list() {
+      const r = M.rounds[ri], ev = events(r);
+      for (const b of box.querySelectorAll(".rpicks button")) b.setAttribute("aria-pressed", String(+b.dataset.r === ri));
+      $("events").innerHTML = `<p class="note">Round ${r.n} · ${r.w ? "won" : "lost"} on ${r.side === "ATK" ? "attack" : "defense"} · ${esc(HOW[r.result] || r.result || "")}</p>`
+        + (ev.length ? ev.map((e, i) => {
+          if (e.kind === "kill") {
+            const f = e.f, s = seats[f.killer] || {};
+            return `<button type="button" class="ev" data-e="${i}" aria-pressed="${i === ei}" style="border-left-color:${s.us ? "var(--ally)" : "var(--enemy)"}">
+              <span class="t">${mmss(f.t)}</span><span><span class="${cls(f.killer)}">${esc(who(f.killer))}</span> · ${esc(f.weapon)} ·
+              <span class="${cls(f.victim)}">${esc(who(f.victim))}</span><br><span class="note">${esc(f.killer_at?.place || "?")} → ${esc(f.victim_at?.place || "?")}${f.distance_m != null ? ` · ${f.distance_m} m` : ""} · ${f.alive_before[0]}v${f.alive_before[1]}${f.opening ? " · first blood" : ""}</span></span></button>`;
+          }
+          return `<button type="button" class="ev" data-e="${i}" aria-pressed="${i === ei}" style="border-left-color:var(--red)">
+            <span class="t">${mmss(e.t)}</span><span>Spike ${e.kind === "plant" ? "planted" : "defused"} by <span class="${cls(e.x.by)}">${esc(who(e.x.by))}</span>${e.x.site ? ` · site ${esc(e.x.site)}` : ""}</span></button>`;
+        }).join("") : `<p class="note">No kills this round.</p>`);
+      draw();
+    }
+    box.querySelector(".rpicks").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; ri = +b.dataset.r; ei = 0; list(); });
+    $("events").addEventListener("click", (e) => {
+      const b = e.target.closest(".ev"); if (!b) return; ei = +b.dataset.e;
+      for (const x of $("events").querySelectorAll(".ev")) x.setAttribute("aria-pressed", String(x === b)); draw();
+    });
+    box.addEventListener("change", draw);
+    list();
+  }
+
+  if (matches.length) showTimeline(matches[0].id, 0, false);
+  else $("tlbox").innerHTML = `<div class="panel empty">The timeline fills in with the first match recorded.</div>`;
+
+  (() => {
+    const tabs = [...document.querySelectorAll(".subbar a")], secs = tabs.map((a) => document.querySelector(a.getAttribute("href")));
+    const on = () => { let c = 0; secs.forEach((s, i) => { if (s && s.getBoundingClientRect().top < 140) c = i; }); tabs.forEach((a, i) => a.classList.toggle("on", i === c)); };
+    addEventListener("scroll", on, { passive: true }); on();
+  })();
+  const deep = location.hash.match(/^#match-(.+)$/);
+  if (deep) openMatch(decodeURIComponent(deep[1]), true);
+  $("stamp").textContent = `${matches.length} matches${D.rank ? ` · rank read ${D.rank.read}` : ""}`;
+})();
+</script>
+</body>
+</html>
