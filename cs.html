@@ -236,7 +236,21 @@
       grid-template-columns:56px 112px minmax(100px,1.2fr) 90px 54px 84px 48px 50px 60px minmax(96px,auto)}
     .mhead{padding:0 12px 6px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
     .match{background:var(--panel);border:1px solid var(--line);scroll-margin-top:110px}
-    .match.open{border-color:var(--line-hot)}
+    /* a match's own screen */
+    .mnav{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+    .btn[disabled]{opacity:.35;cursor:default;filter:none}
+    .mhero{position:relative;overflow:hidden;padding:20px;display:flex;flex-direction:column;gap:14px;border-left:4px solid var(--tie);margin-bottom:10px}
+    .mhero.rW{border-left-color:var(--win)} .mhero.rL{border-left-color:var(--loss)}
+    .mhero .art{position:absolute;inset:0;background:center/cover no-repeat;opacity:.13;filter:blur(2px);pointer-events:none}
+    .mhero > *{position:relative}
+    .mtop{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-end}
+    .mname{font-size:clamp(30px,5vw,46px);line-height:1;color:var(--bright);margin:4px 0}
+    .score.mscore{font-size:clamp(40px,7vw,64px);line-height:1}
+    .mscore span{color:var(--dim);margin:0 2px}
+    .mscore small{display:block;font-size:13px;letter-spacing:.2em;text-transform:uppercase;text-align:right;margin:4px 0 0}
+    .mhero .chips b.good{color:var(--win-ink)} .mhero .chips b.bad{color:var(--loss-ink)}
+    .mact{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .detail{padding:4px 14px 18px}
     .mrow{width:100%;padding:8px 12px;background:none;border:0;border-left:4px solid var(--tie);text-align:left;cursor:pointer;font-size:14px}
     .mrow:hover{background:rgba(255,255,255,.035)}
     .mrow.rW{border-left-color:var(--win)} .mrow.rL{border-left-color:var(--loss)}
@@ -265,7 +279,7 @@
     }
     @media (max-width:520px){.mrow .opt.x{display:none}}
 
-    .detail{padding:4px 14px 18px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:16px}
+    .detail{display:flex;flex-direction:column;gap:16px}
     .detail h3{font-size:13px;letter-spacing:.16em;color:var(--dim);margin:12px 0 8px}
     /* round history, the scoreboard strip */
     .rounds{display:flex;gap:2px;flex-wrap:wrap;align-items:flex-end}
@@ -321,8 +335,14 @@
     @media (max-width:900px){.replay{grid-template-columns:1fr}}
     .stage{padding:10px;min-width:0}
     .stage canvas{display:block;width:100%;aspect-ratio:1;background:#07090c}
-    .rtitle{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;margin-bottom:8px}
+    .rtitle{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
     .rtitle b{font-family:var(--display);font-size:22px;letter-spacing:.05em;text-transform:uppercase;color:var(--bright)}
+    .pick{min-height:36px;flex:1;min-width:0;max-width:420px;background:var(--panel-solid);color:var(--text);border:1px solid var(--line-hot);padding:0 10px;font:inherit}
+    .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+    .rinfo{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:13px;color:var(--dim)}
+    .rinfo span{flex:1;min-width:0} .rinfo b{color:var(--bright)}
+    .rinfo .good{color:var(--win-ink)} .rinfo .bad{color:var(--loss-ink)}
+    .pp[disabled]{opacity:.3;cursor:default}
     .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
     .controls input[type=range]{flex:1;min-width:140px;accent-color:var(--t-ink)}
     .controls .clock{font-variant-numeric:tabular-nums;color:var(--dim);font-size:13px;min-width:86px}
@@ -370,8 +390,17 @@
     .hg .h{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
     .hg .b{display:flex;align-items:center;gap:6px}
     .hg .b i{display:block;height:8px}
-    .plot{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,280px);gap:12px}
-    @media (max-width:820px){.plot{grid-template-columns:1fr}}
+    .plot{display:flex;flex-direction:column;gap:10px}
+    .plot .ctl{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center}
+    .plot .ctl .seg{margin:0!important}
+    .spotlay{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:10px;align-items:start}
+    .spotlay .tile{background:var(--panel);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+    .spotlay .tall .stwrap{max-height:min(78vh,760px)}
+    @media (max-width:1000px){.spotlay{grid-template-columns:1fr}.spotlay .tall .stwrap{max-height:520px}}
+    .stwide > *,.spotlay > *{min-width:0}  /* wide tables scroll inside their tile, not the page */
+    .mscore small{text-align:inherit}
+    .spotlay .pbar{width:32px;margin-left:4px}
+    .spotlay table.st th,.spotlay table.st td{padding:4px 5px}
     .plot canvas{display:block;width:100%;aspect-ratio:1;background:#07090c}
     .more{margin-top:12px}
     /* the Stats page's own tabs, the in-game sub-menu under the main strip */
@@ -475,12 +504,15 @@
 
   <section id="matches" aria-labelledby="mh" data-view="matches">
     <div class="shead"><h2 id="mh">Your Matches</h2><p id="mcount"></p></div>
+    <div id="mlistview">
     <div class="filters" id="filters" role="group" aria-label="Filter by map"></div>
     <div class="mhead" aria-hidden="true">
       <span></span><span>Date</span><span>Map</span><span>Score</span><span>K/D</span><span>K-D-A</span>
       <span>ADR</span><span>HS%</span><span>Rating</span><span style="text-align:right">Source</span>
     </div>
     <div class="mlist" id="mlist"></div>
+    </div>
+    <div id="mdetail" hidden></div>
   </section>
 
   <section id="snapshots" aria-labelledby="sh" data-view="snapshots">
@@ -702,7 +734,7 @@
       tip.style.top = (r.top - host.top + 6) + "px";
     });
     box.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
-    box.addEventListener("click", (e) => { const t = e.target.closest(".hit"); if (t) openMatch(pts[+t.dataset.i].id, true, true); });
+    box.addEventListener("click", (e) => { const t = e.target.closest(".hit"); if (t) openMatch(pts[+t.dataset.i].id); });
   })();
 
   /* ══ match data files ═══════════════════════════════════ */
@@ -1135,8 +1167,9 @@
     "#matches": "matches", "#snapshots": "snapshots", "#replay": "replay", "#method": "about" };
   const VIEW_HASH = { overview: "#overview", stats: "#stats", matches: "#matches", snapshots: "#snapshots", replay: "#replay", about: "#method" };
   let view = null;
-  function go(v, fromAddress) {
+  function go(v, fromAddress, keepMatch) {
     if (!fromAddress && location.hash !== VIEW_HASH[v]) history.pushState(null, "", VIEW_HASH[v]);
+    if (v === "matches" && !keepMatch) showList();
     if (v === view) return;
     view = v;
     for (const s of document.querySelectorAll("main > section[data-view]")) s.hidden = s.dataset.view !== v;
@@ -1163,7 +1196,7 @@
   function row(m) {
     const me = m.me, res = { W: "WIN", L: "LOSS", T: "DRAW" }[m.result] + (m.surrender ? " · FF" : ""), cal = radarFor(m.map);
     return `<div class="match" id="m-${esc(m.id)}">
-      <button class="mrow r${m.result}" aria-expanded="false" data-id="${esc(m.id)}">
+      <button class="mrow r${m.result}" data-id="${esc(m.id)}" aria-label="${esc(`${mapName(m.map)} ${m.score[0]}:${m.score[1]}, ${when(m.at)}. Open the match`)}">
         <span class="thumb" style="${cal ? `background-image:url('projects/cs/${cal.img}')` : ""}" aria-hidden="true"></span>
         <span class="when">${esc(when(m.at))}</span>
         <span class="mapc"><span class="map">${esc(mapName(m.map))}</span><span class="mode">${esc(modeName(m.mode))}</span></span>
@@ -1174,17 +1207,22 @@
         <span class="num opt x${vsAvg(hsPct(me), AVG.hs)}"><span class="lbl">HS%</span>${pct(hsPct(me))}</span>
         <span class="num opt x${vsAvg(me.rating, AVG.rating)}"><span class="lbl">Rating</span>${signed(me.rating)}</span>
         <span class="src">${(m.sources || []).map((s) => SOURCES[s] ? `<span class="${s}" title="${SOURCES[s][1]}">${SOURCES[s][0]}</span>` : "").join("")}</span>
-      </button><div class="detail" hidden></div></div>`;
+      </button></div>`;
   }
   function setMapFilter(map) {
     filter = map; savePrefs({ mmap: map });
     for (const x of $("filters").children) x.setAttribute("aria-pressed", String(x.dataset.map === map));
     renderList();
   }
-  function renderList() {
+  // the list as filtered and sorted right now; a match screen steps through it
+  function currentList() {
     const list = matches.filter((m) => (filter === "all" || m.map === filter) && (result === "all" || m.result === result));
     const key = SORTS[sortBy] && SORTS[sortBy][1];
     if (key) list.sort((a, b) => (key(b) ?? -Infinity) - (key(a) ?? -Infinity));
+    return list;
+  }
+  function renderList() {
+    const list = currentList();
     $("mlist").innerHTML = list.length ? list.map(row).join("") : `<div class="panel empty">No matches yet.</div>`;
     $("mcount").textContent = `${list.length} match${list.length === 1 ? "" : "es"} · coloured against your average`;
   }
@@ -1210,36 +1248,67 @@
     });
     $("msort").addEventListener("change", (e) => { sortBy = e.target.value; savePrefs({ msort: sortBy }); renderList(); });
     renderList();
-    $("mlist").addEventListener("click", (e) => {
-      const b = e.target.closest(".mrow"); if (b) return openMatch(b.dataset.id);
+    $("mlist").addEventListener("click", (e) => { const b = e.target.closest(".mrow"); if (b) openMatch(b.dataset.id); });
+    $("mdetail").addEventListener("click", (e) => {
+      if (e.target.closest("[data-mback]")) return go("matches");
+      const n = e.target.closest("[data-mnav]"); if (n) return stepMatch(+n.dataset.mnav);
       const r = e.target.closest("[data-replay]"); if (r) return showReplay(r.dataset.replay, true);
       const s = e.target.closest("[data-snaps]");
       if (s) { snapState.id = s.dataset.snaps; snapState.all = false; renderSnapBar(); go("snapshots"); }
     });
+    // ← → step through matches while one is open (a held map keeps the arrows)
+    document.addEventListener("keydown", (e) => {
+      if (heldRV || openId == null || view !== "matches" || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); stepMatch(e.key === "ArrowLeft" ? -1 : 1); }
+      else if (e.key === "Escape") go("matches");
+    });
   })();
 
-  function openMatch(id, scroll, keepOpen) {
-    if (!document.getElementById(`m-${id}`)) {
-      result = "all";
-      for (const x of $("mfilters").querySelectorAll("[data-res]")) x.setAttribute("aria-pressed", String(x.dataset.res === "all"));
-      if (!matches.some((m) => m.id === id && (filter === "all" || m.map === filter))) setMapFilter("all"); else renderList();
-    }
-    const card = document.getElementById(`m-${id}`); if (!card) return;
-    const btn = card.querySelector(".mrow"), det = card.querySelector(".detail");
-    const open = keepOpen || btn.getAttribute("aria-expanded") !== "true";
-    for (const c of document.querySelectorAll(".match.open")) {
-      c.classList.remove("open"); c.querySelector(".mrow").setAttribute("aria-expanded", "false"); c.querySelector(".detail").hidden = true;
-    }
-    if (!open) return;
-    det.innerHTML = detail(matches.find((m) => m.id === id));
-    det.hidden = false; card.classList.add("open"); btn.setAttribute("aria-expanded", "true");
-    if (scroll) { go("matches"); card.scrollIntoView({ block: "start" }); }
-    if (location.hash !== `#match-${id}`) history.replaceState(null, "", `#match-${id}`);
+  let openId = null, lastOpen = null;
+  function openMatch(id) {
+    const m = matches.find((x) => x.id === id); if (!m) return;
+    go("matches", true, true);
+    if (location.hash !== `#match-${id}`) history.pushState(null, "", `#match-${id}`);
+    openId = lastOpen = id;
+    $("mlistview").hidden = true;
+    const d = $("mdetail"); d.hidden = false; d.innerHTML = detail(m);
+    scrollTo(0, 0);
+  }
+  function showList() {
+    if (openId == null) return;
+    openId = null; $("mdetail").hidden = true; $("mdetail").innerHTML = ""; $("mlistview").hidden = false;
+    const row = lastOpen && document.getElementById(`m-${lastOpen}`);
+    if (row) requestAnimationFrame(() => row.scrollIntoView({ block: "center" }));
+  }
+  function stepMatch(dir) {
+    let list = currentList(); if (!list.some((m) => m.id === openId)) list = matches;
+    const i = list.findIndex((m) => m.id === openId), next = list[i + dir];
+    if (next) openMatch(next.id);
   }
 
   function detail(m) {
-    const me = m.me, out = [];
-    out.push(`<h3>${esc(when(m.at, true))} · ${esc(modeName(m.mode))} · started ${m.start_side === "CT" ? "Counter-Terrorist" : m.start_side === "T" ? "Terrorist" : "—"}${m.surrender ? ` · ${m.result === "W" ? "the other team" : "Ric's team"} surrendered` : ""}${m.banned ? " · a player in this match was later banned" : ""}</h3>`);
+    const me = m.me, out = [], cal = radarFor(m.map);
+    let list = currentList(); if (!list.some((x) => x.id === m.id)) list = matches;
+    const i = list.findIndex((x) => x.id === m.id), res = { W: "Win", L: "Loss", T: "Draw" }[m.result];
+    const report = `<a class="note" href="projects/cs/llm/${encodeURIComponent(m.id)}.md">Full report as text</a>`;
+    const chipM = (v, l, cls = "") => `<div class="chip"><b class="${cls}">${v}</b><span>${l}</span></div>`;
+    out.push(`<div class="mnav"><button type="button" class="btn ghost" data-mback>← All matches</button>
+      <span class="note">${i + 1} of ${list.length}</span>
+      <span style="display:flex;gap:4px;margin-left:auto"><button type="button" class="btn ghost" data-mnav="-1"${i > 0 ? "" : " disabled"} aria-label="Previous match">‹ Prev</button>
+      <button type="button" class="btn ghost" data-mnav="1"${i < list.length - 1 ? "" : " disabled"} aria-label="Next match">Next ›</button></span></div>
+    <div class="panel mhero r${m.result}"><div class="art" style="${cal ? `background-image:url('projects/cs/${cal.img}')` : ""}"></div>
+      <div class="mtop"><div><div class="kicker">${esc(modeName(m.mode))} · ${esc(when(m.at, true))}</div>
+        <h2 class="mname">${esc(mapName(m.map))}</h2>
+        <p class="note">Started ${m.start_side === "CT" ? "Counter-Terrorist" : m.start_side === "T" ? "Terrorist" : "—"}${m.surrender ? ` · ${m.result === "W" ? "the other team" : "Ric's team"} surrendered` : ""}${m.banned ? " · a player in this match was later banned" : ""}</p></div>
+        <div class="mscore score ${m.result}">${m.score[0]}<span>:</span>${m.score[1]}<small>${res}</small></div></div>
+      <div class="chips">${chipM(`${me.k ?? "—"}-${me.d ?? "—"}-${me.a ?? "—"}`, "K-D-A")}${chipM(fix(kd(me), 2), "K/D", vsAvg(kd(me), AVG.kd).trim())}
+        ${chipM(fix(me.adr, 0), "ADR", vsAvg(me.adr, AVG.adr).trim())}${chipM(pct(hsPct(me)), "HS%", vsAvg(hsPct(me), AVG.hs).trim())}
+        ${chipM(me.kast != null ? pct(me.kast) : "—", "KAST")}${chipM(signed(me.rating), "Rating", vsAvg(me.rating, AVG.rating).trim())}</div>
+      ${m.replay ? `<div class="mact"><button class="btn" type="button" data-replay="${esc(m.id)}">▶ Watch 2D replay</button>
+          <button class="btn ghost" type="button" data-snaps="${esc(m.id)}">Kill snapshots</button>${report}</div>`
+        : `<p class="note">No 2D data for this one yet: ${m.at && Date.now() - new Date(m.at) > 28 * 864e5
+          ? "Valve deleted its demo before it was saved here." : "Valve still has its demo, and it arrives with the next sync."} ${report}</p>`}
+    </div><div class="panel detail">`);
     if (m.rounds && m.rounds.length) {
       // the gap goes where the sides swapped; a game surrendered before the half has none
       const half = m.rounds.findIndex((r, i) => i && r.side && m.rounds[i - 1].side && r.side !== m.rounds[i - 1].side);
@@ -1254,6 +1323,17 @@
         <span><span class="ic">${ICON.defuse}</span>defuse</span><span><span class="ic">${ICON.time}</span>time</span>
         ${m.surrender ? `<span><span class="ic">${ICON.flag}</span>surrender</span>` : ""}
         <span>number = Ric's kills</span><span><i style="background:var(--t)"></i>T</span><span><i style="background:var(--ct)"></i>CT</span></div></div>`);
+    }
+    if (m.board && m.board.length) {
+      const table = (us) => {
+        const seats = m.board.filter((s) => s.us === us).sort((a, b) => (b.score ?? b.k) - (a.score ?? a.k) || b.k - a.k);
+        let mate = 0, foe = 0;
+        return `<div class="sbwrap"><table class="sb"><caption class="${us ? "us" : "them"}">${us ? "Ric's team" : "Opponents"} · ${us ? m.score[0] : m.score[1]}</caption>
+          <thead><tr><th scope="col">Player</th><th scope="col">K</th><th scope="col">A</th><th scope="col">D</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col" class="mvp">MVP</th><th scope="col">Rating</th></tr></thead>
+          <tbody>${seats.map((s) => `<tr${s.me ? ' class="me"' : ""}><td>${s.me ? "Ric" : s.name ? esc(s.name) : us ? `Teammate ${++mate}` : `Opponent ${++foe}`}</td>
+            <td>${s.k}</td><td>${s.a}</td><td>${s.d}</td><td>${fix(s.adr, 0)}</td><td>${s.k ? pct(100 * (s.hsk || 0) / s.k) : "—"}</td><td class="mvp">${s.mvps ?? "—"}</td><td>${signed(s.rating)}</td></tr>`).join("")}</tbody></table></div>`;
+      };
+      out.push(`<div><h3>Scoreboard</h3><div style="display:flex;flex-direction:column;gap:10px">${table(true)}${table(false)}</div></div>`);
     }
     const kv = (k, v) => v === "—" || v == null ? "" : `<div class="kv"><span>${k}</span><b>${v}</b></div>`;
     const tiles = [];
@@ -1273,23 +1353,7 @@
       const ws = Object.entries(me.weapons), top = ws[0][1];
       out.push(`<div><h3>Kills by weapon</h3><div class="wlist">${ws.map(([w, n]) => `<div class="wrow"><span>${esc(weaponName(w))}</span><div class="track"><div class="fill" style="width:${100 * n / top}%"></div></div><b>${n}</b></div>`).join("")}</div></div>`);
     }
-    if (m.board && m.board.length) {
-      const table = (us) => {
-        const seats = m.board.filter((s) => s.us === us).sort((a, b) => (b.score ?? b.k) - (a.score ?? a.k) || b.k - a.k);
-        let mate = 0, foe = 0;
-        return `<div class="sbwrap"><table class="sb"><caption class="${us ? "us" : "them"}">${us ? "Ric's team" : "Opponents"} · ${us ? m.score[0] : m.score[1]}</caption>
-          <thead><tr><th scope="col">Player</th><th scope="col">K</th><th scope="col">A</th><th scope="col">D</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col" class="mvp">MVP</th><th scope="col">Rating</th></tr></thead>
-          <tbody>${seats.map((s) => `<tr${s.me ? ' class="me"' : ""}><td>${s.me ? "Ric" : s.name ? esc(s.name) : us ? `Teammate ${++mate}` : `Opponent ${++foe}`}</td>
-            <td>${s.k}</td><td>${s.a}</td><td>${s.d}</td><td>${fix(s.adr, 0)}</td><td>${s.k ? pct(100 * (s.hsk || 0) / s.k) : "—"}</td><td class="mvp">${s.mvps ?? "—"}</td><td>${signed(s.rating)}</td></tr>`).join("")}</tbody></table></div>`;
-      };
-      out.push(`<div><h3>Scoreboard</h3><div style="display:flex;flex-direction:column;gap:10px">${table(true)}${table(false)}</div></div>`);
-    }
-    const report = `<a class="note" href="projects/cs/llm/${encodeURIComponent(m.id)}.md">Full report as text</a>`;
-    out.push(m.replay
-      ? `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button class="btn" type="button" data-replay="${esc(m.id)}">▶ Watch 2D replay</button>
-          <button class="btn ghost" type="button" data-snaps="${esc(m.id)}">Kill snapshots</button>${report}</div>`
-      : `<p class="note">No 2D data for this one yet: ${m.at && Date.now() - new Date(m.at) > 28 * 864e5
-          ? "Valve deleted its demo before it was saved here." : "Valve still has its demo, and it arrives with the next sync."} ${report}</p>`);
+    out.push(`</div>`);
     return out.join("");
   }
 
@@ -1349,10 +1413,12 @@
 
   function Player(box, m, R, startRound, startAt) {
     const seats = seatInfo(R), cal = radarFor(R.map), st = R.stride || 2;
-    const others = replayable.filter((x) => x.id !== m.id).slice(0, 12);
     box.innerHTML = `<div class="replay"><div class="panel stage">
-        <div class="rtitle"><b>${esc(mapName(m.map))} · ${m.score[0]}:${m.score[1]}</b><span class="note">${esc(when(m.at, true))}</span></div>
+        <div class="rtitle"><label class="sr" for="rmatch">Match</label>
+          <select id="rmatch" data-rmatch class="pick">${replayable.map((x) => `<option value="${esc(x.id)}"${x.id === m.id ? " selected" : ""}>${esc(when(x.at))} · ${esc(mapName(x.map))} ${x.score[0]}:${x.score[1]} ${{ W: "win", L: "loss", T: "draw" }[x.result]}</option>`).join("")}</select>
+          <button type="button" class="btn ghost" data-openmatch style="min-height:34px;font-size:13px">Match stats</button></div>
         <div class="rpicks" role="group" aria-label="Round">${R.rounds.map((r, i) => `<button type="button" class="${r.w ? "w" : "l"}" data-r="${i}" aria-label="Round ${i + 1}, ${r.w ? "won" : "lost"}">${i + 1}</button>`).join("")}</div>
+        <div class="rinfo"><button type="button" class="pp" data-rstep="-1" aria-label="Previous round">‹</button><span></span><button type="button" class="pp" data-rstep="1" aria-label="Next round">›</button></div>
         <div class="rv"><canvas width="1024" height="1024" tabindex="0" aria-label="The round on the radar. Activate to play, zoom and pan."></canvas>
           <div class="kf" aria-hidden="true"></div><div class="hint">Click the map to play, zoom and pan · Space, ← →, [ ]</div>${playBar(`<button type="button" class="pp" data-close aria-label="Let go of the map">✕</button>`)}</div>
         <div class="settings">
@@ -1365,9 +1431,6 @@
           <span><i style="background:#fff"></i>Ric (white ring)</span><span>✕ died · cone = facing</span></div>
         <div><h3 style="font-size:13px;letter-spacing:.14em;color:var(--dim);margin-bottom:6px">Every kill this round</h3><div class="feed"></div>
           <p class="note" style="margin-top:6px">Click one to jump to it.</p></div>
-        ${others.length ? `<div><h3 style="font-size:13px;letter-spacing:.14em;color:var(--dim);margin-bottom:6px">Other replays</h3>
-          ${others.map((x) => `<button class="btn ghost" style="width:100%;margin-bottom:4px;justify-content:space-between" type="button" data-other="${esc(x.id)}">
-          <span>${esc(mapName(x.map))} ${x.score[0]}:${x.score[1]}</span><span class="note">${esc(when(x.at))}</span></button>`).join("")}</div>` : ""}
       </div></div>`;
     const wrap = box.querySelector(".rv"), cv = wrap.querySelector("canvas"), ctx = cv.getContext("2d"), S = cv.width;
     const kf = wrap.querySelector(".kf"), feed = box.querySelector(".feed");
@@ -1427,15 +1490,21 @@
         return `<button type="button" data-t="${f.t}" class="${f.killer === 0 && f.victim !== 0 ? "mine" : ""}${f.victim === 0 ? " died" : ""}"><span class="t">${mmss(f.t)}</span><span class="who-${ks.toLowerCase()}">${esc(nameOf(seats, f.killer))}</span>
           <span>${esc(weaponName(f.weapon))}${f.headshot ? " · HS" : ""}</span><span class="who-${vs.toLowerCase()}">${esc(nameOf(seats, f.victim))}</span></button>`;
       }).join("") : `<p class="note">No kills this round.</p>`;
+      const mine = (r.fights || []).filter((f) => f.killer === 0 && f.victim !== 0).length, died = (r.fights || []).some((f) => f.victim === 0);
+      const buy = (r.economy || {})["0"], ends = { "t killed": "Ts eliminated", "ct killed": "CTs eliminated" };
+      box.querySelector(".rinfo span").innerHTML = `<b>Round ${ri + 1}</b> · Ric ${r.side === "CT" ? "CT" : "T"} · <span class="${r.w ? "good" : "bad"}">${r.w ? "won" : "lost"}</span>
+        ${r.reason ? ` — ${esc(ends[r.reason] || r.reason)}` : ""} · ${mine} kill${mine === 1 ? "" : "s"}, ${died ? "died" : "survived"}${buy && buy.equip != null ? ` · $${int(buy.equip)} loadout` : ""}`;
+      for (const b of box.querySelectorAll("[data-rstep]")) b.disabled = !R.rounds[ri + +b.dataset.rstep];
       clock.range(0, r.dur, 0);
     }
     box.querySelector(".rpicks").addEventListener("click", (e) => {
       const b = e.target.closest("button"); if (!b) return;
       pick(+b.dataset.r); rv.hold(true);
     });
-    box.addEventListener("change", paint);
+    box.addEventListener("change", (e) => { if (e.target.matches("[data-rmatch]")) return showReplay(e.target.value, false); paint(); });
     box.addEventListener("click", (e) => {
-      const o = e.target.closest("[data-other]"); if (o) return showReplay(o.dataset.other, false);
+      if (e.target.closest("[data-openmatch]")) return openMatch(m.id);
+      const st_ = e.target.closest("[data-rstep]"); if (st_) { const n = ri + +st_.dataset.rstep; if (R.rounds[n]) pick(n); return; }
       const k = e.target.closest(".feed button");
       if (k) { clock.play(false); clock.t = Math.max(0, +k.dataset.t - 3); rv.hold(true); return; }
       if (e.target.closest("[data-reset]")) return rv.set([0, 0, 1024]);
@@ -1486,7 +1555,7 @@
       const K = F.filter((f) => f.kind === "k"), Dd = F.filter((f) => f.kind === "d");
       const nG = new Set(R.map((r) => r.g)).size;
       $("stnote").textContent = `${nG} game${nG === 1 ? "" : "s"} with a saved demo · ${R.length} rounds · ${K.length} kills · ${Dd.length} deaths`;
-      const tiles = [], wide = [];
+      const tiles = [];
 
       // rounds
       const won = (xs) => P(sum(xs, (r) => r.w), xs.length);
@@ -1592,24 +1661,23 @@
       const from = (xs, which, map) => { const c = {}; for (const f of xs) { const k = key(f, which); c[k] = (c[k] || 0) + 1; }
         return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, n]) => { const [mp, place] = k.split("|");
           return `<tr><td>${showMap ? `<span class="mapt">${esc(mapName(mp))}</span>` : ""}${esc(place)}</td><td>${n}</td><td>${Math.round(100 * n / map[mp])}%</td></tr>`; }); };
-      wide.push(`<div class="tile wide"><h4>Callouts: where Ric stood when he died and when he killed</h4>
+      const calloutTile = (`<div class="tile wide"><h4>Callouts: where Ric stood when he died and when he killed</h4>
         <p class="note" style="margin-bottom:6px">Percentages are of Ric's deaths (or kills) on that map. Traded, HS and range are about the deaths there.
           Click a row to put just that spot on the radar; click a column heading to sort.</p>
         <div class="tall">${tbl(["Callout", "Deaths", "% of deaths", "Kills", "% of kills", "K/D", "Traded", "HS deaths", "Death range"], spotRows)}</div></div>`);
-      wide.push(`<div class="tile"><h4>Where the killer stood</h4>${tbl(["Enemy at", "Kills on Ric", "%"], from(Dd, "them", dMap))}</div>`);
-      wide.push(`<div class="tile"><h4>Where Ric's victims stood</h4>${tbl(["Enemy at", "Ric's kills", "%"], from(K, "them", kMap))}</div>`);
+      const stoodTiles = [`<div class="tile"><h4>Where the killer stood</h4>${tbl(["Enemy at", "Kills on Ric", "%"], from(Dd, "them", dMap))}</div>`,
+      `<div class="tile"><h4>Where Ric's victims stood</h4>${tbl(["Enemy at", "Ric's kills", "%"], from(K, "them", kMap))}</div>`];
 
       // the map itself, when there is one map
       const cal = st.map !== "all" ? radarFor(st.map) : null;
-      if (cal) wide.unshift(`<div class="tile wide"><h4>On the radar${st.spot ? ` · ${esc(st.spot.split("|")[1])} <button type="button" class="pp" data-clearspot style="padding:0 10px;min-height:28px;font-size:12px;vertical-align:2px">Show all</button>` : ""}</h4><div class="plot"><canvas width="1024" height="1024" id="stplot" aria-label="Ric's kills and deaths on the ${esc(mapName(st.map))} radar"></canvas>
-        <div><div class="seg" role="group" aria-label="Show" style="margin-bottom:10px">${[["d", "Deaths"], ["k", "Kills"], ["b", "Both"]].map(([v, l]) =>
+      const radarTile = !cal ? "" : (`<div class="tile"><h4>On the radar${st.spot ? ` · ${esc(st.spot.split("|")[1])} <button type="button" class="pp" data-clearspot style="padding:0 10px;min-height:28px;font-size:12px;vertical-align:2px">Show all</button>` : ""}</h4><div class="plot"><canvas width="1024" height="1024" id="stplot" aria-label="Ric's kills and deaths on the ${esc(mapName(st.map))} radar"></canvas>
+        <div class="ctl"><div class="seg" role="group" aria-label="Show">${[["d", "Deaths"], ["k", "Kills"], ["b", "Both"]].map(([v, l]) =>
           `<button type="button" data-show="${v}" aria-pressed="${st.show === v}">${l}</button>`).join("")}</div>
-        ${cal.split != null ? `<div class="seg" role="group" aria-label="Floor" style="margin-bottom:10px">${[[0, "Upper"], [1, "Lower"]].map(([v, l]) =>
+        ${cal.split != null ? `<div class="seg" role="group" aria-label="Floor" title="Marks on the other floor are dimmed">${[[0, "Upper"], [1, "Lower"]].map(([v, l]) =>
           `<button type="button" data-floor="${v}" aria-pressed="${st.floor === v}">${l}</button>`).join("")}</div>` : ""}
-        ${cal.split != null ? `<p class="note" style="margin:-4px 0 8px">Marks on the other floor are dimmed.</p>` : ""}
-        <label class="note" style="display:flex;gap:6px;align-items:center;min-height:32px"><input type="checkbox" data-lines${st.lines ? " checked" : ""}> Line to the other player</label>
-        <div class="rlegend" style="margin-top:8px"><span><i style="background:var(--loss)"></i>Ric died here</span><span><i style="background:var(--win)"></i>Ric killed from here</span><span>line ends where the other player stood</span></div>
-        <p class="note" style="margin-top:10px">Point at a mark for the fight; click it to watch that moment in the 2D replay.</p></div></div></div>`);
+        <label class="note" style="display:flex;gap:6px;align-items:center;min-height:32px"><input type="checkbox" data-lines${st.lines ? " checked" : ""}> Lines</label></div>
+        <div class="rlegend"><span><i style="background:var(--loss)"></i>Ric died here</span><span><i style="background:var(--win)"></i>Ric killed from here</span>
+          <span>line → the other player${cal.split != null ? " · other floor dimmed" : ""}</span><span>hover a mark for the fight, click to watch it</span></div></div></div>`);
 
       $("statbox").innerHTML = `<div class="stbar">
           <div class="seg" role="group" aria-label="Games">${[[0, "All games"], [10, "Last 10"], [5, "Last 5"]].map(([v, l]) =>
@@ -1619,7 +1687,9 @@
           <div class="seg" role="group" aria-label="Side">${[["both", "Both sides"], ["CT", "CT"], ["T", "T"]].map(([v, l]) =>
             `<button type="button" data-sside="${v}" aria-pressed="${st.side === v}">${l}</button>`).join("")}</div></div>
         <nav class="stabs" aria-label="Stats pages">${STABS.map(([v, l]) => `<button type="button" data-stab="${v}" aria-pressed="${st.tab === v}">${l}</button>`).join("")}</nav>
-        ${st.tab === "spots" ? `${cal ? "" : `<p class="note" style="margin-bottom:10px">Pick a map above to see these on its radar.</p>`}<div class="stwide">${wide.join("")}</div>`
+        ${st.tab === "spots" ? (cal ? `<div class="spotlay">${radarTile}${calloutTile}</div>`
+            : `<p class="note" style="margin-bottom:10px">Pick a map above to see these on its radar, next to the table.</p><div class="stwide">${calloutTile}</div>`)
+          + `<div class="stwide" style="margin-top:10px">${stoodTiles.join("")}</div>`
           : `<div class="stgrid">${(st.tab === "rounds" ? tiles.slice(0, 6) : tiles.slice(6)).join("")}</div>`}`;
       if (cal && st.tab === "spots") plot(cal, st.spot ? F.filter((f) => key(f, "me") === st.spot) : F);
     }
@@ -1721,9 +1791,7 @@
   const fromHash = () => {
     const deep = location.hash.match(/^#match-(.+)$/);
     if (deep) {
-      const id = decodeURIComponent(deep[1]);
-      go("matches", true); openMatch(id, false, true);
-      requestAnimationFrame(() => { const c = document.getElementById(`m-${id}`); if (c) c.scrollIntoView({ block: "start" }); });
+      openMatch(decodeURIComponent(deep[1]));
       return;
     }
     go(HASH_VIEW[location.hash] || "overview", true);
