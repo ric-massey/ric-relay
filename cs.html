@@ -191,6 +191,38 @@
     .exch{font-size:12px;color:var(--dim);padding:0 12px 12px}
     .exch b{color:var(--text);font-weight:600}
 
+    /* ══ a map you can hold ══════════════════════════════════ */
+    .rv{position:relative;overflow:hidden;background:#07090c;min-width:0}
+    .rv canvas{display:block;width:100%;aspect-ratio:1;cursor:zoom-in;touch-action:pan-y}
+    .rv.held canvas{cursor:grab;touch-action:none}
+    .rv.held.dragging canvas{cursor:grabbing}
+    .rv .hint{position:absolute;left:8px;bottom:8px;padding:4px 9px;background:rgba(0,0,0,.72);font-size:12px;color:var(--text);pointer-events:none}
+    .rv.held .hint{display:none}
+    /* the bar along the bottom, once the map is held */
+    .rv .bar{position:absolute;left:0;right:0;bottom:0;display:flex;gap:8px;align-items:center;padding:26px 10px 9px;
+      background:linear-gradient(180deg,transparent,rgba(0,0,0,.88) 45%);opacity:0;pointer-events:none;transition:opacity .15s}
+    .rv.held .bar,.rv .bar:focus-within{opacity:1;pointer-events:auto}
+    .rv .bar input[type=range]{flex:1;min-width:60px;accent-color:var(--t-ink)}
+    .rv .bar .clock{font-variant-numeric:tabular-nums;font-size:12px;color:var(--text);min-width:34px}
+    .pp{min-width:40px;min-height:36px;background:rgba(255,255,255,.12);border:1px solid var(--line-hot);cursor:pointer;
+      font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.06em;color:var(--text)}
+    .pp:hover{background:rgba(255,255,255,.24)}
+    /* the killfeed, top right, as the game draws it */
+    .kf{position:absolute;top:8px;right:8px;display:flex;flex-direction:column;align-items:flex-end;gap:3px;pointer-events:none;max-width:calc(100% - 16px)}
+    .kfe{display:flex;align-items:center;gap:6px;padding:3px 9px;background:rgba(10,12,15,.74);border:1.5px solid transparent;
+      font-weight:700;font-size:13px;white-space:nowrap;text-shadow:0 1px 2px #000;max-width:100%;overflow:hidden}
+    .kfe.mine{border-color:var(--kill)}
+    .kfe.died{background:rgba(110,18,18,.82)}
+    .kfe .kw{font-family:var(--display);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#e9ecef}
+    .kfe .plus{color:var(--dim);font-weight:400}
+    .kfe svg{width:14px;height:14px;flex:none;color:#e9ecef}
+    @media (max-width:520px){.kfe{font-size:11px;padding:2px 6px;gap:4px}.kfe .kw{font-size:11px}}
+    .feed button{display:flex;gap:6px;flex-wrap:wrap;width:100%;text-align:left;padding:5px 8px;background:rgba(0,0,0,.5);
+      border:1.5px solid transparent;cursor:pointer;font-size:13px}
+    .feed button:hover{background:rgba(255,255,255,.07)}
+    .feed button.mine{border-color:var(--kill)} .feed button.died{background:rgba(110,18,18,.6)}
+    .feed button.future{opacity:.35}
+
     /* ══ match list: Watch → Your Matches ═════════════════════ */
     .filters{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
     .filters button{min-height:34px;padding:0 12px;background:rgba(255,255,255,.04);border:1px solid var(--line);cursor:pointer;
@@ -691,6 +723,137 @@
     return [Math.max(0, Math.min(1024 - size, cx - size / 2)), Math.max(0, Math.min(1024 - size, cy - size / 2)), size];
   }
 
+  /* ══ a radar you can hold ═══════════════════════════════
+     Click a map to take hold of it: the wheel zooms toward the cursor and a
+     drag moves it. On a touchscreen one finger drags, two fingers pinch to
+     zoom and move together to pan. Click outside it (or Esc) to let go, so
+     the page scrolls normally again. */
+  let heldRV = null;
+  function RadarView(wrap, { draw, onHold }) {
+    const cv = wrap.querySelector("canvas");
+    let view = [0, 0, 1024];
+    const set = (v) => {
+      const w = Math.max(96, Math.min(1024, v[2]));
+      const x = Math.max(-w * 0.3, Math.min(1024 - w * 0.7, v[0]));
+      const y = Math.max(-w * 0.3, Math.min(1024 - w * 0.7, v[1]));
+      view = [x, y, w]; draw(view);
+    };
+    const toR = (cx, cy) => { const b = cv.getBoundingClientRect(); return [view[0] + (cx - b.left) / b.width * view[2], view[1] + (cy - b.top) / b.height * view[2]]; };
+    const api = {
+      wrap, set, get view() { return view; },
+      hold(on) {
+        if (on && heldRV && heldRV !== api) heldRV.hold(false);
+        wrap.classList.toggle("held", on);
+        if (on) { heldRV = api; if (onHold) onHold(); } else if (heldRV === api) heldRV = null;
+      },
+    };
+    cv.addEventListener("wheel", (e) => {
+      if (!wrap.classList.contains("held")) return;
+      e.preventDefault();
+      const b = cv.getBoundingClientRect(), [rx, ry] = toR(e.clientX, e.clientY);
+      const w = Math.max(96, Math.min(1024, view[2] * Math.exp(e.deltaY * 0.0015)));
+      set([rx - (e.clientX - b.left) / b.width * w, ry - (e.clientY - b.top) / b.height * w, w]);
+    }, { passive: false });
+    const pts = new Map(); let start = null;
+    const grip = () => {
+      const p = [...pts.values()];
+      if (p.length === 1) return { n: 1, x: p[0].x, y: p[0].y, view: view.slice() };
+      const mx = (p[0].x + p[1].x) / 2, my = (p[0].y + p[1].y) / 2;
+      return { n: 2, d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) || 1, mx, my, view: view.slice(), r: toR(mx, my) };
+    };
+    cv.addEventListener("pointerdown", (e) => {
+      if (!wrap.classList.contains("held") || pts.size >= 2) return;   // the first click takes hold
+      try { cv.setPointerCapture(e.pointerId); } catch {}
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      start = grip(); wrap.classList.add("dragging");
+    });
+    cv.addEventListener("pointermove", (e) => {
+      if (!pts.has(e.pointerId)) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const b = cv.getBoundingClientRect(), now = grip();
+      if (now.n !== start.n) { start = now; return; }
+      if (now.n === 1) {
+        set([start.view[0] - (now.x - start.x) / b.width * start.view[2], start.view[1] - (now.y - start.y) / b.height * start.view[2], start.view[2]]);
+      } else {
+        // the spot that was under the fingers stays under them: pinch zooms, moving pans
+        const w = Math.max(96, Math.min(1024, start.view[2] * start.d / now.d));
+        set([start.r[0] - (now.mx - b.left) / b.width * w, start.r[1] - (now.my - b.top) / b.height * w, w]);
+      }
+    });
+    const release = (e) => { pts.delete(e.pointerId); start = pts.size ? grip() : null; if (!pts.size) wrap.classList.remove("dragging"); };
+    cv.addEventListener("pointerup", (e) => { if (!wrap.classList.contains("held")) { api.hold(true); return; } release(e); });
+    cv.addEventListener("pointercancel", release);
+    cv.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && !wrap.classList.contains("held")) { e.preventDefault(); api.hold(true); } });
+    return api;
+  }
+  document.addEventListener("pointerdown", (e) => { if (heldRV && !heldRV.wrap.contains(e.target)) heldRV.hold(false); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && heldRV) heldRV.hold(false); });
+
+  // Where everyone was at time t, from the round's tracks.
+  function trackAt(tr, i, st) {
+    const a = Math.floor(i), fr = i - a, b0 = a * st, b1 = (a + 1) * st;
+    if (tr[b0] == null) return null;
+    const z = st === 3 ? tr[b0 + 2] : null;
+    if (tr[b1] == null) return [tr[b0], tr[b0 + 1], z];
+    return [tr[b0] + (tr[b1] - tr[b0]) * fr, tr[b0 + 1] + (tr[b1 + 1] - tr[b0 + 1]) * fr, z];
+  }
+  function momentAt(R, r, t) {
+    const st = R.stride || 2, n = (Object.values(r.tracks)[0] || []).length / st;
+    const i = Math.max(0, Math.min(t * R.hz, n - 1));
+    const dead = new Set((r.fights || []).filter((f) => f.t <= t).map((f) => f.victim));
+    const players = [];
+    for (const [seat, tr] of Object.entries(r.tracks)) {
+      if (dead.has(+seat)) continue;
+      const p = trackAt(tr, i, st); if (p) players.push({ seat: +seat, x: p[0], y: p[1], z: p[2] });
+    }
+    for (const f of r.fights || []) if (f.t <= t && f.victim_at && f.victim != null) players.push({ seat: f.victim, ...f.victim_at, dead: true, yaw: null });
+    return players;
+  }
+
+  // The killfeed, top right, the way the game draws it: each kill stays up a
+  // few seconds, Ric's own kills outlined red, his death on red.
+  function killfeed(el, seats, r, t) {
+    const live = (r.fights || []).filter((f) => f.t <= t && t - f.t < 6).slice(-6);
+    el.innerHTML = live.map((f) => {
+      const ks = sideOf(seats, f.killer, r).toLowerCase(), vs = sideOf(seats, f.victim, r).toLowerCase();
+      const icons = [f.wallbang && ICON.wall, f.through_smoke && ICON.smoke, f.headshot && ICON.hs, f.noscope && ICON.noscope, f.killer_blind && ICON.blind].filter(Boolean).join("");
+      const age = t - f.t;
+      return `<div class="kfe${f.killer === 0 && f.victim !== 0 ? " mine" : ""}${f.victim === 0 ? " died" : ""}" style="opacity:${age > 5 ? Math.max(0, 6 - age).toFixed(2) : 1}">
+        <span class="who-${ks}">${esc(nameOf(seats, f.killer))}</span>${f.assister != null ? `<span class="plus">+</span><span class="who-${sideOf(seats, f.assister, r).toLowerCase()}">${esc(nameOf(seats, f.assister))}</span>` : ""}
+        <span class="kw">${esc(weaponName(f.weapon))}</span>${icons}<span class="who-${vs}">${esc(nameOf(seats, f.victim))}</span></div>`;
+    }).join("");
+  }
+
+  // The bar along the bottom of a held map: play/pause, the scrubber, speed.
+  const playBar = (extra = "") => `<div class="bar"><button type="button" class="pp" data-play aria-label="Play">▶</button>
+    <input type="range" step="0.1" value="0" aria-label="Time in round"><span class="clock">0:00</span>
+    <button type="button" class="pp" data-speed aria-label="Playback speed">1×</button>${extra}</div>`;
+  function Clock({ wrap, from, to, at, onTime }) {
+    const btn = wrap.querySelector("[data-play]"), range = wrap.querySelector(".bar input"), spd = wrap.querySelector("[data-speed]");
+    let t = at, speed = 1, playing = false, raf = 0, last = 0;
+    range.min = from; range.max = to; range.value = at;
+    wrap.querySelector(".clock").textContent = mmss(at);
+    const show = () => { range.value = t; wrap.querySelector(".clock").textContent = mmss(t); onTime(t); };
+    const tick = (now) => {
+      if (!playing) return;
+      t = Math.min(to, t + (last ? (now - last) / 1000 : 0) * speed); last = now; show();
+      if (t >= to) return setPlaying(false);
+      raf = requestAnimationFrame(tick);
+    };
+    const setPlaying = (on) => {
+      playing = on; last = 0; btn.textContent = on ? "❚❚" : "▶"; btn.setAttribute("aria-label", on ? "Pause" : "Play");
+      if (on) { if (t >= to) t = from; raf = requestAnimationFrame(tick); } else cancelAnimationFrame(raf);
+    };
+    btn.addEventListener("click", () => setPlaying(!playing));
+    spd.addEventListener("click", () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : speed === 4 ? 0.5 : 1; spd.textContent = `${speed}×`; });
+    range.addEventListener("input", () => { t = +range.value; show(); });
+    return {
+      get t() { return t; }, set t(v) { t = Math.max(from, Math.min(to, v)); show(); },
+      range(f, tt, a) { setPlaying(false); from = f; to = tt; range.min = f; range.max = tt; t = a; show(); },
+      play: setPlaying, show,
+    };
+  }
+
   /* ══ kill snapshots ═════════════════════════════════════ */
   const snapState = { id: replayable[0] && replayable[0].id, which: "all" };
   function renderSnapBar() {
@@ -726,13 +889,7 @@
       $("snapcount").textContent = `${list.length} moment${list.length === 1 ? "" : "s"}`;
       if (!list.length) { $("snaps").innerHTML = `<div class="panel empty">Nothing here.</div>`; return; }
       $("snaps").innerHTML = list.map((s, i) => snapCard(s, i, seats, R)).join("");
-      list.forEach((s, i) => paintSnap(i, s, seats, cal, false));
-      $("snaps").onclick = (e) => {
-        const c = e.target.closest("canvas"); if (!c) return;
-        const card = c.closest(".snap"), i = +card.dataset.i, big = !card.classList.contains("big");
-        card.classList.toggle("big", big); paintSnap(i, list[i], seats, cal, big);
-        if (big) card.scrollIntoView({ block: "nearest" });
-      };
+      list.forEach((s, i) => mountSnap($("snaps").querySelector(`.snap[data-i="${i}"]`), s, seats, R, cal));
     }, () => { $("snaps").innerHTML = `<div class="panel empty">That match didn't load.</div>`; });
   }
 
@@ -763,7 +920,9 @@
         ${f.distance != null ? `<span><b>${Math.round(f.distance * 0.0254)} m</b> apart</span>` : ""}
         ${f.killer_hp_after != null ? `<span>killer on <b>${f.killer_hp_after} HP</b></span>` : ""}
         ${f.opening ? `<span><b>opening kill</b></span>` : ""}${f.traded_after != null ? `<span>traded at <b>${mmss(f.traded_after)}</b></span>` : ""}</div>
-      <div class="snapbody"><canvas width="720" height="720" aria-label="Radar at that moment"></canvas>
+      <div class="snapbody"><div class="rv"><canvas width="720" height="720" tabindex="0" aria-label="Radar at that moment. Activate to zoom, pan and play the seconds around it."></canvas>
+          <div class="kf" aria-hidden="true"></div><div class="hint">Click to zoom, pan and play</div>
+          ${playBar(`<button type="button" class="pp" data-close aria-label="Close">✕</button>`)}</div>
         <div class="roster"><h4 class="t">Terrorists</h4>${team("T")}<h4 class="ct">Counter-Terrorists</h4>${team("CT")}</div></div>
       <div class="util"><span><i style="background:rgba(205,212,222,.8)"></i>${smokes} smoke${smokes === 1 ? "" : "s"} up</span>
         <span><i style="background:rgba(235,110,35,.85)"></i>${fires} fire${fires === 1 ? "" : "s"}</span>
@@ -772,21 +931,37 @@
     </article>`;
   }
 
-  async function paintSnap(i, { r, f }, seats, cal, big) {
-    const card = $("snaps").querySelector(`.snap[data-i="${i}"]`); if (!card) return;
-    const cv = card.querySelector("canvas"), S = big ? 1100 : 720;
-    cv.width = cv.height = S;
-    const ctx = cv.getContext("2d");
-    if (!cal) { ctx.fillStyle = "#07090c"; ctx.fillRect(0, 0, S, S); ctx.fillStyle = "#a0a8b2"; ctx.font = "20px system-ui"; ctx.fillText("No radar for this map", 20, 40); return; }
-    const lower = lowerAt(cal, (f.victim_at || {}).z);
-    const img = await loadImg(lower ? cal.lower : cal.img);
-    const players = (f.snapshot || []).filter((p) => p.hp > 0 || p.seat === f.victim).map((p) => ({ ...p, dead: p.seat === f.victim }));
-    if (!players.some((p) => p.seat === f.victim) && f.victim_at) players.push({ seat: f.victim, ...f.victim_at, dead: true });
-    const view = big ? [0, 0, 1024] : frame(cal, [f.killer_at, f.victim_at, ...(f.snapshot || []).filter((p) => p.seat === 0)]);
-    const planted = r.bomb && r.bomb.planted && r.bomb.planted.t <= f.t ? r.bomb.planted : null;
-    drawMoment(ctx, S, { cal, img, lower, players, nades: r.nades, flashes: r.flashes, bomb: planted,
-      line: f.killer_at && f.victim_at && f.killer_at.x != null ? [f.killer_at.x, f.killer_at.y, f.victim_at.x, f.victim_at.y] : null,
-      view, labels: true, seats, r, t: f.t });
+  // Each card is a small player: frozen on the kill until you take hold of it,
+  // then it plays the six seconds before and three after.
+  function mountSnap(card, { r, f }, seats, R, cal) {
+    const wrap = card.querySelector(".rv"), cv = wrap.querySelector("canvas"), kf = wrap.querySelector(".kf");
+    const lower = cal ? lowerAt(cal, (f.victim_at || {}).z) : false;
+    const frozen = (f.snapshot || []).filter((p) => p.hp > 0 || p.seat === f.victim).map((p) => ({ ...p, dead: p.seat === f.victim }));
+    if (!frozen.some((p) => p.seat === f.victim) && f.victim_at) frozen.push({ seat: f.victim, ...f.victim_at, dead: true });
+    const kline = f.killer_at && f.victim_at && f.killer_at.x != null ? [f.killer_at.x, f.killer_at.y, f.victim_at.x, f.victim_at.y] : null;
+    const first = cal ? frame(cal, [f.killer_at, f.victim_at, ...(f.snapshot || []).filter((p) => p.seat === 0)]) : [0, 0, 1024];
+    let img = null, rv = null;
+    const paint = (view) => {
+      const S = cv.width, ctx = cv.getContext("2d");
+      if (!cal) { ctx.fillStyle = "#07090c"; ctx.fillRect(0, 0, S, S); ctx.fillStyle = "#a0a8b2"; ctx.font = "20px system-ui"; ctx.fillText("No radar for this map", 20, 40); return; }
+      const t = clock.t, exact = Math.abs(t - f.t) < 0.3;
+      const planted = r.bomb && r.bomb.planted && r.bomb.planted.t <= t ? r.bomb.planted : null;
+      const recent = (r.fights || []).filter((x) => x.t <= t && t - x.t < 1.5 && x.killer_at && x.victim_at && x.killer_at.x != null).pop();
+      drawMoment(ctx, S, { cal, img, lower, players: exact ? frozen : momentAt(R, r, t), nades: r.nades, flashes: r.flashes, bomb: planted,
+        line: exact ? kline : recent ? [recent.killer_at.x, recent.killer_at.y, recent.victim_at.x, recent.victim_at.y] : null,
+        view: view || rv.view, labels: true, seats, r, t });
+      killfeed(kf, seats, r, t);
+    };
+    const clock = Clock({ wrap, from: Math.max(0, f.t - 6), to: Math.min(r.dur || f.t + 3, f.t + 3), at: f.t, onTime: () => rv && paint() });
+    rv = RadarView(wrap, { draw: paint, onHold: () => {
+      if (card.classList.contains("big")) return;
+      card.classList.add("big"); cv.width = cv.height = 1100; rv.set(rv.view); card.scrollIntoView({ block: "nearest" });
+    } });
+    wrap.querySelector("[data-close]").addEventListener("click", () => {
+      clock.play(false); clock.t = f.t; card.classList.remove("big"); cv.width = cv.height = 720; rv.hold(false); rv.set(first);
+    });
+    if (cal) loadImg(lower ? cal.lower : cal.img).then((im) => { img = im; rv.set(first); });
+    else rv.set(first);
   }
 
   /* ══ match list ═════════════════════════════════════════ */
@@ -959,31 +1134,30 @@
     box.innerHTML = `<div class="replay"><div class="panel stage">
         <div class="rtitle"><b>${esc(mapName(m.map))} · ${m.score[0]}:${m.score[1]}</b><span class="note">${esc(when(m.at, true))}</span></div>
         <div class="rpicks" role="group" aria-label="Round">${R.rounds.map((r, i) => `<button type="button" class="${r.w ? "w" : "l"}" data-r="${i}" aria-label="Round ${i + 1}, ${r.w ? "won" : "lost"}">${i + 1}</button>`).join("")}</div>
-        <canvas width="1024" height="1024" aria-label="The round on the radar"></canvas>
-        <div class="controls"><button class="btn" type="button" data-play>▶ Play</button>
-          <input type="range" min="0" step="0.1" value="0" aria-label="Time in round"><span class="clock">0:00</span>
-          <button class="btn ghost" type="button" data-speed>1×</button></div>
+        <div class="rv"><canvas width="1024" height="1024" tabindex="0" aria-label="The round on the radar. Activate to play, zoom and pan."></canvas>
+          <div class="kf" aria-hidden="true"></div><div class="hint">Click the map to play, zoom and pan</div>${playBar()}</div>
         <div class="settings">
           ${cal && cal.split != null ? `<div class="seg" role="group" aria-label="Radar level"><button type="button" data-level="auto" aria-pressed="true">Auto</button><button type="button" data-level="0" aria-pressed="false">Upper</button><button type="button" data-level="1" aria-pressed="false">Lower</button></div>` : ""}
           <label><input type="checkbox" data-names checked> Names</label>
           <label><input type="checkbox" data-steps${cal ? "" : " checked"}> Footsteps</label>
+          <button type="button" class="pp" data-reset style="padding:0 10px">Reset view</button>
         </div></div>
       <div class="panel side"><div class="rlegend"><span><i style="background:var(--t)"></i>T</span><span><i style="background:var(--ct)"></i>CT</span>
           <span><i style="background:#fff"></i>Ric (white ring)</span><span>✕ died · cone = facing</span></div>
-        <div><h3 style="font-size:13px;letter-spacing:.14em;color:var(--dim);margin-bottom:6px">Kill feed</h3><div class="feed"></div></div>
+        <div><h3 style="font-size:13px;letter-spacing:.14em;color:var(--dim);margin-bottom:6px">Every kill this round</h3><div class="feed"></div>
+          <p class="note" style="margin-top:6px">Click one to jump to it.</p></div>
         ${others.length ? `<div><h3 style="font-size:13px;letter-spacing:.14em;color:var(--dim);margin-bottom:6px">Other replays</h3>
           ${others.map((x) => `<button class="btn ghost" style="width:100%;margin-bottom:4px;justify-content:space-between" type="button" data-other="${esc(x.id)}">
           <span>${esc(mapName(x.map))} ${x.score[0]}:${x.score[1]}</span><span class="note">${esc(when(x.at))}</span></button>`).join("")}</div>` : ""}
       </div></div>`;
-    const cv = box.querySelector("canvas"), ctx = cv.getContext("2d"), S = cv.width;
-    const range = box.querySelector("input[type=range]"), clock = box.querySelector(".clock");
-    const playBtn = box.querySelector("[data-play]"), speedBtn = box.querySelector("[data-speed]"), feed = box.querySelector(".feed");
+    const wrap = box.querySelector(".rv"), cv = wrap.querySelector("canvas"), ctx = cv.getContext("2d"), S = cv.width;
+    const kf = wrap.querySelector(".kf"), feed = box.querySelector(".feed");
     // Which floor's radar: "auto" follows Ric, the way the in-game radar does.
-    let level = "auto";
+    let level = "auto", ri = startRound, rv = null;
     const imgs = [null, null];
     if (cal) {
-      loadImg(cal.img).then((im) => { imgs[0] = im; draw(); });
-      if (cal.lower) loadImg(cal.lower).then((im) => { imgs[1] = im; draw(); });
+      loadImg(cal.img).then((im) => { imgs[0] = im; paint(); });
+      if (cal.lower) loadImg(cal.lower).then((im) => { imgs[1] = im; paint(); });
     }
     // With no radar for a map, frame the footsteps themselves.
     const calX = cal || (() => {
@@ -1002,64 +1176,49 @@
         if (tr[i] == null) continue; const [x, y] = toRadar(calX, tr[i], tr[i + 1]); f.beginPath(); f.arc(x, y, 5, 0, 7); f.fill();
       }
     }
-    let ri = startRound, t = 0, playing = false, speed = 1, last = 0, raf = 0;
-    const at = (tr, i) => {
-      const a = Math.floor(i), fr = i - a, b0 = a * st, b1 = (a + 1) * st;
-      if (tr[b0] == null) return null;
-      const z = st === 3 ? tr[b0 + 2] : null;
-      if (tr[b1] == null) return [tr[b0], tr[b0 + 1], z];
-      return [tr[b0] + (tr[b1] - tr[b0]) * fr, tr[b0 + 1] + (tr[b1 + 1] - tr[b0 + 1]) * fr, z];
-    };
-    function draw() {
-      const r = R.rounds[ri], n = (Object.values(r.tracks)[0] || []).length / st, i = Math.max(0, Math.min(t * R.hz, n - 1));
-      const players = [];
-      for (const [seat, tr] of Object.entries(r.tracks)) { const p = at(tr, i); if (p) players.push({ seat: +seat, x: p[0], y: p[1], z: p[2] }); }
-      for (const f of r.fights || []) if (f.t <= t && f.victim_at && f.victim != null) players.push({ seat: f.victim, ...f.victim_at, dead: true });
-      const recent = (r.fights || []).filter((f) => f.t <= t && t - f.t < 1.5 && f.killer_at && f.victim_at && f.killer_at.x != null);
+    const paint = () => {
+      if (!rv) return;
+      const r = R.rounds[ri], t = clock.t, players = momentAt(R, r, t);
+      const recent = (r.fights || []).filter((f) => f.t <= t && t - f.t < 1.5 && f.killer_at && f.victim_at && f.killer_at.x != null).pop();
       const planted = r.bomb && r.bomb.planted && r.bomb.planted.t <= t ? r.bomb.planted : null;
       const ric = players.find((p) => p.seat === 0 && !p.dead);
       const lv = level === "auto" ? (ric && lowerAt(cal, ric.z) && imgs[1] ? 1 : 0) : +level;
       drawMoment(ctx, S, { cal: calX, img: cal ? imgs[lv] : null, lower: lv === 1, players, nades: r.nades, flashes: r.flashes, bomb: planted,
-        line: recent.length ? [recent[0].killer_at.x, recent[0].killer_at.y, recent[0].victim_at.x, recent[0].victim_at.y] : null,
-        view: [0, 0, 1024], labels: box.querySelector("[data-names]").checked,
+        line: recent ? [recent.killer_at.x, recent.killer_at.y, recent.victim_at.x, recent.victim_at.y] : null,
+        view: rv.view, labels: box.querySelector("[data-names]").checked,
         footsteps: box.querySelector("[data-steps]").checked ? steps : null, seats, r, t });
-      range.value = t; clock.textContent = `${mmss(t)} / ${mmss(r.dur)}`;
+      killfeed(kf, seats, r, t);
       [...feed.children].forEach((el) => el.classList.toggle("future", +el.dataset.t > t));
-    }
+    };
+    const clock = Clock({ wrap, from: 0, to: R.rounds[ri].dur, at: 0, onTime: paint });
+    rv = RadarView(wrap, { draw: paint, onHold: () => clock.play(!reduce) });
     function pick(n) {
-      ri = n; t = 0; const r = R.rounds[ri]; range.max = r.dur;
+      ri = n; const r = R.rounds[ri];
       for (const b of box.querySelectorAll(".rpicks button")) b.setAttribute("aria-pressed", String(+b.dataset.r === ri));
       const fights = r.fights || [];
       feed.innerHTML = fights.length ? fights.map((f) => {
-        const ks = sideOf(seats, f.killer, r), vs = sideOf(seats, f.victim, r), mine = f.killer === 0 || f.victim === 0;
-        return `<div data-t="${f.t}" class="${mine ? "mine" : ""}"><span class="t">${mmss(f.t)}</span><span class="who-${ks.toLowerCase()}">${esc(nameOf(seats, f.killer))}</span>
-          <span>${esc(weaponName(f.weapon))}${f.headshot ? " · HS" : ""}</span><span class="who-${vs.toLowerCase()}">${esc(nameOf(seats, f.victim))}</span></div>`;
+        const ks = sideOf(seats, f.killer, r), vs = sideOf(seats, f.victim, r);
+        return `<button type="button" data-t="${f.t}" class="${f.killer === 0 && f.victim !== 0 ? "mine" : ""}${f.victim === 0 ? " died" : ""}"><span class="t">${mmss(f.t)}</span><span class="who-${ks.toLowerCase()}">${esc(nameOf(seats, f.killer))}</span>
+          <span>${esc(weaponName(f.weapon))}${f.headshot ? " · HS" : ""}</span><span class="who-${vs.toLowerCase()}">${esc(nameOf(seats, f.victim))}</span></button>`;
       }).join("") : `<p class="note">No kills this round.</p>`;
-      draw();
+      clock.range(0, r.dur, 0);
     }
-    function tick(now) {
-      if (!playing) return;
-      const dt = last ? (now - last) / 1000 : 0; last = now;
-      t = Math.min(R.rounds[ri].dur, t + dt * speed); draw();
-      if (t >= R.rounds[ri].dur) { setPlaying(false); return; }
-      raf = requestAnimationFrame(tick);
-    }
-    function setPlaying(on) {
-      playing = on; last = 0; playBtn.textContent = on ? "❚❚ Pause" : "▶ Play";
-      if (on) { if (t >= R.rounds[ri].dur) t = 0; raf = requestAnimationFrame(tick); } else cancelAnimationFrame(raf);
-    }
-    box.querySelector(".rpicks").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; setPlaying(false); pick(+b.dataset.r); if (!reduce) setPlaying(true); });
-    playBtn.addEventListener("click", () => setPlaying(!playing));
-    speedBtn.addEventListener("click", () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; speedBtn.textContent = `${speed}×`; });
-    range.addEventListener("input", () => { t = +range.value; draw(); });
-    box.addEventListener("change", draw);
+    box.querySelector(".rpicks").addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      pick(+b.dataset.r); rv.hold(true);
+    });
+    box.addEventListener("change", paint);
     box.addEventListener("click", (e) => {
       const o = e.target.closest("[data-other]"); if (o) return showReplay(o.dataset.other, false);
+      const k = e.target.closest(".feed button");
+      if (k) { clock.play(false); clock.t = Math.max(0, +k.dataset.t - 3); rv.hold(true); return; }
+      if (e.target.closest("[data-reset]")) return rv.set([0, 0, 1024]);
       const l = e.target.closest("[data-level]");
-      if (l) { level = l.dataset.level === "auto" ? "auto" : +l.dataset.level; for (const x of l.parentNode.children) x.setAttribute("aria-pressed", String(x === l)); draw(); }
+      if (l) { level = l.dataset.level === "auto" ? "auto" : +l.dataset.level; for (const x of l.parentNode.children) x.setAttribute("aria-pressed", String(x === l)); paint(); }
     });
+    rv.set([0, 0, 1024]);
     pick(startRound);
-    return { stop: () => setPlaying(false) };
+    return { stop: () => clock.play(false) };
   }
 
   renderSnapBar();
