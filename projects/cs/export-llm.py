@@ -232,15 +232,36 @@ def match_md(m, player):
                     L.append("   - damage between them in the 10 s before: " + "; ".join(
                         f"{mmss(e[0])} {nm(e[1])}→{nm(e[2])} {e[4]} ({e[6] or '?'}, {e[3]})" for e in x["exchange"]))
                 if x.get("snapshot"):
-                    L.append("   - everyone at that moment: " + "; ".join(
-                        f"{nm(p['seat'])} ({side(p['seat'], r)}) {p.get('place') or ''} ({p.get('x')}, {p.get('y')}) {p.get('hp')}HP"
-                        for p in x["snapshot"]))
+                    def who_at(p):
+                        bits = [f"{p.get('hp')}HP"]
+                        if p.get("armor"):
+                            bits.append(f"{p['armor']} armor")
+                        if p.get("weapon"):
+                            bits.append(f"holding {p['weapon']}")
+                        if p.get("yaw") is not None:
+                            bits.append(f"facing {p['yaw'] % 360}°")
+                        return (f"{nm(p['seat'])} ({side(p['seat'], r)}) {p.get('place') or ''} "
+                                f"({p.get('x')}, {p.get('y')}, {p.get('z')}) " + ", ".join(bits))
+                    L.append("   - everyone at that moment: " + "; ".join(who_at(p) for p in x["snapshot"]))
+                # what was in the air when it happened
+                t_ = x["t"]
+                up = [n for n in r.get("nades") or []
+                      if n[0] <= t_ <= (n[5] if len(n) > 5 and n[5] is not None
+                                        else n[0] + {"smoke": 20, "fire": 7}.get(n[2], 0))
+                      and n[2] in ("smoke", "fire")]
+                blind = [f for f in r.get("flashes") or [] if f[0] <= t_ <= f[0] + f[3]]
+                if up or blind:
+                    L.append("   - in the air: " + "; ".join(
+                        [f"{n[2]} at ({n[3]}, {n[4]}) from {nm(n[1])}" for n in up]
+                        + [f"{nm(f[2])} flashed by {nm(f[1])}" for f in blind]))
         else:
             L += ["", "_No kills this round._"]
 
         if r.get("nades"):
             L += ["", "**Grenades:** " + "; ".join(
-                f"{mmss(t)} {kind} by {nm(s)} at ({x}, {y})" for t, s, kind, x, y in r["nades"])]
+                f"{mmss(n[0])} {n[2]} by {nm(n[1])} at ({n[3]}, {n[4]})"
+                + (f", gone at {mmss(n[5])}" if len(n) > 5 and n[5] is not None else "")
+                for n in r["nades"])]
         if r.get("flashes"):
             L += ["", "**Flashed:** " + "; ".join(
                 f"{mmss(t)} {nm(a)} flashed {nm(v)} {d}s" for t, a, v, d in r["flashes"])]

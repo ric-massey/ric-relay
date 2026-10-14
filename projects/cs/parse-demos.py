@@ -43,6 +43,16 @@ NADES = {
 }
 
 
+def radar_split(mapname):
+    """z below which CS2 draws the lower radar (Nuke, Train, Vertigo)."""
+    try:
+        t = (csdata.HERE / "radar" / "radar.js").read_text(encoding="utf-8")
+        cal = json.loads(t[t.index("CS_RADAR =") + len("CS_RADAR ="):].strip().rstrip(";"))
+        return (cal.get(mapname) or {}).get("split")
+    except (FileNotFoundError, ValueError):
+        return None
+
+
 def demo_dirs(acct):
     dirs = []
     cs2 = acct.get("cs2_dir")
@@ -71,11 +81,20 @@ def find_new(acct, done):
 
 
 def archive(path, acct):
-    """Keep our own copy before Valve's goes. Copy, never move: CS2's Watch tab
-    lists what is in its replays folder."""
+    """Keep our own copy before Valve's goes. CS2's replays folder is copied,
+    never moved (its Watch tab lists what's in there); anything in our own
+    inbox is moved, so a demo is never on disk twice."""
     keep = keep_dir(acct)
     target = keep / path.name
-    if path.parent.resolve() != keep.resolve() and not target.exists():
+    if path.parent.resolve() == keep.resolve():
+        return path
+    inbox = (csdata.HERE / acct.get("demo_inbox", "demos")).resolve()
+    if target.exists():
+        if path.parent.resolve() == inbox:
+            path.unlink()
+    elif path.parent.resolve() == inbox:
+        shutil.move(str(path), target)
+    else:
         shutil.copy2(path, target)
     return target
 
@@ -222,10 +241,18 @@ def parse(path, me):
     for (ri, a, v), n in dmg_into.items():
         per[a]["dmg"] += n
 
+    ends = {}
+    for name in ("smokegrenade_expired", "inferno_expire"):
+        for r in ev(name):
+            if r.get("entityid") is not None:
+                ends[(name, int(r["entityid"]))] = r["tick"]
     nade_rows = []
     for name, kind in NADES.items():
         for r in ev(name):
-            nade_rows.append((r["tick"], kind, sid(r.get("user_steamid")), r.get("x"), r.get("y")))
+            end = None
+            if r.get("entityid") is not None:
+                end = ends.get(({"smoke": "smokegrenade_expired", "fire": "inferno_expire"}.get(kind), int(r["entityid"])))
+            nade_rows.append((r["tick"], kind, sid(r.get("user_steamid")), r.get("x"), r.get("y"), end))
     plants = (ev("bomb_planted", player=["X", "Y", "last_place_name"])
               or ev("bomb_planted", player=["X", "Y"]))
     defuses = ev("bomb_defused")
@@ -295,17 +322,22 @@ def parse(path, me):
     sample = []
     for r in rounds:
         sample += list(range(r["start"], r["end"] + 1, step))
-    pos = defaultdict(dict)            # tick -> seat -> (x, y)
-    for r in rows(p.parse_ticks(["X", "Y", "is_alive"], ticks=sample)):
+    split = radar_split(mapname)
+    stride = 3 if split is not None else 2
+    pos = defaultdict(dict)            # tick -> seat -> (x, y[, z])
+    for r in rows(p.parse_ticks(["X", "Y", "Z", "is_alive"], ticks=sample)):
         s = sid(r.get("steamid"))
         if s in seat_of and r.get("is_alive"):
-            pos[r["tick"]][seat_of[s]] = (round(r["X"]), round(r["Y"]))
+            xy = (round(r["X"]), round(r["Y"]))
+            pos[r["tick"]][seat_of[s]] = xy + ((round(r["Z"]),) if stride == 3 else ())
 
     # Everyone, at the instant of every kill: where they stood and how much HP
     # they had. This is what makes a fight readable without watching it.
     kill_ticks = sorted({d["tick"] for d in deaths if round_of(d["tick"]) is not None})
     snap = defaultdict(dict)           # tick -> seat -> {x, y, z, place, hp}
-    for props in (["X", "Y", "Z", "health", "is_alive", "last_place_name"],
+    for props in (["X", "Y", "Z", "health", "is_alive", "last_place_name", "yaw",
+                   "active_weapon_name", "armor_value"],
+                  ["X", "Y", "Z", "health", "is_alive", "last_place_name"],
                   ["X", "Y", "Z", "health", "is_alive"]):
         try:
             got = rows(p.parse_ticks(props, ticks=kill_ticks)) if kill_ticks else []
@@ -317,7 +349,9 @@ def parse(path, me):
                 snap[r["tick"]][seat_of[s_]] = {
                     "x": _i(r.get("X")), "y": _i(r.get("Y")), "z": _i(r.get("Z")),
                     "place": _place(r.get("last_place_name")),
-                    "hp": _n(r.get("health")), "alive": bool(r.get("is_alive"))}
+                    "hp": _n(r.get("health")), "alive": bool(r.get("is_alive")),
+                    "yaw": _i(r.get("yaw")), "weapon": _w(r.get("active_weapon_name")),
+                    "armor": _i(r.get("armor_value"))}
         break
 
     # Money and loadout: read 20 s into the round, when the buy is done.
@@ -357,7 +391,7 @@ def parse(path, me):
                     alive = True
                     flat += xy
                 else:
-                    flat += [None, None]
+                    flat += [None] * stride
             if alive:
                 tracks[seat] = flat
         kills = [[sec(d["tick"]), seat_of.get(sid(d.get("attacker_steamid"))),
@@ -365,9 +399,9 @@ def parse(path, me):
                   _i(d.get("attacker_X")), _i(d.get("attacker_Y")),
                   _i(d.get("user_X")), _i(d.get("user_Y"))]
                  for d in sorted(kills_by_round[i], key=lambda d: d["tick"])]
-        nades = [[sec(t), seat_of.get(s), kind, _i(x), _i(y)]
-                 for t, kind, s, x, y in sorted(nade_rows, key=lambda n: n[0])
-                 if t0 <= t <= r["end"]]
+        nades = [[sec(t), seat_of.get(s), kind, _i(x), _i(y), sec(e) if e else None]
+                 for t, kind, s, x, y, e in sorted(nade_rows, key=lambda n: n[0])
+                 if t0 - 5 * TICKRATE <= t <= r["end"]]
         plant = next(([sec(b["tick"]), _i(b.get("user_X")), _i(b.get("user_Y"))]
                       for b in plants if t0 <= b["tick"] <= r["end"]), None)
 
@@ -455,8 +489,8 @@ def parse(path, me):
 
     seats = [{"seat": seat_of[s], "name": names.get(s), "us": s in us_ids, "me": s == me}
              for s in sorted(seat_of, key=seat_of.get)]
-    replay = {"map": mapname, "hz": HZ, "tickrate": TICKRATE, "seats": seats,
-              "rounds": replay_rounds}
+    replay = {"map": mapname, "hz": HZ, "tickrate": TICKRATE, "stride": stride,
+              "split": split, "seats": seats, "rounds": replay_rounds}
     return summary, replay
 
 
@@ -473,6 +507,12 @@ def _n(v):
         return 0 if v is None or v != v else int(v)
     except (TypeError, ValueError):
         return 0
+
+
+def _w(v):
+    if not v or v != v:
+        return None
+    return str(v).replace("weapon_", "")
 
 
 def _b(v):
@@ -553,7 +593,11 @@ def main():
     acct = csdata.account()
     st = csdata.read_state()
     done = st.setdefault("parsed", {})
-    paths = [Path(a) for a in sys.argv[1:]] or find_new(acct, done)
+    if "--rebuild" in sys.argv:
+        done.clear()
+        paths = sorted(keep_dir(acct).glob("*.dem*"))
+    else:
+        paths = [Path(a) for a in sys.argv[1:]] or find_new(acct, done)
     if not paths:
         print("demos: nothing new")
         return

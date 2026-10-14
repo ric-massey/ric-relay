@@ -100,3 +100,4 @@ projects/val/val-account.json
 projects/val/__pycache__/
 projects/val/*.tmp
 projects/val/matches/*.tmp
+projects/cs/tools/

@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>/cs — your matches</title>
-  <meta name="description" content="Ric's Counter-Strike 2 room — every match, round by round, from Valve's own demos and live game feed, with a 2D replay of every round.">
+  <meta name="description" content="Ric's Counter-Strike 2 room — every match, round by round, a snapshot of every kill and death on the real radar, and a 2D replay of every round from Valve's own demos.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ric's Terminal">
   <meta property="og:title" content="CS — Ric's Terminal">
-  <meta property="og:description" content="Every Counter-Strike 2 match, round by round, with 2D replays.">
+  <meta property="og:description" content="Every Counter-Strike 2 match, every kill on the radar, 2D replays.">
   <meta property="og:url" content="https://ricmassey.com/cs.html">
   <meta property="og:image" content="https://ricmassey.com/assets/og-terminal.png">
   <meta property="og:image:width" content="1200">
@@ -17,300 +17,311 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="https://ricmassey.com/cs.html">
   <link rel="alternate" type="text/markdown" title="Every match as plain text" href="projects/cs/llm/index.md">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230b0e13'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23e3b053' stroke-width='8'/><path d='M50 8v26M50 66v26M8 50h26M66 50h26' stroke='%23e3b053' stroke-width='8'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230d0f12'/><circle cx='50' cy='50' r='30' fill='none' stroke='%23e7c178' stroke-width='8'/><path d='M50 8v26M50 66v26M8 50h26M66 50h26' stroke='%23e7c178' stroke-width='8'/></svg>">
   <style>
     :root{
-      /* Steam: the store's navy, the community's darker panels, Steam blue for
-         links, the Play-button green. Win/loss fills are Steam's review
-         histogram blue and orange (passed the colour-blind check as a pair on
-         --panel); text uses the *-ink versions, which clear 4.5:1. */
-      --bg:#1b2838;
-      --bg-deep:#171a21;
-      --panel:#16202d;
-      --panel-2:#1f2c3b;
-      --row:rgba(0,0,0,.2);
-      --row-alt:rgba(255,255,255,.025);
-      --line:#2a3f5a;
-      --line-hot:#3d6c8d;
-      --text:#c6d4df;
+      /* CS2's own menus: near-black glass over blurred map art, condensed
+         uppercase type, gold for T and steel blue for CT. Win/loss fills are a
+         teal/orange pair that passed the colour-blind check on --panel; every
+         colour that carries words is an *-ink version clearing 4.5:1. */
+      --bg:#0b0d10;
+      --panel:rgba(18,21,26,.86);
+      --panel-solid:#14171c;
+      --line:rgba(255,255,255,.08);
+      --line-hot:rgba(255,255,255,.22);
+      --text:#e9ecef;
+      --dim:#a0a8b2;          /* 7.4:1 on --panel-solid */
       --bright:#ffffff;
-      --dim:#8f98a0;          /* 5.0:1 on --bg, 5.6:1 on --panel */
-      --dimmer:#8f98a0;
-      --blue:#66c0f4;         /* Steam link blue, 7.6:1 */
-      --blue-hot:#1a9fff;
-      --ingame:#90ba3c;       /* the "In-Game" green, 6.7:1 */
+      --t:#c9a24b;   --t-ink:#e7c178;  --t-row:rgba(201,162,75,.10);
+      --ct:#5d79ae;  --ct-ink:#a3bdec; --ct-row:rgba(93,121,174,.13);
+      --win:#27a39a; --win-ink:#4fd1c5;
+      --loss:#d8653f;--loss-ink:#f29070;
+      --tie:#7d8799;
+      --kill:#d6413a;         /* the killfeed's red outline on your own kills */
+      --go:#3f8a33;           /* the green of the Play button */
 
-      --win:#4b9bd1;  --win-ink:#66c0f4;
-      --loss:#cf6a35; --loss-ink:#f0905f;
-      --tie:#6b7785;
-      --t:#c69a3e;    --t-ink:#e3b866;
-      --ct:#7fa7cf;   --ct-ink:#a9c8e8;
-      --gold:#e3b866;
-
-      --display:"Motiva Sans",Arial,Helvetica,sans-serif;
-      --sans:"Motiva Sans",Arial,Helvetica,sans-serif;
-      --mono:ui-monospace,Consolas,Menlo,monospace;
-      --gut:clamp(14px,3vw,28px);
+      --display:"Stratum2","Arial Narrow","Roboto Condensed","Helvetica Neue Condensed Bold",
+                "Liberation Sans Narrow",Impact,system-ui,sans-serif;
+      --sans:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+      --gut:clamp(14px,3vw,30px);
     }
     *{box-sizing:border-box;margin:0}
     html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
     body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;overflow-x:hidden}
-    ::selection{background:var(--blue-hot);color:#fff}
-    a{color:var(--blue);text-decoration:none}
-    a:hover{color:var(--bright)}
+    ::selection{background:var(--t);color:#000}
+    a{color:inherit}
     button{font:inherit;color:inherit}
-    :focus-visible{outline:2px solid var(--blue);outline-offset:2px}
-    h1,h2,h3{font-family:var(--display);font-weight:400}
+    :focus-visible{outline:2px solid var(--t-ink);outline-offset:2px}
+    h1,h2,h3,h4{font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
     .num{font-variant-numeric:tabular-nums}
     @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}html{scroll-behavior:auto}}
 
-    /* the community page's backdrop: a dark band behind the profile, fading
-       into the store navy */
-    .scene{position:absolute;inset:0 0 auto;height:620px;z-index:-1;pointer-events:none;
-      background:
-        radial-gradient(70% 90% at 70% 0%,rgba(42,71,94,.55),transparent 70%),
-        linear-gradient(180deg,#0e141b 0%,#121a24 55%,var(--bg) 100%)}
+    /* the map behind the menu: the most-played map's radar, blurred and dark */
+    .scene{position:fixed;inset:0;z-index:-1;pointer-events:none;background:#0b0d10;overflow:hidden}
+    .scene i{position:absolute;inset:-60px;background-size:cover;background-position:center;
+      filter:blur(26px) saturate(.7) brightness(.32);transform:scale(1.1)}
+    .scene::after{content:"";position:absolute;inset:0;
+      background:radial-gradient(120% 90% at 30% 0%,transparent,rgba(11,13,16,.75) 70%),
+                 linear-gradient(180deg,rgba(11,13,16,.2),rgba(11,13,16,.85) 60%,#0b0d10)}
 
-    /* ══ global header ═════════════════════════════════════════ */
-    .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:28px;min-height:64px;
-      padding:0 var(--gut);background:var(--bg-deep)}
-    .brand{display:flex;align-items:center;gap:10px;flex:none;color:var(--bright)}
-    .brand:hover{color:var(--bright)}
-    .brand .t{font-family:var(--display);font-weight:700;font-size:21px;letter-spacing:.02em;text-transform:uppercase;line-height:1}
-    .brand .t b{font-weight:700;color:var(--bright)}
-    .brand .t small{display:block;font-size:10.5px;letter-spacing:.32em;color:var(--dim);font-weight:400;margin-top:3px}
-    .navwrap{flex:1;min-width:0;display:flex;justify-content:flex-start;align-items:stretch;position:relative;align-self:stretch}
+    /* ══ top bar: the main menu strip ═════════════════════════ */
+    .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:stretch;gap:18px;min-height:56px;
+      padding:0 var(--gut);background:linear-gradient(180deg,rgba(6,7,9,.95),rgba(6,7,9,.8));
+      border-bottom:1px solid var(--line);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+    .brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex:none}
+    .brand .t{font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;line-height:1.05;color:var(--dim)}
+    .brand .t b{display:block;color:var(--bright);font-size:18px;letter-spacing:.06em}
+    .navwrap{flex:1;min-width:0;display:flex;justify-content:flex-end;align-items:stretch;position:relative}
     nav.mainmenu{display:flex;align-items:stretch;overflow-x:auto;scrollbar-width:none}
     nav.mainmenu::-webkit-scrollbar{display:none}
-    nav.mainmenu a,nav.mainmenu .here{display:flex;align-items:center;padding:0 11px;font-size:14px;font-weight:500;
-      letter-spacing:.04em;text-transform:uppercase;color:#dcdedf;white-space:nowrap;position:relative;border-bottom:3px solid transparent}
-    nav.mainmenu a:hover{color:var(--bright)}
-    nav.mainmenu .here{color:var(--blue-hot);border-bottom-color:var(--blue-hot)}
+    nav.mainmenu a,nav.mainmenu .here{display:flex;align-items:center;padding:0 12px;font-family:var(--display);font-weight:700;
+      font-size:14px;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;color:var(--dim);white-space:nowrap;position:relative}
+    nav.mainmenu a:hover{color:var(--bright);background:rgba(255,255,255,.04)}
+    nav.mainmenu .here{color:var(--bright)}
+    nav.mainmenu .here::after{content:"";position:absolute;left:10px;right:10px;bottom:0;height:2px;background:var(--bright)}
     .roomnav-toggle{display:none}
     @media (max-width:1100px){
-      .navwrap{justify-content:flex-end;align-items:center}
-      .roomnav-toggle{display:inline-flex;align-items:center;gap:9px;min-height:44px;padding:0 14px;cursor:pointer;border-radius:2px;
-        background:rgba(103,193,245,.12);border:0;color:var(--blue);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
-      .roomnav-toggle:hover{background:var(--blue);color:#fff}
-      .roomnav-toggle[aria-expanded="true"]{background:var(--blue);color:#fff}
+      .navwrap{align-items:center}
+      .roomnav-toggle{display:inline-flex;align-items:center;gap:9px;min-height:44px;padding:0 14px;cursor:pointer;
+        background:rgba(255,255,255,.06);border:1px solid var(--line);font-family:var(--display);font-weight:700;font-size:13px;
+        letter-spacing:.12em;text-transform:uppercase}
+      .roomnav-toggle[aria-expanded="true"]{border-color:var(--t-ink)}
       .roomnav-toggle-bars{position:relative;width:15px;height:11px;border-top:2px solid currentColor;border-bottom:2px solid currentColor}
       .roomnav-toggle-bars::after{content:"";position:absolute;inset:calc(50% - 1px) 0 auto;border-top:2px solid currentColor}
       nav.mainmenu[data-roomnav]{display:none}
-      nav.mainmenu[data-roomnav].roomnav-open{display:flex;flex-direction:column;position:absolute;top:calc(100% + 10px);right:0;
-        min-width:220px;background:#3d4450;box-shadow:0 0 12px #000;padding:4px 0}
-      nav.mainmenu[data-roomnav].roomnav-open a{min-height:44px;padding:0 18px;color:#dcdedf;border:0}
-      nav.mainmenu[data-roomnav].roomnav-open a:hover{background:#dcdedf;color:#171a21}
+      nav.mainmenu[data-roomnav].roomnav-open{display:flex;flex-direction:column;position:absolute;top:100%;right:0;min-width:220px;
+        background:#101317;border:1px solid var(--line);box-shadow:0 18px 40px rgba(0,0,0,.7);padding:6px 0}
+      nav.mainmenu[data-roomnav].roomnav-open a{min-height:44px;padding:0 18px}
     }
-
-    /* the store's blue section bar */
-    .subbar{position:sticky;top:64px;z-index:19;display:flex;gap:2px;margin:14px auto 0;max-width:1180px;
-      padding:0 6px;overflow-x:auto;scrollbar-width:none;border-radius:3px;box-shadow:0 0 3px rgba(0,0,0,.4);
-      background:linear-gradient(90deg,rgba(62,103,150,.95) 11%,rgba(58,120,177,.9) 25%,rgb(15,33,110) 100%)}
+    .subbar{position:sticky;top:56px;z-index:19;display:flex;gap:2px;padding:0 var(--gut);overflow-x:auto;scrollbar-width:none;
+      background:rgba(10,12,15,.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
     .subbar::-webkit-scrollbar{display:none}
-    .subbar a{padding:10px 14px;font-size:13px;color:#e5e5e5;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.4)}
-    .subbar a:hover{background:linear-gradient(90deg,rgba(255,255,255,.18),rgba(255,255,255,.06));color:#fff}
-    .subbar a.on{color:#fff;background:rgba(255,255,255,.12)}
+    .subbar a{padding:11px 14px;font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.12em;text-transform:uppercase;
+      color:var(--dim);text-decoration:none;white-space:nowrap;border-bottom:2px solid transparent}
+    .subbar a:hover{color:var(--bright)}
+    .subbar a.on{color:var(--bright);border-bottom-color:var(--bright)}
 
-    main{max-width:1180px;margin:0 auto;padding:0 var(--gut) 60px}
-    @media (min-width:1236px){main{padding:0 0 60px}}
-    section{padding-top:30px;scroll-margin-top:124px}
-    .shead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
-    .shead h2{font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--bright)}
-    .shead p{font-size:12px;color:var(--dim)}
-    .panel{background:var(--row);border-radius:2px}
+    main{max-width:1240px;margin:0 auto;padding:0 var(--gut) 60px}
+    section{padding-top:34px;scroll-margin-top:110px}
+    .shead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+    .shead h2{font-size:22px;color:var(--bright)}
+    .shead p{font-size:13px;color:var(--dim)}
+    .panel{background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
     .empty{padding:20px;color:var(--dim)}
     .note{font-size:12px;color:var(--dim)}
+    .kv{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:2px 0}
+    .kv span{color:var(--dim)} .kv b{font-weight:600;font-variant-numeric:tabular-nums}
 
-    /* ══ the community profile header ══════════════════════════ */
-    .profile{display:grid;grid-template-columns:auto minmax(0,1fr) 270px;gap:24px;padding:26px 0 8px;align-items:start}
-    @media (max-width:900px){.profile{grid-template-columns:auto minmax(0,1fr)}.profile .side-col{grid-column:1/-1}}
-    @media (max-width:560px){.profile{grid-template-columns:1fr}}
-    .avatar{width:164px;height:164px;padding:3px;border-radius:2px;
-      background:linear-gradient(180deg,#57cbde 0%,#4c91ac 100%)}
-    .avatar svg{display:block;width:100%;height:100%;background:radial-gradient(circle at 50% 35%,#2a475e,#0e141b)}
-    @media (max-width:560px){.avatar{width:96px;height:96px}}
-    .persona h1{font-size:26px;color:var(--bright);line-height:1.15;overflow-wrap:anywhere}
-    .persona .real{color:var(--dim);font-size:14px;margin:4px 0 14px}
-    .persona .sub{color:var(--text);font-size:13px;margin-bottom:12px}
-    .side-col{display:flex;flex-direction:column;gap:12px}
-    .level{display:flex;align-items:center;gap:12px;font-size:20px;color:var(--bright)}
-    .level .ring{width:44px;height:44px;border-radius:50%;border:2px solid #d53b4a;display:grid;place-items:center;font-size:15px}
-    .status{background:rgba(0,0,0,.25);padding:10px 12px;border-left:3px solid var(--ingame)}
-    .status .state{color:var(--ingame);font-size:16px}
-    .status .game{color:var(--ingame);font-size:13px}
-    .kicker{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
-
-    /* showcases: the profile's boxes */
-    .showcases{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px;margin-top:12px}
-    @media (max-width:900px){.showcases{grid-template-columns:1fr}}
-    .showcase{background:rgba(0,0,0,.28);border-radius:2px}
-    .showcase > h2{font-size:14px;color:var(--bright);padding:10px 14px;background:linear-gradient(90deg,rgba(0,0,0,.4),transparent);
-      text-transform:none;letter-spacing:0}
-    .showcase .body{padding:14px}
-    .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(102px,1fr));gap:2px}
-    .chip{background:rgba(0,0,0,.25);padding:12px 10px;text-align:center}
-    .chip b{display:block;font-size:26px;font-weight:300;color:var(--bright);line-height:1.1;font-variant-numeric:tabular-nums}
-    .chip span{font-size:11px;letter-spacing:.06em;color:var(--dim);text-transform:uppercase}
+    /* ══ player card ═════════════════════════════════════════ */
+    .hero{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:12px;padding-top:30px}
+    @media (max-width:860px){.hero{grid-template-columns:1fr}}
+    .plate{padding:22px;display:flex;flex-direction:column;gap:16px}
+    .kicker{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--t-ink)}
+    .plate h1{font-size:clamp(34px,6vw,56px);line-height:1;text-transform:none;letter-spacing:.01em;color:var(--bright);overflow-wrap:anywhere}
+    .plate .sub{color:var(--dim)}
+    .chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:4px}
+    .chip{background:rgba(0,0,0,.35);border:1px solid var(--line);padding:11px 12px}
+    .chip b{display:block;font-family:var(--display);font-size:clamp(22px,3vw,28px);line-height:1.05;color:var(--bright);font-variant-numeric:tabular-nums;white-space:nowrap}
+    .chip span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
     .form{display:flex;gap:3px;flex-wrap:wrap}
-    .form i{width:22px;height:22px;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:700;color:#0b1520;border-radius:2px}
+    .form i{width:22px;height:22px;display:grid;place-items:center;font-style:normal;font-family:var(--display);font-weight:700;font-size:12px;color:#081010}
     .W{background:var(--win)} .L{background:var(--loss)} .T{background:var(--tie)}
-    .bar{display:grid;grid-template-columns:96px 1fr 40px;gap:10px;align-items:center;font-size:13px;margin-bottom:8px}
-    .bar .track{height:8px;background:rgba(0,0,0,.4);border-radius:1px;overflow:hidden}
-    .bar .fill{height:100%;background:linear-gradient(90deg,#3b6e8f,var(--blue))}
-    .bar .v{text-align:right;color:var(--bright);font-variant-numeric:tabular-nums}
-    .ranks{display:flex;flex-wrap:wrap;gap:4px}
-    .rank{font-size:12px;padding:4px 8px;background:rgba(103,193,245,.1);color:var(--blue);border-radius:2px}
-    .rank b{color:var(--bright);font-weight:400}
-    .kv{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 0}
-    .kv span{color:var(--dim)} .kv b{font-weight:400;color:var(--bright);font-variant-numeric:tabular-nums}
+    .skill{padding:22px;display:flex;flex-direction:column;gap:12px}
+    .skill h2{font-size:15px;color:var(--dim);letter-spacing:.14em}
+    .bar{display:grid;grid-template-columns:96px 1fr 40px;gap:10px;align-items:center;font-size:13px}
+    .bar .track{height:6px;background:rgba(255,255,255,.07)}
+    .bar .fill{height:100%;background:var(--t)}
+    .bar .v{text-align:right;font-variant-numeric:tabular-nums}
+    .ranks{display:flex;flex-wrap:wrap;gap:6px}
+    /* skill-group plates, the competitive rank shape */
+    .rank{display:flex;align-items:center;gap:7px;font-size:12px;padding:4px 10px 4px 6px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+    .rank .chev{width:26px;height:14px;background:linear-gradient(180deg,#8c96a3,#5a6470);
+      clip-path:polygon(0 0,80% 0,100% 50%,80% 100%,0 100%,20% 50%)}
+    .rank.r0 .chev{background:#3a4048}
+    .rank b{color:var(--bright);font-weight:600}
 
-    /* the review histogram */
-    .chartbox{padding:14px 14px 8px;position:relative}
+    /* ══ ADR chart ═══════════════════════════════════════════ */
+    .chartbox{padding:16px 16px 10px;position:relative}
     .legend{display:flex;gap:16px;font-size:12px;color:var(--dim);margin-bottom:8px;flex-wrap:wrap}
-    .legend i{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px;border-radius:1px}
+    .legend i{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px}
     .chart svg{display:block;width:100%;height:auto}
     .chart .axis{fill:var(--dim);font-size:11px;font-family:var(--sans)}
-    .chart .grid{stroke:rgba(255,255,255,.06)}
+    .chart .grid{stroke:rgba(255,255,255,.07)}
     .chart .hit{fill:transparent;cursor:pointer}
-    .tip{position:absolute;pointer-events:none;background:#c2c2c2;color:#3d3d3f;border-radius:3px;padding:6px 9px;font-size:12px;
-      white-space:nowrap;opacity:0;transition:opacity .1s;z-index:5;box-shadow:0 0 6px #000}
-    .tip b{color:#171a21}
+    .tip{position:absolute;pointer-events:none;background:#06070a;border:1px solid var(--line-hot);padding:7px 10px;font-size:12px;
+      white-space:nowrap;opacity:0;transition:opacity .1s;z-index:5}
 
-    /* ══ match history: the GCPD tables ════════════════════════ */
+    /* ══ kill snapshots ══════════════════════════════════════ */
+    .snapbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+    .snapbar select{min-height:36px;max-width:100%;background:var(--panel-solid);color:var(--text);border:1px solid var(--line-hot);padding:0 10px;font:inherit}
+    .seg{display:flex;border:1px solid var(--line-hot)}
+    .seg button{min-height:34px;padding:0 12px;background:none;border:0;cursor:pointer;font-family:var(--display);font-weight:700;
+      font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+    .seg button[aria-pressed="true"]{background:rgba(255,255,255,.12);color:var(--bright)}
+    .snaps{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,520px),1fr));gap:12px}
+    .snap{background:var(--panel-solid);border:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
+    .snap.big{grid-column:1/-1}
+    /* the killfeed line, red-outlined like your own kills are in-game */
+    .feedline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 10px 0;padding:6px 10px;
+      background:rgba(0,0,0,.55);border:2px solid var(--kill);font-weight:600;font-size:14px}
+    .feedline.died{border-color:rgba(255,255,255,.35)}
+    .feedline .wpn{font-family:var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--text);font-size:13px;padding:1px 7px;background:rgba(255,255,255,.08)}
+    .feedline svg{width:15px;height:15px;flex:none;color:var(--text)}
+    .who-t{color:var(--t-ink)} .who-ct{color:var(--ct-ink)} .who-me{text-decoration:underline;text-underline-offset:3px}
+    .snapmeta{display:flex;gap:6px 14px;flex-wrap:wrap;padding:8px 12px 0;font-size:12px;color:var(--dim)}
+    .snapmeta b{color:var(--text);font-weight:600}
+    .snapbody{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:10px;padding:10px 12px 12px}
+    .snap.big .snapbody{grid-template-columns:minmax(0,1fr) 300px}
+    @media (max-width:640px){.snapbody,.snap.big .snapbody{grid-template-columns:1fr}}
+    .snapbody canvas{display:block;width:100%;aspect-ratio:1;background:#07090c;cursor:zoom-in}
+    .snap.big .snapbody canvas{cursor:zoom-out}
+    .roster{display:flex;flex-direction:column;gap:3px;font-size:12px;min-width:0}
+    .roster h4{font-size:11px;letter-spacing:.16em;padding:3px 6px;margin-top:4px}
+    .roster h4.t{background:var(--t-row);color:var(--t-ink)} .roster h4.ct{background:var(--ct-row);color:var(--ct-ink)}
+    .pl{display:grid;grid-template-columns:minmax(0,1fr) 40px;gap:2px 8px;padding:3px 6px;align-items:center}
+    .pl.dead{opacity:.45}
+    .pl .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pl .fl{color:var(--bright);font-size:11px}
+    .pl .hp{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+    .pl .hpbar{grid-column:1/-1;height:3px;background:rgba(255,255,255,.08)}
+    .pl .hpbar i{display:block;height:100%;background:var(--text)}
+    .pl .gear{grid-column:1/-1;color:var(--dim);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .util{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--dim);padding:0 12px 10px}
+    .util i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+    .exch{font-size:12px;color:var(--dim);padding:0 12px 12px}
+    .exch b{color:var(--text);font-weight:600}
+
+    /* ══ match list: Watch → Your Matches ═════════════════════ */
     .filters{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
-    .filters button{min-height:32px;padding:0 12px;background:rgba(103,193,245,.12);border:0;border-radius:2px;color:var(--blue);cursor:pointer;font-size:13px}
-    .filters button:hover{background:var(--blue);color:#fff}
-    .filters button[aria-pressed="true"]{background:linear-gradient(90deg,#47bfff 5%,#1a44c2 60%);color:#fff}
-    .mlist{display:flex;flex-direction:column;gap:2px}
+    .filters button{min-height:34px;padding:0 12px;background:rgba(255,255,255,.04);border:1px solid var(--line);cursor:pointer;
+      font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+    .filters button[aria-pressed="true"]{color:var(--bright);border-color:var(--line-hot);background:rgba(255,255,255,.1)}
+    .mlist{display:flex;flex-direction:column;gap:3px}
     .mhead,.mrow{display:grid;align-items:center;gap:10px;
-      grid-template-columns:110px minmax(110px,1.2fr) 92px 64px 92px 54px 54px 62px minmax(100px,auto)}
-    .mhead{padding:8px 14px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);background:rgba(0,0,0,.35)}
-    .match{background:var(--row)}
-    .match:nth-child(even){background:rgba(0,0,0,.12)}
-    .match.open{background:rgba(42,71,94,.35);box-shadow:inset 0 0 0 1px var(--line-hot)}
-    .mrow{width:100%;padding:10px 14px;background:none;border:0;border-left:3px solid var(--tie);text-align:left;cursor:pointer;font-size:13px;color:var(--text)}
-    .mrow:hover{background:rgba(103,193,245,.07)}
+      grid-template-columns:56px 112px minmax(100px,1.2fr) 90px 54px 84px 48px 50px 60px minmax(96px,auto)}
+    .mhead{padding:0 12px 6px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+    .match{background:var(--panel);border:1px solid var(--line)}
+    .match.open{border-color:var(--line-hot)}
+    .mrow{width:100%;padding:8px 12px;background:none;border:0;border-left:4px solid var(--tie);text-align:left;cursor:pointer;font-size:14px}
+    .mrow:hover{background:rgba(255,255,255,.035)}
     .mrow.rW{border-left-color:var(--win)} .mrow.rL{border-left-color:var(--loss)}
-    .mrow .when{color:var(--dim)}
-    .mrow .map{font-size:15px;color:var(--bright)}
-    .mrow .mode{display:block;font-size:11px;color:var(--dim)}
-    .score{font-size:17px;font-variant-numeric:tabular-nums}
+    .thumb{width:56px;height:40px;background:#07090c center/cover no-repeat;border:1px solid var(--line)}
+    .mrow .when{color:var(--dim);font-size:13px}
+    .mrow .map{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.04em;text-transform:uppercase}
+    .mrow .mode{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+    .score{font-family:var(--display);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
     .score.W{background:none;color:var(--win-ink)} .score.L{background:none;color:var(--loss-ink)} .score.T{background:none;color:var(--dim)}
-    .score small{font-size:11px;margin-left:5px;letter-spacing:.04em}
-    .src{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-end}
-    .src span{font-size:11px;padding:1px 6px;border-radius:2px;background:rgba(0,0,0,.35);color:var(--dim)}
-    .src .demo{background:rgba(144,186,60,.16);color:var(--ingame)}
-    .src .gsi{background:rgba(103,193,245,.14);color:var(--blue)}
+    .score small{font-size:11px;letter-spacing:.12em;margin-left:5px}
+    .src{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+    .src span{font-size:11px;letter-spacing:.08em;padding:1px 6px;border:1px solid var(--line-hot);color:var(--dim);text-transform:uppercase}
+    .src .demo{border-color:var(--t);color:var(--t-ink)}
+    .src .gsi{border-color:var(--ct);color:var(--ct-ink)}
     .lbl{display:none}
-    @media (max-width:900px){
+    @media (max-width:960px){
       .mhead{display:none}
-      .mrow{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:6px}
-      .mrow .when{grid-column:1/3;order:-2}
-      .mrow .src{grid-column:3/5;order:-1}
-      .mrow .mapc{grid-column:1/3}
-      .mrow .scorec{grid-column:3/5;text-align:right}
-      .lbl{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+      .mrow{grid-template-columns:56px repeat(3,minmax(0,1fr));row-gap:6px}
+      .mrow .thumb{grid-row:1/3}
+      .mrow .when{grid-column:2/4}
+      .mrow .src{grid-column:4/5}
+      .mrow .mapc{grid-column:2/4}
+      .mrow .scorec{grid-column:4/5;text-align:right}
+      .lbl{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
     }
+    @media (max-width:520px){.mrow .opt.x{display:none}}
 
-    .detail{padding:4px 14px 18px;display:flex;flex-direction:column;gap:16px}
-    .detail h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:12px 0 8px}
+    .detail{padding:4px 14px 18px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:16px}
+    .detail h3{font-size:13px;letter-spacing:.16em;color:var(--dim);margin:12px 0 8px}
+    /* round history, the scoreboard strip */
     .rounds{display:flex;gap:2px;flex-wrap:wrap;align-items:flex-end}
-    .rd{width:24px;display:flex;flex-direction:column;align-items:center;gap:2px}
-    .rd .cell{width:24px;height:28px;display:grid;place-items:center;font-size:11px;font-weight:700;color:#0b1520;position:relative;border-radius:1px}
-    .rd .cell.dead::after{content:"";position:absolute;right:2px;top:2px;width:5px;height:5px;border-radius:50%;background:#0b1520;opacity:.7}
+    .rd{width:26px;display:flex;flex-direction:column;align-items:center;gap:2px}
+    .rd .cell{width:26px;height:30px;display:grid;place-items:center}
+    .rd .cell svg{width:16px;height:16px}
+    .rd .cell.W{background:var(--win)} .rd .cell.L{background:var(--loss)}
+    .rd .k{font-size:11px;font-weight:700;color:var(--bright);min-height:14px}
     .rd .sd{width:100%;height:3px}
     .rd .n{font-size:11px;color:var(--dim)}
     .half{width:10px}
-    .rkey{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--dim);margin-top:8px}
+    .rkey{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--dim);margin-top:8px;align-items:center}
     .rkey i{display:inline-block;width:10px;height:10px;margin-right:5px;vertical-align:-1px}
-    .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px}
-    .tile{background:rgba(0,0,0,.25);padding:12px}
-    .tile h4{font-size:12px;color:var(--blue);margin-bottom:6px;font-weight:400}
-    .boards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media (max-width:760px){.boards{grid-template-columns:1fr}}
+    .rkey .ic{display:inline-grid;place-items:center;width:16px;height:16px;background:var(--dim);margin-right:5px;vertical-align:-3px}
+    .rkey .ic svg{width:12px;height:12px}
+    .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+    .tile{background:rgba(0,0,0,.3);border:1px solid var(--line);padding:12px}
+    .tile h4{font-size:12px;letter-spacing:.16em;color:var(--t-ink);margin-bottom:6px}
+    /* the end-of-match scoreboard */
     .sbwrap{overflow-x:auto;min-width:0}
-    table.sb{width:100%;border-collapse:collapse;font-size:13px}
-    table.sb caption{text-align:left;font-size:13px;padding:7px 8px;color:var(--bright)}
-    table.sb caption.us{background:linear-gradient(90deg,rgba(75,155,209,.35),transparent)}
-    table.sb caption.them{background:linear-gradient(90deg,rgba(207,106,53,.32),transparent)}
-    table.sb th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);font-weight:400;text-align:right;padding:6px 8px;background:rgba(0,0,0,.3)}
+    table.sb{width:100%;border-collapse:separate;border-spacing:0 2px;font-size:13px}
+    table.sb caption{text-align:left;font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase;padding:7px 10px}
+    table.sb caption.us{background:linear-gradient(90deg,rgba(39,163,154,.32),transparent);color:var(--win-ink)}
+    table.sb caption.them{background:linear-gradient(90deg,rgba(216,101,63,.3),transparent);color:var(--loss-ink)}
+    table.sb th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:600;text-align:right;padding:4px 10px}
     table.sb th:first-child,table.sb td:first-child{text-align:left}
-    table.sb td{padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums}
-    table.sb tbody tr:nth-child(odd) td{background:rgba(0,0,0,.18)}
-    table.sb td:first-child{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--blue)}
-    table.sb tr.me td{background:rgba(144,186,60,.14)!important;color:var(--bright)}
-    table.sb tr.me td:first-child{color:var(--ingame)}
-    @media (max-width:480px){table.sb{font-size:12px}table.sb th,table.sb td{padding:5px 4px}table.sb .mvp{display:none}table.sb td:first-child{max-width:96px}}
-    .wlist{display:flex;flex-direction:column;gap:2px}
-    .wrow{display:grid;grid-template-columns:120px 1fr 40px;gap:10px;align-items:center;font-size:13px;padding:6px 10px;background:rgba(0,0,0,.2)}
-    .wrow .track{height:6px;background:rgba(0,0,0,.45);border-radius:1px;overflow:hidden}
-    .wrow .fill{height:100%;background:linear-gradient(90deg,#3b6e8f,var(--blue))}
-    .wrow b{text-align:right;font-weight:400;color:var(--bright);font-variant-numeric:tabular-nums}
-    /* Steam's two buttons: the green Play and the blue */
-    .btn{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 16px;border-radius:2px;cursor:pointer;border:0;
-      background:linear-gradient(90deg,#5c8a1f 5%,#46701a 95%);color:#eaf6d8;font-size:15px}
-    .btn:hover{background:linear-gradient(90deg,#6aa324 5%,#527e1d 95%);color:#fff}
-    .btn.ghost{background:rgba(103,193,245,.14);color:var(--blue)}
-    .btn.ghost:hover{background:linear-gradient(90deg,#47bfff 5%,#1a44c2 60%);color:#fff}
+    table.sb td{padding:6px 10px;text-align:right;background:rgba(255,255,255,.035);font-variant-numeric:tabular-nums}
+    table.sb td:first-child{max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+    table.sb tr.me td{background:rgba(231,193,120,.14);color:var(--t-ink)}
+    @media (max-width:520px){table.sb{font-size:12px}table.sb th,table.sb td{padding:5px 5px}table.sb .mvp{display:none}table.sb td:first-child{max-width:96px}}
+    .wlist{display:flex;flex-direction:column;gap:3px}
+    .wrow{display:grid;grid-template-columns:120px 1fr 36px;gap:10px;align-items:center;font-size:13px}
+    .wrow .track{height:8px;background:rgba(255,255,255,.05)}
+    .wrow .fill{height:100%;background:var(--t)}
+    .wrow b{text-align:right;font-variant-numeric:tabular-nums}
+    .btn{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:0 18px;cursor:pointer;border:0;
+      background:var(--go);color:#fff;font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase}
+    .btn:hover{filter:brightness(1.12)}
+    .btn.ghost{background:rgba(255,255,255,.08);border:1px solid var(--line-hot);color:var(--text)}
 
-    /* ══ maps: store capsules ══════════════════════════════════ */
+    /* ══ maps ════════════════════════════════════════════════ */
     .maps{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
-    .mapcard{position:relative;overflow:hidden;background:var(--panel);border-radius:2px;box-shadow:0 0 5px rgba(0,0,0,.4);padding:0}
-    .mapcard .cap{height:96px;display:flex;align-items:flex-end;padding:10px 12px;position:relative;
-      background:linear-gradient(135deg,var(--c1,#2a475e),var(--c2,#0e141b))}
-    .mapcard .cap::after{content:"";position:absolute;inset:0;
-      background:repeating-linear-gradient(115deg,rgba(255,255,255,.035) 0 2px,transparent 2px 12px)}
-    .mapcard h3{font-size:26px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.04em;position:relative;z-index:1;text-shadow:0 2px 6px rgba(0,0,0,.6)}
-    .mapcard .info{padding:10px 12px;display:flex;flex-direction:column;gap:2px}
-    .mapcard .wl{font-size:12px;color:var(--dim)}
-    .mapcard .price{display:flex;align-items:stretch;margin-top:6px;align-self:flex-start}
-    .mapcard .price .pct{background:#4c6b22;color:#beee11;font-size:18px;padding:2px 8px}
-    .mapcard .price .lbl2{background:rgba(0,0,0,.35);color:#c6d4df;font-size:12px;padding:6px 8px}
-    .mapcard .wbar{display:flex;height:4px;gap:2px;margin:6px 0 4px}
+    .mapcard{position:relative;overflow:hidden;border:1px solid var(--line);background:var(--panel-solid)}
+    .mapcard .art{height:120px;background:#07090c center/cover no-repeat;position:relative}
+    .mapcard .art::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,9,12,.1),rgba(20,23,28,1))}
+    .mapcard h3{position:absolute;left:14px;bottom:8px;z-index:1;font-size:26px;color:var(--bright);text-shadow:0 2px 8px #000}
+    .mapcard .info{padding:8px 14px 14px}
+    .mapcard .wl{font-size:13px;color:var(--dim);margin-bottom:8px}
+    .wbar{display:flex;height:5px;gap:2px;margin-bottom:8px}
 
-    /* ══ replay: the broadcast player ══════════════════════════ */
-    .replay{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:2px;background:#000;box-shadow:0 0 6px rgba(0,0,0,.6)}
+    /* ══ replay ══════════════════════════════════════════════ */
+    .replay{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:10px}
     @media (max-width:900px){.replay{grid-template-columns:1fr}}
-    .stage{background:#000;padding:10px;position:relative}
-    .stage canvas{display:block;width:100%;aspect-ratio:1;background:#080b10}
+    .stage{padding:10px;min-width:0}
+    .stage canvas{display:block;width:100%;aspect-ratio:1;background:#07090c}
     .rtitle{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;margin-bottom:8px}
-    .rtitle b{font-size:17px;font-weight:400;color:var(--bright)}
-    .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;padding:8px;background:#1d1f22}
-    .controls input[type=range]{flex:1;min-width:140px;accent-color:var(--blue-hot)}
-    .controls .clock{font-variant-numeric:tabular-nums;color:var(--text);font-size:13px;min-width:86px}
+    .rtitle b{font-family:var(--display);font-size:22px;letter-spacing:.05em;text-transform:uppercase;color:var(--bright)}
+    .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+    .controls input[type=range]{flex:1;min-width:140px;accent-color:var(--t-ink)}
+    .controls .clock{font-variant-numeric:tabular-nums;color:var(--dim);font-size:13px;min-width:86px}
+    .settings{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--dim);margin-top:8px;align-items:center}
+    .settings label{display:flex;gap:6px;align-items:center;cursor:pointer;min-height:32px}
     .rpicks{display:flex;gap:2px;flex-wrap:wrap;margin-bottom:8px}
-    .rpicks button{width:32px;height:30px;border:0;border-bottom:3px solid var(--tie);background:#1d1f22;cursor:pointer;font-size:12px;color:var(--text)}
+    .rpicks button{width:32px;height:32px;border:1px solid var(--line);border-bottom:3px solid var(--tie);background:rgba(255,255,255,.04);cursor:pointer;font-size:12px}
     .rpicks button.w{border-bottom-color:var(--win)} .rpicks button.l{border-bottom-color:var(--loss)}
-    .rpicks button[aria-pressed="true"]{background:#3d4450;color:#fff}
-    .side{background:#16191d;padding:12px;display:flex;flex-direction:column;gap:10px;max-height:780px;overflow:auto}
-    .feed{display:flex;flex-direction:column;gap:2px;font-size:13px}
-    .feed div{padding:5px 8px;background:rgba(255,255,255,.04);display:flex;gap:6px;flex-wrap:wrap;border-left:3px solid var(--line)}
-    .feed div.future{opacity:.35}
+    .rpicks button[aria-pressed="true"]{background:rgba(255,255,255,.14);color:var(--bright);border-color:var(--line-hot)}
+    .side{padding:12px;display:flex;flex-direction:column;gap:10px;max-height:820px;overflow:auto}
+    .feed{display:flex;flex-direction:column;gap:3px;font-size:13px}
+    .feed div{padding:5px 8px;background:rgba(0,0,0,.5);display:flex;gap:6px;flex-wrap:wrap;border:1px solid transparent}
+    .feed div.mine{border-color:var(--kill)}
+    .feed div.future{opacity:.3}
     .feed .t{color:var(--dim);font-variant-numeric:tabular-nums;min-width:38px}
-    .who-us{color:var(--win-ink)} .who-them{color:var(--loss-ink)} .who-me{color:var(--ingame);font-weight:700}
     .rlegend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--dim)}
     .rlegend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 
-    .method{padding:18px;display:grid;gap:12px;font-size:14px;color:var(--text);max-width:860px}
-    .method b{color:var(--bright);font-weight:400}
-
-    /* the store footer */
-    footer{margin-top:30px;background:var(--bg-deep);color:var(--dim);font-size:12px;padding:22px var(--gut) 40px;text-align:center}
-    footer .rule{max-width:940px;margin:0 auto 14px;border-top:1px solid #363c44}
-    @media (max-width:760px){.topbar{min-height:56px}.subbar{top:56px}}
+    .method{padding:20px;display:grid;gap:12px;font-size:14px;color:var(--dim);max-width:840px}
+    .method b{color:var(--text)}
+    footer{text-align:center;color:var(--dim);font-size:12px;padding:24px var(--gut) 40px;border-top:1px solid var(--line);margin-top:20px}
+    @media (max-width:760px){.topbar{min-height:52px}.subbar{top:52px}}
   </style>
 </head>
 <body>
-<div class="scene" aria-hidden="true"></div>
+<div class="scene" aria-hidden="true"><i id="sceneart"></i></div>
 
 <header class="topbar">
   <a class="brand" href="index.html">
-    <svg width="34" height="34" viewBox="0 0 28 28" aria-hidden="true">
-      <circle cx="14" cy="14" r="8.5" fill="none" stroke="#c6d4df" stroke-width="2"/>
-      <path d="M14 1v8M14 19v8M1 14h8M19 14h8" stroke="#c6d4df" stroke-width="2"/>
-      <circle cx="14" cy="14" r="1.6" fill="#66c0f4"/>
+    <svg width="30" height="30" viewBox="0 0 28 28" aria-hidden="true">
+      <circle cx="14" cy="14" r="8.5" fill="none" stroke="#e7c178" stroke-width="2"/>
+      <path d="M14 1v8M14 19v8M1 14h8M19 14h8" stroke="#e7c178" stroke-width="2"/>
+      <circle cx="14" cy="14" r="1.6" fill="#fff"/>
     </svg>
-    <span class="t"><b>Ric's Terminal</b><small>Counter-Strike 2</small></span>
+    <span class="t">Ric's<b>Terminal</b></span>
   </a>
   <div class="navwrap">
     <nav class="mainmenu" aria-label="Terminal rooms">
@@ -328,11 +339,12 @@
 </header>
 
 <nav class="subbar" aria-label="Sections">
-  <a href="#overview" class="on">Profile</a>
-  <a href="#matches">Match History</a>
+  <a href="#overview" class="on">Overview</a>
+  <a href="#snapshots">Kill Snapshots</a>
+  <a href="#matches">Your Matches</a>
+  <a href="#replay">2D Replay</a>
   <a href="#maps">Maps</a>
   <a href="#weapons">Weapons</a>
-  <a href="#replay">2D Replay</a>
   <a href="#method">About</a>
 </nav>
 
@@ -340,39 +352,33 @@
   <noscript><p class="panel empty" style="margin-top:20px">This page draws itself with JavaScript.
     Every match is also written out as plain text: <a href="projects/cs/llm/index.md">projects/cs/llm/index.md</a>.</p></noscript>
 
-  <section id="overview" aria-label="Profile">
-    <div class="profile">
-      <div class="avatar" aria-hidden="true">
-        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="27" fill="none" stroke="#66c0f4" stroke-width="5"/>
-          <path d="M50 10v26M50 64v26M10 50h26M64 50h26" stroke="#66c0f4" stroke-width="5"/><circle cx="50" cy="50" r="4" fill="#c6d4df"/></svg>
-      </div>
-      <div class="persona">
+  <section id="overview" class="hero" aria-label="Overview">
+    <div class="panel plate">
+      <div>
+        <div class="kicker">Counter-Strike 2</div>
         <h1 id="name">RicGoneCrazy</h1>
-        <p class="real">Ric Massey</p>
         <p class="sub" id="since"></p>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div>
         <div class="note" style="margin-bottom:6px">Last games, newest on the left</div>
         <div class="form" id="form"></div>
       </div>
-      <div class="side-col">
-        <div class="level"><span>Matches</span><span class="ring" id="level">0</span></div>
-        <div class="status"><div class="state">Counter-Strike 2</div><div class="game" id="lastplayed"></div></div>
-      </div>
     </div>
-
-    <div class="showcases">
-      <div class="showcase"><h2>Career Showcase</h2><div class="body"><div class="chips" id="chips"></div></div></div>
-      <div class="showcase"><h2>Skill Profile</h2><div class="body">
-        <div id="ratings"></div>
-        <div class="note" style="margin:12px 0 6px">Competitive rank by map</div>
+    <div class="panel skill">
+      <h2>Skill profile</h2>
+      <div id="ratings"></div>
+      <div>
+        <div class="note" style="margin-bottom:6px">Competitive rank by map</div>
         <div class="ranks" id="ranks"></div>
-        <p class="note" id="ratingnote" style="margin-top:10px"></p>
-      </div></div>
+      </div>
+      <p class="note" id="ratingnote"></p>
     </div>
   </section>
 
   <section aria-labelledby="formh">
     <div class="shead"><h2 id="formh">Damage per round, game by game</h2>
-      <p>Oldest on the left. Hover a bar for the game.</p></div>
+      <p>Oldest on the left. Click a bar for the game.</p></div>
     <div class="panel chartbox chart">
       <div class="legend"><span><i style="background:var(--win)"></i>Win</span>
         <span><i style="background:var(--loss)"></i>Loss</span>
@@ -383,14 +389,25 @@
     </div>
   </section>
 
+  <section id="snapshots" aria-labelledby="sh">
+    <div class="shead"><h2 id="sh">Kill Snapshots</h2>
+      <p>Every kill and every death, frozen: where everyone stood, their health, their gun, the smoke in the air. Click a map to see it all.</p></div>
+    <div id="snapbox"></div>
+  </section>
+
   <section id="matches" aria-labelledby="mh">
-    <div class="shead"><h2 id="mh">Personal Game Data · Match History</h2><p id="mcount"></p></div>
+    <div class="shead"><h2 id="mh">Your Matches</h2><p id="mcount"></p></div>
     <div class="filters" id="filters" role="group" aria-label="Filter by map"></div>
     <div class="mhead" aria-hidden="true">
-      <span>Date</span><span>Map</span><span>Score</span><span>K / D</span><span>K-D-A</span>
+      <span></span><span>Date</span><span>Map</span><span>Score</span><span>K/D</span><span>K-D-A</span>
       <span>ADR</span><span>HS%</span><span>Rating</span><span style="text-align:right">Source</span>
     </div>
     <div class="mlist" id="mlist"></div>
+  </section>
+
+  <section id="replay" aria-labelledby="rh">
+    <div class="shead"><h2 id="rh">2D Replay</h2><p>Every round on the radar: everyone moving, every kill, every grenade.</p></div>
+    <div id="replaybox"></div>
   </section>
 
   <section id="maps" aria-labelledby="maph">
@@ -403,18 +420,14 @@
     <div class="panel" id="weaponbox"></div>
   </section>
 
-  <section id="replay" aria-labelledby="rh">
-    <div class="shead"><h2 id="rh">2D Replay</h2><p>Everyone's position, every kill, every grenade, round by round.</p></div>
-    <div id="replaybox"></div>
-  </section>
-
   <section id="method" aria-labelledby="howh">
-    <div class="shead"><h2 id="howh">About this data</h2></div>
+    <div class="shead"><h2 id="howh">Where this comes from</h2></div>
     <div class="panel method">
       <p><b>Valve first.</b> Every Counter-Strike match is recorded by the game
         itself as a demo: every player's position, every shot and grenade, tick by
-        tick. Each demo is saved and parsed into this page, and that is where the
-        round-by-round history, the weapons and the 2D replay come from.</p>
+        tick. Each one is saved and parsed into this page; that is where the kill
+        snapshots, the round-by-round history and the 2D replay come from. The
+        radar under them is the game's own.</p>
       <p><b>The live feed.</b> While the game is open it also reports its own state
         as it plays, so a match lands here the moment the scoreboard says it's
         over, with the money and loadout for every round.</p>
@@ -425,35 +438,35 @@
       <p><b>Plain text too.</b> Everything here, every fight in every round included,
         is also written out as plain text for anything that reads the site without
         running it: <a href="projects/cs/llm/index.md">the full record</a>, with a
-        report per match.</p>
+        report per match and a callout map for every map.</p>
       <p><b>Everyone plays under their in-game name.</b> The other players in a
         match show up the same way they do on any public stats site.</p>
     </div>
   </section>
 </main>
 
-<footer><div class="rule"></div><p id="stamp"></p>
-  <p style="margin-top:6px">Ric's Terminal is a personal site. Counter-Strike and Steam belong to Valve; nothing here is from or endorsed by them.</p></footer>
+<footer><p id="stamp"></p>
+  <p style="margin-top:6px">Counter-Strike 2, its radars and its names belong to Valve. This is a personal page, not affiliated with them.</p></footer>
 
 <script src="effects.js"></script>
-<script src="projects/cs/cs-data.js?v=1"></script>
+<script src="projects/cs/cs-data.js?v=2"></script>
+<script src="projects/cs/radar/radar.js?v=1"></script>
 <script>
 (() => {
   const D = window.CS_DATA || { matches: [] };
+  const RADAR = window.CS_RADAR || {};
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const fix = (n, d = 1) => (typeof n === "number" && isFinite(n)) ? n.toFixed(d) : "—";
   const int = (n) => (typeof n === "number" && isFinite(n)) ? Math.round(n).toLocaleString("en-US") : "—";
   const pct = (n) => (typeof n === "number" && isFinite(n)) ? `${Math.round(n)}%` : "—";
   const signed = (r) => (typeof r === "number" && isFinite(r)) ? `${r >= 0 ? "+" : ""}${(r * 100).toFixed(2)}` : "—";
+  const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const MAPS = { de_dust2: "Dust II", de_inferno: "Inferno", de_mirage: "Mirage", de_nuke: "Nuke",
     de_overpass: "Overpass", de_vertigo: "Vertigo", de_ancient: "Ancient", de_anubis: "Anubis",
-    de_train: "Train", de_cache: "Cache", de_office: "Office", cs_office: "Office", cs_italy: "Italy",
-    de_thera: "Thera", de_mills: "Mills", de_memento: "Memento", de_assembly: "Assembly",
-    de_basalt: "Basalt", de_edin: "Edin", de_palais: "Palais", de_whistle: "Whistle", de_brewery: "Brewery",
-    de_grail: "Grail", de_jura: "Jura", de_golden: "Golden", de_palacio: "Palacio", ar_shoots: "Shoots",
-    ar_baggage: "Baggage", de_rooftop: "Rooftop", de_sanctum: "Sanctum", de_poseidon: "Poseidon" };
+    de_train: "Train", de_cache: "Cache", cs_office: "Office", cs_italy: "Italy" };
   const mapName = (m) => MAPS[m] || (m || "?").replace(/_\d+$/, "").replace(/^(de|cs|ar|dz|gd)_/, "")
     .replace(/(^|_)(\w)/g, (_, a, b) => (a ? " " : "") + b.toUpperCase());
   const MODES = { matchmaking: "Premier", premier: "Premier", matchmaking_competitive: "Competitive",
@@ -471,15 +484,35 @@
     g3sg1: "G3SG1", mac10: "MAC-10", mp9: "MP9", mp7: "MP7", mp5sd: "MP5-SD", ump45: "UMP-45", p90: "P90",
     bizon: "PP-Bizon", nova: "Nova", xm1014: "XM1014", mag7: "MAG-7", sawedoff: "Sawed-Off", m249: "M249",
     negev: "Negev", hegrenade: "HE Grenade", inferno: "Fire", molotov: "Molotov", incgrenade: "Incendiary",
-    taser: "Zeus x27", world: "The world", planted_c4: "C4" };
-  const weaponName = (w) => WEAPONS[w] || (/knife|bayonet/.test(w || "") ? "Knife" : (w || "?").replace(/_/g, " "));
+    taser: "Zeus x27", world: "The world", planted_c4: "C4", c4: "C4", flashbang: "Flashbang",
+    smokegrenade: "Smoke", decoy: "Decoy" };
+  const weaponName = (w) => !w ? "—" : WEAPONS[w] || (/knife|bayonet|karambit|dagger/i.test(w) ? "Knife" : String(w).replace(/_/g, " "));
   const when = (iso, long) => {
     if (!iso) return "date unknown";
-    // a bare date is a calendar day, not midnight UTC (which is yesterday here)
     const d = /^\d{4}-\d\d-\d\d$/.test(iso) ? new Date(iso + "T12:00:00") : new Date(iso);
     return long
       ? d.toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })
       : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  // small icons, drawn the way the game's HUD draws them
+  const ICON = {
+    hs: '<svg viewBox="0 0 16 16" aria-label="headshot" role="img"><circle cx="8" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="7" r="1.6" fill="currentColor"/><path d="M8 12v3" stroke="currentColor" stroke-width="1.6"/></svg>',
+    wall: '<svg viewBox="0 0 16 16" aria-label="through a wall" role="img"><path d="M2 2h4v12H2z" fill="currentColor" opacity=".55"/><path d="M1 8h14m-3-3 3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+    smoke: '<svg viewBox="0 0 16 16" aria-label="through smoke" role="img"><circle cx="5.5" cy="9" r="3.5" fill="currentColor" opacity=".7"/><circle cx="10" cy="7" r="4" fill="currentColor" opacity=".7"/></svg>',
+    blind: '<svg viewBox="0 0 16 16" aria-label="while flashed" role="img"><path d="M1 8s2.6-5 7-5 7 5 7 5-2.6 5-7 5-7-5-7-5z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 14 14 2" stroke="currentColor" stroke-width="1.6"/></svg>',
+    noscope: '<svg viewBox="0 0 16 16" aria-label="no-scope" role="img"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3 3l10 10" stroke="currentColor" stroke-width="1.6"/></svg>',
+    skull: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5c-3.6 0-5.8 2.4-5.8 5.4 0 1.8.8 3 2 3.8v2.3h7.6v-2.3c1.2-.8 2-2 2-3.8 0-3-2.2-5.4-5.8-5.4z" fill="#0b0d10"/><circle cx="5.8" cy="7.4" r="1.4" fill="#fff"/><circle cx="10.2" cy="7.4" r="1.4" fill="#fff"/></svg>',
+    bomb: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="5" width="12" height="8" rx="1" fill="#0b0d10"/><path d="M5 5V3h6v2" fill="none" stroke="#0b0d10" stroke-width="1.5"/><circle cx="11" cy="9" r="1.3" fill="#fff"/></svg>',
+    defuse: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 13 9 7m0 0 2-4 3 1-1 3z" fill="#0b0d10" stroke="#0b0d10" stroke-width="1.6"/><circle cx="4" cy="12" r="2" fill="#0b0d10"/></svg>',
+    time: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8.5" r="5.5" fill="none" stroke="#0b0d10" stroke-width="1.8"/><path d="M8 5.5v3.2l2.2 1.4M6 1.5h4" stroke="#0b0d10" stroke-width="1.6" fill="none"/></svg>',
+  };
+  const reasonIcon = (why) => {
+    const w = String(why || "").toLowerCase();
+    if (/bomb|explod|^1$/.test(w)) return ICON.bomb;
+    if (/defus|^7$/.test(w)) return ICON.defuse;
+    if (/time|saved|^12$/.test(w)) return ICON.time;
+    return ICON.skull;
   };
 
   const matches = (D.matches || []).filter((m) => m.me && m.score);
@@ -487,124 +520,294 @@
   const hsPct = (me) => me && me.k ? 100 * (me.hsk || 0) / me.k : null;
   const kd = (me) => me && me.d ? me.k / me.d : (me && me.k ? me.k : null);
 
-  /* ══ overview ═══════════════════════════════════════════════ */
+  /* ══ radar ═══════════════════════════════════════════════
+     CS2's overview files say where the radar's top-left corner sits in the
+     world and how many units one of its 1024 pixels covers. */
+  const imgCache = {};
+  const loadImg = (src) => imgCache[src] ||= new Promise((ok) => {
+    const im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = `projects/cs/${src}`;
+  });
+  const radarFor = (map) => RADAR[map] || null;
+  const toRadar = (cal, x, y) => [(x - cal.x) / cal.scale, (cal.y - y) / cal.scale];
+  const lowerAt = (cal, z) => cal && cal.split != null && z != null && z < cal.split;
+  {
+    const counts = {};
+    for (const m of matches) counts[m.map] = (counts[m.map] || 0) + 1;
+    const fav = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([m]) => m).find((m) => RADAR[m]);
+    if (fav) $("sceneart").style.backgroundImage = `url("projects/cs/${RADAR[fav].img}")`;
+  }
+
+  /* ══ overview ═══════════════════════════════════════════ */
   (() => {
     if (D.player) $("name").textContent = D.player;
-    const n = matches.length;
-    const tally = { W: 0, L: 0, T: 0 };
-    let k = 0, d = 0, a = 0, hsk = 0, dmg = 0, rounds = 0, rsum = 0, rn = 0;
+    const n = matches.length, tally = { W: 0, L: 0, T: 0 };
+    let k = 0, d = 0, hsk = 0, dmg = 0, rounds = 0, rsum = 0, rn = 0;
     for (const m of matches) {
-      tally[m.result] = (tally[m.result] || 0) + 1;
-      const me = m.me;
-      k += me.k || 0; d += me.d || 0; a += me.a || 0; hsk += me.hsk || 0;
+      tally[m.result]++;
+      const me = m.me; k += me.k || 0; d += me.d || 0; hsk += me.hsk || 0;
       const r = me.rounds || (m.score[0] + m.score[1]);
       if (typeof me.adr === "number") { dmg += me.adr * r; rounds += r; }
       if (typeof me.rating === "number") { rsum += me.rating; rn++; }
     }
     const oldest = matches.map((m) => m.at).filter(Boolean).sort()[0];
-    $("level").textContent = n;
-    const newest = matches.map((m) => m.at).filter(Boolean).sort().pop();
-    $("lastplayed").textContent = newest ? `Last played ${when(newest)}` : "No matches yet";
-    $("since").textContent = n
-      ? `${n} match${n === 1 ? "" : "es"} on record${oldest ? ` since ${when(oldest)}` : ""}`
-      : "No matches on record yet.";
+    $("since").textContent = n ? `${n} match${n === 1 ? "" : "es"} on record${oldest ? ` since ${when(oldest)}` : ""}` : "No matches on record yet.";
     const chip = (v, l) => `<div class="chip"><b>${v}</b><span>${l}</span></div>`;
-    $("chips").innerHTML = [
-      chip(n, "Matches"),
-      chip(`${tally.W}-${tally.L}${tally.T ? `-${tally.T}` : ""}`, tally.T ? "W-L-D" : "W-L"),
-      chip(n ? pct(100 * tally.W / n) : "—", "Win rate"),
-      chip(d ? fix(k / d, 2) : "—", "K/D"),
-      chip(rounds ? fix(dmg / rounds, 0) : "—", "ADR"),
-      chip(k ? pct(100 * hsk / k) : "—", "Headshot %"),
-      chip(int(k), "Kills"),
-      chip(rn ? signed(rsum / rn) : "—", "Avg rating"),
-    ].join("");
+    $("chips").innerHTML = [chip(n, "Matches"), chip(`${tally.W}-${tally.L}${tally.T ? `-${tally.T}` : ""}`, tally.T ? "W-L-D" : "W-L"),
+      chip(n ? pct(100 * tally.W / n) : "—", "Win rate"), chip(d ? fix(k / d, 2) : "—", "K/D"),
+      chip(rounds ? fix(dmg / rounds, 0) : "—", "ADR"), chip(k ? pct(100 * hsk / k) : "—", "Headshot %"),
+      chip(int(k), "Kills"), chip(rn ? signed(rsum / rn) : "—", "Avg rating")].join("");
     $("form").innerHTML = matches.slice(0, 20).map((m) =>
       `<i class="${m.result}" title="${esc(mapName(m.map))} ${m.score[0]}-${m.score[1]}, ${esc(when(m.at))}">${m.result === "T" ? "D" : m.result}</i>`).join("");
-
-    const L = D.leetify || {};
-    const R = L.rating || {};
-    const bar = (label, v, max = 100) => `<div class="bar"><span>${label}</span>
-      <div class="track" role="img" aria-label="${label} ${fix(v, 0)} out of ${max}"><div class="fill" style="width:${Math.max(0, Math.min(100, 100 * (v || 0) / max))}%"></div></div>
-      <span class="v">${fix(v, 0)}</span></div>`;
-    $("ratings").innerHTML = (R.aim != null)
+    const L = D.leetify || {}, R = L.rating || {};
+    const bar = (label, v) => `<div class="bar"><span>${label}</span><div class="track" role="img" aria-label="${label} ${fix(v, 0)} of 100"><div class="fill" style="width:${Math.max(0, Math.min(100, v || 0))}%"></div></div><span class="v">${fix(v, 0)}</span></div>`;
+    $("ratings").innerHTML = R.aim != null
       ? bar("Aim", R.aim) + bar("Positioning", R.positioning) + bar("Utility", R.utility)
-        + `<div class="kv"><span>Clutching</span><b>${signed(R.clutch)}</b></div>`
-        + `<div class="kv"><span>Opening duels</span><b>${signed(R.opening)}</b></div>`
-        + `<div class="kv"><span>As CT · as T</span><b>${signed(R.ct_leetify)} · ${signed(R.t_leetify)}</b></div>`
+        + `<div class="kv"><span>Clutching</span><b>${signed(R.clutch)}</b></div><div class="kv"><span>Opening duels</span><b>${signed(R.opening)}</b></div>
+           <div class="kv"><span>As CT · as T</span><b>${signed(R.ct_leetify)} · ${signed(R.t_leetify)}</b></div>`
       : `<p class="note">No skill profile yet.</p>`;
-    const ranks = (L.ranks && L.ranks.competitive) || [];
-    const prem = L.ranks && L.ranks.premier;
-    $("ranks").innerHTML = `<span class="rank">Premier <b>${prem ? int(prem) : "unrated"}</b></span>`
-      + ranks.map((r) => `<span class="rank">${esc(mapName(r.map_name))} <b>${esc(RANKS[r.rank] || r.rank)}</b></span>`).join("");
-    $("ratingnote").textContent = L.read
-      ? `Skill scores are Leetify's 0–100 ratings across every game they've parsed. Read ${when(L.read)}.`
-      : "";
+    const ranks = (L.ranks && L.ranks.competitive) || [], prem = L.ranks && L.ranks.premier;
+    $("ranks").innerHTML = `<span class="rank${prem ? "" : " r0"}"><span class="chev"></span>Premier <b>${prem ? int(prem) : "unrated"}</b></span>`
+      + ranks.map((r) => `<span class="rank${r.rank ? "" : " r0"}"><span class="chev"></span>${esc(mapName(r.map_name))} <b>${esc(RANKS[r.rank] || r.rank)}</b></span>`).join("");
+    $("ratingnote").textContent = L.read ? `Skill scores are Leetify's 0–100 ratings across every game they've parsed. Read ${when(L.read)}.` : "";
   })();
 
-  /* ══ ADR chart ══════════════════════════════════════════════ */
+  /* ══ ADR chart ══════════════════════════════════════════ */
   (() => {
     const box = $("chart"), tip = $("tip");
     const pts = matches.filter((m) => typeof m.me.adr === "number").slice().reverse();
     if (!pts.length) { box.innerHTML = `<p class="empty">Nothing to chart yet.</p>`; return; }
     const W = 900, H = 220, padL = 36, padB = 22, padT = 10;
-    const max = Math.max(120, ...pts.map((m) => m.me.adr)) * 1.05;
-    const bw = (W - padL) / pts.length;
+    const max = Math.max(120, ...pts.map((m) => m.me.adr)) * 1.05, bw = (W - padL) / pts.length;
     const y = (v) => padT + (H - padT - padB) * (1 - v / max);
     const avg = pts.reduce((s, m) => s + m.me.adr, 0) / pts.length;
     const col = { W: "var(--win)", L: "var(--loss)", T: "var(--tie)" };
     let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Damage per round in each of ${pts.length} games, average ${avg.toFixed(0)}">`;
-    for (let v = 0; v <= max; v += 40) {
-      svg += `<line class="grid" x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${padL - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
-    }
+    for (let v = 0; v <= max; v += 40) svg += `<line class="grid" x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${padL - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
     pts.forEach((m, i) => {
-      const x = padL + i * bw + 1, w = Math.max(2, bw - 2), top = y(m.me.adr), h = y(0) - top;
-      const r = Math.min(4, w / 2);
+      const x = padL + i * bw + 1, w = Math.max(2, bw - 2), top = y(m.me.adr), r = Math.min(3, w / 2);
       svg += `<path d="M${x},${y(0)} V${top + r} q0,-${r} ${r},-${r} h${w - 2 * r} q${r},0 ${r},${r} V${y(0)} Z" fill="${col[m.result]}"/>`;
       svg += `<rect class="hit" data-i="${i}" x="${padL + i * bw}" y="${padT}" width="${bw}" height="${H - padT - padB}"/>`;
     });
-    svg += `<line x1="${padL}" x2="${W}" y1="${y(avg)}" y2="${y(avg)}" stroke="var(--text)" stroke-opacity=".55" stroke-dasharray="4 4" stroke-width="1.5"/>`;
-    svg += `<text class="axis" x="${W - 4}" y="${y(avg) - 6}" text-anchor="end">avg ${avg.toFixed(0)}</text></svg>`;
+    svg += `<line x1="${padL}" x2="${W}" y1="${y(avg)}" y2="${y(avg)}" stroke="#fff" stroke-opacity=".55" stroke-dasharray="4 4" stroke-width="1.5"/><text class="axis" x="${W - 4}" y="${y(avg) - 6}" text-anchor="end">avg ${avg.toFixed(0)}</text></svg>`;
     box.innerHTML = svg;
-    const show = (e) => {
+    box.addEventListener("pointermove", (e) => {
       const t = e.target.closest(".hit"); if (!t) { tip.style.opacity = 0; return; }
       const m = pts[+t.dataset.i];
       tip.innerHTML = `<b>${esc(mapName(m.map))}</b> · ${m.score[0]}-${m.score[1]} ${m.result === "W" ? "win" : m.result === "L" ? "loss" : "draw"}<br>${fix(m.me.adr)} ADR · ${m.me.k}/${m.me.d}/${m.me.a} · ${esc(when(m.at))}`;
       const host = box.parentElement.getBoundingClientRect(), r = t.getBoundingClientRect();
       tip.style.opacity = 1;
-      const left = Math.min(host.width - tip.offsetWidth - 8, Math.max(8, r.left - host.left + r.width / 2 - tip.offsetWidth / 2));
-      tip.style.left = left + "px"; tip.style.top = (r.top - host.top + 6) + "px";
-    };
-    box.addEventListener("pointermove", show);
+      tip.style.left = Math.min(host.width - tip.offsetWidth - 8, Math.max(8, r.left - host.left + r.width / 2 - tip.offsetWidth / 2)) + "px";
+      tip.style.top = (r.top - host.top + 6) + "px";
+    });
     box.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
     box.addEventListener("click", (e) => { const t = e.target.closest(".hit"); if (t) openMatch(pts[+t.dataset.i].id, true); });
   })();
 
-  /* ══ match list ═════════════════════════════════════════════ */
-  let filter = "all";
-  const SOURCES = { demo: ["Demo", "Parsed from Valve's demo of the match"],
-    gsi: ["Live", "Recorded from the game's live feed as it was played"],
-    leetify: ["Leetify", "Numbers from Leetify's parse of the demo"] };
+  /* ══ match data files ═══════════════════════════════════ */
+  const loaded = {};
+  function loadMatch(id) {
+    if (window.CS_MATCH && window.CS_MATCH[id]) return Promise.resolve(window.CS_MATCH[id]);
+    return loaded[id] ||= new Promise((ok, bad) => {
+      const s = document.createElement("script");
+      s.src = `projects/cs/matches/${encodeURIComponent(id)}.js?v=2`;
+      s.onload = () => (window.CS_MATCH && window.CS_MATCH[id]) ? ok(window.CS_MATCH[id]) : bad();
+      s.onerror = bad; document.head.appendChild(s);
+    });
+  }
+  const replayable = matches.filter((m) => m.replay);
 
+  /* ══ drawing a moment on the radar ══════════════════════
+     Shared by the kill snapshots and the replay. `players` is a list of
+     {seat, x, y, z, yaw, dead}; `r` is the round, `t` seconds into it. */
+  const SIDE_COL = { T: "#c9a24b", CT: "#5d79ae" };
+  const seatInfo = (R) => Object.fromEntries(R.seats.map((s) => [s.seat, s]));
+  const sideOf = (seats, seat, r) => (seats[seat] && seats[seat].us) ? r.side : (r.side === "CT" ? "T" : "CT");
+  const nameOf = (seats, seat) => seat == null ? "the world" : seats[seat] ? (seats[seat].me ? "Ric" : (seats[seat].name || `player ${seat}`)) : "?";
+  const nadeEnd = (n) => n[5] != null ? n[5] : n[0] + ({ smoke: 20, fire: 7, flash: 0.5, he: 0.5 }[n[2]] || 0);
+
+  function drawMoment(ctx, S, o) {
+    const { cal, img, lower, players, nades, flashes, bomb, line, view, labels, footsteps, seats, r, t } = o;
+    const [vx, vy, vw] = view, k = S / vw;
+    const P = (x, y) => { const [px, py] = toRadar(cal, x, y); return [(px - vx) * k, (py - vy) * k]; };
+    ctx.fillStyle = "#07090c"; ctx.fillRect(0, 0, S, S);
+    if (img) ctx.drawImage(img, -vx * k, -vy * k, 1024 * k, 1024 * k);
+    if (footsteps) ctx.drawImage(footsteps, -vx * k, -vy * k, 1024 * k, 1024 * k);
+    const u = k / cal.scale;                            // canvas px per game unit
+    const scaleUI = Math.max(1, S / 700);
+    for (const n of nades || []) {
+      const [nt, , kind, x, y] = n;
+      if (x == null || nt > t || t > nadeEnd(n)) continue;
+      const rad = { smoke: 144, fire: 120, flash: 200, he: 180 }[kind] || 0; if (!rad) continue;
+      const life = nadeEnd(n) - nt, age = t - nt, [cx, cy] = P(x, y);
+      ctx.fillStyle = kind === "smoke" ? "rgba(205,212,222,.55)" : kind === "fire" ? "rgba(235,110,35,.5)"
+        : kind === "flash" ? `rgba(255,255,255,${0.7 * (1 - age / life)})` : `rgba(255,170,60,${0.55 * (1 - age / life)})`;
+      ctx.beginPath(); ctx.arc(cx, cy, Math.max(5, rad * u), 0, 7); ctx.fill();
+    }
+    if (bomb && bomb.x != null) {
+      const [bx, by] = P(bomb.x, bomb.y), s = 13 * scaleUI;
+      ctx.fillStyle = "#d6413a"; ctx.fillRect(bx - s / 2, by - s / 2, s, s);
+      ctx.fillStyle = "#fff"; ctx.font = `bold ${12 * scaleUI}px system-ui`; ctx.fillText("C4", bx + s * 0.8, by + 4 * scaleUI);
+    }
+    if (line) {
+      const [ax, ay] = P(line[0], line[1]), [bx, by] = P(line[2], line[3]);
+      ctx.strokeStyle = "rgba(255,255,255,.95)"; ctx.lineWidth = 2.5 * scaleUI; ctx.setLineDash([8 * scaleUI, 5 * scaleUI]);
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]);
+    }
+    const flashed = new Set((flashes || []).filter((f) => f[0] <= t && t <= f[0] + f[3]).map((f) => f[2]));
+    const dotR = 8 * scaleUI;
+    const order = players.slice().sort((a, b) => (seats[a.seat] && seats[a.seat].me ? 1 : 0) - (seats[b.seat] && seats[b.seat].me ? 1 : 0));
+    for (const p of order) {
+      if (p.x == null) continue;
+      const [px, py] = P(p.x, p.y), me = seats[p.seat] && seats[p.seat].me, side = sideOf(seats, p.seat, r);
+      if (p.dead) {
+        ctx.strokeStyle = SIDE_COL[side]; ctx.lineWidth = 3 * scaleUI;
+        ctx.beginPath(); ctx.moveTo(px - dotR, py - dotR); ctx.lineTo(px + dotR, py + dotR); ctx.moveTo(px + dotR, py - dotR); ctx.lineTo(px - dotR, py + dotR); ctx.stroke();
+      } else {
+        if (p.yaw != null) {                              // facing: yaw is CCW from +x; the radar flips y
+          const a = -p.yaw * Math.PI / 180;
+          ctx.fillStyle = side === "T" ? "rgba(201,162,75,.32)" : "rgba(93,121,174,.36)";
+          ctx.beginPath(); ctx.moveTo(px, py); ctx.arc(px, py, dotR * 4.5, a - 0.38, a + 0.38); ctx.closePath(); ctx.fill();
+        }
+        ctx.fillStyle = SIDE_COL[side]; ctx.beginPath(); ctx.arc(px, py, me ? dotR * 1.25 : dotR, 0, 7); ctx.fill();
+        ctx.lineWidth = (me ? 3 : 2) * scaleUI; ctx.strokeStyle = me ? "#fff" : "#07090c"; ctx.stroke();
+        if (flashed.has(p.seat)) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2 * scaleUI; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(px, py, dotR * 2, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+      }
+      if (labels) {
+        const label = (me ? "Ric" : nameOf(seats, p.seat)).slice(0, 16);
+        ctx.font = `600 ${12 * scaleUI}px system-ui`; ctx.lineWidth = 3 * scaleUI; ctx.strokeStyle = "rgba(0,0,0,.85)"; ctx.fillStyle = "#fff";
+        ctx.strokeText(label, px + dotR + 4, py - dotR + 2); ctx.fillText(label, px + dotR + 4, py - dotR + 2);
+      }
+    }
+  }
+
+  // The bit of the radar worth looking at: everyone in the fight, with margin.
+  function frame(cal, pts, pad = 90, min = 340) {
+    const xs = [], ys = [];
+    for (const p of pts) if (p && p.x != null) { const [x, y] = toRadar(cal, p.x, p.y); xs.push(x); ys.push(y); }
+    if (!xs.length) return [0, 0, 1024];
+    const x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad, y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+    const size = Math.min(1024, Math.max(min, x1 - x0, y1 - y0)), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    return [Math.max(0, Math.min(1024 - size, cx - size / 2)), Math.max(0, Math.min(1024 - size, cy - size / 2)), size];
+  }
+
+  /* ══ kill snapshots ═════════════════════════════════════ */
+  const snapState = { id: replayable[0] && replayable[0].id, which: "all" };
+  function renderSnapBar() {
+    if (!replayable.length) {
+      $("snapbox").innerHTML = `<div class="panel empty">Kill snapshots come from Valve's demo of a match; the first one appears when a demo is saved.</div>`;
+      return;
+    }
+    $("snapbox").innerHTML = `<div class="snapbar">
+      <label class="note" for="snapmatch">Match</label>
+      <select id="snapmatch">${replayable.map((m) => `<option value="${esc(m.id)}"${m.id === snapState.id ? " selected" : ""}>${esc(when(m.at))} · ${esc(mapName(m.map))} ${m.score[0]}:${m.score[1]}</option>`).join("")}</select>
+      <div class="seg" role="group" aria-label="Show">${[["all", "All"], ["kills", "Kills"], ["deaths", "Deaths"]].map(([v, l]) =>
+        `<button type="button" data-which="${v}" aria-pressed="${snapState.which === v}">${l}</button>`).join("")}</div>
+      <span class="note" id="snapcount"></span></div><div class="snaps" id="snaps"></div>`;
+    $("snapmatch").addEventListener("change", (e) => { snapState.id = e.target.value; renderSnaps(); });
+    $("snapbox").querySelector(".seg").addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      snapState.which = b.dataset.which;
+      for (const x of b.parentNode.children) x.setAttribute("aria-pressed", String(x === b));
+      renderSnaps();
+    });
+    renderSnaps();
+  }
+
+  function renderSnaps() {
+    const m = matches.find((x) => x.id === snapState.id); if (!m) return;
+    $("snaps").innerHTML = `<div class="panel empty">Loading…</div>`;
+    loadMatch(m.id).then((R) => {
+      const seats = seatInfo(R), cal = radarFor(R.map), list = [];
+      R.rounds.forEach((r, ri) => (r.fights || []).forEach((f) => {
+        const mine = f.killer === 0 && f.victim !== 0, died = f.victim === 0;
+        if ((mine && snapState.which !== "deaths") || (died && snapState.which !== "kills")) list.push({ r, ri, f, died });
+      }));
+      $("snapcount").textContent = `${list.length} moment${list.length === 1 ? "" : "s"}`;
+      if (!list.length) { $("snaps").innerHTML = `<div class="panel empty">Nothing here.</div>`; return; }
+      $("snaps").innerHTML = list.map((s, i) => snapCard(s, i, seats, R)).join("");
+      list.forEach((s, i) => paintSnap(i, s, seats, cal, false));
+      $("snaps").onclick = (e) => {
+        const c = e.target.closest("canvas"); if (!c) return;
+        const card = c.closest(".snap"), i = +card.dataset.i, big = !card.classList.contains("big");
+        card.classList.toggle("big", big); paintSnap(i, list[i], seats, cal, big);
+        if (big) card.scrollIntoView({ block: "nearest" });
+      };
+    }, () => { $("snaps").innerHTML = `<div class="panel empty">That match didn't load.</div>`; });
+  }
+
+  function snapCard({ r, ri, f, died }, i, seats, R) {
+    const ks = sideOf(seats, f.killer, r), vs = sideOf(seats, f.victim, r), t = f.t;
+    const cls = (seat, side) => `who-${side.toLowerCase()}${seats[seat] && seats[seat].me ? " who-me" : ""}`;
+    const flags = [f.headshot && ICON.hs, f.wallbang && ICON.wall, f.through_smoke && ICON.smoke, f.killer_blind && ICON.blind, f.noscope && ICON.noscope].filter(Boolean).join("");
+    const at = Object.fromEntries((f.snapshot || []).map((p) => [p.seat, p]));
+    const econ = r.economy || {};
+    const flashed = new Set((r.flashes || []).filter((x) => x[0] <= t && t <= x[0] + x[3]).map((x) => x[2]));
+    const team = (side) => R.seats.filter((s) => sideOf(seats, s.seat, r) === side && (at[s.seat] || s.seat === f.victim || econ[String(s.seat)])).map((s) => {
+      const p = at[s.seat], dead = !p || s.seat === f.victim || !p.hp, hp = dead ? 0 : p.hp, e = econ[String(s.seat)] || {};
+      const gear = [p && p.weapon && !dead ? weaponName(p.weapon) : null, p && p.armor && !dead ? `${p.armor} armor` : null, e.money != null ? `$${e.money}` : null].filter(Boolean).join(" · ");
+      return `<div class="pl${dead ? " dead" : ""}"><span class="nm${s.me ? " who-me" : ""}">${esc(nameOf(seats, s.seat))}${flashed.has(s.seat) && !dead ? ' <span class="fl">· flashed</span>' : ""}</span>
+        <span class="hp">${dead ? "✕" : hp}</span><span class="hpbar"><i style="width:${hp}%"></i></span>${gear ? `<span class="gear">${esc(gear)}</span>` : ""}</div>`;
+    }).join("");
+    const active = (r.nades || []).filter((n) => n[0] <= t && t <= nadeEnd(n));
+    const smokes = active.filter((n) => n[2] === "smoke").length, fires = active.filter((n) => n[2] === "fire").length;
+    const planted = r.bomb && r.bomb.planted && r.bomb.planted.t <= t;
+    const ex = (f.exchange || []).reduce((a, e) => { if (e[1] === f.killer) a.k += e[4]; else a.v += e[4]; return a; }, { k: 0, v: 0 });
+    const place = (p) => p && p.place ? esc(p.place) : "?";
+    return `<article class="snap" data-i="${i}" aria-label="Round ${ri + 1}, ${mmss(t)}: ${esc(nameOf(seats, f.killer))} killed ${esc(nameOf(seats, f.victim))}">
+      <div class="feedline${died ? " died" : ""}"><span class="${cls(f.killer, ks)}">${esc(nameOf(seats, f.killer))}</span>
+        <span class="wpn">${esc(weaponName(f.weapon))}</span>${flags}<span class="${cls(f.victim, vs)}">${esc(nameOf(seats, f.victim))}</span></div>
+      <div class="snapmeta"><span>Round <b>${ri + 1}</b></span><span><b>${mmss(t)}</b> in</span>
+        <span><b>${f.alive_before ? `${f.alive_before[0]}v${f.alive_before[1]}` : "—"}</b> before</span>
+        <span><b>${place(f.killer_at)}</b> → <b>${place(f.victim_at)}</b></span>
+        ${f.distance != null ? `<span><b>${Math.round(f.distance * 0.0254)} m</b> apart</span>` : ""}
+        ${f.killer_hp_after != null ? `<span>killer on <b>${f.killer_hp_after} HP</b></span>` : ""}
+        ${f.opening ? `<span><b>opening kill</b></span>` : ""}${f.traded_after != null ? `<span>traded at <b>${mmss(f.traded_after)}</b></span>` : ""}</div>
+      <div class="snapbody"><canvas width="720" height="720" aria-label="Radar at that moment"></canvas>
+        <div class="roster"><h4 class="t">Terrorists</h4>${team("T")}<h4 class="ct">Counter-Terrorists</h4>${team("CT")}</div></div>
+      <div class="util"><span><i style="background:rgba(205,212,222,.8)"></i>${smokes} smoke${smokes === 1 ? "" : "s"} up</span>
+        <span><i style="background:rgba(235,110,35,.85)"></i>${fires} fire${fires === 1 ? "" : "s"}</span>
+        <span><i style="background:#fff"></i>${flashed.size} flashed</span>${planted ? `<span><i style="background:#d6413a;border-radius:0"></i>bomb planted at ${mmss(r.bomb.planted.t)}</span>` : ""}</div>
+      ${ex.k || ex.v ? `<div class="exch">Damage between them before the kill: <b>${esc(nameOf(seats, f.killer))} ${ex.k}</b> · <b>${esc(nameOf(seats, f.victim))} ${ex.v}</b></div>` : ""}
+    </article>`;
+  }
+
+  async function paintSnap(i, { r, f }, seats, cal, big) {
+    const card = $("snaps").querySelector(`.snap[data-i="${i}"]`); if (!card) return;
+    const cv = card.querySelector("canvas"), S = big ? 1100 : 720;
+    cv.width = cv.height = S;
+    const ctx = cv.getContext("2d");
+    if (!cal) { ctx.fillStyle = "#07090c"; ctx.fillRect(0, 0, S, S); ctx.fillStyle = "#a0a8b2"; ctx.font = "20px system-ui"; ctx.fillText("No radar for this map", 20, 40); return; }
+    const lower = lowerAt(cal, (f.victim_at || {}).z);
+    const img = await loadImg(lower ? cal.lower : cal.img);
+    const players = (f.snapshot || []).filter((p) => p.hp > 0 || p.seat === f.victim).map((p) => ({ ...p, dead: p.seat === f.victim }));
+    if (!players.some((p) => p.seat === f.victim) && f.victim_at) players.push({ seat: f.victim, ...f.victim_at, dead: true });
+    const view = big ? [0, 0, 1024] : frame(cal, [f.killer_at, f.victim_at, ...(f.snapshot || []).filter((p) => p.seat === 0)]);
+    const planted = r.bomb && r.bomb.planted && r.bomb.planted.t <= f.t ? r.bomb.planted : null;
+    drawMoment(ctx, S, { cal, img, lower, players, nades: r.nades, flashes: r.flashes, bomb: planted,
+      line: f.killer_at && f.victim_at && f.killer_at.x != null ? [f.killer_at.x, f.killer_at.y, f.victim_at.x, f.victim_at.y] : null,
+      view, labels: true, seats, r, t: f.t });
+  }
+
+  /* ══ match list ═════════════════════════════════════════ */
+  let filter = "all";
+  const SOURCES = { demo: ["Demo", "Parsed from Valve's demo of the match"], gsi: ["Live", "Recorded from the game's live feed"],
+    leetify: ["Leetify", "Numbers from Leetify's parse of the demo"] };
   function row(m) {
-    const me = m.me;
-    const res = { W: "WIN", L: "LOSS", T: "DRAW" }[m.result];
+    const me = m.me, res = { W: "WIN", L: "LOSS", T: "DRAW" }[m.result], cal = radarFor(m.map);
     return `<div class="match" id="m-${esc(m.id)}">
-      <button class="mrow r${m.result}" aria-expanded="false" aria-controls="d-${esc(m.id)}" data-id="${esc(m.id)}">
+      <button class="mrow r${m.result}" aria-expanded="false" data-id="${esc(m.id)}">
+        <span class="thumb" style="${cal ? `background-image:url('projects/cs/${cal.img}')` : ""}" aria-hidden="true"></span>
         <span class="when">${esc(when(m.at))}</span>
         <span class="mapc"><span class="map">${esc(mapName(m.map))}</span><span class="mode">${esc(modeName(m.mode))}</span></span>
         <span class="scorec"><span class="score ${m.result}">${m.score[0]}:${m.score[1]}<small>${res}</small></span></span>
-        <span><span class="lbl">K/D</span>${fix(kd(me), 2)}</span>
-        <span class="num"><span class="lbl">K-D-A</span>${me.k ?? "—"}-${me.d ?? "—"}-${me.a ?? "—"}</span>
-        <span class="num"><span class="lbl">ADR</span>${fix(me.adr, 0)}</span>
-        <span class="num"><span class="lbl">HS%</span>${pct(hsPct(me))}</span>
-        <span class="num"><span class="lbl">Rating</span>${signed(me.rating)}</span>
+        <span class="opt"><span class="lbl">K/D</span>${fix(kd(me), 2)}</span>
+        <span class="num opt"><span class="lbl">K-D-A</span>${me.k ?? "—"}-${me.d ?? "—"}-${me.a ?? "—"}</span>
+        <span class="num opt"><span class="lbl">ADR</span>${fix(me.adr, 0)}</span>
+        <span class="num opt x"><span class="lbl">HS%</span>${pct(hsPct(me))}</span>
+        <span class="num opt x"><span class="lbl">Rating</span>${signed(me.rating)}</span>
         <span class="src">${(m.sources || []).map((s) => SOURCES[s] ? `<span class="${s}" title="${SOURCES[s][1]}">${SOURCES[s][0]}</span>` : "").join("")}</span>
-      </button>
-      <div class="detail" id="d-${esc(m.id)}" hidden></div>
-    </div>`;
+      </button><div class="detail" hidden></div></div>`;
   }
-
   function renderList() {
     const list = matches.filter((m) => filter === "all" || m.map === filter);
     $("mlist").innerHTML = list.length ? list.map(row).join("") : `<div class="panel empty">No matches yet.</div>`;
@@ -622,10 +825,10 @@
     });
     renderList();
     $("mlist").addEventListener("click", (e) => {
-      const b = e.target.closest(".mrow");
-      if (b) return openMatch(b.dataset.id);
-      const r = e.target.closest("[data-replay]");
-      if (r) showReplay(r.dataset.replay, true);
+      const b = e.target.closest(".mrow"); if (b) return openMatch(b.dataset.id);
+      const r = e.target.closest("[data-replay]"); if (r) return showReplay(r.dataset.replay, true);
+      const s = e.target.closest("[data-snaps]");
+      if (s) { snapState.id = s.dataset.snaps; renderSnapBar(); $("snapshots").scrollIntoView(); }
     });
   })();
 
@@ -639,92 +842,70 @@
     const btn = card.querySelector(".mrow"), det = card.querySelector(".detail");
     const open = btn.getAttribute("aria-expanded") !== "true";
     for (const c of document.querySelectorAll(".match.open")) {
-      c.classList.remove("open"); c.querySelector(".mrow").setAttribute("aria-expanded", "false");
-      c.querySelector(".detail").hidden = true;
+      c.classList.remove("open"); c.querySelector(".mrow").setAttribute("aria-expanded", "false"); c.querySelector(".detail").hidden = true;
     }
-    if (open) {
-      det.innerHTML = detail(matches.find((m) => m.id === id));
-      det.hidden = false; card.classList.add("open"); btn.setAttribute("aria-expanded", "true");
-      if (scroll) card.scrollIntoView({ block: "start" });
-      history.replaceState(null, "", `#match-${id}`);
-    }
+    if (!open) return;
+    det.innerHTML = detail(matches.find((m) => m.id === id));
+    det.hidden = false; card.classList.add("open"); btn.setAttribute("aria-expanded", "true");
+    if (scroll) card.scrollIntoView({ block: "start" });
+    history.replaceState(null, "", `#match-${id}`);
   }
 
   function detail(m) {
     const me = m.me, out = [];
     out.push(`<h3>${esc(when(m.at, true))} · ${esc(modeName(m.mode))} · started ${m.start_side === "CT" ? "Counter-Terrorist" : m.start_side === "T" ? "Terrorist" : "—"}${m.banned ? " · a player in this match was later banned" : ""}</h3>`);
-
     if (m.rounds && m.rounds.length) {
       const half = m.rounds.length > 24 ? 12 : Math.min(12, Math.floor((m.rounds.length + 1) / 2));
-      const cells = m.rounds.map((r, i) => {
+      out.push(`<div><h3>Round history</h3><div class="rounds">${m.rounds.map((r, i) => {
         const e = (m.economy || [])[i] || {};
-        const title = `Round ${i + 1}: ${r.w ? "won" : "lost"} as ${r.side || "?"}, ${r.k || 0} kill${r.k === 1 ? "" : "s"}${r.dead ? ", died" : ", survived"}${e.money != null ? `, $${e.money} to spend` : ""}${e.equip ? `, $${e.equip} loadout` : ""}`;
-        const sideCol = r.side === "CT" ? "var(--ct)" : r.side === "T" ? "var(--t)" : "var(--tie)";
-        return `${i === half && m.rounds.length > half ? '<span class="half" aria-hidden="true"></span>' : ""}<div class="rd" title="${title}" aria-label="${title}" role="img">
-          <div class="cell ${r.w ? "W" : "L"}${r.dead ? " dead" : ""}">${r.k ? r.k : ""}</div>
-          <div class="sd" style="background:${sideCol}"></div><div class="n">${i + 1}</div></div>`;
-      }).join("");
-      out.push(`<div><h3>Rounds</h3><div class="rounds">${cells}</div>
-        <div class="rkey"><span><i class="W"></i>won</span><span><i class="L"></i>lost</span>
-        <span>number = Ric's kills · dot = died</span><span><i style="background:var(--t)"></i>T side</span><span><i style="background:var(--ct)"></i>CT side</span></div></div>`);
+        const title = `Round ${i + 1}: ${r.w ? "won" : "lost"} as ${r.side || "?"}${r.why ? ` (${r.why})` : ""}, ${r.k || 0} kill${r.k === 1 ? "" : "s"}${r.dead ? ", died" : ", survived"}${e.equip ? `, $${e.equip} loadout` : ""}`;
+        return `${i === half && m.rounds.length > half ? '<span class="half" aria-hidden="true"></span>' : ""}<div class="rd" title="${esc(title)}" aria-label="${esc(title)}" role="img">
+          <span class="k">${r.k ? r.k : ""}</span><span class="cell ${r.w ? "W" : "L"}">${reasonIcon(r.why)}</span>
+          <span class="sd" style="background:${r.side === "CT" ? "var(--ct)" : r.side === "T" ? "var(--t)" : "var(--tie)"}"></span><span class="n">${i + 1}</span></div>`;
+      }).join("")}</div><div class="rkey"><span><i class="W"></i>won</span><span><i class="L"></i>lost</span>
+        <span><span class="ic">${ICON.skull}</span>elimination</span><span><span class="ic">${ICON.bomb}</span>bomb</span>
+        <span><span class="ic">${ICON.defuse}</span>defuse</span><span><span class="ic">${ICON.time}</span>time</span>
+        <span>number = Ric's kills</span><span><i style="background:var(--t)"></i>T</span><span><i style="background:var(--ct)"></i>CT</span></div></div>`);
     }
-
     const kv = (k, v) => v === "—" || v == null ? "" : `<div class="kv"><span>${k}</span><b>${v}</b></div>`;
     const tiles = [];
-    tiles.push(`<div class="tile"><h4>Line</h4>${kv("Kills", me.k)}${kv("Deaths", me.d)}${kv("Assists", me.a)}
-      ${kv("Damage", int(me.dmg))}${kv("ADR", fix(me.adr))}${kv("Headshot kills", me.hsk != null ? `${me.hsk} (${pct(hsPct(me))})` : "—")}
-      ${kv("MVPs", me.mvps)}${kv("KAST", me.kast != null ? pct(me.kast) : "—")}${kv("Survived", me.survived != null ? `${me.survived} rounds` : "—")}</div>`);
-    if (me.aim) tiles.push(`<div class="tile"><h4>Aim</h4>${kv("Accuracy", pct(me.aim.acc))}${kv("When enemy spotted", pct(me.aim.acc_spotted))}
-      ${kv("Head accuracy", pct(me.aim.acc_head))}${kv("Spray accuracy", pct(me.aim.spray))}${kv("Counter-strafed shots", pct(me.aim.strafe))}
-      ${kv("Reaction time", me.aim.reaction_ms ? `${me.aim.reaction_ms} ms` : "—")}${kv("Crosshair off by", me.aim.preaim != null ? `${fix(me.aim.preaim)}°` : "—")}
-      ${kv("Shots / hits", me.aim.shots != null ? `${me.aim.shots} / ${me.aim.hits}` : "—")}</div>`);
-    if (me.util) tiles.push(`<div class="tile"><h4>Utility</h4>${kv("Smokes", me.util.smoke)}${kv("Flashes", me.util.flash)}
-      ${kv("HE grenades", me.util.he)}${kv("Molotovs", me.util.molly)}${kv("Enemies flashed", me.util.flash_foes)}
-      ${kv("Teammates flashed", me.util.flash_mates)}${kv("Flash assists", me.util.flash_assists)}
-      ${kv("Unused utility at death", me.util.unused_on_death != null ? `$${me.util.unused_on_death}` : "—")}</div>`);
+    tiles.push(`<div class="tile"><h4>Line</h4>${kv("Kills", me.k)}${kv("Deaths", me.d)}${kv("Assists", me.a)}${kv("Damage", int(me.dmg))}${kv("ADR", fix(me.adr))}
+      ${kv("Headshot kills", me.hsk != null ? `${me.hsk} (${pct(hsPct(me))})` : "—")}${kv("MVPs", me.mvps)}${kv("KAST", me.kast != null ? pct(me.kast) : "—")}</div>`);
+    if (me.aim) tiles.push(`<div class="tile"><h4>Aim</h4>${kv("Accuracy", pct(me.aim.acc))}${kv("When enemy spotted", pct(me.aim.acc_spotted))}${kv("Head accuracy", pct(me.aim.acc_head))}
+      ${kv("Spray accuracy", pct(me.aim.spray))}${kv("Counter-strafed", pct(me.aim.strafe))}${kv("Reaction time", me.aim.reaction_ms ? `${me.aim.reaction_ms} ms` : "—")}
+      ${kv("Crosshair off by", me.aim.preaim != null ? `${fix(me.aim.preaim)}°` : "—")}</div>`);
+    if (me.util) tiles.push(`<div class="tile"><h4>Utility</h4>${kv("Smokes", me.util.smoke)}${kv("Flashes", me.util.flash)}${kv("HE grenades", me.util.he)}${kv("Molotovs", me.util.molly)}
+      ${kv("Enemies flashed", me.util.flash_foes)}${kv("Teammates flashed", me.util.flash_mates)}${kv("Unused at death", me.util.unused_on_death != null ? `$${me.util.unused_on_death}` : "—")}</div>`);
     const multi = me.multi || [];
-    tiles.push(`<div class="tile"><h4>Rounds with…</h4>${kv("1 kill", multi[0] ?? "—")}${kv("2 kills", multi[1] ?? "—")}${kv("3 kills", multi[2] ?? "—")}
-      ${kv("4 kills", multi[3] ?? "—")}${kv("Ace", multi[4] ?? "—")}
+    tiles.push(`<div class="tile"><h4>Rounds with…</h4>${kv("1 kill", multi[0] ?? "—")}${kv("2 kills", multi[1] ?? "—")}${kv("3 kills", multi[2] ?? "—")}${kv("4 kills", multi[3] ?? "—")}${kv("Ace", multi[4] ?? "—")}
       ${me.opening ? kv("Opening duels", `${me.opening.won} won · ${me.opening.lost} lost`) : ""}</div>`);
-    if (me.trades) tiles.push(`<div class="tile"><h4>Trades</h4>${kv("Chances to trade", me.trades.chances)}${kv("Traded", me.trades.made)}
-      ${kv("Deaths that could be traded", me.trades.died_tradeable)}${kv("…and were", me.trades.avenged)}</div>`);
-    if (m.economy && m.economy.some((e) => e.money != null)) {
-      const spend = m.economy.map((e) => e.equip || 0);
-      tiles.push(`<div class="tile"><h4>Economy</h4>${kv("Average loadout", `$${int(spend.reduce((s, v) => s + v, 0) / spend.length)}`)}
-        ${kv("Biggest buy", `$${int(Math.max(...spend))}`)}${kv("Rounds on under $2k", spend.filter((v) => v < 2000).length)}</div>`);
-    }
+    if (me.trades) tiles.push(`<div class="tile"><h4>Trades</h4>${kv("Chances to trade", me.trades.chances)}${kv("Traded", me.trades.made)}${kv("Deaths that could be traded", me.trades.died_tradeable)}${kv("…and were", me.trades.avenged)}</div>`);
     out.push(`<div><h3>Ric's game</h3><div class="tiles">${tiles.join("")}</div></div>`);
-
     if (me.weapons && Object.keys(me.weapons).length) {
       const ws = Object.entries(me.weapons), top = ws[0][1];
-      out.push(`<div><h3>Kills by weapon</h3><div class="wlist">${ws.map(([w, n]) =>
-        `<div class="wrow"><span>${esc(weaponName(w))}</span><div class="track"><div class="fill" style="width:${100 * n / top}%"></div></div><b>${n}</b></div>`).join("")}</div></div>`);
+      out.push(`<div><h3>Kills by weapon</h3><div class="wlist">${ws.map(([w, n]) => `<div class="wrow"><span>${esc(weaponName(w))}</span><div class="track"><div class="fill" style="width:${100 * n / top}%"></div></div><b>${n}</b></div>`).join("")}</div></div>`);
     }
-
     if (m.board && m.board.length) {
       const table = (us) => {
         const seats = m.board.filter((s) => s.us === us).sort((a, b) => (b.score ?? b.k) - (a.score ?? a.k) || b.k - a.k);
         let mate = 0, foe = 0;
-        const body = seats.map((s) => `<tr${s.me ? ' class="me"' : ""}><td>${s.me ? "Ric" : s.name ? esc(s.name) : us ? `Teammate ${++mate}` : `Opponent ${++foe}`}</td>
-          <td>${s.k}</td><td>${s.d}</td><td>${s.a}</td><td>${fix(s.adr, 0)}</td><td>${s.k ? pct(100 * (s.hsk || 0) / s.k) : "—"}</td>
-          <td class="mvp">${s.mvps ?? "—"}</td><td>${signed(s.rating)}</td></tr>`).join("");
         return `<div class="sbwrap"><table class="sb"><caption class="${us ? "us" : "them"}">${us ? "Ric's team" : "Opponents"} · ${us ? m.score[0] : m.score[1]}</caption>
-          <thead><tr><th scope="col">Player</th><th scope="col">K</th><th scope="col">D</th><th scope="col">A</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col" class="mvp">MVP</th><th scope="col">Rating</th></tr></thead>
-          <tbody>${body}</tbody></table></div>`;
+          <thead><tr><th scope="col">Player</th><th scope="col">K</th><th scope="col">A</th><th scope="col">D</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col" class="mvp">MVP</th><th scope="col">Rating</th></tr></thead>
+          <tbody>${seats.map((s) => `<tr${s.me ? ' class="me"' : ""}><td>${s.me ? "Ric" : s.name ? esc(s.name) : us ? `Teammate ${++mate}` : `Opponent ${++foe}`}</td>
+            <td>${s.k}</td><td>${s.a}</td><td>${s.d}</td><td>${fix(s.adr, 0)}</td><td>${s.k ? pct(100 * (s.hsk || 0) / s.k) : "—"}</td><td class="mvp">${s.mvps ?? "—"}</td><td>${signed(s.rating)}</td></tr>`).join("")}</tbody></table></div>`;
       };
-      out.push(`<div><h3>Scoreboard</h3><div class="boards">${table(true)}${table(false)}</div></div>`);
+      out.push(`<div><h3>Scoreboard</h3><div style="display:flex;flex-direction:column;gap:10px">${table(true)}${table(false)}</div></div>`);
     }
-
     const report = `<a class="note" href="projects/cs/llm/${encodeURIComponent(m.id)}.md">Full report as text</a>`;
     out.push(m.replay
-      ? `<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><button class="btn" type="button" data-replay="${esc(m.id)}">▶ Watch the 2D replay</button>${report}</div>`
-      : `<p class="note">No 2D replay for this one yet: ${m.at && Date.now() - new Date(m.at) > 28 * 864e5
-          ? "Valve deleted its demo before it was saved here."
-          : "Valve still has its demo, and the replay appears once it's downloaded."} ${report}</p>`);
+      ? `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button class="btn" type="button" data-replay="${esc(m.id)}">▶ Watch 2D replay</button>
+          <button class="btn ghost" type="button" data-snaps="${esc(m.id)}">Kill snapshots</button>${report}</div>`
+      : `<p class="note">No 2D data for this one yet: ${m.at && Date.now() - new Date(m.at) > 28 * 864e5
+          ? "Valve deleted its demo before it was saved here." : "Valve still has its demo, and it arrives with the next sync."} ${report}</p>`);
     return out.join("");
   }
 
-  /* ══ maps ═══════════════════════════════════════════════════ */
+  /* ══ maps ═══════════════════════════════════════════════ */
   (() => {
     const by = new Map();
     for (const m of matches) {
@@ -735,266 +916,164 @@
       by.set(m.map, g);
     }
     const rank = Object.fromEntries((((D.leetify || {}).ranks || {}).competitive || []).map((r) => [r.map_name, r.rank]));
-    const HUES = [["#2a475e", "#0e141b"], ["#5c3d1e", "#14100b"], ["#1e4a3a", "#0b1410"], ["#4a2a4e", "#120b14"],
-      ["#3d4a1e", "#11140b"], ["#1e3a5c", "#0b0f14"], ["#5c1e2a", "#140b0d"]];
-    const hue = (name) => HUES[[...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % HUES.length];
-    const cards = [...by].sort((a, b) => b[1].n - a[1].n).map(([map, g]) => {
-      const [c1, c2] = hue(map), wr = Math.round(100 * g.W / g.n);
-      return `<div class="mapcard"><div class="cap" style="--c1:${c1};--c2:${c2}"><h3>${esc(mapName(map))}</h3></div>
-      <div class="info">
-        <div class="wl">${g.n} game${g.n === 1 ? "" : "s"} · ${g.W}W ${g.L}L${g.T ? ` ${g.T}D` : ""}</div>
-        <div class="wbar" role="img" aria-label="${g.W} wins, ${g.L} losses, ${g.T} draws">
-          <i class="W" style="flex:${g.W}"></i><i class="L" style="flex:${g.L}"></i><i class="T" style="flex:${g.T}"></i></div>
-        <div class="kv"><span>K/D</span><b>${g.d ? fix(g.k / g.d, 2) : "—"}</b></div>
+    $("maplist").innerHTML = [...by].sort((a, b) => b[1].n - a[1].n).map(([map, g]) => {
+      const cal = radarFor(map);
+      return `<div class="mapcard"><div class="art" style="${cal ? `background-image:url('projects/cs/${cal.img}')` : ""}"><h3>${esc(mapName(map))}</h3></div>
+        <div class="info"><div class="wl">${g.n} game${g.n === 1 ? "" : "s"} · ${g.W}W ${g.L}L${g.T ? ` ${g.T}D` : ""}</div>
+        <div class="wbar" role="img" aria-label="${g.W} wins, ${g.L} losses, ${g.T} draws"><i class="W" style="flex:${g.W}"></i><i class="L" style="flex:${g.L}"></i><i class="T" style="flex:${g.T}"></i></div>
+        <div class="kv"><span>Win rate</span><b>${pct(100 * g.W / g.n)}</b></div><div class="kv"><span>K/D</span><b>${g.d ? fix(g.k / g.d, 2) : "—"}</b></div>
         <div class="kv"><span>ADR</span><b>${g.r ? fix(g.dmg / g.r, 0) : "—"}</b></div>
-        ${rank[map] != null ? `<div class="kv"><span>Rank</span><b>${esc(RANKS[rank[map]] || rank[map])}</b></div>` : ""}
-        <div class="price"><span class="pct">${wr}%</span><span class="lbl2">win rate</span></div>
-      </div></div>`;
-    });
-    $("maplist").innerHTML = cards.join("") || `<div class="panel empty">No maps yet.</div>`;
+        ${rank[map] != null ? `<div class="kv"><span>Rank</span><b>${esc(RANKS[rank[map]] || rank[map])}</b></div>` : ""}</div></div>`;
+    }).join("") || `<div class="panel empty">No maps yet.</div>`;
   })();
 
-  /* ══ weapons (demo games only) ══════════════════════════════ */
+  /* ══ weapons ════════════════════════════════════════════ */
   (() => {
-    const tally = {};
-    let games = 0;
+    const tally = {}; let games = 0;
     for (const m of matches) {
-      if (!m.me.weapons) continue;
-      games++;
-      for (const [w, n] of Object.entries(m.me.weapons)) {
-        const name = weaponName(w);
-        tally[name] = (tally[name] || 0) + n;
-      }
+      if (!m.me.weapons) continue; games++;
+      for (const [w, n] of Object.entries(m.me.weapons)) { const name = weaponName(w); tally[name] = (tally[name] || 0) + n; }
     }
     const ws = Object.entries(tally).sort((a, b) => b[1] - a[1]);
     $("weaponbox").innerHTML = ws.length
-      ? `<div style="padding:16px" class="wlist">${ws.map(([w, n]) => `<div class="wrow"><span>${esc(w)}</span>
-          <div class="track"><div class="fill" style="width:${100 * n / ws[0][1]}%"></div></div><b>${n}</b></div>`).join("")}
+      ? `<div style="padding:16px" class="wlist">${ws.map(([w, n]) => `<div class="wrow"><span>${esc(w)}</span><div class="track"><div class="fill" style="width:${100 * n / ws[0][1]}%"></div></div><b>${n}</b></div>`).join("")}
           <p class="note" style="margin-top:8px">From ${games} game${games === 1 ? "" : "s"} with a saved demo.</p></div>`
-      : `<p class="empty">This fills in as demos are saved. Valve's demo is the only source that says which gun every kill came from.</p>`;
+      : `<p class="empty">This fills in as demos are saved.</p>`;
   })();
 
-  /* ══ 2D replay ══════════════════════════════════════════════ */
-  const replayable = matches.filter((m) => m.replay);
-  const loaded = {};
-  function loadMatch(id) {
-    if (window.CS_MATCH && window.CS_MATCH[id]) return Promise.resolve(window.CS_MATCH[id]);
-    if (loaded[id]) return loaded[id];
-    return (loaded[id] = new Promise((ok, bad) => {
-      const s = document.createElement("script");
-      s.src = `projects/cs/matches/${encodeURIComponent(id)}.js`;
-      s.onload = () => (window.CS_MATCH && window.CS_MATCH[id]) ? ok(window.CS_MATCH[id]) : bad();
-      s.onerror = bad;
-      document.head.appendChild(s);
-    }));
-  }
-
+  /* ══ 2D replay ══════════════════════════════════════════ */
   let player = null;
-  function showReplay(id, scroll) {
+  function showReplay(id, scroll, round = 0) {
     const m = matches.find((x) => x.id === id); if (!m) return;
     const box = $("replaybox");
     box.innerHTML = `<div class="panel empty">Loading the replay…</div>`;
     if (scroll) $("replay").scrollIntoView();
-    loadMatch(id).then((R) => { if (player) player.stop(); player = Player(box, m, R); },
+    loadMatch(id).then((R) => { if (player) player.stop(); player = Player(box, m, R, round); },
       () => { box.innerHTML = `<div class="panel empty">That replay didn't load.</div>`; });
   }
 
-  function Player(box, m, R) {
-    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function Player(box, m, R, startRound) {
+    const seats = seatInfo(R), cal = radarFor(R.map), st = R.stride || 2;
     const others = replayable.filter((x) => x.id !== m.id).slice(0, 12);
-    box.innerHTML = `<div class="replay">
-      <div class="panel stage">
+    box.innerHTML = `<div class="replay"><div class="panel stage">
         <div class="rtitle"><b>${esc(mapName(m.map))} · ${m.score[0]}:${m.score[1]}</b><span class="note">${esc(when(m.at, true))}</span></div>
-        <div class="rpicks" role="group" aria-label="Round">${R.rounds.map((r, i) =>
-          `<button type="button" class="${r.w ? "w" : "l"}" data-r="${i}" aria-label="Round ${i + 1}, ${r.w ? "won" : "lost"}">${i + 1}</button>`).join("")}</div>
-        <canvas width="900" height="900" aria-label="Top-down view of the round"></canvas>
-        <div class="controls">
-          <button class="btn" type="button" data-play>▶ Play</button>
-          <input type="range" min="0" step="0.1" value="0" aria-label="Time in round">
-          <span class="clock">0:00</span>
-          <button class="btn ghost" type="button" data-speed>1×</button>
-        </div>
-      </div>
-      <div class="panel side">
-        <div class="rlegend"><span><i style="background:var(--gold);box-shadow:0 0 0 2px #fff"></i>Ric</span>
-          <span><i style="background:var(--t)"></i>T</span><span><i style="background:var(--ct)"></i>CT</span>
-          <span>✕ died · grey cloud smoke · orange fire</span></div>
-        <div><h3 style="font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)">Kill feed</h3>
-          <div class="feed" aria-live="off"></div></div>
-        ${others.length ? `<div><h3 style="font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:6px">Other replays</h3>
+        <div class="rpicks" role="group" aria-label="Round">${R.rounds.map((r, i) => `<button type="button" class="${r.w ? "w" : "l"}" data-r="${i}" aria-label="Round ${i + 1}, ${r.w ? "won" : "lost"}">${i + 1}</button>`).join("")}</div>
+        <canvas width="1024" height="1024" aria-label="The round on the radar"></canvas>
+        <div class="controls"><button class="btn" type="button" data-play>▶ Play</button>
+          <input type="range" min="0" step="0.1" value="0" aria-label="Time in round"><span class="clock">0:00</span>
+          <button class="btn ghost" type="button" data-speed>1×</button></div>
+        <div class="settings">
+          ${cal && cal.split != null ? `<div class="seg" role="group" aria-label="Radar level"><button type="button" data-level="auto" aria-pressed="true">Auto</button><button type="button" data-level="0" aria-pressed="false">Upper</button><button type="button" data-level="1" aria-pressed="false">Lower</button></div>` : ""}
+          <label><input type="checkbox" data-names checked> Names</label>
+          <label><input type="checkbox" data-steps${cal ? "" : " checked"}> Footsteps</label>
+        </div></div>
+      <div class="panel side"><div class="rlegend"><span><i style="background:var(--t)"></i>T</span><span><i style="background:var(--ct)"></i>CT</span>
+          <span><i style="background:#fff"></i>Ric (white ring)</span><span>✕ died · cone = facing</span></div>
+        <div><h3 style="font-size:13px;letter-spacing:.14em;color:var(--dim);margin-bottom:6px">Kill feed</h3><div class="feed"></div></div>
+        ${others.length ? `<div><h3 style="font-size:13px;letter-spacing:.14em;color:var(--dim);margin-bottom:6px">Other replays</h3>
           ${others.map((x) => `<button class="btn ghost" style="width:100%;margin-bottom:4px;justify-content:space-between" type="button" data-other="${esc(x.id)}">
           <span>${esc(mapName(x.map))} ${x.score[0]}:${x.score[1]}</span><span class="note">${esc(when(x.at))}</span></button>`).join("")}</div>` : ""}
       </div></div>`;
-    const cv = box.querySelector("canvas"), ctx = cv.getContext("2d");
+    const cv = box.querySelector("canvas"), ctx = cv.getContext("2d"), S = cv.width;
     const range = box.querySelector("input[type=range]"), clock = box.querySelector(".clock");
-    const playBtn = box.querySelector("[data-play]"), speedBtn = box.querySelector("[data-speed]");
-    const feed = box.querySelector(".feed");
-    const seats = Object.fromEntries(R.seats.map((s) => [s.seat, s]));
-
-    // world → canvas: one frame for the whole match, so the map holds still
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const r of R.rounds) for (const tr of Object.values(r.tracks)) for (let i = 0; i < tr.length; i += 2) {
-      if (tr[i] == null) continue;
-      minX = Math.min(minX, tr[i]); maxX = Math.max(maxX, tr[i]); minY = Math.min(minY, tr[i + 1]); maxY = Math.max(maxY, tr[i + 1]);
+    const playBtn = box.querySelector("[data-play]"), speedBtn = box.querySelector("[data-speed]"), feed = box.querySelector(".feed");
+    // Which floor's radar: "auto" follows Ric, the way the in-game radar does.
+    let level = "auto";
+    const imgs = [null, null];
+    if (cal) {
+      loadImg(cal.img).then((im) => { imgs[0] = im; draw(); });
+      if (cal.lower) loadImg(cal.lower).then((im) => { imgs[1] = im; draw(); });
     }
-    const span = Math.max(maxX - minX, maxY - minY) * 1.08 || 1;
-    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, S = cv.width;
-    const px = (x) => S / 2 + (x - cx) / span * S;
-    const py = (y) => S / 2 - (y - cy) / span * S;
-    const unit = S / span;                     // canvas px per game unit
-
-    // The map itself: no radar art ships with the page, so the floor plan is
-    // drawn from where people actually stood all match. Corridors appear because
-    // that is where everyone walked.
-    const floor = document.createElement("canvas"); floor.width = floor.height = S;
-    (() => {
-      const f = floor.getContext("2d");
-      f.fillStyle = "#080b10"; f.fillRect(0, 0, S, S);
-      f.fillStyle = "rgba(150,170,200,0.05)";
-      for (const r of R.rounds) for (const tr of Object.values(r.tracks)) for (let i = 0; i < tr.length; i += 2) {
-        if (tr[i] != null) { f.beginPath(); f.arc(px(tr[i]), py(tr[i + 1]), 7, 0, 7); f.fill(); }
-      }
+    // With no radar for a map, frame the footsteps themselves.
+    const calX = cal || (() => {
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const r of R.rounds) for (const tr of Object.values(r.tracks)) for (let i = 0; i < tr.length; i += st) if (tr[i] != null) {
+        x0 = Math.min(x0, tr[i]); x1 = Math.max(x1, tr[i]); y0 = Math.min(y0, tr[i + 1]); y1 = Math.max(y1, tr[i + 1]); }
+      const span = Math.max(x1 - x0, y1 - y0) * 1.08 || 1;
+      return { x: (x0 + x1) / 2 - span / 2, y: (y0 + y1) / 2 + span / 2, scale: span / 1024 };
     })();
-
-    // Callout names, placed where Valve's own place tags say they are: the
-    // average of every position in this match tagged with that name.
-    (() => {
-      const acc = {};
-      for (const r of R.rounds) for (const f of r.fights || []) for (const q of [...(f.snapshot || []), f.killer_at || {}, f.victim_at || {}]) {
-        if (!q.place || q.x == null) continue;
-        const a = acc[q.place] ||= [0, 0, 0]; a[0] += q.x; a[1] += q.y; a[2]++;
+    // Footsteps: every place anyone stood all match, as a faint layer. A
+    // setting, off by default — the radar is the map now.
+    const steps = document.createElement("canvas"); steps.width = steps.height = 1024;
+    {
+      const f = steps.getContext("2d"); f.fillStyle = "rgba(150,170,200,0.06)";
+      for (const r of R.rounds) for (const tr of Object.values(r.tracks)) for (let i = 0; i < tr.length; i += st) {
+        if (tr[i] == null) continue; const [x, y] = toRadar(calX, tr[i], tr[i + 1]); f.beginPath(); f.arc(x, y, 5, 0, 7); f.fill();
       }
-      const f = floor.getContext("2d");
-      f.font = "15px system-ui"; f.textAlign = "center";
-      for (const [name, [x, y, n]] of Object.entries(acc)) {
-        f.fillStyle = "rgba(200,210,225,.6)"; f.strokeStyle = "rgba(0,0,0,.8)"; f.lineWidth = 3;
-        f.strokeText(name, px(x / n), py(y / n)); f.fillText(name, px(x / n), py(y / n));
-      }
-    })();
-
-    let ri = 0, t = 0, playing = false, speed = 1, last = 0, raf = 0;
-    const sideOf = (seat, r) => seats[seat] && seats[seat].us ? r.side : (r.side === "CT" ? "T" : "CT");
-    const colour = (side) => side === "CT" ? "#5d8fd6" : "#b88a33";
-    const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-    const who = (seat) => seat == null ? "the world" : !seats[seat] ? "someone"
-      : seats[seat].me ? "Ric" : seats[seat].name ? esc(seats[seat].name)
-      : seats[seat].us ? "a teammate" : "an opponent";
-    const whoClass = (seat) => seat == null ? "" : seats[seat] && seats[seat].me ? "who-me" : seats[seat] && seats[seat].us ? "who-us" : "who-them";
-
-    function at(tr, i) {
-      const a = Math.floor(i), f = i - a;
-      const x0 = tr[2 * a], y0 = tr[2 * a + 1], x1 = tr[2 * a + 2], y1 = tr[2 * a + 3];
-      if (x0 == null) return null;
-      if (x1 == null) return [x0, y0];
-      return [x0 + (x1 - x0) * f, y0 + (y1 - y0) * f];
     }
-
+    let ri = startRound, t = 0, playing = false, speed = 1, last = 0, raf = 0;
+    const at = (tr, i) => {
+      const a = Math.floor(i), fr = i - a, b0 = a * st, b1 = (a + 1) * st;
+      if (tr[b0] == null) return null;
+      const z = st === 3 ? tr[b0 + 2] : null;
+      if (tr[b1] == null) return [tr[b0], tr[b0 + 1], z];
+      return [tr[b0] + (tr[b1] - tr[b0]) * fr, tr[b0 + 1] + (tr[b1 + 1] - tr[b0 + 1]) * fr, z];
+    };
     function draw() {
-      const r = R.rounds[ri];
-      ctx.drawImage(floor, 0, 0);
-      const i = Math.min(t * R.hz, (Object.values(r.tracks)[0] || []).length / 2 - 1);
-      // grenades
-      for (const [nt, seat, kind, x, y] of r.nades) {
-        if (x == null || nt > t) continue;
-        const age = t - nt, life = { smoke: 18, fire: 7, flash: 0.6, he: 0.6, decoy: 0 }[kind] || 0;
-        if (age > life) continue;
-        const rad = { smoke: 144, fire: 120, flash: 220, he: 180 }[kind] * unit;
-        ctx.fillStyle = kind === "smoke" ? "rgba(190,200,215,.42)" : kind === "fire" ? "rgba(230,110,40,.45)"
-          : kind === "flash" ? `rgba(255,255,255,${0.6 * (1 - age / life)})` : `rgba(255,170,60,${0.5 * (1 - age / life)})`;
-        ctx.beginPath(); ctx.arc(px(x), py(y), Math.max(6, rad), 0, 7); ctx.fill();
-      }
-      // bomb
-      if (r.plant && r.plant[0] <= t && r.plant[1] != null) {
-        ctx.fillStyle = "#e4483a"; ctx.fillRect(px(r.plant[1]) - 7, py(r.plant[2]) - 7, 14, 14);
-        ctx.fillStyle = "#fff"; ctx.font = "bold 13px system-ui"; ctx.fillText("C4", px(r.plant[1]) + 10, py(r.plant[2]) + 5);
-      }
-      // shots that killed, fading over a second and a half
-      for (const k of r.kills) {
-        const age = t - k[0];
-        if (age < 0 || age > 1.5 || k[5] == null || k[7] == null) continue;
-        ctx.strokeStyle = `rgba(255,255,255,${0.8 * (1 - age / 1.5)})`; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(px(k[5]), py(k[6])); ctx.lineTo(px(k[7]), py(k[8])); ctx.stroke();
-      }
-      // the dead
-      ctx.lineWidth = 3;
-      for (const k of r.kills) {
-        if (k[0] > t || k[7] == null) continue;
-        ctx.strokeStyle = colour(sideOf(k[2], r));
-        const x = px(k[7]), y = py(k[8]);
-        ctx.beginPath(); ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 6); ctx.moveTo(x + 6, y - 6); ctx.lineTo(x - 6, y + 6); ctx.stroke();
-      }
-      // the living — Ric last so he's on top
-      const order = Object.keys(r.tracks).map(Number).sort((a, b) => (seats[a] && seats[a].me) - (seats[b] && seats[b].me));
-      for (const seat of order) {
-        const p = at(r.tracks[seat], i); if (!p) continue;
-        const me = seats[seat] && seats[seat].me;
-        ctx.fillStyle = colour(sideOf(seat, r));
-        ctx.beginPath(); ctx.arc(px(p[0]), py(p[1]), me ? 10 : 8, 0, 7); ctx.fill();
-        ctx.lineWidth = me ? 3 : 2; ctx.strokeStyle = me ? "#ffffff" : "#080b10"; ctx.stroke();
-        if (me) { ctx.fillStyle = "#fff"; ctx.font = "bold 15px system-ui"; ctx.fillText("Ric", px(p[0]) + 14, py(p[1]) + 5); }
-      }
-      range.value = t; clock.textContent = `${fmt(t)} / ${fmt(r.dur)}`;
+      const r = R.rounds[ri], n = (Object.values(r.tracks)[0] || []).length / st, i = Math.max(0, Math.min(t * R.hz, n - 1));
+      const players = [];
+      for (const [seat, tr] of Object.entries(r.tracks)) { const p = at(tr, i); if (p) players.push({ seat: +seat, x: p[0], y: p[1], z: p[2] }); }
+      for (const f of r.fights || []) if (f.t <= t && f.victim_at && f.victim != null) players.push({ seat: f.victim, ...f.victim_at, dead: true });
+      const recent = (r.fights || []).filter((f) => f.t <= t && t - f.t < 1.5 && f.killer_at && f.victim_at && f.killer_at.x != null);
+      const planted = r.bomb && r.bomb.planted && r.bomb.planted.t <= t ? r.bomb.planted : null;
+      const ric = players.find((p) => p.seat === 0 && !p.dead);
+      const lv = level === "auto" ? (ric && lowerAt(cal, ric.z) && imgs[1] ? 1 : 0) : +level;
+      drawMoment(ctx, S, { cal: calX, img: cal ? imgs[lv] : null, lower: lv === 1, players, nades: r.nades, flashes: r.flashes, bomb: planted,
+        line: recent.length ? [recent[0].killer_at.x, recent[0].killer_at.y, recent[0].victim_at.x, recent[0].victim_at.y] : null,
+        view: [0, 0, 1024], labels: box.querySelector("[data-names]").checked,
+        footsteps: box.querySelector("[data-steps]").checked ? steps : null, seats, r, t });
+      range.value = t; clock.textContent = `${mmss(t)} / ${mmss(r.dur)}`;
       [...feed.children].forEach((el) => el.classList.toggle("future", +el.dataset.t > t));
     }
-
     function pick(n) {
-      ri = n; t = 0;
-      const r = R.rounds[ri];
-      range.max = r.dur;
+      ri = n; t = 0; const r = R.rounds[ri]; range.max = r.dur;
       for (const b of box.querySelectorAll(".rpicks button")) b.setAttribute("aria-pressed", String(+b.dataset.r === ri));
-      feed.innerHTML = r.kills.length ? r.kills.map((k) => `<div data-t="${k[0]}" style="border-left-color:${colour(sideOf(k[1], r))}">
-        <span class="t">${fmt(k[0])}</span><span class="${whoClass(k[1])}">${who(k[1])}</span>
-        <span>${esc(weaponName(k[3]))}${k[4] ? " · headshot" : ""}</span><span class="${whoClass(k[2])}">${who(k[2])}</span></div>`).join("")
-        : `<p class="note">No kills this round.</p>`;
+      const fights = r.fights || [];
+      feed.innerHTML = fights.length ? fights.map((f) => {
+        const ks = sideOf(seats, f.killer, r), vs = sideOf(seats, f.victim, r), mine = f.killer === 0 || f.victim === 0;
+        return `<div data-t="${f.t}" class="${mine ? "mine" : ""}"><span class="t">${mmss(f.t)}</span><span class="who-${ks.toLowerCase()}">${esc(nameOf(seats, f.killer))}</span>
+          <span>${esc(weaponName(f.weapon))}${f.headshot ? " · HS" : ""}</span><span class="who-${vs.toLowerCase()}">${esc(nameOf(seats, f.victim))}</span></div>`;
+      }).join("") : `<p class="note">No kills this round.</p>`;
       draw();
     }
     function tick(now) {
       if (!playing) return;
       const dt = last ? (now - last) / 1000 : 0; last = now;
-      t = Math.min(R.rounds[ri].dur, t + dt * speed);
-      draw();
+      t = Math.min(R.rounds[ri].dur, t + dt * speed); draw();
       if (t >= R.rounds[ri].dur) { setPlaying(false); return; }
       raf = requestAnimationFrame(tick);
     }
     function setPlaying(on) {
-      playing = on; last = 0;
-      playBtn.textContent = on ? "❚❚ Pause" : "▶ Play";
+      playing = on; last = 0; playBtn.textContent = on ? "❚❚ Pause" : "▶ Play";
       if (on) { if (t >= R.rounds[ri].dur) t = 0; raf = requestAnimationFrame(tick); } else cancelAnimationFrame(raf);
     }
-    box.querySelector(".rpicks").addEventListener("click", (e) => {
-      const b = e.target.closest("button"); if (!b) return;
-      setPlaying(false); pick(+b.dataset.r); if (!reduce) setPlaying(true);
-    });
+    box.querySelector(".rpicks").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; setPlaying(false); pick(+b.dataset.r); if (!reduce) setPlaying(true); });
     playBtn.addEventListener("click", () => setPlaying(!playing));
     speedBtn.addEventListener("click", () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; speedBtn.textContent = `${speed}×`; });
     range.addEventListener("input", () => { t = +range.value; draw(); });
-    box.addEventListener("click", (e) => { const o = e.target.closest("[data-other]"); if (o) showReplay(o.dataset.other, false); });
-    pick(0);
+    box.addEventListener("change", draw);
+    box.addEventListener("click", (e) => {
+      const o = e.target.closest("[data-other]"); if (o) return showReplay(o.dataset.other, false);
+      const l = e.target.closest("[data-level]");
+      if (l) { level = l.dataset.level === "auto" ? "auto" : +l.dataset.level; for (const x of l.parentNode.children) x.setAttribute("aria-pressed", String(x === l)); draw(); }
+    });
+    pick(startRound);
     return { stop: () => setPlaying(false) };
   }
 
+  renderSnapBar();
   if (replayable.length) showReplay(replayable[0].id, false);
-  else $("replaybox").innerHTML = `<div class="panel empty">The first replay appears when a demo is saved. Valve's demo is the only
-    recording with everyone's position in it, so games from before that point only have their numbers.</div>`;
+  else $("replaybox").innerHTML = `<div class="panel empty">The first replay appears when a demo is saved.</div>`;
 
-  /* ══ section tabs follow the scroll ═════════════════════════ */
   (() => {
-    const tabs = [...document.querySelectorAll(".subbar a")];
-    const secs = tabs.map((a) => document.querySelector(a.getAttribute("href")));
-    const on = () => {
-      let cur = 0;
-      secs.forEach((s, i) => { if (s && s.getBoundingClientRect().top < 140) cur = i; });
-      tabs.forEach((a, i) => a.classList.toggle("on", i === cur));
-    };
+    const tabs = [...document.querySelectorAll(".subbar a")], secs = tabs.map((a) => document.querySelector(a.getAttribute("href")));
+    const on = () => { let c = 0; secs.forEach((s, i) => { if (s && s.getBoundingClientRect().top < 140) c = i; }); tabs.forEach((a, i) => a.classList.toggle("on", i === c)); };
     addEventListener("scroll", on, { passive: true }); on();
   })();
-
   const deep = location.hash.match(/^#match-(.+)$/);
   if (deep) openMatch(decodeURIComponent(deep[1]), true);
-
   const L = D.leetify || {};
-  $("stamp").textContent = `${matches.length} matches · ${matches.filter((m) => m.replay).length} with a replay`
-    + (L.read ? ` · Leetify read ${when(L.read)}` : "");
+  $("stamp").textContent = `${matches.length} matches · ${replayable.length} with full demo data` + (L.read ? ` · Leetify read ${when(L.read)}` : "");
 })();
 </script>
 </body>

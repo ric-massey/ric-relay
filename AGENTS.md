@@ -490,9 +490,17 @@ that must never break:
 - Raw demos, the venv, `cs-account.json`, `.cs-state.json` and the GSI spool are
   gitignored. Steam Web API secrets live in Windows Credential Manager.
 - `sync.py` commits `cs-data.js` and `matches/` only, on `main`, and never pushes.
-- The replay has no radar art: the floor plan is drawn from where players stood, and
-  callout names are placed at the average of every position Valve tagged with them
-  (`llm/maps/<map>.md` is the same table for machines).
+- **The radar is the game's own.** `extract-radars.py` unpacks CS2's radar images and
+  overview calibration from the local game files with Source 2 Viewer's CLI (in
+  `projects/cs/tools/`, gitignored) into `projects/cs/radar/`. Rerun it after a map
+  update. Two-floor maps (Nuke, Train, Vertigo) keep height in the tracks and pick the
+  radar floor by the game's own altitude split; the replay's floor setting defaults to
+  Auto, following Ric. The old "footsteps" floor plan (drawn from where players stood)
+  is a setting, off by default — Ric asked for it that way.
+- **Kill snapshots** are every kill and death of Ric's, drawn from the same fight data:
+  positions and facing on the radar, everyone's HP / armor / weapon, smokes and fires
+  in the air, who was flashed, the bomb. Anything added to them belongs in the text
+  export too (`in the air:` / `everyone at that moment:` lines).
 - **LLMs read the plain-text copy.** `export-llm.py` writes `projects/cs/llm/*.md`
   from the same data on every sync, and `/llms.txt` points at it. Anything new the
   page shows should also land in that export, or machines only get half the room.

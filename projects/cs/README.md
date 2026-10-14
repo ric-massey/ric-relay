@@ -74,6 +74,16 @@ cmdkey /generic:ric-terminal/cs-match-auth /user:steam /pass:<match auth code>
 Web API key: steamcommunity.com/dev/apikey. Match auth code: help.steampowered.com →
 Counter-Strike 2 → "Access to Your Match History". Without them the rest still works.
 
+## The radars
+
+`extract-radars.py` pulls CS2's own radar images and each map's calibration out of
+`pak01_dir.vpk` using Source 2 Viewer's command-line tool (ValveResourceFormat,
+v20.0, unzipped into `tools/vrf/`, gitignored — download `cli-windows-x64.zip` from
+its GitHub releases if it's missing). Output goes to `radar/` (committed, ~430 KB):
+a `.webp` per map, a `_lower` one for two-floor maps, and `radar.js` with the
+calibration. Rerun it when a CS2 update reworks a map; `parse-demos.py --rebuild`
+then re-parses every archived demo against it.
+
 ## Getting the demos automatically (the bot)
 
 `fetcher/fetch-demos.mjs` runs first in every sync. It signs a **second, bot Steam
