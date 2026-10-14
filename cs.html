@@ -254,7 +254,7 @@
     .mnav{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
     .btn[disabled]{opacity:.35;cursor:default;filter:none}
     .mhero{position:relative;overflow:hidden;padding:20px;display:flex;flex-direction:column;gap:14px;border-left:4px solid var(--tie);margin-bottom:10px}
-    .mhero.rW{border-left-color:var(--win)} .mhero.rL{border-left-color:var(--loss)}
+    .mhero.rW{border-left-color:#4fd36b} .mhero.rL{border-left-color:#f0605a}
     .mhero .art{position:absolute;inset:0;background:center/cover no-repeat;opacity:.13;filter:blur(2px);pointer-events:none}
     .mhero > *{position:relative}
     .mtop{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-end}
@@ -267,14 +267,15 @@
     .detail{padding:4px 14px 18px}
     .mrow{width:100%;padding:8px 12px;background:none;border:0;border-left:4px solid var(--tie);text-align:left;cursor:pointer;font-size:14px}
     .mrow:hover{background:rgba(255,255,255,.035)}
-    .mrow.rW{border-left-color:var(--win)} .mrow.rL{border-left-color:var(--loss)}
+    .mrow.rW{border-left-color:#4fd36b} .mrow.rL{border-left-color:#f0605a}
     .thumb{width:56px;height:40px;background:#07090c center/cover no-repeat;border:1px solid var(--line)}
     .mrow .when{color:var(--dim);font-size:13px}
     .mrow .opt.good{color:var(--win-ink)} .mrow .opt.bad{color:var(--loss-ink)}
     .mrow .map{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.04em;text-transform:uppercase}
     .mrow .mode{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
     .score{font-family:var(--display);font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
-    .score.W{background:none;color:var(--win-ink)} .score.L{background:none;color:var(--loss-ink)} .score.T{background:none;color:var(--dim)}
+    /* the score itself: green won, red lost, grey drawn */
+    .score.W{background:none;color:#4fd36b} .score.L{background:none;color:#f0605a} .score.T{background:none;color:#a0a8b2}
     .score small{font-size:11px;letter-spacing:.12em;margin-left:5px}
     .src{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
     .src span{font-size:11px;letter-spacing:.08em;padding:1px 6px;border:1px solid var(--line-hot);color:var(--dim);text-transform:uppercase}
@@ -448,7 +449,7 @@
 
     /* ══ latest match: the way in ═══════════════════════════ */
     .latest{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;padding:22px;border-left:4px solid var(--tie)}
-    .latest.rW{border-left-color:var(--win)} .latest.rL{border-left-color:var(--loss)}
+    .latest.rW{border-left-color:#4fd36b} .latest.rL{border-left-color:#f0605a}
     .latest .art{position:absolute;inset:0;background:center/cover no-repeat;opacity:.12;filter:blur(3px);pointer-events:none}
     .latest > *{position:relative;min-width:0}
     .latest .lmain{display:flex;flex-direction:column;gap:14px}
@@ -793,6 +794,20 @@ function boot() {
   const hltv = (m) => m.me.multi ? hltvOf({ k: m.me.k, d: m.me.d, rounds: m.me.rounds || m.score[0] + m.score[1], multi: m.me.multi }) : null;
   const hsPct = (me) => me && me.k ? 100 * (me.hsk || 0) / me.k : null;
   const kd = (me) => me && me.d ? me.k / me.d : (me && me.k ? me.k : null);
+  // Each number coloured by where the game sits among every ranked game Ric
+  // has: his best is green, his worst red, the middle yellow. A new game
+  // reads at a glance against all the others.
+  const TONE = (() => {
+    const rk = matches.filter((m) => !UNRANKED.test(m.mode || "")), col = (f) => rk.map(f).filter((v) => v != null && isFinite(v)).sort((a, b) => a - b);
+    return { kd: col((m) => kd(m.me)), adr: col((m) => m.me.adr), hs: col((m) => hsPct(m.me)), kast: col((m) => m.me.kast),
+      rating: col((m) => m.me.rating), hltv: col(hltv) };
+  })();
+  const tone = (key, v) => {
+    const xs = TONE[key]; if (v == null || !isFinite(v) || !xs || xs.length < 2) return "";
+    const below = xs.filter((x) => x < v).length, same = xs.filter((x) => x === v).length;
+    const p = Math.max(0, Math.min(1, (below + Math.max(0, same - 1) / 2) / (xs.length - 1)));
+    return ` style="color:hsl(${Math.round(p * 120)},72%,${62 - 6 * Math.sin(p * Math.PI)}%)"`;
+  };
 
   /* ══ radar ═══════════════════════════════════════════════
      CS2's overview files say where the radar's top-left corner sits in the
@@ -922,8 +937,8 @@ function boot() {
         <div class="mtop"><div><div class="kicker">${esc(modeName(m.mode))} · ${esc(when(m.at, true))}</div>
           <h3 class="mname">${esc(mapName(m.map))}</h3></div>
           <div class="mscore score ${m.result}">${m.score[0]}<span>:</span>${m.score[1]}<small>${res}</small></div></div>
-        <div class="lline"><span>K-D-A <b>${me.k ?? "—"}-${me.d ?? "—"}-${me.a ?? "—"}</b></span><span>ADR <b>${fix(me.adr, 0)}</b>${info("adr", "ADR")}</span>
-          <span>HS <b>${pct(hsPct(me))}</b></span><span>HLTV <b>${hltv(m) != null ? hltv(m).toFixed(2) : "—"}</b>${info("hltv", "HLTV 1.0")}</span><span>Leetify rating <b class="${me.rating == null ? "" : me.rating >= 0 ? "good" : "bad"}">${signed(me.rating)}</b>${info("rating", "the Leetify rating")}</span></div>
+        <div class="lline"><span>K-D-A <b>${me.k ?? "—"}-${me.d ?? "—"}-${me.a ?? "—"}</b></span><span>K/D <b${tone("kd", kd(me))}>${fix(kd(me), 2)}</b></span><span>ADR <b${tone("adr", me.adr)}>${fix(me.adr, 0)}</b>${info("adr", "ADR")}</span>
+          <span>HS <b${tone("hs", hsPct(me))}>${pct(hsPct(me))}</b></span><span>HLTV <b${tone("hltv", hltv(m))}>${hltv(m) != null ? hltv(m).toFixed(2) : "—"}</b>${info("hltv", "HLTV 1.0")}</span><span>Leetify rating <b${tone("rating", me.rating)}>${signed(me.rating)}</b>${info("rating", "the Leetify rating")}</span></div>
         <div class="mact"><button type="button" class="btn" data-lopen>Review latest match</button>
           ${m.replay ? `<button type="button" class="btn ghost" data-lwatch="${best < 0 ? 0 : best}">▶ ${best < 0 ? "Watch round 1" : `Watch his best round (${best + 1}, ${rounds[best].k} kills)`}</button>` : ""}</div>
         ${rounds.length ? `<div>
@@ -1648,7 +1663,6 @@ function boot() {
     AVG = { adr: avgOf((me) => me.adr), kd: avgOf(kd), rating: avgOf((me) => me.rating), hs: avgOf(hsPct), hltv: hs.length ? hs.reduce((a, b) => a + b, 0) / hs.length : null };
   };
   setAvg();
-  const vsAvg = (v, a) => v == null || a == null ? "" : v >= a ? " good" : " bad";
   const SORTS = { new: ["Newest", null], rating: ["Rating", (m) => m.me.rating], adr: ["ADR", (m) => m.me.adr],
     hltv: ["HLTV 1.0", hltv], kd: ["K/D", (m) => kd(m.me)], k: ["Kills", (m) => m.me.k], hs: ["HS%", (m) => hsPct(m.me)] };
   const SOURCES = { demo: ["Demo", "Parsed from Valve's demo of the match"], gsi: ["Live", "Recorded from the game's live feed"],
@@ -1661,12 +1675,12 @@ function boot() {
         <span class="when">${esc(when(m.at))}</span>
         <span class="mapc"><span class="map">${esc(mapName(m.map))}</span><span class="mode">${esc(modeName(m.mode))}</span></span>
         <span class="scorec"><span class="score ${m.result}">${m.score[0]}:${m.score[1]}<small>${res}</small></span></span>
-        <span class="opt${vsAvg(kd(me), AVG.kd)}"><span class="lbl">K/D</span>${fix(kd(me), 2)}</span>
+        <span class="opt"${tone("kd", kd(me))}><span class="lbl">K/D</span>${fix(kd(me), 2)}</span>
         <span class="num opt"><span class="lbl">K-D-A</span>${me.k ?? "—"}-${me.d ?? "—"}-${me.a ?? "—"}</span>
-        <span class="num opt${vsAvg(me.adr, AVG.adr)}"><span class="lbl">ADR</span>${fix(me.adr, 0)}</span>
-        <span class="num opt x${vsAvg(hsPct(me), AVG.hs)}"><span class="lbl">HS%</span>${pct(hsPct(me))}</span>
-        <span class="num opt x${vsAvg(me.rating, AVG.rating)}"><span class="lbl">Leetify</span>${signed(me.rating)}</span>
-        <span class="num opt${vsAvg(hltv(m), AVG.hltv)}"><span class="lbl">HLTV</span>${hltv(m) != null ? hltv(m).toFixed(2) : "—"}</span>
+        <span class="num opt"${tone("adr", me.adr)}><span class="lbl">ADR</span>${fix(me.adr, 0)}</span>
+        <span class="num opt x"${tone("hs", hsPct(me))}><span class="lbl">HS%</span>${pct(hsPct(me))}</span>
+        <span class="num opt x"${tone("rating", me.rating)}><span class="lbl">Leetify</span>${signed(me.rating)}</span>
+        <span class="num opt"${tone("hltv", hltv(m))}><span class="lbl">HLTV</span>${hltv(m) != null ? hltv(m).toFixed(2) : "—"}</span>
       </button></div>`;
   }
   // the list as filtered and sorted right now; a match screen steps through it
@@ -1681,7 +1695,7 @@ function boot() {
     $("mlist").innerHTML = list.length ? list.map(row).join("")
       : `<div class="panel empty">${!matches.length ? "No matches on record yet." : "No matches fit these filters. Widen them above."}</div>`;
     $("mcount").textContent = `${list.length} match${list.length === 1 ? "" : "es"}`;
-    $("mcount").title = "Green and orange: better or worse than your average";
+    $("mcount").title = "Each number: green is your best game for it, red your worst";
   }
   (() => {
     $("filters").innerHTML = `
@@ -1764,7 +1778,7 @@ function boot() {
     let list = currentList(); if (!list.some((x) => x.id === m.id)) list = matches;
     const i = list.findIndex((x) => x.id === m.id), res = { W: "Win", L: "Loss", T: "Draw" }[m.result];
     const report = `<a class="note" href="projects/cs/llm/${encodeURIComponent(m.id)}.md">Full report as text</a>`;
-    const chipM = (v, l, cls = "", g) => `<div class="chip"><b class="${cls}">${v}</b><span>${l}${g ? info(g, l) : ""}</span></div>`;
+    const chipM = (v, l, style = "", g) => `<div class="chip"><b${style}>${v}</b><span>${l}${g ? info(g, l) : ""}</span></div>`;
     out.push(`<div class="mnav"><button type="button" class="btn ghost" data-mback>← All matches</button>
       <span class="note">${i + 1} of ${list.length}</span>
       <span style="display:flex;gap:4px;margin-left:auto"><button type="button" class="btn ghost" data-mnav="-1"${i > 0 ? "" : " disabled"} aria-label="Previous match">‹ Prev</button>
@@ -1774,10 +1788,10 @@ function boot() {
         <h2 class="mname">${esc(mapName(m.map))}</h2>
         <p class="note">Started ${m.start_side === "CT" ? "Counter-Terrorist" : m.start_side === "T" ? "Terrorist" : "—"}${m.surrender ? ` · ${m.result === "W" ? "the other team" : "Ric's team"} surrendered` : ""}${m.banned ? " · a player in this match was later banned" : ""}${(m.sources || []).length ? ` · from ${(m.sources || []).map((x) => SOURCES[x] ? SOURCES[x][0] : x).join(" + ")}` : ""}</p></div>
         <div class="mscore score ${m.result}">${m.score[0]}<span>:</span>${m.score[1]}<small>${res}</small></div></div>
-      <div class="chips">${chipM(`${me.k ?? "—"}-${me.d ?? "—"}-${me.a ?? "—"}`, "K-D-A")}${chipM(fix(kd(me), 2), "K/D", vsAvg(kd(me), AVG.kd).trim(), "kd")}
-        ${chipM(fix(me.adr, 0), "ADR", vsAvg(me.adr, AVG.adr).trim(), "adr")}${chipM(pct(hsPct(me)), "HS%", vsAvg(hsPct(me), AVG.hs).trim(), "hs")}
-        ${chipM(me.kast != null ? pct(me.kast) : "—", "KAST", "", "kast")}${chipM(hltv(m) != null ? hltv(m).toFixed(2) : "—", "HLTV 1.0", vsAvg(hltv(m), AVG.hltv).trim(), "hltv")}
-        ${chipM(signed(me.rating), "Leetify rating", vsAvg(me.rating, AVG.rating).trim(), "rating")}</div>
+      <div class="chips">${chipM(`${me.k ?? "—"}-${me.d ?? "—"}-${me.a ?? "—"}`, "K-D-A")}${chipM(fix(kd(me), 2), "K/D", tone("kd", kd(me)), "kd")}
+        ${chipM(fix(me.adr, 0), "ADR", tone("adr", me.adr), "adr")}${chipM(pct(hsPct(me)), "HS%", tone("hs", hsPct(me)), "hs")}
+        ${chipM(me.kast != null ? pct(me.kast) : "—", "KAST", tone("kast", me.kast), "kast")}${chipM(hltv(m) != null ? hltv(m).toFixed(2) : "—", "HLTV 1.0", tone("hltv", hltv(m)), "hltv")}
+        ${chipM(signed(me.rating), "Leetify rating", tone("rating", me.rating), "rating")}</div>
       ${m.replay ? `<div class="mact"><button class="btn" type="button" data-replay="${esc(m.id)}">▶ Watch 2D replay</button>
           <button class="btn ghost" type="button" data-snaps="${esc(m.id)}">Kill snapshots</button>${report}</div>`
         : `<p class="note">No 2D data for this one yet: ${m.at && Date.now() - new Date(m.at) > 28 * 864e5
