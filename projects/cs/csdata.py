@@ -67,6 +67,69 @@ def save(data):
     os.replace(tmp, DATA_JS)
 
 
+# ── replay tracks, packed ──
+# Positions are most of a replay file. Packed, each player's track is the first
+# sample after spawning (or after a gap) as a position, then each next sample as
+# the step from the one before, with x and y in units of TRACK_Q (2 game units,
+# under half a radar pixel). A track stops at its last sample instead of
+# carrying nulls to the end of the round; `samples` says how long it was. About
+# 30% smaller on disk and over the wire. cs.html's unpackTracks() undoes it, and
+# projects/cs/test/parity.mjs holds the two to the same answer.
+TRACK_Q = 2
+
+
+def pack_tracks(replay):
+    if replay.get("tracks_q"):
+        return replay
+    st = replay["stride"]
+    for r in replay["rounds"]:
+        n, packed = 0, {}
+        for seat, tr in r["tracks"].items():
+            n = max(n, len(tr) // st)
+            out, prev = [], None
+            for i in range(0, len(tr), st):
+                p = tr[i:i + st]
+                if p[0] is None:
+                    out += [None] * st
+                    prev = None
+                    continue
+                p = [round(p[0] / TRACK_Q), round(p[1] / TRACK_Q)] + list(p[2:])
+                out += p if prev is None else [a - b for a, b in zip(p, prev)]
+                prev = p
+            while out and out[-1] is None:
+                out.pop()
+            packed[seat] = out
+        r["samples"] = n
+        r["tracks"] = packed
+    replay["tracks_q"] = TRACK_Q
+    return replay
+
+
+def unpack_tracks(replay):
+    q = replay.get("tracks_q")
+    if not q:
+        return replay
+    st = replay["stride"]
+    for r in replay["rounds"]:
+        full = {}
+        for seat, tr in r["tracks"].items():
+            out, prev = [], None
+            for i in range(0, len(tr), st):
+                d = tr[i:i + st]
+                if d[0] is None:
+                    out += [None] * st
+                    prev = None
+                    continue
+                prev = d if prev is None else [a + b for a, b in zip(prev, d)]
+                out += [prev[0] * q, prev[1] * q] + prev[2:]
+            out += [None] * (r["samples"] * st - len(out))
+            full[seat] = out
+        r["tracks"] = full
+        del r["samples"]
+    del replay["tracks_q"]
+    return replay
+
+
 def share_code_match_id(code):
     """A match share code (CSGO-xxxxx-…) packs Valve's match id, outcome id and
     a token. The match id is also in the filename of the demo CS2 downloads, so

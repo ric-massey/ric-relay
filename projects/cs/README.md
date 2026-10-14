@@ -31,9 +31,21 @@ counting; averages still count ranked games only. Every stat that isn't
 self-explanatory has a tap-to-open ⓘ, and About lists them all — keep those
 definitions in step with `GLOSSARY` in `export-llm.py`. The replay and the kill
 snapshots load a match file (~600 KB) only when opened. The replay's address is
-`#replay/<id>/<round>[/<seconds>]`, and "Copy link to this moment" copies it. If
+`#replay/<id>/<round>[/<seconds>]` and a kill snapshot's is
+`#snap/<id>/<round>/<seconds>`; each has a copy-link button. Overview also
+charts ADR and the Leetify rating game by game, each with a five-game trend
+line, and any percentage built on fewer than five things is dotted-underlined. If
 `cs-data.js` or `stats.js` fails to load the page says so with a Try again
 button, rather than drawing an empty record.
+
+**Packed tracks.** Positions are most of a replay file, so `parse-demos.py`
+writes them packed (`pack_tracks` in `csdata.py`): steps instead of positions,
+x and y in 2-unit steps, trailing gaps cut. That made the 16 files about 30%
+smaller (9.0 MB → 6.5 MB on disk) at a cost of at most one game unit of
+position. The page unpacks them on load. `test/parity.mjs` checks that the page
+and the Python agree on the unpacked tracks, and replays every bomb timeline
+through both `bombAt()` in `cs.html` and `bomb_state()` in `export-llm.py`; it
+runs in `node .github/checks.mjs`.
 
 **Plain text for machines.** `export-llm.py` (run by every sync) rewrites
 `llm/index.md` and one `llm/<id>.md` per match: the same data as the page, every

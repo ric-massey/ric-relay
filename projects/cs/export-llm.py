@@ -72,18 +72,20 @@ def rating(r):
     return "—" if r is None else f"{r * 100:+.2f}"
 
 
-def bomb_at(r, t, nm):
-    """The bomb at one moment, replayed from the round's timeline (the same
-    rules the page uses)."""
+def bomb_state(r, t):
+    """The bomb at one moment, replayed from the round's timeline. The same
+    rules as bombAt() in cs.html; projects/cs/test/parity.mjs holds them
+    together."""
     b = r.get("bomb") or {}
+    tl = b.get("timeline") or []
     carrier = ground = planting = planted = defusing = defused = exploded = None
-    for et, kind, seat, x, y, extra in b.get("timeline") or []:
+    for et, kind, seat, x, y, extra in tl:
         if et > t:
             break
         if kind == "pickup":
             carrier, ground = seat, None
         elif kind == "drop":
-            carrier, ground = None, (x, y)
+            carrier, ground = None, ((x, y) if x is not None else None)
         elif kind == "plant_start":
             planting = (et, seat)
         elif kind == "planted":
@@ -94,6 +96,8 @@ def bomb_at(r, t, nm):
             defusing, defused = None, seat
         elif kind == "exploded":
             exploded = et
+    if not tl and (b.get("planted") or {}).get("t") is not None and b["planted"]["t"] <= t:
+        planted = b["planted"]["t"]               # older data: the plant only
     dead = {f["victim"] for f in r.get("fights") or [] if f["t"] <= t}
     if planting and (t - planting[0] > 3.2 or planting[1] in dead):
         planting = None
@@ -101,6 +105,15 @@ def bomb_at(r, t, nm):
         defusing = None
     if carrier in dead:
         carrier = None
+    return {"carrier": carrier, "ground": ground, "planting": planting, "planted": planted,
+            "defusing": defusing, "defused": defused, "exploded": exploded}
+
+
+def bomb_at(r, t, nm):
+    """The bomb at one moment, in words."""
+    s = bomb_state(r, t)
+    carrier, ground, planting, planted = s["carrier"], s["ground"], s["planting"], s["planted"]
+    defusing, defused, exploded = s["defusing"], s["defused"], s["exploded"]
     if exploded is not None:
         return "exploded"
     if defused is not None:
@@ -352,7 +365,12 @@ Matches with a saved demo have a data file at
 - `rounds[]`, each with
   - `side` (Ric's side), `w` (Ric's team won), `winner`, `reason`, `dur` (seconds)
   - `tracks`: `{seat: [x0, y0, x1, y1, …]}` sampled `hz` times a second from the
-    round going live; `null, null` while dead
+    round going live (`[x, y, z, …]` when the file has `stride: 3`); `null`s while dead.
+    When the file has `tracks_q`, tracks are packed: the first sample after a gap
+    is a position and each later one is the step from the previous, with x and y
+    divided by `tracks_q`; a track ends at its last sample, and the round's
+    `samples` gives the full length. To unpack, keep a running sum and multiply
+    x and y by `tracks_q`.
   - `fights[]`: `t`, `killer`, `victim`, `assister` (seats), `weapon`, `headshot`,
     `wallbang`, `through_smoke`, `noscope`, `killer_blind`, `killer_in_air`,
     `killer_at` / `victim_at` (`x, y, z, place`), `distance`, `killer_hp_after`,

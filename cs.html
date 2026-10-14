@@ -148,6 +148,8 @@
     .chartbox{padding:16px 16px 10px;position:relative}
     .legend{display:flex;gap:16px;font-size:12px;color:var(--dim);margin-bottom:8px;flex-wrap:wrap}
     .legend i{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px}
+    .legend i.ln{width:18px;height:0;border-top:2px solid var(--bright);vertical-align:3px}
+    .legend i.ln.dash{border-top:2px dashed rgba(255,255,255,.6)}
     .chart svg{display:block;width:100%;height:auto}
     .chart .axis{fill:var(--dim);font-size:11px;font-family:var(--sans)}
     .chart .grid{stroke:rgba(255,255,255,.07)}
@@ -392,6 +394,8 @@
     table.st th:first-child,table.st td:first-child{text-align:left;white-space:normal}
     table.st td.dim{color:var(--dim)}
     table.st th{cursor:pointer;user-select:none}
+    table.st .sorth{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;text-align:inherit}
+    table.st .sorth:hover{color:var(--bright)}
     table.st th[data-dir="desc"]::after{content:" ▼";font-size:9px} table.st th[data-dir="asc"]::after{content:" ▲";font-size:9px}
     table.st tr.spot{cursor:pointer} table.st tr.spot:hover td{background:rgba(255,255,255,.04)}
     table.st tr.spot.on td{background:rgba(231,193,120,.12)} table.st tr.spot:focus-visible{outline:2px solid var(--t-ink)}
@@ -437,8 +441,8 @@
     .latest .lline b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
     .latest .lprev{display:flex;flex-direction:column;gap:6px}
     .latest .lprev canvas{display:block;width:100%;max-width:340px;aspect-ratio:1;background:#07090c;border:1px solid var(--line);align-self:center}
-    .latest button.rd{background:none;border:0;padding:0;cursor:pointer;color:inherit}
-    .latest button.rd:hover .cell,.latest button.rd:focus-visible .cell{outline:2px solid var(--bright);outline-offset:-2px}
+    button.rd{background:none;border:0;padding:0;cursor:pointer;color:inherit;font:inherit}
+    button.rd:hover .cell,button.rd:focus-visible .cell{outline:2px solid var(--bright);outline-offset:-2px}
     @media (max-width:860px){.latest{grid-template-columns:1fr}}
 
     /* ══ the shared slice: one filter for overview, stats and matches ══ */
@@ -448,7 +452,16 @@
     .slicebar .count{margin-left:auto;font-size:13px;color:var(--dim)}
     .slicebar .count b{color:var(--bright);font-variant-numeric:tabular-nums}
     .slicebar .lab{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
-    @media (max-width:640px){.slicebar .count{margin-left:0;width:100%}}
+    .slicebar .sltoggle{display:none}
+    /* on a phone the bar is one line saying what's counted; tap it for the choices */
+    @media (max-width:640px){
+      .slicebar .count{margin-left:0;width:100%}
+      .slicebar .sltoggle{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 12px;cursor:pointer;
+        background:rgba(255,255,255,.05);border:1px solid var(--line-hot);font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;text-align:left}
+      .slicebar .sltoggle::after{content:"▾";font-size:12px}
+      .slicebar.open .sltoggle::after{content:"▴"}
+      .slicebar:not(.open) .seg{display:none}
+    }
 
     /* ══ what a number means: tap the ⓘ ═════════════════════ */
     .qi{display:inline-grid;place-items:center;width:22px;height:22px;margin:-4px 0 -4px 4px;padding:0;vertical-align:middle;cursor:pointer;
@@ -458,6 +471,7 @@
       box-shadow:0 12px 30px rgba(0,0,0,.6);font-size:13px;line-height:1.45;color:var(--text);text-transform:none;letter-spacing:0}
     .gloss b{display:block;font-family:var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--t-ink);margin-bottom:3px}
     .skill .scale{font-size:12px;color:var(--dim)}
+    .thin{text-decoration:underline dotted;text-decoration-thickness:1px;text-underline-offset:3px;cursor:help}
 
     .loaderr{margin-top:30px;padding:22px;display:flex;flex-direction:column;gap:12px;align-items:flex-start;border-left:4px solid var(--loss)}
     .loaderr[hidden]{display:none}
@@ -552,9 +566,23 @@
       <div class="legend"><span><i style="background:var(--win)"></i>Win</span>
         <span><i style="background:var(--loss)"></i>Loss</span>
         <span><i style="background:var(--tie)"></i>Draw</span>
-        <span>Dashed line: average</span></div>
+        <span><i class="ln"></i>Trend: average of the last 5 games</span>
+        <span><i class="ln dash"></i>Average</span></div>
       <div id="chart"></div>
       <div class="tip" id="tip" role="status"></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="rateh" data-view="overview">
+    <div class="shead"><h2 id="rateh">Leetify rating, game by game</h2>
+      <p>Above the line, Ric helped his team's chances that game; below it, he cost them. Same order and colours as the chart above.</p></div>
+    <div class="panel chartbox chart">
+      <div class="legend"><span><i style="background:var(--win)"></i>Win</span>
+        <span><i style="background:var(--loss)"></i>Loss</span>
+        <span><i style="background:var(--tie)"></i>Draw</span>
+        <span><i class="ln"></i>Trend: average of the last 5 games</span></div>
+      <div id="ratechart"></div>
+      <div class="tip" role="status"></div>
     </div>
   </section>
 
@@ -776,6 +804,11 @@ function boot() {
     ranks: ["Ranks", "Premier is CS2's main rating, the number on the coloured plate in-game. The plates after it are the Competitive skill groups, one per map, from Silver I up to The Global Elite."],
     sample: ["Which matches count", "These pick the matches that every number on Overview, Stats and Your Matches is worked out from. Averages only ever count ranked games; a custom or casual lobby still shows in the match list."],
   };
+  // A percentage of very few things says little: it gets a dotted underline
+  // and says so on hover or long-press. Colour stays the readable text ink.
+  const FEW = 5;
+  const thin = (text, n, unit = "") => n >= FEW ? text
+    : `<span class="thin" title="${esc(`Only ${n}${unit ? ` ${unit}${n === 1 ? "" : "s"}` : ""} behind this, too few to read much into`)}">${text}</span>`;
   const info = (k, label) => `<button type="button" class="qi" data-gloss="${k}" aria-label="What is ${esc(label)}?" aria-expanded="false">i</button>`;
   {
     const box = document.createElement("div"); box.className = "gloss"; box.hidden = true; box.setAttribute("role", "status");
@@ -827,13 +860,17 @@ function boot() {
     const seg = (key, label, opts) => `<div class="seg" role="group" aria-label="${label}">${opts.map(([v, l]) =>
       `<button type="button" data-slice="${key}" data-v="${esc(v)}" aria-pressed="${String(SLICE[key]) === String(v)}">${esc(l)}</button>`).join("")}</div>`;
     const demo = SL.filter((m) => m.replay).length, other = SL.length - SLR.length;
-    $("slice").innerHTML = seg("last", "How many games", [[0, "All games"], [10, "Last 10"], [5, "Last 5"]])
+    const summary = [SLICE.last ? `Last ${SLICE.last}` : "All games", SLICE.map === "all" ? "All maps" : mapName(SLICE.map),
+      SLICE.mode === "all" ? "All modes" : SLICE.mode === "ranked" ? "Ranked" : SLICE.mode].join(" · ");
+    $("slice").innerHTML = `<button type="button" class="sltoggle" aria-expanded="${$("slice").classList.contains("open")}">${esc(summary)}</button>` + seg("last", "How many games", [[0, "All games"], [10, "Last 10"], [5, "Last 5"]])
       + (mapsAll.length > 1 ? seg("map", "Map", [["all", "All maps"], ...mapsAll.map((m) => [m, mapName(m)])]) : "")
       + (modesPlayed.length > 1 ? seg("mode", "Mode", [["all", "All modes"], ["ranked", "Ranked"], ...modesPlayed.map((m) => [m, m])]) : "")
       + `<span class="count" aria-live="polite">Counting <b>${SL.length}</b> of ${matches.length} match${matches.length === 1 ? "" : "es"}${SL.length
         ? ` · ${SLR.length} ranked${other ? `, ${other} custom/casual` : ""} · ${demo === SL.length ? "all" : demo} with a demo` : ""}${info("sample", "which matches count")}</span>`;
   }
   $("slice").addEventListener("click", (e) => {
+    const tg = e.target.closest(".sltoggle");
+    if (tg) { const on = $("slice").classList.toggle("open"); tg.setAttribute("aria-expanded", String(on)); return; }
     const b = e.target.closest("[data-slice]"); if (!b) return;
     const k = b.dataset.slice; setSlice({ [k]: k === "last" ? +b.dataset.v : b.dataset.v });
   });
@@ -931,7 +968,7 @@ function boot() {
     $("since").textContent = !matches.length ? "No matches on record yet."
       : !SL.length ? "No matches fit the filters above. Widen them to see numbers."
       : !n ? `No ranked games here, only ${other} custom/casual, which the averages don't count.`
-      : `${n} ranked match${n === 1 ? "" : "es"}${oldest ? ` since ${when(oldest)}` : ""}${other ? ` · ${other} custom/casual not counted` : ""}`;
+      : `${n} ranked match${n === 1 ? "" : "es"}${oldest ? ` since ${when(oldest)}` : ""}${other ? ` · ${other} custom/casual not counted` : ""}${n < FEW ? " · a small sample, so read these loosely" : ""}`;
     // "—" means there is nothing to measure; a 0 is a real zero
     const chip = (v, l, g) => `<div class="chip"><b>${v}</b><span>${l}${g ? info(g, l) : ""}</span></div>`;
     $("chips").innerHTML = [chip(n, "Matches"), chip(n ? `${tally.W}-${tally.L}${tally.T ? `-${tally.T}` : ""}` : "—", tally.T ? "W-L-D" : "W-L"),
@@ -965,53 +1002,99 @@ function boot() {
     $("ratingnote").textContent = L.read ? `Read from Leetify ${when(L.read)}.` : "";
   })();
 
-  /* ══ ADR chart ══════════════════════════════════════════ */
-  let chartPts = [];
-  function renderChart() {
-    const box = $("chart");
-    $("tip").style.opacity = 0;
-    const pts = chartPts = SLR.filter((m) => typeof m.me.adr === "number").slice().reverse();
-    if (!pts.length) { box.innerHTML = `<p class="empty">${SL.length ? "No ranked games with a damage number among the matches counted." : "Nothing to chart yet."}</p>`; return; }
-    const W = 900, H = 220, padL = 36, padB = 22, padT = 10;
-    const max = Math.max(120, ...pts.map((m) => m.me.adr)) * 1.05, bw = (W - padL) / pts.length;
-    const y = (v) => padT + (H - padT - padB) * (1 - v / max);
-    const avg = pts.reduce((s, m) => s + m.me.adr, 0) / pts.length;
+  /* ══ game-by-game charts ═══════════════════════════════
+     ADR and the Leetify rating, one chart each (two scales never share an
+     axis), oldest on the left. Bars are coloured by result in both, and the
+     solid line is the trend: the average of each game and the four before it. */
+  const TREND = 5;
+  function barChart(box, pts, val, { fmt, label, zeroLine, avgLine, floor = 0, ceil = 0 }) {
+    const tip = box.parentElement.querySelector(".tip");
+    tip.style.opacity = 0; box.pts = pts;
+    if (!pts.length) { box.innerHTML = `<p class="empty">${SL.length ? `No ranked games with a ${label} among the matches counted.` : "Nothing to chart yet."}</p>`; return; }
+    const W = 900, H = 220, padL = 40, padB = 22, padT = 12;
+    const vs = pts.map(val), hi = Math.max(ceil, ...vs) * 1.08, lo = Math.min(floor, ...vs) * 1.08;
+    const step = [1, 2, 5, 10, 20, 40, 50, 100].find((s) => (hi - lo) / s <= 6) || 200;
+    const bw = (W - padL) / pts.length, y = (v) => padT + (H - padT - padB) * (hi - v) / (hi - lo);
     const col = { W: "var(--win)", L: "var(--loss)", T: "var(--tie)" };
-    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Damage per round in each of ${pts.length} games, oldest first, average ${avg.toFixed(0)}">`;
-    for (let v = 0; v <= max; v += 40) svg += `<line class="grid" x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${padL - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${label} in each of ${pts.length} games, oldest first`)}">`;
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step)
+      svg += `<line class="grid" x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}"${v === 0 && zeroLine ? ' style="stroke:rgba(255,255,255,.4)"' : ""}/><text class="axis" x="${padL - 6}" y="${y(v) + 4}" text-anchor="end">${fmt(v)}</text>`;
     pts.forEach((m, i) => {
-      const x = padL + i * bw + 1, w = Math.max(2, bw - 2), top = y(m.me.adr), r = Math.min(3, w / 2);
-      svg += `<path d="M${x},${y(0)} V${top + r} q0,-${r} ${r},-${r} h${w - 2 * r} q${r},0 ${r},${r} V${y(0)} Z" fill="${col[m.result]}"/>`;
-      svg += `<rect class="hit" data-i="${i}" x="${padL + i * bw}" y="${padT}" width="${bw}" height="${H - padT - padB}"/>`;
+      // rounded on the data end, square on the zero line
+      const v = vs[i], x = padL + i * bw + 1, w = Math.max(2, bw - 2), r = Math.min(3, w / 2, Math.abs(y(v) - y(0)));
+      svg += v >= 0
+        ? `<path d="M${x},${y(0)} V${y(v) + r} q0,-${r} ${r},-${r} h${w - 2 * r} q${r},0 ${r},${r} V${y(0)} Z" fill="${col[m.result]}"/>`
+        : `<path d="M${x},${y(0)} V${y(v) - r} q0,${r} ${r},${r} h${w - 2 * r} q${r},0 ${r},-${r} V${y(0)} Z" fill="${col[m.result]}"/>`;
     });
-    svg += `<line x1="${padL}" x2="${W}" y1="${y(avg)}" y2="${y(avg)}" stroke="#fff" stroke-opacity=".55" stroke-dasharray="4 4" stroke-width="1.5"/><text class="axis" x="${W - 4}" y="${y(avg) - 6}" text-anchor="end">avg ${avg.toFixed(0)}</text></svg>`;
-    box.innerHTML = svg;
+    if (avgLine) {
+      const avg = vs.reduce((s, v) => s + v, 0) / vs.length;
+      svg += `<line x1="${padL}" x2="${W}" y1="${y(avg)}" y2="${y(avg)}" stroke="#fff" stroke-opacity=".55" stroke-dasharray="4 4" stroke-width="1.5"/><text class="axis" x="${W - 4}" y="${y(avg) - 6}" text-anchor="end">avg ${fmt(avg)}</text>`;
+    }
+    // the trend starts once there are three games to average
+    const trend = vs.map((_, i) => { const w = vs.slice(Math.max(0, i - TREND + 1), i + 1); return i < 2 ? null : w.reduce((a, b) => a + b, 0) / w.length; });
+    const tp = trend.map((v, i) => v == null ? null : `${(padL + (i + 0.5) * bw).toFixed(1)},${y(v).toFixed(1)}`).filter(Boolean);
+    if (tp.length > 1) svg += `<polyline points="${tp.join(" ")}" fill="none" stroke="#07090c" stroke-width="5" stroke-linejoin="round" stroke-opacity=".7"/><polyline points="${tp.join(" ")}" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>`;
+    pts.forEach((m, i) => { svg += `<rect class="hit" data-i="${i}" x="${padL + i * bw}" y="${padT}" width="${bw}" height="${H - padT - padB}"/>`; });
+    box.trend = trend; box.fmt = fmt; box.label = label; box.val = val;
+    box.innerHTML = svg + "</svg>";
   }
-  (() => {
-    const box = $("chart"), tip = $("tip");
+  function chartEvents(box) {
+    const tip = box.parentElement.querySelector(".tip");
     box.addEventListener("pointermove", (e) => {
       const t = e.target.closest(".hit"); if (!t) { tip.style.opacity = 0; return; }
-      const m = chartPts[+t.dataset.i];
-      tip.innerHTML = `<b>${esc(mapName(m.map))}</b> · ${m.score[0]}-${m.score[1]} ${m.result === "W" ? "win" : m.result === "L" ? "loss" : "draw"}<br>${fix(m.me.adr)} ADR · ${m.me.k}/${m.me.d}/${m.me.a} · ${esc(when(m.at))}`;
+      const i = +t.dataset.i, m = box.pts[i], tr = box.trend[i];
+      tip.innerHTML = `<b>${esc(mapName(m.map))}</b> · ${m.score[0]}-${m.score[1]} ${m.result === "W" ? "win" : m.result === "L" ? "loss" : "draw"} · ${esc(when(m.at))}<br>
+        ${esc(box.label)} ${box.fmt(box.val(m))}${tr != null ? ` · trend ${box.fmt(tr)}` : ""} · ${m.me.k}/${m.me.d}/${m.me.a}`;
       const host = box.parentElement.getBoundingClientRect(), r = t.getBoundingClientRect();
       tip.style.opacity = 1;
       tip.style.left = Math.min(host.width - tip.offsetWidth - 8, Math.max(8, r.left - host.left + r.width / 2 - tip.offsetWidth / 2)) + "px";
       tip.style.top = (r.top - host.top + 6) + "px";
     });
     box.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
-    box.addEventListener("click", (e) => { const t = e.target.closest(".hit"); if (t) openMatch(chartPts[+t.dataset.i].id); });
-  })();
+    box.addEventListener("click", (e) => { const t = e.target.closest(".hit"); if (t) openMatch(box.pts[+t.dataset.i].id); });
+  }
+  chartEvents($("chart")); chartEvents($("ratechart"));
+  function renderChart() {
+    barChart($("chart"), SLR.filter((m) => typeof m.me.adr === "number").slice().reverse(), (m) => m.me.adr,
+      { fmt: (v) => v.toFixed(0), label: "damage per round", avgLine: true, ceil: 120 });
+    barChart($("ratechart"), SLR.filter((m) => typeof m.me.rating === "number").slice().reverse(), (m) => m.me.rating * 100,
+      { fmt: (v) => `${v > 0 ? "+" : ""}${Number.isInteger(v) ? v : v.toFixed(2)}`, label: "Leetify rating", zeroLine: true, floor: -5, ceil: 5 });
+  }
 
   /* ══ match data files ═══════════════════════════════════ */
+  // Tracks arrive packed (see pack_tracks in projects/cs/csdata.py): a
+  // position, then steps from it, x and y in units of tracks_q, trailing gaps
+  // cut. This puts them back as absolute positions, padded to the round.
+  function unpackTracks(R) {
+    const q = R.tracks_q; if (!q) return R;
+    const st = R.stride || 2;
+    for (const r of R.rounds) {
+      for (const seat of Object.keys(r.tracks)) {
+        const tr = r.tracks[seat], out = [];
+        let prev = null;
+        for (let i = 0; i < tr.length; i += st) {
+          if (tr[i] == null) { for (let j = 0; j < st; j++) out.push(null); prev = null; continue; }
+          const d = tr.slice(i, i + st);
+          prev = prev ? prev.map((v, j) => v + d[j]) : d;
+          out.push(prev[0] * q, prev[1] * q, ...prev.slice(2));
+        }
+        while (out.length < r.samples * st) out.push(null);
+        r.tracks[seat] = out;
+      }
+      delete r.samples;
+    }
+    delete R.tracks_q;
+    return R;
+  }
   const loaded = {};
   function loadMatch(id) {
-    if (window.CS_MATCH && window.CS_MATCH[id]) return Promise.resolve(window.CS_MATCH[id]);
+    if (window.CS_MATCH && window.CS_MATCH[id]) return Promise.resolve(unpackTracks(window.CS_MATCH[id]));
     return loaded[id] ||= new Promise((ok, bad) => {
       const s = document.createElement("script");
-      s.src = `projects/cs/matches/${encodeURIComponent(id)}.js?v=2`;
+      s.src = `projects/cs/matches/${encodeURIComponent(id)}.js?v=3`;
       // a failure is forgotten, so "try again" really fetches again
       const fail = () => { delete loaded[id]; s.remove(); bad(); };
-      s.onload = () => (window.CS_MATCH && window.CS_MATCH[id]) ? ok(window.CS_MATCH[id]) : fail();
+      s.onload = () => (window.CS_MATCH && window.CS_MATCH[id]) ? ok(unpackTracks(window.CS_MATCH[id])) : fail();
       s.onerror = fail; document.head.appendChild(s);
     });
   }
@@ -1324,6 +1407,7 @@ function boot() {
         `<button type="button" data-which="${v}" aria-pressed="${snapState.which === v}">${l}</button>`).join("")}</div></div>
       <div class="snapnav"><button type="button" class="btn ghost" data-snav="-1" aria-label="Previous moment">‹ Prev</button>
         <span class="note" id="snapcount"></span><button type="button" class="btn ghost" data-snav="1" aria-label="Next moment">Next ›</button></div>
+      <div style="display:flex;justify-content:center;margin:-2px 0 8px"><button type="button" class="pp" data-snapshare style="padding:0 12px">Copy link to this kill</button></div>
       <div class="snapstrip" id="snapstrip" role="group" aria-label="Every moment in this match"></div>
       <div id="snaps"></div>`;
     $("snapmatch").addEventListener("change", (e) => { snapState.id = e.target.value; snapState.i = 0; renderSnaps(); });
@@ -1338,6 +1422,16 @@ function boot() {
         return renderSnaps();
       }
       if (e.target.closest("[data-snapretry]")) return renderSnaps();
+      const sh = e.target.closest("[data-snapshare]");
+      if (sh) {
+        const s = snapList[snapState.i]; if (!s) return;
+        const h = snapHash(snapState.id, s), url = location.href.split("#")[0] + h;
+        if (view === "snapshots" && location.hash !== h) history.replaceState(null, "", h);
+        const said = (text) => { sh.textContent = text; clearTimeout(sh.timer); sh.timer = setTimeout(() => { sh.textContent = "Copy link to this kill"; }, 2500); };
+        (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+          .then(() => said(`Copied: round ${s.ri + 1} at ${mmss(s.f.t)}`), () => said("The link is in the address bar"));
+        return;
+      }
       const n = e.target.closest("[data-snav]"); if (n) return stepSnap(+n.dataset.snav);
       const j = e.target.closest("[data-si]"); if (j) { snapState.i = +j.dataset.si; renderSnaps(); }
   });
@@ -1347,6 +1441,9 @@ function boot() {
   });
 
   let snapList = [];
+  // #snap/<match>/<round>/<seconds>: a kill is named by when it happened, so
+  // the link survives the All / Kills / Deaths switch and new data
+  const snapHash = (id, s) => `#snap/${encodeURIComponent(id)}/${s.ri + 1}/${s.f.t}`;
   const stopSnap = () => { const old = $("snaps") && $("snaps").querySelector(".snap"); if (old && old.stop) old.stop(); if (heldRV) heldRV.hold(false); };
   function stepSnap(dir) {
     const i = snapState.i + dir;
@@ -1367,6 +1464,11 @@ function boot() {
         if ((mine && snapState.which !== "deaths") || (died && snapState.which !== "kills")) list.push({ r, ri, f, died });
       }));
       snapList = list;
+      if (snapState.want) {
+        const w = snapState.want; snapState.want = null;
+        const j = list.findIndex((s) => s.ri === w.ri && Math.abs(s.f.t - w.t) < 0.06);
+        if (j >= 0) snapState.i = j;
+      }
       if (snapState.i < 0) snapState.i = list.length - 1;
       snapState.i = Math.max(0, Math.min(list.length - 1, snapState.i));
       const k = replayable.findIndex((x) => x.id === m.id), i = snapState.i;
@@ -1378,6 +1480,7 @@ function boot() {
       if (!list.length) { $("snaps").innerHTML = `<div class="panel empty">Nothing here.</div>`; return; }
       stopSnap();
       $("snaps").innerHTML = snapCard(list[i], 0, seats, R);
+      if (view === "snapshots" && location.hash !== snapHash(m.id, list[i])) history.replaceState(null, "", snapHash(m.id, list[i]));
       const card = $("snaps").querySelector(".snap");
       card.classList.add("solo"); card.querySelector("canvas").width = card.querySelector("canvas").height = 1100;
       mountSnap(card, list[i], seats, R, cal);
@@ -1491,6 +1594,7 @@ function boot() {
     // The replay and the snapshots load a match's demo data (~600 KB), so
     // they wait until someone opens them.
     if (v === "snapshots" && !snapStarted) renderSnapBar();
+    else if (v === "snapshots" && snapList[snapState.i]) history.replaceState(null, "", snapHash(snapState.id, snapList[snapState.i]));
     if (v === "replay" && player) player.sync();
     if (v === "replay" && !replayStarted) {
       if (replayable.length) showReplay(replayable[0].id, false);
@@ -1559,6 +1663,7 @@ function boot() {
       if (e.target.closest("[data-mback]")) return go("matches");
       const n = e.target.closest("[data-mnav]"); if (n) return stepMatch(+n.dataset.mnav);
       const r = e.target.closest("[data-replay]"); if (r) return showReplay(r.dataset.replay, true);
+      const w = e.target.closest("[data-rwatch]"); if (w && openId != null) return showReplay(openId, true, +w.dataset.rwatch, 0);
       const s = e.target.closest("[data-snaps]");
       if (s) { snapState.id = s.dataset.snaps; snapState.i = 0; renderSnapBar(); go("snapshots"); }
     });
@@ -1618,12 +1723,14 @@ function boot() {
     if (m.rounds && m.rounds.length) {
       // the gap goes where the sides swapped; a game surrendered before the half has none
       const half = m.rounds.findIndex((r, i) => i && r.side && m.rounds[i - 1].side && r.side !== m.rounds[i - 1].side);
-      out.push(`<div><h3>Round history</h3><div class="rounds">${m.rounds.map((r, i) => {
+      // with a replay, every round is a way into it
+      const tag = m.replay ? "button" : "div";
+      out.push(`<div><h3>Round history${m.replay ? ` <span class="note" style="text-transform:none;letter-spacing:0;font-family:var(--sans);font-weight:400">· tap a round to watch it</span>` : ""}</h3><div class="rounds">${m.rounds.map((r, i) => {
         const e = (m.economy || [])[i] || {};
-        const title = `Round ${i + 1}: ${r.w ? "won" : "lost"} as ${r.side || "?"}${r.why ? ` (${r.why})` : ""}, ${r.k || 0} kill${r.k === 1 ? "" : "s"}${r.dead ? ", died" : ", survived"}${e.equip ? `, $${e.equip} loadout` : ""}`;
-        return `${i === half ? '<span class="half" aria-hidden="true"></span>' : ""}<div class="rd" title="${esc(title)}" aria-label="${esc(title)}" role="img">
+        const title = `Round ${i + 1}: ${r.w ? "won" : "lost"} as ${r.side || "?"}${r.why ? ` (${r.why})` : ""}, ${r.k || 0} kill${r.k === 1 ? "" : "s"}${r.dead ? ", died" : ", survived"}${e.equip ? `, $${e.equip} loadout` : ""}${m.replay ? ". Watch it" : ""}`;
+        return `${i === half ? '<span class="half" aria-hidden="true"></span>' : ""}<${tag} class="rd"${m.replay ? ` type="button" data-rwatch="${i}"` : ' role="img"'} title="${esc(title)}" aria-label="${esc(title)}">
           <span class="k">${r.k ? r.k : ""}</span><span class="cell ${r.w ? "W" : "L"}">${reasonIcon(r.why)}</span>
-          <span class="sd" style="background:${r.side === "CT" ? "var(--ct)" : r.side === "T" ? "var(--t)" : "var(--tie)"}"></span><span class="n">${i + 1}</span></div>`;
+          <span class="sd" style="background:${r.side === "CT" ? "var(--ct)" : r.side === "T" ? "var(--t)" : "var(--tie)"}"></span><span class="n">${i + 1}</span></${tag}>`;
       }).join("")}</div><div class="rkey"><span><i class="W"></i>won</span><span><i class="L"></i>lost</span>
         <span><span class="ic">${ICON.skull}</span>elimination</span><span><span class="ic">${ICON.bomb}</span>bomb</span>
         <span><span class="ic">${ICON.defuse}</span>defuse</span><span><span class="ic">${ICON.time}</span>time</span>
@@ -1679,7 +1786,7 @@ function boot() {
       return `<div class="mapcard" data-mlist="${esc(map)}" role="link" tabindex="0" aria-label="${esc(mapName(map))}: show its ${g.n} game${g.n === 1 ? "" : "s"}"><div class="art" style="${cal ? `background-image:url('projects/cs/${cal.img}')` : ""}"><h3>${esc(mapName(map))}</h3></div>
         <div class="info"><div class="wl">${g.n} game${g.n === 1 ? "" : "s"} · ${g.W}W ${g.L}L${g.T ? ` ${g.T}D` : ""}</div>
         <div class="wbar" role="img" aria-label="${g.W} wins, ${g.L} losses, ${g.T} draws"><i class="W" style="flex:${g.W}"></i><i class="L" style="flex:${g.L}"></i><i class="T" style="flex:${g.T}"></i></div>
-        <div class="kv"><span>Win rate</span><b>${pct(100 * g.W / g.n)}</b></div><div class="kv"><span>K/D</span><b>${g.d ? fix(g.k / g.d, 2) : "—"}</b></div>
+        <div class="kv"><span>Win rate</span><b>${thin(pct(100 * g.W / g.n), g.n, "game")}</b></div><div class="kv"><span>K/D</span><b>${g.d ? fix(g.k / g.d, 2) : "—"}</b></div>
         <div class="kv"><span>ADR</span><b>${g.r ? fix(g.dmg / g.r, 0) : "—"}</b></div>
         ${rank[map] != null ? `<div class="kv"><span>Rank</span><b>${esc(RANKS[rank[map]] || rank[map])}</b></div>` : ""}
         <div style="display:flex;gap:6px;margin-top:10px"><button type="button" class="btn ghost" data-mstats="${esc(map)}" style="min-height:32px;font-size:13px;padding:0 12px">Stats</button>
@@ -1882,12 +1989,14 @@ function boot() {
     // rounds tiles are pushed first (six of them), then the fight tiles
     const STABS = [["spots", "Callouts & radar"], ["rounds", "Rounds & economy"], ["fights", "Duels & weapons"]];
     if (!STABS.some(([v]) => v === st.tab)) st.tab = "spots";
-    const P = (a, b) => b ? `${Math.round(100 * a / b)}%<small>${a}/${b}</small>` : "—";
+    const P = (a, b) => b ? thin(`${Math.round(100 * a / b)}%`, b) + `<small>${a}/${b}</small>` : "—";
     const row = (k, v) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`;
     const sum = (xs, f) => xs.reduce((s, x) => s + (f(x) || 0), 0);
     const kdc = (k, d) => d ? `<span class="${k / d >= 1 ? "good" : "bad"}">${(k / d).toFixed(2)}</span>` : k ? `<span class="good">${k}.00</span>` : "—";
     const bar = (v, col) => `<span class="pbar"><i style="width:${Math.min(100, v)}%;background:${col}"></i></span>`;
-    const tbl = (head, rows) => `<div class="stwrap"><table class="st"><thead><tr>${head.map((h) => `<th scope="col">${h}</th>`).join("")}</tr></thead><tbody>${rows.join("") || `<tr><td class="dim" colspan="${head.length}">Nothing yet.</td></tr>`}</tbody></table></div>`;
+    // each heading is a button, so the keyboard can sort too; aria-sort says which way
+    const tbl = (head, rows) => `<div class="stwrap"><table class="st"><thead><tr>${head.map((h) => h
+      ? `<th scope="col" aria-sort="none"><button type="button" class="sorth">${h}</button></th>` : `<th scope="col"></th>`).join("")}</tr></thead><tbody>${rows.join("") || `<tr><td class="dim" colspan="${head.length}">Nothing yet.</td></tr>`}</tbody></table></div>`;
     const buyOf = (v) => v == null ? null : v < 2000 ? "Eco" : v < 3900 ? "Force" : "Full";
     const HG = { head: "Head", neck: "Head", chest: "Chest", stomach: "Stomach", left_arm: "Arms", right_arm: "Arms", left_leg: "Legs", right_leg: "Legs" };
     const whyOf = (w) => /defus/i.test(w || "") ? "Bomb defused" : /bomb|explod|target/i.test(w || "") ? "Bomb exploded" : /surrender/i.test(w || "") ? "Surrender"
@@ -1904,7 +2013,7 @@ function boot() {
       const F = S.fights.filter((f) => inMap(f.g) && inSide(f.side));
       const K = F.filter((f) => f.kind === "k"), Dd = F.filter((f) => f.kind === "d");
       const nG = new Set(R.map((r) => r.g)).size;
-      $("stnote").textContent = `${nG} of the ${SL.length} match${SL.length === 1 ? "" : "es"} counted ${nG === 1 ? "has" : "have"} a saved demo · ${R.length} rounds · ${K.length} kills · ${Dd.length} deaths`;
+      $("stnote").textContent = `${nG} of the ${SL.length} match${SL.length === 1 ? "" : "es"} counted ${nG === 1 ? "has" : "have"} a saved demo · ${R.length} rounds · ${K.length} kills · ${Dd.length} deaths · a dotted underline means fewer than ${FEW} to go on`;
       const tiles = [];
 
       // rounds
@@ -1942,7 +2051,7 @@ function boot() {
       tiles.push(`<div class="tile"><h4>Clutches</h4><p class="note" style="margin-bottom:6px">Ric last alive on his team.</p>
         ${tbl(["Situation", "Won", "Played", "%"], [1, 2, 3, 4, 5].map((n) => {
           const c = R.filter((r) => r.clutch === n), w = sum(c, (r) => r.w);
-          return `<tr><td>1v${n}</td><td>${w}</td><td>${c.length}</td><td>${c.length ? Math.round(100 * w / c.length) + "%" : "—"}</td></tr>`; }))}
+          return `<tr><td>1v${n}</td><td>${w}</td><td>${c.length}</td><td>${c.length ? thin(Math.round(100 * w / c.length) + "%", c.length) : "—"}</td></tr>`; }))}
         ${row("Rounds Ric ended up last alive", P(R.filter((r) => r.clutch).length, R.length))}</div>`);
 
       // economy
@@ -1951,7 +2060,7 @@ function boot() {
       tiles.push(`<div class="tile"><h4>Economy</h4><p class="note" style="margin-bottom:6px">Round win % by each team's average loadout after the buy (eco under $2,000, force under $3,900). Pistol rounds left out.</p>
         ${tbl(["Us ↓ · them →", ...classes], classes.map((us) => `<tr><td>${us}</td>${classes.map((them) => {
           const x = nonPistol.filter((r) => buyOf(r.ours) === us && buyOf(r.theirs) === them), w = sum(x, (r) => r.w);
-          return `<td>${x.length ? `${Math.round(100 * w / x.length)}%<small style="color:var(--dim);margin-left:4px">${x.length}</small>` : "—"}</td>`; }).join("")}</tr>`))}
+          return `<td>${x.length ? `${thin(`${Math.round(100 * w / x.length)}%`, x.length)}<small style="color:var(--dim);margin-left:4px">${x.length}</small>` : "—"}</td>`; }).join("")}</tr>`))}
         <div class="sub">Ric's own buy</div>${classes.map((c) => { const x = nonPistol.filter((r) => buyOf(r.buy) === c);
           return row(`${c} rounds <small>won · K/round</small>`, x.length ? `${P(sum(x, (r) => r.w), x.length)} · ${(sum(x, (r) => r.k) / x.length).toFixed(2)}` : "—"); }).join("")}
         ${row("Average loadout", nonPistol.length ? `$${int(sum(nonPistol, (r) => r.buy) / nonPistol.length)}` : "—")}</div>`);
@@ -2117,10 +2226,10 @@ function boot() {
     $("statbox").addEventListener("keydown", (e) => { const tr = e.target.closest("tr[data-spot]"); if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); focusSpot(tr); } });
     // any stats table sorts by a column heading: first click high to low, again low to high
     $("statbox").addEventListener("click", (e) => {
-      const th = e.target.closest("table.st th"); if (!th) return;
+      const th = e.target.closest("table.st th"); if (!th || !th.querySelector(".sorth")) return;
       const tb = th.closest("table").tBodies[0], i = th.cellIndex, desc = th.dataset.dir !== "desc", dir = desc ? 1 : -1;
-      for (const x of th.parentNode.children) delete x.dataset.dir;
-      th.dataset.dir = desc ? "desc" : "asc";
+      for (const x of th.parentNode.children) { delete x.dataset.dir; if (x.hasAttribute("aria-sort")) x.setAttribute("aria-sort", "none"); }
+      th.dataset.dir = desc ? "desc" : "asc"; th.setAttribute("aria-sort", desc ? "descending" : "ascending");
       const val = (tr) => { const c = tr.cells[i]; if (!c) return 0; const n = parseFloat(c.textContent.replace(/[^\d.\-]/g, "")); return isNaN(n) ? c.textContent : n; };
       [...tb.rows].sort((a, b) => { const x = val(a), y = val(b); return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y))) * -dir; })
         .forEach((r) => tb.appendChild(r));
@@ -2145,6 +2254,15 @@ function boot() {
       if (replayable.some((m) => m.id === id)) {
         showReplay(id, false, Math.max(0, (+moment[2] || 1) - 1), moment[3] != null ? +moment[3] : null, true);
         go("replay", true);
+        return;
+      }
+    }
+    const snap = location.hash.match(/^#snap\/([^/]+)\/(\d+)\/(\d+(?:\.\d+)?)$/);
+    if (snap) {
+      const id = decodeURIComponent(snap[1]);
+      if (replayable.some((m) => m.id === id)) {
+        Object.assign(snapState, { id, which: "all", i: 0, want: { ri: +snap[2] - 1, t: +snap[3] } });
+        renderSnapBar(); go("snapshots", true);
         return;
       }
     }

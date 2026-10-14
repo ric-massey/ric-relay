@@ -55,6 +55,9 @@ const SUITES = [
      parse should not wait for the nightly simulations to be found. */
   ['kondrite parses and is wired up', ['projects/kondrite/test/smoke.js']],
   ['the two climbing parsers agree', ['projects/climbing/test/parse-parity.js']],
+  /* The bomb timer and the packed replay tracks are each written twice, in
+     cs.html and in Python; this replays every committed match through both. */
+  ['the CS page and its scripts agree', ['projects/cs/test/parity.mjs']],
   ['atlas', glob('atlas/test', '.test.mjs')],
   /* auth-security is also what keeps the real database key off the website. */
   ['hermiscus (dads-race)', glob('projects/dads-race/tests', '.test.cjs')],
