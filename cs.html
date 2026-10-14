@@ -995,7 +995,8 @@ function boot() {
           }).join("")}</div></div>` : ""}
       </div>
       ${cal ? `<div class="lprev"><div class="lstage"><canvas width="680" height="680" aria-label="${esc(`The ${mapName(m.map)} radar from this match`)}"></canvas><div class="kf" aria-hidden="true"></div></div>
-        ${m.replay && rounds.length ? `<div class="seg lmode" role="group" aria-label="Show"><button type="button" data-lmode="loop">▶ Round ${(best < 0 ? 0 : best) + 1}${best < 0 ? "" : `, ${rounds[best].k}K`}</button><button type="button" data-lmode="fights">All fights</button></div>` : ""}
+        ${m.replay && rounds.length ? `<div class="seg lmode" role="group" aria-label="Show"><button type="button" data-lmode="loop">▶ Round ${(best < 0 ? 0 : best) + 1}${best < 0 ? "" : `, ${rounds[best].k}K`}</button><button type="button" data-lmode="fights">All fights</button>
+          <button type="button" data-lspeed title="Playback speed">${PREFS.lspeed || 1}×</button></div>` : ""}
         <div class="rlegend" data-lleg style="justify-content:center">${fights.length ? `<span><i style="background:#c9a24b"></i>T</span><span><i style="background:#5d79ae"></i>CT</span><span>● Ric's kills · ✕ his deaths · cone = facing · point at one to see his view</span>`
           : `<span>${m.replay ? "Where the fights were shows up with the stats file." : "No demo for this match, so no positions."}</span>`}</div></div>` : ""}</div>`;
     box.addEventListener("click", (e) => {
@@ -1042,11 +1043,17 @@ function boot() {
     loadImg(floor === 1 && cal.lower ? cal.lower : cal.img).then((im) => draw(im));
 
     /* The way in: the best round of the latest game, playing on a loop at
-       double speed, drawn exactly as the 2D replay draws it. It pauses off
+       real speed (or whichever speed was picked), drawn exactly as the 2D replay draws it. It pauses off
        Overview and in a hidden tab; reduced motion starts on All fights. */
     const legend = box.querySelector("[data-lleg]"), legendFights = legend.innerHTML, kf = box.querySelector(".lstage .kf");
     const loopRound = best < 0 ? 0 : best;
-    let loop = null;
+    let loop = null, speed = [0.5, 1, 2, 4].includes(PREFS.lspeed) ? PREFS.lspeed : 1;
+    box.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-lspeed]"); if (!b) return;
+      speed = speed === 1 ? 2 : speed === 2 ? 4 : speed === 4 ? 0.5 : 1;
+      b.textContent = `${speed}×`; savePrefs({ lspeed: speed });
+      if (mode !== "loop") setMode("loop");
+    });
     const setMode = (v) => {
       mode = v;
       for (const b of box.querySelectorAll("[data-lmode]")) b.setAttribute("aria-pressed", String(b.dataset.lmode === v));
@@ -1069,7 +1076,7 @@ function boot() {
           raf = 0;
           if (mode !== "loop") return;
           if (view !== "overview" || document.hidden) { loop.last = 0; setTimeout(() => { if (!raf) raf = requestAnimationFrame(frame); }, 400); return; }
-          loop.t += loop.last ? Math.min(0.1, (now - loop.last) / 1000) * 2 : 0; loop.last = now;
+          loop.t += loop.last ? Math.min(0.1, (now - loop.last) / 1000) * speed : 0; loop.last = now;
           if (loop.t > end + 1.5) loop.t = 0;                // a beat on the end before it starts again
           const t = Math.min(loop.t, end), players = momentAt(R, r, t), B = bombAt(r, t);
           const ric = players.find((p) => p.seat === 0 && !p.dead), lv = ric && lowerAt(cal, ric.z) && imgs[1] ? 1 : 0;
