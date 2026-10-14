@@ -453,6 +453,8 @@
     .lstage{position:relative}
     .lstage .kf{position:absolute;top:8px;right:8px}
     .lmode{justify-content:center;margin:8px auto 0;width:max-content}
+    .lmode [data-lspeed]{display:inline-flex;align-items:center;gap:6px}
+    .lmode .ff{width:15px;height:11px}
     .latest .art{position:absolute;inset:0;background:center/cover no-repeat;opacity:.12;filter:blur(3px);pointer-events:none}
     .latest > *{position:relative;min-width:0}
     .latest .lmain{display:flex;flex-direction:column;gap:14px}
@@ -996,7 +998,7 @@ function boot() {
       </div>
       ${cal ? `<div class="lprev"><div class="lstage"><canvas width="680" height="680" aria-label="${esc(`The ${mapName(m.map)} radar from this match`)}"></canvas><div class="kf" aria-hidden="true"></div></div>
         ${m.replay && rounds.length ? `<div class="seg lmode" role="group" aria-label="Show"><button type="button" data-lmode="loop">▶ Round ${(best < 0 ? 0 : best) + 1}${best < 0 ? "" : `, ${rounds[best].k}K`}</button><button type="button" data-lmode="fights">All fights</button>
-          <button type="button" data-lspeed title="Playback speed">${PREFS.lspeed || 1}×</button></div>` : ""}
+          <button type="button" data-lspeed title="Playback speed" aria-label="Playback speed"><svg class="ff" viewBox="0 0 16 12" aria-hidden="true"><path d="M0 0l7 6-7 6zM8 0l7 6-7 6z" fill="currentColor"/></svg><span>${PREFS.lspeed || 1}×</span></button></div>` : ""}
         <div class="rlegend" data-lleg style="justify-content:center">${fights.length ? `<span><i style="background:#c9a24b"></i>T</span><span><i style="background:#5d79ae"></i>CT</span><span>● Ric's kills · ✕ his deaths · cone = facing · point at one to see his view</span>`
           : `<span>${m.replay ? "Where the fights were shows up with the stats file." : "No demo for this match, so no positions."}</span>`}</div></div>` : ""}</div>`;
     box.addEventListener("click", (e) => {
@@ -1051,7 +1053,7 @@ function boot() {
     box.addEventListener("click", (e) => {
       const b = e.target.closest("[data-lspeed]"); if (!b) return;
       speed = speed === 1 ? 2 : speed === 2 ? 4 : speed === 4 ? 0.5 : 1;
-      b.textContent = `${speed}×`; savePrefs({ lspeed: speed });
+      b.querySelector("span").textContent = `${speed}×`; savePrefs({ lspeed: speed });
       if (mode !== "loop") setMode("loop");
     });
     const setMode = (v) => {
