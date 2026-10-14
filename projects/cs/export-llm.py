@@ -68,6 +68,16 @@ def f(v, d=1):
     return "—" if v is None else (f"{v:.{d}f}" if isinstance(v, float) else str(v))
 
 
+def hltv(m):
+    """HLTV rating 1.0 from the match line, the same formula as the page."""
+    me = m["me"]
+    rounds, mk = me.get("rounds") or sum(m["score"]), me.get("multi")
+    if not rounds or me.get("k") is None or me.get("d") is None or not mk:
+        return "—"
+    multi = mk[0] + 4 * mk[1] + 9 * mk[2] + 16 * mk[3] + 25 * (mk[4] if len(mk) > 4 else 0)
+    return f"{(me['k'] / rounds / 0.679 + 0.7 * (rounds - me['d']) / rounds / 0.317 + multi / rounds / 1.277) / 2.7:.2f}"
+
+
 def rating(r):
     return "—" if r is None else f"{r * 100:+.2f}"
 
@@ -425,10 +435,10 @@ def index_md(data, matches, breakdown=""):
             + f". Premier rating: {(lt.get('ranks') or {}).get('premier') or 'unrated'}."]
 
     L += ["", "## Matches (newest first)", "",
-          table(["Date", "Map", "Mode", "Score", "Result", "K-D-A", "ADR", "Leetify rating", "Full data", "Report"],
+          table(["Date", "Map", "Mode", "Score", "Result", "K-D-A", "ADR", "HLTV 1.0", "Leetify rating", "Full data", "Report"],
                 [(when(m.get("at")), map_name(m["map"]), MODES.get(m.get("mode"), m.get("mode")),
                   f"{m['score'][0]}–{m['score'][1]}", {"W": "win", "L": "loss", "T": "draw"}[m["result"]],
-                  f"{m['me'].get('k')}-{m['me'].get('d')}-{m['me'].get('a')}", f(m["me"].get("adr")),
+                  f"{m['me'].get('k')}-{m['me'].get('d')}-{m['me'].get('a')}", f(m["me"].get("adr")), hltv(m),
                   rating(m["me"].get("rating")), "yes" if m.get("replay") else "no",
                   f"[{m['id']}.md]({m['id']}.md)") for m in matches])]
 

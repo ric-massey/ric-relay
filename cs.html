@@ -247,7 +247,7 @@
     .filters button[aria-pressed="true"]{color:var(--bright);border-color:var(--line-hot);background:rgba(255,255,255,.1)}
     .mlist{display:flex;flex-direction:column;gap:3px}
     .mhead,.mrow{display:grid;align-items:center;gap:10px;
-      grid-template-columns:56px 112px minmax(100px,1.2fr) 90px 54px 84px 48px 50px 92px minmax(96px,auto)}
+      grid-template-columns:56px 112px minmax(100px,1.2fr) 90px 54px 84px 48px 50px 92px 64px}
     .mhead{padding:0 12px 6px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
     .match{background:var(--panel);border:1px solid var(--line);scroll-margin-top:110px}
     /* a match's own screen */
@@ -421,6 +421,21 @@
     .spotlay table.st th,.spotlay table.st td{padding:4px 5px}
     .plot canvas{display:block;width:100%;aspect-ratio:1;background:#07090c}
     .more{margin-top:12px}
+    /* records: bests, highlights, teammates */
+    .recgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:10px;align-items:start}
+    .recgrid .tile{background:var(--panel);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+    .rec{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;width:100%;padding:7px 8px;margin:0 -8px;
+      background:none;border:0;border-top:1px solid var(--line);text-align:left;cursor:pointer;font-size:13px;color:var(--text)}
+    .rec:first-of-type{border-top:0}
+    .rec:hover{background:rgba(255,255,255,.05)}
+    .rec b{font-family:var(--display);font-size:18px;letter-spacing:.03em;color:var(--bright);font-variant-numeric:tabular-nums;text-align:right}
+    .rec small{grid-column:1/-1;color:var(--dim);font-size:12px}
+    .rec .tag{font-family:var(--display);font-weight:700;letter-spacing:.08em;padding:1px 6px;margin-right:6px;background:var(--t);color:#0b0d10;font-size:12px}
+    .rec .tag.cl{background:var(--ct-ink)}
+    /* a match's buys, round by round */
+    .econ svg{display:block;width:100%;height:auto;max-width:900px}
+    .econ .axis{fill:var(--dim);font-size:10px;font-family:var(--sans)}
+    .econ .grid{stroke:rgba(255,255,255,.07)}
     /* the Stats page's own tabs, the in-game sub-menu under the main strip */
     .stabs{display:flex;gap:0;margin:0 0 12px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
     .stabs button{flex:none;min-height:40px;padding:0 16px;background:none;border:0;border-bottom:2px solid transparent;cursor:pointer;
@@ -528,7 +543,7 @@
   <div class="panel loaderr" id="loaderr" role="alert" hidden></div>
 
   <section id="latest" aria-labelledby="lh" data-view="overview">
-    <div class="shead"><h2 id="lh">Latest match</h2><p>Pick a round and watch it, or open the whole match.</p></div>
+    <div class="shead"><h2 id="lh">Latest match</h2></div>
     <div id="latestbox"></div>
   </section>
 
@@ -543,13 +558,13 @@
       </div>
       <div class="chips" id="chips"></div>
       <div>
-        <div class="note" style="margin-bottom:6px" id="formnote">Recent games, oldest on the left, newest on the right</div>
+        <div class="note" style="margin-bottom:6px" id="formnote">Recent form</div>
         <div class="form" id="form"></div>
       </div>
     </div>
     <div class="panel skill">
       <h2>Skill profile</h2>
-      <p class="scale">Leetify's scores out of 100, higher is better, across every game they've parsed (not just the matches picked above). Tap <span aria-hidden="true">ⓘ</span> for what each one measures.</p>
+      <p class="scale">Leetify · all games · out of 100</p>
       <div id="ratings"></div>
       <div>
         <div class="note" style="margin-bottom:6px">Competitive rank by map</div>
@@ -560,8 +575,7 @@
   </section>
 
   <section aria-labelledby="formh" data-view="overview">
-    <div class="shead"><h2 id="formh">Damage per round, game by game</h2>
-      <p>Oldest on the left, newest on the right, like the strip above. Click a bar for the game.</p></div>
+    <div class="shead"><h2 id="formh">Damage per round, game by game</h2></div>
     <div class="panel chartbox chart">
       <div class="legend"><span><i style="background:var(--win)"></i>Win</span>
         <span><i style="background:var(--loss)"></i>Loss</span>
@@ -574,8 +588,7 @@
   </section>
 
   <section aria-labelledby="rateh" data-view="overview">
-    <div class="shead"><h2 id="rateh">Leetify rating, game by game</h2>
-      <p>Above the line, Ric helped his team's chances that game; below it, he cost them. Same order and colours as the chart above.</p></div>
+    <div class="shead"><h2 id="rateh">Leetify rating, game by game</h2></div>
     <div class="panel chartbox chart">
       <div class="legend"><span><i style="background:var(--win)"></i>Win</span>
         <span><i style="background:var(--loss)"></i>Loss</span>
@@ -584,6 +597,11 @@
       <div id="ratechart"></div>
       <div class="tip" role="status"></div>
     </div>
+  </section>
+
+  <section aria-labelledby="rech" data-view="overview">
+    <div class="shead"><h2 id="rech">Records</h2></div>
+    <div class="recgrid" id="recbox"></div>
   </section>
 
   <section id="stats" aria-labelledby="sth" data-view="stats">
@@ -597,7 +615,7 @@
     <div class="filters" id="filters"></div>
     <div class="mhead">
       <span></span><span>Date</span><span>Map</span><span>Score</span><span>K/D</span><span>K-D-A</span>
-      <span>ADR</span><span>HS%</span><span>Leetify<button type="button" class="qi" data-gloss="rating" aria-label="What is the Leetify rating?" aria-expanded="false">i</button></span><span style="text-align:right">Source</span>
+      <span>ADR</span><span>HS%</span><span>Leetify<button type="button" class="qi" data-gloss="rating" aria-label="What is the Leetify rating?" aria-expanded="false">i</button></span><span>HLTV<button type="button" class="qi" data-gloss="hltv" aria-label="What is HLTV 1.0?" aria-expanded="false">i</button></span>
     </div>
     <div class="mlist" id="mlist"></div>
     </div>
@@ -606,22 +624,22 @@
 
   <section id="snapshots" aria-labelledby="sh" data-view="snapshots">
     <div class="shead"><h2 id="sh">Kill Snapshots</h2>
-      <p>Every kill and every death, frozen: where everyone stood, their health, their gun, the smoke in the air. Prev / Next or ← → to step; click the map to play the seconds around it.</p></div>
+      </div>
     <div id="snapbox"></div>
   </section>
 
   <section id="replay" aria-labelledby="rh" data-view="replay">
-    <div class="shead"><h2 id="rh">2D Replay</h2><p>Every round on the radar: everyone moving, every kill, every grenade.</p></div>
+    <div class="shead"><h2 id="rh">2D Replay</h2></div>
     <div id="replaybox"></div>
   </section>
 
   <section id="maps" aria-labelledby="maph" data-view="overview">
-    <div class="shead"><h2 id="maph">Maps</h2><p>Ranked games among the matches counted above. A card opens that map's games.</p></div>
+    <div class="shead"><h2 id="maph">Maps</h2></div>
     <div class="maps" id="maplist"></div>
   </section>
 
   <section id="weapons" aria-labelledby="wh" data-view="overview">
-    <div class="shead"><h2 id="wh">Weapons</h2><p>Kills by weapon, from the ranked games counted above.</p></div>
+    <div class="shead"><h2 id="wh">Weapons</h2></div>
     <div class="panel" id="weaponbox"></div>
   </section>
 
@@ -764,6 +782,15 @@ function boot() {
   // Career numbers count ranked games only: a custom Rush or a casual lobby
   // would skew every average. They still show in the match list.
   const UNRANKED = /rush|casual|deathmatch|custom|retake|armsrace|gungame/i;
+  // HLTV's rating 1.0: kills, survival and multi-kill rounds per round, each
+  // against a pro average, so 1.00 is an average pro game. Needs Leetify's
+  // multi-kill counts; works on totals too (career = sums, not an average).
+  const hltvOf = ({ k, d, rounds, multi }) => {
+    if (!rounds || k == null || d == null || !multi) return null;
+    const mk = multi[0] + 4 * multi[1] + 9 * multi[2] + 16 * multi[3] + 25 * (multi[4] || 0);
+    return (k / rounds / 0.679 + 0.7 * (rounds - d) / rounds / 0.317 + mk / rounds / 1.277) / 2.7;
+  };
+  const hltv = (m) => m.me.multi ? hltvOf({ k: m.me.k, d: m.me.d, rounds: m.me.rounds || m.score[0] + m.score[1], multi: m.me.multi }) : null;
   const hsPct = (me) => me && me.k ? 100 * (me.hsk || 0) / me.k : null;
   const kd = (me) => me && me.d ? me.k / me.d : (me && me.k ? me.k : null);
 
@@ -802,6 +829,7 @@ function boot() {
     opening: ["Opening duels", "Leetify's opening-duel rating: how the first fight of a round goes when Ric is in it, against what's expected. 0 is break-even, shown ×100; above 0 is better than expected."],
     sides: ["As CT · as T", "The Leetify rating split by side: Counter-Terrorist first, then Terrorist. Same scale as the match rating."],
     ranks: ["Ranks", "Premier is CS2's main rating, the number on the coloured plate in-game. The plates after it are the Competitive skill groups, one per map, from Silver I up to The Global Elite."],
+    hltv: ["HLTV 1.0", "HLTV's original player rating, the one most stat sites still show: kills per round, rounds survived and multi-kill rounds, each measured against an average pro. 1.00 is an average pro game; most matchmaking players sit around 0.80–1.10. Worked out here from the match line, so it can differ from HLTV's own by a hair."],
     sample: ["Which matches count", "These pick the matches that every number on Overview, Stats and Your Matches is worked out from. Averages only ever count ranked games; a custom or casual lobby still shows in the match list."],
   };
   // A percentage of very few things says little: it gets a dotted underline
@@ -865,8 +893,8 @@ function boot() {
     $("slice").innerHTML = `<button type="button" class="sltoggle" aria-expanded="${$("slice").classList.contains("open")}">${esc(summary)}</button>` + seg("last", "How many games", [[0, "All games"], [10, "Last 10"], [5, "Last 5"]])
       + (mapsAll.length > 1 ? seg("map", "Map", [["all", "All maps"], ...mapsAll.map((m) => [m, mapName(m)])]) : "")
       + (modesPlayed.length > 1 ? seg("mode", "Mode", [["all", "All modes"], ["ranked", "Ranked"], ...modesPlayed.map((m) => [m, m])]) : "")
-      + `<span class="count" aria-live="polite">Counting <b>${SL.length}</b> of ${matches.length} match${matches.length === 1 ? "" : "es"}${SL.length
-        ? ` · ${SLR.length} ranked${other ? `, ${other} custom/casual` : ""} · ${demo === SL.length ? "all" : demo} with a demo` : ""}${info("sample", "which matches count")}</span>`;
+      + `<span class="count" aria-live="polite"><b>${SL.length}</b>/${matches.length} matches${SL.length
+        ? ` · ${SLR.length} ranked · ${demo} demos` : ""}${info("sample", "which matches count")}</span>`;
   }
   $("slice").addEventListener("click", (e) => {
     const tg = e.target.closest(".sltoggle");
@@ -895,10 +923,10 @@ function boot() {
           <h3 class="mname">${esc(mapName(m.map))}</h3></div>
           <div class="mscore score ${m.result}">${m.score[0]}<span>:</span>${m.score[1]}<small>${res}</small></div></div>
         <div class="lline"><span>K-D-A <b>${me.k ?? "—"}-${me.d ?? "—"}-${me.a ?? "—"}</b></span><span>ADR <b>${fix(me.adr, 0)}</b>${info("adr", "ADR")}</span>
-          <span>HS <b>${pct(hsPct(me))}</b></span><span>Leetify rating <b class="${me.rating == null ? "" : me.rating >= 0 ? "good" : "bad"}">${signed(me.rating)}</b>${info("rating", "the Leetify rating")}</span></div>
+          <span>HS <b>${pct(hsPct(me))}</b></span><span>HLTV <b>${hltv(m) != null ? hltv(m).toFixed(2) : "—"}</b>${info("hltv", "HLTV 1.0")}</span><span>Leetify rating <b class="${me.rating == null ? "" : me.rating >= 0 ? "good" : "bad"}">${signed(me.rating)}</b>${info("rating", "the Leetify rating")}</span></div>
         <div class="mact"><button type="button" class="btn" data-lopen>Review latest match</button>
           ${m.replay ? `<button type="button" class="btn ghost" data-lwatch="${best < 0 ? 0 : best}">▶ ${best < 0 ? "Watch round 1" : `Watch his best round (${best + 1}, ${rounds[best].k} kills)`}</button>` : ""}</div>
-        ${rounds.length ? `<div><div class="note" style="margin-bottom:6px">${m.replay ? "Or pick any round to watch it on the 2D replay." : "Round by round. This one has no 2D replay."} The number above a round is Ric's kills.</div>
+        ${rounds.length ? `<div>
           <div class="rounds" role="group" aria-label="Rounds">${rounds.map((r, i) => {
             const label = `Round ${i + 1}: ${r.w ? "won" : "lost"} as ${r.side || "?"}, ${r.k || 0} kill${r.k === 1 ? "" : "s"}${m.replay ? ". Watch it" : ""}`;
             return `${i === half ? '<span class="half" aria-hidden="true"></span>' : ""}<button type="button" class="rd" ${m.replay ? `data-lwatch="${i}"` : "data-lopen"} title="${esc(label)}" aria-label="${esc(label)}">
@@ -907,7 +935,7 @@ function boot() {
           }).join("")}</div></div>` : ""}
       </div>
       ${cal ? `<div class="lprev"><canvas width="680" height="680" aria-label="${esc(`The ${mapName(m.map)} radar with Ric's ${nk} kills and ${nd} deaths from this match`)}"></canvas>
-        <div class="rlegend" style="justify-content:center">${fights.length ? `<span><i style="background:var(--win)"></i>Ric's kills</span><span><i style="background:var(--loss)"></i>his deaths</span><span>tap one to watch it</span>`
+        <div class="rlegend" style="justify-content:center">${fights.length ? `<span><i style="background:var(--win)"></i>Ric's kills</span><span><i style="background:var(--loss)"></i>his deaths</span>`
           : `<span>${m.replay ? "Where the fights were shows up with the stats file." : "No demo for this match, so no positions."}</span>`}</div></div>` : ""}</div>`;
     box.addEventListener("click", (e) => {
       if (e.target.closest("[data-lopen]")) return openMatch(m.id);
@@ -956,6 +984,12 @@ function boot() {
   function renderOverview() {
     const n = SLR.length, tally = { W: 0, L: 0, T: 0 };
     let k = 0, d = 0, hsk = 0, dmg = 0, rounds = 0, rsum = 0, rn = 0, kast = 0, kn = 0;
+    const H = { k: 0, d: 0, rounds: 0, multi: [0, 0, 0, 0, 0] };     // only games with multi-kill counts
+    for (const m of SLR) if (m.me.multi && m.me.k != null) {
+      H.k += m.me.k; H.d += m.me.d || 0; H.rounds += m.me.rounds || m.score[0] + m.score[1];
+      m.me.multi.forEach((v, i) => { H.multi[i] += v || 0; });
+    }
+    const career = hltvOf(H);
     for (const m of SLR) {
       tally[m.result]++;
       const me = m.me; k += me.k || 0; d += me.d || 0; hsk += me.hsk || 0;
@@ -974,10 +1008,11 @@ function boot() {
     $("chips").innerHTML = [chip(n, "Matches"), chip(n ? `${tally.W}-${tally.L}${tally.T ? `-${tally.T}` : ""}` : "—", tally.T ? "W-L-D" : "W-L"),
       chip(n ? pct(100 * tally.W / n) : "—", "Win rate", "winrate"), chip(d ? fix(k / d, 2) : n ? fix(k, 2) : "—", "K/D", "kd"),
       chip(rounds ? fix(dmg / rounds, 0) : "—", "ADR", "adr"), chip(k ? pct(100 * hsk / k) : n ? "0%" : "—", "Headshot %", "hs"),
-      chip(kn ? pct(kast / kn) : "—", "KAST", "kast"), chip(n ? int(k) : "—", "Kills"), chip(rn ? signed(rsum / rn) : "—", "Leetify rating", "rating")].join("");
+      chip(kn ? pct(kast / kn) : "—", "KAST", "kast"), chip(career != null ? career.toFixed(2) : "—", "HLTV 1.0", "hltv"),
+      chip(n ? int(k) : "—", "Kills"), chip(rn ? signed(rsum / rn) : "—", "Leetify rating", "rating")].join("");
     // oldest on the left, newest on the right, the same way the chart reads
     const recent = SLR.slice(0, 20).reverse();
-    $("formnote").textContent = recent.length ? `Last ${recent.length} game${recent.length === 1 ? "" : "s"}, oldest on the left, newest on the right. Tap one to open it.` : "";
+    $("formnote").textContent = recent.length ? `Last ${recent.length} · oldest → newest` : "";
     $("form").innerHTML = recent.map((m) => {
       const label = `${mapName(m.map)} ${m.score[0]}-${m.score[1]} ${{ W: "win", L: "loss", T: "draw" }[m.result]}, ${when(m.at)}`;
       return `<button type="button" class="${m.result}" data-open="${esc(m.id)}" title="${esc(label)}" aria-label="${esc(label)}">${m.result === "T" ? "D" : m.result}</button>`;
@@ -1517,7 +1552,7 @@ function boot() {
         ${f.killer_hp_after != null ? `<span>killer on <b>${f.killer_hp_after} HP</b></span>` : ""}
         ${f.opening ? `<span><b>opening kill</b></span>` : ""}${f.traded_after != null ? `<span>traded at <b>${mmss(f.traded_after)}</b></span>` : ""}</div>
       <div class="snapbody"><div class="rv"><canvas width="720" height="720" tabindex="0" aria-label="Radar at that moment. Activate to zoom, pan and play the seconds around it."></canvas>
-          <div class="kf" aria-hidden="true"></div><div class="hint">Click to zoom, pan and play · Space, ← →</div>
+          <div class="kf" aria-hidden="true"></div><div class="hint" title="Space plays · ← → step 5 s · Esc lets go">Click to play</div>
           ${playBar(`<button type="button" class="pp" data-close aria-label="Close">✕</button>`)}</div>
         <div class="roster"><h4 class="t">Terrorists</h4>${team("T")}<h4 class="ct">Counter-Terrorists</h4>${team("CT")}</div></div>
       <div class="util"><span><i style="background:rgba(205,212,222,.8)"></i>${smokes} smoke${smokes === 1 ? "" : "s"} up</span>
@@ -1608,11 +1643,14 @@ function boot() {
   // green and orange are against the average of the ranked games counted
   const avgOf = (f) => { const xs = SLR.map((m) => f(m.me)).filter((v) => typeof v === "number" && isFinite(v)); return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null; };
   let AVG = {};
-  const setAvg = () => { AVG = { adr: avgOf((me) => me.adr), kd: avgOf(kd), rating: avgOf((me) => me.rating), hs: avgOf(hsPct) }; };
+  const setAvg = () => {
+    const hs = SLR.map(hltv).filter((v) => v != null);
+    AVG = { adr: avgOf((me) => me.adr), kd: avgOf(kd), rating: avgOf((me) => me.rating), hs: avgOf(hsPct), hltv: hs.length ? hs.reduce((a, b) => a + b, 0) / hs.length : null };
+  };
   setAvg();
   const vsAvg = (v, a) => v == null || a == null ? "" : v >= a ? " good" : " bad";
   const SORTS = { new: ["Newest", null], rating: ["Rating", (m) => m.me.rating], adr: ["ADR", (m) => m.me.adr],
-    kd: ["K/D", (m) => kd(m.me)], k: ["Kills", (m) => m.me.k], hs: ["HS%", (m) => hsPct(m.me)] };
+    hltv: ["HLTV 1.0", hltv], kd: ["K/D", (m) => kd(m.me)], k: ["Kills", (m) => m.me.k], hs: ["HS%", (m) => hsPct(m.me)] };
   const SOURCES = { demo: ["Demo", "Parsed from Valve's demo of the match"], gsi: ["Live", "Recorded from the game's live feed"],
     leetify: ["Leetify", "Numbers from Leetify's parse of the demo"] };
   function row(m) {
@@ -1628,7 +1666,7 @@ function boot() {
         <span class="num opt${vsAvg(me.adr, AVG.adr)}"><span class="lbl">ADR</span>${fix(me.adr, 0)}</span>
         <span class="num opt x${vsAvg(hsPct(me), AVG.hs)}"><span class="lbl">HS%</span>${pct(hsPct(me))}</span>
         <span class="num opt x${vsAvg(me.rating, AVG.rating)}"><span class="lbl">Leetify</span>${signed(me.rating)}</span>
-        <span class="src">${(m.sources || []).map((s) => SOURCES[s] ? `<span class="${s}" title="${SOURCES[s][1]}">${SOURCES[s][0]}</span>` : "").join("")}</span>
+        <span class="num opt${vsAvg(hltv(m), AVG.hltv)}"><span class="lbl">HLTV</span>${hltv(m) != null ? hltv(m).toFixed(2) : "—"}</span>
       </button></div>`;
   }
   // the list as filtered and sorted right now; a match screen steps through it
@@ -1642,7 +1680,8 @@ function boot() {
     const list = currentList();
     $("mlist").innerHTML = list.length ? list.map(row).join("")
       : `<div class="panel empty">${!matches.length ? "No matches on record yet." : "No matches fit these filters. Widen them above."}</div>`;
-    $("mcount").textContent = `${list.length} match${list.length === 1 ? "" : "es"} · green and orange are against the average of the ranked games counted`;
+    $("mcount").textContent = `${list.length} match${list.length === 1 ? "" : "es"}`;
+    $("mcount").title = "Green and orange: better or worse than your average";
   }
   (() => {
     $("filters").innerHTML = `
@@ -1697,6 +1736,29 @@ function boot() {
     if (next) openMatch(next.id);
   }
 
+  // Each team's average loadout after the buy, every round, from the demo:
+  // the HLTV-style economy strip. Light bar Ric's team, dark bar theirs.
+  function econChart(m) {
+    const CS = window.CS_STATS, g = CS ? CS.games.findIndex((x) => x.id === m.id) : -1;
+    const rs = g < 0 ? [] : CS.rounds.filter((r) => r.g === g && r.ours != null).sort((a, b) => a.n - b.n);
+    if (!rs.length) return "";
+    const W = Math.max(360, rs.length * 30 + 44), H = 150, padL = 40, padB = 26, padT = 8, cw = (W - padL) / rs.length;
+    const hi = Math.max(6000, ...rs.map((r) => Math.max(r.ours, r.theirs))), y = (v) => padT + (H - padT - padB) * (1 - v / hi);
+    const buy = (v) => v < 2000 ? "eco" : v < 3900 ? "force" : "full";
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Each team's average loadout value per round">`;
+    for (let v = 0; v <= hi; v += 2000) svg += `<line class="grid" x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${padL - 5}" y="${y(v) + 3}" text-anchor="end">$${v / 1000}k</text>`;
+    rs.forEach((r, i) => {
+      const x = padL + i * cw, bw = Math.max(3, (cw - 6) / 2);
+      const t = `Round ${r.n}: Ric's team $${int(r.ours)} (${buy(r.ours)}), them $${int(r.theirs)} (${buy(r.theirs)}) · ${r.w ? "won" : "lost"}`;
+      svg += `<g><title>${esc(t)}</title><rect x="${x + 2}" y="${y(r.ours)}" width="${bw}" height="${y(0) - y(r.ours)}" fill="#e9ecef" opacity=".85"/>
+        <rect x="${x + 2 + bw + 1}" y="${y(r.theirs)}" width="${bw}" height="${y(0) - y(r.theirs)}" fill="#5c6570"/>
+        <rect x="${x + 2}" y="${H - padB + 4}" width="${cw - 4}" height="6" fill="${r.w ? "var(--win)" : "var(--loss)"}"/>
+        <text class="axis" x="${x + cw / 2}" y="${H - 4}" text-anchor="middle">${r.n}</text></g>`;
+    });
+    return `<div class="econ"><h3>Economy</h3>${svg}</svg><div class="rkey"><span><i style="background:#e9ecef"></i>Ric's team</span><span><i style="background:#5c6570"></i>Opponents</span>
+</div></div>`;
+  }
+
   function detail(m) {
     const me = m.me, out = [], cal = radarFor(m.map);
     let list = currentList(); if (!list.some((x) => x.id === m.id)) list = matches;
@@ -1710,11 +1772,12 @@ function boot() {
     <div class="panel mhero r${m.result}"><div class="art" style="${cal ? `background-image:url('projects/cs/${cal.img}')` : ""}"></div>
       <div class="mtop"><div><div class="kicker">${esc(modeName(m.mode))} · ${esc(when(m.at, true))}</div>
         <h2 class="mname">${esc(mapName(m.map))}</h2>
-        <p class="note">Started ${m.start_side === "CT" ? "Counter-Terrorist" : m.start_side === "T" ? "Terrorist" : "—"}${m.surrender ? ` · ${m.result === "W" ? "the other team" : "Ric's team"} surrendered` : ""}${m.banned ? " · a player in this match was later banned" : ""}</p></div>
+        <p class="note">Started ${m.start_side === "CT" ? "Counter-Terrorist" : m.start_side === "T" ? "Terrorist" : "—"}${m.surrender ? ` · ${m.result === "W" ? "the other team" : "Ric's team"} surrendered` : ""}${m.banned ? " · a player in this match was later banned" : ""}${(m.sources || []).length ? ` · from ${(m.sources || []).map((x) => SOURCES[x] ? SOURCES[x][0] : x).join(" + ")}` : ""}</p></div>
         <div class="mscore score ${m.result}">${m.score[0]}<span>:</span>${m.score[1]}<small>${res}</small></div></div>
       <div class="chips">${chipM(`${me.k ?? "—"}-${me.d ?? "—"}-${me.a ?? "—"}`, "K-D-A")}${chipM(fix(kd(me), 2), "K/D", vsAvg(kd(me), AVG.kd).trim(), "kd")}
         ${chipM(fix(me.adr, 0), "ADR", vsAvg(me.adr, AVG.adr).trim(), "adr")}${chipM(pct(hsPct(me)), "HS%", vsAvg(hsPct(me), AVG.hs).trim(), "hs")}
-        ${chipM(me.kast != null ? pct(me.kast) : "—", "KAST", "", "kast")}${chipM(signed(me.rating), "Leetify rating", vsAvg(me.rating, AVG.rating).trim(), "rating")}</div>
+        ${chipM(me.kast != null ? pct(me.kast) : "—", "KAST", "", "kast")}${chipM(hltv(m) != null ? hltv(m).toFixed(2) : "—", "HLTV 1.0", vsAvg(hltv(m), AVG.hltv).trim(), "hltv")}
+        ${chipM(signed(me.rating), "Leetify rating", vsAvg(me.rating, AVG.rating).trim(), "rating")}</div>
       ${m.replay ? `<div class="mact"><button class="btn" type="button" data-replay="${esc(m.id)}">▶ Watch 2D replay</button>
           <button class="btn ghost" type="button" data-snaps="${esc(m.id)}">Kill snapshots</button>${report}</div>`
         : `<p class="note">No 2D data for this one yet: ${m.at && Date.now() - new Date(m.at) > 28 * 864e5
@@ -1725,7 +1788,7 @@ function boot() {
       const half = m.rounds.findIndex((r, i) => i && r.side && m.rounds[i - 1].side && r.side !== m.rounds[i - 1].side);
       // with a replay, every round is a way into it
       const tag = m.replay ? "button" : "div";
-      out.push(`<div><h3>Round history${m.replay ? ` <span class="note" style="text-transform:none;letter-spacing:0;font-family:var(--sans);font-weight:400">· tap a round to watch it</span>` : ""}</h3><div class="rounds">${m.rounds.map((r, i) => {
+      out.push(`<div><h3>Round history</h3><div class="rounds">${m.rounds.map((r, i) => {
         const e = (m.economy || [])[i] || {};
         const title = `Round ${i + 1}: ${r.w ? "won" : "lost"} as ${r.side || "?"}${r.why ? ` (${r.why})` : ""}, ${r.k || 0} kill${r.k === 1 ? "" : "s"}${r.dead ? ", died" : ", survived"}${e.equip ? `, $${e.equip} loadout` : ""}${m.replay ? ". Watch it" : ""}`;
         return `${i === half ? '<span class="half" aria-hidden="true"></span>' : ""}<${tag} class="rd"${m.replay ? ` type="button" data-rwatch="${i}"` : ' role="img"'} title="${esc(title)}" aria-label="${esc(title)}">
@@ -1737,6 +1800,7 @@ function boot() {
         ${m.surrender ? `<span><span class="ic">${ICON.flag}</span>surrender</span>` : ""}
         <span>number = Ric's kills</span><span><i style="background:var(--t)"></i>T</span><span><i style="background:var(--ct)"></i>CT</span></div></div>`);
     }
+    out.push(econChart(m));
     if (m.board && m.board.length) {
       const table = (us) => {
         const seats = m.board.filter((s) => s.us === us).sort((a, b) => (b.score ?? b.k) - (a.score ?? a.k) || b.k - a.k);
@@ -1769,6 +1833,63 @@ function boot() {
     out.push(`</div>`);
     return out.join("");
   }
+
+  /* ══ records ════════════════════════════════════════════
+     The best game for each number, the rounds worth rewatching (3K and up,
+     clutches won) and the people Ric keeps queueing with. Every line opens
+     the match or plays the round. */
+  function renderRecords() {
+    const CS = window.CS_STATS, counted = new Set(SL.map((m) => m.id));
+    const gIdx = CS ? CS.games.map((g, i) => counted.has(g.id) ? i : -1).filter((i) => i >= 0) : [];
+    const gSet = new Set(gIdx), byId = (id) => matches.find((m) => m.id === id);
+    const line = (m) => `${esc(mapName(m.map))} ${m.score[0]}:${m.score[1]} ${{ W: "win", L: "loss", T: "draw" }[m.result]} · ${esc(when(m.at))}`;
+    const best = (label, f, fmt) => {
+      let top = null; for (const m of SLR) { const v = f(m); if (v != null && isFinite(v) && (!top || v > top[1])) top = [m, v]; }
+      return top ? `<button type="button" class="rec" data-open="${esc(top[0].id)}"><span>${label}</span><b>${fmt(top[1])}</b><small>${line(top[0])}</small></button>` : "";
+    };
+    const bests = [best("Most kills", (m) => m.me.k, (v) => v), best("Best ADR", (m) => m.me.adr, (v) => v.toFixed(0)),
+      best(`Best HLTV 1.0`, hltv, (v) => v.toFixed(2)), best("Best Leetify rating", (m) => m.me.rating, signed),
+      best("Most headshot kills", (m) => m.me.hsk, (v) => v), best("Best KAST", (m) => m.me.kast, (v) => `${Math.round(v)}%`)];
+    if (CS) {
+      const K = CS.fights.filter((f) => gSet.has(f.g) && f.kind === "k" && f.dist != null);
+      const far = K.reduce((a, f) => !a || f.dist > a.dist ? f : a, null);
+      if (far) bests.push(`<button type="button" class="rec" data-watch="${esc(CS.games[far.g].id)}" data-r="${far.n - 1}" data-t="${Math.max(0, far.t - 4)}"><span>Longest kill</span><b>${far.dist} m</b>
+        <small>${esc(weaponName(far.w))}${far.hs ? " headshot" : ""} from ${esc(far.me || "?")} · round ${far.n}, ${line(byId(CS.games[far.g].id))} · ▶ watch</small></button>`);
+      const R = CS.rounds.filter((r) => gSet.has(r.g));
+      const big = R.reduce((a, r) => !a || r.dmg > a.dmg ? r : a, null);
+      if (big) bests.push(`<button type="button" class="rec" data-watch="${esc(CS.games[big.g].id)}" data-r="${big.n - 1}" data-t="0"><span>Most damage in one round</span><b>${big.dmg}</b>
+        <small>${big.k} kill${big.k === 1 ? "" : "s"} as ${big.side} · round ${big.n}, ${line(byId(CS.games[big.g].id))} · ▶ watch</small></button>`);
+    }
+    // highlight rounds, newest first
+    let hl = [];
+    if (CS) for (const g of gIdx.slice().sort((a, b) => (CS.games[b].at || "").localeCompare(CS.games[a].at || "")))
+      for (const r of CS.rounds.filter((x) => x.g === g && (x.k >= 3 || (x.clutch && x.w)))) hl.push(r);
+    const tag = (r) => r.k >= 5 ? "ACE" : r.k >= 3 ? `${r.k}K` : "";
+    const hlRows = hl.map((r) => { const m = byId(CS.games[r.g].id);
+      return `<button type="button" class="rec" data-watch="${esc(m.id)}" data-r="${r.n - 1}" data-t="0"><span>${tag(r) ? `<span class="tag">${tag(r)}</span>` : ""}${r.clutch && r.w ? `<span class="tag cl">1v${r.clutch} won</span>` : ""}round ${r.n} as ${r.side}</span><b>▶</b>
+        <small>${line(m)}${r.clutch && r.w && tag(r) ? "" : ` · ${r.k} kill${r.k === 1 ? "" : "s"}`}</small></button>`; });
+    // teammates seen in more than one counted match
+    const mates = {};
+    for (const m of SL) for (const b of m.board || []) if (b.us && !b.me && b.name) {
+      const x = mates[b.name] ||= { n: 0, W: 0, L: 0, T: 0, k: 0, d: 0, last: m };
+      x.n++; x[m.result]++; x.k += b.k || 0; x.d += b.d || 0;
+    }
+    const often = Object.entries(mates).filter(([, x]) => x.n > 1).sort((a, b) => b[1].n - a[1].n || b[1].W - a[1].W);
+    const once = Object.keys(mates).length - often.length;
+    $("recbox").innerHTML = !SLR.length ? `<div class="panel empty">No ranked games among the matches counted.</div>` : `
+      <div class="tile"><h4>Personal bests</h4>${bests.join("")}</div>
+      <div class="tile"><h4>Highlights</h4>${hlRows.length ? `${hlRows.slice(0, 10).join("")}
+        ${hlRows.length > 10 ? `<details><summary class="note" style="cursor:pointer;padding:6px 0">${hlRows.length - 10} more</summary>${hlRows.slice(10).join("")}</details>` : ""}`
+        : `<p class="note">No 3K rounds or clutches won among the saved demos counted yet.</p>`}</div>
+      <div class="tile"><h4>Played with</h4>${often.length ? `<div class="stwrap"><table class="st"><thead><tr><th scope="col">Teammate</th><th scope="col">Games</th><th scope="col">W-L-D</th><th scope="col">Win %</th><th scope="col">Their K/D</th></tr></thead>
+        <tbody>${often.map(([name, x]) => `<tr><td>${esc(name)}</td><td>${x.n}</td><td>${x.W}-${x.L}-${x.T}</td><td>${thin(`${Math.round(100 * x.W / x.n)}%`, x.n, "game")}</td><td>${x.d ? (x.k / x.d).toFixed(2) : "—"}</td></tr>`).join("")}</tbody></table></div>`
+        : `<p class="note">Nobody shows up on Ric's team in more than one of the matches counted.</p>`}
+        ${once ? `<p class="note" style="margin-top:8px">+${once} played with once</p>` : ""}</div>`;
+  }
+  $("recbox").addEventListener("click", (e) => {
+    const o = e.target.closest("[data-open]"); if (o) return openMatch(o.dataset.open);
+    const w = e.target.closest("[data-watch]"); if (w) showReplay(w.dataset.watch, true, +w.dataset.r, +w.dataset.t);
+  });
 
   /* ══ maps ═══════════════════════════════════════════════ */
   function renderMaps() {
@@ -1847,7 +1968,7 @@ function boot() {
         <div class="rpicks" role="group" aria-label="Round">${R.rounds.map((r, i) => `<button type="button" class="${r.w ? "w" : "l"}" data-r="${i}" aria-label="Round ${i + 1}, ${r.w ? "won" : "lost"}">${i + 1}</button>`).join("")}</div>
         <div class="rinfo"><button type="button" class="pp" data-rstep="-1" aria-label="Previous round">‹</button><span></span><button type="button" class="pp" data-rstep="1" aria-label="Next round">›</button></div>
         <div class="rv"><canvas width="1024" height="1024" tabindex="0" aria-label="The round on the radar. Activate to play, zoom and pan."></canvas>
-          <div class="kf" aria-hidden="true"></div><div class="hint">Click the map to play, zoom and pan · Space, ← →, [ ]</div>${playBar(`<button type="button" class="pp" data-close aria-label="Let go of the map">✕</button>`)}</div>
+          <div class="kf" aria-hidden="true"></div><div class="hint" title="Space plays · ← → step 5 s · [ ] change round · Esc lets go">Click to play</div>${playBar(`<button type="button" class="pp" data-close aria-label="Let go of the map">✕</button>`)}</div>
         <div class="settings">
           ${cal && cal.split != null ? `<div class="seg" role="group" aria-label="Radar level"><button type="button" data-level="auto" aria-pressed="true">Auto</button><button type="button" data-level="0" aria-pressed="false">Upper</button><button type="button" data-level="1" aria-pressed="false">Lower</button></div>` : ""}
           <label><input type="checkbox" data-names checked> Names</label>
@@ -1983,7 +2104,7 @@ function boot() {
     }
     if (!S.rounds.length) { $("statbox").innerHTML = `<div class="panel empty">Stats come from Valve's demos; they appear when the first one is saved.</div>`; return; }
     const G = S.games;
-    const st = { tab: "spots", side: "both", show: "d", lines: true, floor: null, spot: null, ...(PREFS.stats || {}) };
+    const st = { tab: "spots", side: "both", show: "d", lines: true, heat: false, floor: null, spot: null, ...(PREFS.stats || {}) };
     delete st.map; delete st.last;     // the shared slice holds these now
     let shownMap = SLICE.map;
     // rounds tiles are pushed first (six of them), then the fight tiles
@@ -2003,7 +2124,7 @@ function boot() {
       : /time/i.test(w || "") ? "Time ran out" : "Elimination";
 
     function render() {
-      savePrefs({ stats: { tab: st.tab, side: st.side, show: st.show, lines: st.lines } });
+      savePrefs({ stats: { tab: st.tab, side: st.side, show: st.show, lines: st.lines, heat: st.heat } });
       // a new map: the floor and the picked spot belonged to the old one
       if (shownMap !== SLICE.map) { shownMap = SLICE.map; st.floor = null; if (st.spot && SLICE.map !== "all" && !st.spot.startsWith(`${SLICE.map}|`)) st.spot = null; }
       const counted = new Set(SL.map((m) => m.id));
@@ -2013,7 +2134,7 @@ function boot() {
       const F = S.fights.filter((f) => inMap(f.g) && inSide(f.side));
       const K = F.filter((f) => f.kind === "k"), Dd = F.filter((f) => f.kind === "d");
       const nG = new Set(R.map((r) => r.g)).size;
-      $("stnote").textContent = `${nG} of the ${SL.length} match${SL.length === 1 ? "" : "es"} counted ${nG === 1 ? "has" : "have"} a saved demo · ${R.length} rounds · ${K.length} kills · ${Dd.length} deaths · a dotted underline means fewer than ${FEW} to go on`;
+      $("stnote").textContent = `${nG} demos · ${R.length} rounds · ${K.length} kills · ${Dd.length} deaths`;
       const tiles = [];
 
       // rounds
@@ -2022,42 +2143,42 @@ function boot() {
       const multi = [2, 3, 4, 5].map((n) => R.filter((r) => n === 5 ? r.k >= 5 : r.k === n).length);
       tiles.push(`<div class="tile"><h4>Rounds</h4>${row("Rounds won", won(R))}
         ${st.side === "both" ? row("As CT", won(R.filter((r) => r.side === "CT"))) + row("As T", won(R.filter((r) => r.side === "T"))) : ""}
-        ${row("Pistol rounds won", won(R.filter((r) => r.pistol)))}${row("Won the next round after a pistol win", won(R.filter(prevWon)))}
+        ${row("Pistol rounds won", won(R.filter((r) => r.pistol)))}${row("Pistol conversion", won(R.filter(prevWon)))}
         ${row("Survived the round", P(sum(R, (r) => r.surv), R.length))}${row("Rounds with a kill", P(R.filter((r) => r.k).length, R.length))}
         ${row("Kills per round", R.length ? (sum(R, (r) => r.k) / R.length).toFixed(2) : "—")}
         ${row("Damage per round <small>demo</small>", R.length ? (sum(R, (r) => r.dmg) / R.length).toFixed(1) : "—")}
-        ${row("Rounds won when Ric got 2+ kills", won(R.filter((r) => r.k >= 2)))}
+        ${row("Won with 2+ kills", won(R.filter((r) => r.k >= 2)))}
         ${row("2K · 3K · 4K · ACE", multi.join(" · "))}</div>`);
 
       // opening
       const op = R.filter((r) => r.op);
-      tiles.push(`<div class="tile"><h4>Opening duels</h4>${row("Ric was in the first fight", P(op.length, R.length))}
+      tiles.push(`<div class="tile"><h4>Opening duels</h4>${row("Opening attempts", P(op.length, R.length))}
         ${row("Opening duels won", P(op.filter((r) => r.op === "k").length, op.length))}
-        ${row("Round won after Ric's opening kill", won(R.filter((r) => r.op === "k")))}${row("Round won after Ric died first", won(R.filter((r) => r.op === "d")))}
-        <div class="sub">Whole team</div>${row("Round won after the team's first kill", won(R.filter((r) => r.first === "us")))}
-        ${row("Round won after the enemy's first kill", won(R.filter((r) => r.first === "them")))}</div>`);
+        ${row("Won after his opening kill", won(R.filter((r) => r.op === "k")))}${row("Won after he died first", won(R.filter((r) => r.op === "d")))}
+        <div class="sub">Whole team</div>${row("Won after the team's first kill", won(R.filter((r) => r.first === "us")))}
+        ${row("Won after the enemy's first kill", won(R.filter((r) => r.first === "them")))}</div>`);
 
       // trades and man advantage
       const sit = (f) => { const [u, t] = f.ab || []; return u == null ? null : u > t ? "Up a man or more" : u < t ? "Down a man or more" : "Even"; };
-      tiles.push(`<div class="tile"><h4>Trades & numbers</h4>${row("Ric's deaths that were traded", P(sum(Dd, (f) => f.tr), Dd.length))}
-        ${row("Ric's kills that traded a teammate", P(sum(K, (f) => f.tr), K.length))}
-        ${row("Died with 3+ teammates still alive", P(Dd.filter((f) => f.ab && f.ab[0] >= 4).length, Dd.length))}
+      tiles.push(`<div class="tile"><h4>Trades & numbers</h4>${row("Deaths traded", P(sum(Dd, (f) => f.tr), Dd.length))}
+        ${row("Trade kills", P(sum(K, (f) => f.tr), K.length))}
+        ${row("Died with 3+ mates alive", P(Dd.filter((f) => f.ab && f.ab[0] >= 4).length, Dd.length))}
         ${row("Killed by a teammate", Dd.filter((f) => f.team).length)}
         ${tbl(["Before the fight", "K", "D", "K/D"], ["Up a man or more", "Even", "Down a man or more"].map((s) => {
           const k = K.filter((f) => sit(f) === s).length, d = Dd.filter((f) => sit(f) === s).length;
           return `<tr><td>${s}</td><td>${k}</td><td>${d}</td><td>${kdc(k, d)}</td></tr>`; }))}</div>`);
 
       // clutches
-      tiles.push(`<div class="tile"><h4>Clutches</h4><p class="note" style="margin-bottom:6px">Ric last alive on his team.</p>
+      tiles.push(`<div class="tile"><h4>Clutches</h4>
         ${tbl(["Situation", "Won", "Played", "%"], [1, 2, 3, 4, 5].map((n) => {
           const c = R.filter((r) => r.clutch === n), w = sum(c, (r) => r.w);
           return `<tr><td>1v${n}</td><td>${w}</td><td>${c.length}</td><td>${c.length ? thin(Math.round(100 * w / c.length) + "%", c.length) : "—"}</td></tr>`; }))}
-        ${row("Rounds Ric ended up last alive", P(R.filter((r) => r.clutch).length, R.length))}</div>`);
+        ${row("Last alive", P(R.filter((r) => r.clutch).length, R.length))}</div>`);
 
       // economy
       const nonPistol = R.filter((r) => !r.pistol && r.ours != null && r.theirs != null);
       const classes = ["Eco", "Force", "Full"];
-      tiles.push(`<div class="tile"><h4>Economy</h4><p class="note" style="margin-bottom:6px">Round win % by each team's average loadout after the buy (eco under $2,000, force under $3,900). Pistol rounds left out.</p>
+      tiles.push(`<div class="tile"><h4 title="Each team's average loadout after the buy: eco under $2,000, force under $3,900">Economy <small class="note" style="text-transform:none;letter-spacing:0">win % · no pistols</small></h4>
         ${tbl(["Us ↓ · them →", ...classes], classes.map((us) => `<tr><td>${us}</td>${classes.map((them) => {
           const x = nonPistol.filter((r) => buyOf(r.ours) === us && buyOf(r.theirs) === them), w = sum(x, (r) => r.w);
           return `<td>${x.length ? `${thin(`${Math.round(100 * w / x.length)}%`, x.length)}<small style="color:var(--dim);margin-left:4px">${x.length}</small>` : "—"}</td>`; }).join("")}</tr>`))}
@@ -2100,10 +2221,27 @@ function boot() {
           `<tr><td>${esc(w)}</td><td>${xs.length}</td><td>${Math.round(100 * xs.length / Dd.length)}%</td></tr>`))}</div>`);
       tiles.push(`<div class="tile"><h4>Special kills</h4>${row("Wallbangs", sum(K, (f) => f.wall))}${row("Through smoke", sum(K, (f) => f.smoke))}
         ${row("While flashed", sum(K, (f) => f.blind))}${row("No-scopes", sum(K, (f) => f.ns))}${row("In the air", sum(K, (f) => f.air))}
-        ${row("Set up by a teammate's flash", sum(K, (f) => f.fa))}${row("Kills on 1–20 HP left <small>Ric's HP after</small>", K.filter((f) => f.hp != null && f.hp <= 20).length)}
-        ${row("Kills without taking damage", K.filter((f) => f.hp === 100).length)}
+        ${row("Set up by a teammate's flash", sum(K, (f) => f.fa))}${row("Kills on ≤20 HP", K.filter((f) => f.hp != null && f.hp <= 20).length)}
+        ${row("Kills at full HP", K.filter((f) => f.hp === 100).length)}
         <div class="sub">Deaths</div>${row("Through a wall", sum(Dd, (f) => f.wall))}${row("Through smoke", sum(Dd, (f) => f.smoke))}
         ${row("To a flash-assisted kill", sum(Dd, (f) => f.fa))}</div>`);
+
+      // utility: what Ric threw and what it did
+      const N = (S.nades || []).filter((n) => inMap(n[0]) && inSide(n[2]));
+      const FL = (S.flashes || []).filter((x) => inMap(x[0]) && inSide(x[2]));
+      const cnt = (k) => N.filter((n) => n[3] === k).length, nHe = cnt("he"), nFire = cnt("fire");
+      const per = (v) => R.length ? (v / R.length).toFixed(2) : "—";
+      const heDmg = sum(R, (r) => r.he), fireDmg = sum(R, (r) => r.fire), foes = sum(FL, (x) => x[3]);
+      tiles.push(`<div class="tile"><h4>Utility</h4>
+        ${row("Smokes <small>per round</small>", `${cnt("smoke")} · ${per(cnt("smoke"))}`)}${row("Flashes <small>per round</small>", `${FL.length} · ${per(FL.length)}`)}
+        ${row("HE grenades <small>per round</small>", `${nHe} · ${per(nHe)}`)}${row("Molotovs that burned <small>per round</small>", `${nFire} · ${per(nFire)}`)}
+        <div class="sub">Flashes</div>${row("Enemies blinded per flash", FL.length ? thin((foes / FL.length).toFixed(2), FL.length, "flash") : "—")}
+        ${row("Enemy seconds blind per flash", FL.length ? (sum(FL, (x) => x[5]) / FL.length).toFixed(2) + " s" : "—")}
+        ${row("Flashes that caught no enemy", P(FL.filter((x) => !x[3]).length, FL.length))}${row("Teammates blinded", sum(FL, (x) => x[4]))}
+        <div class="sub">Damage</div>${row("HE damage <small>per HE</small>", `${heDmg} · ${nHe ? (heDmg / nHe).toFixed(0) : "—"}`)}
+        ${row("Fire damage <small>per molotov</small>", `${fireDmg} · ${nFire ? (fireDmg / nFire).toFixed(0) : "—"}`)}
+        ${row("Grenade damage per round", per(heDmg + fireDmg))}
+</div>`);
 
       // callouts
       const key = (f, which) => `${G[f.g].map}|${f[which] || "?"}`;
@@ -2121,9 +2259,8 @@ function boot() {
       const from = (xs, which, map) => { const c = {}; for (const f of xs) { const k = key(f, which); c[k] = (c[k] || 0) + 1; }
         return Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, n]) => { const [mp, place] = k.split("|");
           return `<tr><td>${showMap ? `<span class="mapt">${esc(mapName(mp))}</span>` : ""}${esc(place)}</td><td>${n}</td><td>${Math.round(100 * n / map[mp])}%</td></tr>`; }); };
-      const calloutTile = (`<div class="tile wide"><h4>Callouts: where Ric stood when he died and when he killed</h4>
-        <p class="note" style="margin-bottom:6px">Percentages are of Ric's deaths (or kills) on that map. Traded, HS and range are about the deaths there.
-          Click a row to put just that spot on the radar; click a column heading to sort.</p>
+      const calloutTile = (`<div class="tile wide"><h4 title="Where Ric stood. % is of his deaths or kills on that map; Traded, HS and range are about the deaths. Click a row to show it on the radar.">Callouts</h4>
+
         <div class="tall">${tbl(["Callout", "Deaths", "% of deaths", "Kills", "% of kills", "K/D", "Traded", "HS deaths", "Death range"], spotRows)}</div></div>`);
       const stoodTiles = [`<div class="tile"><h4>Where the killer stood</h4>${tbl(["Enemy at", "Kills on Ric", "%"], from(Dd, "them", dMap))}</div>`,
       `<div class="tile"><h4>Where Ric's victims stood</h4>${tbl(["Enemy at", "Ric's kills", "%"], from(K, "them", kMap))}</div>`];
@@ -2131,38 +2268,76 @@ function boot() {
       // the map itself, when there is one map
       const cal = SLICE.map !== "all" ? radarFor(SLICE.map) : null;
       const radarTile = !cal ? "" : (`<div class="tile"><h4>On the radar${st.spot ? ` · ${esc(st.spot.split("|")[1])} <button type="button" class="pp" data-clearspot style="padding:0 10px;min-height:28px;font-size:12px;vertical-align:2px">Show all</button>` : ""}</h4><div class="plot"><canvas width="1024" height="1024" id="stplot" aria-label="Ric's kills and deaths on the ${esc(mapName(SLICE.map))} radar"></canvas>
-        <div class="ctl"><div class="seg" role="group" aria-label="Show">${[["d", "Deaths"], ["k", "Kills"], ["b", "Both"]].map(([v, l]) =>
+        <div class="ctl"><div class="seg" role="group" aria-label="Show">${[["d", "Deaths"], ["k", "Kills"], ["b", "Both"], ["n", "Grenades"]].map(([v, l]) =>
           `<button type="button" data-show="${v}" aria-pressed="${st.show === v}">${l}</button>`).join("")}</div>
         ${cal.split != null ? `<div class="seg" role="group" aria-label="Floor" title="Marks on the other floor are dimmed">${[[0, "Upper"], [1, "Lower"]].map(([v, l]) =>
           `<button type="button" data-floor="${v}" aria-pressed="${st.floor === v}">${l}</button>`).join("")}</div>` : ""}
-        <label class="note" style="display:flex;gap:6px;align-items:center;min-height:32px"><input type="checkbox" data-lines${st.lines ? " checked" : ""}> Lines</label></div>
-        <div class="rlegend"><span><i style="background:var(--loss)"></i>Ric died here</span><span><i style="background:var(--win)"></i>Ric killed from here</span>
-          <span>line → the other player${cal.split != null ? " · other floor dimmed" : ""}</span><span>hover a mark for the fight, click to watch it</span></div></div></div>`);
+        ${st.show === "n" ? "" : `<label class="note" style="display:flex;gap:6px;align-items:center;min-height:32px"><input type="checkbox" data-lines${st.lines ? " checked" : ""}> Lines</label>`}
+        <label class="note" style="display:flex;gap:6px;align-items:center;min-height:32px"><input type="checkbox" data-heat${st.heat ? " checked" : ""}> Heatmap</label></div>
+        <div class="rlegend">${st.show === "n"
+          ? `<span><i style="background:#cdd4de"></i>smoke</span><span><i style="background:#fff"></i>flash</span><span><i style="background:#f0a040"></i>HE</span><span><i style="background:#e0523a"></i>fire</span>`
+          : `<span><i style="background:var(--loss)"></i>Ric died here</span><span><i style="background:var(--win)"></i>Ric killed from here</span>
+${cal.split != null ? "<span>other floor dimmed</span>" : ""}`}</div></div></div>`);
 
       $("statbox").innerHTML = `<div class="stbar">
           <div class="seg" role="group" aria-label="Side">${[["both", "Both sides"], ["CT", "CT"], ["T", "T"]].map(([v, l]) =>
             `<button type="button" data-sside="${v}" aria-pressed="${st.side === v}">${l}</button>`).join("")}</div></div>
         <nav class="stabs" aria-label="Stats pages">${STABS.map(([v, l]) => `<button type="button" data-stab="${v}" aria-pressed="${st.tab === v}">${l}</button>`).join("")}</nav>
         ${st.tab === "spots" ? (cal ? `<div class="spotlay">${radarTile}${calloutTile}</div>`
-            : `<p class="note" style="margin-bottom:10px">Pick a map above to see these on its radar, next to the table.</p><div class="stwide">${calloutTile}</div>`)
+            : `<div class="stwide">${calloutTile}</div>`)
           + `<div class="stwide" style="margin-top:10px">${stoodTiles.join("")}</div>`
           : `<div class="stgrid">${(st.tab === "rounds" ? tiles.slice(0, 6) : tiles.slice(6)).join("")}</div>`}`;
-      if (cal && st.tab === "spots") plot(cal, st.spot ? F.filter((f) => key(f, "me") === st.spot) : F);
+      if (cal && st.tab === "spots") plot(cal, st.spot ? F.filter((f) => key(f, "me") === st.spot) : F,
+        (S.nades || []).filter((n) => inMap(n[0]) && inSide(n[2])));
     }
 
-    function plot(cal, F) {
+    // a density layer: every point a soft blob, added up, then coloured cold to hot
+    function heat(ctx, S2, xy, rgb) {
+      const n = 256, off = document.createElement("canvas"); off.width = off.height = n;
+      const o = off.getContext("2d"), r = 14;
+      for (const [x, y] of xy) {
+        const px = x / S2 * n, py = y / S2 * n, g = o.createRadialGradient(px, py, 0, px, py, r);
+        g.addColorStop(0, "rgba(0,0,0,.35)"); g.addColorStop(1, "rgba(0,0,0,0)");
+        o.fillStyle = g; o.fillRect(px - r, py - r, 2 * r, 2 * r);
+      }
+      const img = o.getImageData(0, 0, n, n), d = img.data;
+      let max = 1; for (let i = 3; i < d.length; i += 4) max = Math.max(max, d[i]);
+      for (let i = 0; i < d.length; i += 4) {
+        const a = d[i + 3] / max; if (!a) continue;
+        d[i] = rgb[0] + (255 - rgb[0]) * a * a; d[i + 1] = rgb[1] + (255 - rgb[1]) * a * a; d[i + 2] = rgb[2] + (255 - rgb[2]) * a * a;
+        d[i + 3] = Math.round(225 * Math.pow(a, 0.85));     // one lone point stays faint
+      }
+      o.putImageData(img, 0, 0);
+      ctx.imageSmoothingEnabled = true; ctx.drawImage(off, 0, 0, S2, S2);
+    }
+    const NADE_COL = { smoke: "#cdd4de", flash: "#ffffff", he: "#f0a040", fire: "#e0523a" };
+    function plot(cal, F, NS) {
       const cv = $("stplot"), ctx = cv.getContext("2d"), S2 = cv.width, k = S2 / 1024;
       const box = cv.parentNode; box.style.position = "relative";
       // Every mark is drawn; the ones on the other floor are dimmed. With no
       // floor chosen, the radar opens on the floor most of the fights were on.
       const low = (f) => cal.split != null && f.mz != null && f.mz < cal.split;
-      const pts = F.filter((f) => f.mx != null && (st.show === "b" || f.kind === st.show));
+      const nadeMode = st.show === "n";
+      const pts = nadeMode ? [] : F.filter((f) => f.mx != null && (st.show === "b" || f.kind === st.show));
+      const nades = nadeMode ? NS : [];
       const floor = cal.split == null ? 0 : st.floor != null ? st.floor : (pts.filter(low).length > pts.length / 2 ? 1 : 0);
       const onFloor = (f) => cal.split == null || (floor === 1) === low(f);
       const draw = (img) => {
         ctx.fillStyle = "#07090c"; ctx.fillRect(0, 0, S2, S2);
         if (img) ctx.drawImage(img, 0, 0, S2, S2);
         ctx.fillStyle = "rgba(7,9,12,.35)"; ctx.fillRect(0, 0, S2, S2);
+        if (st.heat) {
+          if (nadeMode) heat(ctx, S2, nades.map((n) => toRadar(cal, n[4], n[5]).map((v) => v * k)), [240, 160, 64]);
+          else for (const kind of st.show === "b" ? ["d", "k"] : [st.show])
+            heat(ctx, S2, pts.filter((f) => f.kind === kind).map((f) => toRadar(cal, f.mx, f.my).map((v) => v * k)), kind === "d" ? [216, 101, 63] : [39, 163, 154]);
+          return;
+        }
+        for (const n of nades) {
+          const [x, y] = toRadar(cal, n[4], n[5]).map((v) => v * k), r = n[3] === "smoke" ? 13 : n[3] === "fire" ? 11 : 8;
+          ctx.globalAlpha = n[3] === "smoke" ? 0.55 : 0.9; ctx.fillStyle = NADE_COL[n[3]];
+          ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+          ctx.globalAlpha = 1; ctx.lineWidth = 2; ctx.strokeStyle = "#07090c"; ctx.stroke();
+        }
         for (const f of pts) {
           const [x, y] = toRadar(cal, f.mx, f.my).map((v) => v * k), col = f.kind === "d" ? "#f29070" : "#4fd1c5";
           ctx.globalAlpha = onFloor(f) ? 1 : 0.3;
@@ -2182,10 +2357,12 @@ function boot() {
       loadImg(floor === 1 && cal.lower ? cal.lower : cal.img).then(draw);
       for (const b of document.querySelectorAll("[data-floor]")) b.setAttribute("aria-pressed", String(+b.dataset.floor === floor));
       // the mark under the pointer, within 16 canvas px
+      // grenades are looked up as fights-shaped records so hover and click share one path
+      const marks = nadeMode ? nades.map((n) => ({ nade: n[3], g: n[0], n: n[1], t: n[6] ?? 0, mx: n[4], my: n[5] })) : pts;
       const near = (e) => {
         const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) / b.width * S2, y = (e.clientY - b.top) / b.height * S2;
         let best = null, bd = 16 * 16;
-        for (const f of pts) { const [px, py] = toRadar(cal, f.mx, f.my).map((v) => v * k), d = (px - x) ** 2 + (py - y) ** 2; if (d < bd) { bd = d; best = f; } }
+        for (const f of marks) { const [px, py] = toRadar(cal, f.mx, f.my).map((v) => v * k), d = (px - x) ** 2 + (py - y) ** 2; if (d < bd) { bd = d; best = f; } }
         return best;
       };
       const tip = document.createElement("div"); tip.className = "tip"; box.appendChild(tip);
@@ -2193,7 +2370,7 @@ function boot() {
         const f = near(e); cv.style.cursor = f ? "pointer" : "";
         if (!f) { tip.style.opacity = 0; return; }
         const g = G[f.g], b = box.getBoundingClientRect();
-        tip.innerHTML = `<b>${f.kind === "d" ? "Died" : "Kill"}</b> · ${esc(weaponName(f.w))}${f.hs ? " · HS" : ""}${f.dist != null ? ` · ${f.dist} m` : ""}<br>
+        tip.innerHTML = f.nade ? `<b>${{ smoke: "Smoke", flash: "Flash", he: "HE grenade", fire: "Molotov" }[f.nade]}</b><br>Round ${f.n} at ${mmss(f.t)} · ${esc(when(g.at))}` : `<b>${f.kind === "d" ? "Died" : "Kill"}</b> · ${esc(weaponName(f.w))}${f.hs ? " · HS" : ""}${f.dist != null ? ` · ${f.dist} m` : ""}<br>
           Ric at ${esc(f.me || "?")} · enemy at ${esc(f.them || "?")}<br>Round ${f.n} at ${mmss(f.t)} · ${f.ab ? `${f.ab[0]}v${f.ab[1]}` : ""} · ${esc(when(g.at))}`;
         tip.style.opacity = 1;
         tip.style.left = Math.min(b.width - tip.offsetWidth - 4, Math.max(4, e.clientX - b.left + 14)) + "px";
@@ -2213,7 +2390,10 @@ function boot() {
       else return;
       render();
     });
-    $("statbox").addEventListener("change", (e) => { if (e.target.matches("[data-lines]")) { st.lines = e.target.checked; render(); } });
+    $("statbox").addEventListener("change", (e) => {
+      if (e.target.matches("[data-lines]")) { st.lines = e.target.checked; render(); }
+      else if (e.target.matches("[data-heat]")) { st.heat = e.target.checked; render(); }
+    });
     // a callout row puts that spot alone on the radar (and picks its map)
     const focusSpot = (tr) => {
       const k = tr.dataset.spot; if (st.spot === k) { st.spot = null; return render(); }
@@ -2240,7 +2420,7 @@ function boot() {
   initStats();
 
   // everything the slice drives, drawn now and again whenever it changes
-  onSlice.push(setAvg, renderOverview, renderChart, renderMaps, renderWeapons, renderList, () => statsRender && statsRender(),
+  onSlice.push(setAvg, renderOverview, renderChart, renderRecords, renderMaps, renderWeapons, renderList, () => statsRender && statsRender(),
     () => { if (openId != null) { const m = matches.find((x) => x.id === openId); if (m) $("mdetail").innerHTML = detail(m); } });
   renderSliceBar();
   for (const f of onSlice) f();

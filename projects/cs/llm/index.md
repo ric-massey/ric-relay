@@ -22,25 +22,25 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 ## Matches (newest first)
 
-| Date | Map | Mode | Score | Result | K-D-A | ADR | Rating | Full data | Report |
-|---|---|---|---|---|---|---|---|---|---|
-| 2026-10-13 17:22 UTC | Train | Competitive | 9–13 | loss | 6-19-6 | 53.4 | -9.08 | yes | [3848102062252359905.md](3848102062252359905.md) |
-| 2026-10-13 16:50 UTC | Anubis | Competitive | 13–6 | win | 13-13-5 | 80.9 | +3.49 | yes | [3848097853184409614.md](3848097853184409614.md) |
-| 2026-10-13 16:26 UTC | Train | Competitive | 3–13 | loss | 4-14-1 | 46.4 | -4.74 | yes | [3848094777987825749.md](3848094777987825749.md) |
-| 2026-10-13 16:09 UTC | Mirage | Competitive | 3–9 | loss | 4-10-0 | 32.4 | -4.86 | yes | [3848092619766759746.md](3848092619766759746.md) |
-| 2026-10-13 01:36 UTC | Mirage | Competitive | 12–12 | draw | 22-18-5 | 96.7 | +6.74 | yes | [3847980205440237697.md](3847980205440237697.md) |
-| 2026-10-13 01:12 UTC | Cache | Competitive | 2–13 | loss | 12-12-1 | 97.9 | +0.70 | yes | [3847977048639275147.md](3847977048639275147.md) |
-| 2026-10-13 00:38 UTC | Mirage | Competitive | 7–13 | loss | 8-17-4 | 60.9 | -8.53 | yes | [3847972682805018863.md](3847972682805018863.md) |
-| 2026-10-12 23:40 UTC | Dust II | Competitive | 4–7 | loss | 8-8-5 | 102.1 | +4.73 | yes | [3847965185939603496.md](3847965185939603496.md) |
-| 2026-10-11 04:30 UTC | Dust II | Competitive | 3–13 | loss | 8-14-2 | 65.1 | -7.01 | yes | [3847631533552697449.md](3847631533552697449.md) |
-| 2026-10-11 03:29 UTC | Train | Competitive | 13–9 | win | 12-16-3 | 65.7 | -2.87 | yes | [3847623624370421940.md](3847623624370421940.md) |
-| 2026-10-11 02:48 UTC | Train | Competitive | 13–8 | win | 19-13-2 | 88.2 | +9.87 | yes | [3847618294316007431.md](3847618294316007431.md) |
-| 2026-10-11 02:07 UTC | Mirage | Competitive | 11–13 | loss | 16-17-4 | 82.0 | -2.53 | yes | [3847613007211266183.md](3847613007211266183.md) |
-| 2026-10-11 01:03 UTC | Dust II | Competitive | 3–13 | loss | 7-15-3 | 61.2 | -6.25 | yes | [3847604825298567197.md](3847604825298567197.md) |
-| 2026-10-06 03:20 UTC | Mirage | Competitive | 3–13 | loss | 7-16-1 | 48.8 | -11.39 | yes | [3846694811922858158.md](3846694811922858158.md) |
-| 2026-10-06 02:39 UTC | Anubis | Competitive | 6–13 | loss | 5-19-3 | 38.3 | -12.73 | yes | [3846689522670633012.md](3846689522670633012.md) |
-| 2026-10-06 01:55 UTC | Mirage | Competitive | 12–12 | draw | 13-15-2 | 46.8 | -3.17 | yes | [3846683791036776519.md](3846683791036776519.md) |
-| 2026-10-02 03:13 UTC | Rush 001 | Custom | 6–2 | win | 8-3-0 | 85.5 | +10.67 | no | [lt-e57bd669-7374-4f75-9153-2f672ebb7086.md](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
+| Date | Map | Mode | Score | Result | K-D-A | ADR | HLTV 1.0 | Leetify rating | Full data | Report |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-13 17:22 UTC | Train | Competitive | 9–13 | loss | 6-19-6 | 53.4 | 0.37 | -9.08 | yes | [3848102062252359905.md](3848102062252359905.md) |
+| 2026-10-13 16:50 UTC | Anubis | Competitive | 13–6 | win | 13-13-5 | 80.9 | 0.95 | +3.49 | yes | [3848097853184409614.md](3848097853184409614.md) |
+| 2026-10-13 16:26 UTC | Train | Competitive | 3–13 | loss | 4-14-1 | 46.4 | 0.31 | -4.74 | yes | [3848094777987825749.md](3848094777987825749.md) |
+| 2026-10-13 16:09 UTC | Mirage | Competitive | 3–9 | loss | 4-10-0 | 32.4 | 0.46 | -4.86 | yes | [3848092619766759746.md](3848092619766759746.md) |
+| 2026-10-13 01:36 UTC | Mirage | Competitive | 12–12 | draw | 22-18-5 | 96.7 | 1.16 | +6.74 | yes | [3847980205440237697.md](3847980205440237697.md) |
+| 2026-10-13 01:12 UTC | Cache | Competitive | 2–13 | loss | 12-12-1 | 97.9 | 1.14 | +0.70 | yes | [3847977048639275147.md](3847977048639275147.md) |
+| 2026-10-13 00:38 UTC | Mirage | Competitive | 7–13 | loss | 8-17-4 | 60.9 | 0.49 | -8.53 | yes | [3847972682805018863.md](3847972682805018863.md) |
+| 2026-10-12 23:40 UTC | Dust II | Competitive | 4–7 | loss | 8-8-5 | 102.1 | 1.09 | +4.73 | yes | [3847965185939603496.md](3847965185939603496.md) |
+| 2026-10-11 04:30 UTC | Dust II | Competitive | 3–13 | loss | 8-14-2 | 65.1 | 0.52 | -7.01 | yes | [3847631533552697449.md](3847631533552697449.md) |
+| 2026-10-11 03:29 UTC | Train | Competitive | 13–9 | win | 12-16-3 | 65.7 | 0.78 | -2.87 | yes | [3847623624370421940.md](3847623624370421940.md) |
+| 2026-10-11 02:48 UTC | Train | Competitive | 13–8 | win | 19-13-2 | 88.2 | 1.18 | +9.87 | yes | [3847618294316007431.md](3847618294316007431.md) |
+| 2026-10-11 02:07 UTC | Mirage | Competitive | 11–13 | loss | 16-17-4 | 82.0 | 1.01 | -2.53 | yes | [3847613007211266183.md](3847613007211266183.md) |
+| 2026-10-11 01:03 UTC | Dust II | Competitive | 3–13 | loss | 7-15-3 | 61.2 | 0.49 | -6.25 | yes | [3847604825298567197.md](3847604825298567197.md) |
+| 2026-10-06 03:20 UTC | Mirage | Competitive | 3–13 | loss | 7-16-1 | 48.8 | 0.40 | -11.39 | yes | [3846694811922858158.md](3846694811922858158.md) |
+| 2026-10-06 02:39 UTC | Anubis | Competitive | 6–13 | loss | 5-19-3 | 38.3 | 0.22 | -12.73 | yes | [3846689522670633012.md](3846689522670633012.md) |
+| 2026-10-06 01:55 UTC | Mirage | Competitive | 12–12 | draw | 13-15-2 | 46.8 | 0.86 | -3.17 | yes | [3846683791036776519.md](3846683791036776519.md) |
+| 2026-10-02 03:13 UTC | Rush 001 | Custom | 6–2 | win | 8-3-0 | 85.5 | 1.49 | +10.67 | no | [lt-e57bd669-7374-4f75-9153-2f672ebb7086.md](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
 
 ## By map
 
@@ -87,12 +87,12 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Walkway | 4 | 12% | 4 | 22% | 1.00 |
 | Bombsite B | 3 | 9% | 1 | 6% | 0.33 |
 | Canal | 3 | 9% | 0 | 0% | 0.00 |
-| Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
-| Heaven | 2 | 6% | 1 | 6% | 0.50 |
 | Bridge | 2 | 6% | 1 | 6% | 0.50 |
+| Heaven | 2 | 6% | 1 | 6% | 0.50 |
+| Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
 | Main | 1 | 3% | 1 | 6% | 1.00 |
-| Fountain | 1 | 3% | 0 | 0% | 0.00 |
 | Bricks | 1 | 3% | 0 | 0% | 0.00 |
+| Fountain | 1 | 3% | 0 | 0% | 0.00 |
 | Bombsite A | 0 | 0% | 3 | 17% | — |
 | Ruins | 0 | 0% | 2 | 11% | — |
 | Street | 0 | 0% | 1 | 6% | — |
@@ -106,9 +106,9 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Mid | 2 | 17% | 0 | 0% | 0.00 |
 | Outside A | 1 | 8% | 3 | 25% | 3.00 |
 | Bombsite B | 1 | 8% | 1 | 8% | 1.00 |
+| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | CTLane | 1 | 8% | 0 | 0% | 0.00 |
 | TSpawn | 1 | 8% | 0 | 0% | 0.00 |
-| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | TYard | 0 | 0% | 2 | 17% | — |
 | BMain | 0 | 0% | 1 | 8% | — |
 | AStairs | 0 | 0% | 1 | 8% | — |
@@ -120,20 +120,20 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 |---|---|---|---|---|---|
 | Bombsite B | 7 | 19% | 7 | 30% | 1.00 |
 | Long Doors | 5 | 14% | 3 | 13% | 0.60 |
-| Long A | 4 | 11% | 3 | 13% | 0.75 |
 | Outside Long | 4 | 11% | 3 | 13% | 0.75 |
+| Long A | 4 | 11% | 3 | 13% | 0.75 |
 | Topof Mid | 3 | 8% | 0 | 0% | 0.00 |
-| Middle | 2 | 5% | 0 | 0% | 0.00 |
-| Catwalk | 2 | 5% | 0 | 0% | 0.00 |
 | BDoors | 2 | 5% | 0 | 0% | 0.00 |
 | Extended A | 2 | 5% | 0 | 0% | 0.00 |
 | Hole | 2 | 5% | 0 | 0% | 0.00 |
+| Middle | 2 | 5% | 0 | 0% | 0.00 |
+| Catwalk | 2 | 5% | 0 | 0% | 0.00 |
 | Under A | 1 | 3% | 2 | 9% | 2.00 |
 | Mid Doors | 1 | 3% | 1 | 4% | 1.00 |
-| Bombsite A | 1 | 3% | 0 | 0% | 0.00 |
 | ARamp | 1 | 3% | 0 | 0% | 0.00 |
-| Short Stairs | 0 | 0% | 2 | 9% | — |
+| Bombsite A | 1 | 3% | 0 | 0% | 0.00 |
 | Upper Tunnel | 0 | 0% | 2 | 9% | — |
+| Short Stairs | 0 | 0% | 2 | 9% | — |
 
 ### Mirage: where Ric dies and kills
 
@@ -153,8 +153,8 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Middle | 2 | 2% | 2 | 3% | 1.00 |
 | Scaffolding | 2 | 2% | 2 | 3% | 1.00 |
 | House | 2 | 2% | 1 | 1% | 0.50 |
-| Snipers Nest | 2 | 2% | 0 | 0% | 0.00 |
 | Stairs | 2 | 2% | 0 | 0% | 0.00 |
+| Snipers Nest | 2 | 2% | 0 | 0% | 0.00 |
 | Palace Alley | 1 | 1% | 4 | 6% | 4.00 |
 | Back Alley | 1 | 1% | 1 | 1% | 1.00 |
 | Jungle | 1 | 1% | 0 | 0% | 0.00 |
@@ -178,6 +178,16 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | TSide Upper | 0 | 0% | 1 | 2% | — |
 
 
+## What the numbers mean
+
+- **ADR**: average damage per round, the health Ric took off the enemy each round. 100 is a whole enemy's worth every round.
+- **K/D**: kills divided by deaths. **HS%**: the share of kills that were headshots.
+- **KAST**: the share of rounds where Ric got a kill, an assist, survived, or was traded.
+- **Leetify rating** (the Rating column): how much Ric's play moved his team's chance of winning each round, averaged over the match. 0 is break-even; shown ×100, so +2.00 is roughly two points of win chance added per round.
+- **Aim / positioning / utility**: Leetify's scores out of 100 across every game they have parsed. Higher is better; they are scores, not percentages.
+- **Clutching / opening duels**: Leetify ratings for last-alive situations and the first fight of a round, against what is expected. 0 is break-even.
+- Career numbers count ranked games only; custom and casual lobbies are listed but not averaged.
+
 ## Reading the raw 2D data
 
 Matches with a saved demo have a data file at
@@ -189,7 +199,12 @@ Matches with a saved demo have a data file at
 - `rounds[]`, each with
   - `side` (Ric's side), `w` (Ric's team won), `winner`, `reason`, `dur` (seconds)
   - `tracks`: `{seat: [x0, y0, x1, y1, …]}` sampled `hz` times a second from the
-    round going live; `null, null` while dead
+    round going live (`[x, y, z, …]` when the file has `stride: 3`); `null`s while dead.
+    When the file has `tracks_q`, tracks are packed: the first sample after a gap
+    is a position and each later one is the step from the previous, with x and y
+    divided by `tracks_q`; a track ends at its last sample, and the round's
+    `samples` gives the full length. To unpack, keep a running sum and multiply
+    x and y by `tracks_q`.
   - `fights[]`: `t`, `killer`, `victim`, `assister` (seats), `weapon`, `headshot`,
     `wallbang`, `through_smoke`, `noscope`, `killer_blind`, `killer_in_air`,
     `killer_at` / `victim_at` (`x, y, z, place`), `distance`, `killer_hp_after`,

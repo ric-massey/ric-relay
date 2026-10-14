@@ -15,7 +15,8 @@ sync and writes the same numbers into llm/index.md.
             and map units), weapon, headshot/wallbang/smoke/flash, distance,
             men alive before, opening, traded
   hits[]    every bullet of damage given and taken, by hitgroup
-  nades[]   every grenade Ric threw: [game, round, side, kind, x, y], where it went off
+  nades[]   every grenade Ric threw: [game, round, side, kind, x, y, t], where and
+            when (seconds into the round) it went off
   flashes[] every flashbang of Ric's: [game, round, side, enemies blinded,
             teammates blinded, enemy seconds blind]
 
@@ -88,7 +89,7 @@ def build(matches):
                     hits[(R["map"], side, "t", grp)] += 1
             for t, s_, kind, x, y, *_ in r.get("nades") or []:
                 if s_ == me and x is not None and kind in ("smoke", "flash", "he", "fire"):
-                    nades.append([gi, n, side, kind, x, y])
+                    nades.append([gi, n, side, kind, x, y, t])
             pops = {}                       # one flashbang blinds several people at the same tick
             for t, thrower, victim, secs in r.get("flashes") or []:
                 if thrower != me or victim is None or victim == me:
