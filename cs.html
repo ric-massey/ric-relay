@@ -163,6 +163,16 @@
     .snaps{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,520px),1fr));gap:12px}
     .snap{background:var(--panel-solid);border:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
     .snap.big{grid-column:1/-1}
+    .snapnav{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    .snapnav .note{flex:1;text-align:center}
+    .snapstrip{display:flex;gap:3px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;scrollbar-width:thin}
+    .snapstrip button{flex:none;min-width:30px;height:30px;padding:0 4px;border:1px solid var(--line);cursor:pointer;font-size:12px;font-weight:700;
+      background:rgba(255,255,255,.04);color:var(--text);border-bottom:3px solid var(--tie)}
+    .snapstrip button.k{border-bottom-color:var(--win)} .snapstrip button.d{border-bottom-color:var(--loss)}
+    .snapstrip button[aria-pressed="true"]{background:rgba(255,255,255,.16);border-color:var(--line-hot);color:var(--bright)}
+    .snap.solo .snapbody{grid-template-columns:minmax(0,1fr) 300px}
+    .snap.solo .snapbody canvas,.snap.solo .rv canvas{cursor:zoom-in}
+    .snap.solo .rv{max-width:min(100%,74vh)}
     /* the killfeed line, red-outlined like your own kills are in-game */
     .feedline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 10px 0;padding:6px 10px;
       background:rgba(0,0,0,.55);border:2px solid var(--kill);font-weight:600;font-size:14px}
@@ -174,7 +184,7 @@
     .snapmeta b{color:var(--text);font-weight:600}
     .snapbody{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:10px;padding:10px 12px 12px}
     .snap.big .snapbody{grid-template-columns:minmax(0,1fr) 300px}
-    @media (max-width:640px){.snapbody,.snap.big .snapbody{grid-template-columns:1fr}}
+    @media (max-width:640px){.snapbody,.snap.big .snapbody,.snap.solo .snapbody{grid-template-columns:1fr}}
     .snapbody canvas{display:block;width:100%;aspect-ratio:1;background:#07090c;cursor:zoom-in}
     .snap.big .snapbody canvas{cursor:zoom-out}
     .roster{display:flex;flex-direction:column;gap:3px;font-size:12px;min-width:0}
@@ -519,7 +529,7 @@
 
   <section id="snapshots" aria-labelledby="sh" data-view="snapshots">
     <div class="shead"><h2 id="sh">Kill Snapshots</h2>
-      <p>Every kill and every death, frozen: where everyone stood, their health, their gun, the smoke in the air. Click a map to see it all.</p></div>
+      <p>Every kill and every death, frozen: where everyone stood, their health, their gun, the smoke in the air. Prev / Next or ← → to step; click the map to play the seconds around it.</p></div>
     <div id="snapbox"></div>
   </section>
 
@@ -1043,46 +1053,79 @@
   }
 
   /* ══ kill snapshots ═════════════════════════════════════ */
-  const SNAP_FIRST = 6;               // the rest wait behind "show all", so the page stays a page
-  const snapState = { id: replayable[0] && replayable[0].id, which: "all", all: false };
+  // One moment at a time, the way you'd step through a demo: prev/next (and
+  // ← →) walk every kill and death of the match, and run on into the next match.
+  const snapState = { id: replayable[0] && replayable[0].id, which: "all", i: 0 };
   function renderSnapBar() {
     if (!replayable.length) {
       $("snapbox").innerHTML = `<div class="panel empty">Kill snapshots come from Valve's demo of a match; the first one appears when a demo is saved.</div>`;
       return;
     }
     $("snapbox").innerHTML = `<div class="snapbar">
-      <label class="note" for="snapmatch">Match</label>
-      <select id="snapmatch">${replayable.map((m) => `<option value="${esc(m.id)}"${m.id === snapState.id ? " selected" : ""}>${esc(when(m.at))} · ${esc(mapName(m.map))} ${m.score[0]}:${m.score[1]}</option>`).join("")}</select>
+      <label class="sr" for="snapmatch">Match</label>
+      <select id="snapmatch" class="pick">${replayable.map((m) => `<option value="${esc(m.id)}"${m.id === snapState.id ? " selected" : ""}>${esc(when(m.at))} · ${esc(mapName(m.map))} ${m.score[0]}:${m.score[1]} ${{ W: "win", L: "loss", T: "draw" }[m.result]}</option>`).join("")}</select>
       <div class="seg" role="group" aria-label="Show">${[["all", "All"], ["kills", "Kills"], ["deaths", "Deaths"]].map(([v, l]) =>
-        `<button type="button" data-which="${v}" aria-pressed="${snapState.which === v}">${l}</button>`).join("")}</div>
-      <span class="note" id="snapcount"></span></div><div class="snaps" id="snaps"></div>`;
-    $("snapmatch").addEventListener("change", (e) => { snapState.id = e.target.value; snapState.all = false; renderSnaps(); });
-    $("snapbox").querySelector(".seg").addEventListener("click", (e) => {
-      const b = e.target.closest("button"); if (!b) return;
-      snapState.which = b.dataset.which; snapState.all = false;
-      for (const x of b.parentNode.children) x.setAttribute("aria-pressed", String(x === b));
-      renderSnaps();
-    });
+        `<button type="button" data-which="${v}" aria-pressed="${snapState.which === v}">${l}</button>`).join("")}</div></div>
+      <div class="snapnav"><button type="button" class="btn ghost" data-snav="-1" aria-label="Previous moment">‹ Prev</button>
+        <span class="note" id="snapcount"></span><button type="button" class="btn ghost" data-snav="1" aria-label="Next moment">Next ›</button></div>
+      <div class="snapstrip" id="snapstrip" role="group" aria-label="Every moment in this match"></div>
+      <div id="snaps"></div>`;
+    $("snapmatch").addEventListener("change", (e) => { snapState.id = e.target.value; snapState.i = 0; renderSnaps(); });
     renderSnaps();
+  }
+  // #snapbox outlives renderSnapBar's redraws, so it is listened to once
+  $("snapbox").addEventListener("click", (e) => {
+      const w = e.target.closest("[data-which]");
+      if (w) {
+        snapState.which = w.dataset.which; snapState.i = 0;
+        for (const x of w.parentNode.children) x.setAttribute("aria-pressed", String(x === w));
+        return renderSnaps();
+      }
+      const n = e.target.closest("[data-snav]"); if (n) return stepSnap(+n.dataset.snav);
+      const j = e.target.closest("[data-si]"); if (j) { snapState.i = +j.dataset.si; renderSnaps(); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (heldRV || view !== "snapshots" || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); stepSnap(e.key === "ArrowLeft" ? -1 : 1); }
+  });
+
+  let snapList = [];
+  const stopSnap = () => { const old = $("snaps") && $("snaps").querySelector(".snap"); if (old && old.stop) old.stop(); if (heldRV) heldRV.hold(false); };
+  function stepSnap(dir) {
+    const i = snapState.i + dir;
+    if (i >= 0 && i < snapList.length) { snapState.i = i; return renderSnaps(); }
+    // past either end: on into the neighbouring match (newest first, so "next" is older)
+    const k = replayable.findIndex((m) => m.id === snapState.id), other = replayable[k + dir];
+    if (!other) return;
+    snapState.id = other.id; snapState.i = dir > 0 ? 0 : -1;
+    $("snapmatch").value = other.id; renderSnaps();
   }
 
   function renderSnaps() {
     const m = matches.find((x) => x.id === snapState.id); if (!m) return;
-    $("snaps").innerHTML = `<div class="panel empty">Loading…</div>`;
     loadMatch(m.id).then((R) => {
       const seats = seatInfo(R), cal = radarFor(R.map), list = [];
       R.rounds.forEach((r, ri) => (r.fights || []).forEach((f) => {
         const mine = f.killer === 0 && f.victim !== 0, died = f.victim === 0;
         if ((mine && snapState.which !== "deaths") || (died && snapState.which !== "kills")) list.push({ r, ri, f, died });
       }));
-      $("snapcount").textContent = `${list.length} moment${list.length === 1 ? "" : "s"}`;
+      snapList = list;
+      if (snapState.i < 0) snapState.i = list.length - 1;
+      snapState.i = Math.max(0, Math.min(list.length - 1, snapState.i));
+      const k = replayable.findIndex((x) => x.id === m.id), i = snapState.i;
+      $("snapcount").textContent = list.length ? `${i + 1} of ${list.length} · ${mapName(m.map)}` : "Nothing here";
+      $("snapbox").querySelector('[data-snav="-1"]').disabled = i <= 0 && !replayable[k - 1];
+      $("snapbox").querySelector('[data-snav="1"]').disabled = i >= list.length - 1 && !replayable[k + 1];
+      $("snapstrip").innerHTML = list.map((s, j) => `<button type="button" data-si="${j}" class="${s.died ? "d" : "k"}" aria-pressed="${j === i}"
+        title="Round ${s.ri + 1} at ${mmss(s.f.t)}: ${s.died ? "Ric died" : "Ric's kill"}">${s.ri + 1}</button>`).join("");
       if (!list.length) { $("snaps").innerHTML = `<div class="panel empty">Nothing here.</div>`; return; }
-      const shown = snapState.all ? list : list.slice(0, SNAP_FIRST);
-      $("snaps").innerHTML = shown.map((s, i) => snapCard(s, i, seats, R)).join("")
-        + (shown.length < list.length ? `<div class="more" style="grid-column:1/-1"><button type="button" class="btn ghost" id="snapall">Show all ${list.length}</button></div>` : "");
-      shown.forEach((s, i) => mountSnap($("snaps").querySelector(`.snap[data-i="${i}"]`), s, seats, R, cal));
-      const all = $("snapall");
-      if (all) all.addEventListener("click", () => { snapState.all = true; renderSnaps(); });
+      stopSnap();
+      $("snaps").innerHTML = snapCard(list[i], 0, seats, R);
+      const card = $("snaps").querySelector(".snap");
+      card.classList.add("solo"); card.querySelector("canvas").width = card.querySelector("canvas").height = 1100;
+      mountSnap(card, list[i], seats, R, cal);
+      const on = $("snapstrip").querySelector('[aria-pressed="true"]');
+      if (on) $("snapstrip").scrollLeft = on.offsetLeft - $("snapstrip").clientWidth / 2;
     }, () => { $("snaps").innerHTML = `<div class="panel empty">That match didn't load.</div>`; });
   }
 
@@ -1146,14 +1189,18 @@
       killfeed(kf, seats, r, t);
     };
     const clock = Clock({ wrap, from: Math.max(0, f.t - 6), to: Math.min(r.dur || f.t + 3, f.t + 3), at: f.t, onTime: () => rv && paint() });
+    card.stop = () => clock.play(false);
     rv = RadarView(wrap, { draw: paint, onKey: (e) => clockKeys(clock)(e), onHold: () => {
       // one big card at a time: taking hold of this one puts the last one back
+      if (card.classList.contains("solo")) return;
       for (const c of document.querySelectorAll(".snap.big")) if (c !== card) c.querySelector("[data-close]").click();
       if (card.classList.contains("big")) return;
       card.classList.add("big"); cv.width = cv.height = 1100; rv.set(rv.view); card.scrollIntoView({ block: "nearest" });
     } });
     wrap.querySelector("[data-close]").addEventListener("click", () => {
-      clock.play(false); clock.t = f.t; card.classList.remove("big"); cv.width = cv.height = 720; rv.hold(false); rv.set(first);
+      clock.play(false); clock.t = f.t;
+      if (!card.classList.contains("solo")) { card.classList.remove("big"); cv.width = cv.height = 720; }
+      rv.hold(false); rv.set(first);
     });
     card.querySelector("[data-watch]").addEventListener("click", () => showReplay(snapState.id, true, card.dataset.round, Math.max(0, f.t - 5)));
     if (cal) loadImg(lower ? cal.lower : cal.img).then((im) => { img = im; rv.set(first); });
@@ -1182,6 +1229,7 @@
     }
     if (heldRV) heldRV.hold(false);
     if (player && v !== "replay") player.stop();
+    if (v !== "snapshots") stopSnap();
     scrollTo(0, 0);
   }
 
@@ -1256,7 +1304,7 @@
       const n = e.target.closest("[data-mnav]"); if (n) return stepMatch(+n.dataset.mnav);
       const r = e.target.closest("[data-replay]"); if (r) return showReplay(r.dataset.replay, true);
       const s = e.target.closest("[data-snaps]");
-      if (s) { snapState.id = s.dataset.snaps; snapState.all = false; renderSnapBar(); go("snapshots"); }
+      if (s) { snapState.id = s.dataset.snaps; snapState.i = 0; renderSnapBar(); go("snapshots"); }
     });
     // ← → step through matches while one is open (a held map keeps the arrows)
     document.addEventListener("keydown", (e) => {

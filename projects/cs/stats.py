@@ -15,6 +15,9 @@ sync and writes the same numbers into llm/index.md.
             and map units), weapon, headshot/wallbang/smoke/flash, distance,
             men alive before, opening, traded
   hits[]    every bullet of damage given and taken, by hitgroup
+  nades[]   every grenade Ric threw: [game, round, side, kind, x, y], where it went off
+  flashes[] every flashbang of Ric's: [game, round, side, enemies blinded,
+            teammates blinded, enemy seconds blind]
 
 Generated, never hand-edited.
 """
@@ -42,7 +45,7 @@ def load_replay(mid):
 
 
 def build(matches):
-    games, rounds, fights, hits = [], [], [], Counter()
+    games, rounds, fights, hits, nades, flashes = [], [], [], Counter(), [], []
     for m in matches:
         if not m.get("replay"):
             continue
@@ -57,7 +60,7 @@ def build(matches):
             side, fs = r["side"], r.get("fights") or []
             row = {"g": gi, "n": n, "side": side, "w": bool(r["w"]), "why": r.get("reason"),
                    "pistol": n in (1, 13), "k": 0, "dmg": 0, "surv": True,
-                   "first": None, "op": None, "clutch": None}
+                   "first": None, "op": None, "clutch": None, "he": 0, "fire": 0}
             # buy after freeze time: Ric's, and each team's average
             econ = r.get("economy") or {}
             mine = [e.get("equip") or 0 for s, e in econ.items() if int(s) in us]
@@ -75,10 +78,32 @@ def build(matches):
                 took[v] += real
                 if a == me and v not in us:
                     row["dmg"] += real
+                    if w == "hegrenade":
+                        row["he"] += real
+                    elif w in ("inferno", "molotov", "incgrenade"):
+                        row["fire"] += real
                     if w not in NADES and grp:
                         hits[(R["map"], side, "g", grp)] += 1
                 elif v == me and a is not None and a not in us and w not in NADES and grp:
                     hits[(R["map"], side, "t", grp)] += 1
+            for t, s_, kind, x, y, *_ in r.get("nades") or []:
+                if s_ == me and x is not None and kind in ("smoke", "flash", "he", "fire"):
+                    nades.append([gi, n, side, kind, x, y])
+            pops = {}                       # one flashbang blinds several people at the same tick
+            for t, thrower, victim, secs in r.get("flashes") or []:
+                if thrower != me or victim is None or victim == me:
+                    continue
+                f_ = pops.setdefault(round(t, 1), [0, 0, 0.0])
+                if victim in us:
+                    f_[1] += 1
+                else:
+                    f_[0] += 1
+                    f_[2] += secs
+            thrown = sum(1 for x in r.get("nades") or [] if x[1] == me and x[2] == "flash")
+            for foes, mates, secs in pops.values():
+                flashes.append([gi, n, side, foes, mates, round(secs, 2)])
+            for _ in range(max(0, thrown - len(pops))):     # flashes that caught nobody
+                flashes.append([gi, n, side, 0, 0, 0])
             alive_me = True
             for i, f in enumerate(fs):
                 a, v = f.get("killer"), f.get("victim")
@@ -118,7 +143,8 @@ def build(matches):
             row["surv"] = alive_me
             rounds.append(row)
     return {"games": games, "rounds": rounds, "fights": fights,
-            "hits": [[mp, sd, d, g, c] for (mp, sd, d, g), c in sorted(hits.items())]}
+            "hits": [[mp, sd, d, g, c] for (mp, sd, d, g), c in sorted(hits.items())],
+            "nades": nades, "flashes": flashes}
 
 
 def pct(a, b):
@@ -154,6 +180,12 @@ def breakdown_md(S, map_name):
         c = [r for r in rs if r["clutch"] == n]
         if c:
             rows.append((f"1v{n} clutches won", pct(sum(r["w"] for r in c), len(c))))
+    kinds = Counter(n[3] for n in S.get("nades") or [])
+    fl = S.get("flashes") or []
+    rows.append(("Grenades thrown", f"{kinds['smoke']} smokes, {kinds['flash']} flashes, {kinds['he']} HEs, {kinds['fire']} fires"))
+    rows.append(("Enemies blinded per flash", f"{sum(f[3] for f in fl) / len(fl):.2f}" if fl else "—"))
+    rows.append(("Teammates blinded by Ric's flashes", sum(f[4] for f in fl)))
+    rows.append(("Grenade damage (HE / fire)", f"{sum(r['he'] for r in rs)} / {sum(r['fire'] for r in rs)}"))
     L += [_table(["Stat", "Value"], rows), ""]
     for mp in sorted({g["map"] for g in games}):
         gi = {i for i, g in enumerate(games) if g["map"] == mp}
