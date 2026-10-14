@@ -450,6 +450,9 @@
     /* ══ latest match: the way in ═══════════════════════════ */
     .latest{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;padding:22px;border-left:4px solid var(--tie)}
     .latest.rW{border-left-color:#4fd36b} .latest.rL{border-left-color:#f0605a}
+    .lstage{position:relative}
+    .lstage .kf{position:absolute;top:8px;right:8px}
+    .lmode{justify-content:center;margin:8px auto 0;width:max-content}
     .latest .art{position:absolute;inset:0;background:center/cover no-repeat;opacity:.12;filter:blur(3px);pointer-events:none}
     .latest > *{position:relative;min-width:0}
     .latest .lmain{display:flex;flex-direction:column;gap:14px}
@@ -991,8 +994,9 @@ function boot() {
             return `${i === half ? '<span class="half" aria-hidden="true"></span>' : ""}<button type="button" class="${r.w ? "w" : "l"}" ${m.replay ? `data-lwatch="${i}"` : "data-lopen"} title="${esc(label)}" aria-label="${esc(label)}">${i + 1}</button>`;
           }).join("")}</div></div>` : ""}
       </div>
-      ${cal ? `<div class="lprev"><canvas width="680" height="680" aria-label="${esc(`The ${mapName(m.map)} radar with Ric's ${nk} kills and ${nd} deaths from this match`)}"></canvas>
-        <div class="rlegend" style="justify-content:center">${fights.length ? `<span><i style="background:#c9a24b"></i>T</span><span><i style="background:#5d79ae"></i>CT</span><span>● Ric's kills · ✕ his deaths · cone = facing · point at one to see his view</span>`
+      ${cal ? `<div class="lprev"><div class="lstage"><canvas width="680" height="680" aria-label="${esc(`The ${mapName(m.map)} radar from this match`)}"></canvas><div class="kf" aria-hidden="true"></div></div>
+        ${m.replay && rounds.length ? `<div class="seg lmode" role="group" aria-label="Show"><button type="button" data-lmode="loop">▶ Round ${(best < 0 ? 0 : best) + 1}${best < 0 ? "" : `, ${rounds[best].k}K`}</button><button type="button" data-lmode="fights">All fights</button></div>` : ""}
+        <div class="rlegend" data-lleg style="justify-content:center">${fights.length ? `<span><i style="background:#c9a24b"></i>T</span><span><i style="background:#5d79ae"></i>CT</span><span>● Ric's kills · ✕ his deaths · cone = facing · point at one to see his view</span>`
           : `<span>${m.replay ? "Where the fights were shows up with the stats file." : "No demo for this match, so no positions."}</span>`}</div></div>` : ""}</div>`;
     box.addEventListener("click", (e) => {
       if (e.target.closest("[data-lopen]")) return openMatch(m.id);
@@ -1006,9 +1010,10 @@ function boot() {
     const at = (f) => toRadar(cal, f.mx, f.my).map((v) => v * k);
     // hovering a mark shows what Ric could see from there; every mark has an
     // arrow for the way he was facing
-    let base = null, hover = null;
+    let base = null, hover = null, mode = "fights";
     const draw = (img = base) => {
       base = img;
+      if (mode === "loop") return;
       ctx.fillStyle = "#07090c"; ctx.fillRect(0, 0, S2, S2);
       if (img) ctx.drawImage(img, 0, 0, S2, S2);
       ctx.fillStyle = "rgba(7,9,12,.3)"; ctx.fillRect(0, 0, S2, S2);
@@ -1035,6 +1040,53 @@ function boot() {
     };
     draw(null);
     loadImg(floor === 1 && cal.lower ? cal.lower : cal.img).then((im) => draw(im));
+
+    /* The way in: the best round of the latest game, playing on a loop at
+       double speed, drawn exactly as the 2D replay draws it. It pauses off
+       Overview and in a hidden tab; reduced motion starts on All fights. */
+    const legend = box.querySelector("[data-lleg]"), legendFights = legend.innerHTML, kf = box.querySelector(".lstage .kf");
+    const loopRound = best < 0 ? 0 : best;
+    let loop = null;
+    const setMode = (v) => {
+      mode = v;
+      for (const b of box.querySelectorAll("[data-lmode]")) b.setAttribute("aria-pressed", String(b.dataset.lmode === v));
+      kf.hidden = v !== "loop";
+      legend.innerHTML = v === "loop" ? `<span><i style="background:#c9a24b"></i>T</span><span><i style="background:#5d79ae"></i>CT</span><span>white ring = Ric · click to watch it full size</span>` : legendFights;
+      cv.style.cursor = v === "loop" ? "pointer" : "";
+      if (v === "loop") startLoop(); else draw();
+    };
+    function startLoop() {
+      if (loop) return loop.go();
+      loop = { t: 0, last: 0, go() {} };
+      loadMatch(m.id).then((R) => {
+        const r = R.rounds[loopRound]; if (!r) return setMode("fights");
+        const seats = seatInfo(R), imgs = [null, null];
+        loadImg(cal.img).then((im) => { imgs[0] = im; });
+        if (cal.lower) loadImg(cal.lower).then((im) => { imgs[1] = im; });
+        const end = r.dur || 0;
+        let raf = 0;
+        const frame = (now) => {
+          raf = 0;
+          if (mode !== "loop") return;
+          if (view !== "overview" || document.hidden) { loop.last = 0; setTimeout(() => { if (!raf) raf = requestAnimationFrame(frame); }, 400); return; }
+          loop.t += loop.last ? Math.min(0.1, (now - loop.last) / 1000) * 2 : 0; loop.last = now;
+          if (loop.t > end + 1.5) loop.t = 0;                // a beat on the end before it starts again
+          const t = Math.min(loop.t, end), players = momentAt(R, r, t), B = bombAt(r, t);
+          const ric = players.find((p) => p.seat === 0 && !p.dead), lv = ric && lowerAt(cal, ric.z) && imgs[1] ? 1 : 0;
+          const recent = (r.fights || []).filter((f) => f.t <= t && t - f.t < 1.5 && f.killer_at && f.victim_at && f.killer_at.x != null).pop();
+          drawMoment(ctx, S2, { cal, img: imgs[lv], lower: lv === 1, players, nades: r.nades, flashes: r.flashes, bomb: B, hudText: bombText(B, seats, t),
+            line: recent ? [recent.killer_at.x, recent.killer_at.y, recent.victim_at.x, recent.victim_at.y] : null,
+            view: [0, 0, 1024], labels: false, seats, r, t });
+          killfeed(kf, seats, r, t);
+          raf = requestAnimationFrame(frame);
+        };
+        loop.go = () => { loop.last = 0; if (!raf) raf = requestAnimationFrame(frame); };
+        loop.go();
+      }, () => setMode("fights"));
+    }
+    box.addEventListener("click", (e) => { const b = e.target.closest("[data-lmode]"); if (b) setMode(b.dataset.lmode); });
+    if (m.replay && rounds.length) setTimeout(() => setMode(reduce ? "fights" : "loop"), 0);   // after the rest of the page is set up
+    cv.addEventListener("click", () => { if (mode === "loop" && loop) showReplay(m.id, true, loopRound, Math.max(0, loop.t - 2)); });
     if (!fights.length || !m.replay) return;
     // the mark nearest a tap, within reach of a finger
     const near = (e) => {
@@ -1046,6 +1098,7 @@ function boot() {
     const wrapP = cv.parentNode; wrapP.style.position = "relative";
     const tip = document.createElement("div"); tip.className = "tip"; wrapP.appendChild(tip);
     cv.addEventListener("pointermove", (e) => {
+      if (mode === "loop") return;
       const f = near(e); cv.style.cursor = f ? "pointer" : "";
       if (f !== hover) { hover = f; draw(); }
       if (!f) { tip.style.opacity = 0; return; }
@@ -1059,6 +1112,7 @@ function boot() {
     let touch = false;
     cv.addEventListener("pointerdown", (e) => { touch = e.pointerType === "touch"; });
     cv.addEventListener("click", (e) => {
+      if (mode === "loop") return;
       const f = near(e); if (!f) return;
       if (touch && f !== hover) { hover = f; draw(); return; }     // no hover on a phone: first tap shows the view
       showReplay(m.id, true, f.n - 1, Math.max(0, f.t - 5));
