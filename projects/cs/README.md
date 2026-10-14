@@ -23,6 +23,18 @@ hitgroup. The page slices it by map and side. The replays are ~600 KB each;
 `stats.js` is the one small file the page can load whole. Its damage runs a few
 percent under Leetify's ADR, so the page labels it as the demo's.
 
+**The page itself.** Overview opens on the latest match: its score, a radar
+of every kill and death in it, and its rounds, any of which starts the 2D
+replay. One shared filter (last 5 / last 10 / all games, map, mode) drives
+Overview, Stats and Your Matches, and always says how many matches it is
+counting; averages still count ranked games only. Every stat that isn't
+self-explanatory has a tap-to-open ⓘ, and About lists them all — keep those
+definitions in step with `GLOSSARY` in `export-llm.py`. The replay and the kill
+snapshots load a match file (~600 KB) only when opened. The replay's address is
+`#replay/<id>/<round>[/<seconds>]`, and "Copy link to this moment" copies it. If
+`cs-data.js` or `stats.js` fails to load the page says so with a Try again
+button, rather than drawing an empty record.
+
 **Plain text for machines.** `export-llm.py` (run by every sync) rewrites
 `llm/index.md` and one `llm/<id>.md` per match: the same data as the page, every
 fight in every round written out, for LLMs and anything else that reads the site

@@ -407,7 +407,7 @@ def index_md(data, matches, breakdown=""):
             + f". Premier rating: {(lt.get('ranks') or {}).get('premier') or 'unrated'}."]
 
     L += ["", "## Matches (newest first)", "",
-          table(["Date", "Map", "Mode", "Score", "Result", "K-D-A", "ADR", "Rating", "Full data", "Report"],
+          table(["Date", "Map", "Mode", "Score", "Result", "K-D-A", "ADR", "Leetify rating", "Full data", "Report"],
                 [(when(m.get("at")), map_name(m["map"]), MODES.get(m.get("mode"), m.get("mode")),
                   f"{m['score'][0]}–{m['score'][1]}", {"W": "win", "L": "loss", "T": "draw"}[m["result"]],
                   f"{m['me'].get('k')}-{m['me'].get('d')}-{m['me'].get('a')}", f(m["me"].get("adr")),
@@ -424,8 +424,20 @@ def index_md(data, matches, breakdown=""):
                  for mp, g in sorted(by.items(), key=lambda x: -x[1]["n"])])]
     if breakdown:
         L += ["", breakdown]
-    L += ["", SCHEMA]
+    L += ["", GLOSSARY, "", SCHEMA]
     return "\n".join(L) + "\n"
+
+
+# What the numbers mean: the same definitions cs.html shows behind its ⓘ buttons.
+GLOSSARY = """## What the numbers mean
+
+- **ADR**: average damage per round, the health Ric took off the enemy each round. 100 is a whole enemy's worth every round.
+- **K/D**: kills divided by deaths. **HS%**: the share of kills that were headshots.
+- **KAST**: the share of rounds where Ric got a kill, an assist, survived, or was traded.
+- **Leetify rating** (the Rating column): how much Ric's play moved his team's chance of winning each round, averaged over the match. 0 is break-even; shown ×100, so +2.00 is roughly two points of win chance added per round.
+- **Aim / positioning / utility**: Leetify's scores out of 100 across every game they have parsed. Higher is better; they are scores, not percentages.
+- **Clutching / opening duels**: Leetify ratings for last-alive situations and the first fight of a round, against what is expected. 0 is break-even.
+- Career numbers count ranked games only; custom and casual lobbies are listed but not averaged."""
 
 
 def places(replays):
