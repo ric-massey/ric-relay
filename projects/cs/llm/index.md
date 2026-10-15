@@ -1,6 +1,6 @@
 # RicGoneCrazy — Counter-Strike 2, every match
 
-Ric Massey's CS2 record from https://ricmassey.com/cs.html, as plain text. Generated 2026-10-14. Each match below links to a full report.
+Ric Massey's CS2 record from https://ricmassey.com/cs.html, as plain text. Generated 2026-10-15. Each match below links to a full report.
 
 Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed, and Leetify for games whose demo Valve already deleted. Other players appear under their in-game names.
 
@@ -8,22 +8,25 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 | Stat | Value |
 |---|---|
-| Matches | 16 |
-| Won / lost / drawn | 3 / 11 / 2 |
-| Win rate | 19% |
-| Kills / deaths | 164 / 236 |
-| K/D | 0.69 |
-| Headshot % | 46% |
+| Matches | 19 |
+| Won / lost / drawn | 4 / 13 / 2 |
+| Win rate | 21% |
+| Kills / deaths | 181 / 277 |
+| K/D | 0.65 |
+| Headshot % | 45% |
 | Matches with full demo data | 16 |
 
-**Leetify skill ratings** (read 2026-10-14): aim 52/100, positioning 31/100, utility 3/100.
+**Leetify skill ratings** (read 2026-10-15): aim 51/100, positioning 30/100, utility 3/100.
 
-**Competitive rank by map:** Cache Unranked, Dust II Unranked, Train Silver I, Anubis Unranked, Mirage Unranked. Premier rating: unrated.
+**Competitive rank by map:** Cache Unranked, Dust II Unranked, Train Silver I, Anubis Unranked, Mirage Unranked, Vertigo Unranked. Premier rating: unrated.
 
 ## Matches (newest first)
 
 | Date | Map | Mode | Score | Result | K-D-A | ADR | HLTV 1.0 | Leetify rating | Full data | Report |
 |---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-15 02:00 UTC | Mirage | Competitive | 7–13 | loss | 5-19-3 | 25 | 0.25 | -10.14 | no | [3848354346483843102.md](3848354346483843102.md) |
+| 2026-10-15 01:15 UTC | Vertigo | Competitive | 13–11 | win | 8-15-1 | 37.2 | 0.63 | -4.23 | no | [3848348490295935257.md](3848348490295935257.md) |
+| 2026-10-15 00:58 UTC | Dust II | Competitive | 1–8 | loss | 4-7-0 | 27.8 | 0.62 | -2.74 | no | [3848346366434607200.md](3848346366434607200.md) |
 | 2026-10-13 17:22 UTC | Train | Competitive | 9–13 | loss | 6-19-6 | 53.4 | 0.37 | -9.08 | yes | [3848102062252359905.md](3848102062252359905.md) |
 | 2026-10-13 16:50 UTC | Anubis | Competitive | 13–6 | win | 13-13-5 | 80.9 | 0.95 | +3.49 | yes | [3848097853184409614.md](3848097853184409614.md) |
 | 2026-10-13 16:26 UTC | Train | Competitive | 3–13 | loss | 4-14-1 | 46.4 | 0.31 | -4.74 | yes | [3848094777987825749.md](3848094777987825749.md) |
@@ -46,10 +49,11 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 | Map | Played | W-L-D | K/D |
 |---|---|---|---|
-| Mirage | 6 | 0-4-2 | 0.75 |
+| Mirage | 7 | 0-5-2 | 0.67 |
+| Dust II | 4 | 0-4-0 | 0.61 |
 | Train | 4 | 2-2-0 | 0.66 |
-| Dust II | 3 | 0-3-0 | 0.62 |
 | Anubis | 2 | 1-1-0 | 0.56 |
+| Vertigo | 1 | 1-0-0 | 0.53 |
 | Cache | 1 | 0-1-0 | 1.00 |
 | Rush 001 | 1 | 1-0-0 | 2.67 |
 
@@ -87,9 +91,9 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Walkway | 4 | 12% | 4 | 22% | 1.00 |
 | Bombsite B | 3 | 9% | 1 | 6% | 0.33 |
 | Canal | 3 | 9% | 0 | 0% | 0.00 |
-| Bridge | 2 | 6% | 1 | 6% | 0.50 |
 | Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
 | Heaven | 2 | 6% | 1 | 6% | 0.50 |
+| Bridge | 2 | 6% | 1 | 6% | 0.50 |
 | Main | 1 | 3% | 1 | 6% | 1.00 |
 | Fountain | 1 | 3% | 0 | 0% | 0.00 |
 | Bricks | 1 | 3% | 0 | 0% | 0.00 |
@@ -106,13 +110,13 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Mid | 2 | 17% | 0 | 0% | 0.00 |
 | Outside A | 1 | 8% | 3 | 25% | 3.00 |
 | Bombsite B | 1 | 8% | 1 | 8% | 1.00 |
+| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | CTLane | 1 | 8% | 0 | 0% | 0.00 |
 | TSpawn | 1 | 8% | 0 | 0% | 0.00 |
-| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | TYard | 0 | 0% | 2 | 17% | — |
 | BMain | 0 | 0% | 1 | 8% | — |
-| Vents | 0 | 0% | 1 | 8% | — |
 | AStairs | 0 | 0% | 1 | 8% | — |
+| Vents | 0 | 0% | 1 | 8% | — |
 
 ### Dust II: where Ric dies and kills
 
@@ -124,14 +128,14 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Outside Long | 4 | 11% | 3 | 13% | 0.75 |
 | Topof Mid | 3 | 8% | 0 | 0% | 0.00 |
 | BDoors | 2 | 5% | 0 | 0% | 0.00 |
-| Middle | 2 | 5% | 0 | 0% | 0.00 |
-| Catwalk | 2 | 5% | 0 | 0% | 0.00 |
 | Extended A | 2 | 5% | 0 | 0% | 0.00 |
 | Hole | 2 | 5% | 0 | 0% | 0.00 |
+| Middle | 2 | 5% | 0 | 0% | 0.00 |
+| Catwalk | 2 | 5% | 0 | 0% | 0.00 |
 | Under A | 1 | 3% | 2 | 9% | 2.00 |
 | Mid Doors | 1 | 3% | 1 | 4% | 1.00 |
-| ARamp | 1 | 3% | 0 | 0% | 0.00 |
 | Bombsite A | 1 | 3% | 0 | 0% | 0.00 |
+| ARamp | 1 | 3% | 0 | 0% | 0.00 |
 | Short Stairs | 0 | 0% | 2 | 9% | — |
 | Upper Tunnel | 0 | 0% | 2 | 9% | — |
 
