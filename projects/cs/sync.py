@@ -48,9 +48,14 @@ def problem(msg):
 
 
 def step(name, *args, exe=None):
-    r = subprocess.run([exe or PY, *args], cwd=REPO, capture_output=True, text=True,
-                       encoding="utf-8", errors="replace", timeout=1800,
-                       env={**os.environ, "PYTHONIOENCODING": "utf-8", "CS_PYTHON": PY}, **QUIET)
+    try:
+        r = subprocess.run([exe or PY, *args], cwd=REPO, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=1800,
+                           env={**os.environ, "PYTHONIOENCODING": "utf-8", "CS_PYTHON": PY}, **QUIET)
+    except (subprocess.TimeoutExpired, OSError) as e:
+        # a step that hangs or won't start must not take the commit and push with it
+        problem(f"{name}: {'timed out' if isinstance(e, subprocess.TimeoutExpired) else e}")
+        return
     out = (r.stdout + r.stderr).strip()
     print(out if out else f"{name}: (no output)")
     if r.returncode:
@@ -106,7 +111,17 @@ def publish():
             problem("push: other unpushed work is on this branch — not pushing; push it yourself when it's ready")
             return
     if git("rev-list", "HEAD..origin/main").stdout.strip():
-        # someone else pushed meanwhile: put the match commits on top of theirs
+        # someone else pushed meanwhile: put the match commits on top of theirs.
+        # The autostash puts Ric's uncommitted work back afterwards, and if a
+        # file he's editing is one they changed, git leaves conflict markers in
+        # it and still reports success — so in that case don't touch anything.
+        theirs = set(git("diff", "--name-only", "HEAD...origin/main").stdout.split())
+        dirty = {line[3:].strip().strip('"').split(" -> ")[-1]
+                 for line in git("status", "--porcelain").stdout.splitlines()}
+        if theirs & dirty:
+            problem("push: GitHub changed files you're editing (" + ", ".join(sorted(theirs & dirty))[:120]
+                    + ") — not pushing; pull yourself when it's safe")
+            return
         r = git("pull", "--rebase", "--autostash", "-q", "origin", "main")
         if r.returncode:
             git("rebase", "--abort")

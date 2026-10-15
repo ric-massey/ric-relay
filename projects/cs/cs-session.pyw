@@ -54,14 +54,21 @@ def cs2_running():
 def sync(why):
     log(f"sync ({why})")
     try:
+        # each step inside has its own 30-minute limit and the fetch can run
+        # twice, so the whole pass gets far longer than any one step
         r = subprocess.run([sys.executable, str(HERE / "sync.py")], capture_output=True,
                            text=True, encoding="utf-8", errors="replace",
-                           timeout=1800, creationflags=QUIET,
+                           timeout=4 * 3600, creationflags=QUIET,
                            env={**os.environ, "PYTHONIOENCODING": "utf-8"})
         for line in (r.stdout + r.stderr).strip().splitlines():
             log("  " + line)
     except Exception as e:
         log(f"  sync failed: {e}")
+        try:   # sync.py raises its own toasts; this is for when it never got to
+            from notify import toast
+            toast("CS sync failed", str(e))
+        except Exception:
+            pass
 
 
 def main():
