@@ -91,9 +91,9 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Walkway | 4 | 12% | 4 | 22% | 1.00 |
 | Bombsite B | 3 | 9% | 1 | 6% | 0.33 |
 | Canal | 3 | 9% | 0 | 0% | 0.00 |
-| Bridge | 2 | 6% | 1 | 6% | 0.50 |
-| Heaven | 2 | 6% | 1 | 6% | 0.50 |
 | Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
+| Heaven | 2 | 6% | 1 | 6% | 0.50 |
+| Bridge | 2 | 6% | 1 | 6% | 0.50 |
 | Main | 1 | 3% | 1 | 6% | 1.00 |
 | Fountain | 1 | 3% | 0 | 0% | 0.00 |
 | Bricks | 1 | 3% | 0 | 0% | 0.00 |
@@ -110,9 +110,9 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Mid | 2 | 17% | 0 | 0% | 0.00 |
 | Outside A | 1 | 8% | 3 | 25% | 3.00 |
 | Bombsite B | 1 | 8% | 1 | 8% | 1.00 |
+| T Spawn | 1 | 8% | 0 | 0% | 0.00 |
 | CT Lane | 1 | 8% | 0 | 0% | 0.00 |
 | Heaven | 1 | 8% | 0 | 0% | 0.00 |
-| T Spawn | 1 | 8% | 0 | 0% | 0.00 |
 | T Yard | 0 | 0% | 2 | 17% | — |
 | B Main | 0 | 0% | 1 | 8% | — |
 | A Stairs | 0 | 0% | 1 | 8% | — |
@@ -136,8 +136,8 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Mid Doors | 1 | 2% | 1 | 4% | 1.00 |
 | A Ramp | 1 | 2% | 0 | 0% | 0.00 |
 | Bombsite A | 1 | 2% | 0 | 0% | 0.00 |
-| Upper Tunnel | 0 | 0% | 2 | 7% | — |
 | Short Stairs | 0 | 0% | 2 | 7% | — |
+| Upper Tunnel | 0 | 0% | 2 | 7% | — |
 
 ### Mirage: where Ric dies and kills
 
@@ -148,8 +148,8 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Palace Interior | 13 | 12% | 10 | 13% | 0.77 |
 | Bombsite B | 10 | 9% | 5 | 7% | 0.50 |
 | Connector | 9 | 8% | 2 | 3% | 0.22 |
-| Truck | 8 | 7% | 4 | 5% | 0.50 |
 | CT Spawn | 8 | 7% | 4 | 5% | 0.50 |
+| Truck | 8 | 7% | 4 | 5% | 0.50 |
 | Catwalk | 6 | 5% | 4 | 5% | 0.67 |
 | Shop | 5 | 4% | 1 | 1% | 0.20 |
 | T Ramp | 4 | 4% | 1 | 1% | 0.25 |
@@ -157,11 +157,11 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Middle | 2 | 2% | 2 | 3% | 1.00 |
 | Scaffolding | 2 | 2% | 2 | 3% | 1.00 |
 | House | 2 | 2% | 1 | 1% | 0.50 |
-| Stairs | 2 | 2% | 0 | 0% | 0.00 |
 | Snipers Nest | 2 | 2% | 0 | 0% | 0.00 |
+| Stairs | 2 | 2% | 0 | 0% | 0.00 |
 | Palace Alley | 1 | 1% | 4 | 5% | 4.00 |
-| Jungle | 1 | 1% | 1 | 1% | 1.00 |
 | Back Alley | 1 | 1% | 1 | 1% | 1.00 |
+| Jungle | 1 | 1% | 1 | 1% | 1.00 |
 | Top of Mid | 1 | 1% | 0 | 0% | 0.00 |
 | Side Alley | 1 | 1% | 0 | 0% | 0.00 |
 
@@ -191,21 +191,22 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Bombsite A | 3 | 20% | 0 | 0% | 0.00 |
 | T Corridor Up | 1 | 7% | 2 | 25% | 2.00 |
 | Elevator | 1 | 7% | 1 | 12% | 1.00 |
-| Tunnels | 1 | 7% | 0 | 0% | 0.00 |
 | CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
-| Mid | 1 | 7% | 0 | 0% | 0.00 |
-| Crane | 1 | 7% | 0 | 0% | 0.00 |
-| T Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
+| Mid | 1 | 7% | 0 | 0% | 0.00 |
+| T Spawn | 1 | 7% | 0 | 0% | 0.00 |
+| Tunnels | 1 | 7% | 0 | 0% | 0.00 |
+| Crane | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Top | 0 | 0% | 2 | 25% | — |
-| Top of Mid | 0 | 0% | 1 | 12% | — |
 | Connector | 0 | 0% | 1 | 12% | — |
+| Top of Mid | 0 | 0% | 1 | 12% | — |
 
 
 ## What the numbers mean
 
 - **ADR**: average damage per round, the health Ric took off the enemy each round. 100 is a whole enemy's worth every round.
 - **K/D**: kills divided by deaths. **HS%**: the share of kills that were headshots.
+- **Chance of the round**: how likely Ric's team was to win the round at that moment, from players alive on each side, whether the bomb was down, their side and the buy. A logistic model (`winprob.py`) fitted on every moment of every saved round from both teams' side; each fight lists the chance just before and just after it, and the difference is what that kill was worth. Summed over Ric's kills and deaths it is **rounds added**.
 - **KAST**: the share of rounds where Ric got a kill, an assist, survived, or was traded.
 - **Leetify rating** (the Rating column): how much Ric's play moved his team's chance of winning each round, averaged over the match. 0 is break-even; shown ×100, so +2.00 is roughly two points of win chance added per round.
 - **Aim / positioning / utility**: Leetify's scores out of 100 across every game they have parsed. Higher is better; they are scores, not percentages.
