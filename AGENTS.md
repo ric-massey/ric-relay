@@ -494,7 +494,9 @@ that must never break:
 - `sync.py` commits the room's data only, on `main`, and **pushes those commits**
   (Ric's call, 2026-10-14: a session should reach the site by itself). It pushes
   nothing if any unpushed commit touches other files, and `"push": false` in
-  `cs-account.json` turns it off. VALORANT's sync still never pushes.
+  `cs-account.json` turns it off. VALORANT's sync still never pushes. A failed
+  step, commit or push — or a push held back — raises a Windows toast
+  (`notify.py`); the log is otherwise the only place it shows.
 - **The radar is the game's own.** `extract-radars.py` unpacks CS2's radar images and
   overview calibration from the local game files with Source 2 Viewer's CLI (in
   `projects/cs/tools/`, gitignored) into `projects/cs/radar/`. Rerun it after a map

@@ -19,6 +19,11 @@ commits those files and only those (on main, never mid-merge), then pushes
 those commits so the session shows up on the site (set "push": false in
 cs-account.json to stop that). It pushes only its own data commits: on this repo
 a push is a publish, so anything else waiting to go out is left for Ric.
+
+Anything that fails or is held back — a step exiting non-zero, a commit that
+didn't happen, a push that was refused or skipped — is also collected and raised
+as one Windows toast at the end of the run (notify.py), because under pythonw
+the log is otherwise the only place it shows up.
 """
 
 import json
@@ -33,6 +38,12 @@ PY = sys.executable
 DATA = ["projects/cs/cs-data.js", "projects/cs/matches", "projects/cs/llm", "projects/cs/stats.js"]
 # Run from pythonw (no console), every child would otherwise flash a window.
 QUIET = {"creationflags": 0x08000000} if sys.platform == "win32" else {}
+PROBLEMS = []  # one line each, toasted together at the end of the run
+
+
+def problem(msg):
+    print(msg)
+    PROBLEMS.append(msg)
 
 
 def step(name, *args, exe=None):
@@ -42,7 +53,7 @@ def step(name, *args, exe=None):
     out = (r.stdout + r.stderr).strip()
     print(out if out else f"{name}: (no output)")
     if r.returncode:
-        print(f"{name}: exited {r.returncode}")
+        problem(f"{name}: exited {r.returncode}")
 
 
 def git(*args):
@@ -54,18 +65,21 @@ def commit():
     if not acct.get("commit", True) or os.environ.get("CS_NO_COMMIT"):
         return
     if git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip() != "main":
-        print("commit: not on main — left uncommitted")
+        problem("commit: not on main — left uncommitted")
         return
     gitdir = REPO / ".git"
     if any((gitdir / f).exists() for f in ("MERGE_HEAD", "rebase-merge", "rebase-apply", "CHERRY_PICK_HEAD")):
-        print("commit: a merge/rebase is in progress — left uncommitted")
+        problem("commit: a merge/rebase is in progress — left uncommitted")
         return
     paths = [p for p in DATA if (REPO / p).exists()]
     if not git("status", "--porcelain", "--", *paths).stdout.strip():
         return
     git("add", "--", *paths)
     r = git("commit", "-m", "CS: sync matches", "--only", "--", *paths)
-    print("commit: " + (r.stdout.splitlines()[0] if r.returncode == 0 else r.stderr.strip()))
+    if r.returncode == 0:
+        print("commit: " + r.stdout.splitlines()[0])
+    else:
+        problem("commit: " + r.stderr.strip())
 
 
 def publish():
@@ -79,7 +93,7 @@ def publish():
     if git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip() != "main":
         return
     if git("fetch", "-q", "origin", "main").returncode:
-        print("push: couldn't reach GitHub — will try again next sync")
+        problem("push: couldn't reach GitHub — will try again next sync")
         return
     ahead = git("rev-list", "origin/main..HEAD").stdout.split()
     if not ahead:
@@ -88,17 +102,20 @@ def publish():
     for c in ahead:
         files = git("diff-tree", "--no-commit-id", "--name-only", "-r", c).stdout.split()
         if any(not f.startswith(mine) for f in files):
-            print("push: other unpushed work is on this branch — not pushing; push it yourself when it's ready")
+            problem("push: other unpushed work is on this branch — not pushing; push it yourself when it's ready")
             return
     if git("rev-list", "HEAD..origin/main").stdout.strip():
         # someone else pushed meanwhile: put the match commits on top of theirs
         r = git("pull", "--rebase", "--autostash", "-q", "origin", "main")
         if r.returncode:
             git("rebase", "--abort")
-            print("push: couldn't line up with GitHub (" + r.stderr.strip().splitlines()[-1] + ") — left for you")
+            problem("push: couldn't line up with GitHub (" + (r.stderr.strip().splitlines() or ["?"])[-1] + ") — left for you")
             return
     r = git("push", "-q", "origin", "main")
-    print(f"push: {len(ahead)} commit(s) published" if r.returncode == 0 else "push: " + r.stderr.strip())
+    if r.returncode == 0:
+        print(f"push: {len(ahead)} commit(s) published")
+    else:
+        problem("push: " + r.stderr.strip())
 
 
 def main():
@@ -115,4 +132,14 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        problem(f"sync crashed: {e!r}")
+        raise
+    finally:
+        if PROBLEMS:
+            sys.path.insert(0, str(HERE))
+            from notify import toast
+            n = len(PROBLEMS)
+            toast(f"CS sync: {n} problem{'s' if n > 1 else ''}", "\n".join(PROBLEMS))

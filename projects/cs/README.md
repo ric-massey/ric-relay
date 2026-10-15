@@ -83,6 +83,12 @@ so. If GitHub moved on meanwhile it rebases its commits on top first, and if tha
 won't go cleanly it leaves everything for you. `"push": false` in
 `cs-account.json` stops the push; `"commit": false` stops both.
 
+**If anything goes wrong you get a Windows toast** (`notify.py`, Ric's call,
+2026-10-15): a step exiting non-zero, a commit that didn't happen, or a push that
+was refused or held back. One toast per sync lists every problem; it never steals
+focus from the game. `CS_NO_TOAST=1` silences it, and
+`projects/cs/.cs-venv/Scripts/python projects/cs/notify.py` sends a test one.
+
 ## Setup (once)
 
 ```
