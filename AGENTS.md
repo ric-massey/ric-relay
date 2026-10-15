@@ -38,6 +38,7 @@ photos/                     web-optimised photos, EXIF stripped (hard rule 1)
 projects/<name>/            sub-projects, and room data that has a generator next to it
 worker/                     the one Cloudflare Worker (deployed as training-log) — see its README
 atlas/, account/            ATLAS and the site account — an app, not a page: see atlas/README.md
+visitors/                   the private visitor counter; every page loads assets/visit.js (worker/README.md)
 docs/                       notes, audits, mockups and plans about the site, not part of it
 .github/                    checks.mjs (every test) and the six workflows
 ```
@@ -684,6 +685,7 @@ bug you are looking for.
 
 - [ ] All internal links resolve (files exist; current page marked `here`).
 - [ ] The menu label set is identical across all room pages.
+- [ ] A new page loads `assets/visit.js` (or is left out on purpose — see `worker/README.md`).
 - [ ] A new room is in `ROOMS`; a new project is in `PROJECTS` **and** linked from
       exactly one room **and** loads `relay-return.js`.
 - [ ] Any `data-egg` you added has a matching entry in `relay-return.js` and a line in

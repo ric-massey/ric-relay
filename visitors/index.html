@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visitors — Ric's Terminal</title>
+  <meta name="description" content="Ric's private visitor counter for ricmassey.com.">
+  <!-- Private: the numbers sit behind the site password in the Worker. The
+       page itself is public and says nothing until you sign in. -->
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23070b09'/><path d='M14 78 L36 50 L54 62 L86 22' stroke='%2346e08a' stroke-width='10' fill='none'/></svg>">
+  <style>
+    /* A night-shift traffic console. Phosphor green on a near-black panel —
+       the terminal's cousin, not its twin. Every text colour here clears 4.5:1
+       on --panel; --dim is the darkest that does (5.0:1). */
+    :root {
+      --bg: #050807;
+      --panel: #0b1210;
+      --line: #1b2a24;
+      --ink: #d9f2e4;
+      --dim: #7fa392;
+      --green: #46e08a;
+      --green-soft: #1f6b45;
+      --amber: #ffbf47;
+      --red: #ff7a6b;
+      --bar: #163c2b;
+      --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--ink); }
+    body { font: 14px/1.5 var(--mono); min-height: 100vh; }
+    a { color: var(--green); }
+    a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 18px 16px 60px; }
+
+    header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+    .brand { font-weight: 700; letter-spacing: .14em; font-size: 13px; }
+    .brand b { color: var(--green); font-weight: 700; }
+    .home { margin-left: auto; font-size: 12px; text-decoration: none; color: var(--dim); }
+    .home:hover { color: var(--green); }
+
+    .live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 rgba(70,224,138,.6); animation: pulse 2s infinite; }
+    .live.zero .dot { background: var(--dim); animation: none; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(70,224,138,.55); } 70% { box-shadow: 0 0 0 9px rgba(70,224,138,0); } 100% { box-shadow: 0 0 0 0 rgba(70,224,138,0); } }
+    @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+
+    .bar-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0 6px; }
+    .ranges { display: flex; gap: 4px; overflow-x: auto; }
+    .ranges button, .btn {
+      font: 12px var(--mono); color: var(--dim); background: transparent; border: 1px solid var(--line);
+      padding: 7px 11px; border-radius: 4px; cursor: pointer; white-space: nowrap; min-height: 34px;
+    }
+    .ranges button:hover, .btn:hover { color: var(--ink); border-color: var(--green-soft); }
+    .ranges button[aria-pressed="true"] { color: var(--bg); background: var(--green); border-color: var(--green); font-weight: 700; }
+    .tools { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn.on { color: var(--amber); border-color: #6b5520; }
+    .stamp { font-size: 11px; color: var(--dim); }
+
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; margin-top: 12px; }
+    .card { grid-column: span 12; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; min-width: 0; }
+    .card h2 { margin: 0 0 10px; font-size: 11px; letter-spacing: .16em; color: var(--dim); font-weight: 600; text-transform: uppercase; }
+    .s4 { grid-column: span 4; } .s6 { grid-column: span 6; } .s8 { grid-column: span 8; }
+    @media (max-width: 860px) { .s4, .s6, .s8 { grid-column: span 12; } }
+
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+    .tile .n { font-size: 30px; font-weight: 700; line-height: 1.1; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .tile .l { font-size: 11px; color: var(--dim); letter-spacing: .08em; text-transform: uppercase; }
+    .tile .sub { font-size: 11px; color: var(--dim); }
+    .tile.today .n { color: var(--green); }
+    #today { grid-template-columns: repeat(3, 1fr); }
+    th + th { padding-left: 10px; }
+
+    /* The chart is divs, not an SVG: it reflows to any width with no text
+       squashed, and every bar is a focusable thing with its own label. */
+    .chart-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .legend { font-size: 11px; color: var(--dim); display: flex; gap: 14px; }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+    .readout { min-height: 21px; font-size: 12px; color: var(--ink); margin: 2px 0 8px; }
+    .chart { display: flex; align-items: flex-end; gap: 2px; height: 180px; border-bottom: 1px solid var(--line); position: relative; }
+    .col { flex: 1 1 0; height: 100%; display: flex; align-items: flex-end; position: relative; cursor: default; min-width: 2px; }
+    .col .v { position: absolute; bottom: 0; left: 0; right: 0; background: var(--bar); border-radius: 2px 2px 0 0; }
+    .col .u { position: absolute; bottom: 0; left: 18%; right: 18%; background: var(--green); border-radius: 2px 2px 0 0; }
+    .col:hover .v, .col:focus .v { background: var(--green-soft); }
+    .col:focus { outline: none; }
+    .col:focus .u { background: var(--amber); }
+    .axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--dim); margin-top: 6px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    td { padding: 5px 0; vertical-align: top; }
+    td.k { width: 100%; padding-right: 10px; position: relative; word-break: break-all; }
+    td.k span { position: relative; }
+    td.k .fill { position: absolute; left: 0; top: 3px; bottom: 3px; background: var(--bar); border-radius: 2px; }
+    td.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; padding-left: 10px; }
+    td.n.dim, .dimtxt { color: var(--dim); }
+    th { text-align: right; font-size: 11px; color: var(--dim); font-weight: 400; padding-bottom: 4px; }
+    th:first-child { text-align: left; }
+    .empty { color: var(--dim); font-size: 12px; }
+
+    .feed td { padding: 4px 0; }
+    .feed td.t { white-space: nowrap; color: var(--dim); padding-right: 12px; }
+    .feed td.p { width: 100%; word-break: break-all; }
+    .feed td.r { white-space: nowrap; color: var(--dim); padding-left: 12px; text-align: right; }
+    .tag { font-size: 11px; color: var(--amber); }
+
+    .gate { max-width: 420px; margin: 60px auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 22px; }
+    .gate h1 { font-size: 14px; letter-spacing: .14em; margin: 0 0 6px; }
+    .gate p { color: var(--dim); font-size: 12px; margin: 0 0 16px; }
+    .ownerform { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .ownerlabel { width: 100%; font-size: 11px; color: var(--dim); letter-spacing: .1em; text-transform: uppercase; }
+    .ownerform input { flex: 1 1 180px; font: 14px var(--mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 10px; min-height: 44px; }
+    .ownerform button { font: 700 13px var(--mono); color: var(--bg); background: var(--green); border: 0; border-radius: 4px; padding: 0 16px; min-height: 44px; cursor: pointer; }
+    .ownermsg { width: 100%; font-size: 12px; color: var(--amber); min-height: 18px; }
+
+    .notice { margin-top: 14px; padding: 12px 14px; border: 1px dashed #6b5520; border-radius: 6px; color: var(--amber); font-size: 12px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">RICMASSEY.COM <b>/visitors</b></div>
+      <div class="live zero" id="live" hidden><span class="dot" aria-hidden="true"></span><span id="liveText">0 online</span></div>
+      <a class="home" href="../index.html">← Ric's Terminal</a>
+    </header>
+
+    <div id="gate" class="gate" hidden>
+      <h1>VISITORS</h1>
+      <p>Who came, from where, and what they looked at. Private: sign in with the site password.</p>
+      <div id="box"></div>
+    </div>
+
+    <main id="dash" hidden>
+      <div class="bar-row">
+        <div class="ranges" role="group" aria-label="Range">
+          <button type="button" data-range="today">Today</button>
+          <button type="button" data-range="7d">7 days</button>
+          <button type="button" data-range="30d">30 days</button>
+          <button type="button" data-range="90d">90 days</button>
+          <button type="button" data-range="all">All time</button>
+        </div>
+        <div class="tools">
+          <button type="button" class="btn" id="ignore" aria-pressed="false">Ignore this device</button>
+          <button type="button" class="btn" id="signout">Sign out</button>
+        </div>
+      </div>
+      <div class="stamp" id="stamp" aria-live="polite"></div>
+      <div class="notice" id="notice" hidden></div>
+
+      <div class="grid">
+        <section class="card s4">
+          <h2>Today</h2>
+          <div class="tiles" id="today"></div>
+        </section>
+        <section class="card s8">
+          <h2 id="rangeTitle">Last 30 days</h2>
+          <div class="tiles" id="totals"></div>
+        </section>
+
+        <section class="card">
+          <div class="chart-head">
+            <h2 id="chartTitle">Traffic</h2>
+            <div class="legend"><span><i style="background:var(--bar)"></i>page views</span><span><i style="background:var(--green)"></i>visitors</span></div>
+          </div>
+          <div class="readout" id="readout" aria-live="polite"></div>
+          <div class="chart" id="chart"></div>
+          <div class="axis" id="axis"></div>
+        </section>
+
+        <section class="card s6"><h2>Top pages</h2><div id="pages"></div></section>
+        <section class="card s6"><h2>Online now</h2><div id="livePages"></div>
+          <h2 style="margin-top:18px">Entry pages</h2><div id="entries"></div></section>
+
+        <section class="card s4"><h2>Referrers</h2><div id="refs"></div></section>
+        <section class="card s4"><h2>Countries</h2><div id="countries"></div></section>
+        <section class="card s4"><h2>Devices</h2><div id="devices"></div>
+          <h2 style="margin-top:18px">Browsers</h2><div id="browsers"></div>
+          <h2 style="margin-top:18px">Systems</h2><div id="os"></div></section>
+
+        <section class="card s8"><h2>Live feed</h2><div id="feed"></div></section>
+        <section class="card s4"><h2>Broken links (404)</h2><div id="missing"></div></section>
+      </div>
+    </main>
+  </div>
+
+  <script src="../assets/owner.js"></script>
+  <script>
+  (function () {
+    /* Same Worker as the training log, and the same password: owner.js keeps
+       it, so signing in on the training page signs you in here too. */
+    const HOST = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
+      ? location.origin
+      : 'https://training-log.rmbuster82.workers.dev';
+    const $ = id => document.getElementById(id);
+    const store = {
+      get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+      set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+    };
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmt = n => Number(n || 0).toLocaleString('en-US');
+    const tz = -new Date().getTimezoneOffset();
+
+    const RANGE_TITLES = { today: 'Today', '7d': 'Last 7 days', '30d': 'Last 30 days', '90d': 'Last 90 days', all: 'All time' };
+    let range = RANGE_TITLES[store.get('visit:range')] ? store.get('visit:range') : '30d';
+    let data = null, timer = null;
+
+    /* This device's id — the one visit.js sends. This page does not load
+       visit.js (Ric reading his own numbers is not a visit), so if the
+       device has never been anywhere else on the site, make the id here so
+       "ignore" has something to point at. */
+    function myId() {
+      let v = store.get('visit:id');
+      if (!/^[a-z0-9-]{8,40}$/.test(v || '')) {
+        v = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+        store.set('visit:id', v);
+      }
+      return v;
+    }
+
+    /* ── what a referrer is called ── */
+    const REFS = [
+      [/(^|\.)google\./, 'Google'], [/(^|\.)bing\.com$/, 'Bing'], [/duckduckgo\.com$/, 'DuckDuckGo'],
+      [/(^|\.)yahoo\./, 'Yahoo'], [/(^|\.)reddit\.com$/, 'Reddit'], [/(^|\.)facebook\.com$|^fb\.me$/, 'Facebook'],
+      [/(^|\.)instagram\.com$/, 'Instagram'], [/^t\.co$|(^|\.)twitter\.com$|(^|\.)x\.com$/, 'X'],
+      [/(^|\.)linkedin\.com$|^lnkd\.in$/, 'LinkedIn'], [/(^|\.)github\.com$/, 'GitHub'],
+      [/(^|\.)youtube\.com$|^youtu\.be$/, 'YouTube'], [/(^|\.)discord(app)?\.com$/, 'Discord'],
+      [/chatgpt\.com$|openai\.com$/, 'ChatGPT'], [/claude\.ai$/, 'Claude'], [/(^|\.)strava\.com$/, 'Strava']
+    ];
+    const refName = h => { if (!h) return 'Direct'; for (const [re, n] of REFS) if (re.test(h)) return n; return h; };
+    const groupRefs = list => {
+      const m = new Map();
+      for (const [h, n] of list) { const k = refName(h); m.set(k, (m.get(k) || 0) + n); }
+      return [...m].sort((a, b) => b[1] - a[1]);
+    };
+
+    let regions = null;
+    try { regions = new Intl.DisplayNames(['en'], { type: 'region' }); } catch (e) {}
+    const flag = c => /^[A-Z]{2}$/.test(c) ? String.fromCodePoint(...[...c].map(x => 0x1f1a5 + x.charCodeAt(0))) : '';
+    const country = c => !c ? 'Unknown' : (flag(c) + ' ' + ((regions && regions.of(c)) || c));
+
+    /* ── tables ── a row's bar is its share of the biggest row. */
+    function table(rows, { label = x => x, pct = false, extra = null, head = null } = {}) {
+      if (!rows.length) return '<div class="empty">nothing yet</div>';
+      const max = Math.max(...rows.map(r => r[1]), 1);
+      const sum = rows.reduce((a, r) => a + r[1], 0) || 1;
+      return '<table>' + (head ? '<tr>' + head.map(h => '<th>' + esc(h) + '</th>').join('') + '</tr>' : '') +
+        rows.map(r => `<tr><td class="k"><div class="fill" style="width:${(r[1] / max * 100).toFixed(1)}%"></div><span>${label(r[0])}</span></td>` +
+          (extra ? `<td class="n dim">${extra(r)}</td>` : '') +
+          `<td class="n">${pct ? Math.round(r[1] / sum * 100) + '%' : fmt(r[1])}</td></tr>`).join('') + '</table>';
+    }
+    const pathLabel = p => esc(p === '/' ? '/  (terminal)' : p);
+
+    function tiles(el, items) {
+      el.innerHTML = items.map(([n, l, sub, cls]) =>
+        `<div class="tile ${cls || ''}"><div class="n">${n}</div><div class="l">${esc(l)}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ''}</div>`).join('');
+    }
+
+    /* ── the chart ── every bucket in the range drawn, empty ones included,
+       so a quiet week reads as a gap and not as nothing. */
+    function chart(d) {
+      const byB = new Map(d.series.map(r => [r[0], r]));
+      const off = d.tz * 60000;
+      let first = Math.floor((d.from + off) / d.bucket);
+      if (d.range === 'all') first = d.since ? Math.floor((d.since + off) / d.bucket) : Math.floor((d.now + off) / d.bucket);
+      const last = Math.floor((d.now + off) / d.bucket);
+      let cols = [];
+      for (let b = first; b <= last; b++) {
+        const r = byB.get(b) || [b, 0, 0, 0];
+        cols.push({ at: b * d.bucket, visitors: r[1], sessions: r[2], views: r[3], span: 1 });
+      }
+      /* All-time past four months folds into weeks. Visitors in a week are
+         not the sum of visitors per day, so a folded bar says "visits". */
+      let weekly = false;
+      if (cols.length > 120) {
+        weekly = true;
+        const w = [];
+        for (let i = 0; i < cols.length; i += 7) {
+          const g = cols.slice(i, i + 7);
+          w.push({ at: g[0].at, visitors: g.reduce((a, c) => a + c.visitors, 0), sessions: g.reduce((a, c) => a + c.sessions, 0), views: g.reduce((a, c) => a + c.views, 0), span: g.length });
+        }
+        cols = w;
+      }
+      const hourly = d.bucket < 86400000;
+      const when = c => {
+        const t = new Date(c.at);   // bucket start in viewer-local wall-clock ms, read as UTC
+        const opt = hourly ? { hour: 'numeric', timeZone: 'UTC' } : { month: 'short', day: 'numeric', timeZone: 'UTC' };
+        return (weekly ? 'week of ' : '') + t.toLocaleString('en-US', opt);
+      };
+      const max = Math.max(...cols.map(c => c.views), 1);
+      $('chartTitle').textContent = hourly ? 'Traffic by hour' : weekly ? 'Traffic by week' : 'Traffic by day';
+      $('chart').innerHTML = cols.map((c, i) =>
+        `<div class="col" tabindex="0" data-i="${i}" aria-label="${esc(when(c))}: ${c.visitors} ${weekly ? 'daily visitors summed' : 'visitors'}, ${c.views} page views">` +
+        `<div class="v" style="height:${c.views / max * 100}%"></div><div class="u" style="height:${c.visitors / max * 100}%"></div></div>`).join('');
+      const say = c => $('readout').textContent = `${when(c)} — ${fmt(c.visitors)} visitors · ${fmt(c.sessions)} sessions · ${fmt(c.views)} views`;
+      const rest = () => $('readout').textContent = `${fmt(d.total.visitors)} visitors · ${fmt(d.total.sessions)} sessions · ${fmt(d.total.views)} views — hover a bar`;
+      rest();
+      $('chart').onmouseover = $('chart').onfocusin = e => { const el = e.target.closest('.col'); if (el) say(cols[+el.dataset.i]); };
+      $('chart').onmouseleave = $('chart').onfocusout = rest;
+      const mid = cols[Math.floor(cols.length / 2)];
+      $('axis').innerHTML = cols.length ? `<span>${esc(when(cols[0]))}</span>${cols.length > 2 ? `<span>${esc(when(mid))}</span>` : ''}<span>${esc(hourly ? 'now' : when(cols[cols.length - 1]))}</span>` : '';
+    }
+
+    function feedTime(ts) {
+      const t = new Date(ts), now = new Date();
+      const hm = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      return t.toDateString() === now.toDateString() ? hm : t.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + hm;
+    }
+
+    function render() {
+      const d = data;
+      document.querySelectorAll('.ranges button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.range === range)));
+      $('rangeTitle').textContent = RANGE_TITLES[range];
+      const ignoring = store.get('visit:ignore') === '1';
+      $('ignore').classList.toggle('on', ignoring);
+      $('ignore').setAttribute('aria-pressed', String(ignoring));
+      $('ignore').textContent = ignoring ? 'This device is ignored · count it again' : 'Ignore this device';
+      if (!d) return;
+
+      const live = $('live');
+      live.hidden = false;
+      live.classList.toggle('zero', !d.live.count);
+      $('liveText').textContent = `${fmt(d.live.count)} online`;
+
+      tiles($('today'), [
+        [fmt(d.today.visitors), 'visitors', '', 'today'],
+        [fmt(d.today.sessions), 'sessions'],
+        [fmt(d.today.views), 'page views']
+      ]);
+      const t = d.total;
+      const pps = t.sessions ? (t.views / t.sessions).toFixed(1) : '0';
+      const ret = Math.max(0, t.visitors - t.newVisitors);
+      tiles($('totals'), [
+        [fmt(t.visitors), 'unique visitors', `${fmt(t.newVisitors)} new · ${fmt(ret)} returning`],
+        [fmt(t.sessions), 'sessions'],
+        [fmt(t.views), 'page views'],
+        [pps, 'pages / session']
+      ]);
+      chart(d);
+
+      const real = d.pages.filter(p => !p[0].startsWith('/404/'));
+      const missing = d.pages.filter(p => p[0].startsWith('/404/')).map(p => [p[0].slice(4), p[1], p[2]]);
+      $('pages').innerHTML = table(real, { label: pathLabel, extra: r => fmt(r[2]), head: ['page', 'visitors', 'views'] });
+      $('missing').innerHTML = table(missing, { label: p => esc(p) });
+      $('entries').innerHTML = table(d.entries.filter(p => !p[0].startsWith('/404/')).slice(0, 6), { label: pathLabel });
+      $('livePages').innerHTML = d.live.pages.length ? table(d.live.pages, { label: pathLabel }) : '<div class="empty">nobody right now</div>';
+      $('refs').innerHTML = table(groupRefs(d.referrers), { label: esc, pct: true });
+      $('countries').innerHTML = table(d.countries, { label: c => esc(country(c)) });
+      $('devices').innerHTML = table(d.devices, { label: esc, pct: true });
+      $('browsers').innerHTML = table(d.browsers, { label: esc, pct: true });
+      $('os').innerHTML = table(d.os, { label: esc, pct: true });
+      $('feed').innerHTML = d.feed.length ? '<table class="feed">' + d.feed.map(([ts, p, r, c, f]) =>
+        `<tr><td class="t">${esc(feedTime(ts))}</td><td class="p">${p.startsWith('/404/') ? '<span class="tag">404</span> ' + esc(p.slice(4)) : pathLabel(p)}</td>` +
+        `<td class="r">${esc(f ? refName(r) : '·')}${c ? ' ' + flag(c) : ''}</td></tr>`).join('') + '</table>'
+        : '<div class="empty">nothing yet</div>';
+
+      $('stamp').textContent = `updated ${new Date(d.now).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' })} · refreshes every 30 seconds` +
+        (d.since ? ` · counting since ${new Date(d.since).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : '');
+    }
+
+    function notice(text) { $('notice').hidden = !text; $('notice').textContent = text || ''; }
+
+    async function load() {
+      clearTimeout(timer);
+      if (!Owner.on()) return;
+      try {
+        const r = await fetch(`${HOST}/stats?range=${range}&tz=${tz}&me=${encodeURIComponent(myId())}`, { headers: Owner.headers(), cache: 'no-store' });
+        if (r.status === 401) { Owner.signOut(); return; }
+        if (r.status === 429) { notice('Too many wrong passwords just now — the Worker is refusing everything for five minutes.'); }
+        else if (!r.ok) notice(`The Worker answered ${r.status}.`);
+        else {
+          const d = await r.json();
+          if (!d.configured) { notice('Signed in, but the Worker has no database yet — the STATS binding is missing. See worker/README.md.'); data = null; }
+          else {
+            notice('');
+            data = d;
+            /* The server is the truth for whether this device is excluded;
+               keep the local flag (which stops visit.js sending) in step. */
+            if (d.meExcluded !== (store.get('visit:ignore') === '1')) store.set('visit:ignore', d.meExcluded ? '1' : null);
+          }
+          render();
+        }
+      } catch (e) { notice('Could not reach the Worker — showing the last numbers loaded.'); }
+      timer = setTimeout(load, 30000);
+    }
+
+    function show() {
+      const on = Owner.on();
+      $('gate').hidden = on;
+      $('dash').hidden = !on;
+      if (!on) { $('live').hidden = true; clearTimeout(timer); data = null; return; }
+      render();
+      load();
+    }
+
+    document.querySelectorAll('.ranges button').forEach(b => b.addEventListener('click', () => {
+      range = b.dataset.range;
+      store.set('visit:range', range);
+      render();
+      load();
+    }));
+
+    $('ignore').addEventListener('click', async () => {
+      const on = store.get('visit:ignore') !== '1';
+      store.set('visit:ignore', on ? '1' : null);
+      render();
+      const r = await Owner.post('/stats/exclude', { visitor: myId(), on });
+      if (!r) notice('Saved on this device, but the Worker did not take it — past visits from here still count.');
+      load();
+    });
+    $('signout').addEventListener('click', () => Owner.signOut());
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Owner.on()) load(); });
+
+    Owner.init({ host: HOST, onChange: show });
+    Owner.mountBox($('box'), { title: 'Site password' });
+    show();
+  })();
+  </script>
+</body>
+</html>

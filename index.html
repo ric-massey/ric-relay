@@ -311,6 +311,7 @@
       a.entry .go { margin-left: auto; }
     }
   </style>
+  <script src="assets/visit.js" defer></script>
 </head>
 <body>
   <div class="wrap">
@@ -819,6 +820,12 @@ type Sydney's cat's name for a surprise!</div>
       listen: () => {
         setTimeout(() => (location.href = "projects/kondrite/sounds/listen.html"), 450);
         return "patching audio feed ...\nKONDRITE listening booth: play it, say what bugs you, copy the answers.";
+      },
+      // The private visitor counter. Unlisted like listen — the numbers are
+      // behind the site password; anybody typing this just gets a sign-in box.
+      visitors: () => {
+        setTimeout(() => (location.href = "visitors/"), 450);
+        return "tapping the wire ...\nVISITORS: who came, from where, and what they read. owner only.";
       },
       coffee: () => "brewing... ☕ dispensed. carry on.",
       exit: () => "there is no exit. there is only the terminal.",

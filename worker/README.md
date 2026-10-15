@@ -15,6 +15,8 @@ is historical — every room that writes anything writes here:
 | `/movies` | Entertainment | edits on top of `projects/entertainment/entertainment-data.js` |
 | `/garmin` | Training (owner bar) | Ric's Garmin export, token to read **and** write; `/garmin/_pull` starts the Actions job (`projects/training/garmin/`) |
 | `/trials` | Psyche → Studies | `/trials/search` and `/trials/study/<NCT>` pass ClinicalTrials.gov API v2 through, cached five minutes. The watchlist is on the site account, not here (`projects/psyche/README.md`) |
+| `/hit` | every page | page-view beacons from `assets/visit.js`, into D1 (`visitors.mjs`) |
+| `/stats` | `visitors/` | the visitor numbers, owner only; `/stats/exclude` is "ignore this device" |
 | `/auth` | all of them | Ric's sign-in (`assets/owner.js`) |
 
 It lived in `projects/training/server/` until 2026-09-25. The deployed name
@@ -34,5 +36,38 @@ Secrets, the Strava wiring and the security rules are in
 [`projects/training/README.md`](../projects/training/README.md) and at the top
 of `worker.mjs` and `wrangler.jsonc`. **If you add a route, add it to the regex
 in `dev.mjs` too**, or local testing quietly falls through to production.
+
+## The visitor counter
+
+Every visitor-facing page loads `assets/visit.js`, which posts one beacon per
+page view to `/hit` and a heartbeat a minute while the tab is in front. The
+Worker writes them to a **D1** database bound as `STATS`, and
+`ricmassey.com/visitors/` reads them back from `/stats` with the site password
+(the same `LOG_TOKEN` sign-in as Training). `visitors.mjs` says exactly what a
+row holds; the short version is a random browser id, a random session id, the
+path, the referring site's hostname, the country, and a browser / OS / device
+word. No IP address, no raw user agent, no query strings, no cookies.
+
+The tables make themselves on the first beacon, so setting it up is:
+
+```sh
+cd worker
+npx wrangler@latest d1 create visitors     # once; prints a database_id
+# paste that id into the d1_databases block in wrangler.jsonc
+npx wrangler@latest deploy
+```
+
+With no `STATS` binding the Worker runs as before: `/hit` answers 204 and
+keeps nothing, and the dashboard says the database is missing.
+
+`node worker/visitors.test.mjs` runs the rules against a real SQLite
+(`d1-memory.mjs`), and `node worker/dev.mjs` serves the whole thing locally:
+browse a few rooms, then open http://localhost:8799/visitors/?key=local-dev-token.
+
+New pages need the tag too — `<script src="…/assets/visit.js" defer></script>`
+before `</head>` — or they are invisible to it. Left out on purpose: the
+redirect pages, ATLAS and the account page, HERMISCUS, KONDRITE's test and
+tool pages, the visitors page itself, and the generated CS player cards
+(`projects/cs/p/`, not yet).
 
 Orrin's status service is a separate Worker in `projects/orrin/server/`.

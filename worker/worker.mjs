@@ -24,6 +24,8 @@
    unlike a lobby list a training log is worth keeping. The volume is a handful
    of writes a day from one person, which sits far inside the free plan. */
 
+import { handleHit, handleVisitors } from './visitors.mjs';
+
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /* ── what a Strava activity is allowed to become ──
@@ -1407,7 +1409,7 @@ async function trialsProxy(request, env, ctx, parts, url) {
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'hit', 'stats']);
 
 export default {
   async fetch(request, env, ctx) {
@@ -1428,6 +1430,27 @@ export default {
        nothing of anybody's and need no token. The watchlist that goes with
        them is on the site account in Supabase, not on this Worker. */
     if (parts[0] === 'trials') return trialsProxy(request, env, ctx, parts, url);
+
+    /* ── /hit and /stats ── the site's own visitor counter (visitors.mjs).
+       The beacon is public and goes straight to D1. The numbers are Ric's,
+       and whether the caller is Ric is asked of the object's /auth for the
+       same reason /media asks it: one throttle for the one password. */
+    if (parts[0] === 'hit') return handleHit(request, env, ctx);
+    if (parts[0] === 'stats') {
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(request.headers.get('origin')) });
+      const isOwner = async () => {
+        const a = request.headers.get('authorization') || '';
+        const given = a.startsWith('Bearer ') ? a.slice(7) : '';
+        if (!given) return false;
+        const r = await stub.fetch(new Request('https://internal/auth', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ password: given })
+        }));
+        return r.status === 200;
+      };
+      return handleVisitors(request, env, parts, url, isOwner, json);
+    }
 
     /* ── the Strava callback ──
        Two different requests arrive on this one URL, and they are told apart by

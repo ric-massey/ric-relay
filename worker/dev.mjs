@@ -20,9 +20,10 @@ import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import worker, { TrainingLog } from './worker.mjs';
 import { memoryBucket } from './r2-memory.mjs';
+import { memoryD1 } from './d1-memory.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const PORT = 8799;
+const PORT = Number(process.argv[2] || process.env.PORT) || 8799;   // node worker/dev.mjs 8798 to run beside another
 const TOKEN = 'local-dev-token';
 
 const mem = new Map();
@@ -122,7 +123,11 @@ const ENV = {
      right amount of permanence for a rehearsal. Drop this line to rehearse the
      other case: a deploy with no bucket, where /media answers "nothing here"
      and every page has to render anyway. */
-  MEDIA: memoryBucket()
+  MEDIA: memoryBucket(),
+  /* The visitor counter's database, as SQLite in memory. Every page served
+     here sends its beacon to this, so http://localhost:8799/visitors/ (signed
+     in with the dev token) shows your own clicking around as traffic. */
+  STATS: memoryD1()
 };
 
 const TYPES = {
@@ -138,7 +143,7 @@ createServer(async (req, res) => {
      rehearse the case that actually matters on a phone: the page loads fine and
      the log is unreachable. A total blackout is untestable through a browser —
      the HTML would not arrive either — so this is the realistic half. */
-  if (process.env.DEV_OFFLINE && /^\/(log|climb|auth|strava|board|media|todo|movies|garmin|trials)(?=$|[/?])/.test(u.pathname)) {
+  if (process.env.DEV_OFFLINE && /^\/(log|climb|auth|strava|board|media|todo|movies|garmin|trials|hit|stats)(?=$|[/?])/.test(u.pathname)) {
     res.socket.destroy();               // hang up, exactly like no signal
     return;
   }
@@ -153,7 +158,7 @@ createServer(async (req, res) => {
      the dev server. `/climbing.html` escaped only by luck, because `climb` is
      followed by a letter there. The lookahead ends the match at a real path
      separator instead. */
-  if (/^\/(log|climb|auth|strava|board|media|todo|movies|garmin|trials)(?=$|[/?])/.test(u.pathname)) {
+  if (/^\/(log|climb|auth|strava|board|media|todo|movies|garmin|trials|hit|stats)(?=$|[/?])/.test(u.pathname)) {
     /* Which day the invented run lands on. Dev scaffolding for the fake Strava
        above; the deployed Worker has no such thing — a real run brings its own
        date and there is nothing to choose. */
@@ -176,7 +181,9 @@ createServer(async (req, res) => {
     return;
   }
 
-  const p = u.pathname === '/' ? '/index.html' : u.pathname;
+  /* Folders serve their index.html, as Pages does — /visitors/ and
+     /account/ are folders. */
+  const p = u.pathname.endsWith('/') ? u.pathname + 'index.html' : u.pathname;
   try {
     const buf = await readFile(join(ROOT, p));
     res.writeHead(200, { 'content-type': TYPES[extname(p)] || 'application/octet-stream' });

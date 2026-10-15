@@ -17,6 +17,7 @@ completion.
 | `hermiscus` | Opens the crew sign-in for Dad's race (`projects/dads-race/login.html`). The lock is the login and the database rules behind it, not the command being secret. |
 | `login` / `account` | Opens the site account page (`account/`): one sign-in for ATLAS and HERMISCUS, a form to ask Ric for access, and Ric's approval panel. |
 | `listen` | Opens KONDRITE's listening booth (`projects/kondrite/sounds/listen.html`): every game sound alone and in real-timing scenes, with plain-word buttons for what bugs you and a copy-your-answers button. |
+| `visitors` | Opens the private visitor counter (`visitors/`). Anybody can type it; the numbers stay behind the site password. |
 | `coffee` | Dispenses one terminal-grade coffee. |
 | `exit` | Explains the architectural problem with leaving the Terminal. |
 | `404` | Deliberately loses the signal and opens a special version of the Terminal's 404 page. |

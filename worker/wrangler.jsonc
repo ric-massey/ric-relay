@@ -68,6 +68,17 @@
   // before, which is what makes it safe to deploy this ahead of the bucket.
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "photos" }],
 
+  // The visitor counter's database (visitors.mjs, ricmassey.com/visitors/).
+  // Left commented until the database exists, because a binding pointing at
+  // nothing fails the deploy — and with no binding the Worker runs exactly as
+  // before: /hit keeps nothing and the dashboard says the database is missing.
+  // To switch it on, once, from the Mac:
+  //     npx wrangler@latest d1 create visitors
+  // then paste the database_id it prints below, uncomment, and deploy. The
+  // tables make themselves on the first page view. A database id is not a
+  // credential.
+  // "d1_databases": [{ "binding": "STATS", "database_name": "visitors", "database_id": "PASTE-ID-HERE" }],
+
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TrainingLog"] }],
 
   "observability": { "enabled": true }
