@@ -58,6 +58,7 @@ def round_score(coef, R, r, seat):
     fs = [f for f in r.get("fights") or [] if f.get("t") is not None and f["t"] <= end]
     won = bool(r.get("w")) if mine else not r.get("w")
     impact, death, kills, hs, burst, last_k, clutch, first_t = 0.0, 0.0, 0, 0, 0, None, 0, None
+    key_t, key_d = None, -9.0              # their biggest kill: the moment a preview shows
     alone = None                              # enemies alive when they became last alive
     for f in fs:
         ab, a, v = f.get("alive_before"), f.get("killer"), f.get("victim")
@@ -73,6 +74,8 @@ def round_score(coef, R, r, seat):
                 burst += 1
             last_k = f["t"]
             first_t = f["t"] if first_t is None else first_t
+            if d > key_d:
+                key_t, key_d = f["t"], d
         elif v == seat:
             death += -d                       # what dying cost the team
         mates_left, foes_left = (after[0], after[1]) if mine else (after[1], after[0])
@@ -87,7 +90,7 @@ def round_score(coef, R, r, seat):
     score = (impact - 0.5 * death + 0.25 * clutch + 0.06 * kills + 0.05 * burst
              + 0.02 * hs + (0.04 * kills if eco else 0) + (0.10 if won else 0))
     return round(score, 3), {"k": kills, "hs": hs, "clutch": clutch, "impact": round(impact, 3),
-                             "died": death > 0, "won": won, "eco": eco and kills > 0, "t": first_t}
+                             "died": death > 0, "won": won, "eco": eco and kills > 0, "t": first_t, "key_t": key_t}
 
 
 def label(f):

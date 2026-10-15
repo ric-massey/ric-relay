@@ -227,6 +227,18 @@ total and a few words on why. The player page shows their best game with
 its best round, and their three best rounds anywhere, each with ▶ and Save
 video, which opens the same video chooser. `llm/players.md` is the same list as text.
 
+**Link previews** (`cards.py`, a sync step). Everything after `#` stays in
+the browser, so a `cs.html#player/<name>` link shows Discord the same preview
+for everyone. Each player gets `p/<slug>.html` — their own title,
+description and picture, which sends a visitor straight on to their page —
+and `p/<slug>.jpg`, 1200×630: the radar at their best game's best round,
+at their biggest kill (a red line to who they killed), beside their name and
+what they did. The slug is their name in ascii, with a few hex of a hash of
+the name only when that's empty or two names collide. `p/cards.js` maps names
+to slugs for the player page's Copy link. Names only, like the rest of the
+room. ~8 MB for 160 players; drawing is deterministic, so a sync that
+changes nothing rewrites nothing.
+
 Replays are sampled twice a second (~350 KB a match). `HZ` in `parse-demos.py`
 trades size for smoothness.
 

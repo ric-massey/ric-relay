@@ -241,6 +241,17 @@
     .rec .tag.wpt{background:rgba(79,209,197,.18);color:var(--win-ink);min-width:46px;text-align:center;display:inline-block}
     .note b.good{color:var(--win-ink)} .note b.bad{color:var(--loss-ink)}
     .vsave{display:inline-flex;flex-wrap:wrap;gap:6px}
+    /* While something loads its shape is already there, shimmering, and the
+       real thing fades in over it: no "Loading…" line, no black square that
+       pops into a map. */
+    .skel{position:relative;overflow:hidden;background:rgba(255,255,255,.045);border:1px solid var(--line)}
+    .skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);animation:skel 1.3s ease-in-out infinite}
+    @keyframes skel{to{transform:translateX(100%)}}
+    .fadein{animation:fadein .35s ease-out both}
+    @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+    canvas.cvfade{opacity:0;transition:opacity .4s ease-out} canvas.cvfade.ready{opacity:1}
+    @media (prefers-reduced-motion:reduce){.skel::after{animation:none}.fadein{animation:none}canvas.cvfade{transition:none}}
     /* the panel a recording puts over the page */
     .recbar{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:16px;background:rgba(5,7,10,.82);
       -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
@@ -275,9 +286,10 @@
     @keyframes recblink{50%{opacity:.2}}
     @media (prefers-reduced-motion:reduce){.recbar .dot,.recprog i{animation:none;transition:none}}
     /* players */
+    .psearch[hidden]{display:none}
     .psearch{display:grid;gap:8px;margin-bottom:12px;padding:14px 16px}
     #playerbox > .panel{padding:16px 18px;margin-bottom:12px}
-    #playerbox .mnav{margin-bottom:12px}
+    #playerbox .mnav{margin-bottom:12px;display:flex;gap:8px}
     table.plist{max-width:920px}
     /* the best game: details on the left, the round playing on the right */
     @media (min-width:900px){
@@ -791,6 +803,7 @@
 <script src="projects/cs/cs-data.js?v=2"></script>
 <script src="projects/cs/radar/radar.js?v=1"></script>
 <script src="projects/cs/stats.js?v=2"></script>
+<script src="projects/cs/p/cards.js?v=1"></script>
 <script>
 // The match record arrives as its own script. If it didn't load, the page
 // says so and offers to try again: an empty page would read as an account
@@ -1115,7 +1128,7 @@ function boot() {
             return `${i === half ? '<span class="half" aria-hidden="true"></span>' : ""}<button type="button" class="${r.w ? "w" : "l"}" ${m.replay ? `data-lwatch="${i}"` : "data-lopen"} title="${esc(label)}" aria-label="${esc(label)}">${i + 1}</button>`;
           }).join("")}</div></div>` : ""}
       </div>
-      ${cal ? `<div class="lprev"><div class="lstage"><canvas width="680" height="680" aria-label="${esc(`The ${mapName(m.map)} radar from this match`)}"></canvas><div class="kf" aria-hidden="true"></div></div>
+      ${cal ? `<div class="lprev"><div class="lstage"><canvas class="cvfade" width="680" height="680" aria-label="${esc(`The ${mapName(m.map)} radar from this match`)}"></canvas><div class="kf" aria-hidden="true"></div></div>
         ${m.replay && rounds.length ? `<div class="seg lmode" role="group" aria-label="Show"><button type="button" data-lmode="loop">▶ Round ${(best < 0 ? 0 : best) + 1}${best < 0 ? "" : `, ${rounds[best].k}K`}</button><button type="button" data-lmode="fights">All fights</button>
           <button type="button" data-lspeed title="Playback speed" aria-label="Playback speed"><svg class="ff" viewBox="0 0 16 12" aria-hidden="true"><path d="M0 0l7 6-7 6zM8 0l7 6-7 6z" fill="currentColor"/></svg><span>${PREFS.lspeed || 1}×</span></button></div>` : ""}
         <div class="rlegend" data-lleg style="justify-content:center">${fights.length ? `<span><i style="background:#c9a24b"></i>T</span><span><i style="background:#5d79ae"></i>CT</span><span>● Ric's kills · ✕ his deaths · cone = facing · orange = shooting, red = hit, white = headshot · point at one to see his view</span>`
@@ -1161,7 +1174,7 @@ function boot() {
       ctx.globalAlpha = 1;
     };
     draw(null);
-    loadImg(floor === 1 && cal.lower ? cal.lower : cal.img).then((im) => draw(im));
+    loadImg(floor === 1 && cal.lower ? cal.lower : cal.img).then((im) => { draw(im); cv.classList.add("ready"); }, () => cv.classList.add("ready"));
 
     /* The way in: the best round of the latest game, playing on a loop at
        real speed (or whichever speed was picked), drawn exactly as the 2D replay draws it. It pauses off
@@ -1206,6 +1219,7 @@ function boot() {
             line: recent ? [recent.killer_at.x, recent.killer_at.y, recent.victim_at.x, recent.victim_at.y] : null,
             view: [0, 0, 1024], labels: false, seats, r, t });
           killfeed(kf, seats, r, t);
+          if (imgs[0]) cv.classList.add("ready");
           raf = requestAnimationFrame(frame);
         };
         loop.go = () => { loop.last = 0; if (!raf) raf = requestAnimationFrame(frame); };
@@ -1910,6 +1924,7 @@ function boot() {
 
   function renderSnaps() {
     const m = matches.find((x) => x.id === snapState.id); if (!m) return;
+    if (!(window.CS_MATCH && window.CS_MATCH[m.id])) $("snaps").innerHTML = SKEL_SNAP;
     loadMatch(m.id).then((R) => {
       const seats = seatInfo(R), cal = radarFor(R.map), list = [];
       R.rounds.forEach((r, ri) => (r.fights || []).forEach((f) => {
@@ -1935,7 +1950,7 @@ function boot() {
       $("snaps").innerHTML = snapCard(list[i], 0, seats, R);
       if (view === "snapshots" && location.hash !== snapHash(m.id, list[i])) history.replaceState(null, "", snapHash(m.id, list[i]));
       const card = $("snaps").querySelector(".snap");
-      card.classList.add("solo"); card.querySelector("canvas").width = card.querySelector("canvas").height = 1100;
+      card.classList.add("solo", "fadein"); card.querySelector("canvas").width = card.querySelector("canvas").height = 1100;
       mountSnap(card, list[i], seats, R, cal);
       const on = $("snapstrip").querySelector('[aria-pressed="true"]');
       if (on) $("snapstrip").scrollLeft = on.offsetLeft - $("snapstrip").clientWidth / 2;
@@ -2067,6 +2082,7 @@ function boot() {
 
   function showPlayers() {
     if (ploop) ploop.stop();
+    document.querySelector(".psearch").hidden = false;
     const q = fold($("pq").value || "");
     const all = [...PLAYERS.entries()].map(([name, games]) => ({ name, games, w: games.filter((g) => g.b.us).length }))
       .sort((a, b) => b.games.length - a.games.length || fold(a.name).localeCompare(fold(b.name)));
@@ -2085,6 +2101,13 @@ function boot() {
     const r = e.target.closest("[data-player]"); if (r) return openPlayer(r.dataset.player);
     if (e.target.closest("[data-pback]")) { $("pq").value = ""; history.pushState(null, "", "#players"); return showPlayers(); }
     const o = e.target.closest("[data-popen]"); if (o) return openMatch(o.dataset.popen);
+    // their preview page's address: pasted in Discord it shows their card
+    const sh = e.target.closest("[data-pshare]");
+    if (sh) {
+      const url = new URL(`projects/cs/p/${sh.dataset.pshare}.html`, location.href.split("#")[0]).href;
+      const said = (t) => { sh.textContent = t; clearTimeout(sh.timer); sh.timer = setTimeout(() => { sh.textContent = "Copy link"; }, 2500); };
+      return (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => said("Link copied"), () => { prompt("Copy this link:", url); });
+    }
     const w = e.target.closest("[data-pwatch]"); if (w) return watchBest(w.dataset.pwatch, +w.dataset.pround, +w.dataset.pt, w.dataset.prec);
   });
   $("playerbox").addEventListener("keydown", (e) => { const r = e.target.closest("[data-player]"); if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPlayer(r.dataset.player); } });
@@ -2131,8 +2154,10 @@ function boot() {
           ctx.strokeText(lbl, x + 19 * sc, y - 10 * sc); ctx.fillText(lbl, x + 19 * sc, y - 10 * sc);
         }
         killfeed(kf, seats, r, tt);
+        if (imgs[0]) cv.classList.add("ready");
       };
       const ready = Promise.all([loadImg(cal.img).then((im) => { imgs[0] = im; }), cal.lower ? loadImg(cal.lower).then((im) => { imgs[1] = im; }) : null]);
+      ready.catch(() => cv.classList.add("ready"));
       if (reduce) { t = Math.min(end, (at || 0) + 5); ready.then(() => { if (!stopped) paint(t); }); paint(t); return; }
       const tickLoop = (now) => {
         raf = 0; if (stopped) return;
@@ -2152,6 +2177,7 @@ function boot() {
     if (!games) { $("pq").value = name; go("players", fromAddress); return showPlayers(); }
     if (!fromAddress && location.hash !== `#player/${encodeURIComponent(name)}`) history.pushState(null, "", `#player/${encodeURIComponent(name)}`);
     go("players", true, true);
+    document.querySelector(".psearch").hidden = true;
     const mine = (BEST.get(name) || []).filter((x) => games.some((g) => g.m.id === x.id));
     const tops = mine.slice().sort((a, b) => b.score - a.score);             // single rounds
     const bestGame = mine.slice().sort((a, b) => b.total - a.total)[0] || null; // whole games
@@ -2161,29 +2187,31 @@ function boot() {
     const bt = theirs(best);
     const gameOf = (x) => games.find((g) => g.m.id === x.id);
     const watchBtn = (x, label, rec, cls = "btn") => x && (!rec || CAN_RECORD) ? `<button type="button" class="${cls}${rec || cls !== "btn" ? "" : " ghost"}" data-pwatch="${esc(x.id)}" data-pround="${x.round}" data-pt="${x.t}"${rec ? ' data-prec="round"' : ""}>${label}</button>` : "";
-    $("playerbox").innerHTML = `<div class="mnav"><button type="button" class="btn ghost" data-pback>← All players</button></div>
-      <div class="panel pcard"><div class="kicker">${games.length} game${games.length === 1 ? "" : "s"} with Ric${with_ && with_ < games.length ? ` · ${with_} on his team, ${games.length - with_} against him` : with_ ? ", all on his team" : ", all against him"}</div>
+    const card = (window.CS_CARDS || {})[name];
+    $("playerbox").innerHTML = `<div class="mnav"><button type="button" class="btn ghost" data-pback>← All players</button>
+        ${card ? `<button type="button" class="btn ghost" data-pshare="${esc(card)}" style="margin-left:auto">Copy link</button>` : ""}</div>
+      <div class="panel pcard"><div class="kicker">Your ${games.length} game${games.length === 1 ? "" : "s"} with Ric${with_ && with_ < games.length ? ` · ${with_} as teammates, ${games.length - with_} against him` : with_ ? " · all as teammates" : " · all against him"}</div>
         <h2 class="mname">${esc(name)}</h2>
-        <div class="chips">${chip(`${L.tally.W}-${L.tally.L}${L.tally.T ? `-${L.tally.T}` : ""}`, "Their W-L")}${chip(fix(L.kd, 2), "K/D")}${chip(L.adr != null ? fix(L.adr, 0) : "—", "ADR")}
+        <div class="chips">${chip(`${L.tally.W}-${L.tally.L}${L.tally.T ? `-${L.tally.T}` : ""}`, L.tally.T ? "Your W-L-D" : "Your W-L")}${chip(fix(L.kd, 2), "K/D")}${chip(L.adr != null ? fix(L.adr, 0) : "—", "ADR")}
           ${chip(L.hs != null ? pct(L.hs) : "—", "HS%")}${chip(L.k, "Kills")}${chip(L.mvps, "MVPs")}</div></div>
-      <div class="panel pbest"><div class="pbinfo"><h3>Best game with Ric</h3>
+      <div class="panel pbest"><div class="pbinfo"><h3>Your best game with Ric</h3>
         <p class="pbline"><b>${esc(mapName(best.m.map))} ${bt.score[0]}:${bt.score[1]} ${resWord[bt.res]}</b> · ${esc(when(best.m.at))} · ${best.b.us ? "on Ric's team" : "against Ric"}</p>
         <p class="pbline">${best.b.k}-${best.b.d}-${best.b.a} · ${fix(best.b.adr, 0)} ADR · ${best.b.k ? pct(100 * (best.b.hsk || 0) / best.b.k) : "—"} HS${best.b.mvps ? ` · ${best.b.mvps} MVP${best.b.mvps === 1 ? "" : "s"}` : ""}</p>
-        ${top ? `<p class="pbround"><b>Their best round: round ${top.round}</b>${top.why ? ` · ${esc(top.why)}` : ""}</p>` : ""}
-        <div class="pbtns">${watchBtn(top, "Save their best round as video", true)}${watchBtn(top, "▶ Watch their best round")}<button type="button" class="btn ghost" data-popen="${esc(best.m.id)}">Match stats</button></div>
+        ${top ? `<p class="pbround"><b>Your best round: round ${top.round}</b>${top.why ? ` · ${esc(top.why)}` : ""}</p>` : ""}
+        <div class="pbtns">${watchBtn(top, "Save your best round as video", true)}${watchBtn(top, "▶ Watch it")}<button type="button" class="btn ghost" data-popen="${esc(best.m.id)}">Match stats</button></div>
         ${top && CAN_RECORD ? `<p class="note">You pick the speed and quality; it records in real time.</p>` : ""}</div>
-        ${top && radarFor(best.m.map) ? `<div class="pbplay"><div class="lstage ploop"><canvas width="680" height="680" aria-label="${esc(`${name}'s best round, round ${top.round} of ${mapName(best.m.map)}, playing on the radar. Activate to watch it full size.`)}" tabindex="0"></canvas><div class="kf" aria-hidden="true"></div></div>
-          <p class="note ploopnote">Playing on a loop · <span class="gold">gold ring = ${esc(name)}</span> · tap it to watch full size</p></div>` : ""}</div>
-      ${tops.length > 1 ? `<div class="panel"><h3 class="ph3">Their best rounds</h3><p class="note" style="margin:-2px 0 8px">Ranked by impact: kills that swung the round, clutches, multi-kills.</p>
+        ${top && radarFor(best.m.map) ? `<div class="pbplay"><div class="lstage ploop"><canvas class="cvfade" width="680" height="680" aria-label="${esc(`${name}'s best round, round ${top.round} of ${mapName(best.m.map)}, playing on the radar. Activate to watch it full size.`)}" tabindex="0"></canvas><div class="kf" aria-hidden="true"></div></div>
+          <p class="note ploopnote">Playing on a loop · <span class="gold">gold ring = you</span> · tap it to watch full size</p></div>` : ""}</div>
+      ${tops.length > 1 ? `<div class="panel"><h3 class="ph3">Your best rounds</h3><p class="note" style="margin:-2px 0 8px">Ranked by impact: kills that swung the round, clutches, multi-kills.</p>
         ${tops.slice(0, 3).map((x, i) => { const g = gameOf(x);
           return `<div class="ptop"><span class="pn">${i + 1}</span><span class="pw"><b>${esc(mapName(g.m.map))} · round ${x.round}</b><small>${esc(x.why || "")}${x.why ? " · " : ""}${esc(when(g.m.at))}</small></span>
             <span class="pa">${watchBtn(x, "▶", false, "pp")}${watchBtn(x, "Save video", true, "pp")}</span></div>`; }).join("")}</div>` : ""}
-      <div class="panel"><h3 class="ph3">Every game together</h3><div class="stwrap"><table class="st pgames"><thead><tr><th scope="col">Game</th><th scope="col">Side</th><th scope="col">Result</th><th scope="col">K-D-A</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col"><span class="sr">Watch</span></th></tr></thead>
+      <div class="panel"><h3 class="ph3">Every game you played together</h3><div class="stwrap"><table class="st pgames"><thead><tr><th scope="col">Game</th><th scope="col">Side</th><th scope="col">Result</th><th scope="col">K-D-A</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col"><span class="sr">Watch</span></th></tr></thead>
         <tbody>${games.map((g) => { const t = theirs(g);
           return `<tr><td><button type="button" class="linkish" data-popen="${esc(g.m.id)}">${esc(mapName(g.m.map))}</button> <span class="dim">${esc(when(g.m.at))}</span></td>
             <td>${g.b.us ? "with Ric" : "against"}</td><td class="${t.res === "W" ? "good" : t.res === "L" ? "bad" : ""}">${t.score[0]}:${t.score[1]} ${resWord[t.res]}</td>
             <td>${g.b.k}-${g.b.d}-${g.b.a}</td><td>${fix(g.b.adr, 0)}</td><td>${g.b.k ? pct(100 * (g.b.hsk || 0) / g.b.k) : "—"}</td>
-            <td>${(() => { const x = bestRound(name, g.m.id); return x ? `<button type="button" class="pp" data-pwatch="${esc(x.id)}" data-pround="${x.round}" data-pt="${x.t}" aria-label="Watch their best round of this game, round ${x.round}" title="Round ${x.round}${x.why ? `: ${esc(x.why)}` : ""}">▶</button>` : ""; })()}</td></tr>`; }).join("")}</tbody></table></div></div>`;
+            <td>${(() => { const x = bestRound(name, g.m.id); return x ? `<button type="button" class="pp" data-pwatch="${esc(x.id)}" data-pround="${x.round}" data-pt="${x.t}" aria-label="Watch your best round of this game, round ${x.round}" title="Round ${x.round}${x.why ? `: ${esc(x.why)}` : ""}">▶</button>` : ""; })()}</td></tr>`; }).join("")}</tbody></table></div></div>`;
     const stage = $("playerbox").querySelector(".ploop");
     if (stage && top) {
       const g = games.find((x) => x.m.id === top.id);
@@ -2672,12 +2700,20 @@ function boot() {
     };
   })();
 
+  // the replay's shape while its match file loads
+  const SKEL_REPLAY = `<div class="replay" aria-busy="true"><span class="sr">Loading the replay</span>
+      <div class="panel stage"><div class="skel" style="height:36px;width:min(420px,70%)"></div>
+        <div class="skel" style="height:30px;margin-top:10px"></div><div class="skel" style="height:30px;margin-top:8px;width:85%"></div>
+        <div class="skel" style="margin-top:10px;aspect-ratio:1"></div></div>
+      <div class="panel side">${'<div class="skel" style="height:34px"></div>'.repeat(7)}</div></div>`;
+  const SKEL_SNAP = `<div aria-busy="true"><span class="sr">Loading the snapshot</span><div class="skel" style="aspect-ratio:1;max-width:760px;margin:0 auto"></div></div>`;
+
   function showReplay(id, scroll, round = 0, at = null, still = false) {
     const m = matches.find((x) => x.id === id); if (!m) return;
     const box = $("replaybox");
     replayStarted = true;
     if (player) { player.stop(); player = null; }
-    box.innerHTML = `<div class="panel empty">Loading the replay…</div>`;
+    box.innerHTML = SKEL_REPLAY;
     if (scroll) go("replay");
     loadMatch(id).then((R) => { if (player) player.stop(); player = Player(box, m, R, +round, at, still); }, () => {
       box.innerHTML = `<div class="panel empty">That replay's data didn't load. It's there; the download failed.
@@ -2688,13 +2724,13 @@ function boot() {
 
   function Player(box, m, R, startRound, startAt, still) {
     const seats = seatInfo(R), cal = radarFor(R.map), st = R.stride || 2;
-    box.innerHTML = `<div class="replay"><div class="panel stage">
+    box.innerHTML = `<div class="replay fadein"><div class="panel stage">
         <div class="rtitle"><label class="sr" for="rmatch">Match</label>
           <select id="rmatch" data-rmatch class="pick">${replayable.map((x) => `<option value="${esc(x.id)}"${x.id === m.id ? " selected" : ""}>${esc(when(x.at))} · ${esc(mapName(x.map))} ${x.score[0]}:${x.score[1]} ${{ W: "win", L: "loss", T: "draw" }[x.result]}</option>`).join("")}</select>
           <button type="button" class="btn ghost" data-openmatch style="min-height:34px;font-size:13px">Match stats</button></div>
         <div class="rpicks" role="group" aria-label="Round">${R.rounds.map((r, i) => `<button type="button" class="${r.w ? "w" : "l"}" data-r="${i}" aria-label="Round ${i + 1}, ${r.w ? "won" : "lost"}">${i + 1}</button>`).join("")}</div>
         <div class="rinfo"><button type="button" class="pp" data-rstep="-1" aria-label="Previous round">‹</button><span></span><button type="button" class="pp" data-rstep="1" aria-label="Next round">›</button></div>
-        <div class="rv"><canvas width="1024" height="1024" tabindex="0" aria-label="The round on the radar. Activate to play, zoom and pan."></canvas>
+        <div class="rv"><canvas class="cvfade" width="1024" height="1024" tabindex="0" aria-label="The round on the radar. Activate to play, zoom and pan."></canvas>
           <div class="kf" aria-hidden="true"></div><div class="hint" title="Space plays · ← → step 5 s · [ ] change round · Esc lets go">Click to play</div>${playBar(`<button type="button" class="pp" data-close aria-label="Let go of the map">✕</button>`)}</div>
         ${WP ? `<div class="wpstrip" data-wp><div class="wphead"><span>Ric's team's chance to win the round${info("wp", "the win chance")}</span><b data-wpnow>—</b></div>
           <div class="wpplot" role="img"><svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"></svg><i class="wpcur"></i></div></div>` : ""}
@@ -2724,7 +2760,7 @@ function boot() {
     let level = "auto", ri = startRound, rv = null;
     const imgs = [null, null];
     if (cal) {
-      loadImg(cal.img).then((im) => { imgs[0] = im; paint(); });
+      loadImg(cal.img).then((im) => { imgs[0] = im; paint(); }, () => cv.classList.add("ready"));   // no map: show what there is
       if (cal.lower) loadImg(cal.lower).then((im) => { imgs[1] = im; paint(); });
     }
     // With no radar for a map, frame the footsteps themselves.
@@ -2756,6 +2792,7 @@ function boot() {
         view: rv.view, labels: box.querySelector("[data-names]").checked,
         footsteps: box.querySelector("[data-steps]").checked ? steps : null, seats, r, t });
       killfeed(kf, seats, r, t);
+      if (!cal || imgs[0]) cv.classList.add("ready");             // its first frame with the map in it
       [...feed.children].forEach((el) => el.classList.toggle("future", +el.dataset.t > t));
       oddsAt(t);
     };

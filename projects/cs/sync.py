@@ -14,6 +14,7 @@ Steam key yet, a demo that won't parse) never stops the others.
   4. leetify — backfill and the measurements only Leetify makes
      (if 3 or 4 turned up share codes we didn't have, 0 and 1 run again)
   5. llm     — rewrite stats.js (the Stats section) and the plain-text reports in llm/
+  6. cards   — each player's link preview (p/): a page and a picture of their best round
 
 Then, if anything in the room's data changed (cs-data.js, matches/, llm/, stats.js), it
 commits those files and only those (on main, never mid-merge), then pushes
@@ -36,7 +37,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 PY = sys.executable
-DATA = ["projects/cs/cs-data.js", "projects/cs/matches", "projects/cs/llm", "projects/cs/stats.js"]
+DATA = ["projects/cs/cs-data.js", "projects/cs/matches", "projects/cs/llm", "projects/cs/stats.js", "projects/cs/p"]
 # Run from pythonw (no console), every child would otherwise flash a window.
 QUIET = {"creationflags": 0x08000000} if sys.platform == "win32" else {}
 PROBLEMS = []  # one line each, toasted together at the end of the run
@@ -160,6 +161,7 @@ def main():
     if share_codes() - codes:
         demos()
     step("llm", str(HERE / "export-llm.py"))
+    step("cards", str(HERE / "cards.py"))           # each player's link preview
     commit()
     publish()
 
