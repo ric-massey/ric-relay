@@ -202,6 +202,17 @@ chance, the radar with everything the replay draws, the killfeed — with the
 browser's own MediaRecorder: MP4 where it can, WebM where it can't. No server,
 no library. It records as it plays, so keep the tab open while it does.
 
+**Players** (Ric's ask, 2026-10-15: "it can just be their name"). A tab
+listing everyone in Ric's matches by the in-game name the scoreboard had —
+no Steam id, no hash, nothing else — built in the browser from the boards in
+`cs-data.js`. Search a name to get every game that player was in with Ric,
+with or against him, their record and line from their own side, and their
+best game. Each player has an address, `#player/<name>`, to send them.
+"Save their best round as video" opens the replay at the round they got the
+most kills in (a tie goes to one their team won) and records it at 2×; a
+whole round records at 0.9 Mbit/s so a minute stays under a free Discord
+upload's 10 MB. `llm/players.md` is the same list as text.
+
 Replays are sampled twice a second (~350 KB a match). `HZ` in `parse-demos.py`
 trades size for smoothness.
 

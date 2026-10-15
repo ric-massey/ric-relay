@@ -241,6 +241,18 @@
     .rec .tag.wpt{background:rgba(79,209,197,.18);color:var(--win-ink);min-width:46px;text-align:center;display:inline-block}
     .note b.good{color:var(--win-ink)} .note b.bad{color:var(--loss-ink)}
     .vsave{display:inline-flex;flex-wrap:wrap;gap:6px}
+    /* players */
+    .psearch{display:grid;gap:8px;margin-bottom:12px}
+    .psearch label{font-size:14px;color:var(--dim)}
+    .psearch input{font:inherit;font-size:16px;padding:10px 12px;background:#07090c;color:var(--bright);border:1px solid var(--line);min-height:44px}
+    .psearch input:focus{outline:2px solid var(--t-ink);outline-offset:1px}
+    .pcard{margin-bottom:10px} .pcard .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;margin-top:12px}
+    .pbest{margin-bottom:10px;border-left:4px solid var(--t-ink)}
+    .pbest h3,.ph3{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--t-ink);margin-bottom:8px}
+    .pbline{margin:4px 0} .pbtns{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 8px}
+    .linkish{background:none;border:0;padding:0;font:inherit;color:var(--bright);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+    table.st td .dim{color:var(--dim);font-size:12px}
+    table.pgames td.good{color:var(--win-ink)} table.pgames td.bad{color:var(--loss-ink)}
     .wpd{min-width:40px;font-weight:700;font-variant-numeric:tabular-nums}
     .wpd.up{color:var(--win-ink)} .wpd.down{color:var(--loss-ink)}
     /* the win-chance strip under the replay */
@@ -573,6 +585,7 @@
   <a href="#overview" class="on" data-tab="overview">Overview</a>
   <a href="#stats" data-tab="stats">Stats</a>
   <a href="#matches" data-tab="matches">Your Matches</a>
+  <a href="#players" data-tab="players">Players</a>
   <a href="#snapshots" data-tab="snapshots">Kill Snapshots</a>
   <a href="#replay" data-tab="replay">2D Replay</a>
   <a href="#method" data-tab="about">About</a>
@@ -668,6 +681,13 @@
     <div class="shead"><h2 id="sh">Kill Snapshots</h2>
       </div>
     <div id="snapbox"></div>
+  </section>
+
+  <section id="players" aria-labelledby="plh" data-view="players">
+    <div class="shead"><h2 id="plh">Players</h2></div>
+    <div class="panel psearch"><label for="pq">Everyone Ric has played with or against, by their in-game name. Find yours to see every game you were in together.</label>
+      <input id="pq" type="search" autocomplete="off" spellcheck="false" placeholder="Type a name, e.g. Yallzbalz" list="pnames"><datalist id="pnames"></datalist></div>
+    <div id="playerbox"></div>
   </section>
 
   <section id="replay" aria-labelledby="rh" data-view="replay">
@@ -1949,16 +1969,115 @@ function boot() {
   }
 
 
+  /* ══ players ════════════════════════════════════════════
+     Everyone in Ric's matches, by the in-game name the scoreboard had — no
+     Steam id, nothing else (Ric's call, 2026-10-15: "it can just be their
+     name"). A friend finds his name and gets every game he was in with Ric,
+     his best one, and a button that saves his best round as a video to send
+     him. Every match counts here, not the slice the filter bar picks. */
+  const PLAYERS = new Map();               // name -> [{ m, b }], newest first
+  for (const m of matches.slice().sort((a, b) => (b.at || "").localeCompare(a.at || "")))
+    for (const b of m.board || []) if (!b.me && b.name) {
+      if (!PLAYERS.has(b.name)) PLAYERS.set(b.name, []);
+      PLAYERS.get(b.name).push({ m, b });
+    }
+  const fold = (x) => x.toLowerCase().replace(/ +/g, " ").trim();
+  // a game from his side: his score first, his result
+  const theirs = ({ m, b }) => b.us ? { score: m.score, res: m.result } : { score: [m.score[1], m.score[0]], res: { W: "L", L: "W", T: "T" }[m.result] };
+  const resWord = { W: "win", L: "loss", T: "draw" };
+  const pLine = (games) => {
+    const k = games.reduce((s_, g) => s_ + (g.b.k || 0), 0), d = games.reduce((s_, g) => s_ + (g.b.d || 0), 0);
+    const hsk = games.reduce((s_, g) => s_ + (g.b.hsk || 0), 0), dmg = games.reduce((s_, g) => s_ + (g.b.dmg || 0), 0);
+    const rounds = games.reduce((s_, g) => s_ + g.m.score[0] + g.m.score[1], 0);
+    const tally = { W: 0, L: 0, T: 0 }; for (const g of games) tally[theirs(g).res]++;
+    return { k, d, hsk, tally, kd: d ? k / d : k, adr: rounds ? dmg / rounds : null, hs: k ? 100 * hsk / k : null,
+      mvps: games.reduce((s_, g) => s_ + (g.b.mvps || 0), 0) };
+  };
+  const bestOf = (games) => games.reduce((a, g) => !a || (g.b.k || 0) > (a.b.k || 0) || ((g.b.k || 0) === (a.b.k || 0) && (g.b.adr || 0) > (a.b.adr || 0)) ? g : a, null);
+  $("pnames").innerHTML = [...PLAYERS.keys()].sort((a, b) => fold(a).localeCompare(fold(b))).map((n) => `<option value="${esc(n)}">`).join("");
+
+  function showPlayers() {
+    const q = fold($("pq").value || "");
+    const all = [...PLAYERS.entries()].map(([name, games]) => ({ name, games, w: games.filter((g) => g.b.us).length }))
+      .sort((a, b) => b.games.length - a.games.length || fold(a.name).localeCompare(fold(b.name)));
+    const list = q ? all.filter((p) => fold(p.name).includes(q)) : all;
+    const exact = q && all.find((p) => fold(p.name) === q);
+    if (exact && list.length === 1) return openPlayer(exact.name);
+    const shown = q ? list : list.slice(0, 40);
+    $("playerbox").innerHTML = !list.length ? `<div class="panel empty">Nobody called “${esc($("pq").value)}” in Ric's ${matches.length} matches. Names are as the scoreboard showed them.</div>`
+      : `<div class="panel"><div class="stwrap"><table class="st plist"><thead><tr><th scope="col">Player</th><th scope="col">Games</th><th scope="col">With Ric</th><th scope="col">Against</th><th scope="col">K/D</th><th scope="col">ADR</th></tr></thead>
+        <tbody>${shown.map((p) => { const L = pLine(p.games);
+          return `<tr class="spot" tabindex="0" data-player="${esc(p.name)}"><td>${esc(p.name)}</td><td>${p.games.length}</td><td>${p.w}</td><td>${p.games.length - p.w}</td><td>${fix(L.kd, 2)}</td><td>${fix(L.adr, 0)}</td></tr>`; }).join("")}</tbody></table></div>
+        ${!q && list.length > shown.length ? `<p class="note" style="margin-top:8px">The ${shown.length} most-met of ${list.length} players. Type a name to find anyone.</p>` : ""}</div>`;
+  }
+  $("pq").addEventListener("input", () => { if (view === "players") { if (location.hash !== "#players") history.replaceState(null, "", "#players"); showPlayers(); } });
+  $("playerbox").addEventListener("click", (e) => {
+    const r = e.target.closest("[data-player]"); if (r) return openPlayer(r.dataset.player);
+    if (e.target.closest("[data-pback]")) { $("pq").value = ""; history.pushState(null, "", "#players"); return showPlayers(); }
+    const o = e.target.closest("[data-popen]"); if (o) return openMatch(o.dataset.popen);
+    const w = e.target.closest("[data-pwatch]"); if (w) return watchBest(w.dataset.pwatch, w.dataset.pseat, w.dataset.pus === "1", w.dataset.prec);
+  });
+  $("playerbox").addEventListener("keydown", (e) => { const r = e.target.closest("[data-player]"); if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPlayer(r.dataset.player); } });
+
+  function openPlayer(name, fromAddress) {
+    const games = PLAYERS.get(name);
+    if (!games) { $("pq").value = name; go("players", fromAddress); return showPlayers(); }
+    if (!fromAddress && location.hash !== `#player/${encodeURIComponent(name)}`) history.pushState(null, "", `#player/${encodeURIComponent(name)}`);
+    go("players", true, true);
+    const L = pLine(games), best = bestOf(games), with_ = games.filter((g) => g.b.us).length;
+    const chip = (v, l) => `<div class="chip"><b>${v}</b><span>${l}</span></div>`;
+    const bt = theirs(best);
+    const watchBtn = (g, label, rec) => g.m.replay && (!rec || CAN_RECORD) ? `<button type="button" class="btn${rec ? "" : " ghost"}" data-pwatch="${esc(g.m.id)}" data-pseat="${g.b.seat}" data-pus="${g.b.us ? 1 : 0}"${rec ? ' data-prec="round"' : ""}>${label}</button>` : "";
+    $("playerbox").innerHTML = `<div class="mnav"><button type="button" class="btn ghost" data-pback>← All players</button></div>
+      <div class="panel pcard"><div class="kicker">${games.length} game${games.length === 1 ? "" : "s"} with Ric${with_ && with_ < games.length ? ` · ${with_} on his team, ${games.length - with_} against him` : with_ ? ", all on his team" : ", all against him"}</div>
+        <h2 class="mname">${esc(name)}</h2>
+        <div class="chips">${chip(`${L.tally.W}-${L.tally.L}${L.tally.T ? `-${L.tally.T}` : ""}`, "Their W-L")}${chip(fix(L.kd, 2), "K/D")}${chip(L.adr != null ? fix(L.adr, 0) : "—", "ADR")}
+          ${chip(L.hs != null ? pct(L.hs) : "—", "HS%")}${chip(L.k, "Kills")}${chip(L.mvps, "MVPs")}</div></div>
+      <div class="panel pbest"><h3>Best game with Ric</h3>
+        <p class="pbline"><b>${esc(mapName(best.m.map))} ${bt.score[0]}:${bt.score[1]} ${resWord[bt.res]}</b> · ${esc(when(best.m.at))} · ${best.b.us ? "on Ric's team" : "against Ric"}</p>
+        <p class="pbline">${best.b.k}-${best.b.d}-${best.b.a} · ${fix(best.b.adr, 0)} ADR · ${best.b.k ? pct(100 * (best.b.hsk || 0) / best.b.k) : "—"} HS${best.b.mvps ? ` · ${best.b.mvps} MVP${best.b.mvps === 1 ? "" : "s"}` : ""}</p>
+        <div class="pbtns">${watchBtn(best, "Save their best round as video", true)}${watchBtn(best, "▶ Watch their best round")}<button type="button" class="btn ghost" data-popen="${esc(best.m.id)}">Match stats</button></div>
+        ${best.m.replay && CAN_RECORD ? `<p class="note">The video is the whole round at 2× speed, the 2D replay with everything in it. It records as it plays (about a minute), then downloads.</p>` : ""}</div>
+      <div class="panel"><h3 class="ph3">Every game together</h3><div class="stwrap"><table class="st pgames"><thead><tr><th scope="col">Game</th><th scope="col">Side</th><th scope="col">Result</th><th scope="col">K-D-A</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col"><span class="sr">Watch</span></th></tr></thead>
+        <tbody>${games.map((g) => { const t = theirs(g);
+          return `<tr><td><button type="button" class="linkish" data-popen="${esc(g.m.id)}">${esc(mapName(g.m.map))}</button> <span class="dim">${esc(when(g.m.at))}</span></td>
+            <td>${g.b.us ? "with Ric" : "against"}</td><td class="${t.res === "W" ? "good" : t.res === "L" ? "bad" : ""}">${t.score[0]}:${t.score[1]} ${resWord[t.res]}</td>
+            <td>${g.b.k}-${g.b.d}-${g.b.a}</td><td>${fix(g.b.adr, 0)}</td><td>${g.b.k ? pct(100 * (g.b.hsk || 0) / g.b.k) : "—"}</td>
+            <td>${g.m.replay ? `<button type="button" class="pp" data-pwatch="${esc(g.m.id)}" data-pseat="${g.b.seat}" data-pus="${g.b.us ? 1 : 0}" aria-label="Watch their best round of this game">▶</button>` : ""}</td></tr>`; }).join("")}</tbody></table></div></div>`;
+    scrollTo(0, 0);
+  }
+
+  // Open the replay at a player's best round of a match — the round he got the
+  // most kills in (on the other team), a few seconds before the first — and
+  // optionally start saving that round as a video straight away.
+  let pendingRecord = null;
+  function watchBest(id, seat, us, rec) {
+    seat = +seat;
+    loadMatch(id).then((R) => {
+      const ours = new Set(R.seats.filter((s_) => !!s_.us === us).map((s_) => s_.seat));
+      // most kills; a tie goes to a round his team won, then the earlier
+      let bestR = 0, bestS = -1, at = 0;
+      R.rounds.forEach((r, i) => {
+        const ks = (r.fights || []).filter((f) => f.killer === seat && f.victim != null && !ours.has(f.victim));
+        const won = us ? r.w : !r.w, sc = ks.length * 2 + (won ? 1 : 0);
+        if (sc > bestS) { bestS = sc; bestR = i; at = ks.length ? Math.max(0, ks[0].t - 5) : 0; }
+      });
+      pendingRecord = rec || null;
+      showReplay(id, true, bestR, rec ? 0 : at);
+    }, () => openMatch(id));
+  }
+
   /* ══ pages ══════════════════════════════════════════════
      The section bar is the game's menu: each tab is its own page. With
      JavaScript off every section shows, one under the other. */
   const HASH_VIEW = { "#overview": "overview", "#maps": "overview", "#weapons": "overview", "#stats": "stats",
-    "#matches": "matches", "#snapshots": "snapshots", "#replay": "replay", "#method": "about" };
-  const VIEW_HASH = { overview: "#overview", stats: "#stats", matches: "#matches", snapshots: "#snapshots", replay: "#replay", about: "#method" };
+    "#matches": "matches", "#players": "players", "#snapshots": "snapshots", "#replay": "replay", "#method": "about" };
+  const VIEW_HASH = { overview: "#overview", stats: "#stats", matches: "#matches", players: "#players", snapshots: "#snapshots", replay: "#replay", about: "#method" };
   let view = null, snapStarted = false, replayStarted = false;
   function go(v, fromAddress, keepMatch) {
     if (!fromAddress && location.hash !== VIEW_HASH[v]) history.pushState(null, "", VIEW_HASH[v]);
     if (v === "matches" && !keepMatch) showList();
+    if (v === "players" && !keepMatch) showPlayers();
     if (v === view) return;
     view = v;
     for (const s of document.querySelectorAll("main > section[data-view]")) s.hidden = s.dataset.view !== v;
@@ -2315,7 +2434,10 @@ function boot() {
      header with the score, round, clock and win chance over the radar, the
      killfeed in its corner) drawn by the same drawMoment the replay uses, fed
      to MediaRecorder. MP4 where the browser makes it, WebM where it doesn't.
-     It records as it plays, so a clip takes as long to make as it lasts. */
+     It records as it plays, so a clip takes as long to make as it lasts.
+     A whole round records at 0.9 Mbit/s and 24 fps so a minute of it stays
+     under the 10 MB a free Discord upload allows (the encoder overshoots what
+     it's asked for: 1.4 Mbit/s came out at 11.8 MB); the radar barely moves. */
   const REC_TYPE = (() => {
     if (typeof MediaRecorder === "undefined" || !HTMLCanvasElement.prototype.captureStream) return null;
     return ["video/mp4;codecs=avc1.42E01E", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
@@ -2486,8 +2608,8 @@ function boot() {
         c.fillText("ricmassey.com · cs", W - 18, H - 16); c.textAlign = "left";
       };
       frame(from);
-      const stream = cvs.captureStream(30), chunks = [];
-      const rec = new MediaRecorder(stream, { mimeType: REC_TYPE, videoBitsPerSecond: 4e6 });
+      const stream = cvs.captureStream(kind === "clip" ? 30 : 24), chunks = [];
+      const rec = new MediaRecorder(stream, { mimeType: REC_TYPE, videoBitsPerSecond: kind === "clip" ? 4e6 : 9e5 });
       rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
       const label = btn.textContent;
       let raf = 0, start = 0, cancelled = false;
@@ -2575,6 +2697,14 @@ function boot() {
     rv.set([0, 0, 1024]);
     pick(Math.max(0, Math.min(R.rounds.length - 1, startRound || 0)));
     if (startAt != null) { clock.t = startAt; if (still) syncHash(startAt); else rv.hold(true); }
+    // sent here by a player's "Save their best round as video": start saving
+    // once the radar has loaded, so the video doesn't open on a blank map
+    if (pendingRecord) {
+      const k = pendingRecord; pendingRecord = null; let n = 0;
+      const startRec = () => { const b = box.querySelector(`[data-rec="${k}"]`); if (b && !recording) b.click(); };
+      const wait = () => (!cal || imgs[0] || ++n > 60) ? startRec() : setTimeout(wait, 100);
+      wait();
+    }
     return { stop: () => { clock.play(false); if (recording) recording.cancel(); }, sync: () => syncHash() };
   }
 
@@ -2940,6 +3070,8 @@ ${cal.split != null ? "<span>other floor dimmed</span>" : ""}`}</div></div></div
         return;
       }
     }
+    const who = location.hash.match(/^#player\/(.+)$/);
+    if (who) { openPlayer(decodeURIComponent(who[1]), true); return; }
     const deep = location.hash.match(/^#match-(.+)$/);
     if (deep) {
       openMatch(decodeURIComponent(deep[1]));

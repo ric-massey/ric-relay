@@ -513,11 +513,34 @@ def map_md(mapname, ps, n_games):
                for c in ps])]) + "\n"
 
 
+def players_md(matches):
+    """Everyone in Ric's matches by in-game name, as the page's Players tab
+    lists them: every game they were in with him, with or against."""
+    by = {}
+    for m in sorted(matches, key=lambda m: m.get("at") or "", reverse=True):
+        for b in m.get("board") or []:
+            if not b.get("me") and b.get("name"):
+                by.setdefault(b["name"], []).append((m, b))
+    L = ["# Players in Ric's matches", "",
+         "By in-game name, as the scoreboard showed it. Results and scores are from each player's own side.", ""]
+    for name, games in sorted(by.items(), key=lambda kv: (-len(kv[1]), kv[0].lower())):
+        rows = []
+        for m, b in games:
+            sc = m["score"] if b.get("us") else [m["score"][1], m["score"][0]]
+            res = m["result"] if b.get("us") else {"W": "L", "L": "W", "T": "T"}[m["result"]]
+            rows.append((when(m.get("at")), map_name(m["map"]), "with Ric" if b.get("us") else "against Ric",
+                         f"{sc[0]}:{sc[1]} {'win' if res == 'W' else 'loss' if res == 'L' else 'draw'}",
+                         f"{b.get('k')}-{b.get('d')}-{b.get('a')}", f(b.get("adr"), 0), f"[report]({m['id']}.md)"))
+        L += [f"## {name} — {len(games)} game{'s' if len(games) != 1 else ''}", "",
+              table(["Date", "Map", "Side", "Their result", "K-D-A", "ADR", "Match"], rows), ""]
+    return "\n".join(L)
+
+
 def main():
     data = csdata.load()
     matches = [m for m in data["matches"] if m.get("me") and m.get("score")]
     OUT.mkdir(exist_ok=True)
-    keep = {"index.md"}
+    keep = {"index.md", "players.md"}
     player = data.get("player") or "Ric"
     global WP
     S = stats.write(matches)            # stats.js, the page's Stats section — and the model
@@ -528,6 +551,7 @@ def main():
         (OUT / name).write_text(match_md(m, player), encoding="utf-8", newline="\n")
     (OUT / "index.md").write_text(index_md(data, matches, stats.breakdown_md(S, map_name)),
                                   encoding="utf-8", newline="\n")
+    (OUT / "players.md").write_text(players_md(matches), encoding="utf-8", newline="\n")
     by_map = {}
     for m in matches:
         R = load_replay(m["id"]) if m.get("replay") else None
