@@ -4,6 +4,8 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## henry glopp — 5 games
 
+Best game (all their rounds scored together): Mirage, best round 22 — won a 1v2 · 3 kills, 1 HS · +95 pts win chance. Best rounds: Mirage round 22 (won a 1v2 · 3 kills, 1 HS · +95 pts win chance); Anubis round 1 (3 kills, 1 HS · on an eco · +46 pts win chance); Dust II round 4 (1 kill, 1 HS · +14 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-15 00:58 UTC | Dust II | with Ric | 1:8 loss | 3-8-4 | 48 | [report](3848346366434607200.md) |
@@ -13,6 +15,8 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 | 2026-10-02 03:13 UTC | Rush 001 | with Ric | 6:2 win | 7-5-2 | 109 | [report](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
 
 ## Yallzbalz — 5 games
+
+Best game (all their rounds scored together): Vertigo, best round 11 — won a 1v1 · 2 kills · on an eco · +68 pts win chance. Best rounds: Mirage round 10 (won a 1v1 · 2 kills · +85 pts win chance); Vertigo round 11 (won a 1v1 · 2 kills · on an eco · +68 pts win chance); Anubis round 5 (2 kills, 1 HS · +22 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -24,6 +28,8 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## sectnik — 4 games
 
+Best game (all their rounds scored together): Anubis, best round 8 — won a 1v4 · 5 kills, 1 HS · +110 pts win chance. Best rounds: Anubis round 8 (won a 1v4 · 5 kills, 1 HS · +110 pts win chance); Mirage round 4 (won a 1v1 · 2 kills, 1 HS · +70 pts win chance); Mirage round 9 (3 kills · +48 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-06 03:20 UTC | Mirage | with Ric | 3:13 loss | 15-15-3 | 108 | [report](3846694811922858158.md) |
@@ -33,12 +39,16 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Bigdawg — 2 games
 
+Best game (all their rounds scored together): Train, best round 5 — 3 kills, 2 HS · +37 pts win chance. Best rounds: Anubis round 11 (3 kills, 1 HS · +74 pts win chance); Train round 5 (3 kills, 2 HS · +37 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:50 UTC | Anubis | with Ric | 13:6 win | 13-14-8 | 102 | [report](3848097853184409614.md) |
 | 2026-10-13 16:26 UTC | Train | against Ric | 13:3 win | 20-7-6 | 129 | [report](3848094777987825749.md) |
 
 ## Nurbis — 2 games
+
+Best game (all their rounds scored together): Mirage, best round 19 — 3 kills, 2 HS · +22 pts win chance. Best rounds: Mirage round 19 (3 kills, 2 HS · +22 pts win chance); Mirage round 6 (2 kills, 2 HS · +36 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -47,11 +57,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## $h@doW — 1 game
 
+Best game (all their rounds scored together): Train, best round 22 — 2 kills · +33 pts win chance. Best rounds: Train round 22 (2 kills · +33 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 17:22 UTC | Train | against Ric | 13:9 win | 9-19-3 | 60 | [report](3848102062252359905.md) |
 
 ## /:-] — 1 game
+
+Best game (all their rounds scored together): Anubis, best round 17 — 3 kills, 2 HS · +25 pts win chance. Best rounds: Anubis round 17 (3 kills, 2 HS · +25 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -59,11 +73,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## 277 — 1 game
 
+Best game (all their rounds scored together): Train, best round 5 — 3 kills, 1 HS · +38 pts win chance. Best rounds: Train round 5 (3 kills, 1 HS · +38 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 02:48 UTC | Train | against Ric | 8:13 loss | 13-18-1 | 67 | [report](3847618294316007431.md) |
 
 ## 37casino — 1 game
+
+Best game (all their rounds scored together): Train, best round 15 — 3 kills, 1 HS · +73 pts win chance. Best rounds: Train round 15 (3 kills, 1 HS · +73 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -71,11 +89,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## 3niaC — 1 game
 
+Best game (all their rounds scored together): Train, best round 18 — 1 kill · +17 pts win chance. Best rounds: Train round 18 (1 kill · +17 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 03:29 UTC | Train | against Ric | 9:13 loss | 6-18-8 | 49 | [report](3847623624370421940.md) |
 
 ## 52Inspired52 — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 1 — won a 1v1 · 3 kills, 3 HS · on an eco · +85 pts win chance. Best rounds: Mirage round 1 (won a 1v1 · 3 kills, 3 HS · on an eco · +85 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -83,11 +105,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## >///< — 1 game
 
+Best game (all their rounds scored together): Dust II, best round 4 — 2 kills, 1 HS · on an eco · +35 pts win chance. Best rounds: Dust II round 4 (2 kills, 1 HS · on an eco · +35 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-15 00:58 UTC | Dust II | with Ric | 1:8 loss | 4-9-2 | 53 | [report](3848346366434607200.md) |
 
 ## ??? — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 14 — won a 1v2 · 2 kills, 2 HS · on an eco · +67 pts win chance. Best rounds: Mirage round 14 (won a 1v2 · 2 kills, 2 HS · on an eco · +67 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -95,11 +121,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Aix- — 1 game
 
+Best game (all their rounds scored together): Train, best round 21 — 4 kills, 2 HS · +60 pts win chance. Best rounds: Train round 21 (4 kills, 2 HS · +60 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 02:48 UTC | Train | with Ric | 13:8 win | 25-17-7 | 140 | [report](3847618294316007431.md) |
 
 ## arch!ve — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 7 — 3 kills, 1 HS · +65 pts win chance. Best rounds: Mirage round 7 (3 kills, 1 HS · +65 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -107,11 +137,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## b — 1 game
 
+Best game (all their rounds scored together): Anubis, best round 16 — won a 1v2 · 3 kills · +100 pts win chance. Best rounds: Anubis round 16 (won a 1v2 · 3 kills · +100 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:50 UTC | Anubis | with Ric | 13:6 win | 32-11-4 | 178 | [report](3848097853184409614.md) |
 
 ## BajaBooty — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 11 — 2 kills · +27 pts win chance. Best rounds: Dust II round 11 (2 kills · +27 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -119,11 +153,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Baljeet — 1 game
 
+Best game (all their rounds scored together): Anubis, best round 11 — won a 1v1 · 2 kills · +65 pts win chance. Best rounds: Anubis round 11 (won a 1v1 · 2 kills · +65 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-06 02:39 UTC | Anubis | against Ric | 13:6 win | 17-15-5 | 88 | [report](3846689522670633012.md) |
 
 ## Beannael — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 8 — 1 kill, 1 HS · +16 pts win chance. Best rounds: Dust II round 8 (1 kill, 1 HS · +16 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -131,11 +169,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## BearSizedHamster — 1 game
 
+Best game (all their rounds scored together): Train, best round 4 — 2 kills · +31 pts win chance. Best rounds: Train round 4 (2 kills · +31 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:26 UTC | Train | with Ric | 3:13 loss | 11-15-1 | 76 | [report](3848094777987825749.md) |
 
 ## Bergrisar — 1 game
+
+Best game (all their rounds scored together): Train, best round 13 — 1 kill, 1 HS · on an eco · +13 pts win chance. Best rounds: Train round 13 (1 kill, 1 HS · on an eco · +13 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -143,11 +185,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Big_Pete(r)#1 — 1 game
 
+Best game (all their rounds scored together): Dust II, best round 15 — won a 1v4 · 5 kills, 1 HS · +94 pts win chance. Best rounds: Dust II round 15 (won a 1v4 · 5 kills, 1 HS · +94 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 04:30 UTC | Dust II | against Ric | 13:3 win | 12-9-5 | 84 | [report](3847631533552697449.md) |
 
 ## Black Beetles — 1 game
+
+Best game (all their rounds scored together): Train, best round 8 — won a 1v1 · 3 kills · +86 pts win chance. Best rounds: Train round 8 (won a 1v1 · 3 kills · +86 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -155,11 +201,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## BlueMiltank — 1 game
 
+Best game (all their rounds scored together): Train, best round 5 — 2 kills, 2 HS · +28 pts win chance. Best rounds: Train round 5 (2 kills, 2 HS · +28 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 03:29 UTC | Train | against Ric | 9:13 loss | 11-18-3 | 64 | [report](3847623624370421940.md) |
 
 ## Brooks — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 8 — won a 1v1 · 1 kill · +44 pts win chance. Best rounds: Dust II round 8 (won a 1v1 · 1 kill · +44 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -167,11 +217,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## BULLYHUNTER NO. 335749 — 1 game
 
+Best game (all their rounds scored together): Vertigo, best round 12 — won a 1v2 · 2 kills, 1 HS · +85 pts win chance. Best rounds: Vertigo round 12 (won a 1v2 · 2 kills, 1 HS · +85 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-15 01:15 UTC | Vertigo | against Ric | 11:13 loss | 8-19-2 | 40 | [report](3848348490295935257.md) |
 
 ## Bush did Pompeii — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 4 — won a 1v1 · 2 kills, 2 HS · +29 pts win chance. Best rounds: Mirage round 4 (won a 1v1 · 2 kills, 2 HS · +29 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -179,11 +233,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## c.c  on weed — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 13 — 2 kills · on an eco · +37 pts win chance. Best rounds: Mirage round 13 (2 kills · on an eco · +37 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-15 02:00 UTC | Mirage | against Ric | 13:7 win | 5-11-1 | 26 | [report](3848354346483843102.md) |
 
 ## Cat:3 — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 3 — 2 kills, 1 HS · +48 pts win chance. Best rounds: Dust II round 3 (2 kills, 1 HS · +48 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -191,11 +249,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Cave_Squid — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 1 — 1 kill, 1 HS · on an eco · +13 pts win chance. Best rounds: Mirage round 1 (1 kill, 1 HS · on an eco · +13 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:09 UTC | Mirage | with Ric | 3:9 loss | 3-9-4 | 52 | [report](3848092619766759746.md) |
 
 ## christianna — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 10 — 2 kills · +36 pts win chance. Best rounds: Mirage round 10 (2 kills · +36 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -203,11 +265,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## ComicalAcorn243 — 1 game
 
+Best game (all their rounds scored together): Dust II, best round 6 — 2 kills, 1 HS · +50 pts win chance. Best rounds: Dust II round 6 (2 kills, 1 HS · +50 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 04:30 UTC | Dust II | with Ric | 3:13 loss | 6-14-4 | 54 | [report](3847631533552697449.md) |
 
 ## computer — 1 game
+
+Best game (all their rounds scored together): Train, best round 9 — 4 kills, 1 HS · +32 pts win chance. Best rounds: Train round 9 (4 kills, 1 HS · +32 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -215,11 +281,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Coughdropped14 — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 21 — won a 1v1 · 1 kill · +65 pts win chance. Best rounds: Mirage round 21 (won a 1v1 · 1 kill · +65 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 02:07 UTC | Mirage | against Ric | 13:11 win | 12-18-7 | 66 | [report](3847613007211266183.md) |
 
 ## Cress — 1 game
+
+Best game (all their rounds scored together): Train, best round 21 — won a 1v2 · 2 kills, 2 HS · +79 pts win chance. Best rounds: Train round 21 (won a 1v2 · 2 kills, 2 HS · +79 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -227,11 +297,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## crow — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 4 — 2 kills, 1 HS · +57 pts win chance. Best rounds: Mirage round 4 (2 kills, 1 HS · +57 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-06 01:55 UTC | Mirage | against Ric | 12:12 draw | 11-18-3 | 57 | [report](3846683791036776519.md) |
 
 ## Darwin G. — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 7 — 3 kills, 2 HS · +39 pts win chance. Best rounds: Dust II round 7 (3 kills, 2 HS · +39 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -239,11 +313,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Daytona — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 10 — won a 1v2 · 3 kills, 1 HS · +105 pts win chance. Best rounds: Mirage round 10 (won a 1v2 · 3 kills, 1 HS · +105 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 00:38 UTC | Mirage | with Ric | 7:13 loss | 21-16-6 | 113 | [report](3847972682805018863.md) |
 
 ## Degrade Me Mommy — 1 game
+
+Best game (all their rounds scored together): Anubis, best round 19 — won a 1v3 · 3 kills · +89 pts win chance. Best rounds: Anubis round 19 (won a 1v3 · 3 kills · +89 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -251,11 +329,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## delusional — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 13 — 2 kills, 2 HS · on an eco · +34 pts win chance. Best rounds: Mirage round 13 (2 kills, 2 HS · on an eco · +34 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 00:38 UTC | Mirage | against Ric | 13:7 win | 12-17-4 | 73 | [report](3847972682805018863.md) |
 
 ## DervinG † — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 1 — 3 kills, 1 HS · on an eco · +63 pts win chance. Best rounds: Dust II round 1 (3 kills, 1 HS · on an eco · +63 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -263,11 +345,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## deviljt13 — 1 game
 
+Best game (all their rounds scored together): Dust II, best round 3 — 2 kills, 2 HS · +26 pts win chance. Best rounds: Dust II round 3 (2 kills, 2 HS · +26 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-15 00:58 UTC | Dust II | against Ric | 8:1 win | 10-3-0 | 103 | [report](3848346366434607200.md) |
 
 ## dirt — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 12 — won a 1v2 · 2 kills, 2 HS · +79 pts win chance. Best rounds: Mirage round 12 (won a 1v2 · 2 kills, 2 HS · +79 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -275,11 +361,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Dork — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 11 — 1 kill · +12 pts win chance. Best rounds: Mirage round 11 (1 kill · +12 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:09 UTC | Mirage | against Ric | 9:3 win | 4-8-2 | 35 | [report](3848092619766759746.md) |
 
 ## Elleonbelle — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 15 — 1 kill · +26 pts win chance. Best rounds: Mirage round 15 (1 kill · +26 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -287,11 +377,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## eugineblumkin — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 18 — won a 1v2 · 2 kills · +82 pts win chance. Best rounds: Mirage round 18 (won a 1v2 · 2 kills · +82 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 02:07 UTC | Mirage | against Ric | 13:11 win | 11-21-7 | 59 | [report](3847613007211266183.md) |
 
 ## f0rest — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 13 — 2 kills · on an eco · +29 pts win chance. Best rounds: Dust II round 13 (2 kills · on an eco · +29 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -299,11 +393,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Fart — 1 game
 
+Best game (all their rounds scored together): Vertigo, best round 18 — 4 kills, 2 HS · +59 pts win chance. Best rounds: Vertigo round 18 (4 kills, 2 HS · +59 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-15 01:15 UTC | Vertigo | with Ric | 13:11 win | 14-18-1 | 60 | [report](3848348490295935257.md) |
 
 ## fish — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 20 — 3 kills · +29 pts win chance. Best rounds: Mirage round 20 (3 kills · +29 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -311,11 +409,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Gato Payaso — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 6 — won a 1v1 · 2 kills, 1 HS · +72 pts win chance. Best rounds: Mirage round 6 (won a 1v1 · 2 kills, 1 HS · +72 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-06 03:20 UTC | Mirage | against Ric | 13:3 win | 13-12-9 | 119 | [report](3846694811922858158.md) |
 
 ## GG — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 9 — 3 kills, 1 HS · +51 pts win chance. Best rounds: Mirage round 9 (3 kills, 1 HS · +51 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -323,11 +425,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Ghost — 1 game
 
+Best game (all their rounds scored together): Anubis, best round 14 — 4 kills, 4 HS · on an eco · +33 pts win chance. Best rounds: Anubis round 14 (4 kills, 4 HS · on an eco · +33 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:50 UTC | Anubis | against Ric | 6:13 loss | 26-13-6 | 144 | [report](3848097853184409614.md) |
 
 ## girl — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 4 — 3 kills, 3 HS · on an eco · +71 pts win chance. Best rounds: Dust II round 4 (3 kills, 3 HS · on an eco · +71 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -335,11 +441,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Gizmo — 1 game
 
+Best game (all their rounds scored together): Anubis, best round 9 — 2 kills, 1 HS · +29 pts win chance. Best rounds: Anubis round 9 (2 kills, 1 HS · +29 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:50 UTC | Anubis | against Ric | 6:13 loss | 5-17-4 | 37 | [report](3848097853184409614.md) |
 
 ## Goon King — 1 game
+
+Best game (all their rounds scored together): Train, best round 7 — 3 kills, 1 HS · +36 pts win chance. Best rounds: Train round 7 (3 kills, 1 HS · +36 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -347,11 +457,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Great Value Shrimp — 1 game
 
+Best game (all their rounds scored together): Train, best round 6 — 3 kills, 1 HS · +48 pts win chance. Best rounds: Train round 6 (3 kills, 1 HS · +48 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 03:29 UTC | Train | against Ric | 9:13 loss | 17-18-7 | 99 | [report](3847623624370421940.md) |
 
 ## hello — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 1 — 2 kills, 2 HS · on an eco · +37 pts win chance. Best rounds: Dust II round 1 (2 kills, 2 HS · on an eco · +37 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -359,11 +473,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Horus — 1 game
 
+Best game (all their rounds scored together): Train, best round 5 — 2 kills · +14 pts win chance. Best rounds: Train round 5 (2 kills · +14 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 17:22 UTC | Train | against Ric | 13:9 win | 12-17-5 | 66 | [report](3848102062252359905.md) |
 
 ## HUGH JASS — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 13 — 2 kills, 1 HS · on an eco · +34 pts win chance. Best rounds: Mirage round 13 (2 kills, 1 HS · on an eco · +34 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -371,11 +489,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## ibags — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 7 — 2 kills, 1 HS · +12 pts win chance. Best rounds: Mirage round 7 (2 kills, 1 HS · +12 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:09 UTC | Mirage | against Ric | 9:3 win | 5-6-3 | 48 | [report](3848092619766759746.md) |
 
 ## Idkman123 — 1 game
+
+Best game (all their rounds scored together): Train, best round 1 — 2 kills, 2 HS · on an eco · +46 pts win chance. Best rounds: Train round 1 (2 kills, 2 HS · on an eco · +46 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -383,11 +505,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## imaginathan — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 17 — won a 1v1 · 3 kills, 1 HS · on an eco · +112 pts win chance. Best rounds: Mirage round 17 (won a 1v1 · 3 kills, 1 HS · on an eco · +112 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-06 01:55 UTC | Mirage | against Ric | 12:12 draw | 18-18-7 | 91 | [report](3846683791036776519.md) |
 
 ## impact_blitz — 1 game
+
+Best game (all their rounds scored together): Train, best round 1 — 1 kill · on an eco · +24 pts win chance. Best rounds: Train round 1 (1 kill · on an eco · +24 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -395,11 +521,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Intellectual — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 9 — 2 kills · +34 pts win chance. Best rounds: Mirage round 9 (2 kills · +34 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 02:07 UTC | Mirage | with Ric | 11:13 loss | 12-20-8 | 70 | [report](3847613007211266183.md) |
 
 ## intol — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 4 — won a 1v4 · 1 kill · +14 pts win chance. Best rounds: Dust II round 4 (won a 1v4 · 1 kill · +14 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -407,11 +537,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Isodoc CSGOSKINS — 1 game
 
+Best game (all their rounds scored together): Dust II, best round 4 — 1 kill, 1 HS · +31 pts win chance. Best rounds: Dust II round 4 (1 kill, 1 HS · +31 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-12 23:40 UTC | Dust II | against Ric | 7:4 win | 3-6-0 | 29 | [report](3847965185939603496.md) |
 
 ## Its Pineapples3 — 1 game
+
+Best game (all their rounds scored together): Train, best round 14 — won a 1v1 · 2 kills, 1 HS · +65 pts win chance. Best rounds: Train round 14 (won a 1v1 · 2 kills, 1 HS · +65 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -419,11 +553,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## ItsBurnEm — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 13 — won a 1v3 · 4 kills, 2 HS · on an eco · +86 pts win chance. Best rounds: Mirage round 13 (won a 1v3 · 4 kills, 2 HS · on an eco · +86 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 01:36 UTC | Mirage | with Ric | 12:12 draw | 27-18-4 | 130 | [report](3847980205440237697.md) |
 
 ## ItzBilko — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 11 — 2 kills, 2 HS · +49 pts win chance. Best rounds: Dust II round 11 (2 kills, 2 HS · +49 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -431,11 +569,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## J0an — 1 game
 
+Best game (all their rounds scored together): Anubis, best round 9 — 1 kill · +18 pts win chance. Best rounds: Anubis round 9 (1 kill · +18 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:50 UTC | Anubis | against Ric | 6:13 loss | 9-16-4 | 56 | [report](3848097853184409614.md) |
 
 ## Jake From State Farm — 1 game
+
+Best game (all their rounds scored together): Train, best round 4 — 2 kills, 1 HS · on an eco · +34 pts win chance. Best rounds: Train round 4 (2 kills, 1 HS · on an eco · +34 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -443,11 +585,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Jar Jar Binks — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 7 — 2 kills, 1 HS · +11 pts win chance. Best rounds: Mirage round 7 (2 kills, 1 HS · +11 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:09 UTC | Mirage | against Ric | 9:3 win | 9-7-4 | 81 | [report](3848092619766759746.md) |
 
 ## jebus_rice — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 8 — 2 kills, 2 HS · +44 pts win chance. Best rounds: Mirage round 8 (2 kills, 2 HS · +44 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -455,11 +601,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## JohnTafferTaps — 1 game
 
+Best game (all their rounds scored together): Anubis, best round 12 — 2 kills, 1 HS · +37 pts win chance. Best rounds: Anubis round 12 (2 kills, 1 HS · +37 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-06 02:39 UTC | Anubis | against Ric | 13:6 win | 11-16-7 | 80 | [report](3846689522670633012.md) |
 
 ## JOSUE :) — 1 game
+
+Best game (all their rounds scored together): Train, best round 3 — 2 kills, 2 HS · +51 pts win chance. Best rounds: Train round 3 (2 kills, 2 HS · +51 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -467,11 +617,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## José Hurts — 1 game
 
+Best game (all their rounds scored together): Train, best round 16 — won a 1v2 · 2 kills, 1 HS · +73 pts win chance. Best rounds: Train round 16 (won a 1v2 · 2 kills, 1 HS · +73 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 03:29 UTC | Train | with Ric | 13:9 win | 25-14-8 | 113 | [report](3847623624370421940.md) |
 
 ## K6L3B787 — 1 game
+
+Best game (all their rounds scored together): Cache, best round 11 — won a 1v2 · 2 kills · +62 pts win chance. Best rounds: Cache round 11 (won a 1v2 · 2 kills · +62 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -479,11 +633,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Kaliman — 1 game
 
+Best game (all their rounds scored together): Train, best round 13 — 2 kills, 1 HS · on an eco · +36 pts win chance. Best rounds: Train round 13 (2 kills, 1 HS · on an eco · +36 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:26 UTC | Train | with Ric | 3:13 loss | 6-16-1 | 64 | [report](3848094777987825749.md) |
 
 ## Karappo — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 1 — 1 kill, 1 HS · on an eco · +13 pts win chance. Best rounds: Dust II round 1 (1 kill, 1 HS · on an eco · +13 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -491,11 +649,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Katano — 1 game
 
+Best game (all their rounds scored together): Dust II, best round 7 — won a 1v2 · 2 kills, 1 HS · +75 pts win chance. Best rounds: Dust II round 7 (won a 1v2 · 2 kills, 1 HS · +75 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-12 23:40 UTC | Dust II | against Ric | 7:4 win | 11-5-4 | 116 | [report](3847965185939603496.md) |
 
 ## kcrodman09 — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 1 — 1 kill, 1 HS · on an eco · +16 pts win chance. Best rounds: Mirage round 1 (1 kill, 1 HS · on an eco · +16 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -503,11 +665,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## KingKlept0TV — 1 game
 
+Best game (all their rounds scored together): Dust II, best round 6 — 3 kills, 1 HS · +22 pts win chance. Best rounds: Dust II round 6 (3 kills, 1 HS · +22 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-12 23:40 UTC | Dust II | against Ric | 7:4 win | 10-6-1 | 96 | [report](3847965185939603496.md) |
 
 ## KON KARNE — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 2 — won a 1v2 · 2 kills, 1 HS · +77 pts win chance. Best rounds: Mirage round 2 (won a 1v2 · 2 kills, 1 HS · +77 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -515,11 +681,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## LamesHenry — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 5 — won a 1v1 · 1 kill, 1 HS · +62 pts win chance. Best rounds: Mirage round 5 (won a 1v1 · 1 kill, 1 HS · +62 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 00:38 UTC | Mirage | with Ric | 7:13 loss | 7-17-2 | 46 | [report](3847972682805018863.md) |
 
 ## lappo — 1 game
+
+Best game (all their rounds scored together): Anubis, best round 12 — 2 kills · +44 pts win chance. Best rounds: Anubis round 12 (2 kills · +44 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -527,11 +697,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Lord UGhosTy — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 2 — won a 1v3 · 5 kills · +109 pts win chance. Best rounds: Mirage round 2 (won a 1v3 · 5 kills · +109 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 01:36 UTC | Mirage | against Ric | 12:12 draw | 35-13-4 | 147 | [report](3847980205440237697.md) |
 
 ## LOVE S0SA — 1 game
+
+Best game (all their rounds scored together): Anubis, best round 13 — 4 kills, 4 HS · on an eco · +67 pts win chance. Best rounds: Anubis round 13 (4 kills, 4 HS · on an eco · +67 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -539,11 +713,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## luck21 — 1 game
 
+Best game (all their rounds scored together): Train, best round 17 — 2 kills, 2 HS · +35 pts win chance. Best rounds: Train round 17 (2 kills, 2 HS · +35 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 03:29 UTC | Train | with Ric | 13:9 win | 15-16-6 | 94 | [report](3847623624370421940.md) |
 
 ## m1sho — 1 game
+
+Best game (all their rounds scored together): Cache, best round 5 — 2 kills, 2 HS · +22 pts win chance. Best rounds: Cache round 5 (2 kills, 2 HS · +22 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -551,11 +729,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## M3NT4LLY_1LL — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 1 — . Best rounds: Mirage round 1 ().
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-06 01:55 UTC | Mirage | against Ric | 12:12 draw | 1-19-4 | 22 | [report](3846683791036776519.md) |
 
 ## mandog — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 10 — won a 1v2 · 2 kills, 2 HS · +77 pts win chance. Best rounds: Dust II round 10 (won a 1v2 · 2 kills, 2 HS · +77 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -563,11 +745,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Manu — 1 game
 
+Best game (all their rounds scored together): Dust II, best round 6 — 2 kills · +34 pts win chance. Best rounds: Dust II round 6 (2 kills · +34 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 04:30 UTC | Dust II | with Ric | 3:13 loss | 6-16-7 | 81 | [report](3847631533552697449.md) |
 
 ## Meat n Taters, lil gravy — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 14 — won a 1v1 · 1 kill · on an eco · +47 pts win chance. Best rounds: Dust II round 14 (won a 1v1 · 1 kill · on an eco · +47 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -575,11 +761,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## meekopatty — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 18 — won a 1v2 · 4 kills, 1 HS · +108 pts win chance. Best rounds: Mirage round 18 (won a 1v2 · 4 kills, 1 HS · +108 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 00:38 UTC | Mirage | with Ric | 7:13 loss | 22-18-2 | 125 | [report](3847972682805018863.md) |
 
 ## Meep — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 8 — won a 1v1 · 1 kill · +43 pts win chance. Best rounds: Mirage round 8 (won a 1v1 · 1 kill · +43 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -587,11 +777,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Mighty_Meg27 — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 14 — won a 1v4 · 4 kills, 3 HS · +77 pts win chance. Best rounds: Mirage round 14 (won a 1v4 · 4 kills, 3 HS · +77 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-06 01:55 UTC | Mirage | against Ric | 12:12 draw | 44-17-3 | 195 | [report](3846683791036776519.md) |
 
 ## Milk — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 2 — . Best rounds: Mirage round 2 ().
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -599,11 +793,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## milk with pulp — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 18 — 2 kills · +27 pts win chance. Best rounds: Mirage round 18 (2 kills · +27 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-06 01:55 UTC | Mirage | with Ric | 12:12 draw | 8-17-1 | 54 | [report](3846683791036776519.md) |
 
 ## Minichode — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 13 — 3 kills, 3 HS · on an eco · +63 pts win chance. Best rounds: Dust II round 13 (3 kills, 3 HS · on an eco · +63 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -611,11 +809,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Nani — 1 game
 
+Best game (all their rounds scored together): Train, best round 1 — 2 kills · on an eco · +37 pts win chance. Best rounds: Train round 1 (2 kills · on an eco · +37 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:26 UTC | Train | against Ric | 13:3 win | 7-8-6 | 60 | [report](3848094777987825749.md) |
 
 ## NIGGA — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 2 — won a 1v1 · 2 kills, 1 HS · +82 pts win chance. Best rounds: Mirage round 2 (won a 1v1 · 2 kills, 1 HS · +82 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -623,11 +825,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## NRG FAZE nigga — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 19 — 2 kills · +48 pts win chance. Best rounds: Mirage round 19 (2 kills · +48 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 00:38 UTC | Mirage | against Ric | 13:7 win | 9-13-6 | 59 | [report](3847972682805018863.md) |
 
 ## numbSKULL — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 3 — 4 kills, 1 HS · +55 pts win chance. Best rounds: Mirage round 3 (4 kills, 1 HS · +55 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -635,11 +841,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## OG_COBRA — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 3 — 3 kills, 2 HS · +62 pts win chance. Best rounds: Mirage round 3 (3 kills, 2 HS · +62 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 01:36 UTC | Mirage | with Ric | 12:12 draw | 11-20-8 | 69 | [report](3847980205440237697.md) |
 
 ## OpTicFent420 — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 17 — won a 1v1 · 2 kills, 1 HS · +65 pts win chance. Best rounds: Mirage round 17 (won a 1v1 · 2 kills, 1 HS · +65 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -647,11 +857,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Orpheus — 1 game
 
+Best game (all their rounds scored together): Anubis, best round 10 — 1 kill, 1 HS · on an eco · +17 pts win chance. Best rounds: Anubis round 10 (1 kill, 1 HS · on an eco · +17 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:50 UTC | Anubis | with Ric | 13:6 win | 9-15-2 | 55 | [report](3848097853184409614.md) |
 
 ## Otis — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 15 — 1 kill · +23 pts win chance. Best rounds: Dust II round 15 (1 kill · +23 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -659,11 +873,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Pal.holii — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 8 — 3 kills, 2 HS · +50 pts win chance. Best rounds: Mirage round 8 (3 kills, 2 HS · +50 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 01:36 UTC | Mirage | against Ric | 12:12 draw | 24-16-5 | 111 | [report](3847980205440237697.md) |
 
 ## Paladin — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 2 — won a 1v1 · 2 kills, 1 HS · +54 pts win chance. Best rounds: Dust II round 2 (won a 1v1 · 2 kills, 1 HS · +54 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -671,11 +889,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## pba-cav-sqn — 1 game
 
+Best game (all their rounds scored together): Cache, best round 8 — 2 kills · +33 pts win chance. Best rounds: Cache round 8 (2 kills · +33 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 01:12 UTC | Cache | with Ric | 2:13 loss | 12-15-0 | 96 | [report](3847977048639275147.md) |
 
 ## Penguin — 1 game
+
+Best game (all their rounds scored together): Vertigo, best round 7 — won a 1v2 · 2 kills · +62 pts win chance. Best rounds: Vertigo round 7 (won a 1v2 · 2 kills · +62 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -683,11 +905,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Peter Grippin — 1 game
 
+Best game (all their rounds scored together): Cache, best round 14 — 2 kills, 1 HS · +51 pts win chance. Best rounds: Cache round 14 (2 kills, 1 HS · +51 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 01:12 UTC | Cache | with Ric | 2:13 loss | 3-15-3 | 28 | [report](3847977048639275147.md) |
 
 ## PFCBumKnee — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 17 — won a 1v2 · 4 kills, 1 HS · +81 pts win chance. Best rounds: Mirage round 17 (won a 1v2 · 4 kills, 1 HS · +81 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -695,11 +921,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Phantom Floyd — 1 game
 
+Best game (all their rounds scored together): Cache, best round 8 — 2 kills, 2 HS · +45 pts win chance. Best rounds: Cache round 8 (2 kills, 2 HS · +45 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 01:12 UTC | Cache | with Ric | 2:13 loss | 5-14-4 | 54 | [report](3847977048639275147.md) |
 
 ## plexx616 — 1 game
+
+Best game (all their rounds scored together): Anubis, best round 15 — won a 1v2 · 4 kills, 2 HS · +113 pts win chance. Best rounds: Anubis round 15 (won a 1v2 · 4 kills, 2 HS · +113 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -707,11 +937,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## PretendArcher3 — 1 game
 
+Best game (all their rounds scored together): Train, best round 13 — 1 kill, 1 HS · on an eco · +13 pts win chance. Best rounds: Train round 13 (1 kill, 1 HS · on an eco · +13 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 17:22 UTC | Train | with Ric | 9:13 loss | 3-22-4 | 22 | [report](3848102062252359905.md) |
 
 ## PurpleDemon — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 8 — 3 kills, 1 HS · +47 pts win chance. Best rounds: Dust II round 8 (3 kills, 1 HS · +47 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -725,17 +959,23 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## RENOZ — 1 game
 
+Best game (all their rounds scored together): Train, best round 8 — 3 kills, 1 HS · +62 pts win chance. Best rounds: Train round 8 (3 kills, 1 HS · +62 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 03:29 UTC | Train | with Ric | 13:9 win | 15-14-10 | 94 | [report](3847623624370421940.md) |
 
 ## RIO — 1 game
 
+Best game (all their rounds scored together): Train, best round 16 — won a 1v1 · 2 kills · +63 pts win chance. Best rounds: Train round 16 (won a 1v1 · 2 kills · +63 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 17:22 UTC | Train | with Ric | 9:13 loss | 14-16-1 | 66 | [report](3848102062252359905.md) |
 
 ## rosin and smirnoff — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 3 — won a 1v2 · 2 kills · +66 pts win chance. Best rounds: Mirage round 3 (won a 1v2 · 2 kills · +66 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -749,11 +989,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Sandrone — 1 game
 
+Best game (all their rounds scored together): Train, best round 8 — 4 kills, 1 HS · +86 pts win chance. Best rounds: Train round 8 (4 kills, 1 HS · +86 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 17:22 UTC | Train | against Ric | 13:9 win | 29-13-8 | 149 | [report](3848102062252359905.md) |
 
 ## Saul Goodmen — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 10 — won a 1v3 · 5 kills, 3 HS · +101 pts win chance. Best rounds: Mirage round 10 (won a 1v3 · 5 kills, 3 HS · +101 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -761,11 +1005,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## sef — 1 game
 
+Best game (all their rounds scored together): Train, best round 6 — 2 kills · +11 pts win chance. Best rounds: Train round 6 (2 kills · +11 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 17:22 UTC | Train | against Ric | 13:9 win | 8-6-2 | 42 | [report](3848102062252359905.md) |
 
 ## shrekbestboi — 1 game
+
+Best game (all their rounds scored together): Vertigo, best round 8 — 3 kills, 1 HS · +48 pts win chance. Best rounds: Vertigo round 8 (3 kills, 1 HS · +48 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -773,11 +1021,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## SilverFox — 1 game
 
+Best game (all their rounds scored together): Cache, best round 13 — 3 kills · on an eco · +48 pts win chance. Best rounds: Cache round 13 (3 kills · on an eco · +48 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 01:12 UTC | Cache | against Ric | 13:2 win | 13-8-6 | 105 | [report](3847977048639275147.md) |
 
 ## SirThugg1n — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 1 — 3 kills, 1 HS · on an eco · +62 pts win chance. Best rounds: Mirage round 1 (3 kills, 1 HS · on an eco · +62 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -785,11 +1037,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## SmileMore — 1 game
 
+Best game (all their rounds scored together): Cache, best round 1 — 3 kills, 1 HS · on an eco · +28 pts win chance. Best rounds: Cache round 1 (3 kills, 1 HS · on an eco · +28 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 01:12 UTC | Cache | against Ric | 13:2 win | 20-6-3 | 139 | [report](3847977048639275147.md) |
 
 ## SOL1644 — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 10 — 2 kills, 1 HS · +44 pts win chance. Best rounds: Mirage round 10 (2 kills, 1 HS · +44 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -797,11 +1053,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Stizzytron — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 4 — won a 1v1 · 3 kills, 1 HS · +92 pts win chance. Best rounds: Mirage round 4 (won a 1v1 · 3 kills, 1 HS · +92 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 02:07 UTC | Mirage | against Ric | 13:11 win | 12-20-7 | 72 | [report](3847613007211266183.md) |
 
 ## Strayworl — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 4 — 3 kills, 2 HS · +39 pts win chance. Best rounds: Dust II round 4 (3 kills, 2 HS · +39 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -809,11 +1069,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## SuperCell — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 6 — 3 kills · +63 pts win chance. Best rounds: Mirage round 6 (3 kills · +63 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-06 01:55 UTC | Mirage | against Ric | 12:12 draw | 9-16-6 | 49 | [report](3846683791036776519.md) |
 
 ## SuperPanda2222 — 1 game
+
+Best game (all their rounds scored together): Train, best round 3 — won a 1v1 · 1 kill, 1 HS · +54 pts win chance. Best rounds: Train round 3 (won a 1v1 · 1 kill, 1 HS · +54 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -821,11 +1085,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Taterh0ps — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 14 — 5 kills, 4 HS · +38 pts win chance. Best rounds: Mirage round 14 (5 kills, 4 HS · +38 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-15 02:00 UTC | Mirage | against Ric | 13:7 win | 30-14-5 | 167 | [report](3848354346483843102.md) |
 
 ## Terrence Jackson — 1 game
+
+Best game (all their rounds scored together): Vertigo, best round 2 — 3 kills · +43 pts win chance. Best rounds: Vertigo round 2 (3 kills · +43 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -833,11 +1101,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Tex — 1 game
 
+Best game (all their rounds scored together): Dust II, best round 4 — 3 kills · +40 pts win chance. Best rounds: Dust II round 4 (3 kills · +40 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 04:30 UTC | Dust II | with Ric | 3:13 loss | 8-13-2 | 54 | [report](3847631533552697449.md) |
 
 ## thatsmyboy — 1 game
+
+Best game (all their rounds scored together): Train, best round 4 — won a 1v2 · 3 kills, 1 HS · +82 pts win chance. Best rounds: Train round 4 (won a 1v2 · 3 kills, 1 HS · +82 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -845,11 +1117,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## The Beast — 1 game
 
+Best game (all their rounds scored together): Vertigo, best round 4 — 1 kill · +7 pts win chance. Best rounds: Vertigo round 4 (1 kill · +7 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-15 01:15 UTC | Vertigo | against Ric | 11:13 loss | 1-2-0 | 4 | [report](3848348490295935257.md) |
 
 ## TheFriendlyCorgi — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 1 — 1 kill, 1 HS · on an eco · +14 pts win chance. Best rounds: Mirage round 1 (1 kill, 1 HS · on an eco · +14 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -857,11 +1133,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## TheRed — 1 game
 
+Best game (all their rounds scored together): Mirage, best round 11 — 3 kills · +66 pts win chance. Best rounds: Mirage round 11 (3 kills · +66 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-15 02:00 UTC | Mirage | with Ric | 7:13 loss | 17-18-2 | 98 | [report](3848354346483843102.md) |
 
 ## TheShappix44 — 1 game
+
+Best game (all their rounds scored together): Vertigo, best round 16 — won a 1v4 · 4 kills, 1 HS · +93 pts win chance. Best rounds: Vertigo round 16 (won a 1v4 · 4 kills, 1 HS · +93 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -869,11 +1149,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## thopp — 1 game
 
+Best game (all their rounds scored together): Vertigo, best round 20 — 2 kills · +22 pts win chance. Best rounds: Vertigo round 20 (2 kills · +22 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-15 01:15 UTC | Vertigo | with Ric | 13:11 win | 14-18-4 | 66 | [report](3848348490295935257.md) |
 
 ## Thug Muffin — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 6 — 2 kills, 1 HS · +18 pts win chance. Best rounds: Dust II round 6 (2 kills, 1 HS · +18 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -887,11 +1171,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## TooLegit2Quit — 1 game
 
+Best game (all their rounds scored together): Cache, best round 14 — won a 1v1 · 1 kill · on an eco · +44 pts win chance. Best rounds: Cache round 14 (won a 1v1 · 1 kill · on an eco · +44 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 01:12 UTC | Cache | with Ric | 2:13 loss | 2-14-1 | 23 | [report](3847977048639275147.md) |
 
 ## Unpleasantt — 1 game
+
+Best game (all their rounds scored together): Train, best round 20 — won a 1v1 · 4 kills, 1 HS · +110 pts win chance. Best rounds: Train round 20 (won a 1v1 · 4 kills, 1 HS · +110 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -899,11 +1187,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## unrapin cs — 1 game
 
+Best game (all their rounds scored together): Dust II, best round 1 — 2 kills · on an eco · +30 pts win chance. Best rounds: Dust II round 1 (2 kills · on an eco · +30 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-12 23:40 UTC | Dust II | with Ric | 4:7 loss | 6-9-1 | 52 | [report](3847965185939603496.md) |
 
 ## wadihmansour — 1 game
+
+Best game (all their rounds scored together): Dust II, best round 5 — 2 kills · +18 pts win chance. Best rounds: Dust II round 5 (2 kills · +18 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -911,11 +1203,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## WANTEDMARROW — 1 game
 
+Best game (all their rounds scored together): Cache, best round 13 — 1 kill · on an eco · +30 pts win chance. Best rounds: Cache round 13 (1 kill · on an eco · +30 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 01:12 UTC | Cache | against Ric | 13:2 win | 9-10-6 | 81 | [report](3847977048639275147.md) |
 
 ## Weed is tight — 1 game
+
+Best game (all their rounds scored together): Train, best round 12 — won a 1v3 · 4 kills, 3 HS · +102 pts win chance. Best rounds: Train round 12 (won a 1v3 · 4 kills, 3 HS · +102 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -923,11 +1219,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Wenndigo — 1 game
 
+Best game (all their rounds scored together): Train, best round 13 — won a 1v1 · 2 kills, 1 HS · on an eco · +51 pts win chance. Best rounds: Train round 13 (won a 1v1 · 2 kills, 1 HS · on an eco · +51 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:26 UTC | Train | against Ric | 13:3 win | 14-6-0 | 86 | [report](3848094777987825749.md) |
 
 ## Wlgwalker — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 22 — won a 1v1 · 1 kill · +52 pts win chance. Best rounds: Mirage round 22 (won a 1v1 · 1 kill · +52 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -935,11 +1235,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## wosdai — 1 game
 
+Best game (all their rounds scored together): Dust II, best round 1 — 1 kill, 1 HS · on an eco · +29 pts win chance. Best rounds: Dust II round 1 (1 kill, 1 HS · on an eco · +29 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 01:03 UTC | Dust II | with Ric | 3:13 loss | 1-2-2 | 12 | [report](3847604825298567197.md) |
 
 ## wtfpreston — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 8 — won a 1v2 · 3 kills, 2 HS · on an eco · +101 pts win chance. Best rounds: Mirage round 8 (won a 1v2 · 3 kills, 2 HS · on an eco · +101 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -947,11 +1251,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## WWY777 — 1 game
 
+Best game (all their rounds scored together): Dust II, best round 5 — 1 kill · +15 pts win chance. Best rounds: Dust II round 5 (1 kill · +15 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-15 00:58 UTC | Dust II | against Ric | 8:1 win | 5-3-1 | 56 | [report](3848346366434607200.md) |
 
 ## xSinisterSteelx — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 1 — 1 kill · on an eco · +5 pts win chance. Best rounds: Mirage round 1 (1 kill · on an eco · +5 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -959,11 +1267,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Yeesty — 1 game
 
+Best game (all their rounds scored together): Train, best round 5 — 2 kills, 2 HS · +23 pts win chance. Best rounds: Train round 5 (2 kills, 2 HS · +23 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 02:48 UTC | Train | against Ric | 8:13 loss | 13-17-6 | 80 | [report](3847618294316007431.md) |
 
 ## YouGrippinDaddy — 1 game
+
+Best game (all their rounds scored together): Anubis, best round 4 — 2 kills, 2 HS · +26 pts win chance. Best rounds: Anubis round 4 (2 kills, 2 HS · +26 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -971,11 +1283,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## Your Favorite Boss — 1 game
 
+Best game (all their rounds scored together): Anubis, best round 3 — won a 1v3 · 4 kills · +100 pts win chance. Best rounds: Anubis round 3 (won a 1v3 · 4 kills · +100 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-06 02:39 UTC | Anubis | against Ric | 13:6 win | 25-10-6 | 135 | [report](3846689522670633012.md) |
 
 ## ᵗᵒˣiᶜᶜᵘᵗiᵉ — 1 game
+
+Best game (all their rounds scored together): Train, best round 5 — 2 kills, 2 HS · on an eco · +44 pts win chance. Best rounds: Train round 5 (2 kills, 2 HS · on an eco · +44 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -983,11 +1299,15 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## 𝕄𝕚𝕔𝕙𝕒𝕖𝕝 — 1 game
 
+Best game (all their rounds scored together): Dust II, best round 1 — 2 kills, 2 HS · on an eco · +39 pts win chance. Best rounds: Dust II round 1 (2 kills, 2 HS · on an eco · +39 pts win chance).
+
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-15 00:58 UTC | Dust II | against Ric | 8:1 win | 14-6-5 | 197 | [report](3848346366434607200.md) |
 
 ## 🧀 cheesy 🧀 — 1 game
+
+Best game (all their rounds scored together): Mirage, best round 4 — 2 kills, 2 HS · +30 pts win chance. Best rounds: Mirage round 4 (2 kills, 2 HS · +30 pts win chance).
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
