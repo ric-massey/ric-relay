@@ -14,7 +14,7 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Kills / deaths | 181 / 277 |
 | K/D | 0.65 |
 | Headshot % | 45% |
-| Matches with full demo data | 16 |
+| Matches with full demo data | 19 |
 
 **Leetify skill ratings** (read 2026-10-15): aim 51/100, positioning 30/100, utility 3/100.
 
@@ -24,9 +24,9 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 | Date | Map | Mode | Score | Result | K-D-A | ADR | HLTV 1.0 | Leetify rating | Full data | Report |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 2026-10-15 02:00 UTC | Mirage | Competitive | 7–13 | loss | 5-19-3 | 25 | 0.25 | -10.14 | no | [3848354346483843102.md](3848354346483843102.md) |
-| 2026-10-15 01:15 UTC | Vertigo | Competitive | 13–11 | win | 8-15-1 | 37.2 | 0.63 | -4.23 | no | [3848348490295935257.md](3848348490295935257.md) |
-| 2026-10-15 00:58 UTC | Dust II | Competitive | 1–8 | loss | 4-7-0 | 27.8 | 0.62 | -2.74 | no | [3848346366434607200.md](3848346366434607200.md) |
+| 2026-10-15 02:00 UTC | Mirage | Competitive | 7–13 | loss | 5-19-3 | 26.2 | 0.25 | -10.14 | yes | [3848354346483843102.md](3848354346483843102.md) |
+| 2026-10-15 01:15 UTC | Vertigo | Competitive | 13–11 | win | 8-15-2 | 40.5 | 0.63 | -4.23 | yes | [3848348490295935257.md](3848348490295935257.md) |
+| 2026-10-15 00:58 UTC | Dust II | Competitive | 1–8 | loss | 4-7-0 | 35.9 | 0.62 | -2.74 | yes | [3848346366434607200.md](3848346366434607200.md) |
 | 2026-10-13 17:22 UTC | Train | Competitive | 9–13 | loss | 6-19-6 | 53.4 | 0.37 | -9.08 | yes | [3848102062252359905.md](3848102062252359905.md) |
 | 2026-10-13 16:50 UTC | Anubis | Competitive | 13–6 | win | 13-13-5 | 80.9 | 0.95 | +3.49 | yes | [3848097853184409614.md](3848097853184409614.md) |
 | 2026-10-13 16:26 UTC | Train | Competitive | 3–13 | loss | 4-14-1 | 46.4 | 0.31 | -4.74 | yes | [3848094777987825749.md](3848094777987825749.md) |
@@ -59,28 +59,28 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 ## Breakdown (every game with a saved demo)
 
-16 games, 297 rounds, 164 kills and 236 deaths of Ric's, each with the callout both players stood at.
+19 games, 350 rounds, 181 kills and 277 deaths of Ric's, each with the callout both players stood at.
 
 | Stat | Value |
 |---|---|
-| Rounds won as CT | 43% (62/143) |
-| Rounds won as T | 36% (55/154) |
-| Pistol rounds won | 37% (11/30) |
-| Opening duels won | 43% (12/28) |
-| Rounds won after Ric's team got the first kill | 49% (65/132) |
-| Rounds won after the enemy got the first kill | 32% (52/163) |
-| Rounds survived | 21% (61/297) |
-| Deaths that were traded | 14% (33/236) |
-| Kills that traded a teammate | 15% (24/164) |
-| 1v1 clutches won | 50% (6/12) |
-| 1v2 clutches won | 19% (3/16) |
-| 1v3 clutches won | 0% (0/12) |
-| 1v4 clutches won | 0% (0/14) |
+| Rounds won as CT | 45% (75/167) |
+| Rounds won as T | 34% (63/183) |
+| Pistol rounds won | 34% (12/35) |
+| Opening duels won | 44% (14/32) |
+| Rounds won after Ric's team got the first kill | 52% (79/153) |
+| Rounds won after the enemy got the first kill | 30% (59/195) |
+| Rounds survived | 21% (73/350) |
+| Deaths that were traded | 14% (38/277) |
+| Kills that traded a teammate | 15% (28/181) |
+| 1v1 clutches won | 43% (6/14) |
+| 1v2 clutches won | 18% (3/17) |
+| 1v3 clutches won | 0% (0/16) |
+| 1v4 clutches won | 5% (1/20) |
 | 1v5 clutches won | 0% (0/7) |
-| Grenades thrown | 31 smokes, 5 flashes, 15 HEs, 3 fires |
-| Enemies blinded per flash | 0.80 |
-| Teammates blinded by Ric's flashes | 4 |
-| Grenade damage (HE / fire) | 19 / 23 |
+| Grenades thrown | 38 smokes, 7 flashes, 19 HEs, 3 fires |
+| Enemies blinded per flash | 0.57 |
+| Teammates blinded by Ric's flashes | 5 |
+| Grenade damage (HE / fire) | 36 / 23 |
 
 ### Anubis: where Ric dies and kills
 
@@ -91,12 +91,12 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Walkway | 4 | 12% | 4 | 22% | 1.00 |
 | Bombsite B | 3 | 9% | 1 | 6% | 0.33 |
 | Canal | 3 | 9% | 0 | 0% | 0.00 |
-| Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
-| Heaven | 2 | 6% | 1 | 6% | 0.50 |
 | Bridge | 2 | 6% | 1 | 6% | 0.50 |
+| Heaven | 2 | 6% | 1 | 6% | 0.50 |
+| Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
 | Main | 1 | 3% | 1 | 6% | 1.00 |
-| Fountain | 1 | 3% | 0 | 0% | 0.00 |
 | Bricks | 1 | 3% | 0 | 0% | 0.00 |
+| Fountain | 1 | 3% | 0 | 0% | 0.00 |
 | Bombsite A | 0 | 0% | 3 | 17% | — |
 | Ruins | 0 | 0% | 2 | 11% | — |
 | Street | 0 | 0% | 1 | 6% | — |
@@ -110,58 +110,60 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Mid | 2 | 17% | 0 | 0% | 0.00 |
 | Outside A | 1 | 8% | 3 | 25% | 3.00 |
 | Bombsite B | 1 | 8% | 1 | 8% | 1.00 |
-| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | CTLane | 1 | 8% | 0 | 0% | 0.00 |
+| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | TSpawn | 1 | 8% | 0 | 0% | 0.00 |
 | TYard | 0 | 0% | 2 | 17% | — |
-| BMain | 0 | 0% | 1 | 8% | — |
-| AStairs | 0 | 0% | 1 | 8% | — |
 | Vents | 0 | 0% | 1 | 8% | — |
+| AStairs | 0 | 0% | 1 | 8% | — |
+| BMain | 0 | 0% | 1 | 8% | — |
 
 ### Dust II: where Ric dies and kills
 
 | Callout (where Ric stood) | Deaths | % of deaths | Kills | % of kills | K/D there |
 |---|---|---|---|---|---|
-| Bombsite B | 7 | 19% | 7 | 30% | 1.00 |
-| Long Doors | 5 | 14% | 3 | 13% | 0.60 |
-| Long A | 4 | 11% | 3 | 13% | 0.75 |
-| Outside Long | 4 | 11% | 3 | 13% | 0.75 |
-| Topof Mid | 3 | 8% | 0 | 0% | 0.00 |
+| Bombsite B | 8 | 18% | 8 | 30% | 1.00 |
+| Long Doors | 7 | 16% | 3 | 11% | 0.43 |
+| Outside Long | 5 | 11% | 4 | 15% | 0.80 |
+| Long A | 4 | 9% | 3 | 11% | 0.75 |
+| Topof Mid | 4 | 9% | 1 | 4% | 0.25 |
+| Catwalk | 3 | 7% | 1 | 4% | 0.33 |
+| Extended A | 3 | 7% | 0 | 0% | 0.00 |
 | BDoors | 2 | 5% | 0 | 0% | 0.00 |
-| Extended A | 2 | 5% | 0 | 0% | 0.00 |
-| Hole | 2 | 5% | 0 | 0% | 0.00 |
 | Middle | 2 | 5% | 0 | 0% | 0.00 |
-| Catwalk | 2 | 5% | 0 | 0% | 0.00 |
-| Under A | 1 | 3% | 2 | 9% | 2.00 |
-| Mid Doors | 1 | 3% | 1 | 4% | 1.00 |
-| Bombsite A | 1 | 3% | 0 | 0% | 0.00 |
-| ARamp | 1 | 3% | 0 | 0% | 0.00 |
-| Short Stairs | 0 | 0% | 2 | 9% | — |
-| Upper Tunnel | 0 | 0% | 2 | 9% | — |
+| Hole | 2 | 5% | 0 | 0% | 0.00 |
+| Under A | 1 | 2% | 2 | 7% | 2.00 |
+| Mid Doors | 1 | 2% | 1 | 4% | 1.00 |
+| Bombsite A | 1 | 2% | 0 | 0% | 0.00 |
+| ARamp | 1 | 2% | 0 | 0% | 0.00 |
+| Upper Tunnel | 0 | 0% | 2 | 7% | — |
+| Short Stairs | 0 | 0% | 2 | 7% | — |
 
 ### Mirage: where Ric dies and kills
 
 | Callout (where Ric stood) | Deaths | % of deaths | Kills | % of kills | K/D there |
 |---|---|---|---|---|---|
-| Bombsite A | 16 | 17% | 9 | 13% | 0.56 |
-| Apartments | 13 | 14% | 22 | 31% | 1.69 |
-| Palace Interior | 12 | 13% | 10 | 14% | 0.83 |
-| Truck | 8 | 9% | 4 | 6% | 0.50 |
-| Catwalk | 6 | 6% | 4 | 6% | 0.67 |
-| Bombsite B | 6 | 6% | 3 | 4% | 0.50 |
-| Connector | 6 | 6% | 2 | 3% | 0.33 |
+| Bombsite A | 18 | 16% | 9 | 12% | 0.50 |
+| Apartments | 14 | 12% | 22 | 29% | 1.57 |
+| Palace Interior | 13 | 12% | 10 | 13% | 0.77 |
+| Bombsite B | 10 | 9% | 5 | 7% | 0.50 |
+| Connector | 9 | 8% | 2 | 3% | 0.22 |
+| CTSpawn | 8 | 7% | 4 | 5% | 0.50 |
+| Truck | 8 | 7% | 4 | 5% | 0.50 |
+| Catwalk | 6 | 5% | 4 | 5% | 0.67 |
+| Shop | 5 | 4% | 1 | 1% | 0.20 |
 | TRamp | 4 | 4% | 1 | 1% | 0.25 |
-| Shop | 4 | 4% | 0 | 0% | 0.00 |
-| CTSpawn | 3 | 3% | 3 | 4% | 1.00 |
+| Underpass | 2 | 2% | 2 | 3% | 1.00 |
 | Scaffolding | 2 | 2% | 2 | 3% | 1.00 |
 | Middle | 2 | 2% | 2 | 3% | 1.00 |
-| Underpass | 2 | 2% | 2 | 3% | 1.00 |
 | House | 2 | 2% | 1 | 1% | 0.50 |
-| Stairs | 2 | 2% | 0 | 0% | 0.00 |
 | Snipers Nest | 2 | 2% | 0 | 0% | 0.00 |
-| Palace Alley | 1 | 1% | 4 | 6% | 4.00 |
+| Stairs | 2 | 2% | 0 | 0% | 0.00 |
+| Palace Alley | 1 | 1% | 4 | 5% | 4.00 |
+| Jungle | 1 | 1% | 1 | 1% | 1.00 |
 | Back Alley | 1 | 1% | 1 | 1% | 1.00 |
-| Jungle | 1 | 1% | 0 | 0% | 0.00 |
+| Topof Mid | 1 | 1% | 0 | 0% | 0.00 |
+| Side Alley | 1 | 1% | 0 | 0% | 0.00 |
 
 ### Train: where Ric dies and kills
 
@@ -178,8 +180,26 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Alley | 2 | 3% | 0 | 0% | 0.00 |
 | Entrance | 1 | 2% | 2 | 5% | 2.00 |
 | Dumpster | 1 | 2% | 0 | 0% | 0.00 |
-| TSide Upper | 0 | 0% | 1 | 2% | — |
 | Electrical Box | 0 | 0% | 1 | 2% | — |
+| TSide Upper | 0 | 0% | 1 | 2% | — |
+
+### Vertigo: where Ric dies and kills
+
+| Callout (where Ric stood) | Deaths | % of deaths | Kills | % of kills | K/D there |
+|---|---|---|---|---|---|
+| Bombsite B | 4 | 27% | 1 | 12% | 0.25 |
+| Bombsite A | 3 | 20% | 0 | 0% | 0.00 |
+| TCorridor Up | 1 | 7% | 2 | 25% | 2.00 |
+| Elevator | 1 | 7% | 1 | 12% | 1.00 |
+| Mid | 1 | 7% | 0 | 0% | 0.00 |
+| Crane | 1 | 7% | 0 | 0% | 0.00 |
+| Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
+| CTSpawn | 1 | 7% | 0 | 0% | 0.00 |
+| TSpawn | 1 | 7% | 0 | 0% | 0.00 |
+| Tunnels | 1 | 7% | 0 | 0% | 0.00 |
+| Ladder Top | 0 | 0% | 2 | 25% | — |
+| Connector | 0 | 0% | 1 | 12% | — |
+| Topof Mid | 0 | 0% | 1 | 12% | — |
 
 
 ## What the numbers mean
