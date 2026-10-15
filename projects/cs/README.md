@@ -239,6 +239,33 @@ to slugs for the player page's Copy link. Names only, like the rest of the
 room. ~8 MB for 160 players; drawing is deterministic, so a sync that
 changes nothing rewrites nothing.
 
+**Why he dies** (`deaths.py`). Every death in the saved replays is read at
+the instant it happened — the replay's snapshot of all ten players, its
+damage log, its flashes — and tagged: flashed; shot from outside the view
+(the killer more than 60° off the way they faced); outnumbered (two or more
+enemies hit them in the 5 s before); died alone (untraded, no teammate alive
+within ~25 m); otherwise a fair duel lost; and whether they fired back.
+`stats.js` carries Ric's deaths with their tags and every player's totals,
+with everyone's as `*`. "Why Ric dies" on the Overview and "Why you die" on
+a player's page say where they stand out against everyone, with a bar per
+cause and the latest death of each kind to watch.
+
+**Head to head.** A player's page compares them with Ric or anyone they
+shared a game with, over the games both played, and says who killed whom
+when they were on opposite sides (`duels` in `stats.js`, every pair of
+names). `#player/<a>/vs/<b>` opens a comparison.
+
+**The story** (`story.py`). Each match page opens with a few lines, each a
+round to watch: the round that put the winner ahead for good, a comeback
+from 3 or more down, the best clutch, the round won from the lowest chance,
+and the player of the match by round score. The text reports carry it too.
+
+**Habits.** Stats → Habits, and on a player's page: every round they played
+on one map and side drawn at once from spawn, teal for rounds they lived
+through and red for ones they died in, with a cross where — over the first
+20 s, 40 s or the whole round — and where the early deaths cluster. Drawn
+in the browser from the replays, one map's worth at a time.
+
 Replays are sampled twice a second (~350 KB a match). `HZ` in `parse-demos.py`
 trades size for smoothness.
 

@@ -241,6 +241,13 @@
     .rec .tag.wpt{background:rgba(79,209,197,.18);color:var(--win-ink);min-width:46px;text-align:center;display:inline-block}
     .note b.good{color:var(--win-ink)} .note b.bad{color:var(--loss-ink)}
     .vsave{display:inline-flex;flex-wrap:wrap;gap:6px}
+    /* habits */
+    .habits{padding:14px 16px} .panel .habits{padding:0}
+    .hbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px} .hbar .seg small{color:var(--dim);font-size:11px;margin-left:3px}
+    .hstage canvas{display:block;width:100%;max-width:640px;aspect-ratio:1;background:#07090c;border:1px solid var(--line)}
+    .hsum{margin:10px 0 6px;font-size:15px;line-height:1.55} .hsum b{color:var(--bright)}
+    @media (min-width:900px){.hlay{display:grid;grid-template-columns:minmax(0,640px) minmax(220px,1fr);gap:24px;align-items:start}
+      .hlay .hsum{margin-top:0;font-size:17px} .hlay .rlegend{flex-direction:column;align-items:flex-start}}
     /* the story of a match */
     .story{margin-bottom:18px} .story ol{list-style:none;margin:0;padding:0}
     .story li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
@@ -647,6 +654,7 @@
     footer{text-align:center;color:var(--dim);font-size:12px;padding:24px var(--gut) 40px;border-top:1px solid var(--line);margin-top:20px}
     @media (max-width:760px){.topbar{min-height:52px}.subbar{top:52px}}
   </style>
+  <script src="assets/visit.js" defer></script>
 </head>
 <body>
 <div class="scene" aria-hidden="true"><i id="sceneart"></i></div>
@@ -2215,6 +2223,78 @@ function boot() {
     return me;
   }
 
+  /* ══ habits ═══════════════════════════════════════════
+     Every round a player played on one map and side, drawn at once from
+     spawn: the routes they take without thinking, and which ones end with
+     them dead. Teal is a round they lived through, red one they died in,
+     with a cross where. The first 20 or 40 seconds show the opening routes
+     on their own; the whole round shows everything. The replays it needs
+     load when it's opened, one map at a time. */
+  function habitsView(box, games, opts = {}) {
+    const byMap = new Map();
+    for (const g of games) if (g.m.replay && radarFor(g.m.map)) { if (!byMap.has(g.m.map)) byMap.set(g.m.map, []); byMap.get(g.m.map).push(g); }
+    if (!byMap.size) { box.innerHTML = `<p class="note">Habits are drawn from Valve's demos; none are saved for these games yet.</p>`; return; }
+    const maps = [...byMap.keys()].sort((a, b) => byMap.get(b).length - byMap.get(a).length);
+    let map = opts.map && byMap.has(opts.map) ? opts.map : maps[0], side = opts.side === "CT" ? "CT" : "T", win = 20;
+    const you = !!opts.you, whose = you ? "your" : "Ric's", one = you ? "You" : "Ric";
+    const seg = (attr, items, cur, label) => `<div class="seg" role="group" aria-label="${label}">${items.map(([v, l]) =>
+      `<button type="button" data-${attr}="${esc(String(v))}" aria-pressed="${v === cur}">${l}</button>`).join("")}</div>`;
+    let token = 0;
+    function render() {
+      const games_ = byMap.get(map), cal = radarFor(map), my = ++token;
+      box.innerHTML = `<div class="hbar">${seg("hmap", maps.map((x) => [x, `${mapName(x)} <small>${byMap.get(x).length}</small>`]), map, "Map")}
+          ${seg("hside", [["T", "T"], ["CT", "CT"]], side, "Side")}${seg("hwin", [[20, "First 20 s"], [40, "First 40 s"], [999, "Whole round"]], win, "How much of each round")}</div>
+        <div class="hlay"><div class="hstage"><canvas class="cvfade" width="900" height="900" aria-label="${esc(`${one === "Ric" ? "Ric's" : "Your"} routes on ${mapName(map)} as ${side}`)}"></canvas></div>
+        <div class="hside"><p class="hsum" aria-live="polite"><span class="skel" style="display:inline-block;width:60%;height:18px"></span></p>
+        <div class="rlegend"><span><i style="background:#4fd1c5"></i>lived the round</span><span><i style="background:#f0605a"></i>died that round</span><span>✕ where ${you ? "you" : "he"} died</span>${cal.split != null ? "<span>both floors on one radar</span>" : ""}</div></div></div>`;
+      const cv = box.querySelector("canvas"), ctx = cv.getContext("2d"), S2 = cv.width, k = S2 / 1024;
+      Promise.all([loadImg(cal.img).catch(() => null), ...games_.map((g) => loadMatch(g.m.id).then((R) => ({ R, seat: g.seat })).catch(() => null))]).then(([img, ...loaded]) => {
+        if (my !== token) return;                              // a newer choice is drawing
+        ctx.fillStyle = "#07090c"; ctx.fillRect(0, 0, S2, S2);
+        if (img) { ctx.drawImage(img, 0, 0, S2, S2); ctx.fillStyle = "rgba(7,9,12,.45)"; ctx.fillRect(0, 0, S2, S2); }
+        const P = (x, y) => toRadar(cal, x, y).map((v) => v * k);
+        let n = 0, lived = 0, early = 0; const places = {}, crosses = [];
+        for (const it of loaded) {
+          if (!it) continue;
+          const { R, seat } = it, st_ = R.stride || 2, hz = R.hz || 2;
+          const ours = !!(R.seats.find((x) => x.seat === seat) || {}).us;
+          for (const r of R.rounds) {
+            const mySide = ours ? r.side : (r.side === "CT" ? "T" : "CT");
+            const tr = r.tracks[seat] || r.tracks[String(seat)];
+            if (mySide !== side || !tr) continue;
+            const death = (r.fights || []).find((f) => f.victim === seat && f.t <= (r.dur || 1e9) + 0.5);
+            const end = Math.min(win, death ? death.t : (r.dur || 0), r.dur || 0);
+            n++; if (!death) lived++;
+            ctx.strokeStyle = death ? "rgba(240,96,90,.42)" : "rgba(79,209,197,.38)"; ctx.lineWidth = 3; ctx.lineJoin = "round";
+            ctx.beginPath(); let on = false;
+            for (let i = 0; i * st_ < tr.length && i / hz <= end; i++) {
+              const x = tr[i * st_], y = tr[i * st_ + 1]; if (x == null) { on = false; continue; }
+              const [px, py] = P(x, y); if (on) ctx.lineTo(px, py); else { ctx.moveTo(px, py); on = true; }
+            }
+            ctx.stroke();
+            if (death && death.t <= win && death.victim_at && death.victim_at.x != null) {
+              early++; crosses.push(P(death.victim_at.x, death.victim_at.y));
+              const pl = death.victim_at.place || "somewhere"; places[pl] = (places[pl] || 0) + 1;
+            }
+          }
+        }
+        ctx.strokeStyle = "#f0605a"; ctx.lineWidth = 4;
+        for (const [x, y] of crosses) { ctx.beginPath(); ctx.moveTo(x - 9, y - 9); ctx.lineTo(x + 9, y + 9); ctx.moveTo(x + 9, y - 9); ctx.lineTo(x - 9, y + 9); ctx.stroke(); }
+        cv.classList.add("ready");
+        const top = Object.entries(places).sort((a, b) => b[1] - a[1])[0];
+        const span = win >= 999 ? "" : ` in the first ${win} s`;
+        box.querySelector(".hsum").innerHTML = !n ? `No rounds as ${side} on ${esc(mapName(map))} in these games.`
+          : `<b>${n}</b> round${n === 1 ? "" : "s"} as ${side} on ${esc(mapName(map))}. ${one} lived through <b>${lived}</b>${early ? `, and died <b>${early}</b> time${early === 1 ? "" : "s"}${span}${top && top[1] > 1 ? `, most often at <b>${esc(top[0])}</b> (${top[1]})` : ""}` : ""}.`;
+      });
+    }
+    box.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-hmap],[data-hside],[data-hwin]"); if (!b) return;
+      if (b.dataset.hmap) map = b.dataset.hmap; if (b.dataset.hside) side = b.dataset.hside; if (b.dataset.hwin) win = +b.dataset.hwin;
+      render();
+    });
+    render();
+  }
+
   /* ══ head to head ══════════════════════════════════════
      Two players side by side in the games they both played — Ric by
      default, or anyone else they shared a game with — the better number on
@@ -2299,12 +2379,15 @@ function boot() {
       ${(() => { const CS = window.CS_STATS, d = CS && CS.died && CS.died[name]; if (!d) return "";
         const ex = {}; for (const [k, v] of Object.entries(d.ex || {})) { const g = CS.games[v[0]]; if (g) ex[k] = [g.id, v[1], v[2]]; }
         return `<div class="panel whybox"><h3 class="ph3">Why you die</h3>${whyBlock(d, CS.died["*"], ex, true)}</div>`; })()}
+      ${games.some((g) => g.m.replay) ? `<div class="panel"><h3 class="ph3">Your habits</h3><p class="note" style="margin:-2px 0 10px">Every round you played on a map, drawn at once: your routes, and the ones that got you killed.</p><div class="habits" data-phabits></div></div>` : ""}
       <div class="panel"><h3 class="ph3">Every game you played together</h3><div class="stwrap"><table class="st pgames"><thead><tr><th scope="col">Game</th><th scope="col">Side</th><th scope="col">Result</th><th scope="col">K-D-A</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col"><span class="sr">Watch</span></th></tr></thead>
         <tbody>${games.map((g) => { const t = theirs(g);
           return `<tr><td><button type="button" class="linkish" data-popen="${esc(g.m.id)}">${esc(mapName(g.m.map))}</button> <span class="dim">${esc(when(g.m.at))}</span></td>
             <td>${g.b.us ? "with Ric" : "against"}</td><td class="${t.res === "W" ? "good" : t.res === "L" ? "bad" : ""}">${t.score[0]}:${t.score[1]} ${resWord[t.res]}</td>
             <td>${g.b.k}-${g.b.d}-${g.b.a}</td><td>${fix(g.b.adr, 0)}</td><td>${g.b.k ? pct(100 * (g.b.hsk || 0) / g.b.k) : "—"}</td>
             <td>${(() => { const x = bestRound(name, g.m.id); return x ? `<button type="button" class="pp" data-pwatch="${esc(x.id)}" data-pround="${x.round}" data-pt="${x.t}" aria-label="Watch your best round of this game, round ${x.round}" title="Round ${x.round}${x.why ? `: ${esc(x.why)}` : ""}">▶</button>` : ""; })()}</td></tr>`; }).join("")}</tbody></table></div></div>`;
+    const hb = $("playerbox").querySelector("[data-phabits]");
+    if (hb) habitsView(hb, games.filter((g) => g.m.replay).map((g) => ({ m: g.m, seat: g.b.seat })), { you: true });
     const stage = $("playerbox").querySelector(".ploop");
     if (stage && top) {
       const g = games.find((x) => x.m.id === top.id);
@@ -3170,7 +3253,7 @@ function boot() {
     delete st.map; delete st.last;     // the shared slice holds these now
     let shownMap = SLICE.map;
     // rounds tiles are pushed first (six of them), then the fight tiles
-    const STABS = [["spots", "Callouts & radar"], ["rounds", "Rounds & economy"], ["fights", "Duels & weapons"]];
+    const STABS = [["spots", "Callouts & radar"], ["rounds", "Rounds & economy"], ["fights", "Duels & weapons"], ["habits", "Habits"]];
     if (!STABS.some(([v]) => v === st.tab)) st.tab = "spots";
     const P = (a, b) => b ? thin(`${Math.round(100 * a / b)}%`, b) + `<small>${a}/${b}</small>` : "—";
     const row = (k, v) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`;
@@ -3345,10 +3428,11 @@ ${cal.split != null ? "<span>other floor dimmed</span>" : ""}`}</div></div></div
           <div class="seg" role="group" aria-label="Side">${[["both", "Both sides"], ["CT", "CT"], ["T", "T"]].map(([v, l]) =>
             `<button type="button" data-sside="${v}" aria-pressed="${st.side === v}">${l}</button>`).join("")}</div></div>
         <nav class="stabs" aria-label="Stats pages">${STABS.map(([v, l]) => `<button type="button" data-stab="${v}" aria-pressed="${st.tab === v}">${l}</button>`).join("")}</nav>
-        ${st.tab === "spots" ? (cal ? `<div class="spotlay">${radarTile}${calloutTile}</div>`
+        ${st.tab === "habits" ? `<div class="panel habits" id="habitbox"></div>` : st.tab === "spots" ? (cal ? `<div class="spotlay">${radarTile}${calloutTile}</div>`
             : `<div class="stwide">${calloutTile}</div>`)
           + `<div class="stwide" style="margin-top:10px">${stoodTiles.join("")}</div>`
           : `<div class="stgrid">${(st.tab === "rounds" ? tiles.slice(0, 6) : tiles.slice(6)).join("")}</div>`}`;
+      if (st.tab === "habits") habitsView($("habitbox"), SL.filter((m) => m.replay).map((m) => ({ m, seat: 0 })), { side: st.side });
       if (cal && st.tab === "spots") plot(cal, st.spot ? F.filter((f) => key(f, "me") === st.spot) : F,
         (S.nades || []).filter((n) => inMap(n[0]) && inSide(n[2])));
     }
