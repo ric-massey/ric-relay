@@ -1,6 +1,6 @@
 /* The CS page and its Python scripts must agree.
    ────────────────────────────────────────────────────────────────────────────
-   Two things are written twice, once for the browser and once for the plain
+   Three things are written twice, once for the browser and once for the plain
    text export, and nothing else would notice them drifting apart:
 
    1. The bomb. bombAt() in cs.html and bomb_state() in export-llm.py replay a
@@ -12,6 +12,10 @@
       unpackTracks() in cs.html and unpack_tracks() in csdata.py undo it. Both
       must give the same positions for every committed replay, and packing
       must round-trip a made-up round to within a game unit.
+   3. The odds. wpTimeline() in cs.html and timeline() in winprob.py turn a
+      round into Ric's team's chance of winning it, start to finish, with the
+      model stats.js carries. Every round of every replay, both ways, must
+      give the same moments and the same chances.
 
    The page's functions are cut out of cs.html itself, so this tests the code
    that ships, not a copy of it. */
@@ -37,6 +41,12 @@ const cut = (start, end) => {
 const bombSrc = cut('const PLANT_S', '    return s;\n  }');
 const unpackSrc = cut('function unpackTracks(R) {', '    return R;\n  }');
 const { bombAt, unpackTracks } = new Function(`${bombSrc}\n${unpackSrc}\nreturn { bombAt, unpackTracks };`)();
+// the odds: the page's functions, run with the model stats.js carries
+const statsText = readFileSync(join(CS, 'stats.js'), 'utf8');
+const WPM = JSON.parse(statsText.slice(statsText.indexOf('{'), statsText.lastIndexOf('}') + 1)).wp;
+assert.ok(WPM && WPM.coef, 'stats.js carries no win model (wp)');
+const wpSrc = cut('  function wpChance(', 'after[1], p, r.side, e)];\n  }');
+const { wpTimeline } = new Function('WP', `${wpSrc}\nreturn { wpTimeline };`)(WPM);
 
 const files = readdirSync(join(CS, 'matches')).filter((f) => f.endsWith('.js')).sort();
 const read = (f) => { const t = readFileSync(join(CS, 'matches', f), 'utf8'); return JSON.parse(t.slice(t.indexOf(']=') + 2).trim().replace(/;$/, '')); };
@@ -62,11 +72,12 @@ const norm = (s) => JSON.stringify({
 });
 
 // what the browser says
-const jsBomb = {}, jsTracks = {}, asks = {};
+const jsBomb = {}, jsTracks = {}, asks = {}, jsOdds = {};
 for (const f of files) {
   const R = read(f);
   asks[f] = R.rounds.map(moments);
   jsBomb[f] = R.rounds.map((r, i) => asks[f][i].map((t) => norm(bombAt(r, t))));
+  jsOdds[f] = R.rounds.map((r) => wpTimeline(R, r));
   jsTracks[f] = JSON.stringify(unpackTracks(R).rounds.map((r) => r.tracks));
 }
 
@@ -74,15 +85,18 @@ for (const f of files) {
 const py = spawnSync(PYTHON, ['-I', '-c', `
 import sys, json, importlib.util
 sys.path.insert(0, ${JSON.stringify(CS)})
-import csdata
+import csdata, winprob
+st = open(csdata.HERE / "stats.js", encoding="utf-8").read()
+WPM = json.loads(st[st.index("{"):st.rindex("}") + 1])["wp"]
 spec = importlib.util.spec_from_file_location("export_llm", ${JSON.stringify(join(CS, 'export-llm.py'))})
 ex = importlib.util.module_from_spec(spec); spec.loader.exec_module(ex)
 asks = json.load(sys.stdin)
-out = {"bomb": {}, "tracks": {}}
+out = {"bomb": {}, "tracks": {}, "odds": {}}
 for f, per_round in asks.items():
     text = open(csdata.MATCH_DIR / f, encoding="utf-8").read()
     R = json.loads(text[text.index("]=") + 2:].strip().rstrip(";"))
     out["bomb"][f] = [[ex.bomb_state(r, t) for t in ts] for r, ts in zip(R["rounds"], per_round)]
+    out["odds"][f] = [winprob.timeline(WPM["coef"], R, r) for r in R["rounds"]]
     out["tracks"][f] = [r["tracks"] for r in csdata.unpack_tracks(R)["rounds"]]
 # packing round-trips: a made-up round with gaps, a death and a respawn
 fake = {"stride": 3, "rounds": [{"tracks": {"0": [1001, -2003, 10, 1100, -1990, 12, None, None, None, -5, 7, 0, 3, 3, 3, None, None, None],
@@ -108,4 +122,14 @@ for (const k of Object.keys(orig)) {
   assert.equal(back[k].length, orig[k].length, `seat ${k}: packed track came back a different length`);
   orig[k].forEach((v, i) => assert.ok(v === null ? back[k][i] === null : Math.abs(v - back[k][i]) <= 1, `seat ${k} [${i}]: ${v} came back ${back[k][i]}`));
 }
-console.log(`cs parity: ${n} bomb moments over ${files.length} replays agree; packed tracks match`);
+let nOdds = 0;
+for (const f of files) P.odds[f].forEach((py, ri) => {
+  const js = jsOdds[f][ri];
+  assert.equal(js.length, py.length, `${f} round ${ri + 1}: the page sees ${js.length} moments in the odds, the export ${py.length}`);
+  py.forEach(([t, p], j) => {
+    nOdds++;
+    assert.ok(Math.abs(js[j][0] - t) < 1e-6, `${f} round ${ri + 1}: odds moment ${j} at ${js[j][0]} s on the page, ${t} s in Python`);
+    assert.ok(Math.abs(js[j][1] - p) <= 2e-4, `${f} round ${ri + 1} at ${t} s: the page says ${js[j][1]}, winprob.py says ${p}`);
+  });
+});
+console.log(`cs parity: ${nOdds} win-chance moments agree; ${n} bomb moments over ${files.length} replays agree; packed tracks match`);

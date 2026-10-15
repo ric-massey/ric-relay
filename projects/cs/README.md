@@ -182,6 +182,26 @@ stored since 2026-10-15; older replays fall back to the 2 Hz facing). A headshot
 adds a white ring and "HS". Each fades in `SHOT_S`. Knives and grenades
 are left out.
 
+**Win chance and what each kill was worth** (Ric's ask, 2026-10-15).
+`winprob.py` fits a small logistic model on every moment of every saved round
+— the start, every kill, the plant — from both teams' side, labelled with who
+won: men alive on each side (as a log ratio), the bomb, the buy difference and
+the side. `stats.py` refits it on every sync and writes it into `stats.js`
+(`wp`), with each of Ric's kills and deaths carrying his team's chance just
+before and after (`wb` / `wa`). The page draws the same function (`wpChance`
+and friends, next to `bombAt`): a win-chance strip under the replay, each kill's
+value in the round's kill list, **Biggest plays** in Records, and **Rounds
+added** on each match (his kills' and deaths' values summed). `export-llm.py`
+writes the same numbers into every fight. `test/parity.mjs` holds the page and
+`winprob.py` to each other over every round of every replay.
+
+**Saving a replay as video.** The replay's "Save this moment as video" (10 s
+around the scrubber, real speed) and "Save whole round" (2×) record an
+offscreen 1080×1200 canvas — header with the score, round, clock and win
+chance, the radar with everything the replay draws, the killfeed — with the
+browser's own MediaRecorder: MP4 where it can, WebM where it can't. No server,
+no library. It records as it plays, so keep the tab open while it does.
+
 Replays are sampled twice a second (~350 KB a match). `HZ` in `parse-demos.py`
 trades size for smoothness.
 

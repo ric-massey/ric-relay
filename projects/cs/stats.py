@@ -19,6 +19,8 @@ sync and writes the same numbers into llm/index.md.
             when (seconds into the round) it went off
   flashes[] every flashbang of Ric's: [game, round, side, enemies blinded,
             teammates blinded, enemy seconds blind]
+  wp        the round-win model (winprob.py), fitted here on every saved round;
+            each fight carries wb / wa, his team's chance just before and after
 
 Generated, never hand-edited.
 """
@@ -30,6 +32,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import csdata  # noqa: E402
+import winprob  # noqa: E402
 
 OUT = csdata.HERE / "stats.js"
 TRADE_S = 5                     # same window parse-demos.py uses for "traded"
@@ -47,12 +50,9 @@ def load_replay(mid):
 
 def build(matches):
     games, rounds, fights, hits, nades, flashes = [], [], [], Counter(), [], []
-    for m in matches:
-        if not m.get("replay"):
-            continue
-        R = load_replay(m["id"])
-        if not R:
-            continue
+    loaded = [(m, R) for m in matches if m.get("replay") for R in [load_replay(m["id"])] if R]
+    WP = winprob.fit([R for _, R in loaded])        # refitted on every sync
+    for m, R in loaded:
         gi = len(games)
         games.append({"id": m["id"], "map": R["map"], "at": m.get("at"), "result": m["result"]})
         me = next((s["seat"] for s in R["seats"] if s.get("me")), 0)
@@ -106,6 +106,10 @@ def build(matches):
             for _ in range(max(0, thrown - len(pops))):     # flashes that caught nobody
                 flashes.append([gi, n, side, 0, 0, 0])
             alive_me = True
+            pt, ediff = winprob.plant_time(r), winprob.econ_diff(r, us)
+
+            def odds(o, th, t):
+                return round(winprob.chance(WP["coef"], o, th, pt is not None and pt <= t, side, ediff), 4)
             for i, f in enumerate(fs):
                 a, v = f.get("killer"), f.get("victim")
                 if i == 0 and v is not None:
@@ -143,12 +147,15 @@ def build(matches):
                     "tr": (f.get("traded_after") is not None) if not mine_k else trade,
                     "hp": f.get("killer_hp_after") if mine_k else None,
                     "team": a in us if not mine_k else None,
+                    # his team's chance of the round just before and just after
+                    "wb": odds(ab[0], ab[1], f["t"]) if after else None,
+                    "wa": odds(after[0], after[1], f["t"]) if after else None,
                 })
             row["surv"] = alive_me
             rounds.append(row)
     return {"games": games, "rounds": rounds, "fights": fights,
             "hits": [[mp, sd, d, g, c] for (mp, sd, d, g), c in sorted(hits.items())],
-            "nades": nades, "flashes": flashes}
+            "nades": nades, "flashes": flashes, "wp": WP}
 
 
 def pct(a, b):

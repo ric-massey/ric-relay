@@ -238,6 +238,23 @@
       border:1.5px solid transparent;cursor:pointer;font-size:13px}
     .feed button:hover{background:rgba(255,255,255,.07)}
     .feed button.mine{border-color:var(--kill)} .feed button.died{background:rgba(110,18,18,.6)}
+    .rec .tag.wpt{background:rgba(79,209,197,.18);color:var(--win-ink);min-width:46px;text-align:center;display:inline-block}
+    .note b.good{color:var(--win-ink)} .note b.bad{color:var(--loss-ink)}
+    .vsave{display:inline-flex;flex-wrap:wrap;gap:6px}
+    .wpd{min-width:40px;font-weight:700;font-variant-numeric:tabular-nums}
+    .wpd.up{color:var(--win-ink)} .wpd.down{color:var(--loss-ink)}
+    /* the win-chance strip under the replay */
+    .wpstrip{margin-top:8px;padding:8px 10px 10px;background:rgba(0,0,0,.35);border:1px solid var(--line)}
+    .wphead{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:var(--dim);margin-bottom:6px}
+    .wphead b{font-family:var(--display);font-size:20px;color:var(--bright);font-variant-numeric:tabular-nums}
+    .wpplot{position:relative;height:64px;margin:0 6px;cursor:pointer}
+    .wpplot svg{display:block;width:100%;height:100%}
+    .wpplot .mid{stroke:rgba(255,255,255,.18);stroke-dasharray:4 4;stroke-width:1}
+    .wpplot .area{fill:rgba(39,163,154,.14)}
+    .wpplot .line{fill:none;stroke:#cfd6de;stroke-width:2}
+    .wpdot{position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;border:1.5px solid #07090c;pointer-events:none}
+    .wpdot.up{background:var(--win-ink)} .wpdot.down{background:var(--loss-ink)}
+    .wpcur{position:absolute;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.6);pointer-events:none}
     .feed button.future{opacity:.35}
 
     /* ══ match list: Watch → Your Matches ═════════════════════ */
@@ -903,6 +920,8 @@ function boot() {
     kd: ["K/D", "Kills divided by deaths. Above 1.00 means more kills than deaths."],
     adr: ["ADR", "Average damage per round: how much health Ric took off the enemy each round. 100 is a whole enemy's worth of damage every round."],
     hs: ["Headshot %", "The share of Ric's kills that were headshots."],
+    wpa: ["Rounds added", "Add up what each of Ric's kills did to his team's chance of the round, and take off what each of his deaths cost it: that's how many rounds' worth of winning he added. Zero is breaking even; a death in a 1v1 costs more than a kill in a won 5v1 earns."],
+    wp: ["Win chance", "How likely Ric's team was to win the round at that moment, from how many were alive on each side, whether the bomb was down, which side they were on and how well each team bought. It's a model fitted on every round in these demos, from both teams' side, so it's how rounds here really went, not a guess. A kill's value is the chance just after it minus just before."],
     kast: ["KAST", "The share of rounds where Ric got a Kill, an Assist, Survived, or was Traded (a teammate killed his killer right after). It counts the rounds he did something useful in."],
     rating: ["Leetify rating", "Leetify's match rating: how much Ric's play (kills, damage, trades, the bomb) moved his team's chance of winning each round, averaged over the match. 0 is break-even. It's shown ×100, so +2.00 is roughly two points of win chance added per round, and a minus means he cost the team."],
     aim: ["Aim", "Leetify's aim score out of 100, from their measurements of every game they've parsed: accuracy, headshots, reaction time and where the crosshair sits before a fight. Higher is better. It's a score, not a percentage."],
@@ -1359,6 +1378,65 @@ function boot() {
     if (s.carrier != null && dead.has(s.carrier)) s.carrier = null;
     return s;
   }
+  /* ══ the odds ══════════════════════════════════════════
+     winprob.py fits a round-win model on every saved round, from both
+     teams' side of every moment, and stats.js carries it. These are its
+     functions, line for line: men alive, the bomb, the buy, the side.
+     test/parity.mjs holds the two to each other. */
+  const WP = (window.CS_STATS && window.CS_STATS.wp) || null;
+  function wpChance(coef, ours, theirs, planted, side, econ) {
+    ours = Math.max(0, ours); theirs = Math.max(0, theirs);   // a kill logged after a reconnect can count past zero
+    if (theirs === 0 && !(planted && side === "CT")) return 1;
+    if (ours === 0 && !(planted && side === "T")) return 0;
+    const x = [1, Math.log((ours + 0.5) / (theirs + 0.5)), planted ? (side === "T" ? 1 : -1) : 0, econ, side === "CT" ? 1 : 0];
+    const z = x.reduce((s, v, i) => s + v * coef[i], 0);
+    return 1 / (1 + Math.exp(-Math.max(-30, Math.min(30, z))));
+  }
+  const wpUs = (R) => new Set(R.seats.filter((s) => s.us).map((s) => s.seat));
+  function wpPlant(r) {
+    for (const [t, kind] of (r.bomb || {}).timeline || []) if (kind === "planted") return t;
+    const b = (r.bomb || {}).planted; return b ? b.t : null;
+  }
+  function wpEcon(r, us) {
+    const ours = [], theirs = [];
+    for (const [s, e] of Object.entries(r.economy || {})) (us.has(+s) ? ours : theirs).push((e || {}).equip || 0);
+    if (!ours.length || !theirs.length) return 0;
+    return Math.round((ours.reduce((a, b) => a + b, 0) / ours.length - theirs.reduce((a, b) => a + b, 0) / theirs.length)) / 1000;
+  }
+  // [t, ours alive, theirs alive, planted]: the round's start, then every change
+  function wpStates(R, r) {
+    const us = wpUs(R), dur = r.dur != null ? r.dur : 1e9;
+    const fs = (r.fights || []).filter((f) => f.t != null && f.t <= dur);
+    let ours, theirs;
+    if (fs.length && fs[0].alive_before && !fs[0].alive_before.includes(null)) [ours, theirs] = fs[0].alive_before;
+    else { const seats = Object.keys(r.tracks || {}).map(Number); ours = seats.filter((s) => us.has(s)).length || 5; theirs = seats.filter((s) => !us.has(s)).length || 5; }
+    const pt = wpPlant(r), out = [[0, ours, theirs, false]];
+    const ev = fs.map((f) => [f.t, 0, f]);
+    if (pt != null && pt <= dur) ev.push([pt, 1, null]);
+    ev.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    for (const [t, kind, f] of ev) {
+      if (kind === 1) { out.push([t, ours, theirs, true]); continue; }
+      if (f.victim == null) continue;
+      if (us.has(f.victim)) ours = Math.max(0, ours - 1); else theirs = Math.max(0, theirs - 1);
+      out.push([t, ours, theirs, pt != null && pt <= t]);
+    }
+    return out;
+  }
+  // Ric's team's chance over the round: [[t, chance], ...]
+  function wpTimeline(R, r) {
+    if (!WP) return null;
+    const e = wpEcon(r, wpUs(R));
+    return wpStates(R, r).map(([t, o, th, p]) => [t, Math.round(wpChance(WP.coef, o, th, p, r.side, e) * 1e4) / 1e4]);
+  }
+  // what one kill did to his team's chance: [before, after], or null
+  function wpFight(R, r, f) {
+    const ab = f.alive_before; if (!WP || !ab || ab.includes(null) || f.victim == null) return null;
+    const us = wpUs(R), e = wpEcon(r, us), pt = wpPlant(r), p = pt != null && pt <= f.t;
+    const after = [ab[0] - (us.has(f.victim) ? 1 : 0), ab[1] - (us.has(f.victim) ? 0 : 1)];
+    return [wpChance(WP.coef, ab[0], ab[1], p, r.side, e), wpChance(WP.coef, after[0], after[1], p, r.side, e)];
+  }
+  const wpPct = (d) => `${d >= 0 ? "+" : "−"}${Math.abs(Math.round(d * 100))}%`;
+
   const bombText = (B, seats, t) => B.exploded ? "The bomb exploded"
     : B.defused ? `Bomb defused by ${nameOf(seats, B.defused.seat)}`
     : B.defusing ? `${nameOf(seats, B.defusing.seat)} defusing${B.defusing.kit ? " with a kit" : ", no kit"} · ${Math.max(0, BOMB_S - (t - B.planted.t)).toFixed(1)}s left`
@@ -2032,6 +2110,10 @@ function boot() {
     const i = list.findIndex((x) => x.id === m.id), res = { W: "Win", L: "Loss", T: "Draw" }[m.result];
     const report = `<a class="note" href="projects/cs/llm/${encodeURIComponent(m.id)}.md">Full report as text</a>`;
     const chipM = (v, l, style = "", g) => `<div class="chip"><b${style}>${v}</b><span>${tagged(l, g)}</span></div>`;
+    // what his kills and deaths did to his team's chances, summed, in rounds
+    const CSx = window.CS_STATS, gx = CSx ? CSx.games.findIndex((x) => x.id === m.id) : -1;
+    const mine = gx < 0 ? [] : CSx.fights.filter((f) => f.g === gx && f.wb != null);
+    const wpa = mine.length ? mine.reduce((s_, f) => s_ + f.wa - f.wb, 0) : null;
     out.push(`<div class="mnav"><button type="button" class="btn ghost" data-mback>← All matches</button>
       <span class="note">${i + 1} of ${list.length}</span>
       <span style="display:flex;gap:4px;margin-left:auto"><button type="button" class="btn ghost" data-mnav="-1"${i > 0 ? "" : " disabled"} aria-label="Previous match">‹ Prev</button>
@@ -2044,7 +2126,7 @@ function boot() {
       <div class="chips">${chipM(`${me.k ?? "—"}-${me.d ?? "—"}-${me.a ?? "—"}`, "K-D-A")}${chipM(fix(kd(me), 2), "K/D", tone("kd", kd(me)), "kd")}
         ${chipM(fix(me.adr, 0), "ADR", tone("adr", me.adr), "adr")}${chipM(pct(hsPct(me)), "HS%", tone("hs", hsPct(me)), "hs")}
         ${chipM(me.kast != null ? pct(me.kast) : "—", "KAST", tone("kast", me.kast), "kast")}${chipM(hltv(m) != null ? hltv(m).toFixed(2) : "—", "HLTV 1.0", tone("hltv", hltv(m)), "hltv")}
-        ${chipM(signed(me.rating), "Leetify rating", tone("rating", me.rating), "rating")}</div>
+        ${chipM(signed(me.rating), "Leetify rating", tone("rating", me.rating), "rating")}${wpa != null ? chipM(`${wpa >= 0 ? "+" : "−"}${Math.abs(wpa).toFixed(2)}`, "Rounds added", wpa >= 0 ? ' class="good"' : ' class="bad"', "wpa") : ""}</div>
       ${m.replay ? `<div class="mact"><button class="btn" type="button" data-replay="${esc(m.id)}">▶ Watch 2D replay</button>
           <button class="btn ghost" type="button" data-snaps="${esc(m.id)}">Kill snapshots</button>${report}</div>`
         : `<p class="note">No 2D data for this one yet: ${m.at && Date.now() - new Date(m.at) > 28 * 864e5
@@ -2138,6 +2220,15 @@ function boot() {
     const hlRows = hl.map((r) => { const m = byId(CS.games[r.g].id);
       return `<button type="button" class="rec" data-watch="${esc(m.id)}" data-r="${r.n - 1}" data-t="0"><span>${tag(r) ? `<span class="tag">${tag(r)}</span>` : ""}${r.clutch && r.w ? `<span class="tag cl">1v${r.clutch} won</span>` : ""}round ${r.n} as ${r.side}</span><b>▶</b>
         <small>${line(m)}${r.clutch && r.w && tag(r) ? "" : ` · ${r.k} kill${r.k === 1 ? "" : "s"}`}</small></button>`; });
+    // Biggest plays: Ric's kills by what they did to his team's chance of the
+    // round (stats.js carries before and after for each). His kills and deaths
+    // summed are rounds added — what he moved his team's odds by, in rounds.
+    const plays = CS ? CS.fights.filter((f) => gSet.has(f.g) && f.wb != null) : [];
+    const ranked = plays.filter((f) => f.kind === "k").sort((a, b) => (b.wa - b.wb) - (a.wa - a.wb));
+    const added = plays.reduce((s, f) => s + f.wa - f.wb, 0), nG = new Set(plays.map((f) => f.g)).size;
+    const playRows = ranked.slice(0, 8).map((f) => { const m = byId(CS.games[f.g].id);
+      return `<button type="button" class="rec" data-watch="${esc(m.id)}" data-r="${f.n - 1}" data-t="${Math.max(0, f.t - 5)}"><span><span class="tag wpt">${wpPct(f.wa - f.wb)}</span>${f.ab ? `${f.ab[0]}v${f.ab[1]} · ` : ""}${esc(weaponName(f.w))}${f.hs ? " HS" : ""} as ${f.side}</span><b>▶</b>
+        <small>chance ${Math.round(f.wb * 100)}% → ${Math.round(f.wa * 100)}% · round ${f.n}, ${line(m)}</small></button>`; });
     // teammates seen in more than one counted match
     const mates = {};
     for (const m of SL) for (const b of m.board || []) if (b.us && !b.me && b.name) {
@@ -2151,6 +2242,10 @@ function boot() {
       <div class="tile"><h4>Highlights</h4>${hlRows.length ? `${hlRows.slice(0, 10).join("")}
         ${hlRows.length > 10 ? `<details><summary class="note" style="cursor:pointer;padding:6px 0">${hlRows.length - 10} more</summary>${hlRows.slice(10).join("")}</details>` : ""}`
         : `<p class="note">No 3K rounds or clutches won among the saved demos counted yet.</p>`}</div>
+      ${playRows.length ? `<div class="tile"><h4>Biggest plays${info("wp", "the win chance")}</h4>
+        <p class="note" style="margin-bottom:6px">Ric's kills by how much they moved his team's chance of winning the round. All his kills and deaths together:
+          <b class="${added >= 0 ? "good" : "bad"}">${added >= 0 ? "+" : "−"}${Math.abs(added).toFixed(1)} rounds</b> over ${nG} game${nG === 1 ? "" : "s"}${info("wpa", "rounds added")}.</p>
+        ${playRows.join("")}</div>` : ""}
       <div class="tile"><h4>Played with</h4>${often.length ? `<div class="stwrap"><table class="st"><thead><tr><th scope="col">Teammate</th><th scope="col">Games</th><th scope="col">W-L-D</th><th scope="col">Win %</th><th scope="col">Their K/D</th></tr></thead>
         <tbody>${often.map(([name, x]) => `<tr><td>${esc(name)}</td><td>${x.n}</td><td>${x.W}-${x.L}-${x.T}</td><td>${thin(`${Math.round(100 * x.W / x.n)}%`, x.n, "game")}</td><td>${x.d ? (x.k / x.d).toFixed(2) : "—"}</td></tr>`).join("")}</tbody></table></div>`
         : `<p class="note">Nobody shows up on Ric's team in more than one of the matches counted.</p>`}
@@ -2215,6 +2310,19 @@ function boot() {
   /* ══ 2D replay ══════════════════════════════════════════ */
   let player = null;
   // `still` opens on the moment without playing it: what a shared link does
+  /* ══ saving a replay as video ═══════════════════════════
+     The browser records its own canvas: an offscreen 1080×1200 frame (a
+     header with the score, round, clock and win chance over the radar, the
+     killfeed in its corner) drawn by the same drawMoment the replay uses, fed
+     to MediaRecorder. MP4 where the browser makes it, WebM where it doesn't.
+     It records as it plays, so a clip takes as long to make as it lasts. */
+  const REC_TYPE = (() => {
+    if (typeof MediaRecorder === "undefined" || !HTMLCanvasElement.prototype.captureStream) return null;
+    return ["video/mp4;codecs=avc1.42E01E", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
+      .find((t) => { try { return MediaRecorder.isTypeSupported(t); } catch { return false; } }) || null;
+  })();
+  const CAN_RECORD = !!REC_TYPE;
+
   function showReplay(id, scroll, round = 0, at = null, still = false) {
     const m = matches.find((x) => x.id === id); if (!m) return;
     const box = $("replaybox");
@@ -2239,12 +2347,16 @@ function boot() {
         <div class="rinfo"><button type="button" class="pp" data-rstep="-1" aria-label="Previous round">‹</button><span></span><button type="button" class="pp" data-rstep="1" aria-label="Next round">›</button></div>
         <div class="rv"><canvas width="1024" height="1024" tabindex="0" aria-label="The round on the radar. Activate to play, zoom and pan."></canvas>
           <div class="kf" aria-hidden="true"></div><div class="hint" title="Space plays · ← → step 5 s · [ ] change round · Esc lets go">Click to play</div>${playBar(`<button type="button" class="pp" data-close aria-label="Let go of the map">✕</button>`)}</div>
+        ${WP ? `<div class="wpstrip" data-wp><div class="wphead"><span>Ric's team's chance to win the round${info("wp", "the win chance")}</span><b data-wpnow>—</b></div>
+          <div class="wpplot" role="img"><svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"></svg><i class="wpcur"></i></div></div>` : ""}
         <div class="settings">
           ${cal && cal.split != null ? `<div class="seg" role="group" aria-label="Radar level"><button type="button" data-level="auto" aria-pressed="true">Auto</button><button type="button" data-level="0" aria-pressed="false">Upper</button><button type="button" data-level="1" aria-pressed="false">Lower</button></div>` : ""}
           <label><input type="checkbox" data-names checked> Names</label>
           <label><input type="checkbox" data-steps${cal ? "" : " checked"}> Footsteps</label>
           <button type="button" class="pp" data-reset style="padding:0 10px">Reset view</button>
           <button type="button" class="pp" data-share style="padding:0 10px">Copy link to this moment</button>
+          ${CAN_RECORD ? `<span class="vsave"><button type="button" class="pp" data-rec="clip" style="padding:0 10px">Save this moment as video</button>
+          <button type="button" class="pp" data-rec="round" style="padding:0 10px">Save whole round</button></span>` : ""}
         </div></div>
       <div class="panel side"><div class="rlegend"><span><i style="background:var(--t)"></i>T</span><span><i style="background:var(--ct)"></i>CT</span>
           <span><i style="background:#fff"></i>Ric (white ring)</span><span>✕ died · cone = facing · orange = shooting, red = hit, white = headshot</span></div>
@@ -2296,7 +2408,116 @@ function boot() {
         footsteps: box.querySelector("[data-steps]").checked ? steps : null, seats, r, t });
       killfeed(kf, seats, r, t);
       [...feed.children].forEach((el) => el.classList.toggle("future", +el.dataset.t > t));
+      oddsAt(t);
     };
+    // The win-chance strip: a step line across the round (it only moves when
+    // a kill or the plant changes the state), a dot at each kill — green when
+    // it helped Ric's team, red when it hurt — and a marker that follows play.
+    const strip = box.querySelector("[data-wp]");
+    let odds = null;
+    function drawOdds(r) {
+      if (!strip) return;
+      odds = wpTimeline(R, r);
+      const dur = Math.max(1, r.dur), X = (t) => (Math.min(t, dur) / dur * 1000).toFixed(1), Y = (p) => (96 - p * 92).toFixed(1);
+      let d = `M0,${Y(odds[0][1])}`;
+      for (let i = 1; i < odds.length; i++) d += ` H${X(odds[i][0])} V${Y(odds[i][1])}`;
+      d += ` H1000`;
+      strip.querySelector("svg").innerHTML = `<line x1="0" x2="1000" y1="50" y2="50" class="mid" vector-effect="non-scaling-stroke"/>
+        <path d="${d} V100 H0 Z" class="area"/><path d="${d}" class="line" vector-effect="non-scaling-stroke"/>`;
+      // the dots are elements, not SVG: the plot stretches, and a circle in it would too
+      strip.querySelectorAll(".wpdot").forEach((el) => el.remove());
+      strip.querySelector(".wpplot").insertAdjacentHTML("beforeend", odds.slice(1).map(([t, p], i) =>
+        `<i class="wpdot ${p >= odds[i][1] ? "up" : "down"}" style="left:${X(t) / 10}%;top:${Y(p)}%"></i>`).join(""));
+      strip.querySelector(".wpplot").setAttribute("aria-label", `Ric's team's chance to win round ${ri + 1}: ${Math.round(odds[0][1] * 100)}% at the start, ${Math.round(odds[odds.length - 1][1] * 100)}% at the end`);
+    }
+    function oddsAt(t) {
+      if (!strip || !odds) return;
+      const r = R.rounds[ri]; let p = odds[0][1];
+      for (const [et, ep] of odds) { if (et > t) break; p = ep; }
+      strip.querySelector("[data-wpnow]").textContent = `${Math.round(p * 100)}%`;
+      strip.querySelector(".wpcur").style.left = `${Math.min(100, t / Math.max(1, r.dur) * 100)}%`;
+    }
+    if (strip) strip.querySelector(".wpplot").addEventListener("click", (e) => {
+      const b = e.currentTarget.getBoundingClientRect();
+      clock.play(false); clock.t = Math.max(0, Math.min(1, (e.clientX - b.left) / b.width)) * R.rounds[ri].dur; rv.hold(true);
+    });
+    let recording = null;
+    function record(kind, btn) {
+      if (recording) { recording.cancel(); return; }
+      const rn = ri, r = R.rounds[rn], dur = r.dur, now = clock.t;
+      const [from, to, speed] = kind === "clip" ? [Math.max(0, now - 6), Math.min(dur, now + 4), 1] : [0, dur, 2];
+      const W = 1080, HEAD = 120, H = W + HEAD, view = rv.view.slice();
+      const cvs = document.createElement("canvas"); cvs.width = W; cvs.height = H;
+      const c = cvs.getContext("2d"), odds_ = wpTimeline(R, r);
+      const frame = (t) => {
+        const players = momentAt(R, r, t), B = bombAt(r, t);
+        const ric = players.find((p) => p.seat === 0 && !p.dead);
+        const lv = level === "auto" ? (ric && lowerAt(cal, ric.z) && imgs[1] ? 1 : 0) : +level;
+        const recent = (r.fights || []).filter((f) => f.t <= t && t - f.t < 1.5 && f.killer_at && f.victim_at && f.killer_at.x != null).pop();
+        c.save(); c.translate(0, HEAD);
+        drawMoment(c, W, { cal: calX, img: cal ? imgs[lv] : null, lower: lv === 1, players, nades: r.nades, flashes: r.flashes, bomb: B, hudText: bombText(B, seats, t),
+          line: recent ? [recent.killer_at.x, recent.killer_at.y, recent.victim_at.x, recent.victim_at.y] : null, view, labels: true, seats, r, t });
+        // the killfeed, top right of the radar
+        c.font = "600 22px system-ui"; c.textAlign = "right";
+        let y = 44;
+        for (const f of (r.fights || []).filter((f) => f.t <= t && t - f.t < 6).slice(-5)) {
+          const txt = `${nameOf(seats, f.killer)}  ${weaponName(f.weapon)}${f.headshot ? " HS" : ""}  ${nameOf(seats, f.victim)}`;
+          const w = c.measureText(txt).width + 24;
+          c.fillStyle = f.victim === 0 ? "rgba(140,22,22,.85)" : f.killer === 0 ? "rgba(30,30,30,.9)" : "rgba(0,0,0,.7)";
+          c.fillRect(W - 16 - w, y - 28, w, 38);
+          if (f.killer === 0 && f.victim !== 0) { c.strokeStyle = "#e0453a"; c.lineWidth = 2; c.strokeRect(W - 16 - w, y - 28, w, 38); }
+          c.fillStyle = "#fff"; c.fillText(txt, W - 28, y); y += 46;
+        }
+        c.restore();
+        // the header: match, round, clock, win chance
+        c.fillStyle = "#0b0d10"; c.fillRect(0, 0, W, HEAD);
+        c.textAlign = "left"; c.fillStyle = "#e7c178"; c.font = "700 22px system-ui";
+        c.fillText(`${mapName(m.map).toUpperCase()} · ${m.score[0]}:${m.score[1]} · ${when(m.at)}`, 28, 42);
+        c.fillStyle = "#fff"; c.font = "800 40px system-ui";
+        c.fillText(`Round ${rn + 1} · Ric ${r.side} · ${mmss(t)}`, 28, 92);
+        if (odds_) {
+          let p = odds_[0][1]; for (const [et, ep] of odds_) { if (et > t) break; p = ep; }
+          c.textAlign = "right"; c.fillStyle = "#a0a8b2"; c.font = "600 20px system-ui"; c.fillText("WIN CHANCE", W - 28, 42);
+          c.fillStyle = "#fff"; c.font = "800 40px system-ui"; c.fillText(`${Math.round(p * 100)}%`, W - 28, 92);
+          c.fillStyle = "rgba(255,255,255,.12)"; c.fillRect(0, HEAD - 6, W, 6);
+          c.fillStyle = "#4fd1c5"; c.fillRect(0, HEAD - 6, W * p, 6);
+        }
+        c.textAlign = "right"; c.font = "600 18px system-ui"; c.fillStyle = "rgba(255,255,255,.55)";
+        c.fillText("ricmassey.com · cs", W - 18, H - 16); c.textAlign = "left";
+      };
+      frame(from);
+      const stream = cvs.captureStream(30), chunks = [];
+      const rec = new MediaRecorder(stream, { mimeType: REC_TYPE, videoBitsPerSecond: 4e6 });
+      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      const label = btn.textContent;
+      let raf = 0, start = 0, cancelled = false;
+      const done = () => {
+        cancelAnimationFrame(raf); recording = null; btn.textContent = label;
+        box.querySelectorAll("[data-rec]").forEach((b) => { b.disabled = false; });
+      };
+      rec.onstop = () => {
+        done(); if (cancelled || !chunks.length) return;
+        const ext = REC_TYPE.startsWith("video/mp4") ? "mp4" : "webm";
+        const d = new Date(m.at), p2 = (n) => String(n).padStart(2, "0"), a = document.createElement("a");
+        const day = isNaN(d) ? "" : `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;   // the day he played it, not UTC's
+        a.href = URL.createObjectURL(new Blob(chunks, { type: REC_TYPE.split(";")[0] }));
+        a.download = `cs-${mapName(m.map).toLowerCase().replace(/\W+/g, "")}-${day}-round-${rn + 1}${kind === "clip" ? `-${mmss(from).replace(":", "m")}s` : ""}.${ext}`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+      };
+      const tick = (nowMs) => {
+        if (!start) start = nowMs;
+        const t = Math.min(to, from + (nowMs - start) / 1000 * speed);
+        frame(t);
+        btn.textContent = `Recording… ${Math.ceil((to - t) / speed)} s · stop`;
+        if (t >= to) { setTimeout(() => rec.state !== "inactive" && rec.stop(), 150); return; }
+        raf = requestAnimationFrame(tick);
+      };
+      box.querySelectorAll("[data-rec]").forEach((b) => { b.disabled = b !== btn; });
+      recording = { cancel() { cancelled = true; if (rec.state !== "inactive") rec.stop(); else done(); } };
+      rec.start(250);
+      raf = requestAnimationFrame(tick);
+    }
     const clock = Clock({ wrap, from: 0, to: R.rounds[ri].dur, at: 0, onTime: paint });
     rv = RadarView(wrap, { draw: paint, onHold: () => clock.play(!reduce), onKey: (e) => {
       if (e.key === "[" || e.key === "]") {
@@ -2312,7 +2533,8 @@ function boot() {
       const fights = r.fights || [];
       feed.innerHTML = fights.length ? fights.map((f) => {
         const ks = sideOf(seats, f.killer, r), vs = sideOf(seats, f.victim, r);
-        return `<button type="button" data-t="${f.t}" class="${f.killer === 0 && f.victim !== 0 ? "mine" : ""}${f.victim === 0 ? " died" : ""}"><span class="t">${mmss(f.t)}</span><span class="who-${ks.toLowerCase()}">${esc(nameOf(seats, f.killer))}</span>
+        const w = wpFight(R, r, f), d = w ? w[1] - w[0] : null;
+        return `<button type="button" data-t="${f.t}" class="${f.killer === 0 && f.victim !== 0 ? "mine" : ""}${f.victim === 0 ? " died" : ""}"><span class="t">${mmss(f.t)}</span>${d != null ? `<span class="wpd ${d >= 0 ? "up" : "down"}" title="Ric's team's chance went from ${Math.round(w[0] * 100)}% to ${Math.round(w[1] * 100)}%">${wpPct(d)}</span>` : ""}<span class="who-${ks.toLowerCase()}">${esc(nameOf(seats, f.killer))}</span>
           <span>${esc(weaponName(f.weapon))}${f.headshot ? " · HS" : ""}</span><span class="who-${vs.toLowerCase()}">${esc(nameOf(seats, f.victim))}</span></button>`;
       }).join("") : `<p class="note">No kills this round.</p>`;
       const mine = (r.fights || []).filter((f) => f.killer === 0 && f.victim !== 0).length, died = (r.fights || []).some((f) => f.victim === 0);
@@ -2320,6 +2542,7 @@ function boot() {
       box.querySelector(".rinfo span").innerHTML = `<b>Round ${ri + 1}</b> · Ric ${r.side === "CT" ? "CT" : "T"} · <span class="${r.w ? "good" : "bad"}">${r.w ? "won" : "lost"}</span>
         ${r.reason ? ` — ${esc(ends[r.reason] || r.reason)}` : ""} · ${mine} kill${mine === 1 ? "" : "s"}, ${died ? "died" : "survived"}${buy && buy.equip != null ? ` · $${int(buy.equip)} loadout` : ""}`;
       for (const b of box.querySelectorAll("[data-rstep]")) b.disabled = !R.rounds[ri + +b.dataset.rstep];
+      drawOdds(r);
       clock.range(0, r.dur, 0);
       syncHash();
     }
@@ -2340,6 +2563,7 @@ function boot() {
           .then(() => said(`Copied: round ${ri + 1} at ${mmss(t)}`), () => said("The link is in the address bar"));
         return;
       }
+      const rb = e.target.closest("[data-rec]"); if (rb) { clock.play(false); return record(rb.dataset.rec, rb); }
       const st_ = e.target.closest("[data-rstep]"); if (st_) { const n = ri + +st_.dataset.rstep; if (R.rounds[n]) pick(n); return; }
       const k = e.target.closest(".feed button");
       if (k) { clock.play(false); clock.t = Math.max(0, +k.dataset.t - 3); rv.hold(true); return; }
@@ -2351,7 +2575,7 @@ function boot() {
     rv.set([0, 0, 1024]);
     pick(Math.max(0, Math.min(R.rounds.length - 1, startRound || 0)));
     if (startAt != null) { clock.t = startAt; if (still) syncHash(startAt); else rv.hold(true); }
-    return { stop: () => clock.play(false), sync: () => syncHash() };
+    return { stop: () => { clock.play(false); if (recording) recording.cancel(); }, sync: () => syncHash() };
   }
 
   /* ══ stats ══════════════════════════════════════════════

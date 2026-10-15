@@ -22,6 +22,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import csdata  # noqa: E402
 import stats  # noqa: E402
+import winprob  # noqa: E402
+
+WP = None                       # the round-win model; main() fits it before the reports
 
 OUT = csdata.HERE / "llm"
 SITE = "https://ricmassey.com"
@@ -305,6 +308,15 @@ def match_md(m, player):
                     det.append(f"distance {x['distance']} units")
                 if x.get("alive_before"):
                     det.append(f"{x['alive_before'][0]}v{x['alive_before'][1]} before")
+                    ab, v = x["alive_before"], x.get("victim")
+                    if WP and None not in ab and v is not None:
+                        us_ = winprob.us_of(R)
+                        pt, e_ = winprob.plant_time(r), winprob.econ_diff(r, us_)
+                        p_ = pt is not None and pt <= x["t"]
+                        o2, t2 = ab[0] - (v in us_), ab[1] - (v not in us_)
+                        b_ = winprob.chance(WP["coef"], ab[0], ab[1], p_, r.get("side"), e_)
+                        a_ = winprob.chance(WP["coef"], o2, t2, p_, r.get("side"), e_)
+                        det.append(f"Ric's team's chance of the round {b_:.0%} → {a_:.0%} ({'+' if a_ >= b_ else '−'}{abs(a_ - b_):.0%})")
                 if x.get("killer_hp_after") is not None:
                     det.append(f"killer on {x['killer_hp_after']} HP after")
                 if x.get("assister") is not None:
@@ -461,6 +473,7 @@ GLOSSARY = """## What the numbers mean
 
 - **ADR**: average damage per round, the health Ric took off the enemy each round. 100 is a whole enemy's worth every round.
 - **K/D**: kills divided by deaths. **HS%**: the share of kills that were headshots.
+- **Chance of the round**: how likely Ric's team was to win the round at that moment, from players alive on each side, whether the bomb was down, their side and the buy. A logistic model (`winprob.py`) fitted on every moment of every saved round from both teams' side; each fight lists the chance just before and just after it, and the difference is what that kill was worth. Summed over Ric's kills and deaths it is **rounds added**.
 - **KAST**: the share of rounds where Ric got a kill, an assist, survived, or was traded.
 - **Leetify rating** (the Rating column): how much Ric's play moved his team's chance of winning each round, averaged over the match. 0 is break-even; shown ×100, so +2.00 is roughly two points of win chance added per round.
 - **Aim / positioning / utility**: Leetify's scores out of 100 across every game they have parsed. Higher is better; they are scores, not percentages.
@@ -506,11 +519,13 @@ def main():
     OUT.mkdir(exist_ok=True)
     keep = {"index.md"}
     player = data.get("player") or "Ric"
+    global WP
+    S = stats.write(matches)            # stats.js, the page's Stats section — and the model
+    WP = S.get("wp")
     for m in matches:
         name = f"{m['id']}.md"
         keep.add(name)
         (OUT / name).write_text(match_md(m, player), encoding="utf-8", newline="\n")
-    S = stats.write(matches)            # stats.js, the page's Stats section
     (OUT / "index.md").write_text(index_md(data, matches, stats.breakdown_md(S, map_name)),
                                   encoding="utf-8", newline="\n")
     by_map = {}
