@@ -92,11 +92,11 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Bombsite B | 3 | 9% | 1 | 6% | 0.33 |
 | Canal | 3 | 9% | 0 | 0% | 0.00 |
 | Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
-| Heaven | 2 | 6% | 1 | 6% | 0.50 |
 | Bridge | 2 | 6% | 1 | 6% | 0.50 |
+| Heaven | 2 | 6% | 1 | 6% | 0.50 |
 | Main | 1 | 3% | 1 | 6% | 1.00 |
-| Fountain | 1 | 3% | 0 | 0% | 0.00 |
 | Bricks | 1 | 3% | 0 | 0% | 0.00 |
+| Fountain | 1 | 3% | 0 | 0% | 0.00 |
 | Bombsite A | 0 | 0% | 3 | 17% | — |
 | Ruins | 0 | 0% | 2 | 11% | — |
 | Street | 0 | 0% | 1 | 6% | — |
@@ -110,13 +110,13 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Mid | 2 | 17% | 0 | 0% | 0.00 |
 | Outside A | 1 | 8% | 3 | 25% | 3.00 |
 | Bombsite B | 1 | 8% | 1 | 8% | 1.00 |
+| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 8% | 0 | 0% | 0.00 |
 | CT Lane | 1 | 8% | 0 | 0% | 0.00 |
-| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | T Yard | 0 | 0% | 2 | 17% | — |
-| B Main | 0 | 0% | 1 | 8% | — |
-| A Stairs | 0 | 0% | 1 | 8% | — |
 | Vents | 0 | 0% | 1 | 8% | — |
+| A Stairs | 0 | 0% | 1 | 8% | — |
+| B Main | 0 | 0% | 1 | 8% | — |
 
 ### Dust II: where Ric dies and kills
 
@@ -134,10 +134,10 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Middle | 2 | 5% | 0 | 0% | 0.00 |
 | Under A | 1 | 2% | 2 | 7% | 2.00 |
 | Mid Doors | 1 | 2% | 1 | 4% | 1.00 |
-| A Ramp | 1 | 2% | 0 | 0% | 0.00 |
 | Bombsite A | 1 | 2% | 0 | 0% | 0.00 |
-| Short Stairs | 0 | 0% | 2 | 7% | — |
+| A Ramp | 1 | 2% | 0 | 0% | 0.00 |
 | Upper Tunnel | 0 | 0% | 2 | 7% | — |
+| Short Stairs | 0 | 0% | 2 | 7% | — |
 
 ### Mirage: where Ric dies and kills
 
@@ -153,9 +153,9 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Catwalk | 6 | 5% | 4 | 5% | 0.67 |
 | Shop | 5 | 4% | 1 | 1% | 0.20 |
 | T Ramp | 4 | 4% | 1 | 1% | 0.25 |
+| Scaffolding | 2 | 2% | 2 | 3% | 1.00 |
 | Underpass | 2 | 2% | 2 | 3% | 1.00 |
 | Middle | 2 | 2% | 2 | 3% | 1.00 |
-| Scaffolding | 2 | 2% | 2 | 3% | 1.00 |
 | House | 2 | 2% | 1 | 1% | 0.50 |
 | Snipers Nest | 2 | 2% | 0 | 0% | 0.00 |
 | Stairs | 2 | 2% | 0 | 0% | 0.00 |
@@ -192,14 +192,14 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | T Corridor Up | 1 | 7% | 2 | 25% | 2.00 |
 | Elevator | 1 | 7% | 1 | 12% | 1.00 |
 | CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
-| Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
-| Mid | 1 | 7% | 0 | 0% | 0.00 |
-| T Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Tunnels | 1 | 7% | 0 | 0% | 0.00 |
+| Mid | 1 | 7% | 0 | 0% | 0.00 |
+| Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
+| T Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Crane | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Top | 0 | 0% | 2 | 25% | — |
-| Connector | 0 | 0% | 1 | 12% | — |
 | Top of Mid | 0 | 0% | 1 | 12% | — |
+| Connector | 0 | 0% | 1 | 12% | — |
 
 
 ## What the numbers mean

@@ -1,0 +1,994 @@
+# Players in Ric's matches
+
+By in-game name, as the scoreboard showed it. Results and scores are from each player's own side.
+
+## henry glopp — 5 games
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 00:58 UTC | Dust II | with Ric | 1:8 loss | 3-8-4 | 48 | [report](3848346366434607200.md) |
+| 2026-10-06 03:20 UTC | Mirage | with Ric | 3:13 loss | 12-15-3 | 93 | [report](3846694811922858158.md) |
+| 2026-10-06 02:39 UTC | Anubis | with Ric | 6:13 loss | 23-17-5 | 128 | [report](3846689522670633012.md) |
+| 2026-10-06 01:55 UTC | Mirage | with Ric | 12:12 draw | 22-17-5 | 102 | [report](3846683791036776519.md) |
+| 2026-10-02 03:13 UTC | Rush 001 | with Ric | 6:2 win | 7-5-2 | 109 | [report](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
+
+## Yallzbalz — 5 games
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 02:00 UTC | Mirage | with Ric | 7:13 loss | 11-16-3 | 67 | [report](3848354346483843102.md) |
+| 2026-10-15 01:15 UTC | Vertigo | with Ric | 13:11 win | 18-17-2 | 85 | [report](3848348490295935257.md) |
+| 2026-10-15 00:58 UTC | Dust II | with Ric | 1:8 loss | 4-7-3 | 70 | [report](3848346366434607200.md) |
+| 2026-10-06 03:20 UTC | Mirage | with Ric | 3:13 loss | 6-15-2 | 43 | [report](3846694811922858158.md) |
+| 2026-10-06 02:39 UTC | Anubis | with Ric | 6:13 loss | 8-17-8 | 75 | [report](3846689522670633012.md) |
+
+## sectnik — 4 games
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 03:20 UTC | Mirage | with Ric | 3:13 loss | 15-15-3 | 108 | [report](3846694811922858158.md) |
+| 2026-10-06 02:39 UTC | Anubis | with Ric | 6:13 loss | 19-16-6 | 118 | [report](3846689522670633012.md) |
+| 2026-10-06 01:55 UTC | Mirage | with Ric | 12:12 draw | 24-15-5 | 115 | [report](3846683791036776519.md) |
+| 2026-10-02 03:13 UTC | Rush 001 | with Ric | 6:2 win | 6-6-3 | 79 | [report](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
+
+## Bigdawg — 2 games
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:50 UTC | Anubis | with Ric | 13:6 win | 13-14-8 | 102 | [report](3848097853184409614.md) |
+| 2026-10-13 16:26 UTC | Train | against Ric | 13:3 win | 20-7-6 | 129 | [report](3848094777987825749.md) |
+
+## Nurbis — 2 games
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 03:20 UTC | Mirage | with Ric | 3:13 loss | 8-16-3 | 59 | [report](3846694811922858158.md) |
+| 2026-10-06 01:55 UTC | Mirage | with Ric | 12:12 draw | 20-21-6 | 102 | [report](3846683791036776519.md) |
+
+## $h@doW — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 17:22 UTC | Train | against Ric | 13:9 win | 9-19-3 | 60 | [report](3848102062252359905.md) |
+
+## /:-] — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:50 UTC | Anubis | with Ric | 13:6 win | 9-14-3 | 54 | [report](3848097853184409614.md) |
+
+## 277 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:48 UTC | Train | against Ric | 8:13 loss | 13-18-1 | 67 | [report](3847618294316007431.md) |
+
+## 37casino — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 17:22 UTC | Train | with Ric | 9:13 loss | 15-18-2 | 70 | [report](3848102062252359905.md) |
+
+## 3niaC — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 03:29 UTC | Train | against Ric | 9:13 loss | 6-18-8 | 49 | [report](3847623624370421940.md) |
+
+## 52Inspired52 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 00:38 UTC | Mirage | against Ric | 13:7 win | 20-13-5 | 106 | [report](3847972682805018863.md) |
+
+## >///< — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 00:58 UTC | Dust II | with Ric | 1:8 loss | 4-9-2 | 53 | [report](3848346366434607200.md) |
+
+## ??? — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:07 UTC | Mirage | with Ric | 11:13 loss | 27-20-4 | 116 | [report](3847613007211266183.md) |
+
+## Aix- — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:48 UTC | Train | with Ric | 13:8 win | 25-17-7 | 140 | [report](3847618294316007431.md) |
+
+## arch!ve — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:36 UTC | Mirage | against Ric | 12:12 draw | 26-18-5 | 115 | [report](3847980205440237697.md) |
+
+## b — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:50 UTC | Anubis | with Ric | 13:6 win | 32-11-4 | 178 | [report](3848097853184409614.md) |
+
+## BajaBooty — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 01:03 UTC | Dust II | against Ric | 13:3 win | 12-11-2 | 85 | [report](3847604825298567197.md) |
+
+## Baljeet — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 02:39 UTC | Anubis | against Ric | 13:6 win | 17-15-5 | 88 | [report](3846689522670633012.md) |
+
+## Beannael — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 00:58 UTC | Dust II | with Ric | 1:8 loss | 3-7-1 | 50 | [report](3848346366434607200.md) |
+
+## BearSizedHamster — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:26 UTC | Train | with Ric | 3:13 loss | 11-15-1 | 76 | [report](3848094777987825749.md) |
+
+## Bergrisar — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:26 UTC | Train | with Ric | 3:13 loss | 3-16-4 | 42 | [report](3848094777987825749.md) |
+
+## Big_Pete(r)#1 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 04:30 UTC | Dust II | against Ric | 13:3 win | 12-9-5 | 84 | [report](3847631533552697449.md) |
+
+## Black Beetles — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:26 UTC | Train | with Ric | 3:13 loss | 11-13-2 | 66 | [report](3848094777987825749.md) |
+
+## BlueMiltank — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 03:29 UTC | Train | against Ric | 9:13 loss | 11-18-3 | 64 | [report](3847623624370421940.md) |
+
+## Brooks — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-12 23:40 UTC | Dust II | with Ric | 4:7 loss | 4-9-2 | 44 | [report](3847965185939603496.md) |
+
+## BULLYHUNTER NO. 335749 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 01:15 UTC | Vertigo | against Ric | 11:13 loss | 8-19-2 | 40 | [report](3848348490295935257.md) |
+
+## Bush did Pompeii — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 02:00 UTC | Mirage | against Ric | 13:7 win | 13-11-5 | 74 | [report](3848354346483843102.md) |
+
+## c.c  on weed — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 02:00 UTC | Mirage | against Ric | 13:7 win | 5-11-1 | 26 | [report](3848354346483843102.md) |
+
+## Cat:3 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-12 23:40 UTC | Dust II | with Ric | 4:7 loss | 9-8-3 | 84 | [report](3847965185939603496.md) |
+
+## Cave_Squid — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:09 UTC | Mirage | with Ric | 3:9 loss | 3-9-4 | 52 | [report](3848092619766759746.md) |
+
+## christianna — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:36 UTC | Mirage | with Ric | 12:12 draw | 6-20-2 | 37 | [report](3847980205440237697.md) |
+
+## ComicalAcorn243 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 04:30 UTC | Dust II | with Ric | 3:13 loss | 6-14-4 | 54 | [report](3847631533552697449.md) |
+
+## computer — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:26 UTC | Train | against Ric | 13:3 win | 19-7-6 | 141 | [report](3848094777987825749.md) |
+
+## Coughdropped14 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:07 UTC | Mirage | against Ric | 13:11 win | 12-18-7 | 66 | [report](3847613007211266183.md) |
+
+## Cress — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 17:22 UTC | Train | with Ric | 9:13 loss | 26-16-2 | 123 | [report](3848102062252359905.md) |
+
+## crow — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 01:55 UTC | Mirage | against Ric | 12:12 draw | 11-18-3 | 57 | [report](3846683791036776519.md) |
+
+## Darwin G. — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 04:30 UTC | Dust II | against Ric | 13:3 win | 14-6-4 | 96 | [report](3847631533552697449.md) |
+
+## Daytona — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 00:38 UTC | Mirage | with Ric | 7:13 loss | 21-16-6 | 113 | [report](3847972682805018863.md) |
+
+## Degrade Me Mommy — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 02:39 UTC | Anubis | against Ric | 13:6 win | 22-13-10 | 138 | [report](3846689522670633012.md) |
+
+## delusional — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 00:38 UTC | Mirage | against Ric | 13:7 win | 12-17-4 | 73 | [report](3847972682805018863.md) |
+
+## DervinG † — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 04:30 UTC | Dust II | against Ric | 13:3 win | 23-9-4 | 150 | [report](3847631533552697449.md) |
+
+## deviljt13 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 00:58 UTC | Dust II | against Ric | 8:1 win | 10-3-0 | 103 | [report](3848346366434607200.md) |
+
+## dirt — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:07 UTC | Mirage | against Ric | 13:11 win | 25-17-8 | 132 | [report](3847613007211266183.md) |
+
+## Dork — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:09 UTC | Mirage | against Ric | 9:3 win | 4-8-2 | 35 | [report](3848092619766759746.md) |
+
+## Elleonbelle — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 03:20 UTC | Mirage | against Ric | 13:3 win | 2-10-1 | 17 | [report](3846694811922858158.md) |
+
+## eugineblumkin — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:07 UTC | Mirage | against Ric | 13:11 win | 11-21-7 | 59 | [report](3847613007211266183.md) |
+
+## f0rest — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 04:30 UTC | Dust II | against Ric | 13:3 win | 10-8-5 | 67 | [report](3847631533552697449.md) |
+
+## Fart — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 01:15 UTC | Vertigo | with Ric | 13:11 win | 14-18-1 | 60 | [report](3848348490295935257.md) |
+
+## fish — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 00:38 UTC | Mirage | against Ric | 13:7 win | 22-12-5 | 122 | [report](3847972682805018863.md) |
+
+## Gato Payaso — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 03:20 UTC | Mirage | against Ric | 13:3 win | 13-12-9 | 119 | [report](3846694811922858158.md) |
+
+## GG — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 02:00 UTC | Mirage | against Ric | 13:7 win | 16-10-4 | 78 | [report](3848354346483843102.md) |
+
+## Ghost — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:50 UTC | Anubis | against Ric | 6:13 loss | 26-13-6 | 144 | [report](3848097853184409614.md) |
+
+## girl — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 01:03 UTC | Dust II | with Ric | 3:13 loss | 10-15-3 | 79 | [report](3847604825298567197.md) |
+
+## Gizmo — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:50 UTC | Anubis | against Ric | 6:13 loss | 5-17-4 | 37 | [report](3848097853184409614.md) |
+
+## Goon King — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:48 UTC | Train | with Ric | 13:8 win | 14-17-8 | 92 | [report](3847618294316007431.md) |
+
+## Great Value Shrimp — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 03:29 UTC | Train | against Ric | 9:13 loss | 17-18-7 | 99 | [report](3847623624370421940.md) |
+
+## hello — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 01:03 UTC | Dust II | with Ric | 3:13 loss | 12-17-6 | 114 | [report](3847604825298567197.md) |
+
+## Horus — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 17:22 UTC | Train | against Ric | 13:9 win | 12-17-5 | 66 | [report](3848102062252359905.md) |
+
+## HUGH JASS — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 00:38 UTC | Mirage | with Ric | 7:13 loss | 8-18-4 | 56 | [report](3847972682805018863.md) |
+
+## ibags — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:09 UTC | Mirage | against Ric | 9:3 win | 5-6-3 | 48 | [report](3848092619766759746.md) |
+
+## Idkman123 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:48 UTC | Train | against Ric | 8:13 loss | 10-18-3 | 57 | [report](3847618294316007431.md) |
+
+## imaginathan — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 01:55 UTC | Mirage | against Ric | 12:12 draw | 18-18-7 | 91 | [report](3846683791036776519.md) |
+
+## impact_blitz — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:48 UTC | Train | with Ric | 13:8 win | 8-10-3 | 43 | [report](3847618294316007431.md) |
+
+## Intellectual — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:07 UTC | Mirage | with Ric | 11:13 loss | 12-20-8 | 70 | [report](3847613007211266183.md) |
+
+## intol — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 01:03 UTC | Dust II | with Ric | 3:13 loss | 20-15-5 | 142 | [report](3847604825298567197.md) |
+
+## Isodoc CSGOSKINS — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-12 23:40 UTC | Dust II | against Ric | 7:4 win | 3-6-0 | 29 | [report](3847965185939603496.md) |
+
+## Its Pineapples3 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:48 UTC | Train | against Ric | 8:13 loss | 7-16-5 | 46 | [report](3847618294316007431.md) |
+
+## ItsBurnEm — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:36 UTC | Mirage | with Ric | 12:12 draw | 27-18-4 | 130 | [report](3847980205440237697.md) |
+
+## ItzBilko — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 04:30 UTC | Dust II | with Ric | 3:13 loss | 16-14-1 | 116 | [report](3847631533552697449.md) |
+
+## J0an — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:50 UTC | Anubis | against Ric | 6:13 loss | 9-16-4 | 56 | [report](3848097853184409614.md) |
+
+## Jake From State Farm — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:48 UTC | Train | against Ric | 8:13 loss | 25-17-2 | 128 | [report](3847618294316007431.md) |
+
+## Jar Jar Binks — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:09 UTC | Mirage | against Ric | 9:3 win | 9-7-4 | 81 | [report](3848092619766759746.md) |
+
+## jebus_rice — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 02:00 UTC | Mirage | with Ric | 7:13 loss | 7-17-3 | 49 | [report](3848354346483843102.md) |
+
+## JohnTafferTaps — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 02:39 UTC | Anubis | against Ric | 13:6 win | 11-16-7 | 80 | [report](3846689522670633012.md) |
+
+## JOSUE :) — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 03:29 UTC | Train | against Ric | 9:13 loss | 21-16-4 | 116 | [report](3847623624370421940.md) |
+
+## José Hurts — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 03:29 UTC | Train | with Ric | 13:9 win | 25-14-8 | 113 | [report](3847623624370421940.md) |
+
+## K6L3B787 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:12 UTC | Cache | against Ric | 13:2 win | 10-7-3 | 65 | [report](3847977048639275147.md) |
+
+## Kaliman — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:26 UTC | Train | with Ric | 3:13 loss | 6-16-1 | 64 | [report](3848094777987825749.md) |
+
+## Karappo — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 00:58 UTC | Dust II | against Ric | 8:1 win | 3-2-1 | 31 | [report](3848346366434607200.md) |
+
+## Katano — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-12 23:40 UTC | Dust II | against Ric | 7:4 win | 11-5-4 | 116 | [report](3847965185939603496.md) |
+
+## kcrodman09 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:36 UTC | Mirage | against Ric | 12:12 draw | 5-19-6 | 39 | [report](3847980205440237697.md) |
+
+## KingKlept0TV — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-12 23:40 UTC | Dust II | against Ric | 7:4 win | 10-6-1 | 96 | [report](3847965185939603496.md) |
+
+## KON KARNE — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 03:20 UTC | Mirage | against Ric | 13:3 win | 21-8-5 | 128 | [report](3846694811922858158.md) |
+
+## LamesHenry — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 00:38 UTC | Mirage | with Ric | 7:13 loss | 7-17-2 | 46 | [report](3847972682805018863.md) |
+
+## lappo — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:50 UTC | Anubis | against Ric | 6:13 loss | 13-16-2 | 88 | [report](3848097853184409614.md) |
+
+## Lord UGhosTy — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:36 UTC | Mirage | against Ric | 12:12 draw | 35-13-4 | 147 | [report](3847980205440237697.md) |
+
+## LOVE S0SA — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:50 UTC | Anubis | against Ric | 6:13 loss | 14-14-5 | 98 | [report](3848097853184409614.md) |
+
+## luck21 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 03:29 UTC | Train | with Ric | 13:9 win | 15-16-6 | 94 | [report](3847623624370421940.md) |
+
+## m1sho — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:12 UTC | Cache | against Ric | 13:2 win | 15-9-3 | 97 | [report](3847977048639275147.md) |
+
+## M3NT4LLY_1LL — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 01:55 UTC | Mirage | against Ric | 12:12 draw | 1-19-4 | 22 | [report](3846683791036776519.md) |
+
+## mandog — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 01:03 UTC | Dust II | against Ric | 13:3 win | 16-8-3 | 97 | [report](3847604825298567197.md) |
+
+## Manu — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 04:30 UTC | Dust II | with Ric | 3:13 loss | 6-16-7 | 81 | [report](3847631533552697449.md) |
+
+## Meat n Taters, lil gravy — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 01:03 UTC | Dust II | against Ric | 13:3 win | 6-10-2 | 48 | [report](3847604825298567197.md) |
+
+## meekopatty — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 00:38 UTC | Mirage | with Ric | 7:13 loss | 22-18-2 | 125 | [report](3847972682805018863.md) |
+
+## Meep — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:07 UTC | Mirage | against Ric | 13:11 win | 29-17-3 | 131 | [report](3847613007211266183.md) |
+
+## Mighty_Meg27 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 01:55 UTC | Mirage | against Ric | 12:12 draw | 44-17-3 | 195 | [report](3846683791036776519.md) |
+
+## Milk — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:09 UTC | Mirage | with Ric | 3:9 loss | 0-9-1 | 12 | [report](3848092619766759746.md) |
+
+## milk with pulp — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 01:55 UTC | Mirage | with Ric | 12:12 draw | 8-17-1 | 54 | [report](3846683791036776519.md) |
+
+## Minichode — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 01:03 UTC | Dust II | against Ric | 13:3 win | 16-10-5 | 122 | [report](3847604825298567197.md) |
+
+## Nani — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:26 UTC | Train | against Ric | 13:3 win | 7-8-6 | 60 | [report](3848094777987825749.md) |
+
+## NIGGA — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 00:38 UTC | Mirage | against Ric | 13:7 win | 23-12-3 | 111 | [report](3847972682805018863.md) |
+
+## NRG FAZE nigga — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 00:38 UTC | Mirage | against Ric | 13:7 win | 9-13-6 | 59 | [report](3847972682805018863.md) |
+
+## numbSKULL — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 03:20 UTC | Mirage | against Ric | 13:3 win | 28-8-2 | 166 | [report](3846694811922858158.md) |
+
+## OG_COBRA — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:36 UTC | Mirage | with Ric | 12:12 draw | 11-20-8 | 69 | [report](3847980205440237697.md) |
+
+## OpTicFent420 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:07 UTC | Mirage | with Ric | 11:13 loss | 26-19-3 | 109 | [report](3847613007211266183.md) |
+
+## Orpheus — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:50 UTC | Anubis | with Ric | 13:6 win | 9-15-2 | 55 | [report](3848097853184409614.md) |
+
+## Otis — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 01:03 UTC | Dust II | against Ric | 13:3 win | 5-12-7 | 46 | [report](3847604825298567197.md) |
+
+## Pal.holii — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:36 UTC | Mirage | against Ric | 12:12 draw | 24-16-5 | 111 | [report](3847980205440237697.md) |
+
+## Paladin — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-12 23:40 UTC | Dust II | with Ric | 4:7 loss | 5-9-2 | 55 | [report](3847965185939603496.md) |
+
+## pba-cav-sqn — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:12 UTC | Cache | with Ric | 2:13 loss | 12-15-0 | 96 | [report](3847977048639275147.md) |
+
+## Penguin — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 01:15 UTC | Vertigo | with Ric | 13:11 win | 13-18-6 | 65 | [report](3848348490295935257.md) |
+
+## Peter Grippin — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:12 UTC | Cache | with Ric | 2:13 loss | 3-15-3 | 28 | [report](3847977048639275147.md) |
+
+## PFCBumKnee — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 02:00 UTC | Mirage | with Ric | 7:13 loss | 17-17-4 | 99 | [report](3848354346483843102.md) |
+
+## Phantom Floyd — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:12 UTC | Cache | with Ric | 2:13 loss | 5-14-4 | 54 | [report](3847977048639275147.md) |
+
+## plexx616 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 02:39 UTC | Anubis | with Ric | 6:13 loss | 10-15-1 | 60 | [report](3846689522670633012.md) |
+
+## PretendArcher3 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 17:22 UTC | Train | with Ric | 9:13 loss | 3-22-4 | 22 | [report](3848102062252359905.md) |
+
+## PurpleDemon — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 04:30 UTC | Dust II | against Ric | 13:3 win | 12-12-4 | 98 | [report](3847631533552697449.md) |
+
+## rednammoc — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-02 03:13 UTC | Rush 001 | against Ric | 2:6 loss | 4-8-2 | 49 | [report](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
+
+## RENOZ — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 03:29 UTC | Train | with Ric | 13:9 win | 15-14-10 | 94 | [report](3847623624370421940.md) |
+
+## RIO — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 17:22 UTC | Train | with Ric | 9:13 loss | 14-16-1 | 66 | [report](3848102062252359905.md) |
+
+## rosin and smirnoff — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 02:00 UTC | Mirage | against Ric | 13:7 win | 22-12-4 | 116 | [report](3848354346483843102.md) |
+
+## RubberDuckieCowboy — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-02 03:13 UTC | Rush 001 | against Ric | 2:6 loss | 0-7-0 | 0 | [report](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
+
+## Sandrone — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 17:22 UTC | Train | against Ric | 13:9 win | 29-13-8 | 149 | [report](3848102062252359905.md) |
+
+## Saul Goodmen — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:09 UTC | Mirage | against Ric | 9:3 win | 24-3-5 | 209 | [report](3848092619766759746.md) |
+
+## sef — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 17:22 UTC | Train | against Ric | 13:9 win | 8-6-2 | 42 | [report](3848102062252359905.md) |
+
+## shrekbestboi — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 01:15 UTC | Vertigo | against Ric | 11:13 loss | 27-21-4 | 130 | [report](3848348490295935257.md) |
+
+## SilverFox — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:12 UTC | Cache | against Ric | 13:2 win | 13-8-6 | 105 | [report](3847977048639275147.md) |
+
+## SirThugg1n — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:09 UTC | Mirage | with Ric | 3:9 loss | 14-9-1 | 136 | [report](3848092619766759746.md) |
+
+## SmileMore — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:12 UTC | Cache | against Ric | 13:2 win | 20-6-3 | 139 | [report](3847977048639275147.md) |
+
+## SOL1644 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:09 UTC | Mirage | with Ric | 3:9 loss | 9-10-1 | 102 | [report](3848092619766759746.md) |
+
+## Stizzytron — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:07 UTC | Mirage | against Ric | 13:11 win | 12-20-7 | 72 | [report](3847613007211266183.md) |
+
+## Strayworl — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-12 23:40 UTC | Dust II | against Ric | 7:4 win | 11-8-1 | 104 | [report](3847965185939603496.md) |
+
+## SuperCell — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 01:55 UTC | Mirage | against Ric | 12:12 draw | 9-16-6 | 49 | [report](3846683791036776519.md) |
+
+## SuperPanda2222 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 03:29 UTC | Train | against Ric | 9:13 loss | 19-16-1 | 73 | [report](3847623624370421940.md) |
+
+## Taterh0ps — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 02:00 UTC | Mirage | against Ric | 13:7 win | 30-14-5 | 167 | [report](3848354346483843102.md) |
+
+## Terrence Jackson — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 01:15 UTC | Vertigo | against Ric | 11:13 loss | 14-19-5 | 72 | [report](3848348490295935257.md) |
+
+## Tex — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 04:30 UTC | Dust II | with Ric | 3:13 loss | 8-13-2 | 54 | [report](3847631533552697449.md) |
+
+## thatsmyboy — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 03:29 UTC | Train | with Ric | 13:9 win | 18-14-6 | 79 | [report](3847623624370421940.md) |
+
+## The Beast — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 01:15 UTC | Vertigo | against Ric | 11:13 loss | 1-2-0 | 4 | [report](3848348490295935257.md) |
+
+## TheFriendlyCorgi — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 03:20 UTC | Mirage | against Ric | 13:3 win | 8-12-7 | 76 | [report](3846694811922858158.md) |
+
+## TheRed — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 02:00 UTC | Mirage | with Ric | 7:13 loss | 17-18-2 | 98 | [report](3848354346483843102.md) |
+
+## TheShappix44 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 01:15 UTC | Vertigo | against Ric | 11:13 loss | 35-15-4 | 145 | [report](3848348490295935257.md) |
+
+## thopp — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 01:15 UTC | Vertigo | with Ric | 13:11 win | 14-18-4 | 66 | [report](3848348490295935257.md) |
+
+## Thug Muffin — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 00:58 UTC | Dust II | against Ric | 8:1 win | 4-4-1 | 49 | [report](3848346366434607200.md) |
+
+## Tibbles — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-02 03:13 UTC | Rush 001 | against Ric | 2:6 loss | 10-6-3 | 157 | [report](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
+
+## TooLegit2Quit — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:12 UTC | Cache | with Ric | 2:13 loss | 2-14-1 | 23 | [report](3847977048639275147.md) |
+
+## Unpleasantt — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 17:22 UTC | Train | against Ric | 13:9 win | 33-9-0 | 153 | [report](3848102062252359905.md) |
+
+## unrapin cs — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-12 23:40 UTC | Dust II | with Ric | 4:7 loss | 6-9-1 | 52 | [report](3847965185939603496.md) |
+
+## wadihmansour — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-12 23:40 UTC | Dust II | against Ric | 7:4 win | 4-7-3 | 51 | [report](3847965185939603496.md) |
+
+## WANTEDMARROW — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:12 UTC | Cache | against Ric | 13:2 win | 9-10-6 | 81 | [report](3847977048639275147.md) |
+
+## Weed is tight — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:48 UTC | Train | with Ric | 13:8 win | 18-12-3 | 88 | [report](3847618294316007431.md) |
+
+## Wenndigo — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:26 UTC | Train | against Ric | 13:3 win | 14-6-0 | 86 | [report](3848094777987825749.md) |
+
+## Wlgwalker — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:07 UTC | Mirage | with Ric | 11:13 loss | 12-17-8 | 86 | [report](3847613007211266183.md) |
+
+## wosdai — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 01:03 UTC | Dust II | with Ric | 3:13 loss | 1-2-2 | 12 | [report](3847604825298567197.md) |
+
+## wtfpreston — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:36 UTC | Mirage | with Ric | 12:12 draw | 19-19-6 | 89 | [report](3847980205440237697.md) |
+
+## WWY777 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 00:58 UTC | Dust II | against Ric | 8:1 win | 5-3-1 | 56 | [report](3848346366434607200.md) |
+
+## xSinisterSteelx — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 01:36 UTC | Mirage | against Ric | 12:12 draw | 4-22-6 | 23 | [report](3847980205440237697.md) |
+
+## Yeesty — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-11 02:48 UTC | Train | against Ric | 8:13 loss | 13-17-6 | 80 | [report](3847618294316007431.md) |
+
+## YouGrippinDaddy — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 02:39 UTC | Anubis | against Ric | 13:6 win | 7-12-8 | 50 | [report](3846689522670633012.md) |
+
+## Your Favorite Boss — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-06 02:39 UTC | Anubis | against Ric | 13:6 win | 25-10-6 | 135 | [report](3846689522670633012.md) |
+
+## ᵗᵒˣiᶜᶜᵘᵗiᵉ — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:26 UTC | Train | against Ric | 13:3 win | 13-7-4 | 85 | [report](3848094777987825749.md) |
+
+## 𝕄𝕚𝕔𝕙𝕒𝕖𝕝 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-15 00:58 UTC | Dust II | against Ric | 8:1 win | 14-6-5 | 197 | [report](3848346366434607200.md) |
+
+## 🧀 cheesy 🧀 — 1 game
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-13 16:09 UTC | Mirage | against Ric | 9:3 win | 5-6-4 | 63 | [report](3848092619766759746.md) |
