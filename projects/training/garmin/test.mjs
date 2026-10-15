@@ -9,6 +9,8 @@
        node projects/training/garmin/test.mjs                                    */
 
 import { spawn, spawnSync } from 'node:child_process';
+// Windows has no python3 (the name opens the Microsoft Store); it's python there.
+const PYTHON = process.platform === 'win32' ? 'python' : 'python3';
 import { createServer } from 'node:http';
 import worker, { TrainingLog } from '../../../worker/worker.mjs';
 import { memoryBucket } from '../../../worker/r2-memory.mjs';
@@ -23,7 +25,7 @@ let failures = 0;
 const ok = (cond, msg) => { console.log((cond ? '  PASS  ' : '  FAIL  ') + msg); if (!cond) failures++; };
 
 function run(home, env = {}, args = []) {
-  const r = spawnSync('python3', [SCRIPT, '--dry', ...args], {
+  const r = spawnSync(PYTHON, [SCRIPT, '--dry', ...args], {
     encoding: 'utf8',
     env: { ...process.env, PYTHONPATH: join(HERE, 'test', 'fake'), RIC_GARMIN_HOME: home,
            GARMIN_EMAIL: 'ric@example.com', GARMIN_PASSWORD: 'x', FAKE_HISTORY_DAYS: '90', ...env },
@@ -39,6 +41,7 @@ function run(home, env = {}, args = []) {
 /* GARMIN_PAUSE=0 below: the real script paces its calls so Garmin does not
    lock the account out, and the fake has no limit to respect. */
 process.env.PYTHONDONTWRITEBYTECODE = '1';
+process.env.PYTHONUTF8 = '1';   // a piped Windows console is cp1252, and the script prints dashes
 
 const homes = [];
 const home = () => { const h = mkdtempSync(join(tmpdir(), 'garmin-')); homes.push(h); return h; };
@@ -120,7 +123,7 @@ const WORKER = `http://127.0.0.1:${server.address().port}`;
 /* Async, because the Worker it talks to is running in this same process. */
 function remote(home, env = {}) {
   return new Promise(done => {
-    const p = spawn('python3', [SCRIPT], { env: { ...process.env,
+    const p = spawn(PYTHON, [SCRIPT], { env: { ...process.env,
       PYTHONPATH: join(HERE, 'test', 'fake'), RIC_GARMIN_HOME: home, GARMIN_REMOTE: '1',
       GARMIN_WORKER: WORKER, LOG_TOKEN: TOKEN, GARMIN_EMAIL: 'ric@example.com', GARMIN_PASSWORD: 'x',
       GARMIN_PAUSE: '0', FAKE_HISTORY_DAYS: '90', ...env }, stdio: ['ignore', 'pipe', 'pipe'] });

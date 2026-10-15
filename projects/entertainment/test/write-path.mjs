@@ -29,6 +29,8 @@
    "have to" is not a thing you can hope at. */
 
 import { execFileSync } from 'node:child_process';
+// Windows has no python3 (the name opens the Microsoft Store); it's python there.
+const PYTHON = process.platform === 'win32' ? 'python' : 'python3';
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -175,7 +177,7 @@ console.log('\nRULE  the pull script folds the same change into the file, and on
 
   const dir = mkdtempSync(join(tmpdir(), 'entertainment-'));
   writeFileSync(join(dir, 'items.json'), JSON.stringify({ items }));
-  const out = execFileSync('python3', [join(ROOT, 'projects/entertainment/test/merge-once.py'),
+  const out = execFileSync(PYTHON, [join(ROOT, 'projects/entertainment/test/merge-once.py'),
                                        join(dir, 'items.json')], { encoding: 'utf8' });
   const merged = JSON.parse(out);
 

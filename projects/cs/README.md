@@ -69,7 +69,11 @@ first, then:
 
 - listens on `127.0.0.1:3010` for the game's live feed,
 - runs `sync.py` every 30 minutes while `cs2.exe` is open,
-- runs it once more after the game closes, and exits.
+- runs it once more after the game closes,
+- and if a match the live feed saw this session still has no demo (Valve's share
+  code reaches Leetify a while after the match), runs it again up to twice, 15
+  minutes apart — or goes back to step two if the game starts again — then exits.
+  Casual games never get a demo and don't count.
 
 Nothing runs between sessions. The `CS2 + Terminal` desktop shortcut does the same
 thing (it launches CS2 through Steam). Log: `%LOCALAPPDATA%\ric-terminal\cs-session.log`.
@@ -80,13 +84,15 @@ failing never stops the rest, then **commits `cs-data.js` and `matches/` only**
 by itself (Ric's call, 2026-10-14). It pushes only commits that touch nothing but
 the room's data; if other work is waiting to go out it pushes nothing and says
 so. If GitHub moved on meanwhile it rebases its commits on top first, and if that
-won't go cleanly it leaves everything for you. `"push": false` in
+won't go cleanly — or GitHub changed a file you have uncommitted edits in, where
+putting your edits back would leave conflict markers — it leaves everything for you. `"push": false` in
 `cs-account.json` stops the push; `"commit": false` stops both.
 
 **If anything goes wrong you get a Windows toast** (`notify.py`, Ric's call,
 2026-10-15): a step exiting non-zero, a commit that didn't happen, or a push that
-was refused or held back. One toast per sync lists every problem; it never steals
-focus from the game. `CS_NO_TOAST=1` silences it, and
+was refused or held back. One toast per sync lists every problem, each problem
+once per play session (a sync by hand always toasts); it never steals focus from
+the game. `CS_NO_TOAST=1` silences it, and
 `projects/cs/.cs-venv/Scripts/python projects/cs/notify.py` sends a test one.
 
 ## Setup (once)
@@ -171,7 +177,9 @@ always stored — every trigger pull by all ten players, to a tenth of a second 
 so every replay already had it and none needed rebuilding. The shooter gets an
 orange ring and a flash at the gun; a shot that `damage` says landed (gun damage
 in the same tenth of a second — fire and grenades don't count) draws a red line to whoever it hit and a red ring round them; a miss draws
-an orange tracer the way he faced. Each fades in `SHOT_S`. Knives and grenades
+an orange tracer the way the gun pointed on that tick (each shot's own `yaw`,
+stored since 2026-10-15; older replays fall back to the 2 Hz facing). A headshot
+adds a white ring and "HS". Each fades in `SHOT_S`. Knives and grenades
 are left out.
 
 Replays are sampled twice a second (~350 KB a match). `HZ` in `parse-demos.py`

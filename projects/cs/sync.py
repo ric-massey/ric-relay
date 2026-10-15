@@ -173,6 +173,8 @@ if __name__ == "__main__":
     finally:
         if PROBLEMS:
             sys.path.insert(0, str(HERE))
-            from notify import toast
-            n = len(PROBLEMS)
-            toast(f"CS sync: {n} problem{'s' if n > 1 else ''}", "\n".join(PROBLEMS))
+            from notify import toast, unseen
+            new = unseen(PROBLEMS)            # each problem once per play session
+            if new:
+                n = len(new)
+                toast(f"CS sync: {n} problem{'s' if n > 1 else ''}", "\n".join(new))

@@ -93,6 +93,9 @@ def main():
         log(f"listener not started: {e}")
         recorder = None
 
+    started = gsi._now() if recorder else None
+    # one id per play session, so a problem is toasted once, not every sync
+    os.environ["CS_SESSION"] = datetime.now().strftime("%Y%m%d-%H%M%S")
     log("session started")
     # 2. Give the game a few minutes to appear (shader cache, updates…).
     for _ in range(int(300 / POLL_S)):
@@ -103,19 +106,77 @@ def main():
         log("cs2.exe never appeared — stopping")
         return
 
-    # 3. Every 30 minutes until it closes.
-    next_sync = time.monotonic() + SYNC_EVERY_S
-    while cs2_running():
-        time.sleep(POLL_S)
-        if time.monotonic() >= next_sync:
-            sync("30 min")
-            next_sync = time.monotonic() + SYNC_EVERY_S
+    while True:
+        # 3. Every 30 minutes until it closes.
+        next_sync = time.monotonic() + SYNC_EVERY_S
+        while cs2_running():
+            time.sleep(POLL_S)
+            if time.monotonic() >= next_sync:
+                sync("30 min")
+                next_sync = time.monotonic() + SYNC_EVERY_S
 
-    # 4. Once more on the way out, then gone.
-    if recorder:
-        recorder.flush()
-    sync("cs2 closed")
+        # 4. Once more on the way out.
+        if recorder:
+            recorder.flush()
+        sync("cs2 closed")
+
+        # 5. Valve's share code reaches Leetify a while after the match, so the
+        # last game's demo usually isn't there yet when the game closes. While a
+        # match the live feed saw this session has no demo, look again twice,
+        # FOLLOW_UP_S apart. Back in game meanwhile: back to step 3, since this
+        # process still holds the live-feed port and the next session can't.
+        back = False
+        for _ in range(FOLLOW_UPS):
+            if not started or not missing_demos(started):
+                break
+            log(f"  {missing_demos(started)} match(es) still without a demo — syncing again in {FOLLOW_UP_S // 60} min")
+            if not wait_unless_cs2(FOLLOW_UP_S):
+                back = True
+                break
+            sync("follow-up")
+        if not back:
+            break
+        log("cs2 is back — carrying on")
     log("session over")
+
+
+FOLLOW_UPS, FOLLOW_UP_S = 2, 15 * 60
+
+
+def wait_unless_cs2(seconds):
+    """Sleep, unless the game starts again first (then False)."""
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        time.sleep(POLL_S)
+        if cs2_running():
+            return False
+    return True
+
+
+def missing_demos(since):
+    """How many finished matches the live feed spooled since `since` that
+    cs-data.js still has no demo for."""
+    try:
+        import json
+        import csdata
+        import gsi
+        data = csdata.load()
+        n = 0
+        for line in gsi.SPOOL.read_text(encoding="utf-8").splitlines():
+            rec = json.loads(line)
+            # casual games never get a demo; waiting on one would be forever
+            if rec.get("left") or rec.get("at", "") < since or rec.get("mode") == "casual":
+                continue
+            me = rec["me"]
+            probe = {"map": rec["map"], "score": rec["score"],
+                     "me": {"k": me.get("kills"), "d": me.get("deaths")}}
+            m = csdata.find(data, fingerprint=csdata.fingerprint_of(probe))
+            if not m or "demo" not in m.get("sources", []):
+                n += 1
+        return n
+    except Exception as e:
+        log(f"  couldn't check for missing demos: {e}")
+        return 0
 
 
 if __name__ == "__main__":

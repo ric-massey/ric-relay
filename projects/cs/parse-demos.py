@@ -261,7 +261,7 @@ def parse(path, me):
     bomb_beginplant = ev("bomb_beginplant", player=["X", "Y"])
     bomb_begindefuse = ev("bomb_begindefuse", player=["X", "Y"])
     explodes = ev("bomb_exploded")
-    shots = ev("weapon_fire")
+    shots = ev("weapon_fire", player=["yaw"]) or ev("weapon_fire")   # the aim at the shot itself
     blinds = ev("player_blind")
 
     # ── Ric's round by round ──
@@ -431,7 +431,9 @@ def parse(path, me):
                    h.get("weapon"), _n(h.get("dmg_health")), _n(h.get("dmg_armor")),
                    _hit(h.get("hitgroup")), _i(h.get("health"))]
                   for h in sorted(hurts, key=lambda h: h["tick"]) if inr(h)]
-        fired = [[sec(f["tick"]), seat(f.get("user_steamid")), f.get("weapon")]
+        # [t, seat, weapon, yaw] — yaw is where the gun pointed on that tick,
+        # so a miss is drawn the way it really went, not the 2 Hz facing
+        fired = [[sec(f["tick"]), seat(f.get("user_steamid")), f.get("weapon"), _i(f.get("user_yaw"))]
                  for f in sorted(shots, key=lambda f: f["tick"]) if inr(f)]
         flashed = [[sec(b["tick"]), seat(b.get("attacker_steamid")), seat(b.get("user_steamid")),
                     round(float(b.get("blind_duration") or 0), 2)]

@@ -359,7 +359,7 @@ def match_md(m, player):
                 f"{mmss(t)} {nm(a)}→{nm(v)} {hp}{('+' + str(ar) + ' armor') if ar else ''} {hit or ''} {w or ''} ({left} left)"
                 .replace("  ", " ") for t, a, v, w, hp, ar, hit, left in r["damage"])]
         if r.get("shots"):
-            c = Counter(nm(s) for _, s, _ in r["shots"] if s is not None)
+            c = Counter(nm(x[1]) for x in r["shots"] if x[1] is not None)
             L += ["", "**Shots fired:** " + ", ".join(f"{k} {n}" for k, n in c.most_common())]
     return "\n".join(L) + "\n"
 
@@ -388,7 +388,7 @@ Matches with a saved demo have a data file at
     `exchange` (damage rows between the two in the prior 10 s),
     `shots_before`, `snapshot` (everyone alive: seat, x, y, z, place, hp)
   - `damage[]`: `[t, attacker, victim, weapon, hp_damage, armor_damage, hitgroup, hp_left]`
-  - `shots[]`: `[t, seat, weapon]` — every shot fired
+  - `shots[]`: `[t, seat, weapon, yaw]` — every shot fired, and which way the gun pointed (yaw: whole degrees, absent on older replays)
   - `flashes[]`: `[t, thrower, victim, seconds_blind]`
   - `nades[]`: `[t, seat, kind, x, y]` — where each grenade went off
   - `bomb`: `planted {t, by, site, x, y, place}`, `defused {t, by}`, `exploded {t}`

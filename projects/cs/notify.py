@@ -11,9 +11,11 @@ reporting on. CS_NO_TOAST=1 in the environment silences it.
 """
 
 import base64
+import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 from xml.sax.saxutils import escape
 
 APP_ID = r"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe"
@@ -28,6 +30,31 @@ $x.LoadXml(@'
 '@)
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{app}').Show([Windows.UI.Notifications.ToastNotification]::new($x))
 """
+
+
+SEEN = Path(os.environ.get("LOCALAPPDATA", Path(__file__).parent)) / "ric-terminal" / "cs-toasted.json"
+
+
+def unseen(problems):
+    """The problems not already toasted this play session. cs-session.pyw sets
+    CS_SESSION, and a sync every 30 minutes would otherwise raise the same
+    "couldn't reach GitHub" all evening. A sync run by hand has no session and
+    always toasts."""
+    session = os.environ.get("CS_SESSION")
+    if not session:
+        return list(problems)
+    try:
+        st = json.loads(SEEN.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        st = {}
+    seen = st.get("seen", []) if st.get("session") == session else []
+    new = [p for p in problems if p not in seen]
+    try:
+        SEEN.parent.mkdir(parents=True, exist_ok=True)
+        SEEN.write_text(json.dumps({"session": session, "seen": seen + new}), encoding="utf-8")
+    except OSError:
+        pass
+    return new
 
 
 def toast(title, body):

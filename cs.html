@@ -999,7 +999,7 @@ function boot() {
       ${cal ? `<div class="lprev"><div class="lstage"><canvas width="680" height="680" aria-label="${esc(`The ${mapName(m.map)} radar from this match`)}"></canvas><div class="kf" aria-hidden="true"></div></div>
         ${m.replay && rounds.length ? `<div class="seg lmode" role="group" aria-label="Show"><button type="button" data-lmode="loop">▶ Round ${(best < 0 ? 0 : best) + 1}${best < 0 ? "" : `, ${rounds[best].k}K`}</button><button type="button" data-lmode="fights">All fights</button>
           <button type="button" data-lspeed title="Playback speed" aria-label="Playback speed"><svg class="ff" viewBox="0 0 16 12" aria-hidden="true"><path d="M0 0l7 6-7 6zM8 0l7 6-7 6z" fill="currentColor"/></svg><span>${PREFS.lspeed || 1}×</span></button></div>` : ""}
-        <div class="rlegend" data-lleg style="justify-content:center">${fights.length ? `<span><i style="background:#c9a24b"></i>T</span><span><i style="background:#5d79ae"></i>CT</span><span>● Ric's kills · ✕ his deaths · cone = facing · orange = shooting, red = hit · point at one to see his view</span>`
+        <div class="rlegend" data-lleg style="justify-content:center">${fights.length ? `<span><i style="background:#c9a24b"></i>T</span><span><i style="background:#5d79ae"></i>CT</span><span>● Ric's kills · ✕ his deaths · cone = facing · orange = shooting, red = hit, white = headshot · point at one to see his view</span>`
           : `<span>${m.replay ? "Where the fights were shows up with the stats file." : "No demo for this match, so no positions."}</span>`}</div></div>` : ""}</div>`;
     box.addEventListener("click", (e) => {
       if (e.target.closest("[data-lopen]")) return openMatch(m.id);
@@ -1409,7 +1409,7 @@ function boot() {
       ctx.strokeStyle = `rgba(${rgb},${fade})`; ctx.lineWidth = 3 * scaleUI;
       ctx.beginPath(); ctx.arc(x, y, dotR * (1.5 + 0.4 * (1 - fade)), 0, 7); ctx.stroke();
     };
-    for (const [st, seat, w] of r.shots || []) {
+    for (const [st, seat, w, aim] of r.shots || []) {
       if (st > t) break;
       if (t - st > SHOT_S || NOT_A_SHOT.test(w || "")) continue;
       const p = living.get(seat); if (!p) continue;
@@ -1421,7 +1421,8 @@ function boot() {
       const tgt = hit && (living.get(hit[2]) || players.find((q) => q.seat === hit[2] && q.x != null));
       let a, ex, ey, tx, ty;
       if (tgt) { [tx, ty] = P(tgt.x, tgt.y); a = Math.atan2(ty - py, tx - px); ex = tx; ey = ty; }
-      else if (p.yaw != null) { a = -p.yaw * Math.PI / 180; const len = Math.max(dotR * 10, 900 * u); ex = px + Math.cos(a) * len; ey = py + Math.sin(a) * len; }
+      else if (aim != null || p.yaw != null) { a = -(aim != null ? aim : p.yaw) * Math.PI / 180;   // the gun's own aim; older replays only have 2 Hz facing
+        const len = Math.max(dotR * 10, 900 * u); ex = px + Math.cos(a) * len; ey = py + Math.sin(a) * len; }
       else { ringAt(px, py, "255,150,30", fade); continue; }
       const mx = px + Math.cos(a) * dotR * 1.2, my = py + Math.sin(a) * dotR * 1.2;
       const g = ctx.createLinearGradient(mx, my, ex, ey), rgb = tgt ? "255,55,45" : "255,150,30";
@@ -1429,7 +1430,15 @@ function boot() {
       ctx.strokeStyle = g; ctx.lineWidth = 3 * scaleUI;
       ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(ex, ey); ctx.stroke();
       ringAt(px, py, "255,150,30", fade);
-      if (tgt) ringAt(tx, ty, "255,55,45", fade);
+      if (tgt) {
+        ringAt(tx, ty, "255,55,45", fade);
+        if (hit[6] === "head") {                        // a headshot: a white ring outside the red, and HS
+          ctx.strokeStyle = `rgba(255,255,255,${fade})`; ctx.lineWidth = 2.5 * scaleUI;
+          ctx.beginPath(); ctx.arc(tx, ty, dotR * (2.3 + 0.4 * (1 - fade)), 0, 7); ctx.stroke();
+          ctx.font = `bold ${11 * scaleUI}px system-ui`; ctx.lineWidth = 3 * scaleUI; ctx.strokeStyle = `rgba(0,0,0,${0.85 * fade})`; ctx.fillStyle = `rgba(255,255,255,${fade})`;
+          ctx.strokeText("HS", tx + dotR * 2.2, ty - dotR * 1.6); ctx.fillText("HS", tx + dotR * 2.2, ty - dotR * 1.6);
+        }
+      }
       ctx.fillStyle = `rgba(255,240,170,${fade})`;
       ctx.beginPath(); ctx.arc(mx, my, dotR * 0.8 * (0.5 + fade / 2), 0, 7); ctx.fill();
     }
@@ -2178,7 +2187,7 @@ function boot() {
           <button type="button" class="pp" data-share style="padding:0 10px">Copy link to this moment</button>
         </div></div>
       <div class="panel side"><div class="rlegend"><span><i style="background:var(--t)"></i>T</span><span><i style="background:var(--ct)"></i>CT</span>
-          <span><i style="background:#fff"></i>Ric (white ring)</span><span>✕ died · cone = facing · orange = shooting, red = hit</span></div>
+          <span><i style="background:#fff"></i>Ric (white ring)</span><span>✕ died · cone = facing · orange = shooting, red = hit, white = headshot</span></div>
         <div><h3 style="font-size:13px;letter-spacing:.14em;color:var(--dim);margin-bottom:6px">Every kill this round</h3><div class="feed"></div>
           <p class="note" style="margin-top:6px">Click one to jump to it.</p></div>
       </div></div>`;

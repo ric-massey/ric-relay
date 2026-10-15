@@ -18,6 +18,8 @@
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+// Windows has no python3 (the name opens the Microsoft Store); it's python there.
+const PYTHON = process.platform === 'win32' ? 'python' : 'python3';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
@@ -69,7 +71,7 @@ for (const f of files) {
 }
 
 // what Python says, for the same files and moments
-const py = spawnSync('python3', ['-I', '-c', `
+const py = spawnSync(PYTHON, ['-I', '-c', `
 import sys, json, importlib.util
 sys.path.insert(0, ${JSON.stringify(CS)})
 import csdata
