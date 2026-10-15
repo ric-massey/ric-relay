@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import csdata  # noqa: E402
 import stats  # noqa: E402
 import winprob  # noqa: E402
+import deaths  # noqa: E402
 
 WP = None                       # the round-win model; main() fits it before the reports
 
@@ -317,6 +318,9 @@ def match_md(m, player):
                         b_ = winprob.chance(WP["coef"], ab[0], ab[1], p_, r.get("side"), e_)
                         a_ = winprob.chance(WP["coef"], o2, t2, p_, r.get("side"), e_)
                         det.append(f"Ric's team's chance of the round {b_:.0%} → {a_:.0%} ({'+' if a_ >= b_ else '−'}{abs(a_ - b_):.0%})")
+                tags = deaths.why(R, r, x)
+                if tags:
+                    det.append("why they died: " + ", ".join(deaths.WORDS.get(t_, "never fired back") for t_ in tags))
                 if x.get("killer_hp_after") is not None:
                     det.append(f"killer on {x['killer_hp_after']} HP after")
                 if x.get("assister") is not None:
@@ -542,6 +546,10 @@ def players_md(matches, S=None):
             extra.append(f"Best game (all their rounds scored together): {maps.get(bg[1], '?')}, best round {bg[2]} — {bg[3]}.")
         if tops:
             extra.append("Best rounds: " + "; ".join(f"{maps.get(i, '?')} round {r} ({w})" for _s, i, r, w, _tt in tops) + ".")
+        dd = ((S or {}).get("died") or {}).get(name)
+        if dd and dd.get("n"):
+            extra.append(f"Why they died ({dd['n']} deaths): " + ", ".join(
+                f"{deaths.WORDS[k]} {round(100 * dd['head'].get(k, 0) / dd['n'])}%" for k in deaths.ORDER) + ".")
         L += [f"## {name} — {len(games)} game{'s' if len(games) != 1 else ''}", ""] + ([" ".join(extra), ""] if extra else []) + [
               table(["Date", "Map", "Side", "Their result", "K-D-A", "ADR", "Match"], rows), ""]
     return "\n".join(L)

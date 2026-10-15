@@ -241,6 +241,18 @@
     .rec .tag.wpt{background:rgba(79,209,197,.18);color:var(--win-ink);min-width:46px;text-align:center;display:inline-block}
     .note b.good{color:var(--win-ink)} .note b.bad{color:var(--loss-ink)}
     .vsave{display:inline-flex;flex-wrap:wrap;gap:6px}
+    /* why he dies */
+    .whybox{padding:16px 18px}
+    .whysay{font-size:16px;line-height:1.5;margin:0 0 14px;max-width:70ch} .whysay b{color:var(--bright)}
+    .whyrow{display:grid;grid-template-columns:minmax(150px,230px) minmax(0,1fr) 44px 40px;gap:12px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+    .whyrow .wl{font-size:14px} .whyrow.lead .wl{color:var(--t-ink);font-weight:700}
+    .wbar{position:relative;height:12px;background:rgba(255,255,255,.07)}
+    .wbar i{position:absolute;left:0;top:0;bottom:0;background:var(--loss)} .whyrow.lead .wbar i{background:var(--t-ink)}
+    .wbar b{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:#fff}
+    .whyrow .wv{font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+    .whyrow .pp{min-height:34px;padding:0 10px}
+    .whyfoot{margin-top:10px} .wkey{display:inline-block;width:2px;height:12px;background:#fff;vertical-align:-1px}
+    @media (max-width:560px){.whyrow{grid-template-columns:minmax(0,1fr) 40px 40px}.whyrow .wbar{grid-column:1 / -1;grid-row:2}}
     /* While something loads its shape is already there, shimmering, and the
        real thing fades in over it: no "Loading…" line, no black square that
        pops into a map. */
@@ -721,6 +733,11 @@
   <section aria-labelledby="rech" data-view="overview">
     <div class="shead"><h2 id="rech">Records</h2></div>
     <div class="recgrid" id="recbox"></div>
+  </section>
+
+  <section aria-labelledby="whyh" data-view="overview">
+    <div class="shead"><h2 id="whyh">Why Ric dies</h2></div>
+    <div class="panel whybox" id="whybox"></div>
   </section>
 
   <section id="stats" aria-labelledby="sth" data-view="stats">
@@ -2098,6 +2115,7 @@ function boot() {
   }
   $("pq").addEventListener("input", () => { if (view === "players") { if (location.hash !== "#players") history.replaceState(null, "", "#players"); showPlayers(); } });
   $("playerbox").addEventListener("click", (e) => {
+    if (whyWatch(e)) return;
     const r = e.target.closest("[data-player]"); if (r) return openPlayer(r.dataset.player);
     if (e.target.closest("[data-pback]")) { $("pq").value = ""; history.pushState(null, "", "#players"); return showPlayers(); }
     const o = e.target.closest("[data-popen]"); if (o) return openMatch(o.dataset.popen);
@@ -2206,6 +2224,9 @@ function boot() {
         ${tops.slice(0, 3).map((x, i) => { const g = gameOf(x);
           return `<div class="ptop"><span class="pn">${i + 1}</span><span class="pw"><b>${esc(mapName(g.m.map))} · round ${x.round}</b><small>${esc(x.why || "")}${x.why ? " · " : ""}${esc(when(g.m.at))}</small></span>
             <span class="pa">${watchBtn(x, "▶", false, "pp")}${watchBtn(x, "Save video", true, "pp")}</span></div>`; }).join("")}</div>` : ""}
+      ${(() => { const CS = window.CS_STATS, d = CS && CS.died && CS.died[name]; if (!d) return "";
+        const ex = {}; for (const [k, v] of Object.entries(d.ex || {})) { const g = CS.games[v[0]]; if (g) ex[k] = [g.id, v[1], v[2]]; }
+        return `<div class="panel whybox"><h3 class="ph3">Why you die</h3>${whyBlock(d, CS.died["*"], ex, true)}</div>`; })()}
       <div class="panel"><h3 class="ph3">Every game you played together</h3><div class="stwrap"><table class="st pgames"><thead><tr><th scope="col">Game</th><th scope="col">Side</th><th scope="col">Result</th><th scope="col">K-D-A</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col"><span class="sr">Watch</span></th></tr></thead>
         <tbody>${games.map((g) => { const t = theirs(g);
           return `<tr><td><button type="button" class="linkish" data-popen="${esc(g.m.id)}">${esc(mapName(g.m.map))}</button> <span class="dim">${esc(when(g.m.at))}</span></td>
@@ -2473,6 +2494,56 @@ function boot() {
      The best game for each number, the rounds worth rewatching (3K and up,
      clutches won) and the people Ric keeps queueing with. Every line opens
      the match or plays the round. */
+  /* ══ why he dies ═══════════════════════════════════════
+     deaths.py reads every death at the instant it happened and tags what went
+     wrong; stats.js carries Ric's deaths with their tags (so the filters
+     apply) and every player's totals, and everyone's together as "*" to
+     compare against. One block draws it for Ric and for a player's page. */
+  const WHY = [["flashed", "Flashed"], ["unseen", "Shot from outside the view"], ["outnumbered", "Outnumbered"],
+    ["alone", "Died alone, untraded"], ["duel", "Lost a fair duel"]];
+  const WHY_VERB = { flashed: ["die flashed", "dies flashed"], unseen: ["get shot from outside your view", "gets shot from outside his view"],
+    outnumbered: ["die outnumbered", "dies outnumbered"], alone: ["die alone", "dies alone"] };
+  const WHY_MORE = { alone: ", with no one close enough to trade", flashed: "", unseen: "", outnumbered: "" };
+  // c and base: {n, head: {cause: deaths}, any: {...}}; ex: {cause: [match id, round, seconds]}
+  function whyBlock(c, base, ex, you) {
+    if (!c || !c.n) return "";
+    const pc = (o, k, a = "head") => o && o.n ? 100 * ((o[a] || {})[k] || 0) / o.n : 0;
+    let lead = null;
+    for (const [k] of WHY.slice(0, 4)) { const gap = pc(c, k) - pc(base, k); if (gap >= 4 && (!lead || gap > lead[1])) lead = [k, gap]; }
+    const who = you ? "You" : "Ric", whose = you ? "your" : "his";
+    const duel = Math.round(pc(c, "duel")), duelB = Math.round(pc(base, "duel")), owner = you ? "your" : "Ric's";
+    const say = lead
+      ? `${who} ${WHY_VERB[lead[0]][you ? 0 : 1]} more than most${WHY_MORE[lead[0]]}: <b>${Math.round(pc(c, lead[0]))}%</b> of ${whose} deaths, against ${Math.round(pc(base, lead[0]))}% for everyone in these games.`
+      : duel - duelB >= 4 ? `More of ${owner} deaths are straight fights than most: <b>${duel}%</b> are fair duels lost, against ${duelB}% for everyone. It's the aim duel, not the spot.`
+      : `${you ? "Your" : "Ric's"} deaths look like everyone's: <b>${duel}%</b> are fair duels lost (everyone ${duelB}%), and nothing else stands out.`;
+    const top = Math.max(...WHY.map(([k]) => Math.max(pc(c, k), pc(base, k)))) * 1.12 || 1;
+    const rows = WHY.map(([k, l]) => {
+      const v = pc(c, k), b = pc(base, k), e = ex && ex[k];
+      const label = k === "unseen" ? (you ? "Shot from outside your view" : "Shot from outside his view") : l;
+      return `<div class="whyrow${lead && lead[0] === k ? " lead" : ""}"><span class="wl">${label}</span>
+        <div class="wbar" role="img" aria-label="${esc(`${label}: ${Math.round(v)}% of ${whose} deaths; everyone ${Math.round(b)}%`)}"><i style="width:${(v / top * 100).toFixed(1)}%"></i><b style="left:${(b / top * 100).toFixed(1)}%"></b></div>
+        <span class="wv">${Math.round(v)}%</span>
+        ${e ? `<button type="button" class="pp" data-whywatch="${esc(e[0])}" data-r="${e[1]}" data-t="${e[2]}" aria-label="Watch ${whose} latest death of this kind">▶</button>` : `<span></span>`}</div>`;
+    }).join("");
+    const nr = pc(c, "no_reply", "any"), nb = pc(base, "no_reply", "any");
+    return `<p class="whysay">${say}</p>${rows}
+      <p class="note whyfoot"><span class="wkey"></span> = everyone in these games · Never fired back: ${Math.round(nr)}% of ${whose} deaths (everyone ${Math.round(nb)}%) · ▶ plays the latest one</p>`;
+  }
+  function renderWhy() {
+    const CS = window.CS_STATS, box = $("whybox");
+    if (!CS || !CS.died) { box.closest("section").hidden = true; return; }
+    const counted = new Set(SL.map((m) => m.id)), c = { n: 0, head: {}, any: {} }, ex = {}, at = {};
+    CS.fights.forEach((f) => {
+      const g = CS.games[f.g]; if (f.kind !== "d" || !f.why || !g || !counted.has(g.id)) return;
+      c.n++; c.head[f.why[0]] = (c.head[f.why[0]] || 0) + 1;
+      for (const tg of f.why) c.any[tg] = (c.any[tg] || 0) + 1;
+      if (!at[f.why[0]] || (g.at || "") > at[f.why[0]]) { at[f.why[0]] = g.at || ""; ex[f.why[0]] = [g.id, f.n, Math.max(0, +(f.t - 5).toFixed(1))]; }
+    });
+    box.innerHTML = c.n ? whyBlock(c, CS.died["*"], ex, false) : `<p class="note">No deaths among the matches counted.</p>`;
+  }
+  const whyWatch = (e) => { const w = e.target.closest("[data-whywatch]"); if (w) { showReplay(w.dataset.whywatch, true, +w.dataset.r - 1, +w.dataset.t); return true; } return false; };
+  $("whybox").addEventListener("click", whyWatch);
+
   function renderRecords() {
     const CS = window.CS_STATS, counted = new Set(SL.map((m) => m.id));
     const gIdx = CS ? CS.games.map((g, i) => counted.has(g.id) ? i : -1).filter((i) => i >= 0) : [];
@@ -3330,7 +3401,7 @@ ${cal.split != null ? "<span>other floor dimmed</span>" : ""}`}</div></div></div
   initStats();
 
   // everything the slice drives, drawn now and again whenever it changes
-  onSlice.push(setAvg, renderOverview, renderChart, renderRecords, renderMaps, renderWeapons, renderList, () => statsRender && statsRender(),
+  onSlice.push(setAvg, renderOverview, renderChart, renderRecords, renderWhy, renderMaps, renderWeapons, renderList, () => statsRender && statsRender(),
     () => { if (openId != null) { const m = matches.find((x) => x.id === openId); if (m) $("mdetail").innerHTML = detail(m); } });
   renderSliceBar();
   for (const f of onSlice) f();

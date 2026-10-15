@@ -19,6 +19,9 @@ sync and writes the same numbers into llm/index.md.
             when (seconds into the round) it went off
   flashes[] every flashbang of Ric's: [game, round, side, enemies blinded,
             teammates blinded, enemy seconds blind]
+  died      why everyone died (deaths.py), by name, and "*" for everyone:
+            {n, head: {cause: deaths}, any: {cause: deaths}, ex: {cause: [game, round, seconds]}};
+            Ric's own deaths in fights[] carry their tags as `why`
   best[]    every player's most impressive round of each game (highlight.py):
             [game, name, round, score, seconds to start watching, why,
             the game's total over all their rounds — what ranks their games]
@@ -37,6 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import csdata  # noqa: E402
 import winprob  # noqa: E402
 import highlight  # noqa: E402
+import deaths  # noqa: E402
 
 OUT = csdata.HERE / "stats.js"
 TRADE_S = 5                     # same window parse-demos.py uses for "traded"
@@ -57,8 +61,22 @@ def build(matches):
     loaded = [(m, R) for m in matches if m.get("replay") for R in [load_replay(m["id"])] if R]
     WP = winprob.fit([R for _, R in loaded])        # refitted on every sync
     best = []
+    died = {}                                       # name -> counts and an example of each
     for m, R in loaded:
         gi = len(games)
+        # why everyone in this game died (deaths.py), newest game last so
+        # each example ends up being their latest death of that kind
+        names_ = {s["seat"]: s.get("name") for s in R["seats"]}
+        for ri_, f_, v_, tags in deaths.every_death(R):
+            nm_ = names_.get(v_)
+            for key in ([nm_] if nm_ else []) + ["*"]:
+                d_ = died.setdefault(key, {"n": 0, "head": {}, "any": {}, "ex": {}})
+                d_["n"] += 1
+                d_["head"][tags[0]] = d_["head"].get(tags[0], 0) + 1
+                for tg in tags:
+                    d_["any"][tg] = d_["any"].get(tg, 0) + 1
+                if key != "*":
+                    d_["ex"][tags[0]] = [gi, ri_ + 1, round(max(0, f_["t"] - 5), 1)]
         # every player's most impressive round of this game (highlight.py)
         for seat, (ri_, sc, fx, tot) in highlight.best_rounds(WP["coef"], R).items():
             nm_ = next((s.get("name") for s in R["seats"] if s["seat"] == seat), None)
@@ -158,6 +176,7 @@ def build(matches):
                     "hp": f.get("killer_hp_after") if mine_k else None,
                     "team": a in us if not mine_k else None,
                     # his team's chance of the round just before and just after
+                    "why": deaths.why(R, r, f) if v == me else None,      # what went wrong (deaths.py)
                     "wb": odds(ab[0], ab[1], f["t"]) if after else None,
                     "wa": odds(after[0], after[1], f["t"]) if after else None,
                 })
@@ -165,7 +184,7 @@ def build(matches):
             rounds.append(row)
     return {"games": games, "rounds": rounds, "fights": fights,
             "hits": [[mp, sd, d, g, c] for (mp, sd, d, g), c in sorted(hits.items())],
-            "nades": nades, "flashes": flashes, "wp": WP, "best": best}
+            "nades": nades, "flashes": flashes, "wp": WP, "best": best, "died": died}
 
 
 def pct(a, b):
