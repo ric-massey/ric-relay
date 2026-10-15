@@ -275,7 +275,15 @@
     @keyframes recblink{50%{opacity:.2}}
     @media (prefers-reduced-motion:reduce){.recbar .dot,.recprog i{animation:none;transition:none}}
     /* players */
-    .psearch{display:grid;gap:8px;margin-bottom:12px}
+    .psearch{display:grid;gap:8px;margin-bottom:12px;padding:14px 16px}
+    #playerbox > .panel{padding:16px 18px;margin-bottom:12px}
+    #playerbox .mnav{margin-bottom:12px}
+    table.plist{max-width:920px}
+    /* the best game: details on the left, the round playing on the right */
+    @media (min-width:900px){
+      .pbest{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,440px);column-gap:28px;align-items:start}
+      .pbest .ploop{margin-top:0}
+    }
     .psearch label{font-size:14px;color:var(--dim)}
     .psearch input{font:inherit;font-size:16px;padding:10px 12px;background:#07090c;color:var(--bright);border:1px solid var(--line);min-height:44px}
     .psearch input:focus{outline:2px solid var(--t-ink);outline-offset:1px}
@@ -292,6 +300,8 @@
     .ptop .pn{font-family:var(--display);font-weight:700;font-size:20px;color:var(--t-ink);text-align:center}
     .ptop .pw b{display:block} .ptop .pw small{display:block;color:var(--dim);font-size:13px;margin-top:2px}
     .ptop .pa{display:flex;gap:6px} .ptop .pa .pp{min-height:40px;padding:0 12px}
+    a.plink{color:inherit;text-decoration:underline;text-decoration-color:rgba(255,255,255,.3);text-underline-offset:3px}
+    a.plink:hover{text-decoration-color:currentColor}
     .linkish{background:none;border:0;padding:0;font:inherit;color:var(--bright);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
     table.st td .dim{color:var(--dim);font-size:12px}
     table.pgames td.good{color:var(--win-ink)} table.pgames td.bad{color:var(--loss-ink)}
@@ -727,7 +737,7 @@
 
   <section id="players" aria-labelledby="plh" data-view="players">
     <div class="shead"><h2 id="plh">Players</h2></div>
-    <div class="panel psearch"><label for="pq">Everyone Ric has played with or against, by their in-game name. Find yours to see every game you were in together.</label>
+    <div class="panel psearch"><label for="pq">Everyone Ric has played with or against. Find your name to see your games together.</label>
       <input id="pq" type="search" autocomplete="off" spellcheck="false" placeholder="Type a name, e.g. Yallzbalz" list="pnames"><datalist id="pnames"></datalist></div>
     <div id="playerbox"></div>
   </section>
@@ -982,8 +992,8 @@ function boot() {
     kd: ["K/D", "Kills divided by deaths. Above 1.00 means more kills than deaths."],
     adr: ["ADR", "Average damage per round: how much health Ric took off the enemy each round. 100 is a whole enemy's worth of damage every round."],
     hs: ["Headshot %", "The share of Ric's kills that were headshots."],
-    wpa: ["Rounds added", "Add up what each of Ric's kills did to his team's chance of the round, and take off what each of his deaths cost it: that's how many rounds' worth of winning he added. Zero is breaking even; a death in a 1v1 costs more than a kill in a won 5v1 earns."],
-    wp: ["Win chance", "How likely Ric's team was to win the round at that moment, from how many were alive on each side, whether the bomb was down, which side they were on and how well each team bought. It's a model fitted on every round in these demos, from both teams' side, so it's how rounds here really went, not a guess. A kill's value is the chance just after it minus just before."],
+    wpa: ["Rounds added", "What Ric's kills added to his team's chances, minus what his deaths cost, counted in rounds. Zero is breaking even."],
+    wp: ["Win chance", "How likely Ric's team was to win the round: players alive, the bomb, the side and the buy, from a model fitted on every round here. A kill's value is how much it moved that chance."],
     kast: ["KAST", "The share of rounds where Ric got a Kill, an Assist, Survived, or was Traded (a teammate killed his killer right after). It counts the rounds he did something useful in."],
     rating: ["Leetify rating", "Leetify's match rating: how much Ric's play (kills, damage, trades, the bomb) moved his team's chance of winning each round, averaged over the match. 0 is break-even. It's shown ×100, so +2.00 is roughly two points of win chance added per round, and a minus means he cost the team."],
     aim: ["Aim", "Leetify's aim score out of 100, from their measurements of every game they've parsed: accuracy, headshots, reaction time and where the crosshair sits before a fight. Higher is better. It's a score, not a percentage."],
@@ -1493,6 +1503,7 @@ function boot() {
   // what one kill did to his team's chance: [before, after], or null
   function wpFight(R, r, f) {
     const ab = f.alive_before; if (!WP || !ab || ab.includes(null) || f.victim == null) return null;
+    if (r.dur != null && f.t > r.dur + 0.5) return null;      // after the round was decided
     const us = wpUs(R), e = wpEcon(r, us), pt = wpPlant(r), p = pt != null && pt <= f.t;
     const after = [ab[0] - (us.has(f.victim) ? 1 : 0), ab[1] - (us.has(f.victim) ? 0 : 1)];
     return [wpChance(WP.coef, ab[0], ab[1], p, r.side, e), wpChance(WP.coef, after[0], after[1], p, r.side, e)];
@@ -2155,15 +2166,15 @@ function boot() {
         <h2 class="mname">${esc(name)}</h2>
         <div class="chips">${chip(`${L.tally.W}-${L.tally.L}${L.tally.T ? `-${L.tally.T}` : ""}`, "Their W-L")}${chip(fix(L.kd, 2), "K/D")}${chip(L.adr != null ? fix(L.adr, 0) : "—", "ADR")}
           ${chip(L.hs != null ? pct(L.hs) : "—", "HS%")}${chip(L.k, "Kills")}${chip(L.mvps, "MVPs")}</div></div>
-      <div class="panel pbest"><h3>Best game with Ric</h3>
+      <div class="panel pbest"><div class="pbinfo"><h3>Best game with Ric</h3>
         <p class="pbline"><b>${esc(mapName(best.m.map))} ${bt.score[0]}:${bt.score[1]} ${resWord[bt.res]}</b> · ${esc(when(best.m.at))} · ${best.b.us ? "on Ric's team" : "against Ric"}</p>
         <p class="pbline">${best.b.k}-${best.b.d}-${best.b.a} · ${fix(best.b.adr, 0)} ADR · ${best.b.k ? pct(100 * (best.b.hsk || 0) / best.b.k) : "—"} HS${best.b.mvps ? ` · ${best.b.mvps} MVP${best.b.mvps === 1 ? "" : "s"}` : ""}</p>
         ${top ? `<p class="pbround"><b>Their best round: round ${top.round}</b>${top.why ? ` · ${esc(top.why)}` : ""}</p>` : ""}
-        ${top && radarFor(best.m.map) ? `<div class="lstage ploop"><canvas width="680" height="680" aria-label="${esc(`${name}'s best round, round ${top.round} of ${mapName(best.m.map)}, playing on the radar. Activate to watch it full size.`)}" tabindex="0"></canvas><div class="kf" aria-hidden="true"></div></div>
-          <p class="note ploopnote">Playing on a loop · <span class="gold">gold ring = ${esc(name)}</span> · tap it to watch full size</p>` : ""}
         <div class="pbtns">${watchBtn(top, "Save their best round as video", true)}${watchBtn(top, "▶ Watch their best round")}<button type="button" class="btn ghost" data-popen="${esc(best.m.id)}">Match stats</button></div>
-        ${top && CAN_RECORD ? `<p class="note">The video is their whole best round at normal speed, the 2D replay with everything in it. It's made by playing the round through, so it takes as long as the round (up to about 2½ minutes); keep the page open until it downloads.</p>` : ""}</div>
-      ${tops.length > 1 ? `<div class="panel"><h3 class="ph3">Their best rounds</h3><p class="note" style="margin:-2px 0 8px">Ranked by what they did to the round: how much their kills swung it, clutches, quick multi-kills, headshots, winning on an eco.</p>
+        ${top && CAN_RECORD ? `<p class="note">You pick the speed and quality; it records in real time.</p>` : ""}</div>
+        ${top && radarFor(best.m.map) ? `<div class="pbplay"><div class="lstage ploop"><canvas width="680" height="680" aria-label="${esc(`${name}'s best round, round ${top.round} of ${mapName(best.m.map)}, playing on the radar. Activate to watch it full size.`)}" tabindex="0"></canvas><div class="kf" aria-hidden="true"></div></div>
+          <p class="note ploopnote">Playing on a loop · <span class="gold">gold ring = ${esc(name)}</span> · tap it to watch full size</p></div>` : ""}</div>
+      ${tops.length > 1 ? `<div class="panel"><h3 class="ph3">Their best rounds</h3><p class="note" style="margin:-2px 0 8px">Ranked by impact: kills that swung the round, clutches, multi-kills.</p>
         ${tops.slice(0, 3).map((x, i) => { const g = gameOf(x);
           return `<div class="ptop"><span class="pn">${i + 1}</span><span class="pw"><b>${esc(mapName(g.m.map))} · round ${x.round}</b><small>${esc(x.why || "")}${x.why ? " · " : ""}${esc(when(g.m.at))}</small></span>
             <span class="pa">${watchBtn(x, "▶", false, "pp")}${watchBtn(x, "Save video", true, "pp")}</span></div>`; }).join("")}</div>` : ""}
@@ -2199,6 +2210,7 @@ function boot() {
   const VIEW_HASH = { overview: "#overview", stats: "#stats", matches: "#matches", players: "#players", snapshots: "#snapshots", replay: "#replay", about: "#method" };
   let view = null, snapStarted = false, replayStarted = false;
   function go(v, fromAddress, keepMatch) {
+    recBar.dismiss();
     if (!fromAddress && location.hash !== VIEW_HASH[v]) history.pushState(null, "", VIEW_HASH[v]);
     if (v === "matches" && !keepMatch) showList();
     if (v === "players" && !keepMatch) showPlayers();
@@ -2402,7 +2414,7 @@ function boot() {
         let mate = 0, foe = 0;
         return `<div class="sbwrap"><table class="sb"><caption class="${us ? "us" : "them"}">${us ? "Ric's team" : "Opponents"} · ${us ? m.score[0] : m.score[1]}</caption>
           <thead><tr><th scope="col">Player</th><th scope="col">K</th><th scope="col">A</th><th scope="col">D</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col" class="mvp">MVP</th>${rated ? `<th scope="col">Leetify${info("rating", "the Leetify rating")}` : ""}</th></tr></thead>
-          <tbody>${seats.map((s) => `<tr${s.me ? ' class="me"' : ""}><td>${s.me ? "Ric" : s.name ? esc(s.name) : us ? `Teammate ${++mate}` : `Opponent ${++foe}`}</td>
+          <tbody>${seats.map((s) => `<tr${s.me ? ' class="me"' : ""}><td>${s.me ? "Ric" : s.name ? `<a href="#player/${encodeURIComponent(s.name)}" class="plink">${esc(s.name)}</a>` : us ? `Teammate ${++mate}` : `Opponent ${++foe}`}</td>
             <td>${s.k}</td><td>${s.a}</td><td>${s.d}</td><td>${fix(s.adr, 0)}</td><td>${s.k ? pct(100 * (s.hsk || 0) / s.k) : "—"}</td><td class="mvp">${s.mvps ?? "—"}</td>${rated ? `<td>${signed(s.rating)}</td>` : ""}</tr>`).join("")}</tbody></table></div>`;
       };
       out.push(`<div><h3>Scoreboard</h3><div style="display:flex;flex-direction:column;gap:10px">${table(true)}${table(false)}</div></div>`);
@@ -2486,7 +2498,7 @@ function boot() {
         ${hlRows.length > 10 ? `<details><summary class="note" style="cursor:pointer;padding:6px 0">${hlRows.length - 10} more</summary>${hlRows.slice(10).join("")}</details>` : ""}`
         : `<p class="note">No 3K rounds or clutches won among the saved demos counted yet.</p>`}</div>
       ${playRows.length ? `<div class="tile"><h4>Biggest plays${info("wp", "the win chance")}</h4>
-        <p class="note" style="margin-bottom:6px">Ric's kills by how much they moved his team's chance of winning the round. All his kills and deaths together:
+        <p class="note" style="margin-bottom:6px">The kills that swung a round most. All his kills and deaths together:
           <b class="${added >= 0 ? "good" : "bad"}">${added >= 0 ? "+" : "−"}${Math.abs(added).toFixed(1)} rounds</b> over ${nG} game${nG === 1 ? "" : "s"}${info("wpa", "rounds added")}.</p>
         ${playRows.join("")}</div>` : ""}
       <div class="tile"><h4>Played with</h4>${often.length ? `<div class="stwrap"><table class="st"><thead><tr><th scope="col">Teammate</th><th scope="col">Games</th><th scope="col">W-L-D</th><th scope="col">Win %</th><th scope="col">Their K/D</th></tr></thead>
@@ -2580,9 +2592,9 @@ function boot() {
   // 8.5 MB came out at 7.1 (the radar barely moves, and the encoder lands at
   // or under what it's asked). The estimates use that same 0.85.
   const REC_Q = {
-    discord: { label: "Discord-friendly", note: "under 10 MB", bps: (secs) => Math.max(4e5, Math.min(1.4e6, 8.5e6 * 8 / Math.max(1, secs))), fps: 24 },
+    discord: { label: "Discord-friendly", note: "fits Discord", bps: (secs) => Math.max(4e5, Math.min(1.4e6, 8.5e6 * 8 / Math.max(1, secs))), fps: 24 },
     high: { label: "High", note: "sharper", bps: () => 2.5e6, fps: 30 },
-    best: { label: "Best", note: "sharpest, biggest file", bps: () => 6e6, fps: 30 },
+    best: { label: "Best", note: "sharpest", bps: () => 6e6, fps: 30 },
   };
   const REC_SPEEDS = [[1, "Normal speed"], [2, "2× faster"]];
   const recPrefs = (() => { try { return JSON.parse(localStorage.getItem("cs.rec") || "{}"); } catch { return {}; } })();
@@ -2613,11 +2625,11 @@ function boot() {
             <span><b>${l}</b><small data-time="${v}"></small></span></label>`).join("")}</fieldset>
           <fieldset class="recopts"><legend>Quality</legend>${Object.entries(REC_Q).map(([k, o]) => `<label><input type="radio" name="recq" value="${k}"${k === q0 ? " checked" : ""}>
             <span><b>${o.label}</b><small data-size="${k}"></small></span></label>`).join("")}</fieldset>
-          <p class="recnote">It records in real time: keep this tab open and on screen until it downloads.</p>
-          <div class="recbtns"><button type="button" class="btn" data-go>Start recording</button><button type="button" class="btn ghost" data-no>Cancel</button></div>`;
+          <p class="recnote">Recording takes as long as the video. Keep this tab open and on screen.</p>
+          <div class="recbtns"><button type="button" class="btn" data-go>Record</button><button type="button" class="btn ghost" data-no>Cancel</button></div>`;
         const update = () => {
           const sp = +body.querySelector("[name=recspeed]:checked").value, secs = lenSecs / sp;
-          for (const [v] of REC_SPEEDS) body.querySelector(`[data-time="${v}"]`).textContent = `the video is ${mmss(Math.round(lenSecs / v))} long, and takes that long to record`;
+          for (const [v] of REC_SPEEDS) body.querySelector(`[data-time="${v}"]`).textContent = `${mmss(Math.round(lenSecs / v))} long`;
           for (const [k, o] of Object.entries(REC_Q)) body.querySelector(`[data-size="${k}"]`).textContent = `${o.note} · about ${size(mb(o.bps(secs), secs))}`;
         };
         body.addEventListener("change", update); update();
@@ -2634,9 +2646,8 @@ function boot() {
       },
       start(stop) {
         show("Recording your video"); onStop = stop; last = -1;
-        body.innerHTML = `<p class="recwarn"><b>Don't close this tab, switch to another tab or app, or touch anything on this page until it's finished.</b>
-            The video is made by playing the round through in real time, so the page has to stay open and on screen the whole way.
-            If you do switch away it pauses, and carries on when you come back.</p>
+        body.innerHTML = `<p class="recwarn"><b>Keep this tab open and on screen, and don't touch the page, until it finishes.</b>
+            It records the round as it plays. If you switch away it pauses until you're back.</p>
           <div class="recprog" aria-hidden="true"><i></i></div><p class="recleft" aria-hidden="true"></p>
           <button type="button" class="btn ghost recstop">Stop and discard</button>`;
         const b = body.querySelector(".recstop"); b.addEventListener("click", () => { if (onStop) onStop(); }); b.focus();
@@ -2651,6 +2662,7 @@ function boot() {
         el.classList.toggle("paused", on);
         q("#rectitle").textContent = on ? "Paused: come back to this tab" : "Recording your video";
       },
+      dismiss() { if (!onStop) hide(); },          // a finished note, when the page changes
       end(title, html, ok) {
         onStop = null; show(title, ok ? "done" : "done bad");
         body.innerHTML = `<p class="recwarn">${html}</p><button type="button" class="btn${ok ? "" : " ghost"} recstop">OK</button>`;
@@ -2785,8 +2797,8 @@ function boot() {
       const [from, to] = kind === "clip" ? [Math.max(0, now - 6), Math.min(dur, now + 4)] : [0, dur];
       // ask first: what speed, what quality (and what each costs)
       const what = kind === "clip"
-        ? `This moment: ${mmss(from)} to ${mmss(to)} of round ${rn + 1}, ${esc(mapName(m.map))} ${m.score[0]}:${m.score[1]}.`
-        : `The whole of round ${rn + 1}, ${esc(mapName(m.map))} ${m.score[0]}:${m.score[1]}: ${mmss(to - from)} of play.`;
+        ? `Round ${rn + 1} · ${mmss(from)} to ${mmss(to)} · ${esc(mapName(m.map))} ${m.score[0]}:${m.score[1]}`
+        : `Round ${rn + 1} · ${esc(mapName(m.map))} ${m.score[0]}:${m.score[1]} · ${mmss(to - from)}`;
       const choice = await recBar.choose(what, to - from);
       if (!choice || recording) return;
       const speed = choice.speed, Q = REC_Q[choice.quality] || REC_Q.discord, bitrate = Q.bps((to - from) / speed);
