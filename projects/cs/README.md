@@ -166,6 +166,14 @@ them once from the archived demos to add it:
 projects/cs/.cs-venv/Scripts/python projects/cs/parse-demos.py --rebuild
 ```
 
+Every shot is drawn too (Ric's ask, 2026-10-15), from the `shots` each round has
+always stored — every trigger pull by all ten players, to a tenth of a second —
+so every replay already had it and none needed rebuilding. The shooter gets an
+orange ring and a flash at the gun; a shot that `damage` says landed within
+0.1 s draws a red line to whoever it hit and a red ring round them; a miss draws
+an orange tracer the way he faced. Each fades in `SHOT_S`. Knives and grenades
+are left out.
+
 Replays are sampled twice a second (~350 KB a match). `HZ` in `parse-demos.py`
 trades size for smoothness.
 
