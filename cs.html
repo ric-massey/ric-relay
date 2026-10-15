@@ -283,6 +283,10 @@
     .pbest{margin-bottom:10px;border-left:4px solid var(--t-ink)}
     .pbest h3,.ph3{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--t-ink);margin-bottom:8px}
     .pbline{margin:4px 0} .pbtns{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 8px}
+    .ploop{margin:12px auto 0;max-width:520px}
+    .ploop canvas{display:block;width:100%;aspect-ratio:1;background:#07090c;border:1px solid var(--line);cursor:pointer}
+    .ploop canvas:focus-visible{outline:2px solid var(--t-ink);outline-offset:2px}
+    .ploopnote{text-align:center;margin:6px 0 0} .ploopnote .gold{color:var(--t-ink)}
     .pbround{margin:10px 0 0;padding:8px 10px;background:rgba(231,193,120,.08);border-left:3px solid var(--t-ink)}
     .ptop{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
     .ptop .pn{font-family:var(--display);font-weight:700;font-size:20px;color:var(--t-ink);text-align:center}
@@ -2051,6 +2055,7 @@ function boot() {
   $("pnames").innerHTML = [...PLAYERS.keys()].sort((a, b) => fold(a).localeCompare(fold(b))).map((n) => `<option value="${esc(n)}">`).join("");
 
   function showPlayers() {
+    if (ploop) ploop.stop();
     const q = fold($("pq").value || "");
     const all = [...PLAYERS.entries()].map(([name, games]) => ({ name, games, w: games.filter((g) => g.b.us).length }))
       .sort((a, b) => b.games.length - a.games.length || fold(a.name).localeCompare(fold(b.name)));
@@ -2072,6 +2077,64 @@ function boot() {
     const w = e.target.closest("[data-pwatch]"); if (w) return watchBest(w.dataset.pwatch, +w.dataset.pround, +w.dataset.pt, w.dataset.prec);
   });
   $("playerbox").addEventListener("keydown", (e) => { const r = e.target.closest("[data-player]"); if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPlayer(r.dataset.player); } });
+
+  // A player's best round playing on a loop as you open their page, the way
+  // the Overview plays Ric's: drawn as the 2D replay draws it, at real speed,
+  // with a gold ring and their name on them. It pauses off the Players page
+  // and in a hidden tab; reduced motion shows a still of their first kill.
+  // A click opens the full replay at that moment.
+  let ploop = null;
+  function roundLoop(stage, m, ri, seat, name, at) {
+    if (ploop) ploop.stop();
+    const cal = radarFor(m.map);
+    if (!cal) { stage.hidden = true; return; }
+    const cv = stage.querySelector("canvas"), ctx = cv.getContext("2d"), S2 = cv.width, kf = stage.querySelector(".kf");
+    let stopped = false, raf = 0, t = 0, last = 0;
+    const me = { stop() { stopped = true; if (raf) cancelAnimationFrame(raf); raf = 0; } };
+    ploop = me;
+    cv.addEventListener("click", () => showReplay(m.id, true, ri, Math.max(0, t - 2)));
+    loadMatch(m.id).then((R) => {
+      if (stopped) return;
+      const r = R.rounds[ri]; if (!r) return;
+      const seats = seatInfo(R), imgs = [null, null], end = r.dur || 0, sc = Math.max(1, S2 / 700);
+      // framed on where the round was played, not the whole radar: on a map
+      // like Vertigo the radar is a small island in the middle of its square
+      const st = R.stride || 2, pts = [];
+      for (const tr of Object.values(r.tracks)) for (let i = 0; i < tr.length; i += st * 4) if (tr[i] != null) pts.push({ x: tr[i], y: tr[i + 1] });
+      const vw = frame(cal, pts, 70, 420), k = S2 / vw[2];
+      const paint = (tt) => {
+        const players = momentAt(R, r, tt), B = bombAt(r, tt);
+        const him = players.find((q) => q.seat === seat && !q.dead);
+        const lv = him && lowerAt(cal, him.z) && imgs[1] ? 1 : 0;
+        const recent = (r.fights || []).filter((f) => f.t <= tt && tt - f.t < 1.5 && f.killer_at && f.victim_at && f.killer_at.x != null).pop();
+        drawMoment(ctx, S2, { cal, img: imgs[lv], lower: lv === 1, players, nades: r.nades, flashes: r.flashes, bomb: B, hudText: bombText(B, seats, tt),
+          line: recent ? [recent.killer_at.x, recent.killer_at.y, recent.victim_at.x, recent.victim_at.y] : null,
+          view: vw, labels: false, seats, r, t: tt });
+        // the player this page is about: a gold ring, and their name
+        const pl = players.find((q) => q.seat === seat && q.x != null);
+        if (pl) {
+          const [rx, ry] = toRadar(cal, pl.x, pl.y), x = (rx - vw[0]) * k, y = (ry - vw[1]) * k;
+          ctx.strokeStyle = "#e7c178"; ctx.lineWidth = 3 * sc; ctx.beginPath(); ctx.arc(x, y, 16 * sc, 0, 7); ctx.stroke();
+          const lbl = name.length > 16 ? name.slice(0, 15) + "…" : name;
+          ctx.font = `700 ${13 * sc}px system-ui`; ctx.lineWidth = 3 * sc; ctx.strokeStyle = "rgba(0,0,0,.9)"; ctx.fillStyle = "#e7c178";
+          ctx.strokeText(lbl, x + 19 * sc, y - 10 * sc); ctx.fillText(lbl, x + 19 * sc, y - 10 * sc);
+        }
+        killfeed(kf, seats, r, tt);
+      };
+      const ready = Promise.all([loadImg(cal.img).then((im) => { imgs[0] = im; }), cal.lower ? loadImg(cal.lower).then((im) => { imgs[1] = im; }) : null]);
+      if (reduce) { t = Math.min(end, (at || 0) + 5); ready.then(() => { if (!stopped) paint(t); }); paint(t); return; }
+      const tickLoop = (now) => {
+        raf = 0; if (stopped) return;
+        if (view !== "players" || document.hidden) { last = 0; setTimeout(() => { if (!raf && !stopped) raf = requestAnimationFrame(tickLoop); }, 400); return; }
+        t += last ? Math.min(0.1, (now - last) / 1000) : 0; last = now;
+        if (t > end + 1.5) t = 0;                         // a beat on the end before it starts again
+        paint(Math.min(t, end));
+        raf = requestAnimationFrame(tickLoop);
+      };
+      raf = requestAnimationFrame(tickLoop);
+    });
+    return me;
+  }
 
   function openPlayer(name, fromAddress) {
     const games = PLAYERS.get(name);
@@ -2096,6 +2159,8 @@ function boot() {
         <p class="pbline"><b>${esc(mapName(best.m.map))} ${bt.score[0]}:${bt.score[1]} ${resWord[bt.res]}</b> · ${esc(when(best.m.at))} · ${best.b.us ? "on Ric's team" : "against Ric"}</p>
         <p class="pbline">${best.b.k}-${best.b.d}-${best.b.a} · ${fix(best.b.adr, 0)} ADR · ${best.b.k ? pct(100 * (best.b.hsk || 0) / best.b.k) : "—"} HS${best.b.mvps ? ` · ${best.b.mvps} MVP${best.b.mvps === 1 ? "" : "s"}` : ""}</p>
         ${top ? `<p class="pbround"><b>Their best round: round ${top.round}</b>${top.why ? ` · ${esc(top.why)}` : ""}</p>` : ""}
+        ${top && radarFor(best.m.map) ? `<div class="lstage ploop"><canvas width="680" height="680" aria-label="${esc(`${name}'s best round, round ${top.round} of ${mapName(best.m.map)}, playing on the radar. Activate to watch it full size.`)}" tabindex="0"></canvas><div class="kf" aria-hidden="true"></div></div>
+          <p class="note ploopnote">Playing on a loop · <span class="gold">gold ring = ${esc(name)}</span> · tap it to watch full size</p>` : ""}
         <div class="pbtns">${watchBtn(top, "Save their best round as video", true)}${watchBtn(top, "▶ Watch their best round")}<button type="button" class="btn ghost" data-popen="${esc(best.m.id)}">Match stats</button></div>
         ${top && CAN_RECORD ? `<p class="note">The video is their whole best round at normal speed, the 2D replay with everything in it. It's made by playing the round through, so it takes as long as the round (up to about 2½ minutes); keep the page open until it downloads.</p>` : ""}</div>
       ${tops.length > 1 ? `<div class="panel"><h3 class="ph3">Their best rounds</h3><p class="note" style="margin:-2px 0 8px">Ranked by what they did to the round: how much their kills swung it, clutches, quick multi-kills, headshots, winning on an eco.</p>
@@ -2108,6 +2173,12 @@ function boot() {
             <td>${g.b.us ? "with Ric" : "against"}</td><td class="${t.res === "W" ? "good" : t.res === "L" ? "bad" : ""}">${t.score[0]}:${t.score[1]} ${resWord[t.res]}</td>
             <td>${g.b.k}-${g.b.d}-${g.b.a}</td><td>${fix(g.b.adr, 0)}</td><td>${g.b.k ? pct(100 * (g.b.hsk || 0) / g.b.k) : "—"}</td>
             <td>${(() => { const x = bestRound(name, g.m.id); return x ? `<button type="button" class="pp" data-pwatch="${esc(x.id)}" data-pround="${x.round}" data-pt="${x.t}" aria-label="Watch their best round of this game, round ${x.round}" title="Round ${x.round}${x.why ? `: ${esc(x.why)}` : ""}">▶</button>` : ""; })()}</td></tr>`; }).join("")}</tbody></table></div></div>`;
+    const stage = $("playerbox").querySelector(".ploop");
+    if (stage && top) {
+      const g = games.find((x) => x.m.id === top.id);
+      roundLoop(stage, best.m, top.round - 1, g ? g.b.seat : null, name, top.t);
+      stage.querySelector("canvas").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.target.click(); } });
+    } else if (ploop) ploop.stop();
     scrollTo(0, 0);
   }
 
