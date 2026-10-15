@@ -196,11 +196,17 @@ writes the same numbers into every fight. `test/parity.mjs` holds the page and
 `winprob.py` to each other over every round of every replay.
 
 **Saving a replay as video.** The replay's "Save this moment as video" (10 s
-around the scrubber, real speed) and "Save whole round" (2×) record an
-offscreen 1080×1200 canvas — header with the score, round, clock and win
-chance, the radar with everything the replay draws, the killfeed — with the
-browser's own MediaRecorder: MP4 where it can, WebM where it can't. No server,
-no library. It records as it plays, so keep the tab open while it does.
+around the scrubber) and "Save whole round" record an offscreen 1080×1200
+canvas — header with the score, round, clock and win chance, the radar with
+everything the replay draws, the killfeed — with the browser's own
+MediaRecorder: MP4 where it can, WebM where it can't. No server, no library.
+A panel over the page first asks the speed (normal or 2×) and the quality
+(`REC_Q`: Discord-friendly, sized from the length to stay under 10 MB; High;
+Best), showing each one's length and estimated size, and remembers the
+choice. While it records the panel says not to close the tab, switch away or
+touch the page, shows progress and has Stop; a hidden tab pauses the
+recording and it carries on when the tab is back. Measured: a 2:13 round at
+normal speed, Discord-friendly, came out at 7.1 MB.
 
 **Players** (Ric's ask, 2026-10-15: "it can just be their name"). A tab
 listing everyone in Ric's matches by the in-game name the scoreboard had —
@@ -209,9 +215,8 @@ no Steam id, no hash, nothing else — built in the browser from the boards in
 with or against him, their record and line from their own side, and their
 best game. Each player has an address, `#player/<name>`, to send them.
 "Save their best round as video" opens the replay at the round they got the
-most kills in (a tie goes to one their team won) and records it at 2×; a
-whole round records at 0.9 Mbit/s so a minute stays under a free Discord
-upload's 10 MB. `llm/players.md` is the same list as text.
+most kills in (a tie goes to one their team won) and opens the same video
+chooser. `llm/players.md` is the same list as text.
 
 Replays are sampled twice a second (~350 KB a match). `HZ` in `parse-demos.py`
 trades size for smoothness.

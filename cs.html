@@ -241,16 +241,39 @@
     .rec .tag.wpt{background:rgba(79,209,197,.18);color:var(--win-ink);min-width:46px;text-align:center;display:inline-block}
     .note b.good{color:var(--win-ink)} .note b.bad{color:var(--loss-ink)}
     .vsave{display:inline-flex;flex-wrap:wrap;gap:6px}
-    .recbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:80;
-      display:flex;align-items:center;gap:10px;width:max-content;max-width:calc(100vw - 24px);padding:8px 8px 8px 14px;
-      background:#141820;border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.65);font-size:14px;color:var(--bright)}
+    /* the panel a recording puts over the page */
+    .recbar{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:16px;background:rgba(5,7,10,.82);
+      -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
     .recbar[hidden]{display:none}
-    .recbar .msg{min-width:0;overflow-wrap:anywhere}
-    .recbar .dot{flex:none;width:10px;height:10px;border-radius:50%;background:#e0453a;animation:recblink 1s steps(2) infinite}
+    body.recording{overflow:hidden}
+    .reccard{width:min(460px,100%);background:#141820;border:1px solid var(--line);border-top:4px solid #e0453a;
+      padding:20px 20px 18px;box-shadow:0 20px 60px rgba(0,0,0,.7)}
+    .recbar.paused .reccard{border-top-color:#e7a33a} .recbar.done .reccard{border-top-color:var(--win-ink)}
+    .recbar.done.bad .reccard{border-top-color:var(--dim)}
+    .rechead{display:flex;align-items:center;gap:12px}
+    .rechead h2{margin:0;font-family:var(--display);font-size:21px;letter-spacing:.05em;text-transform:uppercase;color:var(--bright)}
+    .recwarn{margin:14px 0 16px;font-size:15px;line-height:1.55;color:#c9d1da} .recwarn b{color:var(--bright)}
+    .recprog{height:10px;background:rgba(255,255,255,.1);overflow:hidden}
+    .recprog i{display:block;height:100%;width:0;background:#e0453a;transition:width .25s linear}
+    .recbar.paused .recprog i{background:#e7a33a}
+    .recleft{margin:10px 0 16px;font-family:var(--display);font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--bright)}
+    .recstop{width:100%;min-height:48px}
+    .recwhat{margin:12px 0 4px;font-size:15px;color:#c9d1da}
+    .recbar.choosing .dot{display:none} .recbar.choosing .reccard{border-top-color:var(--t-ink)}
+    .recopts{border:0;padding:0;margin:14px 0 0}
+    .recopts legend{padding:0;margin-bottom:6px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--t-ink)}
+    .recopts label{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;margin-bottom:4px;border:1px solid var(--line);cursor:pointer;min-height:44px}
+    .recopts label:has(input:checked){border-color:var(--t-ink);background:rgba(231,193,120,.08)}
+    .recopts input{margin-top:3px;accent-color:#e7c178;width:18px;height:18px;flex:none}
+    .recopts b{display:block;color:var(--bright)} .recopts small{display:block;font-size:13px;color:var(--dim);margin-top:2px}
+    .recnote{margin:12px 0 14px;font-size:13px;color:var(--dim)}
+    .recbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px} .recbtns .btn{min-height:48px}
+    .reccard{max-height:calc(100vh - 32px);overflow:auto}
+    .recbar .dot{flex:none;width:14px;height:14px;border-radius:50%;background:#e0453a;animation:recblink 1s steps(2) infinite}
+    .recbar.paused .dot{background:#e7a33a;animation:none}
     .recbar.done .dot{background:var(--win-ink);animation:none} .recbar.done.bad .dot{background:var(--dim)}
-    .recbar .pp{flex:none;min-height:40px;padding:0 14px}
     @keyframes recblink{50%{opacity:.2}}
-    @media (prefers-reduced-motion:reduce){.recbar .dot{animation:none}}
+    @media (prefers-reduced-motion:reduce){.recbar .dot,.recprog i{animation:none;transition:none}}
     /* players */
     .psearch{display:grid;gap:8px;margin-bottom:12px}
     .psearch label{font-size:14px;color:var(--dim)}
@@ -2047,7 +2070,7 @@ function boot() {
         <p class="pbline"><b>${esc(mapName(best.m.map))} ${bt.score[0]}:${bt.score[1]} ${resWord[bt.res]}</b> · ${esc(when(best.m.at))} · ${best.b.us ? "on Ric's team" : "against Ric"}</p>
         <p class="pbline">${best.b.k}-${best.b.d}-${best.b.a} · ${fix(best.b.adr, 0)} ADR · ${best.b.k ? pct(100 * (best.b.hsk || 0) / best.b.k) : "—"} HS${best.b.mvps ? ` · ${best.b.mvps} MVP${best.b.mvps === 1 ? "" : "s"}` : ""}</p>
         <div class="pbtns">${watchBtn(best, "Save their best round as video", true)}${watchBtn(best, "▶ Watch their best round")}<button type="button" class="btn ghost" data-popen="${esc(best.m.id)}">Match stats</button></div>
-        ${best.m.replay && CAN_RECORD ? `<p class="note">The video is the whole round at 2× speed, the 2D replay with everything in it. It records as it plays (about a minute), then downloads.</p>` : ""}</div>
+        ${best.m.replay && CAN_RECORD ? `<p class="note">The video is their whole best round at normal speed, the 2D replay with everything in it. It's made by playing the round through, so it takes as long as the round (up to about 2½ minutes); keep the page open until it downloads.</p>` : ""}</div>
       <div class="panel"><h3 class="ph3">Every game together</h3><div class="stwrap"><table class="st pgames"><thead><tr><th scope="col">Game</th><th scope="col">Side</th><th scope="col">Result</th><th scope="col">K-D-A</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col"><span class="sr">Watch</span></th></tr></thead>
         <tbody>${games.map((g) => { const t = theirs(g);
           return `<tr><td><button type="button" class="linkish" data-popen="${esc(g.m.id)}">${esc(mapName(g.m.map))}</button> <span class="dim">${esc(when(g.m.at))}</span></td>
@@ -2444,41 +2467,104 @@ function boot() {
      header with the score, round, clock and win chance over the radar, the
      killfeed in its corner) drawn by the same drawMoment the replay uses, fed
      to MediaRecorder. MP4 where the browser makes it, WebM where it doesn't.
-     It records as it plays, so a clip takes as long to make as it lasts.
-     A whole round records at 0.9 Mbit/s and 24 fps so a minute of it stays
-     under the 10 MB a free Discord upload allows (the encoder overshoots what
-     it's asked for: 1.4 Mbit/s came out at 11.8 MB); the radar barely moves. */
+     It records as it plays, in real time, so a video takes as long to make
+     as it lasts. Before it starts, the panel asks the speed (normal or 2x)
+     and the quality (Discord-friendly, High, Best: REC_Q below), Ric's ask.
+     A hidden tab stops drawing, so a recording pauses while the tab is
+     hidden and carries on when it's back. */
   const REC_TYPE = (() => {
     if (typeof MediaRecorder === "undefined" || !HTMLCanvasElement.prototype.captureStream) return null;
     return ["video/mp4;codecs=avc1.42E01E", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
       .find((t) => { try { return MediaRecorder.isTypeSupported(t); } catch { return false; } }) || null;
   })();
   const CAN_RECORD = !!REC_TYPE;
-  // The banner a recording shows, pinned to the bottom of the screen: from a
-  // player's page the replay's own buttons are below the map, off a phone's
-  // screen, and nothing else said a video was being made or that the tab has
-  // to stay open. Afterwards it says what was saved, then goes.
+  // The panel every video goes through, over the whole page. First it asks
+  // what speed and quality (with what each costs in size and in time to
+  // record), then, while it records, it says plainly that the tab must stay
+  // open and untouched, shows how far along it is and gives a way to stop.
+  // It covers the page so a stray tap can't change anything. Afterwards it
+  // says what was saved, then goes.
+  // Quality is a bitrate. "Discord" is set from the length so the file stays
+  // under a free Discord upload's 10 MB: measured, a 2:13 round asked for
+  // 8.5 MB came out at 7.1 (the radar barely moves, and the encoder lands at
+  // or under what it's asked). The estimates use that same 0.85.
+  const REC_Q = {
+    discord: { label: "Discord-friendly", note: "under 10 MB", bps: (secs) => Math.max(4e5, Math.min(1.4e6, 8.5e6 * 8 / Math.max(1, secs))), fps: 24 },
+    high: { label: "High", note: "sharper", bps: () => 2.5e6, fps: 30 },
+    best: { label: "Best", note: "sharpest, biggest file", bps: () => 6e6, fps: 30 },
+  };
+  const REC_SPEEDS = [[1, "Normal speed"], [2, "2× faster"]];
+  const recPrefs = (() => { try { return JSON.parse(localStorage.getItem("cs.rec") || "{}"); } catch { return {}; } })();
   const recBar = (() => {
     const el = document.createElement("div");
-    el.className = "recbar"; el.setAttribute("role", "status"); el.hidden = true;
-    el.innerHTML = `<span class="dot" aria-hidden="true"></span><span class="msg"></span><button type="button" class="pp">Stop</button>`;
+    el.className = "recbar"; el.hidden = true;
+    el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "rectitle");
+    el.innerHTML = `<div class="reccard"><div class="rechead"><span class="dot" aria-hidden="true"></span><h2 id="rectitle"></h2></div><div class="recbody"></div></div>`;
     document.body.appendChild(el);
-    const msg = el.querySelector(".msg"), stopB = el.querySelector("button");
-    let onStop = null, timer = 0, last = -1;
-    stopB.addEventListener("click", () => { if (onStop) onStop(); });
+    const q = (s) => el.querySelector(s), body = q(".recbody");
+    let onStop = null, timer = 0, last = -1, pick = null;
+    const hide = () => { el.hidden = true; document.body.classList.remove("recording"); };
+    const show = (title, cls) => {
+      clearTimeout(timer); el.className = `recbar ${cls || ""}`; q("#rectitle").textContent = title;
+      el.hidden = false; document.body.classList.add("recording");
+    };
+    el.addEventListener("keydown", (e) => { if (e.key === "Escape" && pick) { e.preventDefault(); pick(null); } });
+    const mb = (bps, secs) => bps * secs / 8 / 1e6 * 0.85;
+    const size = (n) => n < 10 ? `${n.toFixed(1)} MB` : `${Math.round(n)} MB`;
     return {
+      // what to record: resolves { speed, quality }, or null for Cancel
+      choose(what, lenSecs) {
+        show("Save as video", "choosing");
+        const sp0 = REC_SPEEDS.some(([v]) => v === recPrefs.speed) ? recPrefs.speed : 1;
+        const q0 = REC_Q[recPrefs.quality] ? recPrefs.quality : "discord";
+        body.innerHTML = `<p class="recwhat">${what}</p>
+          <fieldset class="recopts"><legend>Speed</legend>${REC_SPEEDS.map(([v, l]) => `<label><input type="radio" name="recspeed" value="${v}"${v === sp0 ? " checked" : ""}>
+            <span><b>${l}</b><small data-time="${v}"></small></span></label>`).join("")}</fieldset>
+          <fieldset class="recopts"><legend>Quality</legend>${Object.entries(REC_Q).map(([k, o]) => `<label><input type="radio" name="recq" value="${k}"${k === q0 ? " checked" : ""}>
+            <span><b>${o.label}</b><small data-size="${k}"></small></span></label>`).join("")}</fieldset>
+          <p class="recnote">It records in real time: keep this tab open and on screen until it downloads.</p>
+          <div class="recbtns"><button type="button" class="btn" data-go>Start recording</button><button type="button" class="btn ghost" data-no>Cancel</button></div>`;
+        const update = () => {
+          const sp = +body.querySelector("[name=recspeed]:checked").value, secs = lenSecs / sp;
+          for (const [v] of REC_SPEEDS) body.querySelector(`[data-time="${v}"]`).textContent = `the video is ${mmss(Math.round(lenSecs / v))} long, and takes that long to record`;
+          for (const [k, o] of Object.entries(REC_Q)) body.querySelector(`[data-size="${k}"]`).textContent = `${o.note} · about ${size(mb(o.bps(secs), secs))}`;
+        };
+        body.addEventListener("change", update); update();
+        body.querySelector("[name=recspeed]:checked").focus();
+        return new Promise((resolve) => {
+          pick = (v) => { pick = null; if (!v) hide(); resolve(v); };
+          body.querySelector("[data-go]").addEventListener("click", () => {
+            const v = { speed: +body.querySelector("[name=recspeed]:checked").value, quality: body.querySelector("[name=recq]:checked").value };
+            try { localStorage.setItem("cs.rec", JSON.stringify(v)); } catch {}
+            Object.assign(recPrefs, v); pick(v);
+          });
+          body.querySelector("[data-no]").addEventListener("click", () => pick(null));
+        });
+      },
       start(stop) {
-        clearTimeout(timer); onStop = stop; last = -1;
-        el.classList.remove("done", "bad"); stopB.hidden = false; el.hidden = false;
+        show("Recording your video"); onStop = stop; last = -1;
+        body.innerHTML = `<p class="recwarn"><b>Don't close this tab, switch to another tab or app, or touch anything on this page until it's finished.</b>
+            The video is made by playing the round through in real time, so the page has to stay open and on screen the whole way.
+            If you do switch away it pauses, and carries on when you come back.</p>
+          <div class="recprog" aria-hidden="true"><i></i></div><p class="recleft" aria-hidden="true"></p>
+          <button type="button" class="btn ghost recstop">Stop and discard</button>`;
+        const b = body.querySelector(".recstop"); b.addEventListener("click", () => { if (onStop) onStop(); }); b.focus();
       },
-      // the seconds are hidden from screen readers, or they'd hear every one
-      left(sec) {
-        if (sec === last) return; last = sec;
-        msg.innerHTML = `<b>Recording video…</b> <span aria-hidden="true">${sec} s left · </span>keep this tab open`;
+      progress(secLeft, frac) {
+        const bar = body.querySelector(".recprog i"); if (!bar) return;
+        bar.style.width = `${Math.max(0, Math.min(100, frac * 100)).toFixed(1)}%`;
+        if (secLeft === last) return; last = secLeft;
+        body.querySelector(".recleft").textContent = `${mmss(Math.max(0, secLeft))} left`;
       },
-      end(html, ok) {
-        onStop = null; el.classList.add("done"); el.classList.toggle("bad", !ok); stopB.hidden = true;
-        msg.innerHTML = html; clearTimeout(timer); timer = setTimeout(() => { el.hidden = true; }, 6000);
+      paused(on) {
+        el.classList.toggle("paused", on);
+        q("#rectitle").textContent = on ? "Paused: come back to this tab" : "Recording your video";
+      },
+      end(title, html, ok) {
+        onStop = null; show(title, ok ? "done" : "done bad");
+        body.innerHTML = `<p class="recwarn">${html}</p><button type="button" class="btn${ok ? "" : " ghost"} recstop">OK</button>`;
+        const b = body.querySelector(".recstop"); b.addEventListener("click", hide); b.focus();
+        timer = setTimeout(hide, ok ? 12000 : 6000);
       },
     };
   })();
@@ -2602,10 +2688,17 @@ function boot() {
       clock.play(false); clock.t = Math.max(0, Math.min(1, (e.clientX - b.left) / b.width)) * R.rounds[ri].dur; rv.hold(true);
     });
     let recording = null;
-    function record(kind, btn) {
+    async function record(kind, btn) {
       if (recording) { recording.cancel(); return; }
       const rn = ri, r = R.rounds[rn], dur = r.dur, now = clock.t;
-      const [from, to, speed] = kind === "clip" ? [Math.max(0, now - 6), Math.min(dur, now + 4), 1] : [0, dur, 2];
+      const [from, to] = kind === "clip" ? [Math.max(0, now - 6), Math.min(dur, now + 4)] : [0, dur];
+      // ask first: what speed, what quality (and what each costs)
+      const what = kind === "clip"
+        ? `This moment: ${mmss(from)} to ${mmss(to)} of round ${rn + 1}, ${esc(mapName(m.map))} ${m.score[0]}:${m.score[1]}.`
+        : `The whole of round ${rn + 1}, ${esc(mapName(m.map))} ${m.score[0]}:${m.score[1]}: ${mmss(to - from)} of play.`;
+      const choice = await recBar.choose(what, to - from);
+      if (!choice || recording) return;
+      const speed = choice.speed, Q = REC_Q[choice.quality] || REC_Q.discord, bitrate = Q.bps((to - from) / speed);
       const W = 1080, HEAD = 120, H = W + HEAD, view = rv.view.slice();
       const cvs = document.createElement("canvas"); cvs.width = W; cvs.height = H;
       const c = cvs.getContext("2d"), odds_ = wpTimeline(R, r);
@@ -2646,41 +2739,50 @@ function boot() {
         c.fillText("ricmassey.com · cs", W - 18, H - 16); c.textAlign = "left";
       };
       frame(from);
-      const stream = cvs.captureStream(kind === "clip" ? 30 : 24), chunks = [];
-      const rec = new MediaRecorder(stream, { mimeType: REC_TYPE, videoBitsPerSecond: kind === "clip" ? 4e6 : 9e5 });
+      const stream = cvs.captureStream(Q.fps), chunks = [];
+      const rec = new MediaRecorder(stream, { mimeType: REC_TYPE, videoBitsPerSecond: bitrate });
       rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
       const label = btn.textContent;
-      let raf = 0, start = 0, cancelled = false;
+      let raf = 0, played = 0, lastNow = 0, cancelled = false;
+      // a hidden tab draws nothing: pause the recorder, and the round with it
+      const onVis = () => {
+        if (document.hidden) { if (rec.state === "recording") rec.pause(); recBar.paused(true); }
+        else { if (rec.state === "paused") rec.resume(); lastNow = 0; recBar.paused(false); }
+      };
+      document.addEventListener("visibilitychange", onVis);
       const done = () => {
         cancelAnimationFrame(raf); recording = null; btn.textContent = label;
+        document.removeEventListener("visibilitychange", onVis);
         box.querySelectorAll("[data-rec]").forEach((b) => { b.disabled = false; });
       };
       rec.onstop = () => {
         done();
-        if (cancelled) return recBar.end("Recording stopped. Nothing was saved.", false);
-        if (!chunks.length) return recBar.end("This browser couldn't make the video.", false);
+        if (cancelled) return recBar.end("Recording stopped", "Nothing was saved.", false);
+        if (!chunks.length) return recBar.end("The video couldn't be made", "This browser recorded nothing. Try Chrome, Edge or Firefox on a computer.", false);
         const ext = REC_TYPE.startsWith("video/mp4") ? "mp4" : "webm";
         const d = new Date(m.at), p2 = (n) => String(n).padStart(2, "0"), a = document.createElement("a");
         const day = isNaN(d) ? "" : `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;   // the day he played it, not UTC's
         a.href = URL.createObjectURL(new Blob(chunks, { type: REC_TYPE.split(";")[0] }));
         a.download = `cs-${mapName(m.map).toLowerCase().replace(/\W+/g, "")}-${day}-round-${rn + 1}${kind === "clip" ? `-${mmss(from).replace(":", "m")}s` : ""}.${ext}`;
         document.body.appendChild(a); a.click(); a.remove();
-        recBar.end(`<b>Saved:</b> ${esc(a.download)}`, true);
+        recBar.end("Video saved", `<b>${esc(a.download)}</b> is in your downloads, ready to send.`, true);
         setTimeout(() => URL.revokeObjectURL(a.href), 30000);
       };
       const tick = (nowMs) => {
-        if (!start) start = nowMs;
-        const t = Math.min(to, from + (nowMs - start) / 1000 * speed);
+        // only time the tab is showing counts, and a stall never jumps the round
+        if (lastNow && !document.hidden) played += Math.min(250, nowMs - lastNow);
+        lastNow = nowMs;
+        const t = Math.min(to, from + played / 1000 * speed);
         frame(t);
-        btn.textContent = `Recording… ${Math.ceil((to - t) / speed)} s · stop`;
-        recBar.left(Math.ceil((to - t) / speed));
+        btn.textContent = `Recording… ${mmss(Math.ceil((to - t) / speed))} · stop`;
+        recBar.progress(Math.ceil((to - t) / speed), (t - from) / Math.max(0.1, to - from));
         if (t >= to) { setTimeout(() => rec.state !== "inactive" && rec.stop(), 150); return; }
         raf = requestAnimationFrame(tick);
       };
       box.querySelectorAll("[data-rec]").forEach((b) => { b.disabled = b !== btn; });
-      recording = { cancel() { cancelled = true; if (rec.state !== "inactive") rec.stop(); else { done(); recBar.end("Recording stopped. Nothing was saved.", false); } } };
+      recording = { cancel() { cancelled = true; if (rec.state !== "inactive") rec.stop(); else { done(); recBar.end("Recording stopped", "Nothing was saved.", false); } } };
       recBar.start(() => recording && recording.cancel());
-      recBar.left(Math.ceil((to - from) / speed));
+      recBar.progress(Math.ceil((to - from) / speed), 0);
       rec.start(250);
       raf = requestAnimationFrame(tick);
     }
