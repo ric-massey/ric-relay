@@ -513,7 +513,7 @@ def map_md(mapname, ps, n_games):
                for c in ps])]) + "\n"
 
 
-def players_md(matches):
+def players_md(matches, S=None):
     """Everyone in Ric's matches by in-game name, as the page's Players tab
     lists them: every game they were in with him, with or against."""
     by = {}
@@ -523,6 +523,10 @@ def players_md(matches):
                 by.setdefault(b["name"], []).append((m, b))
     L = ["# Players in Ric's matches", "",
          "By in-game name, as the scoreboard showed it. Results and scores are from each player's own side.", ""]
+    best = {}                              # name -> [(score, game id, round, why, total)]
+    for g, nm_, rnd, sc, _t, why, *tot in (S or {}).get("best") or []:
+        best.setdefault(nm_, []).append((sc, S["games"][g]["id"], rnd, why, tot[0] if tot else sc))
+    maps = {m["id"]: map_name(m["map"]) for m in matches}
     for name, games in sorted(by.items(), key=lambda kv: (-len(kv[1]), kv[0].lower())):
         rows = []
         for m, b in games:
@@ -531,7 +535,14 @@ def players_md(matches):
             rows.append((when(m.get("at")), map_name(m["map"]), "with Ric" if b.get("us") else "against Ric",
                          f"{sc[0]}:{sc[1]} {'win' if res == 'W' else 'loss' if res == 'L' else 'draw'}",
                          f"{b.get('k')}-{b.get('d')}-{b.get('a')}", f(b.get("adr"), 0), f"[report]({m['id']}.md)"))
-        L += [f"## {name} — {len(games)} game{'s' if len(games) != 1 else ''}", "",
+        tops = sorted(best.get(name, []), reverse=True)[:3]
+        bg = max(best.get(name, []), key=lambda x: x[4], default=None)
+        extra = []
+        if bg:
+            extra.append(f"Best game (all their rounds scored together): {maps.get(bg[1], '?')}, best round {bg[2]} — {bg[3]}.")
+        if tops:
+            extra.append("Best rounds: " + "; ".join(f"{maps.get(i, '?')} round {r} ({w})" for _s, i, r, w, _tt in tops) + ".")
+        L += [f"## {name} — {len(games)} game{'s' if len(games) != 1 else ''}", ""] + ([" ".join(extra), ""] if extra else []) + [
               table(["Date", "Map", "Side", "Their result", "K-D-A", "ADR", "Match"], rows), ""]
     return "\n".join(L)
 
@@ -551,7 +562,7 @@ def main():
         (OUT / name).write_text(match_md(m, player), encoding="utf-8", newline="\n")
     (OUT / "index.md").write_text(index_md(data, matches, stats.breakdown_md(S, map_name)),
                                   encoding="utf-8", newline="\n")
-    (OUT / "players.md").write_text(players_md(matches), encoding="utf-8", newline="\n")
+    (OUT / "players.md").write_text(players_md(matches, S), encoding="utf-8", newline="\n")
     by_map = {}
     for m in matches:
         R = load_replay(m["id"]) if m.get("replay") else None

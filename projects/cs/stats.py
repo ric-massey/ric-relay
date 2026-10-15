@@ -19,6 +19,9 @@ sync and writes the same numbers into llm/index.md.
             when (seconds into the round) it went off
   flashes[] every flashbang of Ric's: [game, round, side, enemies blinded,
             teammates blinded, enemy seconds blind]
+  best[]    every player's most impressive round of each game (highlight.py):
+            [game, name, round, score, seconds to start watching, why,
+            the game's total over all their rounds — what ranks their games]
   wp        the round-win model (winprob.py), fitted here on every saved round;
             each fight carries wb / wa, his team's chance just before and after
 
@@ -33,6 +36,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import csdata  # noqa: E402
 import winprob  # noqa: E402
+import highlight  # noqa: E402
 
 OUT = csdata.HERE / "stats.js"
 TRADE_S = 5                     # same window parse-demos.py uses for "traded"
@@ -52,8 +56,14 @@ def build(matches):
     games, rounds, fights, hits, nades, flashes = [], [], [], Counter(), [], []
     loaded = [(m, R) for m in matches if m.get("replay") for R in [load_replay(m["id"])] if R]
     WP = winprob.fit([R for _, R in loaded])        # refitted on every sync
+    best = []
     for m, R in loaded:
         gi = len(games)
+        # every player's most impressive round of this game (highlight.py)
+        for seat, (ri_, sc, fx, tot) in highlight.best_rounds(WP["coef"], R).items():
+            nm_ = next((s.get("name") for s in R["seats"] if s["seat"] == seat), None)
+            if nm_:
+                best.append([gi, nm_, ri_ + 1, sc, max(0, round((fx["t"] or 5) - 5, 1)), highlight.label(fx), tot])
         games.append({"id": m["id"], "map": R["map"], "at": m.get("at"), "result": m["result"]})
         me = next((s["seat"] for s in R["seats"] if s.get("me")), 0)
         us = {s["seat"] for s in R["seats"] if s.get("us")}
@@ -155,7 +165,7 @@ def build(matches):
             rounds.append(row)
     return {"games": games, "rounds": rounds, "fights": fights,
             "hits": [[mp, sd, d, g, c] for (mp, sd, d, g), c in sorted(hits.items())],
-            "nades": nades, "flashes": flashes, "wp": WP}
+            "nades": nades, "flashes": flashes, "wp": WP, "best": best}
 
 
 def pct(a, b):

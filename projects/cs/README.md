@@ -214,9 +214,18 @@ no Steam id, no hash, nothing else — built in the browser from the boards in
 `cs-data.js`. Search a name to get every game that player was in with Ric,
 with or against him, their record and line from their own side, and their
 best game. Each player has an address, `#player/<name>`, to send them.
-"Save their best round as video" opens the replay at the round they got the
-most kills in (a tie goes to one their team won) and opens the same video
-chooser. `llm/players.md` is the same list as text.
+**Best rounds and best games are scored, not counted** (`highlight.py`). Kill
+count picked badly — Yallzbalz's two kills then a death in a round a teammate
+won, over his round 11 on Vertigo: a kill from 37% to 60% on an eco MAC-10,
+then the last kill of a 1v1. A round's score is what the player's kills did
+to their team's chance of it (winprob.py), a clutch won (+0.25 a man faced),
+kills and fast multi-kills, headshots, kills on an eco and the round won,
+less half of what their death cost. A game's score is all their rounds'
+added up, so it rewards a game of good rounds over one lucky one. stats.js
+carries every player's best round of every game with its score, the game
+total and a few words on why. The player page shows their best game with
+its best round, and their three best rounds anywhere, each with ▶ and Save
+video, which opens the same video chooser. `llm/players.md` is the same list as text.
 
 Replays are sampled twice a second (~350 KB a match). `HZ` in `parse-demos.py`
 trades size for smoothness.

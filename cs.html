@@ -283,6 +283,11 @@
     .pbest{margin-bottom:10px;border-left:4px solid var(--t-ink)}
     .pbest h3,.ph3{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--t-ink);margin-bottom:8px}
     .pbline{margin:4px 0} .pbtns{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 8px}
+    .pbround{margin:10px 0 0;padding:8px 10px;background:rgba(231,193,120,.08);border-left:3px solid var(--t-ink)}
+    .ptop{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+    .ptop .pn{font-family:var(--display);font-weight:700;font-size:20px;color:var(--t-ink);text-align:center}
+    .ptop .pw b{display:block} .ptop .pw small{display:block;color:var(--dim);font-size:13px;margin-top:2px}
+    .ptop .pa{display:flex;gap:6px} .ptop .pa .pp{min-height:40px;padding:0 12px}
     .linkish{background:none;border:0;padding:0;font:inherit;color:var(--bright);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
     table.st td .dim{color:var(--dim);font-size:12px}
     table.pgames td.good{color:var(--win-ink)} table.pgames td.bad{color:var(--loss-ink)}
@@ -2026,6 +2031,22 @@ function boot() {
     return { k, d, hsk, tally, kd: d ? k / d : k, adr: rounds ? dmg / rounds : null, hs: k ? 100 * hsk / k : null,
       mvps: games.reduce((s_, g) => s_ + (g.b.mvps || 0), 0) };
   };
+  // Each player's most impressive round of each game, scored in highlight.py
+  // (what their kills did to the round's odds, clutches, quick multi-kills,
+  // headshots, an eco, the round won) and carried in stats.js. Their best
+  // game is the one where all their rounds add up to the most, and shows its
+  // best round; "their best rounds" ranks single rounds across every game.
+  // With no stats.js it falls back to the game with the most kills.
+  const BEST = new Map();
+  {
+    const CS = window.CS_STATS;
+    if (CS && CS.best) for (const [g, name, round, score, t, why, total] of CS.best) {
+      const id = CS.games[g] && CS.games[g].id; if (!id) continue;
+      if (!BEST.has(name)) BEST.set(name, []);
+      BEST.get(name).push({ id, round, score, t, why, total: total != null ? total : score });
+    }
+  }
+  const bestRound = (name, id) => (BEST.get(name) || []).find((x) => x.id === id) || null;
   const bestOf = (games) => games.reduce((a, g) => !a || (g.b.k || 0) > (a.b.k || 0) || ((g.b.k || 0) === (a.b.k || 0) && (g.b.adr || 0) > (a.b.adr || 0)) ? g : a, null);
   $("pnames").innerHTML = [...PLAYERS.keys()].sort((a, b) => fold(a).localeCompare(fold(b))).map((n) => `<option value="${esc(n)}">`).join("");
 
@@ -2048,7 +2069,7 @@ function boot() {
     const r = e.target.closest("[data-player]"); if (r) return openPlayer(r.dataset.player);
     if (e.target.closest("[data-pback]")) { $("pq").value = ""; history.pushState(null, "", "#players"); return showPlayers(); }
     const o = e.target.closest("[data-popen]"); if (o) return openMatch(o.dataset.popen);
-    const w = e.target.closest("[data-pwatch]"); if (w) return watchBest(w.dataset.pwatch, w.dataset.pseat, w.dataset.pus === "1", w.dataset.prec);
+    const w = e.target.closest("[data-pwatch]"); if (w) return watchBest(w.dataset.pwatch, +w.dataset.pround, +w.dataset.pt, w.dataset.prec);
   });
   $("playerbox").addEventListener("keydown", (e) => { const r = e.target.closest("[data-player]"); if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPlayer(r.dataset.player); } });
 
@@ -2057,10 +2078,15 @@ function boot() {
     if (!games) { $("pq").value = name; go("players", fromAddress); return showPlayers(); }
     if (!fromAddress && location.hash !== `#player/${encodeURIComponent(name)}`) history.pushState(null, "", `#player/${encodeURIComponent(name)}`);
     go("players", true, true);
-    const L = pLine(games), best = bestOf(games), with_ = games.filter((g) => g.b.us).length;
+    const mine = (BEST.get(name) || []).filter((x) => games.some((g) => g.m.id === x.id));
+    const tops = mine.slice().sort((a, b) => b.score - a.score);             // single rounds
+    const bestGame = mine.slice().sort((a, b) => b.total - a.total)[0] || null; // whole games
+    const best = (bestGame && games.find((g) => g.m.id === bestGame.id)) || bestOf(games), top = bestGame;
+    const L = pLine(games), with_ = games.filter((g) => g.b.us).length;
     const chip = (v, l) => `<div class="chip"><b>${v}</b><span>${l}</span></div>`;
     const bt = theirs(best);
-    const watchBtn = (g, label, rec) => g.m.replay && (!rec || CAN_RECORD) ? `<button type="button" class="btn${rec ? "" : " ghost"}" data-pwatch="${esc(g.m.id)}" data-pseat="${g.b.seat}" data-pus="${g.b.us ? 1 : 0}"${rec ? ' data-prec="round"' : ""}>${label}</button>` : "";
+    const gameOf = (x) => games.find((g) => g.m.id === x.id);
+    const watchBtn = (x, label, rec, cls = "btn") => x && (!rec || CAN_RECORD) ? `<button type="button" class="${cls}${rec || cls !== "btn" ? "" : " ghost"}" data-pwatch="${esc(x.id)}" data-pround="${x.round}" data-pt="${x.t}"${rec ? ' data-prec="round"' : ""}>${label}</button>` : "";
     $("playerbox").innerHTML = `<div class="mnav"><button type="button" class="btn ghost" data-pback>← All players</button></div>
       <div class="panel pcard"><div class="kicker">${games.length} game${games.length === 1 ? "" : "s"} with Ric${with_ && with_ < games.length ? ` · ${with_} on his team, ${games.length - with_} against him` : with_ ? ", all on his team" : ", all against him"}</div>
         <h2 class="mname">${esc(name)}</h2>
@@ -2069,35 +2095,29 @@ function boot() {
       <div class="panel pbest"><h3>Best game with Ric</h3>
         <p class="pbline"><b>${esc(mapName(best.m.map))} ${bt.score[0]}:${bt.score[1]} ${resWord[bt.res]}</b> · ${esc(when(best.m.at))} · ${best.b.us ? "on Ric's team" : "against Ric"}</p>
         <p class="pbline">${best.b.k}-${best.b.d}-${best.b.a} · ${fix(best.b.adr, 0)} ADR · ${best.b.k ? pct(100 * (best.b.hsk || 0) / best.b.k) : "—"} HS${best.b.mvps ? ` · ${best.b.mvps} MVP${best.b.mvps === 1 ? "" : "s"}` : ""}</p>
-        <div class="pbtns">${watchBtn(best, "Save their best round as video", true)}${watchBtn(best, "▶ Watch their best round")}<button type="button" class="btn ghost" data-popen="${esc(best.m.id)}">Match stats</button></div>
-        ${best.m.replay && CAN_RECORD ? `<p class="note">The video is their whole best round at normal speed, the 2D replay with everything in it. It's made by playing the round through, so it takes as long as the round (up to about 2½ minutes); keep the page open until it downloads.</p>` : ""}</div>
+        ${top ? `<p class="pbround"><b>Their best round: round ${top.round}</b>${top.why ? ` · ${esc(top.why)}` : ""}</p>` : ""}
+        <div class="pbtns">${watchBtn(top, "Save their best round as video", true)}${watchBtn(top, "▶ Watch their best round")}<button type="button" class="btn ghost" data-popen="${esc(best.m.id)}">Match stats</button></div>
+        ${top && CAN_RECORD ? `<p class="note">The video is their whole best round at normal speed, the 2D replay with everything in it. It's made by playing the round through, so it takes as long as the round (up to about 2½ minutes); keep the page open until it downloads.</p>` : ""}</div>
+      ${tops.length > 1 ? `<div class="panel"><h3 class="ph3">Their best rounds</h3><p class="note" style="margin:-2px 0 8px">Ranked by what they did to the round: how much their kills swung it, clutches, quick multi-kills, headshots, winning on an eco.</p>
+        ${tops.slice(0, 3).map((x, i) => { const g = gameOf(x);
+          return `<div class="ptop"><span class="pn">${i + 1}</span><span class="pw"><b>${esc(mapName(g.m.map))} · round ${x.round}</b><small>${esc(x.why || "")}${x.why ? " · " : ""}${esc(when(g.m.at))}</small></span>
+            <span class="pa">${watchBtn(x, "▶", false, "pp")}${watchBtn(x, "Save video", true, "pp")}</span></div>`; }).join("")}</div>` : ""}
       <div class="panel"><h3 class="ph3">Every game together</h3><div class="stwrap"><table class="st pgames"><thead><tr><th scope="col">Game</th><th scope="col">Side</th><th scope="col">Result</th><th scope="col">K-D-A</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col"><span class="sr">Watch</span></th></tr></thead>
         <tbody>${games.map((g) => { const t = theirs(g);
           return `<tr><td><button type="button" class="linkish" data-popen="${esc(g.m.id)}">${esc(mapName(g.m.map))}</button> <span class="dim">${esc(when(g.m.at))}</span></td>
             <td>${g.b.us ? "with Ric" : "against"}</td><td class="${t.res === "W" ? "good" : t.res === "L" ? "bad" : ""}">${t.score[0]}:${t.score[1]} ${resWord[t.res]}</td>
             <td>${g.b.k}-${g.b.d}-${g.b.a}</td><td>${fix(g.b.adr, 0)}</td><td>${g.b.k ? pct(100 * (g.b.hsk || 0) / g.b.k) : "—"}</td>
-            <td>${g.m.replay ? `<button type="button" class="pp" data-pwatch="${esc(g.m.id)}" data-pseat="${g.b.seat}" data-pus="${g.b.us ? 1 : 0}" aria-label="Watch their best round of this game">▶</button>` : ""}</td></tr>`; }).join("")}</tbody></table></div></div>`;
+            <td>${(() => { const x = bestRound(name, g.m.id); return x ? `<button type="button" class="pp" data-pwatch="${esc(x.id)}" data-pround="${x.round}" data-pt="${x.t}" aria-label="Watch their best round of this game, round ${x.round}" title="Round ${x.round}${x.why ? `: ${esc(x.why)}` : ""}">▶</button>` : ""; })()}</td></tr>`; }).join("")}</tbody></table></div></div>`;
     scrollTo(0, 0);
   }
 
-  // Open the replay at a player's best round of a match — the round he got the
-  // most kills in (on the other team), a few seconds before the first — and
-  // optionally start saving that round as a video straight away.
+  // Open the replay at a player's best round (stats.js picked it), a few
+  // seconds before their first kill — or, to save it, from the start, with
+  // the video chooser up once the replay has loaded.
   let pendingRecord = null;
-  function watchBest(id, seat, us, rec) {
-    seat = +seat;
-    loadMatch(id).then((R) => {
-      const ours = new Set(R.seats.filter((s_) => !!s_.us === us).map((s_) => s_.seat));
-      // most kills; a tie goes to a round his team won, then the earlier
-      let bestR = 0, bestS = -1, at = 0;
-      R.rounds.forEach((r, i) => {
-        const ks = (r.fights || []).filter((f) => f.killer === seat && f.victim != null && !ours.has(f.victim));
-        const won = us ? r.w : !r.w, sc = ks.length * 2 + (won ? 1 : 0);
-        if (sc > bestS) { bestS = sc; bestR = i; at = ks.length ? Math.max(0, ks[0].t - 5) : 0; }
-      });
-      pendingRecord = rec || null;
-      showReplay(id, true, bestR, rec ? 0 : at);
-    }, () => openMatch(id));
+  function watchBest(id, round, t, rec) {
+    pendingRecord = rec || null;
+    showReplay(id, true, Math.max(0, (round || 1) - 1), rec ? 0 : (t || 0));
   }
 
   /* ══ pages ══════════════════════════════════════════════
