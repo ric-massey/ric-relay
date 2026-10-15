@@ -4,17 +4,17 @@ CS2 tags every player position with a callout name. This table is built from 1 o
 
 | Callout | Centre x | Centre y | Covers x | Covers y | Positions seen |
 |---|---|---|---|---|---|
-| AHalls | 685 | 2086 | 391 to 981 | 1992 to 2177 | 6 |
-| AMain | 651 | 1388 | 515 to 784 | 817 to 1815 | 22 |
-| AStairs | 791 | 709 | 682 to 953 | 694 to 741 | 7 |
-| BHalls | 922 | -911 | 644 to 1404 | -1194 to -459 | 70 |
-| BMain | 400 | -744 | 267 to 563 | -1124 to -451 | 67 |
+| A Halls | 685 | 2086 | 391 to 981 | 1992 to 2177 | 6 |
+| A Main | 651 | 1388 | 515 to 784 | 817 to 1815 | 22 |
+| A Stairs | 791 | 709 | 682 to 953 | 694 to 741 | 7 |
+| B Halls | 922 | -911 | 644 to 1404 | -1194 to -459 | 70 |
+| B Main | 400 | -744 | 267 to 563 | -1124 to -451 | 67 |
 | Bear | -608 | -332 | -665 to -535 | -402 to -296 | 7 |
 | Bombsite A | -93 | 1723 | -424 to 470 | 1284 to 2044 | 58 |
 | Bombsite B | -47 | -993 | -546 to 207 | -1526 to -467 | 107 |
 | Bus Stop | -1354 | 312 | -1407 to -1249 | 240 to 350 | 3 |
-| CTLane | -933 | 122 | -1081 to -777 | -338 to 602 | 42 |
-| CTSpawn | -1405 | 835 | -1488 to -1225 | 707 to 1045 | 7 |
+| CT Lane | -933 | 122 | -1081 to -777 | -338 to 602 | 42 |
+| CT Spawn | -1405 | 835 | -1488 to -1225 | 707 to 1045 | 7 |
 | Catwalk | 405 | 1300 | 405 to 405 | 1300 to 1300 | 2 |
 | Checkers | 89 | -339 | -339 to 383 | -429 to -249 | 43 |
 | Connector | -530 | 132 | -722 to -363 | -97 to 292 | 49 |
@@ -36,8 +36,8 @@ CS2 tags every player position with a callout name. This table is built from 1 o
 | Sandbags | 12 | -52 | -60 to 106 | -143 to 36 | 19 |
 | Squeaky | 239 | 2005 | 145 to 349 | 1876 to 2158 | 15 |
 | Sun Room | 864 | -1307 | 502 to 1084 | -1422 to -1203 | 12 |
-| TSpawn | 2565 | -228 | 2325 to 3268 | -446 to 35 | 17 |
-| TYard | 1923 | 215 | 1764 to 2266 | -139 to 548 | 18 |
+| T Spawn | 2565 | -228 | 2325 to 3268 | -446 to 35 | 17 |
+| T Yard | 1923 | 215 | 1764 to 2266 | -139 to 548 | 18 |
 | Toxic | -198 | 1258 | -278 to -108 | 1146 to 1340 | 4 |
 | Tree Room | -871 | -748 | -1048 to -680 | -1012 to -466 | 28 |
 | Truck | -797 | 1202 | -1013 to -292 | 960 to 1422 | 22 |
