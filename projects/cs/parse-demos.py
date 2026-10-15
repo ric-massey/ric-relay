@@ -209,6 +209,17 @@ def parse(path, me):
               or ev("player_death", player=["X", "Y", "Z"]))
     hurts = ev("player_hurt")
     mvps = Counter(sid(r.get("user_steamid")) for r in ev("round_mvp") if r["tick"] > live_from)
+    if not mvps:
+        # CS2 demos don't record round_mvp at all (every player read 0 MVPs);
+        # each player's own running count does, read at the last round's end
+        try:
+            last = ends[-1]["tick"]
+            for r in rows(p.parse_ticks(["mvps"], ticks=[last, last + TICKRATE])):
+                s = sid(r.get("steamid"))
+                if s and r.get("mvps") == r.get("mvps"):
+                    mvps[s] = max(mvps.get(s, 0), int(r.get("mvps") or 0))
+        except Exception:
+            pass
 
     per = defaultdict(lambda: Counter())
     weapons = Counter()
@@ -556,10 +567,15 @@ def _b(v):
 
 
 def _place(v):
-    """'BombsiteA' -> 'Bombsite A'. Valve's callout names are CamelCase."""
+    """Valve's callout names are CamelCase, with side letters and "of" run in:
+    'BombsiteA' -> 'Bombsite A', 'CTSpawn' -> 'CT Spawn', 'AHalls' -> 'A Halls',
+    'BackofB' -> 'Back of B', 'TopofMid' -> 'Top of Mid'. "of" is split only
+    after the words that take it, or 'MidRoof' would come out 'Mid Ro of'."""
     if not v or v != v:
         return None
-    return re.sub(r"(?<=[a-z])(?=[A-Z0-9])", " ", str(v))
+    s = re.sub(r"(?<=[a-z])(?=[A-Z0-9])", " ", str(v))        # BombsiteA
+    s = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", s)          # CTSpawn, AHalls
+    return re.sub(r"\b(Back|Top|Bottom|Front|Side|End)of\b", r"\1 of", s)
 
 
 HITGROUPS = {0: "generic", 1: "head", 2: "chest", 3: "stomach", 4: "left arm",

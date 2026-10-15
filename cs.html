@@ -247,7 +247,7 @@
     .filters button[aria-pressed="true"]{color:var(--bright);border-color:var(--line-hot);background:rgba(255,255,255,.1)}
     .mlist{display:flex;flex-direction:column;gap:3px}
     .mhead,.mrow{display:grid;align-items:center;gap:10px;
-      grid-template-columns:56px 112px minmax(100px,1.2fr) 90px 54px 84px 48px 50px 92px 64px}
+      grid-template-columns:56px 112px minmax(100px,1.2fr) 124px 54px 84px 48px 50px 92px 64px}
     .mhead{padding:0 12px 6px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
     .match{background:var(--panel);border:1px solid var(--line);scroll-margin-top:110px}
     /* a match's own screen */
@@ -269,6 +269,8 @@
     .mrow:hover{background:rgba(255,255,255,.035)}
     .mrow.rW{border-left-color:#4fd36b} .mrow.rL{border-left-color:#f0605a}
     .thumb{width:56px;height:40px;background:#07090c center/cover no-repeat;border:1px solid var(--line)}
+    /* a map with no radar of its own (a custom map like Rush): its initial, not a black box */
+    .thumb.none{display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:18px;color:var(--dim);background:linear-gradient(135deg,#151a21,#0b0e12)}
     .mrow .when{color:var(--dim);font-size:13px}
     .mrow .opt.good{color:var(--win-ink)} .mrow .opt.bad{color:var(--loss-ink)}
     .mrow .map{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.04em;text-transform:uppercase}
@@ -277,6 +279,7 @@
     /* the score itself: green won, red lost, grey drawn */
     .score.W{background:none;color:#4fd36b} .score.L{background:none;color:#f0605a} .score.T{background:none;color:#a0a8b2}
     .score small{font-size:11px;letter-spacing:.12em;margin-left:5px}
+    .mrow .score{white-space:nowrap}       /* "1:8 LOSS · FF" on one line, not FF under it */
     .src{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
     .src span{font-size:11px;letter-spacing:.08em;padding:1px 6px;border:1px solid var(--line-hot);color:var(--dim);text-transform:uppercase}
     .src .demo{border-color:var(--t);color:var(--t-ink)}
@@ -316,6 +319,9 @@
     /* the end-of-match scoreboard */
     .sbwrap{overflow-x:auto;min-width:0}
     table.sb{width:100%;border-collapse:separate;border-spacing:0 2px;font-size:13px}
+    /* both teams' tables share their columns, so K sits over K: the player
+       column takes a fixed share and the numbers split the rest evenly */
+    @media (min-width:640px){table.sb{table-layout:fixed} table.sb th:first-child{width:34%}}
     table.sb caption{text-align:left;font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase;padding:7px 10px}
     table.sb caption.us{background:linear-gradient(90deg,rgba(39,163,154,.32),transparent);color:var(--win-ink)}
     table.sb caption.them{background:linear-gradient(90deg,rgba(216,101,63,.3),transparent);color:var(--loss-ink)}
@@ -435,7 +441,7 @@
     .rec .tag.cl{background:var(--ct-ink)}
     /* a match's buys, round by round */
     .econ svg{display:block;width:100%;height:auto;max-width:900px}
-    .econ .axis{fill:var(--dim);font-size:10px;font-family:var(--sans)}
+    .econ .axis{fill:var(--dim);font-size:11px;font-family:var(--sans)}
     .econ .grid{stroke:rgba(255,255,255,.07)}
     /* the Stats page's own tabs, the in-game sub-menu under the main strip */
     .stabs{display:flex;gap:0;margin:0 0 12px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
@@ -446,6 +452,18 @@
     /* long tables scroll inside themselves with the heading pinned */
     .tall .stwrap{max-height:520px;overflow:auto}
     .tall table.st thead th{position:sticky;top:0;background:var(--panel-solid);z-index:1}
+    /* On a phone a box that scrolls both ways inside a page that scrolls is a
+       trap for the thumb: the page does the up-and-down, the table only goes
+       sideways, and the name column stays put while it does. */
+    @media (max-width:700px){
+      .tall .stwrap,.spotlay .tall .stwrap{max-height:none}
+      .stwrap table.st th:first-child,.stwrap table.st td:first-child{position:sticky;left:0;background:var(--panel-solid);z-index:1;box-shadow:6px 0 6px -6px rgba(0,0,0,.8)}
+      .tall table.st thead th:first-child{z-index:2}
+      /* a highlighted row's tint is see-through: lay it over the solid colour,
+         or the numbers scrolling under the pinned name show through */
+      .stwrap table.st tr.spot:hover td:first-child{background:linear-gradient(rgba(255,255,255,.04),rgba(255,255,255,.04)),var(--panel-solid)}
+      .stwrap table.st tr.spot.on td:first-child{background:linear-gradient(rgba(231,193,120,.12),rgba(231,193,120,.12)),var(--panel-solid)}
+    }
 
     /* ══ latest match: the way in ═══════════════════════════ */
     .latest{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:18px;padding:22px;border-left:4px solid var(--tie)}
@@ -485,6 +503,7 @@
     }
 
     /* ══ what a number means: tap the ⓘ ═════════════════════ */
+    .nw{white-space:nowrap}
     .qi{display:inline-grid;place-items:center;width:22px;height:22px;margin:-4px 0 -4px 4px;padding:0;vertical-align:middle;cursor:pointer;
       background:none;border:1px solid var(--line-hot);border-radius:50%;font:italic 700 12px/1 Georgia,serif;color:var(--dim);text-transform:none;letter-spacing:0}
     .qi:hover,.qi[aria-expanded="true"]{color:var(--bright);border-color:var(--t-ink)}
@@ -902,6 +921,15 @@ function boot() {
   const thin = (text, n, unit = "") => n >= FEW ? text
     : `<span class="thin" title="${esc(`Only ${n}${unit ? ` ${unit}${n === 1 ? "" : "s"}` : ""} behind this, too few to read much into`)}">${text}</span>`;
   const info = (k, label) => `<button type="button" class="qi" data-gloss="${k}" aria-label="What is ${esc(label)}?" aria-expanded="false">i</button>`;
+  // a label and its (i), the button glued to the last word so it can't wrap
+  // onto a line of its own under "HEADSHOT %" in a narrow tile
+  // (a last word as short as "%" takes the one before it along, or it's orphaned)
+  const tagged = (l, g) => {
+    if (!g) return l;
+    let i = l.lastIndexOf(" ");
+    if (i > 0 && l.length - i <= 3) i = l.lastIndexOf(" ", i - 1);
+    return `${l.slice(0, i + 1)}<span class="nw">${l.slice(i + 1)}${info(g, l)}</span>`;
+  };
   {
     const box = document.createElement("div"); box.className = "gloss"; box.hidden = true; box.setAttribute("role", "status");
     document.body.appendChild(box);
@@ -1153,7 +1181,7 @@ function boot() {
       : !n ? `No ranked games here, only ${other} custom/casual, which the averages don't count.`
       : `${n} ranked match${n === 1 ? "" : "es"}${oldest ? ` since ${when(oldest)}` : ""}${other ? ` · ${other} custom/casual not counted` : ""}${n < FEW ? " · a small sample, so read these loosely" : ""}`;
     // "—" means there is nothing to measure; a 0 is a real zero
-    const chip = (v, l, g) => `<div class="chip"><b>${v}</b><span>${l}${g ? info(g, l) : ""}</span></div>`;
+    const chip = (v, l, g) => `<div class="chip"><b>${v}</b><span>${tagged(l, g)}</span></div>`;
     $("chips").innerHTML = [chip(n, "Matches"), chip(n ? `${tally.W}-${tally.L}${tally.T ? `-${tally.T}` : ""}` : "—", tally.T ? "W-L-D" : "W-L"),
       chip(n ? pct(100 * tally.W / n) : "—", "Win rate", "winrate"), chip(d ? fix(k / d, 2) : n ? fix(k, 2) : "—", "K/D", "kd"),
       chip(rounds ? fix(dmg / rounds, 0) : "—", "ADR", "adr"), chip(k ? pct(100 * hsk / k) : n ? "0%" : "—", "Headshot %", "hs"),
@@ -1171,8 +1199,8 @@ function boot() {
   // Leetify's profile is all-time: the slice can't narrow it, and it says so
   (() => {
     const L = D.leetify || {}, R = L.rating || {};
-    const bar = (label, v, g) => `<div class="sbar"><span>${label}${info(g, label)}</span><div class="track" role="img" aria-label="${label} ${fix(v, 0)} out of 100"><div class="fill" style="width:${Math.max(0, Math.min(100, v || 0))}%"></div></div><span class="v">${fix(v, 0)}<small>/100</small></span></div>`;
-    const kvi = (label, g, v) => `<div class="kv"><span>${label}${info(g, label)}</span><b>${v}</b></div>`;
+    const bar = (label, v, g) => `<div class="sbar"><span>${tagged(label, g)}</span><div class="track" role="img" aria-label="${label} ${fix(v, 0)} out of 100"><div class="fill" style="width:${Math.max(0, Math.min(100, v || 0))}%"></div></div><span class="v">${fix(v, 0)}<small>/100</small></span></div>`;
+    const kvi = (label, g, v) => `<div class="kv"><span>${tagged(label, g)}</span><b>${v}</b></div>`;
     $("ratings").innerHTML = R.aim != null
       ? bar("Aim", R.aim, "aim") + bar("Positioning", R.positioning, "positioning") + bar("Utility", R.utility, "utility")
         + kvi("Clutching", "clutch", signed(R.clutch)) + kvi("Opening duels", "opening", signed(R.opening))
@@ -1191,11 +1219,22 @@ function boot() {
      axis), oldest on the left. Bars are coloured by result in both, and the
      solid line is the trend: the average of each game and the four before it. */
   const TREND = 5;
-  function barChart(box, pts, val, { fmt, label, zeroLine, avgLine, floor = 0, ceil = 0 }) {
+  function barChart(box, pts, val, opts) {
+    const { fmt, label, zeroLine, avgLine, floor = 0, ceil = 0 } = opts;
     const tip = box.parentElement.querySelector(".tip");
+    // Drawn at the width it really has, so a unit is a pixel and the axis text
+    // is the 11px it says: a fixed 900-wide chart shrunk onto a phone came out
+    // 4px text on an 80px strip. Redrawn when the width changes (a tab shown,
+    // a phone turned); hidden, it has no width yet and draws at 900.
+    box.redraw = () => barChart(box, pts, val, opts);
+    if (!box.sized) {
+      box.sized = new ResizeObserver(() => { const w = Math.round(box.clientWidth); if (w && Math.abs(w - (box.drawnW || 0)) > 8) box.redraw(); });
+      box.sized.observe(box);
+    }
     tip.style.opacity = 0; box.pts = pts;
     if (!pts.length) { box.innerHTML = `<p class="empty">${SL.length ? `No ranked games with a ${label} among the matches counted.` : "Nothing to chart yet."}</p>`; return; }
-    const W = 900, H = 220, padL = 40, padB = 22, padT = 12;
+    const W = Math.max(280, Math.round(box.clientWidth) || 900), H = W < 560 ? 180 : 220, padL = 40, padB = 22, padT = 12;
+    box.drawnW = box.clientWidth ? W : 0;
     const vs = pts.map(val), hi = Math.max(ceil, ...vs) * 1.08, lo = Math.min(floor, ...vs) * 1.08;
     const step = [1, 2, 5, 10, 20, 40, 50, 100].find((s) => (hi - lo) / s <= 6) || 200;
     const bw = (W - padL) / pts.length, y = (v) => padT + (H - padT - padB) * (hi - v) / (hi - lo);
@@ -1370,6 +1409,7 @@ function boot() {
       drawSight(ctx, sightPoly(maskOf(img), ...toRadar(cal, p.x, p.y), p.yaw), k, vx, vy);
     const flashed = new Set((flashes || []).filter((f) => f[0] <= t && t <= f[0] + f[3]).map((f) => f[2]));
     const dotR = 8 * scaleUI;
+    const tags = [];                                    // name labels, placed last so none overlap
     const order = players.slice().sort((a, b) => (seats[a.seat] && seats[a.seat].me ? 1 : 0) - (seats[b.seat] && seats[b.seat].me ? 1 : 0));
     for (const p of order) {
       if (p.x == null) continue;
@@ -1391,11 +1431,7 @@ function boot() {
         ctx.lineWidth = (me ? 3 : 2) * scaleUI; ctx.strokeStyle = me ? "#fff" : "#07090c"; ctx.stroke();
         if (flashed.has(p.seat)) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2 * scaleUI; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(px, py, dotR * 2, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
       }
-      if (labels) {
-        const label = (me ? "Ric" : nameOf(seats, p.seat)).slice(0, 16);
-        ctx.font = `600 ${12 * scaleUI}px system-ui`; ctx.lineWidth = 3 * scaleUI; ctx.strokeStyle = "rgba(0,0,0,.85)"; ctx.fillStyle = "#fff";
-        ctx.strokeText(label, px + dotR + 4, py - dotR + 2); ctx.fillText(label, px + dotR + 4, py - dotR + 2);
-      }
+      if (labels) { const nm_ = me ? "Ric" : nameOf(seats, p.seat); tags.push({ px, py, label: nm_.length > 16 ? nm_.slice(0, 15) + "…" : nm_ }); }
     }
     // Every shot anyone fired (the demo logs each trigger pull), drawn over the
     // players so a cone can't wash it out, and fading in SHOT_S. The shooter
@@ -1441,6 +1477,26 @@ function boot() {
       }
       ctx.fillStyle = `rgba(255,240,170,${fade})`;
       ctx.beginPath(); ctx.arc(mx, my, dotR * 0.8 * (0.5 + fade / 2), 0, 7); ctx.fill();
+    }
+    // Names go on top of everything, top to bottom, each nudged down until it
+    // clears the ones already placed: a stack at spawn otherwise prints five
+    // names over each other. A moved label keeps a thin line to its player.
+    if (tags.length) {
+      ctx.font = `600 ${12 * scaleUI}px system-ui`;
+      const h = 14 * scaleUI, placed = [];
+      const clash = (b) => placed.some((q) => b[0] < q[0] + q[2] && q[0] < b[0] + b[2] && b[1] < q[1] + q[3] && q[1] < b[1] + b[3]);
+      for (const g of tags.sort((a, b) => a.py - b.py)) {
+        const w = ctx.measureText(g.label).width, x = g.px + dotR + 4;
+        let y = g.py - dotR + 2, n = 0;
+        while (clash([x - 2, y - h + 3, w + 4, h]) && n < 10) { y += h; n++; }
+        placed.push([x - 2, y - h + 3, w + 4, h]);
+        if (n) {
+          ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1 * scaleUI;
+          ctx.beginPath(); ctx.moveTo(g.px + dotR * 0.8, g.py); ctx.lineTo(x - 3, y - h / 2 + 3); ctx.stroke();
+        }
+        ctx.lineWidth = 3 * scaleUI; ctx.strokeStyle = "rgba(0,0,0,.85)"; ctx.fillStyle = "#fff";
+        ctx.strokeText(g.label, x, y); ctx.fillText(g.label, x, y);
+      }
     }
     const spot = (seat) => { const p = players.find((q) => q.seat === seat && !q.dead && q.x != null); return p ? P(p.x, p.y) : null; };
     const ring = (seat, frac, col) => {
@@ -1867,7 +1923,8 @@ function boot() {
     const me = m.me, res = { W: "WIN", L: "LOSS", T: "DRAW" }[m.result] + (m.surrender ? " · FF" : ""), cal = radarFor(m.map);
     return `<div class="match" id="m-${esc(m.id)}">
       <button class="mrow r${m.result}" data-id="${esc(m.id)}" aria-label="${esc(`${mapName(m.map)} ${m.score[0]}:${m.score[1]}, ${when(m.at)}. Open the match`)}">
-        <span class="thumb" style="${cal ? `background-image:url('projects/cs/${cal.img}')` : ""}" aria-hidden="true"></span>
+        ${cal ? `<span class="thumb" style="background-image:url('projects/cs/${cal.img}')" aria-hidden="true"></span>`
+              : `<span class="thumb none" aria-hidden="true">${esc(mapName(m.map).slice(0, 1))}</span>`}
         <span class="when">${esc(when(m.at))}</span>
         <span class="mapc"><span class="map">${esc(mapName(m.map))}</span><span class="mode">${esc(modeName(m.mode))}</span></span>
         <span class="scorec"><span class="score ${m.result}">${m.score[0]}:${m.score[1]}<small>${res}</small></span></span>
@@ -1974,7 +2031,7 @@ function boot() {
     let list = currentList(); if (!list.some((x) => x.id === m.id)) list = matches;
     const i = list.findIndex((x) => x.id === m.id), res = { W: "Win", L: "Loss", T: "Draw" }[m.result];
     const report = `<a class="note" href="projects/cs/llm/${encodeURIComponent(m.id)}.md">Full report as text</a>`;
-    const chipM = (v, l, style = "", g) => `<div class="chip"><b${style}>${v}</b><span>${l}${g ? info(g, l) : ""}</span></div>`;
+    const chipM = (v, l, style = "", g) => `<div class="chip"><b${style}>${v}</b><span>${tagged(l, g)}</span></div>`;
     out.push(`<div class="mnav"><button type="button" class="btn ghost" data-mback>← All matches</button>
       <span class="note">${i + 1} of ${list.length}</span>
       <span style="display:flex;gap:4px;margin-left:auto"><button type="button" class="btn ghost" data-mnav="-1"${i > 0 ? "" : " disabled"} aria-label="Previous match">‹ Prev</button>
@@ -2012,13 +2069,16 @@ function boot() {
     }
     out.push(econChart(m));
     if (m.board && m.board.length) {
+      // Leetify rates every player only for games it parsed; otherwise the
+      // column is ten dashes, so it isn't drawn at all
+      const rated = m.board.some((s) => s.rating != null);
       const table = (us) => {
         const seats = m.board.filter((s) => s.us === us).sort((a, b) => (b.score ?? b.k) - (a.score ?? a.k) || b.k - a.k);
         let mate = 0, foe = 0;
         return `<div class="sbwrap"><table class="sb"><caption class="${us ? "us" : "them"}">${us ? "Ric's team" : "Opponents"} · ${us ? m.score[0] : m.score[1]}</caption>
-          <thead><tr><th scope="col">Player</th><th scope="col">K</th><th scope="col">A</th><th scope="col">D</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col" class="mvp">MVP</th><th scope="col">Leetify${info("rating", "the Leetify rating")}</th></tr></thead>
+          <thead><tr><th scope="col">Player</th><th scope="col">K</th><th scope="col">A</th><th scope="col">D</th><th scope="col">ADR</th><th scope="col">HS%</th><th scope="col" class="mvp">MVP</th>${rated ? `<th scope="col">Leetify${info("rating", "the Leetify rating")}` : ""}</th></tr></thead>
           <tbody>${seats.map((s) => `<tr${s.me ? ' class="me"' : ""}><td>${s.me ? "Ric" : s.name ? esc(s.name) : us ? `Teammate ${++mate}` : `Opponent ${++foe}`}</td>
-            <td>${s.k}</td><td>${s.a}</td><td>${s.d}</td><td>${fix(s.adr, 0)}</td><td>${s.k ? pct(100 * (s.hsk || 0) / s.k) : "—"}</td><td class="mvp">${s.mvps ?? "—"}</td><td>${signed(s.rating)}</td></tr>`).join("")}</tbody></table></div>`;
+            <td>${s.k}</td><td>${s.a}</td><td>${s.d}</td><td>${fix(s.adr, 0)}</td><td>${s.k ? pct(100 * (s.hsk || 0) / s.k) : "—"}</td><td class="mvp">${s.mvps ?? "—"}</td>${rated ? `<td>${signed(s.rating)}</td>` : ""}</tr>`).join("")}</tbody></table></div>`;
       };
       out.push(`<div><h3>Scoreboard</h3><div style="display:flex;flex-direction:column;gap:10px">${table(true)}${table(false)}</div></div>`);
     }
