@@ -18,7 +18,8 @@ the win-chance model (winprob.py):
   kills     +0.06 a kill, and +0.05 for each kill within 4 s of the one
             before: a fast double reads as more than two slow ones.
   aim       +0.02 a headshot.
-  eco       +0.04 a kill when they'd bought under $2,000.
+  eco       +0.04 a kill when they'd bought under $2,000 against a team that
+            averaged $3,500 or more (not a pistol round, where nobody has).
   won       +0.10 when their team won the round.
 
 Picked on Yallzbalz's Vertigo game, 2026-10-15: kills alone chose round 7 (2
@@ -36,6 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import winprob  # noqa: E402
 
 ECO = 2000
+FOES_BOUGHT = 3500
 BURST_S = 4
 
 
@@ -85,8 +87,12 @@ def round_score(coef, R, r, seat):
                 alone = foes_left
     if alone and won and not any(g.get("victim") == seat for g in fs):
         clutch = alone
-    buy = ((r.get("economy") or {}).get(str(seat)) or {}).get("equip")
-    eco = buy is not None and buy < ECO
+    econ = r.get("economy") or {}
+    buy = (econ.get(str(seat)) or {}).get("equip")
+    # an eco is little money against a team that bought: a pistol round,
+    # where nobody has anything, isn't one
+    foes = [(e or {}).get("equip") or 0 for s_, e in econ.items() if (int(s_) in us) != mine]
+    eco = buy is not None and buy < ECO and bool(foes) and sum(foes) / len(foes) >= FOES_BOUGHT
     score = (impact - 0.5 * death + 0.25 * clutch + 0.06 * kills + 0.05 * burst
              + 0.02 * hs + (0.04 * kills if eco else 0) + (0.10 if won else 0))
     return round(score, 3), {"k": kills, "hs": hs, "clutch": clutch, "impact": round(impact, 3),

@@ -22,6 +22,8 @@ sync and writes the same numbers into llm/index.md.
   died      why everyone died (deaths.py), by name, and "*" for everyone:
             {n, head: {cause: deaths}, any: {cause: deaths}, ex: {cause: [game, round, seconds]}};
             Ric's own deaths in fights[] carry their tags as `why`
+  duels[]   who killed whom, every pair of names: [a, b, a killed b, b killed a]
+  story     each match told in a few lines (story.py): {match id: [[kind, text, round, seconds]]}
   best[]    every player's most impressive round of each game (highlight.py):
             [game, name, round, score, seconds to start watching, why,
             the game's total over all their rounds — what ranks their games]
@@ -41,6 +43,7 @@ import csdata  # noqa: E402
 import winprob  # noqa: E402
 import highlight  # noqa: E402
 import deaths  # noqa: E402
+import story  # noqa: E402
 
 OUT = csdata.HERE / "stats.js"
 TRADE_S = 5                     # same window parse-demos.py uses for "traded"
@@ -62,11 +65,21 @@ def build(matches):
     WP = winprob.fit([R for _, R in loaded])        # refitted on every sync
     best = []
     died = {}                                       # name -> counts and an example of each
+    duels = {}                                      # (a, b), a < b by name -> [a killed b, b killed a]
+    stories = {}                                    # match id -> its story (story.py)
     for m, R in loaded:
         gi = len(games)
         # why everyone in this game died (deaths.py), newest game last so
         # each example ends up being their latest death of that kind
         names_ = {s["seat"]: s.get("name") for s in R["seats"]}
+        stories[m["id"]] = story.tell(WP["coef"], R, m)
+        for r_ in R["rounds"]:                      # who killed whom, between every pair of names
+            end_ = (r_.get("dur") or 1e9) + 0.5
+            for f_ in r_.get("fights") or []:
+                ka, va = names_.get(f_.get("killer")), names_.get(f_.get("victim"))
+                if ka and va and ka != va and f_.get("t") is not None and f_["t"] <= end_:
+                    key_ = tuple(sorted((ka, va)))
+                    duels.setdefault(key_, [0, 0])[0 if ka == key_[0] else 1] += 1
         for ri_, f_, v_, tags in deaths.every_death(R):
             nm_ = names_.get(v_)
             for key in ([nm_] if nm_ else []) + ["*"]:
@@ -184,7 +197,8 @@ def build(matches):
             rounds.append(row)
     return {"games": games, "rounds": rounds, "fights": fights,
             "hits": [[mp, sd, d, g, c] for (mp, sd, d, g), c in sorted(hits.items())],
-            "nades": nades, "flashes": flashes, "wp": WP, "best": best, "died": died}
+            "nades": nades, "flashes": flashes, "wp": WP, "best": best, "died": died,
+            "duels": [[a, b, x, y] for (a, b), (x, y) in sorted(duels.items())], "story": stories}
 
 
 def pct(a, b):

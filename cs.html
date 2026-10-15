@@ -241,6 +241,25 @@
     .rec .tag.wpt{background:rgba(79,209,197,.18);color:var(--win-ink);min-width:46px;text-align:center;display:inline-block}
     .note b.good{color:var(--win-ink)} .note b.bad{color:var(--loss-ink)}
     .vsave{display:inline-flex;flex-wrap:wrap;gap:6px}
+    /* the story of a match */
+    .story{margin-bottom:18px} .story ol{list-style:none;margin:0;padding:0}
+    .story li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+    .story .si{font-size:16px;color:var(--t-ink);text-align:center} .story .stx{font-size:15px;line-height:1.45}
+    .story li.st-decided .stx{font-weight:700;color:var(--bright)}
+    .story .pp{min-height:36px;padding:0 10px;white-space:nowrap}
+    @media (max-width:520px){.story .pp span{display:none}}
+    /* head to head */
+    .h2hhead{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+    .h2hhead .ph3{margin:0} .h2hpick{font-size:14px;color:var(--dim);display:flex;align-items:center;gap:8px}
+    .h2hpick select{font:inherit;color:var(--bright);background:#07090c;border:1px solid var(--line);padding:8px 10px;min-height:40px;max-width:60vw}
+    .h2hsub{margin:10px 0}
+    table.h2ht{width:100%;max-width:560px;border-collapse:collapse;font-variant-numeric:tabular-nums}
+    table.h2ht th,table.h2ht td{padding:9px 10px;border-top:1px solid var(--line);text-align:right}
+    table.h2ht thead th{border-top:0;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+    table.h2ht tbody th{text-align:left;font-weight:400;color:var(--dim)}
+    table.h2ht td{font-family:var(--display);font-weight:700;font-size:18px;color:var(--text,#c9d1da)}
+    table.h2ht td.win{color:var(--t-ink)} table.h2ht td.win::before{content:"▲ ";font-size:11px;vertical-align:2px}
+    .h2hduel{margin:12px 0 0} .h2hduel b{color:var(--bright)}
     /* why he dies */
     .whybox{padding:16px 18px}
     .whysay{font-size:16px;line-height:1.5;margin:0 0 14px;max-width:70ch} .whysay b{color:var(--bright)}
@@ -2128,6 +2147,12 @@ function boot() {
     }
     const w = e.target.closest("[data-pwatch]"); if (w) return watchBest(w.dataset.pwatch, +w.dataset.pround, +w.dataset.pt, w.dataset.prec);
   });
+  $("playerbox").addEventListener("change", (e) => {
+    const sel = e.target.closest("[data-h2h]"); if (!sel) return;
+    const name = $("playerbox").dataset.player, sh = sharedWith(name), other = sel.value;
+    $("playerbox").querySelector("[data-h2hbody]").innerHTML = h2h(name, other, sh.get(other) || []);
+    history.replaceState(null, "", `#player/${encodeURIComponent(name)}${other === ME_NAME ? "" : `/vs/${encodeURIComponent(other)}`}`);
+  });
   $("playerbox").addEventListener("keydown", (e) => { const r = e.target.closest("[data-player]"); if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPlayer(r.dataset.player); } });
 
   // A player's best round playing on a loop as you open their page, the way
@@ -2190,9 +2215,50 @@ function boot() {
     return me;
   }
 
-  function openPlayer(name, fromAddress) {
+  /* ══ head to head ══════════════════════════════════════
+     Two players side by side in the games they both played — Ric by
+     default, or anyone else they shared a game with — the better number on
+     each line marked, and who killed whom when they were on opposite sides
+     (stats.js tallies every pair). #player/<a>/vs/<b> opens it, to send. */
+  const ME_NAME = (() => { for (const m of matches) for (const b of m.board || []) if (b.me && b.name) return b.name; return null; })();
+  const DUELS = new Map();
+  for (const [a, b, x, y] of (window.CS_STATS && window.CS_STATS.duels) || []) { DUELS.set(a + "\n" + b, [x, y]); DUELS.set(b + "\n" + a, [y, x]); }
+  const shown = (n) => n === ME_NAME ? "Ric" : n;
+  function sharedWith(name) {
+    const out = new Map();
+    for (const m of matches) {
+      const me_ = (m.board || []).find((b) => !b.me && b.name === name); if (!me_) continue;
+      for (const b of m.board || []) if (b !== me_ && b.name) {
+        const k = b.me ? ME_NAME : b.name; if (!k) continue;
+        if (!out.has(k)) out.set(k, []);
+        out.get(k).push({ m, a: me_, b });
+      }
+    }
+    return out;
+  }
+  function h2h(name, other, games) {
+    const line = (rows, pick) => {
+      const k = rows.reduce((s_, g) => s_ + (pick(g).k || 0), 0), d = rows.reduce((s_, g) => s_ + (pick(g).d || 0), 0);
+      const hsk = rows.reduce((s_, g) => s_ + (pick(g).hsk || 0), 0), dmg = rows.reduce((s_, g) => s_ + (pick(g).dmg || 0), 0);
+      const rounds = rows.reduce((s_, g) => s_ + g.m.score[0] + g.m.score[1], 0);
+      let w = 0; for (const g of rows) { const b = pick(g); if ((b.us ? g.m.result : { W: "L", L: "W", T: "T" }[g.m.result]) === "W") w++; }
+      return { w, kd: d ? k / d : k, adr: rounds ? dmg / rounds : 0, k, hs: k ? 100 * hsk / k : 0, mvps: rows.reduce((s_, g) => s_ + (pick(g).mvps || 0), 0) };
+    };
+    const A = line(games, (g) => g.a), B = line(games, (g) => g.b);
+    const same = games.filter((g) => g.a.us === g.b.us).length, opp = games.length - same;
+    const row = (label, x, y, fmt) => `<tr><th scope="row">${label}</th><td class="${x > y ? "win" : ""}">${fmt(x)}</td><td class="${y > x ? "win" : ""}">${fmt(y)}</td></tr>`;
+    const [ak, bk] = DUELS.get(name + "\n" + other) || [0, 0];
+    return `<p class="note h2hsub">${games.length} game${games.length === 1 ? "" : "s"} together${same && opp ? `: ${same} on the same team, ${opp} against each other` : same ? ", all on the same team" : ", all against each other"}.</p>
+      <table class="h2ht"><thead><tr><th></th><th scope="col">You</th><th scope="col">${esc(shown(other))}</th></tr></thead><tbody>
+        ${row("Games won", A.w, B.w, (v) => v)}${row("K/D", A.kd, B.kd, (v) => v.toFixed(2))}${row("ADR", A.adr, B.adr, (v) => Math.round(v))}
+        ${row("Kills", A.k, B.k, (v) => v)}${row("HS%", A.hs, B.hs, (v) => `${Math.round(v)}%`)}${row("MVPs", A.mvps, B.mvps, (v) => v)}</tbody></table>
+      ${opp && (ak || bk) ? `<p class="h2hduel">Against each other you killed ${esc(shown(other))} <b>${ak}</b> time${ak === 1 ? "" : "s"}; ${esc(shown(other))} killed you <b>${bk}</b>.</p>` : ""}`;
+  }
+
+  function openPlayer(name, fromAddress, vs) {
     const games = PLAYERS.get(name);
     if (!games) { $("pq").value = name; go("players", fromAddress); return showPlayers(); }
+    $("playerbox").dataset.player = name;
     if (!fromAddress && location.hash !== `#player/${encodeURIComponent(name)}`) history.pushState(null, "", `#player/${encodeURIComponent(name)}`);
     go("players", true, true);
     document.querySelector(".psearch").hidden = true;
@@ -2224,6 +2290,12 @@ function boot() {
         ${tops.slice(0, 3).map((x, i) => { const g = gameOf(x);
           return `<div class="ptop"><span class="pn">${i + 1}</span><span class="pw"><b>${esc(mapName(g.m.map))} · round ${x.round}</b><small>${esc(x.why || "")}${x.why ? " · " : ""}${esc(when(g.m.at))}</small></span>
             <span class="pa">${watchBtn(x, "▶", false, "pp")}${watchBtn(x, "Save video", true, "pp")}</span></div>`; }).join("")}</div>` : ""}
+      ${(() => { const sh = sharedWith(name); if (!sh.size) return "";
+        const opts = [...sh.entries()].sort((a, b) => (b[0] === ME_NAME) - (a[0] === ME_NAME) || b[1].length - a[1].length || fold(a[0]).localeCompare(fold(b[0])));
+        const pick = vs && sh.has(vs) ? vs : opts[0][0];
+        return `<div class="panel h2h"><div class="h2hhead"><h3 class="ph3">Head to head</h3>
+          <label class="h2hpick">with <select data-h2h>${opts.map(([n, g]) => `<option value="${esc(n)}"${n === pick ? " selected" : ""}>${esc(shown(n))} (${g.length})</option>`).join("")}</select></label></div>
+          <div data-h2hbody>${h2h(name, pick, sh.get(pick))}</div></div>`; })()}
       ${(() => { const CS = window.CS_STATS, d = CS && CS.died && CS.died[name]; if (!d) return "";
         const ex = {}; for (const [k, v] of Object.entries(d.ex || {})) { const g = CS.games[v[0]]; if (g) ex[k] = [g.id, v[1], v[2]]; }
         return `<div class="panel whybox"><h3 class="ph3">Why you die</h3>${whyBlock(d, CS.died["*"], ex, true)}</div>`; })()}
@@ -2352,6 +2424,7 @@ function boot() {
       const n = e.target.closest("[data-mnav]"); if (n) return stepMatch(+n.dataset.mnav);
       const r = e.target.closest("[data-replay]"); if (r) return showReplay(r.dataset.replay, true);
       const w = e.target.closest("[data-rwatch]"); if (w && openId != null) return showReplay(openId, true, +w.dataset.rwatch, 0);
+      const sw = e.target.closest("[data-swatch]"); if (sw && openId != null) return showReplay(openId, true, +sw.dataset.swatch - 1, +sw.dataset.t);
       const s = e.target.closest("[data-snaps]");
       if (s) { snapState.id = s.dataset.snaps; snapState.i = 0; renderSnapBar(); go("snapshots"); }
     });
@@ -2436,6 +2509,14 @@ function boot() {
         : `<p class="note">No 2D data for this one yet: ${m.at && Date.now() - new Date(m.at) > 28 * 864e5
           ? "Valve deleted its demo before it was saved here." : "Valve still has its demo, and it arrives with the next sync."} ${report}</p>`}
     </div><div class="panel detail">`);
+    // the match in a few lines (story.py): each one a round to watch
+    const tale = (window.CS_STATS && window.CS_STATS.story && window.CS_STATS.story[m.id]) || [];
+    if (tale.length) {
+      const icon = { decided: "◆", comeback: "↺", clutch: "★", escape: "⚡", star: "♛" };
+      out.push(`<div class="story"><h3>The story</h3><ol>${tale.map(([kind, text, rnd, t]) => `<li class="st-${esc(kind)}">
+          <span class="si" aria-hidden="true">${icon[kind] || "•"}</span><span class="stx">${esc(text)}</span>
+          ${m.replay ? `<button type="button" class="pp" data-swatch="${rnd}" data-t="${t}" aria-label="Watch round ${rnd}">▶ <span>Round ${rnd}</span></button>` : ""}</li>`).join("")}</ol></div>`);
+    }
     if (m.rounds && m.rounds.length) {
       // the gap goes where the sides swapped; a game surrendered before the half has none
       const half = m.rounds.findIndex((r, i) => i && r.side && m.rounds[i - 1].side && r.side !== m.rounds[i - 1].side);
@@ -3428,7 +3509,7 @@ ${cal.split != null ? "<span>other floor dimmed</span>" : ""}`}</div></div></div
       }
     }
     const who = location.hash.match(/^#player\/(.+)$/);
-    if (who) { openPlayer(decodeURIComponent(who[1]), true); return; }
+    if (who) { const [a, b] = who[1].split("/vs/"); openPlayer(decodeURIComponent(a), true, b ? decodeURIComponent(b) : null); return; }
     const deep = location.hash.match(/^#match-(.+)$/);
     if (deep) {
       openMatch(decodeURIComponent(deep[1]));

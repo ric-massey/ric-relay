@@ -26,6 +26,7 @@ import winprob  # noqa: E402
 import deaths  # noqa: E402
 
 WP = None                       # the round-win model; main() fits it before the reports
+S_ = None                       # stats.js as main() writes it: the stories, the deaths
 
 OUT = csdata.HERE / "llm"
 SITE = "https://ricmassey.com"
@@ -216,6 +217,11 @@ def match_md(m, player):
                              s["k"], s["d"], s["a"], f(s.get("adr")), f(s.get("hsk")), f(s.get("mvps")),
                              rating(s.get("rating"))) for s in seats]))
             L.append("")
+
+    # ── the story (story.py, carried in stats.js) ──
+    tale = ((S_ or {}).get("story") or {}).get(m["id"]) or []
+    if tale:
+        L += ["## The story", ""] + [f"- {text} (round {rnd})" for _k, text, rnd, _t in tale] + [""]
 
     # ── round strip ──
     if m.get("rounds"):
@@ -564,6 +570,8 @@ def main():
     global WP
     S = stats.write(matches)            # stats.js, the page's Stats section — and the model
     WP = S.get("wp")
+    global S_
+    S_ = S
     for m in matches:
         name = f"{m['id']}.md"
         keep.add(name)
