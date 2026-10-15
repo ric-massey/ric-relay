@@ -241,6 +241,16 @@
     .rec .tag.wpt{background:rgba(79,209,197,.18);color:var(--win-ink);min-width:46px;text-align:center;display:inline-block}
     .note b.good{color:var(--win-ink)} .note b.bad{color:var(--loss-ink)}
     .vsave{display:inline-flex;flex-wrap:wrap;gap:6px}
+    .recbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:80;
+      display:flex;align-items:center;gap:10px;width:max-content;max-width:calc(100vw - 24px);padding:8px 8px 8px 14px;
+      background:#141820;border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.65);font-size:14px;color:var(--bright)}
+    .recbar[hidden]{display:none}
+    .recbar .msg{min-width:0;overflow-wrap:anywhere}
+    .recbar .dot{flex:none;width:10px;height:10px;border-radius:50%;background:#e0453a;animation:recblink 1s steps(2) infinite}
+    .recbar.done .dot{background:var(--win-ink);animation:none} .recbar.done.bad .dot{background:var(--dim)}
+    .recbar .pp{flex:none;min-height:40px;padding:0 14px}
+    @keyframes recblink{50%{opacity:.2}}
+    @media (prefers-reduced-motion:reduce){.recbar .dot{animation:none}}
     /* players */
     .psearch{display:grid;gap:8px;margin-bottom:12px}
     .psearch label{font-size:14px;color:var(--dim)}
@@ -2444,6 +2454,34 @@ function boot() {
       .find((t) => { try { return MediaRecorder.isTypeSupported(t); } catch { return false; } }) || null;
   })();
   const CAN_RECORD = !!REC_TYPE;
+  // The banner a recording shows, pinned to the bottom of the screen: from a
+  // player's page the replay's own buttons are below the map, off a phone's
+  // screen, and nothing else said a video was being made or that the tab has
+  // to stay open. Afterwards it says what was saved, then goes.
+  const recBar = (() => {
+    const el = document.createElement("div");
+    el.className = "recbar"; el.setAttribute("role", "status"); el.hidden = true;
+    el.innerHTML = `<span class="dot" aria-hidden="true"></span><span class="msg"></span><button type="button" class="pp">Stop</button>`;
+    document.body.appendChild(el);
+    const msg = el.querySelector(".msg"), stopB = el.querySelector("button");
+    let onStop = null, timer = 0, last = -1;
+    stopB.addEventListener("click", () => { if (onStop) onStop(); });
+    return {
+      start(stop) {
+        clearTimeout(timer); onStop = stop; last = -1;
+        el.classList.remove("done", "bad"); stopB.hidden = false; el.hidden = false;
+      },
+      // the seconds are hidden from screen readers, or they'd hear every one
+      left(sec) {
+        if (sec === last) return; last = sec;
+        msg.innerHTML = `<b>Recording video…</b> <span aria-hidden="true">${sec} s left · </span>keep this tab open`;
+      },
+      end(html, ok) {
+        onStop = null; el.classList.add("done"); el.classList.toggle("bad", !ok); stopB.hidden = true;
+        msg.innerHTML = html; clearTimeout(timer); timer = setTimeout(() => { el.hidden = true; }, 6000);
+      },
+    };
+  })();
 
   function showReplay(id, scroll, round = 0, at = null, still = false) {
     const m = matches.find((x) => x.id === id); if (!m) return;
@@ -2618,13 +2656,16 @@ function boot() {
         box.querySelectorAll("[data-rec]").forEach((b) => { b.disabled = false; });
       };
       rec.onstop = () => {
-        done(); if (cancelled || !chunks.length) return;
+        done();
+        if (cancelled) return recBar.end("Recording stopped. Nothing was saved.", false);
+        if (!chunks.length) return recBar.end("This browser couldn't make the video.", false);
         const ext = REC_TYPE.startsWith("video/mp4") ? "mp4" : "webm";
         const d = new Date(m.at), p2 = (n) => String(n).padStart(2, "0"), a = document.createElement("a");
         const day = isNaN(d) ? "" : `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;   // the day he played it, not UTC's
         a.href = URL.createObjectURL(new Blob(chunks, { type: REC_TYPE.split(";")[0] }));
         a.download = `cs-${mapName(m.map).toLowerCase().replace(/\W+/g, "")}-${day}-round-${rn + 1}${kind === "clip" ? `-${mmss(from).replace(":", "m")}s` : ""}.${ext}`;
         document.body.appendChild(a); a.click(); a.remove();
+        recBar.end(`<b>Saved:</b> ${esc(a.download)}`, true);
         setTimeout(() => URL.revokeObjectURL(a.href), 30000);
       };
       const tick = (nowMs) => {
@@ -2632,11 +2673,14 @@ function boot() {
         const t = Math.min(to, from + (nowMs - start) / 1000 * speed);
         frame(t);
         btn.textContent = `Recording… ${Math.ceil((to - t) / speed)} s · stop`;
+        recBar.left(Math.ceil((to - t) / speed));
         if (t >= to) { setTimeout(() => rec.state !== "inactive" && rec.stop(), 150); return; }
         raf = requestAnimationFrame(tick);
       };
       box.querySelectorAll("[data-rec]").forEach((b) => { b.disabled = b !== btn; });
-      recording = { cancel() { cancelled = true; if (rec.state !== "inactive") rec.stop(); else done(); } };
+      recording = { cancel() { cancelled = true; if (rec.state !== "inactive") rec.stop(); else { done(); recBar.end("Recording stopped. Nothing was saved.", false); } } };
+      recBar.start(() => recording && recording.cancel());
+      recBar.left(Math.ceil((to - from) / speed));
       rec.start(250);
       raf = requestAnimationFrame(tick);
     }
