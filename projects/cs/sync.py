@@ -12,6 +12,7 @@ Steam key yet, a demo that won't parse) never stops the others.
   2. gsi     — fold matches the live listener finished into cs-data.js
   3. steam   — ask Valve's match list what's new; list demos still to download
   4. leetify — backfill and the measurements only Leetify makes
+     (if 3 or 4 turned up share codes we didn't have, 0 and 1 run again)
   5. llm     — rewrite stats.js (the Stats section) and the plain-text reports in llm/
 
 Then, if anything in the room's data changed (cs-data.js, matches/, llm/, stats.js), it
@@ -118,14 +119,31 @@ def publish():
         problem("push: " + r.stderr.strip())
 
 
-def main():
+def share_codes():
+    try:
+        return set(json.loads((HERE / ".cs-state.json").read_text(encoding="utf-8")).get("codes", {}))
+    except (OSError, ValueError):
+        return set()
+
+
+def demos():
     if (HERE / "fetcher" / "node_modules").is_dir():
         step("fetch", str(HERE / "fetcher" / "fetch-demos.mjs"), exe="node")
     step("demos", str(HERE / "parse-demos.py"))
+
+
+def main():
+    codes = share_codes()
+    demos()
     step("gsi", "-c", f"import sys; sys.path.insert(0, {str(HERE)!r}); import gsi; "
                       "print(f'gsi: {gsi.merge()} new match(es) from the live feed')")
     step("steam", str(HERE / "steam.py"))
     step("leetify", str(HERE / "pull-leetify.py"))
+    # Steam and Leetify are where share codes come from, and they run after the
+    # fetch — so a game they just found would otherwise wait a whole session for
+    # its demo (2026-10-15: three games did). Go round once more if they did.
+    if share_codes() - codes:
+        demos()
     step("llm", str(HERE / "export-llm.py"))
     commit()
     publish()
