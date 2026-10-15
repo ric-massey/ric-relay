@@ -76,8 +76,12 @@ thing (it launches CS2 through Steam). Log: `%LOCALAPPDATA%\ric-terminal\cs-sess
 
 `sync.py` = demos → live feed → Steam → Leetify, each in its own process so one
 failing never stops the rest, then **commits `cs-data.js` and `matches/` only**
-(on `main`, never mid-merge). It never pushes; a push is a publish. Set
-`"commit": false` in `cs-account.json` to stop the commits.
+(on `main`, never mid-merge), then **pushes them** so a session reaches the site
+by itself (Ric's call, 2026-10-14). It pushes only commits that touch nothing but
+the room's data; if other work is waiting to go out it pushes nothing and says
+so. If GitHub moved on meanwhile it rebases its commits on top first, and if that
+won't go cleanly it leaves everything for you. `"push": false` in
+`cs-account.json` stops the push; `"commit": false` stops both.
 
 ## Setup (once)
 

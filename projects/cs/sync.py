@@ -15,8 +15,10 @@ Steam key yet, a demo that won't parse) never stops the others.
   5. llm     — rewrite stats.js (the Stats section) and the plain-text reports in llm/
 
 Then, if anything in the room's data changed (cs-data.js, matches/, llm/, stats.js), it
-commits those files and only those (on main, never mid-merge). It never pushes — on this repo a push is a
-publish, and that stays Ric's call.
+commits those files and only those (on main, never mid-merge), then pushes
+those commits so the session shows up on the site (set "push": false in
+cs-account.json to stop that). It pushes only its own data commits: on this repo
+a push is a publish, so anything else waiting to go out is left for Ric.
 """
 
 import json
@@ -66,6 +68,39 @@ def commit():
     print("commit: " + (r.stdout.splitlines()[0] if r.returncode == 0 else r.stderr.strip()))
 
 
+def publish():
+    """Push the sync's own commits so a session shows up on the site by itself
+    (Ric's call, 2026-10-14; it used to wait for him). It only ever pushes
+    commits that touch nothing but this room's data: if anything else is
+    waiting to go out, it leaves the lot alone and says so."""
+    acct = json.loads((HERE / "cs-account.json").read_text(encoding="utf-8"))
+    if not acct.get("push", True) or not acct.get("commit", True) or os.environ.get("CS_NO_COMMIT"):
+        return
+    if git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip() != "main":
+        return
+    if git("fetch", "-q", "origin", "main").returncode:
+        print("push: couldn't reach GitHub — will try again next sync")
+        return
+    ahead = git("rev-list", "origin/main..HEAD").stdout.split()
+    if not ahead:
+        return
+    mine = tuple(p.rstrip("/") for p in DATA)
+    for c in ahead:
+        files = git("diff-tree", "--no-commit-id", "--name-only", "-r", c).stdout.split()
+        if any(not f.startswith(mine) for f in files):
+            print("push: other unpushed work is on this branch — not pushing; push it yourself when it's ready")
+            return
+    if git("rev-list", "HEAD..origin/main").stdout.strip():
+        # someone else pushed meanwhile: put the match commits on top of theirs
+        r = git("pull", "--rebase", "--autostash", "-q", "origin", "main")
+        if r.returncode:
+            git("rebase", "--abort")
+            print("push: couldn't line up with GitHub (" + r.stderr.strip().splitlines()[-1] + ") — left for you")
+            return
+    r = git("push", "-q", "origin", "main")
+    print(f"push: {len(ahead)} commit(s) published" if r.returncode == 0 else "push: " + r.stderr.strip())
+
+
 def main():
     if (HERE / "fetcher" / "node_modules").is_dir():
         step("fetch", str(HERE / "fetcher" / "fetch-demos.mjs"), exe="node")
@@ -76,6 +111,7 @@ def main():
     step("leetify", str(HERE / "pull-leetify.py"))
     step("llm", str(HERE / "export-llm.py"))
     commit()
+    publish()
 
 
 if __name__ == "__main__":

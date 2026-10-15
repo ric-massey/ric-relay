@@ -491,7 +491,10 @@ that must never break:
   demo). This is CS only; Apex's LiveAPI rule is unchanged.
 - Raw demos, the venv, `cs-account.json`, `.cs-state.json` and the GSI spool are
   gitignored. Steam Web API secrets live in Windows Credential Manager.
-- `sync.py` commits `cs-data.js` and `matches/` only, on `main`, and never pushes.
+- `sync.py` commits the room's data only, on `main`, and **pushes those commits**
+  (Ric's call, 2026-10-14: a session should reach the site by itself). It pushes
+  nothing if any unpushed commit touches other files, and `"push": false` in
+  `cs-account.json` turns it off. VALORANT's sync still never pushes.
 - **The radar is the game's own.** `extract-radars.py` unpacks CS2's radar images and
   overview calibration from the local game files with Source 2 Viewer's CLI (in
   `projects/cs/tools/`, gitignored) into `projects/cs/radar/`. Rerun it after a map
