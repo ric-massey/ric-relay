@@ -17,14 +17,26 @@ const JOBS = {
     setup: async (p) => { await p.click('[data-lmode="loop"]'); await p.waitForTimeout(800); },
     canvas: ".lprev canvas" },
   kondrite: { url: "projects/kondrite/index.html", vp: [1280, 800], wait: 6000,
-    // the front page's run — a real ship flown by the game's own model — copied
-    // out the moment it is drawn, before the menu goes over it, and cropped to
-    // the part of the sky the ship keeps to
+    // The front page's run — a real ship flown by the game's own model —
+    // copied out the moment it is drawn, before the menu goes over it, and
+    // cropped to a window that follows the ship (from the run's own camera),
+    // so the ship, its shots and the rocks are big enough to read.
     setup: async (p) => p.evaluate(() => {
       const src = document.getElementById("game"), c = document.createElement("canvas");
-      c.id = "__rec"; c.width = Math.round(src.width * 0.66); c.height = Math.round(src.height * 0.66); document.body.appendChild(c);
-      const x = c.getContext("2d"), A = window.KondriteAttract, o = A.draw;
-      A.draw = function (...a) { const r = o.apply(this, a); const W = src.width, H = src.height; x.drawImage(src, W * 0.0, H * 0.3, W * 0.66, H * 0.66, 0, 0, c.width, c.height); return r; };
+      const Wc = src.width, Hc = src.height, cw = Math.round(Wc * 0.46), ch = Math.round(Hc * 0.46);
+      c.id = "__rec"; c.width = cw; c.height = ch; document.body.appendChild(c);
+      const x = c.getContext("2d"), A = window.KondriteAttract, o = A.draw, W = A.world;
+      let fx = 0.24, fy = 0.68;
+      A.draw = function (...a) {
+        const r = o.apply(this, a);
+        const [, , w, h] = a, Z = 0.95 * Math.min(w, h) / 700;
+        // where the ship is, as a fraction of the page, eased so the crop glides
+        const tx = 0.24 + (W.ship.x - W.cam.x) * Z / w, ty = 0.68 + (W.ship.y - W.cam.y) * Z / h;
+        fx += (tx - fx) * 0.08; fy += (ty - fy) * 0.08;
+        const sx = Math.min(Wc - cw, Math.max(0, fx * Wc - cw / 2)), sy = Math.min(Hc - ch, Math.max(0, fy * Hc - ch / 2));
+        x.drawImage(src, sx, sy, cw, ch, 0, 0, cw, ch);
+        return r;
+      };
     }),
     canvas: "#__rec" },
   scale: { url: "projects/how-big-everything-is/index.html", vp: [1440, 900], wait: 2500,

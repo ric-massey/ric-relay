@@ -25,13 +25,12 @@
     document.documentElement.classList.add("js");
     try { const t = localStorage.getItem("frontdoor-theme"); if (t === "day" || t === "night") document.documentElement.dataset.theme = t; } catch (e) {}
   </script>
-  <link rel="preload" as="image" href="photos/climbing-10.jpg">
   <style>
-    /* The front door: a graphite page (silver by day) cut open, and the
-       site seen through the cuts. One cut shape, used everywhere: a strip
-       sliced at the same angle, so every window on the page is parallel
-       to every other. The colour lives in the photographs; the page itself
-       keeps to ink, metal and three slivers — violet, magenta, cyan.
+    /* The front door is a feed of rooms, and every room is torn from its own
+       paper: Counter-Strike's steel, the cinema's black and gold, the climbing
+       log's cream, the darkroom's red, the terminal's amber. Each post tears
+       at its foot onto the next one, and the rip in it shows that room
+       working — drawn fresh on every visit, so no two visits look alike.
        Every colour that carries words clears 4.5:1 against what is behind it. */
     :root {
       --bg: #d5d7db;
@@ -39,11 +38,8 @@
       --ink: #0c0d0f;
       --muted: #4a4e55;
       --field: rgba(255,255,255,.55);
-      --panel: #f6f7f8;
       --hair: rgba(12,13,15,.14);
-      --hair-strong: rgba(12,13,15,.3);
-      --head: rgba(221,223,226,.74);
-      --tile: #c7cacf;
+      --head: rgba(221,223,226,.78);
       --violet: #7b3cff;
       --magenta: #ff2d8a;
       --cyan: #00c2ff;
@@ -51,58 +47,45 @@
       --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
       --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+      --narrow: "Avenir Next Condensed", "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
       --ease: cubic-bezier(.2,.7,.2,1);
       color-scheme: light;
     }
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="day"]) {
         --bg: #0a0b0d; --bg-2: #15161a; --ink: #eef0f3; --muted: #9a9fa8;
-        --field: rgba(255,255,255,.05); --panel: #121317; --hair: rgba(255,255,255,.1); --hair-strong: rgba(255,255,255,.24);
-        --head: rgba(10,11,13,.72); --tile: #17181c;
+        --field: rgba(255,255,255,.05); --hair: rgba(255,255,255,.1); --head: rgba(10,11,13,.78);
         color-scheme: dark;
       }
     }
     :root[data-theme="night"] {
       --bg: #0a0b0d; --bg-2: #15161a; --ink: #eef0f3; --muted: #9a9fa8;
-      --field: rgba(255,255,255,.05); --panel: #121317; --hair: rgba(255,255,255,.1); --hair-strong: rgba(255,255,255,.24);
-      --head: rgba(10,11,13,.72); --tile: #17181c;
+      --field: rgba(255,255,255,.05); --hair: rgba(255,255,255,.1); --head: rgba(10,11,13,.78);
       color-scheme: dark;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { background: var(--bg); scroll-padding-top: 84px; }
-    body {
-      color: var(--ink); font: 400 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
-      overflow-x: hidden; min-height: 100vh;
-      /* a little grain, so the metal reads as a surface and not a flat fill */
-      background:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-        radial-gradient(120% 70% at 50% -10%, var(--bg-2), var(--bg) 62%) no-repeat,
-        var(--bg);
-    }
+    html { background: var(--bg); }
+    body { color: var(--ink); font: 400 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; min-height: 100vh; background: var(--bg); }
     a { color: inherit; }
     button { font: inherit; color: inherit; }
     .mono { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; }
     .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     :focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 
-    /* ─── top bar: the brand, the page's sections, the terminal, night/day ─── */
+    /* ─── top bar: the brand, the terminal, night/day ─── */
     .bar {
-      position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 28px;
-      height: 68px; padding: 0 var(--gutter); border-bottom: 1px solid transparent;
-      transition: background-color .35s, border-color .35s;
+      position: sticky; top: 0; z-index: 100000; display: flex; align-items: center; gap: 14px;
+      height: 64px; padding: 0 var(--gutter);
+      background: var(--head); -webkit-backdrop-filter: saturate(1.4) blur(16px); backdrop-filter: saturate(1.4) blur(16px);
+      border-bottom: 1px solid var(--hair);
     }
-    .bar.scrolled { background: var(--head); border-bottom-color: var(--hair); -webkit-backdrop-filter: saturate(1.5) blur(18px); backdrop-filter: saturate(1.5) blur(18px); }
-    .brand { display: flex; align-items: center; gap: 10px; font: 600 13px var(--sans); letter-spacing: .24em; text-decoration: none; white-space: nowrap; }
+    .brand { display: flex; align-items: center; gap: 10px; font: 600 13px var(--sans); letter-spacing: .24em; text-decoration: none; white-space: nowrap; margin-right: auto; }
     .brand svg { width: 18px; height: 18px; }
     .brand .o { fill: none; stroke: var(--ink); stroke-width: 1.5; }
-    .links { display: flex; gap: 26px; margin-right: auto; font-size: 14px; }
-    .links a { text-decoration: none; color: var(--muted); transition: color .2s; }
-    .links a:hover { color: var(--ink); }
-    .mode { flex: none; width: 40px; height: 40px; border: 1px solid var(--hair); background: var(--field); cursor: pointer; display: grid; place-items: center; color: var(--ink); transition: border-color .2s; }
-    .mode:hover { border-color: var(--ink); }
+    .mode { flex: none; width: 40px; height: 40px; border: 1px solid var(--hair); background: var(--field); cursor: pointer; display: grid; place-items: center; color: var(--ink); }
     .mode svg { width: 16px; height: 16px; }
-
     /* the terminal, as a button: amber like the terminal's own screen */
     .tbtn {
       flex: none; display: inline-flex; align-items: center; gap: 9px; height: 40px; padding: 0 16px 0 14px;
@@ -116,154 +99,147 @@
     .tbtn .cur { display: block; width: 8px; height: 14px; background: #0a0a0a; margin-left: -2px; animation: blink 1.1s steps(1) infinite; }
     @keyframes blink { 50% { opacity: 0; } }
 
-    /* ─── the hero ─── */
-    .hero { padding: clamp(48px, 11vh, 132px) var(--gutter) 0; }
-    .hero-in { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); align-items: end; gap: 36px 72px; }
-    h1 { font: 600 clamp(48px, 8.6vw, 136px)/.9 var(--display); letter-spacing: -.055em; }
-    h1 .line { display: block; }
+    /* ─── the hero: short, so the feed starts on the first screen ─── */
+    .hero { --paper: var(--bg); position: relative; z-index: 99999; background: var(--bg); padding: clamp(40px, 8vh, 96px) var(--gutter) clamp(56px, 9vh, 104px); }
+    .hero-in { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 380px); align-items: end; gap: 24px 72px; }
+    h1 { font: 600 clamp(44px, 7.6vw, 120px)/.9 var(--display); letter-spacing: -.055em; }
     h1 .dot { font-style: normal; color: var(--magenta); }
-    .lede { font-size: clamp(17px, 1.35vw, 19px); line-height: 1.5; color: var(--muted); max-width: 36ch; }
+    .lede { font-size: clamp(16px, 1.3vw, 19px); line-height: 1.5; color: var(--muted); max-width: 38ch; }
     .lede b { color: var(--ink); font-weight: 500; }
-
-    /* the newest thing on the site, a pill over the headline */
-    #latest { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; }
-    .latest-relay { display: inline-flex; align-items: center; gap: 12px; max-width: 100%; padding: 7px 14px 7px 8px; text-decoration: none; font-size: 14px; background: var(--field); border: 1px solid var(--hair); transition: border-color .2s; }
+    #latest { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+    .latest-relay { display: inline-flex; align-items: center; gap: 12px; max-width: 100%; padding: 7px 14px 7px 8px; text-decoration: none; font-size: 14px; background: var(--field); border: 1px solid var(--hair); }
     .latest-relay[hidden] { display: none; }
-    .latest-relay:hover { border-color: var(--ink); }
-    .latest-relay .latest-kicker { font: 500 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #fff; background: var(--ink); padding: 4px 8px; white-space: nowrap; }
-    :root[data-theme="night"] .latest-relay .latest-kicker { color: #0a0b0d; }
-    @media (prefers-color-scheme: dark) { :root:not([data-theme="day"]) .latest-relay .latest-kicker { color: #0a0b0d; } }
+    .latest-relay .latest-kicker { font: 500 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--bg); background: var(--ink); padding: 4px 8px; white-space: nowrap; }
     .latest-relay .latest-title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .latest-relay .latest-description { display: none; }
-    .latest-relay .latest-meta { color: var(--muted); white-space: nowrap; display: flex; gap: 10px; }
+    .latest-relay .latest-meta { color: var(--muted); white-space: nowrap; }
 
-    /* ─── the rips ───
-       A rip is a hole torn in the page with a room showing through it. Its
-       outline is worked out in pixels and set as the cut's clip-path; the
-       paper under the top sheet is painted on a canvas inside the cut (.rim).
-       The picture (.still) is taller than the rip and slides a little as the
-       page scrolls, so it reads as further away than the paper. Never a
-       filter or transform on a .cut or anything above it, and anything laid
-       over a cut goes INSIDE it: a sibling that fades in over a cut makes
-       Chromium paint outside the clip, a whole tile of it. */
-    .cutbox { position: relative; display: block; }
-    .cut { position: relative; z-index: 1; height: 100%; overflow: hidden; background: #111214; transition: clip-path 1.25s cubic-bezier(.7,0,.16,1); }
-    .cut .still {
-      position: absolute; left: 0; right: 0; top: -7%; height: 114%; z-index: 0; pointer-events: none;
-      background: #111214 none var(--pos, 50% 0%) / cover no-repeat; will-change: transform;
-      transition: scale .9s var(--ease), filter .6s var(--ease);
+    /* ─── a post ───
+       Full-bleed, on its room's own paper (the skins below), torn at its foot
+       onto the next post (.seam, a canvas). Each post sits above the one after
+       it, so its torn foot lies over the next one's top. */
+    .post {
+      position: relative; background: var(--paper); color: var(--ink);
+      padding: clamp(84px, 12vh, 140px) 0 clamp(96px, 13vh, 150px);
+      --ink: #111; --muted: #555; --accent: #7b3cff; --paper: #eee;
+      --hf: var(--display); --hw: 650; --htt: none; --hls: -.045em; --hstyle: normal;
     }
-    .cut.near .still { background-image: var(--img); }
-    .cut .still video, .cut .still canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; background: #07090c; }
-    .cut .still canvas[hidden] { display: none; }
-    .cut .still.icon { background-size: auto 46%; background-position: 50% 50%; background-color: #17122b; }
-    /* where the feed starts over */
-    .round-mark { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: clamp(80px, 12vh, 140px) var(--gutter) 0; color: var(--muted); text-align: center; }
-    .round-mark b { color: var(--ink); font-weight: 600; letter-spacing: .16em; }
-    .round-mark::before { content: ""; width: 1px; height: 46px; background: linear-gradient(transparent, var(--hair-strong)); }
-    .cut .rim { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: no-repeat 0 0 / 100% 100%; }
-    /* the tag that says the rip is a door — always there, not only on hover */
-    .peek {
-      position: absolute; z-index: 5; right: calc(var(--gutter) + 18px); bottom: 46px;
-      display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px 9px 13px;
-      background: #fff; color: #0a0b0d; font: 700 11.5px var(--mono); letter-spacing: .14em; text-transform: uppercase;
-      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
-      transition: background-color .3s, color .3s;
-    }
-    .peek::after { content: "↗"; font: 600 14px var(--sans); }
-    [data-bleed="left"] .peek { right: auto; left: calc(var(--gutter) + 18px); }
-
-    /* ─── a feature: words on the paper, a rip beside them ─── */
-    .feature { position: relative; padding-top: clamp(96px, 16vh, 180px); }
-    .feature .row { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; gap: clamp(24px, 4vw, 72px); }
-    .feature[data-side="left"] .row { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
-    .feature[data-side="left"] .f-copy { order: 2; padding: 0 var(--gutter) 0 0; }
-    .f-copy { position: relative; padding-left: var(--gutter); max-width: calc(560px + var(--gutter)); }
-    .f-rip { height: min(66vh, 660px); min-height: 420px; }
-    .f-num { display: block; font: 600 clamp(84px, 9vw, 150px)/.8 var(--display); letter-spacing: -.06em; color: transparent; -webkit-text-stroke: 1px var(--hair-strong); margin-bottom: 18px; }
-    .f-tag { display: flex; align-items: center; gap: 10px; color: var(--muted); margin-bottom: 14px; }
-    .f-tag::before { content: ""; width: 22px; height: 2px; background: var(--c); }
-    .f-tag .new { background: var(--ink); color: var(--bg); font-weight: 700; padding: 3px 7px; }
-    .feature h2 { font: 600 clamp(46px, 5.6vw, 92px)/.92 var(--display); letter-spacing: -.05em; }
-    .f-lede { margin-top: 20px; font-size: clamp(17px, 1.25vw, 19px); line-height: 1.55; color: var(--muted); max-width: 40ch; }
-    .f-facts { list-style: none; display: flex; flex-wrap: wrap; margin: 26px 0 30px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
-    .f-facts li { font: 500 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); padding: 12px 18px 12px 0; margin-right: 18px; border-right: 1px solid var(--hair); }
+    .post::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--pattern, none); opacity: var(--pattern-o, 1); }
+    .seam { position: absolute; left: 0; right: 0; bottom: -34px; width: 100%; height: 46px; z-index: 2; pointer-events: none; }
+    .post .row { position: relative; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; gap: clamp(24px, 4vw, 72px); }
+    .post[data-side="left"] .row { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+    .post[data-side="left"] .f-copy { order: 2; padding: 0 var(--gutter) 0 0; }
+    .f-copy { position: relative; padding-left: var(--gutter); max-width: calc(580px + var(--gutter)); }
+    .f-tag { display: flex; align-items: center; gap: 10px; color: var(--muted); margin-bottom: 16px; }
+    .f-tag::before { content: ""; width: 22px; height: 2px; background: var(--accent); }
+    .f-tag .new { background: var(--accent); color: var(--paper); font-weight: 700; padding: 3px 7px; }
+    .post h2 { font-family: var(--hf); font-weight: var(--hw); font-style: var(--hstyle); text-transform: var(--htt); letter-spacing: var(--hls); font-size: clamp(44px, 5.4vw, 88px); line-height: .95; }
+    .f-lede { margin-top: 18px; font-size: clamp(17px, 1.25vw, 19px); line-height: 1.55; color: var(--muted); max-width: 40ch; }
+    .f-facts { list-style: none; display: flex; flex-wrap: wrap; margin: 24px 0 28px; border-top: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); }
+    .f-facts li { font: 500 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); padding: 12px 18px 12px 0; margin-right: 18px; border-right: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); }
     .f-facts li:last-child { border-right: 0; margin-right: 0; }
     .btn {
-      display: inline-flex; align-items: center; gap: 14px; padding: 16px 22px 16px 20px; text-decoration: none;
-      background: var(--ink); color: var(--bg); font: 600 15px var(--sans); letter-spacing: .01em;
+      display: inline-flex; align-items: center; gap: 14px; padding: 15px 22px 15px 20px; text-decoration: none;
+      background: var(--ink); color: var(--paper); font: 650 15px var(--sans);
       clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
-      transition: background-color .3s var(--ease), color .3s var(--ease);
     }
     .btn i { display: block; width: 22px; height: 1.5px; background: currentColor; position: relative; transition: width .45s var(--ease); }
     .btn i::after { content: ""; position: absolute; right: -1px; top: -3.5px; border-left: 7px solid currentColor; border-top: 4.25px solid transparent; border-bottom: 4.25px solid transparent; }
-    .btn:hover, .btn:focus-visible, .feature.hot .btn { background: var(--c); color: #fff; }
-    .btn:hover i, .feature.hot .btn i { width: 36px; }
-    .f-rip:hover .still, .f-rip:focus-visible .still, .feature.hot .still { scale: 1.035; filter: brightness(1.07); }
-    .f-rip:hover .peek, .feature.hot .peek { background: var(--c); color: #fff; }
-    /* what comes next, so the bottom of one room points at the top of the next */
-    .f-next { display: inline-flex; align-items: center; gap: 12px; margin-top: 54px; color: var(--muted); text-decoration: none; transition: color .2s; }
-    .f-next b { color: var(--ink); font-weight: 600; letter-spacing: .12em; }
-    .f-next i { display: block; width: 1px; height: 26px; background: linear-gradient(var(--muted), transparent); }
-    .f-next:hover { color: var(--ink); }
-    .scroll-cue { display: inline-flex; align-items: center; gap: 12px; margin-top: 30px; color: var(--muted); text-decoration: none; }
-    .scroll-cue i { display: block; width: 1px; height: 34px; background: var(--hair-strong); position: relative; overflow: hidden; }
-    .scroll-cue i::after { content: ""; position: absolute; left: 0; top: -40%; width: 1px; height: 40%; background: var(--ink); animation: drip 2.2s var(--ease) infinite; }
-    @keyframes drip { to { top: 100%; } }
+    .btn:hover i, .post.hot .btn i { width: 38px; }
 
-    /* ─── section heads ─── */
-    .sec { padding: clamp(96px, 16vh, 180px) 0 0; }
-    #play { padding-top: clamp(14px, 2vw, 28px); }
-    #more { padding-top: clamp(80px, 12vh, 140px); }
-    .eyebrow { display: flex; align-items: center; gap: 12px; color: var(--muted); margin-bottom: 16px; }
-    .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--c, var(--violet)); }
-    h2 { font: 600 clamp(32px, 4.4vw, 60px)/1 var(--display); letter-spacing: -.045em; }
+    /* ─── the rips ───
+       A rip is a hole torn through a stack of the room's own paper. Its outline
+       is worked out in pixels and set as the cut's clip-path; the sheets under
+       the top one are painted on a canvas inside the cut (.rim). The picture
+       (.still) is a little taller than the rip and slides with the screen.
+       Never a filter or transform on a .cut or anything above it, and anything
+       laid over a cut goes INSIDE it: Chromium paints a sibling that fades in
+       over a clipped element outside the clip. */
+    .cutbox { position: relative; display: block; }
+    .f-rip { height: min(64vh, 640px); min-height: 420px; }
+    .cut { position: relative; z-index: 1; height: 100%; overflow: hidden; background: #0b0c0e; transition: clip-path 1.2s cubic-bezier(.7,0,.16,1); }
+    .cut .still { position: absolute; left: 0; right: 0; top: -7%; height: 114%; z-index: 0; pointer-events: none; will-change: transform; transition: scale .9s var(--ease); background: #0b0c0e; }
+    .cut .still video, .cut .still canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+    .cut .rim { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: no-repeat 0 0 / 100% 100%; }
+    .peek {
+      position: absolute; z-index: 5; right: calc(var(--gutter) + 18px); bottom: 46px;
+      display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px 9px 13px;
+      background: var(--paper); color: var(--ink); font: 700 11.5px var(--mono); letter-spacing: .14em; text-transform: uppercase;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+    }
+    .peek::after { content: "↗"; font: 600 14px var(--sans); }
+    [data-bleed="left"] .peek { right: auto; left: calc(var(--gutter) + 18px); }
+    .f-rip:hover .still, .post.hot .still { scale: 1.035; }
 
-    /* ─── arriving ─── things fade up the first time they come on screen.
-       Only ever on copy and tiles — never on a cut or a slice (see above). */
-    .js .rv { opacity: 0; transform: translateY(22px); transition: opacity .9s var(--ease), transform 1.1s var(--ease); transition-delay: var(--d, 0s); }
+    /* where a round of the feed ends and the next begins */
+    .round-mark { position: relative; z-index: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 90px var(--gutter) 70px; color: var(--muted); text-align: center; background: var(--bg); }
+    .round-mark b { color: var(--ink); font-weight: 600; letter-spacing: .16em; }
+
+    /* things fade up the first time they come on screen — copy only, never a cut */
+    .js .rv { opacity: 0; transform: translateY(18px); transition: opacity .8s var(--ease), transform 1s var(--ease); transition-delay: var(--d, 0s); }
     .js .rv.in { opacity: 1; transform: none; }
 
-    @media (max-width: 1100px) {
-      .links { display: none; }
-      .bar { gap: 16px; }
-      .bar .tbtn { margin-left: auto; }
-    }
+    /* ─── the rooms' papers ─── */
+    [data-skin="cs"]        { --paper: #101317; --ink: #eef1f4; --muted: #a3acb6; --accent: #e8b85a; --hf: var(--sans); --hw: 800; --htt: uppercase; --hls: -.01em;
+      --pattern: linear-gradient(180deg, rgba(232,184,90,.06), transparent 40%), repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 80px); }
+    [data-skin="kondrite"]  { --paper: #05070c; --ink: #f3d67a; --muted: #bcae7c; --accent: #8a7bff; --hf: var(--mono); --hw: 500; --htt: uppercase; --hls: .14em;
+      --pattern: radial-gradient(1px 1px at 20% 30%, #fff8 50%, transparent 51%), radial-gradient(1px 1px at 70% 60%, #fff6 50%, transparent 51%), radial-gradient(1px 1px at 40% 80%, #fff5 50%, transparent 51%); }
+    [data-skin="boards"]    { --paper: #17191d; --ink: #f4f4f2; --muted: #a9abb0; --accent: #ff3ea5; --hf: var(--sans); --hw: 800; --hls: -.04em;
+      --pattern: radial-gradient(circle at 12px 12px, rgba(255,255,255,.06) 2px, transparent 2.5px) 0 0 / 24px 24px; }
+    [data-skin="cinema"]    { --paper: #0b0a08; --ink: #fff8e6; --muted: #c9b98a; --accent: #f5c518; --hf: var(--narrow); --hw: 800; --htt: uppercase; --hls: .01em;
+      --pattern: radial-gradient(circle, rgba(245,197,24,.55) 2px, transparent 3px) 0 14px / 26px 26px repeat-x; }
+    [data-skin="scale"]     { --paper: #0b0a14; --ink: #ece8ff; --muted: #a9a3c9; --accent: #a78bfa; --hf: var(--serif); --hw: 400; --hls: -.02em; }
+    [data-skin="strava"]    { --paper: #ffffff; --ink: #242428; --muted: #5f5f66; --accent: #fc4c02; --hf: var(--sans); --hw: 800; --hls: -.035em;
+      --pattern: linear-gradient(180deg, #fc4c02 0 4px, transparent 4px); }
+    [data-skin="logbook"]   { --paper: #f4f0e6; --ink: #1f2a22; --muted: #57605a; --accent: #3c7a3b; --hf: var(--serif); --hw: 400; --hls: -.025em; }
+    [data-skin="atlas"]     { --paper: #e8e2d0; --ink: #2b2a26; --muted: #5d5a50; --accent: #c73e26; --hf: var(--mono); --hw: 600; --htt: uppercase; --hls: .06em;
+      --pattern: repeating-linear-gradient(0deg, rgba(43,42,38,.07) 0 1px, transparent 1px 32px), repeating-linear-gradient(90deg, rgba(43,42,38,.07) 0 1px, transparent 1px 32px); }
+    [data-skin="registry"]  { --paper: #f6f1e8; --ink: #1c1b1a; --muted: #5a554c; --accent: #7d1e24; --hf: var(--serif); --hw: 700; --htt: uppercase; --hls: -.01em;
+      --pattern: repeating-linear-gradient(0deg, rgba(125,30,36,.06) 0 1px, transparent 1px 28px); }
+    [data-skin="highway"]   { --paper: #0d4a2d; --ink: #ffffff; --muted: #cfe6d8; --accent: #ffd23f; --hf: var(--narrow); --hw: 700; --hls: .005em; }
+    [data-skin="orrin"]     { --paper: #04070d; --ink: #d8ecff; --muted: #8fa7bd; --accent: #38ff9c; --hf: var(--mono); --hw: 500; --htt: uppercase; --hls: .12em;
+      --pattern: radial-gradient(60% 70% at 70% 40%, rgba(56,255,156,.06), transparent); }
+    [data-skin="darkroom"]  { --paper: #160b09; --ink: #f6e2d8; --muted: #c79d8c; --accent: #ff4b2b; --hf: var(--mono); --hw: 300; --htt: uppercase; --hls: .24em;
+      --pattern: radial-gradient(70% 60% at 50% 0%, rgba(255,60,30,.16), transparent); }
+    [data-skin="starfield"] { --paper: #020309; --ink: #e6ecff; --muted: #9aa6c7; --accent: #6fd8ff; --hf: var(--sans); --hw: 300; --htt: uppercase; --hls: .2em;
+      --pattern: radial-gradient(1px 1px at 15% 25%, #fff9 50%, transparent 51%), radial-gradient(1px 1px at 85% 15%, #fff7 50%, transparent 51%), radial-gradient(1px 1px at 55% 75%, #fff6 50%, transparent 51%); }
+    [data-skin="speed"]     { --paper: #00040d; --ink: #ffffff; --muted: #9fb2c8; --accent: #7fd1ff; --hf: var(--sans); --hw: 600; --hls: -.03em; }
+    [data-skin="manila"]    { --paper: #ece3cf; --ink: #2a2130; --muted: #5e5463; --accent: #8a4fa3; --hf: var(--serif); --hw: 400; --hstyle: italic; --hls: -.02em; }
+    [data-skin="farlight"]  { --paper: #0b1424; --ink: #e8f2ff; --muted: #94a8c4; --accent: #5ec8ff; --hf: var(--sans); --hw: 800; --hstyle: italic; --hls: -.02em; }
+    [data-skin="minkowski"] { --paper: #101012; --ink: #f2f2f2; --muted: #a1a1a6; --accent: #ffd166; --hf: var(--serif); --hw: 400; --hls: -.02em;
+      --pattern: repeating-linear-gradient(45deg, rgba(255,209,102,.05) 0 1px, transparent 1px 40px), repeating-linear-gradient(-45deg, rgba(255,209,102,.05) 0 1px, transparent 1px 40px); }
+    [data-skin="apex"]      { --paper: #0d1626; --ink: #ffffff; --muted: #a3b1c6; --accent: #e8422f; --hf: var(--narrow); --hw: 800; --htt: uppercase; --hls: .01em; }
+    [data-skin="saber"]     { --paper: #120c07; --ink: #f3e6cc; --muted: #b6a487; --accent: #4cc3ff; --hf: var(--narrow); --hw: 700; --htt: uppercase; --hls: .08em; }
+    [data-skin="crt"]       { --paper: #0a0a0a; --ink: #ffb000; --muted: #c08a10; --accent: #ffb000; --hf: var(--mono); --hw: 700; --hls: .02em;
+      --pattern: repeating-linear-gradient(0deg, rgba(255,176,0,.035) 0 1px, transparent 1px 3px); }
+    [data-skin="crt"] h2 { text-shadow: 0 0 18px rgba(255,176,0,.45); }
+
     @media (max-width: 860px) {
-      .hero-in { grid-template-columns: 1fr; gap: 24px; }
-      /* On a phone a room is a row in a feed, like a video in a list: a short
-         torn strip, then the name, two lines and a button — two or three of
-         them on one screen, so there is always another one coming up. */
-      .feature { padding-top: 36px; }
-      .feature .row, .feature[data-side="left"] .row { grid-template-columns: 1fr; gap: 14px; }
-      .f-copy, .feature[data-side="left"] .f-copy { order: 0; padding: 0 var(--gutter); }
-      .f-rip { order: 1; }
-      .f-rip { height: 200px; min-height: 0; }
+      .hero-in { grid-template-columns: 1fr; gap: 14px; }
+      /* On a phone each post is a post in a feed: the words first, then a short
+         torn strip — two or three rooms to a screen. */
+      .post { padding: 40px 0 52px; }
+      .post .row, .post[data-side="left"] .row { grid-template-columns: 1fr; gap: 16px; }
+      .f-copy, .post[data-side="left"] .f-copy { order: 0; padding: 0 var(--gutter); }
+      .f-rip { order: 1; height: 210px; min-height: 0; }
       .peek { bottom: 28px; padding: 7px 11px; font-size: 11px; }
       [data-bleed="right"] .peek { right: 18px; } [data-bleed="left"] .peek { left: 18px; }
-      .f-num, .f-facts, .f-next { display: none; }
-      .f-tag { margin-bottom: 6px; font-size: 11px; }
-      .feature h2 { font-size: 30px; letter-spacing: -.035em; }
-      .f-lede { margin-top: 6px; font-size: 15px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .f-facts { display: none; }
+      .f-tag { margin-bottom: 8px; font-size: 11px; }
+      .post h2 { font-size: clamp(32px, 9.4vw, 42px); }
+      .f-lede { margin-top: 8px; font-size: 15px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
       .f-copy > .btn { margin-top: 14px; padding: 11px 16px 11px 15px; font-size: 14px; }
-      .sec { padding-top: 64px; }
-      .scroll-cue { margin-top: 18px; }
+      .seam { height: 34px; bottom: -24px; }
     }
     @media (max-width: 760px) {
-      .bar { height: 60px; gap: 10px; }
-      .brand { margin-right: auto; }
+      .bar { height: 58px; gap: 10px; }
       .tbtn { height: 38px; padding: 0 12px; letter-spacing: .12em; }
       .mode { width: 38px; height: 38px; }
-      .hero { padding-top: 28px; }
-      #latest { margin-bottom: 18px; }
-      .lede { font-size: 16px; }
+      .hero { padding: 26px var(--gutter) 44px; }
+      #latest { margin-bottom: 14px; }
       .latest-relay { font-size: 13px; }
       .latest-relay .latest-meta { display: none; }
-      .cut .still { background-position: var(--pos-m, 50% 0%); }
-      .cut.near .still { background-image: var(--img-m, var(--img)); }
-      .f-lede { font-size: 16px; }
-      .f-facts li { font-size: 11px; padding-right: 12px; margin-right: 12px; }
-      .f-next { margin-top: 36px; }
+      .lede { font-size: 15px; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; transition-delay: 0s !important; }
@@ -278,15 +254,8 @@
       <svg viewBox="0 0 18 18" aria-hidden="true"><polygon class="o" points="9,1 17,16 1,16"/><polygon points="9,9 11.8,14 6.2,14" fill="#7b3cff"/></svg>
       RIC//NET
     </a>
-    <nav class="links" aria-label="On this page">
-      <a href="#f1">New</a>
-      <a href="#f2">Play</a>
-      <a href="#f3">Watch &amp; explore</a>
-      <a href="#every-room">Every room</a>
-    </nav>
-    <!-- The terminal is a room of its own again: the button opens it, and so
-         does / from anywhere on this page. Amber, because that is the colour
-         the terminal's own screen glows. -->
+    <!-- The terminal is a room of its own: the button opens it, and so does /
+         from anywhere on this page. Amber, the colour its own screen glows. -->
     <a class="tbtn" href="index.html" title="Open the terminal (or press /)">
       <span class="pr" aria-hidden="true">&gt;_</span>Terminal<i class="cur" aria-hidden="true"></i>
     </a>
@@ -294,7 +263,7 @@
   </header>
 
   <main>
-    <section class="hero" id="new" aria-labelledby="hero-h">
+    <section class="hero post-like" id="new" aria-labelledby="hero-h">
       <div class="hero-in">
         <div>
           <!-- Filled by latest.js from latest-climb.js + RELAY_LATEST. Don't hardcode
@@ -304,284 +273,31 @@
             <!-- Trial alerts: only for a site account approved for Studies. -->
             <a class="latest-relay trial-alert" id="trial-alert" href="projects/psyche/studies.html#watch" hidden></a>
           </div>
-          <h1 id="hero-h"><span class="line rv" style="--d:.05s">Ric Massey's</span><span class="line rv" style="--d:.15s">own internet<i class="dot">.</i></span></h1>
+          <h1 id="hero-h" class="rv">Ric Massey's own internet<i class="dot">.</i></h1>
         </div>
-        <div class="rv" style="--d:.3s">
-          <p class="lede">Games to play with your friends, every match of Counter-Strike replayed, what to watch tonight, and the universe to scale. <b>Built by hand — come in and click around.</b></p>
-          <a class="scroll-cue mono" href="#f1"><i></i>Newest first — keep scrolling</a>
-        </div>
+        <p class="lede rv" style="--d:.15s">Games to play with your friends, every match replayed, what to watch tonight, the universe to scale. <b>Every room built by hand — keep scrolling, it doesn't end.</b></p>
       </div>
+      <canvas class="seam" aria-hidden="true"></canvas>
     </section>
 
-    <!-- Newest, biggest and most fun first. Each room gets the words on the
-         paper and a rip beside them looking onto the real page — the pictures
-         are screenshots, taken by assets/frontdoor/capture.mjs. The rip and
-         the button are the same door; hovering either lights both. -->
-    <section class="feature" id="f1" data-side="right" style="--c: var(--cyan)" aria-labelledby="f1-h">
-      <div class="row">
-        <div class="f-copy">
-          <span class="f-num rv" aria-hidden="true">01</span>
-          <div class="f-tag mono rv"><span class="new">New</span>Gaming</div>
-          <h2 id="f1-h" class="rv">Counter-Strike</h2>
-          <p class="f-lede rv">Every match Ric plays, rebuilt from the demo. Replay any round in 2D, freeze any kill, and see where everyone stood.</p>
-          <ul class="f-facts rv"><li>2D replays</li><li>Kill snapshots</li><li>Every round</li></ul>
-          <a class="btn rv" href="cs.html">Watch the replays <i></i></a>
-          <div><a class="f-next mono rv" href="#f2"><i></i>Next <b>KONDRITE</b></a></div>
-        </div>
-        <a class="f-rip cutbox" data-cut data-bleed="right" href="cs.html" tabindex="-1" aria-label="Open Counter-Strike">
-          <div class="cut">
-            <div class="still" role="img" aria-label="A round of Counter-Strike playing out on the Mirage radar: players moving, each with the cone of where they're looking"><video muted loop playsinline preload="none" poster="assets/frontdoor/cs.jpg" data-src="assets/frontdoor/cs.webm" style="object-position:50% 50%" aria-hidden="true"></video></div>
-            <span class="peek">Open</span>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="feature" id="f2" data-side="left" style="--c: var(--violet)" aria-labelledby="f2-h">
-      <div class="row">
-        <div class="f-copy">
-          <span class="f-num rv" aria-hidden="true">02</span>
-          <div class="f-tag mono rv">Multiplayer · in the browser</div>
-          <h2 id="f2-h" class="rv">KONDRITE</h2>
-          <p class="f-lede rv">A space game that runs right here. Up to five ships in one sky — co-op survival or a battle royale. Send a friend the link and fly together.</p>
-          <ul class="f-facts rv"><li>Up to 5 players</li><li>Co-op or royale</li><li>No install</li></ul>
-          <a class="btn rv" href="projects/kondrite/index.html">Play KONDRITE <i></i></a>
-          <div><a class="f-next mono rv" href="#f3"><i></i>Next <b>Entertainment</b></a></div>
-        </div>
-        <a class="f-rip cutbox" data-cut data-bleed="left" href="projects/kondrite/index.html" tabindex="-1" aria-label="Play KONDRITE">
-          <div class="cut">
-            <div class="still" role="img" aria-label="A KONDRITE ship flying through an asteroid field, shooting rocks and slingshotting past a black hole"><video muted loop playsinline preload="none" poster="assets/frontdoor/kondrite.jpg" data-src="assets/frontdoor/kondrite.webm" style="object-position:50% 50%" aria-hidden="true"></video></div>
-            <span class="peek">Play</span>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="feature" id="f3" data-side="right" style="--c: var(--magenta)" aria-labelledby="f3-h">
-      <div class="row">
-        <div class="f-copy">
-          <span class="f-num rv" aria-hidden="true">03</span>
-          <div class="f-tag mono rv">Films &amp; shows</div>
-          <h2 id="f3-h" class="rv">Entertainment</h2>
-          <p class="f-lede rv">Every film and show we've watched, and the ones still waiting. Stuck for tonight? It picks one and tells you where it's streaming.</p>
-          <ul class="f-facts rv"><li>363 titles</li><li>Watch together</li><li>Where to stream</li></ul>
-          <a class="btn rv" href="entertainment.html">Find something to watch <i></i></a>
-          <div><a class="f-next mono rv" href="#f4"><i></i>Next <b>How Big Everything Is</b></a></div>
-        </div>
-        <a class="f-rip cutbox" data-cut data-bleed="right" href="entertainment.html" tabindex="-1" aria-label="Open Entertainment">
-          <div class="cut">
-            <div class="still" role="img" aria-label="A wall of film posters from the list: The Godfather, Goodfellas, Interstellar, Dune, Star Wars and more" style="--img:url(assets/frontdoor/entertainment.jpg); --pos: 0% 30%"></div>
-            <span class="peek">Open</span>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="feature" id="f4" data-side="left" style="--c: var(--cyan)" aria-labelledby="f4-h">
-      <div class="row">
-        <div class="f-copy">
-          <span class="f-num rv" aria-hidden="true">04</span>
-          <div class="f-tag mono rv">Exploration</div>
-          <h2 id="f4-h" class="rv">How Big Everything Is</h2>
-          <p class="f-lede rv">One rail from a quark to the edge of the observable universe, every rung to scale. Press Tour and let it walk you out.</p>
-          <ul class="f-facts rv"><li>Quark to cosmos</li><li>To scale</li><li>Guided tour</li></ul>
-          <a class="btn rv" href="projects/how-big-everything-is/index.html">Start at a quark <i></i></a>
-          <div><a class="f-next mono rv" href="#f5"><i></i>Next <b>Climbing</b></a></div>
-        </div>
-        <a class="f-rip cutbox" data-cut data-bleed="left" href="projects/how-big-everything-is/index.html" tabindex="-1" aria-label="Open How Big Everything Is">
-          <div class="cut">
-            <div class="still" role="img" aria-label="How Big Everything Is on its tour: glowing particles giving way to bigger and bigger things"><video muted loop playsinline preload="none" poster="assets/frontdoor/scale.jpg" data-src="assets/frontdoor/scale.webm" style="object-position:50% 50%" aria-hidden="true"></video></div>
-            <span class="peek">Zoom</span>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="feature" id="f5" data-side="right" style="--c: var(--cyan)" aria-labelledby="f5-h">
-      <div class="row">
-        <div class="f-copy">
-          <span class="f-num rv" aria-hidden="true">05</span>
-          <div class="f-tag mono rv">Climbing</div>
-          <h2 id="f5-h" class="rv">Climbing</h2>
-          <p class="f-lede rv">Every day out at the crag, every send and every project — logged from the wall, the to-do list included.</p>
-          <ul class="f-facts rv"><li>Days out</li><li>Sends &amp; projects</li><li>The to-do list</li></ul>
-          <a class="btn rv" href="climbing.html">Open the logbook <i></i></a>
-          <div><a class="f-next mono rv" href="#f6"><i></i>Next <b>Training</b></a></div>
-        </div>
-        <a class="f-rip cutbox" data-cut data-bleed="right" href="climbing.html" tabindex="-1" aria-label="Open Climbing">
-          <div class="cut">
-            <div class="still" role="img" aria-label="Climbers under a sweeping orange sandstone roof" style="--img:url(photos/climbing-02.jpg); --img-m:url(photos/website-0057.jpg); --pos: 50% 40%"></div>
-            <span class="peek">Open</span>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="feature" id="f6" data-side="left" style="--c: var(--violet)" aria-labelledby="f6-h">
-      <div class="row">
-        <div class="f-copy">
-          <span class="f-num rv" aria-hidden="true">06</span>
-          <div class="f-tag mono rv">Training</div>
-          <h2 id="f6-h" class="rv">Training</h2>
-          <p class="f-lede rv">Every run lands here the moment the watch syncs, and ticks off its day in a 52-week plan. That's the latest one, drawn live.</p>
-          <ul class="f-facts rv"><li>Every run</li><li>52-week plan</li><li>Live from the watch</li></ul>
-          <a class="btn rv" href="training.html">See the training log <i></i></a>
-          <div><a class="f-next mono rv" href="#f7"><i></i>Next <b>Interstate 40</b></a></div>
-        </div>
-        <a class="f-rip cutbox" data-cut data-bleed="left" href="training.html" tabindex="-1" aria-label="Open Training">
-          <div class="cut">
-            <!-- The latest run, drawn from the Worker's /strava as the page
-                 loads — a route is never committed here (hard rule 1), and the
-                 Worker still holds a fresh one back from visitors. With no run
-                 to draw, the mountain photo behind it stands. -->
-            <div class="still" id="run-still" role="img" aria-label="A mountain ridge between snow-streaked peaks" style="--img:url(photos/climbing-12.jpg); --pos: 50% 40%"><canvas class="runcv" hidden aria-hidden="true"></canvas></div>
-            <span class="peek">Open</span>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="feature" id="f7" data-side="right" style="--c: var(--magenta)" aria-labelledby="f7-h">
-      <div class="row">
-        <div class="f-copy">
-          <span class="f-num rv" aria-hidden="true">07</span>
-          <div class="f-tag mono rv">Gaming · plays in the browser</div>
-          <h2 id="f7-h" class="rv">Interstate 40</h2>
-          <p class="f-lede rv">Drive the real I-40 from above, exit to exit, with traffic that has places to be.</p>
-          <ul class="f-facts rv"><li>The real road</li><li>Exit to exit</li><li>Live traffic</li></ul>
-          <a class="btn rv" href="projects/offramp/index.html">Take the wheel <i></i></a>
-          <div><a class="f-next mono rv" href="#f8"><i></i>Next <b>Orrin</b></a></div>
-        </div>
-        <a class="f-rip cutbox" data-cut data-bleed="right" href="projects/offramp/index.html" tabindex="-1" aria-label="Open Interstate 40">
-          <div class="cut">
-            <div class="still" role="img" aria-label="Interstate 40 from above: cars weaving across the lanes of a long straight highway"><video muted loop playsinline preload="none" poster="assets/games/offramp.jpg" data-src="assets/games/offramp.webm" aria-hidden="true"></video></div>
-            <span class="peek">Drive</span>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="feature" id="f8" data-side="left" style="--c: var(--violet)" aria-labelledby="f8-h">
-      <div class="row">
-        <div class="f-copy">
-          <span class="f-num rv" aria-hidden="true">08</span>
-          <div class="f-tag mono rv">The project</div>
-          <h2 id="f8-h" class="rv">Orrin</h2>
-          <p class="f-lede rv">A program Ric built that keeps running on its own — noticing, remembering, choosing and acting, whether or not anyone is talking to it.</p>
-          <ul class="f-facts rv"><li>Always running</li><li>Remembers</li><li>Decides</li></ul>
-          <a class="btn rv" href="orrin.html">Meet Orrin <i></i></a>
-          <div><a class="f-next mono rv" href="#f9"><i></i>Next <b>Captures</b></a></div>
-        </div>
-        <a class="f-rip cutbox" data-cut data-bleed="left" href="orrin.html" tabindex="-1" aria-label="Open Orrin">
-          <div class="cut">
-            <div class="still" role="img" aria-label="A web of glowing nodes, signals travelling between them"><canvas class="art" data-art="orrin" aria-hidden="true"></canvas></div>
-            <span class="peek">Open</span>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="feature" id="f9" data-side="right" style="--c: var(--magenta)" aria-labelledby="f9-h">
-      <div class="row">
-        <div class="f-copy">
-          <span class="f-num rv" aria-hidden="true">09</span>
-          <div class="f-tag mono rv">Photographs</div>
-          <h2 id="f9-h" class="rv">Captures</h2>
-          <p class="f-lede rv">Over 1,300 photographs — mountains, crags, rivers and sunrises, newest first.</p>
-          <ul class="f-facts rv"><li>1,300+ frames</li><li>Newest first</li><li>Full size</li></ul>
-          <a class="btn rv" href="captures.html">Look through them <i></i></a>
-          <div><a class="f-next mono rv" href="#f10"><i></i>Next <b>Starfield</b></a></div>
-        </div>
-        <a class="f-rip cutbox" data-cut data-bleed="right" href="captures.html" tabindex="-1" aria-label="Open Captures">
-          <div class="cut">
-            <div class="still" role="img" aria-label="A wall of photographs: mountain ridges, sunrises, climbers and rivers" style="--img:url(assets/frontdoor/captures.jpg)"></div>
-            <span class="peek">Open</span>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="feature" id="f10" data-side="left" style="--c: var(--cyan)" aria-labelledby="f10-h">
-      <div class="row">
-        <div class="f-copy">
-          <span class="f-num rv" aria-hidden="true">10</span>
-          <div class="f-tag mono rv">Gaming · plays in the browser</div>
-          <h2 id="f10-h" class="rv">Starfield</h2>
-          <p class="f-lede rv">Fly a rocket through real stars and watch the sky bend and change colour as you near the speed of light.</p>
-          <ul class="f-facts rv"><li>Real stars</li><li>Relativity</li><li>Fly it</li></ul>
-          <a class="btn rv" href="projects/starfield/index.html">Launch <i></i></a>
-          <div><a class="f-next mono rv" href="#f11"><i></i>Next <b>Mind</b></a></div>
-        </div>
-        <a class="f-rip cutbox" data-cut data-bleed="left" href="projects/starfield/index.html" tabindex="-1" aria-label="Open Starfield">
-          <div class="cut">
-            <div class="still" role="img" aria-label="Flying through a field of real stars at speed"><video muted loop playsinline preload="none" poster="assets/games/starfield.jpg" data-src="assets/games/starfield.webm" aria-hidden="true"></video></div>
-            <span class="peek">Fly</span>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="feature" id="f11" data-side="right" style="--c: var(--magenta)" aria-labelledby="f11-h">
-      <div class="row">
-        <div class="f-copy">
-          <span class="f-num rv" aria-hidden="true">11</span>
-          <div class="f-tag mono rv">Mind</div>
-          <h2 id="f11-h" class="rv">Mind</h2>
-          <p class="f-lede rv">Human systems, observed from the inside — mood, criteria, and every registered clinical trial, searchable.</p>
-          <ul class="f-facts rv"><li>Mood line</li><li>Studies</li><li>Reflections</li></ul>
-          <a class="btn rv" href="psyche.html">Open the casebook <i></i></a>
-          <div><a class="f-next mono rv" href="#f12"><i></i>Next <b>FARLIGHT</b></a></div>
-        </div>
-        <a class="f-rip cutbox" data-cut data-bleed="right" href="psyche.html" tabindex="-1" aria-label="Open Mind">
-          <div class="cut">
-            <div class="still" role="img" aria-label="A mood line rising and falling across the screen"><canvas class="art" data-art="mind" aria-hidden="true"></canvas></div>
-            <span class="peek">Open</span>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="feature" id="f12" data-side="left" style="--c: var(--violet)" aria-labelledby="f12-h">
-      <div class="row">
-        <div class="f-copy">
-          <span class="f-num rv" aria-hidden="true">12</span>
-          <div class="f-tag mono rv">Gaming · plays in the browser</div>
-          <h2 id="f12-h" class="rv">FARLIGHT</h2>
-          <p class="f-lede rv">A little ship, a lot of hills, and the feel of getting a landing exactly right.</p>
-          <ul class="f-facts rv"><li>Momentum</li><li>Hills</li><li>Landings</li></ul>
-          <a class="btn rv" href="projects/farlight/index.html">Play FARLIGHT <i></i></a>
-          <div><a class="f-next mono rv" href="#f13"><i></i>Next <b>Siege Conductor</b></a></div>
-        </div>
-        <a class="f-rip cutbox" data-cut data-bleed="left" href="projects/farlight/index.html" tabindex="-1" aria-label="Open FARLIGHT">
-          <div class="cut">
-            <div class="still" role="img" aria-label="A glowing ship skimming over rolling blue hills"><video muted loop playsinline preload="none" poster="assets/games/farlight.jpg" data-src="assets/games/farlight.webm" aria-hidden="true"></video></div>
-            <span class="peek">Play</span>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="feature" id="f13" data-side="right" style="--c: var(--cyan)" aria-labelledby="f13-h">
-      <div class="row">
-        <div class="f-copy">
-          <span class="f-num rv" aria-hidden="true">13</span>
-          <div class="f-tag mono rv">Workbench</div>
-          <h2 id="f13-h" class="rv">Siege Conductor</h2>
-          <p class="f-lede rv">A companion for watching The Clone Wars and Revenge of the Sith as one story, in the right order.</p>
-          <ul class="f-facts rv"><li>Star Wars</li><li>In order</li><li>On your phone</li></ul>
-          <a class="btn rv" href="projects/siege-conductor/index.html">Open it <i></i></a>
-        </div>
-        <a class="f-rip cutbox" data-cut data-bleed="right" href="projects/siege-conductor/index.html" tabindex="-1" aria-label="Open Siege Conductor">
-          <div class="cut">
-            <div class="still icon" role="img" aria-label="The Siege Conductor icon: two crossed lightsabers" style="--img:url(projects/siege-conductor/icon-1024.png)"></div>
-            <span class="peek">Open</span>
-          </div>
-        </a>
-      </div>
-    </section>
-    <!-- The feed doesn't end: near the bottom it lays the rooms down again,
-         from the top. See "the feed" in the script. -->
+    <!-- The feed: every room as a post, laid down by the script below (POSTS),
+         newest first, reshuffled each round, never ending. -->
+    <div id="feed"></div>
     <div id="feed-end" aria-hidden="true"></div>
+    <noscript>
+      <ul style="padding:40px var(--gutter);list-style:none;line-height:2">
+        <li><a href="cs.html">Counter-Strike</a></li><li><a href="projects/kondrite/index.html">KONDRITE</a></li>
+        <li><a href="projects/climbing/board.html">The Boards</a></li><li><a href="entertainment.html">Entertainment</a></li>
+        <li><a href="projects/how-big-everything-is/index.html">How Big Everything Is</a></li><li><a href="training.html">Training</a></li>
+        <li><a href="map.html">ATLAS</a></li><li><a href="projects/psyche/studies.html">Studies</a></li>
+        <li><a href="projects/offramp/index.html">Interstate 40</a></li><li><a href="orrin.html">Orrin</a></li>
+        <li><a href="captures.html">Captures</a></li><li><a href="projects/starfield/index.html">Starfield</a></li>
+        <li><a href="climbing.html">Climbing</a></li><li><a href="projects/how-speed-affects-time/index.html">How Speed Affects Time</a></li>
+        <li><a href="projects/state-of-mind-line/index.html">State of Mind</a></li><li><a href="projects/farlight/index.html">FARLIGHT</a></li>
+        <li><a href="projects/spacetime/index.html">The Geometry of Spacetime</a></li><li><a href="apex.html">Apex</a></li>
+        <li><a href="projects/siege-conductor/index.html">Siege Conductor</a></li><li><a href="index.html">The Terminal</a></li>
+      </ul>
+    </noscript>
   </main>
 
   <script src="notes.js"></script>
@@ -629,6 +345,7 @@
       }).catch(() => {});
     })();
   </script>
+
   <script>
     // ─── night and day ───────────────────────────────────
     // A visitor's own pick, kept in this browser; with none, their OS decides.
@@ -646,399 +363,813 @@
       paint();
     })();
 
-    // the rooms as written, before any rip is drawn into them — what the feed
-    // lays down again when it runs out
-    const POSTS = [...document.querySelectorAll("main .feature")].map((f) => f.outerHTML);
-
-    // ─── the rips ────────────────────────────────────────
-    // Every [data-cut] is a rip in the page with a room showing through it.
-    // The page is a stack of paper sheets and the rip goes through all of
-    // them, each tearing a little differently, so at every edge you look down
-    // a few steps of torn paper — fuzzy fibre, a bright broken core that comes
-    // and goes, each sheet throwing its shadow on the one below — before you
-    // reach the picture. A rip runs off one side of the screen (data-bleed),
-    // so it is torn on the other three; on a phone it runs off both.
-    //
-    // The .cut is clipped to the TOP sheet's tear; the sheets under it are
-    // painted on a canvas, laid over the picture as a plain image (.rim)
-    // inside the cut. Plain image, because anything blurred or animated laid
-    // over a cut makes Chromium paint outside the clip; a canvas has no such
-    // problem — its shadows are already pixels by the time the page sees them.
-    //
-    // The picture slides a little as the page scrolls (see "depth" below), so
-    // it reads as further away than the paper.
-    const STILL = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // ─── arriving ────────────────────────────────────────
+    // Copy fades up the first time it comes on screen.
     (() => {
-      const root = document.documentElement;
-      const isNight = () => root.dataset.theme ? root.dataset.theme === "night" : matchMedia("(prefers-color-scheme: dark)").matches;
-      const phone = () => innerWidth <= 860;
-      const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(", ")})`;
-
-      // the paper. Index 0 is the page itself (only its torn edge and its
-      // shadow are ever drawn — the clip shows the real page around it).
-      //   sheets — each layer's face, top to bottom; deeper is darker by night
-      //   core   — the pale fibre a tear shows, dimmer on edges that face
-      //            away from the light (top) than on those that face it (bottom)
-      //   edge   — the bright line right at the break
-      //   shade  — the shadow one sheet throws on the next
-      const PAPER = {
-        night: { sheets: ["#0a0b0d", "#151619", "#1a1b1f", "#1f2125"], coreTop: ["#34363c", "#2c2e34", "#26282d", "#212327"], coreBot: ["#50535b", "#43464d", "#393b42", "#303238"], edgeTop: ["#5b5e66", "#4a4d54", "#3d3f46", "#33353b"], edgeBot: ["#7f838c", "#686b73", "#565961", "#474a51"], shade: "rgba(0,0,0,.85)", photoShade: "rgba(0,0,0,.72)" },
-        day:   { sheets: ["#d5d7db", "#e4e5e8", "#eeeff1", "#f6f6f7"], coreTop: ["#e8e8e4", "#eeeeea", "#f2f2ef", "#f5f5f2"], coreBot: ["#f6f6f3", "#f8f8f5", "#fafaf8", "#fbfbf9"], edgeTop: ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], edgeBot: ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], shade: "rgba(26,30,40,.34)", photoShade: "rgba(0,0,0,.55)" },
-      };
-
-      // ── noise ──
-      const rng = (seed) => { let s = seed % 2147483647 || 1; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
-      // smooth value noise on a lattice `span` px apart, −1…1, laid out once so
-      // a resize never reshuffles the tear
-      const smooth = (r, span) => {
-        const v = Array.from({ length: Math.ceil(9800 / span) + 4 }, () => r() * 2 - 1);
-        return (x) => { const f = (x + 400) / span, i = Math.floor(f), t = f - i, u = t * t * (3 - 2 * t); return v[i] + (v[i + 1] - v[i]) * u; };
-      };
-
-      // ── the shape of every sheet's tear ──
-      // The rip's outline is a box whose top and bottom slant at the page's one
-      // angle; sides that run off the screen sit just past it. The outline is
-      // walked once, all the way round, and every sheet's tear is that walk
-      // pushed inward along its own normal by a wandering, fraying amount.
-      function geometry(w, h, k, seed, small, torn, tallRight) {
-        const r = rng(seed * 7919 + 13), L = 4, STEP = 3;
-        const s = small ? 0.7 : 1;
-        // the tear wanders either side of the outline: keep it inside the box,
-        // or the picture shows past the canvas that covers it
-        const m = 22 * s;
-        const xL = torn.left ? m : -30, xR = torn.right ? w - m : w + 30;
-        // A wedge: full height where the rip meets the screen's edge, closing
-        // in toward the words — top and bottom each come in by k at the far end
-        const t = (x) => Math.min(1, Math.max(0, tallRight ? 1 - x / w : x / w));
-        const yT = (x) => m + k * t(x), yB = (x) => h - m - k * t(x);
-        const corners = [[xL, yT(xL)], [xR, yT(xR)], [xR, yB(xR)], [xL, yB(xL)]];
-        const base = [];
-        for (let c = 0; c < 4; c++) {
-          const [ax, ay] = corners[c], [bx, by] = corners[(c + 1) % 4];
-          const n = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / STEP));
-          for (let j = 0; j < n; j++) base.push([ax + (bx - ax) * j / n, ay + (by - ay) * j / n]);
-        }
-        const N = base.length;
-        // inward normals, smoothed over ~30px so the corners turn round rather
-        // than fold
-        const nrm = base.map((_, j) => {
-          let tx = 0, ty = 0;
-          for (let d = -10; d <= 10; d++) {
-            const a = base[(((j + d - 1) % N) + N) % N], b = base[(((j + d + 1) % N) + N) % N];
-            const lx = b[0] - a[0], ly = b[1] - a[1], ll = Math.hypot(lx, ly) || 1;
-            tx += lx / ll; ty += ly / ll;
-          }
-          const tl = Math.hypot(tx, ty) || 1;
-          return [-ty / tl, tx / tl];   // walking clockwise on screen, inward is to the right
-        });
-        const arc = []; let acc = 0;
-        base.forEach((p, j) => { if (j) acc += Math.hypot(p[0] - base[j - 1][0], p[1] - base[j - 1][1]); arc.push(acc); });
-        // off-screen sides tear too, harmlessly, but they must not tear back
-        // into view: scale the wander down to nothing past the screen's edge
-        const live = base.map(([x]) => (x < 0 || x > w ? 0 : 1));
-
-        // a tear wanders (long, slow), wavers (short) and frays (finest); the
-        // sheets under it tear along nearly the same line, merging in one place
-        // and standing apart in the next
-        const a = smooth(r, 150), b = smooth(r, 41), c = smooth(r, 11);
-        const own = [0, 1, 2, 3].map(() => smooth(r, 63)), gap = [0, 1, 2, 3].map(() => smooth(r, 110));
-        const fray = [0, 1, 2, 3].map(() => smooth(r, 34)), fine = [0, 1, 2, 3].map(() => smooth(r, 8));
-        const u = (f, x) => (f(x) + 1) / 2;
-        const wander = arc.map((t, j) => live[j] * (s * (10 * a(t) + 3.2 * b(t) + 1.1 * c(t)) + (r() - 0.5) * 0.8));
-        const inset = arc.map(() => 0);
-        const layers = [];
-        for (let i = 0; i < L; i++) {
-          const E = [], C = [], Mid = [];
-          for (let j = 0; j < N; j++) {
-            const t = arc[j];
-            if (i) inset[j] += s * 9 * (0.12 + 1.9 * u(gap[i], t) ** 1.8);
-            const d = wander[j] + live[j] * s * 3 * own[i](t) + inset[j];
-            const core = s * Math.max(0.4, 0.5 + 6 * u(fray[i], t) ** 2.2 + 1.2 * fine[i](t));
-            const [bx, by] = base[j], [nx, ny] = nrm[j];
-            E.push([bx + nx * d, by + ny * d]);
-            Mid.push([bx + nx * (d + core * 0.5), by + ny * (d + core * 0.5)]);
-            C.push([bx + nx * (d + core), by + ny * (d + core)]);
-          }
-          layers.push({ E, C, Mid });
-        }
-        // the slit a rip opens from: every point pulled onto the middle line
-        const midY = (x) => (yT(x) + yB(x)) / 2;
-        const slit = layers[0].E.map(([x]) => { const cx = Math.min(xR, Math.max(xL, x)); return [cx, midY(cx)]; });
-        return { layers, nrm, slit };
-      }
-
-      // ── paint the stack under the top sheet ──
-      function paint(box, cut, geo, w, h) {
-        const dpr = Math.min(2.5, window.devicePixelRatio || 1);
-        const cv = document.createElement("canvas");
-        cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
-        const ctx = cv.getContext("2d");
-        ctx.scale(dpr, dpr);
-        const M = PAPER[isNight() ? "night" : "day"];
-        const ring = (A) => { const p = new Path2D(); p.moveTo(A[0][0], A[0][1]); for (const [x, y] of A) p.lineTo(x, y); p.closePath(); return p; };
-        const outside = (A) => { const p = new Path2D(); p.rect(-200, -200, w + 400, h + 400); p.addPath(ring(A)); return p; };
-        const between = (A, B) => { const p = ring(A); p.addPath(ring(B)); return p; };
-        // the edges that face up catch the light; the ones that face down don't
-        const lit = (top, bot) => { const g = ctx.createLinearGradient(0, h * 0.3, 0, h * 0.7); g.addColorStop(0, top); g.addColorStop(1, bot); return g; };
-        const L = geo.layers.length;
-        // deepest first: each sheet throws its shadow onto what is already
-        // drawn under it — the deepest onto the picture itself
-        for (let i = L - 1; i >= 0; i--) {
-          const { E, C, Mid } = geo.layers[i];
-          ctx.save();
-          ctx.shadowColor = i === L - 1 ? M.photoShade : M.shade;
-          ctx.shadowBlur = (i === L - 1 ? 16 : 9) * dpr;
-          ctx.shadowOffsetY = (i === L - 1 ? 6 : 3.5) * dpr;
-          ctx.shadowOffsetX = 0.8 * dpr;
-          ctx.fillStyle = M.coreTop[i];
-          ctx.fill(outside(C), "evenodd");
-          ctx.restore();
-          ctx.fillStyle = lit(M.coreTop[i], M.coreBot[i]); ctx.fill(between(E, C), "evenodd");
-          ctx.fillStyle = lit(M.edgeTop[i], M.edgeBot[i]); ctx.fill(between(Mid, C), "evenodd");
-          // the break is fuzzy: a fine, dense down of short fibres, the odd
-          // longer one — not hairs
-          const r = rng(i * 31 + 7);
-          ctx.lineCap = "round";
-          ctx.strokeStyle = lit(M.edgeTop[i], M.edgeBot[i]);
-          for (const [alpha, width, every, reach] of [[0.32, 0.45, 1, 1.6], [0.45, 0.5, 6, 3.6]]) {
-            ctx.globalAlpha = alpha; ctx.lineWidth = width;
-            ctx.beginPath();
-            for (let j = 0; j < C.length - 1; j++) {
-              const [nx, ny] = geo.nrm[j];
-              for (let q = 0; q < (every === 1 ? 3 : 1); q++) {
-                if (every > 1 && r() * every > 1) continue;
-                const t = r(), x = C[j][0] + (C[j + 1][0] - C[j][0]) * t, y = C[j][1] + (C[j + 1][1] - C[j][1]) * t;
-                const len = (0.3 + r() * r()) * reach, ang = (r() - 0.5) * 1.6;
-                const ca = Math.cos(ang), sa = Math.sin(ang);
-                ctx.moveTo(x - nx * 0.3, y - ny * 0.3);
-                ctx.lineTo(x + (nx * ca - ny * sa) * len, y + (nx * sa + ny * ca) * len);
-              }
-            }
-            ctx.stroke();
-          }
-          ctx.globalAlpha = 1;
-          // the sheet's own face (the page's own face is the real page,
-          // outside the clip — painted anyway so its edge is clean)
-          ctx.fillStyle = M.sheets[i];
-          ctx.fill(outside(E), "evenodd");
-          if (i > 0) {
-            // where this sheet meets the one above it: a crease of shade
-            ctx.save(); ctx.globalAlpha = isNight() ? 0.5 : 0.22; ctx.strokeStyle = "#000"; ctx.lineWidth = 0.8;
-            ctx.translate(0, 0.6); ctx.stroke(ring(geo.layers[i - 1].E)); ctx.restore();
-          }
-        }
-        let rim = cut.querySelector(".rim");
-        if (!rim) { rim = document.createElement("div"); rim.className = "rim"; cut.appendChild(rim); }
-        cv.toBlob((blob) => {
-          if (!blob) return;
-          const url = URL.createObjectURL(blob);
-          const old = rim.dataset.url;
-          rim.style.backgroundImage = `url(${url})`;
-          rim.dataset.url = url;
-          if (old) setTimeout(() => URL.revokeObjectURL(old), 1000);
-        });
-      }
-
-      // a rip's picture loads as the rip comes near, not with the page
-      const near = new IntersectionObserver((list) => list.forEach((e) => {
-        if (e.isIntersecting) { e.target.classList.add("near"); near.unobserve(e.target); }
-      }), { rootMargin: "80% 0px" });
-      const opener = new IntersectionObserver((list) => list.forEach((e) => {
+      const io = "IntersectionObserver" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches && new IntersectionObserver((list) => list.forEach((e) => {
         if (!e.isIntersecting) return;
-        opener.unobserve(e.target);
-        e.target.classList.add("open");
-        e.target.clip();
-      }), { threshold: 0.2 });
-
-      const boxes = [];
-      // every rip on the page, and every one the feed adds as it goes on
-      const add = (box) => {
-        const n = boxes.length;
-        boxes.push(box);
-        const cut = box.querySelector(".cut");
-        near.observe(cut);
-        let geo = null, size = "";
-        box.clip = () => { if (geo) cut.style.clipPath = poly(box.classList.contains("open") ? geo.layers[0].E : geo.slit); };
-        box.draw = (force) => {
-          const w = cut.clientWidth, h = cut.clientHeight, ph = phone();
-          if (!w || !h || (!force && size === `${w}x${h}x${ph}`)) return;
-          size = `${w}x${h}x${ph}`;
-          const k = Math.round((h - 44) * (ph ? 0.2 : 0.24));
-          // torn on every side that is on the screen
-          const bleed = ph ? "both" : box.dataset.bleed || "both";
-          const torn = { left: bleed === "right", right: bleed === "left" };
-          // tall on the side that runs off the screen (on a phone, where both
-          // do, the side it would on a desktop)
-          geo = geometry(w, h, k, n + 1, w < 700, torn, (box.dataset.bleed || "right") === "right");
-          box.style.setProperty("--k", k + "px");
-          box.clip();
-          paint(box, cut, geo, w, h);
-        };
-        box.draw();
-        let t = 0;
-        new ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => box.draw(), 120); }).observe(cut);
-        if (STILL) { box.classList.add("open"); box.clip(); }
-        else opener.observe(box);
-        queue();
-      };
-      // night and day are different paper
-      const redraw = () => boxes.forEach((b) => b.draw(true));
-      document.getElementById("mode").addEventListener("click", redraw);
-      matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
-
-      // ── depth ──
-      // The picture sits behind the paper, so it moves a little less than the
-      // page does: a rip in the middle of the screen shows the middle of its
-      // picture, low on the screen a little of its bottom, high up its top. It is
-      // a transform on the picture itself, never on the cut, so it cannot pin
-      // anything — and it is the same on every phone, where a fixed layer is not.
-      let queued = false;
-      function queue() { if (!STILL && !queued) { queued = true; requestAnimationFrame(move); } }
-      function move() {
-          queued = false;
-          const vh = innerHeight;
-          for (const b of boxes) {
-            const cut = b.querySelector(".cut"), still = b.querySelector(".still");
-            const r = cut.getBoundingClientRect();
-            if (r.bottom < -100 || r.top > vh + 100) continue;
-            const off = (r.top + r.height / 2 - vh / 2) / (vh / 2 + r.height / 2);   // −1 … 1 across the pass
-            // low on the screen it shows a little of the picture's bottom; as it
-            // rises the picture eases down and the top comes into view
-            still.style.transform = `translate3d(0, ${(-off * r.height * 0.065).toFixed(1)}px, 0)`;
-          }
-      }
-      addEventListener("scroll", queue, { passive: true });
-      addEventListener("resize", queue);
-      document.querySelectorAll("[data-cut]").forEach(add);
-      window.addRip = add;
+        e.target.classList.add("in"); io.unobserve(e.target);
+      }), { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
+      window.reveal = (root) => root.querySelectorAll(".rv").forEach((el) => (io ? io.observe(el) : el.classList.add("in")));
+      window.reveal(document);
     })();
 
-    // ─── what plays in the rips ──────────────────────────
-    // A rip's video loads and plays only while the rip is on screen, and not
-    // at all for a visitor who has asked for less motion: they get its poster.
-    (() => {
-      const io = new IntersectionObserver((list) => list.forEach((e) => {
-        const v = e.target;
-        if (e.isIntersecting) {
-          if (!v.src) v.src = v.dataset.src;
-          if (!STILL) v.play().catch(() => {});
-        } else if (!v.paused) v.pause();
-      }), { rootMargin: "20% 0px" });
-      window.addVideos = (root) => root.querySelectorAll(".cut video[data-src]").forEach((v) => io.observe(v));
-      window.addVideos(document);
-    })();
+    // ─── the rooms ───────────────────────────────────────
+    // Every room on the site that a visitor can use, newest and biggest first.
+    // `tier` is how far up the feed a room may land: the first tier keeps its
+    // order, the others are shuffled within themselves on every visit, so the
+    // feed opens on what is new and is never quite the same twice. `media` is
+    // what shows through the rip: a clip of the app running, or a drawing made
+    // live from the room's own data (see ART below). Boards and ATLAS are in by
+    // Ric's word (2026-10-16), as rooms of their own.
+    const POSTS = [
+      { id: "cs", tier: 0, skin: "cs", isNew: true, tag: "Gaming", name: "Counter-Strike", href: "cs.html",
+        lede: "Every match I play, rebuilt from the demo. Replay any round from above, freeze any kill, see where everyone stood.",
+        facts: ["2D replays", "Kill snapshots", "Every round"], btn: "Watch the replays", peek: "Open",
+        media: { video: "assets/frontdoor/cs" }, alt: "A round of Counter-Strike playing out on the Mirage radar" },
+      { id: "kondrite", tier: 0, skin: "kondrite", tag: "Multiplayer · in the browser", name: "KONDRITE", href: "projects/kondrite/index.html",
+        lede: "A space game that runs right here. Up to five ships in one sky — co-op survival or a battle royale. Send a friend the link.",
+        facts: ["Up to 5 players", "Co-op or royale", "No install"], btn: "Play KONDRITE", peek: "Play",
+        media: { video: "assets/frontdoor/kondrite" }, alt: "A KONDRITE ship flying through an asteroid field, shooting rocks" },
+      { id: "boards", tier: 0, skin: "boards", tag: "Climbing · Kilter & Tension", name: "The Boards", href: "projects/climbing/board.html",
+        lede: "Every problem I've climbed on the Kilter and Tension boards — the holds lit up just like the wall in the gym.",
+        facts: ["Kilter", "Tension", "Every send"], btn: "See the boards", peek: "Open",
+        media: { art: "boards" }, alt: "A climbing board with one of Ric's problems lit up hold by hold" },
+      { id: "entertainment", tier: 1, skin: "cinema", tag: "Films & shows", name: "Entertainment", href: "entertainment.html",
+        lede: "Every film and show we've watched and the ones still waiting. Can't pick? It chooses, and tells you where it's streaming.",
+        facts: ["363 titles", "Watch together", "Where to stream"], btn: "Find something to watch", peek: "Open",
+        media: { art: "posters" }, alt: "Columns of film posters from the list, drifting past" },
+      { id: "scale", tier: 1, skin: "scale", tag: "Exploration", name: "How Big Everything Is", href: "projects/how-big-everything-is/index.html",
+        lede: "One rail from a quark to the edge of the observable universe, every rung to scale. Press Tour and let it walk you out.",
+        facts: ["Quark to cosmos", "To scale", "Guided tour"], btn: "Start at a quark", peek: "Zoom",
+        media: { video: "assets/frontdoor/scale" }, alt: "How Big Everything Is on its tour, zooming outward" },
+      { id: "training", tier: 1, skin: "strava", tag: "Training", name: "Training", href: "training.html",
+        lede: "Every run lands here the moment my watch syncs, and ticks off its day in a 52-week plan.",
+        facts: ["Every run", "52-week plan", "Live from the watch"], btn: "See the training log", peek: "Open",
+        media: { art: "run" }, alt: "A run drawn over a contour map, its miles, pace and climb counting up beside it" },
+      { id: "atlas", tier: 1, skin: "atlas", tag: "Crew only", name: "ATLAS", href: "map.html",
+        lede: "A private map for the crew — every place worth going back to, pinned. Sign in to see it.",
+        facts: ["Private", "Pins & photos", "Crew only"], btn: "Open ATLAS", peek: "Sign in",
+        media: { art: "atlas" }, alt: "A hand-drawn style map with pins dropping onto it — an illustration, not real places" },
+      { id: "studies", tier: 1, skin: "registry", tag: "Mind", name: "Studies", href: "projects/psyche/studies.html",
+        lede: "Search every registered clinical trial in the world — what's recruiting, what finished, and what they found.",
+        facts: ["Every trial", "Recruiting now", "Results"], btn: "Search the registry", peek: "Search",
+        media: { art: "studies" }, alt: "A search for clinical trials being typed, the results filling in" },
+      { id: "interstate", tier: 2, skin: "highway", tag: "Gaming · plays in the browser", name: "Interstate 40", href: "projects/offramp/index.html",
+        lede: "Drive the real I-40 from above, exit to exit, with traffic that has somewhere to be.",
+        facts: ["The real road", "Exit to exit", "Live traffic"], btn: "Take the wheel", peek: "Drive",
+        media: { video: "assets/games/offramp" }, alt: "Interstate 40 from above, cars weaving across the lanes" },
+      { id: "orrin", tier: 2, skin: "orrin", tag: "The project", name: "Orrin", href: "orrin.html",
+        lede: "A program I built that keeps running on its own — noticing, remembering, choosing and acting, whether or not anyone is talking to it.",
+        facts: ["Always running", "Remembers", "Decides"], btn: "Meet Orrin", peek: "Open",
+        media: { art: "orrin" }, alt: "A web of nodes passing signals between them" },
+      { id: "captures", tier: 2, skin: "darkroom", tag: "Photographs", name: "Captures", href: "captures.html",
+        lede: "Over 1,300 photographs — mountains, crags, rivers and sunrises, newest first.",
+        facts: ["1,300+ frames", "Newest first", "Full size"], btn: "Look through them", peek: "Open",
+        media: { art: "darkroom" }, alt: "Photographs developing one after another under a red safelight" },
+      { id: "starfield", tier: 2, skin: "starfield", tag: "Gaming · plays in the browser", name: "Starfield", href: "projects/starfield/index.html",
+        lede: "Fly a rocket through real stars and watch the sky bend as you near the speed of light.",
+        facts: ["Real stars", "Relativity", "Fly it"], btn: "Launch", peek: "Fly",
+        media: { video: "assets/games/starfield" }, alt: "Flying through a field of real stars" },
+      { id: "climbing", tier: 2, skin: "logbook", tag: "Climbing", name: "Climbing", href: "climbing.html",
+        lede: "Every day out at the crag, every send and every project — logged from the wall, the to-do list included.",
+        facts: ["Days out", "Sends & projects", "The to-do list"], btn: "Open the logbook", peek: "Open",
+        media: { art: "climbs" }, alt: "Photographs of climbing, one after another" },
+      { id: "speed", tier: 2, skin: "speed", tag: "Exploration", name: "How Speed Affects Time", href: "projects/how-speed-affects-time/index.html",
+        lede: "One slider, two clocks, the real sky. Push toward light speed and watch the stars crowd ahead and turn blue.",
+        facts: ["One slider", "Two clocks", "The real sky"], btn: "Speed up", peek: "Open",
+        media: { art: "speed" }, alt: "Stars crowding forward and turning blue as a ship nears the speed of light" },
+      { id: "mind", tier: 2, skin: "manila", tag: "Mind", name: "State of Mind", href: "projects/state-of-mind-line/index.html",
+        lede: "A mood line drawn the way a bipolar pattern actually moves — the highs, the lows, and the long flat middle.",
+        facts: ["Mood line", "Two signals", "Animated"], btn: "Watch the line", peek: "Open",
+        media: { art: "mood" }, alt: "Two mood lines, red and blue, moving across a chart" },
+      { id: "farlight", tier: 2, skin: "farlight", tag: "Gaming · plays in the browser", name: "FARLIGHT", href: "projects/farlight/index.html",
+        lede: "A little ship, a lot of hills, and the feel of getting a landing exactly right.",
+        facts: ["Momentum", "Hills", "Landings"], btn: "Play FARLIGHT", peek: "Play",
+        media: { video: "assets/games/farlight" }, alt: "A glowing ship skimming over rolling blue hills" },
+      { id: "spacetime", tier: 2, skin: "minkowski", tag: "Exploration", name: "The Geometry of Spacetime", href: "projects/spacetime/index.html",
+        lede: "Special relativity, drawn: tilt a worldline and watch \"now\" tip over with it.",
+        facts: ["Light cones", "Worldlines", "Interactive"], btn: "Tilt it", peek: "Open",
+        media: { art: "spacetime" }, alt: "A spacetime diagram, its grid shearing as a worldline tilts" },
+      { id: "apex", tier: 2, skin: "apex", tag: "Gaming", name: "Apex", href: "apex.html",
+        lede: "My Apex Legends career — the kills on every legend's banner, and the rank I'm grinding.",
+        facts: ["Every legend", "Ranked", "Career"], btn: "See the stats", peek: "Open",
+        media: { art: "apex" }, alt: "An Apex kill count rolling up over a hexagon grid" },
+      { id: "siege", tier: 2, skin: "saber", tag: "Workbench", name: "Siege Conductor", href: "projects/siege-conductor/index.html",
+        lede: "Watch The Clone Wars and Revenge of the Sith as one story, cut together in the right order.",
+        facts: ["Star Wars", "In order", "On your phone"], btn: "Open it", peek: "Open",
+        media: { art: "siege" }, alt: "Two timelines, blue and red, weaving into one" },
+      { id: "terminal", tier: 2, skin: "crt", tag: "The original", name: "The Terminal", href: "index.html",
+        lede: "Where it all started. Type a room's name and you're in — and there are commands nobody has found yet.",
+        facts: ["Type anything", "Hidden commands", "Mochi"], btn: "Open the terminal", peek: "Type",
+        media: { art: "terminal" }, alt: "Commands typed into an amber terminal, answering back" },
+    ];
 
-    // ─── the latest run, drawn live ──────────────────────
-    // Training's rip shows Ric's most recent run: the route on the left, three
-    // numbers beside it. It comes from the Worker's /strava as the page loads,
-    // exactly as the training page gets it — so no route is ever committed to
-    // this repo (hard rule 1), and the Worker's hold still keeps a run that is
-    // minutes old off the map for visitors. No line is laid on a real map here:
-    // the training page's run detail is the one place tiles are fetched. With
-    // no run to draw, the mountain photo under the canvas stands.
-    (() => {
-      const still = document.getElementById("run-still");
-      if (!still) return;
-      const cv = still.querySelector(".runcv");
-      const HOST = location.origin.includes("localhost") ? location.origin : "https://training-log.rmbuster82.workers.dev";
-      const decode = (s) => {
-        const pts = []; let i = 0, lat = 0, lng = 0;
-        while (i < s.length) {
-          for (const k of [0, 1]) {
-            let b, shift = 0, r = 0;
-            do { b = s.charCodeAt(i++) - 63; r |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20 && i < s.length);
-            const d = r & 1 ? ~(r >> 1) : r >> 1;
-            if (k) lng += d; else lat += d;
+    // ─── what is drawn in the rips ───────────────────────
+    // Each painter is (ctx, w, h, t, st): t is seconds, st is the rip's own
+    // state — its random stream (st.r), the frame's dt, anything it keeps.
+    // They are drawn only while their rip is on screen.
+    const IMG = new Map();
+    const img = (src) => {
+      if (!IMG.has(src)) { const i = new Image(); i.decoding = "async"; i.src = src; IMG.set(src, i); }
+      const i = IMG.get(src);
+      return i.complete && i.naturalWidth ? i : null;
+    };
+    const script = (() => { const seen = {}; return (src) => (seen[src] ||= new Promise((ok, no) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = no; document.head.appendChild(s); })); })();
+    const cover = (x, im, w, h, zoom = 1, fx = 0.5, fy = 0.5) => {
+      const s = Math.max(w / im.naturalWidth, h / im.naturalHeight) * zoom, iw = im.naturalWidth * s, ih = im.naturalHeight * s;
+      x.drawImage(im, (w - iw) * fx, (h - ih) * fy, iw, ih);
+    };
+    const pick = (r, a) => a[Math.floor(r() * a.length)];
+    const smooth1 = (r, span) => { const v = Array.from({ length: 4096 }, () => r() * 2 - 1);
+      return (u) => { const f = u / span + 2048, i = Math.floor(f), t = f - i, e = t * t * (3 - 2 * t); return v[i & 4095] + (v[(i + 1) & 4095] - v[i & 4095]) * e; }; };
+    // 2D value noise, for maps
+    const noise2 = (r) => { const P = Array.from({ length: 256 }, () => r());
+      const h = (i, j) => P[(i * 73 + j * 151) & 255];
+      return (x, y) => { const i = Math.floor(x), j = Math.floor(y), u = x - i, v = y - j, su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
+        const a = h(i, j), b = h(i + 1, j), c = h(i, j + 1), d = h(i + 1, j + 1);
+        return a + (b - a) * su + (c - a) * sv + (a - b - c + d) * su * sv; }; };
+    const fbm = (n, x, y) => n(x, y) * 0.55 + n(x * 2.1, y * 2.1) * 0.28 + n(x * 4.3, y * 4.3) * 0.17;
+    // contour lines of a field, by marching squares, cached on an offscreen canvas
+    const contours = (w, h, field, levels, style) => {
+      const c = document.createElement("canvas"), dpr = Math.min(2, devicePixelRatio || 1);
+      c.width = w * dpr; c.height = h * dpr;
+      const x = c.getContext("2d"); x.scale(dpr, dpr);
+      const S = 10, nx = Math.ceil(w / S) + 1, ny = Math.ceil(h / S) + 1, F = [];
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) F[j * nx + i] = field(i * S, j * S);
+      levels.forEach((lv, li) => {
+        x.beginPath(); style(x, li);
+        for (let j = 0; j < ny - 1; j++) for (let i = 0; i < nx - 1; i++) {
+          const a = F[j * nx + i], b = F[j * nx + i + 1], c2 = F[(j + 1) * nx + i + 1], d = F[(j + 1) * nx + i];
+          const pts = [];
+          const e = (p, q, x0, y0, x1, y1) => { if ((p < lv) !== (q < lv)) { const t = (lv - p) / (q - p); pts.push([x0 + (x1 - x0) * t, y0 + (y1 - y0) * t]); } };
+          const X = i * S, Y = j * S;
+          e(a, b, X, Y, X + S, Y); e(b, c2, X + S, Y, X + S, Y + S); e(d, c2, X, Y + S, X + S, Y + S); e(a, d, X, Y, X, Y + S);
+          if (pts.length >= 2) { x.moveTo(pts[0][0], pts[0][1]); x.lineTo(pts[1][0], pts[1][1]); }
+          if (pts.length === 4) { x.moveTo(pts[2][0], pts[2][1]); x.lineTo(pts[3][0], pts[3][1]); }
+        }
+        x.stroke();
+      });
+      return c;
+    };
+    const POSTERS = ["2-guns", "the-equalizer", "the-accountant", "american-gangster", "keep-watching", "the-belko-experiment", "the-last-stand", "patriots-day", "sahara", "mud", "white-boy-rick", "american-made", "mr-mrs-smith", "conspiracy-theory", "freerunner", "minority-report", "elysium", "now-you-see-me", "the-sixth-sense", "game-night", "13-hours", "world-war-z", "snatch", "django-unchained", "sinbad", "catch-me-if-you-can", "tag", "after-earth", "the-dark-knight-trilogy", "fight-club", "alita-battle-angel", "300", "gladiator", "the-patriot", "i-am-legend", "eraser", "predator", "braveheart", "mcfarland-usa", "the-big-short", "security", "robocop", "snowpiercer", "the-adam-project", "don-t-look-up", "hacksaw-ridge", "click", "the-social-network", "exodus-gods-and-kings", "tomorrowland", "nerve", "gran-turismo", "zoolander", "baby-driver", "the-quick-and-the-dead", "yes-man", "focus", "carry-on", "blackkklansman", "no-country-for-old-men", "the-ballad-of-buster-scruggs", "crazy-stupid-love", "where-the-crawdads-sing", "her", "awakenings", "the-dawn-wall", "fahrenheit-451", "pulp-fiction", "f1-the-movie", "valley-uprising", "the-secret-life-of-walter-mitty", "ad-astra", "barbarian", "in-time", "imperium", "mickey-17", "idiocracy", "se7en", "horrible-bosses", "collateral", "inside-man", "looper", "arrival", "whiplash", "saving-private-ryan", "the-matrix", "the-equalizer-2", "inside-man-most-wanted", "the-italian-job", "jack-reacher", "black-hawk-down", "fury", "jarhead", "oblivion", "district-9", "total-recall", "terminator", "alien-vs-predator", "edge-of-tomorrow", "star-wars", "inception", "interstellar", "the-bourne-trilogy", "forrest-gump", "the-truman-show", "good-will-hunting", "the-wolf-of-wall-street", "superbad", "21-jump-street", "white-house-down", "commando", "the-running-man", "last-action-hero", "true-lies", "end-of-days", "collateral-damage", "twins", "kindergarten-cop", "junior", "jingle-all-the-way", "the-expendables", "escape-plan", "killing-gunther", "batman-robin", "aftermath", "mad-max", "law-abiding-citizen", "avatar", "iron-man", "captain-america", "the-avengers", "thor", "guardians-of-the-galaxy", "doctor-strange", "black-panther", "ant-man", "deadpool", "x-men", "venom", "logan", "man-of-steel", "batman-v-superman-dawn-of-justice", "zack-snyder-s-justice-league", "wonder-woman", "aquaman", "shazam", "suicide-squad", "joker", "here-comes-the-boom", "zookeeper", "school-of-rock", "kung-fu-panda", "shrek", "inside-out", "deadpool-wolverine", "despicable-me", "a-quiet-place", "twister", "dune", "the-fall-guy", "oppenheimer", "ant-man-and-the-wasp", "the-nun", "the-meg", "cocaine-bear", "saw", "napoleon", "avatar-the-way-of-water", "the-batman", "elvis", "bullet-train", "smile", "free-guy", "aladdin", "jumanji", "it", "ford-v-ferrari", "1917", "glass", "moana", "split", "hamilton", "free-solo", "wonka", "the-shining", "this-is-the-end", "the-butterfly-effect", "get-out", "hellboy", "zombieland", "bird-box", "the-happening", "the-conjuring", "halloween", "a-nightmare-on-elm-street", "the-silence-of-the-lambs", "gremlins", "dumb-and-dumber", "groundhog-day", "superman", "american-sniper", "maggie", "a-man-called-otto", "the-gentlemen", "the-gorge", "tetris", "life", "absolutely-anything", "the-amateur", "the-long-walk", "i-love-you-man", "tropic-thunder", "it-miniseries", "28-days-later", "28-weeks-later", "28-years-later", "tron-ares", "code-3", "the-menu", "honey-don-t", "caught-stealing", "source-code", "greenland", "greenland-migration", "zodiac", "jurassic-world", "jurassic-world-fallen-kingdom", "jurassic-world-dominion", "jurassic-world-rebirth", "jurassic-park", "the-lost-world-jurassic-park", "jurassic-park-iii", "daybreak", "mercy", "the-odyssey", "spider-man-brand-new-day", "obsession", "rush", "lamborghini", "the-angriest-man-in-brooklyn", "four-brothers", "lone-survivor", "american-honey", "seven-pounds", "knowing", "we-are-your-friends", "triangle", "no-hard-feelings", "the-notebook", "the-prestige", "the-departed", "v-for-vendetta", "the-wall", "samaritan", "training-day", "you-should-have-left", "taxi-driver", "the-family-plan", "what-women-want", "unstoppable", "greater-good", "the-hunt", "equilibrium", "mayhem", "heathers", "the-jester", "pawn-sacrifice", "finch", "next", "adaptation", "10-cloverfield-lane", "argo", "man-on-fire", "green-book", "carriers", "premium-rush", "all-eyez-on-me", "my-name-is-earl", "end-of-watch", "only-the-brave", "men-of-honor", "the-aviator", "sin-city", "the-day-of-the-jackal", "downsizing", "kill-bill", "three-thousand-years-of-longing", "the-taking-of-pelham-one-two-three", "moneyball", "the-sound", "a-i-rising", "the-town", "a-prayer-before-dawn", "jungle", "into-the-blue", "speed", "friendship", "the-impossible", "the-roses", "inglourious-basterds", "blended", "if-only", "odd-thomas", "magazine-dreams", "the-whale", "demolition", "the-heartbreak-kid", "another-earth", "the-flash", "wanted", "where-hope-grows", "john-wick", "goodfellas", "casino", "scarface", "moments", "the-machinist", "blade-runner", "2001-a-space-odyssey", "the-godfather", "talladega-nights", "shutter-island", "children-of-men", "greater", "the-room", "kiss-kiss-bang-bang", "shooter", "the-losers", "the-ministry-of-ungentlemanly-warfare", "the-others", "shaun-of-the-dead", "anaconda", "flight-risk", "guns-akimbo", "marty-supreme", "roofman", "the-revenant", "the-place-beyond-the-pines", "ray", "ghosted", "tommy-boy", "the-devil-s-advocate", "send-help", "smokey-and-the-bandit", "rip", "the-master", "just-friends", "boss-level", "knives-out", "ruby-sparks", "pumping-iron", "the-dark-tower", "hypnotic", "heat", "fallen", "war-machine", "the-adventures-of-tintin", "what-happened-to-monday", "lawless", "we-live-in-time", "nightcrawler"];
+    const CLIMBS = Array.from({ length: 38 }, (_, i) => `photos/climbing-${String(i + 1).padStart(2, "0")}.jpg`);
+    const PHOTOS = (r, n) => Array.from({ length: n }, () => `photos/website-${String(1 + Math.floor(r() * 1287)).padStart(4, "0")}.jpg`);
+    const font = (px, kind = "sans", weight = 600) => `${weight} ${px}px ${kind === "mono" ? 'ui-monospace, "SF Mono", Menlo, Consolas, monospace' : kind === "serif" ? 'Georgia, "Times New Roman", serif' : '-apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif'}`;
+
+    const ART = {
+      // A real board, from the board log: every hold on it, and one of Ric's
+      // sends lit up the way the wall lights it — start, hands, feet, finish —
+      // climbed hold by hold, then the next one.
+      boards(x, w, h, t, st) {
+        x.fillStyle = "#121316"; x.fillRect(0, 0, w, h);
+        const B = window.BOARD_DATA;
+        if (!B) { script("projects/climbing/board-data.js").catch(() => {}); return; }
+        if (!st.sends) {
+          st.sends = [];
+          for (const [key, b] of Object.entries(B.boards || {})) {
+            for (const e of b.entries || []) {
+              const c = b.climbs && b.climbs[e.uuid], L = c && b.layouts && b.layouts[c.layout];
+              if (e.ascent && c && L && c.holds && c.holds.length) st.sends.push({ key, e, c, L });
+            }
           }
-          pts.push([lat / 1e5, lng / 1e5]);
+          st.i = Math.floor(st.r() * st.sends.length); st.t0 = t;
         }
-        return pts;
-      };
-      const MI = 1609.344;
-      let run = null;
-      function draw() {
-        if (!run) return;
-        const w = still.clientWidth, h = still.clientHeight, dpr = Math.min(2, devicePixelRatio || 1);
-        if (!w || !h) return;
-        cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
-        const x = cv.getContext("2d");
-        x.setTransform(dpr, 0, 0, dpr, 0, 0);
-        // a dark field with a fine grid, like a map with the streets taken off
-        x.fillStyle = "#0b0d11"; x.fillRect(0, 0, w, h);
-        x.strokeStyle = "rgba(255,255,255,.045)"; x.lineWidth = 1;
-        for (let gx = 0; gx < w; gx += 36) { x.beginPath(); x.moveTo(gx + 0.5, 0); x.lineTo(gx + 0.5, h); x.stroke(); }
-        for (let gy = 0; gy < h; gy += 36) { x.beginPath(); x.moveTo(0, gy + 0.5); x.lineTo(w, gy + 0.5); x.stroke(); }
-        const glow = x.createRadialGradient(w * 0.35, h * 0.5, 0, w * 0.35, h * 0.5, Math.max(w, h) * 0.6);
-        glow.addColorStop(0, "rgba(252,76,2,.10)"); glow.addColorStop(1, "rgba(252,76,2,0)");
-        x.fillStyle = glow; x.fillRect(0, 0, w, h);
-        // the route, fitted to its half of the picture (or its top, upright)
-        const wide = w / h > 1;
-        const box = wide ? [w * 0.1, h * 0.16, w * 0.5, h * 0.68] : [w * 0.14, h * 0.21, w * 0.72, h * 0.36];
-        const lat0 = run.pts.reduce((a, p) => a + p[0], 0) / run.pts.length;
-        const P = run.pts.map(([la, lo]) => [lo * Math.cos(lat0 * Math.PI / 180), -la]);
-        const xs = P.map((p) => p[0]), ys = P.map((p) => p[1]);
-        const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-        const sc = Math.min(box[2] / ((x1 - x0) || 1e-9), box[3] / ((y1 - y0) || 1e-9));
-        const ox = box[0] + (box[2] - (x1 - x0) * sc) / 2, oy = box[1] + (box[3] - (y1 - y0) * sc) / 2;
-        const at = ([px, py]) => [ox + (px - x0) * sc, oy + (py - y0) * sc];
-        const line = () => { x.beginPath(); P.forEach((p, i) => { const [a, b] = at(p); i ? x.lineTo(a, b) : x.moveTo(a, b); }); };
-        x.lineJoin = x.lineCap = "round";
-        x.shadowColor = "rgba(252,76,2,.55)"; x.shadowBlur = 18;
-        line(); x.strokeStyle = "rgba(255,255,255,.92)"; x.lineWidth = 7; x.stroke();
-        x.shadowBlur = 0;
-        line(); x.strokeStyle = "#fc4c02"; x.lineWidth = 3.6; x.stroke();
-        for (const [p, c] of [[P[0], "#1fb15a"], [P[P.length - 1], "#fc4c02"]]) {
-          const [a, b] = at(p); x.beginPath(); x.arc(a, b, 6, 0, Math.PI * 2); x.fillStyle = c; x.fill(); x.lineWidth = 2.5; x.strokeStyle = "#fff"; x.stroke();
-        }
-        // the numbers beside it: three, big
-        const stats = [[run.mi, "miles"], [run.pace, "per mile"], [run.ft, "feet up"]].filter((s) => s[0]);
-        const big = Math.round(Math.max(26, Math.min(58, (wide ? w * 0.06 : w * 0.085))));
-        x.textBaseline = "alphabetic";
-        stats.forEach(([v, k], i) => {
-          const [sx, sy] = wide ? [w * 0.66, h * 0.32 + i * big * 2.05] : [w * 0.1 + i * (w * 0.78 / stats.length), h * 0.7];
-          x.fillStyle = "#fff"; x.font = `600 ${big}px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif`; x.fillText(v, sx, sy);
-          x.fillStyle = "rgba(255,255,255,.62)"; x.font = `500 ${Math.round(big * 0.24)}px ui-monospace, Menlo, Consolas, monospace`;
-          x.fillText(k.toUpperCase(), sx + 2, sy + big * 0.5);
+        if (!st.sends.length) return;
+        const cyc = 9, el = t - st.t0;
+        if (el > cyc) { st.i = (st.i + 1 + Math.floor(st.r() * (st.sends.length - 1))) % st.sends.length; st.t0 = t; }
+        const { e, c, L } = st.sends[st.i], F = L.frame;
+        // the board, big enough to read, centred on the problem being climbed
+        // (in a short strip it runs off the top and bottom, as a wall would)
+        const s = Math.max(Math.min((h * 0.9) / F.h, (w * 0.9) / F.w), Math.min((w * 0.62) / F.w, (h * 1.9) / F.h)), bw = F.w * s, bh = F.h * s;
+        const ys = c.holds.map((hd) => hd[1]), midHold = (Math.min(...ys) + Math.max(...ys)) / 2;
+        const ox = (w - bw) / 2, oy = Math.min(Math.max(h - bh, h / 2 - (bh - (midHold - F.y) * s)), 0) + (bh < h ? (h - bh) / 2 : 0);
+        const g = x.createLinearGradient(0, oy, 0, oy + bh); g.addColorStop(0, "#26221d"); g.addColorStop(1, "#1a1714");
+        x.fillStyle = g; x.fillRect(ox - 10, oy - 10, bw + 20, bh + 20);
+        const at = ([hx, hy]) => [ox + (hx - F.x) * s, oy + bh - (hy - F.y) * s];
+        x.fillStyle = "rgba(255,255,255,.09)";
+        for (const p of L.grid) { const [px, py] = at(p); x.beginPath(); x.arc(px, py, Math.max(1.6, s * 1.6), 0, 7); x.fill(); }
+        const holds = [...c.holds].sort((a, b) => a[1] - b[1]);
+        const n = holds.length, shown = Math.min(n, Math.floor(((t - st.t0) / (cyc * 0.62)) * n) + 1);
+        holds.forEach((hd, i) => {
+          if (i >= shown) return;
+          const col = (L.roles[hd[2]] && L.roles[hd[2]].color) || "#00ffff", [px, py] = at(hd);
+          const age = Math.min(1, (t - st.t0) * 3 - i * 3 / n * 1.86 + 0.6), R = Math.max(5, s * 4.2);
+          x.save(); x.globalAlpha = Math.max(0.2, Math.min(1, age + 0.2));
+          x.shadowColor = col; x.shadowBlur = R * 2.4; x.strokeStyle = col; x.lineWidth = Math.max(2, s * 1.4);
+          x.beginPath(); x.arc(px, py, R, 0, 7); x.stroke(); x.restore();
         });
-        cv.hidden = false;
-        still.setAttribute("aria-label", `The route of Ric's latest run, ${run.mi} miles${run.pace ? ` at ${run.pace} a mile` : ""}`);
-      }
-      fetch(HOST + "/strava", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j) => {
-        const days = (j && j.days) || {};
-        for (const d of Object.keys(days).sort().reverse()) {
-          const a = (days[d] || []).find((a) => a && a.route && !a.hidden && /run/i.test(a.sport_type || a.type || ""));
-          if (!a) continue;
-          const pts = decode(a.route);
-          if (pts.length < 2 || !pts.every(([la, lo]) => Number.isFinite(la) && Number.isFinite(lo))) continue;
-          const sPerMi = a.moving_time && a.distance ? a.moving_time / (a.distance / MI) : 0;
-          run = {
-            pts,
-            mi: a.distance ? (a.distance / MI).toFixed(1) : "",
-            pace: sPerMi ? `${Math.floor(sPerMi / 60)}:${String(Math.round(sPerMi % 60)).padStart(2, "0")}` : "",
-            ft: a.total_elevation_gain ? String(Math.round(a.total_elevation_gain * 3.28084)) : "",
-          };
-          break;
-        }
-        draw();
-      }).catch(() => {});
-      let t = 0;
-      new ResizeObserver(() => { clearTimeout(t); t = setTimeout(draw, 150); }).observe(still);
-    })();
+        x.fillStyle = "rgba(255,255,255,.82)"; x.font = font(Math.max(11, Math.round(h * 0.035)), "mono", 600);
+        x.fillText(`${(e.grade || "").split("/").pop()}  ${e.angle}°`, ox + 6, oy + bh - 10);
+      },
 
-    // ─── one door ───────────────────────────────────────
-    // A room's button and its rip go to the same place, so pointing at either
-    // lights both — the picture leans in, the button takes the room's colour.
-    const oneDoor = (f) => {
-      for (const el of f.querySelectorAll(".btn, .f-rip")) {
-        el.addEventListener("pointerenter", () => f.classList.add("hot"));
-        el.addEventListener("pointerleave", () => f.classList.remove("hot"));
+      // The list's own posters, a random handful each visit, drifting in columns
+      // at different speeds the way a streaming app's wall does.
+      posters(x, w, h, t, st) {
+        x.fillStyle = "#0b0a08"; x.fillRect(0, 0, w, h);
+        const pw = Math.max(86, Math.min(150, h * 0.36)), ph = pw * 1.5, gap = 8, cols = Math.ceil(w / (pw + gap)) + 1;
+        if (!st.cols || st.cols.length < cols) {
+          st.cols = Array.from({ length: cols }, () => ({ speed: 10 + st.r() * 16, dir: st.r() < 0.5 ? 1 : -1, list: Array.from({ length: 6 }, () => `assets/posters/${pick(st.r, POSTERS)}.jpg`) }));
+        }
+        st.cols.slice(0, cols).forEach((col, ci) => {
+          const off = ((t * col.speed * col.dir) % (ph + gap) + (ph + gap)) % (ph + gap);
+          for (let k = -1; k < Math.ceil(h / (ph + gap)) + 1; k++) {
+            const im = img(col.list[(k + 6 * 100) % col.list.length]);
+            const px = ci * (pw + gap) - pw * 0.3, py = k * (ph + gap) + off - ph * 0.5;
+            if (im) x.drawImage(im, px, py, pw, ph); else { x.fillStyle = "#1c1a15"; x.fillRect(px, py, pw, ph); }
+          }
+        });
+        const v = x.createLinearGradient(0, 0, 0, h); v.addColorStop(0, "rgba(11,10,8,.55)"); v.addColorStop(0.3, "rgba(11,10,8,0)"); v.addColorStop(0.75, "rgba(11,10,8,0)"); v.addColorStop(1, "rgba(11,10,8,.7)");
+        x.fillStyle = v; x.fillRect(0, 0, w, h);
+      },
+
+      // A run that never happened anywhere real: a made-up loop over made-up
+      // hills (Ric's real routes stay on the training page, behind its hold),
+      // a runner going round it and the numbers counting up beside it.
+      run(x, w, h, t, st) {
+        if (!st.map || st.mw !== w || st.mh !== h) {
+          const n = noise2(st.r); st.mw = w; st.mh = h;
+          const sc = 1 / (Math.max(w, h) * 0.35);
+          st.map = contours(w, h, (px, py) => fbm(n, px * sc + 3, py * sc + 7), Array.from({ length: 12 }, (_, i) => 0.18 + i * 0.055),
+            (c, i) => { c.strokeStyle = i % 4 === 0 ? "rgba(130,120,110,.55)" : "rgba(150,140,130,.28)"; c.lineWidth = i % 4 === 0 ? 1.1 : 0.7; });
+          const cx = w * (0.32 + st.r() * 0.08), cy = h * 0.5, R = Math.min(w * 0.24, h * 0.36), wob = smooth1(st.r, 0.9);
+          st.route = Array.from({ length: 220 }, (_, i) => { const a = i / 220 * Math.PI * 2; const rr = R * (0.78 + 0.32 * wob(a * 1.4)); return [cx + Math.cos(a) * rr * 1.25, cy + Math.sin(a) * rr]; });
+          st.mi = 3.5 + st.r() * 6; st.pace = 450 + st.r() * 120; st.ft = Math.round(90 + st.r() * 600);
+        }
+        x.fillStyle = "#f6f4ee"; x.fillRect(0, 0, w, h);
+        x.drawImage(st.map, 0, 0, w, h);
+        const R = st.route, N = R.length, f = (t / 14) % 1, k = Math.floor(f * N);
+        x.lineJoin = x.lineCap = "round";
+        x.beginPath(); R.forEach(([a, b], i) => (i ? x.lineTo(a, b) : x.moveTo(a, b))); x.closePath();
+        x.strokeStyle = "rgba(252,76,2,.25)"; x.lineWidth = 5; x.stroke();
+        x.beginPath(); for (let i = 0; i <= k; i++) (i ? x.lineTo : x.moveTo).call(x, R[i][0], R[i][1]);
+        x.strokeStyle = "#fc4c02"; x.lineWidth = 4; x.stroke();
+        const [rx, ry] = R[k]; x.beginPath(); x.arc(rx, ry, 7, 0, 7); x.fillStyle = "#fff"; x.fill(); x.lineWidth = 3; x.strokeStyle = "#fc4c02"; x.stroke();
+        const wide = w / h > 1.05, big = Math.round(Math.max(24, Math.min(54, wide ? w * 0.055 : w * 0.08)));
+        const mi = (st.mi * f).toFixed(2), pace = `${Math.floor(st.pace / 60)}:${String(Math.round(st.pace % 60)).padStart(2, "0")}`, ft = String(Math.round(st.ft * f));
+        [[mi, "MILES"], [pace, "PER MILE"], [ft, "FEET UP"]].forEach(([v, k2], i) => {
+          const sx = wide ? w * 0.68 : w * 0.06 + i * w * 0.31, sy = wide ? h * 0.3 + i * big * 1.9 : h * 0.86;
+          x.fillStyle = "#242428"; x.font = font(big, "sans", 800); x.fillText(v, sx, sy);
+          x.fillStyle = "#6d6d78"; x.font = font(Math.max(10, Math.round(big * 0.24)), "mono", 600); x.fillText(k2, sx + 2, sy + big * 0.48);
+        });
+      },
+
+      // An invented map — no real place is drawn on this page, ever (hard rule 1):
+      // land, water and contours from noise, and pins dropping onto it.
+      atlas(x, w, h, t, st) {
+        if (!st.map || st.mw !== w || st.mh !== h) {
+          const n = noise2(st.r), sc = 1 / (Math.max(w, h) * 0.45), m = document.createElement("canvas"), dpr = Math.min(2, devicePixelRatio || 1);
+          st.mw = w; st.mh = h; m.width = w * dpr; m.height = h * dpr;
+          const c = m.getContext("2d"); c.scale(dpr, dpr);
+          c.fillStyle = "#efe8d6"; c.fillRect(0, 0, w, h);
+          const cell = 4;
+          for (let py = 0; py < h; py += cell) for (let px = 0; px < w; px += cell) {
+            const v = fbm(n, px * sc, py * sc);
+            if (v < 0.34) { c.fillStyle = v < 0.28 ? "#9fc2d6" : "#b9d3df"; c.fillRect(px, py, cell, cell); }
+            else if (v > 0.66) { c.fillStyle = "rgba(160,140,100,.16)"; c.fillRect(px, py, cell, cell); }
+          }
+          c.drawImage(contours(w, h, (px, py) => fbm(n, px * sc, py * sc), [0.42, 0.5, 0.58, 0.66, 0.74], (cc) => { cc.strokeStyle = "rgba(120,100,70,.35)"; cc.lineWidth = 0.8; }), 0, 0, w, h);
+          st.map = m;
+          st.pins = [];
+          for (let k = 0; k < 40 && st.pins.length < 9; k++) { const px = w * (0.08 + st.r() * 0.84), py = h * (0.18 + st.r() * 0.64); if (fbm(n, px * sc, py * sc) >= 0.36) st.pins.push([px, py]); }
+          st.pins.sort((a, b) => a[0] - b[0]);   // a trip, left to right
+        }
+        x.drawImage(st.map, 0, 0, w, h);
+        const cyc = 10, el = t % cyc, shown = Math.min(st.pins.length, Math.floor(el / 0.7) + 1);
+        x.setLineDash([5, 6]); x.strokeStyle = "rgba(199,62,38,.6)"; x.lineWidth = 2;
+        x.beginPath(); st.pins.slice(0, shown).forEach(([a, b], i) => (i ? x.lineTo(a, b) : x.moveTo(a, b))); x.stroke(); x.setLineDash([]);
+        st.pins.slice(0, shown).forEach(([px, py], i) => {
+          const age = el - i * 0.7, drop = Math.min(1, age * 3), bounce = drop < 1 ? (1 - drop) * -40 : Math.sin(Math.min(1, (age - 0.33) * 4) * Math.PI) * -4;
+          x.fillStyle = "rgba(0,0,0,.18)"; x.beginPath(); x.ellipse(px, py, 7, 3, 0, 0, 7); x.fill();
+          const y = py + bounce;
+          x.fillStyle = "#c73e26"; x.beginPath(); x.moveTo(px, y); x.bezierCurveTo(px - 10, y - 14, px - 9, y - 26, px, y - 26); x.bezierCurveTo(px + 9, y - 26, px + 10, y - 14, px, y); x.fill();
+          x.fillStyle = "#fff"; x.beginPath(); x.arc(px, y - 18, 3.4, 0, 7); x.fill();
+          if (i === shown - 1) { const p = (age % 1.6) / 1.6; x.strokeStyle = `rgba(199,62,38,${1 - p})`; x.lineWidth = 2; x.beginPath(); x.arc(px, py, 6 + p * 26, 0, 7); x.stroke(); }
+        });
+      },
+
+      // The registry search, typing itself: the page's own example queries, and
+      // result rows filling in under it (shown as lines, not invented trials).
+      studies(x, w, h, t, st) {
+        const Q = ["psilocybin", "ketamine depression", "MDMA PTSD", "lithium bipolar", "ADHD stimulant", "autism"];
+        st.q ??= Math.floor(st.r() * Q.length);
+        const cyc = 7, el = t % cyc; if (el < (st.last ?? 0)) st.q = (st.q + 1) % Q.length; st.last = el;
+        const q = Q[st.q], typed = q.slice(0, Math.floor(Math.min(1, el / 2) * q.length));
+        x.fillStyle = "#fbf8f2"; x.fillRect(0, 0, w, h);
+        const m = Math.max(18, w * 0.06), bw = w - m * 2, sz = Math.max(13, Math.min(20, w * 0.028));
+        x.strokeStyle = "#1c1b1a"; x.lineWidth = 1.5; x.strokeRect(m, h * 0.14, bw, sz * 2.6);
+        x.fillStyle = "#1c1b1a"; x.font = font(sz, "serif", 400); x.fillText(typed + (Math.floor(t * 2) % 2 ? "|" : ""), m + sz * 0.8, h * 0.14 + sz * 1.7);
+        x.fillStyle = "#1c1b1a"; x.fillRect(m + bw - sz * 6, h * 0.14, sz * 6, sz * 2.6);
+        x.fillStyle = "#fbf8f2"; x.font = font(Math.round(sz * 0.62), "mono", 700); x.fillText("SEARCH", m + bw - sz * 4.6, h * 0.14 + sz * 1.55);
+        const chips = [["RECRUITING", "#1f7a3a"], ["COMPLETED", "#555"], ["ACTIVE", "#7d1e24"], ["RESULTS", "#2b5fa8"]];
+        const rows = Math.floor((h * 0.72) / (sz * 3.4));
+        for (let i = 0; i < rows; i++) {
+          const a = Math.max(0, Math.min(1, (el - 2.1 - i * 0.28) * 3)); if (!a) continue;
+          const y = h * 0.14 + sz * 3.8 + i * sz * 3.4; x.globalAlpha = a;
+          x.strokeStyle = "rgba(28,27,26,.14)"; x.beginPath(); x.moveTo(m, y + sz * 2.9); x.lineTo(m + bw, y + sz * 2.9); x.stroke();
+          const [label, col] = chips[(i + st.q) % chips.length];
+          x.fillStyle = col; x.fillRect(m, y + sz * 0.2, sz * 5.4, sz * 1.1);
+          x.fillStyle = "#fff"; x.font = font(Math.round(sz * 0.5), "mono", 700); x.fillText(label, m + sz * 0.35, y + sz * 0.98);
+          x.fillStyle = "rgba(28,27,26,.78)"; x.fillRect(m + sz * 6, y + sz * 0.35, bw * (0.35 + ((i * 37 + st.q * 11) % 40) / 100), sz * 0.6);
+          x.fillStyle = "rgba(28,27,26,.25)"; x.fillRect(m, y + sz * 1.75, bw * (0.55 + ((i * 53) % 35) / 100), sz * 0.45);
+          x.globalAlpha = 1;
+        }
+      },
+
+      // Orrin: a web of nodes in clusters, signals running between them and
+      // each node flaring as a signal reaches it.
+      orrin(x, w, h, t, st) {
+        if (!st.nodes) {
+          const hubs = Array.from({ length: 4 }, () => [0.15 + st.r() * 0.7, 0.2 + st.r() * 0.6]);
+          st.nodes = Array.from({ length: 64 }, () => { const [hx, hy] = pick(st.r, hubs), a = st.r() * 7, d = st.r() * 0.22; return { x: hx + Math.cos(a) * d, y: hy + Math.sin(a) * d * 1.3, vx: (st.r() - 0.5) * 0.01, vy: (st.r() - 0.5) * 0.01, fl: 0 }; });
+          st.pulses = [];
+        }
+        x.fillStyle = "#04070d"; x.fillRect(0, 0, w, h);
+        const N = st.nodes, R = Math.max(w, h) * 0.16;
+        for (const n of N) { n.x += n.vx * st.dt; n.y += n.vy * st.dt; if (n.x < 0.03 || n.x > 0.97) n.vx *= -1; if (n.y < 0.05 || n.y > 0.95) n.vy *= -1; n.fl = Math.max(0, n.fl - st.dt * 1.8); }
+        const P = N.map((n) => [n.x * w, n.y * h]), edges = [];
+        for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+          const d = Math.hypot(P[i][0] - P[j][0], P[i][1] - P[j][1]); if (d > R) continue;
+          edges.push([i, j]); x.strokeStyle = `rgba(110,170,220,${(0.42 * (1 - d / R)).toFixed(3)})`; x.lineWidth = 1;
+          x.beginPath(); x.moveTo(P[i][0], P[i][1]); x.lineTo(P[j][0], P[j][1]); x.stroke();
+        }
+        if (edges.length && st.r() < st.dt * 6) { const e = pick(st.r, edges); st.pulses.push({ a: e[0], b: e[1], t: 0 }); }
+        st.pulses = st.pulses.filter((p) => { p.t += st.dt * 1.6; if (p.t >= 1) { N[p.b].fl = 1; if (st.r() < 0.7) { const nxt = edges.filter((e) => e[0] === p.b || e[1] === p.b); if (nxt.length) { const e = pick(st.r, nxt); st.pulses.push({ a: p.b, b: e[0] === p.b ? e[1] : e[0], t: 0 }); } } return false; } return true; });
+        x.shadowColor = "#38ff9c";
+        for (const p of st.pulses) { const px = P[p.a][0] + (P[p.b][0] - P[p.a][0]) * p.t, py = P[p.a][1] + (P[p.b][1] - P[p.a][1]) * p.t; x.shadowBlur = 14; x.fillStyle = "#38ff9c"; x.beginPath(); x.arc(px, py, 2.8, 0, 7); x.fill(); }
+        N.forEach((n, i) => { const [px, py] = P[i]; x.shadowBlur = n.fl * 22; x.fillStyle = n.fl > 0.05 ? `rgba(56,255,156,${0.5 + n.fl / 2})` : "#dce9f5"; x.beginPath(); x.arc(px, py, 2 + n.fl * 3, 0, 7); x.fill(); });
+        x.shadowBlur = 0;
+      },
+
+      // Captures: a photograph developing in the tray under the safelight,
+      // then the next — a different handful of the 1,300 on every visit.
+      darkroom(x, w, h, t, st) {
+        st.list ||= PHOTOS(st.r, 24);
+        const cyc = 4.5, k = Math.floor(t / cyc), el = (t % cyc) / cyc;
+        x.fillStyle = "#1b0c0a"; x.fillRect(0, 0, w, h);
+        const im = img(st.list[k % st.list.length]); img(st.list[(k + 1) % st.list.length]);
+        const pw = w * 0.86, ph = h * 0.84, px = (w - pw) / 2, py = (h - ph) / 2;
+        x.save(); x.translate(w / 2, h / 2); x.rotate(Math.sin(k * 7.3) * 0.02); x.translate(-w / 2, -h / 2);
+        x.fillStyle = "#efe6dc"; x.fillRect(px - 8, py - 8, pw + 16, ph + 16);
+        if (im) {
+          x.save(); x.translate(px, py); x.beginPath(); x.rect(0, 0, pw, ph); x.clip();
+          x.globalAlpha = Math.min(1, Math.max(0, (el - 0.05) * 2.2)); cover(x, im, pw, ph, 1.06 + el * 0.04); x.restore();
+        }
+        x.restore();
+        x.globalCompositeOperation = "multiply"; x.fillStyle = `rgba(255,${110 + el * 80},${90 + el * 70},${0.55 - el * 0.4})`; x.fillRect(0, 0, w, h); x.globalCompositeOperation = "source-over";
+        const fade = el > 0.9 ? (el - 0.9) * 10 : 0; if (fade) { x.fillStyle = `rgba(27,12,10,${fade})`; x.fillRect(0, 0, w, h); }
+      },
+
+      // Climbing: the climbing photographs, a different one each time, each
+      // drifting slowly closer before the next takes over.
+      climbs(x, w, h, t, st) {
+        st.order ||= [...CLIMBS].sort(() => st.r() - 0.5);
+        const cyc = 6, k = Math.floor(t / cyc), el = (t % cyc) / cyc;
+        x.fillStyle = "#14130f"; x.fillRect(0, 0, w, h);
+        const a = img(st.order[k % st.order.length]), b = img(st.order[(k + 1) % st.order.length]);
+        if (a) cover(x, a, w, h, 1.04 + el * 0.08, 0.5 + Math.sin(k) * 0.08, 0.45);
+        if (b && el > 0.82) { x.globalAlpha = (el - 0.82) / 0.18; cover(x, b, w, h, 1.04, 0.5 + Math.sin(k + 1) * 0.08, 0.45); x.globalAlpha = 1; }
+      },
+
+      // How Speed Affects Time, the real optics: each star is moved by
+      // aberration and coloured and brightened by its Doppler factor as the ship
+      // runs up toward the speed of light and back.
+      speed(x, w, h, t, st) {
+        st.stars ||= Array.from({ length: 900 }, () => { const u = st.r() * 2 - 1, a = st.r() * Math.PI * 2; return { c: u, a, m: st.r() ** 3 }; });
+        const beta = 0.97 * (0.5 - 0.5 * Math.cos((t % 16) / 16 * Math.PI * 2));
+        x.fillStyle = "#00040d"; x.fillRect(0, 0, w, h);
+        const cx = w / 2, cy = h / 2, F = Math.max(w, h) * 0.55, g = 1 / Math.sqrt(1 - beta * beta);
+        for (const s of st.stars) {
+          const c = (s.c + beta) / (1 + beta * s.c); if (c < 0.05) continue;
+          const th = Math.acos(c), r = F * Math.tan(th) * 0.55; if (r > Math.max(w, h)) continue;
+          const D = 1 / (g * (1 - beta * c)), px = cx + Math.cos(s.a) * r, py = cy + Math.sin(s.a) * r;
+          const b = Math.min(1, (0.25 + s.m * 0.75) * Math.min(4, D ** 2) * 0.6);
+          const hue = D > 1 ? `rgb(${Math.round(255 / D)},${Math.round(220 / Math.sqrt(D))},255)` : `rgb(255,${Math.round(200 * D)},${Math.round(150 * D)})`;
+          x.globalAlpha = b; x.fillStyle = hue; x.beginPath(); x.arc(px, py, 0.6 + s.m * 1.6 * Math.min(2, D), 0, 7); x.fill();
+        }
+        x.globalAlpha = 1;
+        x.fillStyle = "rgba(255,255,255,.85)"; x.font = font(Math.max(12, Math.round(h * 0.05)), "mono", 600);
+        x.fillText(`${beta.toFixed(2)} c`, 18, h - 22);
+      },
+
+      // State of Mind: the two signals the room draws, red and blue, running
+      // across a dark chart with the steady band through the middle.
+      mood(x, w, h, t, st) {
+        st.a ||= smooth1(st.r, 1.3); st.b ||= smooth1(st.r, 0.45);
+        x.fillStyle = "#06070a"; x.fillRect(0, 0, w, h);
+        const mid = h * 0.5; x.fillStyle = "rgba(120,200,180,.07)"; x.fillRect(0, mid - h * 0.07, w, h * 0.14);
+        x.strokeStyle = "rgba(255,255,255,.06)"; for (let gx = 0; gx < w; gx += 46) { x.beginPath(); x.moveTo(gx, 0); x.lineTo(gx, h); x.stroke(); }
+        const line = (f, amp, col, off) => {
+          x.strokeStyle = col; x.lineWidth = 2; x.beginPath();
+          for (let px = 0; px <= w; px += 2) { const u = (px / w) * 6 + t * 0.35 + off; const y = mid - h * amp * (f(u) * 0.75 + st.b(u * 3) * 0.25); px ? x.lineTo(px, y) : x.moveTo(px, y); }
+          x.stroke();
+        };
+        line(st.a, 0.34, "#e2564f", 0); line(st.a, 0.26, "#6f9be6", 0.6);
+      },
+
+      // Spacetime: a Minkowski diagram — the light cone fixed at 45°, a
+      // worldline tilting as the speed changes and the grid boosting with it.
+      spacetime(x, w, h, t, st) {
+        x.fillStyle = "#101012"; x.fillRect(0, 0, w, h);
+        const b = 0.7 * Math.sin(t * 0.45), g = 1 / Math.sqrt(1 - b * b), cx = w / 2, cy = h / 2, S = Math.min(w, h) / 9;
+        const P = (X, T) => [cx + X * S, cy - T * S];
+        const boost = (xp, tp) => [g * (xp + b * tp), g * (tp + b * xp)];
+        x.lineWidth = 1;
+        for (let k = -12; k <= 12; k++) {
+          x.strokeStyle = k ? "rgba(255,209,102,.16)" : "rgba(255,209,102,.7)";
+          let [a1, b1] = boost(-14, k), [a2, b2] = boost(14, k); x.beginPath(); x.moveTo(...P(a1, b1)); x.lineTo(...P(a2, b2)); x.stroke();
+          x.strokeStyle = k ? "rgba(140,190,255,.16)" : "rgba(140,190,255,.8)";
+          [a1, b1] = boost(k, -14); [a2, b2] = boost(k, 14); x.beginPath(); x.moveTo(...P(a1, b1)); x.lineTo(...P(a2, b2)); x.stroke();
+        }
+        x.strokeStyle = "rgba(255,255,255,.85)"; x.setLineDash([6, 6]); x.lineWidth = 1.5;
+        x.beginPath(); x.moveTo(...P(-10, -10)); x.lineTo(...P(10, 10)); x.moveTo(...P(-10, 10)); x.lineTo(...P(10, -10)); x.stroke(); x.setLineDash([]);
+        const ph = (t * 0.8) % 6 - 3, [dx, dy] = P(...boost(0, ph));
+        x.fillStyle = "#ffd166"; x.shadowColor = "#ffd166"; x.shadowBlur = 16; x.beginPath(); x.arc(dx, dy, 6, 0, 7); x.fill(); x.shadowBlur = 0;
+      },
+
+      // Apex: the biggest number on any legend's banner, rolling up over the
+      // hex grid, from the room's own data file.
+      apex(x, w, h, t, st) {
+        x.fillStyle = "#0d1626"; x.fillRect(0, 0, w, h);
+        const R = Math.max(18, h * 0.07), dx = R * 1.732;
+        x.strokeStyle = "rgba(120,160,220,.12)"; x.lineWidth = 1;
+        for (let j = -1; j * R * 1.5 < h + R; j++) for (let i = -1; i * dx < w + dx; i++) {
+          const cx = i * dx + (j % 2 ? dx / 2 : 0), cy = j * R * 1.5, glow = 0.5 + 0.5 * Math.sin(t * 1.2 + i * 0.7 + j * 1.1);
+          x.globalAlpha = 0.4 + glow * 0.6; x.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + k * Math.PI / 3; x.lineTo(cx + R * Math.cos(a), cy + R * Math.sin(a)); } x.closePath(); x.stroke();
+        }
+        x.globalAlpha = 1;
+        const A = window.APEX_DATA; if (!A) { script("projects/apex/apex-data.js").catch(() => {}); return; }
+        if (!st.best) {
+          let best = null;
+          for (const [name, L] of Object.entries(A.legends || {})) for (const tr of L.trackers || []) if (tr.key === "kills" && (!best || tr.value > best.v)) best = { name, v: tr.value };
+          st.best = best || { name: "", v: 0 }; st.t0 = t;
+        }
+        const f = Math.min(1, (t - st.t0) / 2.4), e = 1 - (1 - f) ** 3, n = Math.round(st.best.v * e);
+        const big = Math.round(Math.min(h * 0.34, w * 0.2));
+        x.textAlign = "center"; x.fillStyle = "#fff"; x.shadowColor = "rgba(232,66,47,.6)"; x.shadowBlur = 24;
+        x.font = font(big, "sans", 800); x.fillText(n.toLocaleString(), w / 2, h * 0.56); x.shadowBlur = 0;
+        x.fillStyle = "#e8422f"; x.font = font(Math.round(big * 0.16), "mono", 700); x.fillText(`${st.best.name.toUpperCase()} · KILLS`, w / 2, h * 0.56 + big * 0.36);
+        x.textAlign = "start";
+      },
+
+      // Siege Conductor: two timelines — the series in blue, the film in red —
+      // folding into one running order under a moving playhead.
+      siege(x, w, h, t, st) {
+        st.blocks ||= Array.from({ length: 120 }, () => ({ film: st.r() < 0.28, len: 0.4 + st.r() * 1.3 }));
+        x.fillStyle = "#120c07"; x.fillRect(0, 0, w, h);
+        const lane = Math.max(6, h * 0.045), u = Math.max(26, w * 0.05), head = w * 0.5;
+        const ys = { series: h * 0.32, film: h * 0.68, one: h * 0.5 };
+        x.strokeStyle = "rgba(243,230,204,.08)"; x.lineWidth = 1;
+        for (const y of Object.values(ys)) { x.beginPath(); x.moveTo(0, y); x.lineTo(w, y); x.stroke(); }
+        let px = -((t * u * 0.5) % (u * 60));
+        for (const b of st.blocks.concat(st.blocks)) {
+          const bw = b.len * u; if (px > w) break;
+          // right of the playhead the two stories run apart; past it they are one
+          const merged = px + bw < head, k = merged ? 1 : Math.max(0, Math.min(1, (head - px) / u));
+          const y0 = b.film ? ys.film : ys.series, y = y0 + (ys.one - y0) * k;
+          const col = b.film ? "#ff5a3c" : "#4cc3ff";
+          x.shadowColor = col; x.shadowBlur = merged ? 10 : 0; x.fillStyle = col; x.globalAlpha = merged ? 0.95 : 0.5;
+          x.beginPath(); x.roundRect ? x.roundRect(px + 2, y - lane / 2, Math.max(2, bw - 4), lane, lane / 2) : x.rect(px + 2, y - lane / 2, bw - 4, lane); x.fill();
+          px += bw;
+        }
+        x.globalAlpha = 1; x.shadowBlur = 0;
+        const gl = x.createLinearGradient(head - 2, 0, head + 2, 0); gl.addColorStop(0, "rgba(243,230,204,0)"); gl.addColorStop(0.5, "#f3e6cc"); gl.addColorStop(1, "rgba(243,230,204,0)");
+        x.fillStyle = gl; x.fillRect(head - 2, h * 0.16, 4, h * 0.68);
+      },
+
+      // The terminal itself, answering: real commands, typed.
+      terminal(x, w, h, t, st) {
+        const S = [
+          ["$ ls", "  /orrin  /mind  /climbing  /training", "  /exploration  /gaming  /captures ..."],
+          ["$ whoami", "guest — but if you're reading this,", "you're probably family. hi."],
+          ["$ coffee", "brewing... ☕ dispensed. carry on."],
+          ["$ exit", "there is no exit. there is only the terminal."],
+          ["$ status", "subject is alive, caffeinated, and", "pushing commits to ORRIN."],
+        ];
+        st.k ??= Math.floor(st.r() * S.length);
+        const cyc = 5.5, el = t % cyc; if (el < (st.last ?? 0)) st.k = (st.k + 1) % S.length; st.last = el;
+        x.fillStyle = "#0a0a0a"; x.fillRect(0, 0, w, h);
+        const sz = Math.max(13, Math.min(22, w * 0.03)), lh = sz * 1.55, m = Math.max(sz * 1.6, w * 0.12);
+        x.save(); x.translate(0, Math.max(0, h * 0.5 - lh * 3));
+        x.font = font(sz, "mono", 500); x.shadowColor = "rgba(255,176,0,.6)"; x.shadowBlur = 8;
+        const lines = S[st.k], cmd = lines[0], typed = cmd.slice(0, Math.floor(Math.min(1, el / 1.2) * cmd.length));
+        x.fillStyle = "#b07d00"; x.fillText("guest@ric-terminal:~", m, m + lh * 0.4);
+        x.fillStyle = "#ffb000"; x.fillText(typed + (el < 1.4 && Math.floor(t * 3) % 2 ? "█" : ""), m, m + lh * 1.6);
+        lines.slice(1).forEach((l, i) => { if (el > 1.6 + i * 0.25) { x.fillStyle = "#e6a200"; x.fillText(l, m, m + lh * (2.8 + i)); } });
+        x.shadowBlur = 0; x.restore();
+        x.fillStyle = "rgba(0,0,0,.18)"; for (let y = 0; y < h; y += 3) x.fillRect(0, y, w, 1);
+      },
+    };
+
+    // ─── the feed ────────────────────────────────────────
+    // Rooms are laid down as posts, one after another, and the feed never ends:
+    // near the bottom it lays them all down again, reshuffled, with new tears
+    // and new pictures. Everything heavy in a post — its torn edges, its
+    // video, its drawing — is let go once the post is far off screen and made
+    // again when it comes back, so a long scroll costs no more than a short one.
+    // Every tear and every drawing is seeded fresh on each visit.
+    const STILL = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const phone = () => innerWidth <= 860;
+    const rng = (seed) => { let s = (seed >>> 0) % 2147483647 || 1; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
+    const VISIT = (crypto.getRandomValues ? crypto.getRandomValues(new Uint32Array(1))[0] : Date.now()) >>> 0;
+    const seedFor = (n) => (VISIT ^ Math.imul(n + 1, 2654435761)) >>> 0;
+    const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(", ")})`;
+
+    // ── colour ──
+    const hex = (c) => { c = c.trim().replace("#", ""); if (c.length === 3) c = [...c].map((d) => d + d).join(""); const n = parseInt(c, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+    const mix = (a, b, f) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * f)).join(",")})`;
+    const lum = ([r, g, b]) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    // a room's paper, as a stack: the page's own sheet, then three under it, and
+    // the colours a tear shows — fibre, the bright break, the shadow
+    function paperOf(el) {
+      const p = hex(getComputedStyle(el).getPropertyValue("--paper") || "#888"), L = lum(p), W = [255, 255, 255], K = [0, 0, 0];
+      const dark = L < 0.45, bright = L > 0.9;
+      const sheet = (i) => (i === 0 ? mix(p, p, 0) : dark ? mix(p, W, 0.035 + i * 0.03) : bright ? mix(p, K, 0.03 * i) : mix(p, W, 0.08 + i * 0.07));
+      return {
+        sheets: [0, 1, 2, 3].map(sheet),
+        coreTop: [0, 1, 2, 3].map((i) => (dark ? mix(p, W, 0.17 - i * 0.02) : mix(p, W, 0.55 - i * 0.04))),
+        coreBot: [0, 1, 2, 3].map((i) => (dark ? mix(p, W, 0.3 - i * 0.03) : mix(p, W, 0.8 - i * 0.03))),
+        edgeTop: [0, 1, 2, 3].map((i) => (dark ? mix(p, W, 0.3 - i * 0.04) : "rgb(255,255,255)")),
+        edgeBot: [0, 1, 2, 3].map((i) => (dark ? mix(p, W, 0.46 - i * 0.05) : "rgb(255,255,255)")),
+        shade: dark ? "rgba(0,0,0,.85)" : "rgba(26,22,18,.32)", photoShade: dark ? "rgba(0,0,0,.72)" : "rgba(0,0,0,.5)",
+        crease: dark ? 0.5 : 0.2, paper: p,
+      };
+    }
+
+    // ── noise ──
+    const smooth = (r, span) => {
+      const v = Array.from({ length: Math.ceil(9800 / span) + 4 }, () => r() * 2 - 1);
+      return (x) => { const f = (x + 400) / span, i = Math.floor(f), t = f - i, u = t * t * (3 - 2 * t); return v[i] + (v[i + 1] - v[i]) * u; };
+    };
+
+    // ── the shape of every sheet's tear ──
+    // The rip's outline is a wedge — full height where it meets the screen's
+    // edge, closing in toward the words. The outline is walked once, all the
+    // way round, and every sheet's tear is that walk pushed inward along its
+    // own normal by a wandering, fraying amount.
+    function geometry(w, h, k, seed, small, torn, tallRight) {
+      const r = rng(seed), L = 4, STEP = 3, s = small ? 0.7 : 1, m = 22 * s;
+      const xL = torn.left ? m : -30, xR = torn.right ? w - m : w + 30;
+      const t = (x) => Math.min(1, Math.max(0, tallRight ? 1 - x / w : x / w));
+      const yT = (x) => m + k * t(x), yB = (x) => h - m - k * t(x);
+      const corners = [[xL, yT(xL)], [xR, yT(xR)], [xR, yB(xR)], [xL, yB(xL)]], base = [];
+      for (let c = 0; c < 4; c++) {
+        const [ax, ay] = corners[c], [bx, by] = corners[(c + 1) % 4], n = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / STEP));
+        for (let j = 0; j < n; j++) base.push([ax + (bx - ax) * j / n, ay + (by - ay) * j / n]);
+      }
+      const N = base.length;
+      const nrm = base.map((_, j) => {
+        let tx = 0, ty = 0;
+        for (let d = -10; d <= 10; d++) {
+          const a = base[(((j + d - 1) % N) + N) % N], b = base[(((j + d + 1) % N) + N) % N], lx = b[0] - a[0], ly = b[1] - a[1], ll = Math.hypot(lx, ly) || 1;
+          tx += lx / ll; ty += ly / ll;
+        }
+        const tl = Math.hypot(tx, ty) || 1; return [-ty / tl, tx / tl];
+      });
+      const arc = []; let acc = 0;
+      base.forEach((p, j) => { if (j) acc += Math.hypot(p[0] - base[j - 1][0], p[1] - base[j - 1][1]); arc.push(acc); });
+      const live = base.map(([x]) => (x < 0 || x > w ? 0 : 1));
+      const a = smooth(r, 150), b = smooth(r, 41), c = smooth(r, 11);
+      const own = [0, 1, 2, 3].map(() => smooth(r, 63)), gap = [0, 1, 2, 3].map(() => smooth(r, 110));
+      const fray = [0, 1, 2, 3].map(() => smooth(r, 34)), fine = [0, 1, 2, 3].map(() => smooth(r, 8));
+      const u = (f, x) => (f(x) + 1) / 2;
+      const wander = arc.map((t2, j) => live[j] * (s * (10 * a(t2) + 3.2 * b(t2) + 1.1 * c(t2)) + (r() - 0.5) * 0.8));
+      const inset = arc.map(() => 0), layers = [];
+      for (let i = 0; i < L; i++) {
+        const E = [], C = [], Mid = [];
+        for (let j = 0; j < N; j++) {
+          const t2 = arc[j];
+          if (i) inset[j] += s * 9 * (0.12 + 1.9 * u(gap[i], t2) ** 1.8);
+          const d = wander[j] + live[j] * s * 3 * own[i](t2) + inset[j];
+          const core = s * Math.max(0.4, 0.5 + 6 * u(fray[i], t2) ** 2.2 + 1.2 * fine[i](t2));
+          const [bx, by] = base[j], [nx, ny] = nrm[j];
+          E.push([bx + nx * d, by + ny * d]); Mid.push([bx + nx * (d + core * 0.5), by + ny * (d + core * 0.5)]); C.push([bx + nx * (d + core), by + ny * (d + core)]);
+        }
+        layers.push({ E, C, Mid });
+      }
+      const midY = (x) => (yT(x) + yB(x)) / 2;
+      const slit = layers[0].E.map(([x]) => { const cx = Math.min(xR, Math.max(xL, x)); return [cx, midY(cx)]; });
+      return { layers, nrm, slit };
+    }
+
+    // ── paint the stack under the top sheet, onto a canvas ──
+    function paintStack(M, geo, w, h, seed) {
+      const dpr = Math.min(2.5, window.devicePixelRatio || 1), cv = document.createElement("canvas");
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      const ctx = cv.getContext("2d"); ctx.scale(dpr, dpr);
+      const ring = (A) => { const p = new Path2D(); p.moveTo(A[0][0], A[0][1]); for (const [x, y] of A) p.lineTo(x, y); p.closePath(); return p; };
+      const outside = (A) => { const p = new Path2D(); p.rect(-200, -200, w + 400, h + 400); p.addPath(ring(A)); return p; };
+      const between = (A, B) => { const p = ring(A); p.addPath(ring(B)); return p; };
+      const lit = (top, bot) => { const g = ctx.createLinearGradient(0, h * 0.3, 0, h * 0.7); g.addColorStop(0, top); g.addColorStop(1, bot); return g; };
+      const L = geo.layers.length;
+      for (let i = L - 1; i >= 0; i--) {
+        const { E, C, Mid } = geo.layers[i];
+        ctx.save();
+        ctx.shadowColor = i === L - 1 ? M.photoShade : M.shade; ctx.shadowBlur = (i === L - 1 ? 16 : 9) * dpr;
+        ctx.shadowOffsetY = (i === L - 1 ? 6 : 3.5) * dpr; ctx.shadowOffsetX = 0.8 * dpr;
+        ctx.fillStyle = M.coreTop[i]; ctx.fill(outside(C), "evenodd"); ctx.restore();
+        ctx.fillStyle = lit(M.coreTop[i], M.coreBot[i]); ctx.fill(between(E, C), "evenodd");
+        ctx.fillStyle = lit(M.edgeTop[i], M.edgeBot[i]); ctx.fill(between(Mid, C), "evenodd");
+        const r = rng(seed + i * 31 + 7);
+        ctx.lineCap = "round"; ctx.strokeStyle = lit(M.edgeTop[i], M.edgeBot[i]);
+        for (const [alpha, width, every, reach] of [[0.32, 0.45, 1, 1.6], [0.45, 0.5, 6, 3.6]]) {
+          ctx.globalAlpha = alpha; ctx.lineWidth = width; ctx.beginPath();
+          for (let j = 0; j < C.length - 1; j++) {
+            const [nx, ny] = geo.nrm[j];
+            for (let q = 0; q < (every === 1 ? 3 : 1); q++) {
+              if (every > 1 && r() * every > 1) continue;
+              const tt = r(), x = C[j][0] + (C[j + 1][0] - C[j][0]) * tt, y = C[j][1] + (C[j + 1][1] - C[j][1]) * tt;
+              const len = (0.3 + r() * r()) * reach, ang = (r() - 0.5) * 1.6, ca = Math.cos(ang), sa = Math.sin(ang);
+              ctx.moveTo(x - nx * 0.3, y - ny * 0.3); ctx.lineTo(x + (nx * ca - ny * sa) * len, y + (nx * sa + ny * ca) * len);
+            }
+          }
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = M.sheets[i]; ctx.fill(outside(E), "evenodd");
+        if (i > 0) { ctx.save(); ctx.globalAlpha = M.crease; ctx.strokeStyle = "#000"; ctx.lineWidth = 0.8; ctx.translate(0, 0.6); ctx.stroke(ring(geo.layers[i - 1].E)); ctx.restore(); }
+      }
+      return cv;
+    }
+    const toURL = (cv) => new Promise((ok) => cv.toBlob((b) => ok(b ? URL.createObjectURL(b) : "")));
+
+    // ── a post's torn foot, lying over the top of the next post ──
+    // Two sheets of the room's paper tearing along nearly the same line, the
+    // fibre showing at the break, and their shadow falling on the next room.
+    function paintSeam(cv, M, seed) {
+      const w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
+      const dpr = Math.min(2, devicePixelRatio || 1); cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      const x = cv.getContext("2d"); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h);
+      const r = rng(seed), a = smooth(r, 170), b = smooth(r, 37), c = smooth(r, 9), f2 = smooth(r, 60), fr = smooth(r, 23);
+      const base = h * 0.42, amp = h * 0.26;
+      const edge = (dy, k) => Array.from({ length: Math.ceil(w / 3) + 2 }, (_, i) => { const X = i * 3; return [X, base + dy + amp * (0.6 * a(X) + 0.3 * b(X) + 0.1 * c(X)) + k * f2(X) * 2.5]; });
+      const fillTo = (E, col, shadow) => {
+        x.save(); if (shadow) { x.shadowColor = M.shade; x.shadowBlur = 10 * dpr; x.shadowOffsetY = 4 * dpr; }
+        x.fillStyle = col; x.beginPath(); x.moveTo(0, 0); for (const [X, Y] of E) x.lineTo(X, Y); x.lineTo(w, 0); x.closePath(); x.fill(); x.restore();
+      };
+      const lower = edge(4, 1), upper = edge(0, 0);
+      fillTo(lower, M.coreBot[1], true);
+      fillTo(lower.map(([X, Y]) => [X, Y - 1.2 - 2.2 * ((fr(X) + 1) / 2)]), M.sheets[1]);
+      const core = upper.map(([X, Y]) => [X, Y + 0.6 + 3.2 * ((fr(X + 99) + 1) / 2) ** 2]);
+      fillTo(core, M.coreBot[0]);
+      fillTo(upper, M.sheets[0]);
+      x.strokeStyle = M.edgeBot[0]; x.globalAlpha = 0.35; x.lineWidth = 0.5; x.beginPath();
+      for (const [X, Y] of core) { if (r() < 0.6) { x.moveTo(X, Y - 0.5); x.lineTo(X + (r() - 0.5) * 2, Y + r() * 2.2); } }
+      x.stroke(); x.globalAlpha = 1;
+    }
+
+    // ── the drawn media: one loop for every drawing on screen ──
+    const live = new Set();
+    let last = performance.now();
+    (function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      for (const c of live) {
+        const w = c.clientWidth, h = c.clientHeight, dpr = Math.min(2, devicePixelRatio || 1);
+        if (!w || !h) continue;
+        if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+        const x = c.getContext("2d"); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+        c.st.dt = STILL ? 0 : dt; c.st.time = (c.st.time || 0) + (STILL ? 0 : dt);
+        try { ART[c.dataset.art](x, w, h, STILL ? 3 : c.st.time, c.st); } catch (e) { /* a drawing that fails leaves its paper */ }
+      }
+      requestAnimationFrame(frame);
+    })(last);
+
+    // ── posts ──
+    const feed = document.getElementById("feed");
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+    let count = 0;
+    function makePost(p) {
+      const n = count++, side = n % 2 ? "left" : "right", seed = seedFor(n);
+      const el = document.createElement("section");
+      el.className = "post"; el.dataset.skin = p.skin; el.dataset.side = side; el.id = n < POSTS.length ? p.id : `${p.id}-${n}`;
+      el.style.zIndex = String(90000 - n);
+      el.setAttribute("aria-label", p.name);
+      const media = p.media.video
+        ? `<video muted loop playsinline preload="none" poster="${p.media.video}.jpg" data-src="${p.media.video}.webm" aria-hidden="true"></video>`
+        : `<canvas data-art="${p.media.art}" aria-hidden="true"></canvas>`;
+      el.innerHTML = `<div class="row">
+          <div class="f-copy">
+            <div class="f-tag mono rv">${p.isNew && n === 0 ? '<span class="new">New</span>' : ""}${esc(p.tag)}</div>
+            <h2 class="rv">${esc(p.name)}</h2>
+            <p class="f-lede rv">${esc(p.lede)}</p>
+            <ul class="f-facts rv">${p.facts.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
+            <a class="btn rv" href="${p.href}">${esc(p.btn)} <i></i></a>
+          </div>
+          <a class="f-rip cutbox" data-bleed="${side}" href="${p.href}" tabindex="-1" aria-label="Open ${esc(p.name)}">
+            <div class="cut"><div class="still" role="img" aria-label="${esc(p.alt)}">${media}</div><span class="peek">${esc(p.peek)}</span></div>
+          </a>
+        </div>
+        <canvas class="seam" aria-hidden="true"></canvas>`;
+      feed.appendChild(el);
+      wire(el, seed);
+      return el;
+    }
+
+    // every post: its rip, its seam, its media, its fade-in, its door
+    const posts = [];
+    function wire(el, seed) {
+      const box = el.querySelector(".f-rip"), cut = box.querySelector(".cut"), still = cut.querySelector(".still");
+      const seam = el.querySelector(".seam"), vid = still.querySelector("video"), art = still.querySelector("canvas[data-art]");
+      if (art) art.st = { r: rng(seed ^ 0x9e3779b9) };
+      let geo = null, size = "", url = "", awake = false, open = STILL;
+      const M = paperOf(el);
+      const clip = () => { if (geo) cut.style.clipPath = poly(open ? geo.layers[0].E : geo.slit); };
+      const draw = async () => {
+        const w = cut.clientWidth, h = cut.clientHeight, ph = phone();
+        if (!w || !h) return;
+        const key = `${w}x${h}x${ph}`;
+        if (key !== size || !geo) {
+          size = key;
+          const k = Math.round((h - 44) * (ph ? 0.2 : 0.24)), bleed = ph ? "both" : box.dataset.bleed;
+          geo = geometry(w, h, k, seed, w < 700, { left: bleed === "right", right: bleed === "left" }, box.dataset.bleed === "right");
+        }
+        clip();
+        let rim = cut.querySelector(".rim"); if (!rim) { rim = document.createElement("div"); rim.className = "rim"; cut.appendChild(rim); }
+        const u = await toURL(paintStack(M, geo, w, h, seed));
+        if (!awake) { URL.revokeObjectURL(u); return; }
+        if (url) URL.revokeObjectURL(url);
+        url = u; rim.style.backgroundImage = `url(${u})`;
+        paintSeam(seam, M, seed + 1);
+      };
+      const wake = () => {
+        if (awake) return; awake = true;
+        draw();
+        if (vid) { if (!vid.getAttribute("src")) vid.src = vid.dataset.src; if (!STILL) vid.play().catch(() => {}); }
+        if (art) live.add(art);
+      };
+      const sleep = () => {
+        if (!awake) return; awake = false;
+        const rim = cut.querySelector(".rim"); if (rim) rim.style.backgroundImage = "";
+        if (url) { URL.revokeObjectURL(url); url = ""; }
+        seam.width = seam.height = 0;
+        if (vid) { vid.pause(); vid.removeAttribute("src"); vid.load(); }
+        if (art) { live.delete(art); art.width = art.height = 0; }
+      };
+      const post = { el, cut, still, wake, sleep, draw, open: () => { open = true; clip(); } };
+      posts.push(post);
+      near.observe(el); opener.observe(box); box.post = post; el.post = post;
+      for (const d of el.querySelectorAll(".btn, .f-rip")) {
+        d.addEventListener("pointerenter", () => el.classList.add("hot"));
+        d.addEventListener("pointerleave", () => el.classList.remove("hot"));
+      }
+      window.reveal(el);
+      let t = 0; new ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => awake && draw(), 140); }).observe(cut);
+    }
+    // a post wakes as it comes within two screens, and lets go beyond that
+    const near = new IntersectionObserver((list) => list.forEach((e) => (e.isIntersecting ? e.target.post.wake() : e.target.post.sleep())), { rootMargin: "200% 0px" });
+    // a rip opens from a slit the first time it is really on screen
+    const opener = new IntersectionObserver((list) => list.forEach((e) => { if (e.isIntersecting) { opener.unobserve(e.target); e.target.post.open(); } }), { threshold: 0.2 });
+
+    // ── depth: the picture sits behind the paper and slides with the screen ──
+    let queued = false;
+    const move = () => {
+      queued = false; const vh = innerHeight;
+      for (const p of posts) {
+        const r = p.cut.getBoundingClientRect(); if (r.bottom < -100 || r.top > vh + 100) continue;
+        const off = (r.top + r.height / 2 - vh / 2) / (vh / 2 + r.height / 2);
+        p.still.style.transform = `translate3d(0, ${(-off * r.height * 0.065).toFixed(1)}px, 0)`;
       }
     };
-    document.querySelectorAll(".feature").forEach(oneDoor);
+    const queue = () => { if (!STILL && !queued) { queued = true; requestAnimationFrame(move); } };
+    addEventListener("scroll", queue, { passive: true }); addEventListener("resize", queue);
+
+    // ── rounds ──
+    // The first round opens on what is newest — the first tier in order, the
+    // rest shuffled within their tier. Every round after that is shuffled whole.
+    const shuffle = (a, r) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    let round = 0;
+    function lay() {
+      const r = rng(seedFor(1000 + round));
+      const order = round === 0
+        ? [0, 1, 2].flatMap((tier) => (tier === 0 ? POSTS.filter((p) => p.tier === 0) : shuffle(POSTS.filter((p) => p.tier === tier), r)))
+        : shuffle(POSTS, r);
+      if (round > 0) {
+        const mark = document.createElement("div"); mark.className = "round-mark mono";
+        mark.innerHTML = `<span>That's every room</span><b>Round ${round + 1} — shuffled</b>`;
+        feed.appendChild(mark);
+      }
+      order.forEach(makePost);
+      round++;
+      queue();
+    }
+    lay();
+    const end = document.getElementById("feed-end");
+    new IntersectionObserver((list) => { if (list.some((e) => e.isIntersecting)) lay(); }, { rootMargin: "0px 0px 150% 0px" }).observe(end);
+    // night and day change the hero's paper, not the rooms'; nothing to redraw
+
+    // ─── the hero's torn foot ────────────────────────────
+    (() => {
+      const hero = document.querySelector(".hero"), seam = hero.querySelector(".seam");
+      const paint = () => paintSeam(seam, paperOf(hero), seedFor(9999));
+      paint();
+      document.getElementById("mode").addEventListener("click", () => setTimeout(paint, 30));
+      matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paint);
+      let t = 0; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(paint, 150); });
+    })();
 
     // ─── the terminal ───────────────────────────────────
-    // The front door doesn't run the terminal any more — it opens it. The
-    // orange button in the bar does, and so does / from anywhere on the page.
+    // The front door doesn't run the terminal — it opens it. The amber button
+    // in the bar does, and so does / from anywhere on the page.
     addEventListener("keydown", (e) => {
       const el = document.activeElement;
       if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -1046,141 +1177,6 @@
       e.preventDefault();
       location.href = "index.html";
     });
-
-    // ─── the page moving ─────────────────────────────────
-    // The bar frosts over once the page scrolls under it.
-    (() => {
-      const bar = document.getElementById("bar");
-      const paint = () => bar.classList.toggle("scrolled", scrollY > 8);
-      addEventListener("scroll", paint, { passive: true });
-      paint();
-    })();
-    // Copy and tiles fade up the first time they come on screen.
-    (() => {
-      const io = "IntersectionObserver" in window && !STILL && new IntersectionObserver((list) => list.forEach((e) => {
-        if (!e.isIntersecting) return;
-        e.target.classList.add("in");
-        io.unobserve(e.target);
-      }), { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
-      window.reveal = (root) => root.querySelectorAll(".rv").forEach((el) => (io ? io.observe(el) : el.classList.add("in")));
-      window.reveal(document);
-    })();
-
-    // ─── drawn rips ──────────────────────────────────────
-    // Orrin and Mind have no game to film, so their rips draw what they are:
-    // a web of nodes passing signals, and a mood line rising and falling.
-    // Each one runs only while it is on screen, and holds still under reduced
-    // motion.
-    const ART = {
-      orrin(x, w, h, t, st) {
-        if (!st.nodes) {
-          let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
-          st.nodes = Array.from({ length: 46 }, () => ({ x: r(), y: r(), vx: (r() - 0.5) * 0.012, vy: (r() - 0.5) * 0.012 }));
-          st.pulses = [];
-        }
-        x.fillStyle = "#0a0816"; x.fillRect(0, 0, w, h);
-        const g = x.createRadialGradient(w * 0.5, h * 0.45, 0, w * 0.5, h * 0.45, Math.max(w, h) * 0.7);
-        g.addColorStop(0, "rgba(123,60,255,.22)"); g.addColorStop(1, "rgba(123,60,255,0)");
-        x.fillStyle = g; x.fillRect(0, 0, w, h);
-        const N = st.nodes, R = Math.max(w, h) * 0.2;
-        for (const n of N) {
-          n.x += n.vx * st.dt; n.y += n.vy * st.dt;
-          if (n.x < 0 || n.x > 1) n.vx *= -1;
-          if (n.y < 0 || n.y > 1) n.vy *= -1;
-        }
-        const P = N.map((n) => [n.x * w, n.y * h]), edges = [];
-        x.lineWidth = 1;
-        for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
-          const d = Math.hypot(P[i][0] - P[j][0], P[i][1] - P[j][1]);
-          if (d > R) continue;
-          edges.push([i, j]);
-          x.strokeStyle = `rgba(150,110,255,${(0.55 * (1 - d / R)).toFixed(3)})`;
-          x.beginPath(); x.moveTo(P[i][0], P[i][1]); x.lineTo(P[j][0], P[j][1]); x.stroke();
-        }
-        // a signal leaves a node now and then and runs along an edge
-        if (edges.length && Math.random() < st.dt * 2.4) st.pulses.push({ e: edges[(Math.random() * edges.length) | 0], t: 0 });
-        st.pulses = st.pulses.filter((p) => (p.t += st.dt * 1.4) < 1);
-        for (const p of st.pulses) {
-          const [a, b] = p.e, px = P[a][0] + (P[b][0] - P[a][0]) * p.t, py = P[a][1] + (P[b][1] - P[a][1]) * p.t;
-          x.fillStyle = "#38ff9c"; x.shadowColor = "#38ff9c"; x.shadowBlur = 12;
-          x.beginPath(); x.arc(px, py, 2.6, 0, Math.PI * 2); x.fill(); x.shadowBlur = 0;
-        }
-        x.fillStyle = "#eceef2";
-        for (const [px, py] of P) { x.beginPath(); x.arc(px, py, 1.8, 0, Math.PI * 2); x.fill(); }
-      },
-      mind(x, w, h, t) {
-        x.fillStyle = "#14080f"; x.fillRect(0, 0, w, h);
-        const g = x.createRadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, Math.max(w, h) * 0.7);
-        g.addColorStop(0, "rgba(255,45,138,.16)"); g.addColorStop(1, "rgba(255,45,138,0)");
-        x.fillStyle = g; x.fillRect(0, 0, w, h);
-        const mid = h / 2;
-        x.strokeStyle = "rgba(236,238,242,.22)"; x.lineWidth = 1;
-        x.setLineDash([4, 6]); x.beginPath(); x.moveTo(0, mid); x.lineTo(w, mid); x.stroke(); x.setLineDash([]);
-        // highs and lows: a slow swing with a faster one riding on it
-        const y = (u) => mid - h * 0.3 * Math.sin(u * 0.9) * (0.55 + 0.45 * Math.sin(u * 0.23 + 1)) - h * 0.05 * Math.sin(u * 3.1);
-        for (const [alpha, lw, lag] of [[0.25, 7, 0.0], [1, 2.4, 0]]) {
-          x.strokeStyle = alpha < 1 ? "rgba(255,45,138,.25)" : "#ff2d8a"; x.lineWidth = lw; x.lineJoin = "round";
-          x.beginPath();
-          for (let px = 0; px <= w; px += 3) { const u = px / w * 12 + t * 0.8 + lag; px ? x.lineTo(px, y(u)) : x.moveTo(px, y(u)); }
-          x.stroke();
-        }
-        const hx = w * 0.72, hu = hx / w * 12 + t * 0.8;
-        x.fillStyle = "#fff"; x.beginPath(); x.arc(hx, y(hu), 5, 0, Math.PI * 2); x.fill();
-      },
-    };
-    const addArt = (() => {
-      const live = new Set();
-      const io = new IntersectionObserver((list) => list.forEach((e) => (e.isIntersecting ? live.add(e.target) : live.delete(e.target))), { rootMargin: "10% 0px" });
-      let last = performance.now();
-      const frame = (now) => {
-        const dt = Math.min(0.05, (now - last) / 1000); last = now;
-        for (const c of live) {
-          const w = c.clientWidth, h = c.clientHeight, dpr = Math.min(2, devicePixelRatio || 1);
-          if (!w || !h) continue;
-          if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
-          const x = c.getContext("2d"); x.setTransform(dpr, 0, 0, dpr, 0, 0);
-          c.st ||= {}; c.st.dt = STILL ? 0 : dt;
-          ART[c.dataset.art](x, w, h, STILL ? 2 : now / 1000, c.st);
-        }
-        requestAnimationFrame(frame);
-      };
-      requestAnimationFrame(frame);
-      return (root) => root.querySelectorAll("canvas.art").forEach((c) => io.observe(c));
-    })();
-    addArt(document);
-
-    // ─── the feed ────────────────────────────────────────
-    // There is no bottom. When the last room comes near, the rooms are laid
-    // down again from the top — numbered on, sides still alternating, every rip
-    // torn fresh — so the page scrolls like a feed for as long as anyone keeps
-    // going. Each round is marked, so it reads as "round two", not as a glitch.
-    (() => {
-      const end = document.getElementById("feed-end");
-      let round = 1, count = POSTS.length;
-      const more = () => {
-        round++;
-        const mark = document.createElement("div");
-        mark.className = "round-mark mono";
-        mark.innerHTML = `<span>That's every room</span><b>Round ${round} — from the top</b>`;
-        end.before(mark);
-        POSTS.forEach((html) => {
-          const t = document.createElement("template");
-          // ids and the labels pointing at them get a round of their own
-          t.innerHTML = html.replace(/(id|aria-labelledby)="([^"]+)"/g, `$1="$2-r${round}"`).replace(/href="#(f\d+)"/g, `href="#$1-r${round}"`);
-          const f = t.content.firstElementChild;
-          const side = count % 2 ? "left" : "right";
-          f.dataset.side = side;
-          f.querySelector("[data-cut]").dataset.bleed = side;
-          f.querySelector(".f-num").textContent = String(++count).padStart(2, "0");
-          const run = f.querySelector("#run-still-r" + round); if (run) run.querySelector("canvas")?.remove();
-          end.before(f);
-          oneDoor(f); window.reveal(f); window.addVideos(f); addArt(f);
-          window.addRip(f.querySelector("[data-cut]"));
-        });
-      };
-      new IntersectionObserver((list) => { if (list.some((e) => e.isIntersecting)) more(); }, { rootMargin: "0px 0px 150% 0px" }).observe(end);
-    })();
-
   </script>
 </body>
 </html>

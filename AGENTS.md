@@ -123,7 +123,8 @@ With JS off nothing is injected and the nav renders exactly as it always did.
 - `map.html` is deliberately left out of the room menus entirely.
 
 **`apex`, `log` and `map` are deliberately unlisted** — in `#dir` *and* in the room
-navs. They are the thin rooms and Ric does not want the front door advertising work
+navs (the preview front door, `frontdoor.html`, is the one exception, by Ric's word on
+2026-10-16: it shows Apex and ATLAS). They are the thin rooms and Ric does not want the front door advertising work
 that isn't done. They are *not* removed: `ls`, `tree`, `find`, `open <room>`, typing
 the room name and the plain URL all still reach them, and Tab completion offers all
 three. Don't "fix" this by putting them back. If one gets built out properly, that's
@@ -356,7 +357,8 @@ and Tension apps. Rules for it:
 - `board-data.js` and `board-catalogue-*.js` are committed; `.board-venv/` and
   `.board-cache/` are not. The catalogues are megabytes and rebuild only on
   `--catalogue`, deliberately — don't wire them into the weekly sync.
-- It is **deliberately hidden**: no room menu entry, no `.jump` link. The way in
+- It is **deliberately hidden** from the room menus: no room menu entry, no `.jump` link
+  (the preview front door shows it as a post, by Ric's word on 2026-10-16). The way in
   is the "the woodshed" button under the Climbing footer, or typing `board` on
   `climbing.html`. Don't "fix" this by promoting it into the nav.
 - Board sessions stay out of the sitewide "latest" banner for the same reason.
@@ -563,44 +565,45 @@ button (the terminal screen's own `#ffb000`) that opens `index.html`, and `/` fr
 anywhere on the page does the same — Ric asked for exactly that on 2026-10-16. Don't
 put it in `ROOMS`, `PROJECTS` or `latest.js`.
 
-**It shows off the pages, not Ric.** Ric's rule, same day: "it's my internet, but it's
-an internet" — family and friends use these rooms, so the front door sells the rooms.
-What fills a rip is **the app working, not a picture of a
-page**: no screenshots with the room's own name and menus in them, and few words.
-Counter-Strike, KONDRITE and How Big Everything Is are short videos recorded straight off
-their own canvas by `assets/frontdoor/record.mjs`; Entertainment is a wall of its own
-posters; Climbing is a climbing photo; Training is Ric's latest run drawn live from the
-Worker's `/strava` — route on the left, three numbers beside it, no map tiles — and never
-committed (hard rule 1), with the mountain photo under it when there is no run. Interstate 40, Starfield and FARLIGHT use the
-Arcade's own clips (`assets/games/`); Captures is a mosaic of its photographs; Orrin and
-Mind are drawn live (`ART` in the script — a web of nodes passing signals, a mood line).
-A video loads and plays only while its rip is on screen, and nothing moves under reduced
-motion.
+**It shows off the pages, not Ric** (Ric, 2026-10-16: "it's my internet, but it's an
+internet" — family and friends use these rooms). What fills a rip is **the room working**,
+never a screenshot of its page: Counter-Strike, KONDRITE and How Big Everything Is are
+clips recorded straight off their own canvas by `assets/frontdoor/record.mjs`
+(KONDRITE's follows the ship using the front-page run's own camera); Interstate 40,
+Starfield and FARLIGHT use the Arcade's clips; everything else is drawn live by a painter
+in `ART` — the Boards from `board-data.js` (a real board, one of Ric's sends lit hold by
+hold), the posters from the Entertainment list, the photographs, a made-up run over
+made-up hills for Training, an **invented** map for ATLAS, the registry search typing
+itself, real aberration and Doppler for How Speed Affects Time, a Minkowski diagram,
+Apex's biggest banner number from `apex-data.js`, the terminal answering real commands.
+**No real place is ever drawn**: Training's route and ATLAS's map are generated (hard
+rule 1). Few words inside any rip.
 
-**It is a feed, and it does not end** (Ric, 2026-10-16: "like an insta feed … infinite
-scrolling"). The rooms run newest, biggest and most fun first — today Counter-Strike,
-KONDRITE, Entertainment, How Big Everything Is, Climbing, Training, Interstate 40, Orrin,
-Captures, Starfield, Mind, FARLIGHT, Siege Conductor — and when the last one comes near,
-the script lays them all down again from the top (`POSTS`, captured before any rip is
-drawn), numbered on, sides still alternating, under a "Round 2 — from the top" mark.
-There is no directory and no footer: a feed has no bottom. When something bigger or
-newer ships, it goes to the top of the feed.
+**It is a feed, it does not end, and no two visits are alike** (Ric, same day: "like an
+insta feed … infinite scrolling", "generated at random so every time you open the page
+it's a bit different"). `POSTS` lists every room a visitor can use, each with a `tier`;
+the first round keeps tier 0 (Counter-Strike, KONDRITE, the Boards) in order and shuffles
+the other tiers within themselves, and every round after is shuffled whole under a
+"Round N — shuffled" mark. Every tear, seam and drawing is seeded from `VISIT`, a random
+number per page load. **Boards and ATLAS are in by Ric's word** — the earlier rule that
+kept them off the front door is lifted here (ATLAS's post is a door to the sign-in; the
+map behind it is untouched). HERMISCUS and the private tools (admin, visitors, account)
+stay out. When something new ships, add it to `POSTS` at tier 0.
 
-**Each room is a `.feature`: the words on the paper, one rip beside them.** The paper
-side carries a big outline number, the name, a sentence, three facts, a solid button
-and a "Next" link to the following room; the rip runs off the screen's edge
-(`data-bleed`), alternating sides, and on a phone each room is a post in the feed — the name, two lines and a button on
-top, then a 200px torn strip — two or three rooms to a screen. Every rip is a **wedge**: full
-height where it meets the screen's edge, closing in toward the words. Button and rip are one door — hovering either lights both. The rip is torn
-through a stack of paper sheets, each tearing differently, painted on a canvas per rip
-(`.rim`) and laid inside the clipped `.cut`; the tear must stay inside the cut's box (the
-`m` margin in `geometry()`). The picture (`.still`) is a little taller than the rip and
-slides with the screen ("depth" in the script): low on the screen it shows a little of
-its bottom, and as it rises the top comes into view — a transform on the picture, never on the
-`.cut`. Never put a `filter` or `transform` on a `.cut`, and keep anything laid over a
-cut *inside* it: Chromium paints a sibling that fades in over a clipped element outside
-the clip. Shadows in a rip are drawn on the canvas, never as a CSS or SVG blur. Night/day is a
-visitor's own choice kept in `localStorage` (`frontdoor-theme`), else their OS.
+**Every post is torn from its room's own paper.** `data-skin` sets the post's paper,
+ink, accent and heading face — CS steel, the cinema's black and gold, the climbing log's
+cream, the darkroom's red, Strava white, the terminal's amber, and so on — every one
+checked for 4.5:1. Each post's foot (`.seam`, a canvas) tears onto the next post, which
+it sits above. The rip in it is a wedge — full height where it meets the screen's edge,
+closing in toward the words — torn through a stack of that same paper (`paperOf()`
+derives the stack from `--paper`), painted on a canvas (`.rim`) inside the clipped `.cut`.
+On a phone the words come first, then a 210px strip. The picture (`.still`) slides with
+the screen ("depth"). **A post far off screen lets go of everything heavy** — its torn
+edges, its seam, its video, its drawing — and makes them again as it comes back, so the
+endless feed costs no more than a short one. Never put a `filter` or `transform` on a
+`.cut`, keep anything laid over a cut *inside* it (Chromium paints outside the clip
+otherwise), and draw shadows on the canvas, never as a CSS or SVG blur. Night/day only
+changes the hero's paper.
 
 Homepage "transmissions" live in `notes.js`. Curated newest additions live
 in `latest.js` and are announced in exactly one place: the NOTIFICATION banner on
