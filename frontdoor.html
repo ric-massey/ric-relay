@@ -22,80 +22,105 @@
   <script>
     /* Night or day, chosen before first paint so the page never flashes the
        wrong one. A visitor's own pick wins; otherwise their OS decides. */
+    document.documentElement.classList.add("js");
     try { const t = localStorage.getItem("frontdoor-theme"); if (t === "day" || t === "night") document.documentElement.dataset.theme = t; } catch (e) {}
   </script>
+  <link rel="preload" as="image" href="photos/climbing-10.jpg">
   <style>
-    /* The front door: silver, white and black, with slivers of colour.
-       Day is brushed silver, night is graphite. Every colour that carries
-       words clears 4.5:1 against what is behind it in both. */
+    /* The front door: a graphite page (silver by day) cut open, and the
+       site seen through the cuts. One cut shape, used everywhere: a strip
+       sliced at the same angle, so every window on the page is parallel
+       to every other. The colour lives in the photographs; the page itself
+       keeps to ink, metal and three slivers — violet, magenta, cyan.
+       Every colour that carries words clears 4.5:1 against what is behind it. */
     :root {
-      --bg: #c9ccd1;
-      --bg-2: #e6e8eb;
-      --ink: #0d0e10;
-      --muted: #4c5057;
-      --field: rgba(255,255,255,.6);
-      --panel: #f4f5f6;
-      --hair: rgba(13,14,16,.16);
+      --bg: #d5d7db;
+      --bg-2: #eef0f2;
+      --ink: #0c0d0f;
+      --muted: #4a4e55;
+      --field: rgba(255,255,255,.55);
+      --panel: #f6f7f8;
+      --hair: rgba(12,13,15,.14);
+      --head: rgba(221,223,226,.74);
       --lip: rgba(255,255,255,.95);
-      --lip-shadow: rgba(0,0,0,.28);
-      --lip-face: #a3a7ad;
+      --lip-face: #b3b6bc;
+      --tile: #c7cacf;
       --violet: #7b3cff;
       --magenta: #ff2d8a;
       --cyan: #00c2ff;
-      --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      --gutter: clamp(16px, 4.4vw, 64px);
+      --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
       --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --ease: cubic-bezier(.2,.7,.2,1);
       color-scheme: light;
     }
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="day"]) {
-        --bg: #0b0c0e; --bg-2: #17181c; --ink: #eceef2; --muted: #9a9ea6;
-        --field: rgba(255,255,255,.06); --panel: #131418; --hair: rgba(255,255,255,.12);
-        --lip: rgba(255,255,255,.22); --lip-shadow: rgba(0,0,0,.8); --lip-face: #16171b;
+        --bg: #0a0b0d; --bg-2: #15161a; --ink: #eef0f3; --muted: #9a9fa8;
+        --field: rgba(255,255,255,.05); --panel: #121317; --hair: rgba(255,255,255,.1);
+        --head: rgba(10,11,13,.72); --lip: rgba(255,255,255,.16); --lip-face: #18191d; --tile: #17181c;
         color-scheme: dark;
       }
     }
     :root[data-theme="night"] {
-      --bg: #0b0c0e; --bg-2: #17181c; --ink: #eceef2; --muted: #9a9ea6;
-      --field: rgba(255,255,255,.06); --panel: #131418; --hair: rgba(255,255,255,.12);
-      --lip: rgba(255,255,255,.22); --lip-shadow: rgba(0,0,0,.8); --lip-face: #16171b;
+      --bg: #0a0b0d; --bg-2: #15161a; --ink: #eef0f3; --muted: #9a9fa8;
+      --field: rgba(255,255,255,.05); --panel: #121317; --hair: rgba(255,255,255,.1);
+      --head: rgba(10,11,13,.72); --lip: rgba(255,255,255,.16); --lip-face: #18191d; --tile: #17181c;
       color-scheme: dark;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { background: var(--bg); }
+    html { background: var(--bg); scroll-padding-top: 84px; }
     body {
-      color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased;
+      color: var(--ink); font: 400 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased;
       overflow-x: hidden; min-height: 100vh;
-      background: radial-gradient(140% 80% at 50% 0%, var(--bg-2), var(--bg) 70%) fixed, var(--bg);
+      /* a little grain, so the metal reads as a surface and not a flat fill */
+      background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+        radial-gradient(120% 70% at 50% -10%, var(--bg-2), var(--bg) 62%) no-repeat,
+        var(--bg);
     }
     a { color: inherit; }
+    button { font: inherit; color: inherit; }
     .mono { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; }
     .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    :focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 
     /* ─── top bar: the brand, the terminal (which is the search), night/day ─── */
-    .bar { position: relative; z-index: 50; display: flex; align-items: center; gap: 14px; padding: 20px 32px; }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: .22em; font-size: 13px; text-decoration: none; margin-right: auto; }
+    .bar {
+      position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 28px;
+      height: 68px; padding: 0 var(--gutter); border-bottom: 1px solid transparent;
+      transition: background-color .35s, border-color .35s;
+    }
+    .bar.scrolled { background: var(--head); border-bottom-color: var(--hair); -webkit-backdrop-filter: saturate(1.5) blur(18px); backdrop-filter: saturate(1.5) blur(18px); }
+    .brand { display: flex; align-items: center; gap: 10px; font: 600 13px var(--sans); letter-spacing: .24em; text-decoration: none; white-space: nowrap; }
     .brand svg { width: 18px; height: 18px; }
     .brand .o { fill: none; stroke: var(--ink); stroke-width: 1.5; }
-    .mode { flex: none; width: 42px; height: 42px; border: 1px solid var(--hair); background: var(--field); cursor: pointer; display: grid; place-items: center; color: var(--ink); }
-    .mode svg { width: 18px; height: 18px; }
+    .links { display: flex; gap: 26px; margin-right: auto; font-size: 14px; }
+    .links a { text-decoration: none; color: var(--muted); transition: color .2s; }
+    .links a:hover { color: var(--ink); }
+    .mode { flex: none; width: 40px; height: 40px; border: 1px solid var(--hair); background: var(--field); cursor: pointer; display: grid; place-items: center; color: var(--ink); transition: border-color .2s; }
+    .mode:hover { border-color: var(--ink); }
+    .mode svg { width: 16px; height: 16px; }
 
-    .term { position: relative; width: min(440px, 100%); }
+    .term { position: relative; width: min(400px, 100%); }
     .seek {
-      display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 14px;
+      display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px 0 14px;
       background: var(--field); border: 1px solid var(--hair); cursor: text; position: relative;
-      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      transition: border-color .2s;
     }
+    .seek:hover { border-color: color-mix(in srgb, var(--ink) 35%, transparent); }
     .seek .prompt { color: var(--muted); font-family: var(--mono); font-size: 13px; }
     .seek input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--ink); font: 400 15px var(--sans); }
     .seek input::placeholder { color: var(--muted); }
     .seek kbd { font: 400 11px var(--mono); color: var(--muted); border: 1px solid var(--hair); padding: 2px 7px; }
-    .seek::after { content: ""; position: absolute; left: -1px; right: -1px; bottom: -1px; height: 2px; background: linear-gradient(90deg, var(--violet) 0 33%, var(--magenta) 33% 66%, var(--cyan) 66%); transform: scaleX(0); transform-origin: left; transition: transform .5s cubic-bezier(.2,.8,.2,1); }
+    .seek::after { content: ""; position: absolute; left: -1px; right: -1px; bottom: -1px; height: 2px; background: linear-gradient(90deg, var(--violet) 0 33%, var(--magenta) 33% 66%, var(--cyan) 66%); transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease); }
     .term.open .seek::after { transform: scaleX(1); }
 
     .console {
-      position: absolute; top: 48px; left: 0; right: 0; display: none;
-      background: var(--panel); border: 1px solid var(--hair); box-shadow: 0 24px 60px rgba(0,0,0,.28);
+      position: absolute; top: 46px; left: 0; right: 0; display: none;
+      background: var(--panel); border: 1px solid var(--hair); box-shadow: 0 30px 80px rgba(0,0,0,.32);
       clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
       max-height: min(70vh, 560px); overflow-y: auto;
     }
@@ -116,157 +141,228 @@
     .screen .hint { color: var(--muted); }
     .screen .hint b { color: var(--ink); font-weight: 400; }
 
-    /* ─── the cuts ───
-       A cut is a hole in the page. Its shape is an SVG clip path drawn in
-       0–1 units, so one path fits any size. Through it you see a photo that
-       stays still while the page moves: a position:fixed layer inside the
-       cut, which the clip path clips. (background-attachment: fixed did this
-       on desktop only; iOS ignores it, and there the photo scrolled with its
-       frame and read as a picture stuck on the page.)
-       The lip is drawn in pixels, so its offsets are real pixels: a hairline where the page
-       surface breaks, then inside the hole the page's own thickness, thicker
-       along the top where you see down onto the wall, and a soft shadow that
-       wall throws onto the photo. No shadow falls outside — a hole has none. */
-    .cut-wrap { position: relative; }
-    .cut { position: relative; z-index: 1; overflow: hidden; background: #1a1b1f center / cover no-repeat; }
-    .cut .still { position: fixed; left: 0; top: 0; width: 100%; height: 100vh; height: 100lvh; z-index: 0;
-      background: #1a1b1f center / cover no-repeat; pointer-events: none; will-change: transform; }
-    .cut .still.away { visibility: hidden; }
-    .lipsvg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
-    .lipsvg.out { z-index: 0; }
-    .lipsvg.in { z-index: 7; }
-    .lipsvg.shade { z-index: 6; filter: blur(6px); opacity: .7; }
-    .lipsvg .hl { stroke: var(--lip); }
-    .lipsvg .face { stroke: var(--lip-face); }
+    /* ─── the hero ─── */
+    .hero { padding: clamp(48px, 11vh, 132px) var(--gutter) 0; }
+    .hero-in { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); align-items: end; gap: 36px 72px; }
+    h1 { font: 600 clamp(48px, 8.6vw, 136px)/.9 var(--display); letter-spacing: -.055em; }
+    h1 .line { display: block; }
+    h1 .dot { font-style: normal; color: var(--magenta); }
+    .lede { font-size: clamp(17px, 1.35vw, 19px); line-height: 1.5; color: var(--muted); max-width: 36ch; }
+    .lede b { color: var(--ink); font-weight: 500; }
+    .tries { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 22px; }
+    .tries .mono { color: var(--muted); margin-right: 4px; }
+    .tries button { border: 1px solid var(--hair); background: var(--field); padding: 6px 11px; font: 400 13px var(--mono); cursor: pointer; transition: border-color .2s, background-color .2s; }
+    .tries button:hover { border-color: var(--ink); }
 
-    /* the hero: the cut you are greeted with, holding things to try */
-    .hero .cut { height: min(68vh, 680px); min-height: 420px; }
-    .hero .veil { position: absolute; inset: -20px; background: inherit; filter: blur(14px) brightness(.62) saturate(1.1); }
-    .stage { position: absolute; inset: 0; perspective: 1200px; z-index: 2; touch-action: pan-y; }
-    .ring { position: absolute; left: 50%; top: 50%; transform-style: preserve-3d; }
-    .card {
-      position: absolute; width: min(46vw, 640px); aspect-ratio: 16 / 10; left: 0; top: 0; translate: -50% -50%;
-      cursor: pointer; will-change: transform; background: #0d0e10; border: 0; padding: 0; color: #fff; text-align: left;
-      clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 22px 100%, 0 calc(100% - 22px));
-    }
-    .card video, .card img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .card img.contain { object-fit: contain; padding: 14%; background: radial-gradient(circle at 50% 40%, #2a2240, #0d0e10 70%); }
-    .card .glass { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgba(255,255,255,.18), transparent 30%, transparent 62%, rgba(0,0,0,.6)); }
-    .card .tag { position: absolute; left: 22px; bottom: 18px; display: flex; align-items: center; gap: 10px; text-shadow: 0 1px 10px rgba(0,0,0,.7); }
-    .card .tag i { width: 3px; height: 16px; background: var(--c); }
-    .card .tag b { font: 500 22px var(--sans); letter-spacing: -.01em; }
-    .card .go { position: absolute; right: 22px; bottom: 16px; display: flex; align-items: center; gap: 9px; color: #0d0e10; background: #fff; padding: 9px 18px 9px 14px; font: 600 13px var(--sans); letter-spacing: .08em; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%); opacity: 0; transition: opacity .3s; }
-    .card .go::before { content: ""; border-left: 8px solid #0d0e10; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
-    .card.center .go { opacity: 1; }
-    .card:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
-    .arrow { position: absolute; z-index: 5; top: 50%; translate: 0 -50%; width: 52px; height: 52px; border: 0; background: rgba(255,255,255,.14); cursor: pointer; display: grid; place-items: center; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-    .arrow:hover { background: rgba(255,255,255,.28); }
-    .arrow.l { left: 3vw; } .arrow.r { right: 3vw; }
-    .arrow::before { content: ""; border-top: 8px solid transparent; border-bottom: 8px solid transparent; }
-    .arrow.l::before { border-right: 12px solid #fff; } .arrow.r::before { border-left: 12px solid #fff; }
-    .live { position: absolute; inset: 9% 0; z-index: 6; display: none; background: #000; }
-    .live.open { display: block; }
-    .live iframe { width: 100%; height: 100%; border: 0; display: block; }
-    .live .ctl { position: absolute; top: 12px; right: 16px; z-index: 2; display: flex; gap: 8px; }
-    .live .ctl a, .live .ctl button { background: #fff; color: #0d0e10; border: 0; font: 600 12px var(--sans); letter-spacing: .1em; padding: 8px 12px; cursor: pointer; text-decoration: none; }
-
-    /* the newest thing on the site, one line under the cut */
-    #latest { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 34px 24px 0; }
-    .latest-relay { display: inline-flex; align-items: center; gap: 14px; max-width: 760px; padding: 10px 18px 10px 14px; text-decoration: none; background: var(--field); border: 1px solid var(--hair); }
+    /* the newest thing on the site, a pill over the headline */
+    #latest { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; }
+    .latest-relay { display: inline-flex; align-items: center; gap: 12px; max-width: 100%; padding: 7px 14px 7px 8px; text-decoration: none; font-size: 14px; background: var(--field); border: 1px solid var(--hair); transition: border-color .2s; }
     .latest-relay[hidden] { display: none; }
-    .latest-relay .latest-kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-    .latest-relay .latest-kicker::before { content: ""; width: 6px; height: 6px; background: var(--magenta); flex: none; }
-    .latest-relay .latest-title { font-weight: 500; }
-    .latest-relay .latest-description { display: none; }
-    .latest-relay .latest-meta { color: var(--muted); font-size: 13px; white-space: nowrap; display: flex; gap: 10px; }
     .latest-relay:hover { border-color: var(--ink); }
+    .latest-relay .latest-kicker { font: 500 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #fff; background: var(--ink); padding: 4px 8px; white-space: nowrap; }
+    :root[data-theme="night"] .latest-relay .latest-kicker { color: #0a0b0d; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="day"]) .latest-relay .latest-kicker { color: #0a0b0d; } }
+    .latest-relay .latest-title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .latest-relay .latest-description { display: none; }
+    .latest-relay .latest-meta { color: var(--muted); white-space: nowrap; display: flex; gap: 10px; }
 
-    /* ─── rooms through the page ─── */
-    .window { margin-top: 13vh; position: relative; display: block; text-decoration: none; }
-    .window .cut { height: var(--wh, 54vh); min-height: 320px; }
-    .window .cut::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.4), transparent 45%); z-index: 2; }
-    .window .title { position: absolute; z-index: 8; color: #fff; text-shadow: 0 2px 18px rgba(0,0,0,.6); }
-    .window .title b { display: block; font: 300 clamp(44px, 7.4vw, 100px) var(--sans); letter-spacing: -.035em; line-height: 1; }
-    .window .title span { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
-    .window .title span::before { content: ""; width: 24px; height: 2px; background: var(--c); }
-    .window .title .enter { margin-top: 18px; display: inline-flex; align-items: center; gap: 10px; font: 500 14px var(--sans); letter-spacing: .06em; }
-    .window .title .enter i { display: block; width: 26px; height: 1px; background: currentColor; position: relative; transition: width .4s ease; }
-    .window .title .enter i::after { content: ""; position: absolute; right: -1px; top: -3px; border-left: 6px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; }
-    /* a cut with gaps in it (the claw) can't carry words over the page, so
-       its title sits under it, in the page's own ink */
-    .window .title.below { position: static; translate: none; color: var(--ink); text-shadow: none; padding: 26px 6vw 0; text-align: left; }
-    .window:hover .enter i, .window:focus-visible .enter i { width: 46px; }
-    .window:focus-visible { outline: none; }
-    /* on the photo layer, not the cut: a filter on the cut would pin the
-       fixed layer to it and the photo would jump */
-    .window:focus-visible .still { filter: brightness(1.12); }
+    /* ─── the cuts ───
+       A cut is a hole in the page. Its shape is a parallelogram worked out in
+       pixels (so the slant is the same on a short cut and a tall one) and set
+       as the cut's clip-path. Through it you see a photo that stays still
+       while the page moves: a position:fixed layer inside the cut, clipped by
+       it. (background-attachment: fixed did this on desktop only; iOS ignores
+       it.) So: never a filter or transform on a .cut or anything above it —
+       either pins the fixed layer to that element and the photo scrolls again.
+       A cut opens from a slit the first time it comes on screen.
+       Anything laid over a cut goes INSIDE it, never beside it: a sibling
+       that fades in over the cut makes Chromium paint the cut's scrim out
+       past its clip, a whole tile of it. */
+    .cutbox { position: relative; }
+    .cut { position: relative; z-index: 1; height: 100%; overflow: hidden; background: #111214; transition: clip-path 1.25s cubic-bezier(.7,0,.16,1); }
+    .cut .still {
+      position: fixed; left: 0; top: 0; width: 100%; height: 100vh; height: 100lvh; z-index: 0; pointer-events: none;
+      background: #111214 var(--img) var(--pos, 50% 50%) / var(--size, cover) no-repeat; will-change: transform;
+    }
+    .cut .still.away { visibility: hidden; }
+    .cut .scrim { position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background: linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,.18) 42%, rgba(0,0,0,0) 62%), linear-gradient(to right, rgba(0,0,0,.35), rgba(0,0,0,0) 55%); }
+    .lip { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; opacity: 0; transition: opacity .7s .75s; }
+    .open .lip { opacity: 1; }
+    .lip.out { z-index: 0; }
+    .cut .rim { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .7s .75s; }
+    .open .rim { opacity: 1; }
+    .lip.in { z-index: 4; }
+    .lip .hl { stroke: var(--lip); }
+    .lip .face { stroke: var(--lip-face); }
 
-    .river { margin-top: 10vh; height: 210px; overflow: hidden; perspective: 900px; display: flex; align-items: center; }
-    .track { display: flex; gap: 14px; animation: drift 140s linear infinite; width: max-content; transform-style: preserve-3d; }
-    .track a { display: block; flex: none; }
-    .track img { height: 160px; width: auto; display: block; transform: rotateY(-18deg); transition: transform .5s; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); }
-    .track a:hover img, .track a:focus-visible img { transform: rotateY(0) scale(1.06); }
+    .hero-cut { height: min(76vh, 860px); min-height: 440px; margin: clamp(40px, 7vh, 88px) calc(-1 * var(--gutter)) 0; }
+    .hero-cut .scrim { background: linear-gradient(to top, rgba(0,0,0,.4), rgba(0,0,0,0) 40%); }
+    .credit { position: absolute; z-index: 5; right: var(--gutter); bottom: calc(var(--k, 60px) + 22px); color: rgba(255,255,255,.86); text-decoration: none; display: flex; align-items: center; gap: 10px; text-shadow: 0 1px 12px rgba(0,0,0,.5); opacity: 0; transition: opacity .7s 1s; }
+    .open .credit { opacity: 1; }
+    .credit::before { content: ""; width: 18px; height: 1px; background: currentColor; }
+    .credit:hover { color: #fff; }
+
+    /* ─── section heads ─── */
+    .sec { padding: clamp(96px, 16vh, 180px) 0 0; }
+    .sec-head { max-width: 1400px; margin: 0 auto clamp(28px, 4vh, 44px); padding: 0 var(--gutter); display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+    .eyebrow { display: flex; align-items: center; gap: 12px; color: var(--muted); margin-bottom: 16px; }
+    .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--c, var(--violet)); }
+    h2 { font: 600 clamp(32px, 4.4vw, 60px)/1 var(--display); letter-spacing: -.045em; }
+    .sec-head p { color: var(--muted); max-width: 40ch; margin-top: 14px; font-size: 17px; }
+
+    /* ─── things to play, a rail ─── */
+    .rail-nav { display: flex; gap: 8px; flex: none; }
+    .rail-nav button { width: 46px; height: 46px; border: 1px solid var(--hair); background: var(--field); cursor: pointer; display: grid; place-items: center; transition: border-color .2s, opacity .2s; }
+    .rail-nav button:hover { border-color: var(--ink); }
+    .rail-nav button:disabled { opacity: .35; cursor: default; border-color: var(--hair); }
+    .rail-nav svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+    .rail {
+      display: flex; gap: 16px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory;
+      padding: 0 var(--gutter) 6px; scroll-padding: 0 var(--gutter); scrollbar-width: none;
+    }
+    .rail::-webkit-scrollbar { display: none; }
+    .rail::after { content: ""; flex: 0 0 1px; }
+    .card {
+      position: relative; flex: 0 0 clamp(280px, 31vw, 470px); aspect-ratio: 4 / 3; scroll-snap-align: start;
+      border: 0; padding: 0; cursor: pointer; text-align: left; color: #fff; background: #0d0e10; overflow: hidden;
+      clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%);
+    }
+    .card video, .card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 1.1s var(--ease); }
+    .card img.contain { object-fit: contain; padding: 18%; background: radial-gradient(circle at 50% 42%, #2a2240, #0d0e10 70%); }
+    .card:hover video, .card:hover img { transform: scale(1.045); }
+    .card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,.1) 48%, rgba(0,0,0,0) 70%); }
+    .card .cap { position: absolute; z-index: 2; left: 22px; right: 22px; bottom: 20px; display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+    .card .cap b { display: block; font: 600 22px/1.15 var(--display); letter-spacing: -.02em; }
+    .card .cap span { display: block; margin-top: 5px; font-size: 13.5px; color: rgba(255,255,255,.82); }
+    .card .cap i { display: block; width: 3px; height: 18px; background: var(--c); margin-bottom: 12px; }
+    .card .go { flex: none; display: flex; align-items: center; gap: 8px; color: #0d0e10; background: #fff; padding: 8px 14px 8px 12px; font: 600 12px var(--sans); letter-spacing: .1em; transition: background-color .25s, color .25s; }
+    .card .go::before { content: ""; border-left: 7px solid currentColor; border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent; }
+    .card:hover .go { background: var(--c); color: #fff; }
+
+    /* the player: a game opens over the page, the page waits underneath */
+    .player { position: fixed; inset: 0; z-index: 200; display: none; place-items: center; background: rgba(4,5,7,.86); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+    .player.open { display: grid; }
+    .player .frame { width: min(1360px, 94vw); height: min(860px, 88vh); display: flex; flex-direction: column; background: #000; box-shadow: 0 40px 120px rgba(0,0,0,.6); }
+    .player .ctl { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 18px; background: #0d0e10; color: #fff; }
+    .player .ctl b { margin-right: auto; font: 600 14px var(--sans); letter-spacing: .02em; }
+    .player .ctl a, .player .ctl button { background: #fff; color: #0d0e10; border: 0; font: 600 12px var(--sans); letter-spacing: .1em; padding: 8px 12px; cursor: pointer; text-decoration: none; }
+    .player iframe { flex: 1; width: 100%; border: 0; display: block; background: #000; }
+
+    /* ─── rooms, seen through the page ─── */
+    .slices { display: grid; gap: clamp(14px, 2vw, 28px); }
+    .slice { position: relative; display: block; height: max(560px, 88vh); color: #fff; text-decoration: none; }
+    .slice .copy { position: absolute; z-index: 6; left: var(--gutter); right: var(--gutter); bottom: calc(var(--k, 60px) + clamp(30px, 7vh, 72px)); max-width: 640px; text-shadow: 0 1px 24px rgba(0,0,0,.35); }
+    .slice .idx { display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,.86); margin-bottom: 18px; }
+    .slice .idx::before { content: ""; width: 22px; height: 2px; background: var(--c); }
+    .slice h3 { font: 600 clamp(52px, 8.4vw, 128px)/.9 var(--display); letter-spacing: -.055em; }
+    .slice p { margin-top: 18px; font-size: clamp(16px, 1.3vw, 19px); color: rgba(255,255,255,.9); max-width: 34ch; }
+    .enter { margin-top: 26px; display: inline-flex; align-items: center; gap: 12px; font: 500 14px var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+    .enter i { display: block; width: 28px; height: 1px; background: currentColor; position: relative; transition: width .45s var(--ease); }
+    .enter i::after { content: ""; position: absolute; right: -1px; top: -3px; border-left: 6px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; }
+    .slice:hover .enter i, .slice:focus-visible .enter i { width: 52px; }
+    .slice:focus-visible { outline: none; }
+    .slice:focus-visible h3 { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 10px; }
+
+    .river { margin: clamp(14px, 2vw, 28px) 0; height: 220px; overflow: hidden; display: flex; align-items: center;
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+    .track { display: flex; gap: 12px; animation: drift 160s linear infinite; width: max-content; }
+    .track a { display: block; flex: none; overflow: hidden; }
+    .track img { height: 220px; width: auto; display: block; transition: transform .8s var(--ease), filter .4s; }
+    .track a:hover img, .track a:focus-visible img { transform: scale(1.05); }
     .river:hover .track, .river:focus-within .track { animation-play-state: paused; }
     @keyframes drift { to { transform: translateX(-50%); } }
 
-    /* every room, the directory. Rendered from ROOMS. */
-    .rooms { padding: 14vh 32px 0; max-width: 1240px; margin: 0 auto; }
-    .rooms h2 { display: flex; align-items: center; gap: 12px; font: 500 12px var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); border-top: 1px solid var(--ink); padding-top: 14px; margin-bottom: 22px; }
-    .rooms h2::before { content: ""; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid var(--ink); }
-    #dir { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
-    a.entry { position: relative; display: block; aspect-ratio: 4 / 5; overflow: hidden; text-decoration: none; color: #fff; background: #15161a;
-      clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%); }
-    a.entry img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .8s cubic-bezier(.2,.8,.2,1); }
-    a.entry .art { position: absolute; inset: 0; }
-    a.entry::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.75), transparent 55%); }
-    a.entry::before { content: ""; position: absolute; left: 0; top: 0; z-index: 2; width: 3px; height: 42px; background: var(--hue); }
-    a.entry .dirname { position: absolute; z-index: 2; left: 16px; bottom: 34px; font: 500 22px var(--sans); letter-spacing: -.01em; text-transform: capitalize; }
-    a.entry .desc { position: absolute; z-index: 2; left: 16px; right: 16px; bottom: 14px; font-size: 13px; color: rgba(255,255,255,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    a.entry:hover img, a.entry:focus-visible img { transform: scale(1.06); }
-    a.entry:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
-    .dir-more { margin-top: 18px; color: var(--muted); font-size: 14px; }
-    .dir-more button { background: none; border: 0; border-bottom: 1px solid var(--hair); color: var(--ink); font: inherit; cursor: pointer; padding: 0; }
+    /* ─── every room, the directory. Rendered from ROOMS. ─── */
+    #dir { max-width: 1400px; margin: 0 auto; padding: 0 var(--gutter); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 22px; }
+    a.entry { display: block; text-decoration: none; color: var(--ink); }
+    a.entry .thumb { position: relative; display: block; aspect-ratio: 16 / 10; overflow: hidden; background: var(--tile);
+      clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%); }
+    a.entry .thumb img, a.entry .thumb .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 1s var(--ease); }
+    a.entry:hover .thumb img, a.entry:hover .thumb .art, a.entry:focus-visible .thumb img { transform: scale(1.05); }
+    a.entry .meta { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 16px; padding-top: 16px; border-top: 2px solid transparent; }
+    a.entry .dirname { font: 600 21px var(--display); letter-spacing: -.02em; text-transform: capitalize; }
+    a.entry .desc { grid-column: 1; font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    a.entry .arr { grid-row: 1; grid-column: 2; color: var(--muted); transition: transform .35s var(--ease), color .2s; }
+    a.entry:hover .arr { transform: translateX(4px); color: var(--hue); }
+    a.entry:hover .dirname { color: var(--ink); }
+    a.entry:focus-visible { outline-offset: 6px; }
+    .dir-more { max-width: 1400px; margin: 44px auto 0; padding: 0 var(--gutter); color: var(--muted); font-size: 15px; }
+    .dir-more button { background: none; border: 0; border-bottom: 1px solid var(--muted); color: var(--ink); font: 400 14px var(--mono); cursor: pointer; padding: 0 0 1px; }
 
-    footer { display: flex; justify-content: space-between; gap: 12px; padding: 12vh 32px 40px; color: var(--muted); }
+    /* ─── footer ─── */
+    .foot { margin-top: clamp(110px, 18vh, 200px); padding: 0 var(--gutter) 36px; }
+    .foot-in { max-width: 1400px; margin: 0 auto; border-top: 1px solid var(--hair); padding-top: 40px; display: flex; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
+    .foot-brand .brand { font-size: 14px; }
+    .foot-brand p { margin-top: 14px; color: var(--muted); max-width: 34ch; }
+    .foot-links { display: grid; grid-template-columns: repeat(2, auto); gap: 10px 48px; align-content: start; }
+    .foot-links a { text-decoration: none; color: var(--muted); transition: color .2s; }
+    .foot-links a:hover { color: var(--ink); }
+    .foot-base { max-width: 1400px; margin: 48px auto 0; display: flex; justify-content: space-between; gap: 16px; color: var(--muted); }
 
+    /* ─── arriving ─── things fade up the first time they come on screen.
+       Only ever on copy and tiles — never on a cut or a slice (see above). */
+    .js .rv { opacity: 0; transform: translateY(22px); transition: opacity .9s var(--ease), transform 1.1s var(--ease); transition-delay: var(--d, 0s); }
+    .js .rv.in { opacity: 1; transform: none; }
+
+    @media (max-width: 1100px) {
+      .links { display: none; }
+      .bar { gap: 16px; }
+      .bar .term { margin-left: auto; }
+    }
+    @media (max-width: 860px) {
+      .hero-in { grid-template-columns: 1fr; gap: 24px; }
+      #dir { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
     @media (max-width: 760px) {
-      .bar { flex-wrap: wrap; padding: 14px 16px; }
-      .term { order: 3; width: 100%; }
+      .bar { position: relative; flex-wrap: wrap; height: auto; padding-top: 14px; padding-bottom: 14px; row-gap: 12px; }
+      .bar .term { order: 3; width: 100%; margin: 0; }
+      .brand { margin-right: auto; }
       .seek kbd { display: none; }
-      .hero .cut { height: 58vh; min-height: 380px; }
-      .card { width: 78vw; }
-      .arrow { display: none; }
-      .window .title { position: static; translate: none !important; color: var(--ink); text-shadow: none; padding: 20px 16px 0; text-align: left !important; }
-      .window .title span, .window .title .enter { justify-content: flex-start !important; }
-      .window { margin-top: 9vh; }
-      .rooms { padding: 10vh 16px 0; }
-      #dir { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-      a.entry .dirname { font-size: 18px; bottom: 30px; left: 12px; }
-      a.entry .desc { left: 12px; right: 12px; font-size: 12px; }
-      .river { height: 160px; } .track img { height: 116px; }
-      footer { padding: 10vh 16px 32px; }
-      .latest-relay { flex-wrap: wrap; gap: 6px 12px; }
+      .hero { padding-top: 28px; }
+      #latest { margin-bottom: 18px; }
+      .lede { font-size: 16px; }
+      .tries { margin-top: 16px; }
+      .latest-relay { font-size: 13px; }
+      .latest-relay .latest-meta { display: none; }
+      .hero-cut { height: 62vh; min-height: 380px; margin-top: 28px; }
+      .cut .still { background-image: var(--img-m, var(--img)); background-position: var(--pos-m, var(--pos, 50% 50%)); background-size: var(--size-m, cover); }
+      .sec-head { align-items: start; flex-direction: column; }
+      .rail-nav { display: none; }
+      .card { flex-basis: 84vw; aspect-ratio: 4 / 5; }
+      .slice { height: max(520px, 82vh); }
+      .slice h3 { font-size: clamp(48px, 15vw, 72px); }
+      .river { height: 150px; } .track img { height: 150px; }
+      /* on a phone the directory is a list: a picture, a name, a line */
+      #dir { grid-template-columns: 1fr; gap: 0; }
+      a.entry { display: grid; grid-template-columns: 84px 1fr; gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--hair); }
+      a.entry:last-child { border-bottom: 1px solid var(--hair); }
+      a.entry .thumb { aspect-ratio: 1; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
+      a.entry .meta { padding-top: 0; }
+      a.entry .dirname { font-size: 18px; }
+      .player .frame { width: 100vw; height: 100vh; height: 100dvh; }
+      .foot-base { flex-direction: column; }
     }
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+      *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; transition-delay: 0s !important; }
       .river { overflow-x: auto; }
       .track { animation: none; }
+      .js .rv { opacity: 1; transform: none; }
     }
   </style>
   <script src="assets/visit.js" defer></script>
 </head>
 <body>
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-    <defs id="cut-defs">
-      <linearGradient id="lip-grad" x1="0" x2="1"><stop offset="0" stop-color="#7b3cff"/><stop offset=".5" stop-color="#ff2d8a"/><stop offset="1" stop-color="#00c2ff"/></linearGradient>
-    </defs>
-  </svg>
-
-  <header class="bar">
-    <a class="brand" href="index.html" aria-label="RIC//NET home">
+  <header class="bar" id="bar">
+    <a class="brand" href="frontdoor.html" aria-label="RIC//NET, back to the top">
       <svg viewBox="0 0 18 18" aria-hidden="true"><polygon class="o" points="9,1 17,16 1,16"/><polygon points="9,9 11.8,14 6.2,14" fill="#7b3cff"/></svg>
       RIC//NET
     </a>
+    <nav class="links" aria-label="On this page">
+      <a href="#play">Play</a>
+      <a href="#rooms">Rooms</a>
+      <a href="#every-room">Everything</a>
+    </nav>
     <!-- The terminal is the search. Type a plain word and it finds things;
          type a command and it runs it — every command, room name and egg the
          old front door answered to still works here. -->
@@ -289,65 +385,162 @@
   </header>
 
   <main>
-    <section class="cut-wrap hero" data-shape="angled" aria-label="Things to try">
-      <div class="cut" id="hero-cut" style="background-image:url(photos/website-0300.jpg)">
-        <div class="veil"></div>
-        <div class="stage" id="stage"><div class="ring" id="ring"></div></div>
-        <button class="arrow l" id="prev" type="button" aria-label="Previous"></button>
-        <button class="arrow r" id="next" type="button" aria-label="Next"></button>
-        <div class="live" id="live">
-          <div class="ctl"><a id="live-full" href="#">FULL PAGE ↗</a><button id="live-close" type="button">CLOSE ✕</button></div>
-          <iframe id="live-frame" title="Playing on the front page"></iframe>
+    <section class="hero" aria-labelledby="hero-h">
+      <div class="hero-in">
+        <div>
+          <!-- Filled by latest.js from latest-climb.js + RELAY_LATEST. Don't hardcode
+               an entry here — it goes stale the moment anything newer lands. -->
+          <div id="latest" class="rv" aria-label="Newest addition">
+            <a class="latest-relay" data-latest-banner data-latest-prefix="new"></a>
+            <!-- Trial alerts: only for a site account approved for Studies. -->
+            <a class="latest-relay trial-alert" id="trial-alert" href="projects/psyche/studies.html#watch" hidden></a>
+          </div>
+          <h1 id="hero-h"><span class="line rv" style="--d:.05s">Ric Massey's</span><span class="line rv" style="--d:.15s">own internet<i class="dot">.</i></span></h1>
+        </div>
+        <div class="rv" style="--d:.3s">
+          <p class="lede">Games you can play right here, space you can explore, <b>climbing, running, photographs</b>, and Orrin. Every room built by hand.</p>
+          <div class="tries" aria-label="Things to type">
+            <span class="mono">Try</span>
+            <button type="button" data-try="kondrite">kondrite</button>
+            <button type="button" data-try="space">space</button>
+            <button type="button" data-try="climbing">climbing</button>
+            <button type="button" data-try="help">help</button>
+          </div>
+        </div>
+      </div>
+      <div class="cutbox hero-cut" data-cut>
+        <div class="cut" style="--img:url(photos/climbing-10.jpg); --size: auto 128%; --pos: 50% 0%; --pos-m: 74% 50%">
+          <div class="still" role="img" aria-label="Watching the sun come up over a sea of clouds and mountains"></div>
+          <div class="scrim"></div>
+          <a class="credit mono" href="captures.html">Sunrise above the clouds · Captures</a>
         </div>
       </div>
     </section>
 
-    <!-- Filled by latest.js from latest-climb.js + RELAY_LATEST. Don't hardcode
-         an entry here — it goes stale the moment anything newer lands. -->
-    <section id="latest" aria-label="Newest addition">
-      <a class="latest-relay" data-latest-banner data-latest-prefix="new"></a>
-      <!-- Trial alerts: only for a site account approved for Studies. -->
-      <a class="latest-relay trial-alert" id="trial-alert" href="projects/psyche/studies.html#watch" hidden></a>
+    <section class="sec" id="play" aria-labelledby="play-h" style="--c: var(--violet)">
+      <div class="sec-head">
+        <div class="rv">
+          <div class="eyebrow mono">01 — Play</div>
+          <h2 id="play-h">Things to try, right here.</h2>
+          <p>Every one runs in the page. Press play and it opens over this one.</p>
+        </div>
+        <div class="rail-nav">
+          <button type="button" id="prev" aria-label="Previous"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg></button>
+          <button type="button" id="next" aria-label="Next"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg></button>
+        </div>
+      </div>
+      <div class="rail" id="rail" aria-label="Things to play"></div>
     </section>
 
-    <a class="window cut-wrap" data-shape="claw" href="climbing.html" style="--wh: 74vh; --c: var(--cyan)">
-      <div class="cut fixed" style="background-image:url(photos/climbing-02.jpg)" role="img" aria-label="Climbers under a sweeping orange sandstone roof"></div>
-      <div class="title below"><b>Climbing</b><span class="mono">Routes · projects · falls</span><div class="enter">Enter <i></i></div></div>
-    </a>
+    <section class="sec" id="rooms" aria-labelledby="rooms-h" style="--c: var(--cyan)">
+      <div class="sec-head">
+        <div class="rv">
+          <div class="eyebrow mono">02 — Rooms</div>
+          <h2 id="rooms-h">Look through the page.</h2>
+          <p>Each room is dressed as the real app for its world. Here are four of them.</p>
+        </div>
+      </div>
+      <div class="slices">
+        <a class="slice cutbox" data-cut href="climbing.html" style="--c: var(--cyan)">
+          <div class="cut" style="--img:url(photos/climbing-02.jpg); --img-m:url(photos/website-0057.jpg); --pos: 50% 45%; --pos-m: 50% 40%">
+            <div class="still" role="img" aria-label="Climbers under a sweeping orange sandstone roof"></div>
+            <div class="scrim"></div>
+            <div class="copy rv">
+              <div class="idx mono">Climbing</div>
+              <h3>The wall.</h3>
+              <p>Every route, every project, every fall — logged from the crag.</p>
+              <div class="enter">Enter <i></i></div>
+            </div>
+          </div>
+        </a>
+        <a class="slice cutbox" data-cut href="captures.html" style="--c: var(--magenta)">
+          <div class="cut" style="--img:url(photos/climbing-16.jpg); --img-m:url(photos/website-0463.jpg); --pos: 50% 55%; --pos-m: 70% 50%">
+            <div class="still" role="img" aria-label="A glacial lake under jagged peaks and pine forest"></div>
+            <div class="scrim"></div>
+            <div class="copy rv">
+              <div class="idx mono">Captures</div>
+              <h3>1,300 frames.</h3>
+              <p>Photographs from the mountains, the crags and everything between.</p>
+              <div class="enter">Enter <i></i></div>
+            </div>
+          </div>
+        </a>
+      </div>
 
-    <a class="window cut-wrap" data-shape="jagged" href="captures.html" style="--c: var(--magenta)">
-      <div class="cut fixed" style="background-image:url(photos/website-0900.jpg)" role="img" aria-label="A dusk sky over still water, a tree in silhouette"></div>
-      <div class="title" style="right: 6vw; top: 22%; text-align: right"><b>Captures</b><span class="mono" style="justify-content:flex-end">1,300+ photographs</span><div class="enter">Enter <i></i></div></div>
-    </a>
+      <div class="river" aria-label="Photographs"><div class="track" id="track"></div></div>
 
-    <div class="river" aria-label="Photographs"><div class="track" id="track"></div></div>
+      <div class="slices">
+        <a class="slice cutbox" data-cut href="training.html" style="--c: var(--violet)">
+          <div class="cut" style="--img:url(photos/climbing-12.jpg); --img-m:url(photos/website-0701.jpg); --pos: 50% 40%; --pos-m: 40% 50%">
+            <div class="still" role="img" aria-label="Walking a high ridge between snow-streaked peaks"></div>
+            <div class="scrim"></div>
+            <div class="copy rv">
+              <div class="idx mono">Training</div>
+              <h3>Every run.</h3>
+              <p>A 52-week plan, ticked off the moment the watch syncs.</p>
+              <div class="enter">Enter <i></i></div>
+            </div>
+          </div>
+        </a>
+        <a class="slice cutbox" data-cut href="exploration.html" style="--c: var(--cyan)">
+          <div class="cut" style="--img:url(photos/climbing-23.jpg); --pos: 50% 50%">
+            <div class="still" role="img" aria-label="The moon, bright against a black sky"></div>
+            <div class="scrim"></div>
+            <div class="copy rv">
+              <div class="idx mono">Exploration</div>
+              <h3>Further out.</h3>
+              <p>Space, physics and the size of things — to scale, and playable.</p>
+              <div class="enter">Enter <i></i></div>
+            </div>
+          </div>
+        </a>
+      </div>
+    </section>
 
-    <a class="window cut-wrap" data-shape="blade" href="training.html" style="--c: var(--violet)">
-      <div class="cut fixed" style="background-image:url(photos/website-0700.jpg)" role="img" aria-label="Sitting on a canyon rim above a river"></div>
-      <div class="title" style="left: 12vw; bottom: 16%"><b>Training</b><span class="mono">Every run · the 52-week plan</span><div class="enter">Enter <i></i></div></div>
-    </a>
-
-    <a class="window cut-wrap" data-shape="shatter" href="exploration.html" style="--wh: 64vh; --c: var(--cyan)">
-      <div class="cut fixed" style="background-image:url(photos/climbing-10.jpg)" role="img" aria-label="Watching the sun set over a sea of mountains"></div>
-      <div class="title" style="left: 50%; translate: -50% 0; top: 34%; text-align: center"><b>Exploration</b><span class="mono" style="justify-content:center">Space · physics · science</span><div class="enter" style="justify-content:center">Enter <i></i></div></div>
-    </a>
-
-    <section class="rooms" aria-labelledby="rooms-h">
-      <h2 id="rooms-h">Every room</h2>
+    <section class="sec" id="every-room" aria-labelledby="dir-h" style="--c: var(--magenta)">
+      <div class="sec-head">
+        <div class="rv">
+          <div class="eyebrow mono">03 — Everything</div>
+          <h2 id="dir-h">Every room.</h2>
+        </div>
+      </div>
       <!-- Deliberately empty: the entries are rendered from the ROOMS array in
            the script below, which is also what `ls`, `tree`, `find` and Tab
            completion read. To add or rename a room, edit ROOMS — not this markup.
            /apex, /cs, /val, /log and /map are left off on purpose (`listed:
            false`); `ls`, the room name, and the URL all still reach them. -->
       <nav id="dir" aria-label="Site directory"></nav>
-      <p class="dir-more">More rooms? <button type="button" id="ls-hint">type ls</button></p>
+      <p class="dir-more">There are more rooms than these. <button type="button" id="ls-hint">type ls</button></p>
     </section>
   </main>
 
-  <footer class="mono">
-    <span>EST. 2026 · SIGNAL NOMINAL</span>
-    <span>RIC//NET</span>
+  <footer class="foot">
+    <div class="foot-in">
+      <div class="foot-brand">
+        <a class="brand" href="frontdoor.html">
+          <svg viewBox="0 0 18 18" aria-hidden="true"><polygon class="o" points="9,1 17,16 1,16"/><polygon points="9,9 11.8,14 6.2,14" fill="#7b3cff"/></svg>
+          RIC//NET
+        </a>
+        <p>Ric Massey's own internet. Plain pages, no frameworks, and something new most weeks.</p>
+      </div>
+      <nav class="foot-links" aria-label="More">
+        <a href="index.html">The terminal</a>
+        <a href="captures.html">Photographs</a>
+        <a href="gaming.html">Games</a>
+        <a href="orrin.html">Orrin</a>
+        <a href="account/">Sign in</a>
+        <a href="exploration.html">Exploration</a>
+      </nav>
+    </div>
+    <div class="foot-base mono"><span>Est. 2026 · signal nominal</span><span>Press / to type</span></div>
   </footer>
+
+  <div class="player" id="player" role="dialog" aria-modal="true" aria-labelledby="player-name">
+    <div class="frame">
+      <div class="ctl"><b id="player-name"></b><a id="live-full" href="#">FULL PAGE ↗</a><button id="live-close" type="button">CLOSE ✕</button></div>
+      <iframe id="live-frame" title="Playing on the front page"></iframe>
+    </div>
+  </div>
 
   <script src="notes.js"></script>
   <script src="effects.js"></script>
@@ -412,181 +605,136 @@
     })();
 
     // ─── the cuts ────────────────────────────────────────
-    // Every [data-shape] gets its own clip path and the lip drawn around it.
-    // Shapes are in 0–1 units (objectBoundingBox), so one path fits any size.
+    // Every [data-cut] is the same shape: a strip sliced at one angle, worked
+    // out in pixels so a short cut and a tall one slant alike, and all of them
+    // parallel. It opens from a slit the first time it comes on screen.
+    const STILL = matchMedia("(prefers-reduced-motion: reduce)").matches;
     (() => {
-      let seed = 11;
-      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-      const pts = (a) => a.map((p, i) => (i ? "L" : "M") + p[0].toFixed(4) + "," + p[1].toFixed(4)).join(" ") + " Z";
-      const edge = (y0, y1, n, amp, spikes) => Array.from({ length: n + 1 }, (_, i) => {
-        const t = i / n, base = y0 + (y1 - y0) * t;
-        const jitter = i === 0 || i === n ? 0
-          : (i % 2 ? 1 : -1) * amp * (0.4 + rnd()) + (spikes && rnd() < 0.15 ? spikes * (rnd() - 0.3) : 0);
-        return [t, base + jitter];
-      });
-      // one claw mark: a tapered, slightly bowed slash
-      const slash = (x0, ya, x1, yb, th, bend) => {
-        const xm = x0 + (x1 - x0) * 0.42, ym = ya + (yb - ya) * 0.42 + bend;
-        return `M${x0},${ya} Q${xm},${ym - th} ${x1},${yb} Q${xm + 0.04},${ym + th * 0.8} ${x0},${ya} Z`;
-      };
-      const SHAPES = {
-        angled: () => pts([[0, 0.12], [1, 0], [1, 0.88], [0, 1]]),
-        jagged: () => pts([...edge(0.16, 0.03, 46, 0.025), ...edge(0.97, 0.84, 46, 0.025).reverse()]),
-        claw: () => [slash(0.06, 0.40, 0.93, 0.04, 0.17, 0.03), slash(0, 0.70, 1, 0.30, 0.22, 0.04), slash(0.1, 0.97, 0.9, 0.64, 0.16, 0.03)].join(" "),
-        blade: () => pts([[0, 0.58], [0.07, 0.16], [1, 0], [0.94, 0.5], [1, 0.84], [0.07, 1]]),
-        shatter: () => pts([...edge(0.22, 0.02, 22, 0.05, 0.12), ...edge(0.98, 0.78, 22, 0.05, 0.12).reverse()]),
-      };
-      const NS = "http://www.w3.org/2000/svg", defs = document.getElementById("cut-defs");
+      const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x}px ${y}px`).join(", ")})`;
+      const path = (pts) => "M" + pts.map(([x, y]) => `${x},${y}`).join(" L") + " Z";
       // four screen-sized photos pinned at once is wasted paint: a cut that is
       // off screen hides its photo until it comes back
       const seen = new IntersectionObserver((list) => list.forEach((e) =>
         e.target.querySelector(".still")?.classList.toggle("away", !e.isIntersecting)), { rootMargin: "50% 0px" });
-      document.querySelectorAll("[data-shape]").forEach((wrap, n) => {
-        const d = SHAPES[wrap.dataset.shape](), id = "cut-" + n;
-        const clip = document.createElementNS(NS, "clipPath");
-        clip.id = id;
-        clip.setAttribute("clipPathUnits", "objectBoundingBox");
-        const path = document.createElementNS(NS, "path");
-        path.setAttribute("d", d);
-        clip.appendChild(path);
-        defs.appendChild(clip);
-        const cut = wrap.querySelector(".cut");
-        cut.style.clipPath = `url(#${id})`;
-        // the bevel hugs the cut itself, not the wrap, which may hold a title too
-        const holder = document.createElement("div");
-        holder.style.position = "relative";
-        cut.before(holder);
-        holder.appendChild(cut);
-        // the photo moves off the cut onto a layer pinned to the screen
-        if (cut.classList.contains("fixed")) {
-          const still = document.createElement("div");
-          still.className = "still";
-          still.style.backgroundImage = cut.style.backgroundImage;
-          cut.style.backgroundImage = "none";
-          cut.prepend(still);
-          seen.observe(cut);
-        }
-        // Drawn in pixels, redrawn when the cut changes size: a blur and a
-        // downward offset have to be real pixels, or a tall cut and a short
-        // one would get different lips.
-        const draw = () => {
+      const opener = new IntersectionObserver((list) => list.forEach((e) => {
+        if (!e.isIntersecting) return;
+        opener.unobserve(e.target);
+        e.target.classList.add("open");
+        e.target.draw();
+      }), { threshold: 0.18 });
+
+      document.querySelectorAll("[data-cut]").forEach((box) => {
+        const cut = box.querySelector(".cut");
+        seen.observe(cut);
+        box.draw = () => {
           const w = cut.clientWidth, h = cut.clientHeight;
           if (!w || !h) return;
-          const at = (cls, stroke, width, dy = 0, extra = "") =>
-            `<g transform="translate(0,${dy})" ${extra}><path ${cls ? `class="${cls}"` : ""} d="${d}" transform="scale(${w},${h})" fill="none" ${stroke ? `stroke="${stroke}"` : ""} stroke-width="${width}" vector-effect="non-scaling-stroke"/></g>`;
-          const box = `viewBox="0 0 ${w} ${h}" aria-hidden="true"`;
-          holder.querySelector(".lipsvg.out")?.remove();
-          cut.querySelector(".lipsvg.in")?.remove();
-          // outside, on the page: only the hairline where its surface breaks,
-          // a touch brighter along the top edges, which face the light
-          holder.insertAdjacentHTML("afterbegin",
-            `<svg class="lipsvg out" ${box}>${at("hl", "", 2)}${at("hl", "", 2, -1)}</svg>`);
-          // inside, clipped to the hole: the shadow the wall throws down onto
-          // the photo (its own layer, blurred by CSS — an SVG filter in there
-          // softened the photo under it too), then the wall itself, then the
-          // room's colour on the edge
-          cut.querySelector(".lipsvg.shade")?.remove();
-          cut.insertAdjacentHTML("beforeend",
-            `<svg class="lipsvg shade" ${box}>${at("", "#000", 24, 7)}</svg>`);
-          cut.insertAdjacentHTML("beforeend",
-            `<svg class="lipsvg in" ${box}>` +
-            `${at("face", "", 12)}${at("face", "", 12, 5)}${at("", "url(#lip-grad)", 1.5, 0, 'opacity=".85"')}</svg>`);
+          const k = Math.round(Math.max(26, Math.min(120, w * 0.065)));
+          const shape = [[0, k], [w, 0], [w, h - k], [0, h]];
+          const slit = [[0, h / 2 + k / 2], [w, h / 2 - k / 2], [w, h / 2 - k / 2], [0, h / 2 + k / 2]];
+          box.style.setProperty("--k", k + "px");
+          cut.style.clipPath = poly(box.classList.contains("open") ? shape : slit);
+          // The lip, in pixels: outside, only the hairline where the page's
+          // surface breaks (brighter on the top edge, which faces the light);
+          // inside, the shadow the wall throws down onto the photo, then the
+          // page's own thickness, deeper along the top where you look down
+          // onto it. No shadow falls outside — a hole has none.
+          const d = path(shape);
+          const at = (cls, width, dy = 0, stroke = "") =>
+            `<path${cls ? ` class="${cls}"` : ""} d="${d}" fill="none"${stroke ? ` stroke="${stroke}"` : ""} stroke-width="${width}" transform="translate(0,${dy})"/>`;
+          const box_ = `viewBox="0 0 ${w} ${h}" aria-hidden="true"`;
+          box.querySelectorAll(".lip").forEach((el) => el.remove());
+          cut.insertAdjacentHTML("beforebegin", `<svg class="lip out" ${box_}>${at("hl", 2)}${at("hl", 2, -1)}</svg>`);
+          // The shadow is gradients laid along each edge, not a blur: a blurred
+          // layer here leaks out past the clip in Chromium, a whole tile of it.
+          // Each edge is straight, so a gradient at the edge's own angle,
+          // starting where the edge is, darkens the photo evenly along it.
+          const n = Math.hypot(w, k), deg = (Math.atan2(k, w) * 180) / Math.PI, at0 = (k * w) / n;
+          let rim = cut.querySelector(".rim");
+          if (!rim) { rim = document.createElement("div"); rim.className = "rim"; cut.appendChild(rim); }
+          rim.style.background = [
+            `linear-gradient(${180 - deg}deg, transparent ${at0}px, rgba(0,0,0,.58) ${at0}px, rgba(0,0,0,.22) ${at0 + 14}px, transparent ${at0 + 46}px)`,
+            `linear-gradient(${-deg}deg, transparent ${at0}px, rgba(0,0,0,.3) ${at0}px, transparent ${at0 + 20}px)`,
+            "linear-gradient(90deg, rgba(0,0,0,.32), transparent 22px)",
+            "linear-gradient(270deg, rgba(0,0,0,.32), transparent 22px)",
+          ].join(", ");
+          cut.insertAdjacentHTML("beforeend", `<svg class="lip in" ${box_}>${at("face", 6)}${at("face", 6, 3)}</svg>`);
         };
-        draw();
-        new ResizeObserver(draw).observe(cut);
+        box.draw();
+        new ResizeObserver(() => box.draw()).observe(cut);
+        if (STILL) { box.classList.add("open"); box.draw(); }
+        else opener.observe(box);
       });
     })();
 
-    // ─── the hero: things to try, on a curved strip ──────
-    // `play` items open right here in the cut; the rest go to their page.
-    const STILL = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // ─── things to play, on a rail ───────────────────────
+    // `play` items open over the page in the player; the rest go to their page.
     (() => {
       const FEATURE = [
-        { name: "KONDRITE", c: "var(--violet)", video: "assets/games/kondrite.webm", poster: "assets/games/kondrite.jpg", href: "projects/kondrite/index.html", verb: "PLAY", play: true },
-        { name: "Interstate 40", c: "var(--magenta)", video: "assets/games/offramp.webm", poster: "assets/games/offramp.jpg", href: "projects/offramp/index.html", verb: "DRIVE", play: true },
-        { name: "How big everything is", c: "var(--cyan)", img: "projects/how-big-everything-is/cmb-wmap9.jpg", alt: "The cosmic microwave background, the oldest light in the universe", href: "projects/how-big-everything-is/index.html", verb: "ZOOM", play: true },
-        { name: "Starfield", c: "var(--violet)", video: "assets/games/starfield.webm", poster: "assets/games/starfield.jpg", href: "projects/starfield/index.html", verb: "FLY", play: true },
-        { name: "Climbing", c: "var(--cyan)", img: "photos/climbing-04.jpg", alt: "Climbing a steep sandstone wall", href: "climbing.html", verb: "ENTER" },
-        { name: "FARLIGHT", c: "var(--magenta)", video: "assets/games/farlight.webm", poster: "assets/games/farlight.jpg", href: "projects/farlight/index.html", verb: "PLAY", play: true },
-        { name: "Siege Conductor", c: "var(--violet)", img: "projects/siege-conductor/icon-1024.png", alt: "", contain: true, href: "projects/siege-conductor/index.html", verb: "OPEN" },
+        { name: "KONDRITE", desc: "Endless space, and four ways to fight", c: "var(--violet)", video: "assets/games/kondrite.webm", poster: "assets/games/kondrite.jpg", href: "projects/kondrite/index.html", verb: "PLAY", play: true },
+        { name: "Interstate 40", desc: "Drive the real I-40, exit to exit", c: "var(--magenta)", video: "assets/games/offramp.webm", poster: "assets/games/offramp.jpg", href: "projects/offramp/index.html", verb: "DRIVE", play: true },
+        { name: "How big everything is", desc: "A quark to the edge of the universe, to scale", c: "var(--cyan)", img: "projects/how-big-everything-is/cmb-wmap9.jpg", alt: "The cosmic microwave background, the oldest light in the universe", href: "projects/how-big-everything-is/index.html", verb: "ZOOM", play: true },
+        { name: "Starfield", desc: "A relativistic rocket through real space", c: "var(--violet)", video: "assets/games/starfield.webm", poster: "assets/games/starfield.jpg", href: "projects/starfield/index.html", verb: "FLY", play: true },
+        { name: "FARLIGHT", desc: "Momentum, hills and the feel of a landing", c: "var(--magenta)", video: "assets/games/farlight.webm", poster: "assets/games/farlight.jpg", href: "projects/farlight/index.html", verb: "PLAY", play: true },
+        { name: "Siege Conductor", desc: "A companion for the Clone Wars and Revenge of the Sith", c: "var(--cyan)", img: "projects/siege-conductor/icon-1024.png", alt: "", contain: true, href: "projects/siege-conductor/index.html", verb: "OPEN" },
       ];
-      const ring = document.getElementById("ring"), N = FEATURE.length;
-      let pos = 0, target = 0, last = performance.now(), idle = null;
-      const wrapD = (d) => { d = ((d % N) + N) % N; return d > N / 2 ? d - N : d; };
-      const cards = FEATURE.map((it, i) => {
+      const rail = document.getElementById("rail");
+      const playing = new IntersectionObserver((list) => list.forEach((e) => {
+        const v = e.target.querySelector("video");
+        if (!v || STILL) return;
+        if (e.isIntersecting) v.play().catch(() => {}); else v.pause();
+      }), { threshold: 0.6 });
+      FEATURE.forEach((it, i) => {
         const el = document.createElement("button");
         el.type = "button";
         el.className = "card";
         el.style.setProperty("--c", it.c);
-        el.setAttribute("aria-label", `${it.verb.toLowerCase()} ${it.name}`);
+        el.setAttribute("aria-label", `${it.verb.toLowerCase()} ${it.name}: ${it.desc}`);
         const media = it.video
-          ? `<video muted loop playsinline preload="${i < 2 ? "auto" : "metadata"}" poster="${it.poster}" src="${it.video}" aria-hidden="true"></video>`
-          : `<img src="${it.img}" alt="${it.alt}"${it.contain ? ' class="contain"' : ""}>`;
-        el.innerHTML = `${media}<div class="glass"></div><div class="tag"><i></i><b>${it.name}</b></div><div class="go">${it.verb}</div>`;
-        el.addEventListener("click", () => {
-          if (moved) return;
-          if (Math.abs(wrapD(i - pos)) < 0.5) launch(it); else { target = pos + wrapD(i - pos); rest(); }
-        });
-        ring.appendChild(el);
-        return el;
-      });
-      function render() {
-        const w = cards[0].offsetWidth;
-        cards.forEach((el, i) => {
-          const d = wrapD(i - pos), a = Math.abs(d);
-          el.style.transform = `translate3d(${d * w * 0.62}px,0,${-a * w * 0.42}px) rotateY(${-d * 34}deg)`;
-          el.style.zIndex = String(100 - Math.round(a * 10));
-          el.style.opacity = a > 2.6 ? Math.max(0, 3.4 - a) : 1;
-          el.style.filter = `brightness(${1 - Math.min(a, 2) * 0.25})`;
-          el.tabIndex = a < 0.5 ? 0 : -1;
-          el.classList.toggle("center", a < 0.5);
-          const v = el.querySelector("video");
-          if (v && !STILL) { if (a < 1.6) { if (v.paused) v.play().catch(() => {}); } else if (!v.paused) v.pause(); }
-        });
-      }
-      (function tick(now) {
-        pos += (target - pos) * Math.min(1, (now - last) / 140);
-        last = now;
-        render();
-        requestAnimationFrame(tick);
-      })(last);
-      // drifts on its own; slows down for a while after you touch it
-      const drift = (ms) => { clearInterval(idle); if (!STILL) idle = setInterval(() => target++, ms); };
-      const rest = () => drift(10000);
-      const nudge = (d) => { target = Math.round(target) + d; rest(); };
-      drift(6000);
-      document.getElementById("prev").addEventListener("click", () => nudge(-1));
-      document.getElementById("next").addEventListener("click", () => nudge(1));
-      const hero = document.getElementById("hero-cut");
-      hero.addEventListener("keydown", (e) => {
-        if (e.key === "ArrowLeft") { e.preventDefault(); nudge(-1); }
-        if (e.key === "ArrowRight") { e.preventDefault(); nudge(1); }
-      });
-      // swipe or drag; a drag is not a click
-      let startX = null, moved = false;
-      document.getElementById("stage").addEventListener("pointerdown", (e) => { startX = e.clientX; moved = false; });
-      addEventListener("pointermove", (e) => { if (startX !== null && Math.abs(e.clientX - startX) > 12) moved = true; });
-      addEventListener("pointerup", (e) => {
-        if (startX !== null && Math.abs(e.clientX - startX) > 40) nudge(e.clientX < startX ? 1 : -1);
-        startX = null;
-        setTimeout(() => (moved = false), 0);
+          ? `<video muted loop playsinline preload="${i < 3 ? "auto" : "metadata"}" poster="${it.poster}" src="${it.video}" aria-hidden="true"></video>`
+          : `<img src="${it.img}" alt="${it.alt}" loading="lazy"${it.contain ? ' class="contain"' : ""}>`;
+        el.innerHTML = `${media}<div class="cap"><div><i></i><b></b><span></span></div><div class="go">${it.verb}</div></div>`;
+        el.querySelector(".cap b").textContent = it.name;
+        el.querySelector(".cap span").textContent = it.desc;
+        el.addEventListener("click", () => launch(it, el));
+        rail.appendChild(el);
+        playing.observe(el);
       });
 
-      const live = document.getElementById("live"), frame = document.getElementById("live-frame");
-      function launch(it) {
+      const prev = document.getElementById("prev"), next = document.getElementById("next");
+      const step = () => (rail.firstElementChild?.offsetWidth || 300) + 16;
+      prev.addEventListener("click", () => rail.scrollBy({ left: -step(), behavior: STILL ? "auto" : "smooth" }));
+      next.addEventListener("click", () => rail.scrollBy({ left: step(), behavior: STILL ? "auto" : "smooth" }));
+      const ends = () => {
+        prev.disabled = rail.scrollLeft < 4;
+        next.disabled = rail.scrollLeft + rail.clientWidth > rail.scrollWidth - 4;
+      };
+      rail.addEventListener("scroll", ends, { passive: true });
+      addEventListener("resize", ends);
+      ends();
+
+      const player = document.getElementById("player"), frame = document.getElementById("live-frame");
+      let opener = null;
+      function launch(it, from) {
         if (!it.play) { location.href = it.href; return; }
-        clearInterval(idle);
-        frame.src = it.href;
+        opener = from;
+        document.getElementById("player-name").textContent = it.name;
         document.getElementById("live-full").href = it.href;
-        live.classList.add("open");
+        frame.src = it.href;
+        player.classList.add("open");
+        document.documentElement.style.overflow = "hidden";
         frame.focus();
       }
-      document.getElementById("live-close").addEventListener("click", () => {
-        live.classList.remove("open");
+      function close() {
+        if (!player.classList.contains("open")) return;
+        player.classList.remove("open");
         frame.src = "about:blank";
-        rest();
-        cards[((Math.round(pos) % N) + N) % N].focus();
-      });
+        document.documentElement.style.overflow = "";
+        opener?.focus();
+      }
+      document.getElementById("live-close").addEventListener("click", close);
+      player.addEventListener("click", (e) => { if (e.target === player) close(); });
+      addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
     })();
 
     // ─── the photo river ─────────────────────────────────
@@ -608,6 +756,7 @@
         track.appendChild(a);
       });
     })();
+
 
     // ─── boot lines ──────────────────────────────────────
     // The old front door typed these out before you could do anything. Now
@@ -654,45 +803,53 @@
       const ART = {
         orrin: () => {
           let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
-          const nodes = Array.from({ length: 16 }, () => [8 + r() * 84, 8 + r() * 84]);
-          const lines = nodes.flatMap((a, i) => nodes.slice(i + 1).filter((b) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 30)
+          const nodes = Array.from({ length: 22 }, () => [6 + r() * 148, 6 + r() * 88]);
+          const lines = nodes.flatMap((a, i) => nodes.slice(i + 1).filter((b) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 32)
             .map((b) => `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`));
-          return `<svg class="art" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true" style="background:radial-gradient(circle at 50% 35%,#2b1d55,#0d0e10 75%)">
-            <g stroke="#7b3cff" stroke-width=".4" opacity=".8">${lines.join("")}</g>
+          return `<svg class="art" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true" style="background:radial-gradient(circle at 50% 40%,#2b1d55,#0d0e10 75%)">
+            <g stroke="#7b3cff" stroke-width=".45" opacity=".85">${lines.join("")}</g>
             <g fill="#eceef2">${nodes.map((n) => `<circle cx="${n[0]}" cy="${n[1]}" r="1.1"/>`).join("")}</g></svg>`;
         },
         mind: () => {
-          const wave = Array.from({ length: 61 }, (_, i) => `${i * 100 / 60},${55 + Math.sin(i / 5) * 18 * Math.sin(i / 17 + 1)}`).join(" ");
-          return `<svg class="art" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true" style="background:radial-gradient(circle at 50% 40%,#3a1430,#0d0e10 75%)">
-            <polyline points="${wave}" fill="none" stroke="#ff2d8a" stroke-width="1.2"/>
-            <line x1="0" y1="55" x2="100" y2="55" stroke="#eceef2" stroke-width=".25" opacity=".5"/></svg>`;
+          const wave = Array.from({ length: 81 }, (_, i) => `${i * 2},${50 + Math.sin(i / 5) * 20 * Math.sin(i / 19 + 1)}`).join(" ");
+          return `<svg class="art" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true" style="background:radial-gradient(circle at 50% 45%,#3a1430,#0d0e10 75%)">
+            <line x1="0" y1="50" x2="160" y2="50" stroke="#eceef2" stroke-width=".3" opacity=".45"/>
+            <polyline points="${wave}" fill="none" stroke="#ff2d8a" stroke-width="1.3"/></svg>`;
         },
       };
       const HUE = { orrin: "var(--violet)", mind: "var(--magenta)", climbing: "var(--cyan)", training: "var(--violet)", exploration: "var(--cyan)", gaming: "var(--violet)", workbench: "var(--magenta)", captures: "var(--magenta)", entertainment: "var(--cyan)" };
-      for (const room of ROOMS.filter((room) => room.listed)) {
+      ROOMS.filter((room) => room.listed).forEach((room, i) => {
         const entry = document.createElement("a");
-        entry.className = "entry";
+        entry.className = "entry rv";
         entry.href = room.href;
         entry.style.setProperty("--hue", HUE[room.name] || "var(--violet)");
+        entry.style.setProperty("--d", `${(i % 3) * 0.08}s`);
+        const thumb = document.createElement("span");
+        thumb.className = "thumb";
         if (room.img) {
           const img = new Image();
           img.loading = "lazy";
           img.src = room.img;
           img.alt = room.alt || "";
-          if (room.contain) img.style.cssText = "object-fit:contain;padding:22%;background:radial-gradient(circle at 50% 40%,#2a2240,#0d0e10 70%)";
-          entry.appendChild(img);
+          if (room.contain) img.style.cssText = "object-fit:contain;padding:16%;background:radial-gradient(circle at 50% 42%,#2a2240,#0d0e10 70%)";
+          thumb.appendChild(img);
         } else if (ART[room.art]) {
-          entry.insertAdjacentHTML("beforeend", ART[room.art]());
+          thumb.insertAdjacentHTML("beforeend", ART[room.art]());
         }
-        for (const [cls, text] of [["dirname", room.name], ["desc", room.desc]]) {
+        const meta = document.createElement("span");
+        meta.className = "meta";
+        for (const [cls, text] of [["dirname", room.name], ["desc", room.desc], ["arr", "→"]]) {
           const span = document.createElement("span");
           span.className = cls;
           span.textContent = text;
-          entry.appendChild(span);
+          if (cls === "arr") span.setAttribute("aria-hidden", "true");
+          meta.appendChild(span);
         }
+        entry.append(thumb, meta);
         dir.appendChild(entry);
-      }
+      });
     })();
+
 
     // ─── command line ────────────────────────────────────
 
@@ -1291,6 +1448,33 @@
       cmd.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
       window.scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" });
     });
+
+    // ─── the page moving ─────────────────────────────────
+    // The bar frosts over once the page scrolls under it.
+    (() => {
+      const bar = document.getElementById("bar");
+      const paint = () => bar.classList.toggle("scrolled", scrollY > 8);
+      addEventListener("scroll", paint, { passive: true });
+      paint();
+    })();
+    // Copy and tiles fade up the first time they come on screen.
+    (() => {
+      const els = document.querySelectorAll(".rv");
+      if (STILL || !("IntersectionObserver" in window)) { els.forEach((el) => el.classList.add("in")); return; }
+      const io = new IntersectionObserver((list) => list.forEach((e) => {
+        if (!e.isIntersecting) return;
+        e.target.classList.add("in");
+        io.unobserve(e.target);
+      }), { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
+      els.forEach((el) => io.observe(el));
+    })();
+    // The "try" words type themselves into the terminal and show what they find.
+    document.querySelectorAll("[data-try]").forEach((b) => b.addEventListener("click", () => {
+      cmd.focus({ preventScroll: true });
+      cmd.value = b.dataset.try;
+      cmd.dispatchEvent(new Event("input"));
+      if (innerWidth <= 760) window.scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" });
+    }));
   </script>
 </body>
 </html>

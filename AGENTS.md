@@ -560,15 +560,22 @@ moved it back out the same day: the terminal is home again, and the redesign liv
 `frontdoor.html`, unlisted and `noindex`, reached by its URL or by typing `front door`
 in the terminal. It is a copy of `index.html` with its own `ROOMS`/`PROJECTS` — while it
 is in preview, a room or project added to `index.html` must be added there too, or the
-preview drifts. Don't put it in `ROOMS`, `PROJECTS` or `latest.js`. It opens on an angled cut holding a
-3D strip of things to try (`FEATURE` in its script); a `play` item opens inside the cut.
-Under it, rooms are shown through cuts of their own (claw for Climbing, jagged, blade,
-shatter), each a window onto a real photo fixed behind the page, then the photo river,
-then `#dir`. The cut shapes are SVG clip paths in 0–1 units (`SHAPES`). The photo in a room's
+preview drifts. Don't put it in `ROOMS`, `PROJECTS` or `latest.js`. It opens on a headline with
+the newest-thing pill over it and "try" words under it, then one wide cut onto the
+sunrise; then a rail of things to play (`FEATURE` in its script — a `play` item opens
+over the page in the player, the rest go to their page); then four rooms seen through
+cuts, each with its title inside the photo; then `#dir`, a 3×3 grid on desktop and a
+list on a phone. **Every cut is the same shape** — a strip sliced at one angle, worked
+out in pixels so they are all parallel — and opens from a slit the first time it comes
+on screen. The claw, jagged, blade and shatter shapes came out on 2026-10-16 because
+four gimmicks at once read as clip-art; don't bring back a second shape. The photo in a
 cut is a `position: fixed` layer (`.still`) inside it, clipped by the cut's clip path —
-that is what keeps it still on iOS, which ignores `background-attachment: fixed`. Never put
-a `filter` or `transform` on a `.cut` or anything above it: either one pins the fixed
-layer to that element and the photo starts scrolling with the page again. Night/day is a
+that is what keeps it still on iOS, which ignores `background-attachment: fixed`. Never
+put a `filter` or `transform` on a `.cut` or anything above it: either one pins the
+fixed layer to that element and the photo starts scrolling with the page again. And
+anything laid over a cut goes *inside* the `.cut`, not beside it: a sibling that fades in
+over it made Chromium paint the cut's scrim out past its clip. The cut's inner shadow is
+gradients along each edge (`.rim`), not a blur, for the same reason. Night/day is a
 visitor's own choice kept in `localStorage` (`frontdoor-theme`), else their OS. The
 search box *is* the terminal: `SEARCH_WORDS` adds the plain words people type for each
 room and project, matches show as you type, and a word the terminal doesn't know opens
