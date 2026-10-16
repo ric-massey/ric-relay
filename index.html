@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Terminal — Ric Massey's corner of the internet</title>
-  <meta name="description" content="Ric Massey's personal terminal — Orrin, psyche, climbing, training, exploration, and gaming.">
+  <title>RIC//NET — Ric Massey's own internet</title>
+  <meta name="description" content="Ric Massey's own internet — games you can play, space you can explore, climbing, training, photos, and Orrin.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ric's Terminal">
-  <meta property="og:title" content="Terminal — Ric Massey's corner of the internet">
-  <meta property="og:description" content="A personal terminal for family & friends — Orrin, climbing, training, gaming, photos, and write-ups.">
+  <meta property="og:title" content="RIC//NET — Ric Massey's own internet">
+  <meta property="og:description" content="Games you can play, space you can explore, climbing, training, photos, and Orrin.">
   <meta property="og:url" content="https://ricmassey.com/">
   <meta property="og:image" content="https://ricmassey.com/assets/og-terminal.png">
   <meta property="og:image:width" content="1200">
@@ -16,380 +16,324 @@
   <meta property="og:image:alt" content="Ric's Terminal — amber text on a black CRT screen">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="https://ricmassey.com/">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230a0a0a'/><text y='.9em' font-size='70' x='15' fill='%23ffb000'>▮</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230b0c0e'/><polygon points='50,12 90,86 10,86' fill='none' stroke='%23eceef2' stroke-width='7'/><polygon points='50,50 63,76 37,76' fill='%237b3cff'/></svg>">
+  <script>
+    /* Night or day, chosen before first paint so the page never flashes the
+       wrong one. A visitor's own pick wins; otherwise their OS decides. */
+    try { const t = localStorage.getItem("frontdoor-theme"); if (t === "day" || t === "night") document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
   <style>
+    /* The front door: silver, white and black, with slivers of colour.
+       Day is brushed silver, night is graphite. Every colour that carries
+       words clears 4.5:1 against what is behind it in both. */
     :root {
-      --bg: #0a0a0a;
-      --phosphor: #ffb000;
-      /* Dim carries nearly all the prose on this page, so it has to clear AA
-         (4.5:1) against --bg on its own — it reads 5.4:1. Faint is now strictly
-         a border/rule color; nothing sets text in it. Don't darken either one
-         back down without checking what it's painting. */
-      --phosphor-dim: #b07d00;
-      --phosphor-faint: #6b4d00;
-      --flash-orrin: #38ff9c;
-      --flash-psyche: #b889c8;
-      --flash-exploration: #7a5cff;
-      --flash-captures: #4dc9ff;
-      --flash-log: #ff8ae0;
-      --flash-workbench: #ffe14d;
-      --flash-climbing: #79c46b;
-      --flash-gaming: #6fd8ff;
-      --flash-entertainment: #f5c518;
-      /* Kept for the rooms currently unlisted in #dir — see the note above the
-         directory. Restore the entry and its hue together. */
-      --flash-map: #ff3b30;
-      --flash-training: #ff6a3d;
-      --flash-apex: #e8422f;
-      --flash-cs: #e8b85a;
-      --flash-val: #ff4655;
+      --bg: #c9ccd1;
+      --bg-2: #e6e8eb;
+      --ink: #0d0e10;
+      --muted: #4c5057;
+      --field: rgba(255,255,255,.6);
+      --panel: #f4f5f6;
+      --hair: rgba(13,14,16,.16);
+      --lip: rgba(255,255,255,.95);
+      --lip-shadow: rgba(0,0,0,.28);
+      --violet: #7b3cff;
+      --magenta: #ff2d8a;
+      --cyan: #00c2ff;
+      --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      color-scheme: light;
     }
-
-    * { box-sizing: border-box; margin: 0; }
-
-    body {
-      background: var(--bg);
-      color: var(--phosphor);
-      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-      font-size: 15px;
-      line-height: 1.7;
-      min-height: 100vh;
-      /* concrete grain */
-      background-image:
-        radial-gradient(ellipse at 20% 10%, rgba(255, 176, 0, 0.04), transparent 50%),
-        repeating-linear-gradient(0deg, transparent 0 2px, rgba(255,255,255,0.012) 2px 4px),
-        repeating-linear-gradient(90deg, transparent 0 3px, rgba(255,255,255,0.008) 3px 6px);
-    }
-
-    /* scanlines + vignette over everything */
-    body::before {
-      content: "";
-      position: fixed; inset: 0;
-      pointer-events: none;
-      background:
-        repeating-linear-gradient(0deg, rgba(0,0,0,0.22) 0 1px, transparent 1px 3px),
-        radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
-      z-index: 10;
-    }
-
-    .wrap { max-width: 780px; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
-
-    .frame {
-      border: 1px solid var(--phosphor-faint);
-      padding: 1.5rem 1.6rem;
-      box-shadow: 0 0 40px rgba(255, 176, 0, 0.05) inset;
-    }
-
-    .frame-label {
-      color: var(--phosphor-dim);
-      font-size: 0.75rem;
-      letter-spacing: 0.25em;
-      margin-bottom: 1.2rem;
-    }
-
-    .wordmark {
-      font-size: clamp(1.6rem, 5vw, 2.3rem);
-      font-weight: 700;
-      letter-spacing: 0.42em;
-      color: var(--phosphor);
-      text-shadow: 0 0 18px rgba(255, 176, 0, 0.55), 0 0 50px rgba(255, 176, 0, 0.2);
-    }
-
-    .welcome-tag {
-      color: var(--phosphor-dim);
-      margin: 0.3rem 0 1.6rem;
-      font-size: 0.9rem;
-    }
-    .welcome-tag p { margin: 0.55rem 0; white-space: pre-wrap; }
-    .welcome-tag .lit { color: var(--phosphor); }
-
-    #boot { white-space: pre-wrap; min-height: 6.8em; }
-    #boot .ok { color: var(--flash-orrin); }
-    #boot .dim { color: var(--phosphor-dim); }
-
-    .terminal-divider {
-      color: var(--phosphor-dim);
-      margin: 0.4rem 0 1rem;
-      letter-spacing: 0.18em;
-    }
-
-    .terminal-intro,
-    .terminal-help,
-    .places-intro {
-      color: var(--phosphor-dim);
-      margin-top: 1rem;
-      white-space: pre-line;
-    }
-
-    .terminal-intro { color: var(--phosphor); }
-    #shell-status { margin-top: 1.1rem; }
-    #shell-status .ok { color: var(--flash-orrin); }
-
-    .cursor { animation: blink 1s steps(1) infinite; }
-    @keyframes blink { 50% { opacity: 0; } }
-
-    /* respect visitors who ask their OS to reduce motion */
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.001ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.001ms !important;
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="day"]) {
+        --bg: #0b0c0e; --bg-2: #17181c; --ink: #eceef2; --muted: #9a9ea6;
+        --field: rgba(255,255,255,.06); --panel: #131418; --hair: rgba(255,255,255,.12);
+        --lip: rgba(255,255,255,.22); --lip-shadow: rgba(0,0,0,.8);
+        color-scheme: dark;
       }
-      .cursor { animation: none; opacity: 1; }
+    }
+    :root[data-theme="night"] {
+      --bg: #0b0c0e; --bg-2: #17181c; --ink: #eceef2; --muted: #9a9ea6;
+      --field: rgba(255,255,255,.06); --panel: #131418; --hair: rgba(255,255,255,.12);
+      --lip: rgba(255,255,255,.22); --lip-shadow: rgba(0,0,0,.8);
+      color-scheme: dark;
     }
 
-    /* directory */
-    #dir { margin-top: 1.8rem; }
-
-    /* Hidden during the boot animation. This is `display: none`, not
-       `visibility: hidden` — reserving the layout left ~900px of empty page
-       under the boot lines for over a second, which read as a broken page.
-       The frame grows as the shell mounts instead, and `.revealed` fades the
-       new block in so the growth looks deliberate. */
-    .hidden { display: none; }
-    .revealed { animation: reveal-in 240ms ease both; }
-    @keyframes reveal-in { from { opacity: 0; transform: translateY(-4px); } }
-
-    .dir-head { color: var(--phosphor-dim); font-size: 0.8rem; margin-bottom: 0.7rem; letter-spacing: 0.15em; }
-
-    a.entry {
-      display: flex;
-      align-items: baseline;
-      gap: 0.9rem;
-      color: var(--phosphor);
-      text-decoration: none;
-      padding: 0.55rem 0.8rem;
-      margin-bottom: 0.45rem;
-      border: 1px solid var(--phosphor-faint);
-      border-left: 3px solid var(--phosphor-dim);
-      cursor: pointer;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { background: var(--bg); }
+    body {
+      color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased;
+      overflow-x: hidden; min-height: 100vh;
+      background: radial-gradient(140% 80% at 50% 0%, var(--bg-2), var(--bg) 70%) fixed, var(--bg);
     }
+    a { color: inherit; }
+    .mono { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-    a.entry .perm { color: var(--phosphor-dim); flex-shrink: 0; }
-    a.entry .desc { color: var(--phosphor-dim); }
-    a.entry .dirname { font-weight: 700; flex-shrink: 0; }
-    a.entry .go {
-      margin-left: auto;
-      color: var(--phosphor-dim);
-      font-size: 0.78rem;
-      letter-spacing: 0.12em;
-      white-space: nowrap;
-      flex-shrink: 0;
+    /* ─── top bar: the brand, the terminal (which is the search), night/day ─── */
+    .bar { position: relative; z-index: 50; display: flex; align-items: center; gap: 14px; padding: 20px 32px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: .22em; font-size: 13px; text-decoration: none; margin-right: auto; }
+    .brand svg { width: 18px; height: 18px; }
+    .brand .o { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+    .mode { flex: none; width: 42px; height: 42px; border: 1px solid var(--hair); background: var(--field); cursor: pointer; display: grid; place-items: center; color: var(--ink); }
+    .mode svg { width: 18px; height: 18px; }
+
+    .term { position: relative; width: min(440px, 100%); }
+    .seek {
+      display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 14px;
+      background: var(--field); border: 1px solid var(--hair); cursor: text; position: relative;
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
     }
+    .seek .prompt { color: var(--muted); font-family: var(--mono); font-size: 13px; }
+    .seek input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--ink); font: 400 15px var(--sans); }
+    .seek input::placeholder { color: var(--muted); }
+    .seek kbd { font: 400 11px var(--mono); color: var(--muted); border: 1px solid var(--hair); padding: 2px 7px; }
+    .seek::after { content: ""; position: absolute; left: -1px; right: -1px; bottom: -1px; height: 2px; background: linear-gradient(90deg, var(--violet) 0 33%, var(--magenta) 33% 66%, var(--cyan) 66%); transform: scaleX(0); transform-origin: left; transition: transform .5s cubic-bezier(.2,.8,.2,1); }
+    .term.open .seek::after { transform: scaleX(1); }
 
-    a.entry:hover, a.entry:focus-visible {
-      color: var(--hue);
-      border-color: var(--hue);
-      background: color-mix(in srgb, var(--hue) 9%, transparent);
-      text-shadow: 0 0 12px var(--hue);
-      outline: none;
+    .console {
+      position: absolute; top: 48px; left: 0; right: 0; display: none;
+      background: var(--panel); border: 1px solid var(--hair); box-shadow: 0 24px 60px rgba(0,0,0,.28);
+      clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+      max-height: min(70vh, 560px); overflow-y: auto;
     }
-    a.entry:hover .perm, a.entry:hover .desc, a.entry:hover .go,
-    a.entry:focus-visible .perm, a.entry:focus-visible .desc, a.entry:focus-visible .go { color: var(--hue); }
-    a.entry:hover .go::after, a.entry:focus-visible .go::after { content: " →"; }
-
-    /* the unlisted rooms are still reachable — say so, quietly */
-    .dir-more { color: var(--phosphor-dim); font-size: 0.82rem; margin-top: 0.9rem; }
-    .dir-more .cmd-hint { color: var(--phosphor); }
-
-    /* latest signal — the update feed, compressed into one useful destination */
-    #latest { margin-top: 1.5rem; }
-    .latest-relay {
-      display: grid; grid-template-columns: auto 1fr auto; gap: 0.18rem 0.9rem;
-      align-items: center; width: min(100%, 760px); padding: 0.85rem 1rem; color: var(--phosphor);
-      border: 1px solid var(--phosphor-dim); border-left: 4px solid var(--flash-psyche);
-      background: rgba(184,137,200,.055); text-decoration: none;
-      box-shadow: 0 0 24px rgba(184,137,200,.05) inset;
-    }
-    .latest-relay .latest-kicker { grid-row: 1 / 3; color: var(--flash-psyche); font-size: 0.69rem; letter-spacing: .12em; }
-    .latest-relay .latest-title { font-size: .95rem; }
-    .latest-relay .latest-description { color: var(--phosphor-dim); font-size: .78rem; }
-    .latest-relay .latest-meta { grid-column: 3; grid-row: 1 / 3; display: grid; gap: .25rem; color: var(--phosphor-dim); font-size: 0.69rem; text-align: right; }
-    .latest-relay:hover,.latest-relay:focus-visible { border-color: var(--flash-psyche); color: var(--flash-psyche); outline: none; text-shadow: 0 0 12px rgba(184,137,200,.65); }
-    .latest-relay[hidden] { display: none; }
-    .trial-alert { margin-top: .6rem; }
-
-    /* command line */
-    #cmdline {
-      margin-top: 1.35rem;
-      overflow: hidden;
-      border: 1px solid color-mix(in srgb, var(--phosphor-dim) 72%, #111);
-      border-radius: 9px;
-      background: rgba(2, 2, 2, 0.86);
-      box-shadow:
-        0 16px 36px rgba(0, 0, 0, 0.42),
-        0 0 28px rgba(255, 176, 0, 0.06),
-        0 0 18px rgba(255, 176, 0, 0.025) inset;
-      transition: border-color 160ms ease, box-shadow 160ms ease;
-    }
-
-    #cmdline:focus-within {
-      border-color: var(--phosphor-dim);
-      box-shadow:
-        0 16px 36px rgba(0, 0, 0, 0.48),
-        0 0 34px rgba(255, 176, 0, 0.1),
-        0 0 22px rgba(255, 176, 0, 0.035) inset;
-    }
-
-    .terminal-chrome {
-      display: flex;
-      gap: 0.42rem;
-      align-items: center;
-      height: 2rem;
-      padding: 0 0.72rem;
-      border-bottom: 1px solid var(--phosphor-faint);
-      background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.015));
-    }
-
-    .terminal-chrome span {
-      width: 0.62rem;
-      height: 0.62rem;
-      border-radius: 50%;
-      border: 1px solid currentColor;
-      opacity: 0.78;
-    }
-
-    .terminal-chrome span:nth-child(1) { color: #ff6258; background: rgba(255,98,88,.28); }
-    .terminal-chrome span:nth-child(2) { color: #ffbe2e; background: rgba(255,190,46,.24); }
-    .terminal-chrome span:nth-child(3) { color: #28c840; background: rgba(40,200,64,.22); }
-
-    .terminal-screen {
-      position: relative;
-      min-height: 7.4rem;
-      padding: 1rem 1.05rem 1.15rem;
-      background:
-        linear-gradient(rgba(255,176,0,.018), rgba(255,176,0,.006)),
-        repeating-linear-gradient(0deg, transparent 0 3px, rgba(255,255,255,.009) 3px 4px);
-    }
-
+    .term.open .console { display: block; }
+    .sugs a { display: grid; grid-template-columns: 10px 1fr auto; gap: 12px; align-items: center; padding: 11px 16px; border-top: 1px solid var(--hair); text-decoration: none; }
+    .sugs a:first-child { border-top: 0; }
+    .sugs a:hover, .sugs a.sel { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+    .sugs a i { width: 0; height: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 7px solid var(--c, var(--violet)); }
+    .sugs a b { font-weight: 500; }
+    .sugs a small { color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+    .sugs a span.d { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .screen { border-top: 1px solid var(--hair); padding: 14px 16px 16px; font-family: var(--mono); font-size: 12.5px; line-height: 1.65; }
+    .sugs:empty + .screen { border-top: 0; }
+    #output { white-space: pre-wrap; color: var(--muted); max-height: 16em; overflow-y: auto; margin-bottom: 10px; }
     #output:empty { display: none; }
-    #output { margin-bottom: .75rem; white-space: pre-wrap; color: var(--phosphor-dim); max-height: 14em; overflow-y: auto; }
-    #output .bright { color: var(--phosphor); }
+    #output .bright { color: var(--ink); }
+    #output .ok { color: var(--violet); }
+    .screen .hint { color: var(--muted); }
+    .screen .hint b { color: var(--ink); font-weight: 400; }
 
-    .prompt-row { display: flex; gap: 0.5rem; align-items: baseline; }
-    .prompt { color: var(--flash-orrin); white-space: nowrap; }
+    /* ─── the cuts ───
+       A cut is a hole in the page. Its shape is an SVG clip path drawn in
+       0–1 units, so one path fits any size; the lip is the same path drawn
+       twice, a bevel outside and a coloured edge with an inner shadow inside. */
+    .cut-wrap { position: relative; }
+    .cut { position: relative; z-index: 1; overflow: hidden; background: #1a1b1f center / cover no-repeat; }
+    .cut.fixed { background-attachment: fixed; }
+    .lipsvg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+    .lipsvg.out { z-index: 0; }
+    .lipsvg.in { z-index: 7; }
+    .lipsvg .hl { stroke: var(--lip); }
+    .lipsvg .sh { stroke: var(--lip-shadow); }
 
-    .input-wrap { position: relative; flex: 1; min-width: 0; }
-
-    #cmd {
-      background: transparent;
-      border: none;
-      color: var(--phosphor);
-      font: inherit;
-      min-width: 0;
-      width: 100%;
-      caret-color: var(--phosphor);
-      outline: none;
+    /* the hero: the cut you are greeted with, holding things to try */
+    .hero .cut { height: min(68vh, 680px); min-height: 420px; }
+    .hero .veil { position: absolute; inset: -20px; background: inherit; filter: blur(14px) brightness(.62) saturate(1.1); }
+    .stage { position: absolute; inset: 0; perspective: 1200px; z-index: 2; touch-action: pan-y; }
+    .ring { position: absolute; left: 50%; top: 50%; transform-style: preserve-3d; }
+    .card {
+      position: absolute; width: min(46vw, 640px); aspect-ratio: 16 / 10; left: 0; top: 0; translate: -50% -50%;
+      cursor: pointer; will-change: transform; background: #0d0e10; border: 0; padding: 0; color: #fff; text-align: left;
+      clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 22px 100%, 0 calc(100% - 22px));
     }
-    #cmd:placeholder-shown { caret-color: transparent; }
-    #cmd:not(:placeholder-shown) + .cursor { display: none; }
-    .input-wrap .cursor {
-      position: absolute;
-      left: 0;
-      top: 0;
-      pointer-events: none;
-    }
+    .card video, .card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .card img.contain { object-fit: contain; padding: 14%; background: radial-gradient(circle at 50% 40%, #2a2240, #0d0e10 70%); }
+    .card .glass { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgba(255,255,255,.18), transparent 30%, transparent 62%, rgba(0,0,0,.6)); }
+    .card .tag { position: absolute; left: 22px; bottom: 18px; display: flex; align-items: center; gap: 10px; text-shadow: 0 1px 10px rgba(0,0,0,.7); }
+    .card .tag i { width: 3px; height: 16px; background: var(--c); }
+    .card .tag b { font: 500 22px var(--sans); letter-spacing: -.01em; }
+    .card .go { position: absolute; right: 22px; bottom: 16px; display: flex; align-items: center; gap: 9px; color: #0d0e10; background: #fff; padding: 9px 18px 9px 14px; font: 600 13px var(--sans); letter-spacing: .08em; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%); opacity: 0; transition: opacity .3s; }
+    .card .go::before { content: ""; border-left: 8px solid #0d0e10; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+    .card.center .go { opacity: 1; }
+    .card:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
+    .arrow { position: absolute; z-index: 5; top: 50%; translate: 0 -50%; width: 52px; height: 52px; border: 0; background: rgba(255,255,255,.14); cursor: pointer; display: grid; place-items: center; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+    .arrow:hover { background: rgba(255,255,255,.28); }
+    .arrow.l { left: 3vw; } .arrow.r { right: 3vw; }
+    .arrow::before { content: ""; border-top: 8px solid transparent; border-bottom: 8px solid transparent; }
+    .arrow.l::before { border-right: 12px solid #fff; } .arrow.r::before { border-left: 12px solid #fff; }
+    .live { position: absolute; inset: 9% 0; z-index: 6; display: none; background: #000; }
+    .live.open { display: block; }
+    .live iframe { width: 100%; height: 100%; border: 0; display: block; }
+    .live .ctl { position: absolute; top: 12px; right: 16px; z-index: 2; display: flex; gap: 8px; }
+    .live .ctl a, .live .ctl button { background: #fff; color: #0d0e10; border: 0; font: 600 12px var(--sans); letter-spacing: .1em; padding: 8px 12px; cursor: pointer; text-decoration: none; }
 
-    footer {
-      margin-top: 3rem;
-      color: var(--phosphor-dim);
-      font-size: 0.75rem;
-      letter-spacing: 0.2em;
-      display: flex;
-      justify-content: space-between;
-    }
-    footer .glyph { cursor: help; color: var(--phosphor-dim); }
+    /* the newest thing on the site, one line under the cut */
+    #latest { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 34px 24px 0; }
+    .latest-relay { display: inline-flex; align-items: center; gap: 14px; max-width: 760px; padding: 10px 18px 10px 14px; text-decoration: none; background: var(--field); border: 1px solid var(--hair); }
+    .latest-relay[hidden] { display: none; }
+    .latest-relay .latest-kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .latest-relay .latest-kicker::before { content: ""; width: 6px; height: 6px; background: var(--magenta); flex: none; }
+    .latest-relay .latest-title { font-weight: 500; }
+    .latest-relay .latest-description { display: none; }
+    .latest-relay .latest-meta { color: var(--muted); font-size: 13px; white-space: nowrap; display: flex; gap: 10px; }
+    .latest-relay:hover { border-color: var(--ink); }
 
-    @media (max-width: 600px) {
-      body { font-size: 13.5px; }
-      .latest-relay { grid-template-columns: minmax(0,1fr) auto; padding: .65rem .75rem; }
-      .latest-relay .latest-kicker,.latest-relay .latest-title { grid-column: 1; grid-row: auto; }
-      .latest-relay .latest-description { display: block; grid-column: 1 / -1; }
-      .latest-relay .latest-meta { grid-column: 2; grid-row: 1/3; display: grid; text-align: right; }
-      a.entry { flex-wrap: wrap; row-gap: 0.1rem; }
-      a.entry .desc { flex-basis: 100%; order: 3; }
-      a.entry .go { margin-left: auto; }
+    /* ─── rooms through the page ─── */
+    .window { margin-top: 13vh; position: relative; display: block; text-decoration: none; }
+    .window .cut { height: var(--wh, 54vh); min-height: 320px; }
+    .window .cut::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.4), transparent 45%); z-index: 2; }
+    .window .title { position: absolute; z-index: 8; color: #fff; text-shadow: 0 2px 18px rgba(0,0,0,.6); }
+    .window .title b { display: block; font: 300 clamp(44px, 7.4vw, 100px) var(--sans); letter-spacing: -.035em; line-height: 1; }
+    .window .title span { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+    .window .title span::before { content: ""; width: 24px; height: 2px; background: var(--c); }
+    .window .title .enter { margin-top: 18px; display: inline-flex; align-items: center; gap: 10px; font: 500 14px var(--sans); letter-spacing: .06em; }
+    .window .title .enter i { display: block; width: 26px; height: 1px; background: currentColor; position: relative; transition: width .4s ease; }
+    .window .title .enter i::after { content: ""; position: absolute; right: -1px; top: -3px; border-left: 6px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; }
+    /* a cut with gaps in it (the claw) can't carry words over the page, so
+       its title sits under it, in the page's own ink */
+    .window .title.below { position: static; translate: none; color: var(--ink); text-shadow: none; padding: 26px 6vw 0; text-align: left; }
+    .window:hover .enter i, .window:focus-visible .enter i { width: 46px; }
+    .window:focus-visible { outline: none; }
+    .window:focus-visible .cut { filter: brightness(1.12); }
+
+    .river { margin-top: 10vh; height: 210px; overflow: hidden; perspective: 900px; display: flex; align-items: center; }
+    .track { display: flex; gap: 14px; animation: drift 140s linear infinite; width: max-content; transform-style: preserve-3d; }
+    .track a { display: block; flex: none; }
+    .track img { height: 160px; width: auto; display: block; transform: rotateY(-18deg); transition: transform .5s; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); }
+    .track a:hover img, .track a:focus-visible img { transform: rotateY(0) scale(1.06); }
+    .river:hover .track, .river:focus-within .track { animation-play-state: paused; }
+    @keyframes drift { to { transform: translateX(-50%); } }
+
+    /* every room, the directory. Rendered from ROOMS. */
+    .rooms { padding: 14vh 32px 0; max-width: 1240px; margin: 0 auto; }
+    .rooms h2 { display: flex; align-items: center; gap: 12px; font: 500 12px var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); border-top: 1px solid var(--ink); padding-top: 14px; margin-bottom: 22px; }
+    .rooms h2::before { content: ""; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 8px solid var(--ink); }
+    #dir { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+    a.entry { position: relative; display: block; aspect-ratio: 4 / 5; overflow: hidden; text-decoration: none; color: #fff; background: #15161a;
+      clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%); }
+    a.entry img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .8s cubic-bezier(.2,.8,.2,1); }
+    a.entry .art { position: absolute; inset: 0; }
+    a.entry::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.75), transparent 55%); }
+    a.entry::before { content: ""; position: absolute; left: 0; top: 0; z-index: 2; width: 3px; height: 42px; background: var(--hue); }
+    a.entry .dirname { position: absolute; z-index: 2; left: 16px; bottom: 34px; font: 500 22px var(--sans); letter-spacing: -.01em; text-transform: capitalize; }
+    a.entry .desc { position: absolute; z-index: 2; left: 16px; right: 16px; bottom: 14px; font-size: 13px; color: rgba(255,255,255,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    a.entry:hover img, a.entry:focus-visible img { transform: scale(1.06); }
+    a.entry:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+    .dir-more { margin-top: 18px; color: var(--muted); font-size: 14px; }
+    .dir-more button { background: none; border: 0; border-bottom: 1px solid var(--hair); color: var(--ink); font: inherit; cursor: pointer; padding: 0; }
+
+    footer { display: flex; justify-content: space-between; gap: 12px; padding: 12vh 32px 40px; color: var(--muted); }
+
+    @media (max-width: 760px) {
+      .bar { flex-wrap: wrap; padding: 14px 16px; }
+      .term { order: 3; width: 100%; }
+      .seek kbd { display: none; }
+      .hero .cut { height: 58vh; min-height: 380px; }
+      .card { width: 78vw; }
+      .arrow { display: none; }
+      .cut.fixed { background-attachment: scroll; }
+      .window .title { position: static; translate: none !important; color: var(--ink); text-shadow: none; padding: 20px 16px 0; text-align: left !important; }
+      .window .title span, .window .title .enter { justify-content: flex-start !important; }
+      .window { margin-top: 9vh; }
+      .rooms { padding: 10vh 16px 0; }
+      #dir { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      a.entry .dirname { font-size: 18px; bottom: 30px; left: 12px; }
+      a.entry .desc { left: 12px; right: 12px; font-size: 12px; }
+      .river { height: 160px; } .track img { height: 116px; }
+      footer { padding: 10vh 16px 32px; }
+      .latest-relay { flex-wrap: wrap; gap: 6px 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+      .river { overflow-x: auto; }
+      .track { animation: none; }
     }
   </style>
   <script src="assets/visit.js" defer></script>
 </head>
 <body>
-  <div class="wrap">
-    <div class="frame">
-      <div class="frame-label">RIC-MASSEY PERSONAL TERMINAL // NODE 01</div>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs id="cut-defs">
+      <linearGradient id="lip-grad" x1="0" x2="1"><stop offset="0" stop-color="#7b3cff"/><stop offset=".5" stop-color="#ff2d8a"/><stop offset="1" stop-color="#00c2ff"/></linearGradient>
+    </defs>
+  </svg>
 
-      <h1 class="wordmark">Terminal</h1>
-      <div class="welcome-tag">
-        <p class="lit">Welcome to Ric’s Internet!</p>
-        <p>I made this for me. So I can see my projects and stay organized and be able to easily show my family what I’m doing on my computer sometimes.</p>
-      </div>
-
-      <div id="boot" aria-live="polite"></div>
-
-      <div id="terminal-divider" class="terminal-divider hidden">-----</div>
-
-      <div id="terminal-intro" class="terminal-intro hidden">This is the terminal!
-You start here!
-Scroll down to see the main different places you can visit!</div>
-
-      <div id="shell-status" class="hidden">mounting command shell ....... <span class="ok">[READY]</span></div>
-
-      <div id="cmdline" class="hidden">
-        <div class="terminal-chrome" aria-hidden="true"><span></span><span></span><span></span></div>
-        <div class="terminal-screen">
-          <div id="output"></div>
-          <div class="prompt-row">
-            <label class="prompt" for="cmd">guest@ric-terminal:~$</label>
-            <span class="input-wrap">
-              <input id="cmd" autocomplete="off" spellcheck="false" placeholder=" " aria-label="terminal command input">
-              <span class="cursor" aria-hidden="true">▮</span>
-            </span>
-          </div>
+  <header class="bar">
+    <a class="brand" href="index.html" aria-label="RIC//NET home">
+      <svg viewBox="0 0 18 18" aria-hidden="true"><polygon class="o" points="9,1 17,16 1,16"/><polygon points="9,9 11.8,14 6.2,14" fill="#7b3cff"/></svg>
+      RIC//NET
+    </a>
+    <!-- The terminal is the search. Type a plain word and it finds things;
+         type a command and it runs it — every command, room name and egg the
+         old front door answered to still works here. -->
+    <div class="term" id="term">
+      <label class="seek" for="cmd">
+        <span class="prompt" aria-hidden="true">&gt;_</span>
+        <span class="sr-only">Search or type a terminal command</span>
+        <input id="cmd" autocomplete="off" spellcheck="false" placeholder="Search, or type help" aria-controls="console" aria-expanded="false">
+        <kbd aria-hidden="true">/</kbd>
+      </label>
+      <div class="console" id="console">
+        <div class="sugs" id="sugs" role="listbox" aria-label="Matches"></div>
+        <div class="screen">
+          <div id="output" aria-live="polite"></div>
+          <div class="hint">guest@ric-terminal:~$ try <b>games</b>, <b>star wars</b>, <b>space</b> — or <b>help</b>, <b>ls</b>, and Sydney's cat's name</div>
         </div>
       </div>
-
-      <div id="terminal-help" class="terminal-help hidden">type /help for a list of commands that make getting around easier!
-type /ls to list out all the directories you can go to!
-type Sydney's cat's name for a surprise!</div>
-
-      <!-- Filled by latest.js from latest-climb.js + RELAY_LATEST. Don't hardcode
-           an entry here — it goes stale the moment anything newer lands. -->
-      <section id="latest" class="hidden" aria-label="Newest addition">
-        <a class="latest-relay" data-latest-banner data-latest-prefix="NOTIFICATION"></a>
-        <!-- Trial alerts: a study this account tracks whose status moved or
-             whose results came out. Filled by the script under latest.js, and
-             only for a site account approved for Studies — each list is its
-             owner's alone (trial_watch in Supabase), so a visitor never sees
-             this exist. -->
-        <a class="latest-relay trial-alert" id="trial-alert" href="projects/psyche/studies.html#watch" hidden></a>
-      </section>
-
-      <p id="places-intro" class="places-intro hidden">I made these places based on things that I enjoy. If you like them too, you may like the information in those areas!</p>
-
-      <!-- Deliberately empty: the entries are rendered from the ROOMS array at the
-           top of the script below, which is also what `ls`, `tree`, `find` and Tab
-           completion read. To add or rename a room, edit ROOMS — not this markup.
-
-           Only the rooms with real depth appear here (`listed: true`). /apex,
-           /log and /map are left off the front door on purpose — they're the
-           thin ones, and the home page shouldn't advertise work that isn't done.
-           /training was one of them until it grew a 52-week plan, a calendar,
-           and a log you can tick from a crag; it earned its place back.
-           They are NOT gone: `ls`, `tree`, `find`, `open <room>`, typing the room
-           name, and the URL all still reach them. The room navs show the same eight
-           this list does, so the site says one thing about what it contains.
-           Re-list one by flipping `listed` when it's actually built out. -->
-      <nav id="dir" class="hidden" aria-label="Site directory"></nav>
-
-      <p id="dir-more" class="dir-more hidden">more rooms? type <span class="cmd-hint">/ls</span></p>
-
     </div>
+    <button class="mode" id="mode" type="button" aria-label="Switch between night and day"></button>
+  </header>
 
-    <footer>
-      <span>EST. 2026 · SIGNAL NOMINAL</span>
-      <span class="glyph">▮▮▮</span>
-    </footer>
-  </div>
+  <main>
+    <section class="cut-wrap hero" data-shape="angled" aria-label="Things to try">
+      <div class="cut" id="hero-cut" style="background-image:url(photos/website-0300.jpg)">
+        <div class="veil"></div>
+        <div class="stage" id="stage"><div class="ring" id="ring"></div></div>
+        <button class="arrow l" id="prev" type="button" aria-label="Previous"></button>
+        <button class="arrow r" id="next" type="button" aria-label="Next"></button>
+        <div class="live" id="live">
+          <div class="ctl"><a id="live-full" href="#">FULL PAGE ↗</a><button id="live-close" type="button">CLOSE ✕</button></div>
+          <iframe id="live-frame" title="Playing on the front page"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <!-- Filled by latest.js from latest-climb.js + RELAY_LATEST. Don't hardcode
+         an entry here — it goes stale the moment anything newer lands. -->
+    <section id="latest" aria-label="Newest addition">
+      <a class="latest-relay" data-latest-banner data-latest-prefix="new"></a>
+      <!-- Trial alerts: only for a site account approved for Studies. -->
+      <a class="latest-relay trial-alert" id="trial-alert" href="projects/psyche/studies.html#watch" hidden></a>
+    </section>
+
+    <a class="window cut-wrap" data-shape="claw" href="climbing.html" style="--wh: 74vh; --c: var(--cyan)">
+      <div class="cut fixed" style="background-image:url(photos/climbing-02.jpg)" role="img" aria-label="Climbers under a sweeping orange sandstone roof"></div>
+      <div class="title below"><b>Climbing</b><span class="mono">Routes · projects · falls</span><div class="enter">Enter <i></i></div></div>
+    </a>
+
+    <a class="window cut-wrap" data-shape="jagged" href="captures.html" style="--c: var(--magenta)">
+      <div class="cut fixed" style="background-image:url(photos/website-0900.jpg)" role="img" aria-label="A dusk sky over still water, a tree in silhouette"></div>
+      <div class="title" style="right: 6vw; top: 22%; text-align: right"><b>Captures</b><span class="mono" style="justify-content:flex-end">1,300+ photographs</span><div class="enter">Enter <i></i></div></div>
+    </a>
+
+    <div class="river" aria-label="Photographs"><div class="track" id="track"></div></div>
+
+    <a class="window cut-wrap" data-shape="blade" href="training.html" style="--c: var(--violet)">
+      <div class="cut fixed" style="background-image:url(photos/website-0700.jpg)" role="img" aria-label="Sitting on a canyon rim above a river"></div>
+      <div class="title" style="left: 12vw; bottom: 16%"><b>Training</b><span class="mono">Every run · the 52-week plan</span><div class="enter">Enter <i></i></div></div>
+    </a>
+
+    <a class="window cut-wrap" data-shape="shatter" href="exploration.html" style="--wh: 64vh; --c: var(--cyan)">
+      <div class="cut fixed" style="background-image:url(photos/climbing-10.jpg)" role="img" aria-label="Watching the sun set over a sea of mountains"></div>
+      <div class="title" style="left: 50%; translate: -50% 0; top: 34%; text-align: center"><b>Exploration</b><span class="mono" style="justify-content:center">Space · physics · science</span><div class="enter" style="justify-content:center">Enter <i></i></div></div>
+    </a>
+
+    <section class="rooms" aria-labelledby="rooms-h">
+      <h2 id="rooms-h">Every room</h2>
+      <!-- Deliberately empty: the entries are rendered from the ROOMS array in
+           the script below, which is also what `ls`, `tree`, `find` and Tab
+           completion read. To add or rename a room, edit ROOMS — not this markup.
+           /apex, /cs, /val, /log and /map are left off on purpose (`listed:
+           false`); `ls`, the room name, and the URL all still reach them. -->
+      <nav id="dir" aria-label="Site directory"></nav>
+      <p class="dir-more">More rooms? <button type="button" id="ls-hint">type ls</button></p>
+    </section>
+  </main>
+
+  <footer class="mono">
+    <span>EST. 2026 · SIGNAL NOMINAL</span>
+    <span>RIC//NET</span>
+  </footer>
 
   <script src="notes.js"></script>
   <script src="effects.js"></script>
@@ -437,83 +381,194 @@ type Sydney's cat's name for a surprise!</div>
     })();
   </script>
   <script>
-    // ─── boot sequence ───────────────────────────────────
+    // ─── night and day ───────────────────────────────────
+    // A visitor's own pick, kept in this browser; with none, their OS decides.
+    (() => {
+      const root = document.documentElement, btn = document.getElementById("mode");
+      const DAY = '<svg viewBox="0 0 18 18" aria-hidden="true"><polygon points="9,3 15,14 3,14" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+      const NIGHT = '<svg viewBox="0 0 18 18" aria-hidden="true"><polygon points="9,3 15,14 3,14" fill="currentColor"/></svg>';
+      const isNight = () => root.dataset.theme ? root.dataset.theme === "night" : matchMedia("(prefers-color-scheme: dark)").matches;
+      const paint = () => { btn.innerHTML = isNight() ? DAY : NIGHT; btn.title = isNight() ? "Day" : "Night"; };
+      btn.addEventListener("click", () => {
+        root.dataset.theme = isNight() ? "day" : "night";
+        try { localStorage.setItem("frontdoor-theme", root.dataset.theme); } catch (e) {}
+        paint();
+      });
+      paint();
+    })();
+
+    // ─── the cuts ────────────────────────────────────────
+    // Every [data-shape] gets its own clip path and the lip drawn around it.
+    // Shapes are in 0–1 units (objectBoundingBox), so one path fits any size.
+    (() => {
+      let seed = 11;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      const pts = (a) => a.map((p, i) => (i ? "L" : "M") + p[0].toFixed(4) + "," + p[1].toFixed(4)).join(" ") + " Z";
+      const edge = (y0, y1, n, amp, spikes) => Array.from({ length: n + 1 }, (_, i) => {
+        const t = i / n, base = y0 + (y1 - y0) * t;
+        const jitter = i === 0 || i === n ? 0
+          : (i % 2 ? 1 : -1) * amp * (0.4 + rnd()) + (spikes && rnd() < 0.15 ? spikes * (rnd() - 0.3) : 0);
+        return [t, base + jitter];
+      });
+      // one claw mark: a tapered, slightly bowed slash
+      const slash = (x0, ya, x1, yb, th, bend) => {
+        const xm = x0 + (x1 - x0) * 0.42, ym = ya + (yb - ya) * 0.42 + bend;
+        return `M${x0},${ya} Q${xm},${ym - th} ${x1},${yb} Q${xm + 0.04},${ym + th * 0.8} ${x0},${ya} Z`;
+      };
+      const SHAPES = {
+        angled: () => pts([[0, 0.12], [1, 0], [1, 0.88], [0, 1]]),
+        jagged: () => pts([...edge(0.16, 0.03, 46, 0.025), ...edge(0.97, 0.84, 46, 0.025).reverse()]),
+        claw: () => [slash(0.06, 0.40, 0.93, 0.04, 0.17, 0.03), slash(0, 0.70, 1, 0.30, 0.22, 0.04), slash(0.1, 0.97, 0.9, 0.64, 0.16, 0.03)].join(" "),
+        blade: () => pts([[0, 0.58], [0.07, 0.16], [1, 0], [0.94, 0.5], [1, 0.84], [0.07, 1]]),
+        shatter: () => pts([...edge(0.22, 0.02, 22, 0.05, 0.12), ...edge(0.98, 0.78, 22, 0.05, 0.12).reverse()]),
+      };
+      const NS = "http://www.w3.org/2000/svg", defs = document.getElementById("cut-defs");
+      document.querySelectorAll("[data-shape]").forEach((wrap, n) => {
+        const d = SHAPES[wrap.dataset.shape](), id = "cut-" + n;
+        const clip = document.createElementNS(NS, "clipPath");
+        clip.id = id;
+        clip.setAttribute("clipPathUnits", "objectBoundingBox");
+        const path = document.createElementNS(NS, "path");
+        path.setAttribute("d", d);
+        clip.appendChild(path);
+        defs.appendChild(clip);
+        const cut = wrap.querySelector(".cut");
+        cut.style.clipPath = `url(#${id})`;
+        const line = (cls, stroke, width, extra = "") =>
+          `<path ${cls ? `class="${cls}"` : ""} d="${d}" fill="none" ${stroke ? `stroke="${stroke}"` : ""} stroke-width="${width}" vector-effect="non-scaling-stroke" ${extra}/>`;
+        // the bevel hugs the cut itself, not the wrap, which may hold a title too
+        const holder = document.createElement("div");
+        holder.style.position = "relative";
+        cut.before(holder);
+        holder.appendChild(cut);
+        holder.insertAdjacentHTML("afterbegin",
+          `<svg class="lipsvg out" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">${line("sh", "", 10, 'transform="translate(0,.008)"')}${line("hl", "", 3)}</svg>`);
+        cut.insertAdjacentHTML("beforeend",
+          `<svg class="lipsvg in" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">${line("", "rgba(0,0,0,.55)", 30)}${line("", "url(#lip-grad)", 2.5)}</svg>`);
+      });
+    })();
+
+    // ─── the hero: things to try, on a curved strip ──────
+    // `play` items open right here in the cut; the rest go to their page.
+    const STILL = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    (() => {
+      const FEATURE = [
+        { name: "KONDRITE", c: "var(--violet)", video: "assets/games/kondrite.webm", poster: "assets/games/kondrite.jpg", href: "projects/kondrite/index.html", verb: "PLAY", play: true },
+        { name: "Interstate 40", c: "var(--magenta)", video: "assets/games/offramp.webm", poster: "assets/games/offramp.jpg", href: "projects/offramp/index.html", verb: "DRIVE", play: true },
+        { name: "How big everything is", c: "var(--cyan)", img: "projects/how-big-everything-is/cmb-wmap9.jpg", alt: "The cosmic microwave background, the oldest light in the universe", href: "projects/how-big-everything-is/index.html", verb: "ZOOM", play: true },
+        { name: "Starfield", c: "var(--violet)", video: "assets/games/starfield.webm", poster: "assets/games/starfield.jpg", href: "projects/starfield/index.html", verb: "FLY", play: true },
+        { name: "Climbing", c: "var(--cyan)", img: "photos/climbing-04.jpg", alt: "Climbing a steep sandstone wall", href: "climbing.html", verb: "ENTER" },
+        { name: "FARLIGHT", c: "var(--magenta)", video: "assets/games/farlight.webm", poster: "assets/games/farlight.jpg", href: "projects/farlight/index.html", verb: "PLAY", play: true },
+        { name: "Siege Conductor", c: "var(--violet)", img: "projects/siege-conductor/icon-1024.png", alt: "", contain: true, href: "projects/siege-conductor/index.html", verb: "OPEN" },
+      ];
+      const ring = document.getElementById("ring"), N = FEATURE.length;
+      let pos = 0, target = 0, last = performance.now(), idle = null;
+      const wrapD = (d) => { d = ((d % N) + N) % N; return d > N / 2 ? d - N : d; };
+      const cards = FEATURE.map((it, i) => {
+        const el = document.createElement("button");
+        el.type = "button";
+        el.className = "card";
+        el.style.setProperty("--c", it.c);
+        el.setAttribute("aria-label", `${it.verb.toLowerCase()} ${it.name}`);
+        const media = it.video
+          ? `<video muted loop playsinline preload="${i < 2 ? "auto" : "metadata"}" poster="${it.poster}" src="${it.video}" aria-hidden="true"></video>`
+          : `<img src="${it.img}" alt="${it.alt}"${it.contain ? ' class="contain"' : ""}>`;
+        el.innerHTML = `${media}<div class="glass"></div><div class="tag"><i></i><b>${it.name}</b></div><div class="go">${it.verb}</div>`;
+        el.addEventListener("click", () => {
+          if (moved) return;
+          if (Math.abs(wrapD(i - pos)) < 0.5) launch(it); else { target = pos + wrapD(i - pos); rest(); }
+        });
+        ring.appendChild(el);
+        return el;
+      });
+      function render() {
+        const w = cards[0].offsetWidth;
+        cards.forEach((el, i) => {
+          const d = wrapD(i - pos), a = Math.abs(d);
+          el.style.transform = `translate3d(${d * w * 0.62}px,0,${-a * w * 0.42}px) rotateY(${-d * 34}deg)`;
+          el.style.zIndex = String(100 - Math.round(a * 10));
+          el.style.opacity = a > 2.6 ? Math.max(0, 3.4 - a) : 1;
+          el.style.filter = `brightness(${1 - Math.min(a, 2) * 0.25})`;
+          el.tabIndex = a < 0.5 ? 0 : -1;
+          el.classList.toggle("center", a < 0.5);
+          const v = el.querySelector("video");
+          if (v && !STILL) { if (a < 1.6) { if (v.paused) v.play().catch(() => {}); } else if (!v.paused) v.pause(); }
+        });
+      }
+      (function tick(now) {
+        pos += (target - pos) * Math.min(1, (now - last) / 140);
+        last = now;
+        render();
+        requestAnimationFrame(tick);
+      })(last);
+      // drifts on its own; slows down for a while after you touch it
+      const drift = (ms) => { clearInterval(idle); if (!STILL) idle = setInterval(() => target++, ms); };
+      const rest = () => drift(10000);
+      const nudge = (d) => { target = Math.round(target) + d; rest(); };
+      drift(6000);
+      document.getElementById("prev").addEventListener("click", () => nudge(-1));
+      document.getElementById("next").addEventListener("click", () => nudge(1));
+      const hero = document.getElementById("hero-cut");
+      hero.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft") { e.preventDefault(); nudge(-1); }
+        if (e.key === "ArrowRight") { e.preventDefault(); nudge(1); }
+      });
+      // swipe or drag; a drag is not a click
+      let startX = null, moved = false;
+      document.getElementById("stage").addEventListener("pointerdown", (e) => { startX = e.clientX; moved = false; });
+      addEventListener("pointermove", (e) => { if (startX !== null && Math.abs(e.clientX - startX) > 12) moved = true; });
+      addEventListener("pointerup", (e) => {
+        if (startX !== null && Math.abs(e.clientX - startX) > 40) nudge(e.clientX < startX ? 1 : -1);
+        startX = null;
+        setTimeout(() => (moved = false), 0);
+      });
+
+      const live = document.getElementById("live"), frame = document.getElementById("live-frame");
+      function launch(it) {
+        if (!it.play) { location.href = it.href; return; }
+        clearInterval(idle);
+        frame.src = it.href;
+        document.getElementById("live-full").href = it.href;
+        live.classList.add("open");
+        frame.focus();
+      }
+      document.getElementById("live-close").addEventListener("click", () => {
+        live.classList.remove("open");
+        frame.src = "about:blank";
+        rest();
+        cards[((Math.round(pos) % N) + N) % N].focus();
+      });
+    })();
+
+    // ─── the photo river ─────────────────────────────────
+    (() => {
+      const track = document.getElementById("track"), pics = [];
+      for (let i = 1; i <= 8; i++) pics.push(`photos/climbing-0${i}.jpg`);
+      for (let i = 0; i < 18; i++) pics.push(`photos/website-${String(2 + i * 70).padStart(4, "0")}.jpg`);
+      // the set twice, so the loop has no seam; the copy is hidden from readers
+      [...pics, ...pics].forEach((src, i) => {
+        const a = document.createElement("a");
+        a.href = "captures.html";
+        if (i >= pics.length) { a.tabIndex = -1; a.setAttribute("aria-hidden", "true"); }
+        const im = new Image();
+        im.loading = "lazy";
+        im.src = src;
+        im.alt = "";
+        a.setAttribute("aria-label", "Open Captures");
+        a.appendChild(im);
+        track.appendChild(a);
+      });
+    })();
+
+    // ─── boot lines ──────────────────────────────────────
+    // The old front door typed these out before you could do anything. Now
+    // they greet you the first time the terminal opens, and never make you wait.
     const BOOT_LINES = [
       ["initializing uplink .......... ", "ok", "[OK]"],
       ["verifying visitor clearance .. ", "ok", "[FAMILY/FRIEND — GRANTED]"],
       ["locating subject ............. ", "ok", "[ACTIVE — LAST SEEN: BUILDING SOMETHING]"],
-      ["everything below is real and current.", "dim"],
+      ["everything here is real and current.", "dim"],
     ];
-
-    const boot = document.getElementById("boot");
-    let li = 0;
-    function renderBootLine([text, cls, suffix]) {
-      const div = document.createElement("div");
-      div.textContent = text;
-      if (cls === "dim") div.className = "dim";
-      if (suffix) {
-        const s = document.createElement("span");
-        s.className = cls;
-        s.textContent = suffix;
-        div.appendChild(s);
-      }
-      return div;
-    }
-
-    let bootTimer = null;
-    function nextLine() {
-      if (li >= BOOT_LINES.length) return (bootTimer = setTimeout(reveal, 330));
-      boot.appendChild(renderBootLine(BOOT_LINES[li++]));
-      bootTimer = setTimeout(nextLine, li <= 1 ? 350 : 170);
-    }
-
-    let revealed = false;
-    function reveal() {
-      if (revealed) return;
-      revealed = true;
-      for (const id of ["terminal-divider", "terminal-intro", "shell-status", "cmdline", "terminal-help", "latest", "places-intro", "dir", "dir-more"]) {
-        const el = document.getElementById(id);
-        el.classList.remove("hidden");
-        el.classList.add("revealed");
-      }
-      if (matchMedia("(pointer: fine)").matches) {
-        document.getElementById("cmd").focus({ preventScroll: true });
-      }
-    }
-
-    // let impatient people skip
-    addEventListener("keydown", skipBoot, { once: true });
-    addEventListener("click", skipBoot, { once: true });
-    function skipBoot(event) {
-      // Cancel the queued line/reveal first, or it fires later and re-runs
-      // reveal() — which would steal focus back out from under the visitor.
-      clearTimeout(bootTimer);
-      if (li < BOOT_LINES.length) {
-        boot.innerHTML = "";
-        for (const line of BOOT_LINES) boot.appendChild(renderBootLine(line));
-        li = BOOT_LINES.length;
-      }
-      // If they skipped by *typing*, that first character was aimed at the
-      // prompt — the input just wasn't focused yet. Put it where they meant it.
-      // Checked before reveal(), which focuses the input itself on desktop.
-      const input = document.getElementById("cmd");
-      const wasTypedAtNothing = event?.type === "keydown" && event.key?.length === 1
-        && !event.metaKey && !event.ctrlKey && !event.altKey
-        && document.activeElement !== input;
-      reveal();
-      if (wasTypedAtNothing) {
-        event.preventDefault();
-        input.focus({ preventScroll: true });
-        input.value += event.key;
-      }
-    }
-    // visitors who ask their OS to reduce motion get the shell instantly,
-    // skipping the typed-boot animation.
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      skipBoot();
-    } else {
-      nextLine();
-    }
 
     // ─── the rooms ───────────────────────────────────────
     // ONE list. The #dir markup, `ls`, `tree`, `find`, `open`, `random` and Tab
@@ -522,18 +577,18 @@ type Sydney's cat's name for a surprise!</div>
     //   listed — appears in the #dir directory on the front door
     //   locked — reachable but answers [LOCKED]; kept out of `random` and Tab
     const ROOMS = [
-      { name: "orrin",         href: "orrin.html",         hue: "--flash-orrin",         desc: "cognition · code · ORRIN runtime",        listed: true },
-      { name: "mind",          href: "psyche.html",        hue: "--flash-psyche",        desc: "human systems · psychology · philosophy", listed: true },
-      { name: "climbing",      href: "climbing.html",      hue: "--flash-climbing",      desc: "routes · projects · mountaineering",      listed: true },
-      { name: "training",      href: "training.html",      hue: "--flash-training",      desc: "runs · sessions · the 52-week plan",      listed: true },
+      { name: "orrin",         href: "orrin.html",         hue: "--flash-orrin",         desc: "cognition · code · ORRIN runtime",        art: "orrin", listed: true },
+      { name: "mind",          href: "psyche.html",        hue: "--flash-psyche",        desc: "human systems · psychology · philosophy", art: "mind", listed: true },
+      { name: "climbing",      href: "climbing.html",      hue: "--flash-climbing",      desc: "routes · projects · mountaineering",      img: "photos/climbing-04.jpg", alt: "Climbing a steep sandstone wall", listed: true },
+      { name: "training",      href: "training.html",      hue: "--flash-training",      desc: "runs · sessions · the 52-week plan",      img: "photos/website-0500.jpg", alt: "A trail through pines under a mountain ridge", listed: true },
       { name: "apex",          href: "apex.html",          hue: "--flash-apex",          desc: "the drop · rank · career kills",          listed: false },
       { name: "cs",            href: "cs.html",            hue: "--flash-cs",            desc: "counter-strike · every match · 2D replays", listed: false },
       { name: "val",           href: "val.html",           hue: "--flash-val",           desc: "valorant · every fight on the minimap",     listed: false },
-      { name: "exploration",   href: "exploration.html",   hue: "--flash-exploration",   desc: "space · physics · science",               listed: true },
-      { name: "gaming",        href: "gaming.html",        hue: "--flash-gaming",        desc: "games · launches · playable builds",      listed: true },
-      { name: "workbench",     href: "workbench.html",     hue: "--flash-workbench",     desc: "random projects · ideas · hobbies",       listed: true },
-      { name: "captures",      href: "captures.html",      hue: "--flash-captures",      desc: "photographs",                             listed: true },
-      { name: "entertainment", href: "entertainment.html", hue: "--flash-entertainment", desc: "films · shows · what is queued up",       listed: true },
+      { name: "exploration",   href: "exploration.html",   hue: "--flash-exploration",   desc: "space · physics · science",               img: "projects/how-big-everything-is/cmb-wmap9.jpg", alt: "The cosmic microwave background, the oldest light in the universe", listed: true },
+      { name: "gaming",        href: "gaming.html",        hue: "--flash-gaming",        desc: "games · launches · playable builds",      img: "assets/games/kondrite.jpg", alt: "KONDRITE: ships fighting in vector space", listed: true },
+      { name: "workbench",     href: "workbench.html",     hue: "--flash-workbench",     desc: "random projects · ideas · hobbies",       img: "projects/siege-conductor/icon-1024.png", alt: "", contain: true, listed: true },
+      { name: "captures",      href: "captures.html",      hue: "--flash-captures",      desc: "photographs",                             img: "photos/climbing-08.jpg", alt: "Friends resting on boulders above a canyon", listed: true },
+      { name: "entertainment", href: "entertainment.html", hue: "--flash-entertainment", desc: "films · shows · what is queued up",       img: "assets/backdrops/the-godfather.jpg", alt: "A still from The Godfather", listed: true },
       { name: "log",           href: "log.html",           hue: "--flash-log",           desc: "notes · theories · written",              listed: false },
       { name: "map",           href: "map.html",           hue: "--flash-map",           desc: "crew access only · ATLAS, the private map", listed: false },
     ];
@@ -543,20 +598,44 @@ type Sydney's cat's name for a surprise!</div>
     // called /training, but the thing they came for is the run.
     const PAGE_ALIASES = { psyche: "mind", run: "training", cs2: "cs", "counter-strike": "cs", valorant: "val" };
 
-    // render the front-door directory from the same list
+    // render the front-door directory from the same list: one tile a room,
+    // its picture if it has one, a drawing if it doesn't
     (() => {
       const dir = document.getElementById("dir");
+      const ART = {
+        orrin: () => {
+          let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+          const nodes = Array.from({ length: 16 }, () => [8 + r() * 84, 8 + r() * 84]);
+          const lines = nodes.flatMap((a, i) => nodes.slice(i + 1).filter((b) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 30)
+            .map((b) => `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`));
+          return `<svg class="art" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true" style="background:radial-gradient(circle at 50% 35%,#2b1d55,#0d0e10 75%)">
+            <g stroke="#7b3cff" stroke-width=".4" opacity=".8">${lines.join("")}</g>
+            <g fill="#eceef2">${nodes.map((n) => `<circle cx="${n[0]}" cy="${n[1]}" r="1.1"/>`).join("")}</g></svg>`;
+        },
+        mind: () => {
+          const wave = Array.from({ length: 61 }, (_, i) => `${i * 100 / 60},${55 + Math.sin(i / 5) * 18 * Math.sin(i / 17 + 1)}`).join(" ");
+          return `<svg class="art" viewBox="0 0 100 125" preserveAspectRatio="xMidYMid slice" aria-hidden="true" style="background:radial-gradient(circle at 50% 40%,#3a1430,#0d0e10 75%)">
+            <polyline points="${wave}" fill="none" stroke="#ff2d8a" stroke-width="1.2"/>
+            <line x1="0" y1="55" x2="100" y2="55" stroke="#eceef2" stroke-width=".25" opacity=".5"/></svg>`;
+        },
+      };
+      const HUE = { orrin: "var(--violet)", mind: "var(--magenta)", climbing: "var(--cyan)", training: "var(--violet)", exploration: "var(--cyan)", gaming: "var(--violet)", workbench: "var(--magenta)", captures: "var(--magenta)", entertainment: "var(--cyan)" };
       for (const room of ROOMS.filter((room) => room.listed)) {
         const entry = document.createElement("a");
         entry.className = "entry";
         entry.href = room.href;
-        entry.style.setProperty("--hue", `var(${room.hue})`);
-        for (const [cls, text] of [
-          ["perm", room.locked ? "drwx ---" : "drwx r-x"],
-          ["dirname", `/${room.name}`],
-          ["desc", `— ${room.desc}`],
-          ["go", room.locked ? "[ LOCKED ]" : "[ ENTER ]"],
-        ]) {
+        entry.style.setProperty("--hue", HUE[room.name] || "var(--violet)");
+        if (room.img) {
+          const img = new Image();
+          img.loading = "lazy";
+          img.src = room.img;
+          img.alt = room.alt || "";
+          if (room.contain) img.style.cssText = "object-fit:contain;padding:22%;background:radial-gradient(circle at 50% 40%,#2a2240,#0d0e10 70%)";
+          entry.appendChild(img);
+        } else if (ART[room.art]) {
+          entry.insertAdjacentHTML("beforeend", ART[room.art]());
+        }
+        for (const [cls, text] of [["dirname", room.name], ["desc", room.desc]]) {
           const span = document.createElement("span");
           span.className = cls;
           span.textContent = text;
@@ -960,7 +1039,14 @@ type Sydney's cat's name for a surprise!</div>
         const result = COMMANDS[verb](arg, originalArg);
         if (result) print(result);
       } else {
-        print(`command not recognized: ${verb}\ntype \`help\` for options.`);
+        // A plain word the terminal doesn't know is a search, not an error.
+        const best = search(raw)[0];
+        if (best) {
+          print(`opening ${best.title} ...`);
+          setTimeout(() => (location.href = best.href), 300);
+        } else {
+          print(`command not recognized: ${verb}\ntype \`help\` for options.`);
+        }
       }
       scrollNewestIntoView(mark);
     });
@@ -982,8 +1068,173 @@ type Sydney's cat's name for a surprise!</div>
       out.scrollTop += first.getBoundingClientRect().top - out.getBoundingClientRect().top;
     }
 
-    // clicking anywhere in the cmdline area focuses the input
-    document.getElementById("cmdline").addEventListener("click", () => cmd.focus());
+
+    // ─── the terminal is the search ──────────────────────
+    // Plain words find things; commands still run. Matches come from ROOMS and
+    // PROJECTS, plus the words people actually type when they aren't thinking
+    // in room names. Enter on a highlighted match opens it; otherwise the line
+    // goes to the terminal above, and if the terminal doesn't know the word,
+    // the best match opens instead of an error.
+    const SEARCH_WORDS = {
+      orrin: "ai artificial intelligence mind code brain agent",
+      mind: "psychology psyche mental health mood bipolar autism philosophy",
+      climbing: "climb climbing rock boulder bouldering mountain outdoors photos sport",
+      training: "run running runs strava fitness workout plan marathon",
+      apex: "games gaming apex legends shooter fps stats",
+      cs: "games gaming counter strike cs2 shooter fps matches replays",
+      val: "games gaming valorant shooter fps matches",
+      exploration: "space physics science universe stars relativity",
+      gaming: "games gaming play arcade",
+      workbench: "projects ideas hobbies star wars",
+      captures: "photos photographs pictures camera gallery",
+      entertainment: "movies films shows tv watching watchlist star wars",
+      log: "writing notes essays theories blog",
+      map: "map atlas crew private",
+      state: "psychology mood bipolar visualization",
+      dsm5: "psychology autism reading",
+      studies: "psychology health medicine clinical trials research science search",
+      spacetime: "space physics relativity science einstein",
+      farlight: "games play physics momentum",
+      siege: "star wars clone wars movies watch companion app",
+      highway: "games play driving drive road car america",
+      starfield: "games play space stars rocket physics fly",
+      kondrite: "games play space shooter multiplayer online friends ships arcade",
+      speed: "space physics relativity time science clocks",
+      scale: "space science size universe atoms zoom physics",
+    };
+    const SEARCHABLE = [
+      ...PROJECTS.map((p) => ({
+        key: p.command, title: p.title, kind: p.room === "psyche" ? "mind" : p.room, href: p.href,
+        text: `${p.title} ${p.description} ${p.command} ${p.aliases.join(" ")} ${SEARCH_WORDS[p.command] || ""}`.toLowerCase(),
+        desc: p.description,
+      })),
+      ...ROOMS.map((r) => ({
+        key: r.name, title: r.name, kind: "room", href: r.href,
+        text: `${r.name} ${r.desc} ${SEARCH_WORDS[r.name] || ""}`.toLowerCase(),
+        desc: r.desc, unlisted: !r.listed,
+      })),
+    ];
+    // the things worth a stranger's first click come first among equals
+    const BOOST = { kondrite: 3, highway: 2, starfield: 1, scale: 2, studies: 1, siege: 1 };
+    const HUES = { gaming: "var(--violet)", exploration: "var(--cyan)", mind: "var(--magenta)", workbench: "var(--magenta)", room: "var(--violet)" };
+
+    const term = document.getElementById("term");
+    const sugs = document.getElementById("sugs");
+    let found = [], sel = -1;
+
+    function search(q) {
+      const words = q.toLowerCase().replace(/^\/+/, "").trim().split(/\s+/).filter(Boolean);
+      if (!words.length) return [];
+      return SEARCHABLE
+        .map((item) => {
+          if (!words.every((w) => item.text.includes(w))) return null;
+          let score = 0;
+          for (const w of words) {
+            if (item.key === w) score += 10;
+            else if (item.key.startsWith(w) || item.title.toLowerCase().startsWith(w)) score += 5;
+            else score += 1;
+          }
+          if (item.unlisted) score -= 2;
+          score += BOOST[item.key] || 0;
+          return { item, score };
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 7)
+        .map((x) => x.item);
+    }
+
+    function paintSugs() {
+      sugs.replaceChildren(...found.map((item, i) => {
+        const a = document.createElement("a");
+        a.href = item.href;
+        a.setAttribute("role", "option");
+        a.setAttribute("aria-selected", String(i === sel));
+        if (i === sel) a.className = "sel";
+        a.style.setProperty("--c", HUES[item.kind] || "var(--violet)");
+        const tri = document.createElement("i");
+        const body = document.createElement("span");
+        const name = document.createElement("b");
+        name.textContent = item.kind === "room" ? `/${item.title}` : item.title;
+        const desc = document.createElement("span");
+        desc.className = "d";
+        desc.textContent = item.desc;
+        body.append(name, desc);
+        const kind = document.createElement("small");
+        kind.textContent = item.kind;
+        a.append(tri, body, kind);
+        return a;
+      }));
+    }
+
+    let booted = false;
+    function openConsole() {
+      if (!term.classList.contains("open")) {
+        term.classList.add("open");
+        cmd.setAttribute("aria-expanded", "true");
+      }
+      if (!booted) {
+        booted = true;
+        for (const [text, cls, suffix] of BOOT_LINES) {
+          const div = document.createElement("div");
+          div.textContent = text;
+          if (suffix) { const s = document.createElement("span"); s.className = "ok"; s.textContent = suffix; div.appendChild(s); }
+          out.appendChild(div);
+        }
+      }
+    }
+    function closeConsole() {
+      term.classList.remove("open");
+      cmd.setAttribute("aria-expanded", "false");
+    }
+
+    cmd.addEventListener("focus", openConsole);
+    cmd.addEventListener("input", () => {
+      found = search(cmd.value);
+      sel = -1;
+      paintSugs();
+      openConsole();
+    });
+    // Runs before the terminal's own keys: arrows walk the matches while there
+    // are any (history takes over when the line is empty), Enter opens a
+    // highlighted match, Escape closes the console.
+    cmd.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { closeConsole(); cmd.blur(); return; }
+      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && found.length) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        sel = e.key === "ArrowDown" ? Math.min(found.length - 1, sel + 1) : Math.max(-1, sel - 1);
+        paintSugs();
+        return;
+      }
+      if (e.key === "Enter" && sel >= 0 && found[sel]) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        location.href = found[sel].href;
+      }
+      if (e.key === "Enter") setTimeout(() => { found = []; sel = -1; paintSugs(); }, 0);
+    }, true);
+    // whatever the terminal prints, the console shows
+    new MutationObserver(openConsole).observe(out, { childList: true });
+    addEventListener("pointerdown", (e) => { if (!term.contains(e.target)) closeConsole(); });
+
+    // `/` from anywhere jumps to the terminal, and a key typed at nothing lands in it
+    addEventListener("keydown", (e) => {
+      const el = document.activeElement;
+      const typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+      if (typing || e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1) return;
+      if (el && el !== document.body && e.key !== "/") return;
+      e.preventDefault();
+      cmd.focus({ preventScroll: true });
+      if (e.key !== "/") { cmd.value += e.key; cmd.dispatchEvent(new Event("input")); }
+    });
+
+    document.getElementById("ls-hint").addEventListener("click", () => {
+      cmd.focus({ preventScroll: true });
+      cmd.value = "ls";
+      cmd.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+      window.scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" });
+    });
   </script>
 </body>
 </html>

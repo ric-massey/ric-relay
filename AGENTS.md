@@ -7,8 +7,10 @@ without breaking the concept or Ric's rules.**
 ## What this project is
 
 Ric Massey's personal website for friends and family. The concept: **"it's literally
-my own internet."** The home page (`index.html`) is a terminal hub; every other page is
-a **room** dressed up to look like the real app for that world (climbing → Mountain
+my own internet."** The home page (`index.html`) is the front door — a silver/graphite
+page cut open with angled "cuts" you see the site through — and **its search box is the
+terminal**: plain words find things, and every command, room name and egg still runs
+there. Every other page is a **room** dressed up to look like the real app for that world (climbing → Mountain
 Project, training → Strava, Orrin → a brain, etc.). Plain HTML/CSS/JS, **no build
 step and no dependencies** — each page is a single self-contained `.html` file with its
 CSS in a `<style>` tag and its JS in a `<script>` tag. Keep it that way unless Ric
@@ -171,7 +173,7 @@ Per-room nav treatments (class on the `<nav>`):
 | captures | darkroom film strip | `nav.filmstrip` |
 | entertainment | cinema marquee tab strip (bulbs under the current room) | `nav.marquee` |
 | log | newspaper section bar | `nav.sections` |
-| index | terminal directory listing + `ls`/`open` commands | `#dir` |
+| index | room tiles rendered from `ROOMS`, plus the terminal in the search box | `#dir` |
 
 **Two rooms have grown into sections and carry their own bar instead.** Climbing and
 training are no longer one page each: climbing is seven pages under
@@ -554,6 +556,16 @@ the rest. Rules:
   Riot callout — the page draws on the real minimap, and `llm/maps/<map>.md` gives an
   AI the callout table and the transform. Keep all three in anything new.
 - The archive only grows; `sync.py` commits the room's data only and never pushes.
+
+**The front door (rebuilt 2026-10-16).** `index.html` opens on an angled cut holding a
+3D strip of things to try (`FEATURE` in its script); a `play` item opens inside the cut.
+Under it, rooms are shown through cuts of their own (claw for Climbing, jagged, blade,
+shatter), each a window onto a real photo fixed behind the page, then the photo river,
+then `#dir`. The cut shapes are SVG clip paths in 0–1 units (`SHAPES`). Night/day is a
+visitor's own choice kept in `localStorage` (`frontdoor-theme`), else their OS. The
+search box *is* the terminal: `SEARCH_WORDS` adds the plain words people type for each
+room and project, matches show as you type, and a word the terminal doesn't know opens
+the best match instead of an error. The boot lines print the first time it opens.
 
 Homepage "transmissions" live in `notes.js`. Curated newest additions live
 in `latest.js` and are announced in exactly one place: the NOTIFICATION banner on
