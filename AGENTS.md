@@ -575,20 +575,30 @@ in `ART` — the Boards from `board-data.js` (a real board, one of Ric's sends l
 hold), the posters from the Entertainment list, the photographs, a made-up run over
 made-up hills for Training, an **invented** map for ATLAS, the registry search typing
 itself, real aberration and Doppler for How Speed Affects Time, a Minkowski diagram,
-Apex's biggest banner number from `apex-data.js`, the terminal answering real commands.
+Apex's biggest banner number from `apex-data.js`, the terminal answering real commands,
+the hardest send of each year from `climbs-data.js`, Mochi on his own sprite frames,
+an invented minimap for VALORANT, a Leviathan hull drafted along a scan line.
 **No real place is ever drawn**: Training's route and ATLAS's map are generated (hard
 rule 1). Few words inside any rip.
 
-**It is a feed, it does not end, and no two visits are alike** (Ric, same day: "like an
-insta feed … infinite scrolling", "generated at random so every time you open the page
-it's a bit different"). `POSTS` lists every room a visitor can use, each with a `tier`;
-the first round keeps tier 0 (Counter-Strike, KONDRITE, the Boards) in order and shuffles
-the other tiers within themselves, and every round after is shuffled whole under a
-"Round N — shuffled" mark. Every tear, seam and drawing is seeded from `VISIT`, a random
-number per page load. **Boards and ATLAS are in by Ric's word** — the earlier rule that
+**It is a feed of everything, it ends, and no two visits are alike** (Ric, same day:
+"like an insta feed", "generated at random so every time you open the page it's a bit
+different", then "when there are no more rooms it should end"). `POSTS` lists every room
+and every thing in a room a visitor can use — 39 today: the rooms themselves, the
+projects, and the sub-pages that stand on their own (the Leviathan, the four spacetime
+chapters, climbing's media and stats, training's calendar and races, the movie list, the
+404) — each with a `tier`. Tier 0 (Counter-Strike, KONDRITE, the Boards) keeps its order,
+the other tiers are shuffled within themselves, each post appears once, and the page
+finishes on "That's every room." (`.fin`). Don't bring back the endless rounds. Every
+tear, seam and drawing is seeded from `VISIT`, a random number per page load. Two posts
+act on the page instead of leaving it (`act` in `POSTS`): Mochi's button wakes him here,
+and Trip Modes cycles `lsd` → `shrooms` → off through `RELAY_EFFECTS`; both still link
+to the terminal without `effects.js`. **Boards and ATLAS are in by Ric's word** — the earlier rule that
 kept them off the front door is lifted here (ATLAS's post is a door to the sign-in; the
 map behind it is untouched). HERMISCUS and the private tools (admin, visitors, account)
-stay out. When something new ships, add it to `POSTS` at tier 0.
+stay out (Ric, 2026-10-16: "Hermiscus can stay out"), and so do Climbing's add pages and
+the KONDRITE listening booth, which are tools for Ric. When something new ships, add it
+to `POSTS` at tier 0 and to the `<noscript>` list.
 
 **Every post is torn from its room's own paper.** `data-skin` sets the post's paper,
 ink, accent and heading face — CS steel, the cinema's black and gold, the climbing log's
@@ -599,8 +609,8 @@ closing in toward the words — torn through a stack of that same paper (`paperO
 derives the stack from `--paper`), painted on a canvas (`.rim`) inside the clipped `.cut`.
 On a phone the words come first, then a 210px strip. The picture (`.still`) slides with
 the screen ("depth"). **A post far off screen lets go of everything heavy** — its torn
-edges, its seam, its video, its drawing — and makes them again as it comes back, so the
-endless feed costs no more than a short one. Never put a `filter` or `transform` on a
+edges, its seam, its video, its drawing — and makes them again as it comes back, so a
+long feed costs no more than a short one. Never put a `filter` or `transform` on a
 `.cut`, keep anything laid over a cut *inside* it (Chromium paints outside the clip
 otherwise), and draw shadows on the canvas, never as a CSS or SVG blur. Night/day only
 changes the hero's paper.

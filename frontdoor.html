@@ -66,7 +66,7 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { background: var(--bg); }
+    html { background: var(--bg); overflow-x: clip; }
     body { color: var(--ink); font: 400 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; min-height: 100vh; background: var(--bg); }
     a { color: inherit; }
     button { font: inherit; color: inherit; }
@@ -171,9 +171,15 @@
     [data-bleed="left"] .peek { right: auto; left: calc(var(--gutter) + 18px); }
     .f-rip:hover .still, .post.hot .still { scale: 1.035; }
 
-    /* where a round of the feed ends and the next begins */
-    .round-mark { position: relative; z-index: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 90px var(--gutter) 70px; color: var(--muted); text-align: center; background: var(--bg); }
-    .round-mark b { color: var(--ink); font-weight: 600; letter-spacing: .16em; }
+    /* the end of the feed: every room has been shown, and it says so */
+    .fin { --paper: var(--bg); position: relative; z-index: 0; background: var(--bg); padding: clamp(110px, 16vh, 180px) var(--gutter) clamp(90px, 14vh, 150px); text-align: center; }
+    .fin .fin-k { color: var(--muted); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; margin-bottom: 18px; }
+    .fin h2 { font: 600 clamp(40px, 6vw, 92px)/.95 var(--display); letter-spacing: -.05em; }
+    .fin h2 .dot { font-style: normal; color: var(--magenta); }
+    .fin .lede { margin: 20px auto 34px; }
+    .fin-b { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 14px 28px; }
+    .fin-top { color: var(--ink); font: 600 14px var(--mono); letter-spacing: .1em; text-transform: uppercase; text-underline-offset: 5px; }
+    .fin .tbtn { height: 48px; padding: 0 20px; }
 
     /* things fade up the first time they come on screen — copy only, never a cut */
     .js .rv { opacity: 0; transform: translateY(18px); transition: opacity .8s var(--ease), transform 1s var(--ease); transition-delay: var(--d, 0s); }
@@ -212,6 +218,19 @@
     [data-skin="saber"]     { --paper: #120c07; --ink: #f3e6cc; --muted: #b6a487; --accent: #4cc3ff; --hf: var(--narrow); --hw: 700; --htt: uppercase; --hls: .08em; }
     [data-skin="crt"]       { --paper: #0a0a0a; --ink: #ffb000; --muted: #c08a10; --accent: #ffb000; --hf: var(--mono); --hw: 700; --hls: .02em;
       --pattern: repeating-linear-gradient(0deg, rgba(255,176,0,.035) 0 1px, transparent 1px 3px); }
+    [data-skin="mochi"]     { --paper: #f3ead9; --ink: #2d2620; --muted: #62574b; --accent: #c46b3b; --hf: var(--serif); --hw: 400; --hstyle: italic; --hls: -.02em; }
+    [data-skin="arcade"]    { --paper: #000000; --ink: #ffffff; --muted: #a8a8a8; --accent: #ffffff; --hf: var(--sans); --hw: 300; --htt: uppercase; --hls: .16em; }
+    [data-skin="valorant"]  { --paper: #0f1923; --ink: #ece8e1; --muted: #a2abb3; --accent: #ff4655; --hf: var(--narrow); --hw: 800; --htt: uppercase; --hls: .01em;
+      --pattern: linear-gradient(135deg, rgba(255,70,85,.06) 0 30%, transparent 30%); }
+    [data-skin="transmit"]  { --paper: #120e1a; --ink: #efe7ff; --muted: #b0a3c4; --accent: #d37bff; --hf: var(--serif); --hw: 400; --hls: -.02em; }
+    [data-skin="criteria"]  { --paper: #f4efe6; --ink: #1c1a17; --muted: #5a554c; --accent: #b0302a; --hf: var(--serif); --hw: 700; --hstyle: italic; --hls: -.025em; }
+    [data-skin="casefile"]  { --paper: #e9dcc0; --ink: #2b2316; --muted: #5c5039; --accent: #9b2d20; --hf: var(--mono); --hw: 700; --htt: uppercase; --hls: .04em;
+      --pattern: repeating-linear-gradient(0deg, rgba(43,35,22,.05) 0 1px, transparent 1px 30px); }
+    [data-skin="deepspace"] { --paper: #0a0716; --ink: #efeaff; --muted: #a9a0c8; --accent: #9d7bff; --hf: var(--sans); --hw: 200; --htt: uppercase; --hls: .08em; }
+    [data-skin="blueprint"] { --paper: #123a6b; --ink: #ffffff; --muted: #c9dbf2; --accent: #ffd23f; --hf: var(--mono); --hw: 700; --htt: uppercase; --hls: .03em;
+      --pattern: repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 24px), repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 24px); }
+    [data-skin="prism"]     { --paper: #14051f; --ink: #ffffff; --muted: #c9b4d9; --accent: #ff5ce1; --hf: var(--sans); --hw: 900; --hstyle: italic; --hls: -.04em;
+      --pattern: radial-gradient(120% 80% at 100% 0%, rgba(255,92,225,.12), transparent 60%), radial-gradient(120% 80% at 0% 100%, rgba(92,200,255,.1), transparent 60%); }
     [data-skin="crt"] h2 { text-shadow: 0 0 18px rgba(255,176,0,.45); }
 
     @media (max-width: 860px) {
@@ -275,29 +294,28 @@
           </div>
           <h1 id="hero-h" class="rv">Ric Massey's own internet<i class="dot">.</i></h1>
         </div>
-        <p class="lede rv" style="--d:.15s">Games to play with your friends, every match replayed, what to watch tonight, the universe to scale. <b>Every room built by hand — keep scrolling, it doesn't end.</b></p>
+        <p class="lede rv" style="--d:.15s">Games to play with your friends, every match replayed, what to watch tonight, the universe to scale. <b>Every room built by hand — <span id="room-count">all of them</span>, one after another.</b></p>
       </div>
       <canvas class="seam" aria-hidden="true"></canvas>
     </section>
 
     <!-- The feed: every room as a post, laid down by the script below (POSTS),
-         newest first, reshuffled each round, never ending. -->
+         newest first, each once — and then it ends. -->
     <div id="feed"></div>
-    <div id="feed-end" aria-hidden="true"></div>
     <noscript>
       <ul style="padding:40px var(--gutter);list-style:none;line-height:2">
-        <li><a href="cs.html">Counter-Strike</a></li><li><a href="projects/kondrite/index.html">KONDRITE</a></li>
-        <li><a href="projects/climbing/board.html">The Boards</a></li><li><a href="entertainment.html">Entertainment</a></li>
-        <li><a href="projects/how-big-everything-is/index.html">How Big Everything Is</a></li><li><a href="training.html">Training</a></li>
-        <li><a href="map.html">ATLAS</a></li><li><a href="projects/psyche/studies.html">Studies</a></li>
-        <li><a href="projects/offramp/index.html">Interstate 40</a></li><li><a href="orrin.html">Orrin</a></li>
-        <li><a href="captures.html">Captures</a></li><li><a href="projects/starfield/index.html">Starfield</a></li>
-        <li><a href="climbing.html">Climbing</a></li><li><a href="projects/how-speed-affects-time/index.html">How Speed Affects Time</a></li>
-        <li><a href="projects/state-of-mind-line/index.html">State of Mind</a></li><li><a href="projects/farlight/index.html">FARLIGHT</a></li>
-        <li><a href="projects/spacetime/index.html">The Geometry of Spacetime</a></li><li><a href="apex.html">Apex</a></li>
-        <li><a href="projects/siege-conductor/index.html">Siege Conductor</a></li><li><a href="index.html">The Terminal</a></li>
+        <li><a href="cs.html">Counter-Strike</a></li><li><a href="projects/kondrite/index.html">KONDRITE</a></li><li><a href="projects/climbing/board.html">The Boards</a></li><li><a href="entertainment.html">Entertainment</a></li><li><a href="projects/how-big-everything-is/index.html">How Big Everything Is</a></li><li><a href="training.html">Training</a></li><li><a href="map.html">ATLAS</a></li><li><a href="projects/psyche/studies.html">Studies</a></li><li><a href="projects/offramp/index.html">Interstate 40</a></li><li><a href="orrin.html">Orrin</a></li><li><a href="captures.html">Captures</a></li><li><a href="projects/starfield/index.html">Starfield</a></li><li><a href="climbing.html">Climbing</a></li><li><a href="projects/how-speed-affects-time/index.html">How Speed Affects Time</a></li><li><a href="projects/state-of-mind-line/index.html">State of Mind</a></li><li><a href="projects/farlight/index.html">FARLIGHT</a></li><li><a href="projects/spacetime/index.html">The Geometry of Spacetime</a></li><li><a href="apex.html">Apex</a></li><li><a href="projects/siege-conductor/index.html">Siege Conductor</a></li><li><a href="projects/kondrite/leviathan.html">The Leviathan</a></li><li><a href="index.html">Mochi</a></li><li><a href="gaming.html">The Arcade</a></li><li><a href="projects/spacetime/02-time-dilation.html">Time Dilation</a></li><li><a href="projects/spacetime/03-simultaneity.html">The Loss of Now</a></li><li><a href="projects/spacetime/04-expansion.html">Space Expanding</a></li><li><a href="projects/climbing/gallery.html">From the Wall</a></li><li><a href="projects/climbing/stats.html">The Numbers</a></li><li><a href="projects/training/calendar.html">The Plan</a></li><li><a href="projects/training/trips.html">Trips &amp; Races</a></li><li><a href="entertainment-library.html">The Movie List</a></li><li><a href="val.html">VALORANT</a></li><li><a href="log.html">The Log</a></li><li><a href="projects/autism-reflection.html">The Shape of the Criteria</a></li><li><a href="psyche.html">Psyche</a></li><li><a href="exploration.html">Exploration</a></li><li><a href="workbench.html">The Workbench</a></li><li><a href="index.html">Trip Modes</a></li><li><a href="404.html">Signal Lost</a></li><li><a href="index.html">The Terminal</a></li>
       </ul>
     </noscript>
+    <section class="fin" id="end" aria-labelledby="fin-h">
+      <p class="fin-k">End of the feed</p>
+      <h2 id="fin-h">That's every room<i class="dot">.</i></h2>
+      <p class="lede">All of it, built by hand. When something new ships, it goes at the top.</p>
+      <div class="fin-b">
+        <a class="tbtn" href="index.html"><span class="pr" aria-hidden="true">&gt;_</span>Terminal<i class="cur" aria-hidden="true"></i></a>
+        <a class="fin-top" href="#top">Back to the top ↑</a>
+      </div>
+    </section>
   </main>
 
   <script src="notes.js"></script>
@@ -459,6 +477,82 @@
         lede: "Watch The Clone Wars and Revenge of the Sith as one story, cut together in the right order.",
         facts: ["Star Wars", "In order", "On your phone"], btn: "Open it", peek: "Open",
         media: { art: "siege" }, alt: "Two timelines, blue and red, weaving into one" },
+      { id: "leviathan", tier: 1, skin: "kondrite", tag: "KONDRITE · plan view", name: "The Leviathan", href: "projects/kondrite/leviathan.html",
+        lede: "The biggest ship in KONDRITE, laid out flat from the same geometry the game flies. Hit Another and it builds a new one.",
+        facts: ["Plan view", "From the game", "A new one each time"], btn: "See the plans", peek: "Open",
+        media: { art: "leviathan" }, alt: "A warship's hull drawn as a blueprint along a moving scan line" },
+      { id: "mochi", tier: 1, skin: "mochi", tag: "The resident", name: "Mochi", href: "index.html", act: "mochi",
+        lede: "There's a cat on this website. He walks the pages, sits on the headings and bolts if you click him. Wake him up right here.",
+        facts: ["Lives on every page", "Click him", "Wears a helmet in space"], btn: "Wake Mochi", peek: "Wake",
+        media: { art: "mochi" }, alt: "A fluffy grey cat walking in, sitting down and washing" },
+      { id: "arcade", tier: 1, skin: "arcade", tag: "Gaming · the storefront", name: "The Arcade", href: "gaming.html",
+        lede: "Every game on the site in one shelf. Click a cover and you're playing — no install, no account.",
+        facts: ["Four games", "Click to play", "No install"], btn: "Open the Arcade", peek: "Open",
+        media: { art: "arcade" }, alt: "The covers of the site's games turning past on a carousel" },
+      { id: "dilation", tier: 2, skin: "minkowski", tag: "Spacetime · chapter 2", name: "Time Dilation", href: "projects/spacetime/02-time-dilation.html",
+        lede: "Two clocks. One stays put, one moves. Watch the moving one fall behind.",
+        facts: ["Two clocks", "Interactive", "Chapter 2 of 4"], btn: "Start the clocks", peek: "Open",
+        media: { art: "clocks" }, alt: "Two clock faces, the moving one ticking slower" },
+      { id: "simultaneity", tier: 2, skin: "minkowski", tag: "Spacetime · chapter 3", name: "The Loss of Now", href: "projects/spacetime/03-simultaneity.html",
+        lede: "A flash in the middle of a moving car. Does it reach both ends at once? It depends who you ask.",
+        facts: ["One flash", "Two answers", "Chapter 3 of 4"], btn: "Fire the flash", peek: "Open",
+        media: { art: "simul" }, alt: "Light spreading from the middle of a moving car toward both ends" },
+      { id: "expansion", tier: 2, skin: "minkowski", tag: "Spacetime · chapter 4", name: "Space Expanding", href: "projects/spacetime/04-expansion.html",
+        lede: "Every galaxy running from every other, and none of them moving. The space between is what grows.",
+        facts: ["Hubble's law", "Stretch it", "Chapter 4 of 4"], btn: "Let it grow", peek: "Open",
+        media: { art: "expand" }, alt: "Galaxies drifting apart as the grid beneath them stretches" },
+      { id: "gallery", tier: 2, skin: "logbook", tag: "Climbing · media", name: "From the Wall", href: "projects/climbing/gallery.html",
+        lede: "Every photo and video from days out climbing, newest first.",
+        facts: ["Photos", "Video", "Every day out"], btn: "Open the gallery", peek: "Open",
+        media: { art: "mosaic" }, alt: "A grid of climbing photographs, one tile at a time turning over" },
+      { id: "stats", tier: 2, skin: "logbook", tag: "Climbing · stats", name: "The Numbers", href: "projects/climbing/stats.html",
+        lede: "Grades over time, the crags, who I climb with and the routes I keep going back to — all counted from the logbook.",
+        facts: ["Hardest each year", "Crags", "Partners"], btn: "See the numbers", peek: "Open",
+        media: { art: "grades" }, alt: "Bars growing for the hardest climb sent in each year" },
+      { id: "calendar", tier: 2, skin: "strava", tag: "Training · calendar", name: "The Plan", href: "projects/training/calendar.html",
+        lede: "The whole season, month by month — climbing, running, rest — and every day ticks itself off when it's done.",
+        facts: ["Month by month", "Self-ticking", "Tap a day"], btn: "Open the calendar", peek: "Open",
+        media: { art: "calendar" }, alt: "A month of training days, each one ticking off in turn" },
+      { id: "races", tier: 2, skin: "strava", tag: "Training · trips & races", name: "Trips & Races", href: "projects/training/trips.html",
+        lede: "What's coming up — the races on the calendar and the trips the training is building toward.",
+        facts: ["Races", "Trips", "Countdowns"], btn: "See what's next", peek: "Open",
+        media: { art: "race" }, alt: "A made-up race course profile drawn out to the finish line" },
+      { id: "library", tier: 2, skin: "cinema", tag: "Films & shows · the catalogue", name: "The Movie List", href: "entertainment-library.html",
+        lede: "Every title on the list in one place — filter by service, genre or decade, as posters or as a list.",
+        facts: ["Every title", "Filters", "Posters or list"], btn: "Browse the list", peek: "Open",
+        media: { art: "shelf" }, alt: "A wall of film posters rearranging itself" },
+      { id: "val", tier: 2, skin: "valorant", tag: "Gaming", name: "VALORANT", href: "val.html",
+        lede: "My VALORANT matches, read straight from the game — every round and every fight on the real minimap.",
+        facts: ["Every round", "The minimap", "Every fight"], btn: "Open the room", peek: "Open",
+        media: { art: "val" }, alt: "Two teams of dots moving across an invented minimap toward a site" },
+      { id: "log", tier: 2, skin: "transmit", tag: "Writing", name: "The Log", href: "log.html",
+        lede: "The longer transmissions — write-ups, trip reports and the thinking behind the rooms.",
+        facts: ["Write-ups", "Trip reports", "Long reads"], btn: "Read the log", peek: "Read",
+        media: { art: "signal" }, alt: "A signal trace on an oscilloscope, bursting now and then" },
+      { id: "criteria", tier: 2, skin: "criteria", tag: "Mind · a reflection", name: "The Shape of the Criteria", href: "projects/autism-reflection.html",
+        lede: "A walk through how the DSM-5 actually describes autism — two domains, and how much support each one needs. Not a diagnosis.",
+        facts: ["DSM-5", "Two domains", "Self-paced"], btn: "Begin the reflection", peek: "Begin",
+        media: { art: "criteria" }, alt: "Rows of four-point scales with markers settling on answers" },
+      { id: "psyche", tier: 2, skin: "casefile", tag: "Mind · the room", name: "Psyche", href: "psyche.html",
+        lede: "The field notebook — mood, the diagnostic criteria, and the evidence people use to understand minds.",
+        facts: ["Case files", "Mood", "Evidence"], btn: "Open the notebook", peek: "Open",
+        media: { art: "inkblot" }, alt: "A mirrored ink blot slowly changing shape" },
+      { id: "exploration", tier: 2, skin: "deepspace", tag: "The deck", name: "Exploration", href: "exploration.html",
+        lede: "Where the space experiments live — the universe to scale, the speed of light, spacetime drawn out.",
+        facts: ["Space", "Experiments", "Modules"], btn: "Board the deck", peek: "Open",
+        media: { art: "orbits" }, alt: "Bodies going round a small sun on tilted orbits" },
+      { id: "workbench", tier: 2, skin: "blueprint", tag: "The bench", name: "The Workbench", href: "workbench.html",
+        lede: "Half-finished ideas and things that might become something. Whatever's on the bench right now.",
+        facts: ["Projects", "Prototypes", "Ideas"], btn: "See the bench", peek: "Open",
+        media: { art: "blueprint" }, alt: "A part being drafted line by line on a blueprint" },
+      { id: "modes", tier: 2, skin: "prism", tag: "Two hidden switches", name: "Trip Modes", href: "index.html", act: "lsd",
+        lede: "Two switches that melt the whole website and follow you into every room. Flip one here and keep scrolling.",
+        facts: ["lsd", "shrooms", "Every room"], btn: "Flip the switch", peek: "Flip",
+        media: { art: "trip" }, alt: "Colour running and swirling across the page" },
+      { id: "lost", tier: 2, skin: "crt", tag: "The 404", name: "Signal Lost", href: "404.html",
+        lede: "Even the wrong turns are a room. Type any address that isn't here and this is where you end up.",
+        facts: ["Wrong turns", "Still amber", "A way back"], btn: "Get lost", peek: "Open",
+        media: { art: "lost" }, alt: "404 flickering amber through static" },
       { id: "terminal", tier: 2, skin: "crt", tag: "The original", name: "The Terminal", href: "index.html",
         lede: "Where it all started. Type a room's name and you're in — and there are commands nobody has found yet.",
         facts: ["Type anything", "Hidden commands", "Mochi"], btn: "Open the terminal", peek: "Type",
@@ -859,6 +953,392 @@
         x.shadowBlur = 0; x.restore();
         x.fillStyle = "rgba(0,0,0,.18)"; for (let y = 0; y < h; y += 3) x.fillRect(0, y, w, 1);
       },
+
+      // The Leviathan: a hull drawn the way the plan view draws it — bulkheads,
+      // compartments and gun decks — built along a scan line, then built again
+      // differently, the way "another" does on the page.
+      leviathan(x, w, h, t, st) {
+        const cyc = 9, k = Math.floor(t / cyc), el = (t % cyc) / cyc;
+        if (st.k !== k || st.w !== w || st.h !== h) {
+          st.k = k; st.w = w; st.h = h;
+          const r = rng((st.seed ??= Math.floor(st.r() * 1e9)) + k * 7919), n = 9 + Math.floor(r() * 5);
+          const L = w * 0.8, x0 = w * 0.08, cy = h * 0.5, H = h * 0.36;
+          // half-widths along the hull, fat at the stern, tapering to a ram
+          st.seg = Array.from({ length: n + 1 }, (_, i) => { const u = i / n; return { x: x0 + u * L, hw: H * (u < 0.85 ? 0.45 + r() * 0.55 : (1 - u) * 3.2) * (1 - u * 0.35) * (0.5 + 0.5 * Math.sin(Math.PI * (0.18 + u * 0.7))) }; });
+          st.seg[n].hw = 0;
+          st.rooms = []; for (let i = 0; i < n - 1; i++) if (r() < 0.75) { const a = st.seg[i], b = st.seg[i + 1], hw = Math.min(a.hw, b.hw) * (0.3 + r() * 0.45); st.rooms.push([a.x + 4, cy - hw, b.x - a.x - 8, hw * 2, r() < 0.3]); }
+          st.cy = cy;
+        }
+        x.fillStyle = "#05070c"; x.fillRect(0, 0, w, h);
+        x.strokeStyle = "rgba(111,143,208,.08)"; x.lineWidth = 1;
+        for (let gx = 0; gx < w; gx += 24) { x.beginPath(); x.moveTo(gx + 0.5, 0); x.lineTo(gx + 0.5, h); x.stroke(); }
+        for (let gy = 0; gy < h; gy += 24) { x.beginPath(); x.moveTo(0, gy + 0.5); x.lineTo(w, gy + 0.5); x.stroke(); }
+        const scan = w * Math.min(1, el * 1.6), fade = el > 0.9 ? 1 - (el - 0.9) * 10 : 1, cy = st.cy;
+        x.save(); x.beginPath(); x.rect(0, 0, scan, h); x.clip(); x.globalAlpha = fade;
+        x.beginPath(); st.seg.forEach((s, i) => (i ? x.lineTo(s.x, cy - s.hw) : x.moveTo(s.x, cy - s.hw)));
+        [...st.seg].reverse().forEach((s) => x.lineTo(s.x, cy + s.hw)); x.closePath();
+        x.fillStyle = "#18233b"; x.fill(); x.strokeStyle = "#7d9be0"; x.lineWidth = 1.5; x.stroke();
+        x.strokeStyle = "rgba(125,155,224,.35)"; x.lineWidth = 1;
+        for (const s of st.seg.slice(1, -1)) { x.beginPath(); x.moveTo(s.x, cy - s.hw); x.lineTo(s.x, cy + s.hw); x.stroke(); }
+        x.setLineDash([4, 5]); x.beginPath(); x.moveTo(st.seg[0].x, cy); x.lineTo(st.seg.at(-1).x, cy); x.stroke(); x.setLineDash([]);
+        for (const [rx, ry, rw, rh, gun] of st.rooms) { x.fillStyle = gun ? "rgba(243,214,122,.28)" : "rgba(138,123,255,.18)"; x.fillRect(rx, ry, rw, rh); x.strokeStyle = gun ? "#f3d67a" : "rgba(138,123,255,.7)"; x.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1); }
+        x.restore();
+        if (el < 0.625) { x.fillStyle = "rgba(243,214,122,.9)"; x.fillRect(scan - 1, 0, 2, h); x.fillStyle = "rgba(243,214,122,.08)"; x.fillRect(scan - 40, 0, 40, h); }
+      },
+
+      // Time Dilation: two clocks, one at rest and one moving, ticking apart.
+      clocks(x, w, h, t) {
+        x.fillStyle = "#101012"; x.fillRect(0, 0, w, h);
+        const R = Math.min(h * 0.32, w * 0.2), y = h * 0.5, beta = 0.8, g = 1 / Math.sqrt(1 - beta * beta);
+        const face = (cx, rate, col) => {
+          x.strokeStyle = "rgba(255,255,255,.22)"; x.lineWidth = 1.5; x.beginPath(); x.arc(cx, y, R, 0, 7); x.stroke();
+          for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; x.beginPath(); x.moveTo(cx + Math.cos(a) * R * 0.86, y + Math.sin(a) * R * 0.86); x.lineTo(cx + Math.cos(a) * R * 0.95, y + Math.sin(a) * R * 0.95); x.stroke(); }
+          const a = t * rate * 0.9 - Math.PI / 2;
+          x.strokeStyle = col; x.lineWidth = 3; x.lineCap = "round"; x.shadowColor = col; x.shadowBlur = 12;
+          x.beginPath(); x.moveTo(cx, y); x.lineTo(cx + Math.cos(a) * R * 0.8, y + Math.sin(a) * R * 0.8); x.stroke(); x.shadowBlur = 0;
+          x.fillStyle = col; x.beginPath(); x.arc(cx, y, 4, 0, 7); x.fill();
+        };
+        face(w * 0.3, 1, "#5be0a8");
+        // the moving clock slides back and forth, and runs slow by gamma
+        const sway = Math.sin(t * 0.6) * w * 0.05;
+        x.globalAlpha = 0.25; x.fillStyle = "#e05bb1"; for (let i = 1; i < 5; i++) { x.globalAlpha = 0.06 * (5 - i); x.beginPath(); x.arc(w * 0.7 + sway - i * 6 * Math.cos(t * 0.6), y, R, 0, 7); x.fill(); }
+        x.globalAlpha = 1; face(w * 0.7 + sway, 1 / g, "#e05bb1");
+      },
+
+      // The Loss of Now: a flash in the middle of a moving car reaches both
+      // ends at once for the rider, and at two different times from the platform.
+      simul(x, w, h, t) {
+        x.fillStyle = "#101012"; x.fillRect(0, 0, w, h);
+        const cyc = 4, el = (t % cyc) / cyc, y = h * 0.48, cw = Math.min(w * 0.5, h * 1.1), ch = Math.min(h * 0.22, 56);
+        const v = w * 0.12, cx = w * 0.4 + el * v;
+        x.strokeStyle = "rgba(255,255,255,.12)"; x.beginPath(); x.moveTo(0, y + ch / 2 + 14); x.lineTo(w, y + ch / 2 + 14); x.stroke();
+        x.strokeStyle = "#e05bb1"; x.lineWidth = 2; x.strokeRect(cx - cw / 2, y - ch / 2, cw, ch);
+        x.fillStyle = "#e05bb1"; x.fillRect(cx - cw / 2 - 6, y - ch / 2, 6, ch); x.fillRect(cx + cw / 2, y - ch / 2, 6, ch);
+        // light spreads from where the flash went off, at the platform's speed of light
+        const flash = w * 0.4 + 0.1 * v, c = (cw / 2) / 0.55;
+        const back = cx - cw / 2, front = cx + cw / 2;
+        if (el > 0.1) {
+          const L = Math.max(back, flash - (el - 0.1) * c * 1.1), Rr = Math.min(front, flash + (el - 0.1) * c * 1.1);
+          x.strokeStyle = "#ffd166"; x.lineWidth = 3; x.shadowColor = "#ffd166"; x.shadowBlur = 14;
+          x.beginPath(); x.moveTo(L, y); x.lineTo(Rr, y); x.stroke(); x.shadowBlur = 0;
+          if (L <= back + 0.5) { x.fillStyle = "#5be0a8"; x.beginPath(); x.arc(back - 3, y, 7, 0, 7); x.fill(); }
+          if (Rr >= front - 0.5) { x.fillStyle = "#5be0a8"; x.beginPath(); x.arc(front + 3, y, 7, 0, 7); x.fill(); }
+        }
+        x.fillStyle = "#5be0a8"; x.beginPath(); x.arc(w * 0.5, y + ch / 2 + 30, 6, 0, 7); x.fill();
+      },
+
+      // Space Expanding: a field of galaxies all running from each other,
+      // faster the farther apart they are, as the grid under them stretches.
+      expand(x, w, h, t, st) {
+        st.g ||= Array.from({ length: 140 }, () => [st.r() * 2 - 1, st.r() * 2 - 1, st.r()]);
+        x.fillStyle = "#0c0c10"; x.fillRect(0, 0, w, h);
+        const cyc = 10, el = (t % cyc) / cyc, a = 0.35 + el * 0.9, fade = el > 0.88 ? 1 - (el - 0.88) / 0.12 : el < 0.06 ? el / 0.06 : 1;
+        const cx = w / 2, cy = h / 2, S = Math.max(w, h) * 0.5 * a;
+        x.strokeStyle = `rgba(160,170,255,${0.08 * fade})`; x.lineWidth = 1;
+        for (let k = -8; k <= 8; k++) { const p = k / 4 * S; x.beginPath(); x.moveTo(cx + p, 0); x.lineTo(cx + p, h); x.moveTo(0, cy + p); x.lineTo(w, cy + p); x.stroke(); }
+        x.globalAlpha = fade;
+        for (const [gx, gy, m] of st.g) {
+          const px = cx + gx * S, py = cy + gy * S; if (px < -10 || px > w + 10 || py < -10 || py > h + 10) continue;
+          x.fillStyle = m > 0.85 ? "#ffd8a8" : "#c9d2ff"; x.beginPath(); x.ellipse(px, py, 1.2 + m * 2.4, 0.8 + m * 1.4, gx * 3, 0, 7); x.fill();
+        }
+        x.globalAlpha = 1;
+      },
+
+      // Climbing Media: the climbing photographs as a grid, one tile at a time
+      // turning over to a different picture.
+      mosaic(x, w, h, t, st) {
+        const cols = Math.max(3, Math.round(w / 170)), size = w / cols, rows = Math.ceil(h / size) + 1;
+        if (!st.tiles || st.tiles.length < cols * rows) st.tiles = Array.from({ length: cols * rows }, () => ({ a: pick(st.r, CLIMBS), b: pick(st.r, CLIMBS), at: -9 }));
+        if (Math.floor(t / 0.7) !== st.tick) { st.tick = Math.floor(t / 0.7); const T = pick(st.r, st.tiles); T.a = T.b; T.b = pick(st.r, CLIMBS); T.at = t; }
+        x.fillStyle = "#f4f0e6"; x.fillRect(0, 0, w, h);
+        const oy = (h - rows * size) / 2;
+        st.tiles.slice(0, cols * rows).forEach((T, i) => {
+          const px = (i % cols) * size, py = oy + Math.floor(i / cols) * size, f = Math.min(1, (t - T.at) / 0.6);
+          const sx = Math.abs(Math.cos(f * Math.PI)), src = f < 0.5 ? T.a : T.b, im = img(src); img(T.b);
+          x.save(); x.translate(px + size / 2, py + size / 2); x.scale(sx || 0.001, 1); x.beginPath(); x.rect(-size / 2 + 3, -size / 2 + 3, size - 6, size - 6); x.clip();
+          if (im) { x.translate(-size / 2 + 3, -size / 2 + 3); cover(x, im, size - 6, size - 6); } else { x.fillStyle = "#d9d3c4"; x.fillRect(-size / 2, -size / 2, size, size); }
+          x.restore();
+        });
+      },
+
+      // Climbing Stats: the hardest send of each year, bars growing up out of
+      // the logbook's own data.
+      grades(x, w, h, t, st) {
+        x.fillStyle = "#f4f0e6"; x.fillRect(0, 0, w, h);
+        const D = window.CLIMBING_DATA; if (!D) { script("projects/climbing/climbs-data.js").catch(() => {}); return; }
+        if (!st.years) {
+          const best = {};
+          for (const tr of D.trips || []) for (const r of tr.routes || []) {
+            if (r.outcome !== "sent" || r.gradeKind !== "rope" || r.unknown) continue;
+            const y = (tr.date || "").slice(0, 4); if (!best[y] || r.gradeRank > best[y].gradeRank) best[y] = r;
+          }
+          st.years = Object.keys(best).sort().slice(-6).map((y) => ({ y, g: best[y].grade, rank: best[y].gradeRank }));
+          st.t0 = t;
+        }
+        const Y = st.years; if (!Y.length) return;
+        const lo = Math.min(...Y.map((d) => d.rank)) - 6, hi = Math.max(...Y.map((d) => d.rank));
+        const pad = w * 0.1, bw = (w - pad * 2) / Y.length, base = h * 0.84, top = h * 0.2;
+        x.strokeStyle = "rgba(31,42,34,.18)"; x.beginPath(); x.moveTo(pad, base + 0.5); x.lineTo(w - pad, base + 0.5); x.stroke();
+        Y.forEach((d, i) => {
+          const f = Math.max(0, Math.min(1, (t - st.t0 - i * 0.25) / 1.2)), e = 1 - (1 - f) ** 3;
+          const bh = (base - top) * ((d.rank - lo) / (hi - lo || 1)) * e, bx = pad + i * bw + bw * 0.14;
+          x.fillStyle = d.rank === hi ? "#b4671f" : "#ddd5c0"; x.fillRect(bx, base - bh, bw * 0.72, bh);
+          x.textAlign = "center"; x.fillStyle = "#1f2a22"; x.globalAlpha = e;
+          x.font = font(Math.max(12, Math.min(20, bw * 0.2)), "serif", 600); x.fillText(d.g, bx + bw * 0.36, base - bh - 10);
+          x.fillStyle = "#57605a"; x.font = font(12, "mono", 500); x.fillText(d.y, bx + bw * 0.36, base + 20); x.globalAlpha = 1;
+        });
+        x.textAlign = "start";
+      },
+
+      // Training Calendar: a month of the plan filling in, day by day, each
+      // session ticking off as it lands.
+      calendar(x, w, h, t, st) {
+        const KINDS = [["#fc4c02", 0.34], ["#3a7bd5", 0.22], ["#7b52c7", 0.16], ["#2f9e6b", 0.12]];
+        st.days ||= Array.from({ length: 35 }, () => { const r = st.r(); let a = 0; for (const [c, p] of KINDS) { a += p; if (r < a) return c; } return null; });
+        x.fillStyle = "#ffffff"; x.fillRect(0, 0, w, h);
+        const cyc = 9, el = (t % cyc) / cyc, shown = Math.floor(el * 1.3 * 35);
+        const m = Math.max(16, w * 0.05), cw = (w - m * 2) / 7, chh = Math.min(cw * 0.78, (h - m * 2) / 5);
+        const oy = (h - chh * 5) / 2;
+        for (let i = 0; i < 35; i++) {
+          const cx = m + (i % 7) * cw, cy = oy + Math.floor(i / 7) * chh;
+          x.strokeStyle = "#e6e6ea"; x.strokeRect(cx + 0.5, cy + 0.5, cw - 1, chh - 1);
+          x.fillStyle = "#8c8c94"; x.font = font(11, "sans", 600); x.fillText(String(i + 1), cx + 6, cy + 15);
+          const c = st.days[i]; if (!c) continue;
+          x.fillStyle = c; x.globalAlpha = 0.16; x.fillRect(cx + 5, cy + chh * 0.5, cw - 10, chh * 0.32); x.globalAlpha = 1;
+          x.fillStyle = c; x.fillRect(cx + 5, cy + chh * 0.5, 3, chh * 0.32);
+          if (i < shown) { const f = Math.min(1, (shown - i) / 2); x.strokeStyle = c; x.lineWidth = 2; x.beginPath(); x.moveTo(cx + cw - 22, cy + 12); x.lineTo(cx + cw - 18 + 0 * f, cy + 16); x.lineTo(cx + cw - 18 + 8 * f, cy + 16 - 8 * f); x.stroke(); x.lineWidth = 1; }
+        }
+        const today = Math.min(34, shown); x.strokeStyle = "#fc4c02"; x.lineWidth = 2;
+        x.strokeRect(m + (today % 7) * cw + 1, oy + Math.floor(today / 7) * chh + 1, cw - 2, chh - 2); x.lineWidth = 1;
+      },
+
+      // Trips & Races: a made-up course profile drawn out to the finish, the
+      // distance counting up as the runner climbs it.
+      race(x, w, h, t, st) {
+        st.prof ||= smooth1(st.r, 0.18); st.dist ||= pick(st.r, [3.1, 13.1, 26.2]);
+        x.fillStyle = "#ffffff"; x.fillRect(0, 0, w, h);
+        const cyc = 8, el = Math.min(1, (t % cyc) / (cyc * 0.85)), m = w * 0.08, base = h * 0.78, top = h * 0.3;
+        const Y = (u) => base + (top - base) * (0.45 + 0.5 * st.prof(u * 1.1));
+        x.beginPath(); x.moveTo(m, base);
+        for (let i = 0; i <= 200; i++) { const u = i / 200; x.lineTo(m + u * (w - m * 2), Y(u)); }
+        x.lineTo(w - m, base); x.closePath(); x.fillStyle = "#f2f2f4"; x.fill();
+        x.save(); x.beginPath(); x.rect(0, 0, m + el * (w - m * 2), h); x.clip();
+        x.beginPath(); x.moveTo(m, base); for (let i = 0; i <= 200; i++) { const u = i / 200; x.lineTo(m + u * (w - m * 2), Y(u)); } x.lineTo(w - m, base); x.closePath();
+        x.fillStyle = "rgba(252,76,2,.14)"; x.fill();
+        x.beginPath(); for (let i = 0; i <= 200; i++) { const u = i / 200; i ? x.lineTo(m + u * (w - m * 2), Y(u)) : x.moveTo(m, Y(0)); }
+        x.strokeStyle = "#fc4c02"; x.lineWidth = 2.5; x.stroke(); x.restore();
+        const rx = m + el * (w - m * 2), ry = Y(el);
+        x.fillStyle = "#fc4c02"; x.beginPath(); x.arc(rx, ry, 6, 0, 7); x.fill();
+        x.strokeStyle = "#242428"; x.lineWidth = 2; x.beginPath(); x.moveTo(w - m, base); x.lineTo(w - m, top - 20); x.stroke();
+        for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) { x.fillStyle = (i + j) % 2 ? "#242428" : "#fff"; x.fillRect(w - m + i * 7, top - 20 + j * 7, 7, 7); }
+        // the distance rides above the runner, clear of the torn edges
+        const big = Math.round(Math.min(h * 0.11, w * 0.07)), lx = Math.min(rx, w - m - big * 2.6);
+        x.fillStyle = "#242428"; x.font = font(big, "sans", 800); x.fillText((st.dist * el).toFixed(1), lx, ry - 30);
+        x.fillStyle = "#5f5f66"; x.font = font(12, "sans", 700); x.fillText("MILES", lx, ry - 14);
+      },
+
+      // The Movie List: the whole catalogue as a wall, sorting itself — every
+      // few seconds the posters trade places, the way a filter rearranges them.
+      shelf(x, w, h, t, st) {
+        const pw = Math.max(58, Math.min(96, w / 9)), ph = pw * 1.5, gap = 6;
+        const cols = Math.ceil(w / (pw + gap)) + 1, rows = Math.ceil(h / (ph + gap)) + 1, N = cols * rows;
+        if (!st.list || st.list.length !== N) { st.list = Array.from({ length: N }, () => `assets/posters/${pick(st.r, POSTERS)}.jpg`); st.from = st.list.map((_, i) => i); st.to = st.from.slice(); }
+        const cyc = 3.2, k = Math.floor(t / cyc), el = Math.min(1, (t % cyc) / 1.1), e = el * el * (3 - 2 * el);
+        if (k !== st.k) { st.k = k; st.from = st.to; st.to = [...st.to].sort(() => st.r() - 0.5); }
+        x.fillStyle = "#0b0a08"; x.fillRect(0, 0, w, h);
+        const at = (i) => [(i % cols) * (pw + gap) - pw * 0.4, Math.floor(i / cols) * (ph + gap) - ph * 0.3];
+        st.list.forEach((src, i) => {
+          const [ax, ay] = at(st.from[i]), [bx, by] = at(st.to[i]), im = img(src);
+          const px = ax + (bx - ax) * e, py = ay + (by - ay) * e;
+          if (im) x.drawImage(im, px, py, pw, ph); else { x.fillStyle = "#1c1a15"; x.fillRect(px, py, pw, ph); }
+        });
+      },
+
+      // VALORANT: a round on a minimap that is nobody's real map — two sites,
+      // five red and five teal moving in, the spike going down.
+      val(x, w, h, t, st) {
+        if (!st.walls) {
+          st.walls = Array.from({ length: 16 }, () => [st.r(), st.r(), 0.06 + st.r() * 0.18, 0.04 + st.r() * 0.14]);
+          st.team = Array.from({ length: 10 }, (_, i) => ({ red: i < 5, p: smooth1(st.r, 0.7), q: smooth1(st.r, 0.7) }));
+        }
+        x.fillStyle = "#0f1923"; x.fillRect(0, 0, w, h);
+        const S = Math.min(w, h * 1.4), ox = (w - S) / 2, oy = (h - S / 1.4) / 2, sh = S / 1.4;
+        x.fillStyle = "#1b2733"; x.fillRect(ox, oy, S, sh);
+        x.fillStyle = "#0f1923"; for (const [a, b, c, d] of st.walls) x.fillRect(ox + a * S * 0.9, oy + b * sh * 0.9, c * S, d * sh);
+        const site = (u, v, L) => { x.strokeStyle = "rgba(255,70,85,.5)"; x.setLineDash([5, 4]); x.strokeRect(ox + u * S, oy + v * sh, S * 0.16, sh * 0.2); x.setLineDash([]); x.fillStyle = "rgba(236,232,225,.75)"; x.font = font(Math.round(sh * 0.07), "sans", 800); x.fillText(L, ox + u * S + 8, oy + v * sh + sh * 0.08); };
+        site(0.1, 0.12, "A"); site(0.72, 0.62, "B");
+        const cyc = 12, el = (t % cyc) / cyc;
+        for (const [i, p] of st.team.entries()) {
+          const goal = p.red ? [0.8, 0.72] : [0.18 + (i % 5) * 0.05, 0.85 - (i % 5) * 0.12];
+          const start = p.red ? [0.1 + (i % 5) * 0.04, 0.9] : [0.85, 0.1 + (i % 5) * 0.06];
+          const u = start[0] + (goal[0] - start[0]) * el + p.p(t + i) * 0.04, v = start[1] + (goal[1] - start[1]) * el + p.q(t * 1.3 + i) * 0.04;
+          const px = ox + u * S, py = oy + v * sh, col = p.red ? "#ff4655" : "#3ee6c4";
+          x.fillStyle = col; x.beginPath(); x.arc(px, py, Math.max(4, S * 0.011), 0, 7); x.fill();
+          x.strokeStyle = col; x.globalAlpha = 0.35; x.beginPath(); x.moveTo(px, py); const a = p.p(t * 2 + i) * 3; x.lineTo(px + Math.cos(a) * 18, py + Math.sin(a) * 18); x.stroke(); x.globalAlpha = 1;
+        }
+        if (el > 0.7) { const pulse = (t * 2) % 1; x.strokeStyle = `rgba(255,70,85,${1 - pulse})`; x.lineWidth = 2; x.beginPath(); x.arc(ox + 0.8 * S, oy + 0.72 * sh, 6 + pulse * 22, 0, 7); x.stroke(); x.lineWidth = 1; }
+      },
+
+      // The Log: transmissions, as a signal on a scope — quiet, then a burst
+      // every time something new goes out.
+      signal(x, w, h, t, st) {
+        st.n ||= smooth1(st.r, 0.05);
+        x.fillStyle = "#120e1a"; x.fillRect(0, 0, w, h);
+        x.strokeStyle = "rgba(211,123,255,.08)";
+        for (let gx = 0; gx < w; gx += 40) { x.beginPath(); x.moveTo(gx, 0); x.lineTo(gx, h); x.stroke(); }
+        for (let gy = h / 2 % 40; gy < h; gy += 40) { x.beginPath(); x.moveTo(0, gy); x.lineTo(w, gy); x.stroke(); }
+        const draw = (lag, a) => {
+          x.beginPath();
+          for (let px = 0; px <= w; px += 2) {
+            const u = px / w * 4 + t * 0.8 - lag, burst = Math.exp(-((((u % 2) + 2) % 2 - 1) ** 2) * 18);
+            const y = h / 2 + (st.n(u * 3) * 0.08 + Math.sin(u * 40) * burst * 0.32) * h;
+            px ? x.lineTo(px, y) : x.moveTo(px, y);
+          }
+          x.strokeStyle = `rgba(211,123,255,${a})`; x.stroke();
+        };
+        x.lineWidth = 1; draw(0.06, 0.25); x.lineWidth = 2; x.shadowColor = "#d37bff"; x.shadowBlur = 10; draw(0, 0.95); x.shadowBlur = 0; x.lineWidth = 1;
+      },
+
+      // The Shape of the Criteria: the two domains as rows on a four-point
+      // scale, each marker settling on an answer and moving on.
+      criteria(x, w, h, t, st) {
+        st.rows ||= Array.from({ length: 7 }, () => ({ p: smooth1(st.r, 2.2) }));
+        x.fillStyle = "#f4efe6"; x.fillRect(0, 0, w, h);
+        const m = w * 0.1, gap = (h * 0.72) / st.rows.length, oy = h * 0.14 + gap / 2;
+        st.rows.forEach((R, i) => {
+          const y = oy + i * gap, dom = i < 3;
+          if (i === 3) { x.strokeStyle = "rgba(176,48,42,.35)"; x.setLineDash([3, 4]); x.beginPath(); x.moveTo(m, y - gap / 2); x.lineTo(w - m, y - gap / 2); x.stroke(); x.setLineDash([]); }
+          x.strokeStyle = "rgba(28,26,23,.2)"; x.beginPath(); x.moveTo(m, y); x.lineTo(w - m, y); x.stroke();
+          for (let k = 0; k < 4; k++) { x.fillStyle = "rgba(28,26,23,.25)"; x.beginPath(); x.arc(m + k / 3 * (w - m * 2), y, 3, 0, 7); x.fill(); }
+          const v = Math.round(1.5 + R.p(t * 0.4 + i * 3) * 2.2), want = Math.max(0, Math.min(3, v));
+          R.at = R.at == null ? want : R.at + (want - R.at) * 0.08;
+          x.fillStyle = dom ? "#b0302a" : "#1c1a17"; x.beginPath(); x.arc(m + R.at / 3 * (w - m * 2), y, Math.max(6, gap * 0.18), 0, 7); x.fill();
+        });
+      },
+
+      // The Arcade: the four games' own covers going by on a carousel.
+      arcade(x, w, h, t, st) {
+        const G = ["offramp", "kondrite", "starfield", "farlight"];
+        st.o ||= [...G].sort(() => st.r() - 0.5);
+        x.fillStyle = "#000"; x.fillRect(0, 0, w, h);
+        const cw = Math.min(w * 0.62, h * 1.5), ch = cw / 1.6, gap = cw * 0.06, step = cw + gap, cy = (h - ch) / 2;
+        const cyc = 3.6, k = Math.floor(t / cyc), el = Math.min(1, (t % cyc) / 0.9), e = el * el * (3 - 2 * el);
+        for (let i = -2; i <= 2; i++) {
+          const src = `assets/games/${st.o[(((k + i) % 4) + 4) % 4]}.jpg`, im = img(src);
+          const cx = w / 2 + (i - e) * step - cw / 2, d = Math.abs(i - e);
+          x.globalAlpha = Math.max(0.25, 1 - d * 0.6);
+          if (im) { x.save(); x.beginPath(); x.rect(cx, cy, cw, ch); x.clip(); x.translate(cx, cy); cover(x, im, cw, ch); x.restore(); }
+          else { x.fillStyle = "#151515"; x.fillRect(cx, cy, cw, ch); }
+        }
+        x.globalAlpha = 1; x.strokeStyle = "#fff"; x.lineWidth = 2; x.strokeRect(w / 2 - cw / 2 - 1, cy - 1, cw + 2, ch + 2); x.lineWidth = 1;
+      },
+
+      // Exploration: the deck's star chart — orbits around a small sun, each
+      // module a body going round on its own clock.
+      orbits(x, w, h, t, st) {
+        st.b ||= Array.from({ length: 6 }, (_, i) => ({ r: 0.16 + i * 0.13, s: 0.6 / (1 + i * 0.7), a: st.r() * 7, z: 2 + st.r() * 4 }));
+        st.stars ||= Array.from({ length: 160 }, () => [st.r(), st.r(), st.r()]);
+        x.fillStyle = "#0a0716"; x.fillRect(0, 0, w, h);
+        for (const [a, b, c] of st.stars) { x.fillStyle = `rgba(239,234,255,${0.15 + c * 0.5 * (0.6 + 0.4 * Math.sin(t * 2 + c * 30))})`; x.fillRect(a * w, b * h, 1.2, 1.2); }
+        const cx = w * 0.5, cy = h * 0.55, R = Math.max(w, h) * 0.55;
+        x.save(); x.translate(cx, cy); x.scale(1, 0.42);
+        for (const o of st.b) { x.strokeStyle = "rgba(157,123,255,.28)"; x.beginPath(); x.arc(0, 0, o.r * R, 0, 7); x.stroke(); }
+        x.restore();
+        x.fillStyle = "#ffd8a8"; x.shadowColor = "#ffb86b"; x.shadowBlur = 30; x.beginPath(); x.arc(cx, cy, 9, 0, 7); x.fill(); x.shadowBlur = 0;
+        for (const o of st.b) { const a = o.a + t * o.s; x.fillStyle = "#c9b8ff"; x.shadowColor = "#9d7bff"; x.shadowBlur = 12; x.beginPath(); x.arc(cx + Math.cos(a) * o.r * R, cy + Math.sin(a) * o.r * R * 0.42, o.z, 0, 7); x.fill(); }
+        x.shadowBlur = 0;
+      },
+
+      // The Workbench: a blueprint being drafted — a part drawn line by line,
+      // dimensioned, then a new sheet.
+      blueprint(x, w, h, t, st) {
+        const cyc = 8, k = Math.floor(t / cyc), el = (t % cyc) / cyc;
+        if (st.k !== k) {
+          st.k = k; const r = rng((st.seed ??= Math.floor(st.r() * 1e9)) + k * 31);
+          st.parts = Array.from({ length: 4 + Math.floor(r() * 3) }, () => r() < 0.4 ? ["c", 0.2 + r() * 0.6, 0.25 + r() * 0.5, 0.05 + r() * 0.12] : ["r", 0.12 + r() * 0.5, 0.18 + r() * 0.45, 0.1 + r() * 0.3, 0.08 + r() * 0.25]);
+        }
+        x.fillStyle = "#123a6b"; x.fillRect(0, 0, w, h);
+        x.strokeStyle = "rgba(255,255,255,.06)"; for (let g = 0; g < Math.max(w, h); g += 18) { x.beginPath(); x.moveTo(g, 0); x.lineTo(g, h); x.moveTo(0, g); x.lineTo(w, g); x.stroke(); }
+        x.strokeStyle = "rgba(255,255,255,.13)"; for (let g = 0; g < Math.max(w, h); g += 90) { x.beginPath(); x.moveTo(g, 0); x.lineTo(g, h); x.moveTo(0, g); x.lineTo(w, g); x.stroke(); }
+        const fade = el > 0.9 ? 1 - (el - 0.9) * 10 : 1, n = st.parts.length;
+        x.strokeStyle = `rgba(255,255,255,${0.9 * fade})`; x.lineWidth = 1.5;
+        st.parts.forEach((p, i) => {
+          const f = Math.max(0, Math.min(1, el * 1.4 * n - i));
+          if (!f) return;
+          x.beginPath();
+          if (p[0] === "c") x.arc(p[1] * w, p[2] * h, p[3] * Math.min(w, h) * 2, 0, Math.PI * 2 * f);
+          else { const [, a, b, c, d] = p, L = (c * w + d * h) * 2 * f; let rem = L; const pts = [[a * w, b * h], [(a + c) * w, b * h], [(a + c) * w, (b + d) * h], [a * w, (b + d) * h], [a * w, b * h]]; x.moveTo(...pts[0]); for (let j = 1; j < 5 && rem > 0; j++) { const [x0, y0] = pts[j - 1], [x1, y1] = pts[j], s = Math.hypot(x1 - x0, y1 - y0), u = Math.min(1, rem / s); x.lineTo(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u); rem -= s; } }
+          x.stroke();
+          if (f === 1 && p[0] === "r") { x.strokeStyle = `rgba(255,210,63,${0.8 * fade})`; x.lineWidth = 1; const yy = (p[2] + p[4]) * h + 14; x.beginPath(); x.moveTo(p[1] * w, yy); x.lineTo((p[1] + p[3]) * w, yy); x.moveTo(p[1] * w, yy - 5); x.lineTo(p[1] * w, yy + 5); x.moveTo((p[1] + p[3]) * w, yy - 5); x.lineTo((p[1] + p[3]) * w, yy + 5); x.stroke(); x.strokeStyle = `rgba(255,255,255,${0.9 * fade})`; x.lineWidth = 1.5; }
+        });
+        x.lineWidth = 1;
+      },
+
+      // Psyche: an ink blot, mirrored down the fold, slowly changing shape —
+      // what do you see? Worked out on a small grid and drawn up smooth.
+      inkblot(x, w, h, t, st) {
+        st.n ||= noise2(st.r);
+        const S = 4, cw = Math.ceil(w / 2 / S), ch = Math.ceil(h / S), tt = t * 0.12;
+        const c = (st.c ||= document.createElement("canvas")); if (c.width !== cw * 2 || c.height !== ch) { c.width = cw * 2; c.height = ch; st.d = null; }
+        const g = c.getContext("2d"), d = (st.d ||= g.createImageData(cw * 2, ch));
+        for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) {
+          const u = i / cw, v = j / ch, dd = Math.hypot(u * 1.1, (v - 0.5) * 1.6);
+          const val = fbm(st.n, u * 3 + tt, v * 3 - tt * 0.6) - dd * 0.55;
+          const a = Math.max(0, Math.min(1, (val - 0.2) * 14)) * 255;
+          for (const k of [(j * cw * 2 + cw + i) * 4, (j * cw * 2 + cw - 1 - i) * 4]) { d.data[k] = 30; d.data[k + 1] = 24; d.data[k + 2] = 18; d.data[k + 3] = a; }
+        }
+        g.putImageData(d, 0, 0);
+        x.fillStyle = "#e9dcc0"; x.fillRect(0, 0, w, h);
+        x.imageSmoothingQuality = "high"; x.drawImage(c, 0, 0, cw * 2 * S, ch * S);
+      },
+
+      // Signal Lost: the 404, flickering through static.
+      lost(x, w, h, t, st) {
+        x.fillStyle = "#0a0a0a"; x.fillRect(0, 0, w, h);
+        st.noise ||= (() => { const c = document.createElement("canvas"); c.width = 160; c.height = 100; const g = c.getContext("2d"), d = g.createImageData(160, 100); for (let i = 0; i < d.data.length; i += 4) { const v = st.r() * 255; d.data[i] = v; d.data[i + 1] = v * 0.7; d.data[i + 2] = 0; d.data[i + 3] = 255; } g.putImageData(d, 0, 0); return c; })();
+        x.globalAlpha = 0.12; x.imageSmoothingEnabled = false; x.drawImage(st.noise, (t * 997) % 40 - 40, (t * 613) % 30 - 30, w + 80, h + 60); x.imageSmoothingEnabled = true; x.globalAlpha = 1;
+        const glitch = Math.sin(t * 7) > 0.92, sz = Math.round(Math.min(h * 0.4, w * 0.22));
+        x.font = font(sz, "mono", 700); x.textAlign = "center"; x.shadowColor = "rgba(255,176,0,.7)"; x.shadowBlur = 20;
+        if (glitch) { x.fillStyle = "rgba(255,60,0,.6)"; x.fillText("404", w / 2 - 6, h * 0.5 + sz * 0.35); }
+        x.fillStyle = "#ffb000"; x.globalAlpha = 0.75 + 0.25 * Math.sin(t * 13); x.fillText("404", w / 2 + (glitch ? 4 : 0), h * 0.5 + sz * 0.35);
+        x.globalAlpha = 1; x.shadowBlur = 0; x.textAlign = "start";
+        x.fillStyle = "rgba(0,0,0,.25)"; for (let y = 0; y < h; y += 3) x.fillRect(0, y, w, 1);
+        const bar = ((t * 0.25) % 1.3) * h; x.fillStyle = "rgba(255,176,0,.06)"; x.fillRect(0, bar - 30, w, 30);
+      },
+
+      // Mochi: the resident, walking in on his own frames, sitting a while,
+      // washing, and wandering off again.
+      mochi(x, w, h, t, st) {
+        const F = (n) => img(`assets/cat/relay-cat${n}.png`);
+        const walk = [F(""), F("-walk-2"), F("-walk-3")], sit = F("-sit"), groom = F("-groom"), loaf = F("-loaf");
+        x.fillStyle = "#f3ead9"; x.fillRect(0, 0, w, h);
+        const floor = h * 0.84; x.fillStyle = "#e6d8bf"; x.fillRect(0, floor, w, h - floor);
+        const cw = Math.min(w * 0.42, h * 1.05), chh = cw * (480 / 720), cyc = 14, el = t % cyc;
+        let frame, cx;
+        if (el < 3.5) { cx = -cw + (w / 2 + cw / 2) * (el / 3.5); frame = walk[Math.floor(t * 7) % 3]; }
+        else if (el < 6.5) { cx = w / 2 - cw / 2; frame = sit; }
+        else if (el < 9) { cx = w / 2 - cw / 2; frame = groom; }
+        else if (el < 10.5) { cx = w / 2 - cw / 2; frame = loaf; }
+        else { cx = w / 2 - cw / 2 + (w / 2 + cw) * ((el - 10.5) / 3.5); frame = walk[Math.floor(t * 7) % 3]; }
+        x.fillStyle = "rgba(60,40,20,.14)"; x.beginPath(); x.ellipse(cx + cw / 2, floor + 2, cw * 0.32, chh * 0.05, 0, 0, 7); x.fill();
+        if (frame) x.drawImage(frame, cx, floor - chh * 0.9, cw, chh);
+      },
+
+      // Trip modes: what the two switches do to a room — colour running and
+      // the page breathing. Worked out on a small grid and drawn up smooth.
+      trip(x, w, h, t, st) {
+        st.n ||= noise2(st.r);
+        const S = 8, cols = Math.ceil(w / S) + 1, rows = Math.ceil(h / S) + 1;
+        const c = (st.c ||= document.createElement("canvas")); if (c.width !== cols || c.height !== rows) { c.width = cols; c.height = rows; st.d = null; }
+        const g = c.getContext("2d"), d = (st.d ||= g.createImageData(cols, rows));
+        for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+          const v = fbm(st.n, i * 0.04 + Math.sin(t * 0.3) * 0.6, j * 0.04 + t * 0.15), H = (v * 540 + t * 40) % 360, L = 0.45 + v * 0.2;
+          const k = (j * cols + i) * 4, f = (n) => { const q = (n + H / 30) % 12, a = 0.85 * Math.min(L, 1 - L); return 255 * (L - a * Math.max(-1, Math.min(q - 3, 9 - q, 1))); };
+          d.data[k] = f(0); d.data[k + 1] = f(8); d.data[k + 2] = f(4); d.data[k + 3] = 255;
+        }
+        g.putImageData(d, 0, 0);
+        x.imageSmoothingQuality = "high"; x.drawImage(c, 0, 0, cols * S, rows * S);
+      },
     };
 
     // ─── the feed ────────────────────────────────────────
@@ -1041,7 +1521,7 @@
     function makePost(p) {
       const n = count++, side = n % 2 ? "left" : "right", seed = seedFor(n);
       const el = document.createElement("section");
-      el.className = "post"; el.dataset.skin = p.skin; el.dataset.side = side; el.id = n < POSTS.length ? p.id : `${p.id}-${n}`;
+      el.className = "post"; el.dataset.skin = p.skin; el.dataset.side = side; el.id = p.id;
       el.style.zIndex = String(90000 - n);
       el.setAttribute("aria-label", p.name);
       const media = p.media.video
@@ -1053,9 +1533,9 @@
             <h2 class="rv">${esc(p.name)}</h2>
             <p class="f-lede rv">${esc(p.lede)}</p>
             <ul class="f-facts rv">${p.facts.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
-            <a class="btn rv" href="${p.href}">${esc(p.btn)} <i></i></a>
+            <a class="btn rv" href="${p.href}"${p.act ? ` data-act="${p.act}"` : ""}>${esc(p.btn)} <i></i></a>
           </div>
-          <a class="f-rip cutbox" data-bleed="${side}" href="${p.href}" tabindex="-1" aria-label="Open ${esc(p.name)}">
+          <a class="f-rip cutbox" data-bleed="${side}" href="${p.href}"${p.act ? ` data-act="${p.act}"` : ""} tabindex="-1" aria-label="Open ${esc(p.name)}">
             <div class="cut"><div class="still" role="img" aria-label="${esc(p.alt)}">${media}</div><span class="peek">${esc(p.peek)}</span></div>
           </a>
         </div>
@@ -1133,28 +1613,35 @@
     const queue = () => { if (!STILL && !queued) { queued = true; requestAnimationFrame(move); } };
     addEventListener("scroll", queue, { passive: true }); addEventListener("resize", queue);
 
-    // ── rounds ──
-    // The first round opens on what is newest — the first tier in order, the
-    // rest shuffled within their tier. Every round after that is shuffled whole.
+    // ── the order ──
+    // Newest first: the first tier in its own order, the rest shuffled within
+    // their tier on every visit. Each room once, and then the feed ends.
     const shuffle = (a, r) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-    let round = 0;
-    function lay() {
-      const r = rng(seedFor(1000 + round));
-      const order = round === 0
-        ? [0, 1, 2].flatMap((tier) => (tier === 0 ? POSTS.filter((p) => p.tier === 0) : shuffle(POSTS.filter((p) => p.tier === tier), r)))
-        : shuffle(POSTS, r);
-      if (round > 0) {
-        const mark = document.createElement("div"); mark.className = "round-mark mono";
-        mark.innerHTML = `<span>That's every room</span><b>Round ${round + 1} — shuffled</b>`;
-        feed.appendChild(mark);
+    const order = rng(seedFor(1000));
+    [0, 1, 2].flatMap((tier) => (tier === 0 ? POSTS.filter((p) => p.tier === 0) : shuffle(POSTS.filter((p) => p.tier === tier), order))).forEach(makePost);
+    queue();
+    document.getElementById("room-count").textContent = `${POSTS.length} of them`;
+
+    // ── the posts that do something here instead of going somewhere ──
+    // Mochi wakes on this page, and the trip modes melt it: lsd, then
+    // shrooms, then off. Without effects.js the links still go to the terminal.
+    const TRIPS = ["lsd", "shrooms", null], TRIP_BTN = { lsd: "Slower, please", shrooms: "Turn it off", null: "Flip the switch" };
+    // a mode already on (it follows the visitor from room to room) says so
+    const tripBtn = document.querySelector('#modes .btn'), on = window.RELAY_EFFECTS?.current();
+    if (tripBtn && on) tripBtn.firstChild.textContent = `${TRIP_BTN[on]} `;
+    feed.addEventListener("click", (e) => {
+      const a = e.target.closest("[data-act]"); if (!a) return;
+      const btn = a.closest(".post").querySelector(".btn");
+      if (a.dataset.act === "mochi" && window.RELAY_CATS) {
+        e.preventDefault(); window.RELAY_CATS.enable();
+        btn.firstChild.textContent = "He's up — look around ";
+      } else if (a.dataset.act === "lsd" && window.RELAY_EFFECTS) {
+        e.preventDefault();
+        const next = TRIPS[(TRIPS.indexOf(window.RELAY_EFFECTS.current() ?? null) + 1) % TRIPS.length];
+        next ? window.RELAY_EFFECTS.set(next) : window.RELAY_EFFECTS.clear();
+        btn.firstChild.textContent = `${TRIP_BTN[next]} `;
       }
-      order.forEach(makePost);
-      round++;
-      queue();
-    }
-    lay();
-    const end = document.getElementById("feed-end");
-    new IntersectionObserver((list) => { if (list.some((e) => e.isIntersecting)) lay(); }, { rootMargin: "0px 0px 150% 0px" }).observe(end);
+    });
     // night and day change the hero's paper, not the rooms'; nothing to redraw
 
     // ─── the hero's torn foot ────────────────────────────
