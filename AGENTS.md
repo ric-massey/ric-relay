@@ -566,11 +566,17 @@ there too while it is in preview. Don't put it in `ROOMS`, `PROJECTS` or `latest
 
 **It shows off the pages, not Ric.** Ric's rule, same day: "it's my internet, but it's
 an internet" — family and friends use these rooms, so the front door sells the rooms.
-No personal photos: every cut and every tile in "Every room" is a **screenshot of the
-real page it opens**, taken by `assets/frontdoor/capture.mjs` (re-run it when a room
-changes how it looks). And the order is **newest, biggest and most fun first** — today
+What fills a rip is **the app working, not a picture of a
+page**: no screenshots with the room's own name and menus in them, and few words.
+Counter-Strike, KONDRITE and How Big Everything Is are short videos recorded straight off
+their own canvas by `assets/frontdoor/record.mjs`; Entertainment is a wall of its own
+posters; Climbing is a climbing photo; Training is Ric's latest run drawn live from the
+Worker's `/strava` — route on the left, three numbers beside it, no map tiles — and never
+committed (hard rule 1), with the mountain photo under it when there is no run. A video
+loads and plays only while its rip is on screen, and never under reduced motion. "Every
+room" keeps a screenshot of each room's first screen (`capture.mjs`). And the order is **newest, biggest and most fun first** — today
 Counter-Strike, KONDRITE, a rail of more games (`FEATURE`; a `play` item opens over the
-page in the player), Entertainment, How Big Everything Is, Climbing, then "Every room".
+page in the player), Entertainment, How Big Everything Is, Climbing, Training, then "Every room".
 When something bigger or newer ships, it moves to the top.
 
 **Each room is a `.feature`: the words on the paper, one rip beside them.** The paper
@@ -580,8 +586,9 @@ and a "Next" link to the following room; the rip runs off the screen's edge
 full width. Button and rip are one door — hovering either lights both. The rip is torn
 through a stack of paper sheets, each tearing differently, painted on a canvas per rip
 (`.rim`) and laid inside the clipped `.cut`; the tear must stay inside the cut's box (the
-`m` margin in `geometry()`). The picture (`.still`) is taller than the rip and slides
-against the scroll ("depth" in the script) — a transform on the picture, never on the
+`m` margin in `geometry()`). The picture (`.still`) is a little taller than the rip and
+slides with the screen ("depth" in the script): low on the screen it shows a little of
+its bottom, and as it rises the top comes into view — a transform on the picture, never on the
 `.cut`. Never put a `filter` or `transform` on a `.cut`, and keep anything laid over a
 cut *inside* it: Chromium paints a sibling that fades in over a clipped element outside
 the clip. Shadows in a rip are drawn on the canvas, never as a CSS or SVG blur. Night/day is a
