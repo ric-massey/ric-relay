@@ -576,7 +576,7 @@ hold), the posters from the Entertainment list, the photographs, a made-up run o
 made-up hills for Training, an **invented** map for ATLAS, the registry search typing
 itself, real aberration and Doppler for How Speed Affects Time, a Minkowski diagram,
 Apex's biggest banner number from `apex-data.js`, the terminal answering real commands,
-the hardest send of each year from `climbs-data.js`, Mochi on his own sprite frames,
+the hardest send of each year from `climbs-data.js`,
 an invented minimap for VALORANT, a Leviathan hull drafted along a scan line.
 **No real place is ever drawn**: Training's route and ATLAS's map are generated (hard
 rule 1). Few words inside any rip.
@@ -584,16 +584,15 @@ rule 1). Few words inside any rip.
 **It is a feed of everything, it ends, and no two visits are alike** (Ric, same day:
 "like an insta feed", "generated at random so every time you open the page it's a bit
 different", then "when there are no more rooms it should end"). `POSTS` lists every room
-and every thing in a room a visitor can use — 39 today: the rooms themselves, the
+and every thing in a room a visitor can use — 36 today: the rooms themselves, the
 projects, and the sub-pages that stand on their own (the Leviathan, the four spacetime
-chapters, climbing's media and stats, training's calendar and races, the movie list, the
-404) — each with a `tier`. Tier 0 (Counter-Strike, KONDRITE, the Boards) keeps its order,
+chapters, climbing's media and stats, training's calendar and races, the movie list) —
+each with a `tier`. Tier 0 (Counter-Strike, KONDRITE, the Boards) keeps its order,
 the other tiers are shuffled within themselves, each post appears once, and the page
 finishes on "That's every room." (`.fin`). Don't bring back the endless rounds. Every
-tear, seam and drawing is seeded from `VISIT`, a random number per page load. Two posts
-act on the page instead of leaving it (`act` in `POSTS`): Mochi's button wakes him here,
-and Trip Modes cycles `lsd` → `shrooms` → off through `RELAY_EFFECTS`; both still link
-to the terminal without `effects.js`. **Boards and ATLAS are in by Ric's word** — the earlier rule that
+tear, seam and drawing is seeded from `VISIT`, a random number per page load.
+Mochi, the 404 page and the trip modes stay off it (Ric, 2026-10-16) — they are
+surprises for the rooms, not posts. **Boards and ATLAS are in by Ric's word** — the earlier rule that
 kept them off the front door is lifted here (ATLAS's post is a door to the sign-in; the
 map behind it is untouched). HERMISCUS and the private tools (admin, visitors, account)
 stay out (Ric, 2026-10-16: "Hermiscus can stay out"), and so do Climbing's add pages and
