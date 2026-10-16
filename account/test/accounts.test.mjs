@@ -191,7 +191,7 @@ function harness({ session = null, rpc = {}, now = 1_700_000_000_000, answers = 
     await new Promise((r) => setTimeout(r, 0));
     await new Promise((r) => setTimeout(r, 0));
   };
-  return { admin: sandbox.window.KondriteAdmin, root, calls, store, all, click, html };
+  return { admin: sandbox.window.KondriteAdmin, sandbox, root, calls, store, all, click, html };
 }
 
 const LIVE = { access: 'a1', refresh: 'r1', userId: 'ric', email: 'r@x', name: 'ric', expires: 1_700_000_000_000 + 60_000 };
@@ -270,6 +270,36 @@ test('search narrows by name or email and says how many', async () => {
   assert.equal(h.root.kids['kd-count'].textContent, '1 of 2');
   h.admin.filter('nobody');
   assert.match(h.root.kids['kd-list'].innerHTML, /no pilot matches/);
+});
+
+test('each pilot is one closed row showing name and email, and opens for the rest', async () => {
+  const h = harness({ session: LIVE, rpc: { '/rest/v1/rpc/admin_pilots': [200, [pilot({ has_save: true, save_seed: 42 }), pilot({ user_id: 'u2', name: 'Comet' })]] } });
+  await h.admin.mount(h.root);
+  const rows = h.root.kids['kd-list'].innerHTML.split('<details').slice(1);
+  assert.equal(rows.length, 2);
+  for (const r of rows) {
+    assert.ok(!/^[^>]*\bopen\b/.test(r), 'a pilot row starts open');
+    const summary = r.match(/<summary>([\s\S]*?)<\/summary>/)[1];
+    assert.match(summary, /class="who"/);
+    assert.match(summary, /p@x/);
+    assert.ok(!/data-kd=|sector/.test(summary), 'details or buttons leaked into the collapsed row');
+  }
+  assert.match(rows[0].split('</summary>')[1], /sector 42/);
+});
+
+test('a row Ric opened stays open when the list redraws', async () => {
+  const h = harness({ session: LIVE, rpc: { '/rest/v1/rpc/admin_pilots': [200, [pilot(), pilot({ user_id: 'u2' })]] } });
+  h.sandbox.window.SiteRows = { openRows: new Set(['kd:u2']) };
+  await h.admin.mount(h.root);
+  assert.match(h.root.kids['kd-list'].innerHTML, /data-row="kd:u2" data-pilot="u2" open>/);
+  assert.match(h.root.kids['kd-list'].innerHTML, /data-row="kd:u1" data-pilot="u1">/);
+});
+
+test('the site list is rows too, and pending requests start open', () => {
+  const src = read('account/account.js');
+  assert.match(src, /<details class="person" data-row="\$\{esc\(key\)\}"\$\{open \? ' open' : ''\}>/);
+  assert.match(src, /const open = openRows\.has\(key\) \|\| \(pending && !closedRows\.has\(key\)\);/);
+  assert.match(read('account/index.html'), /\.person > summary \{[^}]*min-height:44px/, 'row tap target under 44px');
 });
 
 test('filtering before the panel is mounted does not throw', () => {

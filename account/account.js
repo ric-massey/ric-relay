@@ -97,16 +97,36 @@
         <span>${esc(p.label)}</span></label>`).join('')}</div>`;
   }
 
+  const day = (t) => (t ? new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'never');
+
+  // Which rows Ric has opened or shut, so a redraw after a button keeps them.
+  // kondrite.js reads the same set for its pilots.
+  const openRows = new Set();
+  const closedRows = new Set();
+  document.addEventListener('toggle', (e) => {
+    const row = e.target.closest && e.target.closest('details[data-row]');
+    if (!row) return;
+    (row.open ? openRows : closedRows).add(row.dataset.row);
+    (row.open ? closedRows : openRows).delete(row.dataset.row);
+  }, true);
+  window.SiteRows = { openRows };
+
+  // One row each; click it for the details and the buttons. Pending requests
+  // start open, because they are waiting on Ric.
   function personCard(p, pending) {
-    const when = new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const tag = p.is_admin ? '<span class="tag">admin</span>'
       : p.status === 'approved' ? '' : `<span class="tag ${esc(p.status)}">${esc(p.status)}</span>`;
     // Pending ticks what they have plus what they asked for, so approving adds.
     const checked = pending ? [...new Set([...p.pages, ...p.requested])] : p.pages;
-    const has = p.pages.length ? ` · has ${esc(p.pages.map(labelOf).join(', '))}` : '';
-    return `<div class="person" data-person="${esc(p.user_id)}">
-      <div class="who">${esc(p.name || p.username || p.email)}${tag}</div>
-      <div class="meta">${esc(p.email)} · joined ${esc(when)}${pending ? has : ''}${pending && p.requested.length ? ` · asked for ${esc(p.requested.map(labelOf).join(', '))}` : ''}</div>
+    const key = 'site:' + p.user_id;
+    const open = openRows.has(key) || (pending && !closedRows.has(key));
+    const has = p.pages.length ? `has ${p.pages.map(labelOf).join(', ')}` : 'has no pages';
+    const asked = p.requested.length ? ` · asked for ${p.requested.map(labelOf).join(', ')}` : '';
+    return `<details class="person" data-row="${esc(key)}"${open ? ' open' : ''}>
+      <summary><span class="who">${esc(p.name || p.username || p.email)}${tag}</span>
+        <span class="peek">${esc(p.email)}</span></summary>
+      <div class="meta">${p.username ? `username @${esc(p.username)} · ` : ''}joined ${esc(day(p.created_at))} · last in ${esc(day(p.last_sign_in_at))}</div>
+      <div class="meta">${esc(has + asked)}</div>
       ${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}
       ${p.is_admin ? '' : `${pageChecks(p.user_id, checked)}
       <div class="row">
@@ -116,7 +136,7 @@
           : `<button type="button" class="ghost" data-act="save" data-user="${esc(p.user_id)}">save access</button>
              ${p.status === 'denied' ? '' : `<button type="button" class="danger" data-act="deny" data-user="${esc(p.user_id)}">remove</button>`}`}
       </div>`}
-    </div>`;
+    </details>`;
   }
 
   // One search box over both lists: the site's people here, KONDRITE's pilots in kondrite.js.

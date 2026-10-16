@@ -54,8 +54,17 @@
     ul.pages { list-style:none; margin:0; padding:0; }
     ul.pages li { border-top:1px solid var(--faint); padding:12px 0; font-size:13px; }
     ul.pages a { display:inline-block; padding:6px 0; }
-    .person { border-top:1px solid var(--faint); padding:14px 0; }
+    /* One row per account; the row opens for details and buttons. */
+    .person { border-top:1px solid var(--faint); }
     .person:first-of-type { border-top:0; }
+    .person > summary { list-style:none; cursor:pointer; min-height:44px; padding:12px 28px 12px 0; position:relative; }
+    .person > summary::-webkit-details-marker { display:none; }
+    .person > summary::after { content:"+"; position:absolute; right:6px; top:12px; color:var(--dim); }
+    .person[open] > summary::after { content:"−"; }
+    .person > summary:hover .who { text-decoration:underline; }
+    .person > summary:focus-visible { outline:2px solid var(--phosphor); outline-offset:2px; }
+    .person .peek { display:block; font-size:12px; color:var(--dim); margin-top:3px; overflow-wrap:anywhere; }
+    .person[open] { padding-bottom:16px; }
     .person .who { font-size:14px; color:var(--phosphor); overflow-wrap:anywhere; }
     .person .meta { font-size:12px; color:var(--dim); margin:4px 0 0; overflow-wrap:anywhere; }
     .person .note { font-size:12px; color:var(--dim); margin:8px 0 0; white-space:pre-wrap; border-left:2px solid var(--faint); padding-left:10px; }

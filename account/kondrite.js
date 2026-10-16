@@ -117,9 +117,12 @@
       ? `save: sector ${esc(p.save_seed)} · ${esc(Math.ceil(p.save_bytes / 1024))} KB · synced ${esc(day(p.save_updated_at))}`
       : 'no cloud save';
     const id = esc(p.user_id);
-    return `<div class="person" data-pilot="${id}">
-      <div class="who">${esc(p.name || '(no name)')}${tags}</div>
-      <div class="meta">${esc(p.email)} · joined ${esc(day(p.created_at))} · last in ${esc(day(p.last_sign_in_at))}</div>
+    // A row that opens, like the site's people; account.js remembers which.
+    const open = !!(window.SiteRows && window.SiteRows.openRows.has('kd:' + p.user_id));
+    return `<details class="person" data-row="kd:${id}" data-pilot="${id}"${open ? ' open' : ''}>
+      <summary><span class="who">${esc(p.name || '(no name)')}${tags}</span>
+        <span class="peek">${esc(p.email)}</span></summary>
+      <div class="meta">joined ${esc(day(p.created_at))} · last in ${esc(day(p.last_sign_in_at))}</div>
       <div class="meta">${save}</div>
       <div class="meta">${best.length ? esc(best.join(' · ')) : 'nothing on the boards'}${p.reports ? ` · ${esc(p.reports)} report${p.reports === 1 ? '' : 's'} about them` : ''}</div>
       ${p.board_name || !p.name ? '' : '<div class="meta">name not on the boards yet</div>'}
@@ -135,7 +138,7 @@
           : `<button type="button" class="danger" data-kd="ban" data-user="${id}">ban</button>`}
         ${p.is_admin ? '' : `<button type="button" class="danger" data-kd="delete" data-user="${id}">delete</button>`}
       </div>
-    </div>`;
+    </details>`;
   }
 
   const matches = (p) => !filter || [p.name, p.board_name, p.email].some((s) => String(s || '').toLowerCase().includes(filter));
