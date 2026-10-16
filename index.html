@@ -1006,7 +1006,12 @@
       const project = projectLookup.get(normalizeTarget(arg));
       const directProject = projectLookup.get(normalizeTarget(verb));
 
-      if ((verb === "open" || verb === "cd") && PAGES[pageArg]) {
+      // `front door` reloads this page from the top, fresh — for looking the
+      // redesign over again. Spaces, dashes or none: all three are the same door.
+      if (/^front[\s_-]*door$/i.test(normalizedRaw)) {
+        print("walking back out to the front door ...");
+        setTimeout(() => (location.href = "index.html"), 400);
+      } else if ((verb === "open" || verb === "cd") && PAGES[pageArg]) {
         print(`entering /${pageArg} ...`);
         setTimeout(() => (location.href = PAGES[pageArg]), 400);
       } else if (verb === "open" && project) {
@@ -1113,6 +1118,8 @@
         text: `${r.name} ${r.desc} ${SEARCH_WORDS[r.name] || ""}`.toLowerCase(),
         desc: r.desc, unlisted: !r.listed,
       })),
+      { key: "front door", title: "front door", kind: "room", href: "index.html",
+        text: "front door frontdoor front-door home start", desc: "this page again, from the top" },
     ];
     // the things worth a stranger's first click come first among equals
     const BOOST = { kondrite: 3, highway: 2, starfield: 1, scale: 2, studies: 1, siege: 1 };
