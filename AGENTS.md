@@ -560,9 +560,8 @@ moved it back out the same day: the terminal is home again, and the redesign liv
 `frontdoor.html`, unlisted and `noindex`, reached by its URL or by typing `front door`
 in the terminal. It does not run the terminal: the bar carries an amber **Terminal**
 button (the terminal screen's own `#ffb000`) that opens `index.html`, and `/` from
-anywhere on the page does the same — Ric asked for exactly that on 2026-10-16. It keeps
-its own copy of `ROOMS` for "Every room"; a room added to `index.html` must be added
-there too while it is in preview. Don't put it in `ROOMS`, `PROJECTS` or `latest.js`.
+anywhere on the page does the same — Ric asked for exactly that on 2026-10-16. Don't
+put it in `ROOMS`, `PROJECTS` or `latest.js`.
 
 **It shows off the pages, not Ric.** Ric's rule, same day: "it's my internet, but it's
 an internet" — family and friends use these rooms, so the front door sells the rooms.
@@ -572,18 +571,26 @@ Counter-Strike, KONDRITE and How Big Everything Is are short videos recorded str
 their own canvas by `assets/frontdoor/record.mjs`; Entertainment is a wall of its own
 posters; Climbing is a climbing photo; Training is Ric's latest run drawn live from the
 Worker's `/strava` — route on the left, three numbers beside it, no map tiles — and never
-committed (hard rule 1), with the mountain photo under it when there is no run. A video
-loads and plays only while its rip is on screen, and never under reduced motion. "Every
-room" keeps a screenshot of each room's first screen (`capture.mjs`). And the order is **newest, biggest and most fun first** — today
-Counter-Strike, KONDRITE, a rail of more games (`FEATURE`; a `play` item opens over the
-page in the player), Entertainment, How Big Everything Is, Climbing, Training, then "Every room".
-When something bigger or newer ships, it moves to the top.
+committed (hard rule 1), with the mountain photo under it when there is no run. Interstate 40, Starfield and FARLIGHT use the
+Arcade's own clips (`assets/games/`); Captures is a mosaic of its photographs; Orrin and
+Mind are drawn live (`ART` in the script — a web of nodes passing signals, a mood line).
+A video loads and plays only while its rip is on screen, and nothing moves under reduced
+motion.
+
+**It is a feed, and it does not end** (Ric, 2026-10-16: "like an insta feed … infinite
+scrolling"). The rooms run newest, biggest and most fun first — today Counter-Strike,
+KONDRITE, Entertainment, How Big Everything Is, Climbing, Training, Interstate 40, Orrin,
+Captures, Starfield, Mind, FARLIGHT, Siege Conductor — and when the last one comes near,
+the script lays them all down again from the top (`POSTS`, captured before any rip is
+drawn), numbered on, sides still alternating, under a "Round 2 — from the top" mark.
+There is no directory and no footer: a feed has no bottom. When something bigger or
+newer ships, it goes to the top of the feed.
 
 **Each room is a `.feature`: the words on the paper, one rip beside them.** The paper
 side carries a big outline number, the name, a sentence, three facts, a solid button
 and a "Next" link to the following room; the rip runs off the screen's edge
-(`data-bleed`), alternating sides, and on a phone each room is a row in a feed — a 200px torn strip, then the name, two
-lines and a button, two or three rooms to a screen. Every rip is a **wedge**: full
+(`data-bleed`), alternating sides, and on a phone each room is a post in the feed — the name, two lines and a button on
+top, then a 200px torn strip — two or three rooms to a screen. Every rip is a **wedge**: full
 height where it meets the screen's edge, closing in toward the words. Button and rip are one door — hovering either lights both. The rip is torn
 through a stack of paper sheets, each tearing differently, painted on a canvas per rip
 (`.rim`) and laid inside the clipped `.cut`; the tear must stay inside the cut's box (the

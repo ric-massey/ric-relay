@@ -156,6 +156,11 @@
     .cut.near .still { background-image: var(--img); }
     .cut .still video, .cut .still canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; background: #07090c; }
     .cut .still canvas[hidden] { display: none; }
+    .cut .still.icon { background-size: auto 46%; background-position: 50% 50%; background-color: #17122b; }
+    /* where the feed starts over */
+    .round-mark { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: clamp(80px, 12vh, 140px) var(--gutter) 0; color: var(--muted); text-align: center; }
+    .round-mark b { color: var(--ink); font-weight: 600; letter-spacing: .16em; }
+    .round-mark::before { content: ""; width: 1px; height: 46px; background: linear-gradient(transparent, var(--hair-strong)); }
     .cut .rim { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: no-repeat 0 0 / 100% 100%; }
     /* the tag that says the rip is a door — always there, not only on hover */
     .peek {
@@ -210,77 +215,9 @@
     .sec { padding: clamp(96px, 16vh, 180px) 0 0; }
     #play { padding-top: clamp(14px, 2vw, 28px); }
     #more { padding-top: clamp(80px, 12vh, 140px); }
-    .sec-head { max-width: 1400px; margin: 0 auto clamp(28px, 4vh, 44px); padding: 0 var(--gutter); display: flex; align-items: end; justify-content: space-between; gap: 24px; }
     .eyebrow { display: flex; align-items: center; gap: 12px; color: var(--muted); margin-bottom: 16px; }
     .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--c, var(--violet)); }
     h2 { font: 600 clamp(32px, 4.4vw, 60px)/1 var(--display); letter-spacing: -.045em; }
-    .sec-head p { color: var(--muted); max-width: 40ch; margin-top: 14px; font-size: 17px; }
-
-    /* ─── things to play, a rail ─── */
-    .rail-nav { display: flex; gap: 8px; flex: none; }
-    .rail-nav button { width: 46px; height: 46px; border: 1px solid var(--hair); background: var(--field); cursor: pointer; display: grid; place-items: center; transition: border-color .2s, opacity .2s; }
-    .rail-nav button:hover { border-color: var(--ink); }
-    .rail-nav button:disabled { opacity: .35; cursor: default; border-color: var(--hair); }
-    .rail-nav svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; }
-    .rail {
-      display: flex; gap: 16px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory;
-      padding: 0 var(--gutter) 6px; scroll-padding: 0 var(--gutter); scrollbar-width: none;
-    }
-    .rail::-webkit-scrollbar { display: none; }
-    .rail::after { content: ""; flex: 0 0 1px; }
-    .card {
-      position: relative; flex: 0 0 clamp(280px, 31vw, 470px); aspect-ratio: 4 / 3; scroll-snap-align: start;
-      border: 0; padding: 0; cursor: pointer; text-align: left; color: #fff; background: #0d0e10; overflow: hidden;
-      clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 0 100%);
-    }
-    .card video, .card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 1.1s var(--ease); }
-    .card img.contain { object-fit: contain; padding: 18%; background: radial-gradient(circle at 50% 42%, #2a2240, #0d0e10 70%); }
-    .card:hover video, .card:hover img { transform: scale(1.045); }
-    .card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,.1) 48%, rgba(0,0,0,0) 70%); }
-    .card .cap { position: absolute; z-index: 2; left: 22px; right: 22px; bottom: 20px; display: flex; align-items: end; justify-content: space-between; gap: 16px; }
-    .card .cap b { display: block; font: 600 22px/1.15 var(--display); letter-spacing: -.02em; }
-    .card .cap span { display: block; margin-top: 5px; font-size: 13.5px; color: rgba(255,255,255,.82); }
-    .card .cap i { display: block; width: 3px; height: 18px; background: var(--c); margin-bottom: 12px; }
-    .card .go { flex: none; display: flex; align-items: center; gap: 8px; color: #0d0e10; background: #fff; padding: 8px 14px 8px 12px; font: 600 12px var(--sans); letter-spacing: .1em; transition: background-color .25s, color .25s; }
-    .card .go::before { content: ""; border-left: 7px solid currentColor; border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent; }
-    .card:hover .go { background: var(--c); color: #fff; }
-
-    /* the player: a game opens over the page, the page waits underneath */
-    .player { position: fixed; inset: 0; z-index: 200; display: none; place-items: center; background: rgba(4,5,7,.86); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
-    .player.open { display: grid; }
-    .player .frame { width: min(1360px, 94vw); height: min(860px, 88vh); display: flex; flex-direction: column; background: #000; box-shadow: 0 40px 120px rgba(0,0,0,.6); }
-    .player .ctl { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 18px; background: #0d0e10; color: #fff; }
-    .player .ctl b { margin-right: auto; font: 600 14px var(--sans); letter-spacing: .02em; }
-    .player .ctl a, .player .ctl button { background: #fff; color: #0d0e10; border: 0; font: 600 12px var(--sans); letter-spacing: .1em; padding: 8px 12px; cursor: pointer; text-decoration: none; }
-    .player iframe { flex: 1; width: 100%; border: 0; display: block; background: #000; }
-
-    /* ─── every room, the directory. Rendered from ROOMS. ─── */
-    #dir { max-width: 1400px; margin: 0 auto; padding: 0 var(--gutter); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 22px; }
-    a.entry { display: block; text-decoration: none; color: var(--ink); }
-    a.entry .thumb { position: relative; display: block; aspect-ratio: 16 / 10; overflow: hidden; background: var(--tile);
-      clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%); }
-    a.entry .thumb img, a.entry .thumb .art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 1s var(--ease); }
-    a.entry:hover .thumb img, a.entry:hover .thumb .art, a.entry:focus-visible .thumb img { transform: scale(1.05); }
-    a.entry .meta { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 16px; padding-top: 16px; border-top: 2px solid transparent; }
-    a.entry .dirname { font: 600 21px var(--display); letter-spacing: -.02em; text-transform: capitalize; }
-    a.entry .desc { grid-column: 1; font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    a.entry .arr { grid-row: 1; grid-column: 2; color: var(--muted); transition: transform .35s var(--ease), color .2s; }
-    a.entry:hover .arr { transform: translateX(4px); color: var(--hue); }
-    a.entry:hover .dirname { color: var(--ink); }
-    a.entry:focus-visible { outline-offset: 6px; }
-    .dir-more { max-width: 1400px; margin: 44px auto 0; padding: 0 var(--gutter); color: var(--muted); font-size: 15px; }
-    .dir-more a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--muted); }
-    .dir-more a:hover { border-bottom-color: var(--ink); }
-
-    /* ─── footer ─── */
-    .foot { margin-top: clamp(110px, 18vh, 200px); padding: 0 var(--gutter) 36px; }
-    .foot-in { max-width: 1400px; margin: 0 auto; border-top: 1px solid var(--hair); padding-top: 40px; display: flex; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
-    .foot-brand .brand { font-size: 14px; }
-    .foot-brand p { margin-top: 14px; color: var(--muted); max-width: 34ch; }
-    .foot-links { display: grid; grid-template-columns: repeat(2, auto); gap: 10px 48px; align-content: start; }
-    .foot-links a { text-decoration: none; color: var(--muted); transition: color .2s; }
-    .foot-links a:hover { color: var(--ink); }
-    .foot-base { max-width: 1400px; margin: 48px auto 0; display: flex; justify-content: space-between; gap: 16px; color: var(--muted); }
 
     /* ─── arriving ─── things fade up the first time they come on screen.
        Only ever on copy and tiles — never on a cut or a slice (see above). */
@@ -299,7 +236,8 @@
          them on one screen, so there is always another one coming up. */
       .feature { padding-top: 36px; }
       .feature .row, .feature[data-side="left"] .row { grid-template-columns: 1fr; gap: 14px; }
-      .f-copy, .feature[data-side="left"] .f-copy { order: 2; padding: 0 var(--gutter); }
+      .f-copy, .feature[data-side="left"] .f-copy { order: 0; padding: 0 var(--gutter); }
+      .f-rip { order: 1; }
       .f-rip { height: 200px; min-height: 0; }
       .peek { bottom: 28px; padding: 7px 11px; font-size: 11px; }
       [data-bleed="right"] .peek { right: 18px; } [data-bleed="left"] .peek { left: 18px; }
@@ -310,7 +248,6 @@
       .f-copy > .btn { margin-top: 14px; padding: 11px 16px 11px 15px; font-size: 14px; }
       .sec { padding-top: 64px; }
       .scroll-cue { margin-top: 18px; }
-      #dir { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 760px) {
       .bar { height: 60px; gap: 10px; }
@@ -324,24 +261,9 @@
       .latest-relay .latest-meta { display: none; }
       .cut .still { background-position: var(--pos-m, 50% 0%); }
       .cut.near .still { background-image: var(--img-m, var(--img)); }
-      .sec-head { align-items: start; flex-direction: column; }
-      .rail-nav { display: none; }
-      .card { flex-basis: 72vw; aspect-ratio: 16 / 11; }
-      .card .cap { left: 14px; right: 14px; bottom: 12px; }
-      .card .cap b { font-size: 17px; }
-      .card .cap span { display: none; }
       .f-lede { font-size: 16px; }
       .f-facts li { font-size: 11px; padding-right: 12px; margin-right: 12px; }
       .f-next { margin-top: 36px; }
-      /* on a phone the directory is a list: a picture, a name, a line */
-      #dir { grid-template-columns: 1fr; gap: 0; }
-      a.entry { display: grid; grid-template-columns: 84px 1fr; gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--hair); }
-      a.entry:last-child { border-bottom: 1px solid var(--hair); }
-      a.entry .thumb { aspect-ratio: 1; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
-      a.entry .meta { padding-top: 0; }
-      a.entry .dirname { font-size: 18px; }
-      .player .frame { width: 100vw; height: 100vh; height: 100dvh; }
-      .foot-base { flex-direction: column; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; transition-delay: 0s !important; }
@@ -386,7 +308,7 @@
         </div>
         <div class="rv" style="--d:.3s">
           <p class="lede">Games to play with your friends, every match of Counter-Strike replayed, what to watch tonight, and the universe to scale. <b>Built by hand — come in and click around.</b></p>
-          <a class="scroll-cue mono" href="#f1"><i></i>Six rooms below, newest first</a>
+          <a class="scroll-cue mono" href="#f1"><i></i>Newest first — keep scrolling</a>
         </div>
       </div>
     </section>
@@ -424,7 +346,7 @@
           <p class="f-lede rv">A space game that runs right here. Up to five ships in one sky — co-op survival or a battle royale. Send a friend the link and fly together.</p>
           <ul class="f-facts rv"><li>Up to 5 players</li><li>Co-op or royale</li><li>No install</li></ul>
           <a class="btn rv" href="projects/kondrite/index.html">Play KONDRITE <i></i></a>
-          <div><a class="f-next mono rv" href="#more-play"><i></i>Next <b>More to play</b></a></div>
+          <div><a class="f-next mono rv" href="#f3"><i></i>Next <b>Entertainment</b></a></div>
         </div>
         <a class="f-rip cutbox" data-cut data-bleed="left" href="projects/kondrite/index.html" tabindex="-1" aria-label="Play KONDRITE">
           <div class="cut">
@@ -433,21 +355,6 @@
           </div>
         </a>
       </div>
-    </section>
-
-    <section class="sec" id="more-play" aria-labelledby="play-h" style="--c: var(--violet)">
-      <div class="sec-head">
-        <div class="rv">
-          <div class="eyebrow mono">More to play</div>
-          <h2 id="play-h">Every one runs right here.</h2>
-          <p>Press play and it opens over this page.</p>
-        </div>
-        <div class="rail-nav">
-          <button type="button" id="prev" aria-label="Previous"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg></button>
-          <button type="button" id="next" aria-label="Next"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg></button>
-        </div>
-      </div>
-      <div class="rail" id="rail" aria-label="Things to play"></div>
     </section>
 
     <section class="feature" id="f3" data-side="right" style="--c: var(--magenta)" aria-labelledby="f3-h">
@@ -519,7 +426,7 @@
           <p class="f-lede rv">Every run lands here the moment the watch syncs, and ticks off its day in a 52-week plan. That's the latest one, drawn live.</p>
           <ul class="f-facts rv"><li>Every run</li><li>52-week plan</li><li>Live from the watch</li></ul>
           <a class="btn rv" href="training.html">See the training log <i></i></a>
-          <div><a class="f-next mono rv" href="#every-room"><i></i>Next <b>Every room</b></a></div>
+          <div><a class="f-next mono rv" href="#f7"><i></i>Next <b>Interstate 40</b></a></div>
         </div>
         <a class="f-rip cutbox" data-cut data-bleed="left" href="training.html" tabindex="-1" aria-label="Open Training">
           <div class="cut">
@@ -534,48 +441,148 @@
       </div>
     </section>
 
-    <section class="sec" id="every-room" aria-labelledby="dir-h" style="--c: var(--magenta)">
-      <div class="sec-head">
-        <div class="rv">
-          <div class="eyebrow mono">Everything</div>
-          <h2 id="dir-h">Every room.</h2>
+    <section class="feature" id="f7" data-side="right" style="--c: var(--magenta)" aria-labelledby="f7-h">
+      <div class="row">
+        <div class="f-copy">
+          <span class="f-num rv" aria-hidden="true">07</span>
+          <div class="f-tag mono rv">Gaming · plays in the browser</div>
+          <h2 id="f7-h" class="rv">Interstate 40</h2>
+          <p class="f-lede rv">Drive the real I-40 from above, exit to exit, with traffic that has places to be.</p>
+          <ul class="f-facts rv"><li>The real road</li><li>Exit to exit</li><li>Live traffic</li></ul>
+          <a class="btn rv" href="projects/offramp/index.html">Take the wheel <i></i></a>
+          <div><a class="f-next mono rv" href="#f8"><i></i>Next <b>Orrin</b></a></div>
         </div>
-      </div>
-      <!-- Deliberately empty: the entries are rendered from the ROOMS array in
-           the script below. /apex, /cs, /val, /log and /map are left off on
-           purpose (`listed: false`), as they are on the terminal. -->
-      <nav id="dir" aria-label="Site directory"></nav>
-      <p class="dir-more">There are more rooms than these, and a few hidden ones. <a href="index.html">The terminal knows them all →</a></p>
-    </section>
-  </main>
-
-  <footer class="foot">
-    <div class="foot-in">
-      <div class="foot-brand">
-        <a class="brand" href="frontdoor.html">
-          <svg viewBox="0 0 18 18" aria-hidden="true"><polygon class="o" points="9,1 17,16 1,16"/><polygon points="9,9 11.8,14 6.2,14" fill="#7b3cff"/></svg>
-          RIC//NET
+        <a class="f-rip cutbox" data-cut data-bleed="right" href="projects/offramp/index.html" tabindex="-1" aria-label="Open Interstate 40">
+          <div class="cut">
+            <div class="still" role="img" aria-label="Interstate 40 from above: cars weaving across the lanes of a long straight highway"><video muted loop playsinline preload="none" poster="assets/games/offramp.jpg" data-src="assets/games/offramp.webm" aria-hidden="true"></video></div>
+            <span class="peek">Drive</span>
+          </div>
         </a>
-        <p>Ric Massey's own internet. Plain pages, no frameworks, and something new most weeks.</p>
       </div>
-      <nav class="foot-links" aria-label="More">
-        <a href="index.html">The terminal</a>
-        <a href="captures.html">Photographs</a>
-        <a href="gaming.html">Games</a>
-        <a href="orrin.html">Orrin</a>
-        <a href="account/">Sign in</a>
-        <a href="exploration.html">Exploration</a>
-      </nav>
-    </div>
-    <div class="foot-base mono"><span>Est. 2026 · signal nominal</span><span>Press / for the terminal</span></div>
-  </footer>
+    </section>
 
-  <div class="player" id="player" role="dialog" aria-modal="true" aria-labelledby="player-name">
-    <div class="frame">
-      <div class="ctl"><b id="player-name"></b><a id="live-full" href="#">FULL PAGE ↗</a><button id="live-close" type="button">CLOSE ✕</button></div>
-      <iframe id="live-frame" title="Playing on the front page"></iframe>
-    </div>
-  </div>
+    <section class="feature" id="f8" data-side="left" style="--c: var(--violet)" aria-labelledby="f8-h">
+      <div class="row">
+        <div class="f-copy">
+          <span class="f-num rv" aria-hidden="true">08</span>
+          <div class="f-tag mono rv">The project</div>
+          <h2 id="f8-h" class="rv">Orrin</h2>
+          <p class="f-lede rv">A program Ric built that keeps running on its own — noticing, remembering, choosing and acting, whether or not anyone is talking to it.</p>
+          <ul class="f-facts rv"><li>Always running</li><li>Remembers</li><li>Decides</li></ul>
+          <a class="btn rv" href="orrin.html">Meet Orrin <i></i></a>
+          <div><a class="f-next mono rv" href="#f9"><i></i>Next <b>Captures</b></a></div>
+        </div>
+        <a class="f-rip cutbox" data-cut data-bleed="left" href="orrin.html" tabindex="-1" aria-label="Open Orrin">
+          <div class="cut">
+            <div class="still" role="img" aria-label="A web of glowing nodes, signals travelling between them"><canvas class="art" data-art="orrin" aria-hidden="true"></canvas></div>
+            <span class="peek">Open</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section class="feature" id="f9" data-side="right" style="--c: var(--magenta)" aria-labelledby="f9-h">
+      <div class="row">
+        <div class="f-copy">
+          <span class="f-num rv" aria-hidden="true">09</span>
+          <div class="f-tag mono rv">Photographs</div>
+          <h2 id="f9-h" class="rv">Captures</h2>
+          <p class="f-lede rv">Over 1,300 photographs — mountains, crags, rivers and sunrises, newest first.</p>
+          <ul class="f-facts rv"><li>1,300+ frames</li><li>Newest first</li><li>Full size</li></ul>
+          <a class="btn rv" href="captures.html">Look through them <i></i></a>
+          <div><a class="f-next mono rv" href="#f10"><i></i>Next <b>Starfield</b></a></div>
+        </div>
+        <a class="f-rip cutbox" data-cut data-bleed="right" href="captures.html" tabindex="-1" aria-label="Open Captures">
+          <div class="cut">
+            <div class="still" role="img" aria-label="A wall of photographs: mountain ridges, sunrises, climbers and rivers" style="--img:url(assets/frontdoor/captures.jpg)"></div>
+            <span class="peek">Open</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section class="feature" id="f10" data-side="left" style="--c: var(--cyan)" aria-labelledby="f10-h">
+      <div class="row">
+        <div class="f-copy">
+          <span class="f-num rv" aria-hidden="true">10</span>
+          <div class="f-tag mono rv">Gaming · plays in the browser</div>
+          <h2 id="f10-h" class="rv">Starfield</h2>
+          <p class="f-lede rv">Fly a rocket through real stars and watch the sky bend and change colour as you near the speed of light.</p>
+          <ul class="f-facts rv"><li>Real stars</li><li>Relativity</li><li>Fly it</li></ul>
+          <a class="btn rv" href="projects/starfield/index.html">Launch <i></i></a>
+          <div><a class="f-next mono rv" href="#f11"><i></i>Next <b>Mind</b></a></div>
+        </div>
+        <a class="f-rip cutbox" data-cut data-bleed="left" href="projects/starfield/index.html" tabindex="-1" aria-label="Open Starfield">
+          <div class="cut">
+            <div class="still" role="img" aria-label="Flying through a field of real stars at speed"><video muted loop playsinline preload="none" poster="assets/games/starfield.jpg" data-src="assets/games/starfield.webm" aria-hidden="true"></video></div>
+            <span class="peek">Fly</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section class="feature" id="f11" data-side="right" style="--c: var(--magenta)" aria-labelledby="f11-h">
+      <div class="row">
+        <div class="f-copy">
+          <span class="f-num rv" aria-hidden="true">11</span>
+          <div class="f-tag mono rv">Mind</div>
+          <h2 id="f11-h" class="rv">Mind</h2>
+          <p class="f-lede rv">Human systems, observed from the inside — mood, criteria, and every registered clinical trial, searchable.</p>
+          <ul class="f-facts rv"><li>Mood line</li><li>Studies</li><li>Reflections</li></ul>
+          <a class="btn rv" href="psyche.html">Open the casebook <i></i></a>
+          <div><a class="f-next mono rv" href="#f12"><i></i>Next <b>FARLIGHT</b></a></div>
+        </div>
+        <a class="f-rip cutbox" data-cut data-bleed="right" href="psyche.html" tabindex="-1" aria-label="Open Mind">
+          <div class="cut">
+            <div class="still" role="img" aria-label="A mood line rising and falling across the screen"><canvas class="art" data-art="mind" aria-hidden="true"></canvas></div>
+            <span class="peek">Open</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section class="feature" id="f12" data-side="left" style="--c: var(--violet)" aria-labelledby="f12-h">
+      <div class="row">
+        <div class="f-copy">
+          <span class="f-num rv" aria-hidden="true">12</span>
+          <div class="f-tag mono rv">Gaming · plays in the browser</div>
+          <h2 id="f12-h" class="rv">FARLIGHT</h2>
+          <p class="f-lede rv">A little ship, a lot of hills, and the feel of getting a landing exactly right.</p>
+          <ul class="f-facts rv"><li>Momentum</li><li>Hills</li><li>Landings</li></ul>
+          <a class="btn rv" href="projects/farlight/index.html">Play FARLIGHT <i></i></a>
+          <div><a class="f-next mono rv" href="#f13"><i></i>Next <b>Siege Conductor</b></a></div>
+        </div>
+        <a class="f-rip cutbox" data-cut data-bleed="left" href="projects/farlight/index.html" tabindex="-1" aria-label="Open FARLIGHT">
+          <div class="cut">
+            <div class="still" role="img" aria-label="A glowing ship skimming over rolling blue hills"><video muted loop playsinline preload="none" poster="assets/games/farlight.jpg" data-src="assets/games/farlight.webm" aria-hidden="true"></video></div>
+            <span class="peek">Play</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section class="feature" id="f13" data-side="right" style="--c: var(--cyan)" aria-labelledby="f13-h">
+      <div class="row">
+        <div class="f-copy">
+          <span class="f-num rv" aria-hidden="true">13</span>
+          <div class="f-tag mono rv">Workbench</div>
+          <h2 id="f13-h" class="rv">Siege Conductor</h2>
+          <p class="f-lede rv">A companion for watching The Clone Wars and Revenge of the Sith as one story, in the right order.</p>
+          <ul class="f-facts rv"><li>Star Wars</li><li>In order</li><li>On your phone</li></ul>
+          <a class="btn rv" href="projects/siege-conductor/index.html">Open it <i></i></a>
+        </div>
+        <a class="f-rip cutbox" data-cut data-bleed="right" href="projects/siege-conductor/index.html" tabindex="-1" aria-label="Open Siege Conductor">
+          <div class="cut">
+            <div class="still icon" role="img" aria-label="The Siege Conductor icon: two crossed lightsabers" style="--img:url(projects/siege-conductor/icon-1024.png)"></div>
+            <span class="peek">Open</span>
+          </div>
+        </a>
+      </div>
+    </section>
+    <!-- The feed doesn't end: near the bottom it lays the rooms down again,
+         from the top. See "the feed" in the script. -->
+    <div id="feed-end" aria-hidden="true"></div>
+  </main>
 
   <script src="notes.js"></script>
   <script src="effects.js"></script>
@@ -638,6 +645,10 @@
       });
       paint();
     })();
+
+    // the rooms as written, before any rip is drawn into them — what the feed
+    // lays down again when it runs out
+    const POSTS = [...document.querySelectorAll("main .feature")].map((f) => f.outerHTML);
 
     // ─── the rips ────────────────────────────────────────
     // Every [data-cut] is a rip in the page with a room showing through it.
@@ -839,8 +850,11 @@
         e.target.clip();
       }), { threshold: 0.2 });
 
-      const boxes = [...document.querySelectorAll("[data-cut]")];
-      boxes.forEach((box, n) => {
+      const boxes = [];
+      // every rip on the page, and every one the feed adds as it goes on
+      const add = (box) => {
+        const n = boxes.length;
+        boxes.push(box);
         const cut = box.querySelector(".cut");
         near.observe(cut);
         let geo = null, size = "";
@@ -865,7 +879,8 @@
         new ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => box.draw(), 120); }).observe(cut);
         if (STILL) { box.classList.add("open"); box.clip(); }
         else opener.observe(box);
-      });
+        queue();
+      };
       // night and day are different paper
       const redraw = () => boxes.forEach((b) => b.draw(true));
       document.getElementById("mode").addEventListener("click", redraw);
@@ -877,13 +892,13 @@
       // picture, low on the screen a little of its bottom, high up its top. It is
       // a transform on the picture itself, never on the cut, so it cannot pin
       // anything — and it is the same on every phone, where a fixed layer is not.
-      if (!STILL) {
-        const stills = boxes.map((b) => [b.querySelector(".cut"), b.querySelector(".still")]);
-        let queued = false;
-        const move = () => {
+      let queued = false;
+      function queue() { if (!STILL && !queued) { queued = true; requestAnimationFrame(move); } }
+      function move() {
           queued = false;
           const vh = innerHeight;
-          for (const [cut, still] of stills) {
+          for (const b of boxes) {
+            const cut = b.querySelector(".cut"), still = b.querySelector(".still");
             const r = cut.getBoundingClientRect();
             if (r.bottom < -100 || r.top > vh + 100) continue;
             const off = (r.top + r.height / 2 - vh / 2) / (vh / 2 + r.height / 2);   // −1 … 1 across the pass
@@ -891,19 +906,17 @@
             // rises the picture eases down and the top comes into view
             still.style.transform = `translate3d(0, ${(-off * r.height * 0.065).toFixed(1)}px, 0)`;
           }
-        };
-        const queue = () => { if (!queued) { queued = true; requestAnimationFrame(move); } };
-        addEventListener("scroll", queue, { passive: true });
-        addEventListener("resize", queue);
-        move();
       }
+      addEventListener("scroll", queue, { passive: true });
+      addEventListener("resize", queue);
+      document.querySelectorAll("[data-cut]").forEach(add);
+      window.addRip = add;
     })();
 
     // ─── what plays in the rips ──────────────────────────
     // A rip's video loads and plays only while the rip is on screen, and not
     // at all for a visitor who has asked for less motion: they get its poster.
     (() => {
-      const vids = [...document.querySelectorAll(".cut video[data-src]")];
       const io = new IntersectionObserver((list) => list.forEach((e) => {
         const v = e.target;
         if (e.isIntersecting) {
@@ -911,7 +924,8 @@
           if (!STILL) v.play().catch(() => {});
         } else if (!v.paused) v.pause();
       }), { rootMargin: "20% 0px" });
-      vids.forEach((v) => io.observe(v));
+      window.addVideos = (root) => root.querySelectorAll(".cut video[data-src]").forEach((v) => io.observe(v));
+      window.addVideos(document);
     })();
 
     // ─── the latest run, drawn live ──────────────────────
@@ -1011,140 +1025,16 @@
       new ResizeObserver(() => { clearTimeout(t); t = setTimeout(draw, 150); }).observe(still);
     })();
 
-    // ─── things to play, on a rail ───────────────────────
-    // `play` items open over the page in the player; the rest go to their page.
-    (() => {
-      const FEATURE = [
-        { name: "Interstate 40", desc: "Drive the real I-40, exit to exit", c: "var(--magenta)", video: "assets/games/offramp.webm", poster: "assets/games/offramp.jpg", href: "projects/offramp/index.html", verb: "DRIVE", play: true },
-        { name: "Starfield", desc: "A relativistic rocket through real space", c: "var(--violet)", video: "assets/games/starfield.webm", poster: "assets/games/starfield.jpg", href: "projects/starfield/index.html", verb: "FLY", play: true },
-        { name: "FARLIGHT", desc: "Momentum, hills and the feel of a landing", c: "var(--magenta)", video: "assets/games/farlight.webm", poster: "assets/games/farlight.jpg", href: "projects/farlight/index.html", verb: "PLAY", play: true },
-        { name: "Siege Conductor", desc: "A companion for the Clone Wars and Revenge of the Sith", c: "var(--cyan)", img: "projects/siege-conductor/icon-1024.png", alt: "", contain: true, href: "projects/siege-conductor/index.html", verb: "OPEN" },
-      ];
-      const rail = document.getElementById("rail");
-      const playing = new IntersectionObserver((list) => list.forEach((e) => {
-        const v = e.target.querySelector("video");
-        if (!v || STILL) return;
-        if (e.isIntersecting) v.play().catch(() => {}); else v.pause();
-      }), { threshold: 0.6 });
-      FEATURE.forEach((it, i) => {
-        const el = document.createElement("button");
-        el.type = "button";
-        el.className = "card";
-        el.style.setProperty("--c", it.c);
-        el.setAttribute("aria-label", `${it.verb.toLowerCase()} ${it.name}: ${it.desc}`);
-        const media = it.video
-          ? `<video muted loop playsinline preload="${i < 3 ? "auto" : "metadata"}" poster="${it.poster}" src="${it.video}" aria-hidden="true"></video>`
-          : `<img src="${it.img}" alt="${it.alt}" loading="lazy"${it.contain ? ' class="contain"' : ""}>`;
-        el.innerHTML = `${media}<div class="cap"><div><i></i><b></b><span></span></div><div class="go">${it.verb}</div></div>`;
-        el.querySelector(".cap b").textContent = it.name;
-        el.querySelector(".cap span").textContent = it.desc;
-        el.addEventListener("click", () => launch(it, el));
-        rail.appendChild(el);
-        playing.observe(el);
-      });
-
-      const prev = document.getElementById("prev"), next = document.getElementById("next");
-      const step = () => (rail.firstElementChild?.offsetWidth || 300) + 16;
-      prev.addEventListener("click", () => rail.scrollBy({ left: -step(), behavior: STILL ? "auto" : "smooth" }));
-      next.addEventListener("click", () => rail.scrollBy({ left: step(), behavior: STILL ? "auto" : "smooth" }));
-      const ends = () => {
-        prev.disabled = rail.scrollLeft < 4;
-        next.disabled = rail.scrollLeft + rail.clientWidth > rail.scrollWidth - 4;
-      };
-      rail.addEventListener("scroll", ends, { passive: true });
-      addEventListener("resize", ends);
-      ends();
-
-      const player = document.getElementById("player"), frame = document.getElementById("live-frame");
-      let opener = null;
-      function launch(it, from) {
-        if (!it.play) { location.href = it.href; return; }
-        opener = from;
-        document.getElementById("player-name").textContent = it.name;
-        document.getElementById("live-full").href = it.href;
-        frame.src = it.href;
-        player.classList.add("open");
-        document.documentElement.style.overflow = "hidden";
-        frame.focus();
-      }
-      function close() {
-        if (!player.classList.contains("open")) return;
-        player.classList.remove("open");
-        frame.src = "about:blank";
-        document.documentElement.style.overflow = "";
-        opener?.focus();
-      }
-      document.getElementById("live-close").addEventListener("click", close);
-      player.addEventListener("click", (e) => { if (e.target === player) close(); });
-      addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
-    })();
-
-    // ─── the rooms ───────────────────────────────────────
-    // ONE list. The #dir markup, `ls`, `tree`, `find`, `open`, `random` and Tab
-    // completion all render from this — they used to keep five separate copies
-    // and drifted apart. Add, rename or unlist a room here and nowhere else.
-    //   listed — appears in the #dir directory on the front door
-    //   locked — reachable but answers [LOCKED]; kept out of `random` and Tab
-    const ROOMS = [
-      { name: "orrin",         href: "orrin.html",         hue: "--flash-orrin",         desc: "cognition · code · ORRIN runtime",        art: "orrin", listed: true },
-      { name: "mind",          href: "psyche.html",        hue: "--flash-psyche",        desc: "human systems · psychology · philosophy", art: "mind", listed: true },
-      { name: "climbing",      href: "climbing.html",      hue: "--flash-climbing",      desc: "routes · projects · mountaineering",      img: "photos/climbing-04.jpg", alt: "Climbing a steep sandstone wall", listed: true },
-      { name: "training",      href: "training.html",      hue: "--flash-training",      desc: "runs · sessions · the 52-week plan",      img: "photos/website-0500.jpg", alt: "A trail through pines under a mountain ridge", listed: true },
-      { name: "apex",          href: "apex.html",          hue: "--flash-apex",          desc: "the drop · rank · career kills",          listed: false },
-      { name: "cs",            href: "cs.html",            hue: "--flash-cs",            desc: "counter-strike · every match · 2D replays", listed: false },
-      { name: "val",           href: "val.html",           hue: "--flash-val",           desc: "valorant · every fight on the minimap",     listed: false },
-      { name: "exploration",   href: "exploration.html",   hue: "--flash-exploration",   desc: "space · physics · science",               img: "projects/how-big-everything-is/cmb-wmap9.jpg", alt: "The cosmic microwave background, the oldest light in the universe", listed: true },
-      { name: "gaming",        href: "gaming.html",        hue: "--flash-gaming",        desc: "games · launches · playable builds",      img: "assets/games/kondrite.jpg", alt: "KONDRITE: ships fighting in vector space", listed: true },
-      { name: "workbench",     href: "workbench.html",     hue: "--flash-workbench",     desc: "random projects · ideas · hobbies",       img: "projects/siege-conductor/icon-1024.png", alt: "", contain: true, listed: true },
-      { name: "captures",      href: "captures.html",      hue: "--flash-captures",      desc: "photographs",                             img: "photos/climbing-08.jpg", alt: "Friends resting on boulders above a canyon", listed: true },
-      { name: "entertainment", href: "entertainment.html", hue: "--flash-entertainment", desc: "films · shows · what is queued up",       img: "assets/backdrops/the-godfather.jpg", alt: "A still from The Godfather", listed: true },
-      { name: "log",           href: "log.html",           hue: "--flash-log",           desc: "notes · theories · written",              listed: false },
-      { name: "map",           href: "map.html",           hue: "--flash-map",           desc: "crew access only · ATLAS, the private map", listed: false },
-    ];
-
-    // render the front-door directory from the same list: one tile a room,
-    // and the tile is the room's own first screen (assets/frontdoor/room-*.jpg,
-    // taken by assets/frontdoor/capture.mjs)
-    (() => {
-      const dir = document.getElementById("dir");
-      const HUE = { orrin: "var(--violet)", mind: "var(--magenta)", climbing: "var(--cyan)", training: "var(--violet)", exploration: "var(--cyan)", gaming: "var(--violet)", workbench: "var(--magenta)", captures: "var(--magenta)", entertainment: "var(--cyan)" };
-      const SHOT = { mind: "psyche" };
-      ROOMS.filter((room) => room.listed).forEach((room, i) => {
-        const entry = document.createElement("a");
-        entry.className = "entry rv";
-        entry.href = room.href;
-        entry.style.setProperty("--hue", HUE[room.name] || "var(--violet)");
-        entry.style.setProperty("--d", `${(i % 3) * 0.08}s`);
-        const thumb = document.createElement("span");
-        thumb.className = "thumb";
-        const img = new Image();
-        img.loading = "lazy";
-        img.src = `assets/frontdoor/room-${SHOT[room.name] || room.name}.jpg`;
-        img.alt = "";
-        thumb.appendChild(img);
-        const meta = document.createElement("span");
-        meta.className = "meta";
-        for (const [cls, text] of [["dirname", room.name], ["desc", room.desc], ["arr", "→"]]) {
-          const span = document.createElement("span");
-          span.className = cls;
-          span.textContent = text;
-          if (cls === "arr") span.setAttribute("aria-hidden", "true");
-          meta.appendChild(span);
-        }
-        entry.append(thumb, meta);
-        dir.appendChild(entry);
-      });
-    })();
-
     // ─── one door ───────────────────────────────────────
     // A room's button and its rip go to the same place, so pointing at either
     // lights both — the picture leans in, the button takes the room's colour.
-    document.querySelectorAll(".feature").forEach((f) => {
+    const oneDoor = (f) => {
       for (const el of f.querySelectorAll(".btn, .f-rip")) {
         el.addEventListener("pointerenter", () => f.classList.add("hot"));
         el.addEventListener("pointerleave", () => f.classList.remove("hot"));
       }
-    });
+    };
+    document.querySelectorAll(".feature").forEach(oneDoor);
 
     // ─── the terminal ───────────────────────────────────
     // The front door doesn't run the terminal any more — it opens it. The
@@ -1167,15 +1057,130 @@
     })();
     // Copy and tiles fade up the first time they come on screen.
     (() => {
-      const els = document.querySelectorAll(".rv");
-      if (STILL || !("IntersectionObserver" in window)) { els.forEach((el) => el.classList.add("in")); return; }
-      const io = new IntersectionObserver((list) => list.forEach((e) => {
+      const io = "IntersectionObserver" in window && !STILL && new IntersectionObserver((list) => list.forEach((e) => {
         if (!e.isIntersecting) return;
         e.target.classList.add("in");
         io.unobserve(e.target);
       }), { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
-      els.forEach((el) => io.observe(el));
+      window.reveal = (root) => root.querySelectorAll(".rv").forEach((el) => (io ? io.observe(el) : el.classList.add("in")));
+      window.reveal(document);
     })();
+
+    // ─── drawn rips ──────────────────────────────────────
+    // Orrin and Mind have no game to film, so their rips draw what they are:
+    // a web of nodes passing signals, and a mood line rising and falling.
+    // Each one runs only while it is on screen, and holds still under reduced
+    // motion.
+    const ART = {
+      orrin(x, w, h, t, st) {
+        if (!st.nodes) {
+          let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+          st.nodes = Array.from({ length: 46 }, () => ({ x: r(), y: r(), vx: (r() - 0.5) * 0.012, vy: (r() - 0.5) * 0.012 }));
+          st.pulses = [];
+        }
+        x.fillStyle = "#0a0816"; x.fillRect(0, 0, w, h);
+        const g = x.createRadialGradient(w * 0.5, h * 0.45, 0, w * 0.5, h * 0.45, Math.max(w, h) * 0.7);
+        g.addColorStop(0, "rgba(123,60,255,.22)"); g.addColorStop(1, "rgba(123,60,255,0)");
+        x.fillStyle = g; x.fillRect(0, 0, w, h);
+        const N = st.nodes, R = Math.max(w, h) * 0.2;
+        for (const n of N) {
+          n.x += n.vx * st.dt; n.y += n.vy * st.dt;
+          if (n.x < 0 || n.x > 1) n.vx *= -1;
+          if (n.y < 0 || n.y > 1) n.vy *= -1;
+        }
+        const P = N.map((n) => [n.x * w, n.y * h]), edges = [];
+        x.lineWidth = 1;
+        for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+          const d = Math.hypot(P[i][0] - P[j][0], P[i][1] - P[j][1]);
+          if (d > R) continue;
+          edges.push([i, j]);
+          x.strokeStyle = `rgba(150,110,255,${(0.55 * (1 - d / R)).toFixed(3)})`;
+          x.beginPath(); x.moveTo(P[i][0], P[i][1]); x.lineTo(P[j][0], P[j][1]); x.stroke();
+        }
+        // a signal leaves a node now and then and runs along an edge
+        if (edges.length && Math.random() < st.dt * 2.4) st.pulses.push({ e: edges[(Math.random() * edges.length) | 0], t: 0 });
+        st.pulses = st.pulses.filter((p) => (p.t += st.dt * 1.4) < 1);
+        for (const p of st.pulses) {
+          const [a, b] = p.e, px = P[a][0] + (P[b][0] - P[a][0]) * p.t, py = P[a][1] + (P[b][1] - P[a][1]) * p.t;
+          x.fillStyle = "#38ff9c"; x.shadowColor = "#38ff9c"; x.shadowBlur = 12;
+          x.beginPath(); x.arc(px, py, 2.6, 0, Math.PI * 2); x.fill(); x.shadowBlur = 0;
+        }
+        x.fillStyle = "#eceef2";
+        for (const [px, py] of P) { x.beginPath(); x.arc(px, py, 1.8, 0, Math.PI * 2); x.fill(); }
+      },
+      mind(x, w, h, t) {
+        x.fillStyle = "#14080f"; x.fillRect(0, 0, w, h);
+        const g = x.createRadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, Math.max(w, h) * 0.7);
+        g.addColorStop(0, "rgba(255,45,138,.16)"); g.addColorStop(1, "rgba(255,45,138,0)");
+        x.fillStyle = g; x.fillRect(0, 0, w, h);
+        const mid = h / 2;
+        x.strokeStyle = "rgba(236,238,242,.22)"; x.lineWidth = 1;
+        x.setLineDash([4, 6]); x.beginPath(); x.moveTo(0, mid); x.lineTo(w, mid); x.stroke(); x.setLineDash([]);
+        // highs and lows: a slow swing with a faster one riding on it
+        const y = (u) => mid - h * 0.3 * Math.sin(u * 0.9) * (0.55 + 0.45 * Math.sin(u * 0.23 + 1)) - h * 0.05 * Math.sin(u * 3.1);
+        for (const [alpha, lw, lag] of [[0.25, 7, 0.0], [1, 2.4, 0]]) {
+          x.strokeStyle = alpha < 1 ? "rgba(255,45,138,.25)" : "#ff2d8a"; x.lineWidth = lw; x.lineJoin = "round";
+          x.beginPath();
+          for (let px = 0; px <= w; px += 3) { const u = px / w * 12 + t * 0.8 + lag; px ? x.lineTo(px, y(u)) : x.moveTo(px, y(u)); }
+          x.stroke();
+        }
+        const hx = w * 0.72, hu = hx / w * 12 + t * 0.8;
+        x.fillStyle = "#fff"; x.beginPath(); x.arc(hx, y(hu), 5, 0, Math.PI * 2); x.fill();
+      },
+    };
+    const addArt = (() => {
+      const live = new Set();
+      const io = new IntersectionObserver((list) => list.forEach((e) => (e.isIntersecting ? live.add(e.target) : live.delete(e.target))), { rootMargin: "10% 0px" });
+      let last = performance.now();
+      const frame = (now) => {
+        const dt = Math.min(0.05, (now - last) / 1000); last = now;
+        for (const c of live) {
+          const w = c.clientWidth, h = c.clientHeight, dpr = Math.min(2, devicePixelRatio || 1);
+          if (!w || !h) continue;
+          if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+          const x = c.getContext("2d"); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+          c.st ||= {}; c.st.dt = STILL ? 0 : dt;
+          ART[c.dataset.art](x, w, h, STILL ? 2 : now / 1000, c.st);
+        }
+        requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+      return (root) => root.querySelectorAll("canvas.art").forEach((c) => io.observe(c));
+    })();
+    addArt(document);
+
+    // ─── the feed ────────────────────────────────────────
+    // There is no bottom. When the last room comes near, the rooms are laid
+    // down again from the top — numbered on, sides still alternating, every rip
+    // torn fresh — so the page scrolls like a feed for as long as anyone keeps
+    // going. Each round is marked, so it reads as "round two", not as a glitch.
+    (() => {
+      const end = document.getElementById("feed-end");
+      let round = 1, count = POSTS.length;
+      const more = () => {
+        round++;
+        const mark = document.createElement("div");
+        mark.className = "round-mark mono";
+        mark.innerHTML = `<span>That's every room</span><b>Round ${round} — from the top</b>`;
+        end.before(mark);
+        POSTS.forEach((html) => {
+          const t = document.createElement("template");
+          // ids and the labels pointing at them get a round of their own
+          t.innerHTML = html.replace(/(id|aria-labelledby)="([^"]+)"/g, `$1="$2-r${round}"`).replace(/href="#(f\d+)"/g, `href="#$1-r${round}"`);
+          const f = t.content.firstElementChild;
+          const side = count % 2 ? "left" : "right";
+          f.dataset.side = side;
+          f.querySelector("[data-cut]").dataset.bleed = side;
+          f.querySelector(".f-num").textContent = String(++count).padStart(2, "0");
+          const run = f.querySelector("#run-still-r" + round); if (run) run.querySelector("canvas")?.remove();
+          end.before(f);
+          oneDoor(f); window.reveal(f); window.addVideos(f); addArt(f);
+          window.addRip(f.querySelector("[data-cut]"));
+        });
+      };
+      new IntersectionObserver((list) => { if (list.some((e) => e.isIntersecting)) more(); }, { rootMargin: "0px 0px 150% 0px" }).observe(end);
+    })();
+
   </script>
 </body>
 </html>
