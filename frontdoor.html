@@ -38,6 +38,7 @@
       --hair: rgba(13,14,16,.16);
       --lip: rgba(255,255,255,.95);
       --lip-shadow: rgba(0,0,0,.28);
+      --lip-face: #a3a7ad;
       --violet: #7b3cff;
       --magenta: #ff2d8a;
       --cyan: #00c2ff;
@@ -49,14 +50,14 @@
       :root:not([data-theme="day"]) {
         --bg: #0b0c0e; --bg-2: #17181c; --ink: #eceef2; --muted: #9a9ea6;
         --field: rgba(255,255,255,.06); --panel: #131418; --hair: rgba(255,255,255,.12);
-        --lip: rgba(255,255,255,.22); --lip-shadow: rgba(0,0,0,.8);
+        --lip: rgba(255,255,255,.22); --lip-shadow: rgba(0,0,0,.8); --lip-face: #16171b;
         color-scheme: dark;
       }
     }
     :root[data-theme="night"] {
       --bg: #0b0c0e; --bg-2: #17181c; --ink: #eceef2; --muted: #9a9ea6;
       --field: rgba(255,255,255,.06); --panel: #131418; --hair: rgba(255,255,255,.12);
-      --lip: rgba(255,255,255,.22); --lip-shadow: rgba(0,0,0,.8);
+      --lip: rgba(255,255,255,.22); --lip-shadow: rgba(0,0,0,.8); --lip-face: #16171b;
       color-scheme: dark;
     }
 
@@ -117,16 +118,26 @@
 
     /* ─── the cuts ───
        A cut is a hole in the page. Its shape is an SVG clip path drawn in
-       0–1 units, so one path fits any size; the lip is the same path drawn
-       twice, a bevel outside and a coloured edge with an inner shadow inside. */
+       0–1 units, so one path fits any size. Through it you see a photo that
+       stays still while the page moves: a position:fixed layer inside the
+       cut, which the clip path clips. (background-attachment: fixed did this
+       on desktop only; iOS ignores it, and there the photo scrolled with its
+       frame and read as a picture stuck on the page.)
+       The lip is drawn in pixels, so its offsets are real pixels: a hairline where the page
+       surface breaks, then inside the hole the page's own thickness, thicker
+       along the top where you see down onto the wall, and a soft shadow that
+       wall throws onto the photo. No shadow falls outside — a hole has none. */
     .cut-wrap { position: relative; }
     .cut { position: relative; z-index: 1; overflow: hidden; background: #1a1b1f center / cover no-repeat; }
-    .cut.fixed { background-attachment: fixed; }
+    .cut .still { position: fixed; left: 0; top: 0; width: 100%; height: 100vh; height: 100lvh; z-index: 0;
+      background: #1a1b1f center / cover no-repeat; pointer-events: none; will-change: transform; }
+    .cut .still.away { visibility: hidden; }
     .lipsvg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
     .lipsvg.out { z-index: 0; }
     .lipsvg.in { z-index: 7; }
+    .lipsvg.shade { z-index: 6; filter: blur(6px); opacity: .7; }
     .lipsvg .hl { stroke: var(--lip); }
-    .lipsvg .sh { stroke: var(--lip-shadow); }
+    .lipsvg .face { stroke: var(--lip-face); }
 
     /* the hero: the cut you are greeted with, holding things to try */
     .hero .cut { height: min(68vh, 680px); min-height: 420px; }
@@ -186,7 +197,9 @@
     .window .title.below { position: static; translate: none; color: var(--ink); text-shadow: none; padding: 26px 6vw 0; text-align: left; }
     .window:hover .enter i, .window:focus-visible .enter i { width: 46px; }
     .window:focus-visible { outline: none; }
-    .window:focus-visible .cut { filter: brightness(1.12); }
+    /* on the photo layer, not the cut: a filter on the cut would pin the
+       fixed layer to it and the photo would jump */
+    .window:focus-visible .still { filter: brightness(1.12); }
 
     .river { margin-top: 10vh; height: 210px; overflow: hidden; perspective: 900px; display: flex; align-items: center; }
     .track { display: flex; gap: 14px; animation: drift 140s linear infinite; width: max-content; transform-style: preserve-3d; }
@@ -223,7 +236,6 @@
       .hero .cut { height: 58vh; min-height: 380px; }
       .card { width: 78vw; }
       .arrow { display: none; }
-      .cut.fixed { background-attachment: scroll; }
       .window .title { position: static; translate: none !important; color: var(--ink); text-shadow: none; padding: 20px 16px 0; text-align: left !important; }
       .window .title span, .window .title .enter { justify-content: flex-start !important; }
       .window { margin-top: 9vh; }
@@ -425,6 +437,10 @@
         shatter: () => pts([...edge(0.22, 0.02, 22, 0.05, 0.12), ...edge(0.98, 0.78, 22, 0.05, 0.12).reverse()]),
       };
       const NS = "http://www.w3.org/2000/svg", defs = document.getElementById("cut-defs");
+      // four screen-sized photos pinned at once is wasted paint: a cut that is
+      // off screen hides its photo until it comes back
+      const seen = new IntersectionObserver((list) => list.forEach((e) =>
+        e.target.querySelector(".still")?.classList.toggle("away", !e.isIntersecting)), { rootMargin: "50% 0px" });
       document.querySelectorAll("[data-shape]").forEach((wrap, n) => {
         const d = SHAPES[wrap.dataset.shape](), id = "cut-" + n;
         const clip = document.createElementNS(NS, "clipPath");
@@ -436,17 +452,48 @@
         defs.appendChild(clip);
         const cut = wrap.querySelector(".cut");
         cut.style.clipPath = `url(#${id})`;
-        const line = (cls, stroke, width, extra = "") =>
-          `<path ${cls ? `class="${cls}"` : ""} d="${d}" fill="none" ${stroke ? `stroke="${stroke}"` : ""} stroke-width="${width}" vector-effect="non-scaling-stroke" ${extra}/>`;
         // the bevel hugs the cut itself, not the wrap, which may hold a title too
         const holder = document.createElement("div");
         holder.style.position = "relative";
         cut.before(holder);
         holder.appendChild(cut);
-        holder.insertAdjacentHTML("afterbegin",
-          `<svg class="lipsvg out" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">${line("sh", "", 10, 'transform="translate(0,.008)"')}${line("hl", "", 3)}</svg>`);
-        cut.insertAdjacentHTML("beforeend",
-          `<svg class="lipsvg in" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">${line("", "rgba(0,0,0,.55)", 30)}${line("", "url(#lip-grad)", 2.5)}</svg>`);
+        // the photo moves off the cut onto a layer pinned to the screen
+        if (cut.classList.contains("fixed")) {
+          const still = document.createElement("div");
+          still.className = "still";
+          still.style.backgroundImage = cut.style.backgroundImage;
+          cut.style.backgroundImage = "none";
+          cut.prepend(still);
+          seen.observe(cut);
+        }
+        // Drawn in pixels, redrawn when the cut changes size: a blur and a
+        // downward offset have to be real pixels, or a tall cut and a short
+        // one would get different lips.
+        const draw = () => {
+          const w = cut.clientWidth, h = cut.clientHeight;
+          if (!w || !h) return;
+          const at = (cls, stroke, width, dy = 0, extra = "") =>
+            `<g transform="translate(0,${dy})" ${extra}><path ${cls ? `class="${cls}"` : ""} d="${d}" transform="scale(${w},${h})" fill="none" ${stroke ? `stroke="${stroke}"` : ""} stroke-width="${width}" vector-effect="non-scaling-stroke"/></g>`;
+          const box = `viewBox="0 0 ${w} ${h}" aria-hidden="true"`;
+          holder.querySelector(".lipsvg.out")?.remove();
+          cut.querySelector(".lipsvg.in")?.remove();
+          // outside, on the page: only the hairline where its surface breaks,
+          // a touch brighter along the top edges, which face the light
+          holder.insertAdjacentHTML("afterbegin",
+            `<svg class="lipsvg out" ${box}>${at("hl", "", 2)}${at("hl", "", 2, -1)}</svg>`);
+          // inside, clipped to the hole: the shadow the wall throws down onto
+          // the photo (its own layer, blurred by CSS — an SVG filter in there
+          // softened the photo under it too), then the wall itself, then the
+          // room's colour on the edge
+          cut.querySelector(".lipsvg.shade")?.remove();
+          cut.insertAdjacentHTML("beforeend",
+            `<svg class="lipsvg shade" ${box}>${at("", "#000", 24, 7)}</svg>`);
+          cut.insertAdjacentHTML("beforeend",
+            `<svg class="lipsvg in" ${box}>` +
+            `${at("face", "", 12)}${at("face", "", 12, 5)}${at("", "url(#lip-grad)", 1.5, 0, 'opacity=".85"')}</svg>`);
+        };
+        draw();
+        new ResizeObserver(draw).observe(cut);
       });
     })();
 

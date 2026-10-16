@@ -564,7 +564,11 @@ preview drifts. Don't put it in `ROOMS`, `PROJECTS` or `latest.js`. It opens on 
 3D strip of things to try (`FEATURE` in its script); a `play` item opens inside the cut.
 Under it, rooms are shown through cuts of their own (claw for Climbing, jagged, blade,
 shatter), each a window onto a real photo fixed behind the page, then the photo river,
-then `#dir`. The cut shapes are SVG clip paths in 0–1 units (`SHAPES`). Night/day is a
+then `#dir`. The cut shapes are SVG clip paths in 0–1 units (`SHAPES`). The photo in a room's
+cut is a `position: fixed` layer (`.still`) inside it, clipped by the cut's clip path —
+that is what keeps it still on iOS, which ignores `background-attachment: fixed`. Never put
+a `filter` or `transform` on a `.cut` or anything above it: either one pins the fixed
+layer to that element and the photo starts scrolling with the page again. Night/day is a
 visitor's own choice kept in `localStorage` (`frontdoor-theme`), else their OS. The
 search box *is* the terminal: `SEARCH_WORDS` adds the plain words people type for each
 room and project, matches show as you type, and a word the terminal doesn't know opens
