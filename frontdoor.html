@@ -41,6 +41,7 @@
       --field: rgba(255,255,255,.55);
       --panel: #f6f7f8;
       --hair: rgba(12,13,15,.14);
+      --hair-strong: rgba(12,13,15,.3);
       --head: rgba(221,223,226,.74);
       --tile: #c7cacf;
       --violet: #7b3cff;
@@ -56,14 +57,14 @@
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="day"]) {
         --bg: #0a0b0d; --bg-2: #15161a; --ink: #eef0f3; --muted: #9a9fa8;
-        --field: rgba(255,255,255,.05); --panel: #121317; --hair: rgba(255,255,255,.1);
+        --field: rgba(255,255,255,.05); --panel: #121317; --hair: rgba(255,255,255,.1); --hair-strong: rgba(255,255,255,.24);
         --head: rgba(10,11,13,.72); --tile: #17181c;
         color-scheme: dark;
       }
     }
     :root[data-theme="night"] {
       --bg: #0a0b0d; --bg-2: #15161a; --ink: #eef0f3; --muted: #9a9fa8;
-      --field: rgba(255,255,255,.05); --panel: #121317; --hair: rgba(255,255,255,.1);
+      --field: rgba(255,255,255,.05); --panel: #121317; --hair: rgba(255,255,255,.1); --hair-strong: rgba(255,255,255,.24);
       --head: rgba(10,11,13,.72); --tile: #17181c;
       color-scheme: dark;
     }
@@ -136,33 +137,72 @@
     .latest-relay .latest-description { display: none; }
     .latest-relay .latest-meta { color: var(--muted); white-space: nowrap; display: flex; gap: 10px; }
 
-    /* ─── the cuts ───
-       A cut is a hole in the page. Its shape is a parallelogram worked out in
-       pixels (so the slant is the same on a short cut and a tall one) and set
-       as the cut's clip-path. Through it you see a photo that stays still
-       while the page moves: a position:fixed layer inside the cut, clipped by
-       it. (background-attachment: fixed did this on desktop only; iOS ignores
-       it.) So: never a filter or transform on a .cut or anything above it —
-       either pins the fixed layer to that element and the photo scrolls again.
-       A cut opens from a slit the first time it comes on screen.
-       Anything laid over a cut goes INSIDE it, never beside it: a sibling
-       that fades in over the cut makes Chromium paint the cut's scrim out
-       past its clip, a whole tile of it. */
-    .cutbox { position: relative; }
+    /* ─── the rips ───
+       A rip is a hole torn in the page with a room showing through it. Its
+       outline is worked out in pixels and set as the cut's clip-path; the
+       paper under the top sheet is painted on a canvas inside the cut (.rim).
+       The picture (.still) is taller than the rip and slides a little as the
+       page scrolls, so it reads as further away than the paper. Never a
+       filter or transform on a .cut or anything above it, and anything laid
+       over a cut goes INSIDE it: a sibling that fades in over a cut makes
+       Chromium paint outside the clip, a whole tile of it. */
+    .cutbox { position: relative; display: block; }
     .cut { position: relative; z-index: 1; height: 100%; overflow: hidden; background: #111214; transition: clip-path 1.25s cubic-bezier(.7,0,.16,1); }
     .cut .still {
-      position: fixed; left: 0; top: 0; width: 100%; height: 100vh; height: 100lvh; z-index: 0; pointer-events: none;
-      background: #111214 none var(--pos, 50% 50%) / var(--size, cover) no-repeat; will-change: transform;
+      position: absolute; left: 0; right: 0; top: -14%; height: 128%; z-index: 0; pointer-events: none;
+      background: #111214 none var(--pos, 50% 0%) / cover no-repeat; will-change: transform;
+      transition: scale .9s var(--ease), filter .6s var(--ease);
     }
-    .cut .still.away { visibility: hidden; }
-    /* a cut's picture loads as the cut comes near, not with the page */
     .cut.near .still { background-image: var(--img); }
-    .cut .scrim { position: absolute; inset: 0; z-index: 2; pointer-events: none;
-      background: linear-gradient(to bottom, rgba(0,0,0,.28), rgba(0,0,0,0) 45%); }
-    /* the layers under the top sheet, painted on a canvas (see the script) */
     .cut .rim { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: no-repeat 0 0 / 100% 100%; }
+    /* the tag that says the rip is a door — always there, not only on hover */
+    .peek {
+      position: absolute; z-index: 5; right: calc(var(--gutter) + 18px); bottom: calc(var(--k, 60px) + 46px);
+      display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px 9px 13px;
+      background: #fff; color: #0a0b0d; font: 700 11.5px var(--mono); letter-spacing: .14em; text-transform: uppercase;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+      transition: background-color .3s, color .3s;
+    }
+    .peek::after { content: "↗"; font: 600 14px var(--sans); }
+    [data-bleed="left"] .peek { right: auto; left: calc(var(--gutter) + 18px); }
 
-    .hero .slice { margin: clamp(40px, 7vh, 88px) calc(-1 * var(--gutter)) 0; }
+    /* ─── a feature: words on the paper, a rip beside them ─── */
+    .feature { position: relative; padding-top: clamp(96px, 16vh, 180px); }
+    .feature .row { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; gap: clamp(24px, 4vw, 72px); }
+    .feature[data-side="left"] .row { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+    .feature[data-side="left"] .f-copy { order: 2; padding: 0 var(--gutter) 0 0; }
+    .f-copy { position: relative; padding-left: var(--gutter); max-width: calc(560px + var(--gutter)); }
+    .f-rip { height: min(76vh, 780px); min-height: 480px; }
+    .f-num { display: block; font: 600 clamp(84px, 9vw, 150px)/.8 var(--display); letter-spacing: -.06em; color: transparent; -webkit-text-stroke: 1px var(--hair-strong); margin-bottom: 18px; }
+    .f-tag { display: flex; align-items: center; gap: 10px; color: var(--muted); margin-bottom: 14px; }
+    .f-tag::before { content: ""; width: 22px; height: 2px; background: var(--c); }
+    .f-tag .new { background: var(--ink); color: var(--bg); font-weight: 700; padding: 3px 7px; }
+    .feature h2 { font: 600 clamp(46px, 5.6vw, 92px)/.92 var(--display); letter-spacing: -.05em; }
+    .f-lede { margin-top: 20px; font-size: clamp(17px, 1.25vw, 19px); line-height: 1.55; color: var(--muted); max-width: 40ch; }
+    .f-facts { list-style: none; display: flex; flex-wrap: wrap; margin: 26px 0 30px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
+    .f-facts li { font: 500 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); padding: 12px 18px 12px 0; margin-right: 18px; border-right: 1px solid var(--hair); }
+    .f-facts li:last-child { border-right: 0; margin-right: 0; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 14px; padding: 16px 22px 16px 20px; text-decoration: none;
+      background: var(--ink); color: var(--bg); font: 600 15px var(--sans); letter-spacing: .01em;
+      clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+      transition: background-color .3s var(--ease), color .3s var(--ease);
+    }
+    .btn i { display: block; width: 22px; height: 1.5px; background: currentColor; position: relative; transition: width .45s var(--ease); }
+    .btn i::after { content: ""; position: absolute; right: -1px; top: -3.5px; border-left: 7px solid currentColor; border-top: 4.25px solid transparent; border-bottom: 4.25px solid transparent; }
+    .btn:hover, .btn:focus-visible, .feature.hot .btn { background: var(--c); color: #fff; }
+    .btn:hover i, .feature.hot .btn i { width: 36px; }
+    .f-rip:hover .still, .f-rip:focus-visible .still, .feature.hot .still { scale: 1.035; filter: brightness(1.07); }
+    .f-rip:hover .peek, .feature.hot .peek { background: var(--c); color: #fff; }
+    /* what comes next, so the bottom of one room points at the top of the next */
+    .f-next { display: inline-flex; align-items: center; gap: 12px; margin-top: 54px; color: var(--muted); text-decoration: none; transition: color .2s; }
+    .f-next b { color: var(--ink); font-weight: 600; letter-spacing: .12em; }
+    .f-next i { display: block; width: 1px; height: 26px; background: linear-gradient(var(--muted), transparent); }
+    .f-next:hover { color: var(--ink); }
+    .scroll-cue { display: inline-flex; align-items: center; gap: 12px; margin-top: 30px; color: var(--muted); text-decoration: none; }
+    .scroll-cue i { display: block; width: 1px; height: 34px; background: var(--hair-strong); position: relative; overflow: hidden; }
+    .scroll-cue i::after { content: ""; position: absolute; left: 0; top: -40%; width: 1px; height: 40%; background: var(--ink); animation: drip 2.2s var(--ease) infinite; }
+    @keyframes drip { to { top: 100%; } }
 
     /* ─── section heads ─── */
     .sec { padding: clamp(96px, 16vh, 180px) 0 0; }
@@ -212,38 +252,6 @@
     .player .ctl a, .player .ctl button { background: #fff; color: #0d0e10; border: 0; font: 600 12px var(--sans); letter-spacing: .1em; padding: 8px 12px; cursor: pointer; text-decoration: none; }
     .player iframe { flex: 1; width: 100%; border: 0; display: block; background: #000; }
 
-    /* ─── rooms, seen through the page ─── */
-    .slices { display: grid; gap: clamp(14px, 2vw, 28px); }
-    .slice { position: relative; display: block; height: max(560px, 88vh); color: #fff; text-decoration: none; }
-    /* the room's name sits at the top of its cut: a cut comes up from the
-       bottom of the screen as you scroll, so its top is what you see first —
-       and the hero's cut is only half on the first screen */
-    /* The picture behind a cut is a real page, full of its own words, so the
-       name never sits straight on it: it gets a plate of its own, notched like
-       everything else here, with the room's colour along the top. */
-    .slice .copy {
-      position: absolute; z-index: 6; left: var(--gutter); top: calc(var(--k, 60px) + clamp(32px, 6vh, 64px));
-      width: min(520px, calc(100% - 2 * var(--gutter))); padding: 24px 28px 26px;
-      background: rgba(9,10,12,.9); box-shadow: inset 0 2px 0 var(--c);
-      clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);
-    }
-    .slice .idx { display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,.88); margin-bottom: 16px; text-transform: none; letter-spacing: .06em; font-size: 12px; }
-    .slice .idx .new { background: #fff; color: #0a0a0a; font-weight: 700; letter-spacing: .14em; padding: 3px 7px; text-transform: uppercase; font-size: 11px; }
-    .slice h3 { font: 600 clamp(38px, 4.6vw, 66px)/.95 var(--display); letter-spacing: -.045em; }
-    .slice p { margin-top: 14px; font-size: 16px; line-height: 1.5; color: rgba(255,255,255,.84); max-width: 40ch; }
-    .enter { margin-top: 20px; display: inline-flex; align-items: center; gap: 12px; font: 500 14px var(--sans); letter-spacing: .08em; text-transform: uppercase; }
-    .enter i { display: block; width: 28px; height: 1px; background: currentColor; position: relative; transition: width .45s var(--ease); }
-    .enter i::after { content: ""; position: absolute; right: -1px; top: -3px; border-left: 6px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; }
-    .slice:hover .enter i, .slice:focus-visible .enter i { width: 52px; }
-    /* a cut is a door: it lifts a little when you are about to go through */
-    .cut .still { transition: filter .6s var(--ease); }
-    .slice:hover .still, .slice:focus-visible .still { filter: brightness(1.08) saturate(1.05); }
-    .cut .scrim { transition: opacity .6s var(--ease); }
-    .slice:hover .scrim { opacity: .85; }
-    .slice:focus-visible { outline: none; }
-    .slice:focus-visible h3 { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 10px; }
-
-
     /* ─── every room, the directory. Rendered from ROOMS. ─── */
     #dir { max-width: 1400px; margin: 0 auto; padding: 0 var(--gutter); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 22px; }
     a.entry { display: block; text-decoration: none; color: var(--ink); }
@@ -284,6 +292,12 @@
     }
     @media (max-width: 860px) {
       .hero-in { grid-template-columns: 1fr; gap: 24px; }
+      /* on a phone the words come first and the rip runs the full width */
+      .feature .row, .feature[data-side="left"] .row { grid-template-columns: 1fr; gap: 34px; }
+      .f-copy, .feature[data-side="left"] .f-copy { order: 0; padding: 0 var(--gutter); }
+      .f-rip { height: 64vh; min-height: 400px; }
+      .f-num { font-size: 72px; margin-bottom: 10px; }
+      [data-bleed] .peek, [data-bleed="left"] .peek { left: auto; right: calc(var(--gutter) + 6px); }
       #dir { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 760px) {
@@ -296,16 +310,14 @@
       .lede { font-size: 16px; }
       .latest-relay { font-size: 13px; }
       .latest-relay .latest-meta { display: none; }
-      .hero .slice { margin-top: 28px; }
-      .cut .still { background-position: var(--pos-m, var(--pos, 50% 50%)); background-size: var(--size-m, cover); }
+      .cut .still { background-position: var(--pos-m, 50% 0%); }
       .cut.near .still { background-image: var(--img-m, var(--img)); }
       .sec-head { align-items: start; flex-direction: column; }
       .rail-nav { display: none; }
       .card { flex-basis: 84vw; aspect-ratio: 4 / 5; }
-      .slice { height: max(520px, 82vh); }
-      .slice h3 { font-size: clamp(32px, 10vw, 44px); }
-      .slice .copy { padding: 18px 20px 20px; }
-      .slice p { font-size: 15px; }
+      .f-lede { font-size: 16px; }
+      .f-facts li { font-size: 11px; padding-right: 12px; margin-right: 12px; }
+      .f-next { margin-top: 36px; }
       /* on a phone the directory is a list: a picture, a name, a line */
       #dir { grid-template-columns: 1fr; gap: 0; }
       a.entry { display: grid; grid-template-columns: 84px 1fr; gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--hair); }
@@ -330,9 +342,9 @@
       RIC//NET
     </a>
     <nav class="links" aria-label="On this page">
-      <a href="#new">New</a>
-      <a href="#play">Play</a>
-      <a href="#more">Watch &amp; explore</a>
+      <a href="#f1">New</a>
+      <a href="#f2">Play</a>
+      <a href="#f3">Watch &amp; explore</a>
       <a href="#every-room">Every room</a>
     </nav>
     <!-- The terminal is a room of its own again: the button opens it, and so
@@ -359,43 +371,56 @@
         </div>
         <div class="rv" style="--d:.3s">
           <p class="lede">Games to play with your friends, every match of Counter-Strike replayed, what to watch tonight, and the universe to scale. <b>Built by hand — come in and click around.</b></p>
+          <a class="scroll-cue mono" href="#f1"><i></i>Five rooms below, newest first</a>
         </div>
       </div>
-      <!-- The cuts run newest and biggest first. Each looks through the page
-           onto the real page it opens: the pictures are screenshots, taken by
-           assets/frontdoor/capture.mjs. -->
-      <a class="slice cutbox" data-cut href="cs.html" style="--c: var(--cyan)">
-        <div class="cut" style="--img:url(assets/frontdoor/cs-d.jpg); --img-m:url(assets/frontdoor/cs-m.jpg)">
-          <div class="still" role="img" aria-label="The Counter-Strike room: the latest match on Mirage, its score and the map's radar"></div>
-          <div class="scrim"></div>
-          <div class="copy rv">
-            <div class="idx mono"><span class="new">New</span><span>Gaming</span></div>
-            <h3>Counter-Strike</h3>
-            <p>Every match, replayed in 2D — every round and every kill, from above.</p>
-            <div class="enter">Enter <i></i></div>
-          </div>
-        </div>
-      </a>
     </section>
 
-    <section class="sec" id="play" aria-label="KONDRITE">
-      <div class="slices">
-        <a class="slice cutbox" data-cut href="projects/kondrite/index.html" style="--c: var(--violet)">
-          <div class="cut" style="--img:url(assets/frontdoor/kondrite-d.jpg); --pos-m: 50% 40%">
-            <div class="still" role="img" aria-label="KONDRITE's front page: the gold wordmark over a ship flying through an asteroid field"></div>
-            <div class="scrim"></div>
-            <div class="copy rv">
-              <div class="idx mono"><span>Multiplayer · plays in the browser</span></div>
-              <h3>KONDRITE</h3>
-              <p>Up to five ships in one sky — co-op survival or a battle royale. Bring your friends.</p>
-              <div class="enter">Play <i></i></div>
-            </div>
+    <!-- Newest, biggest and most fun first. Each room gets the words on the
+         paper and a rip beside them looking onto the real page — the pictures
+         are screenshots, taken by assets/frontdoor/capture.mjs. The rip and
+         the button are the same door; hovering either lights both. -->
+    <section class="feature" id="f1" data-side="right" style="--c: var(--cyan)" aria-labelledby="f1-h">
+      <div class="row">
+        <div class="f-copy">
+          <span class="f-num rv" aria-hidden="true">01</span>
+          <div class="f-tag mono rv"><span class="new">New</span>Gaming</div>
+          <h2 id="f1-h" class="rv">Counter-Strike</h2>
+          <p class="f-lede rv">Every match Ric plays, rebuilt from the demo. Replay any round in 2D, freeze any kill, and see where everyone stood.</p>
+          <ul class="f-facts rv"><li>2D replays</li><li>Kill snapshots</li><li>Every round</li></ul>
+          <a class="btn rv" href="cs.html">Watch the replays <i></i></a>
+          <div><a class="f-next mono rv" href="#f2"><i></i>Next <b>KONDRITE</b></a></div>
+        </div>
+        <a class="f-rip cutbox" data-cut data-bleed="right" href="cs.html" tabindex="-1" aria-label="Open Counter-Strike">
+          <div class="cut">
+            <div class="still" role="img" aria-label="The Counter-Strike room: the latest match on Mirage, its score and the map's radar" style="--img:url(assets/frontdoor/cs-d.jpg); --img-m:url(assets/frontdoor/cs-m.jpg); --pos: 12% 18%"></div>
+            <span class="peek">Open</span>
           </div>
         </a>
       </div>
     </section>
 
-    <section class="sec sec-tight" id="more-play" aria-labelledby="play-h" style="--c: var(--violet)">
+    <section class="feature" id="f2" data-side="left" style="--c: var(--violet)" aria-labelledby="f2-h">
+      <div class="row">
+        <div class="f-copy">
+          <span class="f-num rv" aria-hidden="true">02</span>
+          <div class="f-tag mono rv">Multiplayer · in the browser</div>
+          <h2 id="f2-h" class="rv">KONDRITE</h2>
+          <p class="f-lede rv">A space game that runs right here. Up to five ships in one sky — co-op survival or a battle royale. Send a friend the link and fly together.</p>
+          <ul class="f-facts rv"><li>Up to 5 players</li><li>Co-op or royale</li><li>No install</li></ul>
+          <a class="btn rv" href="projects/kondrite/index.html">Play KONDRITE <i></i></a>
+          <div><a class="f-next mono rv" href="#more-play"><i></i>Next <b>More to play</b></a></div>
+        </div>
+        <a class="f-rip cutbox" data-cut data-bleed="left" href="projects/kondrite/index.html" tabindex="-1" aria-label="Play KONDRITE">
+          <div class="cut">
+            <div class="still" role="img" aria-label="KONDRITE's front page: the gold wordmark over a ship flying through an asteroid field" style="--img:url(assets/frontdoor/kondrite-d.jpg); --pos: 50% 30%"></div>
+            <span class="peek">Play</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section class="sec" id="more-play" aria-labelledby="play-h" style="--c: var(--violet)">
       <div class="sec-head">
         <div class="rv">
           <div class="eyebrow mono">More to play</div>
@@ -410,42 +435,61 @@
       <div class="rail" id="rail" aria-label="Things to play"></div>
     </section>
 
-    <section class="sec" id="more" aria-label="Watch and explore">
-      <div class="slices">
-        <a class="slice cutbox" data-cut href="entertainment.html" style="--c: var(--magenta)">
-          <div class="cut" style="--img:url(assets/frontdoor/entertainment-d.jpg); --img-m:url(assets/frontdoor/entertainment-m.jpg)">
-            <div class="still" role="img" aria-label="The Entertainment room: a film's poster art and where it is streaming"></div>
-            <div class="scrim"></div>
-            <div class="copy rv">
-              <div class="idx mono"><span>Films &amp; shows</span></div>
-              <h3>Entertainment</h3>
-              <p>363 films and shows — what we've watched, what's next, and where it's streaming tonight.</p>
-              <div class="enter">Enter <i></i></div>
-            </div>
+    <section class="feature" id="f3" data-side="right" style="--c: var(--magenta)" aria-labelledby="f3-h">
+      <div class="row">
+        <div class="f-copy">
+          <span class="f-num rv" aria-hidden="true">03</span>
+          <div class="f-tag mono rv">Films &amp; shows</div>
+          <h2 id="f3-h" class="rv">Entertainment</h2>
+          <p class="f-lede rv">Every film and show we've watched, and the ones still waiting. Stuck for tonight? It picks one and tells you where it's streaming.</p>
+          <ul class="f-facts rv"><li>363 titles</li><li>Watch together</li><li>Where to stream</li></ul>
+          <a class="btn rv" href="entertainment.html">Find something to watch <i></i></a>
+          <div><a class="f-next mono rv" href="#f4"><i></i>Next <b>How Big Everything Is</b></a></div>
+        </div>
+        <a class="f-rip cutbox" data-cut data-bleed="right" href="entertainment.html" tabindex="-1" aria-label="Open Entertainment">
+          <div class="cut">
+            <div class="still" role="img" aria-label="The Entertainment room: a film's poster art and where it is streaming" style="--img:url(assets/frontdoor/entertainment-d.jpg); --img-m:url(assets/frontdoor/entertainment-m.jpg); --pos: 0% 40%"></div>
+            <span class="peek">Open</span>
           </div>
         </a>
-        <a class="slice cutbox" data-cut href="projects/how-big-everything-is/index.html" style="--c: var(--cyan)">
-          <div class="cut" style="--img:url(assets/frontdoor/scale-d.jpg); --img-m:url(assets/frontdoor/scale-m.jpg)">
-            <div class="still" role="img" aria-label="How Big Everything Is, at its first rung: a quark, glowing violet"></div>
-            <div class="scrim"></div>
-            <div class="copy rv">
-              <div class="idx mono"><span>Exploration</span></div>
-              <h3>How Big Everything Is</h3>
-              <p>One rail from a quark to the edge of the observable universe — to scale.</p>
-              <div class="enter">Zoom <i></i></div>
-            </div>
+      </div>
+    </section>
+
+    <section class="feature" id="f4" data-side="left" style="--c: var(--cyan)" aria-labelledby="f4-h">
+      <div class="row">
+        <div class="f-copy">
+          <span class="f-num rv" aria-hidden="true">04</span>
+          <div class="f-tag mono rv">Exploration</div>
+          <h2 id="f4-h" class="rv">How Big Everything Is</h2>
+          <p class="f-lede rv">One rail from a quark to the edge of the observable universe, every rung to scale. Press Tour and let it walk you out.</p>
+          <ul class="f-facts rv"><li>Quark to cosmos</li><li>To scale</li><li>Guided tour</li></ul>
+          <a class="btn rv" href="projects/how-big-everything-is/index.html">Start at a quark <i></i></a>
+          <div><a class="f-next mono rv" href="#f5"><i></i>Next <b>Climbing</b></a></div>
+        </div>
+        <a class="f-rip cutbox" data-cut data-bleed="left" href="projects/how-big-everything-is/index.html" tabindex="-1" aria-label="Open How Big Everything Is">
+          <div class="cut">
+            <div class="still" role="img" aria-label="How Big Everything Is, at its first rung: a quark, glowing violet" style="--img:url(assets/frontdoor/scale-d.jpg); --img-m:url(assets/frontdoor/scale-m.jpg); --pos: 60% 30%"></div>
+            <span class="peek">Zoom</span>
           </div>
         </a>
-        <a class="slice cutbox" data-cut href="climbing.html" style="--c: var(--cyan)">
-          <div class="cut" style="--img:url(assets/frontdoor/climbing-d.jpg); --img-m:url(assets/frontdoor/climbing-m.jpg)">
-            <div class="still" role="img" aria-label="The Climbing room: days out, sends and the hardest grade, over a photo of the wall"></div>
-            <div class="scrim"></div>
-            <div class="copy rv">
-              <div class="idx mono"><span>Climbing</span></div>
-              <h3>Climbing</h3>
-              <p>Every route, project and day out — logged from the crag.</p>
-              <div class="enter">Enter <i></i></div>
-            </div>
+      </div>
+    </section>
+
+    <section class="feature" id="f5" data-side="right" style="--c: var(--cyan)" aria-labelledby="f5-h">
+      <div class="row">
+        <div class="f-copy">
+          <span class="f-num rv" aria-hidden="true">05</span>
+          <div class="f-tag mono rv">Climbing</div>
+          <h2 id="f5-h" class="rv">Climbing</h2>
+          <p class="f-lede rv">Every day out at the crag, every send and every project — logged from the wall, the to-do list included.</p>
+          <ul class="f-facts rv"><li>Days out</li><li>Sends &amp; projects</li><li>The to-do list</li></ul>
+          <a class="btn rv" href="climbing.html">Open the logbook <i></i></a>
+          <div><a class="f-next mono rv" href="#every-room"><i></i>Next <b>Every room</b></a></div>
+        </div>
+        <a class="f-rip cutbox" data-cut data-bleed="right" href="climbing.html" tabindex="-1" aria-label="Open Climbing">
+          <div class="cut">
+            <div class="still" role="img" aria-label="The Climbing room: days out, sends and the hardest grade, over a photo of the wall" style="--img:url(assets/frontdoor/climbing-d.jpg); --img-m:url(assets/frontdoor/climbing-m.jpg); --pos: 0% 0%"></div>
+            <span class="peek">Open</span>
           </div>
         </a>
       </div>
@@ -556,246 +600,183 @@
       paint();
     })();
 
-    // ─── the cuts ────────────────────────────────────────
-    // Every [data-cut] is the same thing: a strip torn out of the page at one
-    // angle (worked out in pixels, so a short cut and a tall one slant alike
-    // and all of them run parallel), opening from a slit the first time it
-    // comes on screen.
+    // ─── the rips ────────────────────────────────────────
+    // Every [data-cut] is a rip in the page with a room showing through it.
+    // The page is a stack of paper sheets and the rip goes through all of
+    // them, each tearing a little differently, so at every edge you look down
+    // a few steps of torn paper — fuzzy fibre, a bright broken core that comes
+    // and goes, each sheet throwing its shadow on the one below — before you
+    // reach the picture. A rip runs off one side of the screen (data-bleed),
+    // so it is torn on the other three; on a phone it runs off both.
     //
-    // The page is not one sheet but a stack of them. The cut goes through all
-    // of them and each one breaks a little differently, so at every edge you
-    // look down a few steps of material — each with its own broken edge, each
-    // throwing a shadow onto the one below — before you reach the photograph.
+    // The .cut is clipped to the TOP sheet's tear; the sheets under it are
+    // painted on a canvas, laid over the picture as a plain image (.rim)
+    // inside the cut. Plain image, because anything blurred or animated laid
+    // over a cut makes Chromium paint outside the clip; a canvas has no such
+    // problem — its shadows are already pixels by the time the page sees them.
     //
-    // The .cut is clipped to the TOP sheet's hole; the sheets under it are
-    // painted on a canvas, laid over the photo as a plain image (.rim) inside
-    // the cut. Plain image, because anything blurred or animated laid over a
-    // cut makes Chromium paint outside the clip; a canvas has no such problem —
-    // its shadows are already pixels by the time the page sees them.
-    //
-    // ?edge=paper | rock | blade picks the material while Ric chooses one.
+    // The picture slides a little as the page scrolls (see "depth" below), so
+    // it reads as further away than the paper.
     const STILL = matchMedia("(prefers-reduced-motion: reduce)").matches;
     (() => {
-      const STYLE = ["paper", "rock", "blade"].includes(new URLSearchParams(location.search).get("edge"))
-        ? new URLSearchParams(location.search).get("edge") : "paper";
       const root = document.documentElement;
       const isNight = () => root.dataset.theme ? root.dataset.theme === "night" : matchMedia("(prefers-color-scheme: dark)").matches;
+      const phone = () => innerWidth <= 860;
       const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(", ")})`;
 
-      // the materials. Index 0 is the page itself (only its torn edge and its
+      // the paper. Index 0 is the page itself (only its torn edge and its
       // shadow are ever drawn — the clip shows the real page around it).
-      //   sheets — each layer's face, top to bottom
-      //   core   — what a break shows at the edge of that layer: paper's pale
-      //            fibre, rock's broken face (lit on the lower edge, which faces
-      //            the light; dark on the upper), the blade's machined chamfer
-      //   shade  — the shadow one layer throws on the next
-      const MATERIAL = {
-        paper: {
-          night: { sheets: ["#0a0b0d", "#151619", "#1a1b1f", "#1f2125"], coreTop: ["#34363c", "#2c2e34", "#26282d", "#212327"], coreBot: ["#50535b", "#43464d", "#393b42", "#303238"], edgeTop: ["#5b5e66", "#4a4d54", "#3d3f46", "#33353b"], edgeBot: ["#7f838c", "#686b73", "#565961", "#474a51"], shade: "rgba(0,0,0,.85)", photoShade: "rgba(0,0,0,.72)" },
-          day:   { sheets: ["#d5d7db", "#e4e5e8", "#eeeff1", "#f6f6f7"], coreTop: ["#e8e8e4", "#eeeeea", "#f2f2ef", "#f5f5f2"], coreBot: ["#f6f6f3", "#f8f8f5", "#fafaf8", "#fbfbf9"], edgeTop: ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], edgeBot: ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], shade: "rgba(26,30,40,.34)", photoShade: "rgba(0,0,0,.55)" },
-        },
-        rock: {
-          night: { sheets: ["#0a0b0d", "#1f2126", "#282a30", "#31343a"], coreTop: ["#050506", "#08090a", "#0c0d0f", "#101113"], coreBot: ["#4a4d55", "#53565f", "#5c5f68", "#666972"], shade: "rgba(0,0,0,.85)", photoShade: "rgba(0,0,0,.7)", grain: .5 },
-          day:   { sheets: ["#d5d7db", "#c2c5ca", "#b1b5bb", "#a0a4ab"], coreTop: ["#8a8e96", "#7d818a", "#71757e", "#666a73"], coreBot: ["#f4f5f7", "#eceef1", "#e3e5e9", "#dadde1"], shade: "rgba(20,24,34,.42)", photoShade: "rgba(0,0,0,.55)", grain: .35 },
-        },
-        blade: {
-          night: { sheets: ["#0a0b0d", "accent", "#1d1f24", "#121316"], coreTop: ["#020203", "accent", "#0d0e10", "#08090a"], coreBot: ["#5a5e67", "accent", "#2e3036", "#232529"], shade: "rgba(0,0,0,.8)", photoShade: "rgba(0,0,0,.65)" },
-          day:   { sheets: ["#d5d7db", "accent", "#8f939a", "#6f737b"], coreTop: ["#7a7e86", "accent", "#5f636b", "#50545b"], coreBot: ["#ffffff", "accent", "#b9bcc2", "#a3a7ae"], shade: "rgba(20,24,34,.4)", photoShade: "rgba(0,0,0,.55)" },
-        },
+      //   sheets — each layer's face, top to bottom; deeper is darker by night
+      //   core   — the pale fibre a tear shows, dimmer on edges that face
+      //            away from the light (top) than on those that face it (bottom)
+      //   edge   — the bright line right at the break
+      //   shade  — the shadow one sheet throws on the next
+      const PAPER = {
+        night: { sheets: ["#0a0b0d", "#151619", "#1a1b1f", "#1f2125"], coreTop: ["#34363c", "#2c2e34", "#26282d", "#212327"], coreBot: ["#50535b", "#43464d", "#393b42", "#303238"], edgeTop: ["#5b5e66", "#4a4d54", "#3d3f46", "#33353b"], edgeBot: ["#7f838c", "#686b73", "#565961", "#474a51"], shade: "rgba(0,0,0,.85)", photoShade: "rgba(0,0,0,.72)" },
+        day:   { sheets: ["#d5d7db", "#e4e5e8", "#eeeff1", "#f6f6f7"], coreTop: ["#e8e8e4", "#eeeeea", "#f2f2ef", "#f5f5f2"], coreBot: ["#f6f6f3", "#f8f8f5", "#fafaf8", "#fbfbf9"], edgeTop: ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], edgeBot: ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], shade: "rgba(26,30,40,.34)", photoShade: "rgba(0,0,0,.55)" },
       };
 
       // ── noise ──
       const rng = (seed) => { let s = seed % 2147483647 || 1; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
       // smooth value noise on a lattice `span` px apart, −1…1, laid out once so
-      // a resize never reshuffles the edge
+      // a resize never reshuffles the tear
       const smooth = (r, span) => {
-        const v = Array.from({ length: Math.ceil(5400 / span) + 4 }, () => r() * 2 - 1);
+        const v = Array.from({ length: Math.ceil(9800 / span) + 4 }, () => r() * 2 - 1);
         return (x) => { const f = (x + 400) / span, i = Math.floor(f), t = f - i, u = t * t * (3 - 2 * t); return v[i] + (v[i + 1] - v[i]) * u; };
       };
-      // a broken line: straight runs between corners at random spacing, −1…1
-      const shards = (r, min, max) => {
-        const xs = [-400], ys = [r() * 2 - 1];
-        while (xs[xs.length - 1] < 5000) { xs.push(xs[xs.length - 1] + min + r() * (max - min)); ys.push(r() * 2 - 1); }
-        let j = 0;
-        return (x) => { while (j > 0 && xs[j] > x) j--; while (xs[j + 1] <= x) j++; const t = (x - xs[j]) / (xs[j + 1] - xs[j]); return ys[j] + (ys[j + 1] - ys[j]) * t; };
-      };
 
-      // ── the shape of every layer's edge ──
-      // Returns, for layers 0…3, the hole's top edge and bottom edge (left to
-      // right), and a "core" line just inside each where the break shows.
-      function geometry(w, h, k, seed, small) {
-        const r = rng(seed * 7919 + 13), L = 4, step = 3;
-        const xs = []; for (let x = -24; x <= w + 24; x += step) xs.push(x);
-        if (xs[xs.length - 1] < w + 24) xs.push(w + 24);
-        const s = small ? 0.68 : 1;
-        // the torn line wanders either side of the slant: keep it inside the
-        // box, or the pinned photo shows past the canvas that covers it
-        const m = 20 * s;
+      // ── the shape of every sheet's tear ──
+      // The rip's outline is a box whose top and bottom slant at the page's one
+      // angle; sides that run off the screen sit just past it. The outline is
+      // walked once, all the way round, and every sheet's tear is that walk
+      // pushed inward along its own normal by a wandering, fraying amount.
+      function geometry(w, h, k, seed, small, torn) {
+        const r = rng(seed * 7919 + 13), L = 4, STEP = 3;
+        const s = small ? 0.7 : 1;
+        // the tear wanders either side of the outline: keep it inside the box,
+        // or the picture shows past the canvas that covers it
+        const m = 22 * s;
+        const xL = torn.left ? m : -30, xR = torn.right ? w - m : w + 30;
         const yT = (x) => m + k * (1 - x / w), yB = (x) => h - m - k * (x / w);
-        const edge = () => {
-          if (STYLE === "paper") {
-            // a tear wanders (long, slow), wavers (short) and frays (finest);
-            // the sheets under it tear along nearly the same line
-            const a = smooth(r, 150), b = smooth(r, 41), c = smooth(r, 11), own = [0, 1, 2, 3].map(() => smooth(r, 63));
-            const gap = [0, 1, 2, 3].map(() => smooth(r, 110)), fray = [0, 1, 2, 3].map(() => smooth(r, 34)), fine = [0, 1, 2, 3].map(() => smooth(r, 8));
-            const u = (f, x) => (f(x) + 1) / 2;
-            return {
-              base: (x) => s * (10 * a(x) + 3.2 * b(x) + 1.1 * c(x)) + (r() - 0.5) * 0.8,
-              own: (i, x) => s * 3 * own[i](x),
-              step: (i, x) => s * 9 * (0.12 + 1.9 * u(gap[i], x) ** 1.8),
-              core: (i, x) => s * Math.max(0.4, 0.5 + 6 * u(fray[i], x) ** 2.2 + 1.2 * fine[i](x)),
-            };
-          }
-          if (STYLE === "rock") {
-            // a fracture runs in straight facets that meet at corners; strata
-            // step back in ledges, wide in one place and flush in the next
-            const a = shards(r, 26, 84), b = shards(r, 7, 22), own = [0, 1, 2, 3].map(() => shards(r, 18, 60));
-            const gap = [0, 1, 2, 3].map(() => shards(r, 40, 140)), face = [0, 1, 2, 3].map(() => shards(r, 14, 44));
-            return {
-              base: (x) => s * (11 * a(x) + 2.4 * b(x)) + (r() - 0.5) * 0.7,
-              own: (i, x) => s * 3.4 * own[i](x),
-              step: (i, x) => s * Math.max(0.6, 11 * (0.05 + 0.95 * Math.max(0, gap[i](x) + 0.25))),
-              core: (i, x) => s * (1.4 + 2.2 * (face[i](x) + 1)),
-            };
-          }
-          // the blade: dead straight, and every layer the same thickness all
-          // the way along — the chamfer, the coloured core, then the wall
-          return {
-            base: () => 0, own: () => 0,
-            step: (i) => s * [0, 3, 2.2, 7][i],
-            core: (i) => s * [2.4, 0, 0, 0][i],
-          };
-        };
-        const top = edge(), bot = edge();
-        const layers = [];
-        const insetT = xs.map(() => 0), insetB = xs.map(() => 0);
-        const baseT = xs.map((x) => top.base(x)), baseB = xs.map((x) => bot.base(x));
-        for (let i = 0; i < L; i++) {
-          xs.forEach((x, j) => { if (i) { insetT[j] += top.step(i, x); insetB[j] += bot.step(i, x); } });
-          const T = xs.map((x, j) => [x, yT(x) + baseT[j] + top.own(i, x) + insetT[j]]);
-          const B = xs.map((x, j) => [x, yB(x) + baseB[j] + bot.own(i, x) - insetB[j]]);
-          const cT = T.map(([x, y]) => [x, y + top.core(i, x)]);
-          const cB = B.map(([x, y]) => [x, y - bot.core(i, x)]);
-          // halfway into the core, where it turns from pulled fibre to the
-          // bright broken edge
-          const mT = T.map(([x, y], j) => [x, y + (cT[j][1] - y) * 0.5]);
-          const mB = B.map(([x, y], j) => [x, y + (cB[j][1] - y) * 0.5]);
-          layers.push({ T, B, cT, cB, mT, mB });
+        const corners = [[xL, yT(xL)], [xR, yT(xR)], [xR, yB(xR)], [xL, yB(xL)]];
+        const base = [];
+        for (let c = 0; c < 4; c++) {
+          const [ax, ay] = corners[c], [bx, by] = corners[(c + 1) % 4];
+          const n = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / STEP));
+          for (let j = 0; j < n; j++) base.push([ax + (bx - ax) * j / n, ay + (by - ay) * j / n]);
         }
-        return { xs, layers, mid: xs.map((x) => (yT(x) + yB(x)) / 2) };
-      }
+        const N = base.length;
+        // inward normals, smoothed over ~30px so the corners turn round rather
+        // than fold
+        const nrm = base.map((_, j) => {
+          let tx = 0, ty = 0;
+          for (let d = -10; d <= 10; d++) {
+            const a = base[(((j + d - 1) % N) + N) % N], b = base[(((j + d + 1) % N) + N) % N];
+            const lx = b[0] - a[0], ly = b[1] - a[1], ll = Math.hypot(lx, ly) || 1;
+            tx += lx / ll; ty += ly / ll;
+          }
+          const tl = Math.hypot(tx, ty) || 1;
+          return [-ty / tl, tx / tl];   // walking clockwise on screen, inward is to the right
+        });
+        const arc = []; let acc = 0;
+        base.forEach((p, j) => { if (j) acc += Math.hypot(p[0] - base[j - 1][0], p[1] - base[j - 1][1]); arc.push(acc); });
+        // off-screen sides tear too, harmlessly, but they must not tear back
+        // into view: scale the wander down to nothing past the screen's edge
+        const live = base.map(([x]) => (x < 0 || x > w ? 0 : 1));
 
-      // a little grain, for stone: speckle, drawn once
-      let grain = null;
-      const grainPattern = (ctx) => {
-        if (!grain) {
-          grain = document.createElement("canvas"); grain.width = grain.height = 160;
-          const g = grain.getContext("2d"), r = rng(4242);
-          for (let n = 0; n < 2600; n++) {
-            const v = r() < 0.5 ? 0 : 255;
-            g.fillStyle = `rgba(${v},${v},${v},${0.04 + r() * 0.08})`;
-            g.fillRect(r() * 160, r() * 160, 1 + r() * 1.6, 1 + r() * 1.2);
+        // a tear wanders (long, slow), wavers (short) and frays (finest); the
+        // sheets under it tear along nearly the same line, merging in one place
+        // and standing apart in the next
+        const a = smooth(r, 150), b = smooth(r, 41), c = smooth(r, 11);
+        const own = [0, 1, 2, 3].map(() => smooth(r, 63)), gap = [0, 1, 2, 3].map(() => smooth(r, 110));
+        const fray = [0, 1, 2, 3].map(() => smooth(r, 34)), fine = [0, 1, 2, 3].map(() => smooth(r, 8));
+        const u = (f, x) => (f(x) + 1) / 2;
+        const wander = arc.map((t, j) => live[j] * (s * (10 * a(t) + 3.2 * b(t) + 1.1 * c(t)) + (r() - 0.5) * 0.8));
+        const inset = arc.map(() => 0);
+        const layers = [];
+        for (let i = 0; i < L; i++) {
+          const E = [], C = [], Mid = [];
+          for (let j = 0; j < N; j++) {
+            const t = arc[j];
+            if (i) inset[j] += s * 9 * (0.12 + 1.9 * u(gap[i], t) ** 1.8);
+            const d = wander[j] + live[j] * s * 3 * own[i](t) + inset[j];
+            const core = s * Math.max(0.4, 0.5 + 6 * u(fray[i], t) ** 2.2 + 1.2 * fine[i](t));
+            const [bx, by] = base[j], [nx, ny] = nrm[j];
+            E.push([bx + nx * d, by + ny * d]);
+            Mid.push([bx + nx * (d + core * 0.5), by + ny * (d + core * 0.5)]);
+            C.push([bx + nx * (d + core), by + ny * (d + core)]);
           }
+          layers.push({ E, C, Mid });
         }
-        return ctx.createPattern(grain, "repeat");
-      };
+        // the slit a rip opens from: every point pulled onto the middle line
+        const midY = (x) => (yT(x) + yB(x)) / 2;
+        const slit = layers[0].E.map(([x]) => { const cx = Math.min(xR, Math.max(xL, x)); return [cx, midY(cx)]; });
+        return { layers, nrm, slit };
+      }
 
       // ── paint the stack under the top sheet ──
       function paint(box, cut, geo, w, h) {
         const dpr = Math.min(2.5, window.devicePixelRatio || 1);
-        const c = document.createElement("canvas");
-        c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
-        const ctx = c.getContext("2d");
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+        const ctx = cv.getContext("2d");
         ctx.scale(dpr, dpr);
-        const M = MATERIAL[STYLE][isNight() ? "night" : "day"];
-        const accent = getComputedStyle(box).getPropertyValue("--c").trim() || "#7b3cff";
-        const col = (v) => (v === "accent" ? accent : v);
-        const outside = (T, B) => {
-          // everything but the hole: a big rectangle with the hole cut out of it
-          const p = new Path2D();
-          p.rect(-200, -200, w + 400, h + 400);
-          p.moveTo(T[0][0], T[0][1]);
-          for (const [x, y] of T) p.lineTo(x, y);
-          for (let j = B.length - 1; j >= 0; j--) p.lineTo(B[j][0], B[j][1]);
-          p.closePath();
-          return p;
-        };
-        const band = (A, Bv) => {
-          // the strip between an edge and the core line just inside it
-          const p = new Path2D();
-          p.moveTo(A[0][0], A[0][1]);
-          for (const [x, y] of A) p.lineTo(x, y);
-          for (let j = Bv.length - 1; j >= 0; j--) p.lineTo(Bv[j][0], Bv[j][1]);
-          p.closePath();
-          return p;
-        };
+        const M = PAPER[isNight() ? "night" : "day"];
+        const ring = (A) => { const p = new Path2D(); p.moveTo(A[0][0], A[0][1]); for (const [x, y] of A) p.lineTo(x, y); p.closePath(); return p; };
+        const outside = (A) => { const p = new Path2D(); p.rect(-200, -200, w + 400, h + 400); p.addPath(ring(A)); return p; };
+        const between = (A, B) => { const p = ring(A); p.addPath(ring(B)); return p; };
+        // the edges that face up catch the light; the ones that face down don't
+        const lit = (top, bot) => { const g = ctx.createLinearGradient(0, h * 0.3, 0, h * 0.7); g.addColorStop(0, top); g.addColorStop(1, bot); return g; };
         const L = geo.layers.length;
-        // deepest first: each layer throws its shadow onto what is already
-        // drawn under it — the deepest onto the photo itself
+        // deepest first: each sheet throws its shadow onto what is already
+        // drawn under it — the deepest onto the picture itself
         for (let i = L - 1; i >= 0; i--) {
-          const { T, B, cT, cB, mT, mB } = geo.layers[i];
+          const { E, C, Mid } = geo.layers[i];
           ctx.save();
           ctx.shadowColor = i === L - 1 ? M.photoShade : M.shade;
           ctx.shadowBlur = (i === L - 1 ? 16 : 9) * dpr;
           ctx.shadowOffsetY = (i === L - 1 ? 6 : 3.5) * dpr;
           ctx.shadowOffsetX = 0.8 * dpr;
-          ctx.fillStyle = col(M.coreTop[i]);
-          ctx.fill(outside(cT, cB), "evenodd");
+          ctx.fillStyle = M.coreTop[i];
+          ctx.fill(outside(C), "evenodd");
           ctx.restore();
-          // the broken face along each edge — lit below, in shade above
-          ctx.fillStyle = col(M.coreTop[i]); ctx.fill(band(T, cT));
-          ctx.fillStyle = col(M.coreBot[i]); ctx.fill(band(B, cB));
-          if (M.edgeTop) {
-            ctx.fillStyle = col(M.edgeTop[i]); ctx.fill(band(mT, cT));
-            ctx.fillStyle = col(M.edgeBot[i]); ctx.fill(band(mB, cB));
-          }
-          if (STYLE === "paper") {
-            // the break is fuzzy: a fine, dense down of short fibres, the odd
-            // longer one — not hairs
-            const r = rng(i * 31 + 7);
-            ctx.lineCap = "round";
-            for (const [E, dir, tone] of [[cT, 1, M.edgeTop[i]], [cB, -1, M.edgeBot[i]]]) {
-              ctx.strokeStyle = tone;
-              for (const [alpha, width, every, reach] of [[0.32, 0.45, 1, 1.6], [0.45, 0.5, 6, 3.6]]) {
-                ctx.globalAlpha = alpha; ctx.lineWidth = width;
-                ctx.beginPath();
-                for (let j = 0; j < E.length - 1; j++) {
-                  for (let q = 0; q < (every === 1 ? 3 : 1); q++) {
-                    if (every > 1 && r() * every > 1) continue;
-                    const t = r(), x = E[j][0] + (E[j + 1][0] - E[j][0]) * t, y = E[j][1] + (E[j + 1][1] - E[j][1]) * t;
-                    const len = (0.3 + r() * r()) * reach, ang = (r() - 0.5) * 1.6;
-                    ctx.moveTo(x, y - dir * 0.3);
-                    ctx.lineTo(x + Math.sin(ang) * len, y + dir * Math.cos(ang) * len);
-                  }
-                }
-                ctx.stroke();
+          ctx.fillStyle = lit(M.coreTop[i], M.coreBot[i]); ctx.fill(between(E, C), "evenodd");
+          ctx.fillStyle = lit(M.edgeTop[i], M.edgeBot[i]); ctx.fill(between(Mid, C), "evenodd");
+          // the break is fuzzy: a fine, dense down of short fibres, the odd
+          // longer one — not hairs
+          const r = rng(i * 31 + 7);
+          ctx.lineCap = "round";
+          ctx.strokeStyle = lit(M.edgeTop[i], M.edgeBot[i]);
+          for (const [alpha, width, every, reach] of [[0.32, 0.45, 1, 1.6], [0.45, 0.5, 6, 3.6]]) {
+            ctx.globalAlpha = alpha; ctx.lineWidth = width;
+            ctx.beginPath();
+            for (let j = 0; j < C.length - 1; j++) {
+              const [nx, ny] = geo.nrm[j];
+              for (let q = 0; q < (every === 1 ? 3 : 1); q++) {
+                if (every > 1 && r() * every > 1) continue;
+                const t = r(), x = C[j][0] + (C[j + 1][0] - C[j][0]) * t, y = C[j][1] + (C[j + 1][1] - C[j][1]) * t;
+                const len = (0.3 + r() * r()) * reach, ang = (r() - 0.5) * 1.6;
+                const ca = Math.cos(ang), sa = Math.sin(ang);
+                ctx.moveTo(x - nx * 0.3, y - ny * 0.3);
+                ctx.lineTo(x + (nx * ca - ny * sa) * len, y + (nx * sa + ny * ca) * len);
               }
-              ctx.globalAlpha = 1;
             }
+            ctx.stroke();
           }
-          if (STYLE === "blade" && i === 0) {
-            // the machined chamfer catches one hard line of light on its rim
-            ctx.strokeStyle = isNight() ? "rgba(255,255,255,.28)" : "#ffffff"; ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(cB[0][0], cB[0][1] + 0.5); for (const [x, y] of cB) ctx.lineTo(x, y + 0.5); ctx.stroke();
-          }
-          // the layer's own face (the page's own face is the real page,
+          ctx.globalAlpha = 1;
+          // the sheet's own face (the page's own face is the real page,
           // outside the clip — painted anyway so its edge is clean)
-          const face = outside(T, B);
-          ctx.fillStyle = col(M.sheets[i]);
-          ctx.fill(face, "evenodd");
-          if (M.grain && i > 0) { ctx.fillStyle = grainPattern(ctx); ctx.globalAlpha = M.grain; ctx.fill(face, "evenodd"); ctx.globalAlpha = 1; }
+          ctx.fillStyle = M.sheets[i];
+          ctx.fill(outside(E), "evenodd");
           if (i > 0) {
-            // where this layer meets the one above it: a crease of shade
+            // where this sheet meets the one above it: a crease of shade
             ctx.save(); ctx.globalAlpha = isNight() ? 0.5 : 0.22; ctx.strokeStyle = "#000"; ctx.lineWidth = 0.8;
-            const { T: uT, B: uB } = geo.layers[i - 1];
-            ctx.beginPath(); for (const [x, y] of uT) ctx.lineTo(x, y + 0.6); ctx.stroke();
-            ctx.beginPath(); for (const [x, y] of uB) ctx.lineTo(x, y + 0.6); ctx.stroke();
-            ctx.restore();
+            ctx.translate(0, 0.6); ctx.stroke(ring(geo.layers[i - 1].E)); ctx.restore();
           }
         }
         let rim = cut.querySelector(".rim");
         if (!rim) { rim = document.createElement("div"); rim.className = "rim"; cut.appendChild(rim); }
-        c.toBlob((blob) => {
+        cv.toBlob((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
           const old = rim.dataset.url;
@@ -805,37 +786,33 @@
         });
       }
 
-      // four screen-sized photos pinned at once is wasted paint: a cut that is
-      // off screen hides its photo until it comes back
-      const seen = new IntersectionObserver((list) => list.forEach((e) => {
-        if (e.isIntersecting) e.target.classList.add("near");
-        e.target.querySelector(".still")?.classList.toggle("away", !e.isIntersecting);
-      }), { rootMargin: "60% 0px" });
+      // a rip's picture loads as the rip comes near, not with the page
+      const near = new IntersectionObserver((list) => list.forEach((e) => {
+        if (e.isIntersecting) { e.target.classList.add("near"); near.unobserve(e.target); }
+      }), { rootMargin: "80% 0px" });
       const opener = new IntersectionObserver((list) => list.forEach((e) => {
         if (!e.isIntersecting) return;
         opener.unobserve(e.target);
         e.target.classList.add("open");
         e.target.clip();
-      }), { threshold: 0.18 });
+      }), { threshold: 0.2 });
 
       const boxes = [...document.querySelectorAll("[data-cut]")];
       boxes.forEach((box, n) => {
         const cut = box.querySelector(".cut");
-        seen.observe(cut);
+        near.observe(cut);
         let geo = null, size = "";
-        box.clip = () => {
-          if (!geo) return;
-          cut.style.clipPath = poly(box.classList.contains("open")
-            ? [...geo.layers[0].T, ...geo.layers[0].B.slice().reverse()]
-            : [...geo.xs.map((x, j) => [x, geo.mid[j] - 0.5]), ...geo.xs.map((x, j) => [x, geo.mid[j] + 0.5]).reverse()]);
-        };
+        box.clip = () => { if (geo) cut.style.clipPath = poly(box.classList.contains("open") ? geo.layers[0].E : geo.slit); };
         box.draw = (force) => {
-          const w = cut.clientWidth, h = cut.clientHeight;
-          if (!w || !h || (!force && size === `${w}x${h}`)) return;
-          size = `${w}x${h}`;
-          const k = Math.round(Math.max(26, Math.min(120, w * 0.065)));
+          const w = cut.clientWidth, h = cut.clientHeight, ph = phone();
+          if (!w || !h || (!force && size === `${w}x${h}x${ph}`)) return;
+          size = `${w}x${h}x${ph}`;
+          const k = Math.round(Math.max(22, Math.min(90, w * 0.06)));
+          // torn on every side that is on the screen
+          const bleed = ph ? "both" : box.dataset.bleed || "both";
+          const torn = { left: bleed === "right", right: bleed === "left" };
+          geo = geometry(w, h, k, n + 1, w < 700, torn);
           box.style.setProperty("--k", k + "px");
-          geo = geometry(w, h, k, n + 1, w < 700);
           box.clip();
           paint(box, cut, geo, w, h);
         };
@@ -845,10 +822,35 @@
         if (STILL) { box.classList.add("open"); box.clip(); }
         else opener.observe(box);
       });
-      // night and day are different materials
+      // night and day are different paper
       const redraw = () => boxes.forEach((b) => b.draw(true));
       document.getElementById("mode").addEventListener("click", redraw);
       matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+
+      // ── depth ──
+      // The picture sits behind the paper, so it moves a little less than the
+      // page does: a rip in the middle of the screen shows the middle of its
+      // picture, and the picture drifts the other way as the rip passes. It is
+      // a transform on the picture itself, never on the cut, so it cannot pin
+      // anything — and it is the same on every phone, where a fixed layer is not.
+      if (!STILL) {
+        const stills = boxes.map((b) => [b.querySelector(".cut"), b.querySelector(".still")]);
+        let queued = false;
+        const move = () => {
+          queued = false;
+          const vh = innerHeight;
+          for (const [cut, still] of stills) {
+            const r = cut.getBoundingClientRect();
+            if (r.bottom < -100 || r.top > vh + 100) continue;
+            const off = (r.top + r.height / 2 - vh / 2) / (vh / 2 + r.height / 2);   // −1 … 1 across the pass
+            still.style.transform = `translate3d(0, ${(off * r.height * 0.11).toFixed(1)}px, 0)`;
+          }
+        };
+        const queue = () => { if (!queued) { queued = true; requestAnimationFrame(move); } };
+        addEventListener("scroll", queue, { passive: true });
+        addEventListener("resize", queue);
+        move();
+      }
     })();
 
     // ─── things to play, on a rail ───────────────────────
@@ -975,6 +977,16 @@
         dir.appendChild(entry);
       });
     })();
+
+    // ─── one door ───────────────────────────────────────
+    // A room's button and its rip go to the same place, so pointing at either
+    // lights both — the picture leans in, the button takes the room's colour.
+    document.querySelectorAll(".feature").forEach((f) => {
+      for (const el of f.querySelectorAll(".btn, .f-rip")) {
+        el.addEventListener("pointerenter", () => f.classList.add("hot"));
+        el.addEventListener("pointerleave", () => f.classList.remove("hot"));
+      }
+    });
 
     // ─── the terminal ───────────────────────────────────
     // The front door doesn't run the terminal any more — it opens it. The

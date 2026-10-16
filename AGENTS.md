@@ -569,32 +569,22 @@ an internet" — family and friends use these rooms, so the front door sells the
 No personal photos: every cut and every tile in "Every room" is a **screenshot of the
 real page it opens**, taken by `assets/frontdoor/capture.mjs` (re-run it when a room
 changes how it looks). And the order is **newest, biggest and most fun first** — today
-Counter-Strike (right under the headline), KONDRITE, a rail of more games (`FEATURE`;
-a `play` item opens over the page in the player), then Entertainment, How Big Everything
-Is and Climbing, then "Every room". When something bigger or newer ships, it moves to
-the top. Each cut's name sits on a dark notched plate inside the cut, never straight on
-the screenshot, which is full of the page's own words.
+Counter-Strike, KONDRITE, a rail of more games (`FEATURE`; a `play` item opens over the
+page in the player), Entertainment, How Big Everything Is, Climbing, then "Every room".
+When something bigger or newer ships, it moves to the top.
 
-**Every cut is the same thing**: a strip sliced at one angle (worked
-out in pixels so they are all parallel), a link to a room, named for it — its URL, its
-name, one line, Enter — at the top of the cut, where you see it first as it scrolls up.
-It opens from a slit the first time it comes on screen. The page is a stack of
-sheets and the cut tears through all of them, each a little differently: at every edge
-you look down a few steps of torn paper — fuzzy fibre, a bright broken core that comes
-and goes, each sheet's shadow on the one below — before you reach the picture. The `.cut`
-is clipped to the top sheet's tear; the sheets under it are painted on a canvas per cut
-and laid over the photo as a plain image (`.rim`), redrawn on resize and on night/day.
-The torn line must stay inside the cut's box (the `m` margin in `geometry()`), or the
-pinned photo shows past the canvas. `?edge=rock` and `?edge=blade` are the two other
-materials Ric was shown; paper is the default. The claw, jagged, blade and shatter shapes came out on 2026-10-16 because
-four gimmicks at once read as clip-art; don't bring back a second shape. The photo in a
-cut is a `position: fixed` layer (`.still`) inside it, clipped by the cut's clip path —
-that is what keeps it still on iOS, which ignores `background-attachment: fixed`. Never
-put a `filter` or `transform` on a `.cut` or anything above it: either one pins the
-fixed layer to that element and the photo starts scrolling with the page again. And
-anything laid over a cut goes *inside* the `.cut`, not beside it: a sibling that fades in
-over it made Chromium paint the cut's scrim out past its clip. The shadows in a cut are drawn on that canvas, never
-as a CSS or SVG blur, for the same reason. Night/day is a
+**Each room is a `.feature`: the words on the paper, one rip beside them.** The paper
+side carries a big outline number, the name, a sentence, three facts, a solid button
+and a "Next" link to the following room; the rip runs off the screen's edge
+(`data-bleed`), alternating sides, and on a phone the words come first and the rip runs
+full width. Button and rip are one door — hovering either lights both. The rip is torn
+through a stack of paper sheets, each tearing differently, painted on a canvas per rip
+(`.rim`) and laid inside the clipped `.cut`; the tear must stay inside the cut's box (the
+`m` margin in `geometry()`). The picture (`.still`) is taller than the rip and slides
+against the scroll ("depth" in the script) — a transform on the picture, never on the
+`.cut`. Never put a `filter` or `transform` on a `.cut`, and keep anything laid over a
+cut *inside* it: Chromium paints a sibling that fades in over a clipped element outside
+the clip. Shadows in a rip are drawn on the canvas, never as a CSS or SVG blur. Night/day is a
 visitor's own choice kept in `localStorage` (`frontdoor-theme`), else their OS.
 
 Homepage "transmissions" live in `notes.js`. Curated newest additions live
