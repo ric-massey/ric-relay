@@ -24,7 +24,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | File | Room | What it is |
 |---|---|---|
 | `index.html` | Terminal | Landing terminal — boot sequence + working command line (try `help`) |
-| `frontdoor.html` | — | The redesigned front door, in preview and unlisted: the newest and biggest rooms seen through torn cuts in the page, games that play in place, and an amber button to the terminal (type `front door` in the terminal) |
+| `frontdoor.html` | — | The redesigned front door, in preview and unlisted: an endless feed of rooms, newest and biggest first, each seen through a torn cut in the page, and an amber button to the terminal (type `front door` in the terminal) |
 | `orrin.html` | Orrin | Plain-language tour of Orrin, progress notes after each run (`orrin-updates.js`), plus live public project activity from GitHub |
 | `psyche.html` | Psyche | Human-systems field notebook — mood, criteria, and evidence |
 | `climbing.html` | Climbing | Mountain-Project-style route ledger — projects, ticks, objectives |
