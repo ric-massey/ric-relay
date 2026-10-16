@@ -232,6 +232,24 @@
     .an-meta { display:flex; flex-direction:column; min-width:0; }
     .an-meta span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .an-door { margin:30px auto; }
+    .an-jump { position:sticky; top:56px; z-index:4; display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; margin:-8px -16px 12px; padding:8px 16px;
+               background:color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); }
+    .an-jump button { flex:0 0 auto; border:1px solid var(--line); background:var(--panel); border-radius:999px; padding:4px 12px; min-height:32px; cursor:pointer; color:var(--dim); font-size:13px; }
+    .an-jump button:hover { color:var(--ink); }
+    [id^="an-"].an-panel, #an-top { scroll-margin-top:110px; }
+    .an-pick { border:0; background:none; padding:0; font:inherit; color:inherit; text-align:left; cursor:pointer; overflow-wrap:anywhere; }
+    .an-pick:hover { text-decoration:underline; text-underline-offset:3px; }
+    .an-chips { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0 0 12px; color:var(--dim); font-size:13px; }
+    .an-chip { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--accent); background:color-mix(in srgb, var(--accent) 10%, var(--panel));
+               color:var(--ink); border-radius:999px; padding:3px 10px; min-height:30px; cursor:pointer; font-size:13px; }
+    .an-chip span { color:var(--dim); font-size:15px; line-height:1; }
+    .an-since, .an-info { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:8px; padding:10px 12px; margin:0 0 12px; font-size:13px; }
+    .an-delta { display:block; font-size:12px; margin-top:4px; color:var(--dim); }
+    .an-delta.up, .an-d.up { color:var(--ok); }
+    .an-delta.down, .an-d.down { color:var(--bad); }
+    .an-d { font-size:12px; color:var(--faint); }
+    .an-panel .an-head { align-items:baseline; }
+    .an-csv { font-size:12px; }
     .an-all { margin:10px 0 0; }
     @media (max-width:420px) { .brand { display:none; } }
     .an-door h2 { margin:0 0 6px; font-size:18px; }
@@ -256,6 +274,7 @@
     @media (max-width:720px) {
       .an-kpis { grid-template-columns:repeat(2, minmax(0,1fr)); }
       .an-stamp { flex-basis:100%; order:3; }
+      .an-jump { top:56px; }
       .an-heat { grid-template-columns:30px repeat(24, minmax(0,1fr)); gap:1px; }
     }
 

@@ -119,6 +119,7 @@
     $('gate').hidden = true;
     $('app').hidden = false;
     $('me-email').textContent = session.user.email || '';
+    if (A.wanted()) S.tab = 'analytics';   // #analytics in the address: a reload lands back on it
     draw();
     await loadSite();
     if (K.enabled() && K.restore()) loadPilots();   // in the background; the tab draws when it lands

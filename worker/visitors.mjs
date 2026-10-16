@@ -303,6 +303,28 @@ export async function isSiteAdmin(token, env, fetcher = fetch) {
   return ok;
 }
 
+/* ── filters ── ?path=/cs.html&country=US&ref=google.com,google.ca … Only these
+   names, only bound values, at most one of each. `ref` is a list because the
+   page groups hosts (google.com and google.ca are both "Google"); an empty
+   item is Direct. */
+const FILTER_COLS = ['path', 'country', 'region', 'city', 'device', 'browser', 'os', 'lang', 'screen', 'src'];
+export function filterClause(q) {
+  const parts = [], args = [];
+  for (const col of FILTER_COLS) {
+    const v = q.get(col);
+    if (v == null || v.length > 200) continue;
+    parts.push(` AND session IN (SELECT session FROM views WHERE ${col} = ?)`);
+    args.push(v);
+  }
+  const ref = q.get('ref');
+  if (ref != null && ref.length <= 2000) {
+    const hosts = [...new Set(ref.split(','))].slice(0, 30);
+    parts.push(` AND session IN (SELECT session FROM views WHERE first = 1 AND ref IN (${hosts.map(() => '?').join(',')}))`);
+    args.push(...hosts);
+  }
+  return { sql: parts.join(''), args };
+}
+
 /* Sessions, newest first, each with the pages it went through in order and
    where it came from. One query serves the admin page's session list (`where`
    is the range) and one visitor's timeline (`where` is their id). */
@@ -371,6 +393,16 @@ export async function handleVisitors(request, env, parts, url, isOwner, json) {
     }, 200, origin, { 'cache-control': 'private, no-store' });
   }
 
+  /* ---------- GET /stats/live — who is here now, and nothing else ----------
+     One small table, so a page can ask every minute without reading a month
+     of views each time. */
+  if (parts[1] === 'live') {
+    const rows = (await db.prepare(`SELECT path AS k, COUNT(*) AS n FROM live
+                    WHERE ts >= ? AND ${NOT_ME} GROUP BY path ORDER BY n DESC`).bind(Date.now() - VIEW_WINDOW).all()).results || [];
+    const pages = rows.map(x => [x.k, x.n]);
+    return json({ now: Date.now(), live: { count: pages.reduce((a, [, n]) => a + n, 0), pages } }, 200, origin, { 'cache-control': 'private, no-store' });
+  }
+
   const range = RANGES.has(q.get('range')) ? q.get('range') : '30d';
   const tz = Math.max(-840, Math.min(840, parseInt(q.get('tz'), 10) || 0));
   const me = ID.test(q.get('me') || '') ? q.get('me') : '';
@@ -382,29 +414,37 @@ export async function handleVisitors(request, env, parts, url, isOwner, json) {
   const bucket = range === 'today' ? HOUR_MS : DAY_MS;
   const off = tz * 60000;
 
-  const W = `ts >= ? AND ${NOT_ME}`;
+  /* Filters narrow everything to the VISITS that match: "came from Google"
+     is a visit whose first page came from Google, "saw /cs.html" is a visit
+     that saw it at some point — and then every table shows those visits
+     whole, so you can see what else they did. Each filter is its own
+     IN (...) so two of them mean both, not "one page that was both". */
+  const { sql: FW, args: FA } = filterClause(q);
+  const W = `ts >= ? AND ${NOT_ME}${FW}`;
+  const WA = [from, ...FA];
   const counts = `COUNT(*) AS views, COUNT(DISTINCT visitor) AS visitors, COUNT(DISTINCT session) AS sessions`;
   const top = (col, measure, n = 12) => db.prepare(
-    `SELECT ${col} AS k, ${measure} AS n FROM views WHERE ${W} GROUP BY ${col} ORDER BY n DESC LIMIT ${n}`).bind(from);
+    `SELECT ${col} AS k, ${measure} AS n FROM views WHERE ${W} GROUP BY ${col} ORDER BY n DESC LIMIT ${n}`).bind(...WA);
 
   const r = await db.batch([
-    db.prepare(`SELECT ${counts} FROM views WHERE ${W}`).bind(from),                         // 0
-    db.prepare(`SELECT ${counts} FROM views WHERE ${W}`).bind(today),                        // 1
+    db.prepare(`SELECT ${counts} FROM views WHERE ${W}`).bind(...WA),                       // 0
+    db.prepare(`SELECT ${counts} FROM views WHERE ${W}`).bind(today, ...FA),                // 1
     db.prepare(`SELECT CAST((ts + ?) / ? AS INTEGER) AS b, ${counts}
-                FROM views WHERE ${W} GROUP BY b ORDER BY b`).bind(off, bucket, from),        // 2
+                FROM views WHERE ${W} GROUP BY b ORDER BY b`).bind(off, bucket, ...WA),      // 2
     db.prepare(`SELECT path AS k, COUNT(*) AS n, COUNT(DISTINCT visitor) AS u
-                FROM views WHERE ${W} GROUP BY path ORDER BY n DESC LIMIT 25`).bind(from),    // 3
+                FROM views WHERE ${W} GROUP BY path ORDER BY n DESC LIMIT 25`).bind(...WA),    // 3
     db.prepare(`SELECT ref AS k, COUNT(*) AS n FROM views
-                WHERE ${W} AND first = 1 GROUP BY ref ORDER BY n DESC LIMIT 20`).bind(from),  // 4
+                WHERE ${W} AND first = 1 GROUP BY ref ORDER BY n DESC LIMIT 20`).bind(...WA),  // 4
     top('country', 'COUNT(DISTINCT visitor)', 20),                                            // 5
     top('browser', 'COUNT(DISTINCT visitor)'),                                                // 6
     top('device', 'COUNT(DISTINCT visitor)'),                                                 // 7
     top('os', 'COUNT(DISTINCT visitor)'),                                                     // 8
     db.prepare(`SELECT path AS k, COUNT(*) AS n FROM views
-                WHERE ${W} AND first = 1 GROUP BY path ORDER BY n DESC LIMIT 10`).bind(from), // 9
+                WHERE ${W} AND first = 1 GROUP BY path ORDER BY n DESC LIMIT 10`).bind(...WA), // 9
     /* New = their first visit ever falls inside the range. */
-    db.prepare(`SELECT COUNT(*) AS n FROM (SELECT MIN(ts) AS f FROM views
-                WHERE ${NOT_ME} GROUP BY visitor) WHERE f >= ?`).bind(from),                  // 10
+    db.prepare(`SELECT COUNT(*) AS n FROM (SELECT visitor, MIN(ts) AS f FROM views
+                WHERE ${NOT_ME} GROUP BY visitor) WHERE f >= ?${FW ? ` AND visitor IN (SELECT visitor FROM views WHERE ${W})` : ''}`)
+      .bind(from, ...(FW ? WA : [])),                                                         // 10
     db.prepare(`SELECT path AS k, COUNT(*) AS n FROM live
                 WHERE ts >= ? AND ${NOT_ME} GROUP BY path ORDER BY n DESC`).bind(now - VIEW_WINDOW), // 11
     db.prepare(`SELECT ts, path, ref, country, first FROM views
@@ -419,14 +459,17 @@ export async function handleVisitors(request, env, parts, url, isOwner, json) {
   const live = pairs(11);
 
   /* ---------- ?full=1 — everything else, for ricmassey.com/admin ----------
-     The /visitors/ console refreshes every thirty seconds and does not ask for
-     this; the admin page asks once a minute. */
+     Heavy: around forty queries over the range. The admin page asks for it
+     when opened, on a range or filter change, and every five minutes while it
+     is in front — and asks /stats/live in between. D1 bills rows READ, and a
+     dashboard left open that re-reads a month every minute is the one thing
+     here that could run up a bill. */
   let more;
   if (q.get('full') === '1') {
     const m = await db.batch([
       db.prepare(`WITH s AS (SELECT COUNT(*) AS n, SUM(dur) AS dur FROM views WHERE ${W} GROUP BY session)
-                  SELECT COUNT(*) AS sessions, SUM(n = 1) AS bounces, AVG(n) AS pps, AVG(dur) AS dur FROM s`).bind(from),   // 0
-      db.prepare(`SELECT AVG(NULLIF(dur, 0)) AS dur, AVG(NULLIF(depth, 0)) AS depth FROM views WHERE ${W}`).bind(from), // 1
+                  SELECT COUNT(*) AS sessions, SUM(n = 1) AS bounces, AVG(n) AS pps, AVG(dur) AS dur FROM s`).bind(...WA),   // 0
+      db.prepare(`SELECT AVG(NULLIF(dur, 0)) AS dur, AVG(NULLIF(depth, 0)) AS depth FROM views WHERE ${W}`).bind(...WA), // 1
       db.prepare(`WITH v AS (SELECT path, visitor, dur, depth,
                     ROW_NUMBER() OVER (PARTITION BY session ORDER BY ts, id) AS rn,
                     ROW_NUMBER() OVER (PARTITION BY session ORDER BY ts DESC, id DESC) AS rd,
@@ -435,41 +478,86 @@ export async function handleVisitors(request, env, parts, url, isOwner, json) {
                   SELECT path AS k, COUNT(*) AS views, COUNT(DISTINCT visitor) AS visitors,
                          ROUND(AVG(NULLIF(dur, 0))) AS dur, ROUND(AVG(NULLIF(depth, 0))) AS depth,
                          SUM(rn = 1) AS entries, SUM(rd = 1) AS exits, SUM(sn = 1) AS bounces
-                  FROM v GROUP BY path ORDER BY views DESC LIMIT 80`).bind(from),                       // 2
+                  FROM v GROUP BY path ORDER BY views DESC LIMIT 80`).bind(...WA),                       // 2
       db.prepare(`WITH v AS (SELECT path, LEAD(path) OVER (PARTITION BY session ORDER BY ts, id) AS nxt
                   FROM views WHERE ${W})
                   SELECT path AS a, nxt AS b, COUNT(*) AS n FROM v
-                  WHERE nxt IS NOT NULL AND nxt != path GROUP BY a, b ORDER BY n DESC LIMIT 30`).bind(from), // 3
+                  WHERE nxt IS NOT NULL AND nxt != path GROUP BY a, b ORDER BY n DESC LIMIT 30`).bind(...WA), // 3
       db.prepare(`SELECT CAST(strftime('%w', (ts + ?) / 1000, 'unixepoch') AS INTEGER) AS d,
                          CAST(strftime('%H', (ts + ?) / 1000, 'unixepoch') AS INTEGER) AS h, COUNT(*) AS n
-                  FROM views WHERE ${W} GROUP BY d, h`).bind(off, off, from),                            // 4
+                  FROM views WHERE ${W} GROUP BY d, h`).bind(off, off, ...WA),                          // 4
       db.prepare(`SELECT country, region, city, COUNT(DISTINCT visitor) AS n FROM views
-                  WHERE ${W} AND country != '' GROUP BY country, region, city ORDER BY n DESC LIMIT 40`).bind(from), // 5
+                  WHERE ${W} AND country != '' GROUP BY country, region, city ORDER BY n DESC LIMIT 40`).bind(...WA), // 5
       top('lang', 'COUNT(DISTINCT visitor)', 20),                                                // 6
       top('screen', 'COUNT(DISTINCT visitor)'),                                                  // 7
       db.prepare(`SELECT src, camp, COUNT(DISTINCT session) AS n FROM views
-                  WHERE ${W} AND src != '' GROUP BY src, camp ORDER BY n DESC LIMIT 20`).bind(from),   // 8
+                  WHERE ${W} AND src != '' GROUP BY src, camp ORDER BY n DESC LIMIT 20`).bind(...WA),   // 8
       db.prepare(`SELECT host AS k, COUNT(*) AS n, COUNT(DISTINCT visitor) AS u FROM outs
-                  WHERE ${W} GROUP BY host ORDER BY n DESC LIMIT 20`).bind(from),                // 9
+                  WHERE ${W} GROUP BY host ORDER BY n DESC LIMIT 20`).bind(...WA),                // 9
       db.prepare(`SELECT c AS k, COUNT(*) AS n FROM
                     (SELECT COUNT(DISTINCT session) AS c FROM views WHERE ${W} GROUP BY visitor)
-                  GROUP BY c ORDER BY c`).bind(from),                                             // 10
+                  GROUP BY c ORDER BY c`).bind(...WA),                                             // 10
       /* Time on site per session, in six bands: <10s, <30s, <2m, <5m, <15m, more. */
       db.prepare(`SELECT CASE WHEN d < 10 THEN 0 WHEN d < 30 THEN 1 WHEN d < 120 THEN 2
                               WHEN d < 300 THEN 3 WHEN d < 900 THEN 4 ELSE 5 END AS k, COUNT(*) AS n FROM
                     (SELECT SUM(dur) AS d FROM views WHERE ${W} GROUP BY session)
-                  GROUP BY k ORDER BY k`).bind(from),                                             // 11
+                  GROUP BY k ORDER BY k`).bind(...WA),                                             // 11
       db.prepare(`SELECT visitor, COUNT(DISTINCT session) AS s, COUNT(*) AS v, SUM(dur) AS dur, MAX(ts) AS last,
                          country, region, city, device, browser, os,
                          (SELECT MIN(ts) FROM views x WHERE x.visitor = views.visitor) AS firstEver
-                  FROM views WHERE ${W} GROUP BY visitor ORDER BY s DESC, v DESC LIMIT 30`).bind(from), // 12
-      sessionsQuery(db, W, [from], 60),                                                           // 13
+                  FROM views WHERE ${W} GROUP BY visitor ORDER BY s DESC, v DESC LIMIT 30`).bind(...WA), // 12
+      sessionsQuery(db, W, WA, 60),                                                           // 13
       db.prepare(`SELECT browser || ' ' || os AS k, COUNT(DISTINCT visitor) AS n FROM views
-                  WHERE ${W} GROUP BY browser, os ORDER BY n DESC LIMIT 12`).bind(from)            // 14
+                  WHERE ${W} GROUP BY browser, os ORDER BY n DESC LIMIT 12`).bind(...WA)            // 14
     ]);
     const rs = i => (m[i] && m[i].results) || [];
     const e = rs(0)[0] || {}, g = rs(1)[0] || {};
+
+    /* The same stretch one period back, to the same point in it: today so far
+       against yesterday to this hour, this week against the week before. */
+    const SPAN = { today: 1, '7d': 7, '30d': 30, '90d': 90 }[range];
+    let prev = null;
+    if (SPAN) {
+      const back = SPAN * DAY_MS, pFrom = from - back, pTo = now - back;
+      const WP = `ts >= ? AND ts < ? AND ${NOT_ME}${FW}`, WPA = [pFrom, pTo, ...FA];
+      const p = await db.batch([
+        db.prepare(`SELECT ${counts} FROM views WHERE ${WP}`).bind(...WPA),
+        db.prepare(`WITH s AS (SELECT COUNT(*) AS n, SUM(dur) AS dur FROM views WHERE ${WP} GROUP BY session)
+                    SELECT COUNT(*) AS sessions, SUM(n = 1) AS bounces, AVG(n) AS pps, AVG(dur) AS dur FROM s`).bind(...WPA),
+        db.prepare(`SELECT AVG(NULLIF(dur, 0)) AS dur FROM views WHERE ${WP}`).bind(...WPA),
+        db.prepare(`SELECT path AS k, COUNT(*) AS n FROM views WHERE ${WP} GROUP BY path ORDER BY n DESC LIMIT 200`).bind(...WPA),
+        db.prepare(`SELECT COUNT(*) AS n FROM (SELECT visitor, MIN(ts) AS f FROM views WHERE ${NOT_ME} GROUP BY visitor)
+                    WHERE f >= ? AND f < ?${FW ? ` AND visitor IN (SELECT visitor FROM views WHERE ${WP})` : ''}`)
+          .bind(pFrom, pTo, ...(FW ? WPA : []))
+      ]);
+      const pr = i => ((p[i] && p[i].results) || []);
+      const c = pr(0)[0] || {}, ps = pr(1)[0] || {};
+      prev = {
+        from: pFrom, to: pTo,
+        visitors: c.visitors || 0, sessions: c.sessions || 0, views: c.views || 0, newVisitors: (pr(4)[0] || {}).n || 0,
+        bounces: ps.bounces || 0, pagesPerSession: ps.pps || 0, sessionSeconds: ps.dur || 0,
+        pageSeconds: (pr(2)[0] || {}).dur || 0,
+        pages: pr(3).map(x => [x.k, x.n])
+      };
+    }
+
+    /* "Since you last looked": what came in after `seen`, whatever the range
+       or filter — it is the doorbell, not a report. */
+    let since = null;
+    const seen = parseInt(q.get('seen'), 10);
+    if (seen > now - 365 * DAY_MS && seen < now) {
+      const sn = await db.batch([
+        db.prepare(`SELECT ${counts} FROM views WHERE ts >= ? AND ${NOT_ME}`).bind(seen),
+        db.prepare(`SELECT COUNT(*) AS n FROM (SELECT MIN(ts) AS f FROM views WHERE ${NOT_ME} GROUP BY visitor) WHERE f >= ?`).bind(seen),
+        db.prepare(`SELECT path AS k, COUNT(*) AS n FROM views WHERE ts >= ? AND ${NOT_ME} GROUP BY path ORDER BY n DESC LIMIT 3`).bind(seen)
+      ]);
+      const c = (sn[0].results || [])[0] || {};
+      since = { at: seen, visitors: c.visitors || 0, sessions: c.sessions || 0, views: c.views || 0,
+                newVisitors: ((sn[1].results || [])[0] || {}).n || 0, pages: (sn[2].results || []).map(x => [x.k, x.n]) };
+    }
     more = {
+      prev, since,
+      filters: Object.fromEntries([...FILTER_COLS, 'ref'].filter(c => q.get(c) != null).map(c => [c, q.get(c)])),
       engagement: {
         sessions: e.sessions || 0, bounces: e.bounces || 0, pagesPerSession: e.pps || 0,
         sessionSeconds: e.dur || 0, pageSeconds: g.dur || 0, scroll: g.depth || 0

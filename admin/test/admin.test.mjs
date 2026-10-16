@@ -611,6 +611,29 @@ test('analytics: times, referrers and places read like a person wrote them', () 
   assert.equal(AN.place({}), 'Unknown place');
 });
 
+test('analytics: filters from the address, CSV and the comparison words are safe and plain', () => {
+  const d = { configured: true, range: '7d', tz: 0, from: 0, now: 86400000 * 7, bucket: 86400000, since: 0,
+    live: { count: 0, pages: [] }, today: { visitors: 0, sessions: 0, views: 0 }, total: { visitors: 2, sessions: 3, views: 4, newVisitors: 1 },
+    series: [], pages: [], entries: [], referrers: [['google.com', 2], ['google.ca', 1], ['', 1]], countries: [], browsers: [], devices: [], os: [], feed: [],
+    more: { filters: { path: EVIL, ref: 'google.com' }, prev: { visitors: 1, sessions: 3, views: 8, pages: [] }, since: { at: 1, views: 2, sessions: 1, visitors: 1, newVisitors: 1, pages: [[EVIL, 2]] },
+      engagement: {}, pages: [], sessions: [], regulars: [] } };
+  // A label read from the address bar is somebody else's link, so it is escaped too.
+  const html = AN.drawAll(d, { range: '7d', labels: { path: EVIL } });
+  assert.ok(!INJECTED.test(html));
+  assert.match(html, /data-unfilter="path"/);
+  // "Google" is one row and filters to both of its hosts.
+  assert.match(html, /data-fv="google\.com,google\.ca"/);
+  assert.match(html, /▲ 100% vs the 7 days before/);
+  assert.match(html, /▼ 50% vs the 7 days before/);
+  assert.equal(AN.delta(5, 5, 'all'), '');
+  assert.match(AN.delta(0.5, 0.25, '7d', { worse: true, ratio: true }), /class="an-delta down">▲ 25 pts/);
+  assert.equal(AN.filterWords('ref', 'google.com,google.ca'), 'came from Google');
+  const csv = AN.toCsv('sessions', { more: { sessions: [{ start: 0, visitor: 'v', pages: [['/a, "b"', 1], ['=cmd|x', 1]], city: '=HYPERLINK("x")' }] } });
+  assert.match(csv, /"\/a, ""b"" > =cmd\|x"/);
+  assert.match(csv, /"'=HYPERLINK\(""x""\)"/);
+  assert.equal(AN.toCsv('nope', {}), '');
+});
+
 test('wiring: the analytics tab reaches only the visitor Worker, with the admin session', () => {
   const page = read('admin/index.html');
   assert.match(page, /connect-src 'self' https:\/\/\*\.supabase\.co http:\/\/127\.0\.0\.1:54321 https:\/\/training-log\.rmbuster82\.workers\.dev;/);

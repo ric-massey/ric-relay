@@ -381,7 +381,9 @@
           render();
         }
       } catch (e) { notice('Could not reach the Worker — showing the last numbers loaded.'); }
-      timer = setTimeout(load, 30000);
+      /* Not while the tab is hidden: every refresh reads the whole range from
+         D1, which bills rows read. visibilitychange below picks it back up. */
+      timer = setTimeout(() => { if (document.visibilityState === 'visible') load(); }, 30000);
     }
 
     function show() {

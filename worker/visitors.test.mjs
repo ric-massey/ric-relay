@@ -298,4 +298,58 @@ await test('the admin page gets in with an admin\'s site session, and nobody els
   } finally { globalThis.fetch = real; }
 });
 
+await test('filters narrow to the visits that match, and two filters mean both', async () => {
+  const { hit, stats } = setup();
+  await hit({ v: V1, s: S1, f: true, p: '/', r: 'google.com', k: 'view' });
+  await hit({ v: V1, s: S1, p: '/cs.html', k: 'view' });
+  await hit({ v: V2, s: S3, f: true, p: '/cs.html', r: 'instagram.com', k: 'view' }, { country: 'CA' });
+  await hit({ v: V2, s: S2, f: true, p: '/climbing.html', k: 'view' }, { country: 'CA' });
+  const get = async qs => (await (await stats('range=30d&tz=0&full=1&' + qs)).json());
+  /* Saw /cs.html: both visits that did, whole — their other pages included. */
+  let d = await get('path=' + encodeURIComponent('/cs.html'));
+  assert.deepEqual(d.total, { visitors: 2, sessions: 2, views: 3, newVisitors: 2 });
+  assert.deepEqual(d.more.filters, { path: '/cs.html' });
+  /* Came from Google (any of its hosts), or straight in. */
+  d = await get('ref=' + encodeURIComponent('google.com,google.ca'));
+  assert.equal(d.total.sessions, 1);
+  d = await get('ref=');
+  assert.equal(d.total.sessions, 1);
+  assert.equal(d.more.sessions[0].session, S2);
+  /* Both: Canada AND saw /cs.html. */
+  d = await get('country=CA&path=' + encodeURIComponent('/cs.html'));
+  assert.equal(d.total.sessions, 1);
+  assert.equal(d.more.sessions[0].session, S3);
+  /* Junk filter names are ignored, never spliced into SQL. */
+  d = await get('path%3D1%20OR%201=1');
+  assert.equal(d.total.sessions, 3);
+  d = await get("country=" + encodeURIComponent("US' OR '1'='1"));
+  assert.equal(d.total.sessions, 0);
+});
+
+await test('the same stretch one period back comes alongside, and "since you last looked"', async () => {
+  const { env, hit, stats } = setup();
+  await hit({ v: V1, s: S1, f: true, p: '/', k: 'view' });
+  await hit({ v: V2, s: S3, f: true, p: '/cs.html', k: 'view' });
+  /* Move V1's visit back eight days: last week, not this one. */
+  env.STATS.raw.prepare('UPDATE views SET ts = ts - 8 * 86400000 WHERE visitor = ?').run(V1);
+  const seen = Date.now() - 60000;
+  const d = await (await stats('range=7d&tz=0&full=1&seen=' + seen)).json();
+  assert.equal(d.total.visitors, 1);
+  assert.equal(d.more.prev.visitors, 1);
+  assert.deepEqual(d.more.prev.pages, [['/', 1]]);
+  assert.equal(d.more.since.views, 1);
+  assert.equal(d.more.since.newVisitors, 1);
+  const all = await (await stats('range=all&tz=0&full=1')).json();
+  assert.equal(all.more.prev, null);
+  assert.equal(all.more.since, null);
+});
+
+await test('/stats/live answers who is here without reading the views', async () => {
+  const { call, hit } = setup();
+  await hit({ v: V1, s: S1, f: true, p: '/cs.html', k: 'view' });
+  assert.equal((await call('/stats/live')).status, 401);
+  const d = await (await call('/stats/live', { headers: { authorization: 'Bearer ' + TOKEN } })).json();
+  assert.deepEqual(d.live, { count: 1, pages: [['/cs.html', 1]] });
+});
+
 console.log(`\n${n} passed`);

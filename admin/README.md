@@ -37,6 +37,30 @@ page. Click any visit or regular for that browser's whole history.
 A visitor is a random id their browser made up — no names, no IPs. Two
 "Ignore" buttons take your own devices out of every number: one for the device
 you are on, one in a visitor's history ("it is me") for your other devices.
+The first time a device opens this tab it is ignored automatically (an admin is
+not a visitor), with a "Count it again" link in case that is wrong.
+
+**For using it every day:**
+
+- **It remembers where you were.** The tab, range and filters are in the
+  address (`/admin/#analytics?range=7d&path=/cs.html`), so a reload lands back
+  on it and any view can be bookmarked.
+- **"Since you last looked"** at the top: visits, people and new people since
+  the last time this browser opened the tab.
+- **Up or down:** every headline number says how it compares with the same
+  stretch one period back (today so far vs yesterday to this hour, this week vs
+  last week…). The pages table has a "vs before" column.
+- **Click to filter.** Any page, source, tag, country, region, city, device,
+  screen, browser, system or language narrows the whole tab to the visits that
+  match — "came from Instagram", then see what those people read. Filters stack;
+  each chip removes its own; Clear removes them all.
+- **Jump bar** across the top (sticky) for the long page, especially on a phone.
+- **Download CSV** on Recent visits, Pages and Regulars.
+- **It is cheap to leave open.** The full report loads on opening, on any
+  change, on Refresh, and every five minutes while the tab is in front; between
+  those it asks only who is online. Nothing at all while the tab is hidden. (D1
+  bills rows read, and the full report reads the range about forty times — a
+  minute-by-minute refresh left open would have used up the free tier in hours.)
 
 **What it needs, once:**
 

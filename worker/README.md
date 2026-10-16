@@ -16,7 +16,7 @@ is historical — every room that writes anything writes here:
 | `/garmin` | Training (owner bar) | Ric's Garmin export, token to read **and** write; `/garmin/_pull` starts the Actions job (`projects/training/garmin/`) |
 | `/trials` | Psyche → Studies | `/trials/search` and `/trials/study/<NCT>` pass ClinicalTrials.gov API v2 through, cached five minutes. The watchlist is on the site account, not here (`projects/psyche/README.md`) |
 | `/hit` | every page | page-view beacons from `assets/visit.js`, into D1 (`visitors.mjs`) |
-| `/stats` | `visitors/`, `admin/` | the visitor numbers, owner only; `?full=1` adds everything the admin Analytics tab draws, `/stats/visitor?id=` is one browser's history, `/stats/exclude` is "ignore this device" |
+| `/stats` | `visitors/`, `admin/` | the visitor numbers, owner only; `?full=1` adds everything the admin Analytics tab draws (with `path=`, `ref=`, `country=`… filters, the previous period, and `seen=` for "since you last looked"), `/stats/live` is only who is online, `/stats/visitor?id=` is one browser's history, `/stats/exclude` is "ignore this device" |
 | `/auth` | all of them | Ric's sign-in (`assets/owner.js`) |
 
 It lived in `projects/training/server/` until 2026-09-25. The deployed name
