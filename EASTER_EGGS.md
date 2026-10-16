@@ -19,7 +19,7 @@ completion.
 | `listen` | Opens KONDRITE's listening booth (`projects/kondrite/sounds/listen.html`): every game sound alone and in real-timing scenes, with plain-word buttons for what bugs you and a copy-your-answers button. |
 | `visitors` | Opens the private visitor counter (`visitors/`). Anybody can type it; the numbers stay behind the site password. |
 | `admin` / `accounts` | Opens Ric's admin site (`admin/`): every site account and KONDRITE pilot — access, invites, emails, password resets, bans, deletes. Anybody can type it; anyone but an admin gets "No access". |
-| `front door` | Walks back out and reloads the front door from the top (`frontdoor` and `front-door` work too). Also shows as a match while you type `front`. |
+| `front door` | Opens the redesigned front door, in preview at `frontdoor.html` (`frontdoor` and `front-door` work too). Typed there, it reloads it from the top. |
 | `coffee` | Dispenses one terminal-grade coffee. |
 | `exit` | Explains the architectural problem with leaving the Terminal. |
 | `404` | Deliberately loses the signal and opens a special version of the Terminal's 404 page. |

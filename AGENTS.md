@@ -7,10 +7,8 @@ without breaking the concept or Ric's rules.**
 ## What this project is
 
 Ric Massey's personal website for friends and family. The concept: **"it's literally
-my own internet."** The home page (`index.html`) is the front door — a silver/graphite
-page cut open with angled "cuts" you see the site through — and **its search box is the
-terminal**: plain words find things, and every command, room name and egg still runs
-there. Every other page is a **room** dressed up to look like the real app for that world (climbing → Mountain
+my own internet."** The home page (`index.html`) is a terminal hub. (A redesigned front
+door is in preview at `frontdoor.html` — see "The front door" below.) Every other page is a **room** dressed up to look like the real app for that world (climbing → Mountain
 Project, training → Strava, Orrin → a brain, etc.). Plain HTML/CSS/JS, **no build
 step and no dependencies** — each page is a single self-contained `.html` file with its
 CSS in a `<style>` tag and its JS in a `<script>` tag. Keep it that way unless Ric
@@ -173,7 +171,7 @@ Per-room nav treatments (class on the `<nav>`):
 | captures | darkroom film strip | `nav.filmstrip` |
 | entertainment | cinema marquee tab strip (bulbs under the current room) | `nav.marquee` |
 | log | newspaper section bar | `nav.sections` |
-| index | room tiles rendered from `ROOMS`, plus the terminal in the search box | `#dir` |
+| index | terminal directory listing + `ls`/`open` commands | `#dir` |
 
 **Two rooms have grown into sections and carry their own bar instead.** Climbing and
 training are no longer one page each: climbing is seven pages under
@@ -557,7 +555,12 @@ the rest. Rules:
   AI the callout table and the transform. Keep all three in anything new.
 - The archive only grows; `sync.py` commits the room's data only and never pushes.
 
-**The front door (rebuilt 2026-10-16).** `index.html` opens on an angled cut holding a
+**The front door (in preview since 2026-10-16).** It went live as `index.html` and Ric
+moved it back out the same day: the terminal is home again, and the redesign lives at
+`frontdoor.html`, unlisted and `noindex`, reached by its URL or by typing `front door`
+in the terminal. It is a copy of `index.html` with its own `ROOMS`/`PROJECTS` — while it
+is in preview, a room or project added to `index.html` must be added there too, or the
+preview drifts. Don't put it in `ROOMS`, `PROJECTS` or `latest.js`. It opens on an angled cut holding a
 3D strip of things to try (`FEATURE` in its script); a `play` item opens inside the cut.
 Under it, rooms are shown through cuts of their own (claw for Climbing, jagged, blade,
 shatter), each a window onto a real photo fixed behind the page, then the photo river,
