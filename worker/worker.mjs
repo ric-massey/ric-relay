@@ -24,7 +24,7 @@
    unlike a lobby list a training log is worth keeping. The volume is a handful
    of writes a day from one person, which sits far inside the free plan. */
 
-import { handleHit, handleVisitors } from './visitors.mjs';
+import { handleHit, handleVisitors, isSiteAdmin } from './visitors.mjs';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -146,7 +146,7 @@ function sameSecret(a, b) {
 const cors = origin => ({
   'access-control-allow-origin': origin || '*',
   'access-control-allow-methods': 'GET,POST,OPTIONS',
-  'access-control-allow-headers': 'content-type,authorization',
+  'access-control-allow-headers': 'content-type,authorization,x-admin-session',
   'access-control-max-age': '86400'
 });
 
@@ -1439,6 +1439,10 @@ export default {
     if (parts[0] === 'stats') {
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(request.headers.get('origin')) });
       const isOwner = async () => {
+        /* From /admin: a site-account session, checked with Supabase and
+           never shown to the password throttle — a JWT is not a guess. */
+        const session = request.headers.get('x-admin-session') || '';
+        if (session) return isSiteAdmin(session, env);
         const a = request.headers.get('authorization') || '';
         const given = a.startsWith('Bearer ') ? a.slice(7) : '';
         if (!given) return false;

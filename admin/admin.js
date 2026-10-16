@@ -16,6 +16,7 @@
   const $ = (id) => document.getElementById(id);
   const V = window.AdminView;
   const K = window.KondriteAdmin;
+  const A = window.AdminAnalytics;
   const db = window.SiteGate.db();
   const CFG = window.CONFIG || {};
   const FN_URL = String(CFG.SUPABASE_URL || '').replace(/\/+$/, '') + '/functions/v1/site-admin';
@@ -183,6 +184,19 @@
 
   function draw() {
     for (const t of document.querySelectorAll('.tab')) t.setAttribute('aria-selected', String(t.dataset.tab === S.tab));
+    // Analytics is not a list of people: none of the list's tools apply.
+    const numbers = S.tab === 'analytics';
+    $('tools').hidden = numbers;
+    if (numbers) {
+      $('notice').hidden = true;
+      $('stats').innerHTML = '';
+      $('bulk').hidden = true;
+      return A.show($('body'), async () => {
+        const { data: { session } } = await db.auth.getSession();
+        return session ? session.access_token : '';
+      });
+    }
+    A.hide();
     $('invite').hidden = S.tab !== 'site';
     $('invite').disabled = !S.server;
     $('notice').hidden = !(S.tab === 'site' && !S.server && !S.siteLoading);
@@ -210,6 +224,7 @@
   }
 
   function drawBulk() {
+    if (!S.picked[S.tab]) return;
     const n = S.picked[S.tab].size;
     $('bulk').hidden = !n;
     $('bulk-count').textContent = `${n} selected`;

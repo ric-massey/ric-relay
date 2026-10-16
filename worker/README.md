@@ -16,7 +16,7 @@ is historical — every room that writes anything writes here:
 | `/garmin` | Training (owner bar) | Ric's Garmin export, token to read **and** write; `/garmin/_pull` starts the Actions job (`projects/training/garmin/`) |
 | `/trials` | Psyche → Studies | `/trials/search` and `/trials/study/<NCT>` pass ClinicalTrials.gov API v2 through, cached five minutes. The watchlist is on the site account, not here (`projects/psyche/README.md`) |
 | `/hit` | every page | page-view beacons from `assets/visit.js`, into D1 (`visitors.mjs`) |
-| `/stats` | `visitors/` | the visitor numbers, owner only; `/stats/exclude` is "ignore this device" |
+| `/stats` | `visitors/`, `admin/` | the visitor numbers, owner only; `?full=1` adds everything the admin Analytics tab draws, `/stats/visitor?id=` is one browser's history, `/stats/exclude` is "ignore this device" |
 | `/auth` | all of them | Ric's sign-in (`assets/owner.js`) |
 
 It lived in `projects/training/server/` until 2026-09-25. The deployed name
@@ -45,8 +45,16 @@ Worker writes them to a **D1** database bound as `STATS`, and
 `ricmassey.com/visitors/` reads them back from `/stats` with the site password
 (the same `LOG_TOKEN` sign-in as Training). `visitors.mjs` says exactly what a
 row holds; the short version is a random browser id, a random session id, the
-path, the referring site's hostname, the country, and a browser / OS / device
-word. No IP address, no raw user agent, no query strings, no cookies.
+path, the referring site's hostname, the country / region / city, a browser /
+OS / device word, the language, a screen-width class, a `?ref=` / `utm_` tag,
+time on page and scroll depth, and the hostname of links clicked out. No IP
+address, no coordinates, no raw user agent, no other query strings, no cookies.
+
+`/stats` opens to the site password **or** to a site-account session from
+`ricmassey.com/admin` (header `x-admin-session`), which it checks by asking
+Supabase `is_site_admin()` with it — `SITE_SUPABASE_URL` / `SITE_SUPABASE_KEY`
+in the `vars` block of `wrangler.jsonc`, both public values. That path never
+touches the password throttle.
 
 The tables make themselves on the first beacon, so setting it up is:
 

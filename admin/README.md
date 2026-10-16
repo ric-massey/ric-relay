@@ -10,12 +10,48 @@ KONDRITE's pilots. Type `admin` or `accounts` on the terminal, or go to
 | `view.js` | Drawing only. Every string a person typed goes through `esc()`. |
 | `admin.js` | Sign-in, the admin check, the lists, the buttons. |
 | `kondrite.js` | KONDRITE's pilots (its own Supabase project, "crossfire"). |
+| `analytics.js` | The **Analytics** tab: every number the visitor counter keeps (`worker/visitors.mjs`). |
 | `test/admin.test.mjs` | All of the above, plus the server function. In `node .github/checks.mjs`. |
 | `../atlas/supabase/functions/site-admin/index.ts` | The server half: invite, edit, reset, ban, delete, email. Holds the service key, so it lives in Supabase, never the page. |
 | `../projects/kondrite/supabase/admin.sql` | KONDRITE's admin functions. |
 
 **What works with no setup:** the list, approve / deny, and which pages a person
 can open. Everything else needs the server function (step 1). Emails need step 2.
+
+---
+
+## Analytics
+
+The third tab reads the visitor counter in the Worker (`/stats?full=1` and
+`/stats/visitor`). What it shows: visitors new and returning, visits, page
+views, who is online now, pages per visit, bounce rate, time on site and on
+each page, how far down pages are scrolled, traffic by hour or day, a weekday ×
+hour heatmap, every page with its views / visitors / time / scroll / entries /
+exits / bounce (click a column to sort), which page people go to next, where
+they came from (referrers and `?ref=` / `utm_source` tags on links you share),
+which links out they click, countries, states and cities, devices, screen
+widths, browsers, systems, languages, how often people come back, how long a
+visit lasts, 404s people hit, the regulars, and the most recent visits page by
+page. Click any visit or regular for that browser's whole history.
+
+A visitor is a random id their browser made up — no names, no IPs. Two
+"Ignore" buttons take your own devices out of every number: one for the device
+you are on, one in a visitor's history ("it is me") for your other devices.
+
+**What it needs, once:**
+
+1. The D1 database (`worker/README.md`, "The visitor counter"). Until it exists
+   the tab says so and nothing is counted.
+2. Deploy the Worker (Actions → **Deploy Worker**). That carries the
+   `SITE_SUPABASE_URL` / `SITE_SUPABASE_KEY` vars in `wrangler.jsonc`, which is
+   how the Worker checks your admin sign-in with Supabase. Before that deploy the
+   tab asks for the site password instead, and that works too.
+
+**Want more data?** The line it holds is the one cookie-free analytics (Plausible,
+Fathom) hold: nothing that identifies a person — no IP address, no fingerprint,
+no cookies, no exact location, nothing typed. That is what lets it run without
+a cookie banner. Crossing it (say, tying visits to site accounts, or recording
+what people type in the terminal) is a decision to make on purpose, not a tweak.
 
 ---
 

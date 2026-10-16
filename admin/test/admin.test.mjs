@@ -9,7 +9,9 @@
 //     because CI has no Postgres);
 //   · view.js draws names and notes strangers typed, so it runs here against
 //     hostile input;
-//   · kondrite.js shares the game's session and turns refusals into states.
+//   · kondrite.js shares the game's session and turns refusals into states;
+//   · analytics.js draws paths, referrers, campaign tags and city names that
+//     came from strangers' browsers, so it runs against hostile input too.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -507,7 +509,7 @@ test('wiring: `admin` and `accounts` open /admin/', () => {
 
 test('wiring: the admin page loads its scripts in order and is kept out of search', () => {
   const page = read('admin/index.html');
-  const order = ['../atlas/config.js', '../assets/site-gate.js', '../projects/kondrite/config.js', 'view.js', 'kondrite.js', 'admin.js']
+  const order = ['../atlas/config.js', '../assets/site-gate.js', '../projects/kondrite/config.js', 'view.js', 'kondrite.js', 'analytics.js', 'admin.js']
     .map((s) => page.indexOf(`src="${s}"`));
   assert.ok(order.every((i) => i > 0) && order.every((v, i) => i === 0 || v > order[i - 1]), String(order));
   assert.match(page, /<meta name="robots" content="noindex,nofollow,noarchive">/);
@@ -557,9 +559,65 @@ test('wiring: account/ no longer carries the admin panels, and links admins to /
 });
 
 test('wiring: no email address is written into the admin files', () => {
-  for (const f of ['admin/admin.js', 'admin/view.js', 'admin/kondrite.js', 'admin/index.html', 'projects/kondrite/supabase/admin.sql']) {
+  for (const f of ['admin/admin.js', 'admin/view.js', 'admin/kondrite.js', 'admin/analytics.js', 'admin/index.html', 'projects/kondrite/supabase/admin.sql']) {
     assert.ok(!/[\w.+-]+@[\w-]+\.(com|net|org|io|me)\b/.test(read(f)), f);
   }
+});
+
+// ═══ analytics.js ══════════════════════════════════════════════════════════
+
+const anBox = { window: {}, location: { hostname: 'ricmassey.com', origin: 'https://ricmassey.com' }, localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+  Intl, Date, Math, JSON, Number, String, Object, Array, Map, Set, RegExp, document: {}, crypto: {} };
+vm.createContext(anBox);
+vm.runInContext(read('admin/analytics.js'), anBox);
+const AN = anBox.window.AdminAnalytics;
+// The dashboard uses <b> itself, so this looks only for what EVIL would inject.
+const INJECTED = /<img|<script|<svg|"><img/;
+
+test('analytics: every string a visitor could send is escaped', () => {
+  const bad = { country: 'US', region: EVIL, city: EVIL, device: EVIL, browser: 'Safari', os: 'iOS' };
+  const sess = { session: 's', visitor: 'aaaaaaaa"><img', start: 1, last: 2, views: 1, dur: 5, ref: EVIL, src: EVIL, camp: EVIL,
+    ...bad, lang: EVIL, screen: EVIL, returning: false, pages: [[EVIL, 3, 50, 1]], outs: [EVIL] };
+  const now = Date.now();
+  const d = {
+    configured: true, range: '30d', tz: 0, from: now - 86400000 * 29, now, bucket: 86400000, since: now,
+    live: { count: 1, pages: [[EVIL, 1]] }, today: { visitors: 1, sessions: 1, views: 1 },
+    total: { visitors: 1, sessions: 1, views: 1, newVisitors: 1 }, series: [[Math.floor(now / 86400000), 1, 1, 1]],
+    pages: [[EVIL, 1, 1], ['/404/' + EVIL, 1, 1]], entries: [[EVIL, 1]], referrers: [[EVIL, 1]], countries: [['US', 1]],
+    browsers: [[EVIL, 1]], devices: [[EVIL, 1]], os: [[EVIL, 1]], feed: [],
+    more: {
+      engagement: { sessions: 1, bounces: 1, pagesPerSession: 1, sessionSeconds: 5, pageSeconds: 5, scroll: 50 },
+      pages: [{ path: EVIL, views: 1, visitors: 1, dur: 5, depth: 50, entries: 1, exits: 1, bounces: 1 }],
+      flows: [[EVIL, EVIL, 1]], heat: [[1, 9, 3]], places: [['US', EVIL, EVIL, 1]], languages: [[EVIL, 1]], screens: [[EVIL, 1]],
+      campaigns: [[EVIL, EVIL, 1]], outbound: [[EVIL, 1, 1]], loyalty: [[1, 1]], lengths: [[0, 1]],
+      regulars: [{ visitor: 'aaaaaaaa"><img', sessions: 1, views: 1, dur: 5, last: 1, first: 1, ...bad }], sessions: [sess],
+    },
+  };
+  const html = AN.drawAll(d);
+  assert.ok(!INJECTED.test(html), 'markup leaked from the dashboard');
+  assert.ok(html.includes('&lt;img'));
+  const v = AN.drawVisitor({ visitor: 'v', views: 1, sessions: 1, dur: 5, first: 1, last: 2, pages: [[EVIL, 1]], history: [sess] });
+  assert.ok(!INJECTED.test(v), 'markup leaked from the visitor view');
+});
+
+test('analytics: times, referrers and places read like a person wrote them', () => {
+  assert.equal(AN.dur(42), '42s');
+  assert.equal(AN.dur(192), '3m 12s');
+  assert.equal(AN.dur(3900), '1h 05m');
+  assert.equal(AN.refName('l.facebook.com'), 'Facebook');
+  assert.equal(AN.refName(''), 'Direct');
+  assert.equal(AN.refName('somebodys-blog.net'), 'somebodys-blog.net');
+  assert.match(AN.place({ country: 'US', region: 'Kentucky', city: 'Lexington' }), /Lexington, Kentucky, United States/);
+  assert.equal(AN.place({}), 'Unknown place');
+});
+
+test('wiring: the analytics tab reaches only the visitor Worker, with the admin session', () => {
+  const page = read('admin/index.html');
+  assert.match(page, /connect-src 'self' https:\/\/\*\.supabase\.co http:\/\/127\.0\.0\.1:54321 https:\/\/training-log\.rmbuster82\.workers\.dev;/);
+  const src = read('admin/analytics.js');
+  assert.ok(src.includes("headers['x-admin-session'] = session"));
+  // The session token goes to the Worker and nowhere else: one fetch helper.
+  assert.equal((src.match(/fetch\(/g) || []).length, 3);   // call() twice (session, then password) + the password check
 });
 
 for (const [name, fn] of tests) {

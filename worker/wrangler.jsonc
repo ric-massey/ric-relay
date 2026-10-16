@@ -79,6 +79,15 @@
   // credential.
   // "d1_databases": [{ "binding": "STATS", "database_name": "visitors", "database_id": "PASTE-ID-HERE" }],
 
+  // The admin page's way into /stats (visitors.mjs, isSiteAdmin): the ATLAS
+  // Supabase project's address and publishable key — the same two public
+  // values atlas/config.js ships to every browser. Not secrets. Never put the
+  // service_role key here or anywhere in this repo.
+  "vars": {
+    "SITE_SUPABASE_URL": "https://ljnwclgjfctotkmqdlqh.supabase.co",
+    "SITE_SUPABASE_KEY": "sb_publishable_O97QmZOjuKjA6KtRP3G84Q_WT2uGmLQ"
+  },
+
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TrainingLog"] }],
 
   "observability": { "enabled": true }
