@@ -334,11 +334,12 @@ const sitePerson = (o = {}) => ({ id: 'u1', email: 'a@x.test', name: 'Ann', user
 test('view: every string a stranger typed is drawn as text', () => {
   const p = sitePerson({ id: `"><script>x</script>`, name: EVIL, email: `" onmouseover="x`, username: '<b>u', note: '<svg onload=1>', requested: ['<b>p'], status: 'pending' });
   const pages = [{ key: 'atlas', label: '<b>ATLAS' }];
-  const out = V.row(p, { open: true, side: '<b>side', details: V.siteDetails(p, pages) });
+  const out = V.row(p, { active: true, side: '<b>side' }) + V.siteDetails(p, pages, { draft: { name: EVIL, email: '<b>' } })
+    + V.badgeHtml(p) + V.listHead(1, 0);
   assert.ok(!MARKUP.test(out), out.match(MARKUP) && out.slice(Math.max(0, out.search(MARKUP) - 40), out.search(MARKUP) + 40));
   assert.ok(out.includes('&lt;img src=x onerror=alert(1)&gt;'));
   const pilot = { id: '<b>', email: EVIL, name: EVIL, best: { '<b>g': 1 }, save_seed: '<b>', has_save: true, reports: 1, created_at: null };
-  assert.ok(!MARKUP.test(V.row(pilot, { open: true, details: V.pilotDetails(pilot) })));
+  assert.ok(!MARKUP.test(V.row(pilot, { active: true }) + V.pilotDetails(pilot, { draft: { name: EVIL } })));
 });
 
 test('view: one badge, the one that matters most', () => {
@@ -362,10 +363,46 @@ test('view: search covers name, username and email; filters sort people', () => 
   assert.ok(V.inFilter(p, 'active') && V.inFilter({ best: {} }, 'active'), 'a pilot with no status is active');
 });
 
-test('view: a collapsed row holds no buttons; an open one does', () => {
+test('view: a row never holds a form or a button that acts — those live in the drawer', () => {
   const p = sitePerson();
-  assert.ok(!/data-act=/.test(V.row(p, { open: false })));
-  assert.match(V.row(p, { open: true, details: V.siteDetails(p, []) }), /data-act="reset"/);
+  for (const active of [false, true]) {
+    const r = V.row(p, { active });
+    assert.ok(!/data-act=|<input type="(text|email)"|data-page=/.test(r));
+  }
+  assert.match(V.row(p, { active: true }), /class="row active"/);
+  assert.match(V.siteDetails(p, []), /data-act="reset"/);
+});
+
+test('view: what Ric typed and has not saved wins over the stored value, and says so', () => {
+  const pages = [{ key: 'atlas', label: 'ATLAS' }, { key: 'h', label: 'H' }];
+  const shownDirty = (html) => (html.match(/class="dirty" data-dirty="\w+">/g) || []).length;
+  assert.equal(shownDirty(V.siteDetails(sitePerson(), pages)), 0);
+  const d = V.siteDetails(sitePerson(), pages, { draft: { name: 'Annie <b>', pages: ['h'] } });
+  assert.match(d, /value="Annie &lt;b&gt;"/);
+  assert.match(d, /data-page="h" data-for="u1" checked/);
+  assert.ok(!/data-page="atlas" data-for="u1" checked/.test(d), 'the draft un-ticked ATLAS');
+  assert.equal(shownDirty(d), 2, 'profile and access both flagged');
+  const pilot = { id: 'k1', name: 'Nova', email: 'n@x', best: {} };
+  const typed = V.pilotDetails(pilot, { draft: { name: 'Nov' } });
+  assert.match(typed, /value="Nov"/);
+  assert.equal(shownDirty(typed), 1);
+  assert.equal(shownDirty(V.pilotDetails(pilot, { draft: { name: 'Nova' } })), 0, 'typing it back is not a change');
+  // Ticking and unticking back to where it started is not a change either.
+  assert.deepEqual({ ...V.dirtyOf(sitePerson(), { pages: ['atlas'] }) }, { profile: false, access: false });
+  assert.deepEqual({ ...V.dirtyOf(sitePerson({ status: 'pending', pages: [], requested: ['h'] }), { pages: ['h'] }) }, { profile: false, access: false });
+  assert.deepEqual({ ...V.dirtyOf(sitePerson(), { email: 'new@x.test' }) }, { profile: true, access: false });
+});
+
+test('view: stat cards count and filter, select-all says what is picked', () => {
+  const people = [sitePerson(), sitePerson({ id: 'b', status: 'pending' }), sitePerson({ id: 'c', banned_until: '2999-01-01' })];
+  assert.deepEqual({ ...V.count(people) }, { all: 3, waiting: 1, active: 1, banned: 1 });
+  const s = V.stats(V.count(people), 'waiting');
+  assert.match(s, /data-filter="waiting" aria-pressed="true"/);
+  assert.match(s, /data-filter="all" aria-pressed="false"/);
+  assert.match(V.listHead(3, 0), /3 people/);
+  assert.match(V.listHead(3, 3), /id="pick-all"[^>]*checked/);
+  assert.match(V.listHead(3, 1), /1 selected/);
+  assert.ok(!/checked/.test(V.listHead(0, 0)), 'nothing shown is not "all picked"');
 });
 
 test('view: admins have no ban, delete or access boxes; pending gets approve and deny', () => {
@@ -484,6 +521,30 @@ test('wiring: nothing is fetched or drawn until the database says admin', () => 
   assert.ok(boot.indexOf("showGate('denied'") > check);
   for (const later of ['loadSite()', 'loadPilots()', "$('app').hidden = false"]) {
     assert.ok(boot.indexOf(later) > boot.indexOf("if (!isAdmin) return showGate('denied'"), `${later} runs before the admin check`);
+  }
+});
+
+test('wiring: no browser confirm(), prompt() or alert() — every question is a styled dialog', () => {
+  const src = read('admin/admin.js').replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '');
+  assert.ok(!/(^|[^.\w])(confirm|prompt|alert)\(/m.test(src));
+  assert.match(read('admin/index.html'), /<dialog id="confirm-dlg">/);
+});
+
+test('wiring: redrawing the list never touches the drawer, so typing is never lost', () => {
+  const src = read('admin/admin.js');
+  const draw = src.slice(src.indexOf('  function draw() {'), src.indexOf('  function drawBulk() {'));
+  assert.ok(draw.length > 100);
+  assert.ok(!/drawer/i.test(draw), 'draw() reaches into the drawer');
+  assert.match(src, /\$\('find'\)\.addEventListener\('input', draw\);/);
+  assert.match(src, /\$\('drawer-body'\)\.addEventListener\('input', noteDraft\);/);
+});
+
+test('wiring: bulk ban and delete skip admins before anything is sent', () => {
+  const src = read('admin/admin.js');
+  const bulk = src.slice(src.indexOf('const BULK = {'), src.indexOf('function report('));
+  for (const act of ['ban', 'delete']) {
+    const body = bulk.slice(bulk.indexOf(`async ${act}(`));
+    assert.match(body, /^async \w+\(picked, b\) \{\s+const targets = picked\.filter\(\(p\) => !p\.is_admin\);/, act);
   }
 });
 
