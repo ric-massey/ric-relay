@@ -582,8 +582,9 @@ When something bigger or newer ships, it moves to the top.
 **Each room is a `.feature`: the words on the paper, one rip beside them.** The paper
 side carries a big outline number, the name, a sentence, three facts, a solid button
 and a "Next" link to the following room; the rip runs off the screen's edge
-(`data-bleed`), alternating sides, and on a phone the words come first and the rip runs
-full width. Button and rip are one door — hovering either lights both. The rip is torn
+(`data-bleed`), alternating sides, and on a phone each room is a row in a feed — a 200px torn strip, then the name, two
+lines and a button, two or three rooms to a screen. Every rip is a **wedge**: full
+height where it meets the screen's edge, closing in toward the words. Button and rip are one door — hovering either lights both. The rip is torn
 through a stack of paper sheets, each tearing differently, painted on a canvas per rip
 (`.rim`) and laid inside the clipped `.cut`; the tear must stay inside the cut's box (the
 `m` margin in `geometry()`). The picture (`.still`) is a little taller than the rip and

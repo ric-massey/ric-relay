@@ -155,10 +155,11 @@
     }
     .cut.near .still { background-image: var(--img); }
     .cut .still video, .cut .still canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; background: #07090c; }
+    .cut .still canvas[hidden] { display: none; }
     .cut .rim { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: no-repeat 0 0 / 100% 100%; }
     /* the tag that says the rip is a door — always there, not only on hover */
     .peek {
-      position: absolute; z-index: 5; right: calc(var(--gutter) + 18px); bottom: calc(var(--k, 60px) + 46px);
+      position: absolute; z-index: 5; right: calc(var(--gutter) + 18px); bottom: 46px;
       display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px 9px 13px;
       background: #fff; color: #0a0b0d; font: 700 11.5px var(--mono); letter-spacing: .14em; text-transform: uppercase;
       clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
@@ -173,7 +174,7 @@
     .feature[data-side="left"] .row { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
     .feature[data-side="left"] .f-copy { order: 2; padding: 0 var(--gutter) 0 0; }
     .f-copy { position: relative; padding-left: var(--gutter); max-width: calc(560px + var(--gutter)); }
-    .f-rip { height: min(76vh, 780px); min-height: 480px; }
+    .f-rip { height: min(66vh, 660px); min-height: 420px; }
     .f-num { display: block; font: 600 clamp(84px, 9vw, 150px)/.8 var(--display); letter-spacing: -.06em; color: transparent; -webkit-text-stroke: 1px var(--hair-strong); margin-bottom: 18px; }
     .f-tag { display: flex; align-items: center; gap: 10px; color: var(--muted); margin-bottom: 14px; }
     .f-tag::before { content: ""; width: 22px; height: 2px; background: var(--c); }
@@ -293,12 +294,22 @@
     }
     @media (max-width: 860px) {
       .hero-in { grid-template-columns: 1fr; gap: 24px; }
-      /* on a phone the words come first and the rip runs the full width */
-      .feature .row, .feature[data-side="left"] .row { grid-template-columns: 1fr; gap: 34px; }
-      .f-copy, .feature[data-side="left"] .f-copy { order: 0; padding: 0 var(--gutter); }
-      .f-rip { height: 64vh; min-height: 400px; }
-      .f-num { font-size: 72px; margin-bottom: 10px; }
-      [data-bleed] .peek, [data-bleed="left"] .peek { left: auto; right: calc(var(--gutter) + 6px); }
+      /* On a phone a room is a row in a feed, like a video in a list: a short
+         torn strip, then the name, two lines and a button — two or three of
+         them on one screen, so there is always another one coming up. */
+      .feature { padding-top: 36px; }
+      .feature .row, .feature[data-side="left"] .row { grid-template-columns: 1fr; gap: 14px; }
+      .f-copy, .feature[data-side="left"] .f-copy { order: 2; padding: 0 var(--gutter); }
+      .f-rip { height: 200px; min-height: 0; }
+      .peek { bottom: 28px; padding: 7px 11px; font-size: 11px; }
+      [data-bleed="right"] .peek { right: 18px; } [data-bleed="left"] .peek { left: 18px; }
+      .f-num, .f-facts, .f-next { display: none; }
+      .f-tag { margin-bottom: 6px; font-size: 11px; }
+      .feature h2 { font-size: 30px; letter-spacing: -.035em; }
+      .f-lede { margin-top: 6px; font-size: 15px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      .f-copy > .btn { margin-top: 14px; padding: 11px 16px 11px 15px; font-size: 14px; }
+      .sec { padding-top: 64px; }
+      .scroll-cue { margin-top: 18px; }
       #dir { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 760px) {
@@ -315,7 +326,10 @@
       .cut.near .still { background-image: var(--img-m, var(--img)); }
       .sec-head { align-items: start; flex-direction: column; }
       .rail-nav { display: none; }
-      .card { flex-basis: 84vw; aspect-ratio: 4 / 5; }
+      .card { flex-basis: 72vw; aspect-ratio: 16 / 11; }
+      .card .cap { left: 14px; right: 14px; bottom: 12px; }
+      .card .cap b { font-size: 17px; }
+      .card .cap span { display: none; }
       .f-lede { font-size: 16px; }
       .f-facts li { font-size: 11px; padding-right: 12px; margin-right: 12px; }
       .f-next { margin-top: 36px; }
@@ -675,14 +689,17 @@
       // angle; sides that run off the screen sit just past it. The outline is
       // walked once, all the way round, and every sheet's tear is that walk
       // pushed inward along its own normal by a wandering, fraying amount.
-      function geometry(w, h, k, seed, small, torn) {
+      function geometry(w, h, k, seed, small, torn, tallRight) {
         const r = rng(seed * 7919 + 13), L = 4, STEP = 3;
         const s = small ? 0.7 : 1;
         // the tear wanders either side of the outline: keep it inside the box,
         // or the picture shows past the canvas that covers it
         const m = 22 * s;
         const xL = torn.left ? m : -30, xR = torn.right ? w - m : w + 30;
-        const yT = (x) => m + k * (1 - x / w), yB = (x) => h - m - k * (x / w);
+        // A wedge: full height where the rip meets the screen's edge, closing
+        // in toward the words — top and bottom each come in by k at the far end
+        const t = (x) => Math.min(1, Math.max(0, tallRight ? 1 - x / w : x / w));
+        const yT = (x) => m + k * t(x), yB = (x) => h - m - k * t(x);
         const corners = [[xL, yT(xL)], [xR, yT(xR)], [xR, yB(xR)], [xL, yB(xL)]];
         const base = [];
         for (let c = 0; c < 4; c++) {
@@ -832,11 +849,13 @@
           const w = cut.clientWidth, h = cut.clientHeight, ph = phone();
           if (!w || !h || (!force && size === `${w}x${h}x${ph}`)) return;
           size = `${w}x${h}x${ph}`;
-          const k = Math.round(Math.max(22, Math.min(90, w * 0.06)));
+          const k = Math.round((h - 44) * (ph ? 0.2 : 0.24));
           // torn on every side that is on the screen
           const bleed = ph ? "both" : box.dataset.bleed || "both";
           const torn = { left: bleed === "right", right: bleed === "left" };
-          geo = geometry(w, h, k, n + 1, w < 700, torn);
+          // tall on the side that runs off the screen (on a phone, where both
+          // do, the side it would on a desktop)
+          geo = geometry(w, h, k, n + 1, w < 700, torn, (box.dataset.bleed || "right") === "right");
           box.style.setProperty("--k", k + "px");
           box.clip();
           paint(box, cut, geo, w, h);
