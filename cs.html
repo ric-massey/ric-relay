@@ -225,6 +225,54 @@
       font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.06em;color:var(--text)}
     .pp:hover{background:rgba(255,255,255,.24)}
     /* the killfeed, top right, as the game draws it */
+    /* the replay's ⋮ menu */
+    .rmenu-btn{position:absolute;top:8px;right:8px;z-index:3;width:40px;height:40px;display:grid;place-items:center;padding:0;cursor:pointer;
+      background:rgba(10,12,15,.78);border:1px solid var(--line);color:var(--bright);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+    .rmenu-btn svg{width:4px;height:16px;fill:currentColor}
+    .rmenu-btn:hover,.rmenu-btn[aria-expanded="true"]{border-color:var(--t-ink);color:var(--t-ink)}
+    .replay .rv .kf{right:56px;max-width:calc(100% - 72px)}
+    .rmenu{position:absolute;top:54px;right:8px;z-index:4;width:min(290px,calc(100% - 16px));max-height:calc(100% - 64px);overflow:auto;
+      background:rgba(16,19,24,.97);border:1px solid var(--line);box-shadow:0 14px 40px rgba(0,0,0,.6);padding:6px 0;animation:fadein .18s ease-out both}
+    .rmenu[hidden]{display:none}
+    .rm-sec{padding:8px 12px} .rm-sec + .rm-sec{border-top:1px solid var(--line)}
+    .rm-h{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--t-ink);margin-bottom:6px}
+    .rm-follow{display:grid;gap:2px}
+    .rm-who{display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:0 10px;background:none;border:0;border-left:3px solid transparent;
+      color:var(--text,#c9d1da);font:inherit;font-size:14px;text-align:left;cursor:pointer}
+    .rm-who:hover{background:rgba(255,255,255,.05);color:var(--bright)}
+    .rm-who[aria-checked="true"]{border-left-color:var(--t-ink);background:rgba(231,193,120,.1);color:var(--bright);font-weight:700}
+    .rm-dot{width:10px;height:10px;border-radius:50%;flex:none} .rm-dot.t{background:var(--t)} .rm-dot.ct{background:var(--ct)}
+    .rm-c4{font-style:normal;font-family:var(--display);font-weight:700;font-size:10px;padding:1px 4px;background:#d6413a;color:#fff;flex:none}
+    .rm-all{width:12px;height:12px;border:2px solid currentColor;flex:none}
+    .rm-follow .rm-seg{margin-bottom:6px} .rm-follow .rm-seg button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:38px}
+    .rm-pick{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 10px;background:#07090c;border:1px solid var(--line);
+      color:var(--dim);font:inherit;font-size:14px;text-align:left;cursor:pointer}
+    .rm-pick.on{color:var(--bright);border-color:rgba(231,193,120,.55)} .rm-pick:hover{border-color:var(--t-ink)}
+    .rm-pick .rm-nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .rm-caret{margin-left:auto;color:var(--t-ink);transition:transform .15s} .rm-pick[aria-expanded="true"] .rm-caret{transform:rotate(180deg)}
+    .rm-plist{margin-top:4px;max-height:260px;overflow:auto;border:1px solid var(--line);background:#0c0f13}
+    .rm-plist[hidden]{display:none}
+    .rm-plist .rm-nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .rm-radio{width:16px;height:16px;border-radius:50%;border:2px solid var(--dim);flex:none;display:grid;place-items:center}
+    .rm-who[aria-checked="true"] .rm-radio{border-color:var(--t-ink)}
+    .rm-who[aria-checked="true"] .rm-radio::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--t-ink)}
+    .rm-side{font-family:var(--display);font-weight:700;font-size:11px;letter-spacing:.08em;padding:1px 5px;flex:none}
+    .rm-side.t{color:#0b0d10;background:var(--t)} .rm-side.ct{color:#fff;background:var(--ct)}
+    .rm-team{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);padding:8px 10px 2px}
+    .rm-seg{display:flex} .rm-seg button{flex:1}
+    .rm-tgs{display:flex;gap:16px}
+    .rm-tg{display:flex;align-items:center;gap:8px;min-height:36px;font-size:14px;cursor:pointer}
+    .rm-tg input{width:18px;height:18px;accent-color:#e7c178}
+    .rm-acts{display:grid;gap:2px}
+    .rm-act{min-height:38px;padding:0 10px;background:none;border:0;color:var(--text,#c9d1da);font:inherit;font-size:14px;text-align:left;cursor:pointer}
+    .rm-act:hover,.rm-act:focus-visible{background:rgba(255,255,255,.06);color:var(--bright)}
+    .rm-act:disabled{opacity:.5;cursor:default}
+    /* a phone: the map is too small to hold the menu, so it rises from the bottom */
+    @media (max-width:640px){
+      .rmenu{position:fixed;left:8px;right:8px;bottom:8px;top:auto;width:auto;max-height:72vh;z-index:90;background:#12151a;
+        box-shadow:0 -10px 40px rgba(0,0,0,.7);border-top:3px solid var(--t-ink)}
+      .rm-who,.rm-act{min-height:44px} .rm-tg{min-height:44px}
+    }
     .kf{position:absolute;top:8px;right:8px;display:flex;flex-direction:column;align-items:flex-end;gap:3px;pointer-events:none;max-width:calc(100% - 16px)}
     .kfe{display:flex;align-items:center;gap:6px;padding:3px 9px;background:rgba(10,12,15,.74);border:1.5px solid transparent;
       font-weight:700;font-size:13px;white-space:nowrap;text-shadow:0 1px 2px #000;max-width:100%;overflow:hidden}
@@ -1179,7 +1227,7 @@ function boot() {
           : `<span>${m.replay ? "Where the fights were shows up with the stats file." : "No demo for this match, so no positions."}</span>`}</div></div>` : ""}</div>`;
     box.addEventListener("click", (e) => {
       if (e.target.closest("[data-lopen]")) return openMatch(m.id);
-      const w = e.target.closest("[data-lwatch]"); if (w) showReplay(m.id, true, +w.dataset.lwatch, 0);
+      const w = e.target.closest("[data-lwatch]"); if (w) showReplay(m.id, true, +w.dataset.lwatch, 0, false, 0);
     });
     const cv = box.querySelector("canvas"); if (!cv) return;
     // the replay's preview: every kill and death of the match on its radar
@@ -1258,10 +1306,13 @@ function boot() {
           if (loop.t > end + 1.5) loop.t = 0;                // a beat on the end before it starts again
           const t = Math.min(loop.t, end), players = momentAt(R, r, t), B = bombAt(r, t);
           const ric = players.find((p) => p.seat === 0 && !p.dead), lv = ric && lowerAt(cal, ric.z) && imgs[1] ? 1 : 0;
+          // the camera stays on Ric, a little wider than the full replay's
+          const spot = followSpot(cal, players, B, 0);
+          loop.cam = loop.cam ? camStep(loop.cam, spot, 560, t < 0.2 ? 1 : 0.12) : spot ? clampView(spot[0] - 280, spot[1] - 280, 560) : [0, 0, 1024];
           const recent = (r.fights || []).filter((f) => f.t <= t && t - f.t < 1.5 && f.killer_at && f.victim_at && f.killer_at.x != null).pop();
           drawMoment(ctx, S2, { cal, img: imgs[lv], lower: lv === 1, players, nades: r.nades, flashes: r.flashes, bomb: B, hudText: bombText(B, seats, t),
             line: recent ? [recent.killer_at.x, recent.killer_at.y, recent.victim_at.x, recent.victim_at.y] : null,
-            view: [0, 0, 1024], labels: false, seats, r, t });
+            view: loop.cam, labels: false, seats, r, t });
           killfeed(kf, seats, r, t);
           if (imgs[0]) cv.classList.add("ready");
           raf = requestAnimationFrame(frame);
@@ -1272,7 +1323,7 @@ function boot() {
     }
     box.addEventListener("click", (e) => { const b = e.target.closest("[data-lmode]"); if (b) setMode(b.dataset.lmode); });
     if (m.replay && rounds.length) setTimeout(() => setMode(reduce ? "fights" : "loop"), 0);   // after the rest of the page is set up
-    cv.addEventListener("click", () => { if (mode === "loop" && loop) showReplay(m.id, true, loopRound, Math.max(0, loop.t - 2)); });
+    cv.addEventListener("click", () => { if (mode === "loop" && loop) showReplay(m.id, true, loopRound, Math.max(0, loop.t - 2), false, 0); });
     if (!fights.length || !m.replay) return;
     // the mark nearest a tap, within reach of a finger
     const near = (e) => {
@@ -1618,10 +1669,14 @@ function boot() {
       drawSight(ctx, sightPoly(maskOf(img), ...toRadar(cal, p.x, p.y), p.yaw), k, vx, vy);
     const flashed = new Set((flashes || []).filter((f) => f[0] <= t && t <= f[0] + f[3]).map((f) => f[2]));
     const dotR = 8 * scaleUI;
+    // Two floors: whoever isn't on the floor being shown is drawn faded, so
+    // the people on it read first and the rest are still there (Ric's ask).
+    const offFloor = (p) => cal.split != null && p && p.z != null && (p.z < cal.split) !== !!lower;
     const tags = [];                                    // name labels, placed last so none overlap
     const order = players.slice().sort((a, b) => (seats[a.seat] && seats[a.seat].me ? 1 : 0) - (seats[b.seat] && seats[b.seat].me ? 1 : 0));
     for (const p of order) {
       if (p.x == null) continue;
+      ctx.globalAlpha = offFloor(p) ? OTHER_FLOOR : 1;
       const [px, py] = P(p.x, p.y), me = seats[p.seat] && seats[p.seat].me, side = sideOf(seats, p.seat, r);
       if (p.dead) {
         ctx.strokeStyle = SIDE_COL[side]; ctx.lineWidth = 3 * scaleUI;
@@ -1640,7 +1695,19 @@ function boot() {
         ctx.lineWidth = (me ? 3 : 2) * scaleUI; ctx.strokeStyle = me ? "#fff" : "#07090c"; ctx.stroke();
         if (flashed.has(p.seat)) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2 * scaleUI; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(px, py, dotR * 2, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
       }
-      if (labels) { const nm_ = me ? "Ric" : nameOf(seats, p.seat); tags.push({ px, py, label: nm_.length > 16 ? nm_.slice(0, 15) + "…" : nm_ }); }
+      if (labels) { const nm_ = me ? "Ric" : nameOf(seats, p.seat); tags.push({ px, py, a: ctx.globalAlpha, label: nm_.length > 16 ? nm_.slice(0, 15) + "…" : nm_ }); }
+    }
+    ctx.globalAlpha = 1;
+    // whoever the camera follows: a gold ring, the one the player page uses
+    if (o.focus != null) {
+      const f = players.find((q) => q.seat === o.focus && !q.dead && q.x != null);
+      if (f) {
+        const [fx, fy] = P(f.x, f.y);
+        ctx.globalAlpha = offFloor(f) ? OTHER_FLOOR : 1;
+        ctx.strokeStyle = "#e7c178"; ctx.lineWidth = 3 * scaleUI;
+        ctx.beginPath(); ctx.arc(fx, fy, dotR * 1.9, 0, 7); ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
     }
     // Every shot anyone fired (the demo logs each trigger pull), drawn over the
     // players so a cone can't wash it out, and fading in SHOT_S. The shooter
@@ -1658,6 +1725,7 @@ function boot() {
       if (st > t) break;
       if (t - st > SHOT_S || NOT_A_SHOT.test(w || "")) continue;
       const p = living.get(seat); if (!p) continue;
+      ctx.globalAlpha = offFloor(p) ? OTHER_FLOOR : 1;
       const fade = 1 - (t - st) / SHOT_S, [px, py] = P(p.x, p.y);
       // a gun's damage lands in the same tenth of a second as its shot (10,596 of
       // 10,600 hits measured); fire and grenades burning on aren't this shot
@@ -1687,6 +1755,7 @@ function boot() {
       ctx.fillStyle = `rgba(255,240,170,${fade})`;
       ctx.beginPath(); ctx.arc(mx, my, dotR * 0.8 * (0.5 + fade / 2), 0, 7); ctx.fill();
     }
+    ctx.globalAlpha = 1;
     // Names go on top of everything, top to bottom, each nudged down until it
     // clears the ones already placed: a stack at spawn otherwise prints five
     // names over each other. A moved label keeps a thin line to its player.
@@ -1703,8 +1772,10 @@ function boot() {
           ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1 * scaleUI;
           ctx.beginPath(); ctx.moveTo(g.px + dotR * 0.8, g.py); ctx.lineTo(x - 3, y - h / 2 + 3); ctx.stroke();
         }
+        ctx.globalAlpha = g.a || 1;
         ctx.lineWidth = 3 * scaleUI; ctx.strokeStyle = "rgba(0,0,0,.85)"; ctx.fillStyle = "#fff";
         ctx.strokeText(g.label, x, y); ctx.fillText(g.label, x, y);
+        ctx.globalAlpha = 1;
       }
     }
     const spot = (seat) => { const p = players.find((q) => q.seat === seat && !q.dead && q.x != null); return p ? P(p.x, p.y) : null; };
@@ -1736,6 +1807,39 @@ function boot() {
     }
   }
 
+  /* ══ a camera that follows ══════════════════════════════
+     The replay can follow a player or the bomb: the view eases toward them
+     while it plays and jumps there when you scrub. followSpot says where the
+     subject is on the radar right now (a player alive, or the bomb carried,
+     dropped or planted) and camStep moves a view one step toward it. */
+  const OTHER_FLOOR = 0.45;                            // how much of the other floor shows
+  const FOLLOW_W = 520;                                 // radar px across, following
+  const clampView = (x, y, w) => { w = Math.max(96, Math.min(1024, w)); return [Math.max(0, Math.min(1024 - w, x)), Math.max(0, Math.min(1024 - w, y)), w]; };
+  function followSpot(cal, players, B, follow) {
+    let p = null;
+    if (follow === "bomb") {
+      if (B.planted && B.planted.x != null) p = B.planted;
+      else if (B.ground) p = B.ground;
+      else if (B.carrier != null) p = players.find((q) => q.seat === B.carrier && !q.dead && q.x != null);
+    } else if (typeof follow === "number") p = players.find((q) => q.seat === follow && !q.dead && q.x != null);
+    return p && p.x != null ? toRadar(cal, p.x, p.y) : null;
+  }
+  function camStep(view, spot, w, ease) {
+    if (!spot) return view;
+    const want = clampView(spot[0] - w / 2, spot[1] - w / 2, w);
+    return view.map((v, i) => v + (want[i] - v) * ease);
+  }
+  // who decides the floor on Auto: the one being followed, else Ric
+  function floorAnchor(players, B, follow) {
+    const alive = (seat) => players.find((q) => q.seat === seat && !q.dead && q.z != null);
+    return (typeof follow === "number" && alive(follow)) || (follow === "bomb" && B.carrier != null && alive(B.carrier)) || alive(0);
+  }
+  // a player's seat in a match, by name; the bomb when they aren't in it
+  function seatOf(id, name) {
+    const m = matches.find((x) => x.id === id), b = m && name && (m.board || []).find((x) => !x.me && x.name === name);
+    return b ? b.seat : "bomb";
+  }
+
   // The bit of the radar worth looking at: everyone in the fight, with margin.
   function frame(cal, pts, pad = 90, min = 340) {
     const xs = [], ys = [];
@@ -1752,7 +1856,7 @@ function boot() {
      zoom and move together to pan. Click outside it (or Esc) to let go, so
      the page scrolls normally again. */
   let heldRV = null;
-  function RadarView(wrap, { draw, onHold, onKey }) {
+  function RadarView(wrap, { draw, onHold, onKey, onUser }) {
     const cv = wrap.querySelector("canvas");
     let view = [0, 0, 1024];
     // The map always fills the frame: zooming out near an edge slides the view
@@ -1766,6 +1870,7 @@ function boot() {
     const toR = (cx, cy) => { const b = cv.getBoundingClientRect(); return [view[0] + (cx - b.left) / b.width * view[2], view[1] + (cy - b.top) / b.height * view[2]]; };
     const api = {
       wrap, set, onKey, get view() { return view; },
+      place(v) { view = clampView(v[0], v[1], v[2]); },   // a camera move, drawn by whoever moved it
       hold(on) {
         if (on && heldRV && heldRV !== api) heldRV.hold(false);
         wrap.classList.toggle("held", on);
@@ -1777,6 +1882,7 @@ function boot() {
       e.preventDefault();
       const b = cv.getBoundingClientRect(), [rx, ry] = toR(e.clientX, e.clientY);
       const w = Math.max(96, Math.min(1024, view[2] * Math.exp(e.deltaY * 0.0015)));
+      if (onUser) onUser("zoom", w);
       set([rx - (e.clientX - b.left) / b.width * w, ry - (e.clientY - b.top) / b.height * w, w]);
     }, { passive: false });
     const pts = new Map(); let start = null;
@@ -1798,10 +1904,12 @@ function boot() {
       const b = cv.getBoundingClientRect(), now = grip();
       if (now.n !== start.n) { start = now; return; }
       if (now.n === 1) {
+        if (onUser) onUser("pan");
         set([start.view[0] - (now.x - start.x) / b.width * start.view[2], start.view[1] - (now.y - start.y) / b.height * start.view[2], start.view[2]]);
       } else {
         // the spot that was under the fingers stays under them: pinch zooms, moving pans
         const w = Math.max(96, Math.min(1024, start.view[2] * start.d / now.d));
+        if (onUser) onUser("zoom", w);
         set([start.r[0] - (now.mx - b.left) / b.width * w, start.r[1] - (now.my - b.top) / b.height * w, w]);
       }
     });
@@ -1813,7 +1921,7 @@ function boot() {
   }
   document.addEventListener("pointerdown", (e) => { if (heldRV && !heldRV.wrap.contains(e.target)) heldRV.hold(false); });
   document.addEventListener("keydown", (e) => {
-    if (!heldRV || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (!heldRV || typing(e) || e.metaKey || e.ctrlKey || e.altKey || (e.target.closest && e.target.closest(".rmenu"))) return;
     if (e.key === "Escape") return heldRV.hold(false);
     if (heldRV.onKey && heldRV.onKey(e)) e.preventDefault();
   });
@@ -2142,7 +2250,7 @@ function boot() {
   }
   $("pq").addEventListener("input", () => { if (view === "players") { if (location.hash !== "#players") history.replaceState(null, "", "#players"); showPlayers(); } });
   $("playerbox").addEventListener("click", (e) => {
-    if (whyWatch(e)) return;
+    if (whyWatch(e, $("playerbox").dataset.who)) return;
     const r = e.target.closest("[data-player]"); if (r) return openPlayer(r.dataset.player);
     if (e.target.closest("[data-pback]")) { $("pq").value = ""; history.pushState(null, "", "#players"); return showPlayers(); }
     const o = e.target.closest("[data-popen]"); if (o) return openMatch(o.dataset.popen);
@@ -2157,7 +2265,7 @@ function boot() {
   });
   $("playerbox").addEventListener("change", (e) => {
     const sel = e.target.closest("[data-h2h]"); if (!sel) return;
-    const name = $("playerbox").dataset.player, sh = sharedWith(name), other = sel.value;
+    const name = $("playerbox").dataset.who, sh = sharedWith(name), other = sel.value;
     $("playerbox").querySelector("[data-h2hbody]").innerHTML = h2h(name, other, sh.get(other) || []);
     history.replaceState(null, "", `#player/${encodeURIComponent(name)}${other === ME_NAME ? "" : `/vs/${encodeURIComponent(other)}`}`);
   });
@@ -2177,7 +2285,7 @@ function boot() {
     let stopped = false, raf = 0, t = 0, last = 0;
     const me = { stop() { stopped = true; if (raf) cancelAnimationFrame(raf); raf = 0; } };
     ploop = me;
-    cv.addEventListener("click", () => showReplay(m.id, true, ri, Math.max(0, t - 2)));
+    cv.addEventListener("click", () => showReplay(m.id, true, ri, Math.max(0, t - 2), false, seat == null ? "bomb" : seat));
     loadMatch(m.id).then((R) => {
       if (stopped) return;
       const r = R.rounds[ri]; if (!r) return;
@@ -2186,12 +2294,15 @@ function boot() {
       // like Vertigo the radar is a small island in the middle of its square
       const st = R.stride || 2, pts = [];
       for (const tr of Object.values(r.tracks)) for (let i = 0; i < tr.length; i += st * 4) if (tr[i] != null) pts.push({ x: tr[i], y: tr[i + 1] });
-      const vw = frame(cal, pts, 70, 420), k = S2 / vw[2];
+      let cam = frame(cal, pts, 70, 420);             // until they're found: where the round was played
       const paint = (tt) => {
         const players = momentAt(R, r, tt), B = bombAt(r, tt);
         const him = players.find((q) => q.seat === seat && !q.dead);
         const lv = him && lowerAt(cal, him.z) && imgs[1] ? 1 : 0;
         const recent = (r.fights || []).filter((f) => f.t <= tt && tt - f.t < 1.5 && f.killer_at && f.victim_at && f.killer_at.x != null).pop();
+        // the camera stays on them, a little wider than the full replay's
+        cam = camStep(cam, followSpot(cal, players, B, seat), 520, tt < 0.2 || reduce ? 1 : 0.12);
+        const vw = cam, k = S2 / vw[2];
         drawMoment(ctx, S2, { cal, img: imgs[lv], lower: lv === 1, players, nades: r.nades, flashes: r.flashes, bomb: B, hudText: bombText(B, seats, tt),
           line: recent ? [recent.killer_at.x, recent.killer_at.y, recent.victim_at.x, recent.victim_at.y] : null,
           view: vw, labels: false, seats, r, t: tt });
@@ -2338,7 +2449,7 @@ function boot() {
   function openPlayer(name, fromAddress, vs) {
     const games = PLAYERS.get(name);
     if (!games) { $("pq").value = name; go("players", fromAddress); return showPlayers(); }
-    $("playerbox").dataset.player = name;
+    $("playerbox").dataset.who = name;
     if (!fromAddress && location.hash !== `#player/${encodeURIComponent(name)}`) history.pushState(null, "", `#player/${encodeURIComponent(name)}`);
     go("players", true, true);
     document.querySelector(".psearch").hidden = true;
@@ -2403,7 +2514,7 @@ function boot() {
   let pendingRecord = null;
   function watchBest(id, round, t, rec) {
     pendingRecord = rec || null;
-    showReplay(id, true, Math.max(0, (round || 1) - 1), rec ? 0 : (t || 0));
+    showReplay(id, true, Math.max(0, (round || 1) - 1), rec ? 0 : (t || 0), false, seatOf(id, $("playerbox").dataset.who));
   }
 
   /* ══ pages ══════════════════════════════════════════════
@@ -2705,8 +2816,9 @@ function boot() {
     });
     box.innerHTML = c.n ? whyBlock(c, CS.died["*"], ex, false) : `<p class="note">No deaths among the matches counted.</p>`;
   }
-  const whyWatch = (e) => { const w = e.target.closest("[data-whywatch]"); if (w) { showReplay(w.dataset.whywatch, true, +w.dataset.r - 1, +w.dataset.t); return true; } return false; };
-  $("whybox").addEventListener("click", whyWatch);
+  // name: whose page it's on (follow them); none on the Overview (follow Ric)
+  const whyWatch = (e, name) => { const w = e.target.closest("[data-whywatch]"); if (w) { showReplay(w.dataset.whywatch, true, +w.dataset.r - 1, +w.dataset.t, false, name ? seatOf(w.dataset.whywatch, name) : 0); return true; } return false; };
+  $("whybox").addEventListener("click", (e) => whyWatch(e));
 
   function renderRecords() {
     const CS = window.CS_STATS, counted = new Set(SL.map((m) => m.id));
@@ -2771,7 +2883,7 @@ function boot() {
   }
   $("recbox").addEventListener("click", (e) => {
     const o = e.target.closest("[data-open]"); if (o) return openMatch(o.dataset.open);
-    const w = e.target.closest("[data-watch]"); if (w) showReplay(w.dataset.watch, true, +w.dataset.r, +w.dataset.t);
+    const w = e.target.closest("[data-watch]"); if (w) showReplay(w.dataset.watch, true, +w.dataset.r, +w.dataset.t, false, 0);
   });
 
   /* ══ maps ═══════════════════════════════════════════════ */
@@ -2943,21 +3055,23 @@ function boot() {
       <div class="panel side">${'<div class="skel" style="height:34px"></div>'.repeat(7)}</div></div>`;
   const SKEL_SNAP = `<div aria-busy="true"><span class="sr">Loading the snapshot</span><div class="skel" style="aspect-ratio:1;max-width:760px;margin:0 auto"></div></div>`;
 
-  function showReplay(id, scroll, round = 0, at = null, still = false) {
+  // follow: a seat, "bomb", or null for the whole map. The Overview opens on
+  // Ric (seat 0), a player's page on that player, everything else on the bomb.
+  function showReplay(id, scroll, round = 0, at = null, still = false, follow = "bomb") {
     const m = matches.find((x) => x.id === id); if (!m) return;
     const box = $("replaybox");
     replayStarted = true;
     if (player) { player.stop(); player = null; }
     box.innerHTML = SKEL_REPLAY;
     if (scroll) go("replay");
-    loadMatch(id).then((R) => { if (player) player.stop(); player = Player(box, m, R, +round, at, still); }, () => {
+    loadMatch(id).then((R) => { if (player) player.stop(); player = Player(box, m, R, +round, at, still, follow); }, () => {
       box.innerHTML = `<div class="panel empty">That replay's data didn't load. It's there; the download failed.
         <button type="button" class="btn ghost" data-retry style="margin-left:8px">Try again</button></div>`;
-      box.querySelector("[data-retry]").addEventListener("click", () => showReplay(id, false, round, at, still));
+      box.querySelector("[data-retry]").addEventListener("click", () => showReplay(id, false, round, at, still, follow));
     });
   }
 
-  function Player(box, m, R, startRound, startAt, still) {
+  function Player(box, m, R, startRound, startAt, still, startFollow = "bomb") {
     const seats = seatInfo(R), cal = radarFor(R.map), st = R.stride || 2;
     box.innerHTML = `<div class="replay fadein"><div class="panel stage">
         <div class="rtitle"><label class="sr" for="rmatch">Match</label>
@@ -2966,18 +3080,18 @@ function boot() {
         <div class="rpicks" role="group" aria-label="Round">${R.rounds.map((r, i) => `<button type="button" class="${r.w ? "w" : "l"}" data-r="${i}" aria-label="Round ${i + 1}, ${r.w ? "won" : "lost"}">${i + 1}</button>`).join("")}</div>
         <div class="rinfo"><button type="button" class="pp" data-rstep="-1" aria-label="Previous round">‹</button><span></span><button type="button" class="pp" data-rstep="1" aria-label="Next round">›</button></div>
         <div class="rv"><canvas class="cvfade" width="1024" height="1024" tabindex="0" aria-label="The round on the radar. Activate to play, zoom and pan."></canvas>
+          <button type="button" class="rmenu-btn" data-rmenu aria-label="Replay settings" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2" r="1.7"/><circle cx="2" cy="8" r="1.7"/><circle cx="2" cy="14" r="1.7"/></svg></button>
+          <div class="rmenu" data-rmenupanel hidden>
+            <div class="rm-sec"><div class="rm-h">Follow</div><div class="rm-follow" role="radiogroup" aria-label="Follow" data-followlist></div></div>
+            ${cal && cal.split != null ? `<div class="rm-sec"><div class="rm-h">Floor</div><div class="seg rm-seg" role="group" aria-label="Radar level"><button type="button" data-level="auto" aria-pressed="true">Auto</button><button type="button" data-level="0" aria-pressed="false">Upper</button><button type="button" data-level="1" aria-pressed="false">Lower</button></div></div>` : ""}
+            <div class="rm-sec rm-tgs"><label class="rm-tg"><input type="checkbox" data-names checked><span>Names</span></label><label class="rm-tg"><input type="checkbox" data-steps${cal ? "" : " checked"}><span>Footsteps</span></label></div>
+            <div class="rm-sec rm-acts"><button type="button" class="rm-act" data-reset>Reset view</button><button type="button" class="rm-act" data-share>Copy link to this moment</button>
+              ${CAN_RECORD ? `<button type="button" class="rm-act" data-rec="clip">Save this moment as video</button><button type="button" class="rm-act" data-rec="round">Save whole round</button>` : ""}</div>
+          </div>
           <div class="kf" aria-hidden="true"></div><div class="hint" title="Space plays · ← → step 5 s · [ ] change round · Esc lets go">Click to play</div>${playBar(`<button type="button" class="pp" data-close aria-label="Let go of the map">✕</button>`)}</div>
         ${WP ? `<div class="wpstrip" data-wp><div class="wphead"><span>Ric's team's chance to win the round${info("wp", "the win chance")}</span><b data-wpnow>—</b></div>
           <div class="wpplot" role="img"><svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"></svg><i class="wpcur"></i></div></div>` : ""}
-        <div class="settings">
-          ${cal && cal.split != null ? `<div class="seg" role="group" aria-label="Radar level"><button type="button" data-level="auto" aria-pressed="true">Auto</button><button type="button" data-level="0" aria-pressed="false">Upper</button><button type="button" data-level="1" aria-pressed="false">Lower</button></div>` : ""}
-          <label><input type="checkbox" data-names checked> Names</label>
-          <label><input type="checkbox" data-steps${cal ? "" : " checked"}> Footsteps</label>
-          <button type="button" class="pp" data-reset style="padding:0 10px">Reset view</button>
-          <button type="button" class="pp" data-share style="padding:0 10px">Copy link to this moment</button>
-          ${CAN_RECORD ? `<span class="vsave"><button type="button" class="pp" data-rec="clip" style="padding:0 10px">Save this moment as video</button>
-          <button type="button" class="pp" data-rec="round" style="padding:0 10px">Save whole round</button></span>` : ""}
-        </div></div>
+</div>
       <div class="panel side"><div class="rlegend"><span><i style="background:var(--t)"></i>T</span><span><i style="background:var(--ct)"></i>CT</span>
           <span><i style="background:#fff"></i>Ric (white ring)</span><span>✕ died · cone = facing · orange = shooting, red = hit, white = headshot</span></div>
         <div><h3 style="font-size:13px;letter-spacing:.14em;color:var(--dim);margin-bottom:6px">Every kill this round</h3><div class="feed"></div>
@@ -2987,12 +3101,15 @@ function boot() {
     const root = box.firstElementChild;
     const wrap = box.querySelector(".rv"), cv = wrap.querySelector("canvas"), ctx = cv.getContext("2d"), S = cv.width;
     const kf = wrap.querySelector(".kf"), feed = box.querySelector(".feed");
+    // the ⋮ menu: held by reference, since on a phone it leaves the replay while open
+    const mbtn = wrap.querySelector("[data-rmenu]"), mpanel = wrap.querySelector("[data-rmenupanel]");
     // The address names the match and round (#replay/<id>/<round>), and a
     // copied link adds the second: #replay/<id>/<round>/<seconds>.
     const hashFor = (t) => `#replay/${encodeURIComponent(m.id)}/${ri + 1}${t != null ? `/${t.toFixed(1)}` : ""}`;
     const syncHash = (t) => { if (view === "replay" && location.hash !== hashFor(t)) history.replaceState(null, "", hashFor(t)); };
-    // Which floor's radar: "auto" follows Ric, the way the in-game radar does.
-    let level = "auto", ri = startRound, rv = null;
+    // Which floor's radar: "auto" follows whoever is followed (else Ric), the
+    // way the in-game radar follows you. follow: a seat, "bomb" or null.
+    let level = "auto", ri = startRound, rv = null, follow = startFollow, followW = FOLLOW_W;
     const imgs = [null, null];
     if (cal) {
       loadImg(cal.img).then((im) => { imgs[0] = im; paint(); }, () => cv.classList.add("ready"));   // no map: show what there is
@@ -3020,12 +3137,14 @@ function boot() {
       const r = R.rounds[ri], t = clock.t, players = momentAt(R, r, t);
       const recent = (r.fights || []).filter((f) => f.t <= t && t - f.t < 1.5 && f.killer_at && f.victim_at && f.killer_at.x != null).pop();
       const B = bombAt(r, t);
-      const ric = players.find((p) => p.seat === 0 && !p.dead);
-      const lv = level === "auto" ? (ric && lowerAt(cal, ric.z) && imgs[1] ? 1 : 0) : +level;
+      const anchor = floorAnchor(players, B, follow);
+      const lv = level === "auto" ? (anchor && lowerAt(cal, anchor.z) && imgs[1] ? 1 : 0) : +level;
+      // the camera eases after whoever it follows while it plays, and jumps when you scrub
+      if (follow != null) rv.place(camStep(rv.view, followSpot(calX, players, B, follow), followW, clock.playing ? 0.14 : 1));
       drawMoment(ctx, S, { cal: calX, img: cal ? imgs[lv] : null, lower: lv === 1, players, nades: r.nades, flashes: r.flashes, bomb: B, hudText: bombText(B, seats, t),
         line: recent ? [recent.killer_at.x, recent.killer_at.y, recent.victim_at.x, recent.victim_at.y] : null,
-        view: rv.view, labels: box.querySelector("[data-names]").checked,
-        footsteps: box.querySelector("[data-steps]").checked ? steps : null, seats, r, t });
+        view: rv.view, focus: typeof follow === "number" ? follow : null, labels: mpanel.querySelector("[data-names]").checked,
+        footsteps: mpanel.querySelector("[data-steps]").checked ? steps : null, seats, r, t });
       killfeed(kf, seats, r, t);
       if (!cal || imgs[0]) cv.classList.add("ready");             // its first frame with the map in it
       [...feed.children].forEach((el) => el.classList.toggle("future", +el.dataset.t > t));
@@ -3074,17 +3193,20 @@ function boot() {
       const choice = await recBar.choose(what, to - from);
       if (!choice || recording) return;
       const speed = choice.speed, Q = REC_Q[choice.quality] || REC_Q.discord, bitrate = Q.bps((to - from) / speed);
-      const W = 1080, HEAD = 120, H = W + HEAD, view = rv.view.slice();
+      const W = 1080, HEAD = 120, H = W + HEAD, camFollow = follow, camW = followW;
+      let cam = rv.view.slice(), camEase = 1;          // jumps to the subject on the first frame, then eases
       const cvs = document.createElement("canvas"); cvs.width = W; cvs.height = H;
       const c = cvs.getContext("2d"), odds_ = wpTimeline(R, r);
       const frame = (t) => {
         const players = momentAt(R, r, t), B = bombAt(r, t);
-        const ric = players.find((p) => p.seat === 0 && !p.dead);
-        const lv = level === "auto" ? (ric && lowerAt(cal, ric.z) && imgs[1] ? 1 : 0) : +level;
+        const anchor = floorAnchor(players, B, camFollow);
+        const lv = level === "auto" ? (anchor && lowerAt(cal, anchor.z) && imgs[1] ? 1 : 0) : +level;
         const recent = (r.fights || []).filter((f) => f.t <= t && t - f.t < 1.5 && f.killer_at && f.victim_at && f.killer_at.x != null).pop();
+        if (camFollow != null) { cam = camStep(cam, followSpot(calX, players, B, camFollow), camW, camEase); camEase = 0.12; }
         c.save(); c.translate(0, HEAD);
         drawMoment(c, W, { cal: calX, img: cal ? imgs[lv] : null, lower: lv === 1, players, nades: r.nades, flashes: r.flashes, bomb: B, hudText: bombText(B, seats, t),
-          line: recent ? [recent.killer_at.x, recent.killer_at.y, recent.victim_at.x, recent.victim_at.y] : null, view, labels: true, seats, r, t });
+          line: recent ? [recent.killer_at.x, recent.killer_at.y, recent.victim_at.x, recent.victim_at.y] : null, view: cam,
+          focus: typeof camFollow === "number" ? camFollow : null, labels: true, seats, r, t });
         // the killfeed, top right of the radar
         c.font = "600 22px system-ui"; c.textAlign = "right";
         let y = 44;
@@ -3128,7 +3250,7 @@ function boot() {
       const done = () => {
         cancelAnimationFrame(raf); recording = null; btn.textContent = label;
         document.removeEventListener("visibilitychange", onVis);
-        box.querySelectorAll("[data-rec]").forEach((b) => { b.disabled = false; });
+        mpanel.querySelectorAll("[data-rec]").forEach((b) => { b.disabled = false; });
       };
       rec.onstop = () => {
         done();
@@ -3154,7 +3276,7 @@ function boot() {
         if (t >= to) { setTimeout(() => rec.state !== "inactive" && rec.stop(), 150); return; }
         raf = requestAnimationFrame(tick);
       };
-      box.querySelectorAll("[data-rec]").forEach((b) => { b.disabled = b !== btn; });
+      mpanel.querySelectorAll("[data-rec]").forEach((b) => { b.disabled = b !== btn; });
       recording = { cancel() { cancelled = true; if (rec.state !== "inactive") rec.stop(); else { done(); recBar.end("Recording stopped", "Nothing was saved.", false); } } };
       recBar.start(() => recording && recording.cancel());
       recBar.progress(Math.ceil((to - from) / speed), 0);
@@ -3162,7 +3284,9 @@ function boot() {
       raf = requestAnimationFrame(tick);
     }
     const clock = Clock({ wrap, from: 0, to: R.rounds[ri].dur, at: 0, onTime: paint });
-    rv = RadarView(wrap, { draw: paint, onHold: () => clock.play(!reduce), onKey: (e) => {
+    rv = RadarView(wrap, { draw: paint, onHold: () => clock.play(!reduce),
+      onUser: (kind, w) => { if (kind === "pan" && follow != null) { follow = null; renderFollow(); } else if (kind === "zoom") followW = w; },
+      onKey: (e) => {
       if (e.key === "[" || e.key === "]") {
         const n = ri + (e.key === "[" ? -1 : 1);
         if (n >= 0 && n < R.rounds.length) { pick(n); clock.play(!reduce); }
@@ -3170,6 +3294,45 @@ function boot() {
       }
       return clockKeys(clock)(e);
     } });
+    // The ⋮ menu: who the camera follows (the bomb, the whole map, or anyone
+    // in the round by team), the floor, names and footsteps, and the actions.
+    // Follow, compact (Ric's design): [ The bomb | Player ], and under it the
+    // player as a dropdown — "Ric ▾" — that opens the list of everyone in the
+    // round, a filled dot by the one picked. The player choice is kept while
+    // the bomb is followed, so "Player" goes back to them.
+    let lastSeat = typeof startFollow === "number" ? startFollow : 0, listOpen = false;
+    function renderFollow() {
+      const r = R.rounds[ri], list = mpanel.querySelector("[data-followlist]");
+      const here = R.seats.filter((x) => r.tracks[x.seat] || r.tracks[String(x.seat)]);
+      if (!here.some((x) => x.seat === lastSeat)) lastSeat = (here[0] || { seat: 0 }).seat;
+      const who = (x) => esc(x.me ? "Ric" : nameOf(seats, x.seat));
+      const side = (x) => sideOf(seats, x.seat, r) === "T" ? "t" : "ct";
+      const cur = here.find((x) => x.seat === lastSeat), onPlayer = typeof follow === "number";
+      const row = (x) => `<button type="button" class="rm-who" role="radio" data-follow="${x.seat}" aria-checked="${x.seat === lastSeat}">
+          <i class="rm-radio" aria-hidden="true"></i><span class="rm-nm">${who(x)}</span><span class="rm-side ${side(x)}">${side(x).toUpperCase()}</span></button>`;
+      list.innerHTML = `<div class="seg rm-seg" role="group" aria-label="Follow">
+          <button type="button" data-follow="bomb" aria-pressed="${follow === "bomb"}"><i class="rm-c4">C4</i>Bomb</button>
+          <button type="button" data-follow="${lastSeat}" aria-pressed="${onPlayer}">Player</button></div>
+        <button type="button" class="rm-pick${onPlayer ? " on" : ""}" data-pickopen aria-expanded="${listOpen}" aria-label="Player to follow: ${cur ? who(cur) : ""}">
+          ${cur ? `<i class="rm-dot ${side(cur)}"></i><span class="rm-nm">${who(cur)}</span>` : ""}<span class="rm-caret" aria-hidden="true">▾</span></button>
+        <div class="rm-plist" role="radiogroup" aria-label="Players"${listOpen ? "" : " hidden"}>
+          <div class="rm-team">Ric's team</div>${here.filter((x) => x.us).map(row).join("")}
+          <div class="rm-team">Opponents</div>${here.filter((x) => !x.us).map(row).join("")}</div>`;
+    }
+    // A phone shows the menu as a sheet from the bottom of the screen. The
+    // replay's panels blur what's behind them, and that pins a "fixed" child to
+    // the panel, not the screen, so the open menu moves out to <body>.
+    const sheet = matchMedia("(max-width:640px)");
+    const menu = (open) => {
+      if (open && sheet.matches) document.body.appendChild(mpanel); else if (mpanel.parentNode !== wrap) wrap.appendChild(mpanel);
+      mpanel.hidden = !open; mbtn.setAttribute("aria-expanded", String(open)); wrap.classList.toggle("menu-open", open);
+      if (!open) listOpen = false;
+      if (open) { renderFollow(); (mpanel.querySelector('[aria-pressed="true"]') || mpanel.querySelector("button")).focus(); }
+    };
+    mbtn.addEventListener("click", () => menu(mpanel.hidden));
+    document.addEventListener("pointerdown", (e) => { if (!mpanel.hidden && !mpanel.contains(e.target) && !mbtn.contains(e.target)) menu(false); });
+    mpanel.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); menu(false); mbtn.focus(); } });
+
     function pick(n) {
       ri = n; const r = R.rounds[ri];
       for (const b of box.querySelectorAll(".rpicks button")) b.setAttribute("aria-pressed", String(+b.dataset.r === ri));
@@ -3186,6 +3349,7 @@ function boot() {
         ${r.reason ? ` — ${esc(ends[r.reason] || r.reason)}` : ""} · ${mine} kill${mine === 1 ? "" : "s"}, ${died ? "died" : "survived"}${buy && buy.equip != null ? ` · $${int(buy.equip)} loadout` : ""}`;
       for (const b of box.querySelectorAll("[data-rstep]")) b.disabled = !R.rounds[ri + +b.dataset.rstep];
       drawOdds(r);
+      renderFollow();
       clock.range(0, r.dur, 0);
       syncHash();
     }
@@ -3193,9 +3357,26 @@ function boot() {
       const b = e.target.closest("button"); if (!b) return;
       pick(+b.dataset.r); rv.hold(true);
     });
-    root.addEventListener("change", (e) => { if (e.target.matches("[data-rmatch]")) return showReplay(e.target.value, false); paint(); });
-    root.addEventListener("click", (e) => {
+    root.addEventListener("change", (e) => { if (e.target.matches("[data-rmatch]")) return showReplay(e.target.value, false, 0, null, false, follow === 0 || follow == null ? follow : "bomb"); paint(); });
+    // one handler for the replay and its menu: on a phone the menu lives outside
+    // the replay while it's open (see menu()), so it gets the clicks itself
+    const onAct = (e) => {
       if (e.target.closest("[data-openmatch]")) return openMatch(m.id);
+      if (e.target.closest("[data-pickopen]")) {
+        listOpen = !listOpen; renderFollow();
+        if (listOpen) { const on = mpanel.querySelector('.rm-plist [aria-checked="true"]') || mpanel.querySelector(".rm-plist button"); if (on) on.focus(); }
+        return;
+      }
+      const fo = e.target.closest("[data-follow]");
+      if (fo) {
+        const v = fo.dataset.follow;
+        follow = v === "bomb" ? "bomb" : +v;
+        if (typeof follow === "number") lastSeat = follow;
+        const fromList = !!fo.closest(".rm-plist");
+        listOpen = false; renderFollow(); paint();
+        if (fromList) menu(false); else mpanel.querySelector(`[data-follow="${v}"]`).focus();
+        return;
+      }
       const sh = e.target.closest("[data-share]");
       if (sh) {
         const t = clock.t, url = location.href.split("#")[0] + hashFor(t);
@@ -3206,15 +3387,20 @@ function boot() {
           .then(() => said(`Copied: round ${ri + 1} at ${mmss(t)}`), () => said("The link is in the address bar"));
         return;
       }
-      const rb = e.target.closest("[data-rec]"); if (rb) { clock.play(false); return record(rb.dataset.rec, rb); }
+      const rb = e.target.closest("[data-rec]"); if (rb) { clock.play(false); menu(false); return record(rb.dataset.rec, rb); }
       const st_ = e.target.closest("[data-rstep]"); if (st_) { const n = ri + +st_.dataset.rstep; if (R.rounds[n]) pick(n); return; }
       const k = e.target.closest(".feed button");
       if (k) { clock.play(false); clock.t = Math.max(0, +k.dataset.t - 3); rv.hold(true); return; }
-      if (e.target.closest("[data-reset]")) return rv.set([0, 0, 1024]);
+      if (e.target.closest("[data-reset]")) { follow = null; followW = FOLLOW_W; renderFollow(); menu(false); return rv.set([0, 0, 1024]); }
       if (e.target.closest("[data-close]")) { clock.play(false); return rv.hold(false); }
       const l = e.target.closest("[data-level]");
       if (l) { level = l.dataset.level === "auto" ? "auto" : +l.dataset.level; for (const x of l.parentNode.children) x.setAttribute("aria-pressed", String(x === l)); paint(); }
-    });
+    };
+    // the path as it was when clicked: the menu redraws itself, which unhooks the
+    // button that was pressed, and a lookup from it would no longer find the menu
+    root.addEventListener("click", (e) => { if (!e.composedPath().includes(mpanel)) onAct(e); });
+    mpanel.addEventListener("click", onAct);
+    mpanel.addEventListener("change", () => paint());
     rv.set([0, 0, 1024]);
     pick(Math.max(0, Math.min(R.rounds.length - 1, startRound || 0)));
     if (startAt != null) { clock.t = startAt; if (still) syncHash(startAt); else rv.hold(true); }
@@ -3222,11 +3408,11 @@ function boot() {
     // once the radar has loaded, so the video doesn't open on a blank map
     if (pendingRecord) {
       const k = pendingRecord; pendingRecord = null; let n = 0;
-      const startRec = () => { const b = box.querySelector(`[data-rec="${k}"]`); if (b && !recording) b.click(); };
+      const startRec = () => { const b = mpanel.querySelector(`[data-rec="${k}"]`); if (b && !recording) b.click(); };
       const wait = () => (!cal || imgs[0] || ++n > 60) ? startRec() : setTimeout(wait, 100);
       wait();
     }
-    return { stop: () => { clock.play(false); if (recording) recording.cancel(); }, sync: () => syncHash() };
+    return { stop: () => { clock.play(false); menu(false); if (recording) recording.cancel(); }, sync: () => syncHash() };
   }
 
   /* ══ stats ══════════════════════════════════════════════

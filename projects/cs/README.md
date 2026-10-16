@@ -266,6 +266,18 @@ through and red for ones they died in, with a cross where — over the first
 20 s, 40 s or the whole round — and where the early deaths cluster. Drawn
 in the browser from the replays, one map's worth at a time.
 
+**The replay's ⋮ menu and camera.** Every setting of the 2D replay sits in a
+menu at its top right: Follow (Bomb or Player, the player from a dropdown with
+everyone in the round), the floor, names, footsteps, Reset view, Copy link and
+the two video buttons. On a phone it rises from the bottom of the screen
+instead (it moves to `<body>` while open: the replay's blurred panels would pin
+a fixed child to themselves). The camera eases after whoever it follows as it
+plays and jumps there when you scrub; a drag lets go, a zoom keeps following.
+It starts on whoever the page you came from is about — a player's page on
+them, the Overview on Ric, anything else on the bomb — and the two looping
+previews follow their player too. On two-floor maps everyone on the floor not
+shown is drawn at 45%, everywhere the radar is drawn.
+
 Replays are sampled twice a second (~350 KB a match). `HZ` in `parse-demos.py`
 trades size for smoothness.
 

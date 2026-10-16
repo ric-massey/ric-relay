@@ -503,8 +503,12 @@ that must never break:
   `projects/cs/tools/`, gitignored) into `projects/cs/radar/`. Rerun it after a map
   update. Two-floor maps (Nuke, Train, Vertigo) keep height in the tracks and pick the
   radar floor by the game's own altitude split; the replay's floor setting defaults to
-  Auto, following Ric. The old "footsteps" floor plan (drawn from where players stood)
+  Auto, following whoever the camera follows (else Ric), and everyone on the other
+  floor is drawn at 45%. The old "footsteps" floor plan (drawn from where players stood)
   is a setting, off by default — Ric asked for it that way.
+- **The replay follows someone.** Its ⋮ menu (all the replay's settings live there)
+  picks Bomb or Player, the player from a dropdown. The default is the page you came
+  from: a player's page follows them, the Overview follows Ric, anything else the bomb.
 - **Kill snapshots** are every kill and death of Ric's, drawn from the same fight data:
   positions and facing on the radar, everyone's HP / armor / weapon, smokes and fires
   in the air, who was flashed, the bomb. Anything added to them belongs in the text
