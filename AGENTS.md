@@ -561,13 +561,18 @@ moved it back out the same day: the terminal is home again, and the redesign liv
 in the terminal. It is a copy of `index.html` with its own `ROOMS`/`PROJECTS` — while it
 is in preview, a room or project added to `index.html` must be added there too, or the
 preview drifts. Don't put it in `ROOMS`, `PROJECTS` or `latest.js`. It opens on a headline with
-the newest-thing pill over it and "try" words under it, then one wide cut onto the
-sunrise; then a rail of things to play (`FEATURE` in its script — a `play` item opens
-over the page in the player, the rest go to their page); then four rooms seen through
-cuts, each with its title inside the photo; then `#dir`, a 3×3 grid on desktop and a
-list on a phone. **Every cut is the same shape** — a strip sliced at one angle, worked
-out in pixels so they are all parallel — and opens from a slit the first time it comes
-on screen. The claw, jagged, blade and shatter shapes came out on 2026-10-16 because
+the newest-thing pill over it and "try" words under it, then the first cut, Captures,
+onto the sunrise; then a rail of things to play (`FEATURE` in its script — a `play` item
+opens over the page in the player, the rest go to their page); then three more cuts —
+Climbing, Training, Exploration; then `#dir`, a 3×3 grid on desktop and a
+list on a phone. **Every cut is the same thing**: a strip sliced at one angle (worked
+out in pixels so they are all parallel), a link to a room, named for it — its URL, its
+name, one line, Enter — at the top of the cut, where you see it first as it scrolls up.
+It opens from a slit the first time it comes on screen. Its edge is a cut through a thick
+sheet lit from above: on the page, a dark line on the top edge and a bright chamfer with
+a sheen on the bottom one; in the hole, the wall's thickness along the top and its
+shadow on the photo, and a lit lip along the bottom. The materials are the `--wall-*`,
+`--edge-*`, `--lip-lit` and `--sheen` tokens, set for day and night. The claw, jagged, blade and shatter shapes came out on 2026-10-16 because
 four gimmicks at once read as clip-art; don't bring back a second shape. The photo in a
 cut is a `position: fixed` layer (`.still`) inside it, clipped by the cut's clip path —
 that is what keeps it still on iOS, which ignores `background-attachment: fixed`. Never

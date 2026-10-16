@@ -42,8 +42,15 @@
       --panel: #f6f7f8;
       --hair: rgba(12,13,15,.14);
       --head: rgba(221,223,226,.74);
-      --lip: rgba(255,255,255,.95);
-      --lip-face: #b3b6bc;
+      /* the edge of a cut: the wall you see inside it (lit at the rim, dark
+         deeper in), the lit lip along the bottom, and on the page itself a
+         dark line on the top edge and a bright chamfer along the bottom one */
+      --wall-hi: #b9bcc2;
+      --wall-lo: #6c7078;
+      --lip-lit: rgba(255,255,255,.8);
+      --edge-dark: rgba(18,20,24,.42);
+      --edge-lit: #ffffff;
+      --sheen: rgba(255,255,255,.75);
       --tile: #c7cacf;
       --violet: #7b3cff;
       --magenta: #ff2d8a;
@@ -59,14 +66,16 @@
       :root:not([data-theme="day"]) {
         --bg: #0a0b0d; --bg-2: #15161a; --ink: #eef0f3; --muted: #9a9fa8;
         --field: rgba(255,255,255,.05); --panel: #121317; --hair: rgba(255,255,255,.1);
-        --head: rgba(10,11,13,.72); --lip: rgba(255,255,255,.16); --lip-face: #18191d; --tile: #17181c;
+        --head: rgba(10,11,13,.72); --tile: #17181c;
+        --wall-hi: #2c2e34; --wall-lo: #0c0d10; --lip-lit: rgba(255,255,255,.26); --edge-dark: rgba(0,0,0,.9); --edge-lit: rgba(255,255,255,.22); --sheen: rgba(255,255,255,.07);
         color-scheme: dark;
       }
     }
     :root[data-theme="night"] {
       --bg: #0a0b0d; --bg-2: #15161a; --ink: #eef0f3; --muted: #9a9fa8;
       --field: rgba(255,255,255,.05); --panel: #121317; --hair: rgba(255,255,255,.1);
-      --head: rgba(10,11,13,.72); --lip: rgba(255,255,255,.16); --lip-face: #18191d; --tile: #17181c;
+      --head: rgba(10,11,13,.72); --tile: #17181c;
+        --wall-hi: #2c2e34; --wall-lo: #0c0d10; --lip-lit: rgba(255,255,255,.26); --edge-dark: rgba(0,0,0,.9); --edge-lit: rgba(255,255,255,.22); --sheen: rgba(255,255,255,.07);
       color-scheme: dark;
     }
 
@@ -186,22 +195,14 @@
     }
     .cut .still.away { visibility: hidden; }
     .cut .scrim { position: absolute; inset: 0; z-index: 2; pointer-events: none;
-      background: linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,.18) 42%, rgba(0,0,0,0) 62%), linear-gradient(to right, rgba(0,0,0,.35), rgba(0,0,0,0) 55%); }
-    .lip { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; opacity: 0; transition: opacity .7s .75s; }
-    .open .lip { opacity: 1; }
-    .lip.out { z-index: 0; }
-    .cut .rim { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .7s .75s; }
-    .open .rim { opacity: 1; }
-    .lip.in { z-index: 4; }
-    .lip .hl { stroke: var(--lip); }
-    .lip .face { stroke: var(--lip-face); }
+      background: linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,.14) 40%, rgba(0,0,0,0) 58%), linear-gradient(to right, rgba(0,0,0,.38), rgba(0,0,0,0) 55%); }
+    .lip { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 0; opacity: 0; transition: opacity .6s .8s; }
+    .lip .dark { stroke: var(--edge-dark); }
+    .lip .lit { stroke: var(--edge-lit); }
+    .cut .rim { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .6s .8s; }
+    .open .lip, .open .rim { opacity: 1; }
 
-    .hero-cut { height: min(76vh, 860px); min-height: 440px; margin: clamp(40px, 7vh, 88px) calc(-1 * var(--gutter)) 0; }
-    .hero-cut .scrim { background: linear-gradient(to top, rgba(0,0,0,.4), rgba(0,0,0,0) 40%); }
-    .credit { position: absolute; z-index: 5; right: var(--gutter); bottom: calc(var(--k, 60px) + 22px); color: rgba(255,255,255,.86); text-decoration: none; display: flex; align-items: center; gap: 10px; text-shadow: 0 1px 12px rgba(0,0,0,.5); opacity: 0; transition: opacity .7s 1s; }
-    .open .credit { opacity: 1; }
-    .credit::before { content: ""; width: 18px; height: 1px; background: currentColor; }
-    .credit:hover { color: #fff; }
+    .hero .slice { margin: clamp(40px, 7vh, 88px) calc(-1 * var(--gutter)) 0; }
 
     /* ─── section heads ─── */
     .sec { padding: clamp(96px, 16vh, 180px) 0 0; }
@@ -252,15 +253,24 @@
     /* ─── rooms, seen through the page ─── */
     .slices { display: grid; gap: clamp(14px, 2vw, 28px); }
     .slice { position: relative; display: block; height: max(560px, 88vh); color: #fff; text-decoration: none; }
-    .slice .copy { position: absolute; z-index: 6; left: var(--gutter); right: var(--gutter); bottom: calc(var(--k, 60px) + clamp(30px, 7vh, 72px)); max-width: 640px; text-shadow: 0 1px 24px rgba(0,0,0,.35); }
-    .slice .idx { display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,.86); margin-bottom: 18px; }
+    /* the room's name sits at the top of its cut: a cut comes up from the
+       bottom of the screen as you scroll, so its top is what you see first —
+       and the hero's cut is only half on the first screen */
+    .slice .copy { position: absolute; z-index: 6; left: var(--gutter); right: var(--gutter); top: calc(var(--k, 60px) + clamp(40px, 8vh, 92px)); max-width: 640px; text-shadow: 0 1px 24px rgba(0,0,0,.35); }
+    .slice .idx { display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,.88); margin-bottom: 16px; text-transform: none; letter-spacing: .06em; font-size: 12px; }
     .slice .idx::before { content: ""; width: 22px; height: 2px; background: var(--c); }
+    .slice .idx b { font-weight: 400; color: #fff; }
     .slice h3 { font: 600 clamp(52px, 8.4vw, 128px)/.9 var(--display); letter-spacing: -.055em; }
     .slice p { margin-top: 18px; font-size: clamp(16px, 1.3vw, 19px); color: rgba(255,255,255,.9); max-width: 34ch; }
     .enter { margin-top: 26px; display: inline-flex; align-items: center; gap: 12px; font: 500 14px var(--sans); letter-spacing: .08em; text-transform: uppercase; }
     .enter i { display: block; width: 28px; height: 1px; background: currentColor; position: relative; transition: width .45s var(--ease); }
     .enter i::after { content: ""; position: absolute; right: -1px; top: -3px; border-left: 6px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; }
     .slice:hover .enter i, .slice:focus-visible .enter i { width: 52px; }
+    /* a cut is a door: it lifts a little when you are about to go through */
+    .cut .still { transition: filter .6s var(--ease); }
+    .slice:hover .still, .slice:focus-visible .still { filter: brightness(1.08) saturate(1.05); }
+    .cut .scrim { transition: opacity .6s var(--ease); }
+    .slice:hover .scrim { opacity: .85; }
     .slice:focus-visible { outline: none; }
     .slice:focus-visible h3 { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 10px; }
 
@@ -325,7 +335,7 @@
       .tries { margin-top: 16px; }
       .latest-relay { font-size: 13px; }
       .latest-relay .latest-meta { display: none; }
-      .hero-cut { height: 62vh; min-height: 380px; margin-top: 28px; }
+      .hero .slice { margin-top: 28px; }
       .cut .still { background-image: var(--img-m, var(--img)); background-position: var(--pos-m, var(--pos, 50% 50%)); background-size: var(--size-m, cover); }
       .sec-head { align-items: start; flex-direction: column; }
       .rail-nav { display: none; }
@@ -408,13 +418,18 @@
           </div>
         </div>
       </div>
-      <div class="cutbox hero-cut" data-cut>
+      <a class="slice cutbox" data-cut href="captures.html" style="--c: var(--magenta)">
         <div class="cut" style="--img:url(photos/climbing-10.jpg); --size: auto 128%; --pos: 50% 0%; --pos-m: 74% 50%">
           <div class="still" role="img" aria-label="Watching the sun come up over a sea of clouds and mountains"></div>
           <div class="scrim"></div>
-          <a class="credit mono" href="captures.html">Sunrise above the clouds · Captures</a>
+          <div class="copy rv">
+            <div class="idx mono"><span>ricmassey.com/<b>captures</b></span></div>
+            <h3>Captures</h3>
+            <p>1,300 photographs from the mountains, the crags and everything between.</p>
+            <div class="enter">Enter <i></i></div>
+          </div>
         </div>
-      </div>
+      </a>
     </section>
 
     <section class="sec" id="play" aria-labelledby="play-h" style="--c: var(--violet)">
@@ -437,7 +452,7 @@
         <div class="rv">
           <div class="eyebrow mono">02 — Rooms</div>
           <h2 id="rooms-h">Look through the page.</h2>
-          <p>Each room is dressed as the real app for its world. Here are four of them.</p>
+          <p>Every cut is a door. Each room is dressed as the real app for its world.</p>
         </div>
       </div>
       <div class="slices">
@@ -446,21 +461,9 @@
             <div class="still" role="img" aria-label="Climbers under a sweeping orange sandstone roof"></div>
             <div class="scrim"></div>
             <div class="copy rv">
-              <div class="idx mono">Climbing</div>
-              <h3>The wall.</h3>
+              <div class="idx mono"><span>ricmassey.com/<b>climbing</b></span></div>
+              <h3>Climbing</h3>
               <p>Every route, every project, every fall — logged from the crag.</p>
-              <div class="enter">Enter <i></i></div>
-            </div>
-          </div>
-        </a>
-        <a class="slice cutbox" data-cut href="captures.html" style="--c: var(--magenta)">
-          <div class="cut" style="--img:url(photos/climbing-16.jpg); --img-m:url(photos/website-0463.jpg); --pos: 50% 55%; --pos-m: 70% 50%">
-            <div class="still" role="img" aria-label="A glacial lake under jagged peaks and pine forest"></div>
-            <div class="scrim"></div>
-            <div class="copy rv">
-              <div class="idx mono">Captures</div>
-              <h3>1,300 frames.</h3>
-              <p>Photographs from the mountains, the crags and everything between.</p>
               <div class="enter">Enter <i></i></div>
             </div>
           </div>
@@ -475,9 +478,9 @@
             <div class="still" role="img" aria-label="Walking a high ridge between snow-streaked peaks"></div>
             <div class="scrim"></div>
             <div class="copy rv">
-              <div class="idx mono">Training</div>
-              <h3>Every run.</h3>
-              <p>A 52-week plan, ticked off the moment the watch syncs.</p>
+              <div class="idx mono"><span>ricmassey.com/<b>training</b></span></div>
+              <h3>Training</h3>
+              <p>Every run, and a 52-week plan that ticks itself off when the watch syncs.</p>
               <div class="enter">Enter <i></i></div>
             </div>
           </div>
@@ -487,8 +490,8 @@
             <div class="still" role="img" aria-label="The moon, bright against a black sky"></div>
             <div class="scrim"></div>
             <div class="copy rv">
-              <div class="idx mono">Exploration</div>
-              <h3>Further out.</h3>
+              <div class="idx mono"><span>ricmassey.com/<b>exploration</b></span></div>
+              <h3>Exploration</h3>
               <p>Space, physics and the size of things — to scale, and playable.</p>
               <div class="enter">Enter <i></i></div>
             </div>
@@ -611,7 +614,6 @@
     const STILL = matchMedia("(prefers-reduced-motion: reduce)").matches;
     (() => {
       const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x}px ${y}px`).join(", ")})`;
-      const path = (pts) => "M" + pts.map(([x, y]) => `${x},${y}`).join(" L") + " Z";
       // four screen-sized photos pinned at once is wasted paint: a cut that is
       // off screen hides its photo until it comes back
       const seen = new IntersectionObserver((list) => list.forEach((e) =>
@@ -623,7 +625,7 @@
         e.target.draw();
       }), { threshold: 0.18 });
 
-      document.querySelectorAll("[data-cut]").forEach((box) => {
+      document.querySelectorAll("[data-cut]").forEach((box, n) => {
         const cut = box.querySelector(".cut");
         seen.observe(cut);
         box.draw = () => {
@@ -634,31 +636,38 @@
           const slit = [[0, h / 2 + k / 2], [w, h / 2 - k / 2], [w, h / 2 - k / 2], [0, h / 2 + k / 2]];
           box.style.setProperty("--k", k + "px");
           cut.style.clipPath = poly(box.classList.contains("open") ? shape : slit);
-          // The lip, in pixels: outside, only the hairline where the page's
-          // surface breaks (brighter on the top edge, which faces the light);
-          // inside, the shadow the wall throws down onto the photo, then the
-          // page's own thickness, deeper along the top where you look down
-          // onto it. No shadow falls outside — a hole has none.
-          const d = path(shape);
-          const at = (cls, width, dy = 0, stroke = "") =>
-            `<path${cls ? ` class="${cls}"` : ""} d="${d}" fill="none"${stroke ? ` stroke="${stroke}"` : ""} stroke-width="${width}" transform="translate(0,${dy})"/>`;
-          const box_ = `viewBox="0 0 ${w} ${h}" aria-hidden="true"`;
-          box.querySelectorAll(".lip").forEach((el) => el.remove());
-          cut.insertAdjacentHTML("beforebegin", `<svg class="lip out" ${box_}>${at("hl", 2)}${at("hl", 2, -1)}</svg>`);
-          // The shadow is gradients laid along each edge, not a blur: a blurred
-          // layer here leaks out past the clip in Chromium, a whole tile of it.
-          // Each edge is straight, so a gradient at the edge's own angle,
-          // starting where the edge is, darkens the photo evenly along it.
-          const n = Math.hypot(w, k), deg = (Math.atan2(k, w) * 180) / Math.PI, at0 = (k * w) / n;
+          // The edge, all in pixels. The page is a thick sheet lit from above
+          // and the cut goes through it; the cuts run to both sides of the
+          // screen, so only the top and bottom edges are ever seen.
+          //   on the page: a dark line where the top edge breaks, and a bright
+          //     chamfer along the bottom edge with a soft sheen under it
+          //   in the hole: the wall's thickness along the top (lit at the rim,
+          //     dark deeper in) and the shadow it throws onto the photo; a lit
+          //     lip along the bottom
+          // No blur anywhere: a blurred layer here leaks out past the clip in
+          // Chromium, a whole tile of it. The edges are straight, so gradients
+          // laid at the edge's own angle do the shading instead.
+          const L = Math.hypot(w, k), nx = k / L, ny = w / L;          // unit normal, pointing down
+          const deg = (Math.atan2(k, w) * 180) / Math.PI, at0 = (k * w) / L; // edge's distance from its corner
+          const T = Math.round(Math.max(5, Math.min(10, w * 0.007)));     // how much wall shows
+          const S = 14;                                                    // sheen depth
+          const id = "sheen-" + n;
+          box.querySelector(".lip")?.remove();
+          cut.insertAdjacentHTML("beforebegin",
+            `<svg class="lip" viewBox="0 0 ${w} ${h}" aria-hidden="true">` +
+            `<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${w / 2}" y1="${h - k / 2}" x2="${w / 2 + nx * S}" y2="${h - k / 2 + ny * S}">` +
+            `<stop offset="0" style="stop-color:var(--sheen)"/><stop offset="1" style="stop-color:var(--sheen);stop-opacity:0"/></linearGradient></defs>` +
+            `<polygon points="0,${h} ${w},${h - k} ${w + nx * S},${h - k + ny * S} ${nx * S},${h + ny * S}" fill="url(#${id})"/>` +
+            `<line class="dark" x1="0" y1="${k}" x2="${w}" y2="0" stroke-width="2"/>` +
+            `<line class="lit" x1="0" y1="${h}" x2="${w}" y2="${h - k}" stroke-width="2"/></svg>`);
           let rim = cut.querySelector(".rim");
           if (!rim) { rim = document.createElement("div"); rim.className = "rim"; cut.appendChild(rim); }
           rim.style.background = [
-            `linear-gradient(${180 - deg}deg, transparent ${at0}px, rgba(0,0,0,.58) ${at0}px, rgba(0,0,0,.22) ${at0 + 14}px, transparent ${at0 + 46}px)`,
-            `linear-gradient(${-deg}deg, transparent ${at0}px, rgba(0,0,0,.3) ${at0}px, transparent ${at0 + 20}px)`,
-            "linear-gradient(90deg, rgba(0,0,0,.32), transparent 22px)",
-            "linear-gradient(270deg, rgba(0,0,0,.32), transparent 22px)",
+            // the top: wall, then its shadow on the photo
+            `linear-gradient(${180 - deg}deg, var(--wall-hi) ${at0}px, var(--wall-lo) ${at0 + T}px, rgba(0,0,0,.6) ${at0 + T + 0.8}px, rgba(0,0,0,.24) ${at0 + T + 12}px, rgba(0,0,0,.08) ${at0 + T + 34}px, rgba(0,0,0,0) ${at0 + T + 64}px)`,
+            // the bottom: a lit lip, and the faintest shading above it
+            `linear-gradient(${-deg}deg, var(--lip-lit) ${at0}px, var(--lip-lit) ${at0 + 1.4}px, rgba(0,0,0,.22) ${at0 + 2.4}px, rgba(0,0,0,0) ${at0 + 22}px)`,
           ].join(", ");
-          cut.insertAdjacentHTML("beforeend", `<svg class="lip in" ${box_}>${at("face", 6)}${at("face", 6, 3)}</svg>`);
         };
         box.draw();
         new ResizeObserver(() => box.draw()).observe(cut);
