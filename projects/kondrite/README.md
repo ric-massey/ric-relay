@@ -1128,6 +1128,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `cloud.js` | The account, and the book kept in it. No SDK, no request until asked |
 | `config.js` | The account service's URL and publishable key. Blank means no accounts |
 | `supabase/schema.sql` | Three tables: the private save, and the two the boards are made of. Run once in the SQL editor |
+| `supabase/admin.sql` | Ric's view of the pilots: an `admins` table and the admin-only functions `account/kondrite.js` calls (list, rename, wipe a save, clear scores, ban, delete). Run once after `schema.sql`, then add his account to `admins` by hand |
 | `survey-world.js` | Where you are and what that means: chunk identity, the danger curve, the region lattice and the Warrens' rock. Pure functions of a seed and a pair of coordinates |
 | `survey-save.js` | The book: where it is kept, the four pieces a read is made of, and the write |
 | `survey-hud/` | Survey's interface, one file per page: the flight panel, the chart, the almanac, the station, the workbench, the ship, the record, the hangar, the machines |

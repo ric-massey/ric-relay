@@ -1,4 +1,5 @@
-/* The account page: sign in, ask for access, and — for Ric — decide.
+/* The account page: sign in, ask for access, and — for Ric — decide. His view
+ * also lists KONDRITE's pilots, which kondrite.js draws from that game's own project.
  *
  * Nothing here is trusted for anything. Every decision is made by the database
  * (request_access, admin_people, admin_set_access, has_page_access); this page
@@ -23,7 +24,9 @@
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   const pageHref = (p) => new URL(p.path || '', siteRoot).href;
   const labelOf = (key) => (PAGES.find((p) => p.key === key) || { label: key }).label;
-  // The three main panels are exclusive; the admin panel is set on its own.
+  // The three main panels are exclusive; Ric's panels are set on their own.
+  const ADMIN_PANELS = ['people', 'admin-panel', 'kondrite-panel'];
+  const showAdmin = (on) => ADMIN_PANELS.forEach((p) => { $(p).hidden = !on; });
   const show = (id) => ['signin-panel', 'request-panel', 'me-panel'].forEach((p) => { $(p).hidden = p !== id; });
   const say = (id, text, good = false) => { const el = $(id); el.textContent = text; el.classList.toggle('good', good); };
 
@@ -54,7 +57,7 @@
   async function render() {
     const { data: { session } } = await db.auth.getSession();
     if (!session) {
-      $('admin-panel').hidden = true;
+      showAdmin(false);
       show(location.hash === '#request' ? 'request-panel' : 'signin-panel');
       return;
     }
@@ -79,9 +82,13 @@
     $('me-pages').innerHTML = open.map((p) =>
       `<li><a href="${esc(pageHref(p))}">${esc(p.label)} →</a> <small>${esc(p.blurb)}</small></li>`).join('');
 
-    $('admin-panel').hidden = !isAdmin;
+    showAdmin(!!isAdmin);
     show('me-panel');
-    if (isAdmin) await renderAdmin();
+    if (isAdmin) {
+      await Promise.all([renderAdmin(), window.KondriteAdmin ? window.KondriteAdmin.mount($('kondrite-admin')) : null]);
+      // The terminal's `accounts` sends Ric straight to the list.
+      if (location.hash === '#people') $('people').scrollIntoView();
+    }
   }
 
   function pageChecks(userId, checked) {
@@ -112,10 +119,21 @@
     </div>`;
   }
 
+  // One search box over both lists: the site's people here, KONDRITE's pilots in kondrite.js.
+  let everyone = [];
+  const findQuery = () => $('people-find').value.trim().toLowerCase();
+  const found = (p) => !findQuery() || [p.name, p.username, p.email]
+    .some((s) => String(s || '').toLowerCase().includes(findQuery()));
+
   async function renderAdmin() {
     const { data, error } = await db.rpc('admin_people');
     if (error) { say('admin-msg', error.message); return; }
-    const people = data || [];
+    everyone = data || [];
+    drawPeople();
+  }
+
+  function drawPeople() {
+    const people = everyone.filter(found);
     const pending = people.filter((p) => p.status === 'pending' && !p.is_admin);
     const rest = people.filter((p) => !(p.status === 'pending' && !p.is_admin));
     $('pending-count').textContent = pending.length ? String(pending.length) : '';
@@ -123,7 +141,8 @@
     $('pending-list').innerHTML = pending.length
       ? pending.map((p) => personCard(p, true)).join('')
       : '<p>no one is waiting.</p>';
-    $('people-list').innerHTML = rest.map((p) => personCard(p, false)).join('');
+    $('people-list').innerHTML = rest.length ? rest.map((p) => personCard(p, false)).join('')
+      : findQuery() ? '<p>no one matches that.</p>' : '';
   }
 
   async function decide(button) {
@@ -199,8 +218,13 @@
 
   $('signout').addEventListener('click', async () => {
     await window.SiteGate.signOut();
-    $('admin-panel').hidden = true;
+    showAdmin(false);
     await render();
+  });
+
+  $('people-find').addEventListener('input', () => {
+    drawPeople();
+    if (window.KondriteAdmin) window.KondriteAdmin.filter(findQuery());
   });
 
   loadPages().then(render).catch((err) => say('si-msg', `could not reach the account service (${err.message})`));

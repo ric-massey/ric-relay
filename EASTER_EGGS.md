@@ -18,6 +18,7 @@ completion.
 | `login` / `account` | Opens the site account page (`account/`): one sign-in for ATLAS and HERMISCUS, a form to ask Ric for access, and Ric's approval panel. |
 | `listen` | Opens KONDRITE's listening booth (`projects/kondrite/sounds/listen.html`): every game sound alone and in real-timing scenes, with plain-word buttons for what bugs you and a copy-your-answers button. |
 | `visitors` | Opens the private visitor counter (`visitors/`). Anybody can type it; the numbers stay behind the site password. |
+| `accounts` | Opens Ric's roster on the account page (`account/#people`): every site account and every KONDRITE pilot, with one search box, renaming, bans and deletes. Anybody can type it; the lists come from admin-only database functions. |
 | `coffee` | Dispenses one terminal-grade coffee. |
 | `exit` | Explains the architectural problem with leaving the Terminal. |
 | `404` | Deliberately loses the signal and opens a special version of the Terminal's 404 page. |
