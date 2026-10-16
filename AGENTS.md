@@ -558,20 +558,30 @@ the rest. Rules:
 **The front door (in preview since 2026-10-16).** It went live as `index.html` and Ric
 moved it back out the same day: the terminal is home again, and the redesign lives at
 `frontdoor.html`, unlisted and `noindex`, reached by its URL or by typing `front door`
-in the terminal. It is a copy of `index.html` with its own `ROOMS`/`PROJECTS` — while it
-is in preview, a room or project added to `index.html` must be added there too, or the
-preview drifts. Don't put it in `ROOMS`, `PROJECTS` or `latest.js`. It opens on a headline with
-the newest-thing pill over it and "try" words under it, then the first cut, Captures,
-onto the sunrise; then a rail of things to play (`FEATURE` in its script — a `play` item
-opens over the page in the player, the rest go to their page); then three more cuts —
-Climbing, Training, Exploration; then `#dir`, a 3×3 grid on desktop and a
-list on a phone. **Every cut is the same thing**: a strip sliced at one angle (worked
+in the terminal. It does not run the terminal: the bar carries an amber **Terminal**
+button (the terminal screen's own `#ffb000`) that opens `index.html`, and `/` from
+anywhere on the page does the same — Ric asked for exactly that on 2026-10-16. It keeps
+its own copy of `ROOMS` for "Every room"; a room added to `index.html` must be added
+there too while it is in preview. Don't put it in `ROOMS`, `PROJECTS` or `latest.js`.
+
+**It shows off the pages, not Ric.** Ric's rule, same day: "it's my internet, but it's
+an internet" — family and friends use these rooms, so the front door sells the rooms.
+No personal photos: every cut and every tile in "Every room" is a **screenshot of the
+real page it opens**, taken by `assets/frontdoor/capture.mjs` (re-run it when a room
+changes how it looks). And the order is **newest, biggest and most fun first** — today
+Counter-Strike (right under the headline), KONDRITE, a rail of more games (`FEATURE`;
+a `play` item opens over the page in the player), then Entertainment, How Big Everything
+Is and Climbing, then "Every room". When something bigger or newer ships, it moves to
+the top. Each cut's name sits on a dark notched plate inside the cut, never straight on
+the screenshot, which is full of the page's own words.
+
+**Every cut is the same thing**: a strip sliced at one angle (worked
 out in pixels so they are all parallel), a link to a room, named for it — its URL, its
 name, one line, Enter — at the top of the cut, where you see it first as it scrolls up.
 It opens from a slit the first time it comes on screen. The page is a stack of
 sheets and the cut tears through all of them, each a little differently: at every edge
 you look down a few steps of torn paper — fuzzy fibre, a bright broken core that comes
-and goes, each sheet's shadow on the one below — before you reach the photo. The `.cut`
+and goes, each sheet's shadow on the one below — before you reach the picture. The `.cut`
 is clipped to the top sheet's tear; the sheets under it are painted on a canvas per cut
 and laid over the photo as a plain image (`.rim`), redrawn on resize and on night/day.
 The torn line must stay inside the cut's box (the `m` margin in `geometry()`), or the
@@ -585,10 +595,7 @@ fixed layer to that element and the photo starts scrolling with the page again. 
 anything laid over a cut goes *inside* the `.cut`, not beside it: a sibling that fades in
 over it made Chromium paint the cut's scrim out past its clip. The shadows in a cut are drawn on that canvas, never
 as a CSS or SVG blur, for the same reason. Night/day is a
-visitor's own choice kept in `localStorage` (`frontdoor-theme`), else their OS. The
-search box *is* the terminal: `SEARCH_WORDS` adds the plain words people type for each
-room and project, matches show as you type, and a word the terminal doesn't know opens
-the best match instead of an error. The boot lines print the first time it opens.
+visitor's own choice kept in `localStorage` (`frontdoor-theme`), else their OS.
 
 Homepage "transmissions" live in `notes.js`. Curated newest additions live
 in `latest.js` and are announced in exactly one place: the NOTIFICATION banner on

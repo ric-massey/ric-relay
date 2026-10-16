@@ -85,7 +85,7 @@
     .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     :focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 
-    /* ─── top bar: the brand, the terminal (which is the search), night/day ─── */
+    /* ─── top bar: the brand, the page's sections, the terminal, night/day ─── */
     .bar {
       position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 28px;
       height: 68px; padding: 0 var(--gutter); border-bottom: 1px solid transparent;
@@ -102,42 +102,18 @@
     .mode:hover { border-color: var(--ink); }
     .mode svg { width: 16px; height: 16px; }
 
-    .term { position: relative; width: min(400px, 100%); }
-    .seek {
-      display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px 0 14px;
-      background: var(--field); border: 1px solid var(--hair); cursor: text; position: relative;
-      transition: border-color .2s;
+    /* the terminal, as a button: amber like the terminal's own screen */
+    .tbtn {
+      flex: none; display: inline-flex; align-items: center; gap: 9px; height: 40px; padding: 0 16px 0 14px;
+      background: #ffb000; color: #0a0a0a; text-decoration: none;
+      font: 700 12.5px var(--mono); letter-spacing: .16em; text-transform: uppercase;
+      box-shadow: 0 0 0 1px rgba(255,176,0,.55), 0 0 22px rgba(255,176,0,.28);
+      transition: box-shadow .3s, background-color .3s;
     }
-    .seek:hover { border-color: color-mix(in srgb, var(--ink) 35%, transparent); }
-    .seek .prompt { color: var(--muted); font-family: var(--mono); font-size: 13px; }
-    .seek input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; color: var(--ink); font: 400 15px var(--sans); }
-    .seek input::placeholder { color: var(--muted); }
-    .seek kbd { font: 400 11px var(--mono); color: var(--muted); border: 1px solid var(--hair); padding: 2px 7px; }
-    .seek::after { content: ""; position: absolute; left: -1px; right: -1px; bottom: -1px; height: 2px; background: linear-gradient(90deg, var(--violet) 0 33%, var(--magenta) 33% 66%, var(--cyan) 66%); transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease); }
-    .term.open .seek::after { transform: scaleX(1); }
-
-    .console {
-      position: absolute; top: 46px; left: 0; right: 0; display: none;
-      background: var(--panel); border: 1px solid var(--hair); box-shadow: 0 30px 80px rgba(0,0,0,.32);
-      clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
-      max-height: min(70vh, 560px); overflow-y: auto;
-    }
-    .term.open .console { display: block; }
-    .sugs a { display: grid; grid-template-columns: 10px 1fr auto; gap: 12px; align-items: center; padding: 11px 16px; border-top: 1px solid var(--hair); text-decoration: none; }
-    .sugs a:first-child { border-top: 0; }
-    .sugs a:hover, .sugs a.sel { background: color-mix(in srgb, var(--ink) 6%, transparent); }
-    .sugs a i { width: 0; height: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 7px solid var(--c, var(--violet)); }
-    .sugs a b { font-weight: 500; }
-    .sugs a small { color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
-    .sugs a span.d { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
-    .screen { border-top: 1px solid var(--hair); padding: 14px 16px 16px; font-family: var(--mono); font-size: 12.5px; line-height: 1.65; }
-    .sugs:empty + .screen { border-top: 0; }
-    #output { white-space: pre-wrap; color: var(--muted); max-height: 16em; overflow-y: auto; margin-bottom: 10px; }
-    #output:empty { display: none; }
-    #output .bright { color: var(--ink); }
-    #output .ok { color: var(--violet); }
-    .screen .hint { color: var(--muted); }
-    .screen .hint b { color: var(--ink); font-weight: 400; }
+    .tbtn:hover, .tbtn:focus-visible { background: #ffc233; box-shadow: 0 0 0 1px rgba(255,194,51,.8), 0 0 34px rgba(255,176,0,.5); }
+    .tbtn .pr { opacity: .7; letter-spacing: 0; }
+    .tbtn .cur { display: block; width: 8px; height: 14px; background: #0a0a0a; margin-left: -2px; animation: blink 1.1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
 
     /* ─── the hero ─── */
     .hero { padding: clamp(48px, 11vh, 132px) var(--gutter) 0; }
@@ -147,10 +123,6 @@
     h1 .dot { font-style: normal; color: var(--magenta); }
     .lede { font-size: clamp(17px, 1.35vw, 19px); line-height: 1.5; color: var(--muted); max-width: 36ch; }
     .lede b { color: var(--ink); font-weight: 500; }
-    .tries { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 22px; }
-    .tries .mono { color: var(--muted); margin-right: 4px; }
-    .tries button { border: 1px solid var(--hair); background: var(--field); padding: 6px 11px; font: 400 13px var(--mono); cursor: pointer; transition: border-color .2s, background-color .2s; }
-    .tries button:hover { border-color: var(--ink); }
 
     /* the newest thing on the site, a pill over the headline */
     #latest { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; }
@@ -180,11 +152,13 @@
     .cut { position: relative; z-index: 1; height: 100%; overflow: hidden; background: #111214; transition: clip-path 1.25s cubic-bezier(.7,0,.16,1); }
     .cut .still {
       position: fixed; left: 0; top: 0; width: 100%; height: 100vh; height: 100lvh; z-index: 0; pointer-events: none;
-      background: #111214 var(--img) var(--pos, 50% 50%) / var(--size, cover) no-repeat; will-change: transform;
+      background: #111214 none var(--pos, 50% 50%) / var(--size, cover) no-repeat; will-change: transform;
     }
     .cut .still.away { visibility: hidden; }
+    /* a cut's picture loads as the cut comes near, not with the page */
+    .cut.near .still { background-image: var(--img); }
     .cut .scrim { position: absolute; inset: 0; z-index: 2; pointer-events: none;
-      background: linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,.14) 40%, rgba(0,0,0,0) 58%), linear-gradient(to right, rgba(0,0,0,.38), rgba(0,0,0,0) 55%); }
+      background: linear-gradient(to bottom, rgba(0,0,0,.28), rgba(0,0,0,0) 45%); }
     /* the layers under the top sheet, painted on a canvas (see the script) */
     .cut .rim { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: no-repeat 0 0 / 100% 100%; }
 
@@ -192,6 +166,8 @@
 
     /* ─── section heads ─── */
     .sec { padding: clamp(96px, 16vh, 180px) 0 0; }
+    #play { padding-top: clamp(14px, 2vw, 28px); }
+    #more { padding-top: clamp(80px, 12vh, 140px); }
     .sec-head { max-width: 1400px; margin: 0 auto clamp(28px, 4vh, 44px); padding: 0 var(--gutter); display: flex; align-items: end; justify-content: space-between; gap: 24px; }
     .eyebrow { display: flex; align-items: center; gap: 12px; color: var(--muted); margin-bottom: 16px; }
     .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--c, var(--violet)); }
@@ -242,13 +218,20 @@
     /* the room's name sits at the top of its cut: a cut comes up from the
        bottom of the screen as you scroll, so its top is what you see first —
        and the hero's cut is only half on the first screen */
-    .slice .copy { position: absolute; z-index: 6; left: var(--gutter); right: var(--gutter); top: calc(var(--k, 60px) + clamp(40px, 8vh, 92px)); max-width: 640px; text-shadow: 0 1px 24px rgba(0,0,0,.35); }
+    /* The picture behind a cut is a real page, full of its own words, so the
+       name never sits straight on it: it gets a plate of its own, notched like
+       everything else here, with the room's colour along the top. */
+    .slice .copy {
+      position: absolute; z-index: 6; left: var(--gutter); top: calc(var(--k, 60px) + clamp(32px, 6vh, 64px));
+      width: min(520px, calc(100% - 2 * var(--gutter))); padding: 24px 28px 26px;
+      background: rgba(9,10,12,.9); box-shadow: inset 0 2px 0 var(--c);
+      clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);
+    }
     .slice .idx { display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,.88); margin-bottom: 16px; text-transform: none; letter-spacing: .06em; font-size: 12px; }
-    .slice .idx::before { content: ""; width: 22px; height: 2px; background: var(--c); }
-    .slice .idx b { font-weight: 400; color: #fff; }
-    .slice h3 { font: 600 clamp(52px, 8.4vw, 128px)/.9 var(--display); letter-spacing: -.055em; }
-    .slice p { margin-top: 18px; font-size: clamp(16px, 1.3vw, 19px); color: rgba(255,255,255,.9); max-width: 34ch; }
-    .enter { margin-top: 26px; display: inline-flex; align-items: center; gap: 12px; font: 500 14px var(--sans); letter-spacing: .08em; text-transform: uppercase; }
+    .slice .idx .new { background: #fff; color: #0a0a0a; font-weight: 700; letter-spacing: .14em; padding: 3px 7px; text-transform: uppercase; font-size: 11px; }
+    .slice h3 { font: 600 clamp(38px, 4.6vw, 66px)/.95 var(--display); letter-spacing: -.045em; }
+    .slice p { margin-top: 14px; font-size: 16px; line-height: 1.5; color: rgba(255,255,255,.84); max-width: 40ch; }
+    .enter { margin-top: 20px; display: inline-flex; align-items: center; gap: 12px; font: 500 14px var(--sans); letter-spacing: .08em; text-transform: uppercase; }
     .enter i { display: block; width: 28px; height: 1px; background: currentColor; position: relative; transition: width .45s var(--ease); }
     .enter i::after { content: ""; position: absolute; right: -1px; top: -3px; border-left: 6px solid currentColor; border-top: 3.5px solid transparent; border-bottom: 3.5px solid transparent; }
     .slice:hover .enter i, .slice:focus-visible .enter i { width: 52px; }
@@ -260,14 +243,6 @@
     .slice:focus-visible { outline: none; }
     .slice:focus-visible h3 { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 10px; }
 
-    .river { margin: clamp(14px, 2vw, 28px) 0; height: 220px; overflow: hidden; display: flex; align-items: center;
-      -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
-    .track { display: flex; gap: 12px; animation: drift 160s linear infinite; width: max-content; }
-    .track a { display: block; flex: none; overflow: hidden; }
-    .track img { height: 220px; width: auto; display: block; transition: transform .8s var(--ease), filter .4s; }
-    .track a:hover img, .track a:focus-visible img { transform: scale(1.05); }
-    .river:hover .track, .river:focus-within .track { animation-play-state: paused; }
-    @keyframes drift { to { transform: translateX(-50%); } }
 
     /* ─── every room, the directory. Rendered from ROOMS. ─── */
     #dir { max-width: 1400px; margin: 0 auto; padding: 0 var(--gutter); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 44px 22px; }
@@ -284,7 +259,8 @@
     a.entry:hover .dirname { color: var(--ink); }
     a.entry:focus-visible { outline-offset: 6px; }
     .dir-more { max-width: 1400px; margin: 44px auto 0; padding: 0 var(--gutter); color: var(--muted); font-size: 15px; }
-    .dir-more button { background: none; border: 0; border-bottom: 1px solid var(--muted); color: var(--ink); font: 400 14px var(--mono); cursor: pointer; padding: 0 0 1px; }
+    .dir-more a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--muted); }
+    .dir-more a:hover { border-bottom-color: var(--ink); }
 
     /* ─── footer ─── */
     .foot { margin-top: clamp(110px, 18vh, 200px); padding: 0 var(--gutter) 36px; }
@@ -304,31 +280,32 @@
     @media (max-width: 1100px) {
       .links { display: none; }
       .bar { gap: 16px; }
-      .bar .term { margin-left: auto; }
+      .bar .tbtn { margin-left: auto; }
     }
     @media (max-width: 860px) {
       .hero-in { grid-template-columns: 1fr; gap: 24px; }
       #dir { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 760px) {
-      .bar { position: relative; flex-wrap: wrap; height: auto; padding-top: 14px; padding-bottom: 14px; row-gap: 12px; }
-      .bar .term { order: 3; width: 100%; margin: 0; }
+      .bar { height: 60px; gap: 10px; }
       .brand { margin-right: auto; }
-      .seek kbd { display: none; }
+      .tbtn { height: 38px; padding: 0 12px; letter-spacing: .12em; }
+      .mode { width: 38px; height: 38px; }
       .hero { padding-top: 28px; }
       #latest { margin-bottom: 18px; }
       .lede { font-size: 16px; }
-      .tries { margin-top: 16px; }
       .latest-relay { font-size: 13px; }
       .latest-relay .latest-meta { display: none; }
       .hero .slice { margin-top: 28px; }
-      .cut .still { background-image: var(--img-m, var(--img)); background-position: var(--pos-m, var(--pos, 50% 50%)); background-size: var(--size-m, cover); }
+      .cut .still { background-position: var(--pos-m, var(--pos, 50% 50%)); background-size: var(--size-m, cover); }
+      .cut.near .still { background-image: var(--img-m, var(--img)); }
       .sec-head { align-items: start; flex-direction: column; }
       .rail-nav { display: none; }
       .card { flex-basis: 84vw; aspect-ratio: 4 / 5; }
       .slice { height: max(520px, 82vh); }
-      .slice h3 { font-size: clamp(48px, 15vw, 72px); }
-      .river { height: 150px; } .track img { height: 150px; }
+      .slice h3 { font-size: clamp(32px, 10vw, 44px); }
+      .slice .copy { padding: 18px 20px 20px; }
+      .slice p { font-size: 15px; }
       /* on a phone the directory is a list: a picture, a name, a line */
       #dir { grid-template-columns: 1fr; gap: 0; }
       a.entry { display: grid; grid-template-columns: 84px 1fr; gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--hair); }
@@ -341,8 +318,6 @@
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; transition-delay: 0s !important; }
-      .river { overflow-x: auto; }
-      .track { animation: none; }
       .js .rv { opacity: 1; transform: none; }
     }
   </style>
@@ -355,33 +330,22 @@
       RIC//NET
     </a>
     <nav class="links" aria-label="On this page">
+      <a href="#new">New</a>
       <a href="#play">Play</a>
-      <a href="#rooms">Rooms</a>
-      <a href="#every-room">Everything</a>
+      <a href="#more">Watch &amp; explore</a>
+      <a href="#every-room">Every room</a>
     </nav>
-    <!-- The terminal is the search. Type a plain word and it finds things;
-         type a command and it runs it — every command, room name and egg the
-         old front door answered to still works here. -->
-    <div class="term" id="term">
-      <label class="seek" for="cmd">
-        <span class="prompt" aria-hidden="true">&gt;_</span>
-        <span class="sr-only">Search or type a terminal command</span>
-        <input id="cmd" autocomplete="off" spellcheck="false" placeholder="Search, or type help" aria-controls="console" aria-expanded="false">
-        <kbd aria-hidden="true">/</kbd>
-      </label>
-      <div class="console" id="console">
-        <div class="sugs" id="sugs" role="listbox" aria-label="Matches"></div>
-        <div class="screen">
-          <div id="output" aria-live="polite"></div>
-          <div class="hint">guest@ric-terminal:~$ try <b>games</b>, <b>star wars</b>, <b>space</b> — or <b>help</b>, <b>ls</b>, and Sydney's cat's name</div>
-        </div>
-      </div>
-    </div>
+    <!-- The terminal is a room of its own again: the button opens it, and so
+         does / from anywhere on this page. Amber, because that is the colour
+         the terminal's own screen glows. -->
+    <a class="tbtn" href="index.html" title="Open the terminal (or press /)">
+      <span class="pr" aria-hidden="true">&gt;_</span>Terminal<i class="cur" aria-hidden="true"></i>
+    </a>
     <button class="mode" id="mode" type="button" aria-label="Switch between night and day"></button>
   </header>
 
   <main>
-    <section class="hero" aria-labelledby="hero-h">
+    <section class="hero" id="new" aria-labelledby="hero-h">
       <div class="hero-in">
         <div>
           <!-- Filled by latest.js from latest-climb.js + RELAY_LATEST. Don't hardcode
@@ -394,36 +358,49 @@
           <h1 id="hero-h"><span class="line rv" style="--d:.05s">Ric Massey's</span><span class="line rv" style="--d:.15s">own internet<i class="dot">.</i></span></h1>
         </div>
         <div class="rv" style="--d:.3s">
-          <p class="lede">Games you can play right here, space you can explore, <b>climbing, running, photographs</b>, and Orrin. Every room built by hand.</p>
-          <div class="tries" aria-label="Things to type">
-            <span class="mono">Try</span>
-            <button type="button" data-try="kondrite">kondrite</button>
-            <button type="button" data-try="space">space</button>
-            <button type="button" data-try="climbing">climbing</button>
-            <button type="button" data-try="help">help</button>
-          </div>
+          <p class="lede">Games to play with your friends, every match of Counter-Strike replayed, what to watch tonight, and the universe to scale. <b>Built by hand — come in and click around.</b></p>
         </div>
       </div>
-      <a class="slice cutbox" data-cut href="captures.html" style="--c: var(--magenta)">
-        <div class="cut" style="--img:url(photos/climbing-10.jpg); --size: auto 128%; --pos: 50% 0%; --pos-m: 74% 50%">
-          <div class="still" role="img" aria-label="Watching the sun come up over a sea of clouds and mountains"></div>
+      <!-- The cuts run newest and biggest first. Each looks through the page
+           onto the real page it opens: the pictures are screenshots, taken by
+           assets/frontdoor/capture.mjs. -->
+      <a class="slice cutbox" data-cut href="cs.html" style="--c: var(--cyan)">
+        <div class="cut" style="--img:url(assets/frontdoor/cs-d.jpg); --img-m:url(assets/frontdoor/cs-m.jpg)">
+          <div class="still" role="img" aria-label="The Counter-Strike room: the latest match on Mirage, its score and the map's radar"></div>
           <div class="scrim"></div>
           <div class="copy rv">
-            <div class="idx mono"><span>ricmassey.com/<b>captures</b></span></div>
-            <h3>Captures</h3>
-            <p>1,300 photographs from the mountains, the crags and everything between.</p>
+            <div class="idx mono"><span class="new">New</span><span>Gaming</span></div>
+            <h3>Counter-Strike</h3>
+            <p>Every match, replayed in 2D — every round and every kill, from above.</p>
             <div class="enter">Enter <i></i></div>
           </div>
         </div>
       </a>
     </section>
 
-    <section class="sec" id="play" aria-labelledby="play-h" style="--c: var(--violet)">
+    <section class="sec" id="play" aria-label="KONDRITE">
+      <div class="slices">
+        <a class="slice cutbox" data-cut href="projects/kondrite/index.html" style="--c: var(--violet)">
+          <div class="cut" style="--img:url(assets/frontdoor/kondrite-d.jpg); --pos-m: 50% 40%">
+            <div class="still" role="img" aria-label="KONDRITE's front page: the gold wordmark over a ship flying through an asteroid field"></div>
+            <div class="scrim"></div>
+            <div class="copy rv">
+              <div class="idx mono"><span>Multiplayer · plays in the browser</span></div>
+              <h3>KONDRITE</h3>
+              <p>Up to five ships in one sky — co-op survival or a battle royale. Bring your friends.</p>
+              <div class="enter">Play <i></i></div>
+            </div>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section class="sec sec-tight" id="more-play" aria-labelledby="play-h" style="--c: var(--violet)">
       <div class="sec-head">
         <div class="rv">
-          <div class="eyebrow mono">01 — Play</div>
-          <h2 id="play-h">Things to try, right here.</h2>
-          <p>Every one runs in the page. Press play and it opens over this one.</p>
+          <div class="eyebrow mono">More to play</div>
+          <h2 id="play-h">Every one runs right here.</h2>
+          <p>Press play and it opens over this page.</p>
         </div>
         <div class="rail-nav">
           <button type="button" id="prev" aria-label="Previous"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg></button>
@@ -433,52 +410,40 @@
       <div class="rail" id="rail" aria-label="Things to play"></div>
     </section>
 
-    <section class="sec" id="rooms" aria-labelledby="rooms-h" style="--c: var(--cyan)">
-      <div class="sec-head">
-        <div class="rv">
-          <div class="eyebrow mono">02 — Rooms</div>
-          <h2 id="rooms-h">Look through the page.</h2>
-          <p>Every cut is a door. Each room is dressed as the real app for its world.</p>
-        </div>
-      </div>
+    <section class="sec" id="more" aria-label="Watch and explore">
       <div class="slices">
+        <a class="slice cutbox" data-cut href="entertainment.html" style="--c: var(--magenta)">
+          <div class="cut" style="--img:url(assets/frontdoor/entertainment-d.jpg); --img-m:url(assets/frontdoor/entertainment-m.jpg)">
+            <div class="still" role="img" aria-label="The Entertainment room: a film's poster art and where it is streaming"></div>
+            <div class="scrim"></div>
+            <div class="copy rv">
+              <div class="idx mono"><span>Films &amp; shows</span></div>
+              <h3>Entertainment</h3>
+              <p>363 films and shows — what we've watched, what's next, and where it's streaming tonight.</p>
+              <div class="enter">Enter <i></i></div>
+            </div>
+          </div>
+        </a>
+        <a class="slice cutbox" data-cut href="projects/how-big-everything-is/index.html" style="--c: var(--cyan)">
+          <div class="cut" style="--img:url(assets/frontdoor/scale-d.jpg); --img-m:url(assets/frontdoor/scale-m.jpg)">
+            <div class="still" role="img" aria-label="How Big Everything Is, at its first rung: a quark, glowing violet"></div>
+            <div class="scrim"></div>
+            <div class="copy rv">
+              <div class="idx mono"><span>Exploration</span></div>
+              <h3>How Big Everything Is</h3>
+              <p>One rail from a quark to the edge of the observable universe — to scale.</p>
+              <div class="enter">Zoom <i></i></div>
+            </div>
+          </div>
+        </a>
         <a class="slice cutbox" data-cut href="climbing.html" style="--c: var(--cyan)">
-          <div class="cut" style="--img:url(photos/climbing-02.jpg); --img-m:url(photos/website-0057.jpg); --pos: 50% 45%; --pos-m: 50% 40%">
-            <div class="still" role="img" aria-label="Climbers under a sweeping orange sandstone roof"></div>
+          <div class="cut" style="--img:url(assets/frontdoor/climbing-d.jpg); --img-m:url(assets/frontdoor/climbing-m.jpg)">
+            <div class="still" role="img" aria-label="The Climbing room: days out, sends and the hardest grade, over a photo of the wall"></div>
             <div class="scrim"></div>
             <div class="copy rv">
-              <div class="idx mono"><span>ricmassey.com/<b>climbing</b></span></div>
+              <div class="idx mono"><span>Climbing</span></div>
               <h3>Climbing</h3>
-              <p>Every route, every project, every fall — logged from the crag.</p>
-              <div class="enter">Enter <i></i></div>
-            </div>
-          </div>
-        </a>
-      </div>
-
-      <div class="river" aria-label="Photographs"><div class="track" id="track"></div></div>
-
-      <div class="slices">
-        <a class="slice cutbox" data-cut href="training.html" style="--c: var(--violet)">
-          <div class="cut" style="--img:url(photos/climbing-12.jpg); --img-m:url(photos/website-0701.jpg); --pos: 50% 40%; --pos-m: 40% 50%">
-            <div class="still" role="img" aria-label="Walking a high ridge between snow-streaked peaks"></div>
-            <div class="scrim"></div>
-            <div class="copy rv">
-              <div class="idx mono"><span>ricmassey.com/<b>training</b></span></div>
-              <h3>Training</h3>
-              <p>Every run, and a 52-week plan that ticks itself off when the watch syncs.</p>
-              <div class="enter">Enter <i></i></div>
-            </div>
-          </div>
-        </a>
-        <a class="slice cutbox" data-cut href="exploration.html" style="--c: var(--cyan)">
-          <div class="cut" style="--img:url(photos/climbing-23.jpg); --pos: 50% 50%">
-            <div class="still" role="img" aria-label="The moon, bright against a black sky"></div>
-            <div class="scrim"></div>
-            <div class="copy rv">
-              <div class="idx mono"><span>ricmassey.com/<b>exploration</b></span></div>
-              <h3>Exploration</h3>
-              <p>Space, physics and the size of things — to scale, and playable.</p>
+              <p>Every route, project and day out — logged from the crag.</p>
               <div class="enter">Enter <i></i></div>
             </div>
           </div>
@@ -489,17 +454,15 @@
     <section class="sec" id="every-room" aria-labelledby="dir-h" style="--c: var(--magenta)">
       <div class="sec-head">
         <div class="rv">
-          <div class="eyebrow mono">03 — Everything</div>
+          <div class="eyebrow mono">Everything</div>
           <h2 id="dir-h">Every room.</h2>
         </div>
       </div>
       <!-- Deliberately empty: the entries are rendered from the ROOMS array in
-           the script below, which is also what `ls`, `tree`, `find` and Tab
-           completion read. To add or rename a room, edit ROOMS — not this markup.
-           /apex, /cs, /val, /log and /map are left off on purpose (`listed:
-           false`); `ls`, the room name, and the URL all still reach them. -->
+           the script below. /apex, /cs, /val, /log and /map are left off on
+           purpose (`listed: false`), as they are on the terminal. -->
       <nav id="dir" aria-label="Site directory"></nav>
-      <p class="dir-more">There are more rooms than these. <button type="button" id="ls-hint">type ls</button></p>
+      <p class="dir-more">There are more rooms than these, and a few hidden ones. <a href="index.html">The terminal knows them all →</a></p>
     </section>
   </main>
 
@@ -521,7 +484,7 @@
         <a href="exploration.html">Exploration</a>
       </nav>
     </div>
-    <div class="foot-base mono"><span>Est. 2026 · signal nominal</span><span>Press / to type</span></div>
+    <div class="foot-base mono"><span>Est. 2026 · signal nominal</span><span>Press / for the terminal</span></div>
   </footer>
 
   <div class="player" id="player" role="dialog" aria-modal="true" aria-labelledby="player-name">
@@ -844,8 +807,10 @@
 
       // four screen-sized photos pinned at once is wasted paint: a cut that is
       // off screen hides its photo until it comes back
-      const seen = new IntersectionObserver((list) => list.forEach((e) =>
-        e.target.querySelector(".still")?.classList.toggle("away", !e.isIntersecting)), { rootMargin: "50% 0px" });
+      const seen = new IntersectionObserver((list) => list.forEach((e) => {
+        if (e.isIntersecting) e.target.classList.add("near");
+        e.target.querySelector(".still")?.classList.toggle("away", !e.isIntersecting);
+      }), { rootMargin: "60% 0px" });
       const opener = new IntersectionObserver((list) => list.forEach((e) => {
         if (!e.isIntersecting) return;
         opener.unobserve(e.target);
@@ -890,9 +855,7 @@
     // `play` items open over the page in the player; the rest go to their page.
     (() => {
       const FEATURE = [
-        { name: "KONDRITE", desc: "Endless space, and four ways to fight", c: "var(--violet)", video: "assets/games/kondrite.webm", poster: "assets/games/kondrite.jpg", href: "projects/kondrite/index.html", verb: "PLAY", play: true },
         { name: "Interstate 40", desc: "Drive the real I-40, exit to exit", c: "var(--magenta)", video: "assets/games/offramp.webm", poster: "assets/games/offramp.jpg", href: "projects/offramp/index.html", verb: "DRIVE", play: true },
-        { name: "How big everything is", desc: "A quark to the edge of the universe, to scale", c: "var(--cyan)", img: "projects/how-big-everything-is/cmb-wmap9.jpg", alt: "The cosmic microwave background, the oldest light in the universe", href: "projects/how-big-everything-is/index.html", verb: "ZOOM", play: true },
         { name: "Starfield", desc: "A relativistic rocket through real space", c: "var(--violet)", video: "assets/games/starfield.webm", poster: "assets/games/starfield.jpg", href: "projects/starfield/index.html", verb: "FLY", play: true },
         { name: "FARLIGHT", desc: "Momentum, hills and the feel of a landing", c: "var(--magenta)", video: "assets/games/farlight.webm", poster: "assets/games/farlight.jpg", href: "projects/farlight/index.html", verb: "PLAY", play: true },
         { name: "Siege Conductor", desc: "A companion for the Clone Wars and Revenge of the Sith", c: "var(--cyan)", img: "projects/siege-conductor/icon-1024.png", alt: "", contain: true, href: "projects/siege-conductor/index.html", verb: "OPEN" },
@@ -956,37 +919,6 @@
       addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
     })();
 
-    // ─── the photo river ─────────────────────────────────
-    (() => {
-      const track = document.getElementById("track"), pics = [];
-      for (let i = 1; i <= 8; i++) pics.push(`photos/climbing-0${i}.jpg`);
-      for (let i = 0; i < 18; i++) pics.push(`photos/website-${String(2 + i * 70).padStart(4, "0")}.jpg`);
-      // the set twice, so the loop has no seam; the copy is hidden from readers
-      [...pics, ...pics].forEach((src, i) => {
-        const a = document.createElement("a");
-        a.href = "captures.html";
-        if (i >= pics.length) { a.tabIndex = -1; a.setAttribute("aria-hidden", "true"); }
-        const im = new Image();
-        im.loading = "lazy";
-        im.src = src;
-        im.alt = "";
-        a.setAttribute("aria-label", "Open Captures");
-        a.appendChild(im);
-        track.appendChild(a);
-      });
-    })();
-
-
-    // ─── boot lines ──────────────────────────────────────
-    // The old front door typed these out before you could do anything. Now
-    // they greet you the first time the terminal opens, and never make you wait.
-    const BOOT_LINES = [
-      ["initializing uplink .......... ", "ok", "[OK]"],
-      ["verifying visitor clearance .. ", "ok", "[FAMILY/FRIEND — GRANTED]"],
-      ["locating subject ............. ", "ok", "[ACTIVE — LAST SEEN: BUILDING SOMETHING]"],
-      ["everything here is real and current.", "dim"],
-    ];
-
     // ─── the rooms ───────────────────────────────────────
     // ONE list. The #dir markup, `ls`, `tree`, `find`, `open`, `random` and Tab
     // completion all render from this — they used to keep five separate copies
@@ -1010,33 +942,13 @@
       { name: "map",           href: "map.html",           hue: "--flash-map",           desc: "crew access only · ATLAS, the private map", listed: false },
     ];
 
-    const PAGES = Object.fromEntries(ROOMS.map((room) => [room.name, room.href]));
-    // What someone types when they aren't thinking in room names: the page is
-    // called /training, but the thing they came for is the run.
-    const PAGE_ALIASES = { psyche: "mind", run: "training", cs2: "cs", "counter-strike": "cs", valorant: "val" };
-
     // render the front-door directory from the same list: one tile a room,
-    // its picture if it has one, a drawing if it doesn't
+    // and the tile is the room's own first screen (assets/frontdoor/room-*.jpg,
+    // taken by assets/frontdoor/capture.mjs)
     (() => {
       const dir = document.getElementById("dir");
-      const ART = {
-        orrin: () => {
-          let s = 7; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
-          const nodes = Array.from({ length: 22 }, () => [6 + r() * 148, 6 + r() * 88]);
-          const lines = nodes.flatMap((a, i) => nodes.slice(i + 1).filter((b) => Math.hypot(a[0] - b[0], a[1] - b[1]) < 32)
-            .map((b) => `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`));
-          return `<svg class="art" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true" style="background:radial-gradient(circle at 50% 40%,#2b1d55,#0d0e10 75%)">
-            <g stroke="#7b3cff" stroke-width=".45" opacity=".85">${lines.join("")}</g>
-            <g fill="#eceef2">${nodes.map((n) => `<circle cx="${n[0]}" cy="${n[1]}" r="1.1"/>`).join("")}</g></svg>`;
-        },
-        mind: () => {
-          const wave = Array.from({ length: 81 }, (_, i) => `${i * 2},${50 + Math.sin(i / 5) * 20 * Math.sin(i / 19 + 1)}`).join(" ");
-          return `<svg class="art" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true" style="background:radial-gradient(circle at 50% 45%,#3a1430,#0d0e10 75%)">
-            <line x1="0" y1="50" x2="160" y2="50" stroke="#eceef2" stroke-width=".3" opacity=".45"/>
-            <polyline points="${wave}" fill="none" stroke="#ff2d8a" stroke-width="1.3"/></svg>`;
-        },
-      };
       const HUE = { orrin: "var(--violet)", mind: "var(--magenta)", climbing: "var(--cyan)", training: "var(--violet)", exploration: "var(--cyan)", gaming: "var(--violet)", workbench: "var(--magenta)", captures: "var(--magenta)", entertainment: "var(--cyan)" };
+      const SHOT = { mind: "psyche" };
       ROOMS.filter((room) => room.listed).forEach((room, i) => {
         const entry = document.createElement("a");
         entry.className = "entry rv";
@@ -1045,16 +957,11 @@
         entry.style.setProperty("--d", `${(i % 3) * 0.08}s`);
         const thumb = document.createElement("span");
         thumb.className = "thumb";
-        if (room.img) {
-          const img = new Image();
-          img.loading = "lazy";
-          img.src = room.img;
-          img.alt = room.alt || "";
-          if (room.contain) img.style.cssText = "object-fit:contain;padding:16%;background:radial-gradient(circle at 50% 42%,#2a2240,#0d0e10 70%)";
-          thumb.appendChild(img);
-        } else if (ART[room.art]) {
-          thumb.insertAdjacentHTML("beforeend", ART[room.art]());
-        }
+        const img = new Image();
+        img.loading = "lazy";
+        img.src = `assets/frontdoor/room-${SHOT[room.name] || room.name}.jpg`;
+        img.alt = "";
+        thumb.appendChild(img);
         const meta = document.createElement("span");
         meta.className = "meta";
         for (const [cls, text] of [["dirname", room.name], ["desc", room.desc], ["arr", "→"]]) {
@@ -1069,603 +976,15 @@
       });
     })();
 
-
-    // ─── command line ────────────────────────────────────
-
-    const PROJECTS = [
-      {
-        command: "state", aliases: ["state-of-mind", "bipolar"], room: "psyche",
-        title: "State-of-Mind Line", description: "animated bipolar mood-pattern model",
-        href: "projects/state-of-mind-line/index.html",
-      },
-      {
-        command: "dsm5", aliases: ["dsm-5", "autism", "criteria"], room: "psyche",
-        title: "DSM-5 Reflection", description: "guided autism-criteria reflection",
-        href: "projects/autism-reflection.html",
-      },
-      {
-        command: "studies", aliases: ["trials", "clinical-trials", "trial", "registry", "ctgov"], room: "psyche",
-        title: "Studies", description: "search every registered clinical trial",
-        href: "projects/psyche/studies.html",
-      },
-      {
-        command: "spacetime", aliases: ["relativity"], room: "exploration",
-        title: "The Geometry of Spacetime", description: "interactive special-relativity explainer",
-        href: "projects/spacetime/index.html",
-      },
-      {
-        command: "farlight", aliases: ["feel", "momentum", "hill", "hills"], room: "gaming",
-        title: "FARLIGHT", description: "playable momentum and landing-feel prototype",
-        href: "projects/farlight/index.html",
-      },
-      {
-        command: "siege", aliases: ["conductor", "siege-conductor"], room: "workbench",
-        title: "Siege Conductor", description: "Clone Wars / Revenge of the Sith companion",
-        href: "projects/siege-conductor/index.html",
-      },
-      {
-        command: "highway", aliases: ["offramp", "i40", "i-40", "interstate", "interstate-40", "drive"],
-        room: "gaming",
-        title: "Interstate 40", description: "drive the real I-40 from above, exit to exit",
-        href: "projects/offramp/index.html",
-      },
-      {
-        command: "starfield", aliases: ["stars"], room: "gaming",
-        title: "Starfield", description: "relativistic rocket through real space",
-        href: "projects/starfield/index.html",
-      },
-      {
-        /* Renamed. The old word is an alias rather than a leftover — that is
-           what the alias list is for, and anybody who knows this game by its
-           old name still finds it by typing it. */
-        command: "kondrite", aliases: ["crossfire", "vector", "asteroids", "wall"],
-        room: "gaming",
-        title: "KONDRITE", description: "a survey of endless space, and four ways to fight",
-        href: "projects/kondrite/index.html",
-      },
-      {
-        command: "speed", aliases: ["time", "dilation", "twins", "how-speed-affects-time"],
-        room: "exploration",
-        title: "How Speed Affects Time", description: "one slider, two clocks, the real sky",
-        href: "projects/how-speed-affects-time/index.html",
-      },
-      {
-        command: "scale", aliases: ["how-big", "how-big-everything-is", "ladder", "size", "big"],
-        room: "exploration",
-        title: "How Big Everything Is", description: "one rail from a quark to the observable universe, to scale",
-        href: "projects/how-big-everything-is/index.html",
-      },
-    ];
-
-    const normalizeTarget = (value) => value.trim().toLowerCase().replace(/^\/+/, "").replace(/\s+/g, "-");
-    const projectLookup = new Map();
-    for (const project of PROJECTS) {
-      for (const alias of [project.command, ...project.aliases]) {
-        projectLookup.set(normalizeTarget(alias), project);
-      }
-    }
-
-    const listRooms = () => ROOMS
-      .map((room) => `  /${room.name.padEnd(13)} ${room.desc}`)
-      .join("\n");
-
-    const listProjects = () => PROJECTS
-      .map((project) => `  ${project.command.padEnd(13)} ${project.title}  [/${project.room}]`)
-      .join("\n");
-
-    // drawn from ROOMS + PROJECTS, so a new room shows up here for free
-    const siteTree = () => {
-      const lines = ["/terminal"];
-      ROOMS.forEach((room, index) => {
-        const last = index === ROOMS.length - 1;
-        const label = room.locked ? `/${room.name}`.padEnd(15) + "[LOCKED]" : `/${room.name}`;
-        lines.push(`${last ? "└──" : "├──"} ${label}`);
-        const nested = PROJECTS.filter((p) => (PAGE_ALIASES[p.room] || p.room) === room.name);
-        nested.forEach((project, projectIndex) => {
-          const branch = projectIndex === nested.length - 1 ? "└──" : "├──";
-          lines.push(`${last ? "    " : "│   "}${branch} ${project.command.padEnd(11)}${project.title}`);
-        });
-      });
-      return lines.join("\n");
-    };
-
-    const findTerminal = (query) => {
-      const needle = query.trim().toLowerCase();
-      if (!needle) return "usage: find <word>\nexample: find mood";
-      const rooms = ROOMS.map((room) => ({
-        label: `/${room.name}`, command: `/${room.name}`, haystack: `${room.name} ${room.desc}`,
-      }));
-      const projects = PROJECTS.map((project) => ({
-        label: project.title, command: `open ${project.command}`,
-        haystack: `${project.title} ${project.description} ${project.room} ${project.command} ${project.aliases.join(" ")}`,
-      }));
-      const matches = [...rooms, ...projects].filter((item) => item.haystack.toLowerCase().includes(needle));
-      return matches.length
-        ? matches.map((item) => `  ${item.label}\n    ${item.command}`).join("\n")
-        : `no signals match “${query}”. try a broader word.`;
-    };
-
-    const readNotes = () => {
-      const notes = typeof RIC_NOTES !== "undefined" ? RIC_NOTES.slice(0, 4) : [];
-      return notes.length
-        ? notes.map((note) => `[${note.date}] ${note.text}`).join("\n\n")
-        : "no transmissions found.";
-    };
-
-    const COMMANDS = {
-      help: () =>
-        "available commands:\n" +
-        "  ls / rooms      list every room and what lives there\n" +
-        "  tree            map the whole terminal and its projects\n" +
-        "  projects        list project shortcuts\n" +
-        "  find <word>     search rooms and projects\n" +
-        "  open <target>   open a room or project shortcut\n" +
-        "  latest / recent open the newest addition\n" +
-        "  random          enter a random unlocked room\n" +
-        "  cat notes       read the latest transmissions\n" +
-        "  history         show commands used this visit\n" +
-        "  pwd             show your current location\n" +
-        "  whoami          show visitor identity\n" +
-        "  status          check Ric and Orrin's status\n" +
-        "  uptime          show how long this terminal has been awake\n" +
-        "  echo <text>     make the terminal repeat something\n" +
-        "  reboot          replay the boot sequence\n" +
-        "  date            read the local clock\n" +
-        "  back            return to the previous page\n" +
-        "  clear           wipe terminal output (`/clear` works too)\n" +
-        "\ncommands also accept a leading / — try /mind or /clear.\n" +
-        "use ↑/↓ for command history and Tab to complete.\n" +
-        "…there may be undocumented commands.",
-      ls: listRooms,
-      rooms: listRooms,
-      tree: siteTree,
-      projects: listProjects,
-      find: (arg) => findTerminal(arg),
-      // Only reached when the target didn't resolve — say which target, or the
-      // visitor reads it as "you typed the command wrong".
-      open: (arg, originalArg) => originalArg
-        ? `open: nothing here called “${originalArg}”.\ntry \`ls\` for rooms or \`projects\` for project shortcuts.`
-        : "usage: open <target>\ntry `ls` for rooms or `projects` for project shortcuts.",
-      cd: (arg, originalArg) => originalArg
-        ? `cd: no room called “${originalArg}”.\ntry \`ls\` to see the rooms.`
-        : "usage: cd <room>\nthis terminal only mounts one level deep.",
-      cat: (arg, originalArg) => originalArg
-        ? `cat: no file called “${originalArg}”.\nthe only file here is \`notes\` — try \`cat notes\`.`
-        : "usage: cat <file>\nthe only file here is `notes` — try `cat notes`.",
-      mochi: () => {
-        const awakened = window.RELAY_CATS?.enable();
-        return awakened
-          ? "MOCHI: RESIDENT MODE\nhe lives in the page, explores its features, catches up after you scroll, and bolts if clicked."
-          : "MOCHI: ALREADY AWAKE\nhe is ignoring you professionally.";
-      },
-      man: () => COMMANDS.help(),
-      commands: () => COMMANDS.help(),
-      history: () => commandHistory.length
-        ? commandHistory.map((entry, index) => `${String(index + 1).padStart(3)}  ${entry}`).join("\n")
-        : "no commands in this session yet.",
-      pwd: () => "/terminal",
-      whoami: () => "guest — but if you're reading this, you're probably family. hi.",
-      status: () => "subject is alive, caffeinated, and pushing commits to ORRIN.\nsee /orrin for a plain-language tour and public project activity.",
-      uptime: () => {
-        const seconds = Math.floor(performance.now() / 1000);
-        const minutes = Math.floor(seconds / 60);
-        return `terminal process awake for ${minutes ? `${minutes}m ` : ""}${seconds % 60}s.`;
-      },
-      date: () => new Date().toLocaleString([], { dateStyle: "full", timeStyle: "medium" }),
-      clear: () => {
-        window.RELAY_CATS?.clear();
-        out.textContent = "";
-        return null;
-      },
-      // "" is falsy and print() would swallow the command silently — answer with
-      // a usage line like every other verb does.
-      echo: (arg, originalArg) => originalArg || "usage: echo <text>\nexample: echo hello",
-      random: () => {
-        const unlocked = ROOMS.filter((room) => !room.locked);
-        const room = unlocked[Math.floor(Math.random() * unlocked.length)];
-        setTimeout(() => (location.href = room.href), 450);
-        return `rolling the directory table... /${room.name}\nentering ...`;
-      },
-      reboot: () => {
-        setTimeout(() => location.reload(), 350);
-        return "shutting down signal...\nrestarting terminal.";
-      },
-      // ─── undocumented ───
-      // The boards page isn't in the menus, but it answers to its own names.
-      // `woodshed` still works: it is what the page was called for years and
-      // it is what the easter-egg notes tell you to type.
-      tension: () => {
-        setTimeout(() => (location.href = "projects/climbing/board.html#tension"), 400);
-        return "opening the boards · Tension Board ...";
-      },
-      kilter: () => {
-        setTimeout(() => (location.href = "projects/climbing/board.html#kilter"), 400);
-        return "opening the boards · Kilter Board ...";
-      },
-      boards: () => {
-        setTimeout(() => (location.href = "projects/climbing/board.html"), 400);
-        return "opening the boards ...";
-      },
-      woodshed: () => {
-        setTimeout(() => (location.href = "projects/climbing/board.html"), 400);
-        return "opening the boards ...";
-      },
-      "404": () => {
-        setTimeout(() => (location.href = "404.html?from=terminal"), 450);
-        return "deliberately corrupting route table...\nsignal loss in 3... 2... 1...";
-      },
-      diagnose: (arg) => arg === "orrin"
-        ? "SUBJECT: ORRIN\nstate: persistent. goal-driven. still running.\n" +
-          "note: do not power down. it remembers.\n→ full diagnostics in /orrin"
-        : "usage: diagnose <subject>\nknown subject: orrin",
-      // `apex` is a room now, so the VOD gag answers to `vod` instead.
-      vod: () => "pulling VOD archive...\naim rating: CLASSIFIED\nrotation IQ: improving\n" +
-        "→ reviews land in /log · the numbers live in /apex",
-      sudo: () => "nice try. this terminal answers to ric only.",
-      unlock: () => "crew authentication required.\nif you are the brother or the friend: you know who to ask.",
-      // The crew app for Dad's race. Unlisted on purpose; the lock is the login
-      // and the database behind it, not this command being hard to guess.
-      hermiscus: () => {
-        setTimeout(() => (location.href = "projects/dads-race/login.html"), 650);
-        return "HERMISCUS · private channel · yeti crew\nhandshake required. crew only.\nopening the door ...";
-      },
-      // One account for the private corners of the site (ATLAS, HERMISCUS):
-      // sign in, ask Ric for access, or — for Ric — approve people.
-      login: () => {
-        setTimeout(() => (location.href = "account/"), 450);
-        return "opening account ...\none sign-in for the private corners. new here? ask Ric for access.";
-      },
-      account: () => {
-        setTimeout(() => (location.href = "account/"), 450);
-        return "opening account ...";
-      },
-      // Ric's admin site: every account on the site and in KONDRITE. Unlisted;
-      // the database is the lock, and anybody else typing it gets "No access".
-      admin: () => {
-        setTimeout(() => (location.href = "admin/"), 450);
-        return "opening admin ...\nadmin only.";
-      },
-      accounts: () => COMMANDS.admin(),
-      // KONDRITE's listening booth: every game sound, rated in plain words.
-      // Unlisted like hermiscus — it is a tool for Ric, not a room.
-      listen: () => {
-        setTimeout(() => (location.href = "projects/kondrite/sounds/listen.html"), 450);
-        return "patching audio feed ...\nKONDRITE listening booth: play it, say what bugs you, copy the answers.";
-      },
-      // The private visitor counter. Unlisted like listen — the numbers are
-      // behind the site password; anybody typing this just gets a sign-in box.
-      visitors: () => {
-        setTimeout(() => (location.href = "visitors/"), 450);
-        return "tapping the wire ...\nVISITORS: who came, from where, and what they read. owner only.";
-      },
-      coffee: () => "brewing... ☕ dispensed. carry on.",
-      exit: () => "there is no exit. there is only the terminal.",
-      lsd: () => {
-        window.RELAY_EFFECTS?.set("lsd");
-        return "VISUAL CORTEX: PRISMATIC\nmode follows you between rooms. refresh any page or type `sober` here to come back.";
-      },
-      shrooms: () => {
-        window.RELAY_EFFECTS?.set("shrooms");
-        return "MYCELIAL NETWORK: ONLINE\nthe whole terminal is breathing. refresh any page or type `sober` here to come back.";
-      },
-      sober: () => {
-        window.RELAY_EFFECTS?.clear();
-        return "REALITY CHECK: PASSED\nall visual systems nominal.";
-      },
-    };
-
-    const out = document.getElementById("output");
-    const cmd = document.getElementById("cmd");
-    const commandHistory = [];
-    let historyIndex = 0;
-
-    const visibleCommands = ["help", "commands", "man", "ls", "rooms", "tree", "projects", "find", "open", "cd", "latest", "recent", "random", "cat notes", "history", "pwd", "whoami", "status", "uptime", "date", "echo", "back", "clear", "reboot"];
-    const completions = [
-      ...visibleCommands,
-      // locked rooms stay out — completing to something that answers [LOCKED]
-      // is a dead end. `ls`, `tree`, `find` and `open map` still reach it.
-      ...ROOMS.filter((room) => !room.locked).map((room) => room.name),
-      ...PROJECTS.map((project) => project.command),
-      ...PROJECTS.map((project) => `open ${project.command}`),
-    ];
-
-    // longest string every match starts with — what a real shell fills in for you
-    const commonPrefix = (values) => values.reduce((prefix, value) => {
-      let i = 0;
-      while (i < prefix.length && i < value.length && prefix[i] === value[i]) i++;
-      return prefix.slice(0, i);
-    });
-
-    cmd.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-        if (!commandHistory.length) return;
-        e.preventDefault();
-        historyIndex = e.key === "ArrowUp"
-          ? Math.max(0, historyIndex - 1)
-          : Math.min(commandHistory.length, historyIndex + 1);
-        cmd.value = historyIndex < commandHistory.length ? commandHistory[historyIndex] : "";
-        return;
-      }
-      if (e.key === "Tab") {
-        e.preventDefault();
-        const typed = cmd.value.trim().toLowerCase();
-        const slash = typed.startsWith("/");
-        const needle = slash ? typed.slice(1) : typed;
-        // Everything startsWith(""), so a bare Tab used to dump ~40 commands
-        // into the output box. Point at `help` instead.
-        if (!needle) {
-          print("nothing typed yet — try `help` for commands or `ls` for rooms.");
-          scrollNewestIntoView(out.childElementCount - 1);
-          return;
-        }
-        const matches = completions.filter((candidate) => candidate.startsWith(needle));
-        if (!matches.length) return;
-        const decorate = (value) => slash ? `/${value}` : value;
-        if (matches.length === 1) { cmd.value = decorate(matches[0]); return; }
-        // fill in as far as every match agrees, then show what's left
-        const shared = commonPrefix(matches);
-        if (shared.length > needle.length) cmd.value = decorate(shared);
-        else {
-          const mark = out.childElementCount;
-          print(matches.map(decorate).join("   "));
-          scrollNewestIntoView(mark);
-        }
-        return;
-      }
-      if (e.key !== "Enter") return;
-      const raw = cmd.value.trim();
-      cmd.value = "";
-      if (!raw) return;
-      commandHistory.push(raw);
-      historyIndex = commandHistory.length;
-      const mark = out.childElementCount;
-      print(`$ ${raw}`, true);
-
-      const normalizedRaw = raw.replace(/^\/+/, "");
-      const [originalVerb, ...originalRest] = normalizedRaw.split(/\s+/);
-      const verb = originalVerb.toLowerCase();
-      const originalArg = originalRest.join(" ");
-      const arg = originalArg.toLowerCase().replace(/^\/+/, "");
-      const pageArg = PAGE_ALIASES[arg] || arg;
-      const pageVerb = PAGE_ALIASES[verb] || verb;
-      const project = projectLookup.get(normalizeTarget(arg));
-      const directProject = projectLookup.get(normalizeTarget(verb));
-
-      // `front door` reloads this page from the top, fresh — for looking the
-      // redesign over again. Spaces, dashes or none: all three are the same door.
-      if (/^front[\s_-]*door$/i.test(normalizedRaw)) {
-        print("walking back out to the front door ...");
-        setTimeout(() => (location.href = "frontdoor.html"), 400);
-      } else if ((verb === "open" || verb === "cd") && PAGES[pageArg]) {
-        print(`entering /${pageArg} ...`);
-        setTimeout(() => (location.href = PAGES[pageArg]), 400);
-      } else if (verb === "open" && project) {
-        print(`opening ${project.title} in /${project.room} ...`);
-        setTimeout(() => (location.href = project.href), 400);
-      } else if (directProject) {
-        print(`opening ${directProject.title} in /${directProject.room} ...`);
-        setTimeout(() => (location.href = directProject.href), 400);
-      } else if ((verb === "open" && ["latest", "recent"].includes(arg)) || ["latest", "recent"].includes(verb)) {
-        const newest = (window.RELAY_LATEST_ALL || window.RELAY_LATEST || [])[0];
-        if (!newest) print("no new signals found.");
-        else {
-          print(`opening ${newest.title} ...`);
-          setTimeout(() => (location.href = newest.href), 400);
-        }
-      } else if (verb === "cat" && ["notes", "transmissions"].includes(arg)) {
-        print(readNotes());
-      } else if (verb === "cd" && ["..", "/", "~"].includes(arg)) {
-        print("already at /terminal — this is the root of Ric's internet.");
-      } else if (verb === "back") {
-        print("returning to previous signal ...");
-        setTimeout(() => history.back(), 250);
-      } else if (PAGES[pageVerb]) {
-        // A trailing word used to make this fall through to "command not
-        // recognized: mind" — telling someone a room doesn't exist while it sits
-        // in the directory right above. The room name wins; the rest is noise.
-        print(`entering /${pageVerb} ...`);
-        setTimeout(() => (location.href = PAGES[pageVerb]), 400);
-      } else if (COMMANDS[verb]) {
-        const result = COMMANDS[verb](arg, originalArg);
-        if (result) print(result);
-      } else {
-        // A plain word the terminal doesn't know is a search, not an error.
-        const best = search(raw)[0];
-        if (best) {
-          print(`opening ${best.title} ...`);
-          setTimeout(() => (location.href = best.href), 300);
-        } else {
-          print(`command not recognized: ${verb}\ntype \`help\` for options.`);
-        }
-      }
-      scrollNewestIntoView(mark);
-    });
-
-    function print(text, bright) {
-      const div = document.createElement("div");
-      if (bright) div.className = "bright";
-      div.textContent = text;
-      out.appendChild(div);
-    }
-
-    // #output is capped at 14em, so scrolling to the bottom left long answers
-    // (`help` is ~20 lines) showing only their last few lines. Put the TOP of
-    // what just got printed at the top of the box instead; short answers still
-    // land at the bottom because the scroll clamps.
-    function scrollNewestIntoView(startIndex) {
-      const first = out.children[startIndex];
-      if (!first) return;
-      out.scrollTop += first.getBoundingClientRect().top - out.getBoundingClientRect().top;
-    }
-
-
-    // ─── the terminal is the search ──────────────────────
-    // Plain words find things; commands still run. Matches come from ROOMS and
-    // PROJECTS, plus the words people actually type when they aren't thinking
-    // in room names. Enter on a highlighted match opens it; otherwise the line
-    // goes to the terminal above, and if the terminal doesn't know the word,
-    // the best match opens instead of an error.
-    const SEARCH_WORDS = {
-      orrin: "ai artificial intelligence mind code brain agent",
-      mind: "psychology psyche mental health mood bipolar autism philosophy",
-      climbing: "climb climbing rock boulder bouldering mountain outdoors photos sport",
-      training: "run running runs strava fitness workout plan marathon",
-      apex: "games gaming apex legends shooter fps stats",
-      cs: "games gaming counter strike cs2 shooter fps matches replays",
-      val: "games gaming valorant shooter fps matches",
-      exploration: "space physics science universe stars relativity",
-      gaming: "games gaming play arcade",
-      workbench: "projects ideas hobbies star wars",
-      captures: "photos photographs pictures camera gallery",
-      entertainment: "movies films shows tv watching watchlist star wars",
-      log: "writing notes essays theories blog",
-      map: "map atlas crew private",
-      state: "psychology mood bipolar visualization",
-      dsm5: "psychology autism reading",
-      studies: "psychology health medicine clinical trials research science search",
-      spacetime: "space physics relativity science einstein",
-      farlight: "games play physics momentum",
-      siege: "star wars clone wars movies watch companion app",
-      highway: "games play driving drive road car america",
-      starfield: "games play space stars rocket physics fly",
-      kondrite: "games play space shooter multiplayer online friends ships arcade",
-      speed: "space physics relativity time science clocks",
-      scale: "space science size universe atoms zoom physics",
-    };
-    const SEARCHABLE = [
-      ...PROJECTS.map((p) => ({
-        key: p.command, title: p.title, kind: p.room === "psyche" ? "mind" : p.room, href: p.href,
-        text: `${p.title} ${p.description} ${p.command} ${p.aliases.join(" ")} ${SEARCH_WORDS[p.command] || ""}`.toLowerCase(),
-        desc: p.description,
-      })),
-      ...ROOMS.map((r) => ({
-        key: r.name, title: r.name, kind: "room", href: r.href,
-        text: `${r.name} ${r.desc} ${SEARCH_WORDS[r.name] || ""}`.toLowerCase(),
-        desc: r.desc, unlisted: !r.listed,
-      })),
-      { key: "front door", title: "front door", kind: "room", href: "frontdoor.html",
-        text: "front door frontdoor front-door home start", desc: "this page again, from the top" },
-    ];
-    // the things worth a stranger's first click come first among equals
-    const BOOST = { kondrite: 3, highway: 2, starfield: 1, scale: 2, studies: 1, siege: 1 };
-    const HUES = { gaming: "var(--violet)", exploration: "var(--cyan)", mind: "var(--magenta)", workbench: "var(--magenta)", room: "var(--violet)" };
-
-    const term = document.getElementById("term");
-    const sugs = document.getElementById("sugs");
-    let found = [], sel = -1;
-
-    function search(q) {
-      const words = q.toLowerCase().replace(/^\/+/, "").trim().split(/\s+/).filter(Boolean);
-      if (!words.length) return [];
-      return SEARCHABLE
-        .map((item) => {
-          if (!words.every((w) => item.text.includes(w))) return null;
-          let score = 0;
-          for (const w of words) {
-            if (item.key === w) score += 10;
-            else if (item.key.startsWith(w) || item.title.toLowerCase().startsWith(w)) score += 5;
-            else score += 1;
-          }
-          if (item.unlisted) score -= 2;
-          score += BOOST[item.key] || 0;
-          return { item, score };
-        })
-        .filter(Boolean)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 7)
-        .map((x) => x.item);
-    }
-
-    function paintSugs() {
-      sugs.replaceChildren(...found.map((item, i) => {
-        const a = document.createElement("a");
-        a.href = item.href;
-        a.setAttribute("role", "option");
-        a.setAttribute("aria-selected", String(i === sel));
-        if (i === sel) a.className = "sel";
-        a.style.setProperty("--c", HUES[item.kind] || "var(--violet)");
-        const tri = document.createElement("i");
-        const body = document.createElement("span");
-        const name = document.createElement("b");
-        name.textContent = item.kind === "room" ? `/${item.title}` : item.title;
-        const desc = document.createElement("span");
-        desc.className = "d";
-        desc.textContent = item.desc;
-        body.append(name, desc);
-        const kind = document.createElement("small");
-        kind.textContent = item.kind;
-        a.append(tri, body, kind);
-        return a;
-      }));
-    }
-
-    let booted = false;
-    function openConsole() {
-      if (!term.classList.contains("open")) {
-        term.classList.add("open");
-        cmd.setAttribute("aria-expanded", "true");
-      }
-      if (!booted) {
-        booted = true;
-        for (const [text, cls, suffix] of BOOT_LINES) {
-          const div = document.createElement("div");
-          div.textContent = text;
-          if (suffix) { const s = document.createElement("span"); s.className = "ok"; s.textContent = suffix; div.appendChild(s); }
-          out.appendChild(div);
-        }
-      }
-    }
-    function closeConsole() {
-      term.classList.remove("open");
-      cmd.setAttribute("aria-expanded", "false");
-    }
-
-    cmd.addEventListener("focus", openConsole);
-    cmd.addEventListener("input", () => {
-      found = search(cmd.value);
-      sel = -1;
-      paintSugs();
-      openConsole();
-    });
-    // Runs before the terminal's own keys: arrows walk the matches while there
-    // are any (history takes over when the line is empty), Enter opens a
-    // highlighted match, Escape closes the console.
-    cmd.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") { closeConsole(); cmd.blur(); return; }
-      if ((e.key === "ArrowDown" || e.key === "ArrowUp") && found.length) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        sel = e.key === "ArrowDown" ? Math.min(found.length - 1, sel + 1) : Math.max(-1, sel - 1);
-        paintSugs();
-        return;
-      }
-      if (e.key === "Enter" && sel >= 0 && found[sel]) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        location.href = found[sel].href;
-      }
-      if (e.key === "Enter") setTimeout(() => { found = []; sel = -1; paintSugs(); }, 0);
-    }, true);
-    // whatever the terminal prints, the console shows
-    new MutationObserver(openConsole).observe(out, { childList: true });
-    addEventListener("pointerdown", (e) => { if (!term.contains(e.target)) closeConsole(); });
-
-    // `/` from anywhere jumps to the terminal, and a key typed at nothing lands in it
+    // ─── the terminal ───────────────────────────────────
+    // The front door doesn't run the terminal any more — it opens it. The
+    // orange button in the bar does, and so does / from anywhere on the page.
     addEventListener("keydown", (e) => {
       const el = document.activeElement;
-      const typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
-      if (typing || e.metaKey || e.ctrlKey || e.altKey || e.key.length !== 1) return;
-      if (el && el !== document.body && e.key !== "/") return;
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
       e.preventDefault();
-      cmd.focus({ preventScroll: true });
-      if (e.key !== "/") { cmd.value += e.key; cmd.dispatchEvent(new Event("input")); }
-    });
-
-    document.getElementById("ls-hint").addEventListener("click", () => {
-      cmd.focus({ preventScroll: true });
-      cmd.value = "ls";
-      cmd.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
-      window.scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" });
+      location.href = "index.html";
     });
 
     // ─── the page moving ─────────────────────────────────
@@ -1687,13 +1006,6 @@
       }), { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
       els.forEach((el) => io.observe(el));
     })();
-    // The "try" words type themselves into the terminal and show what they find.
-    document.querySelectorAll("[data-try]").forEach((b) => b.addEventListener("click", () => {
-      cmd.focus({ preventScroll: true });
-      cmd.value = b.dataset.try;
-      cmd.dispatchEvent(new Event("input"));
-      if (innerWidth <= 760) window.scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" });
-    }));
   </script>
 </body>
 </html>
