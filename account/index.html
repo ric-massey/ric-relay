@@ -47,34 +47,10 @@
               font-size:12px; letter-spacing:.04em; text-transform:none; font-weight:400; }
     .message { min-height:18px; margin:12px 0 0; font-size:12px; color:var(--danger); }
     .message.good { color:var(--ok); }
-    .checks { display:grid; gap:4px; margin:6px 0 0; }
-    .checks label { display:flex; align-items:center; gap:10px; min-height:44px; font-size:13px; cursor:pointer; }
-    .checks input { width:20px; height:20px; accent-color:var(--phosphor); }
-    .checks small { color:var(--dim); }
     ul.pages { list-style:none; margin:0; padding:0; }
     ul.pages li { border-top:1px solid var(--faint); padding:12px 0; font-size:13px; }
     ul.pages a { display:inline-block; padding:6px 0; }
-    /* One row per account; the row opens for details and buttons. */
-    .person { border-top:1px solid var(--faint); }
-    .person:first-of-type { border-top:0; }
-    .person > summary { list-style:none; cursor:pointer; min-height:44px; padding:12px 28px 12px 0; position:relative; }
-    .person > summary::-webkit-details-marker { display:none; }
-    .person > summary::after { content:"+"; position:absolute; right:6px; top:12px; color:var(--dim); }
-    .person[open] > summary::after { content:"−"; }
-    .person > summary:hover .who { text-decoration:underline; }
-    .person > summary:focus-visible { outline:2px solid var(--phosphor); outline-offset:2px; }
-    .person .peek { display:block; font-size:12px; color:var(--dim); margin-top:3px; overflow-wrap:anywhere; }
-    .person[open] { padding-bottom:16px; }
-    .person .who { font-size:14px; color:var(--phosphor); overflow-wrap:anywhere; }
-    .person .meta { font-size:12px; color:var(--dim); margin:4px 0 0; overflow-wrap:anywhere; }
-    .person .note { font-size:12px; color:var(--dim); margin:8px 0 0; white-space:pre-wrap; border-left:2px solid var(--faint); padding-left:10px; }
     .row { display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
-    .tag { display:inline-block; font-size:11px; letter-spacing:.1em; text-transform:uppercase; border:1px solid var(--faint); padding:3px 6px; margin-left:6px; }
-    .tag.pending { color:var(--phosphor); border-color:var(--phosphor); }
-    .tag.denied { color:var(--danger); border-color:var(--danger); }
-    .rename { flex-wrap:nowrap; }
-    .rename input { flex:1; min-width:0; padding:10px 12px; }
-    .count { color:#0a0a0a; background:var(--phosphor); padding:1px 7px; margin-left:8px; text-shadow:none; }
     [hidden] { display:none !important; }
   </style>
 </head>
@@ -123,33 +99,11 @@
       <div class="row"><button class="ghost" id="signout" type="button">sign out</button></div>
     </section>
 
-    <!-- Ric. The terminal's `accounts` command lands here (#people). -->
-    <section class="panel" id="people" hidden aria-labelledby="people-title">
-      <h1 id="people-title">ACCOUNTS</h1>
-      <p class="sub">everybody with an account, on the site and in KONDRITE</p>
-      <label class="field" for="people-find">find</label>
-      <input id="people-find" type="text" autocapitalize="none" spellcheck="false" placeholder="name, username or email">
-    </section>
-
-    <section class="panel" id="admin-panel" hidden aria-labelledby="admin-title">
-      <h2 id="admin-title">site · requests<span class="count" id="pending-count"></span></h2>
-      <div id="pending-list"></div>
-      <h2 style="margin-top:22px">site · everyone</h2>
-      <div id="people-list"></div>
-      <p class="message" id="admin-msg" role="status" aria-live="polite"></p>
-    </section>
-
-    <section class="panel" id="kondrite-panel" hidden aria-labelledby="kondrite-title">
-      <h2 id="kondrite-title">kondrite · pilots</h2>
-      <div id="kondrite-admin"></div>
-    </section>
   </main>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="../atlas/config.js"></script>
   <script src="../assets/site-gate.js"></script>
-  <script src="../projects/kondrite/config.js"></script>
-  <script src="kondrite.js"></script>
   <script src="account.js"></script>
   <script src="../projects/relay-return.js" data-home="../index.html"></script>
 </body>

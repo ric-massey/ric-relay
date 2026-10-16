@@ -1,11 +1,9 @@
-/* The account page: sign in, ask for access, and — for Ric — decide. His view
- * also lists KONDRITE's pilots, which kondrite.js draws from that game's own project.
+/* The account page: sign in, ask for access, see what you can open.
  *
- * Nothing here is trusted for anything. Every decision is made by the database
- * (request_access, admin_people, admin_set_access, has_page_access); this page
- * only asks and draws the answers. A person who edits this file in their
- * browser can make the admin panel appear and it will be empty and every button
- * in it will be refused. */
+ * Deciding moved to /admin/ (2026-10-16): Ric's approvals, invites, emails and
+ * KONDRITE's pilots all live there now, and this page only links to it for an
+ * admin. Nothing here is trusted for anything — request_access and
+ * has_page_access in the database make every decision. */
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
@@ -24,9 +22,7 @@
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   const pageHref = (p) => new URL(p.path || '', siteRoot).href;
   const labelOf = (key) => (PAGES.find((p) => p.key === key) || { label: key }).label;
-  // The three main panels are exclusive; Ric's panels are set on their own.
-  const ADMIN_PANELS = ['people', 'admin-panel', 'kondrite-panel'];
-  const showAdmin = (on) => ADMIN_PANELS.forEach((p) => { $(p).hidden = !on; });
+  // The three panels are exclusive.
   const show = (id) => ['signin-panel', 'request-panel', 'me-panel'].forEach((p) => { $(p).hidden = p !== id; });
   const say = (id, text, good = false) => { const el = $(id); el.textContent = text; el.classList.toggle('good', good); };
 
@@ -57,7 +53,6 @@
   async function render() {
     const { data: { session } } = await db.auth.getSession();
     if (!session) {
-      showAdmin(false);
       show(location.hash === '#request' ? 'request-panel' : 'signin-panel');
       return;
     }
@@ -79,106 +74,11 @@
       : mine.size ? `${waitingOn ? waitingOn + ' meanwhile, ' : ''}here is what you can open:`
       : waitingOn || '<b>waiting for Ric.</b> your request is with him; this page will show what you can open once he decides.';
     const open = PAGES.filter((p) => isAdmin || mine.has(p.key));
-    $('me-pages').innerHTML = open.map((p) =>
+    $('me-pages').innerHTML = (isAdmin
+      ? `<li><a href="${esc(new URL('admin/', siteRoot).href)}">Admin →</a> <small>accounts, access and email</small></li>` : '')
+      + open.map((p) =>
       `<li><a href="${esc(pageHref(p))}">${esc(p.label)} →</a> <small>${esc(p.blurb)}</small></li>`).join('');
-
-    showAdmin(!!isAdmin);
     show('me-panel');
-    if (isAdmin) {
-      await Promise.all([renderAdmin(), window.KondriteAdmin ? window.KondriteAdmin.mount($('kondrite-admin')) : null]);
-      // The terminal's `accounts` sends Ric straight to the list.
-      if (location.hash === '#people') $('people').scrollIntoView();
-    }
-  }
-
-  function pageChecks(userId, checked) {
-    return `<div class="checks" role="group" aria-label="pages">${PAGES.map((p) => `
-      <label><input type="checkbox" data-user="${esc(userId)}" value="${esc(p.key)}" ${checked.includes(p.key) ? 'checked' : ''}>
-        <span>${esc(p.label)}</span></label>`).join('')}</div>`;
-  }
-
-  const day = (t) => (t ? new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'never');
-
-  // Which rows Ric has opened or shut, so a redraw after a button keeps them.
-  // kondrite.js reads the same set for its pilots.
-  const openRows = new Set();
-  const closedRows = new Set();
-  document.addEventListener('toggle', (e) => {
-    const row = e.target.closest && e.target.closest('details[data-row]');
-    if (!row) return;
-    (row.open ? openRows : closedRows).add(row.dataset.row);
-    (row.open ? closedRows : openRows).delete(row.dataset.row);
-  }, true);
-  window.SiteRows = { openRows };
-
-  // One row each; click it for the details and the buttons. Pending requests
-  // start open, because they are waiting on Ric.
-  function personCard(p, pending) {
-    const tag = p.is_admin ? '<span class="tag">admin</span>'
-      : p.status === 'approved' ? '' : `<span class="tag ${esc(p.status)}">${esc(p.status)}</span>`;
-    // Pending ticks what they have plus what they asked for, so approving adds.
-    const checked = pending ? [...new Set([...p.pages, ...p.requested])] : p.pages;
-    const key = 'site:' + p.user_id;
-    const open = openRows.has(key) || (pending && !closedRows.has(key));
-    const has = p.pages.length ? `has ${p.pages.map(labelOf).join(', ')}` : 'has no pages';
-    const asked = p.requested.length ? ` · asked for ${p.requested.map(labelOf).join(', ')}` : '';
-    return `<details class="person" data-row="${esc(key)}"${open ? ' open' : ''}>
-      <summary><span class="who">${esc(p.name || p.username || p.email)}${tag}</span>
-        <span class="peek">${esc(p.email)}</span></summary>
-      <div class="meta">${p.username ? `username @${esc(p.username)} · ` : ''}joined ${esc(day(p.created_at))} · last in ${esc(day(p.last_sign_in_at))}</div>
-      <div class="meta">${esc(has + asked)}</div>
-      ${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}
-      ${p.is_admin ? '' : `${pageChecks(p.user_id, checked)}
-      <div class="row">
-        ${pending
-          ? `<button type="button" data-act="approve" data-user="${esc(p.user_id)}">approve</button>
-             <button type="button" class="danger" data-act="deny" data-user="${esc(p.user_id)}">deny</button>`
-          : `<button type="button" class="ghost" data-act="save" data-user="${esc(p.user_id)}">save access</button>
-             ${p.status === 'denied' ? '' : `<button type="button" class="danger" data-act="deny" data-user="${esc(p.user_id)}">remove</button>`}`}
-      </div>`}
-    </details>`;
-  }
-
-  // One search box over both lists: the site's people here, KONDRITE's pilots in kondrite.js.
-  let everyone = [];
-  const findQuery = () => $('people-find').value.trim().toLowerCase();
-  const found = (p) => !findQuery() || [p.name, p.username, p.email]
-    .some((s) => String(s || '').toLowerCase().includes(findQuery()));
-
-  async function renderAdmin() {
-    const { data, error } = await db.rpc('admin_people');
-    if (error) { say('admin-msg', error.message); return; }
-    everyone = data || [];
-    drawPeople();
-  }
-
-  function drawPeople() {
-    const people = everyone.filter(found);
-    const pending = people.filter((p) => p.status === 'pending' && !p.is_admin);
-    const rest = people.filter((p) => !(p.status === 'pending' && !p.is_admin));
-    $('pending-count').textContent = pending.length ? String(pending.length) : '';
-    $('pending-count').hidden = !pending.length;
-    $('pending-list').innerHTML = pending.length
-      ? pending.map((p) => personCard(p, true)).join('')
-      : '<p>no one is waiting.</p>';
-    $('people-list').innerHTML = rest.length ? rest.map((p) => personCard(p, false)).join('')
-      : findQuery() ? '<p>no one matches that.</p>' : '';
-  }
-
-  async function decide(button) {
-    const user = button.dataset.user;
-    const act = button.dataset.act;
-    const pages = [...document.querySelectorAll(`input[data-user="${CSS.escape(user)}"]:checked`)].map((i) => i.value);
-    if (act === 'deny' && !confirm('Take away all access for this account?')) return;
-    if (act === 'approve' && !pages.length && !confirm('Approve with no pages ticked?')) return;
-    button.disabled = true;
-    const { error } = await db.rpc('admin_set_access', {
-      target: user, new_status: act === 'deny' ? 'denied' : 'approved', grant_pages: act === 'deny' ? [] : pages,
-    });
-    button.disabled = false;
-    if (error) { say('admin-msg', error.message); return; }
-    say('admin-msg', act === 'deny' ? 'access removed.' : 'saved.', true);
-    await renderAdmin();
   }
 
   $('signin-form').addEventListener('submit', async (e) => {
@@ -232,19 +132,11 @@
   document.addEventListener('click', (e) => {
     const sw = e.target.closest('[data-show]');
     if (sw) { show(sw.dataset.show); const first = $(sw.dataset.show).querySelector('input'); if (first) first.focus(); return; }
-    const act = e.target.closest('button[data-act]');
-    if (act) decide(act);
   });
 
   $('signout').addEventListener('click', async () => {
     await window.SiteGate.signOut();
-    showAdmin(false);
     await render();
-  });
-
-  $('people-find').addEventListener('input', () => {
-    drawPeople();
-    if (window.KondriteAdmin) window.KondriteAdmin.filter(findQuery());
   });
 
   loadPages().then(render).catch((err) => say('si-msg', `could not reach the account service (${err.message})`));

@@ -83,7 +83,10 @@ arriving.
 Since 2026-09-23 this project is **one account for the whole site**: ATLAS,
 HERMISCUS, Studies' trial alerts (`projects/psyche/README.md`), and any page added later. Anybody may make an account at
 `ricmassey.com/account/` (or type `login` at the terminal). A new account opens
-**nothing** until you approve it there and tick which pages it gets.
+**nothing** until you approve it and tick which pages it gets — at
+`ricmassey.com/admin/` (terminal: `admin`) since 2026-10-16, which also invites,
+edits, emails, bans and deletes. Its server half is
+`supabase/functions/site-admin/`; setup is in [`admin/README.md`](../admin/README.md).
 
 Authentication → Sign In / Providers → Email:
 

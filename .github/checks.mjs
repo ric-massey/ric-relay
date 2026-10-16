@@ -60,10 +60,10 @@ const SUITES = [
      cs.html and in Python; this replays every committed match through both. */
   ['the CS page and its scripts agree', ['projects/cs/test/parity.mjs']],
   ['atlas', glob('atlas/test', '.test.mjs')],
-  /* The `accounts` roster: KONDRITE's admin functions read past row-level
-     security into every player's email, so this holds each one to its
-     is_admin() line, and runs the page's half against a fake Supabase. */
-  ['the accounts roster', ['account/test/accounts.test.mjs']],
+  /* ricmassey.com/admin: the site-admin function holds the service key, and
+     KONDRITE's admin.sql reads every player's email, so this holds both to
+     their admin checks and runs the page against hostile names. */
+  ['the admin site', ['admin/test/admin.test.mjs']],
   /* auth-security is also what keeps the real database key off the website. */
   ['hermiscus (dads-race)', glob('projects/dads-race/tests', '.test.cjs')],
   ['kondrite', glob('projects/kondrite/test', '.js')

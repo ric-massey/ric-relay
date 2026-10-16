@@ -815,13 +815,13 @@ type Sydney's cat's name for a surprise!</div>
         setTimeout(() => (location.href = "account/"), 450);
         return "opening account ...";
       },
-      // Ric's list of everybody with an account — the site's and KONDRITE's
-      // pilots — on the account page. Unlisted; the database is the lock, and
-      // anybody else typing it lands on a sign-in box.
-      accounts: () => {
-        setTimeout(() => (location.href = "account/#people"), 450);
-        return "pulling the roster ...\nsite accounts + KONDRITE pilots. admin only.";
+      // Ric's admin site: every account on the site and in KONDRITE. Unlisted;
+      // the database is the lock, and anybody else typing it gets "No access".
+      admin: () => {
+        setTimeout(() => (location.href = "admin/"), 450);
+        return "opening admin ...\nadmin only.";
       },
+      accounts: () => COMMANDS.admin(),
       // KONDRITE's listening booth: every game sound, rated in plain words.
       // Unlisted like hermiscus — it is a tool for Ric, not a room.
       listen: () => {
