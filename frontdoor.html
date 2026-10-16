@@ -42,15 +42,6 @@
       --panel: #f6f7f8;
       --hair: rgba(12,13,15,.14);
       --head: rgba(221,223,226,.74);
-      /* the edge of a cut: the wall you see inside it (lit at the rim, dark
-         deeper in), the lit lip along the bottom, and on the page itself a
-         dark line on the top edge and a bright chamfer along the bottom one */
-      --wall-hi: #b9bcc2;
-      --wall-lo: #6c7078;
-      --lip-lit: rgba(255,255,255,.8);
-      --edge-dark: rgba(18,20,24,.42);
-      --edge-lit: #ffffff;
-      --sheen: rgba(255,255,255,.75);
       --tile: #c7cacf;
       --violet: #7b3cff;
       --magenta: #ff2d8a;
@@ -67,7 +58,6 @@
         --bg: #0a0b0d; --bg-2: #15161a; --ink: #eef0f3; --muted: #9a9fa8;
         --field: rgba(255,255,255,.05); --panel: #121317; --hair: rgba(255,255,255,.1);
         --head: rgba(10,11,13,.72); --tile: #17181c;
-        --wall-hi: #2c2e34; --wall-lo: #0c0d10; --lip-lit: rgba(255,255,255,.26); --edge-dark: rgba(0,0,0,.9); --edge-lit: rgba(255,255,255,.22); --sheen: rgba(255,255,255,.07);
         color-scheme: dark;
       }
     }
@@ -75,7 +65,6 @@
       --bg: #0a0b0d; --bg-2: #15161a; --ink: #eef0f3; --muted: #9a9fa8;
       --field: rgba(255,255,255,.05); --panel: #121317; --hair: rgba(255,255,255,.1);
       --head: rgba(10,11,13,.72); --tile: #17181c;
-        --wall-hi: #2c2e34; --wall-lo: #0c0d10; --lip-lit: rgba(255,255,255,.26); --edge-dark: rgba(0,0,0,.9); --edge-lit: rgba(255,255,255,.22); --sheen: rgba(255,255,255,.07);
       color-scheme: dark;
     }
 
@@ -196,11 +185,8 @@
     .cut .still.away { visibility: hidden; }
     .cut .scrim { position: absolute; inset: 0; z-index: 2; pointer-events: none;
       background: linear-gradient(to bottom, rgba(0,0,0,.5), rgba(0,0,0,.14) 40%, rgba(0,0,0,0) 58%), linear-gradient(to right, rgba(0,0,0,.38), rgba(0,0,0,0) 55%); }
-    .lip { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 0; opacity: 0; transition: opacity .6s .8s; }
-    .lip .dark { stroke: var(--edge-dark); }
-    .lip .lit { stroke: var(--edge-lit); }
-    .cut .rim { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .6s .8s; }
-    .open .lip, .open .rim { opacity: 1; }
+    /* the layers under the top sheet, painted on a canvas (see the script) */
+    .cut .rim { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: no-repeat 0 0 / 100% 100%; }
 
     .hero .slice { margin: clamp(40px, 7vh, 88px) calc(-1 * var(--gutter)) 0; }
 
@@ -608,12 +594,254 @@
     })();
 
     // ─── the cuts ────────────────────────────────────────
-    // Every [data-cut] is the same shape: a strip sliced at one angle, worked
-    // out in pixels so a short cut and a tall one slant alike, and all of them
-    // parallel. It opens from a slit the first time it comes on screen.
+    // Every [data-cut] is the same thing: a strip torn out of the page at one
+    // angle (worked out in pixels, so a short cut and a tall one slant alike
+    // and all of them run parallel), opening from a slit the first time it
+    // comes on screen.
+    //
+    // The page is not one sheet but a stack of them. The cut goes through all
+    // of them and each one breaks a little differently, so at every edge you
+    // look down a few steps of material — each with its own broken edge, each
+    // throwing a shadow onto the one below — before you reach the photograph.
+    //
+    // The .cut is clipped to the TOP sheet's hole; the sheets under it are
+    // painted on a canvas, laid over the photo as a plain image (.rim) inside
+    // the cut. Plain image, because anything blurred or animated laid over a
+    // cut makes Chromium paint outside the clip; a canvas has no such problem —
+    // its shadows are already pixels by the time the page sees them.
+    //
+    // ?edge=paper | rock | blade picks the material while Ric chooses one.
     const STILL = matchMedia("(prefers-reduced-motion: reduce)").matches;
     (() => {
-      const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x}px ${y}px`).join(", ")})`;
+      const STYLE = ["paper", "rock", "blade"].includes(new URLSearchParams(location.search).get("edge"))
+        ? new URLSearchParams(location.search).get("edge") : "paper";
+      const root = document.documentElement;
+      const isNight = () => root.dataset.theme ? root.dataset.theme === "night" : matchMedia("(prefers-color-scheme: dark)").matches;
+      const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(", ")})`;
+
+      // the materials. Index 0 is the page itself (only its torn edge and its
+      // shadow are ever drawn — the clip shows the real page around it).
+      //   sheets — each layer's face, top to bottom
+      //   core   — what a break shows at the edge of that layer: paper's pale
+      //            fibre, rock's broken face (lit on the lower edge, which faces
+      //            the light; dark on the upper), the blade's machined chamfer
+      //   shade  — the shadow one layer throws on the next
+      const MATERIAL = {
+        paper: {
+          night: { sheets: ["#0a0b0d", "#151619", "#1a1b1f", "#1f2125"], coreTop: ["#34363c", "#2c2e34", "#26282d", "#212327"], coreBot: ["#50535b", "#43464d", "#393b42", "#303238"], edgeTop: ["#5b5e66", "#4a4d54", "#3d3f46", "#33353b"], edgeBot: ["#7f838c", "#686b73", "#565961", "#474a51"], shade: "rgba(0,0,0,.85)", photoShade: "rgba(0,0,0,.72)" },
+          day:   { sheets: ["#d5d7db", "#e4e5e8", "#eeeff1", "#f6f6f7"], coreTop: ["#e8e8e4", "#eeeeea", "#f2f2ef", "#f5f5f2"], coreBot: ["#f6f6f3", "#f8f8f5", "#fafaf8", "#fbfbf9"], edgeTop: ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], edgeBot: ["#ffffff", "#ffffff", "#ffffff", "#ffffff"], shade: "rgba(26,30,40,.34)", photoShade: "rgba(0,0,0,.55)" },
+        },
+        rock: {
+          night: { sheets: ["#0a0b0d", "#1f2126", "#282a30", "#31343a"], coreTop: ["#050506", "#08090a", "#0c0d0f", "#101113"], coreBot: ["#4a4d55", "#53565f", "#5c5f68", "#666972"], shade: "rgba(0,0,0,.85)", photoShade: "rgba(0,0,0,.7)", grain: .5 },
+          day:   { sheets: ["#d5d7db", "#c2c5ca", "#b1b5bb", "#a0a4ab"], coreTop: ["#8a8e96", "#7d818a", "#71757e", "#666a73"], coreBot: ["#f4f5f7", "#eceef1", "#e3e5e9", "#dadde1"], shade: "rgba(20,24,34,.42)", photoShade: "rgba(0,0,0,.55)", grain: .35 },
+        },
+        blade: {
+          night: { sheets: ["#0a0b0d", "accent", "#1d1f24", "#121316"], coreTop: ["#020203", "accent", "#0d0e10", "#08090a"], coreBot: ["#5a5e67", "accent", "#2e3036", "#232529"], shade: "rgba(0,0,0,.8)", photoShade: "rgba(0,0,0,.65)" },
+          day:   { sheets: ["#d5d7db", "accent", "#8f939a", "#6f737b"], coreTop: ["#7a7e86", "accent", "#5f636b", "#50545b"], coreBot: ["#ffffff", "accent", "#b9bcc2", "#a3a7ae"], shade: "rgba(20,24,34,.4)", photoShade: "rgba(0,0,0,.55)" },
+        },
+      };
+
+      // ── noise ──
+      const rng = (seed) => { let s = seed % 2147483647 || 1; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
+      // smooth value noise on a lattice `span` px apart, −1…1, laid out once so
+      // a resize never reshuffles the edge
+      const smooth = (r, span) => {
+        const v = Array.from({ length: Math.ceil(5400 / span) + 4 }, () => r() * 2 - 1);
+        return (x) => { const f = (x + 400) / span, i = Math.floor(f), t = f - i, u = t * t * (3 - 2 * t); return v[i] + (v[i + 1] - v[i]) * u; };
+      };
+      // a broken line: straight runs between corners at random spacing, −1…1
+      const shards = (r, min, max) => {
+        const xs = [-400], ys = [r() * 2 - 1];
+        while (xs[xs.length - 1] < 5000) { xs.push(xs[xs.length - 1] + min + r() * (max - min)); ys.push(r() * 2 - 1); }
+        let j = 0;
+        return (x) => { while (j > 0 && xs[j] > x) j--; while (xs[j + 1] <= x) j++; const t = (x - xs[j]) / (xs[j + 1] - xs[j]); return ys[j] + (ys[j + 1] - ys[j]) * t; };
+      };
+
+      // ── the shape of every layer's edge ──
+      // Returns, for layers 0…3, the hole's top edge and bottom edge (left to
+      // right), and a "core" line just inside each where the break shows.
+      function geometry(w, h, k, seed, small) {
+        const r = rng(seed * 7919 + 13), L = 4, step = 3;
+        const xs = []; for (let x = -24; x <= w + 24; x += step) xs.push(x);
+        if (xs[xs.length - 1] < w + 24) xs.push(w + 24);
+        const s = small ? 0.68 : 1;
+        // the torn line wanders either side of the slant: keep it inside the
+        // box, or the pinned photo shows past the canvas that covers it
+        const m = 20 * s;
+        const yT = (x) => m + k * (1 - x / w), yB = (x) => h - m - k * (x / w);
+        const edge = () => {
+          if (STYLE === "paper") {
+            // a tear wanders (long, slow), wavers (short) and frays (finest);
+            // the sheets under it tear along nearly the same line
+            const a = smooth(r, 150), b = smooth(r, 41), c = smooth(r, 11), own = [0, 1, 2, 3].map(() => smooth(r, 63));
+            const gap = [0, 1, 2, 3].map(() => smooth(r, 110)), fray = [0, 1, 2, 3].map(() => smooth(r, 34)), fine = [0, 1, 2, 3].map(() => smooth(r, 8));
+            const u = (f, x) => (f(x) + 1) / 2;
+            return {
+              base: (x) => s * (10 * a(x) + 3.2 * b(x) + 1.1 * c(x)) + (r() - 0.5) * 0.8,
+              own: (i, x) => s * 3 * own[i](x),
+              step: (i, x) => s * 9 * (0.12 + 1.9 * u(gap[i], x) ** 1.8),
+              core: (i, x) => s * Math.max(0.4, 0.5 + 6 * u(fray[i], x) ** 2.2 + 1.2 * fine[i](x)),
+            };
+          }
+          if (STYLE === "rock") {
+            // a fracture runs in straight facets that meet at corners; strata
+            // step back in ledges, wide in one place and flush in the next
+            const a = shards(r, 26, 84), b = shards(r, 7, 22), own = [0, 1, 2, 3].map(() => shards(r, 18, 60));
+            const gap = [0, 1, 2, 3].map(() => shards(r, 40, 140)), face = [0, 1, 2, 3].map(() => shards(r, 14, 44));
+            return {
+              base: (x) => s * (11 * a(x) + 2.4 * b(x)) + (r() - 0.5) * 0.7,
+              own: (i, x) => s * 3.4 * own[i](x),
+              step: (i, x) => s * Math.max(0.6, 11 * (0.05 + 0.95 * Math.max(0, gap[i](x) + 0.25))),
+              core: (i, x) => s * (1.4 + 2.2 * (face[i](x) + 1)),
+            };
+          }
+          // the blade: dead straight, and every layer the same thickness all
+          // the way along — the chamfer, the coloured core, then the wall
+          return {
+            base: () => 0, own: () => 0,
+            step: (i) => s * [0, 3, 2.2, 7][i],
+            core: (i) => s * [2.4, 0, 0, 0][i],
+          };
+        };
+        const top = edge(), bot = edge();
+        const layers = [];
+        const insetT = xs.map(() => 0), insetB = xs.map(() => 0);
+        const baseT = xs.map((x) => top.base(x)), baseB = xs.map((x) => bot.base(x));
+        for (let i = 0; i < L; i++) {
+          xs.forEach((x, j) => { if (i) { insetT[j] += top.step(i, x); insetB[j] += bot.step(i, x); } });
+          const T = xs.map((x, j) => [x, yT(x) + baseT[j] + top.own(i, x) + insetT[j]]);
+          const B = xs.map((x, j) => [x, yB(x) + baseB[j] + bot.own(i, x) - insetB[j]]);
+          const cT = T.map(([x, y]) => [x, y + top.core(i, x)]);
+          const cB = B.map(([x, y]) => [x, y - bot.core(i, x)]);
+          // halfway into the core, where it turns from pulled fibre to the
+          // bright broken edge
+          const mT = T.map(([x, y], j) => [x, y + (cT[j][1] - y) * 0.5]);
+          const mB = B.map(([x, y], j) => [x, y + (cB[j][1] - y) * 0.5]);
+          layers.push({ T, B, cT, cB, mT, mB });
+        }
+        return { xs, layers, mid: xs.map((x) => (yT(x) + yB(x)) / 2) };
+      }
+
+      // a little grain, for stone: speckle, drawn once
+      let grain = null;
+      const grainPattern = (ctx) => {
+        if (!grain) {
+          grain = document.createElement("canvas"); grain.width = grain.height = 160;
+          const g = grain.getContext("2d"), r = rng(4242);
+          for (let n = 0; n < 2600; n++) {
+            const v = r() < 0.5 ? 0 : 255;
+            g.fillStyle = `rgba(${v},${v},${v},${0.04 + r() * 0.08})`;
+            g.fillRect(r() * 160, r() * 160, 1 + r() * 1.6, 1 + r() * 1.2);
+          }
+        }
+        return ctx.createPattern(grain, "repeat");
+      };
+
+      // ── paint the stack under the top sheet ──
+      function paint(box, cut, geo, w, h) {
+        const dpr = Math.min(2.5, window.devicePixelRatio || 1);
+        const c = document.createElement("canvas");
+        c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+        const ctx = c.getContext("2d");
+        ctx.scale(dpr, dpr);
+        const M = MATERIAL[STYLE][isNight() ? "night" : "day"];
+        const accent = getComputedStyle(box).getPropertyValue("--c").trim() || "#7b3cff";
+        const col = (v) => (v === "accent" ? accent : v);
+        const outside = (T, B) => {
+          // everything but the hole: a big rectangle with the hole cut out of it
+          const p = new Path2D();
+          p.rect(-200, -200, w + 400, h + 400);
+          p.moveTo(T[0][0], T[0][1]);
+          for (const [x, y] of T) p.lineTo(x, y);
+          for (let j = B.length - 1; j >= 0; j--) p.lineTo(B[j][0], B[j][1]);
+          p.closePath();
+          return p;
+        };
+        const band = (A, Bv) => {
+          // the strip between an edge and the core line just inside it
+          const p = new Path2D();
+          p.moveTo(A[0][0], A[0][1]);
+          for (const [x, y] of A) p.lineTo(x, y);
+          for (let j = Bv.length - 1; j >= 0; j--) p.lineTo(Bv[j][0], Bv[j][1]);
+          p.closePath();
+          return p;
+        };
+        const L = geo.layers.length;
+        // deepest first: each layer throws its shadow onto what is already
+        // drawn under it — the deepest onto the photo itself
+        for (let i = L - 1; i >= 0; i--) {
+          const { T, B, cT, cB, mT, mB } = geo.layers[i];
+          ctx.save();
+          ctx.shadowColor = i === L - 1 ? M.photoShade : M.shade;
+          ctx.shadowBlur = (i === L - 1 ? 16 : 9) * dpr;
+          ctx.shadowOffsetY = (i === L - 1 ? 6 : 3.5) * dpr;
+          ctx.shadowOffsetX = 0.8 * dpr;
+          ctx.fillStyle = col(M.coreTop[i]);
+          ctx.fill(outside(cT, cB), "evenodd");
+          ctx.restore();
+          // the broken face along each edge — lit below, in shade above
+          ctx.fillStyle = col(M.coreTop[i]); ctx.fill(band(T, cT));
+          ctx.fillStyle = col(M.coreBot[i]); ctx.fill(band(B, cB));
+          if (M.edgeTop) {
+            ctx.fillStyle = col(M.edgeTop[i]); ctx.fill(band(mT, cT));
+            ctx.fillStyle = col(M.edgeBot[i]); ctx.fill(band(mB, cB));
+          }
+          if (STYLE === "paper") {
+            // the break is fuzzy: a fine, dense down of short fibres, the odd
+            // longer one — not hairs
+            const r = rng(i * 31 + 7);
+            ctx.lineCap = "round";
+            for (const [E, dir, tone] of [[cT, 1, M.edgeTop[i]], [cB, -1, M.edgeBot[i]]]) {
+              ctx.strokeStyle = tone;
+              for (const [alpha, width, every, reach] of [[0.32, 0.45, 1, 1.6], [0.45, 0.5, 6, 3.6]]) {
+                ctx.globalAlpha = alpha; ctx.lineWidth = width;
+                ctx.beginPath();
+                for (let j = 0; j < E.length - 1; j++) {
+                  for (let q = 0; q < (every === 1 ? 3 : 1); q++) {
+                    if (every > 1 && r() * every > 1) continue;
+                    const t = r(), x = E[j][0] + (E[j + 1][0] - E[j][0]) * t, y = E[j][1] + (E[j + 1][1] - E[j][1]) * t;
+                    const len = (0.3 + r() * r()) * reach, ang = (r() - 0.5) * 1.6;
+                    ctx.moveTo(x, y - dir * 0.3);
+                    ctx.lineTo(x + Math.sin(ang) * len, y + dir * Math.cos(ang) * len);
+                  }
+                }
+                ctx.stroke();
+              }
+              ctx.globalAlpha = 1;
+            }
+          }
+          if (STYLE === "blade" && i === 0) {
+            // the machined chamfer catches one hard line of light on its rim
+            ctx.strokeStyle = isNight() ? "rgba(255,255,255,.28)" : "#ffffff"; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(cB[0][0], cB[0][1] + 0.5); for (const [x, y] of cB) ctx.lineTo(x, y + 0.5); ctx.stroke();
+          }
+          // the layer's own face (the page's own face is the real page,
+          // outside the clip — painted anyway so its edge is clean)
+          const face = outside(T, B);
+          ctx.fillStyle = col(M.sheets[i]);
+          ctx.fill(face, "evenodd");
+          if (M.grain && i > 0) { ctx.fillStyle = grainPattern(ctx); ctx.globalAlpha = M.grain; ctx.fill(face, "evenodd"); ctx.globalAlpha = 1; }
+          if (i > 0) {
+            // where this layer meets the one above it: a crease of shade
+            ctx.save(); ctx.globalAlpha = isNight() ? 0.5 : 0.22; ctx.strokeStyle = "#000"; ctx.lineWidth = 0.8;
+            const { T: uT, B: uB } = geo.layers[i - 1];
+            ctx.beginPath(); for (const [x, y] of uT) ctx.lineTo(x, y + 0.6); ctx.stroke();
+            ctx.beginPath(); for (const [x, y] of uB) ctx.lineTo(x, y + 0.6); ctx.stroke();
+            ctx.restore();
+          }
+        }
+        let rim = cut.querySelector(".rim");
+        if (!rim) { rim = document.createElement("div"); rim.className = "rim"; cut.appendChild(rim); }
+        c.toBlob((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          const old = rim.dataset.url;
+          rim.style.backgroundImage = `url(${url})`;
+          rim.dataset.url = url;
+          if (old) setTimeout(() => URL.revokeObjectURL(old), 1000);
+        });
+      }
+
       // four screen-sized photos pinned at once is wasted paint: a cut that is
       // off screen hides its photo until it comes back
       const seen = new IntersectionObserver((list) => list.forEach((e) =>
@@ -622,58 +850,40 @@
         if (!e.isIntersecting) return;
         opener.unobserve(e.target);
         e.target.classList.add("open");
-        e.target.draw();
+        e.target.clip();
       }), { threshold: 0.18 });
 
-      document.querySelectorAll("[data-cut]").forEach((box, n) => {
+      const boxes = [...document.querySelectorAll("[data-cut]")];
+      boxes.forEach((box, n) => {
         const cut = box.querySelector(".cut");
         seen.observe(cut);
-        box.draw = () => {
+        let geo = null, size = "";
+        box.clip = () => {
+          if (!geo) return;
+          cut.style.clipPath = poly(box.classList.contains("open")
+            ? [...geo.layers[0].T, ...geo.layers[0].B.slice().reverse()]
+            : [...geo.xs.map((x, j) => [x, geo.mid[j] - 0.5]), ...geo.xs.map((x, j) => [x, geo.mid[j] + 0.5]).reverse()]);
+        };
+        box.draw = (force) => {
           const w = cut.clientWidth, h = cut.clientHeight;
-          if (!w || !h) return;
+          if (!w || !h || (!force && size === `${w}x${h}`)) return;
+          size = `${w}x${h}`;
           const k = Math.round(Math.max(26, Math.min(120, w * 0.065)));
-          const shape = [[0, k], [w, 0], [w, h - k], [0, h]];
-          const slit = [[0, h / 2 + k / 2], [w, h / 2 - k / 2], [w, h / 2 - k / 2], [0, h / 2 + k / 2]];
           box.style.setProperty("--k", k + "px");
-          cut.style.clipPath = poly(box.classList.contains("open") ? shape : slit);
-          // The edge, all in pixels. The page is a thick sheet lit from above
-          // and the cut goes through it; the cuts run to both sides of the
-          // screen, so only the top and bottom edges are ever seen.
-          //   on the page: a dark line where the top edge breaks, and a bright
-          //     chamfer along the bottom edge with a soft sheen under it
-          //   in the hole: the wall's thickness along the top (lit at the rim,
-          //     dark deeper in) and the shadow it throws onto the photo; a lit
-          //     lip along the bottom
-          // No blur anywhere: a blurred layer here leaks out past the clip in
-          // Chromium, a whole tile of it. The edges are straight, so gradients
-          // laid at the edge's own angle do the shading instead.
-          const L = Math.hypot(w, k), nx = k / L, ny = w / L;          // unit normal, pointing down
-          const deg = (Math.atan2(k, w) * 180) / Math.PI, at0 = (k * w) / L; // edge's distance from its corner
-          const T = Math.round(Math.max(5, Math.min(10, w * 0.007)));     // how much wall shows
-          const S = 14;                                                    // sheen depth
-          const id = "sheen-" + n;
-          box.querySelector(".lip")?.remove();
-          cut.insertAdjacentHTML("beforebegin",
-            `<svg class="lip" viewBox="0 0 ${w} ${h}" aria-hidden="true">` +
-            `<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${w / 2}" y1="${h - k / 2}" x2="${w / 2 + nx * S}" y2="${h - k / 2 + ny * S}">` +
-            `<stop offset="0" style="stop-color:var(--sheen)"/><stop offset="1" style="stop-color:var(--sheen);stop-opacity:0"/></linearGradient></defs>` +
-            `<polygon points="0,${h} ${w},${h - k} ${w + nx * S},${h - k + ny * S} ${nx * S},${h + ny * S}" fill="url(#${id})"/>` +
-            `<line class="dark" x1="0" y1="${k}" x2="${w}" y2="0" stroke-width="2"/>` +
-            `<line class="lit" x1="0" y1="${h}" x2="${w}" y2="${h - k}" stroke-width="2"/></svg>`);
-          let rim = cut.querySelector(".rim");
-          if (!rim) { rim = document.createElement("div"); rim.className = "rim"; cut.appendChild(rim); }
-          rim.style.background = [
-            // the top: wall, then its shadow on the photo
-            `linear-gradient(${180 - deg}deg, var(--wall-hi) ${at0}px, var(--wall-lo) ${at0 + T}px, rgba(0,0,0,.6) ${at0 + T + 0.8}px, rgba(0,0,0,.24) ${at0 + T + 12}px, rgba(0,0,0,.08) ${at0 + T + 34}px, rgba(0,0,0,0) ${at0 + T + 64}px)`,
-            // the bottom: a lit lip, and the faintest shading above it
-            `linear-gradient(${-deg}deg, var(--lip-lit) ${at0}px, var(--lip-lit) ${at0 + 1.4}px, rgba(0,0,0,.22) ${at0 + 2.4}px, rgba(0,0,0,0) ${at0 + 22}px)`,
-          ].join(", ");
+          geo = geometry(w, h, k, n + 1, w < 700);
+          box.clip();
+          paint(box, cut, geo, w, h);
         };
         box.draw();
-        new ResizeObserver(() => box.draw()).observe(cut);
-        if (STILL) { box.classList.add("open"); box.draw(); }
+        let t = 0;
+        new ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => box.draw(), 120); }).observe(cut);
+        if (STILL) { box.classList.add("open"); box.clip(); }
         else opener.observe(box);
       });
+      // night and day are different materials
+      const redraw = () => boxes.forEach((b) => b.draw(true));
+      document.getElementById("mode").addEventListener("click", redraw);
+      matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
     })();
 
     // ─── things to play, on a rail ───────────────────────

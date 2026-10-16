@@ -568,19 +568,23 @@ Climbing, Training, Exploration; then `#dir`, a 3×3 grid on desktop and a
 list on a phone. **Every cut is the same thing**: a strip sliced at one angle (worked
 out in pixels so they are all parallel), a link to a room, named for it — its URL, its
 name, one line, Enter — at the top of the cut, where you see it first as it scrolls up.
-It opens from a slit the first time it comes on screen. Its edge is a cut through a thick
-sheet lit from above: on the page, a dark line on the top edge and a bright chamfer with
-a sheen on the bottom one; in the hole, the wall's thickness along the top and its
-shadow on the photo, and a lit lip along the bottom. The materials are the `--wall-*`,
-`--edge-*`, `--lip-lit` and `--sheen` tokens, set for day and night. The claw, jagged, blade and shatter shapes came out on 2026-10-16 because
+It opens from a slit the first time it comes on screen. The page is a stack of
+sheets and the cut tears through all of them, each a little differently: at every edge
+you look down a few steps of torn paper — fuzzy fibre, a bright broken core that comes
+and goes, each sheet's shadow on the one below — before you reach the photo. The `.cut`
+is clipped to the top sheet's tear; the sheets under it are painted on a canvas per cut
+and laid over the photo as a plain image (`.rim`), redrawn on resize and on night/day.
+The torn line must stay inside the cut's box (the `m` margin in `geometry()`), or the
+pinned photo shows past the canvas. `?edge=rock` and `?edge=blade` are the two other
+materials Ric was shown; paper is the default. The claw, jagged, blade and shatter shapes came out on 2026-10-16 because
 four gimmicks at once read as clip-art; don't bring back a second shape. The photo in a
 cut is a `position: fixed` layer (`.still`) inside it, clipped by the cut's clip path —
 that is what keeps it still on iOS, which ignores `background-attachment: fixed`. Never
 put a `filter` or `transform` on a `.cut` or anything above it: either one pins the
 fixed layer to that element and the photo starts scrolling with the page again. And
 anything laid over a cut goes *inside* the `.cut`, not beside it: a sibling that fades in
-over it made Chromium paint the cut's scrim out past its clip. The cut's inner shadow is
-gradients along each edge (`.rim`), not a blur, for the same reason. Night/day is a
+over it made Chromium paint the cut's scrim out past its clip. The shadows in a cut are drawn on that canvas, never
+as a CSS or SVG blur, for the same reason. Night/day is a
 visitor's own choice kept in `localStorage` (`frontdoor-theme`), else their OS. The
 search box *is* the terminal: `SEARCH_WORDS` adds the plain words people type for each
 room and project, matches show as you type, and a word the terminal doesn't know opens
