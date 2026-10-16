@@ -64,8 +64,8 @@ not a visitor), with a "Count it again" link in case that is wrong.
 
 **What it needs, once:**
 
-1. The D1 database (`worker/README.md`, "The visitor counter"). Until it exists
-   the tab says so and nothing is counted.
+1. The D1 database — made 2026-10-16 (`visitors`, bound as `STATS` in
+   `worker/wrangler.jsonc`). Nothing before that day was counted.
 2. Deploy the Worker (Actions → **Deploy Worker**). That carries the
    `SITE_SUPABASE_URL` / `SITE_SUPABASE_KEY` vars in `wrangler.jsonc`, which is
    how the Worker checks your admin sign-in with Supabase. Before that deploy the

@@ -454,9 +454,8 @@
       return;
     }
     if (S.state === 'not-set-up') {
-      R.innerHTML = `<p class="notice">The visitor counter's database is not switched on yet, so there is nothing to show. ` +
-        'Once, from the Mac: <code>cd worker && npx wrangler@latest d1 create visitors</code>, paste the id into the ' +
-        '<code>d1_databases</code> line in <code>worker/wrangler.jsonc</code>, uncomment it, and deploy. See <code>worker/README.md</code>.</p>';
+      R.innerHTML = '<p class="notice">The Worker answering is not connected to the visitor database yet. ' +
+        'The database exists and is in <code>worker/wrangler.jsonc</code> — run <b>Actions → Deploy Worker</b> on GitHub and this fills in from the next page view.</p>';
       return;
     }
     if (!S.data) { R.innerHTML = `<p class="notice">${esc(S.msg || 'No numbers yet.')}</p>`; return; }
