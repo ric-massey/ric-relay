@@ -5,6 +5,14 @@
 //   node assets/frontdoor/record.mjs cs 9
 //   node assets/frontdoor/record.mjs kondrite 24
 //   node assets/frontdoor/record.mjs scale 9
+//
+// The page plays the .mp4, not this .webm: MediaRecorder's file has no
+// duration or seek index (so every loop hitches) and VP9 is decoded in
+// software on Safari. Make it with the ffmpeg that ships in imageio-ffmpeg:
+//
+//   FF=$(python3 -c "import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())")
+//   $FF -i scale.webm -an -vf "scale='trunc(min(1536,iw)/2)*2':-2:flags=lanczos,fps=30,format=yuv420p" \
+//       -c:v libx264 -preset slow -crf 23 -profile:v high -g 60 -movflags +faststart scale.mp4
 import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";

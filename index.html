@@ -201,7 +201,7 @@
     .f-rip { height: min(64vh, 640px); min-height: 420px; }
     .cut { position: relative; z-index: 1; height: 100%; overflow: hidden; background: transparent; transition: clip-path 1.2s cubic-bezier(.7,0,.16,1); }
     .cut .still { position: absolute; left: 0; right: 0; top: -7%; height: 114%; z-index: 0; pointer-events: none; will-change: transform; transition: scale .9s var(--ease); background: transparent; }
-    .cut .still video, .cut .still canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+    .cut .still video, .cut .still canvas, .cut .still img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
     .cut .rim { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: no-repeat 0 0 / 100% 100%; }
     .peek {
       position: absolute; z-index: 5; right: calc(var(--gutter) + 18px); bottom: 46px;
@@ -493,7 +493,7 @@
       { id: "starfield", tier: 2, skin: "starfield", tag: "Gaming · plays in the browser", name: "Starfield", href: "projects/starfield/fly.html",
         lede: "Fly a rocket through real stars and watch the sky bend as you near the speed of light.",
         facts: ["Real stars", "Relativity", "Six gears"], btn: "Launch", peek: "Fly",
-        media: { video: "assets/games/starfield" }, alt: "Flying through a field of real stars" },
+        media: { still: "assets/games/starfield.jpg" }, alt: "Flying through a field of real stars" },
       { id: "climbing", tier: 2, skin: "logbook", tag: "Climbing", name: "Climbing", href: "climbing.html",
         lede: "Every day out at the crag — what I sent, what I'm still working on, clips from the day, and when I'm next out.",
         facts: ["Days out", "Sends & clips", "The to-do list"], btn: "Open the logbook", peek: "Open",
@@ -1222,7 +1222,7 @@
         if (!st.vids) {
           st.vids = ["offramp", "kondrite", "starfield", "farlight"].sort(() => st.r() - 0.5).map((g) => {
             const v = document.createElement("video"); v.muted = true; v.loop = true; v.playsInline = true; v.preload = "auto";
-            v.poster = `assets/games/${g}.jpg`; v.src = `assets/games/${g}.webm`; return v;
+            v.poster = `assets/games/${g}.jpg`; if (g !== "starfield") v.src = `assets/games/${g}.mp4`; return v;
           });
           st.stop = () => { for (const v of st.vids) { v.pause(); v.removeAttribute("src"); v.load(); } st.vids = null; };
         }
@@ -1230,7 +1230,7 @@
         const wide = w / h > 2.2, cols = wide ? 4 : 2, rows = wide ? 1 : 2, g = 6;
         const tw = (w - g * (cols + 1)) / cols, th = (h - g * (rows + 1)) / rows;
         st.vids.forEach((v, i) => {
-          if (v.paused && !STILL) v.play().catch(() => {});
+          if (v.paused && !STILL && v.src) v.play().catch(() => {});
           const px = g + (i % cols) * (tw + g), py = g + Math.floor(i / cols) * (th + g);
           const src = v.readyState >= 2 ? v : img(v.poster);
           x.save(); x.beginPath(); x.rect(px, py, tw, th); x.clip(); x.translate(px, py);
@@ -1426,7 +1426,7 @@
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       for (const c of live) {
         const w = c.clientWidth, h = c.clientHeight, dpr = Math.min(2, devicePixelRatio || 1);
-        if (!w || !h) continue;
+        if (!w || !h || !c.seen) continue;
         if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
         const x = c.getContext("2d"); x.setTransform(dpr, 0, 0, dpr, 0, 0);
         c.st.dt = STILL ? 0 : dt; c.st.time = (c.st.time || 0) + (STILL ? 0 : dt);
@@ -1446,8 +1446,13 @@
       el.style.zIndex = String(90000 - n);
       el.classList.toggle("long", p.name.length > 15);
       el.setAttribute("aria-label", p.name);
+      // Clips are H.264 .mp4: hardware-decoded on every device, sized for the
+      // rip, with an index so the loop restarts cleanly. (The .webm beside them
+      // are the Arcade room's.) Starfield's recording is a single frame, so it
+      // is shown as the picture it is rather than looped as a video.
       const media = p.media.video
-        ? `<video muted loop playsinline preload="none" poster="${p.media.video}.jpg" data-src="${p.media.video}.webm" aria-hidden="true"></video>`
+        ? `<video muted loop playsinline preload="none" poster="${p.media.video}.jpg" data-src="${p.media.video}.mp4" aria-hidden="true"></video>`
+        : p.media.still ? `<img src="${p.media.still}" alt="" loading="lazy" decoding="async">`
         : `<canvas data-art="${p.media.art}" aria-hidden="true"></canvas>`;
       el.innerHTML = `<div class="row">
           <div class="f-copy">
@@ -1473,7 +1478,15 @@
       const box = el.querySelector(".f-rip"), cut = box.querySelector(".cut"), still = cut.querySelector(".still");
       const vid = still.querySelector("video"), art = still.querySelector("canvas[data-art]");
       if (art) art.st = { r: rng(seed ^ 0x9e3779b9) };
-      let geo = null, size = "", url = "", awake = false, open = STILL;
+      let geo = null, size = "", url = "", awake = false, open = STILL, seen = false;
+      // A clip loads two screens ahead but only plays while it is on screen:
+      // five clips decoding at once, most of them out of sight, was the lag.
+      const play = () => { if (vid && awake && seen && !STILL) vid.play().catch(() => {}); };
+      const see = (on) => {
+        seen = on;
+        if (art) { art.seen = on; if (!on) art.st.vids?.forEach((v) => v.pause()); }
+        if (vid) on ? play() : vid.pause();
+      };
       const M = paperOf(el);
       const clip = () => { if (geo) cut.style.clipPath = poly(open ? geo.layers[0].E : geo.slit); };
       const draw = async () => {
@@ -1495,7 +1508,7 @@
       const wake = () => {
         if (awake) return; awake = true;
         draw();
-        if (vid) { if (!vid.getAttribute("src")) vid.src = vid.dataset.src; if (!STILL) vid.play().catch(() => {}); }
+        if (vid) { if (!vid.getAttribute("src")) { vid.preload = "auto"; vid.src = vid.dataset.src; } if (seen) play(); }
         if (art) live.add(art);
       };
       const sleep = () => {
@@ -1505,9 +1518,9 @@
         if (vid) { vid.pause(); vid.removeAttribute("src"); vid.load(); }
         if (art) { live.delete(art); art.width = art.height = 0; art.st.stop?.(); }
       };
-      const post = { el, cut, still, wake, sleep, draw, open: () => { open = true; clip(); } };
+      const post = { el, cut, still, wake, sleep, draw, see, open: () => { open = true; clip(); } };
       posts.push(post);
-      near.observe(el); opener.observe(box); box.post = post; el.post = post;
+      near.observe(el); onscreen.observe(el); opener.observe(box); box.post = post; el.post = post;
       for (const d of el.querySelectorAll(".btn, .f-rip")) {
         d.addEventListener("pointerenter", () => el.classList.add("hot"));
         d.addEventListener("pointerleave", () => el.classList.remove("hot"));
@@ -1526,6 +1539,8 @@
     { let t = 0; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => feed.querySelectorAll(".post h2").forEach(fit), 150); }); }
     // a post wakes as it comes within two screens, and lets go beyond that
     const near = new IntersectionObserver((list) => list.forEach((e) => (e.isIntersecting ? e.target.post.wake() : e.target.post.sleep())), { rootMargin: "200% 0px" });
+    // and a clip plays only while some of it is in view
+    const onscreen = new IntersectionObserver((list) => list.forEach((e) => e.target.post.see(e.isIntersecting)));
     // a rip opens from a slit the first time it is really on screen
     const opener = new IntersectionObserver((list) => list.forEach((e) => { if (e.isIntersecting) { opener.unobserve(e.target); e.target.post.open(); } }), { threshold: 0.2 });
 
