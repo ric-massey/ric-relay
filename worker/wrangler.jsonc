@@ -18,6 +18,10 @@
   //     STRAVA_REFRESH_TOKEN   a SEED only — Strava rotates it, and from the
   //                            first refresh the live one lives in storage
   //     STRAVA_VERIFY_TOKEN    echoed back during the webhook handshake
+  //     STRAVA_SUBSCRIPTION_ID the subscription's id (`node strava-setup.mjs
+  //                            status`); events carrying any other are dropped
+  //                            before they cost a lookup. Optional, but without
+  //                            it forged events can crowd out real new runs.
   //     STRAVA_ATHLETE_ID      Ric's athlete id, so other people's events stop
   //                            at the door before costing an API call
   // Leave them unset and the Worker runs exactly as it did before: the /strava

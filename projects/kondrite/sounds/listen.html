@@ -17,7 +17,7 @@
      there is no second copy to drift.
 
      That needs a fetch, so it only works served (the website, or
-     `python3 -m http.server`), not opened off disk. It says so if it is.
+     `python3 -m http.server --bind 127.0.0.1`), not opened off disk. It says so if it is.
 
      Answers are kept in this browser (kondrite.listen.v1) and leave it only
      when somebody presses COPY and pastes them somewhere. -->
@@ -224,7 +224,7 @@
   async function boot() {
     if (location.protocol === "file:") {
       say("This page has to be served to work — open it on the website, or run " +
-          "`python3 -m http.server` in the site folder.", true);
+          "`python3 -m http.server --bind 127.0.0.1` in the site folder.", true);
       return;
     }
     let html;

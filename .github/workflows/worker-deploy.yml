@@ -28,7 +28,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: worker
+          # assets/scrub-media.js is imported by worker.mjs — the photo
+          # scrub is one file shared with the page.
+          sparse-checkout: |
+            /worker/
+            /assets/scrub-media.js
+          sparse-checkout-cone-mode: false
 
       - uses: actions/setup-node@v4
         with:

@@ -828,18 +828,23 @@
     if (!String(id).startsWith('_')) {
       const cur = all().find(e => e.id === id);
       if (cur && cur.title) body.title = cur.title;
-      /* Status rides along for the same reason, one step worse: the service
-         cannot see the committed file, so a patch that only says `pick: true`
-         arrives with no idea which list the film is on. It used to answer that
-         itself, and the answer was "watchlist" — which took a film watched in
-         2009 and put it back on the queue. */
-      if (cur && cur.status) body.status = cur.status;
+      /* Status does NOT ride along. It used to, from this page's copy of the
+         row, and a page loaded before another device marked a film watched
+         sent the stale "watchlist" back with an unrelated pick. The Worker
+         leaves an absent status alone now, and so does the puller's merge. */
     }
+    /* Edits this page holds that never reached the Worker (refused, or
+       queued with no signal) go up with this one, so taking this patch can't
+       drop them. */
+    const pending = LOCAL[id] || {};
+    for (const k in pending) body[k] = pending[k];
     for (const k in patch) body[k] = patch[k];
     if (window.Owner && Owner.on()) {
       const out = await Owner.post('/movies/' + id, body, { queue: true });
       if (out && !out.queued) {                 // the Worker took it
-        REMOTE[id] = Object.assign({}, REMOTE[id] || {}, patch);
+        REMOTE[id] = Object.assign({}, REMOTE[id] || {}, pending, patch);
+        /* Not a removal → the Worker cleared its tombstone; so does this copy. */
+        if (patch.removed !== true) delete REMOTE[id].removed;
         delete LOCAL[id];
         writeLocal(LOCAL);
         onRender();
@@ -905,11 +910,13 @@
           if (chosen === null) { openSheet(id); return; }
           /* Re-identifying means the old answer was wrong, so the facts that
              came with it go too — otherwise 1969's runtime sits on 2003's film.
-             The poster file is left alone; --art overwrites it by id. */
+             That includes the cast, "More like this", the parts and whether
+             it was a series — all of them are only fetched when empty — and
+             poster: false, which tells the puller to fetch the face again. */
           await save(id, Object.assign(
             { wd: '', wdok: false, tmdb: '', imdb: '', year: '', runtime: '',
               genres: [], director: '', overview: '', rating: '',
-              poster: false, backdrop: false,
+              poster: false, backdrop: false, cast: [], like: [], parts: [], kind: '',
               streams: [], rents: [], checked: '' },
             chosen));
         }

@@ -79,8 +79,15 @@ console.log('\nRULE  the page sends enough for the service to be right about the
 {
   ok(/body\.title\s*=/.test(saveFn),
      'save() sends the title — without it the first edit to a committed film is a 400');
-  ok(/body\.status\s*=/.test(saveFn),
-     'and the status — without it a patch saying only `pick` moves a watched film back to the queue');
+  /* Not the status, any more: sent from this page's copy of the row, a page
+     loaded before another device marked a film watched put it back on the
+     queue with an unrelated pick (bug sweep B3-4, 2026-10-17). What keeps a
+     pick-only patch from re-defaulting the status is the Worker leaving an
+     absent one alone. */
+  ok(!/body\.status\s*=/.test(saveFn),
+     'but not the status from its own copy — a stale page would undo another device\'s "watched"');
+  ok(/if \(has\('status'\)\) entry\.status/.test(read('worker/worker.mjs')),
+     'and the Worker leaves an absent status alone rather than defaulting it');
   ok(/startsWith\('_'\)/.test(saveFn),
      'and leaves reserved records alone, which have neither');
 }

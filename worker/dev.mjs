@@ -136,7 +136,19 @@ const TYPES = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg'
 };
 
+/* Only this machine, and only by a local name. Pages serves committed files;
+   this serves the whole working tree, git-ignored files included (the
+   planning app, photo originals, account files), so it listens on loopback
+   and refuses any other Host — a page Ric visits cannot reach it through DNS
+   rebinding either. */
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
+
 createServer(async (req, res) => {
+  if (!LOCAL_HOST.test(req.headers.host || '')) {
+    res.writeHead(421, { 'content-type': 'text/plain' });
+    res.end('local only');
+    return;
+  }
   const u = new URL(req.url, `http://localhost:${PORT}`);
 
   /* DEV_OFFLINE=1 serves the site but kills the API, which is the only way to
@@ -171,19 +183,33 @@ createServer(async (req, res) => {
     if (u.searchParams.has('sport')) FAKE_SPORT = u.searchParams.get('sport') || 'Run';
     const chunks = [];
     for await (const c of req) chunks.push(c);
-    const r = await worker.fetch(new Request('https://local' + u.pathname + u.search, {
-      method: req.method,
-      headers: req.headers,
-      ...(chunks.length ? { body: Buffer.concat(chunks) } : {})
-    }), ENV, null);
-    res.writeHead(r.status, Object.fromEntries(r.headers));
-    res.end(Buffer.from(await r.arrayBuffer()));
+    /* A throw is a 500 here, as it is on Cloudflare — not the end of the
+       server. */
+    try {
+      const r = await worker.fetch(new Request('https://local' + u.pathname + u.search, {
+        method: req.method,
+        headers: req.headers,
+        ...(chunks.length ? { body: Buffer.concat(chunks) } : {})
+      }), ENV, null);
+      res.writeHead(r.status, Object.fromEntries(r.headers));
+      res.end(Buffer.from(await r.arrayBuffer()));
+    } catch (err) {
+      console.error(err);
+      res.writeHead(500, { 'content-type': 'text/plain' });
+      res.end('worker threw');
+    }
     return;
   }
 
   /* Folders serve their index.html, as Pages does — /visitors/ and
      /account/ are folders. */
   const p = u.pathname.endsWith('/') ? u.pathname + 'index.html' : u.pathname;
+  /* .git, .claude, .board-cache …: nothing the site serves starts with a dot. */
+  if (p.split('/').some((seg) => seg.startsWith('.'))) {
+    res.writeHead(404, { 'content-type': 'text/plain' });
+    res.end('not found');
+    return;
+  }
   try {
     const buf = await readFile(join(ROOT, p));
     res.writeHead(200, { 'content-type': TYPES[extname(p)] || 'application/octet-stream' });
@@ -192,7 +218,7 @@ createServer(async (req, res) => {
     res.writeHead(404, { 'content-type': 'text/plain' });
     res.end('not found');
   }
-}).listen(PORT, () => {
+}).listen(PORT, '127.0.0.1', () => {
   console.log(`site + log api  →  http://localhost:${PORT}/training.html`);
   console.log(`owner mode      →  http://localhost:${PORT}/training.html?key=${TOKEN}`);
 });

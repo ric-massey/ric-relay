@@ -43,7 +43,7 @@
   }
 
   function inFilter(p, f) {
-    if (f === 'waiting') return p.status === 'pending' && !p.is_admin;
+    if (f === 'waiting') return p.status === 'pending' && !p.is_admin && !banned(p);
     if (f === 'banned') return banned(p);
     if (f === 'active') return !banned(p) && (p.is_admin || p.status === 'approved' || p.status === undefined);
     return true;

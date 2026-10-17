@@ -546,8 +546,27 @@ test('wiring: bulk ban and delete skip admins before anything is sent', () => {
   const bulk = src.slice(src.indexOf('const BULK = {'), src.indexOf('function report('));
   for (const act of ['ban', 'delete']) {
     const body = bulk.slice(bulk.indexOf(`async ${act}(`));
-    assert.match(body, /^async \w+\(picked, b\) \{\s+const targets = picked\.filter\(\(p\) => !p\.is_admin\);/, act);
+    assert.match(body, /^async \w+\(picked, b\) \{\s+(\/\/[^\n]*\n\s+)*const targets = picked\.filter\(\(p\) => !p\.is_admin[\s\S]*?\);/, act);
   }
+});
+
+/* Bug sweep A1-12/13 (2026-10-17): a bulk ban must not shorten a ban already
+   in place, Waiting must leave the banned out, and a run reads its tab once. */
+test('wiring: bulk ban skips the already banned; Waiting and bulk Approve skip them too', () => {
+  const src = read('admin/admin.js');
+  const bulk = src.slice(src.indexOf('const BULK = {'), src.indexOf('function report('));
+  assert.match(bulk.slice(bulk.indexOf('async ban(')), /picked\.filter\(\(p\) => !p\.is_admin && !V\.banned\(p\)\)/);
+  assert.match(bulk.slice(bulk.indexOf('async approve(')), /!V\.banned\(p\)/);
+  for (const act of ['ban', 'delete']) {
+    const body = bulk.slice(bulk.indexOf(`async ${act}(`), bulk.indexOf(act === 'ban' ? 'async delete(' : 'clear()'));
+    assert.ok(!/each\([^)]*S\.tab/.test(body) && /const site = S\.tab === 'site'/.test(body), act + ' reads the tab once');
+  }
+  const V = read('admin/view.js');
+  assert.match(V, /f === 'waiting'\) return p\.status === 'pending' && !p\.is_admin && !banned\(p\)/);
+});
+
+test('wiring: Sign out ends the KONDRITE admin session too', () => {
+  assert.match(read('admin/admin.js'), /const signOut = async \(\) => \{ K\.signOut\(\);/);
 });
 
 test('wiring: account/ no longer carries the admin panels, and links admins to /admin/', () => {

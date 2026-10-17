@@ -279,7 +279,7 @@ everywhere — the navs must agree with each other *and* with the front door.
   — a multi-MB `returnByValue` comes back `undefined`). The `.jpg` poster for each is a
   frame *from* its clip so the two line up with no hover-jump: draw the `<video>` to a
   canvas and `toDataURL`, but a `file://` video **taints** the canvas — serve the folder
-  over HTTP (`python3 -m http.server`) and load video + wrapper from the same origin so the
+  over HTTP (`python3 -m http.server --bind 127.0.0.1`) and load video + wrapper from the same origin so the
   export is allowed. Keep clips a few seconds and reasonably compressed; webm needs a
   static-poster fallback for older Safari/iOS, which the `<video poster>` already gives.
 - **A simulation's numbers are one machine's.** kondrite's front page and
@@ -754,7 +754,7 @@ with every other suite green — none of them loads the front door.
 
 ```sh
 node .github/checks.mjs            # every quick suite; --slow adds the simulations
-python3 -m http.server 8912
+python3 -m http.server 8912 --bind 127.0.0.1
 ```
 
 Or one suite at a time:

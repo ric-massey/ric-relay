@@ -404,7 +404,7 @@ and open the pages you touched.
 
 ```bash
 node .github/checks.mjs
-python3 -m http.server 8912
+python3 -m http.server 8912 --bind 127.0.0.1
 ```
 
 Or one suite at a time:

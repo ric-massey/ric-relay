@@ -16,6 +16,43 @@
    where the password lives — and the Worker is what actually refuses one, so
    nothing here is a security boundary. */
 (function (global) {
+  /* The location scrub (assets/scrub-media.js), loaded from beside this
+     file's own src so every page that uploads gets it without listing it. */
+  const SCRUB_SRC = (() => {
+    const me = document.currentScript && document.currentScript.src;
+    return me ? new URL('../../assets/scrub-media.js', me).href : null;
+  })();
+  let scrubLoaded = null;
+  const loadScrub = () => global.ScrubMedia ? Promise.resolve() : (scrubLoaded = scrubLoaded || new Promise((ok, no) => {
+    if (!SCRUB_SRC) return no(new Error('no scrub'));
+    const s = document.createElement('script');
+    s.src = SCRUB_SRC; s.onload = ok; s.onerror = () => { scrubLoaded = null; no(new Error('no scrub')); };
+    document.head.appendChild(s);
+  }));
+
+  /* Where a photo was taken goes before it leaves the phone (hard rule 1):
+     the file is read and its camera notes dropped, losslessly. HEIC can't be
+     edited that way, so it is redrawn as a JPEG, which keeps none of them.
+     Resolves to a Blob, or to {error} when the file can't be cleaned — it is
+     never sent as it came. */
+  async function clean(file, type) {
+    try { await loadScrub(); } catch (e) { return { error: 'could not load the location scrub — try again' }; }
+    if (type === 'image/heic' || type === 'image/heif') {
+      try {
+        const bmp = await createImageBitmap(file);
+        const c = document.createElement('canvas');
+        c.width = bmp.width; c.height = bmp.height;
+        c.getContext('2d').drawImage(bmp, 0, 0);
+        const jpg = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.92));
+        if (jpg) return { blob: jpg, type: 'image/jpeg' };
+      } catch (e) {}
+      return { error: 'this browser cannot open HEIC — send it as a JPEG' };
+    }
+    const out = global.ScrubMedia.bytes(type, new Uint8Array(await file.arrayBuffer()));
+    if (!out) return { error: 'that file could not be cleaned of its location, so it was not sent' };
+    return { blob: new Blob([out], { type }), type };
+  }
+
   /* The Worker hands back a PATH, not a URL — it has no reliable idea of its own
      public name, and under the dev server its origin is one no browser can
      reach. The page knows the host; the page builds the URL. */
@@ -56,12 +93,17 @@
      up on a phone with two bars is a thirty-second silence otherwise, and a
      silent thirty seconds is indistinguishable from a hang — which is exactly
      when somebody taps the button again. */
-  function upload(date, file, opts = {}) {
-    return new Promise(resolve => {
-      const token = global.Owner && Owner.token();
-      if (!token) return resolve({ error: 'not signed in' });
+  async function upload(date, file, opts = {}) {
+    const token = global.Owner && Owner.token();
+    if (!token) return { error: 'not signed in' };
+    const cleaned = await clean(file, file.type || byExtension(file.name));
+    if (cleaned.error) return { error: cleaned.error };
+    return send(date, file.name, cleaned.blob, cleaned.type, token, opts);
+  }
 
-      const q = new URLSearchParams({ name: file.name || '' });
+  function send(date, name, body, type, token, opts) {
+    return new Promise(resolve => {
+      const q = new URLSearchParams({ name: name || '' });
       if (opts.route) q.set('route', opts.route);
       if (opts.caption) q.set('caption', opts.caption);
 
@@ -72,7 +114,7 @@
          it has to be the real one. Phones sometimes hand over a blank type for
          a file picked out of the camera roll; fall back to the extension rather
          than sending nothing and being refused. */
-      xhr.setRequestHeader('content-type', file.type || byExtension(file.name));
+      xhr.setRequestHeader('content-type', type);
       if (opts.onProgress) {
         xhr.upload.onprogress = e => e.lengthComputable && opts.onProgress(e.loaded / e.total);
       }
@@ -84,7 +126,7 @@
         resolve(body);
       };
       xhr.onerror = () => resolve({ error: 'no signal — the upload did not go' });
-      xhr.send(file);
+      xhr.send(body);
     });
   }
 

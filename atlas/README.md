@@ -93,7 +93,7 @@ Authentication → Sign In / Providers → Email:
 | Setting | Value | Why |
 |---|---|---|
 | Allow new users to sign up | **ON** | Accounts arrive as requests. The lock is below, not this switch. |
-| Confirm email | OFF | No SMTP yet (step 2). With it on, strangers' confirmation mail goes nowhere. |
+| Confirm email | **ON** | Since 2026-10-17. Off, a sign-up never proved its address (anyone could ask in someone else's name) and an unaccepted invite could be claimed by signing up with its address. SMTP is live, so the mail arrives. |
 
 Site URL and Redirect URLs must include both `https://ricmassey.com/atlas/` and
 `https://ricmassey.com/account/`.

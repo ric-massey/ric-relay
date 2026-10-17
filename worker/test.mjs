@@ -390,7 +390,9 @@ function stravaRig(opts = {}) {
       get: async k => mem.get(k),
       put: async (k, v) => { mem.set(k, v); },
       delete: async k => { mem.delete(k); },
-      list: async ({ prefix }) => new Map([...mem].filter(([k]) => k.startsWith(prefix)))
+      list: async ({ prefix }) => new Map([...mem].filter(([k]) => k.startsWith(prefix))),
+      getAlarm: async () => mem.get('__alarm') || null,
+      setAlarm: async t => { mem.set('__alarm', t); }
     }
   }, {
     LOG_TOKEN: TOKEN,
@@ -424,7 +426,53 @@ function stravaRig(opts = {}) {
   const event = (over = {}) => hit('POST', '/strava',
     { aspect_type: 'create', object_type: 'activity', object_id: 900001, owner_id: ATHLETE, ...over });
 
-  return { hit, event, mem, calls, activities, storage: () => mem, refreshNow: () => refresh };
+  return { hit, event, mem, calls, activities, log, storage: () => mem, refreshNow: () => refresh };
+}
+
+console.log('\nRULE  the re-check takes down a run hidden or deleted with no event (bug sweep A2b-2/3)');
+{
+  const today = new Date().toISOString().slice(0, 10);
+  const r = stravaRig({ activities: { 900001: activity({ name: 'RECHECK-CANARY', start_date_local: today + 'T06:12:00Z' }) } });
+  await r.event();
+  ok(r.mem.get('s:' + today)?.[0]?.name === 'RECHECK-CANARY', 'the run is published');
+  r.activities[900001] = activity({ name: 'RECHECK-CANARY', start_date_local: today + 'T06:12:00Z', visibility: 'followers_only' });
+  await r.log.alarm();
+  const after = r.mem.get('s:' + today) || [];
+  ok(after.length === 1 && after[0].hidden && !JSON.stringify(after).includes('RECHECK-CANARY'),
+     'Everyone → Followers sends no event, and the re-check still hides it');
+  delete r.activities[900001];
+  await r.log.alarm();
+  ok(!r.mem.get('s:' + today) && !r.mem.get('sa:900001'), 'and a run deleted on Strava goes');
+}
+
+console.log('\nRULE  a run whose date changes leaves its old day (bug sweep A2b-4)');
+{
+  const r = stravaRig();
+  await r.event();
+  r.activities[900001] = activity({ start_date_local: '2026-08-16T06:12:00Z' });
+  await r.event({ aspect_type: 'update' });
+  ok(!r.mem.get('s:2026-08-17'), 'the old day no longer holds it');
+  ok(r.mem.get('s:2026-08-16')?.length === 1 && r.mem.get('sa:900001') === '2026-08-16', 'the new day does, once');
+}
+
+console.log('\nRULE  forged events cannot crowd out real ones (bug sweep A2b-1)');
+{
+  const r = stravaRig();
+  await r.event();
+  for (let i = 0; i < 120; i++) await r.event({ object_id: 700000 + i });
+  r.activities[900001] = activity({ visibility: 'only_me' });
+  await r.event({ aspect_type: 'update', updates: { private: 'true' } });
+  ok(r.mem.get('s:2026-08-17')?.[0]?.hidden === true, 'an "Only You" on a stored run lands through a flood of made-up ids');
+  const before = r.calls.length;
+  for (let i = 0; i < 20; i++) await r.event({ aspect_type: 'delete', object_id: 600000 + i });
+  ok(r.calls.length === before, 'a delete for an id never stored costs nothing');
+
+  const s = stravaRig({ env: { STRAVA_SUBSCRIPTION_ID: '4242' } });
+  const n = s.calls.length;
+  for (let i = 0; i < 120; i++) await s.event({ object_id: 700000 + i, subscription_id: 1 });
+  ok(s.calls.length === n, 'with the subscription id set, forged events are dropped unread');
+  await s.event({ subscription_id: 4242 });
+  ok(s.mem.get('s:2026-08-17')?.length === 1, 'and the real one still lands');
 }
 
 console.log('\nRULE  a finished run ticks the session that was planned for that day');

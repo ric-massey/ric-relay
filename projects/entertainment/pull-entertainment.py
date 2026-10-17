@@ -201,9 +201,13 @@ def get_json(url: str, tries: int = 3, headers: dict | None = None) -> dict:
     return {}
 
 
-def download(url: str, dest: Path) -> bool:
-    """Fetch one image into the repo. False if it was already there."""
-    if dest.exists() and dest.stat().st_size > 0:
+def download(url: str, dest: Path, replace: bool = False) -> bool:
+    """Fetch one image into the repo. False if it was already there.
+
+    replace=True fetches it anyway: the row says it has no poster, and a file
+    under its id is then the face of the film it USED to be — "Not the right
+    film?" clears the flag so the right one comes down over it."""
+    if not replace and dest.exists() and dest.stat().st_size > 0:
         return False
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(dest.suffix + ".part")
@@ -859,7 +863,8 @@ def stage_art(rows: list[dict], head: str, args) -> int:
             got += 1
             continue
 
-        if download(f"{TMDB_IMG}/{POSTER_SIZE}{m['poster_path']}", POSTERS / f"{row['id']}.jpg"):
+        if download(f"{TMDB_IMG}/{POSTER_SIZE}{m['poster_path']}", POSTERS / f"{row['id']}.jpg",
+                    replace=not row.get("poster")):
             print(f"{line}\n      ✓ poster")
         row["poster"] = True
 
@@ -957,7 +962,8 @@ def stage_art(rows: list[dict], head: str, args) -> int:
         # The billboard only ever shows starred titles, so that is the only
         # place a 780px-wide image earns its bytes.
         if row.get("pick") and m.get("backdrop_path"):
-            if download(f"{TMDB_IMG}/{BACKDROP_SIZE}{m['backdrop_path']}", BACKDROPS / f"{row['id']}.jpg"):
+            if download(f"{TMDB_IMG}/{BACKDROP_SIZE}{m['backdrop_path']}", BACKDROPS / f"{row['id']}.jpg",
+                        replace=not row.get("backdrop")):
                 print("      ✓ backdrop")
             row["backdrop"] = True
         got += 1

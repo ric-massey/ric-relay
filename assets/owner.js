@@ -123,6 +123,19 @@ window.Owner = (function () {
        Signing in, by contrast, is pointless to queue. */
     async post(path, body, opts = {}) {
       if (!token) return null;
+      /* Order is kept: anything queued earlier goes first. Sending this write
+         and replaying the older ones after it used to let an edit made with
+         no signal land over the newer one Ric made since. If the queue cannot
+         be drained right now, this write waits behind it. */
+      if (opts.queue && readQ().length) {
+        await this.flush();
+        if (readQ().length) {
+          const q = readQ();
+          q.push({ path, body, at: Date.now() });
+          writeQ(q.slice(-200));
+          return { queued: true };
+        }
+      }
       try {
         const r = await fetch(HOST + path, {
           method: 'POST',

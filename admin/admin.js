@@ -434,28 +434,36 @@
   const BULK = {
     email(picked) { openMail(picked); },
     async approve(picked, b) {
-      const waiting = picked.filter((p) => p.status === 'pending' && !p.is_admin);
+      // A banned person's old request is not one more to clear.
+      const waiting = picked.filter((p) => p.status === 'pending' && !p.is_admin && !V.banned(p));
+      if (!waiting.length) return toast('Nobody picked is waiting.', true);
       if (!await ask({ title: `Approve ${waiting.length}?`, body: 'Each gets the pages they asked for, plus any they already have.', yes: 'Approve' })) return;
       const r = await each(b, waiting, (p) => rpc('admin_set_access', { target: p.id, new_status: 'approved', grant_pages: [...new Set([...p.pages, ...p.requested])] }));
       report('Approved', r, waiting.length);
       await loadSite();
     },
     async ban(picked, b) {
-      const targets = picked.filter((p) => !p.is_admin);
-      if (!targets.length) return toast('Admins cannot be banned here.', true);
+      // Someone already banned is left as they are: a bulk ban sets a new
+      // length, and a sweep against new spam must not shorten a Forever.
+      const targets = picked.filter((p) => !p.is_admin && !V.banned(p));
+      if (!targets.length) return toast('Nobody picked can be banned — admins and the already banned are skipped.', true);
       const hours = await askBan(`${targets.length} ${targets.length === 1 ? 'person' : 'people'}`);
       if (hours == null) return;
-      const r = await each(b, targets, (p) => (S.tab === 'site' ? fn('ban', { id: p.id, hours }) : K.ban(p.id, hours)));
+      // The tab is read once: switching tabs mid-run must not send the rest
+      // of the list to the other project.
+      const site = S.tab === 'site';
+      const r = await each(b, targets, (p) => (site ? fn('ban', { id: p.id, hours }) : K.ban(p.id, hours)));
       report('Banned', r, targets.length);
-      await (S.tab === 'site' ? loadSite() : loadPilots());
+      await (site ? loadSite() : loadPilots());
     },
     async delete(picked, b) {
       const targets = picked.filter((p) => !p.is_admin);
       if (!targets.length) return toast('Admins cannot be deleted here.', true);
       if (!await ask({ title: `Delete ${targets.length} ${targets.length === 1 ? 'account' : 'accounts'}?`, body: 'For good. Admins are skipped.', yes: 'Delete', danger: true })) return;
-      const r = await each(b, targets, (p) => (S.tab === 'site' ? fn('delete', { id: p.id }) : K.remove(p.id)));
+      const site = S.tab === 'site';
+      const r = await each(b, targets, (p) => (site ? fn('delete', { id: p.id }) : K.remove(p.id)));
       report('Deleted', r, targets.length);
-      await (S.tab === 'site' ? loadSite() : loadPilots());
+      await (site ? loadSite() : loadPilots());
     },
     clear() { S.picked[S.tab].clear(); draw(); },
   };
@@ -477,7 +485,9 @@
     });
   });
 
-  const signOut = async () => { await window.SiteGate.signOut(); location.reload(); };
+  // Ends the KONDRITE admin session this page signed in too, or it outlives
+  // the site one (refresh token and all) in this browser.
+  const signOut = async () => { K.signOut(); await window.SiteGate.signOut(); location.reload(); };
   $('signout').addEventListener('click', signOut);
   $('denied-out').addEventListener('click', signOut);
   $('find').addEventListener('input', draw);

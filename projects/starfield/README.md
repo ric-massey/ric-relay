@@ -46,7 +46,7 @@ light cones, time dilation and aberration; this one lets you fly them.
 Plain, dependency-free, deferred classic scripts — no build step, no bundler,
 nothing fetched at runtime. Two ways to open it:
 
-- **From a server** (recommended): from the repo root, `python3 -m http.server`
+- **From a server** (recommended): from the repo root, `python3 -m http.server --bind 127.0.0.1`
   and browse to `/projects/starfield/index.html`.
 - **From disk**: opening `index.html` directly over `file://` works too; the
   scripts are deliberately classic (not ES modules) so the browser does not

@@ -3109,7 +3109,7 @@ survey's 497 ft fragments, not a road. Measured both ways in §7b.
 - `.claude/launch.json` gained a `site-alt` entry (port 8913) so two
   sessions can serve the site at once.
 - **Bump `?v=` in `index.html` when you change anything under `src/`.**
-  `python -m http.server` sends no `Cache-Control`, so a browser
+  `python -m http.server --bind 127.0.0.1` sends no `Cache-Control`, so a browser
   heuristically caches both the scripts *and* `index.html` itself —
   which means a plain reload can serve the old HTML, which then asks for
   the old `?v=` scripts, and a change appears not to have worked. It

@@ -215,6 +215,7 @@ async function status() {
   if (!r.ok) die('Strava said ' + r.status + ': ' + JSON.stringify(j));
   if (!j.length) return console.log('\nNo subscription. Run `subscribe`.\n');
   for (const s of j) console.log(`\n  id ${s.id}\n  → ${s.callback_url}\n  since ${s.created_at}\n`);
+  console.log('Set it on the Worker so forged events are dropped unread:\n  npx wrangler@latest secret put STRAVA_SUBSCRIPTION_ID\n');
 }
 
 async function unsubscribe() {

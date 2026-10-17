@@ -25,6 +25,7 @@
    of writes a day from one person, which sits far inside the free plan. */
 
 import { handleHit, handleVisitors, isSiteAdmin } from './visitors.mjs';
+import '../assets/scrub-media.js';   // sets globalThis.ScrubMedia
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -208,6 +209,11 @@ export class TrainingLog {
        work a stranger POSTing rubbish at it can make the Worker do against
        Strava's rate limit. */
     this.hooks = [];
+    /* A second count for events about runs already stored, and when each was
+       last looked up. Forged events for made-up ids fill `hooks`; they must
+       not also stop a delete or an "Only You" on a real run from landing. */
+    this.knownHooks = [];
+    this.lookedAt = new Map();
     /* Timestamps of recent failed attempts. In memory rather than storage on
        purpose: there is exactly one instance of this object, so a plain array
        is a global counter, and losing it when the object is evicted is fine —
@@ -478,8 +484,16 @@ export class TrainingLog {
   async storeActivity(a) {
     const date = String(a.start_date_local || '').slice(0, 10);
     if (!DAY.test(date)) return null;
+    /* A run whose date was corrected on Strava leaves its old day, or the old
+       copy stays public on it through every later "Only You" or delete. */
+    const was = await this.state.storage.get('sa:' + a.id);
+    let moved = null;
+    if (was && was !== date) {
+      moved = ((await this.state.storage.get('s:' + was)) || []).find(x => String(x.id) === String(a.id));
+      await this.forget(a.id);
+    }
     const list = (await this.state.storage.get('s:' + date)) || [];
-    const prior = list.find(x => String(x.id) === String(a.id));
+    const prior = list.find(x => String(x.id) === String(a.id)) || moved;
     const next = list.filter(x => String(x.id) !== String(a.id));
     /* Keep the first arrival time across re-ingests. Renaming a month-old run
        fires a fresh webhook, and without this its route would go back behind
@@ -544,10 +558,23 @@ export class TrainingLog {
     await this.state.storage.put('d:' + date, { ...entry, done, auto, updated: new Date().toISOString() });
   }
 
-  hookFlood() {
-    const now = Date.now(), WINDOW = 15 * 60 * 1000, LIMIT = 100;
+  /* Two buckets. Events about a run this log already holds get their own,
+     and each such run is looked up at most once a minute — so the ids in the
+     public feed can't be replayed into a flood either. Everything else shares
+     the old 100 per 15 minutes. */
+  hookFlood(known, id) {
+    const now = Date.now(), WINDOW = 15 * 60 * 1000;
+    if (known) {
+      if (now - (this.lookedAt.get(id) || 0) < 60 * 1000) return true;
+      this.knownHooks = this.knownHooks.filter(t => now - t < WINDOW);
+      if (this.knownHooks.length >= 60) return true;
+      this.knownHooks.push(now);
+      this.lookedAt.set(id, now);
+      if (this.lookedAt.size > 500) this.lookedAt.delete(this.lookedAt.keys().next().value);
+      return false;
+    }
     this.hooks = this.hooks.filter(t => now - t < WINDOW);
-    if (this.hooks.length >= LIMIT) return true;
+    if (this.hooks.length >= 100) return true;
     this.hooks.push(now);
     return false;
   }
@@ -563,12 +590,20 @@ export class TrainingLog {
       /* Ric's own athlete id, when configured — the cheap check, before
          spending a Strava API call on somebody else's event. */
       if (this.strava.athlete && String(ev.owner_id) !== String(this.strava.athlete)) return;
-      if (this.hookFlood()) { console.error('strava: webhook flood, dropping'); return; }
+      /* The subscription's own id, when configured (STRAVA_SUBSCRIPTION_ID —
+         `node strava-setup.mjs status` prints it). It is in no public page,
+         so a forged event without it is dropped before it costs anything. */
+      const sub = this.env.STRAVA_SUBSCRIPTION_ID;
+      if (sub && String(ev.subscription_id) !== String(sub)) return;
+
+      const known = !!(await this.state.storage.get('sa:' + id));
+      /* Nothing stored under this id means nothing to forget, and no reason
+         to spend an API call finding out — nor to count it: the flood guard
+         counts only events that cost one. */
+      if (ev.aspect_type === 'delete' && !known) return;
+      if (this.hookFlood(known, id)) { console.error('strava: webhook flood, dropping'); return; }
 
       if (ev.aspect_type === 'delete') {
-        /* Nothing stored under this id means nothing to forget, and no reason
-           to spend an API call finding out. */
-        if (!(await this.state.storage.get('sa:' + id))) return;
         /* Believed only once the API says the activity is gone. "Still there"
            is a forged event; "could not ask" keeps the run, and Strava will
            retry a real delete three times before giving up on it. */
@@ -577,24 +612,63 @@ export class TrainingLog {
         return;
       }
 
-      const raw = await this.activity(id);
-      if (!raw) return;
-      /* The authoritative owner check. The event body is a stranger's claim;
-         this is the API's answer, made with Ric's token. */
-      if (this.strava.athlete && raw.athlete && String(raw.athlete.id) !== String(this.strava.athlete)) return;
-
-      /* Strava says this two ways depending on the age of the activity, so both
-         are read and either one is enough. */
-      const hidden = raw.private === true || (raw.visibility && raw.visibility !== 'everyone');
-      const a = this.trim(raw, hidden);
-      if (!a) return;
-      const date = await this.storeActivity(a);
-      if (!date) return;
-      const match = await this.sessionFor(a);
-      if (match) await this.tick(match.date, match.id);
+      await this.refresh(id, (await this.lookup(id)).raw);
+      await this.keepChecking();
     } catch (e) {
       console.error('strava: ingest failed', e && e.message);
     }
+  }
+
+  /* One activity, as the API answers it now, stored the way the rules say. */
+  async refresh(id, raw) {
+    if (!raw) return;
+    /* The authoritative owner check. The event body is a stranger's claim;
+       this is the API's answer, made with Ric's token. */
+    if (this.strava.athlete && raw.athlete && String(raw.athlete.id) !== String(this.strava.athlete)) return;
+
+    /* Strava says this two ways depending on the age of the activity, so both
+       are read and either one is enough. */
+    const hidden = raw.private === true || (raw.visibility && raw.visibility !== 'everyone');
+    const a = this.trim(raw, hidden);
+    if (!a) return;
+    const date = await this.storeActivity(a);
+    if (!date) return;
+    const match = await this.sessionFor(a);
+    if (match) await this.tick(match.date, match.id);
+  }
+
+  /* ── the re-check ──
+     A webhook is the only thing that ever re-read a run, and some changes
+     send none: Everyone → Followers flips nothing an update event reports,
+     and an event whose lookup failed once was gone for good. So every six
+     hours the runs of the last three weeks are asked about again — a
+     run Ric has since hidden loses its name and route, and one he deleted
+     goes. A few dozen API calls a day at most. */
+  async keepChecking() {
+    const st = this.state.storage;
+    if (typeof st.getAlarm !== 'function') return;
+    if (!(await st.getAlarm())) await st.setAlarm(Date.now() + RECHECK_MS);
+  }
+
+  async alarm() {
+    try {
+      const ids = [];
+      for (let d = 0; d < RECHECK_DAYS && ids.length < RECHECK_MAX; d++) {
+        const date = new Date(Date.now() - d * 86400000).toISOString().slice(0, 10);
+        for (const a of (await this.state.storage.get('s:' + date)) || []) {
+          if (ids.length < RECHECK_MAX) ids.push(String(a.id));
+        }
+      }
+      for (const id of ids) {
+        const { status, raw } = await this.lookup(id);
+        if (status === 404) await this.forget(id);
+        else if (raw) await this.refresh(id, raw);
+        else if (status === 429) break;          // Strava's limit — next time
+      }
+    } catch (e) {
+      console.error('strava: re-check failed', e && e.message);
+    }
+    await this.state.storage.setAlarm(Date.now() + RECHECK_MS);
   }
 
   async fetch(request) {
@@ -945,6 +1019,10 @@ export class TrainingLog {
 
         entry.id = slug;
         entry.title = title;
+        /* A save that is not a removal brings the film back. The tombstone
+           used to survive every later write, so a film removed by mistake
+           could never be added again — "Added" on screen, and gone. */
+        delete entry.removed;
         /* Only if it was actually sent. A default here is not a tidy fallback,
            it is an answer this end does not have: the film may well be one of
            the 363 in the committed file that this service has never seen, and
@@ -1253,6 +1331,10 @@ const MEDIA_PREFIX = 'climb/';
    would only ever fail later and less clearly. A phone clip of a boulder sits
    far inside it; a ten-minute 4K multipitch does not, and is told so up front. */
 const MAX_MEDIA_BYTES = 100 * 1024 * 1024;
+/* The Strava re-check: how often, how far back, how many lookups at most. */
+const RECHECK_MS = 6 * 60 * 60 * 1000;
+const RECHECK_DAYS = 21;
+const RECHECK_MAX = 30;
 /* The Garmin export. Years of days and activities come to a few megabytes; the
    cap is only there so a runaway script cannot fill the bucket. */
 const GARMIN_KEY = 'garmin/export.json';
@@ -1818,7 +1900,18 @@ export default {
           at: new Date().toISOString()
         };
         const key = `${MEDIA_PREFIX}${date}/${id}.${ext}`;
-        const put = await env.MEDIA.put(key, request.body, {
+        /* Photos are read whole and scrubbed of their camera notes — GPS lives
+           there, and /media/file is public for a year (hard rule 1). The page
+           scrubs first; this is the second lock, for anything that did not
+           come through it. Videos stay a stream: a 100MB clip does not fit in
+           the isolate, so the page's scrub is the one that counts for them. */
+        let body = request.body;
+        if (kind === 'photo') {
+          const clean = globalThis.ScrubMedia.bytes(type, new Uint8Array(await request.arrayBuffer()));
+          if (!clean) return json({ error: 'that photo could not be cleaned of its location — send it as a JPEG' }, 415, origin);
+          body = clean;
+        }
+        const put = await env.MEDIA.put(key, body, {
           httpMetadata: { contentType: type },
           customMetadata: { meta: encodeURIComponent(JSON.stringify(meta)) }
         });
