@@ -614,9 +614,12 @@ ink, accent and heading face — CS steel, the cinema's black and gold, the clim
 cream, the darkroom's red, Strava white, the terminal's amber, and so on — every one
 checked for 4.5:1. Posts do **not** tear into each other (Ric, 2026-10-17: "smooth
 transitions, not another rip"): each post's `.blend` melts its paper into the next
-one's (`--next`, set by the script) across the padding between them. The rip in it is a
-gentle wedge (kept wide — narrow ones hid the drawings) — full height where it meets the screen's edge,
-closing in toward the words — torn through a stack of that same paper (`paperOf()`
+one's (`--next`, set by the script) across the padding between them. The rip in it is
+**its own shape every time** (Ric, 2026-10-17: "make the shape and angles of the
+cutouts change"): from the post's seed, `geometry()` picks how hard the top and bottom
+each close in or open out, a slant and a sag or swell along each edge — a wedge, a blade,
+a parallelogram, a lens — on phones and desktops alike, never closing below 56% of the
+box. The hole is see-through: nothing behind it is painted black. It is torn through a stack of that same paper (`paperOf()`
 derives the stack from `--paper`), painted on a canvas (`.rim`) inside the clipped `.cut`.
 On a phone the words come first, then a 210px strip. The picture (`.still`) slides with
 the screen ("depth"). **A post far off screen lets go of everything heavy** — its torn
