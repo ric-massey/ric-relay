@@ -395,3 +395,125 @@ class Heap {
     return top;
   }
 }
+
+/* ── contour lines ───────────────────────────────────────────────────────
+ * Drawn here from the elevation tiles rather than fetched, because no free
+ * contour service goes past zoom 16 and the satellite under them goes to 19.
+ * Intervals in FEET, the USGS quad convention the crew already reads: a
+ * thicker, labelled index line every fifth. Closer in, a tighter interval,
+ * because a 40 ft step is the difference between a ledge and a wall.
+ */
+export function contourStep(z) {
+  if (z <= 12) return { minor: 200, index: 1000 };
+  if (z <= 13) return { minor: 100, index: 500 };
+  if (z <= 14) return { minor: 40, index: 200 };
+  if (z <= 16) return { minor: 20, index: 100 };
+  return { minor: 10, index: 50 };
+}
+
+/* Marching squares over a (side × side) grid of heights in feet, for one
+ * level. Segments come back as flat [x1, y1, x2, y2, …] in grid units. The
+ * saddle case is split by the cell's mean, which keeps two lines from
+ * crossing. Shared edges are interpolated identically from both sides, so
+ * neighbouring tiles that share their edge samples meet exactly. */
+export function isoSegments(g, side, level) {
+  const out = [];
+  const lerp = (a, b) => (level - a) / (b - a);
+  for (let y = 0; y < side - 1; y++) {
+    for (let x = 0; x < side - 1; x++) {
+      const tl = g[y * side + x], tr = g[y * side + x + 1];
+      const bl = g[(y + 1) * side + x], br = g[(y + 1) * side + x + 1];
+      const c = (tl >= level ? 8 : 0) | (tr >= level ? 4 : 0) | (br >= level ? 2 : 0) | (bl >= level ? 1 : 0);
+      if (c === 0 || c === 15) continue;
+      const T = [x + lerp(tl, tr), y], R = [x + 1, y + lerp(tr, br)];
+      const B = [x + lerp(bl, br), y + 1], L = [x, y + lerp(tl, bl)];
+      const seg = (p, q) => out.push(p[0], p[1], q[0], q[1]);
+      switch (c) {
+        case 1: case 14: seg(L, B); break;
+        case 2: case 13: seg(B, R); break;
+        case 3: case 12: seg(L, R); break;
+        case 4: case 11: seg(T, R); break;
+        case 6: case 9:  seg(T, B); break;
+        case 7: case 8:  seg(L, T); break;
+        case 5: case 10: {
+          const high = (tl + tr + bl + br) / 4 >= level;
+          if ((c === 5) === high) { seg(L, T); seg(B, R); } else { seg(L, B); seg(T, R); }
+          break;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/* ── which way a face faces ──────────────────────────────────────────────
+ * For climbers the second question after "is there a wall" is "is it in the
+ * sun". Only ground steep enough to climb (35° and up) is coloured, in four
+ * quarters, named for when the sun is on them in the northern hemisphere.
+ */
+export const ASPECTS = [
+  { key: 'n', label: 'north', when: 'shade',            rgb: [40, 110, 230] },
+  { key: 'e', label: 'east',  when: 'morning sun',      rgb: [245, 196, 30] },
+  { key: 's', label: 'south', when: 'sun all day',      rgb: [235, 70, 25] },
+  { key: 'w', label: 'west',  when: 'afternoon sun',    rgb: [150, 60, 200] },
+];
+export const ASPECT_MIN = 35;
+
+/* Degrees clockwise from north that the slope at (x, y) faces — downhill. */
+export function aspectAt(h, w, ht, x, y) {
+  const at = (i, j) => h[(j < 0 ? 0 : j >= ht ? ht - 1 : j) * w + (i < 0 ? 0 : i >= w ? w - 1 : i)];
+  const dx = (at(x + 1, y - 1) + 2 * at(x + 1, y) + at(x + 1, y + 1))
+           - (at(x - 1, y - 1) + 2 * at(x - 1, y) + at(x - 1, y + 1));
+  const dy = (at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1))
+           - (at(x - 1, y - 1) + 2 * at(x, y - 1) + at(x + 1, y - 1));
+  // Grid y runs south. Downhill east is -dx, downhill north is +dy.
+  return (Math.atan2(-dx, dy) * 180 / Math.PI + 360) % 360;
+}
+
+export const aspectClass = (deg) => ASPECTS[Math.round(deg / 90) % 4];
+
+export function paintAspect(h, s, w, ht, out = new Uint8ClampedArray(w * ht * 4)) {
+  for (let y = 0; y < ht; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x, j = i * 4;
+      if (s[i] < ASPECT_MIN) { out[j + 3] = 0; continue; }
+      const c = aspectClass(aspectAt(h, w, ht, x, y)).rgb;
+      out[j] = c[0]; out[j + 1] = c[1]; out[j + 2] = c[2];
+      out[j + 3] = s[i] >= 50 ? 215 : 165;
+    }
+  }
+  return out;
+}
+
+/* ── a profile's totals ──────────────────────────────────────────────────
+ * Climb and descent along sampled heights. Summing every wiggle counts the
+ * survey's noise as climbing — a flat field "gains" 200 ft over a mile — so a
+ * change only counts once it has held past a few metres (hysteresis, the way
+ * GPS units do it).
+ */
+export function profileStats(samples, threshold = 3) {
+  const hs = samples.map((s) => s.h);
+  let gain = 0, loss = 0, ref = hs[0];
+  for (const h of hs) {
+    if (h - ref >= threshold) { gain += h - ref; ref = h; }
+    else if (ref - h >= threshold) { loss += ref - h; ref = h; }
+  }
+  return { gain, loss, min: Math.min(...hs), max: Math.max(...hs), start: hs[0], end: hs[hs.length - 1] };
+}
+
+/* Great-circle metres between two [lng, lat] points. */
+export function metres([lng1, lat1], [lng2, lat2]) {
+  const R = 6371008.8, r = Math.PI / 180;
+  const a = Math.sin((lat2 - lat1) * r / 2) ** 2
+    + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin((lng2 - lng1) * r / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+export const FT = 3.28084;
+export const fmtFt = (m) => `${Math.round(m * FT).toLocaleString('en-US')} ft`;
+export function fmtLength(m) {
+  const mi = m / 1609.344;
+  if (mi >= 10) return `${mi.toFixed(1)} mi`;
+  if (mi >= 0.19) return `${mi.toFixed(2)} mi`;
+  return `${Math.round(m * FT).toLocaleString('en-US')} ft`;
+}

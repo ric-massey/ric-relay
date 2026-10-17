@@ -47,6 +47,12 @@
   <symbol id="i-rock" viewBox="0 0 24 24">
     <path d="M3 7.5 8 5l5 2 8-2.5M3 12.5l6-2 5 1.5 7-2.5M3 17.5l5-1.5 6 2 7-2"/>
   </symbol>
+  <symbol id="i-ruler" viewBox="0 0 24 24">
+    <path d="m3.5 15.5 12-12 5 5-12 12Z"/><path d="m7.5 11.5 2 2M10.5 8.5l2 2M13.5 5.5l2 2"/>
+  </symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M4 18 10 10l4 4 6-8"/><path d="M15 6h5v5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M4 6l6 8 4-4 6 8"/><path d="M15 18h5v-5"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   <symbol id="i-locate" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
@@ -204,6 +210,8 @@
 <!-- ── the map ───────────────────────────────────────────────────────────── -->
 <div id="app" hidden>
   <div id="map"></div>
+  <!-- A thin bar along the top while map tiles are on their way. -->
+  <div id="map-loading" class="map-loading" role="progressbar" aria-label="loading the map"></div>
 
   <!-- The list button is gone from up here: the list of places and the results
        of an empty search are the same list, so the search bar is the way into
@@ -214,6 +222,9 @@
       <span id="layers-count" class="chip-count" hidden></span>
     </button>
     <div class="topbar-right">
+      <button id="measure-btn" class="chip solo" title="Measure distance and climb" aria-label="Measure">
+        <svg class="icon"><use href="#i-ruler"/></svg>
+      </button>
       <button id="settings-btn" class="chip solo" title="Settings" aria-label="Settings">
         <svg class="icon"><use href="#i-settings"/></svg>
       </button>
@@ -253,6 +264,34 @@
       <span id="search-open-label">search places, roads and pins</span>
     </button>
   </div>
+
+  <!-- The measure tool. A card rather than a sheet: the map is the thing you
+       are using, and this only reports on it. -->
+  <section id="measure" class="measure" aria-label="Measure" hidden>
+    <header class="measure-head">
+      <svg class="icon icon-sm"><use href="#i-ruler"/></svg>
+      <strong>measure</strong>
+      <span id="measure-hint" class="measure-hint"></span>
+      <button id="measure-close" class="icon-btn" aria-label="Stop measuring">
+        <svg class="icon"><use href="#i-close"/></svg>
+      </button>
+    </header>
+    <dl class="measure-stats">
+      <div><dt>distance</dt><dd id="measure-dist">—</dd></div>
+      <div><dt><svg class="icon icon-xs"><use href="#i-up"/></svg>climb</dt><dd id="measure-up">—</dd></div>
+      <div><dt><svg class="icon icon-xs"><use href="#i-down"/></svg>descent</dt><dd id="measure-down">—</dd></div>
+    </dl>
+    <div id="measure-profile" class="measure-profile is-empty">
+      <svg id="measure-svg" class="measure-svg" preserveAspectRatio="none" aria-label="elevation profile"></svg>
+      <span id="measure-at" class="measure-at" hidden></span>
+      <span id="measure-range" class="measure-range"></span>
+    </div>
+    <div class="measure-actions">
+      <button id="measure-undo" class="btn-ghost" type="button">
+        <svg class="icon icon-sm"><use href="#i-undo"/></svg>undo</button>
+      <button id="measure-clear" class="btn-ghost" type="button">clear</button>
+    </div>
+  </section>
 
   <!-- pin detail / edit -->
   <div id="sheet" class="sheet" hidden>
@@ -489,6 +528,11 @@
       </button>
     </div>
     <div class="panel-body pad">
+      <!-- What is on, at a glance, each one a tap from off. -->
+      <section id="layers-on" class="layers-on" hidden>
+        <h3 class="detail-head">on now</h3>
+        <div id="layers-on-list" class="on-list"></div>
+      </section>
       <section class="detail" role="radiogroup" aria-label="base map">
         <h3 class="detail-head">base map</h3>
         <div class="map-grid">
@@ -528,8 +572,85 @@
         </div>
       </section>
 
-      <section class="detail">
-        <h3 class="detail-head">names, roads &amp; trails</h3>
+      <details class="detail fold">
+        <summary class="detail-head"><span>terrain</span><span class="fold-count"></span>
+          <svg class="icon icon-sm fold-chev"><use href="#i-chevron"/></svg></summary>
+        <label class="switch">
+          <span>3D terrain</span>
+          <input type="checkbox" data-overlay="terrain3d">
+          <span class="switch-track"></span>
+          <small>tilt the map and the ground stands up — also the 3D button on the map</small>
+        </label>
+        <label class="switch">
+          <span>contour lines</span>
+          <input type="checkbox" data-overlay="contours">
+          <span class="switch-track"></span>
+          <small>labelled in feet, and sharp right in — best over satellite</small>
+        </label>
+        <label class="switch">
+          <span>terrain shading</span>
+          <input type="checkbox" data-overlay="terrain">
+          <span class="switch-track"></span>
+          <small>light from the northwest, so every ridge and hollow stands up</small>
+        </label>
+        <label class="switch">
+          <span>creeks &amp; water</span>
+          <input type="checkbox" data-overlay="water">
+          <span class="switch-track"></span>
+          <small>streams, springs and everything that carved the place</small>
+        </label>
+      </details>
+
+      <details class="detail fold">
+        <summary class="detail-head"><span>reading the ground</span><span class="fold-count"></span>
+          <svg class="icon icon-sm fold-chev"><use href="#i-chevron"/></svg></summary>
+        <label class="switch">
+          <span>steep ground</span>
+          <input type="checkbox" data-overlay="slope">
+          <span class="switch-track"></span>
+          <small>every slope over 27°, coloured by how steep</small>
+        </label>
+        <div class="slope-key" aria-label="slope colours">
+          <span style="--c: rgb(250 215 60)">27°<em>steep</em></span>
+          <span style="--c: rgb(250 145 30)">35°<em>scramble</em></span>
+          <span style="--c: rgb(235 60 40)">45°<em>climb</em></span>
+          <span style="--c: rgb(150 20 120)">60°<em>wall</em></span>
+        </div>
+        <label class="switch">
+          <span>which way it faces</span>
+          <input type="checkbox" data-overlay="aspect">
+          <span class="switch-track"></span>
+          <small>steep faces coloured by direction — is the wall in the sun?</small>
+        </label>
+        <div class="aspect-key" aria-label="which way it faces">
+          <span style="--c: rgb(40 110 230)"><b>N</b>shade</span>
+          <span style="--c: rgb(245 196 30)"><b>E</b>morning sun</span>
+          <span style="--c: rgb(235 70 25)"><b>S</b>sun all day</span>
+          <span style="--c: rgb(150 60 200)"><b>W</b>afternoon sun</span>
+        </div>
+        <label class="switch">
+          <span>likely spots</span>
+          <input type="checkbox" data-overlay="spots">
+          <span class="switch-track"></span>
+          <small>marks the biggest drops and the hollows that could be
+            sinkholes, and checks the rock under each</small>
+        </label>
+        <div class="spot-key">
+          <span><i class="spot spot-cliff is-strong"><svg class="icon"><use href="#i-drop"/></svg></i>cliff edge</span>
+          <span><i class="spot spot-sink is-strong"><svg class="icon"><use href="#i-hollow"/></svg></i>sinkhole</span>
+          <span><i class="spot spot-sink is-weak"><svg class="icon"><use href="#i-hollow"/></svg></i>less likely</span>
+        </div>
+        <label class="switch">
+          <span>rock types</span>
+          <input type="checkbox" data-overlay="rock">
+          <span class="switch-track"></span>
+          <small>the geologic map — tap anywhere to be told the rock</small>
+        </label>
+      </details>
+
+      <details class="detail fold">
+        <summary class="detail-head"><span>names, roads &amp; trails</span><span class="fold-count"></span>
+          <svg class="icon icon-sm fold-chev"><use href="#i-chevron"/></svg></summary>
         <label class="switch">
           <span>place names</span>
           <input type="checkbox" data-overlay="labels">
@@ -554,60 +675,11 @@
           <span class="switch-track"></span>
           <small>lines, sidings and abandoned track</small>
         </label>
-      </section>
+      </details>
 
-      <section class="detail">
-        <h3 class="detail-head">reading the ground</h3>
-        <label class="switch">
-          <span>steep ground</span>
-          <input type="checkbox" data-overlay="slope">
-          <span class="switch-track"></span>
-          <small>every slope over 27°, coloured by how steep</small>
-        </label>
-        <div class="slope-key" aria-label="slope colours">
-          <span style="--c: rgb(250 215 60)">27°<em>steep</em></span>
-          <span style="--c: rgb(250 145 30)">35°<em>scramble</em></span>
-          <span style="--c: rgb(235 60 40)">45°<em>climb</em></span>
-          <span style="--c: rgb(150 20 120)">60°<em>wall</em></span>
-        </div>
-        <label class="switch">
-          <span>likely spots</span>
-          <input type="checkbox" data-overlay="spots">
-          <span class="switch-track"></span>
-          <small>marks the biggest drops and the hollows that could be
-            sinkholes, and checks the rock under each</small>
-        </label>
-        <div class="spot-key">
-          <span><i class="spot spot-cliff is-strong"><svg class="icon"><use href="#i-drop"/></svg></i>cliff edge</span>
-          <span><i class="spot spot-sink is-strong"><svg class="icon"><use href="#i-hollow"/></svg></i>sinkhole</span>
-          <span><i class="spot spot-sink is-weak"><svg class="icon"><use href="#i-hollow"/></svg></i>less likely</span>
-        </div>
-        <label class="switch">
-          <span>rock types</span>
-          <input type="checkbox" data-overlay="rock">
-          <span class="switch-track"></span>
-          <small>the geologic map — tap anywhere to be told the rock</small>
-        </label>
-      </section>
-
-      <section class="detail">
-        <h3 class="detail-head">terrain &amp; water</h3>
-        <label class="switch">
-          <span>terrain shading</span>
-          <input type="checkbox" data-overlay="terrain">
-          <span class="switch-track"></span>
-          <small>light from the northwest, so every ridge and hollow stands up</small>
-        </label>
-        <label class="switch">
-          <span>creeks &amp; water</span>
-          <input type="checkbox" data-overlay="water">
-          <span class="switch-track"></span>
-          <small>streams, springs and everything that carved the place</small>
-        </label>
-      </section>
-
-      <section class="detail">
-        <h3 class="detail-head">boundaries</h3>
+      <details class="detail fold">
+        <summary class="detail-head"><span>boundaries</span><span class="fold-count"></span>
+          <svg class="icon icon-sm fold-chev"><use href="#i-chevron"/></svg></summary>
         <label class="switch">
           <span>state lines</span>
           <input type="checkbox" data-overlay="states">
@@ -620,10 +692,11 @@
           <span class="switch-track"></span>
           <small>who to ask about a road or a deed. Not saved for offline</small>
         </label>
-      </section>
+      </details>
 
-      <section class="detail">
-        <h3 class="detail-head">land ownership</h3>
+      <details class="detail fold">
+        <summary class="detail-head"><span>land ownership</span><span class="fold-count"></span>
+          <svg class="icon icon-sm fold-chev"><use href="#i-chevron"/></svg></summary>
         <label class="switch">
           <span>public land</span>
           <input type="checkbox" data-overlay="publicland">
@@ -637,7 +710,7 @@
           <small>parcel boundaries. zoom right in — they only exist up close</small>
         </label>
         <button id="sources-open" class="btn-ghost wide">counties with owner names…</button>
-      </section>
+      </details>
 
       <p class="estimate">Overlays download with the map when you save an area
         offline, so turn on what you want before you download. State and county

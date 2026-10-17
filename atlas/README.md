@@ -641,10 +641,11 @@ than a sharper tile — and USGS topo stops at 16, which is a fact about their
 cache and not a setting here.
 
 Base maps under **layers**: satellite (Esri), satellite + topo, USGS topo,
-contour topo (OpenTopoMap), and street. Over the top of those, eleven overlays
+contour topo (OpenTopoMap), and street. Over the top of those, fourteen overlays
 in five groups — place names, roads, trails, railways; steep ground, likely
 spots and rock types; terrain shading and water; state and county lines;
-public land and property lines. All free, no keys, nationwide.
+public land and property lines — plus 3D terrain, contour lines and which way
+it faces. All free, no keys, nationwide.
 
 ### Reading the ground
 
@@ -679,6 +680,40 @@ Kansas farmland as the control (no drops, a handful of shallow playas). At 45°
 it lit every steep hollow in the Appalachians; at 50 with 15 m of relief it
 keeps the walls. None of those places is written into this repo — the tests use
 synthetic grids and the calibration was run from a scratch script.
+
+### Terrain: 3D, contours, heights and measuring
+
+All four read the same elevation tiles, through `dem.js` — one fetch-and-decode
+with a cache of the last 48 tiles, so the contour tiles, the height on a pin and
+the measure tool's profile share one copy. Offline, each works wherever the
+elevation was saved.
+
+- **3D terrain** (layers → terrain, or the **3D** button above the zoom
+  buttons) is MapLibre's own terrain on a `raster-dem` source, exaggerated 1.4×
+  because true-scale relief reads flatter than it is, with a sky at the horizon.
+  Turning it on tilts the map; turning it off lays it flat. Restoring it from a
+  saved setting on boot puts the ground up without swinging the camera.
+- **contour lines** are drawn on the phone (`contour://`, marching squares in
+  `terrain.js`) and labelled in feet: 200 ft with a 1,000 ft index at z12, 100
+  at z13, 40 at z14, 20 at z15–16 and 10 past that, index every fifth. Past
+  z15 — where the elevation stops — they are interpolated from the z15 tile, so
+  satellite gets contours at z19, which no free service offered (see "How far
+  in it is worth zooming" below). Tiles sample their exact edges, so a line
+  meets itself across the seam; labels cut a gap in their own line.
+- **which way it faces** (reading the ground) colours ground over 35° by the
+  quarter it faces: north shade, east morning sun, south sun all day, west
+  afternoon sun.
+- **heights**: a pin's sheet shows its height beside its coordinates, and a tap
+  on empty map opens a card with the spot's height, its coordinates, the rock
+  (with rock types on), **pin here** and **measure**. A second tap anywhere puts
+  the card away rather than opening another. Searching a coordinate now lands
+  there with that card instead of opening a new pin.
+- **measure** (the ruler, top right) — tap points for distance, climb, descent
+  and a profile; drag along the profile and a dot runs along the line on the
+  map. Climb counts a change only once it has held 3 m, or survey noise adds
+  hundreds of feet to a flat field (`profileStats`). Long lines are read at a
+  coarser zoom, and only the tiles under the line are fetched. A long-press
+  while measuring is a point, not a pin. Nothing is saved.
 
 **The spots are never stored.** They are recomputed every time the map stops
 and forgotten when it moves; they never reach the database or the repo. They
@@ -726,7 +761,10 @@ turns into the other one is worse than a soft map. It stays itself now and
 stops where its tiles stop; the card says so, and says what to do instead —
 satellite, with whichever overlays you actually wanted. Every free transparent
 contour service was checked for a deeper one and none of them goes past 16
-either, so there is no third option to find.
+either, so there is no third option to find — to fetch. There is one to
+make: **contour lines** (layers → terrain) are drawn on the phone from the
+elevation and carry on over plain satellite to z19. Satellite with contours on
+is what "satellite + topo" wanted to be up close.
 
 Everywhere else, Esri's imagery is the deepest free nationwide picture there is
 and it stops at z19 — past that the map is
@@ -869,6 +907,23 @@ The rest:
 - **A scale bar** sits bottom left, in feet and miles, and the layers button
   carries a count of the overlays that are on, so a map that looks odd says
   why from the corner.
+- **Pins carry a mark** for their kind inside the head — a drop, an arch, a
+  path, a portal, a bridge, a house, a peak, a mast — because the colours are
+  nearly spent and colour alone says nothing to anyone who does not see it. At
+  state zoom, where a pin is a tick, the mark gives way to the plain dot.
+- **Pins that would overlap become a count** below z15, in the colour most of
+  them are; tap it and the map opens onto them. Only pins that actually touch
+  are grouped, so the shape of where things are survives the shrinking that
+  "how big a pin is drawn" in `app.js` already does. The open pin is never in a
+  bubble.
+- **The layers panel folds.** Base maps stay open; the five groups under them
+  fold, each saying how many of its layers are on, and open by themselves when
+  something in them is on. **on now** at the top lists every layer that is on,
+  each a tap from off.
+- **The map's own buttons are ours** — MapLibre's zoom and compass in the app's
+  panel, edge and radius at 44px, with the 3D button above them — and a thin
+  bar runs along the top while tiles are loading, so a slow connection reads as
+  "coming" rather than a grey screen.
 - **A box means you can press it.** That one rule decides every container in the
   file. Information gets type and a hairline, never a box. Before it, the pin
   sheet had a grey well holding white buttons beside an outlined card beside

@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import {
   terrarium, decode, slope, paintSlope, metresPerPixel, findCliffs, findSinks,
   fillDepressions, pick, rockFamily, rockOf, verdict, SLOPE_BANDS,
+  contourStep, isoSegments, aspectAt, aspectClass, profileStats, metres, fmtLength, fmtFt,
 } from '../terrain.js';
 
 let passed = 0;
@@ -160,6 +161,83 @@ test('verdicts: only rock that backs it up is "likely"', () => {
   assert.equal(verdict(sink, null).strong, false);
   assert.equal(verdict(cliff, rockFamily('sandstone')).strong, true);
   assert.equal(verdict(cliff, rockFamily('alluvium')).strong, false);
+});
+
+console.log('contours, faces and profiles');
+
+test('contour intervals tighten as you zoom in, and every fifth is an index', () => {
+  let last = Infinity;
+  for (let z = 10; z <= 19; z++) {
+    const { minor, index } = contourStep(z);
+    assert.equal(index, minor * 5);
+    assert.ok(minor <= last); last = minor;
+  }
+});
+
+test('a cone gives one closed ring per level, at the right radius', () => {
+  const side = 41, g = new Float32Array(side * side);
+  for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) g[y * side + x] = 100 - Math.hypot(x - 20, y - 20) * 5;
+  // 52.5 rather than 50: a level landing exactly on a grid point is the one
+  // degenerate case (it draws a zero-length piece there, invisibly).
+  const seg = isoSegments(g, side, 52.5);            // radius 9.5
+  assert.ok(seg.length > 0);
+  for (let i = 0; i < seg.length; i += 2) {
+    const r = Math.hypot(seg[i] - 20, seg[i + 1] - 20);
+    assert.ok(Math.abs(r - 9.5) < 0.6, `point at radius ${r}`);
+  }
+  // Closed: every end is shared by exactly two segments.
+  const ends = new Map();
+  for (let i = 0; i < seg.length; i += 2) {
+    const k = `${seg[i].toFixed(4)},${seg[i + 1].toFixed(4)}`;
+    ends.set(k, (ends.get(k) || 0) + 1);
+  }
+  for (const n of ends.values()) assert.equal(n, 2);
+});
+
+test('two tiles that share an edge put the line in the same place on it', () => {
+  const f = (x, y) => x * 3 + y * 2;                  // a plane, level 50 crosses both
+  const side = 9;
+  const a = new Float32Array(side * side), b = new Float32Array(side * side);
+  for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) {
+    a[y * side + x] = f(x, y); b[y * side + x] = f(x + side - 1, y);
+  }
+  const onEdge = (seg, x) => {
+    const out = [];
+    for (let i = 0; i < seg.length; i += 2) if (Math.abs(seg[i] - x) < 1e-9) out.push(seg[i + 1]);
+    return out;
+  };
+  for (const lvl of [24.5, 27.3, 31.9]) {
+    const ea = onEdge(isoSegments(a, side, lvl), side - 1), eb = onEdge(isoSegments(b, side, lvl), 0);
+    assert.deepEqual(ea.map((v) => v.toFixed(6)), eb.map((v) => v.toFixed(6)));
+  }
+});
+
+test('a face is named for the way it falls', () => {
+  const W = 9;
+  const grid = (f) => { const h = new Float32Array(W * W); for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) h[y * W + x] = f(x, y); return h; };
+  // y runs south. High in the north, falling south: a south face.
+  assert.equal(aspectClass(aspectAt(grid((x, y) => -y * 10), W, W, 4, 4)).key, 's');
+  assert.equal(aspectClass(aspectAt(grid((x, y) => y * 10), W, W, 4, 4)).key, 'n');
+  assert.equal(aspectClass(aspectAt(grid((x) => -x * 10), W, W, 4, 4)).key, 'e');
+  assert.equal(aspectClass(aspectAt(grid((x) => x * 10), W, W, 4, 4)).key, 'w');
+});
+
+test('climb ignores noise smaller than the threshold and counts real climbs', () => {
+  const flatNoise = Array.from({ length: 200 }, (_, i) => ({ d: i, h: 100 + (i % 2 ? 1 : -1) }));
+  assert.equal(profileStats(flatNoise).gain, 0);
+  const hill = [0, 10, 20, 30, 20, 10, 0].map((h, i) => ({ d: i, h }));
+  const st = profileStats(hill);
+  assert.equal(st.gain, 30); assert.equal(st.loss, 30);
+  assert.equal(st.max, 30); assert.equal(st.min, 0);
+});
+
+test('distances and their wording', () => {
+  const d = metres([-84, 38], [-84, 39]);              // one degree of latitude
+  assert.ok(Math.abs(d - 111195) < 200);
+  assert.equal(fmtLength(100), '328 ft');
+  assert.equal(fmtLength(1609.344), '1.00 mi');
+  assert.equal(fmtLength(20 * 1609.344), '20.0 mi');
+  assert.equal(fmtFt(304.8), '1,000 ft');
 });
 
 console.log(`${passed} passed`);

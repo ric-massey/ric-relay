@@ -2405,3 +2405,221 @@ body.is-offline #app::after {
 }
 @keyframes dock-in  { from { opacity: 0; transform: translateX(-24px); } }
 @keyframes dock-out { to   { opacity: 0; transform: translateX(-16px); } }
+
+/* ── a smaller icon, for inside a line of text ── */
+.icon-xs { width: 14px; height: 14px; stroke-width: 2.4; display: inline-block; vertical-align: -2px; }
+
+/* ── loading ── a hairline of accent sliding along the top edge */
+.map-loading {
+  position: absolute; z-index: 11; top: 0; left: 0; right: 0; height: 3px;
+  overflow: hidden; pointer-events: none;
+}
+.map-loading::before {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 34%;
+  background: var(--accent); border-radius: 0 2px 2px 0;
+  animation: loading-slide 1.1s var(--ease) infinite;
+}
+@keyframes loading-slide { from { left: -34%; } to { left: 100%; } }
+
+/* ── pins: the mark inside the head ──
+   White on the kind's colour, on the icon grid's stroke. At state zoom the
+   mark gives way to the plain dot (app.js, scalePins). */
+.pin-glyph {
+  color: var(--halo); stroke: var(--halo); fill: none;
+  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+}
+.pin-marker:not(.is-pending) .pin-eye { display: none; }
+.pins-small .pin-marker .pin-glyph { display: none; }
+.pins-small .pin-marker .pin-eye { display: inline; }
+.pin-marker.is-pending .pin-glyph { display: none; }
+.pin-marker.is-private .pin-glyph { color: var(--pin); stroke: var(--pin); }
+
+/* ── pins grouped where they would overlap ──
+   A round count in the colour most of them are, with the halo every pin has,
+   sized a step up for ten or more. */
+.pin-cluster {
+  --pin: var(--accent);
+  min-width: 34px; height: 34px; padding: 0 8px;
+  display: grid; place-items: center;
+  border-radius: var(--r-pill);
+  background: var(--pin); color: #fff;
+  border: 2.5px solid var(--halo);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pin) 30%, transparent), 0 2px 6px rgba(0,0,0,0.4);
+  font: 800 0.875rem/1 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  animation: spot-in var(--t-mid) var(--spring) both;
+  transition: transform var(--t-fast) var(--spring);
+}
+.pin-cluster.is-big { min-width: 42px; height: 42px; font-size: 1rem; }
+.pin-cluster:active { transform: scale(0.92); }
+@media (hover: hover) { .pin-cluster:hover { transform: scale(1.08); } }
+.pin-cluster[data-kind="cliffs"]    { --pin: var(--kind-cliffs); }
+.pin-cluster[data-kind="caves"]     { --pin: var(--kind-caves); }
+.pin-cluster[data-kind="trails"]    { --pin: var(--kind-trails); }
+.pin-cluster[data-kind="tunnels"]   { --pin: var(--kind-tunnels); }
+.pin-cluster[data-kind="bridges"]   { --pin: var(--kind-bridges); }
+.pin-cluster[data-kind="buildings"] { --pin: var(--kind-buildings); }
+.pin-cluster[data-kind="mountains"] { --pin: var(--kind-mountains); }
+.pin-cluster[data-kind="towers"]    { --pin: var(--kind-towers); }
+.pin-cluster[data-kind="other"]     { --pin: var(--kind-other); }
+.pin-cluster[data-kind="parking"]   { --pin: var(--park); }
+
+/* ── the map's own buttons, dressed as ours ──
+   MapLibre's zoom/compass stack and the 3D button: the app's panel, edge,
+   radius and shadow instead of MapLibre's grey, and 44px targets. */
+.maplibregl-ctrl-group {
+  background: var(--panel) !important;
+  border: var(--b) solid var(--edge);
+  border-radius: var(--r-md) !important;
+  box-shadow: var(--e-2) !important;
+  overflow: hidden;
+}
+.maplibregl-ctrl-group button { width: var(--tap) !important; height: var(--tap) !important; }
+.maplibregl-ctrl-group button + button { border-top: var(--b) solid var(--hair) !important; }
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl { margin: 0 0 var(--s-2) 0 !important; }
+.ctrl-3d {
+  font: 800 0.8125rem/1 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.02em; color: var(--ink);
+}
+.ctrl-3d.is-on { background: var(--accent) !important; color: var(--on-accent); }
+
+/* ── layers panel: what's on, and the folding groups ── */
+.layers-on { display: flex; flex-direction: column; gap: var(--s-2); }
+.on-list { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.on-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 34px; padding: 0 var(--s-2) 0 var(--s-3);
+  border-radius: var(--r-pill);
+  background: var(--accent-wash); color: var(--ink);
+  border: var(--b) solid var(--accent);
+  font-size: var(--t-sm); font-weight: 700;
+  transition: transform var(--t-fast) var(--spring);
+}
+.on-chip .icon { color: var(--accent-dk); }
+.on-chip:active { transform: scale(0.95); }
+
+details.fold.detail::before { display: block; }
+details.fold > summary {
+  list-style: none; cursor: pointer;
+  display: flex; align-items: center; gap: var(--s-2);
+  min-height: var(--tap); margin: calc(var(--s-2) * -1) 0 0;
+  user-select: none;
+}
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary > span:first-child { flex: 1; }
+.fold-count {
+  font-size: 0.75rem; letter-spacing: 0.04em; color: var(--accent-dk);
+  text-transform: none;
+}
+.fold-chev { color: var(--ink-mute); transition: transform var(--t-mid) var(--ease); }
+details.fold[open] .fold-chev { transform: rotate(90deg); }
+details.fold[open] > summary { margin-bottom: var(--s-1); }
+@media (hover: hover) { details.fold > summary:hover { color: var(--ink); } }
+
+.aspect-key {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-2);
+  margin: calc(var(--s-1) * -1) 0 var(--s-3);
+  font-size: 0.75rem; font-weight: 600; color: var(--ink-dim); line-height: 1.25;
+}
+.aspect-key span { display: flex; flex-direction: column; gap: 3px; }
+.aspect-key b {
+  display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--c); color: #fff; font-size: 0.75rem; font-weight: 800;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2);
+}
+
+/* ── popups: two buttons side by side, and the height big ── */
+.pop-elev { font-size: var(--t-xl); font-variant-numeric: tabular-nums; }
+.pop-actions { display: flex; gap: var(--s-2); margin-top: var(--s-2); }
+.pop-actions > * { flex: 1; min-height: 40px; gap: 6px; padding: 0 var(--s-3); font-size: var(--t-sm); }
+
+/* ── measuring ── */
+.measure {
+  position: absolute; z-index: 15;
+  left: var(--s-3); right: var(--s-3);
+  bottom: calc(var(--safe-b) + var(--s-3));
+  background: var(--panel); color: var(--ink);
+  border: var(--b-strong) solid var(--edge); border-radius: var(--r-xl);
+  box-shadow: var(--e-3);
+  padding: var(--s-2) var(--s-4) var(--s-3);
+  display: flex; flex-direction: column; gap: var(--s-2);
+  animation: rise var(--t-mid) var(--ease);
+}
+.measure-head { display: flex; align-items: center; gap: var(--s-2); min-height: 40px; }
+.measure-head strong { font-size: var(--t-lg); font-weight: 800; }
+.measure-head .icon-btn { margin-left: auto; margin-right: calc(var(--s-2) * -1); }
+.measure-hint {
+  font-size: var(--t-sm); font-weight: 600; color: var(--ink-mute);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.measure-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); }
+.measure-stats > div { min-width: 0; }
+.measure-stats dt {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 0.75rem; font-weight: 700; color: var(--ink-mute);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.measure-stats dd {
+  font-size: var(--t-xl); font-weight: 800; letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.measure-profile {
+  position: relative; height: 112px;
+  border-radius: var(--r-md); background: var(--panel-2); overflow: hidden;
+  touch-action: none;
+}
+.measure-profile.is-empty { height: 40px; }
+.measure-profile.is-busy::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: loading-slide 1s var(--ease) infinite; width: 40%;
+}
+.measure-svg { display: block; width: 100%; height: 100%; cursor: crosshair; }
+.pf-area { fill: color-mix(in srgb, var(--accent) 18%, transparent); }
+.pf-line { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.pf-cursor { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.pf-dot { fill: var(--panel); stroke: var(--accent); stroke-width: 3; }
+.measure-range, .measure-at {
+  position: absolute; top: 6px; padding: 2px 8px; border-radius: var(--r-pill);
+  font: 700 0.75rem/1.4 ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  font-variant-numeric: tabular-nums; pointer-events: none;
+}
+.measure-range { right: 6px; color: var(--ink-dim); background: color-mix(in srgb, var(--panel) 85%, transparent); }
+.measure-profile.is-empty .measure-range { top: 50%; transform: translateY(-50%); left: 8px; right: auto; background: none; }
+.measure-at { left: 6px; background: var(--ink); color: var(--panel); }
+.measure-actions { display: flex; gap: var(--s-2); }
+.measure-actions > * { flex: 1; min-height: 40px; font-size: var(--t-sm); }
+.measure-actions button:disabled { opacity: 0.45; }
+.measure-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+/* While measuring the card is the bottom of the screen: the search bar steps
+   out, the zoom buttons and scale bar ride up over the card, and a tap on the
+   map is a point. */
+.is-measuring .bottombar { visibility: hidden; }
+.is-measuring #measure-btn { background: var(--accent); color: var(--on-accent); border-color: var(--accent-dk); }
+.is-measuring #measure-btn .icon { color: var(--on-accent); }
+.is-measuring .maplibregl-ctrl-bottom-right,
+.is-measuring .maplibregl-ctrl-bottom-left { margin-bottom: calc(var(--safe-b) + 350px); }
+.is-measuring .maplibregl-canvas { cursor: crosshair; }
+
+@media (min-width: 900px) {
+  .measure {
+    right: auto; width: var(--dock); bottom: auto;
+    top: calc(var(--safe-t) + var(--s-3) + var(--tap) + var(--s-3));
+    animation: dock-in var(--t-mid) var(--ease);
+  }
+  .is-measuring .maplibregl-ctrl-bottom-right,
+  .is-measuring .maplibregl-ctrl-bottom-left {
+    margin-bottom: calc(var(--safe-b) + var(--s-3) + var(--bar) + var(--s-3));
+  }
+  /* The scale bar moves out from behind whatever is docked on the left. */
+  #app:has(> .sheet:not([hidden])) .maplibregl-ctrl-bottom-left,
+  #app:has(> .panel:not([hidden])) .maplibregl-ctrl-bottom-left,
+  .is-measuring .maplibregl-ctrl-bottom-left { margin-left: calc(var(--dock) + 2 * var(--s-3)); }
+  #app:has(> .sheet:not([hidden])) .maplibregl-ctrl-bottom-left,
+  #app:has(> .panel:not([hidden])) .maplibregl-ctrl-bottom-left { margin-bottom: var(--s-3); }
+}

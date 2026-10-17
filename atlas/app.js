@@ -26,9 +26,11 @@ import {
   discoverParcelSource,
 } from './owners.js';
 import {
-  DEM_URL, DEM_MAXZOOM, decode, slope, paintSlope, metresPerPixel,
-  rockOf, verdict, ROCK_URL,
+  DEM_URL, DEM_MAXZOOM, slope, paintSlope, paintAspect, metresPerPixel,
+  rockOf, verdict, ROCK_URL, contourStep, isoSegments, FT, fmtFt, fmtLength,
+  ASPECTS, profileStats, metres,
 } from './terrain.js';
+import { demTile, sampler, heightAt, heightsAlong } from './dem.js';
 
 const db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
@@ -205,6 +207,42 @@ const OVERLAYS = {
     bulkUrls: [DEM_URL],
     minzoom: 9,
     maxzoom: DEM_MAXZOOM,
+    attribution: 'Terrain Tiles (USGS 3DEP and others) via AWS Open Data',
+  },
+  /* Steep faces coloured by the way they face — north, east, south, west —
+   * so a wall in the sun can be told from one in the shade before the drive. */
+  aspect: {
+    label: 'which way it faces',
+    urls: ['aspect://{z}/{x}/{y}'],
+    bulkUrls: [DEM_URL],
+    minzoom: 10,
+    maxzoom: DEM_MAXZOOM,
+    attribution: 'Terrain Tiles (USGS 3DEP and others) via AWS Open Data',
+  },
+  /* Contour lines drawn from elevation, labelled in feet. They go on to z19 —
+   * past the elevation's own z15 by interpolating it — so satellite finally
+   * gets contours at the zoom you actually look at a crag. Offline they are
+   * made from the saved elevation, which stops at 15 (bulkMaxzoom). */
+  contours: {
+    label: 'contour lines',
+    urls: ['contour://{z}/{x}/{y}'],
+    tileSize: 256,
+    bulkUrls: [DEM_URL],
+    bulkMaxzoom: DEM_MAXZOOM,
+    // Below this a contour map of real mountains is more line than map.
+    minzoom: 12,
+    maxzoom: 19,
+    attribution: 'Terrain Tiles (USGS 3DEP and others) via AWS Open Data',
+  },
+  /* The ground in 3D: the map tilts and the elevation lifts it. No tiles of its
+   * own — it is MapLibre's terrain, fed from the same elevation (see initMap).
+   * Saved offline down to z13, which is as fine as the relief needs to be. */
+  terrain3d: {
+    label: '3D terrain',
+    urls: [],
+    bulkUrls: [DEM_URL],
+    bulkMaxzoom: 13,
+    maxzoom: 13,
     attribution: 'Terrain Tiles (USGS 3DEP and others) via AWS Open Data',
   },
   /* The spot finder (see "likely spots" further down). No tiles of its own to
@@ -780,6 +818,14 @@ function initMap() {
     });
   }
 
+  // The ground for 3D terrain. Always in the style, used only while the 3D
+  // switch is on (paintOverlay sets the terrain), so turning it on is instant.
+  sources.dem = {
+    type: 'raster-dem', tiles: [DEM_URL], encoding: 'terrarium',
+    tileSize: 256, maxzoom: DEM_MAXZOOM,
+    attribution: 'Terrain Tiles (USGS 3DEP and others) via AWS Open Data',
+  };
+
   // The thread from a pin to its parking spot. In the initial style rather than
   // added later for the same reason as the overlays: addSource() before the
   // style has loaded throws. Empty until a sheet is open.
@@ -798,7 +844,7 @@ function initMap() {
   // first so roads and labels draw on top of it rather than under.
   // Order is the draw order: ground-shading first, then areas, then lines, then
   // labels last so nothing is drawn over the text.
-  const DRAW_ORDER = ['terrain', 'rock', 'slope', 'publicland', 'water', 'parcels',
+  const DRAW_ORDER = ['terrain', 'rock', 'slope', 'aspect', 'publicland', 'water', 'contours', 'parcels',
                      'counties', 'states', 'trails', 'rail', 'roads', 'labels'];
   for (const key of DRAW_ORDER) {
     const cfg = OVERLAYS[key];
@@ -821,9 +867,26 @@ function initMap() {
   // are DOM and sit above all of it regardless.
   layers.push(parkLineLayer);
 
+  // The measure tool's line: a dark casing under a white line, so it reads on
+  // snow and on forest, and white dots with an accent edge at each point.
+  sources[MEASURE_SRC] = { type: 'geojson', data: EMPTY_GEOJSON };
+  layers.push(
+    { id: 'measure-casing', type: 'line', source: MEASURE_SRC, filter: ['==', '$type', 'LineString'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#0b0f14', 'line-width': 6, 'line-opacity': 0.55 } },
+    { id: 'measure-line', type: 'line', source: MEASURE_SRC, filter: ['==', '$type', 'LineString'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#ffffff', 'line-width': 3 } },
+    { id: 'measure-pts', type: 'circle', source: MEASURE_SRC, filter: ['==', '$type', 'Point'],
+      paint: { 'circle-radius': ['case', ['==', ['get', 'end'], 1], 6, 4.5],
+               'circle-color': '#ffffff', 'circle-stroke-color': '#e8490f', 'circle-stroke-width': 3 } },
+  );
+
   // Before the map exists: the steep-ground source asks for slope:// tiles the
   // moment it is visible, and an unregistered protocol is a failed tile.
   maplibregl.addProtocol('slope', slopeTile);
+  maplibregl.addProtocol('aspect', aspectTile);
+  maplibregl.addProtocol('contour', contourTile);
 
   map = new maplibregl.Map({
     container: 'map',
@@ -842,7 +905,8 @@ function initMap() {
   // the reach from a thumb that is already down at the search bar. Zooming is
   // the most-pressed thing on the whole map; it belongs where the hand is.
   // The clearance above the bottom bar is set in styles.css.
-  map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right');
+  map.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), 'bottom-right');
+  map.addControl(new TerrainToggle(), 'bottom-right');
   // How far that is. A map you plan a walk on without one is a picture.
   // Imperial, because the crew think in miles and feet; it says both units
   // as it zooms in (ft under a mile) without being told.
@@ -850,11 +914,14 @@ function initMap() {
 
   // Long-press (or right-click) pins the thing across the valley that you can
   // see but are not standing in.
-  map.on('contextmenu', (e) => openNewPin(e.lngLat.lat, e.lngLat.lng, null));
+  map.on('contextmenu', (e) => { if (!measure) openNewPin(e.lngLat.lat, e.lngLat.lng, null); });
   wireLongPress();
 
   map.on('moveend', updateDownloadEstimate);
   map.on('moveend', scheduleSpots);
+  map.on('moveend', clusterPins);
+  map.on('dataloading', () => mapLoading(true));
+  map.on('idle', () => mapLoading(false));
   renderLayersBadge();
   map.on('click', onMapClick);
   map.once('load', () => {
@@ -905,6 +972,7 @@ function wireLongPress() {
   let timer = null, startPt = null;
 
   const arm = (x, y) => {
+    if (measure) return;              // measuring: a press is a point, not a pin
     startPt = { x, y };
     clearTimeout(timer);
     timer = setTimeout(() => {
@@ -968,6 +1036,8 @@ function overlayNotes() {
 
 function setOverlay(key, on) {
   on ? overlaysOn.add(key) : overlaysOn.delete(key);
+  // The same switch can be in more than one place (3D is on the map too).
+  document.querySelectorAll(`[data-overlay="${key}"]`).forEach((c) => { c.checked = on; });
   paintOverlay(key);
   savePref('overlays', [...overlaysOn]);
   updateDownloadEstimate();
@@ -985,6 +1055,7 @@ function setOverlay(key, on) {
 function paintOverlay(key) {
   if (!map) return;
   const on = overlaysOn.has(key);
+  if (key === 'terrain3d') { paintTerrain(on); return; }
   OVERLAYS[key].urls.forEach((_, i) => {
     const id = `ov-${key}-${i}`;
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
@@ -998,25 +1069,134 @@ function paintOverlay(key) {
  * is the part that talks to the map.
  */
 
-/* A slope:// tile: fetch the elevation tile at the same address, work out
- * every pixel's slope and hand MapLibre back a picture of it. Fetched with
- * plain fetch(), so it goes through the service worker and an area saved for
- * offline draws its steep ground with no signal. */
-async function slopeTile(params, abort) {
-  const [z, x, y] = params.url.slice('slope://'.length).split('/').map(Number);
-  const url = DEM_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y);
-  const res = await fetch(url, { signal: abort.signal });
-  if (!res.ok) throw new Error(`elevation ${res.status}`);
-  const bmp = await createImageBitmap(await res.blob(),
-    { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
-  const c = new OffscreenCanvas(256, 256);
-  const g = c.getContext('2d', { willReadFrequently: true });
-  g.drawImage(bmp, 0, 0);
-  bmp.close?.();
-  const h = decode(g.getImageData(0, 0, 256, 256).data);
-  g.putImageData(new ImageData(paintSlope(slope(h, 256, 256, metresPerPixel(z, y))), 256, 256), 0, 0);
-  const out = await c.convertToBlob({ type: 'image/png' });
-  return { data: await out.arrayBuffer() };
+/* Tiles drawn on the phone from elevation: slope://, aspect:// and
+ * contour:// are protocols MapLibre asks like any tile server, answered here
+ * from the shared elevation cache in dem.js. Every one of them goes through
+ * fetch(), so an area saved for offline draws them with no signal. */
+async function pictureOf(px, size) {
+  const c = new OffscreenCanvas(size, size);
+  c.getContext('2d').putImageData(new ImageData(px, size, size), 0, 0);
+  return { data: await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer() };
+}
+
+const tileArgs = (url) => url.slice(url.indexOf('://') + 3).split('/').map(Number);
+
+/* Every slope, coloured by how steep (terrain.js, SLOPE_BANDS). */
+async function slopeTile(params) {
+  const [z, x, y] = tileArgs(params.url);
+  const h = await demTile(z, x, y);
+  if (!h) throw new Error('no elevation');
+  return pictureOf(paintSlope(slope(h, 256, 256, metresPerPixel(z, y))), 256);
+}
+
+/* Steep faces coloured by the way they face (terrain.js, ASPECTS). */
+async function aspectTile(params) {
+  const [z, x, y] = tileArgs(params.url);
+  const h = await demTile(z, x, y);
+  if (!h) throw new Error('no elevation');
+  const s = slope(h, 256, 256, metresPerPixel(z, y));
+  return pictureOf(paintAspect(h, s, 256, 256), 256);
+}
+
+/* Contour lines, drawn at 512px so they are one device pixel sharp on a
+ * phone, from the elevation tile at the same place — or, past zoom 15 where
+ * the elevation stops, from the deepest one there is, interpolated. That is
+ * what lets them carry on over satellite at z19 when every contour service on
+ * offer stops at 16. Corners are sampled on the tile's exact edges, so a line
+ * leaving one tile meets itself in the next. Index lines (every fifth) are
+ * heavier and labelled in feet, and the line is cut where its label sits. */
+const CONTOUR_PX = 512;
+async function contourTile(params) {
+  const [z, x, y] = tileArgs(params.url);
+  const zd = Math.min(z, DEM_MAXZOOM);
+  const k = 2 ** (zd - z);
+  const side = z <= 14 ? 257 : 129;
+  const step = 256 / (side - 1);
+  const s = await sampler(zd, x * 256 * k, y * 256 * k, (x + 1) * 256 * k, (y + 1) * 256 * k);
+  if (!s) throw new Error('no elevation');
+
+  const g = new Float32Array(side * side);
+  let lo = Infinity, hi = -Infinity;
+  for (let j = 0; j < side; j++) {
+    for (let i = 0; i < side; i++) {
+      const v = s((x * 256 + i * step) * k, (y * 256 + j * step) * k) * FT;
+      g[j * side + i] = v;
+      if (v < lo) lo = v; if (v > hi) hi = v;
+    }
+  }
+
+  const { minor, index } = contourStep(z);
+  const scale = CONTOUR_PX / (side - 1);
+  const c = new OffscreenCanvas(CONTOUR_PX, CONTOUR_PX);
+  const ctx = c.getContext('2d');
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  // Work out every line first, and where index labels will go, so the lines
+  // can be drawn with a gap under each label.
+  const lines = [];
+  const labels = [];
+  for (let level = Math.ceil(lo / minor) * minor; level <= hi; level += minor) {
+    const seg = isoSegments(g, side, level);
+    if (!seg.length) continue;
+    const isIndex = level % index === 0;
+    lines.push({ seg, isIndex });
+    if (!isIndex) continue;
+    let placed = 0;
+    for (let n = 0; n < seg.length && placed < 2; n += 4 * 23) {
+      const mx = (seg[n] + seg[n + 2]) / 2 * scale, my = (seg[n + 1] + seg[n + 3]) / 2 * scale;
+      if (mx < 60 || my < 30 || mx > CONTOUR_PX - 60 || my > CONTOUR_PX - 30) continue;
+      if (labels.some((l) => Math.hypot(l.x - mx, l.y - my) < 200)) continue;
+      let a = Math.atan2(seg[n + 3] - seg[n + 1], seg[n + 2] - seg[n]);
+      if (a > Math.PI / 2) a -= Math.PI; else if (a < -Math.PI / 2) a += Math.PI;
+      labels.push({ x: mx, y: my, a, text: level.toLocaleString('en-US') });
+      placed++;
+    }
+  }
+
+  ctx.font = '700 22px ui-sans-serif, system-ui, -apple-system, sans-serif';
+  ctx.save();
+  if (labels.length) {
+    const cut = new Path2D();
+    cut.rect(0, 0, CONTOUR_PX, CONTOUR_PX);
+    for (const l of labels) {
+      const w = ctx.measureText(l.text).width / 2 + 7;
+      const ca = Math.cos(l.a), sa = Math.sin(l.a);
+      const pts = [[-w, -13], [w, -13], [w, 13], [-w, 13]]
+        .map(([px, py]) => [l.x + px * ca - py * sa, l.y + px * sa + py * ca]);
+      cut.moveTo(...pts[0]); pts.slice(1).forEach((p) => cut.lineTo(...p)); cut.closePath();
+    }
+    ctx.clip(cut, 'evenodd');
+  }
+  const stroke = (isIndex, style, width) => {
+    ctx.strokeStyle = style; ctx.lineWidth = width;
+    ctx.beginPath();
+    for (const l of lines) {
+      if (l.isIndex !== isIndex) continue;
+      for (let n = 0; n < l.seg.length; n += 4) {
+        ctx.moveTo(l.seg[n] * scale, l.seg[n + 1] * scale);
+        ctx.lineTo(l.seg[n + 2] * scale, l.seg[n + 3] * scale);
+      }
+    }
+    ctx.stroke();
+  };
+  // A dark edge under a light line: readable on snow and on forest both.
+  // Zoomed out the minor lines are context, not information: quieter still.
+  const quiet = z <= 13;
+  stroke(false, 'rgba(20,14,6,0.18)', quiet ? 2.6 : 3.4);
+  stroke(false, `rgba(255,241,214,${quiet ? 0.4 : 0.58})`, quiet ? 1.2 : 1.6);
+  stroke(true, 'rgba(20,14,6,0.35)', 6.4);
+  stroke(true, 'rgba(255,236,200,0.96)', 3.6);
+  ctx.restore();
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const l of labels) {
+    ctx.save();
+    ctx.translate(l.x, l.y); ctx.rotate(l.a);
+    ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(25,16,6,0.85)'; ctx.strokeText(l.text, 0, 1);
+    ctx.fillStyle = '#fff4e2'; ctx.fillText(l.text, 0, 1);
+    ctx.restore();
+  }
+  return { data: await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer() };
 }
 
 /* What the rock is at a point, from Macrostrat. Asked once per ~100 m and
@@ -1136,6 +1316,9 @@ function renderSpots(all, id) {
     for (const s of all) {
       if (s.kind !== kind || !b.contains([s.lng, s.lat])) continue;
       const p = map.project([s.lng, s.lat]);
+      // Not under the buttons along the top or the bar along the bottom,
+      // where a mark can be seen and not pressed.
+      if (p.y < 64 || p.y > map.getContainer().clientHeight - 80) continue;
       if (kept.some((k) => Math.hypot(k.p.x - p.x, k.p.y - p.y) < minGap)) continue;
       kept.push({ s, p });
       if (kept.length >= SPOTS_PER_KIND) break;
@@ -1220,36 +1403,77 @@ function closeMapPopup() {
   p?.remove();
 }
 
-/* With rock types on, a tap on the map says what the rock is there. Only
- * with it on: otherwise a tap on the map is nothing, and should stay nothing. */
+/* ── a tap on the map ────────────────────────────────────────────────────
+ * Tells you about the spot: how high it is, where it is, and — with the rock
+ * layer on — what it is made of. With two ways on from there: pin it, or
+ * measure from it. A second tap anywhere just puts the card away, so tapping
+ * the map to get rid of something never conjures up another one.
+ */
 async function onMapClick(e) {
-  if (!overlaysOn.has('rock') || sheet) return;
-  if (e.originalEvent?.target?.closest?.('.maplibregl-marker, .maplibregl-popup')) return;
-  const { lat, lng } = e.lngLat;
-  showMapPopup(e.lngLat, `<div class="pop-kind">rock</div><p class="pop-why">asking the geologic map…</p>`);
-  const here = mapPopup;
-  const rock = await rockAt(lat, lng);
-  if (mapPopup !== here) return;
-  if (!rock) {
-    here.setHTML(`<div class="pop-kind">rock</div><p class="pop-why">${online() ? 'no geologic map covers this spot' : 'needs signal — the rock map is not saved offline'}</p>`);
-    return;
-  }
-  const f = rock.family;
-  here.setHTML(`
-    <div class="pop-kind">rock${f ? ` · ${escapeHtml(f.label)}` : ''}</div>
-    <strong class="pop-title">${escapeHtml(rock.unit.name || 'unnamed unit')}</strong>
-    ${rock.unit.lith ? `<p class="pop-why">${escapeHtml(rock.unit.lith)}</p>` : ''}
-    ${rock.unit.age ? `<p class="pop-measure">${escapeHtml(rock.unit.age)}</p>` : ''}
-    ${f?.karst ? '<p class="pop-note">karst ground — sinkholes and caves form in this</p>' : ''}
-    ${f?.tubes ? '<p class="pop-note">volcanic — lava tubes form in this</p>' : ''}`);
+  if (e.originalEvent?.target?.closest?.('.maplibregl-marker, .maplibregl-popup, .maplibregl-ctrl')) return;
+  if (measure) { addMeasurePoint(e.lngLat); return; }
+  if (mapPopup) { closeMapPopup(); return; }
+  if (sheet) return;
+  showPointCard(e.lngLat.lat, e.lngLat.lng);
 }
 
-/* The rock under a pin, on its sheet. Asked when the sheet opens and only
- * shown if it answers before you have moved on to another pin. */
+async function showPointCard(lat, lng) {
+  const withRock = overlaysOn.has('rock');
+  const card = (elev, rock, rockState) => `
+    <div class="pop-kind">this spot</div>
+    <strong class="pop-title pop-elev">${elev}</strong>
+    <p class="pop-measure">${fmtCoords(lat, lng)}</p>
+    ${withRock ? rockBlock(rock, rockState) : ''}
+    <div class="pop-actions">
+      <button class="btn-primary" type="button" data-pop="pin">${icon('i-pin', 'icon-sm')}pin here</button>
+      <button class="btn-ghost" type="button" data-pop="measure">${icon('i-ruler', 'icon-sm')}measure</button>
+    </div>`;
+  showMapPopup([lng, lat], card('…', null, 'asking'));
+  const here = mapPopup;
+  const wire = () => {
+    here.getElement()?.querySelector('[data-pop="pin"]')?.addEventListener('click', () => {
+      closeMapPopup(); openNewPin(lat, lng, null);
+    });
+    here.getElement()?.querySelector('[data-pop="measure"]')?.addEventListener('click', () => {
+      closeMapPopup(); startMeasure({ lng, lat });
+    });
+  };
+  wire();
+  const [h, rock] = await Promise.all([
+    heightAt(lng, lat).catch(() => null),
+    withRock ? rockAt(lat, lng) : null,
+  ]);
+  if (mapPopup !== here) return;
+  const elev = h == null ? (online() ? 'height unknown' : 'height not saved here') : fmtFt(h);
+  here.setHTML(card(elev, rock, rock ? 'ok' : online() ? 'none' : 'offline'));
+  wire();
+}
+
+function rockBlock(rock, state) {
+  if (state === 'asking') return '<p class="pop-rock">' + icon('i-rock', 'icon-sm') + '<span>asking the geologic map…</span></p>';
+  if (!rock) {
+    return '<p class="pop-rock">' + icon('i-rock', 'icon-sm') + `<span>${state === 'offline'
+      ? 'needs signal — the rock map is not saved offline' : 'no geologic map covers this spot'}</span></p>`;
+  }
+  const f = rock.family;
+  const note = f?.karst ? ' — karst: sinkholes and caves form in this'
+    : f?.tubes ? ' — lava tubes form in this' : '';
+  return '<p class="pop-rock">' + icon('i-rock', 'icon-sm') + `<span>${rockLine(rock)}${note}</span></p>`;
+}
+
+/* The ground under a pin, on its sheet: its height beside its coordinates
+ * (from the elevation, so it works offline in a saved area) and the rock under
+ * it (online only). Each shown only if it answers before you move on. */
 async function showPinRock(pin) {
   const el = $('pin-rock');
   el.hidden = true;
-  if (!online() || !pin) return;
+  if (!pin) return;
+  heightAt(pin.lng, pin.lat).then((h) => {
+    const slot = $('pin-meta').querySelector('[data-elev]');
+    if (h == null || sheet?.pin?.id !== pin.id || !slot) return;
+    slot.textContent = ` · ${fmtFt(h)}`;
+  }).catch(() => {});
+  if (!online()) return;
   const rock = await rockAt(pin.lat, pin.lng);
   if (sheet?.pin?.id !== pin.id || !rock?.unit?.name) return;
   $('pin-rock-text').innerHTML = rockLine(rock);
@@ -1257,12 +1481,282 @@ async function showPinRock(pin) {
 }
 
 /* How many overlays are on, on the layers button — so a map that looks odd
- * says why from the corner, without opening the panel. */
+ * says why from the corner — and, at the top of the panel, which ones, each
+ * a tap away from off. Each folded group says how many of its own are on. */
 function renderLayersBadge() {
   const n = overlaysOn.size;
   const el = $('layers-count');
   el.hidden = n === 0;
   el.textContent = n;
+
+  const row = $('layers-on');
+  if (!row) return;
+  row.hidden = n === 0;
+  $('layers-on-list').innerHTML = [...overlaysOn].filter((k) => OVERLAYS[k]).map((k) =>
+    `<button type="button" class="on-chip" data-off="${k}" aria-label="turn off ${escapeHtml(OVERLAYS[k].label)}">`
+    + `${escapeHtml(OVERLAYS[k].label)}${icon('i-close', 'icon-xs')}</button>`).join('');
+  document.querySelectorAll('#layers details.fold').forEach((d) => {
+    const on = [...d.querySelectorAll('[data-overlay]')].filter((c) => c.checked).length;
+    const tag = d.querySelector('.fold-count');
+    tag.textContent = on ? `${on} on` : '';
+  });
+}
+
+/* ── 3D ──────────────────────────────────────────────────────────────────
+ * MapLibre's own terrain, lifted by the elevation the other layers already
+ * read. Turning it on tilts the map so there is something to see; turning it
+ * off lays it flat again. Restoring a saved setting on boot does not swing the
+ * camera — it just puts the ground back up. */
+let terrainOn = false;
+const EXAGGERATION = 1.4;     // relief at true scale reads flatter than it is
+
+function paintTerrain(on) {
+  if (!map.isStyleLoaded()) return;            // initMap repaints on load
+  if (on !== terrainOn) {
+    terrainOn = on;
+    map.setTerrain(on ? { source: 'dem', exaggeration: EXAGGERATION } : null);
+    // A sky at the horizon when tilted, fading into haze over the far ground,
+    // instead of the map's background colour showing above the ridgeline.
+    map.setSky?.(on ? {
+      'sky-color': '#8fb8e6', 'horizon-color': '#dfe9f3', 'fog-color': '#e9eff5',
+      'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.75,
+      'atmosphere-blend': 0.6,
+    } : {});
+    if (!restoring) map.easeTo({ pitch: on ? 60 : 0, duration: 800 });
+    else if (on && map.getPitch() < 10) map.setPitch(50);
+  }
+  document.querySelectorAll('.ctrl-3d').forEach((b) => {
+    b.classList.toggle('is-on', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+}
+
+/* The 3D switch also lives on the map, above the zoom buttons, because it is
+ * flicked while looking at a ridge — not something to go into a panel for. */
+class TerrainToggle {
+  onAdd() {
+    this.el = document.createElement('div');
+    this.el.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+    this.el.innerHTML = '<button type="button" class="ctrl-3d" aria-pressed="false" title="3D terrain" aria-label="3D terrain">3D</button>';
+    this.el.firstChild.addEventListener('click', () => setOverlay('terrain3d', !overlaysOn.has('terrain3d')));
+    return this.el;
+  }
+  onRemove() { this.el.remove(); }
+}
+
+/* ── measuring ───────────────────────────────────────────────────────────
+ * Tap points, get the distance, the climb and the descent, and a profile of
+ * the ground between them. Drag a finger along the profile and a dot runs
+ * along the line on the map to show where that bit of the chart is. Nothing
+ * is saved — it is a ruler, not a route.
+ */
+let measure = null;               // { pts: [{lng, lat}], profile, seq }
+const MEASURE_SRC = 'measure';
+
+function startMeasure(first = null) {
+  closeMapPopup();
+  if (sheet) closeSheet();
+  measure = { pts: [], profile: null, seq: 0 };
+  document.documentElement.classList.add('is-measuring');
+  $('measure').hidden = false;
+  if (first) addMeasurePoint(first); else renderMeasure();
+}
+
+function stopMeasure() {
+  measure = null;
+  document.documentElement.classList.remove('is-measuring');
+  $('measure').hidden = true;
+  map.getSource(MEASURE_SRC)?.setData(EMPTY_GEOJSON);
+  measureDot?.remove();
+}
+
+function addMeasurePoint({ lng, lat }) {
+  measure.pts.push({ lng, lat });
+  renderMeasure();
+}
+
+function measureLine() {
+  const coords = measure.pts.map((p) => [p.lng, p.lat]);
+  const dists = [0];
+  for (let i = 1; i < coords.length; i++) dists.push(dists[i - 1] + metres(coords[i - 1], coords[i]));
+  return { coords, dists, total: dists[dists.length - 1] || 0 };
+}
+
+let measureTimer = null;
+function renderMeasure() {
+  const { coords, dists, total } = measureLine();
+  map.getSource(MEASURE_SRC)?.setData({
+    type: 'FeatureCollection',
+    features: [
+      ...(coords.length > 1 ? [{ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} }] : []),
+      ...coords.map((c, i) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: c },
+        properties: { end: i === 0 || i === coords.length - 1 ? 1 : 0 } })),
+    ],
+  });
+  const n = coords.length;
+  $('measure-dist').textContent = n > 1 ? fmtLength(total) : '—';
+  $('measure-hint').textContent = n === 0 ? 'tap the map to start'
+    : n === 1 ? 'tap to measure to there' : 'tap to add a point';
+  $('measure-undo').disabled = n === 0;
+  $('measure-clear').disabled = n === 0;
+  measure.profile = null;
+  paintProfile();
+  clearTimeout(measureTimer);
+  if (n < 2) return;
+  const seq = ++measure.seq;
+  $('measure-profile').classList.add('is-busy');
+  measureTimer = setTimeout(async () => {
+    const count = Math.max(24, Math.min(180, Math.round(total / 12)));
+    const samples = await heightsAlong(coords, dists, count).catch(() => null);
+    if (!measure || measure.seq !== seq) return;
+    $('measure-profile').classList.remove('is-busy');
+    measure.profile = samples;
+    paintProfile();
+  }, 250);
+}
+
+/* The chart: an SVG drawn to the card's own width, so it is sharp at any
+ * size. Height axis in feet with a top and bottom label; distance along the
+ * bottom. */
+function paintProfile() {
+  const svg = $('measure-svg');
+  const p = measure?.profile;
+  $('measure-up').textContent = '—';
+  $('measure-down').textContent = '—';
+  $('measure-range').textContent = '';
+  if (!p) {
+    svg.innerHTML = '';
+    $('measure-profile').classList.toggle('is-empty', true);
+    if (measure?.pts.length > 1 && !$('measure-profile').classList.contains('is-busy')) {
+      $('measure-range').textContent = online() ? 'no elevation here' : 'elevation not saved for this area';
+    }
+    return;
+  }
+  $('measure-profile').classList.remove('is-empty');
+  const st = profileStats(p);
+  $('measure-up').textContent = fmtFt(st.gain);
+  $('measure-down').textContent = fmtFt(st.loss);
+  $('measure-range').textContent = `${fmtFt(st.min)} – ${fmtFt(st.max)}`;
+
+  const W = svg.clientWidth || 320, H = 112, padL = 4, padR = 4, padT = 10, padB = 6;
+  const total = p[p.length - 1].d;
+  // At least 50 ft of vertical range, or a flat line reads as a cliff.
+  const span = Math.max(st.max - st.min, 50 / FT);
+  const lo = (st.max + st.min) / 2 - span / 2;
+  const X = (d) => padL + (W - padL - padR) * d / total;
+  const Y = (h) => padT + (H - padT - padB) * (1 - (h - lo) / span);
+  const line = p.map((s, i) => `${i ? 'L' : 'M'}${X(s.d).toFixed(1)} ${Y(s.h).toFixed(1)}`).join('');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = `
+    <path class="pf-area" d="${line}L${X(total).toFixed(1)} ${H}L${X(0).toFixed(1)} ${H}Z"/>
+    <path class="pf-line" d="${line}"/>
+    <line class="pf-cursor" x1="0" x2="0" y1="0" y2="${H}" hidden/>
+    <circle class="pf-dot" r="4.5" cx="-10" cy="-10"/>`;
+  measure.chart = { X, Y, W, total };
+}
+
+let measureDot = null;
+function scrubProfile(e) {
+  const c = measure?.chart, p = measure?.profile;
+  if (!c || !p) return;
+  const svg = $('measure-svg');
+  const r = svg.getBoundingClientRect();
+  const d = Math.max(0, Math.min(c.total, (e.clientX - r.left) / r.width * c.total));
+  let i = 1;
+  while (i < p.length - 1 && p[i].d < d) i++;
+  const a = p[i - 1], b = p[i];
+  const h = a.h + (b.h - a.h) * ((d - a.d) / ((b.d - a.d) || 1));
+  const cur = svg.querySelector('.pf-cursor');
+  cur.removeAttribute('hidden');
+  cur.setAttribute('x1', c.X(d)); cur.setAttribute('x2', c.X(d));
+  const dot = svg.querySelector('.pf-dot');
+  dot.setAttribute('cx', c.X(d)); dot.setAttribute('cy', c.Y(h));
+  $('measure-at').textContent = `${fmtLength(d)} in · ${fmtFt(h)}`;
+  $('measure-at').hidden = false;
+
+  // And the same place on the map.
+  const { coords, dists } = measureLine();
+  let s = 1;
+  while (s < dists.length - 1 && dists[s] < d) s++;
+  const t = (d - dists[s - 1]) / ((dists[s] - dists[s - 1]) || 1);
+  const ll = [coords[s - 1][0] + (coords[s][0] - coords[s - 1][0]) * t,
+              coords[s - 1][1] + (coords[s][1] - coords[s - 1][1]) * t];
+  if (!measureDot) {
+    const el = document.createElement('div');
+    el.className = 'measure-dot';
+    measureDot = new maplibregl.Marker({ element: el });
+  }
+  measureDot.setLngLat(ll).addTo(map);
+}
+
+function endScrub() {
+  $('measure-at').hidden = true;
+  measureDot?.remove();
+  const svg = $('measure-svg');
+  svg.querySelector('.pf-cursor')?.setAttribute('hidden', '');
+  svg.querySelector('.pf-dot')?.setAttribute('cx', -10);
+}
+
+/* ── pins that would sit on top of each other ────────────────────────────
+ * Zoomed out, pins on one bluff become one bubble with a count in it, coloured
+ * by the kind most of them are; tap it and the map opens out onto them. Only
+ * pins that would actually overlap are grouped — the rest keep their own
+ * marks, so the shape of where things are survives (see "how big a pin is
+ * drawn" above, which this works with rather than replacing). Never at street
+ * zoom, and never the pin whose sheet is open.
+ */
+const CLUSTER_UNTIL = 15;     // at and above this every pin stands on its own
+let clusterMarkers = [];
+
+function clusterPins() {
+  clusterMarkers.forEach((m) => m.remove());
+  clusterMarkers = [];
+  const all = [...markers.entries()];
+  all.forEach(([, m]) => { m.getElement().style.visibility = ''; });
+  if (!map || map.getZoom() >= CLUSTER_UNTIL || all.length < 2) return;
+
+  const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pin-scale')) || 1;
+  const R = Math.max(18, 30 * scale);          // closer than a pin's own width
+  const pts = all.map(([id, m]) => ({ id, m, p: map.project(m.getLngLat()) }));
+  const used = new Set();
+  const activeId = sheet?.mode === 'view' ? sheet.pin.id : null;
+  for (const a of pts) {
+    if (used.has(a.id) || a.id === activeId) continue;
+    const group = pts.filter((b) => !used.has(b.id) && b.id !== activeId
+      && Math.hypot(a.p.x - b.p.x, a.p.y - b.p.y) < R);
+    if (group.length < 2) continue;
+    group.forEach((g) => { used.add(g.id); g.m.getElement().style.visibility = 'hidden'; });
+    const lng = group.reduce((s, g) => s + g.m.getLngLat().lng, 0) / group.length;
+    const lat = group.reduce((s, g) => s + g.m.getLngLat().lat, 0) / group.length;
+    const kinds = {};
+    group.forEach((g) => { const k = g.m.getElement().dataset.kind; kinds[k] = (kinds[k] || 0) + 1; });
+    const kind = Object.entries(kinds).sort((x, y) => y[1] - x[1])[0][0];
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'pin-cluster' + (group.length >= 10 ? ' is-big' : '');
+    el.dataset.kind = kind;
+    el.textContent = group.length;
+    el.setAttribute('aria-label', `${group.length} pins here — zoom in`);
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const b = new maplibregl.LngLatBounds();
+      group.forEach((g) => b.extend(g.m.getLngLat()));
+      // Padded clear of the buttons along the top and the bar along the bottom.
+      map.fitBounds(b, { padding: { top: 120, bottom: 130, left: 80, right: 100 },
+        maxZoom: CLUSTER_UNTIL + 1, duration: 700 });
+    });
+    clusterMarkers.push(new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map));
+  }
+}
+
+/* ── loading ── a thin bar along the top while the map is fetching, so a
+ * grey screen on a slow connection says "coming" rather than "broken". Waits
+ * a moment before showing, so a quick pan never flickers it. */
+let loadingTimer = null;
+function mapLoading(on) {
+  clearTimeout(loadingTimer);
+  if (on) loadingTimer = setTimeout(() => { $('map-loading').hidden = false; }, 250);
+  else $('map-loading').hidden = true;
 }
 
 /* ── where am I ──────────────────────────────────────────────────────────── */
@@ -1641,6 +2135,7 @@ function drawPins() {
   // about has to be told again that it is — a filter change or a sync mid-sheet
   // would otherwise quietly put the open pin back in the crowd.
   if (sheet?.mode === 'view') markActive(sheet.pin.id);
+  clusterPins();
 }
 
 /* An actual pin: a round head on a point, with the point being the bit that
@@ -1651,9 +2146,26 @@ function drawPins() {
  *
  * Colour comes from one custom property the classes set, so mine/theirs,
  * unsynced and personal all compose instead of fighting each other. */
-const PIN_SVG = `<svg class="pin-art" viewBox="0 0 24 33" aria-hidden="true">
+/* And a mark in the head that says what kind of place it is, because nine
+ * kinds is about all the colours that stay apart (test/contrast.test.mjs), and
+ * colour alone says nothing to anyone who does not see it. Drawn on the same
+ * 24px grid as the rest of the icons, in the halo colour, inside the head. At
+ * state zoom, where a pin is a tick, the mark goes and the dot comes back. */
+const PIN_GLYPHS = {
+  cliffs:    '<path d="M7.4 8.2h4.6v6.6h4.6"/>',
+  caves:     '<path d="M7.6 15.6v-3.2a4.4 4.4 0 0 1 8.8 0v3.2"/><path d="M6.8 15.6h10.4"/>',
+  trails:    '<path d="M8 15.8c1.6-.4 1.4-2.6 3.4-3.4s3.4-.6 4.6-3.6" stroke-dasharray="2.1 1.7"/>',
+  tunnels:   '<path d="M7 15.8v-3.6a5 5 0 0 1 10 0v3.6"/><path d="M12 15.8v-1.6M12 12.3v-1"/>',
+  bridges:   '<path d="M6.6 9.6h10.8"/><path d="M7.4 15.6c.9-2.9 2.6-4.3 4.6-4.3s3.7 1.4 4.6 4.3"/>',
+  buildings: '<path d="M7.6 15.8v-4.7L12 7.4l4.4 3.7v4.7Z"/><path d="M10.8 15.8v-2.6h2.4v2.6"/>',
+  mountains: '<path d="M6.6 15.6 10.2 9l2.2 3.4 1.5-2.1 3.5 5.3Z"/>',
+  towers:    '<path d="M12 7v8.8M9.4 15.8 12 7l2.6 8.8M10.3 12.6h3.4"/>',
+  other:     '<circle cx="12" cy="11.5" r="2.4" fill="currentColor" stroke="none"/>',
+};
+const pinSvg = (kind) => `<svg class="pin-art" viewBox="0 0 24 33" aria-hidden="true">
   <path class="pin-body" d="M12 32C12 32 22.6 19.8 22.6 11.6 22.6 5.5 17.8.7 12 .7S1.4 5.5 1.4 11.6C1.4 19.8 12 32 12 32Z"/>
   <circle class="pin-eye" cx="12" cy="11.5" r="4.2"/>
+  <g class="pin-glyph">${PIN_GLYPHS[kind] || PIN_GLYPHS.other}</g>
 </svg>`;
 
 /* Exactly one pin is the one whose sheet is open, and it is drawn standing up
@@ -1664,6 +2176,8 @@ const PIN_SVG = `<svg class="pin-art" viewBox="0 0 24 33" aria-hidden="true">
 function markActive(id) {
   markers.forEach((m, key) =>
     m.getElement().classList.toggle('is-active', key === id));
+  // The pin being read about is never inside a bubble.
+  if (map) requestAnimationFrame(clusterPins);
 }
 
 /* ── how big a pin is drawn ──────────────────────────────────────────────
@@ -1687,6 +2201,9 @@ function scalePins() {
     (map.getZoom() - PIN_Z_MIN) / (PIN_Z_FULL - PIN_Z_MIN)));
   const scale = PIN_MIN + (1 - PIN_MIN) * t ** 1.5;
   document.documentElement.style.setProperty('--pin-scale', scale.toFixed(3));
+  // Under about 18px wide the mark inside a pin is a smudge; the plain dot
+  // reads better there (styles.css, .pin-glyph).
+  document.documentElement.classList.toggle('pins-small', scale < 0.62);
 }
 
 /* A parking spot is drawn as what it is rather than as another find: a small
@@ -1707,7 +2224,7 @@ function addMarker(p) {
     + (p._pending ? ' is-pending' : '')
     + (p.is_private ? ' is-private' : '');
   el.dataset.kind = park ? 'parking' : kindOf(p);
-  el.innerHTML = park ? PARK_SVG : PIN_SVG;
+  el.innerHTML = park ? PARK_SVG : pinSvg(kindOf(p));
   el.title = park ? 'parking' : pinTitle(p);
   el.addEventListener('click', (e) => { e.stopPropagation(); openPin(p); });
 
@@ -1998,7 +2515,7 @@ function metaHtml(p, author) {
     ? '<br><span class="note-warn">' + icon('i-alert', 'icon-sm')
       + 'waiting to sync — lives on this phone only</span>' : '';
   const priv = p.is_private ? '<br><b>personal</b> &middot; nobody else can see this pin' : '';
-  return `${head}<br>${fmtCoords(p.lat, p.lng)}${acc}${priv}${pending}`;
+  return `${head}<br>${fmtCoords(p.lat, p.lng)}<span data-elev></span>${acc}${priv}${pending}`;
 }
 
 function closeSheet() {
@@ -3686,11 +4203,10 @@ function placeRow(pl, origin) {
   </button>`;
 }
 
-/* The one row a coordinate gets, and it says what pressing it does — because
- * what it does is more than travel. Typing a number in is how you write down
- * somewhere you have been told about and not yet been, so it lands there and
- * opens a new pin on the spot, name empty, waiting for what to call it. Walk
- * away without saving and nothing was written. */
+/* The one row a coordinate gets. Typing a number in is how you look up
+ * somewhere you have been told about, so it lands there and shows what is on
+ * the spot — its height, and "pin here" a tap away — rather than opening a new
+ * pin before anybody has decided it is one. */
 function coordHtml(c, origin) {
   const away = origin ? metresBetween(origin, c) : null;
   return `<div class="result-head">coordinates</div>
@@ -3701,7 +4217,7 @@ function coordHtml(c, origin) {
         <div class="r-name">${escapeHtml(c.label)}</div>
         ${away != null ? `<div class="r-away">${fmtDistance(away)}</div>` : ''}
       </div>
-      <div class="r-sub">go here and start a pin</div>
+      <div class="r-sub">go to this spot</div>
     </div>
     ${icon('i-chevron', 'r-go')}
   </button>`;
@@ -3719,7 +4235,9 @@ function goToCoords(lat, lng) {
   closeSearch();
   clearFound();      // whatever the last search left standing is not this place
   map.jumpTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), COORD_ZOOM) });
-  openNewPin(lat, lng, null);
+  // Lands and says what is there, with "pin here" one tap away — rather than
+  // opening a new pin nobody asked for yet.
+  showPointCard(lat, lng);
 }
 
 /* An area is flown to as a box and a point as a point. A wilderness area framed
@@ -4040,7 +4558,7 @@ function eachTiledLayer(bounds, { base, overlays, minZoom = OFFLINE_MIN_Z, maxZo
     // as tiles. There is nothing to put in a box and take up the mountain.
     if (!ov || ov.noBulk) continue;
     const from = Math.max(minZoom, ov.minzoom || 0);
-    const to = Math.min(maxZoom, ov.maxzoom);
+    const to = Math.min(maxZoom, ov.bulkMaxzoom ?? ov.maxzoom);
     if (from > to) continue;                       // nothing to fetch
     fn(ov.bulkUrls || ov.urls, from, to);
   }
@@ -5200,6 +5718,12 @@ document.querySelectorAll('[name="theme"]').forEach((r) =>
   r.addEventListener('change', () => r.checked && setTheme(r.value)));
 
 $('layers-btn').addEventListener('click', () => {
+  // Groups with something on open themselves; the rest stay folded — until
+  // you open or close one yourself, after which it stays how you left it.
+  document.querySelectorAll('#layers details.fold').forEach((d) => {
+    if (!d.dataset.touched) d.open = !!d.querySelector('[data-overlay]:checked');
+  });
+  renderLayersBadge();
   openPanel('layers');
   overlayNotes();     // the note depends on the base map, which may have moved
   refreshLocationState();
@@ -5208,6 +5732,26 @@ $('loc-enable').addEventListener('click', () => locate().catch(() => {}));
 $('loc-use').addEventListener('change', (e) => setUseLocation(e.target.checked));
 $('maps-from-layers').addEventListener('click', () => { closePanel('layers'); openMaps(); });
 $('layers-close').addEventListener('click', () => closePanel('layers'));
+document.querySelectorAll('#layers details.fold > summary').forEach((sm) =>
+  sm.addEventListener('click', () => { sm.parentElement.dataset.touched = '1'; }));
+$('layers-on-list').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-off]');
+  if (b) setOverlay(b.dataset.off, false);
+});
+
+$('measure-btn').addEventListener('click', () => (measure ? stopMeasure() : startMeasure()));
+$('measure-close').addEventListener('click', stopMeasure);
+$('measure-undo').addEventListener('click', () => { measure?.pts.pop(); if (measure) renderMeasure(); });
+$('measure-clear').addEventListener('click', () => { if (measure) { measure.pts = []; renderMeasure(); } });
+$('measure-svg').addEventListener('pointerdown', (e) => {
+  e.currentTarget.setPointerCapture(e.pointerId); scrubProfile(e);
+});
+$('measure-svg').addEventListener('pointermove', (e) => {
+  if (e.pointerType === 'mouse' || e.currentTarget.hasPointerCapture(e.pointerId)) scrubProfile(e);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach((t) =>
+  $('measure-svg').addEventListener(t, endScrub));
+addEventListener('resize', () => { if (measure?.profile) paintProfile(); });
 
 document.querySelectorAll('[name="basemap"]').forEach((r) =>
   r.addEventListener('change', () => r.checked && setBasemap(r.value)));
@@ -5235,6 +5779,8 @@ document.addEventListener('keydown', (e) => {
   // A note open for editing gets the next one on its own, for the same reason:
   // backing out of an edit should not also close the pin.
   if (editingNote) { cancelEditNote(); return; }
+  if (mapPopup) { closeMapPopup(); return; }
+  if (measure) { stopMeasure(); return; }
   closeSheet();
   if (!$('list').hidden) closeSearch();
   ['maps', 'layers', 'sources', 'settings'].forEach((id) => closePanel(id));

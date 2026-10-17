@@ -9,7 +9,7 @@
  *      data would be rude.
  */
 
-const SHELL_VERSION = 'atlas-shell-v46';
+const SHELL_VERSION = 'atlas-shell-v47';
 const TILE_CACHE    = 'atlas-tiles-v1';
 
 const SHELL = [
@@ -24,6 +24,7 @@ const SHELL = [
   './owners.js',
   './search.js',
   './terrain.js',
+  './dem.js',
   './terrain-worker.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
