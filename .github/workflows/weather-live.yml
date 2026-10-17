@@ -40,5 +40,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node projects/weather/verify/score.mjs --limit 60 --backfill 2 --state /tmp/wx/state.json --out /tmp/wx/scores && head -c 1500 /tmp/wx/scores/index.json && ls -la /tmp/wx/scores && head -c 800 /tmp/wx/scores/$(ls /tmp/wx/scores | grep -v index | head -1)
       - run: node projects/weather/test/live.mjs

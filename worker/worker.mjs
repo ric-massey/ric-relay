@@ -1598,6 +1598,22 @@ function wxUpstream(parts, params) {
       forecast_hours: '48', wind_speed_unit: 'ms', timeformat: 'unixtime', timezone: 'auto' });
     return [`${WX_OM}?${q}`, WX_TTL.col];
   }
+  if (kind === 'now' && !parts[2]) {
+    const la = String(params.get('lat') || '').split(','), lo = String(params.get('lon') || '').split(',');
+    if (!la.length || la.length !== lo.length || la.length > 12) return null;
+    const lats = la.map(v => wxDeg(v, 90)), lons = lo.map(v => wxDeg(v, 180));
+    if (lats.includes(null) || lons.includes(null)) return null;
+    const q = new URLSearchParams({ latitude: lats.join(','), longitude: lons.join(','), current: 'temperature_2m,weather_code,is_day',
+      daily: 'temperature_2m_max,temperature_2m_min', forecast_days: '1', timezone: 'auto', timeformat: 'unixtime' });
+    return [`${WX_OM}?${q}`, WX_TTL.om];
+  }
+  if (kind === 'ens' && !parts[2]) {
+    const lat = wxDeg(params.get('lat'), 90), lon = wxDeg(params.get('lon'), 180);
+    if (lat === null || lon === null) return null;
+    const q = new URLSearchParams({ latitude: lat, longitude: lon, hourly: 'temperature_2m,precipitation,wind_speed_10m',
+      models: 'ncep_nbm_conus,ncep_hrrr_conus,gfs_global,ecmwf_ifs025,ecmwf_aifs025_single', forecast_days: '7', timezone: 'auto', timeformat: 'unixtime' });
+    return [`${WX_OM}?${q}`, WX_TTL.om];
+  }
   if (kind === 'ommeta' && WX_META.has(parts[2]) && !parts[3]) {
     return [`https://api.open-meteo.com/data/${parts[2]}/static/meta.json`, WX_TTL.meta];
   }
