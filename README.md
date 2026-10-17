@@ -15,7 +15,8 @@ to ask.
 ## The idea
 
 This is not a normal blog. The pitch is: *"imagine it's literally my own internet."*
-The home page is a terminal hub, and every other page is a **room** styled to look like
+The home page is the front door — a feed of every room — with the terminal hub a
+click (or a typed command) away at `terminal.html`; every other page is a **room** styled to look like
 the real app for that world — climbing looks like Mountain Project, training looks like
 Strava, and so on. Each room is its own self-contained `.html` file.
 
@@ -23,8 +24,9 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 
 | File | Room | What it is |
 |---|---|---|
-| `index.html` | Terminal | Landing terminal — boot sequence + working command line (try `help`) |
-| `frontdoor.html` | — | The redesigned front door, in preview and unlisted: a feed of all 34 rooms and things, newest first and reshuffled each visit, that ends when they run out — each torn from its own paper and showing the room working, and an amber button to the terminal (type `front door` in the terminal) |
+| `index.html` | — | The front door, home: a feed of all 34 rooms and things, newest first and reshuffled each visit, that ends when they run out — each torn from its own paper and showing the room working — with a terminal prompt in the bar that runs commands in place |
+| `terminal.html` | Terminal | The terminal — boot sequence + working command line (try `help`); `home` or its [ HOME ] box goes back to the front door |
+| `frontdoor.html` | — | Redirect to `index.html`, where the front door was previewed |
 | `orrin.html` | Orrin | Plain-language tour of Orrin, progress notes after each run (`orrin-updates.js`), plus live public project activity from GitHub |
 | `psyche.html` | Psyche | Human-systems field notebook — mood, criteria, and evidence |
 | `climbing.html` | Climbing | Mountain-Project-style route ledger — projects, ticks, objectives |
@@ -218,7 +220,7 @@ are still reachable by URL and from the terminal's `ls` / `tree` / `find` / `ope
 
 One label is currently out of step: the front door and `ls` call the Psyche room
 **`/mind`**, while every room nav still says **`psyche`**. Typing either works
-(`PAGE_ALIASES` in `index.html` maps `psyche` → `mind`), but the two names are visible
+(`PAGE_ALIASES` in `terminal.html` maps `psyche` → `mind`), but the two names are visible
 in different places, which is exactly the drift the shared label set exists to prevent.
 Pick one and make the other follow.
 
@@ -226,9 +228,9 @@ On a phone the menu collapses behind a single button with full-size tap targets.
 behaviour is shared (`installRoomMenu()` in `effects.js`, so there aren't nine copies of
 it); the button's appearance is styled per room, like everything else in the nav.
 
-When served on the web, Terminal home links normalize to the clean site root instead of
-leaving `/index.html` in the address. Their `index.html` markup remains as a fallback so
-the pages still work when opened directly from disk.
+Links that say *terminal* go to `terminal.html`. Plain home links go to `index.html`, the
+front door, and normalize to the clean site root when served on the web; the
+`index.html` markup remains so the pages still work when opened directly from disk.
 
 ## Terminal
 
@@ -237,7 +239,7 @@ Type `help` for the current command list. Useful shortcuts include `/clear`, `tr
 Commands accept a leading slash, project shortcuts are searchable, and `↑`/`↓` plus
 `Tab` provide history and completion.
 
-Two arrays near the top of `index.html`'s script drive all of it: **`ROOMS`** (the
+Two arrays near the top of `terminal.html`'s script drive all of it: **`ROOMS`** (the
 directory, `ls`, `tree`, `find`, `random`, completion) and **`PROJECTS`** (the `projects`
 list, `open <shortcut>`, `find`, and the project branches under `tree`). A project that
 isn't in `PROJECTS` is invisible to every one of those commands even though its room
@@ -251,12 +253,12 @@ Each page keeps its editable content in a loudly-commented block near the top of
 file — copy the example block, edit, done.
 
 - **Post a homepage note:** edit `notes.js`.
-- **Add or rename a room:** edit the `ROOMS` array in `index.html` — it is the one list
+- **Add or rename a room:** edit the `ROOMS` array in `terminal.html` — it is the one list
   the directory, `ls`, `tree`, `find` and Tab completion all render from — then update
   the `<nav>` on every room page.
 - **Add a project:** put it in `projects/<name>/`, link it from the one room it belongs
   to, give it `projects/relay-return.js` so there's a way back, and add it to the
-  `PROJECTS` array in `index.html` so the terminal can find it.
+  `PROJECTS` array in `terminal.html` so the terminal can find it.
 - **Add a climb:** don't hand-edit the climbing pages. Edit `projects/climbing/climbs.md`
   and run `python3 projects/climbing/build-data.py`. See
   [`projects/climbing/readme.md`](projects/climbing/readme.md).

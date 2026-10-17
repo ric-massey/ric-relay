@@ -8,7 +8,7 @@ const repoRoot = path.join(root, '..', '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 
 test('the terminal has an undocumented hermiscus entrance', () => {
-  const terminal = fs.readFileSync(path.join(repoRoot, 'index.html'), 'utf8');
+  const terminal = fs.readFileSync(path.join(repoRoot, 'terminal.html'), 'utf8');
   assert.match(terminal, /hermiscus:\s*\(\)\s*=>/);
   assert.match(terminal, /projects\/dads-race\/login\.html/);
   const visible = terminal.match(/const visibleCommands = \[([^;]+)\];/s)?.[1] || '';

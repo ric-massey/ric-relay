@@ -64,7 +64,7 @@
 
   document.write(
     `<div class="climbtop"><div class="inner">` +
-      `<a class="brand" href="${root}index.html">RIC'S TERMINAL</a>` +
+      `<a class="brand" href="${root}terminal.html">RIC'S TERMINAL</a>` +
       `<a class="up" href="${root}index.html">&uarr; all rooms</a>` +
     `</div></div>` +
     `<div class="climbnav"><div class="inner" id="climbnavinner">${bar()}</div></div>`);

@@ -1,7 +1,7 @@
 # Ric's Terminal
 
 > Ric Massey's personal website for friends and family. The home page is a
-> terminal; every other page is a "room" styled like the real app for that part
+> feed of every room; the terminal is its own page. Every other page is a "room" styled like the real app for that part
 > of his life. Most rooms draw themselves with JavaScript, so where a room has
 > plain-text data it is linked below.
 
@@ -22,7 +22,8 @@
 
 ## Rooms
 
-- [Terminal (home)](https://ricmassey.com/)
+- [Home — every room, one after another](https://ricmassey.com/)
+- [Terminal](https://ricmassey.com/terminal.html)
 - [Orrin](https://ricmassey.com/orrin.html): Ric's long-running computer program with memory and goals
 - [Psyche](https://ricmassey.com/psyche.html): mood, diagnostic criteria, psychoactive substances, and the evidence behind them
 - [Climbing](https://ricmassey.com/climbing.html): routes and climbing days

@@ -7,8 +7,9 @@ without breaking the concept or Ric's rules.**
 ## What this project is
 
 Ric Massey's personal website for friends and family. The concept: **"it's literally
-my own internet."** The home page (`index.html`) is a terminal hub. (A redesigned front
-door is in preview at `frontdoor.html` — see "The front door" below.) Every other page is a **room** dressed up to look like the real app for that world (climbing → Mountain
+my own internet."** The home page (`index.html`) is **the front door** — a feed of every
+room (see "The front door" below); the terminal hub that used to be home is
+`terminal.html` (moved 2026-10-17, Ric: "make the front door the main page"). Every other page is a **room** dressed up to look like the real app for that world (climbing → Mountain
 Project, training → Strava, Orrin → a brain, etc.). Plain HTML/CSS/JS, **no build
 step and no dependencies** — each page is a single self-contained `.html` file with its
 CSS in a `<style>` tag and its JS in a `<script>` tag. Keep it that way unless Ric
@@ -24,7 +25,9 @@ before a push, `git fetch` and fast-forward first.
 ## Where things live
 
 ```
-index.html, <room>.html     the terminal and the rooms — one self-contained page each
+index.html                  the front door — home
+terminal.html, <room>.html  the terminal and the rooms — one self-contained page each
+frontdoor.html              a redirect to index.html, where the front door was previewed
 effects.js                  sitewide: visual modes, the mobile room menu, Mochi
 latest.js, notes.js         the front door's banner and transmissions (hand-edited)
 orrin-updates.js            the Orrin page's progress notes (written by orrin_v3's scripts/site_update.py, or by hand)
@@ -110,12 +113,16 @@ With JS off nothing is injected and the nav renders exactly as it always did.
 - `href` targets and link text are **identical on every page** — only the CSS differs.
 - **Known drift, not a licence to add more:** the front door and `ls` render the Psyche
   room as `/mind` (that is its `name` in `ROOMS`), while every room nav still says
-  `psyche`. `PAGE_ALIASES` in `index.html` maps `psyche` → `mind` so both words work,
+  `psyche`. `PAGE_ALIASES` in `terminal.html` maps `psyche` → `mind` so both words work,
   but a visitor sees two names for one room. If you are asked to settle it, change the
   `ROOMS` name **or** the nine navs — not one page of them.
-- Keep Terminal home links as `index.html` in room markup for direct-file compatibility.
-  `effects.js` normalizes those links to the clean directory root when served over HTTP;
-  `projects/relay-return.js` does the same for project return controls. Do not hardcode
+- A link that says **terminal** goes to `terminal.html` — every room nav's `terminal`
+  entry, the "RIC'S TERMINAL" brands, the "← Ric's Terminal" controls, the 404's way
+  back. A plain home link (the climbing and training bars' `↑ all rooms`) goes to
+  `index.html`, the front door; `effects.js` normalizes those to the clean directory
+  root when served over HTTP. `projects/relay-return.js` still reads a page's
+  `data-home="…/index.html"` and turns it into the terminal.html beside it, so those
+  attributes stay as they are. Do not hardcode
   a deployment subdirectory or domain.
 - The current room is rendered as a `<span class="here" aria-current="page">` (not a
   link), positioned in the same spot in the list as its `<a>` on other pages.
@@ -123,14 +130,14 @@ With JS off nothing is injected and the nav renders exactly as it always did.
 - `map.html` is deliberately left out of the room menus entirely.
 
 **`apex`, `log` and `map` are deliberately unlisted** — in `#dir` *and* in the room
-navs (the preview front door, `frontdoor.html`, is the one exception, by Ric's word on
+navs (the front door, `index.html`, is the one exception, by Ric's word on
 2026-10-16: it shows Apex and ATLAS). They are the thin rooms and Ric does not want the front door advertising work
 that isn't done. They are *not* removed: `ls`, `tree`, `find`, `open <room>`, typing
 the room name and the plain URL all still reach them, and Tab completion offers all
 three. Don't "fix" this by putting them back. If one gets built out properly, that's
 the moment to re-list it.
 
-**There is one room list, in `index.html`.** The `ROOMS` array near the top of its script
+**There is one room list, in `terminal.html`.** The `ROOMS` array near the top of its script
 is the single source for the `#dir` markup (rendered from it), `PAGES`, `ls`, `tree`,
 `find`, `random` and Tab completion — these used to be five hand-maintained copies that
 drifted (two typos lived in the page twice each). Add, rename or unlist a room by editing
@@ -207,7 +214,7 @@ on purpose, and neither resembles any other room.
 quietly does nothing on those eleven pages. That is correct: both section bars scroll
 sideways under 820px instead.
 
-**If you add, remove, or rename a room:** edit `ROOMS` in `index.html` (that covers the
+**If you add, remove, or rename a room:** edit `ROOMS` in `terminal.html` (that covers the
 directory, `ls`, `tree`, `find` and completion in one place), then update the `<nav>` on
 **every** room page, the table in `README.md`, and this file. Keep the label set in sync
 everywhere — the navs must agree with each other *and* with the front door.
@@ -331,7 +338,7 @@ edit it.
 `projects/climbing/index.html` and `projects/climbing/gallery.html` all read
 generated files. To add a climb, edit `projects/climbing/climbs.md` and run
 `python3 projects/climbing/build-data.py`. See `projects/climbing/readme.md`.
-That script also writes `projects/climbing/latest-climb.js`, which `index.html` loads
+That script also writes `projects/climbing/latest-climb.js`, which the front door loads
 so the newest day out leads the "latest" banner without anyone editing a list.
 
 **A day can also be logged from a phone at the crag.** `projects/climbing/add.html`
@@ -557,16 +564,16 @@ the rest. Rules:
   AI the callout table and the transform. Keep all three in anything new.
 - The archive only grows; `sync.py` commits the room's data only and never pushes.
 
-**The front door (in preview since 2026-10-16).** It went live as `index.html` and Ric
-moved it back out the same day: the terminal is home again, and the redesign lives at
-`frontdoor.html`, `noindex`, reached by its URL, by typing `front door` or `home` in
-the terminal, or by the terminal's **[ HOME ]** box in the corner of its frame (Ric,
-2026-10-17: "a box called home in the terminal that brings you to the main page"). It does not run the terminal, it hands it commands: the bar carries a
+**The front door (home since 2026-10-17).** It went live as `index.html` on 2026-10-16,
+was moved back out to `frontdoor.html` the same day while it was worked on, and became
+home for good on 2026-10-17 (Ric: "make the front door the main page"). The terminal
+moved to `terminal.html`; `frontdoor.html` is now only a redirect home. From the terminal,
+`front door` / `home` or the **[ HOME ]** box in the corner of its frame come back here. It does not run the terminal, it hands it commands: the bar carries a
 piece of the terminal's own screen (black glass, amber `#ffb000`, scanlines) — a `~$`
 prompt and a **TERMINAL** key (Ric, 2026-10-17). What is typed there **runs right
 there** (Ric, 2026-10-17: "it shouldn't move you to the terminal first. Like mochi"): the
-terminal sits in a hidden frame (`index.html?embed=1`, loaded the first time the prompt
-is touched) and answers in a panel under the bar. In that mode `index.html` does nothing
+terminal sits in a hidden frame (`terminal.html?embed=1`, loaded the first time the prompt
+is touched) and answers in a panel under the bar. In that mode `terminal.html` does nothing
 itself — every way it leaves the page goes through `goTo()` / `reloadPage()` / `goBack()`,
 and `RELAY_CATS` / `RELAY_EFFECTS` are stand-ins defined before `effects.js` (which then
 stands down) — all of it is posted up to the front door, which navigates, wakes Mochi or
@@ -575,7 +582,7 @@ sets the trip mode on itself. Messages are checked for origin and source both wa
 `goTo()`**, or that command will move the hidden frame instead of the visitor. A post's
 name goes straight to its page; Enter on nothing opens the terminal; `/` focuses the
 prompt. If the frame never answers, or with JS off, the command goes to the terminal as
-`index.html?run=<command>` (run once, as if typed, address cleaned). Don't put it in `ROOMS`, `PROJECTS` or
+`terminal.html?run=<command>` (run once, as if typed, address cleaned). Don't put it in `ROOMS`, `PROJECTS` or
 `latest.js`.
 
 **It shows off the pages, not Ric** (Ric, 2026-10-16: "it's my internet, but it's an
@@ -640,7 +647,7 @@ changes the hero's paper.
 
 Homepage "transmissions" live in `notes.js`. Curated newest additions live
 in `latest.js` and are announced in exactly one place: the "new" pill on the front door
-(`frontdoor.html`), and the terminal's `latest` command opens the newest. The terminal
+(`index.html`), and the terminal's `latest` command opens the newest. The terminal
 itself carries no banner and no welcome copy any more (Ric, 2026-10-17: "remove the
 notifications") — it boots straight to the shell; don't put either back. Every room used to carry one in its own native style; they don't any
 more, so an addition is not repeated eight times. The per-room support is still in
@@ -697,7 +704,7 @@ migration marked "safe to re-run", and re-running it would have put the original
 ## House style
 
 - Match the existing voice: playful, terminal/hacker flavor, easter eggs welcome
-  (e.g. hidden `index.html` commands: `orrin`, `apex`, `sudo`, `coffee`, `exit`).
+  (e.g. hidden terminal commands in `terminal.html`: `orrin`, `apex`, `sudo`, `coffee`, `exit`).
 - Keep every easter egg discoverable in `EASTER_EGGS.md`. Sitewide visual modes belong
   in `effects.js`; preserve the reduced-motion fallback, room-to-room persistence,
   refresh-to-reset behavior, and the `sober` terminal command. Do not add a visible
@@ -742,7 +749,7 @@ the pile that used to pass.
 
 The first suite in it parses every inline `<script>` on every committed page
 (`.github/test/inline-scripts.mjs`). It exists because on 2026-09-24 a single
-line break written into a string literal stopped `index.html` running at all,
+line break written into a string literal stopped the terminal's page running at all,
 with every other suite green — none of them loads the front door.
 
 ```sh

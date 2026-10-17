@@ -212,7 +212,7 @@ def page(name, slug, n_games, m, why, base):
 <script>location.replace({json.dumps(to)});</script>
 </head><body style="margin:0;background:#0b0d10;color:#eceff2;font:16px system-ui;padding:24px">
 <p><a href="{e(to)}" style="color:#e7c178">{e(name)}'s games with Ric →</a></p>
-<p><a href="../../../index.html" style="color:#a0a8b2">← Ric's Terminal</a></p>
+<p><a href="../../../terminal.html" style="color:#a0a8b2">← Ric's Terminal</a></p>
 </body></html>
 """
 

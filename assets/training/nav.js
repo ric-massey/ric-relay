@@ -39,7 +39,7 @@
 
   document.write(
     `<div class="traintop"><div class="inner">` +
-      `<a class="brand" href="${root}index.html">RIC'S TERMINAL</a>` +
+      `<a class="brand" href="${root}terminal.html">RIC'S TERMINAL</a>` +
       `<a class="up" href="${root}index.html">&uarr; all rooms</a>` +
     `</div></div>` +
     `<div class="trainnav"><div class="inner" id="trainnavinner">` +

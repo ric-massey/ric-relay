@@ -1,9 +1,10 @@
 (() => {
   const loader = document.currentScript;
-  const staticHome = loader?.dataset.home || "../index.html";
-  const home = /^https?:$/.test(location.protocol)
-    ? staticHome.replace(/index\.html(?=#|$)/, "")
-    : staticHome;
+  // data-home names the site root's index.html; the control says "Ric's
+  // Terminal", so it goes to the terminal, which lives beside it as
+  // terminal.html now that index.html is the front door.
+  const staticHome = (loader?.dataset.home || "../index.html").replace(/index\.html(?=#|$)/, "terminal.html");
+  const home = staticHome;
   const egg = loader?.dataset.egg || "";
 
   if (loader && !window.RELAY_EFFECTS && !document.querySelector("script[data-relay-effects]")) {
