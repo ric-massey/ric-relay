@@ -576,15 +576,15 @@ hold), the posters from the Entertainment list, the photographs, a made-up run o
 made-up hills for Training, an **invented** map for ATLAS, the registry search typing
 itself, real aberration and Doppler for How Speed Affects Time, a Minkowski diagram,
 Apex's biggest banner number from `apex-data.js`, the terminal answering real commands,
-the hardest send of each year from `climbs-data.js`,
-an invented minimap for VALORANT, a Leviathan hull drafted along a scan line.
+the hardest send of each year from `climbs-data.js`, the Arcade's four clips playing
+at once, a Leviathan hull drafted along a scan line.
 **No real place is ever drawn**: Training's route and ATLAS's map are generated (hard
 rule 1). Few words inside any rip.
 
 **It is a feed of everything, it ends, and no two visits are alike** (Ric, same day:
 "like an insta feed", "generated at random so every time you open the page it's a bit
 different", then "when there are no more rooms it should end"). `POSTS` lists every room
-and every thing in a room a visitor can use — 36 today: the rooms themselves, the
+and every thing in a room a visitor can use — 33 today: the rooms themselves, the
 projects, and the sub-pages that stand on their own (the Leviathan, the four spacetime
 chapters, climbing's media and stats, training's calendar and races, the movie list) —
 each with a `tier`. Tier 0 (Counter-Strike, KONDRITE, the Boards) keeps its order,
@@ -592,7 +592,13 @@ the other tiers are shuffled within themselves, each post appears once, and the 
 finishes on "That's every room." (`.fin`). Don't bring back the endless rounds. Every
 tear, seam and drawing is seeded from `VISIT`, a random number per page load.
 Mochi, the 404 page and the trip modes stay off it (Ric, 2026-10-16) — they are
-surprises for the rooms, not posts. **Boards and ATLAS are in by Ric's word** — the earlier rule that
+surprises for the rooms, not posts. VALORANT, the Log and the Workbench are off it too
+until they have something in them (no matches, three stub entries, one finished
+project) — a post that opens onto an empty room costs the next click. **Every word on a
+post was checked against its page on 2026-10-17** (ClinicalTrials.gov, not "every
+trial in the world"; I-40's traffic is modelled from real counts, not live; KONDRITE's
+main game is solo Survey) — check again when you change a post, and never claim a
+count or a feature the page doesn't have. "Built by hand" is not to be said: it wasn't. **Boards and ATLAS are in by Ric's word** — the earlier rule that
 kept them off the front door is lifted here (ATLAS's post is a door to the sign-in; the
 map behind it is untouched). HERMISCUS and the private tools (admin, visitors, account)
 stay out (Ric, 2026-10-16: "Hermiscus can stay out"), and so do Climbing's add pages and
@@ -602,13 +608,15 @@ to `POSTS` at tier 0 and to the `<noscript>` list.
 **Every post is torn from its room's own paper.** `data-skin` sets the post's paper,
 ink, accent and heading face — CS steel, the cinema's black and gold, the climbing log's
 cream, the darkroom's red, Strava white, the terminal's amber, and so on — every one
-checked for 4.5:1. Each post's foot (`.seam`, a canvas) tears onto the next post, which
-it sits above. The rip in it is a wedge — full height where it meets the screen's edge,
+checked for 4.5:1. Posts do **not** tear into each other (Ric, 2026-10-17: "smooth
+transitions, not another rip"): each post's `.blend` melts its paper into the next
+one's (`--next`, set by the script) across the padding between them. The rip in it is a
+gentle wedge (kept wide — narrow ones hid the drawings) — full height where it meets the screen's edge,
 closing in toward the words — torn through a stack of that same paper (`paperOf()`
 derives the stack from `--paper`), painted on a canvas (`.rim`) inside the clipped `.cut`.
 On a phone the words come first, then a 210px strip. The picture (`.still`) slides with
 the screen ("depth"). **A post far off screen lets go of everything heavy** — its torn
-edges, its seam, its video, its drawing — and makes them again as it comes back, so a
+edges, its video, its drawing — and makes them again as it comes back, so a
 long feed costs no more than a short one. Never put a `filter` or `transform` on a
 `.cut`, keep anything laid over a cut *inside* it (Chromium paints outside the clip
 otherwise), and draw shadows on the canvas, never as a CSS or SVG blur. Night/day only
