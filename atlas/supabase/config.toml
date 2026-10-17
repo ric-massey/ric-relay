@@ -5,7 +5,7 @@
 #
 # Sign-up is ON since 2026-09-23, deliberately. This project is the one account
 # for the whole site (ATLAS, HERMISCUS, later pages): anybody may make an
-# account, and a new account opens NOTHING until Ric approves it at /account/.
+# account, and a new account opens NOTHING until Ric approves it at /admin/.
 # The lock is has_page_access() in the database (migration site_accounts), not
 # the sign-up switch. Do not "fix" enable_signup back to false without also
 # taking away the request form at /account/.
@@ -251,7 +251,10 @@ enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
-max_frequency = "1s"
+# 60s since 2026-10-17 (A3a-9). At 1s one person could spend the whole
+# project's hourly email allowance on one address in thirty seconds, and every
+# password reset (the only way back in) failed for everybody until the hour.
+max_frequency = "60s"
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).

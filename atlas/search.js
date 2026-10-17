@@ -314,6 +314,12 @@ export const NEAR_BOX_KM = 160;
  * longitude is a different distance at every latitude and a square in degrees
  * is not a square on the ground. */
 export function boxAround({ lat, lng }, km = NEAR_BOX_KM) {
+  // Centred on a point rounded to a tenth of a degree (about 10 km), not on
+  // you. The box is 160 km across, so a coarse centre changes nothing about
+  // what is found — and an exact one handed the geocoder the spot you were
+  // standing on, to six decimals, every time you searched "near me".
+  lat = Math.round(lat * 10) / 10;
+  lng = Math.round(lng * 10) / 10;
   const dLat = km / 111;
   const dLng = km / (111 * Math.max(0.2, Math.cos(rad(lat))));
   return [lng - dLng, lat + dLat, lng + dLng, lat - dLat];

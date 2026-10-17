@@ -2623,3 +2623,16 @@ details.fold[open] > summary { margin-bottom: var(--s-1); }
   #app:has(> .sheet:not([hidden])) .maplibregl-ctrl-bottom-left,
   #app:has(> .panel:not([hidden])) .maplibregl-ctrl-bottom-left { margin-bottom: var(--s-3); }
 }
+
+/* ── a note's own controls hit at 44px ──
+   "photo", "edit" and ✕ were about 24px and 15px tall targets beside each
+   other, and ✕ deletes the note (bug sweep A3b-8). Each now takes a 44px
+   square of finger without the note's heading growing: the negative margin
+   gives back the height the target adds, so the line is the size it was. */
+.note-head .note-del,
+.note-head .note-photo {
+  min-width: var(--tap); min-height: var(--tap);
+  margin-block: calc((var(--tap) - 20px) / -2);
+  display: inline-grid; place-items: center;
+}
+.note-head .note-photo { padding: 0 var(--s-2); }

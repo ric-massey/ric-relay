@@ -13,7 +13,13 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<!-- The two scripts from outside run beside your signed-in session, so each is
+     pinned to an exact version and an integrity hash: a changed file is
+     refused rather than run. To upgrade, change the version and the hash
+     together (openssl dgst -sha384 -binary | openssl base64 -A), here and in
+     sw.js. -->
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+      integrity="sha384-MinO0mNliZ3vwppuPOUnGa+iq619pfMhLVUXfC4LHwSCvF9H+6P/KO4Q7qBOYV5V" crossorigin="anonymous">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -993,6 +999,9 @@
         anywhere in the country, and read you its legal description. Putting a
         <b>name</b> to a private parcel is the county's business, and every
         county publishes differently — so you point it at one, once.</p>
+      <p class="hint">A county you add is used for your own pins straight away,
+        and for everybody else's once Ric has approved it. Each one is only ever
+        asked about pins inside its own county.</p>
 
       <div id="sources-list" class="sources-list"></div>
 
@@ -1005,6 +1014,14 @@
 
         <label class="field"><span>what to call it</span>
           <input id="src-label" type="text" autocapitalize="words" spellcheck="false"></label>
+        <div class="field-row">
+          <label class="field"><span>county</span>
+            <input id="src-county" type="text" autocapitalize="words" spellcheck="false"
+                   maxlength="60" placeholder="Lander County"></label>
+          <label class="field"><span>state</span>
+            <input id="src-state" type="text" autocapitalize="characters" spellcheck="false"
+                   maxlength="2" placeholder="NV"></label>
+        </div>
         <label class="field"><span>layer URL (https, ends in a number)</span>
           <input id="src-url" type="url" inputmode="url" autocapitalize="none"
                  autocorrect="off" spellcheck="false"
@@ -1107,8 +1124,10 @@
   </div>
 </div>
 
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"
+        integrity="sha384-SYKAG6cglRMN0RVvhNeBY0r3FYKNOJtznwA0v7B5Vp9tr31xAHsZC0DqkQ/pZDmj" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"
+        integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
 <script src="config.js"></script>
 <script type="module" src="app.js"></script>
 </body>

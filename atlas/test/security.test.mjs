@@ -203,3 +203,29 @@ test('a restrictive policy is restrictive on every table it is on', () => {
     }
   }
 });
+
+/* ── 2026-10-17 bug sweep: things only the files can hold ── */
+const here = dirname(fileURLToPath(import.meta.url));
+const atlasFile = (f) => readFileSync(join(here, '..', f), 'utf8');
+
+test('seed.sql grants nothing — the migrations do (A3a-6)', () => {
+  const seed = atlasFile('supabase/seed.sql').replace(/--.*$/gm, '');
+  assert.doesNotMatch(seed, /\bgrant\b/i,
+    'a blanket grant in the seed undoes the profiles column lock locally');
+});
+
+test('outside scripts are pinned with an integrity hash (A3b-6)', () => {
+  const html = atlasFile('index.html');
+  const outside = [...html.matchAll(/<(script|link)\b[^>]*(?:src|href)="https:\/\/[^"]+"[^>]*>/g)].map((m) => m[0]);
+  assert.ok(outside.length >= 3);
+  for (const tag of outside) {
+    assert.match(tag, /integrity="sha384-[A-Za-z0-9+/=]+"/, tag);
+    assert.match(tag, /crossorigin="anonymous"/, tag);
+    assert.doesNotMatch(tag, /@\d+\/|@latest/, `not an exact version: ${tag}`);
+  }
+});
+
+test('the service worker deletes only its own old caches (C4-1)', () => {
+  const sw = atlasFile('sw.js');
+  assert.match(sw, /k\.startsWith\('atlas-shell-'\)/);
+});

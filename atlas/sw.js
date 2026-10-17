@@ -9,7 +9,7 @@
  *      data would be rude.
  */
 
-const SHELL_VERSION = 'atlas-shell-v47';
+const SHELL_VERSION = 'atlas-shell-v48';
 const TILE_CACHE    = 'atlas-tiles-v1';
 
 const SHELL = [
@@ -31,7 +31,7 @@ const SHELL = [
   './icons/icon-512.png',
   'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css',
   'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js',
-  'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js',
+  'https://unpkg.com/@supabase/supabase-js@2.117.2/dist/umd/supabase.js',
 ];
 
 // Hosts whose responses are map tiles. Anything from here is cache-first and
@@ -74,9 +74,12 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
+    // Only ATLAS's own old shells. Cache Storage belongs to the whole site,
+    // not to this worker: "delete everything that isn't mine" wiped Siege
+    // Conductor's offline copy on every ATLAS deploy (bug sweep C4-1).
     const keys = await caches.keys();
     await Promise.all(keys.map((k) => {
-      if (k !== SHELL_VERSION && k !== TILE_CACHE) return caches.delete(k);
+      if (k.startsWith('atlas-shell-') && k !== SHELL_VERSION) return caches.delete(k);
     }));
     await self.clients.claim();
   })());

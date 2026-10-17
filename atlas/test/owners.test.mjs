@@ -10,6 +10,7 @@ import {
   assessorSearchUrl, parcelQueryUrl, readParcel, parcelSiteUrl,
   serviceSearchUrls, scoreCandidate, rankCandidates, parcelLayers,
   guessFields, coverageScore, discoverParcelSource, stateName,
+  sourceServes, sourceCounty, trustedHost,
 } from '../owners.js';
 
 let passed = 0;
@@ -151,8 +152,11 @@ test('the assessor deep link only exists when it can be filled in', () => {
 test('the catalogue is asked twice: the county, and the state', () => {
   // URLSearchParams spells a space '+', which decodeURIComponent leaves alone.
   const readable = (u) => decodeURIComponent(u).replace(/\+/g, ' ');
-  const [byCounty, byState] = serviceSearchUrls('Nowhere', 'MT');
+  // The Census NAME, which already ends in "County" (A3b-4: it used to be
+  // searched for as "Nowhere County County").
+  const [byCounty, byState] = serviceSearchUrls('Nowhere County', 'MT');
   assert.match(readable(byCounty), /"Nowhere County"/);
+  assert.doesNotMatch(readable(byCounty), /County County/);
   assert.match(readable(byState), /"Montana"/);
   assert.equal(serviceSearchUrls('Nowhere', 'ZZ').length, 1);   // no such state
   assert.equal(stateName('mt'), 'Montana');
@@ -189,8 +193,8 @@ test('anything that is not about parcels is not a candidate at all', () => {
 test('the same service listed twice is probed once', () => {
   const item = { title: 'Nowhere County Parcels', owner: 'NowhereCountyGIS' };
   const ranked = rankCandidates([
-    { ...item, url: 'https://x/rest/services/P/FeatureServer/0' },
-    { ...item, url: 'https://x/rest/services/P/FeatureServer/0/' },   // trailing slash
+    { ...item, url: 'https://x.arcgis.com/rest/services/P/FeatureServer/0' },
+    { ...item, url: 'https://x.arcgis.com/rest/services/P/FeatureServer/0/' },   // trailing slash
   ], 'Nowhere', 'MT');
   assert.equal(ranked.length, 1);
 });
@@ -282,28 +286,75 @@ function stubFetch(log = []) {
   };
 }
 
-const found = await discoverParcelSource('Nowhere', 'MT', 45, -110, { fetchImpl: stubFetch() });
+const found = await discoverParcelSource('Nowhere County', 'MT', 45, -110, { fetchImpl: stubFetch() });
 
 test('the search comes back with a row ready to save', () => {
   assert.equal(found.source.label, 'Nowhere County, MT');
+  assert.equal(found.source.county, 'Nowhere County');
+  assert.equal(found.source.state, 'MT');
   assert.equal(found.source.owner_field, 'OWNER_NAME');
   assert.equal(found.source.apn_field, 'APN');
   assert.equal(found.source.acres_field, 'ACRES');
   assert.equal(found.source.site_url, null);
 });
 
-test('the layer that answers about the pin itself is the one chosen', () => {
+test('the layer that answers about the probe point itself is the one chosen', () => {
   assert.match(found.source.url, /\/All\/FeatureServer\/0$/);
   assert.equal(found.nearby, false);
-  assert.equal(found.parcel.owner, 'A PERSON');
+  // What it read at the probe point is somebody's parcel, not the pin's: it
+  // ranks the candidates and is not handed back as an answer.
+  assert.equal(found.parcel, null);
   assert.equal(found.count, 60000);
+});
+
+/* ── A3b-1 and A3a-1: who gets told where a pin is ── */
+
+test('the finder only asks government and ArcGIS Online hosts', async () => {
+  assert.equal(trustedHost('https://services3.arcgis.com/x/arcgis/rest/services/P/FeatureServer/0'), true);
+  assert.equal(trustedHost('https://gis.example.gov/arcgis/rest/services/P/MapServer/0'), true);
+  assert.equal(trustedHost('https://gis.co.nowhere.mt.us/arcgis/rest/services/P/MapServer/0'), true);
+  assert.equal(trustedHost('https://evil.example.com/arcgis/rest/services/P/MapServer/0'), false);
+  assert.equal(trustedHost('https://nowhere.us/arcgis/rest/services/P/MapServer/0'), false);
+  assert.equal(trustedHost('https://arcgis.com.evil.net/x'), false);
+
+  const log = [];
+  const planted = async (url) => {
+    log.push(url);
+    return { ok: true, json: async () => (url.includes('/sharing/rest/search')
+      ? { results: [{ title: 'Nowhere County Parcels', owner: 'NowhereCountyGIS',
+                      url: 'https://collector.example.com/arcgis/rest/services/P/FeatureServer/0' }] }
+      : {}) };
+  };
+  assert.equal(await discoverParcelSource('Nowhere County', 'MT', 45, -110, { fetchImpl: planted }), null);
+  assert.equal(log.some((u) => u.includes('collector.example.com')), false, 'never contacted');
+});
+
+test('a source is asked only about its own county', () => {
+  const s = { url: 'https://gis.example.gov/P/MapServer/0', county: 'Nowhere County', state: 'MT', created_by: 'a' };
+  assert.equal(sourceServes(s, { county: 'Nowhere', state: 'MT' }), true);
+  assert.equal(sourceServes(s, { county: 'Elsewhere', state: 'MT' }), false);
+  assert.equal(sourceServes(s, { county: 'Nowhere', state: 'NV' }), false);
+  assert.equal(sourceServes(s, { county: null, state: null }), false, 'no county known, nobody asked');
+  // Older rows only have a label.
+  const old = { url: s.url, label: 'Nowhere County, MT' };
+  assert.deepEqual(sourceCounty(old), { county: 'nowhere', state: 'MT' });
+  assert.equal(sourceServes(old, { county: 'Nowhere', state: 'MT' }), true);
+  assert.equal(sourceServes({ url: s.url, label: 'my favourite' }, { county: 'Nowhere', state: 'MT' }), false);
+});
+
+test('a personal pin goes only to sources its owner added', () => {
+  const s = { url: 'https://gis.example.gov/P/MapServer/0', county: 'Nowhere', state: 'MT', created_by: 'b' };
+  const here = { county: 'Nowhere', state: 'MT' };
+  assert.equal(sourceServes(s, here, { personal: true, me: 'a' }), false);
+  assert.equal(sourceServes(s, here, { personal: true, me: 'b' }), true);
+  assert.equal(sourceServes(s, here, { personal: false, me: 'a' }), true);
 });
 
 test('a catalogue with nothing in it is an ordinary answer, not a crash', async () => {
   const empty = async () => ({ ok: true, json: async () => ({ results: [] }) });
-  assert.equal(await discoverParcelSource('Nowhere', 'MT', 45, -110, { fetchImpl: empty }), null);
+  assert.equal(await discoverParcelSource('Nowhere County', 'MT', 45, -110, { fetchImpl: empty }), null);
   const dead = async () => { throw new Error('no signal'); };
-  assert.equal(await discoverParcelSource('Nowhere', 'MT', 45, -110, { fetchImpl: dead }), null);
+  assert.equal(await discoverParcelSource('Nowhere County', 'MT', 45, -110, { fetchImpl: dead }), null);
 });
 
 test('a service that says no in a 200 body is treated as a no', async () => {
@@ -312,7 +363,7 @@ test('a service that says no in a 200 body is treated as a no', async () => {
       ? { results: [{ title: 'Nowhere County Parcels', owner: 'NowhereGIS',
                       url: 'https://gis.example.gov/rest/services/All/FeatureServer/0' }] }
       : { error: { code: 499, message: 'Token Required' } } });
-  assert.equal(await discoverParcelSource('Nowhere', 'MT', 45, -110, { fetchImpl: tokenWall }), null);
+  assert.equal(await discoverParcelSource('Nowhere County', 'MT', 45, -110, { fetchImpl: tokenWall }), null);
 });
 
 console.log(`\n${passed} passed\n`);

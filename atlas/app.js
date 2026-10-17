@@ -585,14 +585,32 @@ async function setNewPassword(e) {
   toast('password set');
 }
 
+/* Signing out takes everything ATLAS kept on this browser with it — the mirror
+ * of every pin, note and photo you could see, your settings, unsynced work and
+ * saved offline maps — because the next person to use this browser is not
+ * you. It used to take only the session: the next account in was shown the
+ * last one's personal pins, and the dialog's "will lose" was not true either. */
 async function signOut() {
-  const pending = await local.queueCount();
+  const pending = (await myQueue()).length;
   const warning = pending
-    ? `\n\n${pending} pin${pending > 1 ? 's have' : ' has'} not synced yet. Signing out will lose ${pending > 1 ? 'them' : 'it'}.`
+    ? `\n\n${pending} change${pending > 1 ? 's have' : ' has'} not synced yet and will be lost.`
     : '';
-  if (!confirm(`Sign out of ATLAS?${warning}`)) return;
+  if (!confirm(`Sign out of ATLAS?\n\nEverything ATLAS saved on this browser goes too, offline maps included.${warning}`)) return;
+  await forgetThisBrowser();
   await db.auth.signOut();
   location.reload();
+}
+
+async function forgetThisBrowser() {
+  await local.wipe().catch(() => {});
+  await caches.delete(TILE_CACHE).catch(() => {});
+}
+
+/* The queue rows that are this account's. Rows from before writes were stamped
+ * carry no owner and were stamped with the last account on start (below). */
+async function myQueue() {
+  const id = me?.id;
+  return (await local.queued()).filter((q) => q.by === id);
 }
 
 /* ── boot ────────────────────────────────────────────────────────────────── */
@@ -633,13 +651,27 @@ async function start() {
     return;
   }
 
+  // A different account than the one this browser last held. Its mirror is
+  // somebody else's map: it goes. Their unsynced writes stay, stamped as
+  // theirs, and wait for them (myQueue never hands them to anybody else).
+  // Browsers from before this was recorded have no 'owner', but do have the
+  // last profile they held.
+  const owner = (await local.get('owner')) ?? (await local.get('me'))?.id ?? null;
+  if (owner !== session.user.id) {
+    if (owner) {
+      await local.stampQueue(owner);
+      await local.wipe({ keepQueue: true });
+    }
+    await local.set('owner', session.user.id);
+  } else {
+    await local.stampQueue(owner);
+  }
+
   // Offline, the profile fetch will fail — fall back to the copy we kept.
   let profile = await local.get('me');
   let adopted = false;
   if (online()) {
-    const { data } = await db.from('profiles')
-      .select('id, username, display_name, avatar_path, must_change_password, must_choose_username, prefs, setup_done')
-      .eq('id', session.user.id).single();
+    const data = await fetchMyProfile(session.user.id);
     if (data) {
       profile = data;
       await local.set('me', data);
@@ -660,6 +692,10 @@ async function start() {
     // An error means the question could not be asked (say, the function is not
     // live yet), not that the answer is no — fall through and let RLS decide.
     if (!accessError && allowed === false) {
+      // Switched off (or never on): nothing ATLAS kept from before stays on
+      // the phone, where offline it would still open straight onto the map.
+      await local.wipe({ keepQueue: true });
+      await local.set('owner', session.user.id);
       const denied = request && request.status === 'denied';
       const asked = !!(request && request.status === 'pending' && (request.pages || []).includes('atlas'));
       showWaiting(denied ? 'denied' : asked ? 'asked' : 'ask');
@@ -721,6 +757,19 @@ async function start() {
   await loadSources();
   await syncQueue();
   refreshNetworkUI();
+}
+
+/* Your own profile, settings included. Since the 2026-10-17 sweep the
+ * settings columns are not readable as a table — another member's row is a
+ * name and a face and nothing else — and your own come through my_profile().
+ * Falls back to the old read for a database the migration has not reached. */
+async function fetchMyProfile(id) {
+  const { data, error } = await db.rpc('my_profile');
+  if (!error && Array.isArray(data)) return data[0] || null;
+  const old = await db.from('profiles')
+    .select('id, username, display_name, avatar_path, must_change_password, must_choose_username, prefs, setup_done')
+    .eq('id', id).single();
+  return old.data || null;
 }
 
 /* ── settings that follow the person ─────────────────────────────────────
@@ -2009,7 +2058,7 @@ async function loadPins() {
     if (!error && data) {
       // Keep anything still sitting in the queue — the server doesn't know
       // about it yet, and it must not vanish off the map.
-      const queued = (await local.queued())
+      const queued = (await myQueue())
         .filter((q) => q.op === 'insert').map((q) => ({ ...q.row, _pending: true }));
       pins = [...queued, ...data];
       await local.replacePins(pins);
@@ -2037,7 +2086,7 @@ async function loadNotes() {
     const { data, error } = await db.from('pin_notes_with_author').select('*')
       .order('created_at', { ascending: true });
     if (!error && data) {
-      const pending = await local.queued();
+      const pending = await myQueue();
       const queued = pending
         .filter((q) => q.op === 'note-insert')
         .map((q) => ({ ...q.row, _pending: true,
@@ -2064,11 +2113,19 @@ async function loadPhotos() {
     const { data, error } = await db.from('pin_photos_with_author').select('*')
       .order('created_at', { ascending: true });
     if (!error && data) {
-      const queued = (await local.queued())
+      const queued = (await myQueue())
         .filter((q) => q.op === 'photo-insert')
         .map((q) => ({ ...q.row, _pending: true }));
       photoRows = [...data, ...queued];
       await local.replacePhotos(photoRows);
+      // A photo whose row is gone — the pin was made personal, deleted, or is
+      // somebody else's now out of reach — does not stay on this phone.
+      const keep = new Set(photoRows.map((r) => r.id));
+      for (const id of await local.blobIds()) {
+        if (typeof id === 'string' && !id.startsWith('avatar:') && !keep.has(id)) {
+          await local.deleteBlob(id);
+        }
+      }
       return;
     }
   }
@@ -3151,7 +3208,11 @@ async function askOwner() {
   btn.disabled = true;
   btn.textContent = 'asking…';
   try {
-    const result = await lookupOwnership(lat, lng, { sources: parcelSources });
+    // A personal pin is only sent to county sources you added yourself, and
+    // every pin only to sources for its own county (owners.js, sourceServes).
+    const result = await lookupOwnership(lat, lng, {
+      sources: parcelSources, personal: !!sheet.pin.is_private, me: me.id,
+    });
     if (sheet?.pin?.id !== id) return;          // sheet moved on while we waited
     await local.set(`own:${id}`, result);
     renderOwner(result, false);
@@ -3207,11 +3268,14 @@ function huntHtml() {
   // Said plainly, because it is the difference between an answer and a service
   // that merely covers the area: standing on a road or on public land, there is
   // no parcel under you and there is not supposed to be one.
+  // The finder never sends it this pin (it proved the service with a point of
+  // the Census's own), so there is nothing to show about the pin yet. Saving
+  // is what asks — and then only because you chose this service.
   const read = rows.length
     ? `<dl class="owner-rows">${rows.join('')}</dl>`
-    : `<div class="owner-hunt">It covers this area, but nothing owns the exact
-        spot this pin is on — usually a road, or public land. Save it and it
-        will answer for the pins that do.</div>`;
+    : `<div class="owner-hunt">This holds the county's parcels. Use it and this
+        pin is looked up there — your own pins straight away, everybody's once
+        Ric approves it.</div>`;
 
   return `<div class="owner-found">
     <div class="owner-found-head">${escapeHtml(f.service)}</div>
@@ -3225,18 +3289,26 @@ function huntHtml() {
   </div>`;
 }
 
-async function findCounty() {
+async function findCounty(again = false) {
   const r = ownerShown?.r;
   if (!sheet || !r?.county) return;
   if (!online()) { toast('finding a county needs signal', true); return; }
+  // An answer kept from before the finder needed the county's own point: ask
+  // once more for the whole answer, then look.
+  if (!r.countyPoint && !again) { await askOwner(); return findCounty(true); }
 
   const pinId = sheet.pin.id;
   countyHunt = { pinId, state: 'busy' };
   renderOwner(r, ownerShown.cached);
 
+  // Proved with the Census's own point inside the county, never with the pin:
+  // the candidates are services nobody here has chosen yet (A3b-1). An answer
+  // from before this change has no county point, so it is asked again.
   let found = null;
   try {
-    found = await discoverParcelSource(r.county, r.state, sheet.pin.lat, sheet.pin.lng);
+    if (r.countyPoint) {
+      found = await discoverParcelSource(r.county, r.state, r.countyPoint.lat, r.countyPoint.lng);
+    }
   } catch {
     found = null;
   }
@@ -3329,7 +3401,11 @@ async function onOwnerClick(e) {
   const btn = e.target.closest('[data-own]');
   if (!btn) return;
   const what = btn.dataset.own;
-  if (what === 'sources') { closeSheet(); openSources(); return; }
+  if (what === 'sources') {
+    const r = ownerShown?.r;
+    if (r?.county) { $('src-county').value = r.county; $('src-state').value = r.state || ''; }
+    closeSheet(); openSources(); return;
+  }
   if (what === 'find')    { findCounty(); return; }
   if (what === 'save-county') { saveCounty(); return; }
   if (what === 'drop-county') {
@@ -3353,6 +3429,8 @@ async function onOwnerClick(e) {
 
 async function loadSources() {
   if (online()) {
+    const adm = await db.rpc('is_site_admin');
+    isAdmin = adm.data === true;
     const { data, error } = await db.from('parcel_sources').select('*').order('label');
     if (!error && data) {
       parcelSources = data;
@@ -3377,8 +3455,12 @@ function renderSources() {
         return `<div class="source-row">
           <div>
             <div class="source-name">${escapeHtml(s.label)}</div>
-            <div class="source-host">${escapeHtml(host)}</div>
+            <div class="source-host">${escapeHtml(host)}${s.approved === false
+              ? (isAdmin ? ' &middot; <b>waiting for your approval</b>'
+                         : ' &middot; <b>waiting for Ric</b> — yours only until then') : ''}</div>
           </div>
+          ${s.approved === false && isAdmin
+            ? `<button class="linkish" data-approve="${s.id}">approve</button>` : ''}
           ${s.created_by === me.id
             ? `<button class="note-del" data-drop="${s.id}" aria-label="Remove">✕</button>` : ''}
         </div>`;
@@ -3402,10 +3484,15 @@ async function addSource() {
     address_field: $('src-address').value.trim() || null,
     acres_field:   $('src-acres').value.trim() || null,
     site_url:      $('src-site').value.trim() || null,
+    county:        $('src-county').value.trim() || null,
+    state:         $('src-state').value.trim().toUpperCase() || null,
     created_by:    me.id,
   };
 
   if (!row.label) return fail('give it a name');
+  if (!row.county || !/^[A-Z]{2}$/.test(row.state || '')) {
+    return fail('say which county and state it is for — it is only asked about pins there');
+  }
   if (!/^https:\/\//i.test(row.url)) return fail('the layer URL has to start with https://');
   if (!/\/\d+\/?$/.test(row.url)) return fail('that should be one layer — a URL ending in a number');
   if (!row.owner_field && !row.apn_field) return fail('name at least the owner or parcel-number field');
@@ -3417,7 +3504,7 @@ async function addSource() {
   btn.disabled = false;
   if (error) return fail(error.message);
 
-  ['src-label', 'src-url', 'src-owner', 'src-apn', 'src-address', 'src-acres', 'src-site']
+  ['src-label', 'src-county', 'src-state', 'src-url', 'src-owner', 'src-apn', 'src-address', 'src-acres', 'src-site']
     .forEach((id) => { $(id).value = ''; });
   document.querySelector('.add-source').open = false;
   await loadSources();
@@ -3437,6 +3524,21 @@ async function dropSource(id) {
 function onSourcesClick(e) {
   const drop = e.target.closest('[data-drop]');
   if (drop) dropSource(drop.dataset.drop);
+  const ok = e.target.closest('[data-approve]');
+  if (ok) approveSource(ok.dataset.approve);
+}
+
+/* Ric's, and nobody else's: the database refuses anyone else's approval
+ * (parcel_sources_approval in the 2026-10-17 migration). Before he approves a
+ * source, it is asked only about its own creator's pins. */
+let isAdmin = false;
+async function approveSource(id) {
+  const s = parcelSources.find((x) => x.id === id);
+  if (!s || !confirm(`Approve ${s.label} for everybody?\n\nIt will be asked about every member's pins in that county, at ${(() => { try { return new URL(s.url).hostname; } catch { return s.url; } })()}.`)) return;
+  const { error } = await db.from('parcel_sources').update({ approved: true }).eq('id', id);
+  if (error) { toast(error.message, true); return; }
+  await loadSources();
+  renderSources();
 }
 
 /* ── the queue ───────────────────────────────────────────────────────────
@@ -3445,6 +3547,7 @@ function onSourcesClick(e) {
  */
 
 async function push(op) {
+  op = { ...op, by: me.id };
   if (!online()) { await local.enqueue(op); return false; }
   try {
     await runOp(op);
@@ -3492,7 +3595,7 @@ async function runOp(op) {
 
 async function syncQueue() {
   if (!online()) return;
-  const items = (await local.queued()).sort((a, b) => a.qid - b.qid);
+  const items = (await myQueue()).sort((a, b) => a.qid - b.qid);
   if (!items.length) return;
 
   let done = 0;
@@ -3518,7 +3621,7 @@ async function syncQueue() {
 }
 
 async function refreshNetworkUI() {
-  const n = await local.queueCount();
+  const n = (await myQueue()).length;
   const badge = $('pending');
   badge.innerHTML = n ? `${icon('i-sync', 'icon-sm')}${n} unsynced` : '';
   badge.hidden = !n;
@@ -4419,7 +4522,10 @@ function pickHome(pl) {
 
 function clearHome() {
   home = null;
-  local.del('home');
+  // A change like any other: stamped and pushed, so the server's copy loses
+  // its home too. Deleting only the local key let the next start adopt the
+  // server's old one and put the town straight back.
+  savePref('home', null);
   renderHome();
   if (!$('list').hidden) renderResults();
 }
@@ -5565,7 +5671,9 @@ $('login-form').addEventListener('submit', handleLogin);
 $('newpass-form').addEventListener('submit', setNewPassword);
 $('forgot').addEventListener('click', forgotPassword);
 $('waiting-ask').addEventListener('click', requestAtlas);
-$('waiting-out').addEventListener('click', async () => { await db.auth.signOut(); location.reload(); });
+$('waiting-out').addEventListener('click', async () => {
+  await forgetThisBrowser(); await db.auth.signOut(); location.reload();
+});
 // Tapping your own name used to sign you out — a destructive action on the
 // smallest target in the app, behind a tooltip nobody reads on a phone. It
 // opens settings now, where signing out is a labelled button.

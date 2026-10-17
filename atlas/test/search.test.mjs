@@ -464,4 +464,12 @@ test('what comes back is what was read out, not fifteen decimal places of it', (
   assert.equal(parseCoords('39.5 S 111.2 E').label, '-39.5, 111.2');
 });
 
+test('"near me" never tells the geocoder the exact spot (A3b-5)', () => {
+  const at = { lat: 39.504166, lng: -111.208333 };
+  const [w, n, e, so] = boxAround(at);
+  const centre = { lat: (n + so) / 2, lng: (w + e) / 2 };
+  assert.ok(Math.abs(centre.lat - 39.5) < 1e-9 && Math.abs(centre.lng + 111.2) < 1e-9,
+    'centred on a tenth of a degree, not on the searcher');
+});
+
 console.log(`\n${passed} passed\n`);

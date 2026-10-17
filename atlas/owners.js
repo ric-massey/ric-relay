@@ -262,18 +262,52 @@ async function askEsri(url, timeout) {
   }
 }
 
-/* Everything at once. Each source can fail on its own without taking the others
- * down — a county with no PLSS survey still gets an agency and a county name. */
-export async function lookup(lat, lng, { sources = [], timeout = 12000 } = {}) {
+/* Which county a source answers for. New sources carry it in `county` and
+ * `state`; older ones only in their label ("Lander County, NV"), which is read
+ * the same way. A source that says neither answers for nowhere. */
+const squashName = (s) => String(s || '').toLowerCase()
+  .replace(/\b(county|parish|borough|census area|municipality|city and borough|city)\b/g, '')
+  .replace(/[^a-z]/g, '');
+
+export function sourceCounty(source) {
+  if (source?.county && source?.state) {
+    return { county: squashName(source.county), state: String(source.state).toUpperCase() };
+  }
+  const m = /^(.+?)\s*,\s*([A-Za-z]{2})\s*$/.exec(String(source?.label || ''));
+  return m ? { county: squashName(m[1]), state: m[2].toUpperCase() } : null;
+}
+
+/* Whether this source may be asked about this point. Three rules, each one a
+ * finding from the 2026-10-17 sweep (A3a-1):
+ *   - only about a point inside the county it serves — a source used to be
+ *     sent every pin anybody looked up, anywhere in the country;
+ *   - only when we know which county the point is in (no county, no asking);
+ *   - a personal pin only to a source its owner added themselves. */
+export function sourceServes(source, { county, state }, { personal = false, me = null } = {}) {
+  if (source?.enabled === false || !/^https:\/\//i.test(source?.url || '')) return false;
+  if (personal && (!me || source.created_by !== me)) return false;
+  const c = sourceCounty(source);
+  if (!c || !county || !state) return false;
+  return c.county === squashName(county) && c.state === String(state).toUpperCase();
+}
+
+/* Everything at once — except the county records, which wait for the Census to
+ * say which county this is (see sourceServes). Each source can fail on its own
+ * without taking the others down — a county with no PLSS survey still gets an
+ * agency and a county name. */
+export async function lookup(lat, lng, {
+  sources = [], timeout = 12000, personal = false, me = null,
+} = {}) {
   const [sma, plss, county] = await Promise.all([
     askEsri(esriPointQuery(SMA_URL, lat, lng,
       'ADMIN_UNIT_NAME,ADMIN_UNIT_TYPE,ADMIN_AGENCY_CODE,ADMIN_DEPT_CODE,ADMIN_ST'), timeout),
     askEsri(esriPointQuery(PLSS_URL, lat, lng,
       'FRSTDIVNO,TWNSHPNO,TWNSHPDIR,RANGENO,RANGEDIR,PRINMER,SECDIVNO,QSEC,QQSEC,RECRDAREATX'), timeout),
-    askEsri(esriPointQuery(COUNTY_URL, lat, lng, 'BASENAME,NAME,STATE,GEOID'), timeout),
+    askEsri(esriPointQuery(COUNTY_URL, lat, lng, 'BASENAME,NAME,STATE,GEOID,INTPTLAT,INTPTLON'), timeout),
   ]);
 
-  const usable = sources.filter((s) => s.enabled !== false && /^https:\/\//i.test(s.url || ''));
+  const where = { county: county?.BASENAME || county?.NAME, state: stateFromFips(county?.STATE) };
+  const usable = sources.filter((s) => sourceServes(s, where, { personal, me }));
   const tried = await Promise.all(usable.map(async (s) => {
     try {
       const attrs = await askEsri(parcelQueryUrl(s, lat, lng), timeout);
@@ -299,6 +333,11 @@ export async function lookup(lat, lng, { sources = [], timeout = 12000 } = {}) {
     meridian: plss?.PRINMER || null,
     aliquotArea: plss?.RECRDAREATX || null,
     county: county?.NAME || null,
+    countyBase: county?.BASENAME || null,
+    // The Census's own point inside the county. The county finder probes
+    // unknown services with this, never with the pin (A3b-1).
+    countyPoint: Number.isFinite(parseFloat(county?.INTPTLAT)) && Number.isFinite(parseFloat(county?.INTPTLON))
+      ? { lat: parseFloat(county.INTPTLAT), lng: parseFloat(county.INTPTLON) } : null,
     state: stateFromFips(county?.STATE),
     parcel: tried.find(Boolean) || null,
   };
@@ -359,7 +398,10 @@ export const stateName = (abbr) => STATE_NAMES[String(abbr || '').toUpperCase()]
 export function serviceSearchUrls(county, state, { num = 12 } = {}) {
   const kinds = '(type:"Feature Service" OR type:"Map Service")';
   const terms = [];
-  if (county) terms.push(`(parcels OR "land records") AND "${county} County" AND ${kinds}`);
+  // `county` is the Census NAME, which already says what it is — "Lander
+  // County", "Orleans Parish", "Juneau City and Borough". Adding " County" to
+  // it searched for "Lander County County" and found nothing (A3b-4).
+  if (county) terms.push(`(parcels OR "land records") AND "${county}" AND ${kinds}`);
   const sn = stateName(state);
   if (sn) terms.push(`parcels AND "${sn}" AND statewide AND ${kinds}`);
 
@@ -410,9 +452,26 @@ export function scoreCandidate(item, county, state) {
   return score;
 }
 
+/* Who may be asked at all. A catalogue entry's URL can point at any host on
+ * earth, and the probe below sends it a point and offers whatever answers as
+ * "yes, use this" (A3b-1). So only hosts that are plausibly the county's or the
+ * state's own: Esri's hosted services (ArcGIS Online), and government domains.
+ * A county on its own .com or .org is the one this misses — "enter the county
+ * myself" is still there for it. */
+export function trustedHost(url) {
+  let host;
+  try { host = new URL(url).hostname.toLowerCase(); } catch { return false; }
+  return /(^|\.)arcgis\.com$/.test(host)
+      || /(^|\.)arcgisonline\.com$/.test(host)
+      || /\.gov$/.test(host)
+      // The state locality namespace (co.lander.nv.us): delegated by each
+      // state, unlike plain .us, which anybody can register.
+      || /\.[a-z]{2}\.us$/.test(host);
+}
+
 export function rankCandidates(results, county, state, { keep = 8 } = {}) {
   return (results || [])
-    .filter((r) => r?.url && /^https:\/\//i.test(r.url))
+    .filter((r) => r?.url && /^https:\/\//i.test(r.url) && trustedHost(r.url))
     .map((r) => ({ title: r.title, url: r.url.replace(/\/+$/, ''), owner: r.owner,
                    score: scoreCandidate(r, county, state) }))
     .filter((r) => r.score > 0)
@@ -655,8 +714,14 @@ async function probeService(cand, lat, lng, timeout, fetchImpl) {
 }
 
 /* Go and find the county. Returns a parcel_sources row ready to be saved, plus
- * whatever it read at this point so the app can show its working — or null,
- * which is a perfectly ordinary answer and the reason the manual form stays.
+ * what it found out about the service — or null, which is a perfectly ordinary
+ * answer and the reason the manual form stays.
+ *
+ * `lat, lng` is a point to prove a candidate with. The app passes the Census's
+ * own point inside the county, never a pin: the probe goes to services nobody
+ * in ATLAS has chosen yet, and a pin's position is not theirs to be told
+ * (A3b-1). What the probe reads there is somebody's parcel, not the pin's, so
+ * it is used to rank the candidates and is not handed back.
  */
 export async function discoverParcelSource(county, state, lat, lng, {
   timeout = 12000, fetchImpl = null, maxServices = 5,
@@ -684,12 +749,14 @@ export async function discoverParcelSource(county, state, lat, lng, {
   if (!best) return null;
 
   const label = county
-    ? `${county} County, ${state || ''}`.replace(/,\s*$/, '')
+    ? `${county}, ${state || ''}`.replace(/,\s*$/, '')
     : best.label;
 
   return {
     source: {
       label,
+      county: county || null,
+      state: state || null,
       url: best.layerUrl,
       owner_field:   best.fields.owner_field,
       apn_field:     best.fields.apn_field,
@@ -697,7 +764,7 @@ export async function discoverParcelSource(county, state, lat, lng, {
       acres_field:   best.fields.acres_field,
       site_url: null,
     },
-    parcel: best.parcel,
+    parcel: null,
     service: best.candidate.title,
     nearby: best.nearby,
     count: best.count,

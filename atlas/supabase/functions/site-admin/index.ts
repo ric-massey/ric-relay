@@ -189,6 +189,21 @@ export function createHandler({ admin, env, fetch: fetchFn }) {
     async delete(me, { id }) {
       notSelf(me, id, 'delete');
       await userById(id);
+      // "For good" includes their files. The rows cascade away with the
+      // account; the objects in the buckets do not, and stayed readable (A3a-5).
+      // Their photos are found through their rows — on anybody's pin — before
+      // the rows go, and their picture is the one folder named for them. Best
+      // effort: the read policies already refuse an object with no row behind
+      // it, so a removal that fails here leaves nothing anybody can open.
+      const { data: shots } = await admin.from('pin_photos').select('path').eq('created_by', id);
+      const paths = (shots ?? []).map((r: { path: string }) => r.path);
+      for (let i = 0; i < paths.length; i += 100) {
+        await admin.storage.from('pin-photos').remove(paths.slice(i, i + 100));
+      }
+      const { data: faces } = await admin.storage.from('avatars').list(id, { limit: 1000 });
+      if (faces?.length) {
+        await admin.storage.from('avatars').remove(faces.map((f: { name: string }) => `${id}/${f.name}`));
+      }
       const { error } = await admin.auth.admin.deleteUser(id);
       if (error) throw new Refusal(400, error.message);
       return { ok: true };

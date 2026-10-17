@@ -2,15 +2,10 @@
 -- live project never sees it (`db push` skips seeds unless told --include-seed,
 -- which nobody should do).
 --
--- The hosted project gives anon and authenticated the standard table privileges
--- on everything in public by default, and ATLAS's migrations were written
--- against that: they grant nothing and let row-level security decide. A local
--- stack from a recent CLI does not, so without this every table answers
--- "permission denied" locally and no policy is ever reached. This puts the live
--- default back so local tests exercise the same policies the live site runs.
-grant select, insert, update, delete on all tables in schema public to anon, authenticated;
-grant all on all tables in schema public to service_role;
--- ...and then the one set of tables that must NOT be writable directly, exactly
--- as the migration leaves them live.
-revoke insert, update, delete on public.site_pages, public.site_admins,
-  public.site_access, public.access_requests from anon, authenticated;
+-- This used to grant every table in public to anon and authenticated, to put
+-- back the hosted project's old default so local tests reached the policies.
+-- It also undid the one column lock the migrations add (profiles' UPDATE), so
+-- the local stack was looser than live. The migrations now grant exactly what
+-- each table needs (20261017150000_atlas_bug_sweep.sql), live and local alike,
+-- and there is nothing left for a seed to do. Do not put a blanket grant back.
+select 1;

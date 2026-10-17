@@ -73,8 +73,8 @@ async function signIn(who) {
   return r.json.access_token;
 }
 
-async function upload(token, path) {
-  const res = await fetch(`${URL_}/storage/v1/object/pin-photos/${path}`, {
+async function upload(token, path, bucket = 'pin-photos') {
+  const res = await fetch(`${URL_}/storage/v1/object/${bucket}/${path}`, {
     method: 'POST',
     headers: { apikey: ANON, Authorization: `Bearer ${token}`, 'Content-Type': 'image/jpeg' },
     body: new Uint8Array([0xff, 0xd8, 0xff, 0xd9]),
@@ -125,7 +125,7 @@ test('site accounts: request, approve, per-page access', { skip: !up && 'no loca
     assert.deepEqual((await rows('pins', stranger)).json, []);
     assert.deepEqual((await rows('pin_notes', stranger)).json, []);
     assert.deepEqual((await rows('pin_photos', stranger)).json, []);
-    const profiles = (await rows('profiles', stranger)).json;
+    const profiles = (await rows('profiles', stranger, 'select=id')).json;
     assert.deepEqual(profiles.map((p) => p.id), [strangerId], 'only their own profile');
     assert.deepEqual((await rpc('people_i_can_draw', stranger)).json, [strangerId]);
     const crewName = (await rows('profiles', crew, `select=username&id=eq.${crewId}`)).json[0].username;
@@ -214,5 +214,105 @@ test('site accounts: request, approve, per-page access', { skip: !up && 'no loca
   await t.test('an admin opens every page without ticking it', async () => {
     assert.equal((await rpc('has_page_access', ric, { page: 'hermiscus' })).json, true);
     assert.ok((await rows('pins', ric)).json.some((p) => p.id === pinId));
+  });
+
+  // ── the 2026-10-17 bug sweep (atlas/supabase/migrations/20261017150000) ──
+  const mateId = await makeUser('mate');
+  const lonerId = await makeUser('loner');
+  for (const id of [mateId, lonerId]) {
+    await rpc('admin_set_access', ric, { target: id, new_status: 'approved', grant_pages: ['atlas'] });
+  }
+  const mate = await signIn('mate');
+  const loner = await signIn('loner');
+
+  await t.test('A3a-2: grouping somebody shows their name and face, never their settings', async () => {
+    await call(`/rest/v1/profiles?id=eq.${mateId}`, {
+      method: 'PATCH', token: mate, body: { prefs: { home: { name: 'secret town' } } },
+    });
+    const g = await call('/rest/v1/groups', {
+      method: 'POST', token: loner, prefer: 'return=representation', body: { owner: lonerId, name: 'x' },
+    });
+    const added = await call('/rest/v1/group_members', {
+      method: 'POST', token: loner, body: { group_id: g.json[0].id, user_id: mateId },
+    });
+    assert.ok(added.ok, 'grouping still works');
+    const face = await rows('profiles', loner, `select=id,display_name,avatar_path&id=eq.${mateId}`);
+    assert.equal(face.json.length, 1, 'name and face are readable');
+    const prefs = await rows('profiles', loner, `select=prefs&id=eq.${mateId}`);
+    assert.equal(prefs.ok, false, 'prefs are not');
+    const own = await rpc('my_profile', mate);
+    assert.equal(own.json[0].prefs.home.name, 'secret town', 'your own come through my_profile()');
+  });
+
+  await t.test('A3a-3: being in a group does not reveal who filed you', async () => {
+    const drawn = (await rpc('people_i_can_draw', mate)).json;
+    assert.equal(drawn.includes(lonerId), false);
+  });
+
+  await t.test('A3a-2: the avatars bucket is not a roster', async () => {
+    assert.ok(await upload(loner, `${lonerId}/a.jpg`, 'avatars'), 'own avatar uploads');
+    const list = await call('/storage/v1/object/list/avatars', {
+      method: 'POST', token: mate, body: { prefix: '', limit: 100 },
+    });
+    assert.equal((list.json || []).some((o) => o.name === lonerId), false,
+      'a stranger\'s folder is not listed');
+  });
+
+  await t.test('A3a-7: sizes are bounded', async () => {
+    const big = await call(`/rest/v1/profiles?id=eq.${mateId}`, {
+      method: 'PATCH', token: mate, body: { display_name: 'x'.repeat(500) },
+    });
+    assert.equal(big.ok, false);
+  });
+
+  await t.test('A3a-8: a pin with parking cannot itself become parking', async () => {
+    const mk = async (body) => (await call('/rest/v1/pins', {
+      method: 'POST', token: crew, prefer: 'return=representation',
+      body: { created_by: crewId, lat: 1, lng: 1, ...body },
+    })).json[0].id;
+    const a = await mk({ name: 'a' });
+    await mk({ name: 'park', parent_id: a });
+    const c = await mk({ name: 'c', is_private: true });
+    const moved = await call(`/rest/v1/pins?id=eq.${a}`, {
+      method: 'PATCH', token: crew, body: { parent_id: c },
+    });
+    assert.equal(moved.ok, false);
+  });
+
+  await t.test('A3b lead: a photo row names its own object only', async () => {
+    const r = await call('/rest/v1/pin_photos', {
+      method: 'POST', token: mate,
+      body: { pin_id: pinId, created_by: mateId, path: `${pinId}/${crewId}/a.jpg` },
+    });
+    assert.equal(r.ok, false);
+  });
+
+  await t.test('A3a-1: a county someone adds reaches nobody else until Ric approves it', async () => {
+    const src = { label: 'Elk County, NV', url: 'https://example.test/x/MapServer/0', owner_field: 'OWNER' };
+    const theirs = await call('/rest/v1/parcel_sources', {
+      method: 'POST', token: crew, prefer: 'return=representation',
+      body: { ...src, created_by: crewId, approved: true },
+    });
+    assert.ok(theirs.ok, JSON.stringify(theirs.json));
+    assert.equal(theirs.json[0].approved, false, 'cannot approve your own');
+    assert.equal((await rows('parcel_sources', mate, `select=id&id=eq.${theirs.json[0].id}`)).json.length, 0);
+    const ok = await call(`/rest/v1/parcel_sources?id=eq.${theirs.json[0].id}`, {
+      method: 'PATCH', token: ric, body: { approved: true },
+    });
+    assert.ok(ok.ok);
+    assert.equal((await rows('parcel_sources', mate, `select=id&id=eq.${theirs.json[0].id}`)).json.length, 1);
+    const moved = await call(`/rest/v1/parcel_sources?id=eq.${theirs.json[0].id}`, {
+      method: 'PATCH', token: crew, prefer: 'return=representation', body: { url: 'https://evil.test/x/MapServer/0' },
+    });
+    assert.equal(moved.json[0].approved, false, 'pointing it somewhere else takes the approval away');
+  });
+
+  await t.test('A3a-4: a deleted account\'s username is never handed out again', async () => {
+    const name = `loner_${run}`.slice(0, 20);
+    assert.ok((await rpc('set_username', loner, { want: name })).ok);
+    const del = await admin(`/auth/v1/admin/users/${lonerId}`, { method: 'DELETE' });
+    assert.ok(del.ok, JSON.stringify(del.json));
+    const claim = await rpc('set_username', mate, { want: name });
+    assert.equal(claim.ok, false);
   });
 });

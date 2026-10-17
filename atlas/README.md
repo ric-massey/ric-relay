@@ -1107,6 +1107,57 @@ out of `storage.objects.owner`, which has been renamed across storage releases.
 A policy that silently stops matching is a policy that silently stops
 protecting.
 
+### The 2026-10-17 bug sweep
+
+A review of the whole of ATLAS (findings A3a-1…10, A3b-1…8 and the ATLAS half of
+C4-1) fixed the following. The database half is one migration,
+`20261017150000_atlas_bug_sweep.sql`, and `test/site-accounts.test.mjs` now
+checks each of these against a real database (it still needs the local stack).
+
+- **County sources** are asked only about pins in their own county, a personal
+  pin only goes to sources its owner added, and a source somebody adds is theirs
+  alone until Ric approves it in **owner names by county** (an approve button
+  appears for him). Sources from before sign-ups opened are approved as they
+  stand. Changing where a source points takes its approval away.
+- **"look up the owner's name"** only asks government and ArcGIS Online hosts,
+  proves them with the Census's own point inside the county — never the pin —
+  and searches for "Lander County", not "Lander County County".
+- **Profiles**: another member's row is a name and a face and nothing else; your
+  own settings come through `my_profile()`. The avatars bucket can no longer be
+  listed as a roster, and being put in somebody's group no longer tells you who
+  did it.
+- **Deleted accounts** keep their usernames off the market, and their photos and
+  picture are removed by /admin and unreadable even if that fails (a photo is
+  readable only while its row exists; a row's path must be its own).
+- **Sizes** are bounded on profiles, pins, notes, sources and group names, and
+  both buckets take JPEGs only, 8 MB and 1 MB.
+- **Parking**: a pin with a parking spot cannot itself become one, and privacy
+  always cascades.
+- **Grants** are in the migrations; `seed.sql` grants nothing.
+- **Sign-out** clears everything ATLAS kept on the browser, offline maps
+  included. A different account signing in clears the last one's copy, and
+  unsynced writes are stamped with their owner and only ever replayed by them.
+  Losing ATLAS access clears the copy too, and photos you can no longer see are
+  dropped from the phone.
+- **Clearing your home town** sticks. **"near me"** sends the geocoder a point
+  rounded to ~10 km. **maplibre-gl and supabase-js** are pinned with integrity
+  hashes. The note controls are 44px targets. The service worker deletes only
+  its own old caches.
+- `config.toml`: reset and confirmation emails at most once a minute per
+  address; the comment points at /admin/.
+
+To make the database half live, from `atlas/`:
+
+```bash
+supabase db push
+supabase functions deploy site-admin
+```
+
+and, for the email interval, either `supabase config push` (read the warning at
+the top of `config.toml` first — it overwrites live auth settings) or set
+Authentication → Rate Limits → "minimum interval between emails" to 60 seconds
+in the dashboard. The app works before and after the migration lands.
+
 ---
 
 ## Not built yet

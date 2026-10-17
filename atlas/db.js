@@ -105,11 +105,29 @@ export const local = {
     return rows.reduce((n, r) => n + (r.blob?.size || 0), 0);
   },
 
-  /* ── write queue ── */
+  /* ── write queue ──
+   * Every write is stamped with who made it (`by`), and the app only ever reads
+   * back its own: on a borrowed or shared browser the next account must never
+   * be shown — or replay under its own name — somebody else's offline work. */
   async enqueue(op)      { return tx('queue', 'readwrite', (s) => s.add({ ...op, at: Date.now() })); },
+  async stampQueue(by) {
+    const rows = (await tx('queue', 'readonly', (s) => s.getAll())) || [];
+    for (const r of rows.filter((q) => !q.by)) {
+      await tx('queue', 'readwrite', (s) => s.put({ ...r, by }));
+    }
+  },
   async queued()         { return (await tx('queue', 'readonly', (s) => s.getAll())) || []; },
   async dequeue(qid)     { return tx('queue', 'readwrite', (s) => s.delete(qid)); },
   async queueCount()     { return (await tx('queue', 'readonly', (s) => s.count())) || 0; },
+
+  /* ── everything ──
+   * Signing out, or a different account signing in on this browser, or ATLAS
+   * being switched off for you: the mirror of what you could see goes. The
+   * queue goes too unless asked to stay (its rows carry their owner). */
+  async wipe({ keepQueue = false } = {}) {
+    const stores = ['pins', 'notes', 'photos', 'blobs', 'meta', ...(keepQueue ? [] : ['queue'])];
+    for (const store of stores) await tx(store, 'readwrite', (s) => s.clear());
+  },
 
   /* ── meta ── */
   async get(key)         { const r = await tx('meta', 'readonly', (s) => s.get(key)); return r ? r.value : null; },
