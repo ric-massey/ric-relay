@@ -16,6 +16,13 @@
   <meta property="og:image:alt" content="Ric's Terminal — amber text on a black CRT screen">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="canonical" href="https://ricmassey.com/weather.html">
+  <link rel="manifest" href="weather.webmanifest">
+  <link rel="apple-touch-icon" href="assets/weather/icon-180.png">
+  <meta name="theme-color" content="#163f73">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Weather">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231f5fa8'/><circle cx='40' cy='40' r='16' fill='%23ffd166'/><path d='M30 74h42a14 14 0 0 0-3-28 18 18 0 0 0-34 6 11 11 0 0 0-5 22z' fill='%23fff'/></svg>">
   <style>
     :root{
@@ -264,17 +271,39 @@
     .sheet li button.pick:hover{background:rgba(255,255,255,.08)}
     .sheet li button.pick small{display:block;color:var(--dim);font-size:13px}
     .sheet li button.x{width:44px;height:44px;border:0;background:none;border-radius:10px;color:var(--dim);font-size:18px}
+    .sheet .savednow{display:flex;align-items:center;gap:6px;font-size:18px;white-space:nowrap}
+    .sheet .savednow svg{width:26px;height:26px}
+    .sheet .savednow small{display:block;font-size:12px;color:var(--dim)}
     .sheet h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-top:16px}
     .sheet .privacy{font-size:13px;color:var(--dim);margin-top:14px}
 
     @media (max-width:640px){
       .grid{grid-template-columns:minmax(0,1fr)}
       .card.half{grid-column:1/-1}
-      .day summary{grid-template-columns:44px 30px 36px 34px 1fr 34px;gap:6px}
+      .day summary{grid-template-columns:54px 28px 34px 34px 1fr 34px;gap:5px}
       .radar{height:300px}
       .brand .t{display:none}
     }
 
+    .summary{font-size:15px;margin:-2px 0 10px;padding-bottom:10px;border-bottom:1px solid var(--edge)}
+    .hour.sun{opacity:.95}
+    .hour.sun .t{font-size:13px;font-weight:600}
+    .day .daychart{width:100%;height:auto;display:block;margin:4px 0 6px}
+    .confline{display:inline-block;margin-top:10px;padding:4px 12px;border-radius:999px;background:var(--glass);font-size:14px;font-weight:600}
+    .confline[data-l="low"]{background:rgba(120,70,0,.7)}
+    .day .dn{white-space:nowrap}
+    .cdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:4px;vertical-align:2px;background:#69db7c}
+    .cdot[data-l="medium"]{background:#ffd43b}
+    .cdot[data-l="low"]{background:#ff922b}
+    .confsay{margin-top:8px;font-size:14px;color:var(--dim)}
+    .confsay[data-l="low"]{color:#fff}
+    .recrows{display:grid;gap:6px}
+    .recrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 54px;gap:10px;align-items:center;font-size:14px}
+    .recrow .rb{height:8px;border-radius:4px;background:rgba(0,0,0,.28);overflow:hidden}
+    .recrow .rb i{display:block;height:100%;border-radius:4px;background:rgba(255,255,255,.55)}
+    .recrow.used .rb i{background:#7cc4ff}
+    .recrow.used .rn{font-weight:700}
+    .recrow .rv{text-align:right;font-weight:600}
     .card.bare{background:none;border:0;padding:0;backdrop-filter:none;-webkit-backdrop-filter:none}
     .hero.card.bare{padding:20px 0 10px}
     #storms{display:grid;gap:10px}
@@ -414,6 +443,7 @@
     <section class="card" id="next" hidden aria-label="The next three hours"></section>
     <section class="card" id="hourly" hidden aria-label="Hourly forecast"></section>
     <section class="card" id="daily" hidden aria-label="Ten-day forecast"></section>
+    <section class="card" id="record" hidden aria-label="How accurate this forecast has been here"></section>
     <section class="card" id="radarcard" aria-label="Radar">
       <h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 8l4.5-4.5" stroke="currentColor" stroke-width="1.5"/></svg>Radar<span class="src" id="radarsrc"></span></h2>
       <div class="seg" role="group" aria-label="Radar layer">
@@ -456,6 +486,8 @@
     <section class="card half tile" id="t-vis" hidden aria-label="Visibility"></section>
     <section class="card half tile" id="t-uv" hidden aria-label="UV index"></section>
     <section class="card half tile" id="t-sun" hidden aria-label="Sunrise and sunset"></section>
+    <section class="card tile" id="t-rain" hidden aria-label="Rain totals"></section>
+    <section class="card" id="install" hidden aria-label="Keep it on your home screen"></section>
     <section class="card" id="sources" aria-label="Where this comes from"></section>
   </div>
 </main>
@@ -487,9 +519,10 @@
 <noscript><p style="text-align:center;padding:20px">The weather room needs JavaScript to ask the forecast services.</p></noscript>
 
 <script src="effects.js"></script>
-<script src="projects/weather/wx.js?v=2"></script>
+<script src="projects/weather/wx.js?v=3"></script>
 <script src="projects/weather/sounding.js?v=1"></script>
 <script src="projects/weather/draw.js?v=1"></script>
+<script src="projects/weather/verify/core.js?v=1"></script>
 <script>
 (() => {
   "use strict";
@@ -515,7 +548,7 @@
     saved: (store.get("wx:saved", []) || []).map(cleanPlace).filter(Boolean).slice(0, 12),
     units: store.get("wx:units", "us") === "metric" ? "metric" : "us",
     fc: null, fcStale: false, pt: undefined, obs: undefined, office: undefined, alerts: undefined,
-    state: undefined, national: undefined, outlook: undefined,
+    state: undefined, national: undefined, outlook: undefined, ens: undefined, rec: undefined, verdict: null, fcShown: null,
     err: {}, checked: {}, selected: null, ctl: null, loadedAt: 0, fastAt: 0, focusedStorm: null
   };
   const placeKey = (p) => `${Wx.coord(p.lat)},${Wx.coord(p.lon)}`;
@@ -598,7 +631,8 @@
     const live = () => !ctl.signal.aborted && S.place && placeKey(S.place) === key;
     S.err = {};
     if (!S.fc || S.fc.key !== key) {
-      Object.assign(S, { fc: null, fcStale: false, pt: undefined, obs: undefined, office: undefined, alerts: undefined, state: undefined, selected: null, focusedStorm: null });
+      Object.assign(S, { fc: null, fcStale: false, pt: undefined, obs: undefined, office: undefined, alerts: undefined, state: undefined, selected: null, focusedStorm: null,
+        ens: undefined, rec: undefined, verdict: null, fcShown: null });
       sky.reset();
       /* The last forecast for this place, kept in this browser so a phone
          with no signal still has something to show (§34) — labelled as old. */
@@ -616,6 +650,7 @@
         if (!live()) return;
         S.fc = Object.assign(fc, { key }); S.fcStale = false;
         store.set("wx:last", { key, fc });
+        applyBlend();
       } catch (e) {
         if (!live()) return;
         S.err.fc = e;
@@ -632,8 +667,11 @@
         if (S.place.here && pt.city && S.place.name !== "Near " + pt.city) {
           S.place.name = "Near " + pt.city; S.place.region = ""; store.set("wx:place", S.place); renderPlace();
         }
+        const near = await Wx.nearbyStations(pt, lat, lon, ctl.signal).catch(() => []);
+        if (!live()) return;
         await Promise.all([
-          Wx.observation(pt, lat, lon, ctl.signal).then((o) => { if (live()) { S.obs = o; render(); } })
+          loadRecord(near, ctl.signal, live),
+          Wx.observation(pt, lat, lon, ctl.signal, near).then((o) => { if (live()) { S.obs = o; render(); } })
             .catch((e) => { if (live()) { S.obs = null; S.err.obs = e; render(); } }),
           Wx.officeForecast(pt, ctl.signal).then((f) => { if (live()) { S.office = f; render(); } })
             .catch((e) => { if (live()) { S.office = null; S.err.office = e; render(); } }),
@@ -646,7 +684,10 @@
     })();
 
     const alertJob = loadAlerts(ctl.signal, live);
-    await Promise.allSettled([fcJob, nwsJob, alertJob, loadOutlook(ctl.signal, live)]);
+    const ensJob = Wx.ensemble(lat, lon, ctl.signal)
+      .then((e) => { if (live()) { S.ens = e; applyBlend(); render(); } })
+      .catch(() => { if (live()) { S.ens = null; render(); } });
+    await Promise.allSettled([fcJob, nwsJob, alertJob, ensJob, loadOutlook(ctl.signal, live)]);
     if (live()) S.loadedAt = Date.now();
   }
   function loadAlerts(signal, live) {
@@ -661,6 +702,38 @@
       .then((a) => { if (live()) { S.state = a; S.checked.state = Date.now(); render(); radar.draw(); } })
       .catch(() => { if (live()) { S.state = null; render(); } });
   }
+
+  /* ── the scoreboard, here ──
+     The nearest scored airport stations (from the NWS's own list of stations
+     around the place) and their records, from this site's published files. */
+  function loadRecord(near, signal, live) {
+    if (!near.length) { S.rec = null; return Promise.resolve(); }
+    return Wx.stationRecords(near.slice(0, 12), signal)
+      .then((r) => { if (live()) { S.rec = r; S.verdict = r.stations[0] ? Wx.verdict(r.stations[0], r.index.minDays || 7) : null; applyBlend(); render(); } })
+      .catch(() => { if (live()) { S.rec = null; render(); } });
+  }
+  /* The forecast the page shows: the standard one, or — only where the
+     nearest station's record says our blend has been closer — the blend, for
+     temperatures. Rain and wind stay the standard forecast's. */
+  function applyBlend() {
+    S.fcShown = null;
+    const fc = S.fc, ens = S.ens, v = S.verdict, st = S.rec && S.rec.stations[0];
+    if (!fc || !ens || !v || !v.useBlend || !st || !window.WxVerify) return;
+    const recs = {};
+    for (const m of WxVerify.BLEND_MODELS) recs[m] = st.models[m] && st.models[m][1];
+    const hourly = fc.hourly.map((h) => {
+      const row = ens.hours.get(h.t);
+      if (!row) return h;
+      const b = WxVerify.blend(row, recs, WxVerify.isDay(h.t, S.place.lon));
+      return b.t == null ? h : { ...h, temp: b.t, blended: true };
+    });
+    const daily = fc.daily.map((d) => {
+      const hs = hourly.filter((h) => h.blended && h.t >= d.t && h.t < d.t + 86400);
+      return hs.length < 20 ? d : { ...d, hi: Math.max(...hs.map((h) => h.temp)), lo: Math.min(...hs.map((h) => h.temp)), blended: true };
+    });
+    S.fcShown = { ...fc, hourly, daily, blended: true };
+  }
+  const shown = () => S.fcShown || S.fc;
 
   /* Storm warnings that cover the place: the point query returns alerts whose
      area holds it; a storm warning's area is its polygon. */
@@ -697,7 +770,7 @@
     $("#usview").setAttribute("aria-pressed", String(!p));
   }
 
-  const PLACE_CARDS = ["#next", "#hourly", "#daily", "#sky", "#t-wind", "#t-humid", "#t-press", "#t-vis", "#t-uv", "#t-sun"];
+  const PLACE_CARDS = ["#next", "#hourly", "#daily", "#record", "#sky", "#t-wind", "#t-humid", "#t-press", "#t-vis", "#t-uv", "#t-sun", "#t-rain"];
   function render() {
     renderPlace();
     const us = !S.place;
@@ -711,7 +784,8 @@
       renderUSHero(); renderNational(); renderSources(); radar.label();
       return;
     }
-    renderStorms(); renderHero(); renderAlerts(); renderNearby(); renderNext(); renderHourly(); renderDaily(); renderTiles(); renderSources();
+    renderStorms(); renderHero(); renderAlerts(); renderNearby(); renderNext(); renderHourly(); renderDaily(); renderRecord(); renderTiles(); renderSources();
+    if (typeof offerInstall === "function") offerInstall();
     radar.label();
   }
 
@@ -798,7 +872,7 @@
 
   function renderHero() {
     const hero = $("#hero");
-    const fc = S.fc;
+    const fc = shown();
     if (!fc) {
       hero.innerHTML = S.err.fc
         ? `<div class="empty"><h1>${esc(S.place.name)}</h1><p class="dim">The forecast service did not answer. Check the connection and try again.</p><button class="go" type="button" data-retry>Try again</button></div>`
@@ -827,10 +901,69 @@
       <div class="cond">${icon(c.kind, c.isDay)}<span>${esc(c.text)}</span></div>
       <div class="sub num">Feels like ${deg(c.feels.v)} · H ${deg(today.hi)} L ${deg(today.lo)}</div>
       ${wind ? `<div class="sub num">${esc(wind)}</div>` : ""}
+      ${(() => { const v = Wx.versusYesterday(fc, nowSec()); const d = v ? (U() === "us" ? v.diff * 9 / 5 : v.diff) : 0; return v && Math.abs(d) >= (U() === "us" ? 5 : 3) ? `<div class="sub">${Math.round(Math.abs(d))}° ${d > 0 ? "warmer" : "cooler"} than yesterday</div>` : ""; })()}
       <div class="rainline${["now", "stopping", "starting"].includes(rain.state) ? " wet" : ""}">${esc(rain.text)}</div>
+      ${confLine()}
       ${risk && risk.rank >= 2 ? `<div><span class="risk" style="background:${esc(risk.fill || "")};color:#111">SPC: ${esc(risk.name)} of severe storms here today</span></div>` : ""}
       ${S.alerts && S.alerts.length && !stormsHere().length ? `<div class="from"><a href="#alerts"><span style="background:rgba(160,30,30,.85)">⚠ ${esc(S.alerts[0].event)}${S.alerts.length > 1 ? ` +${S.alerts.length - 1}` : ""}</span></a></div>` : ""}
       <div class="from">${from}</div>${approx}`;
+  }
+
+  /* "23° cooler than yesterday" — in the units on screen */
+  function vyText(v) {
+    const d = U() === "us" ? v.diff * 9 / 5 : v.diff;
+    const n = Math.round(Math.abs(d));
+    return n < 1 ? "About as warm as yesterday." : `Today's high is ${n}° ${d > 0 ? "warmer" : "cooler"} than yesterday's (${deg(v.yesterday)}).`;
+  }
+
+  /* ── how sure ── */
+  const confWords = (c) => {
+    if (!c) return "";
+    const lo = deg(c.low), hi = deg(c.high);
+    const rain = c.rainSplit ? ` ${c.rainModels} of ${c.rainOf} have rain.` : c.rainModels === c.rainOf && c.rainOf ? " All of them have rain." : "";
+    if (c.level === "high") return `Models agree: highs ${lo === hi ? lo : lo + "–" + hi} across ${c.models} models.${rain}`;
+    if (c.level === "medium") return `Models mostly agree: highs ${lo}–${hi}.${rain}`;
+    return `Models disagree: highs anywhere from ${lo} to ${hi}.${rain}`;
+  };
+  function confLine() {
+    const fc = S.fc;
+    if (!fc || !S.ens) return "";
+    const today = Wx.upcomingDays(fc, nowSec())[0];
+    const c = today && Wx.dayConfidence(S.ens, today.t);
+    if (!c || c.level === "medium") return "";
+    return `<div class="confline" data-l="${c.level}">${c.level === "high" ? "✓ Models agree on today" : "≈ Models disagree about today — less certain than usual"}</div>`;
+  }
+
+  /* ── how accurate this has been, here ── */
+  function renderRecord() {
+    const box = $("#record");
+    const r = S.rec, v = S.verdict, st = r && r.stations[0];
+    if (!S.place || S.pt === null || r === undefined) { box.hidden = true; return; }
+    box.hidden = false;
+    const head = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 14h12M4 14V8M8 14V3M12 14V6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>How accurate is this, here?<span class="src">scored every day</span></h2>`;
+    if (!r || !st || !v || !v.rows.length) {
+      box.innerHTML = head + `<p class="dim">This site holds every forecast it shows to what actually happens at about 2,500 US airport weather stations, every day. The record for the stations near here is still being built — check back soon.</p>`;
+      return;
+    }
+    const f = U() === "us" ? 1.8 : 1;
+    const max = Math.max(...v.rows.map((x) => x.mae)) * f;
+    const used = v.useBlend ? "blend" : "best";
+    const days = v.rows.find((x) => x.m === used)?.days || v.rows[0].days;
+    const rows = v.rows.map((x) => `<div class="recrow${x.m === used ? " used" : ""}">
+        <span class="rn">${esc(Wx.MODEL_NAMES[x.m] || x.m)}${x.m === used ? ' <span class="tag">shown here</span>' : ""}</span>
+        <span class="rb"><i style="width:${Math.max(4, x.mae * f / max * 100)}%"></i></span>
+        <span class="rv num">±${(x.mae * f).toFixed(1)}°</span></div>`).join("");
+    const nat = r.index && r.index.national;
+    const natLine = nat && nat.blend && nat.best && nat.blend.stations > 50
+      ? `<p class="dim" style="margin-top:8px">Across ${nat.blend.stations.toLocaleString()} US stations, the blend's typical miss is ±${(nat.blend.mae * f).toFixed(1)}° against the standard forecast's ±${(nat.best.mae * f).toFixed(1)}°.</p>` : "";
+    const why = v.useBlend
+      ? `This page shows its own blend for temperatures here, because at this station it has been closer than the standard forecast (±${(v.blend.mae * f).toFixed(1)}° vs ±${(v.base.mae * f).toFixed(1)}°).`
+      : v.blend && v.base ? `This page shows the standard forecast here: its own blend hasn't beaten it at this station yet (±${(v.blend.mae * f).toFixed(1)}° vs ±${(v.base.mae * f).toFixed(1)}°).`
+      : "This page shows the standard forecast here until the blend has a long enough record.";
+    box.innerHTML = head + `<p style="margin-bottom:10px">Next-day temperature forecasts at <b>${esc(st.name)}</b> (${esc(st.id)}${st.dist != null ? `, ${Wx.fmt.dist(st.dist, U())} ${Wx.UNITS[U()].dist} away` : ""}), average miss over the last ${days} days:</p>
+      <div class="recrows">${rows}</div>
+      <p class="nextnote">${esc(why)}</p>${natLine}
+      <p class="nextnote">Scored against the airport's own thermometer, through ${esc(r.index.through || "")}. A miss of ±1.5° is very good; most apps never show theirs.</p>`;
   }
 
   function renderAlerts() {
@@ -864,7 +997,7 @@
 
   function renderNext() {
     const box = $("#next");
-    const fc = S.fc;
+    const fc = shown();
     if (!fc) return;
     const k = clk();
     const now = nowSec();
@@ -889,22 +1022,29 @@
 
   function renderHourly() {
     const box = $("#hourly");
-    const fc = S.fc;
+    const fc = shown();
     if (!fc) return;
     const k = clk();
     const hours = Wx.upcomingHours(fc, nowSec(), 25);
     if (S.selected && !hours.some((h) => h.t === S.selected)) S.selected = null;
     /* "Now" is the hero's number, so the two never disagree on one screen. */
     const nowTemp = Wx.currentConditions(fc, S.obs || null).temp.v;
+    /* sunrise and sunset sit in the strip at their own minute */
+    const suns = [];
+    for (const d of fc.daily) for (const [t, up] of [[d.sunrise, true], [d.sunset, false]]) if (t) suns.push({ t, up });
+    const sunIcon = (up) => `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 24h20" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M10 24a6 6 0 0 1 12 0" fill="#ffd166"/><path d="M16 ${up ? "15V7m-3.5 3.5L16 7l3.5 3.5" : "7v8m-3.5-3.5L16 15l3.5-3.5"}" fill="none" stroke="#ffd166" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     const strip = hours.map((h, i) => {
       const c = Wx.condition(h.code);
+      const sun = suns.filter((x) => x.t >= h.t && x.t < h.t + 3600 && x.t > nowSec() && i < hours.length - 1).map((x) => `<div class="hour sun" role="note">
+        <span class="h">${esc(k.time(x.t * 1000))}</span>${sunIcon(x.up)}<span class="p"></span><span class="t">${x.up ? "Sunrise" : "Sunset"}</span></div>`).join("");
       return `<button class="hour" type="button" data-hour="${h.t}" aria-pressed="${S.selected === h.t}">
         <span class="h">${i === 0 ? "Now" : esc(k.hour(h.t * 1000))}</span>
         ${icon(c.kind, h.isDay !== 0, c.text)}
         <span class="p">${h.pop >= 10 ? Math.round(h.pop) + "%" : ""}</span>
         <span class="t num">${Wx.fmt.temp(i === 0 && nowTemp != null ? nowTemp : h.temp, U())}°</span>
-      </button>`;
+      </button>${sun}`;
     }).join("");
+    const said = Wx.summary(fc, nowSec(), k, (c) => Wx.fmt.temp(c, U()), (w) => Wx.fmt.wind(w, U()), Wx.UNITS[U()].wind);
     let detail = "";
     const h = S.selected && hours.find((x) => x.t === S.selected);
     if (h) {
@@ -927,7 +1067,7 @@
     }
     const scroll = box.querySelector(".hours") ? box.querySelector(".hours").scrollLeft : 0;
     box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4v4l2.5 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Hourly<span class="src">tap an hour · model</span></h2>
-      <div class="hours">${strip}</div>${detail}`;
+      ${said ? `<p class="summary">${esc(said)}</p>` : ""}<div class="hours">${strip}</div>${detail}`;
     box.querySelector(".hours").scrollLeft = scroll;
   }
 
@@ -944,9 +1084,31 @@
     return `rgb(${stops.at(-1)[1]})`;
   };
 
+  /* One day as a picture: the temperature through the day, the chance of rain
+     under it, a mark at now. Small, and only drawn when the day is opened. */
+  function dayChart(fc, d) {
+    const k = clk();
+    const hs = fc.hourly.filter((h) => h.t >= d.t && h.t <= d.t + 86400 && h.temp != null);
+    if (hs.length < 12) return "";
+    const W = 320, H = 132, top = 18, bot = 96, x0 = 6, x1 = W - 6;
+    const ts = hs.map((h) => h.temp), lo = Math.min(...ts), hi = Math.max(...ts), pad = Math.max(1, (hi - lo) * 0.15);
+    const X = (t) => x0 + (t - d.t) / 86400 * (x1 - x0), Y = (v) => bot - (v - lo + pad) / (hi - lo + 2 * pad) * (bot - top);
+    const line = hs.map((h) => `${X(h.t).toFixed(1)},${Y(h.temp).toFixed(1)}`).join(" ");
+    const area = `${X(hs[0].t).toFixed(1)},${bot} ${line} ${X(hs.at(-1).t).toFixed(1)},${bot}`;
+    const bars = hs.filter((h) => h.pop >= 5).map((h) => `<rect x="${(X(h.t) - 4).toFixed(1)}" y="${(H - 14 - h.pop / 100 * 22).toFixed(1)}" width="8" height="${(h.pop / 100 * 22).toFixed(1)}" rx="2" fill="#7cc4ff" opacity=".85"/>`).join("");
+    const iHi = ts.indexOf(hi), iLo = ts.indexOf(lo);
+    const mark = (h, label) => `<circle cx="${X(h.t).toFixed(1)}" cy="${Y(h.temp).toFixed(1)}" r="3.5" fill="#fff"/><text x="${Math.min(x1 - 14, Math.max(x0 + 14, X(h.t))).toFixed(1)}" y="${(Y(h.temp) - 7).toFixed(1)}" text-anchor="middle" font-size="11" fill="#fff" font-weight="600">${label}</text>`;
+    const nowS = nowSec(), nowMark = nowS > d.t && nowS < d.t + 86400 ? `<line x1="${X(nowS).toFixed(1)}" x2="${X(nowS).toFixed(1)}" y1="${top - 6}" y2="${H - 14}" stroke="rgba(255,255,255,.6)" stroke-dasharray="3 3"/>` : "";
+    const ticks = [0, 6, 12, 18].map((hh) => `<text x="${X(d.t + hh * 3600).toFixed(1)}" y="${H - 1}" font-size="11" fill="rgba(255,255,255,.75)">${esc(k.hour((d.t + hh * 3600) * 1000))}</text>`).join("");
+    return `<svg class="daychart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Temperature through the day, from ${deg(lo)} to ${deg(hi)}, with the chance of rain each hour">
+      <defs><linearGradient id="dg${d.t}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd166" stop-opacity=".45"/><stop offset="1" stop-color="#7cc4ff" stop-opacity=".05"/></linearGradient></defs>
+      <polygon points="${area}" fill="url(#dg${d.t})"/><polyline points="${line}" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
+      ${bars}${nowMark}${mark(hs[iHi], "H " + deg(hi))}${iLo !== iHi ? mark(hs[iLo], "L " + deg(lo)) : ""}${ticks}</svg>`;
+  }
+
   function renderDaily() {
     const box = $("#daily");
-    const fc = S.fc;
+    const fc = shown();
     if (!fc) return;
     const k = clk();
     const days = Wx.upcomingDays(fc, nowSec()).filter((d) => d.hi != null && d.lo != null).slice(0, 10);
@@ -956,6 +1118,7 @@
     const cur = Wx.currentConditions(fc, S.obs || null).temp.v;
     const periods = S.office ? S.office.periods : [];
     const u = Wx.UNITS[U()];
+    const vy = Wx.versusYesterday(fc, nowSec());
     box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" stroke-width="1.5"/></svg>${days.length}-day forecast<span class="src">model${periods.length ? " + NWS words" : ""}</span></h2>` +
       days.map((d, i) => {
         const ms = d.t * 1000 + 12 * 3600e3;
@@ -964,9 +1127,10 @@
         const dot = i === 0 && cur != null ? `<b style="left:${Math.min(100, Math.max(0, (cur - lo) / span * 100))}%"></b>` : "";
         const ymd = k.ymd(ms);
         const words = periods.filter((p) => k.ymd(p.start + 3600e3) === ymd);
+        const cf = S.ens ? Wx.dayConfidence(S.ens, d.t) : null;
         return `<details class="day" data-day="${d.t}"${open.has(String(d.t)) ? " open" : ""}>
           <summary>
-            <span class="dn">${i === 0 ? "Today" : esc(k.day(ms))}</span>
+            <span class="dn">${i === 0 ? "Today" : esc(k.day(ms))}${cf ? `<i class="cdot" data-l="${cf.level}" title="${esc(confWords(cf))}"></i>` : ""}</span>
             ${icon(c.kind, true, c.text)}
             <span class="pp">${d.pop >= 20 ? Math.round(d.pop) + "%" : ""}</span>
             <span class="lo num">${Wx.fmt.temp(d.lo, U())}°</span>
@@ -981,6 +1145,9 @@
               ${d.uv != null ? `<span>UV <b class="num">${Math.round(d.uv)}</b></span>` : ""}
               ${d.sunrise ? `<span>Sun <b class="num">${esc(k.time(d.sunrise * 1000))}–${esc(k.time(d.sunset * 1000))}</b></span>` : ""}
             </div>
+            ${dayChart(fc, d)}
+            ${i === 0 && vy ? `<p class="confsay">${esc(vyText(vy))}</p>` : ""}
+            ${cf ? `<p class="confsay" data-l="${cf.level}">${esc(confWords(cf))}</p>` : ""}${d.blended ? `<p class="confsay">High and low from this page's scored blend.</p>` : ""}
             ${words.length ? `<div class="office"><h3>Forecast office ${esc(S.pt && S.pt.office || "")}</h3>${words.map((p) => `<p><b>${esc(p.name)}:</b> ${esc(p.detailed || p.short)}</p>`).join("")}</div>` : ""}
           </div>
         </details>`;
@@ -988,7 +1155,7 @@
   }
 
   function renderTiles() {
-    const fc = S.fc;
+    const fc = shown();
     if (!fc) return;
     const c = Wx.currentConditions(fc, S.obs || null);
     const u = Wx.UNITS[U()];
@@ -1033,6 +1200,13 @@
       <div class="big num">${uv != null ? Math.round(uv) : "–"}</div>
       <div class="say">${uvWord ? `<b>${uvWord}</b> now` : ""}${today.uv != null ? ` · peak ${Math.round(today.uv)} today` : ""}</div>`;
 
+    const rt = Wx.rainTotals(fc, now);
+    $("#t-rain").innerHTML = head('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5S3.5 7 3.5 10a4.5 4.5 0 0 0 9 0C12.5 7 8 1.5 8 1.5z" fill="currentColor"/></svg>', "Rain", "model") + `
+      <div class="dial" style="gap:28px">
+        <div><div class="say">Last 24 hours</div><div class="big num">${rt.past != null ? Wx.fmt.precip(rt.past, U()) : "–"} <small style="font-size:15px">${u.precip}</small></div></div>
+        <div><div class="say">Next 24 hours</div><div class="big num">${rt.next != null ? Wx.fmt.precip(rt.next, U()) : "–"} <small style="font-size:15px">${u.precip}</small></div></div>
+      </div>${S.obs && S.obs.precipHour != null && S.obs.precipHour > 0 ? `<div class="say">The station measured <b class="num">${Wx.fmt.precip(S.obs.precipHour, U())} ${u.precip}</b> in its last hour.</div>` : ""}`;
+
     $("#t-sun").innerHTML = head('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 12h14M4 12a4 4 0 0 1 8 0M8 3v2M3 6l1.2 1.2M13 6l-1.2 1.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>', "Sun", today.sunrise ? "model" : null) + `
       <div class="big num">${today.sunset ? esc(k.time((now > today.sunset ? (Wx.upcomingDays(fc, now)[1] || today).sunrise : now < today.sunrise ? today.sunrise : today.sunset) * 1000)) : "–"}</div>
       <div class="say">${today.sunrise ? `${now > today.sunset || now < today.sunrise ? "Sunrise" : "Sunset"} · up <b class="num">${esc(k.time(today.sunrise * 1000))}</b>, down <b class="num">${esc(k.time(today.sunset * 1000))}</b>` : ""}</div>`;
@@ -1070,6 +1244,8 @@
       const f = Wx.fresh("radar", rv);
       row(f.stale ? "stale" : "", `Radar${f.stale ? " — delayed" : ""}`, `${esc(radar.describe())} · latest scan`, rv);
     } else row("off", "Radar", radar.started ? "scan time unknown" : "loads when you reach it", null);
+    if (S.place && S.rec && S.rec.index) row("", "Scoreboard", `every model vs ${Object.keys(S.rec.index.stations || {}).length.toLocaleString()} US airport stations · scored through ${esc(S.rec.index.through || "")} · published`, Date.parse(S.rec.index.generated) || null);
+    if (S.ens) row("", "Model agreement", "NBM, HRRR, GFS, ECMWF and ECMWF AI, via Open-Meteo", S.fc ? S.fc.fetchedAt : null);
     if (sky.source) row(sky.source.stale ? "stale" : "", esc(sky.source.title), esc(sky.source.sub), sky.source.at);
     $("#sources").innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13V9M6 13V6M10 13V3M14 13V8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Where this comes from</h2><div class="feeds">${rows.join("")}</div>`;
   }
@@ -1614,7 +1790,12 @@
   function renderSaved() {
     const ul = $("#saved");
     $("#savedtitle").hidden = !S.saved.length;
-    ul.innerHTML = S.saved.map((p, i) => `<li><button class="pick" type="button" data-saved="${i}">${esc(p.name)}<small>${esc(p.region)}</small></button><button class="x" type="button" data-forget="${i}" aria-label="Forget ${esc(p.name)}">×</button></li>`).join("");
+    ul.innerHTML = S.saved.map((p, i) => `<li><button class="pick" type="button" data-saved="${i}">${esc(p.name)}<small>${esc(p.region)}</small></button><span class="savednow num" data-now="${i}"></span><button class="x" type="button" data-forget="${i}" aria-label="Forget ${esc(p.name)}">×</button></li>`).join("");
+    /* every saved place's temperature right now, in one request */
+    if (S.saved.length) Wx.several(S.saved).then((list) => list.forEach((x, i) => {
+      const el = ul.querySelector(`[data-now="${i}"]`);
+      if (el && x && x.temp != null) el.innerHTML = `${icon(Wx.condition(x.code).kind, x.isDay)}<b>${Wx.fmt.temp(x.temp, U())}°</b>${x.hi != null ? `<small>H ${Wx.fmt.temp(x.hi, U())}° L ${Wx.fmt.temp(x.lo, U())}°</small>` : ""}`;
+    })).catch(() => {});
   }
   $("#saved").addEventListener("click", (e) => {
     const s = e.target.closest("[data-saved]"), f = e.target.closest("[data-forget]");
@@ -1690,6 +1871,30 @@
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && Date.now() - S.loadedAt > FULL) load();
   });
+
+  /* ── the home screen ──
+     Offered once a place is chosen, never to someone already opening it from
+     their home screen, and gone for good once dismissed. iPhones have no
+     install prompt, so they get the two taps that do it; everything else gets
+     the browser's own prompt when it offers one. */
+  if ("serviceWorker" in navigator && /^(https:|http:\/\/(localhost|127\.0\.0\.1))/.test(location.href)) {
+    navigator.serviceWorker.register("weather-sw.js", { scope: "./weather" }).catch(() => {});
+  }
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  let installEvt = null;
+  addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; offerInstall(); });
+  function offerInstall() {
+    const box = $("#install");
+    if (standalone || !S.place || store.get("wx:installSeen", false)) { box.hidden = true; return; }
+    const ios = /iP(hone|ad|od)/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent);
+    if (!installEvt && !ios) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = `<div class="dial"><img src="assets/weather/icon-180.png" alt="" width="56" height="56" style="border-radius:14px">
+      <div><b>Keep this on your home screen</b><div class="say">${installEvt ? "It opens like an app and works with no signal." : "Tap the Share button, then “Add to Home Screen”. It opens like an app and works with no signal."}</div></div></div>
+      <div style="display:flex;gap:8px;margin-top:10px">${installEvt ? `<button class="chip" type="button" id="doinstall">Add it</button>` : ""}<button class="chip" type="button" id="noinstall">Not now</button></div>`;
+    $("#noinstall").onclick = () => { store.set("wx:installSeen", true); box.hidden = true; };
+    if (installEvt) $("#doinstall").onclick = async () => { installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} store.set("wx:installSeen", true); box.hidden = true; };
+  }
 
   /* ── start ──
      A chosen place, if this browser has one. Otherwise the whole country —

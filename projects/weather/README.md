@@ -17,6 +17,10 @@ room navs, like CS and Apex were while they were thin. Re-list it when Ric says.
 | `wx.js` | everything that talks to a provider, turns its answer into one shape, or decides what the page may say (is it raining, how old is this, where is the storm). Pure functions are exported for Node |
 | `sounding.js` | the vertical arithmetic: parcels, CAPE / CIN / LCL / LFC / EL, precipitable water, lapse rates, shear, Bunkers storm motion, helicity, STP |
 | `draw.js` | the Skew-T and the hodograph, as SVG strings |
+| `verify/core.js` | the scoreboard's arithmetic and the blend — loaded by the page and by `score.mjs` |
+| `verify/score.mjs` | the daily scoring job (below) |
+| `verify/scores/` | what it publishes: rounded records per state, no coordinates |
+| `../../weather.webmanifest`, `../../weather-sw.js`, `../../assets/weather/` | the home-screen app |
 | `DESIGN.md` | the design document |
 | `test/wx.test.mjs` | the client's rules on fixtures, no network. In `.github/checks.mjs`. Also holds the Worker's `/wx` route to every request the page makes |
 | `test/sounding.test.mjs` | the sounding arithmetic, against hand-checkable physics and against MetPy (pinned values). In `checks.mjs` |
@@ -120,6 +124,47 @@ offline copy, refresh every ten minutes while open.
 - *The air above you* (Phase 4) — Skew-T, hodograph and parcel/shear/helicity
   numbers from HRRR, GFS, ECMWF or AIFS, 48 hours on a slider that redraws
   instantly, or the nearest balloon's latest flight; a plain-words glossary.
+
+## How sure, how accurate, and the blend on the page
+
+- **How sure** (`Wx.dayConfidence`): one extra request (`/wx/ens`) fetches the
+  NBM, HRRR, GFS, ECMWF and AIFS hourly temperature, rain and wind for the
+  place. A day is *confident* when the models' highs are within 2 °C and they
+  agree on rain (≥ 1 mm), *fairly* within 4 °C, otherwise *uncertain*. The hero
+  says "Models agree on today" or "Models disagree", each day carries a dot,
+  and the day's details say the range ("highs anywhere from 61° to 70°; 2 of 5
+  have rain").
+- **How accurate, here** (`#record`): the nearest scored airport stations come
+  from the NWS's own station list for the place (ICAO `KTYS` → IEM `TYS`,
+  `Wx.iemId`); their records come from this site's published scoreboard files.
+  The card ranks every model and the blend by their next-day temperature miss,
+  names what the page is showing, and gives the national medians.
+- **The blend on the page** (`applyBlend` in the page, `blend()` in
+  `verify/core.js` — the same function the scoreboard scores): used for hourly
+  temperatures and each day's high and low **only** where the nearest station's
+  record shows the blend beating the standard forecast (`Wx.verdict`; a tie is
+  not a win, and a record under `minDays` is not ranked). Rain and wind stay the
+  standard forecast's. The day's details say when its high and low are the
+  blend's.
+
+## The everyday side
+
+- **The sentence at the top** (`Wx.summary`): rain in the next 12 hours, else a
+  change of sky, gusts of 40 km/h or more, and tomorrow's high against today's —
+  fixed rules, at most three sentences. The next three hours are always said in
+  `rainOutlook`'s own words, so the summary never contradicts the rain line.
+- **Sunrise and sunset** sit in the hourly strip at their minute.
+- **Each day opens** to its temperature curve with high, low and now marked,
+  the chance of rain each hour, today against yesterday, how sure, and the
+  office's words.
+- **Rain**: the last 24 hours (the model's) and the next 24.
+- **Saved places** show their temperature, sky, high and low, in one request.
+- **Home screen**: `weather.webmanifest`, icons in `assets/weather/`, and
+  `weather-sw.js` — the only service worker on the site, scoped to `./weather`
+  so it controls this page and nothing else. Network first for same-origin
+  files, last good copy when offline; it never touches another host. iPhones
+  get the two taps to add it; other browsers their own install prompt; shown
+  once a place is chosen and gone for good once dismissed.
 
 ## The scoreboard (DESIGN.md §31)
 

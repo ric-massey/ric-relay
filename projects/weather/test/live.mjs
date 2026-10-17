@@ -87,6 +87,22 @@ await guard('radar', async () => {
   }
 });
 
+console.log('\nLIVE  how sure: five models at once, and saved places in one request');
+await guard('ensemble', async () => {
+  const e = await W.ensemble(us.lat, us.lon);
+  const now = Math.floor(Date.now() / 1000);
+  const row = e && [...e.hours.entries()].find(([t]) => t >= now)?.[1];
+  ok(row && W.ENSEMBLE.every(m => row[m] && Number.isFinite(row[m].t)), `every model has the next hour: ${row ? Object.keys(row).join(', ') : '—'}`);
+  const fc = await W.forecast(us.lat, us.lon);
+  const c = W.dayConfidence(e, W.upcomingDays(fc, now)[0].t);
+  ok(c && ['high', 'medium', 'low'].includes(c.level) && c.models === 5, `today: ${c && c.level}, highs ${c && c.low.toFixed(1)}–${c && c.high.toFixed(1)} °C`);
+  const k = W.clock(fc.tz);
+  const said = W.summary(fc, now, k, x => String(Math.round(x * 9 / 5 + 32)), x => String(Math.round(x / 1.609)), 'mph');
+  ok(said.length > 10, `the sentence at the top: "${said}"`);
+  const two = await W.several([us, abroad].filter(Boolean));
+  ok(two.length === 2 && two.every(x => x && Number.isFinite(x.temp)), `saved places at once: ${two.map(x => x && x.temp).join(', ')} °C`);
+});
+
 console.log('\nLIVE  storms across the country, and the outlook');
 await guard('national', async () => {
   const n = await W.national();

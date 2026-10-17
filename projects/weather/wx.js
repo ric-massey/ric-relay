@@ -118,6 +118,20 @@
         forecast_hours: '48', wind_speed_unit: 'ms', timeformat: 'unixtime', timezone: 'auto' })}`] : null,
     /* when that model last ran */
     modelRun: model => MODELS[model] ? [`ommeta/${MODELS[model].meta}`, `https://api.open-meteo.com/data/${MODELS[model].meta}/static/meta.json`] : null,
+    /* every model's hourly temperature, rain and wind for a week: how far
+       apart they are is how sure the forecast is, and the scored blend is
+       built from them */
+    ensemble: (lat, lon) => [`ens?lat=${coord(lat)}&lon=${coord(lon)}`,
+      `${OM}?${new URLSearchParams({ latitude: coord(lat), longitude: coord(lon), hourly: 'temperature_2m,precipitation,wind_speed_10m',
+        models: ENSEMBLE.map(m => MODELS_OM[m]).join(','), forecast_days: '7', timezone: 'auto', timeformat: 'unixtime' })}`],
+    /* the current temperature and sky at several saved places, one request */
+    several: places => {
+      const ps = places.slice(0, 12).filter(p => validLat(p.lat) && validLon(p.lon));
+      if (!ps.length) return null;
+      const la = ps.map(p => coord(p.lat)).join(','), lo = ps.map(p => coord(p.lon)).join(',');
+      return [`now?lat=${la}&lon=${lo}`, `${OM}?${new URLSearchParams({ latitude: la, longitude: lo,
+        current: 'temperature_2m,weather_code,is_day', daily: 'temperature_2m_max,temperature_2m_min', forecast_days: '1', timezone: 'auto', timeformat: 'unixtime' })}`];
+    },
     /* weather balloons: where they go up, and one flight */
     raobSites: () => ['iem/raobsites', `${IEM}/geojson/network.py?network=RAOB`],
     raob: (station, ts) => /^[A-Z0-9]{3,5}$/.test(station) && /^\d{12}$/.test(ts)
@@ -139,6 +153,10 @@
     ecmwf: { om: 'ecmwf_ifs025', meta: 'ecmwf_ifs025', label: 'ECMWF', long: 'ECMWF IFS — global, new run every 6 hours' },
     aifs: { om: 'ecmwf_aifs025_single', meta: 'ecmwf_aifs025_single', label: 'AIFS', long: "ECMWF AIFS — ECMWF's AI model, global" }
   };
+  /* the models the blend and the scoreboard know, by Open-Meteo's names */
+  const MODELS_OM = { best: 'best_match', nbm: 'ncep_nbm_conus', hrrr: 'ncep_hrrr_conus', gfs: 'gfs_global', ecmwf: 'ecmwf_ifs025', aifs: 'ecmwf_aifs025_single' };
+  const MODEL_NAMES = { best: 'Open-Meteo best match', nbm: 'NWS National Blend', hrrr: 'HRRR', gfs: 'GFS', ecmwf: 'ECMWF', aifs: 'ECMWF AI (AIFS)', blend: "This page's blend" };
+  const ENSEMBLE = ['nbm', 'hrrr', 'gfs', 'ecmwf', 'aifs'];
   const COLUMN_LEVELS = [1000, 975, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150, 100];
   const COLUMN_FIELDS = COLUMN_LEVELS.flatMap(p => ['temperature', 'dew_point', 'relative_humidity', 'wind_speed', 'wind_direction', 'geopotential_height'].map(k => `${k}_${p}hPa`))
     .concat(['surface_pressure', 'temperature_2m', 'dew_point_2m', 'wind_speed_10m', 'wind_direction_10m', 'cape']).join(',');
@@ -188,7 +206,9 @@
       return { data: await fetchJSON(direct, signal, ms), via: 'direct' };
     } catch (e) {
       if (signal && signal.aborted) throw e;
-      if (!(e.status >= 500 || e.name === 'AbortError' || e.name === 'TypeError')) throw e;
+      /* …or a 200 that is not JSON: Open-Meteo once answered an HRRR column
+         with a plain-text error page */
+      if (!(e.status >= 500 || e.name === 'AbortError' || e.name === 'TypeError' || e.name === 'SyntaxError')) throw e;
       await new Promise(r => setTimeout(r, 800));
       return { data: await fetchJSON(direct, signal, ms * 1.5), via: 'direct' };
     }
@@ -822,9 +842,14 @@
   }
   /* The nearest station with a temperature in the last ninety minutes; the
      next one along if the first has gone quiet (§35.4). */
-  async function observation(pt, lat, lon, signal) {
+  /* the stations around a point, nearest first (the NWS's own list) */
+  async function nearbyStations(pt, lat, lon, signal) {
+    if (!pt || !pt.stationsUrl) return [];
+    return normalizeStations((await ask(ROUTES.nws(pt.stationsUrl), signal)).data, lat, lon).sort((a, b) => (a.dist ?? 1e9) - (b.dist ?? 1e9));
+  }
+  async function observation(pt, lat, lon, signal, list) {
     if (!pt || !pt.stationsUrl) return null;
-    const stations = normalizeStations((await ask(ROUTES.nws(pt.stationsUrl), signal)).data, lat, lon).slice(0, 3);
+    const stations = (list || await nearbyStations(pt, lat, lon, signal)).slice(0, 3);
     let last = null;
     for (const s of stations) {
       try {
@@ -931,6 +956,171 @@
   }
   const raobTs = ms => new Date(ms).toISOString().replace(/[-:T]/g, '').slice(0, 12);
 
+  async function several(places, signal) {
+    const r = ROUTES.several(places);
+    if (!r) return [];
+    const d = (await ask(r, signal)).data;
+    return (Array.isArray(d) ? d : [d]).map(x => x && x.current ? {
+      temp: has(x.current.temperature_2m) ? x.current.temperature_2m : null, code: x.current.weather_code, isDay: x.current.is_day === 1,
+      hi: x.daily && has(x.daily.temperature_2m_max && x.daily.temperature_2m_max[0]) ? x.daily.temperature_2m_max[0] : null,
+      lo: x.daily && has(x.daily.temperature_2m_min && x.daily.temperature_2m_min[0]) ? x.daily.temperature_2m_min[0] : null,
+      tz: x.timezone || null } : null);
+  }
+
+  /* ── the sentence at the top ──
+     What a person would say about the next day, built from the numbers by
+     fixed rules — never more than the forecast says. Returns plain text.
+     Rules, in order, at most three sentences:
+       1. rain in the next 12 hours (an hour ≥ 50% or ≥ 0.3 mm): when it
+          starts, or when it ends if it is raining now
+       2. otherwise a change of sky in the next 8 hours: clearing, or clouds
+          or fog arriving
+       3. gusts of 40 km/h (25 mph) or more in the next 12 hours
+       4. tomorrow's high 3 °C (5 °F) or more away from today's */
+  function summary(fc, nowSec, clockFns, fmtTemp, fmtWind, windUnit) {
+    if (!fc || !fc.hourly) return '';
+    const hrs = upcomingHours(fc, nowSec, 25);
+    const wetH = h => (has(h.pop) && h.pop >= 50) || (has(h.precip) && h.precip >= 0.3);
+    const out = [];
+    const kindOf = h => condition(h.code).kind;
+    const wetWord = h => { const k = kindOf(h); return k === 'snow' ? 'Snow' : k === 'storm' ? 'Storms' : k === 'sleet' ? 'Freezing rain' : 'Rain'; };
+    /* The next three hours belong to rainOutlook (15-minute data), which the
+       page shows just above; this sentence never contradicts it. Past three
+       hours, the hourly forecast speaks. */
+    const near = rainOutlook(fc, nowSec, 3, s => clockFns.time(s * 1000));
+    const nowWet = near.state === 'now' || near.state === 'stopping';
+    if (near.state === 'stopping' || near.state === 'starting') out.push(near.text + '.');
+    else if (nowWet) {
+      const end = hrs.slice(1, 13).find(h => !wetH(h));
+      out.push(end ? `${wetWord(hrs[0])} ending around ${clockFns.hour(end.t * 1000)}.` : `${wetWord(hrs[0])} continuing for the next 12 hours.`);
+    } else if (near.state !== 'starting') {
+      const start = hrs.slice(4, 13).find(wetH);
+      if (start) out.push(`${wetWord(start)} ${start.pop >= 70 ? 'likely' : 'possible'} around ${clockFns.hour(start.t * 1000)}.`);
+      else {
+        const k0 = kindOf(hrs[0]);
+        const cloudy = k => ['cloudy', 'fog', 'rain', 'drizzle', 'snow', 'storm', 'sleet'].includes(k);
+        const clear = k => k === 'clear' || k === 'partly';
+        const change = hrs.slice(1, 9).find(h => cloudy(k0) ? clear(kindOf(h)) : clear(k0) && (kindOf(h) === 'cloudy' || kindOf(h) === 'fog'));
+        if (change) {
+          const k = kindOf(change);
+          out.push(clear(k) ? `${change.isDay ? 'Sunny' : 'Clear'} conditions expected around ${clockFns.hour(change.t * 1000)}.`
+            : k === 'fog' ? `Fog possible around ${clockFns.hour(change.t * 1000)}.` : `Clouds moving in around ${clockFns.hour(change.t * 1000)}.`);
+        }
+      }
+    }
+    const gust = Math.max(-1, ...hrs.slice(0, 13).map(h => has(h.gust) ? h.gust : -1));
+    if (gust >= 40) out.push(`Gusts up to ${fmtWind(gust)} ${windUnit}.`);
+    const days = upcomingDays(fc, nowSec);
+    if (days[0] && days[1] && has(days[0].hi) && has(days[1].hi)) {
+      const d = days[1].hi - days[0].hi;
+      if (Math.abs(d) >= 3) out.push(`Tomorrow ${d > 0 ? 'warmer' : 'colder'}, with a high of ${fmtTemp(days[1].hi)}°.`);
+    }
+    if (!out.length) {
+      const t = hrs.slice(0, 13).filter(h => has(h.temp)).map(h => h.temp);
+      if (t.length) out.push(`Steady conditions for the next 12 hours, between ${fmtTemp(Math.min(...t))}° and ${fmtTemp(Math.max(...t))}°.`);
+    }
+    return out.slice(0, 3).join(' ');
+  }
+
+  /* Today against yesterday (the forecast carries a day of the past). */
+  function versusYesterday(fc, nowSec) {
+    const today = upcomingDays(fc, nowSec)[0];
+    const y = today && fc.daily.find(d => d.t === today.t - 86400 || Math.abs(d.t - (today.t - 86400)) < 7200);
+    return y && has(y.hi) && has(today.hi) ? { today: today.hi, yesterday: y.hi, diff: today.hi - y.hi, ylo: y.lo } : null;
+  }
+  /* Rain totals: the past 24 hours (the model's own record of them) and the next 24. */
+  function rainTotals(fc, nowSec) {
+    let past = 0, next = 0, np = 0, nn = 0;
+    for (const h of fc.hourly) {
+      if (!has(h.precip)) continue;
+      if (h.t <= nowSec && h.t > nowSec - 86400) { past += h.precip; np++; }
+      else if (h.t > nowSec && h.t <= nowSec + 86400) { next += h.precip; nn++; }
+    }
+    return { past: np >= 20 ? past : null, next: nn >= 20 ? next : null };
+  }
+
+  /* ── how sure, and the scoreboard ── */
+  /* One answer, every model: Map(hour → { model: {t, w, p} }) */
+  function normalizeEnsemble(j) {
+    const h = j && j.hourly;
+    if (!h || !Array.isArray(h.time)) return null;
+    const hours = new Map();
+    h.time.forEach((t, i) => {
+      const row = {};
+      for (const m of ENSEMBLE) {
+        const om = MODELS_OM[m];
+        const v = k => { const c = h[`${k}_${om}`]; return Array.isArray(c) && has(c[i]) ? Number(c[i]) : null; };
+        const x = { t: v('temperature_2m'), w: v('wind_speed_10m'), p: v('precipitation') };
+        if (x.t !== null || x.p !== null) row[m] = x;
+      }
+      hours.set(t, row);
+    });
+    return { hours, tz: j.timezone || 'UTC' };
+  }
+  async function ensemble(lat, lon, signal) {
+    return normalizeEnsemble((await ask(ROUTES.ensemble(lat, lon), signal, 20000)).data);
+  }
+
+  /* How sure is a day? From the models themselves: how far apart their highs
+     are, and whether they agree it rains (≥ 1 mm). `days` are local
+     midnights (unix s) from the forecast; `hours` the ensemble. */
+  function dayConfidence(ens, dayT) {
+    if (!ens) return null;
+    const highs = {}, rain = {};
+    for (const [t, row] of ens.hours) {
+      if (t < dayT || t >= dayT + 86400) continue;
+      for (const [m, x] of Object.entries(row)) {
+        if (has(x.t)) highs[m] = Math.max(highs[m] ?? -Infinity, x.t);
+        if (has(x.p)) rain[m] = (rain[m] || 0) + x.p;
+      }
+    }
+    const hs = Object.values(highs).filter(Number.isFinite), rs = Object.values(rain);
+    if (hs.length < 3) return null;
+    const lo = Math.min(...hs), hi = Math.max(...hs), sp = hi - lo;
+    const wet = rs.filter(r => r >= 1).length, frac = rs.length ? wet / rs.length : 0;
+    const rainSplit = frac > 0.2 && frac < 0.8;
+    const level = sp <= 2 && !rainSplit ? 'high' : sp <= 4 && !rainSplit ? 'medium' : 'low';
+    return { level, spread: sp, low: lo, high: hi, models: hs.length, rainModels: wet, rainOf: rs.length, rainSplit, highs };
+  }
+
+  /* NWS station ids are ICAO ("KTYS", "PANC"); IEM's are the three-letter
+     FAA id ("TYS", "ANC") for the same airport. */
+  const iemId = id => /^[KP][A-Z0-9]{3}$/.test(id) ? id.slice(1) : id;
+  /* the published scoreboard: ricmassey.com's own files, no third party */
+  const SCORES = (() => { try { return new URL('projects/weather/verify/scores/', document.baseURI).href; } catch (e) { return 'projects/weather/verify/scores/'; } })();
+  let scoreIndex = null;
+  const stateFiles = new Map();
+  async function scoreIndexGet(signal) {
+    if (!scoreIndex) scoreIndex = fetchJSON(SCORES + 'index.json', signal, 10000).catch(e => { scoreIndex = null; throw e; });
+    return scoreIndex;
+  }
+  /* The records of the scored stations among `stations` (from the NWS
+     list, nearest first), each with its distance. */
+  async function stationRecords(stations, signal) {
+    const idx = await scoreIndexGet(signal);
+    const out = [];
+    for (const s of stations) {
+      const id = iemId(s.id), st = idx.stations && idx.stations[id];
+      if (!st) continue;
+      if (!stateFiles.has(st)) stateFiles.set(st, fetchJSON(SCORES + st + '.json', signal, 10000).catch(() => null));
+      const file = await stateFiles.get(st);
+      const rec = file && file.stations && file.stations[id];
+      if (rec) out.push({ id, nws: s.id, name: rec.n || s.name, dist: s.dist, models: rec.m });
+      if (out.length >= 3) break;
+    }
+    return { index: idx, stations: out };
+  }
+  /* Which forecast has earned its place here: the blend, only where its
+     record at the nearest well-scored station beats the baseline's. */
+  function verdict(rec, minDays) {
+    if (!rec || !rec.models) return null;
+    const mae = m => { const r = rec.models[m] && rec.models[m][1]; if (!r || r.days < minDays) return null;
+      const n = r.td[2] + r.tn[2]; return n ? (r.td[1] * r.td[2] + r.tn[1] * r.tn[2]) / n : null; };
+    const rows = Object.keys(rec.models).map(m => ({ m, mae: mae(m), days: rec.models[m][1] && rec.models[m][1].days })).filter(x => x.mae !== null).sort((a, b) => a.mae - b.mae);
+    const b = rows.find(x => x.m === 'blend'), base = rows.find(x => x.m === 'best');
+    return { rows, useBlend: !!(b && base && b.mae < base.mae - 0.05), blend: b, base, best: rows[0] || null };
+  }
+
   async function radarTime(signal) {
     try { return radarValid((await ask(ROUTES.radarMeta(), signal)).data); }
     catch (e) { if (signal && signal.aborted) throw e; return null; }
@@ -947,7 +1137,8 @@
     forecast, geocode, point, officeForecast, observation, alerts, radarTime, host,
     STORM_EVENTS, NATIONAL_EVENTS, parseMotion, inPolygon, stormTrack, alertDetail, national, stateAlerts, near,
     SITE_PRODUCTS, SPC_KINDS, SPC_NAMES, MODELS, COLUMN_LEVELS, COLUMN_FIELDS, radarSites, siteScans, tileUrl, isoMinute, isoHour,
-    normalizeOutlook, outlook, outlookAt, column, modelRun, raobSites, raobTimes, raobTs
+    normalizeOutlook, outlook, outlookAt, column, modelRun, raobSites, raobTimes, raobTs,
+    several, summary, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet
   };
   root.Wx = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

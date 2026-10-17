@@ -38,7 +38,8 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     ...W.SPC_KINDS.map(k => W.ROUTES.spc(k)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.column(m, 12.34, -56.78)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.modelRun(m)),
-    W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200')
+    W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78),
+    W.ROUTES.several([{ lat: 12.34, lon: -56.78 }, { lat: -33.87, lon: 151.21 }])
   ];
   for (const [path, direct] of routes) {
     const n = asked.length;
@@ -274,6 +275,61 @@ console.log('\nRULE  warning details are the NWS\'s own parameters');
   ok(!w.storm && !w.emergency && w.motion === null && w.hail === null, 'an advisory is not a storm warning');
   const ring = [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]];
   ok(W.inPolygon(1, 1, ring) && !W.inPolygon(3, 1, ring) && !W.inPolygon(1, 1, null), 'inside a warning polygon or not');
+}
+
+console.log('\nRULE  the sentence at the top says only what the numbers say');
+{
+  const c = { hour: ms => new Date(ms).getUTCHours() + 'h', time: ms => new Date(ms).toISOString().slice(11, 16) };
+  const fT = c2 => String(Math.round(c2 * 9 / 5 + 32)), fW = k => String(Math.round(k / 1.609));
+  const base = forecastFixture();
+  const said = f => W.summary(W.normalizeForecast(f), NOW, c, fT, fW, 'mph');
+  ok(/^Steady conditions/.test(said(base)), `nothing happening: "${said(base)}"`);
+  const rain = forecastFixture({ pop: t => t >= H0 + 5 * 3600 ? 80 : 10, code: t => t >= H0 + 5 * 3600 ? 61 : 2 });
+  ok(said(rain).startsWith(`Rain likely around ${new Date((H0 + 5 * 3600) * 1000).getUTCHours()}h.`), `rain later today, from the hourly forecast: "${said(rain)}"`);
+  const raining = forecastFixture({ minutely: [0.5, 0.5, 0.4, 0, 0, 0], pop: t => t < H0 + 2 * 3600 ? 90 : 0, code: () => 61 });
+  ok(/^Rain ending around/.test(said(raining)), `raining now, from the 15-minute data the line above uses: "${said(raining)}"`);
+  const soon = forecastFixture({ minutely: [0, 0, 0, 0, 0.3, 0.5, 0.4], pop: () => 80 });
+  const fcSoon = W.normalizeForecast(soon);
+  ok(said(soon).startsWith(W.rainOutlook(fcSoon, NOW, 3, s => c.time(s * 1000)).text), 'rain in the next three hours is said exactly as the rain line says it');
+  const clearing = forecastFixture({ code: t => t >= H0 + 2 * 3600 ? 0 : 3 });
+  clearing.hourly.is_day = clearing.hourly.time.map(() => 1);
+  ok(/^Sunny conditions expected around/.test(said(clearing)), `clearing: "${said(clearing)}"`);
+  const windy = forecastFixture(); windy.hourly.wind_gusts_10m = windy.hourly.time.map(() => 56);
+  ok(/Gusts up to 35 mph\./.test(said(windy)), `gusty: "${said(windy)}"`);
+  const colder = forecastFixture(); colder.daily.temperature_2m_max = [21, 22, 15];
+  ok(/Tomorrow colder, with a high of 59°\./.test(said(colder)), `a cold front tomorrow: "${said(colder)}"`);
+  const fc = W.normalizeForecast(colder);
+  const vy = W.versusYesterday(fc, NOW);
+  ok(vy && near(vy.diff, 1), `today against yesterday: ${vy && vy.diff}`);
+  const rt = W.rainTotals(W.normalizeForecast(forecastFixture()), NOW);
+  ok(rt.past === 0 && rt.next === 0, 'rain totals for the last and next 24 hours');
+}
+
+console.log('\nRULE  how sure: the models\' own agreement');
+{
+  const day = 1_800_000_000 - (1_800_000_000 % 86400);
+  const mk = (highs, rains) => {
+    const hours = new Map();
+    for (let h = 0; h < 24; h++) {
+      const row = {};
+      W.ENSEMBLE.forEach((m, i) => { row[m] = { t: highs[i] - (h === 15 ? 0 : 5), p: h === 18 ? rains[i] : 0, w: 10 }; });
+      hours.set(day + h * 3600, row);
+    }
+    return { hours };
+  };
+  const agree = W.dayConfidence(mk([20, 20.5, 21, 20, 21.5], [0, 0, 0, 0, 0]), day);
+  ok(agree.level === 'high' && near(agree.spread, 1.5), 'five models within 1.5 °C and all dry: confident');
+  const split = W.dayConfidence(mk([18, 19, 24, 20, 23], [0, 3, 0, 5, 0]), day);
+  ok(split.level === 'low' && split.rainSplit && split.rainModels === 2, 'highs 6 °C apart and two of five wet: models disagree');
+  ok(W.dayConfidence(null, day) === null, 'no ensemble, no claim');
+  const j = { timezone: 'X', hourly: { time: [day], temperature_2m_ncep_hrrr_conus: [10], precipitation_ncep_hrrr_conus: [0], temperature_2m_gfs_global: [null] } };
+  const e = W.normalizeEnsemble(j);
+  ok(e.hours.get(day).hrrr.t === 10 && !e.hours.get(day).gfs, "a model with nothing for an hour is left out of that hour");
+  ok(W.iemId('KTYS') === 'TYS' && W.iemId('PANC') === 'ANC' && W.iemId('0A9') === '0A9', 'NWS ICAO ids to IEM airport ids');
+  const rec = (mae, days) => ({ 1: { td: [0, mae, 100], tn: [0, mae, 100], w: [0, 1, 1], p: [0, 0, 0, 0], pd: [0, 0], days } });
+  const v = W.verdict({ models: { best: rec(1.6, 20), blend: rec(1.2, 20), gfs: rec(2, 20), ecmwf: rec(1.3, 3) } }, 7);
+  ok(v.useBlend && v.best.m === 'blend' && !v.rows.some(r => r.m === 'ecmwf'), 'the blend is used where its record beats the baseline; a 3-day record is not ranked');
+  ok(!W.verdict({ models: { best: rec(1.2, 20), blend: rec(1.21, 20) } }, 7).useBlend, 'a tie is not a win: the baseline stays');
 }
 
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WEATHER CLIENT RULES PASS'));
