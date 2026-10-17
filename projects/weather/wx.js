@@ -188,7 +188,9 @@
       return { data: await fetchJSON(direct, signal, ms), via: 'direct' };
     } catch (e) {
       if (signal && signal.aborted) throw e;
-      if (!(e.status >= 500 || e.name === 'AbortError' || e.name === 'TypeError')) throw e;
+      /* …or a 200 that is not JSON: Open-Meteo once answered an HRRR column
+         with a plain-text error page */
+      if (!(e.status >= 500 || e.name === 'AbortError' || e.name === 'TypeError' || e.name === 'SyntaxError')) throw e;
       await new Promise(r => setTimeout(r, 800));
       return { data: await fetchJSON(direct, signal, ms * 1.5), via: 'direct' };
     }
