@@ -641,9 +641,57 @@ than a sharper tile — and USGS topo stops at 16, which is a fact about their
 cache and not a setting here.
 
 Base maps under **layers**: satellite (Esri), satellite + topo, USGS topo,
-contour topo (OpenTopoMap), and street. Over the top of those, eight overlays in
-four groups — place names, roads, trails, railways; terrain shading and water;
+contour topo (OpenTopoMap), and street. Over the top of those, eleven overlays
+in five groups — place names, roads, trails, railways; steep ground, likely
+spots and rock types; terrain shading and water; state and county lines;
 public land and property lines. All free, no keys, nationwide.
+
+### Reading the ground
+
+Three layers for finding the places worth pinning before anybody has been
+there. The maths is all in `terrain.js`; `terrain-worker.js` runs the heavy
+part off the main thread; `test/terrain.test.mjs` holds it, on made-up ground.
+
+- **steep ground** colours every slope over 27° in avalanche-chart bands —
+  27 steep, 35 scramble, 45 climb, 60 wall. It is worked out on the phone from
+  AWS's open Terrain Tiles (USGS 3DEP in the US, ~10 m): the `slope://`
+  protocol fetches the elevation tile, takes Horn's slope of every pixel and
+  hands MapLibre a picture. It highlights everything and decides nothing.
+- **likely spots** reads the elevation under the screen at z14 (from map zoom
+  12 in) and marks the best fifteen of each: the **lip** of the biggest drops
+  (≥50° with ≥15 m between top and bottom) and closed **hollows** that water
+  drains into and not out of (filled to their spill point, ≥2 m deep, under
+  800 m across, roughly round). Then it asks Macrostrat what the rock is under
+  each. A hollow in limestone, dolomite or gypsum is a *likely sinkhole* and a
+  hollow in basalt a possible lava-tube collapse; in till or alluvium it is
+  probably a pond, and is drawn smaller and grey. A drop in loose ground is a
+  *steep bank*, in shale a *drop*, in anything solid a *cliff edge*. Tap one
+  for the numbers and the rock, and **pin it** starts a pin there with the
+  kind and a line of description filled in.
+- **rock types** is Macrostrat's geologic map, coloured by age like a paper
+  one. Tap anywhere with it on to be told the unit, its rock and its age. An
+  open pin's sheet says what it stands on whichever layers are on.
+
+The thresholds were measured against real ground, not guessed: a sandstone
+gorge (drops of 30–100 m at 60–70°), a granite big wall (800 m at 85°), the
+Kentucky sinkhole plain (500+ hollows in five square miles), Florida karst, and
+Kansas farmland as the control (no drops, a handful of shallow playas). At 45°
+it lit every steep hollow in the Appalachians; at 50 with 15 m of relief it
+keeps the walls. None of those places is written into this repo — the tests use
+synthetic grids and the calibration was run from a scratch script.
+
+**The spots are never stored.** They are recomputed every time the map stops
+and forgotten when it moves; they never reach the database or the repo. They
+are a reading of public elevation data, not places — a place is what you make
+when you press *pin it*.
+
+Offline: the elevation tiles (`s3.amazonaws.com`) are tiles to the service
+worker, so a saved area with steep ground or likely spots on takes the
+elevation along (`bulkUrls` in `OVERLAYS` — the slope picture itself is made on
+the phone, so the thing worth saving is the elevation under it), and both work
+with no signal. The rock lookup and the rock map do not: Macrostrat is a
+university's server rendering on demand, so it is `noBulk` like the Census
+lines, and a spot found offline says so rather than guessing at its rock.
 
 **State and county lines** are two switches off one Census service, which
 publishes each boundary at half a dozen generalisations and picks the right one
@@ -810,6 +858,17 @@ What does the rest of the work is the other four:
 
 The rest:
 
+- **A phone layout is not a desktop layout.** From 900px wide, the pin sheet,
+  the search results and every panel dock to the left as one 400px column with
+  the map live beside it, the way every desktop map works — before that, a
+  laptop got the phone sheet stretched 1,400px wide and the layers panel over
+  the whole screen. The map's padding and the crosshair follow the column
+  (`DOCKED` and `sheetPadding()` in `app.js`); the bottom bar steps out while
+  it is open rather than sticking out from under it. Under 900px nothing
+  changed.
+- **A scale bar** sits bottom left, in feet and miles, and the layers button
+  carries a count of the overlays that are on, so a map that looks odd says
+  why from the corner.
 - **A box means you can press it.** That one rule decides every container in the
   file. Information gets type and a hairline, never a box. Before it, the pin
   sheet had a grey well holding white buttons beside an outlined card beside
@@ -912,6 +971,7 @@ node test/photos.test.mjs
 node test/owners.test.mjs
 node test/contrast.test.mjs
 node test/search.test.mjs
+node test/terrain.test.mjs
 ```
 
 The tile maths — which square of the planet gets downloaded. Worth having tested,

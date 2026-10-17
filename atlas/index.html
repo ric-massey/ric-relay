@@ -36,6 +36,17 @@
     <path d="M3 8h18M3 16h18"/>
     <circle cx="9" cy="8" r="2.7"/><circle cx="15" cy="16" r="2.7"/>
   </symbol>
+  <!-- reading the ground: a drop is a step off an edge, a hollow is a bowl
+       seen from the side, rock is strata -->
+  <symbol id="i-drop" viewBox="0 0 24 24">
+    <path d="M3 6h8v12h10"/><path d="m15 11 2.5 2.5L20 11" opacity=".9"/>
+  </symbol>
+  <symbol id="i-hollow" viewBox="0 0 24 24">
+    <path d="M2.5 9h4c1 5.5 3 8 5.5 8s4.5-2.5 5.5-8h4"/><path d="M10 13.5h4"/>
+  </symbol>
+  <symbol id="i-rock" viewBox="0 0 24 24">
+    <path d="M3 7.5 8 5l5 2 8-2.5M3 12.5l6-2 5 1.5 7-2.5M3 17.5l5-1.5 6 2 7-2"/>
+  </symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   <symbol id="i-locate" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
@@ -200,6 +211,7 @@
   <header class="topbar">
     <button id="layers-btn" class="chip solo wide-chip" title="Layers">
       <svg class="icon"><use href="#i-layers"/></svg>layers
+      <span id="layers-count" class="chip-count" hidden></span>
     </button>
     <div class="topbar-right">
       <button id="settings-btn" class="chip solo" title="Settings" aria-label="Settings">
@@ -208,6 +220,12 @@
       <button id="whoami" class="chip solo who" title="Settings"></button>
     </div>
   </header>
+
+  <!-- What the spot finder is doing. Says so rather than leaving an empty map
+       to mean either "nothing here" or "not looked yet". -->
+  <div id="spots-status" class="spots-status" role="status" hidden>
+    <svg class="icon icon-sm"><use href="#i-drop"/></svg><span id="spots-status-text"></span>
+  </div>
 
   <div class="status">
     <span id="net" class="badge badge-off" hidden></span>
@@ -263,6 +281,9 @@
       <textarea id="pin-desc" class="pin-desc" rows="3"
                 placeholder="what is it? how do you get in? what do you need?"></textarea>
       <div id="pin-meta" class="pin-meta"></div>
+      <p id="pin-rock" class="pin-rock" hidden>
+        <svg class="icon icon-sm"><use href="#i-rock"/></svg><span id="pin-rock-text"></span>
+      </p>
       <button id="pin-copy" class="linkish meta-action">
         <svg class="icon"><use href="#i-copy"/></svg>copy location
       </button>
@@ -476,17 +497,15 @@
             <span class="map-swatch sw-sat"></span>
             <div>
               <div class="map-name">satellite</div>
-              <small>bare ground, and nothing drawn on it unless you switch it
-                on below. Sharp the furthest in of any of them</small>
+              <small>bare ground, nothing drawn on it. The sharpest up close</small>
             </div>
           </label>
           <label class="map-card">
             <input type="radio" name="basemap" value="hybrid">
             <span class="map-swatch sw-hybrid"></span>
             <span class="map-name">satellite + topo</span>
-            <small>imagery with contours and names baked in. USGS stop drawing
-              it three zooms before satellite does, so it softens up close —
-              that is theirs, not a setting</small>
+            <small>imagery with contours and names. Softens up close — USGS
+              stop three zooms before satellite does</small>
           </label>
           <label class="map-card">
             <input type="radio" name="basemap" value="topo">
@@ -538,12 +557,46 @@
       </section>
 
       <section class="detail">
+        <h3 class="detail-head">reading the ground</h3>
+        <label class="switch">
+          <span>steep ground</span>
+          <input type="checkbox" data-overlay="slope">
+          <span class="switch-track"></span>
+          <small>every slope over 27°, coloured by how steep</small>
+        </label>
+        <div class="slope-key" aria-label="slope colours">
+          <span style="--c: rgb(250 215 60)">27°<em>steep</em></span>
+          <span style="--c: rgb(250 145 30)">35°<em>scramble</em></span>
+          <span style="--c: rgb(235 60 40)">45°<em>climb</em></span>
+          <span style="--c: rgb(150 20 120)">60°<em>wall</em></span>
+        </div>
+        <label class="switch">
+          <span>likely spots</span>
+          <input type="checkbox" data-overlay="spots">
+          <span class="switch-track"></span>
+          <small>marks the biggest drops and the hollows that could be
+            sinkholes, and checks the rock under each</small>
+        </label>
+        <div class="spot-key">
+          <span><i class="spot spot-cliff is-strong"><svg class="icon"><use href="#i-drop"/></svg></i>cliff edge</span>
+          <span><i class="spot spot-sink is-strong"><svg class="icon"><use href="#i-hollow"/></svg></i>sinkhole</span>
+          <span><i class="spot spot-sink is-weak"><svg class="icon"><use href="#i-hollow"/></svg></i>less likely</span>
+        </div>
+        <label class="switch">
+          <span>rock types</span>
+          <input type="checkbox" data-overlay="rock">
+          <span class="switch-track"></span>
+          <small>the geologic map — tap anywhere to be told the rock</small>
+        </label>
+      </section>
+
+      <section class="detail">
         <h3 class="detail-head">terrain &amp; water</h3>
         <label class="switch">
           <span>terrain shading</span>
           <input type="checkbox" data-overlay="terrain">
           <span class="switch-track"></span>
-          <small>the layer that shows you a cliff or a sinkhole</small>
+          <small>light from the northwest, so every ridge and hollow stands up</small>
         </label>
         <label class="switch">
           <span>creeks &amp; water</span>
@@ -559,15 +612,13 @@
           <span>state lines</span>
           <input type="checkbox" data-overlay="states">
           <span class="switch-track"></span>
-          <small>which state you are standing in, and where that stops. Cannot
-            be saved ahead of time — kept for wherever you have already looked</small>
+          <small>which state you are in, and where it stops. Not saved for offline</small>
         </label>
         <label class="switch">
           <span>county lines</span>
           <input type="checkbox" data-overlay="counties">
           <span class="switch-track"></span>
-          <small>the county — which is who to ask about a road or a deed. Same:
-            no saving ahead, kept for wherever you have already looked</small>
+          <small>who to ask about a road or a deed. Not saved for offline</small>
         </label>
       </section>
 
@@ -590,9 +641,9 @@
 
       <p class="estimate">Overlays download with the map when you save an area
         offline, so turn on what you want before you download. State and county
-        lines are the exception: they are drawn to order rather than served, so
-        they cannot be saved ahead — you keep the ones you have already looked
-        at, and nothing more.</p>
+        lines and rock types are the exception: they are drawn to order rather
+        than served, so they cannot be saved ahead — you keep the ones you have
+        already looked at, and nothing more.</p>
 
       <button id="maps-from-layers" class="btn-ghost wide">
         <svg class="icon icon-sm"><use href="#i-download"/></svg>save maps for offline…

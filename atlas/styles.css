@@ -2201,3 +2201,207 @@ body.is-offline #app::after {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── reading the ground ──────────────────────────────────────────────────
+ * The spot finder's marks. They are suggestions, not pins, and must never be
+ * mistaken for one: round where a pin is a teardrop, outlined where a pin is
+ * solid, and a size smaller. Sure ones (the rock agrees) are drawn in ink on
+ * white; unsure ones are hollow and quieter; ones still waiting on the rock
+ * are dashed. A pin always draws over them.
+ */
+.spot {
+  --spot-ink: #0b0f14;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(255,255,255,0.94); color: var(--spot-ink);
+  border: 2.5px solid var(--spot-ink);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,0.9), 0 2px 6px rgba(11,15,20,0.35);
+  cursor: pointer;
+  transition: transform var(--t-fast) var(--spring), opacity var(--t-mid) var(--ease);
+  animation: spot-in var(--t-mid) var(--spring) both;
+}
+.maplibregl-marker:has(> .spot) { z-index: 0; }
+.spot .icon { width: 17px; height: 17px; stroke-width: 2.4; }
+.spot.spot-cliff { --spot-ink: #a8240e; }
+.spot.spot-sink  { --spot-ink: #0d5d86; }
+.spot.is-unread  { border-style: dashed; opacity: 0.8; }
+.spot.is-weak {
+  width: 24px; height: 24px; background: rgba(255,255,255,0.72);
+  border-width: 2px; --spot-ink: #46525f;
+}
+.spot.is-weak .icon { width: 14px; height: 14px; }
+.spot:active { transform: scale(0.9); }
+@media (hover: hover) { .spot:hover { transform: scale(1.12); } }
+@keyframes spot-in { from { opacity: 0; transform: scale(0.4); } }
+
+/* "reading the ground…" — top centre, under the chips, out of the thumb's way. */
+.spots-status {
+  position: absolute; z-index: 9; left: 50%; transform: translateX(-50%);
+  top: calc(var(--safe-t) + var(--s-3) + var(--tap) + var(--s-2));
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  max-width: calc(100% - 2 * var(--s-3));
+  padding: var(--s-1) var(--s-3); min-height: 30px;
+  background: var(--panel); color: var(--ink-dim);
+  border: var(--b) solid var(--edge); border-radius: var(--r-pill);
+  box-shadow: var(--e-2);
+  font-size: var(--t-sm); font-weight: 700; white-space: nowrap;
+  pointer-events: none;
+  animation: head-in var(--t-mid) var(--ease);
+}
+.spots-status span { overflow: hidden; text-overflow: ellipsis; }
+.spots-status .icon { color: var(--ink-mute); flex: none; }
+.spots-status.is-busy .icon { animation: spot-pulse 900ms var(--ease) infinite alternate; }
+@keyframes spot-pulse { to { opacity: 0.25; } }
+
+/* How many overlays are on, as a count on the layers chip. */
+.chip-count {
+  min-width: 20px; height: 20px; padding: 0 6px; margin-right: calc(var(--s-1) * -1);
+  border-radius: var(--r-pill);
+  display: inline-grid; place-items: center;
+  background: var(--accent); color: var(--on-accent);
+  font-size: 0.75rem; font-weight: 800; letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The two keys under their switches in the layers panel. */
+.slope-key {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px;
+  margin: calc(var(--s-1) * -1) 0 var(--s-3);
+}
+.slope-key span {
+  display: flex; flex-direction: column; gap: 2px;
+  padding-top: 10px; position: relative;
+  font-size: 0.75rem; font-weight: 800; color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.slope-key span::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px;
+  background: var(--c); border-radius: 3px;
+}
+.slope-key em { font-style: normal; font-weight: 600; color: var(--ink-dim); }
+.spot-key {
+  display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4);
+  margin: calc(var(--s-1) * -1) 0 var(--s-3);
+  font-size: var(--t-sm); font-weight: 600; color: var(--ink-dim);
+}
+.spot-key > span { display: inline-flex; align-items: center; gap: var(--s-2); }
+.spot-key .spot { animation: none; cursor: default; flex: none; }
+
+/* The rock under a pin, on its sheet. */
+.pin-rock {
+  display: flex; gap: var(--s-2); align-items: flex-start;
+  font-size: var(--t-sm); font-weight: 600; color: var(--ink-dim); line-height: 1.45;
+}
+.pin-rock .icon { flex: none; margin-top: 1px; color: var(--ink-mute); }
+
+/* ── popups on the map ── one look for both: a spot, and "what rock is this" */
+.atlas-pop .maplibregl-popup-content {
+  background: var(--panel); color: var(--ink);
+  border: var(--b) solid var(--edge); border-radius: var(--r-lg);
+  box-shadow: var(--e-3);
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  font: inherit; display: flex; flex-direction: column; gap: var(--s-1);
+}
+.atlas-pop .maplibregl-popup-close-button {
+  width: 32px; height: 32px; font-size: 22px; line-height: 1;
+  color: var(--ink-dim); border-radius: var(--r-sm); top: 6px; right: 6px;
+}
+.atlas-pop .maplibregl-popup-close-button:hover { background: var(--panel-2); }
+.atlas-pop.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.atlas-pop.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.atlas-pop.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { border-top-color: var(--edge); }
+.atlas-pop.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.atlas-pop.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.atlas-pop.maplibregl-popup-anchor-top-right .maplibregl-popup-tip { border-bottom-color: var(--edge); }
+.atlas-pop.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--edge); }
+.atlas-pop.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--edge); }
+.pop-kind {
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ink-mute); padding-right: 28px;
+}
+.pop-kind.is-strong { color: var(--accent-dk); }
+.pop-title { font-size: var(--t-lg); font-weight: 800; letter-spacing: -0.01em; line-height: 1.25; padding-right: 20px; }
+.pop-why { font-size: var(--t-sm); font-weight: 600; color: var(--ink-dim); line-height: 1.45; }
+.pop-measure {
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem; font-weight: 600; color: var(--ink);
+}
+.pop-rock {
+  display: flex; gap: var(--s-2); align-items: flex-start; margin-top: var(--s-1);
+  padding: var(--s-2) var(--s-3); border-radius: var(--r-sm); background: var(--panel-2);
+  font-size: 0.8125rem; font-weight: 600; color: var(--ink-dim); line-height: 1.4;
+}
+.pop-rock .icon { flex: none; color: var(--ink-mute); margin-top: 1px; }
+.pop-pin { margin-top: var(--s-2); min-height: 40px; gap: var(--s-2); }
+.pop-note { font-size: 0.75rem; font-weight: 600; color: var(--ink-mute); line-height: 1.4; margin-top: var(--s-1); }
+
+/* The scale bar, bottom left, clear of the bottom bar the same way the zoom
+   buttons are on the right. Restyled to belong: the ink and edge of the app,
+   not MapLibre's grey. */
+.maplibregl-ctrl-bottom-left {
+  margin-bottom: calc(var(--safe-b) + var(--s-3) + var(--bar) + var(--s-3));
+  margin-left: var(--s-3);
+}
+.maplibregl-ctrl-scale {
+  background: rgba(255,255,255,0.88); color: #0b0f14;
+  border: 2px solid #0b0f14; border-top: none;
+  font: 700 0.6875rem/1.5 ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  padding: 0 6px 1px; margin: 0 !important;
+}
+
+/* ── wide screens ────────────────────────────────────────────────────────
+ * A phone layout stretched across a laptop is a sheet 1,400px wide with a
+ * description field you could land a plane on. From 900px up, everything that
+ * opens over the map docks to the left as one column instead, the way every
+ * desktop map does it, and the map stays in view beside it. The phone layout
+ * underneath is untouched.
+ */
+:root { --dock: 400px; }
+@media (min-width: 900px) {
+  .sheet {
+    left: var(--s-3); right: auto; width: var(--dock);
+    top: calc(var(--safe-t) + var(--s-3) + var(--tap) + var(--s-3));
+    bottom: var(--s-3); height: auto;
+    border: var(--b-strong) solid var(--edge); border-radius: var(--r-xl);
+    box-shadow: var(--e-3);
+    animation: dock-in var(--t-slow) var(--ease);
+    transition: none;
+  }
+  .sheet.is-closing { animation: dock-out var(--t-mid) var(--ease) forwards; }
+  .sheet-grip { display: none; }
+  .sheet-body { padding-top: var(--s-4); }
+
+  .panel:not(.is-search) {
+    inset: var(--s-3) auto var(--s-3) var(--s-3); width: var(--dock);
+    border: var(--b-strong) solid var(--edge); border-radius: var(--r-xl);
+    box-shadow: var(--e-3); overflow: hidden;
+    animation: dock-in var(--t-mid) var(--ease);
+  }
+  .panel:not(.is-search).is-closing { animation: dock-out var(--t-fast) var(--ease) forwards; }
+
+  .panel.is-search .search-head {
+    margin: var(--s-3) 0 0 var(--s-3); width: var(--dock);
+    border: var(--b) solid var(--edge); border-radius: var(--r-lg);
+  }
+  .search-sheet {
+    left: var(--s-3); right: auto; width: var(--dock);
+    border: var(--b-strong) solid var(--edge); border-radius: var(--r-xl);
+    bottom: calc(var(--kb) + var(--s-3));
+  }
+
+  /* The crosshair marks the middle of the map you can still see. */
+  .crosshair.is-offset {
+    top: 50%;
+    left: calc(var(--s-3) + var(--dock) + (100% - var(--s-3) - var(--dock)) / 2);
+  }
+
+  /* The search bar does not need to be a runway either — and while the
+     column is open it would only stick out from under it, so it steps out. */
+  .bottombar { right: auto; width: min(560px, calc(100% - 2 * var(--s-3))); }
+  #app:has(> .sheet:not([hidden])) .bottombar,
+  #app:has(> .panel:not([hidden])) .bottombar { visibility: hidden; }
+}
+@keyframes dock-in  { from { opacity: 0; transform: translateX(-24px); } }
+@keyframes dock-out { to   { opacity: 0; transform: translateX(-16px); } }

@@ -9,7 +9,7 @@
  *      data would be rude.
  */
 
-const SHELL_VERSION = 'atlas-shell-v45';
+const SHELL_VERSION = 'atlas-shell-v46';
 const TILE_CACHE    = 'atlas-tiles-v1';
 
 const SHELL = [
@@ -23,6 +23,8 @@ const SHELL = [
   './photos.js',
   './owners.js',
   './search.js',
+  './terrain.js',
+  './terrain-worker.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -50,6 +52,12 @@ const TILE_HOSTS = [
   // app-shell cache and answers it from there until the next deploy: a stale
   // boundary for a month and a shell cache that grows a row per pan.
   'tigerweb.geo.census.gov',
+  // Elevation tiles (AWS Terrain Tiles, an open-data S3 bucket). The steep-
+  // ground layer and the spot finder both read them, and a saved area keeps
+  // them so both still work with no signal.
+  's3.amazonaws.com',
+  // Macrostrat's rock map. Browse-only, but what you have looked at stays.
+  'tiles.macrostrat.org',
 ];
 
 self.addEventListener('install', (event) => {
@@ -103,6 +111,10 @@ self.addEventListener('fetch', (event) => {
   // the life of the deploy — so a road that got named last month would stay
   // un-findable, and the cache would grow a row per thing anyone ever typed.
   if (url.hostname.endsWith('nominatim.openstreetmap.org')) return;
+
+  // "What rock is this" is a question about a point, like a search. The page
+  // keeps its own answers for the session; the shell cache must not.
+  if (url.hostname === 'macrostrat.org') return;
 
   if (TILE_HOSTS.includes(url.hostname)) {
     event.respondWith(tileFirst(req));

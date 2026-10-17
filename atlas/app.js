@@ -25,6 +25,10 @@ import {
   lookup as lookupOwnership, assessorSearchUrl, parcelSiteUrl,
   discoverParcelSource,
 } from './owners.js';
+import {
+  DEM_URL, DEM_MAXZOOM, decode, slope, paintSlope, metresPerPixel,
+  rockOf, verdict, ROCK_URL,
+} from './terrain.js';
 
 const db = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
@@ -188,6 +192,45 @@ const OVERLAYS = {
     urls: ['https://services.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}'],
     maxzoom: 16,
     attribution: 'Esri',
+  },
+  /* Every slope in view, coloured by how steep it is — worked out here, from
+   * elevation tiles, by the `slope://` protocol below. It is what "show me the
+   * dramatic ground" means: it highlights everything and decides nothing.
+   * bulkUrls is what an offline download fetches instead of `urls`, because a
+   * slope tile is made on the phone from an elevation tile, and the elevation
+   * tile is the thing worth keeping. */
+  slope: {
+    label: 'steep ground',
+    urls: ['slope://{z}/{x}/{y}'],
+    bulkUrls: [DEM_URL],
+    minzoom: 9,
+    maxzoom: DEM_MAXZOOM,
+    attribution: 'Terrain Tiles (USGS 3DEP and others) via AWS Open Data',
+  },
+  /* The spot finder (see "likely spots" further down). No tiles of its own to
+   * draw — it is markers — but it reads elevation at z14, so an offline save
+   * with it on takes that level of the elevation pyramid along. */
+  spots: {
+    label: 'likely spots',
+    urls: [],
+    bulkUrls: [DEM_URL],
+    minzoom: 14,
+    maxzoom: 14,
+    attribution: 'Macrostrat (CC-BY 4.0)',
+  },
+  /* What the rock is. Macrostrat's map, which stitches every state survey and
+   * the USGS into one: coloured by age the way a paper geologic map is, and
+   * tap anywhere with it on to be told the unit. Served by a university off
+   * one tile server and rendered on demand, so it is browse-only — never bulk
+   * downloaded — and its 512px tiles stay 512. */
+  rock: {
+    label: 'rock types',
+    urls: ['https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png'],
+    tileSize: 512,
+    maxzoom: 16,
+    noBulk: true,
+    opacity: 0.6,
+    attribution: 'Macrostrat (CC-BY 4.0)',
   },
   water: {
     label: 'creeks & water',
@@ -755,14 +798,14 @@ function initMap() {
   // first so roads and labels draw on top of it rather than under.
   // Order is the draw order: ground-shading first, then areas, then lines, then
   // labels last so nothing is drawn over the text.
-  const DRAW_ORDER = ['terrain', 'publicland', 'water', 'parcels',
+  const DRAW_ORDER = ['terrain', 'rock', 'slope', 'publicland', 'water', 'parcels',
                      'counties', 'states', 'trails', 'rail', 'roads', 'labels'];
   for (const key of DRAW_ORDER) {
     const cfg = OVERLAYS[key];
     cfg.urls.forEach((url, i) => {
       const id = `ov-${key}-${i}`;
       sources[id] = {
-        type: 'raster', tiles: [url], tileSize: tileCssFor(cfg),
+        type: 'raster', tiles: [url], tileSize: cfg.tileSize || tileCssFor(cfg),
         maxzoom: cfg.maxzoom, attribution: cfg.attribution,
         ...(cfg.minzoom ? { minzoom: cfg.minzoom } : {}),
       };
@@ -777,6 +820,10 @@ function initMap() {
   // Last, so the thread is drawn over every base map and overlay. The markers
   // are DOM and sit above all of it regardless.
   layers.push(parkLineLayer);
+
+  // Before the map exists: the steep-ground source asks for slope:// tiles the
+  // moment it is visible, and an unregistered protocol is a failed tile.
+  maplibregl.addProtocol('slope', slopeTile);
 
   map = new maplibregl.Map({
     container: 'map',
@@ -796,6 +843,10 @@ function initMap() {
   // the most-pressed thing on the whole map; it belongs where the hand is.
   // The clearance above the bottom bar is set in styles.css.
   map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right');
+  // How far that is. A map you plan a walk on without one is a picture.
+  // Imperial, because the crew think in miles and feet; it says both units
+  // as it zooms in (ft under a mile) without being told.
+  map.addControl(new maplibregl.ScaleControl({ maxWidth: 110, unit: 'imperial' }), 'bottom-left');
 
   // Long-press (or right-click) pins the thing across the valley that you can
   // see but are not standing in.
@@ -803,6 +854,13 @@ function initMap() {
   wireLongPress();
 
   map.on('moveend', updateDownloadEstimate);
+  map.on('moveend', scheduleSpots);
+  renderLayersBadge();
+  map.on('click', onMapClick);
+  map.once('load', () => {
+    Object.keys(OVERLAYS).forEach(paintOverlay);
+    syncSpots();
+  });
   // Every frame of a pinch, not just the end of it — a pin that resizes once
   // the gesture is over reads as a glitch rather than as a response.
   map.on('zoom', scalePins);
@@ -910,13 +968,301 @@ function overlayNotes() {
 
 function setOverlay(key, on) {
   on ? overlaysOn.add(key) : overlaysOn.delete(key);
+  paintOverlay(key);
+  savePref('overlays', [...overlaysOn]);
+  updateDownloadEstimate();
+  renderCredits();
+  renderLayersBadge();
+  if (key === 'spots') syncSpots();
+  if (key === 'rock' && !on) closeMapPopup();
+}
+
+/* Make the map show what the switch says. Until the style has loaded the
+ * layers do not exist yet and there is nothing to set — a switch flipped (or a
+ * synced setting adopted) in that first second used to be dropped on the
+ * floor, leaving the switch off and the layer on. initMap() calls this for
+ * every overlay once the style is in, which covers that gap. */
+function paintOverlay(key) {
+  if (!map) return;
+  const on = overlaysOn.has(key);
   OVERLAYS[key].urls.forEach((_, i) => {
     const id = `ov-${key}-${i}`;
     if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
   });
-  savePref('overlays', [...overlaysOn]);
-  updateDownloadEstimate();
-  renderCredits();
+}
+
+/* ── reading the ground ──────────────────────────────────────────────────
+ * Three layers that come out of terrain.js: steep ground (every slope,
+ * coloured), likely spots (the few drops and hollows most worth a look) and
+ * rock types (what they are made of). The thinking is all in terrain.js; this
+ * is the part that talks to the map.
+ */
+
+/* A slope:// tile: fetch the elevation tile at the same address, work out
+ * every pixel's slope and hand MapLibre back a picture of it. Fetched with
+ * plain fetch(), so it goes through the service worker and an area saved for
+ * offline draws its steep ground with no signal. */
+async function slopeTile(params, abort) {
+  const [z, x, y] = params.url.slice('slope://'.length).split('/').map(Number);
+  const url = DEM_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y);
+  const res = await fetch(url, { signal: abort.signal });
+  if (!res.ok) throw new Error(`elevation ${res.status}`);
+  const bmp = await createImageBitmap(await res.blob(),
+    { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+  const c = new OffscreenCanvas(256, 256);
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(bmp, 0, 0);
+  bmp.close?.();
+  const h = decode(g.getImageData(0, 0, 256, 256).data);
+  g.putImageData(new ImageData(paintSlope(slope(h, 256, 256, metresPerPixel(z, y))), 256, 256), 0, 0);
+  const out = await c.convertToBlob({ type: 'image/png' });
+  return { data: await out.arrayBuffer() };
+}
+
+/* What the rock is at a point, from Macrostrat. Asked once per ~100 m and
+ * remembered for the session: the same hollow is asked about every time the
+ * map stops moving, and a university's API should hear about it once. */
+const rockCache = new Map();
+function rockAt(lat, lng) {
+  const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+  if (!rockCache.has(key)) {
+    const p = fetch(ROCK_URL(lat, lng))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status))))
+      .then((j) => rockOf(j?.success?.data))
+      .catch(() => { rockCache.delete(key); return undefined; });
+    rockCache.set(key, p);
+  }
+  return rockCache.get(key);
+}
+
+const fmtFeet = (m) => `${Math.round(m * 3.28084 / 5) * 5 || Math.round(m * 3.28084)} ft`;
+
+function rockLine(rock) {
+  if (!rock?.unit) return '';
+  const u = rock.unit;
+  return [u.name, u.lith && u.lith.toLowerCase() !== u.name.toLowerCase() ? u.lith : '', u.age]
+    .filter(Boolean).map(escapeHtml).join(' · ');
+}
+
+/* ── likely spots ── */
+const SPOTS_MIN_ZOOM = 12;
+const SPOTS_Z = 14;          // the zoom the thresholds in terrain.js were measured at
+const SPOTS_MAX_TILES = 48;  // ~0.6 s in the worker; more and a pan waits on it
+let spotsWorker = null;
+let spotsSeq = 0;            // the newest scan asked for; older answers are dropped
+let spotsBusy = false;
+let spotsQueued = false;
+let spotsTimer = null;
+let spotMarkers = [];
+let mapPopup = null;
+
+function syncSpots() {
+  if (!map) return;
+  if (!overlaysOn.has('spots')) {
+    spotsSeq++;
+    clearSpots();
+    spotsStatus(null);
+    return;
+  }
+  scheduleSpots(0);
+}
+
+function scheduleSpots(delay = 500) {
+  if (!map || !overlaysOn.has('spots')) return;
+  clearTimeout(spotsTimer);
+  // Waits for the map to settle: a fling ends in three moveends, and reading
+  // the ground under each of them is two wasted scans.
+  spotsTimer = setTimeout(scanSpots, typeof delay === 'number' ? delay : 500);
+}
+
+function scanSpots() {
+  if (map.getZoom() < SPOTS_MIN_ZOOM) {
+    clearSpots();
+    spotsStatus('zoom in to look for drops and sinkholes');
+    return;
+  }
+  if (spotsBusy) { spotsQueued = true; return; }
+
+  const b = map.getBounds();
+  const n = 2 ** SPOTS_Z;
+  const tx = (lng) => Math.floor((lng + 180) / 360 * n);
+  const ty = (lat) => {
+    const r = lat * Math.PI / 180;
+    return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n);
+  };
+  let x0 = tx(b.getWest()), x1 = tx(b.getEast());
+  let y0 = ty(b.getNorth()), y1 = ty(b.getSouth());
+  // A big screen at z12 is more tiles than is worth a pan's wait. Read the
+  // middle of it; the edges are where you are not looking.
+  while ((x1 - x0 + 1) * (y1 - y0 + 1) > SPOTS_MAX_TILES) {
+    if (x1 - x0 >= y1 - y0) { x0++; x1--; } else { y0++; y1--; }
+  }
+
+  spotsWorker ??= new Worker(new URL('./terrain-worker.js', import.meta.url), { type: 'module' });
+  const id = ++spotsSeq;
+  spotsBusy = true;
+  spotsStatus('reading the ground…', true);
+  spotsWorker.onmessage = ({ data }) => {
+    spotsBusy = false;
+    if (spotsQueued) { spotsQueued = false; scanSpots(); return; }
+    if (data.id !== spotsSeq || !overlaysOn.has('spots')) return;
+    if (data.error) {
+      spotsStatus(online() ? 'could not read the ground here' : 'no elevation saved for this area');
+      return;
+    }
+    renderSpots(data.spots, id);
+  };
+  spotsWorker.postMessage({ id, z: SPOTS_Z, x0, y0, cols: x1 - x0 + 1, rows: y1 - y0 + 1 });
+}
+
+function clearSpots() {
+  spotMarkers.forEach((m) => m.remove());
+  spotMarkers = [];
+  if (mapPopup?._spot) closeMapPopup();
+}
+
+const SPOTS_PER_KIND = 15;
+
+function renderSpots(all, id) {
+  clearSpots();
+  // The worker read whole tiles, which overhang the screen. Keep the best of
+  // each kind that are actually in view, and keep them apart by a fixed share
+  // of the screen so a gorge does not stack fifteen marks on one rim.
+  const b = map.getBounds();
+  const minGap = Math.min(map.getContainer().clientWidth, map.getContainer().clientHeight) / 14;
+  const spots = [];
+  for (const kind of ['cliff', 'sink']) {
+    const kept = [];
+    for (const s of all) {
+      if (s.kind !== kind || !b.contains([s.lng, s.lat])) continue;
+      const p = map.project([s.lng, s.lat]);
+      if (kept.some((k) => Math.hypot(k.p.x - p.x, k.p.y - p.y) < minGap)) continue;
+      kept.push({ s, p });
+      if (kept.length >= SPOTS_PER_KIND) break;
+    }
+    spots.push(...kept.map((k) => k.s));
+  }
+  if (!spots.length) { spotsStatus('nothing dramatic in view'); return; }
+  const drops = spots.filter((s) => s.kind === 'cliff').length;
+  const holes = spots.length - drops;
+  spotsStatus([drops && `${drops} drop${drops === 1 ? '' : 's'}`,
+               holes && `${holes} hollow${holes === 1 ? '' : 's'}`].filter(Boolean).join(' · '));
+
+  for (const s of spots) {
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = `spot spot-${s.kind} is-unread`;
+    el.setAttribute('aria-label', s.kind === 'cliff' ? 'possible cliff edge' : 'possible sinkhole');
+    el.innerHTML = `<svg class="icon"><use href="#i-${s.kind === 'cliff' ? 'drop' : 'hollow'}"/></svg>`;
+    el.addEventListener('click', (e) => { e.stopPropagation(); openSpot(s, marker); });
+    const marker = new maplibregl.Marker({ element: el }).setLngLat([s.lng, s.lat]).addTo(map);
+    marker._spot = s;
+    spotMarkers.push(marker);
+
+    // The rock decides how sure to be. Until it answers the spot is drawn
+    // undecided; if it never answers (offline) it stays that way, which is
+    // the truth.
+    rockAt(s.lat, s.lng).then((rock) => {
+      if (id !== spotsSeq) return;
+      s.rock = rock;
+      s.verdict = verdict(s, rock?.family);
+      el.classList.remove('is-unread');
+      el.classList.toggle('is-strong', s.verdict.strong);
+      el.classList.toggle('is-weak', !s.verdict.strong);
+      el.setAttribute('aria-label', s.verdict.title);
+    });
+  }
+}
+
+function spotsStatus(text, busy = false) {
+  const el = $('spots-status');
+  el.hidden = !text;
+  el.classList.toggle('is-busy', busy);
+  $('spots-status-text').textContent = text || '';
+}
+
+function openSpot(s, marker) {
+  const v = s.verdict || verdict(s, s.rock?.family);
+  const measure = s.kind === 'cliff'
+    ? `about ${fmtFeet(s.relief)} of drop · ${Math.round(s.slope)}° at its steepest`
+    : `about ${fmtFeet(s.depth)} deep · ${fmtFeet(s.across)} across`;
+  const rock = rockLine(s.rock);
+  const html = `
+    <div class="pop-kind ${v.strong ? 'is-strong' : ''}">${s.kind === 'cliff' ? 'drop' : 'hollow'}</div>
+    <strong class="pop-title">${escapeHtml(v.title)}</strong>
+    <p class="pop-why">${escapeHtml(v.why)}</p>
+    <p class="pop-measure">${measure}</p>
+    ${rock ? `<p class="pop-rock"><svg class="icon icon-sm"><use href="#i-rock"/></svg><span>${rock}</span></p>` : ''}
+    <button class="btn-primary pop-pin" type="button">
+      <svg class="icon icon-sm"><use href="#i-pin"/></svg>pin it</button>
+    <p class="pop-note">read from elevation data — go and look before you trust it</p>`;
+  showMapPopup([s.lng, s.lat], html, { spot: s, offset: 18 });
+  mapPopup.getElement().querySelector('.pop-pin').addEventListener('click', () => {
+    closeMapPopup();
+    openNewPin(s.lat, s.lng, null);
+    setPinKind(s.kind === 'cliff' ? 'cliffs' : 'caves');
+    $('pin-desc').value = `${v.title} — ${measure}${s.rock?.unit?.name ? `, ${s.rock.unit.name}` : ''}`;
+  });
+}
+
+function showMapPopup(lngLat, html, { spot = null, offset = 8 } = {}) {
+  closeMapPopup();
+  mapPopup = new maplibregl.Popup({
+    className: 'atlas-pop', maxWidth: '300px', offset, closeButton: true, focusAfterOpen: false,
+  }).setLngLat(lngLat).setHTML(html).addTo(map);
+  mapPopup._spot = spot;
+  mapPopup.on('close', () => { mapPopup = null; });
+}
+
+function closeMapPopup() {
+  const p = mapPopup;
+  mapPopup = null;
+  p?.remove();
+}
+
+/* With rock types on, a tap on the map says what the rock is there. Only
+ * with it on: otherwise a tap on the map is nothing, and should stay nothing. */
+async function onMapClick(e) {
+  if (!overlaysOn.has('rock') || sheet) return;
+  if (e.originalEvent?.target?.closest?.('.maplibregl-marker, .maplibregl-popup')) return;
+  const { lat, lng } = e.lngLat;
+  showMapPopup(e.lngLat, `<div class="pop-kind">rock</div><p class="pop-why">asking the geologic map…</p>`);
+  const here = mapPopup;
+  const rock = await rockAt(lat, lng);
+  if (mapPopup !== here) return;
+  if (!rock) {
+    here.setHTML(`<div class="pop-kind">rock</div><p class="pop-why">${online() ? 'no geologic map covers this spot' : 'needs signal — the rock map is not saved offline'}</p>`);
+    return;
+  }
+  const f = rock.family;
+  here.setHTML(`
+    <div class="pop-kind">rock${f ? ` · ${escapeHtml(f.label)}` : ''}</div>
+    <strong class="pop-title">${escapeHtml(rock.unit.name || 'unnamed unit')}</strong>
+    ${rock.unit.lith ? `<p class="pop-why">${escapeHtml(rock.unit.lith)}</p>` : ''}
+    ${rock.unit.age ? `<p class="pop-measure">${escapeHtml(rock.unit.age)}</p>` : ''}
+    ${f?.karst ? '<p class="pop-note">karst ground — sinkholes and caves form in this</p>' : ''}
+    ${f?.tubes ? '<p class="pop-note">volcanic — lava tubes form in this</p>' : ''}`);
+}
+
+/* The rock under a pin, on its sheet. Asked when the sheet opens and only
+ * shown if it answers before you have moved on to another pin. */
+async function showPinRock(pin) {
+  const el = $('pin-rock');
+  el.hidden = true;
+  if (!online() || !pin) return;
+  const rock = await rockAt(pin.lat, pin.lng);
+  if (sheet?.pin?.id !== pin.id || !rock?.unit?.name) return;
+  $('pin-rock-text').innerHTML = rockLine(rock);
+  el.hidden = false;
+}
+
+/* How many overlays are on, on the layers button — so a map that looks odd
+ * says why from the corner, without opening the panel. */
+function renderLayersBadge() {
+  const n = overlaysOn.size;
+  const el = $('layers-count');
+  el.hidden = n === 0;
+  el.textContent = n;
 }
 
 /* ── where am I ──────────────────────────────────────────────────────────── */
@@ -1464,8 +1810,21 @@ function setListFrac(f) {
   document.documentElement.style.setProperty('--list-frac', f.toFixed(3));
 }
 
+/* Wide screens dock the sheet to the left instead of raising it from the
+ * bottom (styles.css, "wide screens"). Same breakpoint, read in one place. */
+const DOCKED = matchMedia('(min-width: 900px)');
+
 function sheetPadding(open) {
   if (!map) return;
+  if (DOCKED.matches) {
+    // The sheet's width and its margin, so "the middle" is the middle of the
+    // map beside it. Read from the stylesheet, not the sheet: this runs before
+    // the sheet is shown, when it is zero pixels wide.
+    const dock = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dock')) || 400;
+    const left = open ? dock + 12 : 0;
+    map.setPadding({ top: 0, left, right: 0, bottom: 0 });
+    return;
+  }
   const h = map.getContainer().clientHeight;
   // Capped: dragged to full height the sheet leaves almost no map, and padding
   // the camera by 92% of itself puts the centre off the top of the world.
@@ -1567,6 +1926,7 @@ function openNewPin(lat, lng, accuracy) {
   $('notes-list').innerHTML = '';
   renderPhotos();
   resetOwner();
+  showPinRock(sheet.pin);
   showSheet();
   setTimeout(() => $('pin-name').focus(), 80);
 }
@@ -1611,6 +1971,7 @@ function openPin(p) {
   renderNotes();          // which paints the photo strips, this pin's included
   paintAvatars($('pin-meta'));
   resetOwner();
+  showPinRock(p);
   showSheet();
   setSheetFrac(SHEET_HALF);
   sheetPadding(true);
@@ -3681,7 +4042,7 @@ function eachTiledLayer(bounds, { base, overlays, minZoom = OFFLINE_MIN_Z, maxZo
     const from = Math.max(minZoom, ov.minzoom || 0);
     const to = Math.min(maxZoom, ov.maxzoom);
     if (from > to) continue;                       // nothing to fetch
-    fn(ov.urls, from, to);
+    fn(ov.bulkUrls || ov.urls, from, to);
   }
 }
 
