@@ -101,3 +101,4 @@ projects/val/__pycache__/
 projects/val/*.tmp
 projects/val/matches/*.tmp
 projects/cs/tools/
+projects/weather/verify/.state/

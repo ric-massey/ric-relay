@@ -1,0 +1,104 @@
+# The weather room's nationwide scoreboard.
+#
+# Once a day, every model the weather room can show is held to what actually
+# happened at every US airport weather station (~2,500), and the result is
+# folded into a running record per station, model and lead time — including
+# the room's own blend, scored exactly like a model. projects/weather/verify/
+# has the script and its README section is in projects/weather/README.md.
+#
+# The full record lives in the Actions cache between runs. What the page
+# reads — projects/weather/verify/scores/, rounded, one file per state, no
+# coordinates — is committed once a week (Sundays), on the first run, and
+# whenever the run is started by hand with "commit". So the repository grows
+# by a weekly snapshot, not a daily one.
+#
+# Open-Meteo's free, non-commercial tier is the forecast source; the script
+# paces itself under its hourly limit, so a full run takes about an hour and
+# a half. Nothing here needs a secret.
+
+name: Weather scoreboard
+
+on:
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: "Days to score, ending yesterday (14 is the most one run should do)"
+        default: "1"
+      commit:
+        description: "Commit the published scores this run"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weather-score
+  cancel-in-progress: false
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: projects/weather
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Bring back the running record
+        id: restore
+        uses: actions/cache/restore@v4
+        with:
+          path: projects/weather/verify/.state
+          key: weather-score-state-${{ github.run_id }}
+          restore-keys: weather-score-state-
+
+      - name: Score
+        run: |
+          set -e
+          DAYS="${{ github.event.inputs.backfill || '1' }}"
+          # A first run, or a lost cache with nothing committed yet: start
+          # with two weeks so the record has something to say on day one.
+          if [ ! -f projects/weather/verify/.state/state.json ] && [ ! -f projects/weather/verify/scores/index.json ]; then
+            DAYS=14
+          fi
+          node projects/weather/verify/score.mjs --backfill "$DAYS"
+
+      - name: Keep the running record for tomorrow
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: projects/weather/verify/.state
+          key: weather-score-state-${{ github.run_id }}
+
+      - name: Check the scoreboard's own rules before trusting it
+        run: node projects/weather/test/verify.test.mjs
+
+      - name: Commit the published scores, weekly
+        run: |
+          set -e
+          FIRST=$(git ls-files projects/weather/verify/scores/index.json | wc -l | tr -d ' ')
+          if [ "$(date -u +%u)" != "7" ] && [ "${{ github.event.inputs.commit }}" != "true" ] && [ "$FIRST" != "0" ]; then
+            echo "Not Sunday, not asked, and scores already published. Not committing."
+            exit 0
+          fi
+          if [ -z "$(git status --porcelain -- projects/weather/verify/scores)" ]; then
+            echo "Nothing changed. Not committing."
+            exit 0
+          fi
+          git config user.name  "ric-massey"
+          git config user.email "rmbuster82@gmail.com"
+          git add -- projects/weather/verify/scores
+          THROUGH=$(node -e "console.log(require('./projects/weather/verify/scores/index.json').through)")
+          DAYS=$(node -e "console.log(require('./projects/weather/verify/scores/index.json').scored.length)")
+          git commit -m "Weather: the scoreboard, through $THROUGH
+
+          Ran from the clock. Every model held to every US airport station,
+          $DAYS days on the record. No coordinates in what is published."
+          git push || { git pull --rebase && git push; }

@@ -43,7 +43,7 @@ worker/                     the one Cloudflare Worker (deployed as training-log)
 atlas/, account/            ATLAS and the site account — an app, not a page: see atlas/README.md
 visitors/                   the private visitor counter; every page loads assets/visit.js (worker/README.md)
 docs/                       notes, audits, mockups and plans about the site, not part of it
-.github/                    checks.mjs (every test) and the six workflows
+.github/                    checks.mjs (every test) and the workflows
 ```
 
 Two rules keep it that way. **Generated data lives beside the thing that generates it**

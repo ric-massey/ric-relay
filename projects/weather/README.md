@@ -121,6 +121,38 @@ offline copy, refresh every ten minutes while open.
   numbers from HRRR, GFS, ECMWF or AIFS, 48 hours on a slider that redraws
   instantly, or the nearest balloon's latest flight; a plain-words glossary.
 
+## The scoreboard (DESIGN.md §31)
+
+Every day `.github/workflows/weather-score.yml` runs `verify/score.mjs`, which
+holds every model the room can show to what actually happened at every US
+airport weather station (IEM's AZOS network, ~2,500 stations):
+
+- **Forecasts** come from Open-Meteo's previous-runs API — what each model
+  said one and two days before each hour — so nothing has to be saved today to
+  be checked tomorrow. Models: Open-Meteo best match (the page's standard
+  forecast), the NWS National Blend (NBM), HRRR, GFS, ECMWF IFS and ECMWF AIFS.
+- **Observations** come from IEM's ASOS archive, one request per state network.
+- **Our blend** (`verify/core.js`, `blend()`) — each model with its proven bias
+  at that station removed, weighted by 1/MAE², day and night separately — is
+  built from yesterday's records and scored exactly like a model. A model with
+  under `MIN_DAYS` of record is not corrected.
+- **Records** are running averages that remember about the last month
+  (`HALF_LIFE_DAYS`): temperature bias and error by day and night, wind, rain
+  days hit or missed, for each station × model × lead.
+- **What is published** — `verify/scores/index.json` (which state each station
+  is in, how far the record goes, the national medians) and `scores/<ST>.json`
+  (each state's stations, rounded) — holds **no coordinates** (hard rule 1); the
+  job reads station positions at run time and only to ask for forecasts. The
+  full-precision record lives in the Actions cache between runs and is
+  committed only as these rounded files, weekly (Sundays), on the first run, or
+  when started by hand with "commit". If the cache is lost the committed files
+  seed it again.
+- **Pacing**: Open-Meteo's free tier is non-commercial, and the job paces itself
+  to 70 weighted calls a minute — about an hour and a half a run. A first run
+  backfills 14 days.
+- `test/verify.test.mjs` holds the arithmetic to hand-worked cases and runs the
+  whole job against fake providers, including that no coordinate is published.
+
 ## What comes next, and how it would be built here
 
 | Phase | The likely way on this site |
