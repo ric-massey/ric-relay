@@ -61,11 +61,42 @@ def exif_date(path):
     return f"{m.group(1)}-{m.group(2)}-{m.group(3)}" if m else None
 
 
+SCRUB = HERE.parent.parent / "assets" / "scrub-media.js"
+SCRUB_TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+               ".webp": "image/webp", ".gif": "image/gif", ".mp4": "video/mp4",
+               ".mov": "video/quicktime", ".m4v": "video/x-m4v", ".webm": "video/webm"}
+
+
+def strip(path):
+    """Take the camera's notes — GPS included — out of one file, losslessly.
+
+    Hard rule 1. The same scrub the climbing page runs before an upload
+    (assets/scrub-media.js), run here through node so there is one copy of
+    it. `sips` resizes and converts but keeps the location. A file that
+    cannot be scrubbed is moved out to the originals rather than left in
+    the folder the public gallery reads."""
+    if not path.exists():
+        return None
+    kind = SCRUB_TYPES.get(path.suffix.lower())
+    js = ("require(process.argv[1]);const fs=require('fs');"
+          "const out=globalThis.ScrubMedia.bytes(process.argv[3],new Uint8Array(fs.readFileSync(process.argv[2])));"
+          "if(!out)process.exit(3);fs.writeFileSync(process.argv[2],out);")
+    r = subprocess.run(["node", "-e", js, str(SCRUB), str(path), kind or ""],
+                       capture_output=True, timeout=120) if kind else None
+    if r is None or r.returncode != 0:
+        ORIGINALS.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(path), str(ORIGINALS / path.name))
+        print(f"  ! could not strip {path.name} — moved to {ORIGINALS.name}/, not published")
+        return None
+    return path
+
+
 def optimize(path):
-    """HEIC to JPG, and nothing wider than MAX_WIDTH. Returns the web-ready path."""
+    """HEIC to JPG, nothing wider than MAX_WIDTH, and no metadata. Returns the
+    web-ready path, or None if the file could not be made safe to publish."""
     suffix = path.suffix.lower()
     if suffix in VIDEO_EXT:
-        return path
+        return strip(path)
 
     target = path
     if suffix in (".heic", ".heif"):
@@ -87,7 +118,7 @@ def optimize(path):
         subprocess.run(["sips", "-Z", str(MAX_WIDTH), str(target)],
                        capture_output=True, timeout=120)
         print(f"  resized {target.name} ({width}px -> {MAX_WIDTH}px)")
-    return target
+    return strip(target)
 
 
 def read_sidecar():
@@ -166,10 +197,15 @@ def main():
     PHOTOS.mkdir(parents=True, exist_ok=True)
     sidecar = read_sidecar()
 
-    # Anything freshly dropped in projects/climbing/photos gets optimized first.
+    # Anything freshly dropped in projects/climbing/photos gets optimized first —
+    # and stripped, so the camera's date is read before it goes.
+    taken = {}
     for path in sorted(PHOTOS.iterdir()):
         if path.is_file() and path.suffix.lower() in IMAGE_EXT | VIDEO_EXT:
-            optimize(path)
+            date = exif_date(path) if not (sidecar.get(path.name) or {}).get("date") else None
+            out = optimize(path)
+            if out and date:
+                taken[out.name] = date
 
     found = []
     for path in sorted(PHOTOS.iterdir(), key=lambda p: natural_key(p.name)):
@@ -184,7 +220,7 @@ def main():
             sidecar[name] = {"file": name, "date": "", "route": "", "caption": ""}
             added += 1
         if not sidecar[name]["date"]:
-            guess = exif_date(path)
+            guess = taken.get(name) or exif_date(path)
             if guess:
                 y, m, d = guess.split("-")
                 sidecar[name]["date"] = f"{m}/{d}/{y[2:]}"

@@ -103,7 +103,7 @@ async function renderCourseLog(){
   entries.sort((a,b)=>b.sort-a.sort);
   const pinned = ric ? entries.find(e=>e.flagged && e.forRic) : null;
   const pinnedEl = document.getElementById('ric-pinned-note');
-  if(pinnedEl) pinnedEl.innerHTML = pinned ? `<button type="button" class="ric-pinned-alert" onclick="openStopDetail('${pinned.stopId}')"><i class="ti ti-flag-3-filled"></i><span><b>${pinned.forWhere ? `For ${esc(pinned.forWhere)}` : esc(pinned.where)}</b>${esc(pinned.value)}</span><i class="ti ti-chevron-right"></i></button>` : '';
+  if(pinnedEl) pinnedEl.innerHTML = pinned ? `<button type="button" class="ric-pinned-alert" onclick="openStopDetail(${jsq(pinned.stopId)})"><i class="ti ti-flag-3-filled"></i><span><b>${pinned.forWhere ? `For ${esc(pinned.forWhere)}` : esc(pinned.where)}</b>${esc(pinned.value)}</span><i class="ti ti-chevron-right"></i></button>` : '';
   let shown = entries;
   if(ric){
     document.querySelectorAll('[data-ric-note-filter]').forEach(btn=>btn.classList.toggle('active',btn.dataset.ricNoteFilter===RIC_NOTES_FILTER));
@@ -172,7 +172,7 @@ async function renderNotes(){
       ? `<textarea class="note-edit-area" id="note-edit-${n.id}">${esc(decoded.body)}</textarea>
          <div class="modal-actions" style="margin-top:0">
            <button class="btn ghost sm" style="flex:1" onclick="cancelEditNote()">Cancel</button>
-           <button class="btn sm" style="flex:1" onclick="saveEditNote('${n.id}', document.getElementById('note-edit-${n.id}').value)">Save</button>
+           <button class="btn sm" style="flex:1" onclick="saveEditNote(${jsq(n.id)}, document.getElementById(${jsq(`note-edit-${n.id}`)}).value)">Save</button>
          </div>`
       : `<div class="message-head">
            <span class="message-author">From ${esc(n.author)}</span>
@@ -182,9 +182,9 @@ async function renderNotes(){
          <div class="note-body">${linkifyNoteText(decoded.body)}</div>
          <div class="note-footer">
            <div class="note-actions">
-             ${canManage?`<button onclick="toggleNoteFlag('${n.id}')" title="${decoded.flagged?'Remove flag':'Flag message'}" aria-label="${decoded.flagged?'Remove flag':'Flag message'}"><i class="ti ti-flag${decoded.flagged?'-3-filled':'-3'}"></i></button>`:''}
-             ${canManage?`<button onclick="startEditNote('${n.id}')" title="Edit"><i class="ti ti-pencil"></i></button>
-             <button onclick="deleteNote('${n.id}')" title="Delete"><i class="ti ti-trash"></i></button>`:''}
+             ${canManage?`<button onclick="toggleNoteFlag(${jsq(n.id)})" title="${decoded.flagged?'Remove flag':'Flag message'}" aria-label="${decoded.flagged?'Remove flag':'Flag message'}"><i class="ti ti-flag${decoded.flagged?'-3-filled':'-3'}"></i></button>`:''}
+             ${canManage?`<button onclick="startEditNote(${jsq(n.id)})" title="Edit"><i class="ti ti-pencil"></i></button>
+             <button onclick="deleteNote(${jsq(n.id)})" title="Delete"><i class="ti ti-trash"></i></button>`:''}
            </div>
          </div>`;
     return `<div class="crew-message${mine?' mine':''}${decoded.flagged?' flagged':''}${admin?' admin':''}${isEditing?' editing':''}">${body}</div>`;

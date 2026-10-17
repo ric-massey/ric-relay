@@ -62,6 +62,11 @@ function esc(s){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// esc() is not enough inside an inline handler: the browser decodes &#39; back to ' before
+// the JavaScript is read, so onclick="f('${esc(id)}')" still breaks out of the string. jsq()
+// gives a whole JS string literal — quotes included — made safe for the attribute too:
+//   onclick="toggleItem(${jsq(i.id)})"
+function jsq(s){ return esc(JSON.stringify(String(s==null ? '' : s))); }
 // Config values (race URLs, bib #, plan stats) are edited by managers but stored in a table
 // anyone with the anon key can write — so treat them as untrusted too. esc() handles text;
 // safeUrl() additionally strips any scheme that isn't a plain web/link scheme, so a stored
@@ -496,11 +501,11 @@ async function renderChecklist(){
     const done = list.filter(i=>i.checked).length;
     return `
     <div class="cat-block">
-      <div class="cat-head"><div class="sec-title" style="margin:14px 0 4px">${cat}</div><div class="cat-progress">${done}/${list.length}</div></div>
+      <div class="cat-head"><div class="sec-title" style="margin:14px 0 4px">${esc(cat)}</div><div class="cat-progress">${done}/${list.length}</div></div>
       <div class="card">
         ${list.map(i=>`
           <div class="item-row">
-            <div class="chk ${i.checked?'on':''}" onclick="toggleItem('${i.id}', ${!i.checked})">${i.checked?'<i class="ti ti-check" style="font-size:14px"></i>':''}</div>
+            <div class="chk ${i.checked?'on':''}" onclick="toggleItem(${jsq(i.id)}, ${!i.checked})">${i.checked?'<i class="ti ti-check" style="font-size:14px"></i>':''}</div>
             <div class="item-label ${i.checked?'on':''}">${esc(i.label)}</div>
             ${mgr ? `
               <div class="item-assign-avatars">
@@ -508,15 +513,15 @@ async function renderChecklist(){
                   const on = (i.assigned_to_ids||[]).includes(p.id);
                   const c = p.color || '#7851A9';
                   const style = on ? `background:${c};border-color:${c};color:${contrastText(c)}` : `color:${displayColor(c)};border-color:${displayColor(c)}`;
-                  return `<div class="item-assign-avatar ${on?'on':''}" style="${style}" title="${esc(p.name)}" onclick="toggleItemAssignee('${i.id}','${p.id}')">${initials(p.name)}</div>`;
+                  return `<div class="item-assign-avatar ${on?'on':''}" style="${style}" title="${esc(p.name)}" onclick="toggleItemAssignee(${jsq(i.id)},${jsq(p.id)})">${initials(p.name)}</div>`;
                 }).join('')}
               </div>
-              <div class="bring-del" onclick="deleteChecklistItem('${i.id}')"><i class="ti ti-x"></i></div>
+              <div class="bring-del" onclick="deleteChecklistItem(${jsq(i.id)})"><i class="ti ti-x"></i></div>
             ` : ''}
           </div>`).join('')}
         ${mgr ? `<div class="add-item-row">
-          <input type="text" placeholder="Add item to ${cat}..." onkeydown="if(event.key==='Enter'){addItem('${cat}', this); event.preventDefault();}">
-          <button class="btn sm ghost" onclick="addItem('${cat}', this.previousElementSibling)">Add</button>
+          <input type="text" placeholder="Add item to ${esc(cat)}..." onkeydown="if(event.key==='Enter'){addItem(${jsq(cat)}, this); event.preventDefault();}">
+          <button class="btn sm ghost" onclick="addItem(${jsq(cat)}, this.previousElementSibling)">Add</button>
         </div>` : ''}
       </div>
     </div>`;
@@ -587,25 +592,25 @@ function buildQuestionAnswerHTML(s, q){
   let widget;
   if(qt.type === 'yesno'){
     widget = `<div class="qa-yesno">
-      <button type="button" class="qa-yn-btn ${val==='Yes'?'on yes':''}" onclick="answerQuestionAndRefresh('${s.id}','${q.id}','Yes')">Yes</button>
-      <button type="button" class="qa-yn-btn ${val==='No'?'on no':''}" onclick="answerQuestionAndRefresh('${s.id}','${q.id}','No')">No</button>
+      <button type="button" class="qa-yn-btn ${val==='Yes'?'on yes':''}" onclick="answerQuestionAndRefresh(${jsq(s.id)},${jsq(q.id)},'Yes')">Yes</button>
+      <button type="button" class="qa-yn-btn ${val==='No'?'on no':''}" onclick="answerQuestionAndRefresh(${jsq(s.id)},${jsq(q.id)},'No')">No</button>
     </div>`;
   } else if(qt.type === 'quick'){
     const opts = qt.quickOptions;
     const isQuickVal = opts.includes(val);
     widget = `<div class="qa-quick">
       <div class="qa-quick-opts">
-        ${opts.map(o=>`<button type="button" class="qa-yn-btn ${val===o?'on yes':''}" onclick="answerQuestionAndRefresh('${s.id}','${q.id}','${o}')">${esc(o)}</button>`).join('')}
+        ${opts.map(o=>`<button type="button" class="qa-yn-btn ${val===o?'on yes':''}" onclick="answerQuestionAndRefresh(${jsq(s.id)},${jsq(q.id)},${jsq(o)})">${esc(o)}</button>`).join('')}
       </div>
-      <input type="text" class="split-note-input" style="font-style:normal;color:var(--ink)" placeholder="Or describe what's going on..." value="${isQuickVal?'':esc(val)}" onchange="answerQuestionAndRefresh('${s.id}','${q.id}', this.value)">
+      <input type="text" class="split-note-input" style="font-style:normal;color:var(--ink)" placeholder="Or describe what's going on..." value="${isQuickVal?'':esc(val)}" onchange="answerQuestionAndRefresh(${jsq(s.id)},${jsq(q.id)}, this.value)">
     </div>`;
   } else {
-    widget = `<input type="text" class="split-note-input" style="font-style:normal;color:var(--ink)" placeholder="Answer..." value="${esc(val)}" onchange="answerQuestionAndRefresh('${s.id}','${q.id}', this.value)">`;
+    widget = `<input type="text" class="split-note-input" style="font-style:normal;color:var(--ink)" placeholder="Answer..." value="${esc(val)}" onchange="answerQuestionAndRefresh(${jsq(s.id)},${jsq(q.id)}, this.value)">`;
   }
   return `<div class="qa-item">
     <div class="qa-q">${esc(q.text)}</div>
     ${widget}
-    ${answer ? `<div class="qa-answered-by">${answer.by ? `— ${esc(answer.by)} &nbsp;·&nbsp; ` : ''}<button type="button" class="rd-clear-tiny" onclick="answerQuestionAndRefresh('${s.id}','${q.id}', null)">clear answer</button></div>` : ''}
+    ${answer ? `<div class="qa-answered-by">${answer.by ? `— ${esc(answer.by)} &nbsp;·&nbsp; ` : ''}<button type="button" class="rd-clear-tiny" onclick="answerQuestionAndRefresh(${jsq(s.id)},${jsq(q.id)}, null)">clear answer</button></div>` : ''}
   </div>`;
 }
 async function answerQuestionAndRefresh(splitId, questionId, value){
@@ -642,22 +647,22 @@ function renderQuestionsCard(){
       if(mgr && q.id === editingCrewQId){
         return `<div class="crew-q-edit">
           <input type="text" id="edit-crew-q" value="${esc(q.text)}" placeholder="Question or reminder text..."
-                 onkeydown="if(event.key==='Enter'){saveEditCrewQuestion('${q.id}');event.preventDefault();}if(event.key==='Escape')cancelEditCrewQuestion()">
+                 onkeydown="if(event.key==='Enter'){saveEditCrewQuestion(${jsq(q.id)});event.preventDefault();}if(event.key==='Escape')cancelEditCrewQuestion()">
           <div class="cqe-kind">
             <label><input type="radio" name="edit-crew-q-kind" value="ask" ${isRem?'':'checked'}> Question (answer box)</label>
             <label><input type="radio" name="edit-crew-q-kind" value="reminder" ${isRem?'checked':''}> Reminder (no box)</label>
           </div>
           <div class="cqe-actions">
             <button class="btn ghost sm" style="flex:1" onclick="cancelEditCrewQuestion()">Cancel</button>
-            <button class="btn sm" style="flex:1" onclick="saveEditCrewQuestion('${q.id}')">Save</button>
+            <button class="btn sm" style="flex:1" onclick="saveEditCrewQuestion(${jsq(q.id)})">Save</button>
           </div>
         </div>`;
       }
       return `<div class="bring-item">
         <div class="bring-chk on"><i class="ti ti-${isRem ? 'bell' : 'help-circle'}" style="font-size:11px"></i></div>
         <div class="bring-label">${esc(q.text)}${isRem ? '<span class="q-tag">reminder</span>' : ''}</div>
-        ${mgr ? `<div class="bring-del" title="Edit" onclick="startEditCrewQuestion('${q.id}')"><i class="ti ti-pencil"></i></div>
-                 <div class="bring-del" title="Delete" onclick="deleteCrewQuestion('${q.id}')"><i class="ti ti-x"></i></div>` : ''}
+        ${mgr ? `<div class="bring-del" title="Edit" onclick="startEditCrewQuestion(${jsq(q.id)})"><i class="ti ti-pencil"></i></div>
+                 <div class="bring-del" title="Delete" onclick="deleteCrewQuestion(${jsq(q.id)})"><i class="ti ti-x"></i></div>` : ''}
       </div>`;
     }).join('') || '<div class="bring-empty">Nothing added yet.</div>'}
     ${mgr ? `
@@ -726,22 +731,22 @@ function buildEditTimesPanel(s, kind){
     || (s.station_note && s.station_note.trim()) || s.flag_forward
     || (s.question_answers && Object.keys(s.question_answers).length);
   const clearBtn = hasAnything
-    ? `<button type="button" class="rd-clear-tiny" onclick="clearActualAndRefresh('${s.id}')">Clear this station</button>` : '';
+    ? `<button type="button" class="rd-clear-tiny" onclick="clearActualAndRefresh(${jsq(s.id)})">Clear this station</button>` : '';
   if(kind==='start'){
     return `<div class="rd-edit-panel">
-      <label>Started <input type="text" placeholder="H:MM" value="${s.actual_elapsed_seconds!=null?fmtElapsed(s.actual_elapsed_seconds):''}" onchange="logStartManualAndRefresh('${s.id}', this.value)"></label>
+      <label>Started <input type="text" placeholder="H:MM" value="${s.actual_elapsed_seconds!=null?fmtElapsed(s.actual_elapsed_seconds):''}" onchange="logStartManualAndRefresh(${jsq(s.id)}, this.value)"></label>
       ${clearBtn}
     </div>`;
   }
   if(kind==='finish'){
     return `<div class="rd-edit-panel">
-      <label>Finished <input type="text" placeholder="H:MM" value="${s.actual_elapsed_seconds!=null?fmtElapsed(s.actual_elapsed_seconds):''}" onchange="logArrivalManualAndRefresh('${s.id}', this.value)"></label>
+      <label>Finished <input type="text" placeholder="H:MM" value="${s.actual_elapsed_seconds!=null?fmtElapsed(s.actual_elapsed_seconds):''}" onchange="logArrivalManualAndRefresh(${jsq(s.id)}, this.value)"></label>
       ${clearBtn}
     </div>`;
   }
   return `<div class="rd-edit-panel">
-    <label>Arrived <input type="text" placeholder="H:MM" value="${s.actual_elapsed_seconds!=null?fmtElapsed(s.actual_elapsed_seconds):''}" onchange="logArrivalManualAndRefresh('${s.id}', this.value)"></label>
-    <label>Left <input type="text" placeholder="H:MM" value="${s.departed_elapsed_seconds!=null?fmtElapsed(s.departed_elapsed_seconds):''}" onchange="logLeftManualAndRefresh('${s.id}', this.value)"></label>
+    <label>Arrived <input type="text" placeholder="H:MM" value="${s.actual_elapsed_seconds!=null?fmtElapsed(s.actual_elapsed_seconds):''}" onchange="logArrivalManualAndRefresh(${jsq(s.id)}, this.value)"></label>
+    <label>Left <input type="text" placeholder="H:MM" value="${s.departed_elapsed_seconds!=null?fmtElapsed(s.departed_elapsed_seconds):''}" onchange="logLeftManualAndRefresh(${jsq(s.id)}, this.value)"></label>
     ${clearBtn}
   </div>`;
 }
@@ -749,7 +754,7 @@ function buildEditTimesPanel(s, kind){
 // only arrives at the finish. So they get one action each — "Race Started" / "Dad Finished" —
 // with no arrival/departure pair, no rest timer, and no "ran through".
 function buildStartFinishControls(s, kind){
-  const editLink = `<button type="button" class="rd-edit-link" onclick="toggleEditTimesAndRefresh('${s.id}')">${editingTimesId===s.id ? 'Done' : 'Edit times'}</button>`;
+  const editLink = `<button type="button" class="rd-edit-link" onclick="toggleEditTimesAndRefresh(${jsq(s.id)})">${editingTimesId===s.id ? 'Done' : 'Edit times'}</button>`;
   const done = s.actual_elapsed_seconds!=null;
   const icon = kind==='start' ? 'ti-flag-3' : 'ti-flag-checkered';
   const verb = kind==='start' ? 'Race Started' : 'Dad Finished';
@@ -765,7 +770,7 @@ function buildStartFinishControls(s, kind){
   return `<div class="rd-actions" style="margin-top:8px">
     <div class="rd-left-chip"><i class="ti ${icon}"></i> ${label} ${fmtLoggedClock(s.actual_elapsed_seconds, s.actual_logged_at)}${s.actual_logged_by ? ` <span class="rd-logged-by">by ${esc(s.actual_logged_by)}</span>` : ''}</div>
     <div class="rd-status-row" style="margin-top:2px">
-      <button type="button" class="rd-undo-link" onclick="undoLastLogAndRefresh('${s.id}')"><i class="ti ti-arrow-back-up"></i> Undo</button>
+      <button type="button" class="rd-undo-link" onclick="undoLastLogAndRefresh(${jsq(s.id)})"><i class="ti ti-arrow-back-up"></i> Undo</button>
       ${editLink}
     </div>
     ${buildEditTimesPanel(s, kind)}
@@ -777,17 +782,17 @@ function buildLoggingControlsHTML(s, kind){
     return `<div class="rd-actions" style="margin-top:8px">
       <div class="rd-ran-through"><i class="ti ti-player-track-next"></i> Ran through — no stop</div>
       <div class="rd-status-row">
-        <button class="btn ghost sm" onclick="toggleSkipAndRefresh('${s.id}', false)"><i class="ti ti-arrow-back-up"></i> Undo</button>
-        <button type="button" class="rd-clear-tiny" onclick="clearActualAndRefresh('${s.id}')">Clear station</button>
+        <button class="btn ghost sm" onclick="toggleSkipAndRefresh(${jsq(s.id)}, false)"><i class="ti ti-arrow-back-up"></i> Undo</button>
+        <button type="button" class="rd-clear-tiny" onclick="clearActualAndRefresh(${jsq(s.id)})">Clear station</button>
       </div>
     </div>`;
   }
-  const editLink = `<button type="button" class="rd-edit-link" onclick="toggleEditTimesAndRefresh('${s.id}')">${editingTimesId===s.id ? 'Done' : 'Edit times'}</button>`;
+  const editLink = `<button type="button" class="rd-edit-link" onclick="toggleEditTimesAndRefresh(${jsq(s.id)})">${editingTimesId===s.id ? 'Done' : 'Edit times'}</button>`;
   if(s.actual_elapsed_seconds==null){
     return `<div class="rd-actions" style="margin-top:8px">
       <div class="rd-status-row">
-        <button class="btn sm" onclick="logArrivalNowAndRefresh('${s.id}')"><i class="ti ti-map-pin-check"></i> Dad Arrived</button>
-        <button class="btn ghost sm" onclick="toggleSkipAndRefresh('${s.id}', true)"><i class="ti ti-player-track-next"></i> Dad Ran Through</button>
+        <button class="btn sm" onclick="logArrivalNowAndRefresh(${jsq(s.id)})"><i class="ti ti-map-pin-check"></i> Dad Arrived</button>
+        <button class="btn ghost sm" onclick="toggleSkipAndRefresh(${jsq(s.id)}, true)"><i class="ti ti-player-track-next"></i> Dad Ran Through</button>
       </div>
       ${editLink}
       ${buildEditTimesPanel(s)}
@@ -804,9 +809,9 @@ function buildLoggingControlsHTML(s, kind){
         <div class="rd-arrived-chip"><i class="ti ti-map-pin-check"></i> Arrived ${fmtLoggedClock(s.actual_elapsed_seconds, s.actual_logged_at)}${s.actual_logged_by ? ` <span class="rd-logged-by">by ${esc(s.actual_logged_by)}</span>` : ''}</div>
         <div class="rd-resting-timer" data-since-ms="${sinceMs}">Resting for —</div>
       </div>
-      <button class="btn sm" onclick="logLeftNowAndRefresh('${s.id}')"><i class="ti ti-door-exit"></i> Dad Left</button>
+      <button class="btn sm" onclick="logLeftNowAndRefresh(${jsq(s.id)})"><i class="ti ti-door-exit"></i> Dad Left</button>
       <div class="rd-status-row" style="margin-top:2px">
-        <button type="button" class="rd-undo-link" onclick="undoLastLogAndRefresh('${s.id}')"><i class="ti ti-arrow-back-up"></i> Undo arrival</button>
+        <button type="button" class="rd-undo-link" onclick="undoLastLogAndRefresh(${jsq(s.id)})"><i class="ti ti-arrow-back-up"></i> Undo arrival</button>
         ${editLink}
       </div>
       ${buildEditTimesPanel(s)}
@@ -824,7 +829,7 @@ function buildLoggingControlsHTML(s, kind){
     </div>
     <div class="rd-rest-took">Rested ${Math.round(restSec/60)}m</div>
     <div class="rd-status-row" style="margin-top:2px">
-      <button type="button" class="rd-undo-link" onclick="undoLastLogAndRefresh('${s.id}')"><i class="ti ti-arrow-back-up"></i> Undo departure</button>
+      <button type="button" class="rd-undo-link" onclick="undoLastLogAndRefresh(${jsq(s.id)})"><i class="ti ti-arrow-back-up"></i> Undo departure</button>
       ${editLink}
     </div>
     ${buildEditTimesPanel(s)}
@@ -869,7 +874,7 @@ function buildStopDetailHTML(s, splits){
     <div class="sd-section-title">What To Bring</div>
     ${(s.bring_items||[]).length ? `<div class="bring-list" style="margin-top:4px">${s.bring_items.map(it=>`
       <div class="bring-item">
-        <div class="bring-chk ${it.checked?'on':''}" onclick="toggleBringItemAndRefresh('${s.id}','${it.id}', ${!it.checked})">${it.checked?'<i class="ti ti-check" style="font-size:11px"></i>':''}</div>
+        <div class="bring-chk ${it.checked?'on':''}" onclick="toggleBringItemAndRefresh(${jsq(s.id)},${jsq(it.id)}, ${!it.checked})">${it.checked?'<i class="ti ti-check" style="font-size:11px"></i>':''}</div>
         <div class="bring-label ${it.checked?'on':''}">${esc(it.label)}${it.checked && it.checked_by ? ` <span style="color:var(--ink-faint);font-size:10px">✓ ${esc(it.checked_by)}</span>` : ''}</div>
       </div>`).join('')}</div>` : '<div class="sd-empty">Nothing listed.</div>'}
     ${crewable ? `
@@ -877,9 +882,9 @@ function buildStopDetailHTML(s, splits){
     ${questions.length ? questions.map(q=>buildQuestionAnswerHTML(s, q)).join('') : '<div class="sd-empty">None set yet.</div>'}
     ` : `<div class="sd-empty" style="margin-top:14px">Crew can't reach Grady until mile ${crewAccessMile()} — questions start there.</div>`}
     <div class="sd-section-title">Race Day Note</div>
-    <input type="text" class="split-note-input" style="font-style:normal;color:var(--ink);width:100%" placeholder="Note for this station (how he looked, what he needed...)" value="${esc(s.station_note||'')}" onchange="editStationNoteAndRefresh('${s.id}', this.value)">
+    <input type="text" class="split-note-input" style="font-style:normal;color:var(--ink);width:100%" placeholder="Note for this station (how he looked, what he needed...)" value="${esc(s.station_note||'')}" onchange="editStationNoteAndRefresh(${jsq(s.id)}, this.value)">
     ${s.station_note_by ? `<div class="rd-note-by">— ${esc(s.station_note_by)}</div>` : ''}
-    <label class="rd-flag-lbl red"><input type="checkbox" ${s.flag_forward?'checked':''} onchange="toggleFlagForwardAndRefresh('${s.id}', this.checked)"> <i class="ti ti-flag-3"></i> Flag this note for the next stop</label>
+    <label class="rd-flag-lbl red"><input type="checkbox" ${s.flag_forward?'checked':''} onchange="toggleFlagForwardAndRefresh(${jsq(s.id)}, this.checked)"> <i class="ti ti-flag-3"></i> Flag this note for the next stop</label>
   `;
 }
 // The header time on a stop card should track what's actually happened, not just sit on the
@@ -974,7 +979,7 @@ async function renderMyStops(){
     const away = nextUpIdx>=0 ? idx-nextUpIdx : null;
     const done = isDone(s);
     return `
-    <div class="mystop-card ${done?'done':''}" onclick="openStopDetail('${s.id}')">
+    <div class="mystop-card ${done?'done':''}" onclick="openStopDetail(${jsq(s.id)})">
       <div class="mystop-top">
         <div class="mystop-mile">${s.mile}mi</div>
         <div class="mystop-station">${esc(stopTag(splits, s))}${esc(s.station)}</div>
@@ -1484,7 +1489,7 @@ function legPaceHeroHTML(engine, mode){
   const bits = [];
   if(mode === 'next'){
     if(why) bits.push(why);
-    bits.push(`${CONFIG.goal_finish_hours||18}hr pace: ${fmtPace(planPace)}`);
+    bits.push(`${esc(CONFIG.goal_finish_hours||18)}hr pace: ${fmtPace(planPace)}`);
   }
   if(trend) bits.push(trend);
   const line2 = bits.join(' &nbsp;·&nbsp; ');
@@ -1519,16 +1524,16 @@ function renderGoalSplits(rows){
   document.getElementById('splits-summary').innerHTML = `
     <div class="ss-tile"><div class="ss-lbl">Start</div><div class="ss-val">${fmtClock(0)}</div></div>
     <div class="ss-tile"><div class="ss-lbl">Goal Finish (hrs)</div>
-      ${mgr ? `<input type="text" class="ss-input" value="${CONFIG.goal_finish_hours||18}" onchange="setEngineConfig('goal_finish_hours', this.value)">`
-            : `<div class="ss-val">${CONFIG.goal_finish_hours||18}h</div>`}
+      ${mgr ? `<input type="text" class="ss-input" value="${esc(CONFIG.goal_finish_hours||18)}" onchange="setEngineConfig('goal_finish_hours', this.value)">`
+            : `<div class="ss-val">${esc(CONFIG.goal_finish_hours||18)}h</div>`}
     </div>
     <div class="ss-tile"><div class="ss-lbl">Rest: Normal (min)</div>
-      ${mgr ? `<input type="text" class="ss-input" value="${CONFIG.rest_normal_min||2}" onchange="setEngineConfig('rest_normal_min', this.value)">`
-            : `<div class="ss-val">${CONFIG.rest_normal_min||2} min</div>`}
+      ${mgr ? `<input type="text" class="ss-input" value="${esc(CONFIG.rest_normal_min||2)}" onchange="setEngineConfig('rest_normal_min', this.value)">`
+            : `<div class="ss-val">${esc(CONFIG.rest_normal_min||2)} min</div>`}
     </div>
     <div class="ss-tile"><div class="ss-lbl">Rest: Big Stop (min)</div>
-      ${mgr ? `<input type="text" class="ss-input" value="${CONFIG.rest_big_min||6}" onchange="setEngineConfig('rest_big_min', this.value)">`
-            : `<div class="ss-val">${CONFIG.rest_big_min||6} min</div>`}
+      ${mgr ? `<input type="text" class="ss-input" value="${esc(CONFIG.rest_big_min||6)}" onchange="setEngineConfig('rest_big_min', this.value)">`
+            : `<div class="ss-val">${esc(CONFIG.rest_big_min||6)} min</div>`}
     </div>
   `;
   document.getElementById('splits-list').innerHTML = engine.rows.map((r, ri)=>{
@@ -1537,22 +1542,22 @@ function renderGoalSplits(rows){
     return `
     <div class="split-card ${r.skipped?'skipped':''}">
       <div class="split-row">
-        <div class="split-mile"><input class="mile-input" type="text" value="${r.mile}" onchange="editSplitMile('${r.id}', this.value)"><span>mi</span></div>
+        <div class="split-mile"><input class="mile-input" type="text" value="${r.mile}" onchange="editSplitMile(${jsq(r.id)}, this.value)"><span>mi</span></div>
         <div class="split-mid">
           ${stopNumber(engine.rows, r.id) ? `<div class="split-stop-no">Stop ${stopNumber(engine.rows, r.id)}</div>` : ''}
-          <input class="station-input" type="text" value="${esc(r.station)}" onchange="editSplit('${r.id}','station',this.value)">
+          <input class="station-input" type="text" value="${esc(r.station)}" onchange="editSplit(${jsq(r.id)},'station',this.value)">
           ${r.sub ? `<div class="split-sub">${esc(r.sub.replace(/\s*·\s*\d{1,2}:\d{2}\s*\/\s*mi\s*$/,''))}</div>` : ''}
-          <input type="text" class="split-note-input" placeholder="Notes for this stop..." value="${esc(r.note||'')}" onchange="editSplit('${r.id}','note', this.value)">
+          <input type="text" class="split-note-input" placeholder="Notes for this stop..." value="${esc(r.note||'')}" onchange="editSplit(${jsq(r.id)},'note', this.value)">
         </div>
         <div class="split-time">
           <div class="split-clock" style="font-size:14px;font-weight:bold;color:var(--ink)">${fmtElapsed(goal.goal_elapsed_sec)}</div>
           <div class="split-clock">${fmtClock(goal.goal_elapsed_sec)}</div>
           ${goal.goal_pace_sec_per_mi ? `<div class="split-pace">${fmtPace(goal.goal_pace_sec_per_mi)}</div>` : ''}
         </div>
-        ${r.is_custom ? `<div class="split-del" onclick="deleteSplitRow('${r.id}')"><i class="ti ti-x"></i></div>` : ''}
+        ${r.is_custom ? `<div class="split-del" onclick="deleteSplitRow(${jsq(r.id)})"><i class="ti ti-x"></i></div>` : ''}
       </div>
       ${isEndpoint ? '' : `<div class="split-plan-row">
-        <label class="skip-toggle"><input type="checkbox" ${r.skipped?'checked':''} onchange="toggleSkip('${r.id}', this.checked)"> Plan to skip this stop</label>
+        <label class="skip-toggle"><input type="checkbox" ${r.skipped?'checked':''} onchange="toggleSkip(${jsq(r.id)}, this.checked)"> Plan to skip this stop</label>
         ${r.skipped ? `<span class="skip-badge">Skip planned</span>` : ''}
       </div>`}
       <div class="split-crew">
@@ -1564,13 +1569,13 @@ function renderGoalSplits(rows){
             const style = on
               ? `background:${p.color};border-color:${p.color};color:${contrastText(p.color)}`
               : `border-color:${disp};color:${disp}`;
-            return `<button type="button" class="assign-pill ${on?'on':''}" style="${style}" onclick="toggleSplitAssignee('${r.id}','${p.id}')">${esc(p.name)}</button>`;
+            return `<button type="button" class="assign-pill ${on?'on':''}" style="${style}" onclick="toggleSplitAssignee(${jsq(r.id)},${jsq(p.id)})">${esc(p.name)}</button>`;
           }).join('')}
         </div>
         <div class="crew-fields">
           <div class="crew-lbl">Address / Coordinates</div>
           ${isManager()
-            ? `<input type="text" placeholder="Address or coordinates" value="${esc(r.address||'')}" onchange="editSplit('${r.id}','address',this.value)">`
+            ? `<input type="text" placeholder="Address or coordinates" value="${esc(r.address||'')}" onchange="editSplit(${jsq(r.id)},'address',this.value)">`
             : `<div class="sd-text" style="font-size:13px;word-break:break-word">${r.address ? addressLine(r.address) : '<span class="sd-empty">Not set yet.</span>'}</div>`}
         </div>
         <div class="bring-block">
@@ -1578,30 +1583,30 @@ function renderGoalSplits(rows){
           <div class="bring-list">
             ${(r.bring_items||[]).map(it=>`
               <div class="bring-item">
-                <div class="bring-chk ${it.checked?'on':''}" onclick="toggleBringItem('${r.id}','${it.id}', ${!it.checked})">${it.checked?'<i class="ti ti-check" style="font-size:11px"></i>':''}</div>
+                <div class="bring-chk ${it.checked?'on':''}" onclick="toggleBringItem(${jsq(r.id)},${jsq(it.id)}, ${!it.checked})">${it.checked?'<i class="ti ti-check" style="font-size:11px"></i>':''}</div>
                 <div class="bring-label ${it.checked?'on':''}">${esc(it.label)}</div>
-                ${canEditBring() ? `<div class="bring-del" onclick="deleteBringItem('${r.id}','${it.id}')"><i class="ti ti-x"></i></div>` : ''}
+                ${canEditBring() ? `<div class="bring-del" onclick="deleteBringItem(${jsq(r.id)},${jsq(it.id)})"><i class="ti ti-x"></i></div>` : ''}
               </div>`).join('') || '<div class="bring-empty">Nothing added yet.</div>'}
           </div>
           ${canEditBring() ? `
           <div class="add-item-row">
-            <input type="text" placeholder="Add item..." onkeydown="if(event.key==='Enter'){addBringItem('${r.id}', this); event.preventDefault();}">
-            <button class="btn sm ghost" onclick="addBringItem('${r.id}', this.previousElementSibling)">Add</button>
+            <input type="text" placeholder="Add item..." onkeydown="if(event.key==='Enter'){addBringItem(${jsq(r.id)}, this); event.preventDefault();}">
+            <button class="btn sm ghost" onclick="addBringItem(${jsq(r.id)}, this.previousElementSibling)">Add</button>
           </div>` : ''}
         </div>
         <div class="bring-block">
           <div class="crew-lbl" style="color:var(--warn)">Official Note — every crew member at this stop sees this</div>
           ${isManager()
-            ? `<input type="text" class="split-note-input" style="font-style:normal;color:var(--ink)" placeholder="Broadcast note for everyone at this stop..." value="${esc(r.official_note||'')}" onchange="editSplit('${r.id}','official_note', this.value)">`
+            ? `<input type="text" class="split-note-input" style="font-style:normal;color:var(--ink)" placeholder="Broadcast note for everyone at this stop..." value="${esc(r.official_note||'')}" onchange="editSplit(${jsq(r.id)},'official_note', this.value)">`
             : `<div class="sd-text" style="font-size:13px">${r.official_note ? esc(r.official_note) : '<span class="sd-empty">None set.</span>'}</div>`}
         </div>
         <div class="bring-block">
           <div class="crew-lbl" style="color:var(--warn)">Official Race Cutoff</div>
           ${isManager() ? `
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);cursor:pointer;margin-bottom:${r.is_checkpoint?'8px':'0'}">
-              <input type="checkbox" ${r.is_checkpoint?'checked':''} onchange="toggleCheckpoint('${r.id}', this.checked)"> This stop is an official race cutoff
+              <input type="checkbox" ${r.is_checkpoint?'checked':''} onchange="toggleCheckpoint(${jsq(r.id)}, this.checked)"> This stop is an official race cutoff
             </label>
-            ${r.is_checkpoint ? `<input type="text" placeholder="Cutoff — hours elapsed (e.g. 10.2)" value="${r.checkpoint_cutoff_hours!=null?r.checkpoint_cutoff_hours:''}" onchange="editCheckpointHours('${r.id}', this.value)">` : ''}
+            ${r.is_checkpoint ? `<input type="text" placeholder="Cutoff — hours elapsed (e.g. 10.2)" value="${r.checkpoint_cutoff_hours!=null?r.checkpoint_cutoff_hours:''}" onchange="editCheckpointHours(${jsq(r.id)}, this.value)">` : ''}
           ` : (r.is_checkpoint
               ? `<div class="sd-text" style="font-size:13px">Cutoff at ${r.checkpoint_cutoff_hours!=null?fmtElapsed(parseFloat(r.checkpoint_cutoff_hours)*3600):'—'} elapsed</div>`
               : `<div class="sd-empty">Not a race cutoff.</div>`)}
@@ -2013,10 +2018,10 @@ function attendeePillsHTML(ev){
   let pills = going.map(p=>{
     const canRemove = isManager() || p.id === ME.id;
     const style = `background:${p.color || 'var(--grad)'};color:${p.color ? contrastText(p.color) : '#fff'}`;
-    return `<button type="button" class="ev-pill on" style="${style}" ${canRemove ? `onclick="toggleEventAttendee('${ev.id}','${p.id}')"` : 'disabled'}>${esc(p.name)}${canRemove ? ' ✕' : ''}</button>`;
+    return `<button type="button" class="ev-pill on" style="${style}" ${canRemove ? `onclick="toggleEventAttendee(${jsq(ev.id)},${jsq(p.id)})"` : 'disabled'}>${esc(p.name)}${canRemove ? ' ✕' : ''}</button>`;
   }).join('');
-  if(!iAmGoing) pills += `<button type="button" class="ev-pill ev-pill-add" onclick="toggleEventAttendee('${ev.id}','${ME.id}')"><i class="ti ti-plus" style="font-size:11px"></i> I'm going</button>`;
-  if(isManager()) pills += `<button type="button" class="ev-pill ev-pill-add" onclick="openEventModal('${ev.id}')">assign…</button>`;
+  if(!iAmGoing) pills += `<button type="button" class="ev-pill ev-pill-add" onclick="toggleEventAttendee(${jsq(ev.id)},${jsq(ME.id)})"><i class="ti ti-plus" style="font-size:11px"></i> I'm going</button>`;
+  if(isManager()) pills += `<button type="button" class="ev-pill ev-pill-add" onclick="openEventModal(${jsq(ev.id)})">assign…</button>`;
   const label = going.length ? `Going · ${going.length}` : 'Nobody signed up yet';
   return `<div class="ev-going-lbl ${going.length ? '' : 'empty'}">${label}</div><div class="ev-pills">${pills}</div>`;
 }
@@ -2039,7 +2044,7 @@ function renderWeekendList(events){
       return `<div class="wk-list-ev ${dim ? 'dim' : ''}" style="border-left-color:${evColor(ev)}">
         <div class="wk-le-top">
           <div class="wk-le-title">${esc(ev.title)}</div>
-          ${canEditEvent(ev) ? `<button class="tl-del" title="Edit" onclick="openEventModal('${ev.id}')"><i class="ti ti-pencil"></i></button>` : ''}
+          ${canEditEvent(ev) ? `<button class="tl-del" title="Edit" onclick="openEventModal(${jsq(ev.id)})"><i class="ti ti-pencil"></i></button>` : ''}
         </div>
         <div class="wk-le-time"><i class="ti ti-clock" style="font-size:12px"></i> ${fmtMin(m.s)} &nbsp;&ndash;&nbsp; ${fmtMin(m.e)}${overnight ? ' <span style="opacity:.7">(next morning)</span>' : ''}${creator ? ` &nbsp;·&nbsp; ${esc(creator)}` : ''}${m.v === 'private' ? ' &nbsp;·&nbsp; <i class="ti ti-lock" style="font-size:11px"></i> private' : ''}</div>
         ${m.addr ? `<div style="margin-top:6px">${addressBlock(m.addr)}</div>` : ''}
@@ -2117,7 +2122,7 @@ function renderWeekendCalendar(events){
       const top = it.s/60*H, height = Math.max(17, (visEnd - it.s)/60*H - 2);
       const bw = 100/it.lanes, left = it.lane*bw;
       const cls = 'wk-cal-ev' + (it.cont ? ' cont' : '') + (it.overnight && !it.cont ? ' runover' : '');
-      return `<div class="${cls}" style="top:${top}px;height:${height}px;left:calc(${left}% + 1px);width:calc(${bw}% - 3px);background:${c};color:${txt}" onclick="event.stopPropagation();openEventModal('${it.ev.id}')">
+      return `<div class="${cls}" style="top:${top}px;height:${height}px;left:calc(${left}% + 1px);width:calc(${bw}% - 3px);background:${c};color:${txt}" onclick="event.stopPropagation();openEventModal(${jsq(it.ev.id)})">
         <div class="wk-ce-title">${it.cont ? '<i class="ti ti-arrow-up" style="font-size:9px"></i> ' : (it.addr ? '<i class="ti ti-map-pin" style="font-size:9px"></i> ' : '')}${esc(it.ev.title)}</div>${height > 27 && !it.cont ? `<div class="wk-ce-time">${fmtMin(it.s)}${it.overnight ? ' →' : ''}</div>` : ''}</div>`;
     }).join('');
     const gl = Array.from({length:24},(_,h)=>`<div class="wk-grid-line" style="top:${h*H}px"></div>`).join('');
@@ -2160,7 +2165,7 @@ function renderModalAttendees(){
     const on = att.has(p.id);
     const clickable = isManager() || p.id === ME.id;
     const style = on ? `background:${p.color || 'var(--grad)'};color:${p.color ? contrastText(p.color) : '#fff'}` : '';
-    return `<button type="button" class="ev-pill ${on ? 'on' : ''}" style="${style}" ${clickable ? `onclick="toggleModalAttendee('${p.id}')"` : 'disabled'}>${esc(p.name)}${on ? ' ✓' : ''}</button>`;
+    return `<button type="button" class="ev-pill ${on ? 'on' : ''}" style="${style}" ${clickable ? `onclick="toggleModalAttendee(${jsq(p.id)})"` : 'disabled'}>${esc(p.name)}${on ? ' ✓' : ''}</button>`;
   }).join('');
 }
 async function toggleModalAttendee(personId){
@@ -2196,7 +2201,7 @@ function fillEventModal(ev, m){
   const dd = wkDateFor(ev.day_label);
   const creator = evCreatorName(ev);
   document.getElementById('em-view').innerHTML = `
-    <div class="emv-time"><i class="ti ti-calendar-event"></i> ${WK_DAY_FULL[ev.day_label] || ev.day_label} ${dd.getMonth()+1}/${dd.getDate()} &nbsp;·&nbsp; ${fmtMin(m.s)} – ${fmtMin(m.e)}${m.e<=m.s?' <span style="opacity:.7">(next morning)</span>':''} &nbsp;·&nbsp; ${fmtDuration(m.s,m.e)}</div>
+    <div class="emv-time"><i class="ti ti-calendar-event"></i> ${esc(WK_DAY_FULL[ev.day_label] || ev.day_label)} ${dd.getMonth()+1}/${dd.getDate()} &nbsp;·&nbsp; ${fmtMin(m.s)} – ${fmtMin(m.e)}${m.e<=m.s?' <span style="opacity:.7">(next morning)</span>':''} &nbsp;·&nbsp; ${fmtDuration(m.s,m.e)}</div>
     ${m.addr ? `<div class="emv-addr">${addressBlock(m.addr)}</div>` : ''}
     ${ev.notes ? `<div class="emv-notes">${esc(ev.notes)}</div>` : ''}
     <div class="emv-meta">${creator ? `Added by ${esc(creator)}` : ''}${m.v==='private' ? ' &nbsp;·&nbsp; <i class="ti ti-lock" style="font-size:11px"></i> private' : ''}</div>`;
@@ -2365,14 +2370,14 @@ async function renderNotes(){
       ? `<textarea class="note-edit-area" id="note-edit-${n.id}">${esc(n.body)}</textarea>
          <div class="modal-actions" style="margin-top:0">
            <button class="btn ghost sm" style="flex:1" onclick="cancelEditNote()">Cancel</button>
-           <button class="btn sm" style="flex:1" onclick="saveEditNote('${n.id}', document.getElementById('note-edit-${n.id}').value)">Save</button>
+           <button class="btn sm" style="flex:1" onclick="saveEditNote(${jsq(n.id)}, document.getElementById(${jsq(`note-edit-${n.id}`)}).value)">Save</button>
          </div>`
       : `<div class="note-body">${esc(n.body)}</div>
          <div class="note-footer">
            <div class="note-meta" style="color:${accent}">${isLast?'Current Note — ':''}${dateStr} — ${esc(n.author)}</div>
            <div class="note-actions">
-             <button onclick="startEditNote('${n.id}')" title="Edit"><i class="ti ti-pencil"></i></button>
-             <button onclick="deleteNote('${n.id}')" title="Delete"><i class="ti ti-trash"></i></button>
+             <button onclick="startEditNote(${jsq(n.id)})" title="Edit"><i class="ti ti-pencil"></i></button>
+             <button onclick="deleteNote(${jsq(n.id)})" title="Delete"><i class="ti ti-trash"></i></button>
            </div>
          </div>`;
     return `${arrow}<div class="note ${isLast?'current':''}" style="${isLast?`border-color:${accent}`:''}">${body}</div>`;
@@ -2419,7 +2424,7 @@ async function renderTeam(){
   const grid = document.getElementById('team-grid');
   const canEdit = canManageRoles();
   grid.innerHTML = PROFILES.map(p=>`
-    <div class="profile-card" style="${canEdit?'cursor:pointer':'cursor:default'};${p.color?`border-color:${displayColor(p.color)}`:''}" ${canEdit?`onclick="openEditPerson('${p.id}')"`:''}>
+    <div class="profile-card" style="${canEdit?'cursor:pointer':'cursor:default'};${p.color?`border-color:${displayColor(p.color)}`:''}" ${canEdit?`onclick="openEditPerson(${jsq(p.id)})"`:''}>
       <div class="avatar" style="background:${p.color||'var(--grad)'};color:${p.color?contrastText(p.color):'#fff'}">${initials(p.name)}</div>
       <div class="pname">${esc(p.name)}</div>
       <div class="pill">${esc(p.role)}</div>

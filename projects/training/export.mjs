@@ -60,6 +60,8 @@ const isGym = s => !s.venue && /^gym\b/i.test((s.meta || '').trim());
    Named destinations — the Red, Chattanooga, Looking Glass — still publish,
    because a trip you book time off for is the one case where the place IS the
    point. */
+/* Five minutes from the house: never named in the public plan. */
+const HOME_CRAG = /ijams/i;
 const ROPE = ['outrope', 'ijams'];
 const BOULDER = ['outboulder', 'ijamssolo'];
 const GENERIC = /^(ijams|outside)\b/i;
@@ -110,10 +112,13 @@ function publicMeta(s) {
    The exercises stay. "Working route at limit, 3–4 burns" is generic climbing
    instruction and is the useful half; only the name and the crag's description
    are replaced. */
+/* `key` renames the protocol's key as well — the key IS the crag's name, and
+   it rode along on every home-crag day in `k` (bug sweep B2-4). */
 const RENAME_PROTO = {
-  ijams:     { n: 'Sport crag session', spec: null },
-  ijamssolo: { n: 'Solo — easy highballs', spec: null },
+  ijams:     { key: 'sportcrag', n: 'Sport crag session', spec: null },
+  ijamssolo: { key: 'solohighball', n: 'Solo — easy highballs', spec: null },
 };
+const publicKey = k => (RENAME_PROTO[k] && RENAME_PROTO[k].key) || k;
 
 /* The plan names the venue outright now, so that is what is used.
 
@@ -229,7 +234,7 @@ for (const [key, p] of Object.entries(A.PROTO)) {
     const ex = p.ex.filter(([name]) => !DROP_EX.some(re => re.test(name)));
     if (ex.length) out.ex = ex.map(([name, dose]) => [name, dose, HOWTO[name] || null]);
   }
-  protocols[key] = out;
+  protocols[publicKey(key)] = out;
 }
 
 const days = [];
@@ -247,12 +252,14 @@ for (let w = 1; w <= 52; w++) {
              out, so the home crag is not named in the plan either. */
           const v = f === 'title' ? publicTitle({ ...s, title: s.t, meta: s.m })
                   : f === 'meta' ? publicMeta({ ...s, title: s.t, meta: s.m })
+                  : f === 'venue' && s[f] && HOME_CRAG.test(s[f])
+                    ? (genericVenue({ ...s, title: s.t, meta: s.m }) || 'Rope Day')
                   : s[f];
           if (v !== undefined && v !== null) out[f] = v;
         }
         /* Point only at protocols that still exist, or the page would carry
            364 days of keys resolving to nothing. */
-        if (out.k) out.k = out.k.filter(k => protocols[k]);
+        if (out.k) out.k = out.k.map(publicKey).filter(k => protocols[k]);
         /* ── the tick key ──
            A tick is stored against this id, so it has to mean the same session
            tomorrow as it did today. It used to be the session's INDEX, which
@@ -335,6 +342,7 @@ const LEAKS = [
   ['sleep window', /wake 7|bed 23|lights out/i],
   ['gaming schedule', /apex/i],
   ['home-relative drive times', /30 min each way to REI/i],
+  ['the home crag', HOME_CRAG],
 ];
 const hits = LEAKS.filter(([, re]) => re.test(text));
 if (hits.length) {

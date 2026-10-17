@@ -1288,12 +1288,14 @@ export class TrainingLog {
         auto,
         done:  { ...prev.done,  ...(body.done  && typeof body.done  === 'object' ? body.done  : {}) },
         ticks: { ...prev.ticks, ...(body.ticks && typeof body.ticks === 'object' ? body.ticks : {}) },
-        notes: Array.isArray(body.notes) ? body.notes.slice(0, 50).map(n => ({
-          id: String(n.id || crypto.randomUUID()).slice(0, 64),
-          text: String(n.text || '').slice(0, 4000),
-          public: n.public !== false,
-          at: String(n.at || new Date().toISOString()).slice(0, 32)
-        })) : (prev.notes || []),
+        /* `addNote` adds one, merged by id onto what is stored — the page's
+           way now, because a whole list from a page holding a stale or
+           public-only copy deleted the notes it did not have. A full `notes`
+           array still replaces, for writes queued before the change. */
+        notes: Array.isArray(body.notes) ? body.notes.slice(0, 50).map(cleanNote)
+          : body.addNote && typeof body.addNote === 'object'
+            ? (() => { const n = cleanNote(body.addNote); return [...(prev.notes || []).filter(x => x.id !== n.id), n].slice(-50); })()
+            : (prev.notes || []),
         updated: new Date().toISOString()
       };
 
@@ -1331,6 +1333,12 @@ const MEDIA_PREFIX = 'climb/';
    would only ever fail later and less clearly. A phone clip of a boulder sits
    far inside it; a ten-minute 4K multipitch does not, and is told so up front. */
 const MAX_MEDIA_BYTES = 100 * 1024 * 1024;
+const cleanNote = n => ({
+  id: String(n.id || crypto.randomUUID()).slice(0, 64),
+  text: String(n.text || '').slice(0, 4000),
+  public: n.public !== false,
+  at: String(n.at || new Date().toISOString()).slice(0, 32)
+});
 /* The Strava re-check: how often, how far back, how many lookups at most. */
 const RECHECK_MS = 6 * 60 * 60 * 1000;
 const RECHECK_DAYS = 21;

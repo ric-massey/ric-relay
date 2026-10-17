@@ -44,6 +44,7 @@ const SUITES = [
   ['the entertainment write path', ['projects/entertainment/test/write-path.mjs']],
   ['the worker (training-log)', ['worker/test.mjs']],
   ['the media location scrub', ['.github/test/scrub-media.mjs']],
+  ['nothing tracked is ignored', ['.github/test/tracked-ignored.mjs']],
   ['the visitor counter', ['worker/visitors.test.mjs']],
   /* Not live.mjs: that one asks the real ClinicalTrials.gov, so it runs in
      its own lane (.github/workflows/studies-live.yml), not here. */

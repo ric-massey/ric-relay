@@ -229,7 +229,7 @@ function nightGearHTML(key,people){
     <div class="night-gear-checks">${people.map(person=>{
       const owner = String(ME&&ME.name||'crew').toLowerCase().replace(/[^a-z0-9]+/g,'-');
       const checkKey = `mission_headlamp_${owner}_${key}_${person.toLowerCase()}`;
-      return `<label><input type="checkbox" ${CONFIG[checkKey]==='true'?'checked':''} onchange="saveNightGearCheck('${checkKey}',this.checked)"> <span>${esc(person)} headlamp</span></label>`;
+      return `<label><input type="checkbox" ${CONFIG[checkKey]==='true'?'checked':''} onchange="saveNightGearCheck(${jsq(checkKey)},this.checked)"> <span>${esc(person)} headlamp</span></label>`;
     }).join('')}</div>
   </div>`;
 }
@@ -316,7 +316,7 @@ function missionBringListHTML(stop){
   const items = stop && Array.isArray(stop.bring_items) ? stop.bring_items : [];
   if(!items.length) return '<div class="sd-empty">Nothing has been listed for this stop yet.</div>';
   return `<div class="mission-checklist">${items.map(it=>`
-    <button type="button" class="mission-check ${it.checked?'done':''}" onclick="toggleBringItemAndRefresh('${stop.id}','${it.id}',${!it.checked})">
+    <button type="button" class="mission-check ${it.checked?'done':''}" onclick="toggleBringItemAndRefresh(${jsq(stop.id)},${jsq(it.id)},${!it.checked})">
       <span class="box">${it.checked?'<i class="ti ti-check"></i>':''}</span>
       <span>${esc(it.label)}${it.checked && it.checked_by ? ` <small>— ${esc(it.checked_by)}</small>` : ''}</span>
     </button>`).join('')}</div>`;
@@ -514,10 +514,10 @@ function ricPacerMissionHTML(engine){
       <div class="mission-section">
         <div class="mission-section-title"><i class="ti ti-route"></i> Pacing logistics</div>
         <div class="pace-logistics">
-          <div><span>Start</span><b>${esc(stopPlace(engine.rows, group.start))}</b>${group.start.address?addressBlock(group.start.address):''}<input type="text" class="split-note-input" placeholder="Start meeting details…" value="${esc(startMeet)}" onblur="saveSharedPlanText('ric_meet_${group.start.id}',this.value)"></div>
-          <div><span>Exit</span><b>${esc(stopPlace(engine.rows, group.end))}</b>${group.end.address?addressBlock(group.end.address):''}<input type="text" class="split-note-input" placeholder="Exit meeting details…" value="${esc(exitMeet)}" onblur="saveSharedPlanText('ric_meet_${group.end.id}',this.value)"></div>
+          <div><span>Start</span><b>${esc(stopPlace(engine.rows, group.start))}</b>${group.start.address?addressBlock(group.start.address):''}<input type="text" class="split-note-input" placeholder="Start meeting details…" value="${esc(startMeet)}" onblur="saveSharedPlanText(${jsq(`ric_meet_${group.start.id}`)},this.value)"></div>
+          <div><span>Exit</span><b>${esc(stopPlace(engine.rows, group.end))}</b>${group.end.address?addressBlock(group.end.address):''}<input type="text" class="split-note-input" placeholder="Exit meeting details…" value="${esc(exitMeet)}" onblur="saveSharedPlanText(${jsq(`ric_meet_${group.end.id}`)},this.value)"></div>
         </div>
-        <input type="text" class="split-note-input" style="font-style:normal;color:var(--ink);width:100%;margin-top:9px" placeholder="Who retrieves ${esc(ME.name)} / pickup plan…" value="${esc(CONFIG[pickupKey]||'')}" onblur="saveSharedPlanText('${pickupKey}',this.value)">
+        <input type="text" class="split-note-input" style="font-style:normal;color:var(--ink);width:100%;margin-top:9px" placeholder="Who retrieves ${esc(ME.name)} / pickup plan…" value="${esc(CONFIG[pickupKey]||'')}" onblur="saveSharedPlanText(${jsq(pickupKey)},this.value)">
       </div>
       <div class="mission-section">
         <div class="mission-section-title"><i class="ti ti-backpack"></i> Run gear for ${esc(ME.name)}</div>
@@ -562,12 +562,12 @@ function ricOverviewHTML(engine, nextUp, mine){
     const place = nextDuty.kind==='pace-active' && group
       ? `To ${stopPlace(engine.rows, group.end)}`
       : `Stop ${stopNo||'—'} · Mi ${dutyStop.mile} · ${dutyStop.station}`;
-    const action = nextDuty.kind==='crew' ? "goPage('ric-stop')" : `openRicPaceAssignment('${group.start.id}')`;
+    const action = nextDuty.kind==='crew' ? "goPage('ric-stop')" : `openRicPaceAssignment(${JSON.stringify(String(group.start.id))})`;
     const stopSeconds = nextDuty.kind==='pace-active' ? null : RIC_LOGIC.stopRestSeconds(jobStop.mile);
     const arrivalBuffer=Math.max(0,Number(CONFIG.ric_arrival_buffer_minutes||15));
     const beThereBy=!nextDuty.here && nextStopStats.etaElapsed!=null && nextDuty.kind!=='pace-active'
       ? fmtClock(Math.max(0,nextStopStats.etaElapsed-arrivalBuffer*60)) : '';
-    nextJobHTML = `<button type="button" class="ric-next-job" onclick="${action}">
+    nextJobHTML = `<button type="button" class="ric-next-job" onclick="${esc(action)}">
       <span><i class="ti ti-${nextDuty.kind==='crew'?'map-pin-check':'run'}"></i> Next job</span>
       <strong>${esc(jobLabel)}</strong>
       ${beThereBy?`<div class="ric-be-there"><span>Be there by</span><b>${beThereBy}</b></div>`:''}
@@ -578,9 +578,9 @@ function ricOverviewHTML(engine, nextUp, mine){
   let timerHTML = '';
   if(timerStop){
     const timerAction = activePaceGroup && timerStop.id===activePaceGroup.start.id
-      ? `openRicPaceAssignment('${activePaceGroup.start.id}')`
+      ? `openRicPaceAssignment(${JSON.stringify(String(activePaceGroup.start.id))})`
       : `goPage('ric-stop')`;
-    timerHTML = `<button type="button" class="ric-live-timer" onclick="${timerAction}">
+    timerHTML = `<button type="button" class="ric-live-timer" onclick="${esc(timerAction)}">
       <span><i class="ti ti-stopwatch"></i> Stop countdown</span>
       ${restCountdownHTML(timerStop,'compact')}
       <i class="ti ti-chevron-right"></i>
@@ -600,7 +600,7 @@ function ricOverviewHTML(engine, nextUp, mine){
     const stopElapsed = raceIsLive && proj ? proj.projected_elapsed : (proj ? proj.goal_elapsed_sec : stop.elapsed_seconds);
     const dark = isDarkAtElapsed(stopElapsed);
     timeline.push({stopId:stop.id,mile:stop.mile,order:stop.sort_order||0,stopNumber:RIC_LOGIC.courseStopNumber(engine.rows,stop.id),html:`
-      <button type="button" class="ric-timeline-item crew ${done?'done':''} ${active?'live':''}" onclick="openStopDetail('${stop.id}')">
+      <button type="button" class="ric-timeline-item crew ${done?'done':''} ${active?'live':''}" onclick="openStopDetail(${jsq(stop.id)})">
         <span class="ric-timeline-mile">${stop.mile}<small>MI</small></span>
         <span class="ric-timeline-copy">
           <span class="ric-timeline-kind"><i class="ti ti-map-pin"></i> Stop __STOP_NUMBER__ · Crew Stop</span>
@@ -620,7 +620,7 @@ function ricOverviewHTML(engine, nextUp, mine){
     const endElapsed = raceIsLive ? group.end.projected_elapsed : group.end.goal_elapsed_sec;
     const dark = isDarkAtElapsed(startElapsed);
     timeline.push({stopId:group.start.id,mile:group.start.mile,order:group.start.sort_order||index,stopNumber:RIC_LOGIC.courseStopNumber(engine.rows,group.start.id),html:`
-      <button type="button" class="ric-timeline-item pace ${done?'done':''} ${active?'live':''}" onclick="openRicPaceAssignment('${group.start.id}')">
+      <button type="button" class="ric-timeline-item pace ${done?'done':''} ${active?'live':''}" onclick="openRicPaceAssignment(${jsq(group.start.id)})">
         <span class="ric-timeline-mile">${group.start.mile}<small>MI</small></span>
         <span class="ric-timeline-copy">
           <span class="ric-timeline-kind"><i class="ti ti-run"></i> Stop __STOP_NUMBER__ · Pace Dad</span>
@@ -646,7 +646,7 @@ function ricOverviewHTML(engine, nextUp, mine){
     const dark = isDarkAtElapsed(raceIsLive?stop.projected_elapsed:stop.goal_elapsed_sec);
     const kind = stop.mile>=100 ? 'Finish' : 'Course stop';
     return {...item,html:`
-      <button type="button" class="ric-timeline-item course ${done?'done':''} ${active?'live':''}" onclick="openStopDetail('${stop.id}')">
+      <button type="button" class="ric-timeline-item course ${done?'done':''} ${active?'live':''}" onclick="openStopDetail(${jsq(stop.id)})">
         <span class="ric-timeline-mile">${stop.mile}<small>MI</small></span>
         <span class="ric-timeline-copy">
           <span class="ric-timeline-kind"><i class="ti ti-${stop.mile>=100?'flag-checkered':'map-pin'}"></i> Stop __STOP_NUMBER__ · ${kind}</span>
@@ -941,7 +941,7 @@ async function renderRicHomeDashboard(prefetchedSplits){
         </div>
         <div class="mission-section"><div class="mission-section-title"><i class="ti ti-map-pin"></i> Meet here</div>
           ${nextUp.address ? addressBlock(nextUp.address) : '<div class="sd-empty">Map not added yet.</div>'}
-          ${isSydney?'':`<textarea class="split-note-input meet-instructions" placeholder="Parking, trail side, landmark, where to stand…" onblur="saveSharedPlanText('${meetKey}',this.value)">${esc(CONFIG[meetKey]||'')}</textarea>`}
+          ${isSydney?'':`<textarea class="split-note-input meet-instructions" placeholder="Parking, trail side, landmark, where to stand…" onblur="saveSharedPlanText(${jsq(meetKey)},this.value)">${esc(CONFIG[meetKey]||'')}</textarea>`}
         </div>
         <div class="mission-section">
           <div class="mission-section-title"><i class="ti ti-backpack"></i> Bring</div>
@@ -954,9 +954,9 @@ async function renderRicHomeDashboard(prefetchedSplits){
         </div>
         <div class="mission-section">
           <div class="mission-section-title"><i class="ti ti-notes"></i> Note</div>
-          <input type="text" class="split-note-input" style="font-style:normal;color:var(--ink);width:100%" placeholder="Quick note about Dad…" value="${esc(nextUp.station_note||'')}" onchange="editStationNoteAndRefresh('${nextUp.id}', this.value)" onkeydown="saveStationNoteOnEnter(event,'${nextUp.id}',this)">
+          <input type="text" class="split-note-input" style="font-style:normal;color:var(--ink);width:100%" placeholder="Quick note about Dad…" value="${esc(nextUp.station_note||'')}" onchange="editStationNoteAndRefresh(${jsq(nextUp.id)}, this.value)" onkeydown="saveStationNoteOnEnter(event,${jsq(nextUp.id)},this)">
           <small class="mission-note-hint">Press Enter to save to everyone's Notes. Flag only if the next station needs it.</small>
-          <label class="rd-flag-lbl red"><input type="checkbox" ${nextUp.flag_forward?'checked':''} onchange="toggleFlagForwardAndRefresh('${nextUp.id}', this.checked)"> <i class="ti ti-flag-3"></i> Flag for next station</label>
+          <label class="rd-flag-lbl red"><input type="checkbox" ${nextUp.flag_forward?'checked':''} onchange="toggleFlagForwardAndRefresh(${jsq(nextUp.id)}, this.checked)"> <i class="ti ti-flag-3"></i> Flag for next station</label>
         </div>
         <div class="mission-section">
           <div class="mission-section-title"><i class="ti ti-gauge"></i> Pace out</div>
@@ -1093,17 +1093,17 @@ function buildLoggingControlsHTML(s, kind){
     return `<div class="rd-actions" style="margin-top:8px">
       <div class="rd-ran-through"><i class="ti ti-player-track-next"></i> Ran through — no stop</div>
       <div class="rd-status-row">
-        <button class="btn ghost sm" onclick="toggleSkipAndRefresh('${s.id}', false)"><i class="ti ti-arrow-back-up"></i> Undo</button>
-        <button type="button" class="rd-clear-tiny" onclick="clearActualAndRefresh('${s.id}')">Clear station</button>
+        <button class="btn ghost sm" onclick="toggleSkipAndRefresh(${jsq(s.id)}, false)"><i class="ti ti-arrow-back-up"></i> Undo</button>
+        <button type="button" class="rd-clear-tiny" onclick="clearActualAndRefresh(${jsq(s.id)})">Clear station</button>
       </div>
     </div>`;
   }
-  const editLink = `<button type="button" class="rd-edit-link" onclick="toggleEditTimesAndRefresh('${s.id}')">${editingTimesId===s.id ? 'Done' : 'Edit times'}</button>`;
+  const editLink = `<button type="button" class="rd-edit-link" onclick="toggleEditTimesAndRefresh(${jsq(s.id)})">${editingTimesId===s.id ? 'Done' : 'Edit times'}</button>`;
   if(s.actual_elapsed_seconds==null){
     return `<div class="rd-actions race-stop-actions" style="margin-top:8px">
       <div class="rd-status-row race-stop-secondary">
-        <button class="race-stop-primary arrived" onclick="primeRestAudio();logArrivalNowAndRefresh('${s.id}')"><i class="ti ti-map-pin-check"></i><span>Dad Arrived</span></button>
-        <button class="btn ghost sm" onclick="toggleSkipAndRefresh('${s.id}', true)"><i class="ti ti-player-track-next"></i> Dad Ran Through</button>
+        <button class="race-stop-primary arrived" onclick="primeRestAudio();logArrivalNowAndRefresh(${jsq(s.id)})"><i class="ti ti-map-pin-check"></i><span>Dad Arrived</span></button>
+        <button class="btn ghost sm" onclick="toggleSkipAndRefresh(${jsq(s.id)}, true)"><i class="ti ti-player-track-next"></i> Dad Ran Through</button>
       </div>
       ${editLink}
       ${buildEditTimesPanel(s)}
@@ -1119,9 +1119,9 @@ function buildLoggingControlsHTML(s, kind){
         <div class="rd-arrived-chip"><i class="ti ti-map-pin-check"></i> Arrived ${fmtLoggedClock(s.actual_elapsed_seconds, s.actual_logged_at)}${s.actual_logged_by ? ` <span class="rd-logged-by">by ${esc(s.actual_logged_by)}</span>` : ''}</div>
       </div>
       ${restCountdownHTML(s)}
-      <button class="race-stop-primary left" onclick="logLeftNowAndRefresh('${s.id}')"><i class="ti ti-door-exit"></i><span>Dad Left</span></button>
+      <button class="race-stop-primary left" onclick="logLeftNowAndRefresh(${jsq(s.id)})"><i class="ti ti-door-exit"></i><span>Dad Left</span></button>
       <div class="rd-status-row" style="margin-top:2px">
-        <button type="button" class="rd-undo-link" onclick="undoLastLogAndRefresh('${s.id}')"><i class="ti ti-arrow-back-up"></i> Undo arrival</button>
+        <button type="button" class="rd-undo-link" onclick="undoLastLogAndRefresh(${jsq(s.id)})"><i class="ti ti-arrow-back-up"></i> Undo arrival</button>
         ${editLink}
       </div>
       ${buildEditTimesPanel(s)}
@@ -1139,7 +1139,7 @@ function buildLoggingControlsHTML(s, kind){
     </div>
     <div class="rd-rest-took">Rested ${Math.round(restSec/60)}m</div>
     <div class="rd-status-row" style="margin-top:2px">
-      <button type="button" class="rd-undo-link" onclick="undoLastLogAndRefresh('${s.id}')"><i class="ti ti-arrow-back-up"></i> Undo departure</button>
+      <button type="button" class="rd-undo-link" onclick="undoLastLogAndRefresh(${jsq(s.id)})"><i class="ti ti-arrow-back-up"></i> Undo departure</button>
       ${editLink}
     </div>
     ${buildEditTimesPanel(s)}
@@ -1177,7 +1177,7 @@ function buildStopDetailHTML(s, splits){
     <div class="sd-section-title">What To Bring</div>
     ${(s.bring_items||[]).length ? `<div class="bring-list" style="margin-top:4px">${s.bring_items.map(it=>`
       <div class="bring-item">
-        <div class="bring-chk ${it.checked?'on':''}" onclick="toggleBringItemAndRefresh('${s.id}','${it.id}', ${!it.checked})">${it.checked?'<i class="ti ti-check" style="font-size:11px"></i>':''}</div>
+        <div class="bring-chk ${it.checked?'on':''}" onclick="toggleBringItemAndRefresh(${jsq(s.id)},${jsq(it.id)}, ${!it.checked})">${it.checked?'<i class="ti ti-check" style="font-size:11px"></i>':''}</div>
         <div class="bring-label ${it.checked?'on':''}">${esc(it.label)}${it.checked && it.checked_by ? ` <span style="color:var(--ink-faint);font-size:10px">✓ ${esc(it.checked_by)}</span>` : ''}</div>
       </div>`).join('')}</div>` : '<div class="sd-empty">Nothing listed.</div>'}
     ${crewable ? `
@@ -1185,9 +1185,9 @@ function buildStopDetailHTML(s, splits){
     ${questions.length ? questions.map(q=>buildQuestionAnswerHTML(s, q)).join('') : '<div class="sd-empty">None set yet.</div>'}
     ` : `<div class="sd-empty" style="margin-top:14px">Crew can't reach Grady until mile ${crewAccessMile()} — questions start there.</div>`}
     <div class="sd-section-title">Race Day Note</div>
-    <input type="text" class="split-note-input" style="font-style:normal;color:var(--ink);width:100%" placeholder="Note for this station (how he looked, what he needed...)" value="${esc(s.station_note||'')}" onchange="editStationNoteAndRefresh('${s.id}', this.value)" onkeydown="saveStationNoteOnEnter(event,'${s.id}',this)">
+    <input type="text" class="split-note-input" style="font-style:normal;color:var(--ink);width:100%" placeholder="Note for this station (how he looked, what he needed...)" value="${esc(s.station_note||'')}" onchange="editStationNoteAndRefresh(${jsq(s.id)}, this.value)" onkeydown="saveStationNoteOnEnter(event,${jsq(s.id)},this)">
     ${s.station_note_by ? `<div class="rd-note-by">— ${esc(s.station_note_by)}</div>` : ''}
-    <label class="rd-flag-lbl red"><input type="checkbox" ${s.flag_forward?'checked':''} onchange="toggleFlagForwardAndRefresh('${s.id}', this.checked)"> <i class="ti ti-flag-3"></i> Flag this note for the next stop</label>
+    <label class="rd-flag-lbl red"><input type="checkbox" ${s.flag_forward?'checked':''} onchange="toggleFlagForwardAndRefresh(${jsq(s.id)}, this.checked)"> <i class="ti ti-flag-3"></i> Flag this note for the next stop</label>
   `;
 }
 
@@ -1538,7 +1538,7 @@ function toggleRicMore(force){
     const ricPages = new Set([...document.querySelectorAll('.ric-nav-btn[data-page]')].map(b=>b.dataset.page));
     const items = [...document.querySelectorAll('.standard-nav-btn[data-page]')]
       .filter(b=>!ricPages.has(b.dataset.page) && document.getElementById('page-'+b.dataset.page));
-    menu.innerHTML = items.map(b=>`<button type="button" role="menuitem" class="ric-more-item" onclick="toggleRicMore(false);goPage('${b.dataset.page}');document.getElementById('ric-more-nav').classList.add('active')">${b.innerHTML}</button>`).join('')
+    menu.innerHTML = items.map(b=>`<button type="button" role="menuitem" class="ric-more-item" onclick="toggleRicMore(false);goPage(${jsq(b.dataset.page)});document.getElementById('ric-more-nav').classList.add('active')">${b.innerHTML}</button>`).join('')
       || '<div class="ric-more-empty">Nothing else yet.</div>';
   }
   menu.classList.toggle('hidden', !open);

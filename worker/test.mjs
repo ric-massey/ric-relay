@@ -69,6 +69,17 @@ console.log('\nRULE  notes are public by default and private ones never leave');
   ok(!JSON.stringify(all.body).includes('PRIVATE-CANARY'), 'and absent from the full-log read too');
 }
 
+console.log('\nRULE  a note is added by id, never by replacing the day (bug sweep B2-1)');
+{
+  await call('POST', '/log/2026-08-20', { notes: [{ id: 'p', text: 'PRIVATE-KEEP', public: false }] }, TOKEN);
+  await call('POST', '/log/2026-08-20', { addNote: { id: 'n1', text: 'from the phone' } }, TOKEN);
+  await call('POST', '/log/2026-08-20', { addNote: { id: 'n2', text: 'from the laptop' } }, TOKEN);
+  const mine = await call('GET', '/log/2026-08-20', null, TOKEN);
+  ok(mine.body.notes.map(n => n.id).join() === 'p,n1,n2', 'every note survives, the private one included');
+  await call('POST', '/log/2026-08-20', { addNote: { id: 'n2', text: 'from the laptop' } }, TOKEN);
+  ok((await call('GET', '/log/2026-08-20', null, TOKEN)).body.notes.length === 3, 'a replay of the same note is the same note');
+}
+
 console.log('\nRULE  the owner can re-read his own private notes');
 {
   /* Without this the author writes a private note, reloads, and it is gone —

@@ -84,7 +84,31 @@
   const cacheLog = () => { try { localStorage.setItem(CACHE_KEY, JSON.stringify(LOG)); } catch (e) {} };
   const cachedLog = () => { try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch (e) { return null; } };
 
-  Owner.init({ host: LOG_HOST, onChange: () => changed() });
+  /* The log as a visitor may see it: no private notes. */
+  const publicView = log => {
+    const out = {};
+    for (const [iso, d] of Object.entries(log || {})) {
+      out[iso] = { ...d, notes: (d.notes || []).filter(n => n.public !== false) };
+    }
+    return out;
+  };
+
+  /* Signing out has to take the private notes and the "only you" runs with
+     it — off the screen and out of this browser. It used to repaint what was
+     already loaded, and leave them in the cache, where a signed-out page with
+     no signal showed them again. So: the cache goes public and the page loads
+     afresh, as a visitor. */
+  let wasOwner = false;
+  Owner.init({ host: LOG_HOST, onChange: () => {
+    if (wasOwner && !Owner.on()) {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify(publicView(LOG))); } catch (e) {}
+      location.reload();
+      return;
+    }
+    wasOwner = Owner.on();
+    changed();
+  } });
+  wasOwner = Owner.on();
 
   /* ── the day turning over ──
      "Today" was read once, when the page drew, and never again. A phone keeps
@@ -129,7 +153,7 @@
     const log = fetch(LOG_HOST + '/log', { cache: 'no-store', headers: Owner.headers() })
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(j => ({ days: j.days || {}, live: true }))
-      .catch(() => ({ days: cachedLog() || {}, live: false }));
+      .catch(() => ({ days: Owner.on() ? (cachedLog() || {}) : publicView(cachedLog()), live: false }));
     /* The board logbook, straight from the file the Boards page already reads.
        It is a script that assigns a global rather than JSON, so it is fetched
        and the assignment sliced off — cheaper than loading 50KB of it into
@@ -928,7 +952,9 @@
       auto,
       done: { ...prev.done, ...(body.done || {}) },
       ticks: { ...prev.ticks, ...(body.ticks || {}) },
-      notes: Array.isArray(body.notes) ? body.notes : (prev.notes || []),
+      notes: Array.isArray(body.notes) ? body.notes
+        : body.addNote ? [...(prev.notes || []).filter(n => n.id !== body.addNote.id), body.addNote]
+        : (prev.notes || []),
       updated: new Date().toISOString()
     };
   }
@@ -995,8 +1021,11 @@
       const via = b.querySelector('.viastrava');
       const wasVia = via && !via.hidden;
       if (via) via.hidden = true;
-      const st = stateOf(iso);
-      const out = await save(iso, { done: { ...st.done, [sid]: now } });
+      /* Only the session tapped. The whole map used to go, as this page last
+         saw it — every other session on the day lost its Strava mark (so a
+         deleted run no longer took its tick down), and a page loaded before
+         another device's untick put the tick back. The Worker merges by key. */
+      const out = await save(iso, { done: { [sid]: now } });
       if (!out) {                                    // roll the optimistic paint back
         b.setAttribute('aria-pressed', String(!now));
         b.classList.toggle('is-done', !now);
@@ -1070,13 +1099,16 @@
       const ta = b.closest('.noteform').querySelector('[data-note]');
       const text = (ta.value || '').trim();
       if (!text) { ta.focus(); return; }
-      const st = stateOf(iso);
-      const notes = [...(st.notes || []), {
+      /* One note, added by id. Sending the whole list as this page held it
+         replaced the day's notes with the page's copy: right after signing in
+         from the box that copy has no private notes, and on a page loaded
+         before another device posted it lacks that note — both were deleted. */
+      const addNote = {
         id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
         text, public: !b.dataset.private, at: new Date().toISOString()
-      }];
+      };
       ta.value = '';
-      if (await save(iso, { notes })) changed();
+      if (await save(iso, { addNote })) changed();
     }));
 
     /* Enter posts a public note; Shift+Enter is a newline. */

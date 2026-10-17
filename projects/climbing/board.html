@@ -527,8 +527,8 @@
             `${s.grind.name} · ${s.grind.sent ? "sent" : "still open"}`]);
         }
         $("tiles").innerHTML = tiles
-          .map(([n, l, sub]) => `<div class="tile"><div class="n">${n}</div>` +
-            `<div class="l">${l}</div>${sub ? `<div class="sub">${sub}</div>` : ""}</div>`)
+          .map(([n, l, sub]) => `<div class="tile"><div class="n">${esc(n)}</div>` +
+            `<div class="l">${esc(l)}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</div>`)
           .join("");
 
         // A board bolted at one angle makes the whole comparison meaningless.
@@ -538,7 +538,7 @@
         const peak = Math.max(1, ...angles.map(([, a]) => a.attempts));
         $("angles").innerHTML = angles
           .map(([angle, a]) => {
-            const hard = a.hardest ? `${a.hardest.grade} max` : "no send yet";
+            const hard = a.hardest ? `${esc(a.hardest.grade)} max` : "no send yet";
             return `<div class="bar"><span class="k">${angle}°</span>` +
               `<div class="track"><div class="fill" style="width:${(a.sends / peak) * 100}%"></div></div>` +
               `<span class="v">${a.sends}/${a.attempts}<em>${hard}</em></span></div>`;
@@ -547,7 +547,7 @@
 
         const top = Math.max(1, ...s.pyramid.map((p) => p.count));
         $("pyramid").innerHTML = s.pyramid
-          .map((p) => `<div class="bar"><span class="k">${p.grade}</span>` +
+          .map((p) => `<div class="bar"><span class="k">${esc(p.grade)}</span>` +
             `<div class="track"><div class="fill" style="width:${(p.count / top) * 100}%"></div></div>` +
             `<span class="v">${p.count}</span></div>`)
           .join("");
@@ -662,7 +662,7 @@
         $("c-setter").textContent = item.setter ? `set by ${item.setter}` : "";
 
         const [angle, , ascents, quality, benchmark] = item.stat;
-        const chips = [`<span class="chip grade">${item.grade}</span>`,
+        const chips = [`<span class="chip grade">${esc(item.grade)}</span>`,
           `<span class="chip">${angle}°</span>`];
         if (benchmark) chips.push(`<span class="chip bench">benchmark</span>`);
         if (quality) chips.push(`<span class="chip">${stars(quality)}</span>`);
@@ -825,7 +825,7 @@
         }
         $("grade-filter").innerHTML = `<option value="">All grades</option>` +
           [...grades.entries()].sort((a, b) => a[1] - b[1])
-            .map(([label]) => `<option value="${label}">${label}</option>`).join("");
+            .map(([label]) => `<option value="${esc(label)}">${esc(label)}</option>`).join("");
       }
 
       function loadBoard(name) {

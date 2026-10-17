@@ -168,6 +168,15 @@ faking a score stops being a line in the console and becomes two real people
 agreeing to lie about a game they played, which is a social problem and not one
 worth engineering against.
 
+**What it does not stop: a modified host.** The match is host-authoritative —
+guests draw whatever wave and scores the host's snapshots say — so two honest
+guests each report, truthfully, a number a doctored host fed them, and the
+count is satisfied with only one person lying. The reporters are independent
+witnesses of what they were shown, not of what happened. Closing that needs an
+authority neither client is, which this game does not have; until then a bad
+board row is cleared by hand with `admin_clear_scores`. (Bug sweep A5-4,
+2026-10-17.)
+
 A local game reports nothing, and neither does an online one with fewer than two
 accounts in it — rows nobody can witness would sit in the table forever being
 one person's word. A report made with no connection waits in local storage,
