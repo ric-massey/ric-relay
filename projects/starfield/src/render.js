@@ -477,6 +477,13 @@
       const bx = pw.x - centre.x, by = pw.y - centre.y;
       const extent = Math.max(Math.hypot(ax, ay), Math.hypot(bx, by));
       if (extent < 0.7) return;
+      /* Three separately projected points make an affine frame only while
+         the disc is well in front of the camera. A rim point near the camera
+         plane projects tens of thousands of pixels out, the cull below scales
+         with that same blown-up extent, and the sprite was drawn 70,000 px
+         wide — a grey sky crossed by bands on about half of fresh loads. Its
+         stars are drawn above either way; only the sprite waits. */
+      if (pu.z < 0.15 || pw.z < 0.15 || extent > 6 * Math.max(W, H)) return;
       if (centre.x < -extent * 2 || centre.x > W + extent * 2
         || centre.y < -extent * 2 || centre.y > H + extent * 2) return;
 

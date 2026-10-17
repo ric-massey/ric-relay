@@ -122,9 +122,11 @@
         teff, radiusSolar, lum,
         type: entry.sp || SF.stars.classFor(teff),
         whiteDwarf: dwarf,
-        radiusLy: dwarf
-          ? F.starRadiusLy * 0.34
-          : SF.stars.visualRadiusLy(radiusSolar),
+        /* Real size, like every other star since the move to real radii. The
+           dwarf branch was left at the old inflated 0.068 ly (4,300 AU) —
+           a ball sitting on its companion, so flying to Sirius, Procyon or
+           40 Eridani killed you on the dwarf ~0.07 ly out. */
+        radiusLy: SF.stars.visualRadiusLy(radiusSolar),
       };
     },
 
@@ -182,6 +184,7 @@
         teff: s.teff,
         lum: s.lum,
         radiusSolar: s.radiusSolar,
+        whiteDwarf: !!s.whiteDwarf,
         name: system.name,
         p: { ...pos },
       });

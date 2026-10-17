@@ -620,6 +620,14 @@ function sellHold() {
     if (!n || !takes.has(m.key)) continue;
     got += n * (prices ? (prices[m.key] || m.value) : m.value);
     units += n;
+    /* The same sale as SELL SELECTED, so it moves the same numbers: the
+       market eases and a shortage broken is a relief the owner notices. It
+       used to do neither, so the button players press most never reached the
+       living world — and a shortage station bought hold after hold at the
+       top price. */
+    const shortBefore = surv.docked ? shortageOf(surv.docked, m.key) : 0;
+    if (surv.docked) moveMarket(surv.docked, m.key, -0.04 * n);
+    livingDelivery(surv.docked, m.key, n, shortBefore);
     surv.hold[m.key] = 0;
   }
   if (!units) { gameSound("hit"); return 0; }

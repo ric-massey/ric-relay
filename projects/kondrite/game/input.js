@@ -183,6 +183,14 @@ function bindTo(pi, ai, code) {
 /* The game already means something by these three wherever you are, so they
    can't also be somebody's thrust. */
 const RESERVED = { Escape: "ESC", KeyP: "P", Tab: "TAB" };
+/* And these the Survey reads before flight ever sees them — a page each, the
+   scan, the drive, docking, and S / ↓ as reverse — so on the seat that flies
+   the Survey (the first, and the device row) they can't be a flight key
+   either. Bound to thrust, M opened the chart on the first press and closed
+   it on the second, and the ship never moved; the grid said it had worked. */
+const SURVEY_TAKEN = { KeyF: "F", KeyM: "M", KeyL: "L", KeyN: "N", KeyE: "E",
+                       KeyI: "I", KeyG: "G", KeyB: "B", KeyR: "R", KeyS: "S",
+                       ArrowDown: "\u2193" };
 
 /* ── the controls screen ──────────────────────────────────────────────────
    A key is chosen by pressing it, not by picking its name out of a list:
@@ -262,6 +270,10 @@ function takeKey(code) {
   }
   if (RESERVED[code]) {
     note(RESERVED[code] + " belongs to the game — pick another key", true);
+    return;
+  }
+  if (SURVEY_TAKEN[code] && (binder.p === 0 || isDevRow(binder.p))) {
+    note(SURVEY_TAKEN[code] + " opens something in the Survey — pick another key", true);
     return;
   }
   const taken = bindTo(binder.p, binder.a, code);

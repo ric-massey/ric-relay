@@ -11,6 +11,15 @@
 
 function setupSurvey() {
   const seed = surveySeed();
+  /* Say so, once, at the start of the run — both are ways the sector on the
+     screen is not the one that gets saved. */
+  if (BOOK.refusedNewer()) {
+    note("This survey was saved by a newer version of KONDRITE — it is kept " +
+         "untouched, and nothing here will be saved. Open it in the newer game.", true);
+  } else if (VISIT_SEED) {
+    note("Visiting sector " + VISIT_SEED.toString(16).toUpperCase() +
+         " — your own survey is kept as it was.");
+  }
   linkCache = new Map();      // every lattice belongs to a seed, not to a tab
   worldCache = new Map();
   WORLD.clearCaches();        // and so does every region lattice

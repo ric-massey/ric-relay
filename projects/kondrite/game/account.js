@@ -31,8 +31,14 @@ let clash = null;
 
 /* What Survey writes goes to the account too, once there is an account to
    write to. This is the `bookMirror` the store talks to — see `bookStore`. */
+/* Never from the Leviathan lab or a visit to somebody's `?seed=` sector —
+   both write books of their own, and pushing one would replace the survey on
+   the account with a sandbox or a stranger's sector. And never while a clash
+   is waiting for an answer: an autosave would settle it by uploading this
+   device's book over the account's before anybody chose. */
 function syncMirror() {
-  const on = !!(cloud && cloud.enabled() && cloud.session());
+  const on = !!(cloud && cloud.enabled() && cloud.session()) &&
+             !LEV_ONLY && !VISIT_SEED && !clash && !BOOK.refusedNewer();
   BOOK.setMirror(on ? {
     push: str => cloud.push(str),
     wipe: () => { cloud.wipeRow().catch(() => {}); }
@@ -63,6 +69,7 @@ async function catchUp() {
      warning for them is a warning nobody reads, which is how the one that
      matters gets missed. */
   if (!cloud || !cloud.enabled() || !cloud.session()) return;
+  if (LEV_ONLY || VISIT_SEED) return why("not this book — a lab or a visit");
   let remote = null;
   try { remote = await cloud.pull(); }
   catch (err) { return why("could not read the account: " + err.message); }
@@ -82,6 +89,7 @@ async function catchUp() {
   }
 
   clash = { remote, local };
+  syncMirror();
   paintAccount();
   note("This device and your account have different surveys — " +
        "pause and open ACCOUNT to pick one.");
@@ -567,6 +575,7 @@ el("btnAcctSave").addEventListener("click", async () => {
 el("btnAcctTakeCloud").addEventListener("click", () => {
   adoptCloud(clash.remote.book);
   clash = null;
+  syncMirror();
   paintAccount();
   acctSay("Loaded the survey from your account.");
   doorAnswered();
@@ -575,6 +584,7 @@ el("btnAcctTakeCloud").addEventListener("click", () => {
 el("btnAcctTakeLocal").addEventListener("click", async () => {
   const keep = clash.local;
   clash = null;
+  syncMirror();
   cloud.push(keep);
   acctSay("Uploading this device's survey…");
   const r = await cloud.flush();

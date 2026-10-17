@@ -23,20 +23,16 @@ HUD.shopOpened = function () {
 };
 HUD.refitOpened = function () { refit.pick = 0; HUD.shopOpened(); };
 
-/* The keyboard on the market page. It walks the shop's own list — there used
-   to be a separate array of upgrade tiers for the arrows to walk,
-   and the tiers are gone, so the arrows walk the thing that is actually on the
-   screen. */
-HUD.refitKey = function (code, st) {
-  const rows = (st && st.market) || [];
-  if (code === "KeyS") { if (st && st.onSell) st.onSell(); return true; }
-  if (!rows.length) return false;
-  if (code === "ArrowUp")        refit.pick = (refit.pick + rows.length - 1) % rows.length;
-  else if (code === "ArrowDown") refit.pick = (refit.pick + 1) % rows.length;
-  else if (code === "Enter" || code === "Space") {
-    const row = rows[refit.pick];
-    if (row && st.onBuyRow) st.onBuyRow(row.kind, row.key, row.frac);
-  } else return false;
+/* The keyboard on the market page: nothing that buys or sells. It used to
+   walk a cursor nothing drew, spend money on the row under it with Enter or
+   Space, and empty the hold on S (reverse thrust in flight) — three keys
+   acting on a page with no sign of any of them. The page is tick-and-press
+   now (SELL SELECTED / SELL ALL CARGO / BUY SELECTED), and the arrows scroll
+   the list, as they do everywhere. */
+HUD.refitKey = function (code) {
+  const by = code === "ArrowDown" ? 60 : code === "ArrowUp" ? -60 : 0;
+  if (!by) return false;
+  HUD.marketScrollBy(by, HUD.marketHeight || 0, HUD.marketView || 1);
   return true;
 };
 
@@ -304,9 +300,31 @@ function marketPage(st, title, sub, footer, here, closeAct, only) {
       ? sellable.concat([{ kind: "heading", id: "__nope" }], duds)
       : sellable;
 
+    /* It scrolls, like the BUY tab. It used to skip every row past the panel
+       — "six materials, two tanks and a crate is the most", but the crate is
+       a row per kind of part, and at home the lens's price board takes the
+       top — so spare parts could be neither seen nor sold. A row scrolled out
+       of view still counts toward SELL SELECTED if it is ticked. */
+    const listTop = sellY + PAGE.HEAD - 4, listBot = sellY + sellH - 52;
+    const sellInner = { x: full.x + 1, y: listTop, w: full.w - 2, h: listBot - listTop };
+    const sellTotal = shown.length * 38 + 26;
+    mkt.scroll = Math.max(0, Math.min(Math.max(0, sellTotal - sellInner.h), mkt.scroll));
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(sellInner.x, sellInner.y, sellInner.w, sellInner.h);
+    ctx.clip();
+    tapClip(sellInner);
+
     shown.forEach((r, i) => {
-      const y = sellY + PAGE.HEAD + 18 + i * 38;
-      if (y > sellY + sellH - 74) return;    // the two buttons' room
+      const y = sellY + PAGE.HEAD + 18 + i * 38 - mkt.scroll;
+      if (y < listTop - 20 || y > listBot + 20) {
+        if (r.kind !== "heading" && !isDud(r) && sellPick[r.id]) {
+          const q = qtyOf(r.id, r.n);
+          going.push({ r, q });
+          takings += r.kind === "supply" ? Math.max(1, Math.round(q / 100 * r.tank)) : q * r.each;
+        }
+        return;
+      }
 
       if (r.kind === "heading") {
         label("NOT PURCHASING TODAY", x0, y, SIZE.cap, VIOLET_LOW,
@@ -436,6 +454,12 @@ function marketPage(st, title, sub, footer, here, closeAct, only) {
               if (sellPick[r.id] && !sellQty[r.id]) sellQty[r.id] = r.n;
             } });
     });
+    ctx.restore();
+    tapClipOff();
+    if (sellTotal > sellInner.h) {
+      scrollHint(full.x + full.w - 10, sellInner.y + 6, sellInner.h - 12,
+                 mkt.scroll / Math.max(1, sellTotal - sellInner.h));
+    }
 
     /* Two ways out of a full hold: the things you chose, or the cargo in one
        press. "CARGO", not "EVERYTHING" — it empties the hold of materials and
@@ -464,9 +488,8 @@ function marketPage(st, title, sub, footer, here, closeAct, only) {
            carried ? HUD_CASH : VIOLET_LOW, carried ? st.onSell : null,
            false, !!carried);
 
-    // Nothing to scroll: six materials, two tanks and a crate is the most.
-    HUD.marketHeight = 0;
-    HUD.marketView = 1;
+    HUD.marketHeight = sellTotal;
+    HUD.marketView = sellInner.h;
     pageNav(st, here, only);
     closeButton(closeAct);
     return;

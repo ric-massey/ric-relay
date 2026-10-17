@@ -2843,7 +2843,14 @@ const World = (() => {
     const nearEnd = road.baseS + R.len(road) < I40.lengthPx && R.len(road) - s < MARGIN;
     if (!nearStart && !nearEnd) return null;
     const next = buildWindow(corridorPx);
-    W.main = next;
+    /* The root goes with it. It used to stay the run's first window, and the
+       traffic is handed the root — so after the first slide the player's body
+       sat four miles behind the car (eight after the second), and past the
+       first window's end no traffic was drawn at all. `rootStart` keeps
+       naming the same corridor point: where the run began. */
+    const home = W.root ? W.root.baseS + W.rootStart : corridorPx;
+    W.root = W.main = next;
+    W.rootStart = home - next.baseS;
     return { road: next, s: corridorPx - next.baseS };
   }
 

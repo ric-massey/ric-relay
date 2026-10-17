@@ -19,10 +19,12 @@ self.addEventListener("install", (e) => {
   );
 });
 
+/* Only Siege's own old versions. Cache Storage is the whole origin's, and
+   deleting "everything that isn't mine" wiped ATLAS's offline maps. */
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("siege-") && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

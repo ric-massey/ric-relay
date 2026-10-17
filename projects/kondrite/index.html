@@ -568,6 +568,10 @@
     padding: 0.5rem 0.6rem;
     margin-bottom: 0.6rem;
   }
+  /* The password is the one box that must show exactly what it sends — the
+     room compares it byte for byte, so "MOON" on the host's screen over a
+     sent "moon" locked every friend out. */
+  #lobby input#gamePass { text-transform: none; }
   #lobby input[type="text"]:focus, #account input[type="text"]:focus { outline: 2px solid var(--phosphor-dim); outline-offset: 1px; }
   #lobby input::placeholder, #account input::placeholder { color: var(--phosphor-faint); letter-spacing: 0.06em; }
 
@@ -916,7 +920,7 @@
       <label class="lock" for="gameLock">
         <input id="gameLock" type="checkbox"> lock it with a password
       </label>
-      <input id="gamePass" type="text" maxlength="24" spellcheck="false"
+      <input id="gamePass" type="text" maxlength="24" spellcheck="false" autocapitalize="off" autocorrect="off"
              autocomplete="off" placeholder="password" aria-label="password"
              hidden>
       <div>
@@ -936,7 +940,7 @@
 
       <div id="joinPassRow" hidden>
         <span class="step" id="joinPassLabel">password</span>
-        <input id="joinPass" type="password" maxlength="24" spellcheck="false"
+        <input id="joinPass" type="password" maxlength="24" spellcheck="false" autocapitalize="off" autocorrect="off"
                autocomplete="off" aria-label="password for this lobby">
         <div>
           <button id="btnJoinPass" type="button">join</button>

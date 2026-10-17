@@ -380,6 +380,11 @@ function surveyParts(dt) {
     if (pt.key === "coil" && !surv.coilFired) {
       surv.coilFired = true;
       coilJump();
+      saveSurveyBook();
+      /* The jump re-streamed the sky, so `surv.parts` is the new block's list
+         and `i` means nothing in it — carrying on read past its end and froze
+         the game. Nothing else here is in reach of where you landed anyway. */
+      break;
     }
     saveSurveyBook();
   }

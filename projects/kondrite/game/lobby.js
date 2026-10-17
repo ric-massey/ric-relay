@@ -776,7 +776,8 @@ el("btnJoinCancel").addEventListener("click", () => {
   say("");
 });
 el("btnJoinPass").addEventListener("click", () => {
-  if (pendingJoin) joinRoom(pendingJoin.id, el("joinPass").value);
+  // Trimmed, as the host's is — a stray space was a refusal.
+  if (pendingJoin) joinRoom(pendingJoin.id, el("joinPass").value.trim());
 });
 el("joinPass").addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); el("btnJoinPass").click(); }

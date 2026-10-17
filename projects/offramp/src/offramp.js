@@ -3588,13 +3588,19 @@
      closed the books by then, so the ledger work is gated on the run
      still being live — calling `Progress.endRun` twice would bank the
      same points a second time and count the run twice. */
+  /* Closing the books on a live run, the way every exit from one must: R and
+     leaving the page used to skip it, so a run's banked points never reached
+     the ledger — "banked points are yours forever" broken by one key next
+     to the controls. Gated on the run being live, so it never books twice. */
+  function closeLive() {
+    if (S.mode !== "play" && S.mode !== "pause") return;
+    Skill.endRun();
+    const run = Score.end("left");
+    Progress.endRun({ banked: run.banked, km: run.km, exits: run.exits });
+  }
+
   function toMenu() {
-    const live = S.mode === "play" || S.mode === "pause";
-    if (live) {
-      Skill.endRun();
-      const run = Score.end("left");
-      Progress.endRun({ banked: run.banked, km: run.km, exits: run.exits });
-    }
+    closeLive();
     if (typeof Cars !== "undefined") Cars.stop();
     reset("title");
     initGarage();
@@ -3692,7 +3698,7 @@
       return;
     }
     if (S.mode === "wreck" && (e.code === "KeyR" || e.code === "Enter" || e.code === "Space")) { startDriving(); return; }
-    if (e.code === "KeyR" && S.mode === "play") { startDriving(); return; }
+    if (e.code === "KeyR" && S.mode === "play") { closeLive(); startDriving(); return; }
     if (e.code === "KeyH" && S.mode === "play") blip("horn");
   });
   addEventListener("keyup", (e) => keys.delete(e.code));
@@ -3702,6 +3708,12 @@
   });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && S.mode === "play") { hold(); }
+  });
+  // Closing the tab mid-run is walking away: what was banked stays banked.
+  // Back to the title too, so a page restored from the back/forward cache is
+  // not a run that has already been booked once.
+  addEventListener("pagehide", () => {
+    if (S.mode === "play" || S.mode === "pause") toMenu();
   });
 
   function markTouch() {
@@ -3859,8 +3871,12 @@
          went without it for a long time: without a lateral velocity
          every sideswipe solved as though the player were tracking dead
          straight. */
+      /* The phone's BRAKE too. This read the keyboard only, so behind a
+         braking phone player the traffic never saw brake lamps and reacted
+         at its slow, un-primed rate. */
       Cars.setPlayer(root, S.s, S.u, S.fwd, kmh2ms(S.speed),
-                     keys.has("ArrowDown") || keys.has("KeyS"), S.vu);
+                     isTouch ? !!touch.brake : (keys.has("ArrowDown") || keys.has("KeyS")),
+                     S.vu);
     } else Cars.setPlayer(null);
 
     /* Position only. How fast the band is travelling ALONG THE CORRIDOR

@@ -381,27 +381,38 @@ console.log(`       ${q.length} vehicles in the 150 m behind, ${stopped}`
 console.log("       " + q.slice(0, 6).map((v) =>
   `${(400 - v.s).toFixed(0)}m:${v.v.toFixed(1)}`).join("  "));
 
-/* And it can be hit. Stand still in the middle of a live lane, which is
-   the one thing on a motorway that is certain to end badly, and check
-   that the contact comes back through the queue rather than being
-   applied to the player by the model. */
+/* And it can be hit. This used to park the car in a live lane from the
+   first step and count on being rear-ended — which only ever happened
+   because the traffic could not see the player at all (their body had no
+   history index, so every follower's picture of it was NaN: bug sweep
+   C2b-2, 2026-10-17). Seen properly, a car that has been standing there
+   all along is a queue's head, and the jam test above is what checks it.
+
+   What still ends badly is stopping DEAD out of traffic speed — a brick
+   wall no driver behind could have read in time. So: cruise with the
+   traffic, stop in one step, hold, and check that the contacts come back
+   through the queue rather than being applied to the player by the
+   model. Shoves are counted only once stopped, which is what the sign
+   test below is about. */
 const w2 = road6(23);
-let hits = 0, hardest = 0, myV = 0, myS = 0;
+let hits = 0, hardest = 0, myV = 0, myS = 0, stopAt = 0;
 const shoves = [];
 for (let k = 0; k < 1200; k++) {
-  const me = w2.pilot({ s: 400, lane: 2, v: 0, len: 4.7, w: 1.9, m: 1500 });
-  w2.follow(400, 0);
+  const cruising = k < 300;
+  if (cruising) stopAt = 100 + 25 * 0.1 * k;
+  const me = w2.pilot({ s: stopAt, lane: 2, v: cruising ? 25 : 0, len: 4.7, w: 1.9, m: 1500 });
+  w2.follow(stopAt, cruising ? 25 : 0);
   w2.step();
   const h = w2.drainHits();
-  if (h) {
+  if (h && !cruising) {
     hits += h.length;
     for (const x of h) { hardest = Math.max(hardest, x.eff); shoves.push(x); }
   }
   if (me) { myV = me.v; myS = me.s; }
 }
-ok("standing still in a live lane gets you hit", hits > 0, true);
+ok("stopping dead in a live lane gets you hit", hits > 0, true);
 console.log(`       ${hits} contacts, hardest ${hardest.toFixed(1)} km/h effective`);
-ok("...and the model never moved the player", myS, 400);
+ok("...and the model never moved the player", myS, stopAt);
 ok("...nor wrote its speed", myV, 0);
 
 /* ── but it has to HAND BACK what it did to their speed ──────────────

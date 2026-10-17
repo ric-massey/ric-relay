@@ -56,9 +56,10 @@ const attract = window.KondriteAttract || null;
    the way past, before the primary is replaced, so a save that goes wrong
    leaves one good book behind rather than none. */
 const SURVEY_STORE  = LEV_ONLY ? "kondrite.survey.levlab"
+                    : VISIT_SEED ? "kondrite.survey.visit." + VISIT_SEED
                                : "kondrite.survey.v4";
 const SURVEY_BACKUP = SURVEY_STORE + ".backup";
-const SURVEY_LEGACY = LEV_ONLY ? null : "kondrite.survey.v3";
+const SURVEY_LEGACY = LEV_ONLY || VISIT_SEED ? null : "kondrite.survey.v3";
 const SAVE_VERSION  = 5;
 const CHUNK         = 2600;   // world units a side
 const CHUNK_LOAD    = 2;      // chunks kept either side of the ship: a 5×5 block

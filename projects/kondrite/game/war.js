@@ -634,6 +634,15 @@ function battleWrecks(b) {
                x: b.x + Math.cos(a) * d, y: b.y + Math.sin(a) * d,
                a: R() * Math.PI * 2, spin: (R() - 0.5) * 0.05,
                size: 1 + R() * 1.2, battle: true });
+    /* A radius and hit points like a chunk's hulk (52–96, six hits). Without
+       them every consumer of `surv.hulks` did arithmetic with undefined: the
+       wrecks drew at radius NaN, nothing could hit them, and the bounce that
+       keeps ships off a hulk threw every ship and rock near a finished battle
+       to NaN or onto one cache's rim. Taken from `size`, so the seeded field
+       is laid out exactly as before. */
+    const w = out[out.length - 1];
+    w.r = Math.round(44 * w.size);
+    w.hp = 6;
   }
   return out;
 }

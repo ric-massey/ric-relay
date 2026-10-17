@@ -98,6 +98,28 @@ const LEV_ONLY = (() => {
   catch (_) { return false; }
 })();
 
+/* ── somebody else's sector ───────────────────────────────────────────────
+   A `?seed=` link is "a sector you can send someone", and it used to be a
+   sector that replaced yours: the seed beat the book, setup saw a different
+   seed and started fresh, and two autosaves later the save and its backup
+   both held the link's sector — and, signed in, so did the account.
+
+   So a link whose seed is not the one this device's survey is in plays as a
+   visit: its own key per seed, nothing pushed to the account, and your own
+   survey untouched for the next plain visit. A seed link on a device with no
+   survey yet, or for the sector you are already in, is simply your survey. */
+const VISIT_SEED = (() => {
+  try {
+    const p = new URLSearchParams(location.search).get("seed");
+    if (!p || !/^\d+$/.test(p) || LEV_ONLY) return 0;
+    const n = Number(p) >>> 0;
+    const own = localStorage.getItem("kondrite.survey.v4") ||
+                localStorage.getItem("kondrite.survey.v4.backup");
+    const b = own ? JSON.parse(own) : null;
+    return b && b.seed && (b.seed >>> 0) !== n ? n : 0;
+  } catch (_) { return 0; }
+})();
+
 const SURVEY_ZOOMS = [
   { s: 1.00, name: "CLOSE" },
   { s: 0.86, name: "NEAR" },

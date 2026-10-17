@@ -440,6 +440,45 @@ function livingBook() {
   console.log("  backupwalk each save leaves the one before it as the spare");
 }
 
+/* ── a newer build's book is left alone (bug sweep C1d-6) ────────────────
+   Refused "to protect it", then overwritten by the fresh sector the refusal
+   handed back — primary and backup — within two autosaves. */
+{
+  for (const k of Object.keys(store)) delete store[k];
+  const newer = JSON.stringify({ version: 99, seed: 4242, cash: 50000, found: ["first-light"] });
+  store["kondrite.survey.v4"] = newer;
+  const { cf } = bootKeepingStorage("?debug=1");
+  cf.start("survey", 1);
+  cf.saveBook(); cf.saveBook(); cf.saveBook();
+  check(store["kondrite.survey.v4"] === newer, "the newer book was overwritten");
+  check(!store["kondrite.survey.v4.backup"] || store["kondrite.survey.v4.backup"] === newer,
+        "a fresh sector became the backup over a newer book");
+  console.log("  newer      a book from a newer build is never written over");
+}
+
+/* ── a seed link is a visit (bug sweep C1c-1) ─────────────────────────────
+   A `?seed=` for a different sector used to replace the survey on this
+   device. It plays under its own key now and leaves this one alone. */
+{
+  const { cf } = boot("?debug=1&seed=5151");
+  cf.start("survey", 1);
+  cf.survey().cash = 777;
+  cf.saveBook();
+  const own = store["kondrite.survey.v4"];
+  check(cf.book.read(own).cash === 777, "the setup book did not save");
+  const v = bootKeepingStorage("?debug=1&seed=1234");
+  v.cf.start("survey", 1);
+  v.cf.survey().cash = 1;
+  v.cf.saveBook(); v.cf.saveBook();
+  check(store["kondrite.survey.v4"] === own, "a seed link replaced this device's survey");
+  check(!!store["kondrite.survey.visit.1234"], "the visit was not kept under its own key");
+  const back = bootKeepingStorage("?debug=1");
+  back.cf.start("survey", 1);
+  check(back.cf.survey().seed === 5151 && back.cf.survey().cash === 777,
+        "the plain address did not open the player's own sector again");
+  console.log("  visit      a ?seed= link for another sector plays beside yours, not over it");
+}
+
 /* ── what a run permanently changed, compacted ────────────────────────────
    Caches opened and hulks stripped are the only things a deterministic sector
    cannot re-derive: forget one and it refills. So the shape may change and the

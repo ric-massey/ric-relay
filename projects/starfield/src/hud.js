@@ -390,7 +390,9 @@
       const body = cause.body;
       let what = "something";
       if (body) {
-        if (body.kind === "star") {
+        if (body.kind === "star" && body.whiteDwarf) {
+          what = `a ${Math.round(body.teff).toLocaleString()} K white dwarf`;
+        } else if (body.kind === "star") {
           const cls = SF.stars.classFor(body.teff);
           what = `a ${Math.round(body.teff).toLocaleString()} K ${cls}-class star`;
         } else if (body.kind === "planet") {

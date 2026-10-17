@@ -1012,8 +1012,8 @@
   /**
    * `testing` false means "keep the bookkeeping up to date but do not hit
    * anything" — which is not the same as not calling this at all, and the
-   * difference used to kill people. Collisions are detected by watching
-   * `prevAlong` change sign; skipping the function entirely left that value
+   * difference used to kill people. Collisions are detected against where
+   * each body was last frame (`prevP`); skipping the function entirely left that value
    * frozen from before a million-light-year sprint, so the first frame after
    * the hull came back online compared against ancient history, saw a sign
    * change, and reported an impact with whatever happened to be nearby. You
@@ -1024,22 +1024,26 @@
     for (const system of systems) {
       for (const body of system.bodies) {
         const p = body.p;
-        const along = p.x * vdir.x + p.y * vdir.y + p.z * vdir.z;
-        const previous = body.prevAlong;
-        body.prevAlong = along;
-        if (!testing) continue;
-        // Closest approach is where `along` crosses zero — IN EITHER
-        // DIRECTION. Testing only for front-to-back meant that in reverse the
-        // bodies crossed the other way and you could back straight through a
-        // planet without the game noticing.
-        if (previous === undefined) continue;
-        const crossed = (previous > 0 && along <= 0) || (previous < 0 && along >= 0);
-        if (!crossed) continue;
+        const q = body.prevP;
+        body.prevP = { x: p.x, y: p.y, z: p.z };
+        if (!testing || !q) continue;
+        /* The segment the body moved along this frame, in the ship's frame —
+           which is the segment the ship flew, seen from the body. Closest
+           approach is inside the frame only if it falls inside that segment,
+           whichever way the ship is going.
 
-        // Closest approach happens as `along` crosses zero, so the miss
-        // distance is just the perpendicular component there.
-        const distance2 = p.x * p.x + p.y * p.y + p.z * p.z;
-        const perp = Math.sqrt(Math.max(0, distance2 - along * along));
+           It was a sign change in `along = p·vdir`, which is right while vdir
+           holds still and wrong the frame it flips: reversing through a
+           standstill turned vdir round, every body's `along` changed sign at
+           once, and anything wider than its distance from the travel LINE —
+           at any range — was an impact. Backing away from Sirius killed you. */
+        const dx = p.x - q.x, dy = p.y - q.y, dz = p.z - q.z;
+        const len2 = dx * dx + dy * dy + dz * dz;
+        if (!(len2 > 0)) continue;
+        const t = -(q.x * dx + q.y * dy + q.z * dz) / len2;
+        if (t < 0 || t > 1) continue;
+        const cx = q.x + dx * t, cy = q.y + dy * t, cz = q.z + dz * t;
+        const perp = Math.sqrt(cx * cx + cy * cy + cz * cz);
         if (perp < body.radiusLy) {
           crash({ type: "impact", body });
           return;

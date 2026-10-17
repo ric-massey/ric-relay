@@ -117,6 +117,12 @@ const bookStore = (() => {
    account layer once somebody signs in; null the rest of the time, which is
    the state every existing player is in and stays in. */
 let bookMirror = null;
+/* Set when the save on this device was written by a newer build. That book is
+   refused rather than guessed at (see migrateSurveyBook) — and then, before
+   this, overwritten by the fresh sector the refusal handed back, primary and
+   backup, within two autosaves. Now nothing is written while it is set: the
+   newer book stays exactly where it is for the build that can read it. */
+let refusedNewer = false;
 
 /* ── what a save is, in four pieces ───────────────────────────────────────
    Reading a book used to be one function that parsed, migrated, validated,
@@ -678,6 +684,10 @@ function loadSurveyBook() {
       return book;
     } catch (err) {
       if (!(err instanceof SaveError)) throw err;
+      if (err.code === SAVE_UNSUPPORTED_VERSION && /this build reads/.test(err.message)) {
+        refusedNewer = true;
+        return freshBook();
+      }
       /* Only under `?debug=1`: a player whose save is genuinely corrupt should
          get a new sector, not a console full of somebody else's problem. */
       if (debugOn) {
@@ -690,6 +700,7 @@ function loadSurveyBook() {
 }
 
 function write(book) {
+  if (refusedNewer) return false;
   const s = JSON.stringify(book);
   /* Keep the one that is about to be replaced. `lastGoodBook` is a book that
      has already parsed and validated — never whatever happens to be sitting
@@ -732,6 +743,9 @@ function write(book) {
       lastGoodBook = null;
     },
     /* Read-only, for the account layer: the last text known to parse. */
-    lastGood: () => lastGoodBook
+    lastGood: () => lastGoodBook,
+    /* True when this device's save is from a newer build and is being left
+       alone — nothing is saved, and nothing is pushed to the account. */
+    refusedNewer: () => refusedNewer
   };
 };

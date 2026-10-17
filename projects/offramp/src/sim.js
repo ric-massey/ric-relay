@@ -2578,7 +2578,11 @@ const Sim = (() => {
       const doSample = counting() && steps % SAMPLE_EVERY === 0;
       for (let i = live.length - 1; i >= 0; i--) {
         const veh = live[i];
-        if (veh.piloted) continue;                 // driven from outside
+        /* Driven from outside — but remembered like everybody else. With no
+           history index the player's body read as NaN to every driver's
+           perception: nobody braked for it, and every gap beside it was
+           granted (bug sweep C2b-2). */
+        if (veh.piloted) { remember(veh); continue; }
 
         if (veh.wreck) {
           /* Off the throttle, wheels pointing the wrong way, and sliding
@@ -3054,7 +3058,7 @@ const Sim = (() => {
                  length: p.len || 4.7 },
           lane: 1, from: 1, to: 1, phase: 0, dur: 0, why: null,
           s: 0, v: 0, a: 0, vy: 0, changes: 0, missed: 0,
-          hV: new Float64Array(HIST), hS: new Float64Array(HIST),
+          hV: new Float64Array(HIST), hS: new Float64Array(HIST), hi: 0,
           hL: new Float64Array(HIST), hA: new Float64Array(HIST),
           brake: false, hard: false, latZ: 0, limitAt: 30, exitPx: null,
           look: 0, looked: true, glanceT: 0, lag: 0, att: 1,
@@ -3102,7 +3106,15 @@ const Sim = (() => {
       const was = driven.v;
       driven.v = p.v;
       driven.a = dt > 0 ? (driven.v - was) / dt : 0;
-      if (driven.hV) { driven.hV.fill(driven.v); driven.hS.fill(driven.s); }
+      /* A real history, recorded each step by the integrator. Refilling the
+         whole ring with the present every call made a follower extrapolate
+         the player `v × delay` ahead of where they were, and close onto the
+         bumper. Filled once, when the body appears, so there is no garbage
+         to read before the first steps — and again after a jump, which no
+         driver could have watched happen. */
+      if (driven.hV && (fresh || Math.abs(driven.s - driven.hS[(driven.hi + HIST - 1) % HIST]) > 200)) {
+        driven.hV.fill(driven.v); driven.hS.fill(driven.s);
+      }
 
       /* ── you do not materialise inside somebody ─────────────────────
          `fill()` populates the whole band, including the stretch of lane

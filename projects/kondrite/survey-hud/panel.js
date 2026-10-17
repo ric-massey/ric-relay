@@ -41,6 +41,10 @@ HUD.drawPanel = function (st, dt) {
   drawCounters(st);
   drawWarnBand(st);
   drawStrip(st);
+  /* Written with the drive and never called, so a run at eight times top
+     speed drew the ordinary HUD — no streaks, no LIGHT DRIVE %, and no
+     IMPACT IN at all, though the game worked it out every frame. */
+  if (st.light && (st.light.run > 0 || st.light.hit)) drawLightRun(st);
   drawNotes(st);
 };
 

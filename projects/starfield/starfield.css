@@ -219,6 +219,16 @@ p.hint .legend .dot-target { background: rgb(255, 190, 92); }
 @media (hover: none) and (pointer: coarse), (max-width: 700px) {
   .joystick { display: grid; }
 }
+/* Wider than a portrait phone — a tablet, or a phone turned sideways — the
+   throttle took its corner from the default above and the stick sat on top of
+   it, so a touch player could steer and never move. Steer with the left
+   thumb, throttle on the right, above the corner links. */
+@media (hover: none) and (pointer: coarse) and (min-width: 701px) {
+  .controls {
+    left: auto; right: max(1rem, env(safe-area-inset-right));
+    bottom: max(8.5rem, calc(env(safe-area-inset-bottom) + 8.5rem));
+  }
+}
 
 /* ── light-speed alert ───────────────────────────────────────────────── */
 /* A caution light on the dash, not a billboard. It used to be a 27rem card
