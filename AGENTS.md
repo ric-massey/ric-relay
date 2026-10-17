@@ -701,6 +701,12 @@ not on the front door) until Ric says it is ready. The ones that must never brea
   derive one from radar or let one stand in for the warning.
 - **The sounding arithmetic (`sounding.js`) is held to MetPy** in
   `test/sounding.test.mjs`; change the physics and the pinned comparison together.
+- **The scoreboard publishes no coordinates** — stations by airport id only, positions
+  read at run time (`verify/score.mjs`; `test/verify.test.mjs` checks). The page uses
+  its blend only where the nearest station's record shows it beating the standard
+  forecast; never present the blend, or any accuracy figure, beyond what the record says.
+- **`weather-sw.js` is the site's only service worker**, scoped to `./weather`. Keep it
+  network-first and same-origin only; never widen its scope to the rest of the site.
 
 **One account for the whole site lives in ATLAS's Supabase project.** Since
 2026-09-23 anybody may sign up at `account/` (terminal: `login`), the account
