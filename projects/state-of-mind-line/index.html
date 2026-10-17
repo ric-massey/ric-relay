@@ -101,9 +101,12 @@
 
     // ---------- Blue episode state machine ----------
     let episode = { name: 'baseline', target: 0, daysLeft: 1 };
-    function startEpisode(name){
+    // `target` is the one the transition is easing to, when there is one — a
+    // second draw here left the line easing toward one level and the episode
+    // holding another.
+    function startEpisode(name, target){
       const e = EPISODES[name];
-      episode = { name, target: e.target(), daysLeft: e.days() };
+      episode = { name, target: target ?? e.target(), daysLeft: e.days() };
     }
     startEpisode('baseline');
 
@@ -125,7 +128,7 @@
           const elevatedName = (Math.random() < 0.5) ? 'manic' : 'hypoHigh';
           const nextTarget = EPISODES[elevatedName].target();
           beginTransition(nextTarget);
-          startEpisode(elevatedName);
+          startEpisode(elevatedName, nextTarget);
           elevatedThisYear += 1;
           return true;
         }
@@ -154,18 +157,22 @@
         }
         const nextTarget = EPISODES[nextName].target();
         beginTransition(nextTarget);
-        startEpisode(nextName);
+        startEpisode(nextName, nextTarget);
       }
 
       if(episode.name !== 'mixed' && Math.random() < 0.005){
         const nextTarget = EPISODES['mixed'].target();
         beginTransition(nextTarget);
-        startEpisode('mixed');
+        startEpisode('mixed', nextTarget);
       }
 
       maybeTriggerElevated();
 
       const target = currentTarget();
+      // Ease over trans.days and then let go, as the red series does. Nothing
+      // advanced this, so the line chased the previous episode's level for
+      // ever — every depression after a mania was drawn high.
+      if(trans.active){ trans.i += 1; if(trans.i >= trans.days) trans.active = false; }
       prevDayState = state;
 
       if(Math.random() < 0.25){ todayState = state; }

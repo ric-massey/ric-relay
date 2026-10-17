@@ -10,6 +10,7 @@ Leetify and every other public stats site shows them (Ric's call, 2026-10-13).
 Steam ids are never written, and share codes stay in local state.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -173,11 +174,20 @@ def demo_match_id(path):
     return num
 
 
+def leetify_key(leetify_id):
+    """What the published file keeps instead of Leetify's match id. The id
+    itself is a key to Leetify's keyless API, which answers it with every
+    player's Steam id — the one thing this room never writes. A hash still
+    lets a re-pull find its row, and opens nothing."""
+    return hashlib.sha256(("leetify:" + str(leetify_id)).encode()).hexdigest()[:16]
+
+
 def find(data, *, valve_id=None, leetify_id=None, fingerprint=None):
+    lkey = leetify_key(leetify_id) if leetify_id else None
     for m in data["matches"]:
         if valve_id and m.get("valve_id") == valve_id:
             return m
-        if leetify_id and m.get("leetify_id") == leetify_id:
+        if lkey and m.get("leetify_key") == lkey:
             return m
     if fingerprint:
         for m in data["matches"]:

@@ -12,7 +12,7 @@ Best game (all their rounds scored together): Mirage, best round 22 — won a 1v
 | 2026-10-06 03:20 UTC | Mirage | with Ric | 3:13 loss | 12-15-3 | 93 | [report](3846694811922858158.md) |
 | 2026-10-06 02:39 UTC | Anubis | with Ric | 6:13 loss | 23-17-5 | 128 | [report](3846689522670633012.md) |
 | 2026-10-06 01:55 UTC | Mirage | with Ric | 12:12 draw | 22-17-5 | 102 | [report](3846683791036776519.md) |
-| 2026-10-02 03:13 UTC | Rush 001 | with Ric | 6:2 win | 7-5-2 | 109 | [report](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
+| 2026-10-02 03:13 UTC | Rush 001 | with Ric | 6:2 win | 7-5-2 | 109 | [report](lt-36a75749b8651cde.md) |
 
 ## Yallzbalz — 5 games
 
@@ -35,7 +35,7 @@ Best game (all their rounds scored together): Anubis, best round 8 — won a 1v4
 | 2026-10-06 03:20 UTC | Mirage | with Ric | 3:13 loss | 15-15-3 | 108 | [report](3846694811922858158.md) |
 | 2026-10-06 02:39 UTC | Anubis | with Ric | 6:13 loss | 19-16-6 | 118 | [report](3846689522670633012.md) |
 | 2026-10-06 01:55 UTC | Mirage | with Ric | 12:12 draw | 24-15-5 | 115 | [report](3846683791036776519.md) |
-| 2026-10-02 03:13 UTC | Rush 001 | with Ric | 6:2 win | 6-6-3 | 79 | [report](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
+| 2026-10-02 03:13 UTC | Rush 001 | with Ric | 6:2 win | 6-6-3 | 79 | [report](lt-36a75749b8651cde.md) |
 
 ## Bigdawg — 2 games
 
@@ -955,7 +955,7 @@ Best game (all their rounds scored together): Dust II, best round 8 — 3 kills,
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
-| 2026-10-02 03:13 UTC | Rush 001 | against Ric | 2:6 loss | 4-8-2 | 49 | [report](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
+| 2026-10-02 03:13 UTC | Rush 001 | against Ric | 2:6 loss | 4-8-2 | 49 | [report](lt-36a75749b8651cde.md) |
 
 ## RENOZ — 1 game
 
@@ -985,7 +985,7 @@ Best game (all their rounds scored together): Mirage, best round 3 — won a 1v2
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
-| 2026-10-02 03:13 UTC | Rush 001 | against Ric | 2:6 loss | 0-7-0 | 0 | [report](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
+| 2026-10-02 03:13 UTC | Rush 001 | against Ric | 2:6 loss | 0-7-0 | 0 | [report](lt-36a75749b8651cde.md) |
 
 ## Sandrone — 1 game
 
@@ -1167,7 +1167,7 @@ Best game (all their rounds scored together): Dust II, best round 6 — 2 kills,
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
-| 2026-10-02 03:13 UTC | Rush 001 | against Ric | 2:6 loss | 10-6-3 | 157 | [report](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
+| 2026-10-02 03:13 UTC | Rush 001 | against Ric | 2:6 loss | 10-6-3 | 157 | [report](lt-36a75749b8651cde.md) |
 
 ## TooLegit2Quit — 1 game
 

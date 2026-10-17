@@ -35,6 +35,8 @@ third parties and could change or close it. That's the trade Ric chose.
 players who opted in. `show_others_names` in `val-account.json` flips that, then
 run `pull-val.py --rebuild`. `raw/` keeps Riot's untouched JSON locally (it carries
 every player's account id) and is gitignored, so a rebuild never needs Riot again.
+The published match id is a hash of Riot's (`public_id()`), never Riot's own — that
+one opens Riot's record of the match, every Riot ID in it, to anyone with an account.
 
 **The archive only grows.** Riot's history is finite; `val-data.js` is the record.
 

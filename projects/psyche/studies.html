@@ -671,9 +671,22 @@
       return html;
     }
 
+    /* Signed in but the list not back yet, the button can't know which way
+       it goes — and the click decides from the list as it is then. It used to
+       say "Track" over a study already tracked, and pressing it untracked the
+       study and wiped its alert. So it waits, and loadWatch() repaints it. */
+    function trackButton(s) {
+      const tracked = watch.items && watch.items[s.id];
+      const unknown = acct.state === 'ok' && !watch.items;
+      return `<button class="btn ${tracked ? 'tracking' : ''}" type="button" id="track" aria-pressed="${!!tracked}"${unknown ? ' disabled' : ''}>${unknown ? 'Checking your studies…' : tracked ? '✓ Tracking' : 'Track this study'}</button>`;
+    }
+    function repaintTrack() {
+      const b = $('track');
+      if (b && current) b.outerHTML = trackButton(current);
+    }
+
     function detailHTML(s) {
       const phase = T.phaseText(s.phases);
-      const tracked = watch.items && watch.items[s.id];
       const sex = { ALL: 'All sexes', FEMALE: 'Female only', MALE: 'Male only' }[s.eligibility.sex] || '';
       const ages = [s.eligibility.minAge && 'from ' + s.eligibility.minAge, s.eligibility.maxAge && 'to ' + s.eligibility.maxAge].filter(Boolean).join(' ');
       const row = (k, v) => v ? `<dt>${k}</dt><dd>${v}</dd>` : '';
@@ -690,7 +703,7 @@
         <div class="d-actions">
           <a class="btn primary" href="${esc(s.url)}" target="_blank" rel="noopener">Official record ↗</a>
           ${s.hasResults ? `<a class="btn" href="${esc(s.url)}?tab=results" target="_blank" rel="noopener">Read the results ↗</a>` : ''}
-          <button class="btn ${tracked ? 'tracking' : ''}" type="button" id="track" aria-pressed="${!!tracked}">${tracked ? '✓ Tracking' : 'Track this study'}</button>
+          ${trackButton(s)}
           <button class="btn" type="button" id="share">Copy link</button>
         </div>
         ${s.whyStopped ? `<p class="note">Stopped: ${esc(s.whyStopped)}</p>` : ''}
@@ -830,6 +843,7 @@
         return;
       }
       if (e.target.id === 'track' && current) {
+        if (!watch.items && acct.state === 'ok') return;   // list not back yet
         const btn = e.target; btn.disabled = true;
         const was = !!(watch.items && watch.items[current.id]);
         try {
@@ -864,7 +878,7 @@
         $('watch-body').innerHTML = `<p class="watch-empty">${esc(e.message)}</p>`;
         return;
       }
-      paintWatch(); repaintTrackedTags();
+      paintWatch(); repaintTrackedTags(); repaintTrack();
       /* Arrived from the front door's alert: bring the card into view now that
          it has something in it. */
       if (location.hash === '#watch') $('watch').scrollIntoView({ block: 'start' });

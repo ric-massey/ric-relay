@@ -43,7 +43,7 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | 2026-10-06 03:20 UTC | Mirage | Competitive | 3–13 | loss | 7-16-1 | 48.8 | 0.40 | -11.39 | yes | [3846694811922858158.md](3846694811922858158.md) |
 | 2026-10-06 02:39 UTC | Anubis | Competitive | 6–13 | loss | 5-19-3 | 38.3 | 0.22 | -12.73 | yes | [3846689522670633012.md](3846689522670633012.md) |
 | 2026-10-06 01:55 UTC | Mirage | Competitive | 12–12 | draw | 13-15-2 | 46.8 | 0.86 | -3.17 | yes | [3846683791036776519.md](3846683791036776519.md) |
-| 2026-10-02 03:13 UTC | Rush 001 | Custom | 6–2 | win | 8-3-0 | 85.5 | 1.49 | +10.67 | no | [lt-e57bd669-7374-4f75-9153-2f672ebb7086.md](lt-e57bd669-7374-4f75-9153-2f672ebb7086.md) |
+| 2026-10-02 03:13 UTC | Rush 001 | Custom | 6–2 | win | 8-3-0 | 85.5 | 1.49 | +10.67 | no | [lt-36a75749b8651cde.md](lt-36a75749b8651cde.md) |
 
 ## By map
 

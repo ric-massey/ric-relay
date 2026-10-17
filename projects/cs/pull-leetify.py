@@ -133,9 +133,11 @@ def main():
                         fingerprint=csdata.fingerprint_of(probe))
         fresh = m is None
         if fresh:
-            m = {"id": valve_id or f"lt-{row['id']}", "sources": []}
+            m = {"id": valve_id or f"lt-{csdata.leetify_key(row['id'])}", "sources": []}
             data["matches"].append(m)
-        m["leetify_id"] = row["id"]
+        # Never the id itself (see csdata.leetify_key).
+        m["leetify_key"] = csdata.leetify_key(row["id"])
+        m.pop("leetify_id", None)
         if valve_id:
             m["valve_id"] = valve_id
         if "leetify" not in m["sources"]:

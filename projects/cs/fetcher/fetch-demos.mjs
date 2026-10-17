@@ -32,7 +32,11 @@ const PER_MATCH_MS = 20_000;
 const OVERALL_MS = 10 * 60_000;
 
 const say = (m) => console.log(`fetch: ${m}`);
-setTimeout(() => { say("gave up after 10 minutes"); process.exit(0); }, OVERALL_MS).unref();
+// A failure exits non-zero so sync.py raises its toast — a bot that stopped
+// working silently costs every replay until someone reads the log, and
+// Valve's links are gone in a month. "Nothing to do" and "no bot set up"
+// stay 0.
+setTimeout(() => { say("gave up after 10 minutes"); process.exit(1); }, OVERALL_MS).unref();
 
 const creds = (verb, target, input) =>
   spawnSync(process.env.CS_PYTHON || "python", [path.join(CS, "creds.py"), verb, target], { input, encoding: "utf8" });
@@ -80,7 +84,7 @@ user.on("error", (e) => {
   say(/InvalidPassword|AccessDenied|Expired|Revoked/i.test(e.message)
     ? "the bot's saved sign-in was refused — run fetcher/login.mjs again"
     : `Steam sign-in failed: ${e.message}`);
-  process.exit(0);
+  process.exit(1);
 });
 user.on("loggedOn", () => user.gamesPlayed([730]));
 
@@ -126,6 +130,6 @@ csgo.on("connectedToGC", async () => {
   say(`${got} of ${todo.length} demo(s) downloaded`);
   user.gamesPlayed([]);
   user.logOff();
-  setTimeout(() => process.exit(0), 1000);
+  setTimeout(() => process.exit(todo.length && !got ? 1 : 0), 1000);
 });
 user.logOn({ refreshToken: token.stdout.trim() });

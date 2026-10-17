@@ -60,7 +60,10 @@ def step(name, *args, exe=None):
     out = (r.stdout + r.stderr).strip()
     print(out if out else f"{name}: (no output)")
     if r.returncode:
-        problem(f"{name}: exited {r.returncode}")
+        # The step's last line says what went wrong ("the bot's saved sign-in
+        # was refused …"); the toast should say it too.
+        last = (out.splitlines() or [""])[-1][:140]
+        problem(f"{name}: exited {r.returncode}" + (f" — {last}" if last else ""))
 
 
 def git(*args):
@@ -105,10 +108,18 @@ def publish():
     ahead = git("rev-list", "origin/main..HEAD").stdout.split()
     if not ahead:
         return
-    mine = tuple(p.rstrip("/") for p in DATA)
+    def ours(f):
+        # Whole path components: a plain prefix let projects/cs/players.json
+        # through as "projects/cs/p", and cs-data.js.bak as cs-data.js.
+        return any(f == p or f.startswith(p.rstrip("/") + "/") for p in DATA)
     for c in ahead:
+        # A merge lists nothing in a plain diff-tree, so it would pass with
+        # whatever it brought in. The sync never makes one; refuse it.
+        if len(git("rev-list", "--parents", "-n", "1", c).stdout.split()) > 2:
+            problem("push: a merge commit is on this branch — not pushing; push it yourself when it's ready")
+            return
         files = git("diff-tree", "--no-commit-id", "--name-only", "-r", c).stdout.split()
-        if any(not f.startswith(mine) for f in files):
+        if not files or any(not ours(f) for f in files):
             problem("push: other unpushed work is on this branch — not pushing; push it yourself when it's ready")
             return
     if git("rev-list", "HEAD..origin/main").stdout.strip():

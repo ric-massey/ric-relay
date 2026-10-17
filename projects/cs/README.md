@@ -61,6 +61,9 @@ doesn't know it, on map + final score + Ric's K/D.
 **Other players appear by their in-game names**, as they do on Leetify and every
 public stats site (Ric's decision, 2026-10-13). Steam ids are never written. Share
 codes stay in local state — a share code is enough to download the whole demo.
+Leetify's match id is never written either — its keyless API answers it with every
+player's Steam id — so the data keeps a hash of it (`csdata.leetify_key()`), and a
+Leetify-only match is published as `lt-<that hash>`.
 
 ## The session watcher (runs only while CS2 does)
 
@@ -79,7 +82,7 @@ Nothing runs between sessions. The `CS2 + Terminal` desktop shortcut does the sa
 thing (it launches CS2 through Steam). Log: `%LOCALAPPDATA%\ric-terminal\cs-session.log`.
 
 `sync.py` = demos → live feed → Steam → Leetify, each in its own process so one
-failing never stops the rest, then **commits `cs-data.js` and `matches/` only**
+failing never stops the rest, then **commits the room's data only** (`cs-data.js`, `stats.js`, `matches/`, `llm/`, `p/`)
 (on `main`, never mid-merge), then **pushes them** so a session reaches the site
 by itself (Ric's call, 2026-10-14). It pushes only commits that touch nothing but
 the room's data; if other work is waiting to go out it pushes nothing and says

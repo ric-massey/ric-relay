@@ -21,6 +21,7 @@ players who opted in, so the room does the same. `show_others_names` in
 val-account.json flips that, if Ric decides otherwise.
 """
 
+import hashlib
 import json
 import sys
 import time
@@ -270,7 +271,7 @@ def process(raw, me, C, show_names):
 
     start = info.get("gameStartMillis")
     summary = {
-        "id": info["matchId"],
+        "id": public_id(info["matchId"]),
         "at": datetime.fromtimestamp(start / 1000, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ") if start else None,
         "map": mp["name"], "map_url": info["mapId"], "queue": queue, "ranked": bool(info.get("isRanked")),
         "minutes": round((info.get("gameLengthMillis") or 0) / 60000),
@@ -281,7 +282,7 @@ def process(raw, me, C, show_names):
                     "how": r["result"]} for r in out_rounds],
         "board": board,
     }
-    detail = {"id": info["matchId"], "map": mp["name"],
+    detail = {"id": public_id(info["matchId"]), "map": mp["name"],
               "minimap": C.minimap(info["mapId"]),
               # u = y*xm + xa, v = x*ym + ya  (Valorant swaps the axes)
               "transform": {k: mp.get(k) for k in ("xm", "ym", "xa", "ya")},
@@ -289,6 +290,14 @@ def process(raw, me, C, show_names):
                            for c_ in mp.get("callouts", [])] if mp.get("xm") is not None else [],
               "seats": seats, "rounds": out_rounds}
     return summary, detail
+
+
+def public_id(match_id):
+    """The id the site publishes. Not Riot's own: that one opens Riot's full
+    record of the match — every player's Riot ID — to anyone with an account,
+    which is what show_others_names: false promises not to publish. Riot's id
+    stays in raw/ and .val-state.json."""
+    return hashlib.sha256(("val:" + str(match_id)).encode()).hexdigest()[:16]
 
 
 def write_detail(d):
@@ -318,7 +327,7 @@ def main():
         for p in sorted(RAW.glob("*.json")):
             s, d = process(json.loads(p.read_text(encoding="utf-8")), st["puuid"], C, show)
             if s:
-                merge(data, s, (st.get("rr") or {}).get(s["id"]))
+                merge(data, s, (st.get("rr") or {}).get(p.stem))
                 write_detail(d)
         save_data(data)
         print(f"val: rebuilt {len(data['matches'])} matches from raw/")
