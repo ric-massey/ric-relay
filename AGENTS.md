@@ -559,8 +559,9 @@ the rest. Rules:
 
 **The front door (in preview since 2026-10-16).** It went live as `index.html` and Ric
 moved it back out the same day: the terminal is home again, and the redesign lives at
-`frontdoor.html`, unlisted and `noindex`, reached by its URL or by typing `front door`
-in the terminal. It does not run the terminal, it hands it commands: the bar carries a
+`frontdoor.html`, `noindex`, reached by its URL, by typing `front door` or `home` in
+the terminal, or by the terminal's **[ HOME ]** box in the corner of its frame (Ric,
+2026-10-17: "a box called home in the terminal that brings you to the main page"). It does not run the terminal, it hands it commands: the bar carries a
 piece of the terminal's own screen (black glass, amber `#ffb000`, scanlines) — a `~$`
 prompt and a **TERMINAL** key (Ric, 2026-10-17). What is typed there runs in the
 terminal as `index.html?run=<command>` (the terminal runs it once, as if typed, and

@@ -1549,7 +1549,7 @@
         e.preventDefault();
         const typed = input.value.trim();
         if (!typed) { location.href = "index.html"; return; }
-        if (/^front[\s_-]*door$/i.test(typed)) { input.value = ""; scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" }); return; }
+        if (/^(front[\s_-]*door|home|cd home|open home)$/i.test(typed)) { input.value = ""; scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" }); return; }
         const k = key(typed), post = POSTS.find((p) => key(p.name) === k || key(p.id) === k);
         location.href = post ? post.href : `index.html?run=${encodeURIComponent(typed.slice(0, 200))}`;
       });

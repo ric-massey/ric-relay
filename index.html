@@ -87,6 +87,17 @@
       margin-bottom: 1.2rem;
     }
 
+    .frame-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+    .home-box {
+      flex-shrink: 0; margin-top: -0.35rem; padding: 0.35rem 0.8rem; color: var(--phosphor); text-decoration: none;
+      border: 1px solid var(--phosphor-dim); font-size: 0.8rem; letter-spacing: 0.2em; text-transform: uppercase;
+      box-shadow: 0 0 18px rgba(255, 176, 0, 0.08) inset;
+    }
+    .home-box:hover, .home-box:focus-visible {
+      background: var(--phosphor); color: var(--bg); border-color: var(--phosphor); outline: none;
+      box-shadow: 0 0 22px rgba(255, 176, 0, 0.45);
+    }
+
     .wordmark {
       font-size: clamp(1.6rem, 5vw, 2.3rem);
       font-weight: 700;
@@ -269,6 +280,8 @@
 
     @media (max-width: 600px) {
       body { font-size: 13.5px; }
+      .frame-label { letter-spacing: 0.12em; font-size: 0.7rem; }
+      .home-box { padding: 0.35rem 0.6rem; letter-spacing: 0.12em; }
       a.entry { flex-wrap: wrap; row-gap: 0.1rem; }
       a.entry .desc { flex-basis: 100%; order: 3; }
       a.entry .go { margin-left: auto; }
@@ -279,7 +292,11 @@
 <body>
   <div class="wrap">
     <div class="frame">
-      <div class="frame-label">RIC-MASSEY PERSONAL TERMINAL // NODE 01</div>
+      <div class="frame-top">
+        <div class="frame-label">RIC-MASSEY PERSONAL TERMINAL // NODE 01</div>
+        <!-- Home is the front door (frontdoor.html). Typing `home` does the same. -->
+        <a class="home-box" href="frontdoor.html" aria-label="Home — the front door">[ home ]</a>
+      </div>
 
       <h1 class="wordmark">Terminal</h1>
 
@@ -612,6 +629,7 @@ type Sydney's cat's name for a surprise!</div>
         "  echo <text>     make the terminal repeat something\n" +
         "  reboot          replay the boot sequence\n" +
         "  date            read the local clock\n" +
+        "  home            go to the front door\n" +
         "  back            return to the previous page\n" +
         "  clear           wipe terminal output (`/clear` works too)\n" +
         "\ncommands also accept a leading / — try /mind or /clear.\n" +
@@ -760,7 +778,7 @@ type Sydney's cat's name for a surprise!</div>
     const commandHistory = [];
     let historyIndex = 0;
 
-    const visibleCommands = ["help", "commands", "man", "ls", "rooms", "tree", "projects", "find", "open", "cd", "latest", "recent", "random", "cat notes", "history", "pwd", "whoami", "status", "uptime", "date", "echo", "back", "clear", "reboot"];
+    const visibleCommands = ["help", "commands", "man", "ls", "rooms", "tree", "projects", "find", "open", "cd", "latest", "recent", "random", "cat notes", "history", "pwd", "whoami", "status", "uptime", "date", "echo", "home", "back", "clear", "reboot"];
     const completions = [
       ...visibleCommands,
       // locked rooms stay out — completing to something that answers [LOCKED]
@@ -834,7 +852,7 @@ type Sydney's cat's name for a surprise!</div>
 
       // `front door` opens the redesigned home page, in preview at frontdoor.html.
       // Unlisted while the terminal stays home. Spaces, dashes or none all work.
-      if (/^front[\s_-]*door$/i.test(normalizedRaw)) {
+      if (/^front[\s_-]*door$/i.test(normalizedRaw) || /^(home|cd home|open home)$/i.test(normalizedRaw)) {
         print("walking out to the front door ...");
         setTimeout(() => (location.href = "frontdoor.html"), 400);
       } else if ((verb === "open" || verb === "cd") && PAGES[pageArg]) {
