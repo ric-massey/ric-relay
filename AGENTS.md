@@ -560,10 +560,14 @@ the rest. Rules:
 **The front door (in preview since 2026-10-16).** It went live as `index.html` and Ric
 moved it back out the same day: the terminal is home again, and the redesign lives at
 `frontdoor.html`, unlisted and `noindex`, reached by its URL or by typing `front door`
-in the terminal. It does not run the terminal: the bar carries an amber **Terminal**
-button (the terminal screen's own `#ffb000`) that opens `index.html`, and `/` from
-anywhere on the page does the same — Ric asked for exactly that on 2026-10-16. Don't
-put it in `ROOMS`, `PROJECTS` or `latest.js`.
+in the terminal. It does not run the terminal, it hands it commands: the bar carries a
+piece of the terminal's own screen (black glass, amber `#ffb000`, scanlines) — a `~$`
+prompt and a **TERMINAL** key (Ric, 2026-10-17). What is typed there runs in the
+terminal as `index.html?run=<command>` (the terminal runs it once, as if typed, and
+cleans the address); a post's name goes straight to its page; Enter on nothing opens
+the terminal; `/` from anywhere focuses the prompt. Without JS the prompt is a plain
+GET form to `index.html`, so it still works. Don't put it in `ROOMS`, `PROJECTS` or
+`latest.js`.
 
 **It shows off the pages, not Ric** (Ric, 2026-10-16: "it's my internet, but it's an
 internet" — family and friends use these rooms). What fills a rip is **the room working**,
@@ -584,7 +588,7 @@ rule 1). Few words inside any rip.
 **It is a feed of everything, it ends, and no two visits are alike** (Ric, same day:
 "like an insta feed", "generated at random so every time you open the page it's a bit
 different", then "when there are no more rooms it should end"). `POSTS` lists every room
-and every thing in a room a visitor can use — 33 today: the rooms themselves, the
+and every thing in a room a visitor can use — 34 today: the rooms themselves, the
 projects, and the sub-pages that stand on their own (the Leviathan, the four spacetime
 chapters, climbing's media and stats, training's calendar and races, the movie list) —
 each with a `tier`. Tier 0 (Counter-Strike, KONDRITE, the Boards) keeps its order,
@@ -592,9 +596,9 @@ the other tiers are shuffled within themselves, each post appears once, and the 
 finishes on "That's every room." (`.fin`). Don't bring back the endless rounds. Every
 tear, seam and drawing is seeded from `VISIT`, a random number per page load.
 Mochi, the 404 page and the trip modes stay off it (Ric, 2026-10-16) — they are
-surprises for the rooms, not posts. VALORANT, the Log and the Workbench are off it too
-until they have something in them (no matches, three stub entries, one finished
-project) — a post that opens onto an empty room costs the next click. **Every word on a
+surprises for the rooms, not posts. VALORANT and the Workbench are off it too
+until they have something in them (no matches; one finished project). The Log came back
+on 2026-10-17 with its first real entry, the front door's build log — a post that opens onto an empty room costs the next click. **Every word on a
 post was checked against its page on 2026-10-17** (ClinicalTrials.gov, not "every
 trial in the world"; I-40's traffic is modelled from real counts, not live; KONDRITE's
 main game is solo Survey) — check again when you change a post, and never claim a
@@ -623,8 +627,10 @@ otherwise), and draw shadows on the canvas, never as a CSS or SVG blur. Night/da
 changes the hero's paper.
 
 Homepage "transmissions" live in `notes.js`. Curated newest additions live
-in `latest.js` and are announced in exactly one place: the NOTIFICATION banner on
-`index.html`. Every room used to carry one in its own native style; they don't any
+in `latest.js` and are announced in exactly one place: the "new" pill on the front door
+(`frontdoor.html`), and the terminal's `latest` command opens the newest. The terminal
+itself carries no banner and no welcome copy any more (Ric, 2026-10-17: "remove the
+notifications") — it boots straight to the shell; don't put either back. Every room used to carry one in its own native style; they don't any
 more, so an addition is not repeated eight times. The per-room support is still in
 `latest.js` (`data-latest-room` for a room's own wording, `data-latest-skip-linked`
 to pass over an item the page already links to outside its `<nav>`) — if a room

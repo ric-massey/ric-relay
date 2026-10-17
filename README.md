@@ -24,7 +24,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | File | Room | What it is |
 |---|---|---|
 | `index.html` | Terminal | Landing terminal — boot sequence + working command line (try `help`) |
-| `frontdoor.html` | — | The redesigned front door, in preview and unlisted: a feed of all 33 rooms and things, newest first and reshuffled each visit, that ends when they run out — each torn from its own paper and showing the room working, and an amber button to the terminal (type `front door` in the terminal) |
+| `frontdoor.html` | — | The redesigned front door, in preview and unlisted: a feed of all 34 rooms and things, newest first and reshuffled each visit, that ends when they run out — each torn from its own paper and showing the room working, and an amber button to the terminal (type `front door` in the terminal) |
 | `orrin.html` | Orrin | Plain-language tour of Orrin, progress notes after each run (`orrin-updates.js`), plus live public project activity from GitHub |
 | `psyche.html` | Psyche | Human-systems field notebook — mood, criteria, and evidence |
 | `climbing.html` | Climbing | Mountain-Project-style route ledger — projects, ticks, objectives |
@@ -51,7 +51,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `captures-data.js` | — | Generated `[filename, date]` pairs for the 1,300+ photos `captures.html` draws |
 | `assets/` | — | Everything that isn't a photograph. Sitewide files sit at the top (`owner.js`, `site-gate.js`, the share image, and `training-plan.json`, which stays there because the deployed Worker fetches it by its full URL). Everything else has a folder: `cat/` (Mochi's sprite frames), `climbing/`, `training/` and `entertainment/` (each room's own styles, scripts and generated JSON), `games/` (covers and clips), `posters/` and `backdrops/` |
 | `notes.js` | — | Homepage "transmissions" — the one file you edit by hand to post a note |
-| `latest.js` | — | Curated newest additions shown in the homepage's NOTIFICATION banner |
+| `latest.js` | — | Curated newest additions: the front door's "new" pill and the terminal's `latest` command |
 | `effects.js` | — | Persistent visual modes, the shared mobile room-menu behaviour (`installRoomMenu()`), and Mochi — the reduced-motion-aware resident cat with progressively loaded, decoded instant frame swaps; calibrated visible-body scale; collision-safe placements; relaxed multi-angle movement; feature entrances and stretching; element interactions; occasional walk-offs; page-aware returns; a wall-climbing mode on the Climbing room; and a helmeted zero-gravity mode used only by compatible games |
 | `EASTER_EGGS.md` | — | Complete field guide to every hidden command and typed surprise |
 
