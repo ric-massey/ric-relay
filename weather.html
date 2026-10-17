@@ -274,6 +274,94 @@
       .radar{height:300px}
       .brand .t{display:none}
     }
+
+    .card.bare{background:none;border:0;padding:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+    .hero.card.bare{padding:20px 0 10px}
+    #storms{display:grid;gap:10px}
+    .hero .go{min-height:48px;padding:0 22px;border-radius:999px;border:0;background:#fff;color:#0b2342;font-weight:700}
+
+    /* ══ storm mode ══════════════════════════════════════════
+       Inside a warning the page turns to face it: the warning first, then
+       the radar, then the rest. Each warning type has its own deep colour
+       (white type on all of them clears 7:1). */
+    .storm{grid-column:1/-1;border-radius:var(--r);padding:16px;border:2px solid rgba(255,255,255,.35);background:#7a0019;
+      box-shadow:0 10px 40px rgba(0,0,0,.35)}
+    .storm[data-ev="svr"]{background:#7a3300}
+    .storm[data-ev="ffw"]{background:#0c4f20}
+    .storm[data-ev="eww"]{background:#5a1880}
+    .storm[data-ev="other"]{background:#3b3f4a}
+    .storm.emergency{background:#4a0060;border-color:#ff8cff;animation:pulse 1.6s ease-in-out infinite}
+    @keyframes pulse{50%{border-color:#fff}}
+    .storm .kicker{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+    .storm h2{display:block;font-size:clamp(26px,7vw,34px);font-weight:800;line-height:1.05;margin:4px 0 6px;padding:0;border:0;letter-spacing:-.01em;
+      text-transform:none;color:#fff}
+    .storm .until{font-size:16px;font-weight:600}
+    .storm .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .storm .chips span{padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.32);font-size:13px;font-weight:700}
+    .storm .track{margin-top:12px;padding:12px;border-radius:12px;background:rgba(0,0,0,.3);font-size:16px;font-weight:600}
+    .storm .track small{display:block;font-size:13px;font-weight:500;margin-top:4px}
+    .storm .todo{margin-top:12px;font-size:15px;white-space:pre-line}
+    .storm .from{margin-top:10px;font-size:13px}
+    body.storming .hero{padding:14px 0 10px}
+    body.storming .hero .temp{font-size:64px}
+    body.storming #radarcard{order:-1}
+    body.storming #storms{order:-2}
+
+    /* lists of warnings: nearby, and across the country */
+    .warn{display:grid;grid-template-columns:6px 1fr auto;gap:10px;align-items:center;width:100%;text-align:left;padding:10px 0;
+      border:0;border-top:1px solid var(--edge);background:none;min-height:52px}
+    .warn:first-of-type{border-top:0}
+    .warn i{align-self:stretch;border-radius:3px;background:var(--note)}
+    .warn[data-tone="warning"] i{background:var(--warn)}
+    .warn[data-tone="watch"] i{background:var(--watch)}
+    .warn b{display:block;font-weight:700}
+    .warn span{display:block;font-size:13px;color:var(--dim)}
+    .warn em{font-style:normal;font-size:13px;color:var(--dim);text-align:right}
+    .warn:hover{background:rgba(255,255,255,.05)}
+    .counts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px}
+    .counts span{padding:6px 12px;border-radius:999px;background:var(--glass);border:1px solid var(--edge);font-weight:600;font-size:14px}
+    .counts .hot{background:rgba(122,0,25,.85)}
+    .risk{display:inline-block;margin-top:10px;padding:5px 12px;border-radius:999px;font-weight:700;font-size:14px;background:var(--glass)}
+
+    /* radar layer controls */
+    .seg{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+    .seg button{min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--edge);background:rgba(255,255,255,.08);font-weight:600;font-size:14px}
+    .seg button[aria-pressed="true"]{background:#fff;color:#0b2342;border-color:#fff}
+    .seg .sep{flex:1}
+    .sitebar{font-size:13px;color:var(--dim);margin:-2px 0 10px}
+    .legend.vel i{background:linear-gradient(90deg,#00ff3c,#007a1d,#3a3a3a,#7a0010,#ff2a2a)}
+
+    /* above you: the sounding */
+    #sky summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:44px}
+    #sky summary::-webkit-details-marker{display:none}
+    #sky summary .chev{margin-left:auto;transition:transform .2s}
+    #sky details[open] summary .chev{transform:rotate(180deg)}
+    #sky .lead{font-size:14px;color:var(--dim)}
+    .skyrow{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:12px;margin-top:10px;align-items:start}
+    .skyrow svg{width:100%;height:auto;display:block;border-radius:12px}
+    .skymeta{font-size:14px;font-weight:600;margin-top:4px}
+    .skymeta small{display:block;font-weight:500;color:var(--dim);font-size:13px}
+    .hourpick{display:flex;align-items:center;gap:10px;margin-top:8px}
+    .hourpick input{flex:1;min-width:0;height:44px;accent-color:#fff}
+    .params{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 16px;margin-top:12px;font-size:14px}
+    .params div{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--edge)}
+    .params span{color:var(--dim)}
+    .ptable{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
+    .ptable th,.ptable td{padding:6px 4px;text-align:right;border-bottom:1px solid var(--edge)}
+    .ptable th:first-child,.ptable td:first-child{text-align:left}
+    .ptable th{font-weight:600;color:var(--faint);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+    .gloss{margin-top:12px;font-size:14px;color:var(--dim)}
+    .gloss summary{cursor:pointer;color:#fff;font-weight:600;min-height:44px;display:flex;align-items:center}
+    .gloss dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px}
+    .gloss dt{color:#fff;font-weight:600}
+    .key{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--dim);margin-top:6px}
+    .key i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+
+    @media (max-width:640px){
+      .skyrow{grid-template-columns:minmax(0,1fr)}
+      .warn{grid-template-columns:6px 1fr}
+      .warn em{grid-column:2;text-align:left}
+    }
   </style>
   <script src="assets/visit.js" defer></script>
 </head>
@@ -307,30 +395,35 @@
   <div class="placebar">
     <button class="placebtn" type="button" id="placebtn" aria-haspopup="dialog">
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5a4.5 4.5 0 0 0-4.5 4.5c0 3.4 4.5 8.5 4.5 8.5s4.5-5.1 4.5-8.5A4.5 4.5 0 0 0 8 1.5zm0 6.3A1.8 1.8 0 1 1 8 4.2a1.8 1.8 0 0 1 0 3.6z" fill="currentColor"/></svg>
-      <span id="placename">Choose a place</span>
+      <span id="placename">Across the US</span>
     </button>
     <span class="spacer"></span>
+    <button class="chip" type="button" id="usview" aria-label="Across the US" title="Across the US">US</button>
     <button class="chip" type="button" id="units" aria-label="Switch units">°F</button>
     <button class="chip" type="button" id="refresh" aria-label="Refresh">
       <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M15 9a6 6 0 1 1-1.8-4.3M15 2.5V6h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
   </div>
 
-  <section class="hero" id="hero" aria-live="polite">
-    <div class="empty">
-      <h1>What's it like out there?</h1>
-      <p class="dim">Pick a place — your own location, or anywhere you search for.</p>
-      <button class="go" type="button" data-open-places>Choose a place</button>
-    </div>
-  </section>
-
-  <div class="grid" id="cards" hidden>
+  <div class="grid" id="cards">
+    <div id="storms" class="card bare" hidden aria-live="assertive"></div>
+    <section class="hero card bare" id="hero" aria-live="polite"></section>
     <section class="card" id="alerts" hidden aria-label="Official alerts"></section>
-    <section class="card" id="next" aria-label="The next three hours"></section>
-    <section class="card" id="hourly" aria-label="Hourly forecast"></section>
-    <section class="card" id="daily" aria-label="Ten-day forecast"></section>
+    <section class="card" id="nearby" hidden aria-label="Warnings nearby"></section>
+    <section class="card" id="national" hidden aria-label="Warnings across the US"></section>
+    <section class="card" id="next" hidden aria-label="The next three hours"></section>
+    <section class="card" id="hourly" hidden aria-label="Hourly forecast"></section>
+    <section class="card" id="daily" hidden aria-label="Ten-day forecast"></section>
     <section class="card" id="radarcard" aria-label="Radar">
       <h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 8l4.5-4.5" stroke="currentColor" stroke-width="1.5"/></svg>Radar<span class="src" id="radarsrc"></span></h2>
+      <div class="seg" role="group" aria-label="Radar layer">
+        <button type="button" data-mode="comp" aria-pressed="true">US mosaic</button>
+        <button type="button" data-mode="N0B" aria-pressed="false">Reflectivity</button>
+        <button type="button" data-mode="N0S" aria-pressed="false">Velocity</button>
+        <span class="sep"></span>
+        <button type="button" id="outlooktoggle" aria-pressed="false">SPC outlook</button>
+      </div>
+      <p class="sitebar" id="sitebar"></p>
       <div class="radar" id="radar" role="img" aria-label="Radar map">
         <div class="layer base" id="radarbase"></div>
         <div id="radarframes"></div>
@@ -347,21 +440,29 @@
         <input type="range" id="scrub" min="0" max="10" step="1" value="10" aria-label="Radar frame">
         <span class="when num" id="when"></span>
       </div>
-      <div class="legend"><span>light</span><i aria-hidden="true"></i><span>heavy</span></div>
+      <div class="legend" id="legend"><span>light</span><i aria-hidden="true"></i><span>heavy</span></div>
     </section>
-    <section class="card half tile" id="t-wind" aria-label="Wind"></section>
-    <section class="card half tile" id="t-humid" aria-label="Humidity"></section>
-    <section class="card half tile" id="t-press" aria-label="Pressure"></section>
-    <section class="card half tile" id="t-vis" aria-label="Visibility"></section>
-    <section class="card half tile" id="t-uv" aria-label="UV index"></section>
-    <section class="card half tile" id="t-sun" aria-label="Sunrise and sunset"></section>
+    <section class="card" id="sky" hidden aria-label="The air above you">
+      <details id="skyd">
+        <summary><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 15V1M3 13l10-10M3 9l6-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <b>The air above you</b><span class="lead">— sounding, hodograph, storm ingredients</span>
+          <svg class="chev" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></summary>
+        <div id="skybody"></div>
+      </details>
+    </section>
+    <section class="card half tile" id="t-wind" hidden aria-label="Wind"></section>
+    <section class="card half tile" id="t-humid" hidden aria-label="Humidity"></section>
+    <section class="card half tile" id="t-press" hidden aria-label="Pressure"></section>
+    <section class="card half tile" id="t-vis" hidden aria-label="Visibility"></section>
+    <section class="card half tile" id="t-uv" hidden aria-label="UV index"></section>
+    <section class="card half tile" id="t-sun" hidden aria-label="Sunrise and sunset"></section>
     <section class="card" id="sources" aria-label="Where this comes from"></section>
   </div>
 </main>
 
 <footer>
-  <p>Official watches and warnings are the <a href="https://www.weather.gov/" target="_blank" rel="noopener">National Weather Service</a>'s. This page shows them; it does not issue them.</p>
-  <p>Forecast numbers: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0). Observations, office forecasts and alerts: NWS. Radar: NOAA NEXRAD via Iowa Environmental Mesonet.</p>
+  <p>Official watches and warnings are the <a href="https://www.weather.gov/" target="_blank" rel="noopener">National Weather Service</a>'s, and the outlook is the <a href="https://www.spc.noaa.gov/" target="_blank" rel="noopener">Storm Prediction Center</a>'s. This page shows them; it does not issue them. In a warning, act on the warning.</p>
+  <p>Forecast numbers and model soundings: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0). Observations, office forecasts and alerts: NWS. Radar and weather balloons: NOAA, via Iowa Environmental Mesonet.</p>
 </footer>
 
 <dialog class="sheet" id="places" aria-labelledby="placestitle">
@@ -379,18 +480,20 @@
     <ul id="results"></ul>
     <h3 id="savedtitle" hidden>Saved</h3>
     <ul id="saved"></ul>
-    <p class="privacy">A place you choose is kept in this browser only. It is rounded to about a kilometre before anything is asked about it, and it is never sent to this site.</p>
+    <p class="privacy">A place you choose is kept in this browser only. It is rounded to about a kilometre before anything is asked about it, and it is never stored by this site. Without one, the page shows the whole country.</p>
   </div>
 </dialog>
 
 <noscript><p style="text-align:center;padding:20px">The weather room needs JavaScript to ask the forecast services.</p></noscript>
 
 <script src="effects.js"></script>
-<script src="projects/weather/wx.js?v=1"></script>
+<script src="projects/weather/wx.js?v=2"></script>
+<script src="projects/weather/sounding.js?v=1"></script>
+<script src="projects/weather/draw.js?v=1"></script>
 <script>
 (() => {
   "use strict";
-  const Wx = window.Wx;
+  const Wx = window.Wx, Snd = window.Sounding, Draw = window.WxDraw;
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -402,22 +505,32 @@
     del(k) { try { localStorage.removeItem(k); } catch (e) {} }
   };
   const cleanPlace = (p) => p && Wx.validLat(+p.lat) && Wx.validLon(+p.lon)
-    ? { name: String(p.name || "A place").slice(0, 80), region: String(p.region || "").slice(0, 80), lat: Wx.round2(p.lat), lon: Wx.round2(p.lon), here: !!p.here }
+    ? { name: String(p.name || "A place").slice(0, 80), region: String(p.region || "").slice(0, 80), lat: Wx.round2(p.lat), lon: Wx.round2(p.lon), here: !!p.here, approx: !!p.approx }
     : null;
 
-  /* The one state the whole page reads (DESIGN.md §6): a place and a time. */
+  /* The one state the whole page reads (DESIGN.md §6): a place — or none,
+     which is the whole country — and a time. */
   const S = {
     place: cleanPlace(store.get("wx:place", null)),
     saved: (store.get("wx:saved", []) || []).map(cleanPlace).filter(Boolean).slice(0, 12),
     units: store.get("wx:units", "us") === "metric" ? "metric" : "us",
     fc: null, fcStale: false, pt: undefined, obs: undefined, office: undefined, alerts: undefined,
-    err: {}, checked: {}, selected: null, ctl: null, loadedAt: 0
+    state: undefined, national: undefined, outlook: undefined,
+    err: {}, checked: {}, selected: null, ctl: null, loadedAt: 0, fastAt: 0, focusedStorm: null
   };
   const placeKey = (p) => `${Wx.coord(p.lat)},${Wx.coord(p.lon)}`;
   const U = () => S.units;
   const deg = (c) => Wx.fmt.temp(c, U()) + "°";
   const clk = () => Wx.clock((S.fc && S.fc.tz) || (S.pt && S.pt.tz) || undefined);
   const nowSec = () => Math.floor(Date.now() / 1000);
+  const dist = (km) => U() === "us" ? `${Math.max(1, Math.round(km / 1.609344))} mi` : `${Math.max(1, Math.round(km))} km`;
+  const speed = (kmh) => U() === "us" ? `${Math.round(kmh / 1.609344)} mph` : `${Math.round(kmh)} km/h`;
+  const inUS = () => S.pt !== null;      // undefined while asking: assume yes
+
+  /* Warning types, worst first: what storm mode is ordered by and coloured by. */
+  const EV = { "Tornado Warning": ["tor", 5], "Extreme Wind Warning": ["eww", 4], "Severe Thunderstorm Warning": ["svr", 3], "Flash Flood Warning": ["ffw", 2], "Snow Squall Warning": ["other", 1] };
+  const evOf = (a) => EV[a.event] || ["other", 0];
+  const byDanger = (a, b) => (b.emergency - a.emergency) || (evOf(b)[1] - evOf(a)[1]);
 
   /* ── the pictures ── */
   function icon(kind, day = true, label = "") {
@@ -443,7 +556,6 @@
     }
     return `<svg viewBox="0 0 32 32" ${label ? `role="img" aria-label="${esc(label)}"` : 'aria-hidden="true"'}>${body}</svg>`;
   }
-
   const skyOf = (kind, day) => {
     const k = { clear: "clear", partly: "partly", cloudy: "cloudy", fog: "fog", drizzle: "rain", rain: "rain", sleet: "rain", snow: "snow", storm: "storm" }[kind] || "partly";
     return `${k}-${day ? "day" : "night"}`;
@@ -452,17 +564,42 @@
   /* ── loading ──
      Each source arrives on its own and draws its own part (§35.1): a dead
      station never blanks the forecast, a slow NWS never holds up the hero. */
-  async function load() {
-    if (!S.place) return;
+  function begin() {
     if (S.ctl) S.ctl.abort();
-    const ctl = S.ctl = new AbortController();
+    return (S.ctl = new AbortController());
+  }
+
+  /* No place: the whole country (§8.3) — every storm-based warning and
+     watch, SPC's outlook for today, and the national radar. */
+  async function loadUS() {
+    const ctl = begin();
+    const live = () => !ctl.signal.aborted && !S.place;
+    S.err = {};
+    render();
+    radar.showUS();
+    const jobs = [
+      Wx.national(ctl.signal).then((a) => { if (live()) { S.national = a; S.checked.national = Date.now(); render(); radar.draw(); } })
+        .catch((e) => { if (live()) { S.national = null; S.err.national = e; render(); } }),
+      loadOutlook(ctl.signal, live)
+    ];
+    await Promise.allSettled(jobs);
+    if (live()) S.loadedAt = Date.now();
+  }
+  function loadOutlook(signal, live) {
+    return Wx.outlook("day1otlk_cat", signal).then((o) => { if (live()) { S.outlook = o; S.checked.outlook = Date.now(); render(); radar.draw(); } })
+      .catch((e) => { if (live()) { S.outlook = null; S.err.outlook = e; render(); } });
+  }
+
+  async function load() {
+    if (!S.place) return loadUS();
+    const ctl = begin();
     const { lat, lon } = S.place;
     const key = placeKey(S.place);
-    const placeAtStart = key;
-    const live = () => !ctl.signal.aborted && S.place && placeKey(S.place) === placeAtStart;
+    const live = () => !ctl.signal.aborted && S.place && placeKey(S.place) === key;
     S.err = {};
     if (!S.fc || S.fc.key !== key) {
-      Object.assign(S, { fc: null, fcStale: false, pt: undefined, obs: undefined, office: undefined, alerts: undefined, selected: null });
+      Object.assign(S, { fc: null, fcStale: false, pt: undefined, obs: undefined, office: undefined, alerts: undefined, state: undefined, selected: null, focusedStorm: null });
+      sky.reset();
       /* The last forecast for this place, kept in this browser so a phone
          with no signal still has something to show (§34) — labelled as old. */
       const cached = store.get("wx:last", null);
@@ -491,42 +628,172 @@
         const pt = await Wx.point(lat, lon, ctl.signal);
         if (!live()) return;
         S.pt = pt; render();
-        if (!pt) { S.obs = null; S.office = null; render(); return; }
+        if (!pt) { Object.assign(S, { obs: null, office: null, state: null }); render(); return; }
         if (S.place.here && pt.city && S.place.name !== "Near " + pt.city) {
           S.place.name = "Near " + pt.city; S.place.region = ""; store.set("wx:place", S.place); renderPlace();
         }
         await Promise.all([
-          Wx.observation(pt, lat, lon, ctl.signal).then((o) => { if (live()) { S.obs = o; S.checked.obs = Date.now(); render(); } })
+          Wx.observation(pt, lat, lon, ctl.signal).then((o) => { if (live()) { S.obs = o; render(); } })
             .catch((e) => { if (live()) { S.obs = null; S.err.obs = e; render(); } }),
           Wx.officeForecast(pt, ctl.signal).then((f) => { if (live()) { S.office = f; render(); } })
-            .catch((e) => { if (live()) { S.office = null; S.err.office = e; render(); } })
+            .catch((e) => { if (live()) { S.office = null; S.err.office = e; render(); } }),
+          loadState(ctl.signal, live)
         ]);
       } catch (e) {
         if (!live()) return;
-        S.pt = null; S.obs = null; S.office = null; S.err.pt = e; render();
+        Object.assign(S, { pt: null, obs: null, office: null, state: null }); S.err.pt = e; render();
       }
     })();
 
-    const alertJob = Wx.alerts(lat, lon, ctl.signal)
-      .then((a) => { if (live()) { S.alerts = a; S.checked.alerts = Date.now(); render(); radar.draw(); } })
-      .catch((e) => { if (live()) { S.alerts = null; S.err.alerts = e; render(); } });
-
-    await Promise.allSettled([fcJob, nwsJob, alertJob]);
+    const alertJob = loadAlerts(ctl.signal, live);
+    await Promise.allSettled([fcJob, nwsJob, alertJob, loadOutlook(ctl.signal, live)]);
     if (live()) S.loadedAt = Date.now();
+  }
+  function loadAlerts(signal, live) {
+    const { lat, lon } = S.place;
+    return Wx.alerts(lat, lon, signal)
+      .then((a) => { if (live()) { S.alerts = a; S.checked.alerts = Date.now(); render(); radar.draw(); stormFocus(); } })
+      .catch((e) => { if (live()) { S.alerts = null; S.err.alerts = e; render(); } });
+  }
+  function loadState(signal, live) {
+    if (!S.pt || !S.pt.state) { S.state = null; return Promise.resolve(); }
+    return Wx.stateAlerts(S.pt.state, signal)
+      .then((a) => { if (live()) { S.state = a; S.checked.state = Date.now(); render(); radar.draw(); } })
+      .catch(() => { if (live()) { S.state = null; render(); } });
+  }
+
+  /* Storm warnings that cover the place: the point query returns alerts whose
+     area holds it; a storm warning's area is its polygon. */
+  const stormsHere = () => (S.place && S.alerts ? S.alerts.filter((a) => a.storm && (!a.polygon || Wx.inPolygon(S.place.lat, S.place.lon, a.polygon))) : []).sort(byDanger);
+  /* Storm warnings in the same state that don't, nearest first, within 250 km. */
+  function stormsNear() {
+    if (!S.place || !S.state) return [];
+    const mine = new Set((S.alerts || []).map((a) => a.id));
+    return S.state.filter((a) => a.storm && !mine.has(a.id)).map((a) => {
+      const tr = a.motion ? Wx.stormTrack(a.motion, S.place.lat, S.place.lon) : null;
+      const km = tr ? tr.km : a.polygon ? polyDistanceKm(a.polygon) : null;
+      return { a, tr, km };
+    }).filter((x) => x.km !== null && x.km < 250).sort((x, y) => x.km - y.km || byDanger(x.a, y.a));
+  }
+  function polyDistanceKm(poly) {
+    const ring = poly[0];
+    let best = Infinity;
+    for (const [lon, lat] of ring) best = Math.min(best, Wx.distanceM(S.place.lat, S.place.lon, lat, lon) / 1000);
+    return Wx.inPolygon(S.place.lat, S.place.lon, poly) ? 0 : best;
+  }
+  /* The first time a storm warning covers the place, swing the radar to it. */
+  function stormFocus() {
+    const s = stormsHere()[0];
+    if (!s || S.focusedStorm === s.id) return;
+    S.focusedStorm = s.id;
+    radar.focusStorm(s);
   }
 
   /* ── drawing ── */
   function renderPlace() {
-    $("#placename").textContent = S.place ? S.place.name + (S.place.region ? ", " + S.place.region : "") : "Choose a place";
+    const p = S.place;
+    $("#placename").textContent = p ? p.name + (p.region ? ", " + p.region : "") + (p.approx ? " (approx.)" : "") : "Across the US";
     $("#units").textContent = S.units === "us" ? "°F" : "°C";
+    $("#usview").setAttribute("aria-pressed", String(!p));
   }
 
+  const PLACE_CARDS = ["#next", "#hourly", "#daily", "#sky", "#t-wind", "#t-humid", "#t-press", "#t-vis", "#t-uv", "#t-sun"];
   function render() {
     renderPlace();
-    if (!S.place) { $("#cards").hidden = true; return; }
-    $("#cards").hidden = false;
-    renderHero(); renderAlerts(); renderNext(); renderHourly(); renderDaily(); renderTiles(); renderSources();
+    const us = !S.place;
+    for (const c of PLACE_CARDS) $(c).hidden = us || !S.fc;
+    $("#sky").hidden = us || !S.fc;
+    $("#national").hidden = !us;
+    if (us) {
+      $("#alerts").hidden = true; $("#nearby").hidden = true; $("#storms").hidden = true;
+      document.body.classList.remove("storming");
+      document.title = "/weather — the sky over you";
+      renderUSHero(); renderNational(); renderSources(); radar.label();
+      return;
+    }
+    renderStorms(); renderHero(); renderAlerts(); renderNearby(); renderNext(); renderHourly(); renderDaily(); renderTiles(); renderSources();
     radar.label();
+  }
+
+  /* ── the country, with no place ── */
+  function renderUSHero() {
+    const n = S.national;
+    const count = (ev) => (n || []).filter((a) => a.event === ev).length;
+    const parts = [["Tornado Warning", "tornado warning"], ["Severe Thunderstorm Warning", "severe thunderstorm warning"], ["Flash Flood Warning", "flash flood warning"], ["Extreme Wind Warning", "extreme wind warning"], ["Tornado Watch", "tornado watch"], ["Severe Thunderstorm Watch", "severe thunderstorm watch"]]
+      .map(([ev, w]) => [count(ev), w, /Tornado W|Extreme/.test(ev)]).filter(([c]) => c);
+    const top = (S.outlook || []).reduce((b, o) => (!b || o.rank > b.rank ? o : b), null);
+    document.body.dataset.sky = "partly-day";
+    $("#hero").innerHTML = `
+      <div class="where">Across the US right now</div>
+      ${n === undefined ? `<p class="sub">Asking the National Weather Service…</p>`
+        : n === null ? `<p class="sub">The National Weather Service did not answer. The radar still works.</p>`
+        : parts.length ? `<div class="counts">${parts.map(([c, w, hot]) => `<span class="${hot ? "hot" : ""}">${c} ${w}${c === 1 ? "" : "s"}</span>`).join("")}</div>`
+        : `<p class="sub" style="margin-top:10px">No tornado, severe thunderstorm or flash flood warnings anywhere in the country.</p>`}
+      ${top && top.rank >= 2 ? `<div><span class="risk" style="background:${esc(top.fill || "")};color:#111">SPC today: ${esc(top.name)} somewhere</span></div>` : ""}
+      <p class="sub" style="margin-top:16px">For your own forecast, rain timing and the air above you:</p>
+      <div style="margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="go" type="button" data-locate>Use my location</button>
+        <button class="chip" type="button" data-open-places style="min-height:48px">Search a place</button>
+      </div>`;
+  }
+  function renderNational() {
+    const box = $("#national");
+    const n = S.national;
+    if (n === undefined) { box.innerHTML = `<h2>Warnings across the US</h2><p class="loading">Loading…</p>`; return; }
+    if (n === null) { box.innerHTML = `<h2>Warnings across the US</h2><p class="err">The National Weather Service did not answer. Trying again in a minute.</p>`; return; }
+    const list = n.slice().sort((a, b) => byDanger(a, b) || (b.sent || 0) - (a.sent || 0));
+    box.innerHTML = `<h2>Warnings across the US<span class="src">NWS · tap one to see it on the radar</span></h2>` +
+      (list.length ? list.slice(0, 60).map((a) => warnRow(a, null)).join("") : `<p class="dim">Nothing active. Quiet skies.</p>`) +
+      (list.length > 60 ? `<p class="dim" style="margin-top:8px">…and ${list.length - 60} more.</p>` : "");
+  }
+  function warnRow(a, tr, km) {
+    const k = clk();
+    const bits = [];
+    if (tr) bits.push(trackLine(tr, true));
+    else if (km != null) bits.push(km === 0 ? "covers this place" : `${dist(km)} away`);
+    if (a.detection) bits.push(a.detection.toLowerCase());
+    if (a.hail) bits.push(`hail ${a.hail}"`);
+    if (a.gust) bits.push(`gusts ${a.gust} mph`);
+    return `<button class="warn" type="button" data-focus="${esc(a.id)}" data-tone="${a.tone}">
+      <i></i><div><b>${a.emergency ? "⚠ " : ""}${esc(a.event)}</b><span>${esc(a.area.split(";").slice(0, 3).join(";"))}${a.area.split(";").length > 3 ? "…" : ""}</span>${bits.length ? `<span>${esc(bits.join(" · "))}</span>` : ""}</div>
+      <em>${a.ends ? "until " + esc(k.time(a.ends)) : ""}</em></button>`;
+  }
+  /* The warning's own motion, carried forward and said plainly. `short` for a list row. */
+  function trackLine(tr, short) {
+    const where = tr.state === "over" ? "over this place now" : `${dist(tr.km)} ${Wx.compass(tr.bearing)}`;
+    const going = `moving ${Wx.compass(tr.toward)} at ${speed(tr.kmh)}`;
+    const k = clk();
+    const then = tr.state === "approaching" && tr.eta ? `could reach here around ${k.time(tr.eta)}`
+      : tr.state === "passing" ? `on track to pass about ${dist(tr.passKm)} away`
+      : tr.state === "away" ? "moving away from here" : "";
+    return short ? [where, going, then].filter(Boolean).join(", ") : { where, going, then };
+  }
+
+  /* ── storm mode ── */
+  function renderStorms() {
+    const box = $("#storms");
+    const list = stormsHere();
+    document.body.classList.toggle("storming", list.length > 0);
+    document.title = list.length ? `⚠ ${list[0].event} — /weather` : "/weather — the sky over you";
+    if (!list.length) { box.hidden = true; box.innerHTML = ""; return; }
+    box.hidden = false;
+    const k = clk();
+    box.innerHTML = list.map((a) => {
+      const tr = a.motion ? Wx.stormTrack(a.motion, S.place.lat, S.place.lon) : null;
+      const t = tr && trackLine(tr);
+      const chips = [a.detection && (/observed/i.test(a.detection) ? "Tornado OBSERVED" : a.detection.toLowerCase().replace(/^./, (c) => c.toUpperCase())),
+        a.threat && `${a.threat.toLowerCase()} damage threat`, a.hail && `Hail up to ${a.hail} in`, a.gust && `Gusts to ${a.gust} mph`, a.pds && "Particularly dangerous situation"].filter(Boolean);
+      return `<section class="storm${a.emergency ? " emergency" : ""}" data-ev="${evOf(a)[0]}" aria-label="${esc(a.event)}">
+        <div class="kicker">${a.emergency ? "Emergency · " : ""}You are inside this warning</div>
+        <h2>${esc(a.event)}</h2>
+        <div class="until">Until ${esc(a.ends ? k.time(a.ends) : "further notice")} · ${esc(a.sender)}</div>
+        ${chips.length ? `<div class="chips">${chips.map((c) => `<span>${esc(c)}</span>`).join("")}</div>` : ""}
+        ${t ? `<div class="track">The storm is ${esc(t.where)}, ${esc(t.going)}${t.then ? `.<br>${esc(t.then[0].toUpperCase() + t.then.slice(1))}` : ""}.
+          <small>Worked out from the warning's own storm motion, issued ${esc(Wx.age(tr.age))} ago. An estimate — act on the warning, not on this time.</small></div>` : ""}
+        ${a.instruction ? `<div class="todo"><b>What to do:</b> ${esc(a.instruction)}</div>` : ""}
+        <div class="from">The full text is under Official alerts. Radar below follows the storm.</div>
+      </section>`;
+    }).join("");
   }
 
   function renderHero() {
@@ -548,20 +815,22 @@
       : "";
     let from;
     if (c.from === "observation") {
-      const f = Wx.fresh("observation", c.time);
-      from = `<span>Observed at ${esc(S.obs.station)}${S.obs.dist != null ? " · " + Wx.fmt.dist(S.obs.dist, U()) + " " + Wx.UNITS[U()].dist + " away" : ""} · <span data-age="${c.time}">${f.age}</span> ago</span>`;
+      from = `<span>Observed at ${esc(S.obs.station)}${S.obs.dist != null ? " · " + Wx.fmt.dist(S.obs.dist, U()) + " " + Wx.UNITS[U()].dist + " away" : ""} · <b data-age="${c.time}">${Wx.age(Date.now() - c.time)}</b> ago</span>`;
     } else {
-      from = `<span${S.fcStale ? ' class="delayed"' : ""}>${S.fcStale ? "Offline — saved forecast from " : "Model estimate · Open-Meteo · "}<span data-age="${fc.fetchedAt}">${Wx.age(Date.now() - fc.fetchedAt)}</span> ago</span>`;
+      from = `<span${S.fcStale ? ' class="delayed"' : ""}>${S.fcStale ? "Offline — saved forecast from " : "Model estimate · Open-Meteo · "}<b data-age="${fc.fetchedAt}">${Wx.age(Date.now() - fc.fetchedAt)}</b> ago</span>`;
     }
+    const risk = Wx.outlookAt(S.outlook, S.place.lat, S.place.lon);
+    const approx = S.place.approx ? `<div class="from"><span>Approximate place, from your internet connection · <a href="#" data-open-places>set yours</a></span></div>` : "";
     hero.innerHTML = `
       <div class="where">${esc(S.place.name)}</div>
       <div class="temp num" aria-label="${esc(deg(c.temp.v))}">${Wx.fmt.temp(c.temp.v, U())}<sup>°</sup></div>
       <div class="cond">${icon(c.kind, c.isDay)}<span>${esc(c.text)}</span></div>
       <div class="sub num">Feels like ${deg(c.feels.v)} · H ${deg(today.hi)} L ${deg(today.lo)}</div>
       ${wind ? `<div class="sub num">${esc(wind)}</div>` : ""}
-      <div class="rainline${rain.state === "now" || rain.state === "stopping" || rain.state === "starting" ? " wet" : ""}">${esc(rain.text)}</div>
-      ${S.alerts && S.alerts.length ? `<div class="from"><a href="#alerts"><span style="background:rgba(160,30,30,.85)">⚠ ${esc(S.alerts[0].event)}${S.alerts.length > 1 ? ` +${S.alerts.length - 1}` : ""}</span></a></div>` : ""}
-      <div class="from">${from}</div>`;
+      <div class="rainline${["now", "stopping", "starting"].includes(rain.state) ? " wet" : ""}">${esc(rain.text)}</div>
+      ${risk && risk.rank >= 2 ? `<div><span class="risk" style="background:${esc(risk.fill || "")};color:#111">SPC: ${esc(risk.name)} of severe storms here today</span></div>` : ""}
+      ${S.alerts && S.alerts.length && !stormsHere().length ? `<div class="from"><a href="#alerts"><span style="background:rgba(160,30,30,.85)">⚠ ${esc(S.alerts[0].event)}${S.alerts.length > 1 ? ` +${S.alerts.length - 1}` : ""}</span></a></div>` : ""}
+      <div class="from">${from}</div>${approx}`;
   }
 
   function renderAlerts() {
@@ -570,10 +839,10 @@
     if (!a || !a.length) { box.hidden = true; box.innerHTML = ""; return; }
     box.hidden = false;
     const k = clk();
-    const when = (ms) => ms ? k.full(ms) : "until further notice";
+    const open = new Set([...box.querySelectorAll("details[open]")].map((d) => d.dataset.id));
     box.innerHTML = `<h2>Official alerts<span class="src">National Weather Service</span></h2>` + a.map((x) => `
-      <details class="alert" data-tone="${x.tone}">
-        <summary><span class="ev">${esc(x.event)}</span><span class="until">until ${esc(when(x.ends))}</span></summary>
+      <details class="alert" data-tone="${x.tone}" data-id="${esc(x.id)}"${open.has(x.id) ? " open" : ""}>
+        <summary><span class="ev">${esc(x.event)}</span><span class="until">until ${esc(x.ends ? k.full(x.ends) : "further notice")}</span></summary>
         <div class="body">
           ${x.headline ? `<p><b>${esc(x.headline)}</b></p>` : ""}
           ${x.description ? `<p>${esc(x.description)}</p>` : ""}
@@ -583,17 +852,27 @@
       </details>`).join("");
   }
 
+  function renderNearby() {
+    const box = $("#nearby");
+    const near = stormsNear();
+    if (!near.length) { box.hidden = true; box.innerHTML = ""; return; }
+    box.hidden = false;
+    box.innerHTML = `<h2>Warnings nearby<span class="src">NWS · ${esc(S.pt && S.pt.state || "")} · tap for radar</span></h2>` +
+      near.slice(0, 12).map(({ a, tr, km }) => warnRow(a, tr, km)).join("") +
+      `<p class="nextnote">Distances and arrival times are worked out from each warning's own storm motion — estimates, not warnings.</p>`;
+  }
+
   function renderNext() {
     const box = $("#next");
     const fc = S.fc;
-    if (!fc) { box.innerHTML = `<h2>Next 3 hours</h2><p class="loading">${S.err.fc ? "No forecast to read." : "Loading…"}</p>`; return; }
+    if (!fc) return;
     const k = clk();
     const now = nowSec();
     const rain = Wx.rainOutlook(fc, now, 3, (s) => k.time(s * 1000));
     let slots = fc.minutely.filter((s) => s.t > now - 900 && s.t - 900 < now + 3 * 3600);
     const hourly = slots.length < 6;
     if (hourly) slots = fc.hourly.filter((h) => h.t + 3600 > now && h.t < now + 3 * 3600).map((h) => ({ t: h.t + 3600, precip: h.precip, snow: 0 }));
-    const per = hourly ? 1 : 4;              // to mm per hour
+    const per = hourly ? 1 : 4;
     const max = Math.max(2, ...slots.map((s) => (s.precip || 0) * per));
     const bars = slots.map((s) => {
       const rate = (s.precip || 0) * per;
@@ -611,7 +890,7 @@
   function renderHourly() {
     const box = $("#hourly");
     const fc = S.fc;
-    if (!fc) { box.innerHTML = `<h2>Hourly</h2><p class="loading">${S.err.fc ? "No forecast to read." : "Loading…"}</p>`; return; }
+    if (!fc) return;
     const k = clk();
     const hours = Wx.upcomingHours(fc, nowSec(), 25);
     if (S.selected && !hours.some((h) => h.t === S.selected)) S.selected = null;
@@ -668,7 +947,7 @@
   function renderDaily() {
     const box = $("#daily");
     const fc = S.fc;
-    if (!fc) { box.innerHTML = `<h2>10 days</h2><p class="loading">${S.err.fc ? "No forecast to read." : "Loading…"}</p>`; return; }
+    if (!fc) return;
     const k = clk();
     const days = Wx.upcomingDays(fc, nowSec()).filter((d) => d.hi != null && d.lo != null).slice(0, 10);
     const open = new Set([...box.querySelectorAll("details[open]")].map((d) => d.dataset.day));
@@ -679,7 +958,7 @@
     const u = Wx.UNITS[U()];
     box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" stroke-width="1.5"/></svg>${days.length}-day forecast<span class="src">model${periods.length ? " + NWS words" : ""}</span></h2>` +
       days.map((d, i) => {
-        const ms = d.t * 1000 + 12 * 3600e3;       // midday, safely inside the local day
+        const ms = d.t * 1000 + 12 * 3600e3;
         const c = Wx.condition(d.code);
         const left = (d.lo - lo) / span * 100, width = (d.hi - d.lo) / span * 100;
         const dot = i === 0 && cur != null ? `<b style="left:${Math.min(100, Math.max(0, (cur - lo) / span * 100))}%"></b>` : "";
@@ -710,9 +989,7 @@
 
   function renderTiles() {
     const fc = S.fc;
-    const tiles = ["#t-wind", "#t-humid", "#t-press", "#t-vis", "#t-uv", "#t-sun"];
-    if (!fc) { tiles.forEach((t) => { $(t).innerHTML = ""; $(t).hidden = true; }); return; }
-    tiles.forEach((t) => { $(t).hidden = false; });
+    if (!fc) return;
     const c = Wx.currentConditions(fc, S.obs || null);
     const u = Wx.UNITS[U()];
     const k = clk();
@@ -727,7 +1004,7 @@
       <div class="dial">
         <svg viewBox="0 0 74 74" role="img" aria-label="${dir != null ? "From the " + Wx.compass(dir) : "Direction unknown"}">
           <circle cx="37" cy="37" r="33" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2"/>
-          <text x="37" y="13" text-anchor="middle" font-size="10" fill="#fff" font-weight="600">N</text>
+          <text x="37" y="13" text-anchor="middle" font-size="11" fill="#fff" font-weight="600">N</text>
           ${dir != null ? `<g transform="rotate(${dir + 180} 37 37)"><path d="M37 8l6 14h-12z" fill="#fff"/><line x1="37" y1="20" x2="37" y2="62" stroke="#fff" stroke-width="2.5"/></g>` : ""}
         </svg>
         <div><div class="big num">${Wx.fmt.wind(c.wind.v, U())} <small style="font-size:15px">${u.wind}</small></div>
@@ -766,30 +1043,34 @@
     const now = Date.now();
     const rows = [];
     const row = (state, title, sub, at) => rows.push(`<div class="feed"><i class="${state}"></i><div class="what"><b>${title}</b>${sub ? `<span>${sub}</span>` : ""}</div><div class="age">${at ? `<span data-age="${at}">${Wx.age(now - at)}</span> ago` : ""}</div></div>`);
-    const us = S.pt !== null;
-
-    if (S.obs) {
-      const f = Wx.fresh("observation", S.obs.time);
-      row(f.stale ? "stale" : "", `Station ${esc(S.obs.station)}${f.stale ? " — delayed" : ""}`, `${esc(S.obs.stationName)}${S.obs.dist != null ? " · " + Wx.fmt.dist(S.obs.dist, U()) + " " + Wx.UNITS[U()].dist + " away" : ""} · observation`, S.obs.time);
-    } else row("off", "Station observation", S.pt === undefined || S.obs === undefined ? "asking…" : us ? "no recent report nearby — showing the model" : "NWS stations cover the US only", null);
-
-    if (S.fc) row(S.fcStale ? "stale" : "", `Forecast model${S.fcStale ? " — offline copy" : ""}`, `Open-Meteo best match (NOAA HRRR/GFS in the US) · fetched ${S.fc.via === "worker" ? "through this site" : S.fc.via === "direct" ? "directly" : "earlier"}`, S.fc.fetchedAt);
-    else row("off", "Forecast model", S.err.fc ? "not answering" : "asking…", null);
-
-    if (S.office) {
-      const f = Wx.fresh("forecast", S.office.updated);
-      row(f.stale ? "stale" : "", `NWS forecast office ${esc(S.pt && S.pt.office || "")}`, "the office's own words, under each day · updated", S.office.updated);
-    } else row("off", "NWS forecast office", S.office === undefined ? "asking…" : us ? "not answering" : "US only", null);
-
-    if (S.alerts) row("", `Alerts — ${S.alerts.length ? S.alerts.length + " active" : "none active"}`, "National Weather Service · checked", S.checked.alerts);
-    else row("off", "Alerts", S.alerts === undefined ? "asking…" : us ? "could not be checked" : "US only", null);
-
+    if (!S.place) {
+      if (S.national) row("", `Warnings — ${S.national.length} active`, "National Weather Service · checked", S.checked.national);
+      else row("off", "Warnings", S.national === undefined ? "asking…" : "not answering", null);
+    } else {
+      const us = inUS();
+      if (S.obs) {
+        const f = Wx.fresh("observation", S.obs.time);
+        row(f.stale ? "stale" : "", `Station ${esc(S.obs.station)}${f.stale ? " — delayed" : ""}`, `${esc(S.obs.stationName)}${S.obs.dist != null ? " · " + Wx.fmt.dist(S.obs.dist, U()) + " " + Wx.UNITS[U()].dist + " away" : ""} · observation`, S.obs.time);
+      } else row("off", "Station observation", S.pt === undefined || S.obs === undefined ? "asking…" : us ? "no recent report nearby — showing the model" : "NWS stations cover the US only", null);
+      if (S.fc) row(S.fcStale ? "stale" : "", `Forecast model${S.fcStale ? " — offline copy" : ""}`, `Open-Meteo best match (NOAA HRRR/GFS in the US) · fetched ${S.fc.via === "worker" ? "through this site" : S.fc.via === "direct" ? "directly" : "earlier"}`, S.fc.fetchedAt);
+      else row("off", "Forecast model", S.err.fc ? "not answering" : "asking…", null);
+      if (S.office) {
+        const f = Wx.fresh("forecast", S.office.updated);
+        row(f.stale ? "stale" : "", `NWS forecast office ${esc(S.pt && S.pt.office || "")}`, "the office's own words, under each day · updated", S.office.updated);
+      } else row("off", "NWS forecast office", S.office === undefined ? "asking…" : us ? "not answering" : "US only", null);
+      if (S.alerts) row("", `Alerts — ${S.alerts.length ? S.alerts.length + " active here" : "none here"}`, "National Weather Service · checked", S.checked.alerts);
+      else row("off", "Alerts", S.alerts === undefined ? "asking…" : us ? "could not be checked" : "US only", null);
+    }
+    if (S.outlook) {
+      const o = S.outlook[0];
+      row("", "SPC convective outlook, day 1", `Storm Prediction Center${o && o.forecaster ? " · " + esc(o.forecaster) : ""} · issued`, o ? o.issued : S.checked.outlook);
+    } else row("off", "SPC convective outlook", S.outlook === undefined ? "asking…" : "not answering", null);
     const rv = radar.valid;
     if (rv) {
       const f = Wx.fresh("radar", rv);
-      row(f.stale ? "stale" : "", `Radar${f.stale ? " — delayed" : ""}`, "NEXRAD base reflectivity, US composite (IEM) · latest scan", rv);
+      row(f.stale ? "stale" : "", `Radar${f.stale ? " — delayed" : ""}`, `${esc(radar.describe())} · latest scan`, rv);
     } else row("off", "Radar", radar.started ? "scan time unknown" : "loads when you reach it", null);
-
+    if (sky.source) row(sky.source.stale ? "stale" : "", esc(sky.source.title), esc(sky.source.sub), sky.source.at);
     $("#sources").innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13V9M6 13V6M10 13V3M14 13V8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Where this comes from</h2><div class="feeds">${rows.join("")}</div>`;
   }
 
@@ -799,25 +1080,58 @@
   }, 15000);
 
   /* ── radar ──
-     A small slippy map, no library: OpenStreetMap underneath (darkened), the
-     NEXRAD composite on top as eleven layers — one per five minutes — and the
-     place and any alert polygons drawn over both. It loads only when it
-     scrolls into view, and the older frames only once the newest is up. */
+     A small slippy map, no library: OpenStreetMap underneath (darkened), a
+     radar layer on top as a stack of frames, and the place, warning polygons,
+     storm tracks and SPC's outlook drawn over both. Three layers:
+       comp  the NEXRAD US mosaic, every 5 minutes for the last 50
+       N0B   one radar site's super-resolution reflectivity, every scan in the last hour
+       N0S   the same site's storm-relative velocity
+     The site is the nearest NEXRAD to the middle of the map, and follows it.
+     It loads only when it scrolls into view. */
   const radar = (() => {
-    const TILE = 256, MINZ = 4, MAXZ = 10;
+    const TILE = 256, MINZ = 3, MAXZ = 11;
     const el = $("#radar"), baseL = $("#radarbase"), framesL = $("#radarframes"), over = $("#radarover");
-    const R = { z: 7, cx: 0, cy: 0, lat: null, lon: null, frame: 10, playing: false, timer: 0, started: false, valid: null, frames: [], loadedOld: false, visible: false };
+    const R = { z: 7, cx: 0, cy: 0, lat: null, lon: null, frame: 0, playing: false, timer: 0, started: false, visible: false,
+      mode: "comp", valid: null, frames: [], loadedOld: false, site: null, sites: null, outlook: false, us: false, frameT: null };
     const lngX = (lng, z) => (lng + 180) / 360 * TILE * 2 ** z;
     const latY = (lat, z) => { const s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TILE * 2 ** z; };
-    const bucket = () => Math.floor(Date.now() / 300000);
-
-    for (let i = 0; i < Wx.RADAR_STEPS.length; i++) {
-      const d = document.createElement("div");
-      d.className = "layer frame" + (i === 10 ? " on" : "");
-      framesL.appendChild(d);
-      R.frames.push({ el: d, mins: Wx.RADAR_STEPS[i], tiles: new Map() });
-    }
+    const xLng = (x, z) => x / (TILE * 2 ** z) * 360 - 180;
+    const yLat = (y, z) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / (TILE * 2 ** z)))) * 180 / Math.PI;
+    const bucket = () => Math.floor(Date.now() / 120e3);
     const baseTiles = new Map();
+
+    function clearTiles() {
+      for (const c of [baseTiles, ...R.frames.map((f) => f.tiles)]) { for (const img of c.values()) img.remove(); c.clear(); }
+    }
+    function setFrames(list) {
+      framesL.innerHTML = "";
+      R.frames = list.map((f) => {
+        const d = document.createElement("div");
+        d.className = "layer frame";
+        framesL.appendChild(d);
+        return { ...f, el: d, tiles: new Map() };
+      });
+      R.frame = Math.max(0, R.frames.length - 1);
+      R.loadedOld = false;
+      $("#scrub").max = String(Math.max(0, R.frames.length - 1));
+      draw(); show(R.frame);
+    }
+    function compFrames() {
+      const b = bucket();
+      setFrames(Wx.RADAR_STEPS.map((mins) => ({ t: R.valid ? R.valid - mins * 60e3 : null, mins,
+        url: (z, x, y) => Wx.radarTile(mins, z, x, y, b) })));
+    }
+    async function siteFrames(onlyIfNew) {
+      if (!R.site) return;
+      let scans = [];
+      try { scans = await Wx.siteScans(R.site.id, R.mode); } catch (e) {}
+      /* a refresh with no new scan leaves the loop alone */
+      if (onlyIfNew && (!scans.length || scans[scans.length - 1].t === R.valid)) return;
+      if (!scans.length) { setFrames([]); note(`No scans from ${R.site.id} in the last hour — the radar may be down for maintenance. Try the US mosaic.`); return; }
+      R.valid = scans[scans.length - 1].t;
+      setFrames(scans.map((s) => ({ t: s.t, url: (z, x, y) => Wx.tileUrl(s.layer, z, x, y) })));
+      renderSources();
+    }
 
     function place(layer, cache, url, w, h, left, top) {
       const n = 2 ** R.z, seen = new Set();
@@ -840,47 +1154,79 @@
       for (const [key, img] of cache) if (!seen.has(key)) { img.remove(); cache.delete(key); }
     }
 
+    /* everything drawn over the tiles */
+    function overlay(left, top) {
+      const pt = (lat, lon) => [lngX(lon, R.z) - left, latY(lat, R.z) - top];
+      const ring = (r) => r.map(([lon, lat]) => pt(lat, lon).map((v) => v.toFixed(1)).join(",")).join(" ");
+      const out = [];
+      if (R.outlook && S.outlook) {
+        for (const o of S.outlook.slice().sort((a, b) => a.rank - b.rank)) {
+          const d = o.polys.map((poly) => poly.map((r) => "M" + ring(r).replace(/ /g, " L")).join(" ") + " Z").join(" ");
+          out.push(`<path d="${d}" fill="${esc(o.fill || "#888")}" fill-opacity=".28" fill-rule="evenodd" stroke="${esc(o.stroke || "#888")}" stroke-width="1.6"/>`);
+        }
+      }
+      const warns = [...(S.place ? (S.alerts || []) : []), ...(S.place ? (S.state || []) : (S.national || []))];
+      const seen = new Set();
+      for (const a of warns) {
+        if (!a.polygon || seen.has(a.id)) continue;
+        seen.add(a.id);
+        const col = a.event === "Tornado Warning" ? "#ff4d6d" : a.event === "Severe Thunderstorm Warning" ? "#ffa94d" : a.event === "Flash Flood Warning" ? "#69db7c" : a.tone === "warning" ? "#ff6b6b" : a.tone === "watch" ? "#ffd43b" : "#a5d8ff";
+        out.push(`<polygon points="${ring(a.polygon[0])}" fill="${col}" fill-opacity="${a.event === "Tornado Warning" ? ".22" : ".1"}" stroke="${col}" stroke-width="${a.storm ? 2.4 : 1.6}"/>`);
+        /* the storm, where its warning says it is now, and 30 minutes on */
+        if (a.motion) {
+          const tr = Wx.stormTrack(a.motion, a.motion.points[0][0], a.motion.points[0][1]);
+          if (tr && Date.now() - a.motion.time < 2 * 3600e3) {
+            const now = tr.points.map(([la, lo]) => pt(la, lo));
+            const r = tr.toward * Math.PI / 180, km = tr.kmh / 2;
+            const ahead = tr.points.map(([la, lo]) => pt(la + km * Math.cos(r) / 110.57, lo + km * Math.sin(r) / (111.32 * Math.cos(la * Math.PI / 180))));
+            now.forEach((p, i) => out.push(`<line x1="${p[0].toFixed(1)}" y1="${p[1].toFixed(1)}" x2="${ahead[i][0].toFixed(1)}" y2="${ahead[i][1].toFixed(1)}" stroke="#fff" stroke-width="1.6" stroke-dasharray="4 3"/>`));
+            if (now.length > 1) out.push(`<polyline points="${now.map((p) => p.map((v) => v.toFixed(1)).join(",")).join(" ")}" fill="none" stroke="#fff" stroke-width="3"/>`);
+            now.forEach((p) => out.push(`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="4.5" fill="#fff" stroke="#000" stroke-width="1.5"/>`));
+          }
+        }
+      }
+      if (R.site && R.mode !== "comp" && R.site.lat != null) {
+        const [sx, sy] = pt(R.site.lat, R.site.lon);
+        out.push(`<rect x="${(sx - 4).toFixed(1)}" y="${(sy - 4).toFixed(1)}" width="8" height="8" fill="#ffd43b" stroke="#000"/>`);
+      }
+      if (S.place) {
+        const [mx, my] = pt(S.place.lat, S.place.lon);
+        out.push(`<circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="9" fill="rgba(255,255,255,.25)"/><circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="5" fill="#fff" stroke="#0b2342" stroke-width="2"/>`);
+      }
+      over.innerHTML = out.join("");
+    }
+
     function draw() {
-      if (!R.started || R.lat == null) return;
+      if (!R.started) return;
       const w = el.clientWidth, h = el.clientHeight;
       const left = R.cx - w / 2, top = R.cy - h / 2;
       place(baseL, baseTiles, (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`, w, h, left, top);
-      const b = bucket();
       R.frames.forEach((f, i) => {
-        if (i === 10 || R.loadedOld) place(f.el, f.tiles, (z, x, y) => Wx.radarTile(f.mins, z, x, y, b), w, h, left, top);
+        if (i === R.frame || R.loadedOld) place(f.el, f.tiles, f.url, w, h, left, top);
       });
-      /* the place, and the official polygons for it */
-      const pt = (lat, lon) => [lngX(lon, R.z) - left, latY(lat, R.z) - top];
-      const polys = (S.alerts || []).filter((a) => a.polygon).map((a) => {
-        const ring = a.polygon[0].map(([lon, lat]) => pt(lat, lon).map((v) => v.toFixed(1)).join(",")).join(" ");
-        const col = { warning: "#ff6b6b", watch: "#ffa94d", advisory: "#ffd43b" }[a.tone] || "#a5d8ff";
-        return `<polygon points="${ring}" fill="${col}" fill-opacity=".12" stroke="${col}" stroke-width="2.2"/>`;
-      }).join("");
-      const [mx, my] = pt(R.lat, R.lon);
-      over.innerHTML = polys + `<circle cx="${mx}" cy="${my}" r="9" fill="rgba(255,255,255,.25)"/><circle cx="${mx}" cy="${my}" r="5" fill="#fff" stroke="#0b2342" stroke-width="2"/>`;
+      overlay(left, top);
     }
 
+    function note(text) {
+      const n = $("#radarnote");
+      n.hidden = !text; n.textContent = text || "";
+    }
     function show(i) {
       R.frame = i;
       R.frames.forEach((f, j) => f.el.classList.toggle("on", j === i));
+      if (!R.frames[i]) { $("#when").innerHTML = ""; return; }
+      if (!R.loadedOld) draw();
       $("#scrub").value = String(i);
-      const mins = Wx.RADAR_STEPS[i];
+      const f = R.frames[i];
       const when = $("#when");
-      if (R.valid) {
-        const t = R.valid - mins * 60e3;
-        when.innerHTML = `${esc(clk().time(t))}<small>${Wx.age(Date.now() - t)} ago</small>`;
-      } else when.innerHTML = mins ? `−${mins} min<small>before latest</small>` : `Latest<small>scan time unknown</small>`;
-      const note = $("#radarnote");
-      const f = R.valid ? Wx.fresh("radar", R.valid) : null;
-      if (f && f.stale) { note.hidden = false; note.textContent = `Radar delayed — the latest scan is ${f.age} old.`; }
-      else if (S.pt === null) { note.hidden = false; note.textContent = "This radar covers the lower 48 US states only."; }
-      else note.hidden = true;
+      if (f.t) when.innerHTML = `${esc(clk().time(f.t))}<small>${Wx.age(Date.now() - f.t)} ago</small>`;
+      else when.innerHTML = f.mins ? `−${f.mins} min<small>before latest</small>` : `Latest<small>scan time unknown</small>`;
+      const fr = R.valid ? Wx.fresh("radar", R.valid) : null;
+      if (fr && fr.stale) note(`Radar delayed — the latest scan is ${fr.age} old.`);
+      else if (S.place && S.pt === null && R.mode === "comp") note("This radar covers the lower 48 US states only.");
+      else if (R.frames.length) note("");
     }
-
-    function loadOld() {
-      if (R.loadedOld) return;
-      R.loadedOld = true; draw();
-    }
+    function loadOld() { if (!R.loadedOld) { R.loadedOld = true; draw(); } }
     function play(on) {
       R.playing = on;
       clearTimeout(R.timer);
@@ -888,27 +1234,99 @@
         ? '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" rx="1" fill="#fff"/><rect x="9.5" y="2" width="3.5" height="12" rx="1" fill="#fff"/></svg>'
         : '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2l10 6-10 6z" fill="#fff"/></svg>';
       $("#play").setAttribute("aria-label", on ? "Pause radar loop" : "Play radar loop");
-      if (!on) return;
+      if (!on || R.frames.length < 2) return;
       loadOld();
+      const last = R.frames.length - 1;
       const step = () => {
-        const next = R.frame >= 10 ? 0 : R.frame + 1;
+        const next = R.frame >= last ? 0 : R.frame + 1;
         show(next);
-        R.timer = setTimeout(step, next === 10 ? 1600 : 450);
+        R.timer = setTimeout(step, next === last ? 1600 : 450);
       };
-      R.timer = setTimeout(step, R.frame === 10 ? 600 : 450);
+      R.timer = setTimeout(step, R.frame === last ? 600 : 450);
+    }
+
+    /* the nearest NEXRAD to the middle of the map */
+    async function pickSite(force) {
+      const lat = yLat(R.cy, R.z), lon = xLng(R.cx, R.z);
+      if (!force && R.site && R.site.lat != null && Wx.distanceM(lat, lon, R.site.lat, R.site.lon) < 120e3) return false;
+      try {
+        const sites = await Wx.radarSites(Wx.round2(lat), Wx.round2(lon));
+        if (!sites.length) return false;
+        const s = sites[0];
+        if (R.site && R.site.id === s.id) return false;
+        R.site = s;
+        return true;
+      } catch (e) { return false; }
+    }
+
+    async function setMode(mode) {
+      R.mode = mode;
+      document.querySelectorAll(".seg [data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+      play(false);
+      clearTiles();
+      $("#legend").classList.toggle("vel", mode === "N0S");
+      $("#legend").innerHTML = mode === "N0S" ? `<span>toward</span><i aria-hidden="true"></i><span>away</span>` : `<span>light</span><i aria-hidden="true"></i><span>heavy</span>`;
+      if (mode === "comp") {
+        R.valid = await Wx.radarTime();
+        compFrames();
+      } else {
+        if (R.z < 7) zoomTo(8);
+        await pickSite(!R.site);
+        await siteFrames();
+      }
+      label(); renderSources();
+    }
+
+    function label() {
+      const sb = $("#sitebar");
+      if (R.mode === "comp") sb.textContent = "NEXRAD mosaic of the whole country, every 5 minutes.";
+      else if (R.site) sb.textContent = `${R.site.id} · ${R.site.name} · ${Wx.SITE_PRODUCTS[R.mode].long}. The site follows the middle of the map.`;
+      else sb.textContent = "Finding the nearest radar…";
+      if (R.started && R.frames[R.frame]) show(R.frame);
+    }
+    function describe() {
+      return R.mode === "comp" ? "NEXRAD base reflectivity, US mosaic (IEM)" : `${R.site ? R.site.id + " " : ""}${Wx.SITE_PRODUCTS[R.mode].label.toLowerCase()} (NEXRAD via IEM)`;
     }
 
     async function start() {
-      if (R.started || R.lat == null) return;
+      if (R.started) return;
       R.started = true;
-      draw(); show(10);
-      R.valid = await Wx.radarTime();
-      show(R.frame); renderSources();
+      if (R.mode === "comp") {
+        compFrames();
+        R.valid = await Wx.radarTime();
+        compFrames();
+      } else await siteFrames();
+      label(); renderSources();
       if (!reduced) setTimeout(() => { if (R.visible) play(true); }, 900);
     }
 
-    /* dragging */
-    let drag = null;
+    function zoomTo(nz) {
+      nz = Math.min(MAXZ, Math.max(MINZ, nz));
+      if (nz === R.z) return;
+      const f = 2 ** (nz - R.z);
+      R.cx *= f; R.cy *= f; R.z = nz;
+      clearTiles(); draw();
+    }
+    function fit(minLat, minLon, maxLat, maxLon, pad = 40) {
+      const w = el.clientWidth || 340, h = el.clientHeight || 300;
+      let z = MAXZ;
+      for (; z > MINZ; z--) {
+        if (lngX(maxLon, z) - lngX(minLon, z) <= w - pad && latY(minLat, z) - latY(maxLat, z) <= h - pad) break;
+      }
+      R.z = z;
+      R.cx = (lngX(minLon, z) + lngX(maxLon, z)) / 2;
+      R.cy = (latY(minLat, z) + latY(maxLat, z)) / 2;
+      clearTiles(); draw();
+    }
+    function fitPolygon(poly, place) {
+      const pts = poly[0].slice();
+      if (place) pts.push([place.lon, place.lat]);
+      const lats = pts.map((p) => p[1]), lons = pts.map((p) => p[0]);
+      fit(Math.min(...lats), Math.min(...lons), Math.max(...lats), Math.max(...lons), 60);
+    }
+
+    /* dragging, and the site following the map */
+    let drag = null, follow = 0;
     el.addEventListener("pointerdown", (e) => {
       if (e.target.closest("button,a")) return;
       drag = { x: e.clientX, y: e.clientY, cx: R.cx, cy: R.cy };
@@ -919,21 +1337,26 @@
       R.cx = drag.cx - (e.clientX - drag.x); R.cy = drag.cy - (e.clientY - drag.y);
       requestAnimationFrame(draw);
     });
-    const end = () => { drag = null; el.classList.remove("dragging"); };
-    el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
-    const zoom = (d) => {
-      const nz = Math.min(MAXZ, Math.max(MINZ, R.z + d));
-      if (nz === R.z) return;
-      const f = 2 ** (nz - R.z);
-      R.cx *= f; R.cy *= f; R.z = nz;
-      for (const c of [baseTiles, ...R.frames.map((f) => f.tiles)]) { for (const img of c.values()) img.remove(); c.clear(); }
-      draw();
+    const end = () => {
+      if (!drag) return;
+      drag = null; el.classList.remove("dragging");
+      if (R.mode !== "comp") {
+        clearTimeout(follow);
+        follow = setTimeout(async () => { if (await pickSite(false)) { clearTiles(); await siteFrames(); label(); } }, 700);
+      }
     };
-    $("#zin").addEventListener("click", () => zoom(1));
-    $("#zout").addEventListener("click", () => zoom(-1));
-    el.addEventListener("dblclick", (e) => { if (!e.target.closest("button,a")) zoom(1); });
+    el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
+    $("#zin").addEventListener("click", () => zoomTo(R.z + 1));
+    $("#zout").addEventListener("click", () => zoomTo(R.z - 1));
+    el.addEventListener("dblclick", (e) => { if (!e.target.closest("button,a")) zoomTo(R.z + 1); });
     $("#play").addEventListener("click", () => play(!R.playing));
     $("#scrub").addEventListener("input", (e) => { play(false); loadOld(); show(Number(e.target.value)); });
+    document.querySelectorAll(".seg [data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+    $("#outlooktoggle").addEventListener("click", () => {
+      R.outlook = !R.outlook;
+      $("#outlooktoggle").setAttribute("aria-pressed", String(R.outlook));
+      draw();
+    });
     addEventListener("resize", () => requestAnimationFrame(draw));
 
     new IntersectionObserver((entries) => {
@@ -941,20 +1364,210 @@
       if (R.visible) start();
       else if (R.playing) play(false);
     }, { rootMargin: "200px" }).observe(el);
-
     play(false);
+
+    /* The lower 48, edge to edge: a map view, not anybody's place. */
+    const CONUS = [24.4, -125, 49.5, -66.9];
     return {
       center(lat, lon) {
+        R.us = false;
         R.lat = lat; R.lon = lon;
+        R.z = 7;
         R.cx = lngX(lon, R.z); R.cy = latY(lat, R.z);
-        for (const c of [baseTiles, ...R.frames.map((f) => f.tiles)]) { for (const img of c.values()) img.remove(); c.clear(); }
-        if (R.started) { draw(); show(R.frame); } else if (R.visible) start();
+        clearTiles();
+        if (R.mode !== "comp") { R.site = null; if (R.started) pickSite(true).then(() => siteFrames()).then(label); }
+        if (R.started) draw();
       },
-      draw,
-      /* the frame's clock is the place's, which may arrive after the radar */
-      label() { if (R.started) show(R.frame); },
+      showUS() {
+        R.us = true; R.lat = null;
+        if (!R.outlook) { R.outlook = true; $("#outlooktoggle").setAttribute("aria-pressed", "true"); }
+        if (R.mode !== "comp") setMode("comp");
+        fit(...CONUS, 10);
+      },
+      /* a storm that covers the place: its polygon and the place, on the
+         nearest radar's reflectivity, playing */
+      async focusStorm(a) {
+        if (a.polygon) fitPolygon(a.polygon, S.place);
+        if (R.mode === "comp" && inUS()) await setMode("N0B");
+        if (!reduced && R.visible) play(true);
+      },
+      focus(id) {
+        const all = [...(S.alerts || []), ...(S.state || []), ...(S.national || [])];
+        const a = all.find((x) => x.id === id);
+        if (!a || !a.polygon) return false;
+        fitPolygon(a.polygon, S.place && S.place.approx ? null : S.place);
+        el.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+        return true;
+      },
+      refresh() {
+        if (!R.started || !R.visible) return;
+        if (R.mode === "comp") { Wx.radarTime().then((v) => { if (v && v !== R.valid) { R.valid = v; clearTiles(); compFrames(); renderSources(); } }); }
+        else siteFrames(true);
+      },
+      draw, label, describe,
       get valid() { return R.valid; },
       get started() { return R.started; }
+    };
+  })();
+
+  /* ── the air above you (DESIGN.md §15–17) ──
+     Closed until asked for. Opening it fetches one model's next 48 hours at
+     this point — every pressure level — once; the hour slider then only
+     re-reads what is already here, so dragging through time redraws the
+     Skew-T and hodograph instantly (§15.5). */
+  const sky = (() => {
+    const K = { model: null, col: null, colKey: null, run: null, hour: 0, raob: null, raobSite: null, mode: "model", busy: false, source: null };
+    const body = () => $("#skybody");
+    const m2ft = (m) => m * 3.28084;
+    const hgt = (m) => m == null ? "–" : U() === "us" ? `${Math.round(m2ft(m) / 100) * 100} ft` : `${Math.round(m / 10) * 10} m`;
+    const kt = (ms) => ms == null ? "–" : `${Math.round(ms * 1.943844)} kt`;
+    const motionText = (uv) => {
+      if (!uv) return "–";
+      const [u, v] = uv, s = Math.hypot(u, v);
+      const from = (Math.atan2(-u, -v) * 180 / Math.PI + 360) % 360;
+      return `${Math.round(from / 5) * 5}° at ${Math.round(s * 1.943844)} kt`;
+    };
+    const defaultModel = () => (S.place && inUS() && S.place.lat > 21 && S.place.lat < 53 && S.place.lon > -134 && S.place.lon < -60) ? "hrrr" : "gfs";
+
+    async function loadModel() {
+      if (!S.place) return;
+      const key = `${K.model}|${placeKey(S.place)}`;
+      if (K.colKey === key && K.col) return draw();
+      K.busy = true; draw();
+      try {
+        const [col, run] = await Promise.all([Wx.column(K.model, S.place.lat, S.place.lon), Wx.modelRun(K.model)]);
+        K.col = col; K.colKey = key; K.run = run;
+        const first = col.hourly && col.hourly.time ? col.hourly.time.findIndex((t) => t * 1000 > Date.now() - 3600e3) : 0;
+        K.hour = Math.max(0, first);
+      } catch (e) { K.col = null; K.colKey = null; K.err = "The model did not answer. Try again, or another model."; }
+      K.busy = false; draw();
+    }
+    async function loadRaob() {
+      if (!S.place) return;
+      K.busy = true; draw();
+      try {
+        if (!K.raobSite) {
+          const sites = await Wx.raobSites();
+          K.raobSite = sites.map((x) => ({ ...x, d: Wx.distanceM(S.place.lat, S.place.lon, x.lat, x.lon) })).sort((a, b) => a.d - b.d)[0] || null;
+        }
+        K.raob = null;
+        if (K.raobSite) {
+          for (const t of Wx.raobTimes(Date.now())) {
+            const r = Wx.ROUTES.raob(K.raobSite.id, Wx.raobTs(t));
+            if (!r) break;
+            try {
+              const prof = await fetchRaob(r);
+              if (prof && prof.levels.length > 15) { K.raob = prof; break; }
+            } catch (e) {}
+          }
+        }
+        if (!K.raob) K.err = "No recent balloon flight from the nearest launch site.";
+      } catch (e) { K.err = "The balloon archive did not answer."; }
+      K.busy = false; draw();
+    }
+    /* the balloon is fetched through the same Worker-then-direct path as everything else */
+    async function fetchRaob(route) {
+      const tryFetch = async (url) => { const r = await fetch(url); if (!r.ok) throw new Error(r.status); return r.json(); };
+      try { return Snd.fromRaob(await tryFetch(Wx.host() + "/wx/" + route[0])); }
+      catch (e) { return Snd.fromRaob(await tryFetch(route[1])); }
+    }
+
+    function analysisNow() {
+      if (K.mode === "raob") return K.raob ? { a: Snd.analyze(K.raob.levels), when: K.raob.valid } : null;
+      if (!K.col) return null;
+      const prof = Snd.fromOpenMeteo(K.col, K.hour);
+      return prof ? { a: Snd.analyze(prof), when: K.col.hourly.time[K.hour] * 1000 } : null;
+    }
+
+    function draw(partsOnly) {
+      const b = body();
+      if (!b || !$("#skyd").open) return null;
+      const k = clk();
+      const models = Object.entries(Wx.MODELS);
+      const buttons = models.map(([id, m]) => `<button type="button" data-skymodel="${id}" aria-pressed="${K.mode === "model" && K.model === id}" title="${esc(m.long)}">${esc(m.label)}</button>`).join("") +
+        `<button type="button" data-skymodel="raob" aria-pressed="${K.mode === "raob"}" title="The nearest weather balloon's latest flight">Balloon</button>`;
+      let info = "", slider = "", pics = "", table = "";
+      const now = analysisNow();
+      if (K.busy) info = `<p class="loading">Fetching the column…</p>`;
+      else if (!now || !now.a) info = `<p class="err">${esc(K.err || "No sounding to draw for this place.")}</p>`;
+      else {
+        const a = now.a;
+        if (K.mode === "model") {
+          const m = Wx.MODELS[K.model];
+          const lead = K.run ? Math.round((now.when - K.run) / 3600e3) : null;
+          info = `<p class="skymeta">${esc(m.label)}${K.run ? ` · ${new Date(K.run).toISOString().slice(11, 13)}Z run` : ""} · valid ${esc(k.dayLong(now.when))}, ${esc(k.time(now.when))}${lead != null ? ` (+${lead} h)` : ""}
+            <small>${esc(m.long)}. A forecast column at this point, not a measurement.</small></p>`;
+          const n = K.col.hourly.time.length;
+          slider = `<div class="hourpick"><span class="num" style="min-width:52px">${esc(k.hour(now.when))}</span><input type="range" id="skyhour" min="0" max="${n - 1}" step="1" value="${K.hour}" aria-label="Forecast hour"><span class="dim num">+48 h</span></div>`;
+          K.source = { title: `Sounding — ${m.label}`, sub: `Open-Meteo · model run`, at: K.run, stale: K.run ? Date.now() - K.run > (K.model === "hrrr" ? 4 : 14) * 3600e3 : false };
+        } else {
+          const s = K.raobSite;
+          info = `<p class="skymeta">Weather balloon · ${esc(s ? s.id + " — " + s.name : "")}${s ? ` · ${dist(s.d / 1000)} away` : ""}
+            <small>Launched ${esc(new Date(K.raob.valid).toISOString().slice(11, 13))}Z (${esc(Wx.age(Date.now() - K.raob.valid))} ago) — measured, not modelled. Balloons go up at 00Z and 12Z.</small></p>`;
+          K.source = { title: `Sounding — balloon ${s ? s.id : ""}`, sub: "NOAA upper-air, via IEM · launched", at: K.raob.valid, stale: Date.now() - K.raob.valid > 14 * 3600e3 };
+        }
+        pics = `<div class="skyrow">${Draw.skewT(a, { label: "Skew-T log-P diagram: temperature (red), dewpoint (green), mixed-layer parcel (dashed white), CAPE shaded" })}
+          <div>${Draw.hodograph(a, { label: "Hodograph: wind from the ground to 10 km, coloured by height" })}
+          <div class="key"><span><i style="background:#ff6b6b"></i>0–1 km</span><span><i style="background:#51cf66"></i>1–3</span><span><i style="background:#ffd43b"></i>3–6</span><span><i style="background:#74c0fc"></i>6–10</span><span>● RM / ○ LM storm motion</span></div></div></div>`;
+        const P = [["Surface", a.sb], ["Mixed layer", a.ml], ["Most unstable", a.mu]];
+        table = `<table class="ptable"><thead><tr><th>Parcel</th><th>CAPE</th><th>CIN</th><th>LCL</th><th>LFC</th><th>EL</th></tr></thead><tbody>
+          ${P.map(([n, p]) => `<tr><td>${n}</td><td class="num">${p.cape}</td><td class="num">${p.cin}</td><td class="num">${hgt(p.lcl.z)}</td><td class="num">${p.lfc ? hgt(p.lfc.z) : "–"}</td><td class="num">${p.el ? hgt(p.el.z) : "–"}</td></tr>`).join("")}
+          </tbody></table>
+          <div class="params">
+            <div><span>0–1 km shear</span><b class="num">${kt(a.shear1)}</b></div>
+            <div><span>0–6 km shear</span><b class="num">${kt(a.shear6)}</b></div>
+            <div><span>0–1 km SRH</span><b class="num">${a.srh1 != null ? Math.round(a.srh1) + " m²/s²" : "–"}</b></div>
+            <div><span>0–3 km SRH</span><b class="num">${a.srh3 != null ? Math.round(a.srh3) + " m²/s²" : "–"}</b></div>
+            <div><span>Storm motion (RM)</span><b class="num">${a.motion ? motionText(a.motion.right) : "–"}</b></div>
+            <div><span>Precipitable water</span><b class="num">${U() === "us" ? (a.pw / 25.4).toFixed(2) + " in" : a.pw.toFixed(1) + " mm"}</b></div>
+            <div><span>Freezing level</span><b class="num">${hgt(a.frz)}</b></div>
+            <div><span>700–500 lapse rate</span><b class="num">${a.lapse75 != null ? a.lapse75.toFixed(1) + " °C/km" : "–"}</b></div>
+            <div><span>0–3 km lapse rate</span><b class="num">${a.lapse03 != null ? a.lapse03.toFixed(1) + " °C/km" : "–"}</b></div>
+            <div><span>STP (fixed layer)</span><b class="num">${a.stp != null ? a.stp.toFixed(1) : "–"}</b></div>
+          </div>`;
+      }
+      if (partsOnly) return { info, pics, table, when: now && now.when };
+      b.innerHTML = `<div class="seg" role="group" aria-label="Sounding source" style="margin-top:10px">${buttons}</div><div id="skyinfo">${info}</div>${slider}<div id="skydyn">${pics}${table}</div>
+        <details class="gloss"><summary>What these mean</summary><dl>
+          <dt>CAPE</dt><dd>Energy a rising parcel of air gains from being warmer than its surroundings, J/kg. Over ~1000 is plenty for strong storms; over ~3000 is a lot.</dd>
+          <dt>CIN</dt><dd>The "cap": energy needed to push a parcel up to where it rises on its own. Strongly negative means storms struggle to start.</dd>
+          <dt>LCL · LFC · EL</dt><dd>Cloud base; where a lifted parcel starts rising freely; where it stops (roughly the storm top).</dd>
+          <dt>Shear</dt><dd>How much the wind changes between two heights. 0–6 km over ~40 kt helps storms organise and rotate.</dd>
+          <dt>SRH</dt><dd>Storm-relative helicity: how much spin the low-level wind feeds a storm moving the way Bunkers' method predicts (RM). Larger means more tornado-favourable.</dd>
+          <dt>STP</dt><dd>SPC's significant tornado parameter, fixed-layer version: CAPE, cloud base, helicity and shear in one number. Above 1 is notable. An index of ingredients — never a forecast that a tornado will happen.</dd>
+        </dl><p>Computed on this page from the column above (sounding.js), with virtual-temperature parcels as SPC does; checked against MetPy.</p></details>`;
+    }
+
+    $("#skyd").addEventListener("toggle", () => {
+      if (!$("#skyd").open) return;
+      if (!K.model) K.model = defaultModel();
+      if (K.mode === "model") loadModel(); else loadRaob();
+      draw();
+    });
+    document.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-skymodel]");
+      if (!b) return;
+      const id = b.dataset.skymodel;
+      K.err = null;
+      if (id === "raob") { K.mode = "raob"; loadRaob(); }
+      else { K.mode = "model"; K.model = id; loadModel(); }
+    });
+    /* Dragging the hour redraws the info line and the drawings, never the
+       slider itself — replacing an input mid-drag ends the drag on a phone. */
+    document.addEventListener("input", (e) => {
+      if (e.target.id !== "skyhour") return;
+      K.hour = Number(e.target.value);
+      const html = draw(true);
+      if (!html) return;
+      $("#skyinfo").innerHTML = html.info;
+      $("#skydyn").innerHTML = html.pics + html.table;
+      const lab = e.target.previousElementSibling;
+      if (lab && html.when) lab.textContent = clk().hour(html.when);
+    });
+    return {
+      reset() { Object.assign(K, { col: null, colKey: null, run: null, raob: null, raobSite: null, model: null, mode: "model", source: null, err: null }); if ($("#skyd").open) { K.model = defaultModel(); loadModel(); } },
+      get source() { return K.source; },
+      redraw: draw
     };
   })();
 
@@ -966,18 +1579,21 @@
   $("#closeplaces").addEventListener("click", closePlaces);
   $("#placebtn").addEventListener("click", openPlaces);
   document.addEventListener("click", (e) => {
-    if (e.target.closest("[data-open-places]")) openPlaces();
+    if (e.target.closest("[data-open-places]")) { e.preventDefault(); openPlaces(); }
+    if (e.target.closest("[data-locate]")) locate();
     if (e.target.closest("[data-retry]")) load();
     const hb = e.target.closest("[data-hour]");
     if (hb) { const t = Number(hb.dataset.hour); S.selected = S.selected === t ? null : t; renderHourly(); }
+    const w = e.target.closest("[data-focus]");
+    if (w) radar.focus(w.dataset.focus);
   });
 
   function choose(p) {
     const place = cleanPlace(p);
     if (!place) return;
     S.place = place;
-    store.set("wx:place", place);
-    if (!place.here) {
+    if (!place.approx) store.set("wx:place", place);
+    if (!place.here && !place.approx) {
       S.saved = [place, ...S.saved.filter((s) => placeKey(s) !== placeKey(place))].slice(0, 12);
       store.set("wx:saved", S.saved);
     }
@@ -985,6 +1601,15 @@
     window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
     load();
   }
+  function showUS() {
+    S.place = null;
+    store.del("wx:place");
+    Object.assign(S, { fc: null, pt: undefined, obs: undefined, office: undefined, alerts: undefined, state: undefined });
+    sky.reset();
+    window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+    loadUS();
+  }
+  $("#usview").addEventListener("click", showUS);
 
   function renderSaved() {
     const ul = $("#saved");
@@ -1020,33 +1645,62 @@
     if (b) choose(found[Number(b.dataset.found)]);
   });
 
-  $("#locate").addEventListener("click", () => {
-    if (!navigator.geolocation) { $("#placemsg").textContent = "This browser can't share a location — search instead."; return; }
-    $("#placemsg").textContent = "Finding you…";
+  function locate() {
+    const msg = (t) => { $("#placemsg").textContent = t; };
+    if (!navigator.geolocation) { openPlaces(); msg("This browser can't share a location — search instead."); return; }
+    msg("Finding you…");
     navigator.geolocation.getCurrentPosition(
       (pos) => choose({ name: "Your location", region: "", lat: pos.coords.latitude, lon: pos.coords.longitude, here: true }),
-      (err) => { $("#placemsg").textContent = err.code === 1 ? "Location is blocked for this site — search for a place instead." : "Couldn't get a location fix. Try again, or search."; },
+      (err) => { if (!dlg.open) openPlaces(); msg(err.code === 1 ? "Location is blocked for this site — search for a place instead." : "Couldn't get a location fix. Try again, or search."); },
       { enableHighAccuracy: false, timeout: 12000, maximumAge: 10 * 60e3 }
     );
-  });
+  }
+  $("#locate").addEventListener("click", locate);
 
   $("#units").addEventListener("click", () => {
     S.units = S.units === "us" ? "metric" : "us";
     store.set("wx:units", S.units);
-    render(); radar.draw();
+    render(); radar.draw(); sky.redraw();
   });
-  $("#refresh").addEventListener("click", () => load());
+  $("#refresh").addEventListener("click", () => { load(); radar.refresh(); });
 
-  /* Fresh again when the tab comes back after a while, and every ten minutes
-     it stays open in front. */
-  const STALE_AFTER = 10 * 60e3;
+  /* ── keeping up ──
+     Every ten minutes, everything. Every minute, the alerts — when a storm
+     warning covers the place or one is in its state, or on the national view —
+     and the radar every two, while it is in view (§25, §29). */
+  const FULL = 10 * 60e3, FAST = 60e3;
+  let lastRadar = Date.now();
+  setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    const now = Date.now();
+    if (now - S.loadedAt > FULL) { load(); return; }
+    const hot = !S.place || stormsHere().length || (S.state || []).some((a) => a.storm);
+    if (hot && now - S.fastAt >= FAST) {
+      S.fastAt = now;
+      const ctl = S.ctl || new AbortController();
+      if (!S.place) Wx.national(ctl.signal).then((a) => { S.national = a; S.checked.national = Date.now(); render(); radar.draw(); }).catch(() => {});
+      else {
+        const key = placeKey(S.place);
+        const live = () => S.place && placeKey(S.place) === key;
+        loadAlerts(ctl.signal, live); loadState(ctl.signal, live);
+      }
+    }
+    if (now - lastRadar >= 120e3) { lastRadar = now; radar.refresh(); }
+  }, 30e3);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && S.place && Date.now() - S.loadedAt > STALE_AFTER) load();
+    if (document.visibilityState === "visible" && Date.now() - S.loadedAt > FULL) load();
   });
-  setInterval(() => { if (document.visibilityState === "visible" && S.place && Date.now() - S.loadedAt > STALE_AFTER) load(); }, 60e3);
 
+  /* ── start ──
+     A chosen place, if this browser has one. Otherwise the whole country —
+     and, once the Worker can say roughly where this visitor is from their
+     connection, that city's weather, labelled as approximate. */
   renderPlace();
   if (S.place) load();
+  else {
+    loadUS();
+    Wx.near().then((p) => { if (p && !S.place) choose(p); });
+  }
 })();
 </script>
 </body>

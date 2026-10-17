@@ -1527,9 +1527,21 @@ const WX_NWS_PATHS = [
   /^gridpoints\/[A-Z]{3}\/\d{1,3},\d{1,3}\/(forecast|forecast\/hourly|stations)$/,
   /^stations\/[A-Z0-9]{3,6}\/observations\/latest$/
 ];
+const WX_IEM = 'https://mesonet.agron.iastate.edu';
+const WX_SITE_PRODUCTS = ['N0B', 'N0S'];
+const WX_SPC = ['day1otlk_cat', 'day1otlk_torn', 'day1otlk_wind', 'day1otlk_hail', 'day2otlk_cat', 'day3otlk_cat'];
+/* model name on the page → [Open-Meteo forecast name, Open-Meteo run-time file] */
+const WX_MODELS = { hrrr: 'ncep_hrrr_conus', gfs: 'gfs_global', ecmwf: 'ecmwf_ifs025', aifs: 'ecmwf_aifs025_single' };
+const WX_META = new Set(['ncep_hrrr_conus', 'ncep_gfs025', 'ecmwf_ifs025', 'ecmwf_aifs025_single']);
+const WX_COLUMN = [1000, 975, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150, 100]
+  .flatMap(p => ['temperature', 'dew_point', 'relative_humidity', 'wind_speed', 'wind_direction', 'geopotential_height'].map(k => `${k}_${p}hPa`))
+  .concat(['surface_pressure', 'temperature_2m', 'dew_point_2m', 'wind_speed_10m', 'wind_direction_10m', 'cape']).join(',');
+const WX_MINUTE = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
 /* Seconds each kind of answer may be reused. A point's office never moves;
    an alert can be issued at any minute. */
-const WX_TTL = { om: 600, geo: 86400, points: 86400, stations: 86400, forecast: 900, obs: 120, alerts: 60, radar: 60 };
+const WX_TTL = { om: 600, geo: 86400, points: 86400, stations: 86400, forecast: 900, obs: 120, alerts: 60, radar: 60,
+  sites: 86400, scans: 60, spc: 300, col: 600, meta: 300, raobsites: 86400, raob: 1800 };
+const WX_NATIONAL = 'Tornado Warning,Severe Thunderstorm Warning,Flash Flood Warning,Extreme Wind Warning,Tornado Watch,Severe Thunderstorm Watch';
 const WX_MEMO_MAX = 400;
 const wxMemo = new Map();
 
@@ -1555,9 +1567,50 @@ function wxUpstream(parts, params) {
     return [`${WX_GEO}?${new URLSearchParams({ name, count: '6', language: 'en', format: 'json' })}`, WX_TTL.geo];
   }
   if (kind === 'radar' && !parts[2]) return [WX_RADAR, WX_TTL.radar];
+  if (kind === 'iem' && !parts[3]) {
+    const what = parts[2];
+    if (what === 'sites') {
+      const lat = wxDeg(params.get('lat'), 90), lon = wxDeg(params.get('lon'), 180), start = params.get('start') || '';
+      if (lat === null || lon === null || !/^\d{4}-\d\d-\d\dT\d\d:00Z$/.test(start)) return null;
+      return [`${WX_IEM}/json/radar.py?operation=available&lat=${lat}&lon=${lon}&start=${start}`, WX_TTL.sites];
+    }
+    if (what === 'scans') {
+      const site = params.get('radar') || '', prod = params.get('product') || '', start = params.get('start') || '', end = params.get('end') || '';
+      if (!/^[A-Z]{3}$/.test(site) || !WX_SITE_PRODUCTS.includes(prod) || !WX_MINUTE.test(start) || !WX_MINUTE.test(end)) return null;
+      return [`${WX_IEM}/json/radar.py?operation=list&radar=${site}&product=${prod}&start=${start}&end=${end}`, WX_TTL.scans];
+    }
+    if (what === 'raobsites') return [`${WX_IEM}/geojson/network.py?network=RAOB`, WX_TTL.raobsites];
+    if (what === 'raob') {
+      const ts = params.get('ts') || '', st = params.get('station') || '';
+      if (!/^\d{12}$/.test(ts) || !/^[A-Z0-9]{3,5}$/.test(st)) return null;
+      return [`${WX_IEM}/json/raob.py?ts=${ts}&station=${st}`, WX_TTL.raob];
+    }
+    return null;
+  }
+  if (kind === 'spc' && WX_SPC.includes(parts[2]) && !parts[3]) {
+    return [`https://www.spc.noaa.gov/products/outlook/${parts[2]}.nolyr.geojson`, WX_TTL.spc];
+  }
+  if (kind === 'col' && !parts[2]) {
+    const m = WX_MODELS[params.get('model')];
+    const lat = wxDeg(params.get('lat'), 90), lon = wxDeg(params.get('lon'), 180);
+    if (!m || lat === null || lon === null) return null;
+    const q = new URLSearchParams({ latitude: lat, longitude: lon, hourly: WX_COLUMN, models: m,
+      forecast_hours: '48', wind_speed_unit: 'ms', timeformat: 'unixtime', timezone: 'auto' });
+    return [`${WX_OM}?${q}`, WX_TTL.col];
+  }
+  if (kind === 'ommeta' && WX_META.has(parts[2]) && !parts[3]) {
+    return [`https://api.open-meteo.com/data/${parts[2]}/static/meta.json`, WX_TTL.meta];
+  }
   if (kind === 'nws') {
     const path = parts.slice(2).join('/');
     if (path === 'alerts/active') {
+      /* Three shapes only: the alerts on a rounded point, a state's, or the
+         country's storm warnings (the page with no place in it). */
+      if (params.get('event') === WX_NATIONAL) {
+        return [`${WX_NWS}/alerts/active?event=${encodeURIComponent(WX_NATIONAL)}`, WX_TTL.alerts];
+      }
+      const st = params.get('area');
+      if (st) return /^[A-Z]{2}$/.test(st) ? [`${WX_NWS}/alerts/active?area=${st}`, WX_TTL.alerts] : null;
       const m = /^(-?[\d.]+),(-?[\d.]+)$/.exec(params.get('point') || '');
       const lat = m && wxDeg(m[1], 90), lon = m && wxDeg(m[2], 180);
       if (lat === null || lon === null || !m) return null;
@@ -1576,6 +1629,22 @@ async function wxProxy(request, env, ctx, parts, url) {
   const origin = request.headers.get('origin');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(origin) });
   if (request.method !== 'GET') return json({ error: 'method not allowed' }, 405, origin);
+
+  /* /wx/near — where Cloudflare already places this visitor from their
+     connection (request.cf, city level), so the page can show a forecast
+     before anyone shares a location. Rounded to a tenth of a degree (~10 km),
+     never cached, never stored, never logged: it is the visitor's own guess
+     handed back to them. */
+  if (parts[1] === 'near' && !parts[2]) {
+    const cf = request.cf || {};
+    const lat = Number(cf.latitude), lon = Number(cf.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return json({ error: 'no guess' }, 404, origin, { 'cache-control': 'no-store' });
+    return json({
+      lat: Math.round(lat * 10) / 10, lon: Math.round(lon * 10) / 10,
+      city: cf.city || null, region: cf.regionCode || cf.region || null, country: cf.country || null
+    }, 200, origin, { 'cache-control': 'private, no-store' });
+  }
+
   const up = wxUpstream(parts, url.searchParams);
   if (!up) return json({ error: 'not found' }, 404, origin);
   const [upstream, ttl] = up;

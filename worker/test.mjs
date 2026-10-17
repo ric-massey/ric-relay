@@ -1477,9 +1477,22 @@ console.log('\nRULE  /wx passes the weather providers through, allow-listed and 
   const before = asked.length;
   ok((await hit('/wx/nws/products/xyz')).status === 404, 'any other NWS path is refused');
   ok((await hit('/wx/nws/stations/KABC/observations')).status === 404, 'including a station\'s whole history');
-  ok((await hit('/wx/nws/alerts/active?area=TN')).status === 404, 'and alerts by anything but a rounded point');
+  ok((await hit('/wx/nws/alerts/active?zone=TNZ001')).status === 404, 'and alerts by anything but a rounded point, a state or the national list');
   ok((await hit('/wx/geo')).status === 404, 'an empty place search never leaves');
   ok(asked.length === before, '— none of those cost an upstream call');
+
+  const nat = 'Tornado Warning,Severe Thunderstorm Warning,Flash Flood Warning,Extreme Wind Warning,Tornado Watch,Severe Thunderstorm Watch';
+  ok((await hit('/wx/nws/alerts/active?event=' + encodeURIComponent(nat))).status === 200, "the country's storm warnings can be asked for");
+  ok((await hit('/wx/nws/alerts/active?event=Fire%20Weather%20Watch')).status === 404, 'but not any other event list');
+  ok((await hit('/wx/nws/alerts/active?area=OK')).status === 200 && asked.at(-1).u.endsWith('/alerts/active?area=OK'), "and a state's alerts");
+  ok((await hit('/wx/nws/alerts/active?area=oklahoma')).status === 404, 'by its two-letter code only');
+
+  const nearReq = cf => worker.fetch(Object.assign(new Request('https://x/wx/near'), { cf }), env, null);
+  const near = await nearReq({ latitude: '12.3456', longitude: '-56.7891', city: 'Somewhere', regionCode: 'ZZ', country: 'US' });
+  const nb = await near.json();
+  ok(near.status === 200 && nb.lat === 12.3 && nb.lon === -56.8 && nb.city === 'Somewhere', "/wx/near hands back Cloudflare's city-level guess, rounded to a tenth of a degree");
+  ok(/no-store/.test(near.headers.get('cache-control')), 'and it is never cached — it is one visitor\'s');
+  ok((await nearReq({})).status === 404, 'no guess is a 404, not a made-up place');
 
   reply = { status: 404, body: '{"title":"Data Unavailable For Requested Point"}' };
   ok((await hit('/wx/nws/points/1.5,2.5')).status === 404, "the NWS's 404 (outside the US) is passed on as an answer");

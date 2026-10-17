@@ -93,8 +93,56 @@
       if (!NWS_FOLLOW.some(re => re.test(path))) return null;
       return [`nws/${path}`, `${NWS}/${path}`];
     },
-    radarMeta: () => ['radar', `${IEM}/data/gis/images/4326/USCOMP/n0q_0.json`]
+    radarMeta: () => ['radar', `${IEM}/data/gis/images/4326/USCOMP/n0q_0.json`],
+    /* Every storm-based warning in the country right now — the page with no
+       place in it (§8.3, §20). */
+    national: () => [`nws/alerts/active?event=${encodeURIComponent(NATIONAL_EVENTS)}`,
+      `${NWS}/alerts/active?event=${encodeURIComponent(NATIONAL_EVENTS)}`],
+    /* A state's alerts, for "what is near me but not on me". */
+    area: st => /^[A-Z]{2}$/.test(st) ? [`nws/alerts/active?area=${st}`, `${NWS}/alerts/active?area=${st}`] : null,
+
+    /* ── the storm side (DESIGN.md §11–17) ── */
+    /* radar sites near a point; `start` is the hour, so a cache can hold it */
+    radarSites: (lat, lon, hourIso) => [`iem/sites?lat=${coord(lat)}&lon=${coord(lon)}&start=${hourIso}`,
+      `${IEM}/json/radar.py?operation=available&lat=${coord(lat)}&lon=${coord(lon)}&start=${hourIso}`],
+    /* one site's scans of one product over the last hour */
+    scans: (site, prod, startIso, endIso) => SITE.test(site) && SITE_PRODUCTS[prod]
+      ? [`iem/scans?radar=${site}&product=${prod}&start=${startIso}&end=${endIso}`,
+        `${IEM}/json/radar.py?operation=list&radar=${site}&product=${prod}&start=${startIso}&end=${endIso}`] : null,
+    /* SPC's convective outlook, one layer */
+    spc: kind => SPC_KINDS.includes(kind)
+      ? [`spc/${kind}`, `https://www.spc.noaa.gov/products/outlook/${kind}.nolyr.geojson`] : null,
+    /* a model's whole column for the next two days */
+    column: (model, lat, lon) => MODELS[model] ? [`col?model=${model}&lat=${coord(lat)}&lon=${coord(lon)}`,
+      `${OM}?${new URLSearchParams({ latitude: coord(lat), longitude: coord(lon), hourly: COLUMN_FIELDS, models: MODELS[model].om,
+        forecast_hours: '48', wind_speed_unit: 'ms', timeformat: 'unixtime', timezone: 'auto' })}`] : null,
+    /* when that model last ran */
+    modelRun: model => MODELS[model] ? [`ommeta/${MODELS[model].meta}`, `https://api.open-meteo.com/data/${MODELS[model].meta}/static/meta.json`] : null,
+    /* weather balloons: where they go up, and one flight */
+    raobSites: () => ['iem/raobsites', `${IEM}/geojson/network.py?network=RAOB`],
+    raob: (station, ts) => /^[A-Z0-9]{3,5}$/.test(station) && /^\d{12}$/.test(ts)
+      ? [`iem/raob?ts=${ts}&station=${station}`, `${IEM}/json/raob.py?ts=${ts}&station=${station}`] : null
   };
+  const SITE = /^[A-Z]{3}$/;
+  /* The single-site products IEM serves as tiles and lists scans for (probed
+     2026-10-17: correlation coefficient, ZDR, KDP and echo tops are not). */
+  const SITE_PRODUCTS = {
+    N0B: { label: 'Reflectivity', long: 'Base reflectivity, super-resolution (dBZ)' },
+    N0S: { label: 'Storm-relative velocity', long: 'Storm-relative radial velocity — green toward the radar, red away' }
+  };
+  const SPC_KINDS = ['day1otlk_cat', 'day1otlk_torn', 'day1otlk_wind', 'day1otlk_hail', 'day2otlk_cat', 'day3otlk_cat'];
+  /* The models a sounding can come from. `om` is Open-Meteo's name for the
+     forecast, `meta` its name for the run-time file. */
+  const MODELS = {
+    hrrr: { om: 'ncep_hrrr_conus', meta: 'ncep_hrrr_conus', label: 'HRRR', long: 'NOAA HRRR — 3 km, new run every hour, US only' },
+    gfs: { om: 'gfs_global', meta: 'ncep_gfs025', label: 'GFS', long: 'NOAA GFS — global, new run every 6 hours' },
+    ecmwf: { om: 'ecmwf_ifs025', meta: 'ecmwf_ifs025', label: 'ECMWF', long: 'ECMWF IFS — global, new run every 6 hours' },
+    aifs: { om: 'ecmwf_aifs025_single', meta: 'ecmwf_aifs025_single', label: 'AIFS', long: "ECMWF AIFS — ECMWF's AI model, global" }
+  };
+  const COLUMN_LEVELS = [1000, 975, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150, 100];
+  const COLUMN_FIELDS = COLUMN_LEVELS.flatMap(p => ['temperature', 'dew_point', 'relative_humidity', 'wind_speed', 'wind_direction', 'geopotential_height'].map(k => `${k}_${p}hPa`))
+    .concat(['surface_pressure', 'temperature_2m', 'dew_point_2m', 'wind_speed_10m', 'wind_direction_10m', 'cape']).join(',');
+  const NATIONAL_EVENTS = 'Tornado Warning,Severe Thunderstorm Warning,Flash Flood Warning,Extreme Wind Warning,Tornado Watch,Severe Thunderstorm Watch';
   const NWS_FOLLOW = [
     /^gridpoints\/[A-Z]{3}\/\d{1,3},\d{1,3}\/(forecast|forecast\/hourly|stations)$/,
     /^stations\/[A-Z0-9]{3,6}\/observations\/latest$/
@@ -124,15 +172,26 @@
 
   /* Worker, then direct. A 404 from the provider itself is an answer (NWS
      says that about every point outside the US), so it is not retried. */
-  async function ask(route, signal) {
+  async function ask(route, signal, ms = 12000) {
     if (!route) throw new WxError('not a request this page makes', 400);
     const [path, direct] = route;
     try {
-      return { data: await fetchJSON(host() + '/wx/' + path, signal), via: 'worker' };
+      return { data: await fetchJSON(host() + '/wx/' + path, signal, ms), via: 'worker' };
     } catch (e) {
       if (signal && signal.aborted) throw e;
     }
-    return { data: await fetchJSON(direct, signal), via: 'direct' };
+    /* Providers stumble for seconds at a time: the NWS answered 500 on its
+       station lists in one live run, and Open-Meteo timed out "overloaded" in
+       the next. A server error or a timeout gets one more, longer try before
+       the page calls that source down; a 4xx is an answer and is not retried. */
+    try {
+      return { data: await fetchJSON(direct, signal, ms), via: 'direct' };
+    } catch (e) {
+      if (signal && signal.aborted) throw e;
+      if (!(e.status >= 500 || e.name === 'AbortError' || e.name === 'TypeError')) throw e;
+      await new Promise(r => setTimeout(r, 800));
+      return { data: await fetchJSON(direct, signal, ms * 1.5), via: 'direct' };
+    }
   }
 
   /* ── units ──
@@ -395,7 +454,8 @@
       stationsUrl: p.observationStations || null,
       radar: p.radarStation || null,
       tz: p.timeZone || null,
-      city: rel ? [rel.city, rel.state].filter(Boolean).join(', ') : null
+      city: rel ? [rel.city, rel.state].filter(Boolean).join(', ') : null,
+      state: rel && /^[A-Z]{2}$/.test(rel.state || '') ? rel.state : null
     };
   }
 
@@ -490,11 +550,138 @@
         description: p.description || '',
         instruction: p.instruction || '',
         messageType: p.messageType || '',
-        polygon: a.geometry && a.geometry.type === 'Polygon' ? a.geometry.coordinates : null
+        polygon: a.geometry && a.geometry.type === 'Polygon' ? a.geometry.coordinates : null,
+        ...alertDetail(p)
       };
     })
       .filter(a => a.messageType !== 'Cancel' && !(a.ends && a.ends < now))
       .sort((a, b) => (SEVERITY[b.severity] || 0) - (SEVERITY[a.severity] || 0) || (a.onset || 0) - (b.onset || 0));
+  }
+
+  /* What a storm-based warning says about its storm, from the NWS's own
+     parameters (each is an array of strings). Nothing here is inferred: a
+     warning without a motion line simply has no track. */
+  const first = (params, k) => Array.isArray(params[k]) ? params[k][0] : params[k];
+  function alertDetail(p) {
+    const q = p.parameters || {};
+    const text = `${p.headline || ''}\n${p.description || ''}`;
+    const threat = first(q, 'tornadoDamageThreat') || first(q, 'thunderstormDamageThreat') || first(q, 'flashFloodDamageThreat') || null;
+    const hail = parseFloat(first(q, 'maxHailSize'));
+    const gust = parseFloat(first(q, 'maxWindGust'));
+    return {
+      motion: parseMotion(first(q, 'eventMotionDescription')),
+      detection: first(q, 'tornadoDetection') || first(q, 'flashFloodDetection') || null,
+      threat,
+      hail: Number.isFinite(hail) && hail > 0 ? hail : null,                  // inches
+      gust: Number.isFinite(gust) && gust > 0 ? gust : null,                  // mph, as the NWS writes it
+      emergency: /\b(TORNADO|FLASH FLOOD) EMERGENCY\b/i.test(text) || threat === 'CATASTROPHIC',
+      pds: /PARTICULARLY DANGEROUS SITUATION/i.test(text),
+      storm: STORM_EVENTS.test(p.event || '')
+    };
+  }
+  /* Warnings for a storm happening now, as opposed to watches, advisories
+     and statements — the ones storm mode is for. */
+  const STORM_EVENTS = /^(Tornado Warning|Severe Thunderstorm Warning|Flash Flood Warning|Extreme Wind Warning|Snow Squall Warning)$/;
+
+  /* "2026-10-17T21:41:00-00:00...storm...244DEG...31KT...12.34,-56.78"
+     The time the storm was at those points, the direction it is moving FROM
+     (the warning's TIME...MOT...LOC line), its speed in knots, and one point
+     for a cell or several for a line. */
+  function parseMotion(str) {
+    const m = /^(\S+?)\.\.\.(\w+)\.\.\.(\d{1,3})DEG\.\.\.(\d{1,3})KT\.\.\.(.+)$/.exec(String(str || '').trim());
+    if (!m) return null;
+    const t = Date.parse(m[1]);
+    const points = m[5].trim().split(/\s+/).map(pr => pr.split(',').map(Number))
+      .filter(([la, lo]) => validLat(la) && validLon(lo));
+    if (!Number.isFinite(t) || !points.length) return null;
+    return { time: t, kind: m[2], from: Number(m[3]) % 360, kt: Number(m[4]), points };
+  }
+
+  /* Is a point inside a GeoJSON ring ([lon, lat] pairs)? Ray casting. */
+  function inPolygon(lat, lon, polygon) {
+    const ring = polygon && polygon[0];
+    if (!Array.isArray(ring)) return false;
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > lat) !== (yj > lat) && lon < (xj - xi) * (lat - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+
+  /* ── where the storm is, relative to you (storm mode) ──
+     The warning's motion line, carried forward to now at its own speed and
+     heading, in a flat frame around the place (fine over the tens of km a
+     warning covers). Then: how far, which way, and — if its path crosses the
+     place — roughly when. A cell is a point; a line is segments that move
+     together. This is the warning's own estimate extended, nothing more, and
+     the page says so every time it shows one.
+
+     Units out: km, km/h, degrees (bearing FROM the place TO the storm), ms. */
+  const KM_LAT = 110.57;
+  const kmLon = lat => 111.32 * Math.cos(lat * Math.PI / 180);
+  const bearing = (x, y) => (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+  function stormTrack(motion, lat, lon, nowMs, horizonMin = 90) {
+    if (!motion) return null;
+    const now = nowMs || Date.now();
+    const kx = kmLon(lat);
+    const toward = (motion.from + 180) % 360;
+    const v = motion.kt * 1.852;                                  // km/h
+    const vx = v * Math.sin(toward * Math.PI / 180), vy = v * Math.cos(toward * Math.PI / 180);
+    const dtH = (now - motion.time) / 3600e3;
+    const pts = motion.points.map(([la, lo]) => [(lo - lon) * kx + vx * dtH, (la - lat) * KM_LAT + vy * dtH]);
+
+    /* nearest part of the storm now */
+    let best = { d: Infinity, x: 0, y: 0 };
+    const consider = (x, y) => { const d = Math.hypot(x, y); if (d < best.d) best = { d, x, y }; };
+    if (pts.length === 1) consider(...pts[0]);
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
+      const L = (bx - ax) ** 2 + (by - ay) ** 2;
+      const s = L ? Math.max(0, Math.min(1, -(ax * (bx - ax) + ay * (by - ay)) / L)) : 0;
+      consider(ax + s * (bx - ax), ay + s * (by - ay));
+    }
+
+    /* when its path reaches the place: for a line, the moment a segment
+       sweeps over it; for a cell, its closest approach */
+    let eta = null, miss = null;
+    const v2 = vx * vx + vy * vy;
+    if (v2 > 0) {
+      if (pts.length > 1) {
+        for (let i = 0; i + 1 < pts.length; i++) {
+          const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
+          const ex = bx - ax, ey = by - ay;
+          const det = ex * vy - ey * vx;               // solve a + s·e + t·v = 0
+          if (Math.abs(det) < 1e-9) continue;
+          const s = (-ax * vy + ay * vx) / det;
+          const t = (ex * -ay + ey * ax) / det;         // hours
+          if (s >= -0.05 && s <= 1.05 && t > 0 && (eta === null || t < eta)) { eta = t; miss = 0; }
+        }
+      }
+      if (eta === null) {
+        for (const [px, py] of pts) {
+          const t = -(px * vx + py * vy) / v2;
+          if (t <= 0) continue;
+          const m = Math.hypot(px + vx * t, py + vy * t);
+          if (miss === null || m < miss) { miss = m; eta = t; }
+        }
+      }
+    }
+    const within = eta !== null && eta * 60 <= horizonMin;
+    const state = best.d < 3 ? 'over'
+      : eta === null ? 'away'
+      : miss <= 8 && within ? 'approaching'
+      : miss <= 25 && within ? 'passing' : 'away';
+    return {
+      km: best.d,
+      bearing: bearing(best.x, best.y),
+      toward, kmh: v,
+      eta: state === 'approaching' && eta !== null ? now + eta * 3600e3 : null,
+      passKm: state === 'passing' ? miss : null,
+      state,
+      age: now - motion.time,
+      points: pts.map(([x, y]) => [lat + y / KM_LAT, lon + x / kx])     // the storm now, for the map
+    };
   }
 
   /* ── places ── */
@@ -651,6 +838,99 @@
   async function alerts(lat, lon, signal) {
     return normalizeAlerts((await ask(ROUTES.alerts(lat, lon), signal)).data);
   }
+  async function national(signal) {
+    return normalizeAlerts((await ask(ROUTES.national(), signal)).data);
+  }
+  async function stateAlerts(st, signal) {
+    const r = ROUTES.area(st);
+    return r ? normalizeAlerts((await ask(r, signal)).data) : [];
+  }
+  /* Where the Worker thinks this visitor is, from their connection —
+     Cloudflare's own city-level guess, never asked of anyone else. Only the
+     Worker can answer, so there is no direct fallback: null means "ask them". */
+  async function near(signal) {
+    try {
+      const j = await fetchJSON(host() + '/wx/near', signal, 4000);
+      if (!j || !validLat(+j.lat) || !validLon(+j.lon)) return null;
+      return { name: j.city || 'Near you', region: j.region || '', cc: j.country || '', lat: round2(j.lat), lon: round2(j.lon), approx: true };
+    } catch (e) { if (signal && signal.aborted) throw e; return null; }
+  }
+  /* ── the storm side ── */
+  const isoMinute = ms => new Date(ms).toISOString().slice(0, 16) + 'Z';
+  const isoHour = ms => new Date(ms).toISOString().slice(0, 13) + ':00Z';
+  /* The nearest NEXRAD sites to a point, nearest first. */
+  async function radarSites(lat, lon, signal) {
+    const j = (await ask(ROUTES.radarSites(lat, lon, isoHour(Date.now())), signal)).data;
+    return ((j && j.radars) || []).filter(r => r.type === 'NEXRAD' && SITE.test(r.id) && validLat(r.lat) && validLon(r.lon))
+      .map(r => ({ id: r.id, name: r.name || r.id, lat: r.lat, lon: r.lon, dist: distanceM(lat, lon, r.lat, r.lon) }))
+      .sort((a, b) => a.dist - b.dist);
+  }
+  /* A site's scans of a product in the last hour, oldest first, as times and
+     the tile layer for each. Scans come every 4–10 minutes. */
+  async function siteScans(site, prod, signal, nowMs) {
+    const end = Math.floor((nowMs || Date.now()) / 300e3) * 300e3 + 300e3;
+    const r = ROUTES.scans(site, prod, isoMinute(end - 3600e3), isoMinute(end));
+    if (!r) return [];
+    const j = (await ask(r, signal)).data;
+    return ((j && j.scans) || []).map(x => Date.parse(String(x.ts).replace(/Z?$/, 'Z')))
+      .filter(Number.isFinite).sort((a, b) => a - b)
+      .map(t => ({ t, layer: `ridge::${site}-${prod}-${new Date(t).toISOString().replace(/[-:T]/g, '').slice(0, 12)}` }));
+  }
+  const tileUrl = (layer, z, x, y) => `${IEM}/cache/tile.py/1.0.0/${layer}/${z}/${x}/${y}.png`;
+
+  /* SPC outlook polygons, as SPC labels and colours them. */
+  const SPC_RANK = { TSTM: 1, MRGL: 2, SLGT: 3, ENH: 4, MDT: 5, HIGH: 6 };
+  const SPC_NAMES = { TSTM: 'General thunderstorms', MRGL: 'Marginal risk', SLGT: 'Slight risk', ENH: 'Enhanced risk', MDT: 'Moderate risk', HIGH: 'High risk' };
+  function normalizeOutlook(j) {
+    const f = (j && Array.isArray(j.features)) ? j.features : [];
+    return f.map(x => {
+      const p = x.properties || {}, g = x.geometry || {};
+      const polys = g.type === 'MultiPolygon' ? g.coordinates : g.type === 'Polygon' ? [g.coordinates] : [];
+      return { label: p.LABEL || '', name: SPC_NAMES[p.LABEL] || p.LABEL2 || p.LABEL || '', rank: SPC_RANK[p.LABEL] || 0,
+        stroke: p.stroke || null, fill: p.fill || null, polys,
+        valid: Date.parse(p.VALID_ISO) || null, expire: Date.parse(p.EXPIRE_ISO) || null, issued: Date.parse(p.ISSUE_ISO) || null, forecaster: p.FORECASTER || '' };
+    }).filter(o => o.polys.length);
+  }
+  async function outlook(kind, signal) { return normalizeOutlook((await ask(ROUTES.spc(kind), signal)).data); }
+  /* The highest category whose area holds a point. */
+  function outlookAt(o, lat, lon) {
+    let best = null;
+    for (const x of o || []) if (x.polys.some(poly => inPolygon(lat, lon, poly)) && (!best || x.rank > best.rank)) best = x;
+    return best;
+  }
+
+  async function column(model, lat, lon, signal) {
+    const r = ROUTES.column(model, lat, lon);
+    if (!r) throw new WxError('no such model', 400);
+    return (await ask(r, signal, 25000)).data;
+  }
+  async function modelRun(model, signal) {
+    try {
+      const j = (await ask(ROUTES.modelRun(model), signal)).data;
+      const t = Number(j && j.last_run_initialisation_time);
+      return Number.isFinite(t) && t > 0 ? t * 1000 : null;
+    } catch (e) { if (signal && signal.aborted) throw e; return null; }
+  }
+  /* The nearest balloon site, and its latest flight (00Z or 12Z — a flight
+     takes about an hour and a half to reach the top and be published). */
+  async function raobSites(signal) {
+    const j = (await ask(ROUTES.raobSites(), signal)).data;
+    return ((j && j.features) || []).map(f => {
+      const c = f.geometry && f.geometry.coordinates;
+      const id = String(f.id || (f.properties && f.properties.id) || '').replace(/^_/, '');
+      return c && validLat(c[1]) && validLon(c[0]) && /^[A-Z0-9]{3,5}$/.test(id)
+        ? { id: id.length === 3 ? 'K' + id : id, name: (f.properties && (f.properties.sname || f.properties.name)) || id, lat: c[1], lon: c[0],
+          online: !(f.properties && f.properties.archive_end) } : null;
+    }).filter(x => x && x.online);
+  }
+  function raobTimes(nowMs, n = 3) {
+    const out = [];
+    let t = Math.floor(((nowMs || Date.now()) - 100 * 60e3) / (12 * 3600e3)) * 12 * 3600e3;
+    for (let i = 0; i < n; i++, t -= 12 * 3600e3) out.push(t);
+    return out;
+  }
+  const raobTs = ms => new Date(ms).toISOString().replace(/[-:T]/g, '').slice(0, 12);
+
   async function radarTime(signal) {
     try { return radarValid((await ask(ROUTES.radarMeta(), signal)).data); }
     catch (e) { if (signal && signal.aborted) throw e; return null; }
@@ -664,7 +944,10 @@
     normalizeAlerts, normalizePlaces, alertTone,
     hourIndex, upcomingHours, upcomingDays, pressureTrend, rainOutlook, currentConditions,
     radarLayer, radarTile, radarValid, age, fresh, distanceM, clock,
-    forecast, geocode, point, officeForecast, observation, alerts, radarTime, host
+    forecast, geocode, point, officeForecast, observation, alerts, radarTime, host,
+    STORM_EVENTS, NATIONAL_EVENTS, parseMotion, inPolygon, stormTrack, alertDetail, national, stateAlerts, near,
+    SITE_PRODUCTS, SPC_KINDS, SPC_NAMES, MODELS, COLUMN_LEVELS, COLUMN_FIELDS, radarSites, siteScans, tileUrl, isoMinute, isoHour,
+    normalizeOutlook, outlook, outlookAt, column, modelRun, raobSites, raobTimes, raobTs
   };
   root.Wx = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

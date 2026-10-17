@@ -678,8 +678,8 @@ builds ship none) — both handled in the script. `systems.html` and `updates.ht
 rooms.
 
 **Weather is asked live, and the place is the visitor's.** `weather.html` reads
-nothing committed: `projects/weather/wx.js` asks Open-Meteo, the NWS and Iowa State's
-NEXRAD tiles, through the Worker's `/wx` route first and directly if that fails — the
+nothing committed: `projects/weather/wx.js` asks Open-Meteo, the NWS, SPC and Iowa State
+(NEXRAD tiles, scan lists, weather balloons), through the Worker's `/wx` route first and directly if that fails — the
 Studies pattern, and the second room to make external requests by design. **Read
 [`projects/weather/README.md`](projects/weather/README.md) before touching it;
 [`projects/weather/DESIGN.md`](projects/weather/DESIGN.md) is Ric's plan for the whole
@@ -696,6 +696,11 @@ not on the front door) until Ric says it is ready. The ones that must never brea
   issued them, never rewritten.
 - **`ROUTES` in `wx.js` and `wxUpstream` in the Worker must agree** —
   `test/wx.test.mjs` runs every request the page makes through the Worker.
+- **Storm mode's distances and arrival times are the warning's own motion carried
+  forward**, shown only beside the warning and always called an estimate. Never
+  derive one from radar or let one stand in for the warning.
+- **The sounding arithmetic (`sounding.js`) is held to MetPy** in
+  `test/sounding.test.mjs`; change the physics and the pinned comparison together.
 
 **One account for the whole site lives in ATLAS's Supabase project.** Since
 2026-09-23 anybody may sign up at `account/` (terminal: `login`), the account

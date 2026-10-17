@@ -60,7 +60,10 @@ await guard('nws', async () => {
   const obs = await W.observation(pt, us.lat, us.lon);
   ok(obs && /^[A-Z0-9]{3,6}$/.test(obs.station), `a station observation: ${obs && obs.station} ${obs && obs.stationName}`);
   ok(obs && Date.now() - obs.time < 3 * 3600e3, `reported in the last three hours (${obs && W.age(Date.now() - obs.time)} ago)`);
-  ok(obs && Number.isFinite(obs.temp) && Number.isFinite(obs.pressure) && obs.pressure > 900 && obs.pressure < 1100, `with a temperature and a pressure in hPa: ${obs && obs.temp}°C, ${obs && obs.pressure} hPa`);
+  /* Not every station reports pressure (KOUN did not, 2026-10-17); the page
+     fills it from the model and says so. One that does must be in hPa. */
+  ok(obs && Number.isFinite(obs.temp) && (obs.pressure === null || (obs.pressure > 900 && obs.pressure < 1100)),
+    `with a temperature, and any pressure in hPa: ${obs && obs.temp}°C, ${obs && obs.pressure} hPa`);
   ok(obs && obs.dist != null && obs.dist < 60e3, `from within 60 km: ${obs && Math.round(obs.dist / 1000)} km`);
   const al = await W.alerts(us.lat, us.lon);
   ok(Array.isArray(al) && al.every(a => a.event && a.tone), `alerts read (${al.length} active)`);
@@ -82,6 +85,65 @@ await guard('radar', async () => {
     const r = await fetch(W.radarTile(m, 6, 14, 25, 'live'));
     ok(r.ok && /image\/png/.test(r.headers.get('content-type') || ''), `a ${m ? m + '-minute-old' : 'latest'} tile is a PNG (${r.status})`);
   }
+});
+
+console.log('\nLIVE  storms across the country, and the outlook');
+await guard('national', async () => {
+  const n = await W.national();
+  ok(Array.isArray(n) && n.every(a => a.event && W.NATIONAL_EVENTS.includes(a.event)), `the country's storm warnings and watches read (${n.length} now)`);
+  const withMotion = n.filter(a => a.motion);
+  ok(n.filter(a => /Tornado Warning|Severe Thunderstorm Warning/.test(a.event)).every(a => a.motion || !a.polygon) || n.length === 0,
+    `every tornado / severe thunderstorm warning with a polygon has a readable motion line (${withMotion.length} with motion)`);
+  const st = await W.stateAlerts('OK');
+  ok(Array.isArray(st), `a state's alerts read (${st.length})`);
+  const cat = await W.outlook('day1otlk_cat');
+  ok(Array.isArray(cat) && cat.every(o => o.label && o.polys.length), `SPC's day 1 outlook: ${cat.map(o => o.label).join(', ') || 'no risk areas today'}`);
+  for (const k of W.SPC_KINDS.slice(1)) { const o = await W.outlook(k); ok(Array.isArray(o), `${k} reads (${o.length} areas)`); }
+});
+
+console.log('\nLIVE  storm radar (single sites, IEM)');
+await guard('site radar', async () => {
+  const sites = await W.radarSites(us.lat, us.lon);
+  ok(sites.length >= 3 && /^[A-Z]{3}$/.test(sites[0].id) && sites[0].dist < 80e3, `nearest NEXRAD: ${sites.slice(0, 3).map(x => x.id + ' ' + Math.round(x.dist / 1000) + 'km').join(', ')}`);
+  for (const prod of Object.keys(W.SITE_PRODUCTS)) {
+    const scans = await W.siteScans(sites[0].id, prod);
+    ok(scans.length >= 4 && Date.now() - scans.at(-1).t < 30 * 60e3, `${prod}: ${scans.length} scans in the last hour, newest ${scans.length ? W.age(Date.now() - scans.at(-1).t) : '—'} ago`);
+    if (scans.length) {
+      const r = await fetch(W.tileUrl(scans.at(-1).layer, 7, 29, 50));
+      ok(r.ok && /image\/png/.test(r.headers.get('content-type') || ''), `and its newest scan is a tile (${r.status})`);
+    }
+  }
+});
+
+console.log('\nLIVE  model columns and runs (Open-Meteo)');
+const S = require('../sounding.js');
+for (const m of Object.keys(W.MODELS)) {
+  await guard(m, async () => {
+    const j = await W.column(m, us.lat, us.lon);
+    const prof = S.fromOpenMeteo(j, 1);
+    /* HRRR and GFS publish ~20 pressure levels; ECMWF's models publish 12 */
+    ok(prof && prof.length >= 10 && prof[0].p > 900, `${m}: a column of ${prof && prof.length} levels from ${prof && Math.round(prof[0].p)} hPa`);
+    ok(prof && prof.filter(l => l.td !== null && l.ws !== null).length >= 10, `${m}: with dewpoints (or humidity to make them from) and winds`);
+    const a = S.analyze(prof);
+    ok(a && Number.isFinite(a.sb.cape) && Number.isFinite(a.pw) && a.pw > 0, `${m}: analyzed — SBCAPE ${a && a.sb.cape}, PW ${a && a.pw.toFixed(1)} mm, 0–6 km shear ${a && a.shear6 && a.shear6.toFixed(1)} m/s`);
+    const run = await W.modelRun(m);
+    ok(run && Date.now() - run < 30 * 3600e3, `${m}: last run ${run ? new Date(run).toISOString().slice(0, 13) + 'Z' : '—'}`);
+  });
+}
+
+console.log('\nLIVE  weather balloons (IEM RAOB)');
+await guard('raob', async () => {
+  const sites = await W.raobSites();
+  const nearest = sites.map(x => ({ ...x, d: W.distanceM(us.lat, us.lon, x.lat, x.lon) })).sort((a, b) => a.d - b.d)[0];
+  ok(nearest && nearest.d < 100e3, `nearest balloon site: ${nearest && nearest.id} (${nearest && Math.round(nearest.d / 1000)} km)`);
+  let flight = null;
+  for (const t of W.raobTimes(Date.now())) {
+    const r = S.fromRaob((await (async () => { try { return (await fetch(W.ROUTES.raob(nearest.id, W.raobTs(t))[1])).json(); } catch (e) { return null; } })()));
+    if (r && r.levels.length > 20) { flight = r; break; }
+  }
+  ok(flight && flight.levels.length > 20, `a recent flight: ${flight && flight.station} ${flight && new Date(flight.valid).toISOString().slice(0, 13)}Z, ${flight && flight.levels.length} levels`);
+  const a = flight && S.analyze(flight.levels);
+  ok(a && Number.isFinite(a.sb.cape), `analyzed — SBCAPE ${a && a.sb.cape}, PW ${a && a.pw.toFixed(1)} mm`);
 });
 
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'THE WEATHER PROVIDERS ANSWER AS THE PAGE EXPECTS'));

@@ -32,7 +32,13 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     W.ROUTES.nws('https://api.weather.gov/gridpoints/ABC/45,60/forecast'),
     W.ROUTES.nws('https://api.weather.gov/gridpoints/ABC/45,60/stations'),
     W.ROUTES.nws('https://api.weather.gov/stations/KABC/observations/latest'),
-    W.ROUTES.radarMeta()
+    W.ROUTES.radarMeta(), W.ROUTES.national(), W.ROUTES.area('OK'),
+    W.ROUTES.radarSites(12.34, -56.78, '2026-10-17T20:00Z'), W.ROUTES.scans('ABC', 'N0B', '2026-10-17T19:05Z', '2026-10-17T20:05Z'),
+    W.ROUTES.scans('ABC', 'N0S', '2026-10-17T19:05Z', '2026-10-17T20:05Z'),
+    ...W.SPC_KINDS.map(k => W.ROUTES.spc(k)),
+    ...Object.keys(W.MODELS).map(m => W.ROUTES.column(m, 12.34, -56.78)),
+    ...Object.keys(W.MODELS).map(m => W.ROUTES.modelRun(m)),
+    W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200')
   ];
   for (const [path, direct] of routes) {
     const n = asked.length;
@@ -40,6 +46,8 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     ok(r.status === 200 && asked[n] === direct, `/wx/${path.slice(0, 60)} → ${direct.slice(0, 50)}…`);
   }
   ok(W.ROUTES.nws('https://api.weather.gov/products/abc') === null, 'a URL the Worker would refuse is not followed at all');
+  ok(W.ROUTES.scans('ABC', 'N0X', 'a', 'b') === null && W.ROUTES.column('nam', 1, 1) === null && W.ROUTES.spc('day9') === null && W.ROUTES.raob('x', '1') === null,
+    'products, models, outlooks and stations outside the lists are never asked for');
 }
 
 /* ── a forecast fixture: an hourly and 15-minute series around NOW ── */
@@ -227,6 +235,45 @@ console.log('\nRULE  times are the place\'s, not the visitor\'s');
   const t = Date.parse('2026-10-17T21:00:00Z');
   ok(c.time(t) === '3:00 PM' && c.hour(t) === '3PM' && c.ymd(t) === '2026-10-17', '21:00Z is 3 PM in Denver');
   ok(W.clock('Not/AZone').time(t).length > 0, 'a timezone Intl does not know falls back rather than throwing');
+}
+
+console.log('\nRULE  a warning\'s storm, carried forward to now (storm mode)');
+{
+  const T = Date.parse('2026-10-17T21:00:00Z');
+  const m = W.parseMotion('2026-10-17T21:00:00-00:00...storm...270DEG...30KT...12.30,-56.90');
+  ok(m && m.from === 270 && m.kt === 30 && m.points.length === 1 && m.time === T, 'the TIME...MOT...LOC line is read: from 270°, 30 kt, one point');
+  ok(W.parseMotion('nonsense') === null && W.parseMotion(undefined) === null, 'anything else is no track, not a guess');
+  const line = W.parseMotion('2026-10-17T21:00:00-00:00...storm...270DEG...30KT...12.40,-56.90 12.20,-56.90');
+  ok(line && line.points.length === 2, 'a line of storms has several points');
+
+  /* the place is 0.1° (~10.9 km at this latitude) east of the storm, which is
+     moving from the west at 30 kt (55.6 km/h): it arrives in about 11.7 minutes */
+  const tr = W.stormTrack(m, 12.30, -56.80, T);
+  ok(tr.state === 'approaching' && near(tr.km, 10.9, 0.2), `a storm 10.9 km west, coming this way: ${tr.state}, ${tr.km.toFixed(1)} km`);
+  ok(near(tr.bearing, 270, 1) && near(tr.toward, 90) && near(tr.kmh, 55.56, 0.01), 'it is to the west, heading east, at 55.6 km/h');
+  ok(near((tr.eta - T) / 60e3, 11.7, 0.3), `and arrives in about ${((tr.eta - T) / 60e3).toFixed(1)} minutes`);
+  const later = W.stormTrack(m, 12.30, -56.80, T + 6 * 60e3);
+  ok(near(later.km, 10.9 - 55.56 * 0.1, 0.2) && near((later.eta - T) / 60e3, 11.7, 0.3), 'six minutes on, it is closer and the arrival time has not moved');
+  ok(W.stormTrack(m, 12.30, -57.00, T).state === 'away', 'a place behind the storm: moving away');
+  const side = W.stormTrack(m, 12.45, -56.80, T);
+  ok(side.state === 'passing' && near(side.passKm, 16.6, 0.5) && side.eta === null, `a place 16 km off its path: passing ${side.passKm.toFixed(1)} km away, no arrival time`);
+  ok(W.stormTrack(m, 12.30, -56.89, T).state === 'over', 'within 3 km: over you');
+  const sweep = W.stormTrack(line, 12.31, -56.80, T);
+  ok(sweep.state === 'approaching' && near((sweep.eta - T) / 60e3, 11.7, 0.4), 'a line sweeping over the place arrives when it reaches it, not at its nearest end');
+  ok(W.stormTrack(m, 12.30, -55.00, T).state === 'away', 'a storm that would take hours to arrive is not "approaching"');
+  ok(W.stormTrack(null, 1, 1) === null, 'no motion line, no track');
+}
+
+console.log('\nRULE  warning details are the NWS\'s own parameters');
+{
+  const d = W.alertDetail({ event: 'Tornado Warning', headline: 'x', description: '...TORNADO EMERGENCY FOR SOMEWHERE...',
+    parameters: { tornadoDetection: ['OBSERVED'], tornadoDamageThreat: ['CATASTROPHIC'], maxHailSize: ['1.75'], maxWindGust: ['70 MPH'],
+      eventMotionDescription: ['2026-10-17T21:00:00-00:00...storm...240DEG...25KT...12.3,-56.9'] } });
+  ok(d.storm && d.detection === 'OBSERVED' && d.emergency && d.hail === 1.75 && d.gust === 70 && d.motion.from === 240, 'observed, emergency, hail, gust, motion');
+  const w = W.alertDetail({ event: 'Wind Advisory', parameters: {} });
+  ok(!w.storm && !w.emergency && w.motion === null && w.hail === null, 'an advisory is not a storm warning');
+  const ring = [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]];
+  ok(W.inPolygon(1, 1, ring) && !W.inPolygon(3, 1, ring) && !W.inPolygon(1, 1, null), 'inside a warning polygon or not');
 }
 
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WEATHER CLIENT RULES PASS'));
