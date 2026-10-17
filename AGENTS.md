@@ -563,11 +563,19 @@ moved it back out the same day: the terminal is home again, and the redesign liv
 the terminal, or by the terminal's **[ HOME ]** box in the corner of its frame (Ric,
 2026-10-17: "a box called home in the terminal that brings you to the main page"). It does not run the terminal, it hands it commands: the bar carries a
 piece of the terminal's own screen (black glass, amber `#ffb000`, scanlines) — a `~$`
-prompt and a **TERMINAL** key (Ric, 2026-10-17). What is typed there runs in the
-terminal as `index.html?run=<command>` (the terminal runs it once, as if typed, and
-cleans the address); a post's name goes straight to its page; Enter on nothing opens
-the terminal; `/` from anywhere focuses the prompt. Without JS the prompt is a plain
-GET form to `index.html`, so it still works. Don't put it in `ROOMS`, `PROJECTS` or
+prompt and a **TERMINAL** key (Ric, 2026-10-17). What is typed there **runs right
+there** (Ric, 2026-10-17: "it shouldn't move you to the terminal first. Like mochi"): the
+terminal sits in a hidden frame (`index.html?embed=1`, loaded the first time the prompt
+is touched) and answers in a panel under the bar. In that mode `index.html` does nothing
+itself — every way it leaves the page goes through `goTo()` / `reloadPage()` / `goBack()`,
+and `RELAY_CATS` / `RELAY_EFFECTS` are stand-ins defined before `effects.js` (which then
+stands down) — all of it is posted up to the front door, which navigates, wakes Mochi or
+sets the trip mode on itself. Messages are checked for origin and source both ways, and
+`assets/visit.js` never counts a framed page. **Navigate in the terminal only through
+`goTo()`**, or that command will move the hidden frame instead of the visitor. A post's
+name goes straight to its page; Enter on nothing opens the terminal; `/` focuses the
+prompt. If the frame never answers, or with JS off, the command goes to the terminal as
+`index.html?run=<command>` (run once, as if typed, address cleaned). Don't put it in `ROOMS`, `PROJECTS` or
 `latest.js`.
 
 **It shows off the pages, not Ric** (Ric, 2026-10-16: "it's my internet, but it's an

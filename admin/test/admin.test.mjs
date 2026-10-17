@@ -502,7 +502,7 @@ test('kondrite: a password reset goes to KONDRITE\'s own recover endpoint, back 
 
 test('wiring: `admin` and `accounts` open /admin/', () => {
   const index = read('index.html');
-  assert.match(index, /admin: \(\) => \{\s+setTimeout\(\(\) => \(location\.href = "admin\/"\)/);
+  assert.match(index, /admin: \(\) => \{\s+setTimeout\(\(\) => goTo\("admin\/"\)/);
   assert.match(index, /accounts: \(\) => COMMANDS\.admin\(\),/);
   assert.ok(read('EASTER_EGGS.md').includes('| `admin` / `accounts` |'));
 });

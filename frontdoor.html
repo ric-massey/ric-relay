@@ -105,6 +105,22 @@
     }
     .term input::placeholder { color: #b07d00; opacity: 1; text-shadow: none; }
     .term:focus-within { border-color: #ffb000; box-shadow: 0 0 0 1px rgba(255,176,0,.35), 0 0 30px rgba(255,176,0,.28), 0 0 40px rgba(255,176,0,.06) inset; }
+    /* what a command answers, under the bar, on the same black glass */
+    .term-out {
+      position: absolute; top: calc(100% + 8px); right: var(--gutter); z-index: 2;
+      width: min(560px, calc(100vw - 2 * var(--gutter))); max-height: min(55vh, 460px); overflow: auto;
+      padding: 14px 40px 14px 16px; border: 1px solid #6b4d00; color: #e6a200;
+      background: repeating-linear-gradient(0deg, rgba(255,255,255,.016) 0 1px, transparent 1px 3px), #0a0a0a;
+      box-shadow: 0 18px 50px rgba(0,0,0,.45), 0 0 30px rgba(255,176,0,.12);
+      font: 500 13px/1.6 var(--mono); overflow-wrap: anywhere;
+    }
+    #term-lines { white-space: pre-wrap; }
+    .term-out[hidden] { display: none; }
+    .term-out .cmd { color: #ffb000; text-shadow: 0 0 10px rgba(255,176,0,.45); margin-top: 10px; }
+    .term-out .cmd:first-child { margin-top: 0; }
+    .term-out .cmd::before { content: "~$ "; color: #b07d00; text-shadow: none; }
+    .term-x { position: absolute; top: 6px; right: 8px; width: 28px; height: 28px; border: 0; background: none; color: #b07d00; font: 400 20px/1 var(--mono); cursor: pointer; }
+    .term-x:hover, .term-x:focus-visible { color: #ffb000; outline: none; }
     .tbtn {
       flex: none; position: relative; display: inline-flex; align-items: center; gap: 10px; padding: 0 14px 0 16px;
       background: #0a0a0a; color: #ffb000; text-decoration: none; border-left: 1px solid #6b4d00;
@@ -301,9 +317,13 @@
          from anywhere on this page. Amber, the colour its own screen glows. -->
     <form class="term" id="term" action="index.html" method="get" role="search" aria-label="Terminal">
       <label class="ps" for="run">~$</label>
-      <input id="run" name="run" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" placeholder="type a command" aria-label="Type a command — it runs in the terminal (press / to start typing)">
+      <input id="run" name="run" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go" placeholder="type a command" aria-label="Type a terminal command — it runs right here (press / to start typing)">
       <a class="tbtn" href="index.html" title="Open the terminal">Terminal<i class="cur" aria-hidden="true"></i></a>
     </form>
+    <div class="term-out" id="term-out" role="log" aria-live="polite" aria-label="Terminal output" hidden>
+      <button class="term-x" id="term-x" type="button" aria-label="Close the output">×</button>
+      <div id="term-lines"></div>
+    </div>
     <button class="mode" id="mode" type="button" aria-label="Switch between night and day"></button>
   </header>
 
@@ -1538,23 +1558,80 @@
     }
 
     // ─── the terminal ───────────────────────────────────
-    // The front door doesn't run the terminal — it hands it commands. What is
-    // typed in the bar runs there (index.html?run=…), except a room's name,
-    // which goes straight to the room. Enter on nothing opens the terminal,
-    // and / from anywhere puts you at the prompt.
+    // The prompt in the bar runs terminal commands right here: the terminal
+    // sits in a hidden frame (index.html?embed=1), loaded the first time the
+    // prompt is touched, and answers in the panel under the bar. Whatever a
+    // command does — going to a room, waking Mochi, a trip mode — happens on
+    // this page; the frame only thinks. A post's name goes straight to its
+    // page, `home` comes back to the top, Enter on nothing opens the terminal,
+    // and / from anywhere puts you at the prompt. Without the frame (it fails
+    // to load, or no JS) the command goes to the terminal as ?run=.
     {
       const form = document.getElementById("term"), input = document.getElementById("run");
+      const panel = document.getElementById("term-out"), lines = document.getElementById("term-lines");
       const key = (t) => t.toLowerCase().replace(/^\/+/, "").replace(/^(open|cd)\s+/, "").replace(/[^a-z0-9]+/g, "");
+      let frame = null, ready = false, waiting = [];
+      const wake = () => {
+        if (frame) return;
+        frame = document.createElement("iframe");
+        frame.src = "index.html?embed=1"; frame.title = "terminal"; frame.tabIndex = -1;
+        frame.setAttribute("aria-hidden", "true");
+        frame.style.cssText = "position:fixed;width:1px;height:1px;left:-9999px;top:0;border:0;visibility:hidden";
+        document.body.appendChild(frame);
+      };
+      const send = (cmd) => frame.contentWindow.postMessage({ term: "run", cmd, cats: !!window.RELAY_CATS?.active?.(), effect: window.RELAY_EFFECTS?.current?.() || null }, location.origin);
+      const show = (list, cleared) => {
+        if (cleared) lines.textContent = "";
+        for (const l of list) { const d = document.createElement("div"); if (l.bright) { d.className = "cmd"; d.textContent = l.text.replace(/^\$\s*/, ""); } else d.textContent = l.text; lines.appendChild(d); }
+        panel.hidden = !lines.childElementCount;
+        panel.scrollTop = panel.scrollHeight;
+      };
+      addEventListener("message", (e) => {
+        if (!frame || e.source !== frame.contentWindow || e.origin !== location.origin || !e.data) return;
+        const m = e.data;
+        if (m.term === "ready") { ready = true; waiting.splice(0).forEach(send); }
+        else if (m.term === "out") show(m.lines || [], m.cleared);
+        else if (m.term === "go") {
+          const to = new URL(m.href, location.href);
+          if (to.origin !== location.origin) return;
+          if (/\/frontdoor\.html$/.test(to.pathname)) { panel.hidden = true; scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" }); }
+          else location.href = to.href;
+        }
+        else if (m.term === "back") history.back();
+        else if (m.term === "cats") m.on ? window.RELAY_CATS?.enable() : window.RELAY_CATS?.clear();
+        else if (m.term === "effect") m.mode ? window.RELAY_EFFECTS?.set(m.mode) : window.RELAY_EFFECTS?.clear();
+      });
+      for (const ev of ["focus", "pointerenter", "touchstart"]) input.addEventListener(ev, wake, { passive: true });
+      const past = []; let back = 0;
       form.addEventListener("submit", (e) => {
         e.preventDefault();
-        const typed = input.value.trim();
+        const typed = input.value.trim().slice(0, 200);
         if (!typed) { location.href = "index.html"; return; }
-        if (/^(front[\s_-]*door|home|cd home|open home)$/i.test(typed)) { input.value = ""; scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" }); return; }
+        input.value = ""; past.push(typed); back = past.length;
+        if (/^(front[\s_-]*door|home|cd home|open home)$/i.test(typed)) { panel.hidden = true; scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" }); return; }
         const k = key(typed), post = POSTS.find((p) => key(p.name) === k || key(p.id) === k);
-        location.href = post ? post.href : `index.html?run=${encodeURIComponent(typed.slice(0, 200))}`;
+        if (post) { location.href = post.href; return; }
+        wake();
+        if (ready) send(typed);
+        else {
+          waiting.push(typed);
+          // a frame that never answers must not swallow the command
+          setTimeout(() => { if (!ready && waiting.includes(typed)) location.href = `index.html?run=${encodeURIComponent(typed)}`; }, 5000);
+        }
       });
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") { panel.hidden = true; return; }
+        if ((e.key === "ArrowUp" || e.key === "ArrowDown") && past.length) {
+          e.preventDefault();
+          back = e.key === "ArrowUp" ? Math.max(0, back - 1) : Math.min(past.length, back + 1);
+          input.value = past[back] ?? "";
+        }
+      });
+      document.getElementById("term-x").addEventListener("click", () => { panel.hidden = true; input.focus(); });
+      addEventListener("pointerdown", (e) => { if (!panel.hidden && !panel.contains(e.target) && !form.contains(e.target)) panel.hidden = true; });
       addEventListener("keydown", (e) => {
         const el = document.activeElement;
+        if (e.key === "Escape") panel.hidden = true;
         if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
         if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
         e.preventDefault();

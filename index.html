@@ -348,6 +348,37 @@ type Sydney's cat's name for a surprise!</div>
   </div>
 
   <script src="notes.js"></script>
+  <script>
+    /* ─── embedded: the front door's prompt ──────────────────
+       frontdoor.html keeps this page in a hidden frame (?embed=1) and sends it
+       the commands typed into its bar, so a command runs where it was typed
+       instead of carrying the visitor here first. In that mode nothing the
+       terminal does happens in this frame: going somewhere, reloading, going
+       back, waking Mochi and the visual modes are all handed up to the page
+       that holds it (HOST), and the output goes up as text. Defining
+       RELAY_CATS / RELAY_EFFECTS before effects.js makes effects.js stand
+       down here entirely — no cat or trip mode runs in an invisible frame. */
+    window.TERMINAL_EMBED = (() => {
+      if (window.parent === window || new URLSearchParams(location.search).get("embed") !== "1") return null;
+      const send = (msg) => window.parent.postMessage(msg, location.origin);
+      const state = { cats: false, effect: null };
+      window.RELAY_CATS = {
+        enable: () => { const was = state.cats; state.cats = true; send({ term: "cats", on: true }); return !was; },
+        clear: () => { state.cats = false; send({ term: "cats", on: false }); },
+        active: () => state.cats,
+      };
+      window.RELAY_EFFECTS = {
+        set: (mode) => { state.effect = mode; send({ term: "effect", mode }); },
+        clear: () => { state.effect = null; send({ term: "effect", mode: null }); },
+        current: () => state.effect,
+      };
+      return { send, state };
+    })();
+    // Every way the terminal leaves the page goes through these three.
+    const goTo = (href) => window.TERMINAL_EMBED ? window.TERMINAL_EMBED.send({ term: "go", href: new URL(href, location.href).href }) : (location.href = href);
+    const reloadPage = () => window.TERMINAL_EMBED ? window.TERMINAL_EMBED.send({ term: "go", href: new URL("index.html", location.href).href }) : location.reload();
+    const goBack = () => window.TERMINAL_EMBED ? window.TERMINAL_EMBED.send({ term: "back" }) : history.back();
+  </script>
   <script src="effects.js"></script>
   <script src="projects/climbing/latest-climb.js?v=2"></script>
   <!-- Lets the banner see days logged from a phone, not just the ones
@@ -398,7 +429,7 @@ type Sydney's cat's name for a surprise!</div>
         el.classList.remove("hidden");
         el.classList.add("revealed");
       }
-      if (matchMedia("(pointer: fine)").matches) {
+      if (matchMedia("(pointer: fine)").matches && !window.TERMINAL_EMBED) {
         document.getElementById("cmd").focus({ preventScroll: true });
       }
     }
@@ -682,11 +713,11 @@ type Sydney's cat's name for a surprise!</div>
       random: () => {
         const unlocked = ROOMS.filter((room) => !room.locked);
         const room = unlocked[Math.floor(Math.random() * unlocked.length)];
-        setTimeout(() => (location.href = room.href), 450);
+        setTimeout(() => goTo(room.href), 450);
         return `rolling the directory table... /${room.name}\nentering ...`;
       },
       reboot: () => {
-        setTimeout(() => location.reload(), 350);
+        setTimeout(reloadPage, 350);
         return "shutting down signal...\nrestarting terminal.";
       },
       // ─── undocumented ───
@@ -694,23 +725,23 @@ type Sydney's cat's name for a surprise!</div>
       // `woodshed` still works: it is what the page was called for years and
       // it is what the easter-egg notes tell you to type.
       tension: () => {
-        setTimeout(() => (location.href = "projects/climbing/board.html#tension"), 400);
+        setTimeout(() => goTo("projects/climbing/board.html#tension"), 400);
         return "opening the boards · Tension Board ...";
       },
       kilter: () => {
-        setTimeout(() => (location.href = "projects/climbing/board.html#kilter"), 400);
+        setTimeout(() => goTo("projects/climbing/board.html#kilter"), 400);
         return "opening the boards · Kilter Board ...";
       },
       boards: () => {
-        setTimeout(() => (location.href = "projects/climbing/board.html"), 400);
+        setTimeout(() => goTo("projects/climbing/board.html"), 400);
         return "opening the boards ...";
       },
       woodshed: () => {
-        setTimeout(() => (location.href = "projects/climbing/board.html"), 400);
+        setTimeout(() => goTo("projects/climbing/board.html"), 400);
         return "opening the boards ...";
       },
       "404": () => {
-        setTimeout(() => (location.href = "404.html?from=terminal"), 450);
+        setTimeout(() => goTo("404.html?from=terminal"), 450);
         return "deliberately corrupting route table...\nsignal loss in 3... 2... 1...";
       },
       diagnose: (arg) => arg === "orrin"
@@ -725,36 +756,36 @@ type Sydney's cat's name for a surprise!</div>
       // The crew app for Dad's race. Unlisted on purpose; the lock is the login
       // and the database behind it, not this command being hard to guess.
       hermiscus: () => {
-        setTimeout(() => (location.href = "projects/dads-race/login.html"), 650);
+        setTimeout(() => goTo("projects/dads-race/login.html"), 650);
         return "HERMISCUS · private channel · yeti crew\nhandshake required. crew only.\nopening the door ...";
       },
       // One account for the private corners of the site (ATLAS, HERMISCUS):
       // sign in, ask Ric for access, or — for Ric — approve people.
       login: () => {
-        setTimeout(() => (location.href = "account/"), 450);
+        setTimeout(() => goTo("account/"), 450);
         return "opening account ...\none sign-in for the private corners. new here? ask Ric for access.";
       },
       account: () => {
-        setTimeout(() => (location.href = "account/"), 450);
+        setTimeout(() => goTo("account/"), 450);
         return "opening account ...";
       },
       // Ric's admin site: every account on the site and in KONDRITE. Unlisted;
       // the database is the lock, and anybody else typing it gets "No access".
       admin: () => {
-        setTimeout(() => (location.href = "admin/"), 450);
+        setTimeout(() => goTo("admin/"), 450);
         return "opening admin ...\nadmin only.";
       },
       accounts: () => COMMANDS.admin(),
       // KONDRITE's listening booth: every game sound, rated in plain words.
       // Unlisted like hermiscus — it is a tool for Ric, not a room.
       listen: () => {
-        setTimeout(() => (location.href = "projects/kondrite/sounds/listen.html"), 450);
+        setTimeout(() => goTo("projects/kondrite/sounds/listen.html"), 450);
         return "patching audio feed ...\nKONDRITE listening booth: play it, say what bugs you, copy the answers.";
       },
       // The private visitor counter. Unlisted like listen — the numbers are
       // behind the site password; anybody typing this just gets a sign-in box.
       visitors: () => {
-        setTimeout(() => (location.href = "visitors/"), 450);
+        setTimeout(() => goTo("visitors/"), 450);
         return "tapping the wire ...\nVISITORS: who came, from where, and what they read. owner only.";
       },
       coffee: () => "brewing... ☕ dispensed. carry on.",
@@ -854,22 +885,22 @@ type Sydney's cat's name for a surprise!</div>
       // Unlisted while the terminal stays home. Spaces, dashes or none all work.
       if (/^front[\s_-]*door$/i.test(normalizedRaw) || /^(home|cd home|open home)$/i.test(normalizedRaw)) {
         print("walking out to the front door ...");
-        setTimeout(() => (location.href = "frontdoor.html"), 400);
+        setTimeout(() => goTo("frontdoor.html"), 400);
       } else if ((verb === "open" || verb === "cd") && PAGES[pageArg]) {
         print(`entering /${pageArg} ...`);
-        setTimeout(() => (location.href = PAGES[pageArg]), 400);
+        setTimeout(() => goTo(PAGES[pageArg]), 400);
       } else if (verb === "open" && project) {
         print(`opening ${project.title} in /${project.room} ...`);
-        setTimeout(() => (location.href = project.href), 400);
+        setTimeout(() => goTo(project.href), 400);
       } else if (directProject) {
         print(`opening ${directProject.title} in /${directProject.room} ...`);
-        setTimeout(() => (location.href = directProject.href), 400);
+        setTimeout(() => goTo(directProject.href), 400);
       } else if ((verb === "open" && ["latest", "recent"].includes(arg)) || ["latest", "recent"].includes(verb)) {
         const newest = (window.RELAY_LATEST_ALL || window.RELAY_LATEST || [])[0];
         if (!newest) print("no new signals found.");
         else {
           print(`opening ${newest.title} ...`);
-          setTimeout(() => (location.href = newest.href), 400);
+          setTimeout(() => goTo(newest.href), 400);
         }
       } else if (verb === "cat" && ["notes", "transmissions"].includes(arg)) {
         print(readNotes());
@@ -877,13 +908,13 @@ type Sydney's cat's name for a surprise!</div>
         print("already at /terminal — this is the root of Ric's internet.");
       } else if (verb === "back") {
         print("returning to previous signal ...");
-        setTimeout(() => history.back(), 250);
+        setTimeout(goBack, 250);
       } else if (PAGES[pageVerb]) {
         // A trailing word used to make this fall through to "command not
         // recognized: mind" — telling someone a room doesn't exist while it sits
         // in the directory right above. The room name wins; the rest is noise.
         print(`entering /${pageVerb} ...`);
-        setTimeout(() => (location.href = PAGES[pageVerb]), 400);
+        setTimeout(() => goTo(PAGES[pageVerb]), 400);
       } else if (COMMANDS[verb]) {
         const result = COMMANDS[verb](arg, originalArg);
         if (result) print(result);
@@ -912,6 +943,24 @@ type Sydney's cat's name for a surprise!</div>
 
     // clicking anywhere in the cmdline area focuses the input
     document.getElementById("cmdline").addEventListener("click", () => cmd.focus());
+
+    // Embedded in the front door: run what its prompt sends, as if typed here,
+    // and hand back what the terminal printed. Only the page holding this
+    // frame, on this origin, is listened to.
+    if (window.TERMINAL_EMBED) {
+      skipBoot();
+      const { send, state } = window.TERMINAL_EMBED;
+      addEventListener("message", (e) => {
+        if (e.source !== window.parent || e.origin !== location.origin || !e.data || e.data.term !== "run") return;
+        state.cats = !!e.data.cats; state.effect = e.data.effect || null;
+        const mark = out.childElementCount;
+        cmd.value = String(e.data.cmd || "").slice(0, 200);
+        cmd.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+        const now = out.childElementCount;
+        send({ term: "out", cleared: now < mark, lines: [...out.children].slice(Math.min(mark, now)).map((d) => ({ text: d.textContent, bright: d.classList.contains("bright") })) });
+      });
+      send({ term: "ready" });
+    }
 
     // A command sent from elsewhere — the front door's prompt sends
     // index.html?run=<command> — runs here as if it had been typed, once,

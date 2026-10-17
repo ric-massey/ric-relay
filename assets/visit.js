@@ -26,13 +26,15 @@
    referrer URL, nothing typed. The country comes from Cloudflare at the other end and the IP address
    is never stored.
 
-   It does nothing on file://, under automation, or on a device Ric has told
+   It does nothing on file://, under automation, inside a frame (the front
+   door keeps the terminal in a hidden one to run its prompt — that is not a
+   visit), or on a device Ric has told
    to stop counting (the "ignore this device" switch on /visitors/ sets
    `visit:ignore`). And it never throws: a counter that can break a page is
    worse than no counter. */
 (function () {
   try {
-    if (location.protocol === 'file:' || navigator.webdriver) return;
+    if (location.protocol === 'file:' || navigator.webdriver || window.top !== window) return;
     var ls = window.localStorage;
     var ignored = function () { return ls.getItem('visit:ignore') === '1'; };
     if (ignored()) return;
