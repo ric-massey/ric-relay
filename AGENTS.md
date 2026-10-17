@@ -173,6 +173,7 @@ Per-room nav treatments (class on the `<nav>`):
 | apex | Apex lobby tab strip (scrolls sideways, red underline on the current room) | `nav.lobbytabs` |
 | cs | CS2 main-menu strip (white underline) | `nav.mainmenu` |
 | val | VALORANT client tabs (red underline) | `nav.clienttabs` |
+| weather | frosted-glass pills over the sky | `nav.glass` |
 | exploration | star-chart waypoints | `nav.starchart` |
 | gaming | understated top-bar text links | `nav.launcher` |
 | workbench | blueprint sheet-index chips | `nav.sheets` |
@@ -676,6 +677,26 @@ User-Agent (Cloudflare bans `Python-urllib`, error 1010) and a CA bundle (python
 builds ship none) — both handled in the script. `systems.html` and `updates.html` are legacy redirects, not
 rooms.
 
+**Weather is asked live, and the place is the visitor's.** `weather.html` reads
+nothing committed: `projects/weather/wx.js` asks Open-Meteo, the NWS and Iowa State's
+NEXRAD tiles, through the Worker's `/wx` route first and directly if that fails — the
+Studies pattern, and the second room to make external requests by design. **Read
+[`projects/weather/README.md`](projects/weather/README.md) before touching it;
+[`projects/weather/DESIGN.md`](projects/weather/DESIGN.md) is Ric's plan for the whole
+room and the source of truth for what gets built next.** It is unlisted (`listed: false`,
+not on the front door) until Ric says it is ready. The ones that must never break:
+
+- **No place in the repo, ever (hard rule 1).** The visitor's own location or search,
+  kept in their localStorage, rounded to two decimals before anything is asked — the
+  Worker refuses finer. No default location, no coordinates in tests (the live test
+  finds places by name), and the personal weather station in DESIGN.md §19 waits on
+  Ric's call because its position cannot be committed.
+- **Every number carries its source and age**, observation versus model is labelled,
+  and a feed past its `STALE_MS` says "delayed". Official alerts are shown as the NWS
+  issued them, never rewritten.
+- **`ROUTES` in `wx.js` and `wxUpstream` in the Worker must agree** —
+  `test/wx.test.mjs` runs every request the page makes through the Worker.
+
 **One account for the whole site lives in ATLAS's Supabase project.** Since
 2026-09-23 anybody may sign up at `account/` (terminal: `login`), the account
 arrives as a request, and Ric approves it and ticks which pages it opens —
@@ -787,8 +808,9 @@ bug you are looking for.
 - [ ] Any `data-egg` you added has a matching entry in `relay-return.js` and a line in
       `EASTER_EGGS.md`.
 - [ ] Page still opens as a static file — no console errors, no external requests
-      beyond the GitHub API calls that already exist and the OpenStreetMap tiles in
-      the training page's run detail.
+      beyond the GitHub API calls that already exist, the OpenStreetMap tiles in
+      the training page's run detail, Studies' ClinicalTrials.gov fallback and the
+      weather room's providers (below).
 - [ ] Looks right at mobile width.
 - [ ] Didn't add location data, extra repos, or a build step.
 - [ ] The relevant test suite above still passes.

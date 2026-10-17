@@ -1496,10 +1496,143 @@ async function trialsProxy(request, env, ctx, parts, url) {
   return reply(body, 200, 'miss');
 }
 
+/* ── /wx — the weather room's providers, passed through ──
+   weather.html asks Open-Meteo, the National Weather Service and Iowa State's
+   radar archive. All three are public and keyless, and the page calls them
+   directly if this route is down — so, like /trials, this is a cache and a
+   shield rather than a gate. What it buys: one request per place per few
+   minutes instead of one per visitor, a User-Agent the NWS asks callers to
+   send (a browser cannot set one), and a single place to rate-limit later.
+
+   Only the request shapes the page makes are forwarded (projects/weather/wx.js,
+   ROUTES), and test/wx.test.mjs holds the two to each other. Coordinates must
+   already be rounded to two decimals — about a kilometre — so a cache key is
+   never somebody's doorstep, and nothing here logs or stores one. */
+const WX_OM = 'https://api.open-meteo.com/v1/forecast';
+const WX_GEO = 'https://geocoding-api.open-meteo.com/v1/search';
+const WX_NWS = 'https://api.weather.gov';
+const WX_RADAR = 'https://mesonet.agron.iastate.edu/data/gis/images/4326/USCOMP/n0q_0.json';
+const WX_DEG = /^-?\d{1,3}(\.\d{1,2})?$/;
+const WX_OM_FIELDS = {
+  current: 'temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,is_day,precipitation,' +
+    'weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
+  hourly: 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,precipitation_probability,' +
+    'precipitation,weather_code,cloud_cover,visibility,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,is_day',
+  daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,' +
+    'wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,sunrise,sunset,uv_index_max',
+  minutely_15: 'precipitation,snowfall'
+};
+const WX_NWS_PATHS = [
+  /^points\/-?\d{1,2}(\.\d{1,2})?,-?\d{1,3}(\.\d{1,2})?$/,
+  /^gridpoints\/[A-Z]{3}\/\d{1,3},\d{1,3}\/(forecast|forecast\/hourly|stations)$/,
+  /^stations\/[A-Z0-9]{3,6}\/observations\/latest$/
+];
+/* Seconds each kind of answer may be reused. A point's office never moves;
+   an alert can be issued at any minute. */
+const WX_TTL = { om: 600, geo: 86400, points: 86400, stations: 86400, forecast: 900, obs: 120, alerts: 60, radar: 60 };
+const WX_MEMO_MAX = 400;
+const wxMemo = new Map();
+
+function wxDeg(v, max) {
+  if (!WX_DEG.test(v || '')) return null;
+  const n = Number(v);
+  return Math.abs(n) <= max ? String(n) : null;
+}
+
+/* [upstream URL, ttl] for a path the page makes, or null for anything else. */
+function wxUpstream(parts, params) {
+  const kind = parts[1];
+  if (kind === 'om' && !parts[2]) {
+    const lat = wxDeg(params.get('lat'), 90), lon = wxDeg(params.get('lon'), 180);
+    if (lat === null || lon === null) return null;
+    const q = new URLSearchParams({ latitude: lat, longitude: lon, ...WX_OM_FIELDS,
+      timezone: 'auto', timeformat: 'unixtime', forecast_days: '10', past_days: '1' });
+    return [`${WX_OM}?${q}`, WX_TTL.om];
+  }
+  if (kind === 'geo' && !parts[2]) {
+    const name = String(params.get('name') || '').trim().slice(0, 80);
+    if (!name) return null;
+    return [`${WX_GEO}?${new URLSearchParams({ name, count: '6', language: 'en', format: 'json' })}`, WX_TTL.geo];
+  }
+  if (kind === 'radar' && !parts[2]) return [WX_RADAR, WX_TTL.radar];
+  if (kind === 'nws') {
+    const path = parts.slice(2).join('/');
+    if (path === 'alerts/active') {
+      const m = /^(-?[\d.]+),(-?[\d.]+)$/.exec(params.get('point') || '');
+      const lat = m && wxDeg(m[1], 90), lon = m && wxDeg(m[2], 180);
+      if (lat === null || lon === null || !m) return null;
+      return [`${WX_NWS}/alerts/active?point=${lat},${lon}`, WX_TTL.alerts];
+    }
+    if (!WX_NWS_PATHS.some(re => re.test(path))) return null;
+    const ttl = path.startsWith('points/') ? WX_TTL.points
+      : path.endsWith('/stations') ? WX_TTL.stations
+      : path.startsWith('stations/') ? WX_TTL.obs : WX_TTL.forecast;
+    return [`${WX_NWS}/${path}`, ttl];
+  }
+  return null;
+}
+
+async function wxProxy(request, env, ctx, parts, url) {
+  const origin = request.headers.get('origin');
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(origin) });
+  if (request.method !== 'GET') return json({ error: 'method not allowed' }, 405, origin);
+  const up = wxUpstream(parts, url.searchParams);
+  if (!up) return json({ error: 'not found' }, 404, origin);
+  const [upstream, ttl] = up;
+
+  const reply = (body, status, hit) => new Response(body, {
+    status,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': status === 200 ? `public, max-age=${ttl}` : 'no-store',
+      'x-wx-cache': hit,
+      ...cors(origin)
+    }
+  });
+
+  const memo = wxMemo.get(upstream);
+  if (memo && memo.until > Date.now()) return reply(memo.body, 200, 'hit');
+  if (memo) wxMemo.delete(upstream);
+
+  const edge = typeof caches !== 'undefined' && caches.default ? caches.default : null;
+  const key = new Request(upstream);
+  if (edge) {
+    const c = await edge.match(key).catch(() => null);
+    if (c) return reply(await c.text(), 200, 'hit');
+  }
+
+  const get = env.FETCH || ((...a) => fetch(...a));
+  let r;
+  try {
+    r = await get(upstream, {
+      headers: { accept: 'application/geo+json, application/json', 'user-agent': 'ricmassey.com weather room (+https://ricmassey.com)' },
+      ...(typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(12000) } : {})
+    });
+  } catch (e) {
+    return json({ error: 'could not reach the weather service' }, 502, origin);
+  }
+  const body = await r.text();
+  if (!r.ok) {
+    /* A 404 is an answer (the NWS says it of every point outside the US) and
+       is passed on; anything else upstream is a 502. Never cached. */
+    return reply(body.slice(0, 4000) || JSON.stringify({ error: 'upstream ' + r.status }), r.status === 404 ? 404 : 502, 'miss');
+  }
+
+  if (wxMemo.size >= WX_MEMO_MAX) wxMemo.delete(wxMemo.keys().next().value);
+  wxMemo.set(upstream, { body, until: Date.now() + ttl * 1000 });
+  if (edge) {
+    const put = edge.put(key, new Response(body, {
+      headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${ttl}` }
+    })).catch(() => {});
+    if (ctx && ctx.waitUntil) ctx.waitUntil(put);
+  }
+  return reply(body, 200, 'miss');
+}
+
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'hit', 'stats']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats']);
 
 export default {
   async fetch(request, env, ctx) {
@@ -1520,6 +1653,7 @@ export default {
        nothing of anybody's and need no token. The watchlist that goes with
        them is on the site account in Supabase, not on this Worker. */
     if (parts[0] === 'trials') return trialsProxy(request, env, ctx, parts, url);
+    if (parts[0] === 'wx') return wxProxy(request, env, ctx, parts, url);
 
     /* ── /hit and /stats ── the site's own visitor counter (visitors.mjs).
        The beacon is public and goes straight to D1. The numbers are Ric's,

@@ -36,3 +36,4 @@
 - [Apex](https://ricmassey.com/apex.html): Apex Legends stats
 - [CS](https://ricmassey.com/cs.html): Counter-Strike 2, every match
 - [VAL](https://ricmassey.com/val.html): VALORANT, every match and every fight on the minimap
+- [Weather](https://ricmassey.com/weather.html): a forecast for any place the visitor chooses — now, rain timing, hourly, ten days, NWS alerts, radar. Live from public services; nothing about a place is stored on the site

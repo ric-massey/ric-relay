@@ -1452,5 +1452,43 @@ console.log('\nRULE  /trials passes ClinicalTrials.gov through, filtered and cac
   ok((await worker.fetch(new Request('https://x/trials/search?query.term=down'), down, null)).status === 502, 'an unreachable API is a 502');
 }
 
+console.log('\nRULE  /wx passes the weather providers through, allow-listed and cached');
+{
+  const asked = [];
+  let reply = { status: 200, body: '{"ok":1}' };
+  const FETCH = async (u, init) => { asked.push({ u: String(u), ua: init && init.headers && init.headers['user-agent'] }); return new Response(reply.body, { status: reply.status }); };
+  const env = { LOG: { idFromName: () => 'training', get: () => fresh() }, FETCH };
+  const hit = path => worker.fetch(new Request('https://x' + path), env, null);
+
+  const r = await hit('/wx/om?lat=12.34&lon=-56.78&extra=1');
+  ok(r.status === 200, 'a forecast answers');
+  ok(asked[0].u.startsWith('https://api.open-meteo.com/v1/forecast?latitude=12.34&longitude=-56.78&'), 'from Open-Meteo, at the rounded point');
+  ok(!asked[0].u.includes('extra'), 'with nothing the page did not ask for');
+  ok(r.headers.get('access-control-allow-origin') === '*' && r.headers.get('cache-control').includes('max-age=600'), 'readable from the page, kept ten minutes');
+  ok((await hit('/wx/om?lat=12.34&lon=-56.78')).headers.get('x-wx-cache') === 'hit' && asked.length === 1, 'the same place again is a cache hit');
+
+  ok((await hit('/wx/om?lat=12.3456&lon=-56.78')).status === 404, 'more than two decimals never leaves the Worker — no doorsteps in a cache key');
+  ok((await hit('/wx/om?lat=95&lon=0')).status === 404, 'nor does a latitude off the planet');
+  ok((await hit('/wx/nws/points/12.34,-56.78')).status === 200 && asked[1].u === 'https://api.weather.gov/points/12.34,-56.78', 'an NWS point is looked up');
+  ok(/ricmassey\.com/.test(asked[1].ua || ''), 'with the User-Agent the NWS asks for');
+  ok((await hit('/wx/nws/gridpoints/ABC/10,20/forecast')).status === 200, 'an office forecast is followed');
+  ok((await hit('/wx/nws/stations/KABC/observations/latest')).status === 200, 'and a station observation');
+  ok((await hit('/wx/nws/alerts/active?point=12.34,-56.78')).status === 200 && asked.at(-1).u === 'https://api.weather.gov/alerts/active?point=12.34,-56.78', 'and the alerts for a point');
+  const before = asked.length;
+  ok((await hit('/wx/nws/products/xyz')).status === 404, 'any other NWS path is refused');
+  ok((await hit('/wx/nws/stations/KABC/observations')).status === 404, 'including a station\'s whole history');
+  ok((await hit('/wx/nws/alerts/active?area=TN')).status === 404, 'and alerts by anything but a rounded point');
+  ok((await hit('/wx/geo')).status === 404, 'an empty place search never leaves');
+  ok(asked.length === before, '— none of those cost an upstream call');
+
+  reply = { status: 404, body: '{"title":"Data Unavailable For Requested Point"}' };
+  ok((await hit('/wx/nws/points/1.5,2.5')).status === 404, "the NWS's 404 (outside the US) is passed on as an answer");
+  reply = { status: 503, body: '' };
+  ok((await hit('/wx/nws/points/1.5,2.6')).status === 502, 'its other failures are a 502');
+  await hit('/wx/nws/points/1.5,2.6');
+  ok(asked.filter(a => a.u.endsWith('1.5,2.6')).length === 2, 'and are never cached');
+  ok((await worker.fetch(new Request('https://x/wx/om?lat=1&lon=1', { method: 'POST' }), env, null)).status === 405, 'it is read-only');
+}
+
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKER RULES PASS'));
 process.exit(failures ? 1 : 0);
