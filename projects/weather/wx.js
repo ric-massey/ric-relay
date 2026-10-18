@@ -155,7 +155,7 @@
   };
   /* the models the blend and the scoreboard know, by Open-Meteo's names */
   const MODELS_OM = { best: 'best_match', nbm: 'ncep_nbm_conus', hrrr: 'ncep_hrrr_conus', gfs: 'gfs_global', ecmwf: 'ecmwf_ifs025', aifs: 'ecmwf_aifs025_single' };
-  const MODEL_NAMES = { best: 'Open-Meteo best match', nbm: 'NWS National Blend', hrrr: 'HRRR', gfs: 'GFS', ecmwf: 'ECMWF', aifs: 'ECMWF AI (AIFS)', blend: "This page's blend" };
+  const MODEL_NAMES = { best: 'Open-Meteo best match', nbm: 'NWS National Blend', hrrr: 'HRRR', gfs: 'GFS', ecmwf: 'ECMWF', aifs: 'ECMWF AI (AIFS)', blend: "This page's blend", learn: "This page's learned forecast", pangu: 'Pangu AI (our own run)' };
   const ENSEMBLE = ['nbm', 'hrrr', 'gfs', 'ecmwf', 'aifs'];
   const COLUMN_LEVELS = [1000, 975, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150, 100];
   const COLUMN_FIELDS = COLUMN_LEVELS.flatMap(p => ['temperature', 'dew_point', 'relative_humidity', 'wind_speed', 'wind_direction', 'geopotential_height'].map(k => `${k}_${p}hPa`))
@@ -1105,20 +1105,86 @@
       if (!stateFiles.has(st)) stateFiles.set(st, fetchJSON(SCORES + st + '.json', signal, 10000).catch(() => null));
       const file = await stateFiles.get(st);
       const rec = file && file.stations && file.stations[id];
-      if (rec) out.push({ id, nws: s.id, name: rec.n || s.name, dist: s.dist, models: rec.m });
+      if (rec) out.push({ id, nws: s.id, name: rec.n || s.name, dist: s.dist, models: rec.m, learned: rec.L || null });
       if (out.length >= 3) break;
     }
     return { index: idx, stations: out };
   }
-  /* Which forecast has earned its place here: the blend, only where its
-     record at the nearest well-scored station beats the baseline's. */
+  /* Which forecast has earned its place here: of the standard forecast and
+     this page's own two (the blend, the learned forecast), the one whose
+     record at the nearest well-scored station is lowest — and one of ours
+     only when it beats the standard by a clear margin, and the learned one
+     only when its coefficients are published. */
   function verdict(rec, minDays) {
     if (!rec || !rec.models) return null;
     const mae = m => { const r = rec.models[m] && rec.models[m][1]; if (!r || r.days < minDays) return null;
       const n = r.td[2] + r.tn[2]; return n ? (r.td[1] * r.td[2] + r.tn[1] * r.tn[2]) / n : null; };
     const rows = Object.keys(rec.models).map(m => ({ m, mae: mae(m), days: rec.models[m][1] && rec.models[m][1].days })).filter(x => x.mae !== null).sort((a, b) => a.mae - b.mae);
-    const b = rows.find(x => x.m === 'blend'), base = rows.find(x => x.m === 'best');
-    return { rows, useBlend: !!(b && base && b.mae < base.mae - 0.05), blend: b, base, best: rows[0] || null };
+    const base = rows.find(x => x.m === 'best');
+    const ours = rows.filter(x => (x.m === 'blend' || (x.m === 'learn' && rec.learned && rec.learned.t)) && base && x.mae < base.mae - 0.05);
+    const pick = ours.length ? ours[0] : null;
+    const b = rows.find(x => x.m === 'blend'), l = rows.find(x => x.m === 'learn');
+    return { rows, use: pick ? pick.m : 'best', useBlend: !!pick, pick, blend: b, learn: l, base, best: rows[0] || null };
+  }
+
+  /* ── the radar nowcast (nowcast.js) ──
+     The four newest ten-minute frames of the mosaic around the place, at
+     zoom 6 (a pixel is ~2 km; 2×2 tiles reach at least 250 km every way, an
+     hour of a fast squall line), read pixel by pixel through IEM's palette
+     and handed to the same code the nightly grade runs. Lower 48 only —
+     the mosaic stops at its edges. Tiles are cross-origin readable (IEM sends
+     Access-Control-Allow-Origin: *); with no canvas or no network the page
+     simply shows the model line alone. */
+  const NOWCAST_Z = 6;
+  const inMosaic = (lat, lon) => lat > 24.5 && lat < 49.5 && lon > -125.5 && lon < -66.5;
+  function tileImage(url, signal) {
+    return new Promise((res, rej) => {
+      const im = new Image();
+      im.crossOrigin = 'anonymous';
+      im.decoding = 'async';
+      const stop = () => { im.src = ''; rej(new WxError('radar stopped')); };
+      if (signal) signal.addEventListener('abort', stop, { once: true });
+      im.onload = () => res(im);
+      im.onerror = () => rej(new WxError('radar tile failed'));
+      im.src = url;
+    });
+  }
+  async function nowcast(lat, lon, valid, signal) {
+    const N = root.WxNowcast;
+    if (!N || !inMosaic(lat, lon) || typeof document === 'undefined') return null;
+    const world = 256 * 2 ** NOWCAST_Z;
+    const gx = (lon + 180) / 360 * world;
+    const s = Math.sin(lat * Math.PI / 180);
+    const gy = (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * world;
+    const tx0 = Math.floor(gx / 256 - 0.5), ty0 = Math.floor(gy / 256 - 0.5);
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 512;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+    const bust = valid ? Math.floor(valid / 60e3) : '';
+    const frames = [];
+    for (const back of [30, 20, 10, 0]) {
+      const ims = await Promise.all([[0, 0], [1, 0], [0, 1], [1, 1]].map(([dx, dy]) =>
+        tileImage(radarTile(back, NOWCAST_Z, tx0 + dx, ty0 + dy, bust), signal).then(im => ({ im, dx, dy }))));
+      ctx.clearRect(0, 0, 512, 512);
+      for (const { im, dx, dy } of ims) ctx.drawImage(im, dx * 256, dy * 256);
+      const idx = N.indicesOf(ctx.getImageData(0, 0, 512, 512).data);
+      frames.push(N.field({ width: 512, height: 512, data: idx }, 1));
+    }
+    /* km per pixel at this latitude (Mercator stretches x and y alike) */
+    const km = 40075.016 * Math.cos(lat * Math.PI / 180) / world;
+    const m = N.motion(frames, 10, { regions: 3, search: N.SETTINGS.searchKm / km });
+    const px = gx - tx0 * 256, py = gy - ty0 * 256;
+    const series = N.forecast(frames[3], m, px, py, N.optionsFor(km, 60));
+    const mv = N.motionAt(m, px, py);
+    const speed = Math.hypot(mv.u, mv.v) * km * 60;              // km/h
+    /* the direction the rain is moving TOWARD, as a compass bearing */
+    const toward = (Math.atan2(mv.u, -mv.v) * 180 / Math.PI + 360) % 360;
+    return { series, moving: m.known, speed, toward, valid: valid || null };
+  }
+  /* the nowcast's own track record, from the nightly grade */
+  async function nowcastRecord(signal) {
+    return fetchJSON(SCORES + 'nowcast.json', signal, 10000);
   }
 
   async function radarTime(signal) {
@@ -1138,7 +1204,8 @@
     STORM_EVENTS, NATIONAL_EVENTS, parseMotion, inPolygon, stormTrack, alertDetail, national, stateAlerts, near,
     SITE_PRODUCTS, SPC_KINDS, SPC_NAMES, MODELS, COLUMN_LEVELS, COLUMN_FIELDS, radarSites, siteScans, tileUrl, isoMinute, isoHour,
     normalizeOutlook, outlook, outlookAt, column, modelRun, raobSites, raobTimes, raobTs,
-    several, summary, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet
+    several, summary, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet,
+    inMosaic, nowcast, nowcastRecord
   };
   root.Wx = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

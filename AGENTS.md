@@ -705,6 +705,13 @@ not on the front door) until Ric says it is ready. The ones that must never brea
   read at run time (`verify/score.mjs`; `test/verify.test.mjs` checks). The page uses
   its blend only where the nearest station's record shows it beating the standard
   forecast; never present the blend, or any accuracy figure, beyond what the record says.
+- **The room's own predictions are graded before they are shown.** The blend
+  and the learned forecast replace the standard temperatures only where the
+  nearest station's record says so (`Wx.verdict`); the learned forecast is
+  scored only on days it had not learned from. The radar nowcast is rain timing
+  only, never storm arrival, and `verify/nowcast.mjs` grades it with the same
+  code and `SETTINGS` the page uses — change one, the other follows. Our AI run
+  (`weather-ai.yml`, Pangu-Weather, non-commercial weights) commits nothing.
 - **`weather-sw.js` is the site's only service worker**, scoped to `./weather`. Keep it
   network-first and same-origin only; never widen its scope to the rest of the site.
 

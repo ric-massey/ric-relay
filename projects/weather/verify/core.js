@@ -195,7 +195,79 @@
     return xs.length >= 2 ? Math.max(...xs) - Math.min(...xs) : null;
   }
 
-  const api = { HALF_LIFE_DAYS, MIN_DAYS, BLEND_MODELS, weightsFor, blend, spread, RAIN_DAY_MM, parseCsv, hourlyObs, isDay, scoreDay, blank, fold, tempMae, rainSkill, compact };
+  /* ── our learned forecast ──
+     The blend corrects each model by its own average error. This goes one
+     step further, the way the NWS's MOS does: for each station it learns how
+     the truth sat relative to the models' plain average, from
+       · the average itself (a station that runs hot when it is hot),
+       · how far each model sat from that average (which model to lean on,
+         and when the models disagree, which way the truth usually went),
+       · the time of day (a valley that cools faster at night than any model knows).
+     It is a ridge regression on running sums that fade by LEARN_DECAY a day,
+     so it keeps learning and forgets old seasons; the ridge pulls every term
+     to zero (= "the plain average"), so with little evidence it changes
+     nothing. score.mjs predicts each day with what was learned BEFORE it, then
+     scores it, then learns from it — every number it reports is out of sample. */
+  const LEARN_MODELS = ['best', 'nbm', 'hrrr', 'gfs', 'ecmwf', 'aifs'];
+  const LEARN_DIM = 2 + LEARN_MODELS.length + 2;
+  const LEARN_DECAY = 0.97;            // a day's weight halves in about 23 days
+  const LEARN_LAMBDA = 60;             // ridge, in hours of evidence
+  const LEARN_MIN_DAYS = 10;
+  function learnFeatures(values, key, hourUnix, lon) {
+    const xs = LEARN_MODELS.map(m => values[m] && ok(values[m][key]) ? values[m][key] : null);
+    const have = xs.filter(v => v !== null);
+    if (have.length < 2) return null;
+    const mean = have.reduce((a, b) => a + b, 0) / have.length;
+    const h = ((new Date(hourUnix * 1000).getUTCHours() + lon / 15) % 24 + 24) % 24;
+    const x = [1, (mean - 15) / 10, ...xs.map(v => v === null ? 0 : v - mean), Math.sin(2 * Math.PI * h / 24), Math.cos(2 * Math.PI * h / 24)];
+    return { mean, x };
+  }
+  function learnBlank() { return { A: new Array(LEARN_DIM * LEARN_DIM).fill(0), b: new Array(LEARN_DIM).fill(0), n: 0, days: 0 }; }
+  /* fold one day's hours in: samples [{x, r}] where r = truth − mean */
+  function learnAdd(acc, samples) {
+    const a = acc || learnBlank();
+    if (!samples.length) return a;
+    for (let i = 0; i < a.A.length; i++) a.A[i] *= LEARN_DECAY;
+    for (let i = 0; i < LEARN_DIM; i++) a.b[i] *= LEARN_DECAY;
+    a.n *= LEARN_DECAY;
+    for (const { x, r } of samples) {
+      for (let i = 0; i < LEARN_DIM; i++) {
+        a.b[i] += x[i] * r;
+        for (let j = 0; j < LEARN_DIM; j++) a.A[i * LEARN_DIM + j] += x[i] * x[j];
+      }
+      a.n += 1;
+    }
+    a.days += 1;
+    return a;
+  }
+  /* (A + λI) β = b, by Gaussian elimination with partial pivoting */
+  function learnSolve(acc) {
+    if (!acc || acc.days < LEARN_MIN_DAYS) return null;
+    const n = LEARN_DIM, M = [];
+    for (let i = 0; i < n; i++) M.push([...acc.A.slice(i * n, i * n + n).map((v, j) => v + (i === j ? LEARN_LAMBDA : 0)), acc.b[i]]);
+    for (let c = 0; c < n; c++) {
+      let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+      if (Math.abs(M[p][c]) < 1e-12) return null;
+      [M[c], M[p]] = [M[p], M[c]];
+      for (let r = 0; r < n; r++) {
+        if (r === c) continue;
+        const f = M[r][c] / M[c][c];
+        for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k];
+      }
+    }
+    return M.map((row, i) => Math.round(row[n] / row[i] * 1000) / 1000);
+  }
+  function learnPredict(beta, values, key, hourUnix, lon) {
+    if (!beta || beta.length !== LEARN_DIM) return null;
+    const f = learnFeatures(values, key, hourUnix, lon);
+    if (!f) return null;
+    let r = 0; for (let i = 0; i < LEARN_DIM; i++) r += beta[i] * f.x[i];
+    const v = f.mean + r;
+    return key === 'w' ? Math.max(0, v) : v;
+  }
+
+  const api = { HALF_LIFE_DAYS, MIN_DAYS, BLEND_MODELS, weightsFor, blend, spread, RAIN_DAY_MM, parseCsv, hourlyObs, isDay, scoreDay, blank, fold, tempMae, rainSkill, compact,
+    LEARN_MODELS, LEARN_DIM, LEARN_MIN_DAYS, learnFeatures, learnBlank, learnAdd, learnSolve, learnPredict };
   root.WxVerify = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

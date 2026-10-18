@@ -330,6 +330,10 @@ console.log('\nRULE  how sure: the models\' own agreement');
   const v = W.verdict({ models: { best: rec(1.6, 20), blend: rec(1.2, 20), gfs: rec(2, 20), ecmwf: rec(1.3, 3) } }, 7);
   ok(v.useBlend && v.best.m === 'blend' && !v.rows.some(r => r.m === 'ecmwf'), 'the blend is used where its record beats the baseline; a 3-day record is not ranked');
   ok(!W.verdict({ models: { best: rec(1.2, 20), blend: rec(1.21, 20) } }, 7).useBlend, 'a tie is not a win: the baseline stays');
+  const L = { t: new Array(10).fill(0) };
+  ok(W.verdict({ models: { best: rec(1.6, 20), blend: rec(1.3, 20), learn: rec(1.0, 15) }, learned: L }, 7).use === 'learn', 'the learned forecast is used where its record is the best of ours');
+  ok(W.verdict({ models: { best: rec(1.6, 20), blend: rec(1.3, 20), learn: rec(1.0, 15) }, learned: null }, 7).use === 'blend', 'but never without its published coefficients');
+  ok(W.verdict({ models: { best: rec(1.6, 20), learn: rec(1.0, 5) }, learned: L }, 7).use === 'best', 'nor on a record too short to trust');
 }
 
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WEATHER CLIENT RULES PASS'));

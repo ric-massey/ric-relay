@@ -57,6 +57,7 @@ const BATCH = 50;
 const CALLS_PER_MIN = 70;
 const UA = 'ricmassey.com weather scoreboard (+https://ricmassey.com)';
 
+const ok = v => v !== null && v !== undefined && Number.isFinite(v);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const ymd = ms => new Date(ms).toISOString().slice(0, 10);
 const dayStart = d => Date.parse(d + 'T00:00:00Z') / 1000;
@@ -119,6 +120,39 @@ export function forecastsFrom(json, batch) {
   return out;
 }
 
+/* ── our own AI run (.github/workflows/weather-ai.yml, ai/extract.py) ──
+   Each evening's run sits in <state dir>/ai/<init>.json: six-hourly values
+   per station. A day is graded on the run made the evening before it began
+   (initialised 12–36 hours before the day's first hour), the same footing as
+   the other models' "one day before". */
+export const AI_MODELS = ['pangu'];
+export function loadAiRuns(dir) {
+  if (!dir || !existsSync(dir)) return [];
+  return readdirSync(dir).filter(f => /^\d{10}\.json$/.test(f)).sort().map(f => {
+    try { const j = JSON.parse(readFileSync(join(dir, f), 'utf8')); return { ...j, at: Date.parse(j.init) / 1000 }; } catch { return null; }
+  }).filter(r => r && Number.isFinite(r.at) && Array.isArray(r.times) && r.stations);
+}
+export function aiFor(runs, day) {
+  const t0 = dayStart(day);
+  const ok1 = runs.filter(r => r.at <= t0 - 12 * 3600 && r.at >= t0 - 36 * 3600);
+  return ok1.length ? ok1[ok1.length - 1] : null;
+}
+/* fold the runs into the forecast map: fc.get(id)[model] = { 1: Map(hour → {t,w,p}) } */
+export function addAi(fc, runs, days) {
+  for (const d of days) {
+    const r = aiFor(runs, d);
+    if (!r) continue;
+    const t0 = dayStart(d);
+    for (const [id, v] of Object.entries(r.stations)) {
+      const per = fc.get(id);
+      if (!per) continue;
+      const m = r.model || 'pangu';
+      const L1 = (per[m] || (per[m] = { 1: new Map(), 2: new Map() }))[1];
+      r.times.forEach((t, k) => { if (t > t0 && t <= t0 + 86400) L1.set(t, { t: v.t[k] ?? null, w: v.w[k] ?? null, p: null }); });
+    }
+  }
+}
+
 /* ── observations: one state network, the whole range ── */
 export function asosUrl(network, from, to) {
   const [y1, m1, d1] = from.split('-'), [y2, m2, d2] = ymd(Date.parse(to + 'T00:00:00Z') + 2 * 86400e3).split('-');
@@ -140,6 +174,7 @@ export function seedFrom(dir) {
     for (const [id, s] of Object.entries(j.stations || {})) {
       st.stations[id] = { st: f.slice(0, 2), name: s.n, models: {} };
       for (const [m, leads] of Object.entries(s.m || {})) st.stations[id].models[m] = leads;
+      if (s.L) st.stations[id].learn = { t: null, w: null, beta: { t: s.L.t || null, w: s.L.w || null } };
     }
   }
   return st;
@@ -168,7 +203,7 @@ export function scoreOneDay(state, day, stations, fc, obs) {
     }
 
     let any = false;
-    for (const m of Object.keys(MODELS)) {
+    for (const m of Object.keys(f)) {
       for (const lead of [1, 2]) {
         const series = f[m] && f[m][lead];
         if (!series || !series.size) continue;
@@ -181,6 +216,31 @@ export function scoreOneDay(state, day, stations, fc, obs) {
     }
     const db = C.scoreDay(blendFc, o, t0, s.lon);
     if (db.td || db.tn || db.w || db.rain) { R('blend')[1] = C.fold(R('blend')[1], db); any = true; }
+
+    /* our learned forecast: predicted with what was learned before today,
+       scored, and only then taught today */
+    const L = rec.learn || (rec.learn = { t: null, w: null, beta: { t: null, w: null } });
+    const learnFc = new Map(), teach = { t: [], w: [] };
+    for (let h = t0 + 3600; h <= t0 + 86400; h += 3600) {
+      const vals = {};
+      for (const m of C.LEARN_MODELS) { const v = f[m] && f[m][1].get(h); if (v) vals[m] = v; }
+      const pt = C.learnPredict(L.beta.t, vals, 't', h, s.lon), pw = C.learnPredict(L.beta.w, vals, 'w', h, s.lon);
+      if (pt !== null || pw !== null) learnFc.set(h, { t: pt, w: pw, p: null });
+      const ob = o.get(h);
+      if (!ob) continue;
+      for (const k of ['t', 'w']) {
+        const ft = C.learnFeatures(vals, k, h, s.lon);
+        if (ft && ok(ob[k])) teach[k].push({ x: ft.x, r: ob[k] - ft.mean });
+      }
+    }
+    if (learnFc.size) {
+      const dl = C.scoreDay(learnFc, o, t0, s.lon);
+      if (dl.td || dl.tn || dl.w) { R('learn')[1] = C.fold(R('learn')[1], dl); any = true; }
+    }
+    L.t = C.learnAdd(L.t, teach.t); L.w = C.learnAdd(L.w, teach.w);
+    /* a record seeded from the published files has coefficients but no sums
+       yet: keep those until the new sums are long enough to solve */
+    L.beta = { t: C.learnSolve(L.t) || L.beta.t, w: C.learnSolve(L.w) || L.beta.w };
     if (any) scoredStations++;
   }
   if (scoredStations) {
@@ -194,7 +254,7 @@ const median = xs => { const a = xs.filter(Number.isFinite).sort((p, q) => p - q
 export function publish(state, outDir) {
   mkdirSync(outDir, { recursive: true });
   const byState = {}, where = {};
-  const allModels = [...Object.keys(MODELS), 'blend'];
+  const allModels = [...Object.keys(MODELS), ...AI_MODELS, 'blend', 'learn'];
   const national = {};
   for (const m of allModels) national[m] = { mae: [], bias: [], rain: [] };
   for (const [id, s] of Object.entries(state.stations)) {
@@ -209,6 +269,7 @@ export function publish(state, outDir) {
         national[m].rain.push(C.rainSkill(r1));
       }
     }
+    if (s.learn && (s.learn.beta.t || s.learn.beta.w)) entry.L = { t: s.learn.beta.t, w: s.learn.beta.w };
     (byState[s.st] || (byState[s.st] = { stations: {} })).stations[id] = entry;
     where[id] = s.st;
   }
@@ -229,7 +290,7 @@ export function publish(state, outDir) {
 }
 
 /* ── the run ── */
-export async function run({ day, backfill = 1, statePath, outDir, limit = 0, fetchImpl = fetch, log = console.log, pace = true } = {}) {
+export async function run({ day, backfill = 1, statePath, outDir, aiDir, limit = 0, fetchImpl = fetch, log = console.log, pace = true } = {}) {
   const end = day || ymd(Date.now() - 86400e3);
   const days = [];
   for (let i = backfill - 1; i >= 0; i--) days.push(ymd(Date.parse(end + 'T00:00:00Z') - i * 86400e3));
@@ -267,6 +328,9 @@ export async function run({ day, backfill = 1, statePath, outDir, limit = 0, fet
     if (pace) await sleep(Math.max(0, weight(batch.length, span) / CALLS_PER_MIN * 60e3 - (Date.now() - t)));
   }
   log(`forecasts for ${fc.size} stations`);
+  const runs = loadAiRuns(aiDir || (statePath && join(dirname(statePath), 'ai')));
+  addAi(fc, runs, todo);
+  if (runs.length) log(`our AI runs: ${runs.map(r => r.init).join(', ')}`);
 
   const scoredDays = [];
   for (const d of todo) {

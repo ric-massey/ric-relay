@@ -197,6 +197,37 @@ airport weather station (IEM's AZOS network, ~2,500 stations):
   backfills 14 days.
 - `test/verify.test.mjs` holds the arithmetic to hand-worked cases and runs the
   whole job against fake providers, including that no coordinate is published.
+- **Starting over**: run the workflow by hand with `fresh` and `backfill` 28 to
+  rebuild the record from scratch — what the learned forecast needs, since its
+  running sums cannot be rebuilt from the rounded published files.
+- **First numbers** (14 days to 2026-10-16, 3,035 stations, median next-day
+  temperature miss): the blend 1.24 °C; NBM and AIFS 1.38; HRRR 1.52; ECMWF
+  1.51; the standard forecast 1.50; GFS 1.61.
+
+## The room's own predictions
+
+Four forecasts here are made by this site rather than read from someone
+else, and every one is graded the same way the models are — a prediction the
+record has not backed is never put in front of the standard forecast.
+
+| | What it is | Where it runs | How it is graded |
+|---|---|---|---|
+| **The blend** | Each model with its proven bias at the station removed, weighted by 1/MAE² (`verify/core.js` `blend`) | the page, and the scoreboard | as a model, every day, every station |
+| **The learned forecast** | A per-station ridge regression, the way the NWS's MOS works: the truth against the models' average, each model's lean, and the time of day (`verify/core.js` `learn*`). Running sums fade by 3 % a day; the ridge pulls every term to "the plain average", so thin evidence changes nothing | trained in the scoreboard job; coefficients (`L` in `scores/<ST>.json`, ten numbers, no place) applied by the page | each day is predicted with what was learned *before* it, scored, and only then learned from — every reported number is out of sample |
+| **The radar nowcast** | The next hour from the radar itself: the last 30 minutes of IEM's mosaic, motion found by matching rain pixels between frames, the newest frame carried forward, a look that widens with lead time (`nowcast.js`) | the visitor's browser (2×2 zoom-6 tiles × 4 frames, read through IEM's palette — every tile pixel is an exact palette colour, checked 2026-10-17) | `verify/nowcast.mjs` replays yesterday from the archive at six times with the same code and settings (`SETTINGS`), against "nothing moves", over the lower 48; CSI at 15–60 min in `scores/nowcast.json` |
+| **Our AI run** | Pangu-Weather (Bi et al., Nature 2023; CC BY-NC-SA 4.0) run by `weather-ai.yml` on GitHub's own CPU from ECMWF's 12Z open data, seven days ahead (~2 min a six-hour step, 10.4 GB) | GitHub Actions, nightly; `ai/extract.py` reads 2 m temperature and 10 m wind at every station into the Actions cache | scored by the morning scoreboard as `pangu`, from the evening before each day only |
+
+Rules: the nowcast is rain timing only — storm arrival stays the warning's own
+motion. It shows only in the lower 48 (the mosaic's reach). Its words count
+from now, not from the scan, in the place's clock. Pangu has no rain, so it is
+graded on temperature and wind; its six-hourly steps are scored on the hours
+it has.
+
+The **model comparison** card (`#models`, closed until opened) draws every
+model's temperature, rain total or wind for 3 or 7 days from the numbers the
+confidence lines already fetch — no extra request — with the standard forecast
+dashed and the page's shown forecast bold, and one sentence on where they
+split most.
 
 ## What comes next, and how it would be built here
 
@@ -205,7 +236,7 @@ airport weather station (IEM's AZOS network, ~2,500 stations):
 | 2 · Investigation | A full-screen map; satellite from GOES imagery (check what IEM tiles before building); a point inspector reusing `Wx.forecast` at the tapped point; METAR dots |
 | 3 · One serious model | HRRR fields as images. Nothing public tiles them, so this is the first phase that needs a backend: likely a scheduled GitHub Actions job turning HRRR GRIB subsets into tiles in R2. Decide before starting |
 | 4 · Soundings | Built (above). Still to do: observed-vs-model on the same diagram (§16), effective-layer parameters |
-| 5 · Advanced | Model comparison side by side (Open-Meteo's `models=` takes several at once); MRMS |
+| 5 · Advanced | Model comparison: built (above). Still to do: ensemble plumes (GEFS/ECMWF ENS members); MRMS |
 | 6 · Station + verification | The CS pattern: a script that pulls the station and archives point forecasts into a committed accumulator, verified against the station. **Needs a decision on how the station is named** — its coordinates can't be in this repo |
 | 7 · Replay | IEM keeps single-site scans by timestamp (`ridge::SITE-PROD-YYYYMMDDHHMI`, confirmed for the last hour); the mosaic archive needs its tile names confirmed |
 | 8 · 3D | Only after profiling, per the doc |

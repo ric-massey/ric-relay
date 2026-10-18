@@ -1,0 +1,93 @@
+# The weather room's own AI weather model run.
+#
+# Every evening, on GitHub's own machine (CPU only, no GPU, no cost), this
+# runs Pangu-Weather — a published AI model that forecasts the whole globe
+# (Bi et al., Nature 2023; weights CC BY-NC-SA 4.0, non-commercial, via
+# ECMWF's ai-models) — from ECMWF's free 12Z analysis out to seven days,
+# then reads 2 m temperature and 10 m wind off it at every US airport
+# station. The morning scoreboard (weather-score.yml) grades it beside GFS,
+# ECMWF and the rest exactly as it grades them, as the model "pangu".
+#
+# Measured 2026-10-17 on this runner: about 2 minutes per six-hour step and
+# 10.4 GB of memory, so seven days is about an hour.
+#
+# Nothing is committed. The station values live in the Actions cache (the
+# last twelve runs); they name stations by airport id and hold no coordinate.
+
+name: Weather AI run
+
+on:
+  schedule:
+    - cron: "12 21 * * *"
+  workflow_dispatch:
+    inputs:
+      lead:
+        description: "Hours ahead (multiple of 6; 168 is a week)"
+        default: "168"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weather-ai
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: projects/weather
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install (pinned — newer earthkit-data breaks ai-models 0.7)
+        run: |
+          pip install -q 'ai-models==0.7.4' ai-models-panguweather onnxruntime 'earthkit-data<0.11' numpy
+          python3 projects/weather/ai/extract.py --selftest
+
+      - name: Bring back the model weights
+        id: weights
+        uses: actions/cache@v4
+        with:
+          path: weights
+          key: pangu-weights-v1
+
+      - name: Bring back the earlier runs
+        uses: actions/cache/restore@v4
+        with:
+          path: projects/weather/verify/.state/ai
+          key: weather-ai-store-${{ github.run_id }}
+          restore-keys: weather-ai-store-
+
+      - name: Run the model
+        run: |
+          LEAD="${{ github.event.inputs.lead || '168' }}"
+          # today's 12Z if ECMWF has published it, else yesterday's
+          for D in "$(date -u +%Y%m%d)" "$(date -u -d yesterday +%Y%m%d)"; do
+            # --download-assets fetches the weights only when the cache did not bring them back;
+            # --input must always be named, or ai-models asks ECMWF's password-protected MARS
+            mkdir -p weights
+            if ai-models --download-assets --assets weights --input ecmwf-open-data --date "$D" --time 12 --lead-time "$LEAD" --path out.grib panguweather; then
+              echo "ran from $D 12Z"; exit 0
+            fi
+            rm -f out.grib
+          done
+          echo "no 12Z analysis could be read"; exit 1
+
+      - name: Read it off at every airport station
+        run: |
+          curl -sSf --retry 3 -A 'ricmassey.com weather scoreboard (+https://ricmassey.com)' \
+            'https://mesonet.agron.iastate.edu/geojson/network.py?network=AZOS' -o stations.geojson
+          python3 projects/weather/ai/extract.py out.grib stations.geojson projects/weather/verify/.state/ai
+          ls -la projects/weather/verify/.state/ai
+
+      - name: Keep the runs for the scoreboard
+        uses: actions/cache/save@v4
+        with:
+          path: projects/weather/verify/.state/ai
+          key: weather-ai-store-${{ github.run_id }}

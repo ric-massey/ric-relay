@@ -164,6 +164,16 @@
     .nextbars i.s{background:#e7f5ff}
     .nextaxis{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin-top:5px}
     .nextnote{font-size:13px;color:var(--dim);margin-top:8px}
+    /* the radar nowcast: twelve five-minute cells */
+    .nowcast{margin:2px 0 14px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.14)}
+    .nowtext{font-size:17px;font-weight:600}
+    .nowstrip{display:flex;gap:3px;margin-top:8px;height:14px}
+    .nowstrip i{flex:1;border-radius:3px;background:rgba(255,255,255,.14)}
+    .nowstrip i.n{background:rgba(120,190,255,.35)}
+    .nowstrip i.l{background:var(--rain)}
+    .nowstrip i.m{background:#3fbf4f}
+    .nowstrip i.h{background:#ffc400}
+    .nowstrip i.x{background:repeating-linear-gradient(45deg,rgba(255,255,255,.1) 0 3px,transparent 3px 6px)}
 
     /* hourly strip */
     .hours{display:flex;gap:2px;overflow-x:auto;scrollbar-width:thin;padding-bottom:6px;scroll-snap-type:x proximity;
@@ -360,6 +370,34 @@
     .sitebar{font-size:13px;color:var(--dim);margin:-2px 0 10px}
     .legend.vel i{background:linear-gradient(90deg,#00ff3c,#007a1d,#3a3a3a,#7a0010,#ff2a2a)}
 
+    /* the models, side by side */
+    #models summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:44px}
+    #models summary::-webkit-details-marker{display:none}
+    #models summary .chev{margin-left:auto;transition:transform .2s}
+    #models details[open] summary .chev{transform:rotate(180deg)}
+    #models .lead{font-size:14px;color:var(--dim)}
+    .cmpchart{width:100%;height:auto;display:block;margin-top:6px}
+    .cmpchart text{fill:var(--dim);font-size:12px}
+    .cmpkey{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;margin-top:6px}
+    .cmpkey span{display:inline-flex;align-items:center;gap:6px}
+    .cmpkey i{width:16px;height:3px;border-radius:2px;display:inline-block}
+    .cmpsay{font-size:15px;font-weight:600;margin-top:8px}
+
+    /* above you: the ingredients timeline */
+    .tl{margin-top:10px}
+    .tlsay{font-size:14px;font-weight:600;margin-bottom:6px}
+    .tlrow{display:flex;align-items:center;gap:6px;margin-top:3px}
+    .tln{width:44px;flex:none;font-size:12px;color:var(--dim)}
+    .tlcells{flex:1;display:flex;gap:1px;min-width:0}
+    .tlcells i{flex:1;min-width:0;height:22px;border-radius:2px;background:rgba(255,255,255,.1);cursor:pointer}
+    .tlcells i.l1{background:#e9c46a}
+    .tlcells i.l2{background:#f4845f}
+    .tlcells i.l3{background:#d0329b}
+    .tlcells i.lx{background:transparent}
+    .tlcells i.on{outline:2px solid #fff;outline-offset:1px;position:relative;z-index:1}
+    .tlticks{position:relative;height:16px;margin-left:50px;font-size:12px;color:var(--dim)}
+    .tlticks span{position:absolute;top:2px;white-space:nowrap}
+
     /* above you: the sounding */
     #sky summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:44px}
     #sky summary::-webkit-details-marker{display:none}
@@ -443,6 +481,14 @@
     <section class="card" id="next" hidden aria-label="The next three hours"></section>
     <section class="card" id="hourly" hidden aria-label="Hourly forecast"></section>
     <section class="card" id="daily" hidden aria-label="Ten-day forecast"></section>
+    <section class="card" id="models" hidden aria-label="Compare the models">
+      <details id="modelsd">
+        <summary><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 12c3-6 5-6 7-3s4 3 7-4M1 9c3-2 5-5 7-2s4 4 7 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <b>Compare the models</b><span class="lead">— what each one says, side by side</span>
+          <svg class="chev" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></summary>
+        <div id="modelsbody"></div>
+      </details>
+    </section>
     <section class="card" id="record" hidden aria-label="How accurate this forecast has been here"></section>
     <section class="card" id="radarcard" aria-label="Radar">
       <h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 8l4.5-4.5" stroke="currentColor" stroke-width="1.5"/></svg>Radar<span class="src" id="radarsrc"></span></h2>
@@ -519,7 +565,8 @@
 <noscript><p style="text-align:center;padding:20px">The weather room needs JavaScript to ask the forecast services.</p></noscript>
 
 <script src="effects.js"></script>
-<script src="projects/weather/wx.js?v=3"></script>
+<script src="projects/weather/nowcast.js?v=1"></script>
+<script src="projects/weather/wx.js?v=4"></script>
 <script src="projects/weather/sounding.js?v=1"></script>
 <script src="projects/weather/draw.js?v=1"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
@@ -632,7 +679,7 @@
     S.err = {};
     if (!S.fc || S.fc.key !== key) {
       Object.assign(S, { fc: null, fcStale: false, pt: undefined, obs: undefined, office: undefined, alerts: undefined, state: undefined, selected: null, focusedStorm: null,
-        ens: undefined, rec: undefined, verdict: null, fcShown: null });
+        ens: undefined, rec: undefined, verdict: null, fcShown: null, now: undefined });
       sky.reset();
       /* The last forecast for this place, kept in this browser so a phone
          with no signal still has something to show (§34) — labelled as old. */
@@ -687,8 +734,21 @@
     const ensJob = Wx.ensemble(lat, lon, ctl.signal)
       .then((e) => { if (live()) { S.ens = e; applyBlend(); render(); } })
       .catch(() => { if (live()) { S.ens = null; render(); } });
-    await Promise.allSettled([fcJob, nwsJob, alertJob, ensJob, loadOutlook(ctl.signal, live)]);
+    const nowJob = loadNowcast(ctl.signal, live);
+    await Promise.allSettled([fcJob, nwsJob, alertJob, ensJob, nowJob, loadOutlook(ctl.signal, live)]);
     if (live()) S.loadedAt = Date.now();
+  }
+  /* ── the radar nowcast: our own next hour ──
+     Read from the last half hour of the mosaic in this browser (nowcast.js)
+     and graded every night against what the radar did next. Rain timing
+     only: storm arrival comes from the warning's own motion, never this. */
+  function loadNowcast(signal, live) {
+    if (!S.place || !Wx.inMosaic(S.place.lat, S.place.lon) || !window.WxNowcast) { S.now = null; return Promise.resolve(); }
+    if (!S.nowRec) Wx.nowcastRecord(signal).then((r) => { S.nowRec = r; renderNext(); }).catch(() => { S.nowRec = null; });
+    return Wx.radarTime(signal)
+      .then((valid) => Wx.nowcast(S.place.lat, S.place.lon, valid, signal))
+      .then((n) => { if (live()) { S.now = n; S.nowAt = Date.now(); renderNext(); } })
+      .catch(() => { if (live()) { S.now = null; renderNext(); } });
   }
   function loadAlerts(signal, live) {
     const { lat, lon } = S.place;
@@ -721,17 +781,20 @@
     if (!fc || !ens || !v || !v.useBlend || !st || !window.WxVerify) return;
     const recs = {};
     for (const m of WxVerify.BLEND_MODELS) recs[m] = st.models[m] && st.models[m][1];
+    const learned = v.use === "learn" && st.learned && st.learned.t;
     const hourly = fc.hourly.map((h) => {
       const row = ens.hours.get(h.t);
       if (!row) return h;
-      const b = WxVerify.blend(row, recs, WxVerify.isDay(h.t, S.place.lon));
-      return b.t == null ? h : { ...h, temp: b.t, blended: true };
+      const t = learned
+        ? WxVerify.learnPredict(st.learned.t, { ...row, best: { t: h.temp, w: h.wind } }, "t", h.t, S.place.lon)
+        : WxVerify.blend(row, recs, WxVerify.isDay(h.t, S.place.lon)).t;
+      return t == null ? h : { ...h, temp: t, blended: true };
     });
     const daily = fc.daily.map((d) => {
       const hs = hourly.filter((h) => h.blended && h.t >= d.t && h.t < d.t + 86400);
       return hs.length < 20 ? d : { ...d, hi: Math.max(...hs.map((h) => h.temp)), lo: Math.min(...hs.map((h) => h.temp)), blended: true };
     });
-    S.fcShown = { ...fc, hourly, daily, blended: true };
+    S.fcShown = { ...fc, hourly, daily, blended: v.use };
   }
   const shown = () => S.fcShown || S.fc;
 
@@ -770,7 +833,7 @@
     $("#usview").setAttribute("aria-pressed", String(!p));
   }
 
-  const PLACE_CARDS = ["#next", "#hourly", "#daily", "#record", "#sky", "#t-wind", "#t-humid", "#t-press", "#t-vis", "#t-uv", "#t-sun", "#t-rain"];
+  const PLACE_CARDS = ["#next", "#hourly", "#daily", "#models", "#record", "#sky", "#t-wind", "#t-humid", "#t-press", "#t-vis", "#t-uv", "#t-sun", "#t-rain"];
   function render() {
     renderPlace();
     const us = !S.place;
@@ -784,7 +847,7 @@
       renderUSHero(); renderNational(); renderSources(); radar.label();
       return;
     }
-    renderStorms(); renderHero(); renderAlerts(); renderNearby(); renderNext(); renderHourly(); renderDaily(); renderRecord(); renderTiles(); renderSources();
+    renderStorms(); renderHero(); renderAlerts(); renderNearby(); renderNext(); renderHourly(); renderDaily(); renderModels(); renderRecord(); renderTiles(); renderSources();
     if (typeof offerInstall === "function") offerInstall();
     radar.label();
   }
@@ -934,6 +997,92 @@
     return `<div class="confline" data-l="${c.level}">${c.level === "high" ? "✓ Models agree on today" : "≈ Models disagree about today — less certain than usual"}</div>`;
   }
 
+  /* ── the models, side by side ──
+     Every model the page reads for "how sure", drawn on one chart: the
+     standard forecast, and the page's own when it is the one shown. No new
+     request — these are the numbers the confidence lines already use.
+     HRRR stops after two days; that is the model, not a gap here. */
+  const CMP_COLORS = { best: "#ffffff", nbm: "#7fd3ff", hrrr: "#ffb703", gfs: "#ff7b6b", ecmwf: "#8ee59b", aifs: "#d9a6ff", shown: "#ffffff" };
+  const CMP_VARS = { t: "Temperature", p: "Rain (total from now)", w: "Wind" };
+  S.cmp = { v: "t", span: 72 };
+  function renderModels() {
+    const box = $("#models"), body = $("#modelsbody");
+    const fc = S.fc, ens = S.ens;
+    if (!S.place || !fc || !ens) { box.hidden = true; return; }
+    box.hidden = false;
+    if (!$("#modelsd").open) return;                          // drawn when opened
+    const k = clk(), now = nowSec(), { v, span } = S.cmp, us = U() === "us";
+    const end = now + span * 3600, start = now - (now % 3600);
+    const conv = v === "t" ? (c) => us ? Wx.cToF(c) : c : v === "w" ? (x) => us ? x / 1.609344 : x : (mm) => us ? mm / 25.4 : mm;
+    const unit = v === "t" ? (us ? "°F" : "°C") : v === "w" ? Wx.UNITS[U()].wind : Wx.UNITS[U()].precip;
+    const hrs = [...ens.hours.keys()].filter((t) => t >= start && t <= end).sort((a, b) => a - b);
+    const lines = {};
+    const add = (m, t, x) => { if (x == null || !Number.isFinite(x)) return; (lines[m] || (lines[m] = [])).push([t, x]); };
+    for (const m of Wx.ENSEMBLE) {
+      let acc = 0;
+      for (const t of hrs) { const r = ens.hours.get(t)[m]; if (!r) continue; const x = r[v]; if (x == null) continue; if (v === "p") { acc += x; add(m, t, conv(acc)); } else add(m, t, conv(x)); }
+    }
+    const key = { t: "temp", w: "wind", p: "precip" }[v];
+    let acc = 0;
+    for (const h of S.fc.hourly) { if (h.t < start || h.t > end || h[key] == null) continue; if (v === "p") { acc += h[key]; add("best", h.t, conv(acc)); } else add("best", h.t, conv(h[key])); }
+    const sh = shown();
+    if (v === "t" && sh.blended) for (const h of sh.hourly) if (h.t >= start && h.t <= end && h.blended) add("shown", h.t, conv(h.temp));
+    const all = Object.values(lines).flat().map((p) => p[1]);
+    if (all.length < 4) { body.innerHTML = '<p class="dim">The models have nothing to compare here yet.</p>'; return; }
+    let lo = Math.min(...all), hi = Math.max(...all);
+    if (v !== "t") lo = 0;
+    if (hi - lo < (v === "t" ? 4 : v === "p" ? (us ? 0.2 : 5) : 10)) { const mid = (hi + lo) / 2, half = (v === "t" ? 4 : v === "p" ? (us ? 0.2 : 5) : 10) / 2; lo = v === "t" ? mid - half : 0; hi = v === "t" ? mid + half : Math.max(hi, half * 2); }
+    /* drawn at its real width, so the 12px labels stay 12px on a phone */
+    const W = Math.max(280, Math.round(body.clientWidth || 640)), H = W < 500 ? 200 : 240, L = 40, R = 8, T = 10, B = 24;
+    const X = (t) => L + (t - start) / (end - start) * (W - L - R), Y = (x) => T + (1 - (x - lo) / (hi - lo)) * (H - T - B);
+    const fmtY = (x) => v === "p" && us ? x.toFixed(2) : Math.round(x);
+    let grid = "";
+    /* tidy ticks: 1, 2 or 5 times a power of ten */
+    const raw = (hi - lo) / 4, mag = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 5, 10].map((m) => m * mag).find((x) => x >= raw);
+    const dec = step < 1 ? Math.min(2, Math.ceil(-Math.log10(step))) : 0;
+    for (let x = Math.ceil(lo / step) * step; x <= hi + 1e-9; x += step) { const y = Y(x); grid += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="rgba(255,255,255,.12)"/><text x="${L - 6}" y="${y + 4}" text-anchor="end">${x.toFixed(dec)}</text>`; }
+    /* a tick at each local midnight, labelled with the day */
+    for (let t = start; t <= end; t += 3600) if (k.hour(t * 1000) === "12AM") grid += `<line x1="${X(t)}" x2="${X(t)}" y1="${T}" y2="${H - B}" stroke="rgba(255,255,255,.18)"/><text x="${X(t) + 4}" y="${H - 7}">${esc(k.day(t * 1000))}</text>`;
+    const path = (pts) => pts.map(([t, x], i) => `${i ? "L" : "M"}${X(t).toFixed(1)},${Y(x).toFixed(1)}`).join("");
+    const order = ["gfs", "ecmwf", "aifs", "nbm", "hrrr", "best", "shown"];
+    const svgLines = order.filter((m) => lines[m]).map((m) => `<path d="${path(lines[m])}" fill="none" stroke="${CMP_COLORS[m]}" stroke-width="${m === "shown" ? 3 : m === "best" ? 2.2 : 1.8}" ${m === "best" ? 'stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>`).join("");
+    /* in words: where they disagree most */
+    let worst = null;
+    for (const t of hrs) {
+      const xs = Wx.ENSEMBLE.map((m) => (lines[m] || []).find((p) => p[0] === t)).filter(Boolean).map((p) => p[1]);
+      if (xs.length < 3) continue;
+      const sp = Math.max(...xs) - Math.min(...xs);
+      if (!worst || sp > worst.sp) worst = { t, sp, xs };
+    }
+    const nm = (m) => Wx.MODEL_NAMES[m] || m;
+    let say = "";
+    if (worst && v === "t") {
+      const at = Wx.ENSEMBLE.map((m) => ({ m, p: (lines[m] || []).find((q) => q[0] === worst.t) })).filter((x) => x.p).sort((a, b) => b.p[1] - a.p[1]);
+      say = worst.sp < 3 ? `The models agree within ${Math.round(worst.sp)}° the whole way.` :
+        `They split most ${esc(k.dayLong(worst.t * 1000))} around ${esc(k.time(worst.t * 1000))}: ${esc(nm(at[0].m))} ${Math.round(at[0].p[1])}°, ${esc(nm(at[at.length - 1].m))} ${Math.round(at[at.length - 1].p[1])}°.`;
+    } else if (v === "p") {
+      const tot = Wx.ENSEMBLE.filter((m) => lines[m] && lines[m].length).map((m) => ({ m, x: lines[m][lines[m].length - 1][1] })).sort((a, b) => b.x - a.x);
+      const wet = tot.filter((x) => x.x >= (us ? 0.04 : 1));
+      say = !tot.length ? "" : !wet.length ? "None of the models has meaningful rain in this window." :
+        `${wet.length} of ${tot.length} models have rain; ${esc(nm(tot[0].m))} the most (${fmtY(tot[0].x)} ${esc(unit)}).`;
+    } else if (worst) say = `Wind: the models differ by up to ${Math.round(worst.sp)} ${esc(unit)}.`;
+    const keyHtml = order.filter((m) => lines[m]).map((m) => `<span><i style="background:${CMP_COLORS[m]}${m === "best" ? ";background:repeating-linear-gradient(90deg,#fff 0 5px,transparent 5px 9px)" : ""}"></i>${m === "best" ? "Standard forecast" : m === "shown" ? "Shown on this page" : esc(nm(m))}</span>`).join("");
+    const seg = (attr, val, label, on) => `<button type="button" data-${attr}="${val}" aria-pressed="${on}">${label}</button>`;
+    body.innerHTML = `<div class="seg" role="group" aria-label="What to compare">${Object.entries(CMP_VARS).map(([x, l]) => seg("cmpv", x, l.split(" (")[0], x === v)).join("")}
+        <span class="sep"></span>${seg("cmps", 72, "3 days", span === 72)}${seg("cmps", 168, "7 days", span === 168)}</div>
+      ${say ? `<p class="cmpsay">${say}</p>` : ""}
+      <svg class="cmpchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(CMP_VARS[v])} from each model, ${span === 72 ? "three" : "seven"} days, in ${esc(unit)}. ${esc(say.replace(/<[^>]+>/g, ""))}">${grid}${svgLines}</svg>
+      <div class="cmpkey">${keyHtml}</div>
+      <p class="nextnote">${esc(CMP_VARS[v])}, ${esc(unit)}. Each line is one model's latest run, read for this spot. HRRR runs only two days ahead. The page's track record below says which of them has been closest here.</p>`;
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-cmpv],[data-cmps]");
+    if (!b) return;
+    if (b.dataset.cmpv) S.cmp.v = b.dataset.cmpv; else S.cmp.span = Number(b.dataset.cmps);
+    renderModels();
+  });
+  $("#modelsd").addEventListener("toggle", renderModels);
+
   /* ── how accurate this has been, here ── */
   function renderRecord() {
     const box = $("#record");
@@ -947,7 +1096,7 @@
     }
     const f = U() === "us" ? 1.8 : 1;
     const max = Math.max(...v.rows.map((x) => x.mae)) * f;
-    const used = v.useBlend ? "blend" : "best";
+    const used = v.use;
     const days = v.rows.find((x) => x.m === used)?.days || v.rows[0].days;
     const rows = v.rows.map((x) => `<div class="recrow${x.m === used ? " used" : ""}">
         <span class="rn">${esc(Wx.MODEL_NAMES[x.m] || x.m)}${x.m === used ? ' <span class="tag">shown here</span>' : ""}</span>
@@ -956,14 +1105,17 @@
     const nat = r.index && r.index.national;
     const natLine = nat && nat.blend && nat.best && nat.blend.stations > 50
       ? `<p class="dim" style="margin-top:8px">Across ${nat.blend.stations.toLocaleString()} US stations, the blend's typical miss is ±${(nat.blend.mae * f).toFixed(1)}° against the standard forecast's ±${(nat.best.mae * f).toFixed(1)}°.</p>` : "";
-    const why = v.useBlend
-      ? `This page shows its own blend for temperatures here, because at this station it has been closer than the standard forecast (±${(v.blend.mae * f).toFixed(1)}° vs ±${(v.base.mae * f).toFixed(1)}°).`
-      : v.blend && v.base ? `This page shows the standard forecast here: its own blend hasn't beaten it at this station yet (±${(v.blend.mae * f).toFixed(1)}° vs ±${(v.base.mae * f).toFixed(1)}°).`
-      : "This page shows the standard forecast here until the blend has a long enough record.";
+    const mine = { blend: "its own blend", learn: "its own learned forecast" };
+    const deg = (x) => "±" + (x.mae * f).toFixed(1) + "°";
+    const why = v.pick
+      ? `This page shows ${mine[v.pick.m]} for temperatures here, because at this station it has been closer than the standard forecast (${deg(v.pick)} vs ${deg(v.base)}).`
+      : v.base && (v.blend || v.learn) ? `This page shows the standard forecast here: neither of its own forecasts has beaten it at this station yet.`
+      : "This page shows the standard forecast here until its own forecasts have a long enough record.";
     box.innerHTML = head + `<p style="margin-bottom:10px">Next-day temperature forecasts at <b>${esc(st.name)}</b> (${esc(st.id)}${st.dist != null ? `, ${Wx.fmt.dist(st.dist, U())} ${Wx.UNITS[U()].dist} away` : ""}), average miss over the last ${days} days:</p>
       <div class="recrows">${rows}</div>
       <p class="nextnote">${esc(why)}</p>${natLine}
-      <p class="nextnote">Scored against the airport's own thermometer, through ${esc(r.index.through || "")}. A miss of ±1.5° is very good; most apps never show theirs.</p>`;
+      <p class="nextnote">Scored against the airport's own thermometer, through ${esc(r.index.through || "")}. A miss of ±1.5° is very good; most apps never show theirs.</p>
+      ${v.rows.some((x) => x.m === "pangu") ? `<p class="nextnote">Pangu AI is a published AI weather model (Huawei; Bi et al., Nature 2023, weights CC BY-NC-SA 4.0) that this site runs itself every evening, from ECMWF's open data (CC BY 4.0).</p>` : ""}`;
   }
 
   function renderAlerts() {
@@ -1013,11 +1165,36 @@
       const h = Math.max(4, Math.sqrt(rate / max) * 100);
       return `<i class="${rate >= 0.4 ? (snow ? "s" : "w") : ""}" style="height:${rate >= 0.4 ? h : 4}%" title="${esc(k.time((s.t - (hourly ? 3600 : 900)) * 1000))}: ${Wx.fmt.precip(rate, U())} ${Wx.UNITS[U()].precip}/h"></i>`;
     }).join("");
-    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5S3.5 7 3.5 10a4.5 4.5 0 0 0 9 0C12.5 7 8 1.5 8 1.5z" fill="currentColor"/></svg>Next 3 hours<span class="src">${hourly ? "hourly" : "every 15 min"} · model</span></h2>
+    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5S3.5 7 3.5 10a4.5 4.5 0 0 0 9 0C12.5 7 8 1.5 8 1.5z" fill="currentColor"/></svg>Next 3 hours<span class="src">${S.now ? "radar, then " : ""}model ${hourly ? "hourly" : "every 15 min"}</span></h2>
+      ${nowcastLine(k)}
       <div style="font-size:17px;font-weight:600">${esc(rain.text)}</div>
       <div class="nextbars" role="img" aria-label="${esc(rain.text)}">${bars}</div>
       <div class="nextaxis"><span>Now</span><span>+1 h</span><span>+2 h</span><span>+3 h</span></div>
       ${rain.note ? `<p class="nextnote">${esc(rain.note)}</p>` : ""}`;
+  }
+  /* the radar's own next hour, above the models' three: a sentence, a strip
+     of twelve five-minute cells, where the rain is heading, and how this
+     estimate has done — every part of it labelled as ours */
+  function nowcastLine(k) {
+    const n = S.now;
+    const said = n && WxNowcast.describe(n.series, { base: n.valid || S.nowAt, clock: (ms) => k.time(ms) });
+    if (!said) return "";
+    const cells = n.series.filter((p) => p.min > 0).map((p) => {
+      const lvl = p.p === null ? "x" : p.p >= 0.5 ? (p.dbz >= 45 ? "h" : p.dbz >= 35 ? "m" : "l") : p.p >= 0.15 ? "n" : "";
+      return `<i class="${lvl}" title="${esc(k.time((n.valid || S.nowAt) + p.min * 60e3))}: ${p.p === null ? "no radar" : Math.round(p.p * 100) + "% chance"}"></i>`;
+    }).join("");
+    const head = n.moving && n.speed >= 5 ? `Rain on radar is moving ${Wx.compass(n.toward)} at ${Wx.fmt.wind(n.speed, U())} ${Wx.UNITS[U()].wind}.` : "";
+    const rec = S.nowRec && S.nowRec.leads && S.nowRec.leads[30];
+    const grade = rec && rec.csi != null && rec.still != null && S.nowRec.days >= 3
+      ? ` Graded nightly: at 30 minutes it has caught ${Math.round(rec.csi * 100)}% of rain (shared hits), against ${Math.round(rec.still * 100)}% for assuming nothing moves.`
+      : " Graded every night against what the radar did next.";
+    const age = n.valid ? Wx.age(Date.now() - n.valid) + " ago" : "";
+    return `<div class="nowcast">
+      <div class="nowtext">${esc(said.text)}</div>
+      <div class="nowstrip" role="img" aria-label="${esc(said.text)}">${cells}</div>
+      <div class="nextaxis"><span>Now</span><span>+30 min</span><span>+1 h</span></div>
+      <p class="nextnote">From radar${age ? " scanned " + esc(age) : ""} — our own estimate: the last half hour carried forward. ${esc(head)}${esc(grade)}</p>
+    </div>`;
   }
 
   function renderHourly() {
@@ -1147,7 +1324,7 @@
             </div>
             ${dayChart(fc, d)}
             ${i === 0 && vy ? `<p class="confsay">${esc(vyText(vy))}</p>` : ""}
-            ${cf ? `<p class="confsay" data-l="${cf.level}">${esc(confWords(cf))}</p>` : ""}${d.blended ? `<p class="confsay">High and low from this page's scored blend.</p>` : ""}
+            ${cf ? `<p class="confsay" data-l="${cf.level}">${esc(confWords(cf))}</p>` : ""}${d.blended ? `<p class="confsay">High and low from this page's ${S.verdict && S.verdict.use === "learn" ? "learned forecast" : "scored blend"}.</p>` : ""}
             ${words.length ? `<div class="office"><h3>Forecast office ${esc(S.pt && S.pt.office || "")}</h3>${words.map((p) => `<p><b>${esc(p.name)}:</b> ${esc(p.detailed || p.short)}</p>`).join("")}</div>` : ""}
           </div>
         </details>`;
@@ -1239,6 +1416,7 @@
       const o = S.outlook[0];
       row("", "SPC convective outlook, day 1", `Storm Prediction Center${o && o.forecaster ? " · " + esc(o.forecaster) : ""} · issued`, o ? o.issued : S.checked.outlook);
     } else row("off", "SPC convective outlook", S.outlook === undefined ? "asking…" : "not answering", null);
+    if (S.place && S.now) row("", "Radar nowcast — this site's own", "the last half hour of the IEM mosaic, carried forward in this browser · from the scan", S.now.valid);
     const rv = radar.valid;
     if (rv) {
       const f = Wx.fresh("radar", rv);
@@ -1655,6 +1833,44 @@
       return prof ? { a: Snd.analyze(prof), when: K.col.hourly.time[K.hour] * 1000 } : null;
     }
 
+    /* ── the ingredients over the next two days ──
+       Every hour of the column analysed (once per column), four rows of
+       cells coloured by the usual thresholds, so the hour worth a look can be
+       found without dragging the slider through all 48. Tap a cell to go to it. */
+    const ROWS = [
+      ["CAPE", "Mixed-layer CAPE", (a) => a.ml.cape, [250, 1000, 2500], (x) => Math.round(x).toLocaleString() + " J/kg"],
+      ["Shear", "0–6 km shear", (a) => a.shear6 != null ? a.shear6 * 1.943844 : null, [20, 35, 50], (x) => Math.round(x) + " kt"],
+      ["SRH", "0–1 km storm-relative helicity", (a) => a.srh1, [50, 150, 300], (x) => Math.round(x) + " m²/s²"],
+      ["STP", "Significant tornado parameter", (a) => a.stp, [0.5, 1, 3], (x) => x.toFixed(1)]
+    ];
+    function timeline() {
+      if (!K.col || !K.col.hourly || !K.col.hourly.time) return null;
+      if (K.tl && K.tl.key === K.colKey) return K.tl;
+      const hours = K.col.hourly.time.map((t, i) => {
+        const prof = Snd.fromOpenMeteo(K.col, i);
+        let a = null;
+        try { a = prof ? Snd.analyze(prof) : null; } catch (e) { a = null; }
+        return { t: t * 1000, v: ROWS.map((r) => { const x = a ? r[2](a) : null; return x == null || !Number.isFinite(x) ? null : x; }) };
+      });
+      K.tl = { key: K.colKey, hours };
+      return K.tl;
+    }
+    function timelineHtml() {
+      const tl = timeline();
+      if (!tl) return "";
+      const k = clk();
+      const lvl = (x, th) => x == null ? "x" : x >= th[2] ? "3" : x >= th[1] ? "2" : x >= th[0] ? "1" : "0";
+      const peaks = ROWS.map((r, j) => tl.hours.reduce((best, h, i) => h.v[j] != null && (best === null || h.v[j] > tl.hours[best].v[j]) ? i : best, null));
+      const notable = ROWS.map((r, j) => peaks[j] !== null && tl.hours[peaks[j]].v[j] >= r[3][1] ? `${r[1]} peaks at ${r[4](tl.hours[peaks[j]].v[j])} ${k.day(tl.hours[peaks[j]].t)} ${k.hour(tl.hours[peaks[j]].t)}` : null).filter(Boolean);
+      const said = notable.length ? notable.join("; ") + "." : "No storm ingredients reach notable levels in the next two days.";
+      /* a picture to tap; the slider above is the keyboard's way through the hours */
+      const rows = ROWS.map((r, j) => `<div class="tlrow"><span class="tln" title="${esc(r[1])}">${r[0]}</span><div class="tlcells">${tl.hours.map((h, i) =>
+        `<i class="l${lvl(h.v[j], r[3])}${i === K.hour ? " on" : ""}" data-tlh="${i}" title="${esc(k.day(h.t) + " " + k.hour(h.t) + ": " + (h.v[j] == null ? "none" : r[4](h.v[j])))}"></i>`).join("")}</div></div>`).join("");
+      const ticks = tl.hours.map((h, i) => k.hour(h.t) === "12AM" ? `<span style="left:${(i / tl.hours.length * 100).toFixed(1)}%">${esc(k.day(h.t))}</span>` : "").join("");
+      return `<div class="tl" id="skytime"><p class="tlsay">${esc(said)}</p><div role="img" aria-label="${esc("Storm ingredients by hour for the next two days. " + said)}">${rows}<div class="tlticks" aria-hidden="true">${ticks}</div></div>
+        <p class="nextnote">Each cell is one hour of this model's run here: grey none, then yellow, orange, magenta as each ingredient climbs (CAPE 250 / 1,000 / 2,500; shear 20 / 35 / 50 kt; SRH 50 / 150 / 300; STP 0.5 / 1 / 3). Ingredients, not a forecast of storms. Tap an hour to see its sounding.</p></div>`;
+    }
+
     function draw(partsOnly) {
       const b = body();
       if (!b || !$("#skyd").open) return null;
@@ -1703,7 +1919,7 @@
           </div>`;
       }
       if (partsOnly) return { info, pics, table, when: now && now.when };
-      b.innerHTML = `<div class="seg" role="group" aria-label="Sounding source" style="margin-top:10px">${buttons}</div><div id="skyinfo">${info}</div>${slider}<div id="skydyn">${pics}${table}</div>
+      b.innerHTML = `<div class="seg" role="group" aria-label="Sounding source" style="margin-top:10px">${buttons}</div><div id="skyinfo">${info}</div>${slider}${K.mode === "model" && !K.busy && now ? timelineHtml() : ""}<div id="skydyn">${pics}${table}</div>
         <details class="gloss"><summary>What these mean</summary><dl>
           <dt>CAPE</dt><dd>Energy a rising parcel of air gains from being warmer than its surroundings, J/kg. Over ~1000 is plenty for strong storms; over ~3000 is a lot.</dd>
           <dt>CIN</dt><dd>The "cap": energy needed to push a parcel up to where it rises on its own. Strongly negative means storms struggle to start.</dd>
@@ -1739,9 +1955,23 @@
       $("#skydyn").innerHTML = html.pics + html.table;
       const lab = e.target.previousElementSibling;
       if (lab && html.when) lab.textContent = clk().hour(html.when);
+      markHour();
+    });
+    function markHour() { document.querySelectorAll("#skytime [data-tlh]").forEach((c) => c.classList.toggle("on", Number(c.dataset.tlh) === K.hour)); }
+    document.addEventListener("click", (e) => {
+      const c = e.target.closest("[data-tlh]");
+      if (!c) return;
+      K.hour = Number(c.dataset.tlh);
+      const sl = $("#skyhour"); if (sl) sl.value = K.hour;
+      const html = draw(true);
+      if (!html) return;
+      $("#skyinfo").innerHTML = html.info;
+      $("#skydyn").innerHTML = html.pics + html.table;
+      if (sl && html.when) sl.previousElementSibling.textContent = clk().hour(html.when);
+      markHour();
     });
     return {
-      reset() { Object.assign(K, { col: null, colKey: null, run: null, raob: null, raobSite: null, model: null, mode: "model", source: null, err: null }); if ($("#skyd").open) { K.model = defaultModel(); loadModel(); } },
+      reset() { Object.assign(K, { tl: null, col: null, colKey: null, run: null, raob: null, raobSite: null, model: null, mode: "model", source: null, err: null }); if ($("#skyd").open) { K.model = defaultModel(); loadModel(); } },
       get source() { return K.source; },
       redraw: draw
     };
@@ -1867,6 +2097,11 @@
       }
     }
     if (now - lastRadar >= 120e3) { lastRadar = now; radar.refresh(); }
+    if (S.place && now - (S.nowAt || 0) >= 300e3) {
+      S.nowAt = now;
+      const key = placeKey(S.place);
+      loadNowcast((S.ctl || new AbortController()).signal, () => S.place && placeKey(S.place) === key);
+    }
   }, 30e3);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && Date.now() - S.loadedAt > FULL) load();

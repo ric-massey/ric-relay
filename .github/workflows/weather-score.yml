@@ -3,7 +3,9 @@
 # Once a day, every model the weather room can show is held to what actually
 # happened at every US airport weather station (~2,500), and the result is
 # folded into a running record per station, model and lead time — including
-# the room's own blend, scored exactly like a model. projects/weather/verify/
+# the room's own predictions, scored exactly like a model: the blend, the
+# learned forecast, our own AI run (weather-ai.yml) and, against yesterday's
+# radar, the next-hour nowcast. projects/weather/verify/
 # has the script and its README section is in projects/weather/README.md.
 #
 # The full record lives in the Actions cache between runs. What the page
@@ -24,10 +26,14 @@ on:
   workflow_dispatch:
     inputs:
       backfill:
-        description: "Days to score, ending yesterday (14 is the most one run should do)"
+        description: "Days to score, ending yesterday (28 fits in one run)"
         default: "1"
       commit:
         description: "Commit the published scores this run"
+        type: boolean
+        default: false
+      fresh:
+        description: "Start the record over (with backfill, e.g. 28, so the learned forecast has history)"
         type: boolean
         default: false
 
@@ -41,7 +47,7 @@ concurrency:
 jobs:
   score:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,16 +65,32 @@ jobs:
           key: weather-score-state-${{ github.run_id }}
           restore-keys: weather-score-state-
 
+      - name: Bring back our own AI runs (weather-ai.yml)
+        uses: actions/cache/restore@v4
+        with:
+          path: projects/weather/verify/.state/ai
+          key: weather-ai-store-${{ github.run_id }}
+          restore-keys: weather-ai-store-
+
       - name: Score
         run: |
           set -e
           DAYS="${{ github.event.inputs.backfill || '1' }}"
+          if [ "${{ github.event.inputs.fresh }}" = "true" ]; then
+            echo "Starting the record over: ${DAYS} days"
+            rm -f projects/weather/verify/.state/state.json
+            find projects/weather/verify/scores -name '??.json' -delete
+            rm -f projects/weather/verify/scores/index.json
+          fi
           # A first run, or a lost cache with nothing committed yet: start
           # with two weeks so the record has something to say on day one.
-          if [ ! -f projects/weather/verify/.state/state.json ] && [ ! -f projects/weather/verify/scores/index.json ]; then
+          if [ "${{ github.event.inputs.fresh }}" != "true" ] && [ ! -f projects/weather/verify/.state/state.json ] && [ ! -f projects/weather/verify/scores/index.json ]; then
             DAYS=14
           fi
           node projects/weather/verify/score.mjs --backfill "$DAYS"
+
+      - name: Grade yesterday's radar nowcast
+        run: node projects/weather/verify/nowcast.mjs || echo "nowcast grade failed; the scoreboard stands without it"
 
       - name: Keep the running record for tomorrow
         if: always()
@@ -78,7 +100,7 @@ jobs:
           key: weather-score-state-${{ github.run_id }}
 
       - name: Check the scoreboard's own rules before trusting it
-        run: node projects/weather/test/verify.test.mjs
+        run: node projects/weather/test/verify.test.mjs && node projects/weather/test/nowcast.test.mjs
 
       - name: Commit the published scores, weekly
         run: |
