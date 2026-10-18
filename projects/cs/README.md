@@ -2,6 +2,8 @@
 
 `cs.html` reads `cs-data.js` (every match) and, for games with a saved demo,
 `matches/<id>.js` (the 2D replay). Both are generated; nothing here is hand-edited.
+The replays are kept in Cloudflare R2, not git (see **Replays live in R2** below);
+`matches/` is this machine's copy.
 
 ## Where the numbers come from
 
@@ -82,7 +84,7 @@ Nothing runs between sessions. The `CS2 + Terminal` desktop shortcut does the sa
 thing (it launches CS2 through Steam). Log: `%LOCALAPPDATA%\ric-terminal\cs-session.log`.
 
 `sync.py` = demos → live feed → Steam → Leetify, each in its own process so one
-failing never stops the rest, then **commits the room's data only** (`cs-data.js`, `stats.js`, `matches/`, `llm/`, `p/`)
+failing never stops the rest, sends new replays to R2, then **commits the room's data only** (`cs-data.js`, `stats.js`, `matches/` until it moves to R2, `llm/`, `p/`)
 (on `main`, never mid-merge), then **pushes them** so a session reaches the site
 by itself (Ric's call, 2026-10-14). It pushes only commits that touch nothing but
 the room's data; if other work is waiting to go out it pushes nothing and says
@@ -125,6 +127,55 @@ cmdkey /generic:ric-terminal/cs-match-auth /user:steam /pass:<match auth code>
 
 Web API key: steamcommunity.com/dev/apikey. Match auth code: help.steampowered.com →
 Counter-Strike 2 → "Access to Your Match History". Without them the rest still works.
+
+## Replays live in R2
+
+A replay is 0.3-0.9 MB (13.3 MB for the first 19, with the 8 Hz kill windows),
+one per game, forever. At a few hundred games that alone passes the 1 GB GitHub
+Pages allows, on a repo that was already 600 MB, and git keeps a file forever
+even after it's deleted. So the replays go to Cloudflare R2: the `photos` bucket
+the climbing media already uses, under `cs/replays/`, served by the site's
+Worker (`training-log`):
+
+- `GET /cs/replay/<id>`: public, served as JavaScript (the page loads it as a
+  `<script>`, exactly like the repo copy). `cs.html` asks the Worker first and
+  falls back to `projects/cs/matches/<id>.js`, so nothing breaks while both
+  exist, and a local server (where `/cs/replay` 404s) uses the local files.
+- `PUT /cs/replay/<id>`: needs the site password (`LOG_TOKEN`), and only takes
+  the exact file shape `parse-demos.py` writes, so the URL can't be made to
+  run anything else on the page. `worker/test.mjs` holds it to that.
+
+R2's free tier is 10 GB with no charge for reads, about 14,000 games at today's size.
+
+`upload-replays.py` (sync step 7) sends any new or re-parsed replay, reads each
+one back to check it arrived byte for byte, and stamps its hash into
+`cs-data.js` as `replay_v` (the page's `?v=`, so a re-parse is a fresh URL).
+`--check` lists what R2 has, `--pull` rebuilds `matches/` from R2 on a machine
+that has none, and `--move` is the one-time cutover.
+
+**Turning it on (once, in this order):**
+
+1. Deploy the Worker: Actions → **Deploy Worker** → Run workflow (or
+   `npx wrangler@latest deploy` in `worker/`). Until then `/cs/replay` 404s and
+   the page uses the repo copies.
+2. Put the site password in Windows Credential Manager, typed, never pasted
+   into a file or chat:
+   `projects/cs/.cs-venv/Scripts/python projects/cs/creds.py set ric-terminal/log-token`
+   (type it, Enter, then Ctrl+Z and Enter).
+3. `projects/cs/.cs-venv/Scripts/python projects/cs/upload-replays.py`, then the same
+   with `--check`, which should say every replay is in R2 and matching.
+4. `... upload-replays.py --move`. It refuses unless step 3's check is clean. It
+   writes `matches/.gitignore`, untracks the folder (keeping the files on disk) and
+   stages that. Commit it; from then on the sync sends replays to R2 and git
+   never sees another one. The LLM export's links switch to the Worker by
+   themselves (`csdata.replay_url`).
+
+The replays already in git's history stay there. Taking them out needs a
+history rewrite, which is a separate decision. Without one, the repo just stops
+growing by a replay a game.
+
+`test/parity.mjs` reads `matches/` when it's there and otherwise the one
+committed replay in `test/fixtures/`, which is what CI checks.
 
 ## The radars
 
@@ -175,6 +226,14 @@ them once from the archived demos to add it:
 projects/cs/.cs-venv/Scripts/python projects/cs/parse-demos.py --rebuild
 ```
 
+**Faster samples round every kill** (2026-10-17). Twice a second is fine for a
+rotate and smears a peek, so each round also has `fine`: windows sampled
+`fine_hz` (8) times a second from 3 s before every kill to 0.5 s after, merged
+where they touch, with their own `tracks` and `yaws` packed like the round's.
+The page uses a window when the clock is inside one and the 2 Hz track
+everywhere else (`fineAt`/`momentAt`); the replay's ⋮ menu says how it's
+drawn. 8 Hz everywhere would make every file about four times bigger.
+
 Every shot is drawn too (Ric's ask, 2026-10-15), from the `shots` each round has
 always stored — every trigger pull by all ten players, to a tenth of a second —
 so every replay already had it and none needed rebuilding. The shooter gets an
@@ -197,6 +256,27 @@ value in the round's kill list, **Biggest plays** in Records, and **Rounds
 added** on each match (his kills' and deaths' values summed). `export-llm.py`
 writes the same numbers into every fight. `test/parity.mjs` holds the page and
 `winprob.py` to each other over every round of every replay.
+
+**How good the win chance is** (Ric's ask, 2026-10-17: a 12% estimate
+shouldn't be read as a rigorously established 12%). `winprob.check()`
+tests the model on games it never saw: matches split ten ways, whole matches
+per fold (moments of one round are near-copies, so splitting them would let it
+mark its own homework), each fold predicted by a fit on the rest. It's scored
+by Brier and log loss against a plain men-alive table, and binned into a
+calibration table, and all of that is in `stats.js` (`wp.check`), behind the
+page's ⓘ, and in `llm/index.md` under **Model check**. `wp.step` is how finely
+the page shows a chance: **5% steps until calibration is within 2 points on
+2,000+ held-out moments, then 1%**. A kill's value (a difference) stays in whole
+points, because whatever the model gets wrong about a round it gets wrong on
+both sides of the kill. On the first check (19 games) it beat the table (Brier
+0.179 vs 0.186) and ran about 4 points optimistic for Ric's team between 40%
+and 70%.
+
+**Skill groups.** Each replay's `seats` carry the player's `rank` and
+`rank_type` as the match began (hidden ranks are left off). They're set before
+the game, so they can feed the model without leaking its result.
+`winprob.fit()` tries the model with and without them and keeps rank only if
+the held-out log loss improves; `wp.features` says which won.
 
 **Saving a replay as video.** The replay's "Save this moment as video" (10 s
 around the scrubber) and "Save whole round" record an offscreen 1080×1200
@@ -247,7 +327,7 @@ the instant it happened — the replay's snapshot of all ten players, its
 damage log, its flashes — and tagged: flashed; shot from outside the view
 (the killer more than 60° off the way they faced); outnumbered (two or more
 enemies hit them in the 5 s before); died alone (untraded, no teammate alive
-within ~25 m); otherwise a fair duel lost; and whether they fired back.
+within ~25 m); otherwise "lost the duel" (none of those found, which is not the same as an even fight); and whether they fired back.
 `stats.js` carries Ric's deaths with their tags and every player's totals,
 with everyone's as `*`. "Why Ric dies" on the Overview and "Why you die" on
 a player's page say where they stand out against everyone, with a bar per

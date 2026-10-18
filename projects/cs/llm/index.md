@@ -1,6 +1,6 @@
 # RicGoneCrazy — Counter-Strike 2, every match
 
-Ric Massey's CS2 record from https://ricmassey.com/cs.html, as plain text. Generated 2026-10-15. Each match below links to a full report.
+Ric Massey's CS2 record from https://ricmassey.com/cs.html, as plain text. Generated 2026-10-17. Each match below links to a full report.
 
 Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed, and Leetify for games whose demo Valve already deleted. Other players appear under their in-game names.
 
@@ -91,12 +91,12 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Walkway | 4 | 12% | 4 | 22% | 1.00 |
 | Bombsite B | 3 | 9% | 1 | 6% | 0.33 |
 | Canal | 3 | 9% | 0 | 0% | 0.00 |
-| Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
 | Bridge | 2 | 6% | 1 | 6% | 0.50 |
 | Heaven | 2 | 6% | 1 | 6% | 0.50 |
+| Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
 | Main | 1 | 3% | 1 | 6% | 1.00 |
-| Fountain | 1 | 3% | 0 | 0% | 0.00 |
 | Bricks | 1 | 3% | 0 | 0% | 0.00 |
+| Fountain | 1 | 3% | 0 | 0% | 0.00 |
 | Bombsite A | 0 | 0% | 3 | 17% | — |
 | Ruins | 0 | 0% | 2 | 11% | — |
 | Street | 0 | 0% | 1 | 6% | — |
@@ -110,13 +110,13 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Mid | 2 | 17% | 0 | 0% | 0.00 |
 | Outside A | 1 | 8% | 3 | 25% | 3.00 |
 | Bombsite B | 1 | 8% | 1 | 8% | 1.00 |
-| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 8% | 0 | 0% | 0.00 |
 | CT Lane | 1 | 8% | 0 | 0% | 0.00 |
+| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | T Yard | 0 | 0% | 2 | 17% | — |
 | A Stairs | 0 | 0% | 1 | 8% | — |
-| Vents | 0 | 0% | 1 | 8% | — |
 | B Main | 0 | 0% | 1 | 8% | — |
+| Vents | 0 | 0% | 1 | 8% | — |
 
 ### Dust II: where Ric dies and kills
 
@@ -129,9 +129,9 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Top of Mid | 4 | 9% | 1 | 4% | 0.25 |
 | Catwalk | 3 | 7% | 1 | 4% | 0.33 |
 | Extended A | 3 | 7% | 0 | 0% | 0.00 |
-| Middle | 2 | 5% | 0 | 0% | 0.00 |
-| B Doors | 2 | 5% | 0 | 0% | 0.00 |
 | Hole | 2 | 5% | 0 | 0% | 0.00 |
+| B Doors | 2 | 5% | 0 | 0% | 0.00 |
+| Middle | 2 | 5% | 0 | 0% | 0.00 |
 | Under A | 1 | 2% | 2 | 7% | 2.00 |
 | Mid Doors | 1 | 2% | 1 | 4% | 1.00 |
 | Bombsite A | 1 | 2% | 0 | 0% | 0.00 |
@@ -153,17 +153,17 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Catwalk | 6 | 5% | 4 | 5% | 0.67 |
 | Shop | 5 | 4% | 1 | 1% | 0.20 |
 | T Ramp | 4 | 4% | 1 | 1% | 0.25 |
-| Middle | 2 | 2% | 2 | 3% | 1.00 |
 | Underpass | 2 | 2% | 2 | 3% | 1.00 |
 | Scaffolding | 2 | 2% | 2 | 3% | 1.00 |
+| Middle | 2 | 2% | 2 | 3% | 1.00 |
 | House | 2 | 2% | 1 | 1% | 0.50 |
-| Stairs | 2 | 2% | 0 | 0% | 0.00 |
 | Snipers Nest | 2 | 2% | 0 | 0% | 0.00 |
+| Stairs | 2 | 2% | 0 | 0% | 0.00 |
 | Palace Alley | 1 | 1% | 4 | 5% | 4.00 |
 | Jungle | 1 | 1% | 1 | 1% | 1.00 |
 | Back Alley | 1 | 1% | 1 | 1% | 1.00 |
-| Side Alley | 1 | 1% | 0 | 0% | 0.00 |
 | Top of Mid | 1 | 1% | 0 | 0% | 0.00 |
+| Side Alley | 1 | 1% | 0 | 0% | 0.00 |
 
 ### Train: where Ric dies and kills
 
@@ -191,22 +191,46 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Bombsite A | 3 | 20% | 0 | 0% | 0.00 |
 | T Corridor Up | 1 | 7% | 2 | 25% | 2.00 |
 | Elevator | 1 | 7% | 1 | 12% | 1.00 |
-| Crane | 1 | 7% | 0 | 0% | 0.00 |
-| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
-| Mid | 1 | 7% | 0 | 0% | 0.00 |
-| Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Tunnels | 1 | 7% | 0 | 0% | 0.00 |
+| Mid | 1 | 7% | 0 | 0% | 0.00 |
+| Crane | 1 | 7% | 0 | 0% | 0.00 |
+| Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
+| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Top | 0 | 0% | 2 | 25% | — |
-| Connector | 0 | 0% | 1 | 12% | — |
 | Top of Mid | 0 | 0% | 1 | 12% | — |
+| Connector | 0 | 0% | 1 | 12% | — |
 
+
+## Model check
+
+The chance-of-the-round model, tested on 2754 moments from 19 games it was not fitted on (10 folds, whole matches per fold). Lower is better on both scores; the table is a plain count of how often each men-alive state was won.
+
+|  | Brier | Log loss |
+|---|---|---|
+| model | 0.1788 | 0.5319 |
+| men-alive table | 0.1862 | 0.5493 |
+
+Calibration is off by 3.9% on average, so the page shows chances in 5% steps. Inputs used: men, planted, econ, ct.
+
+| It said | Moments | Average it gave | Actually won |
+|---|---|---|---|
+| 0%–10% | 307 | 5% | 6% |
+| 10%–20% | 293 | 15% | 14% |
+| 20%–30% | 319 | 25% | 22% |
+| 30%–40% | 380 | 35% | 33% |
+| 40%–50% | 331 | 45% | 37% |
+| 50%–60% | 328 | 55% | 48% |
+| 60%–70% | 251 | 65% | 59% |
+| 70%–80% | 196 | 75% | 69% |
+| 80%–90% | 185 | 85% | 83% |
+| 90%–100% | 164 | 94% | 92% |
 
 ## What the numbers mean
 
 - **ADR**: average damage per round, the health Ric took off the enemy each round. 100 is a whole enemy's worth every round.
 - **K/D**: kills divided by deaths. **HS%**: the share of kills that were headshots.
-- **Chance of the round**: how likely Ric's team was to win the round at that moment, from players alive on each side, whether the bomb was down, their side and the buy. A logistic model (`winprob.py`) fitted on every moment of every saved round from both teams' side; each fight lists the chance just before and just after it, and the difference is what that kill was worth. Summed over Ric's kills and deaths it is **rounds added**.
+- **Chance of the round**: how likely Ric's team was to win the round at that moment, from players alive on each side, whether the bomb was down, their side and the buy. A logistic model (`winprob.py`) fitted on every moment of every saved round from both teams' side; each fight lists the chance just before and just after it, and the difference is what that kill was worth. Summed over Ric's kills and deaths it is **rounds added**. It is an estimate: the **model check** under the breakdown says how it did on games it was not fitted on.
 - **KAST**: the share of rounds where Ric got a kill, an assist, survived, or was traded.
 - **Leetify rating** (the Rating column): how much Ric's play moved his team's chance of winning each round, averaged over the match. 0 is break-even; shown ×100, so +2.00 is roughly two points of win chance added per round.
 - **Aim / positioning / utility**: Leetify's scores out of 100 across every game they have parsed. Higher is better; they are scores, not percentages.
@@ -215,12 +239,15 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 ## Reading the raw 2D data
 
-Matches with a saved demo have a data file at
-`/projects/cs/matches/<id>.js`. It is one JSON object after
+Matches with a saved demo have a data file (the link in each match's report;
+`https://training-log.rmbuster82.workers.dev/cs/replay/<id>`, or
+`/projects/cs/matches/<id>.js` on the site for older copies). It is one JSON object after
 `(window.CS_MATCH=window.CS_MATCH||{})["<id>"]=`:
 
-- `map`, `hz` (position samples per second), `tickrate`
-- `seats`: `[{seat, name, us, me}]` — `us` = Ric's team, `me` = Ric
+- `map`, `hz` (position samples per second), `fine_hz` (samples per second round each kill), `tickrate`
+- `seats`: `[{seat, name, us, me, rank?, rank_type?}]` — `us` = Ric's team, `me` = Ric;
+  `rank` is the player's skill group as the match began when it was shown
+  (`rank_type` 12 = Competitive groups 1–18, 11 = Premier rating)
 - `rounds[]`, each with
   - `side` (Ric's side), `w` (Ric's team won), `winner`, `reason`, `dur` (seconds)
   - `tracks`: `{seat: [x0, y0, x1, y1, …]}` sampled `hz` times a second from the
@@ -229,7 +256,11 @@ Matches with a saved demo have a data file at
     is a position and each later one is the step from the previous, with x and y
     divided by `tracks_q`; a track ends at its last sample, and the round's
     `samples` gives the full length. To unpack, keep a running sum and multiply
-    x and y by `tracks_q`.
+    x and y by `tracks_q`. Between samples, positions are a straight-line guess.
+  - `fine[]`: windows round each kill sampled `fine_hz` times a second (from 3 s
+    before to 0.5 s after; windows that touch are merged): `{t, tracks, yaws}`,
+    `t` the window's first sample in seconds, `tracks` and `yaws` shaped and
+    packed like the round's own (each window has its own `samples`).
   - `fights[]`: `t`, `killer`, `victim`, `assister` (seats), `weapon`, `headshot`,
     `wallbang`, `through_smoke`, `noscope`, `killer_blind`, `killer_in_air`,
     `killer_at` / `victim_at` (`x, y, z, place`), `distance`, `killer_hp_after`,

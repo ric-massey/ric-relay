@@ -236,6 +236,7 @@
     .rmenu[hidden]{display:none}
     .rm-sec{padding:8px 12px} .rm-sec + .rm-sec{border-top:1px solid var(--line)}
     .rm-h{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--t-ink);margin-bottom:6px}
+    .rm-note{font-size:12px;line-height:1.45;color:var(--dim)}
     .rm-follow{display:grid;gap:2px}
     .rm-who{display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:0 10px;background:none;border:0;border-left:3px solid transparent;
       color:var(--text,#c9d1da);font:inherit;font-size:14px;text-align:left;cursor:pointer}
@@ -1092,13 +1093,30 @@ function boot() {
      Every number that isn't self-explanatory carries an ⓘ that opens its
      meaning on a tap, not only on hover, which a phone never does. The About
      page lists them all. */
+  // How the win model did on games it was never fitted on (winprob.check),
+  // said plainly: whether it beat counting heads, and its worst-off band.
+  function wpCheckText() {
+    const W = window.CS_STATS && window.CS_STATS.wp, c = W && W.check;
+    if (!c) return "";
+    const pc = (v) => `${Math.round(v * 100)}%`;
+    const beat = c.model.brier < c.table.brier ? "it did better than just counting who's alive" : "it did no better than just counting who's alive";
+    const worst = c.bins.filter((b) => b[2] >= 50).sort((a, b) => Math.abs(b[3] - b[4]) - Math.abs(a[3] - a[4]))[0];
+    return ` Tested on ${c.moments.toLocaleString()} moments from games it wasn't fitted on, ${beat}.`
+      + (worst ? ` Its worst band: when it said ${pc(worst[0])}–${pc(worst[1])}, Ric's team won ${pc(worst[4])} of the time.` : "")
+      + ` So it's shown in ${W.step || 5}% steps${(W.step || 5) > 1 ? " until it's been tested on more games" : ""}.`;
+  }
   const GLOSS = {
     winrate: ["Win rate", "Ranked matches won, out of the ranked matches being counted. Draws count as not won."],
     kd: ["K/D", "Kills divided by deaths. Above 1.00 means more kills than deaths."],
     adr: ["ADR", "Average damage per round: how much health Ric took off the enemy each round. 100 is a whole enemy's worth of damage every round."],
     hs: ["Headshot %", "The share of Ric's kills that were headshots."],
     wpa: ["Rounds added", "What Ric's kills added to his team's chances, minus what his deaths cost, counted in rounds. Zero is breaking even."],
-    wp: ["Win chance", "How likely Ric's team was to win the round: players alive, the bomb, the side and the buy, from a model fitted on every round here. A kill's value is how much it moved that chance."],
+    why_flashed: ["Flashed", "They were still blind from a flashbang at the moment they died."],
+    why_unseen: ["Shot from outside the view", "The killer was more than 60° off the way they were facing, so outside what the screen shows (about 53° either side). Worked out from positions, so it's close, not exact."],
+    why_outnumbered: ["Outnumbered", "Two or more enemies hit them in the 5 seconds before they died."],
+    why_alone: ["Died alone, untraded", "Nobody avenged them within 5 seconds, and no teammate was alive within about 25 m. It says no one was close, not that being there was a mistake."],
+    why_duel: ["Lost the duel", "None of the other four showed up: not flashed, the killer was in view, only one enemy hit them, and help was close or they were traded. That's all it means. It doesn't prove the fight was even."],
+    wp: ["Win chance", "How likely Ric's team was to win the round: players alive, the bomb, the side and the buy, from a model fitted on every round here. A kill's value is how much it moved that chance. It's an estimate, not a measurement." + wpCheckText()],
     kast: ["KAST", "The share of rounds where Ric got a Kill, an Assist, Survived, or was Traded (a teammate killed his killer right after). It counts the rounds he did something useful in."],
     rating: ["Leetify rating", "Leetify's match rating: how much Ric's play (kills, damage, trades, the bomb) moved his team's chance of winning each round, averaged over the match. 0 is break-even. It's shown ×100, so +2.00 is roughly two points of win chance added per round, and a minus means he cost the team."],
     aim: ["Aim", "Leetify's aim score out of 100, from their measurements of every game they've parsed: accuracy, headshots, reaction time and where the crosshair sits before a fight. Higher is better. It's a score, not a percentage."],
@@ -1487,13 +1505,14 @@ function boot() {
   /* ══ match data files ═══════════════════════════════════ */
   // Tracks arrive packed (see pack_tracks in projects/cs/csdata.py): a
   // position, then steps from it, x and y in units of tracks_q, trailing gaps
-  // cut. This puts them back as absolute positions, padded to the round.
+  // cut. This puts them back as absolute positions, padded to the round. The
+  // windows sampled faster round each kill (r.fine) are packed the same way.
   function unpackTracks(R) {
     const q = R.tracks_q; if (!q) return R;
     const st = R.stride || 2;
-    for (const r of R.rounds) {
-      for (const seat of Object.keys(r.tracks)) {
-        const tr = r.tracks[seat], out = [];
+    const undo = (h) => {
+      for (const seat of Object.keys(h.tracks)) {
+        const tr = h.tracks[seat], out = [];
         let prev = null;
         for (let i = 0; i < tr.length; i += st) {
           if (tr[i] == null) { for (let j = 0; j < st; j++) out.push(null); prev = null; continue; }
@@ -1501,24 +1520,36 @@ function boot() {
           prev = prev ? prev.map((v, j) => v + d[j]) : d;
           out.push(prev[0] * q, prev[1] * q, ...prev.slice(2));
         }
-        while (out.length < r.samples * st) out.push(null);
-        r.tracks[seat] = out;
+        while (out.length < h.samples * st) out.push(null);
+        h.tracks[seat] = out;
       }
-      delete r.samples;
-    }
+      delete h.samples;
+    };
+    for (const r of R.rounds) { undo(r); for (const w of r.fine || []) undo(w); }
     delete R.tracks_q;
     return R;
   }
+  // Replays live in Cloudflare R2 behind the site's Worker (upload-replays.py)
+  // and are loaded from there first; the repo's copy is the fallback, which is
+  // also what a local server has (its /cs/replay is a 404). ?v= is the file's
+  // hash, so a re-parsed replay is a fresh URL.
+  const REPLAY_HOST = location.origin.includes("localhost") ? location.origin : "https://training-log.rmbuster82.workers.dev";
   const loaded = {};
   function loadMatch(id) {
     if (window.CS_MATCH && window.CS_MATCH[id]) return Promise.resolve(unpackTracks(window.CS_MATCH[id]));
+    const row = matches.find((m) => m.id === id), v = encodeURIComponent((row && row.replay_v) || "3"), e = encodeURIComponent(id);
+    const from = [`${REPLAY_HOST}/cs/replay/${e}?v=${v}`, `projects/cs/matches/${e}.js?v=${v}`];
     return loaded[id] ||= new Promise((ok, bad) => {
-      const s = document.createElement("script");
-      s.src = `projects/cs/matches/${encodeURIComponent(id)}.js?v=3`;
-      // a failure is forgotten, so "try again" really fetches again
-      const fail = () => { delete loaded[id]; s.remove(); bad(); };
-      s.onload = () => (window.CS_MATCH && window.CS_MATCH[id]) ? ok(unpackTracks(window.CS_MATCH[id])) : fail();
-      s.onerror = fail; document.head.appendChild(s);
+      const next = (i) => {
+        // a failure is forgotten, so "try again" really fetches again
+        if (i >= from.length) { delete loaded[id]; bad(); return; }
+        const s = document.createElement("script");
+        s.src = from[i];
+        s.onload = () => (window.CS_MATCH && window.CS_MATCH[id]) ? ok(unpackTracks(window.CS_MATCH[id])) : (s.remove(), next(i + 1));
+        s.onerror = () => { s.remove(); next(i + 1); };
+        document.head.appendChild(s);
+      };
+      next(0);
     });
   }
   const replayable = matches.filter((m) => m.replay);
@@ -1562,15 +1593,16 @@ function boot() {
   /* ══ the odds ══════════════════════════════════════════
      winprob.py fits a round-win model on every saved round, from both
      teams' side of every moment, and stats.js carries it. These are its
-     functions, line for line: men alive, the bomb, the buy, the side.
+     functions, line for line: men alive, the bomb, the buy, the side, and
+     the players' skill groups when the held-out check says they help.
      test/parity.mjs holds the two to each other. */
   const WP = (window.CS_STATS && window.CS_STATS.wp) || null;
-  function wpChance(coef, ours, theirs, planted, side, econ) {
+  function wpChance(coef, ours, theirs, planted, side, econ, rank = 0) {
     ours = Math.max(0, ours); theirs = Math.max(0, theirs);   // a kill logged after a reconnect can count past zero
     if (theirs === 0 && !(planted && side === "CT")) return 1;
     if (ours === 0 && !(planted && side === "T")) return 0;
-    const x = [1, Math.log((ours + 0.5) / (theirs + 0.5)), planted ? (side === "T" ? 1 : -1) : 0, econ, side === "CT" ? 1 : 0];
-    const z = x.reduce((s, v, i) => s + v * coef[i], 0);
+    const x = [1, Math.log((ours + 0.5) / (theirs + 0.5)), planted ? (side === "T" ? 1 : -1) : 0, econ, side === "CT" ? 1 : 0, rank];
+    const z = coef.reduce((s, c, i) => s + c * x[i], 0);     // a model without rank has five
     return 1 / (1 + Math.exp(-Math.max(-30, Math.min(30, z))));
   }
   const wpUs = (R) => new Set(R.seats.filter((s) => s.us).map((s) => s.seat));
@@ -1583,6 +1615,15 @@ function boot() {
     for (const [s, e] of Object.entries(r.economy || {})) (us.has(+s) ? ours : theirs).push((e || {}).equip || 0);
     if (!ours.length || !theirs.length) return 0;
     return Math.round((ours.reduce((a, b) => a + b, 0) / ours.length - theirs.reduce((a, b) => a + b, 0) / theirs.length)) / 1000;
+  }
+  // skill groups on one scale (winprob.skill): competitive 1-18, Premier ~1700 a group
+  const wpSkill = (s) => !s.rank ? null : s.rank_type === 11 ? s.rank / 1700 : s.rank_type === 12 ? s.rank : null;
+  function wpRank(R) {
+    const ours = [], theirs = [];
+    for (const s of R.seats) { const k = wpSkill(s); if (k != null) (s.us ? ours : theirs).push(k); }
+    if (ours.length < 2 || theirs.length < 2) return 0;
+    const avg = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+    return Math.round((avg(ours) - avg(theirs)) / 3 * 1000) / 1000;
   }
   // [t, ours alive, theirs alive, planted]: the round's start, then every change
   function wpStates(R, r) {
@@ -1606,18 +1647,23 @@ function boot() {
   // Ric's team's chance over the round: [[t, chance], ...]
   function wpTimeline(R, r) {
     if (!WP) return null;
-    const e = wpEcon(r, wpUs(R));
-    return wpStates(R, r).map(([t, o, th, p]) => [t, Math.round(wpChance(WP.coef, o, th, p, r.side, e) * 1e4) / 1e4]);
+    const e = wpEcon(r, wpUs(R)), k = wpRank(R);
+    return wpStates(R, r).map(([t, o, th, p]) => [t, Math.round(wpChance(WP.coef, o, th, p, r.side, e, k) * 1e4) / 1e4]);
   }
   // what one kill did to his team's chance: [before, after], or null
   function wpFight(R, r, f) {
     const ab = f.alive_before; if (!WP || !ab || ab.includes(null) || f.victim == null) return null;
     if (r.dur != null && f.t > r.dur + 0.5) return null;      // after the round was decided
-    const us = wpUs(R), e = wpEcon(r, us), pt = wpPlant(r), p = pt != null && pt <= f.t;
+    const us = wpUs(R), e = wpEcon(r, us), k = wpRank(R), pt = wpPlant(r), p = pt != null && pt <= f.t;
     const after = [ab[0] - (us.has(f.victim) ? 1 : 0), ab[1] - (us.has(f.victim) ? 0 : 1)];
-    return [wpChance(WP.coef, ab[0], ab[1], p, r.side, e), wpChance(WP.coef, after[0], after[1], p, r.side, e)];
+    return [wpChance(WP.coef, ab[0], ab[1], p, r.side, e, k), wpChance(WP.coef, after[0], after[1], p, r.side, e, k)];
   }
+  // A kill's value is a difference, and whatever the model gets wrong about a
+  // round it gets wrong on both sides of the kill, so that stays in whole
+  // points. A chance on its own is shown only as finely as the held-out check
+  // allows (WP.step, winprob.py): 5% steps until it has earned 1%.
   const wpPct = (d) => `${d >= 0 ? "+" : "−"}${Math.abs(Math.round(d * 100))}%`;
+  const wpShow = (p) => { const st = (WP && WP.step) || 5; return `${Math.round(p * 100 / st) * st}%`; };
 
   const bombText = (B, seats, t) => B.exploded ? "The bomb exploded"
     : B.defused ? `Bomb defused by ${nameOf(seats, B.defused.seat)}`
@@ -1951,13 +1997,25 @@ function boot() {
     const y1 = ys[a + 1]; if (y1 == null) return y0;
     return y0 + (((y1 - y0 + 540) % 360) - 180) * (i - a);
   }
+  // Round a kill the replay has samples R.fine_hz times a second (r.fine,
+  // parse-demos.py); everywhere else it has R.hz, and in between is a straight
+  // line. Kill positions themselves (victim_at, the snapshots) are exact.
+  function fineAt(R, r, t) {
+    for (const w of r.fine || []) {
+      const n = (Object.values(w.tracks)[0] || []).length / (R.stride || 2), j = (t - w.t) * R.fine_hz;
+      if (j >= 0 && j <= n - 1) return [w, j];
+    }
+    return null;
+  }
   function momentAt(R, r, t) {
     const st = R.stride || 2, n = (Object.values(r.tracks)[0] || []).length / st;
     const i = Math.max(0, Math.min(t * R.hz, n - 1));
     const dead = new Set((r.fights || []).filter((f) => f.t <= t).map((f) => f.victim));
-    const players = [];
+    const fw = fineAt(R, r, t), players = [];
     for (const [seat, tr] of Object.entries(r.tracks)) {
       if (dead.has(+seat)) continue;
+      const fp = fw && fw[0].tracks[seat] ? trackAt(fw[0].tracks[seat], fw[1], st) : null;
+      if (fp) { players.push({ seat: +seat, x: fp[0], y: fp[1], z: fp[2], yaw: yawAt(fw[0].yaws && fw[0].yaws[seat], fw[1]) }); continue; }
       const p = trackAt(tr, i, st);
       if (p) players.push({ seat: +seat, x: p[0], y: p[1], z: p[2], yaw: yawAt(r.yaws && r.yaws[seat], i) });
     }
@@ -2775,7 +2833,7 @@ function boot() {
      apply) and every player's totals, and everyone's together as "*" to
      compare against. One block draws it for Ric and for a player's page. */
   const WHY = [["flashed", "Flashed"], ["unseen", "Shot from outside the view"], ["outnumbered", "Outnumbered"],
-    ["alone", "Died alone, untraded"], ["duel", "Lost a fair duel"]];
+    ["alone", "Died alone, untraded"], ["duel", "Lost the duel"]];
   const WHY_VERB = { flashed: ["die flashed", "dies flashed"], unseen: ["get shot from outside your view", "gets shot from outside his view"],
     outnumbered: ["die outnumbered", "dies outnumbered"], alone: ["die alone", "dies alone"] };
   const WHY_MORE = { alone: ", with no one close enough to trade", flashed: "", unseen: "", outnumbered: "" };
@@ -2789,13 +2847,13 @@ function boot() {
     const duel = Math.round(pc(c, "duel")), duelB = Math.round(pc(base, "duel")), owner = you ? "your" : "Ric's";
     const say = lead
       ? `${who} ${WHY_VERB[lead[0]][you ? 0 : 1]} more than most${WHY_MORE[lead[0]]}: <b>${Math.round(pc(c, lead[0]))}%</b> of ${whose} deaths, against ${Math.round(pc(base, lead[0]))}% for everyone in these games.`
-      : duel - duelB >= 4 ? `More of ${owner} deaths are straight fights than most: <b>${duel}%</b> are fair duels lost, against ${duelB}% for everyone. It's the aim duel, not the spot.`
-      : `${you ? "Your" : "Ric's"} deaths look like everyone's: <b>${duel}%</b> are fair duels lost (everyone ${duelB}%), and nothing else stands out.`;
+      : duel - duelB >= 4 ? `More of ${owner} deaths are duels lost than most: <b>${duel}%</b>, with none of the other four found, against ${duelB}% for everyone.`
+      : `${you ? "Your" : "Ric's"} deaths look like everyone's: <b>${duel}%</b> are duels lost with none of the other four found (everyone ${duelB}%), and nothing else stands out.`;
     const top = Math.max(...WHY.map(([k]) => Math.max(pc(c, k), pc(base, k)))) * 1.12 || 1;
     const rows = WHY.map(([k, l]) => {
       const v = pc(c, k), b = pc(base, k), e = ex && ex[k];
       const label = k === "unseen" ? (you ? "Shot from outside your view" : "Shot from outside his view") : l;
-      return `<div class="whyrow${lead && lead[0] === k ? " lead" : ""}"><span class="wl">${label}</span>
+      return `<div class="whyrow${lead && lead[0] === k ? " lead" : ""}"><span class="wl">${label}${info(`why_${k}`, label)}</span>
         <div class="wbar" role="img" aria-label="${esc(`${label}: ${Math.round(v)}% of ${whose} deaths; everyone ${Math.round(b)}%`)}"><i style="width:${(v / top * 100).toFixed(1)}%"></i><b style="left:${(b / top * 100).toFixed(1)}%"></b></div>
         <span class="wv">${Math.round(v)}%</span>
         ${e ? `<button type="button" class="pp" data-whywatch="${esc(e[0])}" data-r="${e[1]}" data-t="${e[2]}" aria-label="Watch ${whose} latest death of this kind">▶</button>` : `<span></span>`}</div>`;
@@ -2858,7 +2916,7 @@ function boot() {
     const added = plays.reduce((s, f) => s + f.wa - f.wb, 0), nG = new Set(plays.map((f) => f.g)).size;
     const playRows = ranked.slice(0, 8).map((f) => { const m = byId(CS.games[f.g].id);
       return `<button type="button" class="rec" data-watch="${esc(m.id)}" data-r="${f.n - 1}" data-t="${Math.max(0, f.t - 5)}"><span><span class="tag wpt">${wpPct(f.wa - f.wb)}</span>${f.ab ? `${f.ab[0]}v${f.ab[1]} · ` : ""}${esc(weaponName(f.w))}${f.hs ? " HS" : ""} as ${f.side}</span><b>▶</b>
-        <small>chance ${Math.round(f.wb * 100)}% → ${Math.round(f.wa * 100)}% · round ${f.n}, ${line(m)}</small></button>`; });
+        <small>chance ${wpShow(f.wb)} → ${wpShow(f.wa)} · round ${f.n}, ${line(m)}</small></button>`; });
     // teammates seen in more than one counted match
     const mates = {};
     for (const m of SL) for (const b of m.board || []) if (b.us && !b.me && b.name) {
@@ -3087,6 +3145,7 @@ function boot() {
             <div class="rm-sec rm-tgs"><label class="rm-tg"><input type="checkbox" data-names checked><span>Names</span></label><label class="rm-tg"><input type="checkbox" data-steps${cal ? "" : " checked"}><span>Footsteps</span></label></div>
             <div class="rm-sec rm-acts"><button type="button" class="rm-act" data-reset>Reset view</button><button type="button" class="rm-act" data-share>Copy link to this moment</button>
               ${CAN_RECORD ? `<button type="button" class="rm-act" data-rec="clip">Save this moment as video</button><button type="button" class="rm-act" data-rec="round">Save whole round</button>` : ""}</div>
+            <div class="rm-sec"><div class="rm-h">How it's drawn</div><p class="rm-note">Rebuilt from Valve's demo, not a recording. Everyone's position is saved ${R.hz === 2 ? "twice" : `${R.hz} times`} a second${R.fine_hz ? `, and ${({ 4: "four", 8: "eight", 16: "sixteen" })[R.fine_hz] || R.fine_hz} times a second around each kill` : ""}; in between they're drawn moving in a straight line. Where each kill happened is exact. The view cones are worked out from which way people faced, so they're close, not exact.</p></div>
           </div>
           <div class="kf" aria-hidden="true"></div><div class="hint" title="Space plays · ← → step 5 s · [ ] change round · Esc lets go">Click to play</div>${playBar(`<button type="button" class="pp" data-close aria-label="Let go of the map">✕</button>`)}</div>
         ${WP ? `<div class="wpstrip" data-wp><div class="wphead"><span>Ric's team's chance to win the round${info("wp", "the win chance")}</span><b data-wpnow>—</b></div>
@@ -3174,7 +3233,7 @@ function boot() {
       if (!strip || !odds) return;
       const r = R.rounds[ri]; let p = odds[0][1];
       for (const [et, ep] of odds) { if (et > t) break; p = ep; }
-      strip.querySelector("[data-wpnow]").textContent = `${Math.round(p * 100)}%`;
+      strip.querySelector("[data-wpnow]").textContent = wpShow(p);
       strip.querySelector(".wpcur").style.left = `${Math.min(100, t / Math.max(1, r.dur) * 100)}%`;
     }
     if (strip) strip.querySelector(".wpplot").addEventListener("click", (e) => {
@@ -3340,7 +3399,7 @@ function boot() {
       feed.innerHTML = fights.length ? fights.map((f) => {
         const ks = sideOf(seats, f.killer, r), vs = sideOf(seats, f.victim, r);
         const w = wpFight(R, r, f), d = w ? w[1] - w[0] : null;
-        return `<button type="button" data-t="${f.t}" class="${f.killer === 0 && f.victim !== 0 ? "mine" : ""}${f.victim === 0 ? " died" : ""}"><span class="t">${mmss(f.t)}</span>${d != null ? `<span class="wpd ${d >= 0 ? "up" : "down"}" title="Ric's team's chance went from ${Math.round(w[0] * 100)}% to ${Math.round(w[1] * 100)}%">${wpPct(d)}</span>` : ""}<span class="who-${ks.toLowerCase()}">${esc(nameOf(seats, f.killer))}</span>
+        return `<button type="button" data-t="${f.t}" class="${f.killer === 0 && f.victim !== 0 ? "mine" : ""}${f.victim === 0 ? " died" : ""}"><span class="t">${mmss(f.t)}</span>${d != null ? `<span class="wpd ${d >= 0 ? "up" : "down"}" title="Ric's team's chance went from about ${wpShow(w[0])} to ${wpShow(w[1])}">${wpPct(d)}</span>` : ""}<span class="who-${ks.toLowerCase()}">${esc(nameOf(seats, f.killer))}</span>
           <span>${esc(weaponName(f.weapon))}${f.headshot ? " · HS" : ""}</span><span class="who-${vs.toLowerCase()}">${esc(nameOf(seats, f.victim))}</span></button>`;
       }).join("") : `<p class="note">No kills this round.</p>`;
       const mine = (r.fights || []).filter((f) => f.killer === 0 && f.victim !== 0).length, died = (r.fights || []).some((f) => f.victim === 0);

@@ -48,11 +48,11 @@ def round_score(coef, R, r, seat):
     mine = seat in us                        # on Ric's team?
     if str(seat) not in (r.get("tracks") or {}) and seat not in (r.get("tracks") or {}):
         return None, None
-    pt, e = winprob.plant_time(r), winprob.econ_diff(r, us)
+    pt, e, rk = winprob.plant_time(r), winprob.econ_diff(r, us), winprob.rank_diff(R)
     side = r.get("side")
 
     def team_odds(o, th, t):                 # the player's own team's chance
-        p = winprob.chance(coef, o, th, pt is not None and pt <= t, side, e)
+        p = winprob.chance(coef, o, th, pt is not None and pt <= t, side, e, rk)
         return p if mine else 1 - p
     # what happens after the round is decided isn't the round: the bomb going
     # off on a T who just won the 1v1 isn't a death that cost anything

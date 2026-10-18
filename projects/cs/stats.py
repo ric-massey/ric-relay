@@ -147,10 +147,10 @@ def build(matches):
             for _ in range(max(0, thrown - len(pops))):     # flashes that caught nobody
                 flashes.append([gi, n, side, 0, 0, 0])
             alive_me = True
-            pt, ediff = winprob.plant_time(r), winprob.econ_diff(r, us)
+            pt, ediff, rk = winprob.plant_time(r), winprob.econ_diff(r, us), winprob.rank_diff(R)
 
             def odds(o, th, t):
-                return round(winprob.chance(WP["coef"], o, th, pt is not None and pt <= t, side, ediff), 4)
+                return round(winprob.chance(WP["coef"], o, th, pt is not None and pt <= t, side, ediff, rk), 4)
             for i, f in enumerate(fs):
                 a, v = f.get("killer"), f.get("victim")
                 if i == 0 and v is not None:

@@ -9,7 +9,7 @@
 
 - [Every CS2 match, as plain text](https://ricmassey.com/projects/cs/llm/index.md): career numbers, ranks, every match with a link to its full report
 - Each match report (`/projects/cs/llm/<match id>.md`) has the scoreboard with player names, every round, and — for matches whose demo was saved — every fight: where both players stood (callout and map coordinates), weapon, headshot/wallbang/smoke flags, distance, damage exchanged, shots fired, who was alive, and a 2D snapshot of all ten players at the moment of the kill; plus grenades, flashes, the bomb, the damage log, and every player's money and loadout
-- Raw 2D data per match (positions twice a second for every player, every round): `/projects/cs/matches/<match id>.js`, schema at the end of the index
+- Raw 2D data per match (positions twice a second for every player, every round, and eight times a second round every kill): linked from each match report (`https://training-log.rmbuster82.workers.dev/cs/replay/<match id>`), schema at the end of the index
 - [The page itself](https://ricmassey.com/cs.html)
 
 ## VALORANT

@@ -45,11 +45,17 @@ const { bombAt, unpackTracks } = new Function(`${bombSrc}\n${unpackSrc}\nreturn 
 const statsText = readFileSync(join(CS, 'stats.js'), 'utf8');
 const WPM = JSON.parse(statsText.slice(statsText.indexOf('{'), statsText.lastIndexOf('}') + 1)).wp;
 assert.ok(WPM && WPM.coef, 'stats.js carries no win model (wp)');
-const wpSrc = cut('  function wpChance(', 'after[1], p, r.side, e)];\n  }');
+const wpSrc = cut('  function wpChance(', 'after[1], p, r.side, e, k)];\n  }');
 const { wpTimeline } = new Function('WP', `${wpSrc}\nreturn { wpTimeline };`)(WPM);
 
-const files = readdirSync(join(CS, 'matches')).filter((f) => f.endsWith('.js')).sort();
-const read = (f) => { const t = readFileSync(join(CS, 'matches', f), 'utf8'); return JSON.parse(t.slice(t.indexOf(']=') + 2).trim().replace(/;$/, '')); };
+// The replays live in R2 now (upload-replays.py) and matches/ is this
+// machine's copy, so a fresh checkout — every CI run — has none. Then the
+// committed fixture, one real replay, is what gets checked.
+const listJs = (d) => { try { return readdirSync(d).filter((f) => f.endsWith('.js')).sort(); } catch { return []; } };
+const DIR = listJs(join(CS, 'matches')).length ? join(CS, 'matches') : join(CS, 'test', 'fixtures');
+const files = listJs(DIR);
+assert.ok(files.length, 'no replays to check: neither matches/ nor test/fixtures/ has one');
+const read = (f) => { const t = readFileSync(join(DIR, f), 'utf8'); return JSON.parse(t.slice(t.indexOf(']=') + 2).trim().replace(/;$/, '')); };
 
 // the same moments for both sides: every quarter second, and just either side
 // of each event and each timer running out
@@ -78,12 +84,13 @@ for (const f of files) {
   asks[f] = R.rounds.map(moments);
   jsBomb[f] = R.rounds.map((r, i) => asks[f][i].map((t) => norm(bombAt(r, t))));
   jsOdds[f] = R.rounds.map((r) => wpTimeline(R, r));
-  jsTracks[f] = JSON.stringify(unpackTracks(R).rounds.map((r) => r.tracks));
+  jsTracks[f] = JSON.stringify(unpackTracks(R).rounds.map((r) => [r.tracks, (r.fine || []).map((w) => w.tracks)]));
 }
 
 // what Python says, for the same files and moments
 const py = spawnSync(PYTHON, ['-I', '-c', `
 import sys, json, importlib.util
+from pathlib import Path
 sys.path.insert(0, ${JSON.stringify(CS)})
 import csdata, winprob
 st = open(csdata.HERE / "stats.js", encoding="utf-8").read()
@@ -93,17 +100,19 @@ ex = importlib.util.module_from_spec(spec); spec.loader.exec_module(ex)
 asks = json.load(sys.stdin)
 out = {"bomb": {}, "tracks": {}, "odds": {}}
 for f, per_round in asks.items():
-    text = open(csdata.MATCH_DIR / f, encoding="utf-8").read()
+    text = open(Path(${JSON.stringify(DIR)}) / f, encoding="utf-8").read()
     R = json.loads(text[text.index("]=") + 2:].strip().rstrip(";"))
     out["bomb"][f] = [[ex.bomb_state(r, t) for t in ts] for r, ts in zip(R["rounds"], per_round)]
     out["odds"][f] = [winprob.timeline(WPM["coef"], R, r) for r in R["rounds"]]
-    out["tracks"][f] = [r["tracks"] for r in csdata.unpack_tracks(R)["rounds"]]
+    out["tracks"][f] = [[r["tracks"], [w["tracks"] for w in r.get("fine") or []]] for r in csdata.unpack_tracks(R)["rounds"]]
 # packing round-trips: a made-up round with gaps, a death and a respawn
 fake = {"stride": 3, "rounds": [{"tracks": {"0": [1001, -2003, 10, 1100, -1990, 12, None, None, None, -5, 7, 0, 3, 3, 3, None, None, None],
-                                           "1": [None, None, None, 0, 0, 0, None, None, None, None, None, None, None, None, None, None, None, None]}}]}
+                                           "1": [None, None, None, 0, 0, 0, None, None, None, None, None, None, None, None, None, None, None, None]},
+                                "fine": [{"t": 1.5, "tracks": {"0": [1050, -1995, 11, None, None, None, 1061, -1990, 12]}}]}]}
 import copy
 back = csdata.unpack_tracks(csdata.pack_tracks(copy.deepcopy(fake)))
-out["fake"] = [fake["rounds"][0]["tracks"], back["rounds"][0]["tracks"]]
+out["fake"] = [{**fake["rounds"][0]["tracks"], "fine0": fake["rounds"][0]["fine"][0]["tracks"]["0"]},
+               {**back["rounds"][0]["tracks"], "fine0": back["rounds"][0]["fine"][0]["tracks"]["0"]}]
 json.dump(out, sys.stdout)
 `], { input: JSON.stringify(asks), encoding: 'utf8', maxBuffer: 1 << 30 });
 assert.equal(py.status, 0, py.stderr);
@@ -115,7 +124,7 @@ for (const f of files) {
     n++;
     assert.equal(norm(s), jsBomb[f][ri][j], `${f} round ${ri + 1} at ${asks[f][ri][j]} s: the page and the export disagree about the bomb`);
   }));
-  assert.equal(JSON.stringify(P.tracks[f].map((t) => Object.fromEntries(Object.entries(t)))), jsTracks[f], `${f}: unpacked tracks differ between cs.html and csdata.py`);
+  assert.equal(JSON.stringify(P.tracks[f]), jsTracks[f], `${f}: unpacked tracks (or the windows round the kills) differ between cs.html and csdata.py`);
 }
 const [orig, back] = P.fake;
 for (const k of Object.keys(orig)) {
@@ -132,4 +141,5 @@ for (const f of files) P.odds[f].forEach((py, ri) => {
     assert.ok(Math.abs(js[j][1] - p) <= 2e-4, `${f} round ${ri + 1} at ${t} s: the page says ${js[j][1]}, winprob.py says ${p}`);
   });
 });
-console.log(`cs parity: ${nOdds} win-chance moments agree; ${n} bomb moments over ${files.length} replays agree; packed tracks match`);
+const fineN = files.reduce((a, f) => a + read(f).rounds.reduce((b, r) => b + (r.fine || []).length, 0), 0);
+console.log(`cs parity: ${nOdds} win-chance moments agree; ${n} bomb moments over ${files.length} replays${DIR.endsWith('fixtures') ? ' (the fixture)' : ''} agree; packed tracks and ${fineN} kill windows match`);

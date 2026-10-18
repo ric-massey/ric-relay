@@ -1717,7 +1717,23 @@ async function wxProxy(request, env, ctx, parts, url) {
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'cs']);
+
+/* ── /cs/replay/<match id> — the CS room's replays, kept in R2 ──
+   One file per match (projects/cs/matches/<id>.js, written by parse-demos.py),
+   ~0.5-0.7 MB each. In git they would pass the gigabyte GitHub Pages allows at
+   a few hundred games, and every one is permanent. So they live in the same
+   bucket as the climbing media, under `cs/replays/`, which no /media path can
+   build a key under, and projects/cs/upload-replays.py puts them there.
+
+   GET is public: the page loads the file as a <script>, the same file it used
+   to load from the repo, so it is served as JavaScript. The page asks for it
+   with ?v=<the file's hash> (cs-data.js carries it), so a re-parse is a new
+   URL and a day's cache is safe. PUT needs the site password, like every
+   other write here; the throttle is the one in the object's /auth. */
+const CS_REPLAY_PREFIX = 'cs/replays/';
+const CS_REPLAY_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const MAX_CS_REPLAY_BYTES = 20 * 1024 * 1024;
 
 export default {
   async fetch(request, env, ctx) {
@@ -1738,6 +1754,49 @@ export default {
        nothing of anybody's and need no token. The watchlist that goes with
        them is on the site account in Supabase, not on this Worker. */
     if (parts[0] === 'trials') return trialsProxy(request, env, ctx, parts, url);
+    if (parts[0] === 'cs') {
+      const origin = request.headers.get('origin');
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(origin) });
+      const id = parts[2] ? decodeURIComponent(parts[2]) : '';
+      if (parts[1] !== 'replay' || parts[3] || !CS_REPLAY_ID.test(id)) return json({ error: 'not found' }, 404, origin);
+      if (!env.MEDIA) return json({ error: 'replay storage is not configured' }, request.method === 'GET' || request.method === 'HEAD' ? 404 : 503, origin);
+      const key = CS_REPLAY_PREFIX + id + '.js';
+      if (request.method === 'GET' || request.method === 'HEAD') {
+        const obj = await env.MEDIA.get(key);
+        if (!obj) return json({ error: 'not found' }, 404, origin);
+        const headers = new Headers(cors(origin));
+        headers.set('content-type', 'text/javascript; charset=utf-8');
+        headers.set('etag', obj.httpEtag);
+        headers.set('cache-control', 'public, max-age=86400');
+        headers.set('x-content-type-options', 'nosniff');
+        return new Response(request.method === 'HEAD' ? null : obj.body, { status: 200, headers });
+      }
+      if (request.method !== 'PUT') return json({ error: 'method not allowed' }, 405, origin);
+      const a = request.headers.get('authorization') || '';
+      const given = a.startsWith('Bearer ') ? a.slice(7) : '';
+      if (!given) return json({ error: 'unauthorized' }, 401, origin);
+      const auth = await stub.fetch(new Request('https://internal/auth', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: given })
+      }));
+      if (auth.status === 429) return json({ error: 'too many tries — wait five minutes' }, 429, origin);
+      if (auth.status !== 200) return json({ error: 'unauthorized' }, 401, origin);
+      const body = await request.text();
+      if (body.length > MAX_CS_REPLAY_BYTES) return json({ error: 'too big' }, 413, origin);
+      /* It must be the file parse-demos.py writes and nothing else: one
+         assignment of this match's id, so a PUT cannot turn the replay URL
+         into a way to run something else on the CS page. */
+      const head = `(window.CS_MATCH=window.CS_MATCH||{})[${JSON.stringify(id)}]=`;
+      const at = body.indexOf(head);
+      const rest = at >= 0 ? body.slice(at + head.length).trim() : '';
+      let parsed = null;
+      try { parsed = rest.endsWith(';') ? JSON.parse(rest.slice(0, -1)) : null; } catch {}
+      const before = at >= 0 ? body.slice(0, at) : 'x';
+      if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.rounds) || !/^(\s*\/\/[^\n]*\n)*\s*$/.test(before)) {
+        return json({ error: 'not a replay file for this match' }, 400, origin);
+      }
+      await env.MEDIA.put(key, body, { httpMetadata: { contentType: 'text/javascript; charset=utf-8' } });
+      return json({ ok: true, id, bytes: body.length }, 200, origin);
+    }
     if (parts[0] === 'wx') return wxProxy(request, env, ctx, parts, url);
 
     /* ── /hit and /stats ── the site's own visitor counter (visitors.mjs).

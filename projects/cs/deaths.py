@@ -15,7 +15,9 @@ that's true:
   outnumbered  two or more enemies hit them in the OUTNUMBERED_S before
   alone        nobody traded them, and no teammate alive was within
                ALONE_UNITS (about 25 m) — no one there to
-  duel         none of the above: a fair fight, lost
+  duel         none of the above: a fight lost with nothing else found. That
+               is all it means. It is not proof the fight was even, only that
+               none of the four things above showed up in the data
 
 A death can be more than one; the first in that order is its headline, the
 one counted when a death needs a single answer. Deaths to the world, the
@@ -32,7 +34,7 @@ OUTNUMBERED_S = 5
 ALONE_UNITS = 1000
 ORDER = ["flashed", "unseen", "outnumbered", "alone", "duel"]
 WORDS = {"flashed": "flashed", "unseen": "shot from outside their view", "outnumbered": "outnumbered",
-         "alone": "died alone, untraded", "duel": "lost a fair duel"}
+         "alone": "died alone, untraded", "duel": "lost the duel"}
 
 
 def why(R, r, f):

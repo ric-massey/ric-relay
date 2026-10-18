@@ -19,6 +19,15 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 DATA_JS = HERE / "cs-data.js"
 MATCH_DIR = HERE / "matches"
+REPLAY_WORKER = "https://training-log.rmbuster82.workers.dev"
+
+
+def replay_url(mid, site="https://ricmassey.com"):
+    """Where a match's replay file is served from: R2 once matches/ has moved
+    there (upload-replays.py --move leaves matches/.gitignore), else the repo."""
+    if (MATCH_DIR / ".gitignore").exists():
+        return f"{REPLAY_WORKER}/cs/replay/{mid}"
+    return f"{site}/projects/cs/matches/{mid}.js"
 ACCOUNT = HERE / "cs-account.json"
 STATE = HERE / ".cs-state.json"     # local only: parsed demos, share codes
 PREFIX = "window.CS_DATA = "
@@ -79,29 +88,55 @@ def save(data):
 TRACK_Q = 2
 
 
+# The windows of FINE_HZ samples round each kill (r["fine"]) are packed the
+# same way, each with its own `samples`.
+def _pack(holder, st):
+    n, packed = 0, {}
+    for seat, tr in holder["tracks"].items():
+        n = max(n, len(tr) // st)
+        out, prev = [], None
+        for i in range(0, len(tr), st):
+            p = tr[i:i + st]
+            if p[0] is None:
+                out += [None] * st
+                prev = None
+                continue
+            p = [round(p[0] / TRACK_Q), round(p[1] / TRACK_Q)] + list(p[2:])
+            out += p if prev is None else [a - b for a, b in zip(p, prev)]
+            prev = p
+        while out and out[-1] is None:
+            out.pop()
+        packed[seat] = out
+    holder["samples"] = n
+    holder["tracks"] = packed
+
+
+def _unpack(holder, st, q):
+    full = {}
+    for seat, tr in holder["tracks"].items():
+        out, prev = [], None
+        for i in range(0, len(tr), st):
+            d = tr[i:i + st]
+            if d[0] is None:
+                out += [None] * st
+                prev = None
+                continue
+            prev = d if prev is None else [a + b for a, b in zip(prev, d)]
+            out += [prev[0] * q, prev[1] * q] + prev[2:]
+        out += [None] * (holder["samples"] * st - len(out))
+        full[seat] = out
+    holder["tracks"] = full
+    del holder["samples"]
+
+
 def pack_tracks(replay):
     if replay.get("tracks_q"):
         return replay
     st = replay["stride"]
     for r in replay["rounds"]:
-        n, packed = 0, {}
-        for seat, tr in r["tracks"].items():
-            n = max(n, len(tr) // st)
-            out, prev = [], None
-            for i in range(0, len(tr), st):
-                p = tr[i:i + st]
-                if p[0] is None:
-                    out += [None] * st
-                    prev = None
-                    continue
-                p = [round(p[0] / TRACK_Q), round(p[1] / TRACK_Q)] + list(p[2:])
-                out += p if prev is None else [a - b for a, b in zip(p, prev)]
-                prev = p
-            while out and out[-1] is None:
-                out.pop()
-            packed[seat] = out
-        r["samples"] = n
-        r["tracks"] = packed
+        _pack(r, st)
+        for w in r.get("fine") or []:
+            _pack(w, st)
     replay["tracks_q"] = TRACK_Q
     return replay
 
@@ -112,21 +147,9 @@ def unpack_tracks(replay):
         return replay
     st = replay["stride"]
     for r in replay["rounds"]:
-        full = {}
-        for seat, tr in r["tracks"].items():
-            out, prev = [], None
-            for i in range(0, len(tr), st):
-                d = tr[i:i + st]
-                if d[0] is None:
-                    out += [None] * st
-                    prev = None
-                    continue
-                prev = d if prev is None else [a + b for a, b in zip(prev, d)]
-                out += [prev[0] * q, prev[1] * q] + prev[2:]
-            out += [None] * (r["samples"] * st - len(out))
-            full[seat] = out
-        r["tracks"] = full
-        del r["samples"]
+        _unpack(r, st, q)
+        for w in r.get("fine") or []:
+            _unpack(w, st, q)
     del replay["tracks_q"]
     return replay
 

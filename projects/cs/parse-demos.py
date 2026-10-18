@@ -35,6 +35,8 @@ import csdata  # noqa: E402
 
 TICKRATE = 64
 HZ = 2                       # replay samples per second; ~400 KB a match at 2
+FINE_HZ = 8                  # ...and this many around every kill, where 2 Hz smears the fight
+FINE_BEFORE, FINE_AFTER = 3.0, 0.5   # seconds either side of a kill sampled at FINE_HZ
 TRADE_WINDOW_S = 5           # a death avenged inside this counts as traded
 NADES = {
     "smokegrenade_detonate": "smoke", "flashbang_detonate": "flash",
@@ -333,10 +335,30 @@ def parse(path, me):
     }
 
     # ── the replay ──
-    step = TICKRATE // HZ
+    # Everyone twice a second for the whole round, and FINE_HZ in a window
+    # round every kill: walking to a site is fine at 2 Hz, a peek is not.
+    # Windows that touch are merged; every fine tick sits on the same grid
+    # from the round's start, so the 2 Hz samples are a subset of it.
+    step, fstep = TICKRATE // HZ, TICKRATE // FINE_HZ
     sample = []
-    for r in rounds:
+    fine_spans = {}                    # round -> [[first tick, last tick], ...]
+    for i, r in enumerate(rounds):
         sample += list(range(r["start"], r["end"] + 1, step))
+        spans = []
+        for d in sorted(kills_by_round[i], key=lambda d: d["tick"]):
+            a = max(r["start"], d["tick"] - int(FINE_BEFORE * TICKRATE))
+            a = r["start"] + (a - r["start"]) // fstep * fstep
+            b = min(r["end"], d["tick"] + int(FINE_AFTER * TICKRATE))
+            if b < a:
+                continue
+            if spans and a <= spans[-1][1] + fstep:
+                spans[-1][1] = max(spans[-1][1], b)
+            else:
+                spans.append([a, b])
+        fine_spans[i] = spans
+        for a, b in spans:
+            sample += list(range(a, b + 1, fstep))
+    sample = sorted(set(sample))
     split = radar_split(mapname)
     stride = 3 if split is not None else 2
     pos = defaultdict(dict)            # tick -> seat -> (x, y[, z])
@@ -421,6 +443,23 @@ def parse(path, me):
                 ys.pop()
             if any(y is not None for y in ys):
                 yaws[seat] = ys
+        # the same, FINE_HZ, in each window round a kill
+        fine = []
+        for a, b in fine_spans[i]:
+            fticks = list(range(a, b + 1, fstep))
+            ftr, fya = {}, {}
+            for seat in tracks:
+                flat = []
+                for t in fticks:
+                    xy = pos[t].get(seat)
+                    flat += xy if xy else [None] * stride
+                if any(v is not None for v in flat):
+                    ftr[seat] = flat
+                    ys = [look[t].get(seat) for t in fticks]
+                    if any(y is not None for y in ys):
+                        fya[seat] = ys
+            if ftr:
+                fine.append({"t": sec(a), "tracks": ftr, "yaws": fya})
         kills = [[sec(d["tick"]), seat_of.get(sid(d.get("attacker_steamid"))),
                   seat_of.get(sid(d.get("user_steamid"))), d.get("weapon"), bool(d.get("headshot")),
                   _i(d.get("attacker_X")), _i(d.get("attacker_Y")),
@@ -529,14 +568,26 @@ def parse(path, me):
 
         replay_rounds.append({"side": my_side[i], "w": strip[i]["w"], "dur": sec(r["end"]),
                               "winner": r["winner"], "reason": _reason(r["reason"]),
-                              "tracks": tracks, "yaws": yaws, "kills": kills, "nades": nades, "plant": plant,
+                              "tracks": tracks, "yaws": yaws, "fine": fine, "kills": kills, "nades": nades, "plant": plant,
                               "fights": fights, "damage": damage, "shots": fired,
                               "flashes": flashed, "bomb": bomb or None,
                               "economy": {str(k_): v_ for k_, v_ in sorted(econ[i].items())}})
 
-    seats = [{"seat": seat_of[s], "name": names.get(s), "us": s in us_ids, "me": s == me}
+    # Each player's skill group as the match began (0 = hidden): set before
+    # this game, so the win model can use it without learning the result.
+    # Competitive is groups 1-18 per map (rank type 12), Premier a rating (11).
+    ranks = {}
+    try:
+        for r_ in rows(p.parse_ticks(["rank", "comp_rank_type"], ticks=[rounds[0]["start"]])):
+            s_ = sid(r_.get("steamid"))
+            if s_ in seat_of:
+                ranks[s_] = (_n(r_.get("rank")), _n(r_.get("comp_rank_type")))
+    except Exception:
+        pass
+    seats = [{"seat": seat_of[s], "name": names.get(s), "us": s in us_ids, "me": s == me,
+              **({"rank": ranks[s][0], "rank_type": ranks[s][1]} if ranks.get(s, (0,))[0] else {})}
              for s in sorted(seat_of, key=seat_of.get)]
-    replay = {"map": mapname, "hz": HZ, "tickrate": TICKRATE, "stride": stride,
+    replay = {"map": mapname, "hz": HZ, "fine_hz": FINE_HZ, "tickrate": TICKRATE, "stride": stride,
               "split": split, "seats": seats, "rounds": replay_rounds}
     return summary, replay
 

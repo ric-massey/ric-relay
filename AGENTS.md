@@ -488,6 +488,17 @@ that must never break:
 `projects/cs/cs-data.js` plus `projects/cs/matches/<id>.js` replays. Rules
 (`projects/cs/README.md` has the rest):
 
+- **Replays go to R2, not git** (2026-10-17). Ric expects thousands of games;
+  at 0.3-0.9 MB each they would pass Pages' 1 GB in a few hundred. The page
+  loads `/cs/replay/<id>` from the Worker first and the repo copy second;
+  `upload-replays.py` (sync step 7) sends and verifies them, and `--move`
+  untracks `matches/` once R2 has every one. Never commit a replay after that,
+  and never let the Worker's PUT take anything but the replay file's shape.
+- **The win chance is shown only as finely as it has earned.** `winprob.check()`
+  scores it on held-out games and sets `wp.step` (5% until it's within 2 points
+  on 2,000+ moments). Don't print a chance with more precision than `step`, and
+  don't add an input the held-out check doesn't keep. The death labels say what
+  was measured; "Lost the duel" is "none of the others found", never "fair".
 - **Nothing runs between sessions.** `cs-session.pyw` is CS2's Steam launch-option
   wrapper: it starts the game first, listens for Game State Integration on
   `127.0.0.1:3010`, runs `sync.py` every 30 minutes until `cs2.exe` closes, syncs once

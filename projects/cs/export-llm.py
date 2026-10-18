@@ -180,7 +180,7 @@ def match_md(m, player):
          "(demo = parsed from Valve's own recording; gsi = Valve's live game feed; leetify = Leetify's parse)",
          f"- **Page:** {SITE}/cs.html#match-{m['id']}"]
     if R:
-        L.append(f"- **Full 2D data:** {SITE}/projects/cs/matches/{m['id']}.js "
+        L.append(f"- **Full 2D data:** {csdata.replay_url(m['id'], SITE)} "
                  "(JSON after the `=`; schema in index.md)")
         L.append(f"- **Map reference (callouts with coordinates):** maps/{m['map']}.md")
     if m.get("banned"):
@@ -318,11 +318,11 @@ def match_md(m, player):
                     ab, v = x["alive_before"], x.get("victim")
                     if WP and None not in ab and v is not None:
                         us_ = winprob.us_of(R)
-                        pt, e_ = winprob.plant_time(r), winprob.econ_diff(r, us_)
+                        pt, e_, rk_ = winprob.plant_time(r), winprob.econ_diff(r, us_), winprob.rank_diff(R)
                         p_ = pt is not None and pt <= x["t"]
                         o2, t2 = ab[0] - (v in us_), ab[1] - (v not in us_)
-                        b_ = winprob.chance(WP["coef"], ab[0], ab[1], p_, r.get("side"), e_)
-                        a_ = winprob.chance(WP["coef"], o2, t2, p_, r.get("side"), e_)
+                        b_ = winprob.chance(WP["coef"], ab[0], ab[1], p_, r.get("side"), e_, rk_)
+                        a_ = winprob.chance(WP["coef"], o2, t2, p_, r.get("side"), e_, rk_)
                         det.append(f"Ric's team's chance of the round {b_:.0%} → {a_:.0%} ({'+' if a_ >= b_ else '−'}{abs(a_ - b_):.0%})")
                 tags = deaths.why(R, r, x)
                 if tags:
@@ -388,12 +388,15 @@ def match_md(m, player):
 
 SCHEMA = """## Reading the raw 2D data
 
-Matches with a saved demo have a data file at
-`/projects/cs/matches/<id>.js`. It is one JSON object after
+Matches with a saved demo have a data file (the link in each match's report;
+`https://training-log.rmbuster82.workers.dev/cs/replay/<id>`, or
+`/projects/cs/matches/<id>.js` on the site for older copies). It is one JSON object after
 `(window.CS_MATCH=window.CS_MATCH||{})["<id>"]=`:
 
-- `map`, `hz` (position samples per second), `tickrate`
-- `seats`: `[{seat, name, us, me}]` — `us` = Ric's team, `me` = Ric
+- `map`, `hz` (position samples per second), `fine_hz` (samples per second round each kill), `tickrate`
+- `seats`: `[{seat, name, us, me, rank?, rank_type?}]` — `us` = Ric's team, `me` = Ric;
+  `rank` is the player's skill group as the match began when it was shown
+  (`rank_type` 12 = Competitive groups 1–18, 11 = Premier rating)
 - `rounds[]`, each with
   - `side` (Ric's side), `w` (Ric's team won), `winner`, `reason`, `dur` (seconds)
   - `tracks`: `{seat: [x0, y0, x1, y1, …]}` sampled `hz` times a second from the
@@ -402,7 +405,11 @@ Matches with a saved demo have a data file at
     is a position and each later one is the step from the previous, with x and y
     divided by `tracks_q`; a track ends at its last sample, and the round's
     `samples` gives the full length. To unpack, keep a running sum and multiply
-    x and y by `tracks_q`.
+    x and y by `tracks_q`. Between samples, positions are a straight-line guess.
+  - `fine[]`: windows round each kill sampled `fine_hz` times a second (from 3 s
+    before to 0.5 s after; windows that touch are merged): `{t, tracks, yaws}`,
+    `t` the window's first sample in seconds, `tracks` and `yaws` shaped and
+    packed like the round's own (each window has its own `samples`).
   - `fights[]`: `t`, `killer`, `victim`, `assister` (seats), `weapon`, `headshot`,
     `wallbang`, `through_smoke`, `noscope`, `killer_blind`, `killer_in_air`,
     `killer_at` / `victim_at` (`x, y, z, place`), `distance`, `killer_hp_after`,
@@ -474,8 +481,28 @@ def index_md(data, matches, breakdown=""):
                  for mp, g in sorted(by.items(), key=lambda x: -x[1]["n"])])]
     if breakdown:
         L += ["", breakdown]
+    L += model_check()
     L += ["", GLOSSARY, "", SCHEMA]
     return "\n".join(L) + "\n"
+
+
+def model_check():
+    """How the round-win model did on held-out games (winprob.check)."""
+    c = (WP or {}).get("check")
+    if not c:
+        return []
+    L = ["", "## Model check", "",
+         f"The chance-of-the-round model, tested on {c['moments']} moments from {c['games']} games it was "
+         f"not fitted on ({c['folds']} folds, whole matches per fold). Lower is better on both scores; "
+         f"the table is a plain count of how often each men-alive state was won.", "",
+         table(["", "Brier", "Log loss"],
+               [("model", c["model"]["brier"], c["model"]["logloss"]),
+                ("men-alive table", c["table"]["brier"], c["table"]["logloss"])]),
+         "", f"Calibration is off by {c['ece']:.1%} on average, so the page shows chances in "
+             f"{WP.get('step', 5)}% steps. Inputs used: {', '.join(WP.get('features', [])[1:])}.", "",
+         table(["It said", "Moments", "Average it gave", "Actually won"],
+               [(f"{lo:.0%}–{hi:.0%}", n, f"{said:.0%}", f"{won:.0%}") for lo, hi, n, said, won in c["bins"]])]
+    return L
 
 
 # What the numbers mean: the same definitions cs.html shows behind its ⓘ buttons.
@@ -483,7 +510,7 @@ GLOSSARY = """## What the numbers mean
 
 - **ADR**: average damage per round, the health Ric took off the enemy each round. 100 is a whole enemy's worth every round.
 - **K/D**: kills divided by deaths. **HS%**: the share of kills that were headshots.
-- **Chance of the round**: how likely Ric's team was to win the round at that moment, from players alive on each side, whether the bomb was down, their side and the buy. A logistic model (`winprob.py`) fitted on every moment of every saved round from both teams' side; each fight lists the chance just before and just after it, and the difference is what that kill was worth. Summed over Ric's kills and deaths it is **rounds added**.
+- **Chance of the round**: how likely Ric's team was to win the round at that moment, from players alive on each side, whether the bomb was down, their side and the buy. A logistic model (`winprob.py`) fitted on every moment of every saved round from both teams' side; each fight lists the chance just before and just after it, and the difference is what that kill was worth. Summed over Ric's kills and deaths it is **rounds added**. It is an estimate: the **model check** under the breakdown says how it did on games it was not fitted on.
 - **KAST**: the share of rounds where Ric got a kill, an assist, survived, or was traded.
 - **Leetify rating** (the Rating column): how much Ric's play moved his team's chance of winning each round, averaged over the match. 0 is break-even; shown ×100, so +2.00 is roughly two points of win chance added per round.
 - **Aim / positioning / utility**: Leetify's scores out of 100 across every game they have parsed. Higher is better; they are scores, not percentages.

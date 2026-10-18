@@ -15,6 +15,8 @@ Steam key yet, a demo that won't parse) never stops the others.
      (if 3 or 4 turned up share codes we didn't have, 0 and 1 run again)
   5. llm     — rewrite stats.js (the Stats section) and the plain-text reports in llm/
   6. cards   — each player's link preview (p/): a page and a picture of their best round
+  7. r2      — send new or re-parsed replays to Cloudflare R2 (upload-replays.py),
+     which is where the page loads them from; skipped quietly with no token
 
 Then, if anything in the room's data changed (cs-data.js, matches/, llm/, stats.js), it
 commits those files and only those (on main, never mid-merge), then pushes
@@ -173,6 +175,7 @@ def main():
         demos()
     step("llm", str(HERE / "export-llm.py"))
     step("cards", str(HERE / "cards.py"))           # each player's link preview
+    step("r2", str(HERE / "upload-replays.py"))     # replays to R2, versions into cs-data.js
     commit()
     publish()
 
