@@ -318,14 +318,29 @@ export async function run({ day, backfill = 1, statePath, outDir, aiDir, limit =
   /* forecasts, in batches, paced */
   const fc = new Map();
   const span = (Date.parse(to) - Date.parse(from)) / 86400e3 + 1;
+  /* Open-Meteo's free tier also caps a day (~10,000 weighted calls). A daily
+     run costs ~7,500; a 28-day rebuild ~15,000, so it reaches the cap about
+     two-thirds through (seen 2026-10-18). Past the cap every request is
+     refused until tomorrow, so after a few refusals in a row stop asking: the
+     stations not reached simply start their record with tomorrow's run. */
+  let used = 0, refusedInARow = 0, stopped = false;
   for (let i = 0; i < stations.length; i += BATCH) {
     const batch = stations.slice(i, i + BATCH).filter(s => obsRows.has(s.id));
     if (!batch.length) continue;
+    if (stopped) break;
     const t = Date.now();
     try {
       for (const [id, v] of forecastsFrom(await get(fetchImpl, prevRunsUrl(batch, from, to)), batch)) fc.set(id, v);
-    } catch (e) { log(`  batch ${i / BATCH + 1}: forecasts failed (${e.message})`); }
-    if (pace) await sleep(Math.max(0, weight(batch.length, span) / CALLS_PER_MIN * 60e3 - (Date.now() - t)));
+      used += weight(batch.length, span); refusedInARow = 0;
+    } catch (e) {
+      log(`  batch ${i / BATCH + 1}: forecasts failed (${e.message})`);
+      if (/429|fetch failed/.test(e.message) && ++refusedInARow >= 3) {
+        stopped = true;
+        log(`  Open-Meteo has stopped answering after ~${Math.round(used)} weighted calls (its daily cap); ` +
+          `the ${stations.length - i - BATCH > 0 ? stations.length - i - BATCH : 0} stations left start with the next run`);
+      }
+    }
+    if (pace && !stopped) await sleep(Math.max(0, weight(batch.length, span) / CALLS_PER_MIN * 60e3 - (Date.now() - t)));
   }
   log(`forecasts for ${fc.size} stations`);
   const runs = loadAiRuns(aiDir || (statePath && join(dirname(statePath), 'ai')));

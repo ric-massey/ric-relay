@@ -199,10 +199,18 @@ airport weather station (IEM's AZOS network, ~2,500 stations):
   whole job against fake providers, including that no coordinate is published.
 - **Starting over**: run the workflow by hand with `fresh` and `backfill` 28 to
   rebuild the record from scratch — what the learned forecast needs, since its
-  running sums cannot be rebuilt from the rounded published files.
+  running sums cannot be rebuilt from the rounded published files. Open-Meteo's
+  free tier caps a day at ~10,000 weighted calls: a daily run costs ~7,500, a
+  28-day rebuild ~15,000, so a rebuild reaches about two-thirds of the stations
+  (2,115 of 3,143 on 2026-10-18) and stops asking once refused; the rest start
+  their record with the next daily run, and their learned forecast after ten
+  days of it.
 - **First numbers** (14 days to 2026-10-16, 3,035 stations, median next-day
   temperature miss): the blend 1.24 °C; NBM and AIFS 1.38; HRRR 1.52; ECMWF
-  1.51; the standard forecast 1.50; GFS 1.61.
+  1.51; the standard forecast 1.50; GFS 1.61. After the 28-day rebuild (to
+  2026-10-17, ~2,100 stations): the learned forecast 1.13 °C, the blend 1.16,
+  AIFS 1.34, NBM 1.35, the standard forecast 1.47 — and the nowcast's first
+  grade, CSI 0.64 at 30 minutes against 0.62 for "nothing moves".
 
 ## The room's own predictions
 
