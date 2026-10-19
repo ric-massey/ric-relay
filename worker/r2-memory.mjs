@@ -5,8 +5,8 @@
    without anybody's bytes leaving the machine.
 
    It is deliberately not a full R2. It implements the calls worker.mjs actually
-   makes — put, get (with Range), list (with customMetadata) and delete — and
-   nothing else, so a call this file has to grow is a call worth noticing. */
+   makes — put, get (with Range), head, list (with customMetadata), delete and
+   multipart — and nothing else, so a call this file has to grow is a call worth noticing. */
 
 const enc = new TextEncoder();
 
@@ -68,6 +68,8 @@ function stored(key, rec) {
 
 export function memoryBucket() {
   const map = new Map();
+  const uploads = new Map();
+  let uploadSeq = 0;
 
   return {
     /* Exposed for the tests — the real binding has no such thing. */
@@ -137,6 +139,70 @@ export function memoryBucket() {
 
     async delete(keys) {
       for (const k of Array.isArray(keys) ? keys : [keys]) map.delete(k);
-    }
+    },
+
+    async head(key) {
+      const rec = map.get(key);
+      return rec ? stored(key, rec) : null;
+    },
+
+    /* Multipart, for a video too big for one request. Kept as strict as R2 is
+       about the two things that make a real one fail: an unknown upload id,
+       and a part list whose etags are not the ones it handed out. Nothing is
+       listed until complete. */
+    async createMultipartUpload(key, opts = {}) {
+      const uploadId = 'mpu-' + (++uploadSeq);
+      uploads.set(uploadId, { key, opts, parts: new Map() });
+      return resume(key, uploadId);
+    },
+
+    resumeMultipartUpload(key, uploadId) {
+      return resume(key, uploadId);
+    },
+
+    /* Exposed for the tests: uploads begun and not yet finished or aborted. */
+    _uploads: uploads
   };
+
+  function resume(key, uploadId) {
+    const live = () => {
+      const u = uploads.get(uploadId);
+      if (!u || u.key !== key) throw new Error('NoSuchUpload');
+      return u;
+    };
+    return {
+      key, uploadId,
+      async uploadPart(n, body) {
+        const u = live();
+        const bytes = await bytesOf(body);
+        const etag = etagOf(bytes);
+        u.parts.set(n, { bytes, etag });
+        return { partNumber: n, etag };
+      },
+      async complete(parts) {
+        const u = live();
+        const sorted = [...parts].sort((a, b) => a.partNumber - b.partNumber);
+        const chunks = sorted.map(p => {
+          const got = u.parts.get(p.partNumber);
+          if (!got || got.etag !== p.etag) throw new Error('InvalidPart');
+          return got.bytes;
+        });
+        const total = chunks.reduce((s, c) => s + c.length, 0);
+        const bytes = new Uint8Array(total);
+        let at = 0;
+        for (const c of chunks) { bytes.set(c, at); at += c.length; }
+        uploads.delete(uploadId);
+        const rec = {
+          bytes, uploaded: new Date(), etag: etagOf(bytes),
+          httpMetadata: u.opts.httpMetadata || {},
+          customMetadata: u.opts.customMetadata || {}
+        };
+        map.set(key, rec);
+        return stored(key, rec);
+      },
+      async abort() {
+        uploads.delete(uploadId);
+      }
+    };
+  }
 }

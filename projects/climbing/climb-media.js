@@ -48,7 +48,9 @@
       } catch (e) {}
       return { error: 'this browser cannot open HEIC — send it as a JPEG' };
     }
-    const out = global.ScrubMedia.bytes(type, new Uint8Array(await file.arrayBuffer()));
+    /* In place: these bytes were just read and are nobody else's, and a
+       second copy of a big clip is what runs a phone out of memory. */
+    const out = global.ScrubMedia.bytes(type, new Uint8Array(await file.arrayBuffer()), { inPlace: true });
     if (!out) return { error: 'that file could not be cleaned of its location, so it was not sent' };
     return { blob: new Blob([out], { type }), type };
   }
@@ -98,14 +100,87 @@
     if (!token) return { error: 'not signed in' };
     const cleaned = await clean(file, file.type || byExtension(file.name));
     if (cleaned.error) return { error: cleaned.error };
+    /* Anything that fits in one request goes in one; a bigger video goes in
+       pieces, because Cloudflare refuses any single request over 100MB. */
+    if (cleaned.blob.size > PIECE_OVER && /^video\//.test(cleaned.type)) {
+      return sendInPieces(date, file.name, cleaned.blob, cleaned.type, token, opts);
+    }
     return send(date, file.name, cleaned.blob, cleaned.type, token, opts);
+  }
+
+  const describe = (name, opts) => {
+    const q = new URLSearchParams({ name: name || '' });
+    if (opts.route) q.set('route', opts.route);
+    if (opts.caption) q.set('caption', opts.caption);
+    return q;
+  };
+
+  /* One request, answered as JSON. onProgress gets bytes sent so far. */
+  function request(path, { body, type, token, onProgress }) {
+    return new Promise(resolve => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', ClimbHost.origin() + path);
+      xhr.setRequestHeader('authorization', 'Bearer ' + token);
+      if (type) xhr.setRequestHeader('content-type', type);
+      if (onProgress) xhr.upload.onprogress = e => onProgress(e.loaded);
+      xhr.onload = () => {
+        let out = {};
+        try { out = JSON.parse(xhr.responseText); } catch (e) {}
+        resolve({ status: xhr.status, body: out });
+      };
+      xhr.onerror = () => resolve({ status: 0, body: {} });
+      xhr.send(body == null ? null : body);
+    });
+  }
+
+  /* A big clip, in pieces: start, each piece in turn, then done. A piece that
+     fails is tried again a couple of times before giving up — on two bars at
+     a crag, one dropped request should not cost the 200MB already sent. If it
+     does give up, the pieces are thrown away rather than left half-made. */
+  async function sendInPieces(date, name, blob, type, token, opts) {
+    const q = describe(name, opts);
+    q.set('up', 'start');
+    q.set('size', String(blob.size));
+    const start = await request(`/media/${date}?${q}`, { type, token });
+    if (start.status !== 200) {
+      return { error: start.body.error || (start.status ? `upload failed (${start.status})` : 'no signal — the upload did not go') };
+    }
+    const { key, uploadId, partSize } = start.body;
+    const at = `/media/${date}?` + new URLSearchParams({ key, id: uploadId });
+    const parts = [];
+    let sent = 0;
+    for (let n = 1, from = 0; from < blob.size; n += 1, from += partSize) {
+      const piece = blob.slice(from, Math.min(from + partSize, blob.size));
+      let got = null;
+      for (let tries = 0; tries < 3 && !got; tries += 1) {
+        const r = await request(`${at}&up=part&n=${n}`, {
+          body: piece, type: 'application/octet-stream', token,
+          onProgress: opts.onProgress && (b => opts.onProgress((sent + b) / blob.size))
+        });
+        if (r.status === 200 && r.body.etag) got = r.body;
+        else if (r.status && r.status < 500) break;     // refused, not dropped
+      }
+      if (!got) {
+        await request(`${at}&up=abort`, { token });
+        return { error: `the upload stopped at ${Math.round(sent / 1048576)}MB of ${Math.round(blob.size / 1048576)}MB — try it again` };
+      }
+      parts.push({ partNumber: got.partNumber, etag: got.etag });
+      sent += piece.size;
+    }
+    const done = await request(`${at}&up=done`, {
+      body: JSON.stringify({ parts }), type: 'application/json', token
+    });
+    if (done.status !== 200) {
+      await request(`${at}&up=abort`, { token });
+      return { error: done.body.error || `upload failed (${done.status})` };
+    }
+    (days[date] || (days[date] = [])).push(done.body);
+    return done.body;
   }
 
   function send(date, name, body, type, token, opts) {
     return new Promise(resolve => {
-      const q = new URLSearchParams({ name: name || '' });
-      if (opts.route) q.set('route', opts.route);
-      if (opts.caption) q.set('caption', opts.caption);
+      const q = describe(name, opts);
 
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `${ClimbHost.origin()}/media/${date}?${q}`);
@@ -174,7 +249,21 @@
      explanation, which is the worst version of this to debug on a phone. */
   const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,' +
                  'video/mp4,video/quicktime,video/webm,video/x-m4v,.jpg,.jpeg,.png,.heic,.mov,.mp4,.m4v,.webm';
-  const MAX_BYTES = 100 * 1024 * 1024;
+  /* Kept next to the Worker's caps for the same reason: a photo goes in one
+     request, so it stops at Cloudflare's 100MB; a video goes in pieces, so it
+     stops at the gigabyte a phone can hold in memory to scrub. */
+  const MAX_PHOTO_BYTES = 100 * 1024 * 1024;
+  const MAX_BYTES = 1024 * 1024 * 1024;
+  /* Over this a video goes in pieces; under it, in one request as before. */
+  const PIECE_OVER = 90 * 1024 * 1024;
+  const limitFor = file =>
+    /^video\//.test(file.type || byExtension(file.name)) ? MAX_BYTES : MAX_PHOTO_BYTES;
+  /* What a page says when a file is over its limit. */
+  const tooBig = file => {
+    const mb = n => n >= 1073741824 ? `${(n / 1073741824).toFixed(n % 1073741824 ? 1 : 0)}GB` : `${Math.round(n / 1048576)}MB`;
+    return `${file.name} is ${mb(file.size)} — the limit for a ${
+      limitFor(file) === MAX_BYTES ? 'video' : 'photo'} is ${mb(limitFor(file))}.`;
+  };
 
-  global.ClimbMedia = { host: ClimbHost.origin, load, of, has, feature, upload, remove, label, url, ACCEPT, MAX_BYTES, byExtension };
+  global.ClimbMedia = { host: ClimbHost.origin, load, of, has, feature, upload, remove, label, url, ACCEPT, MAX_BYTES, limitFor, tooBig, byExtension };
 })(window);

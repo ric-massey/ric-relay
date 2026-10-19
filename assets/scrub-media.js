@@ -96,9 +96,11 @@
   /* ISO-BMFF, edited in place: every change keeps every size, so the sample
      offsets in stco/co64 still point at the right bytes. */
   const CONTAINERS = new Set(['moov', 'trak', 'mdia', 'minf', 'udta', 'meta', 'edts', 'dinf', 'stbl']);
-  function bmff(src) {
+  function bmff(src, inPlace) {
     if (ascii(src, 4, 4) !== 'ftyp') return null;
-    const b = src.slice();
+    /* In place when the caller says the bytes are its own to change: a clip of
+       several hundred MB copied once more is a phone tab that gets killed. */
+    const b = inPlace ? src : src.slice();
     /* A 'free' box of the same size, its contents zeroed. */
     const free = (at, size, head) => { b.set([0x66, 0x72, 0x65, 0x65], at + 4); b.fill(0, at + head, at + size); };
     const walk = (start, end) => {
@@ -168,14 +170,15 @@
   }
 
   /* bytes → scrubbed bytes; the input bytes when the type carries nothing;
-     null when it cannot be read or cannot be scrubbed (HEIC). */
-  function bytes(type, b) {
+     null when it cannot be read or cannot be scrubbed (HEIC).
+     {inPlace: true} lets a video be edited in the bytes it was handed. */
+  function bytes(type, b, opts) {
     switch (type) {
       case 'image/jpeg': return jpeg(b);
       case 'image/png': return png(b);
       case 'image/webp': return webp(b);
       case 'image/gif': case 'video/webm': return b;
-      case 'video/mp4': case 'video/quicktime': case 'video/x-m4v': return bmff(b);
+      case 'video/mp4': case 'video/quicktime': case 'video/x-m4v': return bmff(b, !!(opts && opts.inPlace));
       default: return null;
     }
   }

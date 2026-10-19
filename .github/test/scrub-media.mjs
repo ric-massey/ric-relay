@@ -15,8 +15,8 @@ const j=new Uint8Array(parts.reduce((s,p)=>s+p.length,0));let o=0;for(const p of
 const out=S.bytes('image/jpeg',j); const t=new TextDecoder('latin1').decode(out);
 check('jpeg loses EXIF/IPTC/COM, keeps JFIF, ICC and the image', !t.includes('GPSDATA')&&!t.includes('Photoshop')&&!t.includes('comment')&&t.includes('ICC_PROFILE')&&t.includes('JFIF')&&t.includes('qt'));
 // real photo from repo
-const f=readdirSync(new URL('../../photos', import.meta.url).pathname).find(x=>x.endsWith('.jpg'));
-const r=readFileSync(new URL('../../photos/'+f, import.meta.url).pathname); const ro=S.bytes('image/jpeg',new Uint8Array(r)); check('a committed photo still scrubs', !!ro && ro.length > 1000);
+const f=readdirSync(new URL('../../photos', import.meta.url)).find(x=>x.endsWith('.jpg'));
+const r=readFileSync(new URL('../../photos/'+f, import.meta.url)); const ro=S.bytes('image/jpeg',new Uint8Array(r)); check('a committed photo still scrubs', !!ro && ro.length > 1000);
 // mov with udta ©xyz
 const box=(type,payload)=>{const b=new Uint8Array(8+payload.length);new DataView(b.buffer).setUint32(0,b.length);b.set(enc(type).length===4?enc(type):Uint8Array.of(0xA9,...enc(type.slice(1))),4);b.set(payload,8);return b};
 const cat=(...a)=>{const n=a.reduce((s,p)=>s+p.length,0);const r=new Uint8Array(n);let o=0;for(const p of a){r.set(p,o);o+=p.length}return r};
@@ -32,3 +32,7 @@ const meta=box('meta',cat(hdlr,keys,ilst));
 const mov=cat(box('ftyp',enc('qt  ')),box('moov',cat(box('udta',xyz),meta)),box('mdat',enc('frames')));
 const mo=new TextDecoder('latin1').decode(S.bytes('video/quicktime',mov));
 check('mov loses both locations, keeps size and frames', !mo.includes('+35.1234')&&!mo.includes('+35.9999')&&mo.includes('frames'), mo.length===mov.length);
+// in place: a big clip is scrubbed in the bytes it was read into, not a copy of them
+const own=mov.slice(); const ip=S.bytes('video/quicktime',own,{inPlace:true}); const ipt=new TextDecoder('latin1').decode(ip);
+check('mov in place loses both locations, in the same bytes', ip===own&&!ipt.includes('+35.1234')&&!ipt.includes('+35.9999')&&ipt.includes('frames')&&ip.length===mov.length);
+check('and without inPlace the bytes handed over are left alone', new TextDecoder('latin1').decode(mov).includes('+35.1234'));

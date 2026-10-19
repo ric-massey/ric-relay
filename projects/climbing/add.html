@@ -811,8 +811,8 @@
           at += 1;
           msg.className = 'msg';
           msg.textContent = `Day saved. Uploading ${f.name} (${sent + 1} of ${files.length})…`;
-          if (f.size > ClimbMedia.MAX_BYTES) {
-            failed = `${f.name} is ${Math.round(f.size / 1048576)}MB — the limit is ${ClimbMedia.MAX_BYTES / 1048576}MB.`;
+          if (f.size > ClimbMedia.limitFor(f)) {
+            failed = ClimbMedia.tooBig(f);
             break;
           }
           const up = await ClimbMedia.upload(iso, f, {

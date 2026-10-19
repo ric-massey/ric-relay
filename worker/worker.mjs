@@ -1329,10 +1329,18 @@ export class TrainingLog {
    with a curly apostrophe in it (and the board logbook is full of them) would
    be rejected raw. Hence one `meta` field, percent-encoded JSON. */
 const MEDIA_PREFIX = 'climb/';
-/* The Workers free plan refuses a request body over 100MB, so a bigger cap here
-   would only ever fail later and less clearly. A phone clip of a boulder sits
-   far inside it; a ten-minute 4K multipitch does not, and is told so up front. */
+/* The Workers free plan refuses a request body over 100MB, so that is the cap
+   for anything sent in one go — every photo, and every clip small enough to go
+   in one piece. */
 const MAX_MEDIA_BYTES = 100 * 1024 * 1024;
+/* A video can be bigger, because it goes up in pieces (R2 multipart,
+   mediaInPieces below): each piece is one request well inside the 100MB, and
+   R2 joins them. The cap on the whole is about the phone, not Cloudflare — the
+   page reads the clip into memory once to scrub where it was shot, and a
+   gigabyte is about what a phone's browser tab will hold without being killed. */
+const MAX_VIDEO_BYTES = 1024 * 1024 * 1024;
+const MEDIA_PART_BYTES = 50 * 1024 * 1024;
+const MEDIA_MAX_PARTS = Math.ceil(MAX_VIDEO_BYTES / MEDIA_PART_BYTES);
 const cleanNote = n => ({
   id: String(n.id || crypto.randomUUID()).slice(0, 64),
   text: String(n.text || '').slice(0, 4000),
@@ -1388,6 +1396,109 @@ function mediaRecord(obj) {
     size: obj.size || 0,
     at: meta.at || (obj.uploaded && new Date(obj.uploaded).toISOString()) || null
   };
+}
+
+/* ---------- POST /media/<date>?up=start|part|done|abort — a video in pieces ----------
+   start  content-type and ?size= say what is coming; answers {key, uploadId, partSize}
+   part   ?key&id&n=1… with up to partSize bytes; answers {partNumber, etag}
+   done   ?key&id with {parts:[{partNumber, etag}]}; answers the record, as one upload does
+   abort  ?key&id; throws the pieces away
+
+   The record's fields are fixed at start, on the multipart upload itself, so
+   the finished object carries them exactly as a one-shot upload would and the
+   listing cannot tell the two apart. A start that is never finished leaves no
+   object at all — R2 lists only completed uploads, and drops abandoned pieces
+   by itself after a week. */
+async function mediaInPieces(request, env, url, date, origin) {
+  const q = url.searchParams;
+  const step = q.get('up');
+
+  if (step === 'start') {
+    const type = (request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    const known = MEDIA_TYPES[type];
+    if (!known || known[1] !== 'video') {
+      return json({ error: 'only a video goes up in pieces', type }, 415, origin);
+    }
+    const size = Number(q.get('size') || 0);
+    if (!(size > 0)) return json({ error: 'say how big it is: ?size=<bytes>' }, 400, origin);
+    if (size > MAX_VIDEO_BYTES) {
+      return json({ error: `too big — ${Math.round(size / 1048576)}MB, and the limit is ${MAX_VIDEO_BYTES / 1048576}MB` }, 413, origin);
+    }
+    const [ext, kind] = known;
+    const id = mediaId();
+    const meta = {
+      id, kind, type,
+      name: (q.get('name') || '').slice(0, 160),
+      route: (q.get('route') || '').slice(0, 160),
+      caption: (q.get('caption') || '').slice(0, 400),
+      at: new Date().toISOString()
+    };
+    const key = `${MEDIA_PREFIX}${date}/${id}.${ext}`;
+    const mpu = await env.MEDIA.createMultipartUpload(key, {
+      httpMetadata: { contentType: type },
+      customMetadata: { meta: encodeURIComponent(JSON.stringify(meta)) }
+    });
+    return json({ key, uploadId: mpu.uploadId, partSize: MEDIA_PART_BYTES }, 200, origin);
+  }
+
+  /* Every later step names the object it is adding to, and it has to be one
+     start could have made, on this date. The owner's token is the real gate,
+     but a key read off the query string is not then free to land anywhere in
+     the bucket — the CS replays live in it too. */
+  const key = q.get('key') || '';
+  const uploadId = q.get('id') || '';
+  const shape = new RegExp(`^${MEDIA_PREFIX}${date}/[0-9a-f]{16}\\.(mp4|mov|webm|m4v)$`);
+  if (!shape.test(key) || !uploadId) return json({ error: 'which upload? ?key=…&id=…' }, 400, origin);
+  const mpu = env.MEDIA.resumeMultipartUpload(key, uploadId);
+
+  if (step === 'part') {
+    const n = Number(q.get('n'));
+    if (!Number.isInteger(n) || n < 1 || n > MEDIA_MAX_PARTS) {
+      return json({ error: `piece number must be 1 to ${MEDIA_MAX_PARTS}` }, 400, origin);
+    }
+    const declared = Number(request.headers.get('content-length') || 0);
+    if (declared > MEDIA_PART_BYTES) return json({ error: 'that piece is too big' }, 413, origin);
+    if (!request.body) return json({ error: 'no bytes in the body' }, 400, origin);
+    try {
+      const part = await mpu.uploadPart(n, request.body);
+      return json({ partNumber: part.partNumber, etag: part.etag }, 200, origin);
+    } catch (e) {
+      return json({ error: 'that piece did not go — try it again' }, 502, origin);
+    }
+  }
+
+  if (step === 'done') {
+    let body = {};
+    try { body = await request.json(); } catch {}
+    const parts = Array.isArray(body.parts)
+      ? body.parts.map(p => ({ partNumber: Number(p && p.partNumber), etag: String((p && p.etag) || '') }))
+      : [];
+    if (!parts.length || parts.length > MEDIA_MAX_PARTS ||
+        parts.some(p => !Number.isInteger(p.partNumber) || !p.etag)) {
+      return json({ error: 'send {"parts":[{"partNumber":1,"etag":"…"}, …]}' }, 400, origin);
+    }
+    let obj;
+    try { obj = await mpu.complete(parts); }
+    catch (e) { return json({ error: 'the pieces did not join — send it again' }, 502, origin); }
+    if (obj.size > MAX_VIDEO_BYTES) {
+      await env.MEDIA.delete(key);
+      return json({ error: 'too big' }, 413, origin);
+    }
+    /* Field by field: an R2Object's fields are not all its own, and a spread
+       would quietly drop the ones that are not. */
+    const head = (obj.customMetadata && obj.customMetadata.meta) ? obj : ((await env.MEDIA.head(key)) || obj);
+    return json({ ok: true, ...mediaRecord({
+      key, size: obj.size, uploaded: obj.uploaded,
+      httpMetadata: head.httpMetadata, customMetadata: head.customMetadata
+    }) }, 200, origin);
+  }
+
+  if (step === 'abort') {
+    try { await mpu.abort(); } catch (e) { /* already gone is the same answer */ }
+    return json({ ok: true }, 200, origin);
+  }
+
+  return json({ error: 'up must be start, part, done or abort' }, 400, origin);
 }
 
 /* ── /trials — ClinicalTrials.gov, passed through ──
@@ -2159,6 +2270,8 @@ export default {
             }));
           return json({ ok: true, removed: page.objects.map(o => o.key) }, 200, origin);
         }
+
+        if (url.searchParams.has('up')) return mediaInPieces(request, env, url, date, origin);
 
         /* ---------- POST /media/<date> — the upload ----------
            Raw bytes, with the describing fields in the query string. Not

@@ -1017,6 +1017,63 @@ console.log('\nRULE  only the owner can take media down');
   ok((await r.hit('GET', up.path)).status === 404, 'the bytes 404 afterwards');
 }
 
+/* A clip over 100MB cannot go in one request — Cloudflare refuses the body
+   before the Worker sees it — so it goes in pieces and R2 joins them. That cap
+   stopped a 234MB clip on 2026-10-19. */
+console.log('\nRULE  a video too big for one request goes up in pieces, and only from the owner');
+{
+  const r = mediaRig();
+  const begin = (q, token = TOKEN) => r.hit('POST', '/media/2026-08-18?up=start&' + q, { token, type: 'video/mp4' });
+
+  ok((await begin('size=1000', null)).status === 401, 'a stranger cannot start one');
+  ok((await r.hit('POST', '/media/2026-08-18?up=start&size=1000', { token: TOKEN, type: 'image/jpeg' })).status === 415,
+    'a photo cannot — it skips the location scrub the Worker gives photos');
+  ok((await begin('size=0')).status === 400, 'it has to say how big it is');
+  const huge = await begin('size=' + (234 * 1048576));
+  ok(huge.status === 200, 'a 234MB clip is allowed to start');
+  ok((await begin('size=' + (2 * 1073741824))).status === 413, 'two gigabytes is told no up front');
+
+  const { key, uploadId, partSize } = await (await begin('size=4096&name=gaia.mp4&route=Gaia')).json();
+  ok(partSize === 50 * 1048576, 'pieces are 50MB, inside the 100MB a request can carry');
+  ok(r.bucket._map.size === 0, 'and nothing is listed while it is still going up');
+
+  const at = `/media/2026-08-18?key=${encodeURIComponent(key)}&id=${uploadId}`;
+  const half = new Uint8Array(2048);
+  half.fill(1);
+  const second = new Uint8Array(2048).fill(2);
+  ok((await r.hit('POST', `${at}&up=part&n=1`, { body: half })).status === 401, 'a stranger cannot add a piece');
+  const p1 = await (await r.hit('POST', `${at}&up=part&n=1`, { token: TOKEN, body: half })).json();
+  const p2 = await (await r.hit('POST', `${at}&up=part&n=2`, { token: TOKEN, body: second })).json();
+  ok(p1.etag && p2.etag && p1.partNumber === 1, 'each piece is answered with what done needs');
+  ok((await r.hit('POST', `${at}&up=part&n=0`, { token: TOKEN, body: half })).status === 400, 'piece numbers start at 1');
+
+  const elsewhere = `/media/2026-08-18?key=${encodeURIComponent('cs/replays/x.js')}&id=${uploadId}&up=part&n=1`;
+  ok((await r.hit('POST', elsewhere, { token: TOKEN, body: half })).status === 400,
+    'a piece cannot be aimed at a key outside this day\'s media');
+
+  ok((await r.hit('POST', `${at}&up=done`, { token: TOKEN, json: true,
+    body: { parts: [{ partNumber: 1, etag: 'not-it' }, p2] } })).status === 502,
+    'a done naming a piece that was never sent does not join');
+
+  const done = await r.hit('POST', `${at}&up=done`, { token: TOKEN, json: true, body: { parts: [p1, p2] } });
+  const rec = await done.json();
+  ok(done.status === 200 && rec.kind === 'video' && rec.size === 4096, 'done joins the pieces into one video');
+  ok(rec.route === 'Gaia' && rec.name === 'gaia.mp4', 'carrying what was said at start');
+
+  const listed = (await (await r.hit('GET', '/media/2026-08-18')).json()).items;
+  ok(listed.length === 1 && listed[0].id === rec.id, 'and it is listed like any other upload');
+  const file = new Uint8Array(await (await r.hit('GET', rec.path)).arrayBuffer());
+  ok(file.length === 4096 && file[0] === 1 && file[4095] === 2, 'the bytes come back whole, in order');
+
+  const lost = await (await begin('size=4096')).json();
+  const lostAt = `/media/2026-08-18?key=${encodeURIComponent(lost.key)}&id=${lost.uploadId}`;
+  await r.hit('POST', `${lostAt}&up=part&n=1`, { token: TOKEN, body: half });
+  ok((await r.hit('POST', `${lostAt}&up=abort`, { token: TOKEN })).status === 200, 'an upload that gives up can be thrown away');
+  ok((await r.hit('POST', `${lostAt}&up=done`, { token: TOKEN, json: true, body: { parts: [p1] } })).status === 502,
+    'and cannot be finished afterwards');
+  ok((await (await r.hit('GET', '/media/2026-08-18')).json()).items.length === 1, 'leaving nothing behind in the listing');
+}
+
 console.log('\nRULE  a Worker with no bucket still serves every page');
 {
   /* This is the state the site is in between deploying the code and creating

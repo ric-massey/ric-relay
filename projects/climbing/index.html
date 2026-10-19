@@ -905,11 +905,10 @@
       input.value = "";
       if (!files.length) return;
 
-      const tooBig = files.filter((f) => f.size > ClimbMedia.MAX_BYTES);
+      const tooBig = files.filter((f) => f.size > ClimbMedia.limitFor(f));
       if (tooBig.length) {
         say.className = "say bad";
-        say.textContent = `${tooBig[0].name} is ${Math.round(tooBig[0].size / 1048576)}MB — the limit is ${
-          ClimbMedia.MAX_BYTES / 1048576}MB. Trim the clip and try again.`;
+        say.textContent = `${ClimbMedia.tooBig(tooBig[0])} Trim it and try again.`;
         return;
       }
 
