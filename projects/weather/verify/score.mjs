@@ -358,6 +358,19 @@ export async function run({ day, backfill = 1, statePath, outDir, aiDir, limit =
   const index = publish(state, outDir);
   for (const [m, x] of Object.entries(index.national)) {
     if (x.stations) log(`  ${m.padEnd(6)} median temperature error ${x.mae} °C over ${x.stations} stations (bias ${x.bias}, rain skill ${x.rain})`);
+    else {
+      /* too young for the table (under MIN_DAYS): said in the log only, so a
+         new model's early form can be watched without the page trusting it */
+      const maes = [], days = [];
+      for (const st of Object.values(state.stations)) {
+        const r = st.models[m] && st.models[m][1];
+        if (r && r.days) { const e = C.tempMae(r); if (e !== null) { maes.push(e); days.push(r.days); } }
+      }
+      if (maes.length) {
+        maes.sort((a, b) => a - b);
+        log(`  ${m.padEnd(6)} still young: ${Math.max(...days)} day(s), median temperature error ${maes[maes.length >> 1].toFixed(2)} °C over ${maes.length} stations — not in the table until ${C.MIN_DAYS} days`);
+      }
+    }
   }
   return { state, scoredDays, index };
 }
