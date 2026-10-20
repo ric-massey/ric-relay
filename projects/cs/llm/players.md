@@ -4,7 +4,7 @@ By in-game name, as the scoreboard showed it. Results and scores are from each p
 
 ## henry glopp — 5 games
 
-Best game (all their rounds scored together): Mirage, best round 22 — won a 1v2 · 3 kills, 1 HS · +95 pts win chance. Best rounds: Mirage round 22 (won a 1v2 · 3 kills, 1 HS · +95 pts win chance); Anubis round 1 (3 kills, 1 HS · +46 pts win chance); Dust II round 4 (1 kill, 1 HS · +14 pts win chance). Why they died (55 deaths): flashed 4%, shot from outside their view 9%, outnumbered 13%, died alone, untraded 22%, lost the duel 53%.
+Best game (all their rounds scored together): Mirage, best round 22 — won a 1v2 · 3 kills, 1 HS · +97 pts win chance. Best rounds: Mirage round 22 (won a 1v2 · 3 kills, 1 HS · +97 pts win chance); Anubis round 1 (3 kills, 1 HS · +46 pts win chance); Dust II round 4 (1 kill, 1 HS · +14 pts win chance). Why they died (55 deaths): flashed 4%, shot from outside their view 9%, outnumbered 13%, died alone, untraded 22%, lost the duel 53%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -16,7 +16,7 @@ Best game (all their rounds scored together): Mirage, best round 22 — won a 1v
 
 ## Yallzbalz — 5 games
 
-Best game (all their rounds scored together): Vertigo, best round 11 — won a 1v1 · 2 kills · on an eco · +68 pts win chance. Best rounds: Mirage round 10 (won a 1v1 · 2 kills · +85 pts win chance); Vertigo round 11 (won a 1v1 · 2 kills · on an eco · +68 pts win chance); Anubis round 5 (2 kills, 1 HS · +22 pts win chance). Why they died (69 deaths): flashed 1%, shot from outside their view 7%, outnumbered 9%, died alone, untraded 26%, lost the duel 57%.
+Best game (all their rounds scored together): Vertigo, best round 11 — won a 1v1 · 2 kills · on an eco · +68 pts win chance. Best rounds: Mirage round 10 (won a 1v1 · 2 kills · +87 pts win chance); Vertigo round 11 (won a 1v1 · 2 kills · on an eco · +68 pts win chance); Anubis round 5 (2 kills, 1 HS · +22 pts win chance). Why they died (69 deaths): flashed 1%, shot from outside their view 7%, outnumbered 9%, died alone, untraded 26%, lost the duel 57%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -28,7 +28,7 @@ Best game (all their rounds scored together): Vertigo, best round 11 — won a 1
 
 ## sectnik — 4 games
 
-Best game (all their rounds scored together): Anubis, best round 8 — won a 1v4 · 5 kills, 1 HS · +110 pts win chance. Best rounds: Anubis round 8 (won a 1v4 · 5 kills, 1 HS · +110 pts win chance); Mirage round 4 (won a 1v1 · 2 kills, 1 HS · +70 pts win chance); Mirage round 9 (3 kills · +48 pts win chance). Why they died (41 deaths): flashed 0%, shot from outside their view 12%, outnumbered 22%, died alone, untraded 27%, lost the duel 39%.
+Best game (all their rounds scored together): Anubis, best round 8 — won a 1v4 · 5 kills, 1 HS · +111 pts win chance. Best rounds: Anubis round 8 (won a 1v4 · 5 kills, 1 HS · +111 pts win chance); Mirage round 4 (won a 1v1 · 2 kills, 1 HS · +69 pts win chance); Mirage round 9 (3 kills · +49 pts win chance). Why they died (41 deaths): flashed 0%, shot from outside their view 12%, outnumbered 22%, died alone, untraded 27%, lost the duel 39%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -39,7 +39,7 @@ Best game (all their rounds scored together): Anubis, best round 8 — won a 1v4
 
 ## Bigdawg — 2 games
 
-Best game (all their rounds scored together): Train, best round 5 — 3 kills, 2 HS · +37 pts win chance. Best rounds: Anubis round 11 (3 kills, 1 HS · +74 pts win chance); Train round 5 (3 kills, 2 HS · +37 pts win chance). Why they died (21 deaths): flashed 0%, shot from outside their view 24%, outnumbered 5%, died alone, untraded 14%, lost the duel 57%.
+Best game (all their rounds scored together): Train, best round 5 — 3 kills, 2 HS · +36 pts win chance. Best rounds: Anubis round 11 (3 kills, 1 HS · +76 pts win chance); Train round 5 (3 kills, 2 HS · +36 pts win chance). Why they died (21 deaths): flashed 0%, shot from outside their view 24%, outnumbered 5%, died alone, untraded 14%, lost the duel 57%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -48,7 +48,7 @@ Best game (all their rounds scored together): Train, best round 5 — 3 kills, 2
 
 ## Nurbis — 2 games
 
-Best game (all their rounds scored together): Mirage, best round 19 — 3 kills, 2 HS · +22 pts win chance. Best rounds: Mirage round 19 (3 kills, 2 HS · +22 pts win chance); Mirage round 6 (2 kills, 2 HS · +36 pts win chance). Why they died (36 deaths): flashed 6%, shot from outside their view 11%, outnumbered 14%, died alone, untraded 19%, lost the duel 50%.
+Best game (all their rounds scored together): Mirage, best round 19 — 3 kills, 2 HS · +23 pts win chance. Best rounds: Mirage round 19 (3 kills, 2 HS · +23 pts win chance); Mirage round 6 (2 kills, 2 HS · +38 pts win chance). Why they died (36 deaths): flashed 6%, shot from outside their view 11%, outnumbered 14%, died alone, untraded 19%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -57,7 +57,7 @@ Best game (all their rounds scored together): Mirage, best round 19 — 3 kills,
 
 ## $h@doW — 1 game
 
-Best game (all their rounds scored together): Train, best round 22 — 2 kills · +33 pts win chance. Best rounds: Train round 22 (2 kills · +33 pts win chance). Why they died (19 deaths): flashed 0%, shot from outside their view 5%, outnumbered 16%, died alone, untraded 21%, lost the duel 58%.
+Best game (all their rounds scored together): Train, best round 18 — 2 kills · +50 pts win chance. Best rounds: Train round 18 (2 kills · +50 pts win chance). Why they died (19 deaths): flashed 0%, shot from outside their view 5%, outnumbered 16%, died alone, untraded 21%, lost the duel 58%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -65,7 +65,7 @@ Best game (all their rounds scored together): Train, best round 22 — 2 kills �
 
 ## /:-] — 1 game
 
-Best game (all their rounds scored together): Anubis, best round 17 — 3 kills, 2 HS · +25 pts win chance. Best rounds: Anubis round 17 (3 kills, 2 HS · +25 pts win chance). Why they died (14 deaths): flashed 14%, shot from outside their view 7%, outnumbered 7%, died alone, untraded 21%, lost the duel 50%.
+Best game (all their rounds scored together): Anubis, best round 17 — 3 kills, 2 HS · +24 pts win chance. Best rounds: Anubis round 17 (3 kills, 2 HS · +24 pts win chance). Why they died (14 deaths): flashed 14%, shot from outside their view 7%, outnumbered 7%, died alone, untraded 21%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -73,7 +73,7 @@ Best game (all their rounds scored together): Anubis, best round 17 — 3 kills,
 
 ## 277 — 1 game
 
-Best game (all their rounds scored together): Train, best round 5 — 3 kills, 1 HS · +38 pts win chance. Best rounds: Train round 5 (3 kills, 1 HS · +38 pts win chance). Why they died (18 deaths): flashed 0%, shot from outside their view 11%, outnumbered 6%, died alone, untraded 44%, lost the duel 39%.
+Best game (all their rounds scored together): Train, best round 5 — 3 kills, 1 HS · +39 pts win chance. Best rounds: Train round 5 (3 kills, 1 HS · +39 pts win chance). Why they died (18 deaths): flashed 0%, shot from outside their view 11%, outnumbered 6%, died alone, untraded 44%, lost the duel 39%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -81,7 +81,7 @@ Best game (all their rounds scored together): Train, best round 5 — 3 kills, 1
 
 ## 37casino — 1 game
 
-Best game (all their rounds scored together): Train, best round 15 — 3 kills, 1 HS · +73 pts win chance. Best rounds: Train round 15 (3 kills, 1 HS · +73 pts win chance). Why they died (18 deaths): flashed 0%, shot from outside their view 11%, outnumbered 0%, died alone, untraded 22%, lost the duel 67%.
+Best game (all their rounds scored together): Train, best round 15 — 3 kills, 1 HS · +74 pts win chance. Best rounds: Train round 15 (3 kills, 1 HS · +74 pts win chance). Why they died (18 deaths): flashed 0%, shot from outside their view 11%, outnumbered 0%, died alone, untraded 22%, lost the duel 67%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -97,7 +97,7 @@ Best game (all their rounds scored together): Train, best round 18 — 1 kill ·
 
 ## 52Inspired52 — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 1 — won a 1v1 · 3 kills, 3 HS · +85 pts win chance. Best rounds: Mirage round 1 (won a 1v1 · 3 kills, 3 HS · +85 pts win chance). Why they died (12 deaths): flashed 17%, shot from outside their view 25%, outnumbered 0%, died alone, untraded 33%, lost the duel 25%.
+Best game (all their rounds scored together): Mirage, best round 1 — won a 1v1 · 3 kills, 3 HS · +87 pts win chance. Best rounds: Mirage round 1 (won a 1v1 · 3 kills, 3 HS · +87 pts win chance). Why they died (12 deaths): flashed 17%, shot from outside their view 25%, outnumbered 0%, died alone, untraded 33%, lost the duel 25%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -113,7 +113,7 @@ Best game (all their rounds scored together): Dust II, best round 4 — 2 kills,
 
 ## ??? — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 14 — won a 1v2 · 2 kills, 2 HS · +67 pts win chance. Best rounds: Mirage round 14 (won a 1v2 · 2 kills, 2 HS · +67 pts win chance). Why they died (19 deaths): flashed 0%, shot from outside their view 5%, outnumbered 11%, died alone, untraded 58%, lost the duel 26%.
+Best game (all their rounds scored together): Mirage, best round 14 — won a 1v2 · 2 kills, 2 HS · +68 pts win chance. Best rounds: Mirage round 14 (won a 1v2 · 2 kills, 2 HS · +68 pts win chance). Why they died (19 deaths): flashed 0%, shot from outside their view 5%, outnumbered 11%, died alone, untraded 58%, lost the duel 26%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -127,6 +127,14 @@ Best game (all their rounds scored together): Train, best round 21 — 4 kills, 
 |---|---|---|---|---|---|---|
 | 2026-10-11 02:48 UTC | Train | with Ric | 13:8 win | 25-17-7 | 140 | [report](3847618294316007431.md) |
 
+## akaBoogie — 1 game
+
+Best game (all their rounds scored together): Inferno, best round 1 — won a 1v2 · 2 kills · +88 pts win chance. Best rounds: Inferno round 1 (won a 1v2 · 2 kills · +88 pts win chance). Why they died (15 deaths): flashed 0%, shot from outside their view 7%, outnumbered 13%, died alone, untraded 47%, lost the duel 33%.
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-20 05:05 UTC | Inferno | against Ric | 13:11 win | 18-15-3 | 81 | [report](gsi-20261020T050557.md) |
+
 ## arch!ve — 1 game
 
 Best game (all their rounds scored together): Mirage, best round 7 — 3 kills, 1 HS · +65 pts win chance. Best rounds: Mirage round 7 (3 kills, 1 HS · +65 pts win chance). Why they died (18 deaths): flashed 6%, shot from outside their view 22%, outnumbered 0%, died alone, untraded 22%, lost the duel 50%.
@@ -137,11 +145,19 @@ Best game (all their rounds scored together): Mirage, best round 7 — 3 kills, 
 
 ## b — 1 game
 
-Best game (all their rounds scored together): Anubis, best round 16 — won a 1v2 · 3 kills · +100 pts win chance. Best rounds: Anubis round 16 (won a 1v2 · 3 kills · +100 pts win chance). Why they died (11 deaths): flashed 18%, shot from outside their view 18%, outnumbered 0%, died alone, untraded 18%, lost the duel 45%.
+Best game (all their rounds scored together): Anubis, best round 16 — won a 1v2 · 3 kills · +101 pts win chance. Best rounds: Anubis round 16 (won a 1v2 · 3 kills · +101 pts win chance). Why they died (11 deaths): flashed 18%, shot from outside their view 18%, outnumbered 0%, died alone, untraded 18%, lost the duel 45%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:50 UTC | Anubis | with Ric | 13:6 win | 32-11-4 | 178 | [report](3848097853184409614.md) |
+
+## Backrub, perhaps? — 1 game
+
+Best game (all their rounds scored together): Inferno, best round 18 — 3 kills, 1 HS · +43 pts win chance. Best rounds: Inferno round 18 (3 kills, 1 HS · +43 pts win chance). Why they died (20 deaths): flashed 0%, shot from outside their view 10%, outnumbered 15%, died alone, untraded 20%, lost the duel 55%.
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-20 05:05 UTC | Inferno | with Ric | 11:13 loss | 15-23-8 | 70 | [report](gsi-20261020T050557.md) |
 
 ## BajaBooty — 1 game
 
@@ -153,7 +169,7 @@ Best game (all their rounds scored together): Dust II, best round 11 — 2 kills
 
 ## Baljeet — 1 game
 
-Best game (all their rounds scored together): Anubis, best round 11 — won a 1v1 · 2 kills · +65 pts win chance. Best rounds: Anubis round 11 (won a 1v1 · 2 kills · +65 pts win chance). Why they died (15 deaths): flashed 0%, shot from outside their view 7%, outnumbered 0%, died alone, untraded 27%, lost the duel 67%.
+Best game (all their rounds scored together): Anubis, best round 11 — won a 1v1 · 2 kills · +67 pts win chance. Best rounds: Anubis round 11 (won a 1v1 · 2 kills · +67 pts win chance). Why they died (15 deaths): flashed 0%, shot from outside their view 7%, outnumbered 0%, died alone, untraded 27%, lost the duel 67%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -185,7 +201,7 @@ Best game (all their rounds scored together): Train, best round 16 — 1 kill, 1
 
 ## Big_Pete(r)#1 — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 15 — won a 1v4 · 5 kills, 1 HS · +94 pts win chance. Best rounds: Dust II round 15 (won a 1v4 · 5 kills, 1 HS · +94 pts win chance). Why they died (9 deaths): flashed 0%, shot from outside their view 11%, outnumbered 11%, died alone, untraded 22%, lost the duel 56%.
+Best game (all their rounds scored together): Dust II, best round 15 — won a 1v4 · 5 kills, 1 HS · +95 pts win chance. Best rounds: Dust II round 15 (won a 1v4 · 5 kills, 1 HS · +95 pts win chance). Why they died (9 deaths): flashed 0%, shot from outside their view 11%, outnumbered 11%, died alone, untraded 22%, lost the duel 56%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -201,7 +217,7 @@ Best game (all their rounds scored together): Train, best round 8 — won a 1v1 
 
 ## BlueMiltank — 1 game
 
-Best game (all their rounds scored together): Train, best round 5 — 2 kills, 2 HS · +28 pts win chance. Best rounds: Train round 5 (2 kills, 2 HS · +28 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 12%, outnumbered 6%, died alone, untraded 24%, lost the duel 59%.
+Best game (all their rounds scored together): Train, best round 5 — 2 kills, 2 HS · +29 pts win chance. Best rounds: Train round 5 (2 kills, 2 HS · +29 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 12%, outnumbered 6%, died alone, untraded 24%, lost the duel 59%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -209,7 +225,7 @@ Best game (all their rounds scored together): Train, best round 5 — 2 kills, 2
 
 ## Brooks — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 8 — won a 1v1 · 1 kill · +44 pts win chance. Best rounds: Dust II round 8 (won a 1v1 · 1 kill · +44 pts win chance). Why they died (7 deaths): flashed 0%, shot from outside their view 0%, outnumbered 0%, died alone, untraded 14%, lost the duel 86%.
+Best game (all their rounds scored together): Dust II, best round 8 — won a 1v1 · 1 kill · +43 pts win chance. Best rounds: Dust II round 8 (won a 1v1 · 1 kill · +43 pts win chance). Why they died (7 deaths): flashed 0%, shot from outside their view 0%, outnumbered 0%, died alone, untraded 14%, lost the duel 86%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -217,7 +233,7 @@ Best game (all their rounds scored together): Dust II, best round 8 — won a 1v
 
 ## BULLYHUNTER NO. 335749 — 1 game
 
-Best game (all their rounds scored together): Vertigo, best round 12 — won a 1v2 · 2 kills, 1 HS · +85 pts win chance. Best rounds: Vertigo round 12 (won a 1v2 · 2 kills, 1 HS · +85 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 12%, outnumbered 25%, died alone, untraded 38%, lost the duel 25%.
+Best game (all their rounds scored together): Vertigo, best round 12 — won a 1v2 · 2 kills, 1 HS · +87 pts win chance. Best rounds: Vertigo round 12 (won a 1v2 · 2 kills, 1 HS · +87 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 12%, outnumbered 25%, died alone, untraded 38%, lost the duel 25%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -225,7 +241,7 @@ Best game (all their rounds scored together): Vertigo, best round 12 — won a 1
 
 ## Bush did Pompeii — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 4 — won a 1v1 · 2 kills, 2 HS · +29 pts win chance. Best rounds: Mirage round 4 (won a 1v1 · 2 kills, 2 HS · +29 pts win chance). Why they died (11 deaths): flashed 9%, shot from outside their view 9%, outnumbered 0%, died alone, untraded 36%, lost the duel 45%.
+Best game (all their rounds scored together): Mirage, best round 4 — won a 1v1 · 2 kills, 2 HS · +30 pts win chance. Best rounds: Mirage round 4 (won a 1v1 · 2 kills, 2 HS · +30 pts win chance). Why they died (11 deaths): flashed 9%, shot from outside their view 9%, outnumbered 0%, died alone, untraded 36%, lost the duel 45%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -233,7 +249,7 @@ Best game (all their rounds scored together): Mirage, best round 4 — won a 1v1
 
 ## c.c  on weed — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 13 — 2 kills · +37 pts win chance. Best rounds: Mirage round 13 (2 kills · +37 pts win chance). Why they died (10 deaths): flashed 0%, shot from outside their view 50%, outnumbered 0%, died alone, untraded 10%, lost the duel 40%.
+Best game (all their rounds scored together): Mirage, best round 13 — 2 kills · +38 pts win chance. Best rounds: Mirage round 13 (2 kills · +38 pts win chance). Why they died (10 deaths): flashed 0%, shot from outside their view 50%, outnumbered 0%, died alone, untraded 10%, lost the duel 40%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -249,7 +265,7 @@ Best game (all their rounds scored together): Dust II, best round 3 — 2 kills,
 
 ## Cave_Squid — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 2 — 1 kill · +9 pts win chance. Best rounds: Mirage round 2 (1 kill · +9 pts win chance). Why they died (9 deaths): flashed 0%, shot from outside their view 11%, outnumbered 33%, died alone, untraded 11%, lost the duel 44%.
+Best game (all their rounds scored together): Mirage, best round 2 — 1 kill · +10 pts win chance. Best rounds: Mirage round 2 (1 kill · +10 pts win chance). Why they died (9 deaths): flashed 0%, shot from outside their view 11%, outnumbered 33%, died alone, untraded 11%, lost the duel 44%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -289,7 +305,7 @@ Best game (all their rounds scored together): Mirage, best round 21 — won a 1v
 
 ## Cress — 1 game
 
-Best game (all their rounds scored together): Train, best round 21 — won a 1v2 · 2 kills, 2 HS · +79 pts win chance. Best rounds: Train round 21 (won a 1v2 · 2 kills, 2 HS · +79 pts win chance). Why they died (16 deaths): flashed 6%, shot from outside their view 6%, outnumbered 6%, died alone, untraded 56%, lost the duel 25%.
+Best game (all their rounds scored together): Train, best round 21 — won a 1v2 · 2 kills, 2 HS · +80 pts win chance. Best rounds: Train round 21 (won a 1v2 · 2 kills, 2 HS · +80 pts win chance). Why they died (16 deaths): flashed 6%, shot from outside their view 6%, outnumbered 6%, died alone, untraded 56%, lost the duel 25%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -297,7 +313,7 @@ Best game (all their rounds scored together): Train, best round 21 — won a 1v2
 
 ## crow — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 4 — 2 kills, 1 HS · +57 pts win chance. Best rounds: Mirage round 4 (2 kills, 1 HS · +57 pts win chance). Why they died (18 deaths): flashed 0%, shot from outside their view 11%, outnumbered 6%, died alone, untraded 11%, lost the duel 72%.
+Best game (all their rounds scored together): Mirage, best round 4 — 2 kills, 1 HS · +58 pts win chance. Best rounds: Mirage round 4 (2 kills, 1 HS · +58 pts win chance). Why they died (18 deaths): flashed 0%, shot from outside their view 11%, outnumbered 6%, died alone, untraded 11%, lost the duel 72%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -305,7 +321,7 @@ Best game (all their rounds scored together): Mirage, best round 4 — 2 kills, 
 
 ## Darwin G. — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 7 — 3 kills, 2 HS · +39 pts win chance. Best rounds: Dust II round 7 (3 kills, 2 HS · +39 pts win chance). Why they died (6 deaths): flashed 0%, shot from outside their view 17%, outnumbered 17%, died alone, untraded 33%, lost the duel 33%.
+Best game (all their rounds scored together): Dust II, best round 7 — 3 kills, 2 HS · +40 pts win chance. Best rounds: Dust II round 7 (3 kills, 2 HS · +40 pts win chance). Why they died (6 deaths): flashed 0%, shot from outside their view 17%, outnumbered 17%, died alone, untraded 33%, lost the duel 33%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -313,7 +329,7 @@ Best game (all their rounds scored together): Dust II, best round 7 — 3 kills,
 
 ## Daytona — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 10 — won a 1v2 · 3 kills, 1 HS · +105 pts win chance. Best rounds: Mirage round 10 (won a 1v2 · 3 kills, 1 HS · +105 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 6%, outnumbered 12%, died alone, untraded 25%, lost the duel 56%.
+Best game (all their rounds scored together): Mirage, best round 10 — won a 1v2 · 3 kills, 1 HS · +106 pts win chance. Best rounds: Mirage round 10 (won a 1v2 · 3 kills, 1 HS · +106 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 6%, outnumbered 12%, died alone, untraded 25%, lost the duel 56%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -321,7 +337,7 @@ Best game (all their rounds scored together): Mirage, best round 10 — won a 1v
 
 ## Degrade Me Mommy — 1 game
 
-Best game (all their rounds scored together): Anubis, best round 19 — won a 1v3 · 3 kills · +89 pts win chance. Best rounds: Anubis round 19 (won a 1v3 · 3 kills · +89 pts win chance). Why they died (13 deaths): flashed 0%, shot from outside their view 8%, outnumbered 15%, died alone, untraded 31%, lost the duel 46%.
+Best game (all their rounds scored together): Anubis, best round 19 — won a 1v3 · 3 kills · +90 pts win chance. Best rounds: Anubis round 19 (won a 1v3 · 3 kills · +90 pts win chance). Why they died (13 deaths): flashed 0%, shot from outside their view 8%, outnumbered 15%, died alone, untraded 31%, lost the duel 46%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -353,7 +369,7 @@ Best game (all their rounds scored together): Dust II, best round 3 — 2 kills,
 
 ## dirt — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 12 — won a 1v2 · 2 kills, 2 HS · +79 pts win chance. Best rounds: Mirage round 12 (won a 1v2 · 2 kills, 2 HS · +79 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 18%, outnumbered 0%, died alone, untraded 29%, lost the duel 53%.
+Best game (all their rounds scored together): Mirage, best round 12 — won a 1v2 · 2 kills, 2 HS · +80 pts win chance. Best rounds: Mirage round 12 (won a 1v2 · 2 kills, 2 HS · +80 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 18%, outnumbered 0%, died alone, untraded 29%, lost the duel 53%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -367,6 +383,14 @@ Best game (all their rounds scored together): Mirage, best round 11 — 1 kill �
 |---|---|---|---|---|---|---|
 | 2026-10-13 16:09 UTC | Mirage | against Ric | 9:3 win | 4-8-2 | 35 | [report](3848092619766759746.md) |
 
+## DragonShogun — 1 game
+
+Best game (all their rounds scored together): Inferno, best round 19 — 3 kills, 3 HS · +42 pts win chance. Best rounds: Inferno round 19 (3 kills, 3 HS · +42 pts win chance). Why they died (19 deaths): flashed 5%, shot from outside their view 0%, outnumbered 16%, died alone, untraded 26%, lost the duel 53%.
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-20 05:05 UTC | Inferno | against Ric | 13:11 win | 16-19-7 | 88 | [report](gsi-20261020T050557.md) |
+
 ## Elleonbelle — 1 game
 
 Best game (all their rounds scored together): Mirage, best round 15 — 1 kill · +26 pts win chance. Best rounds: Mirage round 15 (1 kill · +26 pts win chance). Why they died (10 deaths): flashed 0%, shot from outside their view 0%, outnumbered 20%, died alone, untraded 30%, lost the duel 50%.
@@ -377,7 +401,7 @@ Best game (all their rounds scored together): Mirage, best round 15 — 1 kill �
 
 ## eugineblumkin — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 18 — won a 1v2 · 2 kills · +82 pts win chance. Best rounds: Mirage round 18 (won a 1v2 · 2 kills · +82 pts win chance). Why they died (21 deaths): flashed 0%, shot from outside their view 0%, outnumbered 24%, died alone, untraded 10%, lost the duel 67%.
+Best game (all their rounds scored together): Mirage, best round 18 — won a 1v2 · 2 kills · +83 pts win chance. Best rounds: Mirage round 18 (won a 1v2 · 2 kills · +83 pts win chance). Why they died (21 deaths): flashed 0%, shot from outside their view 0%, outnumbered 24%, died alone, untraded 10%, lost the duel 67%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -393,7 +417,7 @@ Best game (all their rounds scored together): Dust II, best round 13 — 2 kills
 
 ## Fart — 1 game
 
-Best game (all their rounds scored together): Vertigo, best round 18 — 4 kills, 2 HS · +59 pts win chance. Best rounds: Vertigo round 18 (4 kills, 2 HS · +59 pts win chance). Why they died (18 deaths): flashed 11%, shot from outside their view 6%, outnumbered 0%, died alone, untraded 17%, lost the duel 67%.
+Best game (all their rounds scored together): Vertigo, best round 18 — 4 kills, 2 HS · +61 pts win chance. Best rounds: Vertigo round 18 (4 kills, 2 HS · +61 pts win chance). Why they died (18 deaths): flashed 11%, shot from outside their view 6%, outnumbered 0%, died alone, untraded 17%, lost the duel 67%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -401,7 +425,7 @@ Best game (all their rounds scored together): Vertigo, best round 18 — 4 kills
 
 ## fish — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 20 — 3 kills · +29 pts win chance. Best rounds: Mirage round 20 (3 kills · +29 pts win chance). Why they died (12 deaths): flashed 8%, shot from outside their view 8%, outnumbered 8%, died alone, untraded 25%, lost the duel 50%.
+Best game (all their rounds scored together): Mirage, best round 4 — 3 kills, 1 HS · +30 pts win chance. Best rounds: Mirage round 4 (3 kills, 1 HS · +30 pts win chance). Why they died (12 deaths): flashed 8%, shot from outside their view 8%, outnumbered 8%, died alone, untraded 25%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -409,15 +433,23 @@ Best game (all their rounds scored together): Mirage, best round 20 — 3 kills 
 
 ## Gato Payaso — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 6 — won a 1v1 · 2 kills, 1 HS · +72 pts win chance. Best rounds: Mirage round 6 (won a 1v1 · 2 kills, 1 HS · +72 pts win chance). Why they died (10 deaths): flashed 0%, shot from outside their view 0%, outnumbered 10%, died alone, untraded 30%, lost the duel 60%.
+Best game (all their rounds scored together): Mirage, best round 6 — won a 1v1 · 2 kills, 1 HS · +73 pts win chance. Best rounds: Mirage round 6 (won a 1v1 · 2 kills, 1 HS · +73 pts win chance). Why they died (10 deaths): flashed 0%, shot from outside their view 0%, outnumbered 10%, died alone, untraded 30%, lost the duel 60%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-06 03:20 UTC | Mirage | against Ric | 13:3 win | 13-12-9 | 119 | [report](3846694811922858158.md) |
 
+## generik — 1 game
+
+Best game (all their rounds scored together): Inferno, best round 8 — 2 kills, 2 HS · +37 pts win chance. Best rounds: Inferno round 8 (2 kills, 2 HS · +37 pts win chance). Why they died (15 deaths): flashed 0%, shot from outside their view 7%, outnumbered 27%, died alone, untraded 20%, lost the duel 47%.
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-20 05:05 UTC | Inferno | with Ric | 11:13 loss | 15-15-3 | 75 | [report](gsi-20261020T050557.md) |
+
 ## GG — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 9 — 3 kills, 1 HS · +51 pts win chance. Best rounds: Mirage round 9 (3 kills, 1 HS · +51 pts win chance). Why they died (10 deaths): flashed 0%, shot from outside their view 10%, outnumbered 20%, died alone, untraded 30%, lost the duel 40%.
+Best game (all their rounds scored together): Mirage, best round 9 — 3 kills, 1 HS · +50 pts win chance. Best rounds: Mirage round 9 (3 kills, 1 HS · +50 pts win chance). Why they died (10 deaths): flashed 0%, shot from outside their view 10%, outnumbered 20%, died alone, untraded 30%, lost the duel 40%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -425,7 +457,7 @@ Best game (all their rounds scored together): Mirage, best round 9 — 3 kills, 
 
 ## Ghost — 1 game
 
-Best game (all their rounds scored together): Anubis, best round 8 — 3 kills, 2 HS · +52 pts win chance. Best rounds: Anubis round 8 (3 kills, 2 HS · +52 pts win chance). Why they died (13 deaths): flashed 0%, shot from outside their view 8%, outnumbered 8%, died alone, untraded 8%, lost the duel 77%.
+Best game (all their rounds scored together): Anubis, best round 8 — 3 kills, 2 HS · +51 pts win chance. Best rounds: Anubis round 8 (3 kills, 2 HS · +51 pts win chance). Why they died (13 deaths): flashed 0%, shot from outside their view 8%, outnumbered 8%, died alone, untraded 8%, lost the duel 77%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -433,7 +465,7 @@ Best game (all their rounds scored together): Anubis, best round 8 — 3 kills, 
 
 ## girl — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 4 — 3 kills, 3 HS · on an eco · +71 pts win chance. Best rounds: Dust II round 4 (3 kills, 3 HS · on an eco · +71 pts win chance). Why they died (10 deaths): flashed 0%, shot from outside their view 0%, outnumbered 20%, died alone, untraded 50%, lost the duel 30%.
+Best game (all their rounds scored together): Dust II, best round 4 — 3 kills, 3 HS · on an eco · +72 pts win chance. Best rounds: Dust II round 4 (3 kills, 3 HS · on an eco · +72 pts win chance). Why they died (10 deaths): flashed 0%, shot from outside their view 0%, outnumbered 20%, died alone, untraded 50%, lost the duel 30%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -465,7 +497,7 @@ Best game (all their rounds scored together): Train, best round 6 — 3 kills, 1
 
 ## hello — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 1 — 2 kills, 2 HS · +37 pts win chance. Best rounds: Dust II round 1 (2 kills, 2 HS · +37 pts win chance). Why they died (15 deaths): flashed 0%, shot from outside their view 0%, outnumbered 13%, died alone, untraded 33%, lost the duel 53%.
+Best game (all their rounds scored together): Dust II, best round 1 — 2 kills, 2 HS · +38 pts win chance. Best rounds: Dust II round 1 (2 kills, 2 HS · +38 pts win chance). Why they died (15 deaths): flashed 0%, shot from outside their view 0%, outnumbered 13%, died alone, untraded 33%, lost the duel 53%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -487,6 +519,14 @@ Best game (all their rounds scored together): Mirage, best round 13 — 2 kills,
 |---|---|---|---|---|---|---|
 | 2026-10-13 00:38 UTC | Mirage | with Ric | 7:13 loss | 8-18-4 | 56 | [report](3847972682805018863.md) |
 
+## HypostaticHuman — 1 game
+
+Best game (all their rounds scored together): Inferno, best round 13 — 4 kills, 2 HS · +47 pts win chance. Best rounds: Inferno round 13 (4 kills, 2 HS · +47 pts win chance). Why they died (18 deaths): flashed 0%, shot from outside their view 28%, outnumbered 11%, died alone, untraded 22%, lost the duel 39%.
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-20 05:05 UTC | Inferno | with Ric | 11:13 loss | 15-18-5 | 66 | [report](gsi-20261020T050557.md) |
+
 ## ibags — 1 game
 
 Best game (all their rounds scored together): Mirage, best round 7 — 2 kills, 1 HS · +12 pts win chance. Best rounds: Mirage round 7 (2 kills, 1 HS · +12 pts win chance). Why they died (6 deaths): flashed 0%, shot from outside their view 0%, outnumbered 17%, died alone, untraded 33%, lost the duel 50%.
@@ -497,15 +537,23 @@ Best game (all their rounds scored together): Mirage, best round 7 — 2 kills, 
 
 ## Idkman123 — 1 game
 
-Best game (all their rounds scored together): Train, best round 1 — 2 kills, 2 HS · +46 pts win chance. Best rounds: Train round 1 (2 kills, 2 HS · +46 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 12%, outnumbered 0%, died alone, untraded 35%, lost the duel 53%.
+Best game (all their rounds scored together): Train, best round 1 — 2 kills, 2 HS · +47 pts win chance. Best rounds: Train round 1 (2 kills, 2 HS · +47 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 12%, outnumbered 0%, died alone, untraded 35%, lost the duel 53%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 02:48 UTC | Train | against Ric | 8:13 loss | 10-18-3 | 57 | [report](3847618294316007431.md) |
 
+## iikepuma — 1 game
+
+Best game (all their rounds scored together): Inferno, best round 7 — won a 1v1 · 2 kills, 1 HS · +82 pts win chance. Best rounds: Inferno round 7 (won a 1v1 · 2 kills, 1 HS · +82 pts win chance). Why they died (16 deaths): flashed 6%, shot from outside their view 0%, outnumbered 25%, died alone, untraded 25%, lost the duel 44%.
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-20 05:05 UTC | Inferno | with Ric | 11:13 loss | 20-16-12 | 114 | [report](gsi-20261020T050557.md) |
+
 ## imaginathan — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 17 — won a 1v1 · 3 kills, 1 HS · on an eco · +112 pts win chance. Best rounds: Mirage round 17 (won a 1v1 · 3 kills, 1 HS · on an eco · +112 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 18%, outnumbered 12%, died alone, untraded 24%, lost the duel 47%.
+Best game (all their rounds scored together): Mirage, best round 17 — won a 1v1 · 3 kills, 1 HS · on an eco · +113 pts win chance. Best rounds: Mirage round 17 (won a 1v1 · 3 kills, 1 HS · on an eco · +113 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 18%, outnumbered 12%, died alone, untraded 24%, lost the duel 47%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -521,7 +569,7 @@ Best game (all their rounds scored together): Train, best round 9 — 1 kill · 
 
 ## Intellectual — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 9 — 2 kills · +34 pts win chance. Best rounds: Mirage round 9 (2 kills · +34 pts win chance). Why they died (19 deaths): flashed 0%, shot from outside their view 16%, outnumbered 16%, died alone, untraded 5%, lost the duel 63%.
+Best game (all their rounds scored together): Mirage, best round 9 — 2 kills · +35 pts win chance. Best rounds: Mirage round 9 (2 kills · +35 pts win chance). Why they died (19 deaths): flashed 0%, shot from outside their view 16%, outnumbered 16%, died alone, untraded 5%, lost the duel 63%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -529,7 +577,7 @@ Best game (all their rounds scored together): Mirage, best round 9 — 2 kills �
 
 ## intol — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 4 — won a 1v4 · 1 kill · +14 pts win chance. Best rounds: Dust II round 4 (won a 1v4 · 1 kill · +14 pts win chance). Why they died (14 deaths): flashed 7%, shot from outside their view 0%, outnumbered 29%, died alone, untraded 29%, lost the duel 36%.
+Best game (all their rounds scored together): Dust II, best round 4 — won a 1v4 · 1 kill · +13 pts win chance. Best rounds: Dust II round 4 (won a 1v4 · 1 kill · +13 pts win chance). Why they died (14 deaths): flashed 7%, shot from outside their view 0%, outnumbered 29%, died alone, untraded 29%, lost the duel 36%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -545,7 +593,7 @@ Best game (all their rounds scored together): Dust II, best round 4 — 1 kill, 
 
 ## Its Pineapples3 — 1 game
 
-Best game (all their rounds scored together): Train, best round 14 — won a 1v1 · 2 kills, 1 HS · +65 pts win chance. Best rounds: Train round 14 (won a 1v1 · 2 kills, 1 HS · +65 pts win chance). Why they died (15 deaths): flashed 0%, shot from outside their view 13%, outnumbered 0%, died alone, untraded 53%, lost the duel 33%.
+Best game (all their rounds scored together): Train, best round 14 — won a 1v1 · 2 kills, 1 HS · +66 pts win chance. Best rounds: Train round 14 (won a 1v1 · 2 kills, 1 HS · +66 pts win chance). Why they died (15 deaths): flashed 0%, shot from outside their view 13%, outnumbered 0%, died alone, untraded 53%, lost the duel 33%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -561,7 +609,7 @@ Best game (all their rounds scored together): Mirage, best round 13 — won a 1v
 
 ## ItzBilko — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 11 — 2 kills, 2 HS · +49 pts win chance. Best rounds: Dust II round 11 (2 kills, 2 HS · +49 pts win chance). Why they died (14 deaths): flashed 0%, shot from outside their view 0%, outnumbered 14%, died alone, untraded 43%, lost the duel 43%.
+Best game (all their rounds scored together): Dust II, best round 11 — 2 kills, 2 HS · +50 pts win chance. Best rounds: Dust II round 11 (2 kills, 2 HS · +50 pts win chance). Why they died (14 deaths): flashed 0%, shot from outside their view 0%, outnumbered 14%, died alone, untraded 43%, lost the duel 43%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -577,7 +625,7 @@ Best game (all their rounds scored together): Anubis, best round 9 — 1 kill ·
 
 ## Jake From State Farm — 1 game
 
-Best game (all their rounds scored together): Train, best round 4 — 2 kills, 1 HS · on an eco · +34 pts win chance. Best rounds: Train round 4 (2 kills, 1 HS · on an eco · +34 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 29%, outnumbered 0%, died alone, untraded 35%, lost the duel 35%.
+Best game (all their rounds scored together): Train, best round 4 — 2 kills, 1 HS · on an eco · +35 pts win chance. Best rounds: Train round 4 (2 kills, 1 HS · on an eco · +35 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 29%, outnumbered 0%, died alone, untraded 35%, lost the duel 35%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -593,7 +641,7 @@ Best game (all their rounds scored together): Mirage, best round 7 — 2 kills, 
 
 ## jebus_rice — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 8 — 2 kills, 2 HS · +44 pts win chance. Best rounds: Mirage round 8 (2 kills, 2 HS · +44 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 19%, outnumbered 6%, died alone, untraded 12%, lost the duel 62%.
+Best game (all their rounds scored together): Mirage, best round 8 — 2 kills, 2 HS · +46 pts win chance. Best rounds: Mirage round 8 (2 kills, 2 HS · +46 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 19%, outnumbered 6%, died alone, untraded 12%, lost the duel 62%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -601,7 +649,7 @@ Best game (all their rounds scored together): Mirage, best round 8 — 2 kills, 
 
 ## JohnTafferTaps — 1 game
 
-Best game (all their rounds scored together): Anubis, best round 12 — 2 kills, 1 HS · +37 pts win chance. Best rounds: Anubis round 12 (2 kills, 1 HS · +37 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 0%, outnumbered 12%, died alone, untraded 44%, lost the duel 44%.
+Best game (all their rounds scored together): Anubis, best round 12 — 2 kills, 1 HS · +38 pts win chance. Best rounds: Anubis round 12 (2 kills, 1 HS · +38 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 0%, outnumbered 12%, died alone, untraded 44%, lost the duel 44%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -609,7 +657,7 @@ Best game (all their rounds scored together): Anubis, best round 12 — 2 kills,
 
 ## JOSUE :) — 1 game
 
-Best game (all their rounds scored together): Train, best round 3 — 2 kills, 2 HS · +51 pts win chance. Best rounds: Train round 3 (2 kills, 2 HS · +51 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 6%, outnumbered 25%, died alone, untraded 50%, lost the duel 19%.
+Best game (all their rounds scored together): Train, best round 3 — 2 kills, 2 HS · +53 pts win chance. Best rounds: Train round 3 (2 kills, 2 HS · +53 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 6%, outnumbered 25%, died alone, untraded 50%, lost the duel 19%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -617,7 +665,7 @@ Best game (all their rounds scored together): Train, best round 3 — 2 kills, 2
 
 ## José Hurts — 1 game
 
-Best game (all their rounds scored together): Train, best round 16 — won a 1v2 · 2 kills, 1 HS · +73 pts win chance. Best rounds: Train round 16 (won a 1v2 · 2 kills, 1 HS · +73 pts win chance). Why they died (14 deaths): flashed 21%, shot from outside their view 14%, outnumbered 14%, died alone, untraded 0%, lost the duel 50%.
+Best game (all their rounds scored together): Train, best round 16 — won a 1v2 · 2 kills, 1 HS · +74 pts win chance. Best rounds: Train round 16 (won a 1v2 · 2 kills, 1 HS · +74 pts win chance). Why they died (14 deaths): flashed 21%, shot from outside their view 14%, outnumbered 14%, died alone, untraded 0%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -641,7 +689,7 @@ Best game (all their rounds scored together): Train, best round 13 — 2 kills, 
 
 ## Karappo — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 1 — 1 kill, 1 HS · +13 pts win chance. Best rounds: Dust II round 1 (1 kill, 1 HS · +13 pts win chance). Why they died (2 deaths): flashed 50%, shot from outside their view 0%, outnumbered 0%, died alone, untraded 0%, lost the duel 50%.
+Best game (all their rounds scored together): Dust II, best round 1 — 1 kill, 1 HS · +14 pts win chance. Best rounds: Dust II round 1 (1 kill, 1 HS · +14 pts win chance). Why they died (2 deaths): flashed 50%, shot from outside their view 0%, outnumbered 0%, died alone, untraded 0%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -649,7 +697,7 @@ Best game (all their rounds scored together): Dust II, best round 1 — 1 kill, 
 
 ## Katano — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 7 — won a 1v2 · 2 kills, 1 HS · +75 pts win chance. Best rounds: Dust II round 7 (won a 1v2 · 2 kills, 1 HS · +75 pts win chance). Why they died (5 deaths): flashed 0%, shot from outside their view 0%, outnumbered 40%, died alone, untraded 20%, lost the duel 40%.
+Best game (all their rounds scored together): Dust II, best round 7 — won a 1v2 · 2 kills, 1 HS · +77 pts win chance. Best rounds: Dust II round 7 (won a 1v2 · 2 kills, 1 HS · +77 pts win chance). Why they died (5 deaths): flashed 0%, shot from outside their view 0%, outnumbered 40%, died alone, untraded 20%, lost the duel 40%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -673,7 +721,7 @@ Best game (all their rounds scored together): Dust II, best round 6 — 3 kills,
 
 ## KON KARNE — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 2 — won a 1v2 · 2 kills, 1 HS · +77 pts win chance. Best rounds: Mirage round 2 (won a 1v2 · 2 kills, 1 HS · +77 pts win chance). Why they died (8 deaths): flashed 0%, shot from outside their view 12%, outnumbered 25%, died alone, untraded 0%, lost the duel 62%.
+Best game (all their rounds scored together): Mirage, best round 2 — won a 1v2 · 2 kills, 1 HS · +78 pts win chance. Best rounds: Mirage round 2 (won a 1v2 · 2 kills, 1 HS · +78 pts win chance). Why they died (8 deaths): flashed 0%, shot from outside their view 12%, outnumbered 25%, died alone, untraded 0%, lost the duel 62%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -681,7 +729,7 @@ Best game (all their rounds scored together): Mirage, best round 2 — won a 1v2
 
 ## LamesHenry — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 5 — won a 1v1 · 1 kill, 1 HS · +62 pts win chance. Best rounds: Mirage round 5 (won a 1v1 · 1 kill, 1 HS · +62 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 18%, outnumbered 6%, died alone, untraded 12%, lost the duel 65%.
+Best game (all their rounds scored together): Mirage, best round 5 — won a 1v1 · 1 kill, 1 HS · +61 pts win chance. Best rounds: Mirage round 5 (won a 1v1 · 1 kill, 1 HS · +61 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 18%, outnumbered 6%, died alone, untraded 12%, lost the duel 65%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -689,7 +737,7 @@ Best game (all their rounds scored together): Mirage, best round 5 — won a 1v1
 
 ## lappo — 1 game
 
-Best game (all their rounds scored together): Anubis, best round 12 — 2 kills · +44 pts win chance. Best rounds: Anubis round 12 (2 kills · +44 pts win chance). Why they died (16 deaths): flashed 6%, shot from outside their view 19%, outnumbered 6%, died alone, untraded 38%, lost the duel 31%.
+Best game (all their rounds scored together): Anubis, best round 12 — 2 kills · +45 pts win chance. Best rounds: Anubis round 12 (2 kills · +45 pts win chance). Why they died (16 deaths): flashed 6%, shot from outside their view 19%, outnumbered 6%, died alone, untraded 38%, lost the duel 31%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -697,7 +745,7 @@ Best game (all their rounds scored together): Anubis, best round 12 — 2 kills 
 
 ## Lord UGhosTy — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 2 — won a 1v3 · 5 kills · +109 pts win chance. Best rounds: Mirage round 2 (won a 1v3 · 5 kills · +109 pts win chance). Why they died (13 deaths): flashed 0%, shot from outside their view 0%, outnumbered 23%, died alone, untraded 46%, lost the duel 31%.
+Best game (all their rounds scored together): Mirage, best round 2 — won a 1v3 · 5 kills · +110 pts win chance. Best rounds: Mirage round 2 (won a 1v3 · 5 kills · +110 pts win chance). Why they died (13 deaths): flashed 0%, shot from outside their view 0%, outnumbered 23%, died alone, untraded 46%, lost the duel 31%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -705,7 +753,7 @@ Best game (all their rounds scored together): Mirage, best round 2 — won a 1v3
 
 ## LOVE S0SA — 1 game
 
-Best game (all their rounds scored together): Anubis, best round 13 — 4 kills, 4 HS · +67 pts win chance. Best rounds: Anubis round 13 (4 kills, 4 HS · +67 pts win chance). Why they died (14 deaths): flashed 0%, shot from outside their view 21%, outnumbered 7%, died alone, untraded 43%, lost the duel 29%.
+Best game (all their rounds scored together): Anubis, best round 13 — 4 kills, 4 HS · +68 pts win chance. Best rounds: Anubis round 13 (4 kills, 4 HS · +68 pts win chance). Why they died (14 deaths): flashed 0%, shot from outside their view 21%, outnumbered 7%, died alone, untraded 43%, lost the duel 29%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -713,7 +761,7 @@ Best game (all their rounds scored together): Anubis, best round 13 — 4 kills,
 
 ## luck21 — 1 game
 
-Best game (all their rounds scored together): Train, best round 17 — 2 kills, 2 HS · +35 pts win chance. Best rounds: Train round 17 (2 kills, 2 HS · +35 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 12%, outnumbered 6%, died alone, untraded 25%, lost the duel 56%.
+Best game (all their rounds scored together): Train, best round 17 — 2 kills, 2 HS · +36 pts win chance. Best rounds: Train round 17 (2 kills, 2 HS · +36 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 12%, outnumbered 6%, died alone, untraded 25%, lost the duel 56%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -721,7 +769,7 @@ Best game (all their rounds scored together): Train, best round 17 — 2 kills, 
 
 ## m1sho — 1 game
 
-Best game (all their rounds scored together): Cache, best round 5 — 2 kills, 2 HS · +22 pts win chance. Best rounds: Cache round 5 (2 kills, 2 HS · +22 pts win chance). Why they died (8 deaths): flashed 0%, shot from outside their view 0%, outnumbered 12%, died alone, untraded 38%, lost the duel 50%.
+Best game (all their rounds scored together): Cache, best round 5 — 2 kills, 2 HS · +21 pts win chance. Best rounds: Cache round 5 (2 kills, 2 HS · +21 pts win chance). Why they died (8 deaths): flashed 0%, shot from outside their view 0%, outnumbered 12%, died alone, untraded 38%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -745,7 +793,7 @@ Best game (all their rounds scored together): Dust II, best round 10 — won a 1
 
 ## Manu — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 6 — 2 kills · +34 pts win chance. Best rounds: Dust II round 6 (2 kills · +34 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 0%, outnumbered 19%, died alone, untraded 38%, lost the duel 44%.
+Best game (all their rounds scored together): Dust II, best round 6 — 2 kills · +35 pts win chance. Best rounds: Dust II round 6 (2 kills · +35 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 0%, outnumbered 19%, died alone, untraded 38%, lost the duel 44%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -753,7 +801,7 @@ Best game (all their rounds scored together): Dust II, best round 6 — 2 kills 
 
 ## Meat n Taters, lil gravy — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 14 — won a 1v1 · 1 kill · +47 pts win chance. Best rounds: Dust II round 14 (won a 1v1 · 1 kill · +47 pts win chance). Why they died (10 deaths): flashed 0%, shot from outside their view 0%, outnumbered 20%, died alone, untraded 20%, lost the duel 60%.
+Best game (all their rounds scored together): Dust II, best round 14 — won a 1v1 · 1 kill · +48 pts win chance. Best rounds: Dust II round 14 (won a 1v1 · 1 kill · +48 pts win chance). Why they died (10 deaths): flashed 0%, shot from outside their view 0%, outnumbered 20%, died alone, untraded 20%, lost the duel 60%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -761,7 +809,7 @@ Best game (all their rounds scored together): Dust II, best round 14 — won a 1
 
 ## meekopatty — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 18 — won a 1v2 · 4 kills, 1 HS · +108 pts win chance. Best rounds: Mirage round 18 (won a 1v2 · 4 kills, 1 HS · +108 pts win chance). Why they died (18 deaths): flashed 0%, shot from outside their view 0%, outnumbered 6%, died alone, untraded 61%, lost the duel 33%.
+Best game (all their rounds scored together): Mirage, best round 18 — won a 1v2 · 4 kills, 1 HS · +109 pts win chance. Best rounds: Mirage round 18 (won a 1v2 · 4 kills, 1 HS · +109 pts win chance). Why they died (18 deaths): flashed 0%, shot from outside their view 0%, outnumbered 6%, died alone, untraded 61%, lost the duel 33%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -769,7 +817,7 @@ Best game (all their rounds scored together): Mirage, best round 18 — won a 1v
 
 ## Meep — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 8 — won a 1v1 · 1 kill · +43 pts win chance. Best rounds: Mirage round 8 (won a 1v1 · 1 kill · +43 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 18%, outnumbered 0%, died alone, untraded 29%, lost the duel 53%.
+Best game (all their rounds scored together): Mirage, best round 8 — won a 1v1 · 1 kill · +44 pts win chance. Best rounds: Mirage round 8 (won a 1v1 · 1 kill · +44 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 18%, outnumbered 0%, died alone, untraded 29%, lost the duel 53%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -777,7 +825,7 @@ Best game (all their rounds scored together): Mirage, best round 8 — won a 1v1
 
 ## Mighty_Meg27 — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 14 — won a 1v4 · 4 kills, 3 HS · +77 pts win chance. Best rounds: Mirage round 14 (won a 1v4 · 4 kills, 3 HS · +77 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 18%, outnumbered 18%, died alone, untraded 29%, lost the duel 35%.
+Best game (all their rounds scored together): Mirage, best round 14 — won a 1v4 · 4 kills, 3 HS · +78 pts win chance. Best rounds: Mirage round 14 (won a 1v4 · 4 kills, 3 HS · +78 pts win chance). Why they died (17 deaths): flashed 0%, shot from outside their view 18%, outnumbered 18%, died alone, untraded 29%, lost the duel 35%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -801,11 +849,27 @@ Best game (all their rounds scored together): Mirage, best round 18 — 2 kills 
 
 ## Minichode — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 13 — 3 kills, 3 HS · +63 pts win chance. Best rounds: Dust II round 13 (3 kills, 3 HS · +63 pts win chance). Why they died (9 deaths): flashed 0%, shot from outside their view 22%, outnumbered 0%, died alone, untraded 11%, lost the duel 67%.
+Best game (all their rounds scored together): Dust II, best round 13 — 3 kills, 3 HS · +64 pts win chance. Best rounds: Dust II round 13 (3 kills, 3 HS · +64 pts win chance). Why they died (9 deaths): flashed 0%, shot from outside their view 22%, outnumbered 0%, died alone, untraded 11%, lost the duel 67%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
 | 2026-10-11 01:03 UTC | Dust II | against Ric | 13:3 win | 16-10-5 | 122 | [report](3847604825298567197.md) |
+
+## Moms2k on KICK&YOUTUBE&TWITCH — 1 game
+
+Best game (all their rounds scored together): Inferno, best round 4 — 3 kills, 2 HS · +38 pts win chance. Best rounds: Inferno round 4 (3 kills, 2 HS · +38 pts win chance). Why they died (15 deaths): flashed 0%, shot from outside their view 0%, outnumbered 13%, died alone, untraded 33%, lost the duel 53%.
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-20 05:05 UTC | Inferno | against Ric | 13:11 win | 18-16-6 | 82 | [report](gsi-20261020T050557.md) |
+
+## MudCup — 1 game
+
+Best game (all their rounds scored together): Inferno, best round 20 — 2 kills, 2 HS · +34 pts win chance. Best rounds: Inferno round 20 (2 kills, 2 HS · +34 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 0%, outnumbered 31%, died alone, untraded 19%, lost the duel 50%.
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-20 05:05 UTC | Inferno | against Ric | 13:11 win | 13-16-5 | 72 | [report](gsi-20261020T050557.md) |
 
 ## Nani — 1 game
 
@@ -817,7 +881,7 @@ Best game (all their rounds scored together): Train, best round 1 — 2 kills ·
 
 ## NIGGA — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 2 — won a 1v1 · 2 kills, 1 HS · +82 pts win chance. Best rounds: Mirage round 2 (won a 1v1 · 2 kills, 1 HS · +82 pts win chance). Why they died (12 deaths): flashed 8%, shot from outside their view 17%, outnumbered 8%, died alone, untraded 8%, lost the duel 58%.
+Best game (all their rounds scored together): Mirage, best round 2 — won a 1v1 · 2 kills, 1 HS · +84 pts win chance. Best rounds: Mirage round 2 (won a 1v1 · 2 kills, 1 HS · +84 pts win chance). Why they died (12 deaths): flashed 8%, shot from outside their view 17%, outnumbered 8%, died alone, untraded 8%, lost the duel 58%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -825,7 +889,7 @@ Best game (all their rounds scored together): Mirage, best round 2 — won a 1v1
 
 ## NRG FAZE nigga — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 19 — 2 kills · +48 pts win chance. Best rounds: Mirage round 19 (2 kills · +48 pts win chance). Why they died (13 deaths): flashed 0%, shot from outside their view 15%, outnumbered 8%, died alone, untraded 38%, lost the duel 38%.
+Best game (all their rounds scored together): Mirage, best round 19 — 2 kills · +47 pts win chance. Best rounds: Mirage round 19 (2 kills · +47 pts win chance). Why they died (13 deaths): flashed 0%, shot from outside their view 15%, outnumbered 8%, died alone, untraded 38%, lost the duel 38%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -833,7 +897,7 @@ Best game (all their rounds scored together): Mirage, best round 19 — 2 kills 
 
 ## numbSKULL — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 3 — 4 kills, 1 HS · +55 pts win chance. Best rounds: Mirage round 3 (4 kills, 1 HS · +55 pts win chance). Why they died (8 deaths): flashed 0%, shot from outside their view 0%, outnumbered 12%, died alone, untraded 12%, lost the duel 75%.
+Best game (all their rounds scored together): Mirage, best round 3 — 4 kills, 1 HS · +56 pts win chance. Best rounds: Mirage round 3 (4 kills, 1 HS · +56 pts win chance). Why they died (8 deaths): flashed 0%, shot from outside their view 0%, outnumbered 12%, died alone, untraded 12%, lost the duel 75%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -841,7 +905,7 @@ Best game (all their rounds scored together): Mirage, best round 3 — 4 kills, 
 
 ## OG_COBRA — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 3 — 3 kills, 2 HS · +62 pts win chance. Best rounds: Mirage round 3 (3 kills, 2 HS · +62 pts win chance). Why they died (20 deaths): flashed 10%, shot from outside their view 0%, outnumbered 10%, died alone, untraded 10%, lost the duel 70%.
+Best game (all their rounds scored together): Mirage, best round 3 — 3 kills, 2 HS · +64 pts win chance. Best rounds: Mirage round 3 (3 kills, 2 HS · +64 pts win chance). Why they died (20 deaths): flashed 10%, shot from outside their view 0%, outnumbered 10%, died alone, untraded 10%, lost the duel 70%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -849,7 +913,7 @@ Best game (all their rounds scored together): Mirage, best round 3 — 3 kills, 
 
 ## OpTicFent420 — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 17 — won a 1v1 · 2 kills, 1 HS · +65 pts win chance. Best rounds: Mirage round 17 (won a 1v1 · 2 kills, 1 HS · +65 pts win chance). Why they died (18 deaths): flashed 6%, shot from outside their view 17%, outnumbered 22%, died alone, untraded 28%, lost the duel 28%.
+Best game (all their rounds scored together): Mirage, best round 17 — won a 1v1 · 2 kills, 1 HS · +66 pts win chance. Best rounds: Mirage round 17 (won a 1v1 · 2 kills, 1 HS · +66 pts win chance). Why they died (18 deaths): flashed 6%, shot from outside their view 17%, outnumbered 22%, died alone, untraded 28%, lost the duel 28%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -865,7 +929,7 @@ Best game (all their rounds scored together): Anubis, best round 10 — 1 kill, 
 
 ## Otis — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 15 — 1 kill · +23 pts win chance. Best rounds: Dust II round 15 (1 kill · +23 pts win chance). Why they died (12 deaths): flashed 0%, shot from outside their view 25%, outnumbered 8%, died alone, untraded 25%, lost the duel 42%.
+Best game (all their rounds scored together): Dust II, best round 15 — 1 kill · +22 pts win chance. Best rounds: Dust II round 15 (1 kill · +22 pts win chance). Why they died (12 deaths): flashed 0%, shot from outside their view 25%, outnumbered 8%, died alone, untraded 25%, lost the duel 42%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -873,7 +937,7 @@ Best game (all their rounds scored together): Dust II, best round 15 — 1 kill 
 
 ## Pal.holii — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 8 — 3 kills, 2 HS · +50 pts win chance. Best rounds: Mirage round 8 (3 kills, 2 HS · +50 pts win chance). Why they died (15 deaths): flashed 0%, shot from outside their view 13%, outnumbered 20%, died alone, untraded 33%, lost the duel 33%.
+Best game (all their rounds scored together): Mirage, best round 8 — 3 kills, 2 HS · +51 pts win chance. Best rounds: Mirage round 8 (3 kills, 2 HS · +51 pts win chance). Why they died (15 deaths): flashed 0%, shot from outside their view 13%, outnumbered 20%, died alone, untraded 33%, lost the duel 33%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -881,7 +945,7 @@ Best game (all their rounds scored together): Mirage, best round 8 — 3 kills, 
 
 ## Paladin — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 2 — won a 1v1 · 2 kills, 1 HS · +54 pts win chance. Best rounds: Dust II round 2 (won a 1v1 · 2 kills, 1 HS · +54 pts win chance). Why they died (9 deaths): flashed 0%, shot from outside their view 22%, outnumbered 0%, died alone, untraded 44%, lost the duel 33%.
+Best game (all their rounds scored together): Dust II, best round 2 — won a 1v1 · 2 kills, 1 HS · +53 pts win chance. Best rounds: Dust II round 2 (won a 1v1 · 2 kills, 1 HS · +53 pts win chance). Why they died (9 deaths): flashed 0%, shot from outside their view 22%, outnumbered 0%, died alone, untraded 44%, lost the duel 33%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -889,7 +953,7 @@ Best game (all their rounds scored together): Dust II, best round 2 — won a 1v
 
 ## pba-cav-sqn — 1 game
 
-Best game (all their rounds scored together): Cache, best round 8 — 2 kills · +33 pts win chance. Best rounds: Cache round 8 (2 kills · +33 pts win chance). Why they died (14 deaths): flashed 0%, shot from outside their view 7%, outnumbered 14%, died alone, untraded 14%, lost the duel 64%.
+Best game (all their rounds scored together): Cache, best round 8 — 2 kills · +34 pts win chance. Best rounds: Cache round 8 (2 kills · +34 pts win chance). Why they died (14 deaths): flashed 0%, shot from outside their view 7%, outnumbered 14%, died alone, untraded 14%, lost the duel 64%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -905,7 +969,7 @@ Best game (all their rounds scored together): Vertigo, best round 7 — won a 1v
 
 ## Peter Grippin — 1 game
 
-Best game (all their rounds scored together): Cache, best round 14 — 2 kills, 1 HS · +51 pts win chance. Best rounds: Cache round 14 (2 kills, 1 HS · +51 pts win chance). Why they died (15 deaths): flashed 7%, shot from outside their view 13%, outnumbered 20%, died alone, untraded 13%, lost the duel 47%.
+Best game (all their rounds scored together): Cache, best round 14 — 2 kills, 1 HS · +52 pts win chance. Best rounds: Cache round 14 (2 kills, 1 HS · +52 pts win chance). Why they died (15 deaths): flashed 7%, shot from outside their view 13%, outnumbered 20%, died alone, untraded 13%, lost the duel 47%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -921,7 +985,7 @@ Best game (all their rounds scored together): Mirage, best round 17 — won a 1v
 
 ## Phantom Floyd — 1 game
 
-Best game (all their rounds scored together): Cache, best round 8 — 2 kills, 2 HS · +45 pts win chance. Best rounds: Cache round 8 (2 kills, 2 HS · +45 pts win chance). Why they died (14 deaths): flashed 14%, shot from outside their view 7%, outnumbered 7%, died alone, untraded 21%, lost the duel 50%.
+Best game (all their rounds scored together): Cache, best round 8 — 2 kills, 2 HS · +46 pts win chance. Best rounds: Cache round 8 (2 kills, 2 HS · +46 pts win chance). Why they died (14 deaths): flashed 14%, shot from outside their view 7%, outnumbered 7%, died alone, untraded 21%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -929,7 +993,7 @@ Best game (all their rounds scored together): Cache, best round 8 — 2 kills, 2
 
 ## plexx616 — 1 game
 
-Best game (all their rounds scored together): Anubis, best round 15 — won a 1v2 · 4 kills, 2 HS · +113 pts win chance. Best rounds: Anubis round 15 (won a 1v2 · 4 kills, 2 HS · +113 pts win chance). Why they died (15 deaths): flashed 13%, shot from outside their view 7%, outnumbered 20%, died alone, untraded 33%, lost the duel 27%.
+Best game (all their rounds scored together): Anubis, best round 15 — won a 1v2 · 4 kills, 2 HS · +115 pts win chance. Best rounds: Anubis round 15 (won a 1v2 · 4 kills, 2 HS · +115 pts win chance). Why they died (15 deaths): flashed 13%, shot from outside their view 7%, outnumbered 20%, died alone, untraded 33%, lost the duel 27%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -937,7 +1001,7 @@ Best game (all their rounds scored together): Anubis, best round 15 — won a 1v
 
 ## PretendArcher3 — 1 game
 
-Best game (all their rounds scored together): Train, best round 13 — 1 kill, 1 HS · +13 pts win chance. Best rounds: Train round 13 (1 kill, 1 HS · +13 pts win chance). Why they died (22 deaths): flashed 14%, shot from outside their view 5%, outnumbered 5%, died alone, untraded 23%, lost the duel 55%.
+Best game (all their rounds scored together): Train, best round 13 — 1 kill, 1 HS · +14 pts win chance. Best rounds: Train round 13 (1 kill, 1 HS · +14 pts win chance). Why they died (22 deaths): flashed 14%, shot from outside their view 5%, outnumbered 5%, died alone, untraded 23%, lost the duel 55%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -945,7 +1009,7 @@ Best game (all their rounds scored together): Train, best round 13 — 1 kill, 1
 
 ## PurpleDemon — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 8 — 3 kills, 1 HS · +47 pts win chance. Best rounds: Dust II round 8 (3 kills, 1 HS · +47 pts win chance). Why they died (12 deaths): flashed 0%, shot from outside their view 0%, outnumbered 25%, died alone, untraded 42%, lost the duel 33%.
+Best game (all their rounds scored together): Dust II, best round 8 — 3 kills, 1 HS · +49 pts win chance. Best rounds: Dust II round 8 (3 kills, 1 HS · +49 pts win chance). Why they died (12 deaths): flashed 0%, shot from outside their view 0%, outnumbered 25%, died alone, untraded 42%, lost the duel 33%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -959,7 +1023,7 @@ Best game (all their rounds scored together): Dust II, best round 8 — 3 kills,
 
 ## RENOZ — 1 game
 
-Best game (all their rounds scored together): Train, best round 8 — 3 kills, 1 HS · +62 pts win chance. Best rounds: Train round 8 (3 kills, 1 HS · +62 pts win chance). Why they died (14 deaths): flashed 0%, shot from outside their view 21%, outnumbered 0%, died alone, untraded 29%, lost the duel 50%.
+Best game (all their rounds scored together): Train, best round 8 — 3 kills, 1 HS · +63 pts win chance. Best rounds: Train round 8 (3 kills, 1 HS · +63 pts win chance). Why they died (14 deaths): flashed 0%, shot from outside their view 21%, outnumbered 0%, died alone, untraded 29%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -967,7 +1031,7 @@ Best game (all their rounds scored together): Train, best round 8 — 3 kills, 1
 
 ## RIO — 1 game
 
-Best game (all their rounds scored together): Train, best round 16 — won a 1v1 · 2 kills · +63 pts win chance. Best rounds: Train round 16 (won a 1v1 · 2 kills · +63 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 12%, outnumbered 12%, died alone, untraded 44%, lost the duel 31%.
+Best game (all their rounds scored together): Train, best round 16 — won a 1v1 · 2 kills · +65 pts win chance. Best rounds: Train round 16 (won a 1v1 · 2 kills · +65 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 12%, outnumbered 12%, died alone, untraded 44%, lost the duel 31%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -989,7 +1053,7 @@ Best game (all their rounds scored together): Mirage, best round 3 — won a 1v2
 
 ## Sandrone — 1 game
 
-Best game (all their rounds scored together): Train, best round 8 — 4 kills, 1 HS · +86 pts win chance. Best rounds: Train round 8 (4 kills, 1 HS · +86 pts win chance). Why they died (13 deaths): flashed 0%, shot from outside their view 8%, outnumbered 0%, died alone, untraded 31%, lost the duel 62%.
+Best game (all their rounds scored together): Train, best round 8 — 4 kills, 1 HS · +87 pts win chance. Best rounds: Train round 8 (4 kills, 1 HS · +87 pts win chance). Why they died (13 deaths): flashed 0%, shot from outside their view 8%, outnumbered 0%, died alone, untraded 31%, lost the duel 62%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -997,7 +1061,7 @@ Best game (all their rounds scored together): Train, best round 8 — 4 kills, 1
 
 ## Saul Goodmen — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 10 — won a 1v3 · 5 kills, 3 HS · +101 pts win chance. Best rounds: Mirage round 10 (won a 1v3 · 5 kills, 3 HS · +101 pts win chance). Why they died (3 deaths): flashed 0%, shot from outside their view 33%, outnumbered 0%, died alone, untraded 0%, lost the duel 67%.
+Best game (all their rounds scored together): Mirage, best round 10 — won a 1v3 · 5 kills, 3 HS · +102 pts win chance. Best rounds: Mirage round 10 (won a 1v3 · 5 kills, 3 HS · +102 pts win chance). Why they died (3 deaths): flashed 0%, shot from outside their view 33%, outnumbered 0%, died alone, untraded 0%, lost the duel 67%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1005,7 +1069,7 @@ Best game (all their rounds scored together): Mirage, best round 10 — won a 1v
 
 ## sef — 1 game
 
-Best game (all their rounds scored together): Train, best round 6 — 2 kills · +11 pts win chance. Best rounds: Train round 6 (2 kills · +11 pts win chance). Why they died (6 deaths): flashed 0%, shot from outside their view 17%, outnumbered 33%, died alone, untraded 0%, lost the duel 50%.
+Best game (all their rounds scored together): Train, best round 6 — 2 kills · +10 pts win chance. Best rounds: Train round 6 (2 kills · +10 pts win chance). Why they died (6 deaths): flashed 0%, shot from outside their view 17%, outnumbered 33%, died alone, untraded 0%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1013,7 +1077,7 @@ Best game (all their rounds scored together): Train, best round 6 — 2 kills ·
 
 ## shrekbestboi — 1 game
 
-Best game (all their rounds scored together): Vertigo, best round 8 — 3 kills, 1 HS · +48 pts win chance. Best rounds: Vertigo round 8 (3 kills, 1 HS · +48 pts win chance). Why they died (20 deaths): flashed 5%, shot from outside their view 10%, outnumbered 15%, died alone, untraded 25%, lost the duel 45%.
+Best game (all their rounds scored together): Vertigo, best round 8 — 3 kills, 1 HS · +50 pts win chance. Best rounds: Vertigo round 8 (3 kills, 1 HS · +50 pts win chance). Why they died (20 deaths): flashed 5%, shot from outside their view 10%, outnumbered 15%, died alone, untraded 25%, lost the duel 45%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1021,7 +1085,7 @@ Best game (all their rounds scored together): Vertigo, best round 8 — 3 kills,
 
 ## SilverFox — 1 game
 
-Best game (all their rounds scored together): Cache, best round 13 — 3 kills · +48 pts win chance. Best rounds: Cache round 13 (3 kills · +48 pts win chance). Why they died (7 deaths): flashed 0%, shot from outside their view 0%, outnumbered 14%, died alone, untraded 29%, lost the duel 57%.
+Best game (all their rounds scored together): Cache, best round 13 — 3 kills · +50 pts win chance. Best rounds: Cache round 13 (3 kills · +50 pts win chance). Why they died (7 deaths): flashed 0%, shot from outside their view 0%, outnumbered 14%, died alone, untraded 29%, lost the duel 57%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1029,7 +1093,7 @@ Best game (all their rounds scored together): Cache, best round 13 — 3 kills �
 
 ## SirThugg1n — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 11 — 4 kills, 1 HS · +78 pts win chance. Best rounds: Mirage round 11 (4 kills, 1 HS · +78 pts win chance). Why they died (9 deaths): flashed 11%, shot from outside their view 22%, outnumbered 11%, died alone, untraded 0%, lost the duel 56%.
+Best game (all their rounds scored together): Mirage, best round 11 — 4 kills, 1 HS · +80 pts win chance. Best rounds: Mirage round 11 (4 kills, 1 HS · +80 pts win chance). Why they died (9 deaths): flashed 11%, shot from outside their view 22%, outnumbered 11%, died alone, untraded 0%, lost the duel 56%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1037,7 +1101,7 @@ Best game (all their rounds scored together): Mirage, best round 11 — 4 kills,
 
 ## SmileMore — 1 game
 
-Best game (all their rounds scored together): Cache, best round 15 — 2 kills, 1 HS · +46 pts win chance. Best rounds: Cache round 15 (2 kills, 1 HS · +46 pts win chance). Why they died (5 deaths): flashed 0%, shot from outside their view 20%, outnumbered 20%, died alone, untraded 40%, lost the duel 20%.
+Best game (all their rounds scored together): Cache, best round 15 — 2 kills, 1 HS · +47 pts win chance. Best rounds: Cache round 15 (2 kills, 1 HS · +47 pts win chance). Why they died (5 deaths): flashed 0%, shot from outside their view 20%, outnumbered 20%, died alone, untraded 40%, lost the duel 20%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1045,7 +1109,7 @@ Best game (all their rounds scored together): Cache, best round 15 — 2 kills, 
 
 ## SOL1644 — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 10 — 2 kills, 1 HS · +44 pts win chance. Best rounds: Mirage round 10 (2 kills, 1 HS · +44 pts win chance). Why they died (10 deaths): flashed 10%, shot from outside their view 0%, outnumbered 30%, died alone, untraded 40%, lost the duel 20%.
+Best game (all their rounds scored together): Mirage, best round 10 — 2 kills, 1 HS · +45 pts win chance. Best rounds: Mirage round 10 (2 kills, 1 HS · +45 pts win chance). Why they died (10 deaths): flashed 10%, shot from outside their view 0%, outnumbered 30%, died alone, untraded 40%, lost the duel 20%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1053,7 +1117,7 @@ Best game (all their rounds scored together): Mirage, best round 10 — 2 kills,
 
 ## Stizzytron — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 4 — won a 1v1 · 3 kills, 1 HS · +92 pts win chance. Best rounds: Mirage round 4 (won a 1v1 · 3 kills, 1 HS · +92 pts win chance). Why they died (20 deaths): flashed 0%, shot from outside their view 5%, outnumbered 25%, died alone, untraded 20%, lost the duel 50%.
+Best game (all their rounds scored together): Mirage, best round 4 — won a 1v1 · 3 kills, 1 HS · +95 pts win chance. Best rounds: Mirage round 4 (won a 1v1 · 3 kills, 1 HS · +95 pts win chance). Why they died (20 deaths): flashed 0%, shot from outside their view 5%, outnumbered 25%, died alone, untraded 20%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1061,7 +1125,7 @@ Best game (all their rounds scored together): Mirage, best round 4 — won a 1v1
 
 ## Strayworl — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 4 — 3 kills, 2 HS · +39 pts win chance. Best rounds: Dust II round 4 (3 kills, 2 HS · +39 pts win chance). Why they died (8 deaths): flashed 0%, shot from outside their view 0%, outnumbered 25%, died alone, untraded 12%, lost the duel 62%.
+Best game (all their rounds scored together): Dust II, best round 4 — 3 kills, 2 HS · +40 pts win chance. Best rounds: Dust II round 4 (3 kills, 2 HS · +40 pts win chance). Why they died (8 deaths): flashed 0%, shot from outside their view 0%, outnumbered 25%, died alone, untraded 12%, lost the duel 62%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1069,7 +1133,7 @@ Best game (all their rounds scored together): Dust II, best round 4 — 3 kills,
 
 ## SuperCell — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 6 — 3 kills · +63 pts win chance. Best rounds: Mirage round 6 (3 kills · +63 pts win chance). Why they died (16 deaths): flashed 6%, shot from outside their view 19%, outnumbered 12%, died alone, untraded 19%, lost the duel 44%.
+Best game (all their rounds scored together): Mirage, best round 6 — 3 kills · +64 pts win chance. Best rounds: Mirage round 6 (3 kills · +64 pts win chance). Why they died (16 deaths): flashed 6%, shot from outside their view 19%, outnumbered 12%, died alone, untraded 19%, lost the duel 44%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1077,7 +1141,7 @@ Best game (all their rounds scored together): Mirage, best round 6 — 3 kills �
 
 ## SuperPanda2222 — 1 game
 
-Best game (all their rounds scored together): Train, best round 3 — won a 1v1 · 1 kill, 1 HS · +54 pts win chance. Best rounds: Train round 3 (won a 1v1 · 1 kill, 1 HS · +54 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 0%, outnumbered 31%, died alone, untraded 19%, lost the duel 50%.
+Best game (all their rounds scored together): Train, best round 3 — won a 1v1 · 1 kill, 1 HS · +55 pts win chance. Best rounds: Train round 3 (won a 1v1 · 1 kill, 1 HS · +55 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 0%, outnumbered 31%, died alone, untraded 19%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1091,9 +1155,17 @@ Best game (all their rounds scored together): Mirage, best round 14 — 5 kills,
 |---|---|---|---|---|---|---|
 | 2026-10-15 02:00 UTC | Mirage | against Ric | 13:7 win | 30-14-5 | 167 | [report](3848354346483843102.md) |
 
+## tepe — 1 game
+
+Best game (all their rounds scored together): Inferno, best round 24 — 3 kills, 3 HS · +25 pts win chance. Best rounds: Inferno round 24 (3 kills, 3 HS · +25 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 6%, outnumbered 0%, died alone, untraded 31%, lost the duel 62%.
+
+| Date | Map | Side | Their result | K-D-A | ADR | Match |
+|---|---|---|---|---|---|---|
+| 2026-10-20 05:05 UTC | Inferno | against Ric | 13:11 win | 20-16-9 | 120 | [report](gsi-20261020T050557.md) |
+
 ## Terrence Jackson — 1 game
 
-Best game (all their rounds scored together): Vertigo, best round 2 — 3 kills · +43 pts win chance. Best rounds: Vertigo round 2 (3 kills · +43 pts win chance). Why they died (15 deaths): flashed 0%, shot from outside their view 7%, outnumbered 13%, died alone, untraded 20%, lost the duel 60%.
+Best game (all their rounds scored together): Vertigo, best round 2 — 3 kills · +44 pts win chance. Best rounds: Vertigo round 2 (3 kills · +44 pts win chance). Why they died (15 deaths): flashed 0%, shot from outside their view 7%, outnumbered 13%, died alone, untraded 20%, lost the duel 60%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1101,7 +1173,7 @@ Best game (all their rounds scored together): Vertigo, best round 2 — 3 kills 
 
 ## Tex — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 4 — 3 kills · +40 pts win chance. Best rounds: Dust II round 4 (3 kills · +40 pts win chance). Why they died (13 deaths): flashed 0%, shot from outside their view 0%, outnumbered 15%, died alone, untraded 46%, lost the duel 38%.
+Best game (all their rounds scored together): Dust II, best round 4 — 3 kills · +41 pts win chance. Best rounds: Dust II round 4 (3 kills · +41 pts win chance). Why they died (13 deaths): flashed 0%, shot from outside their view 0%, outnumbered 15%, died alone, untraded 46%, lost the duel 38%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1109,7 +1181,7 @@ Best game (all their rounds scored together): Dust II, best round 4 — 3 kills 
 
 ## thatsmyboy — 1 game
 
-Best game (all their rounds scored together): Train, best round 4 — won a 1v2 · 3 kills, 1 HS · +82 pts win chance. Best rounds: Train round 4 (won a 1v2 · 3 kills, 1 HS · +82 pts win chance). Why they died (14 deaths): flashed 7%, shot from outside their view 21%, outnumbered 14%, died alone, untraded 21%, lost the duel 36%.
+Best game (all their rounds scored together): Train, best round 4 — won a 1v2 · 3 kills, 1 HS · +83 pts win chance. Best rounds: Train round 4 (won a 1v2 · 3 kills, 1 HS · +83 pts win chance). Why they died (14 deaths): flashed 7%, shot from outside their view 21%, outnumbered 14%, died alone, untraded 21%, lost the duel 36%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1133,7 +1205,7 @@ Best game (all their rounds scored together): Mirage, best round 1 — 1 kill, 1
 
 ## TheRed — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 11 — 3 kills · +66 pts win chance. Best rounds: Mirage round 11 (3 kills · +66 pts win chance). Why they died (18 deaths): flashed 0%, shot from outside their view 17%, outnumbered 6%, died alone, untraded 50%, lost the duel 28%.
+Best game (all their rounds scored together): Mirage, best round 11 — 3 kills · +67 pts win chance. Best rounds: Mirage round 11 (3 kills · +67 pts win chance). Why they died (18 deaths): flashed 0%, shot from outside their view 17%, outnumbered 6%, died alone, untraded 50%, lost the duel 28%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1157,7 +1229,7 @@ Best game (all their rounds scored together): Vertigo, best round 20 — 2 kills
 
 ## Thug Muffin — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 6 — 2 kills, 1 HS · +18 pts win chance. Best rounds: Dust II round 6 (2 kills, 1 HS · +18 pts win chance). Why they died (4 deaths): flashed 0%, shot from outside their view 0%, outnumbered 50%, died alone, untraded 25%, lost the duel 25%.
+Best game (all their rounds scored together): Dust II, best round 6 — 2 kills, 1 HS · +19 pts win chance. Best rounds: Dust II round 6 (2 kills, 1 HS · +19 pts win chance). Why they died (4 deaths): flashed 0%, shot from outside their view 0%, outnumbered 50%, died alone, untraded 25%, lost the duel 25%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1171,7 +1243,7 @@ Best game (all their rounds scored together): Dust II, best round 6 — 2 kills,
 
 ## TooLegit2Quit — 1 game
 
-Best game (all their rounds scored together): Cache, best round 14 — won a 1v1 · 1 kill · on an eco · +44 pts win chance. Best rounds: Cache round 14 (won a 1v1 · 1 kill · on an eco · +44 pts win chance). Why they died (14 deaths): flashed 0%, shot from outside their view 0%, outnumbered 14%, died alone, untraded 36%, lost the duel 50%.
+Best game (all their rounds scored together): Cache, best round 14 — won a 1v1 · 1 kill · on an eco · +43 pts win chance. Best rounds: Cache round 14 (won a 1v1 · 1 kill · on an eco · +43 pts win chance). Why they died (14 deaths): flashed 0%, shot from outside their view 0%, outnumbered 14%, died alone, untraded 36%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1179,7 +1251,7 @@ Best game (all their rounds scored together): Cache, best round 14 — won a 1v1
 
 ## Unpleasantt — 1 game
 
-Best game (all their rounds scored together): Train, best round 20 — won a 1v1 · 4 kills, 1 HS · +110 pts win chance. Best rounds: Train round 20 (won a 1v1 · 4 kills, 1 HS · +110 pts win chance). Why they died (9 deaths): flashed 0%, shot from outside their view 22%, outnumbered 11%, died alone, untraded 44%, lost the duel 22%.
+Best game (all their rounds scored together): Train, best round 20 — won a 1v1 · 4 kills, 1 HS · +111 pts win chance. Best rounds: Train round 20 (won a 1v1 · 4 kills, 1 HS · +111 pts win chance). Why they died (9 deaths): flashed 0%, shot from outside their view 22%, outnumbered 11%, died alone, untraded 44%, lost the duel 22%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1211,7 +1283,7 @@ Best game (all their rounds scored together): Cache, best round 13 — 1 kill ·
 
 ## Weed is tight — 1 game
 
-Best game (all their rounds scored together): Train, best round 12 — won a 1v3 · 4 kills, 3 HS · +102 pts win chance. Best rounds: Train round 12 (won a 1v3 · 4 kills, 3 HS · +102 pts win chance). Why they died (12 deaths): flashed 8%, shot from outside their view 17%, outnumbered 0%, died alone, untraded 33%, lost the duel 42%.
+Best game (all their rounds scored together): Train, best round 12 — won a 1v3 · 4 kills, 3 HS · +103 pts win chance. Best rounds: Train round 12 (won a 1v3 · 4 kills, 3 HS · +103 pts win chance). Why they died (12 deaths): flashed 8%, shot from outside their view 17%, outnumbered 0%, died alone, untraded 33%, lost the duel 42%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1219,7 +1291,7 @@ Best game (all their rounds scored together): Train, best round 12 — won a 1v3
 
 ## Wenndigo — 1 game
 
-Best game (all their rounds scored together): Train, best round 13 — won a 1v1 · 2 kills, 1 HS · +51 pts win chance. Best rounds: Train round 13 (won a 1v1 · 2 kills, 1 HS · +51 pts win chance). Why they died (6 deaths): flashed 0%, shot from outside their view 17%, outnumbered 17%, died alone, untraded 50%, lost the duel 17%.
+Best game (all their rounds scored together): Train, best round 13 — won a 1v1 · 2 kills, 1 HS · +50 pts win chance. Best rounds: Train round 13 (won a 1v1 · 2 kills, 1 HS · +50 pts win chance). Why they died (6 deaths): flashed 0%, shot from outside their view 17%, outnumbered 17%, died alone, untraded 50%, lost the duel 17%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1227,7 +1299,7 @@ Best game (all their rounds scored together): Train, best round 13 — won a 1v1
 
 ## Wlgwalker — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 22 — won a 1v1 · 1 kill · +52 pts win chance. Best rounds: Mirage round 22 (won a 1v1 · 1 kill · +52 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 6%, outnumbered 12%, died alone, untraded 38%, lost the duel 44%.
+Best game (all their rounds scored together): Mirage, best round 22 — won a 1v1 · 1 kill · +53 pts win chance. Best rounds: Mirage round 22 (won a 1v1 · 1 kill · +53 pts win chance). Why they died (16 deaths): flashed 0%, shot from outside their view 6%, outnumbered 12%, died alone, untraded 38%, lost the duel 44%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1243,7 +1315,7 @@ Best game (all their rounds scored together): Dust II, best round 1 — 1 kill, 
 
 ## wtfpreston — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 8 — won a 1v2 · 3 kills, 2 HS · on an eco · +101 pts win chance. Best rounds: Mirage round 8 (won a 1v2 · 3 kills, 2 HS · on an eco · +101 pts win chance). Why they died (19 deaths): flashed 16%, shot from outside their view 5%, outnumbered 16%, died alone, untraded 26%, lost the duel 37%.
+Best game (all their rounds scored together): Mirage, best round 8 — won a 1v2 · 3 kills, 2 HS · on an eco · +103 pts win chance. Best rounds: Mirage round 8 (won a 1v2 · 3 kills, 2 HS · on an eco · +103 pts win chance). Why they died (19 deaths): flashed 16%, shot from outside their view 5%, outnumbered 16%, died alone, untraded 26%, lost the duel 37%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1283,7 +1355,7 @@ Best game (all their rounds scored together): Anubis, best round 4 — 2 kills, 
 
 ## Your Favorite Boss — 1 game
 
-Best game (all their rounds scored together): Anubis, best round 3 — won a 1v3 · 4 kills · +100 pts win chance. Best rounds: Anubis round 3 (won a 1v3 · 4 kills · +100 pts win chance). Why they died (10 deaths): flashed 0%, shot from outside their view 20%, outnumbered 20%, died alone, untraded 10%, lost the duel 50%.
+Best game (all their rounds scored together): Anubis, best round 3 — won a 1v3 · 4 kills · +101 pts win chance. Best rounds: Anubis round 3 (won a 1v3 · 4 kills · +101 pts win chance). Why they died (10 deaths): flashed 0%, shot from outside their view 20%, outnumbered 20%, died alone, untraded 10%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1291,7 +1363,7 @@ Best game (all their rounds scored together): Anubis, best round 3 — won a 1v3
 
 ## ᵗᵒˣiᶜᶜᵘᵗiᵉ — 1 game
 
-Best game (all their rounds scored together): Train, best round 5 — 2 kills, 2 HS · on an eco · +44 pts win chance. Best rounds: Train round 5 (2 kills, 2 HS · on an eco · +44 pts win chance). Why they died (7 deaths): flashed 14%, shot from outside their view 0%, outnumbered 14%, died alone, untraded 29%, lost the duel 43%.
+Best game (all their rounds scored together): Train, best round 5 — 2 kills, 2 HS · on an eco · +45 pts win chance. Best rounds: Train round 5 (2 kills, 2 HS · on an eco · +45 pts win chance). Why they died (7 deaths): flashed 14%, shot from outside their view 0%, outnumbered 14%, died alone, untraded 29%, lost the duel 43%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1299,7 +1371,7 @@ Best game (all their rounds scored together): Train, best round 5 — 2 kills, 2
 
 ## 𝕄𝕚𝕔𝕙𝕒𝕖𝕝 — 1 game
 
-Best game (all their rounds scored together): Dust II, best round 1 — 2 kills, 2 HS · +39 pts win chance. Best rounds: Dust II round 1 (2 kills, 2 HS · +39 pts win chance). Why they died (6 deaths): flashed 17%, shot from outside their view 0%, outnumbered 17%, died alone, untraded 17%, lost the duel 50%.
+Best game (all their rounds scored together): Dust II, best round 1 — 2 kills, 2 HS · +40 pts win chance. Best rounds: Dust II round 1 (2 kills, 2 HS · +40 pts win chance). Why they died (6 deaths): flashed 17%, shot from outside their view 0%, outnumbered 17%, died alone, untraded 17%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
@@ -1307,7 +1379,7 @@ Best game (all their rounds scored together): Dust II, best round 1 — 2 kills,
 
 ## 🧀 cheesy 🧀 — 1 game
 
-Best game (all their rounds scored together): Mirage, best round 4 — 2 kills, 2 HS · +30 pts win chance. Best rounds: Mirage round 4 (2 kills, 2 HS · +30 pts win chance). Why they died (6 deaths): flashed 0%, shot from outside their view 0%, outnumbered 33%, died alone, untraded 17%, lost the duel 50%.
+Best game (all their rounds scored together): Mirage, best round 4 — 2 kills, 2 HS · +31 pts win chance. Best rounds: Mirage round 4 (2 kills, 2 HS · +31 pts win chance). Why they died (6 deaths): flashed 0%, shot from outside their view 0%, outnumbered 33%, died alone, untraded 17%, lost the duel 50%.
 
 | Date | Map | Side | Their result | K-D-A | ADR | Match |
 |---|---|---|---|---|---|---|
