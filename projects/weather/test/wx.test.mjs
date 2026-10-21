@@ -38,7 +38,7 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     ...W.SPC_KINDS.map(k => W.ROUTES.spc(k)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.column(m, 12.34, -56.78)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.modelRun(m)),
-    W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78), W.ROUTES.stationObs('ABC'),
+    W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78), W.ROUTES.stationObs('ABC'), W.ROUTES.plumes(12.34, -56.78),
     W.ROUTES.several([{ lat: 12.34, lon: -56.78 }, { lat: -33.87, lon: 151.21 }])
   ];
   for (const [path, direct] of routes) {
@@ -358,6 +358,31 @@ console.log('\nRULE  stations on the map: their own readings, in the page\'s uni
     '°F to °C, knots to km/h, miles to metres, inches to mm; a gust of 0 is no gust');
   ok(a.sky === 'Overcast' && a.wx === '-RA' && a.name === 'SOME FIELD', 'the sky is the thickest layer reported; weather codes kept as reported');
   ok(W.ROUTES.stationObs('abc') === null && W.ROUTES.stationObs('ABCD') === null, 'only a three-letter office is ever asked for');
+}
+
+console.log('\nRULE  the ensemble: every run its own line, and the days counted from the runs');
+{
+  const D = 1_800_000_000 - (1_800_000_000 % 86400);
+  const time = Array.from({ length: 48 }, (_, i) => D + i * 3600);
+  const hourly = { time };
+  /* five GEFS runs and five ECMWF ones: highs 10…14 °C on day one, and the
+     wet ones rain 2 mm at noon on day two */
+  for (const [set, base] of [['ncep_gefs025', 0], ['ecmwf_ifs025_ensemble', 5]]) {
+    for (let m = 0; m < 5; m++) {
+      const sfx = (m ? `_member${String(m).padStart(2, '0')}` : '') + '_' + set;
+      hourly['temperature_2m' + sfx] = time.map((t, i) => (i % 24 === 15 ? 10 + m : 5));
+      hourly['precipitation' + sfx] = time.map((t, i) => (i === 36 && (base + m) % 2 === 0 ? 2 : 0));
+    }
+  }
+  hourly.temperature_2m_member09_ncep_gefs025 = time.map(() => null);      // a member with nothing
+  const pl = W.normalizePlumes({ hourly, timezone: 'X' });
+  ok(pl.members.length === 10 && pl.members.filter(m => m.set === 'GEFS').length === 5, 'every member, control included, sorted into its ensemble; an empty member left out');
+  const st = W.plumeStats(pl, [D, D + 86400]);
+  /* the ten runs' highs are 10, 10, 11, 11 … 14, 14 */
+  ok(near(st.days[0].hi10, 10) && near(st.days[0].hi50, 12) && near(st.days[0].hi90, 14), "a day's highs: 10th, 50th and 90th percentile of the runs' own highs");
+  ok(st.days[0].wet === 0 && st.days[1].wet === 0.5, 'chance of rain is the share of runs with 1 mm or more that day');
+  ok(W.quantile([3, 1, 2], 0.5) === 2 && W.quantile([], 0.5) === null, 'quantiles, and none of nothing');
+  ok(W.normalizePlumes({}) === null && W.plumeStats(null, []) === null, 'no ensemble, no claim');
 }
 
 console.log('\nRULE  calm is calm, not "N 0"');

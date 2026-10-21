@@ -126,6 +126,11 @@
     ensemble: (lat, lon) => [`ens?lat=${coord(lat)}&lon=${coord(lon)}`,
       `${OM}?${new URLSearchParams({ latitude: coord(lat), longitude: coord(lon), hourly: 'temperature_2m,precipitation,wind_speed_10m',
         models: ENSEMBLE.map(m => MODELS_OM[m]).join(','), forecast_days: '7', timezone: 'auto', timeformat: 'unixtime' })}`],
+    /* the two big ensembles, every member, for a week (§17.2): GEFS (31 runs)
+       and ECMWF ENS (51). ~150 KB, 18 KB as sent; asked only when opened */
+    plumes: (lat, lon) => [`plume?lat=${coord(lat)}&lon=${coord(lon)}`,
+      `https://ensemble-api.open-meteo.com/v1/ensemble?${new URLSearchParams({ latitude: coord(lat), longitude: coord(lon), hourly: 'temperature_2m,precipitation',
+        models: 'gfs025,ecmwf_ifs025', forecast_days: '7', timezone: 'auto', timeformat: 'unixtime' })}`],
     /* the current temperature and sky at several saved places, one request */
     several: places => {
       const ps = places.slice(0, 12).filter(p => validLat(p.lat) && validLon(p.lon));
@@ -1071,6 +1076,58 @@
     return { past: np >= 20 ? past : null, next: nn >= 20 ? next : null };
   }
 
+  /* ── ensemble plumes (§17.2) ──
+     Every member of GEFS and ECMWF ENS as its own run: {times, members:
+     [{set, t: [°C…], p: [mm…]}]}. Open-Meteo names a member's column
+     `temperature_2m_member07_ncep_gefs025`, and the control run has no
+     member number. A member missing most of its hours is left out. */
+  const PLUME_SETS = { ncep_gefs025: 'GEFS', ecmwf_ifs025_ensemble: 'ECMWF ENS' };
+  function normalizePlumes(j) {
+    const h = j && j.hourly;
+    if (!h || !Array.isArray(h.time)) return null;
+    const runs = new Map();
+    for (const [k, col] of Object.entries(h)) {
+      const m = /^(temperature_2m|precipitation)(?:_member(\d+))?_(ncep_gefs025|ecmwf_ifs025_ensemble)$/.exec(k);
+      if (!m || !Array.isArray(col)) continue;
+      const id = `${m[3]}:${m[2] || '00'}`;
+      if (!runs.has(id)) runs.set(id, { set: PLUME_SETS[m[3]], t: null, p: null });
+      runs.get(id)[m[1] === 'temperature_2m' ? 't' : 'p'] = col.map(v => has(v) ? Number(v) : null);
+    }
+    const n = h.time.length;
+    const members = [...runs.values()].filter(r => r.t && r.t.filter(v => v !== null).length > n * 0.8);
+    return members.length ? { times: h.time.slice(), members, tz: j.timezone || 'UTC' } : null;
+  }
+  async function plumes(lat, lon, signal) {
+    return normalizePlumes((await ask(ROUTES.plumes(lat, lon), signal, 20000)).data);
+  }
+  /* the q-th fraction of a list, linearly between neighbours */
+  function quantile(xs, q) {
+    const s = xs.filter(Number.isFinite).sort((a, b) => a - b);
+    if (!s.length) return null;
+    const i = (s.length - 1) * q, lo = Math.floor(i);
+    return s[lo] + (s[Math.min(lo + 1, s.length - 1)] - s[lo]) * (i - lo);
+  }
+  /* Each hour's spread (10th, 50th, 90th percentile), and each local day's
+     high spread and the share of runs with 1 mm or more of rain in it.
+     `days` are local midnights (unix s), as in the forecast's daily rows. */
+  function plumeStats(pl, days) {
+    if (!pl) return null;
+    const hours = pl.times.map((t, i) => {
+      const xs = pl.members.map(m => m.t[i]);
+      return { t, p10: quantile(xs, 0.1), p50: quantile(xs, 0.5), p90: quantile(xs, 0.9) };
+    });
+    const out = [];
+    for (const d of days || []) {
+      const idx = pl.times.map((t, i) => t >= d && t < d + 86400 ? i : -1).filter(i => i >= 0);
+      if (idx.length < 20) continue;
+      const highs = pl.members.map(m => Math.max(...idx.map(i => m.t[i]).filter(v => v !== null)));
+      const totals = pl.members.filter(m => m.p).map(m => idx.reduce((a, i) => a + (m.p[i] || 0), 0));
+      out.push({ t: d, runs: pl.members.length, hi10: quantile(highs, 0.1), hi50: quantile(highs, 0.5), hi90: quantile(highs, 0.9),
+        wet: totals.length ? totals.filter(x => x >= 1).length / totals.length : null, rain50: quantile(totals, 0.5), rain90: quantile(totals, 0.9) });
+    }
+    return { hours, days: out, runs: pl.members.length, sets: [...new Set(pl.members.map(m => m.set))] };
+  }
+
   /* ── stations on the map (§19.1) ──
      IEM's current ASOS readings for one forecast office, in the page's
      units (°C, km/h, m, hPa). Positions are read at run time and never kept
@@ -1354,7 +1411,7 @@
     several, summary, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet,
     inMosaic, nowcast, nowcastRecord,
     CALM_KMH, isCalm, RIDE, rideOutlook, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M,
-    normalizeStationObs, stationObs
+    normalizeStationObs, stationObs, normalizePlumes, plumes, plumeStats, quantile
   };
   root.Wx = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

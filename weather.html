@@ -445,6 +445,14 @@
     .cmpkey span{display:inline-flex;align-items:center;gap:6px}
     .cmpkey i{width:16px;height:3px;border-radius:2px;display:inline-block}
     .cmpsay{font-size:15px;font-weight:600;margin-top:8px}
+    /* the ensemble's days: a row each */
+    .plrows{display:grid;gap:4px;margin-top:10px;font-size:14px}
+    .plrow{display:grid;grid-template-columns:76px minmax(0,1fr) 42px 74px;gap:10px;align-items:center}
+    .plrow.plhead{font-size:12px;color:var(--faint);letter-spacing:.04em}
+    .plrow.plhead span:last-child{text-align:right}
+    .plbar{height:8px;border-radius:4px;background:rgba(0,0,0,.28);overflow:hidden}
+    .plbar i{display:block;height:100%;border-radius:4px;background:var(--rain)}
+    .plp,.plh{text-align:right;font-weight:600}
 
     /* above you: the ingredients timeline */
     .tl{margin-top:10px}
@@ -646,7 +654,7 @@
 
 <script src="effects.js"></script>
 <script src="projects/weather/nowcast.js?v=1"></script>
-<script src="projects/weather/wx.js?v=6"></script>
+<script src="projects/weather/wx.js?v=7"></script>
 <script src="projects/weather/sounding.js?v=1"></script>
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
@@ -759,7 +767,7 @@
     S.err = {};
     if (!S.fc || S.fc.key !== key) {
       Object.assign(S, { fc: null, fcStale: false, pt: undefined, obs: undefined, office: undefined, alerts: undefined, state: undefined, selected: null, focusedStorm: null,
-        ens: undefined, rec: undefined, verdict: null, fcShown: null, now: undefined });
+        ens: undefined, rec: undefined, verdict: null, fcShown: null, now: undefined, plumes: undefined });
       sky.reset();
       /* The last forecast for this place, kept in this browser so a phone
          with no signal still has something to show (§34) — labelled as old. */
@@ -1121,13 +1129,19 @@
      HRRR stops after two days; that is the model, not a gap here. */
   const CMP_COLORS = { best: "#ffffff", nbm: "#7fd3ff", hrrr: "#ffb703", gfs: "#ff7b6b", ecmwf: "#8ee59b", aifs: "#d9a6ff", shown: "#ffffff" };
   const CMP_VARS = { t: "Temperature", p: "Rain (total from now)", w: "Wind" };
-  S.cmp = { v: "t", span: 72 };
+  S.cmp = { v: "t", span: 72, view: "models" };
+  /* the card's two views: the deterministic models side by side, or the two
+     big ensembles, every run */
+  const viewSeg = () => `<div class="seg" role="group" aria-label="Models or ensemble">
+      <button type="button" data-cmpview="models" aria-pressed="${S.cmp.view === "models"}">Five models</button>
+      <button type="button" data-cmpview="plume" aria-pressed="${S.cmp.view === "plume"}">Ensemble · 82 runs</button></div>`;
   function renderModels() {
     const box = $("#models"), body = $("#modelsbody");
     const fc = S.fc, ens = S.ens;
     if (!S.place || !fc || !ens) { box.hidden = true; return; }
     box.hidden = false;
     if (!$("#modelsd").open) return;                          // drawn when opened
+    if (S.cmp.view === "plume") { renderPlumes(body); return; }
     const k = clk(), now = nowSec(), { v, span } = S.cmp, us = U() === "us";
     const end = now + span * 3600, start = now - (now % 3600);
     const conv = v === "t" ? (c) => us ? Wx.cToF(c) : c : v === "w" ? (x) => us ? x / 1.609344 : x : (mm) => us ? mm / 25.4 : mm;
@@ -1145,7 +1159,7 @@
     const sh = shown();
     if (v === "t" && sh.blended) for (const h of sh.hourly) if (h.t >= start && h.t <= end && h.blended) add("shown", h.t, conv(h.temp));
     const all = Object.values(lines).flat().map((p) => p[1]);
-    if (all.length < 4) { body.innerHTML = '<p class="dim">The models have nothing to compare here yet.</p>'; return; }
+    if (all.length < 4) { body.innerHTML = viewSeg() + '<p class="dim">The models have nothing to compare here yet.</p>'; return; }
     let lo = Math.min(...all), hi = Math.max(...all);
     if (v !== "t") lo = 0;
     if (hi - lo < (v === "t" ? 4 : v === "p" ? (us ? 0.2 : 5) : 10)) { const mid = (hi + lo) / 2, half = (v === "t" ? 4 : v === "p" ? (us ? 0.2 : 5) : 10) / 2; lo = v === "t" ? mid - half : 0; hi = v === "t" ? mid + half : Math.max(hi, half * 2); }
@@ -1185,14 +1199,74 @@
     } else if (worst) say = `Wind: the models differ by up to ${Math.round(worst.sp)} ${esc(unit)}.`;
     const keyHtml = order.filter((m) => lines[m]).map((m) => `<span><i style="background:${CMP_COLORS[m]}${m === "best" ? ";background:repeating-linear-gradient(90deg,#fff 0 5px,transparent 5px 9px)" : ""}"></i>${m === "best" ? "Standard forecast" : m === "shown" ? "Shown on this page" : esc(nm(m))}</span>`).join("");
     const seg = (attr, val, label, on) => `<button type="button" data-${attr}="${val}" aria-pressed="${on}">${label}</button>`;
-    body.innerHTML = `<div class="seg" role="group" aria-label="What to compare">${Object.entries(CMP_VARS).map(([x, l]) => seg("cmpv", x, l.split(" (")[0], x === v)).join("")}
+    body.innerHTML = viewSeg() + `<div class="seg" role="group" aria-label="What to compare">${Object.entries(CMP_VARS).map(([x, l]) => seg("cmpv", x, l.split(" (")[0], x === v)).join("")}
         <span class="sep"></span>${seg("cmps", 72, "3 days", span === 72)}${seg("cmps", 168, "7 days", span === 168)}</div>
       ${say ? `<p class="cmpsay">${say}</p>` : ""}
       <svg class="cmpchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(CMP_VARS[v])} from each model, ${span === 72 ? "three" : "seven"} days, in ${esc(unit)}. ${esc(say.replace(/<[^>]+>/g, ""))}">${grid}${svgLines}</svg>
       <div class="cmpkey">${keyHtml}</div>
       <p class="nextnote">${esc(CMP_VARS[v])}, ${esc(unit)}. Each line is one model's latest run, read for this spot. HRRR runs only two days ahead. The page's track record below says which of them has been closest here.</p>`;
   }
+  /* ── the ensemble plume (§17.2) ──
+     Every run of GEFS (31) and ECMWF ENS (51) for a week: each one the same
+     model started from slightly different weather, to show what could
+     happen. Faint lines for the runs, a band for the middle 80%, the middle
+     run bold, the standard forecast dashed; then, per day, the share of runs
+     with rain and the spread of their highs. Fetched only when opened. */
+  function renderPlumes(body) {
+    const place = S.place;
+    if (S.plumes === undefined) {
+      S.plumes = null; S.plumesBusy = true;
+      const key = placeKey(place);
+      Wx.plumes(place.lat, place.lon).then((p) => { if (S.place && placeKey(S.place) === key) { S.plumes = p || false; S.plumesAt = Date.now(); } })
+        .catch(() => { if (S.place && placeKey(S.place) === key) S.plumes = false; })
+        .finally(() => { S.plumesBusy = false; if (S.cmp.view === "plume") renderModels(); renderSources(); });
+    }
+    if (S.plumesBusy) { body.innerHTML = viewSeg() + `<p class="loading">Fetching 82 runs…</p>`; return; }
+    if (!S.plumes) { body.innerHTML = viewSeg() + `<p class="err">The ensemble service did not answer. Try again later, or look at the five models.</p>`; return; }
+    const pl = S.plumes, fc = S.fc, k = clk(), us = U() === "us", now = nowSec();
+    const conv = (c) => us ? Wx.cToF(c) : c, unit = us ? "°F" : "°C";
+    const days = Wx.upcomingDays(fc, now).map((d) => d.t);
+    const st = Wx.plumeStats(pl, days);
+    const start = now - (now % 3600), end = Math.min(start + 168 * 3600, pl.times[pl.times.length - 1]);
+    const idx = pl.times.map((t, i) => t >= start && t <= end ? i : -1).filter((i) => i >= 0);
+    if (idx.length < 6) { body.innerHTML = viewSeg() + `<p class="dim">The ensemble has nothing for the days ahead here yet.</p>`; return; }
+    const all = pl.members.flatMap((m) => idx.map((i) => m.t[i])).filter((x) => x != null).map(conv);
+    let lo = Math.min(...all), hi = Math.max(...all);
+    if (hi - lo < 6) { const mid = (hi + lo) / 2; lo = mid - 3; hi = mid + 3; }
+    const W = Math.max(280, Math.round(body.clientWidth || 640)), H = W < 500 ? 210 : 250, L = 40, R = 8, T = 10, B = 24;
+    const X = (t) => L + (t - start) / (end - start) * (W - L - R), Y = (x) => T + (1 - (x - lo) / (hi - lo)) * (H - T - B);
+    let grid = "";
+    const raw = (hi - lo) / 4, mag = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 5, 10].map((m) => m * mag).find((x) => x >= raw);
+    for (let x = Math.ceil(lo / step) * step; x <= hi + 1e-9; x += step) grid += `<line x1="${L}" x2="${W - R}" y1="${Y(x)}" y2="${Y(x)}" stroke="rgba(255,255,255,.12)"/><text x="${L - 6}" y="${Y(x) + 4}" text-anchor="end">${Math.round(x)}</text>`;
+    for (let t = start; t <= end; t += 3600) if (k.hour(t * 1000) === "12AM") grid += `<line x1="${X(t)}" x2="${X(t)}" y1="${T}" y2="${H - B}" stroke="rgba(255,255,255,.18)"/><text x="${X(t) + 4}" y="${H - 7}">${esc(k.day(t * 1000))}</text>`;
+    const path = (pts) => pts.map(([t, x], j) => `${j ? "L" : "M"}${X(t).toFixed(1)},${Y(x).toFixed(1)}`).join("");
+    const runs = pl.members.map((m) => `<path d="${path(idx.filter((i) => m.t[i] != null).map((i) => [pl.times[i], conv(m.t[i])]))}" fill="none" stroke="${m.set === "GEFS" ? "rgba(255,123,107,.22)" : "rgba(142,229,155,.22)"}" stroke-width="1"/>`).join("");
+    const hrs = st.hours.filter((h) => h.t >= start && h.t <= end && h.p10 != null);
+    const band = `<path d="${path(hrs.map((h) => [h.t, conv(h.p90)]))}L${hrs.slice().reverse().map((h) => `${X(h.t).toFixed(1)},${Y(conv(h.p10)).toFixed(1)}`).join("L")}Z" fill="rgba(124,196,255,.22)"/>`;
+    const median = `<path d="${path(hrs.map((h) => [h.t, conv(h.p50)]))}" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/>`;
+    const std = `<path d="${path(fc.hourly.filter((h) => h.t >= start && h.t <= end && h.temp != null).map((h) => [h.t, conv(h.temp)]))}" fill="none" stroke="#ffd166" stroke-width="2" stroke-dasharray="5 4"/>`;
+    /* per day, in words and a row each */
+    const D = st.days.filter((d) => d.t + 86400 > now);
+    const loose = D.reduce((b, d) => !b || d.hi90 - d.hi10 > b.hi90 - b.hi10 ? d : b, null);
+    const wettest = D.reduce((b, d) => d.wet != null && (!b || d.wet > b.wet) ? d : b, null);
+    const dn = (d) => d.t <= now ? "today" : k.dayLong(d.t * 1000 + 43200e3).split(",")[0];
+    const say = [
+      wettest && wettest.wet >= 0.1 ? `${dn(wettest)[0].toUpperCase() + dn(wettest).slice(1)} is the likeliest to be wet: ${Math.round(wettest.wet * 100)}% of the ${st.runs} runs have rain.` : `None of the ${st.runs} runs has much rain this week.`,
+      loose ? `They are least sure about ${dn(loose)}: the warmest tenth have a high above ${Math.round(conv(loose.hi90))}°, the coolest tenth below ${Math.round(conv(loose.hi10))}°.` : ""
+    ].filter(Boolean).join(" ");
+    const rows = D.map((d) => `<div class="plrow"><span class="pld">${esc(d.t <= now ? "Today" : k.day(d.t * 1000 + 43200e3))}</span>
+        <span class="plbar" title="${d.wet != null ? Math.round(d.wet * 100) + "% of runs have 1 mm or more" : ""}"><i style="width:${d.wet != null ? Math.max(2, d.wet * 100) : 0}%"></i></span>
+        <span class="plp num">${d.wet != null ? Math.round(d.wet * 100) + "%" : "–"}</span>
+        <span class="plh num">${Math.round(conv(d.hi10))}–${Math.round(conv(d.hi90))}°</span></div>`).join("");
+    body.innerHTML = viewSeg() + `<p class="cmpsay">${esc(say)}</p>
+      <svg class="cmpchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Temperature from ${st.runs} ensemble runs for the week, in ${unit}. ${esc(say)}">${grid}${runs}${band}${median}${std}</svg>
+      <div class="cmpkey"><span><i style="background:rgba(255,123,107,.8)"></i>GEFS runs (${pl.members.filter((m) => m.set === "GEFS").length})</span><span><i style="background:rgba(142,229,155,.8)"></i>ECMWF ENS runs (${pl.members.filter((m) => m.set !== "GEFS").length})</span><span><i style="background:rgba(124,196,255,.6);height:8px"></i>Middle 80%</span><span><i style="background:#fff"></i>Middle run</span><span><i style="background:repeating-linear-gradient(90deg,#ffd166 0 5px,transparent 5px 9px)"></i>Standard forecast</span></div>
+      <div class="plrows"><div class="plrow plhead"><span>Day</span><span>Chance of rain</span><span></span><span title="The middle 80% of the runs' highs">Highs</span></div>${rows}</div>
+      <p class="nextnote">${unit}. Each faint line is one run of an ensemble — the same model started from slightly different weather, so the spread shows how much the forecast could change. Chance of rain is the share of all ${st.runs} runs with 1 mm or more that day; highs are the middle 80% of the runs' own. The runs are the models' own, not corrected for this place, so the band can sit off the forecast above. Via Open-Meteo, fetched ${esc(Wx.age(Date.now() - S.plumesAt))} ago.</p>`;
+  }
   document.addEventListener("click", (e) => {
+    const vb = e.target.closest("[data-cmpview]");
+    if (vb) { S.cmp.view = vb.dataset.cmpview; renderModels(); return; }
     const b = e.target.closest("[data-cmpv],[data-cmps]");
     if (!b) return;
     if (b.dataset.cmpv) S.cmp.v = b.dataset.cmpv; else S.cmp.span = Number(b.dataset.cmps);
@@ -1641,6 +1715,7 @@
     if (radar.sat) row("", "Satellite — GOES-East and GOES-West", `${esc(Wx.SAT[radar.sat].label.toLowerCase())}, via IEM · the latest image; its scan time does not come with the map`, null);
     if (S.place && S.rec && S.rec.index) row("", "Scoreboard", `every model vs ${Object.keys(S.rec.index.stations || {}).length.toLocaleString()} US airport stations · scored through ${esc(S.rec.index.through || "")} · published`, Date.parse(S.rec.index.generated) || null);
     if (S.ens) row("", "Model agreement", "NBM, HRRR, GFS, ECMWF and ECMWF AI, via Open-Meteo", S.fc ? S.fc.fetchedAt : null);
+    if (S.place && S.plumes) row("", `Ensemble — ${S.plumes.members.length} runs`, "GEFS and ECMWF ENS, every member, via Open-Meteo · fetched", S.plumesAt);
     if (sky.source) row(sky.source.stale ? "stale" : "", esc(sky.source.title), esc(sky.source.sub), sky.source.at);
     $("#sources").innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13V9M6 13V6M10 13V3M14 13V8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Where this comes from</h2><div class="feeds">${rows.join("")}</div>`;
   }

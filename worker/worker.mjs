@@ -1724,6 +1724,14 @@ function wxUpstream(parts, params) {
       daily: 'temperature_2m_max,temperature_2m_min', forecast_days: '1', timezone: 'auto', timeformat: 'unixtime' });
     return [`${WX_OM}?${q}`, WX_TTL.om];
   }
+  /* the two big ensembles, every member: GEFS (31) and ECMWF ENS (51) */
+  if (kind === 'plume' && !parts[2]) {
+    const lat = wxDeg(params.get('lat'), 90), lon = wxDeg(params.get('lon'), 180);
+    if (lat === null || lon === null) return null;
+    const q = new URLSearchParams({ latitude: lat, longitude: lon, hourly: 'temperature_2m,precipitation',
+      models: 'gfs025,ecmwf_ifs025', forecast_days: '7', timezone: 'auto', timeformat: 'unixtime' });
+    return [`https://ensemble-api.open-meteo.com/v1/ensemble?${q}`, WX_TTL.om];
+  }
   if (kind === 'ens' && !parts[2]) {
     const lat = wxDeg(params.get('lat'), 90), lon = wxDeg(params.get('lon'), 180);
     if (lat === null || lon === null) return null;

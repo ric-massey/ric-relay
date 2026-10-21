@@ -160,8 +160,9 @@ failed radar tiles · radar moved up the page · the layout items in
 | Station height and distance limits; "now" from the shown forecast | Vail, before and after |
 | Layout items (control rows, two-up tiles, ride buttons, footnote size) | 375px screenshots |
 
-Left for later, in order: ~~surface observations on the map~~ (done the same day,
-below), ensemble plumes, effective-layer parameters, then the HRRR-on-the-map decision.
+Left for later, in order: ~~surface observations on the map~~ and ~~ensemble plumes~~
+(both done the same day, below), effective-layer parameters, then the HRRR-on-the-map
+decision.
 
 ## Follow-up: stations on the map (gap 4) — done 2026-10-21
 
@@ -173,3 +174,15 @@ tap for every field it sent plus its raw METAR, with "Forecast here". IEM's
 Tennessee (57 stations), the station card fitting a phone's 300px map, the national view
 asking to zoom in, and the toggle remembered. **The Worker needs a deploy** for the new
 route; until then the page asks IEM directly, which works.
+
+## Follow-up: ensemble plumes (gap 9) — done 2026-10-21
+
+"Compare the models" has a second view, **Ensemble · 82 runs**: every member of GEFS
+(31) and ECMWF ENS (51) for a week, as faint lines under a middle-80% band and the
+middle run, with the standard forecast dashed; each day's chance of rain as the share
+of runs with 1 mm or more, and the spread of the runs' highs. One request to
+Open-Meteo's ensemble API (`/wx/plume`), 18 KB as sent, only when the view is opened.
+Checked for Seattle (rain chances of 44–50% over the weekend) at desktop and 375px.
+The confidence dots on the 10-day list still come from the five deterministic models;
+moving them onto the ensemble is the natural next step once its record can be scored.
+Needs the same Worker deploy.
