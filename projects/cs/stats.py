@@ -27,6 +27,8 @@ sync and writes the same numbers into llm/index.md.
   best[]    every player's most impressive round of each game (highlight.py):
             [game, name, round, score, seconds to start watching, why,
             the game's total over all their rounds — what ranks their games]
+  feats[]   every banner-worthy kill or round of Ric's (feats.py): [game, round, t, key, victim seat];
+            featdefs[] is [key, name, how] for each kind, in the order to show them
   wp        the round-win model (winprob.py), fitted here on every saved round;
             each fight carries wb / wa, his team's chance just before and after
 
@@ -44,6 +46,7 @@ import winprob  # noqa: E402
 import highlight  # noqa: E402
 import deaths  # noqa: E402
 import story  # noqa: E402
+import feats  # noqa: E402
 
 OUT = csdata.HERE / "stats.js"
 TRADE_S = 5                     # same window parse-demos.py uses for "traded"
@@ -67,12 +70,14 @@ def build(matches):
     died = {}                                       # name -> counts and an example of each
     duels = {}                                      # (a, b), a < b by name -> [a killed b, b killed a]
     stories = {}                                    # match id -> its story (story.py)
+    found = []                                      # [game, round, t, key, victim seat] (feats.py)
     for m, R in loaded:
         gi = len(games)
         # why everyone in this game died (deaths.py), newest game last so
         # each example ends up being their latest death of that kind
         names_ = {s["seat"]: s.get("name") for s in R["seats"]}
         stories[m["id"]] = story.tell(WP["coef"], R, m)
+        found += [[gi, ri_ + 1, t_, k_, v_] for ri_, t_, k_, v_ in feats.of_match(R)]
         for r_ in R["rounds"]:                      # who killed whom, between every pair of names
             end_ = (r_.get("dur") or 1e9) + 0.5
             for f_ in r_.get("fights") or []:
@@ -198,7 +203,8 @@ def build(matches):
     return {"games": games, "rounds": rounds, "fights": fights,
             "hits": [[mp, sd, d, g, c] for (mp, sd, d, g), c in sorted(hits.items())],
             "nades": nades, "flashes": flashes, "wp": WP, "best": best, "died": died,
-            "duels": [[a, b, x, y] for (a, b), (x, y) in sorted(duels.items())], "story": stories}
+            "duels": [[a, b, x, y] for (a, b), (x, y) in sorted(duels.items())], "story": stories,
+            "feats": found, "featdefs": [list(f) for f in feats.FEATS]}
 
 
 def pct(a, b):
@@ -241,6 +247,17 @@ def breakdown_md(S, map_name):
     rows.append(("Teammates blinded by Ric's flashes", sum(f[4] for f in fl)))
     rows.append(("Grenade damage (HE / fire)", f"{sum(r['he'] for r in rs)} / {sum(r['fire'] for r in rs)}"))
     L += [_table(["Stat", "Value"], rows), ""]
+    got = S.get("feats") or []
+    if got:
+        brow = []
+        for key, name, how in S.get("featdefs") or []:
+            mine = [x for x in got if x[3] == key]
+            if mine:
+                g, n, t, *_ = max(mine, key=lambda x: (games[x[0]].get("at") or "", x[1], x[2]))
+                brow.append((name, how, len(mine), f"{(games[g].get('at') or '')[:10]} {map_name(games[g]['map'])}, round {n} at {t:.0f}s"))
+        L += ["### Banners: the kills worth one", "",
+              "Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no groin hitbox.", "",
+              _table(["Banner", "How it's earned", "Times", "Latest"], brow), ""]
     for mp in sorted({g["map"] for g in games}):
         gi = {i for i, g in enumerate(games) if g["map"] == mp}
         md, mk = [f for f in d if f["g"] in gi], [f for f in k if f["g"] in gi]

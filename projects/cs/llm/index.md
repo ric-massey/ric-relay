@@ -90,6 +90,25 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Teammates blinded by Ric's flashes | 15 |
 | Grenade damage (HE / fire) | 36 / 23 |
 
+### Banners: the kills worth one
+
+Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no groin hitbox.
+
+| Banner | How it's earned | Times | Latest |
+|---|---|---|---|
+| Clutch | Last one alive on his team against two or more, and won the round. | 4 | 2026-10-21 Dust II, round 1 at 62s |
+| Collateral | One bullet, two kills. | 1 | 2026-10-21 Inferno, round 11 at 17s |
+| Blind fire | A kill while he was flashed himself. | 1 | 2026-10-21 Dust II, round 3 at 46s |
+| Airborne | A kill with both feet off the ground. | 1 | 2026-10-06 Mirage, round 14 at 45s |
+| Through the smoke | A kill shot through a smoke. | 8 | 2026-10-20 Inferno, round 21 at 56s |
+| Wallbang | A kill shot through something first: a wall, a door, a box, or another player. | 7 | 2026-10-21 Inferno, round 11 at 17s |
+| Kneecapped | The killing bullet hit a leg. | 10 | 2026-10-21 Dust II, round 11 at 27s |
+| On a sliver | A kill with 10 HP or less left. | 9 | 2026-10-21 Dust II, round 7 at 27s |
+| Long shot | A kill from 35 m or further. | 5 | 2026-10-20 Inferno, round 22 at 59s |
+| Triple | Three kills in one round. | 11 | 2026-10-20 Mirage, round 10 at 94s |
+| Quick double | Two kills inside a second (not one bullet). | 2 | 2026-10-20 Mirage, round 10 at 42s |
+| One tap | A full-health enemy killed by one headshot bullet (not a sniper or shotgun). | 15 | 2026-10-21 Inferno, round 11 at 17s |
+
 ### Anubis: where Ric dies and kills
 
 | Callout (where Ric stood) | Deaths | % of deaths | Kills | % of kills | K/D there |
@@ -99,9 +118,9 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Walkway | 4 | 12% | 4 | 22% | 1.00 |
 | Bombsite B | 3 | 9% | 1 | 6% | 0.33 |
 | Canal | 3 | 9% | 0 | 0% | 0.00 |
-| Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
-| Heaven | 2 | 6% | 1 | 6% | 0.50 |
 | Bridge | 2 | 6% | 1 | 6% | 0.50 |
+| Heaven | 2 | 6% | 1 | 6% | 0.50 |
+| Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
 | Main | 1 | 3% | 1 | 6% | 1.00 |
 | Fountain | 1 | 3% | 0 | 0% | 0.00 |
 | Bricks | 1 | 3% | 0 | 0% | 0.00 |
@@ -118,13 +137,13 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Mid | 2 | 17% | 0 | 0% | 0.00 |
 | Outside A | 1 | 8% | 3 | 25% | 3.00 |
 | Bombsite B | 1 | 8% | 1 | 8% | 1.00 |
-| CT Lane | 1 | 8% | 0 | 0% | 0.00 |
-| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 8% | 0 | 0% | 0.00 |
+| Heaven | 1 | 8% | 0 | 0% | 0.00 |
+| CT Lane | 1 | 8% | 0 | 0% | 0.00 |
 | T Yard | 0 | 0% | 2 | 17% | — |
+| A Stairs | 0 | 0% | 1 | 8% | — |
 | Vents | 0 | 0% | 1 | 8% | — |
 | B Main | 0 | 0% | 1 | 8% | — |
-| A Stairs | 0 | 0% | 1 | 8% | — |
 
 ### Dust II: where Ric dies and kills
 
@@ -133,21 +152,21 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Bombsite B | 13 | 18% | 10 | 21% | 0.77 |
 | Catwalk | 8 | 11% | 4 | 8% | 0.50 |
 | Long Doors | 8 | 11% | 3 | 6% | 0.38 |
+| Top of Mid | 6 | 8% | 4 | 8% | 0.67 |
 | Outside Long | 6 | 8% | 4 | 8% | 0.67 |
 | Long A | 6 | 8% | 4 | 8% | 0.67 |
-| Top of Mid | 6 | 8% | 4 | 8% | 0.67 |
 | Extended A | 4 | 6% | 1 | 2% | 0.25 |
 | B Doors | 4 | 6% | 0 | 0% | 0.00 |
 | Bombsite A | 3 | 4% | 1 | 2% | 0.33 |
 | Under A | 2 | 3% | 4 | 8% | 2.00 |
 | Middle | 2 | 3% | 1 | 2% | 0.50 |
 | A Ramp | 2 | 3% | 0 | 0% | 0.00 |
-| Hole | 2 | 3% | 0 | 0% | 0.00 |
 | Tunnel Stairs | 2 | 3% | 0 | 0% | 0.00 |
+| Hole | 2 | 3% | 0 | 0% | 0.00 |
 | Upper Tunnel | 1 | 1% | 3 | 6% | 3.00 |
 | Mid Doors | 1 | 1% | 1 | 2% | 1.00 |
-| Pit | 1 | 1% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 1% | 0 | 0% | 0.00 |
+| Pit | 1 | 1% | 0 | 0% | 0.00 |
 | Short Stairs | 0 | 0% | 4 | 8% | — |
 | Lower Tunnel | 0 | 0% | 3 | 6% | — |
 | CT Spawn | 0 | 0% | 1 | 2% | — |
@@ -158,15 +177,15 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 |---|---|---|---|---|---|
 | Apartments | 6 | 18% | 3 | 12% | 0.50 |
 | Middle | 5 | 15% | 4 | 17% | 0.80 |
-| Banana | 4 | 12% | 3 | 12% | 0.75 |
 | Top of Mid | 4 | 12% | 3 | 12% | 0.75 |
+| Banana | 4 | 12% | 3 | 12% | 0.75 |
 | Bombsite A | 4 | 12% | 2 | 8% | 0.50 |
 | Bombsite B | 3 | 9% | 8 | 33% | 2.67 |
 | Balcony | 2 | 6% | 1 | 4% | 0.50 |
 | Arch | 2 | 6% | 0 | 0% | 0.00 |
-| Library | 1 | 3% | 0 | 0% | 0.00 |
 | Second Mid | 1 | 3% | 0 | 0% | 0.00 |
 | CT Spawn | 1 | 3% | 0 | 0% | 0.00 |
+| Library | 1 | 3% | 0 | 0% | 0.00 |
 
 ### Mirage: where Ric dies and kills
 
@@ -185,12 +204,12 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | T Ramp | 4 | 3% | 1 | 1% | 0.25 |
 | Underpass | 3 | 2% | 3 | 3% | 1.00 |
 | Scaffolding | 2 | 2% | 2 | 2% | 1.00 |
-| House | 2 | 2% | 1 | 1% | 0.50 |
 | Stairs | 2 | 2% | 1 | 1% | 0.50 |
+| House | 2 | 2% | 1 | 1% | 0.50 |
 | Snipers Nest | 2 | 2% | 0 | 0% | 0.00 |
 | Palace Alley | 1 | 1% | 4 | 4% | 4.00 |
-| Back Alley | 1 | 1% | 1 | 1% | 1.00 |
 | Jungle | 1 | 1% | 1 | 1% | 1.00 |
+| Back Alley | 1 | 1% | 1 | 1% | 1.00 |
 | Top of Mid | 1 | 1% | 0 | 0% | 0.00 |
 | Side Alley | 1 | 1% | 0 | 0% | 0.00 |
 | Ladder | 0 | 0% | 2 | 2% | — |
@@ -221,15 +240,15 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Bombsite A | 3 | 20% | 0 | 0% | 0.00 |
 | T Corridor Up | 1 | 7% | 2 | 25% | 2.00 |
 | Elevator | 1 | 7% | 1 | 12% | 1.00 |
-| Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 7% | 0 | 0% | 0.00 |
-| Mid | 1 | 7% | 0 | 0% | 0.00 |
-| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Tunnels | 1 | 7% | 0 | 0% | 0.00 |
+| Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
+| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Crane | 1 | 7% | 0 | 0% | 0.00 |
+| Mid | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Top | 0 | 0% | 2 | 25% | — |
-| Connector | 0 | 0% | 1 | 12% | — |
 | Top of Mid | 0 | 0% | 1 | 12% | — |
+| Connector | 0 | 0% | 1 | 12% | — |
 
 
 ## Model check

@@ -343,6 +343,17 @@ round to watch: the round that put the winner ahead for good, a comeback
 from 3 or more down, the best clutch, the round won from the lowest chance,
 and the player of the match by round score. The text reports carry it too.
 
+**Banners** (`feats.py`). Overview → Banners: a card for each kind of kill
+worth one — collateral, one tap, no-scope, wallbang, through smoke, blind,
+airborne, long shot, kneecapped, on a sliver, knife, Zeus, grenade, fire,
+quick double, 3K / 4K / ace, 1v2+ clutch — with how many, and a tap plays
+the latest. The replay's kill feed tags them. All read off the demo: the
+kill flags CS2 writes, the hitgroup of the killing bullet, and Ric's own
+shots (times are rounded to 0.1 s, so a collateral also needs no more than
+one shot fired in that moment). There is no nut-shot banner: CS2 has no
+groin hitbox, and a gut shot was 53 of his first 250 kills. `featdefs` in
+`stats.js` carries the names, so the page and `llm/index.md` share one list.
+
 **Habits.** Stats → Habits, and on a player's page: every round they played
 on one map and side drawn at once from spawn, teal for rounds they lived
 through and red for ones they died in, with a cross where — over the first
