@@ -13,10 +13,10 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Win rate | 21% |
 | Kills / deaths | 231 / 344 |
 | K/D | 0.67 |
-| Headshot % | 41% |
-| Matches with full demo data | 22 |
+| Headshot % | 43% |
+| Matches with full demo data | 23 |
 
-**Leetify skill ratings** (read 2026-10-20): aim 49/100, positioning 28/100, utility 5/100.
+**Leetify skill ratings** (read 2026-10-21): aim 48/100, positioning 29/100, utility 6/100.
 
 **Competitive rank by map:** Cache Unranked, Dust II Unranked, Train Silver I, Anubis Unranked, Mirage Unranked, Inferno Unranked, Vertigo Unranked. Premier rating: unrated.
 
@@ -24,7 +24,7 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 | Date | Map | Mode | Score | Result | K-D-A | ADR | HLTV 1.0 | Leetify rating | Full data | Report |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 2026-10-20 17:53 UTC | Mirage | Competitive | 12–12 | draw | 21-18-4 | — | — | — | no | [gsi-20261020T175347.md](gsi-20261020T175347.md) |
+| 2026-10-20 17:53 UTC | Mirage | Competitive | 12–12 | draw | 21-18-4 | 84.9 | 1.08 | -0.38 | yes | [gsi-20261020T175347.md](gsi-20261020T175347.md) |
 | 2026-10-20 05:59 UTC | Train | Competitive | 0–5 | loss | 2-4-0 | 53.0 | 0.50 | -5.20 | yes | [gsi-20261020T055951.md](gsi-20261020T055951.md) |
 | 2026-10-20 05:48 UTC | Dust II | Competitive | 11–13 | loss | 7-19-7 | 45.6 | 0.44 | -11.29 | yes | [gsi-20261020T054824.md](gsi-20261020T054824.md) |
 | 2026-10-20 05:05 UTC | Inferno | Competitive | 11–13 | loss | 16-16-4 | 80.9 | 0.93 | -2.14 | yes | [gsi-20261020T050557.md](gsi-20261020T050557.md) |
@@ -65,27 +65,27 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 ## Breakdown (every game with a saved demo)
 
-22 games, 403 rounds, 206 kills and 316 deaths of Ric's, each with the callout both players stood at.
+23 games, 427 rounds, 227 kills and 334 deaths of Ric's, each with the callout both players stood at.
 
 | Stat | Value |
 |---|---|
-| Rounds won as CT | 44% (86/196) |
-| Rounds won as T | 36% (74/207) |
-| Pistol rounds won | 32% (13/40) |
-| Opening duels won | 41% (15/37) |
-| Rounds won after Ric's team got the first kill | 52% (90/172) |
-| Rounds won after the enemy got the first kill | 31% (70/229) |
-| Rounds survived | 22% (87/403) |
-| Deaths that were traded | 13% (42/316) |
-| Kills that traded a teammate | 17% (35/206) |
+| Rounds won as CT | 44% (92/208) |
+| Rounds won as T | 37% (80/219) |
+| Pistol rounds won | 31% (13/42) |
+| Opening duels won | 42% (17/40) |
+| Rounds won after Ric's team got the first kill | 53% (99/188) |
+| Rounds won after the enemy got the first kill | 31% (73/237) |
+| Rounds survived | 22% (93/427) |
+| Deaths that were traded | 14% (47/334) |
+| Kills that traded a teammate | 18% (40/227) |
 | 1v1 clutches won | 40% (6/15) |
-| 1v2 clutches won | 17% (3/18) |
+| 1v2 clutches won | 16% (3/19) |
 | 1v3 clutches won | 0% (0/19) |
-| 1v4 clutches won | 5% (1/21) |
+| 1v4 clutches won | 5% (1/22) |
 | 1v5 clutches won | 0% (0/8) |
-| Grenades thrown | 47 smokes, 15 flashes, 24 HEs, 3 fires |
-| Enemies blinded per flash | 0.53 |
-| Teammates blinded by Ric's flashes | 9 |
+| Grenades thrown | 49 smokes, 19 flashes, 24 HEs, 3 fires |
+| Enemies blinded per flash | 0.58 |
+| Teammates blinded by Ric's flashes | 10 |
 | Grenade damage (HE / fire) | 36 / 23 |
 
 ### Anubis: where Ric dies and kills
@@ -98,8 +98,8 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Bombsite B | 3 | 9% | 1 | 6% | 0.33 |
 | Canal | 3 | 9% | 0 | 0% | 0.00 |
 | Bridge | 2 | 6% | 1 | 6% | 0.50 |
-| Heaven | 2 | 6% | 1 | 6% | 0.50 |
 | Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
+| Heaven | 2 | 6% | 1 | 6% | 0.50 |
 | Main | 1 | 3% | 1 | 6% | 1.00 |
 | Bricks | 1 | 3% | 0 | 0% | 0.00 |
 | Fountain | 1 | 3% | 0 | 0% | 0.00 |
@@ -116,13 +116,13 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Mid | 2 | 17% | 0 | 0% | 0.00 |
 | Outside A | 1 | 8% | 3 | 25% | 3.00 |
 | Bombsite B | 1 | 8% | 1 | 8% | 1.00 |
-| CT Lane | 1 | 8% | 0 | 0% | 0.00 |
-| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 8% | 0 | 0% | 0.00 |
+| Heaven | 1 | 8% | 0 | 0% | 0.00 |
+| CT Lane | 1 | 8% | 0 | 0% | 0.00 |
 | T Yard | 0 | 0% | 2 | 17% | — |
-| Vents | 0 | 0% | 1 | 8% | — |
-| A Stairs | 0 | 0% | 1 | 8% | — |
 | B Main | 0 | 0% | 1 | 8% | — |
+| A Stairs | 0 | 0% | 1 | 8% | — |
+| Vents | 0 | 0% | 1 | 8% | — |
 
 ### Dust II: where Ric dies and kills
 
@@ -138,24 +138,24 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | B Doors | 4 | 6% | 0 | 0% | 0.00 |
 | Bombsite A | 3 | 5% | 1 | 3% | 0.33 |
 | Under A | 2 | 3% | 3 | 9% | 1.50 |
-| A Ramp | 2 | 3% | 0 | 0% | 0.00 |
-| Hole | 2 | 3% | 0 | 0% | 0.00 |
 | Middle | 2 | 3% | 0 | 0% | 0.00 |
+| Hole | 2 | 3% | 0 | 0% | 0.00 |
+| A Ramp | 2 | 3% | 0 | 0% | 0.00 |
 | Mid Doors | 1 | 2% | 1 | 3% | 1.00 |
 | Pit | 1 | 2% | 0 | 0% | 0.00 |
 | Tunnel Stairs | 1 | 2% | 0 | 0% | 0.00 |
-| Short Stairs | 0 | 0% | 2 | 6% | — |
 | Upper Tunnel | 0 | 0% | 2 | 6% | — |
-| Lower Tunnel | 0 | 0% | 1 | 3% | — |
+| Short Stairs | 0 | 0% | 2 | 6% | — |
 | CT Spawn | 0 | 0% | 1 | 3% | — |
+| Lower Tunnel | 0 | 0% | 1 | 3% | — |
 
 ### Inferno: where Ric dies and kills
 
 | Callout (where Ric stood) | Deaths | % of deaths | Kills | % of kills | K/D there |
 |---|---|---|---|---|---|
 | Top of Mid | 3 | 19% | 2 | 12% | 0.67 |
-| Bombsite A | 3 | 19% | 1 | 6% | 0.33 |
 | Apartments | 3 | 19% | 1 | 6% | 0.33 |
+| Bombsite A | 3 | 19% | 1 | 6% | 0.33 |
 | Banana | 2 | 12% | 2 | 12% | 1.00 |
 | Bombsite B | 1 | 6% | 5 | 31% | 5.00 |
 | Middle | 1 | 6% | 4 | 25% | 4.00 |
@@ -167,27 +167,28 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 | Callout (where Ric stood) | Deaths | % of deaths | Kills | % of kills | K/D there |
 |---|---|---|---|---|---|
-| Bombsite A | 18 | 16% | 9 | 12% | 0.50 |
-| Apartments | 14 | 12% | 22 | 29% | 1.57 |
-| Palace Interior | 13 | 12% | 10 | 13% | 0.77 |
-| Bombsite B | 10 | 9% | 5 | 7% | 0.50 |
-| Connector | 9 | 8% | 2 | 3% | 0.22 |
-| Truck | 8 | 7% | 4 | 5% | 0.50 |
-| CT Spawn | 8 | 7% | 4 | 5% | 0.50 |
-| Catwalk | 6 | 5% | 4 | 5% | 0.67 |
+| Bombsite A | 22 | 17% | 14 | 15% | 0.64 |
+| Bombsite B | 16 | 12% | 8 | 8% | 0.50 |
+| Apartments | 15 | 12% | 24 | 25% | 1.60 |
+| Palace Interior | 15 | 12% | 11 | 11% | 0.73 |
+| Truck | 9 | 7% | 4 | 4% | 0.44 |
+| Connector | 9 | 7% | 4 | 4% | 0.44 |
+| CT Spawn | 8 | 6% | 4 | 4% | 0.50 |
+| Catwalk | 6 | 5% | 4 | 4% | 0.67 |
+| Middle | 5 | 4% | 6 | 6% | 1.20 |
 | Shop | 5 | 4% | 1 | 1% | 0.20 |
-| T Ramp | 4 | 4% | 1 | 1% | 0.25 |
-| Scaffolding | 2 | 2% | 2 | 3% | 1.00 |
-| Middle | 2 | 2% | 2 | 3% | 1.00 |
-| Underpass | 2 | 2% | 2 | 3% | 1.00 |
+| T Ramp | 4 | 3% | 1 | 1% | 0.25 |
+| Underpass | 3 | 2% | 3 | 3% | 1.00 |
+| Scaffolding | 2 | 2% | 2 | 2% | 1.00 |
+| Stairs | 2 | 2% | 1 | 1% | 0.50 |
 | House | 2 | 2% | 1 | 1% | 0.50 |
 | Snipers Nest | 2 | 2% | 0 | 0% | 0.00 |
-| Stairs | 2 | 2% | 0 | 0% | 0.00 |
-| Palace Alley | 1 | 1% | 4 | 5% | 4.00 |
-| Jungle | 1 | 1% | 1 | 1% | 1.00 |
+| Palace Alley | 1 | 1% | 4 | 4% | 4.00 |
 | Back Alley | 1 | 1% | 1 | 1% | 1.00 |
+| Jungle | 1 | 1% | 1 | 1% | 1.00 |
 | Top of Mid | 1 | 1% | 0 | 0% | 0.00 |
 | Side Alley | 1 | 1% | 0 | 0% | 0.00 |
+| Ladder | 0 | 0% | 2 | 2% | — |
 
 ### Train: where Ric dies and kills
 
@@ -204,8 +205,8 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Alley | 2 | 3% | 0 | 0% | 0.00 |
 | Entrance | 1 | 2% | 2 | 5% | 2.00 |
 | Dumpster | 1 | 2% | 0 | 0% | 0.00 |
-| T Side Upper | 0 | 0% | 1 | 2% | — |
 | Electrical Box | 0 | 0% | 1 | 2% | — |
+| T Side Upper | 0 | 0% | 1 | 2% | — |
 
 ### Vertigo: where Ric dies and kills
 
@@ -215,12 +216,12 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Bombsite A | 3 | 20% | 0 | 0% | 0.00 |
 | T Corridor Up | 1 | 7% | 2 | 25% | 2.00 |
 | Elevator | 1 | 7% | 1 | 12% | 1.00 |
-| Tunnels | 1 | 7% | 0 | 0% | 0.00 |
-| Crane | 1 | 7% | 0 | 0% | 0.00 |
-| Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
-| Mid | 1 | 7% | 0 | 0% | 0.00 |
-| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 7% | 0 | 0% | 0.00 |
+| Crane | 1 | 7% | 0 | 0% | 0.00 |
+| Tunnels | 1 | 7% | 0 | 0% | 0.00 |
+| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
+| Mid | 1 | 7% | 0 | 0% | 0.00 |
+| Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Top | 0 | 0% | 2 | 25% | — |
 | Connector | 0 | 0% | 1 | 12% | — |
 | Top of Mid | 0 | 0% | 1 | 12% | — |
@@ -228,27 +229,27 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 ## Model check
 
-The chance-of-the-round model, tested on 3151 moments from 22 games it was not fitted on (10 folds, whole matches per fold). Lower is better on both scores; the table is a plain count of how often each men-alive state was won.
+The chance-of-the-round model, tested on 3333 moments from 23 games it was not fitted on (10 folds, whole matches per fold). Lower is better on both scores; the table is a plain count of how often each men-alive state was won.
 
 |  | Brier | Log loss |
 |---|---|---|
-| model | 0.1787 | 0.5312 |
-| men-alive table | 0.1844 | 0.5439 |
+| model | 0.1781 | 0.5295 |
+| men-alive table | 0.1842 | 0.5431 |
 
-Calibration is off by 4.4% on average, so the page shows chances in 5% steps. Inputs used: men, planted, econ, ct.
+Calibration is off by 3.9% on average, so the page shows chances in 5% steps. Inputs used: men, planted, econ, ct.
 
 | It said | Moments | Average it gave | Actually won |
 |---|---|---|---|
-| 0%–10% | 349 | 5% | 6% |
-| 10%–20% | 317 | 15% | 11% |
-| 20%–30% | 365 | 25% | 22% |
-| 30%–40% | 385 | 35% | 31% |
-| 40%–50% | 423 | 45% | 38% |
-| 50%–60% | 395 | 55% | 49% |
-| 60%–70% | 280 | 65% | 58% |
-| 70%–80% | 225 | 75% | 70% |
-| 80%–90% | 216 | 85% | 82% |
-| 90%–100% | 196 | 95% | 91% |
+| 0%–10% | 370 | 5% | 6% |
+| 10%–20% | 340 | 15% | 11% |
+| 20%–30% | 389 | 25% | 24% |
+| 30%–40% | 415 | 35% | 32% |
+| 40%–50% | 447 | 45% | 37% |
+| 50%–60% | 407 | 55% | 50% |
+| 60%–70% | 289 | 65% | 58% |
+| 70%–80% | 239 | 75% | 70% |
+| 80%–90% | 228 | 85% | 82% |
+| 90%–100% | 209 | 95% | 91% |
 
 ## What the numbers mean
 
