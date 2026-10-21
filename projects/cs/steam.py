@@ -26,6 +26,7 @@ Without them this script says so and stops; nothing else in the room needs them.
 
 import json
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -38,23 +39,34 @@ import csdata  # noqa: E402
 
 API = "https://api.steampowered.com/ICSGOPlayers_730/GetNextMatchSharingCode/v1"
 DEMO_DAYS = 28   # Valve's copy is gone some time after this; treat as expired
+GAP_S = 1.5      # between requests: back to back, Valve answers 429 within a few codes
 
 
 def credential(target):
     return creds.get(target)
 
 
+class Throttled(Exception):
+    pass
+
+
 def next_code(key, me, auth, known):
     q = urllib.parse.urlencode({"key": key, "steamid": me, "steamidkey": auth, "knowncode": known})
-    try:
-        with urllib.request.urlopen(f"{API}?{q}", timeout=30) as r:
-            code = json.load(r).get("result", {}).get("nextcode")
-    except urllib.error.HTTPError as e:
-        if e.code == 403:
-            raise SystemExit("steam: the match auth code was refused — make a new one")
-        if e.code == 412:
-            raise SystemExit("steam: Valve doesn't recognise the last known share code")
-        raise
+    for wait in (10, 30, 60, None):
+        try:
+            with urllib.request.urlopen(f"{API}?{q}", timeout=30) as r:
+                code = json.load(r).get("result", {}).get("nextcode")
+            break
+        except urllib.error.HTTPError as e:
+            if e.code == 403:
+                raise SystemExit("steam: the match auth code was refused — make a new one")
+            if e.code == 412:
+                raise SystemExit("steam: Valve doesn't recognise the last known share code")
+            if e.code != 429:
+                raise
+            if wait is None:
+                raise Throttled()
+            time.sleep(wait)   # rate-limited: back off and ask again
     return None if not code or code == "n/a" else code
 
 
@@ -71,8 +83,15 @@ def main():
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         new = 0
         code = st["last_code"]
-        for _ in range(200):
-            code = next_code(key, acct["steam64"], auth, code)
+        throttled = False
+        for i in range(200):
+            if i:
+                time.sleep(GAP_S)
+            try:
+                code = next_code(key, acct["steam64"], auth, code)
+            except Throttled:
+                throttled = True
+                break
             if not code:
                 break
             vid = csdata.share_code_match_id(code)
@@ -80,8 +99,10 @@ def main():
             st.setdefault("seen", {}).setdefault(vid, now)
             st["last_code"] = code
             new += 1
+            csdata.write_state(st)   # each code as it comes: a stop later keeps these
         csdata.write_state(st)
-        print(f"steam: {new} new match{'es' if new != 1 else ''} from Valve")
+        print(f"steam: {new} new match{'es' if new != 1 else ''} from Valve"
+              + (" — Valve is rate-limiting, the rest next sync" if throttled else ""))
     remind(st)
 
 
