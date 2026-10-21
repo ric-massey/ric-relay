@@ -160,5 +160,16 @@ failed radar tiles · radar moved up the page · the layout items in
 | Station height and distance limits; "now" from the shown forecast | Vail, before and after |
 | Layout items (control rows, two-up tiles, ride buttons, footnote size) | 375px screenshots |
 
-Left for later, in order: surface observations on the map (needs a `/wx` route),
-ensemble plumes, effective-layer parameters, then the HRRR-on-the-map decision.
+Left for later, in order: ~~surface observations on the map~~ (done the same day,
+below), ensemble plumes, effective-layer parameters, then the HRRR-on-the-map decision.
+
+## Follow-up: stations on the map (gap 4) — done 2026-10-21
+
+Every airport (ASOS) station in the forecast offices covering the view, from zoom 6 in:
+a chip with its temperature in its own colour, a tail from where the wind comes, and a
+tap for every field it sent plus its raw METAR, with "Forecast here". IEM's
+`currents` API by office (`/wx/iem/obs?wfo=`), about 25 KB each — the whole country is
+3.3 MB with no compression, so it is never asked for. Checked at desktop and 375px in
+Tennessee (57 stations), the station card fitting a phone's 300px map, the national view
+asking to zoom in, and the toggle remembered. **The Worker needs a deploy** for the new
+route; until then the page asks IEM directly, which works.

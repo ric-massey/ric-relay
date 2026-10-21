@@ -137,7 +137,12 @@
     /* weather balloons: where they go up, and one flight */
     raobSites: () => ['iem/raobsites', `${IEM}/geojson/network.py?network=RAOB`],
     raob: (station, ts) => /^[A-Z0-9]{3,5}$/.test(station) && /^\d{12}$/.test(ts)
-      ? [`iem/raob?ts=${ts}&station=${station}`, `${IEM}/json/raob.py?ts=${ts}&station=${station}`] : null
+      ? [`iem/raob?ts=${ts}&station=${station}`, `${IEM}/json/raob.py?ts=${ts}&station=${station}`] : null,
+    /* one forecast office's airport (ASOS) stations as they read now — the
+       map's station layer (§19.1). By office because the whole country is
+       3 MB uncompressed and one office is about 25 KB. */
+    stationObs: wfo => /^[A-Z]{3}$/.test(wfo)
+      ? [`iem/obs?wfo=${wfo}`, `${IEM}/api/1/currents.geojson?networkclass=ASOS&wfo=${wfo}&minutes=90`] : null
   };
   const SITE = /^[A-Z]{3}$/;
   /* The single-site products IEM serves as tiles and lists scans for (probed
@@ -1066,6 +1071,40 @@
     return { past: np >= 20 ? past : null, next: nn >= 20 ? next : null };
   }
 
+  /* ── stations on the map (§19.1) ──
+     IEM's current ASOS readings for one forecast office, in the page's
+     units (°C, km/h, m, hPa). Positions are read at run time and never kept
+     anywhere but the page. A reading older than STALE_MS.observation is
+     dropped; one with no temperature is kept only if it says something else. */
+  const SKY = { CLR: 'Clear', SKC: 'Clear', FEW: 'A few clouds', SCT: 'Partly cloudy', BKN: 'Mostly cloudy', OVC: 'Overcast', VV: 'Sky hidden' };
+  function normalizeStationObs(j, nowMs) {
+    const f = j && Array.isArray(j.features) ? j.features : [];
+    const now = nowMs || Date.now();
+    const num = v => has(v) ? Number(v) : null;
+    return f.map(x => {
+      const p = x.properties || {}, c = x.geometry && x.geometry.coordinates;
+      const t = Date.parse(p.utc_valid);
+      if (!Array.isArray(c) || !validLat(+c[1]) || !validLon(+c[0]) || !Number.isFinite(t)) return null;
+      /* the highest layer that covers the most sky is what the sky looks like */
+      const layers = [p.skyc1, p.skyc2, p.skyc3, p.skyc4].filter(Boolean);
+      const worst = ['VV', 'OVC', 'BKN', 'SCT', 'FEW', 'CLR', 'SKC'].find(k => layers.includes(k)) || null;
+      const tmp = num(p.tmpf), dew = num(p.dwpf), kt = num(p.sknt), g = num(p.gust), mslp = num(p.mslp);
+      return {
+        id: String(p.station || ''), name: String(p.name || '').replace(/\s+/g, ' ').trim(), lat: +c[1], lon: +c[0], time: t,
+        temp: tmp === null ? null : fToC(tmp), dew: dew === null ? null : fToC(dew), rh: num(p.relh),
+        wind: kt === null ? null : kt * 1.852, windDir: num(p.drct), gust: g === null || g <= 0 ? null : g * 1.852,
+        vis: num(p.vsby) === null ? null : p.vsby * 1609.344, pressure: mslp,
+        sky: worst ? SKY[worst] : null, wx: p.wxcodes ? String(p.wxcodes).trim() || null : null,
+        precipHour: num(p.phour) === null ? null : p.phour * 25.4, raw: p.raw ? String(p.raw) : ''
+      };
+    }).filter(s => s && s.id && now - s.time <= STALE_MS.observation && (s.temp !== null || s.wind !== null));
+  }
+  async function stationObs(wfo, signal) {
+    const r = ROUTES.stationObs(wfo);
+    if (!r) return [];
+    return normalizeStationObs((await ask(r, signal)).data);
+  }
+
   /* Calm: under 1.5 km/h, where a station reports 0 and a direction means
      nothing. The page says "calm" instead of "N 0". */
   const CALM_KMH = 1.5;
@@ -1314,7 +1353,8 @@
     normalizeOutlook, outlook, outlookAt, column, modelRun, raobSites, raobTimes, raobTs,
     several, summary, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet,
     inMosaic, nowcast, nowcastRecord,
-    CALM_KMH, isCalm, RIDE, rideOutlook, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M
+    CALM_KMH, isCalm, RIDE, rideOutlook, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M,
+    normalizeStationObs, stationObs
   };
   root.Wx = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

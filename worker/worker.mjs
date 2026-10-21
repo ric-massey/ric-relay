@@ -1691,6 +1691,12 @@ function wxUpstream(parts, params) {
       return [`${WX_IEM}/json/radar.py?operation=list&radar=${site}&product=${prod}&start=${start}&end=${end}`, WX_TTL.scans];
     }
     if (what === 'raobsites') return [`${WX_IEM}/geojson/network.py?network=RAOB`, WX_TTL.raobsites];
+    /* one forecast office's airport stations, as they read now */
+    if (what === 'obs') {
+      const wfo = params.get('wfo') || '';
+      if (!/^[A-Z]{3}$/.test(wfo)) return null;
+      return [`${WX_IEM}/api/1/currents.geojson?networkclass=ASOS&wfo=${wfo}&minutes=90`, WX_TTL.obs];
+    }
     if (what === 'raob') {
       const ts = params.get('ts') || '', st = params.get('station') || '';
       if (!/^\d{12}$/.test(ts) || !/^[A-Z0-9]{3,5}$/.test(st)) return null;

@@ -412,8 +412,16 @@
 
     /* a tapped point on the map */
     .radar .pin{position:absolute;z-index:2;width:232px;transform:translate(-50%,calc(-100% - 14px));padding:10px 12px;border-radius:14px;
-      background:rgba(10,20,40,.95);border:1px solid var(--edge);box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:14px;pointer-events:auto;cursor:default}
-    .radar .pin.below{transform:translate(-50%,14px)}
+      background:#0c182e;border:1px solid var(--edge);box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:14px;pointer-events:auto;cursor:default}
+    .radar .pin{max-height:calc(100% - 12px);overflow:auto}
+    .pin .prows{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin-top:6px;font-size:13px}
+    .pin .prows span{color:var(--dim)}
+    .pin .prows b{text-align:right;font-weight:600}
+    .pin details{margin-top:6px;font-size:12px;color:var(--dim)}
+    .pin details summary{cursor:pointer;min-height:28px;display:flex;align-items:center}
+    .pin details code{display:block;white-space:pre-wrap;word-break:break-all;font-size:12px;color:#e6e9ee}
+    /* station chips: dark type on the temperature's own colour (6:1 or better on every stop) */
+    .radar svg.over .stn text{font:700 12px var(--sans);fill:#0b1422}
     .pin .ph{display:flex;align-items:center;gap:8px}
     .pin .ph svg{width:30px;height:30px;flex:none}
     .pin .pt{font-size:22px;font-weight:600}
@@ -549,6 +557,7 @@
         <button type="button" data-mode="N0B" aria-pressed="false">Reflectivity</button>
         <button type="button" data-mode="N0S" aria-pressed="false">Velocity</button>
         <span class="sep"></span>
+        <button type="button" id="stationtoggle" aria-pressed="false" title="Airport weather stations: temperature and wind, as they read now">Stations</button>
         <button type="button" id="outlooktoggle" aria-pressed="false">SPC outlook</button>
       </div>
       <div class="seg rowscroll" role="group" aria-label="Satellite under the radar">
@@ -637,7 +646,7 @@
 
 <script src="effects.js"></script>
 <script src="projects/weather/nowcast.js?v=1"></script>
-<script src="projects/weather/wx.js?v=5"></script>
+<script src="projects/weather/wx.js?v=6"></script>
 <script src="projects/weather/sounding.js?v=1"></script>
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
@@ -1627,6 +1636,8 @@
       const f = Wx.fresh("radar", rv);
       row(f.stale ? "stale" : "", `Radar${f.stale ? " — delayed" : ""}`, `${esc(radar.describe())} · latest scan`, rv);
     } else row("off", "Radar", radar.started ? "scan time unknown" : "loads when you reach it", null);
+    const stn = radar.stations;
+    if (stn) row("", `Stations on the map — ${stn.n} airport stations`, "ASOS readings via IEM, the forecast offices in view · newest reading", stn.newest);
     if (radar.sat) row("", "Satellite — GOES-East and GOES-West", `${esc(Wx.SAT[radar.sat].label.toLowerCase())}, via IEM · the latest image; its scan time does not come with the map`, null);
     if (S.place && S.rec && S.rec.index) row("", "Scoreboard", `every model vs ${Object.keys(S.rec.index.stations || {}).length.toLocaleString()} US airport stations · scored through ${esc(S.rec.index.through || "")} · published`, Date.parse(S.rec.index.generated) || null);
     if (S.ens) row("", "Model agreement", "NBM, HRRR, GFS, ECMWF and ECMWF AI, via Open-Meteo", S.fc ? S.fc.fetchedAt : null);
@@ -1652,7 +1663,8 @@
     const TILE = 256, MINZ = 3, MAXZ = 11;
     const el = $("#radar"), baseL = $("#radarbase"), framesL = $("#radarframes"), over = $("#radarover");
     const R = { z: 7, cx: 0, cy: 0, lat: null, lon: null, frame: 0, playing: false, timer: 0, started: false, visible: false,
-      mode: "comp", valid: null, frames: [], loadedOld: false, site: null, sites: null, outlook: false, us: false, frameT: null, sat: null, pin: null };
+      mode: "comp", valid: null, frames: [], loadedOld: false, site: null, sites: null, outlook: false, us: false, frameT: null, sat: null, pin: null,
+      stations: store.get("wx:stations", true) !== false, obs: [] };
     const lngX = (lng, z) => (lng + 180) / 360 * TILE * 2 ** z;
     const latY = (lat, z) => { const s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TILE * 2 ** z; };
     const xLng = (x, z) => x / (TILE * 2 ** z) * 360 - 180;
@@ -1683,6 +1695,48 @@
       document.querySelectorAll("[data-sat]").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.sat || null) === R.sat)));
       $("#satcredit").hidden = !R.sat;
       label(); draw(); renderSources();
+    }
+
+    /* ── airport stations on the map (§19.1) ──
+       The forecast offices covering the view (the NWS's own answer for the
+       middle and four points around it, looked up once per half-degree), and
+       each office's ASOS stations from IEM, asked again every five minutes.
+       Drawn from zoom 6 in; at the national view they would be a carpet. */
+    const STN_MINZ = 6, officeAt = new Map(), byOffice = new Map();
+    let stnTimer = 0, stnAsk = 0;
+    const cell = (x) => Math.round(x * 2) / 2;
+    async function officeOf(lat, lon) {
+      const k = `${cell(lat)},${cell(lon)}`;
+      if (!officeAt.has(k)) officeAt.set(k, Wx.point(cell(lat), cell(lon)).then((p) => p && p.office).catch(() => { officeAt.delete(k); return null; }));
+      return officeAt.get(k);
+    }
+    function stationsSoon() { clearTimeout(stnTimer); stnTimer = setTimeout(loadStations, 500); }
+    async function loadStations() {
+      if (!R.stations || !R.started || R.z < STN_MINZ) { if (R.obs.length) { R.obs = []; draw(); } label(); return; }
+      const ask = ++stnAsk, w = el.clientWidth, h = el.clientHeight;
+      const at = (fx, fy) => [yLat(R.cy + (fy - 0.5) * h, R.z), xLng(R.cx + (fx - 0.5) * w, R.z)];
+      const pts = [at(0.5, 0.5), at(0.2, 0.2), at(0.8, 0.2), at(0.2, 0.8), at(0.8, 0.8)];
+      const offices = [...new Set((await Promise.all(pts.map(([la, lo]) => officeOf(la, lo)))).filter(Boolean))].slice(0, 5);
+      await Promise.all(offices.map(async (o) => {
+        const have = byOffice.get(o);
+        if (have && Date.now() - have.at < 300e3) return;
+        try { byOffice.set(o, { at: Date.now(), list: await Wx.stationObs(o) }); } catch (e) { if (!have) byOffice.set(o, { at: Date.now() - 240e3, list: [] }); }
+      }));
+      if (ask !== stnAsk) return;
+      const seen = new Map();
+      for (const o of offices) for (const s of (byOffice.get(o) || { list: [] }).list) if (!seen.has(s.id) || seen.get(s.id).time < s.time) seen.set(s.id, s);
+      R.obs = [...seen.values()];
+      R.obsAt = Date.now();
+      draw(); label(); renderSources();
+    }
+    function stationNear(px, py) {
+      const left = R.cx - el.clientWidth / 2, top = R.cy - el.clientHeight / 2;
+      let best = null, bd = 22;
+      for (const s of R.drawn || []) {
+        const d = Math.hypot(lngX(s.lon, R.z) - left - px, latY(s.lat, R.z) - top - py);
+        if (d < bd) { bd = d; best = s; }
+      }
+      return best;
     }
     function setFrames(list) {
       framesL.innerHTML = "";
@@ -1777,6 +1831,29 @@
       if (R.site && R.mode !== "comp" && R.site.lat != null) {
         const [sx, sy] = pt(R.site.lat, R.site.lon);
         out.push(`<rect x="${(sx - 4).toFixed(1)}" y="${(sy - 4).toFixed(1)}" width="8" height="8" fill="#ffd43b" stroke="#000"/>`);
+      }
+      /* stations: a dot, a tail from where the wind comes, and the
+         temperature on a chip of its own colour — newest first, and none
+         drawn on top of another */
+      R.drawn = [];
+      if (R.stations && R.z >= STN_MINZ && R.obs.length) {
+        const w = el.clientWidth, h = el.clientHeight, placed = [];
+        for (const s of R.obs.slice().sort((a, b) => b.time - a.time)) {
+          const [x, y] = pt(s.lat, s.lon);
+          if (x < -20 || y < -20 || x > w + 20 || y > h + 20 || placed.some(([a, b]) => Math.abs(a - x) < 40 && Math.abs(b - y) < 26) || (x > w - 100 && y < 170)) continue;  // nor under the zoom buttons
+          placed.push([x, y]); R.drawn.push(s);
+          let g = "";
+          if (s.wind != null && !Wx.isCalm(s.wind) && s.windDir != null) {
+            const r = s.windDir * Math.PI / 180, L = Math.min(26, 8 + s.wind * 0.45);
+            g += `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + Math.sin(r) * L).toFixed(1)}" y2="${(y - Math.cos(r) * L).toFixed(1)}" stroke="#0b1422" stroke-width="4" stroke-linecap="round"/><line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + Math.sin(r) * L).toFixed(1)}" y2="${(y - Math.cos(r) * L).toFixed(1)}" stroke="#fff" stroke-width="2" stroke-linecap="round"/>`;
+          }
+          g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2" fill="#fff" stroke="#0b1422" stroke-width="1.5"/>`;
+          if (s.temp != null) {
+            const txt = Wx.fmt.temp(s.temp, U()) + "°", cw = 10 + txt.length * 7.2;
+            g += `<rect x="${(x + 5).toFixed(1)}" y="${(y - 20).toFixed(1)}" width="${cw.toFixed(1)}" height="17" rx="8.5" fill="${tempColor(s.temp)}" stroke="#0b1422" stroke-width="1"/><text x="${(x + 5 + cw / 2).toFixed(1)}" y="${(y - 7.5).toFixed(1)}" text-anchor="middle">${txt}</text>`;
+          }
+          out.push(`<g class="stn">${g}</g>`);
+        }
       }
       if (R.pin) {
         const [qx, qy] = pt(R.pin.lat, R.pin.lon);
@@ -1877,6 +1954,7 @@
       if (R.mode === "comp") sb.textContent = "NEXRAD mosaic of the whole country, every 5 minutes.";
       else if (R.site) sb.textContent = `${R.site.id} · ${R.site.name} · ${Wx.SITE_PRODUCTS[R.mode].long}. The site follows the middle of the map.`;
       else sb.textContent = "Finding the nearest radar…";
+      if (R.stations && R.started) sb.textContent += R.z < STN_MINZ ? " Zoom in to see the airport stations." : R.obs.length ? " Tap a station for its full reading." : "";
       if (R.sat) {
         const night = R.sat === "vis" && S.fc && S.fc.current && S.fc.current.isDay === false;
         sb.textContent += ` Under it: ${Wx.SAT[R.sat].long}${night ? " It is night here, so this part of the map is dark — try Infrared." : ""} The latest image; it refreshes every few minutes.`;
@@ -1898,6 +1976,7 @@
         compFrames();
       } else await siteFrames();
       label(); renderSources();
+      stationsSoon();
       if (!reduced) setTimeout(() => { if (R.visible) play(true); }, 900);
     }
 
@@ -1906,7 +1985,7 @@
       if (nz === R.z) return;
       const f = 2 ** (nz - R.z);
       R.cx *= f; R.cy *= f; R.z = nz;
-      clearTiles(); draw();
+      clearTiles(); draw(); stationsSoon();
     }
     function fit(minLat, minLon, maxLat, maxLon, pad = 40) {
       const w = el.clientWidth || 340, h = el.clientHeight || 300;
@@ -1917,7 +1996,7 @@
       R.z = z;
       R.cx = (lngX(minLon, z) + lngX(maxLon, z)) / 2;
       R.cy = (latY(minLat, z) + latY(maxLat, z)) / 2;
-      clearTiles(); draw();
+      clearTiles(); draw(); stationsSoon();
     }
     function fitPolygon(poly, place) {
       const pts = poly[0].slice();
@@ -1937,8 +2016,11 @@
       const x = lngX(R.pin.lon, R.z) - (R.cx - w / 2), y = latY(R.pin.lat, R.z) - (R.cy - h / 2);
       pinEl.hidden = x < 0 || y < 0 || x > w || y > h;
       pinEl.style.left = Math.min(w - 120, Math.max(120, x)) + "px";
-      pinEl.style.top = y + "px";
-      pinEl.classList.toggle("below", y < 170);          // near the top edge the card opens under the point
+      /* above the point if it fits, else under it, else along the top edge */
+      const ch = pinEl.offsetHeight || 140;
+      const where = y - ch - 14 >= 4 ? "above" : y + 14 + ch <= h - 4 ? "below" : "top";
+      pinEl.style.top = (where === "top" ? 6 : y) + "px";
+      pinEl.style.transform = where === "above" ? "translate(-50%,calc(-100% - 14px))" : where === "below" ? "translate(-50%,14px)" : "translate(-50%,0)";
     }
     async function inspect(lat, lon) {
       const pin = R.pin = { lat: Wx.round2(lat), lon: Wx.round2(((lon + 540) % 360) - 180) };
@@ -1954,7 +2036,34 @@
       pinEl.innerHTML = `<button type="button" class="px" data-pinx aria-label="Close">×</button><div class="pn">${esc(pin.name)}</div>
         ${now && now.temp != null ? `<div class="ph">${icon(c.kind, now.isDay)}<span class="pt num">${Wx.fmt.temp(now.temp, U())}°</span><span class="ps">${esc(c.text)}${now.hi != null ? `<br>H ${Wx.fmt.temp(now.hi, U())}° L ${Wx.fmt.temp(now.lo, U())}°` : ""}</span></div>` : `<p class="ps">The forecast service did not answer for this point.</p>`}
         <button type="button" class="pgo" data-pingo>Forecast here</button>`;
+      placePin();                                        // it grew: place it again
     }
+    /* a station's own reading, every field it sent, and its raw METAR */
+    function showStation(s) {
+      R.pin = { lat: s.lat, lon: s.lon, name: s.name ? titleCase(s.name) : s.id };
+      const u = Wx.UNITS[U()], k = clk();
+      const row = (l, v) => v == null || v === "" ? "" : `<span>${l}</span><b class="num">${v}</b>`;
+      const feels = s.temp != null && s.rh != null ? Wx.feelsLike(s.temp, s.rh, s.wind || 0) : null;
+      const wind = s.wind == null ? null : Wx.isCalm(s.wind) ? "calm" : `${Wx.compass(s.windDir)} ${Wx.fmt.wind(s.wind, U())} ${u.wind}`;
+      pinEl.innerHTML = `<button type="button" class="px" data-pinx aria-label="Close">×</button>
+        <div class="pn">${esc(R.pin.name)} · ${esc(s.id)}</div>
+        <div class="ps">Airport station · observed ${esc(k.time(s.time))} (<span data-age="${s.time}">${Wx.age(Date.now() - s.time)}</span> ago)</div>
+        ${s.temp != null ? `<div class="ph"><span class="pt num">${Wx.fmt.temp(s.temp, U())}°</span><span class="ps">${esc(s.wx || s.sky || "")}</span></div>` : ""}
+        <div class="prows">
+          ${row("Feels like", feels != null && Math.round(feels) !== Math.round(s.temp) ? deg(feels) : null)}
+          ${row("Dew point", s.dew != null ? deg(s.dew) : null)}
+          ${row("Humidity", s.rh != null ? Math.round(s.rh) + "%" : null)}
+          ${row("Wind", wind)}
+          ${row("Gusts", s.gust != null ? `${Wx.fmt.wind(s.gust, U())} ${u.wind}` : null)}
+          ${row("Visibility", s.vis != null ? `${Wx.fmt.dist(s.vis, U())} ${u.dist}` : null)}
+          ${row("Pressure", s.pressure != null ? `${Wx.fmt.pressure(s.pressure, U())} ${u.pressure}` : null)}
+          ${row("Rain, last hour", s.precipHour ? `${Wx.fmt.precip(s.precipHour, U())} ${u.precip}` : null)}
+        </div>
+        ${s.raw ? `<details><summary>The station's own report (METAR)</summary><code>${esc(s.raw)}</code></details>` : ""}
+        <button type="button" class="pgo" data-pingo>Forecast here</button>`;
+      draw();
+    }
+    const titleCase = (t) => t.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
     pinEl.addEventListener("click", (e) => {
       if (e.target.closest("[data-pinx]")) { R.pin = null; draw(); }
       else if (e.target.closest("[data-pingo]") && R.pin) {
@@ -1997,9 +2106,14 @@
         /* wait out a double tap, which zooms instead */
         const r = el.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
         clearTimeout(tap);
-        tap = setTimeout(() => inspect(yLat(R.cy - el.clientHeight / 2 + py, R.z), xLng(R.cx - el.clientWidth / 2 + px, R.z)), 300);
+        tap = setTimeout(() => {
+          const s = stationNear(px, py);
+          if (s) showStation(s);
+          else inspect(yLat(R.cy - el.clientHeight / 2 + py, R.z), xLng(R.cx - el.clientWidth / 2 + px, R.z));
+        }, 300);
         return;
       }
+      stationsSoon();
       if (R.mode !== "comp") {
         clearTimeout(follow);
         follow = setTimeout(async () => { if (await pickSite(false)) { clearTiles(); await siteFrames(); label(); } }, 700);
@@ -2013,6 +2127,13 @@
     $("#scrub").addEventListener("input", (e) => { play(false); loadOld(); show(Number(e.target.value)); });
     document.querySelectorAll(".seg [data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
     document.querySelectorAll("[data-sat]").forEach((b) => b.addEventListener("click", () => setSat(b.dataset.sat)));
+    $("#stationtoggle").setAttribute("aria-pressed", String(R.stations));
+    $("#stationtoggle").addEventListener("click", () => {
+      R.stations = !R.stations;
+      store.set("wx:stations", R.stations);
+      $("#stationtoggle").setAttribute("aria-pressed", String(R.stations));
+      if (R.stations) loadStations(); else { R.obs = []; draw(); label(); renderSources(); }
+    });
     $("#outlooktoggle").addEventListener("click", () => {
       R.outlook = !R.outlook;
       $("#outlooktoggle").setAttribute("aria-pressed", String(R.outlook));
@@ -2037,7 +2158,7 @@
         R.cx = lngX(lon, R.z); R.cy = latY(lat, R.z);
         clearTiles();
         if (R.mode !== "comp") { R.site = null; if (R.started) pickSite(true).then(() => siteFrames()).then(label); }
-        if (R.started) draw();
+        if (R.started) { draw(); stationsSoon(); }
       },
       showUS() {
         R.us = true; R.lat = null;
@@ -2062,12 +2183,14 @@
       },
       refresh() {
         if (!R.started || !R.visible) return;
+        if (R.stations && Date.now() - (R.obsAt || 0) > 300e3) loadStations();
         if (R.sat && satBucket() !== satAt) { satAt = satBucket(); for (const s of sats) { for (const img of s.tiles.values()) img.remove(); s.tiles.clear(); } draw(); }
         if (R.mode === "comp") { Wx.radarTime().then((v) => { if (v && v !== R.valid) { R.valid = v; clearTiles(); compFrames(); renderSources(); } }); }
         else siteFrames(true);
       },
       draw, label, describe, setSat,
       get sat() { return R.sat; },
+      get stations() { return R.stations && R.obs.length ? { n: R.obs.length, newest: Math.max(...R.obs.map((s) => s.time)) } : null; },
       get valid() { return R.valid; },
       get started() { return R.started; }
     };

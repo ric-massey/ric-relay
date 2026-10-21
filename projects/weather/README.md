@@ -35,6 +35,7 @@ post on the front door (the `radar` painter, over invented ground).
 | The forecast office's own words | NWS `/gridpoints/…/forecast` | Shown under each day of the 10-day list, labelled as the office's |
 | Official alerts | NWS `/alerts/active?point=` | Shown as issued, worst first; polygons drawn on the radar |
 | Radar | NOAA NEXRAD base reflectivity, US composite, via [Iowa Environmental Mesonet](https://mesonet.agron.iastate.edu/) tiles | Latest plus one layer per 5 minutes back to 50; `n0q_0.json` says when the latest was scanned. Lower 48 only |
+| Stations on the map | IEM's current ASOS readings, one forecast office at a time (`/api/1/currents.geojson?networkclass=ASOS&wfo=XXX&minutes=90`, `Wx.stationObs`) | The offices covering the view come from the NWS's `/points` for the middle and four points around it, looked up once per half-degree. One office is ~25 KB; the whole country is 3.3 MB uncompressed, so it is never asked for. From zoom 6 in, every five minutes; a chip with the temperature, a tail from where the wind comes, tap for every field and the raw METAR. Positions are read at run time, never kept (hard rule 1). On by default; the Stations button turns it off for this browser |
 | Satellite | GOES-West and GOES-East via IEM tiles (`goes-{west,east}-{ir-4km,vis-1km,wv-4km}-900913`, `Wx.SAT`) | Under the radar, West drawn first and East over it. Latest image only: the tile carries no scan time, so the page says "latest" and nothing finer. Visible is dark at night and the page says so |
 | Storm warnings across the country, and a state's | NWS `/alerts/active?event=…` and `?area=XX` | The national list with no place; "warnings nearby" with one |
 | SPC convective outlook | `spc.noaa.gov/products/outlook/day{1,2,3}otlk_*.nolyr.geojson` | Categorical risk with SPC's own labels and colours; drawn on the radar, and "Slight risk … here today" in the hero |
@@ -265,7 +266,7 @@ split most.
 
 | Phase | The likely way on this site |
 |---|---|
-| 2 · Investigation | Satellite: built (GOES IR / visible / water vapour under the radar). Still to do: a full-screen map; a point inspector reusing `Wx.forecast` at the tapped point; METAR dots |
+| 2 · Investigation | Built: satellite (GOES IR / visible / water vapour under the radar), a full-screen map, a tapped-point card, airport stations on the map. Still to do: a unified timeline across radar and satellite; more networks than ASOS (state mesonets) |
 | 3 · One serious model | HRRR fields as images. IEM *does* list HRRR reflectivity tile layers (`hrrr::REFD-F0060-<run>` answered on 2026-10-21) but returned blank tiles where HRRR had rain, so they are not usable until the naming is confirmed; otherwise this is the first phase that needs a backend (HRRR GRIB subsets into tiles in R2). See `docs/notes/weather-plan-audit-2026-10-21.md` |
 | 4 · Soundings | Built (above), with observed-vs-model on the same diagram (§16). Still to do: effective-layer parameters |
 | 5 · Advanced | Model comparison: built (above). Still to do: ensemble plumes (GEFS/ECMWF ENS members); MRMS |

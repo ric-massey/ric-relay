@@ -38,7 +38,7 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     ...W.SPC_KINDS.map(k => W.ROUTES.spc(k)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.column(m, 12.34, -56.78)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.modelRun(m)),
-    W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78),
+    W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78), W.ROUTES.stationObs('ABC'),
     W.ROUTES.several([{ lat: 12.34, lon: -56.78 }, { lat: -33.87, lon: 151.21 }])
   ];
   for (const [path, direct] of routes) {
@@ -340,6 +340,24 @@ console.log('\nRULE  how sure: the models\' own agreement');
   ok(W.verdict({ models: { best: rec(1.6, 20), blend: rec(1.3, 20), nbm: rec(1.1, 20) } }, 7).use === 'nbm', 'a model the page holds hourly is picked where its record is best');
   ok(W.verdict({ models: { best: rec(1.6, 20), blend: rec(1.3, 20), pangu: rec(0.9, 20) } }, 7).use === 'blend', 'but never one the page cannot draw (Pangu): it is ranked, not shown');
   ok(W.verdict({ models: { best: rec(1.6, 20), nbm: rec(1.1, 20) } }, 7, ['hrrr']).use === 'best', 'nor a model this place has no hours of');
+}
+
+console.log('\nRULE  stations on the map: their own readings, in the page\'s units, and only fresh ones');
+{
+  const T = Date.parse('2026-10-21T12:00:00Z');
+  const ft = (props, coords = [-56.7, 12.3]) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: coords }, properties: props });
+  const s = W.normalizeStationObs({ features: [
+    ft({ station: 'AAA', name: 'SOME  FIELD', utc_valid: '2026-10-21T11:56:00Z', tmpf: 50, dwpf: 32, relh: 50, sknt: 10, drct: 270, gust: 0, vsby: 10, mslp: 1012.5, skyc1: 'FEW', skyc2: 'OVC', wxcodes: '-RA', phour: 0.1, raw: 'KAAA 211156Z …' }),
+    ft({ station: 'OLD', utc_valid: '2026-10-21T09:00:00Z', tmpf: 50 }),
+    ft({ station: 'EMPTY', utc_valid: '2026-10-21T11:50:00Z' }),
+    ft({ station: 'NOWHERE', utc_valid: '2026-10-21T11:50:00Z', tmpf: 50 }, null)
+  ] }, T);
+  ok(s.length === 1 && s[0].id === 'AAA', 'an old reading, an empty one and one with no position are left off');
+  const a = s[0];
+  ok(near(a.temp, 10) && near(a.dew, 0) && near(a.wind, 18.52) && a.gust === null && near(a.vis, 16093, 1) && near(a.precipHour, 2.54),
+    '°F to °C, knots to km/h, miles to metres, inches to mm; a gust of 0 is no gust');
+  ok(a.sky === 'Overcast' && a.wx === '-RA' && a.name === 'SOME FIELD', 'the sky is the thickest layer reported; weather codes kept as reported');
+  ok(W.ROUTES.stationObs('abc') === null && W.ROUTES.stationObs('ABCD') === null, 'only a three-letter office is ever asked for');
 }
 
 console.log('\nRULE  calm is calm, not "N 0"');
