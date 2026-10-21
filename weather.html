@@ -246,6 +246,10 @@
        greens and purples as the radar, and under the radar that read as rain */
     .radar .sat img{opacity:.9;filter:grayscale(1) contrast(1.15)}
     .radar .frame{opacity:0}
+    /* IEM's HRRR pictures are opaque, rain on black: "screen" lets the black
+       vanish and keeps the colours, with no per-pixel work */
+    .radar .frame canvas.hrrr{position:absolute;left:0;top:0}
+    .radar .frame.future{mix-blend-mode:screen}      /* on the layer: its opacity would isolate the canvas */
     .radar .frame.on{opacity:.82}
     .radar svg.over{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
     .radar .credit{position:absolute;right:0;bottom:0;padding:2px 7px;font-size:11px;background:rgba(0,0,0,.66);color:#e6e9ee;
@@ -564,6 +568,7 @@
         <button type="button" data-mode="comp" aria-pressed="true">US mosaic</button>
         <button type="button" data-mode="N0B" aria-pressed="false">Reflectivity</button>
         <button type="button" data-mode="N0S" aria-pressed="false">Velocity</button>
+        <button type="button" data-mode="hrrr" aria-pressed="false" title="The HRRR model's forecast of the rain, drawn like radar, for the next 18 hours">Future · HRRR</button>
         <span class="sep"></span>
         <button type="button" id="stationtoggle" aria-pressed="false" title="Airport weather stations: temperature and wind, as they read now">Stations</button>
         <button type="button" id="outlooktoggle" aria-pressed="false">SPC outlook</button>
@@ -654,7 +659,7 @@
 
 <script src="effects.js"></script>
 <script src="projects/weather/nowcast.js?v=1"></script>
-<script src="projects/weather/wx.js?v=7"></script>
+<script src="projects/weather/wx.js?v=8"></script>
 <script src="projects/weather/sounding.js?v=2"></script>
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
@@ -1706,7 +1711,11 @@
     } else row("off", "SPC convective outlook", S.outlook === undefined ? "asking…" : "not answering", null);
     if (S.place && S.now) row("", "Radar nowcast — this site's own", "the last half hour of the IEM mosaic, carried forward in this browser · from the scan", S.now.valid);
     const rv = radar.valid;
-    if (rv) {
+    if (radar.mode === "hrrr") {
+      const old = rv && Date.now() - rv > 3 * 3600e3;
+      if (rv) row(old ? "stale" : "", `HRRR forecast radar${old ? " — run is late" : ""}`, "simulated reflectivity, the latest run, via IEM · run", rv);
+      else row("off", "HRRR forecast radar", "not answering", null);
+    } else if (rv) {
       const f = Wx.fresh("radar", rv);
       row(f.stale ? "stale" : "", `Radar${f.stale ? " — delayed" : ""}`, `${esc(radar.describe())} · latest scan`, rv);
     } else row("off", "Radar", radar.started ? "scan time unknown" : "loads when you reach it", null);
@@ -1817,7 +1826,7 @@
       framesL.innerHTML = "";
       R.frames = list.map((f) => {
         const d = document.createElement("div");
-        d.className = "layer frame";
+        d.className = "layer frame" + (f.future ? " future" : "");
         framesL.appendChild(d);
         return { ...f, el: d, tiles: new Map() };
       });
@@ -1825,6 +1834,48 @@
       R.loadedOld = false;
       $("#scrub").max = String(Math.max(0, R.frames.length - 1));
       draw(); show(R.frame);
+    }
+    /* one radar site's own products (reflectivity, velocity): the modes that follow a site */
+    const single = () => !!Wx.SITE_PRODUCTS[R.mode];
+
+    /* ── the HRRR's next 18 hours, drawn as radar ──
+       Not tiles: one lat/lon picture of the lower 48 per step (Wx.HRRR),
+       reprojected onto the map in thin strips — longitude is straight in
+       both, so only latitude needs stretching. The loop starts on the step
+       nearest now. A forecast, and labelled as one everywhere it shows. */
+    async function hrrrFrames() {
+      let run = null;
+      try { run = await Wx.hrrrRun(); } catch (e) {}
+      if (R.mode !== "hrrr") return;
+      R.valid = run;
+      setFrames(Wx.HRRR.mins.map((m) => ({ t: run ? run + m * 60e3 : null, mins: m, future: true, src: Wx.hrrrImage(m, run ? Math.round(run / 60e3) : "") })));
+      if (run) {
+        let best = 0;
+        R.frames.forEach((f, i) => { if (Math.abs(f.t - Date.now()) < Math.abs(R.frames[best].t - Date.now())) best = i; });
+        show(best);
+      } else note("The HRRR forecast did not answer. Try again, or go back to the radar.");
+      renderSources();
+    }
+    function paintHrrr(f, w, h, left, top) {
+      const dpr = Math.min(2, devicePixelRatio || 1);
+      if (!f.cv) { f.cv = document.createElement("canvas"); f.cv.className = "hrrr"; f.el.appendChild(f.cv); }
+      if (!f.img) {
+        f.img = new Image(); f.img.decoding = "async";
+        f.img.onload = () => { if (R.frames.includes(f) && R.frames[R.frame] === f) draw(); };
+        f.img.src = f.src;
+      }
+      const cv = f.cv, W = Math.round(w * dpr), Hh = Math.round(h * dpr);
+      if (cv.width !== W || cv.height !== Hh) { cv.width = W; cv.height = Hh; cv.style.width = w + "px"; cv.style.height = h + "px"; }
+      const x = cv.getContext("2d");
+      x.setTransform(dpr, 0, 0, dpr, 0, 0);
+      x.clearRect(0, 0, w, h);
+      if (!f.img.complete || !f.img.naturalWidth) return;
+      const H = Wx.HRRR, x0 = lngX(H.west, R.z) - left, x1 = lngX(H.west + H.w * H.deg, R.z) - left, STRIP = 2;
+      for (let y = 0; y < h; y += STRIP) {
+        const s0 = (H.north - yLat(top + y, R.z)) / H.deg, s1 = (H.north - yLat(top + y + STRIP, R.z)) / H.deg;
+        const a = Math.max(0, s0), b = Math.min(H.h, s1);
+        if (b > a) x.drawImage(f.img, 0, a, H.w, b - a, x0, y, x1 - x0, STRIP);
+      }
     }
     function compFrames() {
       const b = bucket();
@@ -1903,7 +1954,7 @@
           }
         }
       }
-      if (R.site && R.mode !== "comp" && R.site.lat != null) {
+      if (R.site && single() && R.site.lat != null) {
         const [sx, sy] = pt(R.site.lat, R.site.lon);
         out.push(`<rect x="${(sx - 4).toFixed(1)}" y="${(sy - 4).toFixed(1)}" width="8" height="8" fill="#ffd43b" stroke="#000"/>`);
       }
@@ -1948,7 +1999,11 @@
       place(baseL, baseTiles, (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`, w, h, left, top);
       for (const s of sats) place(s.el, s.tiles, (z, x, y) => Wx.satTile(s.layer, z, x, y, satAt), w, h, left, top);
       R.frames.forEach((f, i) => {
-        if (i === R.frame || R.loadedOld) place(f.el, f.tiles, f.url, w, h, left, top);
+        /* a forecast frame is painted only while it is the one on screen —
+           twenty-two full reprojections a pan would be the stroke §2 warns
+           of; the others only load their picture, ready for the loop */
+        if (f.future) { if (i === R.frame) paintHrrr(f, w, h, left, top); else if (R.loadedOld && !f.img) { f.img = new Image(); f.img.src = f.src; } }
+        else if (i === R.frame || R.loadedOld) place(f.el, f.tiles, f.url, w, h, left, top);
       });
       overlay(left, top);
       placePin();
@@ -1962,14 +2017,18 @@
       R.frame = i;
       R.frames.forEach((f, j) => f.el.classList.toggle("on", j === i));
       if (!R.frames[i]) { $("#when").innerHTML = ""; return; }
-      if (!R.loadedOld) draw();
-      $("#scrub").value = String(i);
       const f = R.frames[i];
+      if (!R.loadedOld || f.future) draw();
+      $("#scrub").value = String(i);
       const when = $("#when");
-      if (f.t) when.innerHTML = `${esc(clk().time(f.t))}<small>${Wx.age(Date.now() - f.t)} ago</small>`;
+      if (f.future && f.t) {
+        const k = clk(), d = f.t - Date.now(), day = k.ymd(f.t) !== k.ymd(Date.now()) ? k.day(f.t) + " " : "";
+        when.innerHTML = `${esc(day + k.time(f.t))}<small>forecast · ${Math.abs(d) < 8 * 60e3 ? "now" : d > 0 ? "in " + Wx.age(d) : Wx.age(-d) + " ago"}</small>`;
+      } else if (f.t) when.innerHTML = `${esc(clk().time(f.t))}<small>${Wx.age(Date.now() - f.t)} ago</small>`;
       else when.innerHTML = f.mins ? `−${f.mins} min<small>before latest</small>` : `Latest<small>scan time unknown</small>`;
-      const fr = R.valid ? Wx.fresh("radar", R.valid) : null;
-      if (fr && fr.stale) note(`Radar delayed — the latest scan is ${fr.age} old.`);
+      const fr = R.valid && !f.future ? Wx.fresh("radar", R.valid) : null;
+      if (f.future && R.valid && Date.now() - R.valid > 3 * 3600e3) note(`This HRRR run is ${Wx.age(Date.now() - R.valid)} old — a newer one is late.`);
+      else if (fr && fr.stale) note(`Radar delayed — the latest scan is ${fr.age} old.`);
       else if (S.place && S.pt === null && R.mode === "comp") note("This radar covers the lower 48 US states only.");
       else if (R.frames.length) note("");
     }
@@ -2016,6 +2075,8 @@
       if (mode === "comp") {
         R.valid = await Wx.radarTime();
         compFrames();
+      } else if (mode === "hrrr") {
+        await hrrrFrames();
       } else {
         if (R.z < 7) zoomTo(8);
         await pickSite(!R.site);
@@ -2027,6 +2088,7 @@
     function label() {
       const sb = $("#sitebar");
       if (R.mode === "comp") sb.textContent = "NEXRAD mosaic of the whole country, every 5 minutes.";
+      else if (R.mode === "hrrr") sb.textContent = `A forecast, not radar: the HRRR model's own picture of the rain${R.valid ? ` from its ${new Date(R.valid).toISOString().slice(11, 13)}Z run` : ""}, every 15 minutes for the first hour then hourly to 18 hours. Lower 48 only.`;
       else if (R.site) sb.textContent = `${R.site.id} · ${R.site.name} · ${Wx.SITE_PRODUCTS[R.mode].long}. The site follows the middle of the map.`;
       else sb.textContent = "Finding the nearest radar…";
       if (R.stations && R.started) sb.textContent += R.z < STN_MINZ ? " Zoom in to see the airport stations." : R.obs.length ? " Tap a station for its full reading." : "";
@@ -2037,7 +2099,7 @@
       if (R.started && R.frames[R.frame]) show(R.frame);
     }
     function describe() {
-      return R.mode === "comp" ? "NEXRAD base reflectivity, US mosaic (IEM)" : `${R.site ? R.site.id + " " : ""}${Wx.SITE_PRODUCTS[R.mode].label.toLowerCase()} (NEXRAD via IEM)`;
+      return R.mode === "comp" ? "NEXRAD base reflectivity, US mosaic (IEM)" : R.mode === "hrrr" ? "HRRR simulated reflectivity, the latest run (IEM)" : `${R.site ? R.site.id + " " : ""}${Wx.SITE_PRODUCTS[R.mode].label.toLowerCase()} (NEXRAD via IEM)`;
     }
 
     async function start() {
@@ -2189,7 +2251,7 @@
         return;
       }
       stationsSoon();
-      if (R.mode !== "comp") {
+      if (single()) {
         clearTimeout(follow);
         follow = setTimeout(async () => { if (await pickSite(false)) { clearTiles(); await siteFrames(); label(); } }, 700);
       }
@@ -2232,20 +2294,20 @@
         R.z = 7;
         R.cx = lngX(lon, R.z); R.cy = latY(lat, R.z);
         clearTiles();
-        if (R.mode !== "comp") { R.site = null; if (R.started) pickSite(true).then(() => siteFrames()).then(label); }
+        if (single()) { R.site = null; if (R.started) pickSite(true).then(() => siteFrames()).then(label); }
         if (R.started) { draw(); stationsSoon(); }
       },
       showUS() {
         R.us = true; R.lat = null;
         if (!R.outlook) { R.outlook = true; $("#outlooktoggle").setAttribute("aria-pressed", "true"); }
-        if (R.mode !== "comp") setMode("comp");
+        if (single()) setMode("comp");
         fit(...CONUS, 10);
       },
       /* a storm that covers the place: its polygon and the place, on the
          nearest radar's reflectivity, playing */
       async focusStorm(a) {
         if (a.polygon) fitPolygon(a.polygon, S.place);
-        if (R.mode === "comp" && inUS()) await setMode("N0B");
+        if (!single() && inUS()) await setMode("N0B");
         if (!reduced && R.visible) play(true);
       },
       focus(id) {
@@ -2261,10 +2323,12 @@
         if (R.stations && Date.now() - (R.obsAt || 0) > 300e3) loadStations();
         if (R.sat && satBucket() !== satAt) { satAt = satBucket(); for (const s of sats) { for (const img of s.tiles.values()) img.remove(); s.tiles.clear(); } draw(); }
         if (R.mode === "comp") { Wx.radarTime().then((v) => { if (v && v !== R.valid) { R.valid = v; clearTiles(); compFrames(); renderSources(); } }); }
+        else if (R.mode === "hrrr") { Wx.hrrrRun().then((v) => { if (v && v !== R.valid && !R.playing) hrrrFrames(); }).catch(() => {}); }
         else siteFrames(true);
       },
       draw, label, describe, setSat,
       get sat() { return R.sat; },
+      get mode() { return R.mode; },
       get stations() { return R.stations && R.obs.length ? { n: R.obs.length, newest: Math.max(...R.obs.map((s) => s.time)) } : null; },
       get valid() { return R.valid; },
       get started() { return R.started; }

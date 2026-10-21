@@ -1691,6 +1691,7 @@ function wxUpstream(parts, params) {
       return [`${WX_IEM}/json/radar.py?operation=list&radar=${site}&product=${prod}&start=${start}&end=${end}`, WX_TTL.scans];
     }
     if (what === 'raobsites') return [`${WX_IEM}/geojson/network.py?network=RAOB`, WX_TTL.raobsites];
+    if (what === 'hrrrmeta') return [`${WX_IEM}/data/gis/images/4326/hrrr/refd_0000.json`, WX_TTL.meta];
     /* one forecast office's airport stations, as they read now */
     if (what === 'obs') {
       const wfo = params.get('wfo') || '';

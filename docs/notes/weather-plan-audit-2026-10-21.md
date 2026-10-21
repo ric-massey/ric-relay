@@ -186,3 +186,25 @@ Checked for Seattle (rain chances of 44–50% over the weekend) at desktop and 3
 The confidence dots on the 10-day list still come from the five deterministic models;
 moving them onto the ensemble is the natural next step once its record can be scored.
 Needs the same Worker deploy.
+
+## Follow-up: effective-layer parameters (gap 10) — done 2026-10-21
+
+The effective inflow layer, effective SRH and bulk shear, effective STP (with its CIN
+term) and the supercell composite, in the parameter grid and the glossary; the
+ingredients timeline's STP row is now the effective one. STP and SCP match MetPy's
+`significant_tornado` and `supercell_composite` term for term, and effective SRH matches
+`storm_relative_helicity` over the same layer (64.92 m²/s²). That comparison found the
+helicity loop stopping up to 99 m short of a layer top that is not a round number — 2%
+low — fixed.
+
+## Follow-up: the first model on the map (gap 3, part) — done 2026-10-21
+
+**Future · HRRR** on the radar: the HRRR's simulated reflectivity for the next 18 hours.
+IEM's HRRR *tiles* came back blank, but it also publishes each step as one lat/lon
+picture of the lower 48, which the page reprojects onto the map itself. Checked against
+the live radar at the national view (the Arizona storms and the New England rain sit
+where the radar has them), played through 22 frames with no errors. The pictures are
+opaque — rain on black — which first blacked out the map; a `screen` blend on the
+frame layer fixed it (on the canvas alone it did nothing, because the layer's opacity
+isolates it). Temperature, wind and CAPE as map fields still need a source — that part
+of gap 3 stays Ric's decision.

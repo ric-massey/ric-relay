@@ -94,6 +94,8 @@
       return [`nws/${path}`, `${NWS}/${path}`];
     },
     radarMeta: () => ['radar', `${IEM}/data/gis/images/4326/USCOMP/n0q_0.json`],
+    /* when the HRRR forecast radar on the map was run */
+    hrrrMeta: () => ['iem/hrrrmeta', `${IEM}/data/gis/images/4326/hrrr/refd_0000.json`],
     /* Every storm-based warning in the country right now — the page with no
        place in it (§8.3, §20). */
     national: () => [`nws/alerts/active?event=${encodeURIComponent(NATIONAL_EVENTS)}`,
@@ -749,6 +751,20 @@
     vis: { label: 'Visible', long: 'GOES visible — clouds as a camera sees them. Daytime only.', layers: ['goes-west-vis-1km-900913', 'goes-east-vis-1km-900913'] },
     wv: { label: 'Water vapour', long: 'GOES water vapour — moisture in the middle of the atmosphere; dry air dark, moist air white.', layers: ['goes-west-wv-4km-900913', 'goes-east-wv-4km-900913'] }
   };
+  /* ── HRRR forecast radar (DESIGN.md §13, the first model on the map) ──
+     IEM draws the latest HRRR run's simulated reflectivity for the lower 48
+     every 15 minutes out to 18 hours, as one lat/lon image per step
+     (`refd_MMMM.png`, 3050×1340 px, 0.02° a pixel from 126° W, 50° N —
+     its world file, checked 2026-10-21), in the same colours as the radar.
+     The page reprojects it onto the map. `run` busts the cache so every
+     frame of a loop is the same run. */
+  const HRRR = { west: -126, north: 50, deg: 0.02, w: 3050, h: 1340, mins: [0, 15, 30, 45, ...Array.from({ length: 18 }, (_, i) => (i + 1) * 60)] };
+  const hrrrImage = (mins, run) => `${IEM}/data/gis/images/4326/hrrr/refd_${String(mins).padStart(4, '0')}.png${run ? '?run=' + run : ''}`;
+  async function hrrrRun(signal) {
+    const j = (await ask(ROUTES.hrrrMeta(), signal)).data;
+    const t = Date.parse(j && j.model_init_utc);
+    return Number.isFinite(t) ? t : null;
+  }
   const satTile = (layer, z, x, y, bust) => `${IEM}/cache/tile.py/1.0.0/${layer}/${z}/${x}/${y}.png${bust ? '?_=' + bust : ''}`;
   function radarValid(j) {
     const v = j && j.meta && (j.meta.valid || j.meta.vtime);
@@ -1411,7 +1427,8 @@
     several, summary, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet,
     inMosaic, nowcast, nowcastRecord,
     CALM_KMH, isCalm, RIDE, rideOutlook, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M,
-    normalizeStationObs, stationObs, normalizePlumes, plumes, plumeStats, quantile
+    normalizeStationObs, stationObs, normalizePlumes, plumes, plumeStats, quantile,
+    HRRR, hrrrImage, hrrrRun
   };
   root.Wx = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

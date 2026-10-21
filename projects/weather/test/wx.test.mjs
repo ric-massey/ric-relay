@@ -38,7 +38,7 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     ...W.SPC_KINDS.map(k => W.ROUTES.spc(k)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.column(m, 12.34, -56.78)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.modelRun(m)),
-    W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78), W.ROUTES.stationObs('ABC'), W.ROUTES.plumes(12.34, -56.78),
+    W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78), W.ROUTES.stationObs('ABC'), W.ROUTES.plumes(12.34, -56.78), W.ROUTES.hrrrMeta(),
     W.ROUTES.several([{ lat: 12.34, lon: -56.78 }, { lat: -33.87, lon: 151.21 }])
   ];
   for (const [path, direct] of routes) {
