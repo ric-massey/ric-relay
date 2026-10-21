@@ -22,6 +22,14 @@
 //   },
 window.RELAY_LATEST = [
   {
+    date: "2026-10-21",
+    kind: "new room",
+    room: "weather",
+    title: "Weather",
+    description: "The sky over wherever you are: when the rain starts, radar and satellite, ten days ahead, the National Weather Service's warnings as issued, and whether it's a good hour to ride. Every forecast is scored against real airport thermometers every day.",
+    href: "weather.html",
+  },
+  {
     date: "2026-10-03",
     kind: "new page",
     room: "psyche",

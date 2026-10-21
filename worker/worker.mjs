@@ -1706,7 +1706,7 @@ function wxUpstream(parts, params) {
     const lat = wxDeg(params.get('lat'), 90), lon = wxDeg(params.get('lon'), 180);
     if (!m || lat === null || lon === null) return null;
     const q = new URLSearchParams({ latitude: lat, longitude: lon, hourly: WX_COLUMN, models: m,
-      forecast_hours: '48', wind_speed_unit: 'ms', timeformat: 'unixtime', timezone: 'auto' });
+      forecast_hours: '48', past_hours: '12', wind_speed_unit: 'ms', timeformat: 'unixtime', timezone: 'auto' });
     return [`${WX_OM}?${q}`, WX_TTL.col];
   }
   if (kind === 'now' && !parts[2]) {

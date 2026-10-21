@@ -140,7 +140,11 @@
       if (lfc !== null && mid <= lfc && mid >= el) cape += Math.max(0, area);
       else if (lfc === null || mid > lfc) cin += Math.min(0, area);
     }
-    if (cape < 1) { cape = 0; lfc = null; el = null; }
+    /* No free convection: no CAPE, and no CIN either — "inhibition" is the
+       work to reach an LFC, and there is none. Integrating the whole column
+       instead printed CIN of −14,905 on a stable night. MetPy's cape_cin
+       answers (0, 0) here too. */
+    if (cape < 1) { cape = 0; cin = 0; lfc = null; el = null; }
 
     const zs = L[0].z;
     const agl = p => { const z = p !== null ? heightAt(L, p) : null; return z === null ? null : z - zs; };

@@ -235,6 +235,7 @@
       --pattern: radial-gradient(circle at 12px 12px, rgba(255,255,255,.06) 2px, transparent 2.5px) 0 0 / 24px 24px; }
     [data-skin="cinema"]    { --paper: #0b0a08; --ink: #fff8e6; --muted: #c9b98a; --accent: #f5c518; --hf: var(--narrow); --hw: 800; --htt: uppercase; --hls: .01em;
       --pattern: radial-gradient(circle, rgba(245,197,24,.55) 2px, transparent 3px) 0 14px / 26px 26px repeat-x; }
+    [data-skin="wx"]        { --paper: #0f2747; --ink: #ffffff; --muted: #b7c9e0; --accent: #7cc4ff; --hf: var(--sans); --hw: 300; --hls: -.03em; }
     [data-skin="scale"]     { --paper: #0b0a14; --ink: #ece8ff; --muted: #a9a3c9; --accent: #a78bfa; --hf: var(--serif); --hw: 400; --hls: -.02em; }
     [data-skin="strava"]    { --paper: #ffffff; --ink: #242428; --muted: #5f5f66; --accent: #fc4c02; --hf: var(--sans); --hw: 800; --hls: -.035em;
       --pattern: linear-gradient(180deg, #fc4c02 0 4px, transparent 4px); }
@@ -349,7 +350,7 @@
     <div id="feed"></div>
     <noscript>
       <ul style="padding:40px var(--gutter);list-style:none;line-height:2">
-        <li><a href="cs.html">Counter-Strike Stats</a></li><li><a href="projects/kondrite/index.html">KONDRITE</a></li><li><a href="projects/climbing/board.html">The Boards</a></li><li><a href="entertainment.html">Entertainment</a></li><li><a href="projects/how-big-everything-is/index.html">How Big Everything Is</a></li><li><a href="training.html">Training</a></li><li><a href="map.html">ATLAS</a></li><li><a href="projects/psyche/studies.html">Studies</a></li><li><a href="projects/offramp/index.html">Interstate 40</a></li><li><a href="orrin.html">Orrin</a></li><li><a href="captures.html">Captures</a></li><li><a href="projects/starfield/fly.html">Starfield</a></li><li><a href="climbing.html">Climbing</a></li><li><a href="projects/how-speed-affects-time/index.html">How Speed Affects Time</a></li><li><a href="projects/state-of-mind-line/index.html">State of Mind</a></li><li><a href="projects/farlight/index.html">FARLIGHT</a></li><li><a href="projects/spacetime/index.html">The Geometry of Spacetime</a></li><li><a href="apex.html">Apex</a></li><li><a href="projects/siege-conductor/index.html">Siege Conductor</a></li><li><a href="projects/kondrite/leviathan.html">The Leviathan</a></li><li><a href="gaming.html">The Arcade</a></li><li><a href="projects/spacetime/02-time-dilation.html">Time Dilation</a></li><li><a href="projects/spacetime/03-simultaneity.html">The Loss of Now</a></li><li><a href="projects/spacetime/04-expansion.html">Space Expanding</a></li><li><a href="projects/climbing/gallery.html">Climbing Media</a></li><li><a href="projects/climbing/stats.html">Climbing Stats</a></li><li><a href="projects/training/calendar.html">Training Calendar</a></li><li><a href="projects/training/trips.html">Trips &amp; Races</a></li><li><a href="entertainment-library.html">The Library</a></li><li><a href="projects/autism-reflection.html">The Shape of the Criteria</a></li><li><a href="psyche.html">Psyche</a></li><li><a href="exploration.html">Exploration</a></li><li><a href="log.html">The Log</a></li><li><a href="terminal.html">The Terminal</a></li>
+        <li><a href="weather.html">Weather</a></li><li><a href="cs.html">Counter-Strike Stats</a></li><li><a href="projects/kondrite/index.html">KONDRITE</a></li><li><a href="projects/climbing/board.html">The Boards</a></li><li><a href="entertainment.html">Entertainment</a></li><li><a href="projects/how-big-everything-is/index.html">How Big Everything Is</a></li><li><a href="training.html">Training</a></li><li><a href="map.html">ATLAS</a></li><li><a href="projects/psyche/studies.html">Studies</a></li><li><a href="projects/offramp/index.html">Interstate 40</a></li><li><a href="orrin.html">Orrin</a></li><li><a href="captures.html">Captures</a></li><li><a href="projects/starfield/fly.html">Starfield</a></li><li><a href="climbing.html">Climbing</a></li><li><a href="projects/how-speed-affects-time/index.html">How Speed Affects Time</a></li><li><a href="projects/state-of-mind-line/index.html">State of Mind</a></li><li><a href="projects/farlight/index.html">FARLIGHT</a></li><li><a href="projects/spacetime/index.html">The Geometry of Spacetime</a></li><li><a href="apex.html">Apex</a></li><li><a href="projects/siege-conductor/index.html">Siege Conductor</a></li><li><a href="projects/kondrite/leviathan.html">The Leviathan</a></li><li><a href="gaming.html">The Arcade</a></li><li><a href="projects/spacetime/02-time-dilation.html">Time Dilation</a></li><li><a href="projects/spacetime/03-simultaneity.html">The Loss of Now</a></li><li><a href="projects/spacetime/04-expansion.html">Space Expanding</a></li><li><a href="projects/climbing/gallery.html">Climbing Media</a></li><li><a href="projects/climbing/stats.html">Climbing Stats</a></li><li><a href="projects/training/calendar.html">Training Calendar</a></li><li><a href="projects/training/trips.html">Trips &amp; Races</a></li><li><a href="entertainment-library.html">The Library</a></li><li><a href="projects/autism-reflection.html">The Shape of the Criteria</a></li><li><a href="psyche.html">Psyche</a></li><li><a href="exploration.html">Exploration</a></li><li><a href="log.html">The Log</a></li><li><a href="terminal.html">The Terminal</a></li>
       </ul>
     </noscript>
     <section class="fin" id="end" aria-labelledby="fin-h">
@@ -446,6 +447,10 @@
     // live from the room's own data (see ART below). Boards and ATLAS are in by
     // Ric's word (2026-10-16), as rooms of their own.
     const POSTS = [
+      { id: "weather", tier: 0, skin: "wx", isNew: true, tag: "Weather · the sky over you", name: "Weather", href: "weather.html",
+        lede: "The sky over wherever you are — when the rain starts, radar and satellite, ten days ahead, and the National Weather Service's warnings exactly as issued.",
+        facts: ["Rain timing", "Radar & satellite", "Scored daily"], btn: "Check the sky", peek: "Open",
+        media: { art: "radar" }, alt: "Made-up rain cells in radar colours drifting over an invented map" },
       { id: "cs", tier: 0, skin: "cs", isNew: true, tag: "Gaming", name: "Counter-Strike Stats", href: "cs.html",
         lede: "My Counter-Strike matches, rebuilt from the game's own recordings. Replay any round from above, freeze any kill, see where everyone stood.",
         facts: ["2D replays", "Kill snapshots", "Win chance"], btn: "Watch the replays", peek: "Open",
@@ -637,6 +642,40 @@
     const font = (px, kind = "sans", weight = 600) => `${weight} ${px}px ${kind === "mono" ? 'ui-monospace, "SF Mono", Menlo, Consolas, monospace' : kind === "serif" ? 'Georgia, "Times New Roman", serif' : '-apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif'}`;
 
     const ART = {
+      // The weather room's radar, over ground that does not exist — no real
+      // place is drawn on this page (hard rule 1): contours from noise,
+      // darkened the way the room darkens its map, and rain grown from moving
+      // noise in the NEXRAD colours, drifting past a place dot.
+      radar(x, w, h, t, st) {
+        if (!st.map || st.mw !== w || st.mh !== h) {
+          const n = noise2(st.r), sc = 1 / (Math.max(w, h) * 0.4);
+          st.mw = w; st.mh = h;
+          st.map = contours(w, h, (px, py) => fbm(n, px * sc + 5, py * sc + 1), Array.from({ length: 9 }, (_, i) => 0.25 + i * 0.06),
+            (c, i) => { c.strokeStyle = i % 3 === 0 ? "rgba(160,180,210,.3)" : "rgba(140,160,190,.14)"; c.lineWidth = i % 3 === 0 ? 1 : 0.6; });
+          st.rain = noise2(st.r); st.cv = document.createElement("canvas");
+          st.dir = st.r() * Math.PI * 2; st.px = w * (0.35 + st.r() * 0.3); st.py = h * (0.38 + st.r() * 0.24);
+        }
+        x.fillStyle = "#141a22"; x.fillRect(0, 0, w, h);
+        x.drawImage(st.map, 0, 0, w, h);
+        const cell = 4, gw = Math.ceil(w / cell), gh = Math.ceil(h / cell), c = st.cv;
+        if (c.width !== gw || c.height !== gh) { c.width = gw; c.height = gh; }
+        const g = c.getContext("2d"), im = g.createImageData(gw, gh), d = im.data;
+        const sc = 1 / (Math.max(gw, gh) * 0.32), ox = Math.cos(st.dir) * t * 0.05, oy = Math.sin(st.dir) * t * 0.05;
+        const RAMP = [[0.61, [4, 233, 231]], [0.64, [1, 159, 244]], [0.67, [2, 253, 2]], [0.7, [1, 197, 1]], [0.73, [0, 142, 0]], [0.77, [253, 248, 2]], [0.8, [229, 188, 0]], [0.83, [253, 149, 0]], [0.86, [253, 0, 0]]];
+        for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
+          const v = fbm(st.rain, i * sc - ox, j * sc - oy) + 0.03 * Math.sin(t * 0.4 + i * 0.07 + j * 0.05);
+          let col = null;
+          for (const [th, rgb] of RAMP) if (v >= th) col = rgb;
+          if (!col) continue;
+          const k = (j * gw + i) * 4;
+          d[k] = col[0]; d[k + 1] = col[1]; d[k + 2] = col[2]; d[k + 3] = 205;
+        }
+        g.putImageData(im, 0, 0);
+        x.imageSmoothingEnabled = true; x.drawImage(c, 0, 0, w, h);
+        x.fillStyle = "rgba(255,255,255,.25)"; x.beginPath(); x.arc(st.px, st.py, 10, 0, 7); x.fill();
+        x.fillStyle = "#fff"; x.strokeStyle = "#0b2342"; x.lineWidth = 2.5; x.beginPath(); x.arc(st.px, st.py, 5.5, 0, 7); x.fill(); x.stroke();
+      },
+
       // A real board, from the board log: every hold on it, and one of Ric's
       // sends lit up the way the wall lights it — start, hands, feet, finish —
       // climbed hold by hold, then the next one.

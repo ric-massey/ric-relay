@@ -1,0 +1,164 @@
+# Weather room — bug check and plan audit (2026-10-21)
+
+The question this answers: after today's build, what is broken, and how far is
+`weather.html` from what `projects/weather/DESIGN.md` describes — "an incredible
+weather map that shows all the data people want and is nice to use"?
+
+Checked on the local server (port 8912) with real data for Knoxville, Denver and the
+no-place US view, at desktop width and 375px, with the console watched for errors.
+`node .github/checks.mjs` was green before and after.
+
+## What was built today
+
+| Change | Where |
+|---|---|
+| Calm wind says "calm" (no "N 0", no arrow); a gust is only shown beside a wind from the same source | `Wx.isCalm`, hero and wind tile |
+| The next-3-hours card no longer just repeats the hero: it labels the model part and says when the next rain is | `renderNext` |
+| Radar echoes near a dry station are said as both things, not just "rain is nearby" | `nowcastLine` |
+| Sun card: the next sunrise or sunset, the other one, the length of the day and its change | `renderTiles` |
+| The page shows whichever forecast has the best record here and can be drawn — including the NWS National Blend, which it was ranking first and not using | `Wx.verdict(…, have)`, `judge`, `applyBlend` |
+| Live place search as you type | `search()` |
+| Ride outlook card (§21.1): good / care / poor for 1, 2 or 4 hours, every reason listed | `Wx.rideOutlook`, `renderRide` |
+| GOES satellite under the radar: infrared, visible, water vapour (§12) | `Wx.SAT`, radar `setSat` |
+| Balloon laid over the model at the launch site and hour, with the differences in words (§16) | `past_hours=12` on the column, sky `loadCompare` |
+| The room is public: `ROOMS`, every room nav, a tier-0 front-door post, `latest.js` | `terminal.html`, 12 room pages, `index.html` |
+
+## Bug check
+
+Found and fixed while checking, before this audit:
+
+1. **CIN of −14,905 J/kg on a stable night.** With no LFC, `parcel()` integrated
+   inhibition up the whole column. It now reports 0 like MetPy, and the table shows
+   "–". Test added (`sounding.test.mjs`, "a stable column has none").
+2. **The balloon was compared with the model 150 miles away.** The first version laid
+   the Nashville balloon over Knoxville's column. The comparison now asks for the
+   model's column at the launch site.
+3. **"(+-3 h)" as a lead time** for the column's past hours. Now "from an earlier run".
+4. **"Next rain in the forecast … (2% chance)"** — a trace of model rain at 2% counted.
+   It now needs a 50% chance, or real rain with at least 30%.
+5. **The page could claim to show a model it had no hours of** (HRRR or the National
+   Blend for a station in Alaska). `judge()` now offers only models that have hours at
+   the place, and if nothing changes, the card says the standard forecast is shown.
+6. **The accuracy card named its pick before the numbers had loaded.** It now says
+   "still loading" / "did not load" until they arrive.
+7. **Ride outlook took marine and air-quality alerts as reasons not to ride**, and would
+   have ignored a Tropical Storm Warning because of a loose pattern. Marine/air alerts
+   are now ignored, fire weather is "care", and the anchor is tested.
+8. **"The models, 3 hours" label showed with no radar line above it.** It now follows
+   the radar line.
+9. **Satellite infrared hid the radar.** IEM colours the coldest cloud tops in the
+   radar's own greens and purples. The satellite is now drawn in grey under the radar.
+10. **The ingredients timeline would have counted the column's past twelve hours** as
+    "the next two days". It now starts at the current hour.
+
+Checked and fine: unit switch, the US view, a national warning tapped onto the radar
+with satellite on, mode switches with satellite on, the stored satellite choice, no
+sideways overflow at 375px, no text under 11px, no new console errors.
+
+Still open (not bugs in today's code, but worth knowing):
+
+- **The Worker needs a deploy for the balloon comparison through it.** Until
+  Actions → Deploy Worker runs, `/wx/col` answers without the past twelve hours. The
+  page then says the column "does not reach back to the launch" — honest, but the
+  comparison only works on the direct path.
+- **Local testing serves stale scripts.** `python -m http.server` sends no cache headers,
+  so a reload can keep the old `wx.js`. The `?v=` bumps cover the live site; locally,
+  reload with the service worker cleared.
+- **The mosaic shows clear-air echoes at night** (birds, insects, ground clutter) as
+  light green. That is IEM's unfiltered N0Q; the nowcast already reads it through
+  `RAIN_DBZ` and the station check, but the map itself shows it.
+
+## Where the room stands against the plan
+
+| Phase (DESIGN.md §38) | Status | What is missing |
+|---|---|---|
+| 1 · Excellent normal weather | **Done** | — |
+| 2 · Investigation | **About half** | Full map ✓ today (see fixes), satellite ✓, saved places ✓, animated radar ✓. Missing: point inspector, surface observations on the map, a unified timeline across radar and satellite |
+| 3 · Forecast models | **Not started on the map** | Model fields as map layers (HRRR temperature, wind, simulated radar). Point model data exists (comparison chart, soundings) but nothing is drawn spatially |
+| 4 · Soundings | **Done** | Effective-layer parameters (effective SRH, effective bulk shear, effective STP) |
+| 5 · Advanced meteorology | **Started** | Model comparison chart ✓. Missing: cross-sections, CC/ZDR/KDP (IEM does not tile them), MRMS, ensembles with members/plumes |
+| 6 · Station + verification | **Verification done; station not started** | The personal station waits on a decision about how to name it without coordinates |
+| 7 · Historical replay | **Not started** | IEM keeps single-site scans by timestamp; the mosaic archive naming needs confirming |
+| 8 · 3D | Not started, by design | Only after profiling |
+
+Against §39's MVP list: 1–6 are done; 7 (interactive map) is partly done; **8 (point
+inspection), 9–11 (one serious model on the map, with a time slider and variables) are
+the gap**; 12 (model sounding) is done; 13 (smooth on ordinary hardware) holds today.
+
+## The gaps that matter most, ranked
+
+For "an incredible weather map that shows all the data people want":
+
+1. **The map is a card in a column.** At 340px tall inside an 820px column it is a
+   thumbnail of a map. A full-screen map is the single biggest step toward the plan's
+   "primary spatial workspace" (§10). → *fixing now.*
+2. **Tapping the map does nothing.** §5's "see → tap → investigate" stops at the map.
+   A point inspector (§10.3) — tap anywhere, get that point's weather and "forecast
+   here" — is cheap: the page already has the requests. → *fixing now.*
+3. **No model fields on the map** (Phase 3, MVP 9–11). This is the largest piece of
+   work left. IEM lists HRRR reflectivity tile layers
+   (`hrrr::REFD-F0060-<run>` answered on 2026-10-21) but returned blank tiles where
+   HRRR had rain, so the naming needs confirming with IEM before relying on it. Failing
+   that, it needs a backend (HRRR GRIB → tiles in R2 from a scheduled job), which is
+   **Ric's decision** (cost, a new moving part).
+4. **No surface observations on the map** (§19.1). IEM serves current ASOS observations
+   as GeoJSON per state network. That needs a new `/wx` route (and a Worker deploy) and
+   station dots that open their own reading. A good next step after the inspector.
+5. **No lightning** (§12, §21). There is no free, keyless public lightning feed the page
+   can use (GLM gridded products are in GRIB/NetCDF on AWS). The ride outlook says so
+   instead of pretending. A GLM pipeline would also need a backend.
+6. **Satellite does not animate** and has no scan time: IEM's tiles carry neither. A
+   timed GOES source would fix both (also a backend question, or IEM's archive API).
+7. **Hourly does not show wind** (§9.1 says hourly should emphasise wind and gusts).
+   → *fixing now.*
+8. **A failed radar tile stays blank** (§35.5 asks for retry). → *fixing now.*
+9. **Ensemble spread** (§17.2): the confidence dots use five deterministic models, not
+   an ensemble. Open-Meteo has an ensemble API (GEFS/ECMWF ENS members) — plumes for
+   temperature and rain probability would be a clear win and need one new route.
+10. **Effective-layer severe parameters** (Phase 4 remainder) — pure arithmetic in
+    `sounding.js`, held to MetPy like the rest.
+11. **Push alerts for saved places** — needs the Worker, a key pair as a secret, and
+    stays an extra, never anyone's only warning.
+
+## Decisions for Ric
+
+- **HRRR fields on the map:** wait on IEM's tile naming, or build a small GRIB → tiles
+  job (GitHub Actions + R2)? This is Phase 3 and the biggest step toward the plan.
+- **Personal weather station (§19.2):** what it is and how to name it without its
+  coordinates in the repo.
+- **Lightning:** worth a backend job, or leave it as "no lightning feed" for now?
+- **Deploy the Worker** so the balloon comparison works through it, and before adding
+  the observations route.
+
+## Fixing now (from this audit and the layout audit)
+
+Full-screen map · point inspector on the map · wind in the hourly strip · retry for
+failed radar tiles · radar moved up the page · the layout items in
+`weather-layout-audit-2026-10-21.md`.
+
+## Found while fixing
+
+- **"Now" in the mountains was a station 750 m lower.** For a point near Vail (3,240 m)
+  the nearest station sat at 2,484 m and read 40° against the forecast's 30°. Then,
+  passed over, the next one was 62 miles away. Stations are now taken only within
+  300 m of the place's height and 40 km of it (`ELEV_MAX_M`, `OBS_MAX_M`); past
+  those the model speaks, and the sources card says "no recent report nearby".
+- **"Now" and the hours came from two forecasts.** Where the record picks a forecast
+  other than the standard one, the hero's "now" was still the standard forecast's
+  (35° next to an hourly 30°). "Now" now comes from the shown forecast, interpolated to
+  the minute, and the hero names it.
+
+## Done in this pass — all verified in the browser
+
+| Fix | Checked |
+|---|---|
+| Radar moved up to straight after the 10-day forecast | page order read back |
+| Full-screen map (button in the zoom stack, Esc leaves), 420px map on wide screens | opened, drawn, left with Esc |
+| Tap a point on the map: its name, weather now, high/low, "Forecast here" | tapped near Vail; "Forecast here" made it the place |
+| Wind in the hourly strip, with gusts 10 mph over | read back |
+| A failed map tile is asked once more | code path; not forced in the browser |
+| Station height and distance limits; "now" from the shown forecast | Vail, before and after |
+| Layout items (control rows, two-up tiles, ride buttons, footnote size) | 375px screenshots |
+
+Left for later, in order: surface observations on the map (needs a `/wx` route),
+ensemble plumes, effective-layer parameters, then the HRRR-on-the-map decision.

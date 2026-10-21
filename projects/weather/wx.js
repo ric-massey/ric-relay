@@ -112,10 +112,12 @@
     /* SPC's convective outlook, one layer */
     spc: kind => SPC_KINDS.includes(kind)
       ? [`spc/${kind}`, `https://www.spc.noaa.gov/products/outlook/${kind}.nolyr.geojson`] : null,
-    /* a model's whole column for the next two days */
+    /* a model's whole column for the next two days, and the last twelve
+       hours — so the latest weather balloon can be laid over the model's own
+       hour for the same moment (§16) */
     column: (model, lat, lon) => MODELS[model] ? [`col?model=${model}&lat=${coord(lat)}&lon=${coord(lon)}`,
       `${OM}?${new URLSearchParams({ latitude: coord(lat), longitude: coord(lon), hourly: COLUMN_FIELDS, models: MODELS[model].om,
-        forecast_hours: '48', wind_speed_unit: 'ms', timeformat: 'unixtime', timezone: 'auto' })}`] : null,
+        forecast_hours: '48', past_hours: '12', wind_speed_unit: 'ms', timeformat: 'unixtime', timezone: 'auto' })}`] : null,
     /* when that model last ran */
     modelRun: model => MODELS[model] ? [`ommeta/${MODELS[model].meta}`, `https://api.open-meteo.com/data/${MODELS[model].meta}/static/meta.json`] : null,
     /* every model's hourly temperature, rain and wind for a week: how far
@@ -488,6 +490,7 @@
         id: pr.stationIdentifier || null,
         name: pr.name || '',
         dist: Array.isArray(c) ? distanceM(lat, lon, c[1], c[0]) : null,
+        elev: quantity(pr.elevation, 'm'),
         obsUrl: pr.stationIdentifier ? `${NWS}/stations/${pr.stationIdentifier}/observations/latest` : null
       };
     }).filter(s => s.id);
@@ -724,6 +727,19 @@
   const radarLayer = minsAgo => 'nexrad-n0q-900913' + (minsAgo ? '-m' + String(minsAgo).padStart(2, '0') + 'm' : '');
   const radarTile = (minsAgo, z, x, y, bust) =>
     `${IEM}/cache/tile.py/1.0.0/${radarLayer(minsAgo)}/${z}/${x}/${y}.png${bust ? '?_=' + bust : ''}`;
+  /* ── satellite (DESIGN.md §12) ──
+     GOES-West and GOES-East as IEM tiles (probed 2026-10-21), West drawn
+     first and East over it, so the whole country is covered. Each is the
+     latest image IEM has; it refreshes every few minutes and the tile does
+     not say when its scan was, so the page says "latest" and nothing finer.
+     Visible is black at night — the page says so rather than showing a
+     black map without a word. */
+  const SAT = {
+    ir: { label: 'Infrared', long: 'GOES infrared — cloud tops by temperature, the highest (coldest) brightest. Day and night.', layers: ['goes-west-ir-4km-900913', 'goes-east-ir-4km-900913'] },
+    vis: { label: 'Visible', long: 'GOES visible — clouds as a camera sees them. Daytime only.', layers: ['goes-west-vis-1km-900913', 'goes-east-vis-1km-900913'] },
+    wv: { label: 'Water vapour', long: 'GOES water vapour — moisture in the middle of the atmosphere; dry air dark, moist air white.', layers: ['goes-west-wv-4km-900913', 'goes-east-wv-4km-900913'] }
+  };
+  const satTile = (layer, z, x, y, bust) => `${IEM}/cache/tile.py/1.0.0/${layer}/${z}/${x}/${y}.png${bust ? '?_=' + bust : ''}`;
   function radarValid(j) {
     const v = j && j.meta && (j.meta.valid || j.meta.vtime);
     const t = v ? Date.parse(v) : NaN;
@@ -847,9 +863,20 @@
     if (!pt || !pt.stationsUrl) return [];
     return normalizeStations((await ask(ROUTES.nws(pt.stationsUrl), signal)).data, lat, lon).sort((a, b) => (a.dist ?? 1e9) - (b.dist ?? 1e9));
   }
-  async function observation(pt, lat, lon, signal, list) {
+  /* A station far above or below the place is not "now" there: in the
+     mountains the nearest one can sit 750 m lower and read 9 °F warm (Vail,
+     2026-10-21). With the place's elevation known, stations more than
+     ELEV_MAX_M away from it vertically are passed over — the next one, or the
+     model, speaks instead. */
+  const ELEV_MAX_M = 300;
+  const sameLevel = (s, elev) => !has(elev) || !has(s.elev) || Math.abs(s.elev - elev) <= ELEV_MAX_M;
+  /* …and one 60 miles off is not "now" here either: past this the model's
+     estimate for the place itself is the better answer */
+  const OBS_MAX_M = 40e3;
+  async function observation(pt, lat, lon, signal, list, elev) {
     if (!pt || !pt.stationsUrl) return null;
-    const stations = (list || await nearbyStations(pt, lat, lon, signal)).slice(0, 3);
+    const stations = (list || await nearbyStations(pt, lat, lon, signal))
+      .filter(s => sameLevel(s, elev) && !(has(s.dist) && s.dist > OBS_MAX_M)).slice(0, 3);
     let last = null;
     for (const s of stations) {
       try {
@@ -1039,6 +1066,83 @@
     return { past: np >= 20 ? past : null, next: nn >= 20 ? next : null };
   }
 
+  /* Calm: under 1.5 km/h, where a station reports 0 and a direction means
+     nothing. The page says "calm" instead of "N 0". */
+  const CALM_KMH = 1.5;
+  const isCalm = kmh => has(kmh) && kmh < CALM_KMH;
+
+  /* ── the ride outlook (DESIGN.md §21.1) ──
+     "Can I ride in the next few hours?" — one word and the reasons for it,
+     from what the page already holds: the rain sentence (rainOutlook, so it
+     never contradicts the rain line), the radar's next hour when there is
+     one, thunder in the hourly codes, the strongest gust, the temperature
+     range, fog, darkness, and official alerts covering the place. It says
+     nothing about road surfaces (§21.2) or lightning — the page has no
+     lightning feed, so thunder is the model's, and says so.
+       poor  a storm warning or any warning here, thunder, rain now or
+             likely, gusts ≥ 40 mph, near-freezing air, visibility under 1 mi
+       fair  rain possible or ending, gusts ≥ 25 mph, cold or hot, haze,
+             dark during the window, an advisory or watch
+       good  none of those
+     Thresholds are rider's rules of thumb, in km/h and °C like everything
+     stored here; the page converts the words. */
+  const RIDE = { gustPoor: 64, gustFair: 40, coldPoor: 2, coldFair: 10, hot: 35, visPoor: 1600, visFair: 5000 };
+  const RIDE_IGNORE = /Rip Current|Beach Hazard|Small Craft|Marine|Gale|^Storm Warning$|Hurricane Force Wind|Lakeshore|Low Water|Air Quality|Air Stagnation|Hazardous Seas|High Surf/i;
+  function rideOutlook(fc, nowSec, hours, o = {}) {
+    if (!fc || !fc.hourly) return null;
+    const until = nowSec + hours * 3600;
+    const hrs = fc.hourly.filter(h => h.t + 3600 > nowSec && h.t < until);
+    if (!hrs.length) return null;
+    const time = o.time || (s => new Date(s * 1000).toISOString().slice(11, 16));
+    const T = o.fmtTemp || (c => String(Math.round(c))), Wd = o.fmtWind || (k => String(Math.round(k))), wu = o.windUnit || 'km/h';
+    const reasons = [];
+    const say = (level, text) => reasons.push({ level, text });
+
+    for (const a of (o.alerts || [])) {
+      /* alerts for the water or the air quality say nothing about a road; a
+         fire-weather warning is about dry wind, which the gusts below cover */
+      if (RIDE_IGNORE.test(a.event)) continue;
+      if (/Red Flag|Fire Weather/i.test(a.event)) { say('fair', `${a.event} in effect`); continue; }
+      if (a.storm) say('poor', `${a.event} covers this place`);
+      else if (a.tone === 'warning') say('poor', `${a.event} in effect`);
+      else if (a.tone === 'watch' || a.tone === 'advisory') say('fair', `${a.event} in effect`);
+    }
+    const rain = rainOutlook(fc, nowSec, hours, time);
+    if (rain.state === 'now') say('poor', rain.text);
+    else if (rain.state === 'starting') say(rain.prob == null || rain.prob >= 70 ? 'poor' : 'fair', rain.text);
+    else if (rain.state === 'stopping') say('fair', rain.text + ' — roads stay wet a while');
+    else if (rain.note) say('fair', rain.note);
+    /* the radar's own next hour, when it sees rain the models do not */
+    const nc = o.nowcast;
+    if (nc && (nc.kind === 'raining' || nc.kind === 'starting') && !['now', 'starting', 'stopping'].includes(rain.state)) say('fair', 'Radar: ' + nc.text);
+    const thunder = hrs.find(h => h.code >= 95);
+    if (thunder) say('poor', `Thunderstorms in the forecast around ${time(Math.max(thunder.t, nowSec))}`);
+    const gusts = hrs.map(h => h.gust).filter(has);
+    const gust = gusts.length ? Math.max(...gusts) : null;
+    if (gust != null && gust >= RIDE.gustPoor) say('poor', `Gusts to ${Wd(gust)} ${wu}`);
+    else if (gust != null && gust >= RIDE.gustFair) say('fair', `Gusts to ${Wd(gust)} ${wu}`);
+    const ts = hrs.map(h => h.temp).filter(has);
+    const lo = ts.length ? Math.min(...ts) : null, hi = ts.length ? Math.max(...ts) : null;
+    if (lo != null && lo < RIDE.coldPoor) say('poor', `Near freezing (${T(lo)}°) — ice is possible`);
+    else if (lo != null && lo < RIDE.coldFair) say('fair', `Cold — down to ${T(lo)}°, dress for it`);
+    if (hi != null && hi >= RIDE.hot) say('fair', `Hot — up to ${T(hi)}°`);
+    const viss = hrs.map(h => h.vis).filter(has);
+    const vis = viss.length ? Math.min(...viss) : null;
+    if (vis != null && vis < RIDE.visPoor) say('poor', 'Fog — visibility under a mile');
+    else if (vis != null && vis < RIDE.visFair) say('fair', 'Hazy — visibility down to a few miles');
+    /* darkness: dark now, or the sun sets inside the window */
+    const set = (fc.daily || []).map(d => d.sunset).find(s => has(s) && s > nowSec && s < until);
+    const darkNow = fc.current && has(fc.current.t) ? !fc.current.isDay : hrs[0].isDay === 0;
+    const dark = darkNow ? { now: true } : set ? { at: set } : null;
+    if (dark && dark.at) say('fair', `Dark from ${time(dark.at)}`);
+    else if (dark) say('fair', 'After dark');
+
+    const rank = { good: 0, fair: 1, poor: 2 };
+    const level = reasons.reduce((w, r) => rank[r.level] > rank[w] ? r.level : w, 'good');
+    reasons.sort((a, b) => rank[b.level] - rank[a.level]);
+    return { level, hours, reasons, rain, gust, lo, hi, vis, thunder: !!thunder, dark };
+  }
+
   /* ── how sure, and the scoreboard ── */
   /* One answer, every model: Map(hour → { model: {t, w, p} }) */
   function normalizeEnsemble(j) {
@@ -1110,18 +1214,22 @@
     }
     return { index: idx, stations: out };
   }
-  /* Which forecast has earned its place here: of the standard forecast and
-     this page's own two (the blend, the learned forecast), the one whose
-     record at the nearest well-scored station is lowest — and one of ours
-     only when it beats the standard by a clear margin, and the learned one
-     only when its coefficients are published. */
-  function verdict(rec, minDays) {
+  /* Which forecast has earned its place here: of the standard forecast, this
+     page's own two (the blend, the learned forecast) and the models the page
+     holds hour by hour (ENSEMBLE — the NWS National Blend, HRRR, GFS, ECMWF,
+     AIFS), the one whose record at the nearest well-scored station is lowest
+     — and anything but the standard only when it beats the standard by a
+     clear margin, and the learned one only when its coefficients are
+     published. A model the page cannot draw (Pangu, run off-site) is ranked
+     on the card but never picked. */
+  function verdict(rec, minDays, have = ENSEMBLE) {
     if (!rec || !rec.models) return null;
     const mae = m => { const r = rec.models[m] && rec.models[m][1]; if (!r || r.days < minDays) return null;
       const n = r.td[2] + r.tn[2]; return n ? (r.td[1] * r.td[2] + r.tn[1] * r.tn[2]) / n : null; };
     const rows = Object.keys(rec.models).map(m => ({ m, mae: mae(m), days: rec.models[m][1] && rec.models[m][1].days })).filter(x => x.mae !== null).sort((a, b) => a.mae - b.mae);
     const base = rows.find(x => x.m === 'best');
-    const ours = rows.filter(x => (x.m === 'blend' || (x.m === 'learn' && rec.learned && rec.learned.t)) && base && x.mae < base.mae - 0.05);
+    const usable = m => m === 'blend' || (m === 'learn' && rec.learned && rec.learned.t) || have.includes(m);
+    const ours = rows.filter(x => usable(x.m) && base && x.mae < base.mae - 0.05);
     const pick = ours.length ? ours[0] : null;
     const b = rows.find(x => x.m === 'blend'), l = rows.find(x => x.m === 'learn');
     return { rows, use: pick ? pick.m : 'best', useBlend: !!pick, pick, blend: b, learn: l, base, best: rows[0] || null };
@@ -1205,7 +1313,8 @@
     SITE_PRODUCTS, SPC_KINDS, SPC_NAMES, MODELS, COLUMN_LEVELS, COLUMN_FIELDS, radarSites, siteScans, tileUrl, isoMinute, isoHour,
     normalizeOutlook, outlook, outlookAt, column, modelRun, raobSites, raobTimes, raobTs,
     several, summary, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet,
-    inMosaic, nowcast, nowcastRecord
+    inMosaic, nowcast, nowcastRecord,
+    CALM_KMH, isCalm, RIDE, rideOutlook, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M
   };
   root.Wx = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

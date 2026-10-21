@@ -188,6 +188,9 @@ console.log('\nRULE  NWS points, stations, forecasts');
     { geometry: { coordinates: [-56.7, 12.3] }, properties: { stationIdentifier: 'KAAA', name: 'A' } },
     { geometry: null, properties: { name: 'no id' } }] }, 12.34, -56.78);
   ok(st.length === 1 && st[0].obsUrl.endsWith('/stations/KAAA/observations/latest') && st[0].dist > 9000 && st[0].dist < 11000, 'stations, with how far away each is');
+  const hi = W.normalizeStations({ features: [{ geometry: { coordinates: [-56.7, 12.3] }, properties: { stationIdentifier: 'KBBB', name: 'B', elevation: { unitCode: 'wmoUnit:m', value: 2484 } } }] }, 12.34, -56.78)[0];
+  ok(hi.elev === 2484 && !W.sameLevel(hi, 3240) && W.sameLevel(hi, 2600) && W.sameLevel(hi, null) && W.sameLevel(st[0], 3240),
+    'a station 750 m below the place is not "now" there; within 300 m, or with either height unknown, it is');
   const per = W.normalizePeriods({ properties: { updateTime: '2026-10-17T15:00:00+00:00', periods: [
     { name: 'Tonight', startTime: '2026-10-17T18:00:00-04:00', endTime: '2026-10-18T06:00:00-04:00', isDaytime: false,
       temperature: 50, temperatureUnit: 'F', probabilityOfPrecipitation: { value: null }, windSpeed: '5 mph', windDirection: 'SW',
@@ -334,7 +337,48 @@ console.log('\nRULE  how sure: the models\' own agreement');
   ok(W.verdict({ models: { best: rec(1.6, 20), blend: rec(1.3, 20), learn: rec(1.0, 15) }, learned: L }, 7).use === 'learn', 'the learned forecast is used where its record is the best of ours');
   ok(W.verdict({ models: { best: rec(1.6, 20), blend: rec(1.3, 20), learn: rec(1.0, 15) }, learned: null }, 7).use === 'blend', 'but never without its published coefficients');
   ok(W.verdict({ models: { best: rec(1.6, 20), learn: rec(1.0, 5) }, learned: L }, 7).use === 'best', 'nor on a record too short to trust');
+  ok(W.verdict({ models: { best: rec(1.6, 20), blend: rec(1.3, 20), nbm: rec(1.1, 20) } }, 7).use === 'nbm', 'a model the page holds hourly is picked where its record is best');
+  ok(W.verdict({ models: { best: rec(1.6, 20), blend: rec(1.3, 20), pangu: rec(0.9, 20) } }, 7).use === 'blend', 'but never one the page cannot draw (Pangu): it is ranked, not shown');
+  ok(W.verdict({ models: { best: rec(1.6, 20), nbm: rec(1.1, 20) } }, 7, ['hrrr']).use === 'best', 'nor a model this place has no hours of');
 }
+
+console.log('\nRULE  calm is calm, not "N 0"');
+ok(W.isCalm(0) && W.isCalm(1.2) && !W.isCalm(1.6) && !W.isCalm(null), 'under 1.5 km/h is calm; no reading is not calm');
+
+console.log('\nRULE  the ride outlook: one word, and every reason for it');
+{
+  const T0 = 1_800_000_000 - (1_800_000_000 % 3600);
+  const mk = ({ temp = 20, gust = 20, code = 1, vis = 20000, pop = 0, precip = 0, isDay = true, sunset = T0 + 12 * 3600 } = {}) => ({
+    current: { t: T0, isDay },
+    hourly: Array.from({ length: 12 }, (_, i) => ({ t: T0 + i * 3600, temp, gust, code, vis, pop, precip, isDay: isDay ? 1 : 0 })),
+    daily: [{ t: T0 - 6 * 3600, sunrise: T0 - 3600, sunset }],
+    minutely: Array.from({ length: 48 }, (_, i) => ({ t: T0 + (i + 1) * 900, precip, snow: 0 }))
+  });
+  const now = T0 + 600;
+  const good = W.rideOutlook(mk(), now, 2);
+  ok(good.level === 'good' && good.reasons.length === 0, 'dry, mild, light wind, daylight: good, with nothing to warn about');
+  ok(W.rideOutlook(mk({ code: 95 }), now, 2).level === 'poor', 'thunder in the hours ahead: poor');
+  ok(W.rideOutlook(mk({ gust: 70 }), now, 2).level === 'poor' && W.rideOutlook(mk({ gust: 45 }), now, 2).level === 'fair', 'gusts of 40 mph are poor, 25 mph fair');
+  ok(W.rideOutlook(mk({ temp: 1 }), now, 2).level === 'poor' && W.rideOutlook(mk({ temp: 7 }), now, 2).level === 'fair', 'near freezing is poor, cold is fair');
+  ok(W.rideOutlook(mk({ vis: 800 }), now, 2).level === 'poor', 'fog under a mile: poor');
+  ok(W.rideOutlook(mk({ precip: 0.5, pop: 90 }), now, 2).level === 'poor', 'raining: poor');
+  ok(W.rideOutlook(mk({ isDay: false }), now, 2).reasons.some(r => r.text === 'After dark'), 'dark now is said');
+  const dusk = W.rideOutlook(mk({ sunset: T0 + 3600 }), now, 2);
+  ok(dusk.level === 'fair' && dusk.dark.at === T0 + 3600, 'a sunset inside the window is said, with its time');
+  ok(W.rideOutlook(mk({ sunset: T0 + 3 * 3600 }), now, 2).level === 'good', 'a sunset after the window is not');
+  ok(W.rideOutlook(mk(), now, 2, { alerts: [{ event: 'Tornado Warning', tone: 'warning', storm: true }] }).level === 'poor', 'a storm warning here: poor');
+  ok(W.rideOutlook(mk(), now, 2, { alerts: [{ event: 'Wind Advisory', tone: 'advisory', storm: false }] }).level === 'fair', 'an advisory: fair');
+  ok(W.rideOutlook(mk(), now, 2, { alerts: [{ event: 'Small Craft Advisory', tone: 'advisory' }, { event: 'Rip Current Statement', tone: 'statement' }] }).level === 'good', 'alerts for the water say nothing about a road');
+  ok(W.rideOutlook(mk(), now, 2, { alerts: [{ event: 'Red Flag Warning', tone: 'warning' }] }).level === 'fair', 'a fire-weather warning is care, not a stop');
+  ok(W.rideOutlook(mk(), now, 2, { alerts: [{ event: 'Tropical Storm Warning', tone: 'warning' }] }).level === 'poor', 'but a tropical storm warning is a stop');
+  ok(W.rideOutlook(mk(), now, 2, { nowcast: { kind: 'starting', text: 'Rain likely around 4:10 PM' } }).level === 'fair', "the radar's rain counts when the models are dry");
+  ok(W.rideOutlook(null, now, 2) === null, 'no forecast, no claim');
+}
+
+console.log('\nRULE  satellite tiles come from the lists, West under East');
+ok(Object.values(W.SAT).every(s => s.layers.length === 2 && /west/.test(s.layers[0]) && /east/.test(s.layers[1])), 'each kind is GOES-West then GOES-East');
+ok(W.satTile(W.SAT.ir.layers[1], 6, 17, 25, 9).endsWith('/goes-east-ir-4km-900913/6/17/25.png?_=9'), 'a tile URL');
+ok(W.ROUTES.column('hrrr', 12.34, -56.78)[1].includes('past_hours=12'), "the column carries the last twelve hours, for the balloon");
 
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WEATHER CLIENT RULES PASS'));
 process.exit(failures ? 1 : 0);

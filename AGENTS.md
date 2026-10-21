@@ -92,7 +92,7 @@ There is intentionally **no shared nav component**. Each page has its own `<nav>
 labels** so navigation stays predictable:
 
 ```
-terminal · orrin · psyche · climbing · training · exploration · gaming · workbench · captures · entertainment
+terminal · orrin · psyche · climbing · training · weather · exploration · gaming · workbench · captures · entertainment
 ```
 
 **This set matches the home page's `#dir` listing on purpose.** The room navs used to
@@ -616,10 +616,10 @@ rule 1). Few words inside any rip.
 **It is a feed of everything, it ends, and no two visits are alike** (Ric, same day:
 "like an insta feed", "generated at random so every time you open the page it's a bit
 different", then "when there are no more rooms it should end"). `POSTS` lists every room
-and every thing in a room a visitor can use — 34 today: the rooms themselves, the
+and every thing in a room a visitor can use — 35 today: the rooms themselves, the
 projects, and the sub-pages that stand on their own (the Leviathan, the four spacetime
 chapters, climbing's media and stats, training's calendar and races, the movie list) —
-each with a `tier`. Tier 0 (Counter-Strike, KONDRITE, the Boards) keeps its order,
+each with a `tier`. Tier 0 (Weather, Counter-Strike, KONDRITE, the Boards) keeps its order,
 the other tiers are shuffled within themselves, each post appears once, and the page
 finishes on "That's every room." (`.fin`). Don't bring back the endless rounds. Every
 tear, seam and drawing is seeded from `VISIT`, a random number per page load.
@@ -694,8 +694,10 @@ nothing committed: `projects/weather/wx.js` asks Open-Meteo, the NWS, SPC and Io
 Studies pattern, and the second room to make external requests by design. **Read
 [`projects/weather/README.md`](projects/weather/README.md) before touching it;
 [`projects/weather/DESIGN.md`](projects/weather/DESIGN.md) is Ric's plan for the whole
-room and the source of truth for what gets built next.** It is unlisted (`listed: false`,
-not on the front door) until Ric says it is ready. The ones that must never break:
+room and the source of truth for what gets built next.** It went public on 2026-10-21
+(Ric: "do all of it" — listed in `ROOMS`, in every room nav, a tier-0 post on the front
+door drawn by the `radar` painter over invented ground, and top of `latest.js`). The
+ones that must never break:
 
 - **No place in the repo, ever (hard rule 1).** The visitor's own location or search,
   kept in their localStorage, rounded to two decimals before anything is asked — the
@@ -716,9 +718,11 @@ not on the front door) until Ric says it is ready. The ones that must never brea
   read at run time (`verify/score.mjs`; `test/verify.test.mjs` checks). The page uses
   its blend only where the nearest station's record shows it beating the standard
   forecast; never present the blend, or any accuracy figure, beyond what the record says.
-- **The room's own predictions are graded before they are shown.** The blend
-  and the learned forecast replace the standard temperatures only where the
-  nearest station's record says so (`Wx.verdict`); the learned forecast is
+- **The room's own predictions are graded before they are shown.** The blend,
+  the learned forecast, or a model the page holds hourly (the NWS National
+  Blend, HRRR, …) replace the standard temperatures only where the nearest
+  station's record says so (`Wx.verdict`); a model it cannot draw (Pangu) is
+  ranked, never shown; the learned forecast is
   scored only on days it had not learned from. The radar nowcast is rain timing
   only, never storm arrival, and `verify/nowcast.mjs` grades it with the same
   code and `SETTINGS` the page uses — change one, the other follows. Our AI run

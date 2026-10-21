@@ -174,6 +174,24 @@
     .nowstrip i.m{background:#3fbf4f}
     .nowstrip i.h{background:#ffc400}
     .nowstrip i.x{background:repeating-linear-gradient(45deg,rgba(255,255,255,.1) 0 3px,transparent 3px 6px)}
+    .who{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:2px}
+    .nextafter{font-size:14px;color:var(--dim);margin-top:2px}
+
+    /* the ride outlook: one word, then why */
+    .ridehead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .ridebadge{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border-radius:999px;font-size:18px;font-weight:700;
+      background:#1d6b3a}
+    .ridebadge[data-l="fair"]{background:#7a5200}
+    .ridebadge[data-l="poor"]{background:#8a1c1c}
+    .ridehead .seg{margin:0 0 0 auto}
+    .ridewhy{list-style:none;padding:0;margin-top:10px;display:grid;gap:4px;font-size:15px}
+    .ridewhy li{display:flex;gap:8px;align-items:baseline}
+    .ridewhy li::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--ok);transform:translateY(-1px)}
+    .ridewhy li[data-l="fair"]::before{background:var(--advise)}
+    .ridewhy li[data-l="poor"]::before{background:var(--warn)}
+    .ridefacts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 16px;margin-top:10px;font-size:14px}
+    .ridefacts div{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--edge)}
+    .ridefacts span{color:var(--dim)}
 
     /* hourly strip */
     .hours{display:flex;gap:2px;overflow-x:auto;scrollbar-width:thin;padding-bottom:6px;scroll-snap-type:x proximity;
@@ -186,6 +204,10 @@
     .hour svg{width:28px;height:28px}
     .hour .t{font-size:17px;font-weight:600}
     .hour .p{font-size:12px;font-weight:600;color:var(--rain);min-height:17px}
+    .hour .wd{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--dim);min-height:30px;line-height:1.25}
+    .hour .wd svg{width:10px;height:10px}
+    .hour .wd small{font-size:11px}
+    .hour.sun .wd{min-height:30px}
     .hourdetail{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px 14px;margin-top:10px;
       padding-top:10px;border-top:1px solid var(--edge);font-size:14px}
     .hourdetail div{display:flex;justify-content:space-between;gap:8px}
@@ -220,6 +242,9 @@
     .radar .layer{position:absolute;inset:0;pointer-events:none}
     .radar .layer img{position:absolute;width:256px;height:256px;max-width:none}
     .radar .base img{filter:grayscale(1) invert(1) brightness(.78) contrast(.92)}
+    /* satellite in grey: IEM colours the coldest cloud tops in the same
+       greens and purples as the radar, and under the radar that read as rain */
+    .radar .sat img{opacity:.9;filter:grayscale(1) contrast(1.15)}
     .radar .frame{opacity:0}
     .radar .frame.on{opacity:.82}
     .radar svg.over{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
@@ -288,8 +313,12 @@
     .sheet .privacy{font-size:13px;color:var(--dim);margin-top:14px}
 
     @media (max-width:640px){
-      .grid{grid-template-columns:minmax(0,1fr)}
-      .card.half{grid-column:1/-1}
+      /* every card full width, except the detail tiles, two to a row */
+      .card.half{padding:12px}
+      .tile .big{font-size:25px}
+      .tile .dial{gap:10px}
+      .tile .dial svg{width:52px;height:52px}
+      .ridehead .seg{margin-left:0}
       .day summary{grid-template-columns:54px 28px 34px 34px 1fr 34px;gap:5px}
       .radar{height:300px}
       .brand .t{display:none}
@@ -367,6 +396,32 @@
     .seg button{min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--edge);background:rgba(255,255,255,.08);font-weight:600;font-size:14px}
     .seg button[aria-pressed="true"]{background:#fff;color:#0b2342;border-color:#fff}
     .seg .sep{flex:1}
+    /* the map's control rows stay one line and scroll sideways on a phone,
+       rather than wrapping into five rows above the map */
+    .seg.rowscroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-2px;padding-left:2px}
+    .seg.rowscroll::-webkit-scrollbar{display:none}
+    .seg.rowscroll button{flex:none}
+
+    /* the whole window as the map */
+    #radarcard.mapfull{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;border-radius:0;border:0;margin:0;
+      background:rgba(8,16,30,.97);padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+    #radarcard.mapfull .radar{flex:1;height:auto;min-height:0;margin:0 -14px}
+    body.mapopen{overflow:hidden}
+    .radar .zoom button[aria-pressed="true"]{background:#fff;color:#0b2342}
+    @media (min-width:900px){ .radar{height:420px} }
+
+    /* a tapped point on the map */
+    .radar .pin{position:absolute;z-index:2;width:232px;transform:translate(-50%,calc(-100% - 14px));padding:10px 12px;border-radius:14px;
+      background:rgba(10,20,40,.95);border:1px solid var(--edge);box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:14px;pointer-events:auto;cursor:default}
+    .radar .pin.below{transform:translate(-50%,14px)}
+    .pin .ph{display:flex;align-items:center;gap:8px}
+    .pin .ph svg{width:30px;height:30px;flex:none}
+    .pin .pt{font-size:22px;font-weight:600}
+    .pin .pn{font-weight:600;padding-right:30px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pin .ps{color:var(--dim);font-size:13px}
+    .pin .pgo{margin-top:8px;width:100%;min-height:44px;border-radius:12px;border:0;background:#fff;color:#0b2342;font-weight:700}
+    .pin .px{position:absolute;top:2px;right:2px;width:40px;height:40px;border:0;background:none;color:var(--dim);font-size:18px}
+    .seg .seglab{align-self:center;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-right:2px}
     .sitebar{font-size:13px;color:var(--dim);margin:-2px 0 10px}
     .legend.vel i{background:linear-gradient(90deg,#00ff3c,#007a1d,#3a3a3a,#7a0010,#ff2a2a)}
 
@@ -408,6 +463,8 @@
     .skyrow svg{width:100%;height:auto;display:block;border-radius:12px}
     .skymeta{font-size:14px;font-weight:600;margin-top:4px}
     .skymeta small{display:block;font-weight:500;color:var(--dim);font-size:13px}
+    .skycmp{font-size:14px;margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--glass-hi)}
+    .linkbtn{border:0;background:none;padding:0;color:#fff;font-weight:600;text-decoration:underline;min-height:24px}
     .hourpick{display:flex;align-items:center;gap:10px;margin-top:8px}
     .hourpick input{flex:1;min-width:0;height:44px;accent-color:#fff}
     .params{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 16px;margin-top:12px;font-size:14px}
@@ -449,6 +506,7 @@
       <a href="psyche.html">psyche</a>
       <a href="climbing.html">climbing</a>
       <a href="training.html">training</a>
+      <span class="here" aria-current="page">weather</span>
       <a href="exploration.html">exploration</a>
       <a href="gaming.html">gaming</a>
       <a href="workbench.html">workbench</a>
@@ -479,37 +537,41 @@
     <section class="card" id="nearby" hidden aria-label="Warnings nearby"></section>
     <section class="card" id="national" hidden aria-label="Warnings across the US"></section>
     <section class="card" id="next" hidden aria-label="The next three hours"></section>
+    <section class="card" id="ride" hidden aria-label="Ride outlook"></section>
     <section class="card" id="hourly" hidden aria-label="Hourly forecast"></section>
     <section class="card" id="daily" hidden aria-label="Ten-day forecast"></section>
-    <section class="card" id="models" hidden aria-label="Compare the models">
-      <details id="modelsd">
-        <summary><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 12c3-6 5-6 7-3s4 3 7-4M1 9c3-2 5-5 7-2s4 4 7 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-          <b>Compare the models</b><span class="lead">— what each one says, side by side</span>
-          <svg class="chev" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></summary>
-        <div id="modelsbody"></div>
-      </details>
-    </section>
-    <section class="card" id="record" hidden aria-label="How accurate this forecast has been here"></section>
+    <!-- the map comes right after the forecast: radar is the second thing a
+         weather app is opened for; the deep cards (models, the record) follow it -->
     <section class="card" id="radarcard" aria-label="Radar">
       <h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 8l4.5-4.5" stroke="currentColor" stroke-width="1.5"/></svg>Radar<span class="src" id="radarsrc"></span></h2>
-      <div class="seg" role="group" aria-label="Radar layer">
+      <div class="seg rowscroll" role="group" aria-label="Radar layer">
         <button type="button" data-mode="comp" aria-pressed="true">US mosaic</button>
         <button type="button" data-mode="N0B" aria-pressed="false">Reflectivity</button>
         <button type="button" data-mode="N0S" aria-pressed="false">Velocity</button>
         <span class="sep"></span>
         <button type="button" id="outlooktoggle" aria-pressed="false">SPC outlook</button>
       </div>
+      <div class="seg rowscroll" role="group" aria-label="Satellite under the radar">
+        <span class="seglab">Satellite</span>
+        <button type="button" data-sat="" aria-pressed="true">Off</button>
+        <button type="button" data-sat="ir" aria-pressed="false">Infrared</button>
+        <button type="button" data-sat="vis" aria-pressed="false">Visible</button>
+        <button type="button" data-sat="wv" aria-pressed="false">Water vapour</button>
+      </div>
       <p class="sitebar" id="sitebar"></p>
       <div class="radar" id="radar" role="img" aria-label="Radar map">
         <div class="layer base" id="radarbase"></div>
+        <div class="layer sat" id="radarsat"></div>
         <div id="radarframes"></div>
         <svg class="over" id="radarover" aria-hidden="true"></svg>
         <div class="zoom">
           <button type="button" id="zin" aria-label="Zoom in">+</button>
           <button type="button" id="zout" aria-label="Zoom out">−</button>
+          <button type="button" id="zfull" aria-label="Full-screen map" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 7V2h5M11 2h5v5M16 11v5h-5M7 16H2v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
+        <div class="pin" id="radarpin" hidden></div>
         <div class="note" id="radarnote" hidden></div>
-        <span class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · NEXRAD via <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">IEM</a></span>
+        <span class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · NEXRAD<span id="satcredit" hidden> &amp; GOES</span> via <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">IEM</a></span>
       </div>
       <div class="radarbar">
         <button class="play" type="button" id="play" aria-label="Play radar loop"></button>
@@ -526,6 +588,15 @@
         <div id="skybody"></div>
       </details>
     </section>
+    <section class="card" id="models" hidden aria-label="Compare the models">
+      <details id="modelsd">
+        <summary><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 12c3-6 5-6 7-3s4 3 7-4M1 9c3-2 5-5 7-2s4 4 7 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <b>Compare the models</b><span class="lead">— what each one says, side by side</span>
+          <svg class="chev" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></summary>
+        <div id="modelsbody"></div>
+      </details>
+    </section>
+    <section class="card" id="record" hidden aria-label="How accurate this forecast has been here"></section>
     <section class="card half tile" id="t-wind" hidden aria-label="Wind"></section>
     <section class="card half tile" id="t-humid" hidden aria-label="Humidity"></section>
     <section class="card half tile" id="t-press" hidden aria-label="Pressure"></section>
@@ -566,9 +637,9 @@
 
 <script src="effects.js"></script>
 <script src="projects/weather/nowcast.js?v=1"></script>
-<script src="projects/weather/wx.js?v=4"></script>
+<script src="projects/weather/wx.js?v=5"></script>
 <script src="projects/weather/sounding.js?v=1"></script>
-<script src="projects/weather/draw.js?v=1"></script>
+<script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
 <script>
 (() => {
@@ -716,9 +787,12 @@
         }
         const near = await Wx.nearbyStations(pt, lat, lon, ctl.signal).catch(() => []);
         if (!live()) return;
+        /* the place's height, from the forecast, so a station far above or
+           below it is not taken as "now" here */
+        const elevJob = fcJob.then(() => S.fc && S.fc.elevation);
         await Promise.all([
           loadRecord(near, ctl.signal, live),
-          Wx.observation(pt, lat, lon, ctl.signal, near).then((o) => { if (live()) { S.obs = o; render(); } })
+          elevJob.then((elev) => Wx.observation(pt, lat, lon, ctl.signal, near, elev)).then((o) => { if (live()) { S.obs = o; render(); } })
             .catch((e) => { if (live()) { S.obs = null; S.err.obs = e; render(); } }),
           Wx.officeForecast(pt, ctl.signal).then((f) => { if (live()) { S.office = f; render(); } })
             .catch((e) => { if (live()) { S.office = null; S.err.office = e; render(); } }),
@@ -732,7 +806,7 @@
 
     const alertJob = loadAlerts(ctl.signal, live);
     const ensJob = Wx.ensemble(lat, lon, ctl.signal)
-      .then((e) => { if (live()) { S.ens = e; applyBlend(); render(); } })
+      .then((e) => { if (live()) { S.ens = e; judge(); applyBlend(); render(); } })
       .catch(() => { if (live()) { S.ens = null; render(); } });
     const nowJob = loadNowcast(ctl.signal, live);
     await Promise.allSettled([fcJob, nwsJob, alertJob, ensJob, nowJob, loadOutlook(ctl.signal, live)]);
@@ -747,8 +821,8 @@
     if (!S.nowRec) Wx.nowcastRecord(signal).then((r) => { S.nowRec = r; renderNext(); }).catch(() => { S.nowRec = null; });
     return Wx.radarTime(signal)
       .then((valid) => Wx.nowcast(S.place.lat, S.place.lon, valid, signal))
-      .then((n) => { if (live()) { S.now = n; S.nowAt = Date.now(); renderNext(); } })
-      .catch(() => { if (live()) { S.now = null; renderNext(); } });
+      .then((n) => { if (live()) { S.now = n; S.nowAt = Date.now(); renderNext(); renderRide(); } })
+      .catch(() => { if (live()) { S.now = null; renderNext(); renderRide(); } });
   }
   function loadAlerts(signal, live) {
     const { lat, lon } = S.place;
@@ -769,12 +843,25 @@
   function loadRecord(near, signal, live) {
     if (!near.length) { S.rec = null; return Promise.resolve(); }
     return Wx.stationRecords(near.slice(0, 12), signal)
-      .then((r) => { if (live()) { S.rec = r; S.verdict = r.stations[0] ? Wx.verdict(r.stations[0], r.index.minDays || 7) : null; applyBlend(); render(); } })
+      .then((r) => { if (live()) { S.rec = r; judge(); applyBlend(); render(); } })
       .catch(() => { if (live()) { S.rec = null; render(); } });
   }
   /* The forecast the page shows: the standard one, or — only where the
-     nearest station's record says our blend has been closer — the blend, for
-     temperatures. Rain and wind stay the standard forecast's. */
+     nearest station's record says something else has been clearly closer —
+     that one, for temperatures: our blend, our learned forecast, or one of
+     the models the page holds hour by hour (the NWS National Blend, say).
+     Rain and wind stay the standard forecast's. A model that stops early
+     (HRRR at two days) hands back to the standard forecast where it ends. */
+  /* Which forecast has earned its place, among those this place actually has
+     hours of: HRRR and the National Blend stop at the lower 48's edge, so a
+     station in Alaska must not pick one and then show nothing of it. */
+  function judge() {
+    const st = S.rec && S.rec.stations[0];
+    if (!st) { S.verdict = null; return; }
+    const rows = S.ens ? [...S.ens.hours.values()] : [];
+    const have = S.ens ? Wx.ENSEMBLE.filter((m) => rows.some((r) => r[m] && r[m].t != null)) : Wx.ENSEMBLE;
+    S.verdict = Wx.verdict(st, S.rec.index.minDays || 7, have);
+  }
   function applyBlend() {
     S.fcShown = null;
     const fc = S.fc, ens = S.ens, v = S.verdict, st = S.rec && S.rec.stations[0];
@@ -782,11 +869,12 @@
     const recs = {};
     for (const m of WxVerify.BLEND_MODELS) recs[m] = st.models[m] && st.models[m][1];
     const learned = v.use === "learn" && st.learned && st.learned.t;
+    const model = Wx.ENSEMBLE.includes(v.use) ? v.use : null;
     const hourly = fc.hourly.map((h) => {
       const row = ens.hours.get(h.t);
       if (!row) return h;
-      const t = learned
-        ? WxVerify.learnPredict(st.learned.t, { ...row, best: { t: h.temp, w: h.wind } }, "t", h.t, S.place.lon)
+      const t = model ? (row[model] ? row[model].t : null)
+        : learned ? WxVerify.learnPredict(st.learned.t, { ...row, best: { t: h.temp, w: h.wind } }, "t", h.t, S.place.lon)
         : WxVerify.blend(row, recs, WxVerify.isDay(h.t, S.place.lon)).t;
       return t == null ? h : { ...h, temp: t, blended: true };
     });
@@ -794,9 +882,26 @@
       const hs = hourly.filter((h) => h.blended && h.t >= d.t && h.t < d.t + 86400);
       return hs.length < 20 ? d : { ...d, hi: Math.max(...hs.map((h) => h.temp)), lo: Math.min(...hs.map((h) => h.temp)), blended: true };
     });
-    S.fcShown = { ...fc, hourly, daily, blended: v.use };
+    if (!hourly.some((h) => h.blended)) return;      // nothing of it here: say the standard is shown
+    /* "now" from the same forecast as the hours, so the strip does not step
+       from one forecast's 35° to another's 30° (a station, when there is one,
+       still wins in currentConditions); feels-like moves with it */
+    let current = fc.current;
+    const i = Wx.hourIndex(hourly, nowSec()), a = hourly[i], b = hourly[i + 1];
+    if (a && a.blended && fc.current.temp != null) {
+      const f = b && b.blended ? Math.min(1, Math.max(0, (nowSec() - a.t) / 3600)) : 0;
+      const t = a.temp + (b && b.blended ? (b.temp - a.temp) * f : 0);
+      const d = t - fc.current.temp;
+      current = { ...fc.current, temp: t, feels: fc.current.feels != null ? fc.current.feels + d : null };
+    }
+    S.fcShown = { ...fc, current, hourly, daily, blended: v.use };
   }
   const shown = () => S.fcShown || S.fc;
+  /* what the shown temperatures are, in words */
+  const shownName = () => {
+    const u = S.verdict && S.fcShown ? S.verdict.use : "best";
+    return u === "learn" ? "this page's learned forecast" : u === "blend" ? "this page's scored blend" : u === "best" ? "the standard forecast" : "the " + (Wx.MODEL_NAMES[u] || u);
+  };
 
   /* Storm warnings that cover the place: the point query returns alerts whose
      area holds it; a storm warning's area is its polygon. */
@@ -833,7 +938,7 @@
     $("#usview").setAttribute("aria-pressed", String(!p));
   }
 
-  const PLACE_CARDS = ["#next", "#hourly", "#daily", "#models", "#record", "#sky", "#t-wind", "#t-humid", "#t-press", "#t-vis", "#t-uv", "#t-sun", "#t-rain"];
+  const PLACE_CARDS = ["#next", "#ride", "#hourly", "#daily", "#models", "#record", "#sky", "#t-wind", "#t-humid", "#t-press", "#t-vis", "#t-uv", "#t-sun", "#t-rain"];
   function render() {
     renderPlace();
     const us = !S.place;
@@ -847,7 +952,7 @@
       renderUSHero(); renderNational(); renderSources(); radar.label();
       return;
     }
-    renderStorms(); renderHero(); renderAlerts(); renderNearby(); renderNext(); renderHourly(); renderDaily(); renderModels(); renderRecord(); renderTiles(); renderSources();
+    renderStorms(); renderHero(); renderAlerts(); renderNearby(); renderNext(); renderRide(); renderHourly(); renderDaily(); renderModels(); renderRecord(); renderTiles(); renderSources();
     if (typeof offerInstall === "function") offerInstall();
     radar.label();
   }
@@ -947,14 +1052,17 @@
     const today = Wx.upcomingDays(fc, nowSec())[0] || {};
     const k = clk();
     const rain = Wx.rainOutlook(fc, nowSec(), 3, (s) => k.time(s * 1000));
-    const wind = c.wind.v != null
-      ? `Wind ${Wx.compass(c.windDir.v)} ${Wx.fmt.wind(c.wind.v, U())}${c.gust.v != null && c.gust.v > c.wind.v + 5 ? `, gusting ${Wx.fmt.wind(c.gust.v, U())}` : ""} ${Wx.UNITS[U()].wind}`
-      : "";
+    /* A gust is said only beside a wind from the same source: a station's
+       calm with the model's gust beside it would be two places talking. */
+    const gust = c.gust.v != null && c.gust.src === c.wind.src && c.gust.v > c.wind.v + 5 ? c.gust.v : null;
+    const wind = c.wind.v == null ? ""
+      : Wx.isCalm(c.wind.v) ? `Wind calm${gust != null ? `, gusts to ${Wx.fmt.wind(gust, U())} ${Wx.UNITS[U()].wind}` : ""}`
+      : `Wind ${Wx.compass(c.windDir.v)} ${Wx.fmt.wind(c.wind.v, U())}${gust != null ? `, gusting ${Wx.fmt.wind(gust, U())}` : ""} ${Wx.UNITS[U()].wind}`;
     let from;
     if (c.from === "observation") {
       from = `<span>Observed at ${esc(S.obs.station)}${S.obs.dist != null ? " · " + Wx.fmt.dist(S.obs.dist, U()) + " " + Wx.UNITS[U()].dist + " away" : ""} · <b data-age="${c.time}">${Wx.age(Date.now() - c.time)}</b> ago</span>`;
     } else {
-      from = `<span${S.fcStale ? ' class="delayed"' : ""}>${S.fcStale ? "Offline — saved forecast from " : "Model estimate · Open-Meteo · "}<b data-age="${fc.fetchedAt}">${Wx.age(Date.now() - fc.fetchedAt)}</b> ago</span>`;
+      from = `<span${S.fcStale ? ' class="delayed"' : ""}>${S.fcStale ? "Offline — saved forecast from " : `Model estimate · ${esc(S.fcShown ? shownName().replace(/^the /, "") : "Open-Meteo")} · `}<b data-age="${fc.fetchedAt}">${Wx.age(Date.now() - fc.fetchedAt)}</b> ago</span>`;
     }
     const risk = Wx.outlookAt(S.outlook, S.place.lat, S.place.lon);
     const approx = S.place.approx ? `<div class="from"><span>Approximate place, from your internet connection · <a href="#" data-open-places>set yours</a></span></div>` : "";
@@ -1096,7 +1204,8 @@
     }
     const f = U() === "us" ? 1.8 : 1;
     const max = Math.max(...v.rows.map((x) => x.mae)) * f;
-    const used = v.use;
+    /* what is actually on the page — the pick only once its numbers arrived */
+    const used = S.fcShown ? v.use : "best";
     const days = v.rows.find((x) => x.m === used)?.days || v.rows[0].days;
     const rows = v.rows.map((x) => `<div class="recrow${x.m === used ? " used" : ""}">
         <span class="rn">${esc(Wx.MODEL_NAMES[x.m] || x.m)}${x.m === used ? ' <span class="tag">shown here</span>' : ""}</span>
@@ -1104,13 +1213,16 @@
         <span class="rv num">±${(x.mae * f).toFixed(1)}°</span></div>`).join("");
     const nat = r.index && r.index.national;
     const natLine = nat && nat.blend && nat.best && nat.blend.stations > 50
-      ? `<p class="dim" style="margin-top:8px">Across ${nat.blend.stations.toLocaleString()} US stations, the blend's typical miss is ±${(nat.blend.mae * f).toFixed(1)}° against the standard forecast's ±${(nat.best.mae * f).toFixed(1)}°.</p>` : "";
+      ? `<p class="nextnote">Across ${nat.blend.stations.toLocaleString()} US stations, the blend's typical miss is ±${(nat.blend.mae * f).toFixed(1)}° against the standard forecast's ±${(nat.best.mae * f).toFixed(1)}°.</p>` : "";
     const mine = { blend: "its own blend", learn: "its own learned forecast" };
     const deg = (x) => "±" + (x.mae * f).toFixed(1) + "°";
-    const why = v.pick
-      ? `This page shows ${mine[v.pick.m]} for temperatures here, because at this station it has been closer than the standard forecast (${deg(v.pick)} vs ${deg(v.base)}).`
-      : v.base && (v.blend || v.learn) ? `This page shows the standard forecast here: neither of its own forecasts has beaten it at this station yet.`
-      : "This page shows the standard forecast here until its own forecasts have a long enough record.";
+    const why = v.pick && !S.fcShown
+      ? `${(mine[v.pick.m] || "The " + (Wx.MODEL_NAMES[v.pick.m] || v.pick.m)).replace(/^its/, "This page's")} has the best record here, but its numbers ${S.ens === undefined ? "are still loading" : "did not load"} — this page shows the standard forecast meanwhile.`
+      : v.pick
+      ? `This page shows ${mine[v.pick.m] || "the " + (Wx.MODEL_NAMES[v.pick.m] || v.pick.m)} for temperatures here, because at this station it has been closest — ${deg(v.pick)} against the standard forecast's ${deg(v.base)}.`
+        + (v.best && v.best.m !== v.pick.m ? ` (${Wx.MODEL_NAMES[v.best.m] || v.best.m} ranks above it but is not one this page can draw.)` : "")
+      : v.base && (v.blend || v.learn) ? `This page shows the standard forecast here: nothing it can draw has beaten it at this station yet.`
+      : "This page shows the standard forecast here until the others have a long enough record.";
     box.innerHTML = head + `<p style="margin-bottom:10px">Next-day temperature forecasts at <b>${esc(st.name)}</b> (${esc(st.id)}${st.dist != null ? `, ${Wx.fmt.dist(st.dist, U())} ${Wx.UNITS[U()].dist} away` : ""}), average miss over the last ${days} days:</p>
       <div class="recrows">${rows}</div>
       <p class="nextnote">${esc(why)}</p>${natLine}
@@ -1165,9 +1277,22 @@
       const h = Math.max(4, Math.sqrt(rate / max) * 100);
       return `<i class="${rate >= 0.4 ? (snow ? "s" : "w") : ""}" style="height:${rate >= 0.4 ? h : 4}%" title="${esc(k.time((s.t - (hourly ? 3600 : 900)) * 1000))}: ${Wx.fmt.precip(rate, U())} ${Wx.UNITS[U()].precip}/h"></i>`;
     }).join("");
-    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5S3.5 7 3.5 10a4.5 4.5 0 0 0 9 0C12.5 7 8 1.5 8 1.5z" fill="currentColor"/></svg>Next 3 hours<span class="src">${S.now ? "radar, then " : ""}model ${hourly ? "hourly" : "every 15 min"}</span></h2>
-      ${nowcastLine(k)}
+    /* The hero already says the three-hour sentence; when it is dry, this
+       card adds when the forecast next has rain, so it says something more. */
+    let after = "";
+    if (rain.state === "dry") {
+      /* likely, or real rain with a fair chance — not a trace at 2% */
+      const wet = fc.hourly.find((h) => h.t >= now + 3 * 3600 && ((h.pop ?? 0) >= 50 || ((h.precip ?? 0) >= 0.3 && (h.pop ?? 100) >= 30)));
+      const dayWord = (t) => { const a = k.ymd(t * 1000), b = k.ymd(now * 1000), c = k.ymd((now + 86400) * 1000); return a === b ? "today" : a === c ? "tomorrow" : k.dayLong(t * 1000); };
+      after = wet ? `Next rain in the forecast: ${dayWord(wet.t)} around ${k.hour(wet.t * 1000)}${wet.pop != null ? ` (${Math.round(wet.pop)}% chance)` : ""}.`
+        : "No rain likely anywhere in the 10-day forecast.";
+    }
+    const radarLine = nowcastLine(k);
+    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5S3.5 7 3.5 10a4.5 4.5 0 0 0 9 0C12.5 7 8 1.5 8 1.5z" fill="currentColor"/></svg>Next 3 hours<span class="src">${radarLine ? "radar, then " : ""}model ${hourly ? "hourly" : "every 15 min"}</span></h2>
+      ${radarLine}
+      ${radarLine ? `<div class="who">The models, 3 hours</div>` : ""}
       <div style="font-size:17px;font-weight:600">${esc(rain.text)}</div>
+      ${after ? `<p class="nextafter">${esc(after)}</p>` : ""}
       <div class="nextbars" role="img" aria-label="${esc(rain.text)}">${bars}</div>
       <div class="nextaxis"><span>Now</span><span>+1 h</span><span>+2 h</span><span>+3 h</span></div>
       ${rain.note ? `<p class="nextnote">${esc(rain.note)}</p>` : ""}`;
@@ -1177,8 +1302,15 @@
      estimate has done — every part of it labelled as ours */
   function nowcastLine(k) {
     const n = S.now;
-    const said = n && WxNowcast.describe(n.series, { base: n.valid || S.nowAt, clock: (ms) => k.time(ms) });
-    if (!said) return "";
+    const said0 = n && WxNowcast.describe(n.series, { base: n.valid || S.nowAt, clock: (ms) => k.time(ms) });
+    if (!said0) return "";
+    /* Echoes near a dry station are often rain that never reaches the
+       ground, or clutter. When the station here says it isn't raining, the
+       radar line says both things rather than "rain is nearby" on its own. */
+    const groundDry = S.obs && S.obs.text && Wx.fresh("observation", S.obs.time).stale === false && !["rain", "drizzle", "storm", "snow", "sleet"].includes(Wx.kindOfText(S.obs.text)) && !(S.obs.precipHour > 0);
+    const said = said0.kind === "dry" && n.series.some((p) => p.p >= 0.15) && groundDry
+      ? { ...said0, text: `Light echoes on radar nearby, none heading straight here in the next hour — and ${S.obs.station} reports no rain.` }
+      : said0;
     const cells = n.series.filter((p) => p.min > 0).map((p) => {
       const lvl = p.p === null ? "x" : p.p >= 0.5 ? (p.dbz >= 45 ? "h" : p.dbz >= 35 ? "m" : "l") : p.p >= 0.15 ? "n" : "";
       return `<i class="${lvl}" title="${esc(k.time((n.valid || S.nowAt) + p.min * 60e3))}: ${p.p === null ? "no radar" : Math.round(p.p * 100) + "% chance"}"></i>`;
@@ -1197,6 +1329,58 @@
     </div>`;
   }
 
+  /* ── can I ride? (DESIGN.md §21.1) ──
+     One word for the next 1, 2 or 4 hours and the reasons for it, from what
+     the page already holds (Wx.rideOutlook): the rain line, the radar's next
+     hour, thunder, gusts, the temperature, fog, darkness, alerts here. */
+  S.rideH = [1, 2, 4].includes(store.get("wx:ride", 2)) ? store.get("wx:ride", 2) : 2;
+  function renderRide() {
+    const box = $("#ride");
+    const fc = shown();
+    if (!S.place || !fc) { box.hidden = true; return; }
+    const k = clk(), H = S.rideH, u = Wx.UNITS[U()];
+    const nc = S.now ? WxNowcast.describe(S.now.series, { base: S.now.valid || S.nowAt, clock: (ms) => k.time(ms) }) : null;
+    const r = Wx.rideOutlook(fc, nowSec(), H, { alerts: S.alerts || [], nowcast: nc, time: (s) => k.time(s * 1000),
+      fmtTemp: (c) => Wx.fmt.temp(c, U()), fmtWind: (w) => Wx.fmt.wind(w, U()), windUnit: u.wind });
+    if (!r) { box.hidden = true; return; }
+    box.hidden = false;
+    const word = { good: "Good to ride", fair: "Ride with care", poor: "Not a good window" }[r.level];
+    const icon = { good: "✓", fair: "!", poor: "✕" }[r.level];
+    const why = r.reasons.length ? r.reasons.map((x) => `<li data-l="${x.level}">${esc(x.text)}</li>`).join("")
+      : `<li data-l="good">Dry, light wind, mild air and daylight the whole way.</li>`;
+    const fact = (l, v) => `<div><span>${l}</span><b class="num">${v}</b></div>`;
+    const seg = [1, 2, 4].map((h) => `<button type="button" data-rideh="${h}" aria-pressed="${h === H}">${h} h</button>`).join("");
+    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="4" cy="11" r="2.8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12.5" cy="11" r="2.8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 11l3-5h3.5l2 5M7 6l-1-2H4.5M9.5 6l1-2h2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Ride outlook<span class="src">forecast + radar</span></h2>
+      <div class="ridehead"><span class="ridebadge" data-l="${r.level}"><span aria-hidden="true">${icon}</span>${word}</span>
+        <div class="seg" role="group" aria-label="How long a ride">${seg}</div></div>
+      <ul class="ridewhy">${why}</ul>
+      <div class="ridefacts">
+        ${fact("Rain", esc(r.rain.text))}
+        ${fact("Strongest gust", r.gust != null ? `${Wx.fmt.wind(r.gust, U())} ${u.wind}` : "–")}
+        ${fact("Temperature", r.lo != null ? (Math.round(r.lo) === Math.round(r.hi) ? deg(r.lo) : `${deg(r.lo)}–${deg(r.hi)}`) : "–")}
+        ${fact("Thunder (model)", r.thunder ? "yes" : "none")}
+        ${fact("Light", r.dark ? (r.dark.at ? `dark from ${esc(k.time(r.dark.at * 1000))}` : "dark") : "daylight")}
+      </div>
+      <p class="nextnote">Rules of thumb for the next ${H === 1 ? "hour" : H + " hours"} here, read from the forecast above and the radar's next hour. It knows nothing about the road surface, and there is no lightning feed — thunder is the model's. In a warning, act on the warning.</p>`;
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-rideh]");
+    if (!b) return;
+    S.rideH = Number(b.dataset.rideh);
+    store.set("wx:ride", S.rideH);
+    renderRide();
+  });
+
+  /* An hour's wind for the strip (§9.1): an arrow the way it blows, the
+     speed, and the gust under it when it is 10 mph (16 km/h) or more above. */
+  function windCell(h) {
+    if (h.wind == null) return `<span class="wd"></span>`;
+    if (Wx.isCalm(h.wind)) return `<span class="wd">calm</span>`;
+    const arrow = h.windDir != null ? `<svg viewBox="0 0 10 10" aria-hidden="true" style="transform:rotate(${Math.round(h.windDir + 180)}deg)"><path d="M5 1l3 4H6v4H4V5H2z" fill="currentColor"/></svg>` : "";
+    const g = h.gust != null && h.gust - h.wind >= 16 ? `<small>g${Wx.fmt.wind(h.gust, U())}</small>` : "";
+    return `<span class="wd num" title="Wind ${esc(Wx.compass(h.windDir))} ${Wx.fmt.wind(h.wind, U())} ${Wx.UNITS[U()].wind}">${arrow}${Wx.fmt.wind(h.wind, U())}${g}</span>`;
+  }
+
   function renderHourly() {
     const box = $("#hourly");
     const fc = shown();
@@ -1213,12 +1397,13 @@
     const strip = hours.map((h, i) => {
       const c = Wx.condition(h.code);
       const sun = suns.filter((x) => x.t >= h.t && x.t < h.t + 3600 && x.t > nowSec() && i < hours.length - 1).map((x) => `<div class="hour sun" role="note">
-        <span class="h">${esc(k.time(x.t * 1000))}</span>${sunIcon(x.up)}<span class="p"></span><span class="t">${x.up ? "Sunrise" : "Sunset"}</span></div>`).join("");
+        <span class="h">${esc(k.time(x.t * 1000))}</span>${sunIcon(x.up)}<span class="p"></span><span class="t">${x.up ? "Sunrise" : "Sunset"}</span><span class="wd"></span></div>`).join("");
       return `<button class="hour" type="button" data-hour="${h.t}" aria-pressed="${S.selected === h.t}">
         <span class="h">${i === 0 ? "Now" : esc(k.hour(h.t * 1000))}</span>
         ${icon(c.kind, h.isDay !== 0, c.text)}
         <span class="p">${h.pop >= 10 ? Math.round(h.pop) + "%" : ""}</span>
         <span class="t num">${Wx.fmt.temp(i === 0 && nowTemp != null ? nowTemp : h.temp, U())}°</span>
+        ${windCell(h)}
       </button>${sun}`;
     }).join("");
     const said = Wx.summary(fc, nowSec(), k, (c) => Wx.fmt.temp(c, U()), (w) => Wx.fmt.wind(w, U()), Wx.UNITS[U()].wind);
@@ -1243,7 +1428,7 @@
       </div>`;
     }
     const scroll = box.querySelector(".hours") ? box.querySelector(".hours").scrollLeft : 0;
-    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4v4l2.5 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Hourly<span class="src">tap an hour · model</span></h2>
+    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4v4l2.5 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Hourly<span class="src">tap an hour · wind in ${esc(Wx.UNITS[U()].wind)} · model</span></h2>
       ${said ? `<p class="summary">${esc(said)}</p>` : ""}<div class="hours">${strip}</div>${detail}`;
     box.querySelector(".hours").scrollLeft = scroll;
   }
@@ -1324,7 +1509,7 @@
             </div>
             ${dayChart(fc, d)}
             ${i === 0 && vy ? `<p class="confsay">${esc(vyText(vy))}</p>` : ""}
-            ${cf ? `<p class="confsay" data-l="${cf.level}">${esc(confWords(cf))}</p>` : ""}${d.blended ? `<p class="confsay">High and low from this page's ${S.verdict && S.verdict.use === "learn" ? "learned forecast" : "scored blend"}.</p>` : ""}
+            ${cf ? `<p class="confsay" data-l="${cf.level}">${esc(confWords(cf))}</p>` : ""}${d.blended ? `<p class="confsay">High and low from ${esc(shownName())} — the forecast with the best record near here.</p>` : ""}
             ${words.length ? `<div class="office"><h3>Forecast office ${esc(S.pt && S.pt.office || "")}</h3>${words.map((p) => `<p><b>${esc(p.name)}:</b> ${esc(p.detailed || p.short)}</p>`).join("")}</div>` : ""}
           </div>
         </details>`;
@@ -1343,16 +1528,20 @@
     const srcTag = (src) => src === "obs" ? `<span class="tag">station</span>` : src === "derived" ? `<span class="tag">computed</span>` : `<span class="tag">model</span>`;
     const head = (svg, t, src) => `<h2>${svg}${t}<span class="src">${src ? srcTag(src) : ""}</span></h2>`;
 
-    const dir = c.windDir.v;
+    /* calm has no direction: a station reports 0° with 0 wind, and an arrow
+       pointing north would say something that isn't so */
+    const calm = Wx.isCalm(c.wind.v);
+    const dir = calm ? null : c.windDir.v;
+    const gust = c.gust.v != null && c.gust.src === c.wind.src ? c.gust.v : null;
     $("#t-wind").innerHTML = head('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 5.5h8a2 2 0 1 0-2-2M1.5 8.5h11a2 2 0 1 1-2 2M1.5 11.5h5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>', "Wind", c.wind.src) + `
       <div class="dial">
-        <svg viewBox="0 0 74 74" role="img" aria-label="${dir != null ? "From the " + Wx.compass(dir) : "Direction unknown"}">
+        <svg viewBox="0 0 74 74" role="img" aria-label="${calm ? "Calm" : dir != null ? "From the " + Wx.compass(dir) : "Direction unknown"}">
           <circle cx="37" cy="37" r="33" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2"/>
           <text x="37" y="13" text-anchor="middle" font-size="11" fill="#fff" font-weight="600">N</text>
-          ${dir != null ? `<g transform="rotate(${dir + 180} 37 37)"><path d="M37 8l6 14h-12z" fill="#fff"/><line x1="37" y1="20" x2="37" y2="62" stroke="#fff" stroke-width="2.5"/></g>` : ""}
+          ${dir != null ? `<g transform="rotate(${dir + 180} 37 37)"><path d="M37 8l6 14h-12z" fill="#fff"/><line x1="37" y1="20" x2="37" y2="62" stroke="#fff" stroke-width="2.5"/></g>` : calm ? `<circle cx="37" cy="37" r="5" fill="none" stroke="#fff" stroke-width="2"/>` : ""}
         </svg>
-        <div><div class="big num">${Wx.fmt.wind(c.wind.v, U())} <small style="font-size:15px">${u.wind}</small></div>
-        <div class="say">${dir != null ? `From the <b>${Wx.compass(dir)}</b>` : ""}${c.gust.v != null ? `<br>Gusts <b class="num">${Wx.fmt.wind(c.gust.v, U())} ${u.wind}</b>` : ""}</div></div>
+        <div><div class="big num">${calm ? "Calm" : `${Wx.fmt.wind(c.wind.v, U())} <small style="font-size:15px">${u.wind}</small>`}</div>
+        <div class="say">${dir != null ? `From the <b>${Wx.compass(dir)}</b>` : calm ? "No steady wind" : ""}${gust != null ? `<br>Gusts <b class="num">${Wx.fmt.wind(gust, U())} ${u.wind}</b>` : ""}</div></div>
       </div>`;
 
     const dewF = c.dew.v != null ? Wx.cToF(c.dew.v) : null;
@@ -1384,9 +1573,25 @@
         <div><div class="say">Next 24 hours</div><div class="big num">${rt.next != null ? Wx.fmt.precip(rt.next, U()) : "–"} <small style="font-size:15px">${u.precip}</small></div></div>
       </div>${S.obs && S.obs.precipHour != null && S.obs.precipHour > 0 ? `<div class="say">The station measured <b class="num">${Wx.fmt.precip(S.obs.precipHour, U())} ${u.precip}</b> in its last hour.</div>` : ""}`;
 
+    /* the next of the two, big; the other one and the length of the day under it */
+    const sunSay = (() => {
+      if (!today.sunrise || !today.sunset) return { big: "–", say: "" };
+      const t = (s) => `<b class="num">${esc(k.time(s * 1000))}</b>`;
+      const tomorrow = Wx.upcomingDays(fc, now)[1];
+      const len = (d) => d && d.sunrise && d.sunset ? d.sunset - d.sunrise : null;
+      const hm = (s) => `${Math.floor(s / 3600)} h ${Math.round(s % 3600 / 60)} min`;
+      const yday = fc.daily.find((d) => Math.abs(d.t - (today.t - 86400)) < 7200);
+      const dl = len(today), dy = len(yday);
+      const diff = dl != null && dy != null ? Math.round((dl - dy) / 60) : null;
+      const day = dl != null ? `<br>Daylight <b class="num">${hm(dl)}</b>${diff ? ` · ${Math.abs(diff)} min ${diff > 0 ? "more" : "less"} than yesterday` : ""}` : "";
+      if (now < today.sunrise) return { big: k.time(today.sunrise * 1000), say: `<b>Sunrise</b> · sets ${t(today.sunset)}${day}` };
+      if (now < today.sunset) return { big: k.time(today.sunset * 1000), say: `<b>Sunset</b> · rose ${t(today.sunrise)}${day}` };
+      if (tomorrow && tomorrow.sunrise) return { big: k.time(tomorrow.sunrise * 1000), say: `<b>Sunrise tomorrow</b> · set ${t(today.sunset)} today${day}` };
+      return { big: k.time(today.sunset * 1000), say: `<b>Sunset</b>${day}` };
+    })();
     $("#t-sun").innerHTML = head('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 12h14M4 12a4 4 0 0 1 8 0M8 3v2M3 6l1.2 1.2M13 6l-1.2 1.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>', "Sun", today.sunrise ? "model" : null) + `
-      <div class="big num">${today.sunset ? esc(k.time((now > today.sunset ? (Wx.upcomingDays(fc, now)[1] || today).sunrise : now < today.sunrise ? today.sunrise : today.sunset) * 1000)) : "–"}</div>
-      <div class="say">${today.sunrise ? `${now > today.sunset || now < today.sunrise ? "Sunrise" : "Sunset"} · up <b class="num">${esc(k.time(today.sunrise * 1000))}</b>, down <b class="num">${esc(k.time(today.sunset * 1000))}</b>` : ""}</div>`;
+      <div class="big num">${esc(sunSay.big)}</div>
+      <div class="say">${sunSay.say}</div>`;
   }
 
   /* §25 and §37: every feed, how old, and whether it is answering. */
@@ -1422,6 +1627,7 @@
       const f = Wx.fresh("radar", rv);
       row(f.stale ? "stale" : "", `Radar${f.stale ? " — delayed" : ""}`, `${esc(radar.describe())} · latest scan`, rv);
     } else row("off", "Radar", radar.started ? "scan time unknown" : "loads when you reach it", null);
+    if (radar.sat) row("", "Satellite — GOES-East and GOES-West", `${esc(Wx.SAT[radar.sat].label.toLowerCase())}, via IEM · the latest image; its scan time does not come with the map`, null);
     if (S.place && S.rec && S.rec.index) row("", "Scoreboard", `every model vs ${Object.keys(S.rec.index.stations || {}).length.toLocaleString()} US airport stations · scored through ${esc(S.rec.index.through || "")} · published`, Date.parse(S.rec.index.generated) || null);
     if (S.ens) row("", "Model agreement", "NBM, HRRR, GFS, ECMWF and ECMWF AI, via Open-Meteo", S.fc ? S.fc.fetchedAt : null);
     if (sky.source) row(sky.source.stale ? "stale" : "", esc(sky.source.title), esc(sky.source.sub), sky.source.at);
@@ -1446,16 +1652,37 @@
     const TILE = 256, MINZ = 3, MAXZ = 11;
     const el = $("#radar"), baseL = $("#radarbase"), framesL = $("#radarframes"), over = $("#radarover");
     const R = { z: 7, cx: 0, cy: 0, lat: null, lon: null, frame: 0, playing: false, timer: 0, started: false, visible: false,
-      mode: "comp", valid: null, frames: [], loadedOld: false, site: null, sites: null, outlook: false, us: false, frameT: null };
+      mode: "comp", valid: null, frames: [], loadedOld: false, site: null, sites: null, outlook: false, us: false, frameT: null, sat: null, pin: null };
     const lngX = (lng, z) => (lng + 180) / 360 * TILE * 2 ** z;
     const latY = (lat, z) => { const s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TILE * 2 ** z; };
     const xLng = (x, z) => x / (TILE * 2 ** z) * 360 - 180;
     const yLat = (y, z) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / (TILE * 2 ** z)))) * 180 / Math.PI;
     const bucket = () => Math.floor(Date.now() / 120e3);
     const baseTiles = new Map();
+    /* satellite under the radar: GOES-West first, East over it (Wx.SAT).
+       IEM refreshes the image every few minutes; the tiles are re-asked
+       every five. */
+    const satL = $("#radarsat"), sats = [];
+    const satBucket = () => Math.floor(Date.now() / 300e3);
+    let satAt = satBucket();
 
     function clearTiles() {
-      for (const c of [baseTiles, ...R.frames.map((f) => f.tiles)]) { for (const img of c.values()) img.remove(); c.clear(); }
+      for (const c of [baseTiles, ...sats.map((s) => s.tiles), ...R.frames.map((f) => f.tiles)]) { for (const img of c.values()) img.remove(); c.clear(); }
+    }
+    function setSat(kind) {
+      R.sat = Wx.SAT[kind] ? kind : null;
+      store.set("wx:sat", R.sat);
+      for (const s of sats) for (const img of s.tiles.values()) img.remove();
+      satL.innerHTML = ""; sats.length = 0;
+      if (R.sat) for (const layer of Wx.SAT[R.sat].layers) {
+        const d = document.createElement("div");
+        d.className = "layer";
+        satL.appendChild(d);
+        sats.push({ el: d, layer, tiles: new Map() });
+      }
+      document.querySelectorAll("[data-sat]").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.sat || null) === R.sat)));
+      $("#satcredit").hidden = !R.sat;
+      label(); draw(); renderSources();
     }
     function setFrames(list) {
       framesL.innerHTML = "";
@@ -1498,8 +1725,16 @@
           let img = cache.get(key);
           if (!img) {
             img = new Image(); img.alt = ""; img.decoding = "async"; img.draggable = false;
-            img.onerror = () => { img.style.visibility = "hidden"; };
-            img.src = url(R.z, wx, ty);
+            /* one tile failing never blanks the layer (§35.5): it hides, and is
+               asked once more a few seconds later */
+            const src = url(R.z, wx, ty);
+            img.onerror = () => {
+              img.style.visibility = "hidden";
+              if (img.dataset.retried) return;
+              img.dataset.retried = "1";
+              setTimeout(() => { if (img.isConnected) { img.style.visibility = ""; img.src = src + (src.includes("?") ? "&" : "?") + "r=1"; } }, 4000);
+            };
+            img.src = src;
             cache.set(key, img); layer.appendChild(img);
           }
           img.style.transform = `translate(${tx * TILE - left}px,${ty * TILE - top}px)`;
@@ -1543,6 +1778,10 @@
         const [sx, sy] = pt(R.site.lat, R.site.lon);
         out.push(`<rect x="${(sx - 4).toFixed(1)}" y="${(sy - 4).toFixed(1)}" width="8" height="8" fill="#ffd43b" stroke="#000"/>`);
       }
+      if (R.pin) {
+        const [qx, qy] = pt(R.pin.lat, R.pin.lon);
+        out.push(`<circle cx="${qx.toFixed(1)}" cy="${qy.toFixed(1)}" r="7" fill="none" stroke="#fff" stroke-width="2.5"/><circle cx="${qx.toFixed(1)}" cy="${qy.toFixed(1)}" r="2.5" fill="#fff"/>`);
+      }
       if (S.place) {
         const [mx, my] = pt(S.place.lat, S.place.lon);
         out.push(`<circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="9" fill="rgba(255,255,255,.25)"/><circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="5" fill="#fff" stroke="#0b2342" stroke-width="2"/>`);
@@ -1555,10 +1794,12 @@
       const w = el.clientWidth, h = el.clientHeight;
       const left = R.cx - w / 2, top = R.cy - h / 2;
       place(baseL, baseTiles, (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`, w, h, left, top);
+      for (const s of sats) place(s.el, s.tiles, (z, x, y) => Wx.satTile(s.layer, z, x, y, satAt), w, h, left, top);
       R.frames.forEach((f, i) => {
         if (i === R.frame || R.loadedOld) place(f.el, f.tiles, f.url, w, h, left, top);
       });
       overlay(left, top);
+      placePin();
     }
 
     function note(text) {
@@ -1636,6 +1877,10 @@
       if (R.mode === "comp") sb.textContent = "NEXRAD mosaic of the whole country, every 5 minutes.";
       else if (R.site) sb.textContent = `${R.site.id} · ${R.site.name} · ${Wx.SITE_PRODUCTS[R.mode].long}. The site follows the middle of the map.`;
       else sb.textContent = "Finding the nearest radar…";
+      if (R.sat) {
+        const night = R.sat === "vis" && S.fc && S.fc.current && S.fc.current.isDay === false;
+        sb.textContent += ` Under it: ${Wx.SAT[R.sat].long}${night ? " It is night here, so this part of the map is dark — try Infrared." : ""} The latest image; it refreshes every few minutes.`;
+      }
       if (R.started && R.frames[R.frame]) show(R.frame);
     }
     function describe() {
@@ -1645,6 +1890,8 @@
     async function start() {
       if (R.started) return;
       R.started = true;
+      const sat = store.get("wx:sat", null);           // the visitor's last choice, this browser only
+      if (Wx.SAT[sat]) setSat(sat);
       if (R.mode === "comp") {
         compFrames();
         R.valid = await Wx.radarTime();
@@ -1679,11 +1926,62 @@
       fit(Math.min(...lats), Math.min(...lons), Math.max(...lats), Math.max(...lons), 60);
     }
 
-    /* dragging, and the site following the map */
-    let drag = null, follow = 0;
+    /* ── a tapped point (§10.3) ──
+       Its weather now and its name, and "forecast here", which makes it the
+       place. The point is the visitor's own tap, rounded to two decimals like
+       any place, and kept nowhere unless they choose it. */
+    const pinEl = $("#radarpin");
+    function placePin() {
+      if (!R.pin) { pinEl.hidden = true; return; }
+      const w = el.clientWidth, h = el.clientHeight;
+      const x = lngX(R.pin.lon, R.z) - (R.cx - w / 2), y = latY(R.pin.lat, R.z) - (R.cy - h / 2);
+      pinEl.hidden = x < 0 || y < 0 || x > w || y > h;
+      pinEl.style.left = Math.min(w - 120, Math.max(120, x)) + "px";
+      pinEl.style.top = y + "px";
+      pinEl.classList.toggle("below", y < 170);          // near the top edge the card opens under the point
+    }
+    async function inspect(lat, lon) {
+      const pin = R.pin = { lat: Wx.round2(lat), lon: Wx.round2(((lon + 540) % 360) - 180) };
+      pinEl.innerHTML = `<button type="button" class="px" data-pinx aria-label="Close">×</button><div class="pn">This point</div><p class="ps">Asking…</p>`;
+      draw();
+      const [now, pt] = await Promise.all([
+        Wx.several([pin]).then((l) => l[0]).catch(() => null),
+        Wx.point(pin.lat, pin.lon).catch(() => null)
+      ]);
+      if (R.pin !== pin) return;
+      pin.name = pt && pt.city ? "Near " + pt.city : "This point";
+      const c = now && Wx.condition(now.code);
+      pinEl.innerHTML = `<button type="button" class="px" data-pinx aria-label="Close">×</button><div class="pn">${esc(pin.name)}</div>
+        ${now && now.temp != null ? `<div class="ph">${icon(c.kind, now.isDay)}<span class="pt num">${Wx.fmt.temp(now.temp, U())}°</span><span class="ps">${esc(c.text)}${now.hi != null ? `<br>H ${Wx.fmt.temp(now.hi, U())}° L ${Wx.fmt.temp(now.lo, U())}°` : ""}</span></div>` : `<p class="ps">The forecast service did not answer for this point.</p>`}
+        <button type="button" class="pgo" data-pingo>Forecast here</button>`;
+    }
+    pinEl.addEventListener("click", (e) => {
+      if (e.target.closest("[data-pinx]")) { R.pin = null; draw(); }
+      else if (e.target.closest("[data-pingo]") && R.pin) {
+        const p = R.pin; R.pin = null; full(false);
+        choose({ name: p.name || "Map point", region: "", lat: p.lat, lon: p.lon });
+      }
+    });
+
+    /* the whole window as the map, and back — the button or Esc */
+    function full(on) {
+      const card = $("#radarcard");
+      if (card.classList.contains("mapfull") === on) return;
+      card.classList.toggle("mapfull", on);
+      document.body.classList.toggle("mapopen", on);
+      $("#zfull").setAttribute("aria-pressed", String(on));
+      $("#zfull").setAttribute("aria-label", on ? "Leave the full-screen map" : "Full-screen map");
+      if (on) start();
+      requestAnimationFrame(draw);
+    }
+    $("#zfull").addEventListener("click", () => full(!$("#radarcard").classList.contains("mapfull")));
+    addEventListener("keydown", (e) => { if (e.key === "Escape") full(false); });
+
+    /* dragging, the site following the map, and a tap that is not a drag */
+    let drag = null, follow = 0, tap = 0;
     el.addEventListener("pointerdown", (e) => {
-      if (e.target.closest("button,a")) return;
-      drag = { x: e.clientX, y: e.clientY, cx: R.cx, cy: R.cy };
+      if (e.target.closest("button,a,.pin")) return;
+      drag = { x: e.clientX, y: e.clientY, cx: R.cx, cy: R.cy, t: Date.now() };
       el.setPointerCapture(e.pointerId); el.classList.add("dragging");
     });
     el.addEventListener("pointermove", (e) => {
@@ -1691,9 +1989,17 @@
       R.cx = drag.cx - (e.clientX - drag.x); R.cy = drag.cy - (e.clientY - drag.y);
       requestAnimationFrame(draw);
     });
-    const end = () => {
+    const end = (e) => {
       if (!drag) return;
+      const d = drag;
       drag = null; el.classList.remove("dragging");
+      if (e.type === "pointerup" && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6 && Date.now() - d.t < 450) {
+        /* wait out a double tap, which zooms instead */
+        const r = el.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
+        clearTimeout(tap);
+        tap = setTimeout(() => inspect(yLat(R.cy - el.clientHeight / 2 + py, R.z), xLng(R.cx - el.clientWidth / 2 + px, R.z)), 300);
+        return;
+      }
       if (R.mode !== "comp") {
         clearTimeout(follow);
         follow = setTimeout(async () => { if (await pickSite(false)) { clearTiles(); await siteFrames(); label(); } }, 700);
@@ -1702,10 +2008,11 @@
     el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
     $("#zin").addEventListener("click", () => zoomTo(R.z + 1));
     $("#zout").addEventListener("click", () => zoomTo(R.z - 1));
-    el.addEventListener("dblclick", (e) => { if (!e.target.closest("button,a")) zoomTo(R.z + 1); });
+    el.addEventListener("dblclick", (e) => { if (!e.target.closest("button,a,.pin")) { clearTimeout(tap); zoomTo(R.z + 1); } });
     $("#play").addEventListener("click", () => play(!R.playing));
     $("#scrub").addEventListener("input", (e) => { play(false); loadOld(); show(Number(e.target.value)); });
     document.querySelectorAll(".seg [data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+    document.querySelectorAll("[data-sat]").forEach((b) => b.addEventListener("click", () => setSat(b.dataset.sat)));
     $("#outlooktoggle").addEventListener("click", () => {
       R.outlook = !R.outlook;
       $("#outlooktoggle").setAttribute("aria-pressed", String(R.outlook));
@@ -1724,7 +2031,7 @@
     const CONUS = [24.4, -125, 49.5, -66.9];
     return {
       center(lat, lon) {
-        R.us = false;
+        R.us = false; R.pin = null;
         R.lat = lat; R.lon = lon;
         R.z = 7;
         R.cx = lngX(lon, R.z); R.cy = latY(lat, R.z);
@@ -1755,10 +2062,12 @@
       },
       refresh() {
         if (!R.started || !R.visible) return;
+        if (R.sat && satBucket() !== satAt) { satAt = satBucket(); for (const s of sats) { for (const img of s.tiles.values()) img.remove(); s.tiles.clear(); } draw(); }
         if (R.mode === "comp") { Wx.radarTime().then((v) => { if (v && v !== R.valid) { R.valid = v; clearTiles(); compFrames(); renderSources(); } }); }
         else siteFrames(true);
       },
-      draw, label, describe,
+      draw, label, describe, setSat,
+      get sat() { return R.sat; },
       get valid() { return R.valid; },
       get started() { return R.started; }
     };
@@ -1796,28 +2105,70 @@
       } catch (e) { K.col = null; K.colKey = null; K.err = "The model did not answer. Try again, or another model."; }
       K.busy = false; draw();
     }
+    /* the nearest launch site's latest flight, into K.raob (or an error) */
+    async function fetchLatestRaob() {
+      if (!K.raobSite) {
+        const sites = await Wx.raobSites();
+        K.raobSite = sites.map((x) => ({ ...x, d: Wx.distanceM(S.place.lat, S.place.lon, x.lat, x.lon) })).sort((a, b) => a.d - b.d)[0] || null;
+      }
+      K.raob = null;
+      if (K.raobSite) {
+        for (const t of Wx.raobTimes(Date.now())) {
+          const r = Wx.ROUTES.raob(K.raobSite.id, Wx.raobTs(t));
+          if (!r) break;
+          try {
+            const prof = await fetchRaob(r);
+            if (prof && prof.levels.length > 15) { K.raob = prof; break; }
+          } catch (e) {}
+        }
+      }
+      if (!K.raob) K.err = "No recent balloon flight from the nearest launch site.";
+    }
     async function loadRaob() {
       if (!S.place) return;
       K.busy = true; draw();
-      try {
-        if (!K.raobSite) {
-          const sites = await Wx.raobSites();
-          K.raobSite = sites.map((x) => ({ ...x, d: Wx.distanceM(S.place.lat, S.place.lon, x.lat, x.lon) })).sort((a, b) => a.d - b.d)[0] || null;
-        }
-        K.raob = null;
-        if (K.raobSite) {
-          for (const t of Wx.raobTimes(Date.now())) {
-            const r = Wx.ROUTES.raob(K.raobSite.id, Wx.raobTs(t));
-            if (!r) break;
-            try {
-              const prof = await fetchRaob(r);
-              if (prof && prof.levels.length > 15) { K.raob = prof; break; }
-            } catch (e) {}
-          }
-        }
-        if (!K.raob) K.err = "No recent balloon flight from the nearest launch site.";
-      } catch (e) { K.err = "The balloon archive did not answer."; }
+      try { await fetchLatestRaob(); } catch (e) { K.err = "The balloon archive did not answer."; }
       K.busy = false; draw();
+    }
+    /* §16: the balloon laid over the model — like with like: the model's
+       column at the LAUNCH SITE (often a hundred miles from the place), at
+       the hour of the launch. The column carries the last twelve hours for
+       exactly this. A launch site is a public station, not anyone's place. */
+    const nearestHour = (col, ms) => {
+      const ts = col && col.hourly && col.hourly.time;
+      if (!ts) return -1;
+      let best = -1;
+      ts.forEach((t, i) => { if (best < 0 || Math.abs(t * 1000 - ms) < Math.abs(ts[best] * 1000 - ms)) best = i; });
+      return best >= 0 && Math.abs(ts[best] * 1000 - ms) <= 90 * 60e3 ? best : -1;
+    };
+    async function loadCompare() {
+      K.cmp = null;
+      K.busy = true; draw();
+      try {
+        if (!K.raob) await fetchLatestRaob();
+        if (K.raob && K.raobSite) {
+          const col = await Wx.column(K.model, K.raobSite.lat, K.raobSite.lon);
+          const i = nearestHour(col, K.raob.valid);
+          K.cmp = i >= 0 ? { col, i, model: K.model } : { none: "The model's column does not reach back to the launch, so there is nothing to compare like with like." };
+        }
+      } catch (e) { K.cmp = { none: "The model did not answer for the launch site." }; }
+      K.busy = false; draw();
+    }
+    function toggleCompare() {
+      K.compare = !K.compare;
+      if (K.compare) loadCompare(); else draw();
+    }
+    /* model minus balloon at a few standard levels, in words */
+    function compareWords(a) {
+      const deg = (c) => U() === "us" ? c * 9 / 5 : c;
+      const bits = [], ball = K.raob.levels.slice().sort((x, y) => y.p - x.p);
+      for (const [p, k, name] of [[850, "t", "850 hPa"], [700, "t", "700 hPa"], [500, "t", "500 hPa"], [850, "td", "850 hPa dewpoint"]]) {
+        const m = Snd.at(a.levels, p, k), b = Snd.at(ball, p, k);
+        if (!Number.isFinite(m) || !Number.isFinite(b)) continue;
+        const d = deg(m - b), n = Math.round(Math.abs(d) * 10) / 10;
+        bits.push(n < 0.5 ? `${name} within half a degree` : `${name} ${n}° ${k === "td" ? (d > 0 ? "moister" : "drier") : (d > 0 ? "warmer" : "cooler")}`);
+      }
+      return bits.length ? `The model against the balloon: ${bits.join(", ")}.` : "";
     }
     /* the balloon is fetched through the same Worker-then-direct path as everything else */
     async function fetchRaob(route) {
@@ -1826,8 +2177,13 @@
       catch (e) { return Snd.fromRaob(await tryFetch(route[1])); }
     }
 
+    const comparing = () => K.mode === "model" && K.compare && K.cmp && K.cmp.col && K.cmp.model === K.model;
     function analysisNow() {
       if (K.mode === "raob") return K.raob ? { a: Snd.analyze(K.raob.levels), when: K.raob.valid } : null;
+      if (comparing()) {
+        const prof = Snd.fromOpenMeteo(K.cmp.col, K.cmp.i);
+        return prof ? { a: Snd.analyze(prof), when: K.cmp.col.hourly.time[K.cmp.i] * 1000 } : null;
+      }
       if (!K.col) return null;
       const prof = Snd.fromOpenMeteo(K.col, K.hour);
       return prof ? { a: Snd.analyze(prof), when: K.col.hourly.time[K.hour] * 1000 } : null;
@@ -1846,11 +2202,14 @@
     function timeline() {
       if (!K.col || !K.col.hourly || !K.col.hourly.time) return null;
       if (K.tl && K.tl.key === K.colKey) return K.tl;
-      const hours = K.col.hourly.time.map((t, i) => {
+      /* from the current hour on: the column's twelve past hours are there
+         for the balloon, not for "the next two days" */
+      const from = Date.now() - 3600e3;
+      const hours = K.col.hourly.time.map((t, i) => ({ t, i })).filter((x) => x.t * 1000 > from).map(({ t, i }) => {
         const prof = Snd.fromOpenMeteo(K.col, i);
         let a = null;
         try { a = prof ? Snd.analyze(prof) : null; } catch (e) { a = null; }
-        return { t: t * 1000, v: ROWS.map((r) => { const x = a ? r[2](a) : null; return x == null || !Number.isFinite(x) ? null : x; }) };
+        return { i, t: t * 1000, v: ROWS.map((r) => { const x = a ? r[2](a) : null; return x == null || !Number.isFinite(x) ? null : x; }) };
       });
       K.tl = { key: K.colKey, hours };
       return K.tl;
@@ -1865,7 +2224,7 @@
       const said = notable.length ? notable.join("; ") + "." : "No storm ingredients reach notable levels in the next two days.";
       /* a picture to tap; the slider above is the keyboard's way through the hours */
       const rows = ROWS.map((r, j) => `<div class="tlrow"><span class="tln" title="${esc(r[1])}">${r[0]}</span><div class="tlcells">${tl.hours.map((h, i) =>
-        `<i class="l${lvl(h.v[j], r[3])}${i === K.hour ? " on" : ""}" data-tlh="${i}" title="${esc(k.day(h.t) + " " + k.hour(h.t) + ": " + (h.v[j] == null ? "none" : r[4](h.v[j])))}"></i>`).join("")}</div></div>`).join("");
+        `<i class="l${lvl(h.v[j], r[3])}${h.i === K.hour ? " on" : ""}" data-tlh="${h.i}" title="${esc(k.day(h.t) + " " + k.hour(h.t) + ": " + (h.v[j] == null ? "none" : r[4](h.v[j])))}"></i>`).join("")}</div></div>`).join("");
       const ticks = tl.hours.map((h, i) => k.hour(h.t) === "12AM" ? `<span style="left:${(i / tl.hours.length * 100).toFixed(1)}%">${esc(k.day(h.t))}</span>` : "").join("");
       return `<div class="tl" id="skytime"><p class="tlsay">${esc(said)}</p><div role="img" aria-label="${esc("Storm ingredients by hour for the next two days. " + said)}">${rows}<div class="tlticks" aria-hidden="true">${ticks}</div></div>
         <p class="nextnote">Each cell is one hour of this model's run here: grey none, then yellow, orange, magenta as each ingredient climbs (CAPE 250 / 1,000 / 2,500; shear 20 / 35 / 50 kt; SRH 50 / 150 / 300; STP 0.5 / 1 / 3). Ingredients, not a forecast of storms. Tap an hour to see its sounding.</p></div>`;
@@ -1877,7 +2236,8 @@
       const k = clk();
       const models = Object.entries(Wx.MODELS);
       const buttons = models.map(([id, m]) => `<button type="button" data-skymodel="${id}" aria-pressed="${K.mode === "model" && K.model === id}" title="${esc(m.long)}">${esc(m.label)}</button>`).join("") +
-        `<button type="button" data-skymodel="raob" aria-pressed="${K.mode === "raob"}" title="The nearest weather balloon's latest flight">Balloon</button>`;
+        `<button type="button" data-skymodel="raob" aria-pressed="${K.mode === "raob"}" title="The nearest weather balloon's latest flight">Balloon</button>` +
+        (K.mode === "model" ? `<span class="sep"></span><button type="button" data-skycmp aria-pressed="${!!K.compare}" title="Lay the latest weather balloon over the model's hour for the same moment">Balloon on top</button>` : "");
       let info = "", slider = "", pics = "", table = "";
       const now = analysisNow();
       if (K.busy) info = `<p class="loading">Fetching the column…</p>`;
@@ -1887,23 +2247,34 @@
         if (K.mode === "model") {
           const m = Wx.MODELS[K.model];
           const lead = K.run ? Math.round((now.when - K.run) / 3600e3) : null;
-          info = `<p class="skymeta">${esc(m.label)}${K.run ? ` · ${new Date(K.run).toISOString().slice(11, 13)}Z run` : ""} · valid ${esc(k.dayLong(now.when))}, ${esc(k.time(now.when))}${lead != null ? ` (+${lead} h)` : ""}
-            <small>${esc(m.long)}. A forecast column at this point, not a measurement.</small></p>`;
-          const n = K.col.hourly.time.length;
-          slider = `<div class="hourpick"><span class="num" style="min-width:52px">${esc(k.hour(now.when))}</span><input type="range" id="skyhour" min="0" max="${n - 1}" step="1" value="${K.hour}" aria-label="Forecast hour"><span class="dim num">+48 h</span></div>`;
+          /* an hour before the latest run comes from an earlier run */
+          const leadText = lead == null ? "" : lead >= 0 ? ` (+${lead} h)` : " (from an earlier run)";
           K.source = { title: `Sounding — ${m.label}`, sub: `Open-Meteo · model run`, at: K.run, stale: K.run ? Date.now() - K.run > (K.model === "hrrr" ? 4 : 14) * 3600e3 : false };
+          if (comparing()) {
+            const s = K.raobSite;
+            info = `<p class="skymeta">${esc(m.label)} at the launch site, ${esc(s.id)} — ${esc(s.name)} · ${esc(k.dayLong(now.when))}, ${esc(k.time(now.when))}${leadText}
+              <small>Solid: the model's column at the balloon's own launch site and hour, so the two are like with like. Dotted: the balloon, launched ${esc(new Date(K.raob.valid).toISOString().slice(11, 13))}Z (${esc(Wx.age(Date.now() - K.raob.valid))} ago), ${dist(s.d / 1000)} from here. Turn the comparison off to go back to this place's hours.</small></p>
+              <p class="skycmp">${esc(compareWords(a))}</p>`;
+          } else {
+            info = `<p class="skymeta">${esc(m.label)}${K.run ? ` · ${new Date(K.run).toISOString().slice(11, 13)}Z run` : ""} · valid ${esc(k.dayLong(now.when))}, ${esc(k.time(now.when))}${leadText}
+              <small>${esc(m.long)}. A forecast column at this point, not a measurement.</small></p>`;
+            if (K.compare) info += `<p class="skycmp">${esc((K.cmp && K.cmp.none) || K.err || "No recent balloon flight to compare with.")}</p>`;
+            const n = K.col.hourly.time.length;
+            slider = `<div class="hourpick"><span class="num" style="min-width:52px">${esc(k.hour(now.when))}</span><input type="range" id="skyhour" min="0" max="${n - 1}" step="1" value="${K.hour}" aria-label="Forecast hour"><span class="dim num">+48 h</span></div>`;
+          }
         } else {
           const s = K.raobSite;
           info = `<p class="skymeta">Weather balloon · ${esc(s ? s.id + " — " + s.name : "")}${s ? ` · ${dist(s.d / 1000)} away` : ""}
             <small>Launched ${esc(new Date(K.raob.valid).toISOString().slice(11, 13))}Z (${esc(Wx.age(Date.now() - K.raob.valid))} ago) — measured, not modelled. Balloons go up at 00Z and 12Z.</small></p>`;
           K.source = { title: `Sounding — balloon ${s ? s.id : ""}`, sub: "NOAA upper-air, via IEM · launched", at: K.raob.valid, stale: Date.now() - K.raob.valid > 14 * 3600e3 };
         }
-        pics = `<div class="skyrow">${Draw.skewT(a, { label: "Skew-T log-P diagram: temperature (red), dewpoint (green), mixed-layer parcel (dashed white), CAPE shaded" })}
+        const over = comparing() && K.raob ? { levels: K.raob.levels } : null;
+        pics = `<div class="skyrow">${Draw.skewT(a, { compare: over, label: "Skew-T log-P diagram: temperature (red), dewpoint (green), mixed-layer parcel (dashed white), CAPE shaded" + (over ? "; the weather balloon dotted over it" : "") })}
           <div>${Draw.hodograph(a, { label: "Hodograph: wind from the ground to 10 km, coloured by height" })}
           <div class="key"><span><i style="background:#ff6b6b"></i>0–1 km</span><span><i style="background:#51cf66"></i>1–3</span><span><i style="background:#ffd43b"></i>3–6</span><span><i style="background:#74c0fc"></i>6–10</span><span>● RM / ○ LM storm motion</span></div></div></div>`;
         const P = [["Surface", a.sb], ["Mixed layer", a.ml], ["Most unstable", a.mu]];
         table = `<table class="ptable"><thead><tr><th>Parcel</th><th>CAPE</th><th>CIN</th><th>LCL</th><th>LFC</th><th>EL</th></tr></thead><tbody>
-          ${P.map(([n, p]) => `<tr><td>${n}</td><td class="num">${p.cape}</td><td class="num">${p.cin}</td><td class="num">${hgt(p.lcl.z)}</td><td class="num">${p.lfc ? hgt(p.lfc.z) : "–"}</td><td class="num">${p.el ? hgt(p.el.z) : "–"}</td></tr>`).join("")}
+          ${P.map(([n, p]) => `<tr><td>${n}</td><td class="num">${p.cape}</td><td class="num">${p.lfc ? p.cin : "–"}</td><td class="num">${hgt(p.lcl.z)}</td><td class="num">${p.lfc ? hgt(p.lfc.z) : "–"}</td><td class="num">${p.el ? hgt(p.el.z) : "–"}</td></tr>`).join("")}
           </tbody></table>
           <div class="params">
             <div><span>0–1 km shear</span><b class="num">${kt(a.shear1)}</b></div>
@@ -1919,7 +2290,7 @@
           </div>`;
       }
       if (partsOnly) return { info, pics, table, when: now && now.when };
-      b.innerHTML = `<div class="seg" role="group" aria-label="Sounding source" style="margin-top:10px">${buttons}</div><div id="skyinfo">${info}</div>${slider}${K.mode === "model" && !K.busy && now ? timelineHtml() : ""}<div id="skydyn">${pics}${table}</div>
+      b.innerHTML = `<div class="seg" role="group" aria-label="Sounding source" style="margin-top:10px">${buttons}</div><div id="skyinfo">${info}</div>${slider}${K.mode === "model" && !K.busy && now && !comparing() ? timelineHtml() : ""}<div id="skydyn">${pics}${table}</div>
         <details class="gloss"><summary>What these mean</summary><dl>
           <dt>CAPE</dt><dd>Energy a rising parcel of air gains from being warmer than its surroundings, J/kg. Over ~1000 is plenty for strong storms; over ~3000 is a lot.</dd>
           <dt>CIN</dt><dd>The "cap": energy needed to push a parcel up to where it rises on its own. Strongly negative means storms struggle to start.</dd>
@@ -1937,12 +2308,13 @@
       draw();
     });
     document.addEventListener("click", (e) => {
+      if (e.target.closest("[data-skycmp]")) { toggleCompare(); return; }
       const b = e.target.closest("[data-skymodel]");
       if (!b) return;
       const id = b.dataset.skymodel;
       K.err = null;
       if (id === "raob") { K.mode = "raob"; loadRaob(); }
-      else { K.mode = "model"; K.model = id; loadModel(); }
+      else { K.mode = "model"; K.model = id; loadModel().then(() => { if (K.compare) loadCompare(); }); }
     });
     /* Dragging the hour redraws the info line and the drawings, never the
        slider itself — replacing an input mid-drag ends the drag on a phone. */
@@ -1971,7 +2343,7 @@
       markHour();
     });
     return {
-      reset() { Object.assign(K, { tl: null, col: null, colKey: null, run: null, raob: null, raobSite: null, model: null, mode: "model", source: null, err: null }); if ($("#skyd").open) { K.model = defaultModel(); loadModel(); } },
+      reset() { Object.assign(K, { tl: null, col: null, colKey: null, run: null, raob: null, raobSite: null, model: null, mode: "model", source: null, err: null, compare: false, cmp: null }); if ($("#skyd").open) { K.model = defaultModel(); loadModel(); } },
       get source() { return K.source; },
       redraw: draw
     };
@@ -2035,21 +2407,29 @@
 
   let found = [];
   let searchCtl = null;
-  $("#searchform").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const q = $("#q").value.trim();
-    if (!q) return;
+  /* Results come as you type (after a pause, from two letters), and Enter
+     still searches at once. Only the newest question's answer is drawn. */
+  async function search(q) {
     if (searchCtl) searchCtl.abort();
-    searchCtl = new AbortController();
+    if (!q) { $("#placemsg").textContent = ""; $("#results").innerHTML = ""; found = []; return; }
+    const ctl = searchCtl = new AbortController();
     $("#placemsg").textContent = "Searching…";
-    $("#results").innerHTML = "";
     try {
-      found = await Wx.geocode(q, searchCtl.signal);
+      const list = await Wx.geocode(q, ctl.signal);
+      if (ctl !== searchCtl) return;
+      found = list;
       $("#placemsg").textContent = found.length ? "" : `Nothing called “${q}” — try a nearby town.`;
       $("#results").innerHTML = found.map((p, i) => `<li><button class="pick" type="button" data-found="${i}">${esc(p.name)}<small>${esc(p.region)}</small></button></li>`).join("");
     } catch (err) {
-      if (!searchCtl.signal.aborted) $("#placemsg").textContent = "The place search did not answer. Try again in a moment.";
+      if (!ctl.signal.aborted) $("#placemsg").textContent = "The place search did not answer. Try again in a moment.";
     }
+  }
+  let typing = 0;
+  $("#searchform").addEventListener("submit", (e) => { e.preventDefault(); clearTimeout(typing); search($("#q").value.trim()); });
+  $("#q").addEventListener("input", () => {
+    clearTimeout(typing);
+    const q = $("#q").value.trim();
+    typing = setTimeout(() => search(q.length >= 2 ? q : ""), 280);
   });
   $("#results").addEventListener("click", (e) => {
     const b = e.target.closest("[data-found]");

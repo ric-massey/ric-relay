@@ -156,6 +156,10 @@ console.log('\nRULE  the drawings hold only real numbers');
     ok(sk.startsWith('<svg') && !/NaN|undefined|Infinity/.test(sk), `${name}: the Skew-T draws with no NaN`);
     ok(!/NaN|undefined|Infinity/.test(ho), `${name}: so does the hodograph (${ho ? 'drawn' : 'no winds, nothing drawn'})`);
   }
+  const stable = S.analyze(build({ t: p => 5 + p / 400, td: () => -20 }));
+  ok(stable.sb.cape === 0 && stable.sb.cin === 0 && stable.sb.lfc === null, `a stable, nearly isothermal, dry column has no LFC, so no CAPE and no CIN: ${stable.sb.cape} / ${stable.sb.cin}`);
+  const both = D.skewT(A, { compare: { levels: S.analyze(smooth).levels.concat([{ p: 300, t: NaN, td: null }]) } });
+  ok((both.match(/stroke-dasharray="2 3"/g) || []).length === 2 && !/NaN|undefined|Infinity/.test(both), 'a balloon laid over the model draws two dotted lines, skipping a missing reading');
   ok(D.barb(0, 0, 270, 65).includes('<polygon') && (D.barb(0, 0, 270, 65).match(/<line/g) || []).length === 3, 'a 65 kt barb: one flag, one full barb, one half (plus the staff)');
   ok(D.barb(0, 0, 0, 1).includes('<circle'), 'calm is a circle');
   ok(D.xOf(0, 1000) < D.xOf(0, 500), 'isotherms lean right going up');

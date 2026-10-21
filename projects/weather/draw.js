@@ -119,6 +119,18 @@
       if (lastP - l.p < 24) return false; lastP = l.p; return true;
     }).map(l => barb(372, yOf(l.p), l.wd, l.ws * KT)).join('');
 
+    /* a second profile laid over this one — the weather balloon over the
+       model's hour for the same moment (§16): thin, dotted, lighter, so the
+       model stays the drawing and the balloon reads as the check on it */
+    let over = '';
+    const C = opts.compare;
+    if (C && Array.isArray(C.levels) && C.levels.length > 1) {
+      const ct = C.levels.filter(l => Number.isFinite(l.t) && l.p >= PT).map(l => [xOf(l.t, l.p), yOf(l.p)]);
+      const cd = C.levels.filter(l => Number.isFinite(l.td) && l.p >= PT).map(l => [xOf(l.td, l.p), yOf(l.p)]);
+      over = `<polyline points="${pts(cd)}" fill="none" stroke="#b2f2bb" stroke-width="1.6" stroke-dasharray="2 3" stroke-linecap="round"/>` +
+        `<polyline points="${pts(ct)}" fill="none" stroke="#ffc9c9" stroke-width="1.6" stroke-dasharray="2 3" stroke-linecap="round"/>`;
+    }
+
     const title = opts.title ? `<title>${opts.title}</title>` : '';
     return `<svg class="skewt" viewBox="0 0 ${W} ${H}" role="img" aria-label="${opts.label || 'Skew-T diagram'}">${title}
       <defs><clipPath id="skc"><rect x="${X0}" y="${Y0}" width="${X1 - X0}" height="${Y1 - Y0}"/></clipPath></defs>
@@ -126,7 +138,7 @@
       <g clip-path="url(#skc)">${background()}${shade}
         <polyline points="${pts(parcel)}" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-dasharray="5 4"/>
         <polyline points="${pts(dew)}" fill="none" stroke="#51cf66" stroke-width="2.4" stroke-linejoin="round"/>
-        <polyline points="${pts(env)}" fill="none" stroke="#ff6b6b" stroke-width="2.4" stroke-linejoin="round"/>
+        <polyline points="${pts(env)}" fill="none" stroke="#ff6b6b" stroke-width="2.4" stroke-linejoin="round"/>${over}
       </g>
       ${tick(pc.lcl, 'LCL')}${tick(pc.lfc, 'LFC')}${tick(pc.el, 'EL')}
       <line x1="372" x2="372" y1="${Y0}" y2="${Y1}" stroke="rgba(255,255,255,.12)"/>

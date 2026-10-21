@@ -35,7 +35,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `apex.html` | Apex | Apex Legends lobby — rank ladder, career kills, and every legend carrying a tracker (data pulled by `projects/apex/pull-apex.py`) · *unlisted on the home directory* |
 | `cs.html` | CS | Counter-Strike 2 — every match, round by round, scoreboards and a 2D replay per round (data from Valve's demos and live feed, Leetify for the gaps; see `projects/cs/README.md`) · *unlisted on the home directory* |
 | `val.html` | VAL | VALORANT — every match, every round, every fight on the real minimap with all ten players' positions and facing (Riot's match data, read from the running client; see `projects/val/README.md`) · *unlisted on the home directory* |
-| `weather.html` | Weather | The weather app — now (a real station's observation when there is one), when the rain starts in 15-minute steps, hourly, ten days with the forecast office's own words, NWS alerts and animated NEXRAD radar, each saying where it came from and how old it is; with no place, every storm warning in the country and SPC's outlook; inside a warning, storm mode (where the storm is and roughly when it could arrive, from the warning's own motion); single-site reflectivity and velocity; and a Skew-T, hodograph and storm ingredients from four models or the nearest weather balloon. The visitor picks the place; nothing about it is stored on the site (see `projects/weather/README.md`; the plan is `projects/weather/DESIGN.md`) · *unlisted on the home directory* |
+| `weather.html` | Weather | The weather app — now (a real station's observation when there is one), when the rain starts in 15-minute steps, hourly, ten days with the forecast office's own words, NWS alerts and animated NEXRAD radar, each saying where it came from and how old it is; with no place, every storm warning in the country and SPC's outlook; inside a warning, storm mode (where the storm is and roughly when it could arrive, from the warning's own motion); single-site reflectivity and velocity; and a Skew-T, hodograph and storm ingredients from four models or the nearest weather balloon (which can be laid over the model at its launch site); GOES satellite under the radar; and a ride outlook for the next few hours. The visitor picks the place; nothing about it is stored on the site (see `projects/weather/README.md`; the plan is `projects/weather/DESIGN.md`) |
 | `exploration.html` | Exploration | Space deck — experiments dock here |
 | `workbench.html` | Workbench | Blueprint board of random / half-finished projects |
 | `captures.html` | Captures | Darkroom contact sheet for photos |
@@ -215,8 +215,8 @@ pill switcher in Orrin, case-file tabs in Psyche, a film strip on captures, and 
 **same set of rooms with the same labels** — only the styling differs. If you add or
 rename a room, update the menu on **every** page (see `AGENTS.md`).
 
-That set is `terminal · orrin · psyche · climbing · training · exploration · gaming · workbench · captures`
-— the eight rooms the home directory lists, plus `terminal` for the way home, so the
+That set is `terminal · orrin · psyche · climbing · training · weather · exploration · gaming · workbench · captures · entertainment`
+— the rooms the home directory lists, plus `terminal` for the way home, so the
 site says one thing about what it contains. The unlisted rooms (`apex`, `log`, `map`)
 are still reachable by URL and from the terminal's `ls` / `tree` / `find` / `open`.
 

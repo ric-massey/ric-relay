@@ -8,8 +8,8 @@ document and the source of truth for what it becomes**; this file is how it is
 built here and what is built so far. Terminal: `weather` (or `wx`, `forecast`,
 `radar`, `rain`).
 
-It is **unlisted** — in `ROOMS` with `listed: false`, off the front door and the
-room navs, like CS and Apex were while they were thin. Re-list it when Ric says.
+It is **listed** since 2026-10-21 — in `ROOMS`, in every room nav, and a tier-0
+post on the front door (the `radar` painter, over invented ground).
 
 | File | What it is |
 |---|---|
@@ -31,10 +31,11 @@ room navs, like CS and Apex were while they were thin. Re-list it when Ric says.
 | Question | Provider | Notes |
 |---|---|---|
 | The numbers — now, hourly, 10 days, rain every 15 min | [Open-Meteo](https://open-meteo.com/) `/v1/forecast` | Global, keyless, CC BY 4.0. "Best match" blend — HRRR and GFS in the US. Always asked in metric; the page converts |
-| What a real station measured | NWS `api.weather.gov` — `/points` → `/stations` → `/observations/latest` | Nearest station with a temperature in the last 90 minutes, next one along if it has gone quiet. US only |
+| What a real station measured | NWS `api.weather.gov` — `/points` → `/stations` → `/observations/latest` | Nearest station with a temperature in the last 90 minutes, next one along if it has gone quiet — but only within 40 km and 300 m of height of the place (`OBS_MAX_M`, `ELEV_MAX_M`): in the mountains the nearest one sat 750 m lower and read 9 °F warm. Past those, the model speaks for "now". US only |
 | The forecast office's own words | NWS `/gridpoints/…/forecast` | Shown under each day of the 10-day list, labelled as the office's |
 | Official alerts | NWS `/alerts/active?point=` | Shown as issued, worst first; polygons drawn on the radar |
 | Radar | NOAA NEXRAD base reflectivity, US composite, via [Iowa Environmental Mesonet](https://mesonet.agron.iastate.edu/) tiles | Latest plus one layer per 5 minutes back to 50; `n0q_0.json` says when the latest was scanned. Lower 48 only |
+| Satellite | GOES-West and GOES-East via IEM tiles (`goes-{west,east}-{ir-4km,vis-1km,wv-4km}-900913`, `Wx.SAT`) | Under the radar, West drawn first and East over it. Latest image only: the tile carries no scan time, so the page says "latest" and nothing finer. Visible is dark at night and the page says so |
 | Storm warnings across the country, and a state's | NWS `/alerts/active?event=…` and `?area=XX` | The national list with no place; "warnings nearby" with one |
 | SPC convective outlook | `spc.noaa.gov/products/outlook/day{1,2,3}otlk_*.nolyr.geojson` | Categorical risk with SPC's own labels and colours; drawn on the radar, and "Slight risk … here today" in the hero |
 | Single-site radar | IEM `json/radar.py` (nearest sites, scan list) and `ridge::<SITE>-<PROD>-<YYYYMMDDHHMI>` tiles | Super-res reflectivity (N0B) and storm-relative velocity (N0S), every scan in the last hour. IEM does not tile CC, ZDR, KDP or echo tops (probed 2026-10-17) |
@@ -50,9 +51,10 @@ Exactly as Studies does it (`projects/psyche/README.md`): the Worker's `/wx`
 route first, then the provider directly if that fails. `/wx` (in
 `worker/worker.mjs`) forwards only the shapes `wx.js` builds (`ROUTES`), caches
 each for as long as it stays true (alerts a minute, a station two, the model ten,
-a point's office a day), and sends the User-Agent the NWS asks for. **It is not
-deployed yet** — until Actions → Deploy Worker runs, every call quietly goes
-direct, which works. Images (map and radar tiles) always load directly.
+a point's office a day), and sends the User-Agent the NWS asks for. It is
+deployed (every route answered on 2026-10-21); a change to `wxUpstream` goes
+live only when Actions → Deploy Worker runs, and until then the page's direct
+path covers it. Images (map, radar and satellite tiles) always load directly.
 
 ## Rules
 
@@ -139,15 +141,37 @@ offline copy, refresh every ten minutes while open.
   `Wx.iemId`); their records come from this site's published scoreboard files.
   The card ranks every model and the blend by their next-day temperature miss,
   names what the page is showing, and gives the national medians.
-- **The blend on the page** (`applyBlend` in the page, `blend()` in
-  `verify/core.js` — the same function the scoreboard scores): used for hourly
-  temperatures and each day's high and low **only** where the nearest station's
-  record shows the blend beating the standard forecast (`Wx.verdict`; a tie is
-  not a win, and a record under `minDays` is not ranked). Rain and wind stay the
-  standard forecast's. The day's details say when its high and low are the
-  blend's.
+- **What the page shows** (`applyBlend` in the page, `blend()` in
+  `verify/core.js` — the same function the scoreboard scores): the hourly
+  temperatures and each day's high and low come from whichever forecast the
+  nearest station's record ranks best **and** the page can draw — our blend,
+  our learned forecast, or a model it already holds hour by hour (`ENSEMBLE`:
+  the NWS National Blend, HRRR, GFS, ECMWF, AIFS) — and only when that beats
+  the standard forecast by a clear margin (`Wx.verdict`; a tie is not a win, a
+  record under `minDays` is not ranked, and Pangu, run off-site, is ranked but
+  never shown). A model that stops early (HRRR, two days) hands back to the
+  standard forecast where it ends. Rain and wind stay the standard forecast's.
+  The day's details and the accuracy card say which forecast is on screen, and
+  the card says so honestly if its numbers have not loaded.
 
 ## The everyday side
+
+- **Ride outlook** (`Wx.rideOutlook`, DESIGN.md §21.1): good / ride with care /
+  not a good window for the next 1, 2 or 4 hours, and every reason — the rain
+  line (the same `rainOutlook`, so it never contradicts it), the radar's next
+  hour, thunder in the hourly codes, gusts (25 / 40 mph), cold and near-freezing
+  air, heat, fog, darkness, and alerts covering the place. Thresholds are in
+  `RIDE`. It claims nothing about road surfaces, and there is no lightning feed —
+  thunder is the model's and the card says so.
+- **Calm is "calm"** (`Wx.isCalm`, under 1.5 km/h): no direction, no arrow, and a
+  gust is only said beside a wind from the same source.
+- **The next-3-hours card** adds when the forecast next has rain, so it says more
+  than the hero's line; when echoes near a dry station would read "rain is
+  nearby", it says the station reports no rain too.
+- **Balloon on top** (§16): in a model sounding, lays the nearest balloon's latest
+  flight over the model's column **at the launch site** at the launch hour (the
+  column carries twelve past hours, `past_hours=12`), with the differences at
+  850, 700 and 500 hPa in words.
 
 - **The sentence at the top** (`Wx.summary`): rain in the next 12 hours, else a
   change of sky, gusts of 40 km/h or more, and tomorrow's high against today's —
@@ -241,9 +265,9 @@ split most.
 
 | Phase | The likely way on this site |
 |---|---|
-| 2 · Investigation | A full-screen map; satellite from GOES imagery (check what IEM tiles before building); a point inspector reusing `Wx.forecast` at the tapped point; METAR dots |
-| 3 · One serious model | HRRR fields as images. Nothing public tiles them, so this is the first phase that needs a backend: likely a scheduled GitHub Actions job turning HRRR GRIB subsets into tiles in R2. Decide before starting |
-| 4 · Soundings | Built (above). Still to do: observed-vs-model on the same diagram (§16), effective-layer parameters |
+| 2 · Investigation | Satellite: built (GOES IR / visible / water vapour under the radar). Still to do: a full-screen map; a point inspector reusing `Wx.forecast` at the tapped point; METAR dots |
+| 3 · One serious model | HRRR fields as images. IEM *does* list HRRR reflectivity tile layers (`hrrr::REFD-F0060-<run>` answered on 2026-10-21) but returned blank tiles where HRRR had rain, so they are not usable until the naming is confirmed; otherwise this is the first phase that needs a backend (HRRR GRIB subsets into tiles in R2). See `docs/notes/weather-plan-audit-2026-10-21.md` |
+| 4 · Soundings | Built (above), with observed-vs-model on the same diagram (§16). Still to do: effective-layer parameters |
 | 5 · Advanced | Model comparison: built (above). Still to do: ensemble plumes (GEFS/ECMWF ENS members); MRMS |
 | 6 · Station + verification | The CS pattern: a script that pulls the station and archives point forecasts into a committed accumulator, verified against the station. **Needs a decision on how the station is named** — its coordinates can't be in this repo |
 | 7 · Replay | IEM keeps single-site scans by timestamp (`ridge::SITE-PROD-YYYYMMDDHHMI`, confirmed for the last hour); the mosaic archive needs its tile names confirmed |
