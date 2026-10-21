@@ -223,6 +223,17 @@ once, and IEM renders those on demand; a replay now loads the frame on screen an
 next, and the loop waits for a frame's tiles. Needs the Worker deploy for its warnings
 route (it falls back to IEM directly meanwhile).
 
+## Follow-up: cross-sections (§18) — done 2026-10-21
+
+The map's new cross-section button, then two taps: under the map, a slice through the
+atmosphere from A to B from HRRR (or GFS outside the lower 48) — humidity or wind
+shaded, potential temperature as lines, the ground in brown, twelve hours on a slider.
+One Open-Meteo request for twelve columns along the line. Checked on a 700-mile line
+across the southern Plains: the mid-level moist layer, the stable layers where the
+lines pack, the High Plains rising under A, and the jet core near 300 hPa in the wind
+view. The first drawing had the pressure axis upside down (the ground filled the whole
+panel) — fixed and re-checked at desktop and phone width.
+
 Layout note: on a phone the radar's first row (US mosaic … Replay, Stations, SPC
 outlook) scrolls sideways, so the later buttons start out of sight. Worth a second look
 if Ric finds them hard to find.

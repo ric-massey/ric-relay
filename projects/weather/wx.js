@@ -98,6 +98,12 @@
        at most twelve hours, whole minutes, UTC */
     sbwArchive: (beginIso, endIso) => ISO_MIN.test(beginIso) && ISO_MIN.test(endIso) && Date.parse(endIso) > Date.parse(beginIso) && Date.parse(endIso) - Date.parse(beginIso) <= 12 * 3600e3
       ? [`iem/sbw?begints=${beginIso}&endts=${endIso}`, `${IEM}/api/1/vtec/sbw_interval.geojson?begints=${beginIso}&endts=${endIso}`] : null,
+    /* a cross-section (§18): one model, every point along a line, every
+       pressure level, twelve hours — one request */
+    xsec: (model, pts) => MODELS[model] && Array.isArray(pts) && pts.length >= 2 && pts.length <= XSEC_MAX && pts.every(p => validLat(p.lat) && validLon(p.lon))
+      ? [`xsec?model=${model}&lat=${pts.map(p => coord(p.lat)).join(',')}&lon=${pts.map(p => coord(p.lon)).join(',')}`,
+        `${OM}?${new URLSearchParams({ latitude: pts.map(p => coord(p.lat)).join(','), longitude: pts.map(p => coord(p.lon)).join(','), hourly: XSEC_FIELDS,
+          models: MODELS[model].om, forecast_hours: '12', wind_speed_unit: 'ms', timeformat: 'unixtime', timezone: 'GMT' })}`] : null,
     /* when the HRRR forecast radar on the map was run */
     hrrrMeta: () => ['iem/hrrrmeta', `${IEM}/data/gis/images/4326/hrrr/refd_0000.json`],
     /* Every storm-based warning in the country right now — the page with no
@@ -157,6 +163,10 @@
   };
   const SITE = /^[A-Z]{3}$/;
   const ISO_MIN = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
+  /* a cross-section's levels and fields: up to 200 hPa, where the weather is */
+  const XSEC_LEVELS = [1000, 975, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200];
+  const XSEC_FIELDS = XSEC_LEVELS.flatMap(p => ['temperature', 'relative_humidity', 'wind_speed', 'geopotential_height'].map(k => `${k}_${p}hPa`)).concat(['surface_pressure']).join(',');
+  const XSEC_MAX = 16;
   /* The single-site products IEM serves as tiles and lists scans for (probed
      2026-10-17: correlation coefficient, ZDR, KDP and echo tops are not). */
   const SITE_PRODUCTS = {
@@ -756,6 +766,38 @@
     vis: { label: 'Visible', long: 'GOES visible — clouds as a camera sees them. Daytime only.', layers: ['goes-west-vis-1km-900913', 'goes-east-vis-1km-900913'] },
     wv: { label: 'Water vapour', long: 'GOES water vapour — moisture in the middle of the atmosphere; dry air dark, moist air white.', layers: ['goes-west-wv-4km-900913', 'goes-east-wv-4km-900913'] }
   };
+  /* ── cross-sections (DESIGN.md §18) ──
+     n points evenly along the line from a to b (straight in lat/lon, which
+     is near enough under 1,500 km), each rounded like any place, and the
+     answer as one column per point: per hour, per level, temperature °C,
+     humidity %, wind m/s and height m, plus the ground's pressure. */
+  function linePoints(a, b, n) {
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const f = n === 1 ? 0 : i / (n - 1);
+      out.push({ lat: round2(a.lat + (b.lat - a.lat) * f), lon: round2(a.lon + (b.lon - a.lon) * f) });
+    }
+    return out;
+  }
+  function normalizeXsec(j, pts) {
+    const list = Array.isArray(j) ? j : [j];
+    if (!list.length || !list.every(x => x && x.hourly && Array.isArray(x.hourly.time))) return null;
+    const times = list[0].hourly.time;
+    let along = 0;
+    const cols = list.map((x, i) => {
+      if (i) along += distanceM(pts[i - 1].lat, pts[i - 1].lon, pts[i].lat, pts[i].lon) / 1000;
+      const h = x.hourly, col = k => (Array.isArray(h[k]) ? h[k].map(v => has(v) ? Number(v) : null) : times.map(() => null));
+      const lv = {};
+      for (const p of XSEC_LEVELS) lv[p] = { t: col(`temperature_${p}hPa`), rh: col(`relative_humidity_${p}hPa`), ws: col(`wind_speed_${p}hPa`), z: col(`geopotential_height_${p}hPa`) };
+      return { lat: pts[i].lat, lon: pts[i].lon, km: along, ps: col('surface_pressure'), lv };
+    });
+    return { times, cols, levels: XSEC_LEVELS, km: along };
+  }
+  async function xsec(model, a, b, signal) {
+    const pts = linePoints(a, b, 12);
+    return normalizeXsec((await ask(ROUTES.xsec(model, pts), signal, 30000)).data, pts);
+  }
+
   /* ── replay (DESIGN.md §22) ──
      The national mosaic as it was at any five minutes since 2006, from IEM's
      archive tiles (the name its own viewer uses: `ridge::USCOMP-<product>-
@@ -1468,7 +1510,8 @@
     CALM_KMH, isCalm, RIDE, rideOutlook, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M,
     normalizeStationObs, stationObs, normalizePlumes, plumes, plumeStats, quantile,
     HRRR, hrrrImage, hrrrRun,
-    REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive
+    REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive,
+    XSEC_LEVELS, XSEC_FIELDS, XSEC_MAX, linePoints, normalizeXsec, xsec
   };
   root.Wx = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

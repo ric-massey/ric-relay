@@ -1644,6 +1644,8 @@ const WX_SPC = ['day1otlk_cat', 'day1otlk_torn', 'day1otlk_wind', 'day1otlk_hail
 /* model name on the page → [Open-Meteo forecast name, Open-Meteo run-time file] */
 const WX_MODELS = { hrrr: 'ncep_hrrr_conus', gfs: 'gfs_global', ecmwf: 'ecmwf_ifs025', aifs: 'ecmwf_aifs025_single' };
 const WX_META = new Set(['ncep_hrrr_conus', 'ncep_gfs025', 'ecmwf_ifs025', 'ecmwf_aifs025_single']);
+const WX_XSEC = [1000, 975, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200]
+  .flatMap(p => ['temperature', 'relative_humidity', 'wind_speed', 'geopotential_height'].map(k => `${k}_${p}hPa`)).concat(['surface_pressure']).join(',');
 const WX_COLUMN = [1000, 975, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150, 100]
   .flatMap(p => ['temperature', 'dew_point', 'relative_humidity', 'wind_speed', 'wind_direction', 'geopotential_height'].map(k => `${k}_${p}hPa`))
   .concat(['surface_pressure', 'temperature_2m', 'dew_point_2m', 'wind_speed_10m', 'wind_direction_10m', 'cape']).join(',');
@@ -1731,6 +1733,17 @@ function wxUpstream(parts, params) {
     const q = new URLSearchParams({ latitude: lats.join(','), longitude: lons.join(','), current: 'temperature_2m,weather_code,is_day',
       daily: 'temperature_2m_max,temperature_2m_min', forecast_days: '1', timezone: 'auto', timeformat: 'unixtime' });
     return [`${WX_OM}?${q}`, WX_TTL.om];
+  }
+  /* a cross-section: one model, 2–16 points along a line, every level to 200 hPa */
+  if (kind === 'xsec' && !parts[2]) {
+    const m = WX_MODELS[params.get('model')];
+    const la = String(params.get('lat') || '').split(','), lo = String(params.get('lon') || '').split(',');
+    if (!m || la.length < 2 || la.length > 16 || la.length !== lo.length) return null;
+    const lats = la.map(v => wxDeg(v, 90)), lons = lo.map(v => wxDeg(v, 180));
+    if (lats.includes(null) || lons.includes(null)) return null;
+    const q = new URLSearchParams({ latitude: lats.join(','), longitude: lons.join(','), hourly: WX_XSEC, models: m,
+      forecast_hours: '12', wind_speed_unit: 'ms', timeformat: 'unixtime', timezone: 'GMT' });
+    return [`${WX_OM}?${q}`, WX_TTL.col];
   }
   /* the two big ensembles, every member: GEFS (31) and ECMWF ENS (51) */
   if (kind === 'plume' && !parts[2]) {

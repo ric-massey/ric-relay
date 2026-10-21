@@ -38,7 +38,7 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     ...W.SPC_KINDS.map(k => W.ROUTES.spc(k)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.column(m, 12.34, -56.78)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.modelRun(m)),
-    W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78), W.ROUTES.stationObs('ABC'), W.ROUTES.plumes(12.34, -56.78), W.ROUTES.hrrrMeta(), W.ROUTES.sbwArchive('2011-04-27T20:00Z', '2011-04-27T23:00Z'),
+    W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78), W.ROUTES.stationObs('ABC'), W.ROUTES.plumes(12.34, -56.78), W.ROUTES.hrrrMeta(), W.ROUTES.sbwArchive('2011-04-27T20:00Z', '2011-04-27T23:00Z'), W.ROUTES.xsec('hrrr', W.linePoints({ lat: 12.34, lon: -56.78 }, { lat: 14.1, lon: -50.2 }, 12)),
     W.ROUTES.several([{ lat: 12.34, lon: -56.78 }, { lat: -33.87, lon: 151.21 }])
   ];
   for (const [path, direct] of routes) {
@@ -400,6 +400,21 @@ console.log('\nRULE  replay: the archive by its own names, and the warnings as t
     { geometry: null, properties: { event_label: 'No shape' } }] });
   ok(w.length === 1 && w[0].end === Date.parse('2011-04-27T20:08:00Z') && w[0].polys.length === 1 && w[0].color === '#FF0000',
     'each version of a polygon keeps its own minutes; a warning with no shape is left out');
+}
+
+console.log('\nRULE  a cross-section: points evenly along the line, one column each');
+{
+  const pts = W.linePoints({ lat: 12, lon: -56 }, { lat: 14, lon: -52 }, 5);
+  ok(pts.length === 5 && pts[0].lat === 12 && pts[4].lon === -52 && pts[2].lat === 13 && pts[2].lon === -54, 'evenly spaced, ends included');
+  ok(W.ROUTES.xsec('hrrr', W.linePoints({ lat: 12.345, lon: -56 }, { lat: 14, lon: -52 }, 12))[1].includes('latitude=12.35%2C'), 'every point rounded like any place');
+  ok(W.ROUTES.xsec('nam', pts) === null && W.ROUTES.xsec('hrrr', pts.slice(0, 1)) === null && W.ROUTES.xsec('hrrr', W.linePoints(pts[0], pts[4], 17)) === null,
+    'only the listed models, and 2 to 16 points');
+  const col = (t) => ({ hourly: Object.fromEntries([['time', [1, 2]], ['surface_pressure', [1000, 990]],
+    ...W.XSEC_LEVELS.flatMap(p => [[`temperature_${p}hPa`, [t, t]], [`relative_humidity_${p}hPa`, [50, null]], [`wind_speed_${p}hPa`, [10, 10]], [`geopotential_height_${p}hPa`, [100, 100]]])]) });
+  const x = W.normalizeXsec([col(5), col(6)], pts.slice(0, 2));
+  ok(x && x.cols.length === 2 && x.cols[1].lv[850].t[0] === 6 && x.cols[0].lv[500].rh[1] === null && x.km > 110 && x.km < 130,      // 0.5° of latitude and 1° of longitude at 12° N: ~121 km
+    'one column per point, a missing value kept missing, the distance along the line in km');
+  ok(W.normalizeXsec([{}], pts) === null, 'an answer with no hours is no section');
 }
 
 console.log('\nRULE  calm is calm, not "N 0"');

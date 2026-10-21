@@ -407,6 +407,7 @@
     .seg.rowscroll button{flex:none}
 
     /* replay: a time, a length, and storms worth seeing again */
+    .replaybar[hidden]{display:none}
     .replaybar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 10px;padding:10px;border-radius:14px;background:var(--glass-hi);font-size:14px}
     .replaybar input,.replaybar select{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid var(--edge);background:rgba(0,0,0,.3);color:#fff;font:inherit}
     .replaybar .go{min-height:44px;padding:0 18px;border-radius:999px;border:0;background:#fff;color:#0b2342;font-weight:700}
@@ -414,6 +415,14 @@
     .replaybar .presets{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;width:100%;scrollbar-width:none}
     .replaybar .presets button{flex:none;min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--edge);background:rgba(255,255,255,.08);font-weight:600;font-size:13px}
     #replaytoggle[aria-pressed="true"]{background:#ffd166;color:#2b1d00;border-color:#ffd166}
+
+    /* a cross-section under the map */
+    .xsec{margin-top:12px;padding-top:12px;border-top:1px solid var(--edge)}
+    .xsec .xh{display:flex;align-items:flex-start;gap:8px;font-size:14px;font-weight:600}
+    .xsec .xh small{display:block;font-weight:500;color:var(--dim);font-size:13px}
+    .xsec .xh button{margin-left:auto;flex:none;width:40px;height:40px;border:0;border-radius:10px;background:rgba(255,255,255,.1);font-size:18px}
+    .xsec canvas{display:block;width:100%;border-radius:10px;margin-top:8px;background:#0c1422}
+    .xsec .seg{margin:8px 0 0}
 
     /* the whole window as the map */
     #radarcard.mapfull{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;border-radius:0;border:0;margin:0;
@@ -612,6 +621,7 @@
         <div class="zoom">
           <button type="button" id="zin" aria-label="Zoom in">+</button>
           <button type="button" id="zout" aria-label="Zoom out">−</button>
+          <button type="button" id="zxsec" aria-label="Cross-section: tap two points on the map" aria-pressed="false" title="Cross-section between two points"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="3.5" cy="13.5" r="2" fill="currentColor"/><circle cx="14.5" cy="4.5" r="2" fill="currentColor"/><path d="M5 12L13 6" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2 2"/></svg></button>
           <button type="button" id="zfull" aria-label="Full-screen map" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 7V2h5M11 2h5v5M16 11v5h-5M7 16H2v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
         <div class="pin" id="radarpin" hidden></div>
@@ -624,6 +634,7 @@
         <span class="when num" id="when"></span>
       </div>
       <div class="legend" id="legend"><span>light</span><i aria-hidden="true"></i><span>heavy</span></div>
+      <div class="xsec" id="xsec" hidden aria-live="polite"></div>
     </section>
     <section class="card" id="sky" hidden aria-label="The air above you">
       <details id="skyd">
@@ -682,7 +693,7 @@
 
 <script src="effects.js"></script>
 <script src="projects/weather/nowcast.js?v=1"></script>
-<script src="projects/weather/wx.js?v=9"></script>
+<script src="projects/weather/wx.js?v=10"></script>
 <script src="projects/weather/sounding.js?v=2"></script>
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
@@ -1899,6 +1910,159 @@
     }
     const leaveReplay = () => setMode("comp");
 
+    /* ── a cross-section between two taps (§18) ──
+       Tap A, tap B; one request brings a model's column at twelve points
+       along the line for twelve hours (HRRR when both ends are in its lower
+       48, GFS otherwise). Drawn under the map: humidity or wind as shading,
+       potential temperature as lines (packed lines are stable layers, gaps
+       are mixed air), the ground in brown. A forecast, labelled as one. */
+    const X = { pick: false, a: null, b: null, data: null, hour: 0, view: "rh", busy: false, err: null, model: null };
+    const xsecEl = $("#xsec");
+    function xsecStart() {
+      Object.assign(X, { pick: true, a: null, b: null, data: null, err: null });
+      R.pin = null;
+      $("#zxsec").setAttribute("aria-pressed", "true");
+      note("Cross-section: tap where the line starts, then where it ends.");
+      draw(); renderXsec();
+    }
+    function xsecStop() {
+      Object.assign(X, { pick: false, a: null, b: null, data: null, err: null, busy: false });
+      $("#zxsec").setAttribute("aria-pressed", "false");
+      note(""); draw(); renderXsec();
+    }
+    function xsecTap(lat, lon) {
+      const p = { lat: Wx.round2(lat), lon: Wx.round2(((lon + 540) % 360) - 180) };
+      if (!X.a) { X.a = p; note("Now tap where the line ends."); draw(); renderXsec(); return; }
+      if (Wx.distanceM(X.a.lat, X.a.lon, p.lat, p.lon) > 1500e3) { note("Keep the line under 1,500 km (about 930 miles) — tap a closer end."); return; }
+      X.b = p; X.pick = false; note(""); draw();
+      loadXsec();
+    }
+    async function loadXsec() {
+      X.busy = true; X.err = null; renderXsec();
+      const model = Wx.inMosaic(X.a.lat, X.a.lon) && Wx.inMosaic(X.b.lat, X.b.lon) ? "hrrr" : "gfs";
+      const ask = X.ask = {};
+      try {
+        const d = await Wx.xsec(model, X.a, X.b);
+        if (X.ask !== ask) return;
+        X.data = d; X.model = model;
+        const now = Date.now() / 1000;
+        X.hour = Math.max(0, d ? d.times.findIndex((t) => t > now - 1800) : 0);
+        if (!d) X.err = "The model sent nothing back for this line.";
+      } catch (e) { if (X.ask === ask) X.err = "The model did not answer. Try again, or a shorter line."; }
+      X.busy = false; renderXsec();
+    }
+    function renderXsec() {
+      if (!X.pick && !X.a) { xsecEl.hidden = true; xsecEl.innerHTML = ""; return; }
+      xsecEl.hidden = false;
+      const close = `<button type="button" data-xsx aria-label="Close the cross-section">×</button>`;
+      if (X.pick || !X.b) { xsecEl.innerHTML = `<div class="xh"><span>Cross-section<small>${X.a ? "Now tap where the line ends." : "Tap where the line starts on the map, then where it ends."}</small></span>${close}</div>`; return; }
+      if (X.busy) { xsecEl.innerHTML = `<div class="xh"><span>Cross-section<small>Asking the model for twelve columns along the line…</small></span>${close}</div>`; return; }
+      if (X.err || !X.data) { xsecEl.innerHTML = `<div class="xh"><span>Cross-section<small>${esc(X.err || "Nothing to draw.")}</small></span>${close}</div>`; return; }
+      const d = X.data, t = d.times[X.hour] * 1000, k = clk(), m = Wx.MODELS[X.model];
+      const seg = (v, l) => `<button type="button" data-xsv="${v}" aria-pressed="${X.view === v}">${l}</button>`;
+      xsecEl.innerHTML = `<div class="xh"><span>Cross-section A → B · ${dist(d.km)} · ${esc(m.label)}<small>Valid ${esc(k.dayLong(t))}, ${esc(k.time(t))} — a forecast from the model's columns, not a measurement.</small></span>${close}</div>
+        <div class="seg" role="group" aria-label="Shading">${seg("rh", "Moisture")}${seg("ws", "Wind")}</div>
+        <div class="hourpick"><span class="num" style="min-width:52px">${esc(k.hour(t))}</span><input type="range" id="xshour" min="0" max="${d.times.length - 1}" step="1" value="${X.hour}" aria-label="Cross-section hour"><span class="dim num">+12 h</span></div>
+        <canvas id="xscv" role="img" aria-label="Cross-section from A to B: ${X.view === "rh" ? "relative humidity" : "wind speed"} shaded, potential temperature in lines, the ground in brown"></canvas>
+        <p class="nextnote">${X.view === "rh" ? "Shading: humidity — white where the air is near saturation (cloud likely), clear where it is dry." : "Shading: wind speed, knots — the jet stream shows as the bright core aloft."} Lines: potential temperature every 4 K; lines packed close are stable layers, wide gaps are well-mixed air. Brown is the ground. Twelve columns from Open-Meteo, joined.</p>`;
+      paintXsec($("#xscv"));
+    }
+    function paintXsec(cv) {
+      const d = X.data, i = X.hour, n = d.cols.length, dpr = Math.min(2, devicePixelRatio || 1);
+      const W = Math.max(280, cv.clientWidth || 600), H = W < 500 ? 210 : 260, L = 40, Rm = 8, T = 8, B = 22;
+      cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + "px";
+      const x = cv.getContext("2d"); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+      x.fillStyle = "#0c1422"; x.fillRect(0, 0, W, H);
+      /* 200 hPa at the top, 1050 at the bottom, log-spaced, as the atmosphere stacks */
+      const P0 = 1050, P1 = 200, lnr = Math.log(P0 / P1);
+      const Y = (p) => T + Math.log(p / P1) / lnr * (H - T - B);
+      const lv = Wx.XSEC_LEVELS;
+      /* a column's value at pressure p (linear in ln p between levels) */
+      const at = (c, key, p) => {
+        for (let j = 0; j + 1 < lv.length; j++) {
+          if (p <= lv[j] && p >= lv[j + 1]) {
+            const a = c.lv[lv[j]][key][i], b = c.lv[lv[j + 1]][key][i];
+            if (a == null || b == null) return a ?? b;
+            const f = Math.log(lv[j] / p) / Math.log(lv[j] / lv[j + 1]);
+            return a + (b - a) * f;
+          }
+        }
+        return p > lv[0] ? c.lv[lv[0]][key][i] : null;
+      };
+      const C = 4, gw = Math.ceil((W - L - Rm) / C) + 1, gh = Math.ceil((H - T - B) / C) + 1;
+      const th = new Float32Array(gw * gh).fill(NaN);
+      const ramp = [[0, [12, 20, 34]], [20, [31, 78, 121]], [40, [47, 143, 107]], [60, [233, 196, 106]], [80, [244, 132, 95]], [100, [208, 50, 155]]];
+      const windCol = (kt) => { for (let j = 1; j < ramp.length; j++) if (kt <= ramp[j][0]) { const [a, ca] = ramp[j - 1], [b, cb] = ramp[j], f = (kt - a) / (b - a); return ca.map((v, q) => Math.round(v + (cb[q] - v) * f)); } return ramp.at(-1)[1]; };
+      const groundAt = [];
+      for (let gx = 0; gx < gw; gx++) {
+        const fx = Math.min(1, gx / (gw - 1)) * (n - 1), c0 = Math.floor(fx), c1 = Math.min(n - 1, c0 + 1), f = fx - c0;
+        const ps0 = d.cols[c0].ps[i], ps1 = d.cols[c1].ps[i];
+        const ps = ps0 != null && ps1 != null ? ps0 + (ps1 - ps0) * f : ps0 ?? ps1 ?? 1013;
+        groundAt.push(ps);
+        for (let gy = 0; gy < gh; gy++) {
+          const p = P1 * Math.exp(Math.min(1, gy / (gh - 1)) * lnr);
+          if (p > ps) continue;
+          const v = (key) => { const a = at(d.cols[c0], key, p), b = at(d.cols[c1], key, p); return a == null || b == null ? a ?? b : a + (b - a) * f; };
+          const t = v("t");
+          if (t != null) th[gy * gw + gx] = (t + 273.15) * Math.pow(1000 / p, 0.2857);
+          const px = L + gx * C, py = T + gy * C;
+          if (X.view === "rh") {
+            const rh = v("rh");
+            if (rh == null) continue;
+            const a = Math.pow(Math.max(0, Math.min(1, (rh - 50) / 50)), 1.4) * 0.9;
+            if (a <= 0.01) continue;
+            const w = Math.max(0, Math.min(1, (rh - 75) / 25));
+            x.fillStyle = `rgba(${Math.round(124 + 131 * w)},${Math.round(196 + 59 * w)},255,${a.toFixed(2)})`;
+          } else {
+            const ws = v("ws");
+            if (ws == null) continue;
+            x.fillStyle = `rgb(${windCol(ws * 1.943844)})`;
+          }
+          x.fillRect(px - C / 2, py - C / 2, C, C);
+        }
+      }
+      /* potential temperature lines, by marching squares on the grid */
+      x.strokeStyle = "rgba(255,255,255,.75)"; x.lineWidth = 1; x.beginPath();
+      const thv = [...th].filter(Number.isFinite);
+      const lo = Math.ceil(Math.min(...thv) / 4) * 4, hi = Math.max(...thv);
+      for (let lev = lo; lev <= hi; lev += 4) {
+        for (let gy = 0; gy + 1 < gh; gy++) for (let gx = 0; gx + 1 < gw; gx++) {
+          const a = th[gy * gw + gx], b = th[gy * gw + gx + 1], c = th[(gy + 1) * gw + gx + 1], e = th[(gy + 1) * gw + gx];
+          if (![a, b, c, e].every(Number.isFinite)) continue;
+          const pts = [], X0 = L + gx * C, Y0 = T + gy * C;
+          const cut = (p, q, x0, y0, x1, y1) => { if ((p < lev) !== (q < lev)) { const f = (lev - p) / (q - p); pts.push([x0 + (x1 - x0) * f, y0 + (y1 - y0) * f]); } };
+          cut(a, b, X0, Y0, X0 + C, Y0); cut(b, c, X0 + C, Y0, X0 + C, Y0 + C); cut(e, c, X0, Y0 + C, X0 + C, Y0 + C); cut(a, e, X0, Y0, X0, Y0 + C);
+          if (pts.length >= 2) { x.moveTo(...pts[0]); x.lineTo(...pts[1]); }
+          if (pts.length === 4) { x.moveTo(...pts[2]); x.lineTo(...pts[3]); }
+        }
+      }
+      x.stroke();
+      /* the ground */
+      x.fillStyle = "#4a3a2b"; x.beginPath(); x.moveTo(L - C / 2, H - B);
+      groundAt.forEach((ps, gx) => x.lineTo(L + gx * C, Math.min(H - B, Y(ps))));
+      x.lineTo(L + (gw - 1) * C + C / 2, H - B); x.closePath(); x.fill();
+      /* axes */
+      x.fillStyle = "#c8d0da"; x.font = "11px " + getComputedStyle(document.body).fontFamily; x.textAlign = "right";
+      for (const p of [1000, 850, 700, 500, 300, 200]) { const y = Y(p); x.fillText(String(p), L - 6, y + 4); x.fillStyle = "rgba(255,255,255,.12)"; x.fillRect(L, y, W - L - Rm, 1); x.fillStyle = "#c8d0da"; }
+      x.textAlign = "left"; x.fillText("hPa", 4, H - 6);
+      x.font = "bold 12px " + getComputedStyle(document.body).fontFamily;
+      x.fillText("A", L, H - 6); x.textAlign = "right"; x.fillText("B", W - Rm, H - 6);
+      x.textAlign = "center"; x.font = "11px " + getComputedStyle(document.body).fontFamily; x.fillText(dist(d.km), (L + W - Rm) / 2, H - 6);
+    }
+    xsecEl.addEventListener("click", (e) => {
+      if (e.target.closest("[data-xsx]")) xsecStop();
+      const v = e.target.closest("[data-xsv]");
+      if (v) { X.view = v.dataset.xsv; renderXsec(); }
+    });
+    xsecEl.addEventListener("input", (e) => {
+      if (e.target.id !== "xshour") return;
+      X.hour = Number(e.target.value);
+      const t = X.data.times[X.hour] * 1000, k = clk();
+      e.target.previousElementSibling.textContent = k.hour(t);
+      xsecEl.querySelector(".xh small").textContent = `Valid ${k.dayLong(t)}, ${k.time(t)} — a forecast from the model's columns, not a measurement.`;
+      paintXsec($("#xscv"));
+    });
+
     /* ── the HRRR's next 18 hours, drawn as radar ──
        Not tiles: one lat/lon picture of the lower 48 per step (Wx.HRRR),
        reprojected onto the map in thin strips — longitude is straight in
@@ -2041,7 +2205,7 @@
         const w = el.clientWidth, h = el.clientHeight, placed = [];
         for (const s of R.obs.slice().sort((a, b) => b.time - a.time)) {
           const [x, y] = pt(s.lat, s.lon);
-          if (x < -20 || y < -20 || x > w + 20 || y > h + 20 || placed.some(([a, b]) => Math.abs(a - x) < 40 && Math.abs(b - y) < 26) || (x > w - 100 && y < 170)) continue;  // nor under the zoom buttons
+          if (x < -20 || y < -20 || x > w + 20 || y > h + 20 || placed.some(([a, b]) => Math.abs(a - x) < 40 && Math.abs(b - y) < 26) || (x > w - 100 && y < 220)) continue;  // nor under the zoom buttons
           placed.push([x, y]); R.drawn.push(s);
           let g = "";
           if (s.wind != null && !Wx.isCalm(s.wind) && s.windDir != null) {
@@ -2055,6 +2219,12 @@
           }
           out.push(`<g class="stn">${g}</g>`);
         }
+      }
+      /* the cross-section's line, A to B */
+      if (X.a) {
+        const [ax, ay] = pt(X.a.lat, X.a.lon);
+        if (X.b) { const [bx, by] = pt(X.b.lat, X.b.lon); out.push(`<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="#0b1422" stroke-width="5"/><line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="#ffd166" stroke-width="2.5" stroke-dasharray="6 4"/>`); }
+        for (const [q, lab] of [[X.a, "A"], [X.b, "B"]]) { if (!q) continue; const [qx, qy] = pt(q.lat, q.lon); out.push(`<circle cx="${qx.toFixed(1)}" cy="${qy.toFixed(1)}" r="9" fill="#ffd166" stroke="#0b1422" stroke-width="2"/><text x="${qx.toFixed(1)}" y="${(qy + 4).toFixed(1)}" text-anchor="middle" style="font:700 11px var(--sans);fill:#0b1422">${lab}</text>`); }
       }
       if (R.pin) {
         const [qx, qy] = pt(R.pin.lat, R.pin.lon);
@@ -2308,6 +2478,7 @@
       requestAnimationFrame(draw);
     }
     $("#zfull").addEventListener("click", () => full(!$("#radarcard").classList.contains("mapfull")));
+    $("#zxsec").addEventListener("click", () => { if (X.pick || X.a) xsecStop(); else xsecStart(); });
     addEventListener("keydown", (e) => { if (e.key === "Escape") full(false); });
 
     /* dragging, the site following the map, and a tap that is not a drag */
@@ -2331,6 +2502,7 @@
         const r = el.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
         clearTimeout(tap);
         tap = setTimeout(() => {
+          if (X.pick) { xsecTap(yLat(R.cy - el.clientHeight / 2 + py, R.z), xLng(R.cx - el.clientWidth / 2 + px, R.z)); return; }
           const s = stationNear(px, py);
           if (s) showStation(s);
           else inspect(yLat(R.cy - el.clientHeight / 2 + py, R.z), xLng(R.cx - el.clientWidth / 2 + px, R.z));
