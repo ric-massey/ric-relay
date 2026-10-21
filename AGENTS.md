@@ -701,8 +701,11 @@ ones that must never break:
 
 - **Two pages, one room** (Ric, 2026-10-21): **Weather** (`weather.html`) is what most
   people want — now, the next hours, ten days, a plain radar; **Weather Pro**
-  (`weather-pro.html`) is the full map, soundings, models and the record. A
-  Weather | Pro switch tops both. Both load `assets/weather/app.js` and
+  (`weather-pro.html`) is the full map, soundings, models and the record. They are
+  **two products with two looks** (Ric: "like two different products"): Weather is
+  the sky, with a gold ★ Pro badge in its top bar; Pro is a dark, monospaced,
+  amber instrument with ← Weather to go back. Don't bring back a shared tab switch
+  or style Pro like Weather. Both load `assets/weather/app.js` and
   `assets/weather/weather.css`; each page holds only its own cards. **Warnings and
   storm mode stay on both** — never move them to Pro only. Pro is a tab of the
   weather room, not a room: it is not in `ROOMS` or the room navs.

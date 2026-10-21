@@ -1,6 +1,8 @@
 # Weather — the sky over you
 
-The weather room is **two pages, one tap apart** (Ric, 2026-10-21):
+The weather room is **two products, one tap apart** (Ric, 2026-10-21: "like two
+different products — weather is the app that is simple, weather pro is the app for
+professionals"):
 
 - **Weather** (`weather.html`) — what most people want: now, when the rain
   starts, every hour, ten days, alerts, a plain radar loop, the detail tiles.
@@ -10,7 +12,18 @@ The weather room is **two pages, one tap apart** (Ric, 2026-10-21):
   tap-a-point), the soundings, the models side by side and the ensemble, and the
   accuracy record.
 
-A **Weather | Pro** switch sits at the top of both. Warnings and storm mode are on
+They look like different apps on purpose. Weather is the sky: the colour follows
+what is overhead, frosted cards, big friendly numbers, and a **gold ★ Pro badge**
+in the top bar's corner that opens Weather Pro. Weather Pro is an instrument:
+near-black panels, hairline rules, monospaced data, square corners, one amber
+accent, a WEATHER PRO wordmark, and **← Weather** to go back. On a wide screen it
+is a workspace — the map docked on the left, sized to fit the screen whole, and the
+readouts (now, alerts, the sounding, the models, the record) in a panel beside it;
+on a phone they stack. Its look lives in the second half of
+`assets/weather/weather.css`, under `body[data-view="pro"]`; every text colour
+there is checked at 4.5:1 or better.
+
+Warnings and storm mode are on
 both — a warning has to reach the people who never open Pro. The chosen place is
 shared (this browser's `localStorage`), so switching keeps it. Both pages load the
 same code, `assets/weather/app.js`, and the same stylesheet,

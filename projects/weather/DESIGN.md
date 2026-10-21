@@ -15,8 +15,11 @@
 >    Weather Pro, which has all the stuff someone chasing or studying weather
 >    wants." This replaces the single-page progressive disclosure of §3 and §42.
 >    Weather (`weather.html`) is the everyday page; Weather Pro
->    (`weather-pro.html`) is the map, the soundings, the models. Warnings and storm
->    mode stay on both: a warning has to reach the people who never open Pro.
+>    (`weather-pro.html`) is the map, the soundings, the models. Then, the same day:
+>    "like two different products" — so they look like two apps: Weather keeps the
+>    sky and opens Pro by a gold ★ Pro badge; Pro is a dark, monospaced, amber
+>    instrument laid out as a map workspace. Warnings and storm mode stay on both: a
+>    warning has to reach the people who never open Pro.
 > 2. **No ride outlook, and no go/no-go verdicts.** "This should be information,
 >    not something that could make it unsafe." §21.1's ride verdict was built and
 >    removed the same day. The room shows the weather; it does not tell anyone

@@ -486,27 +486,101 @@ body.mapopen{overflow:hidden}
   .warn em{grid-column:2;text-align:left}
 }
 
-/* ══ two pages, one room ═══════════════════════════════════
-   Weather (data-view="simple") is the everyday page; Weather Pro
-   (data-view="pro") is the map and the atmosphere in depth. Ric,
-   2026-10-21: "a page for what most people want … then a tab that is a
-   button that says Pro". The radar card's markup is the same on both;
-   the simple page hides Pro's controls. */
-.viewtabs{display:flex;justify-content:center;gap:4px;margin:6px auto 2px;padding:4px;width:max-content;border-radius:999px;
-  background:rgba(0,0,0,.25);border:1px solid var(--edge)}
-.viewtabs a,.viewtabs span{display:inline-flex;align-items:center;justify-content:center;min-height:40px;min-width:96px;padding:0 18px;
-  border-radius:999px;font-weight:700;font-size:15px;text-decoration:none;color:var(--dim)}
-.viewtabs a:hover{background:rgba(255,255,255,.12);color:#fff}
-.viewtabs .on{background:#fff;color:#0b2342}
+/* ══ two products, one room ══════════════════════════════
+   Weather (data-view="simple") is the everyday app, and looks like the
+   sky. Weather Pro (data-view="pro") is a different product for people who
+   chase or study weather, and looks like an instrument: Ric, 2026-10-21 —
+   "like two different products … you get to Weather Pro by clicking on a
+   button that is gold with a star". The radar card's markup is the same on
+   both; the simple page hides Pro's controls. */
 body[data-view="simple"] .pro-only{display:none!important}
 body[data-view="pro"] .simple-only{display:none!important}
 .promore{margin-top:10px;font-size:14px}
 .promore a{font-weight:600}
 
-/* Pro: a wider page, a map that fills the screen, a smaller "now" */
-body[data-view="pro"] main{max-width:1200px}
-body[data-view="pro"] .radar{height:min(72vh,720px)}
-body[data-view="pro"] .hero.card.bare{padding:8px 0 4px}
-body[data-view="pro"] .hero .temp{font-size:clamp(52px,11vw,72px)}
-body[data-view="pro"] .hero .cond{font-size:17px}
-@media (max-width:640px){ body[data-view="pro"] .radar{height:64vh} }
+/* the door to Pro, on Weather: gold, with a star */
+.probtn{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 15px 0 11px;border-radius:999px;flex:none;
+  background:linear-gradient(180deg,#ffd76b,#f2a922);color:#2a1a00;font-weight:800;font-size:15px;letter-spacing:.04em;text-decoration:none;
+  box-shadow:0 0 0 2px rgba(255,215,107,.35),0 4px 14px rgba(242,169,34,.35)}
+.probtn:hover{background:linear-gradient(180deg,#ffe08a,#f6b53a)}
+.topbar .probtn{min-height:40px}
+.probtn svg{flex:none}
+
+/* ══ Weather Pro: the instrument ═══════════════════════════
+   Near-black panels, hairline rules, one amber accent, monospaced data,
+   square corners, no sky and no frosted glass. Every text colour below
+   clears 4.5:1 on --glass (#0e1218): --dim 8.0:1, --faint 6.2:1, amber 10.7:1. */
+body[data-view="pro"]{
+  --glass:#0e1218; --glass-hi:#141a22; --edge:#232b36;
+  --dim:#9eabba; --faint:#8a96a6; --amber:#ffb627;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+  --r:4px;
+  background:#07090c;background-image:none;color:#e3e9f0}
+body[data-view="pro"] .num{font-family:var(--mono)}
+body[data-view="pro"] .topbar{background:#05070a;border-bottom:1px solid #2a2f38;backdrop-filter:none;-webkit-backdrop-filter:none}
+body[data-view="pro"] .brand .mark{font-family:var(--mono);font-weight:700;letter-spacing:.2em;font-size:15px}
+body[data-view="pro"] .brand .mark b{color:var(--amber);margin-left:.45em}
+body[data-view="pro"] nav.glass a,body[data-view="pro"] nav.glass .here{border-radius:3px;font-family:var(--mono);font-size:12px}
+body[data-view="pro"] nav.glass .here{background:#1b222c}
+body[data-view="pro"] .roomnav-toggle{border-radius:4px;background:#121821}
+body[data-view="pro"] main{max-width:none;padding:8px 12px 24px}
+body[data-view="pro"] .placebar{padding-top:4px}
+body[data-view="pro"] .placebtn,body[data-view="pro"] .chip,.backbtn{border-radius:4px;background:#121821;border:1px solid var(--edge);font-family:var(--mono);font-size:13px}
+.backbtn{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;color:#e3e9f0;font-weight:600;text-decoration:none;flex:none}
+.backbtn:hover,body[data-view="pro"] .placebtn:hover,body[data-view="pro"] .chip:hover{background:#1a212b}
+body[data-view="pro"] .card{border-radius:var(--r);backdrop-filter:none;-webkit-backdrop-filter:none;padding:12px 14px}
+body[data-view="pro"] .card h2,body[data-view="pro"] #sky summary b,body[data-view="pro"] #models summary b{font-family:var(--mono);color:var(--amber);letter-spacing:.14em;font-size:12px;text-transform:uppercase}
+body[data-view="pro"] #sky summary .lead,body[data-view="pro"] #models summary .lead{font-size:12px}
+body[data-view="pro"] .seg button,body[data-view="pro"] .replaybar input,body[data-view="pro"] .replaybar select,body[data-view="pro"] .replaybar #rplive,body[data-view="pro"] .replaybar .presets button{
+  border-radius:3px;background:#121821;border:1px solid var(--edge);font-family:var(--mono);font-size:12.5px;letter-spacing:.02em}
+body[data-view="pro"] .seg button[aria-pressed="true"],body[data-view="pro"] #replaytoggle[aria-pressed="true"]{background:var(--amber);color:#1c1300;border-color:var(--amber)}
+body[data-view="pro"] .replaybar{border-radius:4px;background:#0a0d12;border:1px solid var(--edge)}
+body[data-view="pro"] .replaybar .go,body[data-view="pro"] .pin .pgo{border-radius:3px;background:var(--amber);color:#1c1300;font-family:var(--mono)}
+body[data-view="pro"] .radar{margin:0 -14px;background:#0b0e13}
+body[data-view="pro"] .radar .zoom button{border-radius:3px;background:rgba(7,9,12,.88);border-color:#2a3340}
+body[data-view="pro"] .radar .zoom button[aria-pressed="true"]{background:var(--amber);color:#1c1300}
+body[data-view="pro"] .radarbar .play{border-radius:4px;background:#121821}
+body[data-view="pro"] .radarbar input,body[data-view="pro"] .hourpick input{accent-color:var(--amber)}
+body[data-view="pro"] .pin{border-radius:4px;background:#0b0f15;border-color:#2a3340}
+body[data-view="pro"] .sitebar,body[data-view="pro"] .nextnote,body[data-view="pro"] .legend{font-size:12px}
+
+/* the readout: what is happening here, as an instrument says it */
+body[data-view="pro"] .hero.card.bare{background:var(--glass);border:1px solid var(--edge);border-radius:var(--r);padding:12px 14px;text-align:left}
+body[data-view="pro"] .hero .where{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);text-shadow:none}
+body[data-view="pro"] .hero .temp{font-family:var(--mono);font-size:48px;font-weight:500;letter-spacing:-.02em;text-shadow:none;margin:2px 0}
+body[data-view="pro"] .hero .cond{justify-content:flex-start;font-size:15px}
+body[data-view="pro"] .hero .cond svg{width:24px;height:24px}
+body[data-view="pro"] .hero .sub{font-size:13px;font-family:var(--mono)}
+body[data-view="pro"] .hero .rainline,body[data-view="pro"] .confline,body[data-view="pro"] .hero .from>span,body[data-view="pro"] .hero .from>a>span,body[data-view="pro"] .risk{border-radius:3px;background:#141a22;font-size:13px}
+body[data-view="pro"] .hero .go{border-radius:3px;background:var(--amber);color:#1c1300}
+body[data-view="pro"] .counts{justify-content:flex-start}
+body[data-view="pro"] .counts span{border-radius:3px;background:#141a22;font-family:var(--mono);font-size:12.5px}
+
+/* the workspace: the map docked, the readouts beside it */
+.stormband{display:grid;gap:10px}
+.stormband #storms:not([hidden]){margin-bottom:12px}
+.workspace{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:12px;align-items:start}
+.mapcol{position:sticky;top:62px;min-width:0}
+/* the docked map column must fit the screen whole — controls, map, play bar
+   and legend — or its bottom could never be reached while it is docked */
+body[data-view="pro"] .workspace .radar{height:calc(100vh - 390px);min-height:380px}
+@media (pointer:fine){
+  body[data-view="pro"] .seg button{min-height:34px;padding:0 10px}
+  body[data-view="pro"] .seg{margin-bottom:8px}
+}
+.side.grid{grid-template-columns:minmax(0,1fr);gap:10px}
+.side .skyrow{grid-template-columns:minmax(0,1fr)}
+.side .card.half{grid-column:1/-1}
+body[data-view="pro"] footer{font-family:var(--mono);font-size:12px;max-width:none}
+/* on a phone Pro keeps its wordmark, and the place gets a row of its own */
+@media (max-width:640px){
+  body[data-view="pro"] .brand .t{display:block}
+  body[data-view="pro"] .brand .t small{display:none}
+  body[data-view="pro"] .placebar{flex-wrap:wrap}
+  body[data-view="pro"] .placebtn{order:-1;flex:1 1 100%}
+}
+@media (max-width:1000px){
+  .workspace{grid-template-columns:minmax(0,1fr)}
+  .mapcol{position:static}
+  body[data-view="pro"] .workspace .radar{height:62vh;min-height:320px}
+}

@@ -429,7 +429,8 @@ console.log('\nRULE  two pages, one room: Weather for everyone, Weather Pro for 
   ok(['next', 'hourly', 'daily', 't-wind'].every(id => simple.includes(`id="${id}"`) && !pro.includes(`id="${id}"`)), 'the everyday cards are on Weather only');
   ok(['sky', 'models', 'record'].every(id => pro.includes(`id="${id}"`) && !simple.includes(`id="${id}"`)), 'the sounding, the models and the record are on Weather Pro only');
   ok(['storms', 'alerts', 'nearby', 'national', 'radarcard'].every(id => simple.includes(`id="${id}"`) && pro.includes(`id="${id}"`)), 'warnings and the radar are on both — a warning reaches people who never open Pro');
-  ok(simple.includes('href="weather-pro.html"') && pro.includes('href="weather.html"'), 'each page links to the other');
+  ok(/class="probtn" href="weather-pro.html"/.test(simple) && /class="backbtn" href="weather.html"/.test(pro), 'Weather opens Pro by its gold star button, and Pro goes back');
+  ok(/WEATHER<b>PRO<\/b>/.test(pro) && !/viewtabs/.test(simple + pro), 'two products, each its own wordmark — not one page with a switch');
   ok([simple, pro].every(p => p.includes('assets/weather/app.js') && p.includes('assets/visit.js')), 'both load the shared code and count visits');
   ok(![simple, pro, app, read('projects/weather/wx.js')].some(s => /ride outlook|rideOutlook/i.test(s)),
     'no ride outlook anywhere — Ric, 2026-10-21: "this should be information, not something that could make it unsafe"');

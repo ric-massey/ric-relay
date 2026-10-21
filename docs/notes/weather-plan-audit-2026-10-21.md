@@ -289,3 +289,17 @@ if Ric finds them hard to find.
   Pro's map with 58 stations and the sounding and models loaded, the simple page's US
   view still leading with the national warnings, no console errors, nothing over
   the edge, nothing under 11px.
+
+## Later still: two products, not two tabs (Ric, 2026-10-21)
+
+"Like two different products — weather is the app that is simple, weather pro is
+the app for professionals. You get to Weather Pro by clicking on a button that is
+gold with a star." The Weather | Pro switch is gone. Weather keeps its sky look and
+gains a gold ★ Pro badge in the top bar's corner. Weather Pro is restyled as an
+instrument (near-black, monospaced, amber, square) and laid out as a workspace: the
+map docked on the left and sized so the whole column fits the screen — the first
+try put the play bar 60 px below the bottom of a laptop screen, where a docked
+column can never reach it — with the readouts beside it. Checked at 1440×900, the
+pane's own width and 375 px; on a phone the Pro badge moved from the place bar to the
+top bar because it squeezed the place name to "Knox…", and Pro gives the place its
+own row and keeps its wordmark.
