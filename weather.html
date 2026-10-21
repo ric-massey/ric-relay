@@ -655,7 +655,7 @@
 <script src="effects.js"></script>
 <script src="projects/weather/nowcast.js?v=1"></script>
 <script src="projects/weather/wx.js?v=7"></script>
-<script src="projects/weather/sounding.js?v=1"></script>
+<script src="projects/weather/sounding.js?v=2"></script>
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
 <script>
@@ -2395,7 +2395,7 @@
       ["CAPE", "Mixed-layer CAPE", (a) => a.ml.cape, [250, 1000, 2500], (x) => Math.round(x).toLocaleString() + " J/kg"],
       ["Shear", "0–6 km shear", (a) => a.shear6 != null ? a.shear6 * 1.943844 : null, [20, 35, 50], (x) => Math.round(x) + " kt"],
       ["SRH", "0–1 km storm-relative helicity", (a) => a.srh1, [50, 150, 300], (x) => Math.round(x) + " m²/s²"],
-      ["STP", "Significant tornado parameter", (a) => a.stp, [0.5, 1, 3], (x) => x.toFixed(1)]
+      ["STP", "Significant tornado parameter (effective layer)", (a) => a.stpE, [0.5, 1, 3], (x) => x.toFixed(1)]
     ];
     function timeline() {
       if (!K.col || !K.col.hourly || !K.col.hourly.time) return null;
@@ -2485,6 +2485,11 @@
             <div><span>700–500 lapse rate</span><b class="num">${a.lapse75 != null ? a.lapse75.toFixed(1) + " °C/km" : "–"}</b></div>
             <div><span>0–3 km lapse rate</span><b class="num">${a.lapse03 != null ? a.lapse03.toFixed(1) + " °C/km" : "–"}</b></div>
             <div><span>STP (fixed layer)</span><b class="num">${a.stp != null ? a.stp.toFixed(1) : "–"}</b></div>
+            <div><span>Effective inflow layer</span><b class="num">${a.eff ? `${hgt(a.eff.base)}–${hgt(Math.max(a.eff.top, a.eff.base))}` : "none"}</b></div>
+            <div><span>Effective SRH</span><b class="num">${a.eff && a.esrh != null ? Math.round(a.esrh) + " m²/s²" : "–"}</b></div>
+            <div><span>Effective bulk shear</span><b class="num">${a.eff && a.ebwd != null ? kt(a.ebwd) : "–"}</b></div>
+            <div><span>STP (effective)</span><b class="num">${a.stpE != null ? a.stpE.toFixed(1) : "–"}</b></div>
+            <div><span>Supercell composite</span><b class="num">${a.scp != null ? a.scp.toFixed(1) : "–"}</b></div>
           </div>`;
       }
       if (partsOnly) return { info, pics, table, when: now && now.when };
@@ -2495,7 +2500,10 @@
           <dt>LCL · LFC · EL</dt><dd>Cloud base; where a lifted parcel starts rising freely; where it stops (roughly the storm top).</dd>
           <dt>Shear</dt><dd>How much the wind changes between two heights. 0–6 km over ~40 kt helps storms organise and rotate.</dd>
           <dt>SRH</dt><dd>Storm-relative helicity: how much spin the low-level wind feeds a storm moving the way Bunkers' method predicts (RM). Larger means more tornado-favourable.</dd>
-          <dt>STP</dt><dd>SPC's significant tornado parameter, fixed-layer version: CAPE, cloud base, helicity and shear in one number. Above 1 is notable. An index of ingredients — never a forecast that a tornado will happen.</dd>
+          <dt>STP</dt><dd>SPC's significant tornado parameter: CAPE, cloud base, helicity and shear in one number. Above 1 is notable. The fixed-layer version uses the lowest 1 km and 6 km; the effective version (the one SPC leads with, and the timeline's row) uses the effective layer and also counts the cap. An index of ingredients — never a forecast that a tornado will happen.</dd>
+          <dt>Effective layer</dt><dd>The air that would actually feed a storm: the lowest run of levels whose air, lifted, has at least 100 J/kg of CAPE and no worse than −250 J/kg of CIN (Thompson et al. 2007). If it starts above the ground, storms would be elevated, and the effective STP is 0.</dd>
+          <dt>Effective SRH · shear</dt><dd>Helicity through the effective layer, and the wind change from its base to halfway up the most-unstable parcel's storm top.</dd>
+          <dt>Supercell composite</dt><dd>Most-unstable CAPE, effective helicity and effective shear together (Thompson et al. 2004). Above 1 favours supercells; negative values favour left-moving ones. Ingredients, not a forecast.</dd>
         </dl><p>Computed on this page from the column above (sounding.js), with virtual-temperature parcels as SPC does; checked against MetPy.</p></details>`;
     }
 

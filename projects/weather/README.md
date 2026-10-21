@@ -276,7 +276,7 @@ split most.
 |---|---|
 | 2 · Investigation | Built: satellite (GOES IR / visible / water vapour under the radar), a full-screen map, a tapped-point card, airport stations on the map. Still to do: a unified timeline across radar and satellite; more networks than ASOS (state mesonets) |
 | 3 · One serious model | HRRR fields as images. IEM *does* list HRRR reflectivity tile layers (`hrrr::REFD-F0060-<run>` answered on 2026-10-21) but returned blank tiles where HRRR had rain, so they are not usable until the naming is confirmed; otherwise this is the first phase that needs a backend (HRRR GRIB subsets into tiles in R2). See `docs/notes/weather-plan-audit-2026-10-21.md` |
-| 4 · Soundings | Built (above), with observed-vs-model on the same diagram (§16). Still to do: effective-layer parameters |
+| 4 · Soundings | Built (above), with observed-vs-model on the same diagram (§16) and the effective-layer parameters: the effective inflow layer (Thompson 2007), effective SRH and bulk shear, effective STP (Thompson 2012, with its CIN term) and the supercell composite. The composites and the effective SRH are held to MetPy in `test/sounding.test.mjs` |
 | 5 · Advanced | Model comparison and ensemble plumes: built (above). Still to do: cross-sections, MRMS |
 | 6 · Station + verification | The CS pattern: a script that pulls the station and archives point forecasts into a committed accumulator, verified against the station. **Needs a decision on how the station is named** — its coordinates can't be in this repo |
 | 7 · Replay | IEM keeps single-site scans by timestamp (`ridge::SITE-PROD-YYYYMMDDHHMI`, confirmed for the last hour); the mosaic archive needs its tile names confirmed |

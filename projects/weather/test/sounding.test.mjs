@@ -66,6 +66,41 @@ ok(A && A.pw > 25 && A.pw < 60, `precipitable water ${A && A.pw.toFixed(1)} mm`)
 ok(A && A.lapse75 > 6 && A.lapse75 < 9, `700–500 hPa lapse rate ${A && A.lapse75.toFixed(1)} °C/km`);
 ok(A && A.frz > 3000 && A.frz < 5000, `freezing level ${A && Math.round(A.frz)} m`);
 
+console.log('\nRULE  the effective layer: the air that feeds a storm');
+{
+  ok(A && A.eff && A.eff.base === 0 && A.eff.top > 0 && A.eff.top < 3000,
+    `on the loaded afternoon it starts at the ground and runs to ${A && A.eff && Math.round(A.eff.top)} m`);
+  /* MetPy's storm_relative_helicity over the same layer, winds and storm
+     motion: 64.92 m²/s² (and 43.23 over 0–1 km), computed 2026-10-21 */
+  ok(A && near(A.esrh, 64.92, 0.7) && near(A.srh1, 43.23, 0.3), `effective SRH ${A && A.esrh.toFixed(2)} and 0–1 km SRH ${A && A.srh1.toFixed(2)} against MetPy's 64.92 and 43.23`);
+  ok(A && A.esrh > 0 && A.ebwd > 12.5 && A.stpE > 0 && A.scp > 0,
+    `with effective SRH ${A && Math.round(A.esrh)} m²/s², bulk shear ${A && A.ebwd.toFixed(1)} m/s, STP ${A && A.stpE.toFixed(1)}, SCP ${A && A.scp.toFixed(1)}`);
+  /* the same air above a cold, shallow pool at the ground: storms there would
+     be elevated, so the layer starts above it and the tornado parameter is 0 */
+  const pooled = build({ t: p => p >= 950 ? 12 : loaded.find(l => l.p <= p).t, td: p => p >= 950 ? 10 : loaded.find(l => l.p <= p).td,
+    wind: h => [240 + Math.min(h, 6000) / 6000 * 30, 5 + Math.min(h, 6000) / 6000 * 25] });
+  const E = S.analyze(pooled);
+  ok(E && E.eff && E.eff.base > 0 && E.stpE === 0, `over a cold pool the layer starts at ${E && E.eff && Math.round(E.eff.base)} m and STP is 0`);
+  const st = S.analyze(build({ t: p => 10 - (1000 - p) * 0.02, td: p => -10 - (1000 - p) * 0.03 }));
+  ok(st && st.eff === null && st.esrh === 0 && st.stpE === 0 && st.scp === 0, 'a stable column has no effective layer, and every effective number is 0');
+}
+
+console.log('\nRULE  the composites are SPC\'s, term for term — held to MetPy');
+{
+  /* MetPy 1.7.1's significant_tornado(cape, lcl, srh, shear) and
+     supercell_composite(mucape, esrh, ebwd), computed 2026-10-21. MetPy's STP
+     has no CIN term, so these are checked with CIN 0 (its term is 1). */
+  for (const [c, l, s, sh, ref] of [[2500, 800, 250, 25, 3.4722], [1800, 1500, 180, 18, 0.648], [3000, 600, 400, 35, 8.0], [1200, 2100, 300, 25, 0], [2000, 900, 200, 11, 0]]) {
+    ok(near(S.stpEffective(c, l, 0, s, sh, 0), ref, 1e-3), `STP ${c} J/kg, LCL ${l} m, ${s} m²/s², ${sh} m/s: ${S.stpEffective(c, l, 0, s, sh, 0).toFixed(3)} (MetPy ${ref})`);
+  }
+  for (const [c, s, sh, ref] of [[2500, 250, 25, 12.5], [1500, 120, 15, 2.7], [3000, -80, 22, -4.8], [800, 60, 8, 0]]) {
+    ok(near(S.scp(c, s, sh), ref, 1e-3), `SCP ${c} J/kg, ${s} m²/s², ${sh} m/s: ${S.scp(c, s, sh).toFixed(3)} (MetPy ${ref})`);
+  }
+  ok(near(S.stpEffective(2500, 800, -125, 250, 25, 0), 3.4722 * 0.5, 1e-3) && S.stpEffective(2500, 800, -250, 250, 25, 0) === 0 && S.stpEffective(2500, 800, -20, 250, 25, 0) > 3.47,
+    'the CIN term: half at −125, nothing below −200, whole above −50');
+  ok(S.stpEffective(2500, 800, 0, 250, 25, 300) === 0, 'and nothing when the inflow starts above the ground');
+}
+
 console.log('\nRULE  a stable column has none');
 {
   const stable = build({ t: p => 10 - (1000 - p) * 0.02, td: p => -10 - (1000 - p) * 0.03 });

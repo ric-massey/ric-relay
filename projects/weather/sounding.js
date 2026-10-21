@@ -218,17 +218,68 @@
   /* Storm-relative helicity over 0–h, relative to storm motion c, summed over
      thin layers (Davies-Jones et al. 1990). Positive for a hodograph that
      turns clockwise, the kind that feeds a right-moving supercell. */
-  function srh(W, h, c) {
+  function srh(W, h, c, h0 = 0) {
     if (!c) return null;
-    let total = 0, prev = windAt(W, 0);
+    let total = 0, prev = windAt(W, h0);
     if (!prev) return null;
-    for (let z = 100; z <= h + 1e-6; z += 100) {
+    /* 100 m steps, the last one ending exactly at h — a layer top is
+       rarely a round number, and skipping its last few tens of metres lost
+       2% of an effective layer's helicity */
+    for (let z = Math.min(h0 + 100, h); z <= h + 1e-6; z = z >= h ? Infinity : Math.min(z + 100, h)) {
       const w = windAt(W, z);
       if (!w) return null;
       total += (w[0] - c[0]) * (prev[1] - c[1]) - (prev[0] - c[0]) * (w[1] - c[1]);
       prev = w;
     }
     return total;
+  }
+
+  /* ── the effective layer (Thompson et al. 2007) ──
+     The air that actually feeds a storm: the lowest unbroken run of levels
+     whose own parcels have CAPE ≥ 100 J/kg and CIN ≥ −250 J/kg, looked for
+     every 10 hPa through the lowest 300 hPa. Null when no level qualifies.
+     Heights are above ground. */
+  const EFF = { cape: 100, cin: -250, step: 10, depth: 300 };
+  function effectiveLayer(L) {
+    const s = L[0];
+    let base = null, top = null;
+    for (let p = s.p; p >= s.p - EFF.depth && p >= L[L.length - 1].p; p -= EFF.step) {
+      const t = at(L, p, 't'), td = at(L, p, 'td');
+      const good = t !== null && ok(td) && (pc => pc.cape >= EFF.cape && pc.cin >= EFF.cin)(parcel(L, { p, t, td: Math.min(td, t) }));
+      if (good) { if (base === null) base = p; top = p; }
+      else if (base !== null) break;
+    }
+    if (base === null) return null;
+    return { pBase: base, pTop: top, base: heightAt(L, base) - s.z, top: heightAt(L, top) - s.z };
+  }
+  /* bulk wind difference between two heights above ground, m/s */
+  function shearBetween(W, h0, h1) {
+    const a = windAt(W, h0), b = windAt(W, h1);
+    return a && b ? mag([b[0] - a[0], b[1] - a[1]]) : null;
+  }
+  /* SPC's effective-layer significant tornado parameter (Thompson et al.
+     2012) and supercell composite (Thompson et al. 2004), each term clipped
+     as SPC clips it:
+       STP = MLCAPE/1500 · (2000 − MLLCL)/1000 · ESRH/150 · EBWD/20 · (200 + MLCIN)/150
+         LCL term 1 below 1000 m, 0 above 2000; EBWD term 0 under 12.5 m/s,
+         capped at 30 m/s (1.5); CIN term 1 above −50, 0 below −200; and 0
+         when the effective layer does not start at the ground (an elevated
+         storm does not make surface tornadoes).
+       SCP = MUCAPE/1000 · ESRH/50 · EBWD term (0 under 10 m/s, 1 over 20)
+     Composites of ingredients — hints about the environment, never a
+     forecast of a tornado or a supercell. */
+  function stpEffective(mlcape, mllcl, mlcin, esrh, ebwd, baseAgl) {
+    if (![mlcape, mllcl, mlcin, esrh, ebwd].every(ok)) return null;
+    if (baseAgl > 0) return 0;
+    const lclT = mllcl < 1000 ? 1 : mllcl > 2000 ? 0 : (2000 - mllcl) / 1000;
+    const shT = ebwd < 12.5 ? 0 : Math.min(ebwd, 30) / 20;
+    const cinT = mlcin > -50 ? 1 : mlcin < -200 ? 0 : (200 + mlcin) / 150;
+    return Math.max(0, mlcape / 1500 * lclT * (esrh / 150) * shT * cinT);
+  }
+  function scp(mucape, esrh, ebwd) {
+    if (![mucape, esrh, ebwd].every(ok)) return null;
+    const shT = ebwd < 10 ? 0 : ebwd > 20 ? 1 : ebwd / 20;
+    return mucape / 1000 * (esrh / 50) * shT;
   }
 
   /* ── the whole analysis ── */
@@ -274,11 +325,24 @@
       const shTerm = s6 < 12.5 ? 0 : Math.min(s6, 30) / 20;
       stp = Math.max(0, sb.cape / 1500 * lclTerm * (srh1 / 150) * shTerm);
     }
+    /* the effective layer and what is measured over it. With no effective
+       layer there is no inflow to speak of: ESRH and EBWD are 0, as SPC
+       shows them, and so are the composites. */
+    const eff = effectiveLayer(L);
+    let esrh = 0, ebwd = 0;
+    if (eff) {
+      esrh = srh(W, Math.max(eff.top, eff.base), motion && motion.right, eff.base);
+      /* to half the most-unstable parcel's equilibrium level above the base */
+      ebwd = mu.el && mu.el.z !== null ? shearBetween(W, eff.base, eff.base + (mu.el.z - eff.base) / 2) : null;
+    }
+    const stpE = eff ? stpEffective(ml.cape, ml.lcl.z, ml.cin, esrh, ebwd, eff.base) : 0;
+    const scpE = eff ? scp(mu.cape, esrh, ebwd) : 0;
     return {
       levels: L, winds: W,
       sb, ml, mu,
       pw, frz, lapse75: lapse(700, 500), lapse03,
-      shear1: s1, shear6: s6, motion, srh1, srh3, stp
+      shear1: s1, shear6: s6, motion, srh1, srh3, stp,
+      eff, esrh, ebwd, stpE, scp: scpE
     };
   }
 
@@ -323,7 +387,8 @@
 
   const api = {
     es, mixing, theta, thetaE, virtual, lcl, moistLift, prepare, at, heightAt, parcel, parcels,
-    toUV, windAt, winds, shear, bunkers, srh, analyze, PRESSURE_LEVELS, fromOpenMeteo, fromRaob
+    toUV, windAt, winds, shear, bunkers, srh, analyze, PRESSURE_LEVELS, fromOpenMeteo, fromRaob,
+    EFF, effectiveLayer, shearBetween, stpEffective, scp
   };
   root.Sounding = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
