@@ -1264,77 +1264,6 @@
   const CALM_KMH = 1.5;
   const isCalm = kmh => has(kmh) && kmh < CALM_KMH;
 
-  /* ── the ride outlook (DESIGN.md §21.1) ──
-     "Can I ride in the next few hours?" — one word and the reasons for it,
-     from what the page already holds: the rain sentence (rainOutlook, so it
-     never contradicts the rain line), the radar's next hour when there is
-     one, thunder in the hourly codes, the strongest gust, the temperature
-     range, fog, darkness, and official alerts covering the place. It says
-     nothing about road surfaces (§21.2) or lightning — the page has no
-     lightning feed, so thunder is the model's, and says so.
-       poor  a storm warning or any warning here, thunder, rain now or
-             likely, gusts ≥ 40 mph, near-freezing air, visibility under 1 mi
-       fair  rain possible or ending, gusts ≥ 25 mph, cold or hot, haze,
-             dark during the window, an advisory or watch
-       good  none of those
-     Thresholds are rider's rules of thumb, in km/h and °C like everything
-     stored here; the page converts the words. */
-  const RIDE = { gustPoor: 64, gustFair: 40, coldPoor: 2, coldFair: 10, hot: 35, visPoor: 1600, visFair: 5000 };
-  const RIDE_IGNORE = /Rip Current|Beach Hazard|Small Craft|Marine|Gale|^Storm Warning$|Hurricane Force Wind|Lakeshore|Low Water|Air Quality|Air Stagnation|Hazardous Seas|High Surf/i;
-  function rideOutlook(fc, nowSec, hours, o = {}) {
-    if (!fc || !fc.hourly) return null;
-    const until = nowSec + hours * 3600;
-    const hrs = fc.hourly.filter(h => h.t + 3600 > nowSec && h.t < until);
-    if (!hrs.length) return null;
-    const time = o.time || (s => new Date(s * 1000).toISOString().slice(11, 16));
-    const T = o.fmtTemp || (c => String(Math.round(c))), Wd = o.fmtWind || (k => String(Math.round(k))), wu = o.windUnit || 'km/h';
-    const reasons = [];
-    const say = (level, text) => reasons.push({ level, text });
-
-    for (const a of (o.alerts || [])) {
-      /* alerts for the water or the air quality say nothing about a road; a
-         fire-weather warning is about dry wind, which the gusts below cover */
-      if (RIDE_IGNORE.test(a.event)) continue;
-      if (/Red Flag|Fire Weather/i.test(a.event)) { say('fair', `${a.event} in effect`); continue; }
-      if (a.storm) say('poor', `${a.event} covers this place`);
-      else if (a.tone === 'warning') say('poor', `${a.event} in effect`);
-      else if (a.tone === 'watch' || a.tone === 'advisory') say('fair', `${a.event} in effect`);
-    }
-    const rain = rainOutlook(fc, nowSec, hours, time);
-    if (rain.state === 'now') say('poor', rain.text);
-    else if (rain.state === 'starting') say(rain.prob == null || rain.prob >= 70 ? 'poor' : 'fair', rain.text);
-    else if (rain.state === 'stopping') say('fair', rain.text + ' — roads stay wet a while');
-    else if (rain.note) say('fair', rain.note);
-    /* the radar's own next hour, when it sees rain the models do not */
-    const nc = o.nowcast;
-    if (nc && (nc.kind === 'raining' || nc.kind === 'starting') && !['now', 'starting', 'stopping'].includes(rain.state)) say('fair', 'Radar: ' + nc.text);
-    const thunder = hrs.find(h => h.code >= 95);
-    if (thunder) say('poor', `Thunderstorms in the forecast around ${time(Math.max(thunder.t, nowSec))}`);
-    const gusts = hrs.map(h => h.gust).filter(has);
-    const gust = gusts.length ? Math.max(...gusts) : null;
-    if (gust != null && gust >= RIDE.gustPoor) say('poor', `Gusts to ${Wd(gust)} ${wu}`);
-    else if (gust != null && gust >= RIDE.gustFair) say('fair', `Gusts to ${Wd(gust)} ${wu}`);
-    const ts = hrs.map(h => h.temp).filter(has);
-    const lo = ts.length ? Math.min(...ts) : null, hi = ts.length ? Math.max(...ts) : null;
-    if (lo != null && lo < RIDE.coldPoor) say('poor', `Near freezing (${T(lo)}°) — ice is possible`);
-    else if (lo != null && lo < RIDE.coldFair) say('fair', `Cold — down to ${T(lo)}°, dress for it`);
-    if (hi != null && hi >= RIDE.hot) say('fair', `Hot — up to ${T(hi)}°`);
-    const viss = hrs.map(h => h.vis).filter(has);
-    const vis = viss.length ? Math.min(...viss) : null;
-    if (vis != null && vis < RIDE.visPoor) say('poor', 'Fog — visibility under a mile');
-    else if (vis != null && vis < RIDE.visFair) say('fair', 'Hazy — visibility down to a few miles');
-    /* darkness: dark now, or the sun sets inside the window */
-    const set = (fc.daily || []).map(d => d.sunset).find(s => has(s) && s > nowSec && s < until);
-    const darkNow = fc.current && has(fc.current.t) ? !fc.current.isDay : hrs[0].isDay === 0;
-    const dark = darkNow ? { now: true } : set ? { at: set } : null;
-    if (dark && dark.at) say('fair', `Dark from ${time(dark.at)}`);
-    else if (dark) say('fair', 'After dark');
-
-    const rank = { good: 0, fair: 1, poor: 2 };
-    const level = reasons.reduce((w, r) => rank[r.level] > rank[w] ? r.level : w, 'good');
-    reasons.sort((a, b) => rank[b.level] - rank[a.level]);
-    return { level, hours, reasons, rain, gust, lo, hi, vis, thunder: !!thunder, dark };
-  }
 
   /* ── how sure, and the scoreboard ── */
   /* One answer, every model: Map(hour → { model: {t, w, p} }) */
@@ -1507,7 +1436,7 @@
     normalizeOutlook, outlook, outlookAt, column, modelRun, raobSites, raobTimes, raobTs,
     several, summary, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet,
     inMosaic, nowcast, nowcastRecord,
-    CALM_KMH, isCalm, RIDE, rideOutlook, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M,
+    CALM_KMH, isCalm, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M,
     normalizeStationObs, stationObs, normalizePlumes, plumes, plumeStats, quantile,
     HRRR, hrrrImage, hrrrRun,
     REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive,

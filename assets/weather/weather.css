@@ -1,0 +1,512 @@
+/* WEATHER — the look of the weather room, shared by Weather (weather.html)
+   and Weather Pro (weather-pro.html). One room, two pages: a stylesheet
+   shared WITHIN a room, as climbing and training share theirs (AGENTS.md).
+   body[data-view] says which page is drawing. */
+:root{
+  /* A phone's weather app: the page IS the sky — its colour follows what
+     is overhead and whether the sun is up — and everything sits on frosted
+     glass over it. Every sky below was picked so white type clears 4.5:1
+     on its lightest stop; the dimmer greys only ever sit on a card
+     (--glass over the sky), where they clear it too. */
+  --sky-a:#163f73; --sky-b:#2a66a8;
+  --glass:rgba(6,16,34,.42);
+  --glass-hi:rgba(6,16,34,.58);
+  --edge:rgba(255,255,255,.14);
+  --text:#ffffff;
+  --dim:rgba(255,255,255,.78);       /* 6:1 or better on --glass over every sky */
+  --faint:rgba(255,255,255,.66);     /* labels; 4.9:1 on --glass over the lightest sky */
+  --sun:#ffd166;
+  --rain:#7cc4ff;
+  --warn:#ff6b6b; --watch:#ffa94d; --advise:#ffd43b; --note:#a5d8ff;
+  --ok:#69db7c;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --gut:clamp(14px,4vw,28px);
+  --r:18px;
+}
+body[data-sky="clear-day"]  {--sky-a:#163f73;--sky-b:#2a66a8}
+body[data-sky="partly-day"] {--sky-a:#22487a;--sky-b:#3a6597}
+body[data-sky="cloudy-day"] {--sky-a:#3b4a5c;--sky-b:#56677a}
+body[data-sky="rain-day"]   {--sky-a:#2c3846;--sky-b:#45525f}
+body[data-sky="storm-day"]  {--sky-a:#211f30;--sky-b:#383349}
+body[data-sky="snow-day"]   {--sky-a:#465668;--sky-b:#5f7086}
+body[data-sky="fog-day"]    {--sky-a:#4a535e;--sky-b:#636c76}
+body[data-sky$="-night"]    {--sky-a:#070d1f;--sky-b:#17254a}
+body[data-sky="cloudy-night"],body[data-sky="fog-night"]{--sky-a:#0d1119;--sky-b:#252c38}
+body[data-sky="rain-night"],body[data-sky="storm-night"]{--sky-a:#0a0c14;--sky-b:#1f2433}
+*{box-sizing:border-box;margin:0}
+html{-webkit-text-size-adjust:100%}
+body{min-height:100vh;color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.45;overflow-x:hidden;
+  background:var(--sky-b);background-image:linear-gradient(180deg,var(--sky-a) 0,var(--sky-b) 70vh,var(--sky-b));
+  background-attachment:fixed;transition:background-color .8s}
+a{color:inherit}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ══ top bar ═════════════════════════════════════════════ */
+.topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;min-height:54px;padding:0 var(--gut);
+  background:rgba(6,14,30,.55);backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);
+  border-bottom:1px solid var(--edge)}
+.brand{display:flex;align-items:center;gap:9px;text-decoration:none;flex:none;font-weight:600;letter-spacing:.01em}
+.brand small{display:block;font-size:11px;font-weight:500;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;line-height:1}
+.navwrap{flex:1;min-width:0;display:flex;justify-content:flex-end;position:relative}
+nav.glass{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:8px 0}
+nav.glass::-webkit-scrollbar{display:none}
+nav.glass a,nav.glass .here{display:flex;align-items:center;min-height:32px;padding:0 12px;border-radius:999px;font-size:13px;
+  font-weight:500;text-decoration:none;white-space:nowrap;color:var(--dim)}
+nav.glass a:hover{background:rgba(255,255,255,.12);color:#fff}
+nav.glass .here{background:rgba(255,255,255,.2);color:#fff}
+.roomnav-toggle{display:none}
+@media (max-width:1060px){
+  .roomnav-toggle{display:inline-flex;align-items:center;gap:9px;min-height:44px;padding:0 16px;border-radius:999px;
+    background:rgba(255,255,255,.12);border:1px solid var(--edge);font-size:14px;font-weight:500}
+  .roomnav-toggle[aria-expanded="true"]{background:rgba(255,255,255,.22)}
+  .roomnav-toggle-bars{position:relative;width:15px;height:11px;border-top:2px solid currentColor;border-bottom:2px solid currentColor}
+  .roomnav-toggle-bars::after{content:"";position:absolute;inset:calc(50% - 1px) 0 auto;border-top:2px solid currentColor}
+  nav.glass[data-roomnav]{display:none}
+  nav.glass[data-roomnav].roomnav-open{display:flex;flex-direction:column;position:absolute;top:calc(100% + 6px);right:0;min-width:220px;
+    padding:6px;border-radius:16px;background:rgba(10,20,40,.94);border:1px solid var(--edge);box-shadow:0 18px 40px rgba(0,0,0,.45)}
+  nav.glass[data-roomnav].roomnav-open a{min-height:44px;padding:0 16px;border-radius:12px}
+}
+
+main{max-width:820px;margin:0 auto;padding:10px var(--gut) 40px}
+
+/* ══ the place line ══════════════════════════════════════ */
+.placebar{display:flex;align-items:center;gap:8px;padding:10px 0 0}
+.placebtn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px 0 12px;border-radius:999px;
+  background:rgba(255,255,255,.12);border:1px solid var(--edge);font-weight:600;max-width:100%;overflow:hidden}
+.placebtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.placebtn:hover,.chip:hover{background:rgba(255,255,255,.2)}
+.spacer{flex:1}
+.chip{min-height:44px;min-width:44px;padding:0 12px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid var(--edge);font-weight:600}
+
+/* ══ the hero ════════════════════════════════════════════ */
+.hero{text-align:center;padding:26px 0 22px}
+.hero .where{font-size:22px;font-weight:600;text-shadow:0 1px 8px rgba(0,0,0,.25)}
+.hero .temp{font-size:clamp(84px,22vw,120px);font-weight:200;line-height:1;letter-spacing:-.04em;margin:4px 0 2px;
+  text-shadow:0 2px 18px rgba(0,0,0,.25)}
+.hero .temp sup{font-size:.5em;vertical-align:.7em;margin-left:.02em}
+.hero .cond{font-size:20px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px}
+.hero .cond svg{width:34px;height:34px}
+.hero .sub{font-size:16px;font-weight:500;margin-top:4px}
+.hero .rainline{display:inline-block;margin-top:14px;padding:8px 16px;border-radius:999px;background:var(--glass);
+  border:1px solid var(--edge);font-weight:600;font-size:15px}
+.hero .rainline.wet{background:rgba(17,58,110,.72)}
+.hero .from{margin-top:12px;font-size:13px}
+.hero .from>span,.hero .from>a>span{display:inline-block;padding:3px 10px;border-radius:999px;background:var(--glass)}
+.hero .from .delayed{background:rgba(120,30,30,.75)}
+.empty{padding:60px 0;text-align:center}
+.empty h1{font-size:28px;font-weight:600;margin-bottom:6px}
+.empty p{margin:0 auto 18px;max-width:420px}
+.empty .go{min-height:48px;padding:0 22px;border-radius:999px;border:0;background:#fff;color:#0b2342;font-weight:700}
+
+/* ══ cards ═══════════════════════════════════════════════ */
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.card{grid-column:1/-1;background:var(--glass);border:1px solid var(--edge);border-radius:var(--r);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);padding:14px 16px;min-width:0}
+.card.half{grid-column:auto}
+.card h2{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--faint);padding-bottom:9px;margin-bottom:10px;border-bottom:1px solid var(--edge)}
+.card h2 svg{width:15px;height:15px;flex:none}
+.card h2 .src{margin-left:auto;font-weight:500;letter-spacing:.02em;text-transform:none}
+.dim{color:var(--dim)}
+.faint{color:var(--faint)}
+.tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:.04em;
+  background:rgba(255,255,255,.12);color:var(--dim);vertical-align:1px}
+.loading{color:var(--dim);padding:6px 0}
+.err{color:var(--dim);padding:4px 0}
+.err b{color:#fff}
+
+/* alerts */
+.alert{border-left:4px solid var(--note);border-radius:12px;background:var(--glass-hi);margin-top:8px}
+.alert:first-of-type{margin-top:0}
+.alert[data-tone="warning"]{border-color:var(--warn)}
+.alert[data-tone="watch"]{border-color:var(--watch)}
+.alert[data-tone="advisory"]{border-color:var(--advise)}
+.alert summary{list-style:none;cursor:pointer;padding:11px 14px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.alert summary::-webkit-details-marker{display:none}
+.alert .ev{font-weight:700;font-size:16px}
+.alert .until{color:var(--dim);font-size:13px}
+.alert .body{padding:0 14px 14px;font-size:14px}
+.alert .body p{white-space:pre-line;margin-top:8px}
+.alert .body .meta{color:var(--dim);font-size:13px}
+
+/* the next few hours */
+.nextbars{display:flex;align-items:flex-end;gap:3px;height:64px;margin-top:6px}
+.nextbars i{flex:1;min-height:3px;border-radius:3px 3px 1px 1px;background:rgba(255,255,255,.22)}
+.nextbars i.w{background:var(--rain)}
+.nextbars i.s{background:#e7f5ff}
+.nextaxis{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin-top:5px}
+.nextnote{font-size:13px;color:var(--dim);margin-top:8px}
+/* the radar nowcast: twelve five-minute cells */
+.nowcast{margin:2px 0 14px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.14)}
+.nowtext{font-size:17px;font-weight:600}
+.nowstrip{display:flex;gap:3px;margin-top:8px;height:14px}
+.nowstrip i{flex:1;border-radius:3px;background:rgba(255,255,255,.14)}
+.nowstrip i.n{background:rgba(120,190,255,.35)}
+.nowstrip i.l{background:var(--rain)}
+.nowstrip i.m{background:#3fbf4f}
+.nowstrip i.h{background:#ffc400}
+.nowstrip i.x{background:repeating-linear-gradient(45deg,rgba(255,255,255,.1) 0 3px,transparent 3px 6px)}
+.who{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:2px}
+.nextafter{font-size:14px;color:var(--dim);margin-top:2px}
+
+
+/* hourly strip */
+.hours{display:flex;gap:2px;overflow-x:auto;scrollbar-width:thin;padding-bottom:6px;scroll-snap-type:x proximity;
+  margin:0 -6px}
+.hour{flex:0 0 58px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;border-radius:14px;
+  border:1px solid transparent;background:none;scroll-snap-align:start}
+.hour:hover{background:rgba(255,255,255,.08)}
+.hour[aria-pressed="true"]{background:rgba(255,255,255,.16);border-color:var(--edge)}
+.hour .h{font-size:13px;font-weight:600}
+.hour svg{width:28px;height:28px}
+.hour .t{font-size:17px;font-weight:600}
+.hour .p{font-size:12px;font-weight:600;color:var(--rain);min-height:17px}
+.hour .wd{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--dim);min-height:30px;line-height:1.25}
+.hour .wd svg{width:10px;height:10px}
+.hour .wd small{font-size:11px}
+.hour.sun .wd{min-height:30px}
+.hourdetail{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px 14px;margin-top:10px;
+  padding-top:10px;border-top:1px solid var(--edge);font-size:14px}
+.hourdetail div{display:flex;justify-content:space-between;gap:8px}
+.hourdetail span{color:var(--dim)}
+.hourdetail .head{grid-column:1/-1;font-weight:600}
+
+/* ten days */
+.day{border-top:1px solid var(--edge)}
+.day:first-child{border-top:0}
+.day summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:52px 34px 40px 40px 1fr 40px;align-items:center;
+  gap:8px;min-height:50px}
+.day summary::-webkit-details-marker{display:none}
+.day .dn{font-weight:600}
+.day svg{width:30px;height:30px}
+.day .pp{font-size:12px;font-weight:600;color:var(--rain);text-align:center}
+.day .lo{text-align:right;color:var(--dim)}
+.day .hi{font-weight:600}
+.range{position:relative;height:6px;border-radius:3px;background:rgba(0,0,0,.28)}
+.range i{position:absolute;top:0;bottom:0;border-radius:3px}
+.range b{position:absolute;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#fff;border:2px solid rgba(0,0,0,.45)}
+.daybody{padding:2px 0 14px;font-size:14px}
+.daybody .facts{display:flex;flex-wrap:wrap;gap:6px 16px;color:var(--dim)}
+.daybody .facts b{color:#fff;font-weight:600}
+.office{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--glass-hi)}
+.office h3{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+.office p+p{margin-top:6px}
+
+/* radar */
+.radar{position:relative;height:340px;margin:0 -16px;overflow:hidden;background:#141a22;touch-action:none;cursor:grab;
+  user-select:none;-webkit-user-select:none}
+.radar.dragging{cursor:grabbing}
+.radar .layer{position:absolute;inset:0;pointer-events:none}
+.radar .layer img{position:absolute;width:256px;height:256px;max-width:none}
+.radar .base img{filter:grayscale(1) invert(1) brightness(.78) contrast(.92)}
+/* satellite in grey: IEM colours the coldest cloud tops in the same
+   greens and purples as the radar, and under the radar that read as rain */
+.radar .sat img{opacity:.9;filter:grayscale(1) contrast(1.15)}
+.radar .frame{opacity:0}
+/* IEM's HRRR pictures are opaque, rain on black: "screen" lets the black
+   vanish and keeps the colours, with no per-pixel work */
+.radar .frame canvas.hrrr{position:absolute;left:0;top:0}
+.radar .frame.future{mix-blend-mode:screen}      /* on the layer: its opacity would isolate the canvas */
+.radar .frame.on{opacity:.82}
+.radar svg.over{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.radar .credit{position:absolute;right:0;bottom:0;padding:2px 7px;font-size:11px;background:rgba(0,0,0,.66);color:#e6e9ee;
+  border-top-left-radius:8px;pointer-events:auto}
+.radar .zoom{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+.radar .zoom button{width:44px;height:44px;border-radius:12px;border:1px solid var(--edge);background:rgba(8,14,24,.82);font-size:22px;line-height:1}
+.radar .note{position:absolute;left:10px;top:10px;right:64px;padding:6px 10px;border-radius:10px;background:rgba(8,14,24,.85);font-size:13px}
+.radarbar{display:flex;align-items:center;gap:10px;margin-top:12px}
+.radarbar .play{width:44px;height:44px;flex:none;border-radius:50%;border:1px solid var(--edge);background:rgba(255,255,255,.14);
+  display:grid;place-items:center}
+.radarbar input{flex:1;min-width:0;accent-color:#fff;height:44px}
+.radarbar .when{flex:none;min-width:104px;text-align:right;font-size:13px;font-weight:600}
+.radarbar .when small{display:block;font-size:12px;font-weight:500;color:var(--dim)}
+.legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);margin-top:8px}
+.legend i{flex:1;height:8px;border-radius:4px;background:linear-gradient(90deg,#04e9e7,#019ff4,#0300f4,#02fd02,#01c501,#008e00,#fdf802,#e5bc00,#fd9500,#fd0000,#d40000,#bc0000,#f800fd,#9854c6)}
+
+/* details */
+.tile .big{font-size:30px;font-weight:500;line-height:1.1}
+.tile .say{margin-top:6px;font-size:14px;color:var(--dim)}
+.tile .say b{color:#fff;font-weight:600}
+.dial{display:flex;align-items:center;gap:14px}
+.dial svg{width:74px;height:74px;flex:none}
+
+/* sources */
+.feeds{display:grid;gap:2px}
+.feed{display:grid;grid-template-columns:14px 1fr auto;gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--edge);font-size:14px}
+.feed:first-child{border-top:0}
+.feed i{width:10px;height:10px;border-radius:50%;background:var(--ok);align-self:center}
+.feed i.stale{background:var(--watch)}
+.feed i.off{background:rgba(255,255,255,.35)}
+.feed .what b{font-weight:600}
+.feed .what span{display:block;color:var(--dim);font-size:13px}
+.feed .age{color:var(--dim);font-size:13px;text-align:right}
+
+footer{max-width:820px;margin:0 auto;padding:6px var(--gut) 48px;font-size:13px;color:var(--dim);text-align:center}
+footer p+p{margin-top:6px}
+footer a{color:#fff}
+
+/* the place sheet */
+dialog.sheet{width:min(520px,calc(100vw - 24px));max-height:min(640px,calc(100vh - 40px));padding:0;border:1px solid var(--edge);
+  border-radius:22px;background:rgba(12,24,46,.97);color:var(--text);box-shadow:0 30px 80px rgba(0,0,0,.55)}
+dialog.sheet::backdrop{background:rgba(2,6,14,.55);backdrop-filter:blur(3px)}
+.sheet .in{padding:18px}
+.sheet h2{font-size:18px;font-weight:600;margin-bottom:12px;display:flex;align-items:center}
+.sheet h2 button{margin-left:auto;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.1);font-size:20px}
+.sheet .locate{width:100%;min-height:48px;border-radius:14px;border:1px solid var(--edge);background:rgba(255,255,255,.12);
+  font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
+.sheet .locate:hover{background:rgba(255,255,255,.2)}
+.sheet form{margin-top:10px}
+.sheet input[type=search]{width:100%;min-height:48px;padding:0 14px;border-radius:14px;border:1px solid var(--edge);
+  background:rgba(0,0,0,.3);font-size:16px}
+.sheet input::placeholder{color:var(--faint)}
+.sheet .msg{font-size:14px;color:var(--dim);margin-top:10px;min-height:1px}
+.sheet ul{list-style:none;padding:0;margin-top:8px}
+.sheet li{display:flex;align-items:center;gap:4px;border-top:1px solid var(--edge)}
+.sheet li:first-child{border-top:0}
+.sheet li button.pick{flex:1;min-height:48px;text-align:left;padding:6px 6px;border:0;background:none;border-radius:10px}
+.sheet li button.pick:hover{background:rgba(255,255,255,.08)}
+.sheet li button.pick small{display:block;color:var(--dim);font-size:13px}
+.sheet li button.x{width:44px;height:44px;border:0;background:none;border-radius:10px;color:var(--dim);font-size:18px}
+.sheet .savednow{display:flex;align-items:center;gap:6px;font-size:18px;white-space:nowrap}
+.sheet .savednow svg{width:26px;height:26px}
+.sheet .savednow small{display:block;font-size:12px;color:var(--dim)}
+.sheet h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-top:16px}
+.sheet .privacy{font-size:13px;color:var(--dim);margin-top:14px}
+
+@media (max-width:640px){
+  /* every card full width, except the detail tiles, two to a row */
+  .card.half{padding:12px}
+  .tile .big{font-size:25px}
+  .tile .dial{gap:10px}
+  .tile .dial svg{width:52px;height:52px}
+  .day summary{grid-template-columns:54px 28px 34px 34px 1fr 34px;gap:5px}
+  .radar{height:300px}
+  .brand .t{display:none}
+}
+
+.summary{font-size:15px;margin:-2px 0 10px;padding-bottom:10px;border-bottom:1px solid var(--edge)}
+.hour.sun{opacity:.95}
+.hour.sun .t{font-size:13px;font-weight:600}
+.day .daychart{width:100%;height:auto;display:block;margin:4px 0 6px}
+.confline{display:inline-block;margin-top:10px;padding:4px 12px;border-radius:999px;background:var(--glass);font-size:14px;font-weight:600}
+.confline[data-l="low"]{background:rgba(120,70,0,.7)}
+.day .dn{white-space:nowrap}
+.cdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:4px;vertical-align:2px;background:#69db7c}
+.cdot[data-l="medium"]{background:#ffd43b}
+.cdot[data-l="low"]{background:#ff922b}
+.confsay{margin-top:8px;font-size:14px;color:var(--dim)}
+.confsay[data-l="low"]{color:#fff}
+.recrows{display:grid;gap:6px}
+.recrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 54px;gap:10px;align-items:center;font-size:14px}
+.recrow .rb{height:8px;border-radius:4px;background:rgba(0,0,0,.28);overflow:hidden}
+.recrow .rb i{display:block;height:100%;border-radius:4px;background:rgba(255,255,255,.55)}
+.recrow.used .rb i{background:#7cc4ff}
+.recrow.used .rn{font-weight:700}
+.recrow .rv{text-align:right;font-weight:600}
+.card.bare{background:none;border:0;padding:0;backdrop-filter:none;-webkit-backdrop-filter:none}
+.hero.card.bare{padding:20px 0 10px}
+#storms{display:grid;gap:10px}
+.hero .go{min-height:48px;padding:0 22px;border-radius:999px;border:0;background:#fff;color:#0b2342;font-weight:700}
+
+/* ══ storm mode ══════════════════════════════════════════
+   Inside a warning the page turns to face it: the warning first, then
+   the radar, then the rest. Each warning type has its own deep colour
+   (white type on all of them clears 7:1). */
+.storm{grid-column:1/-1;border-radius:var(--r);padding:16px;border:2px solid rgba(255,255,255,.35);background:#7a0019;
+  box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.storm[data-ev="svr"]{background:#7a3300}
+.storm[data-ev="ffw"]{background:#0c4f20}
+.storm[data-ev="eww"]{background:#5a1880}
+.storm[data-ev="other"]{background:#3b3f4a}
+.storm.emergency{background:#4a0060;border-color:#ff8cff;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{border-color:#fff}}
+.storm .kicker{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.storm h2{display:block;font-size:clamp(26px,7vw,34px);font-weight:800;line-height:1.05;margin:4px 0 6px;padding:0;border:0;letter-spacing:-.01em;
+  text-transform:none;color:#fff}
+.storm .until{font-size:16px;font-weight:600}
+.storm .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.storm .chips span{padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.32);font-size:13px;font-weight:700}
+.storm .track{margin-top:12px;padding:12px;border-radius:12px;background:rgba(0,0,0,.3);font-size:16px;font-weight:600}
+.storm .track small{display:block;font-size:13px;font-weight:500;margin-top:4px}
+.storm .todo{margin-top:12px;font-size:15px;white-space:pre-line}
+.storm .from{margin-top:10px;font-size:13px}
+body.storming .hero{padding:14px 0 10px}
+body.storming .hero .temp{font-size:64px}
+body.storming #radarcard{order:-1}
+body.storming #storms{order:-2}
+
+/* lists of warnings: nearby, and across the country */
+.warn{display:grid;grid-template-columns:6px 1fr auto;gap:10px;align-items:center;width:100%;text-align:left;padding:10px 0;
+  border:0;border-top:1px solid var(--edge);background:none;min-height:52px}
+.warn:first-of-type{border-top:0}
+.warn i{align-self:stretch;border-radius:3px;background:var(--note)}
+.warn[data-tone="warning"] i{background:var(--warn)}
+.warn[data-tone="watch"] i{background:var(--watch)}
+.warn b{display:block;font-weight:700}
+.warn span{display:block;font-size:13px;color:var(--dim)}
+.warn em{font-style:normal;font-size:13px;color:var(--dim);text-align:right}
+.warn:hover{background:rgba(255,255,255,.05)}
+.counts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px}
+.counts span{padding:6px 12px;border-radius:999px;background:var(--glass);border:1px solid var(--edge);font-weight:600;font-size:14px}
+.counts .hot{background:rgba(122,0,25,.85)}
+.risk{display:inline-block;margin-top:10px;padding:5px 12px;border-radius:999px;font-weight:700;font-size:14px;background:var(--glass)}
+
+/* radar layer controls */
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.seg button{min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--edge);background:rgba(255,255,255,.08);font-weight:600;font-size:14px}
+.seg button[aria-pressed="true"]{background:#fff;color:#0b2342;border-color:#fff}
+.seg .sep{flex:1}
+/* the map's control rows stay one line and scroll sideways on a phone,
+   rather than wrapping into five rows above the map */
+.seg.rowscroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-left:-2px;padding-left:2px}
+.seg.rowscroll::-webkit-scrollbar{display:none}
+.seg.rowscroll button{flex:none}
+
+/* replay: a time, a length, and storms worth seeing again */
+.replaybar[hidden]{display:none}
+.replaybar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 10px;padding:10px;border-radius:14px;background:var(--glass-hi);font-size:14px}
+.replaybar input,.replaybar select{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid var(--edge);background:rgba(0,0,0,.3);color:#fff;font:inherit}
+.replaybar .go{min-height:44px;padding:0 18px;border-radius:999px;border:0;background:#fff;color:#0b2342;font-weight:700}
+.replaybar #rplive{min-height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--edge);background:rgba(255,255,255,.1);font-weight:600}
+.replaybar .presets{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;width:100%;scrollbar-width:none}
+.replaybar .presets button{flex:none;min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--edge);background:rgba(255,255,255,.08);font-weight:600;font-size:13px}
+#replaytoggle[aria-pressed="true"]{background:#ffd166;color:#2b1d00;border-color:#ffd166}
+
+/* a cross-section under the map */
+.xsec{margin-top:12px;padding-top:12px;border-top:1px solid var(--edge)}
+.xsec .xh{display:flex;align-items:flex-start;gap:8px;font-size:14px;font-weight:600}
+.xsec .xh small{display:block;font-weight:500;color:var(--dim);font-size:13px}
+.xsec .xh button{margin-left:auto;flex:none;width:40px;height:40px;border:0;border-radius:10px;background:rgba(255,255,255,.1);font-size:18px}
+.xsec canvas{display:block;width:100%;border-radius:10px;margin-top:8px;background:#0c1422}
+.xsec .seg{margin:8px 0 0}
+
+/* the whole window as the map */
+#radarcard.mapfull{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;border-radius:0;border:0;margin:0;
+  background:rgba(8,16,30,.97);padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+#radarcard.mapfull .radar{flex:1;height:auto;min-height:0;margin:0 -14px}
+body.mapopen{overflow:hidden}
+.radar .zoom button[aria-pressed="true"]{background:#fff;color:#0b2342}
+@media (min-width:900px){ .radar{height:420px} }
+
+/* a tapped point on the map */
+.radar .pin{position:absolute;z-index:2;width:232px;transform:translate(-50%,calc(-100% - 14px));padding:10px 12px;border-radius:14px;
+  background:#0c182e;border:1px solid var(--edge);box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:14px;pointer-events:auto;cursor:default}
+.radar .pin{max-height:calc(100% - 12px);overflow:auto}
+.pin .prows{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin-top:6px;font-size:13px}
+.pin .prows span{color:var(--dim)}
+.pin .prows b{text-align:right;font-weight:600}
+.pin details{margin-top:6px;font-size:12px;color:var(--dim)}
+.pin details summary{cursor:pointer;min-height:28px;display:flex;align-items:center}
+.pin details code{display:block;white-space:pre-wrap;word-break:break-all;font-size:12px;color:#e6e9ee}
+/* station chips: dark type on the temperature's own colour (6:1 or better on every stop) */
+.radar svg.over .stn text{font:700 12px var(--sans);fill:#0b1422}
+.pin .ph{display:flex;align-items:center;gap:8px}
+.pin .ph svg{width:30px;height:30px;flex:none}
+.pin .pt{font-size:22px;font-weight:600}
+.pin .pn{font-weight:600;padding-right:30px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pin .ps{color:var(--dim);font-size:13px}
+.pin .pgo{margin-top:8px;width:100%;min-height:44px;border-radius:12px;border:0;background:#fff;color:#0b2342;font-weight:700}
+.pin .px{position:absolute;top:2px;right:2px;width:40px;height:40px;border:0;background:none;color:var(--dim);font-size:18px}
+.seg .seglab,.presets .seglab{align-self:center;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-right:2px}
+.sitebar{font-size:13px;color:var(--dim);margin:-2px 0 10px}
+.legend.vel i{background:linear-gradient(90deg,#00ff3c,#007a1d,#3a3a3a,#7a0010,#ff2a2a)}
+
+/* the models, side by side */
+#models summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:44px}
+#models summary::-webkit-details-marker{display:none}
+#models summary .chev{margin-left:auto;transition:transform .2s}
+#models details[open] summary .chev{transform:rotate(180deg)}
+#models .lead{font-size:14px;color:var(--dim)}
+.cmpchart{width:100%;height:auto;display:block;margin-top:6px}
+.cmpchart text{fill:var(--dim);font-size:12px}
+.cmpkey{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;margin-top:6px}
+.cmpkey span{display:inline-flex;align-items:center;gap:6px}
+.cmpkey i{width:16px;height:3px;border-radius:2px;display:inline-block}
+.cmpsay{font-size:15px;font-weight:600;margin-top:8px}
+/* the ensemble's days: a row each */
+.plrows{display:grid;gap:4px;margin-top:10px;font-size:14px}
+.plrow{display:grid;grid-template-columns:76px minmax(0,1fr) 42px 74px;gap:10px;align-items:center}
+.plrow.plhead{font-size:12px;color:var(--faint);letter-spacing:.04em}
+.plrow.plhead span:last-child{text-align:right}
+.plbar{height:8px;border-radius:4px;background:rgba(0,0,0,.28);overflow:hidden}
+.plbar i{display:block;height:100%;border-radius:4px;background:var(--rain)}
+.plp,.plh{text-align:right;font-weight:600}
+
+/* above you: the ingredients timeline */
+.tl{margin-top:10px}
+.tlsay{font-size:14px;font-weight:600;margin-bottom:6px}
+.tlrow{display:flex;align-items:center;gap:6px;margin-top:3px}
+.tln{width:44px;flex:none;font-size:12px;color:var(--dim)}
+.tlcells{flex:1;display:flex;gap:1px;min-width:0}
+.tlcells i{flex:1;min-width:0;height:22px;border-radius:2px;background:rgba(255,255,255,.1);cursor:pointer}
+.tlcells i.l1{background:#e9c46a}
+.tlcells i.l2{background:#f4845f}
+.tlcells i.l3{background:#d0329b}
+.tlcells i.lx{background:transparent}
+.tlcells i.on{outline:2px solid #fff;outline-offset:1px;position:relative;z-index:1}
+.tlticks{position:relative;height:16px;margin-left:50px;font-size:12px;color:var(--dim)}
+.tlticks span{position:absolute;top:2px;white-space:nowrap}
+
+/* above you: the sounding */
+#sky summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:44px}
+#sky summary::-webkit-details-marker{display:none}
+#sky summary .chev{margin-left:auto;transition:transform .2s}
+#sky details[open] summary .chev{transform:rotate(180deg)}
+#sky .lead{font-size:14px;color:var(--dim)}
+.skyrow{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:12px;margin-top:10px;align-items:start}
+.skyrow svg{width:100%;height:auto;display:block;border-radius:12px}
+.skymeta{font-size:14px;font-weight:600;margin-top:4px}
+.skymeta small{display:block;font-weight:500;color:var(--dim);font-size:13px}
+.skycmp{font-size:14px;margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--glass-hi)}
+.linkbtn{border:0;background:none;padding:0;color:#fff;font-weight:600;text-decoration:underline;min-height:24px}
+.hourpick{display:flex;align-items:center;gap:10px;margin-top:8px}
+.hourpick input{flex:1;min-width:0;height:44px;accent-color:#fff}
+.params{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 16px;margin-top:12px;font-size:14px}
+.params div{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--edge)}
+.params span{color:var(--dim)}
+.ptable{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
+.ptable th,.ptable td{padding:6px 4px;text-align:right;border-bottom:1px solid var(--edge)}
+.ptable th:first-child,.ptable td:first-child{text-align:left}
+.ptable th{font-weight:600;color:var(--faint);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.gloss{margin-top:12px;font-size:14px;color:var(--dim)}
+.gloss summary{cursor:pointer;color:#fff;font-weight:600;min-height:44px;display:flex;align-items:center}
+.gloss dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px}
+.gloss dt{color:#fff;font-weight:600}
+.key{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--dim);margin-top:6px}
+.key i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+
+@media (max-width:640px){
+  .skyrow{grid-template-columns:minmax(0,1fr)}
+  .warn{grid-template-columns:6px 1fr}
+  .warn em{grid-column:2;text-align:left}
+}
+
+/* ══ two pages, one room ═══════════════════════════════════
+   Weather (data-view="simple") is the everyday page; Weather Pro
+   (data-view="pro") is the map and the atmosphere in depth. Ric,
+   2026-10-21: "a page for what most people want … then a tab that is a
+   button that says Pro". The radar card's markup is the same on both;
+   the simple page hides Pro's controls. */
+.viewtabs{display:flex;justify-content:center;gap:4px;margin:6px auto 2px;padding:4px;width:max-content;border-radius:999px;
+  background:rgba(0,0,0,.25);border:1px solid var(--edge)}
+.viewtabs a,.viewtabs span{display:inline-flex;align-items:center;justify-content:center;min-height:40px;min-width:96px;padding:0 18px;
+  border-radius:999px;font-weight:700;font-size:15px;text-decoration:none;color:var(--dim)}
+.viewtabs a:hover{background:rgba(255,255,255,.12);color:#fff}
+.viewtabs .on{background:#fff;color:#0b2342}
+body[data-view="simple"] .pro-only{display:none!important}
+body[data-view="pro"] .simple-only{display:none!important}
+.promore{margin-top:10px;font-size:14px}
+.promore a{font-weight:600}
+
+/* Pro: a wider page, a map that fills the screen, a smaller "now" */
+body[data-view="pro"] main{max-width:1200px}
+body[data-view="pro"] .radar{height:min(72vh,720px)}
+body[data-view="pro"] .hero.card.bare{padding:8px 0 4px}
+body[data-view="pro"] .hero .temp{font-size:clamp(52px,11vw,72px)}
+body[data-view="pro"] .hero .cond{font-size:17px}
+@media (max-width:640px){ body[data-view="pro"] .radar{height:64vh} }

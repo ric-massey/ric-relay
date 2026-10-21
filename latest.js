@@ -26,7 +26,7 @@ window.RELAY_LATEST = [
     kind: "new room",
     room: "weather",
     title: "Weather",
-    description: "The sky over wherever you are: when the rain starts, radar and satellite, ten days ahead, the National Weather Service's warnings as issued, and whether it's a good hour to ride. Every forecast is scored against real airport thermometers every day.",
+    description: "The sky over wherever you are: when the rain starts, every hour, ten days ahead, radar, and the National Weather Service's warnings as issued. Tap Pro for Weather Pro — satellite, future radar, storm replays, soundings and the models side by side. Every forecast is scored against real airport thermometers every day.",
     href: "weather.html",
   },
   {

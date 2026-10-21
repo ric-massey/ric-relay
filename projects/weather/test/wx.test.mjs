@@ -417,38 +417,26 @@ console.log('\nRULE  a cross-section: points evenly along the line, one column e
   ok(W.normalizeXsec([{}], pts) === null, 'an answer with no hours is no section');
 }
 
+console.log('\nRULE  two pages, one room: Weather for everyone, Weather Pro for the depth');
+{
+  const fs = await import('node:fs');
+  const root = new URL('../../../', import.meta.url);
+  const read = f => fs.readFileSync(new URL(f, root), 'utf8');
+  const simple = read('weather.html'), pro = read('weather-pro.html'), app = read('assets/weather/app.js');
+  let parses = true; try { new Function(app); } catch (e) { parses = false; }
+  ok(parses, 'the shared page code parses');
+  ok(/data-view="simple"/.test(simple) && /data-view="pro"/.test(pro), 'each page says which it is');
+  ok(['next', 'hourly', 'daily', 't-wind'].every(id => simple.includes(`id="${id}"`) && !pro.includes(`id="${id}"`)), 'the everyday cards are on Weather only');
+  ok(['sky', 'models', 'record'].every(id => pro.includes(`id="${id}"`) && !simple.includes(`id="${id}"`)), 'the sounding, the models and the record are on Weather Pro only');
+  ok(['storms', 'alerts', 'nearby', 'national', 'radarcard'].every(id => simple.includes(`id="${id}"`) && pro.includes(`id="${id}"`)), 'warnings and the radar are on both — a warning reaches people who never open Pro');
+  ok(simple.includes('href="weather-pro.html"') && pro.includes('href="weather.html"'), 'each page links to the other');
+  ok([simple, pro].every(p => p.includes('assets/weather/app.js') && p.includes('assets/visit.js')), 'both load the shared code and count visits');
+  ok(![simple, pro, app, read('projects/weather/wx.js')].some(s => /ride outlook|rideOutlook/i.test(s)),
+    'no ride outlook anywhere — Ric, 2026-10-21: "this should be information, not something that could make it unsafe"');
+}
+
 console.log('\nRULE  calm is calm, not "N 0"');
 ok(W.isCalm(0) && W.isCalm(1.2) && !W.isCalm(1.6) && !W.isCalm(null), 'under 1.5 km/h is calm; no reading is not calm');
-
-console.log('\nRULE  the ride outlook: one word, and every reason for it');
-{
-  const T0 = 1_800_000_000 - (1_800_000_000 % 3600);
-  const mk = ({ temp = 20, gust = 20, code = 1, vis = 20000, pop = 0, precip = 0, isDay = true, sunset = T0 + 12 * 3600 } = {}) => ({
-    current: { t: T0, isDay },
-    hourly: Array.from({ length: 12 }, (_, i) => ({ t: T0 + i * 3600, temp, gust, code, vis, pop, precip, isDay: isDay ? 1 : 0 })),
-    daily: [{ t: T0 - 6 * 3600, sunrise: T0 - 3600, sunset }],
-    minutely: Array.from({ length: 48 }, (_, i) => ({ t: T0 + (i + 1) * 900, precip, snow: 0 }))
-  });
-  const now = T0 + 600;
-  const good = W.rideOutlook(mk(), now, 2);
-  ok(good.level === 'good' && good.reasons.length === 0, 'dry, mild, light wind, daylight: good, with nothing to warn about');
-  ok(W.rideOutlook(mk({ code: 95 }), now, 2).level === 'poor', 'thunder in the hours ahead: poor');
-  ok(W.rideOutlook(mk({ gust: 70 }), now, 2).level === 'poor' && W.rideOutlook(mk({ gust: 45 }), now, 2).level === 'fair', 'gusts of 40 mph are poor, 25 mph fair');
-  ok(W.rideOutlook(mk({ temp: 1 }), now, 2).level === 'poor' && W.rideOutlook(mk({ temp: 7 }), now, 2).level === 'fair', 'near freezing is poor, cold is fair');
-  ok(W.rideOutlook(mk({ vis: 800 }), now, 2).level === 'poor', 'fog under a mile: poor');
-  ok(W.rideOutlook(mk({ precip: 0.5, pop: 90 }), now, 2).level === 'poor', 'raining: poor');
-  ok(W.rideOutlook(mk({ isDay: false }), now, 2).reasons.some(r => r.text === 'After dark'), 'dark now is said');
-  const dusk = W.rideOutlook(mk({ sunset: T0 + 3600 }), now, 2);
-  ok(dusk.level === 'fair' && dusk.dark.at === T0 + 3600, 'a sunset inside the window is said, with its time');
-  ok(W.rideOutlook(mk({ sunset: T0 + 3 * 3600 }), now, 2).level === 'good', 'a sunset after the window is not');
-  ok(W.rideOutlook(mk(), now, 2, { alerts: [{ event: 'Tornado Warning', tone: 'warning', storm: true }] }).level === 'poor', 'a storm warning here: poor');
-  ok(W.rideOutlook(mk(), now, 2, { alerts: [{ event: 'Wind Advisory', tone: 'advisory', storm: false }] }).level === 'fair', 'an advisory: fair');
-  ok(W.rideOutlook(mk(), now, 2, { alerts: [{ event: 'Small Craft Advisory', tone: 'advisory' }, { event: 'Rip Current Statement', tone: 'statement' }] }).level === 'good', 'alerts for the water say nothing about a road');
-  ok(W.rideOutlook(mk(), now, 2, { alerts: [{ event: 'Red Flag Warning', tone: 'warning' }] }).level === 'fair', 'a fire-weather warning is care, not a stop');
-  ok(W.rideOutlook(mk(), now, 2, { alerts: [{ event: 'Tropical Storm Warning', tone: 'warning' }] }).level === 'poor', 'but a tropical storm warning is a stop');
-  ok(W.rideOutlook(mk(), now, 2, { nowcast: { kind: 'starting', text: 'Rain likely around 4:10 PM' } }).level === 'fair', "the radar's rain counts when the models are dry");
-  ok(W.rideOutlook(null, now, 2) === null, 'no forecast, no claim');
-}
 
 console.log('\nRULE  satellite tiles come from the lists, West under East');
 ok(Object.values(W.SAT).every(s => s.layers.length === 2 && /west/.test(s.layers[0]) && /east/.test(s.layers[1])), 'each kind is GOES-West then GOES-East');

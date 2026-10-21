@@ -9,6 +9,19 @@
 > room becomes. How it is built on this site, what is built so far, and which
 > provider answers each question is in [`README.md`](README.md).
 
+> **Decisions since the original (Ric, 2026-10-21):**
+> 1. **Two pages, not one.** "A page for what most people want — the forecast,
+>    the 10-day — then a tab that is a button that says Pro, and that takes you to
+>    Weather Pro, which has all the stuff someone chasing or studying weather
+>    wants." This replaces the single-page progressive disclosure of §3 and §42.
+>    Weather (`weather.html`) is the everyday page; Weather Pro
+>    (`weather-pro.html`) is the map, the soundings, the models. Warnings and storm
+>    mode stay on both: a warning has to reach the people who never open Pro.
+> 2. **No ride outlook, and no go/no-go verdicts.** "This should be information,
+>    not something that could make it unsafe." §21.1's ride verdict was built and
+>    removed the same day. The room shows the weather; it does not tell anyone
+>    whether it is safe to do something.
+
 > Simple on the surface. Extremely deep underneath.
 
 Purpose: Define the complete product vision and implementation architecture for a weather application that works as a fast, obvious everyday forecast while opening naturally into a serious meteorological analysis environment for radar, models, soundings, observations, severe weather, replay, and 3D visualization.
@@ -87,7 +100,7 @@ The product succeeds only if both questions can be answered by the same applicat
 ## 3. Product Principles
 
 - Simple first. The first screen should answer everyday weather questions within seconds.
-- Progressive depth. Every important surface-level item can be opened into deeper context without forcing a mode switch.
+- Progressive depth. Every important surface-level item can be opened into deeper context without forcing a mode switch. *(Superseded 2026-10-21: the depth lives on its own page, Weather Pro, one tap away — see the decisions at the top.)*
 - One source of context. Selected location and selected time flow through the entire application.
 - Truth over confidence theater. Show observations, model output, age, uncertainty, and source. Do not present derived estimates as measurements.
 - Performance is a feature. Large scientific datasets are processed server-side and delivered as small visual or numerical slices.
@@ -544,6 +557,12 @@ Official warning products must remain authoritative. The application can organiz
 Advanced derived guidance may be displayed separately, with source and uncertainty clearly labeled.
 
 ## 21. Outdoor and Motorcycle Decisions
+
+> **Removed 2026-10-21 (Ric):** "This should be information, not something that
+> could make it unsafe." The room gives no ride outlook and no good/bad verdict on
+> any activity. The everyday page's next-3-hours, hourly wind and alerts are the
+> information; the decision stays with the person. Kept below as the original
+> plan, not as work to do.
 
 The app should answer practical questions without becoming an activity-selector dashboard.
 
@@ -1081,7 +1100,7 @@ That MVP already proves the core idea: a normal weather app that opens directly 
 
 ## 42. Major Product Decisions
 
-- No hard beginner/expert mode. Use progressive disclosure.
+- ~~No hard beginner/expert mode. Use progressive disclosure.~~ Two pages: Weather for everyone, Weather Pro for the depth, one tap apart (Ric, 2026-10-21).
 - Normal weather remains the front door. The deep side must never compromise basic usability.
 - Location + valid time are global context. Pages are views of the same weather state, not isolated tools.
 - 2D + soundings + cross-sections before 3D. They provide more utility per unit complexity and are easier to keep fast.

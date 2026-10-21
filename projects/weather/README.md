@@ -1,19 +1,41 @@
 # Weather — the sky over you
 
-`weather.html` is the weather room: a phone weather app on the surface (now,
-when the rain starts, every hour, ten days, alerts, radar) that is meant to open,
-phase by phase, into a real meteorology tool — model fields, soundings,
-hodographs, cross-sections, replay. **[`DESIGN.md`](DESIGN.md) is Ric's design
-document and the source of truth for what it becomes**; this file is how it is
-built here and what is built so far. Terminal: `weather` (or `wx`, `forecast`,
-`radar`, `rain`).
+The weather room is **two pages, one tap apart** (Ric, 2026-10-21):
+
+- **Weather** (`weather.html`) — what most people want: now, when the rain
+  starts, every hour, ten days, alerts, a plain radar loop, the detail tiles.
+- **Weather Pro** (`weather-pro.html`) — what someone chasing or studying weather
+  wants: a big map with every layer (single-site reflectivity and velocity, HRRR
+  future radar, replay, satellite, airport stations, SPC outlook, cross-sections,
+  tap-a-point), the soundings, the models side by side and the ensemble, and the
+  accuracy record.
+
+A **Weather | Pro** switch sits at the top of both. Warnings and storm mode are on
+both — a warning has to reach the people who never open Pro. The chosen place is
+shared (this browser's `localStorage`), so switching keeps it. Both pages load the
+same code, `assets/weather/app.js`, and the same stylesheet,
+`assets/weather/weather.css`; each page holds only its own cards and the code
+draws what is there (`body[data-view]` is `simple` or `pro`). The radar card's
+markup is the same on both; the simple page hides Pro's controls (`.pro-only`).
+
+**There is no ride outlook, and there will be no go/no-go verdicts.** One was built
+and removed the same day — Ric: "this should be information, not something that
+could make it unsafe." `test/wx.test.mjs` fails if one comes back.
+
+**[`DESIGN.md`](DESIGN.md) is Ric's design document and the source of truth for
+what the room becomes** (its top lists the decisions made since); this file is how
+it is built here and what is built so far. Terminal: `weather` (or `wx`,
+`forecast`, `radar`, `rain`).
 
 It is **listed** since 2026-10-21 — in `ROOMS`, in every room nav, and a tier-0
 post on the front door (the `radar` painter, over invented ground).
 
 | File | What it is |
 |---|---|
-| `../../weather.html` | the page: the hero, the cards, the radar map, the place sheet |
+| `../../weather.html` | **Weather**: the hero, the next three hours, hourly, ten days, a plain radar, the tiles, the place sheet |
+| `../../weather-pro.html` | **Weather Pro**: the hero, the full map, the air above you, the models and ensemble, the accuracy record |
+| `../../assets/weather/app.js` | the page code both load — every card, the map, the place sheet; it draws the cards the page holds and skips the rest |
+| `../../assets/weather/weather.css` | the stylesheet both load (shared within the room, as climbing's and training's are) |
 | `wx.js` | everything that talks to a provider, turns its answer into one shape, or decides what the page may say (is it raining, how old is this, where is the storm). Pure functions are exported for Node |
 | `sounding.js` | the vertical arithmetic: parcels, CAPE / CIN / LCL / LFC / EL, precipitable water, lapse rates, shear, Bunkers storm motion, helicity, STP |
 | `draw.js` | the Skew-T and the hodograph, as SVG strings |
@@ -160,13 +182,6 @@ offline copy, refresh every ten minutes while open.
 
 ## The everyday side
 
-- **Ride outlook** (`Wx.rideOutlook`, DESIGN.md §21.1): good / ride with care /
-  not a good window for the next 1, 2 or 4 hours, and every reason — the rain
-  line (the same `rainOutlook`, so it never contradicts it), the radar's next
-  hour, thunder in the hourly codes, gusts (25 / 40 mph), cold and near-freezing
-  air, heat, fog, darkness, and alerts covering the place. Thresholds are in
-  `RIDE`. It claims nothing about road surfaces, and there is no lightning feed —
-  thunder is the model's and the card says so.
 - **Calm is "calm"** (`Wx.isCalm`, under 1.5 km/h): no direction, no arrow, and a
   gust is only said beside a wind from the same source.
 - **The next-3-hours card** adds when the forecast next has rain, so it says more

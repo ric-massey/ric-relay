@@ -699,6 +699,17 @@ room and the source of truth for what gets built next.** It went public on 2026-
 door drawn by the `radar` painter over invented ground, and top of `latest.js`). The
 ones that must never break:
 
+- **Two pages, one room** (Ric, 2026-10-21): **Weather** (`weather.html`) is what most
+  people want — now, the next hours, ten days, a plain radar; **Weather Pro**
+  (`weather-pro.html`) is the full map, soundings, models and the record. A
+  Weather | Pro switch tops both. Both load `assets/weather/app.js` and
+  `assets/weather/weather.css`; each page holds only its own cards. **Warnings and
+  storm mode stay on both** — never move them to Pro only. Pro is a tab of the
+  weather room, not a room: it is not in `ROOMS` or the room navs.
+- **No go/no-go verdicts.** A ride outlook was built and removed the same day — Ric:
+  "this should be information, not something that could make it unsafe." Don't add
+  one for riding, driving, flying or anything else; `test/wx.test.mjs` checks.
+
 - **No place in the repo, ever (hard rule 1).** The visitor's own location or search,
   kept in their localStorage, rounded to two decimals before anything is asked — the
   Worker refuses finer. No default location, no coordinates in tests (the live test

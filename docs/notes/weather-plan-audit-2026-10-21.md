@@ -271,3 +271,21 @@ four switches 150 ms apart: it lands cleanly on the last one.
 Layout note: on a phone the radar's first row (US mosaic … Replay, Stations, SPC
 outlook) scrolls sideways, so the later buttons start out of sight. Worth a second look
 if Ric finds them hard to find.
+
+## Later the same day: two pages, and no ride outlook (Ric's decisions)
+
+- **The room is now two pages.** Weather (`weather.html`) — now, the next three
+  hours, hourly, ten days, a plain radar loop, the tiles — and Weather Pro
+  (`weather-pro.html`) — the full map with every layer, the soundings, the models
+  and ensemble, the accuracy record. A Weather | Pro switch tops both; the place
+  carries across; warnings and storm mode stay on both. The page code and styles
+  moved into `assets/weather/app.js` and `weather.css`, shared by both. On Pro the
+  map starts at once rather than when scrolled to, because it is the page.
+- **The ride outlook is gone**, everywhere — card, `Wx.rideOutlook`, its tests and
+  its mentions — and a test now fails if a go/no-go verdict comes back. Ric: "this
+  should be information, not something that could make it unsafe." The ride outlook
+  entries above are history.
+- Checked: both pages at desktop and 375px, the place carried from one to the other,
+  Pro's map with 58 stations and the sounding and models loaded, the simple page's US
+  view still leading with the national warnings, no console errors, nothing over
+  the edge, nothing under 11px.
