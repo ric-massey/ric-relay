@@ -539,6 +539,8 @@
     .stage{padding:10px;min-width:0}
     .stage canvas{display:block;width:100%;aspect-ratio:1;background:#07090c}
     .rtitle{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+    .rtitle.rbelow{margin:10px 0 0}
+    .rv + .rpicks{margin-top:8px}
     .rtitle b{font-family:var(--display);font-size:22px;letter-spacing:.05em;text-transform:uppercase;color:var(--bright)}
     .pick{min-height:36px;flex:1;min-width:0;max-width:420px;background:var(--panel-solid);color:var(--text);border:1px solid var(--line-hot);padding:0 10px;font:inherit}
     .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -3108,9 +3110,9 @@ function boot() {
 
   // the replay's shape while its match file loads
   const SKEL_REPLAY = `<div class="replay" aria-busy="true"><span class="sr">Loading the replay</span>
-      <div class="panel stage"><div class="skel" style="height:36px;width:min(420px,70%)"></div>
+      <div class="panel stage"><div class="skel" style="aspect-ratio:1"></div>
         <div class="skel" style="height:30px;margin-top:10px"></div><div class="skel" style="height:30px;margin-top:8px;width:85%"></div>
-        <div class="skel" style="margin-top:10px;aspect-ratio:1"></div></div>
+        <div class="skel" style="height:36px;margin-top:10px;width:min(420px,70%)"></div></div>
       <div class="panel side">${'<div class="skel" style="height:34px"></div>'.repeat(7)}</div></div>`;
   const SKEL_SNAP = `<div aria-busy="true"><span class="sr">Loading the snapshot</span><div class="skel" style="aspect-ratio:1;max-width:760px;margin:0 auto"></div></div>`;
 
@@ -3133,11 +3135,6 @@ function boot() {
   function Player(box, m, R, startRound, startAt, still, startFollow = "bomb") {
     const seats = seatInfo(R), cal = radarFor(R.map), st = R.stride || 2;
     box.innerHTML = `<div class="replay fadein"><div class="panel stage">
-        <div class="rtitle"><label class="sr" for="rmatch">Match</label>
-          <select id="rmatch" data-rmatch class="pick">${replayable.map((x) => `<option value="${esc(x.id)}"${x.id === m.id ? " selected" : ""}>${esc(when(x.at))} · ${esc(mapName(x.map))} ${x.score[0]}:${x.score[1]} ${{ W: "win", L: "loss", T: "draw" }[x.result]}</option>`).join("")}</select>
-          <button type="button" class="btn ghost" data-openmatch style="min-height:34px;font-size:13px">Match stats</button></div>
-        <div class="rpicks" role="group" aria-label="Round">${R.rounds.map((r, i) => `<button type="button" class="${r.w ? "w" : "l"}" data-r="${i}" aria-label="Round ${i + 1}, ${r.w ? "won" : "lost"}">${i + 1}</button>`).join("")}</div>
-        <div class="rinfo"><button type="button" class="pp" data-rstep="-1" aria-label="Previous round">‹</button><span></span><button type="button" class="pp" data-rstep="1" aria-label="Next round">›</button></div>
         <div class="rv"><canvas class="cvfade" width="1024" height="1024" tabindex="0" aria-label="The round on the radar. Activate to play, zoom and pan."></canvas>
           <button type="button" class="rmenu-btn" data-rmenu aria-label="Replay settings" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2" r="1.7"/><circle cx="2" cy="8" r="1.7"/><circle cx="2" cy="14" r="1.7"/></svg></button>
           <div class="rmenu" data-rmenupanel hidden>
@@ -3149,8 +3146,13 @@ function boot() {
             <div class="rm-sec"><div class="rm-h">How it's drawn</div><p class="rm-note">Rebuilt from Valve's demo, not a recording. Everyone's position is saved ${R.hz === 2 ? "twice" : `${R.hz} times`} a second${R.fine_hz ? `, and ${({ 4: "four", 8: "eight", 16: "sixteen" })[R.fine_hz] || R.fine_hz} times a second around each kill` : ""}; in between they're drawn moving in a straight line. Where each kill happened is exact. The view cones are worked out from which way people faced, so they're close, not exact.</p></div>
           </div>
           <div class="kf" aria-hidden="true"></div><div class="hint" title="Space plays · ← → step 5 s · [ ] change round · Esc lets go">Click to play</div>${playBar(`<button type="button" class="pp" data-close aria-label="Let go of the map">✕</button>`)}</div>
+        <div class="rpicks" role="group" aria-label="Round">${R.rounds.map((r, i) => `<button type="button" class="${r.w ? "w" : "l"}" data-r="${i}" aria-label="Round ${i + 1}, ${r.w ? "won" : "lost"}">${i + 1}</button>`).join("")}</div>
+        <div class="rinfo"><button type="button" class="pp" data-rstep="-1" aria-label="Previous round">‹</button><span></span><button type="button" class="pp" data-rstep="1" aria-label="Next round">›</button></div>
         ${WP ? `<div class="wpstrip" data-wp><div class="wphead"><span>Ric's team's chance to win the round${info("wp", "the win chance")}</span><b data-wpnow>—</b></div>
           <div class="wpplot" role="img"><svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"></svg><i class="wpcur"></i></div></div>` : ""}
+        <div class="rtitle rbelow"><label class="sr" for="rmatch">Match</label>
+          <select id="rmatch" data-rmatch class="pick">${replayable.map((x) => `<option value="${esc(x.id)}"${x.id === m.id ? " selected" : ""}>${esc(when(x.at))} · ${esc(mapName(x.map))} ${x.score[0]}:${x.score[1]} ${{ W: "win", L: "loss", T: "draw" }[x.result]}</option>`).join("")}</select>
+          <button type="button" class="btn ghost" data-openmatch style="min-height:34px;font-size:13px">Match stats</button></div>
 </div>
       <div class="panel side"><div class="rlegend"><span><i style="background:var(--t)"></i>T</span><span><i style="background:var(--ct)"></i>CT</span>
           <span><i style="background:#fff"></i>Ric (white ring)</span><span>✕ died · cone = facing · orange = shooting, red = hit, white = headshot</span></div>
