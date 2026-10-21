@@ -106,9 +106,21 @@ class Recorder:
                         cur["k"] = st.get("round_kills", cur.get("k", 0))
                         cur["hsk"] = st.get("round_killhs", cur.get("hsk", 0))
                         cur["dead"] = (st.get("health") or 0) == 0
+            # The score is the other witness. The last round of a match goes
+            # straight to game over, and that post has no round.win_team
+            # (2026-10-20: a 12-12 came out with 23 rounds), so when one side's
+            # score goes up by one, that side won round n.
+            ct = (mp.get("team_ct") or {}).get("score", 0)
+            t = (mp.get("team_t") or {}).get("score", 0)
+            was = m.get("seen")
+            if was and (ct - was[0], t - was[1]) in ((1, 0), (0, 1)):
+                cur = m["rounds"].setdefault(n, {})
+                if "won" not in cur:
+                    side = cur.get("side") or m["team"]
+                    cur["side"] = side
+                    cur["won"] = ("CT" if ct > was[0] else "T") == side
+            m["seen"] = (ct, t)
             if mp.get("phase") == "gameover":
-                ct = (mp.get("team_ct") or {}).get("score", 0)
-                t = (mp.get("team_t") or {}).get("score", 0)
                 us, them = (ct, t) if m["team"] == "CT" else (t, ct)
                 m["score"] = [us, them]
                 self._close(left=False)

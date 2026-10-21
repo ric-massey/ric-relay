@@ -65,6 +65,8 @@ const SUITES = [
   /* The bomb timer and the packed replay tracks are each written twice, in
      cs.html and in Python; this replays every committed match through both. */
   ['the CS page and its scripts agree', ['projects/cs/test/parity.mjs']],
+  /* The live feed's last round arrives as game over with no winner named. */
+  ['the CS live feed keeps every round', ['projects/cs/test/gsi.mjs']],
   ['atlas', glob('atlas/test', '.test.mjs')],
   /* ricmassey.com/admin: the site-admin function holds the service key, and
      KONDRITE's admin.sql reads every player's email, so this holds both to
