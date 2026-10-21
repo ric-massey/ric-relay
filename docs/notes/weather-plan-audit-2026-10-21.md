@@ -234,6 +234,40 @@ lines pack, the High Plains rising under A, and the jet core near 300 hPa in the
 view. The first drawing had the pressure axis upside down (the ground filled the whole
 panel) — fixed and re-checked at desktop and phone width.
 
+## Final check (2026-10-21, end of the day)
+
+Every radar mode switched through with satellite on and off, stations toggled,
+units switched, a replay entered and left, and a cross-section drawn — no errors. The
+check found one race: switching modes faster than a request answers (Reflectivity then
+Velocity) could leave the older mode's frames under the newer button. `setMode` now
+lets only the newest switch finish, and a replay counts as a switch. Re-checked with
+four switches 150 ms apart: it lands cleanly on the last one.
+
+### Where the plan stands now
+
+| Phase | Status |
+|---|---|
+| 1 · Normal weather | Done |
+| 2 · Investigation | Done except a unified timeline across radar and satellite (satellite tiles carry no time) |
+| 3 · Forecast models | HRRR future radar on the map. Other fields as map layers need a source — **Ric** |
+| 4 · Soundings | Done, effective-layer parameters included |
+| 5 · Advanced | Model comparison, ensembles, cross-sections done. MRMS and dual-pol need a source IEM does not tile |
+| 6 · Station + verification | Verification done. The personal station needs **Ric** (what it is, how to name it with no coordinates) |
+| 7 · Replay | National radar and warnings done. Satellite and model runs for a past moment not yet |
+| 8 · 3D | Not started, by design |
+
+### What needs Ric
+
+1. **Run Actions → Deploy Worker.** Five new `/wx` routes (stations, plumes, HRRR run,
+   replay warnings, cross-sections) and the balloon column's past hours. Until then each
+   falls back to asking the provider directly, which works.
+2. **Model fields on the map** (temperature, wind, CAPE): wait for a public tiled source,
+   or build a GRIB → tiles job (GitHub Actions + R2).
+3. **Lightning:** a backend job for GLM, or leave the ride outlook saying there is no
+   lightning feed.
+4. **The personal weather station.**
+5. **Push alerts for saved places:** needs a key pair as a Worker secret.
+
 Layout note: on a phone the radar's first row (US mosaic … Replay, Stations, SPC
 outlook) scrolls sideways, so the later buttons start out of sight. Worth a second look
 if Ric finds them hard to find.

@@ -1886,6 +1886,7 @@
     const timeFmt = (ms) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(ms);
     async function replay(from, hours, fitToStorms) {
       R.mode = "replay";
+      R.modeAsk = (R.modeAsk || 0) + 1;                  // a live switch still in flight must not finish over this
       document.querySelectorAll(".seg [data-mode]").forEach((b) => b.setAttribute("aria-pressed", "false"));
       play(false); clearTiles(); R.pin = null;
       $("#legend").classList.remove("vel");
@@ -2110,7 +2111,9 @@
     async function siteFrames(onlyIfNew) {
       if (!R.site) return;
       let scans = [];
-      try { scans = await Wx.siteScans(R.site.id, R.mode); } catch (e) {}
+      const mode = R.mode;
+      try { scans = await Wx.siteScans(R.site.id, mode); } catch (e) {}
+      if (R.mode !== mode) return;                     // switched away while asking: the newer mode owns the frames
       /* a refresh with no new scan leaves the loop alone */
       if (onlyIfNew && (!scans.length || scans[scans.length - 1].t === R.valid)) return;
       if (!scans.length) { setFrames([]); note(`No scans from ${R.site.id} in the last hour — the radar may be down for maintenance. Try the US mosaic.`); return; }
@@ -2326,16 +2329,23 @@
       clearTiles();
       $("#legend").classList.toggle("vel", mode === "N0S");
       $("#legend").innerHTML = mode === "N0S" ? `<span>toward</span><i aria-hidden="true"></i><span>away</span>` : `<span>light</span><i aria-hidden="true"></i><span>heavy</span>`;
+      /* only the newest switch may finish: tapping Reflectivity then Velocity
+         quickly once left reflectivity's scans under the Velocity button */
+      const ask = R.modeAsk = (R.modeAsk || 0) + 1;
       if (mode === "comp") {
-        R.valid = await Wx.radarTime();
+        const v = await Wx.radarTime();
+        if (ask !== R.modeAsk) return;
+        R.valid = v;
         compFrames();
       } else if (mode === "hrrr") {
         await hrrrFrames();
       } else {
         if (R.z < 7) zoomTo(8);
         await pickSite(!R.site);
+        if (ask !== R.modeAsk) return;
         await siteFrames();
       }
+      if (ask !== R.modeAsk) return;
       label(); renderSources();
     }
 
