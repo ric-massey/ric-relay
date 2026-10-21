@@ -1,6 +1,6 @@
 # RicGoneCrazy — Counter-Strike 2, every match
 
-Ric Massey's CS2 record from https://ricmassey.com/cs.html, as plain text. Generated 2026-10-20. Each match below links to a full report.
+Ric Massey's CS2 record from https://ricmassey.com/cs.html, as plain text. Generated 2026-10-21. Each match below links to a full report.
 
 Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed, and Leetify for games whose demo Valve already deleted. Other players appear under their in-game names.
 
@@ -16,7 +16,7 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Headshot % | 44% |
 | Matches with full demo data | 25 |
 
-**Leetify skill ratings** (read 2026-10-21): aim 48/100, positioning 29/100, utility 6/100.
+**Leetify skill ratings** (read 2026-10-21): aim 47/100, positioning 28/100, utility 7/100.
 
 **Competitive rank by map:** Cache Unranked, Dust II Unranked, Train Silver I, Anubis Unranked, Mirage Unranked, Inferno Unranked, Vertigo Unranked. Premier rating: unrated.
 
@@ -24,8 +24,8 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 | Date | Map | Mode | Score | Result | K-D-A | ADR | HLTV 1.0 | Leetify rating | Full data | Report |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 2026-10-21 03:19 UTC | Inferno | Competitive | 8–13 | loss | 8-17-3 | 50.2 | 0.56 | — | yes | [gsi-20261021T031901.md](gsi-20261021T031901.md) |
-| 2026-10-21 02:26 UTC | Dust II | Competitive | 13–1 | win | 14-9-4 | 103.4 | 1.29 | — | yes | [gsi-20261021T022617.md](gsi-20261021T022617.md) |
+| 2026-10-21 03:19 UTC | Inferno | Competitive | 8–13 | loss | 8-17-3 | 50.2 | 0.56 | -7.98 | yes | [gsi-20261021T031901.md](gsi-20261021T031901.md) |
+| 2026-10-21 02:26 UTC | Dust II | Competitive | 13–1 | win | 14-9-4 | 103.4 | 1.29 | +5.74 | yes | [gsi-20261021T022617.md](gsi-20261021T022617.md) |
 | 2026-10-20 17:53 UTC | Mirage | Competitive | 12–12 | draw | 21-18-4 | 84.9 | 1.08 | -0.38 | yes | [gsi-20261020T175347.md](gsi-20261020T175347.md) |
 | 2026-10-20 05:59 UTC | Train | Competitive | 0–5 | loss | 2-4-0 | 53.0 | 0.50 | -5.20 | yes | [gsi-20261020T055951.md](gsi-20261020T055951.md) |
 | 2026-10-20 05:48 UTC | Dust II | Competitive | 11–13 | loss | 7-19-7 | 45.6 | 0.44 | -11.29 | yes | [gsi-20261020T054824.md](gsi-20261020T054824.md) |
@@ -99,12 +99,12 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Walkway | 4 | 12% | 4 | 22% | 1.00 |
 | Bombsite B | 3 | 9% | 1 | 6% | 0.33 |
 | Canal | 3 | 9% | 0 | 0% | 0.00 |
+| Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
 | Heaven | 2 | 6% | 1 | 6% | 0.50 |
 | Bridge | 2 | 6% | 1 | 6% | 0.50 |
-| Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
 | Main | 1 | 3% | 1 | 6% | 1.00 |
-| Bricks | 1 | 3% | 0 | 0% | 0.00 |
 | Fountain | 1 | 3% | 0 | 0% | 0.00 |
+| Bricks | 1 | 3% | 0 | 0% | 0.00 |
 | Bombsite A | 0 | 0% | 3 | 17% | — |
 | Ruins | 0 | 0% | 2 | 11% | — |
 | Street | 0 | 0% | 1 | 6% | — |
@@ -118,12 +118,12 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Mid | 2 | 17% | 0 | 0% | 0.00 |
 | Outside A | 1 | 8% | 3 | 25% | 3.00 |
 | Bombsite B | 1 | 8% | 1 | 8% | 1.00 |
-| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | CT Lane | 1 | 8% | 0 | 0% | 0.00 |
+| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 8% | 0 | 0% | 0.00 |
 | T Yard | 0 | 0% | 2 | 17% | — |
-| B Main | 0 | 0% | 1 | 8% | — |
 | Vents | 0 | 0% | 1 | 8% | — |
+| B Main | 0 | 0% | 1 | 8% | — |
 | A Stairs | 0 | 0% | 1 | 8% | — |
 
 ### Dust II: where Ric dies and kills
@@ -133,17 +133,17 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Bombsite B | 13 | 18% | 10 | 21% | 0.77 |
 | Catwalk | 8 | 11% | 4 | 8% | 0.50 |
 | Long Doors | 8 | 11% | 3 | 6% | 0.38 |
+| Outside Long | 6 | 8% | 4 | 8% | 0.67 |
 | Long A | 6 | 8% | 4 | 8% | 0.67 |
 | Top of Mid | 6 | 8% | 4 | 8% | 0.67 |
-| Outside Long | 6 | 8% | 4 | 8% | 0.67 |
 | Extended A | 4 | 6% | 1 | 2% | 0.25 |
 | B Doors | 4 | 6% | 0 | 0% | 0.00 |
 | Bombsite A | 3 | 4% | 1 | 2% | 0.33 |
 | Under A | 2 | 3% | 4 | 8% | 2.00 |
 | Middle | 2 | 3% | 1 | 2% | 0.50 |
+| A Ramp | 2 | 3% | 0 | 0% | 0.00 |
 | Hole | 2 | 3% | 0 | 0% | 0.00 |
 | Tunnel Stairs | 2 | 3% | 0 | 0% | 0.00 |
-| A Ramp | 2 | 3% | 0 | 0% | 0.00 |
 | Upper Tunnel | 1 | 1% | 3 | 6% | 3.00 |
 | Mid Doors | 1 | 1% | 1 | 2% | 1.00 |
 | Pit | 1 | 1% | 0 | 0% | 0.00 |
@@ -164,9 +164,9 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Bombsite B | 3 | 9% | 8 | 33% | 2.67 |
 | Balcony | 2 | 6% | 1 | 4% | 0.50 |
 | Arch | 2 | 6% | 0 | 0% | 0.00 |
-| CT Spawn | 1 | 3% | 0 | 0% | 0.00 |
 | Library | 1 | 3% | 0 | 0% | 0.00 |
 | Second Mid | 1 | 3% | 0 | 0% | 0.00 |
+| CT Spawn | 1 | 3% | 0 | 0% | 0.00 |
 
 ### Mirage: where Ric dies and kills
 
@@ -185,12 +185,12 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | T Ramp | 4 | 3% | 1 | 1% | 0.25 |
 | Underpass | 3 | 2% | 3 | 3% | 1.00 |
 | Scaffolding | 2 | 2% | 2 | 2% | 1.00 |
-| Stairs | 2 | 2% | 1 | 1% | 0.50 |
 | House | 2 | 2% | 1 | 1% | 0.50 |
+| Stairs | 2 | 2% | 1 | 1% | 0.50 |
 | Snipers Nest | 2 | 2% | 0 | 0% | 0.00 |
 | Palace Alley | 1 | 1% | 4 | 4% | 4.00 |
-| Jungle | 1 | 1% | 1 | 1% | 1.00 |
 | Back Alley | 1 | 1% | 1 | 1% | 1.00 |
+| Jungle | 1 | 1% | 1 | 1% | 1.00 |
 | Top of Mid | 1 | 1% | 0 | 0% | 0.00 |
 | Side Alley | 1 | 1% | 0 | 0% | 0.00 |
 | Ladder | 0 | 0% | 2 | 2% | — |
@@ -221,12 +221,12 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 | Bombsite A | 3 | 20% | 0 | 0% | 0.00 |
 | T Corridor Up | 1 | 7% | 2 | 25% | 2.00 |
 | Elevator | 1 | 7% | 1 | 12% | 1.00 |
-| Crane | 1 | 7% | 0 | 0% | 0.00 |
-| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
-| Tunnels | 1 | 7% | 0 | 0% | 0.00 |
-| Mid | 1 | 7% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 7% | 0 | 0% | 0.00 |
+| Mid | 1 | 7% | 0 | 0% | 0.00 |
+| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
+| Tunnels | 1 | 7% | 0 | 0% | 0.00 |
+| Crane | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Top | 0 | 0% | 2 | 25% | — |
 | Connector | 0 | 0% | 1 | 12% | — |
 | Top of Mid | 0 | 0% | 1 | 12% | — |
