@@ -38,7 +38,7 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     ...W.SPC_KINDS.map(k => W.ROUTES.spc(k)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.column(m, 12.34, -56.78)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.modelRun(m)),
-    W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78), W.ROUTES.stationObs('ABC'), W.ROUTES.plumes(12.34, -56.78), W.ROUTES.hrrrMeta(),
+    W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78), W.ROUTES.stationObs('ABC'), W.ROUTES.plumes(12.34, -56.78), W.ROUTES.hrrrMeta(), W.ROUTES.sbwArchive('2011-04-27T20:00Z', '2011-04-27T23:00Z'),
     W.ROUTES.several([{ lat: 12.34, lon: -56.78 }, { lat: -33.87, lon: 151.21 }])
   ];
   for (const [path, direct] of routes) {
@@ -383,6 +383,23 @@ console.log('\nRULE  the ensemble: every run its own line, and the days counted 
   ok(st.days[0].wet === 0 && st.days[1].wet === 0.5, 'chance of rain is the share of runs with 1 mm or more that day');
   ok(W.quantile([3, 1, 2], 0.5) === 2 && W.quantile([], 0.5) === null, 'quantiles, and none of nothing');
   ok(W.normalizePlumes({}) === null && W.plumeStats(null, []) === null, 'no ensemble, no claim');
+}
+
+console.log('\nRULE  replay: the archive by its own names, and the warnings as they stood');
+{
+  const t = Date.UTC(2011, 3, 27, 21, 7, 30);
+  ok(W.archiveStamp(t) === '201104272105' && W.archiveProduct(t) === 'N0Q' && W.archiveProduct(Date.UTC(2008, 5, 1)) === 'N0R',
+    'a time floors to its five minutes; N0Q from 2011, N0R before');
+  ok(W.archiveTile(t, 6, 17, 25).endsWith('/ridge::USCOMP-N0Q-201104272105/6/17/25.png'), 'the tile name IEM\'s own viewer uses');
+  ok(W.ROUTES.sbwArchive('2011-04-27T20:00Z', '2011-04-28T09:00Z') === null && W.ROUTES.sbwArchive('2011-04-27T20:00Z', '2011-04-27T19:00Z') === null && W.ROUTES.sbwArchive('x', 'y') === null,
+    'a window longer than twelve hours, backwards, or not a time is never asked for');
+  const w = W.normalizeSbw({ features: [
+    { geometry: { type: 'MultiPolygon', coordinates: [[[[-56.7, 12.3], [-56.6, 12.3], [-56.6, 12.4], [-56.7, 12.3]]]] },
+      properties: { event_label: 'Tornado Warning', ph_sig: 'TO.W', nws_color: '#FF0000', utc_issue: '2011-04-27T20:00:00Z', utc_expire: '2011-04-27T20:30:00Z',
+        utc_polygon_begin: '2011-04-27T20:00:00Z', utc_polygon_end: '2011-04-27T20:08:00Z', locations: 'Somewhere', wfo: 'ABC' } },
+    { geometry: null, properties: { event_label: 'No shape' } }] });
+  ok(w.length === 1 && w[0].end === Date.parse('2011-04-27T20:08:00Z') && w[0].polys.length === 1 && w[0].color === '#FF0000',
+    'each version of a polygon keeps its own minutes; a warning with no shape is left out');
 }
 
 console.log('\nRULE  calm is calm, not "N 0"');

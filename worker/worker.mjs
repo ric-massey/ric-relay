@@ -1692,6 +1692,13 @@ function wxUpstream(parts, params) {
     }
     if (what === 'raobsites') return [`${WX_IEM}/geojson/network.py?network=RAOB`, WX_TTL.raobsites];
     if (what === 'hrrrmeta') return [`${WX_IEM}/data/gis/images/4326/hrrr/refd_0000.json`, WX_TTL.meta];
+    /* the warnings in force over a replay window — the past does not change */
+    if (what === 'sbw') {
+      const b = params.get('begints') || '', e = params.get('endts') || '';
+      const iso = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
+      if (!iso.test(b) || !iso.test(e) || !(Date.parse(e) > Date.parse(b)) || Date.parse(e) - Date.parse(b) > 12 * 3600e3) return null;
+      return [`${WX_IEM}/api/1/vtec/sbw_interval.geojson?begints=${b}&endts=${e}`, Date.parse(e) < Date.now() - 86400e3 ? 86400 * 7 : WX_TTL.alerts];
+    }
     /* one forecast office's airport stations, as they read now */
     if (what === 'obs') {
       const wfo = params.get('wfo') || '';

@@ -406,6 +406,15 @@
     .seg.rowscroll::-webkit-scrollbar{display:none}
     .seg.rowscroll button{flex:none}
 
+    /* replay: a time, a length, and storms worth seeing again */
+    .replaybar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 10px;padding:10px;border-radius:14px;background:var(--glass-hi);font-size:14px}
+    .replaybar input,.replaybar select{min-height:44px;padding:0 10px;border-radius:10px;border:1px solid var(--edge);background:rgba(0,0,0,.3);color:#fff;font:inherit}
+    .replaybar .go{min-height:44px;padding:0 18px;border-radius:999px;border:0;background:#fff;color:#0b2342;font-weight:700}
+    .replaybar #rplive{min-height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--edge);background:rgba(255,255,255,.1);font-weight:600}
+    .replaybar .presets{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;width:100%;scrollbar-width:none}
+    .replaybar .presets button{flex:none;min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--edge);background:rgba(255,255,255,.08);font-weight:600;font-size:13px}
+    #replaytoggle[aria-pressed="true"]{background:#ffd166;color:#2b1d00;border-color:#ffd166}
+
     /* the whole window as the map */
     #radarcard.mapfull{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;border-radius:0;border:0;margin:0;
       background:rgba(8,16,30,.97);padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
@@ -433,7 +442,7 @@
     .pin .ps{color:var(--dim);font-size:13px}
     .pin .pgo{margin-top:8px;width:100%;min-height:44px;border-radius:12px;border:0;background:#fff;color:#0b2342;font-weight:700}
     .pin .px{position:absolute;top:2px;right:2px;width:40px;height:40px;border:0;background:none;color:var(--dim);font-size:18px}
-    .seg .seglab{align-self:center;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-right:2px}
+    .seg .seglab,.presets .seglab{align-self:center;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-right:2px}
     .sitebar{font-size:13px;color:var(--dim);margin:-2px 0 10px}
     .legend.vel i{background:linear-gradient(90deg,#00ff3c,#007a1d,#3a3a3a,#7a0010,#ff2a2a)}
 
@@ -569,6 +578,7 @@
         <button type="button" data-mode="N0B" aria-pressed="false">Reflectivity</button>
         <button type="button" data-mode="N0S" aria-pressed="false">Velocity</button>
         <button type="button" data-mode="hrrr" aria-pressed="false" title="The HRRR model's forecast of the rain, drawn like radar, for the next 18 hours">Future · HRRR</button>
+        <button type="button" id="replaytoggle" aria-pressed="false" aria-expanded="false" aria-controls="replaybar" title="The radar and the storm warnings as they were, any day since 2006">Replay</button>
         <span class="sep"></span>
         <button type="button" id="stationtoggle" aria-pressed="false" title="Airport weather stations: temperature and wind, as they read now">Stations</button>
         <button type="button" id="outlooktoggle" aria-pressed="false">SPC outlook</button>
@@ -580,6 +590,19 @@
         <button type="button" data-sat="vis" aria-pressed="false">Visible</button>
         <button type="button" data-sat="wv" aria-pressed="false">Water vapour</button>
       </div>
+      <form class="replaybar" id="replaybar" hidden>
+        <label>From <input type="datetime-local" id="rpfrom" min="2006-01-01T00:00" step="300" required></label>
+        <label>for <select id="rplen"><option value="2">2 hours</option><option value="3" selected>3 hours</option><option value="6">6 hours</option></select></label>
+        <button type="submit" class="go">Replay</button>
+        <button type="button" id="rplive" hidden>Back to live</button>
+        <div class="presets" role="group" aria-label="Notable storms">
+          <span class="seglab">Notable</span>
+          <button type="button" data-preset="2011-04-27T19:00Z,6" title="The 2011 Super Outbreak across the Southeast">27 Apr 2011 · Super Outbreak</button>
+          <button type="button" data-preset="2013-05-20T18:30Z,3" title="The Moore, Oklahoma tornado">20 May 2013 · Moore</button>
+          <button type="button" data-preset="2021-12-11T01:00Z,6" title="The December 2021 quad-state tornado">10 Dec 2021 · Quad-State</button>
+          <button type="button" data-preset="2023-03-25T00:00Z,3" title="The Rolling Fork, Mississippi tornado">24 Mar 2023 · Rolling Fork</button>
+        </div>
+      </form>
       <p class="sitebar" id="sitebar"></p>
       <div class="radar" id="radar" role="img" aria-label="Radar map">
         <div class="layer base" id="radarbase"></div>
@@ -659,7 +682,7 @@
 
 <script src="effects.js"></script>
 <script src="projects/weather/nowcast.js?v=1"></script>
-<script src="projects/weather/wx.js?v=8"></script>
+<script src="projects/weather/wx.js?v=9"></script>
 <script src="projects/weather/sounding.js?v=2"></script>
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
@@ -696,6 +719,7 @@
   const deg = (c) => Wx.fmt.temp(c, U()) + "°";
   const clk = () => Wx.clock((S.fc && S.fc.tz) || (S.pt && S.pt.tz) || undefined);
   const nowSec = () => Math.floor(Date.now() / 1000);
+  const dayFmtPage = (ms) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(ms);
   const dist = (km) => U() === "us" ? `${Math.max(1, Math.round(km / 1.609344))} mi` : `${Math.max(1, Math.round(km))} km`;
   const speed = (kmh) => U() === "us" ? `${Math.round(kmh / 1.609344)} mph` : `${Math.round(kmh)} km/h`;
   const inUS = () => S.pt !== null;      // undefined while asking: assume yes
@@ -1711,7 +1735,10 @@
     } else row("off", "SPC convective outlook", S.outlook === undefined ? "asking…" : "not answering", null);
     if (S.place && S.now) row("", "Radar nowcast — this site's own", "the last half hour of the IEM mosaic, carried forward in this browser · from the scan", S.now.valid);
     const rv = radar.valid;
-    if (radar.mode === "hrrr") {
+    if (radar.mode === "replay") {
+      const rp = radar.replay;
+      row("", "Radar replay — archive", rp ? `NEXRAD mosaic (${Wx.archiveProduct(rp.from)}) and storm warnings as they stood, ${esc(dayFmtPage(rp.from))}, via IEM` : "", null);
+    } else if (radar.mode === "hrrr") {
       const old = rv && Date.now() - rv > 3 * 3600e3;
       if (rv) row(old ? "stale" : "", `HRRR forecast radar${old ? " — run is late" : ""}`, "simulated reflectivity, the latest run, via IEM · run", rv);
       else row("off", "HRRR forecast radar", "not answering", null);
@@ -1838,6 +1865,40 @@
     /* one radar site's own products (reflectivity, velocity): the modes that follow a site */
     const single = () => !!Wx.SITE_PRODUCTS[R.mode];
 
+    /* ── replay (§22): the mosaic and the warnings as they were ──
+       Frames every 5 minutes for a 2-hour window, every 10 for longer ones;
+       each warning drawn only for the minutes its polygon was in force. The
+       satellite, the stations and today's warnings are hidden — they are
+       now, and a replay is then. A notable storm fits the map to its own
+       warnings, so no place is written into this page. */
+    const dayFmt = (ms) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(ms);
+    const timeFmt = (ms) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(ms);
+    async function replay(from, hours, fitToStorms) {
+      R.mode = "replay";
+      document.querySelectorAll(".seg [data-mode]").forEach((b) => b.setAttribute("aria-pressed", "false"));
+      play(false); clearTiles(); R.pin = null;
+      $("#legend").classList.remove("vel");
+      $("#legend").innerHTML = `<span>light</span><i aria-hidden="true"></i><span>heavy</span>`;
+      const step = hours <= 2 ? 5 : 10, to = from + hours * 3600e3;
+      const rp = R.replay = { from, to, step, warn: null };
+      const list = [];
+      for (let t = from; t <= to; t += step * 60e3) list.push({ t, archive: true, url: (z, x, y) => Wx.archiveTile(t, z, x, y) });
+      R.valid = null;
+      satL.hidden = true;
+      $("#rplive").hidden = false;
+      setFrames(list);
+      label(); renderSources();
+      try { rp.warn = await Wx.sbwArchive(from, to); } catch (e) { rp.warn = []; rp.err = true; }
+      if (R.replay !== rp) return;
+      if (fitToStorms && rp.warn.length) {
+        const pts = rp.warn.flatMap((w) => w.polys.flatMap((p) => p[0]));
+        fit(Math.min(...pts.map((p) => p[1])), Math.min(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), 30);
+      }
+      draw(); label(); renderSources();
+      if (!reduced && R.visible) play(true);
+    }
+    const leaveReplay = () => setMode("comp");
+
     /* ── the HRRR's next 18 hours, drawn as radar ──
        Not tiles: one lat/lon picture of the lower 48 per step (Wx.HRRR),
        reprojected onto the map in thin strips — longitude is straight in
@@ -1928,6 +1989,20 @@
       const pt = (lat, lon) => [lngX(lon, R.z) - left, latY(lat, R.z) - top];
       const ring = (r) => r.map(([lon, lat]) => pt(lat, lon).map((v) => v.toFixed(1)).join(",")).join(" ");
       const out = [];
+      /* a replay draws only its own warnings, each for its own minutes,
+         and the place dot — nothing of today */
+      if (R.mode === "replay") {
+        const f = R.frames[R.frame], t = f && f.t;
+        for (const w of (R.replay && R.replay.warn) || []) {
+          if (!t || t < w.begin || t >= w.end) continue;
+          const tor = /^TO/.test(w.sig);
+          for (const p of w.polys) out.push(`<polygon points="${ring(p[0])}" fill="${esc(w.color)}" fill-opacity="${tor ? ".25" : ".1"}" stroke="${esc(w.color)}" stroke-width="${tor ? 2.6 : 1.8}"/>`);
+        }
+        if (S.place) { const [mx, my] = pt(S.place.lat, S.place.lon); out.push(`<circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="5" fill="#fff" stroke="#0b2342" stroke-width="2"/>`); }
+        R.drawn = [];
+        over.innerHTML = out.join("");
+        return;
+      }
       if (R.outlook && S.outlook) {
         for (const o of S.outlook.slice().sort((a, b) => a.rank - b.rank)) {
           const d = o.polys.map((poly) => poly.map((r) => "M" + ring(r).replace(/ /g, " L")).join(" ") + " Z").join(" ");
@@ -2003,7 +2078,9 @@
            twenty-two full reprojections a pan would be the stroke §2 warns
            of; the others only load their picture, ready for the loop */
         if (f.future) { if (i === R.frame) paintHrrr(f, w, h, left, top); else if (R.loadedOld && !f.img) { f.img = new Image(); f.img.src = f.src; } }
-        else if (i === R.frame || R.loadedOld) place(f.el, f.tiles, f.url, w, h, left, top);
+        /* archive tiles are drawn by IEM on demand and slow: a replay loads the
+           frame on screen and the next, never the whole loop at once */
+        else if (f.archive ? i === R.frame || i === R.frame + 1 : i === R.frame || R.loadedOld) place(f.el, f.tiles, f.url, w, h, left, top);
       });
       overlay(left, top);
       placePin();
@@ -2018,10 +2095,11 @@
       R.frames.forEach((f, j) => f.el.classList.toggle("on", j === i));
       if (!R.frames[i]) { $("#when").innerHTML = ""; return; }
       const f = R.frames[i];
-      if (!R.loadedOld || f.future) draw();
+      if (!R.loadedOld || f.future || f.archive) draw();   // a replay's warnings change by the minute, and its next frame loads now
       $("#scrub").value = String(i);
       const when = $("#when");
-      if (f.future && f.t) {
+      if (f.archive) when.innerHTML = `${esc(dayFmt(f.t))}<small>${esc(timeFmt(f.t))}</small>`;
+      else if (f.future && f.t) {
         const k = clk(), d = f.t - Date.now(), day = k.ymd(f.t) !== k.ymd(Date.now()) ? k.day(f.t) + " " : "";
         when.innerHTML = `${esc(day + k.time(f.t))}<small>forecast · ${Math.abs(d) < 8 * 60e3 ? "now" : d > 0 ? "in " + Wx.age(d) : Wx.age(-d) + " ago"}</small>`;
       } else if (f.t) when.innerHTML = `${esc(clk().time(f.t))}<small>${Wx.age(Date.now() - f.t)} ago</small>`;
@@ -2045,6 +2123,11 @@
       const last = R.frames.length - 1;
       const step = () => {
         const next = R.frame >= last ? 0 : R.frame + 1;
+        /* a replay waits (up to ~3 s) for its next frame's tiles rather than
+           flashing past empty map */
+        const nf = R.frames[next];
+        if (nf && nf.archive && nf.tiles.size && ![...nf.tiles.values()].every((im) => im.complete) && (R.wait = (R.wait || 0) + 1) < 12) { R.timer = setTimeout(step, 250); return; }
+        R.wait = 0;
         show(next);
         R.timer = setTimeout(step, next === last ? 1600 : 450);
       };
@@ -2066,6 +2149,7 @@
     }
 
     async function setMode(mode) {
+      if (R.replay) { R.replay = null; satL.hidden = false; $("#rplive").hidden = true; }
       R.mode = mode;
       document.querySelectorAll(".seg [data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
       play(false);
@@ -2088,18 +2172,19 @@
     function label() {
       const sb = $("#sitebar");
       if (R.mode === "comp") sb.textContent = "NEXRAD mosaic of the whole country, every 5 minutes.";
+      else if (R.mode === "replay" && R.replay) { const rp = R.replay, n = rp.warn ? new Set(rp.warn.map((w) => w.sig + w.wfo + w.event + w.area)).size : null; sb.textContent = `Replay: the national radar as it was, ${dayFmt(rp.from)} ${timeFmt(rp.from)} to ${timeFmt(rp.to)}, every ${rp.step} minutes, with each storm warning drawn for the minutes it was in force${rp.warn ? ` (${n} warning${n === 1 ? "" : "s"})` : rp.err ? " — the warnings archive did not answer" : " — loading the warnings"}. Archive via IEM.`; }
       else if (R.mode === "hrrr") sb.textContent = `A forecast, not radar: the HRRR model's own picture of the rain${R.valid ? ` from its ${new Date(R.valid).toISOString().slice(11, 13)}Z run` : ""}, every 15 minutes for the first hour then hourly to 18 hours. Lower 48 only.`;
       else if (R.site) sb.textContent = `${R.site.id} · ${R.site.name} · ${Wx.SITE_PRODUCTS[R.mode].long}. The site follows the middle of the map.`;
       else sb.textContent = "Finding the nearest radar…";
-      if (R.stations && R.started) sb.textContent += R.z < STN_MINZ ? " Zoom in to see the airport stations." : R.obs.length ? " Tap a station for its full reading." : "";
-      if (R.sat) {
+      if (R.stations && R.started && R.mode !== "replay") sb.textContent += R.z < STN_MINZ ? " Zoom in to see the airport stations." : R.obs.length ? " Tap a station for its full reading." : "";
+      if (R.sat && R.mode !== "replay") {
         const night = R.sat === "vis" && S.fc && S.fc.current && S.fc.current.isDay === false;
         sb.textContent += ` Under it: ${Wx.SAT[R.sat].long}${night ? " It is night here, so this part of the map is dark — try Infrared." : ""} The latest image; it refreshes every few minutes.`;
       }
       if (R.started && R.frames[R.frame]) show(R.frame);
     }
     function describe() {
-      return R.mode === "comp" ? "NEXRAD base reflectivity, US mosaic (IEM)" : R.mode === "hrrr" ? "HRRR simulated reflectivity, the latest run (IEM)" : `${R.site ? R.site.id + " " : ""}${Wx.SITE_PRODUCTS[R.mode].label.toLowerCase()} (NEXRAD via IEM)`;
+      return R.mode === "comp" ? "NEXRAD base reflectivity, US mosaic (IEM)" : R.mode === "hrrr" ? "HRRR simulated reflectivity, the latest run (IEM)" : R.mode === "replay" ? "NEXRAD mosaic archive (IEM)" : `${R.site ? R.site.id + " " : ""}${Wx.SITE_PRODUCTS[R.mode].label.toLowerCase()} (NEXRAD via IEM)`;
     }
 
     async function start() {
@@ -2109,9 +2194,11 @@
       if (Wx.SAT[sat]) setSat(sat);
       if (R.mode === "comp") {
         compFrames();
-        R.valid = await Wx.radarTime();
+        const v = await Wx.radarTime();
+        if (R.mode !== "comp") return;               // a replay began meanwhile: it owns the frames now
+        R.valid = v;
         compFrames();
-      } else await siteFrames();
+      } else if (single()) await siteFrames();
       label(); renderSources();
       stationsSoon();
       if (!reduced) setTimeout(() => { if (R.visible) play(true); }, 900);
@@ -2264,6 +2351,32 @@
     $("#scrub").addEventListener("input", (e) => { play(false); loadOld(); show(Number(e.target.value)); });
     document.querySelectorAll(".seg [data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
     document.querySelectorAll("[data-sat]").forEach((b) => b.addEventListener("click", () => setSat(b.dataset.sat)));
+    /* the replay bar: a time (the visitor's own clock), a length, or a notable storm */
+    const localInput = (ms) => { const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60e3); return d.toISOString().slice(0, 16); };
+    $("#replaytoggle").addEventListener("click", () => {
+      const bar = $("#replaybar"), open = bar.hidden;
+      bar.hidden = !open;
+      $("#replaytoggle").setAttribute("aria-pressed", String(open));
+      $("#replaytoggle").setAttribute("aria-expanded", String(open));
+      if (open && !$("#rpfrom").value) $("#rpfrom").value = localInput(Date.now() - 86400e3);
+      $("#rpfrom").max = localInput(Date.now() - 1800e3);
+    });
+    $("#replaybar").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const from = new Date($("#rpfrom").value).getTime(), hours = Number($("#rplen").value);
+      if (!Number.isFinite(from) || from < Wx.REPLAY_FROM || from > Date.now() - 1800e3) { note("Pick a time between 2006 and half an hour ago."); return; }
+      if (!R.started) start();
+      replay(from, hours, false);
+    });
+    $("#replaybar").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-preset]");
+      if (!b) return;
+      const [iso, h] = b.dataset.preset.split(","), from = Date.parse(iso);
+      $("#rpfrom").value = localInput(from); $("#rplen").value = h;
+      if (!R.started) start();
+      replay(from, Number(h), true);
+    });
+    $("#rplive").addEventListener("click", leaveReplay);
     $("#stationtoggle").setAttribute("aria-pressed", String(R.stations));
     $("#stationtoggle").addEventListener("click", () => {
       R.stations = !R.stations;
@@ -2323,12 +2436,14 @@
         if (R.stations && Date.now() - (R.obsAt || 0) > 300e3) loadStations();
         if (R.sat && satBucket() !== satAt) { satAt = satBucket(); for (const s of sats) { for (const img of s.tiles.values()) img.remove(); s.tiles.clear(); } draw(); }
         if (R.mode === "comp") { Wx.radarTime().then((v) => { if (v && v !== R.valid) { R.valid = v; clearTiles(); compFrames(); renderSources(); } }); }
+        else if (R.mode === "replay") { /* the past does not refresh */ }
         else if (R.mode === "hrrr") { Wx.hrrrRun().then((v) => { if (v && v !== R.valid && !R.playing) hrrrFrames(); }).catch(() => {}); }
         else siteFrames(true);
       },
       draw, label, describe, setSat,
       get sat() { return R.sat; },
       get mode() { return R.mode; },
+      get replay() { return R.replay; },
       get stations() { return R.stations && R.obs.length ? { n: R.obs.length, newest: Math.max(...R.obs.map((s) => s.time)) } : null; },
       get valid() { return R.valid; },
       get started() { return R.started; }

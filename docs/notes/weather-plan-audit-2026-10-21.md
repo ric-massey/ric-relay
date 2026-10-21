@@ -208,3 +208,21 @@ opaque — rain on black — which first blacked out the map; a `screen` blend o
 frame layer fixed it (on the canvas alone it did nothing, because the layer's opacity
 isolates it). Temperature, wind and CAPE as map fields still need a source — that part
 of gap 3 stays Ric's decision.
+
+## Follow-up: replay (Phase 7) — done 2026-10-21
+
+**Replay** on the radar: pick any time since 2006 and 2, 3 or 6 hours, or one of four
+notable storms (27 Apr 2011, Moore 2013, the December 2021 quad-state tornado, Rolling
+Fork 2023). The national mosaic as it was, from IEM's archive tiles, with every
+storm-based warning drawn only for the minutes its polygon was in force. A notable
+storm fits the map to its own warnings, so the page holds a time and no place.
+Checked on 27 April 2011: 378 warnings, the tornado warnings around Tuscaloosa and
+Birmingham at 22Z sitting on the supercells under them. The first try showed the
+warnings over an empty map — playing asked IEM for every frame's archive tiles at
+once, and IEM renders those on demand; a replay now loads the frame on screen and the
+next, and the loop waits for a frame's tiles. Needs the Worker deploy for its warnings
+route (it falls back to IEM directly meanwhile).
+
+Layout note: on a phone the radar's first row (US mosaic … Replay, Stations, SPC
+outlook) scrolls sideways, so the later buttons start out of sight. Worth a second look
+if Ric finds them hard to find.

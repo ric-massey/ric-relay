@@ -94,6 +94,10 @@
       return [`nws/${path}`, `${NWS}/${path}`];
     },
     radarMeta: () => ['radar', `${IEM}/data/gis/images/4326/USCOMP/n0q_0.json`],
+    /* the storm-based warnings in force between two times, for a replay —
+       at most twelve hours, whole minutes, UTC */
+    sbwArchive: (beginIso, endIso) => ISO_MIN.test(beginIso) && ISO_MIN.test(endIso) && Date.parse(endIso) > Date.parse(beginIso) && Date.parse(endIso) - Date.parse(beginIso) <= 12 * 3600e3
+      ? [`iem/sbw?begints=${beginIso}&endts=${endIso}`, `${IEM}/api/1/vtec/sbw_interval.geojson?begints=${beginIso}&endts=${endIso}`] : null,
     /* when the HRRR forecast radar on the map was run */
     hrrrMeta: () => ['iem/hrrrmeta', `${IEM}/data/gis/images/4326/hrrr/refd_0000.json`],
     /* Every storm-based warning in the country right now — the page with no
@@ -152,6 +156,7 @@
       ? [`iem/obs?wfo=${wfo}`, `${IEM}/api/1/currents.geojson?networkclass=ASOS&wfo=${wfo}&minutes=90`] : null
   };
   const SITE = /^[A-Z]{3}$/;
+  const ISO_MIN = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
   /* The single-site products IEM serves as tiles and lists scans for (probed
      2026-10-17: correlation coefficient, ZDR, KDP and echo tops are not). */
   const SITE_PRODUCTS = {
@@ -751,6 +756,40 @@
     vis: { label: 'Visible', long: 'GOES visible — clouds as a camera sees them. Daytime only.', layers: ['goes-west-vis-1km-900913', 'goes-east-vis-1km-900913'] },
     wv: { label: 'Water vapour', long: 'GOES water vapour — moisture in the middle of the atmosphere; dry air dark, moist air white.', layers: ['goes-west-wv-4km-900913', 'goes-east-wv-4km-900913'] }
   };
+  /* ── replay (DESIGN.md §22) ──
+     The national mosaic as it was at any five minutes since 2006, from IEM's
+     archive tiles (the name its own viewer uses: `ridge::USCOMP-<product>-
+     <YYYYMMDDHHmm UTC>`). Before 2011 the archive holds the older 8-bit
+     product, N0R; from 2011, N0Q. Times are floored to the five minutes. */
+  const REPLAY_FROM = Date.UTC(2006, 0, 1);
+  function archiveStamp(ms) {
+    const d = new Date(Math.floor(ms / 300e3) * 300e3);
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getUTCFullYear()}${p(d.getUTCMonth() + 1)}${p(d.getUTCDate())}${p(d.getUTCHours())}${p(d.getUTCMinutes())}`;
+  }
+  const archiveProduct = ms => ms < Date.UTC(2011, 0, 1) ? 'N0R' : 'N0Q';
+  const archiveTile = (ms, z, x, y) => `${IEM}/cache/tile.py/1.0.0/ridge::USCOMP-${archiveProduct(ms)}-${archiveStamp(ms)}/${z}/${x}/${y}.png`;
+  const isoMinute0 = ms => new Date(Math.floor(ms / 60e3) * 60e3).toISOString().slice(0, 16) + 'Z';
+  /* The warnings of a replay window: each with the minutes its polygon was
+     in force (a warning's polygon shrinks as statements update it, and each
+     version is its own row), its NWS colour, and its rings. */
+  function normalizeSbw(j) {
+    const f = j && Array.isArray(j.features) ? j.features : [];
+    return f.map(x => {
+      const p = x.properties || {}, g = x.geometry;
+      const begin = Date.parse(p.utc_polygon_begin || p.utc_issue), end = Date.parse(p.utc_polygon_end || p.utc_expire);
+      const polys = !g ? [] : g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+      if (!polys.length || !Number.isFinite(begin) || !Number.isFinite(end)) return null;
+      return { event: String(p.event_label || p.ph_sig || 'Warning'), sig: String(p.ph_sig || ''), color: /^#[0-9a-f]{6}$/i.test(p.nws_color || '') ? p.nws_color : '#ff6b6b',
+        begin, end, polys, area: String(p.locations || ''), wfo: String(p.wfo || '') };
+    }).filter(Boolean);
+  }
+  async function sbwArchive(beginMs, endMs, signal) {
+    const r = ROUTES.sbwArchive(isoMinute0(beginMs), isoMinute0(endMs));
+    if (!r) return [];
+    return normalizeSbw((await ask(r, signal, 30000)).data);
+  }
+
   /* ── HRRR forecast radar (DESIGN.md §13, the first model on the map) ──
      IEM draws the latest HRRR run's simulated reflectivity for the lower 48
      every 15 minutes out to 18 hours, as one lat/lon image per step
@@ -1428,7 +1467,8 @@
     inMosaic, nowcast, nowcastRecord,
     CALM_KMH, isCalm, RIDE, rideOutlook, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M,
     normalizeStationObs, stationObs, normalizePlumes, plumes, plumeStats, quantile,
-    HRRR, hrrrImage, hrrrRun
+    HRRR, hrrrImage, hrrrRun,
+    REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive
   };
   root.Wx = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
