@@ -39,7 +39,7 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     ...Object.keys(W.MODELS).map(m => W.ROUTES.column(m, 12.34, -56.78)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.modelRun(m)),
     W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78), W.ROUTES.stationObs('ABC'), W.ROUTES.plumes(12.34, -56.78), W.ROUTES.hrrrMeta(), W.ROUTES.sbwArchive('2011-04-27T20:00Z', '2011-04-27T23:00Z'), W.ROUTES.xsec('hrrr', W.linePoints({ lat: 12.34, lon: -56.78 }, { lat: 14.1, lon: -50.2 }, 12)),
-    W.ROUTES.spcWatches(), W.ROUTES.spcMds(), W.ROUTES.wpcMpds(), W.ROUTES.stormCells(),
+    W.ROUTES.spcWatches(), W.ROUTES.spcMds(), W.ROUTES.wpcMpds(), W.ROUTES.stormCells(), W.ROUTES.stormReports(),
     W.ROUTES.nwsProducts('COD'), W.ROUTES.nwsProducts('AFD', 'ABC'), W.ROUTES.nwsProduct('fcb2d575-a207-4057-a31c-823cdbbda16d'),
     W.ROUTES.several([{ lat: 12.34, lon: -56.78 }, { lat: -33.87, lon: 151.21 }])
   ];
@@ -452,6 +452,19 @@ console.log('\nRULE  Weather Pro\'s overlays: as issued, and gone when they end'
     { geometry: { type: 'Point', coordinates: [-56.7, 12.3] }, properties: { nexrad: 'ABC', storm_id: 'W1', max_dbz: 62, top: 45.4, meso: '3', tvs: 'NONE', poh: 90, posh: 60, max_size: 1.75, drct: 240, sknt: 35, valid: '2026-10-22T02:55:00Z' } },
     { geometry: { type: 'Point', coordinates: [-56.7, 12.3] }, properties: { nexrad: 'ABC', storm_id: 'X9', valid: '2026-10-22T02:00:00Z' } }] }, T);
   ok(c.length === 1 && c[0].meso === '3' && c[0].tvs === null && c[0].from === 240 && c[0].topKft === 45.4, 'a storm cell keeps what the radar measured; "NONE" is no detection; a stale cell is dropped');
+  /* local storm reports, in the shape IEM's lsr.geojson answered on 2026-10-22 */
+  const rep = (type, typetext, extra = {}) => ({ geometry: { type: 'Point', coordinates: [-56.7, 12.3] },
+    properties: { wfo: 'ABC', type, typetext, valid: '2026-10-22T02:30:00Z', city: '3 N Nowhere', county: 'Imaginary', st: 'XX', source: 'Trained Spotter', remark: null, unit: null, magf: null, magnitude: '', ...extra } });
+  const lsr = W.normalizeReports({ features: [
+    rep('T', 'TORNADO'), rep('H', 'HAIL', { magf: 1.75, magnitude: '1.75', unit: 'Inch', qualifier: 'M' }), rep('H', 'HAIL', { magf: 0.5, unit: 'Inch' }),
+    rep('G', 'TSTM WND GST', { magf: 61, unit: 'MPH' }), rep('N', 'NON-TSTM WND GST', { magf: 70, unit: 'MPH' }), rep('D', 'TSTM WND DMG'),
+    rep('F', 'FLASH FLOOD'), rep('R', 'RAIN', { magf: 0.5, unit: 'Inch' }), rep('S', 'SNOW', { magf: 4, unit: 'Inch' }), rep('x', 'LANDSLIDE'),
+    rep('T', 'TORNADO', { valid: '2026-10-20T02:30:00Z' })] }, T);
+  ok(lsr.length === 10, 'the last day\'s reports, and one from two days ago dropped');
+  ok(lsr.map(r => r.kind).join() === 'tor,hail,hail,wind,wind,wind,flood,rain,snow,other', 'each report sorted into its kind');
+  ok(lsr.filter(r => r.severe).length === 5 && lsr[1].severe && !lsr[2].severe && lsr[3].severe && !lsr[4].severe && lsr[5].severe,
+    'severe by the NWS thresholds: a tornado, 1.75" hail (not 0.5"), a 61 mph thunderstorm gust and damage — not a 70 mph non-thunderstorm gust');
+  ok(lsr[1].mag === 1.75 && lsr[1].unit === 'Inch' && lsr[1].qualifier === 'measured' && lsr[0].source === 'Trained Spotter', 'magnitude, unit, measured or estimated, and who reported it');
   ok(W.decodePoint('1230567')[0] === 12.3 && W.decodePoint('1230567')[1] === -56.7 && W.decodePoint('951234')[0] === 9.5 && W.decodePoint('12x4567') === null, 'a coded point is latitude and west longitude in tenths');
   const s = W.parseCodsus('CODSUS\nCODED SURFACE FRONTAL POSITIONS\nVALID 102200Z\nHIGHS 1027 1230567 1031\n1250560\nLOWS 998 1200580\nCOLD 1200580 1180585 1150590\nWARM 1200580 1210570\nTROF 1300500\n$$', Date.parse('2026-10-22T01:36:00Z'));
   ok(s.valid === Date.parse('2026-10-22T00:00:00Z') && s.highs.length === 2 && s.highs[1].mb === 1031 && s.lows[0].mb === 998,

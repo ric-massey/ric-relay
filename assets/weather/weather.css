@@ -358,6 +358,7 @@ body.storming #storms{order:-2}
 
 /* radar layer controls */
 .seg{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.seg[hidden]{display:none}
 .seg button{min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--edge);background:rgba(255,255,255,.08);font-weight:600;font-size:14px}
 .seg button[aria-pressed="true"]{background:#fff;color:#0b2342;border-color:#fff}
 .seg .sep{flex:1}
@@ -607,3 +608,31 @@ details.afd pre{white-space:pre-wrap;word-wrap:break-word;margin:0 0 10px;font:1
 .mesopick select{min-height:40px;margin-left:4px;padding:0 8px;border-radius:4px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:inherit}
 .mesoimg{display:block;margin-top:10px;border-radius:4px;overflow:hidden;background:#fff}
 .mesoimg img{display:block;width:100%;height:auto}
+
+/* ── Weather Pro's own radar, model maps, lightning and storm reports (2026-10-22) ──
+   The models bar sits under the layer row like the replay bar; the legend
+   becomes a numbered scale (or swatches, for a product made of classes); the
+   readout follows a mouse over the map. */
+.modelbar[hidden]{display:none}
+.modelbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 10px;padding:10px;border-radius:14px;background:var(--glass-hi);font-size:14px}
+.modelbar label{display:flex;align-items:center;gap:8px}
+.modelbar select{min-height:44px;max-width:min(330px,72vw);padding:0 10px;border-radius:10px;border:1px solid var(--edge);background:rgba(0,0,0,.3);color:#fff;font:inherit}
+.modelbar .mmrun{font-size:12px;color:var(--dim)}
+.legend.scale{align-items:flex-start;gap:10px}
+.legend.scale .bar{flex:1;min-width:0}
+.legend.scale .bar i{display:block;height:9px;border-radius:2px}
+.legend.scale .ticks{position:relative;height:17px}
+.legend.scale .ticks span{position:absolute;top:2px;transform:translateX(-50%);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.legend.scale .lu{flex:none;font-size:11px}
+.legend.cats{flex-wrap:wrap;gap:4px 12px}
+.legend.cats .sw{display:inline-flex;align-items:center;gap:5px;font-size:11px}
+.legend.cats .sw i{flex:none;width:12px;height:12px;border-radius:2px}
+.radar canvas.ltg{width:100%;height:100%}
+.radar .read[hidden]{display:none}
+.radar .read{position:absolute;left:10px;bottom:24px;max-width:calc(100% - 20px);padding:5px 9px;border-radius:6px;background:rgba(5,7,10,.9);border:1px solid #2a3340;
+  font:500 12px/1.35 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:#e9ecef;pointer-events:none}
+#radarover .lsr text{font:700 10px ui-monospace,Menlo,Consolas,monospace;fill:#05070a}
+.pin .ro{color:#ffd166;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
+body[data-view="pro"] .modelbar{border-radius:4px;background:#0a0d12;border:1px solid var(--edge)}
+body[data-view="pro"] .modelbar select{border-radius:3px;font-family:var(--mono);font-size:13px}
+body[data-view="pro"] .pin .ro{color:var(--amber)}

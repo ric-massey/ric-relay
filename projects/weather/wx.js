@@ -112,6 +112,9 @@
     spcMds: () => ['iem/mcd', `${IEM}/api/1/nws/spc_mcd.geojson`],
     wpcMpds: () => ['iem/mpd', `${IEM}/api/1/nws/wpc_mpd.geojson`],
     stormCells: () => ['iem/cells', `${IEM}/geojson/nexrad_attr.geojson`],
+    /* the NWS's local storm reports — tornadoes, hail, wind damage, floods,
+       snow — from every office, the last 24 hours */
+    stormReports: () => ['iem/lsr', `${IEM}/geojson/lsr.geojson?hours=24`],
     /* the latest of an NWS text product (the coded surface analysis, or an
        office's forecast discussion), and one product by its id */
     nwsProducts: (type, office) => (type === 'COD' && !office) || (type === 'AFD' && /^[A-Z]{3}$/.test(office || ''))
@@ -1287,6 +1290,54 @@
         from: n(p.drct), kt: n(p.sknt) };
     }).filter(Boolean);
   }
+  /* ── local storm reports ──
+     What spotters, the public, emergency managers and stations told the
+     NWS, as each office issued it. `kind` decides the mark on the map; the
+     severe ones (tornado, funnel, hail, wind damage and severe gusts, flash
+     flood) show at every zoom, the rest (rain, snow, everything else) from
+     zoom 7, where there is room. Shown as reported — a report is not a
+     verified event, and the card says who reported it. */
+  const LSR_KINDS = {
+    tor: { glyph: 'T', color: '#ff4d6d', label: 'Tornado' },
+    funnel: { glyph: 'C', color: '#cc5de8', label: 'Funnel cloud' },
+    hail: { glyph: 'H', color: '#69db7c', label: 'Hail' },
+    wind: { glyph: 'W', color: '#4dabf7', label: 'Wind' },
+    flood: { glyph: 'F', color: '#20c997', label: 'Flooding' },
+    snow: { glyph: 'S', color: '#e9ecef', label: 'Snow' },
+    ice: { glyph: 'Z', color: '#f783ac', label: 'Ice' },
+    rain: { glyph: 'R', color: '#3bc9db', label: 'Heavy rain' },
+    other: { glyph: '•', color: '#adb5bd', label: 'Other' }
+  };
+  function lsrKind(type, text) {
+    const t = String(text || '').toUpperCase();
+    if (type === 'T' || t === 'TORNADO') return 'tor';
+    if (/FUNNEL|WATERSPOUT/.test(t)) return 'funnel';
+    if (/HAIL/.test(t)) return 'hail';
+    if (/WND|WIND|GUST|DOWNBURST/.test(t)) return 'wind';
+    if (/FLOOD|DEBRIS FLOW/.test(t)) return 'flood';
+    if (/SNOW|BLIZZARD/.test(t)) return 'snow';
+    if (/FREEZING|ICE|SLEET/.test(t)) return 'ice';
+    if (/RAIN/.test(t)) return 'rain';
+    return 'other';
+  }
+  function normalizeReports(j, nowMs) {
+    const now = nowMs || Date.now();
+    return (j && Array.isArray(j.features) ? j.features : []).map(f => {
+      const p = f.properties || {}, c = f.geometry && f.geometry.coordinates, t = Date.parse(p.valid);
+      if (!Array.isArray(c) || !validLat(+c[1]) || !validLon(+c[0]) || !Number.isFinite(t) || now - t > 24 * 3600e3 || t > now + 3600e3) return null;
+      const kind = lsrKind(p.type, p.typetext);
+      const mag = has(p.magf) ? Number(p.magf) : has(p.magnitude) && String(p.magnitude).trim() !== '' ? Number(p.magnitude) : null;
+      const unit = p.unit ? String(p.unit) : '';
+      /* severe by the NWS's own thresholds: hail 1 inch, gusts 58 mph */
+      const severe = kind === 'tor' || kind === 'funnel' || (kind === 'hail' && (mag == null || mag >= 1)) ||
+        (kind === 'wind' && (/DMG|DAMAGE/.test(String(p.typetext).toUpperCase()) || (mag != null && mag >= 58 && !/NON-TSTM/.test(String(p.typetext).toUpperCase())))) ||
+        (kind === 'flood' && /FLASH/.test(String(p.typetext).toUpperCase()));
+      return { kind, severe, lat: +c[1], lon: +c[0], time: t, text: String(p.typetext || ''), mag: Number.isFinite(mag) ? mag : null, unit,
+        qualifier: p.qualifier === 'E' ? 'estimated' : p.qualifier === 'M' ? 'measured' : '',
+        city: String(p.city || ''), county: String(p.county || ''), state: String(p.st || p.state || ''),
+        source: String(p.source || ''), remark: p.remark ? String(p.remark) : '', wfo: String(p.wfo || '') };
+    }).filter(Boolean).sort((a, b) => a.time - b.time);
+  }
   /* WPC's coded surface bulletin (CODSUS): the analysed highs and lows with
      their pressures, and each front as a string of points. A point is
      LLLOOOO — latitude and west longitude in tenths. A front's points run so
@@ -1341,7 +1392,8 @@
     watches: async signal => normalizeWatches((await ask(ROUTES.spcWatches(), signal)).data),
     mcds: async signal => normalizeDiscussions((await ask(ROUTES.spcMds(), signal)).data, 'mcd'),
     mpds: async signal => normalizeDiscussions((await ask(ROUTES.wpcMpds(), signal)).data, 'mpd'),
-    cells: async signal => normalizeCells((await ask(ROUTES.stormCells(), signal, 20000)).data)
+    cells: async signal => normalizeCells((await ask(ROUTES.stormCells(), signal, 20000)).data),
+    reports: async signal => normalizeReports((await ask(ROUTES.stormReports(), signal, 20000)).data)
   };
 
   /* ── stations on the map (§19.1) ──
@@ -1558,7 +1610,7 @@
     CALM_KMH, isCalm, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M,
     normalizeStationObs, stationObs, normalizePlumes, plumes, plumeStats, quantile,
     HRRR, hrrrImage, hrrrRun,
-    normalizeWatches, normalizeDiscussions, normalizeCells, decodePoint, parseCodsus, FRONT_KINDS, surfaceAnalysis, forecastDiscussion, proOverlays,
+    normalizeWatches, normalizeDiscussions, normalizeCells, LSR_KINDS, lsrKind, normalizeReports, decodePoint, parseCodsus, FRONT_KINDS, surfaceAnalysis, forecastDiscussion, proOverlays,
     REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive,
     XSEC_LEVELS, XSEC_FIELDS, XSEC_MAX, linePoints, normalizeXsec, xsec
   };

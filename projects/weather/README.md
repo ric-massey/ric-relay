@@ -7,10 +7,12 @@ professionals"):
 - **Weather** (`weather.html`) — what most people want: now, when the rain
   starts, every hour, ten days, alerts, a plain radar loop, the detail tiles.
 - **Weather Pro** (`weather-pro.html`) — what someone chasing or studying weather
-  wants: a big map with every layer (single-site reflectivity and velocity, HRRR
-  future radar, replay, satellite, airport stations, SPC outlook, cross-sections,
-  tap-a-point), the soundings, the models side by side and the ensemble, and the
-  accuracy record.
+  wants: a big map with every layer (one radar's own Level III products —
+  reflectivity, velocity, storm-relative velocity, CC, ZDR, KDP, hydrometeor
+  class, echo tops, VIL — at four tilts; HRRR and GFS model maps; HRRR future
+  radar; replay; satellite; GOES lightning; the NWS's storm reports; airport
+  stations; SPC outlook; cross-sections; tap-a-point), the soundings, the models
+  side by side and the ensemble, and the accuracy record.
 
 They look like different apps on purpose. Weather is the sky: the colour follows
 what is overhead, frosted cards, big friendly numbers, and a **gold ★ Pro badge**
@@ -50,6 +52,9 @@ post on the front door (the `radar` painter, over invented ground).
 | `../../assets/weather/app.js` | the page code both load — every card, the map, the place sheet; it draws the cards the page holds and skips the rest |
 | `../../assets/weather/weather.css` | the stylesheet both load (shared within the room, as climbing's and training's are) |
 | `wx.js` | everything that talks to a provider, turns its answer into one shape, or decides what the page may say (is it raining, how old is this, where is the storm). Pure functions are exported for Node |
+| `nexrad.js`, `bzip2.js` | Pro's single-site radar: NEXRAD Level III files read in the browser (the ICD's description and symbology blocks, packet 16 and AF1F), and the bzip2 decompressor the dual-pol files need. Product list, palettes, the beam-height formula |
+| `grib2.js`, `modelmaps.js` | Pro's model maps: a GRIB2 reader (lat/lon and Lambert grids; simple, complex and spatially-differenced packing) and the HRRR / GFS field list — which `.idx` lines each field needs, its unit, palette, contours and barbs |
+| `glm.js` | Pro's lightning: just enough HDF5 (superblock 2/3, object headers, dense links and attributes, chunked deflate+shuffle) to read the GOES lightning mapper's flashes, by byte range |
 | `sounding.js` | the vertical arithmetic: parcels, CAPE / CIN / LCL / LFC / EL, precipitable water, lapse rates, shear, Bunkers storm motion, helicity, STP |
 | `draw.js` | the Skew-T and the hodograph, as SVG strings |
 | `verify/core.js` | the scoreboard's arithmetic and the blend — loaded by the page and by `score.mjs` |
@@ -59,6 +64,7 @@ post on the front door (the `radar` painter, over invented ground).
 | `DESIGN.md` | the design document |
 | `test/wx.test.mjs` | the client's rules on fixtures, no network. In `.github/checks.mjs`. Also holds the Worker's `/wx` route to every request the page makes |
 | `test/sounding.test.mjs` | the sounding arithmetic, against hand-checkable physics and against MetPy (pinned values). In `checks.mjs` |
+| `test/decoders.test.mjs` | the four decoders against the libraries the field trusts — MetPy (Level III), ecCodes (GRIB2), h5py (GLM), Python's bz2 — on real files in `test/fixtures/` (`make-expected.py` wrote `expected.json` from them; rerun it by hand when adding a fixture). In `checks.mjs` |
 | `test/live.mjs` | the same functions against the real providers. Needs the network, so it runs in `.github/workflows/weather-live.yml` (on change, daily, on demand) |
 
 ## Who answers what (DESIGN.md §24)
@@ -83,7 +89,11 @@ post on the front door (the `radar` painter, over invented ground).
 | Satellite | GOES-West and GOES-East via IEM tiles (`goes-{west,east}-{ir-4km,vis-1km,wv-4km}-900913`, `Wx.SAT`) | Under the radar, West drawn first and East over it. Latest image only: the tile carries no scan time, so the page says "latest" and nothing finer. Visible is dark at night and the page says so |
 | Storm warnings across the country, and a state's | NWS `/alerts/active?event=…` and `?area=XX` | The national list with no place; "warnings nearby" with one |
 | SPC convective outlook | `spc.noaa.gov/products/outlook/day{1,2,3}otlk_*.nolyr.geojson` | Categorical risk with SPC's own labels and colours; drawn on the radar, and "Slight risk … here today" in the hero |
-| Single-site radar | IEM `json/radar.py` (nearest sites, scan list) and `ridge::<SITE>-<PROD>-<YYYYMMDDHHMI>` tiles | Super-res reflectivity (N0B) and storm-relative velocity (N0S), every scan in the last hour. IEM does not tile CC, ZDR, KDP or echo tops (probed 2026-10-17) |
+| Single-site radar (Weather, and storm mode) | IEM `json/radar.py` (nearest sites, scan list) and `ridge::<SITE>-<PROD>-<YYYYMMDDHHMI>` tiles | Super-res reflectivity (N0B) and storm-relative velocity (N0S), every scan in the last hour. IEM does not tile CC, ZDR, KDP or echo tops (probed 2026-10-17) |
+| Single-site radar (Pro) | The radar's own Level III files in Unidata's public bucket, `unidata-nexrad-level3` on AWS (`SITE_PROD_YYYY_MM_DD_HH_MM_SS`, CORS open), read by `nexrad.js` | Nine products — N0B–N3B, N0G/N1G/N2U/N3U, N0S, N0C–N3C, N0X–N3X, N0K–N3K, N0H–N3H, EET, DVL — at the tilt picked (the button says the elevation the scan was made at). The bucket is listed by the hour; the newest twelve scans make the loop, each fetched only when shown or played (50–250 KB). Painted pixel by pixel from range and bearing; hover or tap gives the gate's value, its distance and bearing, and the beam's height above sea level (4/3 earth). The nearest site still comes from IEM's `radar.py` |
+| Model maps (Pro) | NOAA's HRRR (`noaa-hrrr-bdp-pds`, `wrfsfcfNN`) and GFS (`noaa-gfs-bdp-pds`, `pgrb2.0p25.fNNN`) on AWS, read by `grib2.js` / `modelmaps.js` | The newest run with enough of itself out (the bucket is listed; HRRR's must have 3 hours, GFS's 30). Each hour's `.idx` says where each field's bytes are and only those are fetched with a Range request — ~1 MB a field. HRRR: reflectivity, precipitation type, updraft helicity, three CAPEs, 0–1/0–3 km helicity, echo tops, lightning threat, temperature, dew point, wind and gusts, MSLP, visibility, cloud, rain and snow totals, PWAT. GFS (3-hourly to 5 days, 6-hourly to 10): 500 mb heights and vorticity, the 250 mb jet, 850 mb, MSLP and thickness, the surface fields, rain, PWAT, snow depth. HRRR's winds are turned from its grid to the earth before barbs are drawn. Labelled a forecast, with its run, everywhere it shows |
+| Lightning (Pro) | GOES-East (`noaa-goes19`) and GOES-West (`noaa-goes18`) GLM Level 2 files on AWS, every 20 s, read by `glm.js` | Flashes, not ground strikes. The last 10 minutes, asked again every minute while the layer is on and the page is visible; East east of 105° W, West west of it (they overlap and see the same flashes). ~150 KB a file in Range requests; the attributes are read from the first file and reused. Only flashes the GLM flags good |
+| Storm reports (Pro) | IEM's `geojson/lsr.geojson?hours=24` (`/wx/iem/lsr`) | The NWS's local storm reports, as each office issued them, every two minutes. Severe ones (tornado, funnel, 1" hail, damaging or 58 mph thunderstorm wind, flash flood) at every zoom, the rest from zoom 7. Tap one for the magnitude, who reported it and the remark. A report, not a verified event, and the card says so |
 | Model soundings | Open-Meteo, every pressure level, `models=` ncep_hrrr_conus / gfs_global / ecmwf_ifs025 / ecmwf_aifs025_single, run time from `/data/<model>/static/meta.json` | HRRR and GFS publish ~20 levels, ECMWF 12; AIFS gives humidity not dewpoint, so the dewpoint is made from it |
 | Weather balloons | IEM `json/raob.py` and the RAOB network list | The nearest launch site's latest 00Z or 12Z flight |
 | Roughly where a visitor is | The Worker's `/wx/near` — Cloudflare's own city-level guess for the connection | Only once the Worker is deployed. Rounded to 0.1°, never cached or stored, labelled "approximate" |
@@ -146,9 +156,17 @@ path covers it. Images (map, radar and satellite tiles) always load directly.
   parcel, LCL, LFC, EL, CAPE and PW to MetPy's on the same profiles (see the
   comment there for why the CAPE reference is the integral of MetPy's parcel
   rather than its `cape_cin()`). STP is labelled as an index of ingredients.
-- **Not built here:** anything that would need a server decoding GRIB or radar
-  volumes. The browser gets small finished answers (§28–29); when a phase needs
-  more than a public API gives, that is a decision for Ric, not a library to add.
+- **Raw NOAA files are decoded in the browser, not on a server** (Ric,
+  2026-10-22: "do the three" — dual-pol radar, lightning, model maps). The
+  radar's Level III files, the GLM's HDF5 and the models' GRIB2 come straight
+  from NOAA's open-data buckets on AWS, which allow any page to read them, and
+  are decoded by `nexrad.js`, `glm.js` and `grib2.js` — written here, no
+  library. Nothing is stored and nothing runs between visits. These are binary
+  files from a bucket, so they go direct like the map's tiles rather than
+  through `/wx`. Each decoder is held to MetPy, ecCodes or h5py in
+  `test/decoders.test.mjs`; change the decoder and the fixtures' expectations
+  together. Anything that would need a server of our own (a mosaic of every
+  radar, MRMS, a model run turned into tiles) is still a decision for Ric.
 
 ## Built so far
 
@@ -157,6 +175,12 @@ current conditions, rain timing (next 3 hours in 15-minute steps), hourly with a
 tap-for-detail hour, 10 days with the office's words, alerts with polygons,
 animated radar, wind / humidity / pressure trend / visibility / UV / sun, °F/°C,
 offline copy, refresh every ten minutes while open.
+
+**Weather Pro's own data (2026-10-22, Ric: "do the three"):** one radar's
+Level III products at four tilts, with a value readout; HRRR and GFS model maps
+with contours and barbs, played through the forecast hours; GOES lightning; and
+the NWS's storm reports — all above, under "Who answers what". Share links
+carry the tilt (`t=`) and the model field (`m=hrrr.mlcape`).
 
 **Weather Pro's tools (2026-10-22):** the overlays above; a **sounding anywhere** — tap a
 point and "Sounding here" moves the Skew-T to it, with a way back to the place; a
@@ -318,9 +342,9 @@ split most.
 | Phase | The likely way on this site |
 |---|---|
 | 2 · Investigation | Built: satellite (GOES IR / visible / water vapour under the radar), a full-screen map, a tapped-point card, airport stations on the map. Still to do: a unified timeline across radar and satellite; more networks than ASOS (state mesonets) |
-| 3 · One serious model | Started: **Future · HRRR** on the radar — the latest HRRR run's simulated reflectivity every 15 minutes for the first hour, then hourly to 18 hours, from IEM's lat/lon pictures (`refd_MMMM.png`, not its tiles, which came back blank) reprojected onto the map in the browser. Other HRRR fields (temperature, wind, CAPE) as map layers still need a source or a backend (GRIB → tiles in R2) — Ric's call |
+| 3 · One serious model | Built: **Future · HRRR** (IEM's simulated-reflectivity pictures) and, since 2026-10-22, **Models** — HRRR and GFS fields read from NOAA's GRIB2 in the browser (above). Still to do: more models (NAM 3 km, RAP, the ECMWF open data), run-to-run comparison, ensemble maps |
 | 4 · Soundings | Built (above), with observed-vs-model on the same diagram (§16) and the effective-layer parameters: the effective inflow layer (Thompson 2007), effective SRH and bulk shear, effective STP (Thompson 2012, with its CIN term) and the supercell composite. The composites and the effective SRH are held to MetPy in `test/sounding.test.mjs` |
-| 5 · Advanced | Model comparison, ensemble plumes and cross-sections: built. Still to do: MRMS; dual-pol radar products (IEM does not tile them) |
+| 5 · Advanced | Model comparison, ensemble plumes, cross-sections, dual-pol radar at four tilts (Level III, 2026-10-22): built. Still to do: MRMS (rotation tracks, MESH); single-site replay from the same bucket |
 | 6 · Station + verification | The CS pattern: a script that pulls the station and archives point forecasts into a committed accumulator, verified against the station. **Needs a decision on how the station is named** — its coordinates can't be in this repo |
 | 7 · Replay | Built for the national radar: any 2, 3 or 6 hours since 2006 from IEM's archive tiles (`ridge::USCOMP-N0Q-<YYYYMMDDHHmm UTC>`, N0R before 2011 — the names IEM's own viewer uses), with each storm warning drawn only for the minutes its polygon was in force (`/api/1/vtec/sbw_interval`), and four notable storms that fit the map to their own warnings. Still to do: satellite, observations and model runs for the same moment; single-site replay |
 | 8 · 3D | Only after profiling, per the doc |

@@ -1703,6 +1703,8 @@ function wxUpstream(parts, params) {
     if (what === 'mcd') return [`${WX_IEM}/api/1/nws/spc_mcd.geojson`, WX_TTL.alerts];
     if (what === 'mpd') return [`${WX_IEM}/api/1/nws/wpc_mpd.geojson`, WX_TTL.alerts];
     if (what === 'cells') return [`${WX_IEM}/geojson/nexrad_attr.geojson`, WX_TTL.radar];
+    /* the last day's local storm reports, from every office */
+    if (what === 'lsr') return [`${WX_IEM}/geojson/lsr.geojson?hours=24`, WX_TTL.alerts];
     /* the warnings in force over a replay window — the past does not change */
     if (what === 'sbw') {
       const b = params.get('begints') || '', e = params.get('endts') || '';

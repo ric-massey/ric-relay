@@ -77,15 +77,39 @@
         <h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 8l4.5-4.5" stroke="currentColor" stroke-width="1.5"/></svg>Radar<span class="src" id="radarsrc"></span></h2>
         <div class="seg rowscroll pro-only" role="group" aria-label="Radar layer">
           <button type="button" data-mode="comp" aria-pressed="true">US mosaic</button>
-          <button type="button" data-mode="N0B" aria-pressed="false">Reflectivity</button>
-          <button type="button" data-mode="N0S" aria-pressed="false">Velocity</button>
+          <span class="seglab">Site</span>
+          <button type="button" data-mode="l3:ref" aria-pressed="false" title="The nearest radar's own reflectivity, at the tilt you pick">Reflectivity</button>
+          <button type="button" data-mode="l3:vel" aria-pressed="false" title="Base radial velocity — green toward the radar, red away">Velocity</button>
+          <button type="button" data-mode="l3:srv" aria-pressed="false" title="Storm-relative velocity — the storm's own motion taken out, so rotation stands out">SRV</button>
+          <button type="button" data-mode="l3:cc" aria-pressed="false" title="Correlation coefficient — low values inside a storm can be debris">CC</button>
+          <button type="button" data-mode="l3:zdr" aria-pressed="false" title="Differential reflectivity — the shape of what the beam hit">ZDR</button>
+          <button type="button" data-mode="l3:kdp" aria-pressed="false" title="Specific differential phase — liquid water, heavy rain">KDP</button>
+          <button type="button" data-mode="l3:hca" aria-pressed="false" title="The radar's own call on what each gate holds: rain, hail, snow, debris…">Hydro class</button>
+          <button type="button" data-mode="l3:eet" aria-pressed="false" title="Enhanced echo tops — how tall the storms are">Echo tops</button>
+          <button type="button" data-mode="l3:vil" aria-pressed="false" title="Vertically integrated liquid — all the water in the column">VIL</button>
+          <span class="seglab">Forecast</span>
           <button type="button" data-mode="hrrr" aria-pressed="false" title="The HRRR model's forecast of the rain, drawn like radar, for the next 18 hours">Future · HRRR</button>
+          <button type="button" data-mode="model" id="modeltoggle" aria-pressed="false" title="HRRR and GFS fields on the map: CAPE, helicity, temperature, 500 mb, the jet…">Models</button>
           <button type="button" id="replaytoggle" aria-pressed="false" aria-expanded="false" aria-controls="replaybar" title="The radar and the storm warnings as they were, any day since 2006">Replay</button>
+        </div>
+        <div class="seg rowscroll pro-only" id="tiltrow" role="group" aria-label="Radar tilt" hidden>
+          <span class="seglab">Tilt</span>
+          <button type="button" data-tilt="0" aria-pressed="true">Lowest</button>
+          <button type="button" data-tilt="1" aria-pressed="false">2nd</button>
+          <button type="button" data-tilt="2" aria-pressed="false">3rd</button>
+          <button type="button" data-tilt="3" aria-pressed="false">4th</button>
+        </div>
+        <div class="modelbar pro-only" id="modelbar" hidden>
+          <label>Model <select id="mmsrc"><option value="hrrr">HRRR · 3 km, hourly</option><option value="gfs">GFS · global, to 10 days</option></select></label>
+          <label>Field <select id="mmfield"></select></label>
+          <span class="mmrun" id="mmrun"></span>
         </div>
         <div class="seg rowscroll pro-only" role="group" aria-label="Overlays on the map">
           <span class="seglab">Overlays</span>
           <button type="button" data-ov="watches" aria-pressed="false" title="SPC watches and mesoscale discussions, WPC precipitation discussions">Watches &amp; MDs</button>
           <button type="button" data-ov="cells" aria-pressed="false" title="Every NEXRAD storm cell: track, hail, rotation">Storm cells</button>
+          <button type="button" data-ov="lightning" aria-pressed="false" title="Every lightning flash GOES's lightning mapper saw in the last 10 minutes">Lightning</button>
+          <button type="button" data-ov="reports" aria-pressed="false" title="The NWS's local storm reports from the last 24 hours: tornadoes, hail, wind, floods, snow">Storm reports</button>
           <button type="button" data-ov="fronts" aria-pressed="false" title="WPC's surface analysis: fronts, highs and lows">Fronts</button>
           <button type="button" id="stationtoggle" aria-pressed="false" title="Airport weather stations: the station model from zoom 8">Stations</button>
           <button type="button" id="outlooktoggle" aria-pressed="false">SPC outlook</button>
@@ -115,7 +139,9 @@
           <div class="layer base" id="radarbase"></div>
           <div class="layer sat" id="radarsat"></div>
           <div id="radarframes"></div>
+          <canvas class="layer ltg" id="radarltg" aria-hidden="true"></canvas>
           <svg class="over" id="radarover" aria-hidden="true"></svg>
+          <div class="read" id="radarread" hidden></div>
           <div class="zoom">
             <button type="button" id="zin" aria-label="Zoom in">+</button>
             <button type="button" id="zout" aria-label="Zoom out">−</button>
@@ -126,7 +152,7 @@
           </div>
           <div class="pin" id="radarpin" hidden></div>
           <div class="note" id="radarnote" hidden></div>
-          <span class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · NEXRAD<span id="satcredit" hidden> &amp; GOES</span> via <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">IEM</a></span>
+          <span class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · NEXRAD<span id="satcredit" hidden> &amp; GOES</span> via <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">IEM</a><span id="awscredit" hidden> · NOAA open data on <a href="https://registry.opendata.aws/collab/noaa/" target="_blank" rel="noopener">AWS</a></span></span>
         </div>
         <div class="radarbar">
           <button class="play" type="button" id="play" aria-label="Play radar loop"></button>
@@ -194,10 +220,15 @@
 
 <script src="effects.js"></script>
 <script src="projects/weather/nowcast.js?v=1"></script>
-<script src="projects/weather/wx.js?v=11"></script>
+<script src="projects/weather/wx.js?v=12"></script>
 <script src="projects/weather/sounding.js?v=2"></script>
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
-<script src="assets/weather/app.js?v=2"></script>
+<script src="projects/weather/bzip2.js?v=1"></script>
+<script src="projects/weather/nexrad.js?v=1"></script>
+<script src="projects/weather/glm.js?v=1"></script>
+<script src="projects/weather/grib2.js?v=1"></script>
+<script src="projects/weather/modelmaps.js?v=1"></script>
+<script src="assets/weather/app.js?v=3"></script>
 </body>
 </html>
