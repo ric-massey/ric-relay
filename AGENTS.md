@@ -22,6 +22,27 @@ mid-task — unless he says otherwise. Other sessions (cloud and desktop) push t
 `main` too: a SessionStart hook in `.claude/settings.json` pulls on startup, and
 before a push, `git fetch` and fast-forward first.
 
+## Update the documentation with the change
+
+Ric (2026-10-22): documentation upkeep has been lacking. **A change is not finished
+until the docs that describe it say what is now true.** In the same commit as the code:
+
+- **This file** — if you added, moved, renamed or removed a page, room, project, file,
+  route, rule or command, fix every line here that mentions it. A rule here that the
+  code no longer follows is worse than no rule: the next agent will "fix" the code back.
+- **`README.md`** — the room table and anything a visitor-facing description depends on.
+- **The nearest README** — most sections carry their own (`projects/<name>/README.md`,
+  `worker/README.md`, `atlas/README.md`, `projects/weather/README.md`, …). Setup steps,
+  data formats and "why it is this way" belong there.
+- **`EASTER_EGGS.md`** for any egg or hidden command; **`.github/checks.mjs`** for any
+  new test.
+- **Code comments** next to anything whose reason isn't obvious from reading it.
+
+Write down *why*, with the date and Ric's words where he made the call — that is what
+stops the next session undoing it. If you find a doc that is already wrong, fix it while
+you are there, or say so in your summary. Before you finish, grep the docs for the
+names you touched.
+
 ## Where things live
 
 ```
@@ -861,3 +882,5 @@ bug you are looking for.
 - [ ] Looks right at mobile width.
 - [ ] Didn't add location data, extra repos, or a build step.
 - [ ] The relevant test suite above still passes.
+- [ ] The docs say what is now true: this file, `README.md`, the nearest README and
+      `EASTER_EGGS.md` are updated for anything you added, moved, renamed or removed.
