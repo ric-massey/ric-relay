@@ -401,7 +401,69 @@
       .filter((k) => k.t && k.t >= nowMs - mins * 60e3).sort((a, b) => a.t - b.t);
   }
 
-  const api = { SATS, SPLIT_LON, open, variable, flashes, fromBytes, fromUrl, fileStart, hourPrefix, files };
+  /* ── flash density ──
+     How many flashes fell in each square of the map over a window: the
+     number forecasters read a storm's electrical strength off. Squares are
+     `km` on a side (rows by latitude, each row cut into columns of the same
+     width in km), so a square in Texas and one in Montana are the same size. */
+  function density(list, { nowMs = Date.now(), windowMs = 5 * 60e3, km = 8 } = {}) {
+    const dLat = km / 110.574, from = nowMs - windowMs, map = new Map();
+    let max = 0;
+    for (const f of list) {
+      if (f.t < from || f.t > nowMs) continue;
+      const row = Math.floor(f.lat / dLat), dLon = km / (111.32 * Math.cos((row + 0.5) * dLat * Math.PI / 180));
+      const col = Math.floor(f.lon / dLon), key = row * 100000 + col;
+      let c = map.get(key);
+      if (!c) { c = { lat0: row * dLat, lon0: col * dLon, dLat, dLon, n: 0 }; map.set(key, c); }
+      if (++c.n > max) max = c.n;
+    }
+    return { km, windowMs, nowMs, dLat, map, cells: [...map.values()], max };
+  }
+  function densityAt(D, lat, lon) {
+    const row = Math.floor(lat / D.dLat), dLon = D.km / (111.32 * Math.cos((row + 0.5) * D.dLat * Math.PI / 180));
+    const c = D.map.get(row * 100000 + Math.floor(lon / dLon));
+    return c ? c.n : 0;
+  }
+
+  /* ── one storm's flash rate ──
+     Flashes per minute within `radiusKm` of a storm cell, in `binMs` steps
+     ending at `endMs`, oldest first. The cell's position is carried back
+     along its own motion to each flash's time, so a storm moving at 40 kt is
+     not counted as dying because it left the circle it was in 15 minutes ago. */
+  function rates(list, cell, { radiusKm = 15, binMs = 120e3, bins = 7, endMs = Date.now() } = {}) {
+    const out = new Array(bins).fill(0), start = endMs - bins * binMs;
+    const to = cell.kt > 2 && cell.from != null ? ((cell.from + 180) % 360) * Math.PI / 180 : null;
+    const kmPerMs = to != null ? cell.kt * 1.852 / 3600e3 : 0, cosLat = Math.cos(cell.lat * Math.PI / 180);
+    for (const f of list) {
+      if (f.t < start || f.t >= endMs) continue;
+      const back = to != null ? kmPerMs * (f.t - cell.time) : 0;           // + forward, − back in time
+      const clat = cell.lat + back * Math.cos(to || 0) / 110.574, clon = cell.lon + back * Math.sin(to || 0) / (111.32 * cosLat);
+      const dy = (f.lat - clat) * 110.574, dx = (f.lon - clon) * 111.32 * cosLat;
+      if (dx * dx + dy * dy <= radiusKm * radiusKm) out[Math.floor((f.t - start) / binMs)]++;
+    }
+    return out.map((n) => n / (binMs / 60e3));
+  }
+
+  /* ── the lightning jump ──
+     Schultz, Petersen and Carey's "2σ" algorithm (2009, Weather and
+     Forecasting 24): the change in flash rate from one 2-minute step to the
+     next (DFRDT, flashes per minute per minute) against the spread of the
+     five changes before it. A change more than twice that spread, while the
+     storm is flashing at least 10 times a minute, is a jump — in their
+     storms it came before most severe hail, wind and tornadoes, by about 20
+     minutes. It is a research indicator, never a warning. `rateList` is
+     flashes per minute, oldest first, at least seven steps. */
+  function jump(rateList, { binMin = 2, minRate = 10 } = {}) {
+    if (rateList.length < 7) return null;
+    const d = [];
+    for (let i = 1; i < rateList.length; i++) d.push((rateList[i] - rateList[i - 1]) / binMin);
+    const now = d[d.length - 1], prev = d.slice(-6, -1), mean = prev.reduce((s, x) => s + x, 0) / prev.length;
+    const sigma = Math.sqrt(prev.reduce((s, x) => s + (x - mean) ** 2, 0) / (prev.length - 1));
+    const rate = rateList[rateList.length - 1];
+    return { rate, dfrdt: now, sigma, level: sigma > 0 ? now / sigma : null, jump: rate >= minRate && now > 0 && now > 2 * sigma };
+  }
+
+  const api = { SATS, SPLIT_LON, open, variable, flashes, fromBytes, fromUrl, fileStart, hourPrefix, files, density, densityAt, rates, jump };
   root.Glm = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

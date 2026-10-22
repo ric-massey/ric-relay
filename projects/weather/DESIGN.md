@@ -26,7 +26,8 @@
 >    whether it is safe to do something.
 > 3. **Raw NOAA data, read in the browser (Ric, 2026-10-22: "do the three", then
 >    "do it").** Dual-pol radar at four tilts and the full Level II volume
->    (§11.2), MRMS rotation tracks and hail (§11.3), GOES lightning (§12), HRRR /
+>    (§11.2), MRMS rotation tracks and hail (§11.3), GOES lightning with flash
+>    density and each storm's flash rate and lightning jump (§12), HRRR /
 >    GFS model maps with the severe composites and a time-lagged HRRR ensemble
 >    for probabilities (§13–14, §17.2) come from NOAA's own files on AWS and are
 >    decoded in the visitor's browser — no server of ours, nothing stored. This is

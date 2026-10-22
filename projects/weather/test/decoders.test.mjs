@@ -113,6 +113,36 @@ for (const [file, e] of Object.entries(expected.glm)) {
   const start = L.fileStart(key);
   ok(start === Date.UTC(2026, 9, 22, 19, 11, 40) && fl.every((x) => Math.abs(x.t - start) < 30e3), 'each flash is within its file’s 20 seconds of the time in the name');
   ok(again.length === fl.length && again.every((x, i) => x.t === fl[i].t && x.energy === fl[i].energy), 'a second file read with the first one’s attributes gives the same flashes');
+  const D = L.density(fl, { nowMs: start + 20e3, windowMs: 60e3 });
+  ok(D.cells.reduce((s, c) => s + c.n, 0) === fl.length && fl.every((x) => L.densityAt(D, x.lat, x.lon) > 0), `density: the file's ${fl.length} flashes land in ${D.cells.length} squares, every one counted once`);
+}
+
+console.log('\nRULE  flash density, flash rate and the lightning jump');
+{
+  const T = Date.UTC(2026, 9, 22, 20);
+  /* 8 km squares are 8 km both ways at any latitude */
+  for (const lat of [26, 48]) {
+    const D = L.density([{ lat, lon: -97, t: T }], { nowMs: T });
+    const c = D.cells[0], ew = c.dLon * 111.32 * Math.cos((c.lat0 + c.dLat / 2) * Math.PI / 180);
+    ok(Math.abs(c.dLat * 110.574 - 8) < 1e-9 && Math.abs(ew - 8) < 1e-9, `a square at ${lat}° N is 8 km by 8 km`);
+  }
+  const D = L.density([{ lat: 35, lon: -97, t: T - 6 * 60e3 }, { lat: 35, lon: -97, t: T - 60e3 }, { lat: 35.001, lon: -97.001, t: T - 30e3 }], { nowMs: T });
+  ok(D.max === 2 && D.cells.length === 1, 'the window keeps the last five minutes and drops the flash six minutes ago');
+  /* a cell moving east at 60 kt: flashes that stayed with it are counted
+     at every step, however far it has moved from where it was scanned */
+  const cell = { lat: 35, lon: -97, kt: 60, from: 270, time: T };
+  const fl = [];
+  for (let m = 0; m < 14; m++) {
+    const km = 60 * 1.852 * (m - 14) / 60, lon = -97 + km / (111.32 * Math.cos(35 * Math.PI / 180));
+    for (let k = 0; k < 10; k++) fl.push({ lat: 35, lon, t: T - (14 - m) * 60e3 + k * 1000 });
+  }
+  const r = L.rates(fl, cell, { endMs: T });
+  ok(r.length === 7 && r.every((x) => x === 10), `following the storm along its track, 10 flashes a minute at every step (${r.join(', ')})`);
+  ok(L.rates(fl, { ...cell, kt: 0 }, { endMs: T })[0] === 0, 'standing still instead, the storm seems to have no flashes 14 minutes ago — it was 26 km away');
+  const steady = L.jump([10, 11, 10, 11, 10, 11, 10]), up = L.jump([10, 11, 10, 11, 10, 11, 24]), weak = L.jump([1, 2, 1, 2, 1, 2, 8]);
+  ok(steady && !steady.jump && up && up.jump && up.level > 2, `a rise from 11 to 24 a minute is a jump (${up.level.toFixed(1)}σ); wobbling between 10 and 11 is not`);
+  ok(weak && !weak.jump && weak.dfrdt > 2 * weak.sigma, 'a storm under 10 flashes a minute never jumps, however steep its rise (Schultz et al. 2009)');
+  ok(L.jump([10, 12, 14]) === null, 'fewer than seven steps (14 minutes) is not enough to say');
 }
 ok(L.hourPrefix(Date.UTC(2026, 0, 1, 5)) === 'GLM-L2-LCFA/2026/001/05/' && L.hourPrefix(Date.UTC(2026, 11, 31, 23)) === 'GLM-L2-LCFA/2026/365/23/', 'the bucket is by day of the year and hour');
 

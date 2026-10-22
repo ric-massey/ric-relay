@@ -780,6 +780,9 @@ ones that must never break:
   on real files in `test/fixtures/`; change a decoder and its expectations together
   (`fixtures/make-expected.py` regenerates them). Those buckets are the weather
   room's other external hosts. Lightning is GLM *flashes* — never call them strikes.
+  Flash density, a cell's flash rate and the lightning jump (`glm.js`, Schultz et
+  al.'s 2σ method) are worked out from those flashes in the browser; the jump is
+  an indicator, shown as one, never a warning or a verdict.
   A storm report is shown as the office issued it and the card says it is a report,
   not a verified event. The severe composites are SPC's published formulas (the
   fixed-layer STP; the supercell composite is labelled an approximation because

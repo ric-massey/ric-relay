@@ -1089,7 +1089,7 @@
     if (pro && pro.ov.cells && pro.cGot) row("", `Storm cells — ${pro.cells.length}`, "every NEXRAD's own storm-tracking table, via IEM · checked", pro.cGot);
     if (pro && pro.ov.reports && pro.rGot) row("", `Storm reports — ${pro.reports.filter((r) => r.severe).length} severe, ${pro.reports.length} in all`, "the NWS's local storm reports, last 24 hours, via IEM · checked", pro.rGot);
     const lt = radar.lightning;
-    if (lt) row(lt.failed ? "off" : "", `Lightning — ${lt.n} flash${lt.n === 1 ? "" : "es"} in 10 minutes`, lt.failed ? "the GOES lightning mappers did not answer" : "GOES-East and GOES-West lightning mappers, NOAA open data on AWS · checked", lt.at);
+    if (lt) row(lt.failed ? "off" : "", `Lightning — ${lt.n} flash${lt.n === 1 ? "" : "es"} in 20 minutes`, lt.failed ? "the GOES lightning mappers did not answer" : "GOES-East and GOES-West lightning mappers, NOAA open data on AWS · checked", lt.at);
     if (pro && pro.ov.fronts && pro.surface) row(Date.now() - (pro.surface.valid || 0) > 6 * 3600e3 ? "stale" : "", "Surface analysis — fronts, highs, lows", "WPC's coded analysis, via the NWS · valid", pro.surface.valid);
     if (S.afd) row("", `Forecast discussion — NWS ${esc(S.afd.office || "")}`, "the forecasters' own words · issued", S.afd.issued);
     const stn = radar.stations;
@@ -1129,7 +1129,9 @@
       mode: "comp", valid: null, frames: [], loadedOld: false, site: null, sites: null, outlook: false, us: false, frameT: null, sat: null, pin: null,
       stations: PRO && store.get("wx:stations", true) !== false, obs: [],   // stations are Pro's
       /* Pro's overlays, each the visitor's own choice in this browser */
-      ov: PRO ? Object.assign({ watches: true, cells: true, fronts: false, lightning: false, reports: true }, store.get("wx:ov", {})) : { watches: false, cells: false, fronts: false, lightning: false, reports: false },
+      ov: PRO ? Object.assign({ watches: true, cells: true, fronts: false, lightning: false, density: false, reports: true }, store.get("wx:ov", {})) : { watches: false, cells: false, fronts: false, lightning: false, density: false, reports: false },
+      /* the flash density window, in minutes */
+      densWin: [1, 5, 10, 20].includes(Number(store.get("wx:denswin", 5))) ? Number(store.get("wx:denswin", 5)) : 5,
       pro: { watches: [], mcds: [], mpds: [], cells: [], surface: null, reports: [] }, measure: null,
       /* Pro's own radar and model maps: the tilt (0 is the lowest scan) and the model field, each kept in this browser */
       tilt: Math.min(3, Math.max(0, Number(store.get("wx:tilt", 0)) || 0)),
@@ -1837,43 +1839,104 @@
     }
 
     /* ── GOES lightning (glm.js) ──
-       Every flash the GLM saw in the last ten minutes, from GOES-East east of
-       105° W and GOES-West west of it, asked again every minute while the
-       layer is on and the page is in view. Brighter is newer. */
+       Every flash the GLM saw in the last twenty minutes, from GOES-East east
+       of 105° W and GOES-West west of it, asked again every minute while
+       either lightning layer is on and the page is in view. Two layers read
+       them: Lightning draws the last ten minutes as dots, brighter is newer;
+       Flash density counts them in 8 km squares over a window the visitor
+       picks (Ric, 2026-10-22: "a density of lightning within a time frame").
+       The twenty minutes are also what each storm cell's flash rate and
+       lightning jump need — seven 2-minute steps and room to spare.
+       `span` is the stretch of time each satellite's files cover with no gap,
+       so a storm is never said to have had no flashes in minutes we never read. */
     const ltgCv = $("#radarltg");
-    const LTG = { flashes: [], last: { east: "", west: "" }, memo: { east: {}, west: {} }, busy: false, at: 0, timer: 0, failed: false };
+    const LTG_KEEP = 20 * 60e3;
+    const LTG = { flashes: [], last: { east: "", west: "" }, memo: { east: {}, west: {} }, span: { east: null, west: null }, busy: false, at: 0, timer: 0, failed: false, dens: null, cell: new Map(), gen: 0 };
+    const ltgOn = () => PRO && (R.ov.lightning || R.ov.density);
     async function loadLightning() {
-      if (!GL || !R.ov.lightning || !R.started || R.mode === "replay" || LTG.busy || document.hidden) return;
+      if (!GL || !ltgOn() || !R.started || R.mode === "replay" || LTG.busy || document.hidden) return;
       LTG.busy = true;
+      const gen = LTG.gen;                                           // turned off meanwhile: stop, and keep nothing
       try {
         const w = el.clientWidth, left = R.cx - w / 2, west = xLng(left, R.z), east = xLng(left + w, R.z);
         const sats = [];
         if (east >= GL.SPLIT_LON || R.z <= 4) sats.push("east");
         if (west < GL.SPLIT_LON || R.z <= 4) sats.push("west");
         let any = false, fail = false;
-        for (const sat of sats) {
+        /* both satellites at once, eight files at a time. A first fill (or one
+           after a gap) goes newest first, so the last few minutes are on the
+           map in seconds and the older ones fill in behind them; `span.from`
+           follows it back. After that, each minute's new files go in order. */
+        await Promise.all(sats.map(async (sat) => {
           let list = [];
-          try { list = await GL.files(sat, { mins: 10, after: LTG.last[sat] }); } catch (e) { fail = true; continue; }
+          try { list = await GL.files(sat, { mins: LTG_KEEP / 60e3, after: LTG.last[sat] }); } catch (e) { fail = true; return; }
           const fresh = list.filter((f) => f.key > LTG.last[sat]);
-          for (let i = 0; i < fresh.length; i += 4) {
-            const got = await Promise.all(fresh.slice(i, i + 4).map((f) => GL.flashes(GL.fromUrl(f.url), f.key, LTG.memo[sat]).catch(() => null)));
+          if (!fresh.length || gen !== LTG.gen) return;
+          const sp = LTG.span[sat], back = !sp || fresh[0].t > sp.to + 40e3, newest = fresh[fresh.length - 1];
+          const order = back ? fresh.slice().reverse() : fresh;
+          if (back) { LTG.span[sat] = { from: newest.t, to: newest.t + 20e3 }; LTG.last[sat] = newest.key; }
+          for (let i = 0; i < order.length; i += 8) {
+            const batch = order.slice(i, i + 8);
+            const got = await Promise.all(batch.map((f) => GL.flashes(GL.fromUrl(f.url), f.key, LTG.memo[sat]).catch(() => null)));
+            if (gen !== LTG.gen) return;
             for (const fl of got) if (fl) { any = true; for (const x of fl) if (x.good && (sat === "east" ? x.lon >= GL.SPLIT_LON : x.lon < GL.SPLIT_LON)) LTG.flashes.push(x); }
-            LTG.last[sat] = fresh[Math.min(fresh.length, i + 4) - 1].key;
+            if (back) LTG.span[sat].from = batch[batch.length - 1].t;
+            else { LTG.last[sat] = batch[batch.length - 1].key; LTG.span[sat].to = batch[batch.length - 1].t + 20e3; }
             LTG.at = LTG.at || Date.now();                           // the count shows as it fills
+            LTG.dens = null; LTG.cell.clear();
             drawLightning(); label();
           }
-        }
-        const cut = Date.now() - 10 * 60e3;
+        }));
+        if (gen !== LTG.gen) return;
+        const cut = Date.now() - LTG_KEEP;
         LTG.flashes = LTG.flashes.filter((x) => x.t >= cut);
+        for (const sat of ["east", "west"]) if (LTG.span[sat]) LTG.span[sat].from = Math.max(LTG.span[sat].from, cut);
         LTG.failed = fail && !any && !LTG.flashes.length;
         LTG.at = Date.now();
-      } finally { LTG.busy = false; }
+      } finally {
+        LTG.busy = false;
+        if (gen !== LTG.gen && ltgOn()) setTimeout(loadLightning, 0);  // turned off and on again while this one read
+      }
+      LTG.dens = null; LTG.cell.clear();
       drawLightning(); label(); renderSources();
+      if (R.ov.cells && R.cellsDrawn && R.cellsDrawn.length) draw();   // the jump rings
     }
     function lightningClock() {
       clearInterval(LTG.timer);
-      if (R.ov.lightning) { loadLightning(); LTG.timer = setInterval(loadLightning, 60e3); }
-      else { LTG.flashes = []; LTG.last = { east: "", west: "" }; drawLightning(); }
+      if ($("#densbar")) $("#densbar").hidden = !(PRO && R.ov.density);
+      if (ltgOn()) { loadLightning(); LTG.timer = setInterval(loadLightning, 60e3); }
+      else { LTG.gen++; LTG.flashes = []; LTG.last = { east: "", west: "" }; LTG.span = { east: null, west: null }; LTG.at = 0; LTG.dens = null; LTG.cell.clear(); drawLightning(); }
+    }
+    /* the newest moment both satellites in use have been read up to */
+    function ltgThrough(lon) {
+      const sp = lon == null ? [LTG.span.east, LTG.span.west].filter(Boolean) : [LTG.span[lon >= GL.SPLIT_LON ? "east" : "west"]].filter(Boolean);
+      return sp.length ? { from: Math.max(...sp.map((s) => s.from)), to: Math.min(...sp.map((s) => s.to)) } : null;
+    }
+    /* flash density over the chosen window, ending where the files end */
+    const DENS_COLS = [[1, "#4c6ef5"], [2, "#15aabf"], [4, "#40c057"], [8, "#fab005"], [16, "#fd7e14"], [32, "#f03e3e"], [64, "#e64980"], [128, "#f8f0fc"]];
+    function ltgDensity() {
+      if (LTG.dens && LTG.dens.windowMs === R.densWin * 60e3) return LTG.dens;
+      const th = ltgThrough();
+      if (!th) return null;
+      LTG.dens = GL.density(LTG.flashes, { nowMs: th.to, windowMs: R.densWin * 60e3 });
+      LTG.dens.short = th.to - th.from < R.densWin * 60e3 - 30e3;              // the window reaches back before the first file read
+      return LTG.dens;
+    }
+    /* one storm cell's flash rate, 2-minute steps for the last 14 minutes,
+       and whether it jumped (glm.js) — or null when the files read do not
+       cover those 14 minutes yet */
+    function cellLightning(c) {
+      if (!GL || !ltgOn() || !LTG.at) return null;
+      const key = `${c.site}:${c.id}:${c.time}`;
+      if (LTG.cell.has(key)) return LTG.cell.get(key);
+      const th = ltgThrough(c.lon);
+      let out = null;
+      if (th && th.to - th.from >= 14 * 60e3 - 30e3) {
+        const rates = GL.rates(LTG.flashes, c, { endMs: th.to });
+        out = { rates, j: GL.jump(rates), end: th.to };
+      }
+      LTG.cell.set(key, out);
+      return out;
     }
     function drawLightning() {
       if (!ltgCv) return;
@@ -1881,8 +1944,24 @@
       if (ltgCv.width !== w || ltgCv.height !== h) { ltgCv.width = w; ltgCv.height = h; }
       const ctx = ltgCv.getContext("2d");
       ctx.clearRect(0, 0, w, h);
-      if (!R.ov.lightning || R.mode === "replay" || !LTG.flashes.length) return;
+      if (!ltgOn() || R.mode === "replay" || !LTG.flashes.length) return;
       const left = R.cx - w / 2, top = R.cy - h / 2, now = Date.now(), r = R.z >= 7 ? 2.6 : 1.8;
+      if (R.ov.density) {
+        const D = ltgDensity();
+        if (D) {
+          ctx.globalAlpha = 0.72;
+          for (const c of D.cells) {
+            const x0 = lngX(c.lon0, R.z) - left, x1 = lngX(c.lon0 + c.dLon, R.z) - left, y0 = latY(c.lat0 + c.dLat, R.z) - top, y1 = latY(c.lat0, R.z) - top;
+            if (x1 < 0 || y1 < 0 || x0 > w || y0 > h) continue;
+            let col = DENS_COLS[0][1];
+            for (const [n, cc] of DENS_COLS) if (c.n >= n) col = cc;
+            ctx.fillStyle = col;
+            ctx.fillRect(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+      if (!R.ov.lightning) return;
       /* four ages, oldest drawn first so the newest sit on top */
       const COLS = ["#ffffff", "#ffe066", "#ff922b", "#e8590c"], buckets = [[], [], [], []];
       for (const f of LTG.flashes) {
@@ -1902,6 +1981,13 @@
 
     /* ── what the pointer is over: the value under it, in words ── */
     function readoutAt(lat, lon) {
+      const a = readoutFrame(lat, lon);
+      const D = R.ov.density && LTG.at && R.mode !== "replay" ? ltgDensity() : null;
+      if (!D) return a;
+      const n = GL.densityAt(D, lat, lon), b = `${n} flash${n === 1 ? "" : "es"} in this 8 km square, ${R.densWin === 1 ? "last minute" : `last ${R.densWin} min`}`;
+      return a ? `${a} · ${b}` : b;
+    }
+    function readoutFrame(lat, lon) {
       const f = R.frames[R.frame];
       if (!f) return null;
       if (f.l3 && f.l3.file) {
@@ -2085,7 +2171,8 @@
       /* NEXRAD's storm cells, from zoom 6: where each is, where it is heading
          (ticks every 15 minutes for an hour, carried forward at its own
          motion), and rings for what the radar found in it — yellow for a
-         mesocyclone, red for a tornadic vortex, green for large hail */
+         mesocyclone, red for a tornadic vortex, green for large hail, and a
+         dashed violet one for a lightning jump when a lightning layer is on */
       R.cellsDrawn = [];
       if (R.ov.cells && R.z >= 6) {
         for (const c of R.pro.cells) {
@@ -2105,6 +2192,8 @@
           const hail = (c.hailIn != null && c.hailIn >= 1) || (c.posh != null && c.posh >= 50);
           if (hail) out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="11" fill="none" stroke="#69db7c" stroke-width="2"/>`);
           if (c.meso) out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="8" fill="none" stroke="#ffd43b" stroke-width="2.4"/>`);
+          const cl = cellLightning(c);
+          if (cl && cl.j && cl.j.jump) out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14" fill="none" stroke="#e599f7" stroke-width="2" stroke-dasharray="4 3"/>`);
           if (c.tvs) out.push(`<polygon points="${x.toFixed(1)},${(y + 9).toFixed(1)} ${(x - 8).toFixed(1)},${(y - 6).toFixed(1)} ${(x + 8).toFixed(1)},${(y - 6).toFixed(1)}" fill="none" stroke="#ff4d6d" stroke-width="2.6"/>`);
           const core = c.dbz >= 60 ? "#e64980" : c.dbz >= 50 ? "#ff6b6b" : c.dbz >= 40 ? "#ffa94d" : "#e9ecef";
           out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.4" fill="${core}" stroke="#05070a" stroke-width="1.2"/>`);
@@ -2289,7 +2378,7 @@
       legend();
       if ($("#modelbar")) $("#modelbar").hidden = mode !== "model";
       if ($("#mrmsbar")) $("#mrmsbar").hidden = mode !== "mrms";
-      if ($("#awscredit")) $("#awscredit").hidden = !(l3(mode) || mode === "model" || mode === "mrms" || R.ov.lightning);
+      if ($("#awscredit")) $("#awscredit").hidden = !(l3(mode) || mode === "model" || mode === "mrms" || ltgOn());
       tilts();
       /* only the newest switch may finish: tapping Reflectivity then Velocity
          quickly once left reflectivity's scans under the Velocity button */
@@ -2358,7 +2447,14 @@
       else sb.textContent = "Finding the nearest radar…";
       if (PRO && R.ov.cells && R.started && R.mode !== "replay" && R.z < 6) sb.textContent += " Zoom in to see storm cells.";
       if (R.stations && R.started && R.mode !== "replay") sb.textContent += R.z < STN_MINZ ? " Zoom in to see the airport stations." : R.obs.length ? " Tap a station for its full reading." : "";
-      if (PRO && R.ov.lightning && R.started && R.mode !== "replay") sb.textContent += LTG.failed ? " Lightning: GOES did not answer." : LTG.at ? ` Lightning: ${LTG.flashes.length.toLocaleString()} flashes in the last 10 minutes, newest brightest.` : " Lightning: loading the last 10 minutes…";
+      if (ltgOn() && R.started && R.mode !== "replay") {
+        const n10 = LTG.flashes.filter((x) => x.t >= Date.now() - 10 * 60e3).length, D = R.ov.density && LTG.at ? ltgDensity() : null;
+        sb.textContent += LTG.failed ? " Lightning: GOES did not answer."
+          : !LTG.at ? " Lightning: loading the last 20 minutes…"
+          : (R.ov.lightning ? ` Lightning: ${n10.toLocaleString()} flashes in the last 10 minutes, newest brightest.` : "")
+            + (D ? ` Flash density: flashes in each 8 km square over the ${R.densWin === 1 ? "last minute" : `last ${R.densWin} minutes`}${D.short ? " (still filling in)" : ""}, most ${D.max}.` : "");
+        if (R.ov.cells && R.z >= 6) sb.textContent += " Tap a storm cell for its flash rate.";
+      }
       if (PRO && R.ov.reports && R.started && R.mode !== "replay" && R.pro.rGot) { const n = R.pro.reports.filter((r) => r.severe).length; sb.textContent += ` Storm reports: ${n} severe in the last 24 hours${R.z < 7 ? " (zoom in for rain, snow and the rest)" : ""} — tap one for who reported it.`; }
       if (R.sat && R.mode !== "replay") {
         const night = R.sat === "vis" && S.fc && S.fc.current && S.fc.current.isDay === false;
@@ -2378,8 +2474,9 @@
       R.started = true;
       const sat = store.get("wx:sat", null);           // the visitor's last choice, this browser only
       if (PRO && Wx.SAT[sat]) setSat(sat);
-      if (PRO && R.ov.lightning) { lightningClock(); if ($("#awscredit")) $("#awscredit").hidden = false; }
       const linked = PRO ? applyLink() : false;          // a shared view wins over the place's
+      /* after the link, which may have turned a lightning layer on */
+      if (ltgOn()) { lightningClock(); if ($("#awscredit")) $("#awscredit").hidden = false; }
       /* the pickers say what the link chose */
       if (PRO && $("#mrprod") && MR) $("#mrprod").value = R.mr.prod;
       if (PRO && $("#mmfield") && MM) modelOptions();
@@ -2496,9 +2593,24 @@
           ${row("VIL", c.vil != null ? `${c.vil} kg/m²` : null)}
           ${row("Hail", c.poh != null ? `${c.poh}% any, ${c.posh ?? 0}% severe${c.hailIn ? `, up to ${c.hailIn} in` : ""}` : null)}
           ${row("Rotation", c.tvs ? `tornadic vortex (${esc(c.tvs)})` : c.meso ? `mesocyclone, strength ${esc(c.meso)}` : "none detected")}
+          ${ltgRows(c, row)}
         </div>
-        <p class="ps" style="margin-top:6px">From the radar's own storm-tracking table — what it measured, not a warning.</p>`;
+        <p class="ps" style="margin-top:6px">From the radar's own storm-tracking table${ltgOn() ? " and GOES's lightning mapper" : ""} — what they measured, not a warning.</p>`;
       draw(); placePin();
+    }
+    /* the cell's lightning: flashes a minute within 15 km, 2-minute steps,
+       and the lightning jump (glm.js) — only when a lightning layer is on */
+    function ltgRows(c, row) {
+      if (!ltgOn()) return "";
+      if (!LTG.at) return row("Lightning", "loading…");
+      const cl = cellLightning(c);
+      if (!cl || !cl.j) return row("Flash rate", "reading 14 minutes of flashes…");
+      const r = cl.rates, fmt = (x) => x >= 10 ? String(Math.round(x)) : x.toFixed(1).replace(/\.0$/, ""), j = cl.j;
+      const trend = r.slice(-4).map(fmt).join(" → ");
+      return row("Flash rate", `${fmt(j.rate)} a minute, within 15 km`)
+        + row("Last 8 minutes", `${trend} a minute`)
+        + row("Lightning jump", j.jump ? `yes — rising ${j.level.toFixed(1)}× faster than its usual swing` : j.rate < 10 ? "no (under 10 a minute)" : "no")
+        + (j.jump ? `<span class="pfull">A sudden rise in flashes often comes before hail, damaging wind or a tornado, by about 20 minutes (Schultz et al., the 2σ method). An indicator — not a warning.</span>` : "");
     }
     /* a local storm report, as the office issued it */
     function showReport(r) {
@@ -2560,7 +2672,7 @@
        layer, the satellite and the overlays — never the visitor's own place */
     function shareLink() {
       const lat = yLat(R.cy, R.z), lon = xLng(R.cx, R.z);
-      const ov = [R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.reports && "r"].filter(Boolean).join("");
+      const ov = [R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r"].filter(Boolean).join("");
       const v = `${lat.toFixed(1)},${(((lon + 540) % 360) - 180).toFixed(1)},${R.z}`;
       const url = `${location.origin}${location.pathname}#v=${v}&l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}`;
       const done = () => note("Link copied — it opens this map view and these layers. Your saved place is not in it.");
@@ -2577,7 +2689,7 @@
       }
       const o = q.get("o");
       if (o != null) {
-        R.ov = { watches: o.includes("w"), cells: o.includes("c"), fronts: o.includes("f"), lightning: o.includes("l"), reports: o.includes("r") };
+        R.ov = { watches: o.includes("w"), cells: o.includes("c"), fronts: o.includes("f"), lightning: o.includes("l"), density: o.includes("d"), reports: o.includes("r") };
         R.stations = o.includes("s"); R.outlook = o.includes("o");
         $("#stationtoggle").setAttribute("aria-pressed", String(R.stations));
         $("#outlooktoggle").setAttribute("aria-pressed", String(R.outlook));
@@ -2623,7 +2735,7 @@
         R.ov[b.dataset.ov] = !R.ov[b.dataset.ov];
         store.set("wx:ov", R.ov);
         b.setAttribute("aria-pressed", String(R.ov[b.dataset.ov]));
-        if (b.dataset.ov === "lightning") { lightningClock(); if ($("#awscredit")) $("#awscredit").hidden = !(l3() || R.mode === "model" || R.ov.lightning); }
+        if (b.dataset.ov === "lightning" || b.dataset.ov === "density") { lightningClock(); if ($("#awscredit")) $("#awscredit").hidden = !(l3() || R.mode === "model" || R.mode === "mrms" || ltgOn()); }
         loadOverlays(true); draw(); label(); renderSources();
       });
     });
@@ -2711,6 +2823,11 @@
         setFrames(R.frames.map((f) => ({ t: f.t, model: { src: f.model.src, field: R.mm.field, run: f.model.run, fh: f.model.fh } })));
         show(Math.min(at, R.frames.length - 1)); label(); renderSources();
       });
+    }
+    if ($("#denswin")) {
+      $("#denswin").value = String(R.densWin);
+      $("#densbar").hidden = !(PRO && R.ov.density);
+      $("#denswin").addEventListener("change", (e) => { R.densWin = Number(e.target.value); store.set("wx:denswin", R.densWin); LTG.dens = null; drawLightning(); label(); });
     }
     if ($("#mrmsbar") && MR) {
       const groups = {};
@@ -2839,7 +2956,7 @@
       get mode() { return R.mode; },
       get replay() { return R.replay; },
       get pro() { return PRO ? { ov: R.ov, ...R.pro } : null; },
-      get lightning() { return PRO && R.ov.lightning && (LTG.at || LTG.failed) ? { n: LTG.flashes.length, at: LTG.at, failed: LTG.failed } : null; },
+      get lightning() { return ltgOn() && (LTG.at || LTG.failed) ? { n: LTG.flashes.length, at: LTG.at, failed: LTG.failed } : null; },
       get stations() { return R.stations && R.obs.length ? { n: R.obs.length, newest: Math.max(...R.obs.map((s) => s.time)) } : null; },
       get valid() { return R.valid; },
       get started() { return R.started; }

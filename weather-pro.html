@@ -24,7 +24,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Weather">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231f5fa8'/><circle cx='40' cy='40' r='16' fill='%23ffd166'/><path d='M30 74h42a14 14 0 0 0-3-28 18 18 0 0 0-34 6 11 11 0 0 0-5 22z' fill='%23fff'/></svg>">
-  <link rel="stylesheet" href="assets/weather/weather.css?v=3">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=4">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -110,11 +110,16 @@
           <label>Field <select id="mmfield"></select></label>
           <span class="mmrun" id="mmrun"></span>
         </div>
+        <div class="modelbar pro-only" id="densbar" hidden>
+          <label>Flash density over <select id="denswin"><option value="1">the last minute</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="20">20 minutes</option></select></label>
+          <span class="dscale" aria-label="Flashes per 8 km square"><span class="sw"><i style="background:#4c6ef5"></i>1</span><span class="sw"><i style="background:#15aabf"></i>2</span><span class="sw"><i style="background:#40c057"></i>4</span><span class="sw"><i style="background:#fab005"></i>8</span><span class="sw"><i style="background:#fd7e14"></i>16</span><span class="sw"><i style="background:#f03e3e"></i>32</span><span class="sw"><i style="background:#e64980"></i>64</span><span class="sw"><i style="background:#f8f0fc"></i>128+</span> <span class="mmrun">flashes per 8 km square · GOES GLM</span></span>
+        </div>
         <div class="seg rowscroll pro-only" role="group" aria-label="Overlays on the map">
           <span class="seglab">Overlays</span>
           <button type="button" data-ov="watches" aria-pressed="false" title="SPC watches and mesoscale discussions, WPC precipitation discussions">Watches &amp; MDs</button>
           <button type="button" data-ov="cells" aria-pressed="false" title="Every NEXRAD storm cell: track, hail, rotation">Storm cells</button>
           <button type="button" data-ov="lightning" aria-pressed="false" title="Every lightning flash GOES's lightning mapper saw in the last 10 minutes">Lightning</button>
+          <button type="button" data-ov="density" aria-pressed="false" title="How many flashes fell in each 8 km square over a window you choose">Flash density</button>
           <button type="button" data-ov="reports" aria-pressed="false" title="The NWS's local storm reports from the last 24 hours: tornadoes, hail, wind, floods, snow">Storm reports</button>
           <button type="button" data-ov="fronts" aria-pressed="false" title="WPC's surface analysis: fronts, highs and lows">Fronts</button>
           <button type="button" id="stationtoggle" aria-pressed="false" title="Airport weather stations: the station model from zoom 8">Stations</button>
@@ -233,10 +238,10 @@
 <script src="projects/weather/bzip2.js?v=1"></script>
 <script src="projects/weather/nexrad.js?v=2"></script>
 <script src="projects/weather/level2.js?v=1"></script>
-<script src="projects/weather/glm.js?v=1"></script>
+<script src="projects/weather/glm.js?v=2"></script>
 <script src="projects/weather/grib2.js?v=2"></script>
 <script src="projects/weather/modelmaps.js?v=2"></script>
 <script src="projects/weather/mrms.js?v=1"></script>
-<script src="assets/weather/app.js?v=4"></script>
+<script src="assets/weather/app.js?v=5"></script>
 </body>
 </html>
