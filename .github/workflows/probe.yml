@@ -1,0 +1,18 @@
+name: wx probe
+on:
+  push:
+    branches: [claude/wx-probe]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: IEM local storm reports
+        run: |
+          for u in "https://mesonet.agron.iastate.edu/geojson/lsr.geojson?hours=24" "https://mesonet.agron.iastate.edu/api/1/nws/lsrs_by_wfo.json?wfo=OUN" ; do
+            echo "=== $u"; curl -s -D - --max-time 30 -H "Origin: https://ricmassey.com" "$u" -o out.json | grep -i -E "^HTTP|access-control|content-type|cache-control"
+            python3 -c "import json;j=json.load(open('out.json'));f=j.get('features') or j.get('data') or [];print('count',len(f));[print(json.dumps(x)[:900]) for x in f[:4]];import collections;print(collections.Counter((x.get('properties',x).get('typetext'),x.get('properties',x).get('type')) for x in f).most_common(40))" || head -c 600 out.json
+          done
+      - name: SPC storm reports
+        run: curl -s --max-time 30 "https://www.spc.noaa.gov/climo/reports/yesterday_filtered.csv" | head -12
