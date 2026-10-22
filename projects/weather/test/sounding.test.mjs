@@ -178,6 +178,12 @@ console.log('\nRULE  agrees with MetPy on the same profiles');
   ok(near(A.sb.lcl.p, M.loaded.lclp, 1.5), `LCL ${A.sb.lcl.p.toFixed(1)} hPa vs MetPy ${M.loaded.lclp}`);
   ok(near(A.pw, M.loaded.pw, 1.5), `precipitable water ${A.pw.toFixed(2)} mm vs MetPy ${M.loaded.pw}`);
   ok(near(S.moistLift(1000, 20, 500), -8.48, 0.15), `the pseudo-adiabat from 20 °C at 1000 hPa reaches ${S.moistLift(1000, 20, 500).toFixed(2)} °C at 500 (MetPy −8.48)`);
+  /* MetPy 1.7.1's downdraft_cape on the same profiles, computed 2026-10-22:
+     the source level, its wet-bulb temperature and the area */
+  for (const [name, prof, ref] of [['loaded', loaded, { dcape: 1412.74, p: 675, wb: -3.315 }], ['smooth', smooth, { dcape: 1017.39, p: 625, wb: -0.397 }]]) {
+    const d = S.dcape(S.prepare(prof));
+    ok(d && d.p === ref.p && near(d.wb, ref.wb, 0.05) && near(d.dcape, ref.dcape, ref.dcape * 0.01), `${name}: DCAPE ${d && d.dcape.toFixed(1)} J/kg from ${d && d.p} hPa, wet bulb ${d && d.wb.toFixed(2)} °C (MetPy ${ref.dcape}, ${ref.p}, ${ref.wb})`);
+  }
   const v = S.parcel(S.prepare(smooth), S.parcels(S.prepare(smooth)).sb);
   ok(v.cape > 2342 && v.cin > -189, `with the virtual-temperature correction (the page's numbers, as SPC does it) CAPE rises and CIN shrinks: ${v.cape} / ${v.cin}`);
 }

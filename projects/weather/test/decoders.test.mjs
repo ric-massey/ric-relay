@@ -2,7 +2,8 @@
    The radar, lightning and model maps are read from NOAA's raw files in the
    browser (bzip2.js, nexrad.js, glm.js, grib2.js). Each is held here to the
    library the field trusts, on real files in fixtures/: MetPy for NEXRAD
-   Level III, ecCodes for GRIB2, h5py for the GLM's HDF5. fixtures/
+   Level III, ecCodes for GRIB2, h5py for the GLM's and the ABI's HDF5,
+   pyproj for the ABI's fixed grid. fixtures/
    make-expected.py wrote expected.json from those libraries; this file reads
    the same files with ours and must agree. No network. */
 import { createRequire } from 'node:module';
@@ -19,6 +20,7 @@ const L = require('../glm.js');
 const L2 = require('../level2.js');
 const MM = require('../modelmaps.js');
 const MR = require('../mrms.js');
+const AB = require('../abi.js');
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fx = (name) => new Uint8Array(readFileSync(join(here, 'fixtures', name)));
@@ -145,6 +147,120 @@ console.log('\nRULE  flash density, flash rate and the lightning jump');
   ok(L.jump([10, 12, 14]) === null, 'fewer than seven steps (14 minutes) is not enough to say');
 }
 ok(L.hourPrefix(Date.UTC(2026, 0, 1, 5)) === 'GLM-L2-LCFA/2026/001/05/' && L.hourPrefix(Date.UTC(2026, 11, 31, 23)) === 'GLM-L2-LCFA/2026/365/23/', 'the bucket is by day of the year and hour');
+
+console.log('\nRULE  GOES ABI imagery reads as h5py reads it, and sits where pyproj puts it');
+for (const [file, e] of Object.entries(expected.abi)) {
+  const f = await L.open(L.fromBytes(fx(file)));
+  const v = await L.variable(f, 'CMI'), r = await L.variable(f, 'CMI', null, { raw16: true });
+  let bad = 0, badRaw = 0, finite = 0;
+  for (const [i, j, x] of e.samples) {
+    const k = i * e.shape[1] + j;
+    if (!close(v.values[k], x, 1e-5)) bad++;
+    const y = r.raw[k] === r.fill ? NaN : r.raw[k] * r.scale + r.offset;
+    if (!close(y, x, 1e-5)) badRaw++;
+  }
+  for (const x of v.values) if (Number.isFinite(x)) finite++;
+  ok(v.dims.join('×') === e.shape.join('×') && finite === e.finite && bad === 0, `${e.shape.join('×')} band in row-band chunks put back together: ${finite} pixels, ${e.samples.length} sampled match${bad ? ` — ${bad} do not` : ''}`);
+  ok(badRaw === 0, 'kept as 16-bit counts with their scale, the same values');
+  const xs = await L.variable(f, 'x'), ys = await L.variable(f, 'y'), P = await L.attrsOf(f, 'goes_imager_projection');
+  ok(close(xs.values[0], e.x[0], 1e-6) && close(ys.values[ys.values.length - 1], e.y[1], 1e-6) && P.longitude_of_projection_origin === e.proj.longitude_of_projection_origin, 'the scan-angle axes and the projection\'s attributes');
+  const g = AB.projector(P, xs.values, ys.values);
+  let worst = 0, back = 0;
+  for (const [j, i, lat, lon] of e.nav) {
+    const [la, lo] = g.ll(i, j); worst = Math.max(worst, Math.abs(la - lat), Math.abs(lo - lon));
+    const [fi, fj] = g.ij(lat, lon); back = Math.max(back, Math.abs(fi - i), Math.abs(fj - j));
+  }
+  ok(worst < 1e-5 && back < 1e-3, `${e.nav.length} pixels navigated to within ${worst.toExponential(1)}° of pyproj, and back to within ${back.toExponential(1)} of a pixel`);
+}
+{
+  /* the GOES-R Product User's Guide's own worked example (vol. 5, §4.2.8.1) */
+  const g = AB.projector({ semi_major_axis: 6378137, semi_minor_axis: 6356752.31414, perspective_point_height: 35786023, longitude_of_projection_origin: -75 }, [-0.024052, -0.024042], [0.095340, 0.095330]);
+  const [la, lo] = g.ll(0, 0);
+  ok(Math.abs(la - 33.846162) < 1e-5 && Math.abs(lo + 84.690932) < 1e-5, `the PUG's example, x −0.024052, y 0.095340 rad: ${la.toFixed(6)}° N, ${lo.toFixed(6)}° E`);
+  ok(Number.isNaN(g.ij(0, 110)[0]), 'a place on the far side of the earth is not on the image');
+  ok(AB.ch(-26.2, -26.2, 0.6) === 0 && AB.ch(0.6, -26.2, 0.6) === 255 && Math.round(AB.ch(0.25, 0, 1, 2)) === 128, 'an RGB channel: the range stretched to 0–255, then the gamma');
+  ok(Object.values(AB.PRODUCTS).every((P) => P.bands.every((b) => AB.BANDS[b])) && Object.keys(AB.PRODUCTS).every((id) => AB.key(id)), 'every product names real bands and has a colour key');
+  ok(AB.hourPrefix('MCMIPC', Date.UTC(2026, 9, 22, 20, 5)) === 'ABI-L2-MCMIPC/2026/295/20/', 'the bucket is by product, day of the year and hour');
+}
+
+console.log('\nRULE  the Level II archive: both layouts read alike, and the download stops early');
+{
+  const { gzipSync } = await import('node:zlib');
+  const parts = expected.l2.files.map(fx), whole = new Uint8Array(parts.reduce((n, b) => n + b.length, 0));
+  let at = 0; for (const b of parts) { whole.set(b, at); at += b.length; }
+  /* the same volume as an old archive file: one gzip around the header and the plain messages */
+  const { header, records } = L2.records(whole);
+  const plain = [whole.subarray(0, 24), ...records.map((r) => Bz.bunzip2(r))];
+  const raw = new Uint8Array(plain.reduce((n, b) => n + b.length, 0));
+  at = 0; for (const b of plain) { raw.set(b, at); at += b.length; }
+  const gz = gzipSync(raw);
+  let served = 0;
+  const serve = (bytes) => async () => new Response(new ReadableStream({
+    start() { this.i = 0; },
+    pull(c) { if (this.i >= bytes.length) return c.close(); const n = Math.min(4096, bytes.length - this.i); served += n; c.enqueue(bytes.slice(this.i, this.i + n)); this.i += n; }
+  }), { status: 200 });
+  const ref = L2.feed(whole), mom = 'REF', want = L2.angles(ref, mom)[0];
+  /* stopped by the radar's own end-of-elevation flag, not a radial count */
+  const done = (st) => L2.swept(st, mom, want.angle);
+  const a = await L2.stream('x', { fetchFn: serve(whole), until: done });
+  const b = await L2.stream('x.gz', { fetchFn: serve(gz), until: done });
+  const sa = L2.sweep(a, want.elevNum, mom), sb = L2.sweep(b, want.elevNum, mom), sr = L2.sweep(ref, want.elevNum, mom);
+  const same = (x, y) => x && y && x.nRad === y.nRad && x.nBins === y.nBins && x.data.every((v, i) => v === y.data[i]);
+  ok(header && header.site.trim() === expected.l2.site && same(sa, sr) && same(sb, sr), `bzip2 records and a gzip of plain messages give the volume's ${want.angle}° sweep byte for byte (${sr && sr.nRad} radials)`);
+  served = 0;
+  await L2.stream('x', { fetchFn: serve(whole), until: (st) => Object.keys(st.sweeps).length > 0 });
+  ok(served < whole.length / 2, `asked to stop at the first radial, it read ${served.toLocaleString()} of ${whole.length.toLocaleString()} bytes`);
+  const keys = ['2013/05/20/KTLX/KTLX20130520_200356_V06.gz', '2013/05/20/KTLX/KTLX20130520_200356_V06_MDM', '2024/05/06/KTLX/KTLX20240506_230154_V06'];
+  const list = await L2.archive('KTLX', Date.UTC(2013, 4, 20, 20), Date.UTC(2013, 4, 20, 21), { fetchFn: async () => new Response(keys.map((k) => `<Key>${k}</Key>`).join(''), { status: 200 }) });
+  ok(list.length === 1 && list[0].gz && list[0].t === Date.UTC(2013, 4, 20, 20, 3, 56), 'the archive\'s volumes by their time, the _MDM metadata files left out');
+}
+
+console.log('\nRULE  ECMWF and the GEFS ensemble');
+{
+  const idx = MM.parseJsonIndex('{"param":"gh","levtype":"pl","levelist":"500","step":"24","_offset":100,"_length":50}\n{"param":"2t","levtype":"sfc","step":"24","_offset":150,"_length":10}\n');
+  ok(idx[0].name === 'gh' && idx[0].level === '500 mb' && idx[0].start === 100 && idx[0].end === 149 && idx[1].level === 'sfc', 'ECMWF\'s JSON-lines index: each field\'s bytes, its pressure level as "500 mb"');
+  ok(MM.FIELDS.ecmwf.every((f) => Object.values(f.parts).every((t) => typeof t === 'function')) && MM.FIELDS.aifs.length >= 10, 'every ECMWF and AIFS field names its parts');
+  ok(MM.SOURCES.gefs.members.length === 31 && MM.SOURCES.gefs.members[0] === 'gec00' && MM.SOURCES.gefs.members[30] === 'gep30', 'the GEFS is its control and thirty perturbed runs');
+  ok(MM.SOURCES.gefs.hours([0, 3, 6, 9, 12, 384]).join() === '6,12,384', 'GEFS frames every six hours, where each run\'s rain is a 6-hour total');
+  const ev = (id, v) => MM.field('gefs', id).event(v);
+  ok(ev('p_rain25', [6.35]) && !ev('p_rain25', [6.3]) && ev('p_frz', [273.15]) && !ev('p_frz', [273.2]) && ev('p_wind', [12.33, 12.33]) && !ev('p_wind', [12, 12]),
+    'the events: ¼ inch is 6.35 mm, freezing is 273.15 K, 39 mph is 17.43 m/s whichever way the wind blows');
+  /* the mirror: Google's copy fails, AWS's answers */
+  const asked = [];
+  const fake = async (url) => { asked.push(url); if (url.includes('googleapis')) throw new TypeError('Failed to fetch'); return new Response('ok', { status: 200 }); };
+  const keys = await MM.listKeys('https://storage.googleapis.com/ecmwf-open-data', 'x/', { fetchFn: async (u, o) => { const r = await fake(u, o); return new Response('<Key>x/1h-oper-fc.index</Key>', { status: r.status }); } });
+  ok(keys.length === 1 && asked[0].startsWith('https://storage.googleapis.com/ecmwf-open-data') && asked[1].startsWith('https://ecmwf-forecasts.s3.eu-central-1.amazonaws.com'), 'when ECMWF\'s Google copy fails, the same request goes to its AWS copy');
+}
+
+console.log('\nRULE  the mesoanalysis: every field in the analysis hour, and SPC\'s arithmetic');
+{
+  const idx = G.parseIdx(readFileSync(join(here, 'fixtures', 'hrrr-wrfsfcf00.grib2.idx'), 'utf8'));
+  const missing = MM.FIELDS.meso.filter((f) => !MM.resolve(idx, f)).map((f) => f.id);
+  ok(MM.SOURCES.meso.analysis && !missing.length, `all ${MM.FIELDS.meso.length} fields find their parts in a real HRRR analysis hour (.idx, 18Z 22 Oct 2026)${missing.length ? ' — not: ' + missing.join(', ') : ''}`);
+  /* one column, every part a one-element array */
+  const one = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, [v]]));
+  const F = (id) => MM.field('meso', id);
+  /* a straight-line hodograph: u grows 5 m/s per km from calm at 10 m (the
+     ground's wind, as SPC takes it); the
+     standard levels at their usual heights over a ground at sea level */
+  const Z = { 1000: 110, 850: 1460, 700: 3010, 500: 5570, 925: 110 + (1460 - 110) * Math.log(1000 / 925) / Math.log(1000 / 850), 250: 5570 + 4790 };
+  const col = { zs: 0, ps: 101300, u10: 0, v10: 0, z1000: Z[1000], z850: Z[850], z700: Z[700], z500: Z[500], mu: 2500, sb: 2500, sbcin: -20, plpl: 101300, el: 12000 };
+  for (const mb of [1000, 925, 850, 700, 500, 250]) { col['u' + mb] = Z[mb] * 0.005; col['v' + mb] = 0; }
+  const eb = F('ebwd').value(one(col), 0) / 1.943844;
+  ok(Math.abs(eb - 30) < 0.01, `effective bulk shear from the ground to half a 12 km EL, 5 m/s per km: ${eb.toFixed(2)} m/s (30)`);
+  ok(F('ebwd').value(one({ ...col, mu: 50 }), 0) === 0, 'no CAPE, no effective layer, no effective shear (as SPC shows it)');
+  const stp = F('stpe').value(one({ ...col, ml: 1500, mlcin: -10, lcl: 800, h: 150 }), 0);
+  ok(Math.abs(stp - 1.5) < 1e-6, `effective STP: 1500 J/kg, LCL 800 m, 150 m²/s², 30 m/s → ${stp.toFixed(3)} (1 × 1 × 1 × 1.5)`);
+  ok(F('stpe').value(one({ ...col, sb: 50, ml: 1500, mlcin: -10, lcl: 800, h: 150 }), 0) === 0, 'an elevated effective layer (the surface parcel has under 100 J/kg) gives no STP, as SPC has it');
+  const scp = F('scpe').value(one({ ...col, h: 100, mucin: -80 }), 0);
+  ok(Math.abs(scp - 2.5) < 1e-6, `SCP with SPC's CIN term: 2500 J/kg, 100 m²/s², 30 m/s, MUCIN −80 → ${scp.toFixed(3)} (2.5 × 2 × 1 × ½)`);
+  /* SHIP by hand: MUCAPE 2000, mixing ratio held to 13.6 g/kg (a 22 °C dewpoint at 900 hPa is more), 700–500 lapse 7.5 °C/km, T500 −12 °C, 20 m/s */
+  const sc = { mu: 2000, plpl: 90000, ps: 100000, d2: 295.15, d925: 295.15, d850: 295.15, d700: 270, t700: 273.15 + 7.2, t500: 273.15 - 12, z700: 3000, z500: 5560, u: 20, v: 0, frz: 4000, zs: 0 };
+  const ship = F('ship').value(one(sc), 0), hand = 2000 * 13.6 * ((7.2 + 12) / 2.56) * 12 * 20 / 42e6;
+  ok(Math.abs(ship - hand) < 1e-6, `SHIP ${ship.toFixed(3)} against the formula by hand ${hand.toFixed(3)} (mixing ratio capped at 13.6 g/kg)`);
+  ok(Math.abs(F('ship').value(one({ ...sc, mu: 650 }), 0) - 650 * 13.6 * (19.2 / 2.56) * 12 * 20 / 42e6 * 0.5) < 1e-6 && Math.abs(F('ship').value(one({ ...sc, frz: 1200 }), 0) - hand / 2) < 1e-6,
+    'SHIP\'s limits: under 1300 J/kg it is scaled by MUCAPE/1300; a freezing level under 2400 m scales it down too');
+}
 
 console.log('\nRULE  NEXRAD Level II reads as MetPy reads it — a volume\'s first chunk and one cut');
 {

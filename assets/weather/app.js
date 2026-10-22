@@ -1074,11 +1074,14 @@
       const old = rv && Date.now() - rv > 3 * 3600e3;
       if (rv) row(old ? "stale" : "", `HRRR forecast radar${old ? " — run is late" : ""}`, "simulated reflectivity, the latest run, via IEM · run", rv);
       else row("off", "HRRR forecast radar", "not answering", null);
+    } else if (radar.mode === "abi") {
+      if (rv) row(Date.now() - rv > 20 * 60e3 ? "stale" : "", `Satellite — ${esc(radar.describe())}`, "GOES ABI cloud and moisture imagery, NOAA open data on AWS · newest image", rv);
+      else row("off", "Satellite (GOES)", "asking NOAA…", null);
     } else if (radar.mode === "mrms") {
       if (rv) row(Date.now() - rv > 30 * 60e3 ? "stale" : "", `MRMS — ${esc(radar.describe())}`, "every NEXRAD blended by NOAA · newest file", rv);
       else row("off", "MRMS", "asking NOAA…", null);
     } else if (radar.mode === "model") {
-      if (rv) row("", `Model map — ${esc(radar.describe())}`, "a forecast, from the run's own files · run", rv);
+      if (rv) row("", `Model map — ${esc(radar.describe())}`, radar.analysis ? "the HRRR analysis hour, NOAA open data on AWS · newest" : "a forecast, from the run's own files · run", rv);
       else row("off", "Model map", "asking NOAA for the latest run…", null);
     } else if (rv) {
       const f = Wx.fresh("radar", rv);
@@ -1137,9 +1140,11 @@
       tilt: Math.min(3, Math.max(0, Number(store.get("wx:tilt", 0)) || 0)),
       /* the full volume (Level II) instead of Level III, and its tilt by angle */
       mr: { prod: store.get("wx:mrms", "rot60") },
+      /* GOES imagery (abi.js): the product, the sector, and the satellite (auto picks by the map's middle) */
+      ab: { prod: store.get("wx:abi", "b13"), sector: store.get("wx:abisec", "conus"), sat: store.get("wx:abisat", "auto") },
       l2: store.get("wx:l2", false) === true, l2angle: Number(store.get("wx:l2angle", 0.5)), l2vol: null,
       mm: { src: store.get("wx:mmsrc", "hrrr"), field: store.get("wx:mmfield", "refc"), run: null } };
-    const NX = PRO ? window.Nexrad : null, MM = PRO ? window.ModelMaps : null, GL = PRO ? window.Glm : null, GB = PRO ? window.Grib2 : null, L2 = PRO ? window.Level2 : null, MR = PRO ? window.Mrms : null;
+    const NX = PRO ? window.Nexrad : null, MM = PRO ? window.ModelMaps : null, GL = PRO ? window.Glm : null, GB = PRO ? window.Grib2 : null, L2 = PRO ? window.Level2 : null, MR = PRO ? window.Mrms : null, AB = PRO ? window.Abi : null;
     if (MM && !MM.SOURCES[R.mm.src]) R.mm.src = "hrrr";
     if (MM && !MM.field(R.mm.src, R.mm.field)) R.mm.field = MM.FIELDS[R.mm.src][0].id;
     /* a label inside a sentence: its first letter lowered, abbreviations (MESH, MSLP, CC) kept */
@@ -1265,6 +1270,9 @@
     }
     function setFrames(list) {
       framesL.innerHTML = "";
+      if ($("#radarread")) $("#radarread").hidden = true;
+      /* ECMWF's open data is CC BY 4.0: its credit shows whenever its fields are on the map */
+      if ($("#eccredit")) $("#eccredit").hidden = !(R.mode === "model" && (R.mm.src === "ecmwf" || R.mm.src === "aifs"));
       R.frames = list.map((f) => {
         const d = document.createElement("div");
         d.className = "layer frame" + (f.future ? " future" : "");
@@ -1313,6 +1321,50 @@
       if (!reduced && R.visible) play(true);
     }
     const leaveReplay = () => setMode("comp");
+
+    /* ── a replay of one radar, from the Level II archive ──
+       Every volume the radar finished in the window (every 4–6 minutes),
+       each read only as far as its lowest tilt (level2.js's stream — about a
+       megabyte a frame), with the warnings as they stood, as the mosaic's
+       replay has them. The radar is the one nearest the map's middle — after
+       a notable storm has fitted the map to its warnings. The product buttons
+       change what is shown without leaving the replay. Ric, 2026-10-22. */
+    async function siteReplay(from, hours, fitToStorms) {
+      const prodMode = l3() && l3().l2 ? R.mode : (R.replay && R.replay.prodMode) || "l3:ref";
+      R.mode = "replay";
+      R.modeAsk = (R.modeAsk || 0) + 1;
+      document.querySelectorAll(".seg [data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === prodMode)));
+      play(false); clearTiles(); R.pin = null;
+      const to = from + hours * 3600e3;
+      const rp = R.replay = { from, to, step: null, warn: null, site: null, prodMode, vols: null };
+      R.valid = null;
+      satL.hidden = true;
+      $("#rplive").hidden = false;
+      setFrames([]); legend(); label();
+      try { rp.warn = await Wx.sbwArchive(from, to); } catch (e) { rp.warn = []; rp.err = true; }
+      if (R.replay !== rp) return;
+      if (fitToStorms && rp.warn.length) {
+        const pts = rp.warn.flatMap((w) => w.polys.flatMap((p) => p[0]));
+        fit(Math.min(...pts.map((p) => p[1])), Math.min(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), 30);
+      }
+      await pickSite(true);
+      if (R.replay !== rp) return;
+      if (!R.site) { note("No radar near the middle of the map — move the map over the storm and replay again."); label(); return; }
+      rp.site = L2.site4(R.site.id);
+      let list = [];
+      try { list = await L2.archive(rp.site, from, to); } catch (e) { rp.listErr = true; }
+      if (R.replay !== rp) return;
+      if (!list.length) { note(rp.listErr ? "NOAA's radar archive did not answer. Try again in a minute." : `NOAA's archive has no full-volume scans from ${rp.site} for that time.`); label(); return; }
+      rp.vols = list;
+      siteReplayFrames();
+      draw(); label(); renderSources();
+      if (!reduced && R.visible) play(true);
+    }
+    function siteReplayFrames() {
+      const rp = R.replay, mom = l3(rp.prodMode).l2;
+      setFrames(rp.vols.map((v) => ({ t: v.t, l3: { prod: rp.prodMode.slice(3), l2: { key: `${v.key}|${mom}`, archive: v, mom, angle: 0.5 } } })));
+      legend();
+    }
 
     /* ── a cross-section between two taps (§18) ──
        Tap A, tap B; one request brings a model's column at twelve points
@@ -1561,6 +1613,13 @@
       return scanCache.get(key);
     };
     async function loadL2(q) {
+      if (q.archive) {
+        const st = await L2.stream(q.archive.url, { gz: q.archive.gz, until: (s) => L2.swept(s, q.mom, q.angle) });
+        const a = L2.angles(st, q.mom);
+        if (!a.length) throw new Error(new Date(q.archive.t).getUTCFullYear() < 2008 ? "a volume before 2008, in an older format this page does not read" : "no " + q.mom + " in this volume");
+        const best = a.reduce((b, x) => (Math.abs(x.angle - q.angle) < Math.abs(b.angle - q.angle) ? x : b), a[0]);
+        return L2.sweep(st, best.elevNum, q.mom);
+      }
       const bufs = await Promise.all(q.urls.map(async (u) => { const r = await fetch(u); if (!r.ok) throw new Error("HTTP " + r.status); return new Uint8Array(await r.arrayBuffer()); }));
       let st = null;
       for (const b of bufs) st = L2.feed(b, st);
@@ -1574,7 +1633,7 @@
         x.file = file; x.colors = NX.colorTable(file, x.prod);
         if (R.frames[R.frame] === f) { draw(); show(R.frame); tilts(); }
         return file;
-      }).catch(() => { x.err = true; if (R.frames[R.frame] === f) note("This scan did not load — the next one may."); });
+      }).catch((e) => { x.err = true; if (R.frames[R.frame] === f) note(x.l2 && x.l2.archive ? `This volume did not load (${String(e.message || e)}).` : "This scan did not load — the next one may."); });
       return x.p;
     }
     function frameCanvas(f, w, h) {
@@ -1701,6 +1760,18 @@
     async function modelFrames() {
       const M = R.mm, src = M.src, ask = R.modeAsk;
       $("#mmrun").textContent = "Finding the latest run…";
+      /* the mesoanalysis is a run of analysis hours, not one run's forecast */
+      if (MM.SOURCES[src].analysis) {
+        let runs = [];
+        try { runs = await MM.analyses(src); } catch (e) {}
+        if (R.mode !== "model" || M.src !== src || ask !== R.modeAsk) return;
+        if (!runs.length) { setFrames([]); $("#mmrun").textContent = ""; note("NOAA's HRRR archive did not answer. Try again in a minute."); return; }
+        M.run = runs[runs.length - 1]; R.valid = M.run;
+        setFrames(runs.map((run) => ({ t: run, model: { src, field: M.field, run, fh: 0 } })));
+        show(R.frames.length - 1);
+        modelRunText(); legend(); renderSources();
+        return;
+      }
       let run = null;
       try { run = await MM.latestRun(src); } catch (e) {}
       if (R.mode !== "model" || M.src !== src || ask !== R.modeAsk) return;
@@ -1715,7 +1786,9 @@
     function modelRunText() {
       const M = R.mm, el = $("#mmrun");
       if (!el) return;
-      el.textContent = M.run ? `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)} · ${R.frames.length} hours out so far · a forecast` : "";
+      el.textContent = !M.run ? "" : MM.SOURCES[M.src].analysis
+        ? `HRRR analysis hours, the last ${R.frames.length} · newest ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)} · the model's picture of now, observations folded in — not a forecast`
+        : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)} · ${R.frames.length} hours out so far · a forecast`;
     }
     function modelLayer(f) {
       const m = f.model;
@@ -1753,18 +1826,70 @@
       }).catch((e) => { m.err = String(e.message || e).replace(/^mrms: /, ""); if (R.frames[R.frame] === f) note(`This MRMS file did not load (${m.err}).`); });
       return m.p;
     }
+    /* ── GOES imagery (abi.js): the sector's newest files — the lower 48
+       every five minutes, a mesoscale sector every minute — each loaded
+       when shown, only the bands its product needs. A big RGB over the
+       lower 48 is four bands of 3.5 MB, so that loop is kept short. ── */
+    const abiCache = new Map(), abiMemo = {};
+    const abiSat = () => R.ab.sat !== "auto" ? R.ab.sat : xLng(R.cx, R.z) >= AB.SPLIT_LON ? "east" : "west";
+    async function abiFrames(onlyIfNew) {
+      const A = R.ab, sat = abiSat(), C = AB.SECTORS[A.sector], P = AB.PRODUCTS[A.prod];
+      if (!C || !P) return;
+      const count = A.sector === "conus" ? (P.bands.length > 2 ? 4 : 6) : C.frames;
+      let list = [], failed = false;
+      try { list = await AB.files(sat, A.sector, { count }); } catch (e) { failed = true; }
+      if (R.mode !== "abi" || R.ab.prod !== A.prod || R.ab.sector !== A.sector || abiSat() !== sat) return;
+      if (!list.length) { setFrames([]); note(failed ? "NOAA's GOES archive did not answer. Try again in a minute." : "No recent files for this sector."); return; }
+      if (onlyIfNew && list[list.length - 1].t === R.valid) return;
+      R.valid = list[list.length - 1].t;
+      setFrames(list.map((file) => ({ t: file.t, abi: { prod: A.prod, file } })));
+      show(R.frames.length - 1);
+      abiRunText(); renderSources(); label();
+    }
+    function abiRunText(box) {
+      const el2 = $("#abirun");
+      if (!el2) return;
+      const C = AB.SECTORS[R.ab.sector];
+      el2.textContent = R.valid ? `${AB.SATS[abiSat()].label} · ${C.label.toLowerCase()} · newest ${clk().time(R.valid)}` : "";
+      if ($("#abigo")) $("#abigo").hidden = !(R.ab.sector !== "conus" && (box || R.abiBox));
+    }
+    function abiLayer(f) {
+      const m = f.abi, key = `${m.file.url}|${m.prod}`;
+      if (!m.p) {
+        if (!abiCache.has(key)) {
+          abiCache.set(key, AB.load(m.file, m.prod, { memo: (abiMemo[m.file.sat + m.file.sector] = abiMemo[m.file.sat + m.file.sector] || {}) }).catch((e) => { abiCache.delete(key); throw e; }));
+          /* about eight big frames at most: a CONUS RGB is 45 MB in memory */
+          if (abiCache.size > 24) abiCache.delete(abiCache.keys().next().value);
+        }
+        m.p = abiCache.get(key).then((L) => {
+          m.layer = L;
+          if (L.box) {
+            const first = !R.abiBox || R.abiBox.w !== L.box.w;
+            R.abiBox = L.box; abiRunText(L.box);
+            /* a mesoscale sector off the screen: go to it, once */
+            if (first && f.abi.file.sector !== "conus") {
+              const lat = yLat(R.cy, R.z), lon = xLng(R.cx, R.z);
+              if (lat > L.box.n || lat < L.box.s || lon < L.box.w || lon > L.box.e) fit(L.box.s, L.box.w, L.box.n, L.box.e, 20);
+            }
+          }
+          if (R.frames[R.frame] === f) { draw(); show(R.frame); }
+          return L;
+        }).catch((e) => { m.err = String(e.message || e).replace(/^(abi|glm): /, ""); if (R.frames[R.frame] === f) note(`This GOES image did not load (${m.err}).`); });
+      }
+      return m.p;
+    }
     let shadeCv = null;
     /* a model hour or an MRMS file: shading from the grid, then contours and barbs */
     function paintModel(f, w, h, left, top) {
-      const cv = frameCanvas(f, w, h), ctx = cv.getContext("2d"), m = f.model || f.mrms, key = `${R.z}|${left}|${top}|${U()}`;
-      if (!m.layer) { if (f.model) modelLayer(f); else mrmsLayer(f); if (f.painted) { ctx.clearRect(0, 0, w, h); f.painted = null; } return; }
+      const cv = frameCanvas(f, w, h), ctx = cv.getContext("2d"), m = f.model || f.mrms || f.abi, key = `${R.z}|${left}|${top}|${U()}`;
+      if (!m.layer) { if (f.model) modelLayer(f); else if (f.abi) abiLayer(f); else mrmsLayer(f); if (f.painted) { ctx.clearRect(0, 0, w, h); f.painted = null; } return; }
       if (f.painted === key) return;
       f.painted = key;
-      const L = m.layer, g = GB.projector(L.grid), nx = L.grid.nx, ny = L.grid.ny, v = L.values, lut = m.lut, near = L.field.nearest;
+      const L = m.layer, g = GB.projector(L.grid), nx = L.grid.nx, ny = L.grid.ny, v = L.values, lut = m.lut, rgba = L.rgba, near = rgba || L.field.nearest;
       const latlon = L.grid.kind === "latlon";
       /* the shading at half resolution below zoom 8 (model grids are smooth;
          it is four times less work), stretched to the screen */
-      const S = R.z >= 8 ? 1 : 2, W = Math.ceil(w / S), H = Math.ceil(h / S);
+      const S = R.z >= (rgba ? 6 : 8) ? 1 : 2, W = Math.ceil(w / S), H = Math.ceil(h / S);
       if (!shadeCv) shadeCv = document.createElement("canvas");
       shadeCv.width = W; shadeCv.height = H;
       const sctx = shadeCv.getContext("2d"), img = sctx.createImageData(W, H), px = new Uint32Array(img.data.buffer);
@@ -1777,7 +1902,8 @@
           let val;
           if (near) {
             const i = Math.round(fi), j = Math.round(fj);
-            if (i < 0 || j < 0 || i >= nx || j >= ny) continue;
+            if (!(i >= 0 && j >= 0 && i < nx && j < ny)) continue;
+            if (rgba) { const c = rgba[j * nx + i]; if (c) px[row + x] = c; continue; }
             val = v[j * nx + i];
           } else {
             const i = Math.floor(fi), j = Math.floor(fj);
@@ -1798,7 +1924,7 @@
       /* contours, labelled once per stretch of screen */
       for (const c of L.contours || []) {
         const s = c.lines.segs, lev = c.lines.levels, n = lev.length, seen = new Set();
-        ctx.lineWidth = 1.3; ctx.strokeStyle = c.color; ctx.globalAlpha = 0.9;
+        ctx.lineWidth = c.width || 1.3; ctx.strokeStyle = c.color; ctx.globalAlpha = 0.9;
         ctx.beginPath();
         const labels = [];
         for (let k = 0; k < n; k++) {
@@ -1806,7 +1932,7 @@
           if ((xa < 0 && xb < 0) || (ya < 0 && yb < 0) || (xa > w && xb > w) || (ya > h && yb > h) || Math.abs(xb - xa) > w / 2) continue;
           ctx.moveTo(xa, ya); ctx.lineTo(xb, yb);
           const cell = `${lev[k]}|${Math.floor(xa / 220)}|${Math.floor(ya / 160)}`;
-          if (!seen.has(cell) && xa > 20 && ya > 14 && xa < w - 30 && ya < h - 8) { seen.add(cell); labels.push([xa, ya, lev[k]]); }
+          if (!c.nolabel && !seen.has(cell) && xa > 20 && ya > 14 && xa < w - 30 && ya < h - 8) { seen.add(cell); labels.push([xa, ya, lev[k]]); }
         }
         ctx.stroke(); ctx.globalAlpha = 1;
         ctx.font = "600 11px ui-monospace,Menlo,monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -2001,6 +2127,12 @@
         /* the beam's centre above sea level: the radar's own height plus the beam's rise */
         return `${what} · ${dist(km)} ${Math.round(az)}° from ${F.site || "the radar"} · beam ${U() === "us" ? Math.round(beam * 3.28084) + " kft" : beam.toFixed(1) + " km"} MSL`;
       }
+      if (f.abi && f.abi.layer) {
+        const vs = AB.valuesAt(f.abi.layer, lat, lon);
+        if (!vs) return null;
+        const say = (x) => x.kind === "refl" ? `${Math.round(x.value)}%` : `${U() === "us" ? Math.round(x.value * 9 / 5 + 32) + " °F" : Math.round(x.value) + " °C"}`;
+        return vs.length === 1 ? `${AB.bandName(vs[0].band)}: ${say(vs[0])} ${vs[0].kind === "refl" ? "reflectance" : "brightness temperature"}` : vs.map((x) => `B${x.band} ${say(x)}`).join(" · ");
+      }
       if (f.mrms && f.mrms.layer) {
         const L = f.mrms.layer, v = MM.valueAt(L, lat, lon);
         return Number.isFinite(v) ? `${L.field.label}: ${MM.say(L.field.unit, v, U())} · MRMS ${clk().time(f.t)}` : null;
@@ -2009,7 +2141,7 @@
         const L = f.model.layer, v = MM.valueAt(L, lat, lon);
         if (!Number.isFinite(v)) return null;
         if (L.field.pal === "ptype") { const t = MM.PAL.ptype.types[Math.floor(v / 100)]; return `${t ? t[0] : "Precipitation"} · ${Math.round(v % 100)} dBZ · ${MM.SOURCES[f.model.src].label} +${f.model.fh} h`; }
-        return `${L.field.label}: ${MM.say(L.field.unit, v, U())} · ${MM.SOURCES[f.model.src].label} +${f.model.fh} h`;
+        return `${L.field.label}: ${MM.say(L.field.unit, v, U())} · ${MM.SOURCES[f.model.src].analysis ? `HRRR analysis ${new Date(f.t).toISOString().slice(11, 13)}Z` : `${MM.SOURCES[f.model.src].label} +${f.model.fh} h`}`;
       }
       return null;
     }
@@ -2078,6 +2210,7 @@
           for (const p of w.polys) out.push(`<polygon points="${ring(p[0])}" fill="${esc(w.color)}" fill-opacity="${tor ? ".25" : ".1"}" stroke="${esc(w.color)}" stroke-width="${tor ? 2.6 : 1.8}"/>`);
         }
         if (S.place) { const [mx, my] = pt(S.place.lat, S.place.lon); out.push(`<circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="5" fill="#fff" stroke="#0b2342" stroke-width="2"/>`); }
+        if (R.replay && R.replay.site && R.site && R.site.lat != null) { const [sx, sy] = pt(R.site.lat, R.site.lon); out.push(`<rect x="${(sx - 4).toFixed(1)}" y="${(sy - 4).toFixed(1)}" width="8" height="8" fill="#ffd43b" stroke="#000"/>`); }
         R.drawn = [];
         over.innerHTML = out.join("");
         return;
@@ -2276,9 +2409,11 @@
       R.frames.forEach((f, i) => {
         /* Pro's own radar and model frames: painted while on screen, fetched
            ahead only while the loop plays */
-        if (f.l3) { if (i === R.frame) paintL3(f, w, h, left, top); else if (R.loadedOld) l3File(f); return; }
+        /* an archived volume is a megabyte or two: only the next one is fetched ahead, while playing */
+        if (f.l3) { if (i === R.frame) paintL3(f, w, h, left, top); else if (f.l3.l2 && f.l3.l2.archive ? R.playing && i === R.frame + 1 : R.loadedOld) l3File(f); return; }
         if (f.model) { if (i === R.frame) paintModel(f, w, h, left, top); else if (R.playing && (i === R.frame + 1 || i === R.frame + 2)) modelLayer(f); return; }
         if (f.mrms) { if (i === R.frame) paintModel(f, w, h, left, top); else if (R.playing && i === R.frame + 1) mrmsLayer(f); return; }
+        if (f.abi) { if (i === R.frame) paintModel(f, w, h, left, top); else if (R.playing && (i === R.frame + 1 || i === R.frame + 2)) abiLayer(f); return; }
         /* a forecast frame is painted only while it is the one on screen —
            twenty-two full reprojections a pan would be the stroke §2 warns
            of; the others only load their picture, ready for the loop */
@@ -2301,26 +2436,31 @@
       R.frames.forEach((f, j) => f.el.classList.toggle("on", j === i));
       if (!R.frames[i]) { $("#when").innerHTML = ""; return; }
       const f = R.frames[i];
-      if (!R.loadedOld || f.future || f.archive) draw();   // a replay's warnings change by the minute, and its next frame loads now
+      if (!R.loadedOld || f.future || f.archive || (f.l3 && f.l3.l2 && f.l3.l2.archive)) draw();   // a replay's warnings change by the minute, and its next frame loads now
       $("#scrub").value = String(i);
       const when = $("#when");
       if (f.archive) when.innerHTML = `${esc(dayFmt(f.t))}<small>${esc(timeFmt(f.t))}</small>`;
       else if (f.mrms) when.innerHTML = `${esc(clk().time(f.t))}<small>MRMS · ${Wx.age(Date.now() - f.t)} ago${f.mrms.layer ? "" : f.mrms.err ? " · failed" : " · loading"}</small>`;
+      else if (f.abi) when.innerHTML = `${esc(clk().time(f.t))}<small>${f.abi.file.sat === "east" ? "GOES-East" : "GOES-West"} · ${Wx.age(Date.now() - f.t)} ago${f.abi.layer ? "" : f.abi.err ? " · failed" : " · loading"}</small>`;
       else if (f.model) {
         const k = clk(), day = k.ymd(f.t) !== k.ymd(Date.now()) ? k.day(f.t) + " " : "";
-        when.innerHTML = `${esc(day + k.time(f.t))}<small>${esc(MM.SOURCES[f.model.src].label)} +${f.model.fh} h${f.model.layer ? "" : f.model.err ? " · failed" : " · loading"}</small>`;
+        when.innerHTML = `${esc(day + k.time(f.t))}<small>${esc(MM.SOURCES[f.model.src].label)}${MM.SOURCES[f.model.src].analysis ? " · " + Wx.age(Date.now() - f.t) + " ago" : ` +${f.model.fh} h`}${f.model.layer ? "" : f.model.err ? " · failed" : " · loading"}</small>`;
       } else if (f.l3) {
         const F = f.l3.file;
-        when.innerHTML = `${esc(clk().time(F ? F.time : f.t))}<small>${Wx.age(Date.now() - (F ? F.time : f.t))} ago${F ? ` · ${F.elev.toFixed(1)}°` : " · loading"}</small>`;
+        const t = F ? F.time : f.t, arch = f.l3.l2 && f.l3.l2.archive;
+        /* an archived volume says its date, as the mosaic's replay does; a live scan its age */
+        when.innerHTML = arch ? `${esc(timeFmt(t))}<small>${esc(dayFmt(t))}${F ? ` · ${F.elev.toFixed(1)}°` : f.l3.err ? " · failed" : " · loading"}</small>`
+          : `${esc(clk().time(t))}<small>${Wx.age(Date.now() - t)} ago${F ? ` · ${F.elev.toFixed(1)}°` : " · loading"}</small>`;
       } else if (f.future && f.t) {
         const k = clk(), d = f.t - Date.now(), day = k.ymd(f.t) !== k.ymd(Date.now()) ? k.day(f.t) + " " : "";
         when.innerHTML = `${esc(day + k.time(f.t))}<small>forecast · ${Math.abs(d) < 8 * 60e3 ? "now" : d > 0 ? "in " + Wx.age(d) : Wx.age(-d) + " ago"}</small>`;
       } else if (f.t) when.innerHTML = `${esc(clk().time(f.t))}<small>${Wx.age(Date.now() - f.t)} ago</small>`;
       else when.innerHTML = f.mins ? `−${f.mins} min<small>before latest</small>` : `Latest<small>scan time unknown</small>`;
-      const fr = R.valid && !f.future && !f.model && !f.mrms ? Wx.fresh("radar", R.valid) : null;
+      const fr = R.valid && !f.future && !f.model && !f.mrms && !f.abi ? Wx.fresh("radar", R.valid) : null;
       if (f.model && f.model.err) note(`This hour did not load (${f.model.err}).`);
       else if (f.mrms && f.mrms.err) note(`This MRMS file did not load (${f.mrms.err}).`);
-      else if (f.model || f.mrms) note("");
+      else if (f.abi && f.abi.err) note(`This GOES image did not load (${f.abi.err}).`);
+      else if (f.model || f.mrms || f.abi) note("");
       else if (f.future && R.valid && Date.now() - R.valid > 3 * 3600e3) note(`This HRRR run is ${Wx.age(Date.now() - R.valid)} old — a newer one is late.`);
       else if (fr && fr.stale) note(`Radar delayed — the latest scan is ${fr.age} old.`);
       else if (S.place && S.pt === null && R.mode === "comp") note("This radar covers the lower 48 US states only.");
@@ -2344,8 +2484,8 @@
         const nf = R.frames[next];
         if (nf && nf.archive && nf.tiles.size && ![...nf.tiles.values()].every((im) => im.complete) && (R.wait = (R.wait || 0) + 1) < 12) { R.timer = setTimeout(step, 250); return; }
         /* …and for a decoded scan or model hour to arrive (up to ~6 s) */
-        if (nf && ((nf.l3 && !nf.l3.file && !nf.l3.err) || (nf.model && !nf.model.layer && !nf.model.err) || (nf.mrms && !nf.mrms.layer && !nf.mrms.err)) && (R.wait = (R.wait || 0) + 1) < 24) {
-          if (nf.l3) l3File(nf); else if (nf.mrms) mrmsLayer(nf); else modelLayer(nf);
+        if (nf && ((nf.l3 && !nf.l3.file && !nf.l3.err) || (nf.model && !nf.model.layer && !nf.model.err) || (nf.mrms && !nf.mrms.layer && !nf.mrms.err) || (nf.abi && !nf.abi.layer && !nf.abi.err)) && (R.wait = (R.wait || 0) + 1) < 24) {
+          if (nf.l3) l3File(nf); else if (nf.mrms) mrmsLayer(nf); else if (nf.abi) abiLayer(nf); else modelLayer(nf);
           R.timer = setTimeout(step, 250); return;
         }
         R.wait = 0;
@@ -2370,6 +2510,14 @@
     }
 
     async function setMode(mode) {
+      /* inside a radar's replay, a product button changes the product, not the mode */
+      if (R.replay && R.replay.vols && l3(mode) && l3(mode).l2) {
+        R.replay.prodMode = mode;
+        document.querySelectorAll(".seg [data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+        const keep = R.frame;
+        play(false); siteReplayFrames(); show(Math.min(keep, R.frames.length - 1)); draw(); label(); renderSources();
+        return;
+      }
       if (R.replay) { R.replay = null; satL.hidden = false; $("#rplive").hidden = true; }
       R.mode = mode;
       document.querySelectorAll(".seg [data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
@@ -2378,7 +2526,11 @@
       legend();
       if ($("#modelbar")) $("#modelbar").hidden = mode !== "model";
       if ($("#mrmsbar")) $("#mrmsbar").hidden = mode !== "mrms";
-      if ($("#awscredit")) $("#awscredit").hidden = !(l3(mode) || mode === "model" || mode === "mrms" || ltgOn());
+      if ($("#abibar")) $("#abibar").hidden = mode !== "abi";
+      if ($("#radarread")) $("#radarread").hidden = true;
+      /* GOES's own imagery replaces the satellite tiles under the radar */
+      satL.hidden = mode === "abi";
+      if ($("#awscredit")) $("#awscredit").hidden = !(l3(mode) || mode === "model" || mode === "mrms" || mode === "abi" || ltgOn());
       tilts();
       /* only the newest switch may finish: tapping Reflectivity then Velocity
          quickly once left reflectivity's scans under the Velocity button */
@@ -2394,6 +2546,9 @@
         await modelFrames();
       } else if (mode === "mrms") {
         await mrmsFrames();
+      } else if (mode === "abi") {
+        R.abiBox = null;
+        await abiFrames();
       } else {
         if (R.z < 7) zoomTo(8);
         await pickSite(!R.site);
@@ -2408,8 +2563,18 @@
     function legend() {
       const lg = $("#legend");
       if (!lg) return;
-      const P = l3();
+      /* a radar's replay keys its own product */
+      const P = l3() || (R.mode === "replay" && R.replay && R.replay.prodMode ? l3(R.replay.prodMode) : null);
       lg.classList.remove("vel", "scale", "cats");
+      if (R.mode === "abi" && AB) {
+        const K = AB.key(R.ab.prod);
+        if (!K || K.text) { lg.innerHTML = `<span>${esc(K ? K.text : "")}</span>`; return; }
+        if (K.cats) { lg.classList.add("cats"); lg.innerHTML = K.cats.map(([n, c]) => `<span class="sw"><i style="background:${c}"></i>${esc(n)}</span>`).join(""); return; }
+        const pos = (v) => (v - K.min) / (K.max - K.min) * 100, us = U() === "us" && K.unit === "°C";
+        lg.classList.add("scale");
+        lg.innerHTML = `<div class="bar"><i aria-hidden="true" style="background:linear-gradient(90deg,${K.stops.map(([v, c]) => `${c} ${pos(v).toFixed(1)}%`).join(",")})"></i><div class="ticks">${K.ticks.map((t) => `<span style="left:${pos(t).toFixed(1)}%">${us ? Math.round(t * 9 / 5 + 32) : t}</span>`).join("")}</div></div><span class="lu">${us ? "°F" : esc(K.unit)}</span>`;
+        return;
+      }
       if (R.mode === "N0S") { lg.classList.add("vel"); lg.innerHTML = `<span>toward</span><i aria-hidden="true"></i><span>away</span>`; return; }
       let pal = null, unit = "", fmt = (v) => String(v), cats = null;
       if (P) {
@@ -2437,9 +2602,12 @@
       legend();
       const sb = $("#sitebar");
       if (R.mode === "comp") sb.textContent = "NEXRAD mosaic of the whole country, every 5 minutes.";
+      else if (R.mode === "replay" && R.replay && R.replay.prodMode) { const rp = R.replay, P = l3(rp.prodMode), n = rp.warn ? new Set(rp.warn.map((w) => w.sig + w.wfo + w.event + w.area)).size : null; sb.textContent = `Replay: ${rp.site ? rp.site + "'s own" : "the nearest radar's"} full volume (Level II), ${lc(P.label)} at the lowest tilt, ${dayFmt(rp.from)} ${timeFmt(rp.from)} to ${timeFmt(rp.to)}${rp.vols ? `, ${rp.vols.length} volumes` : " — finding the radar's volumes"}, with each storm warning drawn for the minutes it was in force${rp.warn ? ` (${n} warning${n === 1 ? "" : "s"})` : ""}. The product buttons change what is shown; NOAA's archive on AWS.`; }
       else if (R.mode === "replay" && R.replay) { const rp = R.replay, n = rp.warn ? new Set(rp.warn.map((w) => w.sig + w.wfo + w.event + w.area)).size : null; sb.textContent = `Replay: the national radar as it was, ${dayFmt(rp.from)} ${timeFmt(rp.from)} to ${timeFmt(rp.to)}, every ${rp.step} minutes, with each storm warning drawn for the minutes it was in force${rp.warn ? ` (${n} warning${n === 1 ? "" : "s"})` : rp.err ? " — the warnings archive did not answer" : " — loading the warnings"}. Archive via IEM.`; }
       else if (R.mode === "hrrr") sb.textContent = `A forecast, not radar: the HRRR model's own picture of the rain${R.valid ? ` from its ${new Date(R.valid).toISOString().slice(11, 13)}Z run` : ""}, every 15 minutes for the first hour then hourly to 18 hours. Lower 48 only.`;
+      else if (R.mode === "abi" && AB) { const P = AB.PRODUCTS[R.ab.prod]; sb.textContent = `${AB.SATS[abiSat()].label} — ${P.group === "Single bands" ? P.label : P.label + " RGB"}, ${lc(AB.SECTORS[R.ab.sector].label)}, read from NOAA's own files. Hover or tap for each band's value.${/\(day\)/.test(P.label) ? " Dark at night: it is made from sunlight." : ""}`; }
       else if (R.mode === "mrms" && MR) sb.textContent = `MRMS — every NEXRAD blended by NOAA, with the model's temperatures and the rain gauges: ${lc(MR.PRODUCTS[R.mr.prod].label)}. Measured from radar, not a forecast. Hover or tap for the value.`;
+      else if (R.mode === "model" && MM && MM.SOURCES[R.mm.src].analysis) { const f = MM.field(R.mm.src, R.mm.field); sb.textContent = `Mesoanalysis — the HRRR model's analysis hour: its picture of now, with the latest observations folded in. Not a forecast, and not SPC's own (that is the SPC mesoanalysis card below). ${f.label}. The slider steps through the last six hours; hover or tap for the value.`; }
       else if (R.mode === "model" && MM) { const f = MM.field(R.mm.src, R.mm.field); sb.textContent = `A forecast, not an observation — ${MM.SOURCES[R.mm.src].long}. ${f.label}${R.mm.run ? `, from the ${new Date(R.mm.run).toISOString().slice(11, 13)}Z run` : ""}. The slider is the forecast hour; hover or tap for the value.`; }
       else if (l3() && R.site) { const f = R.frames[R.frame], F = f && f.l3 && f.l3.file; sb.textContent = `${R.site.id} · ${R.site.name} · ${l3().long}${F ? ` · ${F.elev.toFixed(1)}° scan` : ""}. ${useL2() ? "The full volume (Level II), every tilt at full resolution, refreshed every 30 seconds" : "Read from the radar's own Level III files"}; the site follows the middle of the map. Hover or tap for the value.`; }
       else if (l3()) sb.textContent = "Finding the nearest radar…";
@@ -2465,8 +2633,9 @@
     function describe() {
       if (l3()) return `${R.site ? R.site.id + " " : ""}${lc(l3().label)}, ${useL2() ? "Level II full volume" : "Level III"} (NOAA open data on AWS)`;
       if (R.mode === "model" && MM) return `${MM.SOURCES[R.mm.src].label} ${lc(MM.field(R.mm.src, R.mm.field).label)}`;
+      if (R.mode === "abi" && AB) return `${AB.SATS[abiSat()].label} ${AB.PRODUCTS[R.ab.prod].label}${AB.PRODUCTS[R.ab.prod].group === "Single bands" ? "" : " RGB"} (NOAA open data on AWS)`;
       if (R.mode === "mrms" && MR) return `MRMS ${lc(MR.PRODUCTS[R.mr.prod].label)} (NOAA open data on AWS)`;
-      return R.mode === "comp" ? "NEXRAD base reflectivity, US mosaic (IEM)" : R.mode === "hrrr" ? "HRRR simulated reflectivity, the latest run (IEM)" : R.mode === "replay" ? "NEXRAD mosaic archive (IEM)" : `${R.site ? R.site.id + " " : ""}${Wx.SITE_PRODUCTS[R.mode].label.toLowerCase()} (NEXRAD via IEM)`;
+      return R.mode === "comp" ? "NEXRAD base reflectivity, US mosaic (IEM)" : R.mode === "hrrr" ? "HRRR simulated reflectivity, the latest run (IEM)" : R.mode === "replay" ? (R.replay && R.replay.site ? `${R.replay.site} Level II archive (NOAA open data on AWS)` : "NEXRAD mosaic archive (IEM)") : `${R.site ? R.site.id + " " : ""}${Wx.SITE_PRODUCTS[R.mode].label.toLowerCase()} (NEXRAD via IEM)`;
     }
 
     async function start() {
@@ -2479,6 +2648,7 @@
       if (ltgOn()) { lightningClock(); if ($("#awscredit")) $("#awscredit").hidden = false; }
       /* the pickers say what the link chose */
       if (PRO && $("#mrprod") && MR) $("#mrprod").value = R.mr.prod;
+      if (PRO && $("#abiprod") && AB) { $("#abiprod").value = R.ab.prod; $("#abisec").value = R.ab.sector; $("#abisat").value = R.ab.sat; }
       if (PRO && $("#mmfield") && MM) modelOptions();
       if (typeof linked === "string") { setMode(linked); loadOverlays(true); stationsSoon(); return; }
       if (R.mode === "comp") {
@@ -2674,7 +2844,7 @@
       const lat = yLat(R.cy, R.z), lon = xLng(R.cx, R.z);
       const ov = [R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r"].filter(Boolean).join("");
       const v = `${lat.toFixed(1)},${(((lon + 540) % 360) - 180).toFixed(1)},${R.z}`;
-      const url = `${location.origin}${location.pathname}#v=${v}&l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}`;
+      const url = `${location.origin}${location.pathname}#v=${v}&l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}`;
       const done = () => note("Link copied — it opens this map view and these layers. Your saved place is not in it.");
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => note(`Copy this link: ${url}`));
       else note(`Copy this link: ${url}`);
@@ -2702,8 +2872,10 @@
       const [ms, mf] = (q.get("m") || "").split(".");
       if (MM && MM.field(ms, mf)) { R.mm.src = ms; R.mm.field = mf; }
       if (MR && MR.PRODUCTS[q.get("r")]) R.mr.prod = q.get("r");
+      const [gp, gs, gsat] = (q.get("g") || "").split(".");
+      if (AB && AB.PRODUCTS[gp] && AB.SECTORS[gs] && ["auto", "east", "west"].includes(gsat)) R.ab = { prod: gp, sector: gs, sat: gsat };
       const l = q.get("l");
-      return ["N0B", "N0S", "hrrr"].includes(l) || l3(l) || (l === "model" && MM) || (l === "mrms" && MR) ? l : true;
+      return ["N0B", "N0S", "hrrr"].includes(l) || l3(l) || (l === "model" && MM) || (l === "mrms" && MR) || (l === "abi" && AB) ? l : true;
     }
     pinEl.addEventListener("click", (e) => {
       if (e.target.closest("[data-pinx]")) { R.pin = null; draw(); }
@@ -2735,7 +2907,7 @@
         R.ov[b.dataset.ov] = !R.ov[b.dataset.ov];
         store.set("wx:ov", R.ov);
         b.setAttribute("aria-pressed", String(R.ov[b.dataset.ov]));
-        if (b.dataset.ov === "lightning" || b.dataset.ov === "density") { lightningClock(); if ($("#awscredit")) $("#awscredit").hidden = !(l3() || R.mode === "model" || R.mode === "mrms" || ltgOn()); }
+        if (b.dataset.ov === "lightning" || b.dataset.ov === "density") { lightningClock(); if ($("#awscredit")) $("#awscredit").hidden = !(l3() || R.mode === "model" || R.mode === "mrms" || R.mode === "abi" || ltgOn()); }
         loadOverlays(true); draw(); label(); renderSources();
       });
     });
@@ -2829,6 +3001,19 @@
       $("#densbar").hidden = !(PRO && R.ov.density);
       $("#denswin").addEventListener("change", (e) => { R.densWin = Number(e.target.value); store.set("wx:denswin", R.densWin); LTG.dens = null; drawLightning(); label(); });
     }
+    if ($("#abibar") && AB) {
+      const groups = {};
+      for (const [id, P] of Object.entries(AB.PRODUCTS)) (groups[P.group] = groups[P.group] || []).push([id, P]);
+      if (!AB.PRODUCTS[R.ab.prod]) R.ab.prod = "b13";
+      if (!AB.SECTORS[R.ab.sector]) R.ab.sector = "conus";
+      $("#abiprod").innerHTML = Object.entries(groups).map(([g, ps]) => `<optgroup label="${esc(g)}">${ps.map(([id, P]) => `<option value="${id}">${esc(P.label)}</option>`).join("")}</optgroup>`).join("");
+      $("#abiprod").value = R.ab.prod; $("#abisec").value = R.ab.sector; $("#abisat").value = R.ab.sat;
+      const again = () => { $("#radarread").hidden = true; store.set("wx:abi", R.ab.prod); store.set("wx:abisec", R.ab.sector); store.set("wx:abisat", R.ab.sat); if (R.mode === "abi") { play(false); R.valid = null; abiFrames().then(label); } };
+      $("#abiprod").addEventListener("change", (e) => { if (AB.PRODUCTS[e.target.value]) { R.ab.prod = e.target.value; again(); } });
+      $("#abisec").addEventListener("change", (e) => { if (AB.SECTORS[e.target.value]) { R.ab.sector = e.target.value; R.abiBox = null; again(); } });
+      $("#abisat").addEventListener("change", (e) => { if (["auto", "east", "west"].includes(e.target.value)) { R.ab.sat = e.target.value; R.abiBox = null; again(); } });
+      $("#abigo").addEventListener("click", () => { const b = R.abiBox; if (b) fit(b.s, b.w, b.n, b.e, 20); });
+    }
     if ($("#mrmsbar") && MR) {
       const groups = {};
       for (const [id, P] of Object.entries(MR.PRODUCTS)) (groups[P.group] = groups[P.group] || []).push([id, P]);
@@ -2867,6 +3052,8 @@
       $("#replaytoggle").setAttribute("aria-pressed", String(open));
       $("#replaytoggle").setAttribute("aria-expanded", String(open));
       if (open && !$("#rpfrom").value) $("#rpfrom").value = localInput(Date.now() - 86400e3);
+      /* from a single radar's product, the replay offers that radar first */
+      if (open && $("#rpsrc")) $("#rpsrc").value = l3() && l3().l2 ? "site" : "mosaic";
       $("#rpfrom").max = localInput(Date.now() - 1800e3);
     });
     $("#replaybar").addEventListener("submit", (e) => {
@@ -2874,7 +3061,7 @@
       const from = new Date($("#rpfrom").value).getTime(), hours = Number($("#rplen").value);
       if (!Number.isFinite(from) || from < Wx.REPLAY_FROM || from > Date.now() - 1800e3) { note("Pick a time between 2006 and half an hour ago."); return; }
       if (!R.started) start();
-      replay(from, hours, false);
+      if ($("#rpsrc") && $("#rpsrc").value === "site" && L2) siteReplay(from, hours, false); else replay(from, hours, false);
     });
     $("#replaybar").addEventListener("click", (e) => {
       const b = e.target.closest("[data-preset]");
@@ -2882,7 +3069,7 @@
       const [iso, h] = b.dataset.preset.split(","), from = Date.parse(iso);
       $("#rpfrom").value = localInput(from); $("#rplen").value = h;
       if (!R.started) start();
-      replay(from, Number(h), true);
+      if ($("#rpsrc") && $("#rpsrc").value === "site" && L2) siteReplay(from, Number(h), true); else replay(from, Number(h), true);
     });
     $("#rplive").addEventListener("click", leaveReplay);
     $("#stationtoggle").setAttribute("aria-pressed", String(R.stations));
@@ -2948,6 +3135,8 @@
         else if (R.mode === "replay") { /* the past does not refresh */ }
         else if (R.mode === "hrrr") { Wx.hrrrRun().then((v) => { if (v && v !== R.valid && !R.playing) hrrrFrames(); }).catch(() => {}); }
         else if (R.mode === "mrms") mrmsFrames(true);
+        else if (R.mode === "abi") abiFrames(true);
+        else if (R.mode === "model" && MM.SOURCES[R.mm.src].analysis) { MM.analyses(R.mm.src).then((r) => { if (r.length && r[r.length - 1] !== R.mm.run && !R.playing) modelFrames(); }).catch(() => {}); }
         else if (R.mode === "model") { MM.latestRun(R.mm.src).then((r) => { if (r && r.run !== R.mm.run && !R.playing) modelFrames(); }).catch(() => {}); }
         else siteFrames(true);
       },
@@ -2956,6 +3145,7 @@
       get mode() { return R.mode; },
       get replay() { return R.replay; },
       get pro() { return PRO ? { ov: R.ov, ...R.pro } : null; },
+      get analysis() { return R.mode === "model" && MM && !!MM.SOURCES[R.mm.src].analysis; },
       get lightning() { return ltgOn() && (LTG.at || LTG.failed) ? { n: LTG.flashes.length, at: LTG.at, failed: LTG.failed } : null; },
       get stations() { return R.stations && R.obs.length ? { n: R.obs.length, newest: Math.max(...R.obs.map((s) => s.time)) } : null; },
       get valid() { return R.valid; },
@@ -3180,6 +3370,7 @@
             <div><span>Freezing level</span><b class="num">${hgt(a.frz)}</b></div>
             <div><span>700–500 lapse rate</span><b class="num">${a.lapse75 != null ? a.lapse75.toFixed(1) + " °C/km" : "–"}</b></div>
             <div><span>0–3 km lapse rate</span><b class="num">${a.lapse03 != null ? a.lapse03.toFixed(1) + " °C/km" : "–"}</b></div>
+            <div><span>Downdraft CAPE</span><b class="num">${a.dcape != null ? Math.round(a.dcape).toLocaleString() + " J/kg" : "–"}</b></div>
             <div><span>STP (fixed layer)</span><b class="num">${a.stp != null ? a.stp.toFixed(1) : "–"}</b></div>
             <div><span>Effective inflow layer</span><b class="num">${a.eff ? `${hgt(a.eff.base)}–${hgt(Math.max(a.eff.top, a.eff.base))}` : "none"}</b></div>
             <div><span>Effective SRH</span><b class="num">${a.eff && a.esrh != null ? Math.round(a.esrh) + " m²/s²" : "–"}</b></div>

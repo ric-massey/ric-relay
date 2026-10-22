@@ -24,7 +24,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Weather">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231f5fa8'/><circle cx='40' cy='40' r='16' fill='%23ffd166'/><path d='M30 74h42a14 14 0 0 0-3-28 18 18 0 0 0-34 6 11 11 0 0 0-5 22z' fill='%23fff'/></svg>">
-  <link rel="stylesheet" href="assets/weather/weather.css?v=4">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=5">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -77,6 +77,7 @@
         <h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 8l4.5-4.5" stroke="currentColor" stroke-width="1.5"/></svg>Radar<span class="src" id="radarsrc"></span></h2>
         <div class="seg rowscroll pro-only" role="group" aria-label="Radar layer">
           <button type="button" data-mode="comp" aria-pressed="true">US mosaic</button>
+          <button type="button" data-mode="abi" aria-pressed="false" title="GOES satellite straight from NOAA: all 16 bands and the RGB composites, the lower 48 every 5 minutes or a mesoscale sector every minute">Satellite · GOES</button>
           <button type="button" data-mode="mrms" aria-pressed="false" title="NOAA's Multi-Radar Multi-Sensor products: rotation tracks, hail size (MESH), reflectivity at −10 °C, rain totals">MRMS</button>
           <span class="seglab">Site</span>
           <button type="button" data-mode="l3:ref" aria-pressed="false" title="The nearest radar's own reflectivity, at the tilt you pick">Reflectivity</button>
@@ -101,12 +102,19 @@
           <button type="button" data-tilt="2" aria-pressed="false">3rd</button>
           <button type="button" data-tilt="3" aria-pressed="false">4th</button>
         </div>
+        <div class="modelbar pro-only" id="abibar" hidden>
+          <label>Product <select id="abiprod"></select></label>
+          <label>Sector <select id="abisec"><option value="conus">Lower 48 · every 5 min</option><option value="m1">Mesoscale 1 · every minute</option><option value="m2">Mesoscale 2 · every minute</option></select></label>
+          <label>Satellite <select id="abisat"><option value="auto">Nearest to the map</option><option value="east">GOES-East</option><option value="west">GOES-West</option></select></label>
+          <button type="button" id="abigo" class="go" hidden>Go to the sector</button>
+          <span class="mmrun" id="abirun"></span>
+        </div>
         <div class="modelbar pro-only" id="mrmsbar" hidden>
           <label>Product <select id="mrprod"></select></label>
           <span class="mmrun" id="mrrun"></span>
         </div>
         <div class="modelbar pro-only" id="modelbar" hidden>
-          <label>Model <select id="mmsrc"><option value="hrrr">HRRR · 3 km, hourly</option><option value="gfs">GFS · global, to 10 days</option><option value="tle">HRRR-TLE · storm probabilities</option></select></label>
+          <label>Model <select id="mmsrc"><option value="meso">Mesoanalysis · now, from the HRRR analysis</option><option value="hrrr">HRRR · 3 km, hourly</option><option value="gfs">GFS · global, to 10 days</option><option value="ecmwf">ECMWF · IFS, global, to 10 days</option><option value="aifs">ECMWF AIFS · machine-learned, to 10 days</option><option value="gefs">GEFS ensemble · mean, spread, spaghetti, chances</option><option value="tle">HRRR-TLE · storm probabilities</option></select></label>
           <label>Field <select id="mmfield"></select></label>
           <span class="mmrun" id="mmrun"></span>
         </div>
@@ -134,6 +142,7 @@
         </div>
         <form class="replaybar pro-only" id="replaybar" hidden>
           <label>From <input type="datetime-local" id="rpfrom" min="2006-01-01T00:00" step="300" required></label>
+          <label>Radar <select id="rpsrc"><option value="mosaic">US mosaic</option><option value="site">Nearest radar, full volume</option></select></label>
           <label>for <select id="rplen"><option value="2">2 hours</option><option value="3" selected>3 hours</option><option value="6">6 hours</option></select></label>
           <button type="submit" class="go">Replay</button>
           <button type="button" id="rplive" hidden>Back to live</button>
@@ -163,7 +172,7 @@
           </div>
           <div class="pin" id="radarpin" hidden></div>
           <div class="note" id="radarnote" hidden></div>
-          <span class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · NEXRAD<span id="satcredit" hidden> &amp; GOES</span> via <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">IEM</a><span id="awscredit" hidden> · NOAA open data on <a href="https://registry.opendata.aws/collab/noaa/" target="_blank" rel="noopener">AWS</a></span></span>
+          <span class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · NEXRAD<span id="satcredit" hidden> &amp; GOES</span> via <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">IEM</a><span id="awscredit" hidden> · NOAA open data on <a href="https://registry.opendata.aws/collab/noaa/" target="_blank" rel="noopener">AWS</a></span><span id="eccredit" hidden> · © <a href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF</a> open data, CC BY 4.0</span></span>
         </div>
         <div class="radarbar">
           <button class="play" type="button" id="play" aria-label="Play radar loop"></button>
@@ -232,16 +241,17 @@
 <script src="effects.js"></script>
 <script src="projects/weather/nowcast.js?v=1"></script>
 <script src="projects/weather/wx.js?v=12"></script>
-<script src="projects/weather/sounding.js?v=2"></script>
+<script src="projects/weather/sounding.js?v=3"></script>
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
 <script src="projects/weather/bzip2.js?v=1"></script>
 <script src="projects/weather/nexrad.js?v=2"></script>
-<script src="projects/weather/level2.js?v=1"></script>
-<script src="projects/weather/glm.js?v=2"></script>
-<script src="projects/weather/grib2.js?v=2"></script>
-<script src="projects/weather/modelmaps.js?v=2"></script>
+<script src="projects/weather/level2.js?v=2"></script>
+<script src="projects/weather/glm.js?v=3"></script>
+<script src="projects/weather/abi.js?v=1"></script>
+<script src="projects/weather/grib2.js?v=3"></script>
+<script src="projects/weather/modelmaps.js?v=4"></script>
 <script src="projects/weather/mrms.js?v=1"></script>
-<script src="assets/weather/app.js?v=5"></script>
+<script src="assets/weather/app.js?v=7"></script>
 </body>
 </html>

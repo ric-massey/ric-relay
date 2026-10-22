@@ -14,7 +14,8 @@
      section 4  the forecast hour (template 4.0 and 4.8's first fields)
      section 5  data templates 5.0 (simple packing), 5.2 (complex), 5.3
                 (complex with spatial differencing — what both models use)
-                and 5.41 (PNG — what MRMS uses; parseAsync only, below)
+                5.41 (PNG — what MRMS uses; parseAsync only, below) and 5.42
+                (CCSDS, the Rice coder of libaec — what ECMWF's open data uses)
      section 6  the bitmap, when there is one
      section 7  the packed values
    `test/decoders.test.mjs` holds the values and the grid's positions to
@@ -88,6 +89,7 @@
           NG: u(b, t + 20, 4), widthRef: b[t + 24], widthBits: b[t + 25], lenRef: u(b, t + 26, 4), lenInc: b[t + 30],
           lastLen: u(b, t + 31, 4), lenBits: b[t + 35],
           order: tmpl === 3 ? b[t + 36] : 0, extraOctets: tmpl === 3 ? b[t + 37] : 0 });
+        else if (tmpl === 42) Object.assign(msg.pack, { flags: b[t + 10], block: b[t + 11], rsi: u(b, t + 12, 2) });
         else if (tmpl !== 0 && tmpl !== 41) throw new Error('grib2: data template 5.' + tmpl + ' is not read here');
       } else if (sec === 6) {
         if (b[o + 5] === 0) bitmap = b.subarray(o + 6, o + len);
@@ -195,6 +197,94 @@
   }
 
   /* ── the packed values → Float32Array, NaN where missing ── */
+  /* ── CCSDS 121.0-B lossless (Adaptive Entropy Coding, "Rice") ──
+     What libaec does, for GRIB2 template 5.42. The samples come in
+     reference-sample intervals of `rsi` blocks of `J` samples. Each block
+     opens with an option id: zero blocks (a run of all-zero blocks), the
+     second extension (pairs of samples coded as one number), "split" k (each
+     sample's high part as a unary count, then its k low bits), or
+     uncompressed. With preprocessing on (flags & 8), every interval opens
+     with one raw reference sample and the rest are mapped differences from
+     the sample before (CCSDS §4, the unit-delay predictor), undone here. */
+  function aec(data, bits, flags, J, rsi, n) {
+    const out = new Float64Array(n);
+    if (!n) return out;
+    const pp = !!(flags & 8), padRsi = !!(flags & 32), restricted = !!(flags & 16);
+    const idLen = bits > 16 ? 5 : bits > 8 ? 4 : restricted && bits <= 4 ? (bits <= 2 ? 1 : 2) : 3, idMax = 2 ** idLen - 1;
+    const xmax = 2 ** bits - 1, med = Math.floor(xmax / 2) + 1, nb = data.length;
+    let pos = 0;
+    const get = (k) => {
+      let v = 0;
+      while (k > 0) {
+        const byte = pos >> 3, off = pos & 7, avail = 8 - off, take = avail < k ? avail : k;
+        v = v * (1 << take) + (((byte < nb ? data[byte] : 0) >> (avail - take)) & ((1 << take) - 1));
+        pos += take; k -= take;
+      }
+      return v;
+    };
+    /* a fundamental sequence: zeros counted up to the closing one */
+    const fs = () => {
+      let c = 0;
+      for (;;) {
+        const byte = pos >> 3;
+        if (byte >= nb) throw new Error('grib2: CCSDS data ran out');
+        const x = (data[byte] << (pos & 7)) & 0xff;
+        if (!x) { c += 8 - (pos & 7); pos = (byte + 1) << 3; continue; }
+        const z = Math.clz32(x) - 24;
+        c += z; pos += z + 1;
+        return c;
+      }
+    };
+    const buf = new Float64Array(J);
+    let o = 0;
+    while (o < n) {
+      let ref = pp ? 1 : 0, last = 0, first = true;
+      /* the decoded block's samples (mapped differences, the reference raw) go out here */
+      const emit = (count, fromBuf) => {
+        for (let i = 0; i < count && o < n; i++) {
+          const d = fromBuf ? buf[i] : 0;
+          if (!pp) { out[o++] = d; continue; }
+          if (first) { last = d; first = false; out[o++] = d; continue; }
+          const half = Math.floor(d / 2) + (d % 2), mask = last >= med, theta = mask ? xmax - last : last;
+          if (half <= theta) last += d % 2 ? -(d + 1) / 2 : d / 2;
+          else last = mask ? xmax - d : d;
+          out[o++] = last;
+        }
+      };
+      for (let b = 0; b < rsi && o < n; ) {
+        const id = get(idLen);
+        if (id === 0) {
+          const se = get(1);
+          if (ref) buf[0] = get(bits);
+          if (!se) {
+            let z = fs() + 1;
+            if (z === 5) z = Math.min(rsi - b, 64 - (b % 64));                // to the end of the segment
+            else if (z > 5) z--;
+            if (ref) { emit(1, true); emit(z * J - 1, false); } else emit(z * J, false);
+            b += z; ref = 0;
+            continue;
+          }
+          for (let i = ref; i < J; ) {
+            const m = fs(), beta = Math.floor((Math.sqrt(8 * m + 1) - 1) / 2), d1 = m - beta * (beta + 1) / 2;
+            if ((i & 1) === 0) buf[i++] = beta - d1;
+            buf[i++] = d1;
+          }
+        } else if (id === idMax) {
+          for (let i = 0; i < J; i++) buf[i] = get(bits);
+        } else {
+          const k = id - 1, sc = 2 ** k;
+          if (ref) buf[0] = get(bits);
+          for (let i = ref; i < J; i++) buf[i] = fs() * sc;
+          if (k) for (let i = ref; i < J; i++) buf[i] += get(k);
+        }
+        emit(J, true);
+        b++; ref = 0;
+      }
+      if (padRsi) pos = (pos + 7) & ~7;
+    }
+    return out;
+  }
+
   function unpack(k, data, bitmap, npts) {
     const out = new Float32Array(npts).fill(NaN);
     const bscale = 2 ** k.E, dscale = 10 ** -k.D;
@@ -203,6 +293,11 @@
     if (bitmap) { for (let i = 0; i < npts; i++) if (bitmap[i >> 3] & (0x80 >> (i & 7))) present.push(i); }
     const n = bitmap ? present.length : npts;
     const at = (j) => (bitmap ? present[j] : j);
+    if (k.tmpl === 42) {
+      const x = k.nbits ? aec(data, k.nbits, k.flags, k.block, k.rsi, n) : new Float64Array(n);
+      for (let j = 0; j < n; j++) out[at(j)] = (k.R + x[j] * bscale) * dscale;
+      return out;
+    }
     if (k.tmpl === 0) {
       const br = new Bits(data);
       for (let j = 0; j < n; j++) out[at(j)] = (k.R + (k.nbits ? br.read(k.nbits) : 0) * bscale) * dscale;
@@ -333,7 +428,7 @@
     return parseAsync(new Uint8Array(await r.arrayBuffer()), { pool });
   }
 
-  const api = { parse, parseAsync, pngPooled, unpack, projector, sample, parseIdx, find, fetchMessage, Bits };
+  const api = { parse, parseAsync, pngPooled, unpack, projector, sample, parseIdx, find, fetchMessage, Bits, aec };
   root.Grib2 = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

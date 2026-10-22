@@ -1,5 +1,6 @@
 """Writes expected.json beside the fixtures: what MetPy (NEXRAD Level III),
-ecCodes (GRIB2), h5py (the GLM's HDF5) and MetPy again (NEXRAD Level II)
+ecCodes (GRIB2), h5py (the GLM's and the ABI's HDF5), MetPy again (NEXRAD Level II)
+and pyproj (the ABI's fixed grid)
 read from the same files.
 Not run in CI — run it by hand after adding a fixture:
     pip install metpy eccodes h5py && python3 make-expected.py
@@ -8,7 +9,7 @@ import glob, json, os, warnings
 import numpy as np
 warnings.filterwarnings('ignore')
 here = os.path.dirname(os.path.abspath(__file__))
-out = {'l3': {}, 'grib2': {}, 'glm': {}, 'l2': {}, 'mrms': {}}
+out = {'l3': {}, 'grib2': {}, 'glm': {}, 'l2': {}, 'mrms': {}, 'abi': {}}
 rng = np.random.default_rng(7)
 
 from metpy.io import Level3File
@@ -101,6 +102,29 @@ for path in sorted(glob.glob(os.path.join(here, 'mrms-*.grib2.gz'))):
     picks += [tuple(int(x) for x in hot[i]) for i in rng.integers(0, len(hot), 200)] if len(hot) else []
     out['mrms'][os.path.basename(path)] = {'pool': pool, 'nx': nx // pool, 'ny': ny // pool, 'finite': int(np.isfinite(pv).sum()), 'max': float(np.nanmax(pv)),
         'samples': [[i, j, None if not np.isfinite(pv[i, j]) else float(pv[i, j])] for i, j in picks]}
+
+# GOES ABI: one band of a mesoscale sector (2-D, chunked in row bands) as
+# h5py reads it, and where its pixels are by pyproj's geostationary projection
+out['abi'] = {}
+import pyproj
+for path in sorted(glob.glob(os.path.join(here, 'abi-*.nc'))):
+    f = h5py.File(path, 'r')
+    d = f['CMI']; a = d.attrs
+    raw = d[()].astype(np.int64)
+    if a.get('_Unsigned', b'') == b'true': raw = raw % 65536
+    fv = int(a['_FillValue'][0]); fv = fv + 65536 if a.get('_Unsigned', b'') == b'true' and fv < 0 else fv
+    v = raw.astype(float) * float(a['scale_factor'][0]) + float(a['add_offset'][0]); v[raw == fv] = np.nan
+    ax = lambda k: f[k][()].astype(float) * float(f[k].attrs['scale_factor'][0]) + float(f[k].attrs['add_offset'][0])
+    xs, ys = ax('x'), ax('y')
+    P = {k: (float(x[0]) if hasattr(x, '__len__') and not isinstance(x, bytes) else x) for k, x in f['goes_imager_projection'].attrs.items() if k in ('perspective_point_height', 'semi_major_axis', 'semi_minor_axis', 'longitude_of_projection_origin')}
+    H = P['perspective_point_height']
+    proj = pyproj.Proj(proj='geos', h=H, lon_0=P['longitude_of_projection_origin'], sweep='x', a=P['semi_major_axis'], b=P['semi_minor_axis'])
+    picks = [(int(i), int(j)) for i, j in zip(rng.integers(0, v.shape[0], 400), rng.integers(0, v.shape[1], 400))]
+    nav = [(int(j), int(i)) for j, i in zip(rng.integers(0, v.shape[0], 60), rng.integers(0, v.shape[1], 60))]
+    out['abi'][os.path.basename(path)] = {'shape': list(v.shape), 'finite': int(np.isfinite(v).sum()), 'min': float(np.nanmin(v)), 'max': float(np.nanmax(v)),
+        'x': [float(xs[0]), float(xs[-1])], 'y': [float(ys[0]), float(ys[-1])], 'proj': P,
+        'samples': [[i, j, None if not np.isfinite(v[i, j]) else float(v[i, j])] for i, j in picks],
+        'nav': [[j, i] + [float(z) for z in proj(xs[i] * H, ys[j] * H, inverse=True)[::-1]] for j, i in nav]}
 
 json.dump(out, open(os.path.join(here, 'expected.json'), 'w'), separators=(',', ':'))
 print({k: len(v) for k, v in out.items()})

@@ -27,9 +27,13 @@
 > 3. **Raw NOAA data, read in the browser (Ric, 2026-10-22: "do the three", then
 >    "do it").** Dual-pol radar at four tilts and the full Level II volume
 >    (§11.2), MRMS rotation tracks and hail (§11.3), GOES lightning with flash
->    density and each storm's flash rate and lightning jump (§12), HRRR /
->    GFS model maps with the severe composites and a time-lagged HRRR ensemble
->    for probabilities (§13–14, §17.2) come from NOAA's own files on AWS and are
+>    density and each storm's flash rate and lightning jump (§12), GOES imagery
+>    — all sixteen bands, the RGB composites, the mesoscale sectors (§12) —,
+>    HRRR / GFS / ECMWF / AIFS model maps with the severe composites, a
+>    mesoanalysis from the HRRR's analysis hour, a time-lagged HRRR ensemble for
+>    probabilities and the GEFS's mean, spread, spaghetti and chances (§13–14,
+>    §17.2), and replay of one radar from the Level II archive come from NOAA's
+>    and ECMWF's own files and are
 >    decoded in the visitor's browser — no server of ours, nothing stored. This is
 >    the backend question §27 raises, answered without one for now; see
 >    `README.md`.

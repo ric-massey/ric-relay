@@ -770,13 +770,24 @@ ones that must never break:
 - **`weather-sw.js` is the site's only service worker**, scoped to `./weather`. Keep it
   network-first and same-origin only; never widen its scope to the rest of the site.
 - **Pro reads NOAA's raw files in the browser** (Ric, 2026-10-22: "do the three",
-  then "do it"). The radar's Level III products and full Level II volume, MRMS,
-  GOES lightning and HRRR / GFS fields come from NOAA's public buckets on AWS
-  (`unidata-nexrad-level3`, `unidata-nexrad-level2-chunks`, `noaa-mrms-pds`,
-  `noaa-goes18/19`, `noaa-hrrr-bdp-pds`, `noaa-gfs-bdp-pds`) and are decoded by
-  `nexrad.js` + `bzip2.js`, `level2.js`, `mrms.js`, `glm.js` and `grib2.js` +
-  `modelmaps.js` — written here, no library.
-  Each is held to MetPy, h5py, ecCodes or Python's bz2 in `test/decoders.test.mjs`
+  then "do it", then "do it" again for what the professional sites have). The
+  radar's Level III products, full Level II volume and Level II archive, MRMS,
+  GOES lightning and imagery, and HRRR / GFS / GEFS fields come from NOAA's public
+  buckets on AWS (`unidata-nexrad-level3`, `unidata-nexrad-level2-chunks`,
+  `unidata-nexrad-level2`, `noaa-mrms-pds`, `noaa-goes18/19`, `noaa-hrrr-bdp-pds`,
+  `noaa-gfs-bdp-pds`, `noaa-gefs-pds`), and ECMWF's IFS and AIFS from ECMWF's
+  open data on Google Cloud (`storage.googleapis.com/ecmwf-open-data`) with its
+  AWS copy (`ecmwf-forecasts`) as the fallback — AWS's throttled with 503s that
+  carry no CORS header, so don't swap the order back. They are decoded by
+  `nexrad.js` + `bzip2.js`, `level2.js`, `mrms.js`, `glm.js`, `abi.js` and
+  `grib2.js` (CCSDS included) + `modelmaps.js` — written here, no library.
+  ECMWF's data is CC BY 4.0: the map's corner credits ECMWF whenever its fields
+  are shown (`#eccredit`); keep it. The **mesoanalysis** map layer is the HRRR's
+  analysis hour, not SPC's — never label it SPC's; SPC's own images are the
+  separate card. Where a field approximates SPC's (effective shear from the
+  standard levels, DCAPE on five levels, STP with the surface parcel's LCL) the
+  label says so; keep that honesty if you change one.
+  Each is held to MetPy, h5py, pyproj, ecCodes or Python's bz2 in `test/decoders.test.mjs`
   on real files in `test/fixtures/`; change a decoder and its expectations together
   (`fixtures/make-expected.py` regenerates them). Those buckets are the weather
   room's other external hosts. Lightning is GLM *flashes* — never call them strikes.
@@ -902,7 +913,8 @@ bug you are looking for.
 - [ ] Page still opens as a static file — no console errors, no external requests
       beyond the GitHub API calls that already exist, the OpenStreetMap tiles in
       the training page's run detail, Studies' ClinicalTrials.gov fallback and the
-      weather room's providers, NOAA's AWS buckets among them (below).
+      weather room's providers, NOAA's AWS buckets and ECMWF's open data
+      (Google Cloud and AWS) among them (below).
 - [ ] Looks right at mobile width.
 - [ ] Didn't add location data, extra repos, or a build step.
 - [ ] The relevant test suite above still passes.

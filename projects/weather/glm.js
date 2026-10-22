@@ -13,6 +13,9 @@
    — the metadata at the head of the file and the five little chunks — so a
    minute of lightning costs about 200 KB rather than a megabyte. Ric's call,
    2026-10-22. `test/decoders.test.mjs` holds it to h5py on a real file.
+   abi.js reads the imager's bands with the same reader: their chunks are
+   two-dimensional (row bands), put back where each belongs, and `raw16`
+   keeps a band as its 16-bit counts with the scale to read them by.
 
    Flashes are what the GLM reports; ground strikes are a different
    instrument (the commercial networks) and nothing here calls them that. */
@@ -258,7 +261,7 @@
   }
 
   /* ── one dataset's values, scaled the way netCDF's attributes say ── */
-  async function variable(f, name, knownAttrs) {
+  async function variable(f, name, knownAttrs, { raw16 = false } = {}) {
     const addr = (f.links || (f.links = await links(f, f.root))).get(name);
     if (addr == null) throw new Error('glm: no variable ' + name);
     const msgs = await header(f, addr);
@@ -277,7 +280,7 @@
         filters.push(id);
       }
     }
-    let bytes = new Uint8Array(0);
+    let bytes = new Uint8Array(0), cdims = null;
     if (n) {
       const parts = [];
       if (lay[0] === 3 && lay[1] === 2) {
@@ -293,10 +296,14 @@
             for (let d = 0; d < rank; d++) offs.push(le(h, p + 8 + 8 * d, 8));
             p += 8 + 8 * rank;
             const child = le(h, p, f.O); p += f.O;
-            if (level > 0) await walk(child); else parts.push({ addr: child, size, mask, start: offs[0] });
+            if (level > 0) await walk(child); else parts.push({ addr: child, size, mask, offs });
           }
         };
         await walk(tree);
+        /* the chunk's shape, so a 2-D image (GOES ABI's, in row bands) is
+           put back together where each chunk belongs */
+        cdims = [];
+        for (let d = 0; d < rank - 1; d++) cdims.push(le(lay, 3 + f.O + 4 * d, 4));
       } else if (lay[0] === 4 && lay[1] === 2 && lay[3 + lay[2] * lay[4] + 0] !== undefined) {
         /* chunked, version 4: only the single-chunk index is read here */
         const rank = lay[3], dsz = lay[4];
@@ -305,16 +312,17 @@
         const filtered = lay[2] & 2;
         const size = filtered ? le(lay, p + 1, f.L) : null, mask = filtered ? le(lay, p + 1 + f.L, 4) : 0;
         const addr = le(lay, p + 1 + (filtered ? f.L + 4 : 0), f.O);
-        parts.push({ addr, size: size || n * t.size, mask, start: 0 });
+        parts.push({ addr, size: size || n * t.size, mask, offs: [0] });
       } else if ((lay[0] === 3 || lay[0] === 4) && lay[1] === 1) {
-        parts.push({ addr: le(lay, 2, f.O), size: le(lay, 2 + f.O, f.L), mask: 0xffffffff, start: 0, raw: true });
+        parts.push({ addr: le(lay, 2, f.O), size: le(lay, 2 + f.O, f.L), mask: 0xffffffff, offs: [0], raw: true });
       } else if ((lay[0] === 3 || lay[0] === 4) && lay[1] === 0) {
         const sz = le(lay, 2, 2);
         bytes = lay.slice(4, 4 + sz);
       } else throw new Error('glm: layout ' + lay[0] + '/' + lay[1] + ' is not read here');
       if (parts.length) {
         bytes = new Uint8Array(n * t.size);
-        for (const c of parts) {
+        /* every chunk asked at once: an ABI band is dozens of them */
+        await Promise.all(parts.map(async (c) => {
           let b = await f.src.exact(c.addr, c.size);
           if (!c.raw) for (let i = filters.length - 1; i >= 0; i--) {
             if (c.mask & (1 << i)) continue;
@@ -323,18 +331,55 @@
             else if (filters[i] === 3) b = b.subarray(0, b.length - 4);
             else throw new Error('glm: filter ' + filters[i] + ' is not read here');
           }
-          const at = c.start * t.size;
-          bytes.set(b.subarray(0, Math.min(b.length, bytes.length - at)), at);
-        }
+          if (!cdims || dims.length < 2) {
+            const at = (c.offs ? c.offs[0] : 0) * t.size;
+            bytes.set(b.subarray(0, Math.min(b.length, bytes.length - at)), at);
+            return;
+          }
+          /* row by row: every index but the last walks the chunk, the last is
+             one run of bytes; a chunk at the edge is cut to the dataset */
+          const r = dims.length, last = Math.min(cdims[r - 1], dims[r - 1] - c.offs[r - 1]), idx = new Array(r - 1).fill(0);
+          for (;;) {
+            let inside = true, src = 0, dst = 0;
+            for (let d = 0; d < r - 1; d++) {
+              if (c.offs[d] + idx[d] >= dims[d]) { inside = false; break; }
+              src = src * cdims[d] + idx[d]; dst = dst * dims[d] + c.offs[d] + idx[d];
+            }
+            if (inside) {
+              src = src * cdims[r - 1]; dst = dst * dims[r - 1] + c.offs[r - 1];
+              bytes.set(b.subarray(src * t.size, (src + last) * t.size), dst * t.size);
+            }
+            let d = r - 2;
+            while (d >= 0 && ++idx[d] >= cdims[d]) idx[d--] = 0;
+            if (d < 0) break;
+          }
+        }));
       }
     }
     const attrs = knownAttrs || await attributes(f, msgs);
+    if (raw16 && t.cls === 0 && t.size === 2) {
+      /* an image (GOES ABI: 3.75 million 16-bit counts a CONUS band) is
+         kept as its counts, with the scale to read them by — a quarter of
+         the memory of the decoded numbers */
+      const uns = attrs._Unsigned === 'true' || !t.signed, n2 = n, out = uns ? new Uint16Array(n2) : new Int16Array(n2);
+      const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), little = !t.bigEndian;
+      for (let i = 0; i < n2; i++) out[i] = uns ? dv.getUint16(i * 2, little) : dv.getInt16(i * 2, little);
+      const fill = attrs._FillValue;
+      return { raw: out, scale: attrs.scale_factor ?? 1, offset: attrs.add_offset ?? 0, fill: fill != null && uns && fill < 0 ? fill + 65536 : fill, attrs, dims };
+    }
     const raw = decodeValues(bytes, attrs._Unsigned === 'true' ? { ...t, signed: false } : t, n);
     const fill = attrs._FillValue, scale = attrs.scale_factor ?? 1, offset = attrs.add_offset ?? 0;
     const unsignedFill = fill != null && attrs._Unsigned === 'true' && fill < 0 ? fill + 2 ** (8 * t.size) : fill;
     const vals = new Float64Array(n);
     for (let i = 0; i < n; i++) vals[i] = unsignedFill != null && raw[i] === unsignedFill ? NaN : raw[i] * scale + offset;
-    return { values: vals, attrs };
+    return { values: vals, attrs, dims };
+  }
+  /* an object's attributes alone (a scalar like goes_imager_projection
+     carries everything in them) */
+  async function attrsOf(f, name) {
+    const addr = (f.links || (f.links = await links(f, f.root))).get(name);
+    if (addr == null) throw new Error('glm: no variable ' + name);
+    return attributes(f, await header(f, addr));
   }
 
   /* ── flashes ──
@@ -463,7 +508,7 @@
     return { rate, dfrdt: now, sigma, level: sigma > 0 ? now / sigma : null, jump: rate >= minRate && now > 0 && now > 2 * sigma };
   }
 
-  const api = { SATS, SPLIT_LON, open, variable, flashes, fromBytes, fromUrl, fileStart, hourPrefix, files, density, densityAt, rates, jump };
+  const api = { SATS, SPLIT_LON, open, variable, attrsOf, flashes, fromBytes, fromUrl, fileStart, hourPrefix, files, density, densityAt, rates, jump };
   root.Glm = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

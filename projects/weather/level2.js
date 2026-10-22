@@ -186,6 +186,17 @@
     return [...by.entries()].sort((a, b) => a[0] - b[0]).map(([angle, t]) => ({ angle, elevNum: t.elevNum, time: t.time }));
   }
 
+  /* Has a sweep of `moment` near `angle` been read to its end? The radial
+     status says so (2: end of elevation, 4: end of volume) — counting
+     radials is not enough to stop a download on, since "complete" above
+     allows a few missing. */
+  function swept(state, moment, angle, tol = 0.3) {
+    return Object.values(state.sweeps).some((sw) => {
+      const elev = sw.elevs.reduce((a, b) => a + b, 0) / sw.elevs.length;
+      return Math.abs(elev - angle) < tol && sw.radials.some((r) => r.moments[moment]) && sw.radials.some((r) => r.status === 2 || r.status === 4);
+    });
+  }
+
   /* ── which chunks hold which cut ──
      A volume's chunks are numbered from 1: the first holds the metadata,
      then each cut takes 720 / 120 = 6 chunks (super-resolution) or 3, in the
@@ -257,12 +268,108 @@
       return { key, url: `${CHUNKS}/${key}`, n: +m[3], kind: m[4], t };
     }).filter(Boolean).sort((a, b) => a.n - b.n);
   }
+  /* ── the archive: every finished volume since 1991 ──
+     YYYY/MM/DD/KTLX/KTLX20130520_200356_V06(.gz). A volume to 2015 or so is
+     one gzip around an uncompressed Archive II file; later ones are the
+     usual bzip2 records. The _MDM files beside them are not radar data. */
+  async function archive(site4, fromMs, toMs, { signal, fetchFn = fetch } = {}) {
+    const days = [];
+    for (let d = Date.UTC(new Date(fromMs).getUTCFullYear(), new Date(fromMs).getUTCMonth(), new Date(fromMs).getUTCDate()); d <= toMs; d += 86400e3) days.push(d);
+    const out = [];
+    for (const d of days) {
+      const t = new Date(d), pre = `${t.getUTCFullYear()}/${String(t.getUTCMonth() + 1).padStart(2, '0')}/${String(t.getUTCDate()).padStart(2, '0')}/${site4}/`;
+      const { keys } = await list(ARCHIVE, pre, { signal, fetchFn });
+      for (const key of keys) {
+        const m = /\/[A-Z0-9]{4}(\d{8})_(\d{6})(?:_V\d\d)?(\.gz)?$/.exec(key);
+        if (!m) continue;
+        const ms = Date.UTC(+m[1].slice(0, 4), +m[1].slice(4, 6) - 1, +m[1].slice(6), +m[2].slice(0, 2), +m[2].slice(2, 4), +m[2].slice(4));
+        if (ms >= fromMs && ms <= toMs) out.push({ key, url: `${ARCHIVE}/${key}`, t: ms, gz: !!m[3] });
+      }
+    }
+    return out.sort((a, b) => a.t - b.t);
+  }
+  /* One archived volume, read as it downloads and abandoned the moment
+     `until(state)` is satisfied — the lowest tilt is the first tenth of a
+     volume, so a replay at it fetches about a megabyte a frame, not ten.
+     Both layouts: bzip2 records ("BZh" after each record's length), or
+     uncompressed messages one after another (each 2432 bytes, or as long as
+     a message 31 says). */
+  async function stream(url, { until = () => false, gz = /\.gz$/.test(url), signal, fetchFn = fetch } = {}) {
+    const ctl = new AbortController();
+    if (signal) signal.addEventListener('abort', () => ctl.abort(), { once: true });
+    const r = await fetchFn(url, { signal: ctl.signal });
+    if (!r.ok) throw new Error('level2: HTTP ' + r.status);
+    /* gzip by hand, one network chunk at a time: piped, the decompressor
+       drains the whole download before the first tilt is even read */
+    const src = r.body.getReader();
+    let reader = src, pump = null, stop = false;
+    if (gz) {
+      const ds = new DecompressionStream('gzip'), w = ds.writable.getWriter();
+      reader = ds.readable.getReader();
+      pump = (async () => {
+        try {
+          for (;;) {
+            const { value, done: end } = await src.read();
+            if (stop) break;
+            if (end) { await w.close(); break; }
+            await w.write(value);
+          }
+        } catch (e) { /* cancelled, or the reader below reports it */ }
+      })();
+    }
+    const st = { header: null, site: null, vcp: null, vcpNumber: null, sweeps: {} };
+    let buf = new Uint8Array(1 << 20), len = 0, p = 0, kind = null, done = false;
+    const dv = () => new DataView(buf.buffer, 0, len);
+    try {
+      while (!done) {
+        const { value, done: end } = await reader.read();
+        if (end) done = true;
+        else {
+          if (len + value.length > buf.length) { const nb = new Uint8Array(Math.max(buf.length * 2, len + value.length)); nb.set(buf.subarray(0, len)); buf = nb; }
+          buf.set(value, len); len += value.length;
+        }
+        if (!st.header) {
+          if (len < 32) continue;
+          st.header = records(buf.subarray(0, 24)).header;
+          if (!st.header) throw new Error('level2: not an Archive II file');
+          p = 24;
+          kind = buf[28] === 0x42 && buf[29] === 0x5a && buf[30] === 0x68 ? 'bz' : 'raw';      // "BZh"
+        }
+        const d = dv();
+        if (kind === 'bz') {
+          while (p + 4 <= len) {
+            const n = Math.abs(d.getInt32(p));
+            if (!n || p + 4 + n > len) break;
+            messages(Bz.bunzip2(buf.subarray(p + 4, p + 4 + n)), st);
+            p += 4 + n;
+          }
+        } else {
+          const start = p;
+          while (p + 28 <= len) {
+            const size = d.getUint16(p + 12) * 2, type = buf[p + 15], n = type === 31 ? 12 + size : 2432;
+            if (type === 31 && size < 16) { p = len; break; }
+            if (p + n > len) break;
+            p += n;
+          }
+          if (p > start) messages(buf.slice(start, p), st);
+        }
+        if (until(st)) break;
+      }
+    } finally {
+      /* cancelling the network reader stops the download itself */
+      stop = true;
+      await src.cancel().catch(() => {});
+      if (reader !== src) await reader.cancel().catch(() => {});
+      if (pump) await pump;
+    }
+    return st;
+  }
   const prevNumber = (n, nums) => { const i = nums.indexOf(n); return i > 0 ? nums[i - 1] : nums[nums.length - 1]; };
   const nextNumber = (n) => (n >= 999 ? 1 : n + 1);
   /* the site's ID in four letters, from Level III's three (TLX → KTLX) */
   const site4 = (s3) => (s3.length === 4 ? s3 : /^[A-Z]{3}$/.test(s3) ? 'K' + s3 : s3);
 
-  const api = { CHUNKS, ARCHIVE, MOMENTS, RANGE16, records, feed, sweep, tilts, angles, plan, anglesOf, cutFor, list, newestVolume, chunks, prevNumber, nextNumber, site4 };
+  const api = { CHUNKS, ARCHIVE, MOMENTS, RANGE16, records, feed, sweep, tilts, angles, plan, anglesOf, cutFor, list, newestVolume, chunks, archive, stream, swept, prevNumber, nextNumber, site4 };
   root.Level2 = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

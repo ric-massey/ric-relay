@@ -24,6 +24,7 @@
   'use strict';
 
   const G = root.Grib2 || (typeof require === 'function' ? require('./grib2.js') : null);
+  const SND = root.Sounding || (typeof require === 'function' ? require('./sounding.js') : null);
 
   const pad = (n, w = 2) => String(n).padStart(w, '0');
   const ymd = (ms) => { const d = new Date(ms); return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}`; };
@@ -50,6 +51,54 @@
       prefix: (run) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf`,
       file: (run, fh) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf${pad(fh)}.grib2`,
       hours: (have) => have.filter((h) => h >= 1 && h <= 15)
+    },
+    /* SPC-style mesoanalysis, on the map: the HRRR's analysis hour — its
+       best picture of the atmosphere now, observations folded in — for each
+       of the last six hours, so a field can be stepped through like a loop.
+       SPC draws its own from the RAP, whose bucket allows no browser; the
+       HRRR's analysis carries the effective-layer helicity, the most-
+       unstable parcel's level and the equilibrium level that the SPC
+       composites need. Ric, 2026-10-22: "do it". */
+    meso: {
+      label: 'Mesoanalysis', long: 'Mesoanalysis — the HRRR analysis hour (3 km), the last six hours, lower 48',
+      bucket: 'https://noaa-hrrr-bdp-pds.s3.amazonaws.com', cycle: 1, lookBack: 4, minHours: 1, analysis: true, frames: 6,
+      prefix: (run) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf`,
+      file: (run, fh) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf${pad(fh)}.grib2`,
+      hours: (have) => have.filter((h) => h === 0)
+    },
+    /* ECMWF's own open data: the IFS at 0.25°, and AIFS, its machine-learned
+       model. ECMWF puts the same files on Google Cloud (ecmwf-open-data) and
+       AWS (ecmwf-forecasts), both CORS open; Google's is asked first because
+       AWS's answered most requests with 503 "Slow Down" — with no CORS
+       header, so a browser sees only a failure — while this was built
+       (2026-10-22). `retrying` falls back to AWS. Each file comes with a
+       JSON-lines .index; the fields are CCSDS-packed (grib2.js's aec). The
+       00Z and 12Z runs go to 15 days (drawn to 10, as the GFS is); 06Z and 18Z
+       are shorter and not drawn. ECMWF's licence (CC BY 4.0) asks for credit:
+       the map's corner gives it whenever these are shown. */
+    ecmwf: {
+      label: 'ECMWF', long: 'ECMWF IFS — 0.25°, global, the 00Z and 12Z runs, drawn to 10 days', index: 'json',
+      bucket: 'https://storage.googleapis.com/ecmwf-open-data', cycle: 12, lookBack: 3, minHours: 40,
+      prefix: (run) => `${ymd(run)}/${hh(run)}z/ifs/0p25/oper/${ymd(run)}${hh(run)}0000-`,
+      file: (run, fh) => `${ymd(run)}/${hh(run)}z/ifs/0p25/oper/${ymd(run)}${hh(run)}0000-${fh}h-oper-fc.grib2`,
+      hours: (have) => have.filter((h) => h <= 240)
+    },
+    aifs: {
+      label: 'ECMWF AIFS', long: 'ECMWF AIFS — the machine-learned model, 0.25°, global, the 00Z and 12Z runs, drawn to 10 days', index: 'json',
+      bucket: 'https://storage.googleapis.com/ecmwf-open-data', cycle: 12, lookBack: 3, minHours: 20,
+      prefix: (run) => `${ymd(run)}/${hh(run)}z/aifs-single/0p25/oper/${ymd(run)}${hh(run)}0000-`,
+      file: (run, fh) => `${ymd(run)}/${hh(run)}z/aifs-single/0p25/oper/${ymd(run)}${hh(run)}0000-${fh}h-oper-fc.grib2`,
+      hours: (have) => have.filter((h) => h <= 240)
+    },
+    /* NOAA's GEFS: 31 runs of the GFS (gec00 and gep01–30) at 0.5°, with
+       NOAA's own mean (geavg) and spread (gespr). Every 6 hours, where each
+       member's rain is a 6-hour total, out to 16 days. */
+    gefs: {
+      label: 'GEFS', long: 'NOAA GEFS ensemble — 31 runs of the GFS, 0.5°, every 6 hours to 16 days',
+      bucket: 'https://noaa-gefs-pds.s3.amazonaws.com', cycle: 6, lookBack: 4, minHours: 20, members: ['gec00', ...Array.from({ length: 30 }, (_, k) => 'gep' + pad(k + 1))],
+      prefix: (run) => `gefs.${ymd(run)}/${hh(run)}/atmos/pgrb2ap5/geavg.t${hh(run)}z.pgrb2a.0p50.f`,
+      file: (run, fh, member = 'geavg') => `gefs.${ymd(run)}/${hh(run)}/atmos/pgrb2ap5/${member}.t${hh(run)}z.pgrb2a.0p50.f${pad(fh, 3)}`,
+      hours: (have) => have.filter((h) => h > 0 && h % 6 === 0)
     },
     gfs: {
       label: 'GFS', long: 'NOAA GFS — 0.25°, global, a new run every 6 hours',
@@ -81,6 +130,12 @@
     index: { us: ['', (v) => v], metric: ['', (v) => v] },
     jkgneg: { us: ['J/kg', (v) => v], metric: ['J/kg', (v) => v] },
     hpa: { us: ['hPa', (v) => v], metric: ['hPa', (v) => v] },
+    magl: { us: ['ft', (v) => v * 3.28084], metric: ['m', (v) => v] },
+    gpm: { us: ['m', (v) => v], metric: ['m', (v) => v] },
+    lapse: { us: ['°C/km', (v) => v], metric: ['°C/km', (v) => v] },
+    kelvin: { us: ['K', (v) => v], metric: ['K', (v) => v] },
+    deg: { us: ['°', (v) => v], metric: ['°', (v) => v] },
+    mcon: { us: ['g/kg per hour', (v) => v], metric: ['g/kg per hour', (v) => v] },
     /* MRMS's (mrms.js) */
     rot: { us: ['×10⁻³ s⁻¹', (v) => v], metric: ['×10⁻³ s⁻¹', (v) => v] },
     hailin: { us: ['in', (v) => v], metric: ['mm', (v) => v * 25.4] },
@@ -143,6 +198,19 @@
     posh: { floor: 10, stops: [[10, '#cfe8c3'], [30, '#f2e14a'], [50, '#f5a23a'], [70, '#e0382a'], [90, '#d93ad9'], [100, '#ffffff']], ticks: [10, 30, 50, 70, 90] },
     vil: { floor: 1, stops: [[1, '#1e3a8a'], [5, '#2563eb'], [10, '#10b981'], [20, '#84cc16'], [30, '#fde047'], [40, '#f97316'], [50, '#ef4444'], [65, '#d946ef'], [80, '#ffffff']],
       ticks: [5, 10, 20, 30, 40, 50, 65] },
+    /* the mesoanalysis's own (SPC shades from about where each starts to matter) */
+    cape3: { floor: 25, stops: [[25, '#cfe8c3'], [50, '#7fcf7a'], [100, '#f2e14a'], [150, '#f5a23a'], [200, '#e0382a'], [300, '#d93ad9']], ticks: [50, 100, 150, 200, 300] },
+    dcape: { floor: 400, stops: [[400, '#cfe8ff'], [700, '#8fc4ff'], [1000, '#3fbf6f'], [1300, '#f2e14a'], [1600, '#f07a2a'], [2000, '#e0382a'], [2500, '#d93ad9']], ticks: [600, 1000, 1400, 1800, 2200] },
+    lapse: { floor: 5.5, stops: [[5.5, '#cfe8ff'], [6.5, '#8fd18f'], [7, '#f2e14a'], [7.5, '#f5a23a'], [8, '#e0382a'], [8.5, '#b0122a'], [9.5, '#d93ad9']], ticks: [6, 6.5, 7, 7.5, 8, 9] },
+    lcl: { ceil: 3000, stops: [[250, '#1f9f3a'], [750, '#7fc94a'], [1000, '#c8dd4a'], [1500, '#f2d94a'], [2000, '#d9a050'], [3000, '#a07050']], ticks: [500, 1000, 1500, 2000, 2500] },
+    thetae: { floor: 300, stops: [[300, '#5b2bd9'], [320, '#2b8fe0'], [330, '#2fa45a'], [340, '#c8dd4a'], [350, '#f5a23a'], [360, '#e0382a'], [370, '#d93ad9']], ticks: [310, 320, 330, 340, 350, 360] },
+    mcon: { floor: 0.5, stops: [[0.5, '#cfe8c3'], [1, '#7fcf7a'], [2, '#2fa84a'], [4, '#f2e14a'], [8, '#f07a2a'], [15, '#d93ad9']], ticks: [1, 2, 4, 8, 15], log: true },
+    shear1: { floor: 10, stops: [[10, '#cfe8ff'], [20, '#8fc4ff'], [30, '#3fbf6f'], [40, '#f2e14a'], [50, '#f07a2a'], [60, '#e0382a']], ticks: [15, 20, 30, 40, 50] },
+    angle: { stops: [[0, '#2b3240'], [30, '#5f6b7a'], [60, '#f2e14a'], [90, '#e0382a'], [120, '#f2e14a'], [150, '#5f6b7a'], [180, '#2b3240']], ticks: [30, 60, 90, 120, 150] },
+    ship: { floor: 0.5, stops: [[0.5, '#9fd38a'], [1, '#f2e14a'], [1.5, '#f5a23a'], [2, '#e0382a'], [3, '#d93ad9'], [4, '#ffffff']], ticks: [0.5, 1, 1.5, 2, 3, 4] },
+    /* how far the ensemble's runs disagree */
+    spread: { floor: 10, stops: [[10, '#1e2a3a'], [30, '#2f5f8f'], [60, '#3fbf6f'], [90, '#f2e14a'], [120, '#f07a2a'], [180, '#e0382a']], ticks: [20, 40, 60, 90, 120, 180] },
+    spreadp: { floor: 1, stops: [[1, '#1e2a3a'], [2, '#2f5f8f'], [4, '#3fbf6f'], [6, '#f2e14a'], [9, '#f07a2a'], [14, '#e0382a']], ticks: [2, 4, 6, 9, 14] },
     /* precipitation type: the colour is the type, its depth the echo */
     ptype: { cat: true, types: { 1: ['Rain', '#2fbf4a', '#0b5a1e'], 2: ['Snow', '#7fc4ff', '#1d3fb0'], 3: ['Freezing rain', '#ff7fa8', '#b0123a'], 4: ['Sleet', '#ffb86b', '#b05a0a'] } }
   };
@@ -218,6 +286,10 @@
         member: (e) => e.name === 'APCP' && e.level === 'surface' && /^(\d+)-(\d+) hour acc/.test(e.fcst) && (+e.fcst.split('-')[1].split(' ')[0]) - (+e.fcst.split('-')[0]) === 1, event: (v) => v >= 25.4 },
       { id: 'p_wind', group: 'Chance within 40 km', label: 'A 58 mph wind (hourly maximum)', unit: 'pct', pal: 'prob', member: maxOver('WIND', '10 m above ground'), event: (v) => v >= 25.93 }
     ],
+    meso: MESO_FIELDS(),
+    ecmwf: EC_FIELDS(true),
+    aifs: EC_FIELDS(false),
+    gefs: GEFS_FIELDS(),
     gfs: [
       { id: 'h500', group: 'Upper air', label: '500 mb heights and vorticity', unit: 'vort', pal: 'vort', parts: { z: at('HGT', '500 mb'), a: at('ABSV', '500 mb') },
         value: (p, i) => p.a[i] * 1e5, contours: [{ part: 'z', scale: 0.1, every: 6, unit: 'dam', color: '#ffffff' }] },
@@ -241,11 +313,244 @@
   };
   const field = (src, id) => (FIELDS[src] || []).find((f) => f.id === id) || null;
 
+  /* ── the mesoanalysis's fields ──
+     Each from the analysis hour's own numbers. Where SPC's need something
+     the file does not hold, the gap is named in the label and here:
+     – effective bulk shear: the effective inflow base is the ground where
+       the surface parcel has CAPE ≥ 100 J/kg and CIN ≥ −250 (exactly SPC's
+       test), otherwise the most-unstable parcel's level; the top is halfway
+       to that parcel's equilibrium level, as SPC's is. The winds between are
+       the analysis's standard levels (10 m, 1000–250 mb), not every level.
+     – DCAPE: sounding.js's downdraft CAPE (held to MetPy) on the column the
+       file holds — the ground and 1000, 925, 850, 700, 500 mb — every fifth
+       point (15 km; SPC's grid is 40), so it is coarser than a full sounding's.
+     – STP and SCP use the effective helicity the HRRR computes itself (EFHL);
+       STP's LCL is the surface parcel's (SPC's is the mixed layer's). */
+  function MESO_FIELDS() {
+    const lvl = (name, mb) => at(name, mb + ' mb');
+    const WIND_LEVELS = [1000, 925, 850, 700, 500, 250];
+    const windParts = { u10: at('UGRD', '10 m above ground'), v10: at('VGRD', '10 m above ground'), zs: at('HGT', 'surface'), ps: at('PRES', 'surface'),
+      z1000: lvl('HGT', 1000), z850: lvl('HGT', 850), z700: lvl('HGT', 700), z500: lvl('HGT', 500) };
+    for (const p of WIND_LEVELS) { windParts['u' + p] = lvl('UGRD', p); windParts['v' + p] = lvl('VGRD', p); }
+    const ebwdParts = { ...windParts, mu: at('CAPE', '255-0 mb above ground'), sb: at('CAPE', 'surface'), sbcin: at('CIN', 'surface'),
+      plpl: at('PLPL', '255-0 mb above ground'), el: at('HGT', 'equilibrium level') };
+    /* the height (m above sea level) of each standard level at point i: the
+       file has 1000/850/700/500; 925 between 1000 and 850 in ln p, 250 from
+       500 by the standard atmosphere's thickness (4.79 km) */
+    const levelZ = (p, i, mb) => mb === 925 ? p.z1000[i] + (p.z850[i] - p.z1000[i]) * Math.log(1000 / 925) / Math.log(1000 / 850)
+      : mb === 250 ? p.z500[i] + 4790 : p['z' + mb][i];
+    /* effective bulk wind difference (m/s) at point i, 0 with no effective layer */
+    function ebwdAt(p, i) {
+      if (!(p.mu[i] >= 100)) return 0;
+      const zs = p.zs[i], ps = p.ps[i] / 100;
+      const prof = [[10, p.u10[i], p.v10[i]]];
+      for (const mb of WIND_LEVELS) {
+        if (mb >= ps) continue;
+        const z = levelZ(p, i, mb) - zs;
+        if (z > 10) prof.push([z, p['u' + mb][i], p['v' + mb][i]]);
+      }
+      prof.sort((a, b) => a[0] - b[0]);
+      const wind = (h) => {
+        if (h <= prof[0][0]) return prof[0];
+        for (let k = 0; k + 1 < prof.length; k++) if (h <= prof[k + 1][0]) {
+          const a = prof[k], b = prof[k + 1], t = (h - a[0]) / (b[0] - a[0]);
+          return [h, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+        }
+        return prof[prof.length - 1];
+      };
+      let base = 0;
+      if (!(p.sb[i] >= 100 && p.sbcin[i] >= -250)) {
+        /* the most-unstable parcel's level, from its pressure, in ln p between the standard levels */
+        const pl = p.plpl[i] / 100, pts = [[ps, 0]];
+        for (const mb of [1000, 925, 850, 700, 500]) if (mb < ps) pts.push([mb, levelZ(p, i, mb) - zs]);
+        base = pts[pts.length - 1][1];
+        for (let k = 0; k + 1 < pts.length; k++) if (pl <= pts[k][0] && pl >= pts[k + 1][0]) {
+          base = pts[k][1] + (pts[k + 1][1] - pts[k][1]) * Math.log(pts[k][0] / pl) / Math.log(pts[k][0] / pts[k + 1][0]); break;
+        }
+      }
+      const elAgl = p.el[i] - zs;
+      if (!(elAgl > base)) return 0;
+      const a = wind(base), b = wind(base + (elAgl - base) / 2);
+      return Math.hypot(b[1] - a[1], b[2] - a[2]);
+    }
+    const thetaE = (pPa, tK, tdK) => SND.thetaE(pPa / 100, tK - 273.15, Math.min(tdK, tK) - 273.15);
+    const lapse = (lo, hi) => ({ tl: lvl('TMP', lo), th: lvl('TMP', hi), zl: lvl('HGT', lo), zh: lvl('HGT', hi), ps: at('PRES', 'surface') });
+    const lapseVal = (lo) => (p, i) => (p.ps[i] / 100 > lo + 10 ? (p.tl[i] - p.th[i]) / (p.zh[i] - p.zl[i]) * 1000 : NaN);
+    const dcParts = { ps: at('PRES', 'surface'), zs: at('HGT', 'surface'), t2: at('TMP', '2 m above ground'), d2: at('DPT', '2 m above ground'),
+      z1000: lvl('HGT', 1000), z850: lvl('HGT', 850), z700: lvl('HGT', 700), z500: lvl('HGT', 500) };
+    for (const mb of [1000, 925, 850, 700, 500]) { dcParts['t' + mb] = lvl('TMP', mb); dcParts['d' + mb] = lvl('DPT', mb); }
+    const POOL = 5;
+    /* every POOL-th point computed, the rest take the nearest one's value */
+    const pooled = (fn) => (p, grid) => {
+      const nx = grid.nx, ny = grid.ny, out = new Float32Array(nx * ny);
+      for (let j = 0; j < ny; j += POOL) for (let i = 0; i < nx; i += POOL) {
+        const v = fn(p, j * nx + i);
+        for (let jj = j; jj < Math.min(ny, j + POOL); jj++) out.fill(v, jj * nx + i, jj * nx + Math.min(nx, i + POOL));
+      }
+      return smooth(out, nx, ny, POOL);                                         // no 15 km blocks
+    };
+    const dcapeAt = (p, i) => {
+      const ps = p.ps[i] / 100, L = [{ p: ps, z: p.zs[i], t: p.t2[i] - 273.15, td: p.d2[i] - 273.15 }];
+      for (const mb of [1000, 925, 850, 700, 500]) if (mb < ps - 1) L.push({ p: mb, z: levelZ(p, i, mb), t: p['t' + mb][i] - 273.15, td: p['d' + mb][i] - 273.15 });
+      const d = SND.dcape(SND.prepare(L), { step: 10 });
+      return d ? d.dcape : NaN;
+    };
+    /* the most-unstable parcel's mixing ratio (g/kg): the dewpoint at its
+       level, in ln p between the ground and the standard levels */
+    const shipParts = { mu: at('CAPE', '255-0 mb above ground'), plpl: at('PLPL', '255-0 mb above ground'), ps: at('PRES', 'surface'), d2: at('DPT', '2 m above ground'),
+      d925: lvl('DPT', 925), d850: lvl('DPT', 850), d700: lvl('DPT', 700), t700: lvl('TMP', 700), t500: lvl('TMP', 500), z700: lvl('HGT', 700), z500: lvl('HGT', 500),
+      u: at('VUCSH', '0-6000 m above ground'), v: at('VVCSH', '0-6000 m above ground'), frz: at('HGT', '0C isotherm'), zs: at('HGT', 'surface') };
+    /* SPC's significant hail parameter, every term and limit as SPC's help page gives them */
+    const shipAt = (p, i) => {
+      const mucape = p.mu[i];
+      if (!(mucape > 0)) return 0;
+      const ps = p.ps[i] / 100, pl = p.plpl[i] / 100, pts = [[ps, p.d2[i]], [925, p.d925[i]], [850, p.d850[i]], [700, p.d700[i]]].filter(([q]) => q <= ps);
+      let td = pts[0][1];
+      for (let k = 0; k + 1 < pts.length; k++) if (pl <= pts[k][0] && pl >= pts[k + 1][0]) { td = pts[k][1] + (pts[k + 1][1] - pts[k][1]) * Math.log(pts[k][0] / pl) / Math.log(pts[k][0] / pts[k + 1][0]); break; }
+      const r = Math.min(13.6, Math.max(11, SND.mixing(pl, td - 273.15) * 1000));
+      const lr = (p.t700[i] - p.t500[i]) / (p.z500[i] - p.z700[i]) * 1000, t5 = Math.min(-5.5, p.t500[i] - 273.15);
+      const sh = Math.min(27, Math.max(7, Math.hypot(p.u[i], p.v[i])));
+      let v = mucape * r * lr * -t5 * sh / 42e6;
+      if (mucape < 1300) v *= mucape / 1300;
+      if (lr < 5.8) v *= lr / 5.8;
+      const fzl = p.frz[i] - p.zs[i];
+      if (fzl < 2400) v *= Math.max(0, fzl) / 2400;
+      return Math.max(0, v);
+    };
+    return [
+      { id: 'pmsl', group: 'Surface', label: 'Pressure, temperature and wind', unit: 'temp', pal: 'temp', parts: { t: at('TMP', '2 m above ground'), p: at('MSLMA', 'mean sea level'), u: at('UGRD', '10 m above ground'), v: at('VGRD', '10 m above ground') },
+        value: (p, i) => K2F(p.t[i]), contours: [{ part: 'p', scale: 0.01, every: 4, unit: 'hpa', color: '#ffffff' }], barbs: ['u', 'v'] },
+      { id: 'td2m', group: 'Surface', label: 'Dew point and wind', unit: 'temp', pal: 'dew', parts: { t: at('DPT', '2 m above ground'), u: at('UGRD', '10 m above ground'), v: at('VGRD', '10 m above ground') },
+        value: (p, i) => K2F(p.t[i]), barbs: ['u', 'v'] },
+      { id: 'thetae', group: 'Surface', label: 'Theta-e (surface)', unit: 'kelvin', pal: 'thetae', parts: { ps: at('PRES', 'surface'), t: at('TMP', '2 m above ground'), d: at('DPT', '2 m above ground') },
+        value: (p, i) => thetaE(p.ps[i], p.t[i], p.d[i]) },
+      /* −∇·(q V) at the surface, from the 2 m humidity and the 10 m wind
+         (both on the model's own grid, so no rotation is needed), smoothed
+         over 27 km first as SPC smooths theirs; only convergence is shaded */
+      { id: 'mcon', group: 'Surface', label: 'Moisture convergence (surface)', unit: 'mcon', pal: 'mcon', parts: { q: at('SPFH', '2 m above ground'), u: at('UGRD', '10 m above ground'), v: at('VGRD', '10 m above ground') },
+        compute: (p, grid) => {
+          const nx = grid.nx, ny = grid.ny, qu = new Float32Array(nx * ny), qv = new Float32Array(nx * ny);
+          for (let k = 0; k < nx * ny; k++) { qu[k] = p.q[k] * p.u[k]; qv[k] = p.q[k] * p.v[k]; }
+          const su = smooth(qu, nx, ny, 4), sv = smooth(qv, nx, ny, 4), out = new Float32Array(nx * ny).fill(NaN), d = 2 * (grid.dx || 3000);
+          for (let j = 1; j + 1 < ny; j++) for (let i = 1; i + 1 < nx; i++) {
+            const k = j * nx + i, div = (su[k + 1] - su[k - 1]) / d + (sv[k + nx] - sv[k - nx]) / d;
+            out[k] = -div * 1000 * 3600;
+          }
+          return out;
+        }, barbs: ['u', 'v'] },
+      { id: 'sbcape', group: 'Thermodynamics', label: 'Surface-based CAPE', unit: 'jkg', pal: 'cape', parts: { c: at('CAPE', 'surface') }, value: (p, i) => p.c[i] },
+      { id: 'mlcape', group: 'Thermodynamics', label: 'Mixed-layer CAPE (90 mb), CIN contoured', unit: 'jkg', pal: 'cape', parts: { c: at('CAPE', '90-0 mb above ground'), n: at('CIN', '90-0 mb above ground') },
+        value: (p, i) => p.c[i], contours: [{ part: 'n', scale: -1, every: 50, unit: 'jkgneg', color: '#8fc4ff', smooth: 6 }] },
+      { id: 'mucape', group: 'Thermodynamics', label: 'Most-unstable CAPE', unit: 'jkg', pal: 'cape', parts: { c: at('CAPE', '255-0 mb above ground') }, value: (p, i) => p.c[i] },
+      { id: 'cape3', group: 'Thermodynamics', label: '0–3 km CAPE', unit: 'jkg', pal: 'cape3', parts: { c: at('CAPE', '0-3000 m above ground') }, value: (p, i) => p.c[i] },
+      { id: 'dcape', group: 'Thermodynamics', label: 'Downdraft CAPE (from the standard levels)', unit: 'jkg', pal: 'dcape', parts: dcParts, compute: pooled(dcapeAt) },
+      { id: 'lr75', group: 'Thermodynamics', label: '700–500 mb lapse rate', unit: 'lapse', pal: 'lapse', parts: lapse(700, 500), value: lapseVal(700) },
+      { id: 'lr85', group: 'Thermodynamics', label: '850–500 mb lapse rate', unit: 'lapse', pal: 'lapse', parts: lapse(850, 500), value: lapseVal(850) },
+      { id: 'lcl', group: 'Thermodynamics', label: 'LCL height (surface parcel)', unit: 'magl', pal: 'lcl', parts: { l: at('HGT', 'level of adiabatic condensation from sfc'), zs: at('HGT', 'surface') }, value: (p, i) => p.l[i] - p.zs[i] },
+      { id: 'lfc', group: 'Thermodynamics', label: 'LFC height', unit: 'magl', pal: 'lcl', parts: { l: at('HGT', 'level of free convection'), zs: at('HGT', 'surface'), c: at('CAPE', 'surface') }, value: (p, i) => (p.c[i] > 0 ? p.l[i] - p.zs[i] : NaN) },
+      { id: 'frz', group: 'Thermodynamics', label: 'Freezing level', unit: 'kft', pal: 'tops', parts: { f: at('HGT', '0C isotherm'), zs: at('HGT', 'surface') }, value: (p, i) => Math.max(0, p.f[i] - p.zs[i]) * 3.28084 / 1000 },
+      { id: 'pwat', group: 'Thermodynamics', label: 'Precipitable water', unit: 'precip', pal: 'pwat', parts: { w: at('PWAT', 'entire atmosphere (considered as a single layer)') }, value: (p, i) => p.w[i] / 25.4 },
+      { id: 'shear1', group: 'Wind shear', label: '0–1 km shear and barbs', unit: 'kt', pal: 'shear1', parts: { u: at('VUCSH', '0-1000 m above ground'), v: at('VVCSH', '0-1000 m above ground') }, value: (p, i) => Math.hypot(p.u[i], p.v[i]) * MS2KT, barbs: ['u', 'v'] },
+      { id: 'shear6', group: 'Wind shear', label: '0–6 km shear and barbs', unit: 'kt', pal: 'shear', parts: { u: at('VUCSH', '0-6000 m above ground'), v: at('VVCSH', '0-6000 m above ground') }, value: (p, i) => Math.hypot(p.u[i], p.v[i]) * MS2KT, barbs: ['u', 'v'] },
+      { id: 'ebwd', group: 'Wind shear', label: 'Effective bulk shear (from the standard levels)', unit: 'kt', pal: 'shear', parts: ebwdParts, value: (p, i) => ebwdAt(p, i) * MS2KT },
+      { id: 'srh1', group: 'Wind shear', label: '0–1 km storm-relative helicity', unit: 'm2s2', pal: 'srh', parts: { h: at('HLCY', '1000-0 m above ground') }, value: (p, i) => p.h[i] },
+      { id: 'srh3', group: 'Wind shear', label: '0–3 km storm-relative helicity', unit: 'm2s2', pal: 'srh', parts: { h: at('HLCY', '3000-0 m above ground') }, value: (p, i) => p.h[i] },
+      { id: 'esrh', group: 'Wind shear', label: 'Effective storm-relative helicity', unit: 'm2s2', pal: 'srh', parts: { h: at('EFHL', 'surface') }, value: (p, i) => p.h[i] },
+      { id: 'motion', group: 'Wind shear', label: 'Storm motion (Bunkers right-mover)', unit: 'kt', pal: 'shear1', parts: { u: at('USTM', '0-6000 m above ground'), v: at('VSTM', '0-6000 m above ground') }, value: (p, i) => Math.hypot(p.u[i], p.v[i]) * MS2KT, barbs: ['u', 'v'] },
+      { id: 'cangle', group: 'Wind shear', label: 'Critical angle (0–500 m)', unit: 'deg', pal: 'angle', parts: { a: at('CANGLE', '0-500 m above ground') }, value: (p, i) => p.a[i] },
+      /* Thompson et al. (2012), every term clipped as SPC clips it (sounding.js) */
+      { id: 'stpe', group: 'Composites', label: 'Significant tornado parameter (effective layer)', unit: 'index', pal: 'stp',
+        parts: { ...ebwdParts, ml: at('CAPE', '90-0 mb above ground'), mlcin: at('CIN', '90-0 mb above ground'), lcl: at('HGT', 'level of adiabatic condensation from sfc'), h: at('EFHL', 'surface') },
+        value: (p, i) => {
+          if (!(p.sb[i] >= 100 && p.sbcin[i] >= -250)) return 0;                      // the effective layer starts above the ground
+          return SND.stpEffective(p.ml[i], p.lcl[i] - p.zs[i], p.mlcin[i], p.h[i], ebwdAt(p, i), 0) || 0;
+        } },
+      /* SPC's supercell composite with its most-unstable CIN term (Gropp and
+         Davenport 2018): × −40 / MUCIN where MUCIN is below −40 J/kg */
+      { id: 'scpe', group: 'Composites', label: 'Supercell composite (effective layer)', unit: 'index', pal: 'scp',
+        parts: { ...ebwdParts, mucin: at('CIN', '255-0 mb above ground'), h: at('EFHL', 'surface') },
+        value: (p, i) => { const v = SND.scp(p.mu[i], p.h[i], ebwdAt(p, i)) || 0, c = p.mucin[i]; return Math.max(0, c < -40 ? v * -40 / c : v); } },
+      { id: 'ship', group: 'Composites', label: 'Significant hail parameter', unit: 'index', pal: 'ship', parts: shipParts, value: shipAt },
+      { id: 'ehi1', group: 'Composites', label: 'Energy-helicity index, 0–1 km', unit: 'index', pal: 'ehi', parts: { c: at('CAPE', 'surface'), h: at('HLCY', '1000-0 m above ground') }, value: (p, i) => Math.max(0, p.c[i] * p.h[i] / 160000) }
+    ];
+  }
+
+  /* ── ECMWF's fields ── `ec(param, level)` over its own index: a pressure
+     level is "500 mb", the surface "sfc" */
+  function ec(param, level) { return (e) => e.name === param && e.level === (level ? level + ' mb' : 'sfc'); }
+  function EC_FIELDS(ifs) {
+    const out = [
+      ifs ? { id: 'h500', group: 'Upper air', label: '500 mb heights and vorticity', unit: 'vort', pal: 'vort', parts: { z: ec('gh', 500), a: ec('vo', 500) },
+        value: (p, i) => p.a[i] * 1e5, contours: [{ part: 'z', scale: 0.1, every: 6, unit: 'dam', color: '#ffffff' }] }
+        : { id: 'h500', group: 'Upper air', label: '500 mb heights and wind', unit: 'kt', pal: 'jet', parts: { z: ec('gh', 500), u: ec('u', 500), v: ec('v', 500) },
+          value: (p, i) => Math.hypot(p.u[i], p.v[i]) * MS2KT, contours: [{ part: 'z', scale: 0.1, every: 6, unit: 'dam', color: '#ffffff' }] },
+      { id: 'jet250', group: 'Upper air', label: '250 mb wind (the jet)', unit: 'kt', pal: 'jet', parts: { u: ec('u', 250), v: ec('v', 250), z: ec('gh', 250) },
+        value: (p, i) => Math.hypot(p.u[i], p.v[i]) * MS2KT, barbs: ['u', 'v'], contours: [{ part: 'z', scale: 0.1, every: 12, unit: 'dam', color: '#d0d4da' }] },
+      { id: 't850', group: 'Upper air', label: '850 mb temperature and heights', unit: 'tempC', pal: 't850', parts: { t: ec('t', 850), z: ec('gh', 850) },
+        value: (p, i) => p.t[i] - 273.15, contours: [{ part: 'z', scale: 0.1, every: 3, unit: 'dam', color: '#ffffff' }] },
+      { id: 'mslp', group: 'Surface', label: 'Pressure (MSLP) and 1000–500 mb thickness', unit: 'dam', pal: 'thick', parts: { p: ec('msl'), z5: ec('gh', 500), z1: ec('gh', 1000) },
+        value: (p, i) => (p.z5[i] - p.z1[i]) / 10, contours: [{ part: 'p', scale: 0.01, every: 4, unit: 'hpa', color: '#ffffff' }] },
+      { id: 't2m', group: 'Surface', label: 'Temperature', unit: 'temp', pal: 'temp', parts: { t: ec('2t') }, value: (p, i) => K2F(p.t[i]) },
+      { id: 'td2m', group: 'Surface', label: 'Dew point', unit: 'temp', pal: 'dew', parts: { t: ec('2d') }, value: (p, i) => K2F(p.t[i]) },
+      { id: 'wind10', group: 'Surface', label: 'Wind (10 m) and barbs', unit: 'mph', pal: 'wind', parts: { u: ec('10u'), v: ec('10v') }, value: (p, i) => Math.hypot(p.u[i], p.v[i]) * MS2MPH, barbs: ['u', 'v'] },
+      /* the IFS gives cloud as a fraction and rain and snow as metres of
+         water since the run began; AIFS gives per cent and millimetres
+         (kg/m²) — checked against each file's values, 2026-10-22 */
+      { id: 'cloud', group: 'Surface', label: 'Cloud cover', unit: 'pct', pal: 'cloud', parts: { c: ec('tcc') }, value: ifs ? (p, i) => p.c[i] * 100 : (p, i) => p.c[i] },
+      { id: 'qpf', group: 'Rain and snow', label: 'Total rain since the run', unit: 'precip', pal: 'precip', parts: { a: ec('tp') }, value: (p, i) => p.a[i] * (ifs ? 1000 : 1) / 25.4 },
+      { id: 'snow', group: 'Rain and snow', label: 'Total snow since the run (10:1)', unit: 'snow', pal: 'snow', parts: { s: ec('sf') }, value: (p, i) => p.s[i] * (ifs ? 1000 : 1) / 25.4 * 10 },
+      ifs ? { id: 'pwat', group: 'Rain and snow', label: 'Precipitable water', unit: 'precip', pal: 'pwat', parts: { w: ec('tcwv') }, value: (p, i) => p.w[i] / 25.4 }
+        : { id: 'pwat', group: 'Rain and snow', label: 'Total column water (vapour, cloud and rain)', unit: 'precip', pal: 'pwat', parts: { w: ec('tcw') }, value: (p, i) => p.w[i] / 25.4 }
+    ];
+    if (ifs) out.push(
+      { id: 'gust', group: 'Surface', label: 'Wind gusts (the strongest since the step before)', unit: 'mph', pal: 'wind', parts: { g: ec('10fg') }, value: (p, i) => p.g[i] * MS2MPH },
+      { id: 'cape', group: 'Surface', label: 'Most-unstable CAPE', unit: 'jkg', pal: 'cape', parts: { c: ec('mucape') }, value: (p, i) => p.c[i] });
+    return out;
+  }
+
+  /* ── GEFS: the ensemble's mean and spread (NOAA's own files), every
+     member's 500 mb line (spaghetti), and the share of members with an
+     event (a probability). A part names its file: `avg`, `spr`, or each
+     member in turn. ── */
+  function GEFS_FIELDS() {
+    const avg = (test) => ({ test, member: 'geavg' }), spr = (test) => ({ test, member: 'gespr' });
+    const rain6 = (e) => e.name === 'APCP' && e.level === 'surface' && /^(\d+)-(\d+) hour acc/.test(e.fcst) && (+e.fcst.split('-')[1].split(' ')[0]) - (+e.fcst.split('-')[0]) === 6;
+    return [
+      { id: 'h500', group: 'Mean and spread', label: '500 mb heights (mean) and how far the runs disagree', unit: 'gpm', pal: 'spread',
+        parts: { z: avg(at('HGT', '500 mb')), s: spr(at('HGT', '500 mb')) }, value: (p, i) => p.s[i], contours: [{ part: 'z', scale: 0.1, every: 6, unit: 'dam', color: '#ffffff' }] },
+      { id: 'mslp', group: 'Mean and spread', label: 'Pressure (mean) and how far the runs disagree', unit: 'hpa', pal: 'spreadp',
+        parts: { p: avg(at('PRMSL', 'mean sea level')), s: spr(at('PRMSL', 'mean sea level')) }, value: (p, i) => p.s[i] / 100, contours: [{ part: 'p', scale: 0.01, every: 4, unit: 'hpa', color: '#ffffff' }] },
+      { id: 't2m', group: 'Mean and spread', label: 'Temperature (mean)', unit: 'temp', pal: 'temp', parts: { t: avg(at('TMP', '2 m above ground')) }, value: (p, i) => K2F(p.t[i]) },
+      { id: 'qpf', group: 'Mean and spread', label: 'Rain in the 6 hours to now (mean)', unit: 'precip', pal: 'precip', parts: { a: avg(rain6) }, value: (p, i) => p.a[i] / 25.4 },
+      /* each run's 552 or 576 dam line over the spread: where the lines
+         bunch, the runs agree; where they fan out, nobody knows */
+      { id: 'spag552', group: 'Spaghetti', label: '500 mb, every run\'s 552 dam line', unit: 'gpm', pal: 'spread', spaghetti: { test: at('HGT', '500 mb'), level: 5520 },
+        parts: { s: spr(at('HGT', '500 mb')) }, value: (p, i) => p.s[i] },
+      { id: 'spag576', group: 'Spaghetti', label: '500 mb, every run\'s 576 dam line', unit: 'gpm', pal: 'spread', spaghetti: { test: at('HGT', '500 mb'), level: 5760 },
+        parts: { s: spr(at('HGT', '500 mb')) }, value: (p, i) => p.s[i] },
+      { id: 'p_rain25', group: 'Chance (share of the 31 runs)', label: '¼ inch of rain in 6 hours', unit: 'pct', pal: 'prob', members: [rain6], event: (v) => v[0] >= 6.35 },
+      { id: 'p_rain1', group: 'Chance (share of the 31 runs)', label: '1 inch of rain in 6 hours', unit: 'pct', pal: 'prob', members: [rain6], event: (v) => v[0] >= 25.4 },
+      { id: 'p_frz', group: 'Chance (share of the 31 runs)', label: 'At or below freezing (2 m)', unit: 'pct', pal: 'prob', members: [at('TMP', '2 m above ground')], event: (v) => v[0] <= 273.15 },
+      { id: 'p_wind', group: 'Chance (share of the 31 runs)', label: 'A 39 mph wind (10 m)', unit: 'pct', pal: 'prob', members: [at('UGRD', '10 m above ground'), at('VGRD', '10 m above ground')], event: (v) => Math.hypot(v[0], v[1]) >= 17.43 }
+    ];
+  }
+
+  /* the analysis hours a source has: the newest `count` runs whose hour 0 is out */
+  async function analyses(src, { count, nowMs = Date.now(), signal, fetchFn = fetch } = {}) {
+    const S = SOURCES[src], n = count || S.frames || 6, h = 3600e3, out = [];
+    const first = Math.floor(nowMs / h) * h;
+    const tries = [];
+    for (let k = 0; k < n + 3; k++) tries.push(first - k * h);
+    const got = await Promise.all(tries.map((run) => idxFor(src, run, 0, { signal, fetchFn }).then(() => run, () => null)));
+    for (const run of got) if (run && out.length < n) out.push(run);
+    return out.sort((a, b) => a - b);
+  }
+
   /* which .idx entry each part of a field is (the first that matches) */
   function resolve(idx, f) {
     const out = {};
-    for (const [k, test] of Object.entries(f.parts)) {
-      const e = idx.find(test);
+    for (const [k, spec] of Object.entries(f.parts)) {
+      const e = idx.find(typeof spec === 'function' ? spec : spec.test);
       if (!e) return null;
       out[k] = e;
     }
@@ -329,9 +634,34 @@
     return [c * u + s * v, -s * u + c * v];
   }
 
-  /* ── the bucket ── */
+  /* ── the bucket ──
+     A busy bucket answers 503 "Slow Down" (or, without its CORS header,
+     fails outright in a browser): every request here is tried again after a
+     pause, up to four times, and a bucket with a mirror alternates with it. */
+  const MIRRORS = { 'https://storage.googleapis.com/ecmwf-open-data': 'https://ecmwf-forecasts.s3.eu-central-1.amazonaws.com' };
+  const retrying = (fetchFn) => async (url, opts) => {
+    const base = Object.keys(MIRRORS).find((b) => url.startsWith(b));
+    for (let k = 0; ; k++) {
+      const u = base && k % 2 === 1 ? MIRRORS[base] + url.slice(base.length) : url;
+      try {
+        const r = await fetchFn(u, opts);
+        if ((r.status !== 503 && r.status !== 429) || k >= 4) return r;
+      } catch (e) {
+        if (k >= 4 || (opts && opts.signal && opts.signal.aborted)) throw e;
+      }
+      await new Promise((ok) => setTimeout(ok, 400 * 2 ** k));
+    }
+  };
+  /* ECMWF's .index: one JSON object per line, each field's offset and length */
+  function parseJsonIndex(text) {
+    return String(text).split('\n').filter(Boolean).map((l) => {
+      const j = JSON.parse(l);
+      return { start: j._offset, end: j._offset + j._length - 1, name: j.param, level: j.levtype === 'pl' ? `${j.levelist} mb` : j.levtype, fcst: j.step, line: `${j.param}:${j.levtype}:${j.levelist || ''}` };
+    });
+  }
   const idxCache = new Map();
   async function listKeys(bucket, prefix, { signal, fetchFn = fetch } = {}) {
+    fetchFn = retrying(fetchFn);
     const keys = [];
     let token = '';
     for (let guard = 0; guard < 5; guard++) {
@@ -350,7 +680,7 @@
   }
   /* the forecast hours a run has published so far (its .idx files) */
   function hoursIn(keys, prefix) {
-    return [...new Set(keys.filter((k) => k.startsWith(prefix) && k.endsWith('.idx'))
+    return [...new Set(keys.filter((k) => k.startsWith(prefix) && (k.endsWith('.idx') || k.endsWith('.index')))
       .map((k) => parseInt(k.slice(prefix.length), 10)).filter(Number.isFinite))].sort((a, b) => a - b);
   }
   /* the newest run with enough of itself out; { run, hours } */
@@ -364,13 +694,16 @@
     }
     return null;
   }
-  async function idxFor(src, run, fh, { signal, fetchFn = fetch } = {}) {
-    const url = `${SOURCES[src].bucket}/${SOURCES[src].file(run, fh)}.idx`;
+  const fileUrl = (src, run, fh, member) => `${SOURCES[src].bucket}/${SOURCES[src].file(run, fh, member)}`;
+  async function idxFor(src, run, fh, { signal, fetchFn = fetch, member } = {}) {
+    const S = SOURCES[src], json = S.index === 'json';
+    const url = json ? fileUrl(src, run, fh, member).replace(/\.grib2$/, '.index') : `${fileUrl(src, run, fh, member)}.idx`;
     if (!idxCache.has(url)) {
       idxCache.set(url, (async () => {
-        const r = await fetchFn(url, { signal });
-        if (!r.ok) throw new Error('models: .idx HTTP ' + r.status);
-        return G.parseIdx(await r.text());
+        const r = await retrying(fetchFn)(url, { signal });
+        if (!r.ok) throw new Error('models: index HTTP ' + r.status);
+        const text = await r.text();
+        return json ? parseJsonIndex(text) : G.parseIdx(text);
       })().catch((e) => { idxCache.delete(url); throw e; }));
       if (idxCache.size > 300) idxCache.delete(idxCache.keys().next().value);
     }
@@ -382,22 +715,45 @@
     const f = field(src, id);
     if (!f) throw new Error('models: no field ' + id);
     if (src === 'tle') return loadTLE(f, run + fh * 3600e3, run, fh, { signal, fetchFn });
-    const idx = await idxFor(src, run, fh, { signal, fetchFn });
-    const parts = resolve(idx, f);
-    if (!parts) throw new Error(`models: ${SOURCES[src].label} +${fh} h has no ${f.label}`);
-    const url = `${SOURCES[src].bucket}/${SOURCES[src].file(run, fh)}`;
+    if (f.members) return loadEnsemble(src, f, run, fh, { signal, fetchFn });
+    fetchFn = retrying(fetchFn);
+    /* each part from its own file (a GEFS field's mean and spread are two) */
     const msgs = {};
-    await Promise.all(Object.entries(parts).map(async ([k, e]) => { msgs[k] = await G.fetchMessage(url, e, { signal, fetchFn }); }));
-    return build(f, msgs, run, fh);
+    await Promise.all(Object.entries(f.parts).map(async ([k, spec]) => {
+      const member = typeof spec === 'function' ? undefined : spec.member, test = typeof spec === 'function' ? spec : spec.test;
+      const e = (await idxFor(src, run, fh, { signal, fetchFn, member })).find(test);
+      if (!e) throw new Error(`models: ${SOURCES[src].label} +${fh} h has no ${f.label}`);
+      msgs[k] = await message(fileUrl(src, run, fh, member), e, { signal, fetchFn });
+    }));
+    const out = build(f, msgs, run, fh);
+    if (f.spaghetti) out.contours = (out.contours || []).concat(await spaghetti(src, f, run, fh, { signal, fetchFn }));
+    return out;
+  }
+  /* the messages of one file, kept a while: the mesoanalysis's composites
+     share twenty-odd of them, and stepping between its fields should not
+     fetch them again. A 3 km HRRR field is 7.6 MB of numbers; 28 is the cap. */
+  const msgCache = new Map();
+  function message(url, e, opts) {
+    const key = `${url}|${e.start}`;
+    if (!msgCache.has(key)) {
+      msgCache.set(key, G.fetchMessage(url, e, opts).catch((err) => { msgCache.delete(key); throw err; }));
+      if (msgCache.size > 28) msgCache.delete(msgCache.keys().next().value);
+    }
+    return msgCache.get(key);
   }
   function build(f, msgs, run, fh) {
     const first = Object.values(msgs)[0], grid = first.grid, n = grid.npts;
     const p = {};
     for (const [k, m] of Object.entries(msgs)) p[k] = m.values;
-    const values = new Float32Array(n);
-    for (let i = 0; i < n; i++) values[i] = f.value(p, i);
+    let values;
+    if (f.compute) values = f.compute(p, grid);
+    else {
+      values = new Float32Array(n);
+      for (let i = 0; i < n; i++) values[i] = f.value(p, i);
+    }
     const out = { field: f, grid, values, run, fh, valid: first.validTime || run + fh * 3600e3 };
-    if (f.contours) out.contours = f.contours.map((c) => ({ ...c, lines: contours(grid, p[c.part], { every: c.every, scale: c.scale, step: grid.kind === 'lambert' ? 6 : 2 }) }));
+    /* `smooth` (grid points) takes the 3 km speckle out before contouring */
+    if (f.contours) out.contours = f.contours.map((c) => ({ ...c, lines: contours(grid, c.smooth ? smooth(p[c.part], grid.nx, grid.ny, c.smooth) : p[c.part], { every: c.every, scale: c.scale, step: grid.kind === 'lambert' ? 6 : 2 }) }));
     if (f.barbs) out.wind = { u: p[f.barbs[0]], v: p[f.barbs[1]] };
     return out;
   }
@@ -487,6 +843,45 @@
     return { field: { ...f, label: `${f.label} — ${got.length} runs` }, grid, values, run: run0, fh: fh0, valid: validMs, members: got.length };
   }
 
+  /* ── the ensemble's members ── each member's field (or fields) at the
+     hour; for a probability the share with the event, for spaghetti each
+     member's one line. A member that does not answer is left out, and the
+     label says how many were counted. */
+  async function memberFields(src, tests, run, fh, { signal, fetchFn }) {
+    const S = SOURCES[src];
+    const got = await Promise.all(S.members.map(async (m) => {
+      try {
+        const idx = await idxFor(src, run, fh, { signal, fetchFn, member: m });
+        const es = tests.map((t) => idx.find(t));
+        if (es.some((e) => !e)) return null;
+        /* not kept in the message cache: 31 members would push everything else out */
+        return await Promise.all(es.map((e) => G.fetchMessage(fileUrl(src, run, fh, m), e, { signal, fetchFn })));
+      } catch (err) { if (signal && signal.aborted) throw err; return null; }
+    }));
+    return got.filter(Boolean);
+  }
+  async function loadEnsemble(src, f, run, fh, { signal, fetchFn = fetch } = {}) {
+    fetchFn = retrying(fetchFn);
+    const got = await memberFields(src, f.members, run, fh, { signal, fetchFn });
+    if (got.length < 10) throw new Error(`models: only ${got.length} of the ensemble's runs answered — too few for a probability`);
+    const grid = got[0][0].grid, n = grid.npts, values = new Float32Array(n), v = new Array(f.members.length);
+    for (let i = 0; i < n; i++) {
+      let c = 0;
+      for (const m of got) { for (let k = 0; k < m.length; k++) v[k] = m[k].values[i]; if (f.event(v)) c++; }
+      values[i] = c * 100 / got.length;
+    }
+    return { field: { ...f, label: `${f.label} — ${got.length} runs` }, grid, values, run, fh, valid: got[0][0].validTime || run + fh * 3600e3, members: got.length };
+  }
+  /* every member's line at one level, each its own colour round the wheel */
+  async function spaghetti(src, f, run, fh, opts) {
+    const got = await memberFields(src, [f.spaghetti.test], run, fh, opts);
+    return got.map(([m], k) => {
+      const hue = Math.round(k * 360 / got.length);
+      return { part: null, every: f.spaghetti.level, unit: 'dam', color: `hsl(${hue},85%,62%)`, nolabel: true, width: 1.2,
+        lines: contours(m.grid, m.values, { every: f.spaghetti.level, step: 1 }) };
+    });
+  }
+
   /* the value (canonical) at a place */
   function valueAt(layer, lat, lon) {
     const g = G.projector(layer.grid), [fi, fj] = g.ij(lat, lon);
@@ -495,7 +890,7 @@
     return G.sample({ grid: layer.grid, values: layer.values }, lat, lon);
   }
 
-  const api = { SOURCES, FIELDS, PAL, UNIT, field, resolve, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, idxFor, load, build, valueAt, within, smooth, loadTLE };
+  const api = { SOURCES, FIELDS, PAL, UNIT, field, resolve, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, analyses, idxFor, parseJsonIndex, load, build, valueAt, within, smooth, loadTLE, loadEnsemble };
   root.ModelMaps = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

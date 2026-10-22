@@ -50,10 +50,11 @@
     const T = t + K, r = mixing(p, t);
     return (Rd * T + Lv * r) / (p * (Cp + Lv * Lv * r * EPS / (Rd * T * T)));
   }
-  /* follow it from (p0, t0) to p1 with RK4 in steps of at most 2 hPa */
-  function moistLift(p0, t0, p1) {
+  /* follow it from (p0, t0) to p1 with RK4 in steps of at most `step` hPa
+     (2 by default; 10 still agrees to a few thousandths of a degree) */
+  function moistLift(p0, t0, p1, step = 2) {
     let p = p0, t = t0;
-    const n = Math.max(1, Math.ceil(Math.abs(p1 - p0) / 2)), h = (p1 - p0) / n;
+    const n = Math.max(1, Math.ceil(Math.abs(p1 - p0) / step)), h = (p1 - p0) / n;
     for (let i = 0; i < n; i++) {
       const k1 = moistDTdp(p, t), k2 = moistDTdp(p + h / 2, t + h / 2 * k1);
       const k3 = moistDTdp(p + h / 2, t + h / 2 * k2), k4 = moistDTdp(p + h, t + h * k3);
@@ -282,6 +283,32 @@
     return mucape / 1000 * (esrh / 50) * shT;
   }
 
+  /* ── downdraft CAPE ──
+     MetPy's downdraft_cape, step for step: the air with the lowest θe in
+     the lowest 400 hPa, cooled to its wet-bulb temperature, brought down the
+     pseudo-adiabat to the ground; DCAPE is the area by which it is colder
+     (virtually) than the air it falls through, Rd ∫ (Tv_env − Tv_parcel) d ln p,
+     trapezoids at the profile's own levels. How hard a rain-cooled downdraft
+     can hit the ground — damaging wind potential, never a forecast of it. */
+  function dcape(L, { step = 2 } = {}) {
+    if (!L.length) return null;
+    const s = L[0], layer = L.filter(l => l.p >= s.p - 400 && ok(l.td));
+    if (layer.length < 2) return null;
+    let src = layer[0], best = Infinity;
+    for (const l of layer) { const te = thetaE(l.p, l.t, Math.min(l.td, l.t)); if (te < best) { best = te; src = l; } }
+    const c = lcl(src.p, src.t, Math.min(src.td, src.t)), wb = moistLift(c.p, c.t, src.p, step);
+    const down = layer.filter(l => l.p >= src.p);
+    let area = 0, prev = null, pp = src.p, tp = wb;
+    for (const l of down.slice().reverse()) {                        // from the source down to the ground, one descent
+      tp = moistLift(pp, tp, l.p, step); pp = l.p;
+      const tvE = virtual(l.t, mixing(l.p, Math.min(l.td, l.t))) + K, tvP = virtual(tp, mixing(l.p, tp)) + K;
+      const d = { lnp: Math.log(l.p), diff: tvE - tvP };
+      if (prev) area += (prev.diff + d.diff) / 2 * (d.lnp - prev.lnp);
+      prev = d;
+    }
+    return { dcape: Math.max(0, Rd * area), p: src.p, wb };
+  }
+
   /* ── the whole analysis ── */
   function analyze(levels) {
     const L = prepare(levels);
@@ -336,13 +363,14 @@
       ebwd = mu.el && mu.el.z !== null ? shearBetween(W, eff.base, eff.base + (mu.el.z - eff.base) / 2) : null;
     }
     const stpE = eff ? stpEffective(ml.cape, ml.lcl.z, ml.cin, esrh, ebwd, eff.base) : 0;
+    const dc = dcape(L);
     const scpE = eff ? scp(mu.cape, esrh, ebwd) : 0;
     return {
       levels: L, winds: W,
       sb, ml, mu,
       pw, frz, lapse75: lapse(700, 500), lapse03,
       shear1: s1, shear6: s6, motion, srh1, srh3, stp,
-      eff, esrh, ebwd, stpE, scp: scpE
+      eff, esrh, ebwd, stpE, scp: scpE, dcape: dc ? dc.dcape : null
     };
   }
 
@@ -388,7 +416,7 @@
   const api = {
     es, mixing, theta, thetaE, virtual, lcl, moistLift, prepare, at, heightAt, parcel, parcels,
     toUV, windAt, winds, shear, bunkers, srh, analyze, PRESSURE_LEVELS, fromOpenMeteo, fromRaob,
-    EFF, effectiveLayer, shearBetween, stpEffective, scp
+    EFF, effectiveLayer, shearBetween, stpEffective, scp, dcape
   };
   root.Sounding = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
