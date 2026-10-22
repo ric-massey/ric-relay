@@ -584,3 +584,26 @@ body[data-view="pro"] footer{font-family:var(--mono);font-size:12px;max-width:no
   .mapcol{position:static}
   body[data-view="pro"] .workspace .radar{height:62vh;min-height:320px}
 }
+
+/* ── Pro's map labels: a dark halo so each reads over radar and satellite ── */
+.radar svg.over .ovl{font:700 11px var(--mono,ui-monospace,monospace);paint-order:stroke;stroke:#05070a;stroke-width:3px;stroke-linejoin:round}
+.radar svg.over .ovl.hl{font-size:22px;font-weight:800;stroke-width:4px}
+.radar svg.over .stp text{font:600 11px var(--mono,ui-monospace,monospace);paint-order:stroke;stroke:#05070a;stroke-width:3px;stroke-linejoin:round}
+.radar svg.over .stp .st{fill:#ff8787}
+.radar svg.over .stp .sd{fill:#69db7c}
+.radar svg.over .stp .sw{fill:#da77f2}
+.radar svg.over .stp .sp{fill:#e9ecef}
+.pin .pgo.alt{margin-top:6px;background:transparent;color:inherit;border:1px solid var(--edge)}
+.skyat{font-size:13px;margin:8px 0 0;padding:6px 10px;border-radius:4px;background:var(--glass-hi)}
+
+/* the forecast discussion: the office's sections, as written */
+details.afd{border-top:1px solid var(--edge)}
+details.afd:first-of-type{border-top:0}
+details.afd summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-weight:600;font-size:13px;letter-spacing:.04em}
+details.afd pre{white-space:pre-wrap;word-wrap:break-word;margin:0 0 10px;font:12.5px/1.5 var(--mono,ui-monospace,monospace);color:#dfe6ee;max-height:360px;overflow:auto}
+
+/* SPC mesoanalysis: SPC's own maps */
+.mesopick{display:flex;flex-wrap:wrap;gap:8px;font-size:13px;color:var(--dim)}
+.mesopick select{min-height:40px;margin-left:4px;padding:0 8px;border-radius:4px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:inherit}
+.mesoimg{display:block;margin-top:10px;border-radius:4px;overflow:hidden;background:#fff}
+.mesoimg img{display:block;width:100%;height:auto}

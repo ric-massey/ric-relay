@@ -24,7 +24,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Weather">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231f5fa8'/><circle cx='40' cy='40' r='16' fill='%23ffd166'/><path d='M30 74h42a14 14 0 0 0-3-28 18 18 0 0 0-34 6 11 11 0 0 0-5 22z' fill='%23fff'/></svg>">
-  <link rel="stylesheet" href="assets/weather/weather.css?v=2">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=3">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -81,8 +81,13 @@
           <button type="button" data-mode="N0S" aria-pressed="false">Velocity</button>
           <button type="button" data-mode="hrrr" aria-pressed="false" title="The HRRR model's forecast of the rain, drawn like radar, for the next 18 hours">Future · HRRR</button>
           <button type="button" id="replaytoggle" aria-pressed="false" aria-expanded="false" aria-controls="replaybar" title="The radar and the storm warnings as they were, any day since 2006">Replay</button>
-          <span class="sep"></span>
-          <button type="button" id="stationtoggle" aria-pressed="false" title="Airport weather stations: temperature and wind, as they read now">Stations</button>
+        </div>
+        <div class="seg rowscroll pro-only" role="group" aria-label="Overlays on the map">
+          <span class="seglab">Overlays</span>
+          <button type="button" data-ov="watches" aria-pressed="false" title="SPC watches and mesoscale discussions, WPC precipitation discussions">Watches &amp; MDs</button>
+          <button type="button" data-ov="cells" aria-pressed="false" title="Every NEXRAD storm cell: track, hail, rotation">Storm cells</button>
+          <button type="button" data-ov="fronts" aria-pressed="false" title="WPC's surface analysis: fronts, highs and lows">Fronts</button>
+          <button type="button" id="stationtoggle" aria-pressed="false" title="Airport weather stations: the station model from zoom 8">Stations</button>
           <button type="button" id="outlooktoggle" aria-pressed="false">SPC outlook</button>
         </div>
         <div class="seg rowscroll pro-only" role="group" aria-label="Satellite under the radar">
@@ -115,6 +120,8 @@
             <button type="button" id="zin" aria-label="Zoom in">+</button>
             <button type="button" id="zout" aria-label="Zoom out">−</button>
             <button type="button" class="pro-only" id="zxsec" aria-label="Cross-section: tap two points on the map" aria-pressed="false" title="Cross-section between two points"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="3.5" cy="13.5" r="2" fill="currentColor"/><circle cx="14.5" cy="4.5" r="2" fill="currentColor"/><path d="M5 12L13 6" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2 2"/></svg></button>
+            <button type="button" class="pro-only" id="zmeasure" aria-label="Ruler: measure distance and bearing" aria-pressed="false" title="Measure"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 12.5L12.5 2l3.5 3.5L5.5 16z M5 9.5l1.5 1.5 M7.5 7l2 2 M10 4.5l1.5 1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+            <button type="button" class="pro-only" id="zlink" aria-label="Copy a link to this map view" title="Share this view"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M7.5 10.5a3 3 0 0 0 4.2 0l2.6-2.6a3 3 0 0 0-4.2-4.2l-1 1 M10.5 7.5a3 3 0 0 0-4.2 0L3.7 10.1a3 3 0 0 0 4.2 4.2l1-1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
             <button type="button" id="zfull" aria-label="Full-screen map" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 7V2h5M11 2h5v5M16 11v5h-5M7 16H2v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           </div>
           <div class="pin" id="radarpin" hidden></div>
@@ -143,6 +150,8 @@
           <div id="skybody"></div>
         </details>
       </section>
+      <section class="card" id="afd" hidden aria-label="Forecast discussion"></section>
+      <section class="card" id="meso" aria-label="SPC mesoanalysis"></section>
       <section class="card" id="models" hidden aria-label="Compare the models">
         <details id="modelsd" open>
           <summary><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 12c3-6 5-6 7-3s4 3 7-4M1 9c3-2 5-5 7-2s4 4 7 1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -185,10 +194,10 @@
 
 <script src="effects.js"></script>
 <script src="projects/weather/nowcast.js?v=1"></script>
-<script src="projects/weather/wx.js?v=10"></script>
+<script src="projects/weather/wx.js?v=11"></script>
 <script src="projects/weather/sounding.js?v=2"></script>
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
-<script src="assets/weather/app.js?v=1"></script>
+<script src="assets/weather/app.js?v=2"></script>
 </body>
 </html>

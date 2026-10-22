@@ -303,3 +303,31 @@ column can never reach it — with the readouts beside it. Checked at 1440×900,
 pane's own width and 375 px; on a phone the Pro badge moved from the place bar to the
 top bar because it squeezed the place name to "Knox…", and Pro gives the place its
 own row and keeps its wordmark.
+
+## 2026-10-22: what a professional would still want — the part that could be built
+
+Ric asked what a professional would miss and said "build it all". Built on Pro,
+each checked in the browser against live data:
+
+- **Watches, MDs and MPDs** on the map, as issued, gone when they expire, each a tap
+  away from SPC's or WPC's own page.
+- **Storm cells** from every NEXRAD's tracking table: forecast ticks, hail, meso, TVS.
+- **Fronts, highs and lows** decoded from WPC's coded analysis. The pips are on the
+  side the code says, checked against a real bulletin (cold-front pips facing
+  southeast ahead of a front lying southwest–northeast).
+- **Station plots** — the full station model from zoom 8.
+- **The forecast discussion**, by section, as written.
+- **SPC mesoanalysis**, twelve regions, thirteen fields.
+- **A sounding at any tapped point**, a **ruler**, and a **share link** (the view to
+  one decimal; never the saved place).
+
+Still needs Ric, because each needs a backend job (GRIB or NetCDF → tiles in R2,
+run by Actions) and a decision on cost:
+
+1. **Lightning** — GOES GLM flashes.
+2. **Model fields on the map** — HRRR CAPE, temperature, wind, beyond its radar.
+3. **Dual-pol and higher tilts** — CC, ZDR, KDP and echo tops; IEM does not tile them.
+
+And one deploy: the Worker needs **Deploy Worker** run in Actions for the new `/wx`
+routes; until then the page asks the providers directly and works.
+

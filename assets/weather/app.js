@@ -116,7 +116,7 @@
     S.err = {};
     if (!S.fc || S.fc.key !== key) {
       Object.assign(S, { fc: null, fcStale: false, pt: undefined, obs: undefined, office: undefined, alerts: undefined, state: undefined, selected: null, focusedStorm: null,
-        ens: undefined, rec: undefined, verdict: null, fcShown: null, now: undefined, plumes: undefined });
+        ens: undefined, rec: undefined, verdict: null, fcShown: null, now: undefined, plumes: undefined, afd: undefined });
       sky.reset();
       /* The last forecast for this place, kept in this browser so a phone
          with no signal still has something to show (§34) — labelled as old. */
@@ -160,6 +160,7 @@
           loadRecord(near, ctl.signal, live),
           elevJob.then((elev) => Wx.observation(pt, lat, lon, ctl.signal, near, elev)).then((o) => { if (live()) { S.obs = o; render(); } })
             .catch((e) => { if (live()) { S.obs = null; S.err.obs = e; render(); } }),
+          ($("#afd") && pt.office ? Wx.forecastDiscussion(pt.office, ctl.signal).then((d) => { if (live()) { S.afd = d; renderAfd(); renderSources(); } }).catch(() => { if (live()) { S.afd = null; renderAfd(); } }) : Promise.resolve()),
           Wx.officeForecast(pt, ctl.signal).then((f) => { if (live()) { S.office = f; render(); } })
             .catch((e) => { if (live()) { S.office = null; S.err.office = e; render(); } }),
           loadState(ctl.signal, live)
@@ -304,7 +305,7 @@
     $("#usview").setAttribute("aria-pressed", String(!p));
   }
 
-  const PLACE_CARDS = ["#next", "#hourly", "#daily", "#models", "#record", "#sky", "#t-wind", "#t-humid", "#t-press", "#t-vis", "#t-uv", "#t-sun", "#t-rain"];
+  const PLACE_CARDS = ["#next", "#afd", "#hourly", "#daily", "#models", "#record", "#sky", "#t-wind", "#t-humid", "#t-press", "#t-vis", "#t-uv", "#t-sun", "#t-rain"];
   function render() {
     renderPlace();
     const us = !S.place;
@@ -317,7 +318,7 @@
       renderUSHero(); renderNational(); renderSources(); radar.label();
       return;
     }
-    renderStorms(); renderHero(); renderAlerts(); renderNearby(); renderNext(); renderHourly(); renderDaily(); renderModels(); renderRecord(); renderTiles(); renderSources();
+    renderStorms(); renderHero(); renderAlerts(); renderNearby(); renderNext(); renderAfd(); renderHourly(); renderDaily(); renderModels(); renderRecord(); renderTiles(); renderSources();
     if (typeof offerInstall === "function") offerInstall();
     radar.label();
   }
@@ -622,6 +623,57 @@
     renderModels();
   });
   if ($("#modelsd")) $("#modelsd").addEventListener("toggle", renderModels);
+
+  /* ── the forecast discussion (Weather Pro) ──
+     The office's own reasoning, section by section, exactly as written —
+     never summarised. */
+  function renderAfd() {
+    const box = $("#afd");
+    if (!box) return;
+    if (!S.place || S.pt === null) { box.hidden = true; return; }
+    box.hidden = false;
+    const head = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h7l3 3v9H3z M10 2v3h3 M5 8h6 M5 11h6" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>Forecast discussion<span class="src">${S.afd ? `NWS ${esc(S.afd.office)} · ${esc(clk().time(S.afd.issued))}` : "NWS"}</span></h2>`;
+    if (S.afd === undefined) { box.innerHTML = head + `<p class="loading">Asking the forecast office…</p>`; return; }
+    if (!S.afd) { box.innerHTML = head + `<p class="dim">The forecast office's discussion did not answer.</p>`; return; }
+    /* sections start ".NAME..." and end at "&&"; the header before the first is the product's own boilerplate */
+    const text = S.afd.text.replace(/\r/g, "");
+    const parts = text.split(/\n(?=\.[A-Z][A-Z0-9 /().,-]{2,}\.\.\.)/).slice(1);
+    const sections = (parts.length ? parts : [text]).map((s) => {
+      const m = /^\.([^.]+(?:\.[^.]+)*?)\.\.\.\s*/.exec(s);
+      return { name: m ? m[1].trim() : "Discussion", body: (m ? s.slice(m[0].length) : s).replace(/\n&&[\s\S]*$/, "").replace(/\n\$\$[\s\S]*$/, "").trim() };
+    }).filter((s) => s.body);
+    box.innerHTML = head + sections.map((s, i) => `<details class="afd"${i < 2 ? " open" : ""}><summary>${esc(titleCase0(s.name))}</summary><pre>${esc(s.body)}</pre></details>`).join("") +
+      `<p class="nextnote">As the forecasters wrote it, not rewritten. <a href="https://forecast.weather.gov/product.php?site=NWS&amp;issuedby=${esc(S.afd.office.replace(/^K/, ""))}&amp;product=AFD" target="_blank" rel="noopener">At the NWS ↗</a></p>`;
+  }
+  const titleCase0 = (s) => s.toLowerCase().replace(/(^|[\s/(])[a-z]/g, (c) => c.toUpperCase());
+
+  /* ── SPC mesoanalysis (Weather Pro) ──
+     SPC's own hourly analysis maps, as SPC draws them: a region and a
+     field. Their own projection and their own map — shown, never redrawn. */
+  const MESO_SECTORS = [["19", "National"], ["11", "Northwest"], ["12", "Southwest"], ["22", "Great Basin"], ["13", "Northern Plains"], ["14", "Central Plains"],
+    ["15", "Southern Plains"], ["20", "Midwest"], ["21", "Great Lakes"], ["16", "Northeast"], ["17", "East Central"], ["18", "Southeast"]];
+  const MESO_FIELDS = [["pmsl", "Surface pressure and wind"], ["sbcp", "Surface-based CAPE"], ["mlcp", "Mixed-layer CAPE and CIN"], ["mucp", "Most-unstable CAPE"],
+    ["dcape", "Downdraft CAPE"], ["lclh", "LCL height"], ["laps", "Mid-level lapse rates"], ["pwtr", "Precipitable water"], ["shr6", "0–6 km shear"],
+    ["eshr", "Effective shear"], ["srh1", "0–1 km helicity"], ["stpc", "Significant tornado (effective)"], ["scp", "Supercell composite"]];
+  S.meso = Object.assign({ s: "19", f: "mlcp" }, store.get("wx:meso", {}));
+  function renderMeso() {
+    const box = $("#meso");
+    if (!box) return;
+    const m = S.meso, hour = Math.floor(Date.now() / 1800e3);
+    const field = MESO_FIELDS.find((x) => x[0] === m.f) || MESO_FIELDS[2], sector = MESO_SECTORS.find((x) => x[0] === m.s) || MESO_SECTORS[0];
+    const src = `https://www.spc.noaa.gov/exper/mesoanalysis/s${sector[0]}/${field[0]}/${field[0]}.gif?t=${hour}`;
+    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12c3-5 5 1 7-4s3-3 5-5M2 14h12" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>SPC mesoanalysis<span class="src">hourly · RAP + observations</span></h2>
+      <div class="mesopick"><label>Region <select id="mesos">${MESO_SECTORS.map(([v, l]) => `<option value="${v}"${v === sector[0] ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+        <label>Field <select id="mesof">${MESO_FIELDS.map(([v, l]) => `<option value="${v}"${v === field[0] ? " selected" : ""}>${l}</option>`).join("")}</select></label></div>
+      <a class="mesoimg" href="https://www.spc.noaa.gov/exper/mesoanalysis/new/viewsector.php?sector=${sector[0]}" target="_blank" rel="noopener"><img src="${src}" alt="SPC mesoanalysis map: ${esc(field[1])}, ${esc(sector[1])}" loading="lazy" decoding="async"></a>
+      <p class="nextnote">The Storm Prediction Center's own analysis, redrawn by SPC every hour from the RAP model and the latest observations — shown as SPC draws it. Tap the map to open SPC's viewer.</p>`;
+  }
+  document.addEventListener("change", (e) => {
+    if (e.target.id !== "mesos" && e.target.id !== "mesof") return;
+    S.meso = { s: $("#mesos").value, f: $("#mesof").value };
+    store.set("wx:meso", S.meso);
+    renderMeso();
+  });
 
   /* ── how accurate this has been, here ── */
   function renderRecord() {
@@ -1026,6 +1078,11 @@
       const f = Wx.fresh("radar", rv);
       row(f.stale ? "stale" : "", `Radar${f.stale ? " — delayed" : ""}`, `${esc(radar.describe())} · latest scan`, rv);
     } else row("off", "Radar", radar.started ? "scan time unknown" : "loads when you reach it", null);
+    const pro = radar.pro;
+    if (pro && pro.ov.watches && pro.wGot) row("", `Watches and discussions — ${pro.watches.length} watch${pro.watches.length === 1 ? "" : "es"}, ${pro.mcds.length + pro.mpds.length} discussion${pro.mcds.length + pro.mpds.length === 1 ? "" : "s"}`, "SPC and WPC, via IEM · checked", pro.wGot);
+    if (pro && pro.ov.cells && pro.cGot) row("", `Storm cells — ${pro.cells.length}`, "every NEXRAD's own storm-tracking table, via IEM · checked", pro.cGot);
+    if (pro && pro.ov.fronts && pro.surface) row(Date.now() - (pro.surface.valid || 0) > 6 * 3600e3 ? "stale" : "", "Surface analysis — fronts, highs, lows", "WPC's coded analysis, via the NWS · valid", pro.surface.valid);
+    if (S.afd) row("", `Forecast discussion — NWS ${esc(S.afd.office || "")}`, "the forecasters' own words · issued", S.afd.issued);
     const stn = radar.stations;
     if (stn) row("", `Stations on the map — ${stn.n} airport stations`, "ASOS readings via IEM, the forecast offices in view · newest reading", stn.newest);
     if (radar.sat) row("", "Satellite — GOES-East and GOES-West", `${esc(Wx.SAT[radar.sat].label.toLowerCase())}, via IEM · the latest image; its scan time does not come with the map`, null);
@@ -1055,7 +1112,10 @@
     const el = $("#radar"), baseL = $("#radarbase"), framesL = $("#radarframes"), over = $("#radarover");
     const R = { z: 7, cx: 0, cy: 0, lat: null, lon: null, frame: 0, playing: false, timer: 0, started: false, visible: false,
       mode: "comp", valid: null, frames: [], loadedOld: false, site: null, sites: null, outlook: false, us: false, frameT: null, sat: null, pin: null,
-      stations: PRO && store.get("wx:stations", true) !== false, obs: [] };   // stations are Pro's
+      stations: PRO && store.get("wx:stations", true) !== false, obs: [],   // stations are Pro's
+      /* Pro's overlays, each the visitor's own choice in this browser */
+      ov: PRO ? Object.assign({ watches: true, cells: true, fronts: false }, store.get("wx:ov", {})) : { watches: false, cells: false, fronts: false },
+      pro: { watches: [], mcds: [], mpds: [], cells: [], surface: null }, measure: null };
     const lngX = (lng, z) => (lng + 180) / 360 * TILE * 2 ** z;
     const latY = (lat, z) => { const s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TILE * 2 ** z; };
     const xLng = (x, z) => x / (TILE * 2 ** z) * 360 - 180;
@@ -1119,6 +1179,37 @@
       R.obs = [...seen.values()];
       R.obsAt = Date.now();
       draw(); label(); renderSources();
+    }
+    /* ── Pro's overlays: SPC watches and discussions, WPC's, storm cells,
+       and the surface analysis — each asked again on its own clock ── */
+    async function loadOverlays(force) {
+      if (!PRO || !R.started || R.mode === "replay") return;
+      const P = R.pro, now = Date.now(), jobs = [];
+      if (R.ov.watches && (force || now - (P.wAt || 0) > 120e3)) {
+        P.wAt = now;
+        jobs.push(Promise.all([Wx.proOverlays.watches().catch(() => P.watches), Wx.proOverlays.mcds().catch(() => P.mcds), Wx.proOverlays.mpds().catch(() => P.mpds)])
+          .then(([w, m, d]) => { P.watches = w; P.mcds = m; P.mpds = d; P.wGot = Date.now(); }));
+      }
+      if (R.ov.cells && (force || now - (P.cAt || 0) > 120e3)) { P.cAt = now; jobs.push(Wx.proOverlays.cells().then((c) => { P.cells = c; P.cGot = Date.now(); }).catch(() => {})); }
+      if (R.ov.fronts && (force || now - (P.fAt || 0) > 1800e3)) { P.fAt = now; jobs.push(Wx.surfaceAnalysis().then((s) => { P.surface = s; }).catch(() => {})); }
+      if (!jobs.length) return;
+      await Promise.all(jobs);
+      draw(); label(); renderSources();
+    }
+    const zoomBottom = () => { const z = el.querySelector(".zoom"); return z ? z.offsetTop + z.offsetHeight + 12 : 220; };
+    function cellNear(px, py) {
+      const left = R.cx - el.clientWidth / 2, top = R.cy - el.clientHeight / 2;
+      let best = null, bd = 16;
+      for (const c of R.cellsDrawn || []) {
+        const d = Math.hypot(lngX(c.lon, R.z) - left - px, latY(c.lat, R.z) - top - py);
+        if (d < bd) { bd = d; best = c; }
+      }
+      return best;
+    }
+    function areaAt(lat, lon) {
+      if (!R.ov.watches) return null;
+      const hit = (x) => x.polys.some((poly) => Wx.inPolygon(lat, lon, poly));
+      return R.pro.mcds.find(hit) || R.pro.mpds.find(hit) || R.pro.watches.find(hit) || null;
     }
     function stationNear(px, py) {
       const left = R.cx - el.clientWidth / 2, top = R.cy - el.clientHeight / 2;
@@ -1421,6 +1512,26 @@
     }
 
     /* everything drawn over the tiles */
+    /* one station as a surface chart draws it */
+    const COVER = { CLR: 0, SKC: 0, FEW: 0.25, SCT: 0.5, BKN: 0.75, OVC: 1 };
+    function stationModel(s, x, y) {
+      const f = (v) => v.toFixed(1);
+      let g = "";
+      const kt = s.wind != null ? s.wind / 1.852 : null;
+      if (kt != null && s.windDir != null && kt >= 2.5) g += Draw.barb(x, y, s.windDir, kt);
+      const cov = COVER[s.cover];
+      g += `<circle cx="${f(x)}" cy="${f(y)}" r="6" fill="#0b0f15" stroke="#e9ecef" stroke-width="1.5"/>`;
+      if (s.cover === "VV") g += `<path d="M${f(x - 4)},${f(y - 4)}L${f(x + 4)},${f(y + 4)}M${f(x + 4)},${f(y - 4)}L${f(x - 4)},${f(y + 4)}" stroke="#e9ecef" stroke-width="1.5"/>`;
+      else if (cov === 1) g += `<circle cx="${f(x)}" cy="${f(y)}" r="6" fill="#e9ecef"/>`;
+      else if (cov > 0) { const a = cov * 2 * Math.PI; g += `<path d="M${f(x)},${f(y)}L${f(x)},${f(y - 6)}A6,6 0 ${cov > 0.5 ? 1 : 0},1 ${f(x + 6 * Math.sin(a))},${f(y - 6 * Math.cos(a))}Z" fill="#e9ecef"/>`; }
+      if (kt != null && kt < 2.5) g += `<circle cx="${f(x)}" cy="${f(y)}" r="9" fill="none" stroke="#e9ecef" stroke-width="1.2"/>`;
+      const txt = (dx, dy, v, cls, anchor) => `<text class="${cls}" x="${f(x + dx)}" y="${f(y + dy)}" text-anchor="${anchor}">${esc(v)}</text>`;
+      if (s.temp != null) g += txt(-9, -5, Wx.fmt.temp(s.temp, U()), "st", "end");
+      if (s.dew != null) g += txt(-9, 15, Wx.fmt.temp(s.dew, U()), "sd", "end");
+      if (s.wx) g += txt(-9, 5, s.wx, "sw", "end");
+      if (s.pressure != null) g += txt(9, -5, String(Math.round(s.pressure * 10) % 1000).padStart(3, "0"), "sp", "start");
+      return g;
+    }
     function overlay(left, top) {
       const pt = (lat, lon) => [lngX(lon, R.z) - left, latY(lat, R.z) - top];
       const ring = (r) => r.map(([lon, lat]) => pt(lat, lon).map((v) => v.toFixed(1)).join(",")).join(" ");
@@ -1443,6 +1554,62 @@
         for (const o of S.outlook.slice().sort((a, b) => a.rank - b.rank)) {
           const d = o.polys.map((poly) => poly.map((r) => "M" + ring(r).replace(/ /g, " L")).join(" ") + " Z").join(" ");
           out.push(`<path d="${d}" fill="${esc(o.fill || "#888")}" fill-opacity=".28" fill-rule="evenodd" stroke="${esc(o.stroke || "#888")}" stroke-width="1.6"/>`);
+        }
+      }
+      const W0 = el.clientWidth, H0 = el.clientHeight;
+      const off = ([x, y], m = 40) => x < -m || y < -m || x > W0 + m || y > H0 + m;
+      const pathOf = (polys) => polys.map((poly) => poly.map((r) => "M" + ring(r).replace(/ /g, " L") + " Z").join(" ")).join(" ");
+      const centre = (poly) => { const r = poly[0], n = r.length - 1 || 1; let a = 0, b = 0; for (let i = 0; i < n; i++) { a += r[i][1]; b += r[i][0]; } return pt(a / n, b / n); };
+      const tag = (x, y, text, col) => `<text class="ovl" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" fill="${col}">${esc(text)}</text>`;
+      /* WPC's surface analysis: fronts with their symbols on the side the
+         bulletin's point order puts them, troughs dashed, highs and lows */
+      if (R.ov.fronts && R.pro.surface) {
+        const FC = { COLD: "#4dabf7", WARM: "#ff6b6b", OCFNT: "#cc5de8", STNRY: "#ff6b6b", TROF: "#d9a86c" };
+        const walk = (P, every, make) => {
+          let carry = every / 2, n = 0;
+          for (let i = 0; i + 1 < P.length; i++) {
+            const [x0, y0] = P[i], [x1, y1] = P[i + 1], L = Math.hypot(x1 - x0, y1 - y0);
+            if (!L) continue;
+            const ux = (x1 - x0) / L, uy = (y1 - y0) / L;
+            let s = carry;
+            for (; s < L; s += every) make(x0 + ux * s, y0 + uy * s, ux, uy, n++);
+            carry = s - L;
+          }
+        };
+        const tri = (x, y, ux, uy, side, col) => { const lx = uy * side, ly = -ux * side;
+          return `<polygon points="${(x - ux * 6).toFixed(1)},${(y - uy * 6).toFixed(1)} ${(x + ux * 6).toFixed(1)},${(y + uy * 6).toFixed(1)} ${(x + lx * 9).toFixed(1)},${(y + ly * 9).toFixed(1)}" fill="${col}"/>`; };
+        const semi = (x, y, ux, uy, side, col) => { const lx = uy * side, ly = -ux * side, ps = [];
+          for (let k = 0; k <= 8; k++) { const a = k / 8 * Math.PI; ps.push(`${(x - ux * Math.cos(a) * 6 + lx * Math.sin(a) * 6).toFixed(1)},${(y - uy * Math.cos(a) * 6 + ly * Math.sin(a) * 6).toFixed(1)}`); }
+          return `<polygon points="${ps.join(" ")}" fill="${col}"/>`; };
+        for (const f of R.pro.surface.fronts) {
+          const P = f.pts.map(([la, lo]) => pt(la, lo));
+          if (P.every((q) => off(q, 60))) continue;
+          const line = P.map((q) => q.map((v) => v.toFixed(1)).join(",")).join(" ");
+          if (f.kind === "TROF") { out.push(`<polyline points="${line}" fill="none" stroke="${FC.TROF}" stroke-width="2" stroke-dasharray="8 5"/>`); continue; }
+          if (f.kind === "STNRY") {
+            out.push(`<polyline points="${line}" fill="none" stroke="#ff6b6b" stroke-width="2.5"/><polyline points="${line}" fill="none" stroke="#4dabf7" stroke-width="2.5" stroke-dasharray="20 20"/>`);
+            walk(P, 40, (x, y, ux, uy, n) => out.push(n % 2 ? semi(x, y, ux, uy, -1, "#ff6b6b") : tri(x, y, ux, uy, 1, "#4dabf7")));
+            continue;
+          }
+          out.push(`<polyline points="${line}" fill="none" stroke="${FC[f.kind]}" stroke-width="2.5"/>`);
+          walk(P, 34, (x, y, ux, uy, n) => out.push(f.kind === "COLD" ? tri(x, y, ux, uy, 1, FC.COLD) : f.kind === "WARM" ? semi(x, y, ux, uy, 1, FC.WARM) : (n % 2 ? semi : tri)(x, y, ux, uy, 1, FC.OCFNT)));
+        }
+        for (const [list, letter, col] of [[R.pro.surface.highs, "H", "#4dabf7"], [R.pro.surface.lows, "L", "#ff6b6b"]]) for (const c of list) {
+          const q = pt(c.lat, c.lon);
+          if (off(q)) continue;
+          out.push(`<text class="ovl hl" x="${q[0].toFixed(1)}" y="${q[1].toFixed(1)}" text-anchor="middle" fill="${col}">${letter}</text>${tag(q[0], q[1] + 15, String(c.mb), col)}`);
+        }
+      }
+      /* SPC's watches (the NWS colours: tornado yellow, severe pink) and
+         the two centres' mesoscale discussions, dashed */
+      if (R.ov.watches) {
+        for (const w of R.pro.watches) {
+          const col = w.type === "TOR" ? "#ffd43b" : "#f783ac", [cx, cy] = centre(w.polys[0]);
+          out.push(`<path d="${pathOf(w.polys)}" fill="${col}" fill-opacity=".07" fill-rule="evenodd" stroke="${col}" stroke-width="2.4"/>${tag(cx, cy, `${w.type} ${w.num}`, col)}`);
+        }
+        for (const d of [...R.pro.mcds, ...R.pro.mpds]) {
+          const col = d.kind === "mcd" ? "#74c0fc" : "#8ce99a", [cx, cy] = centre(d.polys[0]);
+          out.push(`<path d="${pathOf(d.polys)}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="7 4"/>${tag(cx, cy + 14, `${d.kind === "mcd" ? "MD" : "MPD"} ${d.num}${d.chance != null ? " · " + d.chance + "%" : ""}`, col)}`);
         }
       }
       const warns = [...(S.place ? (S.alerts || []) : []), ...(S.place ? (S.state || []) : (S.national || []))];
@@ -1469,16 +1636,48 @@
         const [sx, sy] = pt(R.site.lat, R.site.lon);
         out.push(`<rect x="${(sx - 4).toFixed(1)}" y="${(sy - 4).toFixed(1)}" width="8" height="8" fill="#ffd43b" stroke="#000"/>`);
       }
+      /* NEXRAD's storm cells, from zoom 6: where each is, where it is heading
+         (ticks every 15 minutes for an hour, carried forward at its own
+         motion), and rings for what the radar found in it — yellow for a
+         mesocyclone, red for a tornadic vortex, green for large hail */
+      R.cellsDrawn = [];
+      if (R.ov.cells && R.z >= 6) {
+        for (const c of R.pro.cells) {
+          const [x, y] = pt(c.lat, c.lon);
+          if (off([x, y], 10)) continue;
+          R.cellsDrawn.push(c);
+          if (c.kt > 2 && c.from != null) {
+            const to = ((c.from + 180) % 360) * Math.PI / 180, ticks = [];
+            for (let m = 15; m <= 60; m += 15) {
+              const km = c.kt * 1.852 * m / 60;
+              ticks.push(pt(c.lat + km * Math.cos(to) / 110.57, c.lon + km * Math.sin(to) / (111.32 * Math.cos(c.lat * Math.PI / 180))));
+            }
+            const end = ticks[ticks.length - 1];
+            out.push(`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${end[0].toFixed(1)}" y2="${end[1].toFixed(1)}" stroke="#e9ecef" stroke-width="1.3" stroke-dasharray="3 3"/>`);
+            ticks.forEach((q) => out.push(`<circle cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="1.8" fill="#e9ecef"/>`));
+          }
+          const hail = (c.hailIn != null && c.hailIn >= 1) || (c.posh != null && c.posh >= 50);
+          if (hail) out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="11" fill="none" stroke="#69db7c" stroke-width="2"/>`);
+          if (c.meso) out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="8" fill="none" stroke="#ffd43b" stroke-width="2.4"/>`);
+          if (c.tvs) out.push(`<polygon points="${x.toFixed(1)},${(y + 9).toFixed(1)} ${(x - 8).toFixed(1)},${(y - 6).toFixed(1)} ${(x + 8).toFixed(1)},${(y - 6).toFixed(1)}" fill="none" stroke="#ff4d6d" stroke-width="2.6"/>`);
+          const core = c.dbz >= 60 ? "#e64980" : c.dbz >= 50 ? "#ff6b6b" : c.dbz >= 40 ? "#ffa94d" : "#e9ecef";
+          out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.4" fill="${core}" stroke="#05070a" stroke-width="1.2"/>`);
+        }
+      }
       /* stations: a dot, a tail from where the wind comes, and the
          temperature on a chip of its own colour — newest first, and none
-         drawn on top of another */
+         drawn on top of another. From zoom 8 on Pro, the full station
+         model: sky cover, a wind barb in knots, temperature, dew point,
+         present weather and pressure, as on any surface chart */
       R.drawn = [];
       if (R.stations && R.z >= STN_MINZ && R.obs.length) {
-        const w = el.clientWidth, h = el.clientHeight, placed = [];
+        const w = el.clientWidth, h = el.clientHeight, placed = [], zb = zoomBottom();
+        const model = PRO && R.z >= 8, bx = model ? 74 : 40, by = model ? 50 : 26;
         for (const s of R.obs.slice().sort((a, b) => b.time - a.time)) {
           const [x, y] = pt(s.lat, s.lon);
-          if (x < -20 || y < -20 || x > w + 20 || y > h + 20 || placed.some(([a, b]) => Math.abs(a - x) < 40 && Math.abs(b - y) < 26) || (x > w - 100 && y < 220)) continue;  // nor under the zoom buttons
+          if (x < -20 || y < -20 || x > w + 20 || y > h + 20 || placed.some(([a, b]) => Math.abs(a - x) < bx && Math.abs(b - y) < by) || (x > w - 110 && y < zb)) continue;  // nor under the zoom buttons
           placed.push([x, y]); R.drawn.push(s);
+          if (model) { out.push(`<g class="stn stp">${stationModel(s, x, y)}</g>`); continue; }
           let g = "";
           if (s.wind != null && !Wx.isCalm(s.wind) && s.windDir != null) {
             const r = s.windDir * Math.PI / 180, L = Math.min(26, 8 + s.wind * 0.45);
@@ -1497,6 +1696,16 @@
         const [ax, ay] = pt(X.a.lat, X.a.lon);
         if (X.b) { const [bx, by] = pt(X.b.lat, X.b.lon); out.push(`<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="#0b1422" stroke-width="5"/><line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="#ffd166" stroke-width="2.5" stroke-dasharray="6 4"/>`); }
         for (const [q, lab] of [[X.a, "A"], [X.b, "B"]]) { if (!q) continue; const [qx, qy] = pt(q.lat, q.lon); out.push(`<circle cx="${qx.toFixed(1)}" cy="${qy.toFixed(1)}" r="9" fill="#ffd166" stroke="#0b1422" stroke-width="2"/><text x="${qx.toFixed(1)}" y="${(qy + 4).toFixed(1)}" text-anchor="middle" style="font:700 11px var(--sans);fill:#0b1422">${lab}</text>`); }
+      }
+      /* the ruler: each leg with its distance */
+      if (R.measure && R.measure.pts.length) {
+        const P = R.measure.pts.map((q) => pt(q.lat, q.lon));
+        if (P.length > 1) out.push(`<polyline points="${P.map((q) => q.map((v) => v.toFixed(1)).join(",")).join(" ")}" fill="none" stroke="#05070a" stroke-width="5"/><polyline points="${P.map((q) => q.map((v) => v.toFixed(1)).join(",")).join(" ")}" fill="none" stroke="#ffb627" stroke-width="2.4"/>`);
+        R.measure.pts.forEach((q, i) => {
+          out.push(`<circle cx="${P[i][0].toFixed(1)}" cy="${P[i][1].toFixed(1)}" r="4.5" fill="#ffb627" stroke="#05070a" stroke-width="1.5"/>`);
+          if (i) { const a = R.measure.pts[i - 1], km = Wx.distanceM(a.lat, a.lon, q.lat, q.lon) / 1000;
+            out.push(`<text class="ovl" x="${((P[i - 1][0] + P[i][0]) / 2).toFixed(1)}" y="${((P[i - 1][1] + P[i][1]) / 2 - 6).toFixed(1)}" text-anchor="middle" fill="#ffb627">${esc(dist(km))}</text>`); }
+        });
       }
       if (R.pin) {
         const [qx, qy] = pt(R.pin.lat, R.pin.lon);
@@ -1625,6 +1834,7 @@
       else if (R.mode === "hrrr") sb.textContent = `A forecast, not radar: the HRRR model's own picture of the rain${R.valid ? ` from its ${new Date(R.valid).toISOString().slice(11, 13)}Z run` : ""}, every 15 minutes for the first hour then hourly to 18 hours. Lower 48 only.`;
       else if (R.site) sb.textContent = `${R.site.id} · ${R.site.name} · ${Wx.SITE_PRODUCTS[R.mode].long}. The site follows the middle of the map.`;
       else sb.textContent = "Finding the nearest radar…";
+      if (PRO && R.ov.cells && R.started && R.mode !== "replay" && R.z < 6) sb.textContent += " Zoom in to see storm cells.";
       if (R.stations && R.started && R.mode !== "replay") sb.textContent += R.z < STN_MINZ ? " Zoom in to see the airport stations." : R.obs.length ? " Tap a station for its full reading." : "";
       if (R.sat && R.mode !== "replay") {
         const night = R.sat === "vis" && S.fc && S.fc.current && S.fc.current.isDay === false;
@@ -1641,6 +1851,8 @@
       R.started = true;
       const sat = store.get("wx:sat", null);           // the visitor's last choice, this browser only
       if (PRO && Wx.SAT[sat]) setSat(sat);
+      const linked = PRO ? applyLink() : false;          // a shared view wins over the place's
+      if (typeof linked === "string") { setMode(linked); loadOverlays(true); stationsSoon(); return; }
       if (R.mode === "comp") {
         compFrames();
         const v = await Wx.radarTime();
@@ -1649,7 +1861,7 @@
         compFrames();
       } else if (single()) await siteFrames();
       label(); renderSources();
-      stationsSoon();
+      stationsSoon(); loadOverlays(true);
       if (!reduced) setTimeout(() => { if (R.visible) play(true); }, 900);
     }
 
@@ -1708,7 +1920,7 @@
       const c = now && Wx.condition(now.code);
       pinEl.innerHTML = `<button type="button" class="px" data-pinx aria-label="Close">×</button><div class="pn">${esc(pin.name)}</div>
         ${now && now.temp != null ? `<div class="ph">${icon(c.kind, now.isDay)}<span class="pt num">${Wx.fmt.temp(now.temp, U())}°</span><span class="ps">${esc(c.text)}${now.hi != null ? `<br>H ${Wx.fmt.temp(now.hi, U())}° L ${Wx.fmt.temp(now.lo, U())}°` : ""}</span></div>` : `<p class="ps">The forecast service did not answer for this point.</p>`}
-        <button type="button" class="pgo" data-pingo>Forecast here</button>`;
+        <button type="button" class="pgo" data-pingo>Forecast here</button>${PRO ? `<button type="button" class="pgo alt" data-pinsky>Sounding here</button>` : ""}`;
       placePin();                                        // it grew: place it again
     }
     /* a station's own reading, every field it sent, and its raw METAR */
@@ -1737,8 +1949,97 @@
       draw();
     }
     const titleCase = (t) => t.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+    /* a storm cell, as the radar's own table describes it */
+    function showCell(c) {
+      R.pin = { lat: c.lat, lon: c.lon, name: `Cell ${c.id}` };
+      const k = clk(), row = (l, v) => v == null || v === "" ? "" : `<span>${l}</span><b class="num">${v}</b>`;
+      const to = c.from != null ? (c.from + 180) % 360 : null;
+      pinEl.innerHTML = `<button type="button" class="px" data-pinx aria-label="Close">×</button>
+        <div class="pn">Storm cell ${esc(c.id)} · ${esc(c.site)} radar</div>
+        <div class="ps">Scanned ${esc(k.time(c.time))} (<span data-age="${c.time}">${Wx.age(Date.now() - c.time)}</span> ago)</div>
+        <div class="prows">
+          ${row("Moving", c.kt > 2 && to != null ? `${Wx.compass(to)} at ${Wx.fmt.wind(c.kt * 1.852, U())} ${Wx.UNITS[U()].wind}` : "nearly still")}
+          ${row("Strongest echo", c.dbz != null ? `${c.dbz} dBZ${c.dbzKft != null ? ` at ${c.dbzKft} kft` : ""}` : null)}
+          ${row("Echo top", c.topKft != null ? `${c.topKft} kft` : null)}
+          ${row("VIL", c.vil != null ? `${c.vil} kg/m²` : null)}
+          ${row("Hail", c.poh != null ? `${c.poh}% any, ${c.posh ?? 0}% severe${c.hailIn ? `, up to ${c.hailIn} in` : ""}` : null)}
+          ${row("Rotation", c.tvs ? `tornadic vortex (${esc(c.tvs)})` : c.meso ? `mesocyclone, strength ${esc(c.meso)}` : "none detected")}
+        </div>
+        <p class="ps" style="margin-top:6px">From the radar's own storm-tracking table — what it measured, not a warning.</p>`;
+      draw(); placePin();
+    }
+    /* a watch or a discussion, as SPC or WPC issued it */
+    function showArea(a) {
+      const k = clk();
+      const c0 = a.polys[0][0], n = c0.length - 1 || 1;
+      R.pin = { lat: c0.slice(0, n).reduce((s, q) => s + q[1], 0) / n, lon: c0.slice(0, n).reduce((s, q) => s + q[0], 0) / n, name: a.title };
+      pinEl.innerHTML = `<button type="button" class="px" data-pinx aria-label="Close">×</button>
+        <div class="pn">${esc(a.title)}</div>
+        <div class="ps">${a.issued ? `Issued ${esc(k.time(a.issued))}` : ""}${a.expires ? ` · until ${esc(k.time(a.expires))}` : ""}</div>
+        <div class="prows">
+          ${a.concerning ? `<span>Concerning</span><b>${esc(titleCase(a.concerning))}</b>` : ""}
+          ${a.chance != null ? `<span>Chance of a watch</span><b class="num">${a.chance}%</b>` : ""}
+        </div>
+        <a class="pgo" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${esc(a.url)}" target="_blank" rel="noopener">Read it at ${a.kind === "mpd" ? "WPC" : "SPC"} ↗</a>
+        <p class="ps" style="margin-top:6px">${a.kind === "mpd" ? "The Weather Prediction Center" : "The Storm Prediction Center"} issues these; this page only draws them.</p>`;
+      draw(); placePin();
+    }
+    /* the ruler: tap points, read each leg and the whole */
+    function measureTap(lat, lon) {
+      R.measure.pts.push({ lat, lon: ((lon + 540) % 360) - 180 });
+      const P = R.measure.pts;
+      let km = 0;
+      for (let i = 1; i < P.length; i++) km += Wx.distanceM(P[i - 1].lat, P[i - 1].lon, P[i].lat, P[i].lon) / 1000;
+      if (P.length > 1) {
+        const a = P[P.length - 2], b = P[P.length - 1];
+        const y = Math.sin((b.lon - a.lon) * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180);
+        const x = Math.cos(a.lat * Math.PI / 180) * Math.sin(b.lat * Math.PI / 180) - Math.sin(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.cos((b.lon - a.lon) * Math.PI / 180);
+        const brg = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+        note(`Ruler: ${dist(km)} in all · last leg toward ${Math.round(brg)}° (${Wx.compass(brg)}). Tap to add a point; the ruler button finishes.`);
+      } else note("Ruler: tap the next point.");
+      draw();
+    }
+    function measureToggle() {
+      R.measure = R.measure ? null : { pts: [] };
+      $("#zmeasure").setAttribute("aria-pressed", String(!!R.measure));
+      note(R.measure ? "Ruler: tap where it starts." : "");
+      if (R.measure) { R.pin = null; if (X.pick || X.a) xsecStop(); }
+      draw();
+    }
+    /* a link to this view: the map's middle (to about 10 km), its zoom, the
+       layer, the satellite and the overlays — never the visitor's own place */
+    function shareLink() {
+      const lat = yLat(R.cy, R.z), lon = xLng(R.cx, R.z);
+      const ov = [R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o"].filter(Boolean).join("");
+      const v = `${lat.toFixed(1)},${(((lon + 540) % 360) - 180).toFixed(1)},${R.z}`;
+      const url = `${location.origin}${location.pathname}#v=${v}&l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}`;
+      const done = () => note("Link copied — it opens this map view and these layers. Your saved place is not in it.");
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => note(`Copy this link: ${url}`));
+      else note(`Copy this link: ${url}`);
+    }
+    /* opening such a link */
+    function applyLink() {
+      const h = location.hash.replace(/^#/, "");
+      if (!h) return false;
+      const q = new URLSearchParams(h), v = (q.get("v") || "").split(",").map(Number);
+      if (v.length === 3 && Wx.validLat(v[0]) && Wx.validLon(v[1]) && v[2] >= MINZ && v[2] <= MAXZ) {
+        R.z = Math.round(v[2]); R.cx = lngX(v[1], R.z); R.cy = latY(v[0], R.z);
+      }
+      const o = q.get("o");
+      if (o != null) {
+        R.ov = { watches: o.includes("w"), cells: o.includes("c"), fronts: o.includes("f") };
+        R.stations = o.includes("s"); R.outlook = o.includes("o");
+        $("#stationtoggle").setAttribute("aria-pressed", String(R.stations));
+        $("#outlooktoggle").setAttribute("aria-pressed", String(R.outlook));
+        document.querySelectorAll("[data-ov]").forEach((b) => b.setAttribute("aria-pressed", String(!!R.ov[b.dataset.ov])));
+      }
+      if (Wx.SAT[q.get("s")]) setSat(q.get("s"));
+      const l = q.get("l");
+      return ["N0B", "N0S", "hrrr"].includes(l) ? l : true;
+    }
     pinEl.addEventListener("click", (e) => {
       if (e.target.closest("[data-pinx]")) { R.pin = null; draw(); }
+      else if (e.target.closest("[data-pinsky]") && R.pin) { const p = R.pin; R.pin = null; draw(); sky.at(p.lat, p.lon, p.name || "the tapped point"); }
       else if (e.target.closest("[data-pingo]") && R.pin) {
         const p = R.pin; R.pin = null; full(false);
         choose({ name: p.name || "Map point", region: "", lat: p.lat, lon: p.lon });
@@ -1757,7 +2058,18 @@
       requestAnimationFrame(draw);
     }
     $("#zfull").addEventListener("click", () => full(!$("#radarcard").classList.contains("mapfull")));
-    $("#zxsec").addEventListener("click", () => { if (X.pick || X.a) xsecStop(); else xsecStart(); });
+    $("#zxsec").addEventListener("click", () => { if (R.measure) measureToggle(); if (X.pick || X.a) xsecStop(); else xsecStart(); });
+    if ($("#zmeasure")) $("#zmeasure").addEventListener("click", measureToggle);
+    if ($("#zlink")) $("#zlink").addEventListener("click", shareLink);
+    document.querySelectorAll("[data-ov]").forEach((b) => {
+      b.setAttribute("aria-pressed", String(!!R.ov[b.dataset.ov]));
+      b.addEventListener("click", () => {
+        R.ov[b.dataset.ov] = !R.ov[b.dataset.ov];
+        store.set("wx:ov", R.ov);
+        b.setAttribute("aria-pressed", String(R.ov[b.dataset.ov]));
+        loadOverlays(true); draw(); label(); renderSources();
+      });
+    });
     addEventListener("keydown", (e) => { if (e.key === "Escape") full(false); });
 
     /* dragging, the site following the map, and a tap that is not a drag */
@@ -1781,9 +2093,14 @@
         const r = el.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
         clearTimeout(tap);
         tap = setTimeout(() => {
-          if (X.pick) { xsecTap(yLat(R.cy - el.clientHeight / 2 + py, R.z), xLng(R.cx - el.clientWidth / 2 + px, R.z)); return; }
+          const tlat = yLat(R.cy - el.clientHeight / 2 + py, R.z), tlon = xLng(R.cx - el.clientWidth / 2 + px, R.z);
+          if (X.pick) { xsecTap(tlat, tlon); return; }
+          if (R.measure) { measureTap(tlat, tlon); return; }
           const s = stationNear(px, py);
+          const c = !s && cellNear(px, py), a = !s && !c && areaAt(tlat, tlon);
           if (s) showStation(s);
+          else if (c) showCell(c);
+          else if (a) showArea(a);
           else inspect(yLat(R.cy - el.clientHeight / 2 + py, R.z), xLng(R.cx - el.clientWidth / 2 + px, R.z));
         }, 300);
         return;
@@ -1885,6 +2202,7 @@
       refresh() {
         if (!R.started || !R.visible) return;
         if (R.stations && Date.now() - (R.obsAt || 0) > 300e3) loadStations();
+        loadOverlays();
         if (R.sat && satBucket() !== satAt) { satAt = satBucket(); for (const s of sats) { for (const img of s.tiles.values()) img.remove(); s.tiles.clear(); } draw(); }
         if (R.mode === "comp") { Wx.radarTime().then((v) => { if (v && v !== R.valid) { R.valid = v; clearTiles(); compFrames(); renderSources(); } }); }
         else if (R.mode === "replay") { /* the past does not refresh */ }
@@ -1895,6 +2213,7 @@
       get sat() { return R.sat; },
       get mode() { return R.mode; },
       get replay() { return R.replay; },
+      get pro() { return PRO ? { ov: R.ov, ...R.pro } : null; },
       get stations() { return R.stations && R.obs.length ? { n: R.obs.length, newest: Math.max(...R.obs.map((s) => s.time)) } : null; },
       get valid() { return R.valid; },
       get started() { return R.started; }
@@ -1908,7 +2227,7 @@
      Skew-T and hodograph instantly (§15.5). */
   const sky = (() => {
     /* only Weather Pro has the air above you */
-    if (!$("#skyd")) return { reset() {}, get source() { return null; }, redraw() {} };
+    if (!$("#skyd")) return { reset() {}, get source() { return null; }, redraw() {}, at() {} };
     const K = { model: null, col: null, colKey: null, run: null, hour: 0, raob: null, raobSite: null, mode: "model", busy: false, source: null };
     const body = () => $("#skybody");
     const m2ft = (m) => m * 3.28084;
@@ -1920,15 +2239,17 @@
       const from = (Math.atan2(-u, -v) * 180 / Math.PI + 360) % 360;
       return `${Math.round(from / 5) * 5}° at ${Math.round(s * 1.943844)} kt`;
     };
-    const defaultModel = () => (S.place && inUS() && S.place.lat > 21 && S.place.lat < 53 && S.place.lon > -134 && S.place.lon < -60) ? "hrrr" : "gfs";
+    /* where the sounding is: a point tapped on Pro's map, or the place */
+    const here = () => K.point || S.place;
+    const defaultModel = () => { const h = here(); return h && Wx.inMosaic(h.lat, h.lon) ? "hrrr" : "gfs"; };
 
     async function loadModel() {
-      if (!S.place) return;
-      const key = `${K.model}|${placeKey(S.place)}`;
+      if (!here()) return;
+      const key = `${K.model}|${placeKey(here())}`;
       if (K.colKey === key && K.col) return draw();
       K.busy = true; draw();
       try {
-        const [col, run] = await Promise.all([Wx.column(K.model, S.place.lat, S.place.lon), Wx.modelRun(K.model)]);
+        const [col, run] = await Promise.all([Wx.column(K.model, here().lat, here().lon), Wx.modelRun(K.model)]);
         K.col = col; K.colKey = key; K.run = run;
         const first = col.hourly && col.hourly.time ? col.hourly.time.findIndex((t) => t * 1000 > Date.now() - 3600e3) : 0;
         K.hour = Math.max(0, first);
@@ -1939,7 +2260,7 @@
     async function fetchLatestRaob() {
       if (!K.raobSite) {
         const sites = await Wx.raobSites();
-        K.raobSite = sites.map((x) => ({ ...x, d: Wx.distanceM(S.place.lat, S.place.lon, x.lat, x.lon) })).sort((a, b) => a.d - b.d)[0] || null;
+        K.raobSite = sites.map((x) => ({ ...x, d: Wx.distanceM(here().lat, here().lon, x.lat, x.lon) })).sort((a, b) => a.d - b.d)[0] || null;
       }
       K.raob = null;
       if (K.raobSite) {
@@ -1955,7 +2276,7 @@
       if (!K.raob) K.err = "No recent balloon flight from the nearest launch site.";
     }
     async function loadRaob() {
-      if (!S.place) return;
+      if (!here()) return;
       K.busy = true; draw();
       try { await fetchLatestRaob(); } catch (e) { K.err = "The balloon archive did not answer."; }
       K.busy = false; draw();
@@ -2125,7 +2446,8 @@
           </div>`;
       }
       if (partsOnly) return { info, pics, table, when: now && now.when };
-      b.innerHTML = `<div class="seg" role="group" aria-label="Sounding source" style="margin-top:10px">${buttons}</div><div id="skyinfo">${info}</div>${slider}${K.mode === "model" && !K.busy && now && !comparing() ? timelineHtml() : ""}<div id="skydyn">${pics}${table}</div>
+      const where = K.point ? `<p class="skyat">Sounding at <b>${esc(K.point.name)}</b>, tapped on the map. <button type="button" class="linkbtn" data-skyback>Back to ${esc(S.place ? S.place.name : "the place")}</button></p>` : "";
+      b.innerHTML = `${where}<div class="seg" role="group" aria-label="Sounding source" style="margin-top:10px">${buttons}</div><div id="skyinfo">${info}</div>${slider}${K.mode === "model" && !K.busy && now && !comparing() ? timelineHtml() : ""}<div id="skydyn">${pics}${table}</div>
         <details class="gloss"><summary>What these mean</summary><dl>
           <dt>CAPE</dt><dd>Energy a rising parcel of air gains from being warmer than its surroundings, J/kg. Over ~1000 is plenty for strong storms; over ~3000 is a lot.</dd>
           <dt>CIN</dt><dd>The "cap": energy needed to push a parcel up to where it rises on its own. Strongly negative means storms struggle to start.</dd>
@@ -2147,6 +2469,7 @@
     });
     document.addEventListener("click", (e) => {
       if (e.target.closest("[data-skycmp]")) { toggleCompare(); return; }
+      if (e.target.closest("[data-skyback]")) { K.point = null; Object.assign(K, { tl: null, col: null, colKey: null, raob: null, raobSite: null, cmp: null, compare: false }); K.model = defaultModel(); loadModel(); return; }
       const b = e.target.closest("[data-skymodel]");
       if (!b) return;
       const id = b.dataset.skymodel;
@@ -2181,7 +2504,16 @@
       markHour();
     });
     return {
-      reset() { Object.assign(K, { tl: null, col: null, colKey: null, run: null, raob: null, raobSite: null, model: null, mode: "model", source: null, err: null, compare: false, cmp: null }); if ($("#skyd").open) { K.model = defaultModel(); loadModel(); } },
+      reset() { Object.assign(K, { tl: null, col: null, colKey: null, run: null, raob: null, raobSite: null, model: null, mode: "model", source: null, err: null, compare: false, cmp: null, point: null }); if ($("#skyd").open) { K.model = defaultModel(); loadModel(); } },
+      /* a sounding at a point tapped on the map, until "back" */
+      at(lat, lon, name) {
+        Object.assign(K, { tl: null, col: null, colKey: null, run: null, raob: null, raobSite: null, mode: "model", source: null, err: null, compare: false, cmp: null,
+          point: { lat: Wx.round2(lat), lon: Wx.round2(lon), name: String(name || "the tapped point").slice(0, 60) } });
+        K.model = defaultModel();
+        const d = $("#skyd"); d.open = true; $("#sky").hidden = false;
+        loadModel();
+        $("#sky").scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+      },
       get source() { return K.source; },
       redraw: draw
     };
@@ -2355,6 +2687,7 @@
      and, once the Worker can say roughly where this visitor is from their
      connection, that city's weather, labelled as approximate. */
   renderPlace();
+  renderMeso();
   if (S.place) load();
   else {
     loadUS();

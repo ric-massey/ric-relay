@@ -39,6 +39,8 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     ...Object.keys(W.MODELS).map(m => W.ROUTES.column(m, 12.34, -56.78)),
     ...Object.keys(W.MODELS).map(m => W.ROUTES.modelRun(m)),
     W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78), W.ROUTES.stationObs('ABC'), W.ROUTES.plumes(12.34, -56.78), W.ROUTES.hrrrMeta(), W.ROUTES.sbwArchive('2011-04-27T20:00Z', '2011-04-27T23:00Z'), W.ROUTES.xsec('hrrr', W.linePoints({ lat: 12.34, lon: -56.78 }, { lat: 14.1, lon: -50.2 }, 12)),
+    W.ROUTES.spcWatches(), W.ROUTES.spcMds(), W.ROUTES.wpcMpds(), W.ROUTES.stormCells(),
+    W.ROUTES.nwsProducts('COD'), W.ROUTES.nwsProducts('AFD', 'ABC'), W.ROUTES.nwsProduct('fcb2d575-a207-4057-a31c-823cdbbda16d'),
     W.ROUTES.several([{ lat: 12.34, lon: -56.78 }, { lat: -33.87, lon: 151.21 }])
   ];
   for (const [path, direct] of routes) {
@@ -434,6 +436,28 @@ console.log('\nRULE  two pages, one room: Weather for everyone, Weather Pro for 
   ok([simple, pro].every(p => p.includes('assets/weather/app.js') && p.includes('assets/visit.js')), 'both load the shared code and count visits');
   ok(![simple, pro, app, read('projects/weather/wx.js')].some(s => /ride outlook|rideOutlook/i.test(s)),
     'no ride outlook anywhere — Ric, 2026-10-21: "this should be information, not something that could make it unsafe"');
+}
+
+console.log('\nRULE  Weather Pro\'s overlays: as issued, and gone when they end');
+{
+  const T = Date.parse('2026-10-22T03:00:00Z');
+  const sq = [[[-56.8, 12.3], [-56.6, 12.3], [-56.6, 12.5], [-56.8, 12.3]]];
+  const w = W.normalizeWatches({ features: [
+    { geometry: { type: 'MultiPolygon', coordinates: [sq] }, properties: { type: 'TOR', num: 688, utc_issued: '2026-10-22T01:00:00Z', utc_expired: '2026-10-22T09:00:00Z' } },
+    { geometry: { type: 'Polygon', coordinates: sq }, properties: { type: 'SVR', num: 12, utc_issued: '2026-10-21T01:00:00Z', utc_expired: '2026-10-21T09:00:00Z' } }] }, T);
+  ok(w.length === 1 && w[0].title === 'Tornado Watch 688' && w[0].url.endsWith('/watch/2026/ww0688.html'), 'a live watch with its number and SPC page; an expired one is gone');
+  const md = W.normalizeDiscussions({ features: [{ geometry: { type: 'Polygon', coordinates: sq }, properties: { num: 2390, year: 2026, issue: '2026-10-22T02:30:00Z', expire: '2026-10-22T04:00:00Z', watch_confidence: 40, concerning: 'SEVERE POTENTIAL…WATCH POSSIBLE' } }] }, 'mcd', T);
+  ok(md.length === 1 && md[0].chance === 40 && md[0].url.endsWith('/md/2026/md2390.html') && md[0].concerning.includes('WATCH POSSIBLE'), 'a mesoscale discussion keeps its chance of a watch and its own words');
+  const c = W.normalizeCells({ features: [
+    { geometry: { type: 'Point', coordinates: [-56.7, 12.3] }, properties: { nexrad: 'ABC', storm_id: 'W1', max_dbz: 62, top: 45.4, meso: '3', tvs: 'NONE', poh: 90, posh: 60, max_size: 1.75, drct: 240, sknt: 35, valid: '2026-10-22T02:55:00Z' } },
+    { geometry: { type: 'Point', coordinates: [-56.7, 12.3] }, properties: { nexrad: 'ABC', storm_id: 'X9', valid: '2026-10-22T02:00:00Z' } }] }, T);
+  ok(c.length === 1 && c[0].meso === '3' && c[0].tvs === null && c[0].from === 240 && c[0].topKft === 45.4, 'a storm cell keeps what the radar measured; "NONE" is no detection; a stale cell is dropped');
+  ok(W.decodePoint('1230567')[0] === 12.3 && W.decodePoint('1230567')[1] === -56.7 && W.decodePoint('951234')[0] === 9.5 && W.decodePoint('12x4567') === null, 'a coded point is latitude and west longitude in tenths');
+  const s = W.parseCodsus('CODSUS\nCODED SURFACE FRONTAL POSITIONS\nVALID 102200Z\nHIGHS 1027 1230567 1031\n1250560\nLOWS 998 1200580\nCOLD 1200580 1180585 1150590\nWARM 1200580 1210570\nTROF 1300500\n$$', Date.parse('2026-10-22T01:36:00Z'));
+  ok(s.valid === Date.parse('2026-10-22T00:00:00Z') && s.highs.length === 2 && s.highs[1].mb === 1031 && s.lows[0].mb === 998,
+    'the analysis time, and highs and lows with their pressures — across a line break');
+  ok(s.fronts.length === 2 && s.fronts[0].kind === 'COLD' && s.fronts[0].pts.length === 3 && s.fronts[1].kind === 'WARM', 'each front a line of points; a one-point trough is no line');
+  ok(W.ROUTES.nwsProducts('AFD') === null && W.ROUTES.nwsProducts('XYZ') === null && W.ROUTES.nwsProduct('../x') === null, 'only the coded analysis, an office\'s discussion, and a product by its id');
 }
 
 console.log('\nRULE  calm is calm, not "N 0"');

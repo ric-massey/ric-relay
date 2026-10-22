@@ -104,6 +104,19 @@
       ? [`xsec?model=${model}&lat=${pts.map(p => coord(p.lat)).join(',')}&lon=${pts.map(p => coord(p.lon)).join(',')}`,
         `${OM}?${new URLSearchParams({ latitude: pts.map(p => coord(p.lat)).join(','), longitude: pts.map(p => coord(p.lon)).join(','), hourly: XSEC_FIELDS,
           models: MODELS[model].om, forecast_hours: '12', wind_speed_unit: 'ms', timeformat: 'unixtime', timezone: 'GMT' })}`] : null,
+    /* ── Weather Pro's overlays ──
+       SPC's watch outlines and mesoscale discussions, WPC's precipitation
+       discussions, and every NEXRAD storm cell's attributes — IEM, as they
+       stand now */
+    spcWatches: () => ['iem/watches', `${IEM}/api/1/spc_watch_outline.geojson`],
+    spcMds: () => ['iem/mcd', `${IEM}/api/1/nws/spc_mcd.geojson`],
+    wpcMpds: () => ['iem/mpd', `${IEM}/api/1/nws/wpc_mpd.geojson`],
+    stormCells: () => ['iem/cells', `${IEM}/geojson/nexrad_attr.geojson`],
+    /* the latest of an NWS text product (the coded surface analysis, or an
+       office's forecast discussion), and one product by its id */
+    nwsProducts: (type, office) => (type === 'COD' && !office) || (type === 'AFD' && /^[A-Z]{3}$/.test(office || ''))
+      ? [`nws/products/types/${type}${office ? '/locations/' + office : ''}`, `${NWS}/products/types/${type}${office ? '/locations/' + office : ''}`] : null,
+    nwsProduct: id => /^[0-9a-f-]{36}$/.test(id) ? [`nws/products/${id}`, `${NWS}/products/${id}`] : null,
     /* when the HRRR forecast radar on the map was run */
     hrrrMeta: () => ['iem/hrrrmeta', `${IEM}/data/gis/images/4326/hrrr/refd_0000.json`],
     /* Every storm-based warning in the country right now — the page with no
@@ -192,7 +205,10 @@
   const NATIONAL_EVENTS = 'Tornado Warning,Severe Thunderstorm Warning,Flash Flood Warning,Extreme Wind Warning,Tornado Watch,Severe Thunderstorm Watch';
   const NWS_FOLLOW = [
     /^gridpoints\/[A-Z]{3}\/\d{1,3},\d{1,3}\/(forecast|forecast\/hourly|stations)$/,
-    /^stations\/[A-Z0-9]{3,6}\/observations\/latest$/
+    /^stations\/[A-Z0-9]{3,6}\/observations\/latest$/,
+    /^products\/types\/COD$/,
+    /^products\/types\/AFD\/locations\/[A-Z]{3}$/,
+    /^products\/[0-9a-f-]{36}$/
   ];
 
   /* ── fetching ── */
@@ -1225,6 +1241,109 @@
     return { hours, days: out, runs: pl.members.length, sets: [...new Set(pl.members.map(m => m.set))] };
   }
 
+  /* ── watches, discussions, cells and fronts (Weather Pro) ──
+     Each is shown as its issuer issued it: the outline, the number, the
+     times, and a link to the full text on the issuer's own page. */
+  const polysOf = g => !g ? [] : g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+  function normalizeWatches(j, nowMs) {
+    const now = nowMs || Date.now();
+    return (j && Array.isArray(j.features) ? j.features : []).map(f => {
+      const p = f.properties || {}, issued = Date.parse(p.utc_issued), expires = Date.parse(p.utc_expired);
+      const polys = polysOf(f.geometry);
+      if (!polys.length || !Number.isFinite(p.num)) return null;
+      const year = new Date(Number.isFinite(issued) ? issued : now).getUTCFullYear();
+      return { kind: 'watch', type: p.type === 'TOR' ? 'TOR' : 'SVR', num: p.num, issued: issued || null, expires: expires || null, polys,
+        title: `${p.type === 'TOR' ? 'Tornado' : 'Severe Thunderstorm'} Watch ${p.num}`,
+        url: `https://www.spc.noaa.gov/products/watch/${year}/ww${String(p.num).padStart(4, '0')}.html` };
+    }).filter(w => w && !(w.expires && w.expires < now));
+  }
+  function normalizeDiscussions(j, kind, nowMs) {
+    const now = nowMs || Date.now();
+    return (j && Array.isArray(j.features) ? j.features : []).map(f => {
+      const p = f.properties || {}, issued = Date.parse(p.issue), expires = Date.parse(p.expire), polys = polysOf(f.geometry);
+      if (!polys.length || !Number.isFinite(p.num)) return null;
+      const year = p.year || new Date(issued || now).getUTCFullYear(), n = String(p.num).padStart(4, '0');
+      return { kind, num: p.num, issued: issued || null, expires: expires || null, polys,
+        concerning: p.concerning ? String(p.concerning) : '', chance: has(p.watch_confidence) ? Number(p.watch_confidence) : null,
+        title: kind === 'mcd' ? `Mesoscale Discussion ${p.num}` : `Precipitation Discussion ${p.num}`,
+        url: kind === 'mcd' ? `https://www.spc.noaa.gov/products/md/${year}/md${n}.html` : `https://www.wpc.ncep.noaa.gov/metwatch/metwatch_mpd_multi.php?md=${p.num}&yr=${year}` };
+    }).filter(d => d && !(d.expires && d.expires < now));
+  }
+  /* NEXRAD's own storm-cell table (the storm tracking and hail algorithms):
+     where each cell is, how it moves — the direction it moves FROM, as a
+     warning's motion line gives it — and what the radar measured in it.
+     Heights in thousands of feet, as the table gives them (tops reach the
+     40s). A cell older than 20 minutes is dropped. */
+  function normalizeCells(j, nowMs) {
+    const now = nowMs || Date.now();
+    return (j && Array.isArray(j.features) ? j.features : []).map(f => {
+      const p = f.properties || {}, c = f.geometry && f.geometry.coordinates, t = Date.parse(p.valid);
+      if (!Array.isArray(c) || !validLat(+c[1]) || !validLon(+c[0]) || !Number.isFinite(t) || now - t > 20 * 60e3) return null;
+      const n = v => has(v) ? Number(v) : null;
+      const rank = v => v && v !== 'NONE' ? String(v) : null;
+      return { site: String(p.nexrad || ''), id: String(p.storm_id || ''), lat: +c[1], lon: +c[0], time: t,
+        dbz: n(p.max_dbz), dbzKft: n(p.max_dbz_height), topKft: n(p.top), vil: n(p.vil),
+        poh: n(p.poh), posh: n(p.posh), hailIn: n(p.max_size), meso: rank(p.meso), tvs: rank(p.tvs),
+        from: n(p.drct), kt: n(p.sknt) };
+    }).filter(Boolean);
+  }
+  /* WPC's coded surface bulletin (CODSUS): the analysed highs and lows with
+     their pressures, and each front as a string of points. A point is
+     LLLOOOO — latitude and west longitude in tenths. A front's points run so
+     that its symbols belong on the left of the way the line is drawn. */
+  const FRONT_KINDS = ['COLD', 'WARM', 'STNRY', 'OCFNT', 'TROF'];
+  function decodePoint(s) {
+    if (!/^\d{6,7}$/.test(s)) return null;
+    const lat = Number(s.slice(0, s.length - 4)) / 10, lon = -Number(s.slice(-4)) / 10;
+    return validLat(lat) && validLon(lon) ? [lat, lon] : null;
+  }
+  function parseCodsus(text, issuedMs) {
+    const src = String(text || '');
+    const v = /VALID\s+(\d\d)(\d\d)(\d\d)Z/.exec(src);
+    let valid = null;
+    if (v) {
+      const base = new Date(issuedMs || Date.now());
+      valid = Date.UTC(base.getUTCFullYear(), Number(v[1]) - 1, Number(v[2]), Number(v[3]));
+      if (valid - (issuedMs || Date.now()) > 180 * 86400e3) valid = Date.UTC(base.getUTCFullYear() - 1, Number(v[1]) - 1, Number(v[2]), Number(v[3]));
+    }
+    const body = v ? src.slice(v.index + v[0].length) : src;
+    const toks = body.replace(/\$\$[\s\S]*$/, '').split(/\s+/).filter(Boolean);
+    const out = { valid, highs: [], lows: [], fronts: [] };
+    let mode = null, cur = null;
+    for (let i = 0; i < toks.length; i++) {
+      const k = toks[i];
+      if (k === 'HIGHS' || k === 'LOWS') { mode = k; cur = null; continue; }
+      if (FRONT_KINDS.includes(k)) { mode = 'FRONT'; cur = { kind: k, pts: [] }; out.fronts.push(cur); continue; }
+      if (mode === 'HIGHS' || mode === 'LOWS') {
+        const pt = decodePoint(toks[i + 1] || '');
+        if (/^\d{3,4}$/.test(k) && pt) { (mode === 'HIGHS' ? out.highs : out.lows).push({ mb: Number(k), lat: pt[0], lon: pt[1] }); i++; }
+      } else if (mode === 'FRONT') {
+        const pt = decodePoint(k);
+        if (pt) cur.pts.push(pt);
+      }
+    }
+    out.fronts = out.fronts.filter(f => f.pts.length > 1);
+    return out;
+  }
+  async function latestProduct(type, office, wmo, signal) {
+    const list = (await ask(ROUTES.nwsProducts(type, office), signal)).data;
+    const g = (list && Array.isArray(list['@graph']) ? list['@graph'] : []).filter(x => !wmo || x.wmoCollectiveId === wmo);
+    if (!g.length) return null;
+    const j = (await ask(ROUTES.nwsProduct(g[0].id), signal)).data;
+    return j && j.productText ? { id: g[0].id, issued: Date.parse(j.issuanceTime) || null, text: String(j.productText), office: j.issuingOffice || '' } : null;
+  }
+  async function surfaceAnalysis(signal) {
+    const p = await latestProduct('COD', null, 'ASUS02', signal);
+    return p ? { ...parseCodsus(p.text, p.issued), issued: p.issued } : null;
+  }
+  async function forecastDiscussion(office, signal) { return latestProduct('AFD', office, null, signal); }
+  const proOverlays = {
+    watches: async signal => normalizeWatches((await ask(ROUTES.spcWatches(), signal)).data),
+    mcds: async signal => normalizeDiscussions((await ask(ROUTES.spcMds(), signal)).data, 'mcd'),
+    mpds: async signal => normalizeDiscussions((await ask(ROUTES.wpcMpds(), signal)).data, 'mpd'),
+    cells: async signal => normalizeCells((await ask(ROUTES.stormCells(), signal, 20000)).data)
+  };
+
   /* ── stations on the map (§19.1) ──
      IEM's current ASOS readings for one forecast office, in the page's
      units (°C, km/h, m, hPa). Positions are read at run time and never kept
@@ -1248,7 +1367,7 @@
         temp: tmp === null ? null : fToC(tmp), dew: dew === null ? null : fToC(dew), rh: num(p.relh),
         wind: kt === null ? null : kt * 1.852, windDir: num(p.drct), gust: g === null || g <= 0 ? null : g * 1.852,
         vis: num(p.vsby) === null ? null : p.vsby * 1609.344, pressure: mslp,
-        sky: worst ? SKY[worst] : null, wx: p.wxcodes ? String(p.wxcodes).trim() || null : null,
+        sky: worst ? SKY[worst] : null, cover: worst, wx: p.wxcodes ? String(p.wxcodes).trim() || null : null,
         precipHour: num(p.phour) === null ? null : p.phour * 25.4, raw: p.raw ? String(p.raw) : ''
       };
     }).filter(s => s && s.id && now - s.time <= STALE_MS.observation && (s.temp !== null || s.wind !== null));
@@ -1439,6 +1558,7 @@
     CALM_KMH, isCalm, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M,
     normalizeStationObs, stationObs, normalizePlumes, plumes, plumeStats, quantile,
     HRRR, hrrrImage, hrrrRun,
+    normalizeWatches, normalizeDiscussions, normalizeCells, decodePoint, parseCodsus, FRONT_KINDS, surfaceAnalysis, forecastDiscussion, proOverlays,
     REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive,
     XSEC_LEVELS, XSEC_FIELDS, XSEC_MAX, linePoints, normalizeXsec, xsec
   };

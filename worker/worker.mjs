@@ -1636,7 +1636,11 @@ const WX_OM_FIELDS = {
 const WX_NWS_PATHS = [
   /^points\/-?\d{1,2}(\.\d{1,2})?,-?\d{1,3}(\.\d{1,2})?$/,
   /^gridpoints\/[A-Z]{3}\/\d{1,3},\d{1,3}\/(forecast|forecast\/hourly|stations)$/,
-  /^stations\/[A-Z0-9]{3,6}\/observations\/latest$/
+  /^stations\/[A-Z0-9]{3,6}\/observations\/latest$/,
+  /* Weather Pro: the coded surface analysis, an office's forecast discussion, one product */
+  /^products\/types\/COD$/,
+  /^products\/types\/AFD\/locations\/[A-Z]{3}$/,
+  /^products\/[0-9a-f-]{36}$/
 ];
 const WX_IEM = 'https://mesonet.agron.iastate.edu';
 const WX_SITE_PRODUCTS = ['N0B', 'N0S'];
@@ -1694,6 +1698,11 @@ function wxUpstream(parts, params) {
     }
     if (what === 'raobsites') return [`${WX_IEM}/geojson/network.py?network=RAOB`, WX_TTL.raobsites];
     if (what === 'hrrrmeta') return [`${WX_IEM}/data/gis/images/4326/hrrr/refd_0000.json`, WX_TTL.meta];
+    /* Weather Pro's overlays: SPC watches and discussions, WPC's, every storm cell */
+    if (what === 'watches') return [`${WX_IEM}/api/1/spc_watch_outline.geojson`, WX_TTL.alerts];
+    if (what === 'mcd') return [`${WX_IEM}/api/1/nws/spc_mcd.geojson`, WX_TTL.alerts];
+    if (what === 'mpd') return [`${WX_IEM}/api/1/nws/wpc_mpd.geojson`, WX_TTL.alerts];
+    if (what === 'cells') return [`${WX_IEM}/geojson/nexrad_attr.geojson`, WX_TTL.radar];
     /* the warnings in force over a replay window — the past does not change */
     if (what === 'sbw') {
       const b = params.get('begints') || '', e = params.get('endts') || '';
