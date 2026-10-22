@@ -128,7 +128,10 @@ a room is worse than an unhighlighted bar.
 `effects.js` finds `nav[aria-label="Terminal rooms"]`, injects a `.roomnav-toggle` button
 before it, and toggles `.roomnav-open` on the nav. Each page styles `.roomnav-toggle`,
 `nav[data-roomnav]` and `nav[data-roomnav].roomnav-open` in its own `<style>` — that's
-where the room's look lives. Tap targets in the open menu must be at least 44px tall.
+where the room's look lives. **A page that doesn't style `.roomnav-toggle` gets a bare
+grey browser button beside its nav on every screen size** — Entertainment and the
+Library did until 2026-10-22, and it pushed `captures` off the edge of a laptop
+screen. Hide it (`display: none`) at the widths where the whole nav fits. Tap targets in the open menu must be at least 44px tall.
 With JS off nothing is injected and the nav renders exactly as it always did.
 
 - `href` targets and link text are **identical on every page** — only the CSS differs.
@@ -232,8 +235,8 @@ is the one thing right in all three. Styling is `assets/climbing/nav.css` and
 hard rule 3 forbids doing **across** rooms — the two bars look different from each other
 on purpose, and neither resembles any other room.
 
-`effects.js` only injects its mobile room menu where it finds `.topbar .roomnav`, so it
-quietly does nothing on those eleven pages. That is correct: both section bars scroll
+`effects.js` injects its mobile room menu wherever it finds `nav[aria-label="Terminal rooms"]`,
+and those eleven pages carry none, so it quietly does nothing there. That is correct: both section bars scroll
 sideways under 820px instead.
 
 **If you add, remove, or rename a room:** edit `ROOMS` in `terminal.html` (that covers the
