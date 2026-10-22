@@ -1,6 +1,6 @@
 # Audiences — groups, connections, and chat
 
-**Status: design, not built** — with one exception, below. It is here so the
+**Status: half built** — everything but chat, below. It is here so the
 argument gets settled before the migrations do, because every mistake in the
 audience model becomes two mistakes once chat can move pins around.
 
@@ -22,12 +22,25 @@ audience model becomes two mistakes once chat can move pins around.
   set, and it is you, your group members, the owners of groups you are in, and
   the authors of anything you can already see.
 
-**Not built:** connections, `pin_audience`, the picker, chat. Which means the
-one thing on this page that is deliberately *not yet true* is the connection
-gate — today `can_add_to_group()` answers "anybody with an account, other than
-you", because there are three of us and we are brothers. It is a function so
-that the real check lands in one place. See
-[Why connection has to gate group membership](#why-connection-has-to-gate-group-membership).
+- **Connections, `pin_audience` and the picker** —
+  `20261022120000_connections_and_audiences.sql` (2026-10-22). Migration path
+  steps 1–7 below, all of them; `can_add_to_group()` now requires a connection.
+  Three places where the build differs from this page, on purpose:
+  - `can_see_pin()` is "does the pins policy return this row", and the policy
+    is the one rule. The pins policy reads grants through
+    `pins_shared_with_me()` (DEFINER, no parameters), which is what breaks the
+    recursion trap on the pins side.
+  - `pin_audience_people()` does **not** gate on `can_see_pin()` as drafted
+    below: inside a DEFINER function RLS is off and it would say yes to every
+    pin. It writes the rule out instead, and a test refuses any DEFINER
+    function that calls `can_see_pin()`.
+  - `request_connection()` answers `'nobody'` rather than raising, and an
+    account without ATLAS is nobody. Pending asks are capped at 25.
+  Open questions settled by their recommendations: no "everyone on ATLAS";
+  removing somebody from a group is silent; ending a connection pulls them out
+  of groups and grants both ways, in a trigger.
+
+**Not built:** chat, leaving somebody else's group, blocking, invite links.
 
 ---
 

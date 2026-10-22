@@ -520,7 +520,7 @@ these do I want", and that gets answered by what a button is *near*.
 - **directions to this place** — hands the pin to Apple Maps or Google Maps.
 - A pin's **colour is what kind of place it is** — nine kinds, nine measured
   colours. Yellow outranks all of them and means not synced yet. A hollow pin
-  is a personal one. The pin whose sheet is open stands up out of the others
+  is one of yours that nobody else can see yet. The pin whose sheet is open stands up out of the others
   with a ring under it.
 
 **Only the person who dropped a pin can change it.** The name, the description,
@@ -593,9 +593,9 @@ trying to tell which of the two you walk to. It now appears with the dashed
 thread, on the same rule and for the same reason, and goes when the sheet goes.
 
 The database enforces what the client must not be trusted with: one level deep,
-same owner, and **privacy taken from the parent**. A personal pin nobody can see
-with a visible parking spot fifty metres away is not a personal pin, so making a
-pin personal drags its parking spot with it, in a trigger rather than in a hope.
+same owner, and **seen exactly when its pin is**. A parking spot carries no
+grants of its own; the pins policy resolves it through `parent_id` at read time,
+so the two cannot disagree and no trigger has to keep them in step.
 
 ### Directions
 
@@ -1093,12 +1093,14 @@ no valid session the database returns nothing to anyone.
 The **service_role** key must never appear in this repo. It bypasses every
 policy.
 
-A **personal** pin is enforced in the SELECT policy, not in the interface — it is
-never sent to anyone else, whatever they type into a network tab. Notes and
-photos inherit that same rule through `public.can_see_pin()`, which is why they
-gate on a function rather than each reimplementing the check. That function must
-stay SECURITY INVOKER; marked DEFINER it would hand out exactly what it exists to
-withhold.
+**Who sees a pin** is enforced in the pins SELECT policy, not in the interface —
+a pin nobody was granted is never sent to anyone else, whatever they type into a
+network tab. Notes and photos inherit that same rule through
+`public.can_see_pin()`, which is now nothing but "does the pins policy return
+this row", which is why they gate on a function rather than each reimplementing
+the check. That function must stay SECURITY INVOKER — and must never be the
+gate *inside* a DEFINER function, where RLS is off and it would answer yes for
+every pin. `test/security.test.mjs` checks both.
 
 The **pin-photos** bucket is private. Photos are read through short-lived signed
 URLs, and an object's own name carries its permissions — the policies read the
@@ -1160,12 +1162,54 @@ in the dashboard. The app works before and after the migration lands.
 
 ---
 
+### Connections and who sees a pin (2026-10-22)
+
+`20261022120000_connections_and_audiences.sql`, the first half of
+[`docs/audiences.md`](docs/audiences.md). ATLAS stops being "the crew sees
+everything unless it is personal":
+
+- **A pin is seen by its finder and whoever they granted it to** — groups of
+  theirs, or people by name. No grant means nobody, and that is the default for
+  every new pin. There is no "everyone on ATLAS", and running the site does not
+  let Ric read anybody's pins either.
+- **You can only grant to, or group, somebody you are connected to.** A
+  connection is asked for by exact username (people & groups, or tap somebody's
+  name) and accepted by them. Ending one, from either side, takes both people
+  out of each other's groups and individual grants at once.
+- **The pin sheet shows who it reaches** — the deduped headcount and faces
+  before you save, and on somebody else's pin the same list, read-only. Never
+  which group anybody came from.
+- **`pins.is_private` is gone.** An old cached app that still writes it fails
+  instead of believing it made a pin personal.
+- **The backfill keeps today exactly**: every approved account is connected to
+  every other, everyone gets a group called "the crew" holding everyone else,
+  and every pin that was shared is granted to its finder's crew. Somebody
+  approved after this sees nothing until people connect with them and share.
+
+**Run the migration before the app goes out**, from `atlas/`:
+
+```bash
+supabase db push
+```
+
+The other order is the dangerous one: the new app on the old database would
+drop pins that say "only you" while the old policy still showed them to
+everybody. The old app on the new database just fails to save until the
+service worker hands it the new version (`SHELL_VERSION` moved to v49).
+
+`test/site-accounts.test.mjs` runs all of it against the local stack; the
+backfill was checked by hand against a database holding shared, personal and
+parked pins and an owner who had since lost ATLAS.
+
+---
+
 ## Not built yet
 
-- **Groups, connections and chat** — the map for hundreds of people instead of
-  three, where a pin is visible only to the circles its finder chose. Designed
-  but not built: [`docs/audiences.md`](docs/audiences.md) has the tables, the
-  policies, the recursion trap in the middle of it, and the open questions.
+- **Chat** — threads between connected people, and the forwarding rule that
+  keeps it from undoing everything above. Designed in
+  [`docs/audiences.md`](docs/audiences.md), not built. So are leaving somebody
+  else's group and invite links that create an account and a connection at
+  once.
 - Owner **name** in a county that publishes no parcel service at all, or
   publishes one without names on it. Some counties genuinely do not put owner
   names online, and no amount of searching invents one — that is a shape of the

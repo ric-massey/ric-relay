@@ -900,26 +900,50 @@ a.btn-primary { display: grid; place-items: center; text-decoration: none; }
 .pin-desc:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 var(--b) var(--accent-wash); }
 .pin-desc:disabled { opacity: 1; background: var(--panel-2); border-color: var(--hair); }
 
-/* One switch, in a card, saying who can see this. It used to be a checkbox and
-   a paragraph; a switch is the control this actually is — a thing with two
-   states you flip, not a box you tick as part of a form you submit. */
-.privacy {
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: var(--s-1) var(--s-3); align-items: center;
+/* Who sees this. A card with a head you tap — "only you", or "you + 7 people"
+   and their faces — and under it the picker on your own pin, or the list on
+   anybody else's. The head always says the deduped headcount, so you never
+   save a place without having seen exactly who that means. */
+.audience {
   border: var(--b) solid var(--rule); border-radius: var(--r-md);
-  padding: var(--s-3); cursor: pointer; font-weight: 700;
   transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
-.privacy > .icon { grid-column: 1; grid-row: 1 / span 2; color: var(--ink-mute); }
-.privacy > span:not(.switch-track) { grid-column: 2; grid-row: 1; }
-.privacy .switch-track { grid-column: 3; grid-row: 1 / span 2; }
-.privacy input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
-.privacy small {
-  grid-column: 2; grid-row: 2; display: block; color: var(--ink-dim); font-weight: 500;
-  font-size: var(--t-sm); line-height: 1.4;
+.audience-head {
+  display: flex; align-items: center; gap: var(--s-2); width: 100%;
+  min-height: 44px; padding: var(--s-2) var(--s-3);
+  border: none; background: none; color: var(--ink); cursor: pointer;
+  font-family: inherit; font-size: var(--t-md); font-weight: 700; text-align: left;
 }
-.privacy:has(input:checked) { border-color: var(--accent); background: var(--accent-wash); }
-.privacy:has(input:checked) > .icon { color: var(--accent); }
+.audience-head > .icon { flex: none; color: var(--ink-mute); }
+.audience-head > #aud-text { flex: 1; min-width: 0; }
+.audience-head .aud-chev { flex: none; color: var(--ink-mute); transition: transform var(--t-fast) var(--ease); }
+.audience-head[aria-expanded="true"] .aud-chev { transform: rotate(90deg); }
+.aud-faces { display: flex; align-items: center; flex: none; }
+.aud-faces .avatar-sm { margin-right: -6px; box-shadow: 0 0 0 2px var(--panel); }
+.aud-more { font-size: var(--t-xs); font-weight: 700; color: var(--ink-mute); margin-left: 10px; }
+.audience:has(use[href="#i-user"]) { border-color: var(--accent); background: var(--accent-wash); }
+.audience:has(use[href="#i-user"]) .audience-head > .icon { color: var(--accent); }
+.aud-body {
+  display: flex; flex-direction: column; gap: var(--s-2);
+  padding: 0 var(--s-3) var(--s-3);
+}
+.aud-body .switch small { display: inline; margin-left: var(--s-1); }
+.aud-sub {
+  margin-top: var(--s-2); font-size: var(--t-xs); font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ink-mute);
+}
+.aud-people { list-style: none; display: flex; flex-direction: column; gap: var(--s-1); }
+.aud-people li { display: flex; align-items: center; gap: var(--s-1); font-size: var(--t-sm); font-weight: 600; }
+.aud-people small { color: var(--ink-mute); font-weight: 600; font-size: var(--t-xs); }
+
+/* Connections, on the people screen: the same rows as a group's members, with
+   what you can do about each one at the end of it. */
+.conn-list { display: flex; flex-direction: column; gap: var(--s-2); }
+.conn-acts { flex: none; display: flex; align-items: center; gap: var(--s-2); }
+.conn-acts small { font-size: var(--t-xs); font-weight: 700; color: var(--ink-mute); }
+.conn-acts .btn-primary, .conn-acts .linkish { min-height: 44px; }
+#conn-said.is-good { color: var(--good); }
+.conn-state { display: flex; align-items: center; gap: var(--s-1); color: var(--good); font-weight: 700; }
 
 .pin-meta {
   font-size: var(--t-sm); font-weight: 600; color: var(--ink-dim); line-height: 1.65;
@@ -1697,8 +1721,8 @@ a.btn-primary { display: grid; place-items: center; text-decoration: none; }
 /* Scoped to the track, NOT to .switch.
  *
  * These three rules used to start `.switch input:checked`, which meant they
- * only fired inside a label that also carried that class — and the "only me"
- * toggle on a pin does not. It is `.privacy`, because it needed a different
+ * only fired inside a label that also carried that class — and the old "only me"
+ * toggle on a pin did not. It was `.privacy`, because it needed a different
  * layout. So marking a place personal moved a checkbox the database believed,
  * and left a switch on screen that stayed grey and un-flipped for ever: the one
  * control in here where not being able to tell is actually dangerous.
@@ -1708,7 +1732,7 @@ a.btn-primary { display: grid; place-items: center; text-decoration: none; }
 input:checked + .switch-track { background: var(--accent); border-color: var(--accent-dk); }
 input:checked + .switch-track::after { transform: translateX(20px); }
 input:focus-visible + .switch-track { outline: var(--b-strong) solid var(--accent); outline-offset: 3px; }
-.switch:active .switch-track::after, .privacy:active .switch-track::after { width: 28px; }
+.switch:active .switch-track::after { width: 28px; }
 
 /* ── the segmented control ────────────────────────────────────────────────
  * For a choice of one from three or four, where the options are short and you

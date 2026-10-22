@@ -751,6 +751,7 @@ async function start() {
 
   if (!map) initMap();
   else if (adopted) reapplyToMap();
+  await loadAudiences();
   await loadPins();
   await loadNotes();
   await loadPhotos();
@@ -2279,7 +2280,7 @@ function addMarker(p) {
     + (park ? ' is-park' : '')
     + (p.created_by === me.id ? ' is-mine' : '')
     + (p._pending ? ' is-pending' : '')
-    + (p.is_private ? ' is-private' : '');
+    + (isPersonal(p) ? ' is-private' : '');
   el.dataset.kind = park ? 'parking' : kindOf(p);
   el.innerHTML = park ? PARK_SVG : pinSvg(kindOf(p));
   el.title = park ? 'parking' : pinTitle(p);
@@ -2486,8 +2487,9 @@ function openNewPin(lat, lng, accuracy) {
   // locked on somebody else's pin has to be handed back here.
   setPinKindEnabled(true);
   $('photo-add').hidden = false;
-  $('pin-private').checked = false;      // shared by default — that is the point
-  $('pin-private').disabled = false;
+  // Nobody but you until you say otherwise. That is the default the database
+  // has too: a pin with no grant is a pin nobody else can read.
+  sheet.aud = { groups: new Set(), users: new Set() };
   $('pin-save').hidden = false;
   $('pin-save').textContent = 'save pin';
   $('pin-delete').hidden = true;
@@ -2499,6 +2501,7 @@ function openNewPin(lat, lng, accuracy) {
   // document, and renderPhotos paints every strip it can find.
   $('notes-list').innerHTML = '';
   renderPhotos();
+  renderAudience();
   resetOwner();
   showPinRock(sheet.pin);
   showSheet();
@@ -2524,8 +2527,10 @@ function openPin(p) {
   // recoloured the dot at the top of the sheet, so it looked like an edit that
   // had taken, right up until you closed the sheet and it came back.
   setPinKindEnabled(mine);
-  $('pin-private').checked = !!p.is_private;
-  $('pin-private').disabled = !mine;
+  if (mine) {
+    const g = grants.get(p.id);
+    sheet.aud = { groups: new Set(g?.groups || []), users: new Set(g?.users || []) };
+  }
   // A photo with no note on it is a photo OF THE PLACE — it speaks in the pin's
   // voice and belongs to whoever found it. Photos on a note are the other half
   // of that and stay open to everybody; see the note compose box below.
@@ -2539,6 +2544,7 @@ function openPin(p) {
   $('pin-meta').innerHTML = metaHtml(p, p.display_name || p.username);
   renderParking();
   renderDirectionsLabel();
+  renderAudience();
   $('notes-block').hidden = false;
   $('note-body').value = '';
   editingNote = null;
@@ -2571,8 +2577,7 @@ function metaHtml(p, author) {
   const pending = p._pending
     ? '<br><span class="note-warn">' + icon('i-alert', 'icon-sm')
       + 'waiting to sync — lives on this phone only</span>' : '';
-  const priv = p.is_private ? '<br><b>personal</b> &middot; nobody else can see this pin' : '';
-  return `${head}<br>${fmtCoords(p.lat, p.lng)}<span data-elev></span>${acc}${priv}${pending}`;
+  return `${head}<br>${fmtCoords(p.lat, p.lng)}<span data-elev></span>${acc}${pending}`;
 }
 
 function closeSheet() {
@@ -2608,7 +2613,6 @@ async function savePin() {
     // you typed is still there, rather than being quietly thrown away the first
     // time you tried a different chip.
     kind_other: $('pin-kind-other').value.trim(),
-    is_private: $('pin-private').checked,
   };
 
   try {
@@ -2652,6 +2656,16 @@ async function createPin(fields) {
   // and jam the queue. The queue is strictly ordered, so this is enough.
   for (const photo of sheet.pending || []) await commitPhoto(photo);
 
+  // Who sees it, queued behind the pin for the same reason: a grant points at
+  // the pin. This is the one sharing change allowed to wait for signal — the
+  // pin it widens does not exist anywhere but this phone until it lands.
+  const aud = audienceOf(sheet.aud);
+  if (aud.groups.length || aud.users.length) {
+    await push({ op: 'audience-set', pin_id: row.id, ...aud });
+  }
+  await keepGrants(row.id, aud);
+  refreshMarker(shown);
+
   closeSheet();
   toast(sent ? 'pinned' : 'pinned — will sync when you have signal');
   refreshNetworkUI();
@@ -2665,16 +2679,39 @@ async function updatePin(fields) {
   if (!sent) p._pending = true;
 
   await local.putPin(p);
-  const el = markers.get(p.id)?.getElement();
-  if (el) {
-    el.title = pinTitle(p);
-    el.classList.toggle('is-pending', !!p._pending);
-    el.classList.toggle('is-private', !!p.is_private);
-    el.dataset.kind = kindOf(p);
+
+  // Changing who sees a place that already exists is never queued: it either
+  // reached the server or it has not happened, the rule groups follow. A
+  // narrowing that sat on a phone for two days would be two days of people
+  // seeing a place they had been told they could not.
+  let shareSaid = '';
+  const want = audienceOf(sheet.aud);
+  if (!isParking(p) && !sameAudience(want, grants.get(p.id))) {
+    if (!online()) {
+      shareSaid = ' — who sees it needs signal, so that part did not change';
+    } else {
+      try {
+        await writeAudience(p.id, want);
+        await keepGrants(p.id, want);
+      } catch (e) {
+        shareSaid = ` — but who sees it did not change: ${e.message}`;
+      }
+    }
   }
+
+  refreshMarker(p);
   closeSheet();
-  toast(sent ? 'saved' : 'saved on this phone — will sync later');
+  toast((sent ? 'saved' : 'saved on this phone — will sync later') + shareSaid, !!shareSaid);
   refreshNetworkUI();
+}
+
+function refreshMarker(p) {
+  const el = markers.get(p.id)?.getElement();
+  if (!el) return;
+  el.title = pinTitle(p);
+  el.classList.toggle('is-pending', !!p._pending);
+  el.classList.toggle('is-private', isPersonal(p));
+  el.dataset.kind = kindOf(p);
 }
 
 /* Every photo on one pin, out of the bucket and out of the mirror.
@@ -3211,7 +3248,7 @@ async function askOwner() {
     // A personal pin is only sent to county sources you added yourself, and
     // every pin only to sources for its own county (owners.js, sourceServes).
     const result = await lookupOwnership(lat, lng, {
-      sources: parcelSources, personal: !!sheet.pin.is_private, me: me.id,
+      sources: parcelSources, personal: isPersonal(sheet.pin), me: me.id,
     });
     if (sheet?.pin?.id !== id) return;          // sheet moved on while we waited
     await local.set(`own:${id}`, result);
@@ -3582,6 +3619,11 @@ async function runOp(op) {
     res = await db.from('pin_photos').upsert(op.row);
   }
 
+  else if (op.op === 'audience-set') {
+    await writeAudience(op.pin_id, op, { forgiving: true });
+    return;
+  }
+
   else if (op.op === 'photo-delete') {
     // Bucket first: the row is what tells us the object's name, so losing the
     // row while the object lives leaves a file nothing can ever find again.
@@ -3613,6 +3655,7 @@ async function syncQueue() {
 
   if (done) {
     toast(`${done} pin${done > 1 ? 's' : ''} synced`);
+    await loadAudiences();
     await loadPins();
     await loadNotes();
     await loadPhotos();
@@ -3769,9 +3812,6 @@ async function createParking(pin, lat, lng, { quiet = false } = {}) {
     lat, lng,
     accuracy_m: null,
     kind: 'other',
-    // Sent for the sake of the mirror this device keeps; the database forces it
-    // from the parent regardless, which is what actually makes it safe.
-    is_private: !!pin.is_private,
     created_at: new Date().toISOString(),
   };
   const shown = { ...row, username: me.username, display_name: me.display_name };
@@ -3947,7 +3987,7 @@ function listRow(p, here, why = null) {
     <div class="r-text">
       <div class="r-top">
         <div class="r-name">${escapeHtml(pinTitle(p))}${
-          p.is_private ? ' <span class="tag-private">personal</span>' : ''}${
+          isPersonal(p) ? ' <span class="tag-private">only you</span>' : ''}${
           p._pending ? ' <span class="dot-pending"></span>' : ''}</div>
         ${away != null ? `<div class="r-away">${fmtDistance(away)}</div>` : ''}
       </div>
@@ -5240,6 +5280,34 @@ function personGroupsHtml(userId) {
     </label>`).join('');
 }
 
+/* Where you stand with this person, and the one thing you can do about it.
+ * Groups only appear once you are connected — they are the only people a group
+ * can hold. */
+function personBodyHtml(p) {
+  const id = p.id;
+  if (conns.connected.includes(id)) {
+    return `<p class="hint conn-state">${icon('i-check', 'icon-sm')} connected</p>
+      <h3 class="detail-head">in my groups</h3>
+      <p class="hint">Groups are how you say who sees a place. Nobody is ever told
+        which of your groups they are in, or that they are in one.</p>
+      <div id="person-groups">${personGroupsHtml(id)}</div>
+      <button class="linkish" data-conn-end="${id}">disconnect</button>`;
+  }
+  if (conns.incoming.includes(id)) {
+    return `<p class="hint">They asked to connect with you. Saying yes lets either of
+        you share places with the other, and put the other in a group.</p>
+      <div class="me-row"><button class="btn-primary" data-conn-accept="${id}">accept</button>
+        <button class="btn-ghost" data-conn-decline="${id}">no</button></div>`;
+  }
+  if (conns.outgoing.includes(id)) {
+    return `<p class="hint">You asked to connect. It is up to them now.</p>
+      <button class="linkish" data-conn-withdraw="${id}">withdraw</button>`;
+  }
+  return `<p class="hint">You are not connected. Places can only be shared with, and
+      groups can only hold, people who both said yes.</p>
+    ${p.username ? `<button class="btn-primary wide" data-person-ask="${escapeHtml(p.username)}">ask to connect</button>` : ''}`;
+}
+
 async function openPerson(userId) {
   if (!userId) return;
   personShown = userId;
@@ -5261,28 +5329,23 @@ async function openPerson(userId) {
       + 'every pin you drop — change either in settings.</p>';
     return;
   }
-  $('person-body').innerHTML = `<h3 class="detail-head">in my groups</h3>
-    <p class="hint">Groups are how you say who sees a place. Nobody is ever told
-      which of your groups they are in, or that they are in one.</p>
-    <div id="person-groups"></div>`;
-
   if (!online()) {
-    $('person-groups').innerHTML =
-      '<p class="hint">Groups need signal. They decide who can see your places, '
-      + 'so they are never changed on the phone alone and caught up later.</p>';
+    $('person-body').innerHTML =
+      '<p class="hint">Connections and groups need signal. They decide who can see '
+      + 'your places, so they are never changed on the phone alone and caught up later.</p>';
     return;
   }
-  $('person-groups').innerHTML = '<p class="hint">loading…</p>';
+  $('person-body').innerHTML = '<p class="hint">loading…</p>';
   try {
-    await loadGroups();
+    await Promise.all([loadConnections(), loadGroups()]);
     // Two bylines tapped in quick succession: the first request comes back
     // after the second has already redrawn the panel, and without this it
     // paints the first person's memberships under the second person's name.
     if (personShown !== userId) return;
-    $('person-groups').innerHTML = personGroupsHtml(userId);
+    $('person-body').innerHTML = personBodyHtml(p);
   } catch (e) {
     if (personShown !== userId) return;
-    $('person-groups').innerHTML = '';
+    $('person-body').innerHTML = '';
     $('person-error').textContent = e.message;
     $('person-error').hidden = false;
   }
@@ -5315,6 +5378,345 @@ async function togglePersonGroup(box) {
   await loadGroups();
 }
 
+/* ── who sees a pin ──────────────────────────────────────────────────────
+ * A pin is seen by its finder and by whoever the finder granted it to: groups
+ * of theirs, or people they are connected to. No grant means nobody. The
+ * database decides all of it (the pins policy, 20261022120000); this side only
+ * draws the choice and writes the grants.
+ *
+ * `grants` holds the grants on YOUR pins and nothing else — the question it
+ * answers is "who did I share this with", which is the picker's starting point
+ * and the "only you" mark. Who can see somebody else's pin is a different
+ * question, answered by pin_audience_people(), which says people and never
+ * groups.
+ */
+let grants = new Map();      // your pin id -> { groups: [group id], users: [user id] }
+
+async function loadAudiences() {
+  if (online() && me) {
+    const { data, error } = await db.from('pin_audience')
+      .select('pin_id, group_id, user_id, pins!inner(created_by)')
+      .eq('pins.created_by', me.id);
+    if (!error && data) {
+      grants = new Map();
+      for (const r of data) {
+        const g = grants.get(r.pin_id) || { groups: [], users: [] };
+        if (r.group_id) g.groups.push(r.group_id);
+        if (r.user_id) g.users.push(r.user_id);
+        grants.set(r.pin_id, g);
+      }
+      await local.set('grants', [...grants]);
+      // The picker needs your groups and connections to hand, signal or not,
+      // so a pin dropped in a canyon can still be shared the moment it syncs.
+      await Promise.all([loadConnections(), loadGroups().catch(() => {})]);
+      return;
+    }
+  }
+  grants = new Map((await local.get('grants')) || []);
+  conns = (await local.get('conns')) || conns;
+  groups = (await local.get('groups')) || groups;
+}
+
+async function keepGrants(pinId, aud) {
+  grants.set(pinId, { groups: [...aud.groups], users: [...aud.users] });
+  await local.set('grants', [...grants]);
+}
+
+/* "Only you": a pin of yours that nobody has been granted. A parking spot is
+ * whatever its pin is. Never true of somebody else's pin — if you can see it,
+ * it was shared with you. */
+function isPersonal(p) {
+  if (!p || !me) return false;
+  const top = p.parent_id ? pins.find((x) => x.id === p.parent_id) || p : p;
+  if (top.created_by !== me.id) return false;
+  const g = grants.get(top.id);
+  return !g || (!g.groups.length && !g.users.length);
+}
+
+const audienceOf = (aud) => ({
+  groups: [...(aud?.groups || [])].filter((id) => groups.some((g) => g.id === id)),
+  users:  [...(aud?.users  || [])].filter((id) => conns.connected.includes(id)),
+});
+
+function sameAudience(a, b) {
+  const eq = (x, y) => x.length === y.length && x.every((v) => y.includes(v));
+  return eq(a.groups, b?.groups || []) && eq(a.users, b?.users || []);
+}
+
+/* The everybody it comes to, deduped. Groups overlap — "family + climbers" is
+ * not two things, it is however many people that is — so the count is people. */
+function audiencePeople(aud) {
+  const s = new Set(aud.users);
+  for (const gid of aud.groups) {
+    (groups.find((g) => g.id === gid)?.members || []).forEach((id) => s.add(id));
+  }
+  s.delete(me.id);
+  return [...s];
+}
+
+/* Make the server's grants on one pin exactly these. Deletes first, so a
+ * failure half-way leaves the pin narrower than asked, never wider.
+ *
+ * `forgiving` is for the queue: a grant the database refuses (you stopped
+ * being connected to that person while the phone was offline, or deleted the
+ * group) is dropped rather than retried forever, which would jam everything
+ * queued behind it. Refused means nobody got it — failing closed. */
+async function writeAudience(pinId, { groups: gs = [], users: us = [] }, { forgiving = false } = {}) {
+  const { data: have, error } = await db.from('pin_audience')
+    .select('group_id, user_id').eq('pin_id', pinId);
+  if (error) throw new Error(error.message);
+
+  const goneG = have.filter((r) => r.group_id && !gs.includes(r.group_id)).map((r) => r.group_id);
+  const goneU = have.filter((r) => r.user_id && !us.includes(r.user_id)).map((r) => r.user_id);
+  if (goneG.length) {
+    const r = await db.from('pin_audience').delete().eq('pin_id', pinId).in('group_id', goneG);
+    if (r.error) throw new Error(r.error.message);
+  }
+  if (goneU.length) {
+    const r = await db.from('pin_audience').delete().eq('pin_id', pinId).in('user_id', goneU);
+    if (r.error) throw new Error(r.error.message);
+  }
+
+  const add = [
+    ...gs.filter((id) => !have.some((r) => r.group_id === id)).map((id) => ({ pin_id: pinId, group_id: id })),
+    ...us.filter((id) => !have.some((r) => r.user_id === id)).map((id) => ({ pin_id: pinId, user_id: id })),
+  ];
+  for (const row of add) {
+    const r = await db.from('pin_audience').insert(row);
+    if (r.error && !(forgiving && r.error.code === '42501')) throw new Error(r.error.message);
+  }
+}
+
+function facesHtml(ids, max = 5) {
+  const shown = ids.slice(0, max).map((id) => avatarHtml(id, personName(personById(id)), 'avatar-sm')).join('');
+  return shown + (ids.length > max ? `<span class="aud-more">+${ids.length - max}</span>` : '');
+}
+
+function audienceCount(n) {
+  return n === 1 ? '1 person' : `${n} people`;
+}
+
+function renderAudience() {
+  if (!sheet) return;
+  const p = sheet.pin;
+  // A parking spot is seen exactly when its pin is; it has no say of its own.
+  $('pin-audience').hidden = isParking(p);
+  if (isParking(p)) return;
+  const mine = sheet.mode === 'new' || p.created_by === me.id;
+  $('aud-body').hidden = true;
+  $('aud-head').setAttribute('aria-expanded', 'false');
+  if (mine) renderAudiencePicker();
+  else renderAudienceList();
+}
+
+function renderAudiencePicker() {
+  const ids = audiencePeople(audienceOf(sheet.aud));
+  $('aud-icon').setAttribute('href', ids.length ? '#i-user' : '#i-eye-off');
+  $('aud-text').textContent = ids.length ? `you + ${audienceCount(ids.length)}` : 'only you';
+  $('aud-faces').innerHTML = facesHtml(ids);
+  paintAvatars($('aud-head'));
+  if ($('aud-body').hidden) return;
+
+  const locked = sheet.mode !== 'new' && !online();
+  const sw = (attr, id, label, on) => `<label class="switch">
+      <span>${label}</span>
+      <input type="checkbox" ${attr}="${id}"${on ? ' checked' : ''}${locked ? ' disabled' : ''}>
+      <span class="switch-track"></span>
+    </label>`;
+
+  const gs = groups.map((g) => sw('data-aud-group', g.id,
+    `${escapeHtml(g.name)} <small>${audienceCount(g.members.length)}</small>`, sheet.aud.groups.has(g.id))).join('');
+  const us = conns.connected
+    .map((id) => ({ id, nm: personName(personById(id)) }))
+    .sort((a, b) => a.nm.localeCompare(b.nm))
+    .map(({ id, nm }) => sw('data-aud-user', id, escapeHtml(nm), sheet.aud.users.has(id))).join('');
+
+  const who = ids.map((id) => `<li>${avatarHtml(id, personName(personById(id)), 'avatar-sm')}`
+    + `<span>${escapeHtml(personName(personById(id)))}</span></li>`).join('');
+
+  $('aud-body').innerHTML = (!gs && !us)
+    ? `<p class="hint">Nobody to share with yet. Places are shared with people you
+        are connected to — find them in people &amp; groups.</p>
+       <button class="btn-ghost wide" data-aud-people>people &amp; groups…</button>`
+    : `${locked ? '<p class="hint hint-warn">Who sees a place only changes with signal.</p>' : ''}
+       ${gs ? `<h4 class="aud-sub">groups</h4>${gs}` : ''}
+       ${us ? `<h4 class="aud-sub">people</h4>${us}` : ''}
+       <h4 class="aud-sub">${ids.length ? `that is ${audienceCount(ids.length)}, besides you` : 'nobody but you'}</h4>
+       ${who ? `<ul class="aud-people">${who}</ul>` : ''}
+       <p class="hint">Everybody who can see this place sees this same list — never
+         which group anybody came from. Notes and photos people leave on it reach
+         whoever it reaches, so widen it on purpose.</p>`;
+  paintAvatars($('aud-body'));
+}
+
+async function renderAudienceList() {
+  const id = sheet.pin.id;
+  $('aud-icon').setAttribute('href', '#i-user');
+  $('aud-text').textContent = 'who can see this';
+  $('aud-faces').innerHTML = '';
+  let list = null;
+  if (online()) {
+    const { data, error } = await db.rpc('pin_audience_people', { p_id: id });
+    if (!error && data) { list = data; await local.set(`aud:${id}`, data); }
+  }
+  if (!list) list = await local.get(`aud:${id}`);
+  if (sheet?.pin?.id !== id) return;          // sheet moved on while we waited
+  if (!list) {
+    $('aud-text').textContent = 'who can see this — needs signal';
+    $('aud-body').innerHTML = '';
+    return;
+  }
+  // Faces for people this phone had not met yet — co-visible on this pin is
+  // exactly who the server lets you draw.
+  for (const x of list) if (!personById(x.id)) people.push(x);
+  const others = list.filter((x) => x.id !== me.id);
+  $('aud-text').textContent = `you + ${audienceCount(others.length)}`;
+  $('aud-faces').innerHTML = facesHtml(others.map((x) => x.id));
+  $('aud-body').innerHTML = `<ul class="aud-people">${others.map((x) =>
+    `<li>${avatarHtml(x.id, personName(x), 'avatar-sm')}<span>${escapeHtml(personName(x))}`
+    + `${x.id === sheet.pin.created_by ? ' <small>found it</small>' : ''}</span></li>`).join('')}</ul>
+    <p class="hint">Only the person who found it decides who sees it. If you want
+      to show somebody else, ask them.</p>`;
+  paintAvatars($('pin-audience'));
+}
+
+/* ── connections ─────────────────────────────────────────────────────────
+ * A mutual, deliberate friendship: asked for by exact username, accepted by
+ * the other person, ended by either. It is the gate in front of everything
+ * else — you can only share a place with, or group, somebody you are
+ * connected to. Like groups, nothing here is queued: it reached the server or
+ * it did not happen.
+ */
+let conns = { connected: [], incoming: [], outgoing: [] };
+
+async function loadConnections() {
+  if (online() && me) {
+    const [c, r] = await Promise.all([
+      db.from('connections').select('a, b'),
+      db.from('connection_requests').select('from_id, to_id, created_at').order('created_at'),
+    ]);
+    if (!c.error && !r.error) {
+      conns = {
+        connected: c.data.map((x) => (x.a === me.id ? x.b : x.a)),
+        incoming: r.data.filter((x) => x.to_id === me.id).map((x) => x.from_id),
+        outgoing: r.data.filter((x) => x.from_id === me.id).map((x) => x.to_id),
+      };
+      await local.set('conns', conns);
+    }
+  }
+  const n = conns.incoming.length;
+  $('groups-open').textContent = n ? `people & groups · ${n} asking` : 'people & groups…';
+}
+
+const connSay = (msg, bad = true) => {
+  const el = $('conn-said');
+  el.textContent = msg;
+  el.hidden = !msg;
+  el.classList.toggle('is-good', !bad);
+};
+
+function connRowHtml(id, kind) {
+  const p = personById(id);
+  const nm = personName(p);
+  const acts = {
+    incoming: `<button class="btn-primary" data-conn-accept="${id}">accept</button>
+               <button class="linkish" data-conn-decline="${id}">no</button>`,
+    outgoing: `<small>asked</small><button class="linkish" data-conn-withdraw="${id}">withdraw</button>`,
+    connected: `<button class="linkish" data-conn-end="${id}">disconnect</button>`,
+  }[kind];
+  return `<li class="group-member conn-${kind}">
+    ${avatarHtml(id, nm)}
+    <span class="gm-who"><b>${escapeHtml(nm)}</b>
+      <small>@${escapeHtml(p?.username || '—')}</small></span>
+    <span class="conn-acts">${acts}</span>
+  </li>`;
+}
+
+function renderConnections() {
+  const sec = (title, kind) => (conns[kind].length
+    ? `<p class="aud-sub">${title}</p><ul class="group-members">${
+        conns[kind].map((id) => connRowHtml(id, kind)).join('')}</ul>` : '');
+  $('conn-list').innerHTML = (sec('asking to connect with you', 'incoming')
+    + sec('connected', 'connected')
+    + sec('waiting on them', 'outgoing'))
+    || '<p class="hint">Nobody yet. Ask somebody by their exact username — there is no other way to find a person here, on purpose.</p>';
+  paintAvatars($('conn-list'));
+}
+
+async function afterConnWrite(said) {
+  await loadConnections();
+  await loadPeople();
+  await loadGroups().catch(() => {});
+  await loadAudiences();
+  renderConnections();
+  if (!$('groups').hidden) renderGroups();
+  if (said) connSay(said, false);
+}
+
+const CONN_SAID = {
+  requested: (h) => `asked @${h} — it shows up for them next time they open ATLAS`,
+  connected: (h) => `connected with @${h} — they had asked you too`,
+  already:   (h) => `you are already connected with @${h}`,
+};
+
+async function askConnection(raw) {
+  const want = String(raw || '').trim().replace(/^@/, '').toLowerCase();
+  if (!want) { connSay('type a username'); return null; }
+  if (!online()) { connSay('this one needs signal'); return null; }
+  const { data, error } = await db.rpc('request_connection', { handle: want });
+  if (error) { connSay(error.message); return null; }
+  // The same answer for "no such person", "that name was let go" and "not on
+  // ATLAS": a username finds somebody here, or it finds nobody.
+  if (data === 'nobody') { connSay(`nobody here is @${want}`); return null; }
+  await afterConnWrite(CONN_SAID[data]?.(want) || 'done');
+  return data;
+}
+
+async function acceptConnection(id) {
+  const { error } = await db.rpc('accept_connection', { requester: id });
+  if (error) { connSay(error.message); return; }
+  await afterConnWrite(`connected with ${personName(personById(id))}`);
+}
+
+async function dropRequest(fromId, toId, said) {
+  const { error } = await db.from('connection_requests').delete()
+    .eq('from_id', fromId).eq('to_id', toId);
+  if (error) { connSay(error.message); return; }
+  await afterConnWrite(said);
+}
+
+async function endConnection(id) {
+  const nm = personName(personById(id));
+  if (!confirm(`Disconnect from ${nm}? They come out of your groups and you out of`
+    + ' theirs, and every place either of you shared with the other stops being'
+    + ' shared. Nobody is told.')) return false;
+  const [a, b] = [me.id, id].sort();
+  const { error } = await db.from('connections').delete().eq('a', a).eq('b', b);
+  if (error) { connSay(error.message); return false; }
+  await afterConnWrite(`disconnected from ${nm}`);
+  // Their places just stopped being yours to see; the map should say so now,
+  // not at the next sign-in.
+  await loadPins();
+  await loadNotes();
+  await loadPhotos();
+  return true;
+}
+
+async function onConnClick(e) {
+  const t = e.target.closest('[data-conn-accept],[data-conn-decline],[data-conn-withdraw],[data-conn-end]');
+  if (!t) return;
+  if (!online()) { connSay('this one needs signal'); return; }
+  t.disabled = true;
+  try {
+    if (t.dataset.connAccept) await acceptConnection(t.dataset.connAccept);
+    else if (t.dataset.connDecline) await dropRequest(t.dataset.connDecline, me.id, 'said no — they are not told');
+    else if (t.dataset.connWithdraw) await dropRequest(me.id, t.dataset.connWithdraw, 'withdrawn');
+    else if (t.dataset.connEnd) await endConnection(t.dataset.connEnd);
+  } finally {
+    t.disabled = false;
+  }
+}
+
 /* ── groups ──────────────────────────────────────────────────────────────
  * A group is a list of people you keep, so that saying who may see a place is
  * one tap instead of picking names one at a time.
@@ -5344,6 +5746,9 @@ async function loadGroups() {
     created_at: g.created_at,
     members: (g.group_members || []).map((m) => m.user_id),
   }));
+  // Mirrored only so the pin picker can offer them with no signal; the groups
+  // screen itself never works from this copy.
+  await local.set('groups', groups);
 }
 
 const personById = (id) => people.find((p) => p.id === id) || null;
@@ -5376,9 +5781,9 @@ function groupHtml(g) {
   // group's life — so it says what to do next rather than reading as a failure.
   const body = members
     ? `<ul class="group-members">${members}</ul>`
-    : `<p class="hint">Nobody in this one yet. Two ways in: type somebody's
-         username below, or tap their name on a pin they dropped and use the
-         switches there.</p>`;
+    : `<p class="hint">Nobody in this one yet. Type the username of somebody
+         you are connected to below, or tap their name anywhere in the app and
+         use the switches there.</p>`;
 
   return `<section class="group" data-group="${g.id}">
     <header class="group-head">
@@ -5432,14 +5837,18 @@ async function openGroups() {
   $('groups-me-handle').textContent = me?.username ? `@${me.username}` : '—';
   $('groups-me-unset').hidden = !me?.must_choose_username;
   if (!online()) {
+    $('conn-list').innerHTML = '';
     $('groups-list').innerHTML =
-      '<p class="hint">Groups need signal. They decide who can see your places, '
-      + 'so they are never changed on the phone alone and caught up later.</p>';
+      '<p class="hint">People and groups need signal. They decide who can see your '
+      + 'places, so they are never changed on the phone alone and caught up later.</p>';
     return;
   }
   $('groups-list').innerHTML = '<p class="hint">loading…</p>';
+  connSay('');
   try {
     await loadPeople();
+    await loadConnections();
+    renderConnections();
     await loadGroups();
     renderGroups();
   } catch (e) {
@@ -5529,6 +5938,12 @@ async function addToGroup(id, handle, sect) {
     // handing one on.
     if (!who) { said.textContent = `nobody here is @${want}`; said.hidden = false; return; }
     if (who.id === me.id) { said.textContent = 'that is you — you always see your own pins'; said.hidden = false; return; }
+
+    if (!conns.connected.includes(who.id)) {
+      said.textContent = `you are not connected to @${who.username} — ask them under connections first`;
+      said.hidden = false;
+      return;
+    }
 
     const g = groups.find((x) => x.id === id);
     if (g?.members.includes(who.id)) {
@@ -5694,8 +6109,57 @@ document.addEventListener('click', (e) => {
 $('person').addEventListener('change', (e) => {
   if (e.target.matches('#person-groups input[type=checkbox]')) togglePersonGroup(e.target);
 });
-$('person').addEventListener('click', (e) => {
-  if (e.target.closest('#person-to-groups')) { closePanel('person'); openGroups(); }
+$('person').addEventListener('click', async (e) => {
+  if (e.target.closest('#person-to-groups')) { closePanel('person'); openGroups(); return; }
+  const ask = e.target.closest('[data-person-ask]');
+  const conn = e.target.closest('[data-conn-accept],[data-conn-decline],[data-conn-withdraw],[data-conn-end]');
+  if (!ask && !conn) return;
+  const who = personShown;
+  if (ask) {
+    if (!online()) return;
+    ask.disabled = true;
+    await askConnection(ask.dataset.personAsk);
+  } else {
+    await onConnClick(e);
+  }
+  // Whatever just changed is shown where it was done, not only on the people screen.
+  const err = $('conn-said');
+  if (err.textContent && !err.classList.contains('is-good')) {
+    $('person-error').textContent = err.textContent;
+    $('person-error').hidden = false;
+  }
+  if (personShown === who && !$('person').hidden) openPerson(who);
+});
+
+$('conn-list').addEventListener('click', onConnClick);
+$('conn-go').addEventListener('click', async () => {
+  if ((await askConnection($('conn-user').value)) !== null) $('conn-user').value = '';
+});
+$('conn-user').addEventListener('keydown', async (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  if ((await askConnection(e.target.value)) !== null) e.target.value = '';
+});
+
+/* The pin sheet's "who sees this": the head opens it; a switch changes the
+ * draft, which is written on save like everything else on the sheet. */
+$('aud-head').addEventListener('click', () => {
+  const body = $('aud-body');
+  body.hidden = !body.hidden;
+  $('aud-head').setAttribute('aria-expanded', String(!body.hidden));
+  if (sheet && !body.hidden && sheet.aud) renderAudiencePicker();
+});
+$('aud-body').addEventListener('change', (e) => {
+  if (!sheet?.aud) return;
+  const box = e.target;
+  const set = box.dataset.audGroup ? sheet.aud.groups : box.dataset.audUser ? sheet.aud.users : null;
+  if (!set) return;
+  const id = box.dataset.audGroup || box.dataset.audUser;
+  if (box.checked) set.add(id); else set.delete(id);
+  renderAudiencePicker();
+});
+$('aud-body').addEventListener('click', (e) => {
+  if (e.target.closest('[data-aud-people]')) openGroups();
 });
 
 /* A username is a thing you say out loud or send to somebody, so both places it

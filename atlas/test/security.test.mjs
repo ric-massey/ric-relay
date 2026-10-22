@@ -91,8 +91,16 @@ test('the DEFINER functions that take an argument justify it', () => {
   //   request_access(...)    — writes the caller's own request row, nobody else's.
   //   admin_set_access(target, ...) — the one that points at somebody else, and
   //     it refuses anybody who is not in site_admins before it reads a thing.
+  //   request_connection(handle) — a username, the one thing a stranger may
+  //     bring; it writes only a request FROM the caller.
+  //   accept_connection(requester) — an id, but the request row addressed to
+  //     the caller is the authorization; with no such row it does nothing.
+  //   pin_audience_people(p_id) — authorizes first, with the visibility rule
+  //     written out (not can_see_pin, which sees everything under DEFINER),
+  //     and returns people, never groups.
   assert.deepEqual(argued.map(([n]) => n).sort(),
-    ['admin_set_access', 'has_page_access', 'lookup_username', 'request_access', 'set_username'],
+    ['accept_connection', 'admin_set_access', 'has_page_access', 'lookup_username',
+     'pin_audience_people', 'request_access', 'request_connection', 'set_username'],
     'a SECURITY DEFINER function now takes an argument that nobody has argued for — see docs/audiences.md');
 });
 
@@ -228,4 +236,58 @@ test('outside scripts are pinned with an integrity hash (A3b-6)', () => {
 test('the service worker deletes only its own old caches (C4-1)', () => {
   const sw = atlasFile('sw.js');
   assert.match(sw, /k\.startsWith\('atlas-shell-'\)/);
+});
+
+/* ── audiences (20261022120000_connections_and_audiences.sql) ──────────────
+ * can_see_pin() is now "the pins policy returns this row". That is only true
+ * when it runs as the caller: inside a SECURITY DEFINER function RLS is off,
+ * and it would say yes to every pin in the database. The first draft of
+ * docs/audiences.md gated pin_audience_people() on it exactly that way. */
+test('no SECURITY DEFINER function gates on can_see_pin()', () => {
+  for (const [name, fn] of defined) {
+    if (!fn.definer) continue;
+    assert.equal(/can_see_pin\s*\(/.test(fn.body), false,
+      `public.${name}() is SECURITY DEFINER and asks can_see_pin() — in there RLS is off, so it is true for every pin`);
+  }
+});
+
+test('who sees a pin is decided by grants, and is_private is gone', () => {
+  const pinPolicies = policies.get('public.pins');
+  for (const [name, body] of pinPolicies) {
+    assert.equal(/is_private/.test(body), false, `pins policy "${name}" still reads is_private`);
+  }
+  const read = pinPolicies.get('who can see a pin');
+  assert.ok(read, 'the pins SELECT policy is missing');
+  assert.match(read, /for select/);
+  assert.match(read, /created_by = auth\.uid\(\)/, 'the finder no longer sees their own pin');
+  assert.match(read, /coalesce\(parent_id, id\)/, 'a parking spot no longer follows its pin');
+  assert.match(read, /\(select public\.pins_shared_with_me\(\)\)/,
+    'the grant check is not an InitPlan any more — it will run once per pin');
+  assert.match(sql, /alter table public\.pins drop column is_private;/,
+    'is_private is still a column — an old app writing it would succeed silently');
+  assert.equal(/\bis_private\b/.test(defined.get('people_i_can_draw').body), false);
+});
+
+test('nobody writes a connection or a request by hand', () => {
+  // A request goes in by username through request_connection(), never by an
+  // id somebody saw on a pin; a connection only through accept_connection().
+  for (const t of ['connections', 'connection_requests']) {
+    for (const [name, body] of policies.get(`public.${t}`) || []) {
+      assert.equal(/for (insert|update|all)\b/.test(body) && !/\bas restrictive\b/.test(body), false,
+        `"${name}" lets the client write public.${t} directly`);
+    }
+    assert.equal(new RegExp(`grant[^;]*\\b(insert|update)\\b[^;]*on[^;]*public\\.${t}\\b[^;]*to authenticated`).test(sql), false,
+      `authenticated was granted a write on public.${t}`);
+  }
+});
+
+test('a grant needs your own pin and a connection or a group of yours', () => {
+  const ins = policies.get('public.pin_audience').get('you share your own pins');
+  assert.ok(ins, 'the pin_audience insert policy is missing');
+  assert.match(ins, /p\.created_by = auth\.uid\(\)/, 'anybody who can see a pin could widen it');
+  assert.match(ins, /p\.parent_id is null/, 'a parking spot could carry grants of its own');
+  assert.match(ins, /g\.owner = auth\.uid\(\)/, 'somebody else\'s group could be granted');
+  assert.match(ins, /public\.can_add_to_group\(user_id\)/, 'a stranger could be granted a pin');
+  assert.match(defined.get('can_add_to_group').body, /public\.connections/,
+    'group membership is no longer gated on a connection');
 });

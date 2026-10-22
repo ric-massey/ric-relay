@@ -187,10 +187,18 @@ test('site accounts: request, approve, per-page access', { skip: !up && 'no loca
     assert.deepEqual(bob.requested, ['atlas']);
   });
 
-  await t.test('adding ATLAS opens the map', async () => {
+  await t.test('adding ATLAS opens the map — and only what somebody shares', async () => {
     await rpc('admin_set_access', ric, { target: strangerId, new_status: 'approved', grant_pages: ['hermiscus', 'atlas'] });
+    assert.deepEqual((await rows('pins', stranger)).json, [], 'nothing is anybody\'s by default');
+    assert.ok((await rpc('set_username', stranger, { want: `bob_${run}`.slice(0, 20) })).ok);
+    assert.ok((await rpc('request_connection', crew, { handle: `bob_${run}`.slice(0, 20) })).ok);
+    assert.ok((await rpc('accept_connection', stranger, { requester: crewId })).ok);
+    const shared = await call('/rest/v1/pin_audience', {
+      method: 'POST', token: crew, body: { pin_id: pinId, user_id: strangerId },
+    });
+    assert.ok(shared.ok, JSON.stringify(shared.json));
     const pins = (await rows('pins', stranger)).json;
-    assert.ok(pins.some((p) => p.id === pinId), 'sees the crew pin');
+    assert.ok(pins.some((p) => p.id === pinId), 'sees the pin shared with them');
   });
 
   await t.test('denying takes everything back and the request cannot be reopened', async () => {
@@ -213,7 +221,8 @@ test('site accounts: request, approve, per-page access', { skip: !up && 'no loca
 
   await t.test('an admin opens every page without ticking it', async () => {
     assert.equal((await rpc('has_page_access', ric, { page: 'hermiscus' })).json, true);
-    assert.ok((await rows('pins', ric)).json.some((p) => p.id === pinId));
+    assert.equal((await rows('pins', ric)).json.some((p) => p.id === pinId), false,
+      'running the site is not reading everybody\'s pins');
   });
 
   // ── the 2026-10-17 bug sweep (atlas/supabase/migrations/20261017150000) ──
@@ -232,10 +241,17 @@ test('site accounts: request, approve, per-page access', { skip: !up && 'no loca
     const g = await call('/rest/v1/groups', {
       method: 'POST', token: loner, prefer: 'return=representation', body: { owner: lonerId, name: 'x' },
     });
+    const early = await call('/rest/v1/group_members', {
+      method: 'POST', token: loner, body: { group_id: g.json[0].id, user_id: mateId },
+    });
+    assert.equal(early.ok, false, 'not before you are connected');
+    assert.ok((await rpc('set_username', mate, { want: `mate_${run}`.slice(0, 20) })).ok);
+    assert.equal((await rpc('request_connection', loner, { handle: `mate_${run}`.slice(0, 20) })).json, 'requested');
+    assert.ok((await rpc('accept_connection', mate, { requester: lonerId })).ok);
     const added = await call('/rest/v1/group_members', {
       method: 'POST', token: loner, body: { group_id: g.json[0].id, user_id: mateId },
     });
-    assert.ok(added.ok, 'grouping still works');
+    assert.ok(added.ok, 'grouping a connection works');
     const face = await rows('profiles', loner, `select=id,display_name,avatar_path&id=eq.${mateId}`);
     assert.equal(face.json.length, 1, 'name and face are readable');
     const prefs = await rows('profiles', loner, `select=prefs&id=eq.${mateId}`);
@@ -244,15 +260,17 @@ test('site accounts: request, approve, per-page access', { skip: !up && 'no loca
     assert.equal(own.json[0].prefs.home.name, 'secret town', 'your own come through my_profile()');
   });
 
-  await t.test('A3a-3: being in a group does not reveal who filed you', async () => {
+  await t.test('A3a-3: being in a group reveals nobody you did not already know', async () => {
+    // A group can only hold somebody connected to its owner, so the person who
+    // filed you is somebody you said yes to. Nobody else is drawn because of it.
     const drawn = (await rpc('people_i_can_draw', mate)).json;
-    assert.equal(drawn.includes(lonerId), false);
+    assert.equal(drawn.includes(crewId), false);
   });
 
   await t.test('A3a-2: the avatars bucket is not a roster', async () => {
     assert.ok(await upload(loner, `${lonerId}/a.jpg`, 'avatars'), 'own avatar uploads');
     const list = await call('/storage/v1/object/list/avatars', {
-      method: 'POST', token: mate, body: { prefix: '', limit: 100 },
+      method: 'POST', token: crew, body: { prefix: '', limit: 100 },
     });
     assert.equal((list.json || []).some((o) => o.name === lonerId), false,
       'a stranger\'s folder is not listed');
@@ -272,7 +290,7 @@ test('site accounts: request, approve, per-page access', { skip: !up && 'no loca
     })).json[0].id;
     const a = await mk({ name: 'a' });
     await mk({ name: 'park', parent_id: a });
-    const c = await mk({ name: 'c', is_private: true });
+    const c = await mk({ name: 'c' });
     const moved = await call(`/rest/v1/pins?id=eq.${a}`, {
       method: 'PATCH', token: crew, body: { parent_id: c },
     });
@@ -314,5 +332,161 @@ test('site accounts: request, approve, per-page access', { skip: !up && 'no loca
     assert.ok(del.ok, JSON.stringify(del.json));
     const claim = await rpc('set_username', mate, { want: name });
     assert.equal(claim.ok, false);
+  });
+  // ── connections and pin audiences (20261022120000_connections_and_audiences) ──
+  const ids = {};
+  const tok = {};
+  const handle = (who) => `${who}_${run}`.slice(0, 20);
+  for (const who of ['al', 'bo', 'cy', 'di']) {
+    ids[who] = await makeUser(who);
+    await rpc('admin_set_access', ric, { target: ids[who], new_status: 'approved', grant_pages: ['atlas'] });
+    tok[who] = await signIn(who);
+    await rpc('set_username', tok[who], { want: handle(who) });
+  }
+  const connect = async (from, to) => {
+    await rpc('request_connection', tok[from], { handle: handle(to) });
+    return rpc('accept_connection', tok[to], { requester: ids[from] });
+  };
+  const seen = async (who, id) => (await rows('pins', tok[who], `select=id&id=eq.${id}`)).json.length === 1;
+  const drop = async (who, body = {}) => {
+    const r = await call('/rest/v1/pins', {
+      method: 'POST', token: tok[who], prefer: 'return=representation',
+      body: { created_by: ids[who], name: 'spot', lat: 1, lng: 1, ...body },
+    });
+    assert.ok(r.ok, JSON.stringify(r.json));
+    return r.json[0].id;
+  };
+  const grant = (who, body) => call('/rest/v1/pin_audience', { method: 'POST', token: tok[who], body });
+
+  await t.test('asking is by exact username, and only for people on ATLAS', async () => {
+    assert.equal((await rpc('request_connection', tok.al, { handle: 'nobody_here_at_all' })).json, 'nobody');
+    const strangerName = (await rows('profiles', tok.al, `select=username&id=eq.${strangerId}`)).json;
+    assert.deepEqual(strangerName, [], 'a denied account is not drawable');
+    assert.equal((await rpc('request_connection', tok.al, { handle: `bob_${run}`.slice(0, 20) })).json, 'nobody',
+      'an account without ATLAS is nobody, the same answer as a name nobody wears');
+    assert.equal((await rpc('request_connection', tok.al, { handle: handle('al') })).ok, false, 'not yourself');
+    assert.equal((await rpc('request_connection', tok.al, { handle: handle('al').toUpperCase() + ' ' })).ok, false, 'not yourself, however it is typed');
+    const asked = await rpc('request_connection', tok.al, { handle: ` ${handle('bo').toUpperCase()}` });
+    assert.equal(asked.json, 'requested', JSON.stringify(asked.json));
+    assert.equal((await rpc('request_connection', tok.al, { handle: handle('bo') })).json, 'requested', 'asking twice is one ask');
+    const theirs = (await rows('connection_requests', tok.bo)).json;
+    assert.equal(theirs.length, 1);
+    assert.equal(theirs[0].from_id, ids.al);
+    assert.deepEqual((await rows('connection_requests', tok.cy)).json, [], 'nobody else sees it');
+    assert.ok((await rpc('people_i_can_draw', tok.bo)).json.includes(ids.al), 'the asker has a face');
+  });
+
+  await t.test('nothing about a connection is written by hand', async () => {
+    const lo = ids.cy < ids.di ? ids.cy : ids.di;
+    const hi = ids.cy < ids.di ? ids.di : ids.cy;
+    const direct = await call('/rest/v1/connections', { method: 'POST', token: tok.cy, body: { a: lo, b: hi } });
+    assert.equal(direct.ok, false, 'no connecting yourself to somebody');
+    const req = await call('/rest/v1/connection_requests', {
+      method: 'POST', token: tok.cy, body: { from_id: ids.cy, to_id: ids.di },
+    });
+    assert.equal(req.ok, false, 'a request goes in by username only, never by id');
+    assert.equal((await rpc('accept_connection', tok.cy, { requester: ids.al })).ok, false,
+      'you cannot accept a request addressed to somebody else');
+  });
+
+  await t.test('saying yes connects you both; asking back is a yes too', async () => {
+    assert.ok((await rpc('accept_connection', tok.bo, { requester: ids.al })).ok);
+    assert.equal((await rows('connections', tok.al)).json.length, 1);
+    assert.equal((await rows('connections', tok.bo)).json.length, 1);
+    assert.deepEqual((await rows('connection_requests', tok.bo)).json, [], 'the request is gone');
+    assert.equal((await rpc('request_connection', tok.al, { handle: handle('bo') })).json, 'already');
+    await rpc('request_connection', tok.cy, { handle: handle('al') });
+    assert.equal((await rpc('request_connection', tok.al, { handle: handle('cy') })).json, 'connected');
+  });
+
+  await t.test('a new pin is nobody\'s but yours', async () => {
+    const p = await drop('al');
+    assert.equal(await seen('al', p), true);
+    assert.equal(await seen('bo', p), false, 'not even a connection');
+    assert.equal((await rpc('can_see_pin', tok.bo, { p_id: p })).json, false);
+  });
+
+  await t.test('sharing with a person, and only with a connection', async () => {
+    const p = await drop('al');
+    assert.equal((await grant('al', { pin_id: p, user_id: ids.di })).ok, false, 'di is not a connection');
+    assert.ok((await grant('al', { pin_id: p, user_id: ids.bo })).ok);
+    assert.equal(await seen('bo', p), true);
+    assert.equal(await seen('di', p), false);
+    const note = await call('/rest/v1/pin_notes', {
+      method: 'POST', token: tok.bo, body: { pin_id: p, created_by: ids.bo, body: 'went Tuesday' },
+    });
+    assert.ok(note.ok, 'notes are everybody\'s who can see it');
+    assert.equal((await grant('bo', { pin_id: p, user_id: ids.al })).ok, false,
+      'seeing a pin is not sharing it — only the finder widens it');
+    const people = (await rpc('pin_audience_people', tok.bo, { p_id: p })).json.map((x) => x.id).sort();
+    assert.deepEqual(people, [ids.al, ids.bo].sort(), 'the finder and the audience');
+    assert.deepEqual((await rpc('pin_audience_people', tok.di, { p_id: p })).json, [], 'an outsider learns nothing');
+    const un = await call(`/rest/v1/pin_audience?pin_id=eq.${p}&user_id=eq.${ids.bo}`, { method: 'DELETE', token: tok.al });
+    assert.ok(un.ok);
+    assert.equal(await seen('bo', p), false, 'unsharing is immediate');
+  });
+
+  await t.test('sharing with a group: members see it, and never the group', async () => {
+    const g = await call('/rest/v1/groups', {
+      method: 'POST', token: tok.al, prefer: 'return=representation', body: { owner: ids.al, name: 'climbers' },
+    });
+    const gid = g.json[0].id;
+    for (const who of ['bo', 'cy']) {
+      const r = await call('/rest/v1/group_members', { method: 'POST', token: tok.al, body: { group_id: gid, user_id: ids[who] } });
+      assert.ok(r.ok, JSON.stringify(r.json));
+    }
+    const p = await drop('al');
+    const other = await call('/rest/v1/groups', {
+      method: 'POST', token: tok.bo, prefer: 'return=representation', body: { owner: ids.bo, name: 'mine' },
+    });
+    assert.equal((await grant('al', { pin_id: p, group_id: other.json[0].id })).ok, false, 'not somebody else\'s group');
+    assert.ok((await grant('al', { pin_id: p, group_id: gid })).ok);
+    assert.equal(await seen('bo', p), true);
+    assert.equal(await seen('cy', p), true);
+    assert.equal(await seen('di', p), false);
+    assert.deepEqual((await rows('groups', tok.bo, `select=id&id=eq.${gid}`)).json, [], 'the group stays its owner\'s');
+    assert.ok((await rpc('people_i_can_draw', tok.bo)).json.includes(ids.cy), 'co-visible people have faces');
+    const people = (await rpc('pin_audience_people', tok.cy, { p_id: p })).json;
+    assert.deepEqual(people.map((x) => x.id).sort(), [ids.al, ids.bo, ids.cy].sort());
+    assert.deepEqual(Object.keys(people[0]).sort(), ['avatar_path', 'display_name', 'id', 'username']);
+    const del = await call(`/rest/v1/groups?id=eq.${gid}`, { method: 'DELETE', token: tok.al });
+    assert.ok(del.ok);
+    assert.equal(await seen('bo', p), false, 'deleting the group narrows every pin it was on');
+  });
+
+  await t.test('a parking spot is seen exactly when its pin is', async () => {
+    const p = await drop('al');
+    const park = await drop('al', { parent_id: p, name: 'park' });
+    assert.equal((await grant('al', { pin_id: park, user_id: ids.bo })).ok, false, 'a parking spot carries no grants');
+    assert.equal(await seen('bo', park), false);
+    assert.ok((await grant('al', { pin_id: p, user_id: ids.bo })).ok);
+    assert.equal(await seen('bo', park), true);
+  });
+
+  await t.test('ending a connection takes back everything it allowed', async () => {
+    const g = await call('/rest/v1/groups', {
+      method: 'POST', token: tok.al, prefer: 'return=representation', body: { owner: ids.al, name: 'later' },
+    });
+    await call('/rest/v1/group_members', { method: 'POST', token: tok.al, body: { group_id: g.json[0].id, user_id: ids.cy } });
+    const p1 = await drop('al');
+    const p2 = await drop('al');
+    await grant('al', { pin_id: p1, user_id: ids.cy });
+    await grant('al', { pin_id: p2, group_id: g.json[0].id });
+    assert.equal(await seen('cy', p1), true);
+    assert.equal(await seen('cy', p2), true);
+    const lo = ids.al < ids.cy ? ids.al : ids.cy;
+    const hi = ids.al < ids.cy ? ids.cy : ids.al;
+    const end = await call(`/rest/v1/connections?a=eq.${lo}&b=eq.${hi}`, { method: 'DELETE', token: tok.cy });
+    assert.ok(end.ok);
+    assert.equal(await seen('cy', p1), false);
+    assert.equal(await seen('cy', p2), false, 'out of the group as well');
+    assert.deepEqual((await rows('group_members', tok.al, `select=user_id&group_id=eq.${g.json[0].id}`)).json, []);
+  });
+
+  await t.test('an old app that still writes is_private fails loudly', async () => {
+    const r = await call('/rest/v1/pins', {
+      method: 'POST', token: tok.al, body: { created_by: ids.al, name: 'old', lat: 0, lng: 0, is_private: false },
+    });
+    assert.equal(r.ok, false);
   });
 });

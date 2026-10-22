@@ -335,13 +335,21 @@
       <button id="pin-directions" class="btn-ghost wide">
         <svg class="icon"><use href="#i-navigate"/></svg><span id="pin-directions-label">directions to this place</span>
       </button>
-      <label class="privacy">
-        <svg class="icon"><use href="#i-eye-off"/></svg>
-        <span>only me</span>
-        <input id="pin-private" type="checkbox">
-        <span class="switch-track"></span>
-        <small>nobody else can see this pin. it is never sent to them.</small>
-      </label>
+      <!-- Who sees this. On your own pin it is the picker: your groups and the
+           people you are connected to, nobody ticked by default, and the
+           deduped headcount with faces before you save. On anybody else's it
+           is the same list, read-only — who else can see this, so you know who
+           you can talk about it with. Never which group anybody came from. -->
+      <section id="pin-audience" class="audience">
+        <button id="aud-head" class="audience-head" type="button" aria-expanded="false"
+                aria-controls="aud-body">
+          <svg class="icon"><use id="aud-icon" href="#i-eye-off"/></svg>
+          <span id="aud-text">only you</span>
+          <span id="aud-faces" class="aud-faces"></span>
+          <svg class="icon icon-sm aud-chev"><use href="#i-chevron"/></svg>
+        </button>
+        <div id="aud-body" class="aud-body" hidden></div>
+      </section>
 
       <!--
         From here down the sheet is groups, not a list. Every button sits under a
@@ -793,7 +801,7 @@
         <dl class="owner-rows me-facts">
           <div><dt>sign-in</dt><dd id="me-email">—</dd></div>
         </dl>
-        <button id="groups-open" class="btn-ghost wide">my groups…</button>
+        <button id="groups-open" class="btn-ghost wide">people &amp; groups…</button>
         <button id="signout" class="btn-ghost wide">
           <svg class="icon icon-sm"><use href="#i-logout"/></svg>sign out
         </button>
@@ -953,26 +961,40 @@
        work in for a minute, not a switch you flip on the way past. -->
   <div id="groups" class="panel" hidden>
     <div class="panel-head">
-      <strong>my groups</strong>
+      <strong>people &amp; groups</strong>
       <button id="groups-close" class="icon-btn" aria-label="Close">
         <svg class="icon"><use href="#i-close"/></svg>
       </button>
     </div>
     <div class="panel-body pad">
-      <p class="lede">A group is a list of people you keep, so you can say who
-        sees a place without picking names one at a time. You can also put
-        somebody in one by tapping their name on a pin they dropped.</p>
-      <p class="hint"><b>They are yours.</b> Nobody can see your groups, what you
-        called them, or that they are in one. What people do see is who else can
-        see a particular pin — that is a fact about the pin, and it never says
-        which group anybody came from.</p>
-
-      <p class="you-are">people add you by typing
+      <p class="you-are">people find you by typing
         <button id="groups-me-handle" class="handle" type="button"
                 title="copy your username"></button></p>
       <p id="groups-me-unset" class="hint hint-warn" hidden>That is the name the
         account was born with, not one you picked. Change it in settings — it is
-        what anybody adding you has to type.</p>
+        what anybody connecting with you has to type.</p>
+
+      <h3 class="detail-head">connections</h3>
+      <p class="hint">A place is only ever shared with people you are connected
+        to, and only people you are connected to can go in your groups. Both of
+        you have to say yes, and either of you can end it — which takes back
+        everything it shared, both ways.</p>
+      <div class="group-add">
+        <input id="conn-user" type="text" maxlength="20" autocapitalize="none"
+               autocorrect="off" spellcheck="false" placeholder="their exact username"
+               aria-label="Username of somebody to connect with">
+        <button id="conn-go" class="btn-ghost">ask</button>
+      </div>
+      <p id="conn-said" class="group-said" role="status" hidden></p>
+      <div id="conn-list" class="conn-list"></div>
+
+      <h3 class="detail-head">groups</h3>
+      <p class="lede">A group is a list of people you keep, so you can say who
+        sees a place without picking names one at a time.</p>
+      <p class="hint"><b>They are yours.</b> Nobody can see your groups, what you
+        called them, or that they are in one. What people do see is who else can
+        see a particular pin — that is a fact about the pin, and it never says
+        which group anybody came from.</p>
 
       <div class="group-new">
         <label class="field"><span>new group</span>
