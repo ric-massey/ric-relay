@@ -77,10 +77,12 @@
         <h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 8l4.5-4.5" stroke="currentColor" stroke-width="1.5"/></svg>Radar<span class="src" id="radarsrc"></span></h2>
         <div class="seg rowscroll pro-only" role="group" aria-label="Radar layer">
           <button type="button" data-mode="comp" aria-pressed="true">US mosaic</button>
+          <button type="button" data-mode="mrms" aria-pressed="false" title="NOAA's Multi-Radar Multi-Sensor products: rotation tracks, hail size (MESH), reflectivity at −10 °C, rain totals">MRMS</button>
           <span class="seglab">Site</span>
           <button type="button" data-mode="l3:ref" aria-pressed="false" title="The nearest radar's own reflectivity, at the tilt you pick">Reflectivity</button>
           <button type="button" data-mode="l3:vel" aria-pressed="false" title="Base radial velocity — green toward the radar, red away">Velocity</button>
           <button type="button" data-mode="l3:srv" aria-pressed="false" title="Storm-relative velocity — the storm's own motion taken out, so rotation stands out">SRV</button>
+          <button type="button" data-mode="l3:sw" aria-pressed="false" title="Spectrum width — the spread of speeds in each gate; high in turbulence and tight rotation (full volume only)">SW</button>
           <button type="button" data-mode="l3:cc" aria-pressed="false" title="Correlation coefficient — low values inside a storm can be debris">CC</button>
           <button type="button" data-mode="l3:zdr" aria-pressed="false" title="Differential reflectivity — the shape of what the beam hit">ZDR</button>
           <button type="button" data-mode="l3:kdp" aria-pressed="false" title="Specific differential phase — liquid water, heavy rain">KDP</button>
@@ -99,8 +101,12 @@
           <button type="button" data-tilt="2" aria-pressed="false">3rd</button>
           <button type="button" data-tilt="3" aria-pressed="false">4th</button>
         </div>
+        <div class="modelbar pro-only" id="mrmsbar" hidden>
+          <label>Product <select id="mrprod"></select></label>
+          <span class="mmrun" id="mrrun"></span>
+        </div>
         <div class="modelbar pro-only" id="modelbar" hidden>
-          <label>Model <select id="mmsrc"><option value="hrrr">HRRR · 3 km, hourly</option><option value="gfs">GFS · global, to 10 days</option></select></label>
+          <label>Model <select id="mmsrc"><option value="hrrr">HRRR · 3 km, hourly</option><option value="gfs">GFS · global, to 10 days</option><option value="tle">HRRR-TLE · storm probabilities</option></select></label>
           <label>Field <select id="mmfield"></select></label>
           <span class="mmrun" id="mmrun"></span>
         </div>
@@ -225,10 +231,12 @@
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
 <script src="projects/weather/bzip2.js?v=1"></script>
-<script src="projects/weather/nexrad.js?v=1"></script>
+<script src="projects/weather/nexrad.js?v=2"></script>
+<script src="projects/weather/level2.js?v=1"></script>
 <script src="projects/weather/glm.js?v=1"></script>
-<script src="projects/weather/grib2.js?v=1"></script>
-<script src="projects/weather/modelmaps.js?v=1"></script>
-<script src="assets/weather/app.js?v=3"></script>
+<script src="projects/weather/grib2.js?v=2"></script>
+<script src="projects/weather/modelmaps.js?v=2"></script>
+<script src="projects/weather/mrms.js?v=1"></script>
+<script src="assets/weather/app.js?v=4"></script>
 </body>
 </html>

@@ -1074,6 +1074,9 @@
       const old = rv && Date.now() - rv > 3 * 3600e3;
       if (rv) row(old ? "stale" : "", `HRRR forecast radar${old ? " — run is late" : ""}`, "simulated reflectivity, the latest run, via IEM · run", rv);
       else row("off", "HRRR forecast radar", "not answering", null);
+    } else if (radar.mode === "mrms") {
+      if (rv) row(Date.now() - rv > 30 * 60e3 ? "stale" : "", `MRMS — ${esc(radar.describe())}`, "every NEXRAD blended by NOAA · newest file", rv);
+      else row("off", "MRMS", "asking NOAA…", null);
     } else if (radar.mode === "model") {
       if (rv) row("", `Model map — ${esc(radar.describe())}`, "a forecast, from the run's own files · run", rv);
       else row("off", "Model map", "asking NOAA for the latest run…", null);
@@ -1130,12 +1133,20 @@
       pro: { watches: [], mcds: [], mpds: [], cells: [], surface: null, reports: [] }, measure: null,
       /* Pro's own radar and model maps: the tilt (0 is the lowest scan) and the model field, each kept in this browser */
       tilt: Math.min(3, Math.max(0, Number(store.get("wx:tilt", 0)) || 0)),
+      /* the full volume (Level II) instead of Level III, and its tilt by angle */
+      mr: { prod: store.get("wx:mrms", "rot60") },
+      l2: store.get("wx:l2", false) === true, l2angle: Number(store.get("wx:l2angle", 0.5)), l2vol: null,
       mm: { src: store.get("wx:mmsrc", "hrrr"), field: store.get("wx:mmfield", "refc"), run: null } };
-    const NX = PRO ? window.Nexrad : null, MM = PRO ? window.ModelMaps : null, GL = PRO ? window.Glm : null, GB = PRO ? window.Grib2 : null;
+    const NX = PRO ? window.Nexrad : null, MM = PRO ? window.ModelMaps : null, GL = PRO ? window.Glm : null, GB = PRO ? window.Grib2 : null, L2 = PRO ? window.Level2 : null, MR = PRO ? window.Mrms : null;
     if (MM && !MM.SOURCES[R.mm.src]) R.mm.src = "hrrr";
     if (MM && !MM.field(R.mm.src, R.mm.field)) R.mm.field = MM.FIELDS[R.mm.src][0].id;
+    /* a label inside a sentence: its first letter lowered, abbreviations (MESH, MSLP, CC) kept */
+    const lc = (t) => (/^[A-Z]{2}/.test(t) ? t : t.charAt(0).toLowerCase() + t.slice(1));
     /* a Level III mode ("l3:cc") → its product, or null */
     const l3 = (m = R.mode) => (NX && typeof m === "string" && m.startsWith("l3:") && NX.PRODUCTS[m.slice(3)]) || null;
+    /* read this product from the full volume? — when the visitor asked for it,
+       or when Level III does not carry it at all (spectrum width) */
+    const useL2 = (m = R.mode) => { const P = l3(m); return !!(P && L2 && P.l2 && (R.l2 || !P.tilts.length)); };
     const lngX = (lng, z) => (lng + 180) / 360 * TILE * 2 ** z;
     const latY = (lat, z) => { const s = Math.sin(lat * Math.PI / 180); return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * TILE * 2 ** z; };
     const xLng = (x, z) => x / (TILE * 2 ** z) * 360 - 180;
@@ -1520,6 +1531,7 @@
        each screen pixel's range and bearing from the radar pick its gate. */
     const tiltCode = (P) => P.tilts[Math.min(R.tilt, P.tilts.length - 1)];
     async function l3Frames(onlyIfNew) {
+      if (useL2()) return l2Frames(onlyIfNew);
       const mode = R.mode, P = l3(mode), site = R.site && R.site.id;
       if (!P || !site) return;
       let scans = [], failed = false;
@@ -1536,9 +1548,27 @@
       setFrames(scans.map((s) => ({ t: s.t, l3: { url: s.url, prod: mode.slice(3) } })));
       tilts(); renderSources();
     }
+    /* decoded scans, kept so a refresh that rebuilds the loop does not fetch
+       them again (by URL for Level III, by volume and cut for Level II) */
+    const scanCache = new Map();
+    const cached = (key, make) => {
+      if (!scanCache.has(key)) {
+        scanCache.set(key, make().catch((e) => { scanCache.delete(key); throw e; }));
+        if (scanCache.size > 40) scanCache.delete(scanCache.keys().next().value);
+      }
+      return scanCache.get(key);
+    };
+    async function loadL2(q) {
+      const bufs = await Promise.all(q.urls.map(async (u) => { const r = await fetch(u); if (!r.ok) throw new Error("HTTP " + r.status); return new Uint8Array(await r.arrayBuffer()); }));
+      let st = null;
+      for (const b of bufs) st = L2.feed(b, st);
+      const sw = L2.sweep(st, q.elevNum, q.mom);
+      if (!sw) throw new Error("no " + q.mom + " in this cut");
+      return sw;
+    }
     function l3File(f) {
       const x = f.l3;
-      if (!x.p) x.p = NX.load(x.url).then((file) => {
+      if (!x.p) x.p = (x.l2 ? cached(x.l2.key, () => loadL2(x.l2)) : cached(x.url, () => NX.load(x.url))).then((file) => {
         x.file = file; x.colors = NX.colorTable(file, x.prod);
         if (R.frames[R.frame] === f) { draw(); show(R.frame); tilts(); }
         return file;
@@ -1556,7 +1586,7 @@
       if (f.painted === key) return;
       f.painted = key;
       const F = f.l3.file, col = f.l3.colors, img = ctx.createImageData(w, h), px = new Uint32Array(img.data.buffer);
-      const azi = NX.azIndex(F), gk = F.gateKm, nb = F.nBins, data = F.data, rmax = nb * gk;
+      const azi = NX.azIndex(F), gk = F.gateKm, nb = F.nBins, data = F.data, g0 = NX.gateStart(F), rmax = g0 + nb * gk;
       const lat0 = F.lat, lon0 = F.lon, rad = Math.PI / 180;
       const sx = lngX(lon0, R.z) - left, sy = latY(lat0, R.z) - top;
       const pxPerKm = lngX(lon0 + 1 / (111.32 * Math.cos(lat0 * rad)), R.z) - lngX(lon0, R.z), rpx = rmax * pxPerKm * 1.1 + 2;
@@ -1567,29 +1597,99 @@
         const lat = yLat(top + y + 0.5, R.z), dy = (lat - lat0) * 110.574, kx = 111.32 * Math.cos((lat + lat0) / 2 * rad), row = y * w;
         for (let x = x0; x < x1; x++) {
           const dx = dlon[x] * kx, r = Math.sqrt(dx * dx + dy * dy);
-          if (r >= rmax) continue;
+          if (r >= rmax || r < g0) continue;
           let a = Math.atan2(dx, dy) * 572.9577951308232;              // tenths of a degree, clockwise from north
           if (a < 0) a += 3600;
-          const c = col[data[azi[a | 0] * nb + ((r / gk) | 0)]];
+          const c = col[data[azi[a | 0] * nb + (((r - g0) / gk) | 0)]];
           if (c) px[row + x] = c;
         }
       }
       ctx.putImageData(img, 0, 0);
     }
-    /* the tilt buttons say the elevation the shown scan was made at */
+    /* ── the full volume (Level II, level2.js) ──
+       The newest volume and the five before it; for each, only the chunks
+       of the one cut on screen (the volume's own first chunk says which),
+       about 0.3–1.5 MB a frame. The newest volume is asked again every 30
+       seconds while this is showing, so a tilt appears soon after the dish
+       has swept it. */
+    const volInfo = new Map();
+    async function volume(s4, n, live) {
+      const k = `${s4}/${n}`, have = volInfo.get(k);
+      if (have && have.complete && !live) return have;
+      const ch = await L2.chunks(s4, n);
+      const S = ch.find((c) => c.kind === "S");
+      if (!S) return null;
+      if (have && have.sKey === S.key && have.complete) return have;
+      const meta = have && have.sKey === S.key ? have.meta : L2.feed(new Uint8Array(await (await fetch(S.url)).arrayBuffer()));
+      if (!meta.vcp) return null;
+      const info = { s4, n, sKey: S.key, sUrl: S.url, meta, plan: L2.plan(meta.vcp), byN: new Map(ch.map((c) => [c.n, c])), complete: ch.some((c) => c.kind === "E"), start: S.t };
+      volInfo.set(k, info);
+      return info;
+    }
+    let l2timer = 0;
+    async function l2Frames(onlyIfNew) {
+      clearTimeout(l2timer);
+      const mode = R.mode, P = l3(mode), site = R.site && R.site.id, mom = P && P.l2;
+      if (!P || !site || !mom) return;
+      const s4 = L2.site4(site);
+      let nv = R.l2vol && R.l2vol.site === s4 ? R.l2vol : null, failed = false, vols = [];
+      try {
+        if (!nv) nv = R.l2vol = await L2.newestVolume(s4);
+        if (nv) {
+          /* has the next volume begun since? */
+          const nx = L2.nextNumber(nv.number), nc = await L2.chunks(s4, nx);
+          if (nc.length && nc[0].t > Date.now() - 1800e3) { nv.number = nx; if (!nv.numbers.includes(nx)) nv.numbers = [...nv.numbers, nx].sort((a, b) => a - b); }
+          const nums = [nv.number];
+          while (nums.length < 6) nums.push(L2.prevNumber(nums[nums.length - 1], nv.numbers));
+          vols = (await Promise.all(nums.map((n, i) => volume(s4, n, i === 0).catch(() => null)))).filter(Boolean).filter((v) => Date.now() - v.start < 3 * 3600e3);
+        }
+      } catch (e) { failed = true; }
+      if (R.mode !== mode || !R.site || R.site.id !== site || !useL2()) return;
+      const newest = vols[0];
+      if (!newest) {
+        setFrames([]); tilts();
+        note(failed ? "NOAA's full-volume radar did not answer. Try again, or turn Full volume off for Level III." : `No full-volume data from ${s4} in the last few hours.`);
+        return;
+      }
+      R.l2angles = L2.anglesOf(newest.plan, mom);
+      if (!R.l2angles.some((a) => Math.abs(a - R.l2angle) < 0.15)) R.l2angle = R.l2angles.reduce((b, a) => (Math.abs(a - 0.5) < Math.abs(b - 0.5) ? a : b), R.l2angles[0]);
+      const frames = [];
+      for (const v of vols.slice().reverse()) {
+        const cut = L2.cutFor(v.plan, mom, R.l2angle);
+        if (!cut) continue;
+        const parts = [];
+        for (let n = cut.first; n <= cut.last; n++) parts.push(v.byN.get(n));
+        if (parts.some((c) => !c)) continue;                   // not all swept yet, or the volume stopped short
+        frames.push({ t: parts[parts.length - 1].t, l3: { prod: mode.slice(3), l2: { key: `${v.sKey}|${cut.elevNum}|${mom}`, urls: [v.sUrl, ...parts.map((c) => c.url)], elevNum: cut.elevNum, mom } } });
+      }
+      if (useL2() && R.visible) l2timer = setTimeout(() => { if (useL2() && R.mode === mode) l2Frames(true).then(label); }, 30e3);
+      if (onlyIfNew && (!frames.length || frames[frames.length - 1].t === R.valid)) { tilts(); return; }
+      if (!frames.length) { setFrames([]); tilts(); note(`${s4} has not swept ${R.l2angle.toFixed(1)}° in the volumes on hand yet — pick another tilt.`); return; }
+      R.valid = frames[frames.length - 1].t;
+      const was = R.frame, wasLast = !R.frames.length || was === R.frames.length - 1;
+      setFrames(frames);
+      if (!wasLast && onlyIfNew) show(Math.min(was, R.frames.length - 1));
+      tilts(); renderSources();
+    }
+
+    /* the tilt row: four Level III tilts (labelled with the elevation the
+       shown scan was made at), or every angle of the full volume; and the
+       Full volume switch for the products that have one */
     function tilts() {
       const row = $("#tiltrow");
       if (!row) return;
       const P = l3();
-      row.hidden = !P || P.tilts.length < 2;
+      row.hidden = !P || (P.tilts.length < 2 && !P.l2);
       if (row.hidden) return;
-      const f = R.frames[R.frame], el0 = f && f.l3 && f.l3.file ? f.l3.file.elev : null;
-      row.querySelectorAll("[data-tilt]").forEach((b) => {
-        const k = Number(b.dataset.tilt), on = k === Math.min(R.tilt, P.tilts.length - 1);
-        b.setAttribute("aria-pressed", String(on));
-        b.hidden = k >= P.tilts.length;
-        b.textContent = on && el0 != null ? `${el0.toFixed(1)}°` : ["Lowest", "2nd", "3rd", "4th"][k];
-      });
+      const f = R.frames[R.frame], el0 = f && f.l3 && f.l3.file ? f.l3.file.elev : null, b = [];
+      if (useL2()) {
+        for (const a of R.l2angles || []) b.push(`<button type="button" data-angle="${a}" aria-pressed="${Math.abs(a - R.l2angle) < 0.15}">${a.toFixed(1)}°</button>`);
+        if (!(R.l2angles || []).length) b.push(`<span class="seglab">reading the volume…</span>`);
+      } else {
+        P.tilts.forEach((_, k) => { const on = k === Math.min(R.tilt, P.tilts.length - 1); b.push(`<button type="button" data-tilt="${k}" aria-pressed="${on}">${on && el0 != null ? el0.toFixed(1) + "°" : ["Lowest", "2nd", "3rd", "4th"][k]}</button>`); });
+      }
+      if (P.l2 && P.tilts.length) b.push(`<button type="button" data-l2toggle aria-pressed="${useL2()}" title="Every tilt the radar scans, at full resolution, seconds after the sweep — about 1 MB a frame">Full volume</button>`);
+      row.innerHTML = `<span class="seglab">Tilt</span>${b.join("")}`;
     }
 
     /* ── model maps (modelmaps.js) ──
@@ -1624,10 +1724,38 @@
       }).catch((e) => { m.err = String(e.message || e).replace(/^models: /, ""); if (R.frames[R.frame] === f) note(`This hour did not load (${m.err}).`); });
       return m.p;
     }
+    /* ── MRMS (mrms.js): the newest files of the product picked — every two
+       minutes for most, hourly for the rain totals — loaded when shown and
+       drawn by the same painter as a model field ── */
+    async function mrmsFrames(onlyIfNew) {
+      const id = R.mr.prod, P = MR && MR.PRODUCTS[id];
+      if (!P) return;
+      let list = [], failed = false;
+      try { list = await MR.files(id, { mins: P.every ? 180 : 30 }); } catch (e) { failed = true; }
+      if (R.mode !== "mrms" || R.mr.prod !== id) return;
+      if (!list.length) { setFrames([]); note(failed ? "NOAA's MRMS archive did not answer. Try again in a minute." : "No recent MRMS files for this product."); return; }
+      list = list.slice(P.every ? -3 : -8);
+      if (onlyIfNew && list[list.length - 1].t === R.valid) return;
+      R.valid = list[list.length - 1].t;
+      setFrames(list.map((file) => ({ t: file.t, mrms: { id, file } })));
+      const el = $("#mrrun");
+      if (el) el.textContent = `NOAA MRMS · newest ${clk().time(R.valid)} · every ${P.every ? "hour" : "2 minutes"} · the lower 48`;
+      renderSources(); label();
+    }
+    function mrmsLayer(f) {
+      const m = f.mrms;
+      if (!m.p) m.p = cached(m.file.url, () => MR.load(m.id, m.file)).then((L) => {
+        m.layer = L; m.lut = MM.table(L.field.pal);
+        if (R.frames[R.frame] === f) { draw(); show(R.frame); }
+        return L;
+      }).catch((e) => { m.err = String(e.message || e).replace(/^mrms: /, ""); if (R.frames[R.frame] === f) note(`This MRMS file did not load (${m.err}).`); });
+      return m.p;
+    }
     let shadeCv = null;
+    /* a model hour or an MRMS file: shading from the grid, then contours and barbs */
     function paintModel(f, w, h, left, top) {
-      const cv = frameCanvas(f, w, h), ctx = cv.getContext("2d"), m = f.model, key = `${R.z}|${left}|${top}|${U()}`;
-      if (!m.layer) { modelLayer(f); if (f.painted) { ctx.clearRect(0, 0, w, h); f.painted = null; } return; }
+      const cv = frameCanvas(f, w, h), ctx = cv.getContext("2d"), m = f.model || f.mrms, key = `${R.z}|${left}|${top}|${U()}`;
+      if (!m.layer) { if (f.model) modelLayer(f); else mrmsLayer(f); if (f.painted) { ctx.clearRect(0, 0, w, h); f.painted = null; } return; }
       if (f.painted === key) return;
       f.painted = key;
       const L = m.layer, g = GB.projector(L.grid), nx = L.grid.nx, ny = L.grid.ny, v = L.values, lut = m.lut, near = L.field.nearest;
@@ -1786,6 +1914,10 @@
           : `${P.short} ${f.l3.prod === "cc" ? v.value.toFixed(2) : f.l3.prod === "zdr" || f.l3.prod === "kdp" ? v.value.toFixed(1) : Math.round(v.value)}${P.unit ? " " + P.unit : ""}${v.topped ? " (topped)" : ""}`;
         /* the beam's centre above sea level: the radar's own height plus the beam's rise */
         return `${what} · ${dist(km)} ${Math.round(az)}° from ${F.site || "the radar"} · beam ${U() === "us" ? Math.round(beam * 3.28084) + " kft" : beam.toFixed(1) + " km"} MSL`;
+      }
+      if (f.mrms && f.mrms.layer) {
+        const L = f.mrms.layer, v = MM.valueAt(L, lat, lon);
+        return Number.isFinite(v) ? `${L.field.label}: ${MM.say(L.field.unit, v, U())} · MRMS ${clk().time(f.t)}` : null;
       }
       if (f.model && f.model.layer) {
         const L = f.model.layer, v = MM.valueAt(L, lat, lon);
@@ -2057,6 +2189,7 @@
            ahead only while the loop plays */
         if (f.l3) { if (i === R.frame) paintL3(f, w, h, left, top); else if (R.loadedOld) l3File(f); return; }
         if (f.model) { if (i === R.frame) paintModel(f, w, h, left, top); else if (R.playing && (i === R.frame + 1 || i === R.frame + 2)) modelLayer(f); return; }
+        if (f.mrms) { if (i === R.frame) paintModel(f, w, h, left, top); else if (R.playing && i === R.frame + 1) mrmsLayer(f); return; }
         /* a forecast frame is painted only while it is the one on screen —
            twenty-two full reprojections a pan would be the stroke §2 warns
            of; the others only load their picture, ready for the loop */
@@ -2083,6 +2216,7 @@
       $("#scrub").value = String(i);
       const when = $("#when");
       if (f.archive) when.innerHTML = `${esc(dayFmt(f.t))}<small>${esc(timeFmt(f.t))}</small>`;
+      else if (f.mrms) when.innerHTML = `${esc(clk().time(f.t))}<small>MRMS · ${Wx.age(Date.now() - f.t)} ago${f.mrms.layer ? "" : f.mrms.err ? " · failed" : " · loading"}</small>`;
       else if (f.model) {
         const k = clk(), day = k.ymd(f.t) !== k.ymd(Date.now()) ? k.day(f.t) + " " : "";
         when.innerHTML = `${esc(day + k.time(f.t))}<small>${esc(MM.SOURCES[f.model.src].label)} +${f.model.fh} h${f.model.layer ? "" : f.model.err ? " · failed" : " · loading"}</small>`;
@@ -2094,9 +2228,10 @@
         when.innerHTML = `${esc(day + k.time(f.t))}<small>forecast · ${Math.abs(d) < 8 * 60e3 ? "now" : d > 0 ? "in " + Wx.age(d) : Wx.age(-d) + " ago"}</small>`;
       } else if (f.t) when.innerHTML = `${esc(clk().time(f.t))}<small>${Wx.age(Date.now() - f.t)} ago</small>`;
       else when.innerHTML = f.mins ? `−${f.mins} min<small>before latest</small>` : `Latest<small>scan time unknown</small>`;
-      const fr = R.valid && !f.future && !f.model ? Wx.fresh("radar", R.valid) : null;
+      const fr = R.valid && !f.future && !f.model && !f.mrms ? Wx.fresh("radar", R.valid) : null;
       if (f.model && f.model.err) note(`This hour did not load (${f.model.err}).`);
-      else if (f.model) note("");
+      else if (f.mrms && f.mrms.err) note(`This MRMS file did not load (${f.mrms.err}).`);
+      else if (f.model || f.mrms) note("");
       else if (f.future && R.valid && Date.now() - R.valid > 3 * 3600e3) note(`This HRRR run is ${Wx.age(Date.now() - R.valid)} old — a newer one is late.`);
       else if (fr && fr.stale) note(`Radar delayed — the latest scan is ${fr.age} old.`);
       else if (S.place && S.pt === null && R.mode === "comp") note("This radar covers the lower 48 US states only.");
@@ -2120,8 +2255,8 @@
         const nf = R.frames[next];
         if (nf && nf.archive && nf.tiles.size && ![...nf.tiles.values()].every((im) => im.complete) && (R.wait = (R.wait || 0) + 1) < 12) { R.timer = setTimeout(step, 250); return; }
         /* …and for a decoded scan or model hour to arrive (up to ~6 s) */
-        if (nf && ((nf.l3 && !nf.l3.file && !nf.l3.err) || (nf.model && !nf.model.layer && !nf.model.err)) && (R.wait = (R.wait || 0) + 1) < 24) {
-          if (nf.l3) l3File(nf); else modelLayer(nf);
+        if (nf && ((nf.l3 && !nf.l3.file && !nf.l3.err) || (nf.model && !nf.model.layer && !nf.model.err) || (nf.mrms && !nf.mrms.layer && !nf.mrms.err)) && (R.wait = (R.wait || 0) + 1) < 24) {
+          if (nf.l3) l3File(nf); else if (nf.mrms) mrmsLayer(nf); else modelLayer(nf);
           R.timer = setTimeout(step, 250); return;
         }
         R.wait = 0;
@@ -2153,7 +2288,8 @@
       clearTiles();
       legend();
       if ($("#modelbar")) $("#modelbar").hidden = mode !== "model";
-      if ($("#awscredit")) $("#awscredit").hidden = !(l3(mode) || mode === "model" || R.ov.lightning);
+      if ($("#mrmsbar")) $("#mrmsbar").hidden = mode !== "mrms";
+      if ($("#awscredit")) $("#awscredit").hidden = !(l3(mode) || mode === "model" || mode === "mrms" || R.ov.lightning);
       tilts();
       /* only the newest switch may finish: tapping Reflectivity then Velocity
          quickly once left reflectivity's scans under the Velocity button */
@@ -2167,6 +2303,8 @@
         await hrrrFrames();
       } else if (mode === "model") {
         await modelFrames();
+      } else if (mode === "mrms") {
+        await mrmsFrames();
       } else {
         if (R.z < 7) zoomTo(8);
         await pickSite(!R.site);
@@ -2188,8 +2326,8 @@
       if (P) {
         pal = NX.PALETTES[P.pal]; unit = P.unit;
         if (pal.classes) cats = Object.entries(pal.classes).filter(([k]) => k !== "2").map(([k, c]) => [NX.HCA_CLASSES[k][1], c]);
-      } else if (R.mode === "model" && MM) {
-        const f = MM.field(R.mm.src, R.mm.field);
+      } else if ((R.mode === "model" || R.mode === "mrms") && MM) {
+        const f = R.mode === "mrms" ? MR.PRODUCTS[R.mr.prod] : MM.field(R.mm.src, R.mm.field);
         pal = MM.PAL[f.pal];
         if (pal.cat) cats = Object.values(pal.types).map(([name, , hi]) => [name, hi]);
         else {
@@ -2212,8 +2350,9 @@
       if (R.mode === "comp") sb.textContent = "NEXRAD mosaic of the whole country, every 5 minutes.";
       else if (R.mode === "replay" && R.replay) { const rp = R.replay, n = rp.warn ? new Set(rp.warn.map((w) => w.sig + w.wfo + w.event + w.area)).size : null; sb.textContent = `Replay: the national radar as it was, ${dayFmt(rp.from)} ${timeFmt(rp.from)} to ${timeFmt(rp.to)}, every ${rp.step} minutes, with each storm warning drawn for the minutes it was in force${rp.warn ? ` (${n} warning${n === 1 ? "" : "s"})` : rp.err ? " — the warnings archive did not answer" : " — loading the warnings"}. Archive via IEM.`; }
       else if (R.mode === "hrrr") sb.textContent = `A forecast, not radar: the HRRR model's own picture of the rain${R.valid ? ` from its ${new Date(R.valid).toISOString().slice(11, 13)}Z run` : ""}, every 15 minutes for the first hour then hourly to 18 hours. Lower 48 only.`;
+      else if (R.mode === "mrms" && MR) sb.textContent = `MRMS — every NEXRAD blended by NOAA, with the model's temperatures and the rain gauges: ${lc(MR.PRODUCTS[R.mr.prod].label)}. Measured from radar, not a forecast. Hover or tap for the value.`;
       else if (R.mode === "model" && MM) { const f = MM.field(R.mm.src, R.mm.field); sb.textContent = `A forecast, not an observation — ${MM.SOURCES[R.mm.src].long}. ${f.label}${R.mm.run ? `, from the ${new Date(R.mm.run).toISOString().slice(11, 13)}Z run` : ""}. The slider is the forecast hour; hover or tap for the value.`; }
-      else if (l3() && R.site) { const f = R.frames[R.frame], F = f && f.l3 && f.l3.file; sb.textContent = `${R.site.id} · ${R.site.name} · ${l3().long}${F ? ` · ${F.elev.toFixed(1)}° scan` : ""}. Read from the radar's own Level III files; the site follows the middle of the map. Hover or tap for the value.`; }
+      else if (l3() && R.site) { const f = R.frames[R.frame], F = f && f.l3 && f.l3.file; sb.textContent = `${R.site.id} · ${R.site.name} · ${l3().long}${F ? ` · ${F.elev.toFixed(1)}° scan` : ""}. ${useL2() ? "The full volume (Level II), every tilt at full resolution, refreshed every 30 seconds" : "Read from the radar's own Level III files"}; the site follows the middle of the map. Hover or tap for the value.`; }
       else if (l3()) sb.textContent = "Finding the nearest radar…";
       else if (R.site) sb.textContent = `${R.site.id} · ${R.site.name} · ${Wx.SITE_PRODUCTS[R.mode].long}. The site follows the middle of the map.`;
       else sb.textContent = "Finding the nearest radar…";
@@ -2228,8 +2367,9 @@
       if (R.started && R.frames[R.frame]) show(R.frame);
     }
     function describe() {
-      if (l3()) return `${R.site ? R.site.id + " " : ""}${l3().label.toLowerCase()}, Level III (NOAA open data on AWS)`;
-      if (R.mode === "model" && MM) return `${MM.SOURCES[R.mm.src].label} ${MM.field(R.mm.src, R.mm.field).label.toLowerCase()}`;
+      if (l3()) return `${R.site ? R.site.id + " " : ""}${lc(l3().label)}, ${useL2() ? "Level II full volume" : "Level III"} (NOAA open data on AWS)`;
+      if (R.mode === "model" && MM) return `${MM.SOURCES[R.mm.src].label} ${lc(MM.field(R.mm.src, R.mm.field).label)}`;
+      if (R.mode === "mrms" && MR) return `MRMS ${lc(MR.PRODUCTS[R.mr.prod].label)} (NOAA open data on AWS)`;
       return R.mode === "comp" ? "NEXRAD base reflectivity, US mosaic (IEM)" : R.mode === "hrrr" ? "HRRR simulated reflectivity, the latest run (IEM)" : R.mode === "replay" ? "NEXRAD mosaic archive (IEM)" : `${R.site ? R.site.id + " " : ""}${Wx.SITE_PRODUCTS[R.mode].label.toLowerCase()} (NEXRAD via IEM)`;
     }
 
@@ -2240,6 +2380,9 @@
       if (PRO && Wx.SAT[sat]) setSat(sat);
       if (PRO && R.ov.lightning) { lightningClock(); if ($("#awscredit")) $("#awscredit").hidden = false; }
       const linked = PRO ? applyLink() : false;          // a shared view wins over the place's
+      /* the pickers say what the link chose */
+      if (PRO && $("#mrprod") && MR) $("#mrprod").value = R.mr.prod;
+      if (PRO && $("#mmfield") && MM) modelOptions();
       if (typeof linked === "string") { setMode(linked); loadOverlays(true); stationsSoon(); return; }
       if (R.mode === "comp") {
         compFrames();
@@ -2419,7 +2562,7 @@
       const lat = yLat(R.cy, R.z), lon = xLng(R.cx, R.z);
       const ov = [R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.reports && "r"].filter(Boolean).join("");
       const v = `${lat.toFixed(1)},${(((lon + 540) % 360) - 180).toFixed(1)},${R.z}`;
-      const url = `${location.origin}${location.pathname}#v=${v}&l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? `&t=${R.tilt}` : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}` : ""}`;
+      const url = `${location.origin}${location.pathname}#v=${v}&l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}`;
       const done = () => note("Link copied — it opens this map view and these layers. Your saved place is not in it.");
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => note(`Copy this link: ${url}`));
       else note(`Copy this link: ${url}`);
@@ -2441,12 +2584,14 @@
         document.querySelectorAll("[data-ov]").forEach((b) => b.setAttribute("aria-pressed", String(!!R.ov[b.dataset.ov])));
       }
       if (Wx.SAT[q.get("s")]) setSat(q.get("s"));
-      const t = Number(q.get("t"));
-      if (t >= 0 && t <= 3) R.tilt = Math.round(t);
+      const t = Number(q.get("t")), a = q.get("a");
+      if (q.get("t") != null && t >= 0 && t <= 3) { R.tilt = Math.round(t); R.l2 = false; }
+      if (a != null && Number.isFinite(Number(a)) && Math.abs(Number(a)) < 30) { R.l2 = true; R.l2angle = Number(a); }
       const [ms, mf] = (q.get("m") || "").split(".");
       if (MM && MM.field(ms, mf)) { R.mm.src = ms; R.mm.field = mf; }
+      if (MR && MR.PRODUCTS[q.get("r")]) R.mr.prod = q.get("r");
       const l = q.get("l");
-      return ["N0B", "N0S", "hrrr"].includes(l) || l3(l) || (l === "model" && MM) ? l : true;
+      return ["N0B", "N0S", "hrrr"].includes(l) || l3(l) || (l === "model" && MM) || (l === "mrms" && MR) ? l : true;
     }
     pinEl.addEventListener("click", (e) => {
       if (e.target.closest("[data-pinx]")) { R.pin = null; draw(); }
@@ -2528,13 +2673,16 @@
     $("#zin").addEventListener("click", () => zoomTo(R.z + 1));
     $("#zout").addEventListener("click", () => zoomTo(R.z - 1));
     el.addEventListener("dblclick", (e) => { if (!e.target.closest("button,a,.pin")) { clearTimeout(tap); zoomTo(R.z + 1); } });
-    /* the tilt: every Level III product follows it */
-    document.querySelectorAll("[data-tilt]").forEach((b) => b.addEventListener("click", async () => {
-      R.tilt = Number(b.dataset.tilt); store.set("wx:tilt", R.tilt);
-      if (!l3()) return;
+    /* the tilt row (built by tilts()): a Level III tilt, a full-volume angle, or the switch between them */
+    if ($("#tiltrow")) $("#tiltrow").addEventListener("click", async (e) => {
+      const t = e.target.closest("[data-tilt],[data-angle],[data-l2toggle]");
+      if (!t || !l3()) return;
+      if (t.dataset.tilt != null) { R.tilt = Number(t.dataset.tilt); store.set("wx:tilt", R.tilt); }
+      else if (t.dataset.angle != null) { R.l2angle = Number(t.dataset.angle); store.set("wx:l2angle", R.l2angle); }
+      else { R.l2 = !R.l2; store.set("wx:l2", R.l2); }
       play(false); R.valid = null; tilts();
-      await l3Frames(); label();
-    }));
+      await l3Frames(); label(); renderSources();
+    });
     /* the model bar: which model, which field */
     function modelOptions() {
       const sel = $("#mmfield");
@@ -2562,6 +2710,17 @@
         play(false);
         setFrames(R.frames.map((f) => ({ t: f.t, model: { src: f.model.src, field: R.mm.field, run: f.model.run, fh: f.model.fh } })));
         show(Math.min(at, R.frames.length - 1)); label(); renderSources();
+      });
+    }
+    if ($("#mrmsbar") && MR) {
+      const groups = {};
+      for (const [id, P] of Object.entries(MR.PRODUCTS)) (groups[P.group] = groups[P.group] || []).push([id, P]);
+      if (!MR.PRODUCTS[R.mr.prod]) R.mr.prod = "rot60";
+      $("#mrprod").innerHTML = Object.entries(groups).map(([g, ps]) => `<optgroup label="${esc(g)}">${ps.map(([id, P]) => `<option value="${id}"${id === R.mr.prod ? " selected" : ""}>${esc(P.label)}</option>`).join("")}</optgroup>`).join("");
+      $("#mrprod").addEventListener("change", (e) => {
+        if (!MR.PRODUCTS[e.target.value]) return;
+        R.mr.prod = e.target.value; store.set("wx:mrms", R.mr.prod);
+        if (R.mode === "mrms") { play(false); R.valid = null; mrmsFrames().then(label); }
       });
     }
     /* with a mouse, the value under the pointer */
@@ -2671,6 +2830,7 @@
         if (R.mode === "comp") { Wx.radarTime().then((v) => { if (v && v !== R.valid) { R.valid = v; clearTiles(); compFrames(); renderSources(); } }); }
         else if (R.mode === "replay") { /* the past does not refresh */ }
         else if (R.mode === "hrrr") { Wx.hrrrRun().then((v) => { if (v && v !== R.valid && !R.playing) hrrrFrames(); }).catch(() => {}); }
+        else if (R.mode === "mrms") mrmsFrames(true);
         else if (R.mode === "model") { MM.latestRun(R.mm.src).then((r) => { if (r && r.run !== R.mm.run && !R.playing) modelFrames(); }).catch(() => {}); }
         else siteFrames(true);
       },

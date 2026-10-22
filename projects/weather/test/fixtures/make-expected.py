@@ -1,5 +1,6 @@
 """Writes expected.json beside the fixtures: what MetPy (NEXRAD Level III),
-ecCodes (GRIB2) and h5py (the GLM's HDF5) read from the same files.
+ecCodes (GRIB2), h5py (the GLM's HDF5) and MetPy again (NEXRAD Level II)
+read from the same files.
 Not run in CI — run it by hand after adding a fixture:
     pip install metpy eccodes h5py && python3 make-expected.py
 test/decoders.test.mjs holds bzip2.js, nexrad.js, grib2.js and glm.js to it."""
@@ -7,7 +8,7 @@ import glob, json, os, warnings
 import numpy as np
 warnings.filterwarnings('ignore')
 here = os.path.dirname(os.path.abspath(__file__))
-out = {'l3': {}, 'grib2': {}, 'glm': {}}
+out = {'l3': {}, 'grib2': {}, 'glm': {}, 'l2': {}, 'mrms': {}}
 rng = np.random.default_rng(7)
 
 from metpy.io import Level3File
@@ -56,6 +57,50 @@ for path in sorted(glob.glob(os.path.join(here, 'glm-*.nc'))):
     vs = {k: scaled(k) for k in ['flash_lat', 'flash_lon', 'flash_time_offset_of_first_event', 'flash_energy', 'flash_quality_flag']}
     out['glm'][os.path.basename(path)] = {'count': len(vs['flash_lat']),
         'vars': {k: [None if not np.isfinite(x) else float(x) for x in v] for k, v in vs.items()}}
+
+# Level II: the volume's first chunk and one cut's chunks, joined in order
+# into the Archive II file they are pieces of
+from metpy.io import Level2File
+import tempfile
+parts = sorted(glob.glob(os.path.join(here, 'l2-*')))
+if parts:
+    with tempfile.NamedTemporaryFile(suffix='.ar2', delete=False) as tmp:
+        for part in parts: tmp.write(open(part, 'rb').read())
+    f = Level2File(tmp.name)
+    sweeps = {}
+    for sw in f.sweeps:
+        if not sw: continue                       # the cuts this fixture leaves out
+        el_num = sw[0][0].el_num
+        moms = {}
+        for mom in [b'REF', b'VEL', b'SW ', b'ZDR', b'RHO', b'PHI']:
+            if mom not in sw[0][4]: continue
+            rows = sorted(((r[0].az_angle, r[4][mom][1]) for r in sw), key=lambda x: x[0])
+            a = np.array([x[1] for x in rows], dtype=float)
+            h = sw[0][4][mom][0]
+            pick = [(int(i), int(j)) for i, j in zip(rng.integers(0, a.shape[0], 300), rng.integers(0, a.shape[1], 300))]
+            moms[mom.decode().strip()] = {'shape': list(a.shape), 'first': float(h.first_gate), 'spacing': float(h.gate_width),
+                'finite': int(np.isfinite(a).sum()), 'samples': [[i, j, None if not np.isfinite(a[i, j]) else float(a[i, j])] for i, j in pick]}
+        sweeps[str(el_num)] = {'el': float(np.mean([r[0].el_angle for r in sw])), 'nrad': len(sw), 'moments': moms}
+    out['l2'] = {'files': [os.path.basename(x) for x in parts], 'site': f.stid.decode(), 'sweeps': sweeps}
+    os.unlink(tmp.name)
+
+# MRMS: gzipped GRIB2 with PNG packing, read whole by ecCodes, then
+# max-pooled the way grib2.js's parseAsync pools it
+import gzip
+for path in sorted(glob.glob(os.path.join(here, 'mrms-*.grib2.gz'))):
+    raw = gzip.decompress(open(path, 'rb').read())
+    h = eccodes.codes_new_from_message(raw)
+    nx, ny = eccodes.codes_get(h, 'Ni'), eccodes.codes_get(h, 'Nj')
+    pool = 4 if nx >= 14000 else 2
+    v = np.asarray(eccodes.codes_get_values(h), dtype=float).reshape(ny, nx)
+    eccodes.codes_release(h)
+    pv = v.reshape(ny // pool, pool, nx // pool, pool).max(axis=(1, 3))
+    pv[pv <= -99] = np.nan
+    picks = [(int(i), int(j)) for i, j in zip(rng.integers(0, ny // pool, 300), rng.integers(0, nx // pool, 300))]
+    hot = np.argwhere(np.nan_to_num(pv, nan=-1) > 0)
+    picks += [tuple(int(x) for x in hot[i]) for i in rng.integers(0, len(hot), 200)] if len(hot) else []
+    out['mrms'][os.path.basename(path)] = {'pool': pool, 'nx': nx // pool, 'ny': ny // pool, 'finite': int(np.isfinite(pv).sum()), 'max': float(np.nanmax(pv)),
+        'samples': [[i, j, None if not np.isfinite(pv[i, j]) else float(pv[i, j])] for i, j in picks]}
 
 json.dump(out, open(os.path.join(here, 'expected.json'), 'w'), separators=(',', ':'))
 print({k: len(v) for k, v in out.items()})

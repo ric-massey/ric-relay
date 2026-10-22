@@ -24,12 +24,14 @@
 >    not something that could make it unsafe." §21.1's ride verdict was built and
 >    removed the same day. The room shows the weather; it does not tell anyone
 >    whether it is safe to do something.
-> 3. **Raw NOAA data, read in the browser (Ric, 2026-10-22: "do the three").**
->    Dual-pol radar at four tilts (§11.2), GOES lightning (§12) and HRRR / GFS
->    model maps (§13–14) come from NOAA's own Level III, GLM and GRIB2 files on
->    AWS and are decoded in the visitor's browser — no server of ours, nothing
->    stored. This is the backend question §27 raises, answered without one for
->    now; see `README.md`.
+> 3. **Raw NOAA data, read in the browser (Ric, 2026-10-22: "do the three", then
+>    "do it").** Dual-pol radar at four tilts and the full Level II volume
+>    (§11.2), MRMS rotation tracks and hail (§11.3), GOES lightning (§12), HRRR /
+>    GFS model maps with the severe composites and a time-lagged HRRR ensemble
+>    for probabilities (§13–14, §17.2) come from NOAA's own files on AWS and are
+>    decoded in the visitor's browser — no server of ours, nothing stored. This is
+>    the backend question §27 raises, answered without one for now; see
+>    `README.md`.
 
 > Simple on the surface. Extremely deep underneath.
 

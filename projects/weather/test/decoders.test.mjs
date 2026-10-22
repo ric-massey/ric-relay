@@ -16,6 +16,9 @@ const Bz = require('../bzip2.js');
 const N = require('../nexrad.js');
 const G = require('../grib2.js');
 const L = require('../glm.js');
+const L2 = require('../level2.js');
+const MM = require('../modelmaps.js');
+const MR = require('../mrms.js');
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fx = (name) => new Uint8Array(readFileSync(join(here, 'fixtures', name)));
@@ -112,6 +115,65 @@ for (const [file, e] of Object.entries(expected.glm)) {
   ok(again.length === fl.length && again.every((x, i) => x.t === fl[i].t && x.energy === fl[i].energy), 'a second file read with the first one’s attributes gives the same flashes');
 }
 ok(L.hourPrefix(Date.UTC(2026, 0, 1, 5)) === 'GLM-L2-LCFA/2026/001/05/' && L.hourPrefix(Date.UTC(2026, 11, 31, 23)) === 'GLM-L2-LCFA/2026/365/23/', 'the bucket is by day of the year and hour');
+
+console.log('\nRULE  NEXRAD Level II reads as MetPy reads it — a volume\'s first chunk and one cut');
+{
+  const e = expected.l2;
+  let st = null;
+  for (const name of e.files) st = L2.feed(fx(name), st);
+  ok(st.header && st.header.site === e.site && st.vcp && st.vcp.cuts.length > 10, `site ${st.header && st.header.site}, coverage pattern ${st.vcp && st.vcp.pattern} with ${st.vcp && st.vcp.cuts.length} cuts`);
+  const plan = L2.plan(st.vcp);
+  for (const [num, sw] of Object.entries(e.sweeps)) {
+    const cut = plan.find((c) => c.elevNum === Number(num));
+    ok(cut && e.files.filter((f) => /-I$|-E$/.test(f)).every((f) => { const n = Number(f.slice(-5, -2)); return n >= cut.first && n <= cut.last; }),
+      `cut ${num} is where the coverage pattern puts it: chunks ${cut && cut.first}–${cut && cut.last}`);
+    for (const [m, x] of Object.entries(sw.moments)) {
+      const s = L2.sweep(st, Number(num), m);
+      let bad = 0, finite = 0;
+      for (let k = 0; k < s.nRad; k++) for (let g = 0; g < x.shape[1]; g++) if (g < s.nBins && Number.isFinite(s.lut[s.data[k * s.nBins + g]])) finite++;
+      /* 16-bit moments come through 8 bits (level2.js RANGE16): within a step */
+      const tol = m === 'PHI' ? 1.5 : m === 'ZDR' && s.lut[3] - s.lut[2] < 0.1 ? 0.05 : 1e-3;
+      /* …and clamped to that range, which no palette goes past */
+      const R16 = s.lut[3] - s.lut[2] < 0.1 || m === 'PHI' ? L2.RANGE16[m] : null;
+      const want = (v) => (R16 ? Math.min(R16[1], Math.max(R16[0], v)) : v);
+      for (const [k, g, v] of x.samples) { const got = g < s.nBins ? s.lut[s.data[k * s.nBins + g]] : NaN; if (v === null ? Number.isFinite(got) : !(Math.abs(got - want(v)) <= tol)) bad++; }
+      ok(s.nRad === x.shape[0] && Math.abs(s.firstKm - x.first) < 1e-6 && Math.abs(s.gateKm - x.spacing) < 1e-6 && Math.abs(s.elev - sw.el) < 0.01,
+        `cut ${num} ${m}: ${s.nRad} radials, first gate ${s.firstKm} km, every ${s.gateKm} km, ${s.elev.toFixed(2)}°`);
+      ok(finite === x.finite && bad === 0, `cut ${num} ${m}: ${finite} gates with data, ${x.samples.length} sampled gates match${bad ? ` — ${bad} do not` : ''}`);
+    }
+  }
+  ok(L2.anglesOf(plan, 'VEL').length >= 10 && L2.cutFor(plan, 'REF', 0.5).waveform === 1, 'every angle of the volume is offered, and reflectivity comes from the long-range surveillance half of a split cut');
+  ok(L2.site4('TLX') === 'KTLX' && L2.nextNumber(999) === 1 && L2.prevNumber(1, [1, 5, 9]) === 9, 'site ids and the 1–999 volume numbers wrap as the bucket does');
+}
+
+console.log('\nRULE  MRMS (gzip, GRIB2, PNG) reads as ecCodes reads it, pooled to its largest values');
+for (const [file, e] of Object.entries(expected.mrms)) {
+  const m = await G.parseAsync(fx(file), { pool: e.pool });
+  let finite = 0, max = -Infinity, bad = 0;
+  for (const v of m.values) if (Number.isFinite(v)) { finite++; if (v > max) max = v; }
+  for (const [i, j, v] of e.samples) { const x = m.values[i * m.grid.nx + j]; if (v === null ? Number.isFinite(x) : !(Math.abs(x - v) < 1e-3)) bad++; }
+  ok(m.grid.nx === e.nx && m.grid.ny === e.ny && m.pack.tmpl === 41, `${file.slice(5, 40)}: PNG packing, pooled ${e.pool}×${e.pool} to ${m.grid.nx}×${m.grid.ny}`);
+  ok(finite === e.finite && Math.abs(max - e.max) < 1e-3 && bad === 0, `${file.slice(5, 40)}: ${finite} points, largest ${max.toFixed(2)}, ${e.samples.length} sampled blocks match${bad ? ` — ${bad} do not` : ''}`);
+  const [la, lo] = G.projector(m.grid).ll(0, 0);
+  ok(Math.abs(la - (54.995 - (e.pool - 1) / 2 * (e.pool === 4 ? 0.005 : 0.01) * 1)) < 0.02 && Math.abs(lo - (-129.995)) < 0.05, `${file.slice(5, 40)}: the first block sits at the middle of the points it pools`);
+}
+
+console.log('\nRULE  the derived severe maps are the published formulas');
+{
+  const stp = MM.field('hrrr', 'stp'), at = (o) => stp.value(Object.fromEntries(Object.entries(o).map(([k, v]) => [k, [v]])), 0);
+  const base = { c: 1500, lcl: 1200, zs: 300, h: 150, u: 20, v: 0 };
+  ok(Math.abs(at(base) - 1) < 1e-9, 'STP is 1 at 1500 J/kg, a 900 m LCL, 150 m²/s² of 0–1 km helicity and 20 m/s of shear');
+  ok(at({ ...base, lcl: 2600 }) === 0 && Math.abs(at({ ...base, lcl: 1800 }) - 0.5) < 1e-9, 'an LCL above 2000 m gives nothing; at 1500 m it halves (Thompson et al. 2003)');
+  ok(at({ ...base, u: 12 }) === 0 && Math.abs(at({ ...base, u: 40 }) - 1.5) < 1e-9, 'shear under 12.5 m/s gives nothing; past 30 m/s it is held at 1.5');
+  const ehi = MM.field('hrrr', 'ehi');
+  ok(Math.abs(ehi.value({ c: [2000], h: [160] }, 0) - 2) < 1e-9, 'EHI is CAPE × helicity / 160,000');
+  const m = new Uint8Array(81); m[40] = 1;
+  const w = MM.within(m, 9, 9, 2);
+  ok(w.reduce((a, b) => a + b, 0) === 25 && w[40 - 2 * 9 - 2] === 1 && w[40 - 3 * 9] === 0, 'within 40 km: one event lights the square of cells around it, and no further');
+  ok(MM.FIELDS.tle.every((f) => f.member && f.event && f.pal === 'prob'), 'every ensemble field names the member field and the event it counts');
+  ok(MR.keyTime('CONUS/MESH_00.50/20261022/MRMS_MESH_00.50_20261022-201400.grib2.gz') === Date.UTC(2026, 9, 22, 20, 14), 'an MRMS file carries its time in its name');
+  ok(Object.values(MR.PRODUCTS).every((P) => MM.PAL[P.pal] && MM.UNIT[P.unit]), 'every MRMS product has a palette and a unit');
+}
 
 console.log(failures ? `\n${failures} DECODER RULE${failures === 1 ? '' : 'S'} BROKEN` : '\nALL DECODER RULES PASS');
 process.exit(failures ? 1 : 0);

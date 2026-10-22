@@ -769,17 +769,22 @@ ones that must never break:
   (`weather-ai.yml`, Pangu-Weather, non-commercial weights) commits nothing.
 - **`weather-sw.js` is the site's only service worker**, scoped to `./weather`. Keep it
   network-first and same-origin only; never widen its scope to the rest of the site.
-- **Pro reads NOAA's raw files in the browser** (Ric, 2026-10-22: "do the three").
-  The radar's Level III products, GOES lightning and HRRR / GFS fields come from
-  NOAA's public buckets on AWS (`unidata-nexrad-level3`, `noaa-goes18/19`,
-  `noaa-hrrr-bdp-pds`, `noaa-gfs-bdp-pds`) and are decoded by `nexrad.js` +
-  `bzip2.js`, `glm.js` and `grib2.js` + `modelmaps.js` — written here, no library.
+- **Pro reads NOAA's raw files in the browser** (Ric, 2026-10-22: "do the three",
+  then "do it"). The radar's Level III products and full Level II volume, MRMS,
+  GOES lightning and HRRR / GFS fields come from NOAA's public buckets on AWS
+  (`unidata-nexrad-level3`, `unidata-nexrad-level2-chunks`, `noaa-mrms-pds`,
+  `noaa-goes18/19`, `noaa-hrrr-bdp-pds`, `noaa-gfs-bdp-pds`) and are decoded by
+  `nexrad.js` + `bzip2.js`, `level2.js`, `mrms.js`, `glm.js` and `grib2.js` +
+  `modelmaps.js` — written here, no library.
   Each is held to MetPy, h5py, ecCodes or Python's bz2 in `test/decoders.test.mjs`
   on real files in `test/fixtures/`; change a decoder and its expectations together
   (`fixtures/make-expected.py` regenerates them). Those buckets are the weather
   room's other external hosts. Lightning is GLM *flashes* — never call them strikes.
   A storm report is shown as the office issued it and the card says it is a report,
-  not a verified event.
+  not a verified event. The severe composites are SPC's published formulas (the
+  fixed-layer STP; the supercell composite is labelled an approximation because
+  its layers are fixed, not effective), and the storm probabilities are a
+  time-lagged HRRR ensemble — HREF is not openly available; don't call it HREF.
 
 **One account for the whole site lives in ATLAS's Supabase project.** Since
 2026-09-23 anybody may sign up at `account/` (terminal: `login`), the account

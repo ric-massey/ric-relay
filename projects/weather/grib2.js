@@ -12,8 +12,9 @@
      section 3  grid template 3.0 (regular lat/lon — GFS) and 3.30 (Lambert
                 conformal — HRRR)
      section 4  the forecast hour (template 4.0 and 4.8's first fields)
-     section 5  data templates 5.0 (simple packing), 5.2 (complex) and 5.3
+     section 5  data templates 5.0 (simple packing), 5.2 (complex), 5.3
                 (complex with spatial differencing — what both models use)
+                and 5.41 (PNG — what MRMS uses; parseAsync only, below)
      section 6  the bitmap, when there is one
      section 7  the packed values
    `test/decoders.test.mjs` holds the values and the grid's positions to
@@ -42,7 +43,7 @@
   const f32 = (b, o) => new DataView(b.buffer, b.byteOffset + o, 4).getFloat32(0);
 
   /* ── one message ── */
-  function parse(bytes) {
+  function parse(bytes, opts) {
     bytes = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
     if (u(bytes, 0, 4) !== 0x47524942 || bytes[7] !== 2) throw new Error('grib2: not a GRIB2 message');
     const total = u(bytes, 8, 8);
@@ -87,7 +88,7 @@
           NG: u(b, t + 20, 4), widthRef: b[t + 24], widthBits: b[t + 25], lenRef: u(b, t + 26, 4), lenInc: b[t + 30],
           lastLen: u(b, t + 31, 4), lenBits: b[t + 35],
           order: tmpl === 3 ? b[t + 36] : 0, extraOctets: tmpl === 3 ? b[t + 37] : 0 });
-        else if (tmpl !== 0) throw new Error('grib2: data template 5.' + tmpl + ' is not read here');
+        else if (tmpl !== 0 && tmpl !== 41) throw new Error('grib2: data template 5.' + tmpl + ' is not read here');
       } else if (sec === 6) {
         if (b[o + 5] === 0) bitmap = b.subarray(o + 6, o + len);
         else if (b[o + 5] !== 255) throw new Error('grib2: a predefined bitmap is not read here');
@@ -97,11 +98,100 @@
       p += len;
     }
     if (!msg.grid || !msg.pack || !data) throw new Error('grib2: incomplete message');
+    if (msg.pack.tmpl === 41) { msg.png = data; return msg; }   // finished by parseAsync
     /* the hour this field is valid for, counted from the run */
     msg.validTime = msg.product && msg.product.endTime != null ? msg.product.endTime : msg.refTime + (msg.product ? msg.product.fcst : 0) * 3600e3;
     msg.step = Math.round((msg.validTime - msg.refTime) / 3600e3);
     msg.values = unpack(msg.pack, data, bitmap, msg.grid.npts);
     return msg;
+  }
+
+  /* ── MRMS: gzip around GRIB2 around PNG ──
+     MRMS ships each field gzipped, packed as a PNG (template 5.41) over the
+     lower 48 at 0.01° or 0.005° — 24 to 98 million points, too many to hold
+     in a phone's browser as numbers. So the PNG is inflated as a stream and
+     its scanlines unfiltered one at a time, keeping the largest stored value
+     in each `pool` × `pool` block: a rotation track a few hundred metres wide
+     or a hail core survives, where an average would smear it out. Stored
+     values rise with the field (2^E ≥ 1), and MRMS's "missing" and "no
+     coverage" codes (−999, −99) are its lowest, so the maximum is the
+     strongest real echo in the block. */
+  async function stream(bytes, format) {
+    const out = new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream(format)));
+    return new Uint8Array(await out.arrayBuffer());
+  }
+  async function parseAsync(bytes, { pool = 1 } = {}) {
+    bytes = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = await stream(bytes, 'gzip');
+    const msg = parse(bytes);
+    if (msg.pack.tmpl !== 41) return msg;
+    const g = msg.grid, k = msg.pack;
+    if (g.kind !== 'latlon') throw new Error('grib2: PNG packing is read here on lat/lon grids only');
+    const raw = await pngPooled(msg.png, g.nx, g.ny, pool);
+    const bscale = 2 ** k.E, dscale = 10 ** -k.D, n = raw.length, values = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const v = (k.R + raw[i] * bscale) * dscale; values[i] = v <= -99 ? NaN : v; }
+    const nx = Math.ceil(g.nx / pool), ny = Math.ceil(g.ny / pool), north = !(g.scan & 0x40);
+    /* the pooled grid's points sit at the middle of each block */
+    const half = (pool - 1) / 2;
+    msg.grid = { ...g, nx, ny, npts: nx * ny, di: g.di * pool, dj: g.dj * pool,
+      la1: north ? g.la1 - half * g.dj : g.la1 + half * g.dj, lo1: g.lo1 + half * g.di, pool, ij: null, ll: null };
+    msg.values = values;
+    delete msg.png;
+    return msg;
+  }
+  /* A grey PNG (8 or 16 bits) → its samples, max-pooled. Only what MRMS
+     writes: colour type 0, no interlace. */
+  async function pngPooled(png, W0, H0, pool) {
+    const dv = new DataView(png.buffer, png.byteOffset, png.byteLength);
+    if (dv.getUint32(0) !== 0x89504e47) throw new Error('grib2: not a PNG');
+    let p = 8, w = 0, h = 0, depth = 8;
+    const idat = [];
+    while (p + 8 <= png.length) {
+      const len = dv.getUint32(p), type = String.fromCharCode(png[p + 4], png[p + 5], png[p + 6], png[p + 7]);
+      if (type === 'IHDR') {
+        w = dv.getUint32(p + 8); h = dv.getUint32(p + 12); depth = png[p + 16];
+        if (png[p + 17] !== 0 || png[p + 20] !== 0) throw new Error('grib2: only grey, non-interlaced PNG is read here');
+      } else if (type === 'IDAT') idat.push(png.subarray(p + 8, p + 8 + len));
+      else if (type === 'IEND') break;
+      p += 12 + len;
+    }
+    if (w !== W0 || h !== H0) throw new Error('grib2: the PNG is not the grid');
+    const bpp = depth / 8, rowLen = w * bpp, nx = Math.ceil(w / pool), ny = Math.ceil(h / pool);
+    const out = new Uint32Array(nx * ny);
+    let prev = new Uint8Array(rowLen), cur = new Uint8Array(rowLen), row = 0, filled = -1, filter = 0;
+    const take = (r) => {
+      const base = Math.floor(r / pool) * nx;
+      if (bpp === 1) for (let x = 0; x < w; x++) { const v = cur[x], o = base + ((x / pool) | 0); if (v > out[o]) out[o] = v; }
+      else for (let x = 0; x < w; x++) { const v = (cur[2 * x] << 8) | cur[2 * x + 1], o = base + ((x / pool) | 0); if (v > out[o]) out[o] = v; }
+    };
+    const unfilter = () => {
+      const c = cur, q = prev;
+      if (filter === 1) for (let i = bpp; i < rowLen; i++) c[i] = (c[i] + c[i - bpp]) & 255;
+      else if (filter === 2) for (let i = 0; i < rowLen; i++) c[i] = (c[i] + q[i]) & 255;
+      else if (filter === 3) for (let i = 0; i < rowLen; i++) c[i] = (c[i] + (((i >= bpp ? c[i - bpp] : 0) + q[i]) >> 1)) & 255;
+      else if (filter === 4) for (let i = 0; i < rowLen; i++) {
+        const a = i >= bpp ? c[i - bpp] : 0, b = q[i], cc = i >= bpp ? q[i - bpp] : 0, pp = a + b - cc;
+        const pa = Math.abs(pp - a), pb = Math.abs(pp - b), pc = Math.abs(pp - cc);
+        c[i] = (c[i] + (pa <= pb && pa <= pc ? a : pb <= pc ? b : cc)) & 255;
+      }
+    };
+    /* the inflated stream, scanline by scanline: a filter byte, then the row */
+    const reader = new Blob(idat).stream().pipeThrough(new DecompressionStream('deflate')).getReader();
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      for (let i = 0; i < value.length; ) {
+        if (filled < 0) { filter = value[i++]; filled = 0; continue; }
+        const n = Math.min(rowLen - filled, value.length - i);
+        cur.set(value.subarray(i, i + n), filled); filled += n; i += n;
+        if (filled === rowLen) {
+          unfilter(); take(row);
+          const t = prev; prev = cur; cur = t; filled = -1; row++;
+          if (row >= h) break;
+        }
+      }
+    }
+    return out;
   }
 
   /* ── the packed values → Float32Array, NaN where missing ── */
@@ -230,7 +320,7 @@
   /* the one entry matching a pattern over "NAME:LEVEL:FCST" */
   function find(idx, re) { return idx.find((e) => re.test(e.line)) || null; }
 
-  async function fetchMessage(url, entry, { signal, fetchFn = fetch } = {}) {
+  async function fetchMessage(url, entry, { signal, fetchFn = fetch, pool } = {}) {
     let end = entry.end;
     if (end == null) {
       /* the last message in a file: its own length is in its first 16 bytes */
@@ -240,10 +330,10 @@
     }
     const r = await fetchFn(url, { signal, headers: { Range: `bytes=${entry.start}-${end}` } });
     if (!r.ok) throw new Error('grib2: HTTP ' + r.status);
-    return parse(new Uint8Array(await r.arrayBuffer()));
+    return parseAsync(new Uint8Array(await r.arrayBuffer()), { pool });
   }
 
-  const api = { parse, unpack, projector, sample, parseIdx, find, fetchMessage, Bits };
+  const api = { parse, parseAsync, pngPooled, unpack, projector, sample, parseIdx, find, fetchMessage, Bits };
   root.Grib2 = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

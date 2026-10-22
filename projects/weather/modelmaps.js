@@ -38,6 +38,19 @@
       file: (run, fh) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf${pad(fh)}.grib2`,
       hours: (have) => have
     },
+    /* a time-lagged ensemble: the newest HRRR runs, each at the forecast hour
+       that lands on the same moment — how SPC and WPC get probabilities out
+       of a single deterministic model (the HRRR-TLE). HREF, the operational
+       convection-allowing ensemble, is not on AWS, and RRFS's bucket holds
+       only its retrospective runs (checked 2026-10-22); this is what the
+       open data can honestly give. Same files as HRRR. */
+    tle: {
+      label: 'HRRR-TLE', long: 'Time-lagged HRRR ensemble — the last six HRRR runs valid at the same hour, each looked at within 40 km',
+      bucket: 'https://noaa-hrrr-bdp-pds.s3.amazonaws.com', cycle: 1, lookBack: 4, minHours: 3, members: 6, radiusKm: 40,
+      prefix: (run) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf`,
+      file: (run, fh) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf${pad(fh)}.grib2`,
+      hours: (have) => have.filter((h) => h >= 1 && h <= 15)
+    },
     gfs: {
       label: 'GFS', long: 'NOAA GFS — 0.25°, global, a new run every 6 hours',
       bucket: 'https://noaa-gfs-bdp-pds.s3.amazonaws.com', cycle: 6, lookBack: 4, minHours: 30,
@@ -65,7 +78,14 @@
     vort: { us: ['×10⁻⁵ s⁻¹', (v) => v], metric: ['×10⁻⁵ s⁻¹', (v) => v] },
     dam: { us: ['dam', (v) => v], metric: ['dam', (v) => v] },
     ltng: { us: ['fl/km²/5 min', (v) => v], metric: ['fl/km²/5 min', (v) => v] },
-    hpa: { us: ['hPa', (v) => v], metric: ['hPa', (v) => v] }
+    index: { us: ['', (v) => v], metric: ['', (v) => v] },
+    jkgneg: { us: ['J/kg', (v) => v], metric: ['J/kg', (v) => v] },
+    hpa: { us: ['hPa', (v) => v], metric: ['hPa', (v) => v] },
+    /* MRMS's (mrms.js) */
+    rot: { us: ['×10⁻³ s⁻¹', (v) => v], metric: ['×10⁻³ s⁻¹', (v) => v] },
+    hailin: { us: ['in', (v) => v], metric: ['mm', (v) => v * 25.4] },
+    kgm2: { us: ['kg/m²', (v) => v], metric: ['kg/m²', (v) => v] },
+    inhr: { us: ['in/h', (v) => v], metric: ['mm/h', (v) => v * 25.4] }
   };
   function say(unit, v, units) {
     const [name, f] = UNIT[unit][units === 'metric' ? 'metric' : 'us'];
@@ -104,6 +124,25 @@
     cloud: { floor: 5, stops: [[5, '#2b3240'], [50, '#7a8494'], [100, '#e9ecef']], ticks: [25, 50, 75, 100] },
     vort: { floor: 10, stops: [[10, '#f2e14a'], [14, '#f5b43a'], [18, '#f07a2a'], [22, '#e0382a'], [28, '#b0122a'], [36, '#d93ad9'], [50, '#ffffff']], ticks: [12, 16, 20, 28, 36] },
     thick: { stops: [[504, '#5b2bd9'], [522, '#2b8fe0'], [540, '#7fd1ff'], [540.01, '#9fd94a'], [558, '#f2e14a'], [576, '#f07a2a'], [594, '#b0122a']], ticks: [510, 528, 540, 558, 576] },
+    /* the composites (STP, SCP, EHI) are indexes of ingredients — 1 is where
+       SPC's climatology says significant tornadoes and supercells become
+       likelier — and CIN is drawn as how strong the cap is */
+    stp: { floor: 0.5, stops: [[0.5, '#9fd38a'], [1, '#f2e14a'], [2, '#f5a23a'], [3, '#e0382a'], [5, '#d93ad9'], [8, '#8a3ad9'], [12, '#ffffff']], ticks: [1, 2, 3, 5, 8] },
+    scp: { floor: 1, stops: [[1, '#9fd38a'], [2, '#f2e14a'], [4, '#f5a23a'], [8, '#e0382a'], [12, '#d93ad9'], [20, '#8a3ad9'], [30, '#ffffff']], ticks: [2, 4, 8, 12, 20] },
+    ehi: { floor: 0.5, stops: [[0.5, '#9fd38a'], [1, '#f2e14a'], [2, '#f5a23a'], [3, '#e0382a'], [4, '#d93ad9'], [6, '#ffffff']], ticks: [1, 2, 3, 4] },
+    shear: { floor: 20, stops: [[20, '#cfe8ff'], [30, '#8fc4ff'], [40, '#3fbf6f'], [50, '#f2e14a'], [60, '#f07a2a'], [70, '#e0382a'], [90, '#d93ad9']], ticks: [30, 40, 50, 60, 70] },
+    cin: { floor: 10, stops: [[10, '#d6e9ff'], [25, '#9cc8ff'], [50, '#5fa3f5'], [100, '#2f6fd9'], [200, '#6b2fb0'], [300, '#a12fb0']], ticks: [25, 50, 100, 200] },
+    prob: { floor: 5, stops: [[5, '#c9e8c3'], [10, '#8fd18f'], [20, '#2fa84a'], [30, '#f2e14a'], [40, '#f5a23a'], [50, '#e0382a'], [60, '#b0122a'], [70, '#d93ad9'], [80, '#8a3ad9'], [90, '#ffffff']],
+      ticks: [10, 20, 30, 50, 70, 90] },
+    /* MRMS: rotation (azimuthal shear, ×10⁻³ s⁻¹ — SPC's tracks start near 0.006),
+       hail size, the chance of severe hail, VIL */
+    rot: { floor: 5, stops: [[5, '#1e3a8a'], [7, '#2563eb'], [9, '#10b981'], [11, '#facc15'], [13, '#f97316'], [16, '#ef4444'], [20, '#d946ef'], [30, '#ffffff']],
+      ticks: [6, 8, 10, 12, 15, 20, 25] },
+    hail: { floor: 0.25, stops: [[0.25, '#9fd38a'], [0.5, '#3fbf6f'], [0.75, '#f2e14a'], [1, '#f5a23a'], [1.5, '#e0382a'], [2, '#d93ad9'], [2.75, '#8a3ad9'], [4, '#ffffff']],
+      ticks: [0.5, 0.75, 1, 1.5, 2, 2.75, 4] },
+    posh: { floor: 10, stops: [[10, '#cfe8c3'], [30, '#f2e14a'], [50, '#f5a23a'], [70, '#e0382a'], [90, '#d93ad9'], [100, '#ffffff']], ticks: [10, 30, 50, 70, 90] },
+    vil: { floor: 1, stops: [[1, '#1e3a8a'], [5, '#2563eb'], [10, '#10b981'], [20, '#84cc16'], [30, '#fde047'], [40, '#f97316'], [50, '#ef4444'], [65, '#d946ef'], [80, '#ffffff']],
+      ticks: [5, 10, 20, 30, 40, 50, 65] },
     /* precipitation type: the colour is the type, its depth the echo */
     ptype: { cat: true, types: { 1: ['Rain', '#2fbf4a', '#0b5a1e'], 2: ['Snow', '#7fc4ff', '#1d3fb0'], 3: ['Freezing rain', '#ff7fa8', '#b0123a'], 4: ['Sleet', '#ffb86b', '#b05a0a'] } }
   };
@@ -129,6 +168,29 @@
       { id: 'mucape', group: 'Storms', label: 'Most-unstable CAPE', unit: 'jkg', pal: 'cape', parts: { c: at('CAPE', '255-0 mb above ground') }, value: (p, i) => p.c[i] },
       { id: 'srh01', group: 'Storms', label: '0–1 km storm-relative helicity', unit: 'm2s2', pal: 'srh', parts: { h: at('HLCY', '1000-0 m above ground') }, value: (p, i) => p.h[i] },
       { id: 'srh03', group: 'Storms', label: '0–3 km storm-relative helicity', unit: 'm2s2', pal: 'srh', parts: { h: at('HLCY', '3000-0 m above ground') }, value: (p, i) => p.h[i] },
+      /* SPC's fixed-layer significant tornado parameter (Thompson et al. 2003):
+         each ingredient over its typical value, the LCL term 1 below 1000 m
+         and 0 above 2000, the shear term 0 under 12.5 m/s and held at 1.5
+         above 30 */
+      { id: 'stp', group: 'Severe', label: 'Significant tornado parameter (fixed layer)', unit: 'index', pal: 'stp',
+        parts: { c: at('CAPE', 'surface'), lcl: at('HGT', 'level of adiabatic condensation from sfc'), zs: at('HGT', 'surface'), h: at('HLCY', '1000-0 m above ground'),
+          u: at('VUCSH', '0-6000 m above ground'), v: at('VVCSH', '0-6000 m above ground') },
+        value: (p, i) => {
+          const lcl = p.lcl[i] - p.zs[i], bwd = Math.hypot(p.u[i], p.v[i]);
+          const lclT = lcl < 1000 ? 1 : lcl > 2000 ? 0 : (2000 - lcl) / 1000, bwdT = bwd < 12.5 ? 0 : Math.min(1.5, bwd / 20);
+          return Math.max(0, p.c[i] / 1500 * lclT * (p.h[i] / 150) * bwdT);
+        } },
+      /* the supercell composite with fixed layers where SPC's uses the
+         effective ones (which need a sounding at every point): most-unstable
+         CAPE, 0–3 km helicity, 0–6 km shear — an approximation, and named so */
+      { id: 'scp', group: 'Severe', label: 'Supercell composite (fixed-layer approximation)', unit: 'index', pal: 'scp',
+        parts: { c: at('CAPE', '255-0 mb above ground'), h: at('HLCY', '3000-0 m above ground'), u: at('VUCSH', '0-6000 m above ground'), v: at('VVCSH', '0-6000 m above ground') },
+        value: (p, i) => { const bwd = Math.hypot(p.u[i], p.v[i]), s = bwd < 10 ? 0 : Math.min(1, bwd / 20); return Math.max(0, p.c[i] / 1000 * (p.h[i] / 50) * s); } },
+      { id: 'ehi', group: 'Severe', label: 'Energy-helicity index, 0–1 km', unit: 'index', pal: 'ehi',
+        parts: { c: at('CAPE', 'surface'), h: at('HLCY', '1000-0 m above ground') }, value: (p, i) => Math.max(0, p.c[i] * p.h[i] / 160000) },
+      { id: 'shear6', group: 'Severe', label: '0–6 km bulk shear and barbs', unit: 'kt', pal: 'shear',
+        parts: { u: at('VUCSH', '0-6000 m above ground'), v: at('VVCSH', '0-6000 m above ground') }, value: (p, i) => Math.hypot(p.u[i], p.v[i]) * MS2KT, barbs: ['u', 'v'] },
+      { id: 'mlcin', group: 'Severe', label: 'Mixed-layer CIN (the cap)', unit: 'jkgneg', pal: 'cin', parts: { c: at('CIN', '90-0 mb above ground') }, value: (p, i) => -p.c[i] },
       { id: 'tops', group: 'Storms', label: 'Echo tops', unit: 'kft', pal: 'tops', parts: { t: at('RETOP', 'cloud top') }, value: (p, i) => (p.t[i] > 0 ? p.t[i] * 3.28084 / 1000 : NaN) },
       { id: 'ltng', group: 'Storms', label: 'Lightning threat', unit: 'ltng', pal: 'ltng', parts: { l: at('LTNG', 'entire atmosphere') }, value: (p, i) => p.l[i] },
       { id: 't2m', group: 'Surface', label: 'Temperature', unit: 'temp', pal: 'temp', parts: { t: at('TMP', '2 m above ground') }, value: (p, i) => K2F(p.t[i]) },
@@ -146,6 +208,15 @@
       { id: 'qpf', group: 'Rain and snow', label: 'Total rain since the run', unit: 'precip', pal: 'precip', parts: { a: acc('APCP') }, value: (p, i) => p.a[i] / 25.4 },
       { id: 'snow', group: 'Rain and snow', label: 'Total snow since the run (10:1)', unit: 'snow', pal: 'snow', parts: { s: acc('ASNOW') }, value: (p, i) => p.s[i] * 39.3701 },
       { id: 'pwat', group: 'Rain and snow', label: 'Precipitable water', unit: 'precip', pal: 'pwat', parts: { w: at('PWAT', 'entire atmosphere (considered as a single layer)') }, value: (p, i) => p.w[i] / 25.4 }
+    ],
+    /* each member's field at the hour, an event in it, and the share of
+       members with that event within 40 km */
+    tle: [
+      { id: 'p_uh', group: 'Chance within 40 km', label: 'A rotating storm (2–5 km updraft helicity ≥ 75 m²/s²)', unit: 'pct', pal: 'prob', member: maxOver('MXUPHL', '5000-2000 m above ground'), event: (v) => v >= 75 },
+      { id: 'p_dbz', group: 'Chance within 40 km', label: 'A strong storm (40 dBZ or more)', unit: 'pct', pal: 'prob', member: at('REFC', 'entire atmosphere'), event: (v) => v >= 40 },
+      { id: 'p_rain', group: 'Chance within 40 km', label: '1 inch of rain in an hour', unit: 'pct', pal: 'prob',
+        member: (e) => e.name === 'APCP' && e.level === 'surface' && /^(\d+)-(\d+) hour acc/.test(e.fcst) && (+e.fcst.split('-')[1].split(' ')[0]) - (+e.fcst.split('-')[0]) === 1, event: (v) => v >= 25.4 },
+      { id: 'p_wind', group: 'Chance within 40 km', label: 'A 58 mph wind (hourly maximum)', unit: 'pct', pal: 'prob', member: maxOver('WIND', '10 m above ground'), event: (v) => v >= 25.93 }
     ],
     gfs: [
       { id: 'h500', group: 'Upper air', label: '500 mb heights and vorticity', unit: 'vort', pal: 'vort', parts: { z: at('HGT', '500 mb'), a: at('ABSV', '500 mb') },
@@ -310,6 +381,7 @@
   async function load(src, run, fh, id, { signal, fetchFn = fetch } = {}) {
     const f = field(src, id);
     if (!f) throw new Error('models: no field ' + id);
+    if (src === 'tle') return loadTLE(f, run + fh * 3600e3, run, fh, { signal, fetchFn });
     const idx = await idxFor(src, run, fh, { signal, fetchFn });
     const parts = resolve(idx, f);
     if (!parts) throw new Error(`models: ${SOURCES[src].label} +${fh} h has no ${f.label}`);
@@ -329,6 +401,92 @@
     if (f.barbs) out.wind = { u: p[f.barbs[0]], v: p[f.barbs[1]] };
     return out;
   }
+  /* ── the time-lagged ensemble ──
+     For the hour asked, the newest run and the five before it, each at the
+     forecast hour that lands there; each member's event (the field past its
+     threshold) widened to everything within 40 km; the probability is the
+     share of members that have it. An extended run (00/06/12/18Z) reaches 48
+     hours, the others 18 — a member that does not reach is left out, and
+     fewer than three is no answer. */
+  function within(mask, nx, ny, k) {
+    /* a square neighbourhood, by two passes of running counts */
+    const tmp = new Uint8Array(nx * ny), out = new Uint8Array(nx * ny);
+    for (let j = 0; j < ny; j++) {
+      let c = 0;
+      const row = j * nx;
+      for (let i = 0; i < Math.min(k, nx); i++) c += mask[row + i];
+      for (let i = 0; i < nx; i++) {
+        if (i + k < nx) c += mask[row + i + k];
+        if (i - k - 1 >= 0) c -= mask[row + i - k - 1];
+        tmp[row + i] = c > 0 ? 1 : 0;
+      }
+    }
+    for (let i = 0; i < nx; i++) {
+      let c = 0;
+      for (let j = 0; j < Math.min(k, ny); j++) c += tmp[j * nx + i];
+      for (let j = 0; j < ny; j++) {
+        if (j + k < ny) c += tmp[(j + k) * nx + i];
+        if (j - k - 1 >= 0) c -= tmp[(j - k - 1) * nx + i];
+        out[j * nx + i] = c > 0 ? 1 : 0;
+      }
+    }
+    return out;
+  }
+  /* a mean over a square, by two passes of running sums */
+  function smooth(v, nx, ny, r) {
+    const tmp = new Float32Array(nx * ny), out = new Float32Array(nx * ny);
+    for (let j = 0; j < ny; j++) {
+      const row = j * nx;
+      let s = 0, c = 0;
+      for (let i = 0; i < Math.min(r, nx); i++) { s += v[row + i]; c++; }
+      for (let i = 0; i < nx; i++) {
+        if (i + r < nx) { s += v[row + i + r]; c++; }
+        if (i - r - 1 >= 0) { s -= v[row + i - r - 1]; c--; }
+        tmp[row + i] = s / c;
+      }
+    }
+    for (let i = 0; i < nx; i++) {
+      let s = 0, c = 0;
+      for (let j = 0; j < Math.min(r, ny); j++) { s += tmp[j * nx + i]; c++; }
+      for (let j = 0; j < ny; j++) {
+        if (j + r < ny) { s += tmp[(j + r) * nx + i]; c++; }
+        if (j - r - 1 >= 0) { s -= tmp[(j - r - 1) * nx + i]; c--; }
+        out[j * nx + i] = s / c;
+      }
+    }
+    return out;
+  }
+  async function loadTLE(f, validMs, run0, fh0, { signal, fetchFn = fetch } = {}) {
+    const S = SOURCES.tle, members = [];
+    for (let k = 0; k < S.members; k++) {
+      const run = run0 - k * 3600e3, fh = Math.round((validMs - run) / 3600e3), maxFh = new Date(run).getUTCHours() % 6 === 0 ? 48 : 18;
+      if (fh < 1 || fh > maxFh) continue;
+      members.push((async () => {
+        try {
+          const idx = await idxFor('tle', run, fh, { signal, fetchFn });
+          const e = idx.find(f.member);
+          if (!e) return null;
+          return await G.fetchMessage(`${S.bucket}/${S.file(run, fh)}`, e, { signal, fetchFn });
+        } catch (err) { if (signal && signal.aborted) throw err; return null; }
+      })());
+    }
+    const got = (await Promise.all(members)).filter(Boolean);
+    if (got.length < 3) throw new Error(`models: only ${got.length} HRRR runs reach this hour — too few for a probability`);
+    const grid = got[0].grid, n = grid.npts, k = Math.max(1, Math.round(S.radiusKm / (grid.dx / 1000))), sum = new Uint8Array(n);
+    for (const m of got) {
+      const mask = new Uint8Array(n);
+      for (let i = 0; i < n; i++) mask[i] = f.event(m.values[i]) ? 1 : 0;
+      const w = within(mask, grid.nx, grid.ny, k);
+      for (let i = 0; i < n; i++) sum[i] += w[i];
+    }
+    const raw = new Float32Array(n);
+    for (let i = 0; i < n; i++) raw[i] = sum[i] * 100 / got.length;
+    /* smoothed over half the neighbourhood, as SPC smooths its ensemble
+       probabilities — a square's corners are not information */
+    const values = smooth(raw, grid.nx, grid.ny, Math.max(1, Math.round(k / 2)));
+    return { field: { ...f, label: `${f.label} — ${got.length} runs` }, grid, values, run: run0, fh: fh0, valid: validMs, members: got.length };
+  }
+
   /* the value (canonical) at a place */
   function valueAt(layer, lat, lon) {
     const g = G.projector(layer.grid), [fi, fj] = g.ij(lat, lon);
@@ -337,7 +495,7 @@
     return G.sample({ grid: layer.grid, values: layer.values }, lat, lon);
   }
 
-  const api = { SOURCES, FIELDS, PAL, UNIT, field, resolve, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, idxFor, load, build, valueAt };
+  const api = { SOURCES, FIELDS, PAL, UNIT, field, resolve, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, idxFor, load, build, valueAt, within, smooth, loadTLE };
   root.ModelMaps = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

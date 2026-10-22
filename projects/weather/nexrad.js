@@ -36,15 +36,19 @@
      readout say; `toUnit` turns the stored unit into it. */
   const KT = 1 / 0.514444;
   const PRODUCTS = {
-    ref: { label: 'Reflectivity', short: 'REF', tilts: ['N0B', 'N1B', 'N2B', 'N3B'], unit: 'dBZ',
+    /* `l2` is the same moment in the full volume (level2.js); a product with
+       no Level III tilts (spectrum width) is read from Level II only */
+    ref: { label: 'Reflectivity', short: 'REF', tilts: ['N0B', 'N1B', 'N2B', 'N3B'], unit: 'dBZ', l2: 'REF',
       long: 'Base reflectivity, super-resolution — how much the beam came back', pal: 'ref' },
-    vel: { label: 'Velocity', short: 'VEL', tilts: ['N0G', 'N1G', 'N2U', 'N3U'], unit: 'kt', toUnit: KT,
+    vel: { label: 'Velocity', short: 'VEL', tilts: ['N0G', 'N1G', 'N2U', 'N3U'], unit: 'kt', toUnit: KT, l2: 'VEL',
       long: 'Base radial velocity — green toward the radar, red away', pal: 'vel' },
+    sw: { label: 'Spectrum width', short: 'SW', tilts: [], unit: 'kt', toUnit: KT, l2: 'SW',
+      long: 'Spectrum width — how spread the speeds in each gate are; high in turbulence and tight rotation', pal: 'sw' },
     srv: { label: 'Storm-relative', short: 'SRV', tilts: ['N0S'], unit: 'kt',
       long: 'Storm-relative velocity — the storm’s own motion taken out, so rotation stands out', pal: 'vel' },
-    cc: { label: 'CC', short: 'CC', tilts: ['N0C', 'N1C', 'N2C', 'N3C'], unit: '',
+    cc: { label: 'CC', short: 'CC', tilts: ['N0C', 'N1C', 'N2C', 'N3C'], unit: '', l2: 'RHO',
       long: 'Correlation coefficient — how alike the targets are. Rain and snow sit near 1; a drop inside a hook can be debris', pal: 'cc' },
-    zdr: { label: 'ZDR', short: 'ZDR', tilts: ['N0X', 'N1X', 'N2X', 'N3X'], unit: 'dB',
+    zdr: { label: 'ZDR', short: 'ZDR', tilts: ['N0X', 'N1X', 'N2X', 'N3X'], unit: 'dB', l2: 'ZDR',
       long: 'Differential reflectivity — the shape of what the beam hit. Big drops are high; tumbling hail is near zero', pal: 'zdr' },
     kdp: { label: 'KDP', short: 'KDP', tilts: ['N0K', 'N1K', 'N2K', 'N3K'], unit: '°/km',
       long: 'Specific differential phase — liquid water in the beam. High KDP is very heavy rain', pal: 'kdp' },
@@ -214,9 +218,14 @@
     for (let i = 0; i < 3600; i++) if (idx[i] < 0) idx[i] = idx[(i + 3599) % 3600];   // a gap borrows its neighbour
     return (f.azIdx = idx);
   }
-  /* the stored byte at a range and azimuth, or 0 outside the sweep */
+  /* the stored byte at a range and azimuth, or 0 outside the sweep. Level
+     III's first gate starts at the radar; Level II's is centred at `firstKm`
+     (about 2 km out). */
+  const gateStart = (f) => (f.firstKm != null ? f.firstKm - f.gateKm / 2 : 0);
   function gate(f, km, azDeg) {
-    const b = Math.floor(km / f.gateKm);
+    const off = gateStart(f);
+    if (km < off) return 0;
+    const b = Math.floor((km - off) / f.gateKm);
     if (b < 0 || b >= f.nBins) return 0;
     const r = azIndex(f)[((Math.floor(azDeg * 10) % 3600) + 3600) % 3600];
     return r < 0 ? 0 : f.data[r * f.nBins + b];
@@ -252,6 +261,8 @@
       [0.93, '#ff9f1c'], [0.96, '#ff3b1c'], [0.98, '#b3122e'], [1.0, '#ff66d9'], [1.05, '#ffd6f5']], ticks: [0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 1] },
     zdr: { min: -4, max: 8, stops: [[-4, '#2b2b2b'], [-2, '#6d6d9f'], [0, '#b0b0b0'], [0.5, '#4b6bff'], [1, '#22c1ff'], [1.5, '#22e0a0'], [2, '#4ce64c'], [2.5, '#d9f03a'],
       [3, '#ffd21f'], [4, '#ff8c1a'], [5, '#ff3b3b'], [6, '#d61a8c'], [8, '#ffffff']], ticks: [-2, 0, 1, 2, 3, 4, 6] },
+    sw: { min: 0, max: 40, stops: [[0, '#1f2937'], [4, '#4b5563'], [8, '#60a5fa'], [12, '#22c55e'], [16, '#eab308'], [20, '#f97316'], [25, '#ef4444'], [32, '#d946ef'], [40, '#ffffff']],
+      floor: 1, ticks: [5, 10, 15, 20, 25, 30] },
     kdp: { min: -2, max: 8, stops: [[-2, '#555555'], [0, '#8a8a8a'], [0.5, '#3b82f6'], [1, '#22c55e'], [2, '#eab308'], [3, '#f97316'], [4, '#ef4444'], [6, '#d946ef'], [8, '#ffffff']],
       ticks: [0, 1, 2, 3, 4, 6] },
     eet: { min: 0, max: 70, stops: [[5, '#1e3a8a'], [15, '#2563eb'], [25, '#10b981'], [35, '#fde047'], [45, '#f97316'], [55, '#ef4444'], [65, '#d946ef'], [70, '#ffffff']],
@@ -332,7 +343,7 @@
     return parse(new Uint8Array(await r.arrayBuffer()));
   }
 
-  const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, GATE_KM, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
+  const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
     colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load };
   root.Nexrad = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
