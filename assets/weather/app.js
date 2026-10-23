@@ -51,7 +51,7 @@
      but only when the NWS said so: a lookup that failed (S.err.pt) is an
      outage, not a border (a Miami visitor was told the radar covers the
      lower 48 only while api.weather.gov was down, 2026-10-23) */
-  const inUS = () => S.pt !== null || !!S.err.pt;
+  const inUS = () => !Wx.outsideUS(S.pt, !!S.err.pt);
 
   /* Warning types, worst first: what storm mode is ordered by and coloured by. */
   const EV = { "Tornado Warning": ["tor", 5], "Extreme Wind Warning": ["eww", 4], "Severe Thunderstorm Warning": ["svr", 3], "Flash Flood Warning": ["ffw", 2], "Snow Squall Warning": ["other", 1] };
@@ -755,14 +755,14 @@
     const box = $("#alerts");
     const a = S.alerts;
     /* an alert check that failed is shown, never hidden (2026-10-23) */
-    const down = !!S.err.alerts && inUS();
+    const down = Wx.alertSource(!!S.err.alerts, S.alertsVia) !== "nws" && inUS();
     if ((!a || !a.length) && !down) { box.hidden = true; box.innerHTML = ""; return; }
     box.hidden = false;
     const k = clk();
     const open = new Set([...box.querySelectorAll("details[open]")].map((d) => d.dataset.id));
     const where = "Check weather.gov, a weather radio or local news";
     const banner = !down ? "" : `<p class="alertdown" role="alert"><b>The National Weather Service did not answer</b>, so not every alert here could be checked. ${
-      S.alertsVia === "iem" ? `${a.length ? "The storm warnings below come from" : "No storm warning is in force here in"} Iowa State's copy of the NWS's feed. Watches, advisories and winter or heat alerts are not in that copy. ${where}. Trying the NWS again every minute.`
+      S.alertsVia === "iem" ? `${a.length ? "The storm warnings below come from" : "No storm warning is in force here in"} Iowa State's copy of the NWS's feed. It holds the warnings and advisories the NWS draws as polygons; watches and county-wide alerts (winter, heat, wind) are not in it. ${where}. Trying the NWS again every minute.`
         : `Iowa State's copy did not answer either, so warnings may be missing. ${where}. Trying again every minute.`}</p>`;
     box.innerHTML = `<h2>Official alerts<span class="src">${S.alertsVia === "iem" ? "NWS, via Iowa State" : "National Weather Service"}</span></h2>` + banner + (a || []).map((x) => `
       <details class="alert" data-tone="${x.tone}" data-id="${esc(x.id)}"${open.has(x.id) ? " open" : ""}>
@@ -1147,7 +1147,7 @@
         const f = Wx.fresh("forecast", S.office.updated);
         row(f.stale ? "stale" : "", `NWS forecast office ${esc(S.pt && S.pt.office || "")}`, "the office's own words, under each day · updated", S.office.updated);
       } else row("off", "NWS forecast office", S.office === undefined ? "asking…" : us ? "not answering" : "US only", null);
-      if (S.alerts && S.alertsVia === "iem") row("stale", `Storm warnings — ${S.alerts.length ? S.alerts.length + " in force here" : "none here"}`, "the NWS did not answer: Iowa State's copy of its storm warnings (no watches or zone alerts) · checked", S.checked.alerts);
+      if (S.alerts && S.alertsVia === "iem") row("stale", `Storm warnings — ${S.alerts.length ? S.alerts.length + " in force here" : "none here"}`, "the NWS did not answer: Iowa State's copy of its storm warnings (no watches or county-wide alerts) · checked", S.checked.alerts);
       else if (S.alerts) row("", `Alerts — ${S.alerts.length ? S.alerts.length + " active here" : "none here"}`, "National Weather Service · checked", S.checked.alerts);
       else row("off", "Alerts", S.alerts === undefined ? "asking…" : us ? "could not be checked" : "US only", null);
     }
@@ -1177,7 +1177,8 @@
       else row("off", "Model map", "asking NOAA for the latest run…", null);
     } else if (rv) {
       const f = Wx.fresh("radar", rv);
-      row(f.stale ? "stale" : "", `Radar${f.stale ? " — delayed" : ""}`, `${esc(radar.describe())} · latest scan`, rv);
+      if (radar.mode === "comp" && radar.backup) row("stale", "Radar — NOAA's backup mosaic", `Iowa State's mosaic is ${radar.iemValid ? Wx.age(Date.now() - radar.iemValid) + " behind" : "not answering"}, so the map shows NOAA's own (MRMS base reflectivity, from NOAA's map server) · latest`, rv);
+      else row(f.stale ? "stale" : "", `Radar${f.stale ? " — delayed" : ""}`, `${esc(radar.describe())} · latest scan`, rv);
     } else row("off", "Radar", radar.started ? "scan time unknown" : "loads when you reach it", null);
     const pro = radar.pro;
     if (pro && pro.ov.watches && pro.wGot) row("", `Watches and discussions — ${pro.watches.length} watch${pro.watches.length === 1 ? "" : "es"}, ${pro.mcds.length + pro.mpds.length} discussion${pro.mcds.length + pro.mpds.length === 1 ? "" : "s"}`, "SPC and WPC, via IEM · checked", pro.wGot);
@@ -1738,7 +1739,35 @@
         if (b > a) x.drawImage(f.img, 0, a, H.w, b - a, x0, y, x1 - x0, STRIP);
       }
     }
+    /* The mosaic's time: IEM's — or, when IEM's is late or not answering and
+       NOAA's own is newer, NOAA's backup (Wx.useBackupMosaic), which the map
+       then draws. Asked again on every refresh, so it goes back to IEM's the
+       moment that recovers (2026-10-23). */
+    async function mosaicTime() {
+      const v = await Wx.radarTime();
+      let bk = null;
+      if (!v || Date.now() - v > Wx.STALE_MS.radar) {
+        const ts = await Wx.mosaicBackup().catch(() => []);
+        if (Wx.useBackupMosaic(v, ts[ts.length - 1])) bk = ts;
+      }
+      R.backup = bk; R.iemValid = v;
+      return bk ? bk[bk.length - 1] : v;
+    }
     function compFrames() {
+      if ($("#noaacredit")) $("#noaacredit").hidden = !R.backup;
+      /* NOAA's backup: its newest picture and the one nearest each five minutes back, as IEM's loop has.
+         Drawn in the NWS's colours on both pages — its palette is not IEM's, so Weather's rain ramp is not laid on it */
+      if (R.backup) {
+        const ts = R.backup, last = ts[ts.length - 1], picks = [];
+        for (const mins of Wx.RADAR_STEPS) {
+          const want = last - mins * 60e3, t = ts.reduce((b, x) => (Math.abs(x - want) < Math.abs(b - want) ? x : b), ts[0]);
+          if (Math.abs(t - want) < 3 * 60e3 && !picks.includes(t)) picks.push(t);
+        }
+        picks.sort((a, b) => a - b);
+        setFrames(picks.map((t) => ({ t, backup: true, url: (z, x, y) => Wx.backupTile(z, x, y, t) })));
+        renderSources();
+        return;
+      }
       const b = bucket();
       setFrames(Wx.RADAR_STEPS.map((mins) => ({ t: R.valid ? R.valid - mins * 60e3 : null, mins, rain: true,
         url: (z, x, y) => Wx.radarTile(mins, z, x, y, b) })));
@@ -1818,16 +1847,21 @@
        storm-relative velocity at the lowest tilt took out (2026-10-23; before
        this the page used only IEM's tracked cells, which nobody could check
        against NWS, and which an IEM outage took away) */
-    async function nwsMotion(site) {
-      const have = srm.nws.get(site);
-      if (have && Date.now() - have.at < 120e3) return have.m;
+    /* `atMs` (a replay): the N0S nearest that moment instead of the newest —
+       NOAA's bucket keeps them from 30 March 2020 (checked 2026-10-23), so a
+       replay since then has NWS's own storm motion too */
+    const SRM_ARCHIVE_FROM = Date.UTC(2020, 2, 30);
+    async function nwsMotion(site, atMs) {
+      const k = atMs ? `${site}|${Math.round(atMs / 300e3)}` : site, have = srm.nws.get(k);
+      if (have && (atMs || Date.now() - have.at < 120e3)) return have.m;
       let m = null;
       try {
-        const scans = await NX.scans(site, "N0S", { mins: 30 });
-        const s = scans[scans.length - 1];
-        if (s) { const F = await cached(s.url, () => NX.load(s.url)); if (F.motion && F.motion.kt > 0) m = { ...F.motion, t: F.time }; }
+        const scans = atMs ? await NX.scans(site, "N0S", { mins: 20, nowMs: atMs + 8 * 60e3 }) : await NX.scans(site, "N0S", { mins: 30 });
+        const s = atMs ? scans.reduce((b, x) => (!b || Math.abs(x.t - atMs) < Math.abs(b.t - atMs) ? x : b), null) : scans[scans.length - 1];
+        if (s && (!atMs || Math.abs(s.t - atMs) < 12 * 60e3)) { const F = await cached(s.url, () => NX.load(s.url)); if (F.motion && F.motion.kt > 0) m = { ...F.motion, t: F.time }; }
       } catch (e) { m = null; }
-      srm.nws.set(site, { at: Date.now(), m });
+      srm.nws.set(k, { at: Date.now(), m });
+      if (srm.nws.size > 60) srm.nws.delete(srm.nws.keys().next().value);
       return m;
     }
     async function srmMotion(site) {
@@ -1850,8 +1884,17 @@
     }
     async function srmSweep(x, file) {
       if (x.prod !== "srv" || file.code !== "L2") return file;
-      if (x.l2 && x.l2.archive) throw new Error("storm-relative velocity needs the storm motion, which is known only live — use Velocity for a replay");
-      const site = R.site && R.site.id, m = site && await srmMotion(site);
+      const site = R.site && R.site.id;
+      if (x.l2 && x.l2.archive) {
+        /* a replay: NWS's own motion at that moment, from its archived N0S (2020 on) */
+        if (!file.time || file.time < SRM_ARCHIVE_FROM) throw new Error("storm-relative velocity needs NWS's storm motion, which NOAA's archive holds from 30 March 2020 — use Velocity for this replay");
+        const own = site && await nwsMotion(site, file.time);
+        if (!own) throw new Error(`NWS wrote no storm motion for ${site || "this radar"} at this moment (no moving storms, or no file) — use Velocity`);
+        const to = (own.from + 180) * Math.PI / 180;
+        return Object.assign(NX.stormRelative(file, own.kt * Math.sin(to) * 0.514444, own.kt * Math.cos(to) * 0.514444),
+          { motionText: `storm motion from ${Math.round(own.from)}° at ${Math.round(own.kt)} kt, the one NWS took out of ${site}'s own storm-relative velocity then` });
+      }
+      const m = site && await srmMotion(site);
       if (m && m.down) throw new Error("IEM's storm tracking did not answer, so the storm motion is not known — try again in a minute, or use Velocity");
       if (!m) throw new Error(`${site || "this radar"} is tracking no moving storms right now, so there is no storm motion to take out — use Velocity`);
       return Object.assign(NX.stormRelative(file, m.uE, m.vN), { motionText: m.nws
@@ -2762,7 +2805,8 @@
       return cx - w / 2 >= a.ox && cy - h / 2 >= a.oy && cx + w / 2 <= a.ox + a.W && cy + h / 2 <= a.oy + a.H;
     }
     async function nowcastMap() {
-      if (PRO || !NC || !RAIN_IDX || R.mode !== "comp" || !R.valid || !R.started) return;
+      /* the nowcast reads IEM's palette: none over NOAA's backup mosaic */
+      if (PRO || !NC || !RAIN_IDX || R.mode !== "comp" || !R.valid || !R.started || R.backup) return;
       const gen = ++NCM.gen, valid = R.valid;
       /* a scale where a pixel is a few km: fine enough to see motion, the view's area in at most 6×4 tiles */
       const zm = Math.max(5, Math.min(6, R.z + 2)), sc = 2 ** (zm - R.z), n = 2 ** zm;
@@ -3204,7 +3248,7 @@
         const F = f.l3.file;
         const t = F ? F.time : f.t, arch = f.l3.l2 && f.l3.l2.archive;
         /* an archived volume says its date, as the mosaic's replay does; a live scan its age */
-        when.innerHTML = arch ? `${esc(timeFmt(t))}<small>${esc(dayFmt(t))}${F ? ` · ${F.elev.toFixed(1)}°` : f.l3.err ? " · failed" : " · loading"}</small>`
+        when.innerHTML = arch ? `${esc(timeFmt(t))}<small>${esc(dayFmt(t))}${F ? ` · ${F.elev.toFixed(1)}°` : f.l3.err ? " · failed" : " · loading"}${F && F.motionText ? ` · ${esc(F.motionText)}` : ""}</small>`
           : `${esc(clk().time(t))}<small>${Wx.age(Date.now() - t)} ago${F ? ` · ${F.elev.toFixed(1)}°` : f.l3.err ? " · failed" : " · loading"}${F && F.motionText ? ` · ${esc(F.motionText)}` : ""}</small>`;
       } else if (f.nc) {
         const k = clk();
@@ -3227,7 +3271,8 @@
       else if (fr && fr.unknown) note(`IEM did not say when its newest mosaic was made, so how old this radar is is not known.${PRO ? " NOAA's own mosaic of the same radars is under MRMS → Composite reflectivity, read straight from NOAA." : ""}`);
       else if (fr && fr.frozen) note(`Radar delayed — the newest file holds a scan from ${fr.age} ago; the feed is repeating old data.`);
       else if (f.future && R.valid && Date.now() - R.valid > 3 * 3600e3) note(`This HRRR run is ${Wx.age(Date.now() - R.valid)} old — a newer one is late.`);
-      else if (fr && fr.stale) note(`Radar delayed — the latest scan is ${fr.age} old.${PRO && R.mode === "comp" ? " NOAA's own mosaic is under MRMS → Composite reflectivity." : PRO && single() ? " The US mosaic and MRMS use the radars around it." : ""}`);
+      else if (fr && fr.stale && !(R.mode === "comp" && R.backup)) note(`Radar delayed — the latest scan is ${fr.age} old.${PRO && R.mode === "comp" ? " NOAA's own mosaic is under MRMS → Composite reflectivity." : PRO && single() ? " The US mosaic and MRMS use the radars around it." : ""}`);
+      else if (R.mode === "comp" && R.backup) note(`Iowa State's radar mosaic is ${R.iemValid ? Wx.age(Date.now() - R.iemValid) + " behind" : "not answering"}, so this is NOAA's own mosaic of the same radars (MRMS), in the NWS's colours.${fr && fr.stale ? ` It is ${fr.age} old too.` : ""}`);
       else if (S.place && !inUS() && R.mode === "comp") note("This radar covers the lower 48 US states only.");
       else if (R.frames.length) note("");
       if (ltgOn() && LTG.at && R.mode !== "replay" && !$("#radarnote").textContent) {
@@ -3243,24 +3288,16 @@
        a clear-air volume takes ten minutes, and echo tops and VIL wait for
        the whole volume, so a fixed 15 called them delayed when they were not. */
     function radarFresh() {
-      /* IEM's time file asked and not answered: the age is unknown, and is said so */
-      if (R.mode === "comp" && R.compAsked && R.frames.length && !R.valid) return { unknown: true };
-      if (!R.valid) return null;
-      const ts = R.frames.map((x) => x.t).filter(Number.isFinite), gaps = [];
-      for (let i = 1; i < ts.length; i++) if (ts[i] > ts[i - 1]) gaps.push(ts[i] - ts[i - 1]);
-      gaps.sort((a, b) => a - b);
-      const gap = gaps.length ? gaps[gaps.length >> 1] : 5 * 60e3, limit = Math.max(Wx.STALE_MS.radar, 2 * gap + 3 * 60e3);
-      const nf = R.frames[R.frames.length - 1], F = nf && nf.l3 && nf.l3.file, own = F && Number.isFinite(F.time) ? F.time : null;
-      const t = own != null ? Math.min(R.valid, own) : R.valid, a = Date.now() - t;
-      return { stale: a > limit, frozen: own != null && R.valid - own > limit, age: Wx.age(a) };
+      const nf = R.frames[R.frames.length - 1], F = nf && nf.l3 && nf.l3.file;
+      return Wx.radarAge({ frames: R.frames.map((x) => x.t), nameMs: R.valid, fileMs: F ? F.time : null, comp: R.mode === "comp", asked: !!R.compAsked });
     }
     /* MRMS and GOES: late when the newest file is three of its own steps old (and five minutes more) */
     function feedLate() {
       if (!R.valid || R.mode === "replay") return "";
       const every = R.mode === "mrms" && MR ? (MR.PRODUCTS[R.mr.prod].every || 2) : R.mode === "abi" && AB ? AB.SECTORS[R.ab.sector].every : null;
       if (!every) return "";
-      const a = Date.now() - R.valid;
-      return a > (3 * every + 5) * 60e3 ? `${R.mode === "mrms" ? "MRMS" : "GOES"} delayed — the newest file is ${Wx.age(a)} old.` : "";
+      const a = Wx.feedLateMs(every, R.valid);
+      return a != null ? `${R.mode === "mrms" ? "MRMS" : "GOES"} delayed — the newest file is ${Wx.age(a)} old.` : "";
     }
     function loadOld() { if (!R.loadedOld) { R.loadedOld = true; draw(); } }
     function play(on) {
@@ -3355,7 +3392,7 @@
          quickly once left reflectivity's scans under the Velocity button */
       const ask = R.modeAsk = (R.modeAsk || 0) + 1;
       if (mode === "comp") {
-        const v = await Wx.radarTime();
+        const v = await mosaicTime();
         if (ask !== R.modeAsk) return;
         R.valid = v; R.compAsked = true;
         compFrames();
@@ -3421,7 +3458,7 @@
         lg.innerHTML = `<div class="bar"><i aria-hidden="true"></i><div class="ticks">${[10, 20, 30, 40, 50, 60, 70].map((t) => `<span style="left:${pos(t)}%">${t}</span>`).join("")}</div></div><span class="lu">dBZ</span>`;
         return;
       }
-      if (!pal && !PRO && R.mode === "comp" && RAIN_LUT) {
+      if (!pal && !PRO && R.mode === "comp" && RAIN_LUT && !R.backup) {
         lg.classList.add("rainkey");
         lg.innerHTML = `<b>Precipitation</b><i aria-hidden="true" style="--rain:${RAIN_CSS}"></i><span class="k"><span>Light</span><span>Moderate</span><span>Heavy</span><span>Extreme</span></span>`;
         return;
@@ -3489,7 +3526,7 @@
       if (R.mode === "model" && MM) return `${MM.SOURCES[R.mm.src].label} ${lc(MM.field(R.mm.src, R.mm.field).label)}`;
       if (R.mode === "abi" && AB) return `${AB.SATS[abiSat()].label} ${AB.PRODUCTS[R.ab.prod].label}${AB.PRODUCTS[R.ab.prod].group === "Single bands" ? "" : " RGB"} (NOAA open data on AWS)`;
       if (R.mode === "mrms" && MR) return `MRMS ${lc(MR.PRODUCTS[R.mr.prod].label)} (NOAA open data on AWS)`;
-      return R.mode === "comp" ? "NEXRAD base reflectivity, US mosaic (IEM)" : R.mode === "hrrr" ? "HRRR simulated reflectivity, the latest run (IEM)" : R.mode === "replay" ? (R.replay && R.replay.site ? `${R.replay.site} Level II archive (NOAA open data on AWS)` : "NEXRAD mosaic archive (IEM)") : `${R.site ? R.site.id + " " : ""}${Wx.SITE_PRODUCTS[R.mode].label.toLowerCase()} (NEXRAD via IEM)`;
+      return R.mode === "comp" ? (R.backup ? "NEXRAD base reflectivity, NOAA's MRMS mosaic (backup — IEM's is down or late)" : "NEXRAD base reflectivity, US mosaic (IEM)") : R.mode === "hrrr" ? "HRRR simulated reflectivity, the latest run (IEM)" : R.mode === "replay" ? (R.replay && R.replay.site ? `${R.replay.site} Level II archive (NOAA open data on AWS)` : "NEXRAD mosaic archive (IEM)") : `${R.site ? R.site.id + " " : ""}${Wx.SITE_PRODUCTS[R.mode].label.toLowerCase()} (NEXRAD via IEM)`;
     }
 
     async function start() {
@@ -3509,7 +3546,7 @@
       if (typeof linked === "string") { setMode(linked); loadOverlays(true); stationsSoon(); return; }
       if (R.mode === "comp") {
         compFrames();
-        const v = await Wx.radarTime();
+        const v = await mosaicTime();
         if (R.mode !== "comp") return;               // a replay began meanwhile: it owns the frames now
         R.valid = v; R.compAsked = true;
         compFrames();
@@ -4188,7 +4225,7 @@
         if (R.stations && Date.now() - (R.obsAt || 0) > 300e3) loadStations();
         loadOverlays();
         if (R.sat && satBucket() !== satAt) { satAt = satBucket(); for (const s of sats) { for (const img of s.tiles.values()) img.remove(); s.tiles.clear(); } draw(); }
-        if (R.mode === "comp") { Wx.radarTime().then((v) => { if (v && v !== R.valid) { R.valid = v; clearTiles(); compFrames(); renderSources(); } }); }
+        if (R.mode === "comp") { const was = !!R.backup; mosaicTime().then((v) => { if (v && (v !== R.valid || was !== !!R.backup)) { R.valid = v; clearTiles(); compFrames(); renderSources(); } }); }
         else if (R.mode === "replay") { /* the past does not refresh */ }
         else if (R.mode === "hrrr") { Wx.hrrrRun().then((v) => { if (v && v !== R.valid && !R.playing) hrrrFrames(); }).catch(() => {}); }
         else if (R.mode === "mrms") mrmsFrames(true);
@@ -4206,6 +4243,8 @@
       get lightning() { return ltgOn() && (LTG.at || LTG.failed) ? { n: LTG.flashes.length, at: LTG.at, failed: LTG.failed } : null; },
       get stations() { return R.stations && R.obs.length ? { n: R.obs.length, newest: Math.max(...R.obs.map((s) => s.time)) } : null; },
       get valid() { return R.valid; },
+      get backup() { return !!R.backup; },
+      get iemValid() { return R.iemValid; },
       get started() { return R.started; }
     };
   })();

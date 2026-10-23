@@ -42,6 +42,10 @@
   const AIR = 'https://air-quality-api.open-meteo.com/v1/air-quality';
   const ARCHIVE = 'https://archive-api.open-meteo.com/v1/archive';
   const NWS = 'https://api.weather.gov';
+  /* NOAA's own map server: MRMS's quality-controlled base reflectivity for
+     the lower 48, as map pictures with a time on each (CORS open) — the
+     mosaic's backup when Iowa State's is late or not answering (2026-10-23) */
+  const NOAA_MOSAIC = 'https://opengeo.ncep.noaa.gov/geoserver/conus/conus_bref_qcd/ows';
   const IEM = 'https://mesonet.agron.iastate.edu';
 
   const host = () => {
@@ -105,6 +109,8 @@
       return [`nws/${path}`, `${NWS}/${path}`];
     },
     radarMeta: () => ['radar', `${IEM}/data/gis/images/4326/USCOMP/n0q_0.json`],
+    /* the backup mosaic's list of times (its WMS capabilities, ~8 KB of XML) */
+    mosaicBackup: () => ['noaa/mosaic', `${NOAA_MOSAIC}?service=WMS&version=1.3.0&request=GetCapabilities`, 'xml'],
     /* the storm-based warnings in force between two times, for a replay —
        at most twelve hours, whole minutes, UTC */
     sbwArchive: (beginIso, endIso) => ISO_MIN.test(beginIso) && ISO_MIN.test(endIso) && Date.parse(endIso) > Date.parse(beginIso) && Date.parse(endIso) - Date.parse(beginIso) <= 12 * 3600e3
@@ -258,7 +264,7 @@
      says that about every point outside the US), so it is not retried. */
   async function ask(route, signal, ms = 12000) {
     if (!route) throw new WxError('not a request this page makes', 400);
-    const [path, direct, kind] = route, text = kind === 'csv';
+    const [path, direct, kind] = route, text = kind === 'csv' || kind === 'xml';
     try {
       return { data: await fetchJSON(host() + '/wx/' + path, signal, ms, text), via: 'worker' };
     } catch (e) {
@@ -868,14 +874,53 @@
     if (!r) return [];
     return normalizeSbw((await ask(r, signal, 30000)).data);
   }
+  /* ── how old the radar on screen really is (app.js asks; wx.test.mjs holds it) ──
+     frames: the loop's frame times; nameMs: the newest scan by its file's
+     name; fileMs: the time inside that file, once loaded; comp/asked: the
+     national mosaic, and whether IEM's time file has been asked yet.
+     The newest scan's own time wins over its name's — a feed that keeps
+     writing new files holding an old scan is "frozen" — and it is late past
+     twice the gap between scans plus three minutes, never under
+     STALE_MS.radar: a clear-air volume takes ten minutes, and echo tops and
+     VIL wait for the whole volume (2026-10-23). */
+  function radarAge({ frames = [], nameMs = null, fileMs = null, comp = false, asked = false, nowMs = Date.now() } = {}) {
+    if (comp && asked && frames.length && !has(nameMs)) return { unknown: true };
+    if (!has(nameMs)) return null;
+    const ts = frames.filter(t => Number.isFinite(t)), gaps = [];
+    for (let i = 1; i < ts.length; i++) if (ts[i] > ts[i - 1]) gaps.push(ts[i] - ts[i - 1]);
+    gaps.sort((a, b) => a - b);
+    const gap = gaps.length ? gaps[gaps.length >> 1] : 5 * 60e3, limit = Math.max(STALE_MS.radar, 2 * gap + 3 * 60e3);
+    const own = Number.isFinite(fileMs) ? fileMs : null, t = own != null ? Math.min(nameMs, own) : nameMs, a = nowMs - t;
+    return { stale: a > limit, frozen: own != null && nameMs - own > limit, ageMs: a, age: age(a), limit };
+  }
+  /* MRMS and GOES: late when the newest file is three of its own steps old and five minutes more */
+  function feedLateMs(everyMin, newestMs, nowMs = Date.now()) {
+    if (!has(everyMin) || !has(newestMs)) return null;
+    const a = nowMs - newestMs;
+    return a > (3 * everyMin + 5) * 60e3 ? a : null;
+  }
+  /* Outside the NWS's patch only when the NWS said so: a lookup that failed
+     is an outage, not a border (a Miami visitor was told the radar covers
+     the lower 48 only while api.weather.gov was down, 2026-10-23).
+     pt: undefined while asking, null when the NWS answered "not here". */
+  const outsideUS = (pt, lookupFailed) => pt === null && !lookupFailed;
+  /* What the alerts card says about its own source: 'nws' (all well),
+     'backup' (the NWS did not answer; Iowa State's copy did), 'missing'
+     (neither did — warnings may be missing). Never silence. */
+  function alertSource(nwsFailed, via) {
+    if (!nwsFailed) return 'nws';
+    return via === 'iem' ? 'backup' : 'missing';
+  }
+
   /* ── when the NWS does not answer: the warnings from IEM's copy ──
      Iowa State keeps every storm-based warning the NWS issues (tornado,
      severe thunderstorm, flash flood, extreme wind, snow squall, special
      marine) with its polygon. When api.weather.gov is down, the warnings in
      force over a point come from there, in normalizeAlerts' shape and marked
      `backup` — the safety-critical ones a visitor would otherwise lose
-     without a word (2026-10-23). Watches, advisories and zone alerts (winter,
-     heat, wind) are not in it, and the page says so. A polygon's newest
+     without a word (2026-10-23). It also holds the advisories drawn as
+     polygons (a Flood Advisory, say); watches and county-wide alerts
+     (winter, heat, wind) are not in it, and the page says so. A polygon's newest
      version wins, and only one in force now. */
   function backupAlerts(rows, lat, lon, nowMs) {
     const now = nowMs || Date.now(), best = new Map();
@@ -1748,6 +1793,32 @@
     return fetchJSON(SCORES + 'nowcast.json', signal, 10000);
   }
 
+  /* ── the backup mosaic (NOAA MRMS, from NOAA's own map server) ──
+     The times it holds, from its capabilities (one every ~2 minutes for two
+     hours), and a map tile for a time — a WMS picture of exactly the tile's
+     square in web Mercator, so it lays on the map as IEM's tiles do. */
+  function mosaicTimes(xml) {
+    const m = /<Dimension[^>]*name="time"[^>]*>([^<]+)</.exec(String(xml || ''));
+    if (!m) return [];
+    return m[1].split(',').map(s => Date.parse(s.trim())).filter(Number.isFinite).sort((a, b) => a - b);
+  }
+  function backupTile(z, x, y, ms) {
+    const half = Math.PI * 6378137, size = 2 * half / 2 ** z;
+    const x0 = -half + x * size, y1 = half - y * size, bbox = [x0, y1 - size, x0 + size, y1].map(v => v.toFixed(2)).join(',');
+    return `${NOAA_MOSAIC}?service=WMS&version=1.1.1&request=GetMap&layers=conus_bref_qcd&styles=&format=image/png&transparent=true&srs=EPSG:3857&width=256&height=256&bbox=${bbox}&time=${new Date(ms).toISOString().slice(0, 19)}Z`;
+  }
+  async function mosaicBackup(signal) {
+    try { return mosaicTimes((await ask(ROUTES.mosaicBackup(), signal)).data); }
+    catch (e) { if (signal && signal.aborted) throw e; return []; }
+  }
+  /* Is IEM's mosaic fit to show? Not when its time did not answer, or when
+     it is past STALE_MS.radar and NOAA's backup is at least ten minutes newer. */
+  function useBackupMosaic(iemMs, backupNewestMs, nowMs = Date.now()) {
+    if (!has(backupNewestMs) || nowMs - backupNewestMs > STALE_MS.radar) return false;
+    if (!has(iemMs)) return true;
+    return nowMs - iemMs > STALE_MS.radar && backupNewestMs - iemMs >= 10 * 60e3;
+  }
+
   async function radarTime(signal) {
     try { return radarValid((await ask(ROUTES.radarMeta(), signal)).data); }
     catch (e) { if (signal && signal.aborted) throw e; return null; }
@@ -1772,7 +1843,7 @@
     AQI_BANDS, aqiBand, normalizeAir, air, normalsFrom, dayOfYear, normals, normalizePlumes, plumes, plumeStats, quantile,
     HRRR, hrrrImage, hrrrRun,
     normalizeWatches, normalizeDiscussions, normalizeCells, LSR_KINDS, lsrKind, normalizeReports, decodePoint, parseCodsus, FRONT_KINDS, surfaceAnalysis, forecastDiscussion, proOverlays,
-    REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive, backupAlerts, alertsBackup,
+    REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive, backupAlerts, alertsBackup, radarAge, feedLateMs, outsideUS, alertSource, mosaicTimes, backupTile, mosaicBackup, useBackupMosaic,
     XSEC_LEVELS, XSEC_FIELDS, XSEC_MAX, linePoints, normalizeXsec, xsec
   };
   root.Wx = api;

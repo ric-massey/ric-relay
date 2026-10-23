@@ -43,7 +43,7 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     W.ROUTES.nwsProducts('COD'), W.ROUTES.nwsProducts('AFD', 'ABC'), W.ROUTES.nwsProduct('fcb2d575-a207-4057-a31c-823cdbbda16d'),
     W.ROUTES.several([{ lat: 12.34, lon: -56.78 }, { lat: -33.87, lon: 151.21 }]),
     W.ROUTES.stationObs('ABC', true), W.ROUTES.asosAt('OK_ASOS', Date.UTC(2013, 4, 20, 20, 0)),
-    W.ROUTES.air(12.345678, -56.781), W.ROUTES.normals(12.345678, -56.781)
+    W.ROUTES.air(12.345678, -56.781), W.ROUTES.normals(12.345678, -56.781), W.ROUTES.mosaicBackup()
   ];
   for (const [path, direct] of routes) {
     const n = asked.length;
@@ -557,6 +557,46 @@ console.log('\nRULE  a replay\'s stations are the archive\'s readings at that mo
   ok(s[0].raw.startsWith('KOKC 201952Z') && s[0].network === 'OK_ASOS' && s[0].net === 'asos', 'with its METAR and its network');
   ok(W.normalizeAsosCsv('<html>error</html>', 'OK_ASOS').length === 0, 'anything that is not the archive\'s CSV is nothing, not an error');
   ok(W.netKind('IA_RWIS') === 'rwis' && W.netKind('ISUSM') === 'soil' && W.netKind('OK_DCP') === 'dcp' && W.netKind('TX_ASOS') === 'asos', 'live stations say which kind of network they are');
+}
+
+console.log('\nRULE  the radar\'s age is the scan\'s own, and an outage is said as one');
+{
+  const M = 60e3, now = Date.UTC(2026, 9, 23, 20, 0);
+  const every = (n, step, last) => Array.from({ length: n }, (_, i) => last - (n - 1 - i) * step);
+  /* a live storm-mode loop, newest 4 min old: fine */
+  ok(W.radarAge({ frames: every(12, 5 * M, now - 4 * M), nameMs: now - 4 * M, fileMs: now - 5 * M, nowMs: now }).stale === false, 'a scan every 5 min, newest 5 min old: not delayed');
+  /* the feed stopped: 17 min with 5-min scans is late */
+  ok(W.radarAge({ frames: every(12, 5 * M, now - 17 * M), nameMs: now - 17 * M, nowMs: now }).stale === true, 'no scan for 17 min when they come every 5: delayed');
+  /* new names, old scan inside: frozen, and aged by the scan */
+  const fz = W.radarAge({ frames: every(12, 5 * M, now - 2 * M), nameMs: now - 2 * M, fileMs: now - 26 * M, nowMs: now });
+  ok(fz.frozen && fz.stale && Math.round(fz.ageMs / M) === 26, 'a new file holding a 26-min-old scan: frozen, and 26 min old');
+  /* clear air: a volume every 10 min, echo tops 21 min after their volume began — not late */
+  ok(W.radarAge({ frames: every(8, 10 * M, now - 21 * M), nameMs: now - 21 * M, fileMs: now - 21 * M, nowMs: now }).stale === false, 'clear air, 10-min volumes, 21 min old: not delayed (it was, at a fixed 15)');
+  ok(W.radarAge({ frames: every(8, 10 * M, now - 30 * M), nameMs: now - 30 * M, nowMs: now }).stale === true, 'but 30 min with 10-min volumes is');
+  /* the mosaic's time file unanswered: unknown, said — but not before it was asked */
+  ok(W.radarAge({ frames: [null, null], nameMs: null, comp: true, asked: true, nowMs: now }).unknown === true && W.radarAge({ frames: [null], nameMs: null, comp: true, asked: false, nowMs: now }) === null,
+    'the mosaic with no time: "unknown" once IEM was asked, nothing while asking');
+  ok(W.feedLateMs(2, now - 12 * M, now) > 0 && W.feedLateMs(2, now - 10 * M, now) === null && W.feedLateMs(5, now - 21 * M, now) > 0 && W.feedLateMs(60, now - 3 * 60 * M, now) === null,
+    'MRMS every 2 min late past 11 min, GOES every 5 past 20, an hourly field not at 3 hours');
+  ok(W.outsideUS(null, false) === true && W.outsideUS(null, true) === false && W.outsideUS(undefined, false) === false && W.outsideUS({ office: 'X' }, false) === false,
+    'outside the US only when the NWS said so — a failed lookup is an outage');
+  ok(W.alertSource(false, 'nws') === 'nws' && W.alertSource(true, 'iem') === 'backup' && W.alertSource(true, null) === 'missing',
+    'the alerts card: all well, the backup, or "may be missing" — never silence');
+}
+
+console.log('\nRULE  the backup mosaic: NOAA\'s own, when IEM\'s is late or silent');
+{
+  const M = 60e3, now = Date.UTC(2026, 9, 23, 20, 0);
+  const ts = W.mosaicTimes('<Layer><Dimension name="time" default="x" units="ISO8601" nearestValue="1">2026-10-23T19:56:00.000Z,2026-10-23T19:54:01.000Z, 2026-10-23T19:58:07Z</Dimension></Layer>');
+  ok(ts.length === 3 && ts[2] === Date.UTC(2026, 9, 23, 19, 58, 7) && ts[0] < ts[1], 'its times, from the capabilities, sorted');
+  ok(W.mosaicTimes('<nothing/>').length === 0, 'a capabilities document with no times gives none');
+  const t0 = W.backupTile(0, 0, 0, now);
+  ok(/bbox=-20037508\.34,-20037508\.34,20037508\.34,20037508\.34&/.test(t0) && t0.includes('srs=EPSG:3857') && t0.includes('time=2026-10-23T20:00:00Z'), 'tile 0/0/0 is the whole web-Mercator square, at the time asked for');
+  ok(/bbox=0\.00,0\.00,20037508\.34,20037508\.34&/.test(W.backupTile(1, 1, 0, now)), 'tile 1/1/0 is the north-east quarter');
+  ok(W.useBackupMosaic(null, now - 3 * M, now) === true, 'IEM\'s time not answering, NOAA\'s fresh: the backup');
+  ok(W.useBackupMosaic(now - 25 * M, now - 3 * M, now) === true, 'IEM 25 min old, NOAA 3: the backup');
+  ok(W.useBackupMosaic(now - 4 * M, now - 1 * M, now) === false, 'IEM fresh: IEM, always');
+  ok(W.useBackupMosaic(now - 25 * M, now - 20 * M, now) === false && W.useBackupMosaic(null, now - 40 * M, now) === false, 'NOAA late too, or not much newer: no switch to something no better');
 }
 
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WEATHER CLIENT RULES PASS'));

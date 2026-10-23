@@ -219,6 +219,28 @@ await guard('radar bucket', async () => {
   }
 });
 
+console.log('\nLIVE  the backup mosaic (NOAA MRMS, from NOAA\'s own map server)');
+await guard('mosaic backup', async () => {
+  const ts = await W.mosaicBackup();
+  ok(ts.length >= 10, `its times answer: ${ts.length}, every ~${ts.length > 1 ? Math.round((ts.at(-1) - ts[0]) / (ts.length - 1) / 60e3) : '?'} min`);
+  ok(ts.length && Date.now() - ts.at(-1) < 15 * 60e3, `and the newest is fresh: ${ts.length ? Math.round((Date.now() - ts.at(-1)) / 60e3) : '—'} min old`);
+  const r = ts.length ? await fetch(W.backupTile(4, 3, 6, ts.at(-1))) : null;
+  ok(r && r.ok && /image\/png/.test(r.headers.get('content-type') || ''), `a tile at the newest time is a picture (${r && r.status} ${r && r.headers.get('content-type')})`);
+});
+
+console.log('\nLIVE  the warnings backup (Iowa State\'s copy of the NWS\'s storm warnings)');
+await guard('alerts backup', async () => {
+  const now = Date.now(), rows = await W.sbwArchive(now - 6 * 3600e3, now);
+  ok(Array.isArray(rows), `IEM's storm-based warnings answer: ${rows.length} polygons in the last six hours`);
+  ok(rows.every((x) => x.polys.length && Number.isFinite(x.begin) && Number.isFinite(x.end) && x.event && x.wfo), 'each with a polygon, its minutes, its event and its office');
+  /* a point inside a warning in force now (read from the answer, never written here) must find it */
+  const live = rows.find((x) => x.begin <= now && now < x.end);
+  if (!live) { console.log('  note  no storm-based warning is in force right now; the point check waits for weather'); return; }
+  const ring = live.polys[0][0], lat = ring.reduce((s, p) => s + p[1], 0) / ring.length, lon = ring.reduce((s, p) => s + p[0], 0) / ring.length;
+  const got = W.backupAlerts(rows, lat, lon, now);
+  ok(!W.inPolygon(lat, lon, live.polys[0]) || got.some((a) => a.event === live.event && a.backup), `a point inside ${live.event} (${live.wfo}) finds it in the backup`);
+});
+
 console.log('\nLIVE  IEM\'s tracked storm cells (the storm motion when NWS\'s is not to be had)');
 await guard('cells', async () => {
   const cells = await W.proOverlays.cells();

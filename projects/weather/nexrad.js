@@ -373,11 +373,14 @@
      oldest first: [{ key, t, url }] */
   async function scans(site, prod, { mins = 60, nowMs = Date.now(), signal, fetchFn = fetch } = {}) {
     if (!SITE3.test(site) || !/^[A-Z0-9]{3}$/.test(prod)) return [];
+    /* every clock hour the window touches, from the hour it starts in to
+       the one now is in (a minute ahead, for a clock a little slow). Stepping
+       an hour from the window's start skipped the current hour whenever the
+       window was under an hour and began in the last one — 20 minutes at
+       19:04 listed only 18Z, and the newest scan grew older all hour
+       (found by soak.mjs, 2026-10-23) */
     const hours = [];
-    for (let t = nowMs - mins * 60e3; t <= nowMs + 3600e3; t += 3600e3) {
-      const h = hourPrefix(site, prod, t);
-      if (!hours.includes(h) && t <= nowMs + 60e3) hours.push(h);
-    }
+    for (let t = Math.floor((nowMs - mins * 60e3) / 3600e3) * 3600e3; t <= nowMs + 60e3; t += 3600e3) hours.push(hourPrefix(site, prod, t));
     const lists = await Promise.all(hours.map(async (h) => {
       const r = await fetchFn(`${BUCKET}/?list-type=2&prefix=${h}`, { signal });
       if (!r.ok) throw new Error('nexrad: listing HTTP ' + r.status);

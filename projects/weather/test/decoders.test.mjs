@@ -488,6 +488,17 @@ console.log('\nRULE  a gate is drawn where it is: range along the beam, bearing 
   ok(Math.abs(hi.km - 60) < 0.5, `at 19.5° a gate 60 km up the beam is ~56.5 km out on the ground (got ${hi.km.toFixed(2)} km slant)`);
 }
 
+console.log('\nRULE  a scan list covers every hour its window touches');
+{
+  const asked = [];
+  const fetchFn = async (url) => { asked.push(url.slice(-2)); return { ok: true, text: async () => '<ListBucketResult></ListBucketResult>' }; };
+  await N.scans('TLX', 'N0S', { mins: 20, nowMs: Date.UTC(2026, 9, 23, 19, 4), fetchFn });
+  ok(asked.join() === '18,19', `20 minutes at 19:04Z lists 18Z and 19Z (${asked.join()}) — it used to list 18Z only`);
+  asked.length = 0;
+  await N.scans('TLX', 'N0S', { mins: 60, nowMs: Date.UTC(2026, 9, 23, 19, 30), fetchFn });
+  ok(asked.join() === '18,19', `an hour at 19:30Z lists 18Z and 19Z (${asked.join()})`);
+}
+
 console.log('\nRULE  a 16-bit moment keeps values outside its usual range');
 {
   const raw = Uint16Array.of(0, 1, 512 + 32 * 20, 512 + 32 * 0.5, 512 - 32 * 9);

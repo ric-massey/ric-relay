@@ -1705,6 +1705,10 @@ function wxUpstream(parts, params) {
     return [`${WX_GEO}?${new URLSearchParams({ name, count: '6', language: 'en', format: 'json' })}`, WX_TTL.geo];
   }
   if (kind === 'radar' && !parts[2]) return [WX_RADAR, WX_TTL.radar];
+  /* the backup mosaic's times: NOAA's map server's capabilities (wx.js ROUTES.mosaicBackup) */
+  if (kind === 'noaa' && parts[2] === 'mosaic' && !parts[3]) {
+    return ['https://opengeo.ncep.noaa.gov/geoserver/conus/conus_bref_qcd/ows?service=WMS&version=1.3.0&request=GetCapabilities', WX_TTL.radar, 'text/xml; charset=utf-8'];
+  }
   if (kind === 'iem' && !parts[3]) {
     const what = parts[2];
     if (what === 'sites') {
