@@ -210,8 +210,20 @@
   function loadAlerts(signal, live) {
     const { lat, lon } = S.place;
     return Wx.alerts(lat, lon, signal)
-      .then((a) => { if (live()) { S.alerts = a; S.checked.alerts = Date.now(); render(); radar.draw(); stormFocus(); } })
-      .catch((e) => { if (live()) { S.alerts = null; S.err.alerts = e; render(); } });
+      .then((a) => { if (live()) { S.alerts = a; S.alertsVia = "nws"; delete S.err.alerts; S.checked.alerts = Date.now(); render(); radar.draw(); stormFocus(); } })
+      .catch(async (e) => {
+        if (!live()) return;
+        /* the NWS did not answer: never silence. The card says so, and the
+           storm warnings in force here come from Iowa State's copy of the
+           NWS's feed (Wx.alertsBackup) — and storm mode runs on them */
+        S.err.alerts = e;
+        try {
+          const b = await Wx.alertsBackup(lat, lon, signal);
+          if (!live()) return;
+          S.alerts = b; S.alertsVia = "iem"; S.checked.alerts = Date.now();
+        } catch (e2) { if (!live()) return; S.alerts = null; S.alertsVia = null; }
+        render(); radar.draw(); stormFocus();
+      });
   }
   function loadState(signal, live) {
     if (!S.pt || !S.pt.state) { S.state = null; return Promise.resolve(); }
@@ -742,11 +754,17 @@
   function renderAlerts() {
     const box = $("#alerts");
     const a = S.alerts;
-    if (!a || !a.length) { box.hidden = true; box.innerHTML = ""; return; }
+    /* an alert check that failed is shown, never hidden (2026-10-23) */
+    const down = !!S.err.alerts && inUS();
+    if ((!a || !a.length) && !down) { box.hidden = true; box.innerHTML = ""; return; }
     box.hidden = false;
     const k = clk();
     const open = new Set([...box.querySelectorAll("details[open]")].map((d) => d.dataset.id));
-    box.innerHTML = `<h2>Official alerts<span class="src">National Weather Service</span></h2>` + a.map((x) => `
+    const where = "Check weather.gov, a weather radio or local news";
+    const banner = !down ? "" : `<p class="alertdown" role="alert"><b>The National Weather Service did not answer</b>, so not every alert here could be checked. ${
+      S.alertsVia === "iem" ? `${a.length ? "The storm warnings below come from" : "No storm warning is in force here in"} Iowa State's copy of the NWS's feed. Watches, advisories and winter or heat alerts are not in that copy. ${where}. Trying the NWS again every minute.`
+        : `Iowa State's copy did not answer either, so warnings may be missing. ${where}. Trying again every minute.`}</p>`;
+    box.innerHTML = `<h2>Official alerts<span class="src">${S.alertsVia === "iem" ? "NWS, via Iowa State" : "National Weather Service"}</span></h2>` + banner + (a || []).map((x) => `
       <details class="alert" data-tone="${x.tone}" data-id="${esc(x.id)}"${open.has(x.id) ? " open" : ""}>
         <summary><span class="ev">${esc(x.event)}</span><span class="until">until ${esc(x.ends ? k.full(x.ends) : "further notice")}</span></summary>
         <div class="body">
@@ -1129,7 +1147,8 @@
         const f = Wx.fresh("forecast", S.office.updated);
         row(f.stale ? "stale" : "", `NWS forecast office ${esc(S.pt && S.pt.office || "")}`, "the office's own words, under each day · updated", S.office.updated);
       } else row("off", "NWS forecast office", S.office === undefined ? "asking…" : us ? "not answering" : "US only", null);
-      if (S.alerts) row("", `Alerts — ${S.alerts.length ? S.alerts.length + " active here" : "none here"}`, "National Weather Service · checked", S.checked.alerts);
+      if (S.alerts && S.alertsVia === "iem") row("stale", `Storm warnings — ${S.alerts.length ? S.alerts.length + " in force here" : "none here"}`, "the NWS did not answer: Iowa State's copy of its storm warnings (no watches or zone alerts) · checked", S.checked.alerts);
+      else if (S.alerts) row("", `Alerts — ${S.alerts.length ? S.alerts.length + " active here" : "none here"}`, "National Weather Service · checked", S.checked.alerts);
       else row("off", "Alerts", S.alerts === undefined ? "asking…" : us ? "could not be checked" : "US only", null);
     }
     if (S.outlook) {
@@ -3204,10 +3223,11 @@
       else if (f.l3 && f.l3.err && f.l3.errText) note(f.l3.errText);
       else if ((f.mrms || f.abi) && feedLate()) note(feedLate());
       else if (f.model || f.mrms || f.abi) note("");
-      else if (fr && fr.unknown) note("IEM did not say when its newest mosaic was made, so how old this radar is is not known.");
+      /* the backup on Pro: NOAA's own MRMS mosaic, read straight from NOAA's bucket, not IEM */
+      else if (fr && fr.unknown) note(`IEM did not say when its newest mosaic was made, so how old this radar is is not known.${PRO ? " NOAA's own mosaic of the same radars is under MRMS → Composite reflectivity, read straight from NOAA." : ""}`);
       else if (fr && fr.frozen) note(`Radar delayed — the newest file holds a scan from ${fr.age} ago; the feed is repeating old data.`);
       else if (f.future && R.valid && Date.now() - R.valid > 3 * 3600e3) note(`This HRRR run is ${Wx.age(Date.now() - R.valid)} old — a newer one is late.`);
-      else if (fr && fr.stale) note(`Radar delayed — the latest scan is ${fr.age} old.`);
+      else if (fr && fr.stale) note(`Radar delayed — the latest scan is ${fr.age} old.${PRO && R.mode === "comp" ? " NOAA's own mosaic is under MRMS → Composite reflectivity." : PRO && single() ? " The US mosaic and MRMS use the radars around it." : ""}`);
       else if (S.place && !inUS() && R.mode === "comp") note("This radar covers the lower 48 US states only.");
       else if (R.frames.length) note("");
       if (ltgOn() && LTG.at && R.mode !== "replay" && !$("#radarnote").textContent) {
@@ -4621,7 +4641,8 @@
     const now = Date.now();
     if (PANEL) { if (now - lastRadar >= 120e3) { lastRadar = now; radar.refresh(); } return; }
     if (now - S.loadedAt > FULL) { load(); return; }
-    const hot = !S.place || stormsHere().length || (S.state || []).some((a) => a.storm);
+    /* a failed alert check is asked again every minute, like a storm */
+    const hot = !S.place || stormsHere().length || (S.state || []).some((a) => a.storm) || !!S.err.alerts;
     if (hot && now - S.fastAt >= FAST) {
       S.fastAt = now;
       const ctl = S.ctl || new AbortController();

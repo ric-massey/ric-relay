@@ -404,6 +404,16 @@ console.log('\nRULE  replay: the archive by its own names, and the warnings as t
     { geometry: null, properties: { event_label: 'No shape' } }] });
   ok(w.length === 1 && w[0].end === Date.parse('2011-04-27T20:08:00Z') && w[0].polys.length === 1 && w[0].color === '#FF0000',
     'each version of a polygon keeps its own minutes; a warning with no shape is left out');
+  /* the NWS down: the storm warnings in force over a point, from IEM's copy */
+  const ring = [[-56.7, 12.3], [-56.6, 12.3], [-56.6, 12.4], [-56.7, 12.4], [-56.7, 12.3]];
+  const rows = [
+    { event: 'Tornado Warning', sig: 'TO.W', wfo: 'ABC', area: 'A', begin: 1000, end: 5000, polys: [[ring]] },
+    { event: 'Tornado Warning', sig: 'TO.W', wfo: 'ABC', area: 'A', begin: 2000, end: 4000, polys: [[ring]] },
+    { event: 'Severe Thunderstorm Warning', sig: 'SV.W', wfo: 'ABC', area: 'B', begin: 1000, end: 2500, polys: [[ring]] },
+    { event: 'Flash Flood Warning', sig: 'FF.W', wfo: 'ABC', area: 'C', begin: 1000, end: 5000, polys: [[[[0, 0], [1, 0], [1, 1], [0, 0]]]] }];
+  const b = W.backupAlerts(rows, 12.35, -56.65, 3000);
+  ok(b.length === 1 && b[0].event === 'Tornado Warning' && b[0].ends === 4000 && b[0].backup && b[0].storm && b[0].tone === 'warning' && b[0].polygon === rows[1].polys[0],
+    'the newest version of each warning in force here, marked as the backup; an expired one and one elsewhere are left out');
 }
 
 console.log('\nRULE  a cross-section: points evenly along the line, one column each');

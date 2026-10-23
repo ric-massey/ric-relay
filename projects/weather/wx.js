@@ -868,6 +868,34 @@
     if (!r) return [];
     return normalizeSbw((await ask(r, signal, 30000)).data);
   }
+  /* ── when the NWS does not answer: the warnings from IEM's copy ──
+     Iowa State keeps every storm-based warning the NWS issues (tornado,
+     severe thunderstorm, flash flood, extreme wind, snow squall, special
+     marine) with its polygon. When api.weather.gov is down, the warnings in
+     force over a point come from there, in normalizeAlerts' shape and marked
+     `backup` — the safety-critical ones a visitor would otherwise lose
+     without a word (2026-10-23). Watches, advisories and zone alerts (winter,
+     heat, wind) are not in it, and the page says so. A polygon's newest
+     version wins, and only one in force now. */
+  function backupAlerts(rows, lat, lon, nowMs) {
+    const now = nowMs || Date.now(), best = new Map();
+    for (const x of rows) {
+      if (!(x.begin <= now && now < x.end) || !x.polys.some(poly => inPolygon(lat, lon, poly))) continue;
+      const k = `${x.wfo}|${x.sig}|${x.area}`, had = best.get(k);
+      if (!had || had.begin < x.begin) best.set(k, x);
+    }
+    return [...best.values()].map(x => ({
+      id: `iem-${x.wfo}-${x.sig}-${x.begin}`, event: x.event, tone: alertTone(x.event),
+      headline: `${x.event} from NWS ${x.wfo}, in force until ${new Date(x.end).toISOString().slice(11, 16)} UTC`,
+      severity: 'Unknown', urgency: '', certainty: '', sent: x.begin, onset: x.begin, ends: x.end,
+      sender: `NWS ${x.wfo}, via Iowa State's copy`, area: x.area, description: '', instruction: '', messageType: '',
+      polygon: x.polys[0] || null, storm: /^(TO|SV|FF|EW|SQ)\.W$/.test(x.sig), backup: true
+    })).sort((a, b) => (b.tone === 'warning') - (a.tone === 'warning'));
+  }
+  async function alertsBackup(lat, lon, signal) {
+    const now = Date.now();
+    return backupAlerts(await sbwArchive(now - 6 * 3600e3, now, signal), lat, lon, now);
+  }
 
   /* ── HRRR forecast radar (DESIGN.md §13, the first model on the map) ──
      IEM draws the latest HRRR run's simulated reflectivity for the lower 48
@@ -1744,7 +1772,7 @@
     AQI_BANDS, aqiBand, normalizeAir, air, normalsFrom, dayOfYear, normals, normalizePlumes, plumes, plumeStats, quantile,
     HRRR, hrrrImage, hrrrRun,
     normalizeWatches, normalizeDiscussions, normalizeCells, LSR_KINDS, lsrKind, normalizeReports, decodePoint, parseCodsus, FRONT_KINDS, surfaceAnalysis, forecastDiscussion, proOverlays,
-    REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive,
+    REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive, backupAlerts, alertsBackup,
     XSEC_LEVELS, XSEC_FIELDS, XSEC_MAX, linePoints, normalizeXsec, xsec
   };
   root.Wx = api;

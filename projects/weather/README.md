@@ -83,7 +83,30 @@ post on the front door (the `radar` painter, over invented ground).
 | `test/sounding.test.mjs` | the sounding arithmetic, against hand-checkable physics and against MetPy (pinned values). In `checks.mjs` |
 | `test/decoders.test.mjs` | the decoders against the libraries the field trusts — MetPy (Level III and Level II), ecCodes (GRIB2, MRMS's PNG-packed GRIB2 and ECMWF's CCSDS-packed), h5py (GLM and ABI), pyproj and the GOES-R user's guide (the ABI's navigation), Python's bz2 — the Level II archive's two layouts against each other, the mesoanalysis's fields against a real HRRR analysis-hour index and its composites (effective STP and SCP, SHIP, effective shear) against hand-worked columns, the GEFS events and ECMWF's mirror fallback, on real files in `test/fixtures/` (`make-expected.py` wrote `expected.json` from them; rerun it by hand when adding a fixture). In `checks.mjs` |
 | `test/workstation.test.mjs` | the workstation's rules: a workspace holds layers and never a place, a link adds a view only if ticked and lets nothing but layers in from outside, every header says its time and its distance from the shared one, the presets name only layers the page can draw. In `checks.mjs` |
-| `test/live.mjs` | the same functions against the real providers. Needs the network, so it runs in `.github/workflows/weather-live.yml` (on change, daily, on demand) |
+| `test/live.mjs` | the same functions against the real providers — and Pro's own radar: NOAA's Level III files and their times, NWS's storm motion (rebuilding N0S from N0G), storm-relative velocity at every tilt of a whole Level II volume, IEM's cell feed. Needs the network, so it runs in `.github/workflows/weather-live.yml` (on change, daily, on demand) |
+| `test/soak.mjs` | the feeds a storm day leans on, round after round for as long as asked (`--minutes 360 --every 120`): uptime, p50 / p95 time to answer and the age of the newest data, per source, with when each failure happened. `--burst N` asks the site's own Worker N times at once each round — never NOAA, the NWS or Iowa State, whose services are shared. Run by hand through a severe-weather day; not in any workflow (2026-10-23) |
+
+## Data licences (checked 2026-10-23 — not legal advice)
+
+What this personal, non-commercial site may do with each source, from each
+provider's published terms as known on that date. **Before any commercial use,
+broadcast or redistribution, read each provider's current terms again** — the
+two that would change first are Open-Meteo and the OpenStreetMap tiles.
+
+| Source | Terms | What it means here |
+|---|---|---|
+| NWS / NOAA — api.weather.gov, SPC, NEXRAD Level II and III, MRMS, GOES, HRRR, GFS, GEFS, NAM, RAP, the National Blend | US government work: public domain. The AWS copies are NOAA's Open Data Dissemination programme, free to use | Free to show and redistribute; credit NOAA / NWS; never imply NOAA endorses the site. Official warnings are shown as issued (a rule already) |
+| Iowa Environmental Mesonet (Iowa State) — mosaic tiles and time, single-site tiles, ASOS archive, storm cells, storm-based warnings, balloons | Free and public, provided as is with no guarantee of service; IEM asks to be credited and to be told about heavy or commercial use | Credit "Iowa Environmental Mesonet"; the Worker's cache keeps the load small. A commercial product would need IEM's word, or NOAA's own files (which Pro already reads for radar) |
+| Open-Meteo — forecast, ensembles, air quality, geocoding, ERA5 archive | The free API is for **non-commercial** use (with a daily request limit); its data is CC BY 4.0. Air quality is Copernicus CAMS and the archive is Copernicus ERA5, both under the Copernicus licence (attribution) | Fine here, credited. **Commercial use needs Open-Meteo's paid API**, and its CC BY / Copernicus credit stays |
+| ECMWF open data — IFS, AIFS | CC BY 4.0 | Credited on the map whenever shown (`#eccredit`, a rule already) |
+| OpenStreetMap tiles (`tile.openstreetmap.org`) | OSM data is ODbL; the tile servers have a usage policy: light use, attribution, no heavy or commercial traffic | Attribution is in the map's corner. **A commercial or high-traffic site must move to a paid or self-hosted tile service** |
+| Natural Earth — map lines and towns | Public domain | Nothing owed; credited anyway |
+| Pangu-Weather weights (`weather-ai.yml`) | Non-commercial (CC BY-NC-SA 4.0) | Ranked on the scoreboard, never drawn; not usable commercially |
+
+Broadcasting or redistributing this room's pictures commercially would also
+need: the Open-Meteo and OSM changes above, IEM's agreement or a move to NOAA's
+files for the mosaic, and a check that nothing is presented as the NWS's own
+product.
 
 ## Who answers what (DESIGN.md §24)
 
@@ -183,6 +206,17 @@ path covers it. Images (map, radar and satellite tiles) always load directly.
 - **An outage is said as an outage.** A failed NWS lookup is not "outside the
   US" (`inUS()` treats `S.err.pt` as an outage), and IEM's cell feed not
   answering is not "no storms".
+- **An alert check that fails is shown, never hidden, and has a backup**
+  (2026-10-23). When api.weather.gov does not answer, the alerts card says so
+  at the top on both pages, and the storm warnings in force at the place come
+  from Iowa State's copy of the NWS's feed (`Wx.alertsBackup`: IEM's storm-based
+  warnings, the newest polygon of each, marked `backup`) — storm mode and the
+  map run on them. The card says what that copy leaves out (watches,
+  advisories, winter and heat alerts) and to check weather.gov, a weather
+  radio or local news; if IEM is down too it says warnings may be missing. The
+  NWS is asked again every minute. On Pro, a mosaic whose age is unknown or
+  late points to MRMS → Composite reflectivity, NOAA's own mosaic of the same
+  radars, read straight from NOAA.
 - **A gate is drawn where it is** (2026-10-23). Each pixel's range and bearing
   come from `nexrad.js` `locator`: the radar and the point on WGS84, the chord
   in the radar's east-north-up frame, and ground distance turned into slant

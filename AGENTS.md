@@ -772,6 +772,12 @@ ones that must never break:
   above the map — put a new control in the kind's own row or a menu. The card's
   height comes from `--maptop` (measured in `workstation.js`), never a guessed
   offset: the last guess went stale and pushed the play bar off a laptop screen.
+- **A failed alert check is never silent** (2026-10-23, after an outside check
+  of Pro). If the NWS does not answer, the alerts card says so at the top and
+  the storm warnings come from Iowa State's copy of the NWS's feed
+  (`Wx.alertsBackup`), marked as such; an NWS outage is never "outside the US"
+  and IEM's cells down is never "no storms". Radar age is the time inside the
+  newest file, not its name. Don't hide the card on a failure or drop the backup.
 - **No go/no-go verdicts.** A ride outlook was built and removed the same day — Ric:
   "this should be information, not something that could make it unsafe." Don't add
   one for riding, driving, flying or anything else; `test/wx.test.mjs` checks.
