@@ -36,6 +36,11 @@
   const LIVE = 'https://training-log.rmbuster82.workers.dev';
   const OM = 'https://api.open-meteo.com/v1/forecast';
   const GEO = 'https://geocoding-api.open-meteo.com/v1/search';
+  /* Weather's air quality and its "usual for the date" (2026-10-23, Ric: "1 and 2
+     please" — the everyday side's missing pieces): Open-Meteo's air-quality
+     model (CAMS) and its ERA5 archive, both CORS-open, both through the Worker first */
+  const AIR = 'https://air-quality-api.open-meteo.com/v1/air-quality';
+  const ARCHIVE = 'https://archive-api.open-meteo.com/v1/archive';
   const NWS = 'https://api.weather.gov';
   const IEM = 'https://mesonet.agron.iastate.edu';
 
@@ -78,6 +83,12 @@
      accepting every one of these and asking upstream for the same URL. */
   const ROUTES = {
     forecast: (lat, lon) => [`om?lat=${coord(lat)}&lon=${coord(lon)}`, `${OM}?${omParams(lat, lon)}`],
+    air: (lat, lon) => validLat(lat) && validLon(lon)
+      ? [`air?lat=${coord(lat)}&lon=${coord(lon)}`, `${AIR}?latitude=${coord(lat)}&longitude=${coord(lon)}&current=us_aqi,pm2_5,ozone&timezone=auto`] : null,
+    /* the thirty years 1991–2020, every day's high and low — the page works
+       the usual for each date out of it and keeps that a month */
+    normals: (lat, lon) => validLat(lat) && validLon(lon)
+      ? [`normals?lat=${coord(lat)}&lon=${coord(lon)}`, `${ARCHIVE}?latitude=${coord(lat)}&longitude=${coord(lon)}&start_date=1991-01-01&end_date=2020-12-31&daily=temperature_2m_max,temperature_2m_min&timezone=auto`] : null,
     geocode: name => {
       const q = String(name).trim().slice(0, 80);
       return [`geo?name=${encodeURIComponent(q)}`,
@@ -1128,6 +1139,60 @@
   }
   const raobTs = ms => new Date(ms).toISOString().replace(/[-:T]/g, '').slice(0, 12);
 
+  /* ── air quality ──
+     The US AQI and the EPA's own words for each band (airnow.gov); what the
+     page says to do is the EPA's advice for that band, nothing more. */
+  const AQI_BANDS = [[50, 'Good', 'Air quality is fine for everyone.'], [100, 'Moderate', 'Fine for most; people unusually sensitive to air pollution may want to take it easier outside.'],
+    [150, 'Unhealthy for sensitive groups', 'Children, older adults and people with heart or lung conditions should take it easier outside.'],
+    [200, 'Unhealthy', 'Everyone may feel it; sensitive groups should avoid long or heavy effort outside.'],
+    [300, 'Very unhealthy', 'Everyone should take it easier outside; sensitive groups should stay in.'], [Infinity, 'Hazardous', 'Everyone should avoid effort outside.']];
+  const aqiBand = aqi => has(aqi) ? AQI_BANDS.find(b => aqi <= b[0]) : null;
+  function normalizeAir(j) {
+    const c = j && j.current;
+    if (!c || !has(c.us_aqi)) return null;
+    /* the hour is the place's local time: read it as if UTC, then take the place's offset off */
+    const b = aqiBand(c.us_aqi), t = Date.parse(String(c.time || '') + 'Z') - (j.utc_offset_seconds || 0) * 1000;
+    return { aqi: Math.round(c.us_aqi), word: b[1], advice: b[2], pm25: has(c.pm2_5) ? c.pm2_5 : null, ozone: has(c.ozone) ? c.ozone : null,
+      time: Number.isFinite(t) ? t : Date.now() };
+  }
+  async function air(lat, lon, signal) {
+    const r = ROUTES.air(lat, lon);
+    return r ? normalizeAir((await ask(r, signal)).data) : null;
+  }
+  /* ── the usual for the date ──
+     Thirty years of daily highs and lows (ERA5 at this spot, 1991–2020 — the
+     NWS's normal period) → for each day of the year, the mean high and low
+     over the fifteen days around it in every year. Returns { hi, lo } arrays
+     of 366 (°C, day of year from 0, 29 February its own), or null. */
+  function normalsFrom(j) {
+    const d = j && j.daily;
+    if (!d || !Array.isArray(d.time) || !Array.isArray(d.temperature_2m_max)) return null;
+    const sum = { hi: new Float64Array(366), lo: new Float64Array(366) }, n = { hi: new Float64Array(366), lo: new Float64Array(366) };
+    d.time.forEach((t, i) => {
+      const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(t);
+      if (!m) return;
+      const doy = dayOfYear(+m[2], +m[3]);
+      const hi = d.temperature_2m_max[i], lo = d.temperature_2m_min && d.temperature_2m_min[i];
+      for (let k = -7; k <= 7; k++) {
+        const x = (doy + k + 366) % 366;
+        if (has(hi)) { sum.hi[x] += hi; n.hi[x]++; }
+        if (has(lo)) { sum.lo[x] += lo; n.lo[x]++; }
+      }
+    });
+    if (!n.hi.some(Boolean)) return null;
+    const mean = (k) => Array.from(sum[k], (v, i) => n[k][i] ? Math.round(v / n[k][i] * 10) / 10 : null);
+    return { hi: mean('hi'), lo: mean('lo'), years: '1991–2020' };
+  }
+  /* day of the year from 0, with 29 February as day 59 and every later day as in a leap year */
+  function dayOfYear(month, day) {
+    const before = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335];
+    return before[month - 1] + day - 1;
+  }
+  async function normals(lat, lon, signal) {
+    const r = ROUTES.normals(lat, lon);
+    return r ? normalsFrom((await ask(r, signal, 30000)).data) : null;
+  }
+
   async function several(places, signal) {
     const r = ROUTES.several(places);
     if (!r) return [];
@@ -1675,7 +1740,8 @@
     several, summary, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet,
     inMosaic, nowcast, nowcastRecord,
     CALM_KMH, isCalm, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M,
-    normalizeStationObs, stationObs, NET_KINDS, netKind, normalizeAsosCsv, stationObsAt, normalizePlumes, plumes, plumeStats, quantile,
+    normalizeStationObs, stationObs, NET_KINDS, netKind, normalizeAsosCsv, stationObsAt,
+    AQI_BANDS, aqiBand, normalizeAir, air, normalsFrom, dayOfYear, normals, normalizePlumes, plumes, plumeStats, quantile,
     HRRR, hrrrImage, hrrrRun,
     normalizeWatches, normalizeDiscussions, normalizeCells, LSR_KINDS, lsrKind, normalizeReports, decodePoint, parseCodsus, FRONT_KINDS, surfaceAnalysis, forecastDiscussion, proOverlays,
     REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive,

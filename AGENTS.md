@@ -745,6 +745,11 @@ ones that must never break:
   `app.js`, because a shared link's layers must be in the address when the map
   starts. Only the visitor's own steps in time move the other maps (`userShow` in
   `app.js`) — never tell the bus from code that runs when something loads.
+- **Weather speaks plainly, Pro technically** (2026-10-23, Ric: "1 and 2"). On
+  Weather the source of every number is still said, in plain words —
+  measured / forecast / worked out, a station by its name — and Pro keeps
+  station / model and the codes. Don't drop the words on Weather (the room's
+  rule: every number carries its source and age); change them only to plainer.
 - **Weather's radar reads like Apple's, Pro's like the NWS's** (2026-10-23, Ric:
   "On my app it should be closer to the Apple one … just have to click it for it
   to go full screen … easy to see where it's raining"). On Weather the mosaic is

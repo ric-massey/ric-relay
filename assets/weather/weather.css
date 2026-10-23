@@ -936,3 +936,17 @@ body:not([data-view="pro"]) .radar #radarframes .frame:not(.future){filter:blur(
 .radar svg.over .city .ct{font:700 15px var(--sans,system-ui);fill:#fff}
 .radar svg.over .cn{font:600 12px var(--sans,system-ui);fill:#fff;paint-order:stroke;stroke:#14171c;stroke-width:3px;stroke-linejoin:round}
 .radar svg.over .me .mt{font:700 17px var(--sans,system-ui);fill:#fff}
+/* Weather in plain words (2026-10-23, Ric: "1 and 2 please") */
+.hour .meas{display:block;font-size:11px;color:var(--dim);margin-top:2px}
+details.how{margin-top:10px}
+details.how summary{cursor:pointer;min-height:36px;display:flex;align-items:center;font-size:13px;color:var(--dim)}
+details.how[open] summary{margin-bottom:6px}
+.dotkey{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin:10px 0 0;font-size:12px;color:var(--dim)}
+.dotkey .cdot{position:static;margin:0 2px 0 6px}
+.dotkey .cdot:first-child{margin-left:0}
+details.srcfold>summary{list-style:none;cursor:pointer}
+details.srcfold>summary::-webkit-details-marker{display:none}
+details.srcfold>summary h2{margin-bottom:0}
+details.srcfold[open]>summary h2{margin-bottom:12px}
+.aqibar{position:relative;height:6px;margin:8px 0;border-radius:3px;background:linear-gradient(90deg,#00e400 0 16.7%,#ffff00 16.7% 33.3%,#ff7e00 33.3% 50%,#ff0000 50% 66.7%,#8f3f97 66.7% 100%)}
+.aqibar b{position:absolute;top:-3px;width:4px;height:12px;margin-left:-2px;border-radius:2px;background:#fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.4)}

@@ -1685,6 +1685,19 @@ function wxUpstream(parts, params) {
       timezone: 'auto', timeformat: 'unixtime', forecast_days: '10', past_days: '1' });
     return [`${WX_OM}?${q}`, WX_TTL.om];
   }
+  /* Weather's air quality (Open-Meteo's CAMS model), and thirty years of daily
+     highs and lows (its ERA5 archive) for "usual for the date" — the page works
+     the averages out; the past does not change, so a month is kept */
+  if (kind === 'air' && !parts[2]) {
+    const lat = wxDeg(params.get('lat'), 90), lon = wxDeg(params.get('lon'), 180);
+    if (lat === null || lon === null) return null;
+    return [`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi,pm2_5,ozone&timezone=auto`, 1800];
+  }
+  if (kind === 'normals' && !parts[2]) {
+    const lat = wxDeg(params.get('lat'), 90), lon = wxDeg(params.get('lon'), 180);
+    if (lat === null || lon === null) return null;
+    return [`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=1991-01-01&end_date=2020-12-31&daily=temperature_2m_max,temperature_2m_min&timezone=auto`, 86400 * 30];
+  }
   if (kind === 'geo' && !parts[2]) {
     const name = String(params.get('name') || '').trim().slice(0, 80);
     if (!name) return null;

@@ -42,7 +42,8 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     W.ROUTES.spcWatches(), W.ROUTES.spcMds(), W.ROUTES.wpcMpds(), W.ROUTES.stormCells(), W.ROUTES.stormReports(),
     W.ROUTES.nwsProducts('COD'), W.ROUTES.nwsProducts('AFD', 'ABC'), W.ROUTES.nwsProduct('fcb2d575-a207-4057-a31c-823cdbbda16d'),
     W.ROUTES.several([{ lat: 12.34, lon: -56.78 }, { lat: -33.87, lon: 151.21 }]),
-    W.ROUTES.stationObs('ABC', true), W.ROUTES.asosAt('OK_ASOS', Date.UTC(2013, 4, 20, 20, 0))
+    W.ROUTES.stationObs('ABC', true), W.ROUTES.asosAt('OK_ASOS', Date.UTC(2013, 4, 20, 20, 0)),
+    W.ROUTES.air(12.345678, -56.781), W.ROUTES.normals(12.345678, -56.781)
   ];
   for (const [path, direct] of routes) {
     const n = asked.length;
@@ -512,6 +513,22 @@ console.log('\nRULE  Pro\'s map lines: read at run time, cut to North America, n
   ok(G.labels(pl.places, 8, 800, 400, at, () => 400).length === 1, 'two names that would touch: only the bigger is drawn');
   const app = (await import('node:fs')).readFileSync(new URL('../../../assets/weather/app.js', import.meta.url), 'utf8');
   ok(/Wx\.mapLayer\(/.test(app) && !/natural-earth-vector/.test(app), 'the page asks through Wx.mapLayer — the address lives in one place');
+}
+
+console.log('\nRULE  air quality says the EPA\'s band, and the usual for a date is thirty years\' mean');
+{
+  const a = W.normalizeAir({ utc_offset_seconds: -25200, current: { time: '2026-10-23T10:00', us_aqi: 40, pm2_5: 7.8, ozone: 53 } });
+  ok(a.aqi === 40 && a.word === 'Good' && a.time === Date.UTC(2026, 9, 23, 17), 'AQI 40 is Good, read at the place\'s own 10:00 (17:00 UTC)');
+  ok(W.aqiBand(51)[1] === 'Moderate' && W.aqiBand(151)[1] === 'Unhealthy' && W.aqiBand(301)[1] === 'Hazardous' && W.normalizeAir({ current: {} }) === null, 'the bands are the EPA\'s; no number, no tile');
+  ok(W.ROUTES.air(12.345678, -56.781)[1].includes('latitude=12.35&longitude=-56.78') && W.ROUTES.normals(12.345678, -56.781)[1].includes('latitude=12.35&longitude=-56.78'), 'both asked for the place to a kilometre');
+  /* thirty made-up years: highs 10 °C on the days around 23 October, 25 on the day itself */
+  const time = [], hi = [], lo = [];
+  for (let y = 1991; y <= 2020; y++) for (const [m, d] of [[10, 16], [10, 23], [10, 30], [12, 1]]) { time.push(`${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`); hi.push(m === 10 && d === 23 ? 25 : 10); lo.push(2); }
+  const n = W.normalsFrom({ daily: { time, temperature_2m_max: hi, temperature_2m_min: lo } });
+  const oct23 = W.dayOfYear(10, 23);
+  ok(n && near(n.hi[oct23], (25 + 10 + 10) / 3, 0.05) && n.lo[oct23] === 2, 'a date\'s usual is the mean over the fifteen days around it, every year');
+  ok(W.dayOfYear(2, 29) === 59 && W.dayOfYear(3, 1) === 60 && W.dayOfYear(12, 31) === 365, '29 February has its own day; the year has 366');
+  ok(W.normalsFrom({ daily: {} }) === null, 'and an answer with no days is no averages');
 }
 
 console.log('\nRULE  a replay\'s stations are the archive\'s readings at that moment, never today\'s');

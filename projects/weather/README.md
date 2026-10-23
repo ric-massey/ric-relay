@@ -131,6 +131,8 @@ post on the front door (the `radar` painter, over invented ground).
 | Model soundings | Open-Meteo, every pressure level, `models=` ncep_hrrr_conus / gfs_global / ecmwf_ifs025 / ecmwf_aifs025_single, run time from `/data/<model>/static/meta.json` | HRRR and GFS publish ~20 levels, ECMWF 12; AIFS gives humidity not dewpoint, so the dewpoint is made from it |
 | Weather balloons | IEM `json/raob.py` and the RAOB network list | The nearest launch site's latest 00Z or 12Z flight |
 | Roughly where a visitor is | The Worker's `/wx/near` — Cloudflare's own city-level guess for the connection | Only once the Worker is deployed. Rounded to 0.1°, never cached or stored, labelled "approximate" |
+| Air quality (Weather) | Open-Meteo's air-quality model (CAMS), `/wx/air` (`Wx.air`), the hour now | The US AQI with the EPA's own word for its band and the EPA's advice for it (`AQI_BANDS`), nothing more; tagged "forecast" — it is a model's estimate. Kept half an hour by the Worker |
+| Averages (Weather) | Open-Meteo's ERA5 archive, `/wx/normals` (`Wx.normals`): every day's high and low at the spot, 1991–2020 (the NWS's normal period) | `normalsFrom` makes each date's usual — the mean over the fifteen days around it in all thirty years — once, and the page keeps it a month (`wx:norm`); the Worker keeps the answer a month too (the past does not change). The tile says today's forecast high against it ("1° below average, usual 56°"). A reanalysis grid, not a station: the sources card says so |
 | Place search | Open-Meteo geocoding | |
 | Base map | OpenStreetMap tiles | The same exception the training page's run map makes |
 
@@ -211,6 +213,19 @@ current conditions, rain timing (next 3 hours in 15-minute steps), hourly with a
 tap-for-detail hour, 10 days with the office's words, alerts with polygons,
 animated radar, wind / humidity / pressure trend / visibility / UV / sun, °F/°C,
 offline copy, refresh every ten minutes while open.
+
+**Weather in plain words (2026-10-23, Ric: "1 and 2 please", after a walk
+through the page as an everyday visitor):** every source is still said, in
+words anyone reads — "Measured at Boeing Field, 4.5 mi away" (the station's
+name, not KBFI), "Forecast · updated 3 min ago", tile tags *measured* /
+*forecast* / *worked out* / *past years* (Pro keeps *station* / *model*), "✓ A
+confident forecast today", "gusts 14" rather than "g14"; the hourly "Now" is
+marked *measured* when it is the station's, so a forecast a few degrees off it
+does not read as a sudden change; the 10-day's coloured dots have a key; when
+it is dry the Next 3 Hours card is two lines, with how the radar estimate is
+made behind "How this is worked out"; "Where this comes from" starts folded.
+New: **Air quality** and **Averages** tiles (above). The hourly chance of rain
+was already there (each hour's %, from 10%).
 
 **Weather's radar, closer to Apple's (2026-10-23, Ric, with his phone's
 screenshots of ours and Apple's side by side: "Why are these so different? On

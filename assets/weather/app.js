@@ -121,7 +121,7 @@
     S.err = {};
     if (!S.fc || S.fc.key !== key) {
       Object.assign(S, { fc: null, fcStale: false, pt: undefined, obs: undefined, office: undefined, alerts: undefined, state: undefined, selected: null, focusedStorm: null,
-        ens: undefined, rec: undefined, verdict: null, fcShown: null, now: undefined, plumes: undefined, afd: undefined });
+        ens: undefined, rec: undefined, verdict: null, fcShown: null, now: undefined, plumes: undefined, afd: undefined, air: undefined, norm: undefined });
       sky.reset();
       /* The last forecast for this place, kept in this browser so a phone
          with no signal still has something to show (§34) — labelled as old. */
@@ -181,7 +181,14 @@
       .then((e) => { if (live()) { S.ens = e; judge(); applyBlend(); render(); } })
       .catch(() => { if (live()) { S.ens = null; render(); } });
     const nowJob = loadNowcast(ctl.signal, live);
-    await Promise.allSettled([fcJob, nwsJob, alertJob, ensJob, nowJob, loadOutlook(ctl.signal, live)]);
+    /* Weather's air quality, and the usual for the date (kept a month per place) */
+    const airJob = $("#t-air") ? Wx.air(lat, lon, ctl.signal).then((a) => { if (live()) { S.air = a; renderTiles(); renderSources(); } }).catch(() => { if (live()) S.air = null; }) : Promise.resolve();
+    const normJob = !$("#t-avg") ? Promise.resolve() : (async () => {
+      const kept = store.get("wx:norm", null);
+      if (kept && kept.key === key && Date.now() - kept.at < 30 * 86400e3 && kept.hi) { S.norm = kept; return; }
+      try { const n = await Wx.normals(lat, lon, ctl.signal); if (live() && n) { S.norm = { ...n, key, at: Date.now() }; store.set("wx:norm", S.norm); } } catch (e) { if (live()) S.norm = null; }
+    })().then(() => { if (live()) { renderTiles(); renderSources(); } });
+    await Promise.allSettled([fcJob, nwsJob, alertJob, ensJob, nowJob, airJob, normJob, loadOutlook(ctl.signal, live)]);
     if (live()) S.loadedAt = Date.now();
   }
   /* ── the radar nowcast: our own next hour ──
@@ -318,6 +325,7 @@
     $("#national").hidden = !us;
     if (us) {
       $("#alerts").hidden = true; $("#nearby").hidden = true; $("#storms").hidden = true;
+      for (const t of ["#t-air", "#t-avg"]) if ($(t)) $(t).hidden = true;
       document.body.classList.remove("storming");
       document.title = TITLE;
       renderUSHero(); renderNational(); renderSources(); radar.label();
@@ -430,10 +438,16 @@
       : Wx.isCalm(c.wind.v) ? `Wind calm${gust != null ? `, gusts to ${Wx.fmt.wind(gust, U())} ${Wx.UNITS[U()].wind}` : ""}`
       : `Wind ${Wx.compass(c.windDir.v)} ${Wx.fmt.wind(c.wind.v, U())}${gust != null ? `, gusting ${Wx.fmt.wind(gust, U())}` : ""} ${Wx.UNITS[U()].wind}`;
     let from;
-    if (c.from === "observation") {
+    /* Weather says it plainly: measured at a named place, or the forecast's
+       number (2026-10-23, Ric: plain words for the everyday visitor) — the
+       source and age are still there, as the room's rule asks */
+    const stationName = () => { const n = String(S.obs.stationName || "").split(/ - |\/|,/)[0].trim(); return n && n.length <= 40 ? n.replace(/\b(Intl|International|Airport|Arpt|Field)\b.*$/i, (m) => /field/i.test(m) ? "Field" : "").trim() || S.obs.station : S.obs.station; };
+    if (c.from === "observation" && !PRO) {
+      from = `<span>Measured at ${esc(stationName())}${S.obs.dist != null ? ", " + Wx.fmt.dist(S.obs.dist, U()) + " " + Wx.UNITS[U()].dist + " away" : ""} · <b data-age="${c.time}">${Wx.age(Date.now() - c.time)}</b> ago</span>`;
+    } else if (c.from === "observation") {
       from = `<span>Observed at ${esc(S.obs.station)}${S.obs.dist != null ? " · " + Wx.fmt.dist(S.obs.dist, U()) + " " + Wx.UNITS[U()].dist + " away" : ""} · <b data-age="${c.time}">${Wx.age(Date.now() - c.time)}</b> ago</span>`;
     } else {
-      from = `<span${S.fcStale ? ' class="delayed"' : ""}>${S.fcStale ? "Offline — saved forecast from " : `Model estimate · ${esc(S.fcShown ? shownName().replace(/^the /, "") : "Open-Meteo")} · `}<b data-age="${fc.fetchedAt}">${Wx.age(Date.now() - fc.fetchedAt)}</b> ago</span>`;
+      from = `<span${S.fcStale ? ' class="delayed"' : ""}>${S.fcStale ? "Offline — saved forecast from " : PRO ? `Model estimate · ${esc(S.fcShown ? shownName().replace(/^the /, "") : "Open-Meteo")} · ` : "Forecast · updated "}<b data-age="${fc.fetchedAt}">${Wx.age(Date.now() - fc.fetchedAt)}</b> ago</span>`;
     }
     const risk = Wx.outlookAt(S.outlook, S.place.lat, S.place.lon);
     const approx = S.place.approx ? `<div class="from"><span>Approximate place, from your internet connection · <a href="#" data-open-places>set yours</a></span></div>` : "";
@@ -473,6 +487,7 @@
     const today = Wx.upcomingDays(fc, nowSec())[0];
     const c = today && Wx.dayConfidence(S.ens, today.t);
     if (!c || c.level === "medium") return "";
+    if (!PRO) return `<div class="confline" data-l="${c.level}">${c.level === "high" ? "✓ A confident forecast today" : "≈ Less certain than usual today"}</div>`;
     return `<div class="confline" data-l="${c.level}">${c.level === "high" ? "✓ Models agree on today" : "≈ Models disagree about today — less certain than usual"}</div>`;
   }
 
@@ -778,9 +793,20 @@
         : "No rain likely anywhere in the 10-day forecast.";
     }
     const radarLine = nowcastLine(k);
-    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5S3.5 7 3.5 10a4.5 4.5 0 0 0 9 0C12.5 7 8 1.5 8 1.5z" fill="currentColor"/></svg>Next 3 hours<span class="src">${radarLine ? "radar, then " : ""}model ${hourly ? "hourly" : "every 15 min"}</span></h2>
+    /* Weather, when nothing is coming: the hero already says it is dry, so this
+       card says only what is new — the radar's word and when the forecast next
+       has rain — and keeps how it is worked out behind a fold */
+    const radarDry = !S.now || (S.now.series && !S.now.series.some((p) => p.p != null && p.p >= 0.15));
+    if (!PRO && rain.state === "dry" && radarDry) {
+      box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5S3.5 7 3.5 10a4.5 4.5 0 0 0 9 0C12.5 7 8 1.5 8 1.5z" fill="currentColor"/></svg>Next 3 hours<span class="src">radar and forecast</span></h2>
+        <div style="font-size:17px;font-weight:600">${S.now ? "No rain on radar heading here, and none in the forecast." : esc(rain.text)}</div>
+        ${after ? `<p class="nextafter">${esc(after)}</p>` : ""}
+        ${radarLine ? `<details class="how"><summary>How this is worked out</summary>${radarLine}</details>` : ""}`;
+      return;
+    }
+    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5S3.5 7 3.5 10a4.5 4.5 0 0 0 9 0C12.5 7 8 1.5 8 1.5z" fill="currentColor"/></svg>Next 3 hours<span class="src">${radarLine ? "radar, then " : ""}${PRO ? "model" : "forecast"} ${hourly ? "hourly" : "every 15 min"}</span></h2>
       ${radarLine}
-      ${radarLine ? `<div class="who">The models, 3 hours</div>` : ""}
+      ${radarLine ? `<div class="who">${PRO ? "The models, 3 hours" : "The forecast, 3 hours"}</div>` : ""}
       <div style="font-size:17px;font-weight:600">${esc(rain.text)}</div>
       ${after ? `<p class="nextafter">${esc(after)}</p>` : ""}
       <div class="nextbars" role="img" aria-label="${esc(rain.text)}">${bars}</div>
@@ -826,7 +852,7 @@
     if (h.wind == null) return `<span class="wd"></span>`;
     if (Wx.isCalm(h.wind)) return `<span class="wd">calm</span>`;
     const arrow = h.windDir != null ? `<svg viewBox="0 0 10 10" aria-hidden="true" style="transform:rotate(${Math.round(h.windDir + 180)}deg)"><path d="M5 1l3 4H6v4H4V5H2z" fill="currentColor"/></svg>` : "";
-    const g = h.gust != null && h.gust - h.wind >= 16 ? `<small>g${Wx.fmt.wind(h.gust, U())}</small>` : "";
+    const g = h.gust != null && h.gust - h.wind >= 16 ? `<small>${PRO ? "g" : "gusts "}${Wx.fmt.wind(h.gust, U())}</small>` : "";
     return `<span class="wd num" title="Wind ${esc(Wx.compass(h.windDir))} ${Wx.fmt.wind(h.wind, U())} ${Wx.UNITS[U()].wind}">${arrow}${Wx.fmt.wind(h.wind, U())}${g}</span>`;
   }
 
@@ -838,7 +864,11 @@
     const hours = Wx.upcomingHours(fc, nowSec(), 25);
     if (S.selected && !hours.some((h) => h.t === S.selected)) S.selected = null;
     /* "Now" is the hero's number, so the two never disagree on one screen. */
-    const nowTemp = Wx.currentConditions(fc, S.obs || null).temp.v;
+    const nowC = Wx.currentConditions(fc, S.obs || null), nowTemp = nowC.temp.v;
+    /* "Now" is measured when a station is near and fresh, and the hours after it
+       are the forecast: on Weather it says so, so a forecast a few degrees
+       cooler or warmer than the station does not read as a sudden change */
+    const nowMeasured = !PRO && nowC.temp.src === "obs";
     /* sunrise and sunset sit in the strip at their own minute */
     const suns = [];
     for (const d of fc.daily) for (const [t, up] of [[d.sunrise, true], [d.sunset, false]]) if (t) suns.push({ t, up });
@@ -852,7 +882,7 @@
         ${icon(c.kind, h.isDay !== 0, c.text)}
         <span class="p">${h.pop >= 10 ? Math.round(h.pop) + "%" : ""}</span>
         <span class="t num">${Wx.fmt.temp(i === 0 && nowTemp != null ? nowTemp : h.temp, U())}°</span>
-        ${windCell(h)}
+        ${windCell(h)}${i === 0 && nowMeasured ? `<span class="meas">measured</span>` : ""}
       </button>${sun}`;
     }).join("");
     const said = Wx.summary(fc, nowSec(), k, (c) => Wx.fmt.temp(c, U()), (w) => Wx.fmt.wind(w, U()), Wx.UNITS[U()].wind);
@@ -877,7 +907,7 @@
       </div>`;
     }
     const scroll = box.querySelector(".hours") ? box.querySelector(".hours").scrollLeft : 0;
-    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4v4l2.5 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Hourly<span class="src">tap an hour · wind in ${esc(Wx.UNITS[U()].wind)} · model</span></h2>
+    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4v4l2.5 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Hourly<span class="src">tap an hour · wind in ${esc(Wx.UNITS[U()].wind)} · ${PRO ? "model" : "forecast"}</span></h2>
       ${said ? `<p class="summary">${esc(said)}</p>` : ""}<div class="hours">${strip}</div>${detail}`;
     box.querySelector(".hours").scrollLeft = scroll;
   }
@@ -930,7 +960,7 @@
     const periods = S.office ? S.office.periods : [];
     const u = Wx.UNITS[U()];
     const vy = Wx.versusYesterday(fc, nowSec());
-    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" stroke-width="1.5"/></svg>${days.length}-day forecast<span class="src">model${periods.length ? " + NWS words" : ""}</span></h2>` +
+    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" stroke="currentColor" stroke-width="1.5"/></svg>${days.length}-day forecast<span class="src">${PRO ? `model${periods.length ? " + NWS words" : ""}` : `forecast${periods.length ? " + local forecaster's notes" : ""}`}</span></h2>` +
       days.map((d, i) => {
         const ms = d.t * 1000 + 12 * 3600e3;
         const c = Wx.condition(d.code);
@@ -962,7 +992,9 @@
             ${words.length ? `<div class="office"><h3>Forecast office ${esc(S.pt && S.pt.office || "")}</h3>${words.map((p) => `<p><b>${esc(p.name)}:</b> ${esc(p.detailed || p.short)}</p>`).join("")}</div>` : ""}
           </div>
         </details>`;
-      }).join("");
+      }).join("") +
+      /* on Weather the dots say what they mean (2026-10-23) */
+      (!PRO && S.ens ? `<p class="dotkey"><i class="cdot" data-l="high"></i>confident <i class="cdot" data-l="medium"></i>fairly sure <i class="cdot" data-l="low"></i>less sure — how far the forecasts agree; tap a day for more</p>` : "");
   }
 
   function renderTiles() {
@@ -974,7 +1006,7 @@
     const now = nowSec();
     const hr = fc.hourly[Wx.hourIndex(fc.hourly, now)] || {};
     const today = Wx.upcomingDays(fc, now)[0] || {};
-    const srcTag = (src) => src === "obs" ? `<span class="tag">station</span>` : src === "derived" ? `<span class="tag">computed</span>` : `<span class="tag">model</span>`;
+    const srcTag = (src) => src === "obs" ? `<span class="tag">${PRO ? "station" : "measured"}</span>` : src === "derived" ? `<span class="tag">${PRO ? "computed" : "worked out"}</span>` : src === "history" ? `<span class="tag">past years</span>` : `<span class="tag">${PRO ? "model" : "forecast"}</span>`;
     const head = (svg, t, src) => `<h2>${svg}${t}<span class="src">${src ? srcTag(src) : ""}</span></h2>`;
 
     /* calm has no direction: a station reports 0° with 0 wind, and an arrow
@@ -1002,7 +1034,7 @@
     const tr = Wx.pressureTrend(fc, now);
     $("#t-press").innerHTML = head('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 11a5.5 5.5 0 1 1 11 0" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 11l3-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>', "Pressure", c.pressure.src) + `
       <div class="big num">${Wx.fmt.pressure(c.pressure.v, U())} <small style="font-size:15px">${u.pressure}</small></div>
-      <div class="say">${tr ? `<b>${tr.word[0].toUpperCase() + tr.word.slice(1)}</b> over 3 hours (model)` : ""}</div>`;
+      <div class="say">${tr ? `<b>${tr.word[0].toUpperCase() + tr.word.slice(1)}</b> over 3 hours (${PRO ? "model" : "forecast"})` : ""}</div>`;
 
     const vis = c.vis.v != null ? c.vis : { v: hr.vis, src: "model" };
     $("#t-vis").innerHTML = head('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>', "Visibility", vis.v != null ? vis.src : null) + `
@@ -1041,6 +1073,34 @@
     $("#t-sun").innerHTML = head('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 12h14M4 12a4 4 0 0 1 8 0M8 3v2M3 6l1.2 1.2M13 6l-1.2 1.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>', "Sun", today.sunrise ? "model" : null) + `
       <div class="big num">${esc(sunSay.big)}</div>
       <div class="say">${sunSay.say}</div>`;
+
+    /* air quality: the US AQI, the EPA's word for it and the EPA's advice — a
+       model's estimate (CAMS, via Open-Meteo), labelled a forecast */
+    const airEl = $("#t-air");
+    if (airEl) {
+      const a = S.air;
+      airEl.hidden = !a;
+      if (a) airEl.innerHTML = head('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 6h8.5a2 2 0 1 0-2-2M1.5 9.5h11a2 2 0 1 1-2 2M1.5 13h6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>', "Air quality", "model") + `
+        <div class="big num">${a.aqi} <small style="font-size:15px">${esc(a.word)}</small></div>
+        <div class="aqibar" aria-hidden="true"><b style="left:${Math.min(100, a.aqi / 3)}%"></b></div>
+        <div class="say">${esc(a.advice)}</div>`;
+    }
+    /* today against the usual for this date here (1991–2020) */
+    const avgEl = $("#t-avg");
+    if (avgEl) {
+      const nm = S.norm, d = today.t ? new Date(today.t * 1000 + 12 * 3600e3) : null;
+      const idx = nm && d ? Wx.dayOfYear(d.getMonth() + 1, d.getDate()) : -1;
+      const uh = idx >= 0 ? nm.hi[idx] : null, ul = idx >= 0 ? nm.lo[idx] : null;
+      avgEl.hidden = uh == null || today.hi == null;
+      if (!avgEl.hidden) {
+        const diff = (a, b) => { const x = U() === "us" ? (a - b) * 9 / 5 : a - b; return Math.round(x); };
+        const dh = diff(today.hi, uh), dl = today.lo != null && ul != null ? diff(today.lo, ul) : null;
+        const word = (n) => n === 0 ? "about usual" : `${Math.abs(n)}° ${n > 0 ? "above" : "below"} average`;
+        avgEl.innerHTML = head('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12l4-4 3 3 5-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>', "Averages", "history") + `
+          <div class="big num">${dh > 0 ? "+" : dh < 0 ? "−" : ""}${Math.abs(dh)}°</div>
+          <div class="say">Today's high <b class="num">${deg(today.hi)}</b> is ${word(dh)} (usual <b class="num">${deg(uh)}</b>)${dl != null ? `.<br>Low <b class="num">${deg(today.lo)}</b>, usual <b class="num">${deg(ul)}</b>` : ""}.</div>`;
+      }
+    }
   }
 
   /* §25 and §37: every feed, how old, and whether it is answering. */
@@ -1071,6 +1131,8 @@
       row("", "SPC convective outlook, day 1", `Storm Prediction Center${o && o.forecaster ? " · " + esc(o.forecaster) : ""} · issued`, o ? o.issued : S.checked.outlook);
     } else row("off", "SPC convective outlook", S.outlook === undefined ? "asking…" : "not answering", null);
     if (S.place && S.now) row("", "Radar nowcast — this site's own", "the last half hour of the IEM mosaic, carried forward in this browser · from the scan", S.now.valid);
+    if (S.place && S.air) row("", "Air quality", "Open-Meteo's air-quality model (CAMS) · US AQI and the EPA's words · for the hour", S.air.time);
+    if (S.place && S.norm) row("", "Averages", `ERA5 reanalysis for this spot, ${esc(S.norm.years || "1991–2020")} · the mean of the fifteen days around each date · worked out`, S.norm.at);
     const rv = radar.valid;
     if (radar.mode === "replay") {
       const rp = radar.replay;
@@ -1107,7 +1169,12 @@
     if (S.ens) row("", "Model agreement", "NBM, HRRR, GFS, ECMWF and ECMWF AI, via Open-Meteo", S.fc ? S.fc.fetchedAt : null);
     if (S.place && S.plumes) row("", `Ensemble — ${S.plumes.members.length} runs`, "GEFS and ECMWF ENS, every member, via Open-Meteo · fetched", S.plumesAt);
     if (sky.source) row(sky.source.stale ? "stale" : "", esc(sky.source.title), esc(sky.source.sub), sky.source.at);
-    $("#sources").innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13V9M6 13V6M10 13V3M14 13V8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Where this comes from</h2><div class="feeds">${rows.join("")}</div>`;
+    const srcHead = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13V9M6 13V6M10 13V3M14 13V8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Where this comes from`;
+    /* on Weather the list of feeds starts folded: there for anyone who asks, out of everyone else's way */
+    if (!PRO) {
+      const was = $("#sources").querySelector("details");
+      $("#sources").innerHTML = `<details class="srcfold"${was && was.open ? " open" : ""}><summary><h2>${srcHead}<span class="src">tap to see</span></h2></summary><div class="feeds">${rows.join("")}</div></details>`;
+    } else $("#sources").innerHTML = `<h2>${srcHead}</h2><div class="feeds">${rows.join("")}</div>`;
   }
 
   /* Ages tick on their own; nothing else needs redrawing for that. */
