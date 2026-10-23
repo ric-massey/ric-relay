@@ -745,6 +745,13 @@ ones that must never break:
   `app.js`, because a shared link's layers must be in the address when the map
   starts. Only the visitor's own steps in time move the other maps (`userShow` in
   `app.js`) — never tell the bus from code that runs when something loads.
+- **Pro's map comes first** (2026-10-23, Ric: "make it cleaner and easier to use
+  for the professionals"). Above the map there is one row of kinds (with Replay,
+  Overlays ▾ and Info) and at most the chosen kind's own row; overlays go in the
+  Overlays menu, prose goes behind Info, the stamp is on the map. Don't add a row
+  above the map — put a new control in the kind's own row or a menu. The card's
+  height comes from `--maptop` (measured in `workstation.js`), never a guessed
+  offset: the last guess went stale and pushed the play bar off a laptop screen.
 - **No go/no-go verdicts.** A ride outlook was built and removed the same day — Ric:
   "this should be information, not something that could make it unsafe." Don't add
   one for riding, driving, flying or anything else; `test/wx.test.mjs` checks.

@@ -2926,6 +2926,7 @@
       const keepT = R.frames.length > 1 && R.frame < R.frames.length - 1 ? frameTime() : null;
       if (C.on && mode !== "model") chartStop();
       R.mode = mode; if (R.stations && R.obsSlot) stationsSoon();
+      if (PRO && l3(mode)) store.set("wx:sitemode", mode);
       document.querySelectorAll(".seg [data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
       play(false);
       clearTiles();
@@ -3015,7 +3016,21 @@
       lg.classList.add("scale");
       lg.innerHTML = `<div class="bar"><i aria-hidden="true" style="background:linear-gradient(90deg,${grad})"></i><div class="ticks">${(pal.ticks || []).map((t) => `<span style="left:${(pos(t) * 100).toFixed(1)}%">${esc(fmt(t))}</span>`).join("")}</div></div><span class="lu">${esc(unit)}</span>`;
     }
+    /* Pro's map toolbar (2026-10-23, Ric: "make it cleaner and easier to use
+       for the professionals"): one row of kinds — the single-radar products
+       live in the row under it, shown only while one radar is the layer —
+       the overlays in one menu with a count, and the words about the map
+       behind ⓘ, so the map gets the height the rows used to take */
+    function syncTools() {
+      if (!PRO || !$("#siterow")) return;
+      const site = !!(l3() || (R.mode === "replay" && R.replay && R.replay.vols));
+      $("#siterow").hidden = !site;
+      $("#sitekind").setAttribute("aria-pressed", String(site));
+      const n = Object.values(R.ov).filter(Boolean).length + (R.stations ? 1 : 0) + (R.outlook ? 1 : 0) + (R.sat ? 1 : 0);
+      $("#ovcount").textContent = n ? String(n) : "";
+    }
     function label() {
+      syncTools();
       legend();
       const sb = $("#sitebar");
       if (R.mode === "comp") sb.textContent = "NEXRAD mosaic of the whole country, every 5 minutes.";
@@ -3537,6 +3552,23 @@
     $("#play").addEventListener("click", () => play(!R.playing));
     $("#scrub").addEventListener("input", (e) => { play(false); loadOld(); userShow(Number(e.target.value)); });
     document.querySelectorAll(".seg [data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+    if ($("#sitekind")) {
+      /* Radar: the single radar, on the product last used (reflectivity the first time) */
+      $("#sitekind").addEventListener("click", () => {
+        const last = store.get("wx:sitemode", "l3:ref");
+        if (!l3()) setMode(l3(last) ? last : "l3:ref");
+      });
+      const ov = $("#ovbtn"), panel = $("#ovpanel");
+      const ovOpen = (on) => { panel.hidden = !on; ov.setAttribute("aria-expanded", String(on)); };
+      ov.addEventListener("click", () => ovOpen(panel.hidden));
+      document.addEventListener("click", (e) => { if (!panel.hidden && !e.target.closest(".ovwrap")) ovOpen(false); });
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) { ovOpen(false); ov.focus(); } });
+      /* the words about the map: under the toolbar while ⓘ is on (kept in this browser) */
+      const sb = $("#sitebar"), info = $("#infobtn");
+      const infoOn = (on) => { sb.classList.toggle("open", on); info.setAttribute("aria-expanded", String(on)); info.setAttribute("aria-pressed", String(on)); };
+      infoOn(store.get("wx:info", false) === true);
+      info.addEventListener("click", () => { const on = !sb.classList.contains("open"); infoOn(on); store.set("wx:info", on); });
+    }
     document.querySelectorAll("[data-sat]").forEach((b) => b.addEventListener("click", () => setSat(b.dataset.sat)));
     if ($("#satsel")) $("#satsel").addEventListener("change", (e) => setSat(e.target.value));
     /* the replay bar: a time (the visitor's own clock), a length, or a notable storm */
@@ -3644,12 +3676,15 @@
     async function setLayer(str) {
       applying++;
       try {
-        const l = applyLink(str);
+        /* the mosaic is the one layer applyLink leaves to the page's default, so it is named here */
+        const asked = new URLSearchParams(String(str).replace(/^#/, "")).get("l");
+        let l = applyLink(str);
+        if (asked === "comp") l = "comp";
         if (PRO && $("#mrprod") && MR) $("#mrprod").value = R.mr.prod;
         if (PRO && $("#abiprod") && AB) { $("#abiprod").value = R.ab.prod; $("#abisec").value = R.ab.sector; $("#abisat").value = R.ab.sat; }
         if (PRO && $("#mmsrc") && MM) { $("#mmsrc").value = R.mm.src; modelOptions(); }
         if (ltgOn()) lightningClock();
-        if (typeof l === "string") await setMode(l);
+        if (typeof l === "string" && (l !== R.mode || l === "comp")) await setMode(l);
         loadOverlays(true); stationsSoon(); draw(); label();
       } finally { applying--; }
     }

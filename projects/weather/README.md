@@ -212,6 +212,24 @@ tap-for-detail hour, 10 days with the office's words, alerts with polygons,
 animated radar, wind / humidity / pressure trend / visibility / UV / sun, °F/°C,
 offline copy, refresh every ten minutes while open.
 
+**Weather Pro, the map first (2026-10-23, Ric: "analyze the ui and see if there
+is any way to make it cleaner and easier to use for the professionals", then
+"Do it plz"):** measured first — at 1366×768 in Models mode 173 px of map showed,
+at 1440×900 the play bar and legend were off the screen, and on a phone the map
+began below the first screen, with seven rows of controls above it. Now one row
+of kinds (Mosaic · Radar · Satellite · MRMS · Models · Future, then Replay,
+**Overlays ▾** with a count, and **Info**), the chosen kind's own row under it (a
+single radar's products, picker and tilts; a model's model, field and run; a
+satellite's product and sector), the words about the map behind Info, the map's
+stamp on the map, and the workspace in the place bar (behind a **Workspace**
+button on a phone, where Overlays rises from the bottom). The map card fills the
+screen below where it starts (`--maptop`, measured by `workstation.js`, because a
+guessed height went stale the day the workspace bar arrived), so the play bar and
+legend are always in view. After: 341 px of map in Models mode at 1366×768, 473 at
+1440×900, and 486 px of it on a phone's first screen. Every control and key is
+where it was in function; `R` / Radar opens the single radar on the product last
+used.
+
 **Weather Pro, fourth round (2026-10-22, Ric: "finish what the AI needs to
 do"):** the workstation (below, and [`WORKSTATION.md`](WORKSTATION.md)); NAM
 3 km and RAP maps; the National Blend's chances; storm-relative velocity at

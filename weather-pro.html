@@ -24,7 +24,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Weather">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231f5fa8'/><circle cx='40' cy='40' r='16' fill='%23ffd166'/><path d='M30 74h42a14 14 0 0 0-3-28 18 18 0 0 0-34 6 11 11 0 0 0-5 22z' fill='%23fff'/></svg>">
-  <link rel="stylesheet" href="assets/weather/weather.css?v=8">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=13">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -58,6 +58,24 @@
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5a4.5 4.5 0 0 0-4.5 4.5c0 3.4 4.5 8.5 4.5 8.5s4.5-5.1 4.5-8.5A4.5 4.5 0 0 0 8 1.5zm0 6.3A1.8 1.8 0 1 1 8 4.2a1.8 1.8 0 0 1 0 3.6z" fill="currentColor"/></svg>
       <span id="placename">Across the US</span>
     </button>
+    <!-- the workstation (workstation.js): the layout, the maps beside the main
+         one, and the one place and time they share. On a phone it folds
+         behind its own button. -->
+    <button type="button" class="chip wstoggle" id="wstoggle" aria-expanded="false" aria-controls="wsbar">Workspace</button>
+    <div class="wsbar" id="wsbar" role="toolbar" aria-label="Workspace">
+      <label class="wsname"><span class="seglab">Workspace</span><select id="wssel" aria-label="Workspace"></select></label>
+      <button type="button" id="wsexplore" aria-haspopup="dialog" title="Every tool, by what it measures">Explore</button>
+      <button type="button" id="wsadd" title="Another map beside the main one, following the same place and time">+ Map</button>
+      <button type="button" id="wsarrange" aria-haspopup="dialog" title="Which cards show, in what order, and the maps">Arrange</button>
+      <button type="button" id="wssave" aria-haspopup="dialog" title="Save, rename, duplicate or delete workspaces (this browser only)">Save…</button>
+      <button type="button" id="wsshare" aria-haspopup="dialog" title="A link to this layout">Share</button>
+      <span class="wssync" role="group" aria-label="What the maps share"><span class="seglab">Sync</span>
+        <label><input type="checkbox" id="wsplace" checked> place</label>
+        <label><input type="checkbox" id="wstime" checked> time</label></span>
+      <span class="wsclock num" id="wsclock" aria-live="polite"></span>
+      <button type="button" id="wslive" hidden title="Every map back to now">Now</button>
+    </div>
+    <p class="wsnote" id="wsnote" role="status" hidden></p>
     <span class="spacer"></span>
     <button class="chip" type="button" id="usview" aria-label="Across the US" title="Across the US">US</button>
     <button class="chip" type="button" id="units" aria-label="Switch units">°F</button>
@@ -71,48 +89,56 @@
   <div class="stormband">
     <div id="storms" class="card bare" hidden aria-live="assertive"></div>
   </div>
-  <!-- the workstation (workstation.js): the layout, the maps beside the main
-       one, and the one place and time they share -->
-  <div class="wsbar" id="wsbar" role="toolbar" aria-label="Workspace">
-    <label class="wsname"><span class="seglab">Workspace</span><select id="wssel" aria-label="Workspace"></select></label>
-    <button type="button" id="wsexplore" aria-haspopup="dialog" title="Every tool, by what it measures">Explore</button>
-    <button type="button" id="wsadd" title="Another map beside the main one, following the same place and time">+ Map</button>
-    <button type="button" id="wsarrange" aria-haspopup="dialog" title="Which cards show, in what order, and the maps">Arrange</button>
-    <button type="button" id="wssave" aria-haspopup="dialog" title="Save, rename, duplicate or delete workspaces (this browser only)">Save…</button>
-    <button type="button" id="wsshare" aria-haspopup="dialog" title="A link to this layout">Share</button>
-    <span class="wssync" role="group" aria-label="What the maps share"><span class="seglab">Sync</span>
-      <label><input type="checkbox" id="wsplace" checked> place</label>
-      <label><input type="checkbox" id="wstime" checked> time</label></span>
-    <span class="wsclock num" id="wsclock" aria-live="polite"></span>
-    <button type="button" id="wslive" hidden title="Every map back to now">Now</button>
-    <p class="wsnote" id="wsnote" role="status" hidden></p>
-  </div>
   <!-- the workspace: the map, and the readouts docked beside it -->
   <div class="workspace">
     <div class="mapcol">
-      <section class="card" id="radarcard" aria-label="Radar">
-        <h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 8l4.5-4.5" stroke="currentColor" stroke-width="1.5"/></svg>Radar<span class="src" id="radarsrc"></span></h2>
-        <p class="pst mainst" id="mainstamp" aria-live="polite"></p>
-        <div class="seg rowscroll pro-only" role="group" aria-label="Radar layer">
-          <button type="button" data-mode="comp" aria-pressed="true">US mosaic</button>
-          <button type="button" data-mode="abi" aria-pressed="false" title="GOES satellite straight from NOAA: all 16 bands and the RGB composites, the lower 48 every 5 minutes or a mesoscale sector every minute">Satellite · GOES</button>
-          <button type="button" data-mode="mrms" aria-pressed="false" title="NOAA's Multi-Radar Multi-Sensor products: rotation tracks, hail size (MESH), reflectivity at −10 °C, rain totals">MRMS</button>
-          <span class="seglab">Site</span>
-          <button type="button" data-mode="l3:ref" aria-pressed="false" title="The nearest radar's own reflectivity, at the tilt you pick">Reflectivity</button>
-          <button type="button" data-mode="l3:vel" aria-pressed="false" title="Base radial velocity — green toward the radar, red away">Velocity</button>
-          <button type="button" data-mode="l3:srv" aria-pressed="false" title="Storm-relative velocity — the storm's own motion taken out, so rotation stands out">SRV</button>
-          <button type="button" data-mode="l3:sw" aria-pressed="false" title="Spectrum width — the spread of speeds in each gate; high in turbulence and tight rotation (full volume only)">SW</button>
-          <button type="button" data-mode="l3:cc" aria-pressed="false" title="Correlation coefficient — low values inside a storm can be debris">CC</button>
-          <button type="button" data-mode="l3:zdr" aria-pressed="false" title="Differential reflectivity — the shape of what the beam hit">ZDR</button>
-          <button type="button" data-mode="l3:kdp" aria-pressed="false" title="Specific differential phase — liquid water, heavy rain">KDP</button>
-          <button type="button" data-mode="l3:hca" aria-pressed="false" title="The radar's own call on what each gate holds: rain, hail, snow, debris…">Hydro class</button>
-          <button type="button" data-mode="l3:eet" aria-pressed="false" title="Enhanced echo tops — how tall the storms are">Echo tops</button>
-          <button type="button" data-mode="l3:vil" aria-pressed="false" title="Vertically integrated liquid — all the water in the column">VIL</button>
-          <span class="seglab">Forecast</span>
-          <button type="button" data-mode="hrrr" aria-pressed="false" title="The HRRR model's forecast of the rain, drawn like radar, for the next 18 hours">Future · HRRR</button>
-          <button type="button" data-mode="model" id="modeltoggle" aria-pressed="false" title="HRRR and GFS fields on the map: CAPE, helicity, temperature, 500 mb, the jet…">Models</button>
-          <button type="button" id="replaytoggle" aria-pressed="false" aria-expanded="false" aria-controls="replaybar" title="The radar and the storm warnings as they were, any day since 2006">Replay</button>
+      <section class="card" id="radarcard" aria-label="Map">
+        <h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 8l4.5-4.5" stroke="currentColor" stroke-width="1.5"/></svg>Map<span class="src" id="radarsrc"></span></h2>
+        <!-- one row: what kind of map, the replay, the overlays, and the words
+             about it (ⓘ) — the chosen kind's own controls are the row under it -->
+        <div class="maptools pro-only">
+          <div class="seg kinds" role="group" aria-label="Map layer">
+            <button type="button" data-mode="comp" aria-pressed="true" title="Every NEXRAD at once, base reflectivity (M)">Mosaic</button>
+            <button type="button" id="sitekind" aria-pressed="false" aria-controls="siterow" title="One radar's own products: reflectivity, velocity, SRV, dual-pol, echo tops, VIL (R)">Radar</button>
+            <button type="button" data-mode="abi" aria-pressed="false" title="GOES satellite straight from NOAA: all 16 bands and the RGB composites, the lower 48 every 5 minutes or a mesoscale sector every minute (G)">Satellite</button>
+            <button type="button" data-mode="mrms" aria-pressed="false" title="NOAA's Multi-Radar Multi-Sensor products: rotation tracks, hail size (MESH), reflectivity at −10 °C, rain totals">MRMS</button>
+            <button type="button" data-mode="model" id="modeltoggle" aria-pressed="false" title="Model fields on the map: HRRR, NAM, RAP, GFS, ECMWF, ensembles, the mesoanalysis">Models</button>
+            <button type="button" data-mode="hrrr" aria-pressed="false" title="The HRRR model's forecast of the rain, drawn like radar, for the next 18 hours">Future</button>
+          </div>
+          <button type="button" class="toolbtn" id="replaytoggle" aria-pressed="false" aria-expanded="false" aria-controls="replaybar" title="The radar and the storm warnings as they were, any day since 2006">Replay</button>
+          <div class="ovwrap">
+            <button type="button" class="toolbtn" id="ovbtn" aria-expanded="false" aria-controls="ovpanel" title="Lines, watches, cells, lightning, reports, fronts, stations, the outlook and the satellite underneath">Overlays <b class="ovcount" id="ovcount"></b></button>
+            <div class="ovpanel" id="ovpanel" hidden>
+              <div class="seg toggles" role="group" aria-label="Overlays on the map">
+                <button type="button" data-ov="lines" aria-pressed="true" title="State, county, coast and border lines and town names, drawn over the data — from Natural Earth">Map lines</button>
+                <button type="button" data-ov="watches" aria-pressed="false" title="SPC watches and mesoscale discussions, WPC precipitation discussions (W)">Watches &amp; MDs</button>
+                <button type="button" data-ov="cells" aria-pressed="false" title="Every NEXRAD storm cell: track, hail, rotation">Storm cells</button>
+                <button type="button" data-ov="lightning" aria-pressed="false" title="Every lightning flash GOES's lightning mapper saw in the last 10 minutes (L)">Lightning</button>
+                <button type="button" data-ov="density" aria-pressed="false" title="How many flashes fell in each 8 km square over a window you choose">Flash density</button>
+                <button type="button" data-ov="reports" aria-pressed="false" title="The NWS's local storm reports from the last 24 hours: tornadoes, hail, wind, floods, snow">Storm reports</button>
+                <button type="button" data-ov="fronts" aria-pressed="false" title="WPC's surface analysis: fronts, highs and lows">Fronts</button>
+                <button type="button" id="stationtoggle" aria-pressed="false" title="Weather stations: airports, road, farm and gauge networks; the station model from zoom 8">Stations</button>
+                <button type="button" id="outlooktoggle" aria-pressed="false" title="SPC's convective outlook for today">SPC outlook</button>
+              </div>
+              <label class="satpick" title="Satellite under the radar: the latest image, or GOES's own at a past frame's time"><span class="seglab">Under</span><select id="satsel" aria-label="Satellite under the radar"><option value="">No satellite</option><option value="ir">Infrared</option><option value="vis">Visible</option><option value="wv">Water vapour</option></select></label>
+            </div>
+          </div>
+          <button type="button" class="toolbtn infobtn" id="infobtn" aria-expanded="false" aria-controls="sitebar" aria-label="What this map is and where it comes from" title="What this map is and where it comes from">Info</button>
         </div>
+        <!-- a single radar's products, its picker and its tilts: shown while one radar is the layer -->
+        <div class="siterow pro-only" id="siterow" hidden>
+          <div class="seg rowscroll" role="group" aria-label="Radar product">
+            <button type="button" data-mode="l3:ref" aria-pressed="false" title="The nearest radar's own reflectivity, at the tilt you pick (R)">REF</button>
+            <button type="button" data-mode="l3:vel" aria-pressed="false" title="Base radial velocity — green toward the radar, red away (V)">VEL</button>
+            <button type="button" data-mode="l3:srv" aria-pressed="false" title="Storm-relative velocity — the storm's own motion taken out, so rotation stands out (S)">SRV</button>
+            <button type="button" data-mode="l3:sw" aria-pressed="false" title="Spectrum width — the spread of speeds in each gate; high in turbulence and tight rotation (full volume only)">SW</button>
+            <button type="button" data-mode="l3:cc" aria-pressed="false" title="Correlation coefficient — low values inside a storm can be debris (C)">CC</button>
+            <button type="button" data-mode="l3:zdr" aria-pressed="false" title="Differential reflectivity — the shape of what the beam hit (Z)">ZDR</button>
+            <button type="button" data-mode="l3:kdp" aria-pressed="false" title="Specific differential phase — liquid water, heavy rain (K)">KDP</button>
+            <button type="button" data-mode="l3:hca" aria-pressed="false" title="The radar's own call on what each gate holds: rain, hail, snow, debris… (H)">HCA</button>
+            <button type="button" data-mode="l3:eet" aria-pressed="false" title="Enhanced echo tops — how tall the storms are (E)">Tops</button>
+            <button type="button" data-mode="l3:vil" aria-pressed="false" title="Vertically integrated liquid — all the water in the column">VIL</button>
+          </div>
         <div class="seg rowscroll pro-only" id="tiltrow" role="group" aria-label="Radar and tilt" hidden>
           <label class="sitepick"><span class="seglab">Radar</span><select id="sitesel" title="Follow the map, or keep one radar wherever the map goes"><option value="">Nearest to the map</option></select></label>
           <span id="tiltbtns" class="tiltbtns">
@@ -122,6 +148,7 @@
             <button type="button" data-tilt="2" aria-pressed="false">3rd</button>
             <button type="button" data-tilt="3" aria-pressed="false">4th</button>
           </span>
+        </div>
         </div>
         <div class="modelbar pro-only" id="abibar" hidden>
           <label>Product <select id="abiprod"></select></label>
@@ -144,19 +171,6 @@
           <label>Flash density over <select id="denswin"><option value="1">the last minute</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="20">20 minutes</option></select></label>
           <span class="dscale" aria-label="Flashes per 8 km square"><span class="sw"><i style="background:#4c6ef5"></i>1</span><span class="sw"><i style="background:#15aabf"></i>2</span><span class="sw"><i style="background:#40c057"></i>4</span><span class="sw"><i style="background:#fab005"></i>8</span><span class="sw"><i style="background:#fd7e14"></i>16</span><span class="sw"><i style="background:#f03e3e"></i>32</span><span class="sw"><i style="background:#e64980"></i>64</span><span class="sw"><i style="background:#f8f0fc"></i>128+</span> <span class="mmrun">flashes per 8 km square · GOES GLM</span></span>
         </div>
-        <div class="seg rowscroll toggles pro-only" role="group" aria-label="Overlays on the map">
-          <span class="seglab">Overlays</span>
-          <button type="button" data-ov="lines" aria-pressed="true" title="State, county, coast and border lines and town names, drawn over the data — from Natural Earth">Map lines</button>
-          <button type="button" data-ov="watches" aria-pressed="false" title="SPC watches and mesoscale discussions, WPC precipitation discussions">Watches &amp; MDs</button>
-          <button type="button" data-ov="cells" aria-pressed="false" title="Every NEXRAD storm cell: track, hail, rotation">Storm cells</button>
-          <button type="button" data-ov="lightning" aria-pressed="false" title="Every lightning flash GOES's lightning mapper saw in the last 10 minutes">Lightning</button>
-          <button type="button" data-ov="density" aria-pressed="false" title="How many flashes fell in each 8 km square over a window you choose">Flash density</button>
-          <button type="button" data-ov="reports" aria-pressed="false" title="The NWS's local storm reports from the last 24 hours: tornadoes, hail, wind, floods, snow">Storm reports</button>
-          <button type="button" data-ov="fronts" aria-pressed="false" title="WPC's surface analysis: fronts, highs and lows">Fronts</button>
-          <button type="button" id="stationtoggle" aria-pressed="false" title="Airport weather stations: the station model from zoom 8">Stations</button>
-          <button type="button" id="outlooktoggle" aria-pressed="false">SPC outlook</button>
-          <label class="satpick" title="Satellite tiles under the radar (the latest image)"><span class="seglab">Under</span><select id="satsel" aria-label="Satellite under the radar"><option value="">No satellite</option><option value="ir">Infrared</option><option value="vis">Visible</option><option value="wv">Water vapour</option></select></label>
-        </div>
         <form class="replaybar pro-only" id="replaybar" hidden>
           <label>From <input type="datetime-local" id="rpfrom" min="2006-01-01T00:00" step="300" required></label>
           <label>Radar <select id="rpsrc"><option value="mosaic">US mosaic</option><option value="site">Nearest radar, full volume</option></select></label>
@@ -172,7 +186,7 @@
           </div>
         </form>
         <p class="sitebar" id="sitebar"></p>
-        <div class="radar" id="radar" role="img" aria-label="Radar map">
+        <div class="radar" id="radar" role="img" aria-label="Map">
           <div class="layer base" id="radarbase"></div>
           <div class="layer sat" id="radarsat"></div>
           <div id="radarframes"></div>
@@ -190,6 +204,7 @@
           </div>
           <div class="pin" id="radarpin" hidden></div>
           <div class="note" id="radarnote" hidden></div>
+          <p class="pst mainst" id="mainstamp" aria-live="polite"></p>
           <span class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · NEXRAD<span id="satcredit" hidden> &amp; GOES</span> via <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">IEM</a><span id="awscredit" hidden> · NOAA open data on <a href="https://registry.opendata.aws/collab/noaa/" target="_blank" rel="noopener">AWS</a></span><span id="necredit"> · lines <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a></span><span id="eccredit" hidden> · © <a href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF</a> open data, CC BY 4.0</span></span>
         </div>
         <div class="radarbar">
@@ -338,7 +353,7 @@
 <script src="projects/weather/modelmaps.js?v=6"></script>
 <script src="projects/weather/mrms.js?v=1"></script>
 <script src="projects/weather/mapgeo.js?v=1"></script>
-<script src="assets/weather/workstation.js?v=3"></script>
-<script src="assets/weather/app.js?v=12"></script>
+<script src="assets/weather/workstation.js?v=5"></script>
+<script src="assets/weather/app.js?v=14"></script>
 </body>
 </html>

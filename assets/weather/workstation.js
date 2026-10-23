@@ -198,6 +198,18 @@
     const bar = $('#wsbar'), box = $('#panels'), cardsEl = $('#cards');
     if (!bar || !box) return;
     const main = Pro.map;
+    /* the map card fills the screen below wherever it starts — the place
+       bar, and a storm warning when there is one, decide that — so it is
+       measured, not guessed (a guess went stale the day the workspace bar
+       was added: the play bar and legend fell off a laptop screen) */
+    const card = $('#radarcard');
+    const measure = () => { if (card) document.documentElement.style.setProperty('--maptop', Math.round(card.getBoundingClientRect().top + scrollY) + 'px'); };
+    measure();
+    addEventListener('resize', measure);
+    if (typeof ResizeObserver === 'function') { const ro = new ResizeObserver(measure); for (const el of [$('.placebar'), $('.stormband')]) if (el) ro.observe(el); }
+    /* on a phone the workspace's controls fold behind one button */
+    const wst = $('#wstoggle');
+    if (wst) wst.addEventListener('click', () => { const on = !bar.classList.contains('open'); bar.classList.toggle('open', on); wst.setAttribute('aria-expanded', String(on)); measure(); });
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const W = { name: 'Default', saved: false, panels: [], cards: clean({}).cards, sync: { place: true, time: true }, busT: null, mainStamp: null, n: 0 };
 
@@ -298,7 +310,8 @@
       if (ms) ms.textContent = W.mainStamp ? stampText(W.mainStamp, W.busT, fmt) : '';
       for (const p of W.panels) { const el = p.sec.querySelector('.pst'); if (el) el.textContent = stampText(p.stamp, W.busT, fmt); }
       const c = $('#wsclock');
-      if (c) c.textContent = !W.sync.time ? 'each map keeps its own time' : W.busT == null ? 'shared time: now' : `shared time: ${fmt.ymd(W.busT) !== fmt.ymd(Date.now()) ? fmt.day(W.busT) + ' ' : ''}${fmt.time(W.busT)}`;
+      /* said only when it is not "now" (the Now button beside it brings it back) */
+      if (c) { c.textContent = !W.sync.time ? 'each map keeps its own time' : W.busT == null ? '' : `shared time: ${fmt.ymd(W.busT) !== fmt.ymd(Date.now()) ? fmt.day(W.busT) + ' ' : ''}${fmt.time(W.busT)}`; c.hidden = !c.textContent; }
       const live = $('#wslive');
       if (live) live.hidden = !W.sync.time || W.busT == null;
     }
@@ -490,7 +503,7 @@
         } else if (a === 'outlook') { const btn = $('#outlooktoggle'); if (btn.getAttribute('aria-pressed') !== 'true') btn.click(); }
         else if (a === 'xsec') { $('#zxsec').click(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
         else if (a === 'replay') { const t = $('#replaytoggle'); if (t.getAttribute('aria-expanded') !== 'true') t.click(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
-        else if (a === 'sat') { const s = $('#satsel'); s.focus(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
+        else if (a === 'sat') { if ($('#ovpanel') && $('#ovpanel').hidden) $('#ovbtn').click(); $('#satsel').focus(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
       }
     });
 

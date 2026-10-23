@@ -87,7 +87,10 @@ console.log('\nRULE  the presets open only what the page has');
   ok(WS.PRESETS.some((p) => p.name === 'Forecast Analysis') && WS.PRESETS.some((p) => p.name === 'Severe Weather'), 'Forecast Analysis and Severe Weather, as WORKSTATION.md asked');
   const page = readFileSync(new URL('../../../weather-pro.html', import.meta.url), 'utf8');
   ok(page.indexOf('assets/weather/workstation.js') > 0 && page.indexOf('assets/weather/workstation.js') < page.indexOf('assets/weather/app.js'), 'the page loads the workstation before app.js (a link\'s layers are read before the map starts)');
-  ok(/id="storms"/.test(page.slice(0, page.indexOf('id="wsbar"'))), 'and the warnings still come before it');
+  /* the workspace's controls sit in the place bar with the units (2026-10-23,
+     to give the map the height); a warning still leads everything under it */
+  const bar = page.slice(page.indexOf('<div class="placebar">'), page.indexOf('<div class="stormband">'));
+  ok(bar.includes('id="wsbar"') && page.indexOf('id="storms"') < page.indexOf('id="radarcard"'), 'its controls are in the place bar, and a warning still comes before the map');
 }
 
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKSTATION RULES PASS'));

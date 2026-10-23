@@ -655,8 +655,8 @@ body[data-view="pro"] .pin .ro{color:var(--amber)}
    at the right edge to say there is more. */
 @media (min-width:1001px){
   body[data-view="pro"] .seg.rowscroll{flex-wrap:wrap;overflow:visible}
-  body[data-view="pro"] .workspace #radarcard:not(.mapfull):not(:has(.xsec:not([hidden]))){display:flex;flex-direction:column;height:calc(100vh - 140px);min-height:600px}
-  body[data-view="pro"] .workspace #radarcard:not(.mapfull):not(:has(.xsec:not([hidden]))) .radar{flex:1 1 auto;height:auto;min-height:340px}
+  body[data-view="pro"] .workspace #radarcard:not(.mapfull):not(:has(.xsec:not([hidden]))){display:flex;flex-direction:column;height:calc(100vh - var(--maptop, 130px) - 10px);min-height:520px}
+  body[data-view="pro"] .workspace #radarcard:not(.mapfull):not(:has(.xsec:not([hidden]))) .radar{flex:1 1 0;height:auto;min-height:240px}
 }
 @media (max-width:1000px){
   body[data-view="pro"] .seg.rowscroll{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);padding-right:24px}
@@ -716,9 +716,9 @@ body[data-view="pro"] .xsec .xh button{border-radius:3px;background:#121821;bord
 .wssync label{display:inline-flex;align-items:center;gap:5px;min-height:34px;color:var(--dim)}
 .wssync input{accent-color:var(--amber);width:15px;height:15px;margin:0}
 .wsclock{color:var(--amber);margin-left:auto}
-.wsnote{flex:1 1 100%;margin:0;color:var(--dim)}
+
 @media (pointer:coarse){ .wsbar button,.wsbar select,.wssync label{min-height:44px} }
-.mainst{margin:-4px 0 8px;font:12px var(--mono);color:var(--dim)}
+
 .mainst:empty{display:none}
 .workspace.has-panels .mapcol{position:static}
 .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:10px;margin-top:10px}
@@ -738,7 +738,8 @@ body[data-panel] main{padding:0}
 body[data-panel] .workspace{display:block}
 body[data-panel] .mapcol{position:static}
 body[data-panel] #radarcard{border:0;padding:2px 6px;background:transparent}
-body[data-panel] .workspace .radar{height:calc(100vh - 250px);min-height:200px;margin:0 -6px}
+body[data-panel] #radarcard{display:flex;flex-direction:column;height:100vh;min-height:0}
+body[data-panel] .workspace .radar{flex:1 1 0;height:auto;min-height:160px;margin:0 -6px}
 /* the sheets: explore, arrange, save, share */
 .wssheet .wslead{color:var(--dim);font-size:13px;margin:0 0 10px}
 .wssheet h3{font:600 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin:14px 0 6px}
@@ -762,3 +763,80 @@ body[data-panel] .workspace .radar{height:calc(100vh - 250px);min-height:200px;m
 .wscheck input{accent-color:var(--amber);width:16px;height:16px;flex:none}
 .wsform .wscheck{flex:1 1 100%}
 .wssheet .go{min-height:40px;padding:0 16px;border-radius:3px;border:0;background:var(--amber);color:#1c1300;font:600 13px var(--mono)}
+
+/* ── Pro's map, first (2026-10-23, Ric: "make it cleaner and easier to use
+   for the professionals") ──
+   Measured before: at 1366×768 in Models mode 173 px of map showed, at
+   1440×900 the play bar and legend were off the screen, and on a phone the
+   map began below the first screen — seven rows of controls stood above it.
+   Now: one row of kinds (Mosaic · Radar · Satellite · MRMS · Models ·
+   Future, then Replay, Overlays ▾ and ⓘ), the chosen kind's own row under it
+   (a single radar's products, picker and tilts; a model's model, field and
+   run), the overlays in one menu with a count, the words about the map
+   behind ⓘ, the map's stamp on the map, and the workspace in the place bar.
+   The map card fills the screen below where it starts (--maptop, measured by
+   workstation.js), so the play bar and legend are always in view. */
+.maptools{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 8px}
+.maptools .seg{margin:0}
+.maptools .kinds{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.maptools .kinds::-webkit-scrollbar{display:none}
+.maptools .kinds button{flex:none}
+body[data-view="pro"] .maptools .toolbtn{min-height:34px;padding:0 10px;border-radius:3px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 13px var(--mono)}
+body[data-view="pro"] .maptools .toolbtn:hover{background:#1a212b}
+body[data-view="pro"] .maptools .toolbtn[aria-pressed="true"],body[data-view="pro"] .maptools .toolbtn[aria-expanded="true"]{background:#2a2110;color:var(--amber);border-color:#7a5a17}
+body[data-view="pro"] #replaytoggle[aria-pressed="true"]{background:var(--amber);color:#1c1300;border-color:var(--amber)}
+
+.ovwrap{position:relative}
+.ovcount{margin-left:4px;color:var(--amber)}
+.ovcount:empty{display:none}
+.ovpanel{position:absolute;z-index:40;top:calc(100% + 6px);left:0;width:min(560px,calc(100vw - 32px));padding:10px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 12px 30px rgba(0,0,0,.55)}
+.ovpanel[hidden]{display:none}
+.ovpanel .seg{flex-wrap:wrap;margin:0 0 8px}
+.ovpanel .satpick{display:inline-flex;align-items:center;gap:8px}
+.siterow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:0 0 8px}
+.siterow[hidden]{display:none}
+.siterow .seg,.siterow #tiltrow{margin:0}
+body[data-view="pro"] .sitebar{display:none}
+body[data-view="pro"] .sitebar.open{display:block;margin:0 0 8px}
+@media (min-width:1001px){ body[data-view="pro"] .maptools .kinds{flex-wrap:wrap;overflow:visible} }
+/* the map's own stamp, on the map: what it shows and when */
+.radar .mainst{position:absolute;left:8px;top:8px;z-index:6;margin:0;max-width:calc(100% - 72px);padding:3px 8px;border-radius:3px;background:rgba(5,7,10,.82);color:#e3e9f0;font:12px var(--mono);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body[data-view="pro"] .radar .note{top:38px}
+/* the workspace sits in the place bar: one row of page controls */
+body[data-view="pro"] .placebar{flex-wrap:wrap}
+body[data-view="pro"] .placebar .wsbar{margin:0;padding:0;border:0;background:none;flex:0 1 auto}
+body[data-view="pro"] .placebar .wsclock{margin-left:4px}
+.wstoggle{display:none}
+.wsnote{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:60;max-width:min(520px,calc(100vw - 32px));margin:0;padding:8px 12px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;color:#e3e9f0;font:12px var(--mono);box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.wsnote[hidden]{display:none}
+@media (max-width:1000px){
+  /* on a phone the overlays rise from the bottom of the screen */
+  .ovpanel{position:fixed;top:auto;left:16px;right:16px;bottom:16px;width:auto;max-height:70vh;overflow:auto}
+  .wstoggle{display:inline-flex}
+  body[data-view="pro"] .placebar .wsbar{display:none;flex:1 1 100%;order:5;flex-wrap:wrap}
+  body[data-view="pro"] .placebar .wsbar.open{display:flex}
+}
+/* a model's, a satellite's or MRMS's own row: compact, so it is one line on a laptop */
+body[data-view="pro"] .modelbar{padding:6px 8px;gap:6px 10px;margin-bottom:8px;font-size:12px}
+body[data-view="pro"] .modelbar select{min-height:34px;max-width:min(250px,72vw)}
+body[data-view="pro"] .modelbar .mmrun{flex:1 1 220px;min-width:0}
+body[data-view="pro"] .siterow .sitepick select{max-width:210px}
+@media (pointer:coarse){ body[data-view="pro"] .modelbar select{min-height:44px} }
+/* the place bar on one line on a laptop: the workspace's labels go below
+   1500px (the controls keep their own names), and the shared clock shows
+   only when it is not "now" */
+@media (max-width:1500px) and (min-width:1001px){
+  body[data-view="pro"] .placebar .wsname .seglab,body[data-view="pro"] .placebar .wssync>.seglab{display:none}
+  body[data-view="pro"] .placebar{gap:6px}
+  body[data-view="pro"] .placebar .wsbar button{padding:0 8px}
+}
+.wsclock[hidden]{display:none}
+/* the phone's place bar: the place on its own line, then one line of chips */
+@media (max-width:1000px){
+  .wstoggle{align-items:center;justify-content:center;white-space:nowrap}
+}
+@media (max-width:640px){
+  body[data-view="pro"] .placebar{gap:6px}
+  body[data-view="pro"] .placebar .chip,body[data-view="pro"] .placebar .backbtn{padding:0 9px}
+  body[data-view="pro"] .placebar .wstoggle{flex:1 1 auto}
+}
