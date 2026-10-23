@@ -192,6 +192,12 @@ await guard('radar bucket', async () => {
   const fresh = found.filter((x) => Date.now() - x.F.time < 20 * 60e3).length;
   ok(fresh >= found.length - 2, `and they are fresh by the time inside each file: ${fresh} of ${found.length} under 20 min`);
   ok(found.every((x) => Math.abs(x.t - x.F.time) < 15 * 60e3), 'the time in each file\'s name and the time inside it agree (a frozen feed would not)');
+  /* the lowest tilt's scans, SAILS cuts included, run forward in time and none is ahead of now */
+  for (const site of found.slice(0, 4).map((x) => x.site)) {
+    const ss = (await NX.scans(site, 'N0B', { mins: 25 })).slice(-6), ts = [];
+    for (const s of ss) ts.push((await NX.load(s.url)).time);
+    ok(ts.every((t, i) => t <= Date.now() + 60e3 && (!i || t > ts[i - 1])), `${site}: ${ts.length} lowest-tilt scans in order, none in the future (${ts.map((t) => new Date(t).toISOString().slice(11, 16)).join(' ')})`);
+  }
   const moving = found.filter((x) => x.F.motion).sort((a, b) => b.F.motion.kt - a.F.motion.kt);
   if (!moving.length) { console.log('  note  no radar is carrying a storm motion right now; the storm-relative check waits for weather'); return; }
   const best = moving[0], m = best.F.motion;

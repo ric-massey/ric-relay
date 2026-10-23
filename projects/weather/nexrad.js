@@ -150,7 +150,16 @@
     const volTime = ((volDate - 1) * 86400 + volSec) * 1000;
     const elev = dep[2] * 0.1;
     const DIGITAL = [134, 135, 153, 154, 159, 161, 163, 165, 94, 99];
-    const deltaSec = [153, 154, 159, 161, 163, 165].includes(code) ? (u16(dep[6]) >> 5) : 0;
+    /* halfword 50: seconds from the volume's start to the end of this cut
+       (bits 5–15), and in bits 0–4 a flag for a supplemental low cut (SAILS)
+       made partway through the volume. For one of those the header's time is
+       already the cut's own start and the seconds still count from the
+       volume's — added together they put the scan up to four minutes in the
+       future (the soak test's negative ages, 2026-10-23; TFX 19:14:53 + 248 s
+       against a next volume at 19:18:21). So a supplemental cut keeps the
+       header's time. */
+    const dt50 = [153, 154, 159, 161, 163, 165].includes(code) ? u16(dep[6]) : 0, supplemental = (dt50 & 0x1f) !== 0;
+    const deltaSec = supplemental ? 0 : dt50 >> 5;
 
     /* the rest of the message, decompressed when the description says so */
     let body = bytes.subarray(start), off = symOff;
@@ -201,7 +210,7 @@
     const { lut, special } = lookup(code, thr);
     return {
       code, site: m ? m[3] : null, lat, lon, heightM: heightFt * 0.3048, vcp, elev,
-      volTime, time: volTime + deltaSec * 1000, gateKm: GATE_KM[code] || 1, digital: DIGITAL.includes(code),
+      volTime, time: volTime + deltaSec * 1000, supplemental, gateKm: GATE_KM[code] || 1, digital: DIGITAL.includes(code),
       /* storm-relative velocity (56) carries the storm motion the RPG took
          out: halfword 51 the speed in tenths of a knot, 52 the direction it
          comes FROM in tenths of a degree. "From" was checked on 2026-10-23
