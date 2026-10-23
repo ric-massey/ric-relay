@@ -1036,6 +1036,18 @@
   /* ── the storm side ── */
   const isoMinute = ms => new Date(ms).toISOString().slice(0, 16) + 'Z';
   const isoHour = ms => new Date(ms).toISOString().slice(0, 13) + ':00Z';
+  /* One layer of Pro's map lines, ready to draw: Natural Earth's own file,
+     slimmed here (mapgeo.js). Straight from Natural Earth's tagged release,
+     not through the Worker — the county file is 8 MB of JSON, far past the
+     CPU a free-plan Worker gets to parse it. One more try on a server error. */
+  async function mapLayer(name, signal) {
+    const G = root.MapGeo, u = G && G.url(name);
+    if (!u) throw new WxError('not a map layer', 400);
+    let d;
+    try { d = await fetchJSON(u, signal, 30000); }
+    catch (e) { if ((signal && signal.aborted) || (e.status && e.status < 500)) throw e; d = await fetchJSON(u, signal, 45000); }
+    return G.prepare(G.slim(name, d));
+  }
   /* The nearest NEXRAD sites to a point, nearest first. */
   async function radarSites(lat, lon, signal) {
     const j = (await ask(ROUTES.radarSites(lat, lon, isoHour(Date.now())), signal)).data;
@@ -1603,7 +1615,7 @@
     radarLayer, radarTile, radarValid, age, fresh, distanceM, clock,
     forecast, geocode, point, officeForecast, observation, alerts, radarTime, host,
     STORM_EVENTS, NATIONAL_EVENTS, parseMotion, inPolygon, stormTrack, alertDetail, national, stateAlerts, near,
-    SITE_PRODUCTS, SPC_KINDS, SPC_NAMES, MODELS, COLUMN_LEVELS, COLUMN_FIELDS, radarSites, siteScans, tileUrl, isoMinute, isoHour,
+    SITE_PRODUCTS, SPC_KINDS, SPC_NAMES, MODELS, COLUMN_LEVELS, COLUMN_FIELDS, mapLayer, radarSites, siteScans, tileUrl, isoMinute, isoHour,
     normalizeOutlook, outlook, outlookAt, column, modelRun, raobSites, raobTimes, raobTs,
     several, summary, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet,
     inMosaic, nowcast, nowcastRecord,

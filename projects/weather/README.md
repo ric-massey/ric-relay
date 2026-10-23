@@ -12,14 +12,16 @@ professionals"):
   class, echo tops, VIL — at four tilts, or the full Level II volume at every
   tilt; MRMS rotation tracks, hail size and rain totals; GOES imagery straight
   from NOAA — all sixteen bands and the RGB composites, the lower 48 every five
-  minutes or a mesoscale sector every minute; an SPC-style mesoanalysis from
-  the HRRR's analysis hour; HRRR, GFS, ECMWF and AIFS model maps, the severe
+  minutes or a mesoscale sector every minute; a mesoanalysis computed SPC's
+  way every hour (the HRRR's analysis hour, in the browser, when it is late); HRRR, GFS, ECMWF and AIFS model maps, the severe
   composites, HRRR-TLE storm probabilities and the GEFS ensemble's mean,
   spread, spaghetti and chances; HRRR future radar; replay of the mosaic or of
   one radar's full volume from the Level II archive; satellite tiles; GOES
   lightning, flash density and each storm's
   flash rate and lightning jump; the NWS's storm reports; airport
-  stations; SPC outlook; cross-sections; tap-a-point), the soundings, the models
+  stations; SPC outlook; cross-sections; tap-a-point; state, county and town
+  lines over the data; a model field charted hour by hour at a point, against
+  the run before), the soundings, the models
   side by side and the ensemble, and the accuracy record.
 
 They look like different apps on purpose. Weather is the sky: the colour follows
@@ -67,6 +69,7 @@ post on the front door (the `radar` painter, over invented ground).
 | `mesogrid.js` | the server mesoanalysis's file format, shared by the builder (encode) and the page (decode) |
 | `abi.js` | Pro's GOES imagery: the ABI's Level 2 multi-band files read through `glm.js`'s HDF5 reader (2-D chunks, kept as 16-bit counts), the GOES-R fixed-grid navigation both ways, and the band enhancements and RGB recipes |
 | `mrms.js` | Pro's MRMS products — the list, where each lives in the bucket, its unit and palette; `grib2.js`'s `parseAsync` reads the files (gzip, PNG packing, max-pooled) |
+| `mapgeo.js` | Pro's map lines: which Natural Earth file each layer is, `slim()` (a file → North America's lines or town names and nothing else), each line's box for culling, and which town names fit at a zoom without touching |
 | `glm.js` | Pro's lightning, and the HDF5 reader the GOES imagery uses too: just enough HDF5 (superblock 2/3, object headers, dense links and attributes, chunked deflate+shuffle in one or two dimensions) to read the GOES lightning mapper's flashes and the imager's bands, by byte range; and the arithmetic on them — flash density in 8 km squares, a storm cell's flash rate in 2-minute steps following the cell along its own motion, and the Schultz et al. (2009) 2σ lightning jump |
 | `sounding.js` | the vertical arithmetic: parcels, CAPE / CIN / LCL / LFC / EL, precipitable water, lapse rates, shear, Bunkers storm motion, helicity, STP, downdraft CAPE (MetPy's `downdraft_cape` step for step — the mesoanalysis map uses it too) |
 | `draw.js` | the Skew-T and the hodograph, as SVG strings |
@@ -109,6 +112,7 @@ post on the front door (the `radar` painter, over invented ground).
 | Full-volume radar (Pro) | Unidata's real-time Level II chunks, `unidata-nexrad-level2-chunks` on AWS (`KTLX/<1–999>/<YYYYMMDD-HHMMSS>-<n>-<S/I/E>`, CORS open), read by `level2.js` | The "Full volume" switch on the tilt row (and spectrum width, which only Level II carries). Every angle the volume scans (fourteen or more in a storm), REF / VEL / SW / ZDR / CC at full resolution. A site's volume folders are reused 1–999, so the newest is found by binary search on their start times (~10 listings, once per site). The first chunk's coverage pattern says which chunks hold each cut — 6 for a 720-radial cut, 3 for 360, checked against a real volume — so a frame is that chunk plus 3–6 others, 0.3–1.5 MB. The newest six volumes make the loop; the newest is asked again every 30 s, so a tilt appears within about a minute of the sweep. Reflectivity comes from a split cut's surveillance half (460 km), velocity from its Doppler half; SAILS's extra low scans fold into their angle, newest winning. 16-bit moments (PHI; ZDR on some radars) are brought to 8 bits over a fixed range |
 | MRMS (Pro) | NOAA's Multi-Radar Multi-Sensor products, `noaa-mrms-pds` on AWS (`CONUS/<product>/<YYYYMMDD>/MRMS_<product>_<YYYYMMDD-HHMMSS>.grib2.gz`, CORS open), read by `mrms.js` + `grib2.js` | Rotation tracks (0–2 km over 1, 4 and 24 hours; 3–6 km; azimuthal shear now), MESH hail size (now, 1 h, 24 h), POSH, reflectivity at −10 °C, composite reflectivity, echo tops, VIL, rain rate and the 1 h / 24 h multi-sensor rain. Every 2 minutes (the rain totals hourly), the newest eight in the loop. The grids are 0.01° or 0.005° over the lower 48 — up to 98 million points — so they are pooled to 0.02° keeping each block's largest value, which keeps a narrow rotation track and the hail core; 0.4–1.3 s and 0.1–1 MB a file |
 | Model maps (Pro) | NOAA's HRRR (`noaa-hrrr-bdp-pds`, `wrfsfcfNN`) and GFS (`noaa-gfs-bdp-pds`, `pgrb2.0p25.fNNN`) on AWS, read by `grib2.js` / `modelmaps.js` | The newest run with enough of itself out (the bucket is listed; HRRR's must have 3 hours, GFS's 30). Each hour's `.idx` says where each field's bytes are and only those are fetched with a Range request — ~1 MB a field. HRRR: reflectivity, precipitation type, updraft helicity, three CAPEs, 0–1/0–3 km helicity, echo tops, lightning threat, temperature, dew point, wind and gusts, MSLP, visibility, cloud, rain and snow totals, PWAT. GFS (3-hourly to 5 days, 6-hourly to 10): 500 mb heights and vorticity, the 250 mb jet, 850 mb, MSLP and thickness, the surface fields, rain, PWAT, snow depth. HRRR's winds are turned from its grid to the earth before barbs are drawn. Labelled a forecast, with its run, everywhere it shows. HRRR's **Severe** group is computed here from its own fields: SPC's fixed-layer STP (Thompson et al. 2003 — SBCAPE, the LCL above ground, 0–1 km helicity, 0–6 km shear, with SPC's caps), a supercell composite with fixed layers standing in for the effective ones (named as an approximation), 0–1 km EHI, 0–6 km shear with barbs and mixed-layer CIN |
+| Map lines (Pro) | Natural Earth's release on GitHub (`raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/`, CORS open): 1:50m coast, country and state/province lines, 1:10m US counties and populated places | Read when the page runs and cut down in the browser by `mapgeo.js` (`Wx.mapLayer`): North America only, no properties kept, ~100 m rounding. Counties from zoom 7. Never committed, and not through the Worker (free plan; the county file is 8 MB of JSON). Natural Earth is public domain; the corner credits it |
 | Mesoanalysis on the map, SPC's method (Pro) | `meso/build.mjs` on a server, once an hour: the RAP's one-hour forecast (`noaa-rap-pds`, native 13 km grid, every 25 hPa) with NOAA's 15-minute surface analysis at the ground (`noaa-rtma-pds`), every column through `sounding.js`; the file kept a day by the Worker (`/meso`) and drawn by `modelmaps.js` (source `smeso`) | Ric, 2026-10-22: "If we want to make Mesoanalysis more accurate how do we do that?", then "Do it plz." The same twenty-nine fields as SPC's own way of making them: no shortcut in any. Runs in GitHub Actions (`.github/workflows/meso.yml`) a few minutes after each hour's RTMA lands, or in AWS Lambda (`meso/lambda.mjs`, not set up yet). The page uses it when the server has an hour from the last three, and otherwise falls back to the browser's below and says so. How it is made, where it runs, and how far off the browser's shortcuts measured: [`meso/README.md`](meso/README.md) |
 | Mesoanalysis on the map, in the browser (Pro) | The HRRR's analysis hour (`wrfsfcf00`) of each of the last six runs, `noaa-hrrr-bdp-pds` (`modelmaps.js`, source `meso`) | Not SPC's — SPC's own maps are the card further down; SPC draws them from the RAP, whose bucket allows no browser (checked 2026-10-22). Twenty-seven fields that can sit over the radar, step through six hours and give a value under the pointer: surface pressure, dewpoint, theta-e and moisture convergence; SB/ML/MU CAPE (CIN contoured), 0–3 km CAPE, DCAPE, 700–500 and 850–500 lapse rates, LCL, LFC, freezing level, PWAT; 0–1 and 0–6 km shear, effective bulk shear, 0–1, 0–3 km and effective SRH, Bunkers storm motion, critical angle; effective-layer STP, SCP (with SPC's MUCIN term), SHIP, EHI. Where SPC's need something the file does not hold, the label says so and `MESO_FIELDS` explains: effective shear's base is SPC's own test (surface parcel CAPE ≥ 100, CIN ≥ −250) else the most-unstable parcel's level, its winds the standard levels; DCAPE is `sounding.js`'s (MetPy's) on the ground and five standard levels every fifth point (15 km); STP's LCL is the surface parcel's. The effective helicity is the HRRR's own (EFHL). A composite field shares twenty-odd messages, kept in a 28-message cache so stepping between fields does not fetch them again |
 | ECMWF maps (Pro) | ECMWF's open data — the IFS at 0.25° and AIFS — from Google Cloud (`storage.googleapis.com/ecmwf-open-data`) first and AWS (`ecmwf-forecasts`) second, both CORS open | AWS's copy answered most requests with 503 "Slow Down" — with no CORS header, so a browser sees only a failure — when this was built (2026-10-22); every request is retried and alternates between the two (`retrying` in `modelmaps.js`). Each file has a JSON-lines `.index`; the fields are CCSDS-packed, read by `grib2.js`'s `aec`. The 00Z and 12Z runs, drawn to 10 days: 500 mb heights with vorticity (IFS) or wind (AIFS), the 250 mb jet, 850 mb, MSLP and thickness, temperature, dewpoint, wind, gusts and MUCAPE (IFS), cloud, rain and snow since the run, PWAT (IFS) or total column water (AIFS). The IFS gives cloud as a fraction and rain as metres; AIFS per cent and millimetres — checked with ecCodes. ECMWF's licence is CC BY 4.0: the map's corner credits ECMWF whenever its fields are shown |
@@ -220,9 +224,42 @@ with contours and barbs, played through the forecast hours; GOES lightning; and
 the NWS's storm reports — all above, under "Who answers what". Share links
 carry the tilt (`t=`) and the model field (`m=hrrr.mlcape`).
 
+**Weather Pro, the review's eight (2026-10-23, Ric: "Do it. All 8"):**
+1. *Map lines over the data* — state, county (from zoom 7), coast and border
+   lines and town names, on a canvas above the radar or field and under
+   lightning and the overlays (`mapgeo.js`, above). On by default; the
+   **Map lines** switch turns them off, and a link says so with `o=…x`.
+2. *More map on a laptop* — the satellite under the radar is a list at the end
+   of the overlays (it was a row of its own), so the docked map is about 420 px
+   at 900 px tall instead of 315.
+3. *One clock* — lightning and flash density show the minutes up to the frame on
+   screen, so a loop scrubbed back shows that moment's flashes (and says so when
+   the frame is older than the twenty minutes held); switching layer while
+   scrubbed back lands on the nearest frame of the new layer (`frameTime`,
+   `ltgRef`, `frameNear`). Forecasts and the newest frame show now. The
+   satellite tiles under the radar are still the latest image only.
+4. *Radars on the map* — in a one-radar product the nearest radars are drawn as
+   diamonds; tap one to keep it (the same as the picker in the tilt row).
+5. *One name per thing* — settled the same night by the server mesoanalysis
+   (above): the map's layer is "Mesoanalysis" (SPC's method, computed hourly)
+   or "Mesoanalysis (HRRR)" when it falls back to the browser's; "SPC
+   mesoanalysis" is only SPC's own card. The rename to "HRRR analysis" this
+   review first made was dropped in favour of that.
+6. *A quieter first look* — Pro opens with map lines and watches; storm cells,
+   reports, stations and the outlook are a tap away (warnings are always drawn).
+   A choice already made in this browser is kept.
+7. *A point, every hour; and earlier runs* — tap a model map, then "Chart this
+   field here, hour by hour": the field at that point through the run on the
+   map, read from loaded hours or fetched four at a time and let go; tick
+   "Compare with the run before" for that run dashed over the same hours; tap
+   the chart to put an hour on the map. The model bar's **Run** list puts the
+   run before (up to three before) on the map instead, on the same valid hour;
+   a link carries it (`m=hrrr.t2m.1`).
+8. *11 px storm-report letters* — the circles grew a pixel to hold them.
+
 **Weather Pro's controls (2026-10-23, after a review of the page as a
 forecaster would use it):**
-- *Nothing hidden on a desk.* Above 1000px the layer, overlay and satellite rows
+- *Nothing hidden on a desk.* Above 1000px the layer and overlay rows
   wrap instead of scrolling sideways — at 1440px, Echo tops, VIL, Future, Models
   and Replay had been past the right edge with nothing to say so — and the docked
   map takes whatever height the controls leave (the radar card is a flex column),
@@ -409,8 +446,8 @@ workstation with optional presets — the plan is in [`WORKSTATION.md`](WORKSTAT
 
 | Phase | The likely way on this site |
 |---|---|
-| 2 · Investigation | Built: satellite (GOES IR / visible / water vapour under the radar), a full-screen map, a tapped-point card, airport stations on the map. Still to do: a unified timeline across radar and satellite; more networks than ASOS (state mesonets) |
-| 3 · One serious model | Built: **Future · HRRR** (IEM's simulated-reflectivity pictures) and, since 2026-10-22, **Models** — HRRR and GFS fields read from NOAA's GRIB2 in the browser (above). Still to do: more models (NAM 3 km, RAP, the ECMWF open data), run-to-run comparison, ensemble maps |
+| 2 · Investigation | Built: satellite (GOES IR / visible / water vapour under the radar), a full-screen map, a tapped-point card, airport stations on the map, map lines over the data, and one clock for radar, GOES imagery and lightning (2026-10-23). Still to do: the satellite tiles under the radar following that clock (IEM's are latest-only); more networks than ASOS (state mesonets) |
+| 3 · One serious model | Built: **Future · HRRR** (IEM's simulated-reflectivity pictures) and, since 2026-10-22, **Models** — HRRR and GFS fields read from NOAA's GRIB2 in the browser (above). Since then ECMWF IFS and AIFS, the GEFS ensemble maps, and run-to-run comparison (the Run list, and the point chart's run before — 2026-10-23). Still to do: NAM 3 km and the RAP |
 | 4 · Soundings | Built (above), with observed-vs-model on the same diagram (§16) and the effective-layer parameters: the effective inflow layer (Thompson 2007), effective SRH and bulk shear, effective STP (Thompson 2012, with its CIN term) and the supercell composite. The composites and the effective SRH are held to MetPy in `test/sounding.test.mjs` |
 | 5 · Advanced | Model comparison, ensemble plumes, cross-sections, dual-pol radar at four tilts (Level III) and the full Level II volume, MRMS rotation tracks / MESH / QPE, severe composites and HRRR-TLE probabilities (2026-10-22): built. Still to do: single-site replay from the Level II archive; storm-relative velocity above the lowest tilt (from velocity and the storm's motion); GEFS / National Blend probability maps; HREF when NOAA publishes it openly |
 | 6 · Station + verification | The CS pattern: a script that pulls the station and archives point forecasts into a committed accumulator, verified against the station. **Needs a decision on how the station is named** — its coordinates can't be in this repo |

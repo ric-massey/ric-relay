@@ -486,5 +486,32 @@ ok(Object.values(W.SAT).every(s => s.layers.length === 2 && /west/.test(s.layers
 ok(W.satTile(W.SAT.ir.layers[1], 6, 17, 25, 9).endsWith('/goes-east-ir-4km-900913/6/17/25.png?_=9'), 'a tile URL');
 ok(W.ROUTES.column('hrrr', 12.34, -56.78)[1].includes('past_hours=12'), "the column carries the last twelve hours, for the balloon");
 
+console.log('\nRULE  Pro\'s map lines: read at run time, cut to North America, nothing of the file kept but the lines and names');
+{
+  const G = require('../mapgeo.js');
+  ok(Object.values(G.LAYERS).every(L => G.url(Object.keys(G.LAYERS).find(k => G.LAYERS[k] === L)).startsWith('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_')) && G.url('nope') === null,
+    'every layer is a file of Natural Earth\'s tagged release, and only those');
+  /* made-up points at sea, as everywhere in these tests */
+  const lines = G.slim('states', { features: [
+    { properties: { NAME: 'x', MAPCOLOR9: 3 }, geometry: { type: 'LineString', coordinates: [[-56.71234, 13.5], [-56.7121, 13.5001], [-56.6, 13.6]] } },
+    { properties: {}, geometry: { type: 'LineString', coordinates: [[10, 40], [11, 41]] } }] });
+  ok(lines.v === 1 && lines.lines.length === 1 && lines.lines[0].join() === '-56.712,13.5,-56.6,13.6', 'a line inside the box, rounded, its near-duplicate point dropped; one across the ocean gone');
+  ok(!JSON.stringify(lines).includes('MAPCOLOR') && !JSON.stringify(lines).includes('NAME'), 'no property of the file survives');
+  const rings = G.slim('counties', { features: [{ properties: {}, geometry: { type: 'MultiPolygon', coordinates: [[[[-56.7, 13.5], [-56.6, 13.5], [-56.6, 13.6], [-56.7, 13.5]]]] } }] });
+  ok(rings.lines.length === 1 && rings.lines[0].length === 8, 'a county is its outline');
+  const pl = G.slim('places', { features: [
+    { properties: { name: 'Small', min_zoom: 7, pop_max: 900 }, geometry: { coordinates: [-56.7, 13.5] } },
+    { properties: { name: 'Big', min_zoom: 3, pop_max: 90000 }, geometry: { coordinates: [-56.5, 13.5] } },
+    { properties: { name: 'Far', min_zoom: 3, pop_max: 1e6 }, geometry: { coordinates: [10, 40] } }] });
+  ok(pl.places.map(p => p[0]).join() === 'Big,Small', 'towns inside the box, biggest first');
+  const prep = G.prepare(lines);
+  ok(prep.lines[0].box.join() === '-56.712,13.5,-56.6,13.6', 'each line carries its box, for culling');
+  const at = (lon) => [(lon + 56.7) * 1000, 50];
+  ok(G.labels(pl.places, 4, 800, 400, at, () => 40).map(t => t.name).join() === 'Big', 'a town too small for this zoom has no name yet');
+  ok(G.labels(pl.places, 8, 800, 400, at, () => 400).length === 1, 'two names that would touch: only the bigger is drawn');
+  const app = (await import('node:fs')).readFileSync(new URL('../../../assets/weather/app.js', import.meta.url), 'utf8');
+  ok(/Wx\.mapLayer\(/.test(app) && !/natural-earth-vector/.test(app), 'the page asks through Wx.mapLayer — the address lives in one place');
+}
+
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WEATHER CLIENT RULES PASS'));
 process.exit(failures ? 1 : 0);

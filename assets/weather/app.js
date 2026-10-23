@@ -1130,9 +1130,12 @@
     const el = $("#radar"), baseL = $("#radarbase"), framesL = $("#radarframes"), over = $("#radarover");
     const R = { z: 7, cx: 0, cy: 0, lat: null, lon: null, frame: 0, playing: false, timer: 0, started: false, visible: false,
       mode: "comp", valid: null, frames: [], loadedOld: false, site: null, sites: null, outlook: false, us: false, frameT: null, sat: null, pin: null,
-      stations: PRO && store.get("wx:stations", true) !== false, obs: [],   // stations are Pro's
+      stations: PRO && store.get("wx:stations", false) === true, obs: [],   // stations are Pro's, off until asked for
       /* Pro's overlays, each the visitor's own choice in this browser */
-      ov: PRO ? Object.assign({ watches: true, cells: true, fronts: false, lightning: false, density: false, reports: true }, store.get("wx:ov", {})) : { watches: false, cells: false, fronts: false, lightning: false, density: false, reports: false },
+      /* Pro opens on watches and its own map lines; the rest is a tap away
+         (2026-10-23: five overlays at once was a busy first look). Warnings
+         are always drawn. */
+      ov: PRO ? Object.assign({ lines: true, watches: true, cells: false, fronts: false, lightning: false, density: false, reports: false }, store.get("wx:ov", {})) : { lines: false, watches: false, cells: false, fronts: false, lightning: false, density: false, reports: false },
       /* the flash density window, in minutes */
       densWin: [1, 5, 10, 20].includes(Number(store.get("wx:denswin", 5))) ? Number(store.get("wx:denswin", 5)) : 5,
       pro: { watches: [], mcds: [], mpds: [], cells: [], surface: null, reports: [] }, measure: null,
@@ -1143,7 +1146,8 @@
       /* GOES imagery (abi.js): the product, the sector, and the satellite (auto picks by the map's middle) */
       ab: { prod: store.get("wx:abi", "b13"), sector: store.get("wx:abisec", "conus"), sat: store.get("wx:abisat", "auto") },
       l2: store.get("wx:l2", false) === true, l2angle: Number(store.get("wx:l2angle", 0.5)), l2vol: null,
-      mm: { src: store.get("wx:mmsrc", "hrrr"), field: store.get("wx:mmfield", "refc"), run: null } };
+      /* `back` is how many runs before the latest is on the map — 0 is the latest (a choice for this visit, not kept) */
+      mm: { src: store.get("wx:mmsrc", "hrrr"), field: store.get("wx:mmfield", "refc"), run: null, back: 0 } };
     const NX = PRO ? window.Nexrad : null, MM = PRO ? window.ModelMaps : null, GL = PRO ? window.Glm : null, GB = PRO ? window.Grib2 : null, L2 = PRO ? window.Level2 : null, MR = PRO ? window.Mrms : null, AB = PRO ? window.Abi : null;
     if (MM && !MM.SOURCES[R.mm.src]) R.mm.src = "hrrr";
     if (MM && !MM.field(R.mm.src, R.mm.field)) R.mm.field = MM.FIELDS[R.mm.src][0].id;
@@ -1182,6 +1186,7 @@
         sats.push({ el: d, layer, tiles: new Map() });
       }
       document.querySelectorAll("[data-sat]").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.sat || null) === R.sat)));
+      if ($("#satsel")) $("#satsel").value = R.sat || "";             // Pro's is a list, to keep a row of buttons off the map
       $("#satcredit").hidden = !R.sat;
       label(); draw(); renderSources();
     }
@@ -1258,6 +1263,16 @@
       if (!R.ov.watches) return null;
       const hit = (x) => x.polys.some((poly) => Wx.inPolygon(lat, lon, poly));
       return R.pro.mcds.find(hit) || R.pro.mpds.find(hit) || R.pro.watches.find(hit) || null;
+    }
+    function siteNear(px, py) {
+      if (!PRO || !single() || !R.sites) return null;
+      const left = R.cx - el.clientWidth / 2, top = R.cy - el.clientHeight / 2;
+      let best = null, bd = 14;
+      for (const s of R.sites.slice(0, 15)) {
+        const d = Math.hypot(lngX(s.lon, R.z) - left - px, latY(s.lat, R.z) - top - py);
+        if (d < bd) { bd = d; best = s; }
+      }
+      return best;
     }
     function stationNear(px, py) {
       const left = R.cx - el.clientWidth / 2, top = R.cy - el.clientHeight / 2;
@@ -1799,16 +1814,23 @@
         modelRunText(); legend(); renderSources();
         return;
       }
+      /* the hour on screen, kept across a change of run: the same moment, another run's say of it */
+      const was = R.frames[R.frame] && R.frames[R.frame].model && R.frames[R.frame].model.src === src ? R.frames[R.frame].t : null;
       let run = null;
-      try { run = await MM.latestRun(src); } catch (e) {}
+      try {
+        run = await MM.latestRun(src);
+        for (let k = 0; run && k < M.back; k++) run = await MM.latestRun(src, { nowMs: run.run - 1 });
+      } catch (e) { run = null; }
       if (R.mode !== "model" || M.src !== src || ask !== R.modeAsk) return;
       if (!run) { setFrames([]); $("#mmrun").textContent = ""; note(`NOAA's ${MM.SOURCES[src].label} archive did not answer. Try again in a minute.`); return; }
       M.run = run.run; R.valid = run.run;
       setFrames(run.hours.map((fh) => ({ t: run.run + fh * 3600e3, model: { src, field: M.field, run: run.run, fh } })));
+      const aim = was != null ? was : Date.now();
       let best = 0;
-      R.frames.forEach((f, i) => { if (Math.abs(f.t - Date.now()) < Math.abs(R.frames[best].t - Date.now())) best = i; });
+      R.frames.forEach((f, i) => { if (Math.abs(f.t - aim) < Math.abs(R.frames[best].t - aim)) best = i; });
       show(best);
       modelRunText(); legend(); renderSources();
+      if (C.on) chartAt(C.lat, C.lon, C.name);                  // the chart follows the run on the map
     }
     function modelRunText() {
       const M = R.mm, el = $("#mmrun");
@@ -1818,8 +1840,131 @@
         ? `Mesoanalysis hours, the last ${R.frames.length} · newest ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}, made ${clk().time(sv.made)}${sv.rtma ? "" : " (before NOAA's surface analysis was out — the model's own ground-level air)"} · not a forecast`
         : MM.SOURCES[M.src].analysis
         ? `HRRR analysis hours, the last ${R.frames.length} · newest ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)} · the model's picture of now, observations folded in — not a forecast`
-        : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)} · ${R.frames.length} hours out so far · a forecast`;
+        : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}${M.back ? ` — ${["", "the run before the latest", "two runs before the latest", "three runs before the latest"][M.back]}` : ""} · ${R.frames.length} hours out so far · a forecast`;
+      if ($("#mmbackl")) $("#mmbackl").hidden = !!MM.SOURCES[M.src].analysis;
     }
+
+    /* ── a model's every hour at one point (2026-10-23) ──
+       Tap a point on a model map, then "Chart here": the field at that point
+       through every hour of the run on the map, and — ticked — the run
+       before it, over the same hours, so a forecast that is changing shows
+       as two lines apart. Hours already on the map are read from what is
+       loaded; the rest are fetched a few at a time, read, and let go (a GFS
+       field is megabytes a hour, and nobody needs eighty of them kept). */
+    const C = { on: false, gen: 0, lat: 0, lon: 0, name: "", cur: [], prev: [], prevRun: null, cmp: false, err: null, done: 0, total: 0 };
+    const chartEl = $("#ptchart");
+    function chartUnit(f) { return MM.UNIT[f.unit] ? MM.UNIT[f.unit][U() === "metric" ? "metric" : "us"] : [f.unit || "", (v) => v]; }
+    /* a point's value at each of these hours, `put` as each arrives, four at a time */
+    async function chartSeries(src, run, hours, field, lat, lon, gen, put, have = () => null) {
+      let next = 0;
+      const one = async () => {
+        while (next < hours.length && gen === C.gen) {
+          const fh = hours[next++];
+          let v = null;
+          try {
+            const L = have(fh) || await MM.load(src, run, fh, field);
+            v = MM.valueAt(L, lat, lon);
+          } catch (e) { v = null; }
+          if (gen !== C.gen) return;
+          put({ t: run + fh * 3600e3, fh, v: Number.isFinite(v) ? v : null });
+        }
+      };
+      await Promise.all([one(), one(), one(), one()]);
+    }
+    async function chartAt(lat, lon, name) {
+      if (!chartEl || !MM || R.mode !== "model") return;
+      const M = R.mm, f = MM.field(M.src, M.field), gen = ++C.gen;
+      Object.assign(C, { on: true, lat, lon, name: name && name !== "This point" ? name : "the tapped point", cur: [], prev: [], prevRun: null, err: null, done: 0 });
+      chartEl.hidden = false;
+      if (!f || MM.PAL[f.pal].cat || f.pal === "ptype") { C.err = `${f ? f.label : "This field"} is made of categories — there is no line to draw. Pick a field with a number.`; renderChart(); return; }
+      const frames = R.frames.filter((x) => x.model && x.model.run === M.run);
+      const hours = frames.map((x) => x.model.fh);
+      C.total = hours.length * (C.cmp && !MM.SOURCES[M.src].analysis ? 2 : 1);
+      renderChart();
+      const byFh = new Map(frames.map((x) => [x.model.fh, x]));
+      const have = (fh) => { const x = byFh.get(fh); return x && x.model.layer && x.model.field === M.field ? x.model.layer : null; };
+      const analysis = !!MM.SOURCES[M.src].analysis;
+      const tasks = [];
+      if (analysis) {
+        /* the analysis hours are runs of their own, each at hour 0 */
+        tasks.push((async () => {
+          for (const x of frames) {
+            if (gen !== C.gen) return;
+            let v = null;
+            try { v = MM.valueAt(x.model.layer && x.model.field === M.field ? x.model.layer : await MM.load(M.src, x.model.run, 0, M.field), lat, lon); } catch (e) {}
+            if (gen !== C.gen) return;
+            C.cur.push({ t: x.t, fh: 0, v: Number.isFinite(v) ? v : null }); C.done++; renderChart();
+          }
+        })());
+      } else {
+        tasks.push(chartSeries(M.src, M.run, hours, M.field, lat, lon, gen, (p) => { C.cur.push(p); C.done++; renderChart(); }, have));
+        if (C.cmp) tasks.push((async () => {
+          let pr = null;
+          try { pr = await MM.latestRun(M.src, { nowMs: M.run - 1 }); } catch (e) {}
+          if (gen !== C.gen) return;
+          if (!pr) { C.err = "The run before did not answer."; renderChart(); return; }
+          C.prevRun = pr.run;
+          const last = M.run + Math.max(...hours) * 3600e3;
+          const ph = pr.hours.filter((fh) => pr.run + fh * 3600e3 >= M.run && pr.run + fh * 3600e3 <= last);
+          C.total = hours.length + ph.length; renderChart();
+          await chartSeries(M.src, pr.run, ph, M.field, lat, lon, gen, (p) => { C.prev.push(p); C.done++; renderChart(); });
+        })());
+      }
+      await Promise.all(tasks);
+      if (gen === C.gen) renderChart();
+    }
+    function chartStop() { C.on = false; C.gen++; if (chartEl) { chartEl.hidden = true; chartEl.innerHTML = ""; } requestAnimationFrame(draw); }
+    function renderChart() {
+      if (!chartEl || !C.on) return;
+      const M = R.mm, f = MM.field(M.src, M.field), k = clk();
+      const runName = (t) => `${new Date(t).toISOString().slice(11, 13)}Z`;
+      const head = `<div class="xh"><span>${esc(f ? f.label : "")} at ${esc(C.name)}<small>${esc(MM.SOURCES[M.src].label)} ${MM.SOURCES[M.src].analysis ? "analysis hours" : "run " + runName(M.run)}${C.prevRun ? ` · and the run before, ${runName(C.prevRun)}, dashed` : ""} · ${C.lat.toFixed(2)}, ${C.lon.toFixed(2)}${C.done < C.total ? ` · reading ${C.done} of ${C.total} hours…` : ""}</small></span><button type="button" data-chartx aria-label="Close the chart">×</button></div>`;
+      const cmp = MM.SOURCES[M.src].analysis ? "" : `<label class="cmp"><input type="checkbox" data-chartcmp${C.cmp ? " checked" : ""}> Compare with the run before</label>`;
+      if (C.err && !C.cur.length) { chartEl.innerHTML = head + `<p class="ps">${esc(C.err)}</p>`; return; }
+      const [uname, conv] = chartUnit(f);
+      const pts = (a) => a.filter((p) => p.v != null).sort((a, b) => a.t - b.t).map((p) => ({ t: p.t, v: conv(p.v) }));
+      const A = pts(C.cur), B = pts(C.prev), all = A.concat(B);
+      if (!all.length) { chartEl.innerHTML = head + cmp + `<p class="ps">${C.done < C.total ? "Reading the first hours…" : "No value at this point — it may be outside the model's grid."}</p>`; return; }
+      /* drawn at the panel's own width, so its 11px type stays 11px */
+      const W = Math.max(320, Math.round(chartEl.clientWidth || 640)), H = 220, pl = 46, pr = 12, pt = 12, pb = 34;
+      const t0 = Math.min(...all.map((p) => p.t)), t1 = Math.max(...all.map((p) => p.t), t0 + 3600e3);
+      let lo = Math.min(...all.map((p) => p.v)), hi = Math.max(...all.map((p) => p.v));
+      if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+      const pad = (hi - lo) * 0.08, floor0 = all.every((p) => p.v >= 0);   // no negative CAPE on the axis when none was read
+      lo -= pad; hi += pad; if (floor0) lo = Math.max(0, lo);
+      const X = (t) => pl + (t - t0) / (t1 - t0) * (W - pl - pr), Y = (v) => pt + (hi - v) / (hi - lo) * (H - pt - pb);
+      const nice = (v) => Math.abs(v) >= 100 ? Math.round(v) : Math.abs(v) >= 10 ? v.toFixed(0) : v.toFixed(1);
+      const g = [];
+      for (let i = 0; i <= 4; i++) { const v = lo + (hi - lo) * i / 4, y = Y(v); g.push(`<line x1="${pl}" x2="${W - pr}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" class="gl"/><text x="${pl - 6}" y="${(y + 4).toFixed(1)}" text-anchor="end">${esc(String(nice(v)))}</text>`); }
+      /* a tick every 3, 6, 12 or 24 hours, so the axis holds about eight */
+      const span = (t1 - t0) / 3600e3, step = [3, 6, 12, 24, 48].find((s) => span / s <= 8) || 48;
+      for (let t = Math.ceil(t0 / (step * 3600e3)) * step * 3600e3; t <= t1; t += step * 3600e3) {
+        const x = X(t);
+        g.push(`<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${pt}" y2="${H - pb}" class="gl"/><text x="${x.toFixed(1)}" y="${H - pb + 15}" text-anchor="middle">${esc(k.time(t))}</text><text x="${x.toFixed(1)}" y="${H - pb + 28}" text-anchor="middle" class="d">${esc(k.day(t))}</text>`);
+      }
+      const fr = R.frames[R.frame];
+      if (fr && fr.t >= t0 && fr.t <= t1) g.push(`<line x1="${X(fr.t).toFixed(1)}" x2="${X(fr.t).toFixed(1)}" y1="${pt}" y2="${H - pb}" class="now"/>`);
+      const line = (P, cls) => P.length ? `<polyline class="${cls}" points="${P.map((p) => `${X(p.t).toFixed(1)},${Y(p.v).toFixed(1)}`).join(" ")}"/>` + (cls === "cur" ? P.map((p) => `<circle cx="${X(p.t).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="2.4"/>`).join("") : "") : "";
+      const top = A.reduce((m, p) => (m && m.v >= p.v ? m : p), null), bot = A.reduce((m, p) => (m && m.v <= p.v ? m : p), null);
+      const say = (p) => `${nice(p.v)} ${uname} at ${k.day(p.t)} ${k.time(p.t)}`;
+      const sum = top ? `Highest ${say(top)}; lowest ${say(bot)}.` : "";
+      chartEl.innerHTML = head + cmp
+        + `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${f.label} at ${C.name}, hour by hour. ${sum}`)}" data-t0="${t0}" data-t1="${t1}" data-pl="${pl}" data-pr="${pr}" data-w="${W}">${g.join("")}${line(B, "prev")}${line(A, "cur")}<text x="${pl}" y="${pt - 2}" class="u">${esc(uname)}</text></svg>`
+        + `<p class="ps">${esc(sum)} Tap the chart to put that hour on the map.</p>`;
+    }
+    if (chartEl) chartEl.addEventListener("click", (e) => {
+      if (e.target.closest("[data-chartx]")) { chartStop(); return; }
+      const cb = e.target.closest("[data-chartcmp]");
+      if (cb) { C.cmp = cb.checked; chartAt(C.lat, C.lon, C.name); return; }
+      const svg = e.target.closest("svg.chart");
+      if (!svg || R.mode !== "model") return;
+      const W = Number(svg.dataset.w), r = svg.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width;
+      const t0 = Number(svg.dataset.t0), t1 = Number(svg.dataset.t1), pl = Number(svg.dataset.pl), pr = Number(svg.dataset.pr);
+      const t = t0 + (x - pl) / (W - pl - pr) * (t1 - t0);
+      let best = -1;
+      R.frames.forEach((f, i) => { if (best < 0 || Math.abs(f.t - t) < Math.abs(R.frames[best].t - t)) best = i; });
+      if (best >= 0) { play(false); loadOld(); show(best); renderChart(); }
+    });
     function modelLayer(f) {
       const m = f.model;
       if (!m.p) m.p = MM.load(m.src, m.run, m.fh, m.field).then((L) => {
@@ -1994,6 +2139,62 @@
       if (kt >= 5) { if (d === L) d -= 4; ctx.beginPath(); ctx.moveTo(x + dx * d, y + dy * d); ctx.lineTo(x + dx * (d + 1) + px * 5, y + dy * (d + 1) + py * 5); ctx.stroke(); }
     }
 
+    /* ── Pro's map lines (mapgeo.js): state, county, coast and border lines
+       and town names, over the data — satellite, MRMS and a model field cover
+       the basemap, and with it every clue to where you are. Each layer is
+       asked for the first time it is needed (counties from zoom 7) and kept.
+       A dark line under each light one, so they read over red and white
+       echoes alike. ── */
+    const geoCv = $("#radargeo"), GEO = { layers: {}, asked: {} }, GeoOK = PRO && !!window.MapGeo;
+    function geoLayer(name) {
+      if (GEO.layers[name]) return GEO.layers[name];
+      if (!GEO.asked[name] && GeoOK) {
+        GEO.asked[name] = true;
+        Wx.mapLayer(name).then((L) => { GEO.layers[name] = L; drawGeo(); })
+          .catch(() => setTimeout(() => { GEO.asked[name] = false; }, 60e3));   // ask again on a later draw
+      }
+      return null;
+    }
+    function drawGeo() {
+      if (!geoCv) return;
+      const w = el.clientWidth, h = el.clientHeight, dpr = Math.min(2, window.devicePixelRatio || 1);
+      if (geoCv.width !== Math.round(w * dpr) || geoCv.height !== Math.round(h * dpr)) { geoCv.width = Math.round(w * dpr); geoCv.height = Math.round(h * dpr); }
+      const ctx = geoCv.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      if (!GeoOK || !R.ov.lines || !R.started) return;
+      const left = R.cx - w / 2, top = R.cy - h / 2, z = R.z, k = TILE * 2 ** z / 360;
+      const W = xLng(left, z), E = xLng(left + w, z), N = yLat(top, z), Sl = yLat(top + h, z);
+      const px = (lon) => (lon + 180) * k - left, py = (lat) => latY(lat, z) - top;
+      const stroke = (L, style) => {
+        if (!L) return;
+        ctx.beginPath();
+        for (const { xs, box } of L.lines) {
+          if (box[2] < W || box[0] > E || box[3] < Sl || box[1] > N) continue;
+          ctx.moveTo(px(xs[0]), py(xs[1]));
+          for (let i = 2; i < xs.length; i += 2) ctx.lineTo(px(xs[i]), py(xs[i + 1]));
+        }
+        for (const [col, lw, a] of style) { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.globalAlpha = a; ctx.stroke(); }
+        ctx.globalAlpha = 1;
+      };
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      const want = (n) => z >= MapGeo.LAYERS[n].from ? geoLayer(n) : null;
+      stroke(want("counties"), [["#05070a", 2.2, 0.35], ["#aeb8c4", 0.8, 0.55]]);
+      for (const n of ["coast", "nations", "states"]) stroke(want(n), [["#05070a", 3.2, 0.55], ["#e9ecef", n === "states" ? 1.25 : 1.1, 0.85]]);
+      const P = want("places");
+      if (!P) return;
+      ctx.font = "600 12px system-ui,-apple-system,'Segoe UI',sans-serif";
+      ctx.textBaseline = "middle";
+      const few = R.stations && z >= STN_MINZ;                     // station plots carry their own numbers
+      const L = MapGeo.labels(P.places, z, w, h, (lon, lat) => [px(lon), py(lat)], (t) => ctx.measureText(t).width, { max: few ? 30 : 140 });
+      ctx.lineWidth = 3.2; ctx.strokeStyle = "rgba(5,7,10,.9)";
+      for (const t of L) {
+        ctx.beginPath(); ctx.arc(t.x, t.y, 2.6, 0, 2 * Math.PI);
+        ctx.fillStyle = "#f8f9fa"; ctx.fill(); ctx.lineWidth = 1.4; ctx.stroke();
+        ctx.lineWidth = 3.2; ctx.strokeText(t.name, t.x + 6, t.y); ctx.fillText(t.name, t.x + 6, t.y);
+      }
+    }
+
     /* ── GOES lightning (glm.js) ──
        Every flash the GLM saw in the last twenty minutes, from GOES-East east
        of 105° W and GOES-West west of it, asked again every minute while
@@ -2071,11 +2272,13 @@
     /* flash density over the chosen window, ending where the files end */
     const DENS_COLS = [[1, "#4c6ef5"], [2, "#15aabf"], [4, "#40c057"], [8, "#fab005"], [16, "#fd7e14"], [32, "#f03e3e"], [64, "#e64980"], [128, "#f8f0fc"]];
     function ltgDensity() {
-      if (LTG.dens && LTG.dens.windowMs === R.densWin * 60e3) return LTG.dens;
       const th = ltgThrough();
       if (!th) return null;
-      LTG.dens = GL.density(LTG.flashes, { nowMs: th.to, windowMs: R.densWin * 60e3 });
-      LTG.dens.short = th.to - th.from < R.densWin * 60e3 - 30e3;              // the window reaches back before the first file read
+      const end = Math.min(th.to, ltgRef());                                      // the window ends at the frame on screen
+      if (LTG.dens && LTG.dens.windowMs === R.densWin * 60e3 && LTG.dens.end === end) return LTG.dens;
+      LTG.dens = GL.density(LTG.flashes, { nowMs: end, windowMs: R.densWin * 60e3 });
+      LTG.dens.end = end;
+      LTG.dens.short = end - th.from < R.densWin * 60e3 - 30e3;                  // the window reaches back before the first file read
       return LTG.dens;
     }
     /* one storm cell's flash rate, 2-minute steps for the last 14 minutes,
@@ -2094,6 +2297,27 @@
       LTG.cell.set(key, out);
       return out;
     }
+    /* ── one clock (2026-10-23) ──
+       The moment the frame on screen shows — an observation's time, or null
+       for a forecast. Lightning and flash density show the minutes up to it,
+       so a loop scrubbed back shows that moment's flashes, not now's; and a
+       switch of layer lands on the frame nearest it (setMode). The newest
+       frame, and any forecast, show now. */
+    function frameTime(f = R.frames[R.frame]) {
+      if (!f || f.future || (f.model && !MM.SOURCES[f.model.src].analysis)) return null;
+      return (f.l3 && f.l3.file && f.l3.file.time) || f.t || null;
+    }
+    function ltgRef() {
+      if (R.frame >= R.frames.length - 1) return Date.now();
+      const t = frameTime();
+      return t == null ? Date.now() : t;
+    }
+    /* the frame nearest a moment, within a quarter of an hour, or -1 */
+    function frameNear(t) {
+      let best = -1, bd = 15 * 60e3;
+      R.frames.forEach((f, i) => { const ft = frameTime(f); if (ft != null && Math.abs(ft - t) <= bd) { bd = Math.abs(ft - t); best = i; } });
+      return best;
+    }
     function drawLightning() {
       if (!ltgCv) return;
       const w = el.clientWidth, h = el.clientHeight;
@@ -2101,7 +2325,9 @@
       const ctx = ltgCv.getContext("2d");
       ctx.clearRect(0, 0, w, h);
       if (!ltgOn() || R.mode === "replay" || !LTG.flashes.length) return;
-      const left = R.cx - w / 2, top = R.cy - h / 2, now = Date.now(), r = R.z >= 7 ? 2.6 : 1.8;
+      const left = R.cx - w / 2, top = R.cy - h / 2, now = ltgRef(), r = R.z >= 7 ? 2.6 : 1.8;
+      const th = ltgThrough();
+      if (th && now < th.from - 60e3) return;                         // older than anything held: nothing, rather than now's flashes
       if (R.ov.density) {
         const D = ltgDensity();
         if (D) {
@@ -2121,7 +2347,7 @@
       /* four ages, oldest drawn first so the newest sit on top */
       const COLS = ["#ffffff", "#ffe066", "#ff922b", "#e8590c"], buckets = [[], [], [], []];
       for (const f of LTG.flashes) {
-        const a = now - f.t, k = a <= 60e3 ? 0 : a <= 120e3 ? 1 : a <= 300e3 ? 2 : a <= 600e3 ? 3 : -1;
+        const a = now - f.t, k = a < 0 ? -1 : a <= 60e3 ? 0 : a <= 120e3 ? 1 : a <= 300e3 ? 2 : a <= 600e3 ? 3 : -1;
         if (k < 0) continue;
         const x = lngX(f.lon, R.z) - left, y = latY(f.lat, R.z) - top;
         if (x >= -3 && y >= -3 && x <= w + 3 && y <= h + 3) buckets[k].push(x, y);
@@ -2372,8 +2598,8 @@
           const [x, y] = pt(r.lat, r.lon);
           if (off([x, y], 10)) continue;
           R.reportsDrawn.push(r);
-          const k = Wx.LSR_KINDS[r.kind], hrs = (now - r.time) / 3600e3, op = hrs < 1 ? 1 : hrs < 6 ? 0.85 : 0.6, rr = r.severe ? 8 : 6.5;
-          out.push(`<g class="lsr" opacity="${op}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rr}" fill="${k.color}" stroke="#05070a" stroke-width="1.5"/><text x="${x.toFixed(1)}" y="${(y + 3.6).toFixed(1)}" text-anchor="middle">${esc(k.glyph)}</text></g>`);
+          const k = Wx.LSR_KINDS[r.kind], hrs = (now - r.time) / 3600e3, op = hrs < 1 ? 1 : hrs < 6 ? 0.85 : 0.6, rr = r.severe ? 9 : 7.5;   // room for an 11px letter (the site's floor)
+          out.push(`<g class="lsr" opacity="${op}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rr}" fill="${k.color}" stroke="#05070a" stroke-width="1.5"/><text x="${x.toFixed(1)}" y="${(y + 3.9).toFixed(1)}" text-anchor="middle">${esc(k.glyph)}</text></g>`);
         }
       }
       /* stations: a dot, a tail from where the wind comes, and the
@@ -2401,6 +2627,16 @@
             g += `<rect x="${(x + 5).toFixed(1)}" y="${(y - 20).toFixed(1)}" width="${cw.toFixed(1)}" height="17" rx="8.5" fill="${tempColor(s.temp)}" stroke="#0b1422" stroke-width="1"/><text x="${(x + 5 + cw / 2).toFixed(1)}" y="${(y - 7.5).toFixed(1)}" text-anchor="middle">${txt}</text>`;
           }
           out.push(`<g class="stn">${g}</g>`);
+        }
+      }
+      /* the radars near the map, in a one-radar product: tap one to keep it
+         (the picker at the head of the tilt row says the same) */
+      if (PRO && single() && R.sites) {
+        for (const s of R.sites.slice(0, 15)) {
+          const [x, y] = pt(s.lat, s.lon);
+          if (off([x, y], 20)) continue;
+          const on = R.site && R.site.id === s.id, X1 = x.toFixed(1), Y1 = y.toFixed(1);
+          out.push(`<g class="rsite"><rect x="${(x - 5).toFixed(1)}" y="${(y - 5).toFixed(1)}" width="10" height="10" transform="rotate(45 ${X1} ${Y1})" fill="${on ? "#ffb627" : "#0b0f15"}" stroke="${on ? "#05070a" : "#e9ecef"}" stroke-width="1.6"/>${tag(x, y + 20, s.id, on ? "#ffb627" : "#e9ecef")}</g>`);   // under the mark: town names sit to the right of theirs
         }
       }
       /* the cross-section's line, A to B */
@@ -2452,6 +2688,7 @@
            frame on screen and the next, never the whole loop at once */
         else if (f.archive ? i === R.frame || i === R.frame + 1 : i === R.frame || R.loadedOld) place(f.el, f.tiles, f.url, w, h, left, top);
       });
+      drawGeo();
       overlay(left, top);
       drawLightning();
       placePin();
@@ -2486,6 +2723,8 @@
         when.innerHTML = `${esc(day + k.time(f.t))}<small>forecast · ${Math.abs(d) < 8 * 60e3 ? "now" : d > 0 ? "in " + Wx.age(d) : Wx.age(-d) + " ago"}</small>`;
       } else if (f.t) when.innerHTML = `${esc(clk().time(f.t))}<small>${Wx.age(Date.now() - f.t)} ago</small>`;
       else when.innerHTML = f.mins ? `−${f.mins} min<small>before latest</small>` : `Latest<small>scan time unknown</small>`;
+      drawLightning();
+      if (C.on && f.model) renderChart();
       const fr = R.valid && !f.future && !f.model && !f.mrms && !f.abi ? Wx.fresh("radar", R.valid) : null;
       if (f.model && f.model.err) note(`This hour did not load (${f.model.err}).`);
       else if (f.mrms && f.mrms.err) note(`This MRMS file did not load (${f.mrms.err}).`);
@@ -2495,6 +2734,10 @@
       else if (fr && fr.stale) note(`Radar delayed — the latest scan is ${fr.age} old.`);
       else if (S.place && S.pt === null && R.mode === "comp") note("This radar covers the lower 48 US states only.");
       else if (R.frames.length) note("");
+      if (ltgOn() && LTG.at && R.mode !== "replay" && !$("#radarnote").textContent) {
+        const th = ltgThrough();
+        if (th && ltgRef() < th.from - 60e3) note("Lightning is held for the last 20 minutes; this frame is older, so none is drawn.");
+      }
     }
     function loadOld() { if (!R.loadedOld) { R.loadedOld = true; draw(); } }
     function play(on) {
@@ -2562,6 +2805,9 @@
         return;
       }
       if (R.replay) { R.replay = null; satL.hidden = false; $("#rplive").hidden = true; }
+      /* scrubbed back? the new layer opens on the same moment (one clock) */
+      const keepT = R.frames.length > 1 && R.frame < R.frames.length - 1 ? frameTime() : null;
+      if (C.on && mode !== "model") chartStop();
       R.mode = mode;
       document.querySelectorAll(".seg [data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
       play(false);
@@ -2599,6 +2845,7 @@
         await siteFrames();
       }
       if (ask !== R.modeAsk) return;
+      if (keepT != null) { const i = frameNear(keepT); if (i >= 0 && i !== R.frame) { if (i < R.frames.length - 1) loadOld(); show(i); } }
       label(); renderSources();
     }
 
@@ -2673,7 +2920,7 @@
         const n10 = LTG.flashes.filter((x) => x.t >= Date.now() - 10 * 60e3).length, D = R.ov.density && LTG.at ? ltgDensity() : null;
         sb.textContent += LTG.failed ? " Lightning: GOES did not answer."
           : !LTG.at ? " Lightning: loading the last 20 minutes…"
-          : (R.ov.lightning ? ` Lightning: ${n10.toLocaleString()} flashes in the last 10 minutes, newest brightest.` : "")
+          : (R.ov.lightning ? ` Lightning: ${n10.toLocaleString()} flashes in the last 10 minutes, newest brightest; scrub back and it shows the minutes before that frame.` : "")
             + (D ? ` Flash density: flashes in each 8 km square over the ${R.densWin === 1 ? "last minute" : `last ${R.densWin} minutes`}${D.short ? " (still filling in)" : ""}, most ${D.max}.` : "");
         if (R.ov.cells && R.z >= 6) sb.textContent += " Tap a storm cell for its flash rate.";
       }
@@ -2773,7 +3020,7 @@
       const c = now && Wx.condition(now.code);
       pinEl.innerHTML = `<button type="button" class="px" data-pinx aria-label="Close">×</button><div class="pn">${esc(pin.name)}</div>${roHtml}
         ${now && now.temp != null ? `<div class="ph">${icon(c.kind, now.isDay)}<span class="pt num">${Wx.fmt.temp(now.temp, U())}°</span><span class="ps">${esc(c.text)}${now.hi != null ? `<br>H ${Wx.fmt.temp(now.hi, U())}° L ${Wx.fmt.temp(now.lo, U())}°` : ""}</span></div>` : `<p class="ps">The forecast service did not answer for this point.</p>`}
-        <button type="button" class="pgo" data-pingo>Forecast here</button>${PRO ? `<button type="button" class="pgo alt" data-pinsky>Sounding here</button>` : ""}`;
+        <button type="button" class="pgo" data-pingo>Forecast here</button>${PRO ? `<button type="button" class="pgo alt" data-pinsky>Sounding here</button>` : ""}${PRO && R.mode === "model" ? `<button type="button" class="pgo alt" data-pinchart>Chart this field here, hour by hour</button>` : ""}`;
       placePin();                                        // it grew: place it again
     }
     /* a station's own reading, every field it sent, and its raw METAR */
@@ -2896,9 +3143,9 @@
        layer, the satellite and the overlays — never the visitor's own place */
     function shareLink() {
       const lat = yLat(R.cy, R.z), lon = xLng(R.cx, R.z);
-      const ov = [R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r"].filter(Boolean).join("");
+      const ov = [!R.ov.lines && "x", R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r"].filter(Boolean).join("");
       const v = `${lat.toFixed(1)},${(((lon + 540) % 360) - 180).toFixed(1)},${R.z}`;
-      const url = `${location.origin}${location.pathname}#v=${v}&l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
+      const url = `${location.origin}${location.pathname}#v=${v}&l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}${R.mm.back ? "." + R.mm.back : ""}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
       const done = () => note("Link copied — it opens this map view and these layers. Your saved place is not in it.");
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => note(`Copy this link: ${url}`));
       else note(`Copy this link: ${url}`);
@@ -2913,7 +3160,7 @@
       }
       const o = q.get("o");
       if (o != null) {
-        R.ov = { watches: o.includes("w"), cells: o.includes("c"), fronts: o.includes("f"), lightning: o.includes("l"), density: o.includes("d"), reports: o.includes("r") };
+        R.ov = { lines: !o.includes("x"), watches: o.includes("w"), cells: o.includes("c"), fronts: o.includes("f"), lightning: o.includes("l"), density: o.includes("d"), reports: o.includes("r") };
         R.stations = o.includes("s"); R.outlook = o.includes("o");
         $("#stationtoggle").setAttribute("aria-pressed", String(R.stations));
         $("#outlooktoggle").setAttribute("aria-pressed", String(R.outlook));
@@ -2923,8 +3170,8 @@
       const t = Number(q.get("t")), a = q.get("a");
       if (q.get("t") != null && t >= 0 && t <= 3) { R.tilt = Math.round(t); R.l2 = false; }
       if (a != null && Number.isFinite(Number(a)) && Math.abs(Number(a)) < 30) { R.l2 = true; R.l2angle = Number(a); }
-      const [ms, mf] = (q.get("m") || "").split(".");
-      if (MM && MM.field(ms, mf)) { R.mm.src = ms; R.mm.field = mf; }
+      const [ms, mf, mb] = (q.get("m") || "").split(".");
+      if (MM && MM.field(ms, mf)) { R.mm.src = ms; R.mm.field = mf; R.mm.back = /^[1-3]$/.test(mb || "") ? Number(mb) : 0; if ($("#mmback")) $("#mmback").value = String(R.mm.back); }
       if (MR && MR.PRODUCTS[q.get("r")]) R.mr.prod = q.get("r");
       const [gp, gs, gsat] = (q.get("g") || "").split(".");
       if (AB && AB.PRODUCTS[gp] && AB.SECTORS[gs] && ["auto", "east", "west"].includes(gsat)) R.ab = { prod: gp, sector: gs, sat: gsat };
@@ -2935,6 +3182,7 @@
     pinEl.addEventListener("click", (e) => {
       if (e.target.closest("[data-pinx]")) { R.pin = null; draw(); }
       else if (e.target.closest("[data-pinsky]") && R.pin) { const p = R.pin; R.pin = null; draw(); sky.at(p.lat, p.lon, p.name || "the tapped point"); }
+      else if (e.target.closest("[data-pinchart]") && R.pin) { const p = R.pin; R.pin = null; draw(); chartAt(p.lat, p.lon, p.name); chartEl.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" }); }
       else if (e.target.closest("[data-pingo]") && R.pin) {
         const p = R.pin; R.pin = null; full(false);
         choose({ name: p.name || "Map point", region: "", lat: p.lat, lon: p.lon });
@@ -2967,16 +3215,17 @@
       });
     });
     addEventListener("keydown", (e) => { if (e.key === "Escape") full(false); });
-    if ($("#sitesel")) $("#sitesel").addEventListener("change", async (e) => {
-      const id = e.target.value, prev = R.site && R.site.id;
-      e.target.blur();
+    if ($("#sitesel")) $("#sitesel").addEventListener("change", (e) => { e.target.blur(); keepSite(e.target.value); });
+    /* keep one radar (an id), or follow the map again ("") */
+    async function keepSite(id) {
+      const prev = R.site && R.site.id;
       R.lockId = id || null;
       if (id) { const s = (R.sites || []).find((x) => x.id === id); if (s) R.site = s; }
       else await pickSite(true);
       siteOptions();
       if (single() && R.site && R.site.id !== prev) { play(false); R.valid = null; clearTiles(); await siteFrames(); }
       label(); renderSources(); draw();
-    });
+    }
     /* Pro's keys, for a desk (2026-10-23): the loop, the zoom and the
        products reached for most, without the mouse. A key typed into a field,
        one with a modifier, or one pressed while a sheet is open is left alone;
@@ -3038,6 +3287,8 @@
           const tlat = yLat(R.cy - el.clientHeight / 2 + py, R.z), tlon = xLng(R.cx - el.clientWidth / 2 + px, R.z);
           if (X.pick) { xsecTap(tlat, tlon); return; }
           if (R.measure) { measureTap(tlat, tlon); return; }
+          const rs = siteNear(px, py);
+          if (rs) { keepSite(rs.id); return; }
           const rp = PRO && reportNear(px, py), s = !rp && stationNear(px, py);
           const c = !rp && !s && cellNear(px, py), a = !rp && !s && !c && areaAt(tlat, tlon);
           if (rp) showReport(rp);
@@ -3083,7 +3334,7 @@
         R.mm.src = MM.SOURCES[e.target.value] ? e.target.value : "hrrr";
         if (!MM.field(R.mm.src, R.mm.field)) R.mm.field = MM.FIELDS[R.mm.src][0].id;
         store.set("wx:mmsrc", R.mm.src); store.set("wx:mmfield", R.mm.field);
-        modelOptions(); R.mm.run = null;
+        modelOptions(); R.mm.run = null; R.mm.back = 0; $("#mmback").value = "0";
         if (R.mode === "model") { play(false); modelFrames().then(label); }
       });
       $("#mmfield").addEventListener("change", (e) => {
@@ -3095,6 +3346,11 @@
         play(false);
         setFrames(R.frames.map((f) => ({ t: f.t, model: { src: f.model.src, field: R.mm.field, run: f.model.run, fh: f.model.fh } })));
         show(Math.min(at, R.frames.length - 1)); label(); renderSources();
+        if (C.on) chartAt(C.lat, C.lon, C.name);
+      });
+      $("#mmback").addEventListener("change", (e) => {
+        R.mm.back = Math.max(0, Math.min(3, Number(e.target.value) || 0));
+        if (R.mode === "model") { play(false); modelFrames().then(label); }
       });
     }
     if ($("#denswin")) {
@@ -3145,6 +3401,7 @@
     $("#scrub").addEventListener("input", (e) => { play(false); loadOld(); show(Number(e.target.value)); });
     document.querySelectorAll(".seg [data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
     document.querySelectorAll("[data-sat]").forEach((b) => b.addEventListener("click", () => setSat(b.dataset.sat)));
+    if ($("#satsel")) $("#satsel").addEventListener("change", (e) => setSat(e.target.value));
     /* the replay bar: a time (the visitor's own clock), a length, or a notable storm */
     const localInput = (ms) => { const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60e3); return d.toISOString().slice(0, 16); };
     $("#replaytoggle").addEventListener("click", () => {
@@ -3209,7 +3466,8 @@
       },
       showUS() {
         R.us = true; R.lat = null;
-        if (!R.outlook) { R.outlook = true; $("#outlooktoggle").setAttribute("aria-pressed", "true"); }
+        /* the day's risk across the country, on Weather; Pro leaves it to its switch */
+        if (!PRO && !R.outlook) { R.outlook = true; $("#outlooktoggle").setAttribute("aria-pressed", "true"); }
         if (single()) setMode("comp");
         fit(...CONUS, 10);
       },

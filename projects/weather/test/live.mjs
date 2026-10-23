@@ -162,5 +162,16 @@ await guard('raob', async () => {
   ok(a && Number.isFinite(a.sb.cape), `analyzed — SBCAPE ${a && a.sb.cape}, PW ${a && a.pw.toFixed(1)} mm`);
 });
 
+console.log('\nLIVE  Pro\'s map lines (Natural Earth, from its release on GitHub)');
+require('../mapgeo.js');
+for (const [name, least] of [['states', 50], ['coast', 100], ['nations', 5], ['counties', 3000], ['places', 500]]) {
+  await guard(`map ${name}`, async () => {
+    const L = await W.mapLayer(name);
+    const n = L && (L.lines || L.places).length;
+    ok(n >= least, `${name}: ${n} ${L && L.places ? 'towns' : 'lines'} inside North America`);
+    if (name === 'places') ok(L.places.some(p => p[0] === 'Chicago') && L.places.every(p => typeof p[0] === 'string' && Number.isFinite(p[3])), 'names and the zoom each one is worth from');
+  });
+}
+
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'THE WEATHER PROVIDERS ANSWER AS THE PAGE EXPECTS'));
 process.exit(failures ? 1 : 0);

@@ -124,6 +124,9 @@ warnings and storm mode stay on both pages, Pro keeps its own dark amber look.
       `setTime` interface
 - [ ] One shared place + time bus; forecast panels follow valid time, observation
       panels show their own time and say how far it is from the bus time
+      (a first slice is in, 2026-10-23: on the one map, lightning follows the
+      frame on screen and a layer switch keeps the moment — `frameTime` in
+      `app.js`; README → "the review's eight")
 - [ ] Model / run / valid / observed labels on every panel header
 - [ ] Explore: the tool list grouped by what it measures
 - [ ] Workspaces: save / rename / duplicate in localStorage; share as a link that

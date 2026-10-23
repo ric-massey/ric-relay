@@ -798,7 +798,14 @@ ones that must never break:
   Each is held to MetPy, h5py, pyproj, ecCodes or Python's bz2 in `test/decoders.test.mjs`
   on real files in `test/fixtures/`; change a decoder and its expectations together
   (`fixtures/make-expected.py` regenerates them). Those buckets are the weather
-  room's other external hosts. Lightning is GLM *flashes* — never call them strikes.
+  room's other external hosts. **Pro's map lines** (state, county, coast and
+  border lines and town names, drawn over the data — `mapgeo.js`) are Natural
+  Earth's files, fetched from its tagged release on `raw.githubusercontent.com`
+  when the page runs and cut down in the browser; that is one more of the room's
+  hosts. They are never committed: this room keeps real coordinates out of the
+  repo even for public airports, and the map lines follow that. Not through the
+  Worker either — it is on the free plan, and the 8 MB county file is far past
+  the CPU a request gets there. Lightning is GLM *flashes* — never call them strikes.
   Flash density, a cell's flash rate and the lightning jump (`glm.js`, Schultz et
   al.'s 2σ method) are worked out from those flashes in the browser; the jump is
   an indicator, shown as one, never a warning or a verdict.
@@ -921,8 +928,9 @@ bug you are looking for.
 - [ ] Page still opens as a static file — no console errors, no external requests
       beyond the GitHub API calls that already exist, the OpenStreetMap tiles in
       the training page's run detail, Studies' ClinicalTrials.gov fallback and the
-      weather room's providers, NOAA's AWS buckets and ECMWF's open data
-      (Google Cloud and AWS) among them (below).
+      weather room's providers, NOAA's AWS buckets, ECMWF's open data
+      (Google Cloud and AWS) and Pro's map lines from Natural Earth on GitHub
+      among them (below).
 - [ ] Looks right at mobile width.
 - [ ] Didn't add location data, extra repos, or a build step.
 - [ ] The relevant test suite above still passes.
