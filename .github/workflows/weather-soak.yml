@@ -1,0 +1,73 @@
+# The weather room through a real severe-weather day.
+#
+# test/soak.mjs asks the feeds a storm day leans on (the mosaic, the site's
+# Worker, NOAA's radar files at the busiest radars, NWS storm motion and
+# alerts, Iowa State's warnings copy and storm cells) round after round and
+# keeps score: uptime, time to answer, and how old the newest data was.
+# Run by hand it only ever met quiet days. This runs it by itself when it
+# matters (2026-10-23, Ric: "Yep" to the outbreak-day monitor): three times
+# across the afternoon and evening, UTC, it asks SPC's day-1 outlook, and on
+# a day with an Enhanced risk or higher anywhere it watches for close to
+# three hours.
+#
+# What it leaves: the table on the run's own page (the job summary), the
+# whole run as soak.json in the run's artifacts (kept 90 days), and a failed
+# run — which GitHub emails — when any source answered under 95% of the time.
+# It writes nothing to the repository. Nothing in it is private: radar ids,
+# times, counts and response times. It never bursts NOAA, the NWS or Iowa
+# State; --burst asks only the site's own Worker.
+#
+# By hand: Actions → Weather soak → Run workflow, with "force" to watch
+# whatever the day's risk.
+
+name: Weather soak
+
+on:
+  schedule:
+    - cron: "0 17 * * *"
+    - cron: "0 20 * * *"
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Watch even if SPC's risk is under Enhanced"
+        type: boolean
+        default: false
+      minutes:
+        description: "How long to watch"
+        default: "170"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weather-soak
+  cancel-in-progress: false
+
+jobs:
+  soak:
+    runs-on: ubuntu-latest
+    timeout-minutes: 190
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: projects/weather
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - id: risk
+        run: node projects/weather/test/risk-today.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+      - if: steps.risk.outputs.run == 'true'
+        run: >-
+          node projects/weather/test/soak.mjs
+          --minutes ${{ github.event.inputs.minutes || '170' }}
+          --every 120 --burst 10
+          --label "SPC day 1 ${{ steps.risk.outputs.risk }}"
+          --out soak.json
+      - if: always() && steps.risk.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soak-${{ github.run_id }}
+          path: soak.json
+          if-no-files-found: ignore
+          retention-days: 90

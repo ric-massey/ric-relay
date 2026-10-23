@@ -23,8 +23,12 @@
    bursts NOAA, the NWS or Iowa State — their services are shared, and the
    Worker's cache is what stands between a crowd and them.
 
-   No coordinates are written here (hard rule 1). It writes nothing; the
-   summary goes to the terminal, one JSON line a round to stdout with --json. */
+   No coordinates are written here (hard rule 1). The summary goes to the
+   terminal (one JSON line a round with --json); --out <file> also writes the
+   whole run as JSON, and under GitHub Actions the summary table goes to the
+   job's page ($GITHUB_STEP_SUMMARY) — .github/workflows/weather-soak.yml runs
+   it by itself on days SPC has an Enhanced risk or higher (2026-10-23). */
+import { writeFileSync, appendFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const W = require('../wx.js');
@@ -32,6 +36,9 @@ const NX = require('../nexrad.js');
 
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? Number(process.argv[i + 1]) : d; };
 const MINUTES = arg('minutes', 60), EVERY = arg('every', 120), BURST = arg('burst', 0), JSONL = process.argv.includes('--json');
+const OUT = (() => { const i = process.argv.indexOf('--out'); return i > 0 ? process.argv[i + 1] : null; })();
+const LABEL = (() => { const i = process.argv.indexOf('--label'); return i > 0 ? process.argv[i + 1] : ''; })();
+const rows = [], STARTED = new Date().toISOString();
 const SITES = ['TLX', 'AMX', 'BYX', 'TFX', 'LOT', 'FWS', 'DMX', 'MPX', 'FFC', 'LWX', 'ATX', 'MUX', 'ABQ', 'BMX', 'HGX', 'OKX'];
 const WORKER = 'https://training-log.rmbuster82.workers.dev';
 
@@ -79,6 +86,7 @@ async function round() {
     const t = Date.now(), res = await Promise.all(Array.from({ length: BURST }, () => fetch(WORKER + '/wx/radar').then((r) => r.ok, () => false)));
     mark('burst', res.every(Boolean), Date.now() - t); row.burst = `${res.filter(Boolean).length}/${BURST}`;
   }
+  rows.push(row);
   if (JSONL) console.log(JSON.stringify(row));
   else console.log(`${row.t.slice(11, 19)}  mosaic ${row.mosaic ?? '—'} min · radars ${busy.map((s) => `${s} ${row[s] ?? '✗'}`).join(' ')} min · ${row.warnings ?? '✗'} warnings · ${row.cells ?? '✗'} cells${row.burst ? ' · burst ' + row.burst : ''}`);
 }
@@ -100,4 +108,13 @@ for (const [k, s] of Object.entries(score)) {
   console.log(`${k.padEnd(9)} ${`${s.ok}/${s.n} (${Math.round(up * 100)}%)`.padEnd(15)} ${String(q(s.ms, 0.5)).padStart(6)}   ${String(q(s.ms, 0.95)).padStart(6)}   ${s.ages.length ? Math.max(...s.ages).toFixed(1).padStart(8) : '       —'}                   ${s.fails.slice(0, 6).join(' ')}${s.fails.length > 6 ? ' …' : ''}`);
 }
 console.log(bad ? `\n${bad} source${bad > 1 ? 's' : ''} answered under 95% of the time` : '\nevery source answered at least 95% of the time');
+const table = Object.entries(score).map(([k, s]) => ({ source: k, answered: s.ok, asked: s.n, uptime: Math.round(s.ok / s.n * 1000) / 10, p50ms: q(s.ms, 0.5), p95ms: q(s.ms, 0.95), worstAgeMin: s.ages.length ? Math.round(Math.max(...s.ages) * 10) / 10 : null, failedAt: s.fails }));
+if (OUT) writeFileSync(OUT, JSON.stringify({ label: LABEL, started: STARTED, ended: new Date().toISOString(), minutes: MINUTES, every: EVERY, burst: BURST, radars: busy, sources: table, rounds: rows }, null, 1));
+if (process.env.GITHUB_STEP_SUMMARY) {
+  const md = [`## Weather soak${LABEL ? ' — ' + LABEL : ''}`, '', `${STARTED.slice(0, 16)}Z for ${MINUTES} min, a round every ${EVERY} s${BURST ? `, ${BURST} at once to the Worker` : ''}; radars ${busy.join(', ')}`, '',
+    '| source | answered | p50 ms | p95 ms | newest data, worst (min) | failed at (UTC) |', '|---|---|---|---|---|---|',
+    ...table.map((t) => `| ${t.source} | ${t.answered}/${t.asked} (${t.uptime}%) | ${t.p50ms} | ${t.p95ms} | ${t.worstAgeMin ?? '—'} | ${t.failedAt.slice(0, 8).join(' ')}${t.failedAt.length > 8 ? ' …' : ''} |`),
+    '', bad ? `**${bad} source${bad > 1 ? 's' : ''} answered under 95% of the time.**` : 'Every source answered at least 95% of the time.', ''];
+  appendFileSync(process.env.GITHUB_STEP_SUMMARY, md.join('\n'));
+}
 process.exit(bad ? 1 : 0);
