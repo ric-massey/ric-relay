@@ -840,3 +840,43 @@ body[data-view="pro"] .siterow .sitepick select{max-width:210px}
   body[data-view="pro"] .placebar .chip,body[data-view="pro"] .placebar .backbtn{padding:0 9px}
   body[data-view="pro"] .placebar .wstoggle{flex:1 1 auto}
 }
+
+/* ── Pro, the rest of the review (2026-10-23, Ric: "5-8 do plz") ── */
+/* Find: Ctrl+K or / — every layer, field, overlay and card by name */
+.maptools .findbtn kbd{margin-left:6px;padding:0 4px;border:1px solid #3a4452;border-radius:3px;font:600 11px var(--mono);color:var(--dim)}
+@media (pointer:coarse){ .maptools .findbtn kbd{display:none} }
+.findsheet .in{width:min(620px,calc(100vw - 32px))}
+.findsheet #findq{display:block;width:100%;min-height:44px;padding:0 12px;border-radius:3px;border:1px solid var(--amber);background:#121821;color:#e3e9f0;font:14px var(--mono)}
+.findlist{list-style:none;margin:8px 0 0;padding:0;max-height:min(420px,55vh);overflow:auto}
+.findlist li{display:flex;align-items:center;gap:10px;min-height:40px;padding:6px 10px;border-radius:3px;cursor:pointer;font-size:13px}
+.findlist li>span{flex:1;min-width:0}
+.findlist li small{display:block;color:var(--dim);font-size:12px}
+.findlist li em{flex:none;font:normal 11px var(--mono);color:var(--dim)}
+.findlist li[aria-selected="true"],.findlist li:hover{background:#1b222c}
+.findlist li[aria-selected="true"]{outline:1px solid #7a5a17}
+.findlist .none{color:var(--dim);cursor:default}
+.findhint{margin:8px 0 0!important;font-size:12px!important}
+/* the readout cards fold to their heading */
+#cards .card>h2[data-min]{cursor:pointer;display:flex;align-items:center}
+#cards .card>h2[data-min]::after{content:"−";margin-left:auto;padding-left:10px;font:600 14px var(--mono);color:var(--dim)}
+#cards .card.ws-min>h2[data-min]::after{content:"+"}
+#cards .card.ws-min>h2{margin-bottom:0}
+#cards .card.ws-min>:not(h2:first-child){display:none!important}
+#cards .card>h2[data-min]:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+/* Pro's hero with no place: shorter — the place button is in the bar above */
+body[data-view="pro"] #hero .sub[style]{margin-top:6px!important}
+body[data-view="pro"] #hero [data-locate],body[data-view="pro"] #hero [data-open-places]{min-height:36px!important;padding:0 12px}
+body[data-view="pro"] #hero>div[style]{margin-top:6px!important}
+/* the Layers button and the done button belong to the phone's sheet */
+.layersbtn,.sheetdone{display:none}
+@media (max-width:640px){
+  body[data-view="pro"]:not([data-panel]) .mapctl{display:none}
+  body[data-view="pro"]:not([data-panel]) #radarcard.ctl-open .mapctl{display:block;position:fixed;left:0;right:0;bottom:0;z-index:50;max-height:74vh;overflow:auto;padding:14px 16px calc(14px + env(safe-area-inset-bottom));background:#0b0f15;border-top:1px solid #2a3340;border-radius:8px 8px 0 0;box-shadow:0 -14px 34px rgba(0,0,0,.6)}
+  body[data-view="pro"]:not([data-panel]) .mapctl .maptools .kinds{flex-wrap:wrap;overflow:visible}
+  body[data-view="pro"]:not([data-panel]) .mapctl .ovpanel{position:static;width:auto;max-height:none;box-shadow:none;margin-top:8px}
+  body[data-view="pro"]:not([data-panel]) .mapctl .seg.rowscroll{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;padding-right:0}
+  body[data-view="pro"]:not([data-panel]) .sheetdone{display:block;width:100%;min-height:44px;margin-top:8px;border:0;border-radius:4px;background:var(--amber);color:#1c1300;font:600 14px var(--mono)}
+  body[data-view="pro"]:not([data-panel]) .layersbtn{display:inline-flex;align-items:center;gap:7px;position:absolute;left:8px;bottom:24px;z-index:7;min-height:44px;padding:0 14px;border-radius:4px;border:1px solid #7a5a17;background:rgba(7,9,12,.92);color:var(--amber);font:600 13px var(--mono)}
+  /* the map takes the first screen: what is above it is the place bar and the card's title */
+  body[data-view="pro"]:not([data-panel]) .workspace .radar{height:calc(100svh - 330px);min-height:320px}
+}

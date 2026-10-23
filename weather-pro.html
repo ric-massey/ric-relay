@@ -24,7 +24,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Weather">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231f5fa8'/><circle cx='40' cy='40' r='16' fill='%23ffd166'/><path d='M30 74h42a14 14 0 0 0-3-28 18 18 0 0 0-34 6 11 11 0 0 0-5 22z' fill='%23fff'/></svg>">
-  <link rel="stylesheet" href="assets/weather/weather.css?v=13">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=14">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -80,7 +80,7 @@
     <button class="chip" type="button" id="usview" aria-label="Across the US" title="Across the US">US</button>
     <button class="chip" type="button" id="units" aria-label="Switch units">°F</button>
     <button class="chip keyschip" type="button" id="keysbtn" aria-label="Keyboard shortcuts" aria-haspopup="dialog" title="Keyboard shortcuts (?)">?</button>
-    <button class="chip" type="button" id="refresh" aria-label="Refresh">
+    <button class="chip" type="button" id="refresh" aria-label="Refresh" title="Refresh everything">
       <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M15 9a6 6 0 1 1-1.8-4.3M15 2.5V6h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
   </div>
@@ -94,8 +94,11 @@
     <div class="mapcol">
       <section class="card" id="radarcard" aria-label="Map">
         <h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 8l4.5-4.5" stroke="currentColor" stroke-width="1.5"/></svg>Map<span class="src" id="radarsrc"></span></h2>
+        <!-- the map's controls, all in one place: on a phone they are a sheet
+             the Layers button on the map pulls up -->
+        <div class="mapctl" id="mapctl">
         <!-- one row: what kind of map, the replay, the overlays, and the words
-             about it (ⓘ) — the chosen kind's own controls are the row under it -->
+             about it (Info) — the chosen kind's own controls are the row under it -->
         <div class="maptools pro-only">
           <div class="seg kinds" role="group" aria-label="Map layer">
             <button type="button" data-mode="comp" aria-pressed="true" title="Every NEXRAD at once, base reflectivity (M)">Mosaic</button>
@@ -124,6 +127,7 @@
             </div>
           </div>
           <button type="button" class="toolbtn infobtn" id="infobtn" aria-expanded="false" aria-controls="sitebar" aria-label="What this map is and where it comes from" title="What this map is and where it comes from">Info</button>
+          <button type="button" class="toolbtn findbtn" id="findbtn" aria-haspopup="dialog" title="Jump to any layer, model field, overlay or card — Ctrl+K or /">Find <kbd>⌃K</kbd></button>
         </div>
         <!-- a single radar's products, its picker and its tilts: shown while one radar is the layer -->
         <div class="siterow pro-only" id="siterow" hidden>
@@ -186,6 +190,8 @@
           </div>
         </form>
         <p class="sitebar" id="sitebar"></p>
+        <button type="button" class="sheetdone pro-only" id="ctldone">Done</button>
+        </div>
         <div class="radar" id="radar" role="img" aria-label="Map">
           <div class="layer base" id="radarbase"></div>
           <div class="layer sat" id="radarsat"></div>
@@ -195,21 +201,22 @@
           <svg class="over" id="radarover" aria-hidden="true"></svg>
           <div class="read" id="radarread" hidden></div>
           <div class="zoom">
-            <button type="button" id="zin" aria-label="Zoom in">+</button>
-            <button type="button" id="zout" aria-label="Zoom out">−</button>
+            <button type="button" id="zin" aria-label="Zoom in" title="Zoom in (+)">+</button>
+            <button type="button" id="zout" aria-label="Zoom out" title="Zoom out (−)">−</button>
             <button type="button" class="pro-only" id="zxsec" aria-label="Cross-section: tap two points on the map" aria-pressed="false" title="Cross-section between two points"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="3.5" cy="13.5" r="2" fill="currentColor"/><circle cx="14.5" cy="4.5" r="2" fill="currentColor"/><path d="M5 12L13 6" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2 2"/></svg></button>
             <button type="button" class="pro-only" id="zmeasure" aria-label="Ruler: measure distance and bearing" aria-pressed="false" title="Measure"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 12.5L12.5 2l3.5 3.5L5.5 16z M5 9.5l1.5 1.5 M7.5 7l2 2 M10 4.5l1.5 1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
             <button type="button" class="pro-only" id="zlink" aria-label="Copy a link to this map view" title="Share this view"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M7.5 10.5a3 3 0 0 0 4.2 0l2.6-2.6a3 3 0 0 0-4.2-4.2l-1 1 M10.5 7.5a3 3 0 0 0-4.2 0L3.7 10.1a3 3 0 0 0 4.2 4.2l1-1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
-            <button type="button" id="zfull" aria-label="Full-screen map" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 7V2h5M11 2h5v5M16 11v5h-5M7 16H2v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <button type="button" id="zfull" aria-label="Full-screen map" aria-pressed="false" title="Full-screen map (F, Esc to leave)"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 7V2h5M11 2h5v5M16 11v5h-5M7 16H2v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           </div>
           <div class="pin" id="radarpin" hidden></div>
           <div class="note" id="radarnote" hidden></div>
           <p class="pst mainst" id="mainstamp" aria-live="polite"></p>
+          <button type="button" class="layersbtn pro-only" id="layersbtn" aria-controls="mapctl" aria-expanded="false" title="Layers, overlays, replay"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l6.5 3.5L8 8.5 1.5 5zM1.5 8L8 11.5 14.5 8M1.5 11L8 14.5 14.5 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="layername">Layers</span></button>
           <span class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · NEXRAD<span id="satcredit" hidden> &amp; GOES</span> via <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">IEM</a><span id="awscredit" hidden> · NOAA open data on <a href="https://registry.opendata.aws/collab/noaa/" target="_blank" rel="noopener">AWS</a></span><span id="necredit"> · lines <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a></span><span id="eccredit" hidden> · © <a href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF</a> open data, CC BY 4.0</span></span>
         </div>
         <div class="radarbar">
-          <button class="play" type="button" id="play" aria-label="Play radar loop"></button>
-          <input type="range" id="scrub" min="0" max="10" step="1" value="10" aria-label="Radar frame">
+          <button class="play" type="button" id="play" aria-label="Play radar loop" title="Play or pause (Space)"></button>
+          <input type="range" id="scrub" min="0" max="10" step="1" value="10" aria-label="Radar frame" title="Step through the frames (← →)">
           <span class="when num" id="when"></span>
         </div>
         <div class="legend" id="legend"><span>light</span><i aria-hidden="true"></i><span>heavy</span></div>
@@ -286,8 +293,18 @@
       <dt><kbd>E</kbd></dt><dd>echo tops</dd>
       <dt><kbd>1</kbd>–<kbd>9</kbd></dt><dd>the radar's tilts, lowest first</dd>
       <dt><kbd>L</kbd> <kbd>W</kbd></dt><dd>lightning, watches and discussions on or off</dd>
+      <dt><kbd>Ctrl</kbd> <kbd>K</kbd> or <kbd>/</kbd></dt><dd>find any layer, model field, overlay or card</dd>
       <dt><kbd>?</kbd></dt><dd>this list</dd>
     </dl>
+  </div>
+</dialog>
+
+<dialog class="sheet wssheet findsheet" id="findit" aria-labelledby="findtitle">
+  <div class="in">
+    <h2 id="findtitle">Find<button type="button" data-close aria-label="Close">×</button></h2>
+    <input type="search" id="findq" placeholder="srv, cape, mesh, lightning, sounding…" autocomplete="off" enterkeyhint="go" aria-label="Find a layer, field, overlay or card" aria-controls="findlist">
+    <ul id="findlist" class="findlist" role="listbox" aria-label="Matches"></ul>
+    <p class="wslead findhint">Enter puts it on the main map · Shift+Enter opens it as a new map beside it · ↑ ↓ to choose</p>
   </div>
 </dialog>
 
@@ -353,7 +370,7 @@
 <script src="projects/weather/modelmaps.js?v=6"></script>
 <script src="projects/weather/mrms.js?v=1"></script>
 <script src="projects/weather/mapgeo.js?v=1"></script>
-<script src="assets/weather/workstation.js?v=5"></script>
+<script src="assets/weather/workstation.js?v=6"></script>
 <script src="assets/weather/app.js?v=14"></script>
 </body>
 </html>

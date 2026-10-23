@@ -229,7 +229,7 @@
     }
     main.on((type, data) => {
       if (type === 'stamp') {
-        W.mainStamp = data; stamps();
+        W.mainStamp = data; stamps(); layerName(data);
         if (W.mainLayer !== main.layer) { W.mainLayer = main.layer; store.set('wx:wscurrent', current()); renderSel(); }
       }
       else if (type === 'view') shareView(data, main);
@@ -487,25 +487,127 @@
       const b = e.target.closest('button');
       if (!b) return;
       const val = (s) => (s && s[0] === '@' ? ($('#' + s.slice(1)) || {}).value : s);
-      if (b.dataset.xmain) { closeSheet('#wsexploreit'); await main.setLayer(val(b.dataset.xmain)); changed(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
-      else if (b.dataset.xpanel) { closeSheet('#wsexploreit'); const p = addPanel(val(b.dataset.xpanel)); if (p) p.sec.scrollIntoView({ block: 'nearest' }); }
-      else if (b.dataset.xact) {
-        closeSheet('#wsexploreit');
-        const a = b.dataset.xact;
+      if (b.dataset.xmain) { closeSheet('#wsexploreit'); await toMain(val(b.dataset.xmain)); }
+      else if (b.dataset.xpanel) { closeSheet('#wsexploreit'); toPanel(val(b.dataset.xpanel)); }
+      else if (b.dataset.xact) { closeSheet('#wsexploreit'); doAct(b.dataset.xact); }
+    });
+    async function toMain(str) { await main.setLayer(str); changed(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
+    function toPanel(str) { const p = addPanel(str); if (p) p.sec.scrollIntoView({ block: 'nearest' }); }
+    /* `toggle`: from Find an overlay is switched either way; from Explore only on */
+    function doAct(a, { toggle = false } = {}) {
         if (a.startsWith('card:')) {
           const id = a.slice(5), el = document.getElementById(id);
           if (W.cards.hidden.includes(id)) { W.cards.hidden = W.cards.hidden.filter((x) => x !== id); arrangeCards(); changed(); }
           if (el) { if (el.hidden) say('That card has nothing to show yet — choose a place first.'); const d = el.querySelector('details'); if (d) d.open = true; el.scrollIntoView({ block: 'start' }); }
         } else if (a.startsWith('ov:')) {
           const k = a.slice(3), btn = k === 'stations' ? $('#stationtoggle') : $(`[data-ov="${k}"]`);
-          if (btn && btn.getAttribute('aria-pressed') !== 'true') btn.click();
+          if (btn && (toggle || btn.getAttribute('aria-pressed') !== 'true')) btn.click();
           $('#radarcard').scrollIntoView({ block: 'nearest' });
-        } else if (a === 'outlook') { const btn = $('#outlooktoggle'); if (btn.getAttribute('aria-pressed') !== 'true') btn.click(); }
+        } else if (a === 'outlook') { const btn = $('#outlooktoggle'); if (toggle || btn.getAttribute('aria-pressed') !== 'true') btn.click(); }
         else if (a === 'xsec') { $('#zxsec').click(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
         else if (a === 'replay') { const t = $('#replaytoggle'); if (t.getAttribute('aria-expanded') !== 'true') t.click(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
         else if (a === 'sat') { if ($('#ovpanel') && $('#ovpanel').hidden) $('#ovbtn').click(); $('#satsel').focus(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
-      }
+        else if (a.startsWith('ws:')) { const b = $('#ws' + a.slice(3)); if (b) b.click(); }
+    }
+
+    /* ── Find (Ctrl+K or /): every layer, model field, overlay, card and tool
+       by name, from the same product lists Explore reads — a product added to
+       nexrad.js, mrms.js, abi.js or modelmaps.js is findable without editing
+       this. Enter: on the main map; Shift+Enter: a new map beside it. ── */
+    let findItems = null, findHits = [], findAt = 0;
+    function findIndex() {
+      const MM = root.ModelMaps, MR = root.Mrms, AB = root.Abi, NX = root.Nexrad, out = [];
+      const L = (label, group, str, words = '') => out.push({ label, group, str, hay: `${label} ${group} ${words}`.toLowerCase() });
+      const A = (label, group, act, words = '') => out.push({ label, group, act, hay: `${label} ${group} ${words}`.toLowerCase() });
+      L('US mosaic', 'Radar', 'l=comp&o=w', 'nexrad reflectivity national composite');
+      L('Future radar · HRRR', 'Forecast', 'l=hrrr&o=w', 'simulated reflectivity');
+      if (NX) for (const [k, P] of Object.entries(NX.PRODUCTS)) L(`${P.label} (${P.short})`, 'Radar · single site', `l=l3:${k}&o=w`, P.long);
+      if (MR) for (const [k, P] of Object.entries(MR.PRODUCTS)) L(P.label, 'MRMS', `l=mrms&o=w&r=${k}`, 'mrms ' + k);
+      if (AB) for (const [k, P] of Object.entries(AB.PRODUCTS)) L(P.label, 'Satellite · GOES', `l=abi&o=&g=${k}.conus.auto`, P.group + ' goes abi ' + k);
+      if (MM) for (const [k, S] of Object.entries(MM.SOURCES)) for (const f of MM.FIELDS[k]) L(`${S.label} · ${f.label}`, `Models · ${f.group}`, `l=model&o=w&m=${k}.${f.id}`, `${k} ${f.id}`);
+      for (const [k, n, w] of [['lines', 'Map lines', 'states counties towns borders'], ['watches', 'Watches and discussions', 'spc tornado severe mcd mpd wpc'], ['cells', 'Storm cells', 'scit hail meso tvs tracks'],
+        ['lightning', 'Lightning', 'glm flashes'], ['density', 'Flash density', 'lightning glm'], ['reports', 'Storm reports', 'lsr tornado hail wind'], ['fronts', 'Fronts', 'wpc surface analysis highs lows'],
+        ['stations', 'Stations', 'metar asos rwis mesonet observations obs']]) A(n, 'Overlay — on or off', 'ov:' + k, w);
+      A('SPC outlook', 'Overlay — on or off', 'outlook', 'convective risk day 1');
+      A('Satellite under the map', 'Overlay', 'sat', 'infrared visible water vapour underlay');
+      for (const [id, words] of [['hero', 'now forecast current conditions'], ['sky', 'sounding skew-t hodograph balloon raob parcel'], ['afd', 'area forecast discussion office'], ['meso', 'spc mesoanalysis images'],
+        ['models', 'compare models ensemble plumes'], ['record', 'accuracy verification scoreboard'], ['sources', 'feeds data where from']]) A(CARD_NAMES[id], 'Card', 'card:' + id, words);
+      A('Replay any day since 2006', 'Tool', 'replay', 'history archive past storm');
+      A('Cross-section on the main map', 'Tool', 'xsec', 'cross section vertical');
+      A('Explore every tool', 'Workspace', 'ws:explore', 'browse');
+      A('Add a map beside the main one', 'Workspace', 'ws:add', 'panel new map');
+      A('Save the workspace', 'Workspace', 'ws:save', 'layout');
+      A('Share the workspace', 'Workspace', 'ws:share', 'link');
+      return out;
+    }
+    function findRun(it, panel) {
+      closeSheet('#findit');
+      if (it.str) return panel ? toPanel(it.str) : toMain(it.str);
+      doAct(it.act, { toggle: true });
+    }
+    function findShow() {
+      const q = $('#findq').value.toLowerCase().trim(), toks = q.split(/\s+/).filter(Boolean);
+      findItems = findItems || findIndex();
+      findHits = (toks.length ? findItems.filter((it) => toks.every((t) => it.hay.includes(t))) : findItems.filter((it) => !it.str || !/^Models/.test(it.group)))
+        .map((it) => ({ it, w: toks.reduce((n, t) => n + (it.label.toLowerCase().startsWith(t) ? 3 : new RegExp('\\b' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(it.label.toLowerCase()) ? 2 : it.label.toLowerCase().includes(t) ? 1 : 0), 0) - it.label.length / 200 }))
+        .sort((a, b) => b.w - a.w).slice(0, 40).map((x) => x.it);
+      findAt = Math.min(findAt, Math.max(0, findHits.length - 1));
+      $('#findlist').innerHTML = findHits.length ? findHits.map((it, i) => `<li role="option" id="find${i}" data-i="${i}" aria-selected="${i === findAt}"><span>${esc(it.label)}<small>${esc(it.group)}</small></span>${it.str ? '<em>⇧↵ new map</em>' : ''}</li>`).join('')
+        : '<li class="none">Nothing by that name. Try a product (srv, mesh), a field (cape, helicity), or a card (sounding).</li>';
+      $('#findq').setAttribute('aria-activedescendant', findHits.length ? 'find' + findAt : '');
+      const on = $('#find' + findAt);
+      if (on) on.scrollIntoView({ block: 'nearest' });
+    }
+    function findOpen() {
+      if ($('#findit').open) return;
+      $('#findq').value = ''; findAt = 0; findShow(); openSheet('#findit');
+      setTimeout(() => $('#findq').focus(), 20);
+    }
+    $('#findbtn').addEventListener('click', findOpen);
+    $('#findq').addEventListener('input', () => { findAt = 0; findShow(); });
+    $('#findq').addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); findAt = (findAt + (e.key === 'ArrowDown' ? 1 : -1) + findHits.length) % Math.max(1, findHits.length); findShow(); }
+      else if (e.key === 'Enter' && findHits[findAt]) { e.preventDefault(); findRun(findHits[findAt], e.shiftKey); }
     });
+    $('#findlist').addEventListener('click', (e) => { const li = e.target.closest('li[data-i]'); if (li) findRun(findHits[Number(li.dataset.i)], e.shiftKey); });
+    addEventListener('keydown', (e) => {
+      const t = e.target, typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); findOpen(); }
+      else if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey && !document.querySelector('dialog[open]')) { e.preventDefault(); findOpen(); }
+    });
+
+    /* ── on a phone the map's controls are a sheet the Layers button pulls up ── */
+    const ctl = $('#radarcard'), lb = $('#layersbtn');
+    const sheet = (on) => { ctl.classList.toggle('ctl-open', on); lb.setAttribute('aria-expanded', String(on)); };
+    lb.addEventListener('click', () => sheet(!ctl.classList.contains('ctl-open')));
+    $('#ctldone').addEventListener('click', () => { sheet(false); lb.focus(); });
+    addEventListener('keydown', (e) => { if (e.key === 'Escape' && ctl.classList.contains('ctl-open') && !document.querySelector('dialog[open]')) sheet(false); });
+    const KIND = { comp: 'Mosaic', abi: 'Satellite', mrms: 'MRMS', model: 'Models', hrrr: 'Future', replay: 'Replay' };
+    function layerName(st) {
+      const m = st && st.mode, NX = root.Nexrad;
+      $('#layername').textContent = !m ? 'Layers' : m.startsWith('l3:') && NX && NX.PRODUCTS[m.slice(3)] ? `Radar · ${NX.PRODUCTS[m.slice(3)].short}` : KIND[m] || 'Layers';
+    }
+
+    /* ── the readout cards fold to their heading (a tap on it); the sources
+       card starts folded on Pro. Warnings never fold. Kept in this browser. ── */
+    let mins = store.get('wx:cardmin', null);
+    if (!Array.isArray(mins)) mins = ['sources'];
+    function markCards() {
+      for (const id of CARDS) {
+        if (LOCKED.includes(id)) continue;
+        const el = document.getElementById(id), h = el && el.firstElementChild;
+        if (!h || h.tagName !== 'H2') continue;
+        const min = mins.includes(id);
+        if (el.classList.contains('ws-min') !== min) el.classList.toggle('ws-min', min);
+        if (!h.dataset.min) { h.dataset.min = '1'; h.tabIndex = 0; h.setAttribute('role', 'button'); }
+        if (h.getAttribute('aria-expanded') !== String(!min)) h.setAttribute('aria-expanded', String(!min));
+      }
+    }
+    const foldCard = (id) => { mins = mins.includes(id) ? mins.filter((x) => x !== id) : [...mins, id]; store.set('wx:cardmin', mins); markCards(); };
+    markCards();
+    if (typeof MutationObserver === 'function') new MutationObserver(markCards).observe(cardsEl, { childList: true, subtree: true });
+    cardsEl.addEventListener('click', (e) => { const h = e.target.closest('h2[data-min]'); if (h && !e.target.closest('a,button,select,input,label')) foldCard(h.parentElement.id); });
+    cardsEl.addEventListener('keydown', (e) => { const h = e.target.closest && e.target.closest('h2[data-min]'); if (h && e.target === h && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); foldCard(h.parentElement.id); } });
 
     /* ── sheets ── */
     function openSheet(id) { const d = $(id); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); }

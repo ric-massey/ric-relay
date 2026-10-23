@@ -228,7 +228,14 @@ guessed height went stale the day the workspace bar arrived), so the play bar an
 legend are always in view. After: 341 px of map in Models mode at 1366×768, 473 at
 1440×900, and 486 px of it on a phone's first screen. Every control and key is
 where it was in function; `R` / Radar opens the single radar on the product last
-used.
+used. Then the rest of that review (Ric: "5-8 do plz"): **Find** (Ctrl+K or `/`)
+jumps to any layer, model field, overlay, card or tool by name — built from the
+product lists themselves, Enter for the main map, Shift+Enter for a new map
+beside it; on a phone the map's controls are a sheet pulled up by the **Layers**
+button on the map, so the map and play bar fill the first screen; the readout
+cards fold to their heading with a tap (warnings never fold; "Where this comes
+from" starts folded; kept in this browser); the hero with no place is shorter;
+and every control's tooltip names its key.
 
 **Weather Pro, fourth round (2026-10-22, Ric: "finish what the AI needs to
 do"):** the workstation (below, and [`WORKSTATION.md`](WORKSTATION.md)); NAM
