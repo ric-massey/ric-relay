@@ -401,6 +401,9 @@ split most.
 
 ## What comes next, and how it would be built here
 
+**To do soon (Ric, 2026-10-23):** turn Weather Pro into a customizable, synchronized
+workstation with optional presets — the plan is in [`WORKSTATION.md`](WORKSTATION.md).
+
 | Phase | The likely way on this site |
 |---|---|
 | 2 · Investigation | Built: satellite (GOES IR / visible / water vapour under the radar), a full-screen map, a tapped-point card, airport stations on the map. Still to do: a unified timeline across radar and satellite; more networks than ASOS (state mesonets) |

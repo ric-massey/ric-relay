@@ -1127,6 +1127,9 @@ That MVP already proves the core idea: a normal weather app that opens directly 
 
 ## 43. Future Expansion
 
+> Next up for Weather Pro (2026-10-23): dashboards, synced panels and presets are
+> planned in [`WORKSTATION.md`](WORKSTATION.md).
+
 - User-defined dashboards
 - Storm-centric tracked workspaces
 - Favorites for model fields and sounding parameters
