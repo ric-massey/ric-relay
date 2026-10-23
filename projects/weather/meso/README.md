@@ -66,8 +66,11 @@ and the file is model output about everywhere at once.
 **GitHub Actions** (`.github/workflows/meso.yml`) — free (the repository is
 public), no card, already set up. It asks at :18, :28, :38 and :48 past every
 hour; a run that finds the hour already built (with its RTMA) stops in seconds.
-Scheduled runs can start 5–20 minutes late. Needs the `LOG_TOKEN` secret — the
-one the Garmin pull already uses.
+Scheduled runs can start 5–20 minutes late. Needs the `LOG_TOKEN` secret (the
+site password; the Garmin pull reads the same one). **It is not set yet** — Ric,
+2026-10-23: not adding it for now — so every run stops in seconds as a pass
+with a notice, nothing is built, and the page shows the browser's version. Set
+the secret and the next run switches it on.
 
 **AWS Lambda** (`lambda.mjs`) — the same code, for when the 5–20 minutes
 matter. Not set up yet: it needs an AWS account (a card at sign-up; this stays

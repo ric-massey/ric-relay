@@ -13,6 +13,9 @@
 # Scheduled runs can start late; meso/lambda.mjs is the same code for AWS
 # Lambda, which does not (meso/README.md). Needs one secret, LOG_TOKEN — the
 # same one the Garmin pull uses. It prints no value and never the token.
+# Until the secret is set every run stops at the first step as a pass, with a
+# notice: Ric chose on 2026-10-23 not to add it yet, and a schedule failing
+# four times an hour would mail him every time.
 
 name: Mesoanalysis
 
@@ -46,7 +49,7 @@ jobs:
           LOG_TOKEN: ${{ secrets.LOG_TOKEN }}
         run: |
           if [ -z "$LOG_TOKEN" ]; then
-            echo "::error::Set the LOG_TOKEN secret (Settings → Secrets and variables → Actions)."
-            exit 1
+            echo "::notice::No LOG_TOKEN secret, so nothing was built. Add it (Settings → Secrets and variables → Actions) to switch the server mesoanalysis on."
+            exit 0
           fi
           node projects/weather/meso/build.mjs --check --put worker
