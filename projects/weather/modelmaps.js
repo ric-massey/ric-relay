@@ -669,7 +669,8 @@
       if (!r.ok) throw new Error('models: the mesoanalysis server answered ' + r.status);
       const j = await r.json();
       serverIndex.at = nowMs; serverIndex.hours = (j.hours || []).filter((x) => Number.isFinite(x.valid)).sort((a, b) => a.valid - b.valid);
-      return serverIndex.hours.slice(-n).map((x) => x.valid);
+      /* the hours up to `nowMs` — a replay's moment asks for its own, not the newest */
+      return serverIndex.hours.filter((x) => x.valid <= nowMs).slice(-n).map((x) => x.valid);
     }
     const first = Math.floor(nowMs / h) * h;
     const tries = [];

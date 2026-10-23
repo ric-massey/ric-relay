@@ -1660,6 +1660,7 @@ const WX_TTL = { om: 600, geo: 86400, points: 86400, stations: 86400, forecast: 
   sites: 86400, scans: 60, spc: 300, col: 600, meta: 300, raobsites: 86400, raob: 1800 };
 const WX_NATIONAL = 'Tornado Warning,Severe Thunderstorm Warning,Flash Flood Warning,Extreme Wind Warning,Tornado Watch,Severe Thunderstorm Watch';
 const WX_MEMO_MAX = 400;
+const WX_MEMO_BODY_MAX = 64 * 1024;
 const wxMemo = new Map();
 
 function wxDeg(v, max) {
@@ -1891,8 +1892,13 @@ async function wxProxy(request, env, ctx, parts, url) {
     return reply(body.slice(0, 4000) || JSON.stringify({ error: 'upstream ' + r.status }), r.status === 404 ? 404 : 502, 'miss');
   }
 
-  if (wxMemo.size >= WX_MEMO_MAX) wxMemo.delete(wxMemo.keys().next().value);
-  wxMemo.set(upstream, { body, until: Date.now() + ttl * 1000 });
+  /* only small answers stay in the isolate's memory: thirty years of daily
+     normals is ~275 KB, and 400 of those would pass the Worker's 128 MB and
+     take every route down with it. Big ones live in the edge cache only. */
+  if (body.length <= WX_MEMO_BODY_MAX) {
+    if (wxMemo.size >= WX_MEMO_MAX) wxMemo.delete(wxMemo.keys().next().value);
+    wxMemo.set(upstream, { body, until: Date.now() + ttl * 1000 });
+  }
   if (edge) {
     const put = edge.put(key, new Response(body, {
       headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${ttl}` }

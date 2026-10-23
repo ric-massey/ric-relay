@@ -423,5 +423,29 @@ console.log('\nRULE  the NAM nest, the RAP and the National Blend: only fields t
   ok(Math.abs(u - 10) < 0.1 && Math.abs(v) < 0.1, 'and at its centre, grid-east is earth-east');
 }
 
+console.log('\nRULE  a replay asks for its own hours, and a shared message keeps each field\'s bitmap');
+{
+  /* the server mesoanalysis keeps a day; a replay's moment gets the hours up to it */
+  const H = 3600e3, t0 = Date.UTC(2026, 9, 23, 0);
+  const hours = Array.from({ length: 24 }, (_, k) => ({ valid: t0 + k * H }));
+  const fetchFn = async () => ({ ok: true, json: async () => ({ hours }) });
+  const back = await MM.analyses('smeso', { nowMs: t0 + 10 * H, fetchFn });
+  ok(back.length === 6 && back[5] === t0 + 10 * H, 'the hours up to the replay\'s moment, not the newest six');
+  /* a GRIB2 message of two fields on a 2 × 1 grid: the first with a bitmap
+     (only its first point), the second with none — both its points are there */
+  const sec = (n, body) => { const b = new Uint8Array(5 + body.length); new DataView(b.buffer).setUint32(0, b.length); b[4] = n; b.set(body, 5); return b; };
+  const s3 = new Uint8Array(67), d3 = new DataView(s3.buffer); d3.setUint32(1, 2); d3.setUint32(25, 2); d3.setUint32(29, 1);
+  const s5 = new Uint8Array(16); new DataView(s5.buffer).setUint32(0, 2); s5[14] = 8;
+  const s4 = new Uint8Array(29);
+  const parts = [sec(1, new Uint8Array(16)), sec(3, s3), sec(4, s4), sec(5, s5), sec(6, Uint8Array.of(0, 0x80)), sec(7, Uint8Array.of(1)),
+    sec(4, s4), sec(5, s5), sec(6, Uint8Array.of(255)), sec(7, Uint8Array.of(3, 4))];
+  const len = 16 + parts.reduce((n, q) => n + q.length, 0) + 4, msg = new Uint8Array(len);
+  msg.set([0x47, 0x52, 0x49, 0x42, 0, 0, 0, 2]); new DataView(msg.buffer).setBigUint64(8, BigInt(len));
+  let o = 16; for (const q of parts) { msg.set(q, o); o += q.length; } msg.set([0x37, 0x37, 0x37, 0x37], o);
+  let second = null, err = null;
+  try { second = G.parse(msg, { sub: 2 }); } catch (e) { err = e; }
+  ok(second && second.values[0] === 3 && second.values[1] === 4, `the second field has both its points, not the first field's bitmap${err ? ' (' + err.message + ')' : ''}`);
+}
+
 console.log(failures ? `\n${failures} DECODER RULE${failures === 1 ? '' : 'S'} BROKEN` : '\nALL DECODER RULES PASS');
 process.exit(failures ? 1 : 0);

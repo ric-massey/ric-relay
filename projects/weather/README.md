@@ -142,7 +142,11 @@ Exactly as Studies does it (`projects/psyche/README.md`): the Worker's `/wx`
 route first, then the provider directly if that fails. `/wx` (in
 `worker/worker.mjs`) forwards only the shapes `wx.js` builds (`ROUTES`), caches
 each for as long as it stays true (alerts a minute, a station two, the model ten,
-a point's office a day), and sends the User-Agent the NWS asks for. It is
+a point's office a day), and sends the User-Agent the NWS asks for. Only
+answers up to 64 KB are also kept in the isolate's own memory; a bigger one
+(thirty years of normals is ~275 KB) lives in the edge cache alone, because
+hundreds of those would pass the Worker's 128 MB and take every route down
+(2026-10-23). It is
 deployed (every route answered on 2026-10-21); a change to `wxUpstream` goes
 live only when Actions → Deploy Worker runs, and until then the page's direct
 path covers it. Images (map, radar and satellite tiles) always load directly.
@@ -250,7 +254,7 @@ setting that does overlays"): the lines were SPC's outlook, which Weather turned
 on by itself for the national view — no more. Weather's map is **rain only**,
 with a layers button (Apple's: a dark card, a tick on what is shown) for
 **Warnings** (on unless turned off: the one overlay that can matter to someone's
-safety), the **severe weather outlook**, **temperatures** (the stations) and
+safety — and off still draws a warning in force at the visitor's own place), the **severe weather outlook**, **temperatures** (the stations) and
 **clouds** (infrared satellite), kept in this browser (`wx:maplayers`). The rain
 is asked one zoom finer and drawn at half size — four times the detail — and
 softened into areas, as Apple draws it, rather than the radar's single cells.

@@ -109,8 +109,12 @@
         else if (tmpl === 42) Object.assign(msg.pack, { flags: b[t + 10], block: b[t + 11], rsi: u(b, t + 12, 2) });
         else if (tmpl !== 0 && tmpl !== 41) throw new Error('grib2: data template 5.' + tmpl + ' is not read here');
       } else if (sec === 6) {
+        /* 0: this field's own bitmap; 255: none (a second field in a shared
+           message must not inherit the first one's); 254: the previous
+           field's, which is already in `bitmap` */
         if (b[o + 5] === 0) bitmap = b.subarray(o + 6, o + len);
-        else if (b[o + 5] !== 255) throw new Error('grib2: a predefined bitmap is not read here');
+        else if (b[o + 5] === 255) bitmap = null;
+        else if (b[o + 5] !== 254 || !bitmap) throw new Error('grib2: a predefined bitmap is not read here');
       } else if (sec === 7) {
         data = b.subarray(o + 5, o + len);
       }

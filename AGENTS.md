@@ -756,7 +756,9 @@ ones that must never break:
   redrawn from IEM's exact palette into one Light → Extreme ramp (`rainTile` in
   `app.js`), one zoom finer and softened into areas; the map is **rain only** —
   warnings (on by default), the outlook, temperatures and clouds are in its layers
-  menu (`R.wl`), never switched on by the page — city temperatures are the one
+  menu (`R.wl`), never switched on by the page. Turning Warnings off takes away
+  the warnings *around* the place, never one in force *at* it — storm mode's own
+  warning is always drawn (bug review, 2026-10-23). City temperatures are the one
   overlay on by default besides warnings; the timeline runs an hour past now on
   the room's own nowcast (rain only, labelled "forecast", the same `motion()` and
   `SETTINGS` the nightly grade holds — change one, the other follows); the place

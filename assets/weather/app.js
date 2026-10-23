@@ -1088,12 +1088,14 @@
     /* today against the usual for this date here (1991–2020) */
     const avgEl = $("#t-avg");
     if (avgEl) {
-      const nm = S.norm, d = today.t ? new Date(today.t * 1000 + 12 * 3600e3) : null;
-      const idx = nm && d ? Wx.dayOfYear(d.getMonth() + 1, d.getDate()) : -1;
+      /* the date at the place, not in this browser's timezone */
+      const ymd = today.t ? clk().ymd(today.t * 1000 + 12 * 3600e3).split("-").map(Number) : null;
+      const nm = S.norm, idx = nm && ymd ? Wx.dayOfYear(ymd[1], ymd[2]) : -1;
       const uh = idx >= 0 ? nm.hi[idx] : null, ul = idx >= 0 ? nm.lo[idx] : null;
       avgEl.hidden = uh == null || today.hi == null;
       if (!avgEl.hidden) {
-        const diff = (a, b) => { const x = U() === "us" ? (a - b) * 9 / 5 : a - b; return Math.round(x); };
+        /* the difference of the two numbers on screen, so the sentence never contradicts itself */
+        const diff = (a, b) => Number(Wx.fmt.temp(a, U())) - Number(Wx.fmt.temp(b, U()));
         const dh = diff(today.hi, uh), dl = today.lo != null && ul != null ? diff(today.lo, ul) : null;
         const word = (n) => n === 0 ? "about usual" : `${Math.abs(n)}° ${n > 0 ? "above" : "below"} average`;
         avgEl.innerHTML = head('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12l4-4 3 3 5-6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>', "Averages", "history") + `
@@ -1249,12 +1251,15 @@
     const satBucket = () => Math.floor(Date.now() / 300e3);
     let satAt = satBucket();
 
+    /* a recoloured rain tile is a blob URL: it is let go of with the tile */
+    const dropTile = (img) => { if (img.dataset.rain) URL.revokeObjectURL(img.src); img.remove(); };
     function clearTiles() {
-      for (const c of [baseTiles, ...sats.map((s) => s.tiles), ...R.frames.map((f) => f.tiles)]) { for (const img of c.values()) img.remove(); c.clear(); }
+      for (const c of [baseTiles, ...sats.map((s) => s.tiles), ...R.frames.map((f) => f.tiles)]) { for (const img of c.values()) dropTile(img); c.clear(); }
     }
     function setSat(kind) {
       R.sat = Wx.SAT[kind] ? kind : null;
-      store.set("wx:sat", R.sat);
+      /* Pro's underlay choice; Weather's clouds live in its own layers menu (wx:maplayers) */
+      if (PRO) store.set("wx:sat", R.sat);
       for (const s of sats) for (const img of s.tiles.values()) img.remove();
       satL.innerHTML = ""; sats.length = 0;
       if (R.sat) for (const layer of Wx.SAT[R.sat].layers) {
@@ -1420,6 +1425,7 @@
       return best;
     }
     function setFrames(list) {
+      for (const f of R.frames) for (const img of f.tiles.values()) dropTile(img);
       framesL.innerHTML = "";
       if ($("#radarread")) $("#radarread").hidden = true;
       /* ECMWF's open data is CC BY 4.0: its credit shows whenever its fields are on the map */
@@ -2003,7 +2009,7 @@
       const M = R.mm, el = $("#mmrun");
       if (!el) return;
       if (M.at) {
-        el.innerHTML = `${M.run ? esc(MM.SOURCES[M.src].analysis ? `Analysis hours to ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}` : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}`) + " — as it stood at the replay's moment · " : ""}<button type="button" class="linkish" data-mmnow>Latest run instead</button>`;
+        el.innerHTML = `${M.run ? esc(MM.SOURCES[M.src].analysis ? `Analysis hours to ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}` : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}`) + (MM.SOURCES[M.src].analysis ? " — the hours up to the replay's moment · " : " — the newest run that began before the replay's moment (it may have been published after it) · ") : ""}<button type="button" class="linkish" data-mmnow>Latest run instead</button>`;
         if ($("#mmbackl")) $("#mmbackl").hidden = !!MM.SOURCES[M.src].analysis;
         return;
       }
@@ -2606,7 +2612,7 @@
           img.style.transform = `translate(${tx * T - left}px,${ty * T - top}px)`;
         }
       }
-      for (const [key, img] of cache) if (!seen.has(key)) { if (img.dataset.rain) URL.revokeObjectURL(img.src); img.remove(); cache.delete(key); }
+      for (const [key, img] of cache) if (!seen.has(key)) { dropTile(img); cache.delete(key); }
     }
 
     /* ── Weather's rain, redrawn (2026-10-23, Ric: "it should be closer to the
@@ -2687,7 +2693,8 @@
     /* is the view still inside the area the forecast was worked out for, at the same scale? */
     function ncCovers() {
       const a = NCM.area;
-      if (!a || a.valid !== R.valid || a.z !== R.z) return false;
+      /* the grid is the same for every zoom from 4 up, and paintNc scales it to any */
+      if (!a || a.valid !== R.valid || a.zm !== Math.max(5, Math.min(6, R.z + 2))) return false;
       const sc = 2 ** (a.zm - R.z), w = el.clientWidth * sc, h = el.clientHeight * sc, cx = R.cx * sc, cy = R.cy * sc;
       return cx - w / 2 >= a.ox && cy - h / 2 >= a.oy && cx + w / 2 <= a.ox + a.W && cy + h / 2 <= a.oy + a.H;
     }
@@ -2738,12 +2745,15 @@
       }
       NCM.area = { valid, z: R.z, zm, ox: tx0 * 256, oy: ty0 * 256, W, H };
       /* the forecast frames follow the observed ones on the timeline */
-      const keep = Math.min(R.frame, R.frames.filter((f) => !f.nc).length - 1);
+      /* a visitor on a forecast minute stays on that minute */
+      const onNc = R.frames[R.frame] && R.frames[R.frame].nc ? R.frames[R.frame].nc.L : null;
+      const nObs = R.frames.filter((f) => !f.nc).length;
+      const keep = onNc != null && frames.length ? nObs + Math.max(0, frames.findIndex((f) => f.nc.L === onNc)) : Math.min(R.frame, nObs - 1);
       for (const f of R.frames.filter((f) => f.nc)) f.el.remove();
       R.frames = R.frames.filter((f) => !f.nc);
       for (const f of frames) { const d = document.createElement("div"); d.className = "layer frame nc"; framesL.appendChild(d); R.frames.push({ ...f, el: d, tiles: new Map() }); }
       $("#scrub").max = String(Math.max(0, R.frames.length - 1));
-      show(keep);
+      if (keep !== R.frame || onNc != null) show(Math.min(keep, R.frames.length - 1));
     }
     function paintNc(f, w, h, left, top) {
       const cv = frameCanvas(f, w, h), ctx = cv.getContext("2d"), key = `${R.z}|${left}|${top}`;
@@ -2925,7 +2935,11 @@
           out.push(`<path d="${pathOf(d.polys)}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="7 4"/>${tag(cx, cy + 14, `${d.kind === "mcd" ? "MD" : "MPD"} ${d.num}${d.chance != null ? " · " + d.chance + "%" : ""}`, col)}`);
         }
       }
-      const warns = R.wl && !R.wl.warn ? [] : [...(S.place ? (S.alerts || []) : []), ...(S.place ? (S.state || []) : (S.national || []))];
+      /* Weather's layers menu can take the warnings around off the map, never
+         a warning in force where the visitor is: storm mode's own warning is
+         always drawn (AGENTS.md: warnings and storm mode stay on both pages) */
+      const warns = R.wl && !R.wl.warn ? (S.place ? (S.alerts || []).filter((a) => a.tone === "warning" || a.storm) : [])
+        : [...(S.place ? (S.alerts || []) : []), ...(S.place ? (S.state || []) : (S.national || []))];
       const seen = new Set();
       for (const a of warns) {
         if (!a.polygon || seen.has(a.id)) continue;
@@ -3163,8 +3177,11 @@
       $("#play").setAttribute("aria-label", on ? "Pause radar loop" : "Play radar loop");
       if (!on || R.frames.length < 2) return;
       loadOld();
-      const last = R.frames.length - 1;
+      /* the count is read each step: Weather's forecast frames arrive, and are
+         rebuilt, while the loop runs */
+      const lastOf = () => R.frames.length - 1;
       const step = () => {
+        const last = lastOf();
         const next = R.frame >= last ? 0 : R.frame + 1;
         /* a replay waits (up to ~3 s) for its next frame's tiles rather than
            flashing past empty map */
@@ -3179,7 +3196,7 @@
         userShow(next);
         R.timer = setTimeout(step, next === last ? 1600 : 450);
       };
-      R.timer = setTimeout(step, R.frame === last ? 600 : 450);
+      R.timer = setTimeout(step, R.frame === lastOf() ? 600 : 450);
     }
 
     /* the nearest NEXRAD to the middle of the map */
@@ -3384,7 +3401,8 @@
       if (R.started) return;
       R.started = true;
       const sat = store.get("wx:sat", null);           // the visitor's last choice, this browser only
-      if (PRO && Wx.SAT[sat]) setSat(sat);
+      /* a panel shows only what its layers say, never the main page's underlay */
+      if (PRO && !PANEL && Wx.SAT[sat]) setSat(sat);
       if (R.wlApply) R.wlApply();
       const linked = PRO ? applyLink() : false;          // a shared view wins over the place's
       /* after the link, which may have turned a lightning layer on */
@@ -3616,7 +3634,9 @@
         $("#outlooktoggle").setAttribute("aria-pressed", String(R.outlook));
         document.querySelectorAll("[data-ov]").forEach((b) => b.setAttribute("aria-pressed", String(!!R.ov[b.dataset.ov])));
       }
+      /* `s=` (none) is a choice too: a panel or a workspace without a satellite has none */
       if (Wx.SAT[q.get("s")]) setSat(q.get("s"));
+      else if (q.has("s") && q.get("s") === "" && R.sat) setSat("");
       const t = Number(q.get("t")), a = q.get("a");
       if (q.get("t") != null && t >= 0 && t <= 3) { R.tilt = Math.round(t); R.l2 = false; }
       if (a != null && Number.isFinite(Number(a)) && Math.abs(Number(a)) < 30) { R.l2 = true; R.l2angle = Number(a); }
@@ -3984,10 +4004,14 @@
       applying++;
       try {
         R.us = false;
+        const wasZ = R.z;
         R.z = Math.min(MAXZ, Math.max(MINZ, Math.round(z || R.z)));
         R.cx = lngX(lon, R.z); R.cy = latY(lat, R.z);
         toldView = `${lat.toFixed(3)},${lon.toFixed(3)},${R.z}`;
-        clearTiles(); draw(); stationsSoon();
+        /* this runs on every frame of a drag in another map: a pan only moves
+           the tiles (place() drops the ones out of view), a zoom starts over */
+        if (R.z !== wasZ) clearTiles();
+        draw(); stationsSoon();
         if (single() && !R.lockId) { clearTimeout(follow); follow = setTimeout(async () => { if (await pickSite(false)) { clearTiles(); await siteFrames(); label(); } }, 700); }
       } finally { applying--; }
     }
