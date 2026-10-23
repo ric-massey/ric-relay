@@ -915,3 +915,20 @@ body:not([data-view="pro"]) #radarcard.mapfull .radar .credit{bottom:calc(92px +
 body:not([data-view="pro"]) #radarcard.mapfull .radar .note{left:72px;top:calc(14px + env(safe-area-inset-top))}
 body:not([data-view="pro"]) #radarcard.mapfull .legend.rainkey .k{height:110px}
 #radarcard.mapfull .radar .mainst{left:70px;top:calc(22px + env(safe-area-inset-top))}
+/* Weather's layers menu (2026-10-23, Ric: "It should just be rain and there
+   should be a setting that does overlays") — Apple's: a dark rounded card,
+   a tick on what is shown */
+.wxlayersbtn{display:none}
+body:not([data-view="pro"]) .radar .zoom .wxlayersbtn{display:grid;place-items:center}
+body:not([data-view="pro"]) .radar .zoom .wxlayersbtn.some{color:#7cc4ff}
+.wxmenu{position:absolute;top:10px;right:62px;z-index:12;width:min(280px,calc(100% - 134px));padding:8px;border-radius:20px;background:rgba(28,31,36,.96);border:1px solid rgba(255,255,255,.12);box-shadow:0 12px 32px rgba(0,0,0,.5);cursor:default}
+.wxmenu[hidden]{display:none}
+#radarcard.mapfull .wxmenu{top:calc(12px + env(safe-area-inset-top))}
+.wxrow{display:flex;align-items:center;gap:12px;width:100%;min-height:46px;padding:0 12px 0 34px;border:0;border-radius:12px;background:none;color:#fff;font:500 16px/1.2 inherit;text-align:left;position:relative}
+.wxrow svg{width:20px;height:20px;flex:none}
+button.wxrow:hover{background:rgba(255,255,255,.07)}
+.wxrow[aria-checked="true"]::before{content:"";position:absolute;left:12px;top:50%;width:6px;height:11px;margin-top:-8px;border:solid #fff;border-width:0 2.2px 2.2px 0;transform:rotate(45deg)}
+.wxsub{margin:6px 12px 2px;font-size:12px;color:rgba(255,255,255,.6)}
+/* the rain softened into areas, as Apple draws it, rather than the radar's
+   single cells — only the rain layer, never the map or its labels */
+body:not([data-view="pro"]) .radar #radarframes .frame:not(.future){filter:blur(.9px) saturate(1.15)}

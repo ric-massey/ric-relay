@@ -1136,6 +1136,12 @@
     const R = { z: 7, cx: 0, cy: 0, lat: null, lon: null, frame: 0, playing: false, timer: 0, started: false, visible: false,
       mode: "comp", valid: null, frames: [], loadedOld: false, site: null, sites: null, outlook: false, us: false, frameT: null, sat: null, pin: null,
       stations: PRO && store.get("wx:stations", false) === true, obs: [],   // stations are Pro's, off until asked for
+      /* Weather's map is rain and nothing else until asked (2026-10-23, Ric: "It
+         should just be rain and there should be a setting that does overlays"):
+         its layers menu keeps the choices in this browser. Warnings start on —
+         they are the one thing on the map that can matter to someone's safety —
+         and can be turned off like the rest. */
+      wl: PRO ? null : Object.assign({ warn: true, outlook: false, stations: false, clouds: false }, store.get("wx:maplayers", {})),
       /* Pro's overlays, each the visitor's own choice in this browser */
       /* Pro opens on watches and its own map lines; the rest is a tap away
          (2026-10-23: five overlays at once was a busy first look). Warnings
@@ -2501,12 +2507,16 @@
     }
 
     function place(layer, cache, url, w, h, left, top, rain) {
-      const n = 2 ** R.z, seen = new Set();
-      for (let tx = Math.floor(left / TILE); tx <= Math.floor((left + w) / TILE); tx++) {
-        for (let ty = Math.floor(top / TILE); ty <= Math.floor((top + h) / TILE); ty++) {
+      /* Weather's rain is asked one zoom finer and drawn at half size — four
+         times the detail of IEM's tile for the view, as sharp as the radar
+         itself on a phone's screen (Ric, 2026-10-23: "increase the quality") */
+      const up = rain && RAIN_LUT && R.z < MAXZ + 1 ? 1 : 0, T = TILE / 2 ** up, zz = R.z + up;
+      const n = 2 ** zz, seen = new Set();
+      for (let tx = Math.floor(left / T); tx <= Math.floor((left + w) / T); tx++) {
+        for (let ty = Math.floor(top / T); ty <= Math.floor((top + h) / T); ty++) {
           if (ty < 0 || ty >= n) continue;
           const wx = ((tx % n) + n) % n;
-          const key = `${R.z}/${tx}/${ty}`;
+          const key = `${zz}/${tx}/${ty}`;
           seen.add(key);
           let img = cache.get(key);
           if (!img) {
@@ -2514,7 +2524,8 @@
             if (rain && RAIN_LUT) { img.crossOrigin = "anonymous"; img.onload = () => rainTile(img); }
             /* one tile failing never blanks the layer (§35.5): it hides, and is
                asked once more a few seconds later */
-            const src = url(R.z, wx, ty);
+            const src = url(zz, wx, ty);
+            if (up) { img.style.width = T + "px"; img.style.height = T + "px"; }
             img.onerror = () => {
               img.style.visibility = "hidden";
               if (img.dataset.retried) return;
@@ -2524,7 +2535,7 @@
             img.src = src;
             cache.set(key, img); layer.appendChild(img);
           }
-          img.style.transform = `translate(${tx * TILE - left}px,${ty * TILE - top}px)`;
+          img.style.transform = `translate(${tx * T - left}px,${ty * T - top}px)`;
         }
       }
       for (const [key, img] of cache) if (!seen.has(key)) { if (img.dataset.rain) URL.revokeObjectURL(img.src); img.remove(); cache.delete(key); }
@@ -2689,7 +2700,7 @@
           out.push(`<path d="${pathOf(d.polys)}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="7 4"/>${tag(cx, cy + 14, `${d.kind === "mcd" ? "MD" : "MPD"} ${d.num}${d.chance != null ? " · " + d.chance + "%" : ""}`, col)}`);
         }
       }
-      const warns = [...(S.place ? (S.alerts || []) : []), ...(S.place ? (S.state || []) : (S.national || []))];
+      const warns = R.wl && !R.wl.warn ? [] : [...(S.place ? (S.alerts || []) : []), ...(S.place ? (S.state || []) : (S.national || []))];
       const seen = new Set();
       for (const a of warns) {
         if (!a.polygon || seen.has(a.id)) continue;
@@ -3143,6 +3154,7 @@
       R.started = true;
       const sat = store.get("wx:sat", null);           // the visitor's last choice, this browser only
       if (PRO && Wx.SAT[sat]) setSat(sat);
+      if (R.wlApply) R.wlApply();
       const linked = PRO ? applyLink() : false;          // a shared view wins over the place's
       /* after the link, which may have turned a lightning layer on */
       if (ltgOn()) { lightningClock(); if ($("#awscredit")) $("#awscredit").hidden = false; }
@@ -3411,6 +3423,30 @@
     }
     $("#zfull").addEventListener("click", () => full(!$("#radarcard").classList.contains("mapfull")));
     if ($("#mapclose")) $("#mapclose").addEventListener("click", () => full(false));
+    /* Weather's layers menu, Apple's way: rain always, the rest ticked on or off */
+    if (R.wl && $("#wxlayersbtn")) {
+      const btn = $("#wxlayersbtn"), menu = $("#wxmenu");
+      const apply = () => {
+        R.outlook = !!R.wl.outlook;
+        if (R.stations !== !!R.wl.stations) { R.stations = !!R.wl.stations; if (R.stations) loadStations(); else { R.obs = []; } }
+        if ((R.sat === "ir") !== !!R.wl.clouds) setSat(R.wl.clouds ? "ir" : "");
+        menu.querySelectorAll("[data-wl]").forEach((b) => b.setAttribute("aria-checked", String(!!R.wl[b.dataset.wl])));
+        btn.classList.toggle("some", ["warn", "outlook", "stations", "clouds"].some((k) => R.wl[k] && k !== "warn"));
+        draw(); label();
+      };
+      const open = (on) => { menu.hidden = !on; btn.setAttribute("aria-expanded", String(on)); };
+      btn.addEventListener("click", () => open(menu.hidden));
+      menu.addEventListener("click", (e) => {
+        const b = e.target.closest("[data-wl]");
+        if (!b) return;
+        R.wl[b.dataset.wl] = !R.wl[b.dataset.wl];
+        store.set("wx:maplayers", R.wl);
+        apply();
+      });
+      document.addEventListener("click", (e) => { if (!menu.hidden && !e.target.closest("#wxmenu,#wxlayersbtn")) open(false); });
+      addEventListener("keydown", (e) => { if (e.key === "Escape" && !menu.hidden) { open(false); btn.focus(); } });
+      R.wlApply = apply;
+    }
     $("#zxsec").addEventListener("click", () => { if (R.measure) measureToggle(); if (X.pick || X.a) xsecStop(); else xsecStart(); });
     if ($("#zmeasure")) $("#zmeasure").addEventListener("click", measureToggle);
     if ($("#zlink")) $("#zlink").addEventListener("click", shareLink);
@@ -3476,7 +3512,7 @@
     /* dragging, the site following the map, and a tap that is not a drag */
     let drag = null, follow = 0, tap = 0;
     el.addEventListener("pointerdown", (e) => {
-      if (e.target.closest("button,a,.pin")) return;
+      if (e.target.closest("button,a,.pin,.wxmenu")) return;
       drag = { x: e.clientX, y: e.clientY, cx: R.cx, cy: R.cy, t: Date.now() };
       el.setPointerCapture(e.pointerId); el.classList.add("dragging");
     });
@@ -3777,7 +3813,7 @@
       showUS() {
         R.us = true; R.lat = null;
         /* the day's risk across the country, on Weather; Pro leaves it to its switch */
-        if (!PRO && !R.outlook) { R.outlook = true; $("#outlooktoggle").setAttribute("aria-pressed", "true"); }
+        /* (Weather used to turn the outlook on here; it is the visitor's choice now, in the layers menu) */
         if (single()) setMode("comp");
         fit(...CONUS, 10);
       },

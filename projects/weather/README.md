@@ -228,7 +228,17 @@ Light · Moderate · Heavy · Extreme; the outlook is a dashed outline; and a **
 on the small map opens it full screen**, Apple's way: the map edge to edge, a
 close button (and Esc), the key and the timeline floating over it. A single
 radar's tiles (storm mode) keep the NWS colours. Pro keeps them everywhere —
-professionals read reflectivity by number.
+professionals read reflectivity by number. Then (Ric, with Apple's layers menu
+on screen: "How do we make it closer to apples? Like increase the quality? Also
+what are the lines? Remove them. It should just be rain and there should be a
+setting that does overlays"): the lines were SPC's outlook, which Weather turned
+on by itself for the national view — no more. Weather's map is **rain only**,
+with a layers button (Apple's: a dark card, a tick on what is shown) for
+**Warnings** (on unless turned off: the one overlay that can matter to someone's
+safety), the **severe weather outlook**, **temperatures** (the stations) and
+**clouds** (infrared satellite), kept in this browser (`wx:maplayers`). The rain
+is asked one zoom finer and drawn at half size — four times the detail — and
+softened into areas, as Apple draws it, rather than the radar's single cells.
 
 **Weather Pro, the map first (2026-10-23, Ric: "analyze the ui and see if there
 is any way to make it cleaner and easier to use for the professionals", then

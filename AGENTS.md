@@ -749,9 +749,11 @@ ones that must never break:
   "On my app it should be closer to the Apple one … just have to click it for it
   to go full screen … easy to see where it's raining"). On Weather the mosaic is
   redrawn from IEM's exact palette into one Light → Extreme ramp (`rainTile` in
-  `app.js`), the outlook is an outline, and a tap on the small map opens it full
-  screen. Don't put the NWS colours or a filled outlook back on Weather, and don't
-  bring the Apple ramp to Pro.
+  `app.js`), one zoom finer and softened into areas; the map is **rain only** —
+  warnings (on by default), the outlook, temperatures and clouds are in its layers
+  menu (`R.wl`), never switched on by the page; and a tap on the small map opens it
+  full screen. Don't put the NWS colours, a filled or automatic outlook back on
+  Weather, and don't bring the Apple ramp to Pro.
 - **Pro's map comes first** (2026-10-23, Ric: "make it cleaner and easier to use
   for the professionals"). Above the map there is one row of kinds (with Replay,
   Overlays ▾ and Info) and at most the chosen kind's own row; overlays go in the

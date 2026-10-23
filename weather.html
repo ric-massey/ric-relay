@@ -24,7 +24,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Weather">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231f5fa8'/><circle cx='40' cy='40' r='16' fill='%23ffd166'/><path d='M30 74h42a14 14 0 0 0-3-28 18 18 0 0 0-34 6 11 11 0 0 0-5 22z' fill='%23fff'/></svg>">
-  <link rel="stylesheet" href="assets/weather/weather.css?v=17">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=20">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="simple">
@@ -124,10 +124,20 @@
           <button type="button" id="zin" aria-label="Zoom in">+</button>
           <button type="button" id="zout" aria-label="Zoom out">−</button>
           <button type="button" class="pro-only" id="zxsec" aria-label="Cross-section: tap two points on the map" aria-pressed="false" title="Cross-section between two points"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="3.5" cy="13.5" r="2" fill="currentColor"/><circle cx="14.5" cy="4.5" r="2" fill="currentColor"/><path d="M5 12L13 6" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2 2"/></svg></button>
+          <button type="button" class="wxlayersbtn" id="wxlayersbtn" aria-label="Map layers" aria-haspopup="true" aria-expanded="false" aria-controls="wxmenu" title="What is on the map"><svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l6.5 3.5L8 8.5 1.5 5zM1.5 8L8 11.5 14.5 8M1.5 11L8 14.5 14.5 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
           <button type="button" id="zfull" aria-label="Full-screen map" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 7V2h5M11 2h5v5M16 11v5h-5M7 16H2v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
         <div class="pin" id="radarpin" hidden></div>
         <div class="note" id="radarnote" hidden></div>
+        <!-- what is on the map: rain always; the rest the visitor ticks (2026-10-23) -->
+        <div class="wxmenu" id="wxmenu" role="menu" aria-label="On the map" hidden>
+          <div class="wxrow on" role="menuitemradio" aria-checked="true" aria-disabled="true"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7zM10 10v6a1.6 1.6 0 0 1-3.2 0" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Precipitation</div>
+          <p class="wxsub">Also on the map</p>
+          <button type="button" class="wxrow" role="menuitemcheckbox" data-wl="warn" aria-checked="true"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3l8 14H2zM10 8v4M10 14.5v.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>Warnings</button>
+          <button type="button" class="wxrow" role="menuitemcheckbox" data-wl="outlook" aria-checked="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 15c3-7 5-9 7-9s5 3 7 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/></svg>Severe weather outlook</button>
+          <button type="button" class="wxrow" role="menuitemcheckbox" data-wl="stations" aria-checked="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M9 3a2 2 0 0 1 2 2v7.3a3.5 3.5 0 1 1-4 0V5a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Temperatures</button>
+          <button type="button" class="wxrow" role="menuitemcheckbox" data-wl="clouds" aria-checked="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 15h9a3 3 0 0 0 0-6 4.5 4.5 0 0 0-8.7 1.2A2.5 2.5 0 0 0 6 15z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Clouds</button>
+        </div>
         <button type="button" class="mapclose" id="mapclose" aria-label="Close the full-screen map" title="Close (Esc)"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
         <span class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · NEXRAD<span id="satcredit" hidden> &amp; GOES</span> via <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">IEM</a></span>
       </div>
@@ -184,6 +194,6 @@
 <script src="projects/weather/sounding.js?v=4"></script>
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
-<script src="assets/weather/app.js?v=16"></script>
+<script src="assets/weather/app.js?v=17"></script>
 </body>
 </html>
