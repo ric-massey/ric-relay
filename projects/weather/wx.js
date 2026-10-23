@@ -155,8 +155,10 @@
       ? [`iem/scans?radar=${site}&product=${prod}&start=${startIso}&end=${endIso}`,
         `${IEM}/json/radar.py?operation=list&radar=${site}&product=${prod}&start=${startIso}&end=${endIso}`] : null,
     /* SPC's convective outlook, one layer */
-    spc: kind => SPC_KINDS.includes(kind)
-      ? [`spc/${kind}`, `https://www.spc.noaa.gov/products/outlook/${kind}.nolyr.geojson`] : null,
+    spc: kind => SPC_KINDS.includes(kind) ? [`spc/${kind}`, spcUrl(kind)] : null,
+    /* one layer of NOAA's NHC map service, as GeoJSON */
+    nhcLayer: id => Number.isInteger(id) && id >= 0 && id < 400
+      ? [`nhc/layer?id=${id}`, `${NHC_MS}/${id}/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson`] : null,
     /* a model's whole column for the next two days, and the last twelve
        hours — so the latest weather balloon can be laid over the model's own
        hour for the same moment (§16) */
@@ -213,7 +215,33 @@
     N0B: { label: 'Reflectivity', long: 'Base reflectivity, super-resolution (dBZ)' },
     N0S: { label: 'Storm-relative velocity', long: 'Storm-relative radial velocity — green toward the radar, red away' }
   };
-  const SPC_KINDS = ['day1otlk_cat', 'day1otlk_torn', 'day1otlk_wind', 'day1otlk_hail', 'day2otlk_cat', 'day3otlk_cat'];
+  /* every SPC outlook file the page reads: days 1–2 categorical, tornado, wind
+     and hail with their significant-severe areas, day 3 categorical and
+     probability, and days 4–8 (2026-10-23: the full set, for Pro) */
+  const SPC_KINDS = ['day1otlk_cat', 'day1otlk_torn', 'day1otlk_wind', 'day1otlk_hail', 'day2otlk_cat', 'day3otlk_cat',
+    'day1otlk_sigtorn', 'day1otlk_sigwind', 'day1otlk_sighail', 'day2otlk_torn', 'day2otlk_wind', 'day2otlk_hail', 'day2otlk_sigtorn', 'day2otlk_sigwind', 'day2otlk_sighail',
+    'day3otlk_prob', 'day3otlk_sigprob', 'day4prob', 'day5prob', 'day6prob', 'day7prob', 'day8prob'];
+  const spcUrl = kind => /^day[4-8]prob$/.test(kind) ? `https://www.spc.noaa.gov/products/exper/day4-8/${kind}.nolyr.geojson` : `https://www.spc.noaa.gov/products/outlook/${kind}.nolyr.geojson`;
+  /* the outlooks Pro offers, each the files drawn together (a probability and its hatched significant area) */
+  const OUTLOOKS = {
+    'd1:cat': { label: 'Day 1 · categorical', kinds: ['day1otlk_cat'] },
+    'd1:torn': { label: 'Day 1 · tornado', kinds: ['day1otlk_torn', 'day1otlk_sigtorn'] },
+    'd1:wind': { label: 'Day 1 · wind', kinds: ['day1otlk_wind', 'day1otlk_sigwind'] },
+    'd1:hail': { label: 'Day 1 · hail', kinds: ['day1otlk_hail', 'day1otlk_sighail'] },
+    'd2:cat': { label: 'Day 2 · categorical', kinds: ['day2otlk_cat'] },
+    'd2:torn': { label: 'Day 2 · tornado', kinds: ['day2otlk_torn', 'day2otlk_sigtorn'] },
+    'd2:wind': { label: 'Day 2 · wind', kinds: ['day2otlk_wind', 'day2otlk_sigwind'] },
+    'd2:hail': { label: 'Day 2 · hail', kinds: ['day2otlk_hail', 'day2otlk_sighail'] },
+    'd3:cat': { label: 'Day 3 · categorical', kinds: ['day3otlk_cat'] },
+    'd3:prob': { label: 'Day 3 · any severe', kinds: ['day3otlk_prob', 'day3otlk_sigprob'] },
+    ...Object.fromEntries([4, 5, 6, 7, 8].map(d => [`d${d}`, { label: `Day ${d} · any severe`, kinds: [`day${d}prob`] }]))
+  };
+  /* NOAA's map service of NHC's products (CORS open): per storm "bin"
+     (AT1–5, EP1–5, CP1–5), its forecast points, track, cone, coastal watches
+     and warnings and past track, and the basins' 7-day outlook areas. The
+     bins' layer numbers run 26 apart from 4 (read off the service, 2026-10-23). */
+  const NHC_MS = 'https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather/MapServer';
+  const NHC_BINS = ['AT', 'EP', 'CP'].flatMap((b, i) => [1, 2, 3, 4, 5].map(n => ({ bin: b + n, base: 4 + 26 * (i * 5 + n - 1) })));
   /* The models a sounding can come from. `om` is Open-Meteo's name for the
      forecast, `meta` its name for the run-time file. */
   const MODELS = {
@@ -1189,6 +1217,53 @@
     }).filter(o => o.polys.length);
   }
   async function outlook(kind, signal) { return normalizeOutlook((await ask(ROUTES.spc(kind), signal)).data); }
+  /* An outlook set (OUTLOOKS): its files together, the expired dropped — SPC
+     leaves a day's file in place when it has nothing new, so an old one is
+     never drawn as today's. `sig` marks a hatched significant-severe area. */
+  async function outlookSet(key, signal, nowMs = Date.now()) {
+    const o = OUTLOOKS[key];
+    if (!o) return null;
+    const parts = await Promise.all(o.kinds.map(k => outlook(k, signal).catch(() => [])));
+    return parts.flat().filter(x => !x.expire || x.expire > nowMs).map(x => ({ ...x, sig: /^SIGN$/i.test(x.label) || /significant/i.test(x.name) }));
+  }
+
+  /* ── the tropics (NHC, through NOAA's map service) ──
+     Each active storm with its forecast cone, track and points, its coastal
+     watches and warnings and its past track; and the 7-day outlook areas.
+     NHC's own words for a cone: the probable track of the centre — it says
+     nothing of the storm's size, and the page says so. */
+  const TCWW = { HWR: ['Hurricane warning', '#ff2a2a'], HWA: ['Hurricane watch', '#ff7eb6'], TWR: ['Tropical storm warning', '#4dabf7'], TWA: ['Tropical storm watch', '#ffd43b'] };
+  const geoPolys = g => !g ? [] : g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+  const geoLines = g => !g ? [] : g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
+  function stormFrom(bin, points, track, cone, ww, past) {
+    const pts = points.map(f => ({ ...(f.properties || {}), c: f.geometry && f.geometry.coordinates })).filter(p => Array.isArray(p.c)).sort((a, b) => (a.tau || 0) - (b.tau || 0));
+    if (!pts.length) return null;
+    const h = pts[0], num = v => (has(Number(v)) ? Number(v) : null);
+    return {
+      bin, name: String(h.stormname || 'Tropical cyclone'), kind: String(h.tcdvlp || h.stormtype || ''), basin: String(h.basin || ''),
+      wind: num(h.maxwind), gust: num(h.gust), mslp: num(h.mslp), dir: num(h.tcdir), speed: num(h.tcspd),
+      adv: String(h.advisnum || ''), advDate: String(h.advdate || ''), lat: h.c[1], lon: h.c[0],
+      points: pts.map(p => ({ lat: p.c[1], lon: p.c[0], tau: num(p.tau), label: String(p.dvlbl || ''), wind: num(p.maxwind), when: String(p.datelbl || '') })),
+      track: track.flatMap(f => geoLines(f.geometry)), cone: cone.flatMap(f => geoPolys(f.geometry)), past: past.flatMap(f => geoLines(f.geometry)),
+      ww: ww.map(f => { const p = f.properties || {}, k = String(p.tcww || p.TCWW || ''); return { code: k, name: (TCWW[k] || [k || 'Watch or warning'])[0], color: (TCWW[k] || [0, '#adb5bd'])[1], lines: geoLines(f.geometry) }; }).filter(w => w.lines.length)
+    };
+  }
+  function outlookAreas(features) {
+    const col = r => /high/i.test(r) ? '#ff2a2a' : /medium/i.test(r) ? '#ff922b' : '#ffd43b';
+    return features.map(f => { const p = f.properties || {}; return { basin: String(p.basin || ''), p2: String(p.prob2day || ''), r2: String(p.risk2day || ''), p7: String(p.prob7day || ''), r7: String(p.risk7day || ''), color: col(p.risk7day), polys: geoPolys(f.geometry) }; }).filter(a => a.polys.length);
+  }
+  async function tropics(signal) {
+    const layer = id => ask(ROUTES.nhcLayer(id), signal).then(r => (r.data && Array.isArray(r.data.features) ? r.data.features : []));
+    const found = await Promise.all(NHC_BINS.map(b => layer(b.base + 2).then(f => ({ b, f })).catch(() => null)));
+    if (found.every(x => !x)) throw new WxError('NHC did not answer', 502);
+    const storms = (await Promise.all(found.filter(x => x && x.f.length).map(async ({ b, f }) => {
+      const [track, cone, ww, past] = await Promise.all([3, 4, 5, 8].map(k => layer(b.base + k).catch(() => [])));
+      return stormFrom(b.bin, f, track, cone, ww, past);
+    }))).filter(Boolean);
+    const outlook = outlookAreas(await layer(3).catch(() => []));
+    return { storms, outlook, partial: found.some(x => !x), at: Date.now() };
+  }
+
   /* The highest category whose area holds a point. */
   function outlookAt(o, lat, lon) {
     let best = null;
@@ -1859,7 +1934,7 @@
     AQI_BANDS, aqiBand, normalizeAir, air, normalsFrom, dayOfYear, normals, normalizePlumes, plumes, plumeStats, quantile,
     HRRR, hrrrImage, hrrrRun,
     normalizeWatches, normalizeDiscussions, normalizeCells, LSR_KINDS, lsrKind, normalizeReports, decodePoint, parseCodsus, FRONT_KINDS, surfaceAnalysis, forecastDiscussion, proOverlays,
-    REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive, backupAlerts, alertsBackup, radarAge, feedLateMs, outsideUS, alertSource, mosaicTimes, backupTile, mosaicBackup, useBackupMosaic,
+    REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive, backupAlerts, alertsBackup, radarAge, feedLateMs, outsideUS, alertSource, OUTLOOKS, outlookSet, NHC_BINS, TCWW, stormFrom, outlookAreas, tropics, mosaicTimes, backupTile, mosaicBackup, useBackupMosaic,
     XSEC_LEVELS, XSEC_FIELDS, XSEC_MAX, linePoints, normalizeXsec, xsec
   };
   root.Wx = api;

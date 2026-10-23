@@ -43,7 +43,8 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     W.ROUTES.nwsProducts('COD'), W.ROUTES.nwsProducts('AFD', 'ABC'), W.ROUTES.nwsProduct('fcb2d575-a207-4057-a31c-823cdbbda16d'),
     W.ROUTES.several([{ lat: 12.34, lon: -56.78 }, { lat: -33.87, lon: 151.21 }]),
     W.ROUTES.stationObs('ABC', true), W.ROUTES.asosAt('OK_ASOS', Date.UTC(2013, 4, 20, 20, 0)),
-    W.ROUTES.air(12.345678, -56.781), W.ROUTES.normals(12.345678, -56.781), W.ROUTES.mosaicBackup()
+    W.ROUTES.air(12.345678, -56.781), W.ROUTES.normals(12.345678, -56.781), W.ROUTES.mosaicBackup(),
+    W.ROUTES.nhcLayer(164), W.ROUTES.nhcLayer(3)
   ];
   for (const [path, direct] of routes) {
     const n = asked.length;
@@ -582,6 +583,22 @@ console.log('\nRULE  the radar\'s age is the scan\'s own, and an outage is said 
     'outside the US only when the NWS said so — a failed lookup is an outage');
   ok(W.alertSource(false, 'nws') === 'nws' && W.alertSource(true, 'iem') === 'backup' && W.alertSource(true, null) === 'missing',
     'the alerts card: all well, the backup, or "may be missing" — never silence');
+}
+
+console.log('\nRULE  the tropics: NHC\'s storms as the map draws them, and only what NOAA serves');
+{
+  ok(W.ROUTES.nhcLayer(400) === null && W.ROUTES.nhcLayer(-1) === null && W.ROUTES.nhcLayer(1.5) === null && W.ROUTES.nhcLayer('3') === null, 'only a layer number the service has');
+  ok(W.NHC_BINS.length === 15 && W.NHC_BINS[0].base === 4 && W.NHC_BINS.find(b => b.bin === 'EP2').base === 160 && W.NHC_BINS.find(b => b.bin === 'CP5').base === 368, 'the fifteen storm slots, 26 layers apart from 4');
+  const pt = (tau, lon, lat, lbl) => ({ geometry: { type: 'Point', coordinates: [lon, lat] }, properties: { tau, dvlbl: lbl, stormname: 'Hurricane Test', tcdvlp: 'Hurricane', maxwind: tau ? 80 : 90, mslp: 971, tcdir: 325, tcspd: 4, advisnum: '10', advdate: '300 PM', datelbl: 'x' } });
+  const st = W.stormFrom('EP2', [pt(24, -103, 12, 'H'), pt(0, -102, 11, 'H')], [{ geometry: { type: 'LineString', coordinates: [[-102, 11], [-103, 12]] } }],
+    [{ geometry: { type: 'Polygon', coordinates: [[[-102, 11], [-104, 13], [-101, 13], [-102, 11]]] } }],
+    [{ properties: { tcww: 'HWR' }, geometry: { type: 'LineString', coordinates: [[-100, 17], [-101, 18]] } }, { properties: { tcww: 'TWA' }, geometry: null }], []);
+  ok(st && st.name === 'Hurricane Test' && st.wind === 90 && st.lat === 11 && st.points[0].tau === 0 && st.points.length === 2, 'the storm is its first forecast point (now), the rest in order');
+  ok(st.cone.length === 1 && st.track.length === 1 && st.ww.length === 1 && st.ww[0].name === 'Hurricane warning' && st.ww[0].color === '#ff2a2a', 'its cone, its track, and a hurricane warning on the coast in NHC\'s red; a watch with no line is left out');
+  ok(W.stormFrom('AT1', [], [], [], [], []) === null, 'a slot with no storm is no storm');
+  const ar = W.outlookAreas([{ properties: { basin: 'Atlantic', prob2day: '10%', risk2day: 'Low', prob7day: '60%', risk7day: 'Medium' }, geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] } }]);
+  ok(ar.length === 1 && ar[0].p7 === '60%' && ar[0].color === '#ff922b', 'an outlook area with its 2- and 7-day chances, coloured by NHC\'s risk');
+  ok(Object.keys(W.OUTLOOKS).length === 15 && W.OUTLOOKS['d1:torn'].kinds.includes('day1otlk_sigtorn') && W.OUTLOOKS.d8.kinds[0] === 'day8prob' && Object.values(W.OUTLOOKS).every(o => o.kinds.every(k => W.ROUTES.spc(k))), 'every SPC outlook offered is a file the page may ask for');
 }
 
 console.log('\nRULE  the backup mosaic: NOAA\'s own, when IEM\'s is late or silent');

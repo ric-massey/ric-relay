@@ -1644,7 +1644,10 @@ const WX_NWS_PATHS = [
 ];
 const WX_IEM = 'https://mesonet.agron.iastate.edu';
 const WX_SITE_PRODUCTS = ['N0B', 'N0S'];
-const WX_SPC = ['day1otlk_cat', 'day1otlk_torn', 'day1otlk_wind', 'day1otlk_hail', 'day2otlk_cat', 'day3otlk_cat'];
+/* every SPC outlook file the page reads (wx.js SPC_KINDS); days 4–8 live under exper/ */
+const WX_SPC = ['day1otlk_cat', 'day1otlk_torn', 'day1otlk_wind', 'day1otlk_hail', 'day2otlk_cat', 'day3otlk_cat',
+  'day1otlk_sigtorn', 'day1otlk_sigwind', 'day1otlk_sighail', 'day2otlk_torn', 'day2otlk_wind', 'day2otlk_hail', 'day2otlk_sigtorn', 'day2otlk_sigwind', 'day2otlk_sighail',
+  'day3otlk_prob', 'day3otlk_sigprob', 'day4prob', 'day5prob', 'day6prob', 'day7prob', 'day8prob'];
 /* model name on the page → [Open-Meteo forecast name, Open-Meteo run-time file] */
 const WX_MODELS = { hrrr: 'ncep_hrrr_conus', gfs: 'gfs_global', ecmwf: 'ecmwf_ifs025', aifs: 'ecmwf_aifs025_single' };
 const WX_META = new Set(['ncep_hrrr_conus', 'ncep_gfs025', 'ecmwf_ifs025', 'ecmwf_aifs025_single']);
@@ -1762,7 +1765,13 @@ function wxUpstream(parts, params) {
     return null;
   }
   if (kind === 'spc' && WX_SPC.includes(parts[2]) && !parts[3]) {
-    return [`https://www.spc.noaa.gov/products/outlook/${parts[2]}.nolyr.geojson`, WX_TTL.spc];
+    return [/^day[4-8]prob$/.test(parts[2]) ? `https://www.spc.noaa.gov/products/exper/day4-8/${parts[2]}.nolyr.geojson` : `https://www.spc.noaa.gov/products/outlook/${parts[2]}.nolyr.geojson`, WX_TTL.spc];
+  }
+  /* one layer of NOAA's NHC map service (wx.js ROUTES.nhcLayer): the tropics on Pro */
+  if (kind === 'nhc' && parts[2] === 'layer' && !parts[3]) {
+    const id = Number(params.get('id'));
+    if (!Number.isInteger(id) || id < 0 || id >= 400) return null;
+    return [`https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather/MapServer/${id}/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson`, 300];
   }
   if (kind === 'col' && !parts[2]) {
     const m = WX_MODELS[params.get('model')];

@@ -24,7 +24,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Weather">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231f5fa8'/><circle cx='40' cy='40' r='16' fill='%23ffd166'/><path d='M30 74h42a14 14 0 0 0-3-28 18 18 0 0 0-34 6 11 11 0 0 0-5 22z' fill='%23fff'/></svg>">
-  <link rel="stylesheet" href="assets/weather/weather.css?v=27">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=28">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -125,6 +125,15 @@
                 <button type="button" id="stationtoggle" aria-pressed="false" title="Weather stations: airports, road, farm and gauge networks; the station model from zoom 8">Stations</button>
                 <button type="button" id="outlooktoggle" aria-pressed="false" title="SPC's convective outlook for today">SPC outlook</button>
                 <button type="button" data-ov="rings" aria-pressed="false" title="Range rings around the radar on screen, every 25 mi or 50 km (Y)">Range rings</button>
+                <button type="button" data-ov="tropics" aria-pressed="false" title="NHC: every active tropical storm's cone, track, coastal watches and warnings, and the 7-day outlook">Tropics</button>
+              </div>
+              <div class="ovrow">
+                <label class="satpick" title="Which SPC outlook the SPC outlook button draws"><span class="seglab">Outlook</span><select id="outlooksel" aria-label="SPC outlook">
+                  <optgroup label="Day 1"><option value="d1:cat">Day 1 · categorical</option><option value="d1:torn">Day 1 · tornado</option><option value="d1:wind">Day 1 · wind</option><option value="d1:hail">Day 1 · hail</option></optgroup>
+                  <optgroup label="Day 2"><option value="d2:cat">Day 2 · categorical</option><option value="d2:torn">Day 2 · tornado</option><option value="d2:wind">Day 2 · wind</option><option value="d2:hail">Day 2 · hail</option></optgroup>
+                  <optgroup label="Day 3"><option value="d3:cat">Day 3 · categorical</option><option value="d3:prob">Day 3 · any severe</option></optgroup>
+                  <optgroup label="Days 4–8"><option value="d4">Day 4</option><option value="d5">Day 5</option><option value="d6">Day 6</option><option value="d7">Day 7</option><option value="d8">Day 8</option></optgroup>
+                </select></label>
               </div>
               <div class="ovrow">
                 <label class="opick" title="How strongly the data is drawn over the map and the satellite (O)"><span class="seglab">Data</span><input type="range" id="opacity" min="20" max="100" step="5" value="100" aria-label="Data opacity"><span id="opacityv" class="num">100%</span></label>
@@ -374,7 +383,7 @@
 
 <script src="effects.js"></script>
 <script src="projects/weather/nowcast.js?v=1"></script>
-<script src="projects/weather/wx.js?v=18"></script>
+<script src="projects/weather/wx.js?v=19"></script>
 <script src="projects/weather/sounding.js?v=4"></script>
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
@@ -388,7 +397,7 @@
 <script src="projects/weather/modelmaps.js?v=7"></script>
 <script src="projects/weather/mrms.js?v=1"></script>
 <script src="projects/weather/mapgeo.js?v=1"></script>
-<script src="assets/weather/workstation.js?v=8"></script>
-<script src="assets/weather/app.js?v=28"></script>
+<script src="assets/weather/workstation.js?v=9"></script>
+<script src="assets/weather/app.js?v=30"></script>
 </body>
 </html>

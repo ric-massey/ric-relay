@@ -975,8 +975,8 @@ bug you are looking for.
 - [ ] Page still opens as a static file — no console errors, no external requests
       beyond the GitHub API calls that already exist, the OpenStreetMap tiles in
       the training page's run detail, Studies' ClinicalTrials.gov fallback and the
-      weather room's providers, NOAA's AWS buckets and its map server (the
-      backup mosaic), ECMWF's open data
+      weather room's providers, NOAA's AWS buckets and its map servers (the
+      backup mosaic, and NHC's tropics), ECMWF's open data
       (Google Cloud and AWS) and Pro's map lines from Natural Earth on GitHub
       among them (below).
 - [ ] Looks right at mobile width.

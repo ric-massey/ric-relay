@@ -1021,3 +1021,7 @@ body[data-panel] .loopset,body[data-panel] .legend{font-size:11px}
   body[data-view="pro"] .siterow .tiltbtns{white-space:nowrap}
 }
 .utcchip[aria-pressed="true"]{border-color:#7a5a17;color:var(--amber)}
+
+/* the tropics: a forecast point's letter (H, S, D…) and its time */
+#radarover .trl{font:700 10px var(--mono);fill:#05070a}
+#radarover .trw{font:600 11px var(--mono);fill:#e6edf3;stroke:#05070a;stroke-width:3px;paint-order:stroke}

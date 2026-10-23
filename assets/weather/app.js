@@ -1185,6 +1185,7 @@
       else row(f.stale ? "stale" : "", `Radar${f.stale ? " — delayed" : ""}`, `${esc(radar.describe())} · latest scan`, rv);
     } else row("off", "Radar", radar.started ? "scan time unknown" : "loads when you reach it", null);
     const pro = radar.pro;
+    if (pro && pro.ov.tropics) row(pro.tErr ? "off" : "", "Tropics", pro.tropics ? `NHC's storms and outlook, via NOAA's map service · ${pro.tropics.storms.length} active · checked` : pro.tErr ? "NHC did not answer" : "asking…", pro.tropics ? pro.tropics.at : null);
     if (pro && pro.ov.watches && pro.wGot) row("", `Watches and discussions — ${pro.watches.length} watch${pro.watches.length === 1 ? "" : "es"}, ${pro.mcds.length + pro.mpds.length} discussion${pro.mcds.length + pro.mpds.length === 1 ? "" : "s"}`, "SPC and WPC, via IEM · checked", pro.wGot);
     if (pro && pro.ov.cells && pro.cGot) row("", `Storm cells — ${pro.cells.length}`, "every NEXRAD's own storm-tracking table, via IEM · checked", pro.cGot);
     if (pro && pro.ov.reports && pro.rGot) row("", `Storm reports — ${pro.reports.filter((r) => r.severe).length} severe, ${pro.reports.length} in all`, "the NWS's local storm reports, last 24 hours, via IEM · checked", pro.rGot);
@@ -1243,10 +1244,12 @@
       /* Pro opens on watches and its own map lines; the rest is a tap away
          (2026-10-23: five overlays at once was a busy first look). Warnings
          are always drawn. */
-      ov: PRO ? Object.assign({ lines: true, watches: true, cells: false, fronts: false, lightning: false, density: false, reports: false, rings: false }, store.get("wx:ov", {})) : { lines: false, watches: false, cells: false, fronts: false, lightning: false, density: false, reports: false, rings: false },
+      ov: PRO ? Object.assign({ lines: true, watches: true, cells: false, fronts: false, lightning: false, density: false, reports: false, rings: false, tropics: false }, store.get("wx:ov", {})) : { lines: false, watches: false, cells: false, fronts: false, lightning: false, density: false, reports: false, rings: false, tropics: false },
       /* the flash density window, in minutes */
       densWin: [1, 5, 10, 20].includes(Number(store.get("wx:denswin", 5))) ? Number(store.get("wx:denswin", 5)) : 5,
-      pro: { watches: [], mcds: [], mpds: [], cells: [], surface: null, reports: [] }, measure: null,
+      pro: { watches: [], mcds: [], mpds: [], cells: [], surface: null, reports: [], tropics: null }, measure: null,
+      /* Pro's choice of SPC outlook (2026-10-23: days 1–8, tornado, wind, hail), and the sets loaded */
+      olSel: PRO && Wx.OUTLOOKS && Wx.OUTLOOKS[store.get("wx:outlooksel", "")] ? store.get("wx:outlooksel", "d1:cat") : "d1:cat", olData: {},
       /* Pro's own radar and model maps: the tilt (0 is the lowest scan) and the model field, each kept in this browser */
       tilt: Math.min(3, Math.max(0, Number(store.get("wx:tilt", 0)) || 0)),
       /* the full volume (Level II) instead of Level III, and its tilt by angle */
@@ -1394,6 +1397,13 @@
     const pastObs = new Map();
     /* ── Pro's overlays: SPC watches and discussions, WPC's, storm cells,
        and the surface analysis — each asked again on its own clock ── */
+    /* the outlook drawn: Weather's is always day 1's categorical; Pro's the one picked (null while it loads) */
+    const SPC_SHORT = { TSTM: "TSTM", MRGL: "MRGL", SLGT: "SLGT", ENH: "ENH", MDT: "MDT", HIGH: "HIGH" };
+    function outlookList() {
+      if (!PRO || R.olSel === "d1:cat") return S.outlook || null;
+      const h = R.olData[R.olSel];
+      return h && h.list ? h.list : null;
+    }
     async function loadOverlays(force) {
       if (!PRO || !R.started || R.mode === "replay") return;
       const P = R.pro, now = Date.now(), jobs = [];
@@ -1405,6 +1415,13 @@
       if (R.ov.cells && (force || now - (P.cAt || 0) > 120e3)) { P.cAt = now; jobs.push(Wx.proOverlays.cells().then((c) => { P.cells = c; P.cGot = Date.now(); }).catch(() => {})); }
       if (R.ov.fronts && (force || now - (P.fAt || 0) > 1800e3)) { P.fAt = now; jobs.push(Wx.surfaceAnalysis().then((s) => { P.surface = s; }).catch(() => {})); }
       if (R.ov.reports && (force || now - (P.rAt || 0) > 120e3)) { P.rAt = now; jobs.push(Wx.proOverlays.reports().then((r) => { P.reports = r; P.rGot = Date.now(); }).catch(() => {})); }
+      /* the tropics: NHC's storms and outlook, every ten minutes (advisories come every six hours, intermediates every three) */
+      if (R.ov.tropics && (force || now - (P.tAt || 0) > 600e3)) { P.tAt = now; jobs.push(Wx.tropics().then((t) => { P.tropics = t; P.tErr = false; }).catch(() => { P.tErr = true; })); }
+      /* the SPC outlook picked, when it is not the day-1 categorical the page already holds */
+      if (R.outlook && R.olSel !== "d1:cat") {
+        const have = R.olData[R.olSel];
+        if (force || !have || now - have.at > 600e3) { const k = R.olSel; jobs.push(Wx.outlookSet(k).then((l) => { R.olData[k] = { at: Date.now(), list: l }; }).catch(() => { R.olData[k] = { at: Date.now(), list: null }; })); }
+      }
       if (!jobs.length) return;
       await Promise.all(jobs);
       draw(); label(); renderSources();
@@ -2982,12 +2999,50 @@
         over.innerHTML = out.join("");
         return;
       }
-      if (R.outlook && S.outlook) {
-        for (const o of S.outlook.slice().sort((a, b) => a.rank - b.rank)) {
+      const olList = outlookList();
+      if (R.outlook && olList) {
+        /* lowest risk first; a probability by its number; the hatched significant areas last, over the rest */
+        const rk = (o) => (o.sig ? 1e3 : 0) + (o.rank || (parseFloat(o.label) * 100) || 0);
+        if (PRO && olList.some((o) => o.sig)) out.push(`<defs><pattern id="olsig" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#000" stroke-width="2.4"/></pattern></defs>`);
+        for (const o of olList.slice().sort((a, b) => rk(a) - rk(b))) {
           const d = o.polys.map((poly) => poly.map((r) => "M" + ring(r).replace(/ /g, " L")).join(" ") + " Z").join(" ");
           /* on Weather, the outline only: a filled outlook hid the rain under it (Ric, 2026-10-23) */
-          out.push(PRO ? `<path d="${d}" fill="${esc(o.fill || "#888")}" fill-opacity=".28" fill-rule="evenodd" stroke="${esc(o.stroke || "#888")}" stroke-width="1.6"/>`
-            : `<path d="${d}" fill="none" stroke="${esc(o.stroke || o.fill || "#888")}" stroke-width="1.6" stroke-dasharray="6 4" stroke-opacity=".85"/>`);
+          out.push(!PRO ? `<path d="${d}" fill="none" stroke="${esc(o.stroke || o.fill || "#888")}" stroke-width="1.6" stroke-dasharray="6 4" stroke-opacity=".85"/>`
+            : o.sig ? `<path d="${d}" fill="url(#olsig)" fill-rule="evenodd" stroke="#000" stroke-width="1.6"/>`
+            : `<path d="${d}" fill="${esc(o.fill || "#888")}" fill-opacity=".28" fill-rule="evenodd" stroke="${esc(o.stroke || "#888")}" stroke-width="1.6"/>`);
+        }
+        /* each area named where it starts — TSTM, SLGT, 5% … */
+        if (PRO) for (const o of olList) {
+          if (o.sig || !o.polys[0] || !o.polys[0][0]) continue;
+          const r0 = o.polys[0][0], c = r0.reduce((m, q) => [m[0] + q[0] / r0.length, m[1] + q[1] / r0.length], [0, 0]), [x, y] = pt(c[1], c[0]);
+          const word = SPC_SHORT[o.label] || (Number.isFinite(parseFloat(o.label)) ? Math.round(parseFloat(o.label) * 100) + "%" : "");
+          if (word) out.push(`<text class="ovl" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" fill="${esc(o.stroke || "#fff")}">${esc(word)}</text>`);
+        }
+      }
+      /* ── the tropics: NHC's 7-day outlook areas, then each storm's cone,
+         past track, forecast track and points, and its coastal watches and
+         warnings (2026-10-23) ── */
+      if (PRO && R.ov.tropics && R.pro.tropics) {
+        const T = R.pro.tropics, line = (c) => c.map(([lo, la]) => pt(la, lo).map((v) => v.toFixed(1)).join(",")).join(" ");
+        for (const a of T.outlook) {
+          const d = a.polys.map((poly) => poly.map((r) => "M" + ring(r).replace(/ /g, " L")).join(" ") + " Z").join(" ");
+          out.push(`<path d="${d}" fill="${a.color}" fill-opacity=".14" fill-rule="evenodd" stroke="${a.color}" stroke-width="2" stroke-dasharray="7 4"/>`);
+          const r0 = a.polys[0][0], c = r0.reduce((m, q) => [m[0] + q[0] / r0.length, m[1] + q[1] / r0.length], [0, 0]), [x, y] = pt(c[1], c[0]);
+          out.push(`<text class="ovl" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" fill="${a.color}">${esc(`${a.p2} 2-day · ${a.p7} 7-day`)}</text>`);
+        }
+        for (const st of T.storms) {
+          for (const poly of st.cone) out.push(`<path d="${poly.map((r) => "M" + ring(r).replace(/ /g, " L")).join(" ")} Z" fill="#ffffff" fill-opacity=".16" fill-rule="evenodd" stroke="#ffffff" stroke-opacity=".85" stroke-width="1.5"/>`);
+          for (const l of st.past) out.push(`<polyline points="${line(l)}" fill="none" stroke="#adb5bd" stroke-width="2"/>`);
+          for (const l of st.track) out.push(`<polyline points="${line(l)}" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="5 4"/>`);
+          for (const w of st.ww) for (const l of w.lines) out.push(`<polyline points="${line(l)}" fill="none" stroke="${w.color}" stroke-width="6" stroke-linecap="round"/>`);
+          for (const q of st.points) {
+            const [x, y] = pt(q.lat, q.lon), col = /^[HM]$/.test(q.label) ? "#ff4d6d" : q.label === "S" ? "#ffd43b" : "#74c0fc";
+            out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${q.tau ? 7 : 9}" fill="${col}" stroke="#05070a" stroke-width="1.5"/><text class="trl" x="${x.toFixed(1)}" y="${(y + 3.8).toFixed(1)}" text-anchor="middle">${esc(q.label || "•")}</text>`);
+            /* every point's time from zoom 6; further out, only the last, so they do not pile up */
+            if (q.tau && q.when && (R.z >= 6 || q === st.points[st.points.length - 1])) out.push(`<text class="trw" x="${(x + 11).toFixed(1)}" y="${(y + 4).toFixed(1)}">${esc(q.when)}</text>`);
+          }
+          const [hx, hy] = pt(st.lat, st.lon);
+          out.push(`<text class="ovl" x="${hx.toFixed(1)}" y="${(hy - 14).toFixed(1)}" text-anchor="middle" fill="#fff">${esc(`${st.name}${st.wind != null ? " · " + Math.round(st.wind) + " kt" : ""}`)}</text>`);
         }
       }
       const W0 = el.clientWidth, H0 = el.clientHeight;
@@ -3551,6 +3606,19 @@
             + (D ? ` Flash density: flashes in each 8 km square over the ${R.densWin === 1 ? "last minute" : `last ${R.densWin} minutes`}${D.short ? " (still filling in)" : ""}, most ${D.max}.` : "");
         if (R.ov.cells && R.z >= 6) sb.textContent += " Tap a storm cell for its flash rate.";
       }
+      if (PRO && R.outlook && R.started) {
+        const L = outlookList(), first = L && L.find((o) => o.issued), name = (Wx.OUTLOOKS[R.olSel] || {}).label || "Day 1 · categorical";
+        sb.textContent += !L ? ` SPC outlook (${name}): ${R.olData[R.olSel] && R.olData[R.olSel].list === null ? "SPC did not answer" : "loading…"}.`
+          : !L.length ? ` SPC outlook (${name}): no areas in force.`
+          : ` SPC outlook (${name})${first ? `, issued ${clk().time(first.issued)}${first.forecaster ? " by " + first.forecaster : ""}` : ""}${L.some((o) => o.sig) ? "; the hatching is the significant-severe area" : ""}.`;
+      }
+      if (PRO && R.ov.tropics && R.started) {
+        const T = R.pro.tropics;
+        sb.textContent += R.pro.tErr && !T ? " Tropics: NHC did not answer."
+          : !T ? " Tropics: asking NHC…"
+          : !T.storms.length ? ` Tropics: no active storms${T.outlook.length ? `; ${T.outlook.length} area${T.outlook.length === 1 ? "" : "s"} NHC is watching (dashed, with the chance of development in 2 and 7 days)` : ""}.`
+          : ` Tropics: ${T.storms.map((st) => `${st.name} — ${st.wind != null ? Math.round(st.wind) + " kt" : ""}${st.mslp ? ", " + st.mslp + " mb" : ""}${st.speed != null ? `, moving ${Wx.compass(st.dir)} at ${st.speed} kt` : ""} (NHC advisory ${st.adv}, ${st.advDate})`).join("; ")}. The white cone is where the centre will probably go, not how big the storm is; coastal lines are NHC's watches and warnings.${T.outlook.length ? " Dashed areas: where NHC is watching for new storms." : ""}`;
+      }
       if (PRO && R.ov.reports && R.started && R.mode !== "replay" && R.pro.rGot) { const n = R.pro.reports.filter((r) => r.severe).length; sb.textContent += ` Storm reports: ${n} severe in the last 24 hours${R.z < 7 ? " (zoom in for rain, snow and the rest)" : ""} — tap one for who reported it.`; }
       if (R.sat && PRO && AB && pastSat.el && !pastSat.el.hidden) {
         sb.textContent += pastSat.none ? " Under it: no satellite image — the GOES files this page reads begin in 2018."
@@ -3777,7 +3845,7 @@
     /* the layers, in the link's words (no place in them) — a workstation
        panel and a saved workspace are written in the same words */
     function layerString() {
-      const ov = [!R.ov.lines && "x", R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r", R.ov.rings && "g"].filter(Boolean).join("");
+      const ov = [!R.ov.lines && "x", R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r", R.ov.rings && "g", R.ov.tropics && "h"].filter(Boolean).join("");
       return `l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}${R.mm.back ? "." + R.mm.back : ""}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
     }
     /* the map's middle to about 10 km, and its zoom */
@@ -3801,7 +3869,7 @@
       }
       const o = q.get("o");
       if (o != null) {
-        R.ov = { lines: !o.includes("x"), watches: o.includes("w"), cells: o.includes("c"), fronts: o.includes("f"), lightning: o.includes("l"), density: o.includes("d"), reports: o.includes("r"), rings: o.includes("g") };
+        R.ov = { lines: !o.includes("x"), watches: o.includes("w"), cells: o.includes("c"), fronts: o.includes("f"), lightning: o.includes("l"), density: o.includes("d"), reports: o.includes("r"), rings: o.includes("g"), tropics: o.includes("h") };
         R.stations = o.includes("s"); R.outlook = o.includes("o");
         $("#stationtoggle").setAttribute("aria-pressed", String(R.stations));
         $("#outlooktoggle").setAttribute("aria-pressed", String(R.outlook));
@@ -4163,8 +4231,17 @@
     $("#outlooktoggle").addEventListener("click", () => {
       R.outlook = !R.outlook;
       $("#outlooktoggle").setAttribute("aria-pressed", String(R.outlook));
-      draw();
+      draw(); label(); loadOverlays();
     });
+    /* Pro: which SPC outlook — picking one turns the overlay on */
+    if ($("#outlooksel")) {
+      $("#outlooksel").value = R.olSel;
+      $("#outlooksel").addEventListener("change", (e) => {
+        R.olSel = Wx.OUTLOOKS[e.target.value] ? e.target.value : "d1:cat"; store.set("wx:outlooksel", R.olSel);
+        if (!R.outlook) { R.outlook = true; $("#outlooktoggle").setAttribute("aria-pressed", "true"); }
+        draw(); label(); loadOverlays();
+      });
+    }
     addEventListener("resize", () => requestAnimationFrame(draw));
 
     new IntersectionObserver((entries) => {

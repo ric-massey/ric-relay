@@ -234,6 +234,18 @@ await guard('mosaic backup', async () => {
   ok(r && r.ok && /image\/png/.test(r.headers.get('content-type') || ''), `a tile at the newest time is a picture (${r && r.status} ${r && r.headers.get('content-type')})`);
 });
 
+console.log('\nLIVE  the tropics (NHC, through NOAA\'s map service) and every SPC outlook');
+await guard('tropics', async () => {
+  const t = await W.tropics();
+  ok(t && Array.isArray(t.storms) && !t.partial, `NHC answers for all fifteen storm slots: ${t.storms.length} active${t.storms.length ? ' — ' + t.storms.map(s => `${s.name} ${s.wind} kt`).join(', ') : ''}`);
+  ok(t.storms.every(s => s.points.length && Number.isFinite(s.lat) && s.cone.length && s.track.length), 'each storm with its forecast points, cone and track');
+  ok(Array.isArray(t.outlook), `the 7-day outlook: ${t.outlook.length} area${t.outlook.length === 1 ? '' : 's'}`);
+});
+await guard('outlooks', async () => {
+  const sets = await Promise.all(Object.keys(W.OUTLOOKS).map(async k => [k, await W.outlookSet(k)]));
+  ok(sets.every(([, l]) => Array.isArray(l)), `every outlook reads: ${sets.map(([k, l]) => `${k} ${l.length}`).join(', ')}`);
+});
+
 console.log('\nLIVE  the warnings backup (Iowa State\'s copy of the NWS\'s storm warnings)');
 await guard('alerts backup', async () => {
   const now = Date.now(), rows = await W.sbwArchive(now - 6 * 3600e3, now);
