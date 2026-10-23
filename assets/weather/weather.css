@@ -952,3 +952,72 @@ details.srcfold>summary h2{margin-bottom:0}
 details.srcfold[open]>summary h2{margin-bottom:12px}
 .aqibar{position:relative;height:6px;margin:8px 0;border-radius:3px;background:linear-gradient(90deg,#00e400 0 16.7%,#ffff00 16.7% 33.3%,#ff7e00 33.3% 50%,#ff0000 50% 66.7%,#8f3f97 66.7% 100%)}
 .aqibar b{position:absolute;top:-3px;width:4px;height:12px;margin-left:-2px;border-radius:2px;background:#fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.4)}
+
+/* ── Weather Pro, the pros' pass (2026-10-23, Ric: "do all 11") ── */
+/* panels are mostly map: their controls are a sheet behind the Layers button, at any size */
+body[data-panel] .mapctl{display:none}
+body[data-panel] .workspace .radar{margin:0 -6px}
+body[data-panel] .layersbtn{display:inline-flex;align-items:center;gap:6px;position:absolute;left:6px;top:6px;z-index:8;min-height:30px;padding:0 10px;border-radius:3px;border:1px solid #7a5a17;background:rgba(7,9,12,.9);color:var(--amber);font:600 12px var(--mono)}
+body[data-panel] #radarcard.ctl-open .mapctl{display:block;position:fixed;left:0;right:0;top:0;z-index:50;max-height:86vh;overflow:auto;padding:10px 12px;background:#0b0f15;border-bottom:1px solid #2a3340;box-shadow:0 14px 34px rgba(0,0,0,.6)}
+body[data-panel] #radarcard.ctl-open .mapctl .seg.rowscroll,body[data-panel] #radarcard.ctl-open .mapctl .kinds{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;padding-right:0}
+body[data-panel] #radarcard.ctl-open .mapctl .ovpanel{position:static;width:auto;max-height:none;box-shadow:none;margin-top:8px}
+body[data-panel] .sheetdone{display:block;width:100%;min-height:36px;margin-top:8px;border:0;border-radius:3px;background:var(--amber);color:#1c1300;font:600 13px var(--mono)}
+body[data-panel] .radarbar{margin-top:4px}
+body[data-panel] .radarbar .play{width:34px;height:34px}
+body[data-panel] .loopset,body[data-panel] .legend{font-size:11px}
+@media (pointer:coarse){ body[data-panel] .layersbtn{min-height:44px} }
+
+/* side by side: every map in one grid filling the screen; the readouts below */
+@media (min-width:1001px){
+  .workspace.ws-grid{grid-template-columns:minmax(0,1fr)}
+  .workspace.ws-grid .mapcol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;position:static}
+  .workspace.ws-grid .panels{display:contents}
+  .workspace.ws-grid #radarcard,.workspace.ws-grid .mpanel{grid-column:auto}
+  .workspace.ws-grid[data-maps="2"] .mapcol{--cell:calc(100vh - var(--maptop, 130px) - 10px)}
+  .workspace.ws-grid:not([data-maps="2"]) .mapcol{--cell:calc((100vh - var(--maptop, 130px) - 20px) / 2)}
+  body[data-view="pro"] .workspace.ws-grid #radarcard:not(.mapfull):not(:has(.xsec:not([hidden]))){height:var(--cell);min-height:300px}
+  .workspace.ws-grid .mpanel{display:flex;flex-direction:column;height:var(--cell);min-height:300px;margin:0}
+  .workspace.ws-grid .mpanel iframe{flex:1 1 0;height:auto;min-height:0}
+  .workspace.ws-grid[data-maps="3"] #radarcard{grid-row:span 2;height:calc(2 * var(--cell) + 10px)!important}
+  .workspace.ws-grid .side.grid{grid-template-columns:repeat(auto-fill,minmax(380px,1fr))}
+  /* side by side, the main map is map-first too: its controls behind its Layers button */
+  .workspace.ws-grid #radarcard{position:relative}
+  .workspace.ws-grid #radarcard>h2{margin-bottom:4px}
+  .workspace.ws-grid #radarcard .mapctl{display:none}
+  .workspace.ws-grid #radarcard.ctl-open .mapctl{display:block;position:absolute;left:8px;top:38px;z-index:30;width:min(680px,calc(100% - 16px));max-height:calc(100% - 46px);overflow:auto;padding:10px 12px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.6)}
+  .workspace.ws-grid #radarcard.ctl-open .mapctl .ovpanel{position:static;width:auto;max-height:none;box-shadow:none;margin-top:8px}
+  .workspace.ws-grid #radarcard .sheetdone{display:block;width:100%;min-height:36px;margin-top:8px;border:0;border-radius:3px;background:var(--amber);color:#1c1300;font:600 13px var(--mono)}
+  .workspace.ws-grid #radarcard .layersbtn{display:inline-flex;align-items:center;gap:6px;position:absolute;left:6px;top:6px;z-index:8;min-height:30px;padding:0 10px;border-radius:3px;border:1px solid #7a5a17;background:rgba(7,9,12,.9);color:var(--amber);font:600 12px var(--mono)}
+  .workspace.ws-grid #radarcard .mainst{left:auto;right:56px;max-width:calc(100% - 200px)}
+}
+#wslayout[aria-pressed="true"]{border-color:#7a5a17;color:var(--amber)}
+
+/* the colour key on the map, on a desk; the readout sits above it */
+.radar>.legend{position:absolute;left:10px;bottom:22px;z-index:6;width:min(380px,calc(100% - 140px));margin:0;padding:5px 9px;border-radius:4px;background:rgba(7,9,12,.86);border:1px solid #2a3340;pointer-events:none}
+.radar:has(>.legend) .read{bottom:68px}
+.radar .read b{color:var(--amber);font-weight:600}
+.radar .read.stale{opacity:.55}
+/* range rings */
+#radarover .ringl{font:600 11px var(--mono);fill:#e6edf3;stroke:#05070a;stroke-width:3px;paint-order:stroke}
+/* the loop's own controls */
+.radarbar .fcount{flex:none;font:12px var(--mono);color:var(--dim);min-width:3.5em;text-align:right}
+.radarbar .fcount:empty{display:none}
+.loopset{display:inline-flex;gap:4px;flex:none}
+.loopset select{min-height:32px;padding:0 4px;border-radius:3px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
+@media (max-width:640px){ .loopset,.radarbar .fcount{display:none} }  /* on a phone the slider needs the width; the loop runs at the speed last set on a wider screen */
+/* opacity and the base map, in the overlays menu */
+.ovrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:8px}
+.opick{display:inline-flex;align-items:center;gap:6px}
+.opick input{width:120px;accent-color:var(--amber)}
+.opick .num{font:12px var(--mono);color:var(--dim);min-width:3em}
+.radar[data-base="dark"] .base img{filter:grayscale(1) invert(1) brightness(.6) contrast(.95)}
+.radar[data-base="light"] .base img{filter:grayscale(.35) brightness(.92)}
+/* the single radar's products and its picker and tilts on one line where they fit */
+@media (min-width:1001px){
+  body[data-view="pro"] .siterow{flex-wrap:nowrap;gap:6px 10px}
+  body[data-view="pro"] .siterow>.seg{flex:0 1 auto;min-width:0}
+  body[data-view="pro"] .siterow .seg button{padding-left:8px;padding-right:8px}
+  body[data-view="pro"] .siterow .sitepick select{max-width:150px}
+  body[data-view="pro"] .siterow .tiltbtns{white-space:nowrap}
+}
+.utcchip[aria-pressed="true"]{border-color:#7a5a17;color:var(--amber)}

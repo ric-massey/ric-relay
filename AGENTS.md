@@ -772,6 +772,10 @@ ones that must never break:
   above the map — put a new control in the kind's own row or a menu. The card's
   height comes from `--maptop` (measured in `workstation.js`), never a guessed
   offset: the last guess went stale and pushed the play bar off a laptop screen.
+  The maps beside it, and the main one when they sit side by side, are
+  map-first: their controls live behind each map's Layers button (2026-10-23,
+  Ric: "Do all 11 plz"). Times can be UTC (`wx:utc`) — keep new times on `clk()`
+  so the switch reaches them.
 - **A failed alert check is never silent** (2026-10-23, after an outside check
   of Pro). If the NWS does not answer, the alerts card says so at the top and
   the storm warnings come from Iowa State's copy of the NWS's feed

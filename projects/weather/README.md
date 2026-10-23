@@ -364,6 +364,37 @@ cards fold to their heading with a tap (warnings never fold; "Where this comes
 from" starts folded; kept in this browser); the hero with no place is shorter;
 and every control's tooltip names its key.
 
+**Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
+it nicer to use for pros?", then "Do all 11 plz"):**
+- *A panel is mostly map.* Each map beside the main one shows only its map, its
+  play bar and its key; its whole toolbar is a sheet behind its own **Layers**
+  button, which says what the map shows (`controlSheet()` in `workstation.js`,
+  shared with the phone's sheet).
+- *Side by side.* A workspace has a `layout`: `stack` (one map under another) or
+  `grid` — every map in one grid filling the screen (two across; three maps put
+  the main one down the left), the readout cards below. **⊞ Side by side** in the
+  workspace bar switches it; it is saved and shared with the workspace, and both
+  presets open side by side. In the grid the main map folds its controls behind
+  its Layers button too.
+- *UTC.* **Local / UTC** in the place bar (or U): every time on the page in Z,
+  24-hour — the map, its stamps, the replay, the sounding, the cards — and the
+  panels follow by the storage event (`Wx.clock(tz, true)`; `wx:utc`).
+- *More map.* The colour key lies on the map at a desk (≥ 901 px), the single
+  radar's products, picker and tilts share one line where they fit, and the
+  base map can be **Dark** (new default), Dim or Light (Overlays → Base).
+- *The readout* always leads with where the cursor is (to three decimals — the
+  visitor's own pointer, kept nowhere), then the value, the distance and bearing
+  from the radar and the beam's height; it stays, dimmed, when the mouse leaves.
+- *The loop:* a frame count, a speed (½× to 3×, or [ and ]) and how long it
+  rests on the newest frame, kept in this browser (`wx:loop`); N jumps to the
+  newest frame.
+- *Opacity* of the data over the map and satellite (Overlays → Data, or O for
+  100 / 70 / 40%), and *range rings* every 25 mi or 50 km around the radar
+  on screen (Overlays → Range rings, or Y; `g` in a link's overlays).
+- *Keys:* the "?" sheet lists the new ones.
+- *"· changed"* is not judged until the page has put its saved layout back — a
+  half-done restore showed it for a moment on every load.
+
 **Weather Pro, fourth round (2026-10-22, Ric: "finish what the AI needs to
 do"):** the workstation (below, and [`WORKSTATION.md`](WORKSTATION.md)); NAM
 3 km and RAP maps; the National Blend's chances; storm-relative velocity at

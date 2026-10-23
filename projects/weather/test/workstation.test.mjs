@@ -18,7 +18,9 @@ console.log('\nRULE  a workspace is layers, maps and cards — never a place');
 {
   const w = WS.clean({ name: 'Mine', main: 'v=35.4,-97.5,8&l=l3:ref&o=wc', panels: ['l=model&m=hrrr.refc&lat=35.4&lon=-97.5'], place: { lat: 35.4, lon: -97.5 }, cards: { order: ['sky'], hidden: ['alerts', 'afd'] } });
   ok(w.main === 'l=l3:ref&o=wc' && !/v=|35\.4/.test(JSON.stringify(w)), 'a view or a place handed in with the layers is dropped');
-  ok(!('place' in w) && Object.keys(w).sort().join() === 'cards,main,name,panels,sync,v', 'and nothing but the layout survives');
+  ok(!('place' in w) && Object.keys(w).sort().join() === 'cards,layout,main,name,panels,sync,v', 'and nothing but the layout survives');
+  ok(w.layout === 'stack' && WS.clean({ layout: 'grid' }).layout === 'grid' && WS.clean({ layout: '<b>' }).layout === 'stack', 'the maps stack or sit side by side, nothing else');
+  ok(!WS.sameWorkspace({ panels: ['l=comp'], layout: 'grid' }, { panels: ['l=comp'] }), 'side by side is a change from one under another');
   ok(w.cards.order[0] === 'sky' && w.cards.order.length === WS.CARDS.length, 'cards keep the order asked, and every card is still placed');
   ok(!w.cards.hidden.includes('alerts') && w.cards.hidden.includes('afd'), 'warnings cannot be hidden; other cards can');
   ok(WS.clean({ panels: Array(9).fill('l=comp') }).panels.length === WS.MAX_PANELS, `at most ${WS.MAX_PANELS} extra maps`);

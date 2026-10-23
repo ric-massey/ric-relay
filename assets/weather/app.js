@@ -42,7 +42,11 @@
   const placeKey = (p) => `${Wx.coord(p.lat)},${Wx.coord(p.lon)}`;
   const U = () => S.units;
   const deg = (c) => Wx.fmt.temp(c, U()) + "°";
-  const clk = () => Wx.clock((S.fc && S.fc.tz) || (S.pt && S.pt.tz) || undefined);
+  /* Pro speaks UTC on request (2026-10-23, Ric: "do all 11" of a pass on what
+     pros need): forecasters work in Z, as NWS products, runs and scans do.
+     Kept in this browser; a panel follows the page through the storage event. */
+  let UTC = PRO && store.get("wx:utc", false) === true;
+  const clk = () => UTC ? Wx.clock("UTC", true) : Wx.clock((S.fc && S.fc.tz) || (S.pt && S.pt.tz) || undefined);
   const nowSec = () => Math.floor(Date.now() / 1000);
   const dayFmtPage = (ms) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(ms);
   const dist = (km) => U() === "us" ? `${Math.max(1, Math.round(km / 1.609344))} mi` : `${Math.max(1, Math.round(km))} km`;
@@ -1239,7 +1243,7 @@
       /* Pro opens on watches and its own map lines; the rest is a tap away
          (2026-10-23: five overlays at once was a busy first look). Warnings
          are always drawn. */
-      ov: PRO ? Object.assign({ lines: true, watches: true, cells: false, fronts: false, lightning: false, density: false, reports: false }, store.get("wx:ov", {})) : { lines: false, watches: false, cells: false, fronts: false, lightning: false, density: false, reports: false },
+      ov: PRO ? Object.assign({ lines: true, watches: true, cells: false, fronts: false, lightning: false, density: false, reports: false, rings: false }, store.get("wx:ov", {})) : { lines: false, watches: false, cells: false, fronts: false, lightning: false, density: false, reports: false, rings: false },
       /* the flash density window, in minutes */
       densWin: [1, 5, 10, 20].includes(Number(store.get("wx:denswin", 5))) ? Number(store.get("wx:denswin", 5)) : 5,
       pro: { watches: [], mcds: [], mpds: [], cells: [], surface: null, reports: [] }, measure: null,
@@ -1474,8 +1478,8 @@
        satellite, the stations and today's warnings are hidden — they are
        now, and a replay is then. A notable storm fits the map to its own
        warnings, so no place is written into this page. */
-    const dayFmt = (ms) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(ms);
-    const timeFmt = (ms) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(ms);
+    const dayFmt = (ms) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", ...(UTC ? { timeZone: "UTC" } : {}) }).format(ms);
+    const timeFmt = (ms) => UTC ? Wx.clock("UTC", true).time(ms) : new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(ms);
     async function replay(from, hours, fitToStorms) {
       R.mode = "replay"; if (R.stations) stationsSoon();
       R.modeAsk = (R.modeAsk || 0) + 1;                  // a live switch still in flight must not finish over this
@@ -3068,6 +3072,21 @@
       }
       if (R.site && single() && R.site.lat != null) {
         const [sx, sy] = pt(R.site.lat, R.site.lon);
+        /* range rings (2026-10-23): every 25 mi or 50 km out to the products'
+           230 km, on the sphere around the radar — distances at a glance */
+        if (PRO && R.ov.rings) {
+          const us = U() === "us", step = us ? 25 * 1.609344 : 50, rad = Math.PI / 180, la = R.site.lat * rad, lo = R.site.lon * rad;
+          for (let k = 1; k * step <= 231; k++) {
+            const d = k * step / 6371.0088, ptsR = [];
+            for (let b = 0; b <= 360; b += 5) {
+              const br = b * rad, lat2 = Math.asin(Math.sin(la) * Math.cos(d) + Math.cos(la) * Math.sin(d) * Math.cos(br));
+              const lon2 = lo + Math.atan2(Math.sin(br) * Math.sin(d) * Math.cos(la), Math.cos(d) - Math.sin(la) * Math.sin(lat2));
+              ptsR.push(pt(lat2 / rad, lon2 / rad).map((v) => v.toFixed(1)).join(","));
+            }
+            const [lx, ly] = pt(Math.asin(Math.sin(la) * Math.cos(d) + Math.cos(la) * Math.sin(d)) / rad, R.site.lon);
+            out.push(`<polyline points="${ptsR.join(" ")}" fill="none" stroke="#e6edf3" stroke-opacity=".75" stroke-width="1.3" stroke-dasharray="5 4"/><text class="ringl" x="${lx.toFixed(1)}" y="${(ly - 3).toFixed(1)}" text-anchor="middle">${us ? k * 25 + " mi" : k * 50 + " km"}</text>`);
+          }
+        }
         out.push(`<rect x="${(sx - 4).toFixed(1)}" y="${(sy - 4).toFixed(1)}" width="8" height="8" fill="#ffd43b" stroke="#000"/>`);
       }
       /* NEXRAD's storm cells, from zoom 6: where each is, where it is heading
@@ -3222,6 +3241,7 @@
 
     function note(text) {
       const n = $("#radarnote");
+      delete n.dataset.flash;                // a real note outlives a key's passing one
       n.hidden = !text; n.textContent = text || "";
     }
     let byUser = 0;
@@ -3237,6 +3257,7 @@
       /* a replay's stations follow the frame, twenty minutes at a time */
       if (R.mode === "replay" && R.stations) { const ft = frameTime(f); if (ft != null && Math.round(ft / 1200e3) * 1200e3 !== R.obsSlot) stationsSoon(); }
       $("#scrub").value = String(i);
+      if ($("#fcount")) $("#fcount").textContent = R.frames.length > 1 ? `${i + 1}/${R.frames.length}` : "";
       const when = $("#when");
       if (f.archive) when.innerHTML = `${esc(dayFmt(f.t))}<small>${esc(timeFmt(f.t))}</small>`;
       else if (f.mrms) when.innerHTML = `${esc(clk().time(f.t))}<small>MRMS · ${Wx.age(Date.now() - f.t)} ago${f.mrms.layer ? "" : f.mrms.err ? " · failed" : " · loading"}</small>`;
@@ -3300,6 +3321,25 @@
       return a != null ? `${R.mode === "mrms" ? "MRMS" : "GOES"} delayed — the newest file is ${Wx.age(a)} old.` : "";
     }
     function loadOld() { if (!R.loadedOld) { R.loadedOld = true; draw(); } }
+    /* Pro's loop, the data's opacity and the base map (2026-10-23), each kept in this browser */
+    const LOOP = Object.assign({ speed: 1, dwell: 1600 }, PRO ? store.get("wx:loop", {}) : {});
+    let OPAC = PRO ? Math.max(0.2, Math.min(1, Number(store.get("wx:opacity", 1)) || 1)) : 1;
+    let BASE = PRO && ["dark", "dim", "light"].includes(store.get("wx:base", "")) ? store.get("wx:base", "dark") : "dark";
+    function setOpacity(v) {
+      OPAC = Math.max(0.2, Math.min(1, v)); store.set("wx:opacity", OPAC);
+      framesL.style.opacity = OPAC < 1 ? String(OPAC) : "";
+      if ($("#opacity")) { $("#opacity").value = String(Math.round(OPAC * 100)); $("#opacityv").textContent = Math.round(OPAC * 100) + "%"; }
+    }
+    function setBase(b) {
+      BASE = ["dark", "dim", "light"].includes(b) ? b : "dark"; store.set("wx:base", BASE);
+      if (PRO) el.dataset.base = BASE;
+      if ($("#basesel")) $("#basesel").value = BASE;
+    }
+    function setLoop(k, v) {
+      LOOP[k] = v; store.set("wx:loop", LOOP);
+      if ($("#loopspeed")) $("#loopspeed").value = String(LOOP.speed);
+      if ($("#loopdwell")) $("#loopdwell").value = String(LOOP.dwell);
+    }
     function play(on) {
       R.playing = on;
       clearTimeout(R.timer);
@@ -3326,7 +3366,7 @@
         }
         R.wait = 0;
         userShow(next);
-        R.timer = setTimeout(step, next === last ? 1600 : 450);
+        R.timer = setTimeout(step, next === last ? LOOP.dwell : 450 / LOOP.speed);
       };
       R.timer = setTimeout(step, R.frame === lastOf() ? 600 : 450);
     }
@@ -3532,6 +3572,7 @@
     async function start() {
       if (R.started) return;
       R.started = true;
+      if (PRO) { setOpacity(OPAC); setBase(BASE); }
       const sat = store.get("wx:sat", null);           // the visitor's last choice, this browser only
       /* a panel shows only what its layers say, never the main page's underlay */
       if (PRO && !PANEL && Wx.SAT[sat]) setSat(sat);
@@ -3736,7 +3777,7 @@
     /* the layers, in the link's words (no place in them) — a workstation
        panel and a saved workspace are written in the same words */
     function layerString() {
-      const ov = [!R.ov.lines && "x", R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r"].filter(Boolean).join("");
+      const ov = [!R.ov.lines && "x", R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r", R.ov.rings && "g"].filter(Boolean).join("");
       return `l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}${R.mm.back ? "." + R.mm.back : ""}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
     }
     /* the map's middle to about 10 km, and its zoom */
@@ -3760,7 +3801,7 @@
       }
       const o = q.get("o");
       if (o != null) {
-        R.ov = { lines: !o.includes("x"), watches: o.includes("w"), cells: o.includes("c"), fronts: o.includes("f"), lightning: o.includes("l"), density: o.includes("d"), reports: o.includes("r") };
+        R.ov = { lines: !o.includes("x"), watches: o.includes("w"), cells: o.includes("c"), fronts: o.includes("f"), lightning: o.includes("l"), density: o.includes("d"), reports: o.includes("r"), rings: o.includes("g") };
         R.stations = o.includes("s"); R.outlook = o.includes("o");
         $("#stationtoggle").setAttribute("aria-pressed", String(R.stations));
         $("#outlooktoggle").setAttribute("aria-pressed", String(R.outlook));
@@ -3860,6 +3901,8 @@
        products reached for most, without the mouse. A key typed into a field,
        one with a modifier, or one pressed while a sheet is open is left alone;
        `?` lists them (the #keys sheet, which must say the same as KEYMODES). */
+    /* a key's answer, said for a moment and then gone (never over a real note) */
+    const flash = (text) => { const n = $("#radarnote"); if (n.textContent && !n.dataset.flash) return; note(text); n.dataset.flash = "1"; clearTimeout(flash.t); flash.t = setTimeout(() => { if (n.dataset.flash) { delete n.dataset.flash; note(""); } }, 1500); };
     const KEYMODES = { m: "comp", g: "abi", r: "l3:ref", v: "l3:vel", s: "l3:srv", c: "l3:cc", z: "l3:zdr", k: "l3:kdp", h: "l3:hca", e: "l3:eet" };
     if (PRO) addEventListener("keydown", (e) => {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -3884,6 +3927,12 @@
       else if (k === "w" || k === "W") done = press(document.querySelector('[data-ov="watches"]'));
       else if (/^[1-9]$/.test(k)) done = !$("#tiltrow").hidden && press(document.querySelectorAll("#tiltbtns [data-tilt], #tiltbtns [data-angle]")[Number(k) - 1]);
       else if (k === "?") { const d = $("#keys"); if (d && d.showModal) { d.showModal(); done = true; } }
+      /* 2026-10-23: the newest frame, UTC, the loop's speed, the data's opacity, range rings */
+      else if (k === "n" || k === "N" || k === "End") { if (R.frames.length) { play(false); userShow(R.frames.length - 1); done = true; } }
+      else if (k === "u" || k === "U") done = press($("#utcbtn"));
+      else if (k === "[" || k === "]") { const sp = [0.5, 1, 2, 3], i = sp.indexOf(LOOP.speed); setLoop("speed", sp[Math.max(0, Math.min(sp.length - 1, (i < 0 ? 1 : i) + (k === "]" ? 1 : -1)))]); flash(`Loop speed ${LOOP.speed}×`); done = true; }
+      else if (k === "o" || k === "O") { setOpacity(OPAC > 0.85 ? 0.7 : OPAC > 0.55 ? 0.4 : 1); flash(`Data opacity ${Math.round(OPAC * 100)}%`); done = true; }
+      else if (k === "y" || k === "Y") done = press(document.querySelector('[data-ov="rings"]'));
       if (done) e.preventDefault();
     });
     if ($("#keys")) {
@@ -4028,13 +4077,33 @@
         const r = el.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
         cancelAnimationFrame(readRaf);
         readRaf = requestAnimationFrame(() => {
-          const text = readoutAt(yLat(R.cy - el.clientHeight / 2 + py, R.z), xLng(R.cx - el.clientWidth / 2 + px, R.z));
-          readEl.hidden = !text; if (text) readEl.textContent = text;
+          const lat = yLat(R.cy - el.clientHeight / 2 + py, R.z), lon = xLng(R.cx - el.clientWidth / 2 + px, R.z);
+          const text = readoutAt(lat, lon);
+          /* always where the cursor is, to three decimals (the visitor's own pointer; nothing is kept), then what is under it */
+          const where = `${Math.abs(lat).toFixed(3)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lon).toFixed(3)}°${lon >= 0 ? "E" : "W"}`;
+          readEl.hidden = false; readEl.classList.remove("stale");
+          readEl.innerHTML = `<b>${esc(where)}</b>${text ? " · " + esc(text) : ""}`;
         });
       });
-      el.addEventListener("pointerleave", () => { readEl.hidden = true; });
+      /* the last reading stays, dimmed, so it can be read after the mouse moves off */
+      el.addEventListener("pointerleave", () => { readEl.classList.add("stale"); });
     }
     $("#play").addEventListener("click", () => play(!R.playing));
+    /* Pro's loop speed and pause on the newest frame, the data's opacity, and the base map */
+    if ($("#loopspeed")) {
+      setLoop("speed", LOOP.speed);
+      $("#loopspeed").addEventListener("change", (e) => setLoop("speed", Number(e.target.value) || 1));
+      $("#loopdwell").addEventListener("change", (e) => setLoop("dwell", Number(e.target.value) || 1600));
+    }
+    if ($("#opacity")) $("#opacity").addEventListener("input", (e) => setOpacity(Number(e.target.value) / 100));
+    if ($("#basesel")) $("#basesel").addEventListener("change", (e) => setBase(e.target.value));
+    /* on a desk the colour key lies on the map, not under it — the map gets the height (2026-10-23) */
+    if (PRO && !PANEL && $("#legend")) {
+      const mq = matchMedia("(min-width: 901px)"), lg = $("#legend"), home = lg.parentNode, after = lg.nextSibling;
+      const place = () => { if (mq.matches) el.appendChild(lg); else home.insertBefore(lg, after); };
+      place();
+      mq.addEventListener ? mq.addEventListener("change", place) : mq.addListener(place);
+    }
     $("#scrub").addEventListener("input", (e) => { play(false); loadOld(); userShow(Number(e.target.value)); });
     document.querySelectorAll(".seg [data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
     if ($("#sitekind")) {
@@ -4667,6 +4736,17 @@
     store.set("wx:units", S.units);
     render(); radar.draw(); radar.label(); sky.redraw();
   });
+  /* Pro: local time or UTC, everywhere on the page; panels follow by the storage event */
+  const utcRedraw = () => {
+    if ($("#utcbtn")) { $("#utcbtn").textContent = UTC ? "UTC" : "Local"; $("#utcbtn").setAttribute("aria-pressed", String(UTC)); }
+    if (!PANEL) render();
+    radar.label(); sky.redraw();
+  };
+  if ($("#utcbtn")) {
+    $("#utcbtn").textContent = UTC ? "UTC" : "Local"; $("#utcbtn").setAttribute("aria-pressed", String(UTC));
+    $("#utcbtn").addEventListener("click", () => { UTC = !UTC; store.set("wx:utc", UTC); utcRedraw(); });
+  }
+  if (PRO) addEventListener("storage", (e) => { if (e.key === "wx:utc") { UTC = store.get("wx:utc", false) === true; utcRedraw(); } });
   $("#refresh").addEventListener("click", () => { load(); radar.refresh(); });
 
   /* ── keeping up ──

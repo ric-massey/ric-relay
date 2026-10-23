@@ -1030,7 +1030,23 @@
 
   /* Times are shown in the PLACE's clock, not the visitor's: a forecast for
      Denver read in Knoxville should still say the rain starts at 3 PM. */
-  function clock(tz) {
+  /* `zulu`: Weather Pro's UTC switch (2026-10-23) — 24-hour times with a Z,
+     the way NWS products, model runs and scans are written */
+  function clock(tz, zulu) {
+    if (zulu) {
+      const z = (opts) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', hourCycle: 'h23', ...opts });
+      const t = z({ hour: '2-digit', minute: '2-digit' }), d = z({ weekday: 'short' }), dl = z({ weekday: 'long', month: 'short', day: 'numeric' });
+      const p2 = n => String(n).padStart(2, '0');
+      return {
+        time: ms => t.format(ms).replace(':', '') + 'Z',
+        hour: ms => p2(new Date(ms).getUTCHours()) + 'Z',
+        day: ms => d.format(ms),
+        dayLong: ms => dl.format(ms),
+        ymd: ms => new Date(ms).toISOString().slice(0, 10),
+        full: ms => `${d.format(ms)} ${t.format(ms).replace(':', '')}Z`,
+        zulu: true
+      };
+    }
     const make = opts => {
       try { return new Intl.DateTimeFormat('en-US', { timeZone: tz, ...opts }); }
       catch (e) { return new Intl.DateTimeFormat('en-US', opts); }

@@ -67,7 +67,7 @@
   function sameWorkspace(a, b) {
     a = clean(a); b = clean(b);
     if (!a || !b) return false;
-    return (a.main == null || b.main == null || sameLayer(a.main, b.main)) && a.panels.length === b.panels.length && a.panels.every((x, i) => sameLayer(x, b.panels[i]))
+    return (a.main == null || b.main == null || sameLayer(a.main, b.main)) && a.panels.length === b.panels.length && a.panels.every((x, i) => sameLayer(x, b.panels[i])) && a.layout === b.layout
       && a.cards.order.join() === b.cards.order.join() && a.cards.hidden.slice().sort().join() === b.cards.hidden.slice().sort().join()
       && a.sync.place === b.sync.place && a.sync.time === b.sync.time;
   }
@@ -83,7 +83,9 @@
       main: cleanLayer(ws.main),
       panels: (Array.isArray(ws.panels) ? ws.panels : []).map(cleanLayer).filter(Boolean).slice(0, MAX_PANELS),
       cards: { order, hidden: [...new Set(hidden)] },
-      sync: { place: !(ws.sync && ws.sync.place === false), time: !(ws.sync && ws.sync.time === false) }
+      sync: { place: !(ws.sync && ws.sync.place === false), time: !(ws.sync && ws.sync.time === false) },
+      /* the maps one under another ('stack'), or side by side filling the screen ('grid', 2026-10-23) */
+      layout: ws.layout === 'grid' ? 'grid' : 'stack'
     };
   }
 
@@ -91,13 +93,13 @@
     clean({ name: 'Default', main: null, panels: [] }),
     /* the pattern and the next days: the 500 mb trough in two models, the
        surface, and the water vapour that shows the jet's moisture */
-    clean({ name: 'Forecast Analysis', main: 'l=model&o=w&m=gfs.h500',
+    clean({ name: 'Forecast Analysis', main: 'l=model&o=w&m=gfs.h500', layout: 'grid',
       panels: ['l=model&o=&m=ecmwf.h500', 'l=model&o=&m=gfs.mslp', 'l=abi&o=&g=b9.conus.auto'],
       cards: { order: ['hero', 'alerts', 'nearby', 'national', 'models', 'afd', 'sky', 'record', 'sources', 'meso'], hidden: ['meso'] } }),
     /* a storm day: the radar's own reflectivity with watches, cells, reports
        and lightning; storm-relative velocity; the environment's effective
        STP; the rotation tracks */
-    clean({ name: 'Severe Weather', main: 'l=l3:ref&o=wcrl',
+    clean({ name: 'Severe Weather', main: 'l=l3:ref&o=wcrl', layout: 'grid',
       panels: ['l=l3:srv&o=wc', 'l=model&o=w&m=smeso.stpe', 'l=mrms&o=w&r=rot60'],
       cards: { order: ['alerts', 'nearby', 'national', 'sky', 'meso', 'hero', 'models', 'sources', 'afd', 'record'], hidden: ['afd', 'record'] } })
   ];
@@ -173,7 +175,28 @@
     linked = readHash(location.hash);
     if (linked) history.replaceState(null, '', location.pathname + location.search + '#' + (linked.view ? `v=${linked.view}&` : '') + (linked.ws.main || ''));
   }
-  addEventListener('DOMContentLoaded', () => { if (root.WxPro) (PANEL ? panelSide : pageSide)(root.WxPro); });
+  addEventListener('DOMContentLoaded', () => { if (root.WxPro) { controlSheet(); (PANEL ? panelSide : pageSide)(root.WxPro); } });
+
+  /* ── the map's controls as a sheet the Layers button pulls up ──
+     On a phone, and in every panel at any size (2026-10-23: a panel that
+     repeated the main map's whole toolbar was mostly toolbar). The button
+     says what the map shows. */
+  const KIND = { comp: 'Mosaic', abi: 'Satellite', mrms: 'MRMS', model: 'Models', hrrr: 'Future', replay: 'Replay' };
+  function layerName(st) {
+    const el = document.getElementById('layername');
+    if (!el) return;
+    const m = st && st.mode, NX = root.Nexrad;
+    el.textContent = !m ? 'Layers' : m.startsWith('l3:') && NX && NX.PRODUCTS[m.slice(3)] ? `Radar · ${NX.PRODUCTS[m.slice(3)].short}` : KIND[m] || 'Layers';
+  }
+  function controlSheet() {
+    const ctl = document.getElementById('radarcard'), lb = document.getElementById('layersbtn'), done = document.getElementById('ctldone');
+    if (!ctl || !lb) return;
+    const sheet = (on) => { ctl.classList.toggle('ctl-open', on); lb.setAttribute('aria-expanded', String(on)); };
+    lb.addEventListener('click', () => sheet(!ctl.classList.contains('ctl-open')));
+    if (done) done.addEventListener('click', () => { sheet(false); lb.focus(); });
+    addEventListener('keydown', (e) => { if (e.key === 'Escape' && ctl.classList.contains('ctl-open') && !document.querySelector('dialog[open]')) sheet(false); });
+    if (root.WxPro) root.WxPro.map.on((type, data) => { if (type === 'stamp') layerName(data); });
+  }
 
   /* ── inside a panel: tell the page, and do what it says ── */
   function panelSide(Pro) {
@@ -211,7 +234,7 @@
     const wst = $('#wstoggle');
     if (wst) wst.addEventListener('click', () => { const on = !bar.classList.contains('open'); bar.classList.toggle('open', on); wst.setAttribute('aria-expanded', String(on)); measure(); });
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const W = { name: 'Default', saved: false, panels: [], cards: clean({}).cards, sync: { place: true, time: true }, busT: null, mainStamp: null, n: 0 };
+    const W = { name: 'Default', saved: false, panels: [], cards: clean({}).cards, sync: { place: true, time: true }, layout: 'stack', busT: null, mainStamp: null, n: 0 };
 
     /* the shared time: null is "now" */
     function setBus(t, from) {
@@ -229,7 +252,7 @@
     }
     main.on((type, data) => {
       if (type === 'stamp') {
-        W.mainStamp = data; stamps(); layerName(data);
+        W.mainStamp = data; stamps();
         if (W.mainLayer !== main.layer) { W.mainLayer = main.layer; store.set('wx:wscurrent', current()); renderSel(); }
       }
       else if (type === 'view') shareView(data, main);
@@ -278,7 +301,14 @@
     }
     function layout() {
       box.hidden = !W.panels.length;
-      document.querySelector('.workspace').classList.toggle('has-panels', W.panels.length > 0);
+      const wsEl = document.querySelector('.workspace');
+      wsEl.classList.toggle('has-panels', W.panels.length > 0);
+      /* side by side: every map in one grid that fills the screen, the cards below */
+      wsEl.classList.toggle('ws-grid', W.layout === 'grid' && W.panels.length > 0);
+      wsEl.dataset.maps = String(W.panels.length + 1);
+      const lb = $('#wslayout');
+      if (lb) { lb.hidden = !W.panels.length; lb.textContent = W.layout === 'grid' ? '☰ Stack' : '⊞ Side by side'; lb.setAttribute('aria-pressed', String(W.layout === 'grid')); }
+      measure();
       W.panels.forEach((p, i) => { p.sec.querySelector('.pn').textContent = `Map ${i + 2}`; p.frame.title = `Map ${i + 2}: ${p.stamp ? p.stamp.layer : 'starting'}`; });
       box.dataset.n = String(W.panels.length);
     }
@@ -340,13 +370,15 @@
     }
 
     /* ── the workspace: now, applied, saved ── */
-    const current = () => clean({ name: W.name, main: main.layer, panels: W.panels.map((p) => p.str), cards: W.cards, sync: W.sync });
+    const current = () => clean({ name: W.name, main: main.layer, panels: W.panels.map((p) => p.str), cards: W.cards, sync: W.sync, layout: W.layout });
     const savedList = () => (store.get('wx:workspaces', []) || []).map(clean).filter(Boolean);
     function changed() {
       store.set('wx:wscurrent', current());
       renderSel();
     }
-    const dirty = () => !W.ref || !sameWorkspace(current(), W.ref);
+    /* not judged until the page has put its layout back: a restore half done
+       showed "· changed" for a moment on every load (2026-10-23) */
+    const dirty = () => W.ready && (!W.ref || !sameWorkspace(current(), W.ref));
     async function apply(ws, { mainToo = true } = {}) {
       ws = clean(ws);
       if (!ws) return;
@@ -354,7 +386,7 @@
       for (const p of W.panels.slice()) { p.sec.remove(); }
       W.panels = [];
       W.cards = ws.cards; arrangeCards();
-      W.sync = ws.sync; $('#wsplace').checked = ws.sync.place; $('#wstime').checked = ws.sync.time;
+      W.sync = ws.sync; $('#wsplace').checked = ws.sync.place; $('#wstime').checked = ws.sync.time; W.layout = ws.layout;
       if (mainToo && ws.main) await main.setLayer(ws.main);
       for (const s of ws.panels) addPanel(s, { quiet: true });
       layout(); stamps();
@@ -375,6 +407,9 @@
       const ws = g === 'p' ? PRESETS.find((p) => p.name === n) : g === 's' ? savedList().find((s) => s.name === n) : null;
       if (ws) { apply(ws); store.set('wx:wsname', ws.name); }
     });
+
+    /* ── one under another, or side by side ── */
+    if ($('#wslayout')) $('#wslayout').addEventListener('click', () => { W.layout = W.layout === 'grid' ? 'stack' : 'grid'; layout(); changed(); });
 
     /* ── add a map ── */
     $('#wsadd').addEventListener('click', () => {
@@ -576,17 +611,6 @@
       else if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey && !document.querySelector('dialog[open]')) { e.preventDefault(); findOpen(); }
     });
 
-    /* ── on a phone the map's controls are a sheet the Layers button pulls up ── */
-    const ctl = $('#radarcard'), lb = $('#layersbtn');
-    const sheet = (on) => { ctl.classList.toggle('ctl-open', on); lb.setAttribute('aria-expanded', String(on)); };
-    lb.addEventListener('click', () => sheet(!ctl.classList.contains('ctl-open')));
-    $('#ctldone').addEventListener('click', () => { sheet(false); lb.focus(); });
-    addEventListener('keydown', (e) => { if (e.key === 'Escape' && ctl.classList.contains('ctl-open') && !document.querySelector('dialog[open]')) sheet(false); });
-    const KIND = { comp: 'Mosaic', abi: 'Satellite', mrms: 'MRMS', model: 'Models', hrrr: 'Future', replay: 'Replay' };
-    function layerName(st) {
-      const m = st && st.mode, NX = root.Nexrad;
-      $('#layername').textContent = !m ? 'Layers' : m.startsWith('l3:') && NX && NX.PRODUCTS[m.slice(3)] ? `Radar · ${NX.PRODUCTS[m.slice(3)].short}` : KIND[m] || 'Layers';
-    }
 
     /* ── the readout cards fold to their heading (a tap on it); the sources
        card starts folded on Pro. Warnings never fold. Kept in this browser. ── */
@@ -619,7 +643,7 @@
     /* ── start: a shared link, else this browser's last layout ── */
     if (linked) {
       apply(linked.ws, { mainToo: false }).then(() => {
-        renderSel();
+        W.ready = true; renderSel();
         if (linked.at) setTimeout(() => setBus(linked.at, null), 1500);
         say(`Opened a shared workspace, “${linked.ws.name}”. Save it to keep it in this browser.`);
       });
@@ -629,8 +653,8 @@
       /* "changed" is measured against the workspace this one was opened as */
       const named = () => { const n = store.get('wx:wsname', null); return [...PRESETS, ...savedList()].find((x) => x.name === n) || null; };
       if (last && (last.panels.length || last.cards.hidden.length || last.cards.order.join() !== CARDS.join() || (own && last.main))) {
-        apply(last, { mainToo: own }).then(() => { const ref = named(); W.name = ref ? ref.name : last.name; W.ref = ref || last; renderSel(); });
-      } else { W.ref = PRESETS[0]; renderSel(); }
+        apply(last, { mainToo: own }).then(() => { const ref = named(); W.name = ref ? ref.name : last.name; W.ref = ref || last; W.ready = true; renderSel(); });
+      } else { W.ref = PRESETS[0]; W.ready = true; renderSel(); }
     }
     stamps();
   }
