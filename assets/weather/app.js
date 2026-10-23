@@ -340,6 +340,8 @@
   const PLACE_CARDS = ["#next", "#afd", "#hourly", "#daily", "#models", "#record", "#sky", "#t-wind", "#t-humid", "#t-press", "#t-vis", "#t-uv", "#t-sun", "#t-rain"];
   function render() {
     renderPlace();
+    /* Pro: the alerts here, counted on the Readouts button, so a closed drawer never hides one */
+    if ($("#databadge")) $("#databadge").textContent = S.place && S.alerts && S.alerts.length ? String(S.alerts.length) : "";
     const us = !S.place;
     for (const c of PLACE_CARDS) { const el = $(c); if (el) el.hidden = us || !S.fc; }   // each page holds only its own cards
     $("#national").hidden = !us;
@@ -4690,6 +4692,7 @@
         K.model = defaultModel();
         const d = $("#skyd"); d.open = true; $("#sky").hidden = false;
         loadModel();
+        if (window.WxOpenDrawer) window.WxOpenDrawer();
         $("#sky").scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
       },
       get source() { return K.source; },
@@ -4824,6 +4827,44 @@
     $("#utcbtn").addEventListener("click", () => { UTC = !UTC; store.set("wx:utc", UTC); utcRedraw(); });
   }
   if (PRO) addEventListener("storage", (e) => { if (e.key === "wx:utc") { UTC = store.get("wx:utc", false) === true; utcRedraw(); } });
+
+  /* ── Pro as a map app (2026-10-23, Ric: "The map needs to cover the whole
+     page"): the map fills the window under the site's bar (its height is
+     measured into --tb), and the readouts are a drawer. Open by default
+     where there is room to dock it beside the map (1200 px and up); the
+     visitor's own choice is kept in this browser. D opens and closes it. ── */
+  if (PRO && !PANEL && $("#databtn")) {
+    const tb = $(".topbar");
+    const measureTop = () => { if (tb) document.documentElement.style.setProperty("--tb", tb.offsetHeight + "px"); };
+    measureTop();
+    addEventListener("resize", measureTop);
+    const wide = () => innerWidth >= 1200;
+    const setDrawer = (on, keep) => {
+      document.body.classList.toggle("drawer-open", on);
+      $("#databtn").setAttribute("aria-expanded", String(on));
+      if (keep) store.set("wx:drawer", on);
+      /* the map changes size when the drawer docks: redraw once it has */
+      setTimeout(() => dispatchEvent(new Event("resize")), 230);
+    };
+    const kept = store.get("wx:drawer", null);
+    setDrawer(typeof kept === "boolean" ? kept && wide() : wide(), false);
+    $("#databtn").addEventListener("click", () => setDrawer(!document.body.classList.contains("drawer-open"), true));
+    addEventListener("keydown", (e) => {
+      const t = e.target;
+      if (e.ctrlKey || e.metaKey || e.altKey || (t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))) || document.querySelector("dialog[open]")) return;
+      if (e.key === "d" || e.key === "D") { setDrawer(!document.body.classList.contains("drawer-open"), true); e.preventDefault(); }
+      /* over the map (a narrow window), Esc puts it away */
+      else if (e.key === "Escape" && !wide() && document.body.classList.contains("drawer-open")) setDrawer(false, false);
+    });
+    /* the map's toolbar floats on the map: its height goes to --ctlh, so the zoom, the stamp and the notes sit under it */
+    const card = $("#radarcard"), ctl = $("#mapctl");
+    const ctlh = () => { if (card && ctl) card.style.setProperty("--ctlh", (getComputedStyle(ctl).position === "absolute" ? ctl.offsetHeight : 0) + "px"); };
+    ctlh();
+    if (typeof ResizeObserver === "function" && ctl) new ResizeObserver(ctlh).observe(ctl);
+    addEventListener("resize", ctlh);
+    /* anything that asks to show a card opens the drawer first */
+    window.WxOpenDrawer = () => { if (!document.body.classList.contains("drawer-open")) setDrawer(true, false); };
+  }
   $("#refresh").addEventListener("click", () => { load(); radar.refresh(); });
 
   /* ── keeping up ──

@@ -533,6 +533,7 @@
     function doAct(a, { toggle = false } = {}) {
         if (a.startsWith('card:')) {
           const id = a.slice(5), el = document.getElementById(id);
+          if (root.WxOpenDrawer) root.WxOpenDrawer();
           if (W.cards.hidden.includes(id)) { W.cards.hidden = W.cards.hidden.filter((x) => x !== id); arrangeCards(); changed(); }
           if (el) { if (el.hidden) say('That card has nothing to show yet — choose a place first.'); const d = el.querySelector('details'); if (d) d.open = true; el.scrollIntoView({ block: 'start' }); }
         } else if (a.startsWith('ov:')) {

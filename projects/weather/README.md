@@ -366,6 +366,25 @@ cards fold to their heading with a tap (warnings never fold; "Where this comes
 from" starts folded; kept in this browser); the hero with no place is shorter;
 and every control's tooltip names its key.
 
+**Weather Pro, a map app (2026-10-23, Ric: "The map needs to cover the whole
+page. Like go look at the most popular professional ones"):** as RadarScope,
+RadarOmega, GRLevelX and Pivotal do, the map is the window. Under the site's bar
+(its height measured into `--tb`) there is one row of place and workspace
+controls, which scrolls sideways rather than wrap (on a phone the Readouts
+button leads it and the workspace opens as a sheet under it); the map fills
+everything below; its own toolbar floats on its top edge, with the zoom, the
+stamp and the notes moved down under it (`--ctlh`, measured); the loop and the
+key stay at its foot. The readouts — now, alerts, the sounding, the models, the
+discussion, the record, the sources — are a drawer from the right: **Readouts**
+(or D) opens it, it docks beside the map from 1200 px (the map narrows to fit)
+and lies over it below, and it remembers being shut. Its button counts the
+alerts at the place, so a shut drawer never hides one; storm warnings float
+over the top of the map; anything that asks for a card (Find, Explore, a tapped
+sounding) opens the drawer first. Maps side by side fill the window in a grid
+(the stack does not fit a page that does not scroll, so the switch is gone);
+the cross-section and the point chart are a sheet over the map's foot. The
+page itself never scrolls. A panel's frame keeps its own rules.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

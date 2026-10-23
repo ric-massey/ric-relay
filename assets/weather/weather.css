@@ -1025,3 +1025,74 @@ body[data-panel] .loopset,body[data-panel] .legend{font-size:11px}
 /* the tropics: a forecast point's letter (H, S, D…) and its time */
 #radarover .trl{font:700 10px var(--mono);fill:#05070a}
 #radarover .trw{font:600 11px var(--mono);fill:#e6edf3;stroke:#05070a;stroke-width:3px;paint-order:stroke}
+
+/* ── Weather Pro is a map app (2026-10-23, Ric: "The map needs to cover the
+   whole page … they all have the map covering the entire screen"). The map
+   fills the window under the site's bar and one slim row of place and
+   workspace controls; its own tools float on it; the readouts (hero,
+   alerts, sounding, models…) are a drawer from the right — docked beside
+   the map on a wide screen, over it on a smaller one; storm warnings float
+   over the map so they are never off screen. The page itself never scrolls.
+   (A panel's frame, body[data-panel], keeps its own rules above.) ── */
+body[data-view="pro"]:not([data-panel]){height:100dvh;overflow:hidden}
+body[data-view="pro"]:not([data-panel]) .topbar{min-height:44px}
+body[data-view="pro"]:not([data-panel]) main{position:fixed;top:var(--tb,44px);left:0;right:0;bottom:0;max-width:none;margin:0;padding:0;overflow:hidden;display:flex;flex-direction:column}
+body[data-view="pro"]:not([data-panel]) footer{display:none}
+/* the one row above the map: it scrolls sideways rather than wrap */
+body[data-view="pro"]:not([data-panel]) .placebar{flex:none;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;gap:6px;padding:5px 8px;background:#05070a;border-bottom:1px solid #1d232c}
+body[data-view="pro"]:not([data-panel]) .placebar::-webkit-scrollbar{display:none}
+body[data-view="pro"]:not([data-panel]) .placebar>*,body[data-view="pro"]:not([data-panel]) .wsbar>*{flex:none}
+body[data-view="pro"]:not([data-panel]) .placebar .chip,body[data-view="pro"]:not([data-panel]) .placebar .backbtn,body[data-view="pro"]:not([data-panel]) .placebar .placebtn,body[data-view="pro"]:not([data-panel]) .wsbar button,body[data-view="pro"]:not([data-panel]) .wsbar select{min-height:32px}
+body[data-view="pro"]:not([data-panel]) .wsbar{flex-wrap:nowrap}
+body[data-view="pro"]:not([data-panel]) .wsnote{position:fixed;top:calc(var(--tb,44px) + 48px);left:50%;transform:translateX(-50%);z-index:45}
+/* storm warnings over the map, at the top, always */
+body[data-view="pro"]:not([data-panel]) .stormband{position:absolute;top:48px;left:50%;transform:translateX(-50%);z-index:44;width:min(760px,calc(100% - 140px));pointer-events:none}
+body[data-view="pro"]:not([data-panel]) .stormband #storms{pointer-events:auto;max-height:40vh;overflow:auto;margin:0;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+/* the map and the drawer share what is left */
+body[data-view="pro"]:not([data-panel]) .workspace{flex:1 1 auto;min-height:0;position:relative;display:block;margin:0}
+body[data-view="pro"]:not([data-panel]) .mapcol{position:absolute;inset:0;right:var(--dock,0px);transition:right .2s}
+body[data-view="pro"]:not([data-panel]) .workspace #radarcard:not(.mapfull){position:absolute;inset:0;height:auto!important;min-height:0;display:flex;flex-direction:column;margin:0;padding:0 0 4px;border:0;border-radius:0;background:#05070a}
+body[data-view="pro"]:not([data-panel]) .workspace #radarcard:not(.mapfull)>h2{display:none}
+body[data-view="pro"]:not([data-panel]) .workspace #radarcard:not(.mapfull) .mapctl{padding:6px 8px 4px}
+body[data-view="pro"]:not([data-panel]) .workspace #radarcard:not(.mapfull) .radar{flex:1 1 0;height:auto;min-height:0;margin:0}
+body[data-view="pro"]:not([data-panel]) .workspace #radarcard:not(.mapfull) .radarbar{margin:4px 10px 0}
+body[data-view="pro"]:not([data-panel]) .workspace #radarcard:not(.mapfull)>.legend{margin:4px 10px 0}
+/* the cross-section and the point chart: a sheet over the bottom of the map */
+body[data-view="pro"]:not([data-panel]) .workspace #radarcard .xsec:not([hidden]){position:absolute;left:8px;right:8px;bottom:56px;z-index:20;max-height:52%;overflow:auto;margin:0;padding:10px 12px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 -10px 30px rgba(0,0,0,.6)}
+/* the readouts drawer */
+body[data-view="pro"]:not([data-panel]) .side#cards{position:absolute;top:0;right:0;bottom:0;z-index:40;width:min(440px,100%);margin:0;padding:10px;overflow-y:auto;overscroll-behavior:contain;align-content:start;background:#080b10;border-left:1px solid #2a3340;box-shadow:-14px 0 34px rgba(0,0,0,.55);transform:translateX(105%);transition:transform .2s;visibility:hidden}
+body[data-view="pro"].drawer-open:not([data-panel]) .side#cards{transform:none;visibility:visible}
+@media (min-width:1200px){ body[data-view="pro"].drawer-open:not([data-panel]){--dock:440px} body[data-view="pro"]:not([data-panel]) .side#cards{box-shadow:none} }
+@media (prefers-reduced-motion:reduce){ body[data-view="pro"]:not([data-panel]) .side#cards,body[data-view="pro"]:not([data-panel]) .mapcol{transition:none} }
+.databtn{display:inline-flex;align-items:center;gap:6px}
+.databtn b{min-width:18px;padding:0 5px;border-radius:9px;background:var(--warn,#ff6b6b);color:#160000;font:700 11px/18px var(--mono);text-align:center}
+.databtn b:empty{display:none}
+body[data-view="pro"].drawer-open .databtn{border-color:#7a5a17;color:var(--amber)}
+/* maps side by side fill the window too (a stack does not fit a page that does not scroll) */
+body[data-view="pro"]:not([data-panel]) .workspace.has-panels .mapcol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:6px;padding:0}
+body[data-view="pro"]:not([data-panel]) .workspace.has-panels .panels{display:contents}
+body[data-view="pro"]:not([data-panel]) .workspace.has-panels #radarcard:not(.mapfull){position:relative;inset:auto;grid-column:auto}
+body[data-view="pro"]:not([data-panel]) .workspace.has-panels[data-maps="3"] #radarcard:not(.mapfull){grid-row:span 2}
+body[data-view="pro"]:not([data-panel]) .workspace.has-panels .mpanel{display:flex;flex-direction:column;min-height:0;height:auto;margin:0;padding:4px 6px;border-radius:0}
+body[data-view="pro"]:not([data-panel]) .workspace.has-panels .mpanel iframe{flex:1 1 0;height:auto;min-height:0}
+body[data-view="pro"]:not([data-panel]) .workspace.has-panels #radarcard .mapctl{display:none}
+body[data-view="pro"]:not([data-panel]) .workspace.has-panels #radarcard.ctl-open .mapctl{display:block;position:absolute;left:8px;top:8px;z-index:30;width:min(680px,calc(100% - 16px));max-height:calc(100% - 16px);overflow:auto;padding:10px 12px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.6)}
+body[data-view="pro"]:not([data-panel]) .workspace.has-panels #radarcard .sheetdone{display:block;width:100%;min-height:36px;margin-top:8px;border:0;border-radius:3px;background:var(--amber);color:#1c1300;font:600 13px var(--mono)}
+body[data-view="pro"]:not([data-panel]) .workspace.has-panels #radarcard .layersbtn{display:inline-flex;align-items:center;gap:6px;position:absolute;left:6px;top:6px;z-index:8;min-height:30px;padding:0 10px;border-radius:3px;border:1px solid #7a5a17;background:rgba(7,9,12,.9);color:var(--amber);font:600 12px var(--mono)}
+body[data-view="pro"]:not([data-panel]) .workspace.has-panels #radarcard .mainst{left:auto;right:56px;max-width:calc(100% - 200px)}
+body[data-view="pro"]:not([data-panel]) #wslayout{display:none}
+@media (max-width:760px){ body[data-view="pro"]:not([data-panel]) .workspace.has-panels .mapcol{grid-template-columns:minmax(0,1fr)} body[data-view="pro"]:not([data-panel]) .workspace.has-panels[data-maps="3"] #radarcard:not(.mapfull){grid-row:auto} }
+@media (max-width:640px){ body[data-view="pro"]:not([data-panel]) .workspace .radar{height:auto} }
+/* the map's own toolbar floats over the top of the map, as the radar apps do; what sits on the map moves down under it (--ctlh, measured) */
+body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull){--ctlh:0px}
+body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl{position:absolute;top:0;left:0;right:0;z-index:12;padding:6px 8px 6px;background:linear-gradient(rgba(5,7,10,.94),rgba(5,7,10,.82));border-bottom:1px solid rgba(42,51,64,.7)}
+body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .radar .zoom{top:calc(var(--ctlh) + 10px)}
+body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .radar .mainst{top:calc(var(--ctlh) + 8px)}
+body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .radar .note{top:calc(var(--ctlh) + 38px)}
+@media (max-width:640px){ body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl{position:static;background:none;border:0;padding:0} }
+/* on a phone the Readouts button (and its count of alerts) leads the row, never scrolled off */
+@media (max-width:640px){ body[data-view="pro"]:not([data-panel]) .placebar .databtn{order:-2} body[data-view="pro"]:not([data-panel]) .side#cards{width:100%} }
+/* on a phone the workspace controls open as a sheet under the row, not inside it (where they scrolled off the edge) */
+@media (max-width:640px){ body[data-view="pro"]:not([data-panel]) .placebar .wsbar.open{position:fixed;top:calc(var(--tb,44px) + 46px);left:8px;right:8px;z-index:46;flex-wrap:wrap;gap:6px;padding:10px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.6)} }
+/* the old side-by-side rule made the column static; in the map app it always keeps its place beside the drawer */
+body[data-view="pro"]:not([data-panel]) .workspace .mapcol,body[data-view="pro"]:not([data-panel]) .workspace.ws-grid .mapcol{position:absolute;inset:0 var(--dock,0px) 0 0}

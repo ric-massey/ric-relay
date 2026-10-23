@@ -24,7 +24,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Weather">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231f5fa8'/><circle cx='40' cy='40' r='16' fill='%23ffd166'/><path d='M30 74h42a14 14 0 0 0-3-28 18 18 0 0 0-34 6 11 11 0 0 0-5 22z' fill='%23fff'/></svg>">
-  <link rel="stylesheet" href="assets/weather/weather.css?v=28">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=33">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -80,6 +80,7 @@
     <span class="spacer"></span>
     <button class="chip" type="button" id="usview" aria-label="Across the US" title="Across the US">US</button>
     <button class="chip" type="button" id="units" aria-label="Switch units">°F</button>
+    <button class="chip databtn" type="button" id="databtn" aria-expanded="false" aria-controls="cards" title="The readouts beside the map: now, alerts, the sounding, the models… (D)">Readouts <b id="databadge" aria-label="alerts"></b></button>
     <button class="chip utcchip" type="button" id="utcbtn" aria-pressed="false" aria-label="Times in UTC or local time" title="Times in UTC (Z) or the place's local time (U)">Local</button>
     <button class="chip keyschip" type="button" id="keysbtn" aria-label="Keyboard shortcuts" aria-haspopup="dialog" title="Keyboard shortcuts (?)">?</button>
     <button class="chip" type="button" id="refresh" aria-label="Refresh" title="Refresh everything">
@@ -321,6 +322,7 @@
       <dt><kbd>O</kbd></dt><dd>the data's opacity: 100, 70, 40%</dd>
       <dt><kbd>Y</kbd></dt><dd>range rings on or off</dd>
       <dt><kbd>U</kbd></dt><dd>times in UTC, or local</dd>
+      <dt><kbd>D</kbd></dt><dd>the readouts drawer, open or shut</dd>
       <dt><kbd>?</kbd></dt><dd>this list</dd>
     </dl>
   </div>
@@ -397,7 +399,7 @@
 <script src="projects/weather/modelmaps.js?v=7"></script>
 <script src="projects/weather/mrms.js?v=1"></script>
 <script src="projects/weather/mapgeo.js?v=1"></script>
-<script src="assets/weather/workstation.js?v=9"></script>
-<script src="assets/weather/app.js?v=30"></script>
+<script src="assets/weather/workstation.js?v=10"></script>
+<script src="assets/weather/app.js?v=32"></script>
 </body>
 </html>

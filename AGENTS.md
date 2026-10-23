@@ -769,9 +769,15 @@ ones that must never break:
   for the professionals"). Above the map there is one row of kinds (with Replay,
   Overlays ▾ and Info) and at most the chosen kind's own row; overlays go in the
   Overlays menu, prose goes behind Info, the stamp is on the map. Don't add a row
-  above the map — put a new control in the kind's own row or a menu. The card's
-  height comes from `--maptop` (measured in `workstation.js`), never a guessed
-  offset: the last guess went stale and pushed the play bar off a laptop screen.
+  above the map — put a new control in the kind's own row or a menu. **Pro is a
+  map app** (2026-10-23, Ric: "The map needs to cover the whole page … they all
+  have the map covering the entire screen"): the map fills the window under the
+  site's bar (`--tb`, measured) and one row of place and workspace controls that
+  scrolls sideways, never wraps; the map's own toolbar floats on it (`--ctlh`);
+  the readouts are a drawer (**Readouts**, or D) docked beside the map from
+  1200 px and over it below, with the alerts counted on its button; storm
+  warnings float over the map. The page never scrolls. Don't put a card back
+  under or beside the map in the page's flow.
   The maps beside it, and the main one when they sit side by side, are
   map-first: their controls live behind each map's Layers button (2026-10-23,
   Ric: "Do all 11 plz"). Times can be UTC (`wx:utc`) — keep new times on `clk()`
