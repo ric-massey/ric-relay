@@ -239,6 +239,20 @@ safety), the **severe weather outlook**, **temperatures** (the stations) and
 **clouds** (infrared satellite), kept in this browser (`wx:maplayers`). The rain
 is asked one zoom finer and drawn at half size — four times the detail — and
 softened into areas, as Apple draws it, rather than the radar's single cells.
+Then the last three of Apple's (Ric: "Do these"): **the next hour on the
+timeline** — after the newest scan come six forecast frames, ten minutes
+apart, each labelled "forecast · in N min": the room's own nowcast (the last
+half hour of the mosaic around the view at zoom 5–6, read through IEM's
+palette, `nowcast.js`'s `motion()` with the same `SETTINGS` the nightly grade
+holds, the newest picture carried backward along the motion as `forecast()`
+does for a point), rain only, never a storm's arrival; **city temperatures** —
+the biggest towns in view that do not crowd each other or the key, buttons and
+timeline (Natural Earth's places, read at run time by `mapgeo.js`, which Weather
+now loads too), each with its temperature now from Open-Meteo (`Wx.several`,
+twelve at a time, rounded to a kilometre, kept ten minutes) — on by default, the
+**Temperatures** item in the layers menu; and **My Location** — the place as a
+blue round with its temperature and sky, "My Location" when it came from the
+device, else its name. Pro keeps its plain dot and the HRRR for the future.
 
 **Weather Pro, the map first (2026-10-23, Ric: "analyze the ui and see if there
 is any way to make it cleaner and easier to use for the professionals", then

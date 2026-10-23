@@ -1141,7 +1141,7 @@
          its layers menu keeps the choices in this browser. Warnings start on —
          they are the one thing on the map that can matter to someone's safety —
          and can be turned off like the rest. */
-      wl: PRO ? null : Object.assign({ warn: true, outlook: false, stations: false, clouds: false }, store.get("wx:maplayers", {})),
+      wl: PRO ? null : Object.assign({ warn: true, outlook: false, temps: true, clouds: false }, store.get("wx:maplayers", {})),
       /* Pro's overlays, each the visitor's own choice in this browser */
       /* Pro opens on watches and its own map lines; the rest is a tap away
          (2026-10-23: five overlays at once was a busy first look). Warnings
@@ -1254,7 +1254,7 @@
       if (!officeAt.has(k)) officeAt.set(k, Wx.point(cell(lat), cell(lon)).then((p) => p && p.office).catch(() => { officeAt.delete(k); return null; }));
       return officeAt.get(k);
     }
-    function stationsSoon() { clearTimeout(stnTimer); stnTimer = setTimeout(loadStations, 500); }
+    function stationsSoon() { clearTimeout(stnTimer); stnTimer = setTimeout(loadStations, 500); if (!PRO) { citiesSoon(); if (R.mode === "comp") ncSoon(); } }
     async function loadStations() {
       if (!R.stations || !R.started || R.z < STN_MINZ) { if (R.obs.length) { R.obs = []; draw(); } label(); return; }
       const ask = ++stnAsk, w = el.clientWidth, h = el.clientHeight;
@@ -1646,6 +1646,7 @@
       const b = bucket();
       setFrames(Wx.RADAR_STEPS.map((mins) => ({ t: R.valid ? R.valid - mins * 60e3 : null, mins, rain: true,
         url: (z, x, y) => Wx.radarTile(mins, z, x, y, b) })));
+      if (!PRO && R.valid) { NCM.area = null; nowcastMap(); }
     }
     async function siteFrames(onlyIfNew) {
       if (!R.site) return;
@@ -2408,7 +2409,7 @@
        switch of layer lands on the frame nearest it (setMode). The newest
        frame, and any forecast, show now. */
     function frameTime(f = R.frames[R.frame]) {
-      if (!f || f.future || (f.model && !MM.SOURCES[f.model.src].analysis)) return null;
+      if (!f || f.future || f.nc || (f.model && !MM.SOURCES[f.model.src].analysis)) return null;
       return (f.l3 && f.l3.file && f.l3.file.time) || f.t || null;
     }
     function ltgRef() {
@@ -2594,6 +2595,163 @@
           img.src = URL.createObjectURL(blob);
         });
       } catch (e) { /* a tile that cannot be read stays in IEM's colours */ }
+    }
+
+    /* ── the next hour on Weather's map (2026-10-23, Ric: "No forecast of the
+       next hour's rain … Do these") ──
+       Apple's timeline runs on past now into the next hour. Ours does the
+       same with the room's own nowcast (nowcast.js): the last half hour of
+       the mosaic around the view, read through IEM's exact palette, the motion
+       found by the same block matching and SETTINGS the nightly grade
+       (verify/nowcast.mjs) holds to account, and the newest picture carried
+       forward along it — backward along the motion, as forecast() does for a
+       point — every ten minutes to an hour. Rain only: it knows nothing about
+       storms growing or dying, so it is never a storm's arrival (AGENTS.md),
+       and every forecast frame says "forecast". Weather only; Pro has the HRRR. */
+    const NCM = { gen: 0, area: null, timer: 0 };
+    const RAIN_IDX = (() => {
+      if (!NC) return null;
+      const t = new Uint32Array(256);
+      for (let i = 1; i < 256; i++) { const c = rainRGBA(NC.dbzOf(i)); if (c) t[i] = ((Math.round(c[3] * 255) << 24) | (Math.round(c[2]) << 16) | (Math.round(c[1]) << 8) | Math.round(c[0])) >>> 0; }
+      return t;
+    })();
+    const tileImg = (url) => new Promise((ok) => { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => ok(im); im.onerror = () => ok(null); im.src = url; });
+    function ncSoon() { if (PRO || !NC) return; clearTimeout(NCM.timer); NCM.timer = setTimeout(() => { if (!ncCovers()) nowcastMap(); }, 900); }
+    /* is the view still inside the area the forecast was worked out for, at the same scale? */
+    function ncCovers() {
+      const a = NCM.area;
+      if (!a || a.valid !== R.valid || a.z !== R.z) return false;
+      const sc = 2 ** (a.zm - R.z), w = el.clientWidth * sc, h = el.clientHeight * sc, cx = R.cx * sc, cy = R.cy * sc;
+      return cx - w / 2 >= a.ox && cy - h / 2 >= a.oy && cx + w / 2 <= a.ox + a.W && cy + h / 2 <= a.oy + a.H;
+    }
+    async function nowcastMap() {
+      if (PRO || !NC || !RAIN_IDX || R.mode !== "comp" || !R.valid || !R.started) return;
+      const gen = ++NCM.gen, valid = R.valid;
+      /* a scale where a pixel is a few km: fine enough to see motion, the view's area in at most 6×4 tiles */
+      const zm = Math.max(5, Math.min(6, R.z + 2)), sc = 2 ** (zm - R.z), n = 2 ** zm;
+      const cx = R.cx * sc, cy = R.cy * sc, hw = el.clientWidth * sc / 2, hh = el.clientHeight * sc / 2;
+      let tx0 = Math.floor((cx - hw) / 256), tx1 = Math.floor((cx + hw) / 256), ty0 = Math.max(0, Math.floor((cy - hh) / 256)), ty1 = Math.min(n - 1, Math.floor((cy + hh) / 256));
+      while (tx1 - tx0 + 1 > 6) { if ((tx1 + 0.5) * 256 - cx > cx - (tx0 + 0.5) * 256) tx1--; else tx0++; }
+      while (ty1 - ty0 + 1 > 4) { if ((ty1 + 0.5) * 256 - cy > cy - (ty0 + 0.5) * 256) ty1--; else ty0++; }
+      const W = (tx1 - tx0 + 1) * 256, H = (ty1 - ty0 + 1) * 256;
+      const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+      const ctx = cv.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
+      const bust = Math.floor(valid / 60e3), fields = [];
+      for (const back of [30, 20, 10, 0]) {
+        const jobs = [];
+        for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) jobs.push(tileImg(Wx.radarTile(back, zm, ((tx % n) + n) % n, ty, bust)).then((im) => ({ im, tx, ty })));
+        const got = await Promise.all(jobs);
+        if (gen !== NCM.gen) return;
+        ctx.clearRect(0, 0, W, H);
+        for (const { im, tx, ty } of got) if (im) ctx.drawImage(im, (tx - tx0) * 256, (ty - ty0) * 256);
+        try { fields.push(NC.field({ width: W, height: H, data: NC.indicesOf(ctx.getImageData(0, 0, W, H).data) }, 1)); } catch (e) { return; }
+      }
+      const lat = yLat(R.cy, R.z), km = 40075.016 * Math.cos(lat * Math.PI / 180) / (256 * n);
+      const m = NC.motion(fields, 10, { regions: 4, regionsY: 3, search: NC.SETTINGS.searchKm / km });
+      if (gen !== NCM.gen || R.mode !== "comp" || R.valid !== valid) return;
+      /* the motion on a 16-px lattice, then each forecast picture backward along it */
+      const f0 = fields[3], C = 16, cw = Math.ceil(W / C), ch = Math.ceil(H / C), mu = new Float32Array(cw * ch), mvv = new Float32Array(cw * ch);
+      for (let j = 0; j < ch; j++) for (let i = 0; i < cw; i++) { const q = NC.motionAt(m, i * C + C / 2, j * C + C / 2); mu[j * cw + i] = q.u; mvv[j * cw + i] = q.v; }
+      const frames = [];
+      for (let L = 10; m.known && L <= 60; L += 10) {
+        const out = ctx.createImageData(W, H), px = new Uint32Array(out.data.buffer);
+        for (let y = 0; y < H; y++) {
+          const row = ((y / C) | 0) * cw;
+          for (let x = 0; x < W; x++) {
+            const k = row + ((x / C) | 0), sx = Math.round(x - mu[k] * L), sy = Math.round(y - mvv[k] * L);
+            if (sx < 0 || sy < 0 || sx >= W || sy >= H) continue;
+            const d = f0.v[sy * W + sx];
+            if (d < 12) continue;
+            px[y * W + x] = RAIN_IDX[Math.max(1, Math.min(255, Math.round((d + 32.5) * 2)))];
+          }
+        }
+        const c = document.createElement("canvas"); c.width = W; c.height = H; c.getContext("2d").putImageData(out, 0, 0);
+        frames.push({ t: valid + L * 60e3, nc: { cv: c, zm, ox: tx0 * 256, oy: ty0 * 256, W, H, L } });
+      }
+      NCM.area = { valid, z: R.z, zm, ox: tx0 * 256, oy: ty0 * 256, W, H };
+      /* the forecast frames follow the observed ones on the timeline */
+      const keep = Math.min(R.frame, R.frames.filter((f) => !f.nc).length - 1);
+      for (const f of R.frames.filter((f) => f.nc)) f.el.remove();
+      R.frames = R.frames.filter((f) => !f.nc);
+      for (const f of frames) { const d = document.createElement("div"); d.className = "layer frame nc"; framesL.appendChild(d); R.frames.push({ ...f, el: d, tiles: new Map() }); }
+      $("#scrub").max = String(Math.max(0, R.frames.length - 1));
+      show(keep);
+    }
+    function paintNc(f, w, h, left, top) {
+      const cv = frameCanvas(f, w, h), ctx = cv.getContext("2d"), key = `${R.z}|${left}|${top}`;
+      if (f.painted === key) return;
+      f.painted = key;
+      const q = f.nc, sc = 2 ** (R.z - q.zm);
+      ctx.clearRect(0, 0, w, h);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(q.cv, q.ox * sc - left, q.oy * sc - top, q.W * sc, q.H * sc);
+    }
+
+    /* ── Weather's city temperatures and My Location, Apple's way (2026-10-23) ──
+       The biggest towns in view that do not crowd each other (Natural Earth's
+       populated places, read when the page runs — mapgeo.js; nothing kept),
+       each with its temperature now from Open-Meteo, asked twelve at a time
+       and rounded to a kilometre like every place this room asks about. */
+    const CITY = { places: null, asking: false, temps: new Map(), list: [], timer: 0, gen: 0 };
+    function citiesSoon() { if (PRO) return; clearTimeout(CITY.timer); CITY.timer = setTimeout(loadCities, 600); }
+    async function loadCities() {
+      if (PRO || !R.wl || !R.wl.temps || !R.started || R.mode === "replay" || !window.MapGeo) { if (CITY.list.length) { CITY.list = []; draw(); } return; }
+      if (!CITY.places) {
+        if (CITY.asking) return;
+        CITY.asking = true;
+        try { CITY.places = (await Wx.mapLayer("places")).places || []; } catch (e) { CITY.asking = false; return; }
+      }
+      const gen = ++CITY.gen, w = el.clientWidth, h = el.clientHeight, left = R.cx - w / 2, top = R.cy - h / 2;
+      const boxes = [], picks = [];
+      /* the place's own bubble, the key and the buttons keep their room */
+      if (S.place) { const x = lngX(S.place.lon, R.z) - left, y = latY(S.place.lat, R.z) - top; boxes.push([x - 40, y - 80, x + 40, y + 34]); }
+      /* …and so do whatever floats over the map: the key, the buttons, the timeline, the close button */
+      const mr = el.getBoundingClientRect();
+      for (const sel of ["#legend", ".radar .zoom", ".radarbar", "#mapclose", ".radar .credit"]) {
+        const e = el.closest("#radarcard").querySelector(sel);
+        if (!e || !e.offsetParent) continue;
+        const r = e.getBoundingClientRect();
+        if (r.right > mr.left && r.left < mr.right && r.bottom > mr.top && r.top < mr.bottom) boxes.push([r.left - mr.left - 6, r.top - mr.top - 6, r.right - mr.left + 6, r.bottom - mr.top + 6]);
+      }
+      for (const p of CITY.places) {
+        if (p[3] > R.z + 1.5) continue;
+        const x = lngX(p[1], R.z) - left, y = latY(p[2], R.z) - top;
+        if (x < 24 || y < 30 || x > w - 70 || y > h - 30) continue;
+        const b = [x - 34, y - 22, x + 34, y + 34];
+        if (boxes.some((q) => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1])) continue;
+        boxes.push(b); picks.push({ name: p[0], lon: p[1], lat: p[2] });
+        if (picks.length >= 10) break;
+      }
+      const key = (c) => `${Wx.coord(c.lat)},${Wx.coord(c.lon)}`;
+      const need = picks.filter((c) => { const t = CITY.temps.get(key(c)); return !t || Date.now() - t.at > 10 * 60e3; });
+      if (need.length) {
+        try {
+          const got = await Wx.several(need.slice(0, 12).map((c) => ({ lat: c.lat, lon: c.lon })));
+          need.slice(0, 12).forEach((c, i) => { if (got[i] && got[i].temp != null) CITY.temps.set(key(c), { temp: got[i].temp, at: Date.now() }); });
+        } catch (e) { /* the bubbles wait for the next move of the map */ }
+      }
+      if (gen !== CITY.gen) return;
+      CITY.list = picks.map((c) => ({ ...c, temp: (CITY.temps.get(key(c)) || {}).temp })).filter((c) => c.temp != null);
+      draw();
+    }
+    function cityMarks(out, pt) {
+      if (PRO || !R.wl || !R.wl.temps) return;
+      for (const c of CITY.list) {
+        const [x, y] = pt(c.lat, c.lon), X = x.toFixed(1), Y = y.toFixed(1);
+        out.push(`<g class="city"><circle cx="${X}" cy="${Y}" r="17" fill="#4a5568" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><text x="${X}" y="${(y + 5.5).toFixed(1)}" text-anchor="middle" class="ct">${Wx.fmt.temp(c.temp, U())}</text><text x="${X}" y="${(y + 33).toFixed(1)}" text-anchor="middle" class="cn">${esc(c.name)}</text></g>`);
+      }
+    }
+    function placeBubble(out, pt) {
+      if (!S.place) return;
+      const [x, y] = pt(S.place.lat, S.place.lon), fc = shown();
+      const cc = fc ? Wx.currentConditions(fc, S.obs || null) : null, t = cc && cc.temp && cc.temp.v;
+      const X = x.toFixed(1), by = y - 46;
+      const ic = cc ? icon(cc.kind, cc.isDay !== false).replace("<svg ", `<svg x="${(x - 9).toFixed(1)}" y="${(by + 5).toFixed(1)}" width="18" height="18" `) : "";
+      out.push(`<g class="me"><path d="M${(x - 7).toFixed(1)} ${(by + 22).toFixed(1)} L${X} ${(y - 10).toFixed(1)} L${(x + 7).toFixed(1)} ${(by + 22).toFixed(1)}Z" fill="#2f6fd0"/><circle cx="${X}" cy="${by.toFixed(1)}" r="27" fill="#2f6fd0" stroke="#0b1422" stroke-opacity=".5" stroke-width="2"/>`
+        + `<text x="${X}" y="${(by + 2).toFixed(1)}" text-anchor="middle" class="mt">${t != null ? Wx.fmt.temp(t, U()) + "°" : "–"}</text>${ic}`
+        + `<circle cx="${X}" cy="${y.toFixed(1)}" r="5" fill="#0b1422"/><circle cx="${X}" cy="${y.toFixed(1)}" r="3" fill="#cfd8e3"/>`
+        + `<text x="${X}" y="${(y + 20).toFixed(1)}" text-anchor="middle" class="cn">${esc(S.place.here ? "My Location" : S.place.name)}</text></g>`);
     }
 
     /* everything drawn over the tiles */
@@ -2801,7 +2959,9 @@
         const [qx, qy] = pt(R.pin.lat, R.pin.lon);
         out.push(`<circle cx="${qx.toFixed(1)}" cy="${qy.toFixed(1)}" r="7" fill="none" stroke="#fff" stroke-width="2.5"/><circle cx="${qx.toFixed(1)}" cy="${qy.toFixed(1)}" r="2.5" fill="#fff"/>`);
       }
-      if (S.place) {
+      cityMarks(out, pt);
+      if (S.place && !PRO) placeBubble(out, pt);
+      else if (S.place) {
         const [mx, my] = pt(S.place.lat, S.place.lon);
         out.push(`<circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="9" fill="rgba(255,255,255,.25)"/><circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="5" fill="#fff" stroke="#0b2342" stroke-width="2"/>`);
       }
@@ -2850,6 +3010,7 @@
       for (const s of sats) place(s.el, s.tiles, (z, x, y) => Wx.satTile(s.layer, z, x, y, satAt), w, h, left, top);
       syncPastSat(w, h, left, top);
       R.frames.forEach((f, i) => {
+        if (f.nc) { if (i === R.frame) paintNc(f, w, h, left, top); return; }
         /* Pro's own radar and model frames: painted while on screen, fetched
            ahead only while the loop plays */
         /* an archived volume is a megabyte or two: only the next one is fetched ahead, while playing */
@@ -2884,7 +3045,7 @@
       R.frames.forEach((f, j) => f.el.classList.toggle("on", j === i));
       if (!R.frames[i]) { $("#when").innerHTML = ""; return; }
       const f = R.frames[i];
-      if (!R.loadedOld || f.future || f.archive || (f.l3 && f.l3.l2 && f.l3.l2.archive)) draw();   // a replay's warnings change by the minute, and its next frame loads now
+      if (!R.loadedOld || f.future || f.nc || f.archive || (f.l3 && f.l3.l2 && f.l3.l2.archive)) draw();   // a replay's warnings change by the minute, and its next frame loads now
       /* a replay's stations follow the frame, twenty minutes at a time */
       if (R.mode === "replay" && R.stations) { const ft = frameTime(f); if (ft != null && Math.round(ft / 1200e3) * 1200e3 !== R.obsSlot) stationsSoon(); }
       $("#scrub").value = String(i);
@@ -2901,6 +3062,9 @@
         /* an archived volume says its date, as the mosaic's replay does; a live scan its age */
         when.innerHTML = arch ? `${esc(timeFmt(t))}<small>${esc(dayFmt(t))}${F ? ` · ${F.elev.toFixed(1)}°` : f.l3.err ? " · failed" : " · loading"}</small>`
           : `${esc(clk().time(t))}<small>${Wx.age(Date.now() - t)} ago${F ? ` · ${F.elev.toFixed(1)}°` : " · loading"}${F && F.motionText ? ` · ${esc(F.motionText)}` : ""}</small>`;
+      } else if (f.nc) {
+        const k = clk();
+        when.innerHTML = `${esc(k.time(f.t))}<small>forecast · in ${Wx.age(Math.max(60e3, f.t - Date.now()))}</small>`;
       } else if (f.future && f.t) {
         const k = clk(), d = f.t - Date.now(), day = k.ymd(f.t) !== k.ymd(Date.now()) ? k.day(f.t) + " " : "";
         when.innerHTML = `${esc(day + k.time(f.t))}<small>forecast · ${Math.abs(d) < 8 * 60e3 ? "now" : d > 0 ? "in " + Wx.age(d) : Wx.age(-d) + " ago"}</small>`;
@@ -3420,6 +3584,7 @@
       $("#zfull").setAttribute("aria-label", on ? "Leave the full-screen map" : "Full-screen map");
       if (on) start();
       requestAnimationFrame(draw);
+      if (!PRO) { citiesSoon(); if (R.mode === "comp") ncSoon(); }
     }
     $("#zfull").addEventListener("click", () => full(!$("#radarcard").classList.contains("mapfull")));
     if ($("#mapclose")) $("#mapclose").addEventListener("click", () => full(false));
@@ -3428,10 +3593,10 @@
       const btn = $("#wxlayersbtn"), menu = $("#wxmenu");
       const apply = () => {
         R.outlook = !!R.wl.outlook;
-        if (R.stations !== !!R.wl.stations) { R.stations = !!R.wl.stations; if (R.stations) loadStations(); else { R.obs = []; } }
+        if (R.wl.temps) citiesSoon(); else CITY.list = [];
         if ((R.sat === "ir") !== !!R.wl.clouds) setSat(R.wl.clouds ? "ir" : "");
         menu.querySelectorAll("[data-wl]").forEach((b) => b.setAttribute("aria-checked", String(!!R.wl[b.dataset.wl])));
-        btn.classList.toggle("some", ["warn", "outlook", "stations", "clouds"].some((k) => R.wl[k] && k !== "warn"));
+        btn.classList.toggle("some", ["outlook", "clouds"].some((k) => R.wl[k]));
         draw(); label();
       };
       const open = (on) => { menu.hidden = !on; btn.setAttribute("aria-expanded", String(on)); };

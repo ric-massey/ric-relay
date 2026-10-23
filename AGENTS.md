@@ -751,7 +751,11 @@ ones that must never break:
   redrawn from IEM's exact palette into one Light → Extreme ramp (`rainTile` in
   `app.js`), one zoom finer and softened into areas; the map is **rain only** —
   warnings (on by default), the outlook, temperatures and clouds are in its layers
-  menu (`R.wl`), never switched on by the page; and a tap on the small map opens it
+  menu (`R.wl`), never switched on by the page — city temperatures are the one
+  overlay on by default besides warnings; the timeline runs an hour past now on
+  the room's own nowcast (rain only, labelled "forecast", the same `motion()` and
+  `SETTINGS` the nightly grade holds — change one, the other follows); the place
+  is an Apple-style "My Location" round; and a tap on the small map opens it
   full screen. Don't put the NWS colours, a filled or automatic outlook back on
   Weather, and don't bring the Apple ramp to Pro.
 - **Pro's map comes first** (2026-10-23, Ric: "make it cleaner and easier to use

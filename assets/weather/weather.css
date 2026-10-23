@@ -932,3 +932,7 @@ button.wxrow:hover{background:rgba(255,255,255,.07)}
 /* the rain softened into areas, as Apple draws it, rather than the radar's
    single cells — only the rain layer, never the map or its labels */
 body:not([data-view="pro"]) .radar #radarframes .frame:not(.future){filter:blur(.9px) saturate(1.15)}
+/* Weather's map marks, Apple's: city temperatures in slate rounds, the place in a blue one */
+.radar svg.over .city .ct{font:700 15px var(--sans,system-ui);fill:#fff}
+.radar svg.over .cn{font:600 12px var(--sans,system-ui);fill:#fff;paint-order:stroke;stroke:#14171c;stroke-width:3px;stroke-linejoin:round}
+.radar svg.over .me .mt{font:700 17px var(--sans,system-ui);fill:#fff}
