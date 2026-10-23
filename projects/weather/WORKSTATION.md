@@ -1,7 +1,9 @@
-# Weather Pro as a workstation — plan, not built yet
+# Weather Pro as a workstation — built 2026-10-23
 
-> **TO DO — soon.** Ric (2026-10-23) asked for this to be saved and worked on "at
-> some point in time soon". Nothing here is built. It is the direction for Weather
+> **Built 2026-10-23** (Ric: "finish what the AI needs to do"). Ric (2026-10-23) had
+> asked for this to be saved and worked on "at some point in time soon"; the
+> checklist at the bottom says how each piece landed. What is left is Ric's:
+> trying it with the storm-chaser friend. It is the direction for Weather
 > Pro (`weather-pro.html`); `DESIGN.md` stays the source of truth for the room, and
 > this note extends its §43 ("User-defined dashboards", "Shareable analysis links").
 > When a piece of it ships, move it into `README.md` → "Built so far" and tick it
@@ -119,21 +121,40 @@ repo (hard rule 1 — saved workspaces store layout, never a location; a visitor
 place stays in their own localStorage, rounded as today), no go/no-go verdicts,
 warnings and storm mode stay on both pages, Pro keeps its own dark amber look.
 
-- [ ] A panel model: each existing Pro card (radar, satellite, models, soundings,
-      MRMS, lightning, record) wrapped as a panel with a common `setPlace` /
-      `setTime` interface
-- [ ] One shared place + time bus; forecast panels follow valid time, observation
-      panels show their own time and say how far it is from the bus time
-      (a first slice is in, 2026-10-23: on the one map, lightning follows the
-      frame on screen and a layer switch keeps the moment — `frameTime` in
-      `app.js`; README → "the review's eight")
-- [ ] Model / run / valid / observed labels on every panel header
-- [ ] Explore: the tool list grouped by what it measures
-- [ ] Workspaces: save / rename / duplicate in localStorage; share as a link that
-      carries layout + time + layers but **no coordinates** unless the visitor
-      chooses to include theirs
-- [ ] Presets: Forecast Analysis first, then Severe Weather; others only once validated
-- [ ] Phone layout: panels stack, sync still works
-- [ ] Tests in `test/` for the bus and the share-link (no coordinates leak), added to
-      `.github/checks.mjs`
-- [ ] Try it with the storm-chaser friend
+- [x] A panel model. **How it was built (2026-10-23):** the map is the panel. Every
+      map beside the main one is Weather Pro itself in a frame (`?panel=1`), showing
+      only its map — so every product (radar, satellite, models, MRMS, lightning,
+      replay) works in a panel exactly as on the main map, with nothing rewritten.
+      `app.js`'s map exposes `view`/`setView`, `stamp`/`setTime` and
+      `layer`/`setLayer` (`radar.panel`); frames talk to the page by postMessage,
+      checked for origin and sender both ways. The readout cards (sounding, models,
+      discussion, mesoanalysis, record…) are panels the page arranges — shown,
+      hidden, reordered — and the sounding follows the shared time too
+      (`sky.setTime`). At most four maps beside the main one.
+- [x] One shared place + time bus (`assets/weather/workstation.js`). Move or zoom
+      any map and the rest follow; step any loop, or the sounding's hour, and every
+      map goes to its frame nearest that moment. A forecast goes to its valid hour;
+      an observation keeps its own scan time; a map with nothing near keeps its
+      frame. Only the visitor's own steps move the others — a map finishing loading
+      does not. "Now" brings everything back. Place and time can each be unsynced.
+- [x] Model / run / valid / observed labels on every map's header, and how far
+      each is from the shared time ("observed 10:51 PM · 10 min after the shared
+      time"; "run 18Z · valid Fri 9:00 PM"). The cards carry their own sources and
+      ages, as they always have.
+- [x] Explore: every tool grouped by what it measures — radar, satellite, models,
+      soundings, observations, lightning, forecasts, historical — each onto the
+      main map or into a new map (built from the product lists themselves, so a
+      new product appears in it without editing it).
+- [x] Workspaces: save, rename, duplicate, delete, in this browser; the layout
+      last used comes back on the next visit. Shared as `#ws=…` — layers, maps,
+      cards, what is synced — with the main map's view (`&v=`, to 0.1°) and the
+      shared time (`&at=`) only if the visitor ticks them. A link from outside can
+      put nothing but layers on the page (`clean()`).
+- [x] Presets: Default, Forecast Analysis (GFS and ECMWF 500 mb, MSLP, GOES water
+      vapour), Severe Weather (site reflectivity with watches, cells, reports and
+      lightning; SRV; effective STP; rotation tracks). No more until these are tried.
+- [x] Phone layout: maps stack one under another, full width, sync unchanged.
+- [x] Tests: `test/workstation.test.mjs` (no place in a workspace or a default
+      link, what a link can put on the page, the headers, the presets) in
+      `.github/checks.mjs`.
+- [ ] Try it with the storm-chaser friend — Ric's to do.

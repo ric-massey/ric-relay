@@ -20,6 +20,7 @@ is historical — every room that writes anything writes here:
 | `/wx` | Weather | the weather room's providers passed through and cached (`projects/weather/README.md`, "How a request travels") |
 | `/cs` | Counter-Strike | `/cs/replay/<id>`: the match replays, in R2 (`projects/cs/README.md`) |
 | `/meso` | Weather Pro | the hourly mesoanalysis, in R2 for a day: `PUT /meso/<YYYYMMDDHH>` from `projects/weather/meso/build.mjs` (site password; only a mesoanalysis file for that hour is taken), `GET /meso/index` and `GET /meso/<hour>` public |
+| `/rap` | Weather Pro | the RAP model's native-grid files passed through (NOAA's `noaa-rap-pds` sends no CORS header): only `rap.YYYYMMDD/rap.tHHz.wrfprsfNN.grib2` and its `.idx`, and the listing of one run; a single byte range passed on, the bytes streamed untouched, nothing stored; read-only |
 | `/auth` | all of them | Ric's sign-in (`assets/owner.js`) |
 
 It lived in `projects/training/server/` until 2026-09-25. The deployed name

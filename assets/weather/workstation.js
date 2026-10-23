@@ -1,0 +1,522 @@
+/* Weather Pro's workstation — panels on one shared place and time
+   ────────────────────────────────────────────────────────────────────────────
+   WORKSTATION.md's plan (Ric, 2026-10-23: "worked on at some point in time
+   soon"; 2026-10-22: "finish what the AI needs to do"). Pro stays one page;
+   what this adds:
+
+     panels      more maps beside the main one, each any layer the main map
+                 can show. A panel is this same page in a frame with
+                 ?panel=1 — only its map (app.js) — so every product works in
+                 a panel exactly as it does on the main map, with nothing
+                 rewritten. Frames talk to this page by postMessage, checked
+                 for origin and sender both ways, as the front door's does.
+     the bus     one place and one time. Move or zoom any map and the others
+                 follow; step any loop (or the sounding's hour) and the others
+                 go to their frame nearest that moment. A forecast panel goes
+                 to its valid hour; an observation keeps its own scan time and
+                 its header says how far that is from the shared time.
+     headers     every map says what it shows and when: observed, analysis,
+                 or a forecast with its run and valid time.
+     workspaces  the layout — the main map's layers, the panels', which
+                 readout cards show and in what order, what is synced — saved
+                 by name in this browser, duplicated, renamed, shared as a
+                 link. A layout never holds a place: a link carries the map's
+                 view only if the visitor ticks it (hard rule 1, and the
+                 room's: a visitor's place stays in their own browser).
+     presets     Forecast Analysis and Severe Weather. A preset never limits
+                 what can be opened: Explore lists every tool, grouped by what
+                 it measures, and puts any of them on the main map or in a
+                 new panel.
+
+   The pure part (the workspace's shape, the link) is exported for
+   test/workstation.test.mjs; the page part runs only in a browser. */
+(function (root) {
+  'use strict';
+
+  /* ── the workspace: its shape, and the only words it is written in ── */
+  const MAX_PANELS = 4;
+  /* the readout cards a workspace may arrange; warnings are never hidden */
+  const CARDS = ['hero', 'alerts', 'nearby', 'national', 'sky', 'afd', 'meso', 'models', 'record', 'sources'];
+  const LOCKED = ['alerts', 'nearby', 'national'];
+  const CARD_NAMES = { hero: 'Now and the forecast', alerts: 'Official alerts', nearby: 'Warnings nearby', national: 'Warnings across the US', sky: 'The air above you (sounding)',
+    afd: 'Forecast discussion', meso: 'SPC mesoanalysis', models: 'Compare the models', record: 'How accurate it has been here', sources: 'Where this comes from' };
+  /* a layer string is app.js's link words: l=…&s=…&o=…&m=…&r=…&g=…&t=…&a=…&k=…
+     — anything else is not one. `v` (a place) is never part of a layer. */
+  const LAYER_KEYS = ['l', 's', 'o', 'm', 'r', 'g', 't', 'a', 'k'];
+  function cleanLayer(str) {
+    if (typeof str !== 'string' || str.length > 300) return null;
+    const q = new URLSearchParams(str.replace(/^#/, '')), out = new URLSearchParams();
+    for (const k of LAYER_KEYS) {
+      const v = q.get(k);
+      if (v != null && /^[A-Za-z0-9:._-]{0,40}$/.test(v)) out.set(k, v);
+    }
+    return out.get('l') ? out.toString().replace(/%3A/g, ':') : null;
+  }
+  /* two ways of writing the same layers say the same thing: an empty value
+     and the lowest tilt (the default) are left out, the overlays' letters
+     are a set, and the browser's mesoanalysis is the server's standing in
+     for it (app.js falls back to it when the server has nothing recent) */
+  function sameLayer(a, b) {
+    const canon = (x) => {
+      const q = new URLSearchParams(cleanLayer(x) || '');
+      return [...q].filter(([k, v]) => v !== '' && !(k === 't' && v === '0'))
+        .map(([k, v]) => [k, k === 'o' ? [...v].sort().join('') : k === 'm' ? v.replace(/^meso\./, 'smeso.') : v]).sort().map(([k, v]) => k + '=' + v).join('&');
+    };
+    return canon(a) === canon(b);
+  }
+  function sameWorkspace(a, b) {
+    a = clean(a); b = clean(b);
+    if (!a || !b) return false;
+    return (a.main == null || b.main == null || sameLayer(a.main, b.main)) && a.panels.length === b.panels.length && a.panels.every((x, i) => sameLayer(x, b.panels[i]))
+      && a.cards.order.join() === b.cards.order.join() && a.cards.hidden.slice().sort().join() === b.cards.hidden.slice().sort().join()
+      && a.sync.place === b.sync.place && a.sync.time === b.sync.time;
+  }
+  function cleanName(n) { return String(n == null ? '' : n).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40); }
+  function clean(ws) {
+    if (!ws || typeof ws !== 'object') return null;
+    const order = Array.isArray(ws.cards && ws.cards.order) ? ws.cards.order.filter((c) => CARDS.includes(c)) : [];
+    for (const c of CARDS) if (!order.includes(c)) order.push(c);
+    const hidden = Array.isArray(ws.cards && ws.cards.hidden) ? ws.cards.hidden.filter((c) => CARDS.includes(c) && !LOCKED.includes(c)) : [];
+    return {
+      v: 1,
+      name: cleanName(ws.name) || 'Shared workspace',
+      main: cleanLayer(ws.main),
+      panels: (Array.isArray(ws.panels) ? ws.panels : []).map(cleanLayer).filter(Boolean).slice(0, MAX_PANELS),
+      cards: { order, hidden: [...new Set(hidden)] },
+      sync: { place: !(ws.sync && ws.sync.place === false), time: !(ws.sync && ws.sync.time === false) }
+    };
+  }
+
+  const PRESETS = [
+    clean({ name: 'Default', main: null, panels: [] }),
+    /* the pattern and the next days: the 500 mb trough in two models, the
+       surface, and the water vapour that shows the jet's moisture */
+    clean({ name: 'Forecast Analysis', main: 'l=model&o=w&m=gfs.h500',
+      panels: ['l=model&o=&m=ecmwf.h500', 'l=model&o=&m=gfs.mslp', 'l=abi&o=&g=b9.conus.auto'],
+      cards: { order: ['hero', 'alerts', 'nearby', 'national', 'models', 'afd', 'sky', 'record', 'sources', 'meso'], hidden: ['meso'] } }),
+    /* a storm day: the radar's own reflectivity with watches, cells, reports
+       and lightning; storm-relative velocity; the environment's effective
+       STP; the rotation tracks */
+    clean({ name: 'Severe Weather', main: 'l=l3:ref&o=wcrl',
+      panels: ['l=l3:srv&o=wc', 'l=model&o=w&m=smeso.stpe', 'l=mrms&o=w&r=rot60'],
+      cards: { order: ['alerts', 'nearby', 'national', 'sky', 'meso', 'hero', 'models', 'sources', 'afd', 'record'], hidden: ['afd', 'record'] } })
+  ];
+
+  /* ── the link ──
+     #ws=<the workspace, base64url JSON>, and only if asked, &v=<the main
+     map's view> and &at=<the shared time>. Nothing else of the page goes in. */
+  const b64 = (s) => (typeof btoa === 'function' ? btoa(unescape(encodeURIComponent(s))) : Buffer.from(s, 'utf8').toString('base64')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const unb64 = (s) => { s = s.replace(/-/g, '+').replace(/_/g, '/'); return typeof atob === 'function' ? decodeURIComponent(escape(atob(s))) : Buffer.from(s, 'base64').toString('utf8'); };
+  function linkHash(ws, { view = null, at = null } = {}) {
+    const w = clean(ws);
+    let h = `ws=${b64(JSON.stringify(w))}`;
+    if (view && /^-?\d{1,2}(\.\d)?,-?\d{1,3}(\.\d)?,\d{1,2}$/.test(view)) h += `&v=${view}`;
+    if (Number.isFinite(at)) h += `&at=${Math.round(at / 60e3) * 60e3}`;
+    return h;
+  }
+  function readHash(hash) {
+    const q = new URLSearchParams(String(hash || '').replace(/^#/, ''));
+    const raw = q.get('ws');
+    if (!raw || raw.length > 4000) return null;
+    let ws = null;
+    try { ws = clean(JSON.parse(unb64(raw))); } catch (e) { return null; }
+    if (!ws) return null;
+    const v = q.get('v'), at = Number(q.get('at'));
+    return { ws, view: v && /^-?\d{1,2}(\.\d)?,-?\d{1,3}(\.\d)?,\d{1,2}$/.test(v) ? v : null, at: Number.isFinite(at) && at > 0 ? at : null };
+  }
+
+  /* ── what a panel's header says ── */
+  function stampText(st, busT, fmt) {
+    if (!st || !st.layer) return 'starting…';
+    if (!Number.isFinite(st.t)) return `${st.layer} · loading`;
+    const hz = (ms) => new Date(ms).toISOString().slice(11, 13) + 'Z';
+    /* a week or more away, the date itself; nearer, the weekday */
+    const far = (ms) => Math.abs(ms - Date.now()) > 6 * 86400e3;
+    const dayOf = (ms) => (far(ms) ? fmt.ymd(ms) : fmt.day(ms)) + ' ';
+    const when = fmt.time(st.t), day = fmt.ymd(st.t) !== fmt.ymd(Date.now()) ? dayOf(st.t) : '';
+    let s = st.layer + ' · ';
+    if (st.kind === 'forecast') s += `${st.run ? `run ${hz(st.run)} ${fmt.ymd(st.run) !== fmt.ymd(st.t) ? dayOf(st.run) : ''}· ` : ''}valid ${day}${when}`;
+    else if (st.kind === 'analysis') s += `analysis ${day}${when}`;
+    else if (st.kind === 'archive') s += `archive ${fmt.day(st.t)} ${fmt.ymd(st.t).slice(0, 10)} ${when}`;
+    else s += `observed ${day}${when}`;
+    /* an observation is never "after now": a scan stamped ahead of this computer's clock is the clock's error */
+    const ref = busT == null ? Date.now() : busT, d = busT == null && st.kind !== 'forecast' ? Math.min(0, st.t - ref) : st.t - ref, a = Math.abs(d);
+    if (a >= 2 * 60e3 && st.kind !== 'archive' && !(busT == null && far(st.t))) {
+      const amt = a < 3600e3 ? `${Math.round(a / 60e3)} min` : a < 48 * 3600e3 ? `${Math.round(a / 3600e3)} h` : `${Math.round(a / 86400e3)} days`;
+      s += ` · ${amt} ${d < 0 ? 'before' : 'after'} ${busT == null ? 'now' : 'the shared time'}`;
+    }
+    return s;
+  }
+
+  const api = { MAX_PANELS, CARDS, LOCKED, PRESETS, cleanLayer, sameLayer, sameWorkspace, clean, linkHash, readHash, stampText };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (typeof document === 'undefined') return;
+  root.WxWorkstation = api;
+
+  const PRO = document.body.dataset.view === 'pro';
+  if (!PRO) return;
+  const PANEL = new URLSearchParams(location.search).has('panel');
+  const MSG = 'wxws';
+  const ORIGIN = location.origin === 'null' ? '*' : location.origin;
+  /* opened as a file, a frame's origin is "null" and so is nobody else's that matters here */
+  const fromHere = (e, win) => e.source === win && (e.origin === location.origin || location.protocol === 'file:') && e.data && e.data[MSG] === 1;
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+
+  /* A shared link: the main map's layers go in the address app.js reads as
+     it starts (with the view, if the link carries one); the rest waits for
+     the page. This runs before app.js, which is why this file loads first. */
+  let linked = null;
+  if (!PANEL) {
+    linked = readHash(location.hash);
+    if (linked) history.replaceState(null, '', location.pathname + location.search + '#' + (linked.view ? `v=${linked.view}&` : '') + (linked.ws.main || ''));
+  }
+  addEventListener('DOMContentLoaded', () => { if (root.WxPro) (PANEL ? panelSide : pageSide)(root.WxPro); });
+
+  /* ── inside a panel: tell the page, and do what it says ── */
+  function panelSide(Pro) {
+    if (parent === root) return;
+    const map = Pro.map;
+    const up = (m) => parent.postMessage({ [MSG]: 1, ...m }, ORIGIN);
+    map.on((type, data) => up({ type, data, layer: map.layer }));
+    addEventListener('message', (e) => {
+      if (!fromHere(e, parent)) return;
+      const m = e.data;
+      if (m.type === 'view') map.setView(m.lat, m.lon, m.z);
+      /* "now": a forecast goes to the hour nearest now, anything else to its newest frame */
+      else if (m.type === 'time') map.setTime(m.t == null ? (map.stamp.kind === 'forecast' ? Date.now() : null) : m.t);
+      else if (m.type === 'layer') map.setLayer(m.str);
+    });
+    up({ type: 'ready', data: map.stamp, layer: map.layer });
+  }
+
+  /* ── the page: the bus, the panels, the workspaces ── */
+  function pageSide(Pro) {
+    const $ = (s) => document.querySelector(s);
+    const bar = $('#wsbar'), box = $('#panels'), cardsEl = $('#cards');
+    if (!bar || !box) return;
+    const main = Pro.map;
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const W = { name: 'Default', saved: false, panels: [], cards: clean({}).cards, sync: { place: true, time: true }, busT: null, mainStamp: null, n: 0 };
+
+    /* the shared time: null is "now" */
+    function setBus(t, from) {
+      W.busT = t;
+      if (from !== main) main.setTime(t == null ? (main.stamp.kind === 'forecast' ? Date.now() : null) : t);
+      for (const p of W.panels) if (p !== from) post(p, { type: 'time', t });
+      if (from !== Pro.sky) Pro.sky.setTime(t == null ? Date.now() : t);
+      stamps();
+    }
+    const busFrom = (st) => (st.newest && st.kind !== 'forecast' && st.kind !== 'archive' ? null : st.t);
+    function shareView(v, from) {
+      if (!W.sync.place) return;
+      if (from !== main) main.setView(v.lat, v.lon, v.z);
+      for (const p of W.panels) if (p !== from) post(p, { type: 'view', lat: v.lat, lon: v.lon, z: v.z });
+    }
+    main.on((type, data) => {
+      if (type === 'stamp') {
+        W.mainStamp = data; stamps();
+        if (W.mainLayer !== main.layer) { W.mainLayer = main.layer; store.set('wx:wscurrent', current()); renderSel(); }
+      }
+      else if (type === 'view') shareView(data, main);
+      else if (type === 'time' && W.sync.time) setBus(busFrom(data), main);
+    });
+    Pro.sky.onHour = (ms) => { if (W.sync.time) setBus(ms, Pro.sky); };
+
+    /* ── panels ── */
+    const post = (p, m) => { if (p.ready && p.frame.contentWindow) p.frame.contentWindow.postMessage({ [MSG]: 1, ...m }, ORIGIN); };
+    function addPanel(str, { quiet } = {}) {
+      str = cleanLayer(str);
+      if (!str) return null;
+      if (W.panels.length >= MAX_PANELS) { say(`Four panels at most — each is a whole map, and a fifth would slow every one of them.`); return null; }
+      const n = ++W.n, sec = document.createElement('section');
+      sec.className = 'card mpanel';
+      sec.innerHTML = `<h2 class="phead"><span class="pn">Map ${W.panels.length + 2}</span><span class="pst" aria-live="polite">starting…</span>
+        <button type="button" data-pmain title="Swap this with the main map" aria-label="Swap with the main map"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 5h9l-3-3M12 9H3l3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button type="button" data-px aria-label="Remove this map">×</button></h2>`;
+      const frame = document.createElement('iframe');
+      frame.title = `Map panel ${n}`;
+      const v = main.viewString();
+      frame.src = `${location.pathname}?panel=1#v=${v}&${str}`;
+      sec.appendChild(frame);
+      box.appendChild(sec);
+      const p = { n, str, sec, frame, ready: false, stamp: null };
+      W.panels.push(p);
+      sec.addEventListener('click', (e) => {
+        if (e.target.closest('[data-px]')) removePanel(p);
+        else if (e.target.closest('[data-pmain]')) swap(p);
+      });
+      layout();
+      if (!quiet) changed();
+      return p;
+    }
+    function removePanel(p) {
+      W.panels = W.panels.filter((x) => x !== p);
+      p.sec.remove();
+      layout(); changed();
+    }
+    /* the panel's layers onto the main map, and the main map's into the panel */
+    async function swap(p) {
+      const was = main.layer, to = p.str;
+      p.str = was; post(p, { type: 'layer', str: was });
+      await main.setLayer(to);
+      changed();
+    }
+    function layout() {
+      box.hidden = !W.panels.length;
+      document.querySelector('.workspace').classList.toggle('has-panels', W.panels.length > 0);
+      W.panels.forEach((p, i) => { p.sec.querySelector('.pn').textContent = `Map ${i + 2}`; p.frame.title = `Map ${i + 2}: ${p.stamp ? p.stamp.layer : 'starting'}`; });
+      box.dataset.n = String(W.panels.length);
+    }
+    addEventListener('message', (e) => {
+      const p = W.panels.find((x) => x.frame.contentWindow === e.source);
+      if (!p || !fromHere(e, p.frame.contentWindow)) return;
+      const m = e.data;
+      if (m.layer && cleanLayer(m.layer) && !sameLayer(m.layer, p.str)) { p.str = cleanLayer(m.layer); changed(); }
+      if (m.type === 'ready') {
+        p.ready = true;
+        const v = main.view;
+        post(p, { type: 'view', lat: v.lat, lon: v.lon, z: v.z });
+        if (W.busT != null) post(p, { type: 'time', t: W.busT });
+        p.stamp = m.data; stamps();
+      } else if (m.type === 'stamp') { p.stamp = m.data; stamps(); }
+      else if (m.type === 'view') shareView(m.data, p);
+      else if (m.type === 'time' && W.sync.time) setBus(busFrom(m.data), p);
+      else if (m.type === 'pick') {
+        const d = m.data || {};
+        if (d.what === 'sky') Pro.sky.at(d.lat, d.lon, d.name || 'the tapped point');
+        else Pro.choose({ name: d.name || 'Map point', region: '', lat: d.lat, lon: d.lon });
+      }
+    });
+
+    /* ── headers and the clock ── */
+    const fmt = { time: Pro.time, day: Pro.day, ymd: Pro.ymd };
+    function stamps() {
+      const ms = $('#mainstamp');
+      if (ms) ms.textContent = W.mainStamp ? stampText(W.mainStamp, W.busT, fmt) : '';
+      for (const p of W.panels) { const el = p.sec.querySelector('.pst'); if (el) el.textContent = stampText(p.stamp, W.busT, fmt); }
+      const c = $('#wsclock');
+      if (c) c.textContent = !W.sync.time ? 'each map keeps its own time' : W.busT == null ? 'shared time: now' : `shared time: ${fmt.ymd(W.busT) !== fmt.ymd(Date.now()) ? fmt.day(W.busT) + ' ' : ''}${fmt.time(W.busT)}`;
+      const live = $('#wslive');
+      if (live) live.hidden = !W.sync.time || W.busT == null;
+    }
+    $('#wslive').addEventListener('click', () => setBus(null, null));
+    for (const [id, k] of [['#wsplace', 'place'], ['#wstime', 'time']]) {
+      const el = $(id);
+      el.checked = W.sync[k];
+      el.addEventListener('change', () => {
+        W.sync[k] = el.checked;
+        if (k === 'place' && el.checked) shareView(main.view, main);
+        if (k === 'time') { if (el.checked) setBus(busFrom(main.stamp), main); stamps(); }
+        changed();
+      });
+    }
+    function say(text) {
+      const n = $('#wsnote');
+      if (!n) return;
+      n.textContent = text; n.hidden = !text;
+      clearTimeout(say.t); if (text) say.t = setTimeout(() => { n.hidden = true; }, 7000);
+    }
+
+    /* ── cards ── */
+    function arrangeCards() {
+      for (const id of W.cards.order) { const el = document.getElementById(id); if (el && el.parentNode === cardsEl) cardsEl.appendChild(el); }
+      for (const id of CARDS) { const el = document.getElementById(id); if (el) el.classList.toggle('ws-off', W.cards.hidden.includes(id)); }
+    }
+
+    /* ── the workspace: now, applied, saved ── */
+    const current = () => clean({ name: W.name, main: main.layer, panels: W.panels.map((p) => p.str), cards: W.cards, sync: W.sync });
+    const savedList = () => (store.get('wx:workspaces', []) || []).map(clean).filter(Boolean);
+    function changed() {
+      store.set('wx:wscurrent', current());
+      renderSel();
+    }
+    const dirty = () => !W.ref || !sameWorkspace(current(), W.ref);
+    async function apply(ws, { mainToo = true } = {}) {
+      ws = clean(ws);
+      if (!ws) return;
+      W.name = ws.name; store.set('wx:wsname', ws.name);
+      for (const p of W.panels.slice()) { p.sec.remove(); }
+      W.panels = [];
+      W.cards = ws.cards; arrangeCards();
+      W.sync = ws.sync; $('#wsplace').checked = ws.sync.place; $('#wstime').checked = ws.sync.time;
+      if (mainToo && ws.main) await main.setLayer(ws.main);
+      for (const s of ws.panels) addPanel(s, { quiet: true });
+      layout(); stamps();
+      W.ref = clean({ ...ws, main: ws.main || null });
+      store.set('wx:wscurrent', current());
+      renderSel();
+    }
+    function renderSel() {
+      const sel = $('#wssel'), saved = savedList();
+      const d = dirty();
+      const opt = (n, g) => `<option value="${g}:${esc(n)}"${n === W.name ? ' selected' : ''}>${esc(n)}${n === W.name && d ? ' · changed' : ''}</option>`;
+      sel.innerHTML = `<optgroup label="Presets">${PRESETS.map((p) => opt(p.name, 'p')).join('')}</optgroup>`
+        + (saved.length ? `<optgroup label="Saved in this browser">${saved.map((s) => opt(s.name, 's')).join('')}</optgroup>` : '')
+        + (![...PRESETS, ...saved].some((x) => x.name === W.name) ? `<optgroup label="Open">${opt(W.name, 'o')}</optgroup>` : '');
+    }
+    $('#wssel').addEventListener('change', (e) => {
+      const [g, ...rest] = e.target.value.split(':'), n = rest.join(':');
+      const ws = g === 'p' ? PRESETS.find((p) => p.name === n) : g === 's' ? savedList().find((s) => s.name === n) : null;
+      if (ws) { apply(ws); store.set('wx:wsname', ws.name); }
+    });
+
+    /* ── add a map ── */
+    $('#wsadd').addEventListener('click', () => {
+      /* a new panel opens on what the main map shows, ready to be changed */
+      const p = addPanel(main.layer);
+      if (p) p.sec.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
+    });
+
+    /* ── share ── */
+    $('#wsshare').addEventListener('click', () => openSheet('#wsshareit'));
+    $('#wsmakelink').addEventListener('click', () => {
+      const withView = $('#wsincview').checked, withTime = $('#wsinctime').checked && W.busT != null;
+      const url = `${location.origin}${location.pathname}#${linkHash(current(), { view: withView ? main.viewString() : null, at: withTime ? W.busT : null })}`;
+      const out = $('#wslinkout');
+      out.value = url; out.hidden = false; out.select();
+      const done = () => { $('#wslinkmsg').textContent = withView ? 'Copied. It opens this layout, looking where your main map looks.' : 'Copied. It opens this layout — no place is in it.'; };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => { $('#wslinkmsg').textContent = 'Copy the link above.'; });
+      else $('#wslinkmsg').textContent = 'Copy the link above.';
+    });
+
+    /* ── save, rename, duplicate, delete ── */
+    $('#wssave').addEventListener('click', () => { $('#wsnamein').value = PRESETS.some((p) => p.name === W.name) ? `${W.name} (mine)` : W.name; renderSaved(); openSheet('#wssheet'); });
+    function putSaved(ws) {
+      const list = savedList().filter((s) => s.name !== ws.name);
+      list.push(ws); store.set('wx:workspaces', list.slice(-20));
+    }
+    function renderSaved() {
+      const list = savedList(), ul = $('#wssavedlist');
+      ul.innerHTML = list.length ? list.map((s) => `<li><span>${esc(s.name)}<small>${s.panels.length + 1} map${s.panels.length ? 's' : ''}</small></span>
+        <button type="button" data-wsopen="${esc(s.name)}">Open</button><button type="button" data-wsdup="${esc(s.name)}">Duplicate</button><button type="button" data-wsdel="${esc(s.name)}" aria-label="Delete ${esc(s.name)}">Delete</button></li>`).join('')
+        : '<li class="none">Nothing saved yet. Workspaces are kept in this browser only.</li>';
+    }
+    $('#wssaveform').addEventListener('submit', (e) => {
+      e.preventDefault();
+      let n = cleanName($('#wsnamein').value);
+      if (!n) return;
+      if (PRESETS.some((p) => p.name === n)) n += ' (mine)';
+      const was = W.name;
+      W.name = n; putSaved(current());
+      /* renaming a saved one: the old name goes */
+      if ($('#wsrename').checked && was !== n && savedList().some((s) => s.name === was)) store.set('wx:workspaces', savedList().filter((s) => s.name !== was));
+      W.ref = current(); store.set('wx:wsname', n); store.set('wx:wscurrent', current());
+      renderSel(); renderSaved(); say(`Saved “${n}” in this browser.`);
+    });
+    $('#wssavedlist').addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      const list = savedList();
+      if (b.dataset.wsopen) { const ws = list.find((s) => s.name === b.dataset.wsopen); if (ws) { apply(ws); closeSheet('#wssheet'); } }
+      else if (b.dataset.wsdup) {
+        const ws = list.find((s) => s.name === b.dataset.wsdup);
+        if (!ws) return;
+        let n = `${ws.name} copy`, k = 2;
+        while (list.some((s) => s.name === n)) n = `${ws.name} copy ${k++}`;
+        putSaved({ ...ws, name: cleanName(n) }); renderSaved(); renderSel();
+      } else if (b.dataset.wsdel) { store.set('wx:workspaces', list.filter((s) => s.name !== b.dataset.wsdel)); renderSaved(); renderSel(); }
+    });
+
+    /* ── arrange: the cards, and the maps ── */
+    $('#wsarrange').addEventListener('click', () => { renderArrange(); openSheet('#wsarrangeit'); });
+    function renderArrange() {
+      $('#wscardlist').innerHTML = W.cards.order.map((id, i) => `<li><label><input type="checkbox" data-card="${id}"${W.cards.hidden.includes(id) ? '' : ' checked'}${LOCKED.includes(id) ? ' disabled' : ''}> ${esc(CARD_NAMES[id])}${LOCKED.includes(id) ? ' <small>always shown</small>' : ''}</label>
+        <button type="button" data-up="${id}" aria-label="Move ${esc(CARD_NAMES[id])} up"${i ? '' : ' disabled'}>↑</button><button type="button" data-down="${id}" aria-label="Move ${esc(CARD_NAMES[id])} down"${i < W.cards.order.length - 1 ? '' : ' disabled'}>↓</button></li>`).join('');
+      $('#wsmaplist').innerHTML = W.panels.length ? W.panels.map((p, i) => `<li><span>Map ${i + 2}<small>${esc(p.stamp ? p.stamp.layer : 'starting')}</small></span>
+        <button type="button" data-pup="${i}" aria-label="Move map ${i + 2} up"${i ? '' : ' disabled'}>↑</button><button type="button" data-pdown="${i}" aria-label="Move map ${i + 2} down"${i < W.panels.length - 1 ? '' : ' disabled'}>↓</button><button type="button" data-prm="${i}" aria-label="Remove map ${i + 2}">×</button></li>`).join('')
+        : '<li class="none">Only the main map. “+ Map” or Explore adds one beside it.</li>';
+    }
+    $('#wsarrangeit').addEventListener('change', (e) => {
+      const id = e.target.dataset && e.target.dataset.card;
+      if (!id || LOCKED.includes(id)) return;
+      W.cards.hidden = e.target.checked ? W.cards.hidden.filter((x) => x !== id) : [...W.cards.hidden, id];
+      arrangeCards(); changed();
+    });
+    $('#wsarrangeit').addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      const o = W.cards.order, mv = (arr, i, d) => { const j = i + d; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; };
+      if (b.dataset.up) mv(o, o.indexOf(b.dataset.up), -1);
+      else if (b.dataset.down) mv(o, o.indexOf(b.dataset.down), 1);
+      else if (b.dataset.pup || b.dataset.pdown) { const i = Number(b.dataset.pup || b.dataset.pdown); mv(W.panels, i, b.dataset.pup ? -1 : 1); for (const p of W.panels) box.appendChild(p.sec); layout(); }
+      else if (b.dataset.prm) { const p = W.panels[Number(b.dataset.prm)]; if (p) removePanel(p); }
+      else return;
+      arrangeCards(); changed(); renderArrange();
+    });
+
+    /* ── Explore: every tool, by what it measures ── */
+    $('#wsexplore').addEventListener('click', () => { renderExplore(); openSheet('#wsexploreit'); });
+    function renderExplore() {
+      const MM = root.ModelMaps, MR = root.Mrms, AB = root.Abi, NX = root.Nexrad;
+      const row = (label, str, note) => `<li><span>${esc(label)}${note ? `<small>${esc(note)}</small>` : ''}</span><button type="button" data-xmain="${esc(str)}">Main map</button><button type="button" data-xpanel="${esc(str)}">New map</button></li>`;
+      const pick = (label, id, opts, note) => `<li><span>${esc(label)}${note ? `<small>${esc(note)}</small>` : ''}<select id="${id}" aria-label="${esc(label)}">${opts}</select></span><button type="button" data-xmain="@${id}">Main map</button><button type="button" data-xpanel="@${id}">New map</button></li>`;
+      const act = (label, what, note) => `<li><span>${esc(label)}${note ? `<small>${esc(note)}</small>` : ''}</span><button type="button" data-xact="${what}">Show</button></li>`;
+      const site = NX ? Object.entries(NX.PRODUCTS).map(([k, P]) => row(`${P.label} — the nearest radar`, `l=l3:${k}&o=w`, P.long.split(' — ')[0])) : [];
+      const groups = [
+        ['Radar', [row('US mosaic', 'l=comp&o=w', 'every NEXRAD at once, base reflectivity'), ...site,
+          MR ? pick('MRMS — many radars together', 'xmrms', Object.entries(MR.PRODUCTS).map(([k, P]) => `<option value="l=mrms&o=w&r=${k}">${esc(P.label)}</option>`).join(''), 'rotation tracks, hail size, rain rates') : '']],
+        ['Satellite', [AB ? pick('GOES imagery', 'xabi', Object.entries(AB.PRODUCTS).map(([k, P]) => `<option value="l=abi&o=&g=${k}.conus.auto">${esc(P.label)}</option>`).join(''), 'all 16 bands and the RGB composites') : '',
+          act('Satellite under the main map', 'sat', 'infrared, visible or water vapour, beneath the radar')]],
+        ['Models', [MM ? pick('A model field', 'xmodel', Object.entries(MM.SOURCES).map(([k, S]) => `<optgroup label="${esc(S.label)}">${MM.FIELDS[k].map((f) => `<option value="l=model&o=w&m=${k}.${f.id}">${esc(S.label)} · ${esc(f.label)}</option>`).join('')}</optgroup>`).join(''), 'HRRR, NAM, RAP, GFS, ECMWF, ensembles, the Blend') : '',
+          row('Future radar · HRRR', 'l=hrrr&o=w', 'the next 18 hours, drawn like radar'), act('Compare the models at your place', 'card:models')]],
+        ['Soundings', [act('The air above you', 'card:sky', 'Skew-T, hodograph, the storm ingredients'), act('A cross-section on the main map', 'xsec', 'tap two points'), act('Weather balloons', 'card:sky', 'the sounding card has the nearest launch')]],
+        ['Observations', [act('Stations on the main map', 'ov:stations', 'airports, road, farm and gauge networks'), act('Storm reports', 'ov:reports'), act('Storm cells', 'ov:cells'), act('Fronts', 'ov:fronts'), act('Watches and discussions', 'ov:watches'), act('SPC mesoanalysis', 'card:meso')]],
+        ['Lightning', [act('Lightning on the main map', 'ov:lightning', 'every flash, GOES-East and -West'), act('Flash density', 'ov:density')]],
+        ['Forecasts', [act('Now and the forecast', 'card:hero'), act('The forecast discussion', 'card:afd'), MM ? row('National Blend chances', 'l=model&o=w&m=nbm.p_rain6', 'rain, thunder, snow, ice, fog') : '', MM ? row('Storm chances · HRRR-TLE', 'l=model&o=w&m=tle.p_uh') : '', act('SPC outlook on the main map', 'outlook')]],
+        ['Historical', [act('Replay any day since 2006', 'replay', 'radar, warnings, the sky and stations as they were'), act('How accurate the forecast has been here', 'card:record'), MM ? row('Mesoanalysis, the last six hours', 'l=model&o=w&m=smeso.stpe') : '']]
+      ];
+      $('#wsexplorelist').innerHTML = groups.map(([g, items]) => `<section><h3>${esc(g)}</h3><ul>${items.filter(Boolean).join('')}</ul></section>`).join('');
+    }
+    $('#wsexplorelist').addEventListener('click', async (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      const val = (s) => (s && s[0] === '@' ? ($('#' + s.slice(1)) || {}).value : s);
+      if (b.dataset.xmain) { closeSheet('#wsexploreit'); await main.setLayer(val(b.dataset.xmain)); changed(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
+      else if (b.dataset.xpanel) { closeSheet('#wsexploreit'); const p = addPanel(val(b.dataset.xpanel)); if (p) p.sec.scrollIntoView({ block: 'nearest' }); }
+      else if (b.dataset.xact) {
+        closeSheet('#wsexploreit');
+        const a = b.dataset.xact;
+        if (a.startsWith('card:')) {
+          const id = a.slice(5), el = document.getElementById(id);
+          if (W.cards.hidden.includes(id)) { W.cards.hidden = W.cards.hidden.filter((x) => x !== id); arrangeCards(); changed(); }
+          if (el) { if (el.hidden) say('That card has nothing to show yet — choose a place first.'); const d = el.querySelector('details'); if (d) d.open = true; el.scrollIntoView({ block: 'start' }); }
+        } else if (a.startsWith('ov:')) {
+          const k = a.slice(3), btn = k === 'stations' ? $('#stationtoggle') : $(`[data-ov="${k}"]`);
+          if (btn && btn.getAttribute('aria-pressed') !== 'true') btn.click();
+          $('#radarcard').scrollIntoView({ block: 'nearest' });
+        } else if (a === 'outlook') { const btn = $('#outlooktoggle'); if (btn.getAttribute('aria-pressed') !== 'true') btn.click(); }
+        else if (a === 'xsec') { $('#zxsec').click(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
+        else if (a === 'replay') { const t = $('#replaytoggle'); if (t.getAttribute('aria-expanded') !== 'true') t.click(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
+        else if (a === 'sat') { const s = $('#satsel'); s.focus(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
+      }
+    });
+
+    /* ── sheets ── */
+    function openSheet(id) { const d = $(id); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); }
+    function closeSheet(id) { const d = $(id); if (d.close) d.close(); else d.removeAttribute('open'); }
+    for (const d of document.querySelectorAll('dialog.wssheet')) {
+      d.addEventListener('click', (e) => { if (e.target === d || e.target.closest('[data-close]')) closeSheet('#' + d.id); });
+    }
+
+    /* ── start: a shared link, else this browser's last layout ── */
+    if (linked) {
+      apply(linked.ws, { mainToo: false }).then(() => {
+        renderSel();
+        if (linked.at) setTimeout(() => setBus(linked.at, null), 1500);
+        say(`Opened a shared workspace, “${linked.ws.name}”. Save it to keep it in this browser.`);
+      });
+    } else {
+      /* the main map keeps a link's layers (#l=…) if it was opened with one */
+      const last = clean(store.get('wx:wscurrent', null)), own = !location.hash || location.hash === '#';
+      /* "changed" is measured against the workspace this one was opened as */
+      const named = () => { const n = store.get('wx:wsname', null); return [...PRESETS, ...savedList()].find((x) => x.name === n) || null; };
+      if (last && (last.panels.length || last.cards.hidden.length || last.cards.order.join() !== CARDS.join() || (own && last.main))) {
+        apply(last, { mainToo: own }).then(() => { const ref = named(); W.name = ref ? ref.name : last.name; W.ref = ref || last; renderSel(); });
+      } else { W.ref = PRESETS[0]; renderSel(); }
+    }
+    stamps();
+  }
+})(typeof window !== 'undefined' ? window : globalThis);

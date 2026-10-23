@@ -735,6 +735,16 @@ ones that must never break:
   `assets/weather/weather.css`; each page holds only its own cards. **Warnings and
   storm mode stay on both** — never move them to Pro only. Pro is a tab of the
   weather room, not a room: it is not in `ROOMS` or the room navs.
+- **Pro's workstation** (`assets/weather/workstation.js`; `projects/weather/WORKSTATION.md`,
+  built 2026-10-23): the maps beside the main one are Pro itself in a frame
+  (`weather-pro.html?panel=1`), showing only its map, all on one shared place and
+  time. A panel writes nothing to localStorage — the page owns the layout. A
+  workspace holds layers, maps and cards and **never a place**; a share link adds
+  the main map's view only when the visitor ticks it (`test/workstation.test.mjs`
+  checks both). A workspace cannot hide a warning. `workstation.js` loads before
+  `app.js`, because a shared link's layers must be in the address when the map
+  starts. Only the visitor's own steps in time move the other maps (`userShow` in
+  `app.js`) — never tell the bus from code that runs when something loads.
 - **No go/no-go verdicts.** A ride outlook was built and removed the same day — Ric:
   "this should be information, not something that could make it unsafe." Don't add
   one for riding, driving, flying or anything else; `test/wx.test.mjs` checks.

@@ -703,3 +703,62 @@ body[data-view="pro"] .sheet h2 button{border-radius:3px;background:#121821;bord
 .ptchart svg.chart .prev{stroke:#9eabba;stroke-width:1.8;stroke-dasharray:5 4}
 .ptchart .ps{font-size:12px;color:var(--dim);margin-top:6px}
 body[data-view="pro"] .xsec .xh button{border-radius:3px;background:#121821;border:1px solid var(--edge)}
+
+/* ── the workstation (workstation.js): the layout bar, the maps beside the
+   main one, and each map's own page inside its frame ── */
+.ws-off{display:none!important}
+.wsbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 10px;padding:6px 8px;border:1px solid var(--edge);border-radius:var(--r);background:#0a0d12;font-family:var(--mono);font-size:12px}
+.wsbar button,.wsbar select{min-height:34px;padding:0 10px;border-radius:3px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:inherit}
+.wsbar select{max-width:min(260px,60vw)}
+.wsbar button:hover{background:#1a212b}
+.wsbar .wsname{display:inline-flex;align-items:center;gap:6px}
+.wssync{display:inline-flex;align-items:center;gap:8px}
+.wssync label{display:inline-flex;align-items:center;gap:5px;min-height:34px;color:var(--dim)}
+.wssync input{accent-color:var(--amber);width:15px;height:15px;margin:0}
+.wsclock{color:var(--amber);margin-left:auto}
+.wsnote{flex:1 1 100%;margin:0;color:var(--dim)}
+@media (pointer:coarse){ .wsbar button,.wsbar select,.wssync label{min-height:44px} }
+.mainst{margin:-4px 0 8px;font:12px var(--mono);color:var(--dim)}
+.mainst:empty{display:none}
+.workspace.has-panels .mapcol{position:static}
+.panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:10px;margin-top:10px}
+.panels[hidden]{display:none}
+body[data-view="pro"] .mpanel{padding:8px 10px;grid-column:auto;min-width:0}
+.mpanel .phead{display:flex;align-items:center;gap:8px;margin:0 0 6px}
+.mpanel .phead .pn{flex:none}
+.mpanel .pst{flex:1;min-width:0;font:12px var(--mono);color:var(--dim);text-transform:none;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mpanel .phead button{flex:none;display:inline-grid;place-items:center;min-width:32px;min-height:32px;border-radius:3px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 14px var(--mono)}
+.mpanel iframe{display:block;width:100%;height:600px;border:0;border-radius:3px;background:#0b0e13}
+@media (max-width:1000px){ .mpanel iframe{height:72vh;min-height:420px} }
+@media (pointer:coarse){ .mpanel .phead button{min-width:44px;min-height:44px} }
+/* a map's own page inside its frame: only the map and its controls */
+body[data-panel] .topbar,body[data-panel] .placebar,body[data-panel] .stormband,body[data-panel] .wsbar,body[data-panel] .side,body[data-panel] footer,
+body[data-panel] .panels,body[data-panel] #radarcard>h2,body[data-panel] .mainst,body[data-panel] #replaytoggle,body[data-panel] #replaybar{display:none!important}
+body[data-panel] main{padding:0}
+body[data-panel] .workspace{display:block}
+body[data-panel] .mapcol{position:static}
+body[data-panel] #radarcard{border:0;padding:2px 6px;background:transparent}
+body[data-panel] .workspace .radar{height:calc(100vh - 250px);min-height:200px;margin:0 -6px}
+/* the sheets: explore, arrange, save, share */
+.wssheet .wslead{color:var(--dim);font-size:13px;margin:0 0 10px}
+.wssheet h3{font:600 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin:14px 0 6px}
+.wslist,.wsexplore ul{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.wslist li,.wsexplore li{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid #1b222c;font-size:13px}
+.wslist li>span,.wsexplore li>span,.wslist li>label{flex:1 1 200px;min-width:0}
+.wslist small,.wsexplore small{display:block;color:var(--dim);font-size:12px}
+.wslist label small{display:inline;margin-left:4px}
+.wslist input[type=checkbox]{accent-color:var(--amber);width:16px;height:16px;vertical-align:-3px}
+.wsexplore select{display:block;margin-top:4px;width:100%;max-width:420px;min-height:36px;padding:0 8px;border-radius:3px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
+.wslist button,.wsexplore button{min-height:36px;padding:0 10px;border-radius:3px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
+.wslist button:disabled{opacity:.4}
+.wslist .none{color:var(--dim)}
+@media (pointer:coarse){ .wslist button,.wsexplore button,.wsexplore select{min-height:44px} }
+.wsform{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.wsform label[for]{font-size:13px;color:var(--dim)}
+.wsform input[type=text],#wslinkout{flex:1 1 200px;min-height:40px;padding:0 10px;border-radius:3px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:13px var(--mono)}
+#wslinkout{display:block;width:100%;margin-top:8px}
+#wslinkout[hidden]{display:none}
+.wscheck{display:flex;gap:8px;align-items:center;margin:6px 0;font-size:13px;min-height:32px}
+.wscheck input{accent-color:var(--amber);width:16px;height:16px;flex:none}
+.wsform .wscheck{flex:1 1 100%}
+.wssheet .go{min-height:40px;padding:0 16px;border-radius:3px;border:0;background:var(--amber);color:#1c1300;font:600 13px var(--mono)}

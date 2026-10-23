@@ -11,14 +11,19 @@
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   /* which of the two pages this is: "simple" (Weather) or "pro" (Weather Pro) */
   const PRO = document.body.dataset.view === "pro";
+  /* one map panel of Weather Pro's workstation (workstation.js): the same
+     page in a frame, only its map, its choices never written over the main
+     page's (the parent keeps the layout) */
+  const PANEL = PRO && new URLSearchParams(location.search).has("panel");
+  if (PANEL) document.body.dataset.panel = "1";
   /* each page's own title, which a storm warning takes over and gives back */
   const TITLE = document.title;
 
   /* ── this browser's own memory (never sent anywhere) ── */
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
-    del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+    set(k, v) { if (PANEL) return; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+    del(k) { if (PANEL) return; try { localStorage.removeItem(k); } catch (e) {} }
   };
   const cleanPlace = (p) => p && Wx.validLat(+p.lat) && Wx.validLon(+p.lon)
     ? { name: String(p.name || "A place").slice(0, 80), region: String(p.region || "").slice(0, 80), lat: Wx.round2(p.lat), lon: Wx.round2(p.lon), here: !!p.here, approx: !!p.approx }
@@ -1215,7 +1220,7 @@
       if (pastSat.want !== want) {
         pastSat.want = want;
         const gen = ++pastSat.gen;
-        AB.files(sat, "conus", { nowMs: t + 8 * 60e3, count: 4 }).then((list) => {
+        AB.files(sat, "conus", { nowMs: t + 8 * 60e3, count: 30 }).then((list) => {
           if (gen !== pastSat.gen || !list.length) return null;
           const file = list.reduce((b, x) => (Math.abs(x.t - t) < Math.abs(b.t - t) ? x : b), list[0]), prod = SAT_BAND[R.sat], key = `${file.url}|${prod}`;
           if (!abiCache.has(key)) abiCache.set(key, AB.load(file, prod, { memo: (abiMemo[file.sat + file.sector] = abiMemo[file.sat + file.sector] || {}) }).catch((e) => { abiCache.delete(key); throw e; }));
@@ -2056,7 +2061,7 @@
       const t = t0 + (x - pl) / (W - pl - pr) * (t1 - t0);
       let best = -1;
       R.frames.forEach((f, i) => { if (best < 0 || Math.abs(f.t - t) < Math.abs(R.frames[best].t - t)) best = i; });
-      if (best >= 0) { play(false); loadOld(); show(best); renderChart(); }
+      if (best >= 0) { play(false); loadOld(); userShow(best); renderChart(); }
     });
     function modelLayer(f) {
       const m = f.model;
@@ -2560,7 +2565,7 @@
         }
         if (S.place) { const [mx, my] = pt(S.place.lat, S.place.lon); out.push(`<circle cx="${mx.toFixed(1)}" cy="${my.toFixed(1)}" r="5" fill="#fff" stroke="#0b2342" stroke-width="2"/>`); }
         if (R.replay && R.replay.site && R.site && R.site.lat != null) { const [sx, sy] = pt(R.site.lat, R.site.lon); out.push(`<rect x="${(sx - 4).toFixed(1)}" y="${(sy - 4).toFixed(1)}" width="8" height="8" fill="#ffd43b" stroke="#000"/>`); }
-        R.drawn = [];
+        stationMarks(out, pt);
         over.innerHTML = out.join("");
         return;
       }
@@ -2695,36 +2700,8 @@
           out.push(`<g class="lsr" opacity="${op}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rr}" fill="${k.color}" stroke="#05070a" stroke-width="1.5"/><text x="${x.toFixed(1)}" y="${(y + 3.9).toFixed(1)}" text-anchor="middle">${esc(k.glyph)}</text></g>`);
         }
       }
-      /* stations: a dot, a tail from where the wind comes, and the
-         temperature on a chip of its own colour — newest first, and none
-         drawn on top of another. From zoom 8 on Pro, the full station
-         model: sky cover, a wind barb in knots, temperature, dew point,
-         present weather and pressure, as on any surface chart */
-      R.drawn = [];
-      if (R.stations && R.z >= STN_MINZ && R.obs.length) {
-        const w = el.clientWidth, h = el.clientHeight, placed = [], zb = zoomBottom();
-        const model = PRO && R.z >= 8, bx = model ? 74 : 40, by = model ? 50 : 26;
-        /* airports first, so where stations crowd the airport keeps its place */
-        for (const s of R.obs.slice().sort((a, b) => (a.net === "asos" ? 0 : 1) - (b.net === "asos" ? 0 : 1) || b.time - a.time)) {
-          const [x, y] = pt(s.lat, s.lon);
-          if (x < -20 || y < -20 || x > w + 20 || y > h + 20 || placed.some(([a, b]) => Math.abs(a - x) < bx && Math.abs(b - y) < by) || (x > w - 110 && y < zb)) continue;  // nor under the zoom buttons
-          placed.push([x, y]); R.drawn.push(s);
-          if (model) { out.push(`<g class="stn stp">${stationModel(s, x, y)}</g>`); continue; }
-          let g = "";
-          if (s.wind != null && !Wx.isCalm(s.wind) && s.windDir != null) {
-            const r = s.windDir * Math.PI / 180, L = Math.min(26, 8 + s.wind * 0.45);
-            g += `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + Math.sin(r) * L).toFixed(1)}" y2="${(y - Math.cos(r) * L).toFixed(1)}" stroke="#0b1422" stroke-width="4" stroke-linecap="round"/><line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + Math.sin(r) * L).toFixed(1)}" y2="${(y - Math.cos(r) * L).toFixed(1)}" stroke="#fff" stroke-width="2" stroke-linecap="round"/>`;
-          }
-          /* an airport is a round dot; every other network a square one */
-          g += !s.net || s.net === "asos" ? `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2" fill="#fff" stroke="#0b1422" stroke-width="1.5"/>`
-            : `<rect x="${(x - 3).toFixed(1)}" y="${(y - 3).toFixed(1)}" width="6" height="6" fill="#fff" stroke="#0b1422" stroke-width="1.5"/>`;
-          if (s.temp != null) {
-            const txt = Wx.fmt.temp(s.temp, U()) + "°", cw = 10 + txt.length * 7.2;
-            g += `<rect x="${(x + 5).toFixed(1)}" y="${(y - 20).toFixed(1)}" width="${cw.toFixed(1)}" height="17" rx="8.5" fill="${tempColor(s.temp)}" stroke="#0b1422" stroke-width="1"/><text x="${(x + 5 + cw / 2).toFixed(1)}" y="${(y - 7.5).toFixed(1)}" text-anchor="middle">${txt}</text>`;
-          }
-          out.push(`<g class="stn">${g}</g>`);
-        }
-      }
+      /* stations: drawn by stationMarks() — today's, or a replay's from the archive */
+      stationMarks(out, pt);
       /* the radars near the map, in a one-radar product: tap one to keep it
          (the picker at the head of the tilt row says the same) */
       if (PRO && single() && R.sites) {
@@ -2762,8 +2739,42 @@
       over.innerHTML = out.join("");
     }
 
+    /* the stations on the map (live, or a replay's own from the archive) */
+    function stationMarks(out, pt) {
+        /* stations: a dot, a tail from where the wind comes, and the
+           temperature on a chip of its own colour — newest first, and none
+           drawn on top of another. From zoom 8 on Pro, the full station
+           model: sky cover, a wind barb in knots, temperature, dew point,
+           present weather and pressure, as on any surface chart */
+        R.drawn = [];
+        if (R.stations && R.z >= STN_MINZ && R.obs.length) {
+          const w = el.clientWidth, h = el.clientHeight, placed = [], zb = zoomBottom();
+          const model = PRO && R.z >= 8, bx = model ? 74 : 40, by = model ? 50 : 26;
+          /* airports first, so where stations crowd the airport keeps its place */
+          for (const s of R.obs.slice().sort((a, b) => (a.net === "asos" ? 0 : 1) - (b.net === "asos" ? 0 : 1) || b.time - a.time)) {
+            const [x, y] = pt(s.lat, s.lon);
+            if (x < -20 || y < -20 || x > w + 20 || y > h + 20 || placed.some(([a, b]) => Math.abs(a - x) < bx && Math.abs(b - y) < by) || (x > w - 110 && y < zb)) continue;  // nor under the zoom buttons
+            placed.push([x, y]); R.drawn.push(s);
+            if (model) { out.push(`<g class="stn stp">${stationModel(s, x, y)}</g>`); continue; }
+            let g = "";
+            if (s.wind != null && !Wx.isCalm(s.wind) && s.windDir != null) {
+              const r = s.windDir * Math.PI / 180, L = Math.min(26, 8 + s.wind * 0.45);
+              g += `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + Math.sin(r) * L).toFixed(1)}" y2="${(y - Math.cos(r) * L).toFixed(1)}" stroke="#0b1422" stroke-width="4" stroke-linecap="round"/><line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + Math.sin(r) * L).toFixed(1)}" y2="${(y - Math.cos(r) * L).toFixed(1)}" stroke="#fff" stroke-width="2" stroke-linecap="round"/>`;
+            }
+            /* an airport is a round dot; every other network a square one */
+            g += !s.net || s.net === "asos" ? `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2" fill="#fff" stroke="#0b1422" stroke-width="1.5"/>`
+              : `<rect x="${(x - 3).toFixed(1)}" y="${(y - 3).toFixed(1)}" width="6" height="6" fill="#fff" stroke="#0b1422" stroke-width="1.5"/>`;
+            if (s.temp != null) {
+              const txt = Wx.fmt.temp(s.temp, U()) + "°", cw = 10 + txt.length * 7.2;
+              g += `<rect x="${(x + 5).toFixed(1)}" y="${(y - 20).toFixed(1)}" width="${cw.toFixed(1)}" height="17" rx="8.5" fill="${tempColor(s.temp)}" stroke="#0b1422" stroke-width="1"/><text x="${(x + 5 + cw / 2).toFixed(1)}" y="${(y - 7.5).toFixed(1)}" text-anchor="middle">${txt}</text>`;
+            }
+            out.push(`<g class="stn">${g}</g>`);
+          }
+        }
+    }
     function draw() {
       if (!R.started) return;
+      tellView();
       const w = el.clientWidth, h = el.clientHeight;
       const left = R.cx - w / 2, top = R.cy - h / 2;
       place(baseL, baseTiles, (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`, w, h, left, top);
@@ -2795,8 +2806,12 @@
       const n = $("#radarnote");
       n.hidden = !text; n.textContent = text || "";
     }
+    let byUser = 0;
+    function userShow(i) { byUser++; try { show(i); } finally { byUser--; } }
     function show(i) {
       R.frame = i;
+      const told = byUser && !applying;
+      Promise.resolve().then(() => { const st = stamp(); hear("stamp", st); if (told) tell("time", st); });
       R.frames.forEach((f, j) => f.el.classList.toggle("on", j === i));
       if (!R.frames[i]) { $("#when").innerHTML = ""; return; }
       const f = R.frames[i];
@@ -2861,7 +2876,7 @@
           R.timer = setTimeout(step, 250); return;
         }
         R.wait = 0;
-        show(next);
+        userShow(next);
         R.timer = setTimeout(step, next === last ? 1600 : 450);
       };
       R.timer = setTimeout(step, R.frame === last ? 600 : 450);
@@ -3247,18 +3262,26 @@
     }
     /* a link to this view: the map's middle (to about 10 km), its zoom, the
        layer, the satellite and the overlays — never the visitor's own place */
-    function shareLink() {
-      const lat = yLat(R.cy, R.z), lon = xLng(R.cx, R.z);
+    /* the layers, in the link's words (no place in them) — a workstation
+       panel and a saved workspace are written in the same words */
+    function layerString() {
       const ov = [!R.ov.lines && "x", R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r"].filter(Boolean).join("");
-      const v = `${lat.toFixed(1)},${(((lon + 540) % 360) - 180).toFixed(1)},${R.z}`;
-      const url = `${location.origin}${location.pathname}#v=${v}&l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}${R.mm.back ? "." + R.mm.back : ""}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
+      return `l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}${R.mm.back ? "." + R.mm.back : ""}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
+    }
+    /* the map's middle to about 10 km, and its zoom */
+    function viewString() {
+      const lat = yLat(R.cy, R.z), lon = xLng(R.cx, R.z);
+      return `${lat.toFixed(1)},${(((lon + 540) % 360) - 180).toFixed(1)},${R.z}`;
+    }
+    function shareLink() {
+      const url = `${location.origin}${location.pathname}#v=${viewString()}&${layerString()}`;
       const done = () => note("Link copied — it opens this map view and these layers. Your saved place is not in it.");
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => note(`Copy this link: ${url}`));
       else note(`Copy this link: ${url}`);
     }
     /* opening such a link */
-    function applyLink() {
-      const h = location.hash.replace(/^#/, "");
+    function applyLink(str = location.hash) {
+      const h = String(str).replace(/^#/, "");
       if (!h) return false;
       const q = new URLSearchParams(h), v = (q.get("v") || "").split(",").map(Number);
       if (v.length === 3 && Wx.validLat(v[0]) && Wx.validLon(v[1]) && v[2] >= MINZ && v[2] <= MAXZ) {
@@ -3287,6 +3310,8 @@
     }
     pinEl.addEventListener("click", (e) => {
       if (e.target.closest("[data-pinx]")) { R.pin = null; draw(); }
+      /* in a workstation panel, a point's forecast or sounding opens on the main page */
+      else if (PANEL && e.target.closest("[data-pinsky],[data-pingo]") && R.pin) { const p = R.pin; R.pin = null; draw(); tell("pick", { lat: p.lat, lon: p.lon, name: p.name || "", what: e.target.closest("[data-pinsky]") ? "sky" : "forecast" }); }
       else if (e.target.closest("[data-pinsky]") && R.pin) { const p = R.pin; R.pin = null; draw(); sky.at(p.lat, p.lon, p.name || "the tapped point"); }
       else if (e.target.closest("[data-pinchart]") && R.pin) { const p = R.pin; R.pin = null; draw(); chartAt(p.lat, p.lon, p.name); chartEl.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" }); }
       else if (e.target.closest("[data-pingo]") && R.pin) {
@@ -3351,7 +3376,7 @@
         if (!R.frames.length) return;
         play(false); loadOld();
         const n = R.frames.length;
-        show((R.frame + (k === "ArrowLeft" ? -1 : 1) + n) % n); done = true;
+        userShow((R.frame + (k === "ArrowLeft" ? -1 : 1) + n) % n); done = true;
       } else if (k === "+" || k === "=") { zoomTo(R.z + 1); done = true; }
       else if (k === "-" || k === "_") { zoomTo(R.z - 1); done = true; }
       else if (k === "f" || k === "F") { full(!$("#radarcard").classList.contains("mapfull")); done = true; }
@@ -3510,7 +3535,7 @@
       el.addEventListener("pointerleave", () => { readEl.hidden = true; });
     }
     $("#play").addEventListener("click", () => play(!R.playing));
-    $("#scrub").addEventListener("input", (e) => { play(false); loadOld(); show(Number(e.target.value)); });
+    $("#scrub").addEventListener("input", (e) => { play(false); loadOld(); userShow(Number(e.target.value)); });
     document.querySelectorAll(".seg [data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
     document.querySelectorAll("[data-sat]").forEach((b) => b.addEventListener("click", () => setSat(b.dataset.sat)));
     if ($("#satsel")) $("#satsel").addEventListener("change", (e) => setSat(e.target.value));
@@ -3563,9 +3588,82 @@
     }, { rootMargin: "200px" }).observe(el);
     play(false);
 
+    /* ── the map as a workstation panel (workstation.js, 2026-10-22) ──
+       Its view, its moment and a stamp for its header — and the same set
+       from outside, by the shared place and time. A change made here is
+       told; one applied from outside is not told back (`applying`). */
+    let applying = 0, toldView = "";
+    const listeners = [];
+    /* `hear` is for every change (a header's stamp); `tell` only for one the
+       visitor made here, which the other panels then follow */
+    function hear(type, data) { for (const f of listeners) { try { f(type, data); } catch (e) {} } }
+    function tell(type, data) { if (!applying) hear(type, data); }
+    /* the moment a frame is valid for: the scan's own time, or a forecast hour's */
+    const validTime = (f = R.frames[R.frame]) => (f ? (f.l3 && f.l3.file && f.l3.file.time) || f.t || null : null);
+    function stamp() {
+      const f = R.frames[R.frame], t = validTime(f);
+      let kind = "observed", run = null;
+      if (f && f.model) { const Sx = MM.SOURCES[f.model.src]; kind = Sx.analysis ? "analysis" : "forecast"; run = Sx.analysis ? null : f.model.run; }
+      else if (f && f.future) kind = "forecast";
+      else if (R.mode === "replay") kind = "archive";
+      return { layer: R.started ? describe() : "", kind, t, run, newest: R.frame >= R.frames.length - 1, frames: R.frames.length, mode: R.mode };
+    }
+    function viewNow() { return { lat: yLat(R.cy, R.z), lon: xLng(R.cx, R.z), z: R.z }; }
+    function tellView() {
+      const v = viewNow(), k = `${v.lat.toFixed(3)},${v.lon.toFixed(3)},${v.z}`;
+      if (k === toldView) return;
+      toldView = k; tell("view", v);
+    }
+    function setView(lat, lon, z) {
+      if (!Wx.validLat(lat) || !Wx.validLon(lon)) return;
+      applying++;
+      try {
+        R.us = false;
+        R.z = Math.min(MAXZ, Math.max(MINZ, Math.round(z || R.z)));
+        R.cx = lngX(lon, R.z); R.cy = latY(lat, R.z);
+        toldView = `${lat.toFixed(3)},${lon.toFixed(3)},${R.z}`;
+        clearTiles(); draw(); stationsSoon();
+        if (single() && !R.lockId) { clearTimeout(follow); follow = setTimeout(async () => { if (await pickSite(false)) { clearTiles(); await siteFrames(); label(); } }, 700); }
+      } finally { applying--; }
+    }
+    /* the frame nearest a moment, within the step between frames (and never
+       more than three hours) — a panel with nothing near keeps its own
+       frame, and its stamp says how far it is from the shared time */
+    function setTime(t) {
+      if (!R.frames.length) return false;
+      if (t == null) { applying++; try { play(false); show(R.frames.length - 1); } finally { applying--; } return true; }
+      let best = -1, bd = Infinity;
+      R.frames.forEach((f, i) => { const ft = validTime(f); if (ft != null && Math.abs(ft - t) < bd) { bd = Math.abs(ft - t); best = i; } });
+      const ts = R.frames.map((f) => validTime(f)).filter((x) => x != null), step = ts.length > 1 ? (ts[ts.length - 1] - ts[0]) / (ts.length - 1) : 3600e3;
+      if (best < 0 || bd > Math.min(3 * 3600e3, Math.max(10 * 60e3, step))) return false;
+      if (best === R.frame) return true;
+      applying++;
+      try { if (best < R.frames.length - 1) loadOld(); show(best); } finally { applying--; }
+      return true;
+    }
+    async function setLayer(str) {
+      applying++;
+      try {
+        const l = applyLink(str);
+        if (PRO && $("#mrprod") && MR) $("#mrprod").value = R.mr.prod;
+        if (PRO && $("#abiprod") && AB) { $("#abiprod").value = R.ab.prod; $("#abisec").value = R.ab.sector; $("#abisat").value = R.ab.sat; }
+        if (PRO && $("#mmsrc") && MM) { $("#mmsrc").value = R.mm.src; modelOptions(); }
+        if (ltgOn()) lightningClock();
+        if (typeof l === "string") await setMode(l);
+        loadOverlays(true); stationsSoon(); draw(); label();
+      } finally { applying--; }
+    }
+
     /* The lower 48, edge to edge: a map view, not anybody's place. */
     const CONUS = [24.4, -125, 49.5, -66.9];
     return {
+      panel: {
+        get view() { return viewNow(); }, setView,
+        get stamp() { return stamp(); }, setTime,
+        get layer() { return layerString(); }, setLayer,
+        viewString,
+        on(f) { listeners.push(f); }
+      },
       center(lat, lon) {
         R.us = false; R.pin = null;
         R.lat = lat; R.lon = lon;
@@ -3632,7 +3730,7 @@
      Skew-T and hodograph instantly (§15.5). */
   const sky = (() => {
     /* only Weather Pro has the air above you */
-    if (!$("#skyd")) return { reset() {}, get source() { return null; }, redraw() {}, at() {} };
+    if (!$("#skyd")) return { reset() {}, get source() { return null; }, redraw() {}, at() {}, setTime() {}, hourMs: null, onHour: null };
     const K = { model: null, col: null, colKey: null, run: null, hour: 0, raob: null, raobSite: null, mode: "model", busy: false, source: null };
     const body = () => $("#skybody");
     const m2ft = (m) => m * 3.28084;
@@ -3888,6 +3986,7 @@
     document.addEventListener("input", (e) => {
       if (e.target.id !== "skyhour") return;
       K.hour = Number(e.target.value);
+      if (skyApi.onHour && K.col && K.col.hourly) skyApi.onHour(K.col.hourly.time[K.hour] * 1000);
       const html = draw(true);
       if (!html) return;
       $("#skyinfo").innerHTML = html.info;
@@ -3901,6 +4000,7 @@
       const c = e.target.closest("[data-tlh]");
       if (!c) return;
       K.hour = Number(c.dataset.tlh);
+      if (skyApi.onHour && K.col && K.col.hourly) skyApi.onHour(K.col.hourly.time[K.hour] * 1000);
       const sl = $("#skyhour"); if (sl) sl.value = K.hour;
       const html = draw(true);
       if (!html) return;
@@ -3909,7 +4009,7 @@
       if (sl && html.when) sl.previousElementSibling.textContent = clk().hour(html.when);
       markHour();
     });
-    return {
+    const skyApi = {
       reset() { Object.assign(K, { tl: null, col: null, colKey: null, run: null, raob: null, raobSite: null, model: null, mode: "model", source: null, err: null, compare: false, cmp: null, point: null }); if ($("#skyd").open) { K.model = defaultModel(); loadModel(); } },
       /* a sounding at a point tapped on the map, until "back" */
       at(lat, lon, name) {
@@ -3921,8 +4021,20 @@
         $("#sky").scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
       },
       get source() { return K.source; },
+      /* the workstation's shared time: the model hour nearest it (a balloon
+         keeps its launch time — an observation is not moved) */
+      setTime(ms) {
+        const ts = K.col && K.col.hourly && K.col.hourly.time;
+        if (!ts || K.mode !== "model" || ms == null) return;
+        let best = 0;
+        ts.forEach((t, i) => { if (Math.abs(t * 1000 - ms) < Math.abs(ts[best] * 1000 - ms)) best = i; });
+        if (best !== K.hour) { K.hour = best; draw(); }
+      },
+      get hourMs() { const ts = K.col && K.col.hourly && K.col.hourly.time; return ts && ts[K.hour] != null ? ts[K.hour] * 1000 : null; },
+      onHour: null,
       redraw: draw
     };
+    return skyApi;
   })();
 
   /* ── places ── */
@@ -4040,6 +4152,7 @@
   setInterval(() => {
     if (document.visibilityState !== "visible") return;
     const now = Date.now();
+    if (PANEL) { if (now - lastRadar >= 120e3) { lastRadar = now; radar.refresh(); } return; }
     if (now - S.loadedAt > FULL) { load(); return; }
     const hot = !S.place || stormsHere().length || (S.state || []).some((a) => a.storm);
     if (hot && now - S.fastAt >= FAST) {
@@ -4060,7 +4173,7 @@
     }
   }, 30e3);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && Date.now() - S.loadedAt > FULL) load();
+    if (!PANEL && document.visibilityState === "visible" && Date.now() - S.loadedAt > FULL) load();
   });
 
   /* ── the home screen ──
@@ -4092,14 +4205,23 @@
      A chosen place, if this browser has one. Otherwise the whole country —
      and, once the Worker can say roughly where this visitor is from their
      connection, that city's weather, labelled as approximate. */
-  renderPlace();
-  renderMeso();
-  if (S.place) load();
-  else {
-    loadUS();
-    Wx.near().then((p) => { if (p && !S.place) choose(p); });
+  /* Pro's workstation (workstation.js) reaches the map and the sounding
+     through this, and nothing else of the page */
+  if (PRO) window.WxPro = { map: radar.panel, sky, choose, time: (ms) => clk().time(ms), day: (ms) => clk().day(ms), ymd: (ms) => clk().ymd(ms), get place() { return S.place ? { lat: S.place.lat, lon: S.place.lon, name: S.place.name } : null; } };
+  if (PANEL) {
+    /* a panel is only its map: the parent page holds the place, the
+       warnings and every card */
+    radar.start();
+  } else {
+    renderPlace();
+    renderMeso();
+    if (S.place) load();
+    else {
+      loadUS();
+      Wx.near().then((p) => { if (p && !S.place) choose(p); });
+    }
+    /* on Weather Pro the map is the page: it starts now (already centred by the
+       place or the country), not when it is scrolled to */
+    if (PRO) radar.start();
   }
-  /* on Weather Pro the map is the page: it starts now (already centred by the
-     place or the country), not when it is scrolled to */
-  if (PRO) radar.start();
 })();

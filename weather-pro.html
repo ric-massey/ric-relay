@@ -24,7 +24,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Weather">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231f5fa8'/><circle cx='40' cy='40' r='16' fill='%23ffd166'/><path d='M30 74h42a14 14 0 0 0-3-28 18 18 0 0 0-34 6 11 11 0 0 0-5 22z' fill='%23fff'/></svg>">
-  <link rel="stylesheet" href="assets/weather/weather.css?v=7">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=8">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -71,11 +71,28 @@
   <div class="stormband">
     <div id="storms" class="card bare" hidden aria-live="assertive"></div>
   </div>
+  <!-- the workstation (workstation.js): the layout, the maps beside the main
+       one, and the one place and time they share -->
+  <div class="wsbar" id="wsbar" role="toolbar" aria-label="Workspace">
+    <label class="wsname"><span class="seglab">Workspace</span><select id="wssel" aria-label="Workspace"></select></label>
+    <button type="button" id="wsexplore" aria-haspopup="dialog" title="Every tool, by what it measures">Explore</button>
+    <button type="button" id="wsadd" title="Another map beside the main one, following the same place and time">+ Map</button>
+    <button type="button" id="wsarrange" aria-haspopup="dialog" title="Which cards show, in what order, and the maps">Arrange</button>
+    <button type="button" id="wssave" aria-haspopup="dialog" title="Save, rename, duplicate or delete workspaces (this browser only)">Save…</button>
+    <button type="button" id="wsshare" aria-haspopup="dialog" title="A link to this layout">Share</button>
+    <span class="wssync" role="group" aria-label="What the maps share"><span class="seglab">Sync</span>
+      <label><input type="checkbox" id="wsplace" checked> place</label>
+      <label><input type="checkbox" id="wstime" checked> time</label></span>
+    <span class="wsclock num" id="wsclock" aria-live="polite"></span>
+    <button type="button" id="wslive" hidden title="Every map back to now">Now</button>
+    <p class="wsnote" id="wsnote" role="status" hidden></p>
+  </div>
   <!-- the workspace: the map, and the readouts docked beside it -->
   <div class="workspace">
     <div class="mapcol">
       <section class="card" id="radarcard" aria-label="Radar">
         <h2><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 8l4.5-4.5" stroke="currentColor" stroke-width="1.5"/></svg>Radar<span class="src" id="radarsrc"></span></h2>
+        <p class="pst mainst" id="mainstamp" aria-live="polite"></p>
         <div class="seg rowscroll pro-only" role="group" aria-label="Radar layer">
           <button type="button" data-mode="comp" aria-pressed="true">US mosaic</button>
           <button type="button" data-mode="abi" aria-pressed="false" title="GOES satellite straight from NOAA: all 16 bands and the RGB composites, the lower 48 every 5 minutes or a mesoscale sector every minute">Satellite · GOES</button>
@@ -184,6 +201,7 @@
         <div class="xsec pro-only" id="xsec" hidden aria-live="polite"></div>
         <div class="xsec ptchart pro-only" id="ptchart" hidden aria-live="polite"></div>
       </section>
+      <div class="panels" id="panels" hidden></div>
     </div>
     <aside class="side grid" id="cards" aria-label="Readouts">
       <section class="hero card bare" id="hero" aria-live="polite"></section>
@@ -258,24 +276,69 @@
   </div>
 </dialog>
 
+<dialog class="sheet wssheet" id="wsexploreit" aria-labelledby="wsexploretitle">
+  <div class="in">
+    <h2 id="wsexploretitle">Explore<button type="button" data-close aria-label="Close">×</button></h2>
+    <p class="wslead">Every tool on this page, by what it measures. Put a layer on the main map, or open it as a new map beside it — it follows the same place and time.</p>
+    <div id="wsexplorelist" class="wsexplore"></div>
+  </div>
+</dialog>
+
+<dialog class="sheet wssheet" id="wsarrangeit" aria-labelledby="wsarrangetitle">
+  <div class="in">
+    <h2 id="wsarrangetitle">Arrange<button type="button" data-close aria-label="Close">×</button></h2>
+    <h3>Maps</h3>
+    <ul class="wslist" id="wsmaplist"></ul>
+    <h3>Cards</h3>
+    <ul class="wslist" id="wscardlist"></ul>
+  </div>
+</dialog>
+
+<dialog class="sheet wssheet" id="wssheet" aria-labelledby="wssavetitle">
+  <div class="in">
+    <h2 id="wssavetitle">Workspaces<button type="button" data-close aria-label="Close">×</button></h2>
+    <form id="wssaveform" class="wsform">
+      <label for="wsnamein">Name</label>
+      <input type="text" id="wsnamein" maxlength="40" required autocomplete="off">
+      <label class="wscheck"><input type="checkbox" id="wsrename"> rename it (the old name goes)</label>
+      <button type="submit" class="go">Save</button>
+    </form>
+    <ul class="wslist" id="wssavedlist"></ul>
+    <p class="privacy">A workspace is the layout — layers, maps, cards — kept in this browser only. It never holds a place.</p>
+  </div>
+</dialog>
+
+<dialog class="sheet wssheet" id="wsshareit" aria-labelledby="wssharetitle">
+  <div class="in">
+    <h2 id="wssharetitle">Share this layout<button type="button" data-close aria-label="Close">×</button></h2>
+    <p class="wslead">The link opens the same maps, layers and cards. It holds no place unless you add one.</p>
+    <label class="wscheck"><input type="checkbox" id="wsincview"> include where the main map is looking (its middle, to about 10 km)</label>
+    <label class="wscheck"><input type="checkbox" id="wsinctime"> include the shared time, if it is not now</label>
+    <button type="button" class="go" id="wsmakelink">Copy the link</button>
+    <input type="text" id="wslinkout" readonly hidden aria-label="The link">
+    <p class="msg" id="wslinkmsg" aria-live="polite"></p>
+  </div>
+</dialog>
+
 <noscript><p style="text-align:center;padding:20px">The weather room needs JavaScript to ask the forecast services.</p></noscript>
 
 <script src="effects.js"></script>
 <script src="projects/weather/nowcast.js?v=1"></script>
-<script src="projects/weather/wx.js?v=13"></script>
+<script src="projects/weather/wx.js?v=14"></script>
 <script src="projects/weather/sounding.js?v=4"></script>
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
 <script src="projects/weather/bzip2.js?v=1"></script>
-<script src="projects/weather/nexrad.js?v=2"></script>
+<script src="projects/weather/nexrad.js?v=3"></script>
 <script src="projects/weather/level2.js?v=2"></script>
 <script src="projects/weather/glm.js?v=3"></script>
-<script src="projects/weather/abi.js?v=1"></script>
-<script src="projects/weather/grib2.js?v=4"></script>
+<script src="projects/weather/abi.js?v=2"></script>
+<script src="projects/weather/grib2.js?v=5"></script>
 <script src="projects/weather/mesogrid.js?v=1"></script>
-<script src="projects/weather/modelmaps.js?v=5"></script>
+<script src="projects/weather/modelmaps.js?v=6"></script>
 <script src="projects/weather/mrms.js?v=1"></script>
 <script src="projects/weather/mapgeo.js?v=1"></script>
-<script src="assets/weather/app.js?v=9"></script>
+<script src="assets/weather/workstation.js?v=3"></script>
+<script src="assets/weather/app.js?v=12"></script>
 </body>
 </html>
