@@ -9,8 +9,9 @@
 
    What is read (WMO FM 92 GRIB edition 2):
      section 1  the run's reference time
-     section 3  grid template 3.0 (regular lat/lon — GFS) and 3.30 (Lambert
-                conformal — HRRR)
+     section 3  grid template 3.0 (regular lat/lon — GFS), 3.30 (Lambert
+                conformal — HRRR) and NCEP's 3.32769 (rotated lat/lon — the
+                RAP's native grid, for the mesoanalysis builder)
      section 4  the forecast hour (template 4.0 and 4.8's first fields)
      section 5  data templates 5.0 (simple packing), 5.2 (complex), 5.3
                 (complex with spatial differencing — what both models use)
@@ -70,6 +71,17 @@
             latin1: s(b, t + 51, 4) / 1e6, latin2: s(b, t + 55, 4) / 1e6,
             /* winds along the grid's own axes rather than east and north */
             uvGrid: !!(b[t + 32] & 0x08) };
+        } else if (tmpl === 32769) {
+          /* NCEP's rotated latitude/longitude (the RAP's native 13 km grid,
+             what its wrfprs files use): the first and last points in true
+             latitude and longitude, and the point the grid is centred on —
+             the rotated equator and meridian cross there. The spacing is
+             taken from the two corners, which ecCodes and the RAP agree on;
+             the Di in the file is rounded. */
+          const nx = u(b, t + 16, 4), ny = u(b, t + 20, 4);
+          msg.grid = { kind: 'rotll', nx, ny, npts, radius,
+            la1: s(b, t + 32, 4) / 1e6, lo1: u(b, t + 36, 4) / 1e6, la0: s(b, t + 41, 4) / 1e6, lo0: u(b, t + 45, 4) / 1e6,
+            scan: b[t + 57], la2: s(b, t + 58, 4) / 1e6, lo2: u(b, t + 62, 4) / 1e6, uvGrid: !!(b[t + 40] & 0x08) };
         } else throw new Error('grib2: grid template 3.' + tmpl + ' is not read here');
       } else if (sec === 4) {
         const tmpl = u(b, o + 7, 2), t = o + 9;
@@ -368,6 +380,26 @@
         return [di / g.di, north ? (g.la1 - lat) / g.dj : (lat - g.la1) / g.dj];
       };
       g.ll = (i, j) => [north ? g.la1 - j * g.dj : g.la1 + j * g.dj, wrap(lo1 + i * g.di)];
+      return g;
+    }
+    if (g.kind === 'rotll') {
+      /* the sphere turned so the grid's centre sits on the equator at 0°:
+         a rotation about the polar axis by the centre's longitude, then about
+         the new y axis by its latitude */
+      const p0 = g.la0 * rad, c0 = Math.cos(p0), s0 = Math.sin(p0), lon0 = g.lo0;
+      const fwd = (lat, lon) => {
+        const p = lat * rad, l = wrap(lon - lon0) * rad, x = Math.cos(p) * Math.cos(l), y = Math.cos(p) * Math.sin(l), z = Math.sin(p);
+        return [Math.asin(Math.max(-1, Math.min(1, -s0 * x + c0 * z))) / rad, Math.atan2(y, c0 * x + s0 * z) / rad];
+      };
+      const back = (pr, lr) => {
+        const p = pr * rad, l = lr * rad, xr = Math.cos(p) * Math.cos(l), y = Math.cos(p) * Math.sin(l), zr = Math.sin(p);
+        const x = c0 * xr - s0 * zr, z = s0 * xr + c0 * zr;
+        return [Math.asin(Math.max(-1, Math.min(1, z))) / rad, wrap(lon0 + Math.atan2(y, x) / rad)];
+      };
+      const [pa, la] = fwd(g.la1, g.lo1), [pb, lb] = fwd(g.la2, g.lo2);
+      const di = (lb - la) / (g.nx - 1), dj = (pb - pa) / (g.ny - 1);
+      g.ij = (lat, lon) => { const [pr, lr] = fwd(lat, lon); return [(lr - la) / di, (pr - pa) / dj]; };
+      g.ll = (i, j) => back(pa + j * dj, la + i * di);
       return g;
     }
     /* Lambert conformal conic, spherical earth (Snyder 1987, 15-1 to 15-4) */

@@ -17,6 +17,9 @@ is historical — every room that writes anything writes here:
 | `/trials` | Psyche → Studies | `/trials/search` and `/trials/study/<NCT>` pass ClinicalTrials.gov API v2 through, cached five minutes. The watchlist is on the site account, not here (`projects/psyche/README.md`) |
 | `/hit` | every page | page-view beacons from `assets/visit.js`, into D1 (`visitors.mjs`) |
 | `/stats` | `visitors/`, `admin/` | the visitor numbers, owner only; `?full=1` adds everything the admin Analytics tab draws (with `path=`, `ref=`, `country=`… filters, the previous period, and `seen=` for "since you last looked"), `/stats/live` is only who is online, `/stats/visitor?id=` is one browser's history, `/stats/exclude` is "ignore this device" |
+| `/wx` | Weather | the weather room's providers passed through and cached (`projects/weather/README.md`, "How a request travels") |
+| `/cs` | Counter-Strike | `/cs/replay/<id>`: the match replays, in R2 (`projects/cs/README.md`) |
+| `/meso` | Weather Pro | the hourly mesoanalysis, in R2 for a day: `PUT /meso/<YYYYMMDDHH>` from `projects/weather/meso/build.mjs` (site password; only a mesoanalysis file for that hour is taken), `GET /meso/index` and `GET /meso/<hour>` public |
 | `/auth` | all of them | Ric's sign-in (`assets/owner.js`) |
 
 It lived in `projects/training/server/` until 2026-09-25. The deployed name

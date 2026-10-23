@@ -9,7 +9,7 @@ import glob, json, os, warnings
 import numpy as np
 warnings.filterwarnings('ignore')
 here = os.path.dirname(os.path.abspath(__file__))
-out = {'l3': {}, 'grib2': {}, 'glm': {}, 'l2': {}, 'mrms': {}, 'abi': {}}
+out = {'l3': {}, 'grib2': {}, 'glm': {}, 'l2': {}, 'mrms': {}, 'abi': {}, 'rap': {}}
 rng = np.random.default_rng(7)
 
 from metpy.io import Level3File
@@ -125,6 +125,24 @@ for path in sorted(glob.glob(os.path.join(here, 'abi-*.nc'))):
         'x': [float(xs[0]), float(xs[-1])], 'y': [float(ys[0]), float(ys[-1])], 'proj': P,
         'samples': [[i, j, None if not np.isfinite(v[i, j]) else float(v[i, j])] for i, j in picks],
         'nav': [[j, i] + [float(z) for z in proj(xs[i] * H, ys[j] * H, inverse=True)[::-1]] for j, i in nav]}
+
+# The RAP's native rotated grid (template 3.32769): its values as ecCodes
+# reads them, and — since ecCodes cannot place that grid — the same field
+# from the same run on the RAP's own Lambert grid (awp130, JPEG 2000, which
+# ecCodes places), at points across it, for grib2.js's projector to be
+# checked against by interpolation.
+out['rap'] = {}
+for path in sorted(glob.glob(os.path.join(here, 'rap-*.rap'))):
+    h = eccodes.codes_new_from_message(open(path, 'rb').read())
+    v = np.asarray(eccodes.codes_get_values(h), dtype=float)
+    idx = sorted(set(int(i) for i in rng.integers(0, len(v), 400)))
+    lam = eccodes.codes_new_from_message(open(path.replace('rap-wrfprs', 'rap-awp130').replace('.rap', '.jp2grb'), 'rb').read())
+    lv = np.asarray(eccodes.codes_get_values(lam), dtype=float)
+    la = eccodes.codes_get_array(lam, 'latitudes'); lo = eccodes.codes_get_array(lam, 'longitudes')
+    pts = [int(i) for i in rng.integers(0, len(lv), 300)]
+    out['rap'][os.path.basename(path)] = {'npts': len(v), 'min': float(v.min()), 'max': float(v.max()),
+        'samples': [[i, float(v[i])] for i in idx],
+        'lambert': [[float(la[i]), float(lo[i]) if lo[i] <= 180 else float(lo[i]) - 360, float(lv[i])] for i in pts]}
 
 json.dump(out, open(os.path.join(here, 'expected.json'), 'w'), separators=(',', ':'))
 print({k: len(v) for k, v in out.items()})

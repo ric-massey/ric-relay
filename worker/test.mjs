@@ -1586,5 +1586,39 @@ console.log('\nRULE  CS replays: only the owner uploads, everyone can load them,
   ok((await r.hit('GET', '/media/file/..%2Fcs%2Freplays%2F' + id + '.js')).status !== 200, 'and /media cannot reach the replays');
 }
 
+/* ── /meso ──
+   The weather room's mesoanalysis: one file an hour from the builder.
+   Everyone reads; only the owner's token writes; only a real mesoanalysis
+   file for the hour in its name is taken; a day is kept. */
+console.log('\nRULE  the mesoanalysis: only the owner uploads, everyone reads, only that hour\'s file is taken, a day is kept');
+{
+  const { gzipSync } = await import('node:zlib');
+  const { createRequire } = await import('node:module');
+  const MG = createRequire(import.meta.url)('../projects/weather/mesogrid.js');
+  const r = mediaRig();
+  const grid = { kind: 'latlon', la1: 50, lo1: -100, di: 1, dj: 1, nx: 2, ny: 2 };
+  const file = (valid, rtma = true) => {
+    const arrays = {};
+    for (const id of [...MG.FIELDS.map((f) => f.id), ...MG.EXTRA.map(([id]) => id)]) arrays[id] = Float32Array.from([1, 2, NaN, 4]);
+    return gzipSync(MG.encode(arrays, { grid, valid, made: valid + 1200e3, inputs: { rtma } }));
+  };
+  const H = Date.UTC(2026, 9, 22, 22), st = (ms) => new Date(ms).toISOString().replace(/[-T:]/g, '').slice(0, 10);
+  const put = (body, path, token = TOKEN) => r.hit('PUT', path, { token, type: 'application/octet-stream', body });
+  ok((await put(file(H), '/meso/' + st(H), '')).status === 401, 'an upload with no token is refused');
+  ok((await put(file(H), '/meso/' + st(H), 'wrong')).status === 401, 'and with the wrong one');
+  ok((await put(file(H), '/meso/' + st(H))).status === 200, 'the owner can upload an hour');
+  const got = await r.hit('GET', '/meso/' + st(H));
+  ok(got.status === 200 && Buffer.compare(Buffer.from(await got.arrayBuffer()), file(H)) === 0 && got.headers.get('access-control-allow-origin'), 'anyone can read it back, byte for byte, from another origin');
+  const idx = await (await r.hit('GET', '/meso/index')).json();
+  ok(idx.hours.length === 1 && idx.hours[0].valid === H && idx.hours[0].rtma === true && idx.hours[0].stamp === st(H), 'the index lists it, with its hour and whether RTMA was in it');
+  ok((await put(file(H - 3600e3), '/meso/' + st(H))).status === 400, 'a file for another hour is refused');
+  ok((await put(gzipSync(Buffer.from('<script>alert(1)</script>')), '/meso/' + st(H))).status === 400, 'so is anything that is not a mesoanalysis');
+  ok((await put(Buffer.from('MESO1\n'), '/meso/' + st(H))).status === 400, 'or not gzipped');
+  ok((await put(file(H), '/meso/..%2Fclimb')).status === 404 && (await put(file(H), '/meso/2026102222/x')).status === 404, 'a name that is not an hour never reaches the bucket');
+  for (let k = 1; k <= 26; k++) await put(file(H + k * 3600e3), '/meso/' + st(H + k * 3600e3));
+  const after = await (await r.hit('GET', '/meso/index')).json();
+  ok(after.hours.length === 25 && after.hours[0].valid === H + 2 * 3600e3, `a day is kept: ${after.hours.length} hours, the oldest dropped as new ones came`);
+}
+
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKER RULES PASS'));
 process.exit(failures ? 1 : 0);

@@ -25,6 +25,7 @@
 
   const G = root.Grib2 || (typeof require === 'function' ? require('./grib2.js') : null);
   const SND = root.Sounding || (typeof require === 'function' ? require('./sounding.js') : null);
+  const MG = root.MesoGrid || (typeof require === 'function' ? require('./mesogrid.js') : null);
 
   const pad = (n, w = 2) => String(n).padStart(w, '0');
   const ymd = (ms) => { const d = new Date(ms); return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}`; };
@@ -59,8 +60,18 @@
        HRRR's analysis carries the effective-layer helicity, the most-
        unstable parcel's level and the equilibrium level that the SPC
        composites need. Ric, 2026-10-22: "do it". */
+    /* the mesoanalysis computed SPC's way on a server, once an hour
+       (meso/build.mjs: the RAP's one-hour forecast, NOAA's RTMA at the
+       ground, every column through every level) and kept by the Worker for
+       a day. The page only draws it. When the server has nothing recent the
+       page falls back to `meso` below, worked out here from the HRRR. */
+    smeso: {
+      label: 'Mesoanalysis', long: 'Mesoanalysis — the RAP\'s one-hour forecast with NOAA\'s surface analysis at the ground, every column through every level, computed hourly',
+      analysis: true, server: true, frames: 6, staleMs: 3 * 3600e3,
+      base: () => ((root.Wx && root.Wx.host) ? root.Wx.host() : 'https://training-log.rmbuster82.workers.dev') + '/meso'
+    },
     meso: {
-      label: 'Mesoanalysis', long: 'Mesoanalysis — the HRRR analysis hour (3 km), the last six hours, lower 48',
+      label: 'Mesoanalysis (HRRR)', long: 'Mesoanalysis — the HRRR analysis hour (3 km), the last six hours, lower 48',
       bucket: 'https://noaa-hrrr-bdp-pds.s3.amazonaws.com', cycle: 1, lookBack: 4, minHours: 1, analysis: true, frames: 6,
       prefix: (run) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf`,
       file: (run, fh) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf${pad(fh)}.grib2`,
@@ -287,6 +298,7 @@
       { id: 'p_wind', group: 'Chance within 40 km', label: 'A 58 mph wind (hourly maximum)', unit: 'pct', pal: 'prob', member: maxOver('WIND', '10 m above ground'), event: (v) => v >= 25.93 }
     ],
     meso: MESO_FIELDS(),
+    smeso: MG ? MG.FIELDS.map((f) => ({ id: f.id, group: f.group, label: f.label, unit: f.unit, pal: f.pal, server: f })) : [],
     ecmwf: EC_FIELDS(true),
     aifs: EC_FIELDS(false),
     gefs: GEFS_FIELDS(),
@@ -535,9 +547,59 @@
     ];
   }
 
-  /* the analysis hours a source has: the newest `count` runs whose hour 0 is out */
+  /* ── the server's mesoanalysis (mesogrid.js files from the Worker) ── */
+  const serverIndex = { at: 0, hours: [] }, serverFiles = new Map();
+  async function gunzip(bytes) {
+    if (typeof DecompressionStream === 'function') return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+    return new Uint8Array(require('zlib').gunzipSync(bytes));
+  }
+  const pad10 = (ms) => { const d = new Date(ms); return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}${pad(d.getUTCHours())}`; };
+  function serverFile(src, valid, { signal, fetchFn = fetch } = {}) {
+    if (!serverFiles.has(valid)) {
+      serverFiles.set(valid, (async () => {
+        const r = await fetchFn(`${SOURCES[src].base()}/${pad10(valid)}`, { signal });
+        if (!r.ok) throw new Error('models: the mesoanalysis for this hour is not on the server (HTTP ' + r.status + ')');
+        return MG.decode(await gunzip(new Uint8Array(await r.arrayBuffer())));
+      })().catch((e) => { serverFiles.delete(valid); throw e; }));
+      if (serverFiles.size > 8) serverFiles.delete(serverFiles.keys().next().value);
+    }
+    return serverFiles.get(valid);
+  }
+  /* one field of one hour, shaped like any other model layer: knots → m/s
+     for the barbs (the painter's unit), the contours drawn from the file's
+     own arrays */
+  async function loadServer(src, valid, f, opts) {
+    const { head, arrays } = await serverFile(src, valid, opts);
+    const grid = { ...head.grid }, F = f.server;
+    const out = { field: f, grid, values: arrays[f.id], run: valid, fh: 0, valid: head.valid, made: head.made, inputs: head.inputs };
+    if (F.contour === 'mslp') out.contours = [{ part: 'mslp', every: 4, scale: 1, unit: 'hpa', color: '#ffffff', lines: contours(grid, arrays.mslp, { every: 4, step: 1 }) }];
+    if (F.contour === 'mlcin') out.contours = [{ part: 'mlcin', every: 50, scale: 1, unit: 'jkgneg', color: '#8fc4ff', lines: contours(grid, arrays.mlcin, { every: 50, step: 1 }) }];
+    if (F.barbs) {
+      const b = F.barbs === true ? ['u10', 'v10'] : [F.barbs + 'u', F.barbs + 'v'];
+      /* a shear or motion barb under 5 kt says nothing — where there is no
+         effective layer there is no effective shear to draw — so none is drawn */
+      const calm = F.barbs !== true;
+      const U = arrays[b[0]], V = arrays[b[1]], u = new Float32Array(U.length), v = new Float32Array(V.length);
+      for (let i = 0; i < U.length; i++) {
+        const keep = !calm || Math.hypot(U[i], V[i]) >= 5;
+        u[i] = keep ? U[i] / 1.943844 : NaN; v[i] = keep ? V[i] / 1.943844 : NaN;
+      }
+      out.wind = { u, v };
+    }
+    return out;
+  }
+
+  /* the analysis hours a source has: the newest `count` runs whose hour 0 is
+     out, or for the server's mesoanalysis, the hours the Worker holds */
   async function analyses(src, { count, nowMs = Date.now(), signal, fetchFn = fetch } = {}) {
     const S = SOURCES[src], n = count || S.frames || 6, h = 3600e3, out = [];
+    if (S.server) {
+      const r = await fetchFn(`${S.base()}/index`, { signal });
+      if (!r.ok) throw new Error('models: the mesoanalysis server answered ' + r.status);
+      const j = await r.json();
+      serverIndex.at = nowMs; serverIndex.hours = (j.hours || []).filter((x) => Number.isFinite(x.valid)).sort((a, b) => a.valid - b.valid);
+      return serverIndex.hours.slice(-n).map((x) => x.valid);
+    }
     const first = Math.floor(nowMs / h) * h;
     const tries = [];
     for (let k = 0; k < n + 3; k++) tries.push(first - k * h);
@@ -715,6 +777,7 @@
     const f = field(src, id);
     if (!f) throw new Error('models: no field ' + id);
     if (src === 'tle') return loadTLE(f, run + fh * 3600e3, run, fh, { signal, fetchFn });
+    if (SOURCES[src].server) return loadServer(src, run, f, { signal, fetchFn });
     if (f.members) return loadEnsemble(src, f, run, fh, { signal, fetchFn });
     fetchFn = retrying(fetchFn);
     /* each part from its own file (a GEFS field's mean and spread are two) */
@@ -890,7 +953,7 @@
     return G.sample({ grid: layer.grid, values: layer.values }, lat, lon);
   }
 
-  const api = { SOURCES, FIELDS, PAL, UNIT, field, resolve, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, analyses, idxFor, parseJsonIndex, load, build, valueAt, within, smooth, loadTLE, loadEnsemble };
+  const api = { SOURCES, FIELDS, PAL, UNIT, field, resolve, serverIndex, serverFile, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, analyses, idxFor, parseJsonIndex, load, build, valueAt, within, smooth, loadTLE, loadEnsemble };
   root.ModelMaps = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

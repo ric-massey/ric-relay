@@ -1081,7 +1081,7 @@
       if (rv) row(Date.now() - rv > 30 * 60e3 ? "stale" : "", `MRMS — ${esc(radar.describe())}`, "every NEXRAD blended by NOAA · newest file", rv);
       else row("off", "MRMS", "asking NOAA…", null);
     } else if (radar.mode === "model") {
-      if (rv) row("", `Model map — ${esc(radar.describe())}`, radar.analysis ? "the HRRR analysis hour, NOAA open data on AWS · newest" : "a forecast, from the run's own files · run", rv);
+      if (rv) row("", `Model map — ${esc(radar.describe())}`, radar.analysis === "server" ? "the RAP's one-hour forecast and NOAA's RTMA, computed hourly · newest" : radar.analysis ? "the HRRR analysis hour, NOAA open data on AWS · newest" : "a forecast, from the run's own files · run", rv);
       else row("off", "Model map", "asking NOAA for the latest run…", null);
     } else if (rv) {
       const f = Wx.fresh("radar", rv);
@@ -1784,6 +1784,14 @@
         let runs = [];
         try { runs = await MM.analyses(src); } catch (e) {}
         if (R.mode !== "model" || M.src !== src || ask !== R.modeAsk) return;
+        /* the server's has nothing recent: work it out here from the HRRR instead, and say so */
+        if (MM.SOURCES[src].server && (!runs.length || Date.now() - runs[runs.length - 1] > MM.SOURCES[src].staleMs)) {
+          M.src = "meso"; if ($("#mmsrc")) $("#mmsrc").value = "meso";
+          if (!MM.field("meso", M.field)) M.field = "stpe";
+          modelOptions();
+          note("The hourly mesoanalysis is not on the server right now, so this one is worked out in your browser from the HRRR (a few fields approximated, as their names say).");
+          return modelFrames();
+        }
         if (!runs.length) { setFrames([]); $("#mmrun").textContent = ""; note("NOAA's HRRR archive did not answer. Try again in a minute."); return; }
         M.run = runs[runs.length - 1]; R.valid = M.run;
         setFrames(runs.map((run) => ({ t: run, model: { src, field: M.field, run, fh: 0 } })));
@@ -1805,7 +1813,10 @@
     function modelRunText() {
       const M = R.mm, el = $("#mmrun");
       if (!el) return;
-      el.textContent = !M.run ? "" : MM.SOURCES[M.src].analysis
+      const sv = MM.SOURCES[M.src].server && MM.serverIndex.hours.find((x) => x.valid === M.run);
+      el.textContent = !M.run ? "" : sv
+        ? `Mesoanalysis hours, the last ${R.frames.length} · newest ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}, made ${clk().time(sv.made)}${sv.rtma ? "" : " (before NOAA's surface analysis was out — the model's own ground-level air)"} · not a forecast`
+        : MM.SOURCES[M.src].analysis
         ? `HRRR analysis hours, the last ${R.frames.length} · newest ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)} · the model's picture of now, observations folded in — not a forecast`
         : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)} · ${R.frames.length} hours out so far · a forecast`;
     }
@@ -2160,7 +2171,7 @@
         const L = f.model.layer, v = MM.valueAt(L, lat, lon);
         if (!Number.isFinite(v)) return null;
         if (L.field.pal === "ptype") { const t = MM.PAL.ptype.types[Math.floor(v / 100)]; return `${t ? t[0] : "Precipitation"} · ${Math.round(v % 100)} dBZ · ${MM.SOURCES[f.model.src].label} +${f.model.fh} h`; }
-        return `${L.field.label}: ${MM.say(L.field.unit, v, U())} · ${MM.SOURCES[f.model.src].analysis ? `HRRR analysis ${new Date(f.t).toISOString().slice(11, 13)}Z` : `${MM.SOURCES[f.model.src].label} +${f.model.fh} h`}`;
+        return `${L.field.label}: ${MM.say(L.field.unit, v, U())} · ${MM.SOURCES[f.model.src].analysis ? `${MM.SOURCES[f.model.src].server ? "mesoanalysis" : "HRRR analysis"} ${new Date(f.t).toISOString().slice(11, 13)}Z` : `${MM.SOURCES[f.model.src].label} +${f.model.fh} h`}`;
       }
       return null;
     }
@@ -2649,6 +2660,7 @@
       else if (R.mode === "hrrr") sb.textContent = `A forecast, not radar: the HRRR model's own picture of the rain${R.valid ? ` from its ${new Date(R.valid).toISOString().slice(11, 13)}Z run` : ""}, every 15 minutes for the first hour then hourly to 18 hours. Lower 48 only.`;
       else if (R.mode === "abi" && AB) { const P = AB.PRODUCTS[R.ab.prod]; sb.textContent = `${AB.SATS[abiSat()].label} — ${P.group === "Single bands" ? P.label : P.label + " RGB"}, ${lc(AB.SECTORS[R.ab.sector].label)}, read from NOAA's own files. Hover or tap for each band's value.${/\(day\)/.test(P.label) ? " Dark at night: it is made from sunlight." : ""}`; }
       else if (R.mode === "mrms" && MR) sb.textContent = `MRMS — every NEXRAD blended by NOAA, with the model's temperatures and the rain gauges: ${lc(MR.PRODUCTS[R.mr.prod].label)}. Measured from radar, not a forecast. Hover or tap for the value.`;
+      else if (R.mode === "model" && MM && MM.SOURCES[R.mm.src].server) { const f = MM.field(R.mm.src, R.mm.field); sb.textContent = `Mesoanalysis, computed every hour the way SPC computes theirs: the RAP model's one-hour forecast, with NOAA's 15-minute surface analysis at the ground, every column worked through every level (25 hPa apart) on a 0.25° grid. Not a forecast, and not SPC's own (that is the SPC mesoanalysis card below). ${f.label}. The slider steps through the hours; hover or tap for the value.`; }
       else if (R.mode === "model" && MM && MM.SOURCES[R.mm.src].analysis) { const f = MM.field(R.mm.src, R.mm.field); sb.textContent = `Mesoanalysis — the HRRR model's analysis hour: its picture of now, with the latest observations folded in. Not a forecast, and not SPC's own (that is the SPC mesoanalysis card below). ${f.label}. The slider steps through the last six hours; hover or tap for the value.`; }
       else if (R.mode === "model" && MM) { const f = MM.field(R.mm.src, R.mm.field); sb.textContent = `A forecast, not an observation — ${MM.SOURCES[R.mm.src].long}. ${f.label}${R.mm.run ? `, from the ${new Date(R.mm.run).toISOString().slice(11, 13)}Z run` : ""}. The slider is the forecast hour; hover or tap for the value.`; }
       else if (l3() && R.site) { const f = R.frames[R.frame], F = f && f.l3 && f.l3.file; sb.textContent = `${R.site.id} · ${R.site.name} · ${l3().long}${F ? ` · ${F.elev.toFixed(1)}° scan` : ""}. ${useL2() ? "The full volume (Level II), every tilt at full resolution, refreshed every 30 seconds" : "Read from the radar's own Level III files"}; ${R.lockId ? "kept on this radar wherever the map goes" : "the site follows the middle of the map"}. Hover or tap for the value.`; }
@@ -3235,7 +3247,7 @@
       get mode() { return R.mode; },
       get replay() { return R.replay; },
       get pro() { return PRO ? { ov: R.ov, ...R.pro } : null; },
-      get analysis() { return R.mode === "model" && MM && !!MM.SOURCES[R.mm.src].analysis; },
+      get analysis() { return R.mode === "model" && MM && MM.SOURCES[R.mm.src].analysis ? (MM.SOURCES[R.mm.src].server ? "server" : true) : false; },
       get lightning() { return ltgOn() && (LTG.at || LTG.failed) ? { n: LTG.flashes.length, at: LTG.at, failed: LTG.failed } : null; },
       get stations() { return R.stations && R.obs.length ? { n: R.obs.length, newest: Math.max(...R.obs.map((s) => s.time)) } : null; },
       get valid() { return R.valid; },

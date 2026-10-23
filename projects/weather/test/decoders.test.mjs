@@ -215,6 +215,49 @@ console.log('\nRULE  the Level II archive: both layouts read alike, and the down
   ok(list.length === 1 && list[0].gz && list[0].t === Date.UTC(2013, 4, 20, 20, 3, 56), 'the archive\'s volumes by their time, the _MDM metadata files left out');
 }
 
+console.log('\nRULE  the RAP\'s rotated grid reads as ecCodes reads it, and sits where the RAP\'s own Lambert grid puts it');
+for (const [file, e] of Object.entries(expected.rap)) {
+  const m = G.parse(fx(file)), g = G.projector(m.grid);
+  let bad = 0;
+  for (const [i, v] of e.samples) if (!(Math.abs(m.values[i] - v) < 1e-3)) bad++;
+  ok(m.grid.kind === 'rotll' && m.values.length === e.npts && bad === 0, `${m.grid.nx}×${m.grid.ny} rotated grid, ${e.samples.length} sampled values match${bad ? ` — ${bad} do not` : ''}`);
+  const [la0, lo0] = g.ll(0, 0), [la1, lo1] = g.ll(m.grid.nx - 1, m.grid.ny - 1);
+  ok(Math.abs(la0 - m.grid.la1) < 1e-6 && Math.abs(((lo0 - m.grid.lo1 + 540) % 360) - 180) < 1e-6 && Math.abs(la1 - m.grid.la2) < 1e-6 && Math.abs(((lo1 - m.grid.lo2 + 540) % 360) - 180) < 1e-6, 'the first and last points land where the file says');
+  /* the same field, same run, on the Lambert grid ecCodes can place: sampled at
+     those places from the rotated grid, the two agree to a fraction of a degree */
+  const d = e.lambert.map(([lat, lon, v]) => Math.abs(G.sample(m, lat, lon) - v)).filter(Number.isFinite).sort((a, b) => a - b);
+  ok(d.length > 250 && d[Math.floor(d.length / 2)] < 0.1 && d[Math.floor(d.length * 0.95)] < 0.5, `${d.length} places on the RAP's Lambert grid: median difference ${d[Math.floor(d.length / 2)].toFixed(3)} K, 95th ${d[Math.floor(d.length * 0.95)].toFixed(3)} K`);
+}
+
+console.log('\nRULE  the server\'s mesoanalysis file reads back, and each column is sounding.js\'s own arithmetic');
+{
+  const MG = require('../mesogrid.js');
+  const { columnFields } = await import('../meso/build.mjs');
+  const n = 6, arrays = {};
+  for (const id of [...MG.FIELDS.map((f) => f.id), ...MG.EXTRA.map(([id]) => id)]) arrays[id] = Float32Array.from({ length: n }, (_, i) => (i === 3 ? NaN : 100 * Math.sin(i + id.length)));
+  const head = { grid: { kind: 'latlon', la1: 50, lo1: -100, di: 1, dj: 1, nx: 3, ny: 2 }, valid: Date.UTC(2026, 9, 22, 22), made: 1, inputs: { rtma: true } };
+  const back = MG.decode(MG.encode(arrays, head));
+  let worst = 0, nans = true;
+  for (const f of MG.FIELDS) for (let i = 0; i < n; i++) {
+    if (i === 3) { nans = nans && Number.isNaN(back.arrays[f.id][i]); continue; }
+    worst = Math.max(worst, Math.abs(back.arrays[f.id][i] - arrays[f.id][i]) / back.head.scale[f.id][1]);
+  }
+  ok(back.head.valid === head.valid && worst <= 0.5 + 1e-6 && nans, `every field comes back within half its stored step, and "none" stays none (worst ${worst.toFixed(2)} steps)`);
+  ok(back.head.scale.pwat[1] > 0.001 && back.head.scale.mucape[1] === 5, 'a field too wide for its usual step (±100 inches of rain) gets a coarser one instead of being clipped; one that fits keeps its own');
+  /* a capped, juicy column: columnFields is analyze()'s numbers, not new ones */
+  const L = [];
+  let z = 300;
+  for (let p = 1000; p >= 100; p -= 25) {
+    const t = p >= 850 ? (32 + 273.15) * (p / 1000) ** 0.2857 - 273.15 : 18 - (850 - p) * 0.1, td = p >= 850 ? 22 - (1000 - p) * 0.02 : -5 - (850 - p) * 0.06;
+    if (L.length) z += 287 * (t + 273.15) / 9.81 * Math.log(L[L.length - 1].p / p);
+    L.push({ p, z, t, td: Math.min(t, td), wd: 240, ws: 5 + (z - 300) / 400 });
+  }
+  const S = require('../sounding.js'), A = S.analyze(L), c = columnFields(L);
+  ok(c.mlcape === A.ml.cape && c.mucape === A.mu.cape && c.esrh === A.esrh && c.dcape === A.dcape && Math.abs(c.ebwd - A.ebwd * 1.943844) < 1e-9 && c.stpe === A.stpE,
+    `MLCAPE ${c.mlcape}, MUCAPE ${c.mucape}, DCAPE ${Math.round(c.dcape)}, ESRH ${Math.round(c.esrh)}, effective shear ${c.ebwd.toFixed(1)} kt — all analyze()'s`);
+  ok(c.ship >= 0 && c.dcp >= 0 && c.cape3 >= 0 && c.cape3 <= c.mlcape, 'the composites built on top are never negative, and 0–3 km CAPE is part of the whole');
+}
+
 console.log('\nRULE  ECMWF and the GEFS ensemble');
 {
   const idx = MM.parseJsonIndex('{"param":"gh","levtype":"pl","levelist":"500","step":"24","_offset":100,"_length":50}\n{"param":"2t","levtype":"sfc","step":"24","_offset":150,"_length":10}\n');

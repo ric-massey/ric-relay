@@ -1,0 +1,52 @@
+# The weather room's mesoanalysis, computed SPC's way, once an hour.
+#
+# projects/weather/meso/build.mjs takes the RAP's one-hour forecast for the
+# hour, puts NOAA's 15-minute surface analysis (RTMA) at the ground, lifts
+# every column of a 0.25° grid over the lower 48 through every level with
+# sounding.js, and PUTs one ~1.2 MB file to the Worker (/meso), which keeps
+# the last day for Weather Pro's map. The RTMA for the hour lands about 15–20
+# minutes past it, so this asks four times from :18 on; a run that finds the
+# hour already built (with its RTMA) stops in seconds. A build is about a
+# minute on the runner's four cores.
+#
+# Free: the repository is public, so GitHub-hosted minutes cost nothing.
+# Scheduled runs can start late; meso/lambda.mjs is the same code for AWS
+# Lambda, which does not (meso/README.md). Needs one secret, LOG_TOKEN — the
+# same one the Garmin pull uses. It prints no value and never the token.
+
+name: Mesoanalysis
+
+on:
+  schedule:
+    - cron: "18,28,38,48 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meso
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: projects/weather
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Build and send the newest hour
+        env:
+          LOG_TOKEN: ${{ secrets.LOG_TOKEN }}
+        run: |
+          if [ -z "$LOG_TOKEN" ]; then
+            echo "::error::Set the LOG_TOKEN secret (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          node projects/weather/meso/build.mjs --check --put worker

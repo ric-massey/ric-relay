@@ -1874,7 +1874,7 @@ async function wxProxy(request, env, ctx, parts, url) {
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'cs']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'cs', 'meso']);
 
 /* ── /cs/replay/<match id> — the CS room's replays, kept in R2 ──
    One file per match (projects/cs/matches/<id>.js, written by parse-demos.py),
@@ -1889,6 +1889,77 @@ const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media'
    URL and a day's cache is safe. PUT needs the site password, like every
    other write here; the throttle is the one in the object's /auth. */
 const CS_REPLAY_PREFIX = 'cs/replays/';
+
+/* ── /meso — the weather room's mesoanalysis, kept in R2 ──
+   projects/weather/meso/build.mjs computes it once an hour, SPC's way (the
+   RAP's one-hour forecast, NOAA's surface analysis at the ground, every column
+   through every level), in GitHub Actions or AWS Lambda, and PUTs the file
+   here: one gzipped mesogrid.js file per hour, ~1.2 MB, under `meso/`, which
+   no /media path can build a key under. GET /meso/index lists the hours held
+   (the last day's — older ones are deleted as new ones arrive); GET
+   /meso/<YYYYMMDDHH> is one. Reads are public — it is model output about the
+   whole country and holds no one's place. PUT needs the site password
+   (LOG_TOKEN, which the workflow has as a secret), throttled by /auth like
+   every other write, and only a mesoanalysis file for that very hour is
+   taken. Ric, 2026-10-22. */
+const MESO_PREFIX = 'meso/';
+const MESO_STAMP = /^(\d{4})(\d{2})(\d{2})(\d{2})$/;
+const MAX_MESO_BYTES = 6 * 1024 * 1024;
+const MESO_KEEP_MS = 24 * 3600e3;
+async function mesoRoute(request, env, parts, stub) {
+  const origin = request.headers.get('origin');
+  const h = { ...cors(origin), 'access-control-allow-methods': 'GET,PUT,OPTIONS' };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
+  if (!env.MEDIA) return json({ error: 'mesoanalysis storage is not configured' }, 404, origin);
+  if (parts[1] === 'index' && !parts[2] && (request.method === 'GET' || request.method === 'HEAD')) {
+    const list = await env.MEDIA.list({ prefix: MESO_PREFIX, include: ['customMetadata'] });
+    const hours = list.objects.map((o) => ({ stamp: o.key.slice(MESO_PREFIX.length, -7), valid: Number(o.customMetadata?.valid), made: Number(o.customMetadata?.made), rtma: o.customMetadata?.rtma === '1', bytes: o.size }))
+      .filter((x) => Number.isFinite(x.valid)).sort((a, b) => a.valid - b.valid);
+    return json({ hours }, 200, origin, { 'cache-control': 'public, max-age=60' });
+  }
+  const m = MESO_STAMP.exec(parts[1] || '');
+  if (!m || parts[2]) return json({ error: 'not found' }, 404, origin);
+  const valid = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4]), key = MESO_PREFIX + parts[1] + '.bin.gz';
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    const obj = await env.MEDIA.get(key);
+    if (!obj) return json({ error: 'not found' }, 404, origin);
+    const headers = new Headers(h);
+    headers.set('content-type', 'application/octet-stream');
+    headers.set('etag', obj.httpEtag);
+    /* an hour built before its surface analysis was out is built again, under the same name */
+    headers.set('cache-control', 'public, max-age=300');
+    return new Response(request.method === 'HEAD' ? null : obj.body, { status: 200, headers });
+  }
+  if (request.method !== 'PUT') return json({ error: 'method not allowed' }, 405, origin);
+  const a = request.headers.get('authorization') || '';
+  const given = a.startsWith('Bearer ') ? a.slice(7) : '';
+  if (!given) return json({ error: 'unauthorized' }, 401, origin);
+  const auth = await stub.fetch(new Request('https://internal/auth', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: given })
+  }));
+  if (auth.status === 429) return json({ error: 'too many tries — wait five minutes' }, 429, origin);
+  if (auth.status !== 200) return json({ error: 'unauthorized' }, 401, origin);
+  const body = new Uint8Array(await request.arrayBuffer());
+  if (body.length > MAX_MESO_BYTES) return json({ error: 'too big' }, 413, origin);
+  /* it must be a gzipped mesoanalysis file, and for this hour */
+  let head = null;
+  try {
+    if (body[0] !== 0x1f || body[1] !== 0x8b) throw new Error('not gzip');
+    const raw = new Uint8Array(await new Response(new Blob([body]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+    if (new TextDecoder().decode(raw.subarray(0, 6)) !== 'MESO1\n') throw new Error('not a mesoanalysis');
+    const hl = new DataView(raw.buffer, raw.byteOffset).getUint32(6, true);
+    if (hl > 65536) throw new Error('header too long');
+    head = JSON.parse(new TextDecoder().decode(raw.subarray(10, 10 + hl)));
+  } catch { return json({ error: 'not a mesoanalysis file' }, 400, origin); }
+  if (!head || head.valid !== valid || !head.grid || !Array.isArray(head.order)) return json({ error: 'not the mesoanalysis for this hour' }, 400, origin);
+  await env.MEDIA.put(key, body, { httpMetadata: { contentType: 'application/octet-stream' },
+    customMetadata: { valid: String(valid), made: String(Number(head.made) || Date.now()), rtma: head.inputs && head.inputs.rtma ? '1' : '0' } });
+  /* a day is kept: older hours go as new ones come */
+  const list = await env.MEDIA.list({ prefix: MESO_PREFIX, include: ['customMetadata'] });
+  const old = list.objects.filter((o) => Number(o.customMetadata?.valid) < valid - MESO_KEEP_MS).map((o) => o.key);
+  if (old.length) await env.MEDIA.delete(old);
+  return json({ ok: true, stamp: parts[1], bytes: body.length, dropped: old.length }, 200, origin);
+}
 const CS_REPLAY_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const MAX_CS_REPLAY_BYTES = 20 * 1024 * 1024;
 
@@ -1955,6 +2026,7 @@ export default {
       return json({ ok: true, id, bytes: body.length }, 200, origin);
     }
     if (parts[0] === 'wx') return wxProxy(request, env, ctx, parts, url);
+    if (parts[0] === 'meso') return mesoRoute(request, env, parts, stub);
 
     /* ── /hit and /stats ── the site's own visitor counter (visitors.mjs).
        The beacon is public and goes straight to D1. The numbers are Ric's,
