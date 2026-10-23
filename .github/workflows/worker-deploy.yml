@@ -29,10 +29,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           # assets/scrub-media.js is imported by worker.mjs — the photo
-          # scrub is one file shared with the page.
+          # scrub is one file shared with the page. mesogrid.js is the
+          # mesoanalysis file's format, which worker/test.mjs builds its
+          # /meso uploads with.
           sparse-checkout: |
             /worker/
             /assets/scrub-media.js
+            /projects/weather/mesogrid.js
           sparse-checkout-cone-mode: false
 
       - uses: actions/setup-node@v4
