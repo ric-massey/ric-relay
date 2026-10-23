@@ -217,6 +217,33 @@ with contours and barbs, played through the forecast hours; GOES lightning; and
 the NWS's storm reports — all above, under "Who answers what". Share links
 carry the tilt (`t=`) and the model field (`m=hrrr.mlcape`).
 
+**Weather Pro's controls (2026-10-23, after a review of the page as a
+forecaster would use it):**
+- *Nothing hidden on a desk.* Above 1000px the layer, overlay and satellite rows
+  wrap instead of scrolling sideways — at 1440px, Echo tops, VIL, Future, Models
+  and Replay had been past the right edge with nothing to say so — and the docked
+  map takes whatever height the controls leave (the radar card is a flex column),
+  so the column still fits the screen whole. A cross-section open puts the card
+  back to its old fixed map. On a phone the rows still scroll, fading at the
+  right edge to say there is more.
+- *Overlays are switches.* They tick like boxes and stay dark when on, so they do
+  not read like the one layer chosen in the row above.
+- *Pick the radar.* The tilt row starts with a radar list — the nearest fifteen
+  to the map's middle. Choosing one keeps it however far the map is dragged; the
+  first entry goes back to following the map; choosing a new place lets go. A
+  share link carries it (`k=TLX`, IEM's three-letter ids).
+- *Keys.* Space plays, ← → step frames, + − zoom, F full screen, M R V S C Z K H E G
+  the products, 1–9 the tilts, L and W lightning and watches, ? the list (the
+  `#keys` sheet; `KEYMODES` in `app.js` must match it — `test/wx.test.mjs`
+  checks). Ignored while typing, with a modifier, or with a sheet open. The ?
+  chip is hidden on touch screens.
+- *dBZ on the mosaic.* Pro's legend numbers the NWS reflectivity colours (5 dBZ
+  steps, 5–70) for the mosaic, a site's IEM tiles and the HRRR's picture;
+  Weather keeps light-to-heavy.
+- *The sheets centre.* `*{margin:0}` had taken the browser's centring off every
+  `dialog.sheet`, so the place search opened in the top-left corner on both
+  pages. Pro's sheets now have the instrument's corners and panel.
+
 **Weather Pro's tools (2026-10-22):** the overlays above; a **sounding anywhere** — tap a
 point and "Sounding here" moves the Skew-T to it, with a way back to the place; a
 **ruler** — tap points, read each leg's bearing and the total; and a **share link** that

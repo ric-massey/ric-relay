@@ -1740,8 +1740,13 @@
       const row = $("#tiltrow");
       if (!row) return;
       const P = l3();
-      row.hidden = !P || (P.tilts.length < 2 && !P.l2);
+      /* the row is the radar picker as well, so it shows for every one-radar
+         product; the tilt buttons only where there is more than one tilt */
+      row.hidden = !P;
       if (row.hidden) return;
+      siteOptions();
+      const btns = $("#tiltbtns");
+      if (P.tilts.length < 2 && !P.l2) { btns.innerHTML = ""; return; }
       const f = R.frames[R.frame], el0 = f && f.l3 && f.l3.file ? f.l3.file.elev : null, b = [];
       if (useL2()) {
         for (const a of R.l2angles || []) b.push(`<button type="button" data-angle="${a}" aria-pressed="${Math.abs(a - R.l2angle) < 0.15}">${a.toFixed(1)}°</button>`);
@@ -1750,7 +1755,21 @@
         P.tilts.forEach((_, k) => { const on = k === Math.min(R.tilt, P.tilts.length - 1); b.push(`<button type="button" data-tilt="${k}" aria-pressed="${on}">${on && el0 != null ? el0.toFixed(1) + "°" : ["Lowest", "2nd", "3rd", "4th"][k]}</button>`); });
       }
       if (P.l2 && P.tilts.length) b.push(`<button type="button" data-l2toggle aria-pressed="${useL2()}" title="Every tilt the radar scans, at full resolution, seconds after the sweep — about 1 MB a frame">Full volume</button>`);
-      row.innerHTML = `<span class="seglab">Tilt</span>${b.join("")}`;
+      btns.innerHTML = `<span class="seglab">Tilt</span>${b.join("")}`;
+    }
+    /* the radar picker: follow the map (the nearest radar to its middle, as
+       before), or keep one radar however far the map is dragged — the way a
+       forecaster works one storm from one site (2026-10-23). The list is the
+       nearest radars to the map's middle when it was last asked. */
+    function siteOptions() {
+      const sel = $("#sitesel");
+      if (!sel || document.activeElement === sel) return;
+      const list = (R.sites || []).slice(0, 15);
+      if (R.lockId && R.site && R.site.id === R.lockId && !list.some((x) => x.id === R.lockId)) list.unshift(R.site);
+      const here = { lat: yLat(R.cy, R.z), lon: xLng(R.cx, R.z) };
+      sel.innerHTML = `<option value="">Nearest to the map${!R.lockId && R.site ? ` · ${esc(R.site.id)}` : ""}</option>`
+        + list.map((x) => `<option value="${esc(x.id)}"${x.id === R.lockId ? " selected" : ""}>${esc(x.id)} · ${esc(x.name)} · ${dist(Wx.distanceM(here.lat, here.lon, x.lat, x.lon) / 1000)}</option>`).join("");
+      sel.value = R.lockId || "";
     }
 
     /* ── model maps (modelmaps.js) ──
@@ -2496,15 +2515,28 @@
     }
 
     /* the nearest NEXRAD to the middle of the map */
+    async function sitesNear(lat, lon) {
+      const sites = await Wx.radarSites(Wx.round2(lat), Wx.round2(lon));
+      if (sites.length) { R.sites = sites; siteOptions(); }
+      return sites;
+    }
     async function pickSite(force) {
       const lat = yLat(R.cy, R.z), lon = xLng(R.cx, R.z);
+      /* a radar the visitor chose stays until they let it go */
+      if (R.lockId) {
+        if (R.site && R.site.id === R.lockId) return false;
+        let s = (R.sites || []).find((x) => x.id === R.lockId);
+        if (!s) { try { s = (await sitesNear(lat, lon)).find((x) => x.id === R.lockId); } catch (e) {} }
+        if (s) { R.site = s; siteOptions(); return true; }
+        R.lockId = null;                                  // not a radar the list knows: follow the map
+      }
       if (!force && R.site && R.site.lat != null && Wx.distanceM(lat, lon, R.site.lat, R.site.lon) < 120e3) return false;
       try {
-        const sites = await Wx.radarSites(Wx.round2(lat), Wx.round2(lon));
+        const sites = await sitesNear(lat, lon);
         if (!sites.length) return false;
         const s = sites[0];
-        if (R.site && R.site.id === s.id) return false;
-        R.site = s;
+        if (R.site && R.site.id === s.id) { siteOptions(); return false; }
+        R.site = s; siteOptions();
         return true;
       } catch (e) { return false; }
     }
@@ -2591,6 +2623,16 @@
         }
       }
       if (cats) { lg.classList.add("cats"); lg.innerHTML = cats.map(([n, c]) => `<span class="sw"><i style="background:${c}"></i>${esc(n)}</span>`).join(""); return; }
+      /* the mosaic, one site's IEM tiles and the HRRR's picture all use the NWS's
+         reflectivity colours: 5 dBZ steps from 5 (#04e9e7) to 70 (#9854c6),
+         the same stops as .legend i. Pro numbers them (2026-10-23); Weather
+         keeps light-to-heavy. */
+      if (!pal && PRO) {
+        const pos = (v) => ((v - 5) / 65 * 100).toFixed(1);
+        lg.classList.add("scale");
+        lg.innerHTML = `<div class="bar"><i aria-hidden="true"></i><div class="ticks">${[10, 20, 30, 40, 50, 60, 70].map((t) => `<span style="left:${pos(t)}%">${t}</span>`).join("")}</div></div><span class="lu">dBZ</span>`;
+        return;
+      }
       if (!pal) { lg.innerHTML = `<span>light</span><i aria-hidden="true"></i><span>heavy</span>`; return; }
       const st = pal.stops, lo = pal.min ?? st[0][0], hi = pal.max ?? st[st.length - 1][0];
       const pos = (v) => Math.max(0, Math.min(1, pal.log ? (Math.log(v) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)) : (v - lo) / (hi - lo)));
@@ -2609,9 +2651,9 @@
       else if (R.mode === "mrms" && MR) sb.textContent = `MRMS — every NEXRAD blended by NOAA, with the model's temperatures and the rain gauges: ${lc(MR.PRODUCTS[R.mr.prod].label)}. Measured from radar, not a forecast. Hover or tap for the value.`;
       else if (R.mode === "model" && MM && MM.SOURCES[R.mm.src].analysis) { const f = MM.field(R.mm.src, R.mm.field); sb.textContent = `Mesoanalysis — the HRRR model's analysis hour: its picture of now, with the latest observations folded in. Not a forecast, and not SPC's own (that is the SPC mesoanalysis card below). ${f.label}. The slider steps through the last six hours; hover or tap for the value.`; }
       else if (R.mode === "model" && MM) { const f = MM.field(R.mm.src, R.mm.field); sb.textContent = `A forecast, not an observation — ${MM.SOURCES[R.mm.src].long}. ${f.label}${R.mm.run ? `, from the ${new Date(R.mm.run).toISOString().slice(11, 13)}Z run` : ""}. The slider is the forecast hour; hover or tap for the value.`; }
-      else if (l3() && R.site) { const f = R.frames[R.frame], F = f && f.l3 && f.l3.file; sb.textContent = `${R.site.id} · ${R.site.name} · ${l3().long}${F ? ` · ${F.elev.toFixed(1)}° scan` : ""}. ${useL2() ? "The full volume (Level II), every tilt at full resolution, refreshed every 30 seconds" : "Read from the radar's own Level III files"}; the site follows the middle of the map. Hover or tap for the value.`; }
+      else if (l3() && R.site) { const f = R.frames[R.frame], F = f && f.l3 && f.l3.file; sb.textContent = `${R.site.id} · ${R.site.name} · ${l3().long}${F ? ` · ${F.elev.toFixed(1)}° scan` : ""}. ${useL2() ? "The full volume (Level II), every tilt at full resolution, refreshed every 30 seconds" : "Read from the radar's own Level III files"}; ${R.lockId ? "kept on this radar wherever the map goes" : "the site follows the middle of the map"}. Hover or tap for the value.`; }
       else if (l3()) sb.textContent = "Finding the nearest radar…";
-      else if (R.site) sb.textContent = `${R.site.id} · ${R.site.name} · ${Wx.SITE_PRODUCTS[R.mode].long}. The site follows the middle of the map.`;
+      else if (R.site) sb.textContent = `${R.site.id} · ${R.site.name} · ${Wx.SITE_PRODUCTS[R.mode].long}. ${R.lockId ? "Kept on this radar wherever the map goes." : "The site follows the middle of the map."}`;
       else sb.textContent = "Finding the nearest radar…";
       if (PRO && R.ov.cells && R.started && R.mode !== "replay" && R.z < 6) sb.textContent += " Zoom in to see storm cells.";
       if (R.stations && R.started && R.mode !== "replay") sb.textContent += R.z < STN_MINZ ? " Zoom in to see the airport stations." : R.obs.length ? " Tap a station for its full reading." : "";
@@ -2844,7 +2886,7 @@
       const lat = yLat(R.cy, R.z), lon = xLng(R.cx, R.z);
       const ov = [R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r"].filter(Boolean).join("");
       const v = `${lat.toFixed(1)},${(((lon + 540) % 360) - 180).toFixed(1)},${R.z}`;
-      const url = `${location.origin}${location.pathname}#v=${v}&l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}`;
+      const url = `${location.origin}${location.pathname}#v=${v}&l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
       const done = () => note("Link copied — it opens this map view and these layers. Your saved place is not in it.");
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => note(`Copy this link: ${url}`));
       else note(`Copy this link: ${url}`);
@@ -2874,6 +2916,7 @@
       if (MR && MR.PRODUCTS[q.get("r")]) R.mr.prod = q.get("r");
       const [gp, gs, gsat] = (q.get("g") || "").split(".");
       if (AB && AB.PRODUCTS[gp] && AB.SECTORS[gs] && ["auto", "east", "west"].includes(gsat)) R.ab = { prod: gp, sector: gs, sat: gsat };
+      if (/^[A-Z]{3}$/.test(q.get("k") || "")) R.lockId = q.get("k");   // IEM's ids: TLX, not KTLX
       const l = q.get("l");
       return ["N0B", "N0S", "hrrr"].includes(l) || l3(l) || (l === "model" && MM) || (l === "mrms" && MR) || (l === "abi" && AB) ? l : true;
     }
@@ -2912,6 +2955,52 @@
       });
     });
     addEventListener("keydown", (e) => { if (e.key === "Escape") full(false); });
+    if ($("#sitesel")) $("#sitesel").addEventListener("change", async (e) => {
+      const id = e.target.value, prev = R.site && R.site.id;
+      e.target.blur();
+      R.lockId = id || null;
+      if (id) { const s = (R.sites || []).find((x) => x.id === id); if (s) R.site = s; }
+      else await pickSite(true);
+      siteOptions();
+      if (single() && R.site && R.site.id !== prev) { play(false); R.valid = null; clearTiles(); await siteFrames(); }
+      label(); renderSources(); draw();
+    });
+    /* Pro's keys, for a desk (2026-10-23): the loop, the zoom and the
+       products reached for most, without the mouse. A key typed into a field,
+       one with a modifier, or one pressed while a sheet is open is left alone;
+       `?` lists them (the #keys sheet, which must say the same as KEYMODES). */
+    const KEYMODES = { m: "comp", g: "abi", r: "l3:ref", v: "l3:vel", s: "l3:srv", c: "l3:cc", z: "l3:zdr", k: "l3:kdp", h: "l3:hca", e: "l3:eet" };
+    if (PRO) addEventListener("keydown", (e) => {
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target, k = e.key;
+      if (t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))) return;
+      if (document.querySelector("dialog[open]")) return;
+      const press = (b) => { if (!b) return false; b.click(); return true; };
+      let done;
+      if (k === " ") {
+        if (t && t.closest && t.closest("button,a,summary")) return;   // Space on a button presses it
+        start(); play(!R.playing); done = true;
+      } else if (k === "ArrowLeft" || k === "ArrowRight") {
+        if (!R.frames.length) return;
+        play(false); loadOld();
+        const n = R.frames.length;
+        show((R.frame + (k === "ArrowLeft" ? -1 : 1) + n) % n); done = true;
+      } else if (k === "+" || k === "=") { zoomTo(R.z + 1); done = true; }
+      else if (k === "-" || k === "_") { zoomTo(R.z - 1); done = true; }
+      else if (k === "f" || k === "F") { full(!$("#radarcard").classList.contains("mapfull")); done = true; }
+      else if (KEYMODES[k.toLowerCase()]) done = press(document.querySelector(`.seg [data-mode="${KEYMODES[k.toLowerCase()]}"]`));
+      else if (k === "l" || k === "L") done = press(document.querySelector('[data-ov="lightning"]'));
+      else if (k === "w" || k === "W") done = press(document.querySelector('[data-ov="watches"]'));
+      else if (/^[1-9]$/.test(k)) done = !$("#tiltrow").hidden && press(document.querySelectorAll("#tiltbtns [data-tilt], #tiltbtns [data-angle]")[Number(k) - 1]);
+      else if (k === "?") { const d = $("#keys"); if (d && d.showModal) { d.showModal(); done = true; } }
+      if (done) e.preventDefault();
+    });
+    if ($("#keys")) {
+      const d = $("#keys");
+      $("#keysbtn").addEventListener("click", () => d.showModal());
+      $("#closekeys").addEventListener("click", () => d.close());
+      d.addEventListener("click", (e) => { if (e.target === d) d.close(); });   // a tap on the backdrop
+    }
 
     /* dragging, the site following the map, and a tap that is not a drag */
     let drag = null, follow = 0, tap = 0;
@@ -3102,6 +3191,7 @@
         R.z = 7;
         R.cx = lngX(lon, R.z); R.cy = latY(lat, R.z);
         clearTiles();
+        R.lockId = null;
         if (single()) { R.site = null; if (R.started) pickSite(true).then(() => siteFrames()).then(label); }
         if (R.started) { draw(); stationsSoon(); }
       },

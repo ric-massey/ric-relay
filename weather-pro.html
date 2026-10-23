@@ -24,7 +24,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Weather">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231f5fa8'/><circle cx='40' cy='40' r='16' fill='%23ffd166'/><path d='M30 74h42a14 14 0 0 0-3-28 18 18 0 0 0-34 6 11 11 0 0 0-5 22z' fill='%23fff'/></svg>">
-  <link rel="stylesheet" href="assets/weather/weather.css?v=5">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=6">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -61,6 +61,7 @@
     <span class="spacer"></span>
     <button class="chip" type="button" id="usview" aria-label="Across the US" title="Across the US">US</button>
     <button class="chip" type="button" id="units" aria-label="Switch units">°F</button>
+    <button class="chip keyschip" type="button" id="keysbtn" aria-label="Keyboard shortcuts" aria-haspopup="dialog" title="Keyboard shortcuts (?)">?</button>
     <button class="chip" type="button" id="refresh" aria-label="Refresh">
       <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M15 9a6 6 0 1 1-1.8-4.3M15 2.5V6h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
@@ -95,12 +96,15 @@
           <button type="button" data-mode="model" id="modeltoggle" aria-pressed="false" title="HRRR and GFS fields on the map: CAPE, helicity, temperature, 500 mb, the jet…">Models</button>
           <button type="button" id="replaytoggle" aria-pressed="false" aria-expanded="false" aria-controls="replaybar" title="The radar and the storm warnings as they were, any day since 2006">Replay</button>
         </div>
-        <div class="seg rowscroll pro-only" id="tiltrow" role="group" aria-label="Radar tilt" hidden>
-          <span class="seglab">Tilt</span>
-          <button type="button" data-tilt="0" aria-pressed="true">Lowest</button>
-          <button type="button" data-tilt="1" aria-pressed="false">2nd</button>
-          <button type="button" data-tilt="2" aria-pressed="false">3rd</button>
-          <button type="button" data-tilt="3" aria-pressed="false">4th</button>
+        <div class="seg rowscroll pro-only" id="tiltrow" role="group" aria-label="Radar and tilt" hidden>
+          <label class="sitepick"><span class="seglab">Radar</span><select id="sitesel" title="Follow the map, or keep one radar wherever the map goes"><option value="">Nearest to the map</option></select></label>
+          <span id="tiltbtns" class="tiltbtns">
+            <span class="seglab">Tilt</span>
+            <button type="button" data-tilt="0" aria-pressed="true">Lowest</button>
+            <button type="button" data-tilt="1" aria-pressed="false">2nd</button>
+            <button type="button" data-tilt="2" aria-pressed="false">3rd</button>
+            <button type="button" data-tilt="3" aria-pressed="false">4th</button>
+          </span>
         </div>
         <div class="modelbar pro-only" id="abibar" hidden>
           <label>Product <select id="abiprod"></select></label>
@@ -122,7 +126,7 @@
           <label>Flash density over <select id="denswin"><option value="1">the last minute</option><option value="5">5 minutes</option><option value="10">10 minutes</option><option value="20">20 minutes</option></select></label>
           <span class="dscale" aria-label="Flashes per 8 km square"><span class="sw"><i style="background:#4c6ef5"></i>1</span><span class="sw"><i style="background:#15aabf"></i>2</span><span class="sw"><i style="background:#40c057"></i>4</span><span class="sw"><i style="background:#fab005"></i>8</span><span class="sw"><i style="background:#fd7e14"></i>16</span><span class="sw"><i style="background:#f03e3e"></i>32</span><span class="sw"><i style="background:#e64980"></i>64</span><span class="sw"><i style="background:#f8f0fc"></i>128+</span> <span class="mmrun">flashes per 8 km square · GOES GLM</span></span>
         </div>
-        <div class="seg rowscroll pro-only" role="group" aria-label="Overlays on the map">
+        <div class="seg rowscroll toggles pro-only" role="group" aria-label="Overlays on the map">
           <span class="seglab">Overlays</span>
           <button type="button" data-ov="watches" aria-pressed="false" title="SPC watches and mesoscale discussions, WPC precipitation discussions">Watches &amp; MDs</button>
           <button type="button" data-ov="cells" aria-pressed="false" title="Every NEXRAD storm cell: track, hail, rotation">Storm cells</button>
@@ -236,6 +240,26 @@
   </div>
 </dialog>
 
+<dialog class="sheet keysheet" id="keys" aria-labelledby="keystitle">
+  <div class="in">
+    <h2 id="keystitle">Keys<button type="button" id="closekeys" aria-label="Close">×</button></h2>
+    <dl class="keys">
+      <dt><kbd>Space</kbd></dt><dd>play or pause the loop</dd>
+      <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>step back or forward a frame</dd>
+      <dt><kbd>+</kbd> <kbd>−</kbd></dt><dd>zoom in or out</dd>
+      <dt><kbd>F</kbd></dt><dd>full-screen map, and back (<kbd>Esc</kbd> too)</dd>
+      <dt><kbd>M</kbd></dt><dd>US mosaic</dd>
+      <dt><kbd>G</kbd></dt><dd>satellite · GOES</dd>
+      <dt><kbd>R</kbd> <kbd>V</kbd> <kbd>S</kbd></dt><dd>reflectivity, velocity, storm-relative velocity</dd>
+      <dt><kbd>C</kbd> <kbd>Z</kbd> <kbd>K</kbd> <kbd>H</kbd></dt><dd>CC, ZDR, KDP, hydrometeor class</dd>
+      <dt><kbd>E</kbd></dt><dd>echo tops</dd>
+      <dt><kbd>1</kbd>–<kbd>9</kbd></dt><dd>the radar's tilts, lowest first</dd>
+      <dt><kbd>L</kbd> <kbd>W</kbd></dt><dd>lightning, watches and discussions on or off</dd>
+      <dt><kbd>?</kbd></dt><dd>this list</dd>
+    </dl>
+  </div>
+</dialog>
+
 <noscript><p style="text-align:center;padding:20px">The weather room needs JavaScript to ask the forecast services.</p></noscript>
 
 <script src="effects.js"></script>
@@ -252,6 +276,6 @@
 <script src="projects/weather/grib2.js?v=3"></script>
 <script src="projects/weather/modelmaps.js?v=4"></script>
 <script src="projects/weather/mrms.js?v=1"></script>
-<script src="assets/weather/app.js?v=7"></script>
+<script src="assets/weather/app.js?v=8"></script>
 </body>
 </html>

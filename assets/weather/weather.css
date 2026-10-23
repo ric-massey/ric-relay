@@ -251,7 +251,7 @@ footer p+p{margin-top:6px}
 footer a{color:#fff}
 
 /* the place sheet */
-dialog.sheet{width:min(520px,calc(100vw - 24px));max-height:min(640px,calc(100vh - 40px));padding:0;border:1px solid var(--edge);
+dialog.sheet{margin:auto;width:min(520px,calc(100vw - 24px));max-height:min(640px,calc(100vh - 40px));padding:0;border:1px solid var(--edge);
   border-radius:22px;background:rgba(12,24,46,.97);color:var(--text);box-shadow:0 30px 80px rgba(0,0,0,.55)}
 dialog.sheet::backdrop{background:rgba(2,6,14,.55);backdrop-filter:blur(3px)}
 .sheet .in{padding:18px}
@@ -643,3 +643,41 @@ body[data-view="pro"] .modelbar .go{border-radius:3px;background:var(--amber);co
 body[data-view="pro"] .modelbar{border-radius:4px;background:#0a0d12;border:1px solid var(--edge)}
 body[data-view="pro"] .modelbar select{border-radius:3px;font-family:var(--mono);font-size:13px}
 body[data-view="pro"] .pin .ro{color:var(--amber)}
+
+/* ── Weather Pro's controls, 2026-10-23 ──
+   On a wide screen every layer and overlay is in view: the rows wrap rather
+   than scroll sideways (at 1440px, Echo tops, VIL, Future, Models and Replay
+   were all past the right edge with nothing to say they were there), and the
+   map takes whatever height the controls leave, so the docked column still
+   fits the screen whole however many rows they need. While a cross-section is
+   open the card grows as before. On a phone the rows still scroll, and fade
+   at the right edge to say there is more. */
+@media (min-width:1001px){
+  body[data-view="pro"] .seg.rowscroll{flex-wrap:wrap;overflow:visible}
+  body[data-view="pro"] .workspace #radarcard:not(.mapfull):not(:has(#xsec:not([hidden]))){display:flex;flex-direction:column;height:calc(100vh - 140px);min-height:600px}
+  body[data-view="pro"] .workspace #radarcard:not(.mapfull):not(:has(#xsec:not([hidden]))) .radar{flex:1 1 auto;height:auto;min-height:300px}
+}
+@media (max-width:1000px){
+  body[data-view="pro"] .seg.rowscroll{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);padding-right:24px}
+}
+/* the overlays are switches, any number at once — drawn as boxes that tick,
+   so they do not read like the one layer chosen in the row above */
+body[data-view="pro"] .seg.toggles button{display:inline-flex;align-items:center;gap:7px}
+body[data-view="pro"] .seg.toggles button::before{content:"";flex:none;width:10px;height:10px;border:1.5px solid currentColor;border-radius:2px;opacity:.75}
+body[data-view="pro"] .seg.toggles button[aria-pressed="true"]{background:#2a2110;color:var(--amber);border-color:#7a5a17}
+body[data-view="pro"] .seg.toggles button[aria-pressed="true"]::before{opacity:1;background:var(--amber) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5.2l2 2 4-4.4' fill='none' stroke='%231c1300' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/100% no-repeat;border-color:var(--amber)}
+/* the radar picker, at the head of the tilt row */
+.tiltbtns{display:contents}
+.sitepick{display:inline-flex;align-items:center;gap:6px;flex:none;margin-right:6px}
+.sitepick select{min-height:34px;max-width:min(300px,70vw);padding:0 8px;border-radius:3px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12.5px var(--mono,ui-monospace,monospace)}
+@media (pointer:coarse){ .sitepick select{min-height:44px} }
+/* the keys: offered only where there is a keyboard to press them */
+.keyschip{font-weight:700}
+@media (pointer:coarse){ .keyschip{display:none} }
+.keysheet .keys{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:6px 0 4px;font-size:14px}
+.keysheet .keys dt{white-space:nowrap}
+.keysheet .keys dd{margin:0;color:var(--dim)}
+.keysheet kbd{display:inline-block;min-width:22px;padding:1px 6px;border:1px solid var(--edge);border-bottom-width:2px;border-radius:3px;background:#121821;color:#e3e9f0;font:600 12px var(--mono,ui-monospace,monospace);text-align:center}
+/* Pro's sheets are the instrument's, not the sky's */
+body[data-view="pro"] dialog.sheet{border-radius:var(--r);background:#0b0f15;border-color:#2a3340}
+body[data-view="pro"] .sheet h2 button{border-radius:3px;background:#121821;border:1px solid var(--edge)}

@@ -436,6 +436,11 @@ console.log('\nRULE  two pages, one room: Weather for everyone, Weather Pro for 
   ok([simple, pro].every(p => p.includes('assets/weather/app.js') && p.includes('assets/visit.js')), 'both load the shared code and count visits');
   ok(![simple, pro, app, read('projects/weather/wx.js')].some(s => /ride outlook|rideOutlook/i.test(s)),
     'no ride outlook anywhere — Ric, 2026-10-21: "this should be information, not something that could make it unsafe"');
+  /* Pro's keys (2026-10-23): every product key opens a button that is on the page, and the sheet lists every key */
+  const km = app.match(/const KEYMODES = (\{[^}]*\})/), keys = km ? Function(`return ${km[1]}`)() : {};
+  const sheet = (pro.match(/<dl class="keys">([\s\S]*?)<\/dl>/) || [])[1] || '';
+  ok(Object.keys(keys).length >= 8 && Object.values(keys).every(m => pro.includes(`data-mode="${m}"`)), 'each product key presses a layer button Weather Pro has');
+  ok(Object.keys(keys).every(k => sheet.includes(`<kbd>${k.toUpperCase()}</kbd>`)) && ['L', 'W', 'F', '?'].every(k => sheet.includes(`<kbd>${k}</kbd>`)), 'the keys sheet lists every key the page answers');
 }
 
 console.log('\nRULE  Weather Pro\'s overlays: as issued, and gone when they end');
