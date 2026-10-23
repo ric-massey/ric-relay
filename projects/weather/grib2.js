@@ -50,9 +50,14 @@
     if (u(bytes, 0, 4) !== 0x47524942 || bytes[7] !== 2) throw new Error('grib2: not a GRIB2 message');
     const total = u(bytes, 8, 8);
     const msg = { discipline: bytes[6] };
-    let p = 16, bitmap = null, data = null;
+    /* NCEP packs some fields together — the NAM's U and V winds are one
+       message, sections 4 to 7 repeated (its .idx calls them 167.1 and
+       167.2). `sub` picks which; reading stops where the next one starts. */
+    const sub = (opts && opts.sub) || 1;
+    let p = 16, bitmap = null, data = null, fieldNo = 0;
     while (p < total - 4) {
       const len = u(bytes, p, 4), sec = bytes[p + 4], b = bytes, o = p;
+      if (sec === 4 && ++fieldNo > sub) break;
       if (sec === 1) {
         msg.refTime = Date.UTC(u(b, o + 12, 2), b[o + 14] - 1, b[o + 15], b[o + 16], b[o + 17], b[o + 18]);
       } else if (sec === 3) {
@@ -134,10 +139,10 @@
     const out = new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream(format)));
     return new Uint8Array(await out.arrayBuffer());
   }
-  async function parseAsync(bytes, { pool = 1 } = {}) {
+  async function parseAsync(bytes, { pool = 1, sub = 1 } = {}) {
     bytes = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
     if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = await stream(bytes, 'gzip');
-    const msg = parse(bytes);
+    const msg = parse(bytes, { sub });
     if (msg.pack.tmpl !== 41) return msg;
     const g = msg.grid, k = msg.pack;
     if (g.kind !== 'latlon') throw new Error('grib2: PNG packing is read here on lat/lon grids only');
@@ -441,8 +446,15 @@
      begins. */
   function parseIdx(text) {
     const lines = String(text).split('\n').filter(Boolean).map((l) => l.split(':'));
-    return lines.map((f, k) => ({ n: +f[0], start: +f[1], end: k + 1 < lines.length ? +lines[k + 1][1] - 1 : null,
-      run: f[2].replace(/^d=/, ''), name: f[3], level: f[4], fcst: f[5], line: f.slice(3).join(':') }));
+    /* a field inside a shared message ("167.2") ends where the next message
+       begins, not where its sibling does (they share a start) */
+    return lines.map((f, k) => {
+      let next = k + 1;
+      while (next < lines.length && +lines[next][1] === +f[1]) next++;
+      const sub = /\.(\d+)$/.exec(f[0]);
+      return { n: parseInt(f[0], 10), sub: sub ? +sub[1] : 1, start: +f[1], end: next < lines.length ? +lines[next][1] - 1 : null,
+        run: f[2].replace(/^d=/, ''), name: f[3], level: f[4], fcst: f[5], line: f.slice(3).join(':') };
+    });
   }
   /* the one entry matching a pattern over "NAME:LEVEL:FCST" */
   function find(idx, re) { return idx.find((e) => re.test(e.line)) || null; }
@@ -457,7 +469,7 @@
     }
     const r = await fetchFn(url, { signal, headers: { Range: `bytes=${entry.start}-${end}` } });
     if (!r.ok) throw new Error('grib2: HTTP ' + r.status);
-    return parseAsync(new Uint8Array(await r.arrayBuffer()), { pool });
+    return parseAsync(new Uint8Array(await r.arrayBuffer()), { pool, sub: entry.sub || 1 });
   }
 
   const api = { parse, parseAsync, pngPooled, unpack, projector, sample, parseIdx, find, fetchMessage, Bits, aec };

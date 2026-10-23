@@ -111,6 +111,40 @@
       file: (run, fh, member = 'geavg') => `gefs.${ymd(run)}/${hh(run)}/atmos/pgrb2ap5/${member}.t${hh(run)}z.pgrb2a.0p50.f${pad(fh, 3)}`,
       hours: (have) => have.filter((h) => h > 0 && h % 6 === 0)
     },
+    /* the NAM's 3 km CONUS nest: the other storm-scale model forecasters
+       check the HRRR against, every 6 hours to 60 hours (2026-10-22) */
+    nam: {
+      label: 'NAM 3 km', long: 'NOAA NAM 3 km CONUS nest — every 6 hours, out to 60 hours',
+      bucket: 'https://noaa-nam-pds.s3.amazonaws.com', cycle: 6, lookBack: 4, minHours: 12,
+      prefix: (run) => `nam.${ymd(run)}/nam.t${hh(run)}z.conusnest.hiresf`,
+      file: (run, fh) => `nam.${ymd(run)}/nam.t${hh(run)}z.conusnest.hiresf${pad(fh)}.tm00.grib2`,
+      hours: (have) => have
+    },
+    /* the RAP at 13 km, its native grid (the only RAP files that are not
+       JPEG 2000). NOAA's RAP bucket sends no CORS header, so the Worker's
+       /rap passes these files through — byte ranges, untouched. Until the
+       Worker is deployed with /rap, this source says it did not answer. */
+    rap: {
+      label: 'RAP', long: 'NOAA RAP — 13 km, a new run every hour, North America',
+      get bucket() { return ((root.Wx && root.Wx.host) ? root.Wx.host() : 'https://training-log.rmbuster82.workers.dev') + '/rap'; },
+      cycle: 1, lookBack: 4, minHours: 10,
+      prefix: (run) => `rap.${ymd(run)}/rap.t${hh(run)}z.wrfprsf`,
+      file: (run, fh) => `rap.${ymd(run)}/rap.t${hh(run)}z.wrfprsf${pad(fh)}.grib2`,
+      hours: (have) => have
+    },
+    /* the National Blend of Models' own probabilities: NOAA's calibrated
+       blend of many models, at 2.5 km. Only its chances are drawn here — its
+       best-guess numbers are already what the forecast cards compare. Its
+       6-hour windows end at 00, 06, 12 and 18Z whatever hour the run began,
+       so the hours drawn are the ones valid then, to 10 days (fewer kinds
+       past 2 days, as the Blend publishes). */
+    nbm: {
+      label: 'National Blend', long: 'NOAA National Blend of Models — calibrated chances from many models, 2.5 km, lower 48, a new run every hour',
+      bucket: 'https://noaa-nbm-grib2-pds.s3.amazonaws.com', cycle: 1, lookBack: 6, minHours: 40,
+      prefix: (run) => `blend.${ymd(run)}/${hh(run)}/core/blend.t${hh(run)}z.core.f`,
+      file: (run, fh) => `blend.${ymd(run)}/${hh(run)}/core/blend.t${hh(run)}z.core.f${pad(fh, 3)}.co.grib2`,
+      hours: (have, run) => have.filter((h) => h >= 6 && (new Date(run).getUTCHours() + h) % 6 === 0 && h <= 240)
+    },
     gfs: {
       label: 'GFS', long: 'NOAA GFS — 0.25°, global, a new run every 6 hours',
       bucket: 'https://noaa-gfs-bdp-pds.s3.amazonaws.com', cycle: 6, lookBack: 4, minHours: 30,
@@ -323,6 +357,43 @@
       { id: 'snowdepth', group: 'Rain and snow', label: 'Snow depth', unit: 'snow', pal: 'snow', parts: { s: at('SNOD', 'surface') }, value: (p, i) => p.s[i] * 39.3701 }
     ]
   };
+  /* the NAM nest and the RAP carry most of the HRRR's fields under the same
+     names; where a name or level differs it is swapped, and what one does
+     not have (checked against each file's .idx, 2026-10-22) is left out
+     rather than shown failing. The upper-air maps are the GFS's. */
+  const EA = 'entire atmosphere (considered as a single layer)';
+  const derive = (base, { drop = [], swap = {} }) => base.filter((f) => !drop.includes(f.id))
+    .map((f) => (swap[f.id] ? { ...f, parts: { ...f.parts, ...swap[f.id] } } : f))
+    .concat(FIELDS.gfs.filter((f) => ['h500', 'jet250', 't850'].includes(f.id)));
+  /* NAM: no lightning or snowfall fields, rain only in 3-hour pieces (left out) */
+  FIELDS.nam = derive(FIELDS.hrrr, { drop: ['ltng', 'snow', 'qpf', 'qpf1'],
+    swap: { refc: { r: at('REFC', EA) }, ptype: { r: at('REFC', EA) }, tops: { t: at('RETOP', EA) }, cloud: { c: at('TCDC', EA) }, mslp: { p: at('PRMSL', 'mean sea level') } } });
+  /* RAP: no updraft helicity or lightning */
+  FIELDS.rap = derive(FIELDS.hrrr, { drop: ['uh', 'ltng'], swap: { tops: { t: at('RETOP', EA) } } });
+  FIELDS.nbm = NBM_FIELDS();
+
+  /* ── the National Blend's chances ── each one message, already a percent.
+     A 6-hour chance is the window ending at the hour on screen; a chance of
+     low cloud or fog is for the hour itself. Thresholds are the Blend's own
+     (metres and millimetres in the file). */
+  function NBM_FIELDS() {
+    const win = (fcst) => { const m = /^(\d+)-(\d+) hour acc/.exec(fcst); return m ? m[2] - m[1] : null; };
+    const thr = (e) => e.line.split(':')[3];
+    const six = (name, t) => (e) => e.name === name && e.level === 'surface' && win(e.fcst) === 6 && thr(e) === t;
+    const now = (name, level, t) => (e) => e.name === name && e.level === level && /^\d+ hour fcst$/.test(e.fcst) && thr(e) === t;
+    const GROUP = 'Chance (National Blend)';
+    const one = (id, label, test) => ({ id, group: GROUP, label, unit: 'pct', pal: 'prob', parts: { p: test }, value: (p, i) => p.p[i] });
+    return [
+      one('p_rain6', 'Rain (0.01 in or more) in the 6 hours to now', six('APCP', 'prob >0.254')),
+      one('p_tstm6', 'Thunder in the 6 hours to now', six('TSTM', 'probability forecast')),
+      one('p_snow1', '1 inch of snow or more in 6 hours', six('ASNOW', 'prob >0.0254')),
+      one('p_snow4', '4 inches of snow or more in 6 hours', six('ASNOW', 'prob >0.1016')),
+      one('p_ice', '0.1 inch of ice or more in 6 hours', six('FICEAC', 'prob >2.54')),
+      one('p_vis1', 'Visibility under 1 mile', now('VIS', 'surface', 'prob <1609.34')),
+      one('p_ceil1k', 'Cloud ceiling under 1,000 ft', now('CEIL', 'cloud ceiling', 'prob <304.8'))
+    ];
+  }
+
   const field = (src, id) => (FIELDS[src] || []).find((f) => f.id === id) || null;
 
   /* ── the mesoanalysis's fields ──
@@ -687,7 +758,17 @@
   /* HRRR's winds are relative to its grid, not to north (section 3's
      resolution and component flags say so); turn them to the earth. NCEP's
      rotation for a Lambert grid: α = n·(λ − λ₀). */
+  const rotProj = new WeakMap();
   function earthWind(grid, lat, lon, u, v) {
+    if (grid.uvGrid && grid.kind === 'rotll') {
+      /* the RAP's rotated grid: turn by the bearing of the grid's +i
+         direction at the point, as meso/build.mjs does */
+      if (!rotProj.has(grid)) rotProj.set(grid, G.projector(grid));
+      const g = rotProj.get(grid), [fi, fj] = g.ij(lat, lon), [la, lo] = g.ll(fi, fj), [lb, lob] = g.ll(fi + 0.5, fj), r = Math.PI / 180;
+      const y = Math.sin((lob - lo) * r) * Math.cos(lb * r), x = Math.cos(la * r) * Math.sin(lb * r) - Math.sin(la * r) * Math.cos(lb * r) * Math.cos((lob - lo) * r);
+      const beta = Math.atan2(y, x), sb = Math.sin(beta), cb = Math.cos(beta);
+      return [u * sb - v * cb, u * cb + v * sb];
+    }
     if (!grid.uvGrid || grid.kind !== 'lambert') return [u, v];
     const rad = Math.PI / 180, p1 = grid.latin1 * rad, p2 = grid.latin2 * rad;
     const n = Math.abs(p1 - p2) < 1e-9 ? Math.sin(p1)
@@ -752,7 +833,7 @@
     for (let k = 0; k < S.lookBack; k++, first -= c) {
       const prefix = S.prefix(first);
       const hours = hoursIn(await listKeys(S.bucket, prefix, { signal, fetchFn }), prefix);
-      if (hours.length >= S.minHours) return { run: first, hours: S.hours(hours), complete: false };
+      if (hours.length >= S.minHours) return { run: first, hours: S.hours(hours, first), complete: false };
     }
     return null;
   }
@@ -797,7 +878,7 @@
      fetch them again. A 3 km HRRR field is 7.6 MB of numbers; 28 is the cap. */
   const msgCache = new Map();
   function message(url, e, opts) {
-    const key = `${url}|${e.start}`;
+    const key = `${url}|${e.start}|${e.sub || 1}`;
     if (!msgCache.has(key)) {
       msgCache.set(key, G.fetchMessage(url, e, opts).catch((err) => { msgCache.delete(key); throw err; }));
       if (msgCache.size > 28) msgCache.delete(msgCache.keys().next().value);

@@ -364,5 +364,64 @@ console.log('\nRULE  the derived severe maps are the published formulas');
   ok(Object.values(MR.PRODUCTS).every((P) => MM.PAL[P.pal] && MM.UNIT[P.unit]), 'every MRMS product has a palette and a unit');
 }
 
+console.log('\nRULE  two fields in one GRIB2 message (the NAM\'s winds): each is read as itself');
+{
+  /* Build what NCEP writes: one message, sections 0–3 once, then 4–7 for
+     the first field and 4–7 again for the second. Made here from two HRRR
+     fixtures on the same grid, so each half has a known answer. */
+  const A = fx('hrrr-uh03.grb2'), B = fx('hrrr-cpofp.grb2');
+  const u32 = (b, o) => ((b[o] << 24) >>> 0) + (b[o + 1] << 16) + (b[o + 2] << 8) + b[o + 3];
+  const sections = (b) => { const out = []; let p = 16; const total = Number(new DataView(b.buffer, b.byteOffset + 8, 8).getBigUint64(0)); while (p < total - 4) { const len = u32(b, p); out.push([b[p + 4], b.subarray(p, p + len)]); p += len; } return out; };
+  const sa = sections(A), sb = sections(B);
+  const head = sa.filter(([s]) => s <= 3).map(([, x]) => x), fa = sa.filter(([s]) => s >= 4).map(([, x]) => x), fb = sb.filter(([s]) => s >= 4).map(([, x]) => x);
+  const parts = [A.subarray(0, 16), ...head, ...fa, ...fb, new TextEncoder().encode('7777')];
+  const n = parts.reduce((s, x) => s + x.length, 0), M = new Uint8Array(n);
+  let o = 0; for (const x of parts) { M.set(x, o); o += x.length; }
+  new DataView(M.buffer).setBigUint64(8, BigInt(n));
+  const a = G.parse(A), b = G.parse(B), m1 = G.parse(M, { sub: 1 }), m2 = G.parse(M, { sub: 2 });
+  const same = (x, y) => x.length === y.length && x.every((v, i) => (Number.isNaN(v) ? Number.isNaN(y[i]) : v === y[i]));
+  ok(same(m1.values, a.values) && same(m2.values, b.values), 'the first field and the second come out as they were packed');
+  const idx = G.parseIdx('166:100:d=2026102300:HGT:250 mb:6 hour fcst:\n167.1:200:d=2026102300:UGRD:250 mb:6 hour fcst:\n167.2:200:d=2026102300:VGRD:250 mb:6 hour fcst:\n168:900:d=2026102300:TMP:250 mb:6 hour fcst:\n');
+  ok(idx[1].sub === 1 && idx[2].sub === 2 && idx[1].end === 899 && idx[2].end === 899 && idx[0].end === 199 && idx[3].end === null,
+    'the .idx gives both halves the whole message, and says which half');
+}
+
+console.log('\nRULE  storm-relative velocity: each radial loses the storm motion\'s part along it');
+{
+  /* a made-up sweep in m/s: 360 radials, the wind at every gate the same
+     10 m/s from the west; the storms moving east at 10 m/s too */
+  const nRad = 360, nBins = 2, lut = new Float32Array(256).fill(NaN);
+  for (let i = 2; i < 256; i++) lut[i] = -63.5 + (i - 2) * 0.5;
+  const enc = (v) => Math.round((v + 63.5) / 0.5) + 2, data = new Uint8Array(nRad * nBins);
+  const az0 = new Float32Array(nRad), daz = new Float32Array(nRad).fill(1);
+  for (let k = 0; k < nRad; k++) { az0[k] = k - 0.5; const v = 10 * Math.sin(k * Math.PI / 180); data[k * nBins] = enc(v); data[k * nBins + 1] = 1; }
+  const f = { code: 'L2', nRad, nBins, az0, daz, data, lut, special: { 1: 'rf' } };
+  const s = N.stormRelative(f, 10, 0), val = (k) => s.lut[s.data[k * nBins]];
+  ok([0, 45, 90, 180, 270, 333].every((k) => Math.abs(val(k)) <= 1.6), 'a wind that is only the storm\'s own motion is near zero on every radial (to the 1.6 kt step)');
+  const g = N.stormRelative(f, 0, 0);
+  ok(Math.abs(g.lut[g.data[90 * nBins]] - 10 / 0.514444) <= 1.6, 'with the storm still, it is the velocity itself, in knots');
+  ok(s.special[s.data[nBins + 1]] === 'rf', 'a range-folded gate stays range folded');
+}
+
+console.log('\nRULE  the NAM nest, the RAP and the National Blend: only fields their files carry');
+{
+  const ids = (src) => MM.FIELDS[src].map((f) => f.id);
+  ok(!ids('nam').includes('ltng') && !ids('nam').includes('snow') && ids('nam').includes('h500') && ids('nam').includes('uh'), 'the NAM: no lightning or snowfall (not in its files), the upper air, updraft helicity');
+  ok(!ids('rap').includes('uh') && ids('rap').includes('qpf1') && ids('rap').includes('jet250'), 'the RAP: no updraft helicity, its hourly rain, the jet');
+  ok(MM.FIELDS.nbm.every((f) => f.unit === 'pct' && f.pal === 'prob'), 'the Blend: every field a chance, drawn as one');
+  ok(MM.FIELDS.nam.find((f) => f.id === 'refc').parts.r({ name: 'REFC', level: 'entire atmosphere (considered as a single layer)', fcst: '6 hour fcst' }), 'the NAM reads reflectivity under its own level name');
+  const e = (line) => { const f = line.split(':'); return { name: f[0], level: f[1], fcst: f[2], line }; };
+  const rain = MM.FIELDS.nbm.find((f) => f.id === 'p_rain6').parts.p;
+  ok(rain(e('APCP:surface:18-24 hour acc fcst:prob >0.254:prob fcst 255/255')) && !rain(e('APCP:surface:12-24 hour acc fcst:prob >0.254:prob fcst 255/255')) && !rain(e('APCP:surface:23-24 hour acc fcst:prob >0.254:prob fcst 255/255')),
+    'the Blend\'s 6-hour rain chance, not its 12- or 1-hour one');
+  const hours = MM.SOURCES.nbm.hours(Array.from({ length: 60 }, (_, k) => k + 1), Date.UTC(2026, 9, 23, 2));
+  ok(hours[0] === 10 && hours.every((h) => (2 + h) % 6 === 0), 'its hours are the ones valid at 00, 06, 12 and 18Z, where its 6-hour windows end');
+  ok(MM.SOURCES.rap.bucket.endsWith('/rap'), 'the RAP is read through the Worker\'s /rap (NOAA\'s bucket has no CORS)');
+  /* the rotated grid's winds turn to the earth: the +i direction at the grid's centre points east */
+  const grid = { kind: 'rotll', nx: 953, ny: 834, la1: -10.5906, lo1: 220.4, la0: 47.5, lo0: 254, la2: 80.1, lo2: 9.7, uvGrid: true };
+  const [u, v] = MM.earthWind(grid, 47.5, -106, 10, 0);
+  ok(Math.abs(u - 10) < 0.1 && Math.abs(v) < 0.1, 'and at its centre, grid-east is earth-east');
+}
+
 console.log(failures ? `\n${failures} DECODER RULE${failures === 1 ? '' : 'S'} BROKEN` : '\nALL DECODER RULES PASS');
 process.exit(failures ? 1 : 0);

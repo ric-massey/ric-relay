@@ -1668,7 +1668,14 @@ function wxDeg(v, max) {
   return Math.abs(n) <= max ? String(n) : null;
 }
 
-/* [upstream URL, ttl] for a path the page makes, or null for anything else. */
+/* IEM's ASOS archive for one state network, the 40 minutes to `endMs` —
+   built exactly as projects/weather/wx.js builds it (ROUTES.asosAt) */
+function wxAsosUrl(net, endMs) {
+  const d = (ms, k) => { const t = new Date(ms); return `year${k}=${t.getUTCFullYear()}&month${k}=${t.getUTCMonth() + 1}&day${k}=${t.getUTCDate()}&hour${k}=${t.getUTCHours()}&minute${k}=${t.getUTCMinutes()}`; };
+  return `${WX_IEM}/cgi-bin/request/asos.py?network=${net}&data=tmpf&data=dwpf&data=relh&data=sknt&data=drct&data=gust&data=mslp&data=vsby&data=skyc1&data=skyc2&data=skyc3&data=wxcodes&data=metar&${d(endMs - 40 * 60e3, 1)}&${d(endMs, 2)}&tz=Etc/UTC&format=onlycomma&latlon=yes&missing=empty&trace=empty&report_type=3&report_type=4`;
+}
+
+/* [upstream URL, ttl, content type] for a path the page makes, or null for anything else. */
 function wxUpstream(parts, params) {
   const kind = parts[1];
   if (kind === 'om' && !parts[2]) {
@@ -1716,7 +1723,18 @@ function wxUpstream(parts, params) {
     if (what === 'obs') {
       const wfo = params.get('wfo') || '';
       if (!/^[A-Z]{3}$/.test(wfo)) return null;
+      /* all=1: every network IEM carries for the office (Weather Pro), not only airports */
+      if (params.get('all') === '1') return [`${WX_IEM}/api/1/currents.geojson?wfo=${wfo}&minutes=90`, WX_TTL.obs];
       return [`${WX_IEM}/api/1/currents.geojson?networkclass=ASOS&wfo=${wfo}&minutes=90`, WX_TTL.obs];
+    }
+    /* a state's airport readings over the 40 minutes to a past moment (a
+       replay's stations), IEM's ASOS archive as CSV — the past does not change */
+    if (what === 'asos') {
+      const net = params.get('network') || '', end = params.get('end') || '';
+      if (!/^[A-Z]{2}_ASOS$/.test(net) || !/^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/.test(end)) return null;
+      const e = Date.parse(end.replace('Z', ':00Z'));
+      if (!Number.isFinite(e) || e > Date.now() || e < Date.UTC(1995, 0, 1)) return null;
+      return [wxAsosUrl(net, e), e < Date.now() - 86400e3 ? 86400 * 7 : WX_TTL.obs, 'text/csv; charset=utf-8'];
     }
     if (what === 'raob') {
       const ts = params.get('ts') || '', st = params.get('station') || '';
@@ -1820,12 +1838,12 @@ async function wxProxy(request, env, ctx, parts, url) {
 
   const up = wxUpstream(parts, url.searchParams);
   if (!up) return json({ error: 'not found' }, 404, origin);
-  const [upstream, ttl] = up;
+  const [upstream, ttl, type] = up;
 
   const reply = (body, status, hit) => new Response(body, {
     status,
     headers: {
-      'content-type': 'application/json; charset=utf-8',
+      'content-type': status === 200 && type ? type : 'application/json; charset=utf-8',
       'cache-control': status === 200 ? `public, max-age=${ttl}` : 'no-store',
       'x-wx-cache': hit,
       ...cors(origin)
@@ -1874,7 +1892,7 @@ async function wxProxy(request, env, ctx, parts, url) {
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'cs', 'meso']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'cs', 'meso', 'rap']);
 
 /* ── /cs/replay/<match id> — the CS room's replays, kept in R2 ──
    One file per match (projects/cs/matches/<id>.js, written by parse-demos.py),
@@ -1960,6 +1978,53 @@ async function mesoRoute(request, env, parts, stub) {
   if (old.length) await env.MEDIA.delete(old);
   return json({ ok: true, stamp: parts[1], bytes: body.length, dropped: old.length }, 200, origin);
 }
+/* ── /rap — the RAP model's files, passed through for Weather Pro's map ──
+   NOAA's RAP bucket (noaa-rap-pds) sends no CORS header, so a browser cannot
+   read it, and every RAP file but the native-grid ones is JPEG 2000, which
+   nothing on the site decodes. So this passes exactly one kind of file
+   through: the native 13 km pressure-level files (`wrfprsfNN.grib2`) and
+   their `.idx`, plus the bucket listing for one run's prefix. A Range header
+   is passed on and the bytes are streamed back untouched — no parsing, so it
+   costs the Worker almost no CPU. Nothing is stored; the edge may cache a
+   piece for an hour (a run's file never changes once written). Ric,
+   2026-10-22 ("finish what the AI needs to do"). */
+const RAP_BUCKET = 'https://noaa-rap-pds.s3.amazonaws.com';
+const RAP_FILE = /^rap\.\d{8}\/rap\.t\d\dz\.wrfprsf\d\d\.grib2(\.idx)?$/;
+const RAP_PREFIX = /^rap\.\d{8}\/rap\.t\d\dz\.wrfprsf$/;
+async function rapRoute(request, env, parts, url) {
+  const origin = request.headers.get('origin');
+  const h = { ...cors(origin), 'access-control-allow-methods': 'GET,HEAD,OPTIONS', 'access-control-allow-headers': 'range',
+    'access-control-expose-headers': 'content-range,content-length,accept-ranges' };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: h });
+  if (request.method !== 'GET' && request.method !== 'HEAD') return json({ error: 'method not allowed' }, 405, origin);
+  let upstream;
+  if (parts.length === 1) {
+    /* the listing: list-type 2, one run's prefix, nothing else asked of S3 */
+    const prefix = url.searchParams.get('prefix') || '', token = url.searchParams.get('continuation-token');
+    if (url.searchParams.get('list-type') !== '2' || !RAP_PREFIX.test(prefix) || (token && !/^[A-Za-z0-9+/=_-]{1,1024}$/.test(token))) return json({ error: 'not found' }, 404, origin);
+    const q = new URLSearchParams({ 'list-type': '2', prefix });
+    if (token) q.set('continuation-token', token);
+    upstream = `${RAP_BUCKET}/?${q}`;
+  } else {
+    const key = parts.slice(1).join('/');
+    if (!RAP_FILE.test(key)) return json({ error: 'not found' }, 404, origin);
+    upstream = `${RAP_BUCKET}/${key}`;
+  }
+  const range = request.headers.get('range');
+  if (range && !/^bytes=\d{1,12}-\d{0,12}$/.test(range)) return json({ error: 'one plain byte range only' }, 416, origin);
+  const get = env.FETCH || ((...a) => fetch(...a));
+  let r;
+  try {
+    r = await get(upstream, { method: request.method, headers: range ? { range } : {},
+      ...(typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(20000) } : {}) });
+  } catch (e) { return json({ error: 'could not reach NOAA' }, 502, origin); }
+  if (!r.ok) return json({ error: 'NOAA answered ' + r.status }, r.status === 404 ? 404 : 502, origin);
+  const headers = new Headers(h);
+  for (const k of ['content-type', 'content-length', 'content-range', 'accept-ranges', 'etag']) if (r.headers.get(k)) headers.set(k, r.headers.get(k));
+  /* a listing changes as the run comes out; a file, once there, does not */
+  headers.set('cache-control', parts.length === 1 ? 'public, max-age=60' : 'public, max-age=3600');
+  return new Response(request.method === 'HEAD' ? null : r.body, { status: r.status, headers });
+}
 const CS_REPLAY_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const MAX_CS_REPLAY_BYTES = 20 * 1024 * 1024;
 
@@ -2027,6 +2092,7 @@ export default {
     }
     if (parts[0] === 'wx') return wxProxy(request, env, ctx, parts, url);
     if (parts[0] === 'meso') return mesoRoute(request, env, parts, stub);
+    if (parts[0] === 'rap') return rapRoute(request, env, parts, url);
 
     /* ── /hit and /stats ── the site's own visitor counter (visitors.mjs).
        The beacon is public and goes straight to D1. The numbers are Ric's,

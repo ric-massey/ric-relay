@@ -174,8 +174,15 @@
     /* one forecast office's airport (ASOS) stations as they read now — the
        map's station layer (§19.1). By office because the whole country is
        3 MB uncompressed and one office is about 25 KB. */
-    stationObs: wfo => /^[A-Z]{3}$/.test(wfo)
-      ? [`iem/obs?wfo=${wfo}`, `${IEM}/api/1/currents.geojson?networkclass=ASOS&wfo=${wfo}&minutes=90`] : null
+    /* a state's airport readings over the 40 minutes to a past moment (a
+       replay's stations): IEM's ASOS archive, as CSV. The Worker builds the
+       same URL (wxAsosUrl) */
+    asosAt: (net, endMs) => /^[A-Z]{2}_ASOS$/.test(net || '') && Number.isFinite(endMs)
+      ? [`iem/asos?network=${net}&end=${new Date(endMs).toISOString().slice(0, 16)}Z`, asosUrl(net, endMs), 'csv'] : null,
+    /* `all`: every network IEM carries for the office (Pro), not only airports */
+    stationObs: (wfo, all) => /^[A-Z]{3}$/.test(wfo)
+      ? (all ? [`iem/obs?wfo=${wfo}&all=1`, `${IEM}/api/1/currents.geojson?wfo=${wfo}&minutes=90`]
+        : [`iem/obs?wfo=${wfo}`, `${IEM}/api/1/currents.geojson?networkclass=ASOS&wfo=${wfo}&minutes=90`]) : null
   };
   const SITE = /^[A-Z]{3}$/;
   const ISO_MIN = /^\d{4}-\d\d-\d\dT\d\d:\d\dZ$/;
@@ -221,7 +228,7 @@
 
   /* One request with its own deadline, still cancelled by the page's signal
      when the place changes (§29.5: work nobody wants is not finished). */
-  async function fetchJSON(url, signal, ms = 12000) {
+  async function fetchJSON(url, signal, ms = 12000, text = false) {
     const ctl = new AbortController();
     const stop = () => ctl.abort();
     if (signal) { if (signal.aborted) stop(); else signal.addEventListener('abort', stop, { once: true }); }
@@ -229,7 +236,7 @@
     try {
       const r = await fetch(url, { signal: ctl.signal });
       if (!r.ok) throw new WxError('HTTP ' + r.status, r.status);
-      return await r.json();
+      return text ? await r.text() : await r.json();
     } finally {
       clearTimeout(timer);
       if (signal) signal.removeEventListener('abort', stop);
@@ -240,9 +247,9 @@
      says that about every point outside the US), so it is not retried. */
   async function ask(route, signal, ms = 12000) {
     if (!route) throw new WxError('not a request this page makes', 400);
-    const [path, direct] = route;
+    const [path, direct, kind] = route, text = kind === 'csv';
     try {
-      return { data: await fetchJSON(host() + '/wx/' + path, signal, ms), via: 'worker' };
+      return { data: await fetchJSON(host() + '/wx/' + path, signal, ms, text), via: 'worker' };
     } catch (e) {
       if (signal && signal.aborted) throw e;
     }
@@ -251,14 +258,14 @@
        the next. A server error or a timeout gets one more, longer try before
        the page calls that source down; a 4xx is an answer and is not retried. */
     try {
-      return { data: await fetchJSON(direct, signal, ms), via: 'direct' };
+      return { data: await fetchJSON(direct, signal, ms, text), via: 'direct' };
     } catch (e) {
       if (signal && signal.aborted) throw e;
       /* …or a 200 that is not JSON: Open-Meteo once answered an HRRR column
          with a plain-text error page */
       if (!(e.status >= 500 || e.name === 'AbortError' || e.name === 'TypeError' || e.name === 'SyntaxError')) throw e;
       await new Promise(r => setTimeout(r, 800));
-      return { data: await fetchJSON(direct, signal, ms * 1.5), via: 'direct' };
+      return { data: await fetchJSON(direct, signal, ms * 1.5, text), via: 'direct' };
     }
   }
 
@@ -1414,6 +1421,16 @@
      anywhere but the page. A reading older than STALE_MS.observation is
      dropped; one with no temperature is kept only if it says something else. */
   const SKY = { CLR: 'Clear', SKC: 'Clear', FEW: 'A few clouds', SCT: 'Partly cloudy', BKN: 'Mostly cloudy', OVC: 'Overcast', VV: 'Sky hidden' };
+  /* What kind of station a network is, by IEM's network names: airports
+     (ASOS / AWOS), state road-weather stations (RWIS), soil and farm mesonets
+     (ISU's, the USDA's SCAN), and the hydrological gauges (DCP) that also
+     read the air. Each office's state mesonet proper (Oklahoma's, Kansas's…)
+     is not in IEM's open feed. */
+  const NET_KINDS = { asos: 'Airport station', rwis: 'Road-weather station', soil: 'Farm and soil mesonet', dcp: 'River or rain gauge', other: 'Weather station' };
+  function netKind(n) {
+    n = String(n || '');
+    return /_ASOS$|AWOS/.test(n) ? 'asos' : /RWIS/.test(n) ? 'rwis' : n === 'ISUSM' || n === 'SCAN' || /_SM$/.test(n) ? 'soil' : /_DCP$/.test(n) ? 'dcp' : 'other';
+  }
   function normalizeStationObs(j, nowMs) {
     const f = j && Array.isArray(j.features) ? j.features : [];
     const now = nowMs || Date.now();
@@ -1428,6 +1445,7 @@
       const tmp = num(p.tmpf), dew = num(p.dwpf), kt = num(p.sknt), g = num(p.gust), mslp = num(p.mslp);
       return {
         id: String(p.station || ''), name: String(p.name || '').replace(/\s+/g, ' ').trim(), lat: +c[1], lon: +c[0], time: t,
+        net: netKind(p.network), network: String(p.network || ''),
         temp: tmp === null ? null : fToC(tmp), dew: dew === null ? null : fToC(dew), rh: num(p.relh),
         wind: kt === null ? null : kt * 1.852, windDir: num(p.drct), gust: g === null || g <= 0 ? null : g * 1.852,
         vis: num(p.vsby) === null ? null : p.vsby * 1609.344, pressure: mslp,
@@ -1436,8 +1454,45 @@
       };
     }).filter(s => s && s.id && now - s.time <= STALE_MS.observation && (s.temp !== null || s.wind !== null));
   }
-  async function stationObs(wfo, signal) {
-    const r = ROUTES.stationObs(wfo);
+  function asosUrl(net, endMs) {
+    const d = (ms, k) => { const t = new Date(ms); return `year${k}=${t.getUTCFullYear()}&month${k}=${t.getUTCMonth() + 1}&day${k}=${t.getUTCDate()}&hour${k}=${t.getUTCHours()}&minute${k}=${t.getUTCMinutes()}`; };
+    return `${IEM}/cgi-bin/request/asos.py?network=${net}&data=tmpf&data=dwpf&data=relh&data=sknt&data=drct&data=gust&data=mslp&data=vsby&data=skyc1&data=skyc2&data=skyc3&data=wxcodes&data=metar&${d(endMs - 40 * 60e3, 1)}&${d(endMs, 2)}&tz=Etc/UTC&format=onlycomma&latlon=yes&missing=empty&trace=empty&report_type=3&report_type=4`;
+  }
+  /* The archive's CSV, each station's last reading in the window, in the
+     same shape as a live one (normalizeStationObs) — so the map and the
+     station card draw it the same way, with its own time. */
+  function normalizeAsosCsv(text, net) {
+    const lines = String(text || '').split(/\r?\n/).filter(Boolean);
+    if (!lines.length || !/^station,/.test(lines[0])) return [];
+    const head = lines[0].split(','), col = k => head.indexOf(k), last = new Map();
+    const num = v => v === '' || v == null || !Number.isFinite(Number(v)) ? null : Number(v);
+    for (const line of lines.slice(1)) {
+      /* the METAR is the last column and may hold no comma; everything before it is plain */
+      const f = line.split(','), metar = f.slice(head.length - 1).join(','), p = Object.fromEntries(head.map((k, i) => [k, i === head.length - 1 ? metar : f[i]]));
+      const v = /^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d)$/.exec(String(p.valid || ''));
+      const t = v ? Date.UTC(+v[1], v[2] - 1, +v[3], +v[4], +v[5]) : NaN, lat = num(p.lat), lon = num(p.lon);
+      if (!p.station || !Number.isFinite(t) || !validLat(lat) || !validLon(lon)) continue;
+      const tmp = num(p.tmpf), dew = num(p.dwpf), kt = num(p.sknt), g = num(p.gust);
+      const layers = [p.skyc1, p.skyc2, p.skyc3].filter(Boolean);
+      const worst = ['VV', 'OVC', 'BKN', 'SCT', 'FEW', 'CLR', 'SKC'].find(k => layers.includes(k)) || null;
+      const s = { id: p.station, name: '', lat, lon, time: t, net: 'asos', network: net, past: true,
+        temp: tmp === null ? null : fToC(tmp), dew: dew === null ? null : fToC(dew), rh: num(p.relh),
+        wind: kt === null ? null : kt * 1.852, windDir: num(p.drct), gust: g === null || g <= 0 ? null : g * 1.852,
+        vis: num(p.vsby) === null ? null : num(p.vsby) * 1609.344, pressure: num(p.mslp),
+        sky: worst ? SKY[worst] : null, cover: worst, wx: p.wxcodes ? String(p.wxcodes).trim() || null : null, precipHour: null, raw: p.metar ? String(p.metar) : '' };
+      if (s.temp === null && s.wind === null) continue;
+      const had = last.get(s.id);
+      if (!had || had.time <= t) last.set(s.id, s);
+    }
+    return [...last.values()];
+  }
+  async function stationObsAt(net, endMs, signal) {
+    const r = ROUTES.asosAt(net, endMs);
+    if (!r) return [];
+    return normalizeAsosCsv((await ask(r, signal, 20000)).data, net);
+  }
+  async function stationObs(wfo, signal, all) {
+    const r = ROUTES.stationObs(wfo, all);
     if (!r) return [];
     return normalizeStationObs((await ask(r, signal)).data);
   }
@@ -1620,7 +1675,7 @@
     several, summary, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet,
     inMosaic, nowcast, nowcastRecord,
     CALM_KMH, isCalm, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M,
-    normalizeStationObs, stationObs, normalizePlumes, plumes, plumeStats, quantile,
+    normalizeStationObs, stationObs, NET_KINDS, netKind, normalizeAsosCsv, stationObsAt, normalizePlumes, plumes, plumeStats, quantile,
     HRRR, hrrrImage, hrrrRun,
     normalizeWatches, normalizeDiscussions, normalizeCells, LSR_KINDS, lsrKind, normalizeReports, decodePoint, parseCodsus, FRONT_KINDS, surfaceAnalysis, forecastDiscussion, proOverlays,
     REPLAY_FROM, archiveStamp, archiveProduct, archiveTile, isoMinute0, normalizeSbw, sbwArchive,

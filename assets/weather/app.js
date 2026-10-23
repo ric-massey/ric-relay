@@ -1190,6 +1190,45 @@
       $("#satcredit").hidden = !R.sat;
       label(); draw(); renderSources();
     }
+    /* ── the underlay at the radar's own time (Pro, 2026-10-22) ──
+       IEM's satellite tiles are the latest image only (its WMS ignores a
+       time), so a loop stepped back, or a replay, sat on the clouds of now.
+       When the frame on screen is more than ten minutes old, the underlay is
+       GOES's own image nearest that moment instead — the lower-48 file the
+       GOES layer reads, in the band the underlay names — and the latest
+       tiles step aside. Back to 2018, when the satellites with these files
+       took their posts (abi.js's POSTS). */
+    const SAT_BAND = { ir: "b13", vis: "b02", wv: "b09" };
+    const pastSat = { el: null, f: null, want: null, gen: 0, t: null, none: false };
+    const underlayTime = () => { const t = frameTime(); return t != null && Date.now() - t > 10 * 60e3 ? t : null; };
+    function syncPastSat(w, h, left, top) {
+      const t = PRO && AB && R.sat && R.mode !== "abi" ? underlayTime() : null;
+      if (!pastSat.el && t != null) { pastSat.el = document.createElement("div"); pastSat.el.className = "layer sat"; satL.after(pastSat.el); }
+      /* the latest tiles come back only if this hid them (a replay and the GOES layer hide them for their own reasons) */
+      if (t == null) { if (pastSat.hid) { satL.hidden = R.mode === "abi" || R.mode === "replay"; pastSat.hid = false; } if (pastSat.el) pastSat.el.hidden = true; pastSat.t = null; pastSat.none = false; return; }
+      if (!satL.hidden) { satL.hidden = true; pastSat.hid = true; }
+      pastSat.el.hidden = false;
+      const side = xLng(R.cx, R.z) >= AB.SPLIT_LON ? "east" : "west", sat = AB.satAt(side, t), slot = Math.round(t / 300e3) * 300e3;
+      const want = `${sat}|${slot}|${R.sat}`;
+      if (!sat) { pastSat.none = true; pastSat.t = null; if (pastSat.f && pastSat.f.cv) pastSat.f.cv.getContext("2d").clearRect(0, 0, pastSat.f.cv.width, pastSat.f.cv.height); return; }
+      pastSat.none = false;
+      if (pastSat.want !== want) {
+        pastSat.want = want;
+        const gen = ++pastSat.gen;
+        AB.files(sat, "conus", { nowMs: t + 8 * 60e3, count: 4 }).then((list) => {
+          if (gen !== pastSat.gen || !list.length) return null;
+          const file = list.reduce((b, x) => (Math.abs(x.t - t) < Math.abs(b.t - t) ? x : b), list[0]), prod = SAT_BAND[R.sat], key = `${file.url}|${prod}`;
+          if (!abiCache.has(key)) abiCache.set(key, AB.load(file, prod, { memo: (abiMemo[file.sat + file.sector] = abiMemo[file.sat + file.sector] || {}) }).catch((e) => { abiCache.delete(key); throw e; }));
+          return abiCache.get(key).then((L) => {
+            if (gen !== pastSat.gen) return;
+            const f = pastSat.f || (pastSat.f = { el: pastSat.el });
+            f.abi = { prod, file, layer: L }; f.painted = null; pastSat.t = file.t; pastSat.sat = sat;
+            draw(); label();
+          });
+        }).catch(() => { if (gen === pastSat.gen) pastSat.want = null; });
+      }
+      if (pastSat.f && pastSat.f.abi && pastSat.want === want) paintModel(pastSat.f, w, h, left, top);
+    }
 
     /* ── airport stations on the map (§19.1) ──
        The forecast offices covering the view (the NWS's own answer for the
@@ -1214,15 +1253,34 @@
       await Promise.all(offices.map(async (o) => {
         const have = byOffice.get(o);
         if (have && Date.now() - have.at < 300e3) return;
-        try { byOffice.set(o, { at: Date.now(), list: await Wx.stationObs(o) }); } catch (e) { if (!have) byOffice.set(o, { at: Date.now() - 240e3, list: [] }); }
+        try { byOffice.set(o, { at: Date.now(), list: await Wx.stationObs(o, undefined, PRO) }); } catch (e) { if (!have) byOffice.set(o, { at: Date.now() - 240e3, list: [] }); }
       }));
       if (ask !== stnAsk) return;
+      /* a replay's stations are the airports as they read then (IEM's ASOS
+         archive), never today's: the states come from the offices' own
+         networks, the moment from the frame on screen, in 20-minute steps */
+      const T = R.mode === "replay" ? frameTime() : null;
+      if (T != null) {
+        const nets = [...new Set(offices.flatMap((o) => (byOffice.get(o) || { list: [] }).list.map((s) => s.network)).filter((n) => /^[A-Z]{2}_ASOS$/.test(n || "")))].slice(0, 4);
+        const slot = Math.round(T / 1200e3) * 1200e3;
+        const lists = await Promise.all(nets.map((n) => {
+          const k = `${n}|${slot}`;
+          if (!pastObs.has(k)) { pastObs.set(k, Wx.stationObsAt(n, slot).catch(() => { pastObs.delete(k); return []; })); if (pastObs.size > 40) pastObs.delete(pastObs.keys().next().value); }
+          return pastObs.get(k);
+        }));
+        if (ask !== stnAsk) return;
+        R.obs = lists.flat(); R.obsSlot = slot; R.obsAt = Date.now();
+        draw(); label(); renderSources();
+        return;
+      }
+      R.obsSlot = null;
       const seen = new Map();
       for (const o of offices) for (const s of (byOffice.get(o) || { list: [] }).list) if (!seen.has(s.id) || seen.get(s.id).time < s.time) seen.set(s.id, s);
       R.obs = [...seen.values()];
       R.obsAt = Date.now();
       draw(); label(); renderSources();
     }
+    const pastObs = new Map();
     /* ── Pro's overlays: SPC watches and discussions, WPC's, storm cells,
        and the surface analysis — each asked again on its own clock ── */
     async function loadOverlays(force) {
@@ -1311,7 +1369,7 @@
     const dayFmt = (ms) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(ms);
     const timeFmt = (ms) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(ms);
     async function replay(from, hours, fitToStorms) {
-      R.mode = "replay";
+      R.mode = "replay"; if (R.stations) stationsSoon();
       R.modeAsk = (R.modeAsk || 0) + 1;                  // a live switch still in flight must not finish over this
       document.querySelectorAll(".seg [data-mode]").forEach((b) => b.setAttribute("aria-pressed", "false"));
       play(false); clearTiles(); R.pin = null;
@@ -1346,7 +1404,7 @@
        change what is shown without leaving the replay. Ric, 2026-10-22. */
     async function siteReplay(from, hours, fitToStorms) {
       const prodMode = l3() && l3().l2 ? R.mode : (R.replay && R.replay.prodMode) || "l3:ref";
-      R.mode = "replay";
+      R.mode = "replay"; if (R.stations) stationsSoon();
       R.modeAsk = (R.modeAsk || 0) + 1;
       document.querySelectorAll(".seg [data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === prodMode)));
       play(false); clearTiles(); R.pin = null;
@@ -1642,13 +1700,40 @@
       if (!sw) throw new Error("no " + q.mom + " in this cut");
       return sw;
     }
+    /* The storm motion taken out of storm-relative velocity above the lowest
+       tilt: the mean of the motions this radar's own storm tracking (SCIT,
+       via IEM) gives its moving cells — what the NWS's own N0S uses. Live
+       only: the cells are the last twenty minutes', so an archived volume
+       has none. Asked at most every two minutes. */
+    const srm = { at: 0, p: null };
+    async function srmMotion(site) {
+      if (!srm.p || Date.now() - srm.at > 120e3) { srm.at = Date.now(); srm.p = Wx.proOverlays.cells().catch(() => { srm.at = 0; return []; }); }
+      const cells = (await srm.p).filter((c) => c.site === site && c.kt > 0 && c.from != null);
+      if (!cells.length) return null;
+      let u = 0, v = 0;
+      for (const c of cells) { const to = (c.from + 180) * Math.PI / 180; u += c.kt * Math.sin(to); v += c.kt * Math.cos(to); }
+      u /= cells.length; v /= cells.length;
+      const kt = Math.hypot(u, v), from = ((Math.atan2(-u, -v) * 180 / Math.PI) + 360) % 360;
+      return { uE: u * 0.514444, vN: v * 0.514444, kt, from, n: cells.length };
+    }
+    async function srmSweep(x, file) {
+      if (x.prod !== "srv" || file.code !== "L2") return file;
+      if (x.l2 && x.l2.archive) throw new Error("storm-relative velocity needs the storm motion, which is known only live — use Velocity for a replay");
+      const site = R.site && R.site.id, m = site && await srmMotion(site);
+      if (!m) throw new Error(`${site || "this radar"} is tracking no moving storms right now, so there is no storm motion to take out — use Velocity`);
+      return Object.assign(NX.stormRelative(file, m.uE, m.vN), { motionText: `storm motion from ${Math.round(m.from)}° at ${Math.round(m.kt)} kt, the mean of the ${m.n} storm${m.n === 1 ? "" : "s"} ${site} is tracking` });
+    }
     function l3File(f) {
       const x = f.l3;
-      if (!x.p) x.p = (x.l2 ? cached(x.l2.key, () => loadL2(x.l2)) : cached(x.url, () => NX.load(x.url))).then((file) => {
+      if (!x.p) x.p = (x.l2 ? cached(x.l2.key, () => loadL2(x.l2)) : cached(x.url, () => NX.load(x.url))).then((file) => srmSweep(x, file)).then((file) => {
         x.file = file; x.colors = NX.colorTable(file, x.prod);
         if (R.frames[R.frame] === f) { draw(); show(R.frame); tilts(); }
         return file;
-      }).catch((e) => { x.err = true; if (R.frames[R.frame] === f) note(x.l2 && x.l2.archive ? `This volume did not load (${String(e.message || e)}).` : "This scan did not load — the next one may."); });
+      }).catch((e) => {
+        x.err = true;
+        const srmErr = /storm motion/.test(String(e.message || ""));
+        if (R.frames[R.frame] === f) note(srmErr ? `Storm-relative: ${e.message}.` : x.l2 && x.l2.archive ? `This volume did not load (${String(e.message || e)}).` : "This scan did not load — the next one may.");
+      });
       return x.p;
     }
     function frameCanvas(f, w, h) {
@@ -1796,11 +1881,13 @@
       $("#mmrun").textContent = "Finding the latest run…";
       /* the mesoanalysis is a run of analysis hours, not one run's forecast */
       if (MM.SOURCES[src].analysis) {
+        /* the server keeps a day; an older moment is worked out from the HRRR's archive (2014 on) */
+        if (M.at && MM.SOURCES[src].server && Date.now() - M.at > 20 * 3600e3) { M.src = "meso"; if ($("#mmsrc")) $("#mmsrc").value = "meso"; if (!MM.field("meso", M.field)) M.field = "stpe"; modelOptions(); return modelFrames(); }
         let runs = [];
-        try { runs = await MM.analyses(src); } catch (e) {}
+        try { runs = await MM.analyses(src, M.at ? { nowMs: M.at + 3600e3 } : {}); } catch (e) {}
         if (R.mode !== "model" || M.src !== src || ask !== R.modeAsk) return;
         /* the server's has nothing recent: work it out here from the HRRR instead, and say so */
-        if (MM.SOURCES[src].server && (!runs.length || Date.now() - runs[runs.length - 1] > MM.SOURCES[src].staleMs)) {
+        if (MM.SOURCES[src].server && !M.at && (!runs.length || Date.now() - runs[runs.length - 1] > MM.SOURCES[src].staleMs)) {
           M.src = "meso"; if ($("#mmsrc")) $("#mmsrc").value = "meso";
           if (!MM.field("meso", M.field)) M.field = "stpe";
           modelOptions();
@@ -1818,14 +1905,15 @@
       const was = R.frames[R.frame] && R.frames[R.frame].model && R.frames[R.frame].model.src === src ? R.frames[R.frame].t : null;
       let run = null;
       try {
-        run = await MM.latestRun(src);
+        run = await MM.latestRun(src, M.at ? { nowMs: M.at } : {});
         for (let k = 0; run && k < M.back; k++) run = await MM.latestRun(src, { nowMs: run.run - 1 });
       } catch (e) { run = null; }
       if (R.mode !== "model" || M.src !== src || ask !== R.modeAsk) return;
-      if (!run) { setFrames([]); $("#mmrun").textContent = ""; note(`NOAA's ${MM.SOURCES[src].label} archive did not answer. Try again in a minute.`); return; }
+      if (!run && M.at) { setFrames([]); modelRunText(); note(`NOAA's ${MM.SOURCES[src].label} archive has no run from ${dayFmt(M.at)} — the HRRR's goes back to 2014, the GFS's to 2021, ECMWF's open data only a few days.`); return; }
+      if (!run) { setFrames([]); $("#mmrun").textContent = ""; note(src === "rap" ? "The RAP reaches this page through the site's own server, which did not answer. Try again in a minute, or pick another model." : `NOAA's ${MM.SOURCES[src].label} archive did not answer. Try again in a minute.`); return; }
       M.run = run.run; R.valid = run.run;
       setFrames(run.hours.map((fh) => ({ t: run.run + fh * 3600e3, model: { src, field: M.field, run: run.run, fh } })));
-      const aim = was != null ? was : Date.now();
+      const aim = was != null ? was : M.at || Date.now();
       let best = 0;
       R.frames.forEach((f, i) => { if (Math.abs(f.t - aim) < Math.abs(R.frames[best].t - aim)) best = i; });
       show(best);
@@ -1835,6 +1923,11 @@
     function modelRunText() {
       const M = R.mm, el = $("#mmrun");
       if (!el) return;
+      if (M.at) {
+        el.innerHTML = `${M.run ? esc(MM.SOURCES[M.src].analysis ? `Analysis hours to ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}` : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}`) + " — as it stood at the replay's moment · " : ""}<button type="button" class="linkish" data-mmnow>Latest run instead</button>`;
+        if ($("#mmbackl")) $("#mmbackl").hidden = !!MM.SOURCES[M.src].analysis;
+        return;
+      }
       const sv = MM.SOURCES[M.src].server && MM.serverIndex.hours.find((x) => x.valid === M.run);
       el.textContent = !M.run ? "" : sv
         ? `Mesoanalysis hours, the last ${R.frames.length} · newest ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}, made ${clk().time(sv.made)}${sv.rtma ? "" : " (before NOAA's surface analysis was out — the model's own ground-level air)"} · not a forecast`
@@ -2611,7 +2704,8 @@
       if (R.stations && R.z >= STN_MINZ && R.obs.length) {
         const w = el.clientWidth, h = el.clientHeight, placed = [], zb = zoomBottom();
         const model = PRO && R.z >= 8, bx = model ? 74 : 40, by = model ? 50 : 26;
-        for (const s of R.obs.slice().sort((a, b) => b.time - a.time)) {
+        /* airports first, so where stations crowd the airport keeps its place */
+        for (const s of R.obs.slice().sort((a, b) => (a.net === "asos" ? 0 : 1) - (b.net === "asos" ? 0 : 1) || b.time - a.time)) {
           const [x, y] = pt(s.lat, s.lon);
           if (x < -20 || y < -20 || x > w + 20 || y > h + 20 || placed.some(([a, b]) => Math.abs(a - x) < bx && Math.abs(b - y) < by) || (x > w - 110 && y < zb)) continue;  // nor under the zoom buttons
           placed.push([x, y]); R.drawn.push(s);
@@ -2621,7 +2715,9 @@
             const r = s.windDir * Math.PI / 180, L = Math.min(26, 8 + s.wind * 0.45);
             g += `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + Math.sin(r) * L).toFixed(1)}" y2="${(y - Math.cos(r) * L).toFixed(1)}" stroke="#0b1422" stroke-width="4" stroke-linecap="round"/><line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + Math.sin(r) * L).toFixed(1)}" y2="${(y - Math.cos(r) * L).toFixed(1)}" stroke="#fff" stroke-width="2" stroke-linecap="round"/>`;
           }
-          g += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2" fill="#fff" stroke="#0b1422" stroke-width="1.5"/>`;
+          /* an airport is a round dot; every other network a square one */
+          g += !s.net || s.net === "asos" ? `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2" fill="#fff" stroke="#0b1422" stroke-width="1.5"/>`
+            : `<rect x="${(x - 3).toFixed(1)}" y="${(y - 3).toFixed(1)}" width="6" height="6" fill="#fff" stroke="#0b1422" stroke-width="1.5"/>`;
           if (s.temp != null) {
             const txt = Wx.fmt.temp(s.temp, U()) + "°", cw = 10 + txt.length * 7.2;
             g += `<rect x="${(x + 5).toFixed(1)}" y="${(y - 20).toFixed(1)}" width="${cw.toFixed(1)}" height="17" rx="8.5" fill="${tempColor(s.temp)}" stroke="#0b1422" stroke-width="1"/><text x="${(x + 5 + cw / 2).toFixed(1)}" y="${(y - 7.5).toFixed(1)}" text-anchor="middle">${txt}</text>`;
@@ -2672,6 +2768,7 @@
       const left = R.cx - w / 2, top = R.cy - h / 2;
       place(baseL, baseTiles, (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`, w, h, left, top);
       for (const s of sats) place(s.el, s.tiles, (z, x, y) => Wx.satTile(s.layer, z, x, y, satAt), w, h, left, top);
+      syncPastSat(w, h, left, top);
       R.frames.forEach((f, i) => {
         /* Pro's own radar and model frames: painted while on screen, fetched
            ahead only while the loop plays */
@@ -2704,6 +2801,8 @@
       if (!R.frames[i]) { $("#when").innerHTML = ""; return; }
       const f = R.frames[i];
       if (!R.loadedOld || f.future || f.archive || (f.l3 && f.l3.l2 && f.l3.l2.archive)) draw();   // a replay's warnings change by the minute, and its next frame loads now
+      /* a replay's stations follow the frame, twenty minutes at a time */
+      if (R.mode === "replay" && R.stations) { const ft = frameTime(f); if (ft != null && Math.round(ft / 1200e3) * 1200e3 !== R.obsSlot) stationsSoon(); }
       $("#scrub").value = String(i);
       const when = $("#when");
       if (f.archive) when.innerHTML = `${esc(dayFmt(f.t))}<small>${esc(timeFmt(f.t))}</small>`;
@@ -2717,7 +2816,7 @@
         const t = F ? F.time : f.t, arch = f.l3.l2 && f.l3.l2.archive;
         /* an archived volume says its date, as the mosaic's replay does; a live scan its age */
         when.innerHTML = arch ? `${esc(timeFmt(t))}<small>${esc(dayFmt(t))}${F ? ` · ${F.elev.toFixed(1)}°` : f.l3.err ? " · failed" : " · loading"}</small>`
-          : `${esc(clk().time(t))}<small>${Wx.age(Date.now() - t)} ago${F ? ` · ${F.elev.toFixed(1)}°` : " · loading"}</small>`;
+          : `${esc(clk().time(t))}<small>${Wx.age(Date.now() - t)} ago${F ? ` · ${F.elev.toFixed(1)}°` : " · loading"}${F && F.motionText ? ` · ${esc(F.motionText)}` : ""}</small>`;
       } else if (f.future && f.t) {
         const k = clk(), d = f.t - Date.now(), day = k.ymd(f.t) !== k.ymd(Date.now()) ? k.day(f.t) + " " : "";
         when.innerHTML = `${esc(day + k.time(f.t))}<small>forecast · ${Math.abs(d) < 8 * 60e3 ? "now" : d > 0 ? "in " + Wx.age(d) : Wx.age(-d) + " ago"}</small>`;
@@ -2804,11 +2903,14 @@
         play(false); siteReplayFrames(); show(Math.min(keep, R.frames.length - 1)); draw(); label(); renderSources();
         return;
       }
+      /* Models from inside a replay: the runs as they stood at the replay's moment */
+      if (R.replay && mode === "model") { const t = frameTime(); if (t != null) R.mm.at = t; }
+      else if (mode !== "model") R.mm.at = null;
       if (R.replay) { R.replay = null; satL.hidden = false; $("#rplive").hidden = true; }
       /* scrubbed back? the new layer opens on the same moment (one clock) */
       const keepT = R.frames.length > 1 && R.frame < R.frames.length - 1 ? frameTime() : null;
       if (C.on && mode !== "model") chartStop();
-      R.mode = mode;
+      R.mode = mode; if (R.stations && R.obsSlot) stationsSoon();
       document.querySelectorAll(".seg [data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
       play(false);
       clearTiles();
@@ -2915,7 +3017,8 @@
       else if (R.site) sb.textContent = `${R.site.id} · ${R.site.name} · ${Wx.SITE_PRODUCTS[R.mode].long}. ${R.lockId ? "Kept on this radar wherever the map goes." : "The site follows the middle of the map."}`;
       else sb.textContent = "Finding the nearest radar…";
       if (PRO && R.ov.cells && R.started && R.mode !== "replay" && R.z < 6) sb.textContent += " Zoom in to see storm cells.";
-      if (R.stations && R.started && R.mode !== "replay") sb.textContent += R.z < STN_MINZ ? " Zoom in to see the airport stations." : R.obs.length ? " Tap a station for its full reading." : "";
+      if (R.stations && R.started && R.mode === "replay" && R.z >= STN_MINZ) sb.textContent += R.obsSlot ? ` Stations: the airports as they read at ${clk().time(R.obsSlot)} (the last report in the 40 minutes before), from IEM's archive.` : " Stations: reading the archive for this moment…";
+      if (R.stations && R.started && R.mode !== "replay") sb.textContent += R.z < STN_MINZ ? (PRO ? " Zoom in to see the stations (round: airports; square: road, farm and gauge networks)." : " Zoom in to see the airport stations.") : R.obs.length ? " Tap a station for its full reading." : "";
       if (ltgOn() && R.started && R.mode !== "replay") {
         const n10 = LTG.flashes.filter((x) => x.t >= Date.now() - 10 * 60e3).length, D = R.ov.density && LTG.at ? ltgDensity() : null;
         sb.textContent += LTG.failed ? " Lightning: GOES did not answer."
@@ -2925,9 +3028,12 @@
         if (R.ov.cells && R.z >= 6) sb.textContent += " Tap a storm cell for its flash rate.";
       }
       if (PRO && R.ov.reports && R.started && R.mode !== "replay" && R.pro.rGot) { const n = R.pro.reports.filter((r) => r.severe).length; sb.textContent += ` Storm reports: ${n} severe in the last 24 hours${R.z < 7 ? " (zoom in for rain, snow and the rest)" : ""} — tap one for who reported it.`; }
-      if (R.sat && R.mode !== "replay") {
+      if (R.sat && PRO && AB && pastSat.el && !pastSat.el.hidden) {
+        sb.textContent += pastSat.none ? " Under it: no satellite image — the GOES files this page reads begin in 2018."
+          : pastSat.t ? ` Under it: ${Wx.SAT[R.sat].label.toLowerCase()} from ${AB.SATS[pastSat.sat].label}, ${clk().time(pastSat.t)} — the image nearest the frame on screen, read from NOAA's own files.` : " Under it: finding the satellite image for this moment…";
+      } else if (R.sat && R.mode !== "replay") {
         const night = R.sat === "vis" && S.fc && S.fc.current && S.fc.current.isDay === false;
-        sb.textContent += ` Under it: ${Wx.SAT[R.sat].long}${night ? " It is night here, so this part of the map is dark — try Infrared." : ""} The latest image; it refreshes every few minutes.`;
+        sb.textContent += ` Under it: ${Wx.SAT[R.sat].long}${night ? " It is night here, so this part of the map is dark — try Infrared." : ""} The latest image; it refreshes every few minutes${PRO ? " (step the loop back and the image follows it)" : ""}.`;
       }
       if (R.started && R.frames[R.frame]) show(R.frame);
     }
@@ -3032,7 +3138,7 @@
       const wind = s.wind == null ? null : Wx.isCalm(s.wind) ? "calm" : `${Wx.compass(s.windDir)} ${Wx.fmt.wind(s.wind, U())} ${u.wind}`;
       pinEl.innerHTML = `<button type="button" class="px" data-pinx aria-label="Close">×</button>
         <div class="pn">${esc(R.pin.name)} · ${esc(s.id)}</div>
-        <div class="ps">Airport station · observed ${esc(k.time(s.time))} (<span data-age="${s.time}">${Wx.age(Date.now() - s.time)}</span> ago)</div>
+        <div class="ps">${esc((Wx.NET_KINDS || {})[s.net] || "Airport station")}${s.network ? ` (${esc(s.network.replace(/_/g, " "))})` : ""} · observed ${s.past ? esc(dayFmt(s.time) + " ") : ""}${esc(k.time(s.time))} (<span data-age="${s.time}">${Wx.age(Date.now() - s.time)}</span> ago)</div>
         ${s.temp != null ? `<div class="ph"><span class="pt num">${Wx.fmt.temp(s.temp, U())}°</span><span class="ps">${esc(s.wx || s.sky || "")}</span></div>` : ""}
         <div class="prows">
           ${row("Feels like", feels != null && Math.round(feels) !== Math.round(s.temp) ? deg(feels) : null)}
@@ -3350,6 +3456,12 @@
       });
       $("#mmback").addEventListener("change", (e) => {
         R.mm.back = Math.max(0, Math.min(3, Number(e.target.value) || 0));
+        if (R.mode === "model") { play(false); modelFrames().then(label); }
+      });
+      /* out of a replay's moment, back to the newest run */
+      $("#mmrun").addEventListener("click", (e) => {
+        if (!e.target.closest("[data-mmnow]")) return;
+        R.mm.at = null; R.mm.run = null;
         if (R.mode === "model") { play(false); modelFrames().then(label); }
       });
     }

@@ -44,7 +44,7 @@
       long: 'Base radial velocity — green toward the radar, red away', pal: 'vel' },
     sw: { label: 'Spectrum width', short: 'SW', tilts: [], unit: 'kt', toUnit: KT, l2: 'SW',
       long: 'Spectrum width — how spread the speeds in each gate are; high in turbulence and tight rotation', pal: 'sw' },
-    srv: { label: 'Storm-relative', short: 'SRV', tilts: ['N0S'], unit: 'kt',
+    srv: { label: 'Storm-relative', short: 'SRV', tilts: ['N0S'], unit: 'kt', l2: 'VEL', srm: true,
       long: 'Storm-relative velocity — the storm’s own motion taken out, so rotation stands out', pal: 'vel' },
     cc: { label: 'CC', short: 'CC', tilts: ['N0C', 'N1C', 'N2C', 'N3C'], unit: '', l2: 'RHO',
       long: 'Correlation coefficient — how alike the targets are. Rain and snow sit near 1; a drop inside a hook can be debris', pal: 'cc' },
@@ -343,8 +343,31 @@
     return parse(new Uint8Array(await r.arrayBuffer()));
   }
 
+  /* ── storm-relative velocity at any tilt ──
+     The NWS sends storm-relative velocity for the lowest tilt only (N0S).
+     Above it, it is worked out here the way the RPG does: from a sweep's
+     radial velocity take away the storm motion's component along each
+     radial (the part of the motion toward or away from the radar). `uE`,
+     `vN` are the motion the storms are heading with, m/s east and north;
+     the sweep's velocities are m/s (Level II). The result is in knots, as
+     N0S is, re-stored over ±200 kt in 253 steps (1.6 kt, finer than the
+     palette); "below threshold" and range-folded gates keep their codes. */
+  function stormRelative(f, uE, vN) {
+    const lo = -200, hi = 200, data = new Uint8Array(f.data.length), lut = new Float32Array(256).fill(NaN), rad = Math.PI / 180;
+    for (let i = 2; i < 256; i++) lut[i] = lo + (i - 2) * (hi - lo) / 253;
+    for (let k = 0; k < f.nRad; k++) {
+      const az = (f.az0[k] + f.daz[k] / 2) * rad, along = uE * Math.sin(az) + vN * Math.cos(az), row = k * f.nBins;
+      for (let g = 0; g < f.nBins; g++) {
+        const b = f.data[row + g], v = f.lut[b];
+        if (!Number.isFinite(v)) { data[row + g] = f.special[b] === 'rf' ? 1 : 0; continue; }
+        data[row + g] = Math.max(2, Math.min(255, Math.round(((v - along) * KT - lo) * 253 / (hi - lo)) + 2));
+      }
+    }
+    return { ...f, data, lut, special: { 1: 'rf' }, motion: { uE, vN } };
+  }
+
   const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
-    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load };
+    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, stormRelative };
   root.Nexrad = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

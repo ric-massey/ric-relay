@@ -1620,5 +1620,30 @@ console.log('\nRULE  the mesoanalysis: only the owner uploads, everyone reads, o
   ok(after.hours.length === 25 && after.hours[0].valid === H + 2 * 3600e3, `a day is kept: ${after.hours.length} hours, the oldest dropped as new ones came`);
 }
 
+/* ── /rap ──
+   The RAP's native-grid files passed through for Weather Pro (NOAA's bucket
+   sends no CORS header). Only those files, their .idx, and one run's listing;
+   a single byte range passed on; read-only. */
+console.log('\nRULE  /rap passes the RAP\'s native-grid files through, and nothing else');
+{
+  const asked = [];
+  const FETCH = async (u, init) => { asked.push({ u: String(u), range: init && init.headers && init.headers.range });
+    return new Response('GRIB', { status: init && init.headers && init.headers.range ? 206 : 200, headers: { 'content-range': 'bytes 0-3/9', 'content-type': 'binary/octet-stream' } }); };
+  const env = { LOG: { idFromName: () => 'training', get: () => fresh() }, FETCH };
+  const hit = (path, init) => worker.fetch(new Request('https://x' + path, init), env, null);
+  const f = 'rap.20261022/rap.t12z.wrfprsf03.grib2';
+  const r = await hit('/rap/' + f, { headers: { range: 'bytes=0-3', origin: 'https://ricmassey.com' } });
+  ok(r.status === 206 && asked[0].u === 'https://noaa-rap-pds.s3.amazonaws.com/' + f && asked[0].range === 'bytes=0-3', 'a native-grid file is fetched from NOAA with the range asked');
+  ok(r.headers.get('access-control-allow-origin') && /content-range/.test(r.headers.get('access-control-expose-headers')) && r.headers.get('content-range') === 'bytes 0-3/9', 'and readable from the page, its range said');
+  ok((await hit('/rap/' + f + '.idx')).status === 200, 'its .idx too');
+  ok((await hit('/rap?list-type=2&prefix=rap.20261022/rap.t12z.wrfprsf')).status === 200 && asked[2].u.endsWith('?list-type=2&prefix=rap.20261022%2Frap.t12z.wrfprsf'), 'and one run\'s listing');
+  const n = asked.length;
+  ok((await hit('/rap/rap.20261022/rap.t12z.awp130pgrbf03.grib2')).status === 404, 'another RAP file is not passed');
+  ok((await hit('/rap/..%2Fnoaa-hrrr-bdp-pds%2Fx')).status === 404 && (await hit('/rap?list-type=2&prefix=rap.')).status === 404 && (await hit('/rap?prefix=rap.20261022/rap.t12z.wrfprsf')).status === 404, 'nor any other path, prefix or kind of listing');
+  ok((await hit('/rap/' + f, { headers: { range: 'bytes=0-3,9-12' } })).status === 416, 'more than one range is refused');
+  ok((await hit('/rap/' + f, { method: 'POST' })).status === 405, 'it is read-only');
+  ok(asked.length === n, '— none of those reached NOAA');
+}
+
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKER RULES PASS'));
 process.exit(failures ? 1 : 0);

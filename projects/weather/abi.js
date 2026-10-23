@@ -31,6 +31,18 @@
     east: { bucket: 'https://noaa-goes19.s3.amazonaws.com', id: 'G19', label: 'GOES-East (GOES-19)' },
     west: { bucket: 'https://noaa-goes18.s3.amazonaws.com', id: 'G18', label: 'GOES-West (GOES-18)' }
   };
+  /* the satellites that held each post before these two, for a moment in
+     the past (a radar loop stepped back, a replay): GOES-16 was East from
+     18 December 2017 to 7 April 2025, GOES-17 West from 12 February 2019 to
+     4 January 2023 — NOAA keeps both buckets */
+  SATS.east16 = { bucket: 'https://noaa-goes16.s3.amazonaws.com', id: 'G16', label: 'GOES-East (GOES-16)' };
+  SATS.west17 = { bucket: 'https://noaa-goes17.s3.amazonaws.com', id: 'G17', label: 'GOES-West (GOES-17)' };
+  const POSTS = {
+    east: [[Date.UTC(2025, 3, 7), 'east'], [Date.UTC(2017, 11, 18), 'east16']],
+    west: [[Date.UTC(2023, 0, 4), 'west'], [Date.UTC(2019, 1, 12), 'west17']]
+  };
+  /* which satellite held a post at a moment, or null before there was one with these files */
+  const satAt = (side, ms) => { for (const [from, s] of POSTS[side]) if (ms >= from) return s; return null; };
   /* east of 105° W GOES-East sees the map better, west of it GOES-West —
      the same split glm.js uses for lightning */
   const SPLIT_LON = -105;
@@ -236,7 +248,7 @@
     return { unit: '°C', min: lo, max: hi, stops: out.reverse(), ticks: P.band >= 8 && P.band <= 10 ? [-70, -50, -30, -10] : [-80, -60, -40, -20, 0, 20] };
   }
 
-  const api = { SATS, SPLIT_LON, SECTORS, BANDS, PRODUCTS, bandName, projector, hourPrefix, files, load, valuesAt, ch, key };
+  const api = { SATS, POSTS, satAt, SPLIT_LON, SECTORS, BANDS, PRODUCTS, bandName, projector, hourPrefix, files, load, valuesAt, ch, key };
   root.Abi = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

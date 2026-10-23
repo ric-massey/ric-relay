@@ -41,7 +41,8 @@ console.log('\nRULE  the Worker accepts every request the page makes, and asks u
     W.ROUTES.raobSites(), W.ROUTES.raob('KABC', '202610171200'), W.ROUTES.ensemble(12.34, -56.78), W.ROUTES.stationObs('ABC'), W.ROUTES.plumes(12.34, -56.78), W.ROUTES.hrrrMeta(), W.ROUTES.sbwArchive('2011-04-27T20:00Z', '2011-04-27T23:00Z'), W.ROUTES.xsec('hrrr', W.linePoints({ lat: 12.34, lon: -56.78 }, { lat: 14.1, lon: -50.2 }, 12)),
     W.ROUTES.spcWatches(), W.ROUTES.spcMds(), W.ROUTES.wpcMpds(), W.ROUTES.stormCells(), W.ROUTES.stormReports(),
     W.ROUTES.nwsProducts('COD'), W.ROUTES.nwsProducts('AFD', 'ABC'), W.ROUTES.nwsProduct('fcb2d575-a207-4057-a31c-823cdbbda16d'),
-    W.ROUTES.several([{ lat: 12.34, lon: -56.78 }, { lat: -33.87, lon: 151.21 }])
+    W.ROUTES.several([{ lat: 12.34, lon: -56.78 }, { lat: -33.87, lon: 151.21 }]),
+    W.ROUTES.stationObs('ABC', true), W.ROUTES.asosAt('OK_ASOS', Date.UTC(2013, 4, 20, 20, 0))
   ];
   for (const [path, direct] of routes) {
     const n = asked.length;
@@ -511,6 +512,24 @@ console.log('\nRULE  Pro\'s map lines: read at run time, cut to North America, n
   ok(G.labels(pl.places, 8, 800, 400, at, () => 400).length === 1, 'two names that would touch: only the bigger is drawn');
   const app = (await import('node:fs')).readFileSync(new URL('../../../assets/weather/app.js', import.meta.url), 'utf8');
   ok(/Wx\.mapLayer\(/.test(app) && !/natural-earth-vector/.test(app), 'the page asks through Wx.mapLayer — the address lives in one place');
+}
+
+console.log('\nRULE  a replay\'s stations are the archive\'s readings at that moment, never today\'s');
+{
+  ok(W.ROUTES.asosAt('OK_ASOS', Date.UTC(2013, 4, 20, 20, 0))[2] === 'csv' && W.ROUTES.asosAt('OK_DCP', 1) === null && W.ROUTES.asosAt('ok_asos', 1) === null, 'only a state\'s airport network is asked for, as CSV');
+  const url = W.ROUTES.asosAt('OK_ASOS', Date.UTC(2013, 4, 20, 20, 0))[1];
+  ok(url.includes('year1=2013&month1=5&day1=20&hour1=19&minute1=20') && url.includes('hour2=20&minute2=0'), 'the forty minutes to the moment');
+  const csv = 'station,valid,lon,lat,tmpf,dwpf,relh,sknt,drct,gust,mslp,vsby,skyc1,skyc2,skyc3,wxcodes,metar\n'
+    + 'OKC,2013-05-20 19:52,-97.6006,35.3889,76.00,72.00,87.55,16.00,90.00,20.00,1002.70,2.50,SCT,BKN,OVC,-TSRA BR,KOKC 201952Z 09016G20KT 2 1/2SM -TSRA BR SCT032 BKN048CB OVC070 24/22 A2966\n'
+    + 'OKC,2013-05-20 19:40,-97.6006,35.3889,80.00,70.00,,10.00,120.00,,,10.00,FEW,,,,KOKC 201940Z 12010KT\n'
+    + 'PWA,2013-05-20 19:53,-97.6472,35.5342,,,,,,,,,,,,,KPWA 201953Z AUTO\n'
+    + 'BAD,not a time,-97,35,70,60,,5,180,,,10,CLR,,,,\n';
+  const s = W.normalizeAsosCsv(csv, 'OK_ASOS');
+  ok(s.length === 1 && s[0].id === 'OKC', 'one station: the empty report and the bad row are dropped');
+  ok(s[0].time === Date.UTC(2013, 4, 20, 19, 52) && near(s[0].temp, (76 - 32) * 5 / 9) && near(s[0].wind, 16 * 1.852) && s[0].cover === 'OVC' && s[0].past === true, 'its last reading in the window, in the live shape, marked as past');
+  ok(s[0].raw.startsWith('KOKC 201952Z') && s[0].network === 'OK_ASOS' && s[0].net === 'asos', 'with its METAR and its network');
+  ok(W.normalizeAsosCsv('<html>error</html>', 'OK_ASOS').length === 0, 'anything that is not the archive\'s CSV is nothing, not an error');
+  ok(W.netKind('IA_RWIS') === 'rwis' && W.netKind('ISUSM') === 'soil' && W.netKind('OK_DCP') === 'dcp' && W.netKind('TX_ASOS') === 'asos', 'live stations say which kind of network they are');
 }
 
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WEATHER CLIENT RULES PASS'));

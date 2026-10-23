@@ -618,6 +618,7 @@ details.afd pre{white-space:pre-wrap;word-wrap:break-word;margin:0 0 10px;font:1
 .modelbar label{display:flex;align-items:center;gap:8px}
 .modelbar select{min-height:44px;max-width:min(330px,72vw);padding:0 10px;border-radius:10px;border:1px solid var(--edge);background:rgba(0,0,0,.3);color:#fff;font:inherit}
 .modelbar .mmrun{font-size:12px;color:var(--dim)}
+.modelbar .mmrun .linkish{background:none;border:0;padding:4px 0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer}
 .modelbar .go{min-height:44px;padding:0 16px;border-radius:999px;border:0;background:#fff;color:#0b2342;font-weight:700}
 .modelbar .go[hidden]{display:none}
 body[data-view="pro"] .modelbar .go{border-radius:3px;background:var(--amber);color:#1c1300;font-family:var(--mono)}
