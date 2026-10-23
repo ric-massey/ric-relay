@@ -37,7 +37,6 @@
     PHI: { label: 'Differential phase', short: 'PHI', unit: '°', pal: 'phi' }
   };
 
-  const RANGE16 = { PHI: [0, 360], ZDR: [-8, 12] };
 
   /* ── records ── */
   /* the bzip2 records in a piece of an Archive II file (a whole file, or one chunk) */
@@ -129,9 +128,8 @@
   }
 
   /* One sweep of one moment as the painter wants it — the same shape as a
-     Level III file (nexrad.js): radials sorted by azimuth, one byte a gate,
-     a 256-entry table from byte to value. A 16-bit moment (PHI) is brought
-     to 8 bits over its range. */
+     Level III file (nexrad.js): radials sorted by azimuth, one stored value
+     a gate, and a table from stored value to value. */
   function sweep(state, elevNum, moment) {
     const sw = state.sweeps[elevNum];
     if (!sw) return null;
@@ -139,22 +137,18 @@
     if (!rads.length) return null;
     const m0 = rads[0].moments[moment];
     const nBins = Math.max(...rads.map((r) => r.moments[moment].nGates));
-    const nRad = rads.length, data = new Uint8Array(nRad * nBins), az0 = new Float32Array(nRad), daz = new Float32Array(nRad);
-    /* a 16-bit moment (PHI always, ZDR on some radars) is brought to 8 bits
-       over a fixed range — 0.08 dB a step for ZDR, 1.4° for PHI, finer than
-       any palette shows */
-    const lut = new Float32Array(256).fill(NaN), special = { 1: 'rf' };
-    const [lo, hi] = RANGE16[moment] || [-32, 95];
-    if (m0.word === 8) for (let i = 2; i < 256; i++) lut[i] = (i - m0.offset) / m0.scale;
-    else for (let i = 2; i < 256; i++) lut[i] = lo + (i - 2) * (hi - lo) / 253;
+    /* an 8-bit moment is stored as it came; a 16-bit one (PHI always, ZDR on
+       some radars) is kept at 16 bits with a 65,536-entry table — exact, so a
+       clutter gate of 20 dB ZDR reads 20, not the end of a fixed range (it
+       read 12 until 2026-10-23, when the moment was squeezed into 8 bits) */
+    const wide = m0.word !== 8, nRad = rads.length, data = wide ? new Uint16Array(nRad * nBins) : new Uint8Array(nRad * nBins);
+    const az0 = new Float32Array(nRad), daz = new Float32Array(nRad);
+    const lut = new Float32Array(wide ? 65536 : 256).fill(NaN), special = { 1: 'rf' };
+    for (let i = 2; i < lut.length; i++) lut[i] = (i - m0.offset) / m0.scale;
     rads.forEach((r, k) => {
       const m = r.moments[moment];
       az0[k] = r.az - r.res / 2; daz[k] = r.res;
-      if (m.word === 8) data.set(m.raw.subarray(0, Math.min(m.nGates, nBins)), k * nBins);
-      else for (let g = 0; g < m.nGates && g < nBins; g++) {
-        const v = m.raw[g];
-        data[k * nBins + g] = v < 2 ? v : Math.max(2, Math.min(255, Math.round(((v - m.offset) / m.scale - lo) * 253 / (hi - lo)) + 2));
-      }
+      data.set(m.raw.subarray(0, Math.min(m.nGates, nBins)), k * nBins);
     });
     const elev = sw.elevs.reduce((a, b) => a + b, 0) / sw.elevs.length;
     const times = rads.map((r) => r.t);
@@ -369,7 +363,7 @@
   /* the site's ID in four letters, from Level III's three (TLX → KTLX) */
   const site4 = (s3) => (s3.length === 4 ? s3 : /^[A-Z]{3}$/.test(s3) ? 'K' + s3 : s3);
 
-  const api = { CHUNKS, ARCHIVE, MOMENTS, RANGE16, records, feed, sweep, tilts, angles, plan, anglesOf, cutFor, list, newestVolume, chunks, archive, stream, swept, prevNumber, nextNumber, site4 };
+  const api = { CHUNKS, ARCHIVE, MOMENTS, records, feed, sweep, tilts, angles, plan, anglesOf, cutFor, list, newestVolume, chunks, archive, stream, swept, prevNumber, nextNumber, site4 };
   root.Level2 = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

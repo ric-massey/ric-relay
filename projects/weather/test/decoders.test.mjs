@@ -320,11 +320,8 @@ console.log('\nRULE  NEXRAD Level II reads as MetPy reads it — a volume\'s fir
       const s = L2.sweep(st, Number(num), m);
       let bad = 0, finite = 0;
       for (let k = 0; k < s.nRad; k++) for (let g = 0; g < x.shape[1]; g++) if (g < s.nBins && Number.isFinite(s.lut[s.data[k * s.nBins + g]])) finite++;
-      /* 16-bit moments come through 8 bits (level2.js RANGE16): within a step */
-      const tol = m === 'PHI' ? 1.5 : m === 'ZDR' && s.lut[3] - s.lut[2] < 0.1 ? 0.05 : 1e-3;
-      /* …and clamped to that range, which no palette goes past */
-      const R16 = s.lut[3] - s.lut[2] < 0.1 || m === 'PHI' ? L2.RANGE16[m] : null;
-      const want = (v) => (R16 ? Math.min(R16[1], Math.max(R16[0], v)) : v);
+      /* every moment exact, 16-bit ones included (they are kept at 16 bits) */
+      const tol = 1e-3, want = (v) => v;
       for (const [k, g, v] of x.samples) { const got = g < s.nBins ? s.lut[s.data[k * s.nBins + g]] : NaN; if (v === null ? Number.isFinite(got) : !(Math.abs(got - want(v)) <= tol)) bad++; }
       ok(s.nRad === x.shape[0] && Math.abs(s.firstKm - x.first) < 1e-6 && Math.abs(s.gateKm - x.spacing) < 1e-6 && Math.abs(s.elev - sw.el) < 0.01,
         `cut ${num} ${m}: ${s.nRad} radials, first gate ${s.firstKm} km, every ${s.gateKm} km, ${s.elev.toFixed(2)}°`);
@@ -445,6 +442,59 @@ console.log('\nRULE  a replay asks for its own hours, and a shared message keeps
   let second = null, err = null;
   try { second = G.parse(msg, { sub: 2 }); } catch (e) { err = e; }
   ok(second && second.values[0] === 3 && second.values[1] === 4, `the second field has both its points, not the first field's bitmap${err ? ' (' + err.message + ')' : ''}`);
+}
+
+console.log('\nRULE  a gate is drawn where it is: range along the beam, bearing on the ellipsoid');
+{
+  /* Vincenty's direct problem on WGS84 — the reference a geodesic library
+     (pyproj, MetPy) would give — from the radar's own position, read out of
+     the fixture files (no coordinates are written in this repo) */
+  const A = 6378137, F = 1 / 298.257223563, B = A * (1 - F), rad = Math.PI / 180;
+  function direct(lat1, lon1, azDeg, s) {
+    const a1 = azDeg * rad, U1 = Math.atan((1 - F) * Math.tan(lat1 * rad)), s1 = Math.atan2(Math.tan(U1), Math.cos(a1));
+    const sa = Math.cos(U1) * Math.sin(a1), c2a = 1 - sa * sa, u2 = c2a * (A * A - B * B) / (B * B);
+    const k1 = (Math.sqrt(1 + u2) - 1) / (Math.sqrt(1 + u2) + 1), AA = (1 + k1 * k1 / 4) / (1 - k1), BB = k1 * (1 - 3 * k1 * k1 / 8);
+    let sg = s / (B * AA), sgp, c2m;
+    do { c2m = Math.cos(2 * s1 + sg); const ds = BB * Math.sin(sg) * (c2m + BB / 4 * (Math.cos(sg) * (-1 + 2 * c2m * c2m) - BB / 6 * c2m * (-3 + 4 * Math.sin(sg) ** 2) * (-3 + 4 * c2m * c2m))); sgp = sg; sg = s / (B * AA) + ds; } while (Math.abs(sg - sgp) > 1e-12);
+    const x = Math.sin(U1) * Math.sin(sg) - Math.cos(U1) * Math.cos(sg) * Math.cos(a1);
+    const lat2 = Math.atan2(Math.sin(U1) * Math.cos(sg) + Math.cos(U1) * Math.sin(sg) * Math.cos(a1), (1 - F) * Math.sqrt(sa * sa + x * x));
+    const lam = Math.atan2(Math.sin(sg) * Math.sin(a1), Math.cos(U1) * Math.cos(sg) - Math.sin(U1) * Math.sin(sg) * Math.cos(a1));
+    const C = F / 16 * c2a * (4 + F * (4 - 3 * c2a)), L = lam - (1 - C) * F * sa * (sg + C * Math.sin(sg) * (c2m + C * Math.cos(sg) * (-1 + 2 * c2m * c2m)));
+    return [lat2 / rad, lon1 + L / rad];
+  }
+  const tlx = N.parse(fx('l3-TLX_N0S_2026_10_22_19_08_56'));
+  let st2 = L2.feed(fx('l2-KFSX-20261022-194955-001-S'));
+  for (const n of ['080', '081', '082']) st2 = L2.feed(fx(`l2-KFSX-20261022-194955-${n}-I`), st2);
+  const fsx = { lat: st2.site && st2.site.lat, lon: st2.site && st2.site.lon };
+  const sites = [['TLX', tlx.lat, tlx.lon]];
+  if (fsx && fsx.lat != null) sites.push(['FSX', fsx.lat, fsx.lon]);
+  let worstKm = 0, worstAz = 0, worstSlant = 0;
+  for (const [, la, lo] of sites) for (const km of [5, 60, 120, 230, 460]) for (const az of [0, 37, 90, 145, 200, 271, 333]) {
+    const [lat, lon] = direct(la, lo, az, km * 1000);
+    const q = N.polarOf(la, lo, 0.5, lat, lon);
+    worstKm = Math.max(worstKm, Math.abs(q.groundKm - km)); worstAz = Math.max(worstAz, Math.abs(((q.az - az + 540) % 360) - 180) * km * rad);
+    for (const el of [0.5, 4, 19.5]) {
+      /* Doviak & Zrnić forward: the slant range the locator gives must land back on this ground distance */
+      const s0 = Math.sin(la * rad), w = 1 - 0.00669437999014 * s0 * s0, Rl = Math.sqrt(6378.137 / Math.sqrt(w) * 6378.137 * (1 - 0.00669437999014) / w ** 1.5), KE = 4 / 3 * Rl;
+      const r = N.polarOf(la, lo, el, lat, lon).km, h = Math.sqrt(r * r + KE * KE + 2 * r * KE * Math.sin(el * rad)) - KE;
+      worstSlant = Math.max(worstSlant, Math.abs(KE * Math.asin(r * Math.cos(el * rad) / (KE + h)) - q.groundKm));
+    }
+  }
+  ok(sites.length === 2, 'two radars, read from their own files (Oklahoma and Montana latitudes)');
+  ok(worstKm < 0.02, `ground distance matches the geodesic to 20 m out to 460 km (worst ${(worstKm * 1000).toFixed(1)} m)`);
+  ok(worstAz < 0.02, `bearing matches it to 20 m across the beam (worst ${(worstAz * 1000).toFixed(1)} m)`);
+  ok(worstSlant < 0.005, `slant range and the 4/3-earth beam agree to 5 m at 0.5°, 4° and 19.5° (worst ${(worstSlant * 1000).toFixed(2)} m)`);
+  const hi = N.polarOf(tlx.lat, tlx.lon, 19.5, ...direct(tlx.lat, tlx.lon, 90, 56500));
+  ok(Math.abs(hi.km - 60) < 0.5, `at 19.5° a gate 60 km up the beam is ~56.5 km out on the ground (got ${hi.km.toFixed(2)} km slant)`);
+}
+
+console.log('\nRULE  a 16-bit moment keeps values outside its usual range');
+{
+  const raw = Uint16Array.of(0, 1, 512 + 32 * 20, 512 + 32 * 0.5, 512 - 32 * 9);
+  const state = { sweeps: { 1: { elevNum: 1, elevs: [0.5], radials: [{ az: 0.25, res: 0.5, t: 0, moments: { ZDR: { word: 16, raw, nGates: raw.length, offset: 512, scale: 32, spacing: 250, first: 2125 } } }] } } };
+  const sw = L2.sweep(state, 1, 'ZDR'), val = (g) => sw.lut[sw.data[g]];
+  ok(Math.abs(val(2) - 20) < 0.1 && Math.abs(val(3) - 0.5) < 0.1 && Math.abs(val(4) + 9) < 0.1, `ZDR of 20, 0.5 and −9 dB read as themselves (${val(2).toFixed(2)}, ${val(3).toFixed(2)}, ${val(4).toFixed(2)})`);
+  ok(sw.data[0] === 0 && sw.data[1] === 1, 'below threshold and range folded keep their codes');
 }
 
 console.log(failures ? `\n${failures} DECODER RULE${failures === 1 ? '' : 'S'} BROKEN` : '\nALL DECODER RULES PASS');

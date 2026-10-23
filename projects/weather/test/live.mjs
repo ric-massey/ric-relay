@@ -173,5 +173,59 @@ for (const [name, least] of [['states', 50], ['coast', 100], ['nations', 5], ['c
   });
 }
 
-console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'THE WEATHER PROVIDERS ANSWER AS THE PAGE EXPECTS'));
+console.log('\nLIVE  Pro\'s own radar: NOAA\'s Level III and Level II, and the storm motion');
+const NX = require('../nexrad.js'), LV2 = require('../level2.js');
+await guard('radar bucket', async () => {
+  /* the radars with the most storm motion right now: NWS writes its motion
+     into each N0S file, so the busiest of a spread of sites is found, not named */
+  const SITES = ['TLX', 'AMX', 'BYX', 'TFX', 'LOT', 'FWS', 'DMX', 'MPX', 'FFC', 'LWX', 'ATX', 'MUX', 'ABQ', 'BMX', 'HGX', 'OKX'];
+  const found = [];
+  for (const site of SITES) {
+    try {
+      const s = (await NX.scans(site, 'N0S', { mins: 30 })).at(-1);
+      if (!s) continue;
+      const F = await NX.load(s.url);
+      found.push({ site, F, url: s.url, t: s.t });
+    } catch (e) { /* a radar down for maintenance is not a failure */ }
+  }
+  ok(found.length >= SITES.length - 4, `NOAA's bucket answers: newest N0S from ${found.length} of ${SITES.length} radars`);
+  const fresh = found.filter((x) => Date.now() - x.F.time < 20 * 60e3).length;
+  ok(fresh >= found.length - 2, `and they are fresh by the time inside each file: ${fresh} of ${found.length} under 20 min`);
+  ok(found.every((x) => Math.abs(x.t - x.F.time) < 15 * 60e3), 'the time in each file\'s name and the time inside it agree (a frozen feed would not)');
+  const moving = found.filter((x) => x.F.motion).sort((a, b) => b.F.motion.kt - a.F.motion.kt);
+  if (!moving.length) { console.log('  note  no radar is carrying a storm motion right now; the storm-relative check waits for weather'); return; }
+  const best = moving[0], m = best.F.motion;
+  ok(m.kt > 0 && m.kt < 120 && m.from >= 0 && m.from < 360, `${best.site}: NWS's storm motion from ${m.from}° at ${m.kt} kt`);
+  /* rebuilt from base velocity with that motion (direction it comes FROM),
+     storm-relative velocity lands on NWS's own N0S */
+  const u = (await NX.scans(best.site, 'N0G', { mins: 30 })).filter((x) => Math.abs(x.t - best.t) < 120e3).at(-1);
+  if (u) {
+    const U = await NX.load(u.url);
+    const err = (from) => { let n = 0, e = 0; for (let az = 0; az < 360; az += 3) for (let km = 20; km < 120; km += 4) { const a = NX.valueAt(best.F, 'srv', km, az), b = NX.valueAt(U, 'vel', km, az); if (!a || !b || a.rf || b.rf) continue; e += Math.abs(a.value - (b.value - m.kt * Math.cos((az - from - 180) * Math.PI / 180))); n++; } return n ? e / n : null; };
+    const right = err(m.from), wrong = err(m.from + 180);
+    ok(right != null && right < 6.5 && (m.kt < 5 || right < wrong), `${best.site}: N0G with the motion taken out is NWS's N0S to ${right && right.toFixed(1)} kt (the opposite direction: ${wrong && wrong.toFixed(1)} kt)`);
+  }
+  /* every tilt of a whole volume: velocity with the storm motion taken out decodes and stays in range */
+  const s4 = LV2.site4(best.site), vol = await LV2.newestVolume(s4);
+  if (vol) {
+    /* the volume before the newest: a whole one, every tilt in it */
+    const ch = await LV2.chunks(s4, LV2.prevNumber(vol.number, vol.numbers));
+    let st = null;
+    for (const c of ch) st = LV2.feed(new Uint8Array(await (await fetch(c.url)).arrayBuffer()), st);
+    const cuts = st ? Object.keys(st.sweeps).map(Number).filter((n) => LV2.sweep(st, n, 'VEL')) : [];
+    const to = (m.from + 180) * Math.PI / 180;
+    const okCuts = cuts.filter((n) => { const sw = LV2.sweep(st, n, 'VEL'), r = NX.stormRelative(sw, m.kt * 0.514444 * Math.sin(to), m.kt * 0.514444 * Math.cos(to)); return r.data.some((b) => b >= 2 && Number.isFinite(r.lut[b])); });
+    ok(cuts.length >= 2 && okCuts.length === cuts.length, `${s4}: storm-relative velocity at every velocity tilt of the last whole volume (${okCuts.length} of ${cuts.length})`);
+  }
+});
+
+console.log('\nLIVE  IEM\'s tracked storm cells (the storm motion when NWS\'s is not to be had)');
+await guard('cells', async () => {
+  const cells = await W.proOverlays.cells();
+  ok(Array.isArray(cells), `the cell feed answers: ${cells.length} cells tracked across the country`);
+  const moving = cells.filter((c) => c.kt > 0 && c.from != null && /^[A-Z0-9]{3}$/.test(c.site || ''));
+  ok(!cells.length || moving.length > 0, `with a radar, a speed and a direction on the moving ones (${moving.length})`);
+});
+
+console.log('\n' + (failures ?`${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'THE WEATHER PROVIDERS ANSWER AS THE PAGE EXPECTS'));
 process.exit(failures ? 1 : 0);

@@ -8,7 +8,8 @@
 #
 # It needs the network, so it is its own lane rather than part of checks.mjs.
 # It runs when the weather code changes, once a day (a provider can change
-# under a page that has not), and on demand. About fifteen requests.
+# under a page that has not), and on demand. About fifty requests, and one
+# whole Level II volume (~20 MB) for the storm-relative check at every tilt.
 
 name: Weather live check
 

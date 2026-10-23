@@ -47,7 +47,11 @@
   const dayFmtPage = (ms) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(ms);
   const dist = (km) => U() === "us" ? `${Math.max(1, Math.round(km / 1.609344))} mi` : `${Math.max(1, Math.round(km))} km`;
   const speed = (kmh) => U() === "us" ? `${Math.round(kmh / 1.609344)} mph` : `${Math.round(kmh)} km/h`;
-  const inUS = () => S.pt !== null;      // undefined while asking: assume yes
+  /* undefined while asking: assume yes. null is "outside the NWS's patch" —
+     but only when the NWS said so: a lookup that failed (S.err.pt) is an
+     outage, not a border (a Miami visitor was told the radar covers the
+     lower 48 only while api.weather.gov was down, 2026-10-23) */
+  const inUS = () => S.pt !== null || !!S.err.pt;
 
   /* Warning types, worst first: what storm mode is ordered by and coloured by. */
   const EV = { "Tornado Warning": ["tor", 5], "Extreme Wind Warning": ["eww", 4], "Severe Thunderstorm Warning": ["svr", 3], "Flash Flood Warning": ["ffw", 2], "Snow Squall Warning": ["other", 1] };
@@ -1790,10 +1794,34 @@
        via IEM) gives its moving cells — what the NWS's own N0S uses. Live
        only: the cells are the last twenty minutes', so an archived volume
        has none. Asked at most every two minutes. */
-    const srm = { at: 0, p: null };
+    const srm = { at: 0, p: null, nws: new Map() };
+    /* NWS's own: the motion in the radar's newest N0S file — exactly what its
+       storm-relative velocity at the lowest tilt took out (2026-10-23; before
+       this the page used only IEM's tracked cells, which nobody could check
+       against NWS, and which an IEM outage took away) */
+    async function nwsMotion(site) {
+      const have = srm.nws.get(site);
+      if (have && Date.now() - have.at < 120e3) return have.m;
+      let m = null;
+      try {
+        const scans = await NX.scans(site, "N0S", { mins: 30 });
+        const s = scans[scans.length - 1];
+        if (s) { const F = await cached(s.url, () => NX.load(s.url)); if (F.motion && F.motion.kt > 0) m = { ...F.motion, t: F.time }; }
+      } catch (e) { m = null; }
+      srm.nws.set(site, { at: Date.now(), m });
+      return m;
+    }
     async function srmMotion(site) {
-      if (!srm.p || Date.now() - srm.at > 120e3) { srm.at = Date.now(); srm.p = Wx.proOverlays.cells().catch(() => { srm.at = 0; return []; }); }
-      const cells = (await srm.p).filter((c) => c.site === site && c.kt > 0 && c.from != null);
+      const own = await nwsMotion(site);
+      if (own) {
+        const to = (own.from + 180) * Math.PI / 180, u = own.kt * Math.sin(to), v = own.kt * Math.cos(to);
+        return { uE: u * 0.514444, vN: v * 0.514444, kt: own.kt, from: own.from, nws: true };
+      }
+      /* a feed that did not answer is said as that, never as "no storms" */
+      if (!srm.p || Date.now() - srm.at > 120e3) { srm.at = Date.now(); srm.p = Wx.proOverlays.cells().catch(() => { srm.at = 0; return null; }); }
+      const all = await srm.p;
+      if (!all) return { down: true };
+      const cells = all.filter((c) => c.site === site && c.kt > 0 && c.from != null);
       if (!cells.length) return null;
       let u = 0, v = 0;
       for (const c of cells) { const to = (c.from + 180) * Math.PI / 180; u += c.kt * Math.sin(to); v += c.kt * Math.cos(to); }
@@ -1805,8 +1833,11 @@
       if (x.prod !== "srv" || file.code !== "L2") return file;
       if (x.l2 && x.l2.archive) throw new Error("storm-relative velocity needs the storm motion, which is known only live — use Velocity for a replay");
       const site = R.site && R.site.id, m = site && await srmMotion(site);
+      if (m && m.down) throw new Error("IEM's storm tracking did not answer, so the storm motion is not known — try again in a minute, or use Velocity");
       if (!m) throw new Error(`${site || "this radar"} is tracking no moving storms right now, so there is no storm motion to take out — use Velocity`);
-      return Object.assign(NX.stormRelative(file, m.uE, m.vN), { motionText: `storm motion from ${Math.round(m.from)}° at ${Math.round(m.kt)} kt, the mean of the ${m.n} storm${m.n === 1 ? "" : "s"} ${site} is tracking` });
+      return Object.assign(NX.stormRelative(file, m.uE, m.vN), { motionText: m.nws
+        ? `storm motion from ${Math.round(m.from)}° at ${Math.round(m.kt)} kt, the one NWS took out of ${site}'s own storm-relative velocity`
+        : `storm motion from ${Math.round(m.from)}° at ${Math.round(m.kt)} kt, the mean of the ${m.n} storm${m.n === 1 ? "" : "s"} ${site} is tracking (IEM; NWS's own was not to be had)` });
     }
     function l3File(f) {
       const x = f.l3;
@@ -1815,9 +1846,20 @@
         if (R.frames[R.frame] === f) { draw(); show(R.frame); tilts(); }
         return file;
       }).catch((e) => {
-        x.err = true;
+        /* said, and kept said (show() repeats it), and asked again twice,
+           30 s apart — a corrupt file used to say "loading" for good and
+           never be asked for again until a newer scan came (2026-10-23) */
+        x.err = true; x.tries = (x.tries || 0) + 1;
         const srmErr = /storm motion/.test(String(e.message || ""));
-        if (R.frames[R.frame] === f) note(srmErr ? `Storm-relative: ${e.message}.` : x.l2 && x.l2.archive ? `This volume did not load (${String(e.message || e)}).` : "This scan did not load — the next one may.");
+        const again = x.tries < 3 && !(x.l2 && x.l2.archive && srmErr);
+        x.errText = srmErr ? `Storm-relative: ${e.message}.` : x.l2 && x.l2.archive ? `This volume did not load (${String(e.message || e)}).`
+          : `This scan did not load (${String(e.message || e).slice(0, 80)})${again ? " — trying it again in 30 seconds" : " — the next scan may"}.`;
+        if (R.frames[R.frame] === f) show(R.frame);
+        if (again) setTimeout(() => {
+          if (!R.frames.includes(f) || x.file) return;
+          x.p = null; x.err = false;
+          if (R.frames[R.frame] === f) { l3File(f); show(R.frame); }
+        }, 30e3);
       });
       return x.p;
     }
@@ -1837,16 +1879,18 @@
       const sx = lngX(lon0, R.z) - left, sy = latY(lat0, R.z) - top;
       const pxPerKm = lngX(lon0 + 1 / (111.32 * Math.cos(lat0 * rad)), R.z) - lngX(lon0, R.z), rpx = rmax * pxPerKm * 1.1 + 2;
       const x0 = Math.max(0, Math.floor(sx - rpx)), x1 = Math.min(w, Math.ceil(sx + rpx)), y0 = Math.max(0, Math.floor(sy - rpx)), y1 = Math.min(h, Math.ceil(sy + rpx));
-      const dlon = new Float64Array(w);
-      for (let x = x0; x < x1; x++) dlon[x] = xLng(left + x + 0.5, R.z) - lon0;
+      /* each pixel's slant range and bearing from the radar, on the ellipsoid
+         with the beam's rise (NX.locator) — not a flat map */
+      const L = NX.locator(lat0, lon0, F.elev || 0), cols = new Array(w);
+      for (let x = x0; x < x1; x++) cols[x] = L.lon(xLng(left + x + 0.5, R.z));
       for (let y = y0; y < y1; y++) {
-        const lat = yLat(top + y + 0.5, R.z), dy = (lat - lat0) * 110.574, kx = 111.32 * Math.cos((lat + lat0) / 2 * rad), row = y * w;
+        const rowP = L.lat(yLat(top + y + 0.5, R.z)), row = y * w;
         for (let x = x0; x < x1; x++) {
-          const dx = dlon[x] * kx, r = Math.sqrt(dx * dx + dy * dy);
+          const q = L.at(rowP, cols[x]), r = q.km;
           if (r >= rmax || r < g0) continue;
-          let a = Math.atan2(dx, dy) * 572.9577951308232;              // tenths of a degree, clockwise from north
-          if (a < 0) a += 3600;
-          const c = col[data[azi[a | 0] * nb + (((r - g0) / gk) | 0)]];
+          const ri = azi[(q.az * 10) | 0];                               // tenths of a degree, clockwise from north
+          if (ri < 0) continue;
+          const c = col[data[ri * nb + (((r - g0) / gk) | 0)]];
           if (c) px[row + x] = c;
         }
       }
@@ -2552,14 +2596,14 @@
       if (!f) return null;
       if (f.l3 && f.l3.file) {
         const F = f.l3.file, P = NX.PRODUCTS[f.l3.prod];
-        const dy = (lat - F.lat) * 110.574, dx = (lon - F.lon) * 111.32 * Math.cos((lat + F.lat) / 2 * Math.PI / 180), km = Math.hypot(dx, dy);
-        const az = (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360, v = NX.valueAt(F, f.l3.prod, km, az);
+        /* the same range and bearing the painter used, so the readout is the gate drawn there */
+        const q = NX.polarOf(F.lat, F.lon, F.elev || 0, lat, lon), km = q.km, az = q.az, v = NX.valueAt(F, f.l3.prod, km, az);
         if (km > F.nBins * F.gateKm) return null;
         const beam = NX.beamHeightKm(km, F.elev) + F.heightM / 1000;
         const what = !v ? "no echo" : v.rf ? "range folded" : v.cls ? `${v.cls[1]} (${v.cls[0]})`
           : `${P.short} ${f.l3.prod === "cc" ? v.value.toFixed(2) : f.l3.prod === "zdr" || f.l3.prod === "kdp" ? v.value.toFixed(1) : Math.round(v.value)}${P.unit ? " " + P.unit : ""}${v.topped ? " (topped)" : ""}`;
         /* the beam's centre above sea level: the radar's own height plus the beam's rise */
-        return `${what} · ${dist(km)} ${Math.round(az)}° from ${F.site || "the radar"} · beam ${U() === "us" ? Math.round(beam * 3.28084) + " kft" : beam.toFixed(1) + " km"} MSL`;
+        return `${what} · ${dist(q.groundKm)} ${Math.round(az)}° from ${F.site || "the radar"} · beam ${U() === "us" ? Math.round(beam * 3.28084) + " kft" : beam.toFixed(1) + " km"} MSL`;
       }
       if (f.abi && f.abi.layer) {
         const vs = AB.valuesAt(f.abi.layer, lat, lon);
@@ -3142,7 +3186,7 @@
         const t = F ? F.time : f.t, arch = f.l3.l2 && f.l3.l2.archive;
         /* an archived volume says its date, as the mosaic's replay does; a live scan its age */
         when.innerHTML = arch ? `${esc(timeFmt(t))}<small>${esc(dayFmt(t))}${F ? ` · ${F.elev.toFixed(1)}°` : f.l3.err ? " · failed" : " · loading"}</small>`
-          : `${esc(clk().time(t))}<small>${Wx.age(Date.now() - t)} ago${F ? ` · ${F.elev.toFixed(1)}°` : " · loading"}${F && F.motionText ? ` · ${esc(F.motionText)}` : ""}</small>`;
+          : `${esc(clk().time(t))}<small>${Wx.age(Date.now() - t)} ago${F ? ` · ${F.elev.toFixed(1)}°` : f.l3.err ? " · failed" : " · loading"}${F && F.motionText ? ` · ${esc(F.motionText)}` : ""}</small>`;
       } else if (f.nc) {
         const k = clk();
         when.innerHTML = `${esc(k.time(f.t))}<small>forecast · in ${Wx.age(Math.max(60e3, f.t - Date.now()))}</small>`;
@@ -3153,19 +3197,50 @@
       else when.innerHTML = f.mins ? `−${f.mins} min<small>before latest</small>` : `Latest<small>scan time unknown</small>`;
       drawLightning();
       if (C.on && f.model) renderChart();
-      const fr = R.valid && !f.future && !f.model && !f.mrms && !f.abi ? Wx.fresh("radar", R.valid) : null;
+      const fr = !f.future && !f.model && !f.mrms && !f.abi && !f.nc && R.mode !== "replay" && !(f.l3 && f.l3.l2 && f.l3.l2.archive) ? radarFresh() : null;
       if (f.model && f.model.err) note(`This hour did not load (${f.model.err}).`);
       else if (f.mrms && f.mrms.err) note(`This MRMS file did not load (${f.mrms.err}).`);
       else if (f.abi && f.abi.err) note(`This GOES image did not load (${f.abi.err}).`);
+      else if (f.l3 && f.l3.err && f.l3.errText) note(f.l3.errText);
+      else if ((f.mrms || f.abi) && feedLate()) note(feedLate());
       else if (f.model || f.mrms || f.abi) note("");
+      else if (fr && fr.unknown) note("IEM did not say when its newest mosaic was made, so how old this radar is is not known.");
+      else if (fr && fr.frozen) note(`Radar delayed — the newest file holds a scan from ${fr.age} ago; the feed is repeating old data.`);
       else if (f.future && R.valid && Date.now() - R.valid > 3 * 3600e3) note(`This HRRR run is ${Wx.age(Date.now() - R.valid)} old — a newer one is late.`);
       else if (fr && fr.stale) note(`Radar delayed — the latest scan is ${fr.age} old.`);
-      else if (S.place && S.pt === null && R.mode === "comp") note("This radar covers the lower 48 US states only.");
+      else if (S.place && !inUS() && R.mode === "comp") note("This radar covers the lower 48 US states only.");
       else if (R.frames.length) note("");
       if (ltgOn() && LTG.at && R.mode !== "replay" && !$("#radarnote").textContent) {
         const th = ltgThrough();
         if (th && ltgRef() < th.from - 60e3) note("Lightning is held for the last 20 minutes; this frame is older, so none is drawn.");
       }
+    }
+    /* How old the radar on screen really is (2026-10-23). The newest scan's
+       own time, from inside its file once it has loaded — a feed can keep
+       writing new files that hold an old scan, and the name's time never
+       showed that — else the time in its name. Allowed twice the gap
+       between scans plus three minutes, never under STALE_MS.radar (15):
+       a clear-air volume takes ten minutes, and echo tops and VIL wait for
+       the whole volume, so a fixed 15 called them delayed when they were not. */
+    function radarFresh() {
+      /* IEM's time file asked and not answered: the age is unknown, and is said so */
+      if (R.mode === "comp" && R.compAsked && R.frames.length && !R.valid) return { unknown: true };
+      if (!R.valid) return null;
+      const ts = R.frames.map((x) => x.t).filter(Number.isFinite), gaps = [];
+      for (let i = 1; i < ts.length; i++) if (ts[i] > ts[i - 1]) gaps.push(ts[i] - ts[i - 1]);
+      gaps.sort((a, b) => a - b);
+      const gap = gaps.length ? gaps[gaps.length >> 1] : 5 * 60e3, limit = Math.max(Wx.STALE_MS.radar, 2 * gap + 3 * 60e3);
+      const nf = R.frames[R.frames.length - 1], F = nf && nf.l3 && nf.l3.file, own = F && Number.isFinite(F.time) ? F.time : null;
+      const t = own != null ? Math.min(R.valid, own) : R.valid, a = Date.now() - t;
+      return { stale: a > limit, frozen: own != null && R.valid - own > limit, age: Wx.age(a) };
+    }
+    /* MRMS and GOES: late when the newest file is three of its own steps old (and five minutes more) */
+    function feedLate() {
+      if (!R.valid || R.mode === "replay") return "";
+      const every = R.mode === "mrms" && MR ? (MR.PRODUCTS[R.mr.prod].every || 2) : R.mode === "abi" && AB ? AB.SECTORS[R.ab.sector].every : null;
+      if (!every) return "";
+      const a = Date.now() - R.valid;
+      return a > (3 * every + 5) * 60e3 ? `${R.mode === "mrms" ? "MRMS" : "GOES"} delayed — the newest file is ${Wx.age(a)} old.` : "";
     }
     function loadOld() { if (!R.loadedOld) { R.loadedOld = true; draw(); } }
     function play(on) {
@@ -3262,7 +3337,7 @@
       if (mode === "comp") {
         const v = await Wx.radarTime();
         if (ask !== R.modeAsk) return;
-        R.valid = v;
+        R.valid = v; R.compAsked = true;
         compFrames();
       } else if (mode === "hrrr") {
         await hrrrFrames();
@@ -3416,7 +3491,7 @@
         compFrames();
         const v = await Wx.radarTime();
         if (R.mode !== "comp") return;               // a replay began meanwhile: it owns the frames now
-        R.valid = v;
+        R.valid = v; R.compAsked = true;
         compFrames();
       } else if (single()) await siteFrames();
       label(); renderSources();

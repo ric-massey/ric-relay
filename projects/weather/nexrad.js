@@ -202,6 +202,12 @@
     return {
       code, site: m ? m[3] : null, lat, lon, heightM: heightFt * 0.3048, vcp, elev,
       volTime, time: volTime + deltaSec * 1000, gateKm: GATE_KM[code] || 1, digital: DIGITAL.includes(code),
+      /* storm-relative velocity (56) carries the storm motion the RPG took
+         out: halfword 51 the speed in tenths of a knot, 52 the direction it
+         comes FROM in tenths of a degree. "From" was checked on 2026-10-23
+         by rebuilding N0S from N0G at three radars with storms: 4.5–5 kt mean
+         difference (inside N0S's value bands) against 5.7–11 kt for "toward". */
+      ...(code === 56 && dep[7] > 0 ? { motion: { kt: dep[7] / 10, from: dep[8] / 10 } } : {}),
       ...radial, lut, special
     };
   }
@@ -247,6 +253,48 @@
     return Math.sqrt(rangeKm * rangeKm + ke * ke + 2 * rangeKm * ke * Math.sin(e)) - ke;
   }
 
+  /* ── where a point on the map is, as the radar sees it ──
+     A gate's range is along the beam (slant range), and the beam rises over
+     a curved earth. The painter used to turn map distance into range on a
+     flat map with no slant, which put storms 0.25–4.6 km from where they were
+     (more at long range, high tilts and northern sites — measured against
+     MetPy, 2026-10-23). Now: the radar and the point on WGS84 (ECEF), the
+     chord between them in the radar's own east-north-up frame — its azimuth
+     is the bearing, its length the ground distance — and the ground distance
+     turned into slant range with the standard 4/3 earth (Doviak & Zrnić
+     2.28c, inverted: r = kₑa·sin φ / cos(θ + φ), φ = s / kₑa).
+     locator(lat0, lon0, elevDeg) → { lat(lat), lon(lon), at(row, col) }:
+     `lat` and `lon` are worked out once per row and column, `at` per pixel,
+     so a whole screen costs one sqrt and one atan2 a pixel. `at` returns one
+     shared object { km (slant), groundKm, az (degrees from north) }. */
+  const WGS_A = 6378.137, WGS_E2 = 0.00669437999014, RAD = Math.PI / 180;
+  function locator(lat0, lon0, elevDeg = 0) {
+    const s0 = Math.sin(lat0 * RAD), c0 = Math.cos(lat0 * RAD), w0 = 1 - WGS_E2 * s0 * s0;
+    const N0 = WGS_A / Math.sqrt(w0), X0 = N0 * c0, Z0 = N0 * (1 - WGS_E2) * s0;
+    /* the earth's mean radius of curvature here, and the 4/3 earth over it */
+    const Rl = Math.sqrt(N0 * WGS_A * (1 - WGS_E2) / Math.pow(w0, 1.5)), KE = 4 / 3 * Rl, k24 = 1 / (24 * Rl * Rl);
+    const st = Math.sin(elevDeg * RAD), ct = Math.cos(elevDeg * RAD);
+    const out = { km: 0, groundKm: 0, az: 0 };
+    return {
+      lat(lat) { const s = Math.sin(lat * RAD), N = WGS_A / Math.sqrt(1 - WGS_E2 * s * s); return { rc: N * Math.cos(lat * RAD), dz: N * (1 - WGS_E2) * s - Z0 }; },
+      lon(lon) { const d = (lon - lon0) * RAD; return { cl: Math.cos(d), sl: Math.sin(d) }; },
+      at(row, col) {
+        const dx = row.rc * col.cl - X0, e = row.rc * col.sl;
+        const n = c0 * row.dz - s0 * dx, u = c0 * dx + s0 * row.dz;
+        const d2 = e * e + n * n + u * u, g = Math.sqrt(d2) * (1 + d2 * k24);   // chord → arc
+        const p = g / KE, sp = p - p * p * p / 6, cp = 1 - p * p / 2;
+        out.groundKm = g; out.km = KE * sp / (ct * cp - st * sp);
+        const a = Math.atan2(e, n) / RAD; out.az = a < 0 ? a + 360 : a;
+        return out;
+      }
+    };
+  }
+  /* one point, for a tap or a test */
+  function polarOf(lat0, lon0, elevDeg, lat, lon) {
+    const L = locator(lat0, lon0, elevDeg), o = L.at(L.lat(lat), L.lon(lon));
+    return { km: o.km, groundKm: o.groundKm, az: o.az };
+  }
+
   /* ── colour ──
      Smooth palettes in the conventions forecasters read: the NWS's
      reflectivity colours, green-in / red-out velocity, CC with the low
@@ -285,9 +333,10 @@
   /* one RGBA word per stored byte, for this file: the painter's whole job is
      then a table lookup per pixel */
   function colorTable(f, prod) {
-    const P = PRODUCTS[prod], pal = PALETTES[P.pal], out = new Uint32Array(256);
+    /* as long as the file's own table: 256, or 65,536 for a 16-bit Level II moment */
+    const P = PRODUCTS[prod], pal = PALETTES[P.pal], out = new Uint32Array(f.lut.length);
     const pack = (c, a = 255) => ((a << 24) | (c[2] << 16) | (c[1] << 8) | c[0]) >>> 0;   // little-endian RGBA
-    for (let i = 0; i < 256; i++) {
+    for (let i = 0; i < out.length; i++) {
       if (f.special[i] === 'rf') { out[i] = pack(RF_COLOR, 200); continue; }
       const v = f.lut[i];
       if (!Number.isFinite(v)) continue;
@@ -367,7 +416,7 @@
   }
 
   const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
-    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, stormRelative };
+    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, stormRelative, locator, polarOf };
   root.Nexrad = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
