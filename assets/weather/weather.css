@@ -880,3 +880,38 @@ body[data-view="pro"] #hero>div[style]{margin-top:6px!important}
   /* the map takes the first screen: what is above it is the place bar and the card's title */
   body[data-view="pro"]:not([data-panel]) .workspace .radar{height:calc(100svh - 330px);min-height:320px}
 }
+
+/* ── Weather's radar, closer to Apple's (2026-10-23, Ric: "it should be
+   closer to the Apple one … you should just have to click it for it to go full
+   screen. And it should be easy to see where it's raining.") ──
+   The rain is redrawn in one intensity ramp (app.js, rainTile) and shown at
+   full strength over a lighter grey map; a tap on the small map opens it full
+   screen, where the map fills the screen and the key, the close button and the
+   timeline float over it. */
+.mapclose{display:none}
+#radarcard.mapfull .mapclose{display:grid;place-items:center;position:absolute;left:12px;top:calc(12px + env(safe-area-inset-top));z-index:9;width:48px;height:48px;border-radius:50%;border:1px solid var(--edge);background:rgba(28,31,36,.9);color:#fff}
+body:not([data-view="pro"]) .radar{cursor:pointer}
+body:not([data-view="pro"]) #radarcard.mapfull .radar{cursor:grab}
+body:not([data-view="pro"]) .radar .base img{filter:grayscale(1) invert(1) brightness(.98) contrast(.72)}
+body:not([data-view="pro"]) .radar .frame.on{opacity:1}
+.sitebar:empty{display:none}
+/* the key: one bar, named Light to Extreme */
+.legend.rainkey{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:2px 10px}
+.legend.rainkey b{grid-row:1/3;font-weight:600;color:#fff}
+.legend.rainkey i{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--rain))}
+.legend.rainkey .k{display:flex;justify-content:space-between;font-size:11px}
+/* full screen, Apple's way: the map edge to edge, everything else floating on it */
+body:not([data-view="pro"]) #radarcard.mapfull{padding:0;background:#2b2e33}
+body:not([data-view="pro"]) #radarcard.mapfull>:not(.radar):not(.radarbar):not(.legend){display:none}
+body:not([data-view="pro"]) #radarcard.mapfull .radar{position:absolute;inset:0;height:auto;margin:0}
+body:not([data-view="pro"]) #radarcard.mapfull .radar .zoom{top:calc(12px + env(safe-area-inset-top))}
+body:not([data-view="pro"]) #radarcard.mapfull .radarbar{position:absolute;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:8;margin:0;padding:10px 14px;border-radius:22px;background:rgba(28,31,36,.92);border:1px solid rgba(255,255,255,.1);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+body:not([data-view="pro"]) #radarcard.mapfull .legend{position:absolute;left:12px;top:calc(72px + env(safe-area-inset-top));z-index:8;margin:0;padding:10px 12px;border-radius:14px;background:rgba(28,31,36,.88);border:1px solid rgba(255,255,255,.1);color:#e9ecef}
+body:not([data-view="pro"]) #radarcard.mapfull .legend.rainkey{grid-template-columns:8px auto;grid-template-rows:auto 1fr;gap:8px 10px}
+body:not([data-view="pro"]) #radarcard.mapfull .legend.rainkey b{grid-row:auto;grid-column:1/3}
+body:not([data-view="pro"]) #radarcard.mapfull .legend.rainkey i{width:6px;height:110px;background:linear-gradient(0deg,var(--rain))}
+body:not([data-view="pro"]) #radarcard.mapfull .legend.rainkey .k{flex-direction:column-reverse;justify-content:space-between;font-size:13px}
+body:not([data-view="pro"]) #radarcard.mapfull .radar .credit{bottom:calc(92px + env(safe-area-inset-bottom))}
+body:not([data-view="pro"]) #radarcard.mapfull .radar .note{left:72px;top:calc(14px + env(safe-area-inset-top))}
+body:not([data-view="pro"]) #radarcard.mapfull .legend.rainkey .k{height:110px}
+#radarcard.mapfull .radar .mainst{left:70px;top:calc(22px + env(safe-area-inset-top))}

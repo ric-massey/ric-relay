@@ -1638,7 +1638,7 @@
     }
     function compFrames() {
       const b = bucket();
-      setFrames(Wx.RADAR_STEPS.map((mins) => ({ t: R.valid ? R.valid - mins * 60e3 : null, mins,
+      setFrames(Wx.RADAR_STEPS.map((mins) => ({ t: R.valid ? R.valid - mins * 60e3 : null, mins, rain: true,
         url: (z, x, y) => Wx.radarTile(mins, z, x, y, b) })));
     }
     async function siteFrames(onlyIfNew) {
@@ -2500,7 +2500,7 @@
       return null;
     }
 
-    function place(layer, cache, url, w, h, left, top) {
+    function place(layer, cache, url, w, h, left, top, rain) {
       const n = 2 ** R.z, seen = new Set();
       for (let tx = Math.floor(left / TILE); tx <= Math.floor((left + w) / TILE); tx++) {
         for (let ty = Math.floor(top / TILE); ty <= Math.floor((top + h) / TILE); ty++) {
@@ -2511,6 +2511,7 @@
           let img = cache.get(key);
           if (!img) {
             img = new Image(); img.alt = ""; img.decoding = "async"; img.draggable = false;
+            if (rain && RAIN_LUT) { img.crossOrigin = "anonymous"; img.onload = () => rainTile(img); }
             /* one tile failing never blanks the layer (§35.5): it hides, and is
                asked once more a few seconds later */
             const src = url(R.z, wx, ty);
@@ -2526,7 +2527,62 @@
           img.style.transform = `translate(${tx * TILE - left}px,${ty * TILE - top}px)`;
         }
       }
-      for (const [key, img] of cache) if (!seen.has(key)) { img.remove(); cache.delete(key); }
+      for (const [key, img] of cache) if (!seen.has(key)) { if (img.dataset.rain) URL.revokeObjectURL(img.src); img.remove(); cache.delete(key); }
+    }
+
+    /* ── Weather's rain, redrawn (2026-10-23, Ric: "it should be closer to the
+       Apple one … it should be easy to see where it's raining") ──
+       IEM's mosaic tiles are the NWS's reflectivity colours at 82% over the map:
+       light rain is a thin teal that disappears on a dark map. Every pixel of
+       those tiles is an exact colour of IEM's N0Q palette (nowcast.js, checked
+       2026-10-17), so its dBZ is known exactly and the tile is redrawn in one
+       intensity ramp — light blue, blue, violet, magenta, orange, yellow,
+       white — opaque from moderate rain up, the way Apple's radar reads at a
+       glance. Below 12 dBZ (clear-air returns, not rain) is left clear. Pro
+       keeps the NWS colours professionals read by number. */
+    const NC = window.WxNowcast;
+    const RAIN_STOPS = [[12, [120, 190, 255, 0.55]], [20, [60, 140, 255, 0.85]], [28, [80, 90, 245, 0.95]], [35, [150, 70, 235, 1]], [42, [220, 60, 200, 1]],
+      [48, [255, 85, 110, 1]], [54, [255, 150, 50, 1]], [60, [255, 225, 70, 1]], [68, [255, 255, 255, 1]]];
+    const rainRGBA = (dbz) => {
+      if (!(dbz >= RAIN_STOPS[0][0])) return null;
+      let k = 1;
+      while (k < RAIN_STOPS.length - 1 && dbz > RAIN_STOPS[k][0]) k++;
+      const [a, A] = RAIN_STOPS[k - 1], [b, B] = RAIN_STOPS[k], t = Math.max(0, Math.min(1, (dbz - a) / (b - a)));
+      return A.map((v, i) => v + (B[i] - v) * t);
+    };
+    /* one 32-bit word (canvas byte order) per IEM colour */
+    const RAIN_LUT = (() => {
+      if (!NC || !NC.PALETTE) return null;
+      const m = new Map();
+      for (let i = 1; i < 256; i++) {
+        const c = rainRGBA(NC.dbzOf(i));
+        if (!c) continue;
+        const rgb = parseInt(NC.PALETTE.slice(i * 6, i * 6 + 6), 16);
+        m.set(rgb, ((Math.round(c[3] * 255) << 24) | (Math.round(c[2]) << 16) | (Math.round(c[1]) << 8) | Math.round(c[0])) >>> 0);
+      }
+      return m;
+    })();
+    /* the key's colour stops; each layout of the key sets its own direction */
+    const RAIN_CSS = RAIN_STOPS.map(([, c], i) => `rgba(${c[0]},${c[1]},${c[2]},${Math.max(c[3], .8)}) ${Math.round(i / (RAIN_STOPS.length - 1) * 100)}%`).join(",");
+    function rainTile(img) {
+      if (!RAIN_LUT || img.dataset.rain) return;
+      try {
+        const cv = document.createElement("canvas");
+        cv.width = img.naturalWidth || 256; cv.height = img.naturalHeight || 256;
+        const ctx = cv.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        const im = ctx.getImageData(0, 0, cv.width, cv.height), px = new Uint32Array(im.data.buffer), d = im.data;
+        for (let i = 0, j = 0; i < px.length; i++, j += 4) {
+          if (!d[j + 3]) continue;
+          px[i] = RAIN_LUT.get((d[j] << 16) | (d[j + 1] << 8) | d[j + 2]) || 0;
+        }
+        ctx.putImageData(im, 0, 0);
+        cv.toBlob((blob) => {
+          if (!blob || !img.isConnected) return;
+          img.dataset.rain = "1";
+          img.src = URL.createObjectURL(blob);
+        });
+      } catch (e) { /* a tile that cannot be read stays in IEM's colours */ }
     }
 
     /* everything drawn over the tiles */
@@ -2572,7 +2628,9 @@
       if (R.outlook && S.outlook) {
         for (const o of S.outlook.slice().sort((a, b) => a.rank - b.rank)) {
           const d = o.polys.map((poly) => poly.map((r) => "M" + ring(r).replace(/ /g, " L")).join(" ") + " Z").join(" ");
-          out.push(`<path d="${d}" fill="${esc(o.fill || "#888")}" fill-opacity=".28" fill-rule="evenodd" stroke="${esc(o.stroke || "#888")}" stroke-width="1.6"/>`);
+          /* on Weather, the outline only: a filled outlook hid the rain under it (Ric, 2026-10-23) */
+          out.push(PRO ? `<path d="${d}" fill="${esc(o.fill || "#888")}" fill-opacity=".28" fill-rule="evenodd" stroke="${esc(o.stroke || "#888")}" stroke-width="1.6"/>`
+            : `<path d="${d}" fill="none" stroke="${esc(o.stroke || o.fill || "#888")}" stroke-width="1.6" stroke-dasharray="6 4" stroke-opacity=".85"/>`);
         }
       }
       const W0 = el.clientWidth, H0 = el.clientHeight;
@@ -2794,7 +2852,7 @@
         if (f.future) { if (i === R.frame) paintHrrr(f, w, h, left, top); else if (R.loadedOld && !f.img) { f.img = new Image(); f.img.src = f.src; } }
         /* archive tiles are drawn by IEM on demand and slow: a replay loads the
            frame on screen and the next, never the whole loop at once */
-        else if (f.archive ? i === R.frame || i === R.frame + 1 : i === R.frame || R.loadedOld) place(f.el, f.tiles, f.url, w, h, left, top);
+        else if (f.archive ? i === R.frame || i === R.frame + 1 : i === R.frame || R.loadedOld) place(f.el, f.tiles, f.url, w, h, left, top, !PRO && f.rain);
       });
       drawGeo();
       overlay(left, top);
@@ -2973,7 +3031,7 @@
       if (!lg) return;
       /* a radar's replay keys its own product */
       const P = l3() || (R.mode === "replay" && R.replay && R.replay.prodMode ? l3(R.replay.prodMode) : null);
-      lg.classList.remove("vel", "scale", "cats");
+      lg.classList.remove("vel", "scale", "cats", "rainkey");
       if (R.mode === "abi" && AB) {
         const K = AB.key(R.ab.prod);
         if (!K || K.text) { lg.innerHTML = `<span>${esc(K ? K.text : "")}</span>`; return; }
@@ -3009,6 +3067,11 @@
         lg.innerHTML = `<div class="bar"><i aria-hidden="true"></i><div class="ticks">${[10, 20, 30, 40, 50, 60, 70].map((t) => `<span style="left:${pos(t)}%">${t}</span>`).join("")}</div></div><span class="lu">dBZ</span>`;
         return;
       }
+      if (!pal && !PRO && R.mode === "comp" && RAIN_LUT) {
+        lg.classList.add("rainkey");
+        lg.innerHTML = `<b>Precipitation</b><i aria-hidden="true" style="--rain:${RAIN_CSS}"></i><span class="k"><span>Light</span><span>Moderate</span><span>Heavy</span><span>Extreme</span></span>`;
+        return;
+      }
       if (!pal) { lg.innerHTML = `<span>light</span><i aria-hidden="true"></i><span>heavy</span>`; return; }
       const st = pal.stops, lo = pal.min ?? st[0][0], hi = pal.max ?? st[st.length - 1][0];
       const pos = (v) => Math.max(0, Math.min(1, pal.log ? (Math.log(v) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)) : (v - lo) / (hi - lo)));
@@ -3033,7 +3096,7 @@
       syncTools();
       legend();
       const sb = $("#sitebar");
-      if (R.mode === "comp") sb.textContent = "NEXRAD mosaic of the whole country, every 5 minutes.";
+      if (R.mode === "comp") sb.textContent = PRO ? "NEXRAD mosaic of the whole country, every 5 minutes." : "";
       else if (R.mode === "replay" && R.replay && R.replay.prodMode) { const rp = R.replay, P = l3(rp.prodMode), n = rp.warn ? new Set(rp.warn.map((w) => w.sig + w.wfo + w.event + w.area)).size : null; sb.textContent = `Replay: ${rp.site ? rp.site + "'s own" : "the nearest radar's"} full volume (Level II), ${lc(P.label)} at the lowest tilt, ${dayFmt(rp.from)} ${timeFmt(rp.from)} to ${timeFmt(rp.to)}${rp.vols ? `, ${rp.vols.length} volumes` : " — finding the radar's volumes"}, with each storm warning drawn for the minutes it was in force${rp.warn ? ` (${n} warning${n === 1 ? "" : "s"})` : ""}. The product buttons change what is shown; NOAA's archive on AWS.`; }
       else if (R.mode === "replay" && R.replay) { const rp = R.replay, n = rp.warn ? new Set(rp.warn.map((w) => w.sig + w.wfo + w.event + w.area)).size : null; sb.textContent = `Replay: the national radar as it was, ${dayFmt(rp.from)} ${timeFmt(rp.from)} to ${timeFmt(rp.to)}, every ${rp.step} minutes, with each storm warning drawn for the minutes it was in force${rp.warn ? ` (${n} warning${n === 1 ? "" : "s"})` : rp.err ? " — the warnings archive did not answer" : " — loading the warnings"}. Archive via IEM.`; }
       else if (R.mode === "hrrr") sb.textContent = `A forecast, not radar: the HRRR model's own picture of the rain${R.valid ? ` from its ${new Date(R.valid).toISOString().slice(11, 13)}Z run` : ""}, every 15 minutes for the first hour then hourly to 18 hours. Lower 48 only.`;
@@ -3347,6 +3410,7 @@
       requestAnimationFrame(draw);
     }
     $("#zfull").addEventListener("click", () => full(!$("#radarcard").classList.contains("mapfull")));
+    if ($("#mapclose")) $("#mapclose").addEventListener("click", () => full(false));
     $("#zxsec").addEventListener("click", () => { if (R.measure) measureToggle(); if (X.pick || X.a) xsecStop(); else xsecStart(); });
     if ($("#zmeasure")) $("#zmeasure").addEventListener("click", measureToggle);
     if ($("#zlink")) $("#zlink").addEventListener("click", shareLink);
@@ -3429,6 +3493,7 @@
         /* wait out a double tap, which zooms instead */
         const r = el.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
         clearTimeout(tap);
+        if (!PRO && !$("#radarcard").classList.contains("mapfull")) { full(true); return; }
         tap = setTimeout(() => {
           const tlat = yLat(R.cy - el.clientHeight / 2 + py, R.z), tlon = xLng(R.cx - el.clientWidth / 2 + px, R.z);
           if (X.pick) { xsecTap(tlat, tlon); return; }

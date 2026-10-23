@@ -137,5 +137,21 @@ console.log('\nRULE  the nightly grade: graded like the page, against "nothing m
   ok(G.archiveUrl(Date.parse('2026-10-16T12:05:00Z')).endsWith('/2026/10/16/GIS/uscomp/n0q_202610161205.png'), 'the archive address for a time');
 }
 
+console.log('\nRULE  a tile\'s colour gives its dBZ back exactly (Weather\'s radar is redrawn from it)');
+{
+  /* assets/weather/app.js's rainTile reads each mosaic pixel's colour, looks
+     up its palette index and so its dBZ, and repaints it in the Apple-like
+     ramp (2026-10-23). That is only exact while no two indices share a colour. */
+  const seen = new Map();
+  let clash = null;
+  for (let i = 1; i < 256; i++) {
+    const c = N.PALETTE.slice(i * 6, i * 6 + 6);
+    if (seen.has(c) && clash == null) clash = [seen.get(c), i];
+    seen.set(c, i);
+  }
+  ok(N.PALETTE.length >= 256 * 6 && clash == null, clash ? `indices ${clash[0]} and ${clash[1]} share a colour` : 'all 255 colours are different');
+  ok(N.dbzOf(1) < 0 && N.dbzOf(90) === 12.5 && N.dbzOf(170) === 52.5, 'and the index is dBZ in half steps from -32 (12 dBZ, where the redraw starts showing rain, is index 89)');
+}
+
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL NOWCAST RULES PASS'));
 process.exit(failures ? 1 : 0);

@@ -745,6 +745,13 @@ ones that must never break:
   `app.js`, because a shared link's layers must be in the address when the map
   starts. Only the visitor's own steps in time move the other maps (`userShow` in
   `app.js`) — never tell the bus from code that runs when something loads.
+- **Weather's radar reads like Apple's, Pro's like the NWS's** (2026-10-23, Ric:
+  "On my app it should be closer to the Apple one … just have to click it for it
+  to go full screen … easy to see where it's raining"). On Weather the mosaic is
+  redrawn from IEM's exact palette into one Light → Extreme ramp (`rainTile` in
+  `app.js`), the outlook is an outline, and a tap on the small map opens it full
+  screen. Don't put the NWS colours or a filled outlook back on Weather, and don't
+  bring the Apple ramp to Pro.
 - **Pro's map comes first** (2026-10-23, Ric: "make it cleaner and easier to use
   for the professionals"). Above the map there is one row of kinds (with Replay,
   Overlays ▾ and Info) and at most the chosen kind's own row; overlays go in the

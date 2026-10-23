@@ -212,6 +212,24 @@ tap-for-detail hour, 10 days with the office's words, alerts with polygons,
 animated radar, wind / humidity / pressure trend / visibility / UV / sun, °F/°C,
 offline copy, refresh every ten minutes while open.
 
+**Weather's radar, closer to Apple's (2026-10-23, Ric, with his phone's
+screenshots of ours and Apple's side by side: "Why are these so different? On
+my app it should be closer to the Apple one? And you should just have to click
+it for it to go full screen. And it should be easy to see where it's
+raining."):** the differences were IEM's tiles in the NWS's reflectivity colours
+at 82% over a dark map (light rain a thin teal that vanished), SPC's outlook
+painted over the rain in filled green and yellow, and a full screen behind a
+button. Now on Weather (not Pro) the mosaic is **redrawn** in one intensity ramp —
+light blue, blue, violet, magenta, orange, yellow, white, opaque from moderate
+rain up, nothing under 12 dBZ — exact, because every mosaic pixel is a colour
+of IEM's N0Q palette (`nowcast.js`'s `PALETTE` and `dbzOf`; `test/nowcast.test.mjs`
+holds the palette's colours unique), over a lighter grey map; the key says
+Light · Moderate · Heavy · Extreme; the outlook is a dashed outline; and a **tap
+on the small map opens it full screen**, Apple's way: the map edge to edge, a
+close button (and Esc), the key and the timeline floating over it. A single
+radar's tiles (storm mode) keep the NWS colours. Pro keeps them everywhere —
+professionals read reflectivity by number.
+
 **Weather Pro, the map first (2026-10-23, Ric: "analyze the ui and see if there
 is any way to make it cleaner and easier to use for the professionals", then
 "Do it plz"):** measured first — at 1366×768 in Models mode 173 px of map showed,
