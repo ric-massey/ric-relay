@@ -884,6 +884,13 @@ ones that must never break:
   and light only, never a colour that could be read as radar; its credit is in
   the map's corner while it shows. Geology was looked at and not built: little
   for a forecaster, and its sources could not be checked from here.
+  **The UKMET** (2026-10-24) is the Met Office's open NetCDF on AWS
+  (`met-office-atmospheric-model-data`, CC BY-SA 4.0 — `#ukcredit` in the map's
+  corner whenever it is shown; keep it), read by `glm.js`'s HDF5 reader; one
+  more of the room's hosts. ECMWF's ensemble products come from the same open
+  data as the IFS. **Dealiasing is off by default and full volume only**, and
+  the radar cross-section never fills the gaps between tilts — both rules
+  are in the weather README.
   Lightning is GLM *flashes* — never call them strikes.
   Flash density, a cell's flash rate and the lightning jump (`glm.js`, Schultz et
   al.'s 2σ method) are worked out from those flashes in the browser; the jump is
@@ -1009,8 +1016,9 @@ bug you are looking for.
       the training page's run detail, Studies' ClinicalTrials.gov fallback and the
       weather room's providers, NOAA's AWS buckets and its map servers (the
       backup mosaic, and NHC's tropics), ECMWF's open data
-      (Google Cloud and AWS), Pro's map lines from Natural Earth on GitHub
-      and Pro's terrain from the Terrain Tiles on AWS among them (below).
+      (Google Cloud and AWS), Pro's map lines from Natural Earth on GitHub,
+      Pro's terrain from the Terrain Tiles on AWS and the Met Office's UKMET
+      on AWS among them (below).
 - [ ] Looks right at mobile width.
 - [ ] Didn't add location data, extra repos, or a build step.
 - [ ] The relevant test suite above still passes.

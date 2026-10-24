@@ -103,6 +103,7 @@ two that would change first are Open-Meteo and the OpenStreetMap tiles.
 | ECMWF open data — IFS, AIFS | CC BY 4.0 | Credited on the map whenever shown (`#eccredit`, a rule already) |
 | OpenStreetMap tiles (`tile.openstreetmap.org`) | OSM data is ODbL; the tile servers have a usage policy: light use, attribution, no heavy or commercial traffic | Attribution is in the map's corner. **A commercial or high-traffic site must move to a paid or self-hosted tile service** |
 | Natural Earth — map lines and towns | Public domain | Nothing owed; credited anyway |
+| Met Office global model (UKMET) on AWS | CC BY-SA 4.0, © Crown copyright, Met Office | Credited on the map whenever shown (`#ukcredit`). Share-alike: a derived dataset would carry the same licence; the maps drawn here are not redistributed data |
 | Terrain Tiles on AWS (`elevation-tiles-prod`) — Pro's terrain | Open data; each source's own terms: USGS 3DEP is public domain, SRTM and ETOPO1 likewise, GMTED from the USGS; the registry asks that the sources be credited | Credited in the map's corner while Terrain is on (`#terraincredit`) |
 | Pangu-Weather weights (`weather-ai.yml`) | Non-commercial (CC BY-NC-SA 4.0) | Ranked on the scoreboard, never drawn; not usable commercially |
 
@@ -154,6 +155,8 @@ product.
 | The National Blend's chances (Pro) | NOAA's NBM on AWS, `noaa-nbm-grib2-pds` (`core/…co.grib2`, 2.5 km, hourly runs) | Its own probabilities, not computed here: rain (0.01 in) and thunder in the 6 hours to the hour shown, 1 and 4 inches of snow and 0.1 inch of ice in 6 hours, visibility under a mile, ceilings under 1,000 ft. Its 6-hour windows end at 00/06/12/18Z whatever hour the run began, so those are the hours drawn, to 10 days (fewer kinds past two) |
 | Ensemble maps (Pro) | NOAA's GEFS on AWS, `noaa-gefs-pds` (`pgrb2ap5`, 0.5°): the control and thirty members, and NOAA's own mean (`geavg`) and spread (`gespr`) | Every 6 hours to 16 days (where each member's rain is a 6-hour total). The mean of 500 mb heights and MSLP contoured over how far the runs disagree; mean temperature and rain; **spaghetti** — every run's 552 or 576 dam line, each its own colour, over the spread; and **chances** — the share of the 31 runs with ¼ or 1 inch of rain in 6 hours, freezing at 2 m, or a 39 mph wind. ~8 MB for a field's 31 members. ECMWF's own ensemble is 51 runs at 0.25° and a 2 MB index per step, too much for a page; its spread at one place is in the ensemble card (Open-Meteo) |
 | Storm probabilities (Pro) | **HRRR-TLE** — the newest six HRRR runs, each at the hour that lands on the same moment (`modelmaps.js`, source `tle`) | HREF is not on AWS and RRFS's bucket holds only retrospective runs (checked 2026-10-22), so the probabilities are the time-lagged HRRR, as SPC and WPC use it: for each member, the event (2–5 km updraft helicity ≥ 75, 40 dBZ, 1 inch of rain in an hour, a 58 mph hourly-max wind) widened to everything within 40 km; the share of members with it, smoothed over half that. A run that does not reach the hour (18 h, 48 from 00/06/12/18Z) is left out; fewer than three members is no answer. One to fifteen hours ahead, ~6 MB an hour |
+| ECMWF ensemble maps (Pro) | ECMWF's open data `enfo` products — `…-240h-enfo-ep` and `…-360h-enfo-ep`, one file each holding every hour's ensemble mean (`em`), spread (`es`) and probabilities (`ep`), 0.25° (`modelmaps.js`, source `ecens`) | Not the 51 members (about 16 MB a field an hour) but ECMWF's own products from them; probabilities for 24 h ending on the hour, every 12 h from 24 to 360; the 850 mb anomaly chances are ECMWF's own standardised anomaly against its own climate. A run counts once its products file is there (about 8½ h after it starts) |
+| UKMET maps (Pro) | The Met Office's global model on AWS, `met-office-atmospheric-model-data` (`global-deterministic-10km/<run>/<valid>-PT<hhhh>H00M-<field>.nc`, CORS open), one NetCDF-4 file per field per hour, read by `glm.js`'s HDF5 reader (`modelmaps.js`, source `ukmet`) | A surface field is about 7 MB for the globe; a pressure level is that level's chunks out of a 130–230 MB file (`slice0`). Drawn at 20 km (2×2 averaged) to keep a loop's memory near a GFS's. The slowest model here: a first frame took about 20 s in testing |
 | Lightning (Pro) | GOES-East (`noaa-goes19`) and GOES-West (`noaa-goes18`) GLM Level 2 files on AWS, every 20 s, read by `glm.js` | Flashes, not ground strikes. The last 20 minutes, asked again every minute while **Lightning** or **Flash density** is on and the page is visible; a first fill goes newest first so the last minutes show in seconds. East east of 105° W, West west of it (they overlap and see the same flashes). ~150 KB a file in Range requests; the attributes are read from the first file and reused. Only flashes the GLM flags good. **Lightning** draws the last 10 minutes as dots. **Flash density** (Ric, 2026-10-22: "a density of lightning within a time frame") counts flashes in 8 km squares over 1, 5, 10 or 20 minutes, the window ending at the newest file read; hover gives a square's count. With either on, a storm cell's card shows its **flash rate** (flashes a minute within 15 km, the circle carried back along the cell's motion to each flash's time), the last four 2-minute steps, and the **lightning jump**: Schultz, Petersen and Carey's 2σ method — the latest change in rate more than twice the spread of the five before it, with the cell at 10 flashes a minute or more — drawn as a dashed violet ring. It is labelled an indicator, never a warning. Rate and jump wait until 14 unbroken minutes of files have been read (`span` in app.js), so a gap is never read as a storm going quiet. GLM sees fewer flashes than a ground-based lightning mapping array, so its rates run lower than the ones the method was built on |
 | Storm reports (Pro) | IEM's `geojson/lsr.geojson?hours=24` (`/wx/iem/lsr`) | The NWS's local storm reports, as each office issued them, every two minutes. Severe ones (tornado, funnel, 1" hail, damaging or 58 mph thunderstorm wind, flash flood) at every zoom, the rest from zoom 7. Tap one for the magnitude, who reported it and the remark. A report, not a verified event, and the card says so |
 | Model soundings | Open-Meteo, every pressure level, `models=` ncep_hrrr_conus / gfs_global / ecmwf_ifs025 / ecmwf_aifs025_single, run time from `/data/<model>/static/meta.json` | HRRR and GFS publish ~20 levels, ECMWF 12; AIFS gives humidity not dewpoint, so the dewpoint is made from it |
@@ -214,6 +217,19 @@ path covers it. Images (map, radar and satellite tiles) always load directly.
   done, so don't call it a QC'd product; the US mosaic and MRMS are the
   cross-radar ones. Don't lower the dBZ line or filter velocity without
   measuring a debris case first; `test/decoders.test.mjs` holds the rule.
+- **Dealiasing is a choice, off by default, and full volume only** (2026-10-24).
+  Level III velocity is unfolded by the radar's own computer; Level II is not.
+  **Dealias** beside the tilts (full-volume velocity and SRV) unfolds it by
+  continuity (`NX.dealias`): each gate shifted by multiples of twice its
+  radial's Nyquist velocity (read from the radial's own RAD block) to be
+  nearest the gates already unfolded beside it, twice round the circle. It
+  assumes a smooth wind slower than the Nyquist near the radar; it can
+  choose wrong in noisy data, which is why raw stays the default and the
+  label says what it is. Don't present it as the NWS's dealiasing.
+- **The radar cross-section draws only where a beam looked** (2026-10-24).
+  Between two tilts less than 2.5 km apart it blends, as GR2Analyst does;
+  further apart — far from the radar — the gap stays empty, never filled in
+  (`NX.crossSection`; `test/decoders.test.mjs` holds it).
 - **Radar age is the scan's own** (2026-10-23, after an outside check of Pro).
   A single radar's age comes from the time inside the newest file once it has
   loaded, not the time in its name: a feed that keeps writing new files holding
@@ -754,6 +770,37 @@ workspace. **An empty Find opens on the visitor's last five picks**
 (`wx:findrecent`, product names only), then everything in the index's own
 order — sorted by name length, it read as a random list. **Active** says
 how to choose only when there is something to choose.
+
+**Round six (2026-10-24 — Ric: "What features and info is missing that
+official ones have?", then "Do all 11"):** seven of the eleven built; four
+wait on their hosts (below).
+**Upper air** — 850 mb wind (the low-level jet), 700 mb humidity, 700 mb
+vertical motion and the 300 mb jet, each with its level's heights, for the
+GFS, NAM, RAP, ECMWF and AIFS (`UPPER` in `modelmaps.js`; AIFS's humidity
+worked out from its moisture and temperature; the HRRR's surface file has
+neither 700 mb field, so it does not offer them). 500 mb vorticity was
+already there. **More models** — the **UKMET** (above, under "Who answers
+what"). **ECMWF's ensemble** (`ecens`) — mean and spread, rain and gust
+chances, and the chance 850 mb temperature is 1.5 or 2 standard deviations
+from normal. **Difference maps** — a *Difference* menu beside Run: this field
+minus the run before, or minus another model's newest run that began by
+this one's start, on the same valid time (`MM.difference`); blue lower, red
+higher, a fixed span per unit, temperatures in a unit that only scales
+(`dtemp`); 500 mb is differenced on its heights. A link carries it (`d=`).
+**Kuchera snow** — "Total snow since the run (Kuchera ratio)" for the GFS
+(0.5° files), ECMWF and AIFS, summed window by window. **Radar
+cross-section** — on a single radar, the cross-section tool cuts through the
+frame's whole Level II volume. **Dealiasing** — a *Dealias* switch on
+full-volume velocity. Both are under Rules.
+**Waiting on their hosts** — this session's network refused them, so they
+were not built against files nobody could see: Canada's GEM
+(`dd.weather.gc.ca`) and Germany's ICON (`opendata.dwd.de`); WPC's QPF, excessive
+rainfall and winter outlooks and day 3–7 hazards (`mapservices.weather.noaa.gov`,
+`www.wpc.ncep.noaa.gov`); observed upper-air maps (IEM's `json/raob.py`);
+aviation — TAFs, SIGMETs, AIRMETs, PIREPs (`aviationweather.gov`); water —
+river gauges (`api.water.noaa.gov`), buoys (`www.ndbc.noaa.gov`), NOHRSC's snow
+analysis (`mapservices.weather.noaa.gov`). Also fixed: the Echoes picker showed
+on every single-radar product (its `hidden` lost to the row's CSS).
 
 **Round five (2026-10-24 — Ric: "Both", to the elevation layer and a
 declutter pass, "and this": clutter filtering):**

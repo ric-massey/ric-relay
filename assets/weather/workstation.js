@@ -42,7 +42,7 @@
     afd: 'Forecast discussion', meso: 'SPC mesoanalysis', models: 'Compare the models', record: 'How accurate it has been here', sources: 'Where this comes from' };
   /* a layer string is app.js's link words: l=…&s=…&o=…&m=…&r=…&g=…&t=…&a=…&k=…
      — anything else is not one. `v` (a place) is never part of a layer. */
-  const LAYER_KEYS = ['l', 's', 'o', 'm', 'r', 'g', 't', 'a', 'k'];
+  const LAYER_KEYS = ['l', 's', 'o', 'm', 'r', 'g', 't', 'a', 'k', 'd'];
   function cleanLayer(str) {
     if (typeof str !== 'string' || str.length > 300) return null;
     const q = new URLSearchParams(str.replace(/^#/, '')), out = new URLSearchParams();
@@ -242,7 +242,7 @@
      map is not a model these apply to. */
   /* the drawer's tabs: one short word a card (B4) */
   const CARD_TABS = { hero: 'Now', alerts: 'Alerts', nearby: 'Nearby', national: 'Warnings', sky: 'Sounding', afd: 'Discussion', meso: 'Meso', models: 'Models', record: 'Record', sources: 'Sources' };
-  const COMPARE_ORDER = ['hrrr', 'nam', 'rap', 'gfs', 'ecmwf', 'aifs'], GLOBAL = ['ecmwf', 'gfs', 'aifs'];
+  const COMPARE_ORDER = ['hrrr', 'nam', 'rap', 'gfs', 'ecmwf', 'aifs', 'ukmet'], GLOBAL = ['ecmwf', 'gfs', 'aifs', 'ukmet'];
   const modelOf = (mainStr) => {
     const q = new URLSearchParams(cleanLayer(mainStr) || '');
     if (q.get('l') !== 'model') return null;

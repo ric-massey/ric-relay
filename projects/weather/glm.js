@@ -261,12 +261,18 @@
   }
 
   /* ── one dataset's values, scaled the way netCDF's attributes say ── */
-  async function variable(f, name, knownAttrs, { raw16 = false } = {}) {
+  /* `slice0`: one index of the first dimension of a 3-D chunked dataset —
+     one pressure level of the Met Office's UKMET files (2026-10-24), which
+     hold all 37 levels in 130–230 MB. Only the chunks that cover that index
+     are fetched, and the 2-D plane comes back. */
+  async function variable(f, name, knownAttrs, { raw16 = false, slice0 = null } = {}) {
     const addr = (f.links || (f.links = await links(f, f.root))).get(name);
     if (addr == null) throw new Error('glm: no variable ' + name);
     const msgs = await header(f, addr);
     const t = datatype(msgs.find((m) => m.type === 0x03).body);
-    const dims = dataspace(msgs.find((m) => m.type === 0x01).body, f.L);
+    const full = dataspace(msgs.find((m) => m.type === 0x01).body, f.L);
+    let dims = full;
+    if (slice0 != null && full.length === 3) dims = full.slice(1);
     const n = dims.reduce((a, c) => a * c, 1);
     const lay = msgs.find((m) => m.type === 0x08).body;
     const filters = [];
@@ -289,21 +295,31 @@
         const walk = async (node) => {
           const h = await f.src.read(node, 24 + 64 * (16 + 8 * rank + f.O));
           if (String.fromCharCode(h[0], h[1], h[2], h[3]) !== 'TREE') throw new Error('glm: bad chunk tree');
-          const level = h[5], entries = le(h, 6, 2);
+          const level = h[5], entries = le(h, 6, 2), kids = [];
           let p = 8 + 2 * f.O;
           for (let e = 0; e < entries; e++) {
             const size = le(h, p, 4), mask = le(h, p + 4, 4), offs = [];
             for (let d = 0; d < rank; d++) offs.push(le(h, p + 8 + 8 * d, 8));
             p += 8 + 8 * rank;
             const child = le(h, p, f.O); p += f.O;
-            if (level > 0) await walk(child); else parts.push({ addr: child, size, mask, offs });
+            if (level > 0) kids.push(child); else parts.push({ addr: child, size, mask, offs });
           }
+          /* the branches at once: a UKMET pressure file's tree is hundreds of nodes, and one at a time took 40 s */
+          await Promise.all(kids.map(walk));
         };
         await walk(tree);
         /* the chunk's shape, so a 2-D image (GOES ABI's, in row bands) is
            put back together where each chunk belongs */
         cdims = [];
         for (let d = 0; d < rank - 1; d++) cdims.push(le(lay, 3 + f.O + 4 * d, 4));
+        if (dims !== full) {
+          /* only the chunks holding that level, each cut to its plane there */
+          const c0 = cdims[0], keep = parts.filter((c) => slice0 >= c.offs[0] && slice0 < c.offs[0] + c0);
+          parts.length = 0;
+          for (const c of keep) parts.push({ ...c, plane: slice0 - c.offs[0], offs: c.offs.slice(1) });
+          cdims = cdims.slice(1);
+          if (!parts.length) throw new Error('glm: no chunk holds index ' + slice0 + ' of ' + name);
+        }
       } else if (lay[0] === 4 && lay[1] === 2 && lay[3 + lay[2] * lay[4] + 0] !== undefined) {
         /* chunked, version 4: only the single-chunk index is read here */
         const rank = lay[3], dsz = lay[4];
@@ -331,6 +347,7 @@
             else if (filters[i] === 3) b = b.subarray(0, b.length - 4);
             else throw new Error('glm: filter ' + filters[i] + ' is not read here');
           }
+          if (c.plane != null) { const ps = cdims[0] * cdims[1] * t.size; b = b.subarray(c.plane * ps, (c.plane + 1) * ps); }
           if (!cdims || dims.length < 2) {
             const at = (c.offs ? c.offs[0] : 0) * t.size;
             bytes.set(b.subarray(0, Math.min(b.length, bytes.length - at)), at);

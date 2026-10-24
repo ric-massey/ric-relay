@@ -103,6 +103,9 @@
       if (kind === 'R' && name === 'VOL' && !into.site) {
         into.site = { lat: dv.getFloat32(bp + 8), lon: dv.getFloat32(bp + 12), heightM: dv.getInt16(bp + 16) + dv.getUint16(bp + 18) };
         into.vcpNumber = dv.getUint16(bp + 40);
+      } else if (kind === 'R' && name === 'RAD') {
+        /* the radial's constants (ICD 2620002, table XVII-H): the Nyquist velocity, 0.01 m/s — what dealiasing unfolds by */
+        r.nyq = dv.getUint16(bp + 16) / 100;
       } else if (kind === 'D') {
         const key = name.trim();
         if (!MOMENTS[key]) continue;
@@ -144,12 +147,12 @@
        clutter gate of 20 dB ZDR reads 20, not the end of a fixed range (it
        read 12 until 2026-10-23, when the moment was squeezed into 8 bits) */
     const wide = m0.word !== 8, nRad = rads.length, data = wide ? new Uint16Array(nRad * nBins) : new Uint8Array(nRad * nBins);
-    const az0 = new Float32Array(nRad), daz = new Float32Array(nRad);
+    const az0 = new Float32Array(nRad), daz = new Float32Array(nRad), nyq = new Float32Array(nRad);
     const lut = new Float32Array(wide ? 65536 : 256).fill(NaN), special = { 1: 'rf' };
     for (let i = 2; i < lut.length; i++) lut[i] = (i - m0.offset) / m0.scale;
     rads.forEach((r, k) => {
       const m = r.moments[moment];
-      az0[k] = r.az - r.res / 2; daz[k] = r.res;
+      az0[k] = r.az - r.res / 2; daz[k] = r.res; nyq[k] = r.nyq || 0;
       data.set(m.raw.subarray(0, Math.min(m.nGates, nBins)), k * nBins);
     });
     const elev = sw.elevs.reduce((a, b) => a + b, 0) / sw.elevs.length;
@@ -157,7 +160,7 @@
     return {
       code: 'L2', moment, site: state.header ? state.header.site.trim() : null, lat: state.site ? state.site.lat : null, lon: state.site ? state.site.lon : null,
       heightM: state.site ? state.site.heightM : 0, elev, elevNum, time: Math.max(...times), start: Math.min(...times),
-      gateKm: m0.spacing / 1000, firstKm: m0.first / 1000, nRad, nBins, az0, daz, data, lut, special, digital: true, complete: nRad >= (rads[0].res === 0.5 ? 700 : 350)
+      gateKm: m0.spacing / 1000, firstKm: m0.first / 1000, nRad, nBins, az0, daz, nyq, data, lut, special, digital: true, complete: nRad >= (rads[0].res === 0.5 ? 700 : 350)
     };
   }
   /* the sweeps a volume holds, one line each: which moments, which angle, done or not */

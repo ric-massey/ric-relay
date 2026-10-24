@@ -482,6 +482,97 @@
     return { ...f, data, lut, special: { 1: 'rf' }, motion: { uE, vN } };
   }
 
+  /* ── Velocity dealiasing (2026-10-24, Ric: "Do all 11") ──
+     A Doppler radar measures speeds only up to its Nyquist velocity (about
+     25–40 m/s for NEXRAD); anything faster wraps round to the other end —
+     a 35 m/s outbound wind seen with a 28 m/s Nyquist reads as 21 m/s
+     inbound. Level III velocity has been unfolded by the radar's own
+     computer; the full volume (Level II) has not. This unfolds it by
+     continuity, the simple way: radials in turn round the circle, gates
+     outward along each, every gate's value shifted by whole multiples of
+     twice the Nyquist until it is nearest a reference — the mean of the
+     gates already unfolded just before it on the same radial and at the
+     same range on the radial before. Twice round, so the seam where the
+     first pass started is mended by the second. It assumes the wind
+     changes smoothly and that near the radar it is slower than the
+     Nyquist; in noisy or sparse data it can choose wrong, so it is a
+     choice, off by default, and the raw velocity is one switch away.
+     The result is stored at 0.01 m/s in 16 bits so unfolded speeds
+     (beyond ±Nyquist) keep their value. */
+  function dealias(f) {
+    if (!f.nyq || f.code !== 'L2') return f;
+    const nR = f.nRad, nB = f.nBins, v = new Float32Array(nR * nB).fill(NaN), rf = new Uint8Array(nR * nB);
+    for (let i = 0; i < v.length; i++) { const c = f.data[i], x = f.lut[c]; if (f.special[c] === 'rf') rf[i] = 1; else if (Number.isFinite(x)) v[i] = x; }
+    const out = Float32Array.from(v), done = new Uint8Array(nR * nB), BACK = 4;
+    const unfold = (x, ref, N) => x + 2 * N * Math.round((ref - x) / (2 * N));
+    for (let pass = 0; pass < 2; pass++) {
+      for (let k = 0; k < nR; k++) {
+        const N = f.nyq[k] || f.nyq.find((q) => q > 0);
+        if (!(N > 0)) continue;
+        const prev = ((k - 1) + nR) % nR, row = k * nB, prow = prev * nB;
+        for (let g = 0; g < nB; g++) {
+          const i = row + g, x = v[i];
+          if (!Number.isFinite(x)) continue;
+          let sum = 0, n = 0;
+          for (let b = 1; b <= BACK && g - b >= 0; b++) if (done[i - b]) { sum += out[i - b]; n++; break; }
+          if (done[prow + g]) { sum += out[prow + g]; n++; }
+          /* a second look the second time round: the radial after, too */
+          if (pass && done[((k + 1) % nR) * nB + g]) { sum += out[((k + 1) % nR) * nB + g]; n++; }
+          out[i] = n ? unfold(x, sum / n, N) : x;
+          done[i] = 1;
+        }
+      }
+    }
+    const data = new Uint16Array(nR * nB), lut = new Float32Array(65536).fill(NaN);
+    for (let c = 2; c < 65536; c++) lut[c] = (c - 32768) / 100;
+    for (let i = 0; i < data.length; i++) data[i] = rf[i] ? 1 : Number.isFinite(out[i]) ? Math.max(2, Math.min(65535, Math.round(out[i] * 100) + 32768)) : 0;
+    return { ...f, data, lut, special: { 1: 'rf' }, dealiased: true };
+  }
+
+  /* ── A vertical cross-section through one radar's volume (2026-10-24,
+     Ric: "Do all 11" — GR2Analyst's best-known tool). `sweeps` are one
+     moment at every tilt of a volume; the line runs from `a` to `b`
+     ({lat, lon}); the picture is `nx` columns by `ny` rows from the ground
+     to `topKm` above sea level. Each point and height is read from the
+     tilt whose beam centre passes nearest; between two tilts whose beams
+     are within `gapKm` of each other the value is blended linearly in
+     height, as GR2Analyst's is; beyond that, and outside half a beam width
+     (0.95° beam) of every tilt, the point is left empty — at long range the
+     gaps between tilts are kilometres tall, and nothing is drawn in them.
+     Values are the moment's own (dBZ, m/s, …). ── */
+  const HALF_BEAM = 0.475 * Math.PI / 180;
+  function crossSection(sweeps, a, b, { nx = 300, ny = 150, topKm = 15, gapKm = 2.5 } = {}) {
+    const S = sweeps.filter(Boolean).sort((x, y) => x.elev - y.elev);
+    if (!S.length) throw new Error('nexrad: no tilts to cut through');
+    const lat0 = S[0].lat, lon0 = S[0].lon, h0 = (S[0].heightM || 0) / 1000, out = new Float32Array(nx * ny).fill(NaN), dist = new Float32Array(nx), beams = [];
+    const Ls = S.map((sw) => ({ sw, L: locator(lat0, lon0, sw.elev), g0: gateStart(sw), rmax: gateStart(sw) + sw.nBins * sw.gateKm }));
+    for (let x = 0; x < nx; x++) {
+      const f = x / (nx - 1), lat = a.lat + (b.lat - a.lat) * f, lon = a.lon + (b.lon - a.lon) * f;
+      /* each tilt's beam centre over this point, and its value there */
+      const col = Ls.map(({ sw, L, g0, rmax }) => {
+        const q = L.at(L.lat(lat), L.lon(lon)), km = q.km;
+        dist[x] = q.groundKm;
+        if (km < g0 || km >= rmax) return null;
+        const v = sw.lut[gate(sw, km, q.az)];
+        return { h: beamHeightKm(km, sw.elev) + h0, hw: km * Math.tan(HALF_BEAM), v: Number.isFinite(v) ? v : null };
+      });
+      beams.push(col.map((c) => (c ? c.h : null)));
+      for (let y = 0; y < ny; y++) {
+        const z = topKm * (1 - (y + 0.5) / ny);
+        let below = null, above = null;
+        for (const c of col) { if (!c) continue; if (c.h <= z) { if (!below || c.h > below.h) below = c; } else if (!above || c.h < above.h) above = c; }
+        let v = null;
+        if (below && above && below.v != null && above.v != null && above.h - below.h <= gapKm) v = below.v + (above.v - below.v) * (z - below.h) / (above.h - below.h);
+        else {
+          const near = [below, above].filter((c) => c && Math.abs(c.h - z) <= c.hw).sort((p, q) => Math.abs(p.h - z) - Math.abs(q.h - z))[0];
+          if (near && near.v != null) v = near.v;
+        }
+        if (v != null) out[y * nx + x] = v;
+      }
+    }
+    return { values: out, nx, ny, topKm, dist, beams, tilts: S.map((sw) => sw.elev), site: S[0].site, time: Math.max(...S.map((sw) => sw.time || 0)) };
+  }
+
   /* ── Clutter filtering: which reflectivity gates are likely not weather ──
      A reflectivity scan shows everything the beam came back from: rain and
      snow, but also birds, insects, ground clutter, wind farms and
@@ -527,7 +618,7 @@
   }
 
   const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, SCHEMES, SCHEME_NAMES, paletteFor, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
-    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, retrying, stormRelative, locator, polarOf, CLUTTER, clutterMask };
+    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, retrying, stormRelative, locator, polarOf, CLUTTER, clutterMask, crossSection, dealias };
   root.Nexrad = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1484,3 +1484,6 @@ body[data-view="pro"] .radar:has(> .maphint) .note{bottom:112px !important}  /* 
 /* Terrain (2026-10-24): shaded relief between the base map and the data */
 .radar .layer.terrain canvas{position:absolute;width:256px;height:256px}
 .radar .layer.terrain[hidden]{display:none}
+
+/* the radar row's own pickers display as flex, which beat their hidden attribute: Echoes showed on every product (2026-10-24) */
+#clutterpick[hidden],#dealiasbtn[hidden]{display:none!important}

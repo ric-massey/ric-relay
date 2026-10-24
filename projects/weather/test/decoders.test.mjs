@@ -262,7 +262,7 @@ console.log('\nRULE  ECMWF and the GEFS ensemble');
 {
   const idx = MM.parseJsonIndex('{"param":"gh","levtype":"pl","levelist":"500","step":"24","_offset":100,"_length":50}\n{"param":"2t","levtype":"sfc","step":"24","_offset":150,"_length":10}\n');
   ok(idx[0].name === 'gh' && idx[0].level === '500 mb' && idx[0].start === 100 && idx[0].end === 149 && idx[1].level === 'sfc', 'ECMWF\'s JSON-lines index: each field\'s bytes, its pressure level as "500 mb"');
-  ok(MM.FIELDS.ecmwf.every((f) => Object.values(f.parts).every((t) => typeof t === 'function')) && MM.FIELDS.aifs.length >= 10, 'every ECMWF and AIFS field names its parts');
+  ok(MM.FIELDS.ecmwf.every((f) => f.kuchera || Object.values(f.parts).every((t) => typeof t === 'function')) && MM.FIELDS.aifs.length >= 10, 'every ECMWF and AIFS field names its parts');
   ok(MM.SOURCES.gefs.members.length === 31 && MM.SOURCES.gefs.members[0] === 'gec00' && MM.SOURCES.gefs.members[30] === 'gep30', 'the GEFS is its control and thirty perturbed runs');
   ok(MM.SOURCES.gefs.hours([0, 3, 6, 9, 12, 384]).join() === '6,12,384', 'GEFS frames every six hours, where each run\'s rain is a 6-hour total');
   const ev = (id, v) => MM.field('gefs', id).event(v);
@@ -578,6 +578,77 @@ console.log('\nRULE  the Run list offers every run of the last five days, and a 
   ok(got && got.run === run && got.hours.includes(48) && asked.length === 1 && decodeURIComponent(asked[0]).includes(MM.SOURCES.hrrr.prefix(run)), `a picked run is listed by its own prefix, once (${got ? got.hours.length : 0} hours, 06Z to 48 h)`);
   const none = await MM.runAt('hrrr', run, { fetchFn: async () => ({ ok: true, text: async () => '<x></x>' }) });
   ok(none === null, 'a run that is not in the archive is null, not an empty run');
+}
+
+console.log('\nRULE  a difference map is one layer minus the other, on the first one\'s grid, in a unit that only scales');
+{
+  const grid = (lo1, di) => ({ kind: 'latlon', nx: 5, ny: 4, npts: 20, la1: 40, lo1, di, dj: 1, scan: 0 });
+  const t2m = MM.field('gfs', 't2m');
+  const A = { field: t2m, grid: grid(-100, 1), values: Float32Array.from({ length: 20 }, (_, k) => 60 + k), run: 0, fh: 0, valid: 0 };
+  const B = { field: t2m, grid: grid(-100.5, 0.5), values: new Float32Array(11 * 4).fill(50), run: 0, fh: 0, valid: 0 };
+  B.grid.nx = 11; B.grid.npts = 44;
+  const D = MM.difference(A, B, 'test');
+  ok(D.values[0] === 10 && D.values[13] === 23, `A minus B at each of A's points (${D.values[0]}, ${D.values[13]})`);
+  ok(D.field.unit === 'dtemp' && MM.unitFor('dtemp', 'metric')[1](9) === 5, 'a temperature difference is scaled to °C, never offset (9 °F apart is 5 °C apart)');
+  ok(MM.PAL[D.field.pal].clear && MM.PAL[D.field.pal].stops[0][0] === -MM.DIFF_SPAN.dtemp, 'its colour scale is two-sided, fixed, and clear in the middle');
+  const h = MM.field('gfs', 'h500'), cv = Float32Array.from({ length: 20 }, () => 5700), cv2 = new Float32Array(44).fill(5640);
+  const H = MM.difference({ ...A, field: h, cvals: cv }, { ...B, field: h, cvals: cv2 }, 'h');
+  ok(H.field.unit === 'dam' && Math.abs(H.values[7] - 6) < 1e-6, '500 mb is differenced on its heights (6 dam), not its vorticity');
+  let refused = false; try { MM.difference(A, { ...B, field: MM.field('gfs', 'wind10') }, 'x'); } catch (e) { refused = true; }
+  ok(refused, 'two different quantities are refused, not subtracted');
+}
+
+console.log('\nRULE  Kuchera\'s snow ratio follows the warmest air in the column');
+{
+  ok(MM.kucheraRatio(271.16) === 12, '12:1 with the column\'s warmest air at 271.16 K (−2 °C)');
+  ok(Math.abs(MM.kucheraRatio(261.16) - 22) < 1e-9, 'colder, drier snow piles higher: 22:1 at −12 °C');
+  ok(Math.abs(MM.kucheraRatio(273.16) - 8) < 1e-9 && MM.kucheraRatio(280) === 0, 'warmer than −2 °C it falls twice as fast, and never below zero');
+  ok(MM.field('gfs', 'snowk') && MM.field('ecmwf', 'snowk') && MM.field('aifs', 'snowk'), 'the GFS, ECMWF and AIFS all have it');
+}
+
+console.log('\nRULE  the radar cross-section draws only where a beam looked');
+{
+  let st = L2.feed(fx('l2-KFSX-20261022-194955-001-S'));
+  for (const n of ['080', '081', '082']) st = L2.feed(fx(`l2-KFSX-20261022-194955-${n}-I`), st);
+  const sw = L2.sweep(st, 15, 'REF');
+  const X = N.crossSection([sw], { lat: sw.lat, lon: sw.lon + 0.05 }, { lat: sw.lat, lon: sw.lon + 2 }, { nx: 120, ny: 100, topKm: 15 });
+  let filled = 0, stray = 0;
+  for (let x = 0; x < X.nx; x++) for (let y = 0; y < X.ny; y++) {
+    if (!Number.isFinite(X.values[y * X.nx + x])) continue;
+    filled++;
+    const z = 15 * (1 - (y + 0.5) / X.ny), h = X.beams[x][0], half = X.dist[x] / Math.cos(sw.elev * Math.PI / 180) * Math.tan(0.475 * Math.PI / 180);
+    if (h == null || Math.abs(z - h) > half + 15 / X.ny) stray++;
+  }
+  ok(filled > 0 && stray === 0, `one tilt fills only its own beam (${filled} cells, none outside half a beam width)`);
+  ok(X.dist[X.nx - 1] > 170 && X.dist[X.nx - 1] < 200, `distance along the line is the ground distance (${X.dist[X.nx - 1].toFixed(0)} km for 2° of longitude at 34.6°N)`);
+  let threw = false; try { N.crossSection([], { lat: 0, lon: 0 }, { lat: 1, lon: 1 }); } catch (e) { threw = true; }
+  ok(threw, 'no tilts is said, not drawn empty');
+}
+
+console.log('\nRULE  dealiasing unfolds velocity that wrapped past the Nyquist, and leaves the rest alone');
+{
+  /* a made-up sweep: a 45 m/s wind from the west seen with a 27 m/s Nyquist — slow near the radar, folded beyond */
+  const nR = 360, nB = 200, Nq = 27, lut = new Float32Array(256).fill(NaN);
+  for (let c = 2; c < 256; c++) lut[c] = (c - 129) / 2;
+  const data = new Uint8Array(nR * nB), truth = new Float32Array(nR * nB), fold = (x) => ((x + Nq) % (2 * Nq) + 2 * Nq) % (2 * Nq) - Nq;
+  for (let k = 0; k < nR; k++) for (let g = 0; g < nB; g++) {
+    const sp = g < 20 ? g / 20 * 45 : 45, t = sp * Math.sin((k + 0.5) * Math.PI / 180), i = k * nB + g;
+    truth[i] = t; data[i] = (k * 7 + g * 13) % 17 === 0 ? 0 : Math.round(fold(t) * 2) + 129;     // one gate in 17 missing, as real data has holes
+  }
+  const f = { code: 'L2', nRad: nR, nBins: nB, gateKm: 0.25, firstKm: 2, az0: Float32Array.from({ length: nR }, (_, k) => k), daz: new Float32Array(nR).fill(1), nyq: new Float32Array(nR).fill(Nq), data, lut, special: { 1: 'rf' } };
+  const d = N.dealias(f);
+  let folded = 0, wrong = 0, holes = 0;
+  for (let i = 0; i < truth.length; i++) {
+    if (!data[i]) { if (Number.isFinite(d.lut[d.data[i]])) holes++; continue; }
+    if (Math.abs(lut[data[i]] - truth[i]) > 1) folded++;
+    if (Math.abs(d.lut[d.data[i]] - truth[i]) > 1) wrong++;
+  }
+  ok(folded > 10000 && wrong === 0, `${folded} folded gates unfolded, none wrong`);
+  ok(holes === 0, 'a gate with no data stays empty');
+  ok(N.dealias({ ...f, code: 'N0G' }) !== undefined && N.dealias({ ...f, code: 'N0G' }).dealiased !== true, 'Level III is left as the radar unfolded it');
+  let st = L2.feed(fx('l2-KFSX-20261022-194955-001-S'));
+  for (const n of ['080', '081', '082']) st = L2.feed(fx(`l2-KFSX-20261022-194955-${n}-I`), st);
+  ok(Math.abs(L2.sweep(st, 15, 'VEL').nyq[0] - 39.62) < 0.01, 'the Nyquist velocity is read from each radial (KFSX: 39.62 m/s)');
 }
 
 console.log('\nRULE  clutter filtering hides weak non-weather echoes and never a strong one (a debris signature has low CC too)');

@@ -1316,7 +1316,7 @@
       ab: { prod: store.get("wx:abi", "b13"), sector: store.get("wx:abisec", "conus"), sat: store.get("wx:abisat", "auto") },
       l2: store.get("wx:l2", false) === true, l2angle: Number(store.get("wx:l2angle", 0.5)), l2vol: null,
       /* `back` is how many runs before the latest is on the map — 0 is the latest (a choice for this visit, not kept) */
-      mm: { src: store.get("wx:mmsrc", "hrrr"), field: store.get("wx:mmfield", "refc"), run: null, back: 0, pin: null, newest: null } };
+      mm: { src: store.get("wx:mmsrc", "hrrr"), field: store.get("wx:mmfield", "refc"), run: null, back: 0, pin: null, newest: null, diff: "" } };
     const NX = PRO ? window.Nexrad : null, MM = PRO ? window.ModelMaps : null, GL = PRO ? window.Glm : null, GB = PRO ? window.Grib2 : null, L2 = PRO ? window.Level2 : null, MR = PRO ? window.Mrms : null, AB = PRO ? window.Abi : null;
     if (MM && !MM.SOURCES[R.mm.src]) R.mm.src = "hrrr";
     if (MM && !MM.field(R.mm.src, R.mm.field)) R.mm.field = MM.FIELDS[R.mm.src][0].id;
@@ -1532,7 +1532,9 @@
       framesL.innerHTML = "";
       if ($("#radarread")) $("#radarread").hidden = true;
       /* ECMWF's open data is CC BY 4.0: its credit shows whenever its fields are on the map */
-      if ($("#eccredit")) $("#eccredit").hidden = !(R.mode === "model" && (R.mm.src === "ecmwf" || R.mm.src === "aifs"));
+      if ($("#eccredit")) $("#eccredit").hidden = !(R.mode === "model" && (R.mm.src === "ecmwf" || R.mm.src === "aifs" || R.mm.src === "ecens"));
+      /* the Met Office's licence (CC BY-SA 4.0) asks for its credit whenever its model is drawn */
+      if ($("#ukcredit")) $("#ukcredit").hidden = !(R.mode === "model" && R.mm.src === "ukmet");
       R.frames = list.map((f) => {
         const d = document.createElement("div");
         d.className = "layer frame" + (f.future ? " future" : "");
@@ -1632,17 +1634,17 @@
        48, GFS otherwise). Drawn under the map: humidity or wind as shading,
        potential temperature as lines (packed lines are stable layers, gaps
        are mixed air), the ground in brown. A forecast, labelled as one. */
-    const X = { pick: false, a: null, b: null, data: null, hour: 0, view: "rh", busy: false, err: null, model: null };
+    const X = { pick: false, a: null, b: null, data: null, hour: 0, view: "rh", busy: false, err: null, model: null, rx: null };
     const xsecEl = $("#xsec");
     function xsecStart() {
-      Object.assign(X, { pick: true, a: null, b: null, data: null, err: null });
+      Object.assign(X, { pick: true, a: null, b: null, data: null, err: null, rx: null });
       R.pin = null;
       $("#zxsec").setAttribute("aria-pressed", "true");
       note("Cross-section: tap where the line starts, then where it ends.");
       draw(); renderXsec();
     }
     function xsecStop() {
-      Object.assign(X, { pick: false, a: null, b: null, data: null, err: null, busy: false });
+      Object.assign(X, { pick: false, a: null, b: null, data: null, err: null, busy: false, rx: null });
       $("#zxsec").setAttribute("aria-pressed", "false");
       note(""); draw(); renderXsec();
     }
@@ -1653,7 +1655,80 @@
       X.b = p; X.pick = false; note(""); draw();
       loadXsec();
     }
+    /* ── the radar's own cross-section (2026-10-24): on a single radar whose
+       product has a full volume, the line is cut through that volume —
+       the volume of the frame on screen, every tilt — instead of through a
+       model. NX.crossSection does the cutting and says what it leaves out. ── */
+    const radarXsecOn = () => { const P = l3(); return !!(P && P.l2 && L2 && R.site); };
+    async function radarVolumeState() {
+      const f = R.frames[R.frame], x = f && f.l3 && f.l3.l2;
+      if (x && x.archive) return L2.stream(x.archive.url, { gz: x.archive.gz });
+      const s4 = L2.site4(R.site.id);
+      let v = x && !x.archive ? [...volInfo.values()].find((i) => i.sKey === x.key.split("|")[0]) : null;
+      if (!v) {
+        const nv = R.l2vol && R.l2vol.site === s4 ? R.l2vol : (R.l2vol = await L2.newestVolume(s4));
+        if (!nv) throw new Error(`${s4} has no full volume in NOAA's archive right now`);
+        v = await volume(s4, nv.number, true);
+        /* the newest still sweeping: the one before it is whole */
+        if (v && !v.complete) v = (await volume(s4, L2.prevNumber(nv.number, nv.numbers)).catch(() => null)) || v;
+      }
+      if (!v) throw new Error("the volume did not load");
+      const urls = [v.sUrl, ...[...v.byN.values()].filter((c) => c.kind !== "S").sort((p, q) => p.n - q.n).map((c) => c.url)];
+      const bufs = await Promise.all(urls.map(async (u) => { const r = await NX.retrying(fetch)(u); if (!r.ok) throw new Error("HTTP " + r.status); return new Uint8Array(await r.arrayBuffer()); }));
+      let st = null;
+      for (const b of bufs) st = L2.feed(b, st);
+      return st;
+    }
+    async function loadRadarXsec() {
+      X.busy = true; X.err = null; X.rx = { loading: true }; renderXsec();
+      const ask = X.ask = {}, P = l3(), prod = R.mode.slice(3);
+      try {
+        const site = R.site, far = (p) => Wx.distanceM(site.lat, site.lon, p.lat, p.lon) > 460e3;
+        if (far(X.a) && far(X.b)) throw new Error(`the line is out of ${site.id}'s reach — draw it within about 460 km (285 miles) of the radar`);
+        const [st, ground] = await Promise.all([radarVolumeState(), PRO ? groundProfile(X.a, X.b, 300) : null]);
+        if (X.ask !== ask) return;
+        const sweeps = L2.angles(st, P.l2).map((t) => L2.sweep(st, t.elevNum, P.l2)).filter(Boolean).map((sw) => (R.dealias && P.l2 === "VEL" ? NX.dealias(sw) : sw));
+        if (!sweeps.length) throw new Error(`this volume has no ${P.label.toLowerCase()} yet`);
+        const sec = NX.crossSection(sweeps, X.a, X.b, { nx: 320, ny: 160, topKm: 15 });
+        X.rx = { sec, prod, P, ground };
+      } catch (e) { if (X.ask === ask) { X.rx = null; X.err = `The radar's cross-section did not load (${String(e.message || e).replace(/^nexrad: /, "")}).`; } }
+      X.busy = false; renderXsec();
+    }
+    function paintRadarXsec(cv) {
+      const { sec, P, ground } = X.rx, dpr = Math.min(2, devicePixelRatio || 1);
+      const W = Math.max(280, cv.clientWidth || 600), H = W < 500 ? 220 : 280, L = 44, Rm = 8, T = 8, B = 24;
+      cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + "px";
+      const x = cv.getContext("2d"); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+      x.fillStyle = "#0c1422"; x.fillRect(0, 0, W, H);
+      /* the section at its own size, coloured from the product's palette, then laid over the plot */
+      const pal = NX.paletteFor(P.pal, R.pal[P.pal]), img = new ImageData(sec.nx, sec.ny), d = img.data;
+      for (let i = 0; i < sec.values.length; i++) {
+        const v = sec.values[i];
+        if (!Number.isFinite(v)) continue;
+        const u = P.toUnit ? v * P.toUnit : v;
+        if (pal.floor != null && u < pal.floor) continue;
+        const c = NX.colorOf(pal, u);
+        d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2]; d[i * 4 + 3] = 255;
+      }
+      const off = document.createElement("canvas"); off.width = sec.nx; off.height = sec.ny; off.getContext("2d").putImageData(img, 0, 0);
+      const pw = W - L - Rm, ph = H - T - B;
+      x.imageSmoothingEnabled = false; x.drawImage(off, L, T, pw, ph);
+      const Y = (km) => T + ph * (1 - km / sec.topKm);
+      /* each tilt's beam centre, faint — where the radar actually looked */
+      x.strokeStyle = "rgba(255,255,255,.16)"; x.lineWidth = 1;
+      sec.tilts.forEach((_, k) => { x.beginPath(); let on = false; sec.beams.forEach((col, i) => { const h = col[k]; if (h == null || h > sec.topKm) { on = false; return; } const px = L + i / (sec.beams.length - 1) * pw; if (on) x.lineTo(px, Y(h)); else { x.moveTo(px, Y(h)); on = true; } }); x.stroke(); });
+      /* the real ground under the line */
+      if (ground) { x.fillStyle = "#4a3a2b"; x.beginPath(); x.moveTo(L, Y(0)); ground.forEach((m, i) => x.lineTo(L + i / (ground.length - 1) * pw, Y(Math.max(0, m) / 1000))); x.lineTo(L + pw, Y(0)); x.closePath(); x.fill(); }
+      /* axes: height above sea level, and the distance along the line */
+      const font = getComputedStyle(document.body).fontFamily, ft = U() !== "metric";
+      x.fillStyle = "#c8d0da"; x.font = "11px " + font; x.textAlign = "right";
+      for (const t of ft ? [0, 10, 20, 30, 40] : [0, 3, 6, 9, 12, 15]) { const km = ft ? t * 0.3048 : t; if (km > sec.topKm) continue; const y = Y(km); x.fillText(String(t), L - 6, y + 4); x.fillStyle = "rgba(255,255,255,.10)"; x.fillRect(L, y, pw, 1); x.fillStyle = "#c8d0da"; }
+      x.textAlign = "left"; x.fillText(ft ? "kft" : "km", 4, T + 10);
+      x.font = "bold 12px " + font; x.fillText("A", L, H - 7); x.textAlign = "right"; x.fillText("B", W - Rm, H - 7);
+      x.textAlign = "center"; x.font = "11px " + font; x.fillText(dist(Wx.distanceM(X.a.lat, X.a.lon, X.b.lat, X.b.lon) / 1000), L + pw / 2, H - 7);
+    }
     async function loadXsec() {
+      if (radarXsecOn()) return loadRadarXsec();
       X.busy = true; X.err = null; renderXsec();
       const model = Wx.inMosaic(X.a.lat, X.a.lon) && Wx.inMosaic(X.b.lat, X.b.lon) ? "hrrr" : "gfs";
       const ask = X.ask = {};
@@ -1672,7 +1747,15 @@
       xsecEl.hidden = false;
       const close = `<button type="button" data-xsx aria-label="Close the cross-section">×</button>`;
       if (X.pick || !X.b) { xsecEl.innerHTML = `<div class="xh"><span>Cross-section<small>${X.a ? "Now tap where the line ends." : "Tap where the line starts on the map, then where it ends."}</small></span>${close}</div>`; return; }
-      if (X.busy) { xsecEl.innerHTML = `<div class="xh"><span>Cross-section<small>Asking the model for twelve columns along the line…</small></span>${close}</div>`; return; }
+      if (X.busy) { xsecEl.innerHTML = `<div class="xh"><span>Cross-section<small>${X.rx ? `Reading ${esc(R.site ? R.site.id : "the radar")}'s whole volume — every tilt, about 10–25 MB…` : "Asking the model for twelve columns along the line…"}</small></span>${close}</div>`; return; }
+      if (X.rx && X.rx.sec) {
+        const { sec, P } = X.rx;
+        xsecEl.innerHTML = `<div class="xh"><span>Cross-section A → B · ${esc(sec.site || R.site.id)} ${esc(P.label.toLowerCase())}${P.srm ? " (velocity, not storm-relative)" : ""}<small>The volume of ${esc(clk().time(sec.time))}, ${sec.tilts.length} tilts (${sec.tilts[0].toFixed(1)}° to ${sec.tilts[sec.tilts.length - 1].toFixed(1)}°) — measured, not a model.</small></span>${close}</div>
+          <canvas id="xscv" role="img" aria-label="Radar cross-section from A to B: ${esc(P.label)} by height above sea level"></canvas>
+          <p class="nextnote">Each height is read from the tilt whose beam passes nearest; between two tilts less than 2.5 km apart it is blended, as GR2Analyst does. Where the tilts are further apart — far from the radar — the gap is left empty, because nothing was measured there. Faint lines are the beams; brown is the ground.</p>`;
+        paintRadarXsec($("#xscv"));
+        return;
+      }
       if (X.err || !X.data) { xsecEl.innerHTML = `<div class="xh"><span>Cross-section<small>${esc(X.err || "Nothing to draw.")}</small></span>${close}</div>`; return; }
       const d = X.data, t = d.times[X.hour] * 1000, k = clk(), m = Wx.MODELS[X.model];
       const seg = (v, l) => `<button type="button" data-xsv="${v}" aria-pressed="${X.view === v}">${l}</button>`;
@@ -2001,7 +2084,8 @@
     }
     function l3File(f) {
       const x = f.l3;
-      if (!x.p) x.p = (x.l2 ? cached(x.l2.key, () => loadL2(x.l2)) : cached(x.url, () => NX.load(x.url))).then((file) => srmSweep(x, file)).then((file) => {
+      /* full-volume velocity unfolded first when Dealias is on (NX.dealias), then storm-relative if asked */
+      if (!x.p) x.p = (x.l2 ? cached(x.l2.key, () => loadL2(x.l2)) : cached(x.url, () => NX.load(x.url))).then((file) => srmSweep(x, R.dealias && file.code === "L2" && file.moment === "VEL" ? NX.dealias(file) : file)).then((file) => {
         x.file = file; x.colors = NX.colorTable(file, x.prod, R.pal);
         if (R.frames[R.frame] === f) { draw(); show(R.frame); tilts(); }
         return file;
@@ -2139,6 +2223,7 @@
       if (row.hidden) return;
       siteOptions();
       const cp = $("#clutterpick"); if (cp) { cp.hidden = R.mode !== "l3:ref"; $("#cluttersel").value = R.clutter; }
+      const db = $("#dealiasbtn"); if (db) { db.hidden = !((R.mode === "l3:vel" || R.mode === "l3:srv") && useL2()); db.setAttribute("aria-pressed", String(!!R.dealias)); }
       const btns = $("#tiltbtns");
       if (P.tilts.length < 2 && !P.l2) { btns.innerHTML = ""; return; }
       const f = R.frames[R.frame], el0 = f && f.l3 && f.l3.file ? f.l3.file.elev : null, b = [];
@@ -2220,7 +2305,7 @@
       if (!run) { setFrames([]); $("#mmrun").textContent = ""; note(src === "rap" ? "The RAP reaches this page through the site's own server, which did not answer. Try again in a minute, or pick another model." : `NOAA's ${MM.SOURCES[src].label} archive did not answer. Try again in a minute.`); return; }
       M.run = run.run; R.valid = run.run;
       M.late = !M.at && !M.back && !M.pin ? MM.lateBy(src, run.run) : 0;
-      setFrames(run.hours.map((fh) => ({ t: run.run + fh * 3600e3, model: { src, field: M.field, run: run.run, fh } })));
+      setFrames(run.hours.map((fh) => ({ t: run.run + fh * 3600e3, model: { src, field: M.field, run: run.run, fh, diff: M.diff } })));
       const aim = was != null ? was : M.at || Date.now();
       let best = 0;
       R.frames.forEach((f, i) => { if (Math.abs(f.t - aim) < Math.abs(R.frames[best].t - aim)) best = i; });
@@ -2260,7 +2345,7 @@
         ? `Mesoanalysis hours, the last ${R.frames.length} · newest ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}, made ${clk().time(sv.made)}${sv.rtma ? "" : " (before NOAA's surface analysis was out — the model's own ground-level air)"} · not a forecast`
         : MM.SOURCES[M.src].analysis
         ? `HRRR analysis hours, the last ${R.frames.length} · newest ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)} · the model's picture of now, observations folded in — not a forecast`
-        : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}${M.pin && M.newest && M.pin < M.newest ? ` — a chosen run, ${Wx.age(M.newest - M.pin)} before the latest` : M.back ? ` — ${["", "the run before the latest", "two runs before the latest", "three runs before the latest"][M.back]}` : ""} · ${R.frames.length} hours out${M.pin || M.back ? "" : " so far"} · a forecast${M.late ? " · newer runs are late" : ""}`;
+        : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}${M.pin && M.newest && M.pin < M.newest ? ` — a chosen run, ${Wx.age(M.newest - M.pin)} before the latest` : M.back ? ` — ${["", "the run before the latest", "two runs before the latest", "three runs before the latest"][M.back]}` : ""} · ${R.frames.length} hours out${M.pin || M.back ? "" : " so far"} · a forecast${M.late ? " · newer runs are late" : ""}${M.diff ? ` · shown as ${M.diff === "prev" ? "the change from the run before" : `this minus ${MM.SOURCES[M.diff].label}`}, blue lower, red higher` : ""}`;
       if ($("#mmbackl")) $("#mmbackl").hidden = !!MM.SOURCES[M.src].analysis;
     }
 
@@ -2302,7 +2387,8 @@
       C.total = hours.length * (C.cmp && !MM.SOURCES[M.src].analysis ? 2 : 1);
       renderChart();
       const byFh = new Map(frames.map((x) => [x.model.fh, x]));
-      const have = (fh) => { const x = byFh.get(fh); return x && x.model.layer && x.model.field === M.field ? x.model.layer : null; };
+      /* a difference map's own layer is the difference: the chart wants the field itself */
+      const have = (fh) => { const x = byFh.get(fh); return x && x.model.layer && x.model.field === M.field ? (x.model.layer.base || x.model.layer) : null; };
       const analysis = !!MM.SOURCES[M.src].analysis;
       const tasks = [];
       if (analysis) {
@@ -2385,11 +2471,30 @@
       R.frames.forEach((f, i) => { if (best < 0 || Math.abs(f.t - t) < Math.abs(R.frames[best].t - t)) best = i; });
       if (best >= 0) { play(false); loadOld(); userShow(best); renderChart(); }
     });
+    /* ── difference maps (2026-10-24): the layer on screen minus the same
+       field at the same moment from the run before, or from another model's
+       newest run that began by this one's start — the information each had
+       at the same time. The reference's run is found once per run. ── */
+    const refRuns = new Map();
+    function refRun(src, nowMs) {
+      const k = `${src}|${nowMs}`;
+      if (!refRuns.has(k)) { refRuns.set(k, MM.latestRun(src, { nowMs }).catch((e) => { refRuns.delete(k); throw e; })); if (refRuns.size > 40) refRuns.delete(refRuns.keys().next().value); }
+      return refRuns.get(k);
+    }
+    async function diffLayer(m, L) {
+      const valid = L.valid || m.run + m.fh * 3600e3, rsrc = m.diff === "prev" ? m.src : m.diff, S = MM.SOURCES[rsrc];
+      const r = await refRun(rsrc, m.diff === "prev" ? m.run - 1 : m.run + 1);
+      if (!r) throw new Error(m.diff === "prev" ? "the run before is not in the archive" : `${S.label} has no run from then`);
+      const fh = Math.round((valid - r.run) / 3600e3);
+      if (!r.hours.includes(fh)) throw new Error(`${S.label}'s ${new Date(r.run).toISOString().slice(11, 13)}Z run has no hour at this moment`);
+      const B = await MM.load(rsrc, r.run, fh, m.field);
+      return MM.difference(L, B, m.diff === "prev" ? `change from the ${new Date(r.run).toISOString().slice(11, 13)}Z run` : `minus ${S.label}'s ${new Date(r.run).toISOString().slice(11, 13)}Z run`);
+    }
     function modelLayer(f) {
       const m = f.model;
-      if (!m.p) m.p = MM.load(m.src, m.run, m.fh, m.field).then((L) => {
+      if (!m.p) m.p = MM.load(m.src, m.run, m.fh, m.field).then((L) => (m.diff ? diffLayer(m, L) : L)).then((L) => {
         m.layer = L; m.lut = lutFor(L);
-        if (R.frames[R.frame] === f) { draw(); show(R.frame); }
+        if (R.frames[R.frame] === f) { draw(); show(R.frame); if (L.field.diff) legend(); }
         return L;
       }).catch((e) => { m.err = String(e.message || e).replace(/^models: /, ""); if (R.frames[R.frame] === f) note(`This hour did not load (${m.err}).`); });
       return m.p;
@@ -2849,7 +2954,7 @@
         const L = f.model.layer, v = MM.valueAt(L, lat, lon);
         if (!Number.isFinite(v)) return null;
         if (L.field.pal === "ptype") { const t = MM.PAL.ptype.types[Math.floor(v / 100)]; return `${t ? t[0] : "Precipitation"} · ${Math.round(v % 100)} dBZ · ${runHour(f.model)}`; }
-        return `${L.field.label}: ${MM.say(L.field.unit, v, U())} · ${MM.SOURCES[f.model.src].analysis ? `${MM.SOURCES[f.model.src].server ? "mesoanalysis" : "HRRR analysis"} ${new Date(f.t).toISOString().slice(11, 13)}Z` : runHour(f.model)}`;
+        return `${L.field.label}: ${L.field.diff && v > 0 ? "+" : ""}${MM.say(L.field.unit, v, U())} · ${MM.SOURCES[f.model.src].analysis ? `${MM.SOURCES[f.model.src].server ? "mesoanalysis" : "HRRR analysis"} ${new Date(f.t).toISOString().slice(11, 13)}Z` : runHour(f.model)}`;
       }
       return null;
     }
@@ -3804,7 +3909,9 @@
         pal = NX.paletteFor(P.pal, R.pal[P.pal]); unit = P.unit;
         if (pal.classes) cats = Object.entries(pal.classes).filter(([k]) => k !== "2").map(([k, c]) => [NX.HCA_CLASSES[k][1], c]);
       } else if ((R.mode === "model" || R.mode === "mrms") && MM) {
-        const f = R.mode === "mrms" ? MR.PRODUCTS[R.mr.prod] : MM.field(R.mm.src, R.mm.field);
+        /* a difference map keys its own two-sided scale, not the field's */
+        const cur = R.mode === "model" && R.frames[R.frame] && R.frames[R.frame].model && R.frames[R.frame].model.layer;
+        const f = R.mode === "mrms" ? MR.PRODUCTS[R.mr.prod] : cur && cur.field.diff ? cur.field : MM.field(R.mm.src, R.mm.field);
         pal = f.pal === "dbz" && NX ? NX.paletteFor("ref", R.pal.ref) : MM.PAL[f.pal];
         if (pal.cat) cats = Object.values(pal.types).map(([name, , hi]) => [name, hi]);
         else {
@@ -3812,7 +3919,7 @@
           unit = name;
           /* a temperature or a speed converted from a model's own stops (°F, mph) is said whole, not "-6.7" or "8.7" */
           const whole = /^(°[CF]|kt|mph|km\/h)$/.test(name);
-          fmt = (v) => { const x = conv(v); return whole || Math.abs(x) >= 10 || Number.isInteger(x) ? String(Math.round(x)) : x.toFixed(Math.abs(x) < 1 ? 2 : 1); };
+          fmt = (v) => { const x = conv(v), sg = f.diff && x > 0 ? "+" : ""; return sg + (whole || Math.abs(x) >= 10 || Number.isInteger(x) ? String(Math.round(x)) : x.toFixed(Math.abs(x) < 1 ? 2 : 1)); };
         }
       }
       if (cats) { lg.classList.add("cats"); lg.innerHTML = cats.map(([n, c]) => `<span class="sw"><i style="background:${c}"></i>${esc(n)}</span>`).join(""); return; }
@@ -3905,6 +4012,15 @@
       draw(); legendBase();
     }
     if ($("#cluttersel")) { $("#cluttersel").value = R.clutter; $("#cluttersel").addEventListener("change", (e) => setClutter(e.target.value)); }
+    /* dealiasing: off by default — raw is the analyst's view, as with clutter */
+    R.dealias = PRO ? !!store.get("wx:dealias", false) : false;
+    if ($("#dealiasbtn")) $("#dealiasbtn").addEventListener("click", () => {
+      R.dealias = !R.dealias; store.set("wx:dealias", R.dealias);
+      $("#dealiasbtn").setAttribute("aria-pressed", String(R.dealias));
+      /* every frame read again from the decoded volume it already has (no new download) */
+      for (const f of R.frames) if (f.l3 && f.l3.l2) Object.assign(f.l3, { p: null, file: null, err: false, colors: null }), f.painted = null;
+      draw(); label();
+    });
     R.pal = { ref: "nws", vel: "nws" };
     if (PRO && NX) for (const k of ["ref", "vel"]) { const v = store.get("wx:pal" + k, "nws"); if (NX.SCHEMES[k][v]) R.pal[k] = v; }
     function lutFor(L) { return MM.table(L.field.pal, 255, L.field.pal === "dbz" && NX ? NX.paletteFor("ref", R.pal.ref) : null); }
@@ -4467,7 +4583,7 @@
        panel and a saved workspace are written in the same words */
     function layerString() {
       const ov = [!R.ov.lines && "x", R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r", R.ov.rings && "g", R.ov.tropics && "h", R.ov.terrain && "e"].filter(Boolean).join("");
-      return `l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}${R.mm.pin ? "." + new Date(R.mm.pin).toISOString().replace(/\D/g, "").slice(0, 10) : R.mm.back ? "." + R.mm.back : ""}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
+      return `l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}${R.mm.pin ? "." + new Date(R.mm.pin).toISOString().replace(/\D/g, "").slice(0, 10) : R.mm.back ? "." + R.mm.back : ""}` : ""}${R.mode === "model" && R.mm.diff ? `&d=${R.mm.diff}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
     }
     /* the map's middle to about 10 km, and its zoom */
     function viewString() {
@@ -4508,7 +4624,9 @@
         /* a picked run travels as its own time, YYYYMMDDHH */
         const pm = /^(\d{4})(\d\d)(\d\d)(\d\d)$/.exec(mb || ""), pin = pm ? Date.UTC(+pm[1], +pm[2] - 1, +pm[3], +pm[4]) : NaN;
         R.mm.pin = Number.isFinite(pin) && pin <= Date.now() ? pin : null;
-        runOptions();
+        const d = q.get("d") || "";
+        R.mm.diff = d === "prev" || (MM.SOURCES[d] && MM.field(d, mf)) ? d : "";
+        runOptions(); diffOptions();
       }
       if (MR && MR.PRODUCTS[q.get("r")]) R.mr.prod = q.get("r");
       const [gp, gs, gsat] = (q.get("g") || "").split(".");
@@ -4917,6 +5035,19 @@
       for (const f of MM.FIELDS[R.mm.src]) (groups[f.group] = groups[f.group] || []).push(f);
       sel.innerHTML = Object.entries(groups).map(([g, fs]) => `<optgroup label="${esc(g)}">${fs.map((f) => `<option value="${f.id}"${f.id === R.mm.field ? " selected" : ""}>${esc(f.label)}</option>`).join("")}</optgroup>`).join("");
       $("#mmsrc").value = R.mm.src;
+      diffOptions();
+    }
+    /* what this field can be differenced against: its run before, and every forecast model with the same field showing the same quantity */
+    const DIFF_MODELS = ["hrrr", "nam", "rap", "gfs", "ecmwf", "aifs", "ukmet"];
+    function diffOptions() {
+      const sel = $("#mmdiff"), M = R.mm, S = MM.SOURCES[M.src], f = MM.field(M.src, M.field);
+      if (!sel) return;
+      const lbl = $("#mmdiffl"), ok = f && !S.analysis && !S.server && !f.members && !f.member && M.src !== "tle";
+      if (lbl) lbl.hidden = !ok;
+      const others = ok ? DIFF_MODELS.filter((k) => k !== M.src && MM.SOURCES[k] && MM.field(k, M.field) && MM.field(k, M.field).unit === f.unit) : [];
+      sel.innerHTML = `<option value="">None</option>${ok ? `<option value="prev">From the run before</option>` : ""}${others.map((k) => `<option value="${k}">Minus ${esc(MM.SOURCES[k].label)}</option>`).join("")}`;
+      if (M.diff && ![...sel.options].some((o) => o.value === M.diff)) M.diff = "";
+      sel.value = M.diff;
     }
     if ($("#modelbar") && MM) {
       modelOptions();
@@ -4924,19 +5055,28 @@
         R.mm.src = MM.SOURCES[e.target.value] ? e.target.value : "hrrr";
         if (!MM.field(R.mm.src, R.mm.field)) R.mm.field = MM.FIELDS[R.mm.src][0].id;
         store.set("wx:mmsrc", R.mm.src); store.set("wx:mmfield", R.mm.field);
-        modelOptions(); R.mm.run = null; R.mm.back = 0; R.mm.pin = null; R.mm.newest = null; runOptions();
+        R.mm.diff = ""; modelOptions(); R.mm.run = null; R.mm.back = 0; R.mm.pin = null; R.mm.newest = null; runOptions();
         if (R.mode === "model") { play(false); modelFrames().then(label); }
       });
       $("#mmfield").addEventListener("change", (e) => {
         if (!MM.field(R.mm.src, e.target.value)) return;
         R.mm.field = e.target.value; store.set("wx:mmfield", R.mm.field);
+        diffOptions();                                            // a field with nothing to difference against drops the choice first
         if (R.mode !== "model" || !R.frames.length) return;
         /* the same run and hours, the new field; the hour on screen stays */
         const at = R.frame;
         play(false);
-        setFrames(R.frames.map((f) => ({ t: f.t, model: { src: f.model.src, field: R.mm.field, run: f.model.run, fh: f.model.fh } })));
+        setFrames(R.frames.map((f) => ({ t: f.t, model: { src: f.model.src, field: R.mm.field, run: f.model.run, fh: f.model.fh, diff: R.mm.diff } })));
         show(Math.min(at, R.frames.length - 1)); label(); renderSources();
         if (C.on) chartAt(C.lat, C.lon, C.name);
+      });
+      $("#mmdiff").addEventListener("change", (e) => {
+        R.mm.diff = e.target.value;
+        if (R.mode !== "model" || !R.frames.length) return;
+        const at = R.frame;
+        play(false);
+        setFrames(R.frames.map((f) => ({ t: f.t, model: { ...f.model, p: null, layer: null, lut: null, err: null, diff: R.mm.diff } })));
+        show(Math.min(at, R.frames.length - 1)); label(); renderSources(); modelRunText();
       });
       $("#mmback").addEventListener("change", (e) => {
         const v = Number(e.target.value) || 0;
