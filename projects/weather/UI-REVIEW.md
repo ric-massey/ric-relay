@@ -6,10 +6,10 @@
 > When a piece ships, move it into `README.md` → "Built so far" and tick it off
 > at the bottom. `DESIGN.md` stays the source of truth for the room.
 >
-> **A and B1–B7 are built (2026-10-23)** — see README.md, "The review's small
+> **All of it — A and B1–B9 — is built (2026-10-23 and 24)** — see README.md, "The review's small
 > fixes", "The legend and the timeline", "Compare and Trend", "The drawer's
 > index, and the sounding large", "The mode's controls in the toolbar", "Pro
-> units" and "Colour tables".
+> units", "Colour tables" and "The map's lines and names, and the small touches".
 
 Method: every mode of `weather-pro.html` driven in headless Chrome at 1440×900,
 1280×800 and 800×600, plus the phone at 369–375 px, with no place and with a place
@@ -159,8 +159,8 @@ rail + sounding pop-out), B5. B6–B9 as they fit.
 - [x] B5 mode controls into the toolbar (2026-10-23)
 - [x] B6 Pro units (2026-10-23; UTC stays its own button)
 - [x] B7 colour tables (2026-10-23)
-- [ ] B8 label density, map brightness
-- [ ] B9 empty layers, hovers, remembered fields
+- [x] B8 label density, map brightness (2026-10-24)
+- [x] B9 empty layers, hovers, remembered fields (2026-10-24; the fields were already remembered)
 
 ## Sources
 

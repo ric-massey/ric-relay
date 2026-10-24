@@ -543,6 +543,8 @@ console.log('\nRULE  Pro\'s map lines: read at run time, cut to North America, n
   const at = (lon) => [(lon + 56.7) * 1000, 50];
   ok(G.labels(pl.places, 4, 800, 400, at, () => 40).map(t => t.name).join() === 'Big', 'a town too small for this zoom has no name yet');
   ok(G.labels(pl.places, 8, 800, 400, at, () => 400).length === 1, 'two names that would touch: only the bigger is drawn');
+  const at2 = (lon) => [(lon + 56.7) * 2000, 50];
+  ok(G.labels(pl.places, 7, 800, 400, at2, () => 40).length === 2 && G.labels(pl.places, 7, 800, 400, at2, () => 40, { lift: 2 }).map(t => t.name).join() === 'Big', 'Names: Cities keeps the bigger places only (two zoom levels bigger)');
   const app = (await import('node:fs')).readFileSync(new URL('../../../assets/weather/app.js', import.meta.url), 'utf8');
   ok(/Wx\.mapLayer\(/.test(app) && !/natural-earth-vector/.test(app), 'the page asks through Wx.mapLayer — the address lives in one place');
 }

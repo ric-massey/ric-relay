@@ -1409,3 +1409,5 @@ body[data-view="pro"]:not([data-panel]) .skyout{position:fixed;top:var(--tb,44px
 .maplegend .lgnote[hidden]{display:none}
 @media (max-width:1000px){ .maplegend .lgnote{display:none} }
 @media (min-width:1001px){ body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl .siterow .sitepick select{min-width:178px} }
+/* the timeline's hover preview (B9): the frame under the pointer, said in grey until you step to it */
+.scrubwrap .scrubtip.peek{background:#e3e9f0;color:#05070a}

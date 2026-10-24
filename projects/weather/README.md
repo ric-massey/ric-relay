@@ -602,6 +602,22 @@ the NWS table's is 3) and toward/away velocity at the same speed by 25 or more
 protanopes saw them as the light blues — and was redrawn: blue for light
 rain, yellow through brown, rose at 55, grey at 60, white above.
 
+**The map's lines and names, and the small touches (2026-10-24, UI-REVIEW B8
+and B9):** Overlays has **Lines** — how strongly the map's own lines and town
+names are drawn over the data, 20–100%, separate from the data's opacity —
+and **Names**: Towns (as before), Cities (`MapGeo.labels`' `lift`: a place
+must be two zoom levels bigger to be named, 45 at most; tested) or None. Both
+kept in this browser. A model hour or MRMS file with nothing at or above its
+palette's floor anywhere says so — "a quiet map, not a broken one" — worked
+out once per layer over the whole grid (checked by forcing a floor out of
+reach; on the night it was built there was real hail and rotation, so no
+note was right). With a mouse, the timeline shows the time of the frame
+under the pointer, in grey, before you step to it; and the cursor readout
+names the warnings drawn under it with their end ("Flash Flood Warning until
+1:00 AM"). The model field, satellite product and MRMS product were already
+remembered in this browser (`wx:mmfield`, `wx:abi`, `wx:mrms`), so B9's last
+item needed nothing.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

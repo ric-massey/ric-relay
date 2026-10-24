@@ -89,10 +89,12 @@
      `width(name)` the label's width; returns [{ name, x, y }]. Natural Earth's
      min_zoom says when a town is worth a name — one step early here, because
      a radar view is about towns more than countries. */
-  function labels(places, z, w, h, at, width, { max = 140 } = {}) {
+  /* lift: how many zoom levels bigger a place must be to be named — 0 is
+     every town the zoom allows; 2 keeps the cities (Pro's Names: Cities) */
+  function labels(places, z, w, h, at, width, { max = 140, lift = 0 } = {}) {
     const out = [], boxes = [];
     for (const p of places) {
-      if (p[3] > z + 1) continue;
+      if (p[3] > z + 1 - lift) continue;
       const [x, y] = at(p[1], p[2]);
       if (x < -40 || y < -10 || x > w + 40 || y > h + 10) continue;
       const tw = width(p[0]), b = [x + 5, y - 8, x + 9 + tw, y + 6];

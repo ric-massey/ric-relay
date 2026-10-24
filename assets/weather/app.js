@@ -2553,12 +2553,13 @@
       const want = (n) => z >= MapGeo.LAYERS[n].from ? geoLayer(n) : null;
       stroke(want("counties"), [["#05070a", 2.2, 0.35], ["#aeb8c4", 0.8, 0.55]]);
       for (const n of ["coast", "nations", "states"]) stroke(want(n), [["#05070a", 3.2, 0.55], ["#e9ecef", n === "states" ? 1.25 : 1.1, 0.85]]);
-      const P = want("places");
+      /* Names (UI-REVIEW B8): towns, cities only, or none */
+      const P = R.names === "none" ? null : want("places");
       if (!P) return;
       ctx.font = PRO ? "600 12px \"IBM Plex Sans\",system-ui,-apple-system,'Segoe UI',sans-serif" : "600 12px system-ui,-apple-system,'Segoe UI',sans-serif";
       ctx.textBaseline = "middle";
       const few = R.stations && z >= STN_MINZ;                     // station plots carry their own numbers
-      const L = MapGeo.labels(P.places, z, w, h, (lon, lat) => [px(lon), py(lat)], (t) => ctx.measureText(t).width, { max: few ? 30 : 140 });
+      const L = MapGeo.labels(P.places, z, w, h, (lon, lat) => [px(lon), py(lat)], (t) => ctx.measureText(t).width, { max: few ? 30 : R.names === "cities" ? 45 : 140, lift: R.names === "cities" ? 2 : 0 });
       ctx.lineWidth = 3.2; ctx.strokeStyle = "rgba(5,7,10,.9)";
       for (const t of L) {
         ctx.beginPath(); ctx.arc(t.x, t.y, 2.6, 0, 2 * Math.PI);
@@ -2738,8 +2739,20 @@
        (2026-10-24) — the stamp and the readout said only "+6 h", and the
        maps beside this one, which hide the line above the map, said no run */
     function runHour(m) { return `${MM.SOURCES[m.src].label} ${new Date(m.run).toISOString().slice(11, 13)}Z +${m.fh} h`; }
+    /* the warnings drawn under the cursor: their event and end, in the readout (B9) */
+    function warnsAt(lat, lon) {
+      if (!PRO || R.mode === "replay") return "";
+      const list = [...(S.place ? (S.alerts || []) : []), ...(S.place ? (S.state || []) : (S.national || []))], seen = new Set(), k = clk(), out = [];
+      for (const a of list) {
+        if (!a.polygon || seen.has(a.id) || !Wx.inPolygon(lat, lon, a.polygon)) continue;
+        seen.add(a.id);
+        const end = a.ends || a.expires;
+        out.push(`${a.event}${end ? " until " + k.time(end) : ""}`);
+      }
+      return out.join(" · ");
+    }
     function readoutAt(lat, lon) {
-      const a = readoutFrame(lat, lon);
+      const w0 = warnsAt(lat, lon), a0 = readoutFrame(lat, lon), a = a0 && w0 ? `${a0} · ${w0}` : a0 || w0 || null;
       const D = R.ov.density && LTG.at && R.mode !== "replay" ? ltgDensity() : null;
       if (!D) return a;
       const n = GL.densityAt(D, lat, lon), b = `${n} flash${n === 1 ? "" : "es"} in this 8 km square, ${R.densWin === 1 ? "last minute" : `last ${R.densWin} min`}`;
@@ -3441,6 +3454,7 @@
       else if (f.l3 && f.l3.err && f.l3.errText) note(f.l3.errText);
       else if ((f.mrms || f.abi) && feedLate()) note(feedLate());
       else if (f.model && R.mm.late && f.model.run === R.mm.run) note(`${MM.SOURCES[f.model.src].label}'s newer runs are late — this is the ${new Date(f.model.run).toISOString().slice(11, 13)}Z run, ${Wx.age(Date.now() - f.model.run)} old. A newer one is usually out ${Wx.age(MM.SOURCES[f.model.src].publishMin * 60e3)} after it starts.`);
+      else if ((f.model || f.mrms) && quietNote(f)) note(quietNote(f));
       else if (f.model || f.mrms || f.abi) note("");
       /* the backup on Pro: NOAA's own MRMS mosaic, read straight from NOAA's bucket, not IEM */
       else if (fr && fr.unknown) note(`IEM did not say when its newest mosaic was made, so how old this radar is is not known.${PRO ? " NOAA's own mosaic of the same radars is under MRMS → Composite reflectivity, read straight from NOAA." : ""}`);
@@ -3454,6 +3468,26 @@
         const th = ltgThrough();
         if (th && ltgRef() < th.from - 60e3) note("Lightning is held for the last 20 minutes; this frame is older, so none is drawn.");
       }
+    }
+    /* An empty layer says so (UI-REVIEW B9, 2026-10-23): a model hour or
+       an MRMS file with nothing at or above its palette's floor anywhere —
+       rotation tracks on a quiet night — is a quiet map, not a broken one.
+       Worked out once per layer, over the whole grid, not just the view. */
+    function quietNote(f) {
+      const m = f.model || f.mrms, L = m && m.layer;
+      if (!L || !L.values || !L.field) return "";
+      if (L.quiet === undefined) {
+        const pal = L.field.pal === "dbz" && NX ? NX.paletteFor("ref", R.pal.ref) : MM.PAL[L.field.pal];
+        const floor = pal && pal.floor;
+        if (floor == null || pal.cat) L.quiet = "";
+        else {
+          let any = false;
+          for (let i = 0; i < L.values.length; i++) if (L.values[i] >= floor) { any = true; break; }
+          const [u, conv] = MM.unitFor(L.field.unit, U());
+          L.quiet = any ? "" : `Nothing at or above ${+conv(floor).toFixed(2)} ${u} anywhere in this ${f.mrms ? "file" : "hour"} — a quiet map, not a broken one.`;
+        }
+      }
+      return L.quiet;
     }
     /* How old the radar on screen really is (2026-10-23). The newest scan's
        own time, from inside its file once it has loaded — a feed can keep
@@ -3694,6 +3728,19 @@
        MRMS, a model's reflectivity — and the key with it; the US mosaic
        arrives coloured by IEM and stays the NWS's. Changing it recolours
        what is loaded; maps side by side follow by the storage event. ── */
+    /* ── The map's own lines and names (UI-REVIEW B8, 2026-10-23): how
+       strongly they are drawn over the data, and how many places are named
+       — separate from the data's own opacity, as GR lets a placefile draw
+       above or below. Kept in this browser; Weather keeps its defaults. ── */
+    R.names = PRO && ["towns", "cities", "none"].includes(store.get("wx:names", "")) ? store.get("wx:names", "") : "towns";
+    R.linesOp = PRO ? Math.min(100, Math.max(20, Number(store.get("wx:linesop", 100)) || 100)) : 100;
+    const linesOp = () => { if (geoCv) geoCv.style.opacity = String(R.linesOp / 100); if ($("#linesopv")) $("#linesopv").textContent = R.linesOp + "%"; };
+    if (PRO) {
+      linesOp();
+      const lo = $("#linesop"), ns = $("#namesel");
+      if (lo) { lo.value = String(R.linesOp); lo.addEventListener("input", () => { R.linesOp = Number(lo.value); store.set("wx:linesop", R.linesOp); linesOp(); }); }
+      if (ns) { ns.value = R.names; ns.addEventListener("change", () => { R.names = ns.value; store.set("wx:names", R.names); drawGeo(); }); }
+    }
     R.pal = { ref: "nws", vel: "nws" };
     if (PRO && NX) for (const k of ["ref", "vel"]) { const v = store.get("wx:pal" + k, "nws"); if (NX.SCHEMES[k][v]) R.pal[k] = v; }
     function lutFor(L) { return MM.table(L.field.pal, 255, L.field.pal === "dbz" && NX ? NX.paletteFor("ref", R.pal.ref) : null); }
@@ -3823,6 +3870,17 @@
     }
     let tlWait = 0;
     if (PRO) addEventListener("resize", () => timeline());
+    /* with a mouse, the bar says the time of the frame under the pointer before you step to it (B9) */
+    if (PRO && $("#scrubwrap")) {
+      const wrap = $("#scrubwrap");
+      wrap.addEventListener("pointermove", (e) => {
+        const tip = $("#scrubtip"), n = R.frames.length;
+        if (e.pointerType !== "mouse" || !tip || n < 2) return;
+        const r = wrap.getBoundingClientRect(), i = Math.max(0, Math.min(n - 1, Math.round((e.clientX - r.left - 5) / Math.max(1, r.width - 10) * (n - 1))));
+        tip.textContent = tipText(R.frames[i]); tip.style.left = (i / (n - 1) * 100).toFixed(2) + "%"; tip.classList.toggle("peek", i !== R.frame);
+      });
+      wrap.addEventListener("pointerleave", () => { const tip = $("#scrubtip"); if (tip) tip.classList.remove("peek"); timeline(); });
+    }
     function timeline() {
       const box = $("#scrubticks"), tip = $("#scrubtip"), sc = $("#scrub");
       if (!box || !sc) return;
