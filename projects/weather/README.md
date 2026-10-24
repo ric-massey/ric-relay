@@ -546,6 +546,21 @@ order; on a narrow screen it closes the drawer so the panel is not under it.
 The last tab was not restored on a reload on purpose: the drawer opens at the
 top, where the alerts are.
 
+**IBM Plex (2026-10-23, Ric: "can we use better font?", then "Use IBM Plex Sans
+and IBM Plex Mono, shipped with the site"):** Pro had used each computer's own
+fonts — SF on a Mac, Segoe and Consolas on Windows, Roboto on Android — so
+nobody saw the same page. It is now set in IBM Plex Sans (one variable file,
+weights 100–700, 40 KB) and IBM Plex Mono (400–700, 10 KB each), Latin only,
+in `assets/weather/fonts/` with the SIL Open Font License (`OFL.txt`). They are
+served from this repo — no font CDN, no external request — and preloaded so
+the instrument does not reflow when they land. A character outside Latin (an
+arrow, a tick) falls through to the system font after Plex in the stack. Only
+Pro's `--sans` and `--mono` name them, so Weather never downloads them; the
+map's canvas labels (towns, contours) use them too and are drawn again once
+they have loaded. Chosen by rendering the page in the system fonts, Plex,
+Inter with JetBrains Mono, and Geist. Every bar still fits on one row at 800,
+1024 and 1280 px.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

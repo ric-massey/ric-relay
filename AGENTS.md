@@ -731,7 +731,11 @@ ones that must never break:
   **two products with two looks** (Ric: "like two different products"): Weather is
   the sky, with a gold ★ Pro badge in its top bar; Pro is a dark, monospaced
   instrument with one blue accent (Ric, 2026-10-23 — amber fought the radar's
-  own oranges; it now means only "late") and ← Weather to go back. Don't bring back a shared tab switch
+  own oranges; it now means only "late"), set in IBM Plex Sans and Plex Mono
+  (Ric, 2026-10-23: "shipped with the site" — the woff2 files and their OFL
+  licence are in `assets/weather/fonts/`, served from this repo, never a font
+  CDN; only Pro names them, so Weather never downloads them) and ← Weather to
+  go back. Don't bring back a shared tab switch
   or style Pro like Weather. Both load `assets/weather/app.js` and
   `assets/weather/weather.css`; each page holds only its own cards. **Warnings and
   storm mode stay on both** — never move them to Pro only. On Pro a warning may be **folded**

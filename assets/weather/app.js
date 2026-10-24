@@ -2476,7 +2476,7 @@
           if (!c.nolabel && !seen.has(cell) && xa > 20 && ya > 14 && xa < w - 30 && ya < h - 8) { seen.add(cell); labels.push([xa, ya, lev[k]]); }
         }
         ctx.stroke(); ctx.globalAlpha = 1;
-        ctx.font = "600 11px ui-monospace,Menlo,monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.font = PRO ? "600 11px \"IBM Plex Mono\",ui-monospace,Menlo,monospace" : "600 11px ui-monospace,Menlo,monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
         for (const [x, y, l] of labels) { ctx.lineWidth = 3; ctx.strokeStyle = "rgba(5,7,10,.85)"; ctx.strokeText(String(Math.round(l)), x, y); ctx.fillStyle = c.color; ctx.fillText(String(Math.round(l)), x, y); }
       }
       /* wind barbs in knots, every ~56 px, turned from the grid to the earth */
@@ -2551,7 +2551,7 @@
       for (const n of ["coast", "nations", "states"]) stroke(want(n), [["#05070a", 3.2, 0.55], ["#e9ecef", n === "states" ? 1.25 : 1.1, 0.85]]);
       const P = want("places");
       if (!P) return;
-      ctx.font = "600 12px system-ui,-apple-system,'Segoe UI',sans-serif";
+      ctx.font = PRO ? "600 12px \"IBM Plex Sans\",system-ui,-apple-system,'Segoe UI',sans-serif" : "600 12px system-ui,-apple-system,'Segoe UI',sans-serif";
       ctx.textBaseline = "middle";
       const few = R.stations && z >= STN_MINZ;                     // station plots carry their own numbers
       const L = MapGeo.labels(P.places, z, w, h, (lon, lat) => [px(lon), py(lat)], (t) => ctx.measureText(t).width, { max: few ? 30 : 140 });
@@ -3857,6 +3857,8 @@
     async function start() {
       if (R.started) return;
       R.started = true;
+      /* the map's canvas text (towns, contour labels) is drawn in Pro's own type: draw again once it has loaded */
+      if (PRO && document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (R.started) draw(); });
       if (PRO) { setOpacity(OPAC); setBase(BASE); }
       const sat = store.get("wx:sat", null);           // the visitor's last choice, this browser only
       /* a panel shows only what its layers say, never the main page's underlay */
