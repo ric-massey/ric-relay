@@ -645,6 +645,25 @@ sharing the time, it says the frame, as before (`stampText`, tested). The
 legend's text is only rewritten when it changes, so a screen reader is not
 read every frame.
 
+**Active, and the map's own menu (2026-10-24, UI-REVIEW-2 items 3 and 4):**
+**Active** (the toolbar, or A) lists the country's weather the way a chaser
+or a forecaster looks for it — storm warnings (tornado, severe thunderstorm,
+flash flood, the rest; newest first), SPC's mesoscale discussions by their
+chance of a watch, watches (tornado first), WPC's precipitation discussions,
+then the eight strongest storm cells (rotation, then hail from a quarter
+inch, then reflectivity). Ranked by `Wx.activeList` (tested); it reads only
+what the NWS, SPC and WPC published. A click (or ↑ ↓ and Enter) fits the map
+to it, turns on the overlay that drew it, and opens the view that suits it:
+the nearest radar's storm-relative velocity for a tornado warning or a
+rotating storm, its reflectivity for a severe one (`goTo`). The button counts
+tornado and severe thunderstorm warnings, asked every three minutes while the
+page is in view. **Right-click** on the map (a **long press** on a phone) opens
+its own menu at that point: the nearest radar (reflectivity, velocity,
+storm-relative), a sounding, a chart, a cross-section from there, the
+forecast there, centre the map, copy the coordinates — every one an action
+the map already had, at the point pressed, which is kept nowhere. The keys
+sheet lists both, and the wheel.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

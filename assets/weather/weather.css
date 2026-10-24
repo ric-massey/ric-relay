@@ -1419,3 +1419,18 @@ body[data-view="pro"]:not([data-panel]) .skyout{position:fixed;top:var(--tb,44px
 .radar .frameslayer{position:absolute;inset:0;pointer-events:none}
 .radar .zghost{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 .radar .zghost>*{will-change:transform}
+
+/* ── Active (UI-REVIEW-2 item 3): the Find sheet's list, with a colour bar for what each is ── */
+.actlist li{gap:10px}
+.actlist .actsw{flex:none;align-self:stretch;width:4px;min-height:28px}
+.actlist li em{color:var(--accent)}
+.actbtn .ovcount{color:#ff8787}
+/* ── The map's own menu (item 4): right-click or a long press ── */
+.radar .mapmenu{position:absolute;z-index:30;min-width:240px;padding:4px 0;background:#0b0f15;border:1px solid #4a5566;font:13px var(--mono,ui-monospace,monospace);color:#e3e9f0}
+.radar .mapmenu[hidden]{display:none}
+.radar .mapmenu .mmhead{margin:0;padding:4px 12px 6px;font-size:11.5px;color:var(--dim);border-bottom:1px solid #1d232c}
+.radar .mapmenu button{display:block;width:100%;min-height:32px;padding:0 12px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.radar .mapmenu button:hover,.radar .mapmenu button:focus-visible{background:var(--accent-tint,#0f2537);color:var(--accent,#4dabf7);outline:0}
+.radar .mapmenu hr{margin:4px 0;border:0;border-top:1px solid #1d232c}
+@media (pointer:coarse){ .radar .mapmenu button{min-height:44px} }
+body[data-panel] #actbtn{display:none}

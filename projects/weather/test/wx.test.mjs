@@ -153,6 +153,31 @@ ok(W.fmt.wind(16.09344, 'us') === '10' && W.fmt.wind(16, 'metric') === '16', 'wi
 ok(W.fmt.precip(25.4, 'us') === '1.00' && W.fmt.precip(0.1, 'us') === '<0.01' && W.fmt.precip(0, 'us') === '0.00', 'precipitation');
 ok(W.fmt.pressure(1013.25, 'us') === '29.92' && W.fmt.pressure(1013.25, 'metric') === '1013', 'pressure');
 ok(W.fmt.dist(16093.44, 'us') === '10' && W.fmt.dist(1609.344 * 2.5, 'us') === '2.5', 'distance');
+/* Active (UI-REVIEW-2 item 3): the country's weather, ranked the way a chaser looks for it */
+{
+  const now = Date.UTC(2026, 9, 24, 0, 0), sq = (la, lo) => [[[lo, la], [lo + 0.5, la], [lo + 0.5, la + 0.5], [lo, la + 0.5], [lo, la]]];
+  const L = W.activeList({
+    warns: [
+      { event: 'Flash Flood Warning', polygon: sq(32, -106), ends: now + 3600e3, sent: now - 60e3 },
+      { event: 'Severe Thunderstorm Warning', polygon: sq(35, -97), ends: now + 1800e3, sent: now - 120e3 },
+      { event: 'Tornado Warning', polygon: sq(35.2, -97.5), ends: now + 1200e3, sent: now - 300e3 },
+      { event: 'Tornado Warning', polygon: sq(36, -96), ends: now - 60e3, sent: now - 3600e3 },
+      { event: 'Flood Advisory', polygon: sq(30, -90), ends: now + 3600e3 }],
+    mcds: [{ num: 1, polys: [sq(34, -98)], chance: 20 }, { num: 2, polys: [sq(36, -99)], chance: 80 }],
+    watches: [{ type: 'SVR', num: 600, polys: [sq(33, -100)] }, { type: 'TOR', num: 601, polys: [sq(35, -98)] }],
+    mpds: [{ num: 9, polys: [sq(32, -105)] }],
+    cells: [{ id: 'A1', site: 'TLX', lat: 35.3, lon: -97.4, dbz: 62, hailIn: 1.5 }, { id: 'B2', site: 'FWS', lat: 33, lon: -97, dbz: 55, meso: 1 }, { id: 'C3', lat: 34, lon: -96, dbz: 45 }]
+  }, now);
+  const t = L.map((x) => x.kind === 'cell' ? 'cell ' + x.title.split(' ')[1] : x.title);
+  ok(t[0] === 'Tornado Warning' && t[1] === 'Severe Thunderstorm Warning' && t[2] === 'Flash Flood Warning', `warnings first: tornado, severe, flash flood (${t.slice(0, 3).join(' | ')})`);
+  ok(!L.some((x) => x.title === 'Flood Advisory') && L.filter((x) => x.title === 'Tornado Warning').length === 1, 'an advisory is not a warning, and an expired warning is gone');
+  ok(L[0].mode === 'l3:srv' && L[1].mode === 'l3:ref' && L[2].mode === null, 'a tornado warning opens storm-relative velocity, a severe one reflectivity');
+  ok(t.indexOf('Mesoscale Discussion 2') < t.indexOf('Mesoscale Discussion 1'), 'discussions by their chance of a watch');
+  ok(t.indexOf('Tornado Watch 601') < t.indexOf('Severe Thunderstorm Watch 600'), 'a tornado watch before a severe one');
+  ok(t.indexOf('cell B2') < t.indexOf('cell A1') && !t.includes('cell C3'), `storms: rotation before hail, and a weak one is left out (${t.filter((x) => x.startsWith('cell')).join(', ')})`);
+  ok(L.find((x) => x.title === 'Tornado Warning').box.join() === '35.2,-97.5,35.7,-97', 'a warning carries the box to fit the map to');
+  ok(W.activeList({}, now).length === 0, 'nothing active: an empty list');
+}
 /* Weather Pro's own set (B6): °C, knots, hPa — rain in inches and distance in miles, as the US set */
 ok(W.UNITS.pro.temp === 'C' && W.UNITS.pro.wind === 'kt' && W.UNITS.pro.pressure === 'hPa' && W.UNITS.pro.precip === 'in' && W.UNITS.pro.dist === 'mi', 'Pro units: °C, kt, hPa, in, mi');
 ok(W.fmt.temp(0, 'pro') === '0' && W.fmt.temp(30, 'pro') === '30', 'Pro units: temperature in °C');

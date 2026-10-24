@@ -4331,6 +4331,147 @@
       }
     });
 
+    /* ── Go to a place, on the view that suits it (UI-REVIEW-2 items 3 and 4,
+       2026-10-24): fit a box or centre a point, put the overlay that drew it
+       on, and switch to a single radar's product when one is named — the
+       nearest radar to where the map now is, never one kept from before. ── */
+    async function goTo({ box, point, mode, overlay }) {
+      if (box) fit(box[0], box[1], box[2], box[3], 70);
+      else if (point) { R.z = Math.max(R.z, 8); R.cx = lngX(point.lon, R.z); R.cy = latY(point.lat, R.z); clearTiles(); draw(); stationsSoon(); }
+      if (overlay && R.ov[overlay] === false) { const b = document.querySelector(`[data-ov="${overlay}"]`); if (b) b.click(); }
+      if (mode && l3(mode)) {
+        R.lockId = null;
+        if (R.mode === mode) { if (await pickSite(false)) { clearTiles(); await siteFrames(); label(); } }
+        else await setMode(mode);
+      }
+    }
+
+    /* ── Active (item 3): the country's storms, one click each. Asked when
+       opened (and kept a minute and a half); the button counts tornado and
+       severe thunderstorm warnings, asked every three minutes in view. ── */
+    const ACT = { at: 0, data: null, items: [], sel: 0 };
+    async function activeData(force) {
+      if (!force && ACT.data && Date.now() - ACT.at < 90e3) return ACT.data;
+      const P = R.pro, soft = (p, d) => Promise.resolve(p).catch(() => d);
+      const [warns, watches, mcds, mpds, cells] = await Promise.all([
+        !S.place && Array.isArray(S.national) ? S.national : soft(Wx.national(), []),
+        soft(Wx.proOverlays.watches(), P.watches), soft(Wx.proOverlays.mcds(), P.mcds), soft(Wx.proOverlays.mpds(), P.mpds), soft(Wx.proOverlays.cells(), P.cells)]);
+      ACT.data = { warns: warns || [], watches: watches || [], mcds: mcds || [], mpds: mpds || [], cells: cells || [] };
+      ACT.at = Date.now();
+      actCount();
+      return ACT.data;
+    }
+    function actCount() {
+      const c = $("#actcount");
+      if (!c || !ACT.data) return;
+      const n = ACT.data.warns.filter((a) => a.polygon && (a.event === "Tornado Warning" || a.event === "Severe Thunderstorm Warning")).length;
+      c.textContent = n ? String(n) : "";
+    }
+    function actRender() {
+      const ul = $("#actlist"), lead = $("#actlead");
+      if (!ul) return;
+      const k = clk(), L = ACT.items;
+      const n = (kind) => L.filter((x) => x.kind === kind).length;
+      lead.textContent = !L.length ? "Nothing active across the US right now — no storm warnings, discussions, watches or strong storms."
+        : [n("warning") && `${n("warning")} storm warning${n("warning") === 1 ? "" : "s"}`, n("md") && `${n("md")} SPC discussion${n("md") === 1 ? "" : "s"}`, n("watch") && `${n("watch")} watch${n("watch") === 1 ? "" : "es"}`, n("mpd") && `${n("mpd")} WPC discussion${n("mpd") === 1 ? "" : "s"}`, n("cell") && `${n("cell")} strong storm${n("cell") === 1 ? "" : "s"}`].filter(Boolean).join(" · ") + " — as the NWS, SPC and WPC issued them.";
+      ul.innerHTML = L.map((x, i) => `<li role="option" data-i="${i}" aria-selected="${i === ACT.sel}"><i class="actsw" style="background:${x.color}" aria-hidden="true"></i><span>${esc(x.title)}${x.chance != null ? ` · ${x.chance}% chance of a watch` : ""}<small>${esc([x.area, x.ends ? "until " + k.time(x.ends) : ""].filter(Boolean).join(" · "))}</small></span><em>${x.mode === "l3:srv" ? "SRV" : x.mode === "l3:ref" ? "radar" : ""}</em></li>`).join("");
+    }
+    async function openActive() {
+      const d = $("#activeit");
+      if (!d) return;
+      ACT.sel = 0;
+      if (d.showModal && !d.open) d.showModal();
+      if (!ACT.data) { $("#actlead").textContent = "Asking the NWS, SPC and WPC…"; $("#actlist").innerHTML = ""; }
+      else { ACT.items = Wx.activeList(ACT.data); actRender(); }
+      try { ACT.items = Wx.activeList(await activeData(false)); } catch (e) { $("#actlead").textContent = "The NWS, SPC or WPC did not answer — try again in a minute."; return; }
+      actRender();
+    }
+    function actGo(i) {
+      const x = ACT.items[i];
+      if (!x) return;
+      const d = $("#activeit"); if (d && d.close) d.close();
+      goTo({ box: x.box, point: x.point, mode: x.mode, overlay: x.overlay });
+    }
+    if (PRO && !PANEL && $("#actbtn")) {
+      $("#actbtn").addEventListener("click", openActive);
+      $("#actlist").addEventListener("click", (e) => { const li = e.target.closest("li[data-i]"); if (li) actGo(Number(li.dataset.i)); });
+      $("#activeit").addEventListener("keydown", (e) => {
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); ACT.sel = Math.max(0, Math.min(ACT.items.length - 1, ACT.sel + (e.key === "ArrowDown" ? 1 : -1))); actRender(); const li = $(`#actlist li[data-i="${ACT.sel}"]`); if (li) li.scrollIntoView({ block: "nearest" }); }
+        else if (e.key === "Enter") { e.preventDefault(); actGo(ACT.sel); }
+      });
+      addEventListener("keydown", (e) => {
+        const t = e.target;
+        if (e.ctrlKey || e.metaKey || e.altKey || (t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName))) || document.querySelector("dialog[open]")) return;
+        if (e.key === "a" || e.key === "A") { e.preventDefault(); openActive(); }
+      });
+      /* the count on the button, kept fresh while the page is in view */
+      const tick = () => { if (!document.hidden) activeData(true).catch(() => {}); };
+      setTimeout(tick, 4000); setInterval(tick, 180e3);
+    } else if ($("#actbtn")) $("#actbtn").hidden = true;
+
+    /* ── The map's own menu (item 4): right-click, or a long press on a
+       touch screen. Every action is one the map already has, at the point
+       pressed; the point is only the visitor's own pointer and is kept
+       nowhere. ── */
+    const menu = document.createElement("div");
+    menu.className = "mapmenu"; menu.setAttribute("role", "menu"); menu.hidden = true;
+    el.appendChild(menu);
+    let MENU = null;
+    function menuClose() { if (!menu.hidden) { menu.hidden = true; MENU = null; } }
+    function menuOpen(px, py) {
+      if (!PRO) return;
+      const lat = yLat(R.cy - el.clientHeight / 2 + py, R.z), lon = xLng(R.cx - el.clientWidth / 2 + px, R.z);
+      if (!Wx.validLat(lat) || !Wx.validLon(lon)) return;
+      MENU = { lat, lon };
+      const ll = `${Math.abs(lat).toFixed(3)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lon).toFixed(3)}°${lon >= 0 ? "E" : "W"}`;
+      menu.innerHTML = `<p class="mmhead num">${ll}</p>
+        <button type="button" role="menuitem" data-m="l3:ref">Nearest radar here · reflectivity</button>
+        <button type="button" role="menuitem" data-m="l3:vel">Nearest radar here · velocity</button>
+        <button type="button" role="menuitem" data-m="l3:srv">Nearest radar here · storm-relative</button>
+        <hr><button type="button" role="menuitem" data-m="sky">Sounding here</button>
+        <button type="button" role="menuitem" data-m="chart">Chart here</button>
+        <button type="button" role="menuitem" data-m="xsec">Cross-section from here</button>
+        <button type="button" role="menuitem" data-m="forecast">Forecast for here</button>
+        <hr><button type="button" role="menuitem" data-m="centre">Centre the map here</button>
+        <button type="button" role="menuitem" data-m="copy">Copy the coordinates</button>`;
+      menu.hidden = false;
+      const mw = menu.offsetWidth || 240, mh = menu.offsetHeight || 300;
+      menu.style.left = Math.max(6, Math.min(px, el.clientWidth - mw - 6)) + "px";
+      menu.style.top = Math.max(6, Math.min(py, el.clientHeight - mh - 6)) + "px";
+      const first = menu.querySelector("button"); if (first) first.focus({ preventScroll: true });
+    }
+    menu.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-m]");
+      if (!b || !MENU) return;
+      const { lat, lon } = MENU, m = b.dataset.m;
+      menuClose();
+      if (l3(m)) goTo({ point: { lat, lon }, mode: m });
+      else if (m === "sky") { if (PANEL) tell("pick", { lat, lon, name: "", what: "sky" }); else sky.at(lat, lon, "the point picked"); }
+      else if (m === "chart") { chartAt(lat, lon, ""); chartEl.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" }); }
+      else if (m === "xsec") { xsecStart(); xsecTap(lat, lon); }
+      else if (m === "forecast") { if (PANEL) tell("pick", { lat, lon, name: "", what: "forecast" }); else { full(false); choose({ name: "Map point", region: "", lat, lon }); } }
+      else if (m === "centre") { R.cx = lngX(lon, R.z); R.cy = latY(lat, R.z); draw(); stationsSoon(); }
+      else if (m === "copy") {
+        const txt = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+        Promise.resolve(navigator.clipboard && navigator.clipboard.writeText(txt)).then(() => { note(`Copied ${txt}`); setTimeout(() => { if ($("#radarnote").textContent === `Copied ${txt}`) note(""); }, 2500); }).catch(() => note(txt));
+      }
+    });
+    menu.addEventListener("keydown", (e) => {
+      const items = [...menu.querySelectorAll("button")], i = items.indexOf(document.activeElement);
+      if (e.key === "Escape") { e.preventDefault(); menuClose(); el.focus && el.focus(); }
+      else if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length]; if (n) n.focus(); }
+    });
+    if (PRO) {
+      el.addEventListener("contextmenu", (e) => {
+        if (e.target.closest("button,a,.pin,.mapmenu,.maplegend,.mapctl,.zoom")) return;
+        e.preventDefault();
+        const r = el.getBoundingClientRect();
+        menuOpen(e.clientX - r.left, e.clientY - r.top);
+      });
+      document.addEventListener("pointerdown", (e) => { if (!menu.hidden && !menu.contains(e.target)) menuClose(); }, true);
+      el.addEventListener("wheel", menuClose, { passive: true });
+    }
+
     /* the whole window as the map, and back — the button or Esc */
     function full(on) {
       const card = $("#radarcard");
@@ -4453,7 +4594,7 @@
         if (touches.size === 2) {
           /* the first finger's drag becomes the pinch: what it moved so far stays */
           if (drag) { drag = null; el.classList.remove("dragging"); }
-          clearTimeout(tap); zdropGhost(true);
+          clearTimeout(tap); clearTimeout(R.lp); zdropGhost(true);
           const g = pinchGeom(); pinch = { d0: g.d, x0: g.x, y0: g.y, s: 1, x: g.x, y: g.y };
           el.setPointerCapture(e.pointerId);
           return;
@@ -4462,7 +4603,11 @@
       }
       zdropGhost(true);
       drag = { x: e.clientX, y: e.clientY, cx: R.cx, cy: R.cy, t: Date.now() };
-      el.setPointerCapture(e.pointerId); el.classList.add("dragging");
+      try { el.setPointerCapture(e.pointerId); } catch (err) {}
+      el.classList.add("dragging");
+      /* a long press on a touch screen opens the map's own menu (the right-click of a phone) */
+      clearTimeout(R.lp);
+      if (PRO && e.pointerType === "touch") { const r = el.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; R.lp = setTimeout(() => { if (drag && !pinch && Math.hypot(drag.x - e.clientX, drag.y - e.clientY) < 1) { drag = null; el.classList.remove("dragging"); clearTimeout(tap); R.lpFired = true; menuOpen(x, y); } }, 550); }
     });
     el.addEventListener("pointermove", (e) => {
       if (e.pointerType === "touch" && touches.has(e.pointerId)) {
@@ -4476,6 +4621,7 @@
         }
       }
       if (!drag) return;
+      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 8) clearTimeout(R.lp);
       R.cx = drag.cx - (e.clientX - drag.x); R.cy = drag.cy - (e.clientY - drag.y);
       requestAnimationFrame(draw);
     });
@@ -4492,6 +4638,8 @@
     el.addEventListener("pointerup", (e) => { if (pinchEnd(e)) e.stopImmediatePropagation(); }, true);
     el.addEventListener("pointercancel", (e) => { if (pinchEnd(e)) e.stopImmediatePropagation(); }, true);
     const end = (e) => {
+      clearTimeout(R.lp);
+      if (R.lpFired) { R.lpFired = false; return; }
       if (!drag) return;
       const d = drag;
       drag = null; el.classList.remove("dragging");

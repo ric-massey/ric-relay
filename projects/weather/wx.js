@@ -1445,6 +1445,43 @@
     return out.join('\n');
   }
 
+  /* Active (UI-REVIEW-2 item 3, 2026-10-24): the country's weather in the
+     order a chaser or a forecaster looks for it — storm warnings (tornado,
+     then severe thunderstorm, then flash flood, then the rest; newest first
+     within each), SPC's mesoscale discussions by their chance of a watch,
+     watches (tornado first), WPC's precipitation discussions, then the
+     strongest storm cells (rotation, then hail, then reflectivity; eight at
+     most, and only ones worth a look). Each item says where it is (a box to
+     fit, or a point) and which view suits it: storm-relative velocity for a
+     tornado warning or a rotating cell, reflectivity for a severe one. It
+     reads only what the NWS, SPC and WPC published; it ranks, never judges. */
+  function activeList(D, nowMs = Date.now()) {
+    const out = [];
+    const boxOf = (polys) => {
+      const pts = (polys || []).flatMap((poly) => (poly && poly[0]) || []).filter((p) => Array.isArray(p) && validLat(+p[1]) && validLon(+p[0]));
+      if (!pts.length) return null;
+      const la = pts.map((p) => +p[1]), lo = pts.map((p) => +p[0]);
+      return [Math.min(...la), Math.min(...lo), Math.max(...la), Math.max(...lo)];
+    };
+    const WARN = [['Tornado Warning', 0, 'l3:srv', '#ff4d6d'], ['Severe Thunderstorm Warning', 1, 'l3:ref', '#ffa94d'], ['Flash Flood Warning', 2, null, '#69db7c']];
+    const warns = (D.warns || []).filter((a) => a && a.polygon && /Warning$/.test(a.event || '') && !(a.ends && a.ends < nowMs)).map((a) => {
+      const w = WARN.find((x) => x[0] === a.event) || [a.event, 3, null, '#ff6b6b'];
+      return { kind: 'warning', rank: w[1], title: a.event, area: a.area || '', ends: a.ends || a.expires || null, when: a.sent || a.onset || 0, box: boxOf([a.polygon]), mode: w[2], color: w[3], overlay: null, threat: a.threat || '' };
+    }).filter((x) => x.box).sort((a, b) => a.rank - b.rank || (b.when || 0) - (a.when || 0));
+    out.push(...warns);
+    out.push(...(D.mcds || []).map((d) => ({ kind: 'md', title: `Mesoscale Discussion ${d.num}`, area: d.concern || d.title || '', chance: Number.isFinite(d.chance) ? d.chance : null, ends: d.expires || null, box: boxOf(d.polys), mode: null, color: '#74c0fc', overlay: 'watches' }))
+      .filter((x) => x.box).sort((a, b) => (b.chance ?? -1) - (a.chance ?? -1)));
+    out.push(...(D.watches || []).map((w) => ({ kind: 'watch', title: w.title || `${w.type === 'TOR' ? 'Tornado' : 'Severe Thunderstorm'} Watch ${w.num}`, area: '', ends: w.expires || null, box: boxOf(w.polys), mode: null, color: w.type === 'TOR' ? '#ffd43b' : '#f783ac', overlay: 'watches', tor: w.type === 'TOR' }))
+      .filter((x) => x.box).sort((a, b) => Number(b.tor) - Number(a.tor)));
+    out.push(...(D.mpds || []).map((d) => ({ kind: 'mpd', title: `Precipitation Discussion ${d.num}`, area: d.concern || '', ends: d.expires || null, box: boxOf(d.polys), mode: null, color: '#8ce99a', overlay: 'watches' })).filter((x) => x.box));
+    const score = (c) => (c.tvs ? 1000 : 0) + (c.meso ? 500 : 0) + (Number.isFinite(c.hailIn) ? c.hailIn * 100 : 0) + (Number.isFinite(c.dbz) ? Math.max(0, c.dbz - 50) * 5 : 0);
+    out.push(...(D.cells || []).filter((c) => c && validLat(c.lat) && validLon(c.lon) && (c.tvs || c.meso || (c.hailIn >= 1) || c.dbz >= 60))
+      .sort((a, b) => score(b) - score(a)).slice(0, 8).map((c) => ({ kind: 'cell', title: `Storm ${c.id}${c.site ? ' · ' + c.site : ''}`,
+        area: [c.tvs ? 'tornado vortex signature' : c.meso ? 'rotation' : '', Number.isFinite(c.hailIn) && c.hailIn >= 0.25 ? `hail to ${c.hailIn} in` : '', Number.isFinite(c.dbz) ? `${c.dbz} dBZ` : ''].filter(Boolean).join(' · '),
+        point: { lat: c.lat, lon: c.lon }, mode: c.tvs || c.meso ? 'l3:srv' : 'l3:ref', color: c.tvs ? '#ff4d6d' : c.meso ? '#f783ac' : '#ffa94d', overlay: 'cells' })));
+    return out;
+  }
+
   function versusYesterday(fc, nowSec) {
     const today = upcomingDays(fc, nowSec)[0];
     const y = today && fc.daily.find(d => d.t === today.t - 86400 || Math.abs(d.t - (today.t - 86400)) < 7200);
@@ -1948,7 +1985,7 @@
     STORM_EVENTS, NATIONAL_EVENTS, parseMotion, inPolygon, stormTrack, alertDetail, national, stateAlerts, near,
     SITE_PRODUCTS, SPC_KINDS, SPC_NAMES, MODELS, COLUMN_LEVELS, COLUMN_FIELDS, mapLayer, radarSites, siteScans, tileUrl, isoMinute, isoHour,
     normalizeOutlook, outlook, outlookAt, column, modelRun, raobSites, raobTimes, raobTs,
-    several, summary, reflowDiscussion, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet,
+    several, summary, reflowDiscussion, activeList, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet,
     inMosaic, nowcast, nowcastRecord,
     CALM_KMH, isCalm, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M,
     normalizeStationObs, stationObs, NET_KINDS, netKind, normalizeAsosCsv, stationObsAt,

@@ -107,8 +107,8 @@ the right radar"), 5, 6, 7.
 
 - [x] 1 the map feels like a map: wheel/pinch zoom to the point, animated, no blank (2026-10-24)
 - [x] 2 time that does not alarm: open on newest, the legend says the loop (2026-10-24)
-- [ ] 3 Active: the country's storms, one click each
-- [ ] 4 the map's own menu (right-click / long-press)
+- [x] 3 Active: the country's storms, one click each (2026-10-24)
+- [x] 4 the map's own menu (right-click / long-press) (2026-10-24)
 - [ ] 5 presets by task
 - [ ] 6 load decoders on demand; progress on slow loads
 - [ ] 7 quieter controls
