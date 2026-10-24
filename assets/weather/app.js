@@ -3993,13 +3993,108 @@
       if (!reduced) setTimeout(() => { if (R.visible) play(true); }, 900);
     }
 
-    function zoomTo(nz) {
-      nz = Math.min(MAXZ, Math.max(MINZ, nz));
-      if (nz === R.z) return;
-      const f = 2 ** (nz - R.z);
-      R.cx *= f; R.cy *= f; R.z = nz;
-      clearTiles(); draw(); stationsSoon();
+    /* ── Zoom that feels like a map (UI-REVIEW-2 item 1, 2026-10-24). The
+       map's zoom levels stay whole numbers — every tile set and painter
+       assumes them — but getting from one to the next is a gesture: the
+       wheel, a trackpad's pinch, two fingers, a double-click, ± and the keys
+       all scale the map's layers live with a CSS transform about the point
+       under the pointer, then settle on the nearest level with that point
+       held still. Nothing goes blank: a snapshot of the scaled picture (the
+       ghost) sits over the new level until it has loaded, then fades.
+       Before this, zoom was a whole level at a time about the middle of the
+       map, and every step cleared the map and redrew it from nothing. ── */
+    const Z = { acc: 0, ox: 0, oy: 0, t: 0, ghost: null, gt: 0, busy: false };
+    const zlayers = () => [...el.querySelectorAll(":scope > .layer, :scope > #radarframes, :scope > svg.over")];
+    const zmotion = () => !reduced;
+    function zsetTransform(s, ox, oy, tx = 0, ty = 0, ms = 0) {
+      for (const L of zlayers()) {
+        L.style.transformOrigin = `${ox}px ${oy}px`;
+        L.style.transition = ms ? `transform ${ms}ms ease-out` : "";
+        L.style.transform = s === 1 && !tx && !ty ? "" : `translate(${tx}px,${ty}px) scale(${s})`;
+      }
     }
+    /* a still copy of the layers as they look now (canvases copied pixel for pixel), laid over them */
+    function zghost() {
+      zdropGhost(true);
+      const g = document.createElement("div");
+      g.className = "zghost";
+      for (const L of zlayers()) {
+        const c = L.cloneNode(true);
+        const from = L.tagName === "CANVAS" ? [L] : [...L.querySelectorAll("canvas")], to = c.tagName === "CANVAS" ? [c] : [...c.querySelectorAll("canvas")];
+        from.forEach((src, i) => { const dst = to[i]; if (!dst) return; dst.width = src.width; dst.height = src.height; try { dst.getContext("2d").drawImage(src, 0, 0); } catch (e) {} });
+        c.removeAttribute("id"); c.querySelectorAll("[id]").forEach((x) => x.removeAttribute("id"));
+        g.appendChild(c);
+      }
+      const over = $("#radarover");
+      el.insertBefore(g, over ? over.nextSibling : null);
+      Z.ghost = g;
+      return g;
+    }
+    function zdropGhost(now) {
+      const g = Z.ghost;
+      if (!g) return;
+      Z.ghost = null; clearTimeout(Z.gt);
+      if (now || !zmotion()) { g.remove(); return; }
+      g.style.transition = "opacity 140ms"; g.style.opacity = "0";
+      setTimeout(() => g.remove(), 160);
+    }
+    /* the new level is on screen: the map under it has loaded and the frame on show is drawn */
+    function zready() {
+      const imgs = [...el.querySelectorAll("#radarbase img")];
+      const base = imgs.length > 0 && imgs.every((im) => im.complete);
+      const f = R.frames[R.frame];
+      return base && (!f || frameState(f, R.frame) !== "wait");
+    }
+    function zwaitGhost(t0 = Date.now()) {
+      clearTimeout(Z.gt);
+      if (!Z.ghost) return;
+      if (zready() || Date.now() - t0 > 2500) { zdropGhost(false); return; }
+      Z.gt = setTimeout(() => zwaitGhost(t0), 80);
+    }
+    /* settle: dz whole levels, the world point under (ox, oy) moved to (sx, sy) on screen.
+       `shown` is the scale the layers are showing now (the gesture's), so the ghost eases from it to the level's. */
+    function zcommit(dz, ox, oy, sx = ox, sy = oy, shown = 2 ** dz, tx = sx - ox, ty = sy - oy) {
+      const nz = Math.min(MAXZ, Math.max(MINZ, R.z + dz));
+      dz = nz - R.z;
+      const w = el.clientWidth, h = el.clientHeight;
+      if (!dz && !tx && !ty) { zsetTransform(1, ox, oy, 0, 0, zmotion() ? 140 : 0); setTimeout(() => zsetTransform(1, ox, oy), 150); return; }
+      const g = zghost();
+      for (const c of g.children) { c.style.transformOrigin = `${ox}px ${oy}px`; c.style.transform = `translate(${tx}px,${ty}px) scale(${shown})`; }
+      if (zmotion() && Math.abs(shown - 2 ** dz) > 0.01) requestAnimationFrame(() => { for (const c of g.children) { c.style.transition = "transform 120ms ease-out"; c.style.transform = `translate(${tx}px,${ty}px) scale(${2 ** dz})`; } });
+      zsetTransform(1, ox, oy);
+      const wx = R.cx - w / 2 + ox, wy = R.cy - h / 2 + oy, f = 2 ** dz;
+      R.z = nz; R.cx = wx * f - sx + w / 2; R.cy = wy * f - sy + h / 2;
+      clearTiles(); draw(); stationsSoon();
+      if (single() && !R.lockId) { clearTimeout(follow); follow = setTimeout(async () => { if (await pickSite(false)) { clearTiles(); await siteFrames(); label(); } }, 700); }
+      zwaitGhost();
+    }
+    /* ±, the keys, a double-click: one level, eased, about a point (the middle unless one is given) */
+    function zoomAt(nz, ox = el.clientWidth / 2, oy = el.clientHeight / 2) {
+      nz = Math.min(MAXZ, Math.max(MINZ, nz));
+      if (nz === R.z || Z.busy) return;
+      const dz = nz - R.z;
+      if (!zmotion()) { zcommit(dz, ox, oy); return; }
+      Z.busy = true;
+      zsetTransform(2 ** dz, ox, oy, 0, 0, 160);
+      setTimeout(() => { Z.busy = false; zcommit(dz, ox, oy); }, 170);
+    }
+    function zoomTo(nz) { zoomAt(nz); }
+    /* the wheel and a trackpad: the scale follows the fingers; the level is settled once they stop */
+    el.addEventListener("wheel", (e) => {
+      if (e.target.closest(".pin,.wxmenu,.read,.maplegend,.mapctl")) return;
+      /* on Weather the small map leaves the wheel to the page; its full-screen map takes it */
+      if (!PRO && !$("#radarcard").classList.contains("mapfull")) return;
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      if (!Z.acc) { zdropGhost(true); Z.ox = e.clientX - r.left; Z.oy = e.clientY - r.top; }
+      const d = e.deltaY * (e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 800 : 1);
+      /* a trackpad pinch arrives as a wheel with ctrl held, in small steps; a mouse wheel in notches of about 100 */
+      const k = e.ctrlKey ? 0.012 : Math.abs(d) >= 50 ? 0.005 : 0.003;
+      Z.acc = Math.min(MAXZ - R.z + 0.35, Math.max(MINZ - R.z - 0.35, Z.acc - d * k));
+      zsetTransform(2 ** Z.acc, Z.ox, Z.oy);
+      clearTimeout(Z.t);
+      Z.t = setTimeout(() => { const a = Z.acc; Z.acc = 0; zcommit(Math.round(a), Z.ox, Z.oy, Z.ox, Z.oy, 2 ** a); }, e.ctrlKey ? 140 : 200);
+    }, { passive: false });
     function fit(minLat, minLon, maxLat, maxLon, pad = 40) {
       const w = el.clientWidth || 340, h = el.clientHeight || 300;
       let z = MAXZ;
@@ -4340,16 +4435,56 @@
 
     /* dragging, the site following the map, and a tap that is not a drag */
     let drag = null, follow = 0, tap = 0;
+    /* two fingers: a pinch scales and moves the layers live, and settles on the nearest level when one lifts */
+    const touches = new Map();
+    let pinch = null;
+    const pinchGeom = () => { const [a, b] = [...touches.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
     el.addEventListener("pointerdown", (e) => {
       if (e.target.closest("button,a,.pin,.wxmenu")) return;
+      if (e.pointerType === "touch") {
+        const r = el.getBoundingClientRect();
+        touches.set(e.pointerId, { x: e.clientX - r.left, y: e.clientY - r.top });
+        if (touches.size === 2) {
+          /* the first finger's drag becomes the pinch: what it moved so far stays */
+          if (drag) { drag = null; el.classList.remove("dragging"); }
+          clearTimeout(tap); zdropGhost(true);
+          const g = pinchGeom(); pinch = { d0: g.d, x0: g.x, y0: g.y, s: 1, x: g.x, y: g.y };
+          el.setPointerCapture(e.pointerId);
+          return;
+        }
+        if (pinch) return;
+      }
+      zdropGhost(true);
       drag = { x: e.clientX, y: e.clientY, cx: R.cx, cy: R.cy, t: Date.now() };
       el.setPointerCapture(e.pointerId); el.classList.add("dragging");
     });
     el.addEventListener("pointermove", (e) => {
+      if (e.pointerType === "touch" && touches.has(e.pointerId)) {
+        const r = el.getBoundingClientRect();
+        touches.set(e.pointerId, { x: e.clientX - r.left, y: e.clientY - r.top });
+        if (pinch && touches.size >= 2) {
+          const g = pinchGeom(), lo = 2 ** (MINZ - R.z - 0.35), hi = 2 ** (MAXZ - R.z + 0.35);
+          pinch.s = Math.min(hi, Math.max(lo, g.d / pinch.d0)); pinch.x = g.x; pinch.y = g.y;
+          zsetTransform(pinch.s, pinch.x0, pinch.y0, pinch.x - pinch.x0, pinch.y - pinch.y0);
+          return;
+        }
+      }
       if (!drag) return;
       R.cx = drag.cx - (e.clientX - drag.x); R.cy = drag.cy - (e.clientY - drag.y);
       requestAnimationFrame(draw);
     });
+    const pinchEnd = (e) => {
+      if (e.pointerType !== "touch") return false;
+      touches.delete(e.pointerId);
+      if (!pinch) return false;
+      if (touches.size < 2) {
+        const p = pinch; pinch = null;
+        zcommit(Math.round(Math.log2(p.s)), p.x0, p.y0, p.x, p.y, p.s);
+      }
+      return true;
+    };
+    el.addEventListener("pointerup", (e) => { if (pinchEnd(e)) e.stopImmediatePropagation(); }, true);
+    el.addEventListener("pointercancel", (e) => { if (pinchEnd(e)) e.stopImmediatePropagation(); }, true);
     const end = (e) => {
       if (!drag) return;
       const d = drag;
@@ -4384,7 +4519,8 @@
     el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
     $("#zin").addEventListener("click", () => zoomTo(R.z + 1));
     $("#zout").addEventListener("click", () => zoomTo(R.z - 1));
-    el.addEventListener("dblclick", (e) => { if (!e.target.closest("button,a,.pin")) { clearTimeout(tap); zoomTo(R.z + 1); } });
+    /* a double-click zooms toward the point clicked, not the middle (shift: out) */
+    el.addEventListener("dblclick", (e) => { if (!e.target.closest("button,a,.pin")) { clearTimeout(tap); const r = el.getBoundingClientRect(); zoomAt(R.z + (e.shiftKey ? -1 : 1), e.clientX - r.left, e.clientY - r.top); } });
     /* the tilt row (built by tilts()): a Level III tilt, a full-volume angle, or the switch between them */
     if ($("#tiltrow")) $("#tiltrow").addEventListener("click", async (e) => {
       const t = e.target.closest("[data-tilt],[data-angle],[data-l2toggle]");
@@ -4616,8 +4752,9 @@
         toldView = `${lat.toFixed(3)},${lon.toFixed(3)},${R.z}`;
         /* this runs on every frame of a drag in another map: a pan only moves
            the tiles (place() drops the ones out of view), a zoom starts over */
-        if (R.z !== wasZ) clearTiles();
+        if (R.z !== wasZ) { zghost(); clearTiles(); }
         draw(); stationsSoon();
+        if (R.z !== wasZ) zwaitGhost();
         if (single() && !R.lockId) { clearTimeout(follow); follow = setTimeout(async () => { if (await pickSite(false)) { clearTiles(); await siteFrames(); label(); } }, 700); }
       } finally { applying--; }
     }

@@ -1411,3 +1411,11 @@ body[data-view="pro"]:not([data-panel]) .skyout{position:fixed;top:var(--tb,44px
 @media (min-width:1001px){ body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl .siterow .sitepick select{min-width:178px} }
 /* the timeline's hover preview (B9): the frame under the pointer, said in grey until you step to it */
 .scrubwrap .scrubtip.peek{background:#e3e9f0;color:#05070a}
+
+/* ── Zoom that feels like a map (UI-REVIEW-2 item 1, 2026-10-24): the frames'
+   holder is a full-size box so it scales with the rest during a gesture, and
+   the ghost — a still copy of the map laid over it while the next zoom level
+   loads — sits above the data and under every control. ── */
+.radar .frameslayer{position:absolute;inset:0;pointer-events:none}
+.radar .zghost{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.radar .zghost>*{will-change:transform}

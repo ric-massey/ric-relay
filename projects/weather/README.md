@@ -618,6 +618,22 @@ names the warnings drawn under it with their end ("Flash Flood Warning until
 remembered in this browser (`wx:mmfield`, `wx:abi`, `wx:mrms`), so B9's last
 item needed nothing.
 
+**Zoom that feels like a map (2026-10-24, UI-REVIEW-2 item 1):** there was no
+wheel, trackpad or pinch zoom; zoom was a whole level at a time about the
+middle of the map, and every step cleared the map and redrew it from nothing.
+Now the wheel, a trackpad's pinch (a wheel with ctrl), two fingers, a
+double-click (shift: out), ± and the keys all scale the map's layers live
+with a CSS transform about the point under the pointer, and settle on the
+nearest level with that point held still (`zcommit` in `app.js`; the levels
+stay whole numbers, which every tile set and painter assumes). Nothing goes
+blank: a still copy of the scaled map — canvases copied pixel for pixel —
+lies over the new level until its map and frame have loaded (2.5 s at most),
+then fades in 140 ms; a zoom arriving from another map side by side gets the
+same. On Weather the small map leaves the wheel to the page; its full-screen
+map takes it. Measured in headless Chrome: four wheel notches = two levels,
+a double-click one, a pinch to three times two — each with the point under
+the cursor or between the fingers moving 0 km.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its
