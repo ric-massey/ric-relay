@@ -111,4 +111,4 @@ the right radar"), 5, 6, 7.
 - [x] 4 the map's own menu (right-click / long-press) (2026-10-24)
 - [x] 5 presets by task (2026-10-24)
 - [x] 6 load decoders on demand; progress on slow loads (2026-10-24 — progress and preconnect built; loading decoders on demand measured and not done, see README)
-- [ ] 7 quieter controls
+- [x] 7 quieter controls (2026-10-24)

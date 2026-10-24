@@ -1436,3 +1436,20 @@ body[data-view="pro"]:not([data-panel]) .skyout{position:fixed;top:var(--tb,44px
 body[data-panel] #actbtn{display:none}
 .maplegend .lgload{color:var(--accent)}
 @media (max-width:1000px){ .maplegend .lgload{display:block} .maplegend .lgload[hidden]{display:none} }
+
+/* ── Quieter controls (UI-REVIEW-2 item 7, 2026-10-24): a hierarchy, not
+   fewer features. The kinds of map keep full weight (the joined strip, the
+   one on show filled); the tools — Replay, Overlays, Active, Info, Find —
+   are outlined and light up on hover or while in use; the page's own
+   settings in the bar (US, units, Local, ?, refresh) are lighter again.
+   With a mouse over the data, the legend and the colour key step back to
+   half strength, and come straight back when pointed at. ── */
+body[data-view="pro"] .maptools .toolbtn{background:transparent;border-color:#232b36;color:#c3cad4}
+body[data-view="pro"] .maptools .toolbtn:hover{background:#121821;border-color:#5a6678;color:#e3e9f0}
+body[data-view="pro"] .maptools .toolbtn[aria-pressed="true"],body[data-view="pro"] .maptools .toolbtn[aria-expanded="true"]{background:var(--accent-tint);color:var(--accent);border-color:var(--accent-edge)}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox .chip{background:transparent;border-color:transparent;color:var(--dim)}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox .chip:hover{border-color:#5a6678;color:#e3e9f0}
+@media (max-width:1199px){ body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox .chip{border-color:var(--edge);color:#e3e9f0;background:#121821} }
+#radarcard .maplegend,#radarcard #legend{transition:opacity .25s}
+#radarcard.mapfocus .maplegend:not(:hover):not(:focus-within),#radarcard.mapfocus #legend:not(:hover){opacity:.6}
+@media (prefers-reduced-motion:reduce){ #radarcard .maplegend,#radarcard #legend{transition:none} }

@@ -3879,6 +3879,12 @@
     }
     let tlWait = 0;
     if (PRO) addEventListener("resize", () => timeline());
+    /* with a mouse over the data (not over a control on it), the legend and the colour key step back (item 7) */
+    if (PRO) {
+      const card = $("#radarcard");
+      el.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse" && card) card.classList.toggle("mapfocus", !e.target.closest(".maplegend,#legend,.zoom,.mapmenu,.pin,.read,.layersbtn,.mapctl")); });
+      el.addEventListener("pointerleave", () => { if (card) card.classList.remove("mapfocus"); });
+    }
     /* with a mouse, the bar says the time of the frame under the pointer before you step to it (B9) */
     if (PRO && $("#scrubwrap")) {
       const wrap = $("#scrubwrap");

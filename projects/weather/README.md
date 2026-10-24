@@ -697,6 +697,15 @@ the timeline: a GOES or MRMS frame counted as loaded from the moment its
 file was listed, so its tick showed filled while the image was still on its
 way; a frame is now loaded when it is decoded.
 
+**Quieter controls (2026-10-24, UI-REVIEW-2 item 7):** a hierarchy, not fewer
+features. The kinds of map keep full weight (the joined strip, the one on
+show filled in the accent); the tools — Replay, Overlays, Active, Info, Find —
+are outlined and light up on hover or while in use; the page's own settings in
+the bar (US, units, Local, ?, refresh) are plain until pointed at (boxed again
+behind ⋯ on a narrower screen). With a mouse over the data, the legend and the
+colour key step back to 60% and come straight back when pointed at
+(`#radarcard.mapfocus`).
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its
