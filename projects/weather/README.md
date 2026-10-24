@@ -70,6 +70,7 @@ post on the front door (the `radar` painter, over invented ground).
 | `mesogrid.js` | the server mesoanalysis's file format, shared by the builder (encode) and the page (decode) |
 | `abi.js` | Pro's GOES imagery: the ABI's Level 2 multi-band files read through `glm.js`'s HDF5 reader (2-D chunks, kept as 16-bit counts), the GOES-R fixed-grid navigation both ways, and the band enhancements and RGB recipes |
 | `mrms.js` | Pro's MRMS products — the list, where each lives in the bucket, its unit and palette; `grib2.js`'s `parseAsync` reads the files (gzip, PNG packing, max-pooled) |
+| `terrain.js` | Pro's terrain: the Terrain Tiles' terrarium pixels → metres, Horn's hillshade (light from the north-west, shadow and light only), the standard atmosphere's pressure at a height (the cross-section's real ground), and which tile a point falls in |
 | `mapgeo.js` | Pro's map lines: which Natural Earth file each layer is, `slim()` (a file → North America's lines or town names and nothing else), each line's box for culling, and which town names fit at a zoom without touching |
 | `glm.js` | Pro's lightning, and the HDF5 reader the GOES imagery uses too: just enough HDF5 (superblock 2/3, object headers, dense links and attributes, chunked deflate+shuffle in one or two dimensions) to read the GOES lightning mapper's flashes and the imager's bands, by byte range; and the arithmetic on them — flash density in 8 km squares, a storm cell's flash rate in 2-minute steps following the cell along its own motion, and the Schultz et al. (2009) 2σ lightning jump |
 | `sounding.js` | the vertical arithmetic: parcels, CAPE / CIN / LCL / LFC / EL, precipitable water, lapse rates, shear, Bunkers storm motion, helicity, STP, downdraft CAPE (MetPy's `downdraft_cape` step for step — the mesoanalysis map uses it too) |
@@ -102,6 +103,7 @@ two that would change first are Open-Meteo and the OpenStreetMap tiles.
 | ECMWF open data — IFS, AIFS | CC BY 4.0 | Credited on the map whenever shown (`#eccredit`, a rule already) |
 | OpenStreetMap tiles (`tile.openstreetmap.org`) | OSM data is ODbL; the tile servers have a usage policy: light use, attribution, no heavy or commercial traffic | Attribution is in the map's corner. **A commercial or high-traffic site must move to a paid or self-hosted tile service** |
 | Natural Earth — map lines and towns | Public domain | Nothing owed; credited anyway |
+| Terrain Tiles on AWS (`elevation-tiles-prod`) — Pro's terrain | Open data; each source's own terms: USGS 3DEP is public domain, SRTM and ETOPO1 likewise, GMTED from the USGS; the registry asks that the sources be credited | Credited in the map's corner while Terrain is on (`#terraincredit`) |
 | Pangu-Weather weights (`weather-ai.yml`) | Non-commercial (CC BY-NC-SA 4.0) | Ranked on the scoreboard, never drawn; not usable commercially |
 
 Broadcasting or redistributing this room's pictures commercially would also
@@ -196,6 +198,22 @@ path covers it. Images (map, radar and satellite tiles) always load directly.
   observation is computed with the NWS's own formulas and tagged `computed`.
   Past `STALE_MS` a feed says "delayed" rather than looking live. The *Where this
   comes from* card is the room's status page (§37).
+- **Clutter filtering never hides a strong echo** (2026-10-24, Ric: "Raw radar:
+  preserve weak returns … Filtered radar: remove likely non-weather echoes").
+  The single radar's reflectivity has an **Echoes** choice beside its tilts —
+  *All · raw* (Pro's default), *Weather only · filtered* and *Mark non-weather*
+  (grey). The evidence is the radar's own correlation coefficient at each gate
+  — the Level II cut's RHO, or the Level III CC scan of the same tilt nearest
+  in time — never the colours. A gate is called likely non-weather when CC is
+  under 0.80 **and** reflectivity under 30 dBZ (`NX.CLUTTER`, `clutterMask` in
+  `nexrad.js`): a tornado's debris has low CC too, so anything strong stays,
+  whatever its CC, and strong ground clutter stays with it. No CC, no
+  filtering, and the legend says so. The readout gives the gate's CC and calls
+  it *likely*; the legend says how much went. It is one radar's dual-pol and
+  nothing more — comparing successive scans or neighbouring radars is not
+  done, so don't call it a QC'd product; the US mosaic and MRMS are the
+  cross-radar ones. Don't lower the dBZ line or filter velocity without
+  measuring a debris case first; `test/decoders.test.mjs` holds the rule.
 - **Radar age is the scan's own** (2026-10-23, after an outside check of Pro).
   A single radar's age comes from the time inside the newest file once it has
   loaded, not the time in its name: a feed that keeps writing new files holding
@@ -453,7 +471,8 @@ square — one rule at the foot of `weather.css` (`border-radius:0!important` un
 The data's own symbols keep their shape: an airport is still a round dot. No
 soft shadows or gradients: panels are flat and hairline-edged, and menus,
 sheets and popovers are told apart by a brighter edge (`#4a5566`). Switches are
-monospaced capitals (a monospace capital costs no width); the map's kinds and a
+monospaced, and since 2026-10-24 only the map's kinds are in capitals (round
+five, below); the map's kinds and a
 single radar's products are one joined strip with the lit segment in the accent (a
 3 × 2 block on a phone); the map's buttons are one joined column (36 px with a
 mouse, 44 by touch); sliders are a hairline track with a square cursor in the accent;
@@ -735,6 +754,31 @@ workspace. **An empty Find opens on the visitor's last five picks**
 (`wx:findrecent`, product names only), then everything in the index's own
 order — sorted by name length, it read as a random list. **Active** says
 how to choose only when there is something to choose.
+
+**Round five (2026-10-24 — Ric: "Both", to the elevation layer and a
+declutter pass, "and this": clutter filtering):**
+**Clutter filtering** — the single radar's reflectivity has an *Echoes* choice
+beside its tilts: all (raw, the default), weather only, or non-weather marked
+grey, judged by the radar's own CC with strong echoes always kept (the rule
+and why are under Rules). On a clear day at KTLX it called about half the
+echoes likely non-weather — birds and insects at the low tilt.
+**Terrain** — an overlay (*Terrain*, letter `e` in a link) that shades the
+ground's shape under the data from the open Terrain Tiles on AWS
+(`terrain.js`), exaggerated at the national view where the mountains are a few
+pixels wide; with it on, the readout gives the ground's height under the
+pointer, and Pro's cross-section always draws the real ground as a thin line
+over the model's own, smoother ground. Shadow and light only, never a colour.
+Geology was looked at and left: Macrostrat's map and the USGS state maps
+exist, but they tell a forecaster little and could not be checked from here.
+**Quieter first screen** — 26 of the first screen's 47 controls were monospaced
+capitals, so the top read as three bands of identical buttons; capitals are
+now the map's kinds only (6). The rooms button is its bars at every width (its
+label said "weather" a few buttons from "← Weather"); the loop's speed and rest
+fold behind one button that says the speed; the legend names the map lines only
+once they are off (they are credited in the corner). Left as they were, on
+purpose: **US** (it brings the map back to the country after a pan, place or
+no place) and the readouts drawer open from 1200 px (it carries the national
+warnings list, and warnings stay in view).
 
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**

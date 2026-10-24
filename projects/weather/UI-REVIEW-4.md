@@ -21,11 +21,24 @@ controls and layout, not the data on the map.
       picks, then the index in order.
 - [x] Active said "Enter or a click goes there" with nothing to go to.
 
+## Then, the same day (README.md, "Round five")
+
+- [x] Clutter filtering on the single radar's reflectivity.
+- [x] Terrain under the map, its height in the readout, the real ground in
+      the cross-section.
+- [x] Capitals on the map's kinds only; the rooms button as bars; the loop's
+      speed and rest behind one button; the legend's map-lines line only when
+      they are off.
+
 ## Looked at and left
 
 - The ⋯ menu on a phone opens over the map's + button: it is a menu, open
   only while it is being used.
 - The Future map's line of prose above the map is Info's, shown only while
   Info is open — not a leftover from round one.
+- **US** beside the place is not a duplicate: it fits the map back to the
+  country after a pan, with or without a place.
+- The readouts drawer stays open by default from 1200 px: the national
+  warnings list is in it.
 - The zoom ghost stays soft for up to 2.5 s when tiles do not arrive; that is
   its cap, by design (round two).

@@ -818,6 +818,11 @@ ones that must never break:
 - **Storm mode's distances and arrival times are the warning's own motion carried
   forward**, shown only beside the warning and always called an estimate. Never
   derive one from radar or let one stand in for the warning.
+- **Clutter filtering never hides a strong echo** (2026-10-24). Pro's single
+  radar can show reflectivity raw, filtered or with non-weather marked grey,
+  judged by the radar's own CC — but a gate at 30 dBZ or more is always kept,
+  because a tornado's debris has low CC too. Raw is Pro's default. Read the
+  rule in `projects/weather/README.md` before touching `NX.CLUTTER`.
 - **The sounding arithmetic (`sounding.js`) is held to MetPy** in
   `test/sounding.test.mjs`; change the physics and the pinned comparison together.
 - **The scoreboard publishes no coordinates** — stations by airport id only, positions
@@ -871,7 +876,15 @@ ones that must never break:
   hosts. They are never committed: this room keeps real coordinates out of the
   repo even for public airports, and the map lines follow that. Not through the
   Worker either — it is on the free plan, and the 8 MB county file is far past
-  the CPU a request gets there. Lightning is GLM *flashes* — never call them strikes.
+  the CPU a request gets there. **Pro's terrain** (Ric, 2026-10-24: "Geological
+  and elevation layers?" then "Both") is the open Terrain Tiles on AWS
+  (`s3.amazonaws.com/elevation-tiles-prod`, USGS 3DEP and SRTM), decoded and
+  shaded in the browser by `terrain.js` — one more host, fetched while the page
+  runs and never committed, for the same reason as the map lines. It is shadow
+  and light only, never a colour that could be read as radar; its credit is in
+  the map's corner while it shows. Geology was looked at and not built: little
+  for a forecaster, and its sources could not be checked from here.
+  Lightning is GLM *flashes* — never call them strikes.
   Flash density, a cell's flash rate and the lightning jump (`glm.js`, Schultz et
   al.'s 2σ method) are worked out from those flashes in the browser; the jump is
   an indicator, shown as one, never a warning or a verdict.
@@ -996,8 +1009,8 @@ bug you are looking for.
       the training page's run detail, Studies' ClinicalTrials.gov fallback and the
       weather room's providers, NOAA's AWS buckets and its map servers (the
       backup mosaic, and NHC's tropics), ECMWF's open data
-      (Google Cloud and AWS) and Pro's map lines from Natural Earth on GitHub
-      among them (below).
+      (Google Cloud and AWS), Pro's map lines from Natural Earth on GitHub
+      and Pro's terrain from the Terrain Tiles on AWS among them (below).
 - [ ] Looks right at mobile width.
 - [ ] Didn't add location data, extra repos, or a build step.
 - [ ] The relevant test suite above still passes.

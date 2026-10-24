@@ -750,6 +750,7 @@
         ['Observations', [act('Stations on the main map', 'ov:stations', 'airports, road, farm and gauge networks'), act('Storm reports', 'ov:reports'), act('Storm cells', 'ov:cells'), act('Fronts', 'ov:fronts'), act('Watches and discussions', 'ov:watches'), act('SPC mesoanalysis', 'card:meso')]],
         ['Lightning', [act('Lightning on the main map', 'ov:lightning', 'every flash, GOES-East and -West'), act('Flash density', 'ov:density')]],
         ['Tropics', [act('Hurricanes and tropical storms', 'ov:tropics', 'NHC: cones, tracks, coastal watches and warnings, the 7-day outlook')]],
+        ['The ground', [act('Terrain under the map', 'ov:terrain', "shaded relief, and the ground's height under the pointer")]],
         ['Forecasts', [act('Now and the forecast', 'card:hero'), act('The forecast discussion', 'card:afd'), MM ? row('National Blend chances', 'l=model&o=w&m=nbm.p_rain6', 'rain, thunder, snow, ice, fog') : '', MM ? row('Storm chances · HRRR-TLE', 'l=model&o=w&m=tle.p_uh') : '', act('SPC outlook on the main map', 'outlook')]],
         ['Historical', [act('Replay any day since 2006', 'replay', 'radar, warnings, the sky and stations as they were'), act('How accurate the forecast has been here', 'card:record'), MM ? row('Mesoanalysis, the last six hours', 'l=model&o=w&m=smeso.stpe') : '']]
       ];
@@ -805,7 +806,8 @@
       for (const [k, n, w] of [['lines', 'Map lines', 'states counties towns borders'], ['watches', 'Watches and discussions', 'spc tornado severe mcd mpd wpc'], ['cells', 'Storm cells', 'scit hail meso tvs tracks'],
         ['lightning', 'Lightning', 'glm flashes'], ['density', 'Flash density', 'lightning glm'], ['reports', 'Storm reports', 'lsr tornado hail wind'], ['fronts', 'Fronts', 'wpc surface analysis highs lows'],
         ['stations', 'Stations', 'metar asos rwis mesonet observations obs'], ['rings', 'Range rings', 'distance circles radar'],
-        ['tropics', 'Tropics', 'hurricane tropical storm nhc cone track watches warnings outlook cyclone']]) A(n, 'Overlay — on or off', 'ov:' + k, w);
+        ['tropics', 'Tropics', 'hurricane tropical storm nhc cone track watches warnings outlook cyclone'],
+        ['terrain', 'Terrain', 'elevation height relief hillshade mountains ground topography 3dep srtm']]) A(n, 'Overlay — on or off', 'ov:' + k, w);
       for (const [k, o] of Object.entries((root.Wx && root.Wx.OUTLOOKS) || {})) A(`SPC outlook · ${o.label}`, 'Outlook', 'outlook:' + k, 'spc convective severe risk tornado wind hail probability');
       A('SPC outlook', 'Overlay — on or off', 'outlook', 'convective risk day 1');
       A('Satellite under the map', 'Overlay', 'sat', 'infrared visible water vapour underlay');

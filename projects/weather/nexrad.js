@@ -482,8 +482,52 @@
     return { ...f, data, lut, special: { 1: 'rf' }, motion: { uE, vN } };
   }
 
+  /* ── Clutter filtering: which reflectivity gates are likely not weather ──
+     A reflectivity scan shows everything the beam came back from: rain and
+     snow, but also birds, insects, ground clutter, wind farms and
+     anomalous propagation. The radar's own correlation coefficient (CC,
+     ρhv) tells them apart at each gate: rain and snow are alike from pulse
+     to pulse (CC above about 0.97; hail and the melting layer down to about
+     0.85), while birds, bugs and clutter are not (well under 0.8).
+
+     A gate is called likely non-weather when CC there is below CC_MAX
+     **and** its reflectivity is below KEEP_DBZ. The second test is the
+     safety rule: a tornado lofting debris has low CC too — that is how a
+     debris signature is seen — and it is strong, so a strong echo is never
+     filtered, whatever its CC. Ground clutter that strong stays on the map
+     as well; that is the price, and the right way round. A gate with no CC
+     (none measured there, or no CC file) is kept: no evidence, no removal.
+
+     Returns a Uint8Array over the scan's gates, 1 where the gate is likely
+     non-weather, with the counts. `cc` is a CC scan of the same tilt and
+     moment (Level III N?C or the Level II RHO cut); it is looked up by each
+     gate's own range and azimuth, so the two need not share a grid.
+     This is a filter for reading the map, not a verdict on any echo: the
+     raw scan is always one choice away. */
+  const CLUTTER = { CC_MAX: 0.80, KEEP_DBZ: 30 };
+  function clutterMask(f, cc, opts = {}) {
+    const ccMax = opts.ccMax != null ? opts.ccMax : CLUTTER.CC_MAX, keep = opts.keepDbz != null ? opts.keepDbz : CLUTTER.KEEP_DBZ;
+    const mask = new Uint8Array(f.nRad * f.nBins);
+    let echoes = 0, removed = 0, kept = 0;
+    if (!cc) return { mask, echoes, removed, kept, cc: false };
+    const g0 = gateStart(f);
+    for (let r = 0; r < f.nRad; r++) {
+      const az = ((f.az0[r] + f.daz[r] / 2) % 360 + 360) % 360, row = r * f.nBins;
+      for (let b = 0; b < f.nBins; b++) {
+        const z = f.lut[f.data[row + b]];
+        if (!Number.isFinite(z)) continue;
+        echoes++;
+        const c = cc.lut[gate(cc, g0 + (b + 0.5) * f.gateKm, az)];
+        if (!Number.isFinite(c) || c >= ccMax) continue;
+        if (z >= keep) { kept++; continue; }
+        mask[row + b] = 1; removed++;
+      }
+    }
+    return { mask, echoes, removed, kept, cc: true };
+  }
+
   const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, SCHEMES, SCHEME_NAMES, paletteFor, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
-    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, retrying, stormRelative, locator, polarOf };
+    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, retrying, stormRelative, locator, polarOf, CLUTTER, clutterMask };
   root.Nexrad = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

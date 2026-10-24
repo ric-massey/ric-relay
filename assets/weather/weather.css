@@ -1021,8 +1021,16 @@ body[data-panel] .loopset,body[data-panel] .legend{font-size:11px}
 /* the loop's own controls */
 .radarbar .fcount{flex:none;font:12px var(--mono);color:var(--dim);min-width:3.5em;text-align:right}
 .radarbar .fcount:empty{display:none}
-.loopset{display:inline-flex;gap:4px;flex:none}
+/* the loop's speed and rest, folded behind one button that says the speed (declutter, 2026-10-24) */
+.loopset{position:relative;flex:none}
+.loopset>summary{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 8px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono);cursor:pointer;list-style:none}
+.loopset>summary::-webkit-details-marker{display:none}
+.loopset>summary::after{content:"▾";color:var(--dim);font-size:11px}
+.loopset[open]>summary{border-color:var(--accent-edge,#2d6a99)}
+.loopset .loopbox{position:absolute;right:0;bottom:calc(100% + 6px);z-index:30;display:flex;flex-direction:column;gap:8px;padding:10px;min-width:230px;background:#0b0f15;border:1px solid #4a5566}
+.loopset .loopbox label{display:flex;justify-content:space-between;align-items:center;gap:10px;white-space:nowrap;font:12px var(--mono);color:var(--dim)}
 .loopset select{min-height:32px;padding:0 4px;border-radius:3px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
+@media (pointer:coarse){ .loopset>summary,.loopset select{min-height:44px} }
 @media (max-width:640px){ .loopset,.radarbar .fcount{display:none} }  /* on a phone the slider needs the width; the loop runs at the speed last set on a wider screen */
 /* opacity and the base map, in the overlays menu */
 .ovrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:8px}
@@ -1181,9 +1189,8 @@ body[data-view="pro"]:not([data-panel]) .wsnote{top:calc(var(--tb,44px) + 8px)}
 @media (max-width:999px) and (min-width:641px){
   body[data-view="pro"]:not([data-panel]) .topbar.hasplace .brand .t{display:none}
 }
-@media (max-width:999px){
-  body[data-view="pro"]:not([data-panel]) .roomnav-toggle-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-}
+/* the rooms button is its bars at every width: its label said "weather" a few buttons from "← Weather" (declutter, 2026-10-24); a screen reader still hears it */
+body[data-view="pro"]:not([data-panel]) .roomnav-toggle-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* a phone: two rows — the wordmark, Readouts and the rooms; then the place and its controls */
 @media (max-width:640px){
   body[data-view="pro"]:not([data-panel]) .topbar.hasplace{padding:0 8px 6px}
@@ -1224,8 +1231,12 @@ body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:n
 /* menus, sheets and popovers: a brighter edge instead of a shadow */
 body[data-view="pro"] .ovpanel,body[data-view="pro"] .wsbar.open,body[data-view="pro"] .pagebox.open,body[data-view="pro"] nav.glass.roomnav-open,body[data-view="pro"] dialog.sheet,body[data-view="pro"] .wsnote,body[data-view="pro"] .pin,body[data-view="pro"] #radarcard.ctl-open .mapctl,body[data-view="pro"] .xsec:not([hidden]){border-color:#4a5566!important}
 body[data-view="pro"] dialog.sheet::backdrop{background:rgba(0,0,0,.6)}
-/* switches: monospaced capitals (a monospace capital is no wider than its small letter) */
-body[data-view="pro"] .seg button,body[data-view="pro"] .toolbtn,body[data-view="pro"] .chip,body[data-view="pro"] .backbtn,body[data-view="pro"] .wsbar button,body[data-view="pro"] .roomnav-toggle,body[data-view="pro"] .sheet h2 button,body[data-view="pro"] .replaybar .go,body[data-view="pro"] .pin .pgo,body[data-view="pro"] .hero .go{text-transform:uppercase;letter-spacing:.04em;font-family:var(--mono)}
+/* switches: monospaced. Capitals only on the kinds of map — the one strip read first, and the
+   only thing that changes what the map is; everything else in ordinary case. All in capitals,
+   the top of the page read as three bands of identical buttons (declutter, 2026-10-24: 26 of
+   the first screen's 47 controls were capitals) */
+body[data-view="pro"] .seg button,body[data-view="pro"] .toolbtn,body[data-view="pro"] .chip,body[data-view="pro"] .backbtn,body[data-view="pro"] .wsbar button,body[data-view="pro"] .roomnav-toggle,body[data-view="pro"] .sheet h2 button,body[data-view="pro"] .replaybar .go,body[data-view="pro"] .pin .pgo,body[data-view="pro"] .hero .go{font-family:var(--mono)}
+body[data-view="pro"] .maptools .kinds button{text-transform:uppercase;letter-spacing:.04em}
 body[data-view="pro"] .placebtn,body[data-view="pro"] .wstoggle #wsname{text-transform:none;letter-spacing:0}
 body[data-view="pro"] .seg button:hover,body[data-view="pro"] .toolbtn:hover,body[data-view="pro"] .chip:hover,body[data-view="pro"] .wsbar button:hover,body[data-view="pro"] .radar .zoom button:hover{border-color:#5a6678}
 /* a mode selector is one joined strip; the lit segment sits on top of its neighbours' edges */
@@ -1346,7 +1357,7 @@ body:not([data-view="pro"]) .scrubwrap .scrubticks,body:not([data-view="pro"]) .
 body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .radar .note,body[data-view="pro"] .radar .note{top:auto;bottom:62px}
 /* Compare and Trend (UI-REVIEW B3): a joined pair at the end of the model row */
 .mmline{display:inline-flex}
-.mmline button{min-height:34px;padding:0 10px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
+.mmline button{min-height:34px;padding:0 10px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 12px var(--mono);letter-spacing:.04em;cursor:pointer}
 .mmline button+button{margin-left:-1px}
 .mmline button:hover{border-color:#5a6678;position:relative}
 @media (pointer:coarse){ .mmline button{min-height:44px} }
@@ -1357,7 +1368,7 @@ body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:n
 .cardtabs{display:none}
 body[data-view="pro"]:not([data-panel]) .side#cards>.cardtabs:not([hidden]){display:flex;position:sticky;top:0;z-index:5;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;min-height:43px;align-items:center;margin:0;padding:6px 8px;gap:0;background:#05070a!important;border-bottom:1px solid #2a3340}
 .cardtabs::-webkit-scrollbar{display:none}
-.cardtabs button{flex:none;min-height:30px;padding:0 9px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.cardtabs button{flex:none;min-height:30px;padding:0 9px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 11px var(--mono);letter-spacing:.06em;cursor:pointer}
 .cardtabs button+button{margin-left:-1px}
 .cardtabs button:hover{border-color:#5a6678;position:relative}
 .cardtabs button[aria-current="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent);position:relative;z-index:1}
@@ -1368,7 +1379,7 @@ body[data-view="pro"]:not([data-panel]) .side#cards>.cardtabs:not([hidden]){disp
 /* ── The sounding, large: a panel over the map (never over the drawer it
    came from when that is docked, and under the storm warnings) ── */
 .skypop{display:none}
-body[data-view="pro"]:not([data-panel]) .skypop{display:inline-flex;align-items:center;position:absolute;top:12px;right:44px;z-index:2;min-height:28px;padding:0 9px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+body[data-view="pro"]:not([data-panel]) .skypop{display:inline-flex;align-items:center;position:absolute;top:12px;right:44px;z-index:2;min-height:28px;padding:0 9px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 11px var(--mono);letter-spacing:.06em;cursor:pointer}
 body[data-view="pro"] .skypop:hover{border-color:#5a6678}
 body[data-view="pro"] #sky{position:relative}
 body[data-view="pro"] #sky summary .lead{padding-right:60px}
@@ -1376,7 +1387,7 @@ body[data-view="pro"] #sky summary .lead{padding-right:60px}
 body[data-view="pro"]:not([data-panel]) .skyout{position:fixed;top:var(--tb,44px);left:0;right:var(--dock,0px);bottom:0;z-index:43;overflow-y:auto;overscroll-behavior:contain;padding:0 16px 24px;background:#080b10;border-right:1px solid #2a3340}
 .skyouthead{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:12px;margin:0 -16px 8px;padding:8px 16px;background:#05070a;border-bottom:1px solid #2a3340}
 .skyouthead b{font:600 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
-.skyouthead button{margin-left:auto;min-height:32px;padding:0 12px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 12px var(--mono);letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+.skyouthead button{margin-left:auto;min-height:32px;padding:0 12px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 12px var(--mono);letter-spacing:.04em;cursor:pointer}
 .skyouthead button:hover{border-color:#5a6678}
 /* in the panel the card is the page: no card chrome, its own heading and button not needed */
 .skyout #sky{max-width:1400px;margin:0 auto;padding:0;border:0!important;background:none!important}
@@ -1466,3 +1477,10 @@ body[data-view="pro"] .radar:has(> .maphint) .note{bottom:112px !important}  /* 
 .radar .maphint button{flex:none;min-width:28px;min-height:28px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;cursor:pointer}
 @media (pointer:coarse){ .radar .maphint button{min-width:40px;min-height:40px} }
 @media (max-width:640px){ .radar .maphint{bottom:84px;font-size:11.5px} body[data-view="pro"] .radar:has(> .maphint) .note{bottom:172px !important} }
+/* clutter filtering's line under the data's own (2026-10-24) */
+.maplegend .lgbase{flex-wrap:wrap}
+.lgbase .lgclut{flex:1 0 100%;padding-left:17px;color:var(--dim);font-size:11px;white-space:normal}
+.lgbase .lgclut[hidden]{display:none}
+/* Terrain (2026-10-24): shaded relief between the base map and the data */
+.radar .layer.terrain canvas{position:absolute;width:256px;height:256px}
+.radar .layer.terrain[hidden]{display:none}

@@ -563,5 +563,27 @@ console.log('\nRULE  a model run is late only when the next one should have been
   ok(MM.lateBy('nope', run, run + 99 * H) === 0 && MM.lateBy('hrrr', NaN) === 0, 'an unknown model or run is never called late');
 }
 
+console.log('\nRULE  clutter filtering hides weak non-weather echoes and never a strong one (a debris signature has low CC too)');
+{
+  /* a made-up scan: four gates on one radial, reflectivity and CC side by side */
+  const scan = (vals) => ({ nRad: 1, nBins: vals.length, gateKm: 1, firstKm: 0.5, az0: new Float32Array([0]), daz: new Float32Array([360]),
+    data: Uint8Array.from(vals.map((_, i) => i + 2)), lut: Float32Array.from([NaN, NaN, ...vals].concat(Array(256).fill(NaN)).slice(0, 256)), special: { 1: 'rf' } });
+  //                      bugs  rain   debris  clutter-weak   no echo
+  const z = scan([12,   38,    55,     22,     NaN]), cc = scan([0.45, 0.99, 0.55, 0.60, 0.3]);
+  const m = N.clutterMask(z, cc);
+  ok(m.mask[0] === 1 && m.mask[3] === 1, 'weak echoes with low CC (insects, weak clutter) are called likely non-weather');
+  ok(m.mask[1] === 0, 'rain (CC 0.99) is weather');
+  ok(m.mask[2] === 0 && m.kept === 1, 'a strong echo with low CC — how a tornado\'s debris looks — is never filtered');
+  ok(m.mask[4] === 0 && m.echoes === 4, 'a gate with no echo is not counted or filtered');
+  ok(N.clutterMask(z, null).removed === 0, 'with no CC to go on, nothing is filtered');
+  /* the real volume: KFSX's 3.1° cut, REF against its own RHO */
+  let st = L2.feed(fx('l2-KFSX-20261022-194955-001-S'));
+  for (const n of ['080', '081', '082']) st = L2.feed(fx(`l2-KFSX-20261022-194955-${n}-I`), st);
+  const r = L2.sweep(st, 15, 'REF'), c = L2.sweep(st, 15, 'RHO'), k = N.clutterMask(r, c);
+  let wrong = 0;
+  for (let i = 0; i < k.mask.length; i++) if (k.mask[i] && !(r.lut[r.data[i]] < N.CLUTTER.KEEP_DBZ)) wrong++;
+  ok(k.removed > 0 && k.removed < k.echoes && wrong === 0, `KFSX 3.1°: ${k.removed} of ${k.echoes} echoes filtered, none at ${N.CLUTTER.KEEP_DBZ} dBZ or more`);
+}
+
 console.log(failures ? `\n${failures} DECODER RULE${failures === 1 ? '' : 'S'} BROKEN` : '\nALL DECODER RULES PASS');
 process.exit(failures ? 1 : 0);

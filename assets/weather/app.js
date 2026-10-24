@@ -1302,7 +1302,7 @@
       /* Pro opens on watches and its own map lines; the rest is a tap away
          (2026-10-23: five overlays at once was a busy first look). Warnings
          are always drawn. */
-      ov: PRO ? Object.assign({ lines: true, watches: true, cells: false, fronts: false, lightning: false, density: false, reports: false, rings: false, tropics: false }, store.get("wx:ov", {})) : { lines: false, watches: false, cells: false, fronts: false, lightning: false, density: false, reports: false, rings: false, tropics: false },
+      ov: PRO ? Object.assign({ lines: true, watches: true, cells: false, fronts: false, lightning: false, density: false, reports: false, rings: false, tropics: false, terrain: false }, store.get("wx:ov", {})) : { lines: false, watches: false, cells: false, fronts: false, lightning: false, density: false, reports: false, rings: false, tropics: false },
       /* the flash density window, in minutes */
       densWin: [1, 5, 10, 20].includes(Number(store.get("wx:denswin", 5))) ? Number(store.get("wx:denswin", 5)) : 5,
       pro: { watches: [], mcds: [], mpds: [], cells: [], surface: null, reports: [], tropics: null }, measure: null,
@@ -1658,9 +1658,9 @@
       const model = Wx.inMosaic(X.a.lat, X.a.lon) && Wx.inMosaic(X.b.lat, X.b.lon) ? "hrrr" : "gfs";
       const ask = X.ask = {};
       try {
-        const d = await Wx.xsec(model, X.a, X.b);
+        const [d, gp] = await Promise.all([Wx.xsec(model, X.a, X.b), PRO ? groundProfile(X.a, X.b) : null]);
         if (X.ask !== ask) return;
-        X.data = d; X.model = model;
+        X.data = d; X.model = model; X.ground = gp;
         const now = Date.now() / 1000;
         X.hour = Math.max(0, d ? d.times.findIndex((t) => t > now - 1800) : 0);
         if (!d) X.err = "The model sent nothing back for this line.";
@@ -1680,7 +1680,7 @@
         <div class="seg" role="group" aria-label="Shading">${seg("rh", "Moisture")}${seg("ws", "Wind")}</div>
         <div class="hourpick"><span class="num" style="min-width:52px">${esc(k.hour(t))}</span><input type="range" id="xshour" min="0" max="${d.times.length - 1}" step="1" value="${X.hour}" aria-label="Cross-section hour"><span class="dim num">+12 h</span></div>
         <canvas id="xscv" role="img" aria-label="Cross-section from A to B: ${X.view === "rh" ? "relative humidity" : "wind speed"} shaded, potential temperature in lines, the ground in brown"></canvas>
-        <p class="nextnote">${X.view === "rh" ? "Shading: humidity — white where the air is near saturation (cloud likely), clear where it is dry." : "Shading: wind speed, knots — the jet stream shows as the bright core aloft."} Lines: potential temperature every 4 K; lines packed close are stable layers, wide gaps are well-mixed air. Brown is the ground. Twelve columns from Open-Meteo, joined.</p>`;
+        <p class="nextnote">${X.view === "rh" ? "Shading: humidity — white where the air is near saturation (cloud likely), clear where it is dry." : "Shading: wind speed, knots — the jet stream shows as the bright core aloft."} Lines: potential temperature every 4 K; lines packed close are stable layers, wide gaps are well-mixed air. Brown is the ground as the model sees it${X.ground ? "; the thin tan line is the real ground (USGS 3DEP and SRTM), which the model smooths" : ""}. Twelve columns from Open-Meteo, joined.</p>`;
       paintXsec($("#xscv"));
     }
     function paintXsec(cv) {
@@ -1757,6 +1757,13 @@
       x.fillStyle = "#4a3a2b"; x.beginPath(); x.moveTo(L - C / 2, H - B);
       groundAt.forEach((ps, gx) => x.lineTo(L + gx * C, Math.min(H - B, Y(ps))));
       x.lineTo(L + (gw - 1) * C + C / 2, H - B); x.closePath(); x.fill();
+      /* the real ground (Pro): the terrain tiles' heights on the same pressure axis, through the
+         standard atmosphere — a thin line over the model's own, smoother ground */
+      if (X.ground) {
+        x.strokeStyle = "#e0b07a"; x.lineWidth = 1.5; x.beginPath();
+        X.ground.forEach((m, j) => { const px = L - C / 2 + j / (X.ground.length - 1) * ((gw - 1) * C + C), py = Math.min(H - B, Y(TR.pressureAt(m))); if (j) x.lineTo(px, py); else x.moveTo(px, py); });
+        x.stroke();
+      }
       /* axes */
       x.fillStyle = "#c8d0da"; x.font = "11px " + getComputedStyle(document.body).fontFamily; x.textAlign = "right";
       for (const p of [1000, 850, 700, 500, 300, 200]) { const y = Y(p); x.fillText(String(p), L - 6, y + 4); x.fillStyle = "rgba(255,255,255,.12)"; x.fillRect(L, y, W - L - Rm, 1); x.fillStyle = "#c8d0da"; }
@@ -1887,8 +1894,14 @@
         tilts(); return;
       }
       scans = scans.slice(-12);
+      /* reflectivity: the CC scan of the same tilt, for clutter filtering —
+         listed once; each file is fetched only when filtering is on */
+      let ccs = [];
+      if (mode === "l3:ref") try { ccs = await NX.scans(site, tiltCode(NX.PRODUCTS.cc), { mins: 70 }); } catch (e) { ccs = []; }
+      if (R.mode !== mode || !R.site || R.site.id !== site) return;
+      const ccFor = (t) => { const c = ccs.reduce((b, x) => (!b || Math.abs(x.t - t) < Math.abs(b.t - t) ? x : b), null); return c && Math.abs(c.t - t) < 3 * 60e3 ? c.url : null; };
       R.valid = scans[scans.length - 1].t;
-      setFrames(scans.map((s) => ({ t: s.t, l3: { url: s.url, prod: mode.slice(3) } })));
+      setFrames(scans.map((s) => ({ t: s.t, l3: { url: s.url, prod: mode.slice(3), ccUrl: mode === "l3:ref" ? ccFor(s.t) : null } })));
       tilts(); renderSources();
     }
     /* decoded scans, kept so a refresh that rebuilds the loop does not fetch
@@ -1907,13 +1920,19 @@
         const a = L2.angles(st, q.mom);
         if (!a.length) throw new Error(new Date(q.archive.t).getUTCFullYear() < 2008 ? "a volume before 2008, in an older format this page does not read" : "no " + q.mom + " in this volume");
         const best = a.reduce((b, x) => (Math.abs(x.angle - q.angle) < Math.abs(b.angle - q.angle) ? x : b), a[0]);
-        return L2.sweep(st, best.elevNum, q.mom);
+        return withCC(L2.sweep(st, best.elevNum, q.mom), st, best.elevNum);
       }
       const bufs = await Promise.all(q.urls.map(async (u) => { const r = await NX.retrying(fetch)(u); if (!r.ok) throw new Error("HTTP " + r.status); return new Uint8Array(await r.arrayBuffer()); }));
       let st = null;
       for (const b of bufs) st = L2.feed(b, st);
       const sw = L2.sweep(st, q.elevNum, q.mom);
       if (!sw) throw new Error("no " + q.mom + " in this cut");
+      return withCC(sw, st, q.elevNum);
+    }
+    /* clutter filtering's evidence: reflectivity's own cut holds CC (RHO) at
+       the same moment, so it costs nothing to keep beside it */
+    function withCC(sw, st, elevNum) {
+      if (sw && sw.moment === "REF") sw.cc = L2.sweep(st, elevNum, "RHO") || null;
       return sw;
     }
     /* The storm motion taken out of storm-relative velocity above the lowest
@@ -2010,11 +2029,13 @@
       return f.cv;
     }
     function paintL3(f, w, h, left, top) {
-      const cv = frameCanvas(f, w, h), ctx = cv.getContext("2d"), key = `${R.z}|${left}|${top}`;
+      const cv = frameCanvas(f, w, h), ctx = cv.getContext("2d"), key = `${R.z}|${left}|${top}|${R.clutter}`;
       if (!f.l3.file) { l3File(f); if (f.painted) { ctx.clearRect(0, 0, w, h); f.painted = null; } return; }
       if (f.painted === key) return;
       f.painted = key;
       const F = f.l3.file, col = f.l3.colors, img = ctx.createImageData(w, h), px = new Uint32Array(img.data.buffer);
+      /* clutter filtering: a likely non-weather gate is skipped, or drawn a flat grey when marked */
+      const cm = clutterOf(f), mask = cm && cm.cc ? cm.mask : null, MARK = 0x8c8c8c8c >>> 0, hide = R.clutter === "filter";
       const azi = NX.azIndex(F), gk = F.gateKm, nb = F.nBins, data = F.data, g0 = NX.gateStart(F), rmax = g0 + nb * gk;
       const lat0 = F.lat, lon0 = F.lon, rad = Math.PI / 180;
       const sx = lngX(lon0, R.z) - left, sy = latY(lat0, R.z) - top;
@@ -2031,8 +2052,10 @@
           if (r >= rmax || r < g0) continue;
           const ri = azi[(q.az * 10) | 0];                               // tenths of a degree, clockwise from north
           if (ri < 0) continue;
-          const c = col[data[ri * nb + (((r - g0) / gk) | 0)]];
-          if (c) px[row + x] = c;
+          const gi = ri * nb + (((r - g0) / gk) | 0), c = col[data[gi]];
+          if (!c) continue;
+          if (mask && mask[gi]) { if (!hide) px[row + x] = MARK; continue; }
+          px[row + x] = c;
         }
       }
       ctx.putImageData(img, 0, 0);
@@ -2115,6 +2138,7 @@
       row.hidden = !P;
       if (row.hidden) return;
       siteOptions();
+      const cp = $("#clutterpick"); if (cp) { cp.hidden = R.mode !== "l3:ref"; $("#cluttersel").value = R.clutter; }
       const btns = $("#tiltbtns");
       if (P.tilts.length < 2 && !P.l2) { btns.innerHTML = ""; return; }
       const f = R.frames[R.frame], el0 = f && f.l3 && f.l3.file ? f.l3.file.elev : null, b = [];
@@ -2755,7 +2779,11 @@
       return out.join(" · ");
     }
     function readoutAt(lat, lon) {
-      const w0 = warnsAt(lat, lon), a0 = readoutFrame(lat, lon), a = a0 && w0 ? `${a0} · ${w0}` : a0 || w0 || null;
+      const w0 = warnsAt(lat, lon), a1 = readoutFrame(lat, lon), a2 = a1 && w0 ? `${a1} · ${w0}` : a1 || w0 || null;
+      /* with Terrain on, the ground's height under the pointer, above sea level */
+      const gh = PRO && R.ov.terrain ? groundAt(lat, lon) : null;
+      const g = gh == null ? "" : `ground ${U() !== "metric" ? Math.round(gh * 3.28084).toLocaleString() + " ft" : Math.round(gh).toLocaleString() + " m"}`;
+      const a = a2 && g ? `${a2} · ${g}` : a2 || g || null;
       const D = R.ov.density && LTG.at && R.mode !== "replay" ? ltgDensity() : null;
       if (!D) return a;
       const n = GL.densityAt(D, lat, lon), b = `${n} flash${n === 1 ? "" : "es"} in this 8 km square, ${R.densWin === 1 ? "last minute" : `last ${R.densWin} min`}`;
@@ -2770,8 +2798,14 @@
         const q = NX.polarOf(F.lat, F.lon, F.elev || 0, lat, lon), km = q.km, az = q.az, v = NX.valueAt(F, f.l3.prod, km, az);
         if (km > F.nBins * F.gateKm) return null;
         const beam = NX.beamHeightKm(km, F.elev) + F.heightM / 1000;
-        const what = !v ? "no echo" : v.rf ? "range folded" : v.cls ? `${v.cls[1]} (${v.cls[0]})`
+        let what = !v ? "no echo" : v.rf ? "range folded" : v.cls ? `${v.cls[1]} (${v.cls[0]})`
           : `${P.short} ${f.l3.prod === "cc" ? v.value.toFixed(2) : f.l3.prod === "zdr" || f.l3.prod === "kdp" ? v.value.toFixed(1) : Math.round(v.value)}${P.unit ? " " + P.unit : ""}${v.topped ? " (topped)" : ""}`;
+        /* with filtering on, the gate's CC is the reason, said plainly — and "likely", because it is a filter, not a verdict */
+        const cm = v && !v.rf && clutterOf(f);
+        if (cm && cm.cc && F.cc) {
+          const c = F.cc.lut[NX.gate(F.cc, km, az)];
+          if (Number.isFinite(c)) what += c < NX.CLUTTER.CC_MAX ? (v.value < NX.CLUTTER.KEEP_DBZ ? ` · CC ${c.toFixed(2)}: likely not weather (birds, insects, ground clutter)${R.clutter === "filter" ? " — filtered" : ""}` : ` · CC ${c.toFixed(2)}, but strong: kept (debris looks like this too)`) : ` · CC ${c.toFixed(2)}`;
+        }
         /* the beam's centre above sea level: the radar's own height plus the beam's rise */
         return `${what} · ${dist(q.groundKm)} ${Math.round(az)}° from ${F.site || "the radar"} · beam ${U() !== "metric" ? Math.round(beam * 3.28084) + " kft" : beam.toFixed(1) + " km"} MSL`;
       }
@@ -2792,6 +2826,72 @@
         return `${L.field.label}: ${MM.say(L.field.unit, v, U())} · ${MM.SOURCES[f.model.src].analysis ? `${MM.SOURCES[f.model.src].server ? "mesoanalysis" : "HRRR analysis"} ${new Date(f.t).toISOString().slice(11, 13)}Z` : runHour(f.model)}`;
       }
       return null;
+    }
+
+    /* ── Terrain (2026-10-24, Ric: "Geological and elevation layers?" then
+       "Both"): the ground's shape, shaded under the data, from the open
+       Terrain Tiles on AWS (terrain.js says what they are). A tile is decoded
+       to heights once and kept a while: the shading is drawn from them, and
+       the readout and the cross-section read them. Shadow and light only,
+       never a colour, so nothing on the map can be mistaken for radar. ── */
+    const TR = window.Terrain, terrL = $("#radarterrain"), terrTiles = new Map(), terrElev = new Map(), terrDone = new Map();
+    function terrainElev(z, x, y) {
+      const key = `${z}/${x}/${y}`;
+      if (!terrElev.has(key)) {
+        const p = fetch(TR.url(z, x, y)).then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.blob(); }).then((b) => createImageBitmap(b)).then((bm) => {
+          const cv = document.createElement("canvas"); cv.width = cv.height = TR.TILE;
+          const g = cv.getContext("2d", { willReadFrequently: true }); g.drawImage(bm, 0, 0);
+          const e = TR.decode(g.getImageData(0, 0, TR.TILE, TR.TILE).data);
+          terrDone.set(key, e); if (terrDone.size > 96) terrDone.delete(terrDone.keys().next().value);
+          return e;
+        });
+        p.catch(() => terrElev.delete(key));
+        terrElev.set(key, p);
+        if (terrElev.size > 96) terrElev.delete(terrElev.keys().next().value);
+      }
+      return terrElev.get(key);
+    }
+    /* the ground's height at a point, from a tile already read at this zoom — or null */
+    function groundAt(lat, lon) {
+      if (!TR) return null;
+      const t = TR.tileOf(lat, lon, Math.min(TR.MAXZ, R.z)), e = terrDone.get(`${t.z}/${t.x}/${t.y}`);
+      return e ? e[t.py * TR.TILE + t.px] : null;
+    }
+    function placeTerrain(w, h, left, top) {
+      if (!terrL || !TR) return;
+      const on = PRO && !!R.ov.terrain;
+      terrL.hidden = !on;
+      if ($("#terraincredit")) $("#terraincredit").hidden = !on;
+      if (!on) { for (const c of terrTiles.values()) c.remove(); terrTiles.clear(); return; }
+      const z = R.z, n = 2 ** z, T = TR.TILE, seen = new Set();
+      /* the relief is a few pixels tall at the national view; exaggerate it there */
+      const ex = z <= 5 ? 6 : z <= 7 ? 3 : z <= 9 ? 1.8 : 1.2;
+      for (let tx = Math.floor(left / T); tx <= Math.floor((left + w) / T); tx++) for (let ty = Math.floor(top / T); ty <= Math.floor((top + h) / T); ty++) {
+        if (ty < 0 || ty >= n) continue;
+        const wx = ((tx % n) + n) % n, key = `${z}/${tx}/${ty}`;
+        seen.add(key);
+        let c = terrTiles.get(key);
+        if (!c) {
+          c = document.createElement("canvas"); c.width = c.height = T; c.className = "ttile";
+          terrL.appendChild(c); terrTiles.set(key, c);
+          const lat = yLat((ty + 0.5) * T, z);
+          terrainElev(z, wx, ty).then((e) => { if (c.isConnected) c.getContext("2d").putImageData(new ImageData(TR.shade(e, T, T, TR.metresPerPixel(lat, z), { ex }), T, T), 0, 0); }, () => {});
+        }
+        c.style.transform = `translate(${tx * T - left}px,${ty * T - top}px)`;
+      }
+      for (const [key, c] of terrTiles) if (!seen.has(key)) { c.remove(); terrTiles.delete(key); }
+    }
+    /* the real ground along a line, metres at `n` points — for the cross-section; null if it could not be read */
+    async function groundProfile(a, b, n = 160) {
+      if (!TR) return null;
+      const km = Wx.distanceM(a.lat, a.lon, b.lat, b.lon) / 1000, z = km > 700 ? 8 : km > 250 ? 9 : 10;
+      const pts = Array.from({ length: n }, (_, i) => { const f = i / (n - 1); return TR.tileOf(a.lat + (b.lat - a.lat) * f, a.lon + (b.lon - a.lon) * f, z); });
+      try {
+        const tiles = new Map();
+        for (const t of pts) { const k = `${t.z}/${t.x}/${t.y}`; if (!tiles.has(k)) tiles.set(k, terrainElev(t.z, t.x, t.y)); }
+        const got = new Map(await Promise.all([...tiles].map(async ([k, p]) => [k, await p])));
+        return pts.map((t) => got.get(`${t.z}/${t.x}/${t.y}`)[t.py * TR.TILE + t.px]);
+      } catch (e) { return null; }
     }
 
     function place(layer, cache, url, w, h, left, top, rain) {
@@ -3369,6 +3469,7 @@
       const w = el.clientWidth, h = el.clientHeight;
       const left = R.cx - w / 2, top = R.cy - h / 2;
       place(baseL, baseTiles, (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`, w, h, left, top);
+      placeTerrain(w, h, left, top);
       for (const s of sats) place(s.el, s.tiles, (z, x, y) => Wx.satTile(s.layer, z, x, y, satAt), w, h, left, top);
       syncPastSat(w, h, left, top);
       R.frames.forEach((f, i) => {
@@ -3530,6 +3631,7 @@
       LOOP[k] = v; store.set("wx:loop", LOOP);
       if ($("#loopspeed")) $("#loopspeed").value = String(LOOP.speed);
       if ($("#loopdwell")) $("#loopdwell").value = String(LOOP.dwell);
+      if ($("#loopsum")) $("#loopsum").textContent = $("#loopspeed") ? $("#loopspeed").selectedOptions[0].textContent : LOOP.speed + "×";
     }
     /* auto: the page started the loop by itself (a load, a new kind of map) —
        Pro then rests on the newest frame for three seconds first, so the
@@ -3750,6 +3852,33 @@
       if (lo) { lo.value = String(R.linesOp); lo.addEventListener("input", () => { R.linesOp = Number(lo.value); store.set("wx:linesop", R.linesOp); linesOp(); }); }
       if (ns) { ns.value = R.names; ns.addEventListener("change", () => { R.names = ns.value; store.set("wx:names", R.names); drawGeo(); }); }
     }
+    /* ── Clutter filtering (2026-10-24): all echoes, only what the radar's own
+       CC says is likely weather, or everything with the rest marked grey.
+       Pro starts on all — raw is the analyst's view — and remembers the
+       choice in this browser. NX.clutterMask holds the rule and its reasons;
+       a strong echo is never filtered, because a tornado's debris has low CC. ── */
+    R.clutter = PRO ? store.get("wx:clutter", "raw") : "raw";
+    if (!["raw", "filter", "mark"].includes(R.clutter)) R.clutter = "raw";
+    /* the mask for a reflectivity frame, or null when the frame has no CC to go on (yet) */
+    function clutterOf(f) {
+      const x = f.l3, F = x && x.file;
+      if (!F || x.prod !== "ref" || R.clutter === "raw") return null;
+      if (F.clut) return F.clut;
+      if (F.cc === undefined) {
+        if (F.code === "L2" || !x.ccUrl) F.cc = null;
+        else if (!x.ccP) x.ccP = cached(x.ccUrl, () => NX.load(x.ccUrl)).then((c) => { F.cc = c; }, () => { F.cc = null; F.ccErr = true; }).then(() => { F.clut = null; f.painted = null; if (R.frames[R.frame] === f) { draw(); legendBase(); } });
+        if (F.cc === undefined) return null;
+      }
+      return (F.clut = NX.clutterMask(F, F.cc));
+    }
+    function setClutter(v) {
+      if (!["raw", "filter", "mark"].includes(v) || v === R.clutter) return;
+      R.clutter = v; store.set("wx:clutter", v);
+      const sel = $("#cluttersel"); if (sel) sel.value = v;
+      for (const f of R.frames) f.painted = null;
+      draw(); legendBase();
+    }
+    if ($("#cluttersel")) { $("#cluttersel").value = R.clutter; $("#cluttersel").addEventListener("change", (e) => setClutter(e.target.value)); }
     R.pal = { ref: "nws", vel: "nws" };
     if (PRO && NX) for (const k of ["ref", "vel"]) { const v = store.get("wx:pal" + k, "nws"); if (NX.SCHEMES[k][v]) R.pal[k] = v; }
     function lutFor(L) { return MM.table(L.field.pal, 255, L.field.pal === "dbz" && NX ? NX.paletteFor("ref", R.pal.ref) : null); }
@@ -3779,7 +3908,8 @@
     const LGOFF = new Set();
     const LG = () => [
       { k: "sat", on: () => !!R.sat, name: () => "Satellite under", src: () => { const o = $("#satsel") && $("#satsel").selectedOptions[0]; return o && o.value ? o.textContent : ""; }, col: "#9aa5b4", btn: null },
-      { k: "lines", on: () => R.ov.lines, name: () => "Map lines", src: () => "Natural Earth", col: "#c3cad4", btn: '[data-ov="lines"]' },
+      /* map lines are the map's furniture, on by default and credited in the corner: the legend names them only once they are off (declutter, 2026-10-24) */
+      { k: "lines", on: () => R.ov.lines, name: () => "Map lines", src: () => "Natural Earth", col: "#c3cad4", btn: '[data-ov="lines"]', quiet: true },
       { k: "watches", on: () => R.ov.watches, name: () => "Watches & discussions", src: () => "SPC · WPC", at: () => R.pro.wGot, every: 120e3, col: "#f783ac", btn: '[data-ov="watches"]' },
       { k: "cells", on: () => R.ov.cells, name: () => "Storm cells", src: () => "NEXRAD", at: () => R.pro.cGot, every: 120e3, col: "#e9ecef", btn: '[data-ov="cells"]' },
       { k: "lightning", on: () => R.ov.lightning, name: () => "Lightning", src: () => "GOES GLM · 10 min", at: () => LTG.at, every: 60e3, col: "#ffd43b", btn: '[data-ov="lightning"]' },
@@ -3790,13 +3920,14 @@
       { k: "outlook", on: () => R.outlook, name: () => "SPC outlook", src: () => (Wx.OUTLOOKS[R.olSel] || {}).label || "Day 1 · categorical", at: () => { const L = outlookList(), f = L && L.find((o) => o.issued); return f ? f.issued : null; }, col: "#69db7c", btn: "#outlooktoggle", issued: true },
       { k: "rings", on: () => R.ov.rings, name: () => "Range rings", src: () => (U() !== "metric" ? "every 25 mi" : "every 50 km"), col: "#c3cad4", btn: '[data-ov="rings"]' },
       { k: "tropics", on: () => R.ov.tropics, name: () => "Tropics", src: () => "NHC", at: () => R.pro.tAt, every: 600e3, col: "#ff922b", btn: '[data-ov="tropics"]' },
+      { k: "terrain", on: () => !!R.ov.terrain, name: () => "Terrain", src: () => "USGS 3DEP · SRTM", col: "#c8a27a", btn: '[data-ov="terrain"]' },
     ];
     let lgSatWas = "";
     function legendRows() {
       const box = $("#lgrows");
       if (!PRO || !box) return;
       const k = clk(), now = Date.now();
-      box.innerHTML = LG().filter((d) => d.on() || LGOFF.has(d.k)).map((d) => {
+      box.innerHTML = LG().filter((d) => d.quiet ? !d.on() : d.on() || LGOFF.has(d.k)).map((d) => {
         const on = d.on(), t = d.at ? d.at() : null;
         /* fetched more than three refreshes (and five minutes) ago: late */
         const late = on && t && d.every && now - t > 3 * d.every + 300e3;
@@ -3847,6 +3978,16 @@
       const fr = f && !f.future && !f.model && !f.mrms && !f.abi && !f.nc && R.mode !== "replay" && !(f.l3 && f.l3.l2 && f.l3.l2.archive) ? radarFresh() : null;
       const late = !!((fr && (fr.stale || fr.frozen)) || ((R.mode === "mrms" || R.mode === "abi") && feedLate()) || (f && f.model && R.mm.late && f.model.run === R.mm.run));
       b.classList.toggle("stale", late);
+      /* clutter filtering, said on the line of the data it changes: how much it took out, or why it could not */
+      const lc = $("#lgclut");
+      if (lc) {
+        const cm = f && f.l3 && f.l3.prod === "ref" && R.clutter !== "raw" ? clutterOf(f) : null, F = f && f.l3 && f.l3.file;
+        const t = !f || !f.l3 || f.l3.prod !== "ref" || R.clutter === "raw" || !F ? ""
+          : !cm ? "filter: reading CC…"
+          : !cm.cc ? `filter off: no CC ${F.ccErr ? "(it did not load)" : "for this scan"}`
+          : `${R.clutter === "filter" ? "filtered" : "marked grey"}: ${cm.echoes ? Math.round(cm.removed / cm.echoes * 100) : 0}% of echoes likely not weather`;
+        lc.textContent = t; lc.hidden = !t;
+      }
       /* a new kind of map brings its data back into view */
       if (R.lgMode !== R.mode) { R.lgMode = R.mode; el.classList.remove("datahide"); b.setAttribute("aria-pressed", "true"); }
     }
@@ -4299,7 +4440,7 @@
     /* the layers, in the link's words (no place in them) — a workstation
        panel and a saved workspace are written in the same words */
     function layerString() {
-      const ov = [!R.ov.lines && "x", R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r", R.ov.rings && "g", R.ov.tropics && "h"].filter(Boolean).join("");
+      const ov = [!R.ov.lines && "x", R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r", R.ov.rings && "g", R.ov.tropics && "h", R.ov.terrain && "e"].filter(Boolean).join("");
       return `l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}${R.mm.back ? "." + R.mm.back : ""}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
     }
     /* the map's middle to about 10 km, and its zoom */
@@ -4323,7 +4464,7 @@
       }
       const o = q.get("o");
       if (o != null) {
-        R.ov = { lines: !o.includes("x"), watches: o.includes("w"), cells: o.includes("c"), fronts: o.includes("f"), lightning: o.includes("l"), density: o.includes("d"), reports: o.includes("r"), rings: o.includes("g"), tropics: o.includes("h") };
+        R.ov = { lines: !o.includes("x"), watches: o.includes("w"), cells: o.includes("c"), fronts: o.includes("f"), lightning: o.includes("l"), density: o.includes("d"), reports: o.includes("r"), rings: o.includes("g"), tropics: o.includes("h"), terrain: o.includes("e") };
         R.stations = o.includes("s"); R.outlook = o.includes("o");
         $("#stationtoggle").setAttribute("aria-pressed", String(R.stations));
         $("#outlooktoggle").setAttribute("aria-pressed", String(R.outlook));
@@ -4831,6 +4972,8 @@
       setLoop("speed", LOOP.speed);
       $("#loopspeed").addEventListener("change", (e) => setLoop("speed", Number(e.target.value) || 1));
       $("#loopdwell").addEventListener("change", (e) => setLoop("dwell", Number(e.target.value) || 1600));
+      /* the loop's menu closes on a click anywhere else, as the other menus do */
+      document.addEventListener("click", (e) => { const d = $("#loopset"); if (d && d.open && !e.target.closest("#loopset")) d.open = false; });
     }
     if ($("#opacity")) $("#opacity").addEventListener("input", (e) => setOpacity(Number(e.target.value) / 100));
     if ($("#basesel")) $("#basesel").addEventListener("change", (e) => setBase(e.target.value));

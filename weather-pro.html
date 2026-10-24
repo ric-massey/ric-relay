@@ -32,7 +32,7 @@
   <link rel="preload" href="assets/weather/fonts/IBMPlexMono-600.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/weather/fonts/IBMPlexMono-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/weather/fonts/IBMPlexSans.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/weather/weather.css?v=59">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=60">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -136,6 +136,7 @@
                 <button type="button" data-ov="density" aria-pressed="false" title="How many flashes fell in each 8 km square over a window you choose">Flash density</button>
                 <button type="button" data-ov="reports" aria-pressed="false" title="The NWS's local storm reports from the last 24 hours: tornadoes, hail, wind, floods, snow">Storm reports</button>
                 <button type="button" data-ov="fronts" aria-pressed="false" title="WPC's surface analysis: fronts, highs and lows">Fronts</button>
+                <button type="button" data-ov="terrain" aria-pressed="false" title="The ground's shape, shaded, under the data — and its height in the readout (USGS 3DEP and SRTM, via the Terrain Tiles on AWS)">Terrain</button>
                 <button type="button" id="stationtoggle" aria-pressed="false" title="Weather stations: airports, road, farm and gauge networks; the station model from zoom 8">Stations</button>
                 <button type="button" id="outlooktoggle" aria-pressed="false" title="SPC's convective outlook for today">SPC outlook</button>
                 <button type="button" data-ov="rings" aria-pressed="false" title="Range rings around the radar on screen, every 25 mi or 50 km (Y)">Range rings</button>
@@ -191,6 +192,8 @@
             <button type="button" data-tilt="2" aria-pressed="false">3rd</button>
             <button type="button" data-tilt="3" aria-pressed="false">4th</button>
           </span>
+          <!-- clutter filtering (2026-10-24): reflectivity only; the radar's own CC decides, never a guess from the colours -->
+          <label class="sitepick" id="clutterpick" hidden title="Every echo the radar saw, or only what its own dual-pol (CC) says is likely weather. Strong echoes are always kept — a tornado's debris has low CC too"><span class="seglab">Echoes</span><select id="cluttersel" aria-label="Clutter filtering"><option value="raw">All · raw</option><option value="filter">Weather only · filtered</option><option value="mark">Mark non-weather</option></select></label>
         </div>
         </div>
         <div class="modelbar pro-only" id="abibar" hidden>
@@ -237,6 +240,7 @@
         </div>
         <div class="radar" id="radar" role="img" aria-label="Map">
           <div class="layer base" id="radarbase"></div>
+          <div class="layer terrain" id="radarterrain" aria-hidden="true"></div>
           <div class="layer sat" id="radarsat"></div>
           <div id="radarframes" class="frameslayer"></div>
           <canvas class="layer geo" id="radargeo" aria-hidden="true"></canvas>
@@ -257,13 +261,13 @@
           <!-- the legend (UI-REVIEW B1): what is on the map and how old each
                piece is, one line a layer; click a line to hide or show it -->
           <div class="mainst maplegend" id="maplegend" role="group" aria-label="On the map">
-            <button type="button" class="lgrow lgbase" id="lgbase" aria-pressed="true" title="Hide or show the data (the map stays)"><i class="lgsw" aria-hidden="true"></i><span class="pst" id="mainstamp" aria-live="polite"></span></button>
+            <button type="button" class="lgrow lgbase" id="lgbase" aria-pressed="true" title="Hide or show the data (the map stays)"><i class="lgsw" aria-hidden="true"></i><span class="pst" id="mainstamp" aria-live="polite"></span><span class="lgclut" id="lgclut" hidden></span></button>
             <p class="lgnote" id="lgnote" hidden></p>
             <p class="lgnote lgload" id="lgload" aria-live="polite" hidden></p>
             <div class="lgrows" id="lgrows"></div>
           </div>
           <button type="button" class="layersbtn pro-only" id="layersbtn" aria-controls="mapctl" aria-expanded="false" title="Layers, overlays, replay"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l6.5 3.5L8 8.5 1.5 5zM1.5 8L8 11.5 14.5 8M1.5 11L8 14.5 14.5 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="layername">Layers</span></button>
-          <span class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · NEXRAD<span id="satcredit" hidden> &amp; GOES</span> via <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">IEM</a><span id="noaacredit" hidden> · backup mosaic <a href="https://www.nssl.noaa.gov/projects/mrms/" target="_blank" rel="noopener">NOAA MRMS</a></span><span id="awscredit" hidden> · NOAA open data on <a href="https://registry.opendata.aws/collab/noaa/" target="_blank" rel="noopener">AWS</a></span><span id="necredit"> · lines <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a></span><span id="eccredit" hidden> · © <a href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF</a> open data, CC BY 4.0</span></span>
+          <span class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · NEXRAD<span id="satcredit" hidden> &amp; GOES</span> via <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">IEM</a><span id="noaacredit" hidden> · backup mosaic <a href="https://www.nssl.noaa.gov/projects/mrms/" target="_blank" rel="noopener">NOAA MRMS</a></span><span id="awscredit" hidden> · NOAA open data on <a href="https://registry.opendata.aws/collab/noaa/" target="_blank" rel="noopener">AWS</a></span><span id="necredit"> · lines <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a></span><span id="terraincredit" hidden> · terrain <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">USGS 3DEP, SRTM and others</a> via AWS</span><span id="eccredit" hidden> · © <a href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF</a> open data, CC BY 4.0</span></span>
         </div>
         <div class="radarbar">
           <button class="play" type="button" id="play" aria-label="Play radar loop" title="Play or pause (Space)"></button>
@@ -274,10 +278,13 @@
             <span class="scrubtip num" id="scrubtip" aria-hidden="true"></span>
           </div>
           <span class="fcount num" id="fcount" aria-label="Frame"></span>
-          <span class="loopset pro-only" role="group" aria-label="Loop">
-            <select id="loopspeed" aria-label="Loop speed" title="Loop speed ([ and ])"><option value="0.5">½×</option><option value="1">1×</option><option value="2">2×</option><option value="3">3×</option></select>
-            <select id="loopdwell" aria-label="Pause on the newest frame" title="How long the loop rests on the newest frame"><option value="800">rest ½ s</option><option value="1600">rest 1½ s</option><option value="3200">rest 3 s</option><option value="5000">rest 5 s</option></select>
-          </span>
+          <details class="loopset pro-only" id="loopset">
+            <summary title="Loop speed and how long it rests on the newest frame ([ and ] change the speed)"><span class="sr">Loop speed </span><span id="loopsum">1×</span></summary>
+            <div class="loopbox" role="group" aria-label="Loop">
+              <label>Speed <select id="loopspeed" aria-label="Loop speed"><option value="0.5">½×</option><option value="1">1×</option><option value="2">2×</option><option value="3">3×</option></select></label>
+              <label>Rest on newest <select id="loopdwell" aria-label="Pause on the newest frame"><option value="800">½ s</option><option value="1600">1½ s</option><option value="3200">3 s</option><option value="5000">5 s</option></select></label>
+            </div>
+          </details>
           <span class="when num" id="when"></span>
         </div>
         <div class="legend" id="legend"><span>light</span><i aria-hidden="true"></i><span>heavy</span></div>
@@ -448,7 +455,7 @@
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
 <script src="projects/weather/bzip2.js?v=1"></script>
-<script src="projects/weather/nexrad.js?v=8"></script>
+<script src="projects/weather/nexrad.js?v=9"></script>
 <script src="projects/weather/level2.js?v=4"></script>
 <script src="projects/weather/glm.js?v=3"></script>
 <script src="projects/weather/abi.js?v=2"></script>
@@ -457,7 +464,8 @@
 <script src="projects/weather/modelmaps.js?v=10"></script>
 <script src="projects/weather/mrms.js?v=2"></script>
 <script src="projects/weather/mapgeo.js?v=2"></script>
-<script src="assets/weather/workstation.js?v=21"></script>
-<script src="assets/weather/app.js?v=56"></script>
+<script src="projects/weather/terrain.js?v=1"></script>
+<script src="assets/weather/workstation.js?v=22"></script>
+<script src="assets/weather/app.js?v=57"></script>
 </body>
 </html>
