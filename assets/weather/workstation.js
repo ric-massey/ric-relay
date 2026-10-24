@@ -116,11 +116,25 @@
     clean({ name: 'Tropical', main: 'l=abi&o=h&g=b9.conus.auto', layout: 'grid',
       panels: ['l=comp&o=h', 'l=model&o=h&m=gfs.mslp', 'l=model&o=h&m=ecmwf.wind10'],
       cards: { order: ['alerts', 'nearby', 'national', 'hero', 'afd', 'models', 'sky', 'record', 'sources', 'meso'], hidden: ['meso', 'sky'] } }),
-    /* fire weather: wind and gusts, how dry the air is (dew point), GOES's
-       fire-detection picture, and lightning */
-    clean({ name: 'Fire Weather', main: 'l=model&o=l&m=hrrr.gust', layout: 'grid',
-      panels: ['l=model&o=&m=hrrr.td2m', 'l=abi&o=l&g=fire.conus.auto', 'l=model&o=&m=hrrr.wind10'],
+    /* fire weather: the hot-dry-windy index (wind and dry air together),
+       gusts, smoke at the ground, GOES's fire-detection picture, lightning
+       (smoke and HDW added 2026-10-24) */
+    clean({ name: 'Fire Weather', main: 'l=model&o=l&m=hrrr.hdw', layout: 'grid',
+      panels: ['l=model&o=&m=hrrr.gust', 'l=abi&o=l&g=fire.conus.auto', 'l=model&o=&m=hrrr.smoke'],
       cards: { order: ['alerts', 'nearby', 'hero', 'afd', 'models', 'sky', 'national', 'record', 'sources', 'meso'], hidden: ['meso'] } }),
+    /* on the water (2026-10-24, after an outside review: sailors asked for
+       wind and waves together): ECMWF's wave height and peak period, the
+       wind, and the pressure pattern driving it. Tides, currents and buoys
+       are not in it — their hosts were out of reach. */
+    clean({ name: 'Marine', main: 'l=model&o=&m=ecwave.swh', layout: 'grid',
+      panels: ['l=model&o=&m=ecwave.pp1d', 'l=model&o=&m=ecmwf.wind10', 'l=model&o=&m=gfs.mslp'],
+      cards: { order: ['alerts', 'nearby', 'hero', 'models', 'afd', 'national', 'sky', 'record', 'sources', 'meso'], hidden: ['meso', 'sky'] } }),
+    /* growing (2026-10-24): frost, the soil's warmth and water, how fast the
+       ground dries, and the Blend's chance of rain — information, not a
+       spray or planting verdict (the room's rule) */
+    clean({ name: 'Growing', main: 'l=model&o=&m=gfs.tmin', layout: 'grid',
+      panels: ['l=model&o=&m=gfs.tsoil', 'l=model&o=&m=gfs.soilw', 'l=model&o=&m=nbm.p_rain6'],
+      cards: { order: ['hero', 'alerts', 'nearby', 'models', 'afd', 'record', 'national', 'sky', 'sources', 'meso'], hidden: ['meso', 'sky'] } }),
     /* flying, for a look and never as a briefing: the radar with the
        stations (ceiling and visibility in their plots), lightning and
        watches; the HRRR's visibility; the Blend's chance of a ceiling under
@@ -753,6 +767,7 @@
         ['Tropics', [act('Hurricanes and tropical storms', 'ov:tropics', 'NHC: cones, tracks, coastal watches and warnings, the 7-day outlook')]],
         ['The ground', [act('Terrain under the map', 'ov:terrain', "shaded relief, and the ground's height under the pointer")]],
         ['Forecasts', [act('Now and the forecast', 'card:hero'), act('The forecast discussion', 'card:afd'), MM ? row('National Blend chances', 'l=model&o=w&m=nbm.p_rain6', 'rain, thunder, snow, ice, fog') : '', MM ? row('Storm chances · HRRR-TLE', 'l=model&o=w&m=tle.p_uh') : '', act('SPC outlook on the main map', 'outlook')]],
+        ['Your way and your place', [act('Route weather', 'route', 'the forecast at each point of a drawn or opened route, when you are there'), act('Watches', 'watches', 'rain, gusts, cold, heat, warnings or lightning at your place, while the page is open'), act('Add a file to the map', 'files', 'GPX, KML, GeoJSON or a GRLevelX placefile — kept in this browser'), act('Save a picture or a video', 'save')]],
         ['Historical', [act('Replay any day since 2006', 'replay', 'radar, warnings, the sky and stations as they were'), act('How accurate the forecast has been here', 'card:record'), MM ? row('Mesoanalysis, the last six hours', 'l=model&o=w&m=smeso.stpe') : '']]
       ];
       $('#wsexplorelist').innerHTML = groups.map(([g, items]) => `<section><h3>${esc(g)}</h3><ul>${items.filter(Boolean).join('')}</ul></section>`).join('');
@@ -784,6 +799,13 @@
           $('#radarcard').scrollIntoView({ block: 'nearest' });
         } else if (a === 'outlook') { const btn = $('#outlooktoggle'); if (toggle || btn.getAttribute('aria-pressed') !== 'true') btn.click(); }
         else if (a === 'xsec') { $('#zxsec').click(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
+        /* the tools of 2026-10-24: each is a button the page already has */
+        else if (a === 'route') { if ($('#zroute').getAttribute('aria-pressed') !== 'true') $('#zroute').click(); }
+        else if (a === 'watches') $('#watchbtn').click();
+        else if (a === 'files') { if ($('#ovpanel') && $('#ovpanel').hidden) $('#ovbtn').click(); $('#filesadd').click(); }
+        else if (a === 'save') $('#zsave').click();
+        else if (a === 'checked') { const d = $('#checkit'); if (d && d.showModal) d.showModal(); }
+        else if (a === 'vwp') { if ($('#vwpbtn') && !$('#vwpbtn').hidden) $('#vwpbtn').click(); else say('The wind profile is a single radar\'s: choose Radar first.'); }
         else if (a === 'replay') { const t = $('#replaytoggle'); if (t.getAttribute('aria-expanded') !== 'true') t.click(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
         else if (a === 'sat') { if ($('#ovpanel') && $('#ovpanel').hidden) $('#ovbtn').click(); $('#satsel').focus(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
         else if (a.startsWith('ws:')) { const b = $('#ws' + a.slice(3)); if (b) b.click(); }
@@ -815,7 +837,13 @@
       for (const [id, words] of [['hero', 'now forecast current conditions'], ['sky', 'sounding skew-t hodograph balloon raob parcel'], ['afd', 'area forecast discussion office'], ['meso', 'spc mesoanalysis images'],
         ['models', 'compare models ensemble plumes'], ['record', 'accuracy verification scoreboard'], ['sources', 'feeds data where from']]) A(CARD_NAMES[id], 'Card', 'card:' + id, words);
       A('Replay any day since 2006', 'Tool', 'replay', 'history archive past storm');
-      A('Cross-section on the main map', 'Tool', 'xsec', 'cross section vertical');
+      A('Cross-section on the main map', 'Tool', 'xsec', 'cross section vertical radar volume');
+      A('Route weather — the forecast along a way', 'Tool', 'route', 'trip drive ride hike run sail fly gpx track path headwind');
+      A('Watches — rain, wind, cold, warnings, lightning at your place', 'Tool', 'watches', 'alert notify notification threshold remind');
+      A('Add a file to the map (GPX, KML, GeoJSON, placefile)', 'Tool', 'files', 'import upload layer track boundary placefile');
+      A('Wind profile (VWP) from the radar', 'Tool', 'vwp', 'vad velocity azimuth display winds aloft radar');
+      A('Save a picture of the map, or the loop as a video', 'Tool', 'save', 'export download png webm screenshot gif');
+      A('How this page is checked, and what it cannot do', 'About', 'checked', 'reliability accuracy verification tests limits trust');
       A('Explore every tool', 'Workspace', 'ws:explore', 'browse');
       A('Add a map beside the main one', 'Workspace', 'ws:add', 'panel new map');
       A('Save the workspace', 'Workspace', 'ws:save', 'layout');

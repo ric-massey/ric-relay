@@ -529,6 +529,65 @@
     return { ...f, data, lut, special: { 1: 'rf' }, dealiased: true };
   }
 
+  /* ── The VAD wind profile (2026-10-24, from an outside review of Pro: "VWP
+     wind profiles"). What the NWS's VWP is made from: around a ring at one
+     range on one tilt, the radial velocity of a uniform wind is a sine of
+     the azimuth, Vr = A + B·sin(az) + C·cos(az); the fit's B and C over the
+     tilt's cosine are the wind's east and north parts, at the height the
+     beam is at that range. For each height asked, every tilt is tried at
+     the range where its beam is at that height, and the best fit kept: at
+     least `minCover` of the circle with data (in 10° bins), and a residual
+     under `maxRms`. Run on dealiased velocity — a folded ring fits nothing.
+     Returns [{ h (km above sea level), u, v (m/s), rms, cover, elev }],
+     lowest first, only the heights that passed. ── */
+  function vad(sweeps, { heightsKm, minCover = 0.7, maxRms = 4 } = {}) {
+    const S = sweeps.filter((sw) => sw && sw.elev > 0.3 && sw.elev < 20);
+    if (!S.length) return [];
+    const h0 = (S[0].heightM || 0) / 1000, ke = 4 / 3 * 6371;
+    const H = heightsKm || Array.from({ length: 40 }, (_, k) => h0 + 0.3 + k * 0.3048);
+    const out = [];
+    for (const h of H) {
+      let best = null;
+      for (const sw of S) {
+        /* the slant range where this tilt's beam centre is at h (inverting beamHeightKm) */
+        const dh = h - h0, e = sw.elev * Math.PI / 180;
+        if (dh <= 0) continue;
+        const r = -ke * Math.sin(e) + Math.sqrt(ke * ke * Math.sin(e) ** 2 + dh * dh + 2 * ke * dh);
+        const g0 = gateStart(sw), b = Math.floor((r - g0) / sw.gateKm);
+        if (r < 5 || b < 0 || b >= sw.nBins) continue;
+        /* least squares for A, B, C over the ring's valid gates (a gate either side averaged in) */
+        let n = 0, sx = 0, sy = 0, sc = 0, ss = 0, scc = 0, sss = 0, ssc = 0, sv = 0, svs = 0, svc = 0;
+        const bins = new Uint8Array(36), pts = [];
+        for (let k = 0; k < sw.nRad; k++) {
+          let v = 0, c = 0;
+          for (let d = -1; d <= 1; d++) { const bb = b + d; if (bb < 0 || bb >= sw.nBins) continue; const x = sw.lut[sw.data[k * sw.nBins + bb]]; if (Number.isFinite(x)) { v += x; c++; } }
+          if (!c) continue;
+          v /= c;
+          const az = (sw.az0[k] + sw.daz[k] / 2) * Math.PI / 180, si = Math.sin(az), co = Math.cos(az);
+          n++; ss += si; sc += co; sss += si * si; scc += co * co; ssc += si * co; sv += v; svs += v * si; svc += v * co;
+          bins[Math.floor(((az * 180 / Math.PI) % 360 + 360) % 360 / 10) % 36] = 1; pts.push([si, co, v]);
+        }
+        const cover = bins.reduce((a, x) => a + x, 0) / 36;
+        if (n < 30 || cover < minCover) continue;
+        /* the 3×3 normal equations, solved by Cramer's rule */
+        const M = [[n, ss, sc], [ss, sss, ssc], [sc, ssc, scc]], Y = [sv, svs, svc];
+        const det = (m) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+        const D = det(M);
+        if (Math.abs(D) < 1e-9) continue;
+        const col = (j) => det(M.map((row, i) => row.map((x, k) => (k === j ? Y[i] : x))));
+        const A = col(0) / D, B = col(1) / D, C = col(2) / D;
+        let res = 0;
+        for (const [si, co, v] of pts) res += (v - (A + B * si + C * co)) ** 2;
+        const rms = Math.sqrt(res / pts.length);
+        if (rms > maxRms) continue;
+        const fit = { h, u: B / Math.cos(e), v: C / Math.cos(e), rms, cover, elev: sw.elev };
+        if (!best || rms < best.rms) best = fit;
+      }
+      if (best) out.push(best);
+    }
+    return out;
+  }
+
   /* ── A vertical cross-section through one radar's volume (2026-10-24,
      Ric: "Do all 11" — GR2Analyst's best-known tool). `sweeps` are one
      moment at every tilt of a volume; the line runs from `a` to `b`
@@ -618,7 +677,7 @@
   }
 
   const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, SCHEMES, SCHEME_NAMES, paletteFor, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
-    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, retrying, stormRelative, locator, polarOf, CLUTTER, clutterMask, crossSection, dealias };
+    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, retrying, stormRelative, locator, polarOf, CLUTTER, clutterMask, crossSection, dealias, vad };
   root.Nexrad = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -71,6 +71,8 @@ post on the front door (the `radar` painter, over invented ground).
 | `abi.js` | Pro's GOES imagery: the ABI's Level 2 multi-band files read through `glm.js`'s HDF5 reader (2-D chunks, kept as 16-bit counts), the GOES-R fixed-grid navigation both ways, and the band enhancements and RGB recipes |
 | `mrms.js` | Pro's MRMS products — the list, where each lives in the bucket, its unit and palette; `grib2.js`'s `parseAsync` reads the files (gzip, PNG packing, max-pooled) |
 | `terrain.js` | Pro's terrain: the Terrain Tiles' terrarium pixels → metres, Horn's hillshade (light from the north-west, shadow and light only), the standard atmosphere's pressure at a height (the cross-section's real ground), and which tile a point falls in |
+| `route.js` | route weather's arithmetic (a line resampled evenly with its bearing, the arrival time at a steady speed, the wind split along and across the way) and the files a visitor opens: GPX, KML, GeoJSON and GRLevelX placefiles, read with patterns so the tests can run them |
+| `watches.js` | the watches' rules and words: each kind met or not from what the page already has, an event key so one event reminds once, and a stored watch cleaned to known kinds and numbers in range |
 | `mapgeo.js` | Pro's map lines: which Natural Earth file each layer is, `slim()` (a file → North America's lines or town names and nothing else), each line's box for culling, and which town names fit at a zoom without touching |
 | `glm.js` | Pro's lightning, and the HDF5 reader the GOES imagery uses too: just enough HDF5 (superblock 2/3, object headers, dense links and attributes, chunked deflate+shuffle in one or two dimensions) to read the GOES lightning mapper's flashes and the imager's bands, by byte range; and the arithmetic on them — flash density in 8 km squares, a storm cell's flash rate in 2-minute steps following the cell along its own motion, and the Schultz et al. (2009) 2σ lightning jump |
 | `sounding.js` | the vertical arithmetic: parcels, CAPE / CIN / LCL / LFC / EL, precipitable water, lapse rates, shear, Bunkers storm motion, helicity, STP, downdraft CAPE (MetPy's `downdraft_cape` step for step — the mesoanalysis map uses it too) |
@@ -770,6 +772,48 @@ workspace. **An empty Find opens on the visitor's last five picks**
 (`wx:findrecent`, product names only), then everything in the index's own
 order — sorted by name length, it read as a random list. **Active** says
 how to choose only when there is something to choose.
+
+**Round seven (2026-10-24 — Ric passed on an outside review: "Work on
+these", and "the answer is both" to its question of which workstation Pro
+should be; WORKSTATION.md has the decision):**
+**Route weather** (`route.js`, the route button on the map) — tap points or
+open a GPX/KML route, set when you leave and how fast (walking to a small
+plane, or your own number), and every point is read from the HRRR (or the
+GFS where the HRRR does not reach, via its new `prate`) at the model hour
+nearest its arrival: temperature, the wind split into head/tail and cross,
+gusts, rain, and the ground's height (terrain tiles). A chart and a table,
+the route drawn coloured by rain, and a CSV with its metadata. A steady
+speed is assumed and said; no verdict.
+**Your files** (Overlays → Your files) — GPX, KML, GeoJSON and GRLevelX
+placefiles, read in the browser, drawn over the map, kept in localStorage
+(2.5 MB), never sent; a line in one can become the route.
+**Waves** — ECMWF's wave model (`ecwave`: height, peak and mean period); a
+**Marine** preset. NOAA's GFS-Wave is JPEG 2000-packed (GRIB2 template 5.40),
+which `grib2.js` does not read, so it waits on a decoder.
+**Ground, smoke and fire** — on the GFS: the lowest temperature in the hours
+to each (frost), soil temperature and moisture, potential evaporation; on
+the HRRR: smoke near the ground and through the column, mixing height, and
+the hot-dry-windy index (named a surface approximation: Srock et al. use the
+lowest 500 m). A **Growing** preset; **Fire Weather** now leads with HDW and
+smoke.
+**VWP** — beside the radar's tilts: the wind by height from the volume's
+own dealiased velocity, ring by ring (`NX.vad`), barbs and a hodograph;
+heights only where 70% of the circle had echo and the fit was within 4 m/s.
+**Saving** — the map's save button: a PNG of what is on screen, stamped with
+what, when and whose; or the loop as a WebM. Image tiles whose host will
+not allow copying are left out and named.
+**Watches** (⋯ → Watches, `watches.js`) — rain on radar within N minutes,
+gusts, cold, heat, any NWS warning, lightning within N miles, at the saved
+place; checked every two minutes while the page is open, a browser
+notification if allowed, each event once. Never a warning service.
+**How this page is checked** — a sheet from "Where this comes from" and
+Find: what each piece is held to (MetPy, ecCodes, h5py, pyproj, bz2), how
+forecasts are graded, which tools are tested only on known-answer cases, and
+what the page cannot do.
+Also: `decoders.test.mjs` gives every Python call a time limit — an outside
+run stalled where starting Python hung.
+Still out of reach here (network): aviation reports, river gauges, tides,
+buoys, NOHRSC, RAWS, WPC's products, observed upper-air maps, GEM and ICON.
 
 **Round six (2026-10-24 — Ric: "What features and info is missing that
 official ones have?", then "Do all 11"):** seven of the eleven built; four

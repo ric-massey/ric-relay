@@ -144,6 +144,19 @@
       hoursFrom: (keys) => [...new Set(keys.map((k) => /PT(\d{4})H00M-temperature_at_screen_level\.nc$/.exec(k)).filter(Boolean).map((m) => +m[1]))].sort((a, b) => a - b),
       hours: (have) => have.filter((h) => h > 0 && h <= 168 && (h > 48 || h % 3 === 0))
     },
+    /* Waves (2026-10-24, from an outside review of Pro: "I want wind, waves,
+       tides, and currents together" — a sailor's ask): ECMWF's wave model,
+       from the same open data as its IFS (CC BY 4.0). NOAA's GFS-Wave is in
+       the GFS's bucket but packed as JPEG 2000 (GRIB2 template 5.40), which
+       grib2.js does not read — a decoder of its own, not built yet. Tides,
+       currents and buoys are not here: their hosts were out of reach. */
+    ecwave: {
+      label: 'ECMWF waves', long: "ECMWF's wave model — 0.25°, global oceans, the 00Z and 12Z runs, to 10 days", index: 'json',
+      bucket: 'https://storage.googleapis.com/ecmwf-open-data', cycle: 12, lookBack: 3, minHours: 40, publishMin: 460,
+      prefix: (run) => `${ymd(run)}/${hh(run)}z/ifs/0p25/wave/${ymd(run)}${hh(run)}0000-`,
+      file: (run, fh) => `${ymd(run)}/${hh(run)}z/ifs/0p25/wave/${ymd(run)}${hh(run)}0000-${fh}h-wave-fc.grib2`,
+      hours: (have) => have.filter((h) => h > 0 && h <= 240)
+    },
     /* NOAA's GEFS: 31 runs of the GFS (gec00 and gep01–30) at 0.5°, with
        NOAA's own mean (geavg) and spread (gespr). Every 6 hours, where each
        member's rain is a 6-hour total, out to 16 days. */
@@ -226,6 +239,15 @@
     kelvin: { us: ['K', (v) => v], metric: ['K', (v) => v] },
     deg: { us: ['°', (v) => v], metric: ['°', (v) => v] },
     mcon: { us: ['g/kg per hour', (v) => v], metric: ['g/kg per hour', (v) => v] },
+    /* waves: metres, said in feet in the US set; periods in seconds */
+    wavem: { us: ['ft', (v) => v * 3.28084], metric: ['m', (v) => v] },
+    sec: { us: ['s', (v) => v], metric: ['s', (v) => v] },
+    /* smoke near the ground (µg/m³, the unit PM2.5 is measured in) and through the column (mg/m²) */
+    ugm3: { us: ['µg/m³', (v) => v], metric: ['µg/m³', (v) => v] },
+    mgm2: { us: ['mg/m²', (v) => v], metric: ['mg/m²', (v) => v] },
+    /* evaporation as water a day; soil water as the share of the soil's volume */
+    mmday: { us: ['in/day', (v) => v / 25.4], metric: ['mm/day', (v) => v] },
+    ft: { us: ['ft', (v) => v * 3.28084], metric: ['m', (v) => v] },
     /* vertical motion as forecasters read it: microbars a second, rising negative (omega) */
     ubs: { us: ['μb/s', (v) => v], metric: ['μb/s', (v) => v] },
     /* MRMS's (mrms.js) */
@@ -236,7 +258,7 @@
   };
   /* Weather Pro's 'pro' units: °C and knots and metres above ground, the
      rest (rain in inches, miles, kft) as the US set gives them */
-  const PRO_UNIT = { temp: UNIT.temp.metric, dtemp: UNIT.dtemp.metric, mph: ['kt', (v) => v * 0.868976], magl: UNIT.magl.metric };
+  const PRO_UNIT = { temp: UNIT.temp.metric, dtemp: UNIT.dtemp.metric, mph: ['kt', (v) => v * 0.868976], magl: UNIT.magl.metric, wavem: UNIT.wavem.metric, ft: UNIT.ft.metric };
   function unitFor(unit, units) {
     const u = UNIT[unit];
     if (!u) return [unit || '', (v) => v];
@@ -315,6 +337,16 @@
     llj: { floor: 20, stops: [[20, '#cfe8ff'], [30, '#8fc4ff'], [40, '#3fbf6f'], [50, '#f2e14a'], [60, '#f07a2a'], [70, '#e0382a'], [90, '#d93ad9']], ticks: [20, 30, 40, 50, 60, 70] },
     rh: { floor: 50, stops: [[50, '#4a5a4a'], [70, '#3fa85a'], [80, '#1f9f3a'], [90, '#0f7f4a'], [100, '#0a5a32']], ticks: [50, 70, 80, 90, 100] },
     omega: { clear: [-2, 2], stops: [[-30, '#d93ad9'], [-20, '#e0382a'], [-10, '#f07a2a'], [-2, '#f2e14a'], [2, '#8fc4ff'], [10, '#4f8fff'], [20, '#2f3fb0']], ticks: [-20, -10, -2, 2, 10, 20] },
+    /* waves in metres: calm blues to the heights that close harbours */
+    wave: { floor: 0.25, stops: [[0.25, '#123a5c'], [1, '#1f6fb0'], [2, '#2fb0c8'], [3, '#3fbf6f'], [4, '#f2e14a'], [6, '#f07a2a'], [9, '#e0382a'], [14, '#d93ad9']], ticks: [1, 2, 3, 4, 6, 9, 14] },
+    period: { floor: 2, stops: [[2, '#2b3240'], [6, '#2f5f8f'], [9, '#3fbf6f'], [12, '#f2e14a'], [15, '#f07a2a'], [20, '#d93ad9']], ticks: [4, 6, 9, 12, 15, 20] },
+    /* smoke at the ground on the EPA's PM2.5 breaks (12, 35, 55, 150, 250 µg/m³) — the colours of the air-quality index */
+    smoke: { floor: 2, stops: [[2, '#9fd38a'], [12, '#f2e14a'], [35, '#f5a23a'], [55, '#e0382a'], [150, '#8a3ad9'], [250, '#7a1a2a']], ticks: [12, 35, 55, 150, 250], log: true },
+    smokec: { floor: 5, stops: [[5, '#d9cfa0'], [20, '#c8a060'], [60, '#a06a3a'], [150, '#7a4a2a'], [400, '#4a2a1a']], ticks: [10, 30, 60, 150, 400], log: true },
+    soilw: { stops: [[5, '#8a5a2a'], [15, '#c8a060'], [25, '#d9cfa0'], [32, '#7fcf7a'], [40, '#1f9f8a'], [50, '#2a4fd9']], ticks: [10, 20, 30, 40, 50] },
+    pevap: { floor: 0.5, stops: [[0.5, '#cfe8ff'], [2, '#9fd38a'], [4, '#f2e14a'], [6, '#f5a23a'], [8, '#e0382a'], [12, '#b0122a']], ticks: [2, 4, 6, 8, 10] },
+    pbl: { stops: [[0, '#2b3240'], [500, '#2f5f8f'], [1000, '#3fbf6f'], [2000, '#f2e14a'], [3000, '#f07a2a'], [4500, '#d93ad9']], ticks: [500, 1000, 2000, 3000, 4000] },
+    hdw: { floor: 50, stops: [[50, '#f2e14a'], [150, '#f5a23a'], [300, '#e0382a'], [500, '#b0122a'], [800, '#d93ad9']], ticks: [100, 200, 300, 500, 800] },
     /* how far the ensemble's runs disagree */
     spread: { floor: 10, stops: [[10, '#1e2a3a'], [30, '#2f5f8f'], [60, '#3fbf6f'], [90, '#f2e14a'], [120, '#f07a2a'], [180, '#e0382a']], ticks: [20, 40, 60, 90, 120, 180] },
     spreadp: { floor: 1, stops: [[1, '#1e2a3a'], [2, '#2f5f8f'], [4, '#3fbf6f'], [6, '#f2e14a'], [9, '#f07a2a'], [14, '#e0382a']], ticks: [2, 4, 6, 9, 14] },
@@ -410,7 +442,16 @@
         value: (p, i) => p.a[i] / 25.4 },
       { id: 'qpf', group: 'Rain and snow', label: 'Total rain since the run', unit: 'precip', pal: 'precip', parts: { a: acc('APCP') }, value: (p, i) => p.a[i] / 25.4 },
       { id: 'snow', group: 'Rain and snow', label: 'Total snow since the run (10:1)', unit: 'snow', pal: 'snow', parts: { s: acc('ASNOW') }, value: (p, i) => p.s[i] * 39.3701 },
-      { id: 'pwat', group: 'Rain and snow', label: 'Precipitable water', unit: 'precip', pal: 'pwat', parts: { w: at('PWAT', 'entire atmosphere (considered as a single layer)') }, value: (p, i) => p.w[i] / 25.4 }
+      { id: 'pwat', group: 'Rain and snow', label: 'Precipitable water', unit: 'precip', pal: 'pwat', parts: { w: at('PWAT', 'entire atmosphere (considered as a single layer)') }, value: (p, i) => p.w[i] / 25.4 },
+      /* smoke and fire (2026-10-24): the HRRR carries wildfire smoke from satellite-seen fires */
+      { id: 'smoke', group: 'Smoke and fire', label: 'Smoke near the ground (8 m)', unit: 'ugm3', pal: 'smoke', parts: { m: at('MASSDEN', '8 m above ground') }, value: (p, i) => p.m[i] * 1e9 },
+      { id: 'colsmoke', group: 'Smoke and fire', label: 'Smoke through the whole column (haze overhead)', unit: 'mgm2', pal: 'smokec', parts: { m: at('COLMD', 'entire atmosphere (considered as a single layer)') }, value: (p, i) => p.m[i] * 1e6 },
+      { id: 'hpbl', group: 'Smoke and fire', label: 'Mixing height (how deep the air mixes)', unit: 'ft', pal: 'pbl', parts: { h: at('HPBL', 'surface') }, value: (p, i) => p.h[i] },
+      /* Srock et al.'s (2018) hot-dry-windy index is the vapour-pressure deficit times the wind, each the most in the lowest 500 m;
+         from the surface file it can only be worked from 2 m air and the 10 or 80 m wind, so it is named an approximation */
+      { id: 'hdw', group: 'Smoke and fire', label: 'Hot-dry-windy index (surface approximation)', unit: 'index', pal: 'hdw',
+        parts: { t: at('TMP', '2 m above ground'), d: at('DPT', '2 m above ground'), u: at('UGRD', '10 m above ground'), v: at('VGRD', '10 m above ground'), u8: at('UGRD', '80 m above ground'), v8: at('VGRD', '80 m above ground') },
+        value: (p, i) => { const es = (k) => 6.112 * Math.exp(17.67 * (k - 273.15) / (k - 29.65)); return Math.max(0, es(p.t[i]) - es(p.d[i])) * Math.max(Math.hypot(p.u[i], p.v[i]), Math.hypot(p.u8[i], p.v8[i])); } }
     ],
     /* each member's field at the hour, an event in it, and the share of
        members with that event within 40 km */
@@ -426,6 +467,11 @@
     ecmwf: EC_FIELDS(true),
     aifs: EC_FIELDS(false),
     gefs: GEFS_FIELDS(),
+    ecwave: [
+      { id: 'swh', group: 'Waves', label: 'Significant wave height', unit: 'wavem', pal: 'wave', parts: { h: ec('swh') }, value: (p, i) => p.h[i] },
+      { id: 'pp1d', group: 'Waves', label: 'Peak wave period', unit: 'sec', pal: 'period', parts: { t: ec('pp1d') }, value: (p, i) => p.t[i] },
+      { id: 'mwp', group: 'Waves', label: 'Mean wave period', unit: 'sec', pal: 'period', parts: { t: ec('mwp') }, value: (p, i) => p.t[i] }
+    ],
     ukmet: UK_FIELDS(),
     ecens: ECENS_FIELDS(),
     gfs: [
@@ -446,9 +492,19 @@
       { id: 'gust', group: 'Surface', label: 'Wind gusts', unit: 'mph', pal: 'wind', parts: { g: at('GUST', 'surface') }, value: (p, i) => p.g[i] * MS2MPH },
       { id: 'cape', group: 'Surface', label: 'Surface CAPE', unit: 'jkg', pal: 'cape', parts: { c: at('CAPE', 'surface') }, value: (p, i) => p.c[i] },
       { id: 'qpf', group: 'Rain and snow', label: 'Total rain since the run', unit: 'precip', pal: 'precip', parts: { a: acc('APCP') }, value: (p, i) => p.a[i] / 25.4 },
+      /* the rate averaged over the step to this hour (kg/m²/s → in/h) — what the route reads where the HRRR does not reach */
+      { id: 'prate', group: 'Rain and snow', label: 'Rain rate (average over the hours to this one)', unit: 'inhr', pal: 'precip', parts: { r: (e) => e.name === 'PRATE' && e.level === 'surface' && / ave/.test(e.fcst) }, value: (p, i) => p.r[i] * 3600 / 25.4 },
       { id: 'pwat', group: 'Rain and snow', label: 'Precipitable water', unit: 'precip', pal: 'pwat', parts: { w: at('PWAT', 'entire atmosphere (considered as a single layer)') }, value: (p, i) => p.w[i] / 25.4 },
       { id: 'snowdepth', group: 'Rain and snow', label: 'Snow depth', unit: 'snow', pal: 'snow', parts: { s: at('SNOD', 'surface') }, value: (p, i) => p.s[i] * 39.3701 },
-      { id: 'snowk', group: 'Rain and snow', label: 'Total snow since the run (Kuchera ratio)', unit: 'snow', pal: 'snow', kuchera: true }
+      { id: 'snowk', group: 'Rain and snow', label: 'Total snow since the run (Kuchera ratio)', unit: 'snow', pal: 'snow', kuchera: true },
+      /* the ground (2026-10-24): what growers ask for — frost, the soil, how fast the land dries */
+      { id: 'tmin', group: 'Ground and growing', label: 'Lowest temperature in the hours to this one (frost)', unit: 'temp', pal: 'temp', parts: { t: (e) => e.name === 'TMIN' && e.level === '2 m above ground' }, value: (p, i) => K2F(p.t[i]) },
+      { id: 'tsoil', group: 'Ground and growing', label: 'Soil temperature, top 10 cm', unit: 'temp', pal: 'temp', parts: { t: at('TSOIL', '0-0.1 m below ground') }, value: (p, i) => K2F(p.t[i]) },
+      /* water and ice read as 1 (all water) — left clear, not called the wettest soil */
+      { id: 'soilw', group: 'Ground and growing', label: 'Soil moisture, top 10 cm (share of the soil that is water)', unit: 'pct', pal: 'soilw', parts: { w: at('SOILW', '0-0.1 m below ground') }, value: (p, i) => (p.w[i] >= 0.999 ? NaN : p.w[i] * 100) },
+      { id: 'soilw2', group: 'Ground and growing', label: 'Soil moisture, 10–40 cm', unit: 'pct', pal: 'soilw', parts: { w: at('SOILW', '0.1-0.4 m below ground') }, value: (p, i) => (p.w[i] >= 0.999 ? NaN : p.w[i] * 100) },
+      /* potential evaporation as W/m² of latent heat → water a day (÷ 2.45 MJ/kg × 86,400 s) */
+      { id: 'pevpr', group: 'Ground and growing', label: 'Potential evaporation (how fast wet ground would dry, at this hour\'s rate)', unit: 'mmday', pal: 'pevap', parts: { e: at('PEVPR', 'surface') }, value: (p, i) => Math.max(0, p.e[i]) * 86400 / 2.45e6 }
     ]
   };
   /* the NAM nest and the RAP carry most of the HRRR's fields under the same

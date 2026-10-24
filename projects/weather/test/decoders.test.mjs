@@ -34,16 +34,17 @@ console.log('\nRULE  bzip2 undoes what bzip2 did');
 {
   /* python's bz2 when it is there; otherwise the radar files below are the test */
   let py = null;
-  try { execFileSync('python3', ['-c', 'import bz2'], { stdio: 'ignore' }); py = true; } catch { py = false; }
+  /* every Python call has a time limit: an environment where starting Python hangs (an outside run, 2026-10-24) skips this check, never stalls the suite */
+  try { execFileSync('python3', ['-c', 'import bz2'], { stdio: 'ignore', timeout: 15000 }); py = true; } catch { py = false; }
   if (py) {
     for (const [name, data] of [['text', Buffer.from('the quick brown fox '.repeat(4000))], ['random', randomBytes(300000)], ['runs', Buffer.alloc(200000, 7)], ['one byte', Buffer.from('x')]]) {
-      const packed = execFileSync('python3', ['-c', 'import bz2,sys;sys.stdout.buffer.write(bz2.compress(sys.stdin.buffer.read(),9))'], { input: data, maxBuffer: 1e8 });
+      const packed = execFileSync('python3', ['-c', 'import bz2,sys;sys.stdout.buffer.write(bz2.compress(sys.stdin.buffer.read(),9))'], { input: data, maxBuffer: 1e8, timeout: 60000 });
       const back = Bz.bunzip2(new Uint8Array(packed));
       ok(Buffer.compare(Buffer.from(back), data) === 0, `${name}: ${data.length} bytes round-trip through python's bz2`);
     }
   } else console.log('  skip  python3 not here — the dual-pol radar files below exercise it');
   let threw = false;
-  try { const bad = new Uint8Array(execFileSync('python3', ['-c', 'import bz2,sys;sys.stdout.buffer.write(bz2.compress(b"hello world"*100))'])); bad[bad.length - 8] ^= 0xff; Bz.bunzip2(bad); } catch { threw = true; }
+  try { const bad = new Uint8Array(execFileSync('python3', ['-c', 'import bz2,sys;sys.stdout.buffer.write(bz2.compress(b"hello world"*100))'], { timeout: 15000 })); bad[bad.length - 8] ^= 0xff; Bz.bunzip2(bad); } catch { threw = true; }
   ok(threw || !py, 'a damaged stream is an error, not a picture');
 }
 
@@ -649,6 +650,19 @@ console.log('\nRULE  dealiasing unfolds velocity that wrapped past the Nyquist, 
   let st = L2.feed(fx('l2-KFSX-20261022-194955-001-S'));
   for (const n of ['080', '081', '082']) st = L2.feed(fx(`l2-KFSX-20261022-194955-${n}-I`), st);
   ok(Math.abs(L2.sweep(st, 15, 'VEL').nyq[0] - 39.62) < 0.01, 'the Nyquist velocity is read from each radial (KFSX: 39.62 m/s)');
+}
+
+console.log('\nRULE  the VAD wind profile recovers a known wind, and refuses a ring with too little echo');
+{
+  const mk = (elev, holes) => {
+    const nR = 360, nB = 400, lut = new Float32Array(65536).fill(NaN), data = new Uint16Array(nR * nB), u = -8, v = 15, e = elev * Math.PI / 180;
+    for (let c = 2; c < 65536; c++) lut[c] = (c - 32768) / 100;
+    for (let k = 0; k < nR; k++) { const az = (k + 0.5) * Math.PI / 180, vr = (u * Math.sin(az) + v * Math.cos(az)) * Math.cos(e); for (let g = 0; g < nB; g++) data[k * nB + g] = holes && k > 180 ? 0 : Math.round(vr * 100) + 32768; }
+    return { code: 'L2', elev, heightM: 300, nRad: nR, nBins: nB, gateKm: 0.25, firstKm: 2, az0: Float32Array.from({ length: nR }, (_, k) => k), daz: new Float32Array(nR).fill(1), data, lut, special: { 1: 'rf' } };
+  };
+  const P = N.vad([mk(0.5), mk(2.4)]);
+  ok(P.length > 5 && P.every((p) => Math.abs(p.u + 8) < 0.05 && Math.abs(p.v - 15) < 0.05), `a uniform 17 m/s wind from the south-southeast, at ${P.length} heights (u ${P[0].u.toFixed(2)}, v ${P[0].v.toFixed(2)})`);
+  ok(N.vad([mk(0.5, true)]).length === 0, 'half a circle of echo is not enough to call the wind');
 }
 
 console.log('\nRULE  clutter filtering hides weak non-weather echoes and never a strong one (a debris signature has low CC too)');

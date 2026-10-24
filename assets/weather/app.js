@@ -1262,7 +1262,9 @@
     /* on Weather the list of feeds starts folded: there for anyone who asks, out of everyone else's way */
     if (!PRO) {
       const was = $("#sources").querySelector("details");
-      $("#sources").innerHTML = `<details class="srcfold"${was && was.open ? " open" : ""}><summary><h2>${srcHead}<span class="src">tap to see</span></h2></summary><div class="feeds">${rows.join("")}</div></details>`;
+      /* Pro: the feeds' ages, then how the page's own arithmetic is checked (2026-10-24) */
+      const howBtn = $("#checkit") ? `<p class="nextnote"><button type="button" class="linkish" data-howchecked>How this page is checked, and what it cannot do</button></p>` : "";
+      $("#sources").innerHTML = `<details class="srcfold"${was && was.open ? " open" : ""}><summary><h2>${srcHead}<span class="src">tap to see</span></h2></summary><div class="feeds">${rows.join("")}</div>${howBtn}</details>`;
     } else $("#sources").innerHTML = `<h2>${srcHead}</h2><div class="feeds">${rows.join("")}</div>`;
   }
 
@@ -1532,7 +1534,7 @@
       framesL.innerHTML = "";
       if ($("#radarread")) $("#radarread").hidden = true;
       /* ECMWF's open data is CC BY 4.0: its credit shows whenever its fields are on the map */
-      if ($("#eccredit")) $("#eccredit").hidden = !(R.mode === "model" && (R.mm.src === "ecmwf" || R.mm.src === "aifs" || R.mm.src === "ecens"));
+      if ($("#eccredit")) $("#eccredit").hidden = !(R.mode === "model" && (R.mm.src === "ecmwf" || R.mm.src === "aifs" || R.mm.src === "ecens" || R.mm.src === "ecwave"));
       /* the Met Office's licence (CC BY-SA 4.0) asks for its credit whenever its model is drawn */
       if ($("#ukcredit")) $("#ukcredit").hidden = !(R.mode === "model" && R.mm.src === "ukmet");
       R.frames = list.map((f) => {
@@ -1635,6 +1637,9 @@
        potential temperature as lines (packed lines are stable layers, gaps
        are mixed air), the ground in brown. A forecast, labelled as one. */
     const X = { pick: false, a: null, b: null, data: null, hour: 0, view: "rh", busy: false, err: null, model: null, rx: null };
+    /* route weather's state and the visitor's own files, declared here because the map's overlay draws both from the first frame */
+    const RT = { on: false, pts: [], res: null, busy: false, err: null, ask: null, file: "" };
+    const FILES = PRO ? (store.get("wx:files", []) || []).filter((f) => f && f.data && Array.isArray(f.data.lines)) : [];
     const xsecEl = $("#xsec");
     function xsecStart() {
       Object.assign(X, { pick: true, a: null, b: null, data: null, err: null, rx: null });
@@ -1693,6 +1698,33 @@
         X.rx = { sec, prod, P, ground };
       } catch (e) { if (X.ask === ask) { X.rx = null; X.err = `The radar's cross-section did not load (${String(e.message || e).replace(/^nexrad: /, "")}).`; } }
       X.busy = false; renderXsec();
+    }
+    /* ── the VAD wind profile (NX.vad): one volume's velocity, dealiased, fitted ring by ring ── */
+    const vwpEl = $("#vwppanel");
+    async function openVwp() {
+      if (!vwpEl || !R.site) return;
+      vwpEl.hidden = false;
+      const close = `<button type="button" data-vwpx aria-label="Close the wind profile">×</button>`;
+      vwpEl.innerHTML = `<div class="xh"><span>Wind profile (VWP) · ${esc(R.site.id)}<small>Reading the radar's whole volume — every tilt, about 10–25 MB…</small></span>${close}</div>`;
+      try {
+        const st = await radarVolumeState();
+        const sweeps = L2.angles(st, "VEL").map((t) => L2.sweep(st, t.elevNum, "VEL")).filter(Boolean).map((sw) => NX.dealias(sw));
+        const prof = NX.vad(sweeps), h0 = sweeps.length ? (sweeps[0].heightM || 0) / 1000 : 0, t = Math.max(...sweeps.map((sw) => sw.time || 0));
+        const ft = U() !== "metric";
+        if (!prof.length) { vwpEl.innerHTML = `<div class="xh"><span>Wind profile (VWP) · ${esc(R.site.id)}<small>No height passed: the radar needs echoes — rain, snow or the summer's insects — most of the way round it to measure the wind. Clear, still air gives none.</small></span>${close}</div>`; return; }
+        const top = Math.max(...prof.map((p) => p.h)) + 0.5, Hh = 300, T = 10, B = 20, Y = (h) => T + (Hh - T - B) * (1 - (h - h0) / (top - h0));
+        const barbs = prof.map((p) => { const kt = Math.hypot(p.u, p.v) * 1.943844, dir = (Math.atan2(-p.u, -p.v) * 180 / Math.PI + 360) % 360; return Draw.barb(70, Y(p.h), dir, kt) + `<text x="104" y="${(Y(p.h) + 4).toFixed(1)}" style="font:11px var(--mono)" fill="#c8d0da">${Math.round(dir)}° ${Math.round(U() === "metric" ? kt * 1.852 : kt)} ${U() === "metric" ? "km/h" : "kt"}</text>`; }).join("");
+        const ticks = []; for (let k = 0; k <= (top - h0) * (ft ? 3.28084 : 1); k += ft ? 3 : 1) { const h = h0 + (ft ? k / 3.28084 : k); ticks.push(`<text x="30" y="${(Y(h) + 4).toFixed(1)}" text-anchor="end" style="font:11px var(--mono)" fill="#c8d0da">${k}</text><line x1="34" x2="200" y1="${Y(h).toFixed(1)}" y2="${Y(h).toFixed(1)}" stroke="rgba(255,255,255,.08)"/>`); }
+        const col = `<svg class="vwpcol" viewBox="0 0 210 ${Hh}" role="img" aria-label="Wind barbs by height above the radar">${ticks.join("")}<text x="4" y="${Hh - 4}" style="font:11px var(--mono)" fill="#c8d0da">${ft ? "kft" : "km"} up</text>${barbs}</svg>`;
+        const hodo = Draw.hodograph({ winds: prof.map((p) => ({ h: (p.h - h0) * 1000, u: p.u, v: p.v })), motion: null }, { label: "Hodograph from the radar's wind profile" });
+        vwpEl.innerHTML = `<div class="xh"><span>Wind profile (VWP) · ${esc(R.site.id)}<small>The volume of ${esc(clk().time(t))} · ${prof.length} heights · measured by the radar, not a model</small></span>${close}</div>
+          <div class="vwpbody">${col}${hodo || ""}</div>
+          <p class="nextnote">Each height is a ring of the radar's own velocity fitted with a sine — the VAD method the NWS's VWP uses — on dealiased velocity, at the tilt whose fit was best. A height is shown only where at least 70% of the circle had echoes and the fit was within 4 m/s; heights above the radar.</p>`;
+      } catch (e) { vwpEl.innerHTML = `<div class="xh"><span>Wind profile (VWP)<small>It did not load (${esc(String(e.message || e).replace(/^(nexrad|level2): /, ""))}).</small></span>${close}</div>`; }
+    }
+    if (vwpEl) {
+      vwpEl.addEventListener("click", (e) => { if (e.target.closest("[data-vwpx]")) { vwpEl.hidden = true; vwpEl.innerHTML = ""; } });
+      if ($("#vwpbtn")) $("#vwpbtn").addEventListener("click", openVwp);
     }
     function paintRadarXsec(cv) {
       const { sec, P, ground } = X.rx, dpr = Math.min(2, devicePixelRatio || 1);
@@ -2223,6 +2255,7 @@
       if (row.hidden) return;
       siteOptions();
       const cp = $("#clutterpick"); if (cp) { cp.hidden = R.mode !== "l3:ref"; $("#cluttersel").value = R.clutter; }
+      const vb = $("#vwpbtn"); if (vb) vb.hidden = !(L2 && R.site && P.l2);
       const db = $("#dealiasbtn"); if (db) { db.hidden = !((R.mode === "l3:vel" || R.mode === "l3:srv") && useL2()); db.setAttribute("aria-pressed", String(!!R.dealias)); }
       const btns = $("#tiltbtns");
       if (P.tilts.length < 2 && !P.l2) { btns.innerHTML = ""; return; }
@@ -3548,6 +3581,21 @@
             out.push(`<text class="ovl" x="${((P[i - 1][0] + P[i][0]) / 2).toFixed(1)}" y="${((P[i - 1][1] + P[i][1]) / 2 - 6).toFixed(1)}" text-anchor="middle" fill="#ffffff">${esc(dist(km))}</text>`); }
         });
       }
+      /* your files, under the route */
+      for (const f of FILES) {
+        if (!f.on) continue;
+        const path = (l) => l.map((q) => pt(q.lat, q.lon).map((v) => v.toFixed(1)).join(",")).join(" ");
+        for (const r of f.data.polys) out.push(`<polygon points="${path(r)}" fill="#c3e88d" fill-opacity=".12" stroke="#05070a" stroke-width="4"/><polygon points="${path(r)}" fill="none" stroke="#c3e88d" stroke-width="1.8"/>`);
+        for (const l of f.data.lines) out.push(`<polyline points="${path(l)}" fill="none" stroke="#05070a" stroke-width="4.5"/><polyline points="${path(l)}" fill="none" stroke="#c3e88d" stroke-width="2"/>`);
+        for (const q of f.data.points.slice(0, 400)) { const [x, y] = pt(q.lat, q.lon); out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="#c3e88d" stroke="#05070a" stroke-width="1.5"/>${q.name ? `<text class="ovl" x="${(x + 7).toFixed(1)}" y="${(y + 4).toFixed(1)}" fill="#c3e88d">${esc(q.name.slice(0, 40))}</text>` : ""}`); }
+      }
+      /* the route, and each read point coloured by its rain */
+      if (RT.on && RT.pts.length) {
+        const P = RT.pts.map((q) => pt(q.lat, q.lon).map((v) => v.toFixed(1)).join(",")).join(" ");
+        out.push(`<polyline points="${P}" fill="none" stroke="#05070a" stroke-width="6"/><polyline points="${P}" fill="none" stroke="#ffd166" stroke-width="3"/>`);
+        if (RT.res) for (const r of RT.res.rows) { const [x, y] = pt(r.lat, r.lon), wet = Number.isFinite(r.precip) && r.precip > 0.01; out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${wet ? 5 : 3.5}" fill="${wet ? "#4dabf7" : "#ffd166"}" stroke="#05070a" stroke-width="1.4"/>`); }
+        else RT.pts.forEach((q) => { const [x, y] = pt(q.lat, q.lon); out.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="#ffd166" stroke="#05070a" stroke-width="1.5"/>`); });
+      }
       if (R.pin) {
         const [qx, qy] = pt(R.pin.lat, R.pin.lon);
         out.push(`<circle cx="${qx.toFixed(1)}" cy="${qy.toFixed(1)}" r="7" fill="none" stroke="#fff" stroke-width="2.5"/><circle cx="${qx.toFixed(1)}" cy="${qy.toFixed(1)}" r="2.5" fill="#fff"/>`);
@@ -4570,7 +4618,366 @@
       } else note("Ruler: tap the next point.");
       draw();
     }
+    /* ── Route weather (2026-10-24, from an outside review Ric passed on:
+       "Draw or import a route, set departure time and expected pace or
+       speed, then examine forecast conditions at each point when the person
+       is expected to arrive"). route.js does the arithmetic; this asks the
+       model for each hour the route needs and reads every point at the hour
+       nearest its arrival. Information along the way, never a verdict on
+       whether to go (the room's rule). ── */
+    const Rt = window.Route;
+    const routeEl = $("#routepanel");
+    /* the speeds people travel at, in km/h; Custom takes the visitor's own number in their units */
+    const SPEEDS = [["walk", "Walking · 3 mph", 4.83], ["run", "Running · 6 mph", 9.66], ["bike", "Cycling · 15 mph", 24.1], ["road", "Driving or riding · 50 mph", 80.5], ["sail", "Sailing · 6 kt", 11.1], ["plane", "Small plane · 110 kt", 203.7], ["custom", "Custom…", 0]];
+    RT.speed = PRO ? store.get("wx:routespeed", "road") : "road"; RT.custom = PRO ? store.get("wx:routecustom", 30) : 30;
+    const routeKmh = () => { const sp = SPEEDS.find((x) => x[0] === RT.speed) || SPEEDS[3]; return sp[0] !== "custom" ? sp[2] : RT.custom * (U() !== "metric" ? 1.609344 : 1); };
+    function routeStart(pts, from) {
+      if (R.measure) measureToggle();
+      if (X.pick || X.a) xsecStop();
+      Object.assign(RT, { on: true, pts: pts ? pts.slice() : [], res: null, err: null, busy: false, file: from || "" });
+      if (!RT.depart) { const d = new Date(Math.ceil(Date.now() / 900e3) * 900e3); RT.depart = d.getTime(); }
+      $("#zroute").setAttribute("aria-pressed", "true");
+      R.pin = null;
+      note(pts ? "" : "Route: tap points along the way, then Show the weather.");
+      renderRoute(); draw();
+    }
+    function routeStop() {
+      Object.assign(RT, { on: false, pts: [], res: null, err: null, busy: false, ask: null });
+      $("#zroute").setAttribute("aria-pressed", "false");
+      note(""); renderRoute(); draw();
+    }
+    function routeTap(lat, lon) {
+      RT.pts.push({ lat, lon: ((lon + 540) % 360) - 180 }); RT.res = null;
+      renderRoute(); draw();
+    }
+    /* the model: the HRRR when every point is in its lower 48 and its run reaches the last arrival, else the GFS */
+    async function routeWeather() {
+      const ask = RT.ask = {};
+      RT.busy = true; RT.err = null; RT.res = null; renderRoute();
+      try {
+        const total = Rt.length(RT.pts), n = Math.max(8, Math.min(48, Math.round(total / 5) + 1));
+        const kmh = routeKmh(), sch = Rt.schedule(Rt.resample(RT.pts, n), RT.depart, kmh);
+        const last = sch[sch.length - 1].t;
+        let src = RT.model && RT.model !== "auto" ? RT.model : sch.every((p) => Wx.inMosaic(p.lat, p.lon)) ? "hrrr" : "gfs", run = await MM.latestRun(src);
+        if (src === "hrrr" && (!run || last > run.run + Math.max(...run.hours) * 3600e3) && RT.model !== "hrrr") { src = "gfs"; run = await MM.latestRun(src); }
+        if (!run) throw new Error(`${MM.SOURCES[src].label}'s newest run is not out`);
+        const F = src === "hrrr" ? { t: "t2m", w: "wind10", g: "gust", p: "qpf1", v: "vis" } : { t: "t2m", w: "wind10", g: "gust", p: "prate" };
+        const hourOf = (t) => { const h = (t - run.run) / 3600e3; let best = null; for (const x of run.hours) if (best == null || Math.abs(x - h) < Math.abs(best - h)) best = x; return best != null && Math.abs(best - h) <= 1.6 ? best : null; };
+        const fhs = [...new Set(sch.map((p) => hourOf(p.t)).filter((x) => x != null))];
+        const layers = new Map();
+        for (const fh of fhs) {
+          if (RT.ask !== ask) return;
+          RT.progress = `${layers.size + 1} of ${fhs.length} hours`; renderRoute();
+          const got = {};
+          await Promise.all(Object.entries(F).map(async ([k, id]) => { try { got[k] = await MM.load(src, run.run, fh, id); } catch (e) { got[k] = null; } }));
+          layers.set(fh, got);
+        }
+        const elev = await Promise.all(sch.map((p) => (TR ? (async () => { try { const t = TR.tileOf(p.lat, p.lon, 10), e = await terrainElev(t.z, t.x, t.y); return e[t.py * TR.TILE + t.px]; } catch (e) { return null; } })() : null)));
+        if (RT.ask !== ask) return;
+        const val = (L, lat, lon) => (L ? MM.valueAt(L, lat, lon) : NaN);
+        const rows = sch.map((p, i) => {
+          const fh = hourOf(p.t), g = fh != null ? layers.get(fh) : null, r = { ...p, fh, elev: elev[i] };
+          if (!g) return r;
+          r.temp = val(g.t, p.lat, p.lon); r.gust = val(g.g, p.lat, p.lon); r.precip = val(g.p, p.lat, p.lon); r.vis = g.v ? val(g.v, p.lat, p.lon) : NaN;
+          if (g.w && g.w.wind) {
+            const u = MM.valueAt({ grid: g.w.grid, values: g.w.wind.u, field: {} }, p.lat, p.lon), v = MM.valueAt({ grid: g.w.grid, values: g.w.wind.v, field: {} }, p.lat, p.lon);
+            if (Number.isFinite(u) && Number.isFinite(v)) { const tw = Rt.trackWind(u, v, p.bearing); r.wind = Math.hypot(u, v) * 2.236936; r.head = tw.head * 2.236936; r.cross = tw.cross * 2.236936; r.from = tw.from; }
+          }
+          return r;
+        });
+        RT.res = { src, run: run.run, rows, kmh, total, units: F.p === "qpf1" ? "rain in the hour" : "rain rate" };
+      } catch (e) { if (RT.ask === ask) RT.err = String(e.message || e).replace(/^(route|models): /, ""); }
+      if (RT.ask === ask) { RT.busy = false; renderRoute(); draw(); }
+    }
+    const fmtSpeed = (mph) => (U() === "metric" ? `${Math.round(mph * 1.609344)} km/h` : U() === "pro" ? `${Math.round(mph * 0.868976)} kt` : `${Math.round(mph)} mph`);
+    function routeCsv() {
+      const res = RT.res, k = clk(), us = U() !== "metric";
+      const head = [`# Route weather from Ric's Terminal — Weather Pro`, `# model: ${MM.SOURCES[res.src].long}`, `# run: ${new Date(res.run).toISOString()}`,
+        `# leaving: ${new Date(RT.depart).toISOString()} at ${Math.round(res.kmh)} km/h; each point read at the model hour nearest its arrival`, `# a forecast, not a measurement — information, not a go/no-go`, `# made: ${new Date().toISOString()}`];
+      const cols = ["distance_km", "arrival_utc", "lat", "lon", "model_hour", "temp_" + (us ? "F" : "C"), "wind_mph", "headwind_mph", "crosswind_mph", "crosswind_from", "gust_mph", "precip_in" + (res.units === "rain rate" ? "_per_hour" : "_in_hour"), "visibility_mi", "ground_m"];
+      const f = (x, d = 1) => (Number.isFinite(x) ? x.toFixed(d) : "");
+      const body = res.rows.map((r) => [f(r.km), new Date(r.t).toISOString(), r.lat.toFixed(2), r.lon.toFixed(2), r.fh ?? "", f(us ? r.temp : (r.temp - 32) * 5 / 9), f(r.wind), f(r.head), f(r.cross), r.from || "", f(r.gust), f(r.precip, 2), f(r.vis), f(r.elev, 0)].join(","));
+      const blob = new Blob([head.join("\n") + "\n" + cols.join(",") + "\n" + body.join("\n") + "\n"], { type: "text/csv" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `route-weather-${new Date(RT.depart).toISOString().slice(0, 13).replace(/[-T]/g, "")}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }
+    function renderRoute() {
+      if (!routeEl) return;
+      if (!RT.on) { routeEl.hidden = true; routeEl.innerHTML = ""; return; }
+      routeEl.hidden = false;
+      const k = clk(), total = RT.pts.length > 1 ? Rt.length(RT.pts) : 0, close = `<button type="button" data-rtx aria-label="Close route weather">×</button>`;
+      const dep = new Date(RT.depart - new Date(RT.depart).getTimezoneOffset() * 60e3).toISOString().slice(0, 16);
+      const ctl = `<div class="rtctl">
+          <label>Leaving <input type="datetime-local" id="rtdep" value="${dep}"></label>
+          <label>Speed <select id="rtspeed">${SPEEDS.map(([id, l]) => `<option value="${id}"${id === RT.speed ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></label>
+          ${RT.speed === "custom" ? `<label><input type="number" id="rtcustom" min="1" max="600" step="1" value="${RT.custom}" style="width:5.5em"> ${U() !== "metric" ? "mph" : "km/h"}</label>` : ""}
+          <label>Model <select id="rtmodel"><option value="auto">Auto — HRRR, else GFS</option><option value="hrrr">HRRR</option><option value="gfs">GFS</option></select></label>
+          <button type="button" class="go" data-rtgo ${RT.pts.length > 1 && !RT.busy ? "" : "disabled"}>Show the weather along it</button>
+          ${RT.pts.length ? `<button type="button" data-rtundo>Undo</button><button type="button" data-rtclear>Clear</button>` : ""}
+        </div>`;
+      const lead = RT.busy ? `Reading ${esc(RT.res ? "" : "the model")} — ${esc(RT.progress || "")}…` : RT.err ? esc(RT.err)
+        : RT.pts.length < 2 ? (RT.pts.length ? "Tap the next point." : "Tap points along the way on the map, or open a GPX or KML route (Overlays → Your files).")
+        : `${RT.pts.length} points${RT.file ? ` from ${esc(RT.file)}` : ""} · ${dist(total)} · about ${Wx.age(total / routeKmh() * 3600e3)} at this speed`;
+      let body = "";
+      if (RT.res) {
+        const res = RT.res, rows = res.rows, ok = rows.filter((r) => Number.isFinite(r.temp));
+        const W = 640, H = 120, P = 26, tv = ok.map((r) => r.temp), tmin = Math.min(...tv), tmax = Math.max(...tv), sx = (km) => P + km / res.total * (W - 2 * P);
+        const sy = (t) => 12 + (1 - (t - tmin) / Math.max(1, tmax - tmin)) * (H - 46);
+        const pmax = Math.max(0.05, ...rows.map((r) => r.precip || 0));
+        const bars = rows.map((r) => Number.isFinite(r.precip) && r.precip > 0.003 ? `<rect x="${(sx(r.km) - 3).toFixed(1)}" y="${(H - 22 - r.precip / pmax * 26).toFixed(1)}" width="6" height="${(r.precip / pmax * 26).toFixed(1)}" fill="#4dabf7"/>` : "").join("");
+        const line = ok.map((r) => `${sx(r.km).toFixed(1)},${sy(r.temp).toFixed(1)}`).join(" ");
+        const winds = rows.filter((_, i) => i % Math.ceil(rows.length / 16) === 0).map((r) => Number.isFinite(r.head) ? `<text x="${sx(r.km).toFixed(1)}" y="${H - 4}" text-anchor="middle" fill="${r.head > 5 ? "#ffa8a8" : r.head < -5 ? "#8ce99a" : "#c8d0da"}" style="font:11px var(--mono)">${r.head > 0 ? "▼" : "▲"}${Math.round(Math.abs(U() === "metric" ? r.head * 1.609344 : U() === "pro" ? r.head * 0.868976 : r.head))}</text>` : "").join("");
+        const chart = `<svg class="rtchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Temperature, rain and the wind along the route by distance">${bars}<polyline points="${line}" fill="none" stroke="#ffa94d" stroke-width="2"/>
+          <text x="${P}" y="10" style="font:11px var(--mono)" fill="#ffa94d">${esc(MM.say("temp", tmax, U()))} high · ${esc(MM.say("temp", tmin, U()))} low</text><text x="${W - P}" y="10" text-anchor="end" style="font:11px var(--mono)" fill="#4dabf7">rain</text><text x="${W / 2}" y="10" text-anchor="middle" style="font:11px var(--mono)" fill="#c8d0da">wind along the way: ▲ behind you · ▼ in your face</text>${winds}</svg>`;
+        const tr = rows.filter((_, i) => i % Math.max(1, Math.round(rows.length / 14)) === 0 || i === rows.length - 1).map((r) => `<tr><td>${esc(dist(r.km || 0.001))}</td><td>${esc(k.time(r.t))}</td>${r.fh == null ? `<td colspan="5" class="dim">past the model's reach</td>` : `<td>${Number.isFinite(r.temp) ? esc(MM.say("temp", r.temp, U())) : "—"}</td><td>${Number.isFinite(r.head) ? `${r.head > 0.5 ? "head" : r.head < -0.5 ? "tail" : "calm"} ${esc(fmtSpeed(Math.abs(r.head)))}${r.cross > 3 ? ` · cross ${esc(fmtSpeed(r.cross))} from the ${r.from}` : ""}` : "—"}</td><td>${Number.isFinite(r.gust) ? esc(fmtSpeed(r.gust)) : "—"}</td><td>${Number.isFinite(r.precip) ? esc(MM.say(res.units === "rain rate" ? "inhr" : "precip", r.precip, U())) : "—"}</td><td>${Number.isFinite(r.elev) ? esc(U() !== "metric" ? Math.round(r.elev * 3.28084).toLocaleString() + " ft" : Math.round(r.elev) + " m") : "—"}</td>`}</tr>`).join("");
+        body = `${chart}<div class="rttable"><table><thead><tr><th>Along</th><th>There at</th><th>Temp</th><th>Wind on the way</th><th>Gusts</th><th>${res.units === "rain rate" ? "Rain rate" : "Rain that hour"}</th><th>Ground</th></tr></thead><tbody>${tr}</tbody></table></div>
+          <p class="nextnote">${esc(MM.SOURCES[res.src].label)} run ${new Date(res.run).toISOString().slice(11, 13)}Z — a forecast, each point read at the model hour nearest when you would be there at a steady ${esc(fmtSpeed(res.kmh / 1.609344))}. Stops, traffic and terrain change that. Information along the way, not a go or no-go. <button type="button" class="linkish" data-rtcsv>Download as CSV</button></p>`;
+      }
+      routeEl.innerHTML = `<div class="xh"><span>Route weather<small>${lead}</small></span>${close}</div>${ctl}${body}`;
+      if ($("#rtmodel")) $("#rtmodel").value = RT.model || "auto";
+    }
+    if (routeEl) {
+      routeEl.addEventListener("click", (e) => {
+        if (e.target.closest("[data-rtx]")) routeStop();
+        else if (e.target.closest("[data-rtgo]")) routeWeather();
+        else if (e.target.closest("[data-rtundo]")) { RT.pts.pop(); RT.res = null; renderRoute(); draw(); }
+        else if (e.target.closest("[data-rtclear]")) { RT.pts = []; RT.res = null; RT.file = ""; renderRoute(); draw(); }
+        else if (e.target.closest("[data-rtcsv]")) routeCsv();
+      });
+      routeEl.addEventListener("change", (e) => {
+        if (e.target.id === "rtdep") { const t = new Date(e.target.value).getTime(); if (Number.isFinite(t)) { RT.depart = t; RT.res = null; renderRoute(); } }
+        else if (e.target.id === "rtspeed") { RT.speed = e.target.value; store.set("wx:routespeed", RT.speed); RT.res = null; renderRoute(); }
+        else if (e.target.id === "rtcustom") { const v = Number(e.target.value); if (v > 0) { RT.custom = v; store.set("wx:routecustom", v); RT.res = null; renderRoute(); } }
+        else if (e.target.id === "rtmodel") { RT.model = e.target.value; RT.res = null; renderRoute(); }
+      });
+    }
+    if ($("#zroute")) $("#zroute").addEventListener("click", () => (RT.on ? routeStop() : routeStart()));
+
+    /* ── Your files (2026-10-24): a GPX, KML, GeoJSON or GRLevelX placefile
+       opened here is read here (route.js), drawn over the map and kept in
+       this browser's storage — never sent, logged or committed (hard rule
+       1: a visitor's places are theirs). A line in it can become the route. ── */
+    function saveFiles() {
+      const json = JSON.stringify(FILES);
+      if (json.length > 2.5e6) { note("Those files are too large to keep in this browser (2.5 MB in all) — they show until the page reloads."); return; }
+      store.set("wx:files", FILES);
+    }
+    function filesList() {
+      const box = $("#fileslist");
+      if (!box) return;
+      box.innerHTML = FILES.map((f, i) => `<div class="fileitem"><label><input type="checkbox" data-fon="${i}" ${f.on ? "checked" : ""}> ${esc(f.name)}</label><span class="dim">${[f.data.lines.length && `${f.data.lines.length} line${f.data.lines.length === 1 ? "" : "s"}`, f.data.polys.length && `${f.data.polys.length} area${f.data.polys.length === 1 ? "" : "s"}`, f.data.points.length && `${f.data.points.length} point${f.data.points.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</span>${f.data.lines.length ? `<button type="button" data-froute="${i}">Route</button>` : ""}<button type="button" data-fdel="${i}" aria-label="Remove ${esc(f.name)}">×</button></div>`).join("");
+    }
+    function fitFile(d) {
+      const all = [...d.lines.flat(), ...d.polys.flat(), ...d.points];
+      if (!all.length) return;
+      const la = all.map((p) => p.lat), lo = all.map((p) => p.lon);
+      fit(Math.min(...la), Math.min(...lo), Math.max(...la), Math.max(...lo), 50);
+    }
+    if ($("#filesadd")) {
+      $("#filesadd").addEventListener("click", () => $("#filesin").click());
+      $("#filesin").addEventListener("change", async (e) => {
+        const file = e.target.files && e.target.files[0];
+        e.target.value = "";
+        if (!file) return;
+        if (file.size > 8e6) { note("That file is over 8 MB — too large to draw here."); return; }
+        try {
+          const data = Rt.readFile(file.name, await file.text());
+          /* long tracks thinned to 2,000 points a line: enough to draw, light to keep */
+          data.lines = data.lines.map((l) => (l.length > 2000 ? l.filter((_, i) => i % Math.ceil(l.length / 2000) === 0 || i === l.length - 1) : l));
+          FILES.push({ name: file.name.slice(0, 60), on: true, data });
+          saveFiles(); filesList(); fitFile(data); draw();
+          note(`${file.name} is on the map — kept in this browser only.`);
+        } catch (err) { note(String(err.message || err).replace(/^route: /, "")); }
+      });
+      $("#fileslist").addEventListener("change", (e) => { const i = e.target.dataset.fon; if (i != null) { FILES[i].on = e.target.checked; saveFiles(); draw(); } });
+      $("#fileslist").addEventListener("click", (e) => {
+        const d = e.target.closest("[data-fdel]"), r = e.target.closest("[data-froute]");
+        if (d) { FILES.splice(Number(d.dataset.fdel), 1); saveFiles(); filesList(); draw(); }
+        else if (r) { const f = FILES[Number(r.dataset.froute)], line = f.data.lines.reduce((a, b) => (b.length > a.length ? b : a)); routeStart(line.filter((_, i) => i % Math.ceil(line.length / 400) === 0 || i === line.length - 1), f.name); fitFile({ lines: [line], polys: [], points: [] }); }
+      });
+      filesList();
+    }
+    /* ── Exports (2026-10-24, from an outside review: "Download charts,
+       export data with its metadata, save analytical views"): the map as a
+       PNG, the loop as a WebM video, each stamped with what it is, when, and
+       whose data. Every layer the page drew itself is copied as it is; the
+       image tiles (the base map, Iowa State's mosaic) are fetched again in a
+       mode that allows copying, and one whose host refuses is left out and
+       said. The visitor's place dot is left off unless it is on the map's
+       own legend. Nothing is uploaded: the file goes straight to them. ── */
+    const corsImg = new Map();
+    function copyable(img) {
+      const src = img.currentSrc || img.src;
+      if (!src || src.startsWith("blob:") || src.startsWith("data:") || img.crossOrigin) return Promise.resolve(img.complete && img.naturalWidth ? img : null);
+      if (!corsImg.has(src)) corsImg.set(src, new Promise((res) => { const im = new Image(); im.crossOrigin = "anonymous"; im.onload = () => res(im); im.onerror = () => res(null); im.src = src + (src.includes("?") ? "&" : "?") + "copy=1"; }));
+      if (corsImg.size > 400) corsImg.delete(corsImg.keys().next().value);
+      return corsImg.get(src);
+    }
+    async function composeMap() {
+      const w = el.clientWidth, h = el.clientHeight, dpr = Math.min(2, devicePixelRatio || 1), cv = document.createElement("canvas");
+      cv.width = w * dpr; cv.height = (h + 40) * dpr;
+      const x = cv.getContext("2d"); x.scale(dpr, dpr);
+      x.fillStyle = "#05070a"; x.fillRect(0, 0, w, h + 40);
+      const box = el.getBoundingClientRect(), skipped = new Set();
+      for (const L of zlayers()) {
+        const cs = getComputedStyle(L);
+        if (cs.display === "none" || cs.visibility === "hidden" || L.hidden) continue;
+        x.globalAlpha = Number(cs.opacity) || 1;
+        if (L.tagName === "CANVAS") { if (L.width) x.drawImage(L, 0, 0, L.width, L.height, 0, 0, L.clientWidth || w, L.clientHeight || h); continue; }
+        if (L.tagName === "svg") {
+          const svg = new XMLSerializer().serializeToString(L).replace(/var\(--(sans|mono)[^)]*\)/g, "monospace");
+          const im = new Image(); im.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.includes("xmlns=") ? svg : svg.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"'));
+          await im.decode().catch(() => {});
+          if (im.naturalWidth) x.drawImage(im, 0, 0, w, h);
+          continue;
+        }
+        for (const node of L.querySelectorAll("img, canvas")) {
+          const ncs = getComputedStyle(node);
+          if (ncs.visibility === "hidden" || ncs.display === "none") continue;
+          const r = node.getBoundingClientRect(), op = (Number(cs.opacity) || 1) * (Number(getComputedStyle(node.parentNode).opacity) || 1);
+          x.globalAlpha = op;
+          if (node.tagName === "CANVAS") { if (node.width) x.drawImage(node, r.left - box.left, r.top - box.top, r.width, r.height); continue; }
+          const im = await copyable(node);
+          if (im) x.drawImage(im, r.left - box.left, r.top - box.top, r.width, r.height);
+          else skipped.add(/openstreetmap/.test(node.src) ? "the base map" : /iastate/.test(node.src) ? "Iowa State's radar tiles" : "some tiles");
+        }
+      }
+      x.globalAlpha = 1;
+      /* the stamp: what, when, whose */
+      const stamp = ($("#mainstamp") && $("#mainstamp").textContent.trim()) || "";
+      /* only the credits showing: a hidden one is for data not on the map */
+      const vis = (n) => (n.nodeType === 3 ? n.textContent : n.hidden ? "" : [...n.childNodes].map(vis).join(""));
+      const credit = $(".radar .credit") ? vis($(".radar .credit")).replace(/\s+/g, " ").trim() : "";
+      x.fillStyle = "#0b0f15"; x.fillRect(0, h, w, 40);
+      x.fillStyle = "#e3e9f0"; x.font = "12px monospace"; x.fillText(`Weather Pro · ${stamp}`.slice(0, 160), 8, h + 16);
+      x.fillStyle = "#9aa5b4"; x.font = "11px monospace"; x.fillText(`${credit}${skipped.size ? ` · not copied: ${[...skipped].join(", ")}` : ""} · saved ${new Date().toISOString().slice(0, 16)}Z`.slice(0, 200), 8, h + 32);
+      return { cv, skipped };
+    }
+    async function savePicture() {
+      note("Making the picture…");
+      try {
+        const { cv, skipped } = await composeMap();
+        cv.toBlob((b) => {
+          if (!b) { note("The picture could not be made in this browser."); return; }
+          const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `weather-pro-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+          note(skipped.size ? `Saved — ${[...skipped].join(" and ")} could not be copied (their host does not allow it) and are left out.` : "Saved.");
+        }, "image/png");
+      } catch (e) { note(`The picture could not be made (${String(e.message || e).slice(0, 80)}).`); }
+    }
+    async function saveLoop() {
+      if (!R.frames.length || typeof MediaRecorder === "undefined") { note("This browser cannot record a video of the loop."); return; }
+      play(false);
+      const first = await composeMap(), out = document.createElement("canvas");
+      out.width = first.cv.width; out.height = first.cv.height;
+      const ox = out.getContext("2d"), stream = out.captureStream(30), type = ["video/webm;codecs=vp9", "video/webm"].find((t) => MediaRecorder.isTypeSupported(t));
+      if (!type) { note("This browser cannot record WebM video."); return; }
+      const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 4e6 }), chunks = [];
+      rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      const done = new Promise((r) => { rec.onstop = r; });
+      rec.start();
+      const was = R.frame, n = R.frames.length;
+      for (let i = 0; i < n; i++) {
+        note(`Recording the loop · frame ${i + 1} of ${n}…`);
+        show(i);
+        /* wait for the frame to load, up to eight seconds */
+        for (let k = 0; k < 40 && frameState(R.frames[i], i) === "wait"; k++) await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, 150));
+        const { cv } = await composeMap();
+        ox.drawImage(cv, 0, 0);
+        await new Promise((r) => setTimeout(r, i === n - 1 ? 1200 : 450));
+      }
+      rec.stop(); await done; show(was);
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(chunks, { type: "video/webm" })); a.download = `weather-pro-loop-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}.webm`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 8000);
+      note(`Saved the loop — ${n} frames, as a WebM video.`);
+    }
+    if ($("#zsave")) {
+      const sm = document.createElement("div");
+      sm.className = "mapmenu savemenu"; sm.setAttribute("role", "menu"); sm.hidden = true;
+      sm.innerHTML = `<button type="button" role="menuitem" data-sv="png">Picture of the map (PNG)</button><button type="button" role="menuitem" data-sv="loop">The loop as a video (WebM)</button>`;
+      el.appendChild(sm);
+      $("#zsave").addEventListener("click", (e) => { e.stopPropagation(); const r = $("#zsave").getBoundingClientRect(), b = el.getBoundingClientRect(); sm.style.left = Math.max(8, r.left - b.left - 230) + "px"; sm.style.top = (r.top - b.top) + "px"; sm.hidden = !sm.hidden; });
+      sm.addEventListener("click", (e) => { const b = e.target.closest("[data-sv]"); if (!b) return; sm.hidden = true; if (b.dataset.sv === "png") savePicture(); else saveLoop(); });
+      document.addEventListener("click", (e) => { if (!sm.hidden && !e.target.closest(".savemenu,#zsave")) sm.hidden = true; });
+    }
+    /* ── Watches (2026-10-24; watches.js holds the rules and the words).
+       Checked every two minutes and whenever the page's data comes in, while
+       the page is open; met for the first time, an event says so once — on
+       the map, and as a browser notification if the visitor allowed them.
+       Stored in this browser (wx:watches); never sent anywhere. ── */
+    const WW = window.WxWatches;
+    let WATCH = PRO && WW ? (store.get("wx:watches", []) || []).map(WW.clean).filter(Boolean) : [];
+    const watchSeen = new Set(store.get("wx:watchseen", []) || []), watchState = new Map();
+    function watchCtx() {
+      const now = Date.now(), n = S.now && window.WxNowcast ? WxNowcast.describe(S.now.series, { base: S.now.valid || S.nowAt }) : null;
+      return { now, hourly: S.fc && S.fc.hourly, nowcast: n, nowAt: S.nowAt, alerts: S.place ? S.alerts || null : null, flashes: LTG.at ? LTG.flashes : null, place: S.place };
+    }
+    function watchCheck(quiet) {
+      if (!WW || !WATCH.length) { if ($("#watchbadge")) $("#watchbadge").textContent = ""; return; }
+      const ctx = watchCtx(), k = clk();
+      let metN = 0;
+      for (const w of WATCH) {
+        if (!w.on) continue;
+        const r = S.place ? WW.check(w, ctx) : { met: false, known: false, text: "Choose a place first — a watch is for your place.", from: "" };
+        if (r.at) r.text += ` around ${k.time(r.at)}, ${k.dayLong(r.at)}.`;
+        watchState.set(w.id, { ...r, checked: Date.now() });
+        if (r.met) metN++;
+        if (r.met && r.key && !watchSeen.has(w.id + "|" + r.key)) {
+          watchSeen.add(w.id + "|" + r.key); store.set("wx:watchseen", [...watchSeen].slice(-200));
+          if (!quiet) {
+            note(`Watch — ${WW.describe(w)}: ${r.text}`);
+            try { if ("Notification" in window && Notification.permission === "granted") new Notification("Weather Pro watch", { body: `${WW.describe(w)}: ${r.text}`, tag: w.id + r.key }); } catch (e) {}
+          }
+        }
+      }
+      if ($("#watchbadge")) $("#watchbadge").textContent = metN ? String(metN) : "";
+      if ($("#watchit") && $("#watchit").open) watchRender();
+    }
+    function watchRender() {
+      const ul = $("#watchlist");
+      if (!ul) return;
+      ul.innerHTML = WATCH.length ? WATCH.map((w) => { const st = watchState.get(w.id); return `<li class="${st && st.met ? "met" : ""}"><label><input type="checkbox" data-won="${w.id}" ${w.on ? "checked" : ""}> ${esc(WW.describe(w))}</label><small>${st ? `${esc(st.text)}${st.from ? ` · ${esc(st.from)}` : ""} · checked ${esc(clk().time(st.checked))}` : "Not checked yet."}</small><button type="button" data-wdel="${w.id}" aria-label="Remove this watch">×</button></li>`; }).join("") : `<li class="none">No watches yet.</li>`;
+    }
+    function watchNums() {
+      const kind = $("#watchkind").value, D = WW.KINDS[kind].defaults, f = [];
+      if ("mph" in D) f.push(`<label><input type="number" id="wmph" value="${D.mph}" min="10" max="150"> mph</label>`);
+      if ("f" in D) f.push(`<label><input type="number" id="wf" value="${D.f}" min="-60" max="130"> °F</label>`);
+      if ("miles" in D) f.push(`<label>within <input type="number" id="wmiles" value="${D.miles}" min="1" max="100"> mi</label>`);
+      if ("minutes" in D) f.push(`<label>${kind === "rain" ? "within" : "in the last"} <input type="number" id="wmin" value="${D.minutes}" min="5" max="60"> min</label>`);
+      if ("hours" in D) f.push(`<label>in the next <input type="number" id="whours" value="${D.hours}" min="1" max="72"> h</label>`);
+      $("#watchnums").innerHTML = f.join(" ");
+    }
+    /* how this page is checked: a sheet, opened from the sources card and from Find */
+    if ($("#checkit")) {
+      document.addEventListener("click", (e) => { if (e.target.closest("[data-howchecked]")) { const d = $("#checkit"); if (d.showModal) d.showModal(); else d.setAttribute("open", ""); } });
+      $("#checkit").addEventListener("click", (e) => { if (e.target.closest("[data-close]")) $("#checkit").close(); });
+    }
+    if (WW && $("#watchbtn")) {
+      $("#watchkind").innerHTML = Object.entries(WW.KINDS).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join("");
+      watchNums();
+      $("#watchkind").addEventListener("change", watchNums);
+      $("#watchbtn").addEventListener("click", () => { watchCheck(true); watchRender(); const d = $("#watchit"); if (d.showModal) d.showModal(); else d.setAttribute("open", ""); });
+      $("#watchit").addEventListener("click", (e) => {
+        if (e.target.closest("[data-close]")) { $("#watchit").close(); return; }
+        const del = e.target.closest("[data-wdel]");
+        if (del) { WATCH = WATCH.filter((w) => w.id !== del.dataset.wdel); store.set("wx:watches", WATCH); watchCheck(true); watchRender(); }
+      });
+      $("#watchit").addEventListener("change", (e) => { const id = e.target.dataset.won; if (id) { const w = WATCH.find((x) => x.id === id); if (w) { w.on = e.target.checked; store.set("wx:watches", WATCH); watchCheck(true); watchRender(); } } });
+      $("#watchaddbtn").addEventListener("click", async () => {
+        const v = (id) => ($("#" + id) ? Number($("#" + id).value) : undefined);
+        const w = WW.clean({ kind: $("#watchkind").value, mph: v("wmph"), f: v("wf"), miles: v("wmiles"), minutes: v("wmin"), hours: v("whours") });
+        if (!w || WATCH.length >= 12) return;
+        WATCH.push(w); store.set("wx:watches", WATCH);
+        /* asked once, at the visitor's own click; without it the reminder is on the page only */
+        let msg = "Added.";
+        if ("Notification" in window && Notification.permission === "default") { try { msg = (await Notification.requestPermission()) === "granted" ? "Added — this browser will show a notification while the page is open." : "Added — reminders will show on the page (notifications are off)."; } catch (e) {} }
+        $("#watchnote").textContent = msg;
+        if (w.kind === "lightning" && !ltgOn()) $("#watchnote").textContent += " Lightning is read while the Lightning overlay is on.";
+        watchCheck(true); watchRender();
+      });
+      setInterval(() => { if (!document.hidden || ("Notification" in window && Notification.permission === "granted")) watchCheck(false); }, 120e3);
+      setTimeout(() => watchCheck(false), 15e3);
+    }
     function measureToggle() {
+      if (!R.measure && RT.on) routeStop();
       R.measure = R.measure ? null : { pts: [] };
       $("#zmeasure").setAttribute("aria-pressed", String(!!R.measure));
       note(R.measure ? "Ruler: tap where it starts." : "");
@@ -4993,6 +5400,7 @@
         tap = setTimeout(() => {
           const tlat = yLat(R.cy - el.clientHeight / 2 + py, R.z), tlon = xLng(R.cx - el.clientWidth / 2 + px, R.z);
           if (X.pick) { xsecTap(tlat, tlon); return; }
+          if (RT.on && !RT.busy) { routeTap(tlat, tlon); return; }
           if (R.measure) { measureTap(tlat, tlon); return; }
           const rs = siteNear(px, py);
           if (rs) { keepSite(rs.id); return; }

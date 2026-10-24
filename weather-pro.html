@@ -32,7 +32,7 @@
   <link rel="preload" href="assets/weather/fonts/IBMPlexMono-600.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/weather/fonts/IBMPlexMono-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/weather/fonts/IBMPlexSans.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/weather/weather.css?v=61">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=62">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -93,6 +93,7 @@
       <button class="chip" type="button" id="usview" aria-label="Across the US" title="Across the US">US</button>
       <button class="chip" type="button" id="units" aria-label="Switch units">°F</button>
       <button class="chip utcchip" type="button" id="utcbtn" aria-pressed="false" aria-label="Times in UTC or local time" title="Times in UTC (Z) or the place's local time (U)">Local</button>
+      <button class="chip" type="button" id="watchbtn" aria-haspopup="dialog" title="Watches: conditions at your place this page keeps an eye on while it is open">Watches <b id="watchbadge"></b></button>
       <button class="chip keyschip" type="button" id="keysbtn" aria-label="Keyboard shortcuts" aria-haspopup="dialog" title="Keyboard shortcuts (?)">?</button>
       <button class="chip" type="button" id="refresh" aria-label="Refresh" title="Refresh everything">
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M15 9a6 6 0 1 1-1.8-4.3M15 2.5V6h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -162,6 +163,9 @@
                 <label class="satpick" title="Reflectivity colours for the single radar, MRMS and the models — the US mosaic comes already coloured by Iowa State, in the NWS's"><span class="seglab">Reflectivity</span><select id="palref" aria-label="Reflectivity colours"></select></label>
                 <label class="satpick" title="Velocity colours: toward and away from the radar"><span class="seglab">Velocity</span><select id="palvel" aria-label="Velocity colours"></select></label>
               </div>
+              <!-- your files (2026-10-24): GPX, KML, GeoJSON or a placefile, read in this browser and kept only here -->
+              <div class="ovrow filesrow" role="group" aria-label="Your files"><span class="seglab">Your files</span><button type="button" id="filesadd" title="Open a GPX, KML, GeoJSON or GRLevelX placefile — it stays in this browser and is never sent">Add a file…</button><input type="file" id="filesin" accept=".gpx,.kml,.geojson,.json,.txt,.pf" hidden></div>
+              <div class="fileslist" id="fileslist"></div>
               <label class="satpick" title="Satellite under the radar: the latest image, or GOES's own at a past frame's time"><span class="seglab">Under</span><select id="satsel" aria-label="Satellite under the radar"><option value="">No satellite</option><option value="ir">Infrared</option><option value="vis">Visible</option><option value="wv">Water vapour</option></select></label>
             </div>
           </div>
@@ -195,6 +199,7 @@
           <!-- clutter filtering (2026-10-24): reflectivity only; the radar's own CC decides, never a guess from the colours -->
           <label class="sitepick" id="clutterpick" hidden title="Every echo the radar saw, or only what its own dual-pol (CC) says is likely weather. Strong echoes are always kept — a tornado's debris has low CC too"><span class="seglab">Echoes</span><select id="cluttersel" aria-label="Clutter filtering"><option value="raw">All · raw</option><option value="filter">Weather only · filtered</option><option value="mark">Mark non-weather</option></select></label>
           <!-- dealiasing (2026-10-24): full-volume velocity only — Level III comes unfolded by the radar's own computer -->
+          <button type="button" id="vwpbtn" hidden title="The wind by height over this radar, from its own full-volume velocity (a VAD wind profile, as the NWS's VWP is made)">VWP</button>
           <button type="button" id="dealiasbtn" aria-pressed="false" hidden title="Unfold velocities that wrapped past the radar's Nyquist speed (full volume only — Level III is unfolded by the radar's own computer). A simple continuity method: it can choose wrong in noisy data">Dealias</button>
         </div>
         </div>
@@ -210,7 +215,7 @@
           <span class="mmrun" id="mrrun"></span>
         </div>
         <div class="modelbar pro-only" id="modelbar" hidden>
-          <label>Model <select id="mmsrc"><option value="smeso">Mesoanalysis · every level, SPC's method, hourly</option><option value="meso">Mesoanalysis · HRRR, worked out in your browser</option><option value="hrrr">HRRR · 3 km, hourly</option><option value="nam">NAM 3 km · every 6 hours, to 60 hours</option><option value="rap">RAP · 13 km, hourly</option><option value="gfs">GFS · global, to 10 days</option><option value="ecmwf">ECMWF · IFS, global, to 10 days</option><option value="aifs">ECMWF AIFS · machine-learned, to 10 days</option><option value="ukmet">UKMET · the Met Office's global model, to 7 days</option><option value="gefs">GEFS ensemble · mean, spread, spaghetti, chances</option><option value="ecens">ECMWF ensemble · mean, spread, chances, how unusual · to 15 days</option><option value="tle">HRRR-TLE · storm probabilities</option><option value="nbm">National Blend · chances of rain, thunder, snow, ice, fog</option></select></label>
+          <label>Model <select id="mmsrc"><option value="smeso">Mesoanalysis · every level, SPC's method, hourly</option><option value="meso">Mesoanalysis · HRRR, worked out in your browser</option><option value="hrrr">HRRR · 3 km, hourly</option><option value="nam">NAM 3 km · every 6 hours, to 60 hours</option><option value="rap">RAP · 13 km, hourly</option><option value="gfs">GFS · global, to 10 days</option><option value="ecmwf">ECMWF · IFS, global, to 10 days</option><option value="aifs">ECMWF AIFS · machine-learned, to 10 days</option><option value="ukmet">UKMET · the Met Office's global model, to 7 days</option><option value="ecwave">ECMWF waves · height and period, the oceans</option><option value="gefs">GEFS ensemble · mean, spread, spaghetti, chances</option><option value="ecens">ECMWF ensemble · mean, spread, chances, how unusual · to 15 days</option><option value="tle">HRRR-TLE · storm probabilities</option><option value="nbm">National Blend · chances of rain, thunder, snow, ice, fog</option></select></label>
           <label>Field <select id="mmfield"></select></label>
           <label id="mmbackl" title="Any run of the last five days, by its own time (UTC) — how the forecast has changed. Latest follows new runs as they come out">Run <select id="mmback"><option value="0">Latest</option></select></label>
           <label id="mmdiffl" title="This field minus the same field at the same moment from the run before, or from another model — blue where this one is lower, red where it is higher">Difference <select id="mmdiff"><option value="">None</option></select></label>
@@ -255,6 +260,8 @@
             <button type="button" id="zout" aria-label="Zoom out" title="Zoom out (−)">−</button>
             <button type="button" class="pro-only" id="zxsec" aria-label="Cross-section: tap two points on the map" aria-pressed="false" title="Cross-section between two points"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="3.5" cy="13.5" r="2" fill="currentColor"/><circle cx="14.5" cy="4.5" r="2" fill="currentColor"/><path d="M5 12L13 6" stroke="currentColor" stroke-width="1.8" stroke-dasharray="2 2"/></svg></button>
             <button type="button" class="pro-only" id="zmeasure" aria-label="Ruler: measure distance and bearing" aria-pressed="false" title="Measure"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 12.5L12.5 2l3.5 3.5L5.5 16z M5 9.5l1.5 1.5 M7.5 7l2 2 M10 4.5l1.5 1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+            <button type="button" class="pro-only" id="zroute" aria-label="Route weather: draw a route, see the weather at each point when you get there" aria-pressed="false" title="Route weather — the forecast along a way, at the time you are there"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="3.5" cy="14" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="14.5" cy="4" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 12.5c2-2 1-5 4-5.5s3-1 4-2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"/></svg></button>
+            <button type="button" class="pro-only" id="zsave" aria-label="Save this map as a picture, or the loop as a video" aria-haspopup="menu" title="Save a picture of the map, or the loop as a video"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2.5v9M5.5 8l3.5 3.5L12.5 8M3 14.5h12" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></button>
             <button type="button" class="pro-only" id="zlink" aria-label="Copy a link to this map view" title="Share this view"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M7.5 10.5a3 3 0 0 0 4.2 0l2.6-2.6a3 3 0 0 0-4.2-4.2l-1 1 M10.5 7.5a3 3 0 0 0-4.2 0L3.7 10.1a3 3 0 0 0 4.2 4.2l1-1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
             <button type="button" id="zfull" aria-label="Full-screen map" aria-pressed="false" title="Full-screen map (F, Esc to leave)"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 7V2h5M11 2h5v5M16 11v5h-5M7 16H2v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           </div>
@@ -292,6 +299,9 @@
         </div>
         <div class="legend" id="legend"><span>light</span><i aria-hidden="true"></i><span>heavy</span></div>
         <div class="xsec pro-only" id="xsec" hidden aria-live="polite"></div>
+        <!-- route weather (2026-10-24): the forecast along a drawn or opened route, at the time each point is reached -->
+        <div class="xsec routep pro-only" id="routepanel" hidden aria-live="polite"></div>
+        <div class="xsec vwpp pro-only" id="vwppanel" hidden aria-live="polite"></div>
         <div class="xsec ptchart pro-only" id="ptchart" hidden aria-live="polite"></div>
       </section>
       <div class="panels" id="panels" hidden></div>
@@ -356,6 +366,54 @@
   </div>
 </dialog>
 
+<!-- watches (2026-10-24): checked in this browser while the page is open; a reminder, not a warning service -->
+<dialog class="sheet wssheet watchsheet" id="watchit" aria-labelledby="watchtitle">
+  <div class="in">
+    <h2 id="watchtitle">Watches<button type="button" data-close aria-label="Close">×</button></h2>
+    <p class="wslead">Conditions at your saved place this page keeps an eye on — checked every two minutes <b>while this page is open</b>, and kept in this browser only. A reminder, not a warning service: the NWS's warnings are shown as it issues them, whatever you set here.</p>
+    <ul class="watchlist" id="watchlist"></ul>
+    <div class="watchadd" role="group" aria-label="Add a watch">
+      <select id="watchkind" aria-label="What to watch for"></select>
+      <span id="watchnums"></span>
+      <button type="button" id="watchaddbtn">Add</button>
+    </div>
+    <p class="wslead" id="watchnote"></p>
+  </div>
+</dialog>
+<!-- how this page is checked (2026-10-24, after an outside review: "a publicly accessible reliability page"). Kept by hand: change it when a check or a limit changes. -->
+<dialog class="sheet wssheet checksheet" id="checkit" aria-labelledby="checktitle">
+  <div class="in">
+    <h2 id="checktitle">How this page is checked<button type="button" data-close aria-label="Close">×</button></h2>
+    <p class="wslead">Weather Pro reads the agencies' own files and does its own arithmetic on them in your browser. This is what that arithmetic is held to, how its forecasts are graded, and what it cannot do. It is a hobby project, tested but not certified — never anyone's only source when it matters.</p>
+    <h3>Held to the libraries meteorologists use</h3>
+    <ul class="checklist">
+      <li><b>Radar files</b> (Level III) — against MetPy, on real files.</li>
+      <li><b>Model files</b> (GRIB2, every packing read here) — against ecCodes, ECMWF's own library.</li>
+      <li><b>Satellite and lightning files</b> (GOES, HDF5) — against h5py; the satellite's map projection against pyproj.</li>
+      <li><b>Full-volume radar</b> (Level II) — its compression against Python's bzip2, its values against the files' own.</li>
+      <li><b>Soundings</b> — CAPE, CIN, the parcel levels, helicity, shear and the composites against MetPy.</li>
+    </ul>
+    <h3>Graded against what happened</h3>
+    <ul class="checklist">
+      <li><b>Forecasts</b> — every night the models' temperatures are scored against airport stations; the page uses its own blend only where a station's record says it beats the standard forecast. The <b>record</b> card shows that record for the station nearest your place.</li>
+      <li><b>The rain nowcast</b> — graded every night with the same code and settings the page uses.</li>
+    </ul>
+    <h3>Tested on cases with known answers only</h3>
+    <p class="wslead">No independent library to compare with, so each is held to made-up cases whose answer is known, and to real files for sense:</p>
+    <ul class="checklist">
+      <li>Clutter filtering, the radar cross-section, velocity dealiasing, the VAD wind profile, Kuchera snowfall, difference maps, terrain, route weather, watches.</li>
+    </ul>
+    <h3>What it cannot do</h3>
+    <ul class="checklist">
+      <li>Watches are checked only while this page is open — there is no server sending them. Official warnings always come from the NWS.</li>
+      <li>Route weather assumes a steady speed and reads each point at the model hour nearest your arrival: stops, traffic and terrain change that.</li>
+      <li>Dealiasing is a simple continuity method and can choose wrong in noisy data; the VWP is one volume, where the NWS's shows the last hour.</li>
+      <li>The storm probabilities are a time-lagged HRRR, not HREF; the mesoanalysis is worked out SPC's way but is not SPC's; lightning is GOES flashes, not ground strikes.</li>
+      <li>The UKMET is drawn at 20 km; GFS-Wave is not read yet (its files need a JPEG 2000 decoder); tides, currents, buoys, river gauges and aviation reports are not here yet.</li>
+      <li>Feed ages are shown live in "Where this comes from", but a history of outages is not kept.</li>
+    </ul>
+  </div>
+</dialog>
 <dialog class="sheet keysheet" id="keys" aria-labelledby="keystitle">
   <div class="in">
     <h2 id="keystitle">Keys<button type="button" id="closekeys" aria-label="Close">×</button></h2>
@@ -458,17 +516,19 @@
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
 <script src="projects/weather/bzip2.js?v=1"></script>
-<script src="projects/weather/nexrad.js?v=10"></script>
+<script src="projects/weather/nexrad.js?v=11"></script>
 <script src="projects/weather/level2.js?v=5"></script>
 <script src="projects/weather/glm.js?v=4"></script>
 <script src="projects/weather/abi.js?v=2"></script>
 <script src="projects/weather/grib2.js?v=6"></script>
 <script src="projects/weather/mesogrid.js?v=1"></script>
-<script src="projects/weather/modelmaps.js?v=12"></script>
+<script src="projects/weather/modelmaps.js?v=13"></script>
 <script src="projects/weather/mrms.js?v=2"></script>
 <script src="projects/weather/mapgeo.js?v=2"></script>
 <script src="projects/weather/terrain.js?v=1"></script>
-<script src="assets/weather/workstation.js?v=24"></script>
-<script src="assets/weather/app.js?v=59"></script>
+<script src="projects/weather/route.js?v=1"></script>
+<script src="projects/weather/watches.js?v=1"></script>
+<script src="assets/weather/workstation.js?v=25"></script>
+<script src="assets/weather/app.js?v=60"></script>
 </body>
 </html>

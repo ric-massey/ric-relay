@@ -801,6 +801,15 @@ ones that must never break:
   (`Wx.alertsBackup`), marked as such; an NWS outage is never "outside the US"
   and IEM's cells down is never "no storms". Radar age is the time inside the
   newest file, not its name. Don't hide the card on a failure or drop the backup.
+- **Pro is both** (Ric, 2026-10-24, asked whether it should be the deepest
+  meteorology workstation or a universal one for every kind of work: "the
+  answer is both"). Build both ways inside the one app — Explore and the
+  workspaces, not a separate app per job. `projects/weather/WORKSTATION.md`.
+- **A visitor's files and watches stay in their browser.** A GPX, KML,
+  GeoJSON or placefile opened on Pro is read there (`route.js`) and kept in
+  localStorage; it is never sent, logged or committed (hard rule 1). Watches
+  (`watches.js`) are checked only while the page is open, say so, and are
+  never a warning service — official warnings stay the NWS's.
 - **No go/no-go verdicts.** A ride outlook was built and removed the same day — Ric:
   "this should be information, not something that could make it unsafe." Don't add
   one for riding, driving, flying or anything else; `test/wx.test.mjs` checks.

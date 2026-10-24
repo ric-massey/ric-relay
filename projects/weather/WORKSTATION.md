@@ -9,6 +9,17 @@
 > When a piece of it ships, move it into `README.md` → "Built so far" and tick it
 > off in the checklist at the bottom.
 
+**Which kind of workstation (Ric, 2026-10-24).** An outside review asked
+whether Pro should be "a meteorological workstation that virtually anyone can
+learn to use, with the deepest possible atmospheric data" or "a universal
+weather workstation where people from many different professions can access
+specialized data, workflows, and tools appropriate to their jobs". Ric:
+**"the answer is both."** So new work goes two ways at once — deeper
+meteorology (radar, models, soundings) *and* tools organised around what
+people are deciding (route weather, watches, their own files, marine,
+growing, smoke) — inside the one app, through Explore and the workspaces,
+never as a separate app per profession. Still information, never a verdict.
+
 The research and recommendation below are as Ric brought them in, lightly
 formatted. The checklist at the end is how it would land on this site.
 
