@@ -186,7 +186,38 @@
     return out;
   }
 
-  const api = { MAX_PANELS, CARDS, LOCKED, PRESETS, cleanLayer, sameLayer, sameWorkspace, clean, linkHash, readHash, stampText, timelineMarks };
+  /* Compare and Trend (2026-10-23, UI-REVIEW B3 — Pivotal's two modes).
+     Compare: the main map's field in the other models that have it, at the
+     same valid time, three at most — a storm-scale model against the others
+     of its kind first (HRRR, NAM 3 km, RAP), a global one against the
+     globals (ECMWF, GFS, AIFS). Trend: the same model and field from
+     the runs before (the Run picker's "the one before" … "three before"),
+     so the maps show how the forecast for one moment has moved. Both keep
+     the main map's overlays; neither ever holds a place. null when the main
+     map is not a model these apply to. */
+  const COMPARE_ORDER = ['hrrr', 'nam', 'rap', 'gfs', 'ecmwf', 'aifs'], GLOBAL = ['ecmwf', 'gfs', 'aifs'];
+  const modelOf = (mainStr) => {
+    const q = new URLSearchParams(cleanLayer(mainStr) || '');
+    if (q.get('l') !== 'model') return null;
+    const [src, field, back] = (q.get('m') || '').split('.');
+    return COMPARE_ORDER.includes(src) && field ? { q, src, field, back: Math.max(0, Math.min(3, Number(back) || 0)) } : null;
+  };
+  const withModel = (q, m) => { const o = new URLSearchParams(q); o.set('m', m); return cleanLayer(o.toString()); };
+  function compareLayers(mainStr, hasField) {
+    const M = modelOf(mainStr);
+    if (!M) return null;
+    /* a global model is compared with the other globals first, a storm-scale one with its own kind */
+    const order = GLOBAL.includes(M.src) ? [...GLOBAL, ...COMPARE_ORDER.filter((x) => !GLOBAL.includes(x))] : COMPARE_ORDER;
+    return order.filter((s) => s !== M.src && hasField(s, M.field)).slice(0, MAX_PANELS - 1)
+      .map((s) => withModel(M.q, `${s}.${M.field}`));
+  }
+  function trendLayers(mainStr) {
+    const M = modelOf(mainStr);
+    if (!M) return null;
+    return [0, 1, 2, 3].filter((b) => b !== M.back).map((b) => withModel(M.q, b ? `${M.src}.${M.field}.${b}` : `${M.src}.${M.field}`));
+  }
+
+  const api = { MAX_PANELS, CARDS, LOCKED, PRESETS, cleanLayer, sameLayer, sameWorkspace, clean, linkHash, readHash, stampText, timelineMarks, compareLayers, trendLayers };
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
   root.WxWorkstation = api;
@@ -239,14 +270,24 @@
     if (parent === root) return;
     const map = Pro.map;
     const up = (m) => parent.postMessage({ [MSG]: 1, ...m }, ORIGIN);
-    map.on((type, data) => up({ type, data, layer: map.layer }));
+    /* a time asked for before this map has its frames (a panel just opened
+       by Compare or Trend, say) is held and tried again as frames arrive —
+       for twenty seconds, or until the visitor steps this map themselves */
+    let want = null;
+    const tryWant = () => { if (want && (Date.now() - want.at > 20e3 || map.setTime(want.t))) want = null; };
+    map.on((type, data) => {
+      if (type === 'time') want = null;
+      up({ type, data, layer: map.layer });
+      if (type === 'stamp' && want) setTimeout(tryWant, 0);
+    });
     addEventListener('message', (e) => {
       if (!fromHere(e, parent)) return;
       const m = e.data;
       if (m.type === 'view') map.setView(m.lat, m.lon, m.z);
       /* "now": a forecast goes to the hour nearest now, anything else to its newest frame */
-      else if (m.type === 'time') map.setTime(m.t == null ? (map.stamp.kind === 'forecast' ? Date.now() : null) : m.t);
+      else if (m.type === 'time') { const t = m.t == null ? (map.stamp.kind === 'forecast' ? Date.now() : null) : m.t; want = map.setTime(t) || t == null ? null : { t, at: Date.now() }; }
       else if (m.type === 'layer') map.setLayer(m.str);
+      else if (m.type === 'tz' && Pro.setTZ) Pro.setTZ(m.tz);
     });
     up({ type: 'ready', data: map.stamp, layer: map.layer });
   }
@@ -302,6 +343,9 @@
     main.on((type, data) => {
       if (type === 'stamp') {
         W.mainStamp = data; stamps();
+        /* a new place can mean a new time zone: the panels follow it */
+        const tz = Pro.tz ? Pro.tz() : null;
+        if (tz !== W.tz) { W.tz = tz; for (const p of W.panels) post(p, { type: 'tz', tz }); }
         if (W.mainLayer !== main.layer) { W.mainLayer = main.layer; store.set('wx:wscurrent', current()); renderSel(); }
       }
       else if (type === 'view') shareView(data, main);
@@ -371,6 +415,8 @@
         const v = main.view;
         post(p, { type: 'view', lat: v.lat, lon: v.lon, z: v.z });
         if (W.busT != null) post(p, { type: 'time', t: W.busT });
+        /* the page's time zone, so a panel's clock says the same hour as its header */
+        post(p, { type: 'tz', tz: Pro.tz ? Pro.tz() : null });
         p.stamp = m.data; stamps();
       } else if (m.type === 'stamp') { p.stamp = m.data; stamps(); }
       else if (m.type === 'view') shareView(m.data, p);
@@ -471,6 +517,25 @@
       const p = addPanel(main.layer);
       if (p) p.sec.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
     });
+
+    /* ── Compare and Trend: the maps beside the main one become the other
+       models, or the earlier runs, at the main map's moment. They replace
+       the maps already open; the shared time is pinned to the main map's
+       valid hour first, so each new map opens on it. ── */
+    function lineUp(kind) {
+      const MM = root.ModelMaps;
+      const list = kind === 'compare' ? compareLayers(main.layer, (s, f) => !!(MM && MM.field(s, f))) : trendLayers(main.layer);
+      if (!list) { say('Compare and Trend work on a model map: HRRR, NAM 3 km, RAP, GFS, ECMWF or AIFS.'); return; }
+      if (!list.length) { say('No other model has this field — try one the models share, like 2 m temperature, MSLP or precipitable water.'); return; }
+      for (const p of W.panels.slice()) { W.panels = W.panels.filter((x) => x !== p); p.sec.remove(); }
+      if (!W.sync.time) { W.sync.time = true; const el = $('#wstime'); if (el) el.checked = true; }
+      if (!W.sync.place) { W.sync.place = true; const el = $('#wsplace'); if (el) el.checked = true; }
+      setBus(busFrom(main.stamp), main);
+      for (const str of list) addPanel(str, { quiet: true });
+      layout(); changed();
+      say(kind === 'compare' ? `Comparing ${list.length + 1} models at the same moment — step any map and the rest follow.` : 'This run and the three before it, at the same moment — how the forecast has moved.');
+    }
+    for (const [id, kind] of [['#mmcompare', 'compare'], ['#mmtrend', 'trend']]) { const b = $(id); if (b) b.addEventListener('click', () => lineUp(kind)); }
 
     /* ── share ── */
     $('#wsshare').addEventListener('click', () => openSheet('#wsshareit'));

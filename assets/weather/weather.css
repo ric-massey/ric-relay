@@ -1328,3 +1328,9 @@ body:not([data-view="pro"]) .scrubwrap .scrubticks,body:not([data-view="pro"]) .
 .scrubwrap .tlab:last-of-type:not(:first-of-type){transform:translateX(-100%)}
 /* the map's notices sit at its foot, above the colour key, so they never cover the legend at its head */
 body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .radar .note,body[data-view="pro"] .radar .note{top:auto;bottom:62px}
+/* Compare and Trend (UI-REVIEW B3): a joined pair at the end of the model row */
+.mmline{display:inline-flex}
+.mmline button{min-height:34px;padding:0 10px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
+.mmline button+button{margin-left:-1px}
+.mmline button:hover{border-color:#5a6678;position:relative}
+@media (pointer:coarse){ .mmline button{min-height:44px} }

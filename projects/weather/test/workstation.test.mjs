@@ -103,6 +103,26 @@ console.log('\nRULE  the timeline tells time: a model by its forecast hour, the 
   } finally { Date.now = now; }
 }
 
+console.log('\nRULE  Compare opens the other models with the same field; Trend the runs before; neither holds a place');
+{
+  const has = { hrrr: ['refc', 't2m', 'h500x'], nam: ['refc', 't2m'], rap: ['refc', 't2m'], gfs: ['t2m'], ecmwf: ['t2m'], aifs: ['t2m'] };
+  const hasField = (s, f) => (has[s] || []).includes(f);
+  const c = WS.compareLayers('l=model&m=hrrr.refc&o=lw', hasField);
+  ok(c.length === 2 && c[0].includes('m=nam.refc') && c[1].includes('m=rap.refc'), `reflectivity: NAM and RAP, storm-scale first (${c.join(' | ')})`);
+  ok(c.every((x) => x.includes('o=lw')), 'each keeps the main map\'s overlays');
+  const t2 = WS.compareLayers('l=model&m=gfs.t2m', hasField);
+  ok(t2.length === 3 && /ecmwf/.test(t2[0]) && /aifs/.test(t2[1]) && /hrrr/.test(t2[2]), `a global model against the globals first, three at most (${t2.map((x) => x.match(/m=([a-z]+)/)[1]).join(' ')})`);
+  const h2 = WS.compareLayers('l=model&m=hrrr.t2m', hasField);
+  ok(/nam/.test(h2[0]) && /rap/.test(h2[1]) && /gfs/.test(h2[2]), `a storm-scale model against its own kind first (${h2.map((x) => x.match(/m=([a-z]+)/)[1]).join(' ')})`);
+  ok(WS.compareLayers('l=model&m=gfs.h500x', hasField).length === 1, 'only models that have the field');
+  ok(WS.compareLayers('l=comp', hasField) === null && WS.compareLayers('l=model&m=gefs.t2m', hasField) === null, 'not a model these apply to: null');
+  const tr = WS.trendLayers('l=model&m=hrrr.refc');
+  ok(tr.length === 3 && tr[0].includes('m=hrrr.refc.1') && tr[2].includes('m=hrrr.refc.3'), `Trend: the one before, two before, three before (${tr.join(' | ')})`);
+  const tb = WS.trendLayers('l=model&m=nam.t2m.2');
+  ok(tb.length === 3 && tb.some((x) => /m=nam\.t2m(&|$)/.test(x)) && !tb.some((x) => /m=nam\.t2m\.2/.test(x)), 'from an earlier run: the other three, the latest among them');
+  ok([...c, ...t2, ...tr].every((x) => !/(^|&)v=/.test(x)), 'no place in any of them');
+}
+
 console.log('\nRULE  the presets open only what the page has');
 {
   const MM = require('../modelmaps.js'), MR = require('../mrms.js'), AB = require('../abi.js'), NX = require('../nexrad.js');

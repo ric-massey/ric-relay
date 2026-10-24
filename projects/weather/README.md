@@ -512,6 +512,23 @@ are white: blue on a radar map reads as light rain. The colours were chosen by
 rendering the page three ways (amber, monochrome, blue) with only the
 interface colour changed.
 
+**Compare and Trend (2026-10-23, UI-REVIEW B3 — Pivotal's two modes):** two
+buttons at the end of the Models row line the maps beside the main one up on
+the main map's moment. **Compare** opens the same field in the other models
+that have it (`ModelMaps.field`), three at most — a storm-scale model against
+its own kind first (HRRR, NAM 3 km, RAP), a global one against the globals
+(ECMWF, GFS, AIFS). **Trend** opens the same model and field from the three
+runs before (the Run picker's "the one before" … "three before"), so the four
+maps show how the forecast for one hour has moved. Both replace the maps
+already open, keep the main map's overlays, turn place and time sync on and
+pin the shared time to the main map's valid hour first. The choice of maps is
+`WxWorkstation.compareLayers` / `trendLayers` (tested; no place in any). Two
+fixes came with it: a panel told a time before its frames have loaded holds
+it and applies it as they arrive (twenty seconds, or until the visitor steps
+that map), and a panel tells time in the page's zone (`WxPro.setTZ`, sent on
+ready and whenever the place's zone changes) — its own clock had been in the
+computer's zone while its header was in the place's.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

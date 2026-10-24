@@ -24,7 +24,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Weather">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231f5fa8'/><circle cx='40' cy='40' r='16' fill='%23ffd166'/><path d='M30 74h42a14 14 0 0 0-3-28 18 18 0 0 0-34 6 11 11 0 0 0-5 22z' fill='%23fff'/></svg>">
-  <link rel="stylesheet" href="assets/weather/weather.css?v=44">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=45">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -191,6 +191,10 @@
           <label>Model <select id="mmsrc"><option value="smeso">Mesoanalysis · every level, SPC's method, hourly</option><option value="meso">Mesoanalysis · HRRR, worked out in your browser</option><option value="hrrr">HRRR · 3 km, hourly</option><option value="nam">NAM 3 km · every 6 hours, to 60 hours</option><option value="rap">RAP · 13 km, hourly</option><option value="gfs">GFS · global, to 10 days</option><option value="ecmwf">ECMWF · IFS, global, to 10 days</option><option value="aifs">ECMWF AIFS · machine-learned, to 10 days</option><option value="gefs">GEFS ensemble · mean, spread, spaghetti, chances</option><option value="tle">HRRR-TLE · storm probabilities</option><option value="nbm">National Blend · chances of rain, thunder, snow, ice, fog</option></select></label>
           <label>Field <select id="mmfield"></select></label>
           <label id="mmbackl" title="An earlier run of the same model, at the same hours — how the forecast has changed">Run <select id="mmback"><option value="0">Latest</option><option value="1">The one before</option><option value="2">Two before</option><option value="3">Three before</option></select></label>
+          <span class="mmline" role="group" aria-label="Line the models up">
+            <button type="button" id="mmcompare" title="This field in the other models, side by side at the same moment (Pivotal's Compare Models)">Compare</button>
+            <button type="button" id="mmtrend" title="This model's last four runs side by side at the same moment — how the forecast has moved (Pivotal's Model Trend)">Trend</button>
+          </span>
           <span class="mmrun" id="mmrun"></span>
         </div>
         <div class="modelbar pro-only" id="densbar" hidden>
@@ -414,7 +418,7 @@
 <script src="projects/weather/modelmaps.js?v=8"></script>
 <script src="projects/weather/mrms.js?v=2"></script>
 <script src="projects/weather/mapgeo.js?v=1"></script>
-<script src="assets/weather/workstation.js?v=14"></script>
-<script src="assets/weather/app.js?v=38"></script>
+<script src="assets/weather/workstation.js?v=17"></script>
+<script src="assets/weather/app.js?v=39"></script>
 </body>
 </html>

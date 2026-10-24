@@ -48,7 +48,10 @@
      pros need): forecasters work in Z, as NWS products, runs and scans do.
      Kept in this browser; a panel follows the page through the storage event. */
   let UTC = PRO && store.get("wx:utc", false) === true;
-  const clk = () => UTC ? Wx.clock("UTC", true) : Wx.clock((S.fc && S.fc.tz) || (S.pt && S.pt.tz) || undefined);
+  /* a panel has no place of its own: it tells time in the page's zone, sent down by the workstation (PANEL_TZ) */
+  let PANEL_TZ = null;
+  const tzNow = () => PANEL_TZ || (S.fc && S.fc.tz) || (S.pt && S.pt.tz) || undefined;
+  const clk = () => UTC ? Wx.clock("UTC", true) : Wx.clock(tzNow());
   const nowSec = () => Math.floor(Date.now() / 1000);
   const dayFmtPage = (ms) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(ms);
   const dist = (km) => U() === "us" ? `${Math.max(1, Math.round(km / 1.609344))} mi` : `${Math.max(1, Math.round(km))} km`;
@@ -4541,6 +4544,8 @@
     /* The lower 48, edge to edge: a map view, not anybody's place. */
     const CONUS = [24.4, -125, 49.5, -66.9];
     return {
+      /* the times said again (a panel given the page's time zone) */
+      relabel() { if (R.frames.length) show(R.frame); label(); },
       panel: {
         get view() { return viewNow(); }, setView,
         get stamp() { return stamp(); }, setTime,
@@ -5172,7 +5177,7 @@
      connection, that city's weather, labelled as approximate. */
   /* Pro's workstation (workstation.js) reaches the map and the sounding
      through this, and nothing else of the page */
-  if (PRO) window.WxPro = { map: radar.panel, sky, choose, time: (ms) => clk().time(ms), day: (ms) => clk().day(ms), ymd: (ms) => clk().ymd(ms), get place() { return S.place ? { lat: S.place.lat, lon: S.place.lon, name: S.place.name } : null; } };
+  if (PRO) window.WxPro = { map: radar.panel, sky, choose, tz: () => tzNow() || null, setTZ: (tz) => { if (PANEL && (tz == null || /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/.test(tz)) && tz !== PANEL_TZ) { PANEL_TZ = tz || null; radar.relabel && radar.relabel(); } }, time: (ms) => clk().time(ms), day: (ms) => clk().day(ms), ymd: (ms) => clk().ymd(ms), get place() { return S.place ? { lat: S.place.lat, lon: S.place.lon, name: S.place.name } : null; } };
   if (PANEL) {
     /* a panel is only its map: the parent page holds the place, the
        warnings and every card */
