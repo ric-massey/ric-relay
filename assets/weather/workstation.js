@@ -101,7 +101,39 @@
        STP; the rotation tracks */
     clean({ name: 'Severe Weather', main: 'l=l3:ref&o=wcrl', layout: 'grid',
       panels: ['l=l3:srv&o=wc', 'l=model&o=w&m=smeso.stpe', 'l=mrms&o=w&r=rot60'],
-      cards: { order: ['alerts', 'nearby', 'national', 'sky', 'meso', 'hero', 'models', 'sources', 'afd', 'record'], hidden: ['afd', 'record'] } })
+      cards: { order: ['alerts', 'nearby', 'national', 'sky', 'meso', 'hero', 'models', 'sources', 'afd', 'record'], hidden: ['afd', 'record'] } }),
+    /* ── presets by the weather, not by the job (UI-REVIEW-2 item 5,
+       2026-10-24): WORKSTATION.md's caution still holds — Pro is not trying
+       to be ForeFlight — so each is a starting layout for a kind of day,
+       made only of what the page already draws. ── */
+    /* a winter storm: what falls (the HRRR's type), how much snow, where the
+       850 mb freezing line runs, and the Blend's chance of an inch */
+    clean({ name: 'Winter Storm', main: 'l=model&o=w&m=hrrr.ptype', layout: 'grid',
+      panels: ['l=model&o=&m=hrrr.snow', 'l=model&o=&m=nam.t850', 'l=model&o=&m=nbm.p_snow1'],
+      cards: { order: ['alerts', 'nearby', 'hero', 'sky', 'afd', 'models', 'national', 'record', 'sources', 'meso'], hidden: ['meso'] } }),
+    /* the tropics: water vapour with the NHC's cones, the radar, the GFS's
+       pressure and ECMWF's wind */
+    clean({ name: 'Tropical', main: 'l=abi&o=h&g=b9.conus.auto', layout: 'grid',
+      panels: ['l=comp&o=h', 'l=model&o=h&m=gfs.mslp', 'l=model&o=h&m=ecmwf.wind10'],
+      cards: { order: ['alerts', 'nearby', 'national', 'hero', 'afd', 'models', 'sky', 'record', 'sources', 'meso'], hidden: ['meso', 'sky'] } }),
+    /* fire weather: wind and gusts, how dry the air is (dew point), GOES's
+       fire-detection picture, and lightning */
+    clean({ name: 'Fire Weather', main: 'l=model&o=l&m=hrrr.gust', layout: 'grid',
+      panels: ['l=model&o=&m=hrrr.td2m', 'l=abi&o=l&g=fire.conus.auto', 'l=model&o=&m=hrrr.wind10'],
+      cards: { order: ['alerts', 'nearby', 'hero', 'afd', 'models', 'sky', 'national', 'record', 'sources', 'meso'], hidden: ['meso'] } }),
+    /* flying, for a look and never as a briefing: the radar with the
+       stations (ceiling and visibility in their plots), lightning and
+       watches; the HRRR's visibility; the Blend's chance of a ceiling under
+       1,000 ft; the 250 mb wind */
+    clean({ name: 'Flying (not a briefing)', main: 'l=comp&o=slw', layout: 'grid',
+      panels: ['l=model&o=&m=hrrr.vis', 'l=model&o=&m=nbm.p_ceil1k', 'l=model&o=&m=gfs.jet250'],
+      cards: { order: ['alerts', 'nearby', 'hero', 'afd', 'models', 'sky', 'national', 'record', 'sources', 'meso'], hidden: ['meso'] } }),
+    /* a morning briefing: today's SPC outlook and watches over the radar, the
+       500 mb pattern, the HRRR's picture of the day's storms, water vapour —
+       and the forecasters' discussion first among the cards */
+    clean({ name: 'Morning Briefing', main: 'l=comp&o=ow', layout: 'grid',
+      panels: ['l=model&o=&m=gfs.h500', 'l=model&o=&m=hrrr.refc', 'l=abi&o=&g=b9.conus.auto'],
+      cards: { order: ['afd', 'alerts', 'nearby', 'hero', 'models', 'sky', 'national', 'meso', 'record', 'sources'], hidden: [] } })
   ];
 
   /* ── the link ──

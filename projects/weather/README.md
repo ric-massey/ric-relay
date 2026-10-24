@@ -664,6 +664,20 @@ forecast there, centre the map, copy the coordinates — every one an action
 the map already had, at the point pressed, which is kept nowhere. The keys
 sheet lists both, and the wheel.
 
+**Presets by the weather (2026-10-24, UI-REVIEW-2 item 5):** five more starting
+layouts, by the kind of day rather than the job — `WORKSTATION.md`'s caution
+that Pro is not trying to be ForeFlight still holds, so each is made only of
+what the page already draws. **Winter Storm** (the HRRR's precipitation type;
+its snow; the NAM's 850 mb temperature; the Blend's chance of an inch),
+**Tropical** (water vapour with the NHC's cones; the radar; GFS pressure;
+ECMWF wind), **Fire Weather** (gusts; dew point; GOES's fire picture; wind;
+lightning), **Flying (not a briefing)** (the radar with station plots,
+lightning and watches; HRRR visibility; the Blend's chance of a ceiling under
+1,000 ft; 250 mb wind — the name says it is not a briefing) and **Morning
+Briefing** (SPC's outlook and watches over the radar; 500 mb; the HRRR's
+storms; water vapour; the discussion first among the cards). Tested: every
+layer and overlay each names is one the page can draw.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

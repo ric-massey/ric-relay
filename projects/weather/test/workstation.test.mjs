@@ -148,6 +148,10 @@ console.log('\nRULE  the presets open only what the page has');
   };
   ok(WS.PRESETS.every((p) => (!p.main || real(p.main)) && p.panels.every(real)), 'every layer a preset names is one the page can draw');
   ok(WS.PRESETS.some((p) => p.name === 'Forecast Analysis') && WS.PRESETS.some((p) => p.name === 'Severe Weather'), 'Forecast Analysis and Severe Weather, as WORKSTATION.md asked');
+  const TASKS = ['Winter Storm', 'Tropical', 'Fire Weather', 'Flying (not a briefing)', 'Morning Briefing'];
+  ok(TASKS.every((n) => WS.PRESETS.some((p) => p.name === n)), `presets by the weather (UI-REVIEW-2 item 5): ${TASKS.join(', ')}`);
+  ok(WS.PRESETS.every((p) => [p.main, ...p.panels].filter(Boolean).every((x) => /^[xwcfsoldrgh]*$/.test(new URLSearchParams(x).get('o') || ''))), 'every overlay a preset names is one the page has');
+  ok(WS.PRESETS.find((p) => /Flying/.test(p.name)).name.includes('not a briefing'), 'the flying layout says, in its name, that it is not a briefing');
   const page = readFileSync(new URL('../../../weather-pro.html', import.meta.url), 'utf8');
   ok(page.indexOf('assets/weather/workstation.js') > 0 && page.indexOf('assets/weather/workstation.js') < page.indexOf('assets/weather/app.js'), 'the page loads the workstation before app.js (a link\'s layers are read before the map starts)');
   /* the workspace's controls sit in the place bar with the units (2026-10-23,

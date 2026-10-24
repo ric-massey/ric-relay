@@ -109,6 +109,6 @@ the right radar"), 5, 6, 7.
 - [x] 2 time that does not alarm: open on newest, the legend says the loop (2026-10-24)
 - [x] 3 Active: the country's storms, one click each (2026-10-24)
 - [x] 4 the map's own menu (right-click / long-press) (2026-10-24)
-- [ ] 5 presets by task
+- [x] 5 presets by task (2026-10-24)
 - [ ] 6 load decoders on demand; progress on slow loads
 - [ ] 7 quieter controls

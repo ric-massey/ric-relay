@@ -152,7 +152,11 @@ warnings and storm mode stay on both pages, Pro keeps its own dark amber look.
       put nothing but layers on the page (`clean()`).
 - [x] Presets: Default, Forecast Analysis (GFS and ECMWF 500 mb, MSLP, GOES water
       vapour), Severe Weather (site reflectivity with watches, cells, reports and
-      lightning; SRV; effective STP; rotation tracks). No more until these are tried.
+      lightning; SRV; effective STP; rotation tracks). No more until these are tried
+      — overridden by Ric on 2026-10-24 ("presets for more professions i guess", then
+      "do all 7"): five more, by the weather rather than the job — Winter Storm,
+      Tropical, Fire Weather, Flying (not a briefing), Morning Briefing
+      (UI-REVIEW-2 item 5).
 - [x] Phone layout: maps stack one under another, full width, sync unchanged.
 - [x] Tests: `test/workstation.test.mjs` (no place in a workspace or a default
       link, what a link can put on the page, the headers, the presets) in
