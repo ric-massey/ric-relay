@@ -706,6 +706,22 @@ behind ⋯ on a narrower screen). With a mouse over the data, the legend and the
 colour key step back to 60% and come straight back when pointed at
 (`#radarcard.mapfocus`).
 
+**Round three (2026-10-24, `UI-REVIEW-3.md` — Ric: "then do another look for
+more. then do those"):** a fresh pass after round two found four things.
+**Pro reopens where you left off:** the main map's view is kept in this
+browser to 0.1° (`wx:lastview`; never sent) whenever it moves — by a gesture,
+a key or another map side by side — and comes back on a reload unless a link
+sets the view; choosing a place or US still moves it. **Close in, roads and
+towns:** from zoom 8 the base map draws at full strength with its own roads
+and names (interstates, Moore, Yukon, Mustang around Oklahoma City at zoom
+10 were all but invisible), and our coarser town names step aside so nothing
+is named twice; our state, county and coast lines stay. **A first-visit
+hint:** one line, once, along the foot of the map — wheel or pinch to zoom,
+right-click (press and hold on a phone) for the map's menu, A for active
+weather, ? for every key — put away by × or after a minute
+(`wx:hintseen`). **Shift and an arrow pan** the map a third of the way; the
+arrows alone still step frames.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

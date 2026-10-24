@@ -2533,7 +2533,10 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
       /* while our own lines and town names are drawn, Pro sinks the tiles' (CSS: .haslines), so no town is named twice */
-      el.classList.toggle("haslines", !!(GeoOK && R.ov.lines && R.started));
+      /* close in (zoom 8 and up) the base map's own roads and names are the useful ones — a chaser navigates by them —
+         so it draws at full strength and our coarser town names step aside (UI-REVIEW-3 item 2) */
+      const close = PRO && R.z >= 8;
+      el.classList.toggle("haslines", !!(GeoOK && R.ov.lines && R.started && !close));
       if (!GeoOK || !R.ov.lines || !R.started) return;
       const left = R.cx - w / 2, top = R.cy - h / 2, z = R.z, k = TILE * 2 ** z / 360;
       const W = xLng(left, z), E = xLng(left + w, z), N = yLat(top, z), Sl = yLat(top + h, z);
@@ -2554,7 +2557,7 @@
       stroke(want("counties"), [["#05070a", 2.2, 0.35], ["#aeb8c4", 0.8, 0.55]]);
       for (const n of ["coast", "nations", "states"]) stroke(want(n), [["#05070a", 3.2, 0.55], ["#e9ecef", n === "states" ? 1.25 : 1.1, 0.85]]);
       /* Names (UI-REVIEW B8): towns, cities only, or none */
-      const P = R.names === "none" ? null : want("places");
+      const P = R.names === "none" || close ? null : want("places");
       if (!P) return;
       ctx.font = PRO ? "600 12px \"IBM Plex Sans\",system-ui,-apple-system,'Segoe UI',sans-serif" : "600 12px system-ui,-apple-system,'Segoe UI',sans-serif";
       ctx.textBaseline = "middle";
@@ -3997,6 +4000,11 @@
       if (PRO && !PANEL && Wx.SAT[sat]) setSat(sat);
       if (R.wlApply) R.wlApply();
       const linked = PRO ? applyLink() : false;          // a shared view wins over the place's
+      /* no link: the map reopens where it was left (UI-REVIEW-3 item 1) — a place chosen later still moves it */
+      if (PRO && !PANEL && !linked) {
+        const lv = store.get("wx:lastview", null);
+        if (lv && Wx.validLat(lv.lat) && Wx.validLon(lv.lon) && Number.isInteger(lv.z) && lv.z >= MINZ && lv.z <= MAXZ) { R.us = false; R.z = lv.z; R.cx = lngX(lv.lon, R.z); R.cy = latY(lv.lat, R.z); clearTiles(); }
+      }
       /* after the link, which may have turned a lightning layer on */
       if (ltgOn()) { lightningClock(); if ($("#awscredit")) $("#awscredit").hidden = false; }
       /* the pickers say what the link chose */
@@ -4426,6 +4434,21 @@
       setTimeout(tick, 4000); setInterval(tick, 180e3);
     } else if ($("#actbtn")) $("#actbtn").hidden = true;
 
+    /* ── A first-visit hint (UI-REVIEW-3 item 3): one line, once, along the
+       foot of the map, saying what the map can do that nothing else on the
+       page shows. × puts it away for good; so does a minute on screen. ── */
+    if (PRO && !PANEL && !store.get("wx:hintseen", false)) {
+      const hint = document.createElement("p");
+      hint.className = "maphint"; hint.setAttribute("role", "note");
+      hint.innerHTML = matchMedia("(pointer:coarse)").matches
+        ? `Pinch to zoom · press and hold the map for its menu · <b>Active</b> lists the country's storms <button type="button" aria-label="Got it">×</button>`
+        : `Wheel or pinch to zoom toward the pointer · right-click the map for its menu · <kbd>A</kbd> active weather · <kbd>?</kbd> every key <button type="button" aria-label="Got it">×</button>`;
+      el.appendChild(hint);
+      const seen = () => { store.set("wx:hintseen", true); hint.remove(); };
+      hint.querySelector("button").addEventListener("click", seen);
+      setTimeout(() => { if (hint.isConnected) { hint.classList.add("going"); setTimeout(seen, 600); } }, 60e3);
+    }
+
     /* ── The map's own menu (item 4): right-click, or a long press on a
        touch screen. Every action is one the map already has, at the point
        pressed; the point is only the visitor's own pointer and is kept
@@ -4566,7 +4589,15 @@
       if (document.querySelector("dialog[open]")) return;
       const press = (b) => { if (!b) return false; b.click(); return true; };
       let done;
-      if (k === " ") {
+      /* shift and an arrow moves the map a third of the way (UI-REVIEW-3 item 4); the arrows alone still step frames */
+      if (e.shiftKey && /^Arrow(Left|Right|Up|Down)$/.test(k)) {
+        const w = el.clientWidth, h = el.clientHeight;
+        R.cx += k === "ArrowLeft" ? -w / 3 : k === "ArrowRight" ? w / 3 : 0;
+        R.cy += k === "ArrowUp" ? -h / 3 : k === "ArrowDown" ? h / 3 : 0;
+        draw(); stationsSoon();
+        if (single() && !R.lockId) { clearTimeout(follow); follow = setTimeout(async () => { if (await pickSite(false)) { clearTiles(); await siteFrames(); label(); } }, 700); }
+        done = true;
+      } else if (k === " ") {
         if (t && t.closest && t.closest("button,a,summary")) return;   // Space on a button presses it
         start(); play(!R.playing); done = true;
       } else if (k === "ArrowLeft" || k === "ArrowRight") {
@@ -4910,10 +4941,15 @@
       return { layer: R.started ? describe() : "", kind, t, run, loop, newest: R.frame >= R.frames.length - 1, frames: R.frames.length, mode: R.mode };
     }
     function viewNow() { return { lat: yLat(R.cy, R.z), lon: xLng(R.cx, R.z), z: R.z }; }
+    /* where the main map is, kept in this browser to 0.1° so a reload reopens there (UI-REVIEW-3 item 1); never sent */
+    function rememberView(v = viewNow()) {
+      if (PRO && !PANEL && R.started) { clearTimeout(R.lvT); R.lvT = setTimeout(() => store.set("wx:lastview", { lat: Math.round(v.lat * 10) / 10, lon: Math.round(v.lon * 10) / 10, z: v.z }), 800); }
+    }
     function tellView() {
       const v = viewNow(), k = `${v.lat.toFixed(3)},${v.lon.toFixed(3)},${v.z}`;
       if (k === toldView) return;
       toldView = k; tell("view", v);
+      rememberView(v);
     }
     function setView(lat, lon, z) {
       if (!Wx.validLat(lat) || !Wx.validLon(lon)) return;
@@ -4929,6 +4965,7 @@
         if (R.z !== wasZ) { zghost(); clearTiles(); }
         draw(); stationsSoon();
         if (R.z !== wasZ) zwaitGhost();
+        rememberView();   // moved by another map: remembered all the same
         if (single() && !R.lockId) { clearTimeout(follow); follow = setTimeout(async () => { if (await pickSite(false)) { clearTiles(); await siteFrames(); label(); } }, 700); }
       } finally { applying--; }
     }
