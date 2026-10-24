@@ -529,6 +529,23 @@ that map), and a panel tells time in the page's zone (`WxPro.setTZ`, sent on
 ready and whenever the place's zone changes) — its own clock had been in the
 computer's zone while its header was in the place's.
 
+**The drawer's index, and the sounding large (2026-10-23, UI-REVIEW B4):** with
+a place set the readouts were one 4,500 px scroll. A strip of tabs is pinned to
+the drawer's top — NOW · SOUNDING · DISCUSSION · MESO · MODELS · RECORD ·
+SOURCES, one for each card on show, in the workspace's own card order
+(`WxWorkstation.CARD_TABS`, tested to cover every card) — and a tab scrolls
+the drawer to its card; the card at the top is lit as you scroll, and the
+place's own alerts are red. A jump, never a filter: nothing above is hidden.
+The strip shows only with three cards or more. **Large** on the sounding card
+moves the card itself into a panel over the map (`#skyout`), where its own wide
+layout puts the hodograph beside the skew-T — forecasters read a sounding full
+window, as NSHARP and SHARPpy show it. It covers the map, never the docked
+drawer, and sits under the storm warnings (z-index 43 to their 44). Back, Esc,
+or the page hiding the card (no place) returns it to its place in the card
+order; on a narrow screen it closes the drawer so the panel is not under it.
+The last tab was not restored on a reload on purpose: the drawer opens at the
+top, where the alerts are.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

@@ -6,8 +6,9 @@
 > When a piece ships, move it into `README.md` → "Built so far" and tick it off
 > at the bottom. `DESIGN.md` stays the source of truth for the room.
 >
-> **A, B1, B2 and B3 are built (2026-10-23)** — see README.md, "The review's
-> small fixes", "The legend and the timeline" and "Compare and Trend".
+> **A and B1–B4 are built (2026-10-23)** — see README.md, "The review's small
+> fixes", "The legend and the timeline", "Compare and Trend" and "The drawer's
+> index, and the sounding large".
 
 Method: every mode of `weather-pro.html` driven in headless Chrome at 1440×900,
 1280×800 and 800×600, plus the phone at 369–375 px, with no place and with a place
@@ -153,7 +154,7 @@ rail + sounding pop-out), B5. B6–B9 as they fit.
 - [x] B1 product legend (2026-10-23)
 - [x] B2 timeline with ticks, times and F-hours (2026-10-23)
 - [x] B3 Compare and Trend (2026-10-23)
-- [ ] B4 drawer rail, sounding pop-out
+- [x] B4 drawer rail, sounding pop-out (2026-10-23)
 - [ ] B5 mode controls into the toolbar
 - [ ] B6 Pro units
 - [ ] B7 colour tables

@@ -1334,3 +1334,41 @@ body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:n
 .mmline button+button{margin-left:-1px}
 .mmline button:hover{border-color:#5a6678;position:relative}
 @media (pointer:coarse){ .mmline button{min-height:44px} }
+
+/* ── The drawer's index (UI-REVIEW B4, 2026-10-23): a joined strip of tabs
+   pinned to the drawer's top; the card at the top is lit; the place's own
+   alerts are red. It scrolls sideways when the drawer is narrow. ── */
+.cardtabs{display:none}
+body[data-view="pro"]:not([data-panel]) .side#cards>.cardtabs:not([hidden]){display:flex;position:sticky;top:0;z-index:5;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;min-height:43px;align-items:center;margin:0;padding:6px 8px;gap:0;background:#05070a!important;border-bottom:1px solid #2a3340}
+.cardtabs::-webkit-scrollbar{display:none}
+.cardtabs button{flex:none;min-height:30px;padding:0 9px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.cardtabs button+button{margin-left:-1px}
+.cardtabs button:hover{border-color:#5a6678;position:relative}
+.cardtabs button[aria-current="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent);position:relative;z-index:1}
+.cardtabs button.warn{color:#ff8787}
+.cardtabs button.warn[aria-current="true"]{background:#ff6b6b;border-color:#ff6b6b;color:#1a0000}
+@media (pointer:coarse){ .cardtabs button{min-height:40px} }
+
+/* ── The sounding, large: a panel over the map (never over the drawer it
+   came from when that is docked, and under the storm warnings) ── */
+.skypop{display:none}
+body[data-view="pro"]:not([data-panel]) .skypop{display:inline-flex;align-items:center;position:absolute;top:12px;right:44px;z-index:2;min-height:28px;padding:0 9px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+body[data-view="pro"] .skypop:hover{border-color:#5a6678}
+body[data-view="pro"] #sky{position:relative}
+body[data-view="pro"] #sky summary .lead{padding-right:60px}
+.skyout[hidden]{display:none}
+body[data-view="pro"]:not([data-panel]) .skyout{position:fixed;top:var(--tb,44px);left:0;right:var(--dock,0px);bottom:0;z-index:43;overflow-y:auto;overscroll-behavior:contain;padding:0 16px 24px;background:#080b10;border-right:1px solid #2a3340}
+.skyouthead{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:12px;margin:0 -16px 8px;padding:8px 16px;background:#05070a;border-bottom:1px solid #2a3340}
+.skyouthead b{font:600 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.skyouthead button{margin-left:auto;min-height:32px;padding:0 12px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 12px var(--mono);letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+.skyouthead button:hover{border-color:#5a6678}
+/* in the panel the card is the page: no card chrome, its own heading and button not needed */
+.skyout #sky{max-width:1400px;margin:0 auto;padding:0;border:0!important;background:none!important}
+.skyout #sky>.skypop,.skyout #skyd>summary{display:none!important}
+.skyout .skyrow{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
+.skyout #skydyn .params{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+@media (max-width:760px){ .skyout .skyrow{grid-template-columns:minmax(0,1fr)} }
+@media (pointer:coarse){ body[data-view="pro"]:not([data-panel]) .side#cards>.cardtabs:not([hidden]){min-height:53px} }
+.skyouthead b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.skyouthead button{flex:none;white-space:nowrap}
+@media (max-width:640px){ .skyouthead .wide{display:none} }

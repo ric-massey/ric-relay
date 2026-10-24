@@ -123,6 +123,12 @@ console.log('\nRULE  Compare opens the other models with the same field; Trend t
   ok([...c, ...t2, ...tr].every((x) => !/(^|&)v=/.test(x)), 'no place in any of them');
 }
 
+console.log('\nRULE  every readout card has a tab in the drawer\'s index, one short word');
+{
+  ok(WS.CARDS.every((c) => typeof WS.CARD_TABS[c] === 'string'), `a tab for each card (${WS.CARDS.filter((c) => !WS.CARD_TABS[c]).join(', ') || 'none missing'})`);
+  ok(Object.values(WS.CARD_TABS).every((t) => /^[A-Z][a-z]+$/.test(t) && t.length <= 10), 'each is one short word');
+}
+
 console.log('\nRULE  the presets open only what the page has');
 {
   const MM = require('../modelmaps.js'), MR = require('../mrms.js'), AB = require('../abi.js'), NX = require('../nexrad.js');

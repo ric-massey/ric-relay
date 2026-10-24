@@ -195,6 +195,8 @@
      so the maps show how the forecast for one moment has moved. Both keep
      the main map's overlays; neither ever holds a place. null when the main
      map is not a model these apply to. */
+  /* the drawer's tabs: one short word a card (B4) */
+  const CARD_TABS = { hero: 'Now', alerts: 'Alerts', nearby: 'Nearby', national: 'Warnings', sky: 'Sounding', afd: 'Discussion', meso: 'Meso', models: 'Models', record: 'Record', sources: 'Sources' };
   const COMPARE_ORDER = ['hrrr', 'nam', 'rap', 'gfs', 'ecmwf', 'aifs'], GLOBAL = ['ecmwf', 'gfs', 'aifs'];
   const modelOf = (mainStr) => {
     const q = new URLSearchParams(cleanLayer(mainStr) || '');
@@ -217,7 +219,7 @@
     return [0, 1, 2, 3].filter((b) => b !== M.back).map((b) => withModel(M.q, b ? `${M.src}.${M.field}.${b}` : `${M.src}.${M.field}`));
   }
 
-  const api = { MAX_PANELS, CARDS, LOCKED, PRESETS, cleanLayer, sameLayer, sameWorkspace, clean, linkHash, readHash, stampText, timelineMarks, compareLayers, trendLayers };
+  const api = { MAX_PANELS, CARDS, LOCKED, PRESETS, cleanLayer, sameLayer, sameWorkspace, clean, linkHash, readHash, stampText, timelineMarks, compareLayers, trendLayers, CARD_TABS };
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
   root.WxWorkstation = api;
@@ -465,7 +467,77 @@
     function arrangeCards() {
       for (const id of W.cards.order) { const el = document.getElementById(id); if (el && el.parentNode === cardsEl) cardsEl.appendChild(el); }
       for (const id of CARDS) { const el = document.getElementById(id); if (el) el.classList.toggle('ws-off', W.cards.hidden.includes(id)); }
+      renderTabs();
     }
+
+    /* ── the drawer's index (UI-REVIEW B4, 2026-10-23): a tab for each card
+       on show, in the drawer's own order, that scrolls the drawer to it; the
+       tab of the card at the top is lit as the drawer scrolls. A jump, never
+       a filter — the alerts above stay where they are. ── */
+    const TAB = CARD_TABS;
+    const tabsEl = $('#cardtabs');
+    const shown = (el) => el && el.parentNode === cardsEl && !el.hidden && !el.classList.contains('ws-off') && el.offsetHeight > 0;
+    function renderTabs() {
+      if (!tabsEl) return;
+      const ids = W.cards.order.filter((id) => TAB[id] && shown(document.getElementById(id)));
+      const html = ids.map((id) => `<button type="button" data-tab="${id}"${id === 'alerts' || id === 'nearby' ? ' class="warn"' : ''}>${TAB[id]}</button>`).join('');
+      if (tabsEl.dataset.html !== html) { tabsEl.dataset.html = html; tabsEl.innerHTML = html; }
+      tabsEl.hidden = ids.length < 3;
+      spy();
+    }
+    function spy() {
+      if (!tabsEl || tabsEl.hidden) return;
+      const top = cardsEl.scrollTop + tabsEl.offsetHeight + 8;
+      let cur = null;
+      for (const b of tabsEl.querySelectorAll('[data-tab]')) { const el = document.getElementById(b.dataset.tab); if (el && el.offsetTop <= top) cur = b; }
+      for (const b of tabsEl.querySelectorAll('[data-tab]')) b.setAttribute('aria-current', String(b === cur));
+      if (cur && cur.scrollIntoView && tabsEl.scrollWidth > tabsEl.clientWidth) tabsEl.scrollLeft = Math.max(0, cur.offsetLeft - 40);
+    }
+    if (tabsEl) {
+      tabsEl.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-tab]'), el = b && document.getElementById(b.dataset.tab);
+        if (!el) return;
+        cardsEl.scrollTo({ top: Math.max(0, el.offsetTop - tabsEl.offsetHeight), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      });
+      let raf = 0;
+      cardsEl.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(spy); }, { passive: true });
+      /* the page shows and hides cards as their data comes and goes */
+      new MutationObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(renderTabs); }).observe(cardsEl, { attributes: true, attributeFilter: ['hidden', 'class'], subtree: false, childList: true });
+      for (const el of cardsEl.children) if (el.id && TAB[el.id]) new MutationObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(renderTabs); }).observe(el, { attributes: true, attributeFilter: ['hidden'] });
+    }
+
+    /* ── the sounding, large (UI-REVIEW B4): the card itself moves into a
+       panel over the map — forecasters read a skew-T full window, as NSHARP
+       and SHARPpy show it — where its own wide layout puts the hodograph
+       beside the skew-T; Esc or Back returns it to its place in the drawer.
+       It sits under the storm warnings, never over them. ── */
+    const skyEl = $('#sky'), skyOut = $('#skyout'), skyPop = $('#skypop');
+    function skyLarge(on) {
+      if (!skyEl || !skyOut) return;
+      if (on === (skyEl.parentNode === skyOut)) return;
+      if (on) {
+        skyOut.appendChild(skyEl);
+        skyOut.hidden = false;
+        const d = $('#skyd'); if (d) d.open = true;
+        document.body.classList.add('sky-large');
+        /* over the map on a narrow screen, the drawer would sit on top of it */
+        if (innerWidth < 1200 && document.body.classList.contains('drawer-open') && $('#databtn')) $('#databtn').click();
+      } else {
+        const next = W.cards.order.slice(W.cards.order.indexOf('sky') + 1).map((id) => document.getElementById(id)).find((el) => el && el.parentNode === cardsEl);
+        cardsEl.insertBefore(skyEl, next || null);
+        skyOut.hidden = true;
+        document.body.classList.remove('sky-large');
+      }
+      if (skyPop) { skyPop.setAttribute('aria-pressed', String(on)); skyPop.textContent = on ? 'Back' : 'Large'; }
+      renderTabs();
+      dispatchEvent(new Event('resize'));
+      (on ? $('#skyback') : skyPop)?.focus();
+    }
+    if (skyPop) skyPop.addEventListener('click', () => skyLarge(skyEl.parentNode !== skyOut));
+    if ($('#skyback')) $('#skyback').addEventListener('click', () => skyLarge(false));
+    /* the page hid the card (no place any more): it goes back with it */
+    if (skyEl) new MutationObserver(() => { if (skyEl.hidden && skyEl.parentNode === skyOut) skyLarge(false); }).observe(skyEl, { attributes: true, attributeFilter: ['hidden'] });
+    addEventListener('keydown', (e) => { if (e.key === 'Escape' && skyEl && skyEl.parentNode === skyOut && !document.querySelector('dialog[open]')) { e.preventDefault(); skyLarge(false); } });
 
     /* ── the workspace: now, applied, saved ── */
     const current = () => clean({ name: W.name, main: main.layer, panels: W.panels.map((p) => p.str), cards: W.cards, sync: W.sync, layout: W.layout });
