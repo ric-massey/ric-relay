@@ -563,6 +563,23 @@ console.log('\nRULE  a model run is late only when the next one should have been
   ok(MM.lateBy('nope', run, run + 99 * H) === 0 && MM.lateBy('hrrr', NaN) === 0, 'an unknown model or run is never called late');
 }
 
+console.log('\nRULE  the Run list offers every run of the last five days, and a picked run is read exactly');
+{
+  const H = 3600e3, newest = Date.UTC(2026, 9, 24, 15);
+  const h = MM.runsBack('hrrr', newest), g = MM.runsBack('gfs', Date.UTC(2026, 9, 24, 12)), e = MM.runsBack('ecmwf', Date.UTC(2026, 9, 24, 12));
+  ok(h.length === 121 && h[0] === newest && h[120] === newest - 120 * H, `HRRR: ${h.length} runs, hourly, newest first, five days back`);
+  ok(g.length === 21 && g[1] === g[0] - 6 * H, `GFS: ${g.length} runs, six-hourly`);
+  ok(e.length === 11 && e[1] === e[0] - 12 * H, `ECMWF: ${e.length} runs, twelve-hourly`);
+  ok(MM.runsBack('nope', newest).length === 0 && MM.runsBack('hrrr', NaN).length === 0, 'an unknown model or no newest run lists nothing');
+  /* runAt lists that run's own prefix and nothing else */
+  const asked = [], run = Date.UTC(2026, 9, 21, 6);
+  const fake = async (url) => { asked.push(url); const p = MM.SOURCES.hrrr.prefix(run); return { ok: true, text: async () => `<x>${[0, 1, 2, 47, 48].map((n) => `<Key>${p}${String(n).padStart(2, '0')}.grib2.idx</Key>`).join('')}</x>` }; };
+  const got = await MM.runAt('hrrr', run, { fetchFn: fake });
+  ok(got && got.run === run && got.hours.includes(48) && asked.length === 1 && decodeURIComponent(asked[0]).includes(MM.SOURCES.hrrr.prefix(run)), `a picked run is listed by its own prefix, once (${got ? got.hours.length : 0} hours, 06Z to 48 h)`);
+  const none = await MM.runAt('hrrr', run, { fetchFn: async () => ({ ok: true, text: async () => '<x></x>' }) });
+  ok(none === null, 'a run that is not in the archive is null, not an empty run');
+}
+
 console.log('\nRULE  clutter filtering hides weak non-weather echoes and never a strong one (a debris signature has low CC too)');
 {
   /* a made-up scan: four gates on one radial, reflectivity and CC side by side */

@@ -1316,7 +1316,7 @@
       ab: { prod: store.get("wx:abi", "b13"), sector: store.get("wx:abisec", "conus"), sat: store.get("wx:abisat", "auto") },
       l2: store.get("wx:l2", false) === true, l2angle: Number(store.get("wx:l2angle", 0.5)), l2vol: null,
       /* `back` is how many runs before the latest is on the map — 0 is the latest (a choice for this visit, not kept) */
-      mm: { src: store.get("wx:mmsrc", "hrrr"), field: store.get("wx:mmfield", "refc"), run: null, back: 0 } };
+      mm: { src: store.get("wx:mmsrc", "hrrr"), field: store.get("wx:mmfield", "refc"), run: null, back: 0, pin: null, newest: null } };
     const NX = PRO ? window.Nexrad : null, MM = PRO ? window.ModelMaps : null, GL = PRO ? window.Glm : null, GB = PRO ? window.Grib2 : null, L2 = PRO ? window.Level2 : null, MR = PRO ? window.Mrms : null, AB = PRO ? window.Abi : null;
     if (MM && !MM.SOURCES[R.mm.src]) R.mm.src = "hrrr";
     if (MM && !MM.field(R.mm.src, R.mm.field)) R.mm.field = MM.FIELDS[R.mm.src][0].id;
@@ -2205,14 +2205,21 @@
       try {
         run = await MM.latestRun(src, M.at ? { nowMs: M.at } : {});
         if (!run && !M.at) { const Sx = MM.SOURCES[src]; run = await MM.latestRun(src, { nowMs: Date.now() - Sx.lookBack * Sx.cycle * 3600e3 }); }
-        for (let k = 0; run && k < M.back; k++) run = await MM.latestRun(src, { nowMs: run.run - 1 });
+        /* the Run list: every run of the last five days back from this one */
+        if (run) { M.newest = run.run; runOptions(); }
+        /* a run picked by its own time (2026-10-24) — or, from a Trend panel, n runs before the newest */
+        if (run && M.pin && M.pin <= run.run) {
+          const r = await MM.runAt(src, M.pin);
+          if (r) run = r;
+          else { note(`${MM.SOURCES[src].label}'s ${new Date(M.pin).toISOString().slice(11, 13)}Z run of ${dayFmt(M.pin)} is not in NOAA's archive — showing the latest instead.`); M.pin = null; runOptions(); }
+        } else for (let k = 0; run && k < M.back; k++) run = await MM.latestRun(src, { nowMs: run.run - 1 });
       } catch (e) { run = null; failed = true; }
       if (R.mode !== "model" || M.src !== src || ask !== R.modeAsk) return;
       if (!run && M.at && !failed) { setFrames([]); modelRunText(); note(`NOAA's ${MM.SOURCES[src].label} archive has no run from ${dayFmt(M.at)} — the HRRR's goes back to 2014, the GFS's to 2021, ECMWF's open data only a few days.`); return; }
       if (!run && !failed) { setFrames([]); $("#mmrun").textContent = ""; note(`${MM.SOURCES[src].label} has no run out in its archive from the last ${MM.SOURCES[src].lookBack * 2 * MM.SOURCES[src].cycle} hours — its runs are late. Pick another model for now.`); return; }
       if (!run) { setFrames([]); $("#mmrun").textContent = ""; note(src === "rap" ? "The RAP reaches this page through the site's own server, which did not answer. Try again in a minute, or pick another model." : `NOAA's ${MM.SOURCES[src].label} archive did not answer. Try again in a minute.`); return; }
       M.run = run.run; R.valid = run.run;
-      M.late = !M.at && !M.back ? MM.lateBy(src, run.run) : 0;
+      M.late = !M.at && !M.back && !M.pin ? MM.lateBy(src, run.run) : 0;
       setFrames(run.hours.map((fh) => ({ t: run.run + fh * 3600e3, model: { src, field: M.field, run: run.run, fh } })));
       const aim = was != null ? was : M.at || Date.now();
       let best = 0;
@@ -2220,6 +2227,25 @@
       show(best);
       modelRunText(); legend(); renderSources();
       if (C.on) chartAt(C.lat, C.lon, C.name);                  // the chart follows the run on the map
+    }
+    /* ── the Run list (2026-10-24, Ric: "be able to select each run
+       individually"): Latest, then every run of the last five days by its
+       own time, a day to a group. Latest follows new runs as they come out;
+       a picked run stays put. ── */
+    const runHH = (t) => new Date(t).toISOString().slice(11, 13) + "Z";
+    function runOptions() {
+      const sel = $("#mmback"), M = R.mm;
+      if (!sel || !MM) return;
+      const list = MM.runsBack(M.src, M.newest), groups = new Map();
+      for (const run of list.slice(1)) {
+        const d = new Date(run).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+        if (!groups.has(d)) groups.set(d, []);
+        /* the HRRR's 00, 06, 12 and 18Z runs go to 48 hours, the others to 18 */
+        groups.get(d).push(`<option value="${run}">${runHH(run)}${M.src === "hrrr" && new Date(run).getUTCHours() % 6 === 0 ? " · to 48 h" : ""}</option>`);
+      }
+      sel.innerHTML = `<option value="0">Latest${M.newest ? " · " + runHH(M.newest) : ""}</option>`
+        + [...groups].map(([d, opts]) => `<optgroup label="${esc(d)} (UTC)">${opts.join("")}</optgroup>`).join("");
+      sel.value = M.pin && list.includes(M.pin) ? String(M.pin) : M.back && list[M.back] ? String(list[M.back]) : "0";
     }
     function modelRunText() {
       const M = R.mm, el = $("#mmrun");
@@ -2234,7 +2260,7 @@
         ? `Mesoanalysis hours, the last ${R.frames.length} · newest ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}, made ${clk().time(sv.made)}${sv.rtma ? "" : " (before NOAA's surface analysis was out — the model's own ground-level air)"} · not a forecast`
         : MM.SOURCES[M.src].analysis
         ? `HRRR analysis hours, the last ${R.frames.length} · newest ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)} · the model's picture of now, observations folded in — not a forecast`
-        : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}${M.back ? ` — ${["", "the run before the latest", "two runs before the latest", "three runs before the latest"][M.back]}` : ""} · ${R.frames.length} hours out so far · a forecast${M.late ? " · newer runs are late" : ""}`;
+        : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}${M.pin && M.newest && M.pin < M.newest ? ` — a chosen run, ${Wx.age(M.newest - M.pin)} before the latest` : M.back ? ` — ${["", "the run before the latest", "two runs before the latest", "three runs before the latest"][M.back]}` : ""} · ${R.frames.length} hours out${M.pin || M.back ? "" : " so far"} · a forecast${M.late ? " · newer runs are late" : ""}`;
       if ($("#mmbackl")) $("#mmbackl").hidden = !!MM.SOURCES[M.src].analysis;
     }
 
@@ -4441,7 +4467,7 @@
        panel and a saved workspace are written in the same words */
     function layerString() {
       const ov = [!R.ov.lines && "x", R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r", R.ov.rings && "g", R.ov.tropics && "h", R.ov.terrain && "e"].filter(Boolean).join("");
-      return `l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}${R.mm.back ? "." + R.mm.back : ""}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
+      return `l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}${R.mm.pin ? "." + new Date(R.mm.pin).toISOString().replace(/\D/g, "").slice(0, 10) : R.mm.back ? "." + R.mm.back : ""}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
     }
     /* the map's middle to about 10 km, and its zoom */
     function viewString() {
@@ -4477,7 +4503,13 @@
       if (q.get("t") != null && t >= 0 && t <= 3) { R.tilt = Math.round(t); R.l2 = false; }
       if (a != null && Number.isFinite(Number(a)) && Math.abs(Number(a)) < 30) { R.l2 = true; R.l2angle = Number(a); }
       const [ms, mf, mb] = (q.get("m") || "").split(".");
-      if (MM && MM.field(ms, mf)) { R.mm.src = ms; R.mm.field = mf; R.mm.back = /^[1-3]$/.test(mb || "") ? Number(mb) : 0; if ($("#mmback")) $("#mmback").value = String(R.mm.back); }
+      if (MM && MM.field(ms, mf)) {
+        R.mm.src = ms; R.mm.field = mf; R.mm.back = /^[1-3]$/.test(mb || "") ? Number(mb) : 0;
+        /* a picked run travels as its own time, YYYYMMDDHH */
+        const pm = /^(\d{4})(\d\d)(\d\d)(\d\d)$/.exec(mb || ""), pin = pm ? Date.UTC(+pm[1], +pm[2] - 1, +pm[3], +pm[4]) : NaN;
+        R.mm.pin = Number.isFinite(pin) && pin <= Date.now() ? pin : null;
+        runOptions();
+      }
       if (MR && MR.PRODUCTS[q.get("r")]) R.mr.prod = q.get("r");
       const [gp, gs, gsat] = (q.get("g") || "").split(".");
       if (AB && AB.PRODUCTS[gp] && AB.SECTORS[gs] && ["auto", "east", "west"].includes(gsat)) R.ab = { prod: gp, sector: gs, sat: gsat };
@@ -4892,7 +4924,7 @@
         R.mm.src = MM.SOURCES[e.target.value] ? e.target.value : "hrrr";
         if (!MM.field(R.mm.src, R.mm.field)) R.mm.field = MM.FIELDS[R.mm.src][0].id;
         store.set("wx:mmsrc", R.mm.src); store.set("wx:mmfield", R.mm.field);
-        modelOptions(); R.mm.run = null; R.mm.back = 0; $("#mmback").value = "0";
+        modelOptions(); R.mm.run = null; R.mm.back = 0; R.mm.pin = null; R.mm.newest = null; runOptions();
         if (R.mode === "model") { play(false); modelFrames().then(label); }
       });
       $("#mmfield").addEventListener("change", (e) => {
@@ -4907,13 +4939,14 @@
         if (C.on) chartAt(C.lat, C.lon, C.name);
       });
       $("#mmback").addEventListener("change", (e) => {
-        R.mm.back = Math.max(0, Math.min(3, Number(e.target.value) || 0));
+        const v = Number(e.target.value) || 0;
+        R.mm.back = 0; R.mm.pin = v > 0 ? v : null;
         if (R.mode === "model") { play(false); modelFrames().then(label); }
       });
       /* out of a replay's moment, back to the newest run */
       $("#mmrun").addEventListener("click", (e) => {
         if (!e.target.closest("[data-mmnow]")) return;
-        R.mm.at = null; R.mm.run = null;
+        R.mm.at = null; R.mm.run = null; R.mm.pin = null;
         if (R.mode === "model") { play(false); modelFrames().then(label); }
       });
     }
@@ -5203,7 +5236,7 @@
         else if (R.mode === "mrms") mrmsFrames(true);
         else if (R.mode === "abi") abiFrames(true);
         else if (R.mode === "model" && MM.SOURCES[R.mm.src].analysis) { MM.analyses(R.mm.src).then((r) => { if (r.length && r[r.length - 1] !== R.mm.run && !R.playing) modelFrames(); }).catch(() => {}); }
-        else if (R.mode === "model") { MM.latestRun(R.mm.src).then((r) => { if (r && r.run !== R.mm.run && !R.playing) modelFrames(); }).catch(() => {}); }
+        else if (R.mode === "model") { MM.latestRun(R.mm.src).then((r) => { if (!r) return; if (R.mm.pin || R.mm.at) { if (r.run !== R.mm.newest && !R.mm.at) { R.mm.newest = r.run; runOptions(); modelRunText(); } } else if (r.run !== (R.mm.back ? R.mm.newest : R.mm.run) && !R.playing) modelFrames(); }).catch(() => {}); }
         else siteFrames(true);
       },
       draw, label, describe, setSat, start,

@@ -847,6 +847,27 @@
     }
     return null;
   }
+  /* Every run of the last `days` days, newest first, from the newest run
+     found (2026-10-24, Ric: "The model runs should be available through
+     about as far back as 5 days … be able to select each run
+     individually"). Computed from the model's cycle — no listing, so a list
+     of 120 HRRR runs costs nothing until one is picked. Every bucket here
+     was checked to keep at least eight days (2026-10-24), ECMWF's open
+     data included, so five days of runs are all there. */
+  const RUN_DAYS = 5;
+  function runsBack(src, newest, days = RUN_DAYS) {
+    const S = SOURCES[src], c = S && S.cycle * 3600e3;
+    if (!c || !Number.isFinite(newest)) return [];
+    const out = [];
+    for (let run = newest; run >= newest - days * 86400e3; run -= c) out.push(run);
+    return out;
+  }
+  /* one exact run: { run, hours } of what it has published, or null */
+  async function runAt(src, run, { signal, fetchFn = fetch } = {}) {
+    const S = SOURCES[src], prefix = S.prefix(run);
+    const hours = hoursIn(await listKeys(S.bucket, prefix, { signal, fetchFn }), prefix);
+    return hours.length ? { run, hours: S.hours(hours, run), complete: false } : null;
+  }
   /* When a run is late (2026-10-24). `publishMin` on each source is the
      longest any of its runs took to reach `minHours` hours out, measured
      from the buckets' own LastModified over the two days before
@@ -1059,7 +1080,7 @@
     return G.sample({ grid: layer.grid, values: layer.values }, lat, lon);
   }
 
-  const api = { SOURCES, FIELDS, PAL, UNIT, unitFor, field, resolve, serverIndex, serverFile, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, lateBy, analyses, idxFor, parseJsonIndex, load, build, valueAt, within, smooth, loadTLE, loadEnsemble };
+  const api = { SOURCES, FIELDS, PAL, UNIT, unitFor, field, resolve, serverIndex, serverFile, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, runsBack, runAt, RUN_DAYS, lateBy, analyses, idxFor, parseJsonIndex, load, build, valueAt, within, smooth, loadTLE, loadEnsemble };
   root.ModelMaps = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

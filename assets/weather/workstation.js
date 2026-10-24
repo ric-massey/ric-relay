@@ -247,7 +247,8 @@
     const q = new URLSearchParams(cleanLayer(mainStr) || '');
     if (q.get('l') !== 'model') return null;
     const [src, field, back] = (q.get('m') || '').split('.');
-    return COMPARE_ORDER.includes(src) && field ? { q, src, field, back: Math.max(0, Math.min(3, Number(back) || 0)) } : null;
+    /* `back` is 1–3 runs before the newest; a picked run (YYYYMMDDHH, 2026-10-24) is not a count */
+    return COMPARE_ORDER.includes(src) && field ? { q, src, field, back: /^[1-3]$/.test(back || '') ? Number(back) : 0 } : null;
   };
   const withModel = (q, m) => { const o = new URLSearchParams(q); o.set('m', m); return cleanLayer(o.toString()); };
   function compareLayers(mainStr, hasField) {

@@ -865,9 +865,17 @@ carry the tilt (`t=`) and the model field (`m=hrrr.mlcape`).
    field here, hour by hour": the field at that point through the run on the
    map, read from loaded hours or fetched four at a time and let go; tick
    "Compare with the run before" for that run dashed over the same hours; tap
-   the chart to put an hour on the map. The model bar's **Run** list puts the
-   run before (up to three before) on the map instead, on the same valid hour;
-   a link carries it (`m=hrrr.t2m.1`).
+   the chart to put an hour on the map. The model bar's **Run** list puts an
+   earlier run on the map instead, on the same valid hour. Since 2026-10-24
+   (Ric: "The model runs should be available through about as far back as 5
+   days … be able to select each run individually") it lists **every run of
+   the last five days by its own time** — 120 for the HRRR (its 00/06/12/18Z
+   runs marked "to 48 h"), 20 for the GFS, 10 for ECMWF — a UTC day to a group,
+   worked out from the model's cycle (`MM.runsBack`) and listed only once one is
+   picked (`MM.runAt`). Every bucket was checked to keep at least eight days.
+   *Latest* follows new runs; a picked run stays put, and a link carries it as
+   its time (`m=hrrr.t2m.2026102312`). Trend's panels still say "n runs before
+   the newest" (`m=hrrr.t2m.1`), and follow it.
 8. *11 px storm-report letters* — the circles grew a pixel to hold them.
 
 **Weather Pro's controls (2026-10-23, after a review of the page as a
