@@ -361,6 +361,16 @@
   const SCHEME_NAMES = { ref: { nws: 'NWS standard', contrast: 'High contrast', cvd: 'Colour-blind safe' }, vel: { nws: 'Green in, red out (NWS)', cvd: 'Blue in, orange out (colour-blind safe)' } };
   /* the palette a product draws with under the visitor's choice; an unknown choice is the NWS's */
   const paletteFor = (name, scheme) => (SCHEMES[name] && SCHEMES[name][scheme]) || PALETTES[name];
+  /* the visitor's own table for a product (colormaps.js, 2026-10-24), as the
+     choice 'custom' beside the others; null takes it away */
+  function setCustom(name, pal) {
+    if (!PALETTES[name] || PALETTES[name].classes) return false;
+    if (!SCHEMES[name]) SCHEMES[name] = { nws: PALETTES[name] };
+    if (!SCHEME_NAMES[name]) SCHEME_NAMES[name] = { nws: 'Standard' };
+    if (pal && pal.stops) { SCHEMES[name].custom = pal; SCHEME_NAMES[name].custom = 'Your colours'; }
+    else { delete SCHEMES[name].custom; delete SCHEME_NAMES[name].custom; }
+    return true;
+  }
   const RF_COLOR = [124, 58, 237, 255];
   const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   function colorOf(pal, v) {
@@ -632,6 +642,49 @@
     return { values: out, nx, ny, topKm, dist, beams, tilts: S.map((sw) => sw.elev), site: S[0].site, time: Math.max(...S.map((sw) => sw.time || 0)) };
   }
 
+  /* ── The volume as points in space, for the 3D view (2026-10-24, the last
+     of the outside review's specialist items Ric passed on: "3D radar").
+     Every tilt of one moment, thinned to about `radialDeg` between radials
+     and `gateKm` along them (a whole volume is eighteen million gates; a
+     few hundred thousand are drawn), keeping gates whose value passes
+     `keep(v)`. Each gate goes where its beam centre is: up the 4/3-earth
+     beam (beamHeightKm), and along the ground by the arc under it, so a
+     storm 200 km out sits at its true height and distance. Returns x east,
+     y north and z up in km from the radar's foot (z from sea level, the
+     radar's own height included), and the value; `maxPoints` thins further
+     if more pass. ── */
+  function volumePoints(sweeps, { keep = (v) => v >= 20, radialDeg = 1, gateKm = 1, maxKm = 300, maxPoints = 400000, toUnit = 1 } = {}) {
+    const S = sweeps.filter(Boolean).sort((x, y) => x.elev - y.elev);
+    if (!S.length) throw new Error('nexrad: no tilts to draw');
+    const ke = 4 / 3 * 6371, h0 = (S[0].heightM || 0) / 1000;
+    const pass = (thin) => {
+      const xs = [], ys = [], zs = [], vs = [];
+      for (const sw of S) {
+        const e = sw.elev * Math.PI / 180, ce = Math.cos(e), g0 = gateStart(sw);
+        const rStep = Math.max(1, Math.round(radialDeg * thin / (sw.daz[0] || 1))), bStep = Math.max(1, Math.round(gateKm * thin / sw.gateKm));
+        for (let r = 0; r < sw.nRad; r += rStep) {
+          const az = (sw.az0[r] + sw.daz[r] * rStep / 2) * Math.PI / 180, sa = Math.sin(az), ca = Math.cos(az), row = r * sw.nBins;
+          for (let b = 0; b < sw.nBins; b += bStep) {
+            const v = sw.lut[sw.data[row + b]];
+            if (!Number.isFinite(v)) continue;
+            const x = v * toUnit;
+            if (!keep(x)) continue;
+            const km = g0 + (b + 0.5) * sw.gateKm;
+            if (km > maxKm) break;
+            const h = Math.sqrt(km * km + ke * ke + 2 * km * ke * Math.sin(e)) - ke, gnd = ke * Math.asin(Math.min(1, km * ce / (ke + h)));
+            xs.push(gnd * sa); ys.push(gnd * ca); zs.push(h + h0); vs.push(x);
+          }
+        }
+      }
+      return { xs, ys, zs, vs };
+    };
+    let thin = 1, P = pass(thin);
+    while (P.vs.length > maxPoints && thin < 16) { thin *= 1.5; P = pass(thin); }
+    const n = P.vs.length, pos = new Float32Array(n * 3), val = new Float32Array(n);
+    for (let i = 0; i < n; i++) { pos[3 * i] = P.xs[i]; pos[3 * i + 1] = P.ys[i]; pos[3 * i + 2] = P.zs[i]; val[i] = P.vs[i]; }
+    return { pos, val, n, h0, tilts: S.map((sw) => sw.elev), site: S[0].site, time: Math.max(...S.map((sw) => sw.time || 0)), thinned: thin > 1 };
+  }
+
   /* ── Clutter filtering: which reflectivity gates are likely not weather ──
      A reflectivity scan shows everything the beam came back from: rain and
      snow, but also birds, insects, ground clutter, wind farms and
@@ -676,7 +729,7 @@
     return { mask, echoes, removed, kept, cc: true };
   }
 
-  const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, SCHEMES, SCHEME_NAMES, paletteFor, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
+  const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, SCHEMES, SCHEME_NAMES, paletteFor, setCustom, colorOf, volumePoints, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
     colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, retrying, stormRelative, locator, polarOf, CLUTTER, clutterMask, crossSection, dealias, vad };
   root.Nexrad = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

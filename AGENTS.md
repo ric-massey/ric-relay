@@ -897,7 +897,17 @@ ones that must never break:
   (`met-office-atmospheric-model-data`, CC BY-SA 4.0 — `#ukcredit` in the map's
   corner whenever it is shown; keep it), read by `glm.js`'s HDF5 reader; one
   more of the room's hosts. ECMWF's ensemble products come from the same open
-  data as the IFS. **Dealiasing is off by default and full volume only**, and
+  data as the IFS. **ERA5** (2026-10-24, `reanalysis.js`, Models → ERA5) is
+  NSF NCAR's copy of Copernicus's reanalysis on AWS (`nsf-ncar-era5`, CC BY
+  4.0 — `#eracredit` in the map's corner whenever it is shown; keep it): any
+  hour since 1940, read for the map's window only. It is always labelled an
+  analysis, never a forecast, and its pressure levels (43 MB an hour) are
+  drawn every 6 hours and never cached; one more of the room's hosts.
+  **Colour tables and satellite recipes a visitor makes** (`colormaps.js`, GR
+  `.pal` files; `abi.js` recipes) stay in their browser and are never sent or
+  committed; a recipe rides in a share link only as its numbers. **The 3D
+  radar** (`radar3d.js`) is WebGL, built into the browser — no library; keep
+  it that way. **Dealiasing is off by default and full volume only**, and
   the radar cross-section never fills the gaps between tilts — both rules
   are in the weather README.
   Lightning is GLM *flashes* — never call them strikes.
@@ -1026,8 +1036,8 @@ bug you are looking for.
       weather room's providers, NOAA's AWS buckets and its map servers (the
       backup mosaic, and NHC's tropics), ECMWF's open data
       (Google Cloud and AWS), Pro's map lines from Natural Earth on GitHub,
-      Pro's terrain from the Terrain Tiles on AWS and the Met Office's UKMET
-      on AWS among them (below).
+      Pro's terrain from the Terrain Tiles on AWS, the Met Office's UKMET
+      on AWS and NSF NCAR's ERA5 on AWS among them (below).
 - [ ] Looks right at mobile width.
 - [ ] Didn't add location data, extra repos, or a build step.
 - [ ] The relevant test suite above still passes.

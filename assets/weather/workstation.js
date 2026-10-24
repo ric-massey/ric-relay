@@ -767,7 +767,7 @@
         ['Tropics', [act('Hurricanes and tropical storms', 'ov:tropics', 'NHC: cones, tracks, coastal watches and warnings, the 7-day outlook')]],
         ['The ground', [act('Terrain under the map', 'ov:terrain', "shaded relief, and the ground's height under the pointer")]],
         ['Forecasts', [act('Now and the forecast', 'card:hero'), act('The forecast discussion', 'card:afd'), MM ? row('National Blend chances', 'l=model&o=w&m=nbm.p_rain6', 'rain, thunder, snow, ice, fog') : '', MM ? row('Storm chances · HRRR-TLE', 'l=model&o=w&m=tle.p_uh') : '', act('SPC outlook on the main map', 'outlook')]],
-        ['Your way and your place', [act('Route weather', 'route', 'the forecast at each point of a drawn or opened route, when you are there'), act('Watches', 'watches', 'rain, gusts, cold, heat, warnings or lightning at your place, while the page is open'), act('Add a file to the map', 'files', 'GPX, KML, GeoJSON or a GRLevelX placefile — kept in this browser'), act('Save a picture or a video', 'save')]],
+        ['Your way and your place', [act('Route weather', 'route', 'the forecast at each point of a drawn or opened route, when you are there'), act('Watches', 'watches', 'rain, gusts, cold, heat, warnings or lightning at your place, while the page is open'), act('Add a file to the map', 'files', 'GPX, KML, GeoJSON or a GRLevelX placefile — kept in this browser'), act('Save a picture or a video', 'save'), act('Colour tables', 'colours', 'your own colours for any product or field, or a GR .pal file'), act('Satellite recipe', 'recipe', 'an RGB of your own from GOES\'s 16 bands')]],
         ['Historical', [act('Replay any day since 2006', 'replay', 'radar, warnings, the sky and stations as they were'), act('How accurate the forecast has been here', 'card:record'), MM ? row('Mesoanalysis, the last six hours', 'l=model&o=w&m=smeso.stpe') : '']]
       ];
       $('#wsexplorelist').innerHTML = groups.map(([g, items]) => `<section><h3>${esc(g)}</h3><ul>${items.filter(Boolean).join('')}</ul></section>`).join('');
@@ -804,6 +804,8 @@
         else if (a === 'watches') $('#watchbtn').click();
         else if (a === 'files') { if ($('#ovpanel') && $('#ovpanel').hidden) $('#ovbtn').click(); $('#filesadd').click(); }
         else if (a === 'save') $('#zsave').click();
+        else if (a === 'colours') $('#cmapedit').click();
+        else if (a === 'recipe') { if (!document.querySelector('[data-mode="abi"][aria-pressed="true"]')) document.querySelector('[data-mode="abi"]').click(); $('#abibuild').click(); }
         else if (a === 'checked') { const d = $('#checkit'); if (d && d.showModal) d.showModal(); }
         else if (a === 'vwp') { if ($('#vwpbtn') && !$('#vwpbtn').hidden) $('#vwpbtn').click(); else say('The wind profile is a single radar\'s: choose Radar first.'); }
         else if (a === 'replay') { const t = $('#replaytoggle'); if (t.getAttribute('aria-expanded') !== 'true') t.click(); $('#radarcard').scrollIntoView({ block: 'nearest' }); }
@@ -843,6 +845,9 @@
       A('Add a file to the map (GPX, KML, GeoJSON, placefile)', 'Tool', 'files', 'import upload layer track boundary placefile');
       A('Wind profile (VWP) from the radar', 'Tool', 'vwp', 'vad velocity azimuth display winds aloft radar');
       A('Save a picture of the map, or the loop as a video', 'Tool', 'save', 'export download png webm screenshot gif');
+      A('Satellite recipe — an RGB of your own from the 16 bands', 'Tool', 'recipe', 'rgb composite goes abi band channel custom recipe builder');
+      A('Colour tables — your own, or a GR .pal file', 'Tool', 'colours', 'color colour palette pal table scheme custom gr2analyst grlevelx radarscope');
+      if (MM && MM.SOURCES.era5) L('ERA5 reanalysis — the weather of any hour since 1940', 'Models · History', 'l=model&o=w&m=era5.mslp', 'reanalysis history historic past archive climate 1940 era5 ecmwf');
       A('How this page is checked, and what it cannot do', 'About', 'checked', 'reliability accuracy verification tests limits trust');
       A('Explore every tool', 'Workspace', 'ws:explore', 'browse');
       A('Add a map beside the main one', 'Workspace', 'ws:add', 'panel new map');

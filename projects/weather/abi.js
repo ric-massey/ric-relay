@@ -132,6 +132,66 @@
         : (v) => GREY_IR(v[b] - 273.15) };
   }
 
+  /* ── recipes (2026-10-24, the last of an outside review's specialist
+     items Ric passed on: a satellite recipe builder) ──
+     Every RGB above is three channels, each a band or one band minus
+     another, stretched from a low to a high value with a gamma — the way
+     RAMMB's and EUMETSAT's quick guides write them. A recipe is that, as
+     data: { name, ch: [red, green, blue] }, each channel { a, b, lo, hi, g }
+     with b = 0 for a single band. Values are in the units people read:
+     reflectance in per cent, brightness temperature in °C (a difference of
+     two temperatures is the same in °C and K). The built-ins are written as
+     recipes in SPECS — test/decoders.test.mjs holds each to its own rgb() —
+     so a visitor can start from Airmass and change one channel. */
+  const bandValue = (v, b) => (BANDS[b][2] === 'refl' ? v[b] * 100 : v[b] - 273.15);
+  const SPECS = {
+    airmass: { name: 'Airmass', ch: [{ a: 8, b: 10, lo: -26.2, hi: 0.6, g: 1 }, { a: 12, b: 13, lo: -43.2, hi: 6.7, g: 1 }, { a: 8, b: 0, lo: 243.9 - 273.15, hi: 208.5 - 273.15, g: 1 }] },
+    dcp: { name: 'Day Cloud Phase Distinction', ch: [{ a: 13, b: 0, lo: 7.5, hi: -53.5, g: 1 }, { a: 2, b: 0, lo: 0, hi: 78, g: 1 }, { a: 5, b: 0, lo: 1, hi: 59, g: 1 }] },
+    convection: { name: 'Day Convection', ch: [{ a: 8, b: 10, lo: -35, hi: 5, g: 1 }, { a: 7, b: 13, lo: -5, hi: 60, g: 1 }, { a: 5, b: 2, lo: -75, hi: 25, g: 1 }] },
+    ntmicro: { name: 'Night Microphysics', ch: [{ a: 15, b: 13, lo: -6.7, hi: 2.6, g: 1 }, { a: 13, b: 7, lo: -3.1, hi: 5.2, g: 1 }, { a: 13, b: 0, lo: 243.55 - 273.15, hi: 292.65 - 273.15, g: 1 }] },
+    dust: { name: 'Dust', ch: [{ a: 15, b: 13, lo: -6.7, hi: 2.6, g: 1 }, { a: 14, b: 11, lo: -0.5, hi: 20, g: 2.5 }, { a: 13, b: 0, lo: 261.2 - 273.15, hi: 288.7 - 273.15, g: 1 }] },
+    fire: { name: 'Fire Temperature', ch: [{ a: 7, b: 0, lo: 0, hi: 60, g: 0.4 }, { a: 6, b: 0, lo: 0, hi: 100, g: 1 }, { a: 5, b: 0, lo: 0, hi: 75, g: 1 }] },
+    natural: { name: 'Natural Color', ch: [{ a: 5, b: 0, lo: 0, hi: 97.5, g: 1 }, { a: 3, b: 0, lo: 0, hi: 108.6, g: 1 }, { a: 2, b: 0, lo: 0, hi: 100, g: 1 }] }
+  };
+  /* a recipe from storage, a link or the builder, checked: three channels,
+     bands 1–16, a difference only of like with like, a range that is a range */
+  function cleanRecipe(r) {
+    if (!r || !Array.isArray(r.ch) || r.ch.length !== 3) return null;
+    const ch = [];
+    for (const c of r.ch) {
+      const a = Math.round(+c.a), b = Math.round(+c.b || 0), lo = +c.lo, hi = +c.hi, g = c.g == null ? 1 : +c.g;
+      if (!BANDS[a] || (b && (!BANDS[b] || b === a || BANDS[b][2] !== BANDS[a][2]))) return null;
+      if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo === hi || !(g >= 0.1 && g <= 5)) return null;
+      ch.push({ a, b, lo, hi, g });
+    }
+    const name = String(r.name || 'My recipe').replace(/[<>&"]/g, '').trim().slice(0, 40) || 'My recipe';
+    return { name, ch };
+  }
+  function recipe(r) {
+    const R = cleanRecipe(r);
+    if (!R) throw new Error('abi: that recipe cannot be drawn');
+    const bands = [...new Set(R.ch.flatMap((c) => (c.b ? [c.a, c.b] : [c.a])))];
+    return {
+      group: 'Your recipes', label: R.name, bands, spec: R,
+      rgb: (v) => R.ch.map((c) => ch(bandValue(v, c.a) - (c.b ? bandValue(v, c.b) : 0), c.lo, c.hi, c.g))
+    };
+  }
+  /* what a channel is, in words: "B8 − B10, −26.2 to 0.6 °C" */
+  function describe(r) {
+    const R = cleanRecipe(r);
+    if (!R) return '';
+    return R.ch.map((c, i) => `${'RGB'[i]} = B${c.a}${c.b ? ' − B' + c.b : ''}, ${+c.lo.toFixed(2)} to ${+c.hi.toFixed(2)} ${BANDS[c.a][2] === 'refl' ? '%' : '°C'}${c.g !== 1 ? ', γ ' + c.g : ''}`).join(' · ');
+  }
+  /* for a share link: "name~a,b,lo,hi,g~a,b,lo,hi,g~a,b,lo,hi,g" */
+  const encodeRecipe = (r) => { const R = cleanRecipe(r); return R ? [encodeURIComponent(R.name), ...R.ch.map((c) => [c.a, c.b, +c.lo.toFixed(3), +c.hi.toFixed(3), +c.g.toFixed(2)].join(','))].join('~') : ''; };
+  function decodeRecipe(str) {
+    const parts = String(str || '').split('~');
+    if (parts.length !== 4) return null;
+    let name = '';
+    try { name = decodeURIComponent(parts[0]); } catch (e) { return null; }
+    return cleanRecipe({ name, ch: parts.slice(1).map((p) => { const [a, b, lo, hi, g] = p.split(',').map(Number); return { a, b, lo, hi, g }; }) });
+  }
+
   /* ── the fixed grid ── */
   function projector(P, xs, ys) {
     const req = P.semi_major_axis, rpol = P.semi_minor_axis, H = P.perspective_point_height + req;
@@ -240,6 +300,7 @@
     const P = PRODUCTS[id];
     if (!P) return null;
     if (KEYS[id]) return { cats: KEYS[id] };
+    if (P.spec) return { text: describe(P.spec) };
     if (!P.band) return { text: 'As the eye would see it' };
     const kind = BANDS[P.band][2];
     if (kind === 'refl') return { unit: '%', min: 0, max: 100, stops: [0, 25, 50, 75, 100].map((r) => [r, `rgb(${GREY_VIS(r / 100).map(Math.round).join(',')})`]), ticks: [0, 25, 50, 75, 100] };
@@ -248,7 +309,7 @@
     return { unit: '°C', min: lo, max: hi, stops: out.reverse(), ticks: P.band >= 8 && P.band <= 10 ? [-70, -50, -30, -10] : [-80, -60, -40, -20, 0, 20] };
   }
 
-  const api = { SATS, POSTS, satAt, SPLIT_LON, SECTORS, BANDS, PRODUCTS, bandName, projector, hourPrefix, files, load, valuesAt, ch, key };
+  const api = { SATS, POSTS, satAt, SPLIT_LON, SECTORS, BANDS, PRODUCTS, bandName, projector, hourPrefix, files, load, valuesAt, ch, key, SPECS, cleanRecipe, recipe, describe, encodeRecipe, decodeRecipe };
   root.Abi = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1320,6 +1320,20 @@
       /* `back` is how many runs before the latest is on the map — 0 is the latest (a choice for this visit, not kept) */
       mm: { src: store.get("wx:mmsrc", "hrrr"), field: store.get("wx:mmfield", "refc"), run: null, back: 0, pin: null, newest: null, diff: "" } };
     const NX = PRO ? window.Nexrad : null, MM = PRO ? window.ModelMaps : null, GL = PRO ? window.Glm : null, GB = PRO ? window.Grib2 : null, L2 = PRO ? window.Level2 : null, MR = PRO ? window.Mrms : null, AB = PRO ? window.Abi : null;
+    /* ── the visitor's satellite recipes (2026-10-24): kept in this browser
+       as wx:recipes, each registered as a product "rx…" beside the built-in
+       RGBs; one that arrives in a shared link is "rxlink" until it is saved ── */
+    const RECIPES = [];
+    function recipesLoad() {
+      if (!AB || !AB.cleanRecipe) return;
+      for (const id of Object.keys(AB.PRODUCTS)) if (/^rx/.test(id) && id !== "rxlink" && id !== "rxdraft") delete AB.PRODUCTS[id];
+      RECIPES.length = 0;
+      for (const r of (store.get("wx:recipes", []) || []).slice(0, 12)) {
+        const c = AB.cleanRecipe(r), id = String(r && r.id || "");
+        if (c && /^rx[a-z0-9]{4,8}$/.test(id)) { RECIPES.push({ id, ...c }); AB.PRODUCTS[id] = AB.recipe(c); }
+      }
+    }
+    recipesLoad();
     if (MM && !MM.SOURCES[R.mm.src]) R.mm.src = "hrrr";
     if (MM && !MM.field(R.mm.src, R.mm.field)) R.mm.field = MM.FIELDS[R.mm.src][0].id;
     /* a label inside a sentence: its first letter lowered, abbreviations (MESH, MSLP, CC) kept */
@@ -1417,7 +1431,7 @@
       if (!officeAt.has(k)) officeAt.set(k, Wx.point(cell(lat), cell(lon)).then((p) => p && p.office).catch(() => { officeAt.delete(k); return null; }));
       return officeAt.get(k);
     }
-    function stationsSoon() { clearTimeout(stnTimer); stnTimer = setTimeout(loadStations, 500); if (!PRO) { citiesSoon(); if (R.mode === "comp") ncSoon(); } }
+    function stationsSoon() { eraSoon(); clearTimeout(stnTimer); stnTimer = setTimeout(loadStations, 500); if (!PRO) { citiesSoon(); if (R.mode === "comp") ncSoon(); } }
     async function loadStations() {
       if (!R.stations || !R.started || R.z < STN_MINZ) { if (R.obs.length) { R.obs = []; draw(); } label(); return; }
       const ask = ++stnAsk, w = el.clientWidth, h = el.clientHeight;
@@ -1537,6 +1551,7 @@
       if ($("#eccredit")) $("#eccredit").hidden = !(R.mode === "model" && (R.mm.src === "ecmwf" || R.mm.src === "aifs" || R.mm.src === "ecens" || R.mm.src === "ecwave"));
       /* the Met Office's licence (CC BY-SA 4.0) asks for its credit whenever its model is drawn */
       if ($("#ukcredit")) $("#ukcredit").hidden = !(R.mode === "model" && R.mm.src === "ukmet");
+      if ($("#eracredit")) $("#eracredit").hidden = !(R.mode === "model" && R.mm.src === "era5");
       R.frames = list.map((f) => {
         const d = document.createElement("div");
         d.className = "layer frame" + (f.future ? " future" : "");
@@ -1725,6 +1740,60 @@
     if (vwpEl) {
       vwpEl.addEventListener("click", (e) => { if (e.target.closest("[data-vwpx]")) { vwpEl.hidden = true; vwpEl.innerHTML = ""; } });
       if ($("#vwpbtn")) $("#vwpbtn").addEventListener("click", openVwp);
+    }
+    /* ── 3D radar (2026-10-24, radar3d.js): one radar's whole volume as
+       points where its beams are, turned in the hand. Reflectivity, or
+       velocity when velocity is on the map (dealiased if that is on); the
+       colours are the map's own table. A threshold keeps the view to the
+       storm, and height is stretched — the view says by how much. ── */
+    const V3 = { view: null, sweeps: null, prod: "ref", site: "", time: 0, ask: null };
+    const v3Status = (t) => { const el = $("#v3dnote"); if (el) el.textContent = t; };
+    function v3Points() {
+      if (!V3.sweeps || !V3.view) return;
+      const NP = NX.PRODUCTS[V3.prod], thr = Number($("#v3dthr").value), vel = V3.prod === "vel";
+      const pts = NX.volumePoints(V3.sweeps, { keep: vel ? (v) => Math.abs(v) >= thr : (v) => v >= thr, toUnit: NP.toUnit || 1, maxKm: 250 });
+      const pal = NX.paletteFor(NP.pal, R.pal[NP.pal]), col = new Uint8Array(pts.n * 4);
+      for (let i = 0; i < pts.n; i++) { const c = NX.colorOf(pal, pts.val[i]); col[4 * i] = c[0]; col[4 * i + 1] = c[1]; col[4 * i + 2] = c[2]; col[4 * i + 3] = 255; }
+      V3.view.points(pts.pos, col);
+      $("#v3dthrv").textContent = `${vel ? "±" : ""}${thr} ${NP.unit}`;
+      v3Status(`${V3.site} · the volume of ${clk().time(V3.time)} · ${pts.tilts.length} tilts · ${pts.n.toLocaleString()} points${pts.thinned ? " (thinned to keep it smooth)" : ""} · height stretched ×${V3.view.exaggeration} · range rings every 50 km · measured by the radar`);
+    }
+    async function open3d() {
+      const d = $("#v3dit");
+      if (!d || !window.Radar3D || !R.site || !L2) return;
+      if (typeof d.showModal === "function") d.showModal(); else d.setAttribute("open", "");
+      const P = l3(), vel = P && P.l2 === "VEL", ask = V3.ask = {};
+      V3.prod = vel ? "vel" : "ref";
+      const thr = $("#v3dthr");
+      thr.min = vel ? "5" : "5"; thr.max = vel ? "80" : "65"; thr.step = "5"; thr.value = vel ? "30" : "20";
+      $("#v3dtitle").firstChild.textContent = `3D radar · ${R.site.id} · ${vel ? "velocity" : "reflectivity"}`;
+      if (!V3.view) {
+        try { V3.view = Radar3D.view($("#v3dcv"), $("#v3dlab")); } catch (e) { V3.view = null; }
+        if (!V3.view) { v3Status("This browser cannot draw in 3D (it has no WebGL)."); return; }
+        V3.view.ground(250);
+      }
+      V3.view.reset(); V3.view.exaggeration = Number($("#v3dex").value);
+      V3.view.points(new Float32Array(0), new Uint8Array(0));
+      v3Status("Reading the radar's whole volume — every tilt, about 10–25 MB…");
+      try {
+        const st = await radarVolumeState();
+        if (V3.ask !== ask) return;
+        const m = vel ? "VEL" : "REF";
+        V3.sweeps = L2.angles(st, m).map((t) => L2.sweep(st, t.elevNum, m)).filter(Boolean).map((sw) => (vel && R.dealias ? NX.dealias(sw) : sw));
+        if (!V3.sweeps.length) throw new Error("this volume has no " + (vel ? "velocity" : "reflectivity") + " yet");
+        V3.site = R.site.id; V3.time = Math.max(...V3.sweeps.map((sw) => sw.time || 0));
+        v3Points();
+      } catch (e) { if (V3.ask === ask) v3Status(`The volume did not load (${String(e.message || e).replace(/^(nexrad|level2): /, "")}).`); }
+    }
+    if ($("#v3dit")) {
+      const d = $("#v3dit");
+      if ($("#v3dbtn")) $("#v3dbtn").addEventListener("click", open3d);
+      $("#v3dthr").addEventListener("input", () => v3Points());
+      $("#v3dex").addEventListener("input", (e) => { if (V3.view) { V3.view.exaggeration = Number(e.target.value); $("#v3dexv").textContent = "×" + e.target.value; v3Points(); } });
+      $("#v3dreset").addEventListener("click", () => V3.view && V3.view.reset());
+      d.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) d.close(); });
+      /* closed, the volume is let go: it is tens of megabytes */
+      d.addEventListener("close", () => { V3.ask = null; V3.sweeps = null; if (V3.view) V3.view.points(new Float32Array(0), new Uint8Array(0)); });
     }
     function paintRadarXsec(cv) {
       const { sec, P, ground } = X.rx, dpr = Math.min(2, devicePixelRatio || 1);
@@ -2256,6 +2325,7 @@
       siteOptions();
       const cp = $("#clutterpick"); if (cp) { cp.hidden = R.mode !== "l3:ref"; $("#cluttersel").value = R.clutter; }
       const vb = $("#vwpbtn"); if (vb) vb.hidden = !(L2 && R.site && P.l2);
+      const v3 = $("#v3dbtn"); if (v3) v3.hidden = !(L2 && R.site && P.l2 && window.Radar3D);
       const db = $("#dealiasbtn"); if (db) { db.hidden = !((R.mode === "l3:vel" || R.mode === "l3:srv") && useL2()); db.setAttribute("aria-pressed", String(!!R.dealias)); }
       const btns = $("#tiltbtns");
       if (P.tilts.length < 2 && !P.l2) { btns.innerHTML = ""; return; }
@@ -2291,6 +2361,7 @@
     async function modelFrames() {
       const M = R.mm, src = M.src, ask = R.modeAsk;
       M.late = 0;
+      if (MM.SOURCES[src].archive) return eraFrames();
       $("#mmrun").textContent = "Finding the latest run…";
       /* the mesoanalysis is a run of analysis hours, not one run's forecast */
       if (MM.SOURCES[src].analysis) {
@@ -2346,6 +2417,54 @@
       modelRunText(); legend(); renderSources();
       if (C.on) chartAt(C.lat, C.lon, C.name);                  // the chart follows the run on the map
     }
+    /* ── ERA5, the reanalysis (2026-10-24): a day picked by its date, its 24
+       hours (the upper air every 6), read from NSF NCAR's copy on AWS for
+       the map's window only (reanalysis.js). The newest month is the
+       bucket's own; ERA5 runs two to three months behind, precipitation a
+       month more. Not a forecast: the weather as it was, rebuilt. ── */
+    const ERA = { latest: null, precip: null };
+    const H1 = 3600e3;
+    function mapView() {
+      const w = el.clientWidth, h = el.clientHeight;
+      return { n: yLat(R.cy - h / 2, R.z), s: yLat(R.cy + h / 2, R.z), w: xLng(R.cx - w / 2, R.z), e: xLng(R.cx + w / 2, R.z) };
+    }
+    const eraLast = () => (ERA.latest ? window.Era5.monthEnd(ERA.latest) - 23 * H1 : null);
+    async function eraFrames() {
+      const M = R.mm, src = M.src, ask = R.modeAsk, f = MM.field(src, M.field), E = window.Era5;
+      $("#mmrun").textContent = "Finding ERA5's newest month…";
+      if (!ERA.latest) { try { [ERA.latest, ERA.precip] = await Promise.all([E.latestMonth("an.sfc"), E.latestMonth("fc.sfc.accumu").catch(() => null)]); } catch (e) {} }
+      if (R.mode !== "model" || M.src !== src || ask !== R.modeAsk) return;
+      if (!ERA.latest) { setFrames([]); $("#mmrun").textContent = ""; note("NSF NCAR's ERA5 archive on AWS did not answer. Try again in a minute."); return; }
+      const last = eraLast(), was = R.frames[R.frame] && R.frames[R.frame].model && R.frames[R.frame].model.src === src ? new Date(R.frames[R.frame].t).getUTCHours() : null;
+      let day = Number.isFinite(M.pin) ? M.pin : M.at || last;
+      day = Math.floor(Math.max(E.FIRST, Math.min(last, day)) / 86400e3) * 86400e3;
+      M.pin = day; M.run = day; R.valid = day;
+      const inp = $("#mmdate");
+      if (inp) { inp.max = new Date(last).toISOString().slice(0, 10); inp.value = new Date(day).toISOString().slice(0, 10); }
+      MM.setView(mapView());
+      const hours = f && f.every ? [0, 6, 12, 18] : Array.from({ length: 24 }, (_, h) => h);
+      setFrames(hours.map((fh) => ({ t: day + fh * H1, model: { src, field: M.field, run: day, fh } })));
+      let best = 0;
+      if (was != null) R.frames.forEach((x, i) => { if (Math.abs(x.model.fh - was) < Math.abs(R.frames[best].model.fh - was)) best = i; });
+      else best = Math.min(R.frames.length - 1, hours.indexOf(12) >= 0 ? hours.indexOf(12) : 0);
+      show(best);
+      modelRunText(); legend(); renderSources();
+    }
+    /* the map moved past what the day's frames were read for: read them again for the new view */
+    let eraTimer = 0;
+    function eraSoon() {
+      if (R.mode !== "model" || !MM || !MM.SOURCES[R.mm.src].archive || !window.Era5) return;
+      clearTimeout(eraTimer);
+      eraTimer = setTimeout(() => {
+        const need = window.Era5.windowOf(mapView(), 0), f = R.frames[R.frame], win = f && f.model && f.model.layer && f.model.layer.win;
+        if (!f || !f.model || !f.model.layer || !win || !need) return;
+        if (need[0] >= win[0] && need[1] <= win[1] && need[2] >= win[2] && need[3] <= win[3]) return;
+        MM.setView(mapView());
+        const at = R.frame;
+        setFrames(R.frames.map((x) => ({ t: x.t, model: { src: x.model.src, field: x.model.field, run: x.model.run, fh: x.model.fh } })));
+        show(at); label();
+      }, 600);
+    }
     /* ── the Run list (2026-10-24, Ric: "be able to select each run
        individually"): Latest, then every run of the last five days by its
        own time, a day to a group. Latest follows new runs as they come out;
@@ -2368,6 +2487,15 @@
     function modelRunText() {
       const M = R.mm, el = $("#mmrun");
       if (!el) return;
+      const archive = !!MM.SOURCES[M.src].archive;
+      if ($("#mmdatel")) $("#mmdatel").hidden = !archive;
+      for (const q of ["#mmcompare", "#mmtrend"]) if ($(q)) $(q).hidden = archive;
+      if (archive) {
+        if ($("#mmbackl")) $("#mmbackl").hidden = true;
+        const f = MM.field(M.src, M.field), wet = f && /^qpf/.test(f.id), pEnd = ERA.precip ? window.Era5.monthEnd(ERA.precip) : null;
+        el.textContent = !M.run ? "" : `ERA5 reanalysis · ${new Date(M.run).toISOString().slice(0, 10)} (UTC) · ${R.frames.length === 4 ? "every 6 hours" : "every hour"} · the weather as it was, rebuilt from the observations of the time — not a forecast${wet && pEnd && M.run + 24 * H1 > pEnd ? ` · precipitation runs to ${new Date(pEnd).toISOString().slice(0, 10)} in the archive` : ""}`;
+        return;
+      }
       if (M.at) {
         el.innerHTML = `${M.run ? esc(MM.SOURCES[M.src].analysis ? `Analysis hours to ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}` : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}`) + (MM.SOURCES[M.src].analysis ? " — the hours up to the replay's moment · " : " — the newest run that began before the replay's moment (it may have been published after it) · ") : ""}<button type="button" class="linkish" data-mmnow>Latest run instead</button>`;
         if ($("#mmbackl")) $("#mmbackl").hidden = !!MM.SOURCES[M.src].analysis;
@@ -2587,7 +2715,7 @@
       if ($("#abigo")) $("#abigo").hidden = !(R.ab.sector !== "conus" && (box || R.abiBox));
     }
     function abiLayer(f) {
-      const m = f.abi, key = `${m.file.url}|${m.prod}`;
+      const m = f.abi, P = AB.PRODUCTS[m.prod], key = `${m.file.url}|${m.prod}${P && P.spec ? "|" + AB.encodeRecipe(P.spec) : ""}`;
       if (!m.p) {
         if (!abiCache.has(key)) {
           abiCache.set(key, AB.load(m.file, m.prod, { memo: (abiMemo[m.file.sat + m.file.sector] = abiMemo[m.file.sat + m.file.sector] || {}) }).catch((e) => { abiCache.delete(key); throw e; }));
@@ -2868,7 +2996,7 @@
        switch of layer lands on the frame nearest it (setMode). The newest
        frame, and any forecast, show now. */
     function frameTime(f = R.frames[R.frame]) {
-      if (!f || f.future || f.nc || (f.model && !MM.SOURCES[f.model.src].analysis)) return null;
+      if (!f || f.future || f.nc || (f.model && !MM.SOURCES[f.model.src].analysis && !MM.SOURCES[f.model.src].archive)) return null;
       return (f.l3 && f.l3.file && f.l3.file.time) || f.t || null;
     }
     function ltgRef() {
@@ -2929,7 +3057,7 @@
     /* a forecast hour as forecasters write it, the run first: "GFS 18Z +6 h"
        (2026-10-24) — the stamp and the readout said only "+6 h", and the
        maps beside this one, which hide the line above the map, said no run */
-    function runHour(m) { return `${MM.SOURCES[m.src].label} ${new Date(m.run).toISOString().slice(11, 13)}Z +${m.fh} h`; }
+    function runHour(m) { return MM.SOURCES[m.src].archive ? `ERA5 reanalysis ${new Date(m.run + m.fh * 3600e3).toISOString().slice(0, 13).replace("T", " ")}Z` : `${MM.SOURCES[m.src].label} ${new Date(m.run).toISOString().slice(11, 13)}Z +${m.fh} h`; }
     /* the warnings drawn under the cursor: their event and end, in the readout (B9) */
     function warnsAt(lat, lon) {
       if (!PRO || R.mode === "replay") return "";
@@ -3712,7 +3840,7 @@
       else if (f.mrms) when.innerHTML = `${esc(clk().time(f.t))}<small>MRMS · ${Wx.age(Date.now() - f.t)} ago${f.mrms.layer ? "" : f.mrms.err ? " · failed" : " · loading"}</small>`;
       else if (f.abi) when.innerHTML = `${esc(clk().time(f.t))}<small>${f.abi.file.sat === "east" ? "GOES-East" : "GOES-West"} · ${Wx.age(Date.now() - f.t)} ago${f.abi.layer ? "" : f.abi.err ? " · failed" : " · loading"}</small>`;
       else if (f.model) {
-        const k = clk(), day = k.ymd(f.t) !== k.ymd(Date.now()) ? k.day(f.t) + " " : "";
+        const k = clk(), day = MM.SOURCES[f.model.src].archive ? new Date(f.t).toISOString().slice(0, 10) + " " : k.ymd(f.t) !== k.ymd(Date.now()) ? k.day(f.t) + " " : "";
         when.innerHTML = `${esc(day + k.time(f.t))}<small>${esc(MM.SOURCES[f.model.src].analysis ? MM.SOURCES[f.model.src].label : runHour(f.model))}${MM.SOURCES[f.model.src].analysis ? " · " + Wx.age(Date.now() - f.t) + " ago" : ""}${f.model.layer ? "" : f.model.err ? " · failed" : " · loading"}</small>`;
       } else if (f.l3) {
         const F = f.l3.file;
@@ -3760,7 +3888,7 @@
       const m = f.model || f.mrms, L = m && m.layer;
       if (!L || !L.values || !L.field) return "";
       if (L.quiet === undefined) {
-        const pal = L.field.pal === "dbz" && NX ? NX.paletteFor("ref", R.pal.ref) : MM.PAL[L.field.pal];
+        const pal = L.field.pal === "dbz" && NX ? NX.paletteFor("ref", R.pal.ref) : MM.palOf(L.field.pal);
         const floor = pal && pal.floor;
         if (floor == null || pal.cat) L.quiet = "";
         else {
@@ -3960,7 +4088,7 @@
         /* a difference map keys its own two-sided scale, not the field's */
         const cur = R.mode === "model" && R.frames[R.frame] && R.frames[R.frame].model && R.frames[R.frame].model.layer;
         const f = R.mode === "mrms" ? MR.PRODUCTS[R.mr.prod] : cur && cur.field.diff ? cur.field : MM.field(R.mm.src, R.mm.field);
-        pal = f.pal === "dbz" && NX ? NX.paletteFor("ref", R.pal.ref) : MM.PAL[f.pal];
+        pal = f.pal === "dbz" && NX ? NX.paletteFor("ref", R.pal.ref) : MM.palOf(f.pal);
         if (pal.cat) cats = Object.values(pal.types).map(([name, , hi]) => [name, hi]);
         else {
           const [name, conv] = MM.unitFor(f.unit, U());
@@ -4069,14 +4197,32 @@
       for (const f of R.frames) if (f.l3 && f.l3.l2) Object.assign(f.l3, { p: null, file: null, err: false, colors: null }), f.painted = null;
       draw(); label();
     });
+    /* ── Your colour tables (2026-10-24, colormaps.js): any radar product's
+       or model field's colours, made in the editor or read from a GR .pal
+       file, kept in this browser as wx:cmaps { radar: {…}, model: {…} }.
+       A reflectivity or velocity table is a choice beside the standard ones
+       (its picker says "Your colours"); any other product or field simply
+       draws with it while it is there. ── */
+    const CMK = "wx:cmaps", CMAP_RADAR = ["ref", "vel", "cc", "zdr", "kdp", "sw", "eet", "vil"];
+    function cmapsLoad() {
+      const all = store.get(CMK, null) || {}, out = { radar: {}, model: {} }, CM = window.ColorMaps;
+      if (!CM || !NX || !MM) return out;
+      for (const k of CMAP_RADAR) { const p = all.radar && CM.clean(all.radar[k]); NX.setCustom(k, p || null); if (p) out.radar[k] = p; }
+      for (const k of Object.keys(MM.PAL)) { const p = all.model && CM.clean(all.model[k]); MM.setCustom(k, p || null); if (p) out.model[k] = p; }
+      return out;
+    }
+    let CMAPS = PRO ? cmapsLoad() : { radar: {}, model: {} };
     R.pal = { ref: "nws", vel: "nws" };
     if (PRO && NX) for (const k of ["ref", "vel"]) { const v = store.get("wx:pal" + k, "nws"); if (NX.SCHEMES[k][v]) R.pal[k] = v; }
+    /* the products with no picker draw with the visitor's table whenever there is one */
+    const cmapApply = () => { for (const k of CMAP_RADAR) if (k !== "ref" && k !== "vel") R.pal[k] = CMAPS.radar[k] ? "custom" : "nws"; };
+    cmapApply();
     function lutFor(L) { return MM.table(L.field.pal, 255, L.field.pal === "dbz" && NX ? NX.paletteFor("ref", R.pal.ref) : null); }
     function recolor() {
       for (const f of R.frames) {
         if (f.l3 && f.l3.file) { f.l3.colors = NX.colorTable(f.l3.file, f.l3.prod, R.pal); f.painted = null; }
         const m = f.model || f.mrms;
-        if (m && m.layer && m.layer.field && m.layer.field.pal === "dbz") { m.lut = lutFor(m.layer); f.painted = null; }
+        if (m && m.layer && m.layer.field) { m.lut = lutFor(m.layer); f.painted = null; }
       }
       if (R.frames.length) show(R.frame);
       draw(); legend();
@@ -4088,12 +4234,132 @@
       const sel = $("#pal" + k); if (sel) sel.value = v;
       recolor();
     }
-    if (PRO && NX) for (const k of ["ref", "vel"]) {
-      const sel = $("#pal" + k);
-      if (!sel) continue;
-      sel.innerHTML = Object.entries(NX.SCHEME_NAMES[k]).map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join("");
-      sel.value = R.pal[k];
-      sel.addEventListener("change", () => setPal(k, sel.value, true));
+    function palSelects() {
+      if (PRO && NX) for (const k of ["ref", "vel"]) {
+        const sel = $("#pal" + k);
+        if (!sel) continue;
+        sel.innerHTML = Object.entries(NX.SCHEME_NAMES[k]).map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join("");
+        if (!NX.SCHEMES[k][R.pal[k]]) R.pal[k] = "nws";
+        sel.value = R.pal[k];
+      }
+    }
+    palSelects();
+    if (PRO && NX) for (const k of ["ref", "vel"]) { const sel = $("#pal" + k); if (sel) sel.addEventListener("change", () => setPal(k, sel.value, true)); }
+    /* ── the colour table editor (#cmapit) ── */
+    const CE = { key: "radar:ref", stops: [], floor: null, log: false, note: "" };
+    function cmapTargets() {
+      const radar = CMAP_RADAR.map((k) => [`radar:${k}`, `${NX.PRODUCTS[k] ? NX.PRODUCTS[k].label : k}${NX.PRODUCTS[k] && NX.PRODUCTS[k].unit ? " (" + NX.PRODUCTS[k].unit + ")" : ""}`]);
+      const seen = new Set(), model = [];
+      for (const src of Object.keys(MM.FIELDS)) for (const f of MM.FIELDS[src]) {
+        const P = MM.PAL[f.pal];
+        if (!P || P.cat || seen.has(f.pal) || f.pal === "dbz") continue;
+        seen.add(f.pal);
+        const [u] = MM.unitFor(f.unit, "us");
+        model.push([`model:${f.pal}`, `${f.label.replace(/ and .*$/, "")}${u ? " (" + u + ")" : ""}`]);
+      }
+      model.sort((a, b) => a[1].localeCompare(b[1]));
+      return { radar, model };
+    }
+    const cmapBase = (key) => { const [kind, k] = key.split(":"); return kind === "radar" ? NX.PALETTES[k] : MM.PAL[k]; };
+    const cmapMine = (key) => { const [kind, k] = key.split(":"); return CMAPS[kind] && CMAPS[kind][k]; };
+    function cmapLoadInto(key, pal) {
+      const P = pal || cmapMine(key) || cmapBase(key);
+      CE.key = key; CE.stops = P.stops.map(([v, c]) => [v, c]); CE.floor = P.floor != null ? P.floor : null; CE.log = !!P.log;
+    }
+    function cmapCurrent() { return window.ColorMaps.clean({ stops: [...CE.stops].sort((a, b) => a[0] - b[0]), floor: CE.floor, log: CE.log }); }
+    function cmapRender() {
+      const box = $("#cmapstops"), cv = $("#cmapstrip");
+      if (!box) return;
+      box.innerHTML = CE.stops.map(([v, c], i) => `<li><input type="number" step="any" value="${v}" data-cmv="${i}" aria-label="Value"><input type="color" value="${c}" data-cmc="${i}" aria-label="Colour at ${v}"><button type="button" class="linkish" data-cmx="${i}" aria-label="Remove the stop at ${v}">×</button></li>`).join("");
+      const P = cmapCurrent();
+      $("#cmapnote").textContent = CE.note || (P ? `${P.stops.length} stops, ${P.min} to ${P.max}${P.floor != null ? `; nothing drawn under ${P.floor}` : ""}${cmapMine(CE.key) ? " · in use" : " · the standard table"}` : "Each value must be higher than the one before it.");
+      $("#cmapsave").disabled = !P; $("#cmapexport").disabled = !P;
+      if (cv && P) {
+        const g = cv.getContext("2d"), W = cv.width, Hh = cv.height, lut = MM.table(null, 255, P);
+        const img = g.createImageData(W, Hh);
+        for (let x = 0; x < W; x++) {
+          const v = P.log ? Math.exp(Math.log(P.min) + (Math.log(P.max) - Math.log(P.min)) * x / (W - 1)) : P.min + (P.max - P.min) * x / (W - 1);
+          const w = lut.lookup(v);
+          for (let y = 0; y < Hh; y++) { const o = (y * W + x) * 4; img.data[o] = w & 255; img.data[o + 1] = (w >>> 8) & 255; img.data[o + 2] = (w >>> 16) & 255; img.data[o + 3] = (w >>> 24) & 255; }
+        }
+        g.clearRect(0, 0, W, Hh); g.putImageData(img, 0, 0);
+      }
+    }
+    function cmapOpen(key) {
+      const d = $("#cmapit"), sel = $("#cmapwhich");
+      if (!d || !window.ColorMaps) return;
+      const T = cmapTargets();
+      sel.innerHTML = `<optgroup label="Radar">${T.radar.map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join("")}</optgroup><optgroup label="Model maps">${T.model.map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join("")}</optgroup>`;
+      key = key || (R.mode === "model" && MM.field(R.mm.src, R.mm.field) && MM.field(R.mm.src, R.mm.field).pal !== "dbz" ? `model:${MM.field(R.mm.src, R.mm.field).pal}` : l3() && CMAP_RADAR.includes(l3().pal) ? `radar:${l3().pal}` : "radar:ref");
+      if (![...sel.options].some((o) => o.value === key)) key = "radar:ref";
+      sel.value = key; CE.note = ""; cmapLoadInto(key); cmapRender();
+      if (typeof d.showModal === "function") d.showModal(); else d.setAttribute("open", "");
+    }
+    function cmapStore() {
+      const out = { radar: {}, model: {} };
+      for (const kind of ["radar", "model"]) for (const [k, p] of Object.entries(CMAPS[kind])) out[kind][k] = { stops: p.stops, floor: p.floor, log: p.log };
+      store.set(CMK, out);
+    }
+    function cmapUse(key, pal) {
+      const [kind, k] = key.split(":");
+      if (pal) CMAPS[kind][k] = pal; else delete CMAPS[kind][k];
+      cmapStore();                                  // first, so a map beside this one has the table before it hears the choice
+      if (kind === "radar") {
+        NX.setCustom(k, pal || null);
+        if (k === "ref" || k === "vel") { if (pal) { R.pal[k] = "custom"; store.set("wx:pal" + k, "custom"); } else if (R.pal[k] === "custom") { R.pal[k] = "nws"; store.set("wx:pal" + k, "nws"); } }
+      } else MM.setCustom(k, pal || null);
+      cmapApply(); palSelects(); recolor();
+    }
+    if (PRO && $("#cmapit")) {
+      const d = $("#cmapit");
+      if ($("#cmapedit")) $("#cmapedit").addEventListener("click", () => cmapOpen());
+      $("#cmapwhich").addEventListener("change", (e) => { CE.note = ""; cmapLoadInto(e.target.value); cmapRender(); });
+      d.addEventListener("input", (e) => {
+        const v = e.target.dataset.cmv, c = e.target.dataset.cmc;
+        if (v != null && Number.isFinite(Number(e.target.value)) && e.target.value !== "") { CE.stops[v][0] = Number(e.target.value); CE.note = ""; cmapRender(); d.querySelector(`[data-cmv="${v}"]`) && d.querySelector(`[data-cmv="${v}"]`).focus(); }
+        if (c != null) { CE.stops[c][1] = e.target.value; CE.note = ""; cmapRender(); }
+      });
+      d.addEventListener("click", (e) => {
+        const x = e.target.closest("[data-cmx]");
+        if (x) { if (CE.stops.length > 2) CE.stops.splice(Number(x.dataset.cmx), 1); else CE.note = "A table needs two colours or more."; cmapRender(); return; }
+        if (e.target.closest("[data-close]")) d.close();
+      });
+      $("#cmapadd").addEventListener("click", () => {
+        const s = [...CE.stops].sort((a, b) => a[0] - b[0]), last = s[s.length - 1], prev = s[s.length - 2];
+        CE.stops = s; CE.stops.push([+(last[0] + (last[0] - prev[0] || 1)).toFixed(4), last[1]]); CE.note = ""; cmapRender();
+      });
+      $("#cmapreset").addEventListener("click", () => { cmapLoadInto(CE.key, cmapBase(CE.key)); CE.note = "The standard table — Use these colours to go back to it."; cmapRender(); });
+      $("#cmapsave").addEventListener("click", () => {
+        const P = cmapCurrent();
+        if (!P) return;
+        /* the standard table, unchanged, is no table of your own */
+        const B = cmapBase(CE.key), same = B.stops.length === P.stops.length && B.stops.every((s, i) => s[0] === P.stops[i][0] && s[1].toLowerCase() === P.stops[i][1]) && (B.floor ?? null) === (P.floor ?? null);
+        cmapUse(CE.key, same ? null : P);
+        CE.note = same ? "Back to the standard table." : "In use — the map is drawn with these colours."; cmapRender();
+      });
+      $("#cmapexport").addEventListener("click", () => {
+        const P = cmapCurrent(), [kind, k] = CE.key.split(":");
+        if (!P) return;
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([window.ColorMaps.writePal(P, kind === "radar" ? k : null)], { type: "text/plain" }));
+        a.download = `weather-pro-${k}.pal`; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      });
+      $("#cmapimport").addEventListener("click", () => $("#cmapfile").click());
+      $("#cmapfile").addEventListener("change", async (e) => {
+        const file = e.target.files && e.target.files[0];
+        e.target.value = "";
+        if (!file) return;
+        try {
+          if (file.size > 256e3) throw new Error("that file is too large to be a colour table");
+          const r = window.ColorMaps.parsePal(await file.text());
+          /* a radar table goes to its product; anything else to what is open in the editor */
+          const key = r.key ? `radar:${r.key}` : CE.key;
+          $("#cmapwhich").value = key; cmapLoadInto(key, r.palette);
+          CE.note = `Read ${file.name}${r.key ? ` — a ${NX.PRODUCTS[r.key].label.toLowerCase()} table` : ""}${r.notes.length ? ` (${r.notes.slice(0, 2).join("; ")})` : ""}. Use these colours to draw with it.`;
+        } catch (err) { CE.note = String(err.message || err).replace(/^colormaps: /, "Could not read it: "); }
+        cmapRender();
+      });
     }
     const LGOFF = new Set();
     const LG = () => [
@@ -4204,7 +4470,7 @@
       }
       return "ok";
     }
-    const frameFh = (f) => (f && f.model && !MM.SOURCES[f.model.src].analysis ? f.model.fh : null);
+    const frameFh = (f) => (f && f.model && !MM.SOURCES[f.model.src].analysis && !MM.SOURCES[f.model.src].archive ? f.model.fh : null);
     function tipText(f) {
       const t = validTime(f);
       if (t == null) return "";
@@ -4340,7 +4606,7 @@
       if (ltgOn()) { lightningClock(); if ($("#awscredit")) $("#awscredit").hidden = false; }
       /* the pickers say what the link chose */
       if (PRO && $("#mrprod") && MR) $("#mrprod").value = R.mr.prod;
-      if (PRO && $("#abiprod") && AB) { $("#abiprod").value = R.ab.prod; $("#abisec").value = R.ab.sector; $("#abisat").value = R.ab.sat; }
+      if (PRO && $("#abiprod") && AB) { abiOptions(); $("#abisec").value = R.ab.sector; $("#abisat").value = R.ab.sat; }
       if (PRO && $("#mmfield") && MM) modelOptions();
       if (typeof linked === "string") { setMode(linked); loadOverlays(true); stationsSoon(); return; }
       if (R.mode === "comp") {
@@ -4990,7 +5256,7 @@
        panel and a saved workspace are written in the same words */
     function layerString() {
       const ov = [!R.ov.lines && "x", R.ov.watches && "w", R.ov.cells && "c", R.ov.fronts && "f", R.stations && "s", R.outlook && "o", R.ov.lightning && "l", R.ov.density && "d", R.ov.reports && "r", R.ov.rings && "g", R.ov.tropics && "h", R.ov.terrain && "e"].filter(Boolean).join("");
-      return `l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}${R.mm.pin ? "." + new Date(R.mm.pin).toISOString().replace(/\D/g, "").slice(0, 10) : R.mm.back ? "." + R.mm.back : ""}` : ""}${R.mode === "model" && R.mm.diff ? `&d=${R.mm.diff}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
+      return `l=${encodeURIComponent(R.mode === "replay" ? "comp" : R.mode)}&s=${encodeURIComponent(R.sat || "")}&o=${ov}${l3() ? (useL2() ? `&a=${R.l2angle}` : `&t=${R.tilt}`) : ""}${R.mode === "model" ? `&m=${R.mm.src}.${R.mm.field}${R.mm.pin ? "." + new Date(R.mm.pin).toISOString().replace(/\D/g, "").slice(0, 10) : R.mm.back ? "." + R.mm.back : ""}` : ""}${R.mode === "model" && R.mm.diff ? `&d=${R.mm.diff}` : ""}${R.mode === "mrms" ? `&r=${R.mr.prod}` : ""}${R.mode === "abi" ? `&g=${R.ab.prod}.${R.ab.sector}.${R.ab.sat}${AB.PRODUCTS[R.ab.prod] && AB.PRODUCTS[R.ab.prod].spec ? `&rx=${AB.encodeRecipe(AB.PRODUCTS[R.ab.prod].spec)}` : ""}` : ""}${single() && R.lockId ? `&k=${R.lockId}` : ""}`;
     }
     /* the map's middle to about 10 km, and its zoom */
     function viewString() {
@@ -5037,7 +5303,10 @@
       }
       if (MR && MR.PRODUCTS[q.get("r")]) R.mr.prod = q.get("r");
       const [gp, gs, gsat] = (q.get("g") || "").split(".");
-      if (AB && AB.PRODUCTS[gp] && AB.SECTORS[gs] && ["auto", "east", "west"].includes(gsat)) R.ab = { prod: gp, sector: gs, sat: gsat };
+      /* a recipe in a shared link travels as its own channels */
+      if (AB && AB.decodeRecipe && /^rx/.test(gp || "") && !AB.PRODUCTS[gp] && q.get("rx")) { const c = AB.decodeRecipe(q.get("rx")); if (c) AB.PRODUCTS[gp === "rxdraft" ? "rxdraft" : "rxlink"] = AB.recipe(c); }
+      const gid = /^rx/.test(gp || "") && !AB.PRODUCTS[gp] && AB.PRODUCTS[gp === "rxdraft" ? "rxdraft" : "rxlink"] ? (gp === "rxdraft" ? "rxdraft" : "rxlink") : gp;
+      if (AB && AB.PRODUCTS[gid] && AB.SECTORS[gs] && ["auto", "east", "west"].includes(gsat)) R.ab = { prod: gid, sector: gs, sat: gsat };
       if (/^[A-Z]{3}$/.test(q.get("k") || "")) R.lockId = q.get("k");   // IEM's ids: TLX, not KTLX
       const l = q.get("l");
       return ["N0B", "N0S", "hrrr"].includes(l) || l3(l) || (l === "model" && MM) || (l === "mrms" && MR) || (l === "abi" && AB) ? l : true;
@@ -5450,7 +5719,7 @@
     function diffOptions() {
       const sel = $("#mmdiff"), M = R.mm, S = MM.SOURCES[M.src], f = MM.field(M.src, M.field);
       if (!sel) return;
-      const lbl = $("#mmdiffl"), ok = f && !S.analysis && !S.server && !f.members && !f.member && M.src !== "tle";
+      const lbl = $("#mmdiffl"), ok = f && !S.analysis && !S.archive && !S.server && !f.members && !f.member && M.src !== "tle";
       if (lbl) lbl.hidden = !ok;
       const others = ok ? DIFF_MODELS.filter((k) => k !== M.src && MM.SOURCES[k] && MM.field(k, M.field) && MM.field(k, M.field).unit === f.unit) : [];
       sel.innerHTML = `<option value="">None</option>${ok ? `<option value="prev">From the run before</option>` : ""}${others.map((k) => `<option value="${k}">Minus ${esc(MM.SOURCES[k].label)}</option>`).join("")}`;
@@ -5471,6 +5740,7 @@
         R.mm.field = e.target.value; store.set("wx:mmfield", R.mm.field);
         diffOptions();                                            // a field with nothing to difference against drops the choice first
         if (R.mode !== "model" || !R.frames.length) return;
+        if (MM.SOURCES[R.mm.src].archive) { play(false); eraFrames().then(label); return; }
         /* the same run and hours, the new field; the hour on screen stays */
         const at = R.frame;
         play(false);
@@ -5491,6 +5761,13 @@
         R.mm.back = 0; R.mm.pin = v > 0 ? v : null;
         if (R.mode === "model") { play(false); modelFrames().then(label); }
       });
+      /* ERA5's day */
+      if ($("#mmdate")) $("#mmdate").addEventListener("change", (e) => {
+        const v = Date.parse(e.target.value + "T00:00:00Z");
+        if (!Number.isFinite(v)) return;
+        R.mm.pin = v;
+        if (R.mode === "model") { play(false); modelFrames().then(label); }
+      });
       /* out of a replay's moment, back to the newest run */
       $("#mmrun").addEventListener("click", (e) => {
         if (!e.target.closest("[data-mmnow]")) return;
@@ -5503,18 +5780,96 @@
       $("#densbar").hidden = !(PRO && R.ov.density);
       $("#denswin").addEventListener("change", (e) => { R.densWin = Number(e.target.value); store.set("wx:denswin", R.densWin); LTG.dens = null; drawLightning(); label(); });
     }
-    if ($("#abibar") && AB) {
+    function abiOptions() {
       const groups = {};
       for (const [id, P] of Object.entries(AB.PRODUCTS)) (groups[P.group] = groups[P.group] || []).push([id, P]);
       if (!AB.PRODUCTS[R.ab.prod]) R.ab.prod = "b13";
+      $("#abiprod").innerHTML = Object.entries(groups).map(([g, ps]) => `<optgroup label="${esc(g)}">${ps.map(([id, P]) => `<option value="${id}">${esc(P.label)}${id === "rxlink" ? " (from a link)" : id === "rxdraft" ? " (not saved)" : ""}</option>`).join("")}</optgroup>`).join("");
+      $("#abiprod").value = R.ab.prod;
+    }
+    if ($("#abibar") && AB) {
       if (!AB.SECTORS[R.ab.sector]) R.ab.sector = "conus";
-      $("#abiprod").innerHTML = Object.entries(groups).map(([g, ps]) => `<optgroup label="${esc(g)}">${ps.map(([id, P]) => `<option value="${id}">${esc(P.label)}</option>`).join("")}</optgroup>`).join("");
-      $("#abiprod").value = R.ab.prod; $("#abisec").value = R.ab.sector; $("#abisat").value = R.ab.sat;
+      abiOptions();
+      $("#abisec").value = R.ab.sector; $("#abisat").value = R.ab.sat;
       const again = () => { $("#radarread").hidden = true; store.set("wx:abi", R.ab.prod); store.set("wx:abisec", R.ab.sector); store.set("wx:abisat", R.ab.sat); if (R.mode === "abi") { play(false); R.valid = null; abiFrames().then(label); } };
       $("#abiprod").addEventListener("change", (e) => { if (AB.PRODUCTS[e.target.value]) { R.ab.prod = e.target.value; again(); } });
       $("#abisec").addEventListener("change", (e) => { if (AB.SECTORS[e.target.value]) { R.ab.sector = e.target.value; R.abiBox = null; again(); } });
       $("#abisat").addEventListener("change", (e) => { if (["auto", "east", "west"].includes(e.target.value)) { R.ab.sat = e.target.value; R.abiBox = null; again(); } });
       $("#abigo").addEventListener("click", () => { const b = R.abiBox; if (b) fit(b.s, b.w, b.n, b.e, 20); });
+      /* ── the recipe builder (#recipeit) ── */
+      const RC = { id: null };
+      const bandOpt = (b, sel) => `<option value="${b}"${b === sel ? " selected" : ""}>B${b} · ${AB.BANDS[b][0]} µm ${esc(AB.BANDS[b][1].toLowerCase())}</option>`;
+      const BAND_IDS = Object.keys(AB.BANDS).map(Number);
+      function rcFill(spec) {
+        $("#rcname").value = spec.name;
+        $("#rcrows").innerHTML = spec.ch.map((c, i) => `<tr><th scope="row" class="rc${"rgb"[i]}">${["Red", "Green", "Blue"][i]}</th>
+          <td><select data-rc="a" data-i="${i}" aria-label="${["Red", "Green", "Blue"][i]}: band">${BAND_IDS.map((b) => bandOpt(b, c.a)).join("")}</select></td>
+          <td><select data-rc="b" data-i="${i}" aria-label="${["Red", "Green", "Blue"][i]}: minus a band"><option value="0"${c.b ? "" : " selected"}>—</option>${BAND_IDS.map((b) => bandOpt(b, c.b)).join("")}</select></td>
+          <td><input type="number" step="any" data-rc="lo" data-i="${i}" value="${+c.lo.toFixed(3)}" aria-label="${["Red", "Green", "Blue"][i]}: low"></td>
+          <td><input type="number" step="any" data-rc="hi" data-i="${i}" value="${+c.hi.toFixed(3)}" aria-label="${["Red", "Green", "Blue"][i]}: high"></td>
+          <td><input type="number" step="0.1" min="0.1" max="5" data-rc="g" data-i="${i}" value="${c.g}" aria-label="${["Red", "Green", "Blue"][i]}: gamma"></td></tr>`).join("");
+        rcCheck();
+      }
+      function rcRead() {
+        const ch = [0, 1, 2].map((i) => { const v = (k) => $(`#recipeit [data-rc="${k}"][data-i="${i}"]`).value; return { a: +v("a"), b: +v("b"), lo: +v("lo"), hi: +v("hi"), g: +v("g") }; });
+        return AB.cleanRecipe({ name: $("#rcname").value, ch });
+      }
+      function rcCheck(msg) {
+        const r = rcRead();
+        $("#rcuse").disabled = !r; $("#rcsave").disabled = !r;
+        $("#rcdel").hidden = !RC.id || !RECIPES.some((x) => x.id === RC.id);
+        $("#rcnote").textContent = msg || (r ? AB.describe(r) : "Each colour needs a range (low and high differ), a gamma from 0.1 to 5, and a difference only of like with like — two reflectances or two temperatures.");
+      }
+      function rcFrom() {
+        const sel = $("#rcfrom");
+        sel.innerHTML = `<optgroup label="Start from a standard RGB">${Object.entries(AB.SPECS).map(([k, sp]) => `<option value="s:${k}">${esc(sp.name)}</option>`).join("")}</optgroup>${RECIPES.length ? `<optgroup label="Your recipes">${RECIPES.map((r) => `<option value="m:${r.id}">${esc(r.name)}</option>`).join("")}</optgroup>` : ""}`;
+      }
+      function rcOpen() {
+        const d = $("#recipeit");
+        rcFrom();
+        const P = AB.PRODUCTS[R.ab.prod];
+        if (P && P.spec && RECIPES.some((x) => x.id === R.ab.prod)) { RC.id = R.ab.prod; $("#rcfrom").value = "m:" + RC.id; rcFill(P.spec); }
+        else if (AB.SPECS[R.ab.prod]) { RC.id = null; $("#rcfrom").value = "s:" + R.ab.prod; rcFill({ ...AB.SPECS[R.ab.prod], name: AB.SPECS[R.ab.prod].name + " (mine)" }); }
+        else if (P && P.spec) { RC.id = null; rcFill(P.spec); }
+        else { RC.id = null; $("#rcfrom").value = "s:airmass"; rcFill({ ...AB.SPECS.airmass, name: "My recipe" }); }
+        if (typeof d.showModal === "function") d.showModal(); else d.setAttribute("open", "");
+      }
+      function rcStore() { store.set("wx:recipes", RECIPES.map((r) => ({ id: r.id, name: r.name, ch: r.ch }))); }
+      function rcDraw(id, r) {
+        AB.PRODUCTS[id] = AB.recipe(r);
+        R.ab.prod = id; abiOptions();
+        if (R.mode !== "abi") setMode("abi"); else again();
+      }
+      $("#abibuild").addEventListener("click", rcOpen);
+      $("#rcfrom").addEventListener("change", (e) => {
+        const [k, id] = e.target.value.split(":");
+        if (k === "s") { RC.id = null; rcFill({ ...AB.SPECS[id], name: AB.SPECS[id].name + " (mine)" }); }
+        else { const r = RECIPES.find((x) => x.id === id); if (r) { RC.id = r.id; rcFill(r); } }
+      });
+      $("#recipeit").addEventListener("input", () => rcCheck());
+      $("#recipeit").addEventListener("change", () => rcCheck());
+      $("#recipeit").addEventListener("click", (e) => { if (e.target.closest("[data-close]")) $("#recipeit").close(); });
+      $("#rcuse").addEventListener("click", () => { const r = rcRead(); if (!r) return; const id = RC.id && RECIPES.some((x) => x.id === RC.id) ? RC.id : "rxdraft"; if (id !== "rxdraft") { Object.assign(RECIPES.find((x) => x.id === id), r); rcStore(); } rcDraw(id, r); rcCheck("Drawn on the map" + (id === "rxdraft" ? " — not saved yet." : ", and saved.")); });
+      $("#rcsave").addEventListener("click", () => {
+        const r = rcRead();
+        if (!r) return;
+        let x = RC.id && RECIPES.find((y) => y.id === RC.id);
+        if (x) Object.assign(x, r);
+        else {
+          if (RECIPES.length >= 12) { rcCheck("Twelve recipes is the most kept here — delete one first."); return; }
+          x = { id: "rx" + Math.random().toString(36).slice(2, 8).replace(/[^a-z0-9]/g, "a").padEnd(6, "a"), ...r };
+          RECIPES.push(x); RC.id = x.id;
+        }
+        rcStore(); rcFrom(); $("#rcfrom").value = "m:" + x.id; rcDraw(x.id, r); rcCheck("Saved, and drawn on the map.");
+      });
+      $("#rcdel").addEventListener("click", () => {
+        const i = RECIPES.findIndex((x) => x.id === RC.id);
+        if (i < 0) return;
+        const [gone] = RECIPES.splice(i, 1);
+        delete AB.PRODUCTS[gone.id]; rcStore(); rcFrom();
+        if (R.ab.prod === gone.id) { R.ab.prod = "b13"; abiOptions(); if (R.mode === "abi") again(); } else abiOptions();
+        RC.id = null; rcCheck(`Deleted "${gone.name}".`);
+      });
     }
     if ($("#mrmsbar") && MR) {
       const groups = {};
@@ -5659,7 +6014,7 @@
     function stamp() {
       const f = R.frames[R.frame], t = validTime(f);
       let kind = "observed", run = null;
-      if (f && f.model) { const Sx = MM.SOURCES[f.model.src]; kind = Sx.analysis ? "analysis" : "forecast"; run = Sx.analysis ? null : f.model.run; }
+      if (f && f.model) { const Sx = MM.SOURCES[f.model.src]; kind = Sx.analysis || Sx.archive ? "analysis" : "forecast"; run = Sx.analysis || Sx.archive ? null : f.model.run; }
       else if (f && f.future) kind = "forecast";
       else if (R.mode === "replay") kind = "archive";
       /* while the loop plays: its span, so the legend can say the loop rather than each frame */
@@ -5719,7 +6074,7 @@
         let l = applyLink(str);
         if (asked === "comp") l = "comp";
         if (PRO && $("#mrprod") && MR) $("#mrprod").value = R.mr.prod;
-        if (PRO && $("#abiprod") && AB) { $("#abiprod").value = R.ab.prod; $("#abisec").value = R.ab.sector; $("#abisat").value = R.ab.sat; }
+        if (PRO && $("#abiprod") && AB) { abiOptions(); $("#abisec").value = R.ab.sector; $("#abisat").value = R.ab.sat; }
         if (PRO && $("#mmsrc") && MM) { $("#mmsrc").value = R.mm.src; modelOptions(); }
         if (ltgOn()) lightningClock();
         if (typeof l === "string" && (l !== R.mode || l === "comp")) await setMode(l);
@@ -5734,6 +6089,7 @@
       relabel() { if (R.frames.length) show(R.frame); label(); },
       /* a colour table chosen in the page or another map */
       setPal: (k, v) => setPal(k, v, false),
+      cmapsReload: () => { CMAPS = cmapsLoad(); cmapApply(); palSelects(); recolor(); },
       panel: {
         get view() { return viewNow(); }, setView,
         get stamp() { return stamp(); }, setTime,
@@ -6243,6 +6599,7 @@
     if (e.key === "wx:utc") { UTC = store.get("wx:utc", false) === true; utcRedraw(); }
     /* the units, changed in the page or another map: every map follows */
     else if (e.key === "wx:palref" || e.key === "wx:palvel") radar.setPal(e.key.slice(6), store.get(e.key, "nws"));
+    else if (e.key === "wx:cmaps") radar.cmapsReload && radar.cmapsReload();
     else if (e.key === "wx:prounits") {
       const u = store.get("wx:prounits", "pro");
       if (["pro", "us", "metric"].includes(u) && u !== S.units) { S.units = u; if (!PANEL) render(); radar.draw(); radar.label(); sky.redraw(); }

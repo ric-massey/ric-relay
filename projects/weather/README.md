@@ -106,6 +106,8 @@ two that would change first are Open-Meteo and the OpenStreetMap tiles.
 | OpenStreetMap tiles (`tile.openstreetmap.org`) | OSM data is ODbL; the tile servers have a usage policy: light use, attribution, no heavy or commercial traffic | Attribution is in the map's corner. **A commercial or high-traffic site must move to a paid or self-hosted tile service** |
 | Natural Earth — map lines and towns | Public domain | Nothing owed; credited anyway |
 | Met Office global model (UKMET) on AWS | CC BY-SA 4.0, © Crown copyright, Met Office | Credited on the map whenever shown (`#ukcredit`). Share-alike: a derived dataset would carry the same licence; the maps drawn here are not redistributed data |
+| ERA5 on AWS (`nsf-ncar-era5`, NSF NCAR's copy, DOI 10.5065/BH6N-5N20) — Pro's reanalysis | Copernicus ERA5: CC BY 4.0 (Copernicus licence), "Contains modified Copernicus Climate Change Service information"; NCAR asks the dataset be cited | Credited on the map whenever shown (`#eracredit`: Copernicus C3S, via NSF NCAR) |
+| GR colour tables (.pal) a visitor reads into Pro | The visitor's own file | Read in their browser and kept there; never sent or committed |
 | Terrain Tiles on AWS (`elevation-tiles-prod`) — Pro's terrain | Open data; each source's own terms: USGS 3DEP is public domain, SRTM and ETOPO1 likewise, GMTED from the USGS; the registry asks that the sources be credited | Credited in the map's corner while Terrain is on (`#terraincredit`) |
 | Pangu-Weather weights (`weather-ai.yml`) | Non-commercial (CC BY-NC-SA 4.0) | Ranked on the scoreboard, never drawn; not usable commercially |
 
@@ -158,6 +160,7 @@ product.
 | Ensemble maps (Pro) | NOAA's GEFS on AWS, `noaa-gefs-pds` (`pgrb2ap5`, 0.5°): the control and thirty members, and NOAA's own mean (`geavg`) and spread (`gespr`) | Every 6 hours to 16 days (where each member's rain is a 6-hour total). The mean of 500 mb heights and MSLP contoured over how far the runs disagree; mean temperature and rain; **spaghetti** — every run's 552 or 576 dam line, each its own colour, over the spread; and **chances** — the share of the 31 runs with ¼ or 1 inch of rain in 6 hours, freezing at 2 m, or a 39 mph wind. ~8 MB for a field's 31 members. ECMWF's own ensemble is 51 runs at 0.25° and a 2 MB index per step, too much for a page; its spread at one place is in the ensemble card (Open-Meteo) |
 | Storm probabilities (Pro) | **HRRR-TLE** — the newest six HRRR runs, each at the hour that lands on the same moment (`modelmaps.js`, source `tle`) | HREF is not on AWS and RRFS's bucket holds only retrospective runs (checked 2026-10-22), so the probabilities are the time-lagged HRRR, as SPC and WPC use it: for each member, the event (2–5 km updraft helicity ≥ 75, 40 dBZ, 1 inch of rain in an hour, a 58 mph hourly-max wind) widened to everything within 40 km; the share of members with it, smoothed over half that. A run that does not reach the hour (18 h, 48 from 00/06/12/18Z) is left out; fewer than three members is no answer. One to fifteen hours ahead, ~6 MB an hour |
 | ECMWF ensemble maps (Pro) | ECMWF's open data `enfo` products — `…-240h-enfo-ep` and `…-360h-enfo-ep`, one file each holding every hour's ensemble mean (`em`), spread (`es`) and probabilities (`ep`), 0.25° (`modelmaps.js`, source `ecens`) | Not the 51 members (about 16 MB a field an hour) but ECMWF's own products from them; probabilities for 24 h ending on the hour, every 12 h from 24 to 360; the 850 mb anomaly chances are ECMWF's own standardised anomaly against its own climate. A run counts once its products file is there (about 8½ h after it starts) |
+| ERA5 maps (Pro) — any hour since 1940 | NSF NCAR's ERA5 on AWS, `nsf-ncar-era5` (`e5.oper.<stream>/<YYYYMM>/…ll025sc.<start>_<end>.nc`, CORS open), netCDF-4 read by `glm.js` with range requests (`reanalysis.js`, source `era5`) | Surface fields: one file a month, chunks of 27 hours × 139 × 277, so a lower-48 window is about 6.5 MB and the day's other hours come from the cache. Upper air: one file a day with 1 hour × 37 levels × the globe in a chunk (43 MB) — drawn every 6 hours, never cached. Precipitation: 06/18Z short forecasts, two files a month. Runs 2–3 months behind (July 2026 on 2026-10-24; precipitation June). Older files (before about 2023) are HDF5 with a version 0 superblock, which `glm.js` reads too |
 | UKMET maps (Pro) | The Met Office's global model on AWS, `met-office-atmospheric-model-data` (`global-deterministic-10km/<run>/<valid>-PT<hhhh>H00M-<field>.nc`, CORS open), one NetCDF-4 file per field per hour, read by `glm.js`'s HDF5 reader (`modelmaps.js`, source `ukmet`) | A surface field is about 7 MB for the globe; a pressure level is that level's chunks out of a 130–230 MB file (`slice0`). Drawn at 20 km (2×2 averaged) to keep a loop's memory near a GFS's. The slowest model here: a first frame took about 20 s in testing |
 | Lightning (Pro) | GOES-East (`noaa-goes19`) and GOES-West (`noaa-goes18`) GLM Level 2 files on AWS, every 20 s, read by `glm.js` | Flashes, not ground strikes. The last 20 minutes, asked again every minute while **Lightning** or **Flash density** is on and the page is visible; a first fill goes newest first so the last minutes show in seconds. East east of 105° W, West west of it (they overlap and see the same flashes). ~150 KB a file in Range requests; the attributes are read from the first file and reused. Only flashes the GLM flags good. **Lightning** draws the last 10 minutes as dots. **Flash density** (Ric, 2026-10-22: "a density of lightning within a time frame") counts flashes in 8 km squares over 1, 5, 10 or 20 minutes, the window ending at the newest file read; hover gives a square's count. With either on, a storm cell's card shows its **flash rate** (flashes a minute within 15 km, the circle carried back along the cell's motion to each flash's time), the last four 2-minute steps, and the **lightning jump**: Schultz, Petersen and Carey's 2σ method — the latest change in rate more than twice the spread of the five before it, with the cell at 10 flashes a minute or more — drawn as a dashed violet ring. It is labelled an indicator, never a warning. Rate and jump wait until 14 unbroken minutes of files have been read (`span` in app.js), so a gap is never read as a storm going quiet. GLM sees fewer flashes than a ground-based lightning mapping array, so its rates run lower than the ones the method was built on |
 | Storm reports (Pro) | IEM's `geojson/lsr.geojson?hours=24` (`/wx/iem/lsr`) | The NWS's local storm reports, as each office issued them, every two minutes. Severe ones (tornado, funnel, 1" hail, damaging or 58 mph thunderstorm wind, flash flood) at every zoom, the rest from zoom 7. Tap one for the magnitude, who reported it and the remark. A report, not a verified event, and the card says so |
@@ -203,6 +206,19 @@ path covers it. Images (map, radar and satellite tiles) always load directly.
   observation is computed with the NWS's own formulas and tagged `computed`.
   Past `STALE_MS` a feed says "delayed" rather than looking live. The *Where this
   comes from* card is the room's status page (§37).
+- **ERA5 is the weather as it was, never a forecast** (2026-10-24). Its
+  maps say "reanalysis" and "analysis" wherever they show, carry the
+  Copernicus / NSF NCAR credit in the map's corner (`#eracredit`), and take
+  no difference maps, Compare or Trend. Its pressure levels are drawn every 6
+  hours and never cached — each is 43 MB to fetch and 154 MB unpacked — and
+  only the chunks under the map's view are read. Nothing about the view is
+  kept or sent beyond those requests.
+- **What a visitor makes stays in their browser** (2026-10-24): colour tables
+  (`wx:cmaps`, read from their own `.pal` files or made in the editor) and
+  satellite recipes (`wx:recipes`) are never sent or committed. A recipe
+  travels in a share link only when shared (`rx=`: its name and twelve
+  numbers — no place). A standard table, colour or RGB is never changed by
+  one; the visitor's sits beside it as "Your colours" or "Your recipes".
 - **Clutter filtering never hides a strong echo** (2026-10-24, Ric: "Raw radar:
   preserve weak returns … Filtered radar: remove likely non-weather echoes").
   The single radar's reflectivity has an **Echoes** choice beside its tilts —
@@ -772,6 +788,48 @@ workspace. **An empty Find opens on the visitor's last five picks**
 (`wx:findrecent`, product names only), then everything in the index's own
 order — sorted by name length, it read as a random list. **Active** says
 how to choose only when there is something to choose.
+
+**Round eight (2026-10-24 — the review's last specialist items, after Ric
+quoted them back: "3D radar, a reanalysis archive, custom colour maps and a
+satellite recipe builder"):**
+**ERA5 reanalysis** (Models → ERA5, a *Day* picker) — the weather of any
+hour from 1 January 1940 to a few months ago: pressure and temperature, dew
+point, wind, CAPE, cloud, sea surface temperature, precipitation in the hour
+and the 6 and 24 hours to it, precipitable water, snow water, and every 6
+hours the 500 mb heights and 850 mb temperature. `reanalysis.js` knows where
+each hour lives (table above); only the chunks under the map are read
+(`windowOf`), and a chunk read once serves every hour in it (`budget`, about
+200 MB). Pan past what was read and the day reads again for the new view.
+Labelled the weather as it was — an analysis, never a forecast; no
+difference maps, no Compare or Trend. For it `glm.js` learned the older
+HDF5 (version 0 superblock, symbol-table groups), slices with several
+leading indices (`[hour, level]`), windows and a chunk cache; a small
+h5py-written fixture (`test/fixtures/make-hdf5-v0.py`) holds all four.
+Measured: a lower-48 surface map 6.5 MB and about 3 s, the next hour from
+the cache in milliseconds; the February 2021 cold outbreak's 1040 mb high,
+and 500 mb on 1 January 1950, both drawn.
+**Colour tables** (Overlays → Colour tables → Edit…, `colormaps.js`) — your
+own colours for any radar product or model field: values and colours,
+blended between, a live strip of the result; or **read a GRLevelX /
+GR2Analyst `.pal`** file (Color, SolidColor, Color4 and the clear first
+entry as the floor; speeds in MPH, KTS, MPS or KPH turned into knots), and
+save yours as one GR reads back. A reflectivity or velocity table joins the
+standard choices as "Your colours"; any other product or field draws with
+it while it is there. Kept in this browser (`wx:cmaps`); maps beside the main
+one follow.
+**Satellite recipes** (Satellite → Recipe…) — an RGB of your own: each of
+red, green and blue one band or one band minus another, stretched from low
+to high (reflectance %, temperatures °C) with a gamma. Start from any
+standard RGB — written as recipes in `Abi.SPECS`, each held to its own
+`rgb()` to within 10⁻⁹ — save up to twelve, and a shared link carries the
+recipe (`rx=`), so it draws for whoever opens it.
+**3D radar** (the radar row's *3D*, `radar3d.js`) — the single radar's
+whole volume as points where its beams are (`NX.volumePoints`: up the
+4/3-earth beam, along the arc under it), coloured by the map's own table,
+over range rings; drag, wheel or pinch to turn and zoom, arrow keys too.
+Reflectivity from a threshold, or velocity (dealiased if that is on) beyond
+one; height stretched ×1–8 and said; a volume past 400,000 points is thinned
+and says so. WebGL, which every browser has — no library.
 
 **Round seven (2026-10-24 — Ric passed on an outside review: "Work on
 these", and "the answer is both" to its question of which workstation Pro

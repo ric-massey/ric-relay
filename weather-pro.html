@@ -32,7 +32,7 @@
   <link rel="preload" href="assets/weather/fonts/IBMPlexMono-600.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/weather/fonts/IBMPlexMono-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/weather/fonts/IBMPlexSans.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/weather/weather.css?v=62">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=63">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -162,6 +162,7 @@
               <div class="ovrow" role="group" aria-label="Colour tables">
                 <label class="satpick" title="Reflectivity colours for the single radar, MRMS and the models — the US mosaic comes already coloured by Iowa State, in the NWS's"><span class="seglab">Reflectivity</span><select id="palref" aria-label="Reflectivity colours"></select></label>
                 <label class="satpick" title="Velocity colours: toward and away from the radar"><span class="seglab">Velocity</span><select id="palvel" aria-label="Velocity colours"></select></label>
+                <button type="button" id="cmapedit" title="Make your own colours for any radar product or model field, or read a GR2Analyst / GRLevelX .pal colour table — kept in this browser">Edit…</button>
               </div>
               <!-- your files (2026-10-24): GPX, KML, GeoJSON or a placefile, read in this browser and kept only here -->
               <div class="ovrow filesrow" role="group" aria-label="Your files"><span class="seglab">Your files</span><button type="button" id="filesadd" title="Open a GPX, KML, GeoJSON or GRLevelX placefile — it stays in this browser and is never sent">Add a file…</button><input type="file" id="filesin" accept=".gpx,.kml,.geojson,.json,.txt,.pf" hidden></div>
@@ -199,12 +200,14 @@
           <!-- clutter filtering (2026-10-24): reflectivity only; the radar's own CC decides, never a guess from the colours -->
           <label class="sitepick" id="clutterpick" hidden title="Every echo the radar saw, or only what its own dual-pol (CC) says is likely weather. Strong echoes are always kept — a tornado's debris has low CC too"><span class="seglab">Echoes</span><select id="cluttersel" aria-label="Clutter filtering"><option value="raw">All · raw</option><option value="filter">Weather only · filtered</option><option value="mark">Mark non-weather</option></select></label>
           <!-- dealiasing (2026-10-24): full-volume velocity only — Level III comes unfolded by the radar's own computer -->
+          <button type="button" id="v3dbtn" hidden title="This radar's whole volume in 3D — every tilt where its beam is; drag to turn it">3D</button>
           <button type="button" id="vwpbtn" hidden title="The wind by height over this radar, from its own full-volume velocity (a VAD wind profile, as the NWS's VWP is made)">VWP</button>
           <button type="button" id="dealiasbtn" aria-pressed="false" hidden title="Unfold velocities that wrapped past the radar's Nyquist speed (full volume only — Level III is unfolded by the radar's own computer). A simple continuity method: it can choose wrong in noisy data">Dealias</button>
         </div>
         </div>
         <div class="modelbar pro-only" id="abibar" hidden>
           <label>Product <select id="abiprod"></select></label>
+          <button type="button" id="abibuild" title="Make an RGB of your own from the sixteen bands, or change one of the standard ones — kept in this browser">Recipe…</button>
           <label>Sector <select id="abisec"><option value="conus">Lower 48 · every 5 min</option><option value="m1">Mesoscale 1 · every minute</option><option value="m2">Mesoscale 2 · every minute</option></select></label>
           <label>Satellite <select id="abisat"><option value="auto">Nearest to the map</option><option value="east">GOES-East</option><option value="west">GOES-West</option></select></label>
           <button type="button" id="abigo" class="go" hidden>Go to the sector</button>
@@ -215,9 +218,10 @@
           <span class="mmrun" id="mrrun"></span>
         </div>
         <div class="modelbar pro-only" id="modelbar" hidden>
-          <label>Model <select id="mmsrc"><option value="smeso">Mesoanalysis · every level, SPC's method, hourly</option><option value="meso">Mesoanalysis · HRRR, worked out in your browser</option><option value="hrrr">HRRR · 3 km, hourly</option><option value="nam">NAM 3 km · every 6 hours, to 60 hours</option><option value="rap">RAP · 13 km, hourly</option><option value="gfs">GFS · global, to 10 days</option><option value="ecmwf">ECMWF · IFS, global, to 10 days</option><option value="aifs">ECMWF AIFS · machine-learned, to 10 days</option><option value="ukmet">UKMET · the Met Office's global model, to 7 days</option><option value="ecwave">ECMWF waves · height and period, the oceans</option><option value="gefs">GEFS ensemble · mean, spread, spaghetti, chances</option><option value="ecens">ECMWF ensemble · mean, spread, chances, how unusual · to 15 days</option><option value="tle">HRRR-TLE · storm probabilities</option><option value="nbm">National Blend · chances of rain, thunder, snow, ice, fog</option></select></label>
+          <label>Model <select id="mmsrc"><option value="smeso">Mesoanalysis · every level, SPC's method, hourly</option><option value="meso">Mesoanalysis · HRRR, worked out in your browser</option><option value="hrrr">HRRR · 3 km, hourly</option><option value="nam">NAM 3 km · every 6 hours, to 60 hours</option><option value="rap">RAP · 13 km, hourly</option><option value="gfs">GFS · global, to 10 days</option><option value="ecmwf">ECMWF · IFS, global, to 10 days</option><option value="aifs">ECMWF AIFS · machine-learned, to 10 days</option><option value="ukmet">UKMET · the Met Office's global model, to 7 days</option><option value="ecwave">ECMWF waves · height and period, the oceans</option><option value="gefs">GEFS ensemble · mean, spread, spaghetti, chances</option><option value="ecens">ECMWF ensemble · mean, spread, chances, how unusual · to 15 days</option><option value="tle">HRRR-TLE · storm probabilities</option><option value="nbm">National Blend · chances of rain, thunder, snow, ice, fog</option><option value="era5">ERA5 reanalysis · the weather of any hour since 1940</option></select></label>
           <label>Field <select id="mmfield"></select></label>
           <label id="mmbackl" title="Any run of the last five days, by its own time (UTC) — how the forecast has changed. Latest follows new runs as they come out">Run <select id="mmback"><option value="0">Latest</option></select></label>
+          <label id="mmdatel" hidden title="ERA5's day (UTC): any from 1 January 1940 to a few months ago — the weather as it was, rebuilt from the observations of the time">Day <input type="date" id="mmdate" min="1940-01-01"></label>
           <label id="mmdiffl" title="This field minus the same field at the same moment from the run before, or from another model — blue where this one is lower, red where it is higher">Difference <select id="mmdiff"><option value="">None</option></select></label>
           <span class="mmline" role="group" aria-label="Line the models up">
             <button type="button" id="mmcompare" title="This field in the other models, side by side at the same moment (Pivotal's Compare Models)">Compare</button>
@@ -277,7 +281,7 @@
             <div class="lgrows" id="lgrows"></div>
           </div>
           <button type="button" class="layersbtn pro-only" id="layersbtn" aria-controls="mapctl" aria-expanded="false" title="Layers, overlays, replay"><svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l6.5 3.5L8 8.5 1.5 5zM1.5 8L8 11.5 14.5 8M1.5 11L8 14.5 14.5 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span id="layername">Layers</span></button>
-          <span class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · NEXRAD<span id="satcredit" hidden> &amp; GOES</span> via <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">IEM</a><span id="noaacredit" hidden> · backup mosaic <a href="https://www.nssl.noaa.gov/projects/mrms/" target="_blank" rel="noopener">NOAA MRMS</a></span><span id="awscredit" hidden> · NOAA open data on <a href="https://registry.opendata.aws/collab/noaa/" target="_blank" rel="noopener">AWS</a></span><span id="necredit"> · lines <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a></span><span id="terraincredit" hidden> · terrain <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">USGS 3DEP, SRTM and others</a> via AWS</span><span id="ukcredit" hidden> · <a href="https://registry.opendata.aws/met-office-global-deterministic/" target="_blank" rel="noopener">© Crown copyright, Met Office</a>, CC BY-SA 4.0</span><span id="eccredit" hidden> · © <a href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF</a> open data, CC BY 4.0</span></span>
+          <span class="credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · NEXRAD<span id="satcredit" hidden> &amp; GOES</span> via <a href="https://mesonet.agron.iastate.edu/" target="_blank" rel="noopener">IEM</a><span id="noaacredit" hidden> · backup mosaic <a href="https://www.nssl.noaa.gov/projects/mrms/" target="_blank" rel="noopener">NOAA MRMS</a></span><span id="awscredit" hidden> · NOAA open data on <a href="https://registry.opendata.aws/collab/noaa/" target="_blank" rel="noopener">AWS</a></span><span id="necredit"> · lines <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a></span><span id="terraincredit" hidden> · terrain <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">USGS 3DEP, SRTM and others</a> via AWS</span><span id="ukcredit" hidden> · <a href="https://registry.opendata.aws/met-office-global-deterministic/" target="_blank" rel="noopener">© Crown copyright, Met Office</a>, CC BY-SA 4.0</span><span id="eracredit" hidden> · ERA5, <a href="https://doi.org/10.24381/cds.adbb2d47" target="_blank" rel="noopener">Copernicus Climate Change Service</a>, via <a href="https://registry.opendata.aws/nsf-ncar-era5/" target="_blank" rel="noopener">NSF NCAR</a>, CC BY 4.0</span><span id="eccredit" hidden> · © <a href="https://www.ecmwf.int/en/forecasts/datasets/open-data" target="_blank" rel="noopener">ECMWF</a> open data, CC BY 4.0</span></span>
         </div>
         <div class="radarbar">
           <button class="play" type="button" id="play" aria-label="Play radar loop" title="Play or pause (Space)"></button>
@@ -380,6 +384,53 @@
     <p class="wslead" id="watchnote"></p>
   </div>
 </dialog>
+<!-- your colour tables (2026-10-24): made here or read from a GR .pal file, kept in this browser only -->
+<dialog class="sheet wssheet cmapsheet" id="cmapit" aria-labelledby="cmaptitle">
+  <div class="in">
+    <h2 id="cmaptitle">Colour tables<button type="button" data-close aria-label="Close">×</button></h2>
+    <p class="wslead">Your own colours for any radar product or model field. Values are in the unit the key shows; colours blend between them. Read a GRLevelX or GR2Analyst <b>.pal</b> colour table, or save yours as one. Kept in this browser only.</p>
+    <label class="cmapwhich">For <select id="cmapwhich" aria-label="Which product or field"></select></label>
+    <canvas id="cmapstrip" width="480" height="18" aria-hidden="true"></canvas>
+    <ul class="cmapstops" id="cmapstops"></ul>
+    <div class="cmapacts">
+      <button type="button" id="cmapadd">Add a colour</button>
+      <button type="button" id="cmapreset">Start from the standard</button>
+      <button type="button" id="cmapimport">Read a .pal file…</button><input type="file" id="cmapfile" accept=".pal,.txt" hidden>
+      <button type="button" id="cmapexport">Save as .pal</button>
+      <button type="button" id="cmapsave" class="go">Use these colours</button>
+    </div>
+    <p class="wslead" id="cmapnote" aria-live="polite"></p>
+  </div>
+</dialog>
+<!-- 3D radar (2026-10-24): one radar's whole volume, drawn with WebGL in this browser -->
+<dialog class="sheet v3dsheet" id="v3dit" aria-labelledby="v3dtitle">
+  <div class="in">
+    <h2 id="v3dtitle">3D radar<button type="button" data-close aria-label="Close">×</button></h2>
+    <div class="v3dctl">
+      <label>Show from <input type="range" id="v3dthr" min="5" max="65" step="5" value="20" aria-label="Show values from"> <span id="v3dthrv" class="num"></span></label>
+      <label>Height <input type="range" id="v3dex" min="1" max="8" step="1" value="4" aria-label="Stretch the height"> <span id="v3dexv" class="num">×4</span></label>
+      <button type="button" id="v3dreset">Reset the view</button>
+    </div>
+    <div class="v3dbox"><canvas id="v3dcv" tabindex="0" aria-label="The radar's volume in 3D: drag or use the arrow keys to turn it, the wheel or + and − to zoom"></canvas><canvas id="v3dlab" aria-hidden="true"></canvas></div>
+    <p class="wslead" id="v3dnote" aria-live="polite"></p>
+    <p class="wslead">Each point is a gate of one tilt, where the beam was: up the beam as the standard atmosphere bends it, and along the ground under it. Gaps between tilts are real — the radar does not look there. Drag to turn, wheel or pinch to zoom; arrow keys and + / − work too.</p>
+  </div>
+</dialog>
+<!-- satellite recipes (2026-10-24): an RGB of the visitor's own, kept in this browser; a shared link carries it -->
+<dialog class="sheet wssheet recipesheet" id="recipeit" aria-labelledby="rctitle">
+  <div class="in">
+    <h2 id="rctitle">Satellite recipe<button type="button" data-close aria-label="Close">×</button></h2>
+    <p class="wslead">An RGB of your own from GOES's sixteen bands. Each colour is one band, or one band minus another, stretched from <b>low</b> (none of that colour) to <b>high</b> (all of it) — reflectance in per cent, temperatures in °C; low above high turns it round. A gamma above 1 lifts the dark end. Kept in this browser; a shared link carries the recipe with it.</p>
+    <div class="rchead"><label>Start from <select id="rcfrom"></select></label><label>Name <input type="text" id="rcname" maxlength="40"></label></div>
+    <div class="rcwrap"><table class="rctable"><thead><tr><th></th><th>Band</th><th>minus</th><th>low</th><th>high</th><th>γ</th></tr></thead><tbody id="rcrows"></tbody></table></div>
+    <div class="cmapacts">
+      <button type="button" id="rcuse" class="go">Draw it</button>
+      <button type="button" id="rcsave">Save</button>
+      <button type="button" id="rcdel" hidden>Delete</button>
+    </div>
+    <p class="wslead" id="rcnote" aria-live="polite"></p>
+  </div>
+</dialog>
 <!-- how this page is checked (2026-10-24, after an outside review: "a publicly accessible reliability page"). Kept by hand: change it when a check or a limit changes. -->
 <dialog class="sheet wssheet checksheet" id="checkit" aria-labelledby="checktitle">
   <div class="in">
@@ -389,7 +440,8 @@
     <ul class="checklist">
       <li><b>Radar files</b> (Level III) — against MetPy, on real files.</li>
       <li><b>Model files</b> (GRIB2, every packing read here) — against ecCodes, ECMWF's own library.</li>
-      <li><b>Satellite and lightning files</b> (GOES, HDF5) — against h5py; the satellite's map projection against pyproj.</li>
+      <li><b>Satellite and lightning files</b> (GOES, HDF5) — against h5py; the satellite's map projection against pyproj. The older HDF5 that ERA5's files before about 2023 use — against a file h5py wrote.</li>
+      <li><b>Satellite recipes</b> — each standard RGB written as a recipe gives that RGB's own colours, to a billionth.</li>
       <li><b>Full-volume radar</b> (Level II) — its compression against Python's bzip2, its values against the files' own.</li>
       <li><b>Soundings</b> — CAPE, CIN, the parcel levels, helicity, shear and the composites against MetPy.</li>
     </ul>
@@ -401,7 +453,7 @@
     <h3>Tested on cases with known answers only</h3>
     <p class="wslead">No independent library to compare with, so each is held to made-up cases whose answer is known, and to real files for sense:</p>
     <ul class="checklist">
-      <li>Clutter filtering, the radar cross-section, velocity dealiasing, the VAD wind profile, Kuchera snowfall, difference maps, terrain, route weather, watches.</li>
+      <li>Clutter filtering, the radar cross-section, velocity dealiasing, the VAD wind profile, Kuchera snowfall, difference maps, terrain, route weather, watches, where each ERA5 hour is read from, GR colour tables read and written back, and where the 3D radar puts each gate.</li>
     </ul>
     <h3>What it cannot do</h3>
     <ul class="checklist">
@@ -410,6 +462,8 @@
       <li>Dealiasing is a simple continuity method and can choose wrong in noisy data; the VWP is one volume, where the NWS's shows the last hour.</li>
       <li>The storm probabilities are a time-lagged HRRR, not HREF; the mesoanalysis is worked out SPC's way but is not SPC's; lightning is GOES flashes, not ground strikes.</li>
       <li>The UKMET is drawn at 20 km; GFS-Wave is not read yet (its files need a JPEG 2000 decoder); tides, currents, buoys, river gauges and aviation reports are not here yet.</li>
+      <li>ERA5 runs two to three months behind (precipitation a month more), and its upper air is drawn every 6 hours: each of those maps is about 40 MB to fetch.</li>
+      <li>The 3D radar is one volume, thinned past 400,000 points, with its height stretched — the view says by how much.</li>
       <li>Feed ages are shown live in "Where this comes from", but a history of outages is not kept.</li>
     </ul>
   </div>
@@ -516,19 +570,22 @@
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
 <script src="projects/weather/bzip2.js?v=1"></script>
-<script src="projects/weather/nexrad.js?v=11"></script>
+<script src="projects/weather/nexrad.js?v=12"></script>
 <script src="projects/weather/level2.js?v=5"></script>
-<script src="projects/weather/glm.js?v=4"></script>
-<script src="projects/weather/abi.js?v=2"></script>
+<script src="projects/weather/glm.js?v=5"></script>
+<script src="projects/weather/reanalysis.js?v=1"></script>
+<script src="projects/weather/abi.js?v=3"></script>
 <script src="projects/weather/grib2.js?v=6"></script>
 <script src="projects/weather/mesogrid.js?v=1"></script>
-<script src="projects/weather/modelmaps.js?v=13"></script>
+<script src="projects/weather/modelmaps.js?v=14"></script>
 <script src="projects/weather/mrms.js?v=2"></script>
 <script src="projects/weather/mapgeo.js?v=2"></script>
 <script src="projects/weather/terrain.js?v=1"></script>
 <script src="projects/weather/route.js?v=1"></script>
 <script src="projects/weather/watches.js?v=1"></script>
-<script src="assets/weather/workstation.js?v=25"></script>
-<script src="assets/weather/app.js?v=60"></script>
+<script src="projects/weather/colormaps.js?v=1"></script>
+<script src="projects/weather/radar3d.js?v=1"></script>
+<script src="assets/weather/workstation.js?v=26"></script>
+<script src="assets/weather/app.js?v=61"></script>
 </body>
 </html>

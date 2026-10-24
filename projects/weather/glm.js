@@ -7,7 +7,8 @@
    350 KB, of which the flashes (where, when, how bright) are a few KB.
 
    So this is a small HDF5 reader: just enough of the format (version 2/3
-   superblock, version 1 and 2 object headers, compact and dense links and
+   superblock — and 0/1, with its symbol-table groups, for older files —
+   version 1 and 2 object headers, compact and dense links and
    attributes, chunked datasets with the deflate and shuffle filters) to find
    the flash variables and read them, fetching only the byte ranges it needs
    — the metadata at the head of the file and the five little chunks — so a
@@ -76,9 +77,16 @@
     const sb = await src.read(0, 64);
     if (sb[0] !== 0x89 || sb[1] !== 0x48 || sb[2] !== 0x44 || sb[3] !== 0x46) throw new Error('glm: not an HDF5 file');
     const ver = sb[8];
-    if (ver !== 2 && ver !== 3) throw new Error('glm: superblock version ' + ver + ' is not read here');
-    const O = sb[9], L = sb[10];
-    const rootAddr = le(sb, 12 + 3 * O, O);
+    let O, L, rootAddr;
+    if (ver === 2 || ver === 3) { O = sb[9]; L = sb[10]; rootAddr = le(sb, 12 + 3 * O, O); }
+    else if (ver === 0 || ver === 1) {
+      /* the older superblock (ERA5's files before about 2023, 2026-10-24):
+         four addresses, then the root group's symbol table entry — its
+         second field is the root's object header */
+      O = sb[13]; L = sb[14];
+      const p = (ver === 1 ? 28 : 24) + 4 * O;
+      rootAddr = le(await src.read(0, p + 2 * O), p + O, O);
+    } else throw new Error('glm: superblock version ' + ver + ' is not read here');
     const f = { src, O, L, cache: new Map() };
     f.root = await header(f, rootAddr);
     return f;
@@ -201,8 +209,33 @@
     const ids = tree.records.map((r) => (tree.type === 5 ? r.subarray(4, 4 + heap.idLen) : r.subarray(0, heap.idLen)));
     return (await Promise.all(ids.map((id) => heap.get(id)))).map(parseOne).filter(Boolean);
   }
+  /* ── the older groups: a symbol table message points at a version 1
+     B-tree of symbol nodes ("SNOD") and a local heap of their names ── */
+  async function symbolTable(f, body, out) {
+    const { src, O, L } = f, tree = le(body, 0, O), heapAddr = le(body, O, O);
+    const hh = await src.read(heapAddr, 8 + 2 * L + O);
+    if (String.fromCharCode(hh[0], hh[1], hh[2], hh[3]) !== 'HEAP') throw new Error('glm: not a local heap');
+    const dataSize = le(hh, 8, L), data = await src.read(le(hh, 8 + 2 * L, O), dataSize);
+    const nameAt = (off) => { let e = off; while (e < data.length && data[e]) e++; return new TextDecoder().decode(data.subarray(off, e)); };
+    const walk = async (addr) => {
+      const h = await src.read(addr, 8 + 2 * O);
+      const sig = String.fromCharCode(h[0], h[1], h[2], h[3]);
+      if (sig === 'SNOD') {
+        const n = le(h, 6, 2), b = await src.read(addr + 8, n * (2 * O + 24));
+        for (let i = 0; i < n; i++) { const q = i * (2 * O + 24); out.set(nameAt(le(b, q, O)), le(b, q + O, O)); }
+        return;
+      }
+      if (sig !== 'TREE' || h[4] !== 0) throw new Error('glm: bad group tree');
+      const entries = le(h, 6, 2), b = await src.read(addr + 8 + 2 * O, (entries + 1) * L + entries * O), kids = [];
+      for (let e = 0; e < entries; e++) kids.push(le(b, L + e * (L + O), O));
+      await Promise.all(kids.map(walk));
+    };
+    await walk(tree);
+  }
   async function links(f, msgs) {
     const out = new Map();
+    const st = msgs.find((m) => m.type === 0x11);
+    if (st) await symbolTable(f, st.body, out);
     for (const m of msgs) if (m.type === 0x06) { const l = linkMessage(m.body, f.O); out.set(l.name, l.addr); }
     const info = msgs.find((m) => m.type === 0x02);
     if (info) {
@@ -264,16 +297,26 @@
   /* `slice0`: one index of the first dimension of a 3-D chunked dataset —
      one pressure level of the Met Office's UKMET files (2026-10-24), which
      hold all 37 levels in 130–230 MB. Only the chunks that cover that index
-     are fetched, and the 2-D plane comes back. */
-  async function variable(f, name, knownAttrs, { raw16 = false, slice0 = null } = {}) {
+     are fetched, and the 2-D plane comes back. An array fixes as many
+     leading dimensions as it has indices: [hour, level] of an ERA5
+     pressure-level file (time × level × lat × lon, 2026-10-24).
+     `win`: [r0, r1, c0, c1], the rows and columns of the 2-D plane wanted
+     (end exclusive). Only the chunks touching it are fetched, and what comes
+     back is those chunks' rows and columns, with `origin` [row, col] saying
+     where in the full plane they start — a map's view out of a global grid.
+     `cache`: a Map the caller keeps per file; each chunk is decompressed
+     once and kept there, so the next hour of the same chunk (ERA5 packs 27
+     hours in one) costs nothing to fetch. */
+  async function variable(f, name, knownAttrs, { raw16 = false, slice0 = null, win = null, cache = null } = {}) {
     const addr = (f.links || (f.links = await links(f, f.root))).get(name);
     if (addr == null) throw new Error('glm: no variable ' + name);
     const msgs = await header(f, addr);
     const t = datatype(msgs.find((m) => m.type === 0x03).body);
     const full = dataspace(msgs.find((m) => m.type === 0x01).body, f.L);
     let dims = full;
-    if (slice0 != null && full.length === 3) dims = full.slice(1);
-    const n = dims.reduce((a, c) => a * c, 1);
+    const lead = slice0 == null ? [] : Array.isArray(slice0) ? slice0 : [slice0];
+    if (lead.length && full.length === lead.length + 2) dims = full.slice(lead.length);
+    let n = dims.reduce((a, c) => a * c, 1), origin = null;
     const lay = msgs.find((m) => m.type === 0x08).body;
     const filters = [];
     const fp = msgs.find((m) => m.type === 0x0b);
@@ -313,12 +356,27 @@
         cdims = [];
         for (let d = 0; d < rank - 1; d++) cdims.push(le(lay, 3 + f.O + 4 * d, 4));
         if (dims !== full) {
-          /* only the chunks holding that level, each cut to its plane there */
-          const c0 = cdims[0], keep = parts.filter((c) => slice0 >= c.offs[0] && slice0 < c.offs[0] + c0);
+          /* only the chunks holding that level (or hour and level), each cut to its plane there */
+          const L = lead.length, keep = parts.filter((c) => lead.every((x, d) => x >= c.offs[d] && x < c.offs[d] + cdims[d]));
           parts.length = 0;
-          for (const c of keep) parts.push({ ...c, plane: slice0 - c.offs[0], offs: c.offs.slice(1) });
-          cdims = cdims.slice(1);
-          if (!parts.length) throw new Error('glm: no chunk holds index ' + slice0 + ' of ' + name);
+          for (const c of keep) {
+            let plane = 0;
+            for (let d = 0; d < L; d++) plane = plane * cdims[d] + (lead[d] - c.offs[d]);
+            parts.push({ ...c, plane, offs: c.offs.slice(L) });
+          }
+          cdims = cdims.slice(L);
+          if (!parts.length) throw new Error('glm: no chunk holds index ' + lead.join(',') + ' of ' + name);
+        }
+        if (win && dims.length === 2) {
+          /* only the chunks over the window, and the plane shrunk to them */
+          const [r0, r1, c0, c1] = win, keep = parts.filter((c) => c.offs[0] < r1 && c.offs[0] + cdims[0] > r0 && c.offs[1] < c1 && c.offs[1] + cdims[1] > c0);
+          if (!keep.length) throw new Error('glm: the window holds none of ' + name);
+          const o0 = Math.min(...keep.map((c) => c.offs[0])), o1 = Math.min(...keep.map((c) => c.offs[1]));
+          const e0 = Math.min(dims[0], Math.max(...keep.map((c) => c.offs[0] + cdims[0]))), e1 = Math.min(dims[1], Math.max(...keep.map((c) => c.offs[1] + cdims[1])));
+          parts.length = 0;
+          for (const c of keep) parts.push({ ...c, offs: [c.offs[0] - o0, c.offs[1] - o1] });
+          dims = [e0 - o0, e1 - o1];
+          origin = [o0, o1];
         }
       } else if (lay[0] === 4 && lay[1] === 2 && lay[3 + lay[2] * lay[4] + 0] !== undefined) {
         /* chunked, version 4: only the single-chunk index is read here */
@@ -336,18 +394,28 @@
         bytes = lay.slice(4, 4 + sz);
       } else throw new Error('glm: layout ' + lay[0] + '/' + lay[1] + ' is not read here');
       if (parts.length) {
+        if (origin) n = dims[0] * dims[1];
         bytes = new Uint8Array(n * t.size);
         /* every chunk asked at once: an ABI band is dozens of them */
         await Promise.all(parts.map(async (c) => {
-          let b = await f.src.exact(c.addr, c.size);
-          if (!c.raw) for (let i = filters.length - 1; i >= 0; i--) {
-            if (c.mask & (1 << i)) continue;
-            if (filters[i] === 1) b = await inflate(b);
-            else if (filters[i] === 2) b = unshuffle(b, t.size);
-            else if (filters[i] === 3) b = b.subarray(0, b.length - 4);
-            else throw new Error('glm: filter ' + filters[i] + ' is not read here');
-          }
-          if (c.plane != null) { const ps = cdims[0] * cdims[1] * t.size; b = b.subarray(c.plane * ps, (c.plane + 1) * ps); }
+          const unpack = async () => {
+            let b = await f.src.exact(c.addr, c.size);
+            if (!c.raw) for (let i = filters.length - 1; i >= 0; i--) {
+              if (c.mask & (1 << i)) continue;
+              if (filters[i] === 1) b = await inflate(b);
+              else if (filters[i] === 2) b = unshuffle(b, t.size);
+              else if (filters[i] === 3) b = b.subarray(0, b.length - 4);
+              else throw new Error('glm: filter ' + filters[i] + ' is not read here');
+            }
+            return b;
+          };
+          let b;
+          if (cache) {
+            const key = name + '@' + c.addr;
+            if (!cache.has(key)) cache.set(key, unpack().catch((e) => { cache.delete(key); throw e; }));
+            b = await cache.get(key);
+          } else b = await unpack();
+          if (c.plane != null) { const ps = cdims.reduce((a, x) => a * x, 1) * t.size; b = b.subarray(c.plane * ps, (c.plane + 1) * ps); }
           if (!cdims || dims.length < 2) {
             const at = (c.offs ? c.offs[0] : 0) * t.size;
             bytes.set(b.subarray(0, Math.min(b.length, bytes.length - at)), at);
@@ -382,14 +450,14 @@
       const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), little = !t.bigEndian;
       for (let i = 0; i < n2; i++) out[i] = uns ? dv.getUint16(i * 2, little) : dv.getInt16(i * 2, little);
       const fill = attrs._FillValue;
-      return { raw: out, scale: attrs.scale_factor ?? 1, offset: attrs.add_offset ?? 0, fill: fill != null && uns && fill < 0 ? fill + 65536 : fill, attrs, dims };
+      return { raw: out, scale: attrs.scale_factor ?? 1, offset: attrs.add_offset ?? 0, fill: fill != null && uns && fill < 0 ? fill + 65536 : fill, attrs, dims, origin };
     }
     const raw = decodeValues(bytes, attrs._Unsigned === 'true' ? { ...t, signed: false } : t, n);
     const fill = attrs._FillValue, scale = attrs.scale_factor ?? 1, offset = attrs.add_offset ?? 0;
     const unsignedFill = fill != null && attrs._Unsigned === 'true' && fill < 0 ? fill + 2 ** (8 * t.size) : fill;
     const vals = new Float64Array(n);
     for (let i = 0; i < n; i++) vals[i] = unsignedFill != null && raw[i] === unsignedFill ? NaN : raw[i] * scale + offset;
-    return { values: vals, attrs, dims };
+    return { values: vals, attrs, dims, origin };
   }
   /* an object's attributes alone (a scalar like goes_imager_projection
      carries everything in them) */

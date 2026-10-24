@@ -1524,3 +1524,42 @@ body[data-view="pro"] .radar:has(> .maphint) .note{bottom:112px !important}  /* 
 .checksheet h3{margin-top:14px}
 .checklist{margin:4px 0 8px;padding-left:18px;font-size:13px;line-height:1.5}
 .checklist li{margin:3px 0}
+/* colour tables (2026-10-24) */
+#cmapedit{min-height:30px;padding:0 8px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
+.cmapwhich{display:flex;gap:8px;align-items:center;font:12px var(--mono);margin:6px 0}
+.cmapwhich select{flex:1;min-width:0;min-height:32px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
+#cmapstrip{display:block;width:100%;height:18px;margin:6px 0;border:1px solid #2a3340;background:#0b0f15}
+.cmapstops{list-style:none;margin:6px 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;max-height:40vh;overflow:auto}
+.cmapstops li{display:flex;gap:4px;align-items:center}
+.cmapstops input[type=number]{width:6.5em;min-height:32px;padding:0 6px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
+.cmapstops input[type=color]{width:40px;min-height:32px;padding:0;border:1px solid var(--edge);background:#121821}
+.cmapstops button{min-width:32px;min-height:32px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:14px var(--mono);text-decoration:none}
+.cmapacts{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.cmapacts button{min-height:32px;padding:0 10px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
+.cmapacts button.go{border-color:#4dabf7;color:#fff;background:#14324f}
+.cmapacts button:disabled{opacity:.5}
+@media (pointer:coarse){ #cmapedit,.cmapwhich select,.cmapstops input,.cmapstops button,.cmapacts button{min-height:44px} }
+/* satellite recipes (2026-10-24) */
+#abibuild{min-height:30px;padding:0 8px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
+.rchead{display:flex;flex-wrap:wrap;gap:8px 16px;font:12px var(--mono);margin:6px 0}
+.rchead label{display:flex;gap:6px;align-items:center;flex:1;min-width:200px}
+.rchead select,.rchead input{flex:1;min-width:0;min-height:32px;padding:0 6px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
+.rcwrap{overflow-x:auto}
+.rctable{border-collapse:collapse;font:12px var(--mono);width:100%}
+.rctable th{text-align:left;color:var(--dim);font-weight:600;padding:4px}
+.rctable td{padding:3px}
+.rctable select{max-width:13em;min-height:32px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
+.rctable input{width:5.5em;min-height:32px;padding:0 4px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
+.rctable th.rcr{color:#ff8787}.rctable th.rcg{color:#69db7c}.rctable th.rcb{color:#74c0fc}
+@media (pointer:coarse){ #abibuild,.rchead select,.rchead input,.rctable select,.rctable input{min-height:44px} }
+/* 3D radar (2026-10-24) */
+#v3dbtn[hidden]{display:none!important}
+dialog.sheet.v3dsheet{width:min(1100px,calc(100vw - 16px));max-height:calc(100vh - 16px)}
+.v3dctl{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font:12px var(--mono);margin:6px 0}
+.v3dctl label{display:flex;gap:6px;align-items:center}
+.v3dctl button{min-height:32px;padding:0 10px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
+.v3dbox{position:relative;height:min(62vh,640px);border:1px solid #2a3340;background:#080d14}
+.v3dbox canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#v3dlab{pointer-events:none}
+#v3dcv:focus-visible{outline:2px solid #4dabf7;outline-offset:-2px}
+@media (pointer:coarse){ .v3dctl button,.v3dctl input{min-height:44px} }

@@ -149,6 +149,50 @@ console.log('\nRULE  flash density, flash rate and the lightning jump');
 }
 ok(L.hourPrefix(Date.UTC(2026, 0, 1, 5)) === 'GLM-L2-LCFA/2026/001/05/' && L.hourPrefix(Date.UTC(2026, 11, 31, 23)) === 'GLM-L2-LCFA/2026/365/23/', 'the bucket is by day of the year and hour');
 
+console.log('\nRULE  the older HDF5 (version 0 superblock, symbol-table groups) reads as h5py wrote it, sliced and windowed');
+{
+  /* fixtures/make-hdf5-v0.py: v = t*1000 + l*100 + y*10 + x in a 3×2×10×12 Z, t*100 + y*10 + x in a 5×8×9 T */
+  const f = await L.open(L.fromBytes(fx('hdf5-v0.h5')));
+  const lat = await L.variable(f, 'latitude');
+  ok(lat.values.length === 10 && lat.values[0] === 90 && lat.values[9] === 87.75, 'a group found through its symbol table, a plain dataset read');
+  const z = await L.variable(f, 'Z', null, { slice0: [2, 1] });
+  let bad = 0;
+  for (let y = 0; y < 10; y++) for (let x = 0; x < 12; x++) if (z.values[y * 12 + x] !== 2000 + 100 + y * 10 + x) bad++;
+  ok(z.dims.join('x') === '10x12' && bad === 0, `[hour, level] fixes two leading dimensions of a 4-D chunked dataset (hour 2, level 1: ${bad ? bad + ' differ' : 'all 120 match'})`);
+  ok(z.attrs.units === 'm**2 s**-2', 'its attributes read from the older object header');
+  const cache = new Map(), T = (t, w) => L.variable(f, 'T', null, { slice0: t, win: w, cache });
+  const a = await T(4, [4, 8, 5, 9]);
+  ok(a.origin.join(',') === '4,5' && a.dims.join('x') === '4x4' && a.values[0] === 400 + 40 + 5 && a.values[15] === 400 + 70 + 8, 'a window keeps only the chunks under it, with where they start');
+  const before = cache.size, b = await T(3, [4, 8, 5, 9]);
+  ok(cache.size === before && b.values[5] === 300 + 50 + 6, 'the next hour in the same chunk comes out of the cache: nothing new unpacked');
+  const full = await T(1, null);
+  ok(full.origin === null && full.values[8 * 9 - 1] === 100 + 70 + 8, 'no window: the whole plane, chunks put back where they belong');
+}
+
+console.log('\nRULE  a satellite recipe draws as the built-in RGB it was written from, and a bad one is refused');
+{
+  /* a fixed spread of band values: reflectances 0–1.2, temperatures 190–330 K */
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (const [id, spec] of Object.entries(AB.SPECS)) {
+    const P = AB.PRODUCTS[id], R = AB.recipe(spec);
+    let worst = 0;
+    for (let k = 0; k < 500; k++) {
+      const v = {};
+      for (let b = 1; b <= 16; b++) v[b] = AB.BANDS[b][2] === 'refl' ? -0.05 + rnd() * 1.25 : 190 + rnd() * 140;
+      const x = P.rgb(v), y = R.rgb(v);
+      for (let i = 0; i < 3; i++) worst = Math.max(worst, Math.abs(x[i] - y[i]));
+    }
+    ok(worst < 1e-9 && R.bands.every((b) => P.bands.includes(b)), `${spec.name}: the recipe gives the built-in's colours (worst ${worst.toExponential(1)}) from the same bands`);
+  }
+  ok(AB.decodeRecipe(AB.encodeRecipe(AB.SPECS.dust)).ch[1].g === 2.5 && AB.decodeRecipe(AB.encodeRecipe({ name: 'Mine & yours', ch: AB.SPECS.fire.ch })).name === 'Mine  yours', 'a recipe survives a share link; markup characters do not');
+  const bad = [{ ch: [] }, { ch: [{ a: 2, b: 13, lo: 0, hi: 1 }, AB.SPECS.fire.ch[1], AB.SPECS.fire.ch[2]] }, { ch: [{ a: 17, b: 0, lo: 0, hi: 1 }, AB.SPECS.fire.ch[1], AB.SPECS.fire.ch[2]] },
+    { ch: [{ a: 2, b: 0, lo: 5, hi: 5 }, AB.SPECS.fire.ch[1], AB.SPECS.fire.ch[2]] }, { ch: [{ a: 2, b: 0, lo: 0, hi: 1, g: 50 }, AB.SPECS.fire.ch[1], AB.SPECS.fire.ch[2]] }];
+  ok(bad.every((r) => AB.cleanRecipe(r) === null), 'no channels, a reflectance minus a temperature, band 17, an empty range and a gamma of 50 are each refused');
+  ok(AB.key(Object.assign(AB.PRODUCTS, { rxtest: AB.recipe(AB.SPECS.airmass) }) && 'rxtest').text.startsWith('R = B8 − B10'), 'a recipe\'s key says what each colour is made of');
+  delete AB.PRODUCTS.rxtest;
+}
+
 console.log('\nRULE  GOES ABI imagery reads as h5py reads it, and sits where pyproj puts it');
 for (const [file, e] of Object.entries(expected.abi)) {
   const f = await L.open(L.fromBytes(fx(file)));
@@ -552,6 +596,7 @@ console.log('\nRULE  a model run is late only when the next one should have been
   const H = 3600e3, M = 60e3, run = Date.UTC(2026, 9, 24, 12);
   for (const [src, S] of Object.entries(MM.SOURCES)) {
     if (S.server) { ok(MM.lateBy(src, run, run + 30 * H) === 0, `${src} is the server's, judged by its own staleMs, not here`); continue; }
+    if (S.archive) { ok(MM.lateBy(src, run, run + 3000 * H) === 0, `${src} is an archive of the past: never late`); continue; }
     ok(Number.isFinite(S.publishMin) && S.publishMin > 0 && S.publishMin * M < S.cycle * H + 8 * H, `${src} has a measured publishing delay (${S.publishMin} min)`);
     const allowed = S.cycle * H + S.publishMin * M + (S.cycle >= 6 ? 2 : 1) * H;
     ok(MM.lateBy(src, run, run + allowed) === 0 && MM.lateBy(src, run, run + allowed + 10 * M) === 10 * M,

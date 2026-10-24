@@ -144,6 +144,13 @@
       hoursFrom: (keys) => [...new Set(keys.map((k) => /PT(\d{4})H00M-temperature_at_screen_level\.nc$/.exec(k)).filter(Boolean).map((m) => +m[1]))].sort((a, b) => a - b),
       hours: (have) => have.filter((h) => h > 0 && h <= 168 && (h > 48 || h % 3 === 0))
     },
+    /* ERA5 (2026-10-24): ECMWF's reanalysis, every hour from 1940 to a few
+       months ago, read from NSF NCAR's copy on AWS by reanalysis.js. Not a
+       run and not a forecast: a day picked by its date, its hours rebuilt
+       from the observations of the time. `archive` tells the page so. */
+    era5: {
+      label: 'ERA5', long: "ECMWF's reanalysis — the weather of any hour since 1940, 0.25°, global (NSF NCAR's copy on AWS)", archive: true, cycle: 24
+    },
     /* Waves (2026-10-24, from an outside review of Pro: "I want wind, waves,
        tides, and currents together" — a sailor's ask): ECMWF's wave model,
        from the same open data as its IFS (CC BY 4.0). NOAA's GFS-Wave is in
@@ -473,6 +480,7 @@
       { id: 'mwp', group: 'Waves', label: 'Mean wave period', unit: 'sec', pal: 'period', parts: { t: ec('mwp') }, value: (p, i) => p.t[i] }
     ],
     ukmet: UK_FIELDS(),
+    era5: ERA_FIELDS(),
     ecens: ECENS_FIELDS(),
     gfs: [
       { id: 'h500', group: 'Upper air', label: '500 mb heights and vorticity', unit: 'vort', pal: 'vort', parts: { z: at('HGT', '500 mb'), a: at('ABSV', '500 mb') },
@@ -765,6 +773,34 @@
     ];
   }
 
+  /* ── ERA5: `era(name, level, hours)` is a part — a field of
+     reanalysis.js, at a pressure level for the upper air, and summed over
+     the `hours` up to this one for a precipitation total. The upper air is
+     drawn every 6 hours (`every: 6`): its files are 43 MB an hour. ── */
+  function era(name, level, hours) { return { era: true, name, level, hours: hours || 1 }; }
+  function ERA_FIELDS() {
+    const M2IN = 39.3701;
+    return [
+      { id: 'mslp', group: 'Surface', label: 'Pressure (MSLP) and temperature', unit: 'temp', pal: 'temp', parts: { t: era('2t'), p: era('msl') },
+        value: (p, i) => K2F(p.t[i]), contours: [{ part: 'p', scale: 0.01, every: 4, unit: 'hpa', color: '#ffffff' }] },
+      { id: 't2m', group: 'Surface', label: 'Temperature', unit: 'temp', pal: 'temp', parts: { t: era('2t') }, value: (p, i) => K2F(p.t[i]) },
+      { id: 'td2m', group: 'Surface', label: 'Dew point', unit: 'temp', pal: 'dew', parts: { t: era('2d') }, value: (p, i) => K2F(p.t[i]) },
+      { id: 'wind10', group: 'Surface', label: 'Wind (10 m) and barbs', unit: 'mph', pal: 'wind', parts: { u: era('10u'), v: era('10v') }, value: (p, i) => Math.hypot(p.u[i], p.v[i]) * MS2MPH, barbs: ['u', 'v'] },
+      { id: 'cape', group: 'Surface', label: 'CAPE', unit: 'jkg', pal: 'cape', parts: { c: era('cape') }, value: (p, i) => p.c[i] },
+      { id: 'cloud', group: 'Surface', label: 'Cloud cover', unit: 'pct', pal: 'cloud', parts: { c: era('tcc') }, value: (p, i) => p.c[i] * 100 },
+      { id: 'sst', group: 'Surface', label: 'Sea surface temperature', unit: 'temp', pal: 'temp', parts: { t: era('sst') }, value: (p, i) => K2F(p.t[i]) },
+      { id: 'qpf1', group: 'Rain and snow', label: 'Rain and snow (as water) in the hour', unit: 'precip', pal: 'precip', parts: { l: era('lsp'), c: era('cp') }, value: (p, i) => (p.l[i] + p.c[i]) * M2IN },
+      { id: 'qpf6', group: 'Rain and snow', label: 'Rain and snow (as water) in the 6 hours to this one', unit: 'precip', pal: 'precip', parts: { l: era('lsp', null, 6), c: era('cp', null, 6) }, value: (p, i) => (p.l[i] + p.c[i]) * M2IN },
+      { id: 'qpf24', group: 'Rain and snow', label: 'Rain and snow (as water) in the 24 hours to this one', unit: 'precip', pal: 'precip', parts: { l: era('lsp', null, 24), c: era('cp', null, 24) }, value: (p, i) => (p.l[i] + p.c[i]) * M2IN },
+      { id: 'pwat', group: 'Rain and snow', label: 'Precipitable water', unit: 'precip', pal: 'pwat', parts: { w: era('tcwv') }, value: (p, i) => p.w[i] / 25.4 },
+      /* the snow's water, not its depth: ERA5 keeps snow as metres of water it would melt to */
+      { id: 'snowd', group: 'Rain and snow', label: 'Snow on the ground, as the water it holds', unit: 'precip', pal: 'precip', parts: { s: era('sd') }, value: (p, i) => p.s[i] * M2IN },
+      { id: 'h500', group: 'Upper air (every 6 hours — about 40 MB a map)', label: '500 mb heights', unit: 'dam', pal: 'thick', every: 6, parts: { z: era('z', 500) },
+        value: (p, i) => p.z[i] / 9.80665 / 10, contours: [{ part: 'z', scale: 1 / 98.0665, every: 6, unit: 'dam', color: '#ffffff' }] },
+      { id: 't850', group: 'Upper air (every 6 hours — about 40 MB a map)', label: '850 mb temperature', unit: 'tempC', pal: 't850', every: 6, parts: { t: era('t', 850) }, value: (p, i) => p.t[i] - 273.15 }
+    ];
+  }
+
   /* ── ECMWF's ensemble products: `en(type, param, level)` — em the mean,
      es the spread, ep a probability (already in per cent) ── */
   function en(type, param, level) { return (e) => e.type === type && e.name === param && e.level === (level ? level + ' mb' : 'sfc'); }
@@ -901,9 +937,13 @@
     }
     return hex(stops[stops.length - 1][1]);
   }
+  /* the visitor's own tables (colormaps.js, 2026-10-24), by palette name, in the palette's canonical unit */
+  const CUSTOM = {};
+  function setCustom(palName, pal) { if (!PAL[palName] || PAL[palName].cat) return false; if (pal && pal.stops) CUSTOM[palName] = pal; else delete CUSTOM[palName]; return true; }
+  const palOf = (palName) => CUSTOM[palName] || PAL[palName];
   /* over: a palette to use instead of PAL[palName] — the reflectivity table the visitor picked (Nexrad.paletteFor) */
   function table(palName, alpha = 255, over = null) {
-    const P = over && over.stops ? over : PAL[palName];
+    const P = over && over.stops ? over : palOf(palName);
     if (P.cat) {
       /* 4 types × 81 echo steps */
       const t = new Uint32Array(500);
@@ -1229,10 +1269,32 @@
     return build(f, msgs, run, fh);
   }
 
+  /* ── ERA5: each part read for the map's window (setView), summed over
+     its hours where it is a total, then built like any model field ── */
+  const EV = root.Era5 || (typeof require === 'function' ? require('./reanalysis.js') : null);
+  let eraView = null;
+  /* the map's view as { s, w, n, e }: ERA5 reads only the chunks under it */
+  function setView(v) { eraView = v && [v.s, v.w, v.n, v.e].every(Number.isFinite) ? { s: v.s, w: v.w, n: v.n, e: v.e } : null; }
+  async function loadEra5(f, run, fh, opts) {
+    const at = run + fh * 3600e3, win = EV.windowOf(eraView), msgs = {};
+    await Promise.all(Object.entries(f.parts).map(async ([k, part]) => {
+      const reads = await Promise.all(Array.from({ length: part.hours }, (_, h) => EV.read(part.name, at - h * 3600e3, { level: part.level, win, ...opts })));
+      const first = reads[0], vals = part.hours > 1 ? new Float32Array(first.values.length) : first.values;
+      if (part.hours > 1) for (const r of reads) { if (r.values.length !== vals.length) throw new Error('models: ERA5 grids differ'); for (let i = 0; i < vals.length; i++) vals[i] += r.values[i]; }
+      msgs[k] = { grid: first.grid, values: vals, validTime: at };
+    }));
+    const g = Object.values(msgs).map((m) => m.grid.npts);
+    if (g.some((x) => x !== g[0])) throw new Error('models: ERA5 grids differ');
+    const out = build(f, msgs, run, fh);
+    out.win = win;
+    return out;
+  }
+
   async function load(src, run, fh, id, { signal, fetchFn = fetch } = {}) {
     const f = field(src, id);
     if (!f) throw new Error('models: no field ' + id);
     if (SOURCES[src].netcdf) return loadNc(src, f, run, fh, { signal, fetchFn: retrying(fetchFn) });
+    if (SOURCES[src].archive) return loadEra5(f, run, fh, { signal, fetchFn: retrying(fetchFn) });
     if (f.kuchera) return loadKuchera(src, f, run, fh, { signal, fetchFn: retrying(fetchFn) });
     if (src === 'tle') return loadTLE(f, run + fh * 3600e3, run, fh, { signal, fetchFn });
     if (SOURCES[src].server) return loadServer(src, run, f, { signal, fetchFn });
@@ -1453,7 +1515,7 @@
     return G.sample({ grid: layer.grid, values: layer.values }, lat, lon);
   }
 
-  const api = { SOURCES, FIELDS, PAL, UNIT, unitFor, field, resolve, serverIndex, serverFile, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, runsBack, runAt, RUN_DAYS, lateBy, analyses, idxFor, parseJsonIndex, load, build, valueAt, kucheraRatio, loadKuchera, difference, diffPal, DIFF_SPAN, within, smooth, loadTLE, loadEnsemble };
+  const api = { setView, setCustom, palOf, CUSTOM, SOURCES, FIELDS, PAL, UNIT, unitFor, field, resolve, serverIndex, serverFile, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, runsBack, runAt, RUN_DAYS, lateBy, analyses, idxFor, parseJsonIndex, load, build, valueAt, kucheraRatio, loadKuchera, difference, diffPal, DIFF_SPAN, within, smooth, loadTLE, loadEnsemble };
   root.ModelMaps = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
