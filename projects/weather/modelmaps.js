@@ -1075,15 +1075,39 @@
      fails outright in a browser): every request here is tried again after a
      pause, up to four times, and a bucket with a mirror alternates with it. */
   const MIRRORS = { 'https://storage.googleapis.com/ecmwf-open-data': 'https://ecmwf-forecasts.s3.eu-central-1.amazonaws.com' };
+  /* A stalled request fails rather than hanging (2026-10-24, after an outside
+     check asked what happens when a bucket is slow or the network drops
+     halfway): no reply within STALL_MS and the request is aborted and tried
+     once more; a body still arriving after BODY_MS is aborted too, and the
+     frame says it failed instead of "loading" for ever. The visitor's own
+     abort (a new layer chosen) passes straight through. */
+  const STALL_MS = 30e3, BODY_MS = 180e3;   /* the same rule as nexrad.js's (each file is self-contained) */
+  function guarded(fetchFn, url, opts = {}, stallMs = STALL_MS) {
+    const ctl = new AbortController(), outer = opts.signal;
+    if (outer) { if (outer.aborted) ctl.abort(); else outer.addEventListener('abort', () => ctl.abort(), { once: true }); }
+    let stalled = false;
+    const t1 = setTimeout(() => { stalled = true; ctl.abort(); }, stallMs);
+    return fetchFn(url, { ...opts, signal: ctl.signal }).then((r) => {
+      clearTimeout(t1);
+      const t2 = setTimeout(() => ctl.abort(), BODY_MS);   // a finished body is not affected
+      if (t2 && t2.unref) t2.unref();                       // (and in Node, the tests, it does not hold the process open)
+      return r;
+    }, (e) => {
+      clearTimeout(t1);
+      if (stalled && !(outer && outer.aborted)) { const err = new Error('the data host did not answer in ' + Math.round(stallMs / 1000) + ' s'); err.stalled = true; throw err; }
+      throw e;
+    });
+  }
   const retrying = (fetchFn) => async (url, opts) => {
     const base = Object.keys(MIRRORS).find((b) => url.startsWith(b));
     for (let k = 0; ; k++) {
       const u = base && k % 2 === 1 ? MIRRORS[base] + url.slice(base.length) : url;
       try {
-        const r = await fetchFn(u, opts);
+        const r = await guarded(fetchFn, u, opts);
         if ((r.status !== 503 && r.status !== 429) || k >= 4) return r;
       } catch (e) {
-        if (k >= 4 || (opts && opts.signal && opts.signal.aborted)) throw e;
+        /* a stall: once more (from the mirror, where there is one), not four times */
+        if (k >= 4 || (opts && opts.signal && opts.signal.aborted) || (e.stalled && k >= 1)) throw e;
       }
       await new Promise((ok) => setTimeout(ok, 400 * 2 ** k));
     }

@@ -109,6 +109,35 @@ console.log('\nRULE  the timeline tells time: a model by its forecast hour, the 
   } finally { Date.now = now; }
 }
 
+console.log('\nRULE  a workspace sets the main map completely, so choosing one always ends in the same state');
+{
+  const def = WS.PRESETS.find((p) => p.name === 'Default');
+  const d = new URLSearchParams(WS.completeLayer(def.main));
+  ok(d.get('l') === 'comp' && d.get('m') === 'hrrr.refc' && d.get('s') === '' && d.get('g') === 'b13.conus.auto' && d.get('r') === 'rot60', `Default is the first-visit map: the mosaic, HRRR in the model menu, no satellite under it (${WS.completeLayer(def.main)})`);
+  const marine = WS.PRESETS.find((p) => /Marine/.test(p.name));
+  ok(marine && new URLSearchParams(WS.completeLayer(marine.main)).get('m') !== 'hrrr.refc' && new URLSearchParams(WS.completeLayer(def.main)).get('m') === 'hrrr.refc', 'Marine sets its own model; Default then sets HRRR back — nothing of Marine survives in the model menu');
+  ok(WS.PRESETS.every((p) => Object.keys(WS.DEFAULT_MAIN).every((k) => new URLSearchParams(WS.completeLayer(p.main)).has(k))), 'every preset, completed, names every part of the main map');
+  ok(new URLSearchParams(WS.completeLayer('l=model&m=gfs.h500&o=wc')).get('o') === 'wc', 'what a workspace names is kept; only the rest is filled in');
+  ok(WS.sameWorkspace(def, { ...def, main: 'l=comp&s=&o=w' }), 'Default is not "changed" the moment it opens: the page\'s own way of writing the mosaic is the same map');
+}
+
+console.log('\nRULE  a map still loading, or one whose file failed, says so in its header');
+{
+  const fmt = { time: (ms) => new Date(ms).toISOString().slice(11, 16), day: () => 'Sun', ymd: (ms) => new Date(ms).toISOString().slice(0, 10) };
+  const t = Date.now(), base = { layer: 'UKMET 500 mb', kind: 'forecast', t, run: t - 12 * 3600e3 };
+  ok(/loading…$/.test(WS.stampText({ ...base, state: 'loading' }, t, fmt)), 'loading: "· loading…"');
+  ok(/did not load$/.test(WS.stampText({ ...base, state: 'failed' }, t, fmt)), 'failed: "· did not load" — never a valid time over an empty map that looks like the others');
+  ok(!/load/.test(WS.stampText({ ...base, state: 'ready' }, t, fmt)), 'drawn: nothing added');
+}
+
+console.log('\nRULE  every preset says what it has, and the specialist ones what they lack');
+{
+  ok(WS.PRESETS.every((p) => WS.PRESET_NOTES[p.name]), 'each preset has its note');
+  const specialist = ['Marine', 'Fire Weather', 'Growing', 'Flying (not a briefing)', 'Severe Weather', 'Tropical', 'Winter Storm'];
+  ok(specialist.every((n) => /Not here:/.test(WS.PRESET_NOTES[n] || '')), 'Marine, Fire, Growing, Flying, Severe, Tropical and Winter each name what a professional would still need');
+  ok(/tides/.test(WS.PRESET_NOTES.Marine) && /RAWS/.test(WS.PRESET_NOTES['Fire Weather']) && /briefing/.test(WS.PRESET_NOTES['Flying (not a briefing)']), 'the gaps named are the real ones: tides, RAWS, an official briefing');
+}
+
 console.log('\nRULE  Compare opens the other models with the same field; Trend the runs before; neither holds a place');
 {
   const has = { hrrr: ['refc', 't2m', 'h500x'], nam: ['refc', 't2m'], rap: ['refc', 't2m'], gfs: ['t2m'], ecmwf: ['t2m'], aifs: ['t2m'] };

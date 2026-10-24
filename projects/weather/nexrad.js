@@ -430,13 +430,37 @@
      stale. A 404 is an answer, and an aborted request is not retried. One
      copy, here, loaded first; level2.js, mrms.js and the page use it. */
   const RETRY_STATUS = (s) => s === 429 || (s >= 500 && s <= 599);
-  const retrying = (fetchFn, { tries = 4, waitMs = 500 } = {}) => async (url, opts) => {
+  /* A stalled request fails rather than hanging (2026-10-24, after an outside
+     check asked what happens when a bucket is slow or the network drops
+     halfway): no reply within STALL_MS and the request is aborted and tried
+     once more; a body still arriving after BODY_MS is aborted too, and the
+     frame says it failed instead of "loading" for ever. The visitor's own
+     abort (a new layer chosen) passes straight through. */
+  const STALL_MS = 30e3, BODY_MS = 180e3;
+  function guarded(fetchFn, url, opts = {}, stallMs = STALL_MS) {
+    const ctl = new AbortController(), outer = opts.signal;
+    if (outer) { if (outer.aborted) ctl.abort(); else outer.addEventListener('abort', () => ctl.abort(), { once: true }); }
+    let stalled = false;
+    const t1 = setTimeout(() => { stalled = true; ctl.abort(); }, stallMs);
+    return fetchFn(url, { ...opts, signal: ctl.signal }).then((r) => {
+      clearTimeout(t1);
+      const t2 = setTimeout(() => ctl.abort(), BODY_MS);   // a finished body is not affected
+      if (t2 && t2.unref) t2.unref();                       // (and in Node, the tests, it does not hold the process open)
+      return r;
+    }, (e) => {
+      clearTimeout(t1);
+      if (stalled && !(outer && outer.aborted)) { const err = new Error('the data host did not answer in ' + Math.round(stallMs / 1000) + ' s'); err.stalled = true; throw err; }
+      throw e;
+    });
+  }
+  const retrying = (fetchFn, { tries = 4, waitMs = 500, stallMs = STALL_MS } = {}) => async (url, opts) => {
     for (let k = 0; ; k++) {
       try {
-        const r = await fetchFn(url, opts);
+        const r = await guarded(fetchFn, url, opts, stallMs);
         if (!r || !RETRY_STATUS(r.status) || k >= tries - 1) return r;
       } catch (e) {
-        if (k >= tries - 1 || (opts && opts.signal && opts.signal.aborted)) throw e;
+        /* a stall is tried once more, not four times: four 30-second silences is two minutes of "loading" */
+        if (k >= tries - 1 || (opts && opts.signal && opts.signal.aborted) || (e.stalled && k >= 1)) throw e;
       }
       if (opts && opts.signal && opts.signal.aborted) throw new Error('nexrad: aborted');
       await new Promise((ok) => setTimeout(ok, waitMs * 2 ** k));
@@ -730,7 +754,7 @@
   }
 
   const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, SCHEMES, SCHEME_NAMES, paletteFor, setCustom, volumePoints, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
-    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, retrying, stormRelative, locator, polarOf, CLUTTER, clutterMask, crossSection, dealias, vad };
+    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, retrying, guarded, STALL_MS, stormRelative, locator, polarOf, CLUTTER, clutterMask, crossSection, dealias, vad };
   root.Nexrad = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

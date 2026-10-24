@@ -389,6 +389,39 @@ tap-for-detail hour, 10 days with the office's words, alerts with polygons,
 animated radar, wind / humidity / pressure trend / visibility / UV / sun, °F/°C,
 offline copy, refresh every ten minutes while open.
 
+**After an outside review of Pro (2026-10-24, Ric: "Fix this stuff plz"):**
+- *A workspace sets the whole map.* Marine then Default left the model menu on
+  ECMWF waves, because a preset only named the keys it cared about and the rest
+  stayed as they were. `completeLayer()` in `workstation.js` now fills every key
+  a preset leaves out from `DEFAULT_MAIN` before it is applied, so every preset
+  arrives at the same map every time. The model, field and satellite choices are
+  saved when they change, not only when a menu is touched.
+- *Presets say what they are not.* Each preset carries a note (`PRESET_NOTES`),
+  shown under the bar and on its menu entry: what it has, then "Not here: …".
+  Marine has no tides, currents, buoys or coastal forecasts; Flying no METARs,
+  TAFs, SIGMETs, icing or turbulence; Fire no RAWS or fuel moisture. These are
+  starting views for a kind of work, not that work's tools. Keep the notes true
+  when a preset gains a layer.
+- *Compare gives the maps the room.* Compare and Trend close the readouts drawer
+  (and say how to bring it back), lay the maps out as a grid, and say the field
+  once, in the main map's header and the clock. The side maps' headers carry
+  only the model, run and valid time, and they drop their own timeline and
+  legend. Choosing another field, adding a map or closing the last one ends it.
+- *A map says when it is still loading, or failed.* Every header says
+  "loading…" or "did not load" for the frame on screen, so two maps at
+  different stages never look alike. Going offline says so, and coming back
+  asks again.
+- *A silent host fails within a minute.* `guarded()` in `nexrad.js` gives every
+  try 30 s to answer (`STALL_MS`) and three minutes to finish; a stall is tried
+  once more (on the mirror where there is one), then said. The visitor's own
+  abort — choosing another layer mid-download — is never called a failure.
+- *A file cut short is never drawn.* A GRIB2 message is checked against its own
+  length and its "7777" end marker, and an HDF5 chunk against its size. Before
+  this a truncated GRIB message parsed as a whole field, the missing bytes read
+  as zeros; `test/operational.test.mjs` found it.
+- *The scoreboard says how old it is.* See "The scoreboard" — scored daily,
+  posted weekly, and marked late when the last post is over nine days old.
+
 **Weather in plain words (2026-10-23, Ric: "1 and 2 please", after a walk
 through the page as an everyday visitor):** every source is still said, in
 words anyone reads — "Measured at Boeing Field, 4.5 mi away" (the station's
@@ -1208,6 +1241,13 @@ airport weather station (IEM's AZOS network, ~2,500 stations):
   committed only as these rounded files, weekly (Sundays), on the first run, or
   when started by hand with "commit". If the cache is lost the committed files
   seed it again.
+- **Why the page can be a week behind** (2026-10-24, after a visitor read
+  "scored through October 17" on the 24th): the job scores every day, but the
+  rounded files are about 555 KB compressed per commit — daily, about 200 MB a
+  year in git — so they are posted on Sundays. The page says "scored daily ·
+  posted weekly", how many days ago the record ends, and calls it late past nine
+  days. Posting daily would mean the Worker (R2) or daily commits; that is Ric's
+  call, not made.
 - **Pacing**: Open-Meteo's free tier is non-commercial, and the job paces itself
   to 70 weighted calls a minute — about an hour and a half a run. A first run
   backfills 14 days.
@@ -1227,6 +1267,23 @@ airport weather station (IEM's AZOS network, ~2,500 stations):
   2026-10-17, ~2,100 stations): the learned forecast 1.13 °C, the blend 1.16,
   AIFS 1.34, NBM 1.35, the standard forecast 1.47 — and the nowcast's first
   grade, CSI 0.64 at 30 minutes against 0.62 for "nothing moves".
+
+## What the tests do not show
+
+`test/operational.test.mjs` holds the run selection, valid times, failed and
+truncated downloads, stalled hosts and incomplete radar sweeps — with made-up
+buckets and real fixture files. What no test here shows:
+
+- **The live hosts on a bad day.** NOAA's buckets, ECMWF's mirrors and the Met
+  Office's NetCDF are slow at times and publish late at times; the tests prove
+  the page says so, not how often it happens. The UKMET still takes about 12 s
+  for one map, because its NetCDF has to be read in pieces.
+- **Devices.** Chromium at desktop and phone width is what is checked; Safari,
+  older phones and low memory with four maps open are not.
+- **Fast-changing severe weather.** Nothing measures how far behind the radar
+  and warnings run against what is happening, beyond each feed's own age.
+- **Whether it is useful.** That needs forecasters, chasers, pilots and sailors
+  using it and saying where it gets in the way — no test stands in for them.
 
 ## The room's own predictions
 

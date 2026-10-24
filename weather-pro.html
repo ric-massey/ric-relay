@@ -32,7 +32,7 @@
   <link rel="preload" href="assets/weather/fonts/IBMPlexMono-600.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/weather/fonts/IBMPlexMono-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/weather/fonts/IBMPlexSans.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/weather/weather.css?v=63">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=65">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -84,6 +84,8 @@
       <span class="wssync" role="group" aria-label="What the maps share"><span class="seglab">Sync</span>
         <label><input type="checkbox" id="wsplace" checked> place</label>
         <label><input type="checkbox" id="wstime" checked> time</label></span>
+      <!-- what the open preset has and what it lacks (2026-10-24) -->
+      <p class="wspresetnote" id="wspresetnote" hidden></p>
     </div>
     <p class="wsnote" id="wsnote" role="status" hidden></p>
     <span class="spacer"></span>
@@ -570,14 +572,14 @@
 <script src="projects/weather/draw.js?v=2"></script>
 <script src="projects/weather/verify/core.js?v=1"></script>
 <script src="projects/weather/bzip2.js?v=1"></script>
-<script src="projects/weather/nexrad.js?v=13"></script>
+<script src="projects/weather/nexrad.js?v=14"></script>
 <script src="projects/weather/level2.js?v=5"></script>
-<script src="projects/weather/glm.js?v=7"></script>
+<script src="projects/weather/glm.js?v=8"></script>
 <script src="projects/weather/reanalysis.js?v=1"></script>
-<script src="projects/weather/abi.js?v=3"></script>
-<script src="projects/weather/grib2.js?v=7"></script>
+<script src="projects/weather/abi.js?v=4"></script>
+<script src="projects/weather/grib2.js?v=8"></script>
 <script src="projects/weather/mesogrid.js?v=1"></script>
-<script src="projects/weather/modelmaps.js?v=15"></script>
+<script src="projects/weather/modelmaps.js?v=16"></script>
 <script src="projects/weather/mrms.js?v=2"></script>
 <script src="projects/weather/mapgeo.js?v=2"></script>
 <script src="projects/weather/terrain.js?v=1"></script>
@@ -585,7 +587,7 @@
 <script src="projects/weather/watches.js?v=1"></script>
 <script src="projects/weather/colormaps.js?v=1"></script>
 <script src="projects/weather/radar3d.js?v=1"></script>
-<script src="assets/weather/workstation.js?v=27"></script>
-<script src="assets/weather/app.js?v=63"></script>
+<script src="assets/weather/workstation.js?v=29"></script>
+<script src="assets/weather/app.js?v=65"></script>
 </body>
 </html>

@@ -774,13 +774,25 @@
   });
 
   /* ── how accurate this has been, here ── */
+  /* How old the published record is (2026-10-24, after an outside check found
+     it scored through the 17th on the 24th and nothing saying why): it is
+     scored every day in the Actions job, but the files the page reads are
+     committed once a week, on Sundays (weather-score.yml — a daily commit
+     would add ~200 MB of history a year). So up to 8 days behind is the
+     schedule; past 9 the weekly post did not arrive, and the page says so. */
+  function recordAge(index) {
+    const t = index && Date.parse((index.through || "") + "T00:00:00Z");
+    if (!Number.isFinite(t)) return null;
+    const days = Math.floor((Date.now() - t) / 86400e3);
+    return { days, late: days > 9 };
+  }
   function renderRecord() {
     const box = $("#record");
     if (!box) return;
     const r = S.rec, v = S.verdict, st = r && r.stations[0];
     if (!S.place || S.pt === null || r === undefined) { box.hidden = true; return; }
     box.hidden = false;
-    const head = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 14h12M4 14V8M8 14V3M12 14V6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>How accurate is this, here?<span class="src">scored every day</span></h2>`;
+    const head = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 14h12M4 14V8M8 14V3M12 14V6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>How accurate is this, here?<span class="src">scored daily · posted weekly</span></h2>`;
     if (!r || !st || !v || !v.rows.length) {
       box.innerHTML = head + `<p class="dim">This site holds every forecast it shows to what actually happens at about 2,500 US airport weather stations, every day. The record for the stations near here is still being built — check back soon.</p>`;
       return;
@@ -809,7 +821,7 @@
     box.innerHTML = head + `<p style="margin-bottom:10px">Next-day temperature forecasts at <b>${esc(st.name)}</b> (${esc(st.id)}${st.dist != null ? `, ${Wx.fmt.dist(st.dist, U())} ${Wx.UNITS[U()].dist} away` : ""}), average miss over the last ${days} days:</p>
       <div class="recrows">${rows}</div>
       <p class="nextnote">${esc(why)}</p>${natLine}
-      <p class="nextnote">Scored against the airport's own thermometer, through ${esc(r.index.through || "")}. A miss of ±1.5° is very good; most apps never show theirs.</p>
+      <p class="nextnote${recordAge(r.index) && recordAge(r.index).late ? " late" : ""}">Scored against the airport's own thermometer, through ${esc(r.index.through || "")}${recordAge(r.index) ? ` (${recordAge(r.index).days} days ago)` : ""}. ${recordAge(r.index) && recordAge(r.index).late ? "That is later than it should be: the record is scored every day and posted here every Sunday, and the last weekly post did not arrive." : "The record is scored every day and posted here once a week, on Sundays — so it can be up to a week behind."} A miss of ±1.5° is very good; most apps never show theirs.</p>
       ${v.rows.some((x) => x.m === "pangu") ? `<p class="nextnote">Pangu AI is a published AI weather model (Huawei; Bi et al., Nature 2023, weights CC BY-NC-SA 4.0) that this site runs itself every evening, from ECMWF's open data (CC BY 4.0).</p>` : ""}`;
   }
 
@@ -1254,7 +1266,7 @@
     const stn = radar.stations;
     if (stn) row("", `Stations on the map — ${stn.n} airport stations`, "ASOS readings via IEM, the forecast offices in view · newest reading", stn.newest);
     if (radar.sat) row("", "Satellite — GOES-East and GOES-West", `${esc(Wx.SAT[radar.sat].label.toLowerCase())}, via IEM · the latest image; its scan time does not come with the map`, null);
-    if (S.place && S.rec && S.rec.index) row("", "Scoreboard", `every model vs ${Object.keys(S.rec.index.stations || {}).length.toLocaleString()} US airport stations · scored through ${esc(S.rec.index.through || "")} · published`, Date.parse(S.rec.index.generated) || null);
+    if (S.place && S.rec && S.rec.index) row(recordAge(S.rec.index) && recordAge(S.rec.index).late ? "stale" : "", "Scoreboard", `every model vs ${Object.keys(S.rec.index.stations || {}).length.toLocaleString()} US airport stations · scored daily, posted weekly (Sundays) · scored through ${esc(S.rec.index.through || "")}${recordAge(S.rec.index) && recordAge(S.rec.index).late ? " — the last weekly post is late" : ""} · published`, Date.parse(S.rec.index.generated) || null);
     if (S.ens) row("", "Model agreement", "NBM, HRRR, GFS, ECMWF and ECMWF AI, via Open-Meteo", S.fc ? S.fc.fetchedAt : null);
     if (S.place && S.plumes) row("", `Ensemble — ${S.plumes.members.length} runs`, "GEFS and ECMWF ENS, every member, via Open-Meteo · fetched", S.plumesAt);
     if (sky.source) row(sky.source.stale ? "stale" : "", esc(sky.source.title), esc(sky.source.sub), sky.source.at);
@@ -2658,7 +2670,7 @@
         m.layer = L; m.lut = lutFor(L);
         if (R.frames[R.frame] === f) { draw(); show(R.frame); if (L.field.diff) legend(); }
         return L;
-      }).catch((e) => { m.err = String(e.message || e).replace(/^models: /, ""); if (R.frames[R.frame] === f) note(`This hour did not load (${m.err}).`); });
+      }).catch((e) => { m.err = String(e.message || e).replace(/^models: /, ""); if (R.frames[R.frame] === f) { note(`This hour did not load (${m.err}).`); hear("stamp", stamp()); } });
       return m.p;
     }
     /* ── MRMS (mrms.js): the newest files of the product picked — every two
@@ -2685,7 +2697,7 @@
         m.layer = L; m.lut = lutFor(L);
         if (R.frames[R.frame] === f) { draw(); show(R.frame); }
         return L;
-      }).catch((e) => { m.err = String(e.message || e).replace(/^mrms: /, ""); if (R.frames[R.frame] === f) note(`This MRMS file did not load (${m.err}).`); });
+      }).catch((e) => { m.err = String(e.message || e).replace(/^mrms: /, ""); if (R.frames[R.frame] === f) { note(`This MRMS file did not load (${m.err}).`); hear("stamp", stamp()); } });
       return m.p;
     }
     /* ── GOES imagery (abi.js): the sector's newest files — the lower 48
@@ -2736,7 +2748,7 @@
           }
           if (R.frames[R.frame] === f) { draw(); show(R.frame); }
           return L;
-        }).catch((e) => { m.err = String(e.message || e).replace(/^(abi|glm): /, ""); if (R.frames[R.frame] === f) note(`This GOES image did not load (${m.err}).`); });
+        }).catch((e) => { m.err = String(e.message || e).replace(/^(abi|glm): /, ""); if (R.frames[R.frame] === f) { note(`This GOES image did not load (${m.err}).`); hear("stamp", stamp()); } });
       }
       return m.p;
     }
@@ -6027,7 +6039,10 @@
       /* while the loop plays: its span, so the legend can say the loop rather than each frame */
       const ts = R.playing ? R.frames.map((x) => validTime(x)).filter((x) => x != null) : [];
       const loop = ts.length > 1 ? { from: Math.min(...ts), to: Math.max(...ts) } : null;
-      return { layer: R.started ? describe() : "", kind, t, run, loop, newest: R.frame >= R.frames.length - 1, frames: R.frames.length, mode: R.mode };
+      /* whether this frame's data is drawn, still coming, or failed — a map's header says so (2026-10-24) */
+      const m = f && (f.model || f.mrms || f.abi);
+      const state = !f ? null : m ? (m.layer ? "ready" : m.err ? "failed" : "loading") : f.l3 ? (f.l3.file ? "ready" : f.l3.err ? "failed" : "loading") : "ready";
+      return { layer: R.started ? describe() : "", kind, t, run, loop, newest: R.frame >= R.frames.length - 1, frames: R.frames.length, mode: R.mode, state, err: (m && m.err) || (f && f.l3 && f.l3.errText) || null };
     }
     function viewNow() { return { lat: yLat(R.cy, R.z), lon: xLng(R.cx, R.z), z: R.z }; }
     /* where the main map is, kept in this browser to 0.1° so a reload reopens there (UI-REVIEW-3 item 1); never sent */
@@ -6083,6 +6098,8 @@
         if (PRO && $("#mrprod") && MR) $("#mrprod").value = R.mr.prod;
         if (PRO && $("#abiprod") && AB) { abiOptions(); $("#abisec").value = R.ab.sector; $("#abisat").value = R.ab.sat; }
         if (PRO && $("#mmsrc") && MM) { $("#mmsrc").value = R.mm.src; modelOptions(); }
+        /* a workspace's menus are kept, as a choice made by hand is — or a reload brought back the last ones (2026-10-24) */
+        if (PRO && !PANEL) { store.set("wx:mmsrc", R.mm.src); store.set("wx:mmfield", R.mm.field); store.set("wx:abi", R.ab.prod); store.set("wx:abisec", R.ab.sector); store.set("wx:abisat", R.ab.sat); store.set("wx:mrms", R.mr.prod); }
         if (ltgOn()) lightningClock();
         if (typeof l === "string" && (l !== R.mode || l === "comp")) await setMode(l);
         loadOverlays(true); stationsSoon(); draw(); label();
@@ -6151,7 +6168,7 @@
         else if (R.mode === "model") { MM.latestRun(R.mm.src).then((r) => { if (!r) return; if (R.mm.pin || R.mm.at) { if (r.run !== R.mm.newest && !R.mm.at) { R.mm.newest = r.run; runOptions(); modelRunText(); } } else if (r.run !== (R.mm.back ? R.mm.newest : R.mm.run) && !R.playing) modelFrames(); }).catch(() => {}); }
         else siteFrames(true);
       },
-      draw, label, describe, setSat, start,
+      draw, label, describe, setSat, start, note,
       get sat() { return R.sat; },
       get mode() { return R.mode; },
       get replay() { return R.replay; },
@@ -6671,6 +6688,12 @@
     window.WxOpenDrawer = () => { if (!document.body.classList.contains("drawer-open")) setDrawer(true, false); };
   }
   $("#refresh").addEventListener("click", () => { load(); radar.refresh(); });
+  /* the connection lost and back (2026-10-24, after an outside check asked
+     what happens when a network drops halfway): said at once, so a frame
+     that fails is not a mystery, and what is on screen is asked again on
+     the way back */
+  addEventListener("offline", () => { if (!PANEL) radar.note("Your connection dropped — what is loading will say it failed. The page asks again when you are back online."); });
+  addEventListener("online", () => { if (!PANEL) radar.note("Back online — asking again."); load(); radar.refresh(); });
 
   /* ── keeping up ──
      Every ten minutes, everything. Every minute, the alerts — when a storm

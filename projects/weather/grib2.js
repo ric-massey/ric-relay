@@ -49,6 +49,12 @@
     bytes = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
     if (u(bytes, 0, 4) !== 0x47524942 || bytes[7] !== 2) throw new Error('grib2: not a GRIB2 message');
     const total = u(bytes, 8, 8);
+    /* a message cut short (a dropped connection, a short answer to a range
+       request) used to parse as a whole field, the missing bytes read as
+       zeros — a plausible map of numbers nobody sent (found 2026-10-24).
+       The message says its own length and ends in "7777": both are checked. */
+    if (bytes.length < total) throw new Error(`grib2: the message is cut short — ${bytes.length} of its ${total} bytes arrived`);
+    if (u(bytes, total - 4, 4) !== 0x37373737) throw new Error('grib2: the message does not end where it says it does (no "7777")');
     const msg = { discipline: bytes[6] };
     /* NCEP packs some fields together — the NAM's U and V winds are one
        message, sections 4 to 7 repeated (its .idx calls them 167.1 and

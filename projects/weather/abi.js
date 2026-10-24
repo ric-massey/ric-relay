@@ -227,6 +227,8 @@
   const fileStart = GL.fileStart;
   /* the sector's newest files, oldest first */
   async function files(sat, sector, { nowMs = Date.now(), count, signal, fetchFn = fetch } = {}) {
+    /* plain fetch gets nexrad.js's retries and stall guard (2026-10-24) */
+    if (typeof fetch === 'function' && fetchFn === fetch && root.Nexrad && root.Nexrad.retrying) fetchFn = root.Nexrad.retrying(fetchFn);
     const S = SATS[sat], C = SECTORS[sector], n = count || C.frames;
     const prefixes = [...new Set([hourPrefix(C.product, nowMs - (n * C.every + 10) * 60e3), hourPrefix(C.product, nowMs)])];
     const keys = [];

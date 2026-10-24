@@ -67,7 +67,8 @@
   function sameWorkspace(a, b) {
     a = clean(a); b = clean(b);
     if (!a || !b) return false;
-    return (a.main == null || b.main == null || sameLayer(a.main, b.main)) && a.panels.length === b.panels.length && a.panels.every((x, i) => sameLayer(x, b.panels[i])) && a.layout === b.layout
+    /* both completed as apply() completes them, so Default is not "changed" the moment it opens */
+    return (a.main == null || b.main == null || sameLayer(completeLayer(a.main), completeLayer(b.main))) && a.panels.length === b.panels.length && a.panels.every((x, i) => sameLayer(x, b.panels[i])) && a.layout === b.layout
       && a.cards.order.join() === b.cards.order.join() && a.cards.hidden.slice().sort().join() === b.cards.hidden.slice().sort().join()
       && a.sync.place === b.sync.place && a.sync.time === b.sync.time;
   }
@@ -89,8 +90,22 @@
     };
   }
 
+  /* What a workspace sets on the main map, every time (2026-10-24, after an
+     outside check: Marine, then Default, left the model menu on ECMWF waves —
+     "does Default restore a known configuration?"). A workspace's main map is
+     completed with the page's own first-visit choices for anything it does not
+     name — the national mosaic, no satellite under it, watches and the map's
+     lines, and the model, satellite and MRMS menus on HRRR composite
+     reflectivity, band 13 and rotation tracks — so choosing a workspace always
+     ends in the same state, whatever was on screen before. */
+  const DEFAULT_MAIN = { l: 'comp', s: '', o: 'w', m: 'hrrr.refc', g: 'b13.conus.auto', r: 'rot60' };
+  function completeLayer(str) {
+    const q = new URLSearchParams(cleanLayer(str || '') || '');
+    for (const [k, v] of Object.entries(DEFAULT_MAIN)) if (!q.has(k)) q.set(k, v);
+    return cleanLayer(q.toString());
+  }
   const PRESETS = [
-    clean({ name: 'Default', main: null, panels: [] }),
+    clean({ name: 'Default', main: 'l=comp', panels: [] }),
     /* the pattern and the next days: the 500 mb trough in two models, the
        surface, and the water vapour that shows the jet's moisture */
     clean({ name: 'Forecast Analysis', main: 'l=model&o=w&m=gfs.h500', layout: 'grid',
@@ -149,6 +164,24 @@
       panels: ['l=model&o=&m=gfs.h500', 'l=model&o=&m=hrrr.refc', 'l=abi&o=&g=b9.conus.auto'],
       cards: { order: ['afd', 'alerts', 'nearby', 'hero', 'models', 'sky', 'national', 'meso', 'record', 'sources'], hidden: [] } })
   ];
+  /* What each preset has, and what a professional in that line of work would
+     still need that it does not (2026-10-24, after an outside check: "the
+     presets are becoming broad, but many remain shallow… a problem if the
+     interface presents a category as more complete than it actually is").
+     Said when the preset is chosen and on its option in the menu. Keep the
+     "not here" true: take a thing off it only when the page really has it. */
+  const PRESET_NOTES = {
+    'Default': 'The first-visit map: the national radar mosaic, with watches.',
+    'Forecast Analysis': '500 mb in the GFS and ECMWF, the surface pressure and water vapour. Not here: upper-air observations (balloon soundings as maps), WPC\'s forecasts.',
+    'Severe Weather': 'The nearest radar\'s reflectivity and storm-relative velocity, the environment (STP) and rotation tracks. Not here: a storm-scale ensemble (HREF is not open), spotter and mPING reports — and never a warning: those are the NWS\'s.',
+    'Winter Storm': 'Precipitation type, snow, the 850 mb freezing line and the Blend\'s chance of an inch. Not here: WPC\'s winter outlooks, snow observations (NOHRSC), road conditions.',
+    'Tropical': 'Water vapour and the NHC\'s cones, the radar, GFS pressure and ECMWF wind. Not here: recon flights, buoys and ships, the NHC\'s own wind-speed probabilities as a map.',
+    'Fire Weather': 'The hot-dry-windy index, gusts, smoke and GOES\'s fire picture. Not here: RAWS stations, fuel moisture, the NWS\'s fire-weather forecasts and spot forecasts.',
+    'Marine': 'Wave height and period, wind and pressure — a start. Not here: tides, currents, buoy observations, swell direction or marine forecasts (their sources were out of reach).',
+    'Growing': 'Frost, soil warmth and water, evaporation and the chance of rain. Not here: farm observing networks (mesonets) or crop-specific guidance.',
+    'Flying (not a briefing)': 'A look only: radar with airport plots, visibility, the chance of a low ceiling, the jet. Not here: METARs and TAFs in full, AIRMETs and SIGMETs, icing, turbulence or winds aloft — get an official briefing.',
+    'Morning Briefing': 'SPC\'s outlook and watches over the radar, 500 mb, the HRRR\'s storms and water vapour, the forecasters\' discussion first.'
+  };
 
   /* ── the link ──
      #ws=<the workspace, base64url JSON>, and only if asked, &v=<the main
@@ -207,6 +240,10 @@
       /* against the clock it is an age ("5 min ago", "in 3 h"); against another map, a gap */
       s += busT == null ? ` · ${d < 0 ? `${amt} ago` : `in ${amt}`}` : ` · ${amt} ${d < 0 ? 'before' : 'after'} the shared time`;
     }
+    /* how complete what is drawn is (2026-10-24): side by side, a map still
+       loading or one whose file failed must not look like the others */
+    if (st.state === 'loading') s += ' · loading…';
+    else if (st.state === 'failed') s += ' · did not load';
     return s;
   }
 
@@ -279,7 +316,7 @@
     return [0, 1, 2, 3].filter((b) => b !== M.back).map((b) => withModel(M.q, b ? `${M.src}.${M.field}.${b}` : `${M.src}.${M.field}`));
   }
 
-  const api = { MAX_PANELS, CARDS, LOCKED, PRESETS, cleanLayer, sameLayer, sameWorkspace, clean, linkHash, readHash, stampText, timelineMarks, compareLayers, trendLayers, CARD_TABS };
+  const api = { MAX_PANELS, CARDS, LOCKED, PRESETS, PRESET_NOTES, DEFAULT_MAIN, completeLayer, cleanLayer, sameLayer, sameWorkspace, clean, linkHash, readHash, stampText, timelineMarks, compareLayers, trendLayers, CARD_TABS };
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
   root.WxWorkstation = api;
@@ -350,6 +387,8 @@
       else if (m.type === 'time') { const t = m.t == null ? (map.stamp.kind === 'forecast' ? Date.now() : null) : m.t; want = map.setTime(t) || t == null ? null : { t, at: Date.now() }; }
       else if (m.type === 'layer') map.setLayer(m.str);
       else if (m.type === 'tz' && Pro.setTZ) Pro.setTZ(m.tz);
+      /* in a Compare or Trend: the timeline and colour key are the main map's, shared by all — a side map shows only its map */
+      else if (m.type === 'compact') document.body.classList.toggle('compact', !!m.on);
     });
     up({ type: 'ready', data: map.stamp, layer: map.layer });
   }
@@ -386,7 +425,7 @@
       addEventListener('resize', () => { if (bar.classList.contains('open')) wsOpen(true); });
     }
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const W = { name: 'Default', saved: false, panels: [], cards: clean({}).cards, sync: { place: true, time: true }, layout: 'stack', busT: null, mainStamp: null, n: 0 };
+    const W = { name: 'Default', saved: false, panels: [], cards: clean({}).cards, sync: { place: true, time: true }, layout: 'stack', busT: null, mainStamp: null, n: 0, same: null };
 
     /* the shared time: null is "now" */
     function setBus(t, from) {
@@ -438,12 +477,14 @@
         if (e.target.closest('[data-px]')) removePanel(p);
         else if (e.target.closest('[data-pmain]')) swap(p);
       });
+      if (!quiet) W.same = null;
       layout();
       if (!quiet) changed();
       return p;
     }
     function removePanel(p) {
       W.panels = W.panels.filter((x) => x !== p);
+      if (!W.panels.length) W.same = null;
       p.sec.remove();
       layout(); changed();
     }
@@ -466,6 +507,7 @@
       measure();
       W.panels.forEach((p, i) => { p.sec.querySelector('.pn').textContent = `Map ${i + 2}`; p.frame.title = `Map ${i + 2}: ${p.stamp ? p.stamp.layer : 'starting'}`; });
       box.dataset.n = String(W.panels.length);
+      for (const p of W.panels) post(p, { type: 'compact', on: !!W.same });
     }
     addEventListener('message', (e) => {
       const p = W.panels.find((x) => x.frame.contentWindow === e.source);
@@ -479,6 +521,7 @@
         if (W.busT != null) post(p, { type: 'time', t: W.busT });
         /* the page's time zone, so a panel's clock says the same hour as its header */
         post(p, { type: 'tz', tz: Pro.tz ? Pro.tz() : null });
+        post(p, { type: 'compact', on: !!W.same });
         p.stamp = m.data; stamps();
       } else if (m.type === 'stamp') { p.stamp = m.data; stamps(); }
       else if (m.type === 'view') shareView(m.data, p);
@@ -495,13 +538,28 @@
     function stamps() {
       const ms = $('#mainstamp');
       /* alone, the main map's time is told against the clock: "the shared time" means nothing with no other map to share it */
+      /* in a Compare or Trend every map shows one field: it is said once, above
+         the maps, and each header leads with what differs — the model, the run,
+         the valid time (2026-10-24, after an outside check found four headers
+         truncating the same field name and the maps cramped under them) */
+      /* a map changed to another field: no longer one comparison — the heading goes, each map gets its own timeline back */
+      if (W.same && [W.mainStamp, ...W.panels.map((p) => p.stamp)].some((st) => st && st.layer && Number.isFinite(st.t) && !st.layer.includes(W.same))) { W.same = null; for (const p of W.panels) post(p, { type: 'compact', on: false }); }
+      const short = (st) => (W.same && st && st.layer && st.layer.includes(W.same) ? { ...st, layer: st.layer.replace(W.same, '').replace(/\s+/g, ' ').trim() || st.layer } : st);
+      /* the main map keeps the field's full name — it is said once, there; the side maps lead with what differs */
       if (ms) { const t = W.mainStamp ? stampText(W.mainStamp, W.panels.length ? W.busT : null, fmt) : ''; if (ms.textContent !== t) ms.textContent = t; }   // unchanged, untouched: a playing loop is not read out each frame
-      for (const p of W.panels) { const el = p.sec.querySelector('.pst'); if (el) el.textContent = stampText(p.stamp, W.busT, fmt); }
+      for (const p of W.panels) { const el = p.sec.querySelector('.pst'); if (el) el.textContent = stampText(short(p.stamp), W.busT, fmt); }
       const c = $('#wsclock');
       /* said only when it is not "now" (the Now button beside it brings it back) */
       /* …and only when there is another map to share it with: alone, the
          main map's own clock under it already says the time */
-      if (c) { c.textContent = !W.panels.length ? '' : !W.sync.time ? 'each map keeps its own time' : W.busT == null ? '' : `shared time: ${fmt.ymd(W.busT) !== fmt.ymd(Date.now()) ? fmt.day(W.busT) + ' ' : ''}${fmt.time(W.busT)}`; c.hidden = !c.textContent; }
+      if (c) {
+        const time = !W.panels.length ? '' : !W.sync.time ? 'each map keeps its own time' : W.busT == null ? '' : `shared time: ${fmt.ymd(W.busT) !== fmt.ymd(Date.now()) ? fmt.day(W.busT) + ' ' : ''}${fmt.time(W.busT)}`;
+        /* in a comparison, short — the field and the time — so the one bar never wraps; the whole sentence is the tooltip */
+        const comparing = W.same && W.panels.length;
+        c.textContent = comparing ? [W.same, time.replace(/^shared time: /, '')].filter(Boolean).join(' · ') : time;
+        c.title = comparing ? `Every map shows ${W.same}${time ? ` — ${time}` : ''}` : time;
+        c.hidden = !c.textContent;
+      }
       const live = $('#wslive');
       if (live) live.hidden = !W.panels.length || !W.sync.time || W.busT == null;
     }
@@ -614,23 +672,28 @@
       if (!ws) return;
       W.name = ws.name; store.set('wx:wsname', ws.name);
       for (const p of W.panels.slice()) { p.sec.remove(); }
-      W.panels = [];
+      W.panels = []; W.same = null;
       W.cards = ws.cards; arrangeCards();
       W.sync = ws.sync; $('#wsplace').checked = ws.sync.place; $('#wstime').checked = ws.sync.time; W.layout = ws.layout;
-      if (mainToo && ws.main) await main.setLayer(ws.main);
+      if (mainToo) await main.setLayer(completeLayer(ws.main));
       for (const s of ws.panels) addPanel(s, { quiet: true });
       layout(); stamps();
       W.ref = clean({ ...ws, main: ws.main || null });
       store.set('wx:wscurrent', current());
       renderSel();
+      if (PRESET_NOTES[ws.name] && PRESETS.some((p) => p.name === ws.name)) say(PRESET_NOTES[ws.name]);
     }
     function renderSel() {
       const sel = $('#wssel'), saved = savedList();
       const d = dirty();
       const nm = $('#wsname');
       if (nm) nm.textContent = W.name + (d ? '*' : '');
-      const opt = (n, g) => `<option value="${g}:${esc(n)}"${n === W.name ? ' selected' : ''}>${esc(n)}${n === W.name && d ? ' · changed' : ''}</option>`;
-      sel.innerHTML = `<optgroup label="Presets">${PRESETS.map((p) => opt(p.name, 'p')).join('')}</optgroup>`
+      /* what the open preset has and lacks, under the menu */
+      const pn = $('#wspresetnote');
+      if (pn) { const t = PRESETS.some((p) => p.name === W.name) ? PRESET_NOTES[W.name] || '' : ''; pn.textContent = t; pn.hidden = !t; }
+      const opt = (n, g) => `<option value="${g}:${esc(n)}"${n === W.name ? ' selected' : ''}${g === 'p' && PRESET_NOTES[n] ? ` title="${esc(PRESET_NOTES[n])}"` : ''}>${esc(n)}${n === W.name && d ? ' · changed' : ''}</option>`;
+      /* a preset sets the whole map (completeLayer): the group says so */
+      sel.innerHTML = `<optgroup label="Presets — each sets the whole map">${PRESETS.map((p) => opt(p.name, 'p')).join('')}</optgroup>`
         + (saved.length ? `<optgroup label="Saved in this browser">${saved.map((s) => opt(s.name, 's')).join('')}</optgroup>` : '')
         + (![...PRESETS, ...saved].some((x) => x.name === W.name) ? `<optgroup label="Open">${opt(W.name, 'o')}</optgroup>` : '');
     }
@@ -677,7 +740,14 @@
       if (globals && t != null) { const six = 6 * 3600e3, snap = Math.round(t / six) * six; if (snap !== t) { t = snap; setBus(t, null); } else setBus(t, main); }
       else setBus(t, main);
       for (const str of list) addPanel(str, { quiet: true });
-      layout(); changed();
+      /* the maps are the point: side by side, the readouts drawer out of their way */
+      W.layout = 'grid';
+      const F = M && MM ? MM.field(M.src, M.field) : null;
+      W.same = F ? F.label.replace(/ \(.*\)$/, '') : null;
+      const drawer = document.body.classList.contains('drawer-open') && $('#databtn');
+      if (drawer) $('#databtn').click();
+      layout(); changed(); stamps();
+      if (drawer) setTimeout(() => say('The readouts are closed to give the maps room — D, or Readouts, brings them back.'), 7200);
       say(kind === 'compare' ? `Comparing ${list.length + 1} models at the same moment${globals ? ', on a 6-hourly time all of them have' : ''} — step any map and the rest follow.${left.length ? ` Left out, as they show something else: ${left.join(', ')}.` : ''}` : 'This run and the three before it, at the same moment — how the forecast has moved.');
     }
     for (const [id, kind] of [['#mmcompare', 'compare'], ['#mmtrend', 'trend']]) { const b = $(id); if (b) b.addEventListener('click', () => lineUp(kind)); }

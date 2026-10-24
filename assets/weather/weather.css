@@ -1153,7 +1153,8 @@ body[data-view="pro"]:not([data-panel]) .topbar.hasplace .spacer{flex:1 1 0;min-
 body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebtn{flex:0 1 auto;min-width:96px;max-width:280px}
 body[data-view="pro"]:not([data-panel]) .topbar.hasplace .backbtn{display:inline-flex;align-items:center;gap:.5ch;min-height:32px;padding:0 10px;white-space:nowrap;text-decoration:none}
 body[data-view="pro"]:not([data-panel]) .topbar.hasplace>.navwrap{flex:none}
-body[data-view="pro"]:not([data-panel]) .topbar.hasplace .wsclock{white-space:nowrap;font-size:12px}
+/* it may say what a Compare compares as well as the time: it takes only the room left (a basis of 0, so it can never wrap the bar) and ends in … (the whole is its tooltip) */
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .wsclock{white-space:nowrap;font-size:12px;flex:6 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis}
 /* the workspace button: its name, and a menu under it */
 body[data-view="pro"]:not([data-panel]) .topbar.hasplace .wstoggle{display:inline-flex;align-items:center;gap:7px;min-width:0;max-width:240px;padding:0 10px;white-space:nowrap}
 .wstoggle #wsname{overflow:hidden;text-overflow:ellipsis}
@@ -1563,3 +1564,10 @@ dialog.sheet.v3dsheet{width:min(1100px,calc(100vw - 16px));max-height:calc(100vh
 #v3dlab{pointer-events:none}
 #v3dcv:focus-visible{outline:2px solid #4dabf7;outline-offset:-2px}
 @media (pointer:coarse){ .v3dctl button,.v3dctl input{min-height:44px} }
+/* the scoreboard's weekly post, late (2026-10-24): said in the room's "late" colour */
+.nextnote.late{color:var(--late,#ffb627)}
+/* a side map in a Compare or Trend (2026-10-24): one field, one time — the main map's timeline and key serve them all */
+body[data-panel].compact .radarbar,body[data-panel].compact #legend{display:none!important}
+/* under the workspace menu: what the open preset has, and what it does not (2026-10-24) */
+.wspresetnote{flex:1 1 100%;margin:2px 0 0;color:var(--dim);font-size:12px;line-height:1.45;max-width:72ch;white-space:normal}
+.wspresetnote[hidden]{display:none}

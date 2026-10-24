@@ -907,7 +907,14 @@ ones that must never break:
   `.pal` files; `abi.js` recipes) stay in their browser and are never sent or
   committed; a recipe rides in a share link only as its numbers. **The 3D
   radar** (`radar3d.js`) is WebGL, built into the browser — no library; keep
-  it that way. **Compare sets like beside like** (2026-10-24): a
+  it that way. **A workspace sets the whole main map** (2026-10-24): `apply()`
+  runs `completeLayer()`, so a preset that leaves a key out gets the default,
+  never what was there before; every preset keeps a true "Not here: …" note
+  (`PRESET_NOTES`) — don't present a category as more complete than it is.
+  Compare and Trend close the readouts and say the field once. Every fetch to a
+  data host goes through `guarded()` (30 s to answer), and a GRIB2 message or
+  HDF5 chunk shorter than it says is an error, never a drawn field.
+  **Compare sets like beside like** (2026-10-24): a
   model joins only if its field shows the same thing (`MM.signature`); a
   quantity a model does not publish is worked out from what it does and
   labelled so. Don't pair fields by id alone — the weather README has why. **Dealiasing is off by default and full volume only**, and

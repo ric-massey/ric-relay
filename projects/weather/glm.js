@@ -49,7 +49,10 @@
   }
   let nBytes = 0;
   const fromBytes = (bytes) => source(async (o, n) => bytes.subarray(o, o + n), bytes.length, 'bytes:' + (++nBytes));
+  /* plain fetch gets nexrad.js's retries and stall guard (2026-10-24); a caller's own fetcher (modelmaps.js's, already guarded) is used as given */
+  const guard = (fetchFn) => (typeof fetch === 'function' && fetchFn === fetch && root.Nexrad && root.Nexrad.retrying ? root.Nexrad.retrying(fetchFn) : fetchFn);
   function fromUrl(url, { signal, fetchFn = fetch } = {}) {
+    fetchFn = guard(fetchFn);
     return source(async (o, n) => {
       const r = await fetchFn(url, { signal, headers: { Range: `bytes=${o}-${o + n - 1}` } });
       if (!r.ok) throw new Error('glm: HTTP ' + r.status);
@@ -430,6 +433,8 @@
           const unpack = async () => {
             const r = runs.get(c);
             let b = r ? (await runBytes(r)).subarray(c.addr - r.start, c.addr - r.start + c.size) : await f.src.exact(c.addr, c.size);
+            /* a chunk cut short is an error, never a plane padded with zeros (2026-10-24) */
+            if (b.length < c.size) throw new Error(`glm: a chunk of ${name} is cut short — ${b.length} of ${c.size} bytes arrived`);
             if (!c.raw) for (let i = filters.length - 1; i >= 0; i--) {
               if (c.mask & (1 << i)) continue;
               if (filters[i] === 1) b = await inflate(b);
@@ -547,6 +552,7 @@
   }
   /* the files whose 20 seconds began in the last `mins` minutes, oldest first */
   async function files(sat, { mins = 10, nowMs = Date.now(), after = '', signal, fetchFn = fetch } = {}) {
+    fetchFn = guard(fetchFn);
     const S = SATS[sat];
     const prefixes = [...new Set([hourPrefix(nowMs - mins * 60e3), hourPrefix(nowMs)])];
     const keys = [];
