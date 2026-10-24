@@ -721,10 +721,16 @@
   function ec(param, level) { return (e) => e.name === param && e.level === (level ? level + ' mb' : 'sfc'); }
   function EC_FIELDS(ifs) {
     const out = [
+      /* ECMWF's `vo` is relative vorticity; the Coriolis parameter is added so it
+         is absolute, as the GFS's ABSV is — without it the map sat under the
+         palette's floor beside the others (2026-10-24) */
       ifs ? { id: 'h500', group: 'Upper air', label: '500 mb heights and vorticity', unit: 'vort', pal: 'vort', parts: { z: ec('gh', 500), a: ec('vo', 500) },
-        value: (p, i) => p.a[i] * 1e5, contours: [{ part: 'z', scale: 0.1, every: 6, unit: 'dam', color: '#ffffff' }] }
-        : { id: 'h500', group: 'Upper air', label: '500 mb heights and wind', unit: 'kt', pal: 'jet', parts: { z: ec('gh', 500), u: ec('u', 500), v: ec('v', 500) },
-          value: (p, i) => Math.hypot(p.u[i], p.v[i]) * MS2KT, contours: [{ part: 'z', scale: 0.1, every: 6, unit: 'dam', color: '#ffffff' }] },
+        compute: (p, grid) => plusCoriolis(p.a, grid), contours: [{ part: 'z', scale: 0.1, every: 6, unit: 'dam', color: '#ffffff' }] }
+        /* AIFS publishes no vorticity: it is worked out from its own 500 mb wind
+           (absVorticity), so Compare sets it beside the others' (2026-10-24 —
+           an outside check found AIFS showing wind where the rest showed vorticity) */
+        : { id: 'h500', group: 'Upper air', label: '500 mb heights and vorticity (worked out from its wind)', unit: 'vort', pal: 'vort', parts: { z: ec('gh', 500), u: ec('u', 500), v: ec('v', 500) },
+          compute: (p, grid) => absVorticity(p.u, p.v, grid), contours: [{ part: 'z', scale: 0.1, every: 6, unit: 'dam', color: '#ffffff' }] },
       { id: 'jet250', group: 'Upper air', label: '250 mb wind (the jet)', unit: 'kt', pal: 'jet', parts: { u: ec('u', 250), v: ec('v', 250), z: ec('gh', 250) },
         value: (p, i) => Math.hypot(p.u[i], p.v[i]) * MS2KT, barbs: ['u', 'v'], contours: [{ part: 'z', scale: 0.1, every: 12, unit: 'dam', color: '#d0d4da' }] },
       { id: 't850', group: 'Upper air', label: '850 mb temperature and heights', unit: 'tempC', pal: 't850', parts: { t: ec('t', 850), z: ec('gh', 850) },
@@ -755,12 +761,17 @@
   function UK_FIELDS() {
     const precip = (keys, fh) => { const re = new RegExp(`PT${pad(fh, 4)}H00M-(precipitation_accumulation-PT\\d\\dH)\\.nc$`); for (const k of keys) { const m = re.exec(k); if (m) return m[1]; } return null; };
     return [
-      { id: 'h500', group: 'Upper air', label: '500 mb heights', unit: 'dam', pal: 'thick', parts: { z: nc('geopotential_height_on_pressure_levels', 'geopotential_height', 500) },
-        value: (p, i) => p.z[i] / 10, contours: [{ part: 'z', scale: 0.1, every: 6, unit: 'dam', color: '#ffffff' }] },
+      /* vorticity from its 500 mb wind, as for the AIFS (the Met Office publishes none);
+         shading the heights themselves turned the whole map red at the vorticity's scale beside the others */
+      { id: 'h500', group: 'Upper air', label: '500 mb heights and vorticity (worked out from its wind)', unit: 'vort', pal: 'vort',
+        parts: { z: nc('geopotential_height_on_pressure_levels', 'geopotential_height', 500), s: nc('wind_speed_on_pressure_levels', 'wind_speed', 500), d: nc('wind_direction_on_pressure_levels', 'wind_from_direction', 500) },
+        fromDir: ['s', 'd'], compute: (p, grid) => absVorticity(p.u, p.v, grid), contours: [{ part: 'z', scale: 0.1, every: 6, unit: 'dam', color: '#ffffff' }] },
       { id: 't850', group: 'Upper air', label: '850 mb temperature and heights', unit: 'tempC', pal: 't850', parts: { t: nc('temperature_on_pressure_levels', 'air_temperature', 850), z: nc('geopotential_height_on_pressure_levels', 'geopotential_height', 850) },
         value: (p, i) => p.t[i] - 273.15, contours: [{ part: 'z', scale: 0.1, every: 3, unit: 'dam', color: '#ffffff' }] },
-      { id: 'mslp', group: 'Surface', label: 'Pressure (MSLP) and temperature', unit: 'temp', pal: 'temp', parts: { t: nc('temperature_at_screen_level', 'air_temperature'), p: nc('pressure_at_mean_sea_level', 'air_pressure_at_sea_level') },
-        value: (p, i) => K2F(p.t[i]), contours: [{ part: 'p', scale: 0.01, every: 4, unit: 'hpa', color: '#ffffff' }] },
+      /* thickness, as the other global models draw it, so Compare matches them (2026-10-24) */
+      { id: 'mslp', group: 'Surface', label: 'Pressure (MSLP) and 1000–500 mb thickness', unit: 'dam', pal: 'thick',
+        parts: { p: nc('pressure_at_mean_sea_level', 'air_pressure_at_sea_level'), z5: nc('geopotential_height_on_pressure_levels', 'geopotential_height', 500), z1: nc('geopotential_height_on_pressure_levels', 'geopotential_height', 1000) },
+        value: (p, i) => (p.z5[i] - p.z1[i]) / 10, contours: [{ part: 'p', scale: 0.01, every: 4, unit: 'hpa', color: '#ffffff' }] },
       { id: 't2m', group: 'Surface', label: 'Temperature', unit: 'temp', pal: 'temp', parts: { t: nc('temperature_at_screen_level', 'air_temperature') }, value: (p, i) => K2F(p.t[i]) },
       { id: 'td2m', group: 'Surface', label: 'Dew point', unit: 'temp', pal: 'dew', parts: { t: nc('temperature_of_dew_point_at_screen_level', 'dew_point_temperature') }, value: (p, i) => K2F(p.t[i]) },
       { id: 'wind10', group: 'Surface', label: 'Wind (10 m) and barbs', unit: 'mph', pal: 'wind', parts: { s: nc('wind_speed_at_10m', 'wind_speed'), d: nc('wind_direction_at_10m', 'wind_from_direction') },
@@ -970,6 +981,45 @@
       }
     };
   }
+
+  /* ── absolute vorticity from the wind, on a latitude/longitude grid
+     (2026-10-24): ζ + f, with ζ = [∂v/∂λ − ∂(u cos φ)/∂φ] / (R cos φ) by
+     centred differences, and f = 2Ω sin φ; ×10⁵ s⁻¹, the unit GFS's ABSV is
+     drawn in. The grid's own geometry (G.projector) gives each row's latitude
+     and the step between columns, so either scan direction works; a global
+     grid wraps east–west. Within a degree of a pole, and on a grid's edge
+     rows, it is left empty. Held to GFS's own ABSV in test/decoders.test.mjs. ── */
+  function absVorticity(u, v, grid) {
+    if (grid.kind !== 'latlon') throw new Error('models: vorticity is worked out on latitude/longitude grids only');
+    const g = G.projector(grid), nx = grid.nx, ny = grid.ny, R = 6371229, OM = 7.2921e-5, D = Math.PI / 180;
+    const lon0 = g.ll(0, 0)[1], lon1 = g.ll(1, 0)[1], dlam = ((((lon1 - lon0) % 360) + 540) % 360 - 180) * D;
+    const wraps = Math.abs(Math.abs(dlam) * nx - 2 * Math.PI) < Math.abs(dlam) * 1.5;
+    const lat = new Float64Array(ny);
+    for (let j = 0; j < ny; j++) lat[j] = g.ll(0, j)[0] * D;
+    const out = new Float32Array(nx * ny).fill(NaN);
+    for (let j = 1; j < ny - 1; j++) {
+      const phi = lat[j], c = Math.cos(phi), dphi = lat[j + 1] - lat[j - 1];
+      if (Math.abs(phi) > 89 * D || !dphi) continue;
+      const f = 2 * OM * Math.sin(phi), cN = Math.cos(lat[j + 1]), cS = Math.cos(lat[j - 1]);
+      for (let i = 0; i < nx; i++) {
+        let iw = i - 1, ie = i + 1;
+        if (iw < 0) { if (!wraps) continue; iw = nx - 1; }
+        if (ie >= nx) { if (!wraps) continue; ie = 0; }
+        const dv = v[j * nx + ie] - v[j * nx + iw], du = u[(j + 1) * nx + i] * cN - u[(j - 1) * nx + i] * cS;
+        out[j * nx + i] = ((dv / (2 * dlam) - du / dphi) / (R * c) + f) * 1e5;
+      }
+    }
+    return out;
+  }
+  /* relative vorticity (s⁻¹) made absolute, ×10⁵ s⁻¹ */
+  function plusCoriolis(rel, grid) {
+    const g = G.projector(grid), nx = grid.nx, ny = grid.ny, out = new Float32Array(nx * ny);
+    for (let j = 0; j < ny; j++) { const f = 2 * 7.2921e-5 * Math.sin(g.ll(0, j)[0] * Math.PI / 180); for (let i = 0; i < nx; i++) out[j * nx + i] = (rel[j * nx + i] + f) * 1e5; }
+    return out;
+  }
+  /* what a field shows, for Compare: the same id is not enough — the shading's
+     quantity and colours, and the lines' quantity and spacing, must match */
+  const signature = (f) => (f ? [f.unit, f.pal, (f.contours || []).map((c) => c.unit + '/' + c.every).join(',')].join('|') : '');
 
   /* ── contours: marching squares over the grid (every `step`th point),
      returned as segments in lat/lon with their level ── */
@@ -1259,11 +1309,13 @@
     const p = {};
     await Promise.all(Object.entries(f.parts).map(async ([k, part]) => { p[k] = await ncRead(src, run, fh, part, opts); }));
     const { la, lo } = ncGrid.g, nx = lo.length, ny = la.length;
+    /* wind from speed and the direction it blows from — before the grid is
+       halved: averaging directions breaks across north (350° and 10° make 180°),
+       which turned the UKMET's worked-out vorticity into noise (2026-10-24) */
+    if (f.fromDir) { const [sp, dir] = f.fromDir, n = nx * ny; p.u = new Float32Array(n); p.v = new Float32Array(n); for (let i = 0; i < n; i++) { const r = p[dir][i] * Math.PI / 180; p.u[i] = -p[sp][i] * Math.sin(r); p.v[i] = -p[sp][i] * Math.cos(r); } }
     for (const k of Object.keys(p)) p[k] = ncHalve(p[k], nx, ny);
     const mx = nx >> 1, my = ny >> 1;
     const grid = { kind: 'latlon', nx: mx, ny: my, npts: mx * my, la1: (la[0] + la[1]) / 2, lo1: (lo[0] + lo[1]) / 2, di: (lo[2] - lo[0]), dj: (la[2] - la[0]), scan: 0x40 };
-    /* wind from speed and the direction it blows from, for the barbs */
-    if (f.fromDir) { const [sp, dir] = f.fromDir, n = grid.npts; p.u = new Float32Array(n); p.v = new Float32Array(n); for (let i = 0; i < n; i++) { const r = p[dir][i] * Math.PI / 180; p.u[i] = -p[sp][i] * Math.sin(r); p.v[i] = -p[sp][i] * Math.cos(r); } }
     const msgs = {};
     for (const [k, vals] of Object.entries(p)) msgs[k] = { grid, values: vals, validTime: run + fh * 3600e3 };
     return build(f, msgs, run, fh);
@@ -1515,7 +1567,7 @@
     return G.sample({ grid: layer.grid, values: layer.values }, lat, lon);
   }
 
-  const api = { setView, setCustom, palOf, CUSTOM, SOURCES, FIELDS, PAL, UNIT, unitFor, field, resolve, serverIndex, serverFile, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, runsBack, runAt, RUN_DAYS, lateBy, analyses, idxFor, parseJsonIndex, load, build, valueAt, kucheraRatio, loadKuchera, difference, diffPal, DIFF_SPAN, within, smooth, loadTLE, loadEnsemble };
+  const api = { setView, setCustom, palOf, CUSTOM, absVorticity, plusCoriolis, signature, SOURCES, FIELDS, PAL, UNIT, unitFor, field, resolve, serverIndex, serverFile, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, runsBack, runAt, RUN_DAYS, lateBy, analyses, idxFor, parseJsonIndex, load, build, valueAt, kucheraRatio, loadKuchera, difference, diffPal, DIFF_SPAN, within, smooth, loadTLE, loadEnsemble };
   root.ModelMaps = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

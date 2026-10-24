@@ -655,17 +655,30 @@
        the maps already open; the shared time is pinned to the main map's
        valid hour first, so each new map opens on it. ── */
     function lineUp(kind) {
-      const MM = root.ModelMaps;
-      const list = kind === 'compare' ? compareLayers(main.layer, (s, f) => !!(MM && MM.field(s, f))) : trendLayers(main.layer);
-      if (!list) { say('Compare and Trend work on a model map: HRRR, NAM 3 km, RAP, GFS, ECMWF or AIFS.'); return; }
-      if (!list.length) { say('No other model has this field — try one the models share, like 2 m temperature, MSLP or precipitable water.'); return; }
+      const MM = root.ModelMaps, M = modelOf(main.layer);
+      /* Compare only what shows the same thing: the same field id, and the
+         same quantity shaded on the same colours with the same lines
+         (MM.signature, 2026-10-24 — an outside check found "500 mb heights
+         and vorticity" beside one model's wind and another's heights alone) */
+      const want = M && MM ? MM.signature(MM.field(M.src, M.field)) : '';
+      const left = [];
+      const same = (s, f) => { const F = MM && MM.field(s, f); if (!F) return false; if (MM.signature(F) !== want) { if (GLOBAL.includes(s) === GLOBAL.includes(M.src)) left.push(`${MM.SOURCES[s].label} (its map is “${F.label}”)`); return false; } return true; };
+      const list = kind === 'compare' ? compareLayers(main.layer, same) : trendLayers(main.layer);
+      if (!list) { say('Compare and Trend work on a model map: HRRR, NAM 3 km, RAP, GFS, ECMWF, AIFS or UKMET.'); return; }
+      if (!list.length) { say(`No other model shows this the same way${left.length ? ' — ' + left.join(', ') : ''}. Try one the models share, like 2 m temperature or precipitable water.`); return; }
       for (const p of W.panels.slice()) { W.panels = W.panels.filter((x) => x !== p); p.sec.remove(); }
       if (!W.sync.time) { W.sync.time = true; const el = $('#wstime'); if (el) el.checked = true; }
       if (!W.sync.place) { W.sync.place = true; const el = $('#wsplace'); if (el) el.checked = true; }
-      setBus(busFrom(main.stamp), main);
+      /* the global models do not all have every hour (the AIFS steps every 6,
+         ECMWF and the UKMET every 6 late in their runs): a comparison of
+         globals is set on the nearest 00, 06, 12 or 18Z, which all of them have */
+      let t = busFrom(main.stamp);
+      const globals = kind === 'compare' && M && GLOBAL.includes(M.src);
+      if (globals && t != null) { const six = 6 * 3600e3, snap = Math.round(t / six) * six; if (snap !== t) { t = snap; setBus(t, null); } else setBus(t, main); }
+      else setBus(t, main);
       for (const str of list) addPanel(str, { quiet: true });
       layout(); changed();
-      say(kind === 'compare' ? `Comparing ${list.length + 1} models at the same moment — step any map and the rest follow.` : 'This run and the three before it, at the same moment — how the forecast has moved.');
+      say(kind === 'compare' ? `Comparing ${list.length + 1} models at the same moment${globals ? ', on a 6-hourly time all of them have' : ''} — step any map and the rest follow.${left.length ? ` Left out, as they show something else: ${left.join(', ')}.` : ''}` : 'This run and the three before it, at the same moment — how the forecast has moved.');
     }
     for (const [id, kind] of [['#mmcompare', 'compare'], ['#mmtrend', 'trend']]) { const b = $(id); if (b) b.addEventListener('click', () => lineUp(kind)); }
 

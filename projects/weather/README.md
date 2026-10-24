@@ -206,6 +206,18 @@ path covers it. Images (map, radar and satellite tiles) always load directly.
   observation is computed with the NWS's own formulas and tagged `computed`.
   Past `STALE_MS` a feed says "delayed" rather than looking live. The *Where this
   comes from* card is the room's status page (§37).
+- **Compare sets like beside like** (2026-10-24, after an outside check found
+  GFS and ECMWF vorticity beside the AIFS's wind and the UKMET's heights,
+  the AIFS three hours off, and the UKMET all red). A model joins a Compare
+  only if its field shows the same thing — same quantity and colours shaded,
+  same lines (`MM.signature`); the rest are named as left out. A comparison
+  of global models is set on the nearest 00/06/12/18Z, which all of them
+  have. Where a model does not publish a quantity the others do, it is worked
+  out from what it does publish and the label says so: 500 mb vorticity from
+  the AIFS's and the UKMET's own wind (`absVorticity`, held to GFS's ABSV),
+  and ECMWF's relative vorticity made absolute (`plusCoriolis`) so it reads
+  on the same scale as the GFS's. `decoders.test.mjs` fails if the global
+  models' shared fields stop matching.
 - **ERA5 is the weather as it was, never a forecast** (2026-10-24). Its
   maps say "reanalysis" and "analysis" wherever they show, carry the
   Copernicus / NSF NCAR credit in the map's corner (`#eracredit`), and take
@@ -823,6 +835,13 @@ to high (reflectance %, temperatures °C) with a gamma. Start from any
 standard RGB — written as recipes in `Abi.SPECS`, each held to its own
 `rgb()` to within 10⁻⁹ — save up to twelve, and a shared link carries the
 recipe (`rx=`), so it draws for whoever opens it.
+**Compare, fixed** (the same day, after an outside check) — the rule above;
+and the UKMET's slowness: its winds are turned into u and v before its grid
+is halved (averaged directions made noise), its chunk index is walked only
+down the branches that hold the wanted level, and chunks next to each other
+are fetched as one range — a 500 mb map from 80 s and 1,637 requests to
+12 s and 52. Its MSLP map now shades 1000–500 mb thickness, as the other
+globals' do.
 **3D radar** (the radar row's *3D*, `radar3d.js`) — the single radar's
 whole volume as points where its beams are (`NX.volumePoints`: up the
 4/3-earth beam, along the arc under it), coloured by the map's own table,

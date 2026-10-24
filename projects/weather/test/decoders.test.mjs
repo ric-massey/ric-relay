@@ -193,6 +193,39 @@ console.log('\nRULE  a satellite recipe draws as the built-in RGB it was written
   delete AB.PRODUCTS.rxtest;
 }
 
+console.log('\nRULE  vorticity worked out from a model\'s wind is the vorticity its model publishes, and Compare pairs only like with like');
+{
+  /* solid-body rotation, u = U cos φ: ζ = 2U sin φ / R exactly */
+  const g = { kind: 'latlon', nx: 360, ny: 181, npts: 360 * 181, la1: 90, lo1: 0, di: 1, dj: 1, scan: 0 };
+  const U = 20, u = new Float32Array(g.npts), v = new Float32Array(g.npts);
+  for (let j = 0; j < 181; j++) for (let i = 0; i < 360; i++) u[j * 360 + i] = U * Math.cos((90 - j) * Math.PI / 180);
+  const z = MM.absVorticity(u, v, g), at45 = z[45 * 360 + 10], want = (2 * U * Math.sin(Math.PI / 4) / 6371229 + 2 * 7.2921e-5 * Math.sin(Math.PI / 4)) * 1e5;
+  ok(Math.abs(at45 - want) < 0.01 && Number.isNaN(z[0]), `solid-body rotation at 45° N: ${at45.toFixed(3)} against ${want.toFixed(3)} ×10⁻⁵ s⁻¹; nothing at the pole`);
+  /* GFS's own 500 mb wind and ABSV from one 1° file (fixtures/make-gfs-vort.mjs) */
+  const b = fx('gfs1-500-uv-absv.grb2'), msgs = [];
+  for (let o = 0; o < b.length;) { const len = Number(new DataView(b.buffer, b.byteOffset + o + 8, 8).getBigUint64(0)); msgs.push(G.parse(b.subarray(o, o + len))); o += len; }
+  const [gu, gv, ga] = msgs, mine = MM.absVorticity(gu.values, gv.values, gu.grid), nx = gu.grid.nx, ny = gu.grid.ny;
+  /* GFS works its vorticity out at its native resolution; a centred difference over 2° smooths, so the fair comparison is with ABSV smoothed 3×3 */
+  let n = 0, e = 0, sa = 0, sb = 0, sab = 0, saa = 0, sbb = 0;
+  for (let j = 1; j < ny - 1; j++) for (let i = 0; i < nx; i++) {
+    const k = j * nx + i;
+    if (!Number.isFinite(mine[k])) continue;
+    let sm = 0; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) sm += ga.values[(j + dj) * nx + ((i + di + nx) % nx)] * 1e5;
+    sm /= 9; const x = mine[k];
+    n++; e += (x - sm) ** 2; sa += x; sb += sm; sab += x * sm; saa += x * x; sbb += sm * sm;
+  }
+  const r = (n * sab - sa * sb) / Math.sqrt((n * saa - sa * sa) * (n * sbb - sb * sb)), rms = Math.sqrt(e / n);
+  ok(r > 0.97 && rms < 3, `against GFS's own 500 mb ABSV (smoothed 3×3) over ${n} points: r ${r.toFixed(3)}, RMS ${rms.toFixed(2)} ×10⁻⁵ s⁻¹`);
+  /* the fields the global models share show the same quantity, colours and lines — Compare pairs on that */
+  const GLOB = ['gfs', 'ecmwf', 'aifs', 'ukmet'], bad = [];
+  const ids = new Set(GLOB.flatMap((s) => MM.FIELDS[s].map((f) => f.id)));
+  for (const id of ids) { const sigs = new Set(GLOB.map((s) => MM.field(s, id)).filter(Boolean).map(MM.signature)); if (sigs.size > 1) bad.push(id); }
+  ok(!bad.length, `every field id the GFS, ECMWF, AIFS and UKMET share shows the same thing${bad.length ? ' — not: ' + bad.join(', ') : ''}`);
+  const f45 = MM.plusCoriolis(new Float32Array(g.npts), g)[45 * 360];
+  ok(Math.abs(f45 - 2 * 7.2921e-5 * Math.SQRT1_2 * 1e5) < 1e-4 && MM.field('ecmwf', 'h500').compute, `ECMWF's relative vorticity is made absolute, as the GFS's is (f at 45° N = ${f45.toFixed(2)} ×10⁻⁵ s⁻¹)`);
+  ok(MM.signature(MM.field('aifs', 'h500')) === MM.signature(MM.field('gfs', 'h500')) && MM.signature(MM.field('ukmet', 'h500')) === MM.signature(MM.field('ecmwf', 'h500')), '500 mb heights and vorticity is vorticity in all four');
+}
+
 console.log('\nRULE  GOES ABI imagery reads as h5py reads it, and sits where pyproj puts it');
 for (const [file, e] of Object.entries(expected.abi)) {
   const f = await L.open(L.fromBytes(fx(file)));

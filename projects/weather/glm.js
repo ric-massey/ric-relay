@@ -335,18 +335,29 @@
       if (lay[0] === 3 && lay[1] === 2) {
         /* chunked, version 1 B-tree of chunks */
         const rank = lay[2], tree = le(lay, 3, f.O);
+        /* with leading indices fixed, a branch is followed only if its key range
+           can hold their chunk: each child holds the chunks between its key and
+           the next, in order of their offsets (2026-10-24 — a UKMET pressure
+           file's whole tree was 500+ reads for one level, and took 80 s) */
+        const lc = lay.length >= 3 + f.O + 4 * rank ? [] : null;
+        if (lc) for (let d = 0; d < lead.length; d++) lc.push(le(lay, 3 + f.O + 4 * d, 4));
+        const T = lc && lead.length && dims !== full ? lead.map((x, d) => Math.floor(x / lc[d]) * lc[d]) : null;
+        const cmp = (k) => { for (let d = 0; d < T.length; d++) { if (k[d] < T[d]) return -1; if (k[d] > T[d]) return 1; } return 0; };
         const walk = async (node) => {
-          const h = await f.src.read(node, 24 + 64 * (16 + 8 * rank + f.O));
+          const h = await f.src.read(node, 24 + 65 * (16 + 8 * rank + f.O));
           if (String.fromCharCode(h[0], h[1], h[2], h[3]) !== 'TREE') throw new Error('glm: bad chunk tree');
-          const level = h[5], entries = le(h, 6, 2), kids = [];
+          const level = h[5], entries = le(h, 6, 2), kids = [], keys = [];
           let p = 8 + 2 * f.O;
-          for (let e = 0; e < entries; e++) {
+          for (let e = 0; e <= entries; e++) {
             const size = le(h, p, 4), mask = le(h, p + 4, 4), offs = [];
             for (let d = 0; d < rank; d++) offs.push(le(h, p + 8 + 8 * d, 8));
             p += 8 + 8 * rank;
+            keys.push(offs);
+            if (e === entries) break;                     // the last key closes the last child
             const child = le(h, p, f.O); p += f.O;
             if (level > 0) kids.push(child); else parts.push({ addr: child, size, mask, offs });
           }
+          if (T && level > 0) for (let e = entries - 1; e >= 0; e--) if (cmp(keys[e]) > 0 || cmp(keys[e + 1]) < 0) kids.splice(e, 1);
           /* the branches at once: a UKMET pressure file's tree is hundreds of nodes, and one at a time took 40 s */
           await Promise.all(kids.map(walk));
         };
@@ -396,10 +407,26 @@
       if (parts.length) {
         if (origin) n = dims[0] * dims[1];
         bytes = new Uint8Array(n * t.size);
+        /* chunks that lie next to each other in the file are fetched as one
+           range (gaps under 256 KB read through, runs up to 8 MB): one level of
+           a UKMET file is hundreds of chunks, and a request each made it slow
+           (2026-10-24). Each chunk is then cut out of its run. */
+        const runs = new Map();
+        {
+          const want = parts.filter((c) => !(cache && cache.has(name + '@' + c.addr))).sort((a, b) => a.addr - b.addr);
+          let cur = null;
+          for (const c of want) {
+            if (cur && c.addr - cur.end < 262144 && c.addr + c.size - cur.start <= 8e6) { cur.end = Math.max(cur.end, c.addr + c.size); cur.list.push(c); }
+            else { cur = { start: c.addr, end: c.addr + c.size, list: [c] }; }
+            runs.set(c, cur);
+          }
+        }
+        const runBytes = (r) => r.p || (r.p = f.src.exact(r.start, r.end - r.start));
         /* every chunk asked at once: an ABI band is dozens of them */
         await Promise.all(parts.map(async (c) => {
           const unpack = async () => {
-            let b = await f.src.exact(c.addr, c.size);
+            const r = runs.get(c);
+            let b = r ? (await runBytes(r)).subarray(c.addr - r.start, c.addr - r.start + c.size) : await f.src.exact(c.addr, c.size);
             if (!c.raw) for (let i = filters.length - 1; i >= 0; i--) {
               if (c.mask & (1 << i)) continue;
               if (filters[i] === 1) b = await inflate(b);

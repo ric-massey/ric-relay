@@ -907,7 +907,10 @@ ones that must never break:
   `.pal` files; `abi.js` recipes) stay in their browser and are never sent or
   committed; a recipe rides in a share link only as its numbers. **The 3D
   radar** (`radar3d.js`) is WebGL, built into the browser — no library; keep
-  it that way. **Dealiasing is off by default and full volume only**, and
+  it that way. **Compare sets like beside like** (2026-10-24): a
+  model joins only if its field shows the same thing (`MM.signature`); a
+  quantity a model does not publish is worked out from what it does and
+  labelled so. Don't pair fields by id alone — the weather README has why. **Dealiasing is off by default and full volume only**, and
   the radar cross-section never fills the gaps between tilts — both rules
   are in the weather README.
   Lightning is GLM *flashes* — never call them strikes.
