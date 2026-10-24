@@ -18,7 +18,8 @@
             lightning a GOES lightning flash within `miles` in the last `minutes`
 
    ctx: { now, hourly: [{ t (ms), temp (°C), gust (km/h) }], fcAt,
-          nowcast: { kind, at (min) } | null, nowAt,
+          nowcast: { kind, at (min after the radar picture) } | null, radarAt (when
+          that picture was scanned, ms — its minutes are counted from now here), nowAt,
           alerts: [{ event, ends }] | null, flashes: [{ lat, lon, t }], ltgAt,
           place: { lat, lon } }
    Pure: no DOM, no network. */
@@ -45,7 +46,10 @@
       const n = ctx.nowcast;
       if (!n) return { met: false, known: false, text: 'No radar nowcast for this place (it covers the lower 48).', from: 'radar nowcast' };
       if (n.kind === 'raining') return { met: true, known: true, text: 'Raining here now, on radar.', key: 'rain-now', from: 'radar nowcast' };
-      if (n.kind === 'starting' && n.at <= w.minutes) return { met: true, known: true, text: `Rain likely in about ${Math.max(1, Math.round(n.at))} min, on radar.`, key: `rain-${Math.round((ctx.nowAt || now) / 1800e3)}`, from: 'radar nowcast' };
+      /* the nowcast counts from its radar picture, which is minutes old: the lead is from now
+         (2026-10-24 — a watch said "no rain in 30 min" beside a nowcast saying "in about 30 min") */
+      const lead = n.at - (ctx.radarAt ? Math.max(0, (now - ctx.radarAt) / 60e3) : 0);
+      if (n.kind === 'starting' && lead <= w.minutes) return { met: true, known: true, text: `Rain likely in about ${Math.max(1, Math.round(lead))} min, on radar.`, key: `rain-${Math.round((ctx.nowAt || now) / 1800e3)}`, from: 'radar nowcast' };
       return { met: false, known: true, text: n.kind === 'ending' ? 'Rain moving off.' : `No rain heading here in the next ${w.minutes} min on radar.`, from: 'radar nowcast' };
     }
     if (w.kind === 'gust' || w.kind === 'cold' || w.kind === 'heat') {

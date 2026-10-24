@@ -5028,8 +5028,9 @@
        1: a visitor's places are theirs). A line in it can become the route. ── */
     function saveFiles() {
       const json = JSON.stringify(FILES);
-      if (json.length > 2.5e6) { note("Those files are too large to keep in this browser (2.5 MB in all) — they show until the page reloads."); return; }
+      if (json.length > 2.5e6) { note("Those files are too large to keep in this browser (2.5 MB in all) — they show until the page reloads."); return false; }
       store.set("wx:files", FILES);
+      return true;
     }
     function filesList() {
       const box = $("#fileslist");
@@ -5037,10 +5038,11 @@
       box.innerHTML = FILES.map((f, i) => `<div class="fileitem"><label><input type="checkbox" data-fon="${i}" ${f.on ? "checked" : ""}> ${esc(f.name)}</label><span class="dim">${[f.data.lines.length && `${f.data.lines.length} line${f.data.lines.length === 1 ? "" : "s"}`, f.data.polys.length && `${f.data.polys.length} area${f.data.polys.length === 1 ? "" : "s"}`, f.data.points.length && `${f.data.points.length} point${f.data.points.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}</span>${f.data.lines.length ? `<button type="button" data-froute="${i}">Route</button>` : ""}<button type="button" data-fdel="${i}" aria-label="Remove ${esc(f.name)}">×</button></div>`).join("");
     }
     function fitFile(d) {
-      const all = [...d.lines.flat(), ...d.polys.flat(), ...d.points];
-      if (!all.length) return;
-      const la = all.map((p) => p.lat), lo = all.map((p) => p.lon);
-      fit(Math.min(...la), Math.min(...lo), Math.max(...la), Math.max(...lo), 50);
+      /* a loop, not Math.min(...): an outline file can hold 150,000 points, past what a call's arguments take (2026-10-24) */
+      let s = Infinity, w = Infinity, n = -Infinity, e = -Infinity;
+      for (const p of [...d.lines.flat(), ...d.polys.flat(), ...d.points]) { if (p.lat < s) s = p.lat; if (p.lat > n) n = p.lat; if (p.lon < w) w = p.lon; if (p.lon > e) e = p.lon; }
+      if (s === Infinity) return;
+      fit(s, w, n, e, 50);
     }
     if ($("#filesadd")) {
       $("#filesadd").addEventListener("click", () => $("#filesin").click());
@@ -5054,8 +5056,9 @@
           /* long tracks thinned to 2,000 points a line: enough to draw, light to keep */
           data.lines = data.lines.map((l) => (l.length > 2000 ? l.filter((_, i) => i % Math.ceil(l.length / 2000) === 0 || i === l.length - 1) : l));
           FILES.push({ name: file.name.slice(0, 60), on: true, data });
-          saveFiles(); filesList(); fitFile(data); draw();
-          note(`${file.name} is on the map — kept in this browser only.`);
+          const kept = saveFiles(); filesList(); fitFile(data); draw();
+          /* said only when it is true: too large to keep, it shows until the page reloads (saveFiles's own note stands) */
+          if (kept) note(`${file.name} is on the map — kept in this browser only.`);
         } catch (err) { note(String(err.message || err).replace(/^route: /, "")); }
       });
       $("#fileslist").addEventListener("change", (e) => { const i = e.target.dataset.fon; if (i != null) { FILES[i].on = e.target.checked; saveFiles(); draw(); } });
@@ -5177,8 +5180,8 @@
     let WATCH = PRO && WW ? (store.get("wx:watches", []) || []).map(WW.clean).filter(Boolean) : [];
     const watchSeen = new Set(store.get("wx:watchseen", []) || []), watchState = new Map();
     function watchCtx() {
-      const now = Date.now(), n = S.now && window.WxNowcast ? WxNowcast.describe(S.now.series, { base: S.now.valid || S.nowAt }) : null;
-      return { now, hourly: S.fc && S.fc.hourly, nowcast: n, nowAt: S.nowAt, alerts: S.place ? S.alerts || null : null, flashes: LTG.at ? LTG.flashes : null, place: S.place };
+      const now = Date.now(), base = S.now && (S.now.valid || S.nowAt), n = S.now && window.WxNowcast ? WxNowcast.describe(S.now.series, { base }) : null;
+      return { now, hourly: S.fc && S.fc.hourly, nowcast: n, radarAt: base || null, nowAt: S.nowAt, alerts: S.place ? S.alerts || null : null, flashes: LTG.at ? LTG.flashes : null, place: S.place };
     }
     function watchCheck(quiet) {
       if (!WW || !WATCH.length) { if ($("#watchbadge")) $("#watchbadge").textContent = ""; return; }

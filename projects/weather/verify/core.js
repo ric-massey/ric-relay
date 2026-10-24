@@ -26,6 +26,10 @@
 (function (root) {
   'use strict';
 
+  /* Named a half-life, but used as the running averages' memory: each day
+     moves them by 1/14 (fold), so the mean age of what they remember is 14
+     days and a day's weight halves in about 9.4 (ln ½ / ln 13/14) — checked
+     2026-10-24. Kept at 14 so the published records stay comparable. */
   const HALF_LIFE_DAYS = 14;
   const RAIN_DAY_MM = 1;
   const F2C = f => (f - 32) * 5 / 9;

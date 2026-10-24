@@ -729,7 +729,7 @@
     return { mask, echoes, removed, kept, cc: true };
   }
 
-  const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, SCHEMES, SCHEME_NAMES, paletteFor, setCustom, colorOf, volumePoints, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
+  const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, SCHEMES, SCHEME_NAMES, paletteFor, setCustom, volumePoints, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
     colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, retrying, stormRelative, locator, polarOf, CLUTTER, clutterMask, crossSection, dealias, vad };
   root.Nexrad = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

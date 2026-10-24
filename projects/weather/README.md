@@ -858,6 +858,23 @@ found right: the VAD inversion and fit, Kuchera's ratio and window chain,
 storm-relative motion, hillshade aspect, the 700 mb humidity, omega's units,
 GR speed conversions, the probability neighbourhood, ERA5's file and index
 arithmetic, range rings and bearings.
+**A second review** (the same day, Ric: "Do another search. Double check
+your findings before the fixes") — each finding reproduced before it was
+changed. Fixed: a rain watch counted the nowcast's minutes from its radar
+picture rather than from now, so beside a nowcast saying "in about 30 min" a
+30-minute watch said no rain was coming (`radarAt`, tested); a large outline
+file (150,000+ points, inside the 8 MB limit) broke fitting the map to it,
+which used `Math.min(...)` over every point; a file too large to keep was
+still announced as "kept in this browser"; `HALF_LIFE_DAYS` is a 14-day
+memory, not a half-life (the comment and this README now say so — the value
+is unchanged so the records stay comparable). Checked and found right: the
+lightning density, flash rate and jump; the heat index and wind chill; storm
+mode's sweep-time solve; the scoreboard's ETS, blend and ridge; the
+nowcast's motion search; GOES's day-of-year paths; the mesoanalysis file's
+16-bit packing; MRMS units (rotation is stored in 10⁻³ s⁻¹); wind barbs and
+the hodograph. MRMS keeps the largest value of each 2 km block — right for
+rotation and hail, a slight local overstatement for rain; left as it is and
+said here.
 **3D radar** (the radar row's *3D*, `radar3d.js`) — the single radar's
 whole volume as points where its beams are (`NX.volumePoints`: up the
 4/3-earth beam, along the arc under it), coloured by the map's own table,
@@ -1180,8 +1197,8 @@ airport weather station (IEM's AZOS network, ~2,500 stations):
   at that station removed, weighted by 1/MAE², day and night separately — is
   built from yesterday's records and scored exactly like a model. A model with
   under `MIN_DAYS` of record is not corrected.
-- **Records** are running averages that remember about the last month
-  (`HALF_LIFE_DAYS`): temperature bias and error by day and night, wind, rain
+- **Records** are running averages with a 14-day memory (`HALF_LIFE_DAYS`,
+  despite its name: a day's weight halves in about 9 days): temperature bias and error by day and night, wind, rain
   days hit or missed, for each station × model × lead.
 - **What is published** — `verify/scores/index.json` (which state each station
   is in, how far the record goes, the national medians) and `scores/<ST>.json`

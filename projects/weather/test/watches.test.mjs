@@ -17,6 +17,9 @@ console.log('\nRULE  each kind is met, or not, from what the page already has');
   ok(W.check({ kind: 'rain', minutes: 30 }, { now, nowcast: { kind: 'starting', at: 20 } }).met, 'rain in 20 min meets a 30-min watch');
   ok(!W.check({ kind: 'rain', minutes: 15 }, { now, nowcast: { kind: 'starting', at: 20 } }).met, 'rain in 20 min does not meet a 15-min watch');
   ok(W.check({ kind: 'rain', minutes: 15 }, { now, nowcast: null }).known === false, 'no nowcast is "not known", never "dry"');
+  /* the nowcast counts from its radar picture; six minutes old, its 35 is 29 from now */
+  const late = W.check({ kind: 'rain', minutes: 30 }, { now, nowcast: { kind: 'starting', at: 35 }, radarAt: now - 6 * 60e3 });
+  ok(late.met && /about 29 min/.test(late.text), `a 6-minute-old radar picture's rain at +35 min is in about 29 min from now, inside a 30-min watch (${late.text})`);
   const g = W.check({ kind: 'gust', mph: 40, hours: 24 }, { now, hourly });
   ok(g.met && g.at === now + 6 * H, '70 km/h (43 mph) gusts at hour 6 meet a 40 mph watch, and say when');
   ok(!W.check({ kind: 'gust', mph: 50, hours: 24 }, { now, hourly }).met, '43 mph does not meet a 50 mph watch');
