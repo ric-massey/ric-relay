@@ -389,6 +389,10 @@
         return [di / g.di, north ? (g.la1 - lat) / g.dj : (lat - g.la1) / g.dj];
       };
       g.ll = (i, j) => [north ? g.la1 - j * g.dj : g.la1 + j * g.dj, wrap(lo1 + i * g.di)];
+      /* only a grid all the way round wraps east–west; a regional one (MRMS,
+         the server mesoanalysis, ERA5's window) ends at its edges — reading
+         past them took values from the next row (2026-10-24) */
+      g.wraps = Math.abs(g.nx * g.di - 360) < 1.5 * g.di;
       return g;
     }
     if (g.kind === 'rotll') {
@@ -436,8 +440,8 @@
   function sample(msg, lat, lon) {
     const g = projector(msg.grid), [fi, fj] = g.ij(lat, lon);
     const i = Math.floor(fi), j = Math.floor(fj);
-    if (i < 0 || j < 0 || j + 1 >= g.ny) return NaN;
-    const i1 = g.kind === 'latlon' && i + 1 >= g.nx ? 0 : i + 1;
+    if (i < 0 || j < 0 || j + 1 >= g.ny || i >= g.nx) return NaN;
+    const i1 = g.wraps && i + 1 >= g.nx ? 0 : i + 1;
     if (i1 >= g.nx) return NaN;
     const v = msg.values, a = v[j * g.nx + i], b = v[j * g.nx + i1], c = v[(j + 1) * g.nx + i], d = v[(j + 1) * g.nx + i1];
     const x = fi - i, y = fj - j;

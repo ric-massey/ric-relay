@@ -1546,7 +1546,7 @@
   function difference(A, B, label) {
     const w = diffWhat(A.field), arr = (L) => (w.lines ? L.cvals : L.values);
     const va = arr(A), vb = arr(B), wb = diffWhat(B.field);
-    /* the same quantity in the same unit, or no map: AIFS's 500 mb is wind where the others' is heights */
+    /* the same quantity in the same unit, or no map (MM.signature is the stricter test Compare uses) */
     if (!va || !vb || wb.unit !== w.unit || wb.lines !== w.lines) throw new Error('models: these two do not show the same quantity, so they cannot be differenced');
     const g = G.projector(A.grid), nx = A.grid.nx, ny = A.grid.ny, out = new Float32Array(nx * ny), Bs = { grid: B.grid, values: vb };
     for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {

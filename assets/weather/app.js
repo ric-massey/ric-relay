@@ -1235,7 +1235,7 @@
       if (rv) row(Date.now() - rv > 30 * 60e3 ? "stale" : "", `MRMS — ${esc(radar.describe())}`, "every NEXRAD blended by NOAA · newest file", rv);
       else row("off", "MRMS", "asking NOAA…", null);
     } else if (radar.mode === "model") {
-      if (rv) row("", `Model map — ${esc(radar.describe())}`, radar.analysis === "server" ? "the RAP's one-hour forecast and NOAA's RTMA, computed hourly · newest" : radar.analysis ? "the HRRR analysis hour, NOAA open data on AWS · newest" : "a forecast, from the run's own files · run", rv);
+      if (rv) row("", `Model map — ${esc(radar.describe())}`, radar.analysis === "server" ? "the RAP's one-hour forecast and NOAA's RTMA, computed hourly · newest" : radar.analysis === "archive" ? "ERA5 reanalysis, NSF NCAR's copy on AWS · the day" : radar.analysis ? "the HRRR analysis hour, NOAA open data on AWS · newest" : "a forecast, from the run's own files · run", rv);
       else row("off", "Model map", "asking NOAA for the latest run…", null);
     } else if (rv) {
       const f = Wx.fresh("radar", rv);
@@ -2545,7 +2545,7 @@
       if (!f || MM.PAL[f.pal].cat || f.pal === "ptype") { C.err = `${f ? f.label : "This field"} is made of categories — there is no line to draw. Pick a field with a number.`; renderChart(); return; }
       const frames = R.frames.filter((x) => x.model && x.model.run === M.run);
       const hours = frames.map((x) => x.model.fh);
-      C.total = hours.length * (C.cmp && !MM.SOURCES[M.src].analysis ? 2 : 1);
+      C.total = hours.length * (C.cmp && !MM.SOURCES[M.src].analysis && !MM.SOURCES[M.src].archive ? 2 : 1);
       renderChart();
       const byFh = new Map(frames.map((x) => [x.model.fh, x]));
       /* a difference map's own layer is the difference: the chart wants the field itself */
@@ -2565,7 +2565,8 @@
         })());
       } else {
         tasks.push(chartSeries(M.src, M.run, hours, M.field, lat, lon, gen, (p) => { C.cur.push(p); C.done++; renderChart(); }, have));
-        if (C.cmp) tasks.push((async () => {
+        /* ERA5 is an archive of the weather as it was: there is no run before to compare with */
+        if (C.cmp && !MM.SOURCES[M.src].archive) tasks.push((async () => {
           let pr = null;
           try { pr = await MM.latestRun(M.src, { nowMs: M.run - 1 }); } catch (e) {}
           if (gen !== C.gen) return;
@@ -2585,8 +2586,8 @@
       if (!chartEl || !C.on) return;
       const M = R.mm, f = MM.field(M.src, M.field), k = clk();
       const runName = (t) => `${new Date(t).toISOString().slice(11, 13)}Z`;
-      const head = `<div class="xh"><span>${esc(f ? f.label : "")} at ${esc(C.name)}<small>${esc(MM.SOURCES[M.src].label)} ${MM.SOURCES[M.src].analysis ? "analysis hours" : "run " + runName(M.run)}${C.prevRun ? ` · and the run before, ${runName(C.prevRun)}, dashed` : ""} · ${C.lat.toFixed(2)}, ${C.lon.toFixed(2)}${C.done < C.total ? ` · reading ${C.done} of ${C.total} hours…` : ""}</small></span><button type="button" data-chartx aria-label="Close the chart">×</button></div>`;
-      const cmp = MM.SOURCES[M.src].analysis ? "" : `<label class="cmp"><input type="checkbox" data-chartcmp${C.cmp ? " checked" : ""}> Compare with the run before</label>`;
+      const head = `<div class="xh"><span>${esc(f ? f.label : "")} at ${esc(C.name)}<small>${esc(MM.SOURCES[M.src].label)} ${MM.SOURCES[M.src].analysis ? "analysis hours" : MM.SOURCES[M.src].archive ? "reanalysis, " + new Date(M.run).toISOString().slice(0, 10) : "run " + runName(M.run)}${C.prevRun ? ` · and the run before, ${runName(C.prevRun)}, dashed` : ""} · ${C.lat.toFixed(2)}, ${C.lon.toFixed(2)}${C.done < C.total ? ` · reading ${C.done} of ${C.total} hours…` : ""}</small></span><button type="button" data-chartx aria-label="Close the chart">×</button></div>`;
+      const cmp = MM.SOURCES[M.src].analysis || MM.SOURCES[M.src].archive ? "" : `<label class="cmp"><input type="checkbox" data-chartcmp${C.cmp ? " checked" : ""}> Compare with the run before</label>`;
       if (C.err && !C.cur.length) { chartEl.innerHTML = head + `<p class="ps">${esc(C.err)}</p>`; return; }
       const [uname, conv] = chartUnit(f);
       const pts = (a) => a.filter((p) => p.v != null).sort((a, b) => a.t - b.t).map((p) => ({ t: p.t, v: conv(p.v) }));
@@ -2747,7 +2748,6 @@
       if (f.painted === key) return;
       f.painted = key;
       const L = m.layer, g = GB.projector(L.grid), nx = L.grid.nx, ny = L.grid.ny, v = L.values, lut = m.lut, rgba = L.rgba, near = rgba || L.field.nearest;
-      const latlon = L.grid.kind === "latlon";
       /* the shading at half resolution below zoom 8 (model grids are smooth;
          it is four times less work), stretched to the screen */
       const S = R.z >= (rgba ? 6 : 8) ? 1 : 2, W = Math.ceil(w / S), H = Math.ceil(h / S);
@@ -2768,8 +2768,9 @@
             val = v[j * nx + i];
           } else {
             const i = Math.floor(fi), j = Math.floor(fj);
-            if (i < 0 || j < 0 || j + 1 >= ny) continue;
-            const i1 = latlon && i + 1 >= nx ? 0 : i + 1;
+            if (i < 0 || j < 0 || j + 1 >= ny || i >= nx) continue;
+            /* east–west wrap only on a grid all the way round (GB.projector's `wraps`); off a regional grid's edge nothing is painted */
+            const i1 = g.wraps && i + 1 >= nx ? 0 : i + 1;
             if (i1 >= nx) continue;
             const a = v[j * nx + i], b = v[j * nx + i1], c = v[(j + 1) * nx + i], d = v[(j + 1) * nx + i1], tx = fi - i, ty = fj - j;
             val = (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
@@ -4539,6 +4540,7 @@
       else if (R.mode === "mrms" && MR) sb.textContent = `MRMS — every NEXRAD blended by NOAA, with the model's temperatures and the rain gauges: ${lc(MR.PRODUCTS[R.mr.prod].label)}. Measured from radar, not a forecast. Hover or tap for the value.`;
       else if (R.mode === "model" && MM && MM.SOURCES[R.mm.src].server) { const f = MM.field(R.mm.src, R.mm.field); sb.textContent = `Mesoanalysis, computed every hour the way SPC computes theirs: the RAP model's one-hour forecast, with NOAA's 15-minute surface analysis at the ground, every column worked through every level (25 hPa apart) on a 0.25° grid. Not a forecast, and not SPC's own (that is the SPC mesoanalysis card below). ${f.label}. The slider steps through the hours; hover or tap for the value.`; }
       else if (R.mode === "model" && MM && MM.SOURCES[R.mm.src].analysis) { const f = MM.field(R.mm.src, R.mm.field); sb.textContent = `Mesoanalysis — the HRRR model's analysis hour: its picture of now, with the latest observations folded in. Not a forecast, and not SPC's own (that is the SPC mesoanalysis card below). ${f.label}. The slider steps through the last six hours; hover or tap for the value.`; }
+      else if (R.mode === "model" && MM && MM.SOURCES[R.mm.src].archive) { const f = MM.field(R.mm.src, R.mm.field); sb.textContent = `ERA5 reanalysis — the weather as it was${R.mm.run ? ` on ${new Date(R.mm.run).toISOString().slice(0, 10)} (UTC)` : ""}, rebuilt by ECMWF from the observations of the time with one model, every hour since 1940. Not a forecast, and not a single observation. ${f ? f.label : ""}. Read for the map's view from NSF NCAR's copy on AWS; hover or tap for the value.`; }
       else if (R.mode === "model" && MM) { const f = MM.field(R.mm.src, R.mm.field); sb.textContent = `A forecast, not an observation — ${MM.SOURCES[R.mm.src].long}. ${f.label}${R.mm.run ? `, from the ${new Date(R.mm.run).toISOString().slice(11, 13)}Z run` : ""}. The slider is the forecast hour; hover or tap for the value.`; }
       else if (l3() && R.site) { const f = R.frames[R.frame], F = f && f.l3 && f.l3.file; sb.textContent = `${R.site.id} · ${R.site.name} · ${l3().long}${F ? ` · ${F.elev.toFixed(1)}° scan` : ""}. ${useL2() ? "The full volume (Level II), every tilt at full resolution, refreshed every 30 seconds" : "Read from the radar's own Level III files"}; ${R.lockId ? "kept on this radar wherever the map goes" : "the site follows the middle of the map"}. Hover or tap for the value.`; }
       else if (l3()) sb.textContent = "Finding the nearest radar…";
@@ -4947,7 +4949,9 @@
           r.temp = val(g.t, p.lat, p.lon); r.gust = val(g.g, p.lat, p.lon); r.precip = val(g.p, p.lat, p.lon); r.vis = g.v ? val(g.v, p.lat, p.lon) : NaN;
           if (g.w && g.w.wind) {
             const u = MM.valueAt({ grid: g.w.grid, values: g.w.wind.u, field: {} }, p.lat, p.lon), v = MM.valueAt({ grid: g.w.grid, values: g.w.wind.v, field: {} }, p.lat, p.lon);
-            if (Number.isFinite(u) && Number.isFinite(v)) { const tw = Rt.trackWind(u, v, p.bearing); r.wind = Math.hypot(u, v) * 2.236936; r.head = tw.head * 2.236936; r.cross = tw.cross * 2.236936; r.from = tw.from; }
+            /* the HRRR's winds are along its own grid, not east and north: turned before they are split along
+               the route (they were not until 2026-10-24 — up to 15° off on the West Coast) */
+            if (Number.isFinite(u) && Number.isFinite(v)) { const [ue, ve] = MM.earthWind(g.w.grid, p.lat, p.lon, u, v), tw = Rt.trackWind(ue, ve, p.bearing); r.wind = Math.hypot(ue, ve) * 2.236936; r.head = tw.head * 2.236936; r.cross = tw.cross * 2.236936; r.from = tw.from; }
           }
           return r;
         });
@@ -6140,6 +6144,7 @@
         else if (R.mode === "mrms") mrmsFrames(true);
         else if (R.mode === "abi") abiFrames(true);
         else if (R.mode === "model" && MM.SOURCES[R.mm.src].analysis) { MM.analyses(R.mm.src).then((r) => { if (r.length && r[r.length - 1] !== R.mm.run && !R.playing) modelFrames(); }).catch(() => {}); }
+        else if (R.mode === "model" && MM.SOURCES[R.mm.src].archive) { /* the past does not refresh */ }
         else if (R.mode === "model") { MM.latestRun(R.mm.src).then((r) => { if (!r) return; if (R.mm.pin || R.mm.at) { if (r.run !== R.mm.newest && !R.mm.at) { R.mm.newest = r.run; runOptions(); modelRunText(); } } else if (r.run !== (R.mm.back ? R.mm.newest : R.mm.run) && !R.playing) modelFrames(); }).catch(() => {}); }
         else siteFrames(true);
       },
@@ -6148,7 +6153,7 @@
       get mode() { return R.mode; },
       get replay() { return R.replay; },
       get pro() { return PRO ? { ov: R.ov, ...R.pro } : null; },
-      get analysis() { return R.mode === "model" && MM && MM.SOURCES[R.mm.src].analysis ? (MM.SOURCES[R.mm.src].server ? "server" : true) : false; },
+      get analysis() { return R.mode === "model" && MM && MM.SOURCES[R.mm.src].archive ? "archive" : R.mode === "model" && MM && MM.SOURCES[R.mm.src].analysis ? (MM.SOURCES[R.mm.src].server ? "server" : true) : false; },
       get lightning() { return ltgOn() && (LTG.at || LTG.failed) ? { n: LTG.flashes.length, at: LTG.at, failed: LTG.failed } : null; },
       get stations() { return R.stations && R.obs.length ? { n: R.obs.length, newest: Math.max(...R.obs.map((s) => s.time)) } : null; },
       get valid() { return R.valid; },

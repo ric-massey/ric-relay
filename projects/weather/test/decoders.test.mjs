@@ -165,6 +165,12 @@ console.log('\nRULE  the older HDF5 (version 0 superblock, symbol-table groups) 
   ok(a.origin.join(',') === '4,5' && a.dims.join('x') === '4x4' && a.values[0] === 400 + 40 + 5 && a.values[15] === 400 + 70 + 8, 'a window keeps only the chunks under it, with where they start');
   const before = cache.size, b = await T(3, [4, 8, 5, 9]);
   ok(cache.size === before && b.values[5] === 300 + 50 + 6, 'the next hour in the same chunk comes out of the cache: nothing new unpacked');
+  /* a twin file, same layout, every value 10000 higher: its chunks sit at the same offsets,
+     and a cache shared by both files (ERA5's is) must not hand one file's chunk to the other */
+  const fa = await L.open(L.fromBytes(fx('hdf5-v0.h5'))), g = await L.open(L.fromBytes(fx('hdf5-v0b.h5')));
+  await L.variable(fa, 'U', null, { slice0: 4, win: [4, 8, 5, 9], cache });
+  const twin = await L.variable(g, 'U', null, { slice0: 4, win: [4, 8, 5, 9], cache });
+  ok(twin.values[0] === 10000 + 400 + 40 + 5, `one cache, two files with chunks at the same offsets: each gets its own (${twin.values[0]})`);
   const full = await T(1, null);
   ok(full.origin === null && full.values[8 * 9 - 1] === 100 + 70 + 8, 'no window: the whole plane, chunks put back where they belong');
 }
@@ -191,6 +197,16 @@ console.log('\nRULE  a satellite recipe draws as the built-in RGB it was written
   ok(bad.every((r) => AB.cleanRecipe(r) === null), 'no channels, a reflectance minus a temperature, band 17, an empty range and a gamma of 50 are each refused');
   ok(AB.key(Object.assign(AB.PRODUCTS, { rxtest: AB.recipe(AB.SPECS.airmass) }) && 'rxtest').text.startsWith('R = B8 − B10'), 'a recipe\'s key says what each colour is made of');
   delete AB.PRODUCTS.rxtest;
+}
+
+console.log('\nRULE  a regional lat/lon grid ends at its edges; only a global one wraps');
+{
+  /* 10 × 3 points from 250° E: values are the column number */
+  const reg = { kind: 'latlon', nx: 10, ny: 3, npts: 30, la1: 40, lo1: 250, di: 1, dj: 1, scan: 0 }, rv = Float32Array.from({ length: 30 }, (_, k) => k % 10);
+  ok(Math.abs(G.sample({ grid: reg, values: rv }, 39.5, -105.5) - 4.5) < 1e-6, 'inside: blended between its columns');
+  ok(Number.isNaN(G.sample({ grid: reg, values: rv }, 39.5, -100.5)) && Number.isNaN(G.sample({ grid: reg, values: rv }, 39.5, -90)) && Number.isNaN(G.sample({ grid: reg, values: rv }, 39.5, -115)), 'past its last column, far east, or west of it: nothing, never the next row');
+  const glob = { kind: 'latlon', nx: 360, ny: 3, npts: 1080, la1: 40, lo1: 0, di: 1, dj: 1, scan: 0 }, gv = Float32Array.from({ length: 1080 }, (_, k) => (k % 360 === 359 ? 10 : k % 360 === 0 ? 20 : 0));
+  ok(Math.abs(G.sample({ grid: glob, values: gv }, 39.5, -0.5) - 15) < 1e-6, 'a global grid wraps from its last column to its first');
 }
 
 console.log('\nRULE  vorticity worked out from a model\'s wind is the vorticity its model publishes, and Compare pairs only like with like');

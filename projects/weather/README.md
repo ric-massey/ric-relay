@@ -842,6 +842,22 @@ down the branches that hold the wanted level, and chunks next to each other
 are fetched as one range — a 500 mb map from 80 s and 1,637 requests to
 12 s and 52. Its MSLP map now shades 1000–500 mb thickness, as the other
 globals' do.
+**A bug and arithmetic review** (the same day, Ric: "Do a deep search for
+bugs and mathematical errors"). Fixed, each with a test that failed before:
+the chunk cache keyed chunks by variable and offset only, so two files laid
+out alike (two months of one ERA5 field) could swap chunks — the file is in
+the key now; a regional lat/lon grid (MRMS, the server mesoanalysis, ERA5's
+window) wrapped east–west like a global one, and past its edge read the next
+row, painting and reading values that were not there — only a grid all the
+way round wraps (`projector().wraps`). Fixed without a new test: route
+weather split the HRRR's winds along the route without turning them from
+its grid to east/north (up to 15° off in the West; `MM.earthWind` now);
+ERA5 was called "a forecast" in the Info text and Sources, its chart offered
+"the run before", and the refresh asked it for a newest run. Checked and
+found right: the VAD inversion and fit, Kuchera's ratio and window chain,
+storm-relative motion, hillshade aspect, the 700 mb humidity, omega's units,
+GR speed conversions, the probability neighbourhood, ERA5's file and index
+arithmetic, range rings and bearings.
 **3D radar** (the radar row's *3D*, `radar3d.js`) — the single radar's
 whole volume as points where its beams are (`NX.volumePoints`: up the
 4/3-earth beam, along the arc under it), coloured by the map's own table,

@@ -26,7 +26,7 @@
   /* ── a file read in pieces ──
      read(offset, length) answers from 16 KB blocks fetched with Range
      requests (or from a whole file already in memory, for the tests). */
-  function source(get, size) {
+  function source(get, size, id = '') {
     const BLOCK = 16384, blocks = new Map();
     const block = (k) => {
       if (!blocks.has(k)) blocks.set(k, get(k * BLOCK, Math.min(BLOCK, size ? size - k * BLOCK : BLOCK)).catch((e) => { blocks.delete(k); throw e; }));
@@ -42,16 +42,19 @@
         return out;
       },
       /* a chunk is fetched by itself, exactly */
-      exact: (off, len) => get(off, len)
+      exact: (off, len) => get(off, len),
+      /* which file: a chunk cache shared by many files keys on it */
+      id
     };
   }
-  const fromBytes = (bytes) => source(async (o, n) => bytes.subarray(o, o + n), bytes.length);
+  let nBytes = 0;
+  const fromBytes = (bytes) => source(async (o, n) => bytes.subarray(o, o + n), bytes.length, 'bytes:' + (++nBytes));
   function fromUrl(url, { signal, fetchFn = fetch } = {}) {
     return source(async (o, n) => {
       const r = await fetchFn(url, { signal, headers: { Range: `bytes=${o}-${o + n - 1}` } });
       if (!r.ok) throw new Error('glm: HTTP ' + r.status);
       return new Uint8Array(await r.arrayBuffer());
-    });
+    }, undefined, url);
   }
 
   /* ── little-endian fields ── */
@@ -413,7 +416,7 @@
            (2026-10-24). Each chunk is then cut out of its run. */
         const runs = new Map();
         {
-          const want = parts.filter((c) => !(cache && cache.has(name + '@' + c.addr))).sort((a, b) => a.addr - b.addr);
+          const want = parts.filter((c) => !(cache && cache.has(f.src.id + '|' + name + '@' + c.addr))).sort((a, b) => a.addr - b.addr);
           let cur = null;
           for (const c of want) {
             if (cur && c.addr - cur.end < 262144 && c.addr + c.size - cur.start <= 8e6) { cur.end = Math.max(cur.end, c.addr + c.size); cur.list.push(c); }
@@ -434,11 +437,13 @@
               else if (filters[i] === 3) b = b.subarray(0, b.length - 4);
               else throw new Error('glm: filter ' + filters[i] + ' is not read here');
             }
-            return b;
+            /* a chunk no filter copied is still a view into its whole run: copied, so a cache keeps only the chunk */
+            return r && b.buffer.byteLength > b.byteLength ? b.slice() : b;
           };
           let b;
           if (cache) {
-            const key = name + '@' + c.addr;
+            /* the file is in the key: two files of one variable can hold a chunk at the same offset */
+            const key = f.src.id + '|' + name + '@' + c.addr;
             if (!cache.has(key)) cache.set(key, unpack().catch((e) => { cache.delete(key); throw e; }));
             b = await cache.get(key);
           } else b = await unpack();
