@@ -847,7 +847,8 @@ body[data-view="pro"] .siterow .sitepick select{max-width:210px}
 /* Find: Ctrl+K or / — every layer, field, overlay and card by name */
 .maptools .findbtn kbd{margin-left:6px;padding:0 4px;border:1px solid #3a4452;border-radius:3px;font:600 11px var(--mono);color:var(--dim)}
 @media (pointer:coarse){ .maptools .findbtn kbd{display:none} }
-.findsheet .in{width:min(620px,calc(100vw - 32px))}
+dialog.sheet.findsheet{width:min(620px,calc(100vw - 24px))}
+.findsheet .in{width:auto}
 .findsheet #findq{display:block;width:100%;min-height:44px;padding:0 12px;border-radius:3px;border:1px solid var(--amber);background:#121821;color:#e3e9f0;font:14px var(--mono)}
 .findlist{list-style:none;margin:8px 0 0;padding:0;max-height:min(420px,55vh);overflow:auto}
 .findlist li{display:flex;align-items:center;gap:10px;min-height:40px;padding:6px 10px;border-radius:3px;cursor:pointer;font-size:13px}
@@ -1244,3 +1245,28 @@ body[data-view="pro"]:not([data-panel]) .side#cards>.card.bare:empty,body[data-v
 }
 /* the Overlays panel opens leftward from its button on a wide screen, so it stays over the map and never under the docked drawer */
 @media (min-width:1001px){ body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) .maptools .ovpanel{left:auto;right:0} }
+/* a town named once (2026-10-23): while the map's own lines and town names
+   are drawn (.haslines), Pro sinks the tiles' labels — contrast squeezed
+   first, then darkened, so roads and counties stay faint and the tiles'
+   names all but vanish under ours. With Map lines off, the tiles keep theirs. */
+body[data-view="pro"] .radar.haslines .base img{filter:grayscale(1) invert(1) contrast(.42) brightness(.5)}
+body[data-view="pro"] .radar.haslines[data-base="dark"] .base img{filter:grayscale(1) invert(1) contrast(.32) brightness(.36)}
+body[data-view="pro"] .radar.haslines[data-base="light"] .base img{filter:grayscale(.6) contrast(.45) brightness(1.18)}
+/* the phone (2026-10-23): the map's controls rise from the bottom of the
+   screen as a sheet, as they were meant to — the map-app rule that keeps the
+   toolbar in flow on a phone had been winning over the sheet's — and the map's
+   stamp takes two lines rather than cutting off its time */
+@media (max-width:640px){
+  body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull).ctl-open .mapctl{position:fixed;top:auto;left:0;right:0;bottom:0;z-index:50;max-height:74vh;overflow:auto;padding:14px 16px calc(14px + env(safe-area-inset-bottom));background:#0b0f15;border:0;border-top:1px solid #4a5566}
+  body[data-view="pro"] .radar .mainst{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.35}
+  body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .radar .note{top:calc(var(--ctlh) + 56px)}
+}
+/* a card's heading and its source (2026-10-23): when both do not fit on one
+   line the source drops to its own, rather than both wrapping into each
+   other; the source is grey, so the amber heading reads first */
+body[data-view="pro"] .card h2{flex-wrap:wrap;row-gap:2px}
+body[data-view="pro"] .card h2 .src{flex:0 1 auto;min-width:0;color:var(--dim);font-family:var(--mono);font-size:11.5px;letter-spacing:0;text-align:right}
+/* the same for the folding cards' headings: the title on one line, its description under it when there is no room */
+body[data-view="pro"] #sky summary,body[data-view="pro"] #models summary{flex-wrap:wrap;row-gap:2px}
+body[data-view="pro"] #sky summary b,body[data-view="pro"] #models summary b{white-space:nowrap}
+body[data-view="pro"] #sky summary .lead,body[data-view="pro"] #models summary .lead{flex:1 1 180px;min-width:0}

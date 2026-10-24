@@ -65,7 +65,9 @@ console.log('\nRULE  every map says what it shows and when, and how far from the
   Date.now = () => T + 5 * 60e3;
   try {
     const obs = WS.stampText({ layer: 'TLX velocity', kind: 'observed', t: T, run: null }, null, fmt);
-    ok(/observed .*21:00/.test(obs) && /5 min before now/.test(obs), `an observation: its own time, and its age (${obs})`);
+    ok(/observed .*21:00/.test(obs) && /5 min ago/.test(obs), `an observation: its own time, and its age (${obs})`);
+    ok(!/shared time/.test(obs), 'with no shared time, the shared time is never mentioned');
+    ok(/in 3 h/.test(WS.stampText({ layer: 'HRRR CAPE', kind: 'forecast', t: T + 3 * 3600e3, run: T - 3600e3 }, null, fmt)), 'a forecast against the clock says how far ahead it is');
     const fc = WS.stampText({ layer: 'HRRR CAPE', kind: 'forecast', t: T + 3 * 3600e3, run: T - 3600e3 }, T, fmt);
     ok(/run 20Z/.test(fc) && /valid .*00:00/.test(fc) && /3 h after the shared time/.test(fc), `a forecast: its run, its valid time, and the gap (${fc})`);
     ok(WS.stampText({ layer: 'GOES', kind: 'analysis', t: T, run: null }, T, fmt).indexOf('shared time') < 0, 'on the shared time, no gap is mentioned');

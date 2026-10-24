@@ -721,7 +721,7 @@
       const m = /^\.([^.]+(?:\.[^.]+)*?)\.\.\.\s*/.exec(s);
       return { name: m ? m[1].trim() : "Discussion", body: (m ? s.slice(m[0].length) : s).replace(/\n&&[\s\S]*$/, "").replace(/\n\$\$[\s\S]*$/, "").trim() };
     }).filter((s) => s.body);
-    box.innerHTML = head + sections.map((s, i) => `<details class="afd"${i < 2 ? " open" : ""}><summary>${esc(titleCase0(s.name))}</summary><pre>${esc(s.body)}</pre></details>`).join("") +
+    box.innerHTML = head + sections.map((s, i) => `<details class="afd"${i < 2 ? " open" : ""}><summary>${esc(titleCase0(s.name))}</summary><pre>${esc(Wx.reflowDiscussion(s.body))}</pre></details>`).join("") +
       `<p class="nextnote">As the forecasters wrote it, not rewritten. <a href="https://forecast.weather.gov/product.php?site=NWS&amp;issuedby=${esc(S.afd.office.replace(/^K/, ""))}&amp;product=AFD" target="_blank" rel="noopener">At the NWS ↗</a></p>`;
   }
   const titleCase0 = (s) => s.toLowerCase().replace(/(^|[\s/(])[a-z]/g, (c) => c.toUpperCase());
@@ -734,12 +734,22 @@
   const MESO_FIELDS = [["pmsl", "Surface pressure and wind"], ["sbcp", "Surface-based CAPE"], ["mlcp", "Mixed-layer CAPE and CIN"], ["mucp", "Most-unstable CAPE"],
     ["dcape", "Downdraft CAPE"], ["lclh", "LCL height"], ["laps", "Mid-level lapse rates"], ["pwtr", "Precipitable water"], ["shr6", "0–6 km shear"],
     ["eshr", "Effective shear"], ["srh1", "0–1 km helicity"], ["stpc", "Significant tornado (effective)"], ["scp", "Supercell composite"]];
-  S.meso = Object.assign({ s: "19", f: "mlcp" }, store.get("wx:meso", {}));
+  /* the regional sector the place sits in, until the visitor picks one
+     (2026-10-23): the nearest of SPC's regional sectors by its rough middle —
+     a default only, the picker still says which; outside the lower 48, National */
+  const MESO_MIDS = { 11: [45.5, -117], 12: [35.5, -115.5], 13: [45, -100], 14: [39, -98], 15: [33, -99], 20: [40.5, -91], 21: [43.5, -85], 16: [42.5, -75], 17: [38, -80], 18: [32.5, -85] };
+  const mesoSectorFor = (p) => {
+    if (!p || p.lat < 24 || p.lat > 50 || p.lon < -125 || p.lon > -66) return "19";
+    let best = "19", bd = Infinity;
+    for (const [id, [la, lo]] of Object.entries(MESO_MIDS)) { const d = Math.hypot(p.lat - la, (p.lon - lo) * Math.cos(p.lat * Math.PI / 180)); if (d < bd) { bd = d; best = id; } }
+    return best;
+  };
+  S.meso = Object.assign({ s: null, f: "mlcp" }, store.get("wx:meso", {}));
   function renderMeso() {
     const box = $("#meso");
     if (!box) return;
     const m = S.meso, hour = Math.floor(Date.now() / 1800e3);
-    const field = MESO_FIELDS.find((x) => x[0] === m.f) || MESO_FIELDS[2], sector = MESO_SECTORS.find((x) => x[0] === m.s) || MESO_SECTORS[0];
+    const field = MESO_FIELDS.find((x) => x[0] === m.f) || MESO_FIELDS[2], sector = MESO_SECTORS.find((x) => x[0] === (m.s || mesoSectorFor(S.place))) || MESO_SECTORS[0];
     const src = `https://www.spc.noaa.gov/exper/mesoanalysis/s${sector[0]}/${field[0]}/${field[0]}.gif?t=${hour}`;
     box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 12c3-5 5 1 7-4s3-3 5-5M2 14h12" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>SPC mesoanalysis<span class="src">hourly · RAP + observations</span></h2>
       <div class="mesopick"><label>Region <select id="mesos">${MESO_SECTORS.map(([v, l]) => `<option value="${v}"${v === sector[0] ? " selected" : ""}>${l}</option>`).join("")}</select></label>
@@ -2513,6 +2523,8 @@
       const ctx = geoCv.getContext("2d");
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
+      /* while our own lines and town names are drawn, Pro sinks the tiles' (CSS: .haslines), so no town is named twice */
+      el.classList.toggle("haslines", !!(GeoOK && R.ov.lines && R.started));
       if (!GeoOK || !R.ov.lines || !R.started) return;
       const left = R.cx - w / 2, top = R.cy - h / 2, z = R.z, k = TILE * 2 ** z / 360;
       const W = xLng(left, z), E = xLng(left + w, z), N = yLat(top, z), Sl = yLat(top + h, z);
@@ -2741,7 +2753,7 @@
       if (f.abi && f.abi.layer) {
         const vs = AB.valuesAt(f.abi.layer, lat, lon);
         if (!vs) return null;
-        const say = (x) => x.kind === "refl" ? `${Math.round(x.value)}%` : `${U() === "us" ? Math.round(x.value * 9 / 5 + 32) + " °F" : Math.round(x.value) + " °C"}`;
+        const say = (x) => x.kind === "refl" ? `${Math.round(x.value)}%` : `${Math.round(x.value)} °C${U() === "us" ? ` (${Math.round(x.value * 9 / 5 + 32)} °F)` : ""}`;
         return vs.length === 1 ? `${AB.bandName(vs[0].band)}: ${say(vs[0])} ${vs[0].kind === "refl" ? "reflectance" : "brightness temperature"}` : vs.map((x) => `B${x.band} ${say(x)}`).join(" · ");
       }
       if (f.mrms && f.mrms.layer) {
@@ -3100,6 +3112,19 @@
       const pathOf = (polys) => polys.map((poly) => poly.map((r) => "M" + ring(r).replace(/ /g, " L") + " Z").join(" ")).join(" ");
       const centre = (poly) => { const r = poly[0], n = r.length - 1 || 1; let a = 0, b = 0; for (let i = 0; i < n; i++) { a += r[i][1]; b += r[i][0]; } return pt(a / n, b / n); };
       const tag = (x, y, text, col) => `<text class="ovl" x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" fill="${col}">${esc(text)}</text>`;
+      /* a label that would land on one already placed steps down a line until
+         it is clear (2026-10-23: a watch and a discussion sharing a middle wrote
+         "SVR 696" over "MPD 1519") — 11 px monospace is ~6.8 px a letter */
+      const placed = [];
+      const freeTag = (x, y, text, col) => {
+        const w = text.length * 6.8 + 6, h = 14;
+        for (let i = 0; i < 8; i++) {
+          const b = [x - w / 2, y - h + 3, x + w / 2, y + 3];
+          if (!placed.some((p) => b[0] < p[2] && b[2] > p[0] && b[1] < p[3] && b[3] > p[1])) { placed.push(b); break; }
+          y += h + 1;
+        }
+        return tag(x, y, text, col);
+      };
       /* WPC's surface analysis: fronts with their symbols on the side the
          bulletin's point order puts them, troughs dashed, highs and lows */
       if (R.ov.fronts && R.pro.surface) {
@@ -3144,11 +3169,11 @@
       if (R.ov.watches) {
         for (const w of R.pro.watches) {
           const col = w.type === "TOR" ? "#ffd43b" : "#f783ac", [cx, cy] = centre(w.polys[0]);
-          out.push(`<path d="${pathOf(w.polys)}" fill="${col}" fill-opacity=".07" fill-rule="evenodd" stroke="${col}" stroke-width="2.4"/>${tag(cx, cy, `${w.type} ${w.num}`, col)}`);
+          out.push(`<path d="${pathOf(w.polys)}" fill="${col}" fill-opacity=".07" fill-rule="evenodd" stroke="${col}" stroke-width="2.4"/>${freeTag(cx, cy, `${w.type} ${w.num}`, col)}`);
         }
         for (const d of [...R.pro.mcds, ...R.pro.mpds]) {
           const col = d.kind === "mcd" ? "#74c0fc" : "#8ce99a", [cx, cy] = centre(d.polys[0]);
-          out.push(`<path d="${pathOf(d.polys)}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="7 4"/>${tag(cx, cy + 14, `${d.kind === "mcd" ? "MD" : "MPD"} ${d.num}${d.chance != null ? " · " + d.chance + "%" : ""}`, col)}`);
+          out.push(`<path d="${pathOf(d.polys)}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="7 4"/>${freeTag(cx, cy + 14, `${d.kind === "mcd" ? "MD" : "MPD"} ${d.num}${d.chance != null ? " · " + d.chance + "%" : ""}`, col)}`);
         }
       }
       /* Weather's layers menu can take the warnings around off the map, never
@@ -3586,7 +3611,8 @@
         const K = AB.key(R.ab.prod);
         if (!K || K.text) { lg.innerHTML = `<span>${esc(K ? K.text : "")}</span>`; return; }
         if (K.cats) { lg.classList.add("cats"); lg.innerHTML = K.cats.map(([n, c]) => `<span class="sw"><i style="background:${c}"></i>${esc(n)}</span>`).join(""); return; }
-        const pos = (v) => (v - K.min) / (K.max - K.min) * 100, us = U() === "us" && K.unit === "°C";
+        /* brightness temperature is read in °C by everyone who reads it, whatever the page's units (2026-10-23) */
+        const pos = (v) => (v - K.min) / (K.max - K.min) * 100, us = false;
         lg.classList.add("scale");
         lg.innerHTML = `<div class="bar"><i aria-hidden="true" style="background:linear-gradient(90deg,${K.stops.map(([v, c]) => `${c} ${pos(v).toFixed(1)}%`).join(",")})"></i><div class="ticks">${K.ticks.map((t) => `<span style="left:${pos(t).toFixed(1)}%">${us ? Math.round(t * 9 / 5 + 32) : t}</span>`).join("")}</div></div><span class="lu">${us ? "°F" : esc(K.unit)}</span>`;
         return;
@@ -4807,6 +4833,7 @@
     }
     closePlaces();
     window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+    if (!S.meso.s) renderMeso();
     load();
   }
   function showUS() {
@@ -4815,6 +4842,7 @@
     Object.assign(S, { fc: null, pt: undefined, obs: undefined, office: undefined, alerts: undefined, state: undefined });
     sky.reset();
     window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+    if (!S.meso.s) renderMeso();
     loadUS();
   }
   $("#usview").addEventListener("click", showUS);

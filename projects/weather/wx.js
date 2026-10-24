@@ -1424,6 +1424,23 @@
   }
 
   /* Today against yesterday (the forecast carries a day of the past). */
+  /* A forecast discussion as it was written, with the wire's hard line wraps
+     taken out (2026-10-23): a line that carries on the sentence above it — it
+     starts in lower case and the line above did not end a sentence — is joined
+     to it with one space. Nothing else moves: lists, headings, blank lines and
+     any table (a line with a run of spaces) stay exactly as issued, and no
+     word is added, dropped or changed. */
+  function reflowDiscussion(text) {
+    const lines = String(text || '').replace(/\r/g, '').split('\n'), out = [];
+    for (const line of lines) {
+      const prev = out.length ? out[out.length - 1] : '';
+      const table = (l) => /\S {2,}\S/.test(l);
+      if (prev.trim() && /^[a-z]/.test(line) && !/[.:!?]$/.test(prev.trim()) && !table(prev) && !table(line)) out[out.length - 1] = prev.replace(/\s+$/, '') + ' ' + line.trim();
+      else out.push(line);
+    }
+    return out.join('\n');
+  }
+
   function versusYesterday(fc, nowSec) {
     const today = upcomingDays(fc, nowSec)[0];
     const y = today && fc.daily.find(d => d.t === today.t - 86400 || Math.abs(d.t - (today.t - 86400)) < 7200);
@@ -1927,7 +1944,7 @@
     STORM_EVENTS, NATIONAL_EVENTS, parseMotion, inPolygon, stormTrack, alertDetail, national, stateAlerts, near,
     SITE_PRODUCTS, SPC_KINDS, SPC_NAMES, MODELS, COLUMN_LEVELS, COLUMN_FIELDS, mapLayer, radarSites, siteScans, tileUrl, isoMinute, isoHour,
     normalizeOutlook, outlook, outlookAt, column, modelRun, raobSites, raobTimes, raobTs,
-    several, summary, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet,
+    several, summary, reflowDiscussion, versusYesterday, rainTotals, nearbyStations, MODELS_OM, MODEL_NAMES, ENSEMBLE, normalizeEnsemble, ensemble, dayConfidence, iemId, stationRecords, verdict, scoreIndexGet,
     inMosaic, nowcast, nowcastRecord,
     CALM_KMH, isCalm, SAT, satTile, ELEV_MAX_M, sameLevel, OBS_MAX_M,
     normalizeStationObs, stationObs, NET_KINDS, netKind, normalizeAsosCsv, stationObsAt,

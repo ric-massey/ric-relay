@@ -307,6 +307,13 @@ console.log('\nRULE  the sentence at the top says only what the numbers say');
   const colder = forecastFixture(); colder.daily.temperature_2m_max = [21, 22, 15];
   ok(/Tomorrow colder, with a high of 59°\./.test(said(colder)), `a cold front tomorrow: "${said(colder)}"`);
   const fc = W.normalizeForecast(colder);
+  {
+    const raw = 'Long wave ridging continues across Oklahoma and Texas today, with a\npronounced long wave trough through California.\nThis feature has\nhelped bring storms.\n\n- Above normal temperatures\n- dry conditions\n\nOKC  80  54  82 /   0   0   0\nlater today  0   0';
+    const re = W.reflowDiscussion(raw);
+    ok(/today, with a pronounced long wave trough/.test(re) && /This feature has helped bring storms\./.test(re), 'the discussion: a wrapped sentence is one line again');
+    ok(re.replace(/\s+/g, ' ') === raw.replace(/\s+/g, ' '), 'the discussion: not a word added, dropped or changed');
+    ok(/\n- dry conditions/.test(re) && /\nOKC  80/.test(re) && /\nlater today  0/.test(re), 'the discussion: lists and tables stay as issued');
+  }
   const vy = W.versusYesterday(fc, NOW);
   ok(vy && near(vy.diff, 1), `today against yesterday: ${vy && vy.diff}`);
   const rt = W.rainTotals(W.normalizeForecast(forecastFixture()), NOW);

@@ -145,7 +145,8 @@
     const ref = busT == null ? Date.now() : busT, d = busT == null && st.kind !== 'forecast' ? Math.min(0, st.t - ref) : st.t - ref, a = Math.abs(d);
     if (a >= 2 * 60e3 && st.kind !== 'archive' && !(busT == null && far(st.t))) {
       const amt = a < 3600e3 ? `${Math.round(a / 60e3)} min` : a < 48 * 3600e3 ? `${Math.round(a / 3600e3)} h` : `${Math.round(a / 86400e3)} days`;
-      s += ` · ${amt} ${d < 0 ? 'before' : 'after'} ${busT == null ? 'now' : 'the shared time'}`;
+      /* against the clock it is an age ("5 min ago", "in 3 h"); against another map, a gap */
+      s += busT == null ? ` · ${d < 0 ? `${amt} ago` : `in ${amt}`}` : ` · ${amt} ${d < 0 ? 'before' : 'after'} the shared time`;
     }
     return s;
   }
@@ -350,7 +351,8 @@
     const fmt = { time: Pro.time, day: Pro.day, ymd: Pro.ymd };
     function stamps() {
       const ms = $('#mainstamp');
-      if (ms) ms.textContent = W.mainStamp ? stampText(W.mainStamp, W.busT, fmt) : '';
+      /* alone, the main map's time is told against the clock: "the shared time" means nothing with no other map to share it */
+      if (ms) ms.textContent = W.mainStamp ? stampText(W.mainStamp, W.panels.length ? W.busT : null, fmt) : '';
       for (const p of W.panels) { const el = p.sec.querySelector('.pst'); if (el) el.textContent = stampText(p.stamp, W.busT, fmt); }
       const c = $('#wsclock');
       /* said only when it is not "now" (the Now button beside it brings it back) */

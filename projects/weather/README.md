@@ -464,6 +464,24 @@ sky — none of this reaches it. The Overlays panel now opens leftward from its
 button on a wide screen, so it stays over the map instead of under the docked
 drawer.
 
+**The review's small fixes (2026-10-23, Ric: "Do the nine small fixes in
+section A" of [`UI-REVIEW.md`](UI-REVIEW.md)):** Find's sheet is as wide as its
+search box. The map's stamp tells its time against the clock ("observed 9:15 PM
+· 30 min ago", "in 3 h") unless another map is open, when it gives the gap to
+the shared time (`stampText`, tested). A town is named once: while Map lines
+draw ours, Pro sinks the tiles' own labels (`.radar.haslines`, contrast squeezed
+before darkening, so roads and counties stay faint). The forecast discussion's
+hard wraps are joined (`Wx.reflowDiscussion`: a lower-case line carrying on an
+unfinished sentence joins the one above; lists, headings and tables stay as
+issued; tested to change no word) — it still says "as the forecasters wrote it".
+The mesoanalysis starts on the SPC sector nearest the place until one is
+picked. Satellite brightness temperature is in °C in the key and the cursor
+readout (with °F after it on US units). A watch's and a discussion's labels no
+longer print over each other (each steps down until clear). On a phone the map's
+controls rise from the bottom as a sheet again and the stamp takes two lines
+rather than cutting off its time. A card's heading and its source no longer wrap
+into each other: the source drops under the title, in grey.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its
