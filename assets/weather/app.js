@@ -15,6 +15,8 @@
      page in a frame, only its map, its choices never written over the main
      page's (the parent keeps the layout) */
   const PANEL = PRO && new URLSearchParams(location.search).has("panel");
+  /* the workstation's shared helpers (the timeline's labels); Pro loads workstation.js first, Weather never */
+  const WS = PRO ? window.WxWorkstation || null : null;
   if (PANEL) document.body.dataset.panel = "1";
   /* each page's own title, which a storm warning takes over and gives back */
   const TITLE = document.title;
@@ -3401,6 +3403,7 @@
       if (R.mode === "replay" && R.stations) { const ft = frameTime(f); if (ft != null && Math.round(ft / 1200e3) * 1200e3 !== R.obsSlot) stationsSoon(); }
       $("#scrub").value = String(i);
       if ($("#fcount")) $("#fcount").textContent = R.frames.length > 1 ? `${i + 1}/${R.frames.length}` : "";
+      if (PRO) { timeline(); legendBase(); }
       const when = $("#when");
       if (f.archive) when.innerHTML = `${esc(dayFmt(f.t))}<small>${esc(timeFmt(f.t))}</small>`;
       else if (f.mrms) when.innerHTML = `${esc(clk().time(f.t))}<small>MRMS · ${Wx.age(Date.now() - f.t)} ago${f.mrms.layer ? "" : f.mrms.err ? " · failed" : " · loading"}</small>`;
@@ -3668,9 +3671,130 @@
       const n = Object.values(R.ov).filter(Boolean).length + (R.stations ? 1 : 0) + (R.outlook ? 1 : 0) + (R.sat ? 1 : 0);
       $("#ovcount").textContent = n ? String(n) : "";
     }
+    /* ── The legend (UI-REVIEW B1, 2026-10-23): AWIPS's product legend —
+       every layer on the map, one line each, with its time and age, and a
+       click hides or shows it. The first line is the data: its words are the
+       workstation's stamp (#mainstamp); a click hides the frames, not the map.
+       Under it, each overlay that is on, with when it was last fetched (amber
+       once that is well past its refresh), and the satellite underneath. A
+       line clicked off stays, greyed, so a second click brings it back; one
+       turned off in the Overlays panel goes. Pro only. ── */
+    const LGOFF = new Set();
+    const LG = () => [
+      { k: "sat", on: () => !!R.sat, name: () => "Satellite under", src: () => { const o = $("#satsel") && $("#satsel").selectedOptions[0]; return o && o.value ? o.textContent : ""; }, col: "#9aa5b4", btn: null },
+      { k: "lines", on: () => R.ov.lines, name: () => "Map lines", src: () => "Natural Earth", col: "#c3cad4", btn: '[data-ov="lines"]' },
+      { k: "watches", on: () => R.ov.watches, name: () => "Watches & discussions", src: () => "SPC · WPC", at: () => R.pro.wGot, every: 120e3, col: "#f783ac", btn: '[data-ov="watches"]' },
+      { k: "cells", on: () => R.ov.cells, name: () => "Storm cells", src: () => "NEXRAD", at: () => R.pro.cGot, every: 120e3, col: "#e9ecef", btn: '[data-ov="cells"]' },
+      { k: "lightning", on: () => R.ov.lightning, name: () => "Lightning", src: () => "GOES GLM · 10 min", at: () => LTG.at, every: 60e3, col: "#ffd43b", btn: '[data-ov="lightning"]' },
+      { k: "density", on: () => R.ov.density, name: () => "Flash density", src: () => `GOES GLM · ${R.densWin} min`, at: () => LTG.at, every: 60e3, col: "#fd7e14", btn: '[data-ov="density"]' },
+      { k: "reports", on: () => R.ov.reports, name: () => "Storm reports", src: () => "NWS · 24 h", at: () => R.pro.rGot, every: 120e3, col: "#ff8787", btn: '[data-ov="reports"]' },
+      { k: "fronts", on: () => R.ov.fronts, name: () => "Fronts", src: () => "WPC analysis", at: () => R.pro.surface && R.pro.surface.issued, every: 3 * 3600e3, col: "#4dabf7", btn: '[data-ov="fronts"]', issued: true },
+      { k: "stations", on: () => R.stations, name: () => "Stations", src: () => "airports and networks", col: "#e9ecef", btn: "#stationtoggle" },
+      { k: "outlook", on: () => R.outlook, name: () => "SPC outlook", src: () => (Wx.OUTLOOKS[R.olSel] || {}).label || "Day 1 · categorical", at: () => { const L = outlookList(), f = L && L.find((o) => o.issued); return f ? f.issued : null; }, col: "#69db7c", btn: "#outlooktoggle", issued: true },
+      { k: "rings", on: () => R.ov.rings, name: () => "Range rings", src: () => (U() === "us" ? "every 25 mi" : "every 50 km"), col: "#c3cad4", btn: '[data-ov="rings"]' },
+      { k: "tropics", on: () => R.ov.tropics, name: () => "Tropics", src: () => "NHC", at: () => R.pro.tAt, every: 600e3, col: "#ff922b", btn: '[data-ov="tropics"]' },
+    ];
+    let lgSatWas = "";
+    function legendRows() {
+      const box = $("#lgrows");
+      if (!PRO || !box) return;
+      const k = clk(), now = Date.now();
+      box.innerHTML = LG().filter((d) => d.on() || LGOFF.has(d.k)).map((d) => {
+        const on = d.on(), t = d.at ? d.at() : null;
+        /* fetched more than three refreshes (and five minutes) ago: late */
+        const late = on && t && d.every && now - t > 3 * d.every + 300e3;
+        const when = t ? ` · ${d.issued ? "issued" : "as of"} ${k.time(t)}` : "";
+        return `<button type="button" class="lgrow${late ? " stale" : ""}" data-lg="${d.k}" aria-pressed="${on}" title="${on ? "Hide" : "Show"} ${esc(d.name().toLowerCase())}"><i class="lgsw" style="background:${d.col}" aria-hidden="true"></i><span>${esc(d.name())}<em> · ${esc(d.src())}${esc(when)}${late ? " · late" : ""}</em></span></button>`;
+      }).join("");
+    }
+    if (PRO && $("#lgrows")) {
+      $("#lgrows").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-lg]");
+        if (!b) return;
+        const d = LG().find((x) => x.k === b.dataset.lg);
+        if (!d) return;
+        const on = d.on();
+        if (d.k === "sat") {
+          const sel = $("#satsel");
+          if (sel) { if (on) lgSatWas = sel.value; sel.value = on ? "" : lgSatWas || "ir"; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+        } else { const btn = document.querySelector(d.btn); if (btn) btn.click(); }
+        if (on) LGOFF.add(d.k); else LGOFF.delete(d.k);
+        legendRows();
+      });
+      /* turned off anywhere else, a line goes (the legend's own clicks re-add theirs above) */
+      document.addEventListener("click", (e) => { if (!e.target.closest("#lgrows") && e.target.closest("[data-ov],#stationtoggle,#outlooktoggle")) { LGOFF.clear(); setTimeout(legendRows, 0); } }, true);
+      $("#lgbase").addEventListener("click", () => {
+        const hide = !el.classList.contains("datahide");
+        el.classList.toggle("datahide", hide);
+        $("#lgbase").setAttribute("aria-pressed", String(!hide));
+      });
+    }
+    /* the data line: amber when the feed behind it is late */
+    function legendBase() {
+      const b = $("#lgbase");
+      if (!PRO || !b) return;
+      const f = R.frames[R.frame];
+      const fr = f && !f.future && !f.model && !f.mrms && !f.abi && !f.nc && R.mode !== "replay" && !(f.l3 && f.l3.l2 && f.l3.l2.archive) ? radarFresh() : null;
+      const late = !!((fr && (fr.stale || fr.frozen)) || ((R.mode === "mrms" || R.mode === "abi") && feedLate()) || (f && f.model && R.mm.late && f.model.run === R.mm.run));
+      b.classList.toggle("stale", late);
+      /* a new kind of map brings its data back into view */
+      if (R.lgMode !== R.mode) { R.lgMode = R.mode; el.classList.remove("datahide"); b.setAttribute("aria-pressed", "true"); }
+    }
+
+    /* ── The timeline (UI-REVIEW B2, 2026-10-23): a tick a frame under the
+       slider — filled once that frame has loaded, hollow while it loads, red
+       if it failed — times along it (a model's forecast hours, the clock
+       otherwise; WxWorkstation.timelineMarks picks them), and the frame's own
+       time riding on the cursor, which is also what a screen reader hears. ── */
+    function frameState(f, i) {
+      if (!f) return "wait";
+      /* a frame nobody has asked for yet (the older ones load once the loop plays) is idle, not loading */
+      const asked = R.playing || R.loadedOld || i === R.frame;
+      const part = f.l3 || f.model || f.mrms || f.abi;
+      if (part) return part.err ? "err" : (part.file || part.layer) ? "ok" : asked ? "wait" : "idle";
+      if (f.nc) return "ok";
+      if (f.tiles) {
+        if (!f.tiles.size) return f.el && f.el.classList.contains("on") ? "wait" : "idle";
+        const imgs = [...f.tiles.values()];
+        return imgs.every((im) => im.complete) ? (imgs.some((im) => im.complete && !im.naturalWidth) && imgs.every((im) => !im.naturalWidth) ? "err" : "ok") : "wait";
+      }
+      return "ok";
+    }
+    const frameFh = (f) => (f && f.model && !MM.SOURCES[f.model.src].analysis ? f.model.fh : null);
+    function tipText(f) {
+      const t = validTime(f);
+      if (t == null) return "";
+      const k = clk(), day = k.ymd(t) !== k.ymd(Date.now()) ? k.day(t) + " " : "", fh = frameFh(f);
+      return (fh != null ? `F${String(fh).padStart(3, "0")} · ` : "") + day + k.time(t);
+    }
+    let tlWait = 0;
+    if (PRO) addEventListener("resize", () => timeline());
+    function timeline() {
+      const box = $("#scrubticks"), tip = $("#scrubtip"), sc = $("#scrub");
+      if (!box || !sc) return;
+      const n = R.frames.length;
+      if (n < 2) { box.innerHTML = ""; if (tip) tip.textContent = ""; sc.removeAttribute("aria-valuetext"); return; }
+      const W = Math.max(80, box.clientWidth || sc.clientWidth || 300);
+      const marks = WS ? WS.timelineMarks(R.frames.map((f) => { const fh = frameFh(f); return fh != null ? { t: validTime(f), fh } : { t: validTime(f) }; }), clk(), Math.floor(W / 110)) : [];
+      const pos = (i) => (i / (n - 1) * 100).toFixed(2) + "%";
+      let waiting = false;
+      box.innerHTML = R.frames.map((f, i) => {
+        const st = frameState(f, i);
+        if (st === "wait") waiting = true;
+        return `<i class="tk ${st}${i === R.frame ? " cur" : ""}" style="left:${pos(i)}"></i>`;
+      }).join("") + marks.map((m) => `<b class="tlab" style="left:${pos(m.i)}">${esc(m.text)}</b>`).join("");
+      const txt = tipText(R.frames[R.frame]);
+      if (tip) { tip.textContent = txt; tip.style.left = pos(R.frame); }
+      if (txt) sc.setAttribute("aria-valuetext", txt); else sc.removeAttribute("aria-valuetext");
+      /* while any frame is still loading, look again in a second (only the ticks change) */
+      clearTimeout(tlWait);
+      if (waiting) tlWait = setTimeout(timeline, 1000);
+    }
+
     function label() {
       syncTools();
       legend();
+      legendRows(); legendBase();
       const sb = $("#sitebar");
       if (R.mode === "comp") sb.textContent = PRO ? "NEXRAD mosaic of the whole country, every 5 minutes." : "";
       else if (R.mode === "replay" && R.replay && R.replay.prodMode) { const rp = R.replay, P = l3(rp.prodMode), n = rp.warn ? new Set(rp.warn.map((w) => w.sig + w.wfo + w.event + w.area)).size : null; sb.textContent = `Replay: ${rp.site ? rp.site + "'s own" : "the nearest radar's"} full volume (Level II), ${lc(P.label)} at the lowest tilt, ${dayFmt(rp.from)} ${timeFmt(rp.from)} to ${timeFmt(rp.to)}${rp.vols ? `, ${rp.vols.length} volumes` : " — finding the radar's volumes"}, with each storm warning drawn for the minutes it was in force${rp.warn ? ` (${n} warning${n === 1 ? "" : "s"})` : ""}. The product buttons change what is shown; NOAA's archive on AWS.`; }

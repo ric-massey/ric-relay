@@ -482,6 +482,26 @@ controls rise from the bottom as a sheet again and the stamp takes two lines
 rather than cutting off its time. A card's heading and its source no longer wrap
 into each other: the source drops under the title, in grey.
 
+**The legend and the timeline (2026-10-23, UI-REVIEW B1 and B2):** the map's
+one-line stamp is now a legend, as AWIPS's product legend is: the data first
+(its words still the workstation's stamp, `#mainstamp`), then a line for each
+overlay that is on and the satellite underneath — source, and "as of" the last
+fetch (or "issued" for fronts and outlooks), amber and marked late once that is
+more than three refreshes old. Every line is a switch: the data line hides the
+frames and leaves the map (`.radar.datahide`; a new kind of map shows them
+again); an overlay's line turns that overlay off and stays, greyed and struck
+through, so a second click brings it back (one turned off in the Overlays panel
+goes). On a phone only the data line shows. The timeline has a tick a frame
+under the slider — filled when loaded, hollow while loading, dimmed when not
+asked for yet (older frames load once the loop plays), red if it failed, amber
+the one on screen — and times along it chosen by
+`WxWorkstation.timelineMarks` (tested): a model's forecast hours (F000, F012 …
+at the coarsest step that fits) or the clock at the first frame past each
+5 min … 1 day boundary, about one per 110 px, with the weekday where the day
+changes. The frame's own time rides on the cursor and is the slider's
+`aria-valuetext`. The "3/19" counter is gone from Pro. The map's notices moved
+to its foot, above the colour key, so they never cover the legend.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

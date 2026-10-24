@@ -76,6 +76,33 @@ console.log('\nRULE  every map says what it shows and when, and how far from the
   } finally { Date.now = now; }
 }
 
+console.log('\nRULE  the timeline tells time: a model by its forecast hour, the rest by the clock, never crowded');
+{
+  const fmt = { time: (ms) => new Date(ms).toISOString().slice(11, 16), day: (ms) => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(ms).getUTCDay()], ymd: (ms) => new Date(ms).toISOString().slice(0, 10) };
+  const T = Date.UTC(2026, 9, 22, 20, 47), now = Date.now;
+  Date.now = () => T + 60 * 60e3;
+  try {
+    /* an hour of radar every 5 minutes: 12 frames */
+    const radar = Array.from({ length: 12 }, (_, i) => ({ t: T + i * 5 * 60e3 }));
+    const r6 = WS.timelineMarks(radar, fmt, 6);
+    ok(r6.length && r6.length <= 6, `no more labels than room for (${r6.map((m) => m.text).join(', ')})`);
+    ok(r6.every((m) => /^\d\d:\d\d$/.test(m.text)), 'clock times on an observation loop');
+    ok(r6.every((m) => m.i > 0 && Math.floor(radar[m.i].t / 600e3) !== Math.floor(radar[m.i - 1].t / 600e3)), 'each label is the first frame past a step boundary');
+    ok(new Set(r6.map((m) => m.i)).size === r6.length, 'never two labels on one frame');
+    const r2 = WS.timelineMarks(radar, fmt, 2);
+    ok(r2.length <= 2 && r2.length >= 1, `a narrow bar gets fewer (${r2.map((m) => m.text).join(', ')})`);
+    /* a model run, F000 to F048 hourly */
+    const model = Array.from({ length: 49 }, (_, i) => ({ t: T + i * 3600e3, fh: i }));
+    const m8 = WS.timelineMarks(model, fmt, 8);
+    ok(m8.length <= 8 && m8.every((m) => /^F\d{3}$/.test(m.text)), `a model says forecast hours (${m8.map((m) => m.text).join(' ')})`);
+    ok(m8[0].text === 'F000' && m8.every((m) => model[m.i].fh % 12 === 0), 'at the coarsest step that fits: F000, F012 …');
+    /* across midnight UTC the day is said where it changes */
+    const late = Array.from({ length: 8 }, (_, i) => ({ t: Date.UTC(2026, 9, 22, 22, 0) + i * 30 * 60e3 }));
+    ok(WS.timelineMarks(late, fmt, 8).some((m) => /^Fri 00:00$/.test(m.text)), 'the weekday where the day changes');
+    ok(WS.timelineMarks([], fmt, 6).length === 0 && WS.timelineMarks([{ t: T }], fmt, 6).length === 1, 'nothing for no frames; one frame is labelled');
+  } finally { Date.now = now; }
+}
+
 console.log('\nRULE  the presets open only what the page has');
 {
   const MM = require('../modelmaps.js'), MR = require('../mrms.js'), AB = require('../abi.js'), NX = require('../nexrad.js');

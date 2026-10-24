@@ -151,7 +151,42 @@
     return s;
   }
 
-  const api = { MAX_PANELS, CARDS, LOCKED, PRESETS, cleanLayer, sameLayer, sameWorkspace, clean, linkHash, readHash, stampText };
+  /* The timeline's labels (2026-10-23, UI-REVIEW B2): which frames get a
+     time under them, and what it says. A model's frames say their forecast
+     hour (F000, F006 …) at the coarsest of 1/3/6/12/24 h that fits; anything
+     else says its clock time at the first frame past each boundary of the
+     smallest step (5 min … 1 day) that fits, with the weekday when the day
+     changes. At most maxLabels, never two on the same frame. */
+  const pad3 = (n) => String(Math.max(0, Math.round(n))).padStart(3, '0');
+  function timelineMarks(frames, fmt, maxLabels) {
+    const n = frames.length, max = Math.max(2, maxLabels | 0), out = [];
+    if (!n) return out;
+    if (frames.every((f) => Number.isFinite(f.fh))) {
+      for (const step of [1, 3, 6, 12, 24, 48]) {
+        const at = frames.map((f, i) => (f.fh % step === 0 ? i : -1)).filter((i) => i >= 0);
+        if (at.length <= max || step === 48) { for (const i of at) out.push({ i, text: 'F' + pad3(frames[i].fh) }); return out; }
+      }
+    }
+    const ts = frames.map((f) => f.t);
+    if (!ts.every(Number.isFinite)) return out;
+    for (const min of [5, 10, 15, 30, 60, 120, 180, 360, 720, 1440]) {
+      const step = min * 60e3, at = [];
+      for (let i = 1; i < n; i++) if (Math.floor(ts[i] / step) !== Math.floor(ts[i - 1] / step)) at.push(i);
+      if (!at.length && n) at.push(0);
+      if (at.length <= max || min === 1440) {
+        let lastDay = null;
+        for (const i of at) {
+          const day = fmt.ymd(ts[i]);
+          out.push({ i, text: (lastDay !== null && day !== lastDay) || (lastDay === null && day !== fmt.ymd(Date.now())) ? `${fmt.day(ts[i])} ${fmt.time(ts[i])}` : fmt.time(ts[i]) });
+          lastDay = day;
+        }
+        return out;
+      }
+    }
+    return out;
+  }
+
+  const api = { MAX_PANELS, CARDS, LOCKED, PRESETS, cleanLayer, sameLayer, sameWorkspace, clean, linkHash, readHash, stampText, timelineMarks };
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
   root.WxWorkstation = api;

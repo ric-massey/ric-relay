@@ -1270,3 +1270,56 @@ body[data-view="pro"] .card h2 .src{flex:0 1 auto;min-width:0;color:var(--dim);f
 body[data-view="pro"] #sky summary,body[data-view="pro"] #models summary{flex-wrap:wrap;row-gap:2px}
 body[data-view="pro"] #sky summary b,body[data-view="pro"] #models summary b{white-space:nowrap}
 body[data-view="pro"] #sky summary .lead,body[data-view="pro"] #models summary .lead{flex:1 1 180px;min-width:0}
+
+/* ── The legend (UI-REVIEW B1, 2026-10-23): in the stamp's place, one line a
+   layer — the data first, then each overlay with its source and age. Each
+   line is a switch: greyed and struck through when off, amber when late. ── */
+.radar .maplegend{display:flex;flex-direction:column;align-items:stretch;padding:2px 0;white-space:normal;pointer-events:auto;overflow:visible;max-width:min(560px,calc(100% - 72px))}
+.radar .maplegend:has(#mainstamp:empty){display:none}
+.maplegend .lgrow{display:flex;align-items:center;gap:7px;width:100%;min-height:22px;margin:0;padding:1px 8px;border:0;background:none;color:#e3e9f0;font:12px var(--mono);text-align:left;cursor:pointer;white-space:nowrap}
+.maplegend .lgrow>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.maplegend .lgrow em{font-style:normal;color:var(--dim)}
+.maplegend .lgrow:hover{background:#141a22}
+.maplegend .lgrow:focus-visible{outline:2px solid var(--amber);outline-offset:-2px}
+.maplegend .lgsw{flex:none;width:9px;height:9px;background:var(--amber)}
+.maplegend .lgrow[aria-pressed="false"]{color:var(--faint)}
+.maplegend .lgrow[aria-pressed="false"]>span{text-decoration:line-through}
+.maplegend .lgrow[aria-pressed="false"] .lgsw{background:transparent!important;outline:1px solid #6b7686;outline-offset:-1px}
+.maplegend .lgrow.stale,.maplegend .lgrow.stale em{color:var(--amber)}
+.maplegend .lgrows:empty{display:none}
+.maplegend .lgrows{border-top:1px solid #1d232c;margin-top:2px;padding-top:2px}
+.radar.datahide #radarframes{visibility:hidden}
+/* a phone keeps the data line only (the overlays are a tap away in the sheet), on two lines */
+@media (max-width:640px){
+  .maplegend .lgrows{display:none}
+  body[data-view="pro"] .radar .maplegend{display:flex;-webkit-line-clamp:unset}
+  .maplegend .lgbase{white-space:normal;align-items:flex-start}
+  .maplegend .lgbase .lgsw{margin-top:4px}
+  .maplegend .lgbase>span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.35}
+}
+
+/* ── The timeline (UI-REVIEW B2, 2026-10-23): the slider with a tick a frame
+   (filled loaded, hollow loading, red failed, amber the one on screen), times
+   under it, and the frame's own time on the cursor. The ticks sit on the
+   thumb's centres: inset by half the 10 px thumb. ── */
+.scrubwrap{position:relative;flex:1;min-width:0;align-self:stretch;display:flex;flex-direction:column;justify-content:flex-start}
+.scrubwrap input{width:100%;flex:none}
+body[data-view="pro"] .scrubwrap{min-height:48px}
+body[data-view="pro"] .scrubwrap input[type="range"]{margin-top:4px}
+.scrubwrap .scrubticks{position:relative;height:18px;margin:0 5px}
+.scrubwrap .tk{position:absolute;top:0;width:5px;height:6px;margin-left:-2.5px;background:#6b7686}
+.scrubwrap .tk.wait,.scrubwrap .tk.idle{background:transparent;outline:1px solid #6b7686;outline-offset:-1px}
+.scrubwrap .tk.idle{opacity:.5}
+.scrubwrap .tk.err{background:#ff6b6b}
+.scrubwrap .tk.cur{background:var(--amber);outline:0;height:8px}
+.scrubwrap .tlab{position:absolute;top:7px;transform:translateX(-50%);font:500 11px var(--mono);color:var(--dim);white-space:nowrap;pointer-events:none}
+.scrubwrap .tlab:first-of-type{transform:none}
+.scrubwrap .scrubtip{position:absolute;bottom:calc(100% - 2px);transform:translateX(-50%);margin-left:0;padding:1px 6px;background:var(--amber);color:#1c1300;font:600 11px var(--mono);white-space:nowrap;pointer-events:none;z-index:3}
+.scrubwrap .scrubtip:empty{display:none}
+/* the frame counter said "3/19"; the ticks say it better */
+body[data-view="pro"] .radarbar .fcount{display:none}
+/* Weather keeps its plain slider */
+body:not([data-view="pro"]) .scrubwrap .scrubticks,body:not([data-view="pro"]) .scrubwrap .scrubtip{display:none}
+.scrubwrap .tlab:last-of-type:not(:first-of-type){transform:translateX(-100%)}
+/* the map's notices sit at its foot, above the colour key, so they never cover the legend at its head */
+body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .radar .note,body[data-view="pro"] .radar .note{top:auto;bottom:62px}
