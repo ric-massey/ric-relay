@@ -106,7 +106,7 @@ the right radar"), 5, 6, 7.
 ## Checklist
 
 - [x] 1 the map feels like a map: wheel/pinch zoom to the point, animated, no blank (2026-10-24)
-- [ ] 2 time that does not alarm: open on newest, the legend says the loop
+- [x] 2 time that does not alarm: open on newest, the legend says the loop (2026-10-24)
 - [ ] 3 Active: the country's storms, one click each
 - [ ] 4 the map's own menu (right-click / long-press)
 - [ ] 5 presets by task

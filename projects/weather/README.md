@@ -634,6 +634,17 @@ map takes it. Measured in headless Chrome: four wheel notches = two levels,
 a double-click one, a pinch to three times two — each with the point under
 the cursor or between the fingers moving 0 km.
 
+**Time that does not alarm (2026-10-24, UI-REVIEW-2 item 2):** the loop
+starts by itself on load, and the legend used to say each frame's age as it
+came round — so the first thing a visitor read was "observed 11:30 PM · 47
+min ago", a feed that looked stale. Now a loop the page starts by itself
+rests on the newest frame for three seconds first (`play(on, auto)`), and
+while any loop plays the legend says the loop: "loop 11:35 PM–12:25 AM ·
+newest 3 min ago" (a forecast: its run and span). Paused, or with another map
+sharing the time, it says the frame, as before (`stampText`, tested). The
+legend's text is only rewritten when it changes, so a screen reader is not
+read every frame.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

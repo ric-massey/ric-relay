@@ -73,6 +73,12 @@ console.log('\nRULE  every map says what it shows and when, and how far from the
     ok(WS.stampText({ layer: 'GOES', kind: 'analysis', t: T, run: null }, T, fmt).indexOf('shared time') < 0, 'on the shared time, no gap is mentioned');
     ok(!/after now/.test(WS.stampText({ layer: 'R', kind: 'observed', t: T + 9 * 60e3 }, null, fmt)), 'a scan stamped ahead of the clock is never "after now"');
     ok(/loading/.test(WS.stampText({ layer: 'R', kind: 'observed', t: null }, null, fmt)), 'and one still loading says so');
+    /* a loop playing: its span and how fresh its newest frame is, never the age of the frame coming round */
+    const lp = WS.stampText({ layer: 'NEXRAD mosaic', kind: 'observed', t: T - 40 * 60e3, loop: { from: T - 45 * 60e3, to: T - 3 * 60e3 } }, null, fmt);
+    ok(/loop 20:15–20:57/.test(lp) && /newest 8 min ago/.test(lp) && !/45 min ago|observed/.test(lp), `a loop says its span and its newest (${lp})`);
+    const lf = WS.stampText({ layer: 'HRRR CAPE', kind: 'forecast', t: T + 3600e3, run: T - 3600e3, loop: { from: T, to: T + 18 * 3600e3 } }, null, fmt);
+    ok(/run 20Z · loop 21:00–.*15:00/.test(lf) && !/newest/.test(lf), `a forecast loop says its run and its span (${lf})`);
+    ok(/observed .*21:00/.test(WS.stampText({ layer: 'R', kind: 'observed', t: T, loop: { from: T - 3600e3, to: T } }, T, fmt)), 'with a shared time, each frame is still said by its own time');
   } finally { Date.now = now; }
 }
 

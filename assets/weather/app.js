@@ -1578,7 +1578,7 @@
         fit(Math.min(...pts.map((p) => p[1])), Math.min(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), 30);
       }
       draw(); label(); renderSources();
-      if (!reduced && R.visible) play(true);
+      if (!reduced && R.visible) play(true, true);
     }
     const leaveReplay = () => setMode("comp");
 
@@ -1618,7 +1618,7 @@
       rp.vols = list;
       siteReplayFrames();
       draw(); label(); renderSources();
-      if (!reduced && R.visible) play(true);
+      if (!reduced && R.visible) play(true, true);
     }
     function siteReplayFrames() {
       const rp = R.replay, mom = l3(rp.prodMode).l2;
@@ -3528,9 +3528,15 @@
       if ($("#loopspeed")) $("#loopspeed").value = String(LOOP.speed);
       if ($("#loopdwell")) $("#loopdwell").value = String(LOOP.dwell);
     }
-    function play(on) {
+    /* auto: the page started the loop by itself (a load, a new kind of map) —
+       Pro then rests on the newest frame for three seconds first, so the
+       first thing read is how fresh the data is (UI-REVIEW-2 item 2) */
+    function play(on, auto) {
+      const was = R.playing;
       R.playing = on;
       clearTimeout(R.timer);
+      /* the legend says the loop while it plays and the frame once it stops */
+      if (was !== on && R.started) Promise.resolve().then(() => hear("stamp", stamp()));
       $("#play").innerHTML = on
         ? '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2" width="3.5" height="12" rx="1" fill="#fff"/><rect x="9.5" y="2" width="3.5" height="12" rx="1" fill="#fff"/></svg>'
         : '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2l10 6-10 6z" fill="#fff"/></svg>';
@@ -3556,7 +3562,7 @@
         userShow(next);
         R.timer = setTimeout(step, next === last ? LOOP.dwell : 450 / LOOP.speed);
       };
-      R.timer = setTimeout(step, R.frame === lastOf() ? 600 : 450);
+      R.timer = setTimeout(step, R.frame === lastOf() ? (auto && PRO ? 3000 : 600) : 450);
     }
 
     /* the nearest NEXRAD to the middle of the map */
@@ -3990,7 +3996,7 @@
       } else if (single()) await siteFrames();
       label(); renderSources();
       stationsSoon(); loadOverlays(true);
-      if (!reduced) setTimeout(() => { if (R.visible) play(true); }, 900);
+      if (!reduced) setTimeout(() => { if (R.visible) play(true, true); }, 900);
     }
 
     /* ── Zoom that feels like a map (UI-REVIEW-2 item 1, 2026-10-24). The
@@ -4733,7 +4739,10 @@
       if (f && f.model) { const Sx = MM.SOURCES[f.model.src]; kind = Sx.analysis ? "analysis" : "forecast"; run = Sx.analysis ? null : f.model.run; }
       else if (f && f.future) kind = "forecast";
       else if (R.mode === "replay") kind = "archive";
-      return { layer: R.started ? describe() : "", kind, t, run, newest: R.frame >= R.frames.length - 1, frames: R.frames.length, mode: R.mode };
+      /* while the loop plays: its span, so the legend can say the loop rather than each frame */
+      const ts = R.playing ? R.frames.map((x) => validTime(x)).filter((x) => x != null) : [];
+      const loop = ts.length > 1 ? { from: Math.min(...ts), to: Math.max(...ts) } : null;
+      return { layer: R.started ? describe() : "", kind, t, run, loop, newest: R.frame >= R.frames.length - 1, frames: R.frames.length, mode: R.mode };
     }
     function viewNow() { return { lat: yLat(R.cy, R.z), lon: xLng(R.cx, R.z), z: R.z }; }
     function tellView() {
@@ -4825,7 +4834,7 @@
       async focusStorm(a) {
         if (a.polygon) fitPolygon(a.polygon, S.place);
         if (!single() && inUS()) await setMode(NX ? "l3:ref" : "N0B");
-        if (!reduced && R.visible) play(true);
+        if (!reduced && R.visible) play(true, true);
       },
       focus(id) {
         const all = [...(S.alerts || []), ...(S.state || []), ...(S.national || [])];

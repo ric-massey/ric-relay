@@ -136,6 +136,19 @@
     const far = (ms) => Math.abs(ms - Date.now()) > 6 * 86400e3;
     const dayOf = (ms) => (far(ms) ? fmt.ymd(ms) : fmt.day(ms)) + ' ';
     const when = fmt.time(st.t), day = fmt.ymd(st.t) !== fmt.ymd(Date.now()) ? dayOf(st.t) : '';
+    /* a loop playing, with no other map to share time with: the loop's span,
+       and for an observation how fresh its newest frame is — not each
+       frame's age as it comes round, which read like a stale feed
+       (UI-REVIEW-2 item 2) */
+    if (st.loop && busT == null && st.kind !== 'archive') {
+      const a = st.loop.from, b = st.loop.to, dA = fmt.ymd(a) !== fmt.ymd(Date.now()) ? dayOf(a) : '', dB = fmt.ymd(b) !== fmt.ymd(a) ? dayOf(b) : '';
+      let s = `${st.layer} · ${st.kind === 'forecast' && st.run ? `run ${hz(st.run)} · ` : ''}loop ${dA}${fmt.time(a)}–${dB}${fmt.time(b)}`;
+      if (st.kind !== 'forecast') {
+        const age = Math.max(0, Date.now() - b);
+        s += ` · newest ${age < 2 * 60e3 ? 'just now' : `${age < 3600e3 ? Math.round(age / 60e3) + ' min' : Math.round(age / 3600e3) + ' h'} ago`}`;
+      }
+      return s;
+    }
     let s = st.layer + ' · ';
     if (st.kind === 'forecast') s += `${st.run ? `run ${hz(st.run)} ${fmt.ymd(st.run) !== fmt.ymd(st.t) ? dayOf(st.run) : ''}· ` : ''}valid ${day}${when}`;
     else if (st.kind === 'analysis') s += `analysis ${day}${when}`;
@@ -435,7 +448,7 @@
     function stamps() {
       const ms = $('#mainstamp');
       /* alone, the main map's time is told against the clock: "the shared time" means nothing with no other map to share it */
-      if (ms) ms.textContent = W.mainStamp ? stampText(W.mainStamp, W.panels.length ? W.busT : null, fmt) : '';
+      if (ms) { const t = W.mainStamp ? stampText(W.mainStamp, W.panels.length ? W.busT : null, fmt) : ''; if (ms.textContent !== t) ms.textContent = t; }   // unchanged, untouched: a playing loop is not read out each frame
       for (const p of W.panels) { const el = p.sec.querySelector('.pst'); if (el) el.textContent = stampText(p.stamp, W.busT, fmt); }
       const c = $('#wsclock');
       /* said only when it is not "now" (the Now button beside it brings it back) */
