@@ -1182,3 +1182,65 @@ body[data-view="pro"]:not([data-panel]) .wsnote{top:calc(var(--tb,44px) + 8px)}
 }
 /* the map's toolbar on one line at laptop width: Find's ⌃K hint (still in its title and the ? sheet) gives way below 1100px */
 @media (max-width:1099px){ body[data-view="pro"] .maptools .findbtn kbd{display:none} }
+
+/* ══ Weather Pro, squared: an instrument to use (2026-10-23, Ric: "make all
+   the edges squared … with the idea that this is an instrument to use").
+   Every corner in Pro is square — controls, panels, menus, sheets, the map's
+   buttons, chart bars and map tags — except the data's own symbols (an
+   airport is still a round dot: that is meaning, not styling). Nothing
+   floats on a soft shadow or a gradient: panels are flat, edged in hairlines,
+   and the menus are told apart by a brighter edge. Controls read like a
+   panel's switches: monospaced capitals; a mode selector is one joined
+   strip whose lit segment is amber; checkboxes and sliders are square;
+   numbers keep their width as they change. ══ */
+body[data-view="pro"],body[data-view="pro"] *,body[data-view="pro"] *::before,body[data-view="pro"] *::after{border-radius:0!important}
+body[data-view="pro"] svg rect{rx:0;ry:0}
+body[data-view="pro"] *{box-shadow:none!important;text-shadow:none}
+body[data-view="pro"]{font-variant-numeric:tabular-nums}
+/* flat: the map's toolbar is a solid strip, ruled off from the map */
+body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl{background:#05070a;border-bottom:1px solid #2a3340}
+/* menus, sheets and popovers: a brighter edge instead of a shadow */
+body[data-view="pro"] .ovpanel,body[data-view="pro"] .wsbar.open,body[data-view="pro"] .pagebox.open,body[data-view="pro"] nav.glass.roomnav-open,body[data-view="pro"] dialog.sheet,body[data-view="pro"] .wsnote,body[data-view="pro"] .pin,body[data-view="pro"] #radarcard.ctl-open .mapctl,body[data-view="pro"] .xsec:not([hidden]){border-color:#4a5566!important}
+body[data-view="pro"] dialog.sheet::backdrop{background:rgba(0,0,0,.6)}
+/* switches: monospaced capitals (a monospace capital is no wider than its small letter) */
+body[data-view="pro"] .seg button,body[data-view="pro"] .toolbtn,body[data-view="pro"] .chip,body[data-view="pro"] .backbtn,body[data-view="pro"] .wsbar button,body[data-view="pro"] .roomnav-toggle,body[data-view="pro"] .sheet h2 button,body[data-view="pro"] .replaybar .go,body[data-view="pro"] .pin .pgo,body[data-view="pro"] .hero .go{text-transform:uppercase;letter-spacing:.04em;font-family:var(--mono)}
+body[data-view="pro"] .placebtn,body[data-view="pro"] .wstoggle #wsname{text-transform:none;letter-spacing:0}
+body[data-view="pro"] .seg button:hover,body[data-view="pro"] .toolbtn:hover,body[data-view="pro"] .chip:hover,body[data-view="pro"] .wsbar button:hover,body[data-view="pro"] .radar .zoom button:hover{border-color:#5a6678}
+/* a mode selector is one joined strip; the lit segment sits on top of its neighbours' edges */
+body[data-view="pro"] .maptools .kinds,body[data-view="pro"] .siterow .seg.rowscroll{gap:0}
+body[data-view="pro"] .maptools .kinds>button+button,body[data-view="pro"] .siterow .seg.rowscroll>button+button{margin-left:-1px}
+body[data-view="pro"] .seg button[aria-pressed="true"]{position:relative;z-index:1}
+/* the map's buttons: one joined column */
+body[data-view="pro"] .radar .zoom{gap:0}
+body[data-view="pro"] .radar .zoom>*+*{margin-top:-1px}
+body[data-view="pro"] .radar .zoom button{background:#0b0e13;border-color:#2a3340}
+@media (pointer:fine){ body[data-view="pro"] .radar .zoom button{width:36px;height:36px;font-size:18px} }
+/* sliders: a hairline track and a square amber cursor */
+body[data-view="pro"] input[type="range"]{-webkit-appearance:none;appearance:none;height:20px;background:transparent;cursor:pointer}
+body[data-view="pro"] input[type="range"]::-webkit-slider-runnable-track{height:4px;background:#2a3340;border:0}
+body[data-view="pro"] input[type="range"]::-moz-range-track{height:4px;background:#2a3340;border:0}
+body[data-view="pro"] input[type="range"]::-moz-range-progress{height:4px;background:#7a5a17}
+body[data-view="pro"] input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:20px;margin-top:-8px;background:var(--amber);border:1px solid #1c1300}
+body[data-view="pro"] input[type="range"]::-moz-range-thumb{width:10px;height:20px;background:var(--amber);border:1px solid #1c1300}
+body[data-view="pro"] input[type="range"]:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+/* checkboxes: a square that lights */
+body[data-view="pro"] input[type="checkbox"]{-webkit-appearance:none;appearance:none;flex:none;display:inline-grid;place-content:center;width:15px;height:15px;margin:0;background:#0b0f15;border:1.5px solid #6b7686;cursor:pointer}
+body[data-view="pro"] input[type="checkbox"]:checked{background:var(--amber);border-color:var(--amber)}
+body[data-view="pro"] input[type="checkbox"]:checked::after{content:"";width:8px;height:4px;margin-top:-2px;border:2px solid #1c1300;border-top:0;border-right:0;transform:rotate(-45deg)}
+body[data-view="pro"] input[type="checkbox"]:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+/* selects: square, with a drawn caret (the system's own is rounded on a Mac) */
+body[data-view="pro"] select{-webkit-appearance:none;appearance:none;padding-right:26px;background:#121821 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0h10L5 6z' fill='%239eabba'/%3E%3C/svg%3E") right 9px center/10px 6px no-repeat;border:1px solid var(--edge);color:#e3e9f0;font-family:var(--mono)}
+body[data-view="pro"] select:hover{border-color:#5a6678}
+/* the readouts drawer is a rack: panels flush, one hairline between them */
+body[data-view="pro"]:not([data-panel]) .side#cards{gap:0;padding:0}
+body[data-view="pro"]:not([data-panel]) .side#cards>*{margin:0;border-width:0 0 1px;border-style:solid;border-color:var(--edge);background:#0b0e13}
+body[data-view="pro"]:not([data-panel]) .side#cards>.card.bare:empty,body[data-view="pro"]:not([data-panel]) .side#cards>[hidden]{display:none}
+/* a narrow phone: the place gives up its width first, so its row stays one row */
+@media (max-width:640px){ body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebtn{flex:1 1 0} }
+/* on a phone the joined strip of kinds is a 3 × 2 block, not a strip that wraps one button over */
+@media (max-width:640px){
+  body[data-view="pro"] .maptools .kinds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;padding:0 0 1px 1px}
+  body[data-view="pro"] .maptools .kinds>button,body[data-view="pro"] .maptools .kinds>button+button{margin:0 0 -1px -1px}
+}
+/* the Overlays panel opens leftward from its button on a wide screen, so it stays over the map and never under the docked drawer */
+@media (min-width:1001px){ body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) .maptools .ovpanel{left:auto;right:0} }

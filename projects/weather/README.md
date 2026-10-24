@@ -446,6 +446,24 @@ place, ←, the workspace and ⋯. Without JS nothing moves. Measured: one 44 px
 and no sideways scroll at 1440, 1280, 1024 and 800; 83 px for both phone rows
 at 375.
 
+**Squared: an instrument to use (2026-10-23, Ric: "make all the edges squared …
+with the idea that this is an instrument to use"):** every corner in Pro is
+square — one rule at the foot of `weather.css` (`border-radius:0!important` under
+`body[data-view="pro"]`, and `rx:0` on SVG rects for chart bars and map tags).
+The data's own symbols keep their shape: an airport is still a round dot. No
+soft shadows or gradients: panels are flat and hairline-edged, and menus,
+sheets and popovers are told apart by a brighter edge (`#4a5566`). Switches are
+monospaced capitals (a monospace capital costs no width); the map's kinds and a
+single radar's products are one joined strip with the lit segment in amber (a
+3 × 2 block on a phone); the map's buttons are one joined column (36 px with a
+mouse, 44 by touch); sliders are a hairline track with a square amber cursor;
+checkboxes are squares that light amber; selects draw their own caret; numbers
+are tabular, so a readout never jitters; the readouts drawer is a rack of flush
+panels with one hairline between. Weather, the everyday page, keeps its round
+sky — none of this reaches it. The Overlays panel now opens leftward from its
+button on a wide screen, so it stays over the map instead of under the docked
+drawer.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its
