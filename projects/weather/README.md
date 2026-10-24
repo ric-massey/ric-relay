@@ -27,8 +27,8 @@ professionals"):
 They look like different apps on purpose. Weather is the sky: the colour follows
 what is overhead, frosted cards, big friendly numbers, and a **gold ★ Pro badge**
 in the top bar's corner that opens Weather Pro. Weather Pro is an instrument:
-near-black panels, hairline rules, monospaced data, square corners, one amber
-accent, a WEATHER PRO wordmark, and **← Weather** to go back. On a wide screen it
+near-black panels, hairline rules, monospaced data, square corners, one blue
+accent (amber until 2026-10-23; it now means only "late"), a WEATHER PRO wordmark, and **← Weather** to go back. On a wide screen it
 is a workspace — the map docked on the left, sized to fit the screen whole, and the
 readouts (now, alerts, the sounding, the models, the record) in a panel beside it;
 on a phone they stack. Its look lives in the second half of
@@ -454,10 +454,10 @@ The data's own symbols keep their shape: an airport is still a round dot. No
 soft shadows or gradients: panels are flat and hairline-edged, and menus,
 sheets and popovers are told apart by a brighter edge (`#4a5566`). Switches are
 monospaced capitals (a monospace capital costs no width); the map's kinds and a
-single radar's products are one joined strip with the lit segment in amber (a
+single radar's products are one joined strip with the lit segment in the accent (a
 3 × 2 block on a phone); the map's buttons are one joined column (36 px with a
-mouse, 44 by touch); sliders are a hairline track with a square amber cursor;
-checkboxes are squares that light amber; selects draw their own caret; numbers
+mouse, 44 by touch); sliders are a hairline track with a square cursor in the accent;
+checkboxes are squares that light in the accent; selects draw their own caret; numbers
 are tabular, so a readout never jitters; the readouts drawer is a rack of flush
 panels with one hairline between. Weather, the everyday page, keeps its round
 sky — none of this reaches it. The Overlays panel now opens leftward from its
@@ -493,7 +493,7 @@ again); an overlay's line turns that overlay off and stays, greyed and struck
 through, so a second click brings it back (one turned off in the Overlays panel
 goes). On a phone only the data line shows. The timeline has a tick a frame
 under the slider — filled when loaded, hollow while loading, dimmed when not
-asked for yet (older frames load once the loop plays), red if it failed, amber
+asked for yet (older frames load once the loop plays), red if it failed, the accent
 the one on screen — and times along it chosen by
 `WxWorkstation.timelineMarks` (tested): a model's forecast hours (F000, F012 …
 at the coarsest step that fits) or the clock at the first frame past each
@@ -501,6 +501,16 @@ at the coarsest step that fits) or the clock at the first frame past each
 changes. The frame's own time rides on the cursor and is the slider's
 `aria-valuetext`. The "3/19" counter is gone from Pro. The map's notices moved
 to its foot, above the colour key, so they never cover the legend.
+
+**Blue (2026-10-23, Ric: "i dont like the orange", then "Go with the blue
+accent"):** Pro's accent is `--accent` #4dabf7 (7.3:1 on its panels), with
+`--on-accent`, `--accent-tint` and `--accent-edge` for text on it, lit
+switches and their edges. Amber is kept for one meaning only, `--late` — a
+legend line whose feed is late — and for the gold ★ badge that is the door
+from Weather. Marks drawn on the map by a tool (the ruler, the radar picked)
+are white: blue on a radar map reads as light rain. The colours were chosen by
+rendering the page three ways (amber, monochrome, blue) with only the
+interface colour changed.
 
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**

@@ -729,8 +729,9 @@ ones that must never break:
   people want — now, the next hours, ten days, a plain radar; **Weather Pro**
   (`weather-pro.html`) is the full map, soundings, models and the record. They are
   **two products with two looks** (Ric: "like two different products"): Weather is
-  the sky, with a gold ★ Pro badge in its top bar; Pro is a dark, monospaced,
-  amber instrument with ← Weather to go back. Don't bring back a shared tab switch
+  the sky, with a gold ★ Pro badge in its top bar; Pro is a dark, monospaced
+  instrument with one blue accent (Ric, 2026-10-23 — amber fought the radar's
+  own oranges; it now means only "late") and ← Weather to go back. Don't bring back a shared tab switch
   or style Pro like Weather. Both load `assets/weather/app.js` and
   `assets/weather/weather.css`; each page holds only its own cards. **Warnings and
   storm mode stay on both** — never move them to Pro only. On Pro a warning may be **folded**

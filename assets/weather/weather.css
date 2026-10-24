@@ -510,19 +510,24 @@ body[data-view="pro"] .simple-only{display:none!important}
 .probtn svg{flex:none}
 
 /* ══ Weather Pro: the instrument ═══════════════════════════
-   Near-black panels, hairline rules, one amber accent, monospaced data,
+   Near-black panels, hairline rules, one blue accent, monospaced data,
    square corners, no sky and no frosted glass. Every text colour below
-   clears 4.5:1 on --glass (#0e1218): --dim 8.0:1, --faint 6.2:1, amber 10.7:1. */
+   clears 4.5:1 on --glass (#0e1218): --dim 8.0:1, --faint 6.2:1, accent 7.3:1. */
 body[data-view="pro"]{
   --glass:#0e1218; --glass-hi:#141a22; --edge:#232b36;
-  --dim:#9eabba; --faint:#8a96a6; --amber:#ffb627;
+  --dim:#9eabba; --faint:#8a96a6;
+  /* the accent is blue (2026-10-23, Ric: "Go with the blue accent" — the
+     amber fought the radar's own oranges and the watch colours); amber is
+     kept for one meaning only, "late". #4dabf7 on #0e1218 is 7.3:1, the
+     dark text on it 7.6:1. */
+  --accent:#4dabf7; --on-accent:#031525; --accent-tint:#0f2537; --accent-edge:#2d6a99; --late:#ffb627;
   --mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
   --r:4px;
   background:#07090c;background-image:none;color:#e3e9f0}
 body[data-view="pro"] .num{font-family:var(--mono)}
 body[data-view="pro"] .topbar{background:#05070a;border-bottom:1px solid #2a2f38;backdrop-filter:none;-webkit-backdrop-filter:none}
 body[data-view="pro"] .brand .mark{font-family:var(--mono);font-weight:700;letter-spacing:.2em;font-size:15px}
-body[data-view="pro"] .brand .mark b{color:var(--amber);margin-left:.45em}
+body[data-view="pro"] .brand .mark b{color:var(--accent);margin-left:.45em}
 body[data-view="pro"] nav.glass a,body[data-view="pro"] nav.glass .here{border-radius:3px;font-family:var(--mono);font-size:12px}
 body[data-view="pro"] nav.glass .here{background:#1b222c}
 body[data-view="pro"] .roomnav-toggle{border-radius:4px;background:#121821}
@@ -532,30 +537,30 @@ body[data-view="pro"] .placebtn,body[data-view="pro"] .chip,.backbtn{border-radi
 .backbtn{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;color:#e3e9f0;font-weight:600;text-decoration:none;flex:none}
 .backbtn:hover,body[data-view="pro"] .placebtn:hover,body[data-view="pro"] .chip:hover{background:#1a212b}
 body[data-view="pro"] .card{border-radius:var(--r);backdrop-filter:none;-webkit-backdrop-filter:none;padding:12px 14px}
-body[data-view="pro"] .card h2,body[data-view="pro"] #sky summary b,body[data-view="pro"] #models summary b{font-family:var(--mono);color:var(--amber);letter-spacing:.14em;font-size:12px;text-transform:uppercase}
+body[data-view="pro"] .card h2,body[data-view="pro"] #sky summary b,body[data-view="pro"] #models summary b{font-family:var(--mono);color:var(--accent);letter-spacing:.14em;font-size:12px;text-transform:uppercase}
 body[data-view="pro"] #sky summary .lead,body[data-view="pro"] #models summary .lead{font-size:12px}
 body[data-view="pro"] .seg button,body[data-view="pro"] .replaybar input,body[data-view="pro"] .replaybar select,body[data-view="pro"] .replaybar #rplive,body[data-view="pro"] .replaybar .presets button{
   border-radius:3px;background:#121821;border:1px solid var(--edge);font-family:var(--mono);font-size:12.5px;letter-spacing:.02em}
-body[data-view="pro"] .seg button[aria-pressed="true"],body[data-view="pro"] #replaytoggle[aria-pressed="true"]{background:var(--amber);color:#1c1300;border-color:var(--amber)}
+body[data-view="pro"] .seg button[aria-pressed="true"],body[data-view="pro"] #replaytoggle[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 body[data-view="pro"] .replaybar{border-radius:4px;background:#0a0d12;border:1px solid var(--edge)}
-body[data-view="pro"] .replaybar .go,body[data-view="pro"] .pin .pgo{border-radius:3px;background:var(--amber);color:#1c1300;font-family:var(--mono)}
+body[data-view="pro"] .replaybar .go,body[data-view="pro"] .pin .pgo{border-radius:3px;background:var(--accent);color:var(--on-accent);font-family:var(--mono)}
 body[data-view="pro"] .radar{margin:0 -14px;background:#0b0e13}
 body[data-view="pro"] .radar .zoom button{border-radius:3px;background:rgba(7,9,12,.88);border-color:#2a3340}
-body[data-view="pro"] .radar .zoom button[aria-pressed="true"]{background:var(--amber);color:#1c1300}
+body[data-view="pro"] .radar .zoom button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
 body[data-view="pro"] .radarbar .play{border-radius:4px;background:#121821}
-body[data-view="pro"] .radarbar input,body[data-view="pro"] .hourpick input{accent-color:var(--amber)}
+body[data-view="pro"] .radarbar input,body[data-view="pro"] .hourpick input{accent-color:var(--accent)}
 body[data-view="pro"] .pin{border-radius:4px;background:#0b0f15;border-color:#2a3340}
 body[data-view="pro"] .sitebar,body[data-view="pro"] .nextnote,body[data-view="pro"] .legend{font-size:12px}
 
 /* the readout: what is happening here, as an instrument says it */
 body[data-view="pro"] .hero.card.bare{background:var(--glass);border:1px solid var(--edge);border-radius:var(--r);padding:12px 14px;text-align:left}
-body[data-view="pro"] .hero .where{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);text-shadow:none}
+body[data-view="pro"] .hero .where{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);text-shadow:none}
 body[data-view="pro"] .hero .temp{font-family:var(--mono);font-size:48px;font-weight:500;letter-spacing:-.02em;text-shadow:none;margin:2px 0}
 body[data-view="pro"] .hero .cond{justify-content:flex-start;font-size:15px}
 body[data-view="pro"] .hero .cond svg{width:24px;height:24px}
 body[data-view="pro"] .hero .sub{font-size:13px;font-family:var(--mono)}
 body[data-view="pro"] .hero .rainline,body[data-view="pro"] .confline,body[data-view="pro"] .hero .from>span,body[data-view="pro"] .hero .from>a>span,body[data-view="pro"] .risk{border-radius:3px;background:#141a22;font-size:13px}
-body[data-view="pro"] .hero .go{border-radius:3px;background:var(--amber);color:#1c1300}
+body[data-view="pro"] .hero .go{border-radius:3px;background:var(--accent);color:var(--on-accent)}
 body[data-view="pro"] .counts{justify-content:flex-start}
 body[data-view="pro"] .counts span{border-radius:3px;background:#141a22;font-family:var(--mono);font-size:12.5px}
 
@@ -623,7 +628,7 @@ details.afd pre{white-space:pre-wrap;word-wrap:break-word;margin:0 0 10px;font:1
 .modelbar .mmrun .linkish{background:none;border:0;padding:4px 0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer}
 .modelbar .go{min-height:44px;padding:0 16px;border-radius:999px;border:0;background:#fff;color:#0b2342;font-weight:700}
 .modelbar .go[hidden]{display:none}
-body[data-view="pro"] .modelbar .go{border-radius:3px;background:var(--amber);color:#1c1300;font-family:var(--mono)}
+body[data-view="pro"] .modelbar .go{border-radius:3px;background:var(--accent);color:var(--on-accent);font-family:var(--mono)}
 .legend.scale{align-items:flex-start;gap:10px}
 .legend.scale .bar{flex:1;min-width:0}
 .legend.scale .bar i{display:block;height:9px;border-radius:2px}
@@ -645,7 +650,7 @@ body[data-view="pro"] .modelbar .go{border-radius:3px;background:var(--amber);co
 .pin .ro{color:#ffd166;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
 body[data-view="pro"] .modelbar{border-radius:4px;background:#0a0d12;border:1px solid var(--edge)}
 body[data-view="pro"] .modelbar select{border-radius:3px;font-family:var(--mono);font-size:13px}
-body[data-view="pro"] .pin .ro{color:var(--amber)}
+body[data-view="pro"] .pin .ro{color:var(--accent)}
 
 /* ── Weather Pro's controls, 2026-10-23 ──
    On a wide screen every layer and overlay is in view: the rows wrap rather
@@ -667,8 +672,8 @@ body[data-view="pro"] .pin .ro{color:var(--amber)}
    so they do not read like the one layer chosen in the row above */
 body[data-view="pro"] .seg.toggles button{display:inline-flex;align-items:center;gap:7px}
 body[data-view="pro"] .seg.toggles button::before{content:"";flex:none;width:10px;height:10px;border:1.5px solid currentColor;border-radius:2px;opacity:.75}
-body[data-view="pro"] .seg.toggles button[aria-pressed="true"]{background:#2a2110;color:var(--amber);border-color:#7a5a17}
-body[data-view="pro"] .seg.toggles button[aria-pressed="true"]::before{opacity:1;background:var(--amber) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5.2l2 2 4-4.4' fill='none' stroke='%231c1300' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/100% no-repeat;border-color:var(--amber)}
+body[data-view="pro"] .seg.toggles button[aria-pressed="true"]{background:var(--accent-tint);color:var(--accent);border-color:var(--accent-edge)}
+body[data-view="pro"] .seg.toggles button[aria-pressed="true"]::before{opacity:1;background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 5.2l2 2 4-4.4' fill='none' stroke='%231c1300' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/100% no-repeat;border-color:var(--accent)}
 /* the radar picker, at the head of the tilt row; the satellite under the
    radar, at the end of the overlays (a list, so it costs no row of its own) */
 .tiltbtns{display:contents}
@@ -692,7 +697,7 @@ body[data-view="pro"] .sheet h2 button{border-radius:3px;background:#121821;bord
 .modelbar label[hidden]{display:none}
 /* a model field at one point, hour by hour — under the map, like a cross-section */
 .ptchart .cmp{display:inline-flex;align-items:center;gap:8px;margin:8px 0 0;font-size:13px;color:var(--dim);min-height:32px}
-.ptchart .cmp input{accent-color:var(--amber,#ffb627);width:16px;height:16px}
+.ptchart .cmp input{accent-color:var(--accent,#4dabf7);width:16px;height:16px}
 .ptchart svg.chart{display:block;width:100%;height:auto;margin-top:8px;cursor:crosshair}
 .ptchart svg.chart text{font:11px var(--mono,ui-monospace,monospace);fill:#9eabba}
 .ptchart svg.chart text.d{fill:#8a96a6}
@@ -700,8 +705,8 @@ body[data-view="pro"] .sheet h2 button{border-radius:3px;background:#121821;bord
 .ptchart svg.chart .gl{stroke:#232b36;stroke-width:1}
 .ptchart svg.chart .now{stroke:#e9ecef;stroke-width:1;stroke-dasharray:3 3}
 .ptchart svg.chart polyline{fill:none;stroke-linejoin:round;stroke-linecap:round}
-.ptchart svg.chart .cur{stroke:#ffb627;stroke-width:2.2}
-.ptchart svg.chart circle{fill:#ffb627}
+.ptchart svg.chart .cur{stroke:var(--accent);stroke-width:2.2}
+.ptchart svg.chart circle{fill:var(--accent)}
 .ptchart svg.chart .prev{stroke:#9eabba;stroke-width:1.8;stroke-dasharray:5 4}
 .ptchart .ps{font-size:12px;color:var(--dim);margin-top:6px}
 body[data-view="pro"] .xsec .xh button{border-radius:3px;background:#121821;border:1px solid var(--edge)}
@@ -716,8 +721,8 @@ body[data-view="pro"] .xsec .xh button{border-radius:3px;background:#121821;bord
 .wsbar .wsname{display:inline-flex;align-items:center;gap:6px}
 .wssync{display:inline-flex;align-items:center;gap:8px}
 .wssync label{display:inline-flex;align-items:center;gap:5px;min-height:34px;color:var(--dim)}
-.wssync input{accent-color:var(--amber);width:15px;height:15px;margin:0}
-.wsclock{color:var(--amber);margin-left:auto}
+.wssync input{accent-color:var(--accent);width:15px;height:15px;margin:0}
+.wsclock{color:var(--accent);margin-left:auto}
 
 @media (pointer:coarse){ .wsbar button,.wsbar select,.wssync label{min-height:44px} }
 
@@ -744,13 +749,13 @@ body[data-panel] #radarcard{display:flex;flex-direction:column;height:100vh;min-
 body[data-panel] .workspace .radar{flex:1 1 0;height:auto;min-height:160px;margin:0 -6px}
 /* the sheets: explore, arrange, save, share */
 .wssheet .wslead{color:var(--dim);font-size:13px;margin:0 0 10px}
-.wssheet h3{font:600 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin:14px 0 6px}
+.wssheet h3{font:600 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:14px 0 6px}
 .wslist,.wsexplore ul{list-style:none;margin:0;padding:0;display:grid;gap:2px}
 .wslist li,.wsexplore li{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid #1b222c;font-size:13px}
 .wslist li>span,.wsexplore li>span,.wslist li>label{flex:1 1 200px;min-width:0}
 .wslist small,.wsexplore small{display:block;color:var(--dim);font-size:12px}
 .wslist label small{display:inline;margin-left:4px}
-.wslist input[type=checkbox]{accent-color:var(--amber);width:16px;height:16px;vertical-align:-3px}
+.wslist input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;vertical-align:-3px}
 .wsexplore select{display:block;margin-top:4px;width:100%;max-width:420px;min-height:36px;padding:0 8px;border-radius:3px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
 .wslist button,.wsexplore button{min-height:36px;padding:0 10px;border-radius:3px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:12px var(--mono)}
 .wslist button:disabled{opacity:.4}
@@ -762,9 +767,9 @@ body[data-panel] .workspace .radar{flex:1 1 0;height:auto;min-height:160px;margi
 #wslinkout{display:block;width:100%;margin-top:8px}
 #wslinkout[hidden]{display:none}
 .wscheck{display:flex;gap:8px;align-items:center;margin:6px 0;font-size:13px;min-height:32px}
-.wscheck input{accent-color:var(--amber);width:16px;height:16px;flex:none}
+.wscheck input{accent-color:var(--accent);width:16px;height:16px;flex:none}
 .wsform .wscheck{flex:1 1 100%}
-.wssheet .go{min-height:40px;padding:0 16px;border-radius:3px;border:0;background:var(--amber);color:#1c1300;font:600 13px var(--mono)}
+.wssheet .go{min-height:40px;padding:0 16px;border-radius:3px;border:0;background:var(--accent);color:var(--on-accent);font:600 13px var(--mono)}
 
 /* ── Pro's map, first (2026-10-23, Ric: "make it cleaner and easier to use
    for the professionals") ──
@@ -785,11 +790,11 @@ body[data-panel] .workspace .radar{flex:1 1 0;height:auto;min-height:160px;margi
 .maptools .kinds button{flex:none}
 body[data-view="pro"] .maptools .toolbtn{min-height:34px;padding:0 10px;border-radius:3px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;font:600 13px var(--mono)}
 body[data-view="pro"] .maptools .toolbtn:hover{background:#1a212b}
-body[data-view="pro"] .maptools .toolbtn[aria-pressed="true"],body[data-view="pro"] .maptools .toolbtn[aria-expanded="true"]{background:#2a2110;color:var(--amber);border-color:#7a5a17}
-body[data-view="pro"] #replaytoggle[aria-pressed="true"]{background:var(--amber);color:#1c1300;border-color:var(--amber)}
+body[data-view="pro"] .maptools .toolbtn[aria-pressed="true"],body[data-view="pro"] .maptools .toolbtn[aria-expanded="true"]{background:var(--accent-tint);color:var(--accent);border-color:var(--accent-edge)}
+body[data-view="pro"] #replaytoggle[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 
 .ovwrap{position:relative}
-.ovcount{margin-left:4px;color:var(--amber)}
+.ovcount{margin-left:4px;color:var(--accent)}
 .ovcount:empty{display:none}
 .ovpanel{position:absolute;z-index:40;top:calc(100% + 6px);left:0;width:min(560px,calc(100vw - 32px));padding:10px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 12px 30px rgba(0,0,0,.55)}
 .ovpanel[hidden]{display:none}
@@ -849,14 +854,14 @@ body[data-view="pro"] .siterow .sitepick select{max-width:210px}
 @media (pointer:coarse){ .maptools .findbtn kbd{display:none} }
 dialog.sheet.findsheet{width:min(620px,calc(100vw - 24px))}
 .findsheet .in{width:auto}
-.findsheet #findq{display:block;width:100%;min-height:44px;padding:0 12px;border-radius:3px;border:1px solid var(--amber);background:#121821;color:#e3e9f0;font:14px var(--mono)}
+.findsheet #findq{display:block;width:100%;min-height:44px;padding:0 12px;border-radius:3px;border:1px solid var(--accent);background:#121821;color:#e3e9f0;font:14px var(--mono)}
 .findlist{list-style:none;margin:8px 0 0;padding:0;max-height:min(420px,55vh);overflow:auto}
 .findlist li{display:flex;align-items:center;gap:10px;min-height:40px;padding:6px 10px;border-radius:3px;cursor:pointer;font-size:13px}
 .findlist li>span{flex:1;min-width:0}
 .findlist li small{display:block;color:var(--dim);font-size:12px}
 .findlist li em{flex:none;font:normal 11px var(--mono);color:var(--dim)}
 .findlist li[aria-selected="true"],.findlist li:hover{background:#1b222c}
-.findlist li[aria-selected="true"]{outline:1px solid #7a5a17}
+.findlist li[aria-selected="true"]{outline:1px solid var(--accent-edge)}
 .findlist .none{color:var(--dim);cursor:default}
 .findhint{margin:8px 0 0!important;font-size:12px!important}
 /* the readout cards fold to their heading */
@@ -865,7 +870,7 @@ dialog.sheet.findsheet{width:min(620px,calc(100vw - 24px))}
 #cards .card.ws-min>h2[data-min]::after{content:"+"}
 #cards .card.ws-min>h2{margin-bottom:0}
 #cards .card.ws-min>:not(h2:first-child){display:none!important}
-#cards .card>h2[data-min]:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+#cards .card>h2[data-min]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* Pro's hero with no place: shorter — the place button is in the bar above */
 body[data-view="pro"] #hero .sub[style]{margin-top:6px!important}
 body[data-view="pro"] #hero [data-locate],body[data-view="pro"] #hero [data-open-places]{min-height:36px!important;padding:0 12px}
@@ -878,8 +883,8 @@ body[data-view="pro"] #hero>div[style]{margin-top:6px!important}
   body[data-view="pro"]:not([data-panel]) .mapctl .maptools .kinds{flex-wrap:wrap;overflow:visible}
   body[data-view="pro"]:not([data-panel]) .mapctl .ovpanel{position:static;width:auto;max-height:none;box-shadow:none;margin-top:8px}
   body[data-view="pro"]:not([data-panel]) .mapctl .seg.rowscroll{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;padding-right:0}
-  body[data-view="pro"]:not([data-panel]) .sheetdone{display:block;width:100%;min-height:44px;margin-top:8px;border:0;border-radius:4px;background:var(--amber);color:#1c1300;font:600 14px var(--mono)}
-  body[data-view="pro"]:not([data-panel]) .layersbtn{display:inline-flex;align-items:center;gap:7px;position:absolute;left:8px;bottom:24px;z-index:7;min-height:44px;padding:0 14px;border-radius:4px;border:1px solid #7a5a17;background:rgba(7,9,12,.92);color:var(--amber);font:600 13px var(--mono)}
+  body[data-view="pro"]:not([data-panel]) .sheetdone{display:block;width:100%;min-height:44px;margin-top:8px;border:0;border-radius:4px;background:var(--accent);color:var(--on-accent);font:600 14px var(--mono)}
+  body[data-view="pro"]:not([data-panel]) .layersbtn{display:inline-flex;align-items:center;gap:7px;position:absolute;left:8px;bottom:24px;z-index:7;min-height:44px;padding:0 14px;border-radius:4px;border:1px solid var(--accent-edge);background:rgba(7,9,12,.92);color:var(--accent);font:600 13px var(--mono)}
   /* the map takes the first screen: what is above it is the place bar and the card's title */
   body[data-view="pro"]:not([data-panel]) .workspace .radar{height:calc(100svh - 330px);min-height:320px}
 }
@@ -958,11 +963,11 @@ details.srcfold[open]>summary h2{margin-bottom:12px}
 /* panels are mostly map: their controls are a sheet behind the Layers button, at any size */
 body[data-panel] .mapctl{display:none}
 body[data-panel] .workspace .radar{margin:0 -6px}
-body[data-panel] .layersbtn{display:inline-flex;align-items:center;gap:6px;position:absolute;left:6px;top:6px;z-index:8;min-height:30px;padding:0 10px;border-radius:3px;border:1px solid #7a5a17;background:rgba(7,9,12,.9);color:var(--amber);font:600 12px var(--mono)}
+body[data-panel] .layersbtn{display:inline-flex;align-items:center;gap:6px;position:absolute;left:6px;top:6px;z-index:8;min-height:30px;padding:0 10px;border-radius:3px;border:1px solid var(--accent-edge);background:rgba(7,9,12,.9);color:var(--accent);font:600 12px var(--mono)}
 body[data-panel] #radarcard.ctl-open .mapctl{display:block;position:fixed;left:0;right:0;top:0;z-index:50;max-height:86vh;overflow:auto;padding:10px 12px;background:#0b0f15;border-bottom:1px solid #2a3340;box-shadow:0 14px 34px rgba(0,0,0,.6)}
 body[data-panel] #radarcard.ctl-open .mapctl .seg.rowscroll,body[data-panel] #radarcard.ctl-open .mapctl .kinds{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;padding-right:0}
 body[data-panel] #radarcard.ctl-open .mapctl .ovpanel{position:static;width:auto;max-height:none;box-shadow:none;margin-top:8px}
-body[data-panel] .sheetdone{display:block;width:100%;min-height:36px;margin-top:8px;border:0;border-radius:3px;background:var(--amber);color:#1c1300;font:600 13px var(--mono)}
+body[data-panel] .sheetdone{display:block;width:100%;min-height:36px;margin-top:8px;border:0;border-radius:3px;background:var(--accent);color:var(--on-accent);font:600 13px var(--mono)}
 body[data-panel] .radarbar{margin-top:4px}
 body[data-panel] .radarbar .play{width:34px;height:34px}
 body[data-panel] .loopset,body[data-panel] .legend{font-size:11px}
@@ -987,16 +992,16 @@ body[data-panel] .loopset,body[data-panel] .legend{font-size:11px}
   .workspace.ws-grid #radarcard .mapctl{display:none}
   .workspace.ws-grid #radarcard.ctl-open .mapctl{display:block;position:absolute;left:8px;top:38px;z-index:30;width:min(680px,calc(100% - 16px));max-height:calc(100% - 46px);overflow:auto;padding:10px 12px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.6)}
   .workspace.ws-grid #radarcard.ctl-open .mapctl .ovpanel{position:static;width:auto;max-height:none;box-shadow:none;margin-top:8px}
-  .workspace.ws-grid #radarcard .sheetdone{display:block;width:100%;min-height:36px;margin-top:8px;border:0;border-radius:3px;background:var(--amber);color:#1c1300;font:600 13px var(--mono)}
-  .workspace.ws-grid #radarcard .layersbtn{display:inline-flex;align-items:center;gap:6px;position:absolute;left:6px;top:6px;z-index:8;min-height:30px;padding:0 10px;border-radius:3px;border:1px solid #7a5a17;background:rgba(7,9,12,.9);color:var(--amber);font:600 12px var(--mono)}
+  .workspace.ws-grid #radarcard .sheetdone{display:block;width:100%;min-height:36px;margin-top:8px;border:0;border-radius:3px;background:var(--accent);color:var(--on-accent);font:600 13px var(--mono)}
+  .workspace.ws-grid #radarcard .layersbtn{display:inline-flex;align-items:center;gap:6px;position:absolute;left:6px;top:6px;z-index:8;min-height:30px;padding:0 10px;border-radius:3px;border:1px solid var(--accent-edge);background:rgba(7,9,12,.9);color:var(--accent);font:600 12px var(--mono)}
   .workspace.ws-grid #radarcard .mainst{left:auto;right:56px;max-width:calc(100% - 200px)}
 }
-#wslayout[aria-pressed="true"]{border-color:#7a5a17;color:var(--amber)}
+#wslayout[aria-pressed="true"]{border-color:var(--accent-edge);color:var(--accent)}
 
 /* the colour key on the map, on a desk; the readout sits above it */
 .radar>.legend{position:absolute;left:10px;bottom:22px;z-index:6;width:min(380px,calc(100% - 140px));margin:0;padding:5px 9px;border-radius:4px;background:rgba(7,9,12,.86);border:1px solid #2a3340;pointer-events:none}
 .radar:has(>.legend) .read{bottom:68px}
-.radar .read b{color:var(--amber);font-weight:600}
+.radar .read b{color:var(--accent);font-weight:600}
 .radar .read.stale{opacity:.55}
 /* range rings */
 #radarover .ringl{font:600 11px var(--mono);fill:#e6edf3;stroke:#05070a;stroke-width:3px;paint-order:stroke}
@@ -1009,7 +1014,7 @@ body[data-panel] .loopset,body[data-panel] .legend{font-size:11px}
 /* opacity and the base map, in the overlays menu */
 .ovrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:8px}
 .opick{display:inline-flex;align-items:center;gap:6px}
-.opick input{width:120px;accent-color:var(--amber)}
+.opick input{width:120px;accent-color:var(--accent)}
 .opick .num{font:12px var(--mono);color:var(--dim);min-width:3em}
 .radar[data-base="dark"] .base img{filter:grayscale(1) invert(1) brightness(.6) contrast(.95)}
 .radar[data-base="light"] .base img{filter:grayscale(.35) brightness(.92)}
@@ -1021,7 +1026,7 @@ body[data-panel] .loopset,body[data-panel] .legend{font-size:11px}
   body[data-view="pro"] .siterow .sitepick select{max-width:150px}
   body[data-view="pro"] .siterow .tiltbtns{white-space:nowrap}
 }
-.utcchip[aria-pressed="true"]{border-color:#7a5a17;color:var(--amber)}
+.utcchip[aria-pressed="true"]{border-color:var(--accent-edge);color:var(--accent)}
 
 /* the tropics: a forecast point's letter (H, S, D…) and its time */
 #radarover .trl{font:700 10px var(--mono);fill:#05070a}
@@ -1078,7 +1083,7 @@ body[data-view="pro"].drawer-open:not([data-panel]) .side#cards{transform:none;v
 .databtn{display:inline-flex;align-items:center;gap:6px}
 .databtn b{min-width:18px;padding:0 5px;border-radius:9px;background:var(--warn,#ff6b6b);color:#160000;font:700 11px/18px var(--mono);text-align:center}
 .databtn b:empty{display:none}
-body[data-view="pro"].drawer-open .databtn{border-color:#7a5a17;color:var(--amber)}
+body[data-view="pro"].drawer-open .databtn{border-color:var(--accent-edge);color:var(--accent)}
 /* maps side by side fill the window too (a stack does not fit a page that does not scroll) */
 body[data-view="pro"]:not([data-panel]) .workspace.has-panels .mapcol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:6px;padding:0}
 body[data-view="pro"]:not([data-panel]) .workspace.has-panels .panels{display:contents}
@@ -1088,8 +1093,8 @@ body[data-view="pro"]:not([data-panel]) .workspace.has-panels .mpanel{display:fl
 body[data-view="pro"]:not([data-panel]) .workspace.has-panels .mpanel iframe{flex:1 1 0;height:auto;min-height:0}
 body[data-view="pro"]:not([data-panel]) .workspace.has-panels #radarcard .mapctl{display:none}
 body[data-view="pro"]:not([data-panel]) .workspace.has-panels #radarcard.ctl-open .mapctl{display:block;position:absolute;left:8px;top:8px;z-index:30;width:min(680px,calc(100% - 16px));max-height:calc(100% - 16px);overflow:auto;padding:10px 12px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.6)}
-body[data-view="pro"]:not([data-panel]) .workspace.has-panels #radarcard .sheetdone{display:block;width:100%;min-height:36px;margin-top:8px;border:0;border-radius:3px;background:var(--amber);color:#1c1300;font:600 13px var(--mono)}
-body[data-view="pro"]:not([data-panel]) .workspace.has-panels #radarcard .layersbtn{display:inline-flex;align-items:center;gap:6px;position:absolute;left:6px;top:6px;z-index:8;min-height:30px;padding:0 10px;border-radius:3px;border:1px solid #7a5a17;background:rgba(7,9,12,.9);color:var(--amber);font:600 12px var(--mono)}
+body[data-view="pro"]:not([data-panel]) .workspace.has-panels #radarcard .sheetdone{display:block;width:100%;min-height:36px;margin-top:8px;border:0;border-radius:3px;background:var(--accent);color:var(--on-accent);font:600 13px var(--mono)}
+body[data-view="pro"]:not([data-panel]) .workspace.has-panels #radarcard .layersbtn{display:inline-flex;align-items:center;gap:6px;position:absolute;left:6px;top:6px;z-index:8;min-height:30px;padding:0 10px;border-radius:3px;border:1px solid var(--accent-edge);background:rgba(7,9,12,.9);color:var(--accent);font:600 12px var(--mono)}
 body[data-view="pro"]:not([data-panel]) .workspace.has-panels #radarcard .mainst{left:auto;right:56px;max-width:calc(100% - 200px)}
 body[data-view="pro"]:not([data-panel]) #wslayout{display:none}
 @media (max-width:760px){ body[data-view="pro"]:not([data-panel]) .workspace.has-panels .mapcol{grid-template-columns:minmax(0,1fr)} body[data-view="pro"]:not([data-panel]) .workspace.has-panels[data-maps="3"] #radarcard:not(.mapfull){grid-row:auto} }
@@ -1133,7 +1138,7 @@ body[data-view="pro"]:not([data-panel]) .topbar.hasplace .wstoggle{display:inlin
 .wstoggle #wsname{overflow:hidden;text-overflow:ellipsis}
 .wstoggle .caret{color:var(--dim);font-size:11px}
 .wstoggle .seglab{color:var(--dim)}
-body[data-view="pro"] .wstoggle[aria-expanded="true"],body[data-view="pro"] .pagemore[aria-expanded="true"]{border-color:#7a5a17;color:var(--amber)}
+body[data-view="pro"] .wstoggle[aria-expanded="true"],body[data-view="pro"] .pagemore[aria-expanded="true"]{border-color:var(--accent-edge);color:var(--accent)}
 @media (max-width:1399px){ body[data-view="pro"] .wstoggle .seglab{display:none} }
 body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wsbar{display:none;position:fixed;left:var(--popx,8px);top:var(--popy,52px);z-index:60;flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:6px;width:max-content;min-width:220px;max-width:calc(100vw - 16px);margin:0;padding:10px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.6)}
 body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wsbar.open{display:flex}
@@ -1152,7 +1157,7 @@ body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wssync{paddi
 body[data-view="pro"]:not([data-panel]) .roomnav-toggle{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:0 10px;border-radius:4px;background:#121821;border:1px solid var(--edge);font:13px var(--mono);color:#e3e9f0}
 body[data-view="pro"]:not([data-panel]) .roomnav-toggle-bars{position:relative;width:15px;height:11px;border-top:2px solid currentColor;border-bottom:2px solid currentColor}
 body[data-view="pro"]:not([data-panel]) .roomnav-toggle-bars::after{content:"";position:absolute;inset:calc(50% - 1px) 0 auto;border-top:2px solid currentColor}
-body[data-view="pro"]:not([data-panel]) .roomnav-toggle[aria-expanded="true"]{border-color:#7a5a17;color:var(--amber)}
+body[data-view="pro"]:not([data-panel]) .roomnav-toggle[aria-expanded="true"]{border-color:var(--accent-edge);color:var(--accent)}
 body[data-view="pro"]:not([data-panel]) nav.glass[data-roomnav]{display:none}
 body[data-view="pro"]:not([data-panel]) nav.glass[data-roomnav].roomnav-open{display:flex;flex-direction:column;position:absolute;top:calc(100% + 6px);right:0;z-index:60;min-width:220px;padding:6px;border-radius:4px;background:#0b0f15;border:1px solid #2a3340;box-shadow:0 14px 34px rgba(0,0,0,.6)}
 body[data-view="pro"]:not([data-panel]) nav.glass[data-roomnav].roomnav-open a,body[data-view="pro"]:not([data-panel]) nav.glass[data-roomnav].roomnav-open .here{min-height:44px;padding:0 16px}
@@ -1192,7 +1197,7 @@ body[data-view="pro"]:not([data-panel]) .wsnote{top:calc(var(--tb,44px) + 8px)}
    floats on a soft shadow or a gradient: panels are flat, edged in hairlines,
    and the menus are told apart by a brighter edge. Controls read like a
    panel's switches: monospaced capitals; a mode selector is one joined
-   strip whose lit segment is amber; checkboxes and sliders are square;
+   strip whose lit segment is the accent; checkboxes and sliders are square;
    numbers keep their width as they change. ══ */
 body[data-view="pro"],body[data-view="pro"] *,body[data-view="pro"] *::before,body[data-view="pro"] *::after{border-radius:0!important}
 body[data-view="pro"] svg rect{rx:0;ry:0}
@@ -1216,19 +1221,19 @@ body[data-view="pro"] .radar .zoom{gap:0}
 body[data-view="pro"] .radar .zoom>*+*{margin-top:-1px}
 body[data-view="pro"] .radar .zoom button{background:#0b0e13;border-color:#2a3340}
 @media (pointer:fine){ body[data-view="pro"] .radar .zoom button{width:36px;height:36px;font-size:18px} }
-/* sliders: a hairline track and a square amber cursor */
+/* sliders: a hairline track and a square accent cursor */
 body[data-view="pro"] input[type="range"]{-webkit-appearance:none;appearance:none;height:20px;background:transparent;cursor:pointer}
 body[data-view="pro"] input[type="range"]::-webkit-slider-runnable-track{height:4px;background:#2a3340;border:0}
 body[data-view="pro"] input[type="range"]::-moz-range-track{height:4px;background:#2a3340;border:0}
-body[data-view="pro"] input[type="range"]::-moz-range-progress{height:4px;background:#7a5a17}
-body[data-view="pro"] input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:20px;margin-top:-8px;background:var(--amber);border:1px solid #1c1300}
-body[data-view="pro"] input[type="range"]::-moz-range-thumb{width:10px;height:20px;background:var(--amber);border:1px solid #1c1300}
-body[data-view="pro"] input[type="range"]:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+body[data-view="pro"] input[type="range"]::-moz-range-progress{height:4px;background:var(--accent-edge)}
+body[data-view="pro"] input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:20px;margin-top:-8px;background:var(--accent);border:1px solid var(--on-accent)}
+body[data-view="pro"] input[type="range"]::-moz-range-thumb{width:10px;height:20px;background:var(--accent);border:1px solid var(--on-accent)}
+body[data-view="pro"] input[type="range"]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* checkboxes: a square that lights */
 body[data-view="pro"] input[type="checkbox"]{-webkit-appearance:none;appearance:none;flex:none;display:inline-grid;place-content:center;width:15px;height:15px;margin:0;background:#0b0f15;border:1.5px solid #6b7686;cursor:pointer}
-body[data-view="pro"] input[type="checkbox"]:checked{background:var(--amber);border-color:var(--amber)}
-body[data-view="pro"] input[type="checkbox"]:checked::after{content:"";width:8px;height:4px;margin-top:-2px;border:2px solid #1c1300;border-top:0;border-right:0;transform:rotate(-45deg)}
-body[data-view="pro"] input[type="checkbox"]:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+body[data-view="pro"] input[type="checkbox"]:checked{background:var(--accent);border-color:var(--accent)}
+body[data-view="pro"] input[type="checkbox"]:checked::after{content:"";width:8px;height:4px;margin-top:-2px;border:2px solid var(--on-accent);border-top:0;border-right:0;transform:rotate(-45deg)}
+body[data-view="pro"] input[type="checkbox"]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* selects: square, with a drawn caret (the system's own is rounded on a Mac) */
 body[data-view="pro"] select{-webkit-appearance:none;appearance:none;padding-right:26px;background:#121821 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0h10L5 6z' fill='%239eabba'/%3E%3C/svg%3E") right 9px center/10px 6px no-repeat;border:1px solid var(--edge);color:#e3e9f0;font-family:var(--mono)}
 body[data-view="pro"] select:hover{border-color:#5a6678}
@@ -1263,7 +1268,7 @@ body[data-view="pro"] .radar.haslines[data-base="light"] .base img{filter:graysc
 }
 /* a card's heading and its source (2026-10-23): when both do not fit on one
    line the source drops to its own, rather than both wrapping into each
-   other; the source is grey, so the amber heading reads first */
+   other; the source is grey, so the accent heading reads first */
 body[data-view="pro"] .card h2{flex-wrap:wrap;row-gap:2px}
 body[data-view="pro"] .card h2 .src{flex:0 1 auto;min-width:0;color:var(--dim);font-family:var(--mono);font-size:11.5px;letter-spacing:0;text-align:right}
 /* the same for the folding cards' headings: the title on one line, its description under it when there is no room */
@@ -1280,12 +1285,12 @@ body[data-view="pro"] #sky summary .lead,body[data-view="pro"] #models summary .
 .maplegend .lgrow>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .maplegend .lgrow em{font-style:normal;color:var(--dim)}
 .maplegend .lgrow:hover{background:#141a22}
-.maplegend .lgrow:focus-visible{outline:2px solid var(--amber);outline-offset:-2px}
-.maplegend .lgsw{flex:none;width:9px;height:9px;background:var(--amber)}
+.maplegend .lgrow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.maplegend .lgsw{flex:none;width:9px;height:9px;background:var(--accent)}
 .maplegend .lgrow[aria-pressed="false"]{color:var(--faint)}
 .maplegend .lgrow[aria-pressed="false"]>span{text-decoration:line-through}
 .maplegend .lgrow[aria-pressed="false"] .lgsw{background:transparent!important;outline:1px solid #6b7686;outline-offset:-1px}
-.maplegend .lgrow.stale,.maplegend .lgrow.stale em{color:var(--amber)}
+.maplegend .lgrow.stale,.maplegend .lgrow.stale em{color:var(--late)}
 .maplegend .lgrows:empty{display:none}
 .maplegend .lgrows{border-top:1px solid #1d232c;margin-top:2px;padding-top:2px}
 .radar.datahide #radarframes{visibility:hidden}
@@ -1299,7 +1304,7 @@ body[data-view="pro"] #sky summary .lead,body[data-view="pro"] #models summary .
 }
 
 /* ── The timeline (UI-REVIEW B2, 2026-10-23): the slider with a tick a frame
-   (filled loaded, hollow loading, red failed, amber the one on screen), times
+   (filled loaded, hollow loading, red failed, the accent the one on screen), times
    under it, and the frame's own time on the cursor. The ticks sit on the
    thumb's centres: inset by half the 10 px thumb. ── */
 .scrubwrap{position:relative;flex:1;min-width:0;align-self:stretch;display:flex;flex-direction:column;justify-content:flex-start}
@@ -1311,10 +1316,10 @@ body[data-view="pro"] .scrubwrap input[type="range"]{margin-top:4px}
 .scrubwrap .tk.wait,.scrubwrap .tk.idle{background:transparent;outline:1px solid #6b7686;outline-offset:-1px}
 .scrubwrap .tk.idle{opacity:.5}
 .scrubwrap .tk.err{background:#ff6b6b}
-.scrubwrap .tk.cur{background:var(--amber);outline:0;height:8px}
+.scrubwrap .tk.cur{background:var(--accent);outline:0;height:8px}
 .scrubwrap .tlab{position:absolute;top:7px;transform:translateX(-50%);font:500 11px var(--mono);color:var(--dim);white-space:nowrap;pointer-events:none}
 .scrubwrap .tlab:first-of-type{transform:none}
-.scrubwrap .scrubtip{position:absolute;bottom:calc(100% - 2px);transform:translateX(-50%);margin-left:0;padding:1px 6px;background:var(--amber);color:#1c1300;font:600 11px var(--mono);white-space:nowrap;pointer-events:none;z-index:3}
+.scrubwrap .scrubtip{position:absolute;bottom:calc(100% - 2px);transform:translateX(-50%);margin-left:0;padding:1px 6px;background:var(--accent);color:var(--on-accent);font:600 11px var(--mono);white-space:nowrap;pointer-events:none;z-index:3}
 .scrubwrap .scrubtip:empty{display:none}
 /* the frame counter said "3/19"; the ticks say it better */
 body[data-view="pro"] .radarbar .fcount{display:none}

@@ -3275,7 +3275,7 @@
           const [x, y] = pt(s.lat, s.lon);
           if (off([x, y], 20)) continue;
           const on = R.site && R.site.id === s.id, X1 = x.toFixed(1), Y1 = y.toFixed(1);
-          out.push(`<g class="rsite"><rect x="${(x - 5).toFixed(1)}" y="${(y - 5).toFixed(1)}" width="10" height="10" transform="rotate(45 ${X1} ${Y1})" fill="${on ? "#ffb627" : "#0b0f15"}" stroke="${on ? "#05070a" : "#e9ecef"}" stroke-width="1.6"/>${tag(x, y + 20, s.id, on ? "#ffb627" : "#e9ecef")}</g>`);   // under the mark: town names sit to the right of theirs
+          out.push(`<g class="rsite"><rect x="${(x - 5).toFixed(1)}" y="${(y - 5).toFixed(1)}" width="10" height="10" transform="rotate(45 ${X1} ${Y1})" fill="${on ? "#ffffff" : "#0b0f15"}" stroke="${on ? "#05070a" : "#e9ecef"}" stroke-width="1.6"/>${tag(x, y + 20, s.id, on ? "#4dabf7" : "#e9ecef")}</g>`);   // under the mark: town names sit to the right of theirs
         }
       }
       /* the cross-section's line, A to B */
@@ -3287,11 +3287,11 @@
       /* the ruler: each leg with its distance */
       if (R.measure && R.measure.pts.length) {
         const P = R.measure.pts.map((q) => pt(q.lat, q.lon));
-        if (P.length > 1) out.push(`<polyline points="${P.map((q) => q.map((v) => v.toFixed(1)).join(",")).join(" ")}" fill="none" stroke="#05070a" stroke-width="5"/><polyline points="${P.map((q) => q.map((v) => v.toFixed(1)).join(",")).join(" ")}" fill="none" stroke="#ffb627" stroke-width="2.4"/>`);
+        if (P.length > 1) out.push(`<polyline points="${P.map((q) => q.map((v) => v.toFixed(1)).join(",")).join(" ")}" fill="none" stroke="#05070a" stroke-width="5"/><polyline points="${P.map((q) => q.map((v) => v.toFixed(1)).join(",")).join(" ")}" fill="none" stroke="#ffffff" stroke-width="2.4"/>`);
         R.measure.pts.forEach((q, i) => {
-          out.push(`<circle cx="${P[i][0].toFixed(1)}" cy="${P[i][1].toFixed(1)}" r="4.5" fill="#ffb627" stroke="#05070a" stroke-width="1.5"/>`);
+          out.push(`<circle cx="${P[i][0].toFixed(1)}" cy="${P[i][1].toFixed(1)}" r="4.5" fill="#ffffff" stroke="#05070a" stroke-width="1.5"/>`);
           if (i) { const a = R.measure.pts[i - 1], km = Wx.distanceM(a.lat, a.lon, q.lat, q.lon) / 1000;
-            out.push(`<text class="ovl" x="${((P[i - 1][0] + P[i][0]) / 2).toFixed(1)}" y="${((P[i - 1][1] + P[i][1]) / 2 - 6).toFixed(1)}" text-anchor="middle" fill="#ffb627">${esc(dist(km))}</text>`); }
+            out.push(`<text class="ovl" x="${((P[i - 1][0] + P[i][0]) / 2).toFixed(1)}" y="${((P[i - 1][1] + P[i][1]) / 2 - 6).toFixed(1)}" text-anchor="middle" fill="#ffffff">${esc(dist(km))}</text>`); }
         });
       }
       if (R.pin) {
