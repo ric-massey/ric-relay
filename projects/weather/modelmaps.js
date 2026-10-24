@@ -187,8 +187,16 @@
     kgm2: { us: ['kg/m²', (v) => v], metric: ['kg/m²', (v) => v] },
     inhr: { us: ['in/h', (v) => v], metric: ['mm/h', (v) => v * 25.4] }
   };
+  /* Weather Pro's 'pro' units: °C and knots and metres above ground, the
+     rest (rain in inches, miles, kft) as the US set gives them */
+  const PRO_UNIT = { temp: UNIT.temp.metric, mph: ['kt', (v) => v * 0.868976], magl: UNIT.magl.metric };
+  function unitFor(unit, units) {
+    const u = UNIT[unit];
+    if (!u) return [unit || '', (v) => v];
+    return units === 'pro' ? PRO_UNIT[unit] || u.us : u[units === 'metric' ? 'metric' : 'us'];
+  }
   function say(unit, v, units) {
-    const [name, f] = UNIT[unit][units === 'metric' ? 'metric' : 'us'];
+    const [name, f] = unitFor(unit, units);
     const x = f(v), a = Math.abs(x);
     return `${a >= 100 || unit === 'jkg' || unit === 'm2s2' ? Math.round(x) : a >= 10 ? x.toFixed(0) : a >= 1 ? x.toFixed(1) : x.toFixed(2)} ${name}`;
   }
@@ -1050,7 +1058,7 @@
     return G.sample({ grid: layer.grid, values: layer.values }, lat, lon);
   }
 
-  const api = { SOURCES, FIELDS, PAL, UNIT, field, resolve, serverIndex, serverFile, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, lateBy, analyses, idxFor, parseJsonIndex, load, build, valueAt, within, smooth, loadTLE, loadEnsemble };
+  const api = { SOURCES, FIELDS, PAL, UNIT, unitFor, field, resolve, serverIndex, serverFile, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, lateBy, analyses, idxFor, parseJsonIndex, load, build, valueAt, within, smooth, loadTLE, loadEnsemble };
   root.ModelMaps = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

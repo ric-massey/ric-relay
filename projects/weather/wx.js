@@ -317,23 +317,27 @@
   /* ── units ──
      Stored metric (°C, km/h, mm, hPa, m), shown in whichever the visitor
      picked. */
+  /* 'pro' is Weather Pro's own set (2026-10-23, UI-REVIEW B6): the units
+     forecasters and pilots read — °C, knots, hectopascals — with rain in
+     inches and distance in miles, as the NWS and SPC give them in the US. */
   const UNITS = {
     us: { temp: 'F', wind: 'mph', precip: 'in', pressure: 'inHg', dist: 'mi' },
-    metric: { temp: 'C', wind: 'km/h', precip: 'mm', pressure: 'hPa', dist: 'km' }
+    metric: { temp: 'C', wind: 'km/h', precip: 'mm', pressure: 'hPa', dist: 'km' },
+    pro: { temp: 'C', wind: 'kt', precip: 'in', pressure: 'hPa', dist: 'mi' }
   };
   const cToF = c => c * 9 / 5 + 32;
   const fToC = f => (f - 32) * 5 / 9;
   const has = v => v !== null && v !== undefined && Number.isFinite(Number(v));
   const fmt = {
-    temp: (c, u) => has(c) ? String(Math.round(u === 'metric' ? c : cToF(c))) : '–',
-    wind: (k, u) => has(k) ? String(Math.round(u === 'metric' ? k : k / 1.609344)) : '–',
+    temp: (c, u) => has(c) ? String(Math.round(u === 'metric' || u === 'pro' ? c : cToF(c))) : '–',
+    wind: (k, u) => has(k) ? String(Math.round(u === 'metric' ? k : u === 'pro' ? k / 1.852 : k / 1.609344)) : '–',
     precip: (mm, u) => {
       if (!has(mm)) return '–';
       if (u === 'metric') return mm < 10 ? mm.toFixed(1) : String(Math.round(mm));
       const i = mm / 25.4;
       return i > 0 && i < 0.01 ? '<0.01' : i.toFixed(2);
     },
-    pressure: (hpa, u) => has(hpa) ? (u === 'metric' ? String(Math.round(hpa)) : (hpa * 0.0295300).toFixed(2)) : '–',
+    pressure: (hpa, u) => has(hpa) ? (u === 'metric' || u === 'pro' ? String(Math.round(hpa)) : (hpa * 0.0295300).toFixed(2)) : '–',
     dist: (m, u) => {
       if (!has(m)) return '–';
       const v = u === 'metric' ? m / 1000 : m / 1609.344;

@@ -36,7 +36,9 @@
   const S = {
     place: cleanPlace(store.get("wx:place", null)),
     saved: (store.get("wx:saved", []) || []).map(cleanPlace).filter(Boolean).slice(0, 12),
-    units: store.get("wx:units", "us") === "metric" ? "metric" : "us",
+    /* Pro keeps its own choice (wx:prounits), starting on its own set — kt, °C, hPa;
+       Weather's °F / °C (wx:units) is never touched by it */
+    units: PRO ? (["pro", "us", "metric"].includes(store.get("wx:prounits", "")) ? store.get("wx:prounits", "") : "pro") : store.get("wx:units", "us") === "metric" ? "metric" : "us",
     fc: null, fcStale: false, pt: undefined, obs: undefined, office: undefined, alerts: undefined,
     state: undefined, national: undefined, outlook: undefined, ens: undefined, rec: undefined, verdict: null, fcShown: null,
     err: {}, checked: {}, selected: null, ctl: null, loadedAt: 0, fastAt: 0, focusedStorm: null
@@ -54,8 +56,8 @@
   const clk = () => UTC ? Wx.clock("UTC", true) : Wx.clock(tzNow());
   const nowSec = () => Math.floor(Date.now() / 1000);
   const dayFmtPage = (ms) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(ms);
-  const dist = (km) => U() === "us" ? `${Math.max(1, Math.round(km / 1.609344))} mi` : `${Math.max(1, Math.round(km))} km`;
-  const speed = (kmh) => U() === "us" ? `${Math.round(kmh / 1.609344)} mph` : `${Math.round(kmh)} km/h`;
+  const dist = (km) => U() !== "metric" ? `${Math.max(1, Math.round(km / 1.609344))} mi` : `${Math.max(1, Math.round(km))} km`;
+  const speed = (kmh) => U() === "us" ? `${Math.round(kmh / 1.609344)} mph` : U() === "pro" ? `${Math.round(kmh / 1.852)} kt` : `${Math.round(kmh)} km/h`;
   /* undefined while asking: assume yes. null is "outside the NWS's patch" —
      but only when the NWS said so: a lookup that failed (S.err.pt) is an
      outage, not a border (a Miami visitor was told the radar covers the
@@ -338,7 +340,8 @@
   function renderPlace() {
     const p = S.place;
     $("#placename").textContent = p ? p.name + (p.region ? ", " + p.region : "") + (p.approx ? " (approx.)" : "") : "Across the US";
-    $("#units").textContent = S.units === "us" ? "°F" : "°C";
+    $("#units").textContent = S.units === "us" ? "°F" : S.units === "pro" ? "KT·°C" : "°C";
+    $("#units").title = S.units === "us" ? "°F, mph, inHg — tap for °C" : S.units === "pro" ? "Pro units: °C, knots, hPa (rain in inches, miles) — tap for °F" : "°C, km/h, hPa, mm — tap for Pro units";
     $("#usview").setAttribute("aria-pressed", String(!p));
   }
 
@@ -576,10 +579,11 @@
     box.hidden = false;
     if (!$("#modelsd").open) return;                          // drawn when opened
     if (S.cmp.view === "plume") { renderPlumes(body); return; }
-    const k = clk(), now = nowSec(), { v, span } = S.cmp, us = U() === "us";
+    /* us: rain in inches (US and Pro units); tF: °F (US only); wind in the set's own unit */
+    const k = clk(), now = nowSec(), { v, span } = S.cmp, us = U() !== "metric", tF = U() === "us";
     const end = now + span * 3600, start = now - (now % 3600);
-    const conv = v === "t" ? (c) => us ? Wx.cToF(c) : c : v === "w" ? (x) => us ? x / 1.609344 : x : (mm) => us ? mm / 25.4 : mm;
-    const unit = v === "t" ? (us ? "°F" : "°C") : v === "w" ? Wx.UNITS[U()].wind : Wx.UNITS[U()].precip;
+    const conv = v === "t" ? (c) => tF ? Wx.cToF(c) : c : v === "w" ? (x) => U() === "us" ? x / 1.609344 : U() === "pro" ? x / 1.852 : x : (mm) => us ? mm / 25.4 : mm;
+    const unit = v === "t" ? (tF ? "°F" : "°C") : v === "w" ? Wx.UNITS[U()].wind : Wx.UNITS[U()].precip;
     const hrs = [...ens.hours.keys()].filter((t) => t >= start && t <= end).sort((a, b) => a - b);
     const lines = {};
     const add = (m, t, x) => { if (x == null || !Number.isFinite(x)) return; (lines[m] || (lines[m] = [])).push([t, x]); };
@@ -2219,7 +2223,7 @@
        field is megabytes a hour, and nobody needs eighty of them kept). */
     const C = { on: false, gen: 0, lat: 0, lon: 0, name: "", cur: [], prev: [], prevRun: null, cmp: false, err: null, done: 0, total: 0 };
     const chartEl = $("#ptchart");
-    function chartUnit(f) { return MM.UNIT[f.unit] ? MM.UNIT[f.unit][U() === "metric" ? "metric" : "us"] : [f.unit || "", (v) => v]; }
+    function chartUnit(f) { return MM.unitFor(f.unit, U()); }
     /* a point's value at each of these hours, `put` as each arrives, four at a time */
     async function chartSeries(src, run, hours, field, lat, lon, gen, put, have = () => null) {
       let next = 0;
@@ -2753,7 +2757,7 @@
         const what = !v ? "no echo" : v.rf ? "range folded" : v.cls ? `${v.cls[1]} (${v.cls[0]})`
           : `${P.short} ${f.l3.prod === "cc" ? v.value.toFixed(2) : f.l3.prod === "zdr" || f.l3.prod === "kdp" ? v.value.toFixed(1) : Math.round(v.value)}${P.unit ? " " + P.unit : ""}${v.topped ? " (topped)" : ""}`;
         /* the beam's centre above sea level: the radar's own height plus the beam's rise */
-        return `${what} · ${dist(q.groundKm)} ${Math.round(az)}° from ${F.site || "the radar"} · beam ${U() === "us" ? Math.round(beam * 3.28084) + " kft" : beam.toFixed(1) + " km"} MSL`;
+        return `${what} · ${dist(q.groundKm)} ${Math.round(az)}° from ${F.site || "the radar"} · beam ${U() !== "metric" ? Math.round(beam * 3.28084) + " kft" : beam.toFixed(1) + " km"} MSL`;
       }
       if (f.abi && f.abi.layer) {
         const vs = AB.valuesAt(f.abi.layer, lat, lon);
@@ -3210,7 +3214,7 @@
         /* range rings (2026-10-23): every 25 mi or 50 km out to the products'
            230 km, on the sphere around the radar — distances at a glance */
         if (PRO && R.ov.rings) {
-          const us = U() === "us", step = us ? 25 * 1.609344 : 50, rad = Math.PI / 180, la = R.site.lat * rad, lo = R.site.lon * rad;
+          const us = U() !== "metric", step = us ? 25 * 1.609344 : 50, rad = Math.PI / 180, la = R.site.lat * rad, lo = R.site.lon * rad;
           for (let k = 1; k * step <= 231; k++) {
             const d = k * step / 6371.0088, ptsR = [];
             for (let b = 0; b <= 360; b += 5) {
@@ -3633,9 +3637,11 @@
         pal = MM.PAL[f.pal];
         if (pal.cat) cats = Object.values(pal.types).map(([name, , hi]) => [name, hi]);
         else {
-          const [name, conv] = MM.UNIT[f.unit][U() === "metric" ? "metric" : "us"];
+          const [name, conv] = MM.unitFor(f.unit, U());
           unit = name;
-          fmt = (v) => { const x = conv(v); return Math.abs(x) >= 10 || Number.isInteger(x) ? String(Math.round(x)) : x.toFixed(Math.abs(x) < 1 ? 2 : 1); };
+          /* a temperature or a speed converted from a model's own stops (°F, mph) is said whole, not "-6.7" or "8.7" */
+          const whole = /^(°[CF]|kt|mph|km\/h)$/.test(name);
+          fmt = (v) => { const x = conv(v); return whole || Math.abs(x) >= 10 || Number.isInteger(x) ? String(Math.round(x)) : x.toFixed(Math.abs(x) < 1 ? 2 : 1); };
         }
       }
       if (cats) { lg.classList.add("cats"); lg.innerHTML = cats.map(([n, c]) => `<span class="sw"><i style="background:${c}"></i>${esc(n)}</span>`).join(""); return; }
@@ -3694,7 +3700,7 @@
       { k: "fronts", on: () => R.ov.fronts, name: () => "Fronts", src: () => "WPC analysis", at: () => R.pro.surface && R.pro.surface.issued, every: 3 * 3600e3, col: "#4dabf7", btn: '[data-ov="fronts"]', issued: true },
       { k: "stations", on: () => R.stations, name: () => "Stations", src: () => "airports and networks", col: "#e9ecef", btn: "#stationtoggle" },
       { k: "outlook", on: () => R.outlook, name: () => "SPC outlook", src: () => (Wx.OUTLOOKS[R.olSel] || {}).label || "Day 1 · categorical", at: () => { const L = outlookList(), f = L && L.find((o) => o.issued); return f ? f.issued : null; }, col: "#69db7c", btn: "#outlooktoggle", issued: true },
-      { k: "rings", on: () => R.ov.rings, name: () => "Range rings", src: () => (U() === "us" ? "every 25 mi" : "every 50 km"), col: "#c3cad4", btn: '[data-ov="rings"]' },
+      { k: "rings", on: () => R.ov.rings, name: () => "Range rings", src: () => (U() !== "metric" ? "every 25 mi" : "every 50 km"), col: "#c3cad4", btn: '[data-ov="rings"]' },
       { k: "tropics", on: () => R.ov.tropics, name: () => "Tropics", src: () => "NHC", at: () => R.pro.tAt, every: 600e3, col: "#ff922b", btn: '[data-ov="tropics"]' },
     ];
     let lgSatWas = "";
@@ -4847,7 +4853,7 @@
             <div><span>0–1 km SRH</span><b class="num">${a.srh1 != null ? Math.round(a.srh1) + " m²/s²" : "–"}</b></div>
             <div><span>0–3 km SRH</span><b class="num">${a.srh3 != null ? Math.round(a.srh3) + " m²/s²" : "–"}</b></div>
             <div><span>Storm motion (RM)</span><b class="num">${a.motion ? motionText(a.motion.right) : "–"}</b></div>
-            <div><span>Precipitable water</span><b class="num">${U() === "us" ? (a.pw / 25.4).toFixed(2) + " in" : a.pw.toFixed(1) + " mm"}</b></div>
+            <div><span>Precipitable water</span><b class="num">${U() !== "metric" ? (a.pw / 25.4).toFixed(2) + " in" : a.pw.toFixed(1) + " mm"}</b></div>
             <div><span>Freezing level</span><b class="num">${hgt(a.frz)}</b></div>
             <div><span>700–500 lapse rate</span><b class="num">${a.lapse75 != null ? a.lapse75.toFixed(1) + " °C/km" : "–"}</b></div>
             <div><span>0–3 km lapse rate</span><b class="num">${a.lapse03 != null ? a.lapse03.toFixed(1) + " °C/km" : "–"}</b></div>
@@ -5051,8 +5057,9 @@
   $("#locate").addEventListener("click", locate);
 
   $("#units").addEventListener("click", () => {
-    S.units = S.units === "us" ? "metric" : "us";
-    store.set("wx:units", S.units);
+    /* Pro: its own set → °F → °C → its own set; Weather: °F ↔ °C */
+    S.units = PRO ? ({ pro: "us", us: "metric", metric: "pro" })[S.units] || "pro" : S.units === "us" ? "metric" : "us";
+    store.set(PRO ? "wx:prounits" : "wx:units", S.units);
     render(); radar.draw(); radar.label(); sky.redraw();
   });
   /* Pro: local time or UTC, everywhere on the page; panels follow by the storage event */
@@ -5065,7 +5072,14 @@
     $("#utcbtn").textContent = UTC ? "UTC" : "Local"; $("#utcbtn").setAttribute("aria-pressed", String(UTC));
     $("#utcbtn").addEventListener("click", () => { UTC = !UTC; store.set("wx:utc", UTC); utcRedraw(); });
   }
-  if (PRO) addEventListener("storage", (e) => { if (e.key === "wx:utc") { UTC = store.get("wx:utc", false) === true; utcRedraw(); } });
+  if (PRO) addEventListener("storage", (e) => {
+    if (e.key === "wx:utc") { UTC = store.get("wx:utc", false) === true; utcRedraw(); }
+    /* the units, changed in the page or another map: every map follows */
+    else if (e.key === "wx:prounits") {
+      const u = store.get("wx:prounits", "pro");
+      if (["pro", "us", "metric"].includes(u) && u !== S.units) { S.units = u; if (!PANEL) render(); radar.draw(); radar.label(); sky.redraw(); }
+    }
+  });
 
   /* ── Pro as a map app (2026-10-23, Ric: "The map needs to cover the whole
      page"): the map fills the window under the site's bar (its height is

@@ -575,6 +575,17 @@ unless it holds a button, which stays in the toolbar where it works. At
 shut) and 113 to 103 for a single radar. The replay's form and Info's words
 keep the full width; a phone's sheet and maps side by side are unchanged.
 
+**Pro units (2026-10-23, UI-REVIEW B6):** Pro has a third unit set, `pro` in
+`Wx.UNITS` — °C, knots, hPa, the units forecasters and pilots read, with rain
+in inches and distance in miles as the NWS and SPC give them in the US — and
+starts on it. The units button cycles **KT·°C** → °F → °C. Pro keeps its own
+choice (`wx:prounits`), so Weather's °F / °C (`wx:units`) is never changed by
+it, and maps side by side follow a change by the storage event. Model maps
+convert through `ModelMaps.unitFor` (°C, kt, heights above ground in metres;
+rain, snow and hail in inches); a colour key's temperatures and speeds are
+said in whole numbers. Times stay on their own Local / UTC button — the set
+does not switch the clock. Tested in `wx.test.mjs`.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

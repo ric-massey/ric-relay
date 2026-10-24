@@ -153,6 +153,20 @@ ok(W.fmt.wind(16.09344, 'us') === '10' && W.fmt.wind(16, 'metric') === '16', 'wi
 ok(W.fmt.precip(25.4, 'us') === '1.00' && W.fmt.precip(0.1, 'us') === '<0.01' && W.fmt.precip(0, 'us') === '0.00', 'precipitation');
 ok(W.fmt.pressure(1013.25, 'us') === '29.92' && W.fmt.pressure(1013.25, 'metric') === '1013', 'pressure');
 ok(W.fmt.dist(16093.44, 'us') === '10' && W.fmt.dist(1609.344 * 2.5, 'us') === '2.5', 'distance');
+/* Weather Pro's own set (B6): °C, knots, hPa — rain in inches and distance in miles, as the US set */
+ok(W.UNITS.pro.temp === 'C' && W.UNITS.pro.wind === 'kt' && W.UNITS.pro.pressure === 'hPa' && W.UNITS.pro.precip === 'in' && W.UNITS.pro.dist === 'mi', 'Pro units: °C, kt, hPa, in, mi');
+ok(W.fmt.temp(0, 'pro') === '0' && W.fmt.temp(30, 'pro') === '30', 'Pro units: temperature in °C');
+ok(W.fmt.wind(18.52, 'pro') === '10' && W.fmt.wind(92.6, 'pro') === '50', 'Pro units: wind in knots (1 kt = 1.852 km/h)');
+ok(W.fmt.pressure(1013.25, 'pro') === '1013', 'Pro units: pressure in hPa');
+ok(W.fmt.precip(25.4, 'pro') === '1.00' && W.fmt.dist(16093.44, 'pro') === '10', 'Pro units: rain in inches, distance in miles');
+{
+  const MMu = require('../modelmaps.js');
+  const [tn, tf] = MMu.unitFor('temp', 'pro'), [wn, wf] = MMu.unitFor('mph', 'pro'), [pn, pf] = MMu.unitFor('precip', 'pro');
+  ok(tn === '°C' && Math.round(tf(212)) === 100, `a model's temperature in Pro units is °C (${tn})`);
+  ok(wn === 'kt' && Math.round(wf(115.078)) === 100, `a model's wind in Pro units is knots (${wn})`);
+  ok(pn === 'in' && pf(1) === 1 && MMu.unitFor('magl', 'pro')[0] === 'm' && MMu.unitFor('hpa', 'pro')[0] === 'hPa', 'rain stays inches, heights above ground in metres, pressure in hPa');
+  ok(MMu.unitFor('temp', 'us')[0] === '°F' && MMu.unitFor('temp', 'metric')[0] === '°C' && MMu.unitFor('nosuch', 'pro')[0] === 'nosuch', 'the other sets are unchanged; an unknown unit passes through');
+}
 ok(W.compass(225) === 'SW' && W.compass(359) === 'N' && W.compass(-90) === 'W' && W.compass(null) === '', 'compass points');
 
 console.log('\nRULE  an NWS observation is read by its units');
