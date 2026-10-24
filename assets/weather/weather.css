@@ -1385,3 +1385,27 @@ body[data-view="pro"]:not([data-panel]) .skyout{position:fixed;top:var(--tb,44px
 .skyouthead b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .skyouthead button{flex:none;white-space:nowrap}
 @media (max-width:640px){ .skyouthead .wide{display:none} }
+
+/* ── The mode's controls in the toolbar (UI-REVIEW B5, 2026-10-23): on a wide
+   single map the model, satellite, MRMS and single-radar rows are no longer
+   boxed bars of their own under the toolbar — they flow on from it in the same
+   strip, set off by a hairline, sharing its row when the map is wide enough
+   and wrapping to one more when not. Their info line ("HRRR run 01Z · 19 hours
+   out so far") is said in the legend instead (#lgnote), unless it holds a
+   button. The replay's form and Info's words still take the full width. A
+   phone's sheet and the maps side by side keep their own layout. ── */
+@media (min-width:1001px){
+  body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+  body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl>.maptools{margin:0;flex:0 1 auto}
+  body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl>.modelbar:not([hidden]),
+  body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl>.siterow:not([hidden]){flex:0 1 auto;margin:0;padding:0 0 0 10px;border:0;border-left:1px solid #2a3340;background:none;min-height:34px}
+  body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl>.modelbar label{gap:6px;color:var(--dim)}
+  body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl>.modelbar select{min-height:32px;max-width:220px}
+  body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl .mmrun:not(:has(button)){display:none}
+  body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl>.replaybar:not([hidden]),
+  body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl>.sitebar.open{flex:1 1 100%;margin:0}
+}
+.maplegend .lgnote{margin:0;padding:0 8px 2px 24px;font:11.5px var(--mono);color:var(--dim);white-space:normal;pointer-events:none}
+.maplegend .lgnote[hidden]{display:none}
+@media (max-width:1000px){ .maplegend .lgnote{display:none} }
+@media (min-width:1001px){ body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:not(.mapfull) .mapctl .siterow .sitepick select{min-width:178px} }

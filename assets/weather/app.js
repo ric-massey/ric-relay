@@ -3732,6 +3732,19 @@
         $("#lgbase").setAttribute("aria-pressed", String(!hide));
       });
     }
+    /* the mode's own line (a model's run and hours, a satellite's sector,
+       MRMS's file) said in the legend under the data line (UI-REVIEW B5):
+       on a wide single map the toolbar hides it, so the run and its age
+       are said once, where the rest of the time is. A line holding a button
+       stays in the toolbar, where the button works. */
+    function legendNote() {
+      const n = $("#lgnote");
+      if (!PRO || !n) return;
+      const src = ["#mmrun", "#abirun", "#mrrun"].map((q) => $(q)).find((x) => x && x.closest(".modelbar") && !x.closest(".modelbar").hidden && x.textContent.trim() && !x.querySelector("button"));
+      n.textContent = src ? src.textContent.trim() : "";
+      n.hidden = !n.textContent;
+    }
+    if (PRO && typeof MutationObserver === "function") for (const q of ["#mmrun", "#abirun", "#mrrun"]) { const x = $(q); if (x) new MutationObserver(legendNote).observe(x, { childList: true, characterData: true, subtree: true }); }
     /* the data line: amber when the feed behind it is late */
     function legendBase() {
       const b = $("#lgbase");
@@ -3797,7 +3810,7 @@
     function label() {
       syncTools();
       legend();
-      legendRows(); legendBase();
+      legendRows(); legendBase(); legendNote();
       const sb = $("#sitebar");
       if (R.mode === "comp") sb.textContent = PRO ? "NEXRAD mosaic of the whole country, every 5 minutes." : "";
       else if (R.mode === "replay" && R.replay && R.replay.prodMode) { const rp = R.replay, P = l3(rp.prodMode), n = rp.warn ? new Set(rp.warn.map((w) => w.sig + w.wfo + w.event + w.area)).size : null; sb.textContent = `Replay: ${rp.site ? rp.site + "'s own" : "the nearest radar's"} full volume (Level II), ${lc(P.label)} at the lowest tilt, ${dayFmt(rp.from)} ${timeFmt(rp.from)} to ${timeFmt(rp.to)}${rp.vols ? `, ${rp.vols.length} volumes` : " — finding the radar's volumes"}, with each storm warning drawn for the minutes it was in force${rp.warn ? ` (${n} warning${n === 1 ? "" : "s"})` : ""}. The product buttons change what is shown; NOAA's archive on AWS.`; }

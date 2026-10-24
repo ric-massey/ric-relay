@@ -561,6 +561,20 @@ they have loaded. Chosen by rendering the page in the system fonts, Plex,
 Inter with JetBrains Mono, and Geist. Every bar still fits on one row at 800,
 1024 and 1280 px.
 
+**The mode's controls in the toolbar (2026-10-23, UI-REVIEW B5):** choosing
+Models, Satellite, MRMS or Radar used to add a boxed bar of its own under the
+map's toolbar, so the map started lower in exactly the modes where you look
+at detail. On a wide single map (over 1000 px) those rows now flow on from
+the toolbar in the same strip, set off by a hairline, sharing its row when
+there is room and wrapping to one more when not; and their info line ("HRRR
+run 02Z · 19 hours out so far · a forecast", a satellite's sector and newest
+image) is said once, under the legend's data line (`#lgnote`, copied live),
+unless it holds a button, which stays in the toolbar where it works. At
+1440×900 with the drawer docked the controls above the map went from 142 px to
+95 in Models and Satellite, 119 to 95 in MRMS (55 — one row — with the drawer
+shut) and 113 to 103 for a single radar. The replay's form and Info's words
+keep the full width; a phone's sheet and maps side by side are unchanged.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its
