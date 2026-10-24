@@ -4399,6 +4399,8 @@
       const n = (kind) => L.filter((x) => x.kind === kind).length;
       lead.textContent = !L.length ? "Nothing active across the US right now — no storm warnings, discussions, watches or strong storms."
         : [n("warning") && `${n("warning")} storm warning${n("warning") === 1 ? "" : "s"}`, n("md") && `${n("md")} SPC discussion${n("md") === 1 ? "" : "s"}`, n("watch") && `${n("watch")} watch${n("watch") === 1 ? "" : "es"}`, n("mpd") && `${n("mpd")} WPC discussion${n("mpd") === 1 ? "" : "s"}`, n("cell") && `${n("cell")} strong storm${n("cell") === 1 ? "" : "s"}`].filter(Boolean).join(" · ") + " — as the NWS, SPC and WPC issued them.";
+      /* how to choose is said only when there is something to choose */
+      const how = $("#activeit .findhint"); if (how) how.hidden = !L.length;
       ul.innerHTML = L.map((x, i) => `<li role="option" data-i="${i}" aria-selected="${i === ACT.sel}"><i class="actsw" style="background:${x.color}" aria-hidden="true"></i><span>${esc(x.title)}${x.chance != null ? ` · ${x.chance}% chance of a watch` : ""}<small>${esc([x.area, x.ends ? "until " + k.time(x.ends) : ""].filter(Boolean).join(" · "))}</small></span><em>${x.mode === "l3:srv" ? "SRV" : x.mode === "l3:ref" ? "radar" : ""}</em></li>`).join("");
     }
     async function openActive() {
@@ -4441,8 +4443,9 @@
       const hint = document.createElement("p");
       hint.className = "maphint"; hint.setAttribute("role", "note");
       hint.innerHTML = matchMedia("(pointer:coarse)").matches
-        ? `Pinch to zoom · press and hold the map for its menu · <b>Active</b> lists the country's storms <button type="button" aria-label="Got it">×</button>`
-        : `Wheel or pinch to zoom toward the pointer · right-click the map for its menu · <kbd>A</kbd> active weather · <kbd>?</kbd> every key <button type="button" aria-label="Got it">×</button>`;
+        ? `<span>Pinch to zoom · press and hold the map for its menu · <b>Active</b> lists the country's storms</span><button type="button" aria-label="Got it">×</button>`
+        : `<span>Wheel or pinch to zoom toward the pointer · right-click the map for its menu · <kbd>A</kbd> active weather · <kbd>?</kbd> every key</span><button type="button" aria-label="Got it">×</button>`;
+      /* the words are one span: bare text beside <kbd> in a flex row became a column per run, one word a line on a phone */
       el.appendChild(hint);
       const seen = () => { store.set("wx:hintseen", true); hint.remove(); };
       hint.querySelector("button").addEventListener("click", seen);

@@ -1192,13 +1192,16 @@ body[data-view="pro"]:not([data-panel]) .wsnote{top:calc(var(--tb,44px) + 8px)}
   body[data-view="pro"]:not([data-panel]) .topbar.hasplace>.navwrap{order:2}
   body[data-view="pro"]:not([data-panel]) .topbar.hasplace .spacer{order:3;flex:1 0 100%;height:0}
   body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebtn{order:4;flex:1 1 auto;max-width:none}
-  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .backbtn{order:5}
+  /* the back arrow leads the first row, beside the wordmark — where a back arrow is looked for; alone in the second row, between the place and the workspace, it read as nothing (2026-10-24) */
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .backbtn{order:-1;min-width:44px;justify-content:center;padding:0}
   body[data-view="pro"]:not([data-panel]) .topbar.hasplace .wstoggle{order:6;flex:0 1 auto;max-width:150px}
   body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagemore{order:7}
   body[data-view="pro"]:not([data-panel]) .topbar.hasplace .wsclock,body[data-view="pro"]:not([data-panel]) .topbar.hasplace #wslive{order:8}
   body[data-view="pro"]:not([data-panel]) .topbar.hasplace .backbtn span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wsbar{left:8px;right:8px;width:auto}
 }
+/* the bar's controls are 32px for a mouse; a finger still gets 44px: the bar is a row taller on a phone, which is the price */
+@media (pointer:coarse){ body[data-view="pro"]:not([data-panel]) .placebar .chip,body[data-view="pro"]:not([data-panel]) .placebar .backbtn,body[data-view="pro"]:not([data-panel]) .placebar .placebtn,body[data-view="pro"]:not([data-panel]) .wsbar button,body[data-view="pro"]:not([data-panel]) .wsbar select,body[data-view="pro"]:not([data-panel]) .topbar.hasplace .backbtn,body[data-view="pro"]:not([data-panel]) .roomnav-toggle{min-height:44px} }
 /* the map's toolbar on one line at laptop width: Find's ⌃K hint (still in its title and the ? sheet) gives way below 1100px */
 @media (max-width:1099px){ body[data-view="pro"] .maptools .findbtn kbd{display:none} }
 
@@ -1454,9 +1457,12 @@ body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox .chip:hover{bo
 #radarcard.mapfocus .maplegend:not(:hover):not(:focus-within),#radarcard.mapfocus #legend:not(:hover){opacity:.6}
 @media (prefers-reduced-motion:reduce){ #radarcard .maplegend,#radarcard #legend{transition:none} }
 /* ── The first-visit hint (UI-REVIEW-3 item 3) ── */
-.radar .maphint{position:absolute;left:50%;bottom:52px;transform:translateX(-50%);z-index:9;display:flex;align-items:center;gap:10px;max-width:calc(100% - 24px);margin:0;padding:6px 8px 6px 12px;background:#0b0f15;border:1px solid var(--accent-edge,#2d6a99);color:#e3e9f0;font:12px var(--mono,ui-monospace,monospace);transition:opacity .5s}
+.radar .maphint{position:absolute;left:12px;right:12px;bottom:52px;z-index:9;display:flex;align-items:center;gap:10px;width:fit-content;max-width:640px;margin:0 auto;padding:6px 8px 6px 12px;background:#0b0f15;border:1px solid var(--accent-edge,#2d6a99);color:#e3e9f0;font:12px var(--mono,ui-monospace,monospace);transition:opacity .5s}
+.radar .maphint>span{flex:1 1 auto;min-width:0;line-height:1.5}
 .radar .maphint.going{opacity:0}
+/* while the hint is up, a notice at the map's foot sits above it rather than under it */
+body[data-view="pro"] .radar:has(> .maphint) .note{bottom:112px !important}  /* !important: the notice's own placing, earlier in this file, carries an id and seven classes */
 .radar .maphint kbd{padding:0 4px;border:1px solid #3a4452;font:600 11px var(--mono,ui-monospace,monospace)}
 .radar .maphint button{flex:none;min-width:28px;min-height:28px;border:1px solid var(--edge);background:#121821;color:#e3e9f0;cursor:pointer}
 @media (pointer:coarse){ .radar .maphint button{min-width:40px;min-height:40px} }
-@media (max-width:640px){ .radar .maphint{bottom:84px;font-size:11.5px} }
+@media (max-width:640px){ .radar .maphint{bottom:84px;font-size:11.5px} body[data-view="pro"] .radar:has(> .maphint) .note{bottom:172px !important} }

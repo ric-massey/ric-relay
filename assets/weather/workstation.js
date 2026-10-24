@@ -819,7 +819,13 @@
       A('Share the workspace', 'Workspace', 'ws:share', 'link');
       return out;
     }
+    /* the last few picks, by name only (a product, never a place), so an empty
+       Find opens on what this visitor reaches for — then everything in the
+       index's own order, radar to tools. Sorted by name length, as it was,
+       an empty Find read as a random list. */
+    const FIND_RECENT = 'wx:findrecent';
     function findRun(it, panel) {
+      store.set(FIND_RECENT, [it.label, ...store.get(FIND_RECENT, []).filter((l) => l !== it.label)].slice(0, 5));
       closeSheet('#findit');
       if (it.str) return panel ? toPanel(it.str) : toMain(it.str);
       doAct(it.act, { toggle: true });
@@ -827,9 +833,13 @@
     function findShow() {
       const q = $('#findq').value.toLowerCase().trim(), toks = q.split(/\s+/).filter(Boolean);
       findItems = findItems || findIndex();
-      findHits = (toks.length ? findItems.filter((it) => toks.every((t) => it.hay.includes(t))) : findItems.filter((it) => !it.str || !/^Models/.test(it.group)))
+      if (toks.length) findHits = findItems.filter((it) => toks.every((t) => it.hay.includes(t)))
         .map((it) => ({ it, w: toks.reduce((n, t) => n + (it.label.toLowerCase().startsWith(t) ? 3 : new RegExp('\\b' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(it.label.toLowerCase()) ? 2 : it.label.toLowerCase().includes(t) ? 1 : 0), 0) - it.label.length / 200 }))
         .sort((a, b) => b.w - a.w).slice(0, 40).map((x) => x.it);
+      else {
+        const recent = store.get(FIND_RECENT, []).map((l) => findItems.find((it) => it.label === l)).filter(Boolean);
+        findHits = [...recent.map((it) => ({ ...it, group: 'Recent · ' + it.group })), ...findItems.filter((it) => !recent.includes(it) && (!it.str || !/^Models/.test(it.group)))].slice(0, 40);
+      }
       findAt = Math.min(findAt, Math.max(0, findHits.length - 1));
       $('#findlist').innerHTML = findHits.length ? findHits.map((it, i) => `<li role="option" id="find${i}" data-i="${i}" aria-selected="${i === findAt}"><span>${esc(it.label)}<small>${esc(it.group)}</small></span>${it.str ? '<em>⇧↵ new map</em>' : ''}</li>`).join('')
         : '<li class="none">Nothing by that name. Try a product (srv, mesh), a field (cape, helicity), or a card (sounding).</li>';

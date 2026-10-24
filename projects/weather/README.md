@@ -722,6 +722,20 @@ weather, ? for every key — put away by × or after a minute
 (`wx:hintseen`). **Shift and an arrow pan** the map a third of the way; the
 arrows alone still step frames.
 
+**Round four (2026-10-24, `UI-REVIEW-4.md` — Ric: "look at weather pros ui and
+lmk what else needs to be done"):** small fixes. **The first-visit hint reads
+as one line** — it was a flex row with bare text beside its `<kbd>`s, so each
+run of words became its own column (one word a line on a phone), and
+`left:50%` capped it at half the map; the words are one `<span>` now, and a
+notice at the map's foot moves up while the hint is there. **A finger gets
+44px in the top bar** — the bar's 32px controls stay 32px for a mouse only
+(`pointer:coarse`). **On a phone the ← back to Weather leads the first row**,
+beside the wordmark, instead of standing alone between the place and the
+workspace. **An empty Find opens on the visitor's last five picks**
+(`wx:findrecent`, product names only), then everything in the index's own
+order — sorted by name length, it read as a random list. **Active** says
+how to choose only when there is something to choose.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its
