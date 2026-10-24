@@ -1983,7 +1983,7 @@
     function l3File(f) {
       const x = f.l3;
       if (!x.p) x.p = (x.l2 ? cached(x.l2.key, () => loadL2(x.l2)) : cached(x.url, () => NX.load(x.url))).then((file) => srmSweep(x, file)).then((file) => {
-        x.file = file; x.colors = NX.colorTable(file, x.prod);
+        x.file = file; x.colors = NX.colorTable(file, x.prod, R.pal);
         if (R.frames[R.frame] === f) { draw(); show(R.frame); tilts(); }
         return file;
       }).catch((e) => {
@@ -2338,7 +2338,7 @@
     function modelLayer(f) {
       const m = f.model;
       if (!m.p) m.p = MM.load(m.src, m.run, m.fh, m.field).then((L) => {
-        m.layer = L; m.lut = MM.table(L.field.pal);
+        m.layer = L; m.lut = lutFor(L);
         if (R.frames[R.frame] === f) { draw(); show(R.frame); }
         return L;
       }).catch((e) => { m.err = String(e.message || e).replace(/^models: /, ""); if (R.frames[R.frame] === f) note(`This hour did not load (${m.err}).`); });
@@ -2365,7 +2365,7 @@
     function mrmsLayer(f) {
       const m = f.mrms;
       if (!m.p) m.p = cached(m.file.url, () => MR.load(m.id, m.file)).then((L) => {
-        m.layer = L; m.lut = MM.table(L.field.pal);
+        m.layer = L; m.lut = lutFor(L);
         if (R.frames[R.frame] === f) { draw(); show(R.frame); }
         return L;
       }).catch((e) => { m.err = String(e.message || e).replace(/^mrms: /, ""); if (R.frames[R.frame] === f) note(`This MRMS file did not load (${m.err}).`); });
@@ -3630,11 +3630,11 @@
       if (R.mode === "N0S") { lg.classList.add("vel"); lg.innerHTML = `<span>toward</span><i aria-hidden="true"></i><span>away</span>`; return; }
       let pal = null, unit = "", fmt = (v) => String(v), cats = null;
       if (P) {
-        pal = NX.PALETTES[P.pal]; unit = P.unit;
+        pal = NX.paletteFor(P.pal, R.pal[P.pal]); unit = P.unit;
         if (pal.classes) cats = Object.entries(pal.classes).filter(([k]) => k !== "2").map(([k, c]) => [NX.HCA_CLASSES[k][1], c]);
       } else if ((R.mode === "model" || R.mode === "mrms") && MM) {
         const f = R.mode === "mrms" ? MR.PRODUCTS[R.mr.prod] : MM.field(R.mm.src, R.mm.field);
-        pal = MM.PAL[f.pal];
+        pal = f.pal === "dbz" && NX ? NX.paletteFor("ref", R.pal.ref) : MM.PAL[f.pal];
         if (pal.cat) cats = Object.values(pal.types).map(([name, , hi]) => [name, hi]);
         else {
           const [name, conv] = MM.unitFor(f.unit, U());
@@ -3688,6 +3688,38 @@
        once that is well past its refresh), and the satellite underneath. A
        line clicked off stays, greyed, so a second click brings it back; one
        turned off in the Overlays panel goes. Pro only. ── */
+    /* ── Colour tables (UI-REVIEW B7, 2026-10-23): the visitor's choice of
+       reflectivity and velocity colours (Nexrad.SCHEMES), kept in this
+       browser. Everything Pro paints itself follows it — a single radar,
+       MRMS, a model's reflectivity — and the key with it; the US mosaic
+       arrives coloured by IEM and stays the NWS's. Changing it recolours
+       what is loaded; maps side by side follow by the storage event. ── */
+    R.pal = { ref: "nws", vel: "nws" };
+    if (PRO && NX) for (const k of ["ref", "vel"]) { const v = store.get("wx:pal" + k, "nws"); if (NX.SCHEMES[k][v]) R.pal[k] = v; }
+    function lutFor(L) { return MM.table(L.field.pal, 255, L.field.pal === "dbz" && NX ? NX.paletteFor("ref", R.pal.ref) : null); }
+    function recolor() {
+      for (const f of R.frames) {
+        if (f.l3 && f.l3.file) { f.l3.colors = NX.colorTable(f.l3.file, f.l3.prod, R.pal); f.painted = null; }
+        const m = f.model || f.mrms;
+        if (m && m.layer && m.layer.field && m.layer.field.pal === "dbz") { m.lut = lutFor(m.layer); f.painted = null; }
+      }
+      if (R.frames.length) show(R.frame);
+      draw(); legend();
+    }
+    function setPal(k, v, keep) {
+      if (!NX || !NX.SCHEMES[k][v] || R.pal[k] === v) return;
+      R.pal[k] = v;
+      if (keep) store.set("wx:pal" + k, v);
+      const sel = $("#pal" + k); if (sel) sel.value = v;
+      recolor();
+    }
+    if (PRO && NX) for (const k of ["ref", "vel"]) {
+      const sel = $("#pal" + k);
+      if (!sel) continue;
+      sel.innerHTML = Object.entries(NX.SCHEME_NAMES[k]).map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join("");
+      sel.value = R.pal[k];
+      sel.addEventListener("change", () => setPal(k, sel.value, true));
+    }
     const LGOFF = new Set();
     const LG = () => [
       { k: "sat", on: () => !!R.sat, name: () => "Satellite under", src: () => { const o = $("#satsel") && $("#satsel").selectedOptions[0]; return o && o.value ? o.textContent : ""; }, col: "#9aa5b4", btn: null },
@@ -4567,6 +4599,8 @@
     return {
       /* the times said again (a panel given the page's time zone) */
       relabel() { if (R.frames.length) show(R.frame); label(); },
+      /* a colour table chosen in the page or another map */
+      setPal: (k, v) => setPal(k, v, false),
       panel: {
         get view() { return viewNow(); }, setView,
         get stamp() { return stamp(); }, setTime,
@@ -5075,6 +5109,7 @@
   if (PRO) addEventListener("storage", (e) => {
     if (e.key === "wx:utc") { UTC = store.get("wx:utc", false) === true; utcRedraw(); }
     /* the units, changed in the page or another map: every map follows */
+    else if (e.key === "wx:palref" || e.key === "wx:palvel") radar.setPal(e.key.slice(6), store.get(e.key, "nws"));
     else if (e.key === "wx:prounits") {
       const u = store.get("wx:prounits", "pro");
       if (["pro", "us", "metric"].includes(u) && u !== S.units) { S.units = u; if (!PANEL) render(); radar.draw(); radar.label(); sky.redraw(); }

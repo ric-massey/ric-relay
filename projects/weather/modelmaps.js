@@ -710,8 +710,9 @@
     }
     return hex(stops[stops.length - 1][1]);
   }
-  function table(palName, alpha = 255) {
-    const P = PAL[palName];
+  /* over: a palette to use instead of PAL[palName] — the reflectivity table the visitor picked (Nexrad.paletteFor) */
+  function table(palName, alpha = 255, over = null) {
+    const P = over && over.stops ? over : PAL[palName];
     if (P.cat) {
       /* 4 types × 81 echo steps */
       const t = new Uint32Array(500);

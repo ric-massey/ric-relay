@@ -586,6 +586,22 @@ rain, snow and hail in inches); a colour key's temperatures and speeds are
 said in whole numbers. Times stay on their own Local / UTC button — the set
 does not switch the clock. Tested in `wx.test.mjs`.
 
+**Colour tables (2026-10-23, UI-REVIEW B7 — as GR2Analyst and RadarScope let
+you swap them):** Overlays now has **Reflectivity** (NWS standard · High
+contrast · Colour-blind safe) and **Velocity** (green in, red out · blue in,
+orange out). The tables are `Nexrad.SCHEMES`; the choice is kept in this
+browser (`wx:palref`, `wx:palvel`), recolours what is already loaded, moves the
+colour key with it, and maps side by side follow. A single radar, MRMS and a
+model's reflectivity all draw with it (`ModelMaps.table`'s override); the US
+mosaic comes coloured by Iowa State and stays the NWS's, as the picker's
+tooltip says. "Colour-blind safe" is measured: `test/palettes.test.mjs`
+simulates deuteranopia and protanopia and requires any two reflectivity bands
+10 dBZ apart to differ by ΔE 15 or more (the safe table's closest pair is 24;
+the NWS table's is 3) and toward/away velocity at the same speed by 25 or more
+(safe 58; NWS 14). The first safe table, with purples at the top, failed it —
+protanopes saw them as the light blues — and was redrawn: blue for light
+rain, yellow through brown, rose at 55, grey at 60, white above.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

@@ -328,6 +328,39 @@
       ticks: [5, 10, 20, 30, 40, 50, 65] },
     hca: { classes: { 1: '#9ca3af', 2: '#78716c', 3: '#a5f3fc', 4: '#60a5fa', 5: '#1d4ed8', 6: '#22c55e', 7: '#15803d', 8: '#fde047', 9: '#f472b6', 10: '#ef4444', 11: '#b91c1c', 12: '#7f1d1d', 13: '#e9d5ff', 14: '#7c3aed' } }
   };
+  /* The colour tables a visitor can pick (2026-10-23, UI-REVIEW B7 — as
+     GR2Analyst and RadarScope let you swap them). 'nws' is the palette above
+     for each. Reflectivity: 'contrast' steps harder between the bands a
+     forecaster reads (the 35/40/50/60 dBZ thresholds), on darker light-rain
+     colours so heavy cores stand out; 'cvd' is safe for red-green colour
+     blindness — dark blue through light blue for light rain, then yellow,
+     orange and brown, a rose at 55, grey at 60 and white above, so any two
+     bands 10 dBZ apart differ in lightness or in blue against yellow, never
+     only in red against green: test/palettes.test.mjs simulates
+     deuteranopia and protanopia and finds the closest such pair ΔE 24 (the
+     NWS table's is 3). A first try with purples at the top failed it —
+     protanopes saw them as the light blues. Velocity: 'cvd' is blue toward
+     the radar and orange away, the colour-blind-safe couplet. The same
+     reflectivity choice colours the MRMS and model reflectivity maps
+     (ModelMaps.table's override). */
+  const SCHEMES = {
+    ref: {
+      nws: PALETTES.ref,
+      contrast: { min: -10, max: 80, stops: [[5, '#3c4a5a'], [12, '#2f6cb3'], [19.9, '#59a8f0'], [20, '#33c14a'], [29.9, '#0f7a2a'], [30, '#0f7a2a'], [34.9, '#7fbf2a'],
+        [35, '#ffe81a'], [39.9, '#f5c400'], [40, '#ff9a00'], [44.9, '#ff6a00'], [45, '#ff3b00'], [49.9, '#e01010'], [50, '#c00000'], [54.9, '#8a0000'],
+        [55, '#ff1fd6'], [59.9, '#d21fff'], [60, '#ffffff'], [65, '#9ff7ff'], [70, '#2fe0ff'], [75, '#ffffff']], floor: 5, ticks: [10, 20, 30, 40, 50, 60, 70] },
+      cvd: { min: -10, max: 80, stops: [[5, '#1a2a52'], [15, '#24489a'], [20, '#2f6fd0'], [25, '#4a8fe0'], [30, '#86bdf0'], [35, '#fbef7a'], [40, '#f3c444'],
+        [45, '#e0942f'], [50, '#b8611f'], [55, '#c23b6e'], [60, '#9a9a9a'], [65, '#ffffff'], [70, '#fff3b0'], [75, '#ffffff']], floor: 5, ticks: [10, 20, 30, 40, 50, 60, 70] }
+    },
+    vel: {
+      nws: PALETTES.vel,
+      cvd: { min: -80, max: 80, stops: [[-80, '#e6f4ff'], [-64, '#7cc4ff'], [-40, '#2f86e0'], [-20, '#1f5596'], [-5, '#18304f'], [-1, '#3a4250'], [1, '#504338'], [5, '#4f2e12'],
+        [20, '#9a5414'], [40, '#e3871f'], [64, '#ffb85c'], [80, '#fff1cc']], ticks: [-60, -30, 0, 30, 60] }
+    }
+  };
+  const SCHEME_NAMES = { ref: { nws: 'NWS standard', contrast: 'High contrast', cvd: 'Colour-blind safe' }, vel: { nws: 'Green in, red out (NWS)', cvd: 'Blue in, orange out (colour-blind safe)' } };
+  /* the palette a product draws with under the visitor's choice; an unknown choice is the NWS's */
+  const paletteFor = (name, scheme) => (SCHEMES[name] && SCHEMES[name][scheme]) || PALETTES[name];
   const RF_COLOR = [124, 58, 237, 255];
   const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   function colorOf(pal, v) {
@@ -341,9 +374,9 @@
   }
   /* one RGBA word per stored byte, for this file: the painter's whole job is
      then a table lookup per pixel */
-  function colorTable(f, prod) {
+  function colorTable(f, prod, schemes = {}) {
     /* as long as the file's own table: 256, or 65,536 for a 16-bit Level II moment */
-    const P = PRODUCTS[prod], pal = PALETTES[P.pal], out = new Uint32Array(f.lut.length);
+    const P = PRODUCTS[prod], pal = paletteFor(P.pal, schemes[P.pal]), out = new Uint32Array(f.lut.length);
     const pack = (c, a = 255) => ((a << 24) | (c[2] << 16) | (c[1] << 8) | c[0]) >>> 0;   // little-endian RGBA
     for (let i = 0; i < out.length; i++) {
       if (f.special[i] === 'rf') { out[i] = pack(RF_COLOR, 200); continue; }
@@ -449,7 +482,7 @@
     return { ...f, data, lut, special: { 1: 'rf' }, motion: { uE, vN } };
   }
 
-  const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
+  const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, SCHEMES, SCHEME_NAMES, paletteFor, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
     colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, retrying, stormRelative, locator, polarOf };
   root.Nexrad = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
