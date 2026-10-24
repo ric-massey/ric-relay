@@ -378,9 +378,31 @@
     while ((m = re.exec(xml))) keys.push(m[1]);
     return keys;
   }
+  /* A request to a busy bucket, tried again (2026-10-24). S3 answers a
+     burst with 503 "Slow Down" — in a browser often with no CORS header, so
+     it shows as a failed fetch — and one miss used to cost a scan until the
+     next refresh. A 429, a 5xx or a network failure is asked again after
+     0.5, 1 and 2 s: four tries in about 3.5 s, shorter than the models'
+     (modelmaps.js), because a radar scan a minute late is already going
+     stale. A 404 is an answer, and an aborted request is not retried. One
+     copy, here, loaded first; level2.js, mrms.js and the page use it. */
+  const RETRY_STATUS = (s) => s === 429 || (s >= 500 && s <= 599);
+  const retrying = (fetchFn, { tries = 4, waitMs = 500 } = {}) => async (url, opts) => {
+    for (let k = 0; ; k++) {
+      try {
+        const r = await fetchFn(url, opts);
+        if (!r || !RETRY_STATUS(r.status) || k >= tries - 1) return r;
+      } catch (e) {
+        if (k >= tries - 1 || (opts && opts.signal && opts.signal.aborted)) throw e;
+      }
+      if (opts && opts.signal && opts.signal.aborted) throw new Error('nexrad: aborted');
+      await new Promise((ok) => setTimeout(ok, waitMs * 2 ** k));
+    }
+  };
   /* every scan of one product from one site in the last `mins` minutes,
      oldest first: [{ key, t, url }] */
   async function scans(site, prod, { mins = 60, nowMs = Date.now(), signal, fetchFn = fetch } = {}) {
+    fetchFn = retrying(fetchFn);
     if (!SITE3.test(site) || !/^[A-Z0-9]{3}$/.test(prod)) return [];
     /* every clock hour the window touches, from the hour it starts in to
        the one now is in (a minute ahead, for a clock a little slow). Stepping
@@ -399,7 +421,7 @@
       .filter((s) => s.t && s.t >= nowMs - mins * 60e3 && s.t <= nowMs + 120e3).sort((a, b) => a.t - b.t);
   }
   async function load(url, { signal, fetchFn = fetch } = {}) {
-    const r = await fetchFn(url, { signal });
+    const r = await retrying(fetchFn)(url, { signal });
     if (!r.ok) throw new Error('nexrad: HTTP ' + r.status);
     return parse(new Uint8Array(await r.arrayBuffer()));
   }
@@ -428,7 +450,7 @@
   }
 
   const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
-    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, stormRelative, locator, polarOf };
+    colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, retrying, stormRelative, locator, polarOf };
   root.Nexrad = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

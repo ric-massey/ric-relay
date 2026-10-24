@@ -16,6 +16,8 @@
   'use strict';
 
   const G = root.Grib2 || (typeof require === 'function' ? require('./grib2.js') : null);
+  const NX = root.Nexrad || (typeof require === 'function' ? require('./nexrad.js') : null);
+  const retrying = NX ? NX.retrying : (f) => f;                 // nexrad.js's: a busy bucket asked again
   const BUCKET = 'https://noaa-mrms-pds.s3.amazonaws.com';
 
   /* pool: how many of MRMS's own grid points go into one of ours, each way —
@@ -57,7 +59,7 @@
       const prefix = `CONUS/${P.name}/${day}/`;
       const q = new URLSearchParams({ 'list-type': '2', prefix });
       if (day === ymd(from)) q.set('start-after', `${prefix}MRMS_${P.name}_${day}-${hms(from)}`);
-      const r = await fetchFn(`${BUCKET}/?${q}`, { signal });
+      const r = await retrying(fetchFn)(`${BUCKET}/?${q}`, { signal });
       if (!r.ok) throw new Error('mrms: listing HTTP ' + r.status);
       keys.push(...[...(await r.text()).matchAll(/<Key>([^<]+)<\/Key>/g)].map((m) => m[1]));
     }
@@ -66,7 +68,7 @@
   /* one file → a layer the map painter draws: grid, values in the
      canonical unit, the product, and its time */
   async function load(id, file, { signal, fetchFn = fetch } = {}) {
-    const P = PRODUCTS[id], r = await fetchFn(file.url, { signal });
+    const P = PRODUCTS[id], r = await retrying(fetchFn)(file.url, { signal });
     if (!r.ok) throw new Error('mrms: HTTP ' + r.status);
     const msg = await G.parseAsync(new Uint8Array(await r.arrayBuffer()), { pool: P.pool });
     if (P.conv) for (let i = 0; i < msg.values.length; i++) msg.values[i] = P.conv(msg.values[i]);

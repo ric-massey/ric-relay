@@ -1046,8 +1046,18 @@ body[data-view="pro"]:not([data-panel]) .placebar .chip,body[data-view="pro"]:no
 body[data-view="pro"]:not([data-panel]) .wsbar{flex-wrap:nowrap}
 body[data-view="pro"]:not([data-panel]) .wsnote{position:fixed;top:calc(var(--tb,44px) + 48px);left:50%;transform:translateX(-50%);z-index:45}
 /* storm warnings over the map, at the top, always */
-body[data-view="pro"]:not([data-panel]) .stormband{position:absolute;top:48px;left:50%;transform:translateX(-50%);z-index:44;width:min(760px,calc(100% - 140px));pointer-events:none}
+body[data-view="pro"]:not([data-panel]) .stormband{position:absolute;top:calc(48px + var(--mapctlh,0px));left:50%;transform:translateX(-50%);z-index:44;width:min(760px,calc(100% - 140px));pointer-events:none}
 body[data-view="pro"]:not([data-panel]) .stormband #storms{pointer-events:auto;max-height:40vh;overflow:auto;margin:0;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+/* a warning folded to a bar, and the Fold button on an open one (2026-10-24):
+   still red, still on top, the event and its end time always shown */
+body[data-view="pro"] .storm{position:relative}
+body[data-view="pro"] .storm .stormfold{position:absolute;top:10px;right:10px;min-height:32px;padding:4px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.55);background:rgba(0,0,0,.35);color:#fff;font:600 13px var(--sans);cursor:pointer}
+body[data-view="pro"] .storm .stormfold~.kicker{padding-right:76px}
+body[data-view="pro"] .storm.folded{padding:0}
+body[data-view="pro"] .storm .stormbar{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;width:100%;min-height:44px;padding:8px 14px;border:0;background:none;color:#fff;font:500 14px var(--sans);text-align:left;cursor:pointer}
+body[data-view="pro"] .storm .stormbar b{font-size:15px;font-weight:800}
+body[data-view="pro"] .storm .stormbar .show{margin-left:auto;padding:3px 10px;border-radius:999px;background:rgba(0,0,0,.35);font-weight:600;font-size:13px}
+body[data-view="pro"] .storm .stormfold:focus-visible,body[data-view="pro"] .storm .stormbar:focus-visible{outline:2px solid #fff;outline-offset:2px}
 /* the map and the drawer share what is left */
 body[data-view="pro"]:not([data-panel]) .workspace{flex:1 1 auto;min-height:0;position:relative;display:block;margin:0}
 body[data-view="pro"]:not([data-panel]) .mapcol{position:absolute;inset:0;right:var(--dock,0px);transition:right .2s}

@@ -413,21 +413,58 @@
   }
 
   /* ── storm mode ── */
+  /* Pro folds a warning (2026-10-24): over a full-window map the box covered
+     the storm it was warning about. Folded it is still a red bar on top of
+     the map, with the warning's name and end time — never hidden. It is kept
+     here only, in memory, never saved: a reload opens every warning again.
+     A warning not folded before always opens, and a folded one opens again
+     the moment it is upgraded — a worse event, a tornado observed, a PDS,
+     an emergency, a higher damage threat. The NWS's updates arrive with new
+     ids, so a warning is known by its place, event and office; once an
+     answer from the NWS no longer has it, its fold is forgotten and the next
+     one is new. Only an answer counts: while the alerts are being asked
+     again (S.alerts undefined) or did not come (null), every fold stands. */
+  const FOLD = new Map();
+  const foldKey = (a) => `${S.place ? S.place.lat + "," + S.place.lon : ""}|${a.event}|${a.sender}`;
+  const THREAT = { BASE: 0, CONSIDERABLE: 1, DESTRUCTIVE: 2, CATASTROPHIC: 3 };
+  const dangerOf = (a) => evOf(a)[1] * 100 + (a.emergency ? 40 : 0) + (a.pds ? 20 : 0)
+    + (a.detection && /observed/i.test(a.detection) ? 10 : 0) + (THREAT[String(a.threat || "").toUpperCase()] || 0);
+  function folded(a) {
+    if (!PRO || !FOLD.has(foldKey(a))) return false;
+    if (dangerOf(a) > FOLD.get(foldKey(a))) { FOLD.delete(foldKey(a)); return false; }
+    return true;
+  }
+  if (PRO) document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-stormfold]");
+    if (!b) return;
+    const a = stormsHere().find((x) => foldKey(x) === b.dataset.stormfold);
+    if (!a) return;
+    if (FOLD.has(b.dataset.stormfold)) FOLD.delete(b.dataset.stormfold); else FOLD.set(b.dataset.stormfold, dangerOf(a));
+    renderStorms();
+    const again = [...document.querySelectorAll("#storms [data-stormfold]")].find((x) => x.dataset.stormfold === b.dataset.stormfold);
+    if (again) again.focus();
+  });
   function renderStorms() {
     const box = $("#storms");
     const list = stormsHere();
     document.body.classList.toggle("storming", list.length > 0);
     document.title = list.length ? `⚠ ${list[0].event} — ${PRO ? "/weather pro" : "/weather"}` : TITLE;
+    if (Array.isArray(S.alerts)) { const here = new Set(list.map(foldKey)); for (const key of [...FOLD.keys()]) if (!here.has(key)) FOLD.delete(key); }
     if (!list.length) { box.hidden = true; box.innerHTML = ""; return; }
     box.hidden = false;
     const k = clk();
     box.innerHTML = list.map((a) => {
+      const key = esc(foldKey(a));
+      if (folded(a)) return `<section class="storm folded${a.emergency ? " emergency" : ""}" data-ev="${evOf(a)[0]}" aria-label="${esc(a.event)}">
+        <button type="button" class="stormbar" data-stormfold="${key}" aria-expanded="false"><b>⚠ ${esc(a.event)}</b><span>until ${esc(a.ends ? k.time(a.ends) : "further notice")} · you are inside it</span><span class="show">Show</span></button>
+      </section>`;
+      const fold = PRO ? `<button type="button" class="stormfold" data-stormfold="${key}" aria-expanded="true" aria-label="Fold this warning to a bar">Fold</button>` : "";
       const tr = a.motion ? Wx.stormTrack(a.motion, S.place.lat, S.place.lon) : null;
       const t = tr && trackLine(tr);
       const chips = [a.detection && (/observed/i.test(a.detection) ? "Tornado OBSERVED" : a.detection.toLowerCase().replace(/^./, (c) => c.toUpperCase())),
         a.threat && `${a.threat.toLowerCase()} damage threat`, a.hail && `Hail up to ${a.hail} in`, a.gust && `Gusts to ${a.gust} mph`, a.pds && "Particularly dangerous situation"].filter(Boolean);
       return `<section class="storm${a.emergency ? " emergency" : ""}" data-ev="${evOf(a)[0]}" aria-label="${esc(a.event)}">
-        <div class="kicker">${a.emergency ? "Emergency · " : ""}You are inside this warning</div>
+        ${fold}<div class="kicker">${a.emergency ? "Emergency · " : ""}You are inside this warning</div>
         <h2>${esc(a.event)}</h2>
         <div class="until">Until ${esc(a.ends ? k.time(a.ends) : "further notice")} · ${esc(a.sender)}</div>
         ${chips.length ? `<div class="chips">${chips.map((c) => `<span>${esc(c)}</span>`).join("")}</div>` : ""}
@@ -1853,7 +1890,7 @@
         const best = a.reduce((b, x) => (Math.abs(x.angle - q.angle) < Math.abs(b.angle - q.angle) ? x : b), a[0]);
         return L2.sweep(st, best.elevNum, q.mom);
       }
-      const bufs = await Promise.all(q.urls.map(async (u) => { const r = await fetch(u); if (!r.ok) throw new Error("HTTP " + r.status); return new Uint8Array(await r.arrayBuffer()); }));
+      const bufs = await Promise.all(q.urls.map(async (u) => { const r = await NX.retrying(fetch)(u); if (!r.ok) throw new Error("HTTP " + r.status); return new Uint8Array(await r.arrayBuffer()); }));
       let st = null;
       for (const b of bufs) st = L2.feed(b, st);
       const sw = L2.sweep(st, q.elevNum, q.mom);
@@ -1995,7 +2032,7 @@
       const S = ch.find((c) => c.kind === "S");
       if (!S) return null;
       if (have && have.sKey === S.key && have.complete) return have;
-      const meta = have && have.sKey === S.key ? have.meta : L2.feed(new Uint8Array(await (await fetch(S.url)).arrayBuffer()));
+      const meta = have && have.sKey === S.key ? have.meta : L2.feed(new Uint8Array(await (await NX.retrying(fetch)(S.url)).arrayBuffer()));
       if (!meta.vcp) return null;
       const info = { s4, n, sKey: S.key, sUrl: S.url, meta, plan: L2.plan(meta.vcp), byN: new Map(ch.map((c) => [c.n, c])), complete: ch.some((c) => c.kind === "E"), start: S.t };
       volInfo.set(k, info);
@@ -2092,6 +2129,7 @@
        shading, then contours and wind barbs on top. */
     async function modelFrames() {
       const M = R.mm, src = M.src, ask = R.modeAsk;
+      M.late = 0;
       $("#mmrun").textContent = "Finding the latest run…";
       /* the mesoanalysis is a run of analysis hours, not one run's forecast */
       if (MM.SOURCES[src].analysis) {
@@ -2117,15 +2155,21 @@
       }
       /* the hour on screen, kept across a change of run: the same moment, another run's say of it */
       const was = R.frames[R.frame] && R.frames[R.frame].model && R.frames[R.frame].model.src === src ? R.frames[R.frame].t : null;
-      let run = null;
+      /* a listing that failed is "did not answer"; a listing that answered
+         with no run far enough out is not — the runs it looked at are late,
+         so the one before them is drawn and said to be late (2026-10-24) */
+      let run = null, failed = false;
       try {
         run = await MM.latestRun(src, M.at ? { nowMs: M.at } : {});
+        if (!run && !M.at) { const Sx = MM.SOURCES[src]; run = await MM.latestRun(src, { nowMs: Date.now() - Sx.lookBack * Sx.cycle * 3600e3 }); }
         for (let k = 0; run && k < M.back; k++) run = await MM.latestRun(src, { nowMs: run.run - 1 });
-      } catch (e) { run = null; }
+      } catch (e) { run = null; failed = true; }
       if (R.mode !== "model" || M.src !== src || ask !== R.modeAsk) return;
-      if (!run && M.at) { setFrames([]); modelRunText(); note(`NOAA's ${MM.SOURCES[src].label} archive has no run from ${dayFmt(M.at)} — the HRRR's goes back to 2014, the GFS's to 2021, ECMWF's open data only a few days.`); return; }
+      if (!run && M.at && !failed) { setFrames([]); modelRunText(); note(`NOAA's ${MM.SOURCES[src].label} archive has no run from ${dayFmt(M.at)} — the HRRR's goes back to 2014, the GFS's to 2021, ECMWF's open data only a few days.`); return; }
+      if (!run && !failed) { setFrames([]); $("#mmrun").textContent = ""; note(`${MM.SOURCES[src].label} has no run out in its archive from the last ${MM.SOURCES[src].lookBack * 2 * MM.SOURCES[src].cycle} hours — its runs are late. Pick another model for now.`); return; }
       if (!run) { setFrames([]); $("#mmrun").textContent = ""; note(src === "rap" ? "The RAP reaches this page through the site's own server, which did not answer. Try again in a minute, or pick another model." : `NOAA's ${MM.SOURCES[src].label} archive did not answer. Try again in a minute.`); return; }
       M.run = run.run; R.valid = run.run;
+      M.late = !M.at && !M.back ? MM.lateBy(src, run.run) : 0;
       setFrames(run.hours.map((fh) => ({ t: run.run + fh * 3600e3, model: { src, field: M.field, run: run.run, fh } })));
       const aim = was != null ? was : M.at || Date.now();
       let best = 0;
@@ -2147,7 +2191,7 @@
         ? `Mesoanalysis hours, the last ${R.frames.length} · newest ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}, made ${clk().time(sv.made)}${sv.rtma ? "" : " (before NOAA's surface analysis was out — the model's own ground-level air)"} · not a forecast`
         : MM.SOURCES[M.src].analysis
         ? `HRRR analysis hours, the last ${R.frames.length} · newest ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)} · the model's picture of now, observations folded in — not a forecast`
-        : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}${M.back ? ` — ${["", "the run before the latest", "two runs before the latest", "three runs before the latest"][M.back]}` : ""} · ${R.frames.length} hours out so far · a forecast`;
+        : `${MM.SOURCES[M.src].label} run ${new Date(M.run).toISOString().slice(11, 13)}Z ${dayFmt(M.run)}${M.back ? ` — ${["", "the run before the latest", "two runs before the latest", "three runs before the latest"][M.back]}` : ""} · ${R.frames.length} hours out so far · a forecast${M.late ? " · newer runs are late" : ""}`;
       if ($("#mmbackl")) $("#mmbackl").hidden = !!MM.SOURCES[M.src].analysis;
     }
 
@@ -2669,6 +2713,10 @@
     }
 
     /* ── what the pointer is over: the value under it, in words ── */
+    /* a forecast hour as forecasters write it, the run first: "GFS 18Z +6 h"
+       (2026-10-24) — the stamp and the readout said only "+6 h", and the
+       maps beside this one, which hide the line above the map, said no run */
+    function runHour(m) { return `${MM.SOURCES[m.src].label} ${new Date(m.run).toISOString().slice(11, 13)}Z +${m.fh} h`; }
     function readoutAt(lat, lon) {
       const a = readoutFrame(lat, lon);
       const D = R.ov.density && LTG.at && R.mode !== "replay" ? ltgDensity() : null;
@@ -2703,8 +2751,8 @@
       if (f.model && f.model.layer) {
         const L = f.model.layer, v = MM.valueAt(L, lat, lon);
         if (!Number.isFinite(v)) return null;
-        if (L.field.pal === "ptype") { const t = MM.PAL.ptype.types[Math.floor(v / 100)]; return `${t ? t[0] : "Precipitation"} · ${Math.round(v % 100)} dBZ · ${MM.SOURCES[f.model.src].label} +${f.model.fh} h`; }
-        return `${L.field.label}: ${MM.say(L.field.unit, v, U())} · ${MM.SOURCES[f.model.src].analysis ? `${MM.SOURCES[f.model.src].server ? "mesoanalysis" : "HRRR analysis"} ${new Date(f.t).toISOString().slice(11, 13)}Z` : `${MM.SOURCES[f.model.src].label} +${f.model.fh} h`}`;
+        if (L.field.pal === "ptype") { const t = MM.PAL.ptype.types[Math.floor(v / 100)]; return `${t ? t[0] : "Precipitation"} · ${Math.round(v % 100)} dBZ · ${runHour(f.model)}`; }
+        return `${L.field.label}: ${MM.say(L.field.unit, v, U())} · ${MM.SOURCES[f.model.src].analysis ? `${MM.SOURCES[f.model.src].server ? "mesoanalysis" : "HRRR analysis"} ${new Date(f.t).toISOString().slice(11, 13)}Z` : runHour(f.model)}`;
       }
       return null;
     }
@@ -3301,6 +3349,12 @@
       delete n.dataset.flash;                // a real note outlives a key's passing one
       n.hidden = !text; n.textContent = text || "";
     }
+    function paintFrame(f) {
+      if (!R.started) return;
+      const w = el.clientWidth, h = el.clientHeight, left = R.cx - w / 2, top = R.cy - h / 2;
+      if (f.l3) paintL3(f, w, h, left, top);
+      else if (f.model || f.mrms || f.abi) paintModel(f, w, h, left, top);
+    }
     let byUser = 0;
     function userShow(i) { byUser++; try { show(i); } finally { byUser--; } }
     function show(i) {
@@ -3311,6 +3365,13 @@
       if (!R.frames[i]) { $("#when").innerHTML = ""; return; }
       const f = R.frames[i];
       if (!R.loadedOld || f.future || f.nc || f.archive || (f.l3 && f.l3.l2 && f.l3.l2.archive)) draw();   // a replay's warnings change by the minute, and its next frame loads now
+      /* every other frame is painted by itself, and only that one (2026-10-24):
+         once the older frames had loaded, stepping onto a scan, model hour,
+         MRMS or GOES frame drew nothing, because draw() paints those only
+         while they are on screen and nothing here called it. Each painter
+         keeps the view it last drew (f.painted), so one already drawn costs
+         nothing, and one not yet loaded is asked for now. */
+      else paintFrame(f);
       /* a replay's stations follow the frame, twenty minutes at a time */
       if (R.mode === "replay" && R.stations) { const ft = frameTime(f); if (ft != null && Math.round(ft / 1200e3) * 1200e3 !== R.obsSlot) stationsSoon(); }
       $("#scrub").value = String(i);
@@ -3321,7 +3382,7 @@
       else if (f.abi) when.innerHTML = `${esc(clk().time(f.t))}<small>${f.abi.file.sat === "east" ? "GOES-East" : "GOES-West"} · ${Wx.age(Date.now() - f.t)} ago${f.abi.layer ? "" : f.abi.err ? " · failed" : " · loading"}</small>`;
       else if (f.model) {
         const k = clk(), day = k.ymd(f.t) !== k.ymd(Date.now()) ? k.day(f.t) + " " : "";
-        when.innerHTML = `${esc(day + k.time(f.t))}<small>${esc(MM.SOURCES[f.model.src].label)}${MM.SOURCES[f.model.src].analysis ? " · " + Wx.age(Date.now() - f.t) + " ago" : ` +${f.model.fh} h`}${f.model.layer ? "" : f.model.err ? " · failed" : " · loading"}</small>`;
+        when.innerHTML = `${esc(day + k.time(f.t))}<small>${esc(MM.SOURCES[f.model.src].analysis ? MM.SOURCES[f.model.src].label : runHour(f.model))}${MM.SOURCES[f.model.src].analysis ? " · " + Wx.age(Date.now() - f.t) + " ago" : ""}${f.model.layer ? "" : f.model.err ? " · failed" : " · loading"}</small>`;
       } else if (f.l3) {
         const F = f.l3.file;
         const t = F ? F.time : f.t, arch = f.l3.l2 && f.l3.l2.archive;
@@ -3344,6 +3405,7 @@
       else if (f.abi && f.abi.err) note(`This GOES image did not load (${f.abi.err}).`);
       else if (f.l3 && f.l3.err && f.l3.errText) note(f.l3.errText);
       else if ((f.mrms || f.abi) && feedLate()) note(feedLate());
+      else if (f.model && R.mm.late && f.model.run === R.mm.run) note(`${MM.SOURCES[f.model.src].label}'s newer runs are late — this is the ${new Date(f.model.run).toISOString().slice(11, 13)}Z run, ${Wx.age(Date.now() - f.model.run)} old. A newer one is usually out ${Wx.age(MM.SOURCES[f.model.src].publishMin * 60e3)} after it starts.`);
       else if (f.model || f.mrms || f.abi) note("");
       /* the backup on Pro: NOAA's own MRMS mosaic, read straight from NOAA's bucket, not IEM */
       else if (fr && fr.unknown) note(`IEM did not say when its newest mosaic was made, so how old this radar is is not known.${PRO ? " NOAA's own mosaic of the same radars is under MRMS → Composite reflectivity, read straight from NOAA." : ""}`);
@@ -4393,7 +4455,12 @@
       get valid() { return R.valid; },
       get backup() { return !!R.backup; },
       get iemValid() { return R.iemValid; },
-      get started() { return R.started; }
+      get started() { return R.started; },
+      /* a radar site's Level III scans, read from NOAA's bucket: asked every
+         30 s, as Level II already is (its own timer, l2Frames), since a new
+         scan lands every one to five minutes (2026-10-24). IEM's tiles and the
+         mosaic stay on two minutes; loadOverlays() throttles itself. */
+      get fast() { return !!(PRO && R.started && l3() && !useL2() && R.mode !== "replay"); }
     };
   })();
 
@@ -4858,7 +4925,8 @@
     });
     /* the map's toolbar floats on the map: its height goes to --ctlh, so the zoom, the stamp and the notes sit under it */
     const card = $("#radarcard"), ctl = $("#mapctl");
-    const ctlh = () => { if (card && ctl) card.style.setProperty("--ctlh", (getComputedStyle(ctl).position === "absolute" ? ctl.offsetHeight : 0) + "px"); };
+    /* …and to the body as --mapctlh, so the storm warnings, which float over the map from outside its card, sit under the toolbar rather than over its buttons (2026-10-24) */
+    const ctlh = () => { if (card && ctl) { const v = (getComputedStyle(ctl).position === "absolute" ? ctl.offsetHeight : 0) + "px"; card.style.setProperty("--ctlh", v); document.body.style.setProperty("--mapctlh", v); } };
     ctlh();
     if (typeof ResizeObserver === "function" && ctl) new ResizeObserver(ctlh).observe(ctl);
     addEventListener("resize", ctlh);
@@ -4870,13 +4938,15 @@
   /* ── keeping up ──
      Every ten minutes, everything. Every minute, the alerts — when a storm
      warning covers the place or one is in its state, or on the national view —
-     and the radar every two, while it is in view (§25, §29). */
+     and the radar every two, while it is in view (§25, §29) — a radar
+     site's own Level III scans on Pro every thirty seconds (radar.fast). */
   const FULL = 10 * 60e3, FAST = 60e3;
   let lastRadar = Date.now();
+  const radarDue = (now) => now - lastRadar >= (radar.fast ? 25e3 : 120e3);   // 25: the tick is 30 s, and a timer runs a little early or late
   setInterval(() => {
     if (document.visibilityState !== "visible") return;
     const now = Date.now();
-    if (PANEL) { if (now - lastRadar >= 120e3) { lastRadar = now; radar.refresh(); } return; }
+    if (PANEL) { if (radarDue(now)) { lastRadar = now; radar.refresh(); } return; }
     if (now - S.loadedAt > FULL) { load(); return; }
     /* a failed alert check is asked again every minute, like a storm */
     const hot = !S.place || stormsHere().length || (S.state || []).some((a) => a.storm) || !!S.err.alerts;
@@ -4890,7 +4960,7 @@
         loadAlerts(ctl.signal, live); loadState(ctl.signal, live);
       }
     }
-    if (now - lastRadar >= 120e3) { lastRadar = now; radar.refresh(); }
+    if (radarDue(now)) { lastRadar = now; radar.refresh(); }
     if (S.place && now - (S.nowAt || 0) >= 300e3) {
       S.nowAt = now;
       const key = placeKey(S.place);

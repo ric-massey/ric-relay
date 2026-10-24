@@ -733,7 +733,9 @@ ones that must never break:
   amber instrument with ← Weather to go back. Don't bring back a shared tab switch
   or style Pro like Weather. Both load `assets/weather/app.js` and
   `assets/weather/weather.css`; each page holds only its own cards. **Warnings and
-  storm mode stay on both** — never move them to Pro only. Pro is a tab of the
+  storm mode stay on both** — never move them to Pro only. On Pro a warning may be **folded**
+  to a red bar over the map (2026-10-24) — never hidden, never saved, and opened
+  again by any upgrade; don't add a way to dismiss one. Pro is a tab of the
   weather room, not a room: it is not in `ROOMS` or the room navs.
 - **Pro's workstation** (`assets/weather/workstation.js`; `projects/weather/WORKSTATION.md`,
   built 2026-10-23): the maps beside the main one are Pro itself in a frame

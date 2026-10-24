@@ -23,6 +23,8 @@
   'use strict';
 
   const Bz = root.Bzip2 || (typeof require === 'function' ? require('./bzip2.js') : null);
+  const NX = root.Nexrad || (typeof require === 'function' ? require('./nexrad.js') : null);
+  const retrying = NX ? NX.retrying : (f) => f;                 // nexrad.js's: a busy bucket asked again
   const CHUNKS = 'https://unidata-nexrad-level2-chunks.s3.amazonaws.com';
   const ARCHIVE = 'https://unidata-nexrad-level2.s3.amazonaws.com';
 
@@ -230,7 +232,7 @@
     const q = new URLSearchParams({ 'list-type': '2', prefix, 'max-keys': String(maxKeys) });
     if (delimiter) q.set('delimiter', delimiter);
     if (startAfter) q.set('start-after', startAfter);
-    const r = await fetchFn(`${base}/?${q}`, { signal });
+    const r = await retrying(fetchFn)(`${base}/?${q}`, { signal });
     if (!r.ok) throw new Error('level2: listing HTTP ' + r.status);
     const xml = await r.text();
     return { keys: [...xml.matchAll(/<Key>([^<]+)<\/Key>/g)].map((m) => m[1]), prefixes: [...xml.matchAll(/<Prefix>([^<]+)<\/Prefix>/g)].map((m) => m[1]) };
@@ -291,7 +293,7 @@
   async function stream(url, { until = () => false, gz = /\.gz$/.test(url), signal, fetchFn = fetch } = {}) {
     const ctl = new AbortController();
     if (signal) signal.addEventListener('abort', () => ctl.abort(), { once: true });
-    const r = await fetchFn(url, { signal: ctl.signal });
+    const r = await retrying(fetchFn)(url, { signal: ctl.signal });
     if (!r.ok) throw new Error('level2: HTTP ' + r.status);
     /* gzip by hand, one network chunk at a time: piped, the decompressor
        drains the whole download before the first tilt is even read */

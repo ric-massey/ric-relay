@@ -616,5 +616,41 @@ console.log('\nRULE  the backup mosaic: NOAA\'s own, when IEM\'s is late or sile
   ok(W.useBackupMosaic(now - 25 * M, now - 20 * M, now) === false && W.useBackupMosaic(null, now - 40 * M, now) === false, 'NOAA late too, or not much newer: no switch to something no better');
 }
 
+console.log('\nRULE  Pro\'s map paints the frame it steps to; warnings fold but never hide');
+{
+  const fs = await import('node:fs');
+  const app = fs.readFileSync(new URL('../../../assets/weather/app.js', import.meta.url), 'utf8');
+  const css = fs.readFileSync(new URL('../../../assets/weather/weather.css', import.meta.url), 'utf8');
+  const body = (name) => { const i = app.indexOf(`function ${name}(`); return i < 0 ? '' : app.slice(i, app.indexOf('\n    }\n', i)); };
+  /* stepping onto a scan, model hour, MRMS or GOES frame once the older frames have loaded */
+  ok(/\)\) draw\(\);[^\n]*\n(?:\s*\/\*[\s\S]*?\*\/\n)?\s*else paintFrame\(f\);/.test(body('show')), 'show() paints the frame it moves to when it does not redraw the map');
+  const pf = body('paintFrame');
+  ok(/paintL3\(f/.test(pf) && /f\.model \|\| f\.mrms \|\| f\.abi\) paintModel\(f/.test(pf), 'paintFrame covers Level III, model, MRMS and GOES frames');
+  ok(/f\.painted === key\) return;/.test(body('paintL3')) && /f\.painted === key\) return;/.test(body('paintModel')), 'each painter keeps the view it drew, so a frame already painted costs nothing');
+  /* the radar's own fetches go through the one retrying helper */
+  ok(/NX\.retrying\(fetch\)\(u\)/.test(app) && /NX\.retrying\(fetch\)\(S\.url\)/.test(app) && !/await fetch\(S\.url\)/.test(app), 'the page\'s Level II chunk fetches are retried');
+  ok(/get fast\(\)[^\n]*l3\(\) && !useL2\(\)/.test(app) && /radarDue\(now\)/.test(app) && /radar\.fast \? 25e3 : 120e3/.test(app), 'a site\'s Level III scans refresh every 30 s; the rest every two minutes');
+  /* model runs: a failed listing and a late run are two different things */
+  const mf = body('modelFrames');
+  ok(/catch \(e\) \{ run = null; failed = true; \}/.test(mf) && /!run && !failed/.test(mf) && /runs are late/.test(mf), 'a model listing that answered with no run is "late", not "did not answer"');
+  ok(/Sx\.lookBack \* Sx\.cycle \* 3600e3/.test(mf) && /MM\.lateBy\(src, run\.run\)/.test(mf), 'with no run out, the run before is drawn and called late');
+  ok(/function runHour\(m\)[^\n]*Z \+\$\{m\.fh\} h/.test(app) && !/label\)\}\$\{MM\.SOURCES\[f\.model\.src\]\.analysis \? " · " \+ Wx\.age\(Date\.now\(\) - f\.t\) \+ " ago" : ` \+\$\{f\.model\.fh\} h`/.test(app), 'the stamp says the run: "GFS 18Z +6 h"');
+  /* storm mode on Pro: a fold, never a hiding */
+  const rs = body('renderStorms');
+  ok(/if \(folded\(a\)\)[^\n]*class="storm folded/.test(rs) && /⚠ \$\{esc\(a\.event\)\}/.test(rs) && /until \$\{esc\(a\.ends/.test(rs), 'a folded warning is still a red bar with its event and end time');
+  ok(/if \(!PRO \|\| !FOLD\.has/.test(app) && /const fold = PRO \?/.test(rs), 'only Pro folds; Weather\'s storm mode is unchanged');
+  ok(/dangerOf\(a\) > FOLD\.get\(foldKey\(a\)\)\) \{ FOLD\.delete/.test(app), 'an upgraded warning opens again');
+  ok(/if \(Array\.isArray\(S\.alerts\)\) \{[^\n]*if \(!here\.has\(key\)\) FOLD\.delete\(key\)/.test(rs), 'a warning an answer no longer has is forgotten, so the next one opens — and a reload in flight forgets nothing');
+  ok(!/store\.set\([^)]*FOLD|wx:fold/.test(app), 'a fold is never saved: a reload opens every warning');
+  ok(/\.storm\.folded\{/.test(css) && !/\.storm\.folded\{[^}]*display:\s*none/.test(css), 'a folded warning is styled, never display:none');
+  const ev = (event, extra = {}) => ({ event, sender: 'NWS X', ...extra });
+  /* the ranking itself, read out of the page */
+  const EVsrc = /const EV = (\{[^\n]*\});/.exec(app)[1], TH = /const THREAT = (\{[^\n]*\});/.exec(app)[1], DG = /const dangerOf = \(a\) => ([\s\S]*?);\n/.exec(app)[1];
+  const dangerOf = new Function('a', `const EV = ${EVsrc}, evOf = (a) => EV[a.event] || ["other", 0], THREAT = ${TH}; return ${DG};`);
+  const base = dangerOf(ev('Tornado Warning'));
+  ok([{ detection: 'OBSERVED' }, { pds: true }, { emergency: true }, { threat: 'CONSIDERABLE' }].every(x => dangerOf(ev('Tornado Warning', x)) > base), 'observed, PDS, an emergency or a higher damage threat each count as an upgrade');
+  ok(dangerOf(ev('Severe Thunderstorm Warning', { threat: 'DESTRUCTIVE', pds: true })) < base, 'a severe thunderstorm warning, however tagged, ranks under a tornado warning');
+}
+
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WEATHER CLIENT RULES PASS'));
 process.exit(failures ? 1 : 0);

@@ -35,7 +35,7 @@
   const SOURCES = {
     hrrr: {
       label: 'HRRR', long: 'NOAA HRRR — 3 km, a new run every hour, lower 48',
-      bucket: 'https://noaa-hrrr-bdp-pds.s3.amazonaws.com', cycle: 1, lookBack: 4, minHours: 3,
+      bucket: 'https://noaa-hrrr-bdp-pds.s3.amazonaws.com', cycle: 1, lookBack: 4, minHours: 3, publishMin: 60,
       prefix: (run) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf`,
       file: (run, fh) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf${pad(fh)}.grib2`,
       hours: (have) => have
@@ -48,7 +48,7 @@
        open data can honestly give. Same files as HRRR. */
     tle: {
       label: 'HRRR-TLE', long: 'Time-lagged HRRR ensemble — the last six HRRR runs valid at the same hour, each looked at within 40 km',
-      bucket: 'https://noaa-hrrr-bdp-pds.s3.amazonaws.com', cycle: 1, lookBack: 4, minHours: 3, members: 6, radiusKm: 40,
+      bucket: 'https://noaa-hrrr-bdp-pds.s3.amazonaws.com', cycle: 1, lookBack: 4, minHours: 3, publishMin: 60, members: 6, radiusKm: 40,
       prefix: (run) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf`,
       file: (run, fh) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf${pad(fh)}.grib2`,
       hours: (have) => have.filter((h) => h >= 1 && h <= 15)
@@ -72,7 +72,7 @@
     },
     meso: {
       label: 'Mesoanalysis (HRRR)', long: 'Mesoanalysis — the HRRR analysis hour (3 km), the last six hours, lower 48',
-      bucket: 'https://noaa-hrrr-bdp-pds.s3.amazonaws.com', cycle: 1, lookBack: 4, minHours: 1, analysis: true, frames: 6,
+      bucket: 'https://noaa-hrrr-bdp-pds.s3.amazonaws.com', cycle: 1, lookBack: 4, minHours: 1, publishMin: 55, analysis: true, frames: 6,
       prefix: (run) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf`,
       file: (run, fh) => `hrrr.${ymd(run)}/conus/hrrr.t${hh(run)}z.wrfsfcf${pad(fh)}.grib2`,
       hours: (have) => have.filter((h) => h === 0)
@@ -89,14 +89,14 @@
        the map's corner gives it whenever these are shown. */
     ecmwf: {
       label: 'ECMWF', long: 'ECMWF IFS — 0.25°, global, the 00Z and 12Z runs, drawn to 10 days', index: 'json',
-      bucket: 'https://storage.googleapis.com/ecmwf-open-data', cycle: 12, lookBack: 3, minHours: 40,
+      bucket: 'https://storage.googleapis.com/ecmwf-open-data', cycle: 12, lookBack: 3, minHours: 40, publishMin: 460,
       prefix: (run) => `${ymd(run)}/${hh(run)}z/ifs/0p25/oper/${ymd(run)}${hh(run)}0000-`,
       file: (run, fh) => `${ymd(run)}/${hh(run)}z/ifs/0p25/oper/${ymd(run)}${hh(run)}0000-${fh}h-oper-fc.grib2`,
       hours: (have) => have.filter((h) => h <= 240)
     },
     aifs: {
       label: 'ECMWF AIFS', long: 'ECMWF AIFS — the machine-learned model, 0.25°, global, the 00Z and 12Z runs, drawn to 10 days', index: 'json',
-      bucket: 'https://storage.googleapis.com/ecmwf-open-data', cycle: 12, lookBack: 3, minHours: 20,
+      bucket: 'https://storage.googleapis.com/ecmwf-open-data', cycle: 12, lookBack: 3, minHours: 20, publishMin: 380,
       prefix: (run) => `${ymd(run)}/${hh(run)}z/aifs-single/0p25/oper/${ymd(run)}${hh(run)}0000-`,
       file: (run, fh) => `${ymd(run)}/${hh(run)}z/aifs-single/0p25/oper/${ymd(run)}${hh(run)}0000-${fh}h-oper-fc.grib2`,
       hours: (have) => have.filter((h) => h <= 240)
@@ -106,7 +106,7 @@
        member's rain is a 6-hour total, out to 16 days. */
     gefs: {
       label: 'GEFS', long: 'NOAA GEFS ensemble — 31 runs of the GFS, 0.5°, every 6 hours to 16 days',
-      bucket: 'https://noaa-gefs-pds.s3.amazonaws.com', cycle: 6, lookBack: 4, minHours: 20, members: ['gec00', ...Array.from({ length: 30 }, (_, k) => 'gep' + pad(k + 1))],
+      bucket: 'https://noaa-gefs-pds.s3.amazonaws.com', cycle: 6, lookBack: 4, minHours: 20, publishMin: 255, members: ['gec00', ...Array.from({ length: 30 }, (_, k) => 'gep' + pad(k + 1))],
       prefix: (run) => `gefs.${ymd(run)}/${hh(run)}/atmos/pgrb2ap5/geavg.t${hh(run)}z.pgrb2a.0p50.f`,
       file: (run, fh, member = 'geavg') => `gefs.${ymd(run)}/${hh(run)}/atmos/pgrb2ap5/${member}.t${hh(run)}z.pgrb2a.0p50.f${pad(fh, 3)}`,
       hours: (have) => have.filter((h) => h > 0 && h % 6 === 0)
@@ -115,7 +115,7 @@
        check the HRRR against, every 6 hours to 60 hours (2026-10-22) */
     nam: {
       label: 'NAM 3 km', long: 'NOAA NAM 3 km CONUS nest — every 6 hours, out to 60 hours',
-      bucket: 'https://noaa-nam-pds.s3.amazonaws.com', cycle: 6, lookBack: 4, minHours: 12,
+      bucket: 'https://noaa-nam-pds.s3.amazonaws.com', cycle: 6, lookBack: 4, minHours: 12, publishMin: 120,
       prefix: (run) => `nam.${ymd(run)}/nam.t${hh(run)}z.conusnest.hiresf`,
       file: (run, fh) => `nam.${ymd(run)}/nam.t${hh(run)}z.conusnest.hiresf${pad(fh)}.tm00.grib2`,
       hours: (have) => have
@@ -127,7 +127,7 @@
     rap: {
       label: 'RAP', long: 'NOAA RAP — 13 km, a new run every hour, North America',
       get bucket() { return ((root.Wx && root.Wx.host) ? root.Wx.host() : 'https://training-log.rmbuster82.workers.dev') + '/rap'; },
-      cycle: 1, lookBack: 4, minHours: 10,
+      cycle: 1, lookBack: 4, minHours: 10, publishMin: 90,
       prefix: (run) => `rap.${ymd(run)}/rap.t${hh(run)}z.wrfprsf`,
       file: (run, fh) => `rap.${ymd(run)}/rap.t${hh(run)}z.wrfprsf${pad(fh)}.grib2`,
       hours: (have) => have
@@ -140,14 +140,14 @@
        past 2 days, as the Blend publishes). */
     nbm: {
       label: 'National Blend', long: 'NOAA National Blend of Models — calibrated chances from many models, 2.5 km, lower 48, a new run every hour',
-      bucket: 'https://noaa-nbm-grib2-pds.s3.amazonaws.com', cycle: 1, lookBack: 6, minHours: 40,
+      bucket: 'https://noaa-nbm-grib2-pds.s3.amazonaws.com', cycle: 1, lookBack: 6, minHours: 40, publishMin: 100,
       prefix: (run) => `blend.${ymd(run)}/${hh(run)}/core/blend.t${hh(run)}z.core.f`,
       file: (run, fh) => `blend.${ymd(run)}/${hh(run)}/core/blend.t${hh(run)}z.core.f${pad(fh, 3)}.co.grib2`,
       hours: (have, run) => have.filter((h) => h >= 6 && (new Date(run).getUTCHours() + h) % 6 === 0 && h <= 240)
     },
     gfs: {
       label: 'GFS', long: 'NOAA GFS — 0.25°, global, a new run every 6 hours',
-      bucket: 'https://noaa-gfs-bdp-pds.s3.amazonaws.com', cycle: 6, lookBack: 4, minHours: 30,
+      bucket: 'https://noaa-gfs-bdp-pds.s3.amazonaws.com', cycle: 6, lookBack: 4, minHours: 30, publishMin: 225,
       prefix: (run) => `gfs.${ymd(run)}/${hh(run)}/atmos/gfs.t${hh(run)}z.pgrb2.0p25.f`,
       file: (run, fh) => `gfs.${ymd(run)}/${hh(run)}/atmos/gfs.t${hh(run)}z.pgrb2.0p25.f${pad(fh, 3)}`,
       /* every 3 hours to 5 days, then every 6 to 10 */
@@ -838,7 +838,22 @@
     }
     return null;
   }
-  const fileUrl = (src, run, fh, member) => `${SOURCES[src].bucket}/${SOURCES[src].file(run, fh, member)}`;
+  /* When a run is late (2026-10-24). `publishMin` on each source is the
+     longest any of its runs took to reach `minHours` hours out, measured
+     from the buckets' own LastModified over the two days before
+     (2026-10-23/24): HRRR 54–58 min, its analysis hour 50–54, RAP 48–86,
+     the Blend 37–96, NAM 115–118, GFS 221–224, GEFS 251–254, AIFS 379,
+     ECMWF 455 — each rounded up. The newest run Pro finds is late when it
+     is older than a cycle plus that, plus an hour's slack (two for the
+     6- and 12-hourly models, whose runs vary more): by then the next run
+     should have been there. How late, in ms; 0 when it is not. */
+  function lateBy(src, run, nowMs = Date.now()) {
+    const S = SOURCES[src];
+    if (!S || !S.publishMin || !Number.isFinite(run)) return 0;
+    const allowed = S.cycle * 3600e3 + S.publishMin * 60e3 + (S.cycle >= 6 ? 2 : 1) * 3600e3;
+    return Math.max(0, nowMs - run - allowed);
+  }
+  const fileUrl =(src, run, fh, member) => `${SOURCES[src].bucket}/${SOURCES[src].file(run, fh, member)}`;
   async function idxFor(src, run, fh, { signal, fetchFn = fetch, member } = {}) {
     const S = SOURCES[src], json = S.index === 'json';
     const url = json ? fileUrl(src, run, fh, member).replace(/\.grib2$/, '.index') : `${fileUrl(src, run, fh, member)}.idx`;
@@ -1035,7 +1050,7 @@
     return G.sample({ grid: layer.grid, values: layer.values }, lat, lon);
   }
 
-  const api = { SOURCES, FIELDS, PAL, UNIT, field, resolve, serverIndex, serverFile, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, analyses, idxFor, parseJsonIndex, load, build, valueAt, within, smooth, loadTLE, loadEnsemble };
+  const api = { SOURCES, FIELDS, PAL, UNIT, field, resolve, serverIndex, serverFile, say, table, rgbAt, contours, earthWind, listKeys, hoursIn, latestRun, lateBy, analyses, idxFor, parseJsonIndex, load, build, valueAt, within, smooth, loadTLE, loadEnsemble };
   root.ModelMaps = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

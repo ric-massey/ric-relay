@@ -508,5 +508,60 @@ console.log('\nRULE  a 16-bit moment keeps values outside its usual range');
   ok(sw.data[0] === 0 && sw.data[1] === 1, 'below threshold and range folded keep their codes');
 }
 
+console.log('\nRULE  a busy radar bucket is asked again, briefly');
+{
+  /* a fake bucket: answers `codes` in turn, then 200 */
+  const bucket = (codes, body = '<ListBucketResult></ListBucketResult>') => {
+    const seen = [];
+    const fn = async (url) => { const c = codes[seen.length]; seen.push(url); if (c === 'net') throw new TypeError('Failed to fetch'); return new Response(body, { status: c || 200 }); };
+    return { fn, seen };
+  };
+  const quick = (f) => N.retrying(f, { waitMs: 1 });
+  let b = bucket([503, 503]);
+  ok((await quick(b.fn)('u')).status === 200 && b.seen.length === 3, `two 503s, then the answer (${b.seen.length} asks)`);
+  b = bucket(['net', 429, 502]);
+  ok((await quick(b.fn)('u')).status === 200 && b.seen.length === 4, `a network failure, a 429 and a 502, then the answer (${b.seen.length} asks)`);
+  b = bucket([404]);
+  ok((await quick(b.fn)('u')).status === 404 && b.seen.length === 1, 'a 404 is an answer, not asked again');
+  b = bucket([503, 503, 503, 503, 503]);
+  ok((await quick(b.fn)('u')).status === 503 && b.seen.length === 4, `four tries at most, then the 503 is the answer (${b.seen.length})`);
+  b = bucket(['net', 'net', 'net', 'net']);
+  let threw = false; try { await quick(b.fn)('u'); } catch { threw = true; }
+  ok(threw && b.seen.length === 4, 'four network failures fail');
+  const ctl = new AbortController(); ctl.abort();
+  b = bucket(['net', 'net']);
+  threw = false; try { await quick(b.fn)('u', { signal: ctl.signal }); } catch { threw = true; }
+  ok(threw && b.seen.length === 1, 'an aborted request is not asked again');
+  /* and the decoders use it: one 503 each, then the answer (one real 0.5 s wait, in parallel) */
+  const nx = bucket([503]), l2 = bucket([503], '<ListBucketResult><KeyCount>0</KeyCount></ListBucketResult>'), mr = bucket([503]);
+  const t0 = Date.now();
+  await Promise.all([
+    N.scans('TLX', 'N0Q', { mins: 5, nowMs: Date.UTC(2026, 9, 23, 19, 30), fetchFn: nx.fn }),
+    L2.list(L2.CHUNKS, 'KTLX/', { fetchFn: l2.fn, delimiter: '/' }),
+    MR.files(Object.keys(MR.PRODUCTS)[0], { mins: 5, nowMs: Date.UTC(2026, 9, 23, 19, 30), fetchFn: mr.fn })
+  ]);
+  ok(nx.seen.length >= 2 && nx.seen[0] === nx.seen[1], `nexrad.js's scan list asks again after a 503 (${nx.seen.length} asks)`);
+  ok(l2.seen.length === 2, `level2.js's listing asks again after a 503 (${l2.seen.length} asks)`);
+  ok(mr.seen.length >= 2 && mr.seen[0] === mr.seen[1], `mrms.js's listing asks again after a 503 (${mr.seen.length} asks)`);
+  ok(Date.now() - t0 < 3000, `the first wait is half a second (${Date.now() - t0} ms)`);
+}
+
+console.log('\nRULE  a model run is late only when the next one should have been out');
+{
+  const H = 3600e3, M = 60e3, run = Date.UTC(2026, 9, 24, 12);
+  for (const [src, S] of Object.entries(MM.SOURCES)) {
+    if (S.server) { ok(MM.lateBy(src, run, run + 30 * H) === 0, `${src} is the server's, judged by its own staleMs, not here`); continue; }
+    ok(Number.isFinite(S.publishMin) && S.publishMin > 0 && S.publishMin * M < S.cycle * H + 8 * H, `${src} has a measured publishing delay (${S.publishMin} min)`);
+    const allowed = S.cycle * H + S.publishMin * M + (S.cycle >= 6 ? 2 : 1) * H;
+    ok(MM.lateBy(src, run, run + allowed) === 0 && MM.lateBy(src, run, run + allowed + 10 * M) === 10 * M,
+      `${src}: on time to ${(allowed / H).toFixed(2)} h after its run starts, then late by the difference`);
+  }
+  /* the hourly HRRR's newest run, 1.5 h old at :30, is on time; at 3 h old it is late */
+  ok(MM.lateBy('hrrr', run, run + 1.5 * H) === 0, 'an HRRR run 1.5 h old is not late (its next is out at about +55 min)');
+  ok(MM.lateBy('hrrr', run, run + 3.5 * H) > 0, 'an HRRR run 3.5 h old is late');
+  ok(MM.lateBy('gfs', run, run + 8 * H) === 0 && MM.lateBy('gfs', run, run + 12 * H) > 0, 'a GFS run 8 h old is not late; 12 h old it is');
+  ok(MM.lateBy('nope', run, run + 99 * H) === 0 && MM.lateBy('hrrr', NaN) === 0, 'an unknown model or run is never called late');
+}
+
 console.log(failures ? `\n${failures} DECODER RULE${failures === 1 ? '' : 'S'} BROKEN` : '\nALL DECODER RULES PASS');
 process.exit(failures ? 1 : 0);

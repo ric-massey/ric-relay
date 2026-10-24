@@ -206,6 +206,33 @@ path covers it. Images (map, radar and satellite tiles) always load directly.
   not answer, the mosaic says its age is unknown rather than showing none. A
   scan that does not load says why, says it is trying again, and is asked twice
   more 30 s apart.
+- **A busy bucket is asked again, briefly** (2026-10-24). Every radar request —
+  Level III, Level II chunks and listings, MRMS — goes through one `retrying()`
+  in `nexrad.js` (loaded first; `level2.js`, `mrms.js` and the page use it): a
+  429, a 5xx or a network failure is asked again after 0.5, 1 and 2 s, four
+  tries in about 3.5 s. That is shorter than the models' (`retrying` in
+  `modelmaps.js`, up to ~12 s with ECMWF's mirror), because a scan a minute late
+  is already going stale. A 404 is an answer; an aborted request is not retried.
+  A site's Level III scans are listed every 30 s on Pro (`radar.fast`), as
+  Level II already was; IEM's tiles and the mosaic stay on two minutes, and the
+  overlays throttle themselves.
+- **A late model run is said as late, not as an outage** (2026-10-24). A
+  listing that failed is "did not answer"; one that answered with no run far
+  enough out means the runs are late, so the newest run before them is drawn
+  and the note says so. `publishMin` on each source in `modelmaps.js` is the
+  longest its runs took to reach `minHours` hours out, measured from the
+  buckets' own LastModified over 2026-10-23/24 (HRRR 54–58 min, its analysis
+  hour 50–54, RAP 48–86, the Blend 37–96, NAM 115–118, GFS 221–224, GEFS
+  251–254, AIFS 379, ECMWF 455), rounded up; `MM.lateBy()` calls the newest run
+  late once it is older than a cycle plus that plus an hour's slack (two for
+  the 6- and 12-hourly models). Re-measure if a model's schedule changes, and
+  change the test in `decoders.test.mjs` with it.
+- **Stepping paints the frame you step to** (2026-10-24). Once the older frames
+  had loaded, `show()` stopped calling the painters, and a scan, model hour,
+  MRMS or GOES frame stepped onto stayed "loading" with nothing drawn.
+  `paintFrame()` now paints that one frame; each painter keeps the view it last
+  drew (`f.painted`), so a frame already drawn costs nothing. A model hour's
+  stamp and hover readout say the run, as forecasters write it: "GFS 18Z +6 h".
 - **An outage is said as an outage.** A failed NWS lookup is not "outside the
   US" (`inUS()` treats `S.err.pt` as an outage), and IEM's cell feed not
   answering is not "no storms".
@@ -260,6 +287,17 @@ path covers it. Images (map, radar and satellite tiles) always load directly.
   one says "an estimate — act on the warning". Never present one without the
   warning, never make one from radar, and never let it delay or soften the
   warning's text.
+- **On Pro a warning folds, and never hides** (2026-10-24). Over a full-window
+  map the box covered the storm it warned about, so each warning has **Fold**:
+  folded, it is still a red bar over the map with the event, its end time and
+  "you are inside it". The fold lives in memory only — a reload opens every
+  warning — and is keyed by place, event and office, since the NWS's updates
+  come with new ids. A warning not folded before always opens; a folded one
+  opens again the moment it is upgraded (a worse event, a tornado observed, a
+  PDS, an emergency, a higher damage threat); once an answer from the NWS no
+  longer has it, the fold is forgotten. A reload in flight forgets nothing.
+  The band sits under the map's toolbar (`--mapctlh`), not over its buttons.
+  Weather's storm mode does not fold.
 - **The sounding numbers are computed here and checked.** `sounding.js` uses
   virtual-temperature parcels as SPC does; `test/sounding.test.mjs` holds its
   parcel, LCL, LFC, EL, CAPE and PW to MetPy's on the same profiles (see the
