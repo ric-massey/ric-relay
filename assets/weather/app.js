@@ -3857,8 +3857,11 @@
       if (!f) return "wait";
       /* a frame nobody has asked for yet (the older ones load once the loop plays) is idle, not loading */
       const asked = R.playing || R.loadedOld || i === R.frame;
-      const part = f.l3 || f.model || f.mrms || f.abi;
-      if (part) return part.err ? "err" : (part.file || part.layer) ? "ok" : asked ? "wait" : "idle";
+      /* loaded means decoded: a single radar's file once parsed; a model hour, an MRMS or a GOES file once it has its layer
+         (an MRMS or GOES frame carries its listing's file from the start — that is not the data) */
+      if (f.l3) return f.l3.err ? "err" : f.l3.file ? "ok" : asked ? "wait" : "idle";
+      const part = f.model || f.mrms || f.abi;
+      if (part) return part.err ? "err" : part.layer ? "ok" : asked ? "wait" : "idle";
       if (f.nc) return "ok";
       if (f.tiles) {
         if (!f.tiles.size) return f.el && f.el.classList.contains("on") ? "wait" : "idle";
@@ -3903,6 +3906,14 @@
       }).join("") + marks.map((m) => `<b class="tlab" style="left:${pos(m.i)}">${esc(m.text)}</b>`).join("");
       const txt = tipText(R.frames[R.frame]);
       if (tip) { tip.textContent = txt; tip.style.left = pos(R.frame); }
+      /* the frame on screen still loading: the legend says so, with how many are ready (UI-REVIEW-2 item 6) */
+      const ld = $("#lgload");
+      if (ld) {
+        const st = R.frames.map((f, i) => frameState(f, i)), here = st[R.frame] === "wait", ready = st.filter((x) => x === "ok").length;
+        const t = here ? `loading · ${ready} of ${n} frame${n === 1 ? "" : "s"} ready` : "";
+        if (ld.textContent !== t) ld.textContent = t;
+        ld.hidden = !t;
+      }
       if (txt) sc.setAttribute("aria-valuetext", txt); else sc.removeAttribute("aria-valuetext");
       /* while any frame is still loading, look again in a second (only the ticks change) */
       clearTimeout(tlWait);

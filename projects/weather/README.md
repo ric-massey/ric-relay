@@ -678,6 +678,25 @@ Briefing** (SPC's outlook and watches over the radar; 500 mb; the HRRR's
 storms; water vapour; the discussion first among the cards). Tested: every
 layer and overlay each names is one the page can draw.
 
+**Load less, sooner — what was measured and what was done (2026-10-24,
+UI-REVIEW-2 item 6):** Pro's scripts are about 1 MB as written and 316 KB
+gzipped as GitHub Pages serves them; `app.js` is 124 KB of that. On an
+emulated mid-range phone (4× CPU, slow 4G) the time goes to fetching and
+running JavaScript, not the radar's images (24 tiles were asked for by the
+time the first frame was drawn). Loading the optional decoders on demand
+(satellite, lightning, full-volume radar, MRMS) would save about 30–40 KB
+gzipped — a tenth — but `app.js` reads those modules in about 80 places,
+including the satellite and MRMS menus it builds at the start and a shared
+link's layers, so it was not done: the risk is larger than the gain, and the
+real weight, `app.js` itself, cannot be split without a build step (hard rule
+4). Done instead: the first screen's three hosts (IEM, OpenStreetMap, the
+Worker) are preconnected while the page loads, and while the frame on show
+is still loading the legend says so with a count ("loading · 0 of 6 frames
+ready" — satellite takes about five seconds). Building that found a bug in
+the timeline: a GOES or MRMS frame counted as loaded from the moment its
+file was listed, so its tick showed filled while the image was still on its
+way; a frame is now loaded when it is decoded.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

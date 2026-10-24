@@ -1434,3 +1434,5 @@ body[data-view="pro"]:not([data-panel]) .skyout{position:fixed;top:var(--tb,44px
 .radar .mapmenu hr{margin:4px 0;border:0;border-top:1px solid #1d232c}
 @media (pointer:coarse){ .radar .mapmenu button{min-height:44px} }
 body[data-panel] #actbtn{display:none}
+.maplegend .lgload{color:var(--accent)}
+@media (max-width:1000px){ .maplegend .lgload{display:block} .maplegend .lgload[hidden]{display:none} }
