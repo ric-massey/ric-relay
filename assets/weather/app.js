@@ -4902,9 +4902,27 @@
      visitor's own choice is kept in this browser. D opens and closes it. ── */
   if (PRO && !PANEL && $("#databtn")) {
     const tb = $(".topbar");
+    /* one bar, not two (2026-10-23, Ric: "cut the stacked bars down"): the
+       place bar joins the site's bar, between the wordmark and the rooms */
+    const pb = $(".placebar"), nw = $(".topbar .navwrap");
+    if (tb && pb && nw) { tb.insertBefore(pb, nw); tb.classList.add("hasplace"); }
     const measureTop = () => { if (tb) document.documentElement.style.setProperty("--tb", tb.offsetHeight + "px"); };
     measureTop();
     addEventListener("resize", measureTop);
+    if (typeof ResizeObserver === "function" && tb) new ResizeObserver(measureTop).observe(tb);
+    /* the page's settings behind ⋯ where the row has no room for them */
+    const more = $("#pagemore"), mbox = $("#pagebox");
+    if (more && mbox) {
+      const moreOpen = (on) => {
+        mbox.classList.toggle("open", on); more.setAttribute("aria-expanded", String(on));
+        if (on) { const r = more.getBoundingClientRect(); mbox.style.setProperty("--popr", Math.max(8, innerWidth - r.right) + "px"); mbox.style.setProperty("--popy", Math.round(r.bottom + 6) + "px"); }
+      };
+      more.addEventListener("click", () => moreOpen(!mbox.classList.contains("open")));
+      document.addEventListener("click", (e) => { if (mbox.classList.contains("open") && !mbox.contains(e.target) && !more.contains(e.target)) moreOpen(false); });
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape" && mbox.classList.contains("open") && !document.querySelector("dialog[open]")) { moreOpen(false); more.focus(); } });
+      mbox.addEventListener("click", (e) => { if (e.target.closest("#keysbtn,#refresh,#usview")) moreOpen(false); });
+      addEventListener("resize", () => { if (mbox.classList.contains("open")) moreOpen(true); });
+    }
     const wide = () => innerWidth >= 1200;
     const setDrawer = (on, keep) => {
       document.body.classList.toggle("drawer-open", on);

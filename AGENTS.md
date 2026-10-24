@@ -735,7 +735,11 @@ ones that must never break:
   `assets/weather/weather.css`; each page holds only its own cards. **Warnings and
   storm mode stay on both** — never move them to Pro only. On Pro a warning may be **folded**
   to a red bar over the map (2026-10-24) — never hidden, never saved, and opened
-  again by any upgrade; don't add a way to dismiss one. Pro is a tab of the
+  again by any upgrade; don't add a way to dismiss one. **Pro has one bar above
+  the map** (2026-10-23): its place bar is moved into the site's bar, and its room
+  nav is the menu button at every width — same rooms, same labels inside. Don't
+  add a second row of controls back; fold new ones into the workspace menu or ⋯
+  (`projects/weather/README.md`, "One bar, not three"). Pro is a tab of the
   weather room, not a room: it is not in `ROOMS` or the room navs.
 - **Pro's workstation** (`assets/weather/workstation.js`; `projects/weather/WORKSTATION.md`,
   built 2026-10-23): the maps beside the main one are Pro itself in a frame

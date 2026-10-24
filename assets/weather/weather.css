@@ -1106,3 +1106,79 @@ body[data-view="pro"]:not([data-panel]) .workspace:not(.has-panels) #radarcard:n
 @media (max-width:640px){ body[data-view="pro"]:not([data-panel]) .placebar .wsbar.open{position:fixed;top:calc(var(--tb,44px) + 46px);left:8px;right:8px;z-index:46;flex-wrap:wrap;gap:6px;padding:10px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.6)} }
 /* the old side-by-side rule made the column static; in the map app it always keeps its place beside the drawer */
 body[data-view="pro"]:not([data-panel]) .workspace .mapcol,body[data-view="pro"]:not([data-panel]) .workspace.ws-grid .mapcol{position:absolute;inset:0 var(--dock,0px) 0 0}
+
+/* ── One bar (2026-10-23, Ric: "cut the stacked bars down so the map gets
+   more room and nothing gets clipped at laptop width"). app.js moves the
+   place bar into the site's bar (.topbar.hasplace) and the place bar's own
+   box goes away (display:contents), so its controls sit in one row with the
+   wordmark and the rooms. What used to make that row too long folds:
+   the workspace's controls are a menu under one button carrying its name;
+   the page's settings (US, °F, Local, ?, refresh) go behind ⋯ under 1200px;
+   the room nav is its menu button at every width (same rooms, same labels).
+   On a phone the row wraps into two: wordmark, Readouts and rooms, then the
+   place and its controls. Without JS nothing moves and the old bars stand. ── */
+.pagebox{display:contents}
+.pagemore{display:none}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace{gap:6px;padding:0 8px;flex-wrap:wrap;row-gap:0}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar{display:contents}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .brand{margin-right:4px}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .spacer{flex:1 1 0;min-width:0}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebtn{flex:0 1 auto;min-width:96px;max-width:280px}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .backbtn{display:inline-flex;align-items:center;gap:.5ch;min-height:32px;padding:0 10px;white-space:nowrap;text-decoration:none}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace>.navwrap{flex:none}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .wsclock{white-space:nowrap;font-size:12px}
+/* the workspace button: its name, and a menu under it */
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .wstoggle{display:inline-flex;align-items:center;gap:7px;min-width:0;max-width:240px;padding:0 10px;white-space:nowrap}
+.wstoggle #wsname{overflow:hidden;text-overflow:ellipsis}
+.wstoggle .caret{color:var(--dim);font-size:11px}
+.wstoggle .seglab{color:var(--dim)}
+body[data-view="pro"] .wstoggle[aria-expanded="true"],body[data-view="pro"] .pagemore[aria-expanded="true"]{border-color:#7a5a17;color:var(--amber)}
+@media (max-width:1399px){ body[data-view="pro"] .wstoggle .seglab{display:none} }
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wsbar{display:none;position:fixed;left:var(--popx,8px);top:var(--popy,52px);z-index:60;flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:6px;width:max-content;min-width:220px;max-width:calc(100vw - 16px);margin:0;padding:10px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.6)}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wsbar.open{display:flex}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wsbar button{text-align:left;padding:0 10px}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wsbar select{max-width:none;width:100%}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wsname{display:flex;flex-direction:column;align-items:stretch;gap:4px}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wsname .seglab,body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wssync>.seglab{display:inline}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wssync{padding-top:4px;border-top:1px solid #1d232c}
+/* the page's settings: in the row from 1200px, a small menu under ⋯ below it */
+@media (max-width:1199px){
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagemore{display:inline-flex;align-items:center;justify-content:center;font-size:18px;line-height:1}
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox{display:none;position:fixed;right:var(--popr,8px);top:var(--popy,52px);z-index:60;flex-wrap:wrap;gap:6px;max-width:calc(100vw - 16px);padding:8px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.6)}
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox.open{display:flex}
+}
+/* the rooms: the menu button at every width in Pro, same rooms inside */
+body[data-view="pro"]:not([data-panel]) .roomnav-toggle{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:0 10px;border-radius:4px;background:#121821;border:1px solid var(--edge);font:13px var(--mono);color:#e3e9f0}
+body[data-view="pro"]:not([data-panel]) .roomnav-toggle-bars{position:relative;width:15px;height:11px;border-top:2px solid currentColor;border-bottom:2px solid currentColor}
+body[data-view="pro"]:not([data-panel]) .roomnav-toggle-bars::after{content:"";position:absolute;inset:calc(50% - 1px) 0 auto;border-top:2px solid currentColor}
+body[data-view="pro"]:not([data-panel]) .roomnav-toggle[aria-expanded="true"]{border-color:#7a5a17;color:var(--amber)}
+body[data-view="pro"]:not([data-panel]) nav.glass[data-roomnav]{display:none}
+body[data-view="pro"]:not([data-panel]) nav.glass[data-roomnav].roomnav-open{display:flex;flex-direction:column;position:absolute;top:calc(100% + 6px);right:0;z-index:60;min-width:220px;padding:6px;border-radius:4px;background:#0b0f15;border:1px solid #2a3340;box-shadow:0 14px 34px rgba(0,0,0,.6)}
+body[data-view="pro"]:not([data-panel]) nav.glass[data-roomnav].roomnav-open a,body[data-view="pro"]:not([data-panel]) nav.glass[data-roomnav].roomnav-open .here{min-height:44px;padding:0 16px}
+/* what floated under the old second bar moves up to the map's own top */
+body[data-view="pro"]:not([data-panel]) .stormband{top:calc(8px + var(--mapctlh,0px))}
+body[data-view="pro"]:not([data-panel]) .wsnote{top:calc(var(--tb,44px) + 8px)}
+/* a laptop: the wordmark goes to its star, the rooms button to its bars */
+@media (max-width:999px) and (min-width:641px){
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .brand .t{display:none}
+}
+@media (max-width:999px){
+  body[data-view="pro"]:not([data-panel]) .roomnav-toggle-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+}
+/* a phone: two rows — the wordmark, Readouts and the rooms; then the place and its controls */
+@media (max-width:640px){
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace{padding:0 8px 6px}
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .brand{order:0;margin-right:auto;min-height:44px}
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .databtn{order:1}
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace>.navwrap{order:2}
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .spacer{order:3;flex:1 0 100%;height:0}
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebtn{order:4;flex:1 1 auto;max-width:none}
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .backbtn{order:5}
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .wstoggle{order:6;flex:0 1 auto;max-width:150px}
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagemore{order:7}
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .wsclock,body[data-view="pro"]:not([data-panel]) .topbar.hasplace #wslive{order:8}
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .backbtn span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wsbar{left:8px;right:8px;width:auto}
+}
+/* the map's toolbar on one line at laptop width: Find's ⌃K hint (still in its title and the ? sheet) gives way below 1100px */
+@media (max-width:1099px){ body[data-view="pro"] .maptools .findbtn kbd{display:none} }

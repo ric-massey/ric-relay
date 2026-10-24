@@ -24,7 +24,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Weather">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231f5fa8'/><circle cx='40' cy='40' r='16' fill='%23ffd166'/><path d='M30 74h42a14 14 0 0 0-3-28 18 18 0 0 0-34 6 11 11 0 0 0-5 22z' fill='%23fff'/></svg>">
-  <link rel="stylesheet" href="assets/weather/weather.css?v=34">
+  <link rel="stylesheet" href="assets/weather/weather.css?v=36">
   <script src="assets/visit.js" defer></script>
 </head>
 <body data-sky="clear-day" data-view="pro">
@@ -53,15 +53,18 @@
 
 <main>
   <div class="placebar">
-    <a class="backbtn" href="weather.html" title="Back to Weather, the everyday app">← Weather</a>
+    <a class="backbtn" href="weather.html" title="Back to Weather, the everyday app">←<span> Weather</span></a>
     <button class="placebtn" type="button" id="placebtn" aria-haspopup="dialog">
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5a4.5 4.5 0 0 0-4.5 4.5c0 3.4 4.5 8.5 4.5 8.5s4.5-5.1 4.5-8.5A4.5 4.5 0 0 0 8 1.5zm0 6.3A1.8 1.8 0 1 1 8 4.2a1.8 1.8 0 0 1 0 3.6z" fill="currentColor"/></svg>
       <span id="placename">Across the US</span>
     </button>
     <!-- the workstation (workstation.js): the layout, the maps beside the main
-         one, and the one place and time they share. On a phone it folds
-         behind its own button. -->
-    <button type="button" class="chip wstoggle" id="wstoggle" aria-expanded="false" aria-controls="wsbar">Workspace</button>
+         one, and the one place and time they share. It folds behind one
+         button that carries the workspace's name; the shared clock stays
+         out beside it. With JS, the whole place bar joins the site's bar. -->
+    <button type="button" class="chip wstoggle" id="wstoggle" aria-expanded="false" aria-controls="wsbar" title="Workspace: the layout, the maps beside the main one, what they share"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M1.5 1.5h4.5v4.5h-4.5zM8 1.5h4.5v4.5h-4.5zM1.5 8h4.5v4.5h-4.5zM8 8h4.5v4.5h-4.5z" fill="none" stroke="currentColor" stroke-width="1.4"/></svg><span class="seglab">Workspace</span><span id="wsname">Default</span><span class="caret" aria-hidden="true">▾</span></button>
+    <span class="wsclock num" id="wsclock" aria-live="polite"></span>
+    <button type="button" class="chip" id="wslive" hidden title="Every map back to now">Now</button>
     <div class="wsbar" id="wsbar" role="toolbar" aria-label="Workspace">
       <label class="wsname"><span class="seglab">Workspace</span><select id="wssel" aria-label="Workspace"></select></label>
       <button type="button" id="wsexplore" aria-haspopup="dialog" title="Every tool, by what it measures">Explore</button>
@@ -73,19 +76,21 @@
       <span class="wssync" role="group" aria-label="What the maps share"><span class="seglab">Sync</span>
         <label><input type="checkbox" id="wsplace" checked> place</label>
         <label><input type="checkbox" id="wstime" checked> time</label></span>
-      <span class="wsclock num" id="wsclock" aria-live="polite"></span>
-      <button type="button" id="wslive" hidden title="Every map back to now">Now</button>
     </div>
     <p class="wsnote" id="wsnote" role="status" hidden></p>
     <span class="spacer"></span>
-    <button class="chip" type="button" id="usview" aria-label="Across the US" title="Across the US">US</button>
-    <button class="chip" type="button" id="units" aria-label="Switch units">°F</button>
+    <!-- the page's own settings: in the row on a wide screen, behind ⋯ on a smaller one -->
+    <button class="chip pagemore" type="button" id="pagemore" aria-expanded="false" aria-controls="pagebox" aria-label="More: US view, units, time zone, keys, refresh" title="US view, units, time zone, keys, refresh">⋯</button>
+    <div class="pagebox" id="pagebox" role="group" aria-label="Page settings">
+      <button class="chip" type="button" id="usview" aria-label="Across the US" title="Across the US">US</button>
+      <button class="chip" type="button" id="units" aria-label="Switch units">°F</button>
+      <button class="chip utcchip" type="button" id="utcbtn" aria-pressed="false" aria-label="Times in UTC or local time" title="Times in UTC (Z) or the place's local time (U)">Local</button>
+      <button class="chip keyschip" type="button" id="keysbtn" aria-label="Keyboard shortcuts" aria-haspopup="dialog" title="Keyboard shortcuts (?)">?</button>
+      <button class="chip" type="button" id="refresh" aria-label="Refresh" title="Refresh everything">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M15 9a6 6 0 1 1-1.8-4.3M15 2.5V6h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
     <button class="chip databtn" type="button" id="databtn" aria-expanded="false" aria-controls="cards" title="The readouts beside the map: now, alerts, the sounding, the models… (D)">Readouts <b id="databadge" aria-label="alerts"></b></button>
-    <button class="chip utcchip" type="button" id="utcbtn" aria-pressed="false" aria-label="Times in UTC or local time" title="Times in UTC (Z) or the place's local time (U)">Local</button>
-    <button class="chip keyschip" type="button" id="keysbtn" aria-label="Keyboard shortcuts" aria-haspopup="dialog" title="Keyboard shortcuts (?)">?</button>
-    <button class="chip" type="button" id="refresh" aria-label="Refresh" title="Refresh everything">
-      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M15 9a6 6 0 1 1-1.8-4.3M15 2.5V6h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
   </div>
 
   <!-- storm warnings first, across the whole width: in Pro too, a warning leads -->
@@ -399,7 +404,7 @@
 <script src="projects/weather/modelmaps.js?v=8"></script>
 <script src="projects/weather/mrms.js?v=2"></script>
 <script src="projects/weather/mapgeo.js?v=1"></script>
-<script src="assets/weather/workstation.js?v=10"></script>
-<script src="assets/weather/app.js?v=33"></script>
+<script src="assets/weather/workstation.js?v=12"></script>
+<script src="assets/weather/app.js?v=34"></script>
 </body>
 </html>

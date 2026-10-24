@@ -424,6 +424,28 @@ sounding) opens the drawer first. Maps side by side fill the window in a grid
 the cross-section and the point chart are a sheet over the map's foot. The
 page itself never scrolls. A panel's frame keeps its own rules.
 
+**One bar, not three (2026-10-23, Ric: "cut the stacked bars down so the map
+gets more room and nothing gets clipped at laptop width"):** at 800 px the place
+row cut off at "shared time:" with Now, US, °F, Readouts and Local off the edge,
+and on a phone the last button showed as "Wo…". Now `app.js` moves the place bar
+into the site's bar (`.topbar.hasplace`; the place bar's own box is
+`display:contents`), so above the map there is one 44 px row from 641 px up:
+the wordmark (its star below 1000 px), ← Weather, the place, the **workspace
+button** carrying the workspace's name (`*` when changed), then the page's
+settings, **Readouts** and the rooms. What made that row too long folds: the
+workspace's controls (picker, Explore, + Map, Arrange, Save, Share, Sync) are a
+menu under its button at every width; US, °F, Local, ? and refresh are inline
+from 1200 px and behind **⋯** below; and in Pro the room nav is its menu button
+at every width — the same eleven rooms and labels inside. The menus are fixed,
+so the bar never clips them; a click outside or Esc closes them. The shared clock
+("shared time …", and **Now**) stands beside the workspace button, and only when
+there is another map to share the time with — alone, the play bar's own clock
+says it. Find's ⌃K hint gives way below 1100 px so the map's toolbar is one line
+at 800. A phone gets two rows: the wordmark, Readouts and the rooms; then the
+place, ←, the workspace and ⋯. Without JS nothing moves. Measured: one 44 px bar
+and no sideways scroll at 1440, 1280, 1024 and 800; 83 px for both phone rows
+at 375.
+
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**
 - *A panel is mostly map.* Each map beside the main one shows only its map, its

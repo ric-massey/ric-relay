@@ -230,9 +230,22 @@
     measure();
     addEventListener('resize', measure);
     if (typeof ResizeObserver === 'function') { const ro = new ResizeObserver(measure); for (const el of [$('.placebar'), $('.stormband')]) if (el) ro.observe(el); }
-    /* on a phone the workspace's controls fold behind one button */
+    /* the workspace's controls fold behind one button, at every width: a
+       menu under it (fixed, so the bar it sits in never clips it); a click
+       outside or Esc puts it away */
     const wst = $('#wstoggle');
-    if (wst) wst.addEventListener('click', () => { const on = !bar.classList.contains('open'); bar.classList.toggle('open', on); wst.setAttribute('aria-expanded', String(on)); measure(); });
+    const wsOpen = (on) => {
+      bar.classList.toggle('open', on); wst.setAttribute('aria-expanded', String(on));
+      if (on) { const r = wst.getBoundingClientRect(); bar.style.setProperty('--popx', Math.max(8, Math.min(r.left, innerWidth - bar.offsetWidth - 8)) + 'px'); bar.style.setProperty('--popy', Math.round(r.bottom + 6) + 'px'); }
+    };
+    if (wst) {
+      wst.addEventListener('click', () => wsOpen(!bar.classList.contains('open')));
+      document.addEventListener('click', (e) => { if (bar.classList.contains('open') && !bar.contains(e.target) && !wst.contains(e.target) && !e.target.closest('dialog')) wsOpen(false); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && bar.classList.contains('open') && !document.querySelector('dialog[open]')) { wsOpen(false); wst.focus(); } });
+      /* a button that opens a sheet is done with the menu */
+      bar.addEventListener('click', (e) => { if (e.target.closest('button[aria-haspopup]')) wsOpen(false); });
+      addEventListener('resize', () => { if (bar.classList.contains('open')) wsOpen(true); });
+    }
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const W = { name: 'Default', saved: false, panels: [], cards: clean({}).cards, sync: { place: true, time: true }, layout: 'stack', busT: null, mainStamp: null, n: 0 };
 
@@ -341,9 +354,11 @@
       for (const p of W.panels) { const el = p.sec.querySelector('.pst'); if (el) el.textContent = stampText(p.stamp, W.busT, fmt); }
       const c = $('#wsclock');
       /* said only when it is not "now" (the Now button beside it brings it back) */
-      if (c) { c.textContent = !W.sync.time ? 'each map keeps its own time' : W.busT == null ? '' : `shared time: ${fmt.ymd(W.busT) !== fmt.ymd(Date.now()) ? fmt.day(W.busT) + ' ' : ''}${fmt.time(W.busT)}`; c.hidden = !c.textContent; }
+      /* …and only when there is another map to share it with: alone, the
+         main map's own clock under it already says the time */
+      if (c) { c.textContent = !W.panels.length ? '' : !W.sync.time ? 'each map keeps its own time' : W.busT == null ? '' : `shared time: ${fmt.ymd(W.busT) !== fmt.ymd(Date.now()) ? fmt.day(W.busT) + ' ' : ''}${fmt.time(W.busT)}`; c.hidden = !c.textContent; }
       const live = $('#wslive');
-      if (live) live.hidden = !W.sync.time || W.busT == null;
+      if (live) live.hidden = !W.panels.length || !W.sync.time || W.busT == null;
     }
     $('#wslive').addEventListener('click', () => setBus(null, null));
     for (const [id, k] of [['#wsplace', 'place'], ['#wstime', 'time']]) {
@@ -397,6 +412,8 @@
     function renderSel() {
       const sel = $('#wssel'), saved = savedList();
       const d = dirty();
+      const nm = $('#wsname');
+      if (nm) nm.textContent = W.name + (d ? '*' : '');
       const opt = (n, g) => `<option value="${g}:${esc(n)}"${n === W.name ? ' selected' : ''}>${esc(n)}${n === W.name && d ? ' · changed' : ''}</option>`;
       sel.innerHTML = `<optgroup label="Presets">${PRESETS.map((p) => opt(p.name, 'p')).join('')}</optgroup>`
         + (saved.length ? `<optgroup label="Saved in this browser">${saved.map((s) => opt(s.name, 's')).join('')}</optgroup>` : '')
