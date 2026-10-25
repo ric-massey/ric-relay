@@ -47,8 +47,32 @@
      from the top: stars, the moon and lightning bolts stay above it. `sky:
      true` is the picture-less scene, which draws its own clouds and sun. */
   const SCENES = [
-    { id: "sky", name: "Sky", sky: true, horizon: 1, say: "The sky's own colour, and the weather in it." }
+    { id: "sky", name: "Sky", sky: true, horizon: 1, say: "The sky's own colour, and the weather in it." },
+    /* the photos: all from Wikimedia Commons, public domain or CC BY (never
+       share-alike), resized to 1600 px and re-encoded with no metadata.
+       `pos` keeps the subject in frame when a phone crops the sides. */
+    scenePhoto("forest", "Forest", 0.1, "center",
+      { title: "Bois Raquet, High Fens", by: "Trougnouf (Benoit Brummer)", licence: "CC BY 4.0",
+        url: "https://commons.wikimedia.org/wiki/File:Bois_Raquet,_in_the_High_Fens_%E2%80%93_Eifel_Nature_Park_(DSCF6655).jpg" }),
+    scenePhoto("mountains", "Mountains", 0.35, "45% center",
+      { title: "Mylgval cirque, Western Caucasus", by: "Vyacheslav Argenberg", licence: "CC BY 4.0",
+        url: "https://commons.wikimedia.org/wiki/File:Mountain_lake,_Mylgval_mountain_cirque,_Western_Caucasus.jpg" }),
+    scenePhoto("city", "City", 0.3, "60% center",
+      { title: "Montreal skyline", by: "Taxiarchos228", licence: "CC BY 3.0",
+        url: "https://commons.wikimedia.org/wiki/File:Montreal_-_QC_-_Skyline.jpg" }),
+    scenePhoto("water", "On the water", 0.35, "center",
+      { title: "Lake Kinney and Mount Whitehorn", by: "Florian Fuchs", licence: "CC BY 3.0",
+        url: "https://commons.wikimedia.org/wiki/File:Lake_Kinney_mit_Mount_Whitehorn.jpg" }),
+    scenePhoto("beach", "Beach", 0.62, "center",
+      { title: "Havelock Island, Andaman Islands", by: "Vyacheslav Argenberg", licence: "CC BY 4.0",
+        url: "https://commons.wikimedia.org/wiki/File:Havelock_Island,_Mangrove_tree_on_the_beach,_Andaman_Islands.jpg" }),
+    scenePhoto("crag", "At the crag", 0.1, "66% center",
+      { title: "Colorado National Monument", by: "Victoria Stauffenberg, NPS", licence: "public domain",
+        url: "https://commons.wikimedia.org/wiki/File:The_sandstone_cliffs_and_spires_of_Colorado_National_Monument_attract_hundreds_of_climbers_a_year._(9e8ceddd-0a94-4c97-82dd-ee36edf697c7).jpg" })
   ];
+  function scenePhoto(id, name, horizon, pos, credit) {
+    return { id, name, horizon, pos, credit, photo: `assets/weather/scenes/${id}.jpg`, thumb: `assets/weather/scenes/${id}-thumb.jpg` };
+  }
 
   let scene = SCENES.find((s) => s.id === store.get("wx:scene", "sky")) || SCENES[0];
   let moving = store.get("wx:motion", true) !== false;

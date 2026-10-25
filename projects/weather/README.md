@@ -1243,13 +1243,19 @@ scenes, then climbing.
   weather** off, or the system's reduced motion, draws one still frame and no
   lightning. With a photo a scrim and a shadow on the hero keep white type
   readable, and the cards' glass is darker.
-  **Only the plain Sky ships today.** The photo scenes (Forest, Mountains, City,
-  On the water, Beach, At the crag) are free-licensed photos from online, by
-  Ric's word ("get pictures from online for now"); this session's network could
-  not reach Wikimedia, Unsplash or Pexels, so none are committed yet. Adding one
-  is a JPG in `assets/weather/scenes/`, metadata stripped (hard rule 1), and a
-  line in `SCENES` with its credit, which the settings sheet shows. A Mochi
-  scene is planned and waits (Ric: "Don't do mochi yet").
+  **Seven scenes ship:** Sky (no photo) and six photographs, added the same day
+  — Forest, Mountains, City, On the water, Beach and At the crag (a party on a
+  sandstone crack). They are free-licensed photos from online, by Ric's word
+  ("get pictures from online for now"): all from Wikimedia Commons, public
+  domain or CC BY only — never share-alike, so the page owes nothing but the
+  credit, which the settings sheet shows for the scene in use. Each is
+  `assets/weather/scenes/<id>.jpg` at 1600 px (200–350 KB) and a 240 px
+  `<id>-thumb.jpg`, re-encoded from a fresh image so no EXIF, XMP or ICC block
+  survives (hard rule 1 — check with the command in AGENTS.md). `horizon` in
+  each `SCENES` line is where that photo's sky ends, measured off the picture,
+  and `pos` keeps its subject in frame when a phone crops the sides. Adding one
+  is the same three things: the JPG, the thumb, a line in `SCENES` with its
+  credit. A Mochi scene is planned and waits (Ric: "Don't do mochi yet").
 - **Climbing** (Settings → Show → Climbing; the `#climb` card under the
   alerts). Measurements only: temperature, humidity, dew point and how far
   under the air it is, cloud cover in % and in words, wind and gusts, daylight
