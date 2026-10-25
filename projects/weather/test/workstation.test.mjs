@@ -189,5 +189,22 @@ console.log('\nRULE  the presets open only what the page has');
   ok(bar.includes('id="wsbar"') && page.indexOf('id="storms"') < page.indexOf('id="radarcard"'), 'its controls are in the place bar, and a warning still comes before the map');
 }
 
+console.log('\nRULE  Compare puts a map beside another only if it shows the same quantity — by its name, not only its colours');
+{
+  const MM = require('../modelmaps.js');
+  ok(!WS.comparable(MM, 'gfs', 'cape', 'ecmwf') && !WS.comparable(MM, 'ukmet', 'cape', 'gfs'), 'surface CAPE (GFS) is not set beside most-unstable CAPE (ECMWF, UKMET)');
+  ok(!WS.comparable(MM, 'ecmwf', 'pwat', 'aifs'), 'precipitable water is not set beside total column water (AIFS)');
+  ok(!WS.comparable(MM, 'hrrr', 'qpf1', 'ukmet'), 'the past hour\'s rain is not set beside the UKMET\'s longer windows');
+  ok(WS.comparable(MM, 'gfs', 'h500', 'ecmwf') && WS.comparable(MM, 'ecmwf', 'cape', 'ukmet') && WS.comparable(MM, 'gfs', 'pwat', 'ecmwf'), 'the same field in two models still pairs (500 mb, most-unstable CAPE, precipitable water)');
+  /* every pairing Compare can make carries one name, so the field is said once over the maps and every side map keeps its compact header */
+  const ORDER = ['hrrr', 'nam', 'rap', 'gfs', 'ecmwf', 'aifs', 'ukmet'], bad = [];
+  for (const a of ORDER) for (const f of MM.FIELDS[a] || []) for (const b of ORDER) {
+    if (a === b || !WS.comparable(MM, a, f.id, b)) continue;
+    const base = MM.field(a, f.id).label.replace(/ \(.*\)$/, '');
+    if (!MM.field(b, f.id).label.includes(base)) bad.push(`${a}/${b}.${f.id}`);
+  }
+  ok(!bad.length, `every pair Compare makes shares the field's name${bad.length ? ' — not: ' + bad.slice(0, 5).join(', ') : ''}`);
+}
+
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKSTATION RULES PASS'));
 process.exit(failures ? 1 : 0);

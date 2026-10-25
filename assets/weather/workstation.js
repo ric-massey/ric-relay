@@ -310,13 +310,25 @@
     return order.filter((s) => s !== M.src && hasField(s, M.field)).slice(0, MAX_PANELS - 1)
       .map((s) => withModel(M.q, `${s}.${M.field}`));
   }
+  /* Compare only what shows the same thing: the same field id, the same
+     quantity shaded on the same colours with the same lines (MM.signature,
+     2026-10-24 — an outside check found "500 mb heights and vorticity" beside
+     one model's wind and another's heights alone), and the same quantity by
+     name: surface CAPE and most-unstable CAPE, or precipitable water and
+     total column water, share a unit and colours but are not the same thing
+     (bug review, 2026-10-25). The name is the label without its bracket. */
+  function comparable(MM, src, field, other) {
+    const A = MM.field(src, field), B = MM.field(other, field);
+    const named = (F) => F.label.replace(/ \(.*\)$/, '');
+    return !!(A && B && MM.signature(A) === MM.signature(B) && named(A) === named(B));
+  }
   function trendLayers(mainStr) {
     const M = modelOf(mainStr);
     if (!M) return null;
     return [0, 1, 2, 3].filter((b) => b !== M.back).map((b) => withModel(M.q, b ? `${M.src}.${M.field}.${b}` : `${M.src}.${M.field}`));
   }
 
-  const api = { MAX_PANELS, CARDS, LOCKED, PRESETS, PRESET_NOTES, DEFAULT_MAIN, completeLayer, cleanLayer, sameLayer, sameWorkspace, clean, linkHash, readHash, stampText, timelineMarks, compareLayers, trendLayers, CARD_TABS };
+  const api = { MAX_PANELS, CARDS, LOCKED, PRESETS, PRESET_NOTES, DEFAULT_MAIN, completeLayer, cleanLayer, sameLayer, sameWorkspace, clean, linkHash, readHash, stampText, timelineMarks, compareLayers, comparable, trendLayers, CARD_TABS };
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
   root.WxWorkstation = api;
@@ -719,13 +731,8 @@
        valid hour first, so each new map opens on it. ── */
     function lineUp(kind) {
       const MM = root.ModelMaps, M = modelOf(main.layer);
-      /* Compare only what shows the same thing: the same field id, and the
-         same quantity shaded on the same colours with the same lines
-         (MM.signature, 2026-10-24 — an outside check found "500 mb heights
-         and vorticity" beside one model's wind and another's heights alone) */
-      const want = M && MM ? MM.signature(MM.field(M.src, M.field)) : '';
       const left = [];
-      const same = (s, f) => { const F = MM && MM.field(s, f); if (!F) return false; if (MM.signature(F) !== want) { if (GLOBAL.includes(s) === GLOBAL.includes(M.src)) left.push(`${MM.SOURCES[s].label} (its map is “${F.label}”)`); return false; } return true; };
+      const same = (s, f) => { const F = MM && MM.field(s, f); if (!F) return false; if (!comparable(MM, M.src, M.field, s)) { if (GLOBAL.includes(s) === GLOBAL.includes(M.src)) left.push(`${MM.SOURCES[s].label} (its map is “${F.label}”)`); return false; } return true; };
       const list = kind === 'compare' ? compareLayers(main.layer, same) : trendLayers(main.layer);
       if (!list) { say('Compare and Trend work on a model map: HRRR, NAM 3 km, RAP, GFS, ECMWF, AIFS or UKMET.'); return; }
       if (!list.length) { say(`No other model shows this the same way${left.length ? ' — ' + left.join(', ') : ''}. Try one the models share, like 2 m temperature or precipitable water.`); return; }

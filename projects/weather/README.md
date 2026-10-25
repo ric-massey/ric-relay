@@ -210,7 +210,10 @@ path covers it. Images (map, radar and satellite tiles) always load directly.
   GFS and ECMWF vorticity beside the AIFS's wind and the UKMET's heights,
   the AIFS three hours off, and the UKMET all red). A model joins a Compare
   only if its field shows the same thing — same quantity and colours shaded,
-  same lines (`MM.signature`); the rest are named as left out. A comparison
+  same lines (`MM.signature`), and the same name once the bracket is taken off
+  (`comparable()` in `workstation.js`, 2026-10-25: the colours alone had set the
+  GFS's surface CAPE beside ECMWF's most-unstable CAPE, and precipitable water
+  beside the AIFS's total column water); the rest are named as left out. A comparison
   of global models is set on the nearest 00/06/12/18Z, which all of them
   have. Where a model does not publish a quantity the others do, it is worked
   out from what it does publish and the label says so: 500 mb vorticity from
@@ -404,7 +407,9 @@ offline copy, refresh every ten minutes while open.
 - *The drawer can be dragged wider or narrower* by its left edge (from 1200 px,
   300 px up to 900 px or as wide as leaves the map 520 px; `wx:drawerw`,
   double-click to reset). Unannounced on purpose — Ric: "no explanation or
-  anything. just a hidden feature" — and listed in `EASTER_EGGS.md`.
+  anything. just a hidden feature" — and listed in `EASTER_EGGS.md`. Only the
+  wanted width is stored; the CSS (`--dockw`) holds it inside what the window
+  allows, so opening the page narrow never overwrites it (bug review, 2026-10-25).
 
 , Ric: "Fix this stuff plz"):**
 - *A workspace sets the whole map.* Marine then Default left the model menu on

@@ -917,7 +917,9 @@ ones that must never break:
   data host goes through `guarded()` (30 s to answer), and a GRIB2 message or
   HDF5 chunk shorter than it says is an error, never a drawn field.
   **Compare sets like beside like** (2026-10-24): a
-  model joins only if its field shows the same thing (`MM.signature`); a
+  model joins only if its field shows the same thing (`MM.signature`) under the
+  same name (`comparable()` — surface and most-unstable CAPE share colours, not
+  meaning); a
   quantity a model does not publish is worked out from what it does and
   labelled so. Don't pair fields by id alone — the weather README has why. **Dealiasing is off by default and full volume only**, and
   the radar cross-section never fills the gaps between tilts — both rules

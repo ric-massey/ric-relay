@@ -1097,9 +1097,9 @@ body[data-view="pro"]:not([data-panel]) .workspace #radarcard:not(.mapfull)>.leg
 /* the cross-section and the point chart: a sheet over the bottom of the map */
 body[data-view="pro"]:not([data-panel]) .workspace #radarcard .xsec:not([hidden]){position:absolute;left:8px;right:8px;bottom:56px;z-index:20;max-height:52%;overflow:auto;margin:0;padding:10px 12px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 -10px 30px rgba(0,0,0,.6)}
 /* the readouts drawer */
-body[data-view="pro"]:not([data-panel]) .side#cards{position:absolute;top:0;right:0;bottom:0;z-index:40;width:min(var(--drawerw,440px),100%);margin:0;padding:10px;overflow-y:auto;overscroll-behavior:contain;align-content:start;background:#080b10;border-left:1px solid #2a3340;box-shadow:-14px 0 34px rgba(0,0,0,.55);transform:translateX(105%);transition:transform .2s;visibility:hidden}
+body[data-view="pro"]:not([data-panel]) .side#cards{position:absolute;top:0;right:0;bottom:0;z-index:40;width:min(440px,100%);margin:0;padding:10px;overflow-y:auto;overscroll-behavior:contain;align-content:start;background:#080b10;border-left:1px solid #2a3340;box-shadow:-14px 0 34px rgba(0,0,0,.55);transform:translateX(105%);transition:transform .2s;visibility:hidden}
 body[data-view="pro"].drawer-open:not([data-panel]) .side#cards{transform:none;visibility:visible}
-@media (min-width:1200px){ body[data-view="pro"].drawer-open:not([data-panel]){--dock:var(--drawerw,440px)} body[data-view="pro"]:not([data-panel]) .side#cards{box-shadow:none} }
+@media (min-width:1200px){ body[data-view="pro"]:not([data-panel]){--dockw:clamp(300px,var(--drawerw,440px),min(900px,calc(100vw - 520px)))} body[data-view="pro"].drawer-open:not([data-panel]){--dock:var(--dockw)} body[data-view="pro"]:not([data-panel]) .side#cards{box-shadow:none} }
 @media (prefers-reduced-motion:reduce){ body[data-view="pro"]:not([data-panel]) .side#cards,body[data-view="pro"]:not([data-panel]) .mapcol{transition:none} }
 .databtn{display:inline-flex;align-items:center;gap:6px}
 .databtn b{min-width:18px;padding:0 5px;border-radius:9px;background:var(--warn,#ff6b6b);color:#160000;font:700 11px/18px var(--mono);text-align:center}
@@ -1579,6 +1579,7 @@ body[data-view="pro"] .pagemore:has(+ .pagebox #watchbadge:not(:empty))::after{c
 /* the docked drawer's edge can be dragged to size it — unannounced on purpose (2026-10-25, Ric: "just a hidden feature") */
 .drawergrip{display:none}
 @media (min-width:1200px){
+  body[data-view="pro"]:not([data-panel]) .side#cards{width:var(--dockw,440px)}
   body[data-view="pro"].drawer-open:not([data-panel]) .drawergrip{display:block;position:absolute;top:0;bottom:0;right:calc(var(--dock,440px) - 4px);width:8px;z-index:41;cursor:col-resize;touch-action:none}
   body.drawer-sizing,body.drawer-sizing *{cursor:col-resize!important;user-select:none}
   body.drawer-sizing .mapcol,body.drawer-sizing .side#cards{transition:none!important}

@@ -6681,7 +6681,9 @@
     /* drag the docked drawer's edge to size it (2026-10-25): no label, no hint — it is simply there for whoever tries */
     {
       const cards = $("#cards"), root = document.documentElement;
-      const fit = (w) => Math.round(Math.max(300, Math.min(w, innerWidth - 520, 900)));
+      /* only the wanted width is kept; the CSS holds it between 300 px and what leaves the map 520 (900 at most),
+         so a narrow window never writes its squeezed width over the one asked for */
+      const fit = (w) => Math.round(Math.max(300, Math.min(w, 900)));
       const w0 = store.get("wx:drawerw", null);
       if (typeof w0 === "number") root.style.setProperty("--drawerw", fit(w0) + "px");
       if (cards && cards.parentNode) {
@@ -6693,7 +6695,7 @@
           e.preventDefault(); e.stopPropagation();
           grip.setPointerCapture(e.pointerId); document.body.classList.add("drawer-sizing");
           const move = (ev) => {
-            root.style.setProperty("--drawerw", fit(innerWidth - ev.clientX) + "px");
+            root.style.setProperty("--drawerw", fit(Math.min(innerWidth - ev.clientX, innerWidth - 520)) + "px");
             if (!raf) raf = requestAnimationFrame(() => { raf = 0; dispatchEvent(new Event("resize")); });
           };
           const up = () => {
@@ -6705,7 +6707,6 @@
           grip.addEventListener("pointermove", move); grip.addEventListener("pointerup", up); grip.addEventListener("pointercancel", up);
         });
         grip.addEventListener("dblclick", () => { root.style.removeProperty("--drawerw"); store.set("wx:drawerw", null); dispatchEvent(new Event("resize")); });
-        addEventListener("resize", () => { const v = parseInt(root.style.getPropertyValue("--drawerw"), 10); if (v && v !== fit(v)) root.style.setProperty("--drawerw", fit(v) + "px"); });
       }
     }
     const kept = store.get("wx:drawer2", null);
