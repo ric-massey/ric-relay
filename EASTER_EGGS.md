@@ -49,6 +49,14 @@ static distortion treatment without the movement.
   board climbing is a thing you do in a garage, not a thing you announce. The only
   visible way in is the `the woodshed` button under the Climbing footer.
 
+## Weather Pro (`weather-pro.html`)
+
+- Grab the left edge of the open **Readouts** drawer (1200 px and wider) and drag
+  it to size the drawer; the map takes the rest. The width is remembered in this
+  browser; double-click the edge to go back to the standard width. There is no
+  handle, label or hint on purpose (Ric, 2026-10-25: "just a hidden feature. so if
+  someone tries it works"). Code: `.drawergrip` in `assets/weather/app.js`.
+
 ## Project typing codes
 
 On these project pages, type the word or number anywhere that is not an input field.

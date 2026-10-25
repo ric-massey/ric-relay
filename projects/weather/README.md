@@ -401,6 +401,10 @@ offline copy, refresh every ten minutes while open.
 - *Info and Find are icons* in the map's row (ⓘ and a magnifier; Ctrl+K and /
   still open Find).
 - *A note on the map is short, narrow, and tapped away.*
+- *The drawer can be dragged wider or narrower* by its left edge (from 1200 px,
+  300 px up to 900 px or as wide as leaves the map 520 px; `wx:drawerw`,
+  double-click to reset). Unannounced on purpose — Ric: "no explanation or
+  anything. just a hidden feature" — and listed in `EASTER_EGGS.md`.
 
 , Ric: "Fix this stuff plz"):**
 - *A workspace sets the whole map.* Marine then Default left the model menu on

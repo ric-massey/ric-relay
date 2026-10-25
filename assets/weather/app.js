@@ -6678,6 +6678,36 @@
     /* closed until asked for, at every width (2026-10-25, Ric: "still feels
        kinda crowded"): the map is the page. A new key, so a drawer remembered
        open from before starts closed once; the alerts still count on its button */
+    /* drag the docked drawer's edge to size it (2026-10-25): no label, no hint — it is simply there for whoever tries */
+    {
+      const cards = $("#cards"), root = document.documentElement;
+      const fit = (w) => Math.round(Math.max(300, Math.min(w, innerWidth - 520, 900)));
+      const w0 = store.get("wx:drawerw", null);
+      if (typeof w0 === "number") root.style.setProperty("--drawerw", fit(w0) + "px");
+      if (cards && cards.parentNode) {
+        const grip = document.createElement("div");
+        grip.className = "drawergrip"; grip.setAttribute("aria-hidden", "true");
+        cards.parentNode.insertBefore(grip, cards);
+        let raf = 0;
+        grip.addEventListener("pointerdown", (e) => {
+          e.preventDefault(); e.stopPropagation();
+          grip.setPointerCapture(e.pointerId); document.body.classList.add("drawer-sizing");
+          const move = (ev) => {
+            root.style.setProperty("--drawerw", fit(innerWidth - ev.clientX) + "px");
+            if (!raf) raf = requestAnimationFrame(() => { raf = 0; dispatchEvent(new Event("resize")); });
+          };
+          const up = () => {
+            grip.removeEventListener("pointermove", move); grip.removeEventListener("pointerup", up); grip.removeEventListener("pointercancel", up);
+            document.body.classList.remove("drawer-sizing");
+            store.set("wx:drawerw", parseInt(getComputedStyle(root).getPropertyValue("--drawerw"), 10) || 440);
+            dispatchEvent(new Event("resize"));
+          };
+          grip.addEventListener("pointermove", move); grip.addEventListener("pointerup", up); grip.addEventListener("pointercancel", up);
+        });
+        grip.addEventListener("dblclick", () => { root.style.removeProperty("--drawerw"); store.set("wx:drawerw", null); dispatchEvent(new Event("resize")); });
+        addEventListener("resize", () => { const v = parseInt(root.style.getPropertyValue("--drawerw"), 10); if (v && v !== fit(v)) root.style.setProperty("--drawerw", fit(v) + "px"); });
+      }
+    }
     const kept = store.get("wx:drawer2", null);
     setDrawer(kept === true && wide(), false);
     $("#databtn").addEventListener("click", () => setDrawer(!document.body.classList.contains("drawer-open"), true));
