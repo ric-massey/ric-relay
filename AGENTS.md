@@ -788,7 +788,9 @@ ones that must never break:
   site's bar (`--tb`, measured) and one row of place and workspace controls that
   scrolls sideways, never wraps; the map's own toolbar floats on it (`--ctlh`);
   the readouts are a drawer (**Readouts**, or D) docked beside the map from
-  1200 px and over it below, with the alerts counted on its button; storm
+  1200 px and over it below, **closed until the visitor opens it** (2026-10-25,
+  Ric: "still feels kinda crowded"), with the alerts counted on its button; the
+  page's settings sit behind ⋯ at every width; storm
   warnings float over the map. The page never scrolls. Don't put a card back
   under or beside the map in the page's flow.
   The maps beside it, and the main one when they sit side by side, are

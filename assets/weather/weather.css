@@ -1169,12 +1169,11 @@ body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wsbar select
 body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wsname{display:flex;flex-direction:column;align-items:stretch;gap:4px}
 body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wsname .seglab,body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wssync>.seglab{display:inline}
 body[data-view="pro"]:not([data-panel]) .topbar.hasplace .placebar .wssync{padding-top:4px;border-top:1px solid #1d232c}
-/* the page's settings: in the row from 1200px, a small menu under ⋯ below it */
-@media (max-width:1199px){
-  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagemore{display:inline-flex;align-items:center;justify-content:center;font-size:18px;line-height:1}
-  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox{display:none;position:fixed;right:var(--popr,8px);top:var(--popy,52px);z-index:60;flex-wrap:wrap;gap:6px;max-width:calc(100vw - 16px);padding:8px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.6)}
-  body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox.open{display:flex}
-}
+/* the page's settings: a small menu under ⋯ at every width (2026-10-25, Ric:
+   "still feels kinda crowded" — six chips in the bar for things set once) */
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagemore{display:inline-flex;align-items:center;justify-content:center;font-size:18px;line-height:1}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox{display:none;position:fixed;right:var(--popr,8px);top:var(--popy,52px);z-index:60;flex-wrap:wrap;gap:6px;max-width:calc(100vw - 16px);padding:8px;background:#0b0f15;border:1px solid #2a3340;border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.6)}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox.open{display:flex}
 /* the rooms: the menu button at every width in Pro, same rooms inside */
 body[data-view="pro"]:not([data-panel]) .roomnav-toggle{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:0 10px;border-radius:4px;background:#121821;border:1px solid var(--edge);font:13px var(--mono);color:#e3e9f0}
 body[data-view="pro"]:not([data-panel]) .roomnav-toggle-bars{position:relative;width:15px;height:11px;border-top:2px solid currentColor;border-bottom:2px solid currentColor}
@@ -1462,9 +1461,8 @@ body[data-panel] #actbtn{display:none}
 body[data-view="pro"] .maptools .toolbtn{background:transparent;border-color:#232b36;color:#c3cad4}
 body[data-view="pro"] .maptools .toolbtn:hover{background:#121821;border-color:#5a6678;color:#e3e9f0}
 body[data-view="pro"] .maptools .toolbtn[aria-pressed="true"],body[data-view="pro"] .maptools .toolbtn[aria-expanded="true"]{background:var(--accent-tint);color:var(--accent);border-color:var(--accent-edge)}
-body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox .chip{background:transparent;border-color:transparent;color:var(--dim)}
-body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox .chip:hover{border-color:#5a6678;color:#e3e9f0}
-@media (max-width:1199px){ body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox .chip{border-color:var(--edge);color:#e3e9f0;background:#121821} }
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox .chip{border-color:var(--edge);color:#e3e9f0;background:#121821}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace .pagebox .chip:hover{border-color:#5a6678}
 #radarcard .maplegend,#radarcard #legend{transition:opacity .25s}
 #radarcard.mapfocus .maplegend:not(:hover):not(:focus-within),#radarcard.mapfocus #legend:not(:hover){opacity:.6}
 @media (prefers-reduced-motion:reduce){ #radarcard .maplegend,#radarcard #legend{transition:none} }
@@ -1571,3 +1569,10 @@ body[data-panel].compact .radarbar,body[data-panel].compact #legend{display:none
 /* under the workspace menu: what the open preset has, and what it does not (2026-10-24) */
 .wspresetnote{flex:1 1 100%;margin:2px 0 0;color:var(--dim);font-size:12px;line-height:1.45;max-width:72ch;white-space:normal}
 .wspresetnote[hidden]{display:none}
+
+/* Info and Find are icons in the map's row; a note on the map is tapped away and stays narrow (2026-10-25) */
+body[data-view="pro"] .maptools .iconbtn{display:inline-flex;align-items:center;justify-content:center;min-width:34px;padding:0 8px}
+body[data-view="pro"] .radar .note{cursor:pointer;max-width:min(520px,calc(100% - 84px));right:auto}
+/* a watch that has gone off still shows with the settings folded: a dot on ⋯ */
+body[data-view="pro"] .pagemore{position:relative}
+body[data-view="pro"] .pagemore:has(+ .pagebox #watchbadge:not(:empty))::after{content:"";position:absolute;top:4px;right:4px;width:7px;height:7px;background:var(--accent)}

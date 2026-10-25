@@ -389,7 +389,20 @@ tap-for-detail hour, 10 days with the office's words, alerts with polygons,
 animated radar, wind / humidity / pressure trend / visibility / UV / sun, °F/°C,
 offline copy, refresh every ten minutes while open.
 
-**After an outside review of Pro (2026-10-24, Ric: "Fix this stuff plz"):**
+**Room for the map (2026-10-25, Ric: "still feels kinda crowded"):**
+- *The readouts start closed* at every width, and open only for a visitor who
+  opened them (kept under `wx:drawer2` — a new key, so a drawer remembered open
+  from before starts closed once). Warnings are not put away with it: storm
+  warnings at the place still float over the map, the button counts the
+  alerts, and **Active** lists the country's warnings in one click.
+- *The page's settings live behind ⋯ at every width* — US, units, Local,
+  Watches, keys and refresh are set once, not used all the time. A watch that
+  has gone off puts a dot on ⋯.
+- *Info and Find are icons* in the map's row (ⓘ and a magnifier; Ctrl+K and /
+  still open Find).
+- *A note on the map is short, narrow, and tapped away.*
+
+, Ric: "Fix this stuff plz"):**
 - *A workspace sets the whole map.* Marine then Default left the model menu on
   ECMWF waves, because a preset only named the keys it cared about and the rest
   stayed as they were. `completeLayer()` in `workstation.js` now fills every key
@@ -1012,7 +1025,8 @@ fold behind one button that says the speed; the legend names the map lines only
 once they are off (they are credited in the corner). Left as they were, on
 purpose: **US** (it brings the map back to the country after a pan, place or
 no place) and the readouts drawer open from 1200 px (it carries the national
-warnings list, and warnings stay in view).
+warnings list, and warnings stay in view). *Changed 2026-10-25:* the drawer now
+starts closed at every width — see "Room for the map" below.
 
 **Weather Pro, the pros' pass (2026-10-23, Ric: "Where can we improve it to make
 it nicer to use for pros?", then "Do all 11 plz"):**

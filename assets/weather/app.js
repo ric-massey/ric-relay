@@ -3818,7 +3818,15 @@
     function note(text) {
       const n = $("#radarnote");
       delete n.dataset.flash;                // a real note outlives a key's passing one
+      if (text && text === n.dataset.gone) text = "";   // tapped away: stays away until it says something new
+      else if (text) delete n.dataset.gone;
       n.hidden = !text; n.textContent = text || "";
+    }
+    /* a note over the map is put away with a tap — it sits on the data (2026-10-25) */
+    if (PRO) {
+      const n = $("#radarnote");
+      n.addEventListener("pointerdown", (e) => e.stopPropagation());   // or the map takes the press for a pan, and the click with it
+      n.addEventListener("click", () => { n.dataset.gone = n.textContent; note(""); });
     }
     function paintFrame(f) {
       if (!R.started) return;
@@ -3881,7 +3889,7 @@
       else if ((f.model || f.mrms) && quietNote(f)) note(quietNote(f));
       else if (f.model || f.mrms || f.abi) note("");
       /* the backup on Pro: NOAA's own MRMS mosaic, read straight from NOAA's bucket, not IEM */
-      else if (fr && fr.unknown) note(`IEM did not say when its newest mosaic was made, so how old this radar is is not known.${PRO ? " NOAA's own mosaic of the same radars is under MRMS → Composite reflectivity, read straight from NOAA." : ""}`);
+      else if (fr && fr.unknown) note(`How old this mosaic is is not known — IEM gave no time.${PRO ? " NOAA's own: MRMS → Composite." : ""}`);
       else if (fr && fr.frozen) note(`Radar delayed — the newest file holds a scan from ${fr.age} ago; the feed is repeating old data.`);
       else if (f.future && R.valid && Date.now() - R.valid > 3 * 3600e3) note(`This HRRR run is ${Wx.age(Date.now() - R.valid)} old — a newer one is late.`);
       else if (fr && fr.stale && !(R.mode === "comp" && R.backup)) note(`Radar delayed — the latest scan is ${fr.age} old.${PRO && R.mode === "comp" ? " NOAA's own mosaic is under MRMS → Composite reflectivity." : PRO && single() ? " The US mosaic and MRMS use the radars around it." : ""}`);
@@ -6663,12 +6671,15 @@
     const setDrawer = (on, keep) => {
       document.body.classList.toggle("drawer-open", on);
       $("#databtn").setAttribute("aria-expanded", String(on));
-      if (keep) store.set("wx:drawer", on);
+      if (keep) store.set("wx:drawer2", on);
       /* the map changes size when the drawer docks: redraw once it has */
       setTimeout(() => dispatchEvent(new Event("resize")), 230);
     };
-    const kept = store.get("wx:drawer", null);
-    setDrawer(typeof kept === "boolean" ? kept && wide() : wide(), false);
+    /* closed until asked for, at every width (2026-10-25, Ric: "still feels
+       kinda crowded"): the map is the page. A new key, so a drawer remembered
+       open from before starts closed once; the alerts still count on its button */
+    const kept = store.get("wx:drawer2", null);
+    setDrawer(kept === true && wide(), false);
     $("#databtn").addEventListener("click", () => setDrawer(!document.body.classList.contains("drawer-open"), true));
     addEventListener("keydown", (e) => {
       const t = e.target;
