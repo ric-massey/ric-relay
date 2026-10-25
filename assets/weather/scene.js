@@ -68,7 +68,12 @@
         url: "https://commons.wikimedia.org/wiki/File:Havelock_Island,_Mangrove_tree_on_the_beach,_Andaman_Islands.jpg" }),
     scenePhoto("crag", "At the crag", 0.1, "66% center",
       { title: "Colorado National Monument", by: "Victoria Stauffenberg, NPS", licence: "public domain",
-        url: "https://commons.wikimedia.org/wiki/File:The_sandstone_cliffs_and_spires_of_Colorado_National_Monument_attract_hundreds_of_climbers_a_year._(9e8ceddd-0a94-4c97-82dd-ee36edf697c7).jpg" })
+        url: "https://commons.wikimedia.org/wiki/File:The_sandstone_cliffs_and_spires_of_Colorado_National_Monument_attract_hundreds_of_climbers_a_year._(9e8ceddd-0a94-4c97-82dd-ee36edf697c7).jpg" }),
+    /* Ric, 2026-10-25: "cerro torre … what the weather would be like there if it
+       was like the weather of where you are" — which is what every scene does */
+    scenePhoto("torre", "Cerro Torre", 0.35, "38% center",
+      { title: "Cerro Torre", by: "Alex Proimos", licence: "CC BY 2.0",
+        url: "https://commons.wikimedia.org/wiki/File:Cerro_Torre_(5457586054).jpg" })
   ];
   function scenePhoto(id, name, horizon, pos, credit) {
     return { id, name, horizon, pos, credit, photo: `assets/weather/scenes/${id}.jpg`, thumb: `assets/weather/scenes/${id}-thumb.jpg` };

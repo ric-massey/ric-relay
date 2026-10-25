@@ -1243,9 +1243,11 @@ scenes, then climbing.
   weather** off, or the system's reduced motion, draws one still frame and no
   lightning. With a photo a scrim and a shadow on the hero keep white type
   readable, and the cards' glass is darker.
-  **Seven scenes ship:** Sky (no photo) and six photographs, added the same day
-  — Forest, Mountains, City, On the water, Beach and At the crag (a party on a
-  sandstone crack). They are free-licensed photos from online, by Ric's word
+  **Eight scenes ship:** Sky (no photo) and seven photographs, added the same day
+  — Forest, Mountains, City, On the water, Beach, At the crag (a party on a
+  sandstone crack) and Cerro Torre, which Ric asked for by name: "what the
+  weather would be like there if it was like the weather of where you are", which
+  is what every scene already does. They are free-licensed photos from online, by Ric's word
   ("get pictures from online for now"): all from Wikimedia Commons, public
   domain or CC BY only — never share-alike, so the page owes nothing but the
   credit, which the settings sheet shows for the scene in use. Each is
