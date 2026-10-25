@@ -57,7 +57,8 @@ post on the front door (the `radar` painter, over invented ground).
 
 | File | What it is |
 |---|---|
-| `../../weather.html` | **Weather**: the hero, the next three hours, hourly, ten days, a plain radar, the tiles, the place sheet |
+| `../../weather.html` | **Weather**: the hero, the next three hours, hourly, ten days, a plain radar, the details (the tiles, folded), the climbing card, the place sheet and the settings sheet |
+| `../../assets/weather/scene.js` | Weather's background: a scene (a photo, or the plain sky) and the weather happening in it — rain, snow, fog, cloud, lightning, stars and the moon, the light from the real sunrise and sunset. Weather only; Pro never loads it |
 | `../../weather-pro.html` | **Weather Pro**: the hero, the full map, the air above you, the models and ensemble, the accuracy record |
 | `../../assets/weather/app.js` | the page code both load — every card, the map, the place sheet; it draws the cards the page holds and skips the rest |
 | `../../assets/weather/weather.css` | the stylesheet both load (shared within the room, as climbing's and training's are) |
@@ -1210,6 +1211,58 @@ the satellite and the overlays, never the visitor's saved place.
   the card says so honestly if its numbers have not loaded.
 
 ## The everyday side
+
+### The overhaul (2026-10-25)
+
+Ric: "I want a ui overhaul … presets … a setting that makes it so I can see the
+info I would want for climbing … the background to be really cool. Preferably
+not ai generated or normal boring stuff", then "scenes as in real pictures. Then
+weather happens in the scene", and for climbing "I don't want good or bad to go.
+Just the measurements climbers would care about. Humidity, rain, cloudy, sunny,
+temp, dew point, daylight". Built in the order agreed: the page, then the
+scenes, then climbing.
+
+- **One button for the rest.** The place line is the place and a settings
+  button; °F / °C, refresh and the old **US** chip are gone from it. The whole
+  country is the last button in the place sheet. The settings sheet holds
+  **Show** (Everyday or Climbing), **Background** (the scenes), **Moving
+  weather** (on/off) and **Units** — all in this browser's localStorage
+  (`wx:mode`, `wx:scene`, `wx:motion`, `wx:units`), never sent.
+- **Fewer cards.** The eight detail tiles fold into one **Details** card whose
+  line says the wind and humidity while it is shut; the Pro paragraph under the
+  radar is gone (the gold ★ is the door); "Where this comes from" sits at the
+  foot with the credits. Warnings and storm mode are where they were.
+- **Scenes** (`assets/weather/scene.js`). A scene is a picture behind the page,
+  and the weather plays over it from the same reading the hero shows: rain at
+  the wind's slant and beads on the glass, snow drifting, fog banks (thicker the
+  less you can see), the picture dimmed and cooled by cloud, darker in a storm
+  with lightning, and the light — dawn, golden hour, dusk, night — from the real
+  sunrise and sunset, with stars and the moon's real phase when it is clear. It
+  never invents weather: with no place it is calm. One canvas, at most 30 frames
+  a second and 1.5× the screen's pixels, paused in a hidden tab; **Moving
+  weather** off, or the system's reduced motion, draws one still frame and no
+  lightning. With a photo a scrim and a shadow on the hero keep white type
+  readable, and the cards' glass is darker.
+  **Only the plain Sky ships today.** The photo scenes (Forest, Mountains, City,
+  On the water, Beach, At the crag) are free-licensed photos from online, by
+  Ric's word ("get pictures from online for now"); this session's network could
+  not reach Wikimedia, Unsplash or Pexels, so none are committed yet. Adding one
+  is a JPG in `assets/weather/scenes/`, metadata stripped (hard rule 1), and a
+  line in `SCENES` with its credit, which the settings sheet shows. A Mochi
+  scene is planned and waits (Ric: "Don't do mochi yet").
+- **Climbing** (Settings → Show → Climbing; the `#climb` card under the
+  alerts). Measurements only: temperature, humidity, dew point and how far
+  under the air it is, cloud cover in % and in words, wind and gusts, daylight
+  left; when it last rained, how much, and each of the last three days; then a
+  table, sunrise to sunset, for any of the next seven days — sky, temperature,
+  humidity, dew point, cloud, chance of rain, rain and wind, shaded by how much
+  in one colour per row. **No verdict, ever** — no good or bad, no "send day",
+  no advice (`test/wx.test.mjs` reads the card's code for those words).
+  Rain already fallen is the forecast model's own record, and the card says so.
+  For it the forecast asks for three past days (`past_days: '3'`, in `wx.js`
+  and the Worker's `om` route alike). **The Worker needs a redeploy** for that:
+  until then it answers one past day, and the card says only what its copy
+  covers ("no rain in the last 24 hours").
 
 - **Calm is "calm"** (`Wx.isCalm`, under 1.5 km/h): no direction, no arrow, and a
   gust is only said beside a wind from the same source.

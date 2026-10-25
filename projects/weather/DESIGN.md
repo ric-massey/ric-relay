@@ -38,6 +38,15 @@
 >    the backend question §27 raises, answered without one for now; see
 >    `README.md`.
 
+> **Decisions since (Ric, 2026-10-25):** Weather's own look. "I want a ui
+> overhaul … presets … a setting that makes it so I can see the info I would want
+> for climbing … the background to be really cool", then "scenes as in real
+> pictures. Then weather happens in the scene", and "I don't want good or bad to
+> go. Just the measurements climbers would care about". Weather gets a settings
+> sheet (what it shows, its background, units), scenes with the live weather
+> drawn over them, and a climbing card of measurements — decision 2 holds there
+> too. README.md, "The overhaul".
+
 > Simple on the surface. Extremely deep underneath.
 
 Purpose: Define the complete product vision and implementation architecture for a weather application that works as a fast, obvious everyday forecast while opening naturally into a serious meteorological analysis environment for radar, models, soundings, observations, severe weather, replay, and 3D visualization.

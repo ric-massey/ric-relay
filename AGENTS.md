@@ -815,6 +815,16 @@ ones that must never break:
 - **No go/no-go verdicts.** A ride outlook was built and removed the same day — Ric:
   "this should be information, not something that could make it unsafe." Don't add
   one for riding, driving, flying or anything else; `test/wx.test.mjs` checks.
+  That includes **Weather's climbing card** (Settings → Show → Climbing,
+  2026-10-25): Ric — "I don't want good or bad to go. Just the measurements
+  climbers would care about." Numbers only; the test reads its code for verdict words.
+- **Weather's scenes** (`assets/weather/scene.js`, 2026-10-25): a picture behind
+  the page with the live weather drawn over it, chosen in Weather's settings
+  sheet. Real photographs, not drawings and not AI images (Ric: "scenes as in real
+  pictures"), committed with their credit and their metadata stripped (hard rule
+  1), never hotlinked. The weather drawn is only what the hero's reading says;
+  "Moving weather" off and reduced motion draw a still frame. Weather only —
+  Pro keeps its instrument look. A Mochi scene waits on Ric.
 
 - **No place in the repo, ever (hard rule 1).** The visitor's own location or search,
   kept in their localStorage, rounded to two decimals before anything is asked — the

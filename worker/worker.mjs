@@ -1686,7 +1686,7 @@ function wxUpstream(parts, params) {
     const lat = wxDeg(params.get('lat'), 90), lon = wxDeg(params.get('lon'), 180);
     if (lat === null || lon === null) return null;
     const q = new URLSearchParams({ latitude: lat, longitude: lon, ...WX_OM_FIELDS,
-      timezone: 'auto', timeformat: 'unixtime', forecast_days: '10', past_days: '1' });
+      timezone: 'auto', timeformat: 'unixtime', forecast_days: '10', past_days: '3' });
     return [`${WX_OM}?${q}`, WX_TTL.om];
   }
   /* Weather's air quality (Open-Meteo's CAMS model), and thirty years of daily

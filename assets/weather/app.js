@@ -340,12 +340,16 @@
   function renderPlace() {
     const p = S.place;
     $("#placename").textContent = p ? p.name + (p.region ? ", " + p.region : "") + (p.approx ? " (approx.)" : "") : "Across the US";
-    $("#units").textContent = S.units === "us" ? "°F" : S.units === "pro" ? "KT·°C" : "°C";
-    $("#units").title = S.units === "us" ? "°F, mph, inHg — tap for °C" : S.units === "pro" ? "Pro units: °C, knots, hPa (rain in inches, miles) — tap for °F" : "°C, km/h, hPa, mm — tap for Pro units";
+    /* Pro's units are one button in its bar; Weather's are °F / °C in its settings sheet */
+    if ($("#units")) {
+      $("#units").textContent = S.units === "us" ? "°F" : S.units === "pro" ? "KT·°C" : "°C";
+      $("#units").title = S.units === "us" ? "°F, mph, inHg — tap for °C" : S.units === "pro" ? "Pro units: °C, knots, hPa (rain in inches, miles) — tap for °F" : "°C, km/h, hPa, mm — tap for Pro units";
+    }
+    for (const b of document.querySelectorAll("[data-units]")) b.setAttribute("aria-checked", String(b.dataset.units === S.units));
     $("#usview").setAttribute("aria-pressed", String(!p));
   }
 
-  const PLACE_CARDS = ["#next", "#afd", "#hourly", "#daily", "#models", "#record", "#sky", "#t-wind", "#t-humid", "#t-press", "#t-vis", "#t-uv", "#t-sun", "#t-rain"];
+  const PLACE_CARDS = ["#more", "#next", "#afd", "#hourly", "#daily", "#models", "#record", "#sky", "#t-wind", "#t-humid", "#t-press", "#t-vis", "#t-uv", "#t-sun", "#t-rain"];
   function render() {
     renderPlace();
     /* Pro: the alerts here, counted on the Readouts button, so a closed drawer never hides one */
@@ -355,13 +359,14 @@
     $("#national").hidden = !us;
     if (us) {
       $("#alerts").hidden = true; $("#nearby").hidden = true; $("#storms").hidden = true;
+      if ($("#climb")) $("#climb").hidden = true;
       for (const t of ["#t-air", "#t-avg"]) if ($(t)) $(t).hidden = true;
       document.body.classList.remove("storming");
       document.title = TITLE;
       renderUSHero(); renderNational(); renderSources(); radar.label();
       return;
     }
-    renderStorms(); renderHero(); renderAlerts(); renderNearby(); renderNext(); renderAfd(); renderHourly(); renderDaily(); renderModels(); renderRecord(); renderTiles(); renderSources();
+    renderStorms(); renderHero(); renderAlerts(); renderNearby(); renderClimb(); renderNext(); renderAfd(); renderHourly(); renderDaily(); renderModels(); renderRecord(); renderTiles(); renderSources();
     if (typeof offerInstall === "function") offerInstall();
     radar.label();
   }
@@ -374,6 +379,7 @@
       .map(([ev, w]) => [count(ev), w, /Tornado W|Extreme/.test(ev)]).filter(([c]) => c);
     const top = (S.outlook || []).reduce((b, o) => (!b || o.rank > b.rank ? o : b), null);
     document.body.dataset.sky = "partly-day";
+    if (window.WxScene) WxScene.update(null);
     $("#hero").innerHTML = `
       <div class="where">Across the US right now</div>
       ${n === undefined ? `<p class="sub">Asking the National Weather Service…</p>`
@@ -496,6 +502,15 @@
     const c = Wx.currentConditions(fc, S.obs || null);
     document.body.dataset.sky = skyOf(c.kind, c.isDay);
     const today = Wx.upcomingDays(fc, nowSec())[0] || {};
+    /* the background plays what is overhead (scene.js): the sky's kind, how hard
+       it is coming down, the wind, the cloud, how far you can see, and where the sun is */
+    if (window.WxScene) {
+      const hr = fc.hourly[Wx.hourIndex(fc.hourly, nowSec())] || {};
+      const tomorrow = Wx.upcomingDays(fc, nowSec())[1] || {};
+      WxScene.update({ kind: c.kind, isDay: c.isDay, rate: fc.current.precip ?? hr.precip ?? 0,
+        wind: c.wind.v, windDir: c.windDir.v, cloud: fc.current.cloud ?? hr.cloud, vis: c.vis.v ?? hr.vis,
+        rise: today.sunrise, set: today.sunset, nextRise: tomorrow.sunrise });
+    }
     const k = clk();
     const rain = Wx.rainOutlook(fc, nowSec(), 3, (s) => k.time(s * 1000));
     /* A gust is said only beside a wind from the same source: a station's
@@ -860,6 +875,127 @@
       `<p class="nextnote">Distances and arrival times are worked out from each warning's own storm motion — estimates, not warnings.</p>`;
   }
 
+  /* ── climbing (2026-10-25, Ric: "Just the measurements climbers would care
+     about. Humidity, rain, cloudy, sunny, temp, dew point, daylight") ──
+     Settings → Show → Climbing. Numbers only: no good or bad, no "send
+     day" — the room's rule since 2026-10-21 (DESIGN.md §21): information,
+     never a verdict; the call stays with the climber. Shading in the table says how much, in
+     one colour per row, never a judgement. */
+  const cloudWord = (pct, day) => pct == null ? "" : pct < 12 ? (day ? "Sunny" : "Clear") : pct < 35 ? (day ? "Mostly sunny" : "Mostly clear") : pct < 65 ? "Partly cloudy" : pct < 88 ? "Mostly cloudy" : "Overcast";
+  /* Open-Meteo's smallest step, so any rain at all. Its hourly rain is the
+     hour before the row's time, as Wx.rainTotals reads it. */
+  const WET_MM = 0.1;
+  function rainHistory(fc, now) {
+    const past = fc.hourly.filter((h) => h.t <= now && h.precip != null);
+    /* how far back the forecast's own record reaches: three days when it
+       asked for three (past_days), less from an older cached copy — the card
+       says only what it covers */
+    const reach = past.length ? now - past[0].t + 3600 : 0;
+    const sum = (a, b) => reach >= b * 3600 ? past.filter((h) => h.t > now - b * 3600 && h.t <= now - a * 3600).reduce((x, h) => x + h.precip, 0) : null;
+    const spans = [[0, 24], [24, 48], [48, 72]].map(([a, b]) => ({ a, b, mm: sum(a, b) }));
+    let last = null;
+    for (let i = past.length - 1; i >= 0; i--) {
+      if (past[i].precip >= WET_MM) {
+        /* the whole wet spell that ended then, and when it ended */
+        let mm = 0, j = i;
+        while (j >= 0 && past[j].precip >= WET_MM) mm += past[j--].precip;
+        last = { t: past[i].t, mm, hours: i - j };
+        break;
+      }
+    }
+    return { reach, spans, last };
+  }
+  const hm = (sec) => { const m = Math.max(0, Math.round(sec / 60)); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
+  function renderClimb() {
+    const box = $("#climb");
+    if (!box) return;
+    const fc = shown();
+    box.hidden = S.mode !== "climb" || !S.place || !fc;
+    if (box.hidden) { box.innerHTML = ""; return; }
+    const k = clk(), now = nowSec(), u = Wx.UNITS[U()];
+    const c = Wx.currentConditions(fc, S.obs || null);
+    const days = Wx.upcomingDays(fc, now).filter((d) => d.sunrise && d.sunset).slice(0, 7);
+    const today = days[0] || {};
+    const srcWord = (src) => src === "obs" ? "measured" : "forecast";
+
+    /* now: the six numbers */
+    const cloud = fc.current.cloud;
+    const spread = c.temp.v != null && c.dew.v != null ? Number(Wx.fmt.temp(c.temp.v, U())) - Number(Wx.fmt.temp(c.dew.v, U())) : null;
+    let light;
+    if (today.sunrise && now < today.sunrise) light = { big: k.time(today.sunrise * 1000), say: `sunrise · ${hm(today.sunset - today.sunrise)} of light today` };
+    else if (today.sunset && now < today.sunset) light = { big: hm(today.sunset - now).replace(" h ", "h ").replace(" min", "m"), say: `of light left · sunset ${esc(k.time(today.sunset * 1000))}` };
+    else if (days[1]) light = { big: k.time(days[1].sunrise * 1000), say: `sunrise tomorrow · dark since ${esc(k.time(today.sunset * 1000))}` };
+    else light = { big: "–", say: "" };
+    const gust = c.gust.v != null && c.gust.src === c.wind.src && c.gust.v > c.wind.v + 5 ? c.gust.v : null;
+    const stat = (label, big, say, src) => `<div class="cstat"><span class="cl">${label}${src ? ` <i>${src}</i>` : ""}</span><b class="num">${big}</b><small>${say}</small></div>`;
+    const nowRow = [
+      stat("Temp", deg(c.temp.v), c.feels.v != null ? `feels ${deg(c.feels.v)}` : "", srcWord(c.temp.src)),
+      stat("Humidity", c.rh.v != null ? Math.round(c.rh.v) + "%" : "–", "relative", srcWord(c.rh.src)),
+      stat("Dew point", deg(c.dew.v), spread != null ? `${Math.abs(spread)}° ${spread >= 0 ? "under" : "over"} the air` : "", srcWord(c.dew.src)),
+      stat("Sky", cloud != null ? Math.round(cloud) + "%" : "–", cloud != null ? `cloud · ${cloudWord(cloud, c.isDay).toLowerCase()}` : "", ""),
+      stat("Wind", Wx.isCalm(c.wind.v) ? "Calm" : `${Wx.fmt.wind(c.wind.v, U())} <small>${u.wind}</small>`, gust != null ? `gusts ${Wx.fmt.wind(gust, U())} ${u.wind}` : c.windDir.v != null && !Wx.isCalm(c.wind.v) ? `from the ${Wx.compass(c.windDir.v)}` : "", srcWord(c.wind.src)),
+      stat("Daylight", esc(light.big), light.say, "")
+    ].join("");
+
+    /* rain: when it last fell, and how much in each of the last three days */
+    const rh = rainHistory(fc, now);
+    const wetNow = ["rain", "drizzle", "storm", "sleet", "snow"].includes(c.kind);
+    const dayWord = (t) => { const a = k.ymd(t * 1000), b = k.ymd(now * 1000), y = k.ymd((now - 86400) * 1000); return a === b ? "today" : a === y ? "yesterday" : k.dayLong(t * 1000); };
+    const covered = Math.floor(rh.reach / 3600);
+    let lastLine;
+    if (wetNow) lastLine = `<b>${esc(c.text)} now.</b>`;
+    else if (rh.last) {
+      const ago = now - rh.last.t;
+      lastLine = `Last rain <b>${ago < 3600 ? "within the hour" : hm(ago).replace(/ \d+ min$/, "") + " ago"}</b> — ended ${esc(dayWord(rh.last.t))} around ${esc(k.hour(rh.last.t * 1000))}, <b class="num">${Wx.fmt.precip(rh.last.mm, U())} ${u.precip}</b> over ${rh.last.hours} hour${rh.last.hours === 1 ? "" : "s"}.`;
+    } else lastLine = covered >= 24 ? `<b>No rain in the last ${covered >= 72 ? "3 days" : covered >= 48 ? "2 days" : "24 hours"}.</b>` : "Rain over the last days is not in this forecast yet.";
+    const maxMm = Math.max(1, ...rh.spans.map((x) => x.mm || 0));
+    const spans = rh.spans.map((x) => `<div class="rspan"><span>${x.a === 0 ? "Last 24 h" : `${x.a}–${x.b} h ago`}</span>
+      <i aria-hidden="true"><b style="width:${x.mm ? Math.max(3, Math.sqrt(x.mm / maxMm) * 100) : 0}%"></b></i>
+      <em class="num">${x.mm == null ? "–" : Wx.fmt.precip(x.mm, U()) + " " + u.precip}</em></div>`).join("");
+    const st = S.obs && S.obs.precipHour > 0 ? ` The station measured <b class="num">${Wx.fmt.precip(S.obs.precipHour, U())} ${u.precip}</b> in its last hour.` : "";
+
+    /* hour by hour, sunrise to sunset, for the day picked */
+    if (!S.climbDay || !days.some((d) => d.t === S.climbDay)) S.climbDay = (days.find((d) => d.sunset > now) || days[0] || {}).t;
+    const day = days.find((d) => d.t === S.climbDay) || {};
+    const from = Math.max(Math.floor(day.sunrise / 3600) * 3600, Math.floor(now / 3600) * 3600);
+    const hours = day.sunrise ? fc.hourly.filter((h) => h.t >= from && h.t <= day.sunset) : [];
+    const chips = days.map((d, i) => `<button type="button" data-cday="${d.t}" aria-pressed="${d.t === S.climbDay}">${i === 0 ? "Today" : i === 1 ? "Tomorrow" : esc(k.day(d.t * 1000 + 12 * 3600e3))}</button>`).join("");
+    const shade = (v, max) => v == null ? "" : ` style="--a:${Math.min(1, Math.max(0, v / max)).toFixed(2)}"`;
+    const row = (label, cell) => `<tr><th scope="row">${label}</th>${hours.map(cell).join("")}</tr>`;
+    const table = hours.length ? `<div class="ctable"><table>
+      <thead><tr><th scope="col"><span class="sr">Hour</span></th>${hours.map((h) => `<th scope="col">${esc(k.hour(h.t * 1000))}</th>`).join("")}</tr></thead>
+      <tbody>
+        ${row("Sky", (h) => `<td class="csky" title="${esc(cloudWord(h.cloud, h.isDay !== 0))}">${icon(Wx.condition(h.code).kind, h.isDay !== 0, Wx.condition(h.code).text)}</td>`)}
+        ${row(`Temp <small>°${U() === "us" ? "F" : "C"}</small>`, (h) => `<td class="num" style="color:${tempColor(h.temp)}">${Wx.fmt.temp(h.temp, U())}</td>`)}
+        ${row("Humidity <small>%</small>", (h) => `<td class="num sh"${shade(h.rh, 100)}>${h.rh != null ? Math.round(h.rh) : "–"}</td>`)}
+        ${row(`Dew pt <small>°${U() === "us" ? "F" : "C"}</small>`, (h) => `<td class="num">${Wx.fmt.temp(h.dew, U())}</td>`)}
+        ${row("Cloud <small>%</small>", (h) => `<td class="num sh"${shade(h.cloud, 100)}>${h.cloud != null ? Math.round(h.cloud) : "–"}</td>`)}
+        ${row("Rain <small>chance</small>", (h) => `<td class="num sh rn"${shade(h.pop, 100)}>${h.pop != null ? Math.round(h.pop) + "%" : "–"}</td>`)}
+        ${row(`Rain <small>${u.precip}</small>`, (h) => `<td class="num">${h.precip ? Wx.fmt.precip(h.precip, U()) : "·"}</td>`)}
+        ${row(`Wind <small>${u.wind}</small>`, (h) => `<td class="num">${Wx.isCalm(h.wind) ? "calm" : Wx.fmt.wind(h.wind, U())}${h.gust != null && h.gust - (h.wind || 0) >= 16 ? `<small>g${Wx.fmt.wind(h.gust, U())}</small>` : ""}</td>`)}
+      </tbody></table></div>`
+      : `<p class="dim">${day.sunset && day.sunset <= now ? "The sun is down for today — pick another day." : "No hours for this day yet."}</p>`;
+    const dayRain = day.t ? fc.hourly.filter((h) => h.t > Math.max(day.sunrise, now) && h.t <= day.sunset + 3600).reduce((x, h) => x + (h.precip || 0), 0) : 0;
+    const daySay = day.sunrise ? `Sun up <b class="num">${esc(k.time(day.sunrise * 1000))}</b> – down <b class="num">${esc(k.time(day.sunset * 1000))}</b> · ${hm(day.sunset - day.sunrise)} of light · high <b class="num">${deg(day.hi)}</b>, low <b class="num">${deg(day.lo)}</b>${dayRain >= WET_MM ? ` · <b class="num">${Wx.fmt.precip(dayRain, U())} ${u.precip}</b> of rain in daylight` : ""}` : "";
+
+    const scroll = box.querySelector(".ctable") ? box.querySelector(".ctable").scrollLeft : 0;
+    box.innerHTML = `<h2><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 14.5l5-8.5 2.7 3.8L10.6 7l4.4 7.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Climbing<span class="src">${c.from === "observation" ? "measured nearby, then forecast" : "forecast"}</span></h2>
+      <div class="cnow">${nowRow}</div>
+      <div class="crain">
+        <p>${lastLine}${st}</p>
+        <div class="rspans">${spans}</div>
+        <p class="nextnote">Rain already fallen is the forecast model's own estimate for this spot, not a gauge.</p>
+      </div>
+      <div class="cdays" role="group" aria-label="Day">${chips}</div>
+      <p class="cdaysay">${daySay}</p>
+      ${table}`;
+    if (box.querySelector(".ctable")) box.querySelector(".ctable").scrollLeft = scroll;
+  }
+  document.addEventListener("click", (e) => {
+    const d = e.target.closest("[data-cday]");
+    if (d) { S.climbDay = Number(d.dataset.cday); renderClimb(); }
+  });
+
   function renderNext() {
     const box = $("#next");
     const fc = shown();
@@ -1199,6 +1335,11 @@
           <div class="say">Today's high <b class="num">${deg(today.hi)}</b> is ${word(dh)} (usual <b class="num">${deg(uh)}</b>)${dl != null ? `.<br>Low <b class="num">${deg(today.lo)}</b>, usual <b class="num">${deg(ul)}</b>` : ""}.</div>`;
       }
     }
+    /* Weather folds the tiles into one Details card (2026-10-25): its line
+       says the two most asked-for numbers while it is shut */
+    if ($("#moresay")) $("#moresay").textContent = [
+      calm ? "calm" : c.wind.v != null ? `wind ${Wx.fmt.wind(c.wind.v, U())} ${u.wind}` : "",
+      c.rh.v != null ? `humidity ${Math.round(c.rh.v)}%` : ""].filter(Boolean).join(" · ");
   }
 
   /* §25 and §37: every feed, how old, and whether it is answering. */
@@ -6551,7 +6692,51 @@
     if (!S.meso.s) renderMeso();
     loadUS();
   }
-  $("#usview").addEventListener("click", showUS);
+  $("#usview").addEventListener("click", () => { closePlaces(); showUS(); });
+
+  /* ── Weather's settings sheet (2026-10-25, Ric: "presets", "a setting that
+     makes it so I can see the info I would want for climbing", "the
+     background to be really cool"): what the page shows, what is behind it,
+     whether the weather moves, and °F / °C. All kept in this browser only. */
+  const setDlg = $("#settings");
+  if (setDlg && !PRO) {
+    const MODES = ["everyday", "climb"];
+    const applyMode = () => {
+      document.body.dataset.show = S.mode;
+      for (const b of setDlg.querySelectorAll("[data-show]")) b.setAttribute("aria-checked", String(b.dataset.show === S.mode));
+    };
+    S.mode = MODES.includes(store.get("wx:mode", "")) ? store.get("wx:mode", "") : "everyday";
+    applyMode();
+    const renderScenes = () => {
+      if (!window.WxScene) return;
+      const on = WxScene.current();
+      $("#scenes").innerHTML = WxScene.SCENES.map((sc) => `<button type="button" role="radio" data-scene="${esc(sc.id)}" aria-checked="${sc.id === on.id}" aria-label="${esc(sc.name)}">
+        <span class="sw"${sc.thumb ? ` style="background-image:url('${esc(sc.thumb)}')"` : ""}></span><span class="sn">${esc(sc.name)}</span></button>`).join("");
+      const c = on.credit;
+      $("#scenecredit").innerHTML = c ? `Photo: <a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title || on.name)}</a> by ${esc(c.by)} · ${esc(c.licence)}` : on.say ? esc(on.say) : "";
+      $("#motion").setAttribute("aria-checked", String(WxScene.motion()));
+    };
+    const openSettings = () => { renderScenes(); renderPlace(); setDlg.showModal ? setDlg.showModal() : setDlg.setAttribute("open", ""); };
+    const closeSettings = () => { setDlg.close ? setDlg.close() : setDlg.removeAttribute("open"); };
+    $("#settingsbtn").addEventListener("click", openSettings);
+    $("#closesettings").addEventListener("click", closeSettings);
+    setDlg.addEventListener("click", (e) => {
+      if (e.target === setDlg) { closeSettings(); return; }
+      const m = e.target.closest("[data-show]");
+      if (m && m.dataset.show !== S.mode) {
+        S.mode = m.dataset.show; store.set("wx:mode", S.mode); applyMode();
+        if (S.place && shown()) renderClimb();
+      }
+      const sc = e.target.closest("[data-scene]");
+      if (sc && window.WxScene) { WxScene.use(sc.dataset.scene); renderScenes(); }
+      const u = e.target.closest("[data-units]");
+      if (u && u.dataset.units !== S.units) {
+        S.units = u.dataset.units; store.set("wx:units", S.units);
+        render(); radar.draw(); radar.label(); sky.redraw();
+      }
+    });
+    $("#motion").addEventListener("click", () => { if (window.WxScene) { WxScene.motion(!WxScene.motion()); renderScenes(); } });
+  }
 
   function renderSaved() {
     const ul = $("#saved");
@@ -6612,7 +6797,7 @@
   }
   $("#locate").addEventListener("click", locate);
 
-  $("#units").addEventListener("click", () => {
+  if ($("#units")) $("#units").addEventListener("click", () => {
     /* Pro: its own set → °F → °C → its own set; Weather: °F ↔ °C */
     S.units = PRO ? ({ pro: "us", us: "metric", metric: "pro" })[S.units] || "pro" : S.units === "us" ? "metric" : "us";
     store.set(PRO ? "wx:prounits" : "wx:units", S.units);

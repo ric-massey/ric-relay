@@ -495,6 +495,16 @@ console.log('\nRULE  two pages, one room: Weather for everyone, Weather Pro for 
   ok([simple, pro].every(p => p.includes('assets/weather/app.js') && p.includes('assets/visit.js')), 'both load the shared code and count visits');
   ok(![simple, pro, app, read('projects/weather/wx.js')].some(s => /ride outlook|rideOutlook/i.test(s)),
     'no ride outlook anywhere — Ric, 2026-10-21: "this should be information, not something that could make it unsafe"');
+  /* Weather's settings, scene and climbing card (2026-10-25) — Weather's alone */
+  ok(['settings', 'climb', 'scene', 'more'].every(id => simple.includes(`id="${id}"`) && !pro.includes(`id="${id}"`)) && simple.includes('assets/weather/scene.js') && !pro.includes('scene.js'),
+    'the settings sheet, the climbing card, the details fold and the scene are on Weather only');
+  {
+    /* Ric, 2026-10-25: "I don't want good or bad to go. Just the measurements" */
+    const body = (app.match(/function renderClimb\(\) \{[\s\S]*?\n  \}\n/) || [''])[0].replace(/\/\*[\s\S]*?\*\//g, '');
+    ok(body.length > 2000 && !/\b(good|bad|ideal|perfect|prime|great|poor|safe|unsafe|send|go|no-go|recommend\w*|should)\b/i.test(body),
+      'the climbing card says measurements only — no good or bad, no verdict, no advice');
+  }
+  ok(/past_days: '3'/.test(read('projects/weather/wx.js')) && /past_days: '3'/.test(read('worker/worker.mjs')), 'the page and the Worker both ask for three days of the past (the climbing card\'s rain)');
   /* Pro's keys (2026-10-23): every product key opens a button that is on the page, and the sheet lists every key */
   const km = app.match(/const KEYMODES = (\{[^}]*\})/), keys = km ? Function(`return ${km[1]}`)() : {};
   const sheet = (pro.match(/<dl class="keys">([\s\S]*?)<\/dl>/) || [])[1] || '';

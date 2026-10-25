@@ -64,8 +64,11 @@
 
   /* ── the Open-Meteo request ──
      Always metric, converted on the page, so switching °F/°C never refetches
-     and every visitor's request for a place is the same cache entry. A day of
-     the past rides along for the pressure trend. */
+     and every visitor's request for a place is the same cache entry. Three days
+     of the past ride along: one for the pressure trend and yesterday, all
+     three for the climbing card's rain history (2026-10-25). The Worker's
+     om route asks for the same; until it is redeployed it answers one day,
+     and the card says only what the copy it got covers. */
   const OM_CURRENT = 'temperature_2m,relative_humidity_2m,dew_point_2m,apparent_temperature,is_day,precipitation,' +
     'weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m';
   const OM_HOURLY = 'temperature_2m,apparent_temperature,dew_point_2m,relative_humidity_2m,precipitation_probability,' +
@@ -78,7 +81,7 @@
     return new URLSearchParams({
       latitude: coord(lat), longitude: coord(lon),
       current: OM_CURRENT, hourly: OM_HOURLY, daily: OM_DAILY, minutely_15: OM_MINUTELY,
-      timezone: 'auto', timeformat: 'unixtime', forecast_days: '10', past_days: '1'
+      timezone: 'auto', timeformat: 'unixtime', forecast_days: '10', past_days: '3'
     });
   }
 
