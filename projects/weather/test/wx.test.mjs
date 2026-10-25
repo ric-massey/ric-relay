@@ -505,6 +505,19 @@ console.log('\nRULE  two pages, one room: Weather for everyone, Weather Pro for 
       'the climbing card says measurements only — no good or bad, no verdict, no advice');
   }
   ok(/past_days: '3'/.test(read('projects/weather/wx.js')) && /past_days: '3'/.test(read('worker/worker.mjs')), 'the page and the Worker both ask for three days of the past (the climbing card\'s rain)');
+  {
+    /* the scenes (2026-10-25): Ric — "if its cloudy the picture should have it be cloudy". Every
+       photo has its thumb and the sky mask cloud is drawn through, and none carries EXIF (hard rule 1) */
+    const scene = read('assets/weather/scene.js');
+    const ids = [...scene.matchAll(/scenePhoto\("([a-z]+)"/g)].map(m => m[1]);
+    const dir = 'assets/weather/scenes/';
+    ok(ids.length >= 7 && ids.every(id => [`${id}.jpg`, `${id}-thumb.jpg`, `${id}-sky.png`].every(f => fs.existsSync(new URL(dir + f, root)))),
+      `every photo scene has its photo, thumb and sky mask (${ids.join(', ')})`);
+    const exif = ids.flatMap(id => [`${id}.jpg`, `${id}-thumb.jpg`]).filter(f => fs.readFileSync(new URL(dir + f, root)).subarray(0, 65536).includes('Exif\0'));
+    ok(exif.length === 0, `no scene photo carries EXIF, so no GPS (${exif.join(', ') || 'none'})`);
+    ok(!/WxScene\.preview/.test(app) && /gust: c\.gust\.v/.test(app),
+      'the page never previews a weather — the scene shows only the reading, gusts included');
+  }
   /* Pro's keys (2026-10-23): every product key opens a button that is on the page, and the sheet lists every key */
   const km = app.match(/const KEYMODES = (\{[^}]*\})/), keys = km ? Function(`return ${km[1]}`)() : {};
   const sheet = (pro.match(/<dl class="keys">([\s\S]*?)<\/dl>/) || [])[1] || '';

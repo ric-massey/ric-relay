@@ -1233,12 +1233,41 @@ scenes, then climbing.
   radar is gone (the gold ★ is the door); "Where this comes from" sits at the
   foot with the credits. Warnings and storm mode are where they were.
 - **Scenes** (`assets/weather/scene.js`). A scene is a picture behind the page,
-  and the weather plays over it from the same reading the hero shows: rain at
-  the wind's slant and beads on the glass, snow drifting, fog banks (thicker the
-  less you can see), the picture dimmed and cooled by cloud, darker in a storm
-  with lightning, and the light — dawn, golden hour, dusk, night — from the real
-  sunrise and sunset, with stars and the moon's real phase when it is clear. It
-  never invents weather: with no place it is calm. One canvas, at most 30 frames
+  and the weather happens *in* it, from the same reading the hero shows. The
+  first version only dimmed the photo for cloud, so Cerro Torre under an
+  overcast sky still had blue behind it; Ric, the same evening: "if its cloudy
+  the picture should have it be cloudy if its raining it should be raining if
+  its snowing it should be snowing if its foggy it should have fog if its windy
+  it should be kicking up dust". So now:
+  - **Cloud fills the photo's own sky.** `assets/weather/scenes/sky-masks.py`
+    finds which pixels of each photo are sky (sky-coloured *and* joined to the
+    top edge through sky, so a blue lake or white glacier is not) and writes
+    `<id>-sky.png`, the photo at 800 px with the sky in its alpha, grown two
+    pixels into the land so no blue fringe shows round a ridge. Cloud is drawn
+    through it: two drifting layers sized so together they cover the reported
+    share (1 − (1 − each)²), then from 60% a grey ceiling until the blue is
+    gone. Stars, the moon and lightning bolts go only where the mask is sky.
+    Rerun the script when a photo changes; `--sheet <dir>` writes a check image.
+  - **Thick, wet cloud comes down over the tops** — Cerro Torre's spire goes
+    into it first. **Rain and snow** put a veil in the air as well as streaks
+    and flakes. **Fog** whites the picture out: pale, flat, banks moving through.
+  - **Wind picks up what the ground gives** from 18 km/h (full by 60, gusts
+    counted at 85%): red dust at the crag, sand on the beach, grit in the city,
+    spray off the lake, leaves in the forest, and spindrift streaming off Cerro
+    Torre's summits (`GROUND` in scene.js). Dust in the air is drawn paler than
+    the ground or it vanishes against it. Rain lays dust, sand, grit and lying
+    snow; while it snows, everything blowing is snow.
+  - **One texture does all of it** — tileable noise made once, cut to a cover
+    and coloured for the light. Edges are a share of the noise's own spread: a
+    fixed width blurred 10% cover into haze over the whole sky.
+  - **To look at a weather that is not happening**, from the browser console:
+    `WxScene.preview({ kind: "rain", cloud: 95, wind: 50, windDir: 270 })`
+    (kinds clear partly cloudy fog drizzle rain storm sleet snow; wind and gust
+    in km/h; `isDay: false` for night), and `WxScene.preview(null)` to go back.
+    The page never calls it (`test/wx.test.mjs` checks) — what visitors see is
+    only ever the reading.
+
+  It never invents weather: with no place it is calm. One canvas, at most 30 frames
   a second and 1.5× the screen's pixels, paused in a hidden tab; **Moving
   weather** off, or the system's reduced motion, draws one still frame and no
   lightning. With a photo a scrim and a shadow on the hero keep white type
@@ -1251,13 +1280,14 @@ scenes, then climbing.
   ("get pictures from online for now"): all from Wikimedia Commons, public
   domain or CC BY only — never share-alike, so the page owes nothing but the
   credit, which the settings sheet shows for the scene in use. Each is
-  `assets/weather/scenes/<id>.jpg` at 1600 px (200–350 KB) and a 240 px
-  `<id>-thumb.jpg`, re-encoded from a fresh image so no EXIF, XMP or ICC block
+  `assets/weather/scenes/<id>.jpg` at 1600 px (200–350 KB), a 240 px
+  `<id>-thumb.jpg` and its `<id>-sky.png` mask, re-encoded from a fresh image so no EXIF, XMP or ICC block
   survives (hard rule 1 — check with the command in AGENTS.md). `horizon` in
   each `SCENES` line is where that photo's sky ends, measured off the picture,
   and `pos` keeps its subject in frame when a phone crops the sides. Adding one
-  is the same three things: the JPG, the thumb, a line in `SCENES` with its
-  credit. A Mochi scene is planned and waits (Ric: "Don't do mochi yet").
+  is four things: the JPG, the thumb, its sky mask (`sky-masks.py <id>`, with a
+  `FLOOR` row so sea or snow below the horizon is never sky), and a line in
+  `SCENES` with its credit — plus a `GROUND` row for what its wind picks up. A Mochi scene is planned and waits (Ric: "Don't do mochi yet").
 - **Climbing** (Settings → Show → Climbing; the `#climb` card under the
   alerts). Measurements only: temperature, humidity, dew point and how far
   under the air it is, cloud cover in % and in words, wind and gusts, daylight

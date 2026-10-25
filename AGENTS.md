@@ -822,8 +822,14 @@ ones that must never break:
   the page with the live weather drawn over it, chosen in Weather's settings
   sheet. Real photographs, not drawings and not AI images (Ric: "scenes as in real
   pictures"), committed with their credit and their metadata stripped (hard rule
-  1), never hotlinked. The weather drawn is only what the hero's reading says;
-  "Moving weather" off and reduced motion draw a still frame. Weather only —
+  1), never hotlinked. The weather happens *in* the picture, not over it (Ric:
+  "if its cloudy the picture should have it be cloudy … if its windy it should be
+  kicking up dust"): cloud fills each photo's own sky through its `<id>-sky.png`
+  mask (`assets/weather/scenes/sky-masks.py`), low cloud takes the tops, fog
+  whites it out, wind blows what that ground gives up. Don't go back to dimming
+  the photo for cloud. The weather drawn is only what the hero's reading says —
+  `WxScene.preview()` is for looking from the console and the page never calls
+  it; "Moving weather" off and reduced motion draw a still frame. Weather only —
   Pro keeps its instrument look. A Mochi scene waits on Ric.
 
 - **No place in the repo, ever (hard rule 1).** The visitor's own location or search,

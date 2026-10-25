@@ -508,7 +508,7 @@
       const hr = fc.hourly[Wx.hourIndex(fc.hourly, nowSec())] || {};
       const tomorrow = Wx.upcomingDays(fc, nowSec())[1] || {};
       WxScene.update({ kind: c.kind, isDay: c.isDay, rate: fc.current.precip ?? hr.precip ?? 0,
-        wind: c.wind.v, windDir: c.windDir.v, cloud: fc.current.cloud ?? hr.cloud, vis: c.vis.v ?? hr.vis,
+        wind: c.wind.v, gust: c.gust.v, windDir: c.windDir.v, cloud: fc.current.cloud ?? hr.cloud, vis: c.vis.v ?? hr.vis,
         rise: today.sunrise, set: today.sunset, nextRise: tomorrow.sunrise });
     }
     const k = clk();
