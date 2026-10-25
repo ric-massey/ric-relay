@@ -159,7 +159,9 @@ console.log('\nRULE  on GitHub, the export and the Garmin session live on the Wo
   ok(mfa2.code === 1 && /two-step verification code/.test(mfa2.stderr), 'and with none, a code request is a sentence, not a hang');
 
   const leak = r1.stdout + r1.stderr + r2.stdout + r2.stderr;
-  ok(!/\b48\b|sleepScores|restingHeartRate|fresh-session|test-log-token/.test(leak.replace(/Picked up \d+ days/g, '')),
+  /* the upload line's timestamp is not a value: at :48 seconds past the minute it
+     read as the 48 resting heart rate and failed one run in sixty (2026-10-25) */
+  ok(!/\b48\b|sleepScores|restingHeartRate|fresh-session|test-log-token/.test(leak.replace(/Picked up \d+ days/g, '').replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, '')),
      'nothing it prints is a value, a token or a password — Actions logs are public');
 }
 server.close();
