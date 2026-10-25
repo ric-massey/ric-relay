@@ -513,6 +513,14 @@ console.log('\nRULE  two pages, one room: Weather for everyone, Weather Pro for 
     const dir = 'assets/weather/scenes/';
     ok(ids.length >= 7 && ids.every(id => [`${id}.jpg`, `${id}-thumb.jpg`, `${id}-sky.png`].every(f => fs.existsSync(new URL(dir + f, root)))),
       `every photo scene has its photo, thumb and sky mask (${ids.join(', ')})`);
+    /* the pictures' own life (2026-10-25): Ric — "the ocean will have the water moving the city will have lights flickering" */
+    const wet = (scene.match(/const WET = new Set\(\[([^\]]*)\]\)/) || [, ''])[1].match(/[a-z]+/g) || [];
+    const glow = Object.keys(Function(`return ${(scene.match(/const GLOW = (\{[^}]*\})/) || [, '{}'])[1]}`)());
+    const lights = glow.map(id => { try { return JSON.parse(fs.readFileSync(new URL(`${dir}${id}-lights.json`, root), 'utf8')); } catch { return null; } });
+    ok(wet.length >= 3 && wet.every(id => fs.existsSync(new URL(`${dir}${id}-water.png`, root))),
+      `every scene with moving water has its water map (${wet.join(', ')})`);
+    ok(glow.length && lights.every(j => j && j.windows.length > 500 && j.tops.length && [...j.windows, ...j.tops].every(([u, v]) => u >= 0 && u <= 1 && v >= 0 && v <= 1)),
+      `every city scene has its windows and tower tops mapped inside the photo (${glow.join(', ')})`);
     const exif = ids.flatMap(id => [`${id}.jpg`, `${id}-thumb.jpg`]).filter(f => fs.readFileSync(new URL(dir + f, root)).subarray(0, 65536).includes('Exif\0'));
     ok(exif.length === 0, `no scene photo carries EXIF, so no GPS (${exif.join(', ') || 'none'})`);
     ok(!/WxScene\.preview/.test(app) && /gust: c\.gust\.v/.test(app),

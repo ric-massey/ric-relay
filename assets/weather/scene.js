@@ -46,6 +46,12 @@
   if (!root) return;
   const photo = root.querySelector(".photo"), tint = root.querySelector(".tint"),
     cv = root.querySelector("canvas"), flashEl = root.querySelector(".flash");
+  /* the photo's water, redrawn moving (drawWater): its own canvas between the
+     photo and the light, carrying the photo's filter so it darkens with it */
+  const waterCv = document.createElement("canvas");
+  waterCv.className = "water";
+  root.insertBefore(waterCv, tint);
+  const wctx = waterCv.getContext("2d");
   const ctx = cv.getContext("2d");
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -195,6 +201,7 @@
       b *= 1 - P.dark * (0.74 - moonlit * 0.14);
       sat *= 1 - P.dark * 0.5 + P.warm * 0.12 * (1 - P.dark);
       photo.style.filter = `brightness(${b.toFixed(2)}) saturate(${sat.toFixed(2)})`;
+      waterCv.style.filter = photo.style.filter;
     } else {
       photo.style.backgroundImage = "";
       photo.style.filter = "";
@@ -214,7 +221,7 @@
      Ric, 2026-10-25: "if its cloudy the picture should have it be cloudy if its
      raining it should be raining … if its foggy it should have fog if its windy
      it should be kicking up dust". So the weather is drawn INTO the picture, not
-     laid over it as a dimmer. <id>-sky.png (sky-masks.py) is the photo at 800 px
+     laid over it as a dimmer. <id>-sky.png (scene-maps.py) is the photo at 800 px
      with its sky in the alpha channel: cloud fills the sky through it, stars and
      the moon go only where it is sky, and a bolt comes down only through sky.
      The plain Sky scene is all sky. */
@@ -232,13 +239,23 @@
     return { x: W / 2 + (x - W / 2) * k, y: H / 2 + (y - H / 2) * k, w: dw * k, h: dh * k };
   }
   const photoRect = () => { const m = maskOf(scene); return m ? coverRect(m.w, m.h) : coverRect(3, 2); };
-  const masks = {};
-  function maskOf(sc) {
-    if (sc.sky || !sc.photo) return null;
-    let m = masks[sc.id];
+  /* a scene's maps (scene-maps.py), each loaded once and the scene rebuilt
+     when it lands: <id>-sky.png, <id>-water.png (images whose alpha says where),
+     <id>-lights.json, and the photo itself for redrawing its water */
+  const maps = {};
+  function mapOf(sc, kind) {
+    const key = `${sc.id}-${kind}`;
+    let m = maps[key];
     if (!m) {
-      m = masks[sc.id] = { img: new Image(), data: null, w: 0, h: 0 };
+      m = maps[key] = { img: new Image(), data: null, w: 0, h: 0 };
+      const done = () => { if (scene === sc && fx) { lastKey = ""; update(st); } };
+      if (kind === "lights") {
+        fetch(`assets/weather/scenes/${sc.id}-lights.json`).then((r) => r.ok ? r.json() : null)
+          .then((j) => { if (j) { m.json = j; m.w = 1; done(); } }).catch(() => {});
+        return null;
+      }
       m.img.onload = () => {
+        if (kind === "photo") { m.w = m.img.naturalWidth; m.h = m.img.naturalHeight; return done(); }
         try {
           const c = document.createElement("canvas");
           c.width = m.img.naturalWidth; c.height = m.img.naturalHeight;
@@ -246,12 +263,26 @@
           x.drawImage(m.img, 0, 0);
           m.data = x.getImageData(0, 0, c.width, c.height).data;
           m.w = c.width; m.h = c.height;
+          if (kind === "water") waterStats(m);
         } catch (e) { m.data = null; }
-        if (scene === sc && fx) { lastKey = ""; update(st); }
+        done();
       };
-      m.img.src = `assets/weather/scenes/${sc.id}-sky.png`;
+      m.img.src = kind === "photo" ? sc.photo : `assets/weather/scenes/${sc.id}-${kind}.png`;
     }
     return m.w ? m : null;
+  }
+  const maskOf = (sc) => sc.sky || !sc.photo ? null : mapOf(sc, "sky");
+  /* where the water lies, and points on it for glints, whitecaps and rings */
+  function waterStats(m) {
+    let top = m.h, bottom = 0;
+    const pts = [];
+    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+      if (m.data[(y * m.w + x) * 4 + 3] < 200) continue;
+      if (y < top) top = y;
+      bottom = y;
+      if (Math.random() < 0.03) pts.push([x / m.w, y / m.h]);
+    }
+    m.top = top / m.h; m.bottom = (bottom + 1) / m.h; m.pts = pts;
   }
   /* how much the canvas pixel x, y is sky, 0 … 1 */
   function skyAt(x, y) {
@@ -352,6 +383,11 @@
     let hi = [255, 255, 255], lo = [192, 200, 214];
     if (warm) { hi = [255, 210, 176]; lo = [170, 146, 160]; }
     if (ph === "night") { hi = [150, 158, 182]; lo = [100, 106, 128]; }
+    /* over a city at night the cloud's underside takes the streets' orange */
+    if (GLOW[scene.id] && f.phase.dark > 0.3) {
+      const t = (f.phase.dark - 0.3) / 0.7 * 0.6;
+      hi = hi.map((v, i) => v + (GLOW[scene.id][i] - v) * t); lo = lo.map((v, i) => v + (GLOW[scene.id][i] * 0.75 - v) * t);
+    }
     hi = shade(hi, k * grey); lo = shade(lo, k * grey * (f.storm ? 0.7 : 0.88));
     return { hi, lo, mid: hi.map((v, i) => Math.round((v + lo[i]) / 2)),
       fog: shade(ph === "night" ? [70, 78, 94] : warm ? [214, 196, 192] : [218, 224, 230], ph === "night" ? 1 : k * (f.rain ? 0.85 : 1)) };
@@ -361,6 +397,9 @@
      lying snow: in the wet only spray and leaves still blow. While it snows, everything
      blowing is snow. `peaks` are summits (shares of the photo) that stream
      spindrift in a wind — Cerro Torre, Torre Egger, Punta Herron and Standhardt. */
+  /* scenes with water that moves, and with a town's light at night */
+  const WET = new Set(["beach", "mountains", "water"]);
+  const GLOW = { city: [255, 160, 90] };
   const GROUND = {
     crag: { kind: "dust", col: [204, 134, 92] },
     mountains: { kind: "dust", col: [182, 166, 136] },
@@ -489,6 +528,47 @@
         for (let t = 0; t < 6; t += 1 / 15) stepPlume(1 / 15);
       }
     }
+    /* the water: the photo's own, redrawn rippling; how rough from the wind and rain */
+    layers.water = null;
+    if (WET.has(scene.id)) {
+      const wm = mapOf(scene, "water"), ph = mapOf(scene, "photo");
+      if (wm && ph && wm.pts) {
+        const mr = coverRect(wm.w, wm.h), pr = coverRect(ph.w, ph.h);
+        const y0 = Math.max(0, mr.y + wm.top * mr.h), y1 = Math.min(H, mr.y + wm.bottom * mr.h);
+        const pts = wm.pts.map(([u, v]) => [mr.x + u * mr.w, mr.y + v * mr.h]).filter(([x, y]) => x > 0 && x < W && y > 0 && y < H)
+          .map(([x, y]) => [x, y, clamp((y - y0) / Math.max(1, y1 - y0), 0, 1), rnd(2, 7), rnd(0, 6.28)]);
+        layers.water = { mask: wm, mr, img: ph.img, pr, y0, y1, pts, caps: [], rings: [],
+          rough: clamp(f.wind / 45, 0, 1.3) + f.rain * 0.25 + (f.storm ? 0.3 : 0) };
+      }
+    }
+    /* the city's windows and tower tops, lit after dark */
+    layers.city = null;
+    const lj = GLOW[scene.id] && mapOf(scene, "lights");
+    if (lj && lj.json) {
+      const r = photoRect(), scale = r.w / 1600;
+      /* how many are on by the local hour: most in the evening, fewest before dawn */
+      const at = f.phase.at || Date.now(), lon = st && Number.isFinite(st.lon) ? st.lon : 0;
+      const hour = ((new Date(at).getUTCHours() + new Date(at).getUTCMinutes() / 60 + lon / 15) % 24 + 24) % 24;
+      const share = hour >= 16 && hour < 23 ? 0.72 : hour >= 23 || hour < 1 ? 0.55 : hour < 5 ? 0.32 : hour < 8 ? 0.5 : 0.62;
+      const COLS = [[255, 178, 88, 0.55], [255, 204, 130, 0.18], [232, 238, 255, 0.15], [210, 255, 222, 0.08], [140, 172, 255, 0.04]];
+      /* a floor of a building lights together — an office, a flat — so windows
+         are grouped by height and a stretch across, and each group is on or off
+         with a few exceptions in it */
+      const groups = {};
+      const wins = lj.json.windows.map(([u, v]) => {
+        const key = `${Math.round(v * 150)}:${Math.floor(u * 28)}`;
+        if (!(key in groups)) {
+          let pick = Math.random(), c = COLS[0];
+          for (const k of COLS) { if (pick < k[3]) { c = k; break; } pick -= k[3]; }
+          groups[key] = { on: Math.random() < share, c };
+        }
+        const gp = groups[key], c = Math.random() < 0.8 ? gp.c : COLS[Math.floor(Math.random() * 3)];
+        return { x: r.x + u * r.w, y: r.y + v * r.h, s: Math.max(1.5, scale * rnd(2.6, 4.4)), col: c.slice(0, 3),
+          on: gp.on ? Math.random() < 0.86 : Math.random() < 0.1, b: rnd(0.6, 1), tv: c === COLS[4], buzz: Math.random() < 0.02, ph: rnd(0, 100) };
+      }).filter((w) => w.x > -4 && w.x < W + 4 && w.y > -4 && w.y < H + 4);
+      const tops = lj.json.tops.map(([u, v], i) => ({ x: r.x + u * r.w, y: r.y + v * r.h, ph: i * 0.07 }));
+      layers.city = { wins, tops, share, next: 0 };
+    }
     nextFlash = f.storm ? performance.now() + rnd(800, 3000) : 0;
   }
   function newMote(g, b, dir, anywhere) {
@@ -569,6 +649,8 @@
     }
     if (a <= 0.01) return;
     const g = s.createLinearGradient(0, 0, 0, band);
+    /* a city's sky never goes black low down: its own light glows on the haze */
+    if (GLOW[scene.id] && P.dark > 0.3) low = mix(low, shade(GLOW[scene.id], 0.5), (P.dark - 0.3) * 0.8);
     g.addColorStop(0, rgba(top, a)); g.addColorStop(0.65, rgba(mix(top, low, 0.45), a)); g.addColorStop(1, rgba(low, a));
     s.fillStyle = g;
     s.fillRect(0, 0, W, H);
@@ -701,6 +783,131 @@
     ctx.drawImage(skyCv, 0, 0);
   }
 
+  /* ── the picture's own life ──
+     Ric, 2026-10-25: "we need to make the pictures feel real so the ocean will
+     have the water moving the city will have lights flickering and on. the idea
+     is to make it as realistic as possible."
+
+     Water: the photo's water is redrawn a thin strip at a time, each strip
+     shifted by two slow waves — a few pixels far off, more close up, more in
+     wind and rain — so the sea and the lakes' reflections move. Cut to the water
+     map, on the canvas that carries the photo's filter. */
+  function drawWater(t) {
+    const w = layers.water;
+    wctx.clearRect(0, 0, W, H);
+    if (!w) return;
+    const img = w.img, r = w.pr, iw = img.naturalWidth, ih = img.naturalHeight;
+    const hb = Math.max(2, Math.round(2 * DPR)), span = Math.max(1, w.y1 - w.y0), rough = w.rough;
+    for (let y = Math.floor(w.y0); y < w.y1; y += hb) {
+      const u = (y - w.y0) / span, f = 0.3 + u;                      // 0 far … 1 near
+      const A = DPR * (0.35 + rough * 3.2) * (0.25 + u * 1.2);
+      const q = y / DPR / f;
+      const dx = A * (Math.sin(t * (1.1 + rough) + q * 0.13) + 0.55 * Math.sin(t * (1.9 + rough * 1.4) + q * 0.29 + 2));
+      const dy = A * 0.4 * Math.sin(t * (1.4 + rough) + q * 0.21 + 1);
+      const sy = (y + dy - r.y) / r.h * ih;
+      if (sy < 0 || sy >= ih) continue;
+      wctx.drawImage(img, 0, sy, iw, Math.max(1, hb / r.h * ih), r.x + dx, y, r.w, hb);
+    }
+    wctx.globalCompositeOperation = "destination-in";
+    wctx.drawImage(w.mask.img, w.mr.x, w.mr.y, w.mr.w, w.mr.h);
+    wctx.globalCompositeOperation = "source-over";
+  }
+
+  /* on the water: the sun's or moon's glitter, thickest in a path under it when
+     it is in view; whitecaps in a wind; rings where rain lands */
+  function waterLife(t, dt, live) {
+    const w = layers.water;
+    if (!w || !w.pts.length) return;
+    const f = fx, P = f.phase;
+    let src = null;
+    if (P.sunPos ? P.sunPos.alt > 0 : P.dark < 0.3) {
+      src = { p: P.sunPos && skyPoint(P.sunPos.az, P.sunPos.alt), k: (1 - f.cloud * 0.92) * (1 - f.fog), col: P.warm > 0.3 ? [255, 196, 130] : [255, 252, 238] };
+    } else if (P.moon && P.moon.alt > 0 && P.dark > 0.5) {
+      src = { p: skyPoint(P.moon.az, P.moon.alt), k: P.moon.fraction * (1 - f.cloud) * (1 - f.fog) * 0.85, col: [214, 226, 255] };
+    }
+    ctx.globalCompositeOperation = "lighter";
+    if (src && src.k > 0.04) {
+      for (const g of w.pts) {
+        const path = src.p ? Math.exp(-(((g[0] - src.p.x) / (W * 0.07 * (0.6 + g[2]))) ** 2)) : 0;
+        const tw = Math.sin(t * g[3] + g[4]);
+        const cut = 0.93 - path * 0.45;
+        if (tw < cut) continue;
+        const a = (tw - cut) / (1 - cut) * src.k * (0.25 + path * 0.9);
+        const len = (2 + g[2] * 5) * DPR * (0.6 + path);
+        ctx.fillStyle = rgba(src.col, Math.min(1, a));
+        ctx.fillRect(g[0] - len / 2, g[1], len, Math.max(1, DPR * (0.7 + g[2] * 0.6)));
+      }
+    }
+    ctx.globalCompositeOperation = "source-over";
+    if (!live) return;
+    const pick = () => w.pts[Math.floor(Math.random() * w.pts.length)];
+    /* whitecaps from about 28 km/h (17 mph), more the harder it blows */
+    if (f.wind > 28) {
+      const n = (f.wind - 28) / 30 * 7 * dt;
+      for (let i = 0; i < Math.floor(n) + (Math.random() < n % 1 ? 1 : 0); i++) { const g = pick(); w.caps.push({ x: g[0], y: g[1], u: g[2], age: 0, life: rnd(0.7, 1.6) }); }
+    }
+    /* rain: a ring for each drop that lands */
+    if (f.rain) {
+      const n = f.rain * 45 * dt;
+      for (let i = 0; i < Math.floor(n) + (Math.random() < n % 1 ? 1 : 0); i++) { const g = pick(); w.rings.push({ x: g[0], y: g[1], u: g[2], age: 0, life: rnd(0.5, 0.9) }); }
+    }
+    const lit = 1 - P.dark * 0.65;
+    for (const c of w.caps) {
+      c.age += dt;
+      const a = Math.sin(Math.min(1, c.age / c.life) * Math.PI) * 0.7 * lit, rx = (2 + c.u * 6) * DPR;
+      ctx.fillStyle = `rgba(245,250,255,${a.toFixed(3)})`;
+      ctx.beginPath(); ctx.ellipse(c.x, c.y, rx, rx * 0.28, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.lineWidth = Math.max(1, DPR * 0.8);
+    for (const r of w.rings) {
+      r.age += dt;
+      const k = r.age / r.life, rx = (1 + k * 9 * (0.3 + r.u)) * DPR;
+      ctx.strokeStyle = `rgba(225,235,250,${((1 - k) * 0.4 * lit).toFixed(3)})`;
+      ctx.beginPath(); ctx.ellipse(r.x, r.y, rx, rx * 0.25 * (0.4 + r.u), 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    w.caps = w.caps.filter((c) => c.age < c.life);
+    w.rings = w.rings.filter((r) => r.age < r.life);
+  }
+
+  /* the city after dark: windows come on as the light goes — most in the
+     evening, fewer through the night — one goes off or on every second or so,
+     a few flicker (a television's blue, a failing tube), the towers' tops blink
+     red for aircraft, and the streets' orange glows low in the air */
+  function cityLights(t, dt, live, now) {
+    const c = layers.city;
+    if (!c) return;
+    const f = fx, k = clamp((f.phase.dark - 0.18) / 0.45, 0, 1);
+    if (k <= 0) return;
+    if (live && now > c.next) {
+      const w = c.wins[Math.floor(Math.random() * c.wins.length)];
+      if (w) w.on = w.on ? Math.random() > c.share * 0.9 : Math.random() < c.share * 1.1;
+      c.next = now + rnd(400, 1600);
+    }
+    ctx.globalCompositeOperation = "lighter";
+    /* the streets' glow, low in the air */
+    const g = ctx.createLinearGradient(0, H * 0.35, 0, H);
+    g.addColorStop(0, "rgba(255,150,70,0)"); g.addColorStop(1, `rgba(255,150,70,${(0.12 * k).toFixed(3)})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    for (const w of c.wins) {
+      if (!w.on) continue;
+      let a = k * w.b;
+      if (w.tv) a *= 0.45 + 0.55 * Math.abs(Math.sin(t * 7.3 + w.ph) * Math.sin(t * 2.9 + w.ph * 1.7));
+      if (w.buzz && Math.sin(t * 23 + w.ph) > 0.6 && Math.sin(t * 0.7 + w.ph) > 0.3) a *= 0.25;
+      ctx.fillStyle = rgba(w.col, a);
+      ctx.fillRect(w.x - w.s / 2, w.y - w.s * 0.6, w.s, w.s * 1.2);
+      if (w.b > 0.8) { ctx.fillStyle = rgba(w.col, a * 0.16); ctx.fillRect(w.x - w.s * 1.6, w.y - w.s * 1.6, w.s * 3.2, w.s * 3.2); }
+    }
+    /* aircraft warning lights: red, on together for a beat, then off */
+    for (const tp of c.tops) {
+      const on = ((t + tp.ph) % 1.5) < 0.75;
+      if (!on) continue;
+      const R = 7 * DPR, gl = ctx.createRadialGradient(tp.x, tp.y, 0, tp.x, tp.y, R);
+      gl.addColorStop(0, `rgba(255,40,30,${(0.95 * k).toFixed(3)})`); gl.addColorStop(0.25, `rgba(255,30,20,${(0.45 * k).toFixed(3)})`); gl.addColorStop(1, "rgba(255,20,10,0)");
+      ctx.fillStyle = gl; ctx.fillRect(tp.x - R, tp.y - R, R * 2, R * 2);
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+
   function frame(now) {
     const f = fx;
     if (!f) return;
@@ -712,7 +919,10 @@
     /* the wind comes in gusts: everything it carries thickens and thins */
     const gust = live ? 0.72 + 0.28 * Math.sin(t * 0.9) * Math.sin(t * 0.37 + 1) + (f.gusty ? 0.25 * Math.max(0, Math.sin(t * 0.23)) : 0) : 0.85;
 
+    drawWater(t);
     drawSky(dt, t, live);
+    waterLife(t, dt, live);
+    cityLights(t, dt, live, now);
     /* spindrift streaming off the summits */
     if (plume.length || layers.peaks) {
       if (live) stepPlume(dt);
@@ -900,7 +1110,7 @@
     lastT = 0;
     if (!fx) return;
     frame(performance.now());
-    if (animated() && (parts.length || drops.length || stars.length || dust.length || plume.length || layers.near || layers.deck || layers.fog || layers.sheet || fx.storm)) raf = requestAnimationFrame(loop);
+    if (animated() && (parts.length || drops.length || stars.length || dust.length || plume.length || layers.near || layers.deck || layers.fog || layers.sheet || layers.water || (layers.city && fx.phase.dark > 0.18) || fx.storm)) raf = requestAnimationFrame(loop);
     if (!animated()) flashEl.style.opacity = "0";
   }
   function size() {
@@ -908,7 +1118,7 @@
     const w = Math.round(innerWidth * DPR), h = Math.round(innerHeight * DPR);
     /* a phone's address bar showing and hiding changes the height a little: not worth a rebuild */
     if (w === W && Math.abs(h - H) < 120 * DPR) return false;
-    W = cv.width = w; H = cv.height = h;
+    W = cv.width = waterCv.width = w; H = cv.height = waterCv.height = h;
     return true;
   }
   let resizeT = 0;

@@ -1596,6 +1596,7 @@ body[data-view="simple"] .topbar{z-index:30}
 .scene{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
 .scene .photo,.scene .tint,.scene .flash,.scene canvas{position:absolute;inset:0;width:100%;height:100%}
 .scene .photo{background:center/cover no-repeat;transition:filter 1.2s ease;transform:scale(1.04)}
+.scene .water{transition:filter 1.2s ease}
 .scene .tint{transition:opacity 1.2s ease}
 .scene .flash{background:#e8ecff;opacity:0;mix-blend-mode:screen}
 .scene.hasphoto::after{content:"";position:absolute;inset:0;

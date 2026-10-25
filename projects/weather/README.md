@@ -1240,7 +1240,7 @@ scenes, then climbing.
   the picture should have it be cloudy if its raining it should be raining if
   its snowing it should be snowing if its foggy it should have fog if its windy
   it should be kicking up dust". So now:
-  - **Cloud fills the photo's own sky.** `assets/weather/scenes/sky-masks.py`
+  - **Cloud fills the photo's own sky.** `assets/weather/scenes/scene-maps.py`
     finds which pixels of each photo are sky (sky-coloured *and* joined to the
     top edge through sky, so a blue lake or white glacier is not) and writes
     `<id>-sky.png`, the photo at 800 px with the sky in its alpha, grown two
@@ -1284,6 +1284,22 @@ scenes, then climbing.
   - **Cloud goes by at the wind's speed** — a still day creeps, a gale races —
     and every layer (cloud, the low deck, fog banks, blowing dust) takes the
     wind's direction.
+  - **The pictures have their own life** (Ric: "the ocean will have the water
+    moving the city will have lights flickering and on. the idea is to make it
+    as realistic as possible"). The beach's sea and the two lakes are redrawn
+    from the photo a strip at a time, each strip shifted by two slow waves — a
+    pixel far off, several close up, more in wind and rain — on a canvas of its
+    own that carries the photo's filter, so it darkens with it (`drawWater`).
+    On the water: the sun's or moon's glitter, thickest in a path under it when
+    it is in view; whitecaps from 28 km/h; a ring where each raindrop lands.
+    The city lights up after dark: windows lit floor by floor (each floor of a
+    building on or off together, a few exceptions), most in the evening and
+    fewest before dawn by the place's own hour, one changing every second or
+    so, a few flickering (a television, a failing tube); the five tallest tops
+    blink red for aircraft; the streets' orange glows low in the air and on the
+    underside of the cloud (`GLOW`). Where the water, the windows and the tops
+    are comes from `scene-maps.py` (`<id>-water.png`, `<id>-lights.json`).
+    About 2–4 ms a frame on a laptop at the busiest.
   - **To look at a weather that is not happening**, from the browser console:
     `WxScene.preview({ kind: "rain", cloud: 95, wind: 50, windDir: 270 })`
     (kinds clear partly cloudy fog drizzle rain storm sleet snow; wind and gust
@@ -1311,9 +1327,11 @@ scenes, then climbing.
   survives (hard rule 1 — check with the command in AGENTS.md). `horizon` in
   each `SCENES` line is where that photo's sky ends, measured off the picture,
   and `pos` keeps its subject in frame when a phone crops the sides. Adding one
-  is four things: the JPG, the thumb, its sky mask (`sky-masks.py <id>`, with a
+  is four things: the JPG, the thumb, its sky mask (`scene-maps.py <id>`, with a
   `FLOOR` row so sea or snow below the horizon is never sky), and a line in
-  `SCENES` with its credit — plus a `GROUND` row for what its wind picks up. A Mochi scene is planned and waits (Ric: "Don't do mochi yet").
+  `SCENES` with its credit — plus a `GROUND` row for what its wind picks up,
+  and if it has water or a town, a `WATER` or `LIGHTS` row in scene-maps.py and
+  its id in `WET` or `GLOW` in scene.js. A Mochi scene is planned and waits (Ric: "Don't do mochi yet").
 - **Climbing** (Settings → Show → Climbing; the `#climb` card under the
   alerts). Measurements only: temperature, humidity, dew point and how far
   under the air it is, cloud cover in % and in words, wind and gusts, daylight

@@ -825,12 +825,14 @@ ones that must never break:
   1), never hotlinked. The weather happens *in* the picture, not over it (Ric:
   "if its cloudy the picture should have it be cloudy … if its windy it should be
   kicking up dust"): cloud fills each photo's own sky through its `<id>-sky.png`
-  mask (`assets/weather/scenes/sky-masks.py`), low cloud takes the tops, fog
+  mask (`assets/weather/scenes/scene-maps.py`), low cloud takes the tops, fog
   thins with distance by the measured visibility, wind blows what that ground
   gives up, a thunderstorm brings strokes down to the land. Day, twilight and
   night come from the sun's real height at the visitor's place, and the sun and
   moon (its real phase, lit side as seen from that latitude) are drawn where
-  they are (`assets/weather/astro.js`, held by `test/astro.test.mjs`). Don't go
+  they are (`assets/weather/astro.js`, held by `test/astro.test.mjs`). The
+  pictures live too: the sea and lakes move, the city's windows light floor by
+  floor after dark and its towers blink red (maps from `scene-maps.py`). Don't go
   back to dimming the photo for cloud, or to a clock for the light. The weather drawn is only what the hero's reading says —
   `WxScene.preview()` is for looking from the console and the page never calls
   it; "Moving weather" off and reduced motion draw a still frame. Weather only —
