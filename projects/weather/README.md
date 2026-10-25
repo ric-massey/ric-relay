@@ -59,6 +59,7 @@ post on the front door (the `radar` painter, over invented ground).
 |---|---|
 | `../../weather.html` | **Weather**: the hero, the next three hours, hourly, ten days, a plain radar, the details (the tiles, folded), the climbing card, the place sheet and the settings sheet |
 | `../../assets/weather/scene.js` | Weather's background: a scene (a photo, or the plain sky) and the weather happening in it — rain, snow, fog, cloud, lightning, stars and the moon, the light from the real sunrise and sunset. Weather only; Pro never loads it |
+| `../../assets/weather/astro.js` | Where the sun and moon are from the visitor's place: altitude, azimuth, the moon's phase and which way its lit side faces. Scene.js takes day, golden hour, the twilights and night from the sun's height, and draws both where they are. Standard low-precision formulas (Meeus; the set SunCalc uses), no library — `test/astro.test.mjs` holds it to published full and new moons, the sun at an equinox noon, and the lit side facing the sun |
 | `../../weather-pro.html` | **Weather Pro**: the hero, the full map, the air above you, the models and ensemble, the accuracy record |
 | `../../assets/weather/app.js` | the page code both load — every card, the map, the place sheet; it draws the cards the page holds and skips the rest |
 | `../../assets/weather/weather.css` | the stylesheet both load (shared within the room, as climbing's and training's are) |
@@ -1260,10 +1261,35 @@ scenes, then climbing.
   - **One texture does all of it** — tileable noise made once, cut to a cover
     and coloured for the light. Edges are a share of the noise's own spread: a
     fixed width blurred 10% cover into haze over the whole sky.
+  - **Day and night come from the sun's real height** at the visitor's place
+    (Ric, same evening: "night and day needs to be implemented. the moon also
+    needs to be what it is based on the location. and the sun."). Above 10° it
+    is day; to 0° golden hour; to −12° the twilights; below, night — `dark`
+    and `warm` change smoothly between, refreshed every minute. The photo's sky
+    takes the hour's colour (warm at the horizon, deepening overhead), the land
+    darkens with it and a high clear moon gives some back. **The sun and moon
+    are drawn where they are**: the view faces the equator across 180°, height
+    rises from the land's edge, and both set behind the ridges. The moon is its
+    real phase with its lit side turned as seen from that latitude. Stars come
+    out as the sky darkens, only where it is sky and only under clear sky.
+  - **Fog is the measured visibility**, applied by distance: each picture has
+    an apparent far and near (`DEPTH` in scene.js) and loses e^(−3.9·d/V) of
+    each. On Cerro Torre 8 km is a haze, 2 km a ghost, under 1 km white; the
+    crag's wall stays until the fog is thick. A fog report with no distance is
+    taken as 800 m. ("fog shouldnt be full whiteout unless thats what its like")
+  - **Lightning strikes**: in a thunderstorm most flashes bring a stroke down
+    through open sky to the land's edge, lighting the ground where it lands,
+    sometimes in runs; brighter at night. None with Moving weather off or
+    reduced motion.
+  - **Cloud goes by at the wind's speed** — a still day creeps, a gale races —
+    and every layer (cloud, the low deck, fog banks, blowing dust) takes the
+    wind's direction.
   - **To look at a weather that is not happening**, from the browser console:
     `WxScene.preview({ kind: "rain", cloud: 95, wind: 50, windDir: 270 })`
     (kinds clear partly cloudy fog drizzle rain storm sleet snow; wind and gust
-    in km/h; `isDay: false` for night), and `WxScene.preview(null)` to go back.
+    in km/h; `vis` in metres; `isDay: false` for tonight's darkest hour here,
+    `isDay: true` for today's highest sun, or `at` for any time in ms;
+    `lat`/`lon` for somewhere else), and `WxScene.preview(null)` to go back.
     The page never calls it (`test/wx.test.mjs` checks) — what visitors see is
     only ever the reading.
 

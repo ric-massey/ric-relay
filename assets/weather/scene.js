@@ -14,13 +14,15 @@
      rain and drizzle   streaks at the wind's slant, a grey veil in the air,
                         beads on the glass in front
      snow and sleet     flakes drifting with the wind, a white veil
-     fog                the picture goes pale and flat, banks moving through it
+     fog                each part lost by its distance at the measured visibility
+                        — a haze, a ghost, or white only when it is that thick
      wind               from 18 km/h, what the ground gives up blows across it
                         — dust, sand, grit, spray, leaves; spindrift streams off
                         Cerro Torre's summits; rain lays the dust, snow blows
-     storm              darker still, and lightning down through open sky
-     the sun            dawn, day, golden hour, dusk and night from the real
-                        sunrise and sunset; stars and the moon in open sky
+     storm              darker still, and strokes down through open sky to the land
+     day and night      from the sun's real height at the place (astro.js): the
+                        sky's colour, the land's light, stars as it darkens; the
+                        sun and moon drawn where they are, the moon at its phase
    It never invents weather: with no reading (the whole-US view) it is calm.
 
    The picture is never the forecast's source and says nothing a card does not.
@@ -100,16 +102,39 @@
   const rnd = (a, b) => a + Math.random() * (b - a);
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 
-  /* ── the light: where the sun is, from the real times ── */
+  /* ── the light: from the sun's real height at the place ──
+     Ric, 2026-10-25: "night and day needs to be implemented … the moon also
+     needs to be what it is based on the location. and the sun." With the place
+     (astro.js) the light follows the sun's altitude: day above 10°, golden hour
+     to 0°, the twilights to −12°, night below — `dark` and `warm` change
+     smoothly through them, so dusk comes on as it does outside. The sun and the
+     moon (its phase, and its lit side turned as it looks from that latitude) are
+     drawn where they are. Without a place it falls back on the day's times. */
+  const DEG = Math.PI / 180;
   function phaseOf(s) {
+    if (s && Number.isFinite(s.lat) && Number.isFinite(s.lon) && window.WxAstro) {
+      const t = Number.isFinite(s.at) ? s.at : Date.now();
+      const A = window.WxAstro, su = A.sun(t, s.lat, s.lon), mo = A.moon(t, s.lat, s.lon), ml = A.moonLight(t);
+      const elev = su.alt / DEG;
+      const morning = Math.sin(su.az) > 0;                       // the sun in the east
+      const name = elev >= 10 ? "day" : elev >= 0 ? (morning ? "dawn" : "golden") : elev >= -12 ? (morning ? "dawn" : "dusk") : "night";
+      return { name, elev, sun: null, at: t, lat: s.lat,
+        dark: clamp((2 - elev) / 16, 0, 1),                      // 0 by day … 1 from 14° below
+        warm: clamp(1 - Math.abs(elev - 1) / 10, 0, 1),          // the low sun's colour, most at sunrise and sunset
+        sunPos: su, moon: { alt: mo.alt, az: mo.az, fraction: ml.fraction, phase: ml.phase, limb: A.limb(t, s.lat, s.lon) } };
+    }
+    return phaseByClock(s);
+  }
+  function phaseByClock(s) {
     const now = Date.now() / 1000;
-    if (!s || !s.rise || !s.set) return { name: s && s.isDay === false ? "night" : "day", sun: 0.5 };
+    const shape = (p) => Object.assign(p, { dark: p.name === "night" ? 1 : p.name === "dawn" || p.name === "dusk" ? 0.6 : 0, warm: p.name === "golden" ? 0.7 : p.name === "dawn" || p.name === "dusk" ? 0.8 : 0 });
+    if (!s || !s.rise || !s.set) return shape({ name: s && s.isDay === false ? "night" : "day", sun: 0.5 });
     const M = 60;
-    if (now < s.rise - 40 * M || now > s.set + 45 * M) return { name: "night", sun: null };
-    if (now < s.rise + 50 * M) return { name: "dawn", sun: 0 };
-    if (now > s.set) return { name: "dusk", sun: 1 };
+    if (now < s.rise - 40 * M || now > s.set + 45 * M) return shape({ name: "night", sun: null });
+    if (now < s.rise + 50 * M) return shape({ name: "dawn", sun: 0 });
+    if (now > s.set) return shape({ name: "dusk", sun: 1 });
     const sun = (now - s.rise) / (s.set - s.rise);
-    return { name: now > s.set - 80 * M ? "golden" : "day", sun };
+    return shape({ name: now > s.set - 80 * M ? "golden" : "day", sun });
   }
 
   /* ── what the reading means on screen ── */
@@ -122,8 +147,12 @@
     const level = (r) => r >= 7.6 ? 1.6 : r >= 2.5 ? 1 : r >= 0.5 ? 0.6 : r > 0 ? 0.35 : 0;
     const rain = wetK ? Math.max(level(rate), k === "drizzle" ? 0.25 : k === "storm" ? 0.9 : 0.45) : 0;
     const snow = k === "snow" ? Math.max(level(rate) * 0.9, 0.5) : k === "sleet" ? 0.35 : 0;
-    const vis = s.vis == null ? 20000 : s.vis;
-    const fog = k === "fog" ? clamp(1.1 - vis / 5000, 0.45, 1) : vis < 8000 ? clamp(0.6 - vis / 16000, 0, 0.45) : 0;
+    /* fog is how far you can see, not the word for it: a fog report with no
+       distance is taken as 800 m. `fog` is how much a thing 1 km off is lost
+       (Koschmieder: what is left is e^(−3.9·d/V)); the scene works out each
+       part of the picture from its own distance (DEPTH). Past 10 km, none. */
+    const vis = s.vis == null ? (k === "fog" ? 800 : 20000) : Math.max(20, s.vis);
+    const fog = vis >= 10000 ? 0 : 1 - Math.exp(-3.912 * 1000 / vis);
     const cloud = clamp((s.cloud == null ? (k === "cloudy" ? 90 : k === "partly" ? 45 : k === "clear" ? 5 : 80) : s.cloud) / 100, 0, 1);
     const wind = Math.max(0, s.wind || 0);                       // km/h
     /* what the wind picks up: nothing below a breeze of 18 km/h (11 mph),
@@ -134,12 +163,15 @@
     /* the wind's "from" direction, turned into which way things blow across the screen */
     const dirX = s.windDir == null ? 0.3 : -Math.sin(s.windDir * Math.PI / 180);
     let phase = phaseOf(s);
-    /* the reading's own day or night wins over the clock: the times are a
-       day's, and a reading at the edge of one should not light a dark sky */
-    if (s.isDay === false && phase.name !== "night" && phase.name !== "dusk" && phase.name !== "dawn") phase = { name: "night", sun: null };
-    else if (s.isDay === true && phase.name === "night") phase = { name: "day", sun: 0.5 };
-    const stars = phase.name === "night" ? clamp(1 - cloud * 1.15, 0, 1) * (rain || snow ? 0 : 1) * (1 - fog) : 0;
-    return { kind: k, phase, rain, snow, fog, cloud, wind, blow, gusty, dirX, storm: k === "storm", stars };
+    /* without a place, the reading's own day or night wins over the clock: the
+       times are a day's, and a reading at the edge of one should not light a dark sky */
+    if (phase.elev == null) {
+      if (s.isDay === false && phase.name !== "night" && phase.name !== "dusk" && phase.name !== "dawn") phase = phaseByClock(null), phase = Object.assign(phase, { name: "night", dark: 1, warm: 0 });
+      else if (s.isDay === true && phase.name === "night") phase = Object.assign(phaseByClock(null), { name: "day" });
+    }
+    /* stars come out as the sky darkens, under clear sky only */
+    const stars = clamp((phase.dark - 0.55) / 0.4, 0, 1) * clamp(1 - cloud * 1.15, 0, 1) * (rain || snow ? 0 : 1) * (1 - fog);
+    return { kind: k, phase, rain, snow, fog, vis, cloud, wind, blow, gusty, dirX, storm: k === "storm", stars };
   }
 
   /* ── the picture: a filter and a colour over it ── */
@@ -155,27 +187,27 @@
       photo.style.backgroundPosition = scene.pos || "center";
       /* daylight on the picture: the more cloud, the flatter and darker; the
          lower the sun, the darker; a storm darker still */
-      const wet = f.rain || f.snow;
+      const wet = f.rain || f.snow, P = f.phase;
       let b = 1 - f.cloud * 0.22 - (wet ? 0.14 : 0) - (f.storm ? 0.16 : 0);
       let sat = 1 - f.cloud * 0.35 - (wet ? 0.15 : 0) - f.fog * 0.3;
-      if (ph === "golden") { b *= 0.92; sat *= 1.1; }
-      if (ph === "dawn" || ph === "dusk") { b *= 0.62; sat *= 0.85; }
-      if (ph === "night") { b *= 0.32; sat *= 0.55; }
-      if (ph !== "night") b *= 1 + f.fog * 0.12;               // fog is bright from inside it
-      photo.style.filter = `brightness(${b.toFixed(2)}) saturate(${sat.toFixed(2)}) contrast(${(1 - f.fog * 0.5).toFixed(2)})`;
+      /* the land goes dark with the sky; a high moon in a clear sky gives some back */
+      const m = P.moon, moonlit = m && m.alt > 0 ? m.fraction * Math.min(1, m.alt / (25 * DEG)) * (1 - f.cloud) : 0;
+      b *= 1 - P.dark * (0.74 - moonlit * 0.14);
+      sat *= 1 - P.dark * 0.5 + P.warm * 0.12 * (1 - P.dark);
+      photo.style.filter = `brightness(${b.toFixed(2)}) saturate(${sat.toFixed(2)})`;
     } else {
       photo.style.backgroundImage = "";
       photo.style.filter = "";
     }
-    /* the colour of the light, laid over the picture (and the plain sky's gradient) */
-    const tints = {
-      dawn: "linear-gradient(180deg, rgba(70,60,140,.35), rgba(255,150,120,.22) 70%, rgba(255,190,140,.18))",
-      golden: "linear-gradient(180deg, rgba(255,170,80,.08), rgba(255,140,60,.22) 75%, rgba(255,120,50,.26))",
-      dusk: "linear-gradient(180deg, rgba(30,30,90,.45), rgba(200,90,110,.22) 75%, rgba(255,130,90,.2))",
-      night: "linear-gradient(180deg, rgba(4,10,40,.45), rgba(10,20,60,.3))",
-      day: f.cloud > 0.6 || f.rain || f.snow ? "linear-gradient(180deg, rgba(120,140,160,.12), rgba(60,75,95,.1))" : "none"
-    };
-    tint.style.backgroundImage = tints[ph] || "none";
+    /* the colour of the light on the land: the low sun's warmth (less under
+       cloud), the blue of twilight and night, the grey of a wet day */
+    const P = f.phase, wa = P.warm * (1 - P.dark * 0.6) * (1 - f.cloud * 0.7), nb = P.dark;
+    const grey = (f.cloud > 0.6 || f.rain || f.snow) && nb < 0.5 ? 0.12 : 0;
+    tint.style.backgroundImage = [
+      nb > 0.02 && `linear-gradient(180deg, rgba(4,10,40,${(nb * 0.45).toFixed(3)}), rgba(10,20,60,${(nb * 0.3).toFixed(3)}))`,
+      wa > 0.02 && `linear-gradient(180deg, rgba(255,170,80,${(wa * 0.06).toFixed(3)}), rgba(255,130,60,${(wa * 0.24).toFixed(3)}) 75%, rgba(255,120,50,${(wa * 0.28).toFixed(3)}))`,
+      grey && `linear-gradient(180deg, rgba(120,140,160,${grey}), rgba(60,75,95,${grey * 0.8}))`
+    ].filter(Boolean).join(",") || "none";
   }
 
   /* ── where the sky is in the photo ──
@@ -223,7 +255,7 @@
   }
   /* how much the canvas pixel x, y is sky, 0 … 1 */
   function skyAt(x, y) {
-    if (scene.sky) return y < H * 0.8 ? 1 : 0;
+    if (scene.sky) return y < H ? 1 : 0;
     const m = maskOf(scene);
     if (!m) return 0;
     const r = coverRect(m.w, m.h);
@@ -312,11 +344,14 @@
   function light(f) {
     const ph = f.phase.name;
     const warm = ph === "golden" || ph === "dawn" || ph === "dusk";
-    const k = ph === "night" ? 0.2 : ph === "dawn" || ph === "dusk" ? 0.55 : ph === "golden" ? 0.92 : 1;
+    /* by the sun's height when there is one: an overcast night is a dim grey
+       glow (towns, the moon behind it), not black */
+    const k = f.phase.elev != null ? 0.34 + 0.66 * (1 - f.phase.dark) - (f.phase.warm > 0.3 && f.phase.dark < 0.5 ? 0.08 : 0)
+      : ph === "night" ? 0.34 : ph === "dawn" || ph === "dusk" ? 0.55 : ph === "golden" ? 0.92 : 1;
     const grey = f.storm ? 0.42 : f.rain || f.snow ? 0.64 : f.cloud > 0.85 ? 0.78 : f.cloud > 0.6 ? 0.9 : 1;
     let hi = [255, 255, 255], lo = [192, 200, 214];
     if (warm) { hi = [255, 210, 176]; lo = [170, 146, 160]; }
-    if (ph === "night") { hi = [160, 172, 205]; lo = [96, 106, 136]; }
+    if (ph === "night") { hi = [150, 158, 182]; lo = [100, 106, 128]; }
     hi = shade(hi, k * grey); lo = shade(lo, k * grey * (f.storm ? 0.7 : 0.88));
     return { hi, lo, mid: hi.map((v, i) => Math.round((v + lo[i]) / 2)),
       fog: shade(ph === "night" ? [70, 78, 94] : warm ? [214, 196, 192] : [218, 224, 230], ph === "night" ? 1 : k * (f.rain ? 0.85 : 1)) };
@@ -335,6 +370,16 @@
     forest: { kind: "leaves", col: [176, 122, 52] },
     torre: { kind: "snow", col: [246, 249, 255], peaks: [[0.375, 0.07], [0.47, 0.235], [0.6, 0.35]] }
   };
+  /* how far off each picture's back and front look, km, for fog: Ric — "fog
+     shouldnt be full whiteout unless thats what its like". Fog takes the far
+     side first. These are apparent distances, about a third of the real ones:
+     the photos already carry their own day's haze, and the e^(−3.9·d/V) rule
+     is for a black target, while snow and pale rock show through far longer.
+     Measured on Cerro Torre, 2026-10-25: with the real ~4 km, 8 km visibility
+     (a hazy day) took 86% of it; at 1.2 km it is a haze at 8 km (44%), mostly
+     gone at 2 km (90%), white under 1 km. The crag's wall stays until the fog
+     is thick (15% at 2 km, 65% at 300 m). */
+  const DEPTH = { sky: [2, 1], torre: [1.2, 0.35], mountains: [1, 0.1], city: [1.2, 0.15], water: [1.2, 0.04], beach: [1.8, 0.02], crag: [0.08, 0.03], forest: [0.15, 0.008] };
   const LEAVES = [[226, 160, 62], [204, 120, 44], [176, 184, 74], [238, 194, 96]];
   function blowing(f) {
     const g = GROUND[scene.id];
@@ -345,12 +390,13 @@
   }
 
   /* ── the moving parts ── */
-  let layers = {}, dust = [], plume = [], skyCv = null, moon = null;
+  let layers = {}, dust = [], plume = [], skyCv = null, horizon = [];
   function build() {
     const f = fx;
     const area = (W * H) / (DPR * DPR);
     const small = W / DPR < 640;
-    parts = []; drops = []; stars = []; dust = []; plume = []; layers = {}; moon = null;
+    parts = []; drops = []; stars = []; dust = []; plume = []; layers = {};
+    bolt = null; flashT = -1; flashEl.style.opacity = "0";             // a strike belongs to the sky it was in
     const wx = f.dirX * clamp(f.wind / 40, 0, 1.4);            // slant, -1.4 … 1.4
     const dir = f.dirX >= 0 ? 1 : -1;
     if (f.rain) {
@@ -381,18 +427,24 @@
         stars.push({ x, y, r: (Math.random() < 0.08 ? 2 : rnd(0.8, 1.4)) * DPR, a: rnd(0.35, 0.95) * (1 - y / H) + 0.1, tw: rnd(0.4, 1.6), ph: rnd(0, 6.28) });
         i++;
       }
-      /* the moon where there is open sky for it, towards the top right */
-      const r = Math.min(W, H) * 0.028 + 6 * DPR;
-      for (const fxp of [0.86, 0.76, 0.66, 0.16, 0.26, 0.5]) {
-        const x = W * fxp, d = skyDepth(x);
-        if (d > r * 6) { moon = { x, y: Math.max(r * 2.5, d * 0.35), r }; break; }
-      }
     }
+    /* where the land's edge is across the screen, for putting the sun and moon
+       at their height above it and setting them behind it */
+    horizon = [];
+    if (sky) for (let i = 0; i <= 32; i++) horizon.push(scene.sky ? H * 0.8 : skyDepth(W * i / 32));
     const L = light(f);
     /* cloud in the sky: two layers drifting at their own speeds, and from 60%
        cover a grey ceiling filling in behind them until the blue is gone */
+    if (sky) {
+      let d = 0;
+      if (scene.sky) d = H * 0.8;
+      else for (const y of horizon) d = Math.max(d, y);
+      layers.skyH = Math.max(H * 0.25, d);
+    }
     if (sky && f.cloud > 0.04) {
-      const drift = (5 + clamp(f.wind, 0, 90) * 0.55) * DPR * dir;
+      /* cloud goes by at the wind's speed: a still day creeps, a gale races
+         ("if its windy and cloudy you see the clouds move") */
+      const drift = (4 + clamp(f.wind, 0, 100) * 0.9) * DPR * dir;
       /* two layers each covering `each` overlap to cover 1 − (1 − each)² of
          the sky: sized so together they cover what the reading says */
       const each = 1 - Math.sqrt(1 - Math.min(0.97, f.cloud));
@@ -400,21 +452,19 @@
       layers.near = { img: tex(each, L.lo, L.hi, 0.95, { soft: 0.1, flip: true }), off: rnd(0, W), v: drift };
       layers.over = clamp((f.cloud - 0.6) / 0.35, 0, 1) * (f.storm ? 1 : 0.96);
       layers.overCol = L.mid;
-      /* how far down the sky goes on screen, for stretching the cloud over it */
-      let d = 0;
-      if (scene.sky) d = H * 0.8;
-      else for (let i = 0; i <= 8; i++) d = Math.max(d, skyDepth(W * i / 8));
-      layers.skyH = Math.max(H * 0.25, d);
     }
     /* low cloud: thick, wet cloud comes down over the tops — Cerro Torre's
        spire goes into it first. Only on photos: the plain Sky has no tops. */
     if (scene.photo) {
       const low = clamp(clamp((f.cloud - 0.72) / 0.28, 0, 1) * 0.5 + (f.rain ? 0.22 + f.rain * 0.1 : 0) + (f.snow ? 0.3 : 0) + (f.storm ? 0.2 : 0) + f.fog * 0.3, 0, 1);
-      if (low > 0.05) layers.deck = { img: tex(0.84, L.lo, L.hi, 0.95, { fade: [0, 0.6], soft: 0.5, shift: 211 }), low, off: rnd(0, W), v: (4 + clamp(f.wind, 0, 90) * 0.4) * DPR * dir };
+      if (low > 0.05) layers.deck = { img: tex(0.84, L.lo, L.hi, 0.95, { fade: [0, 0.6], soft: 0.5, shift: 211 }), low, off: rnd(0, W), v: (3 + clamp(f.wind, 0, 100) * 0.7) * DPR * dir };
     }
     /* fog: a veil, and banks moving through it */
     if (f.fog > 0.02) {
-      layers.fog = { img: tex(0.78, shade(L.fog, 0.9), L.fog, 1, { fade: [0.3, 0.2], soft: 0.9, shift: 41 }), col: L.fog, off: rnd(0, W), v: (3 + clamp(f.wind, 0, 40) * 0.5) * DPR * (dir || 1) };
+      const [far, near] = DEPTH[scene.id] || DEPTH.sky;
+      const lost = (km) => 1 - Math.exp(-3.912 * km * 1000 / f.vis);
+      layers.fog = { img: tex(0.78, shade(L.fog, 0.9), L.fog, 1, { fade: [0.3, 0.2], soft: 0.9, shift: 41 }), col: L.fog,
+        far: lost(far), near: lost(near), off: rnd(0, W), v: (3 + clamp(f.wind, 0, 40) * 0.6) * DPR * dir };
     }
     /* wind: what it picks up blows across the ground */
     const g = blowing(f);
@@ -439,7 +489,7 @@
         for (let t = 0; t < 6; t += 1 / 15) stepPlume(1 / 15);
       }
     }
-    nextFlash = f.storm ? performance.now() + rnd(2500, 7000) : 0;
+    nextFlash = f.storm ? performance.now() + rnd(800, 3000) : 0;
   }
   function newMote(g, b, dir, anywhere) {
     const z = Math.random();
@@ -481,93 +531,174 @@
     return blob;
   }
 
-  /* the moon's phase from a known new moon (2000-01-06 18:14 UTC), 0 new … 0.5 full */
-  const moonAge = () => (((Date.now() - Date.UTC(2000, 0, 6, 18, 14)) / 86400000) % 29.530588853 + 29.530588853) % 29.530588853 / 29.530588853;
+  /* ── the sky itself: its colour, the sun, the moon, the stars ──
+     Where a thing in the sky lands on the picture: the view faces the equator
+     (south in the north, north in the south) and spans 180°, so the sun rises
+     at the left edge and sets at the right in the north, the other way round in
+     the south. Altitude rises from the land's edge under it (`horizon`) to the
+     top of the screen at about 65°. Anything below the edge is behind the land
+     and the mask hides it — the sun and moon set behind the ridges. The picture's
+     camera pointed somewhere we cannot know; this is the sky in front of you. */
+  function skyPoint(az, altR) {
+    if (!horizon.length) return null;
+    const view = (fx.phase.lat ?? 1) >= 0 ? Math.PI : 0;
+    const d = Math.atan2(Math.sin(az - view), Math.cos(az - view));
+    if (Math.abs(d) > Math.PI / 2 + 0.15) return null;
+    const x = W / 2 + d / Math.PI * W;
+    const i = clamp(Math.round(x / W * 32), 0, 32), hy = horizon[i] || H * 0.5;
+    return { x, y: hy - clamp(altR / (65 * DEG), -0.3, 1) * hy * 0.94 };
+  }
+  /* screen east is left when you face south, right when you face north */
+  const eastLeft = () => (fx.phase.lat ?? 1) >= 0;
 
-  function drawSun(t) {
-    const f = fx;
-    if (!scene.sky || f.phase.sun == null || f.cloud > 0.75 || f.rain || f.snow || f.fog > 0.4) return;
-    /* across the top of the page from left at sunrise to right at sunset, highest at noon */
-    const s = clamp(f.phase.sun, 0, 1);
-    const x = W * (0.08 + s * 0.84), y = H * (0.3 - Math.sin(s * Math.PI) * 0.24);
-    const warm = f.phase.name !== "day";
-    const a = (1 - f.cloud) * (warm ? 0.55 : 0.45);
-    const r = Math.min(W, H) * 0.42;
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, warm ? `rgba(255,200,120,${a})` : `rgba(255,244,214,${a})`);
-    g.addColorStop(0.08, warm ? `rgba(255,170,90,${a * 0.6})` : `rgba(255,236,190,${a * 0.5})`);
-    g.addColorStop(1, "rgba(255,220,160,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
+  /* the sky's colour through the day: nothing over the photo's own blue by day;
+     low sun, twilight and night replace it, horizon warm, overhead deepening */
+  function skyWash(s, band) {
+    const P = fx.phase;
+    if (P.dark < 0.02 && P.warm < 0.05) return;
+    const e = P.elev ?? (P.name === "night" ? -20 : P.name === "day" ? 30 : -3);
+    const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+    /* colours by the sun's height: golden, sunset, twilight, night */
+    const stops = [[10, [120, 160, 220], [255, 196, 120], 0.25], [0, [70, 90, 170], [255, 140, 80], 0.55],
+      [-6, [24, 30, 80], [190, 90, 90], 0.85], [-12, [6, 10, 30], [24, 30, 64], 0.95], [-18, [3, 6, 18], [10, 16, 36], 0.97]];
+    let top = stops[stops.length - 1][1], low = stops[stops.length - 1][2], a = stops[stops.length - 1][3];
+    if (e >= stops[0][0]) { const t = clamp((e - 10) / 6, 0, 1); top = stops[0][1]; low = stops[0][2]; a = stops[0][3] * (1 - t); }
+    else for (let i = 0; i < stops.length - 1; i++) {
+      const [e0, t0, l0, a0] = stops[i], [e1, t1, l1, a1] = stops[i + 1];
+      if (e <= e0 && e >= e1) { const t = (e0 - e) / (e0 - e1); top = mix(t0, t1, t); low = mix(l0, l1, t); a = a0 + (a1 - a0) * t; break; }
+    }
+    if (a <= 0.01) return;
+    const g = s.createLinearGradient(0, 0, 0, band);
+    g.addColorStop(0, rgba(top, a)); g.addColorStop(0.65, rgba(mix(top, low, 0.45), a)); g.addColorStop(1, rgba(low, a));
+    s.fillStyle = g;
+    s.fillRect(0, 0, W, H);
   }
-  function drawMoon() {
-    const f = fx;
-    if (f.phase.name !== "night" || f.stars < 0.2 || !moon) return;
-    const { x, y, r } = moon;
-    const glow = ctx.createRadialGradient(x, y, r, x, y, r * 7);
-    glow.addColorStop(0, `rgba(210,225,255,${0.16 * f.stars})`); glow.addColorStop(1, "rgba(210,225,255,0)");
-    ctx.fillStyle = glow; ctx.fillRect(x - r * 7, y - r * 7, r * 14, r * 14);
-    /* the dark disc faintly, then the lit part: the lit half's edge, and back
-       along the terminator — an ellipse that bulges into the dark half while
-       it is a crescent and into the lit half once it is gibbous. Waxing is lit
-       on the right (as seen from the northern hemisphere). */
-    const age = moonAge(), lit = 1 - Math.abs(age - 0.5) * 2;      // 0 new … 1 full
-    const P = Math.PI, rx = r * Math.abs(Math.cos(age * 2 * P)), crescent = lit < 0.5;
-    ctx.fillStyle = `rgba(150,165,200,${0.12 * f.stars})`;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, P * 2); ctx.fill();
-    if (lit < 0.03) return;
-    ctx.fillStyle = `rgba(238,242,252,${0.94 * f.stars})`;
-    ctx.beginPath();
-    if (age < 0.5) { ctx.arc(x, y, r, -P / 2, P / 2, false); ctx.ellipse(x, y, rx, r, 0, P / 2, -P / 2, crescent); }
-    else { ctx.arc(x, y, r, P / 2, P * 1.5, false); ctx.ellipse(x, y, rx, r, 0, -P / 2, P / 2, crescent); }
-    ctx.fill();
+  function drawSunIn(s) {
+    const P = fx.phase;
+    let x, y, altR;
+    if (P.sunPos) {
+      altR = P.sunPos.alt;
+      if (altR < -2 * DEG) return;
+      const p = skyPoint(P.sunPos.az, altR);
+      if (!p) return;
+      ({ x, y } = p);
+    } else {
+      /* no place: across the top from left at sunrise to right at sunset */
+      if (!scene.sky || P.sun == null) return;
+      const k = clamp(P.sun, 0, 1);
+      x = W * (0.08 + k * 0.84); y = H * (0.3 - Math.sin(k * Math.PI) * 0.24); altR = Math.sin(k * Math.PI) * 50 * DEG;
+    }
+    const low = clamp(1 - altR / (12 * DEG), 0, 1);               // reddens near the horizon
+    const R = Math.min(W, H) * 0.42, r = Math.min(W, H) * 0.018 + 5 * DPR;
+    const glow = s.createRadialGradient(x, y, 0, x, y, R);
+    glow.addColorStop(0, `rgba(255,${Math.round(240 - low * 70)},${Math.round(200 - low * 110)},${0.5 - low * 0.05})`);
+    glow.addColorStop(0.07, `rgba(255,${Math.round(225 - low * 80)},${Math.round(170 - low * 100)},${0.3})`);
+    glow.addColorStop(1, "rgba(255,200,140,0)");
+    s.fillStyle = glow; s.fillRect(x - R, y - R, R * 2, R * 2);
+    s.fillStyle = `rgb(255,${Math.round(250 - low * 60)},${Math.round(232 - low * 120)})`;
+    s.beginPath(); s.arc(x, y, r, 0, Math.PI * 2); s.fill();
   }
-  /* a bolt comes down only through open sky; with none worth the name, the flash alone */
+  /* the moon at its real phase, its lit side turned as it looks from here */
+  function drawMoonIn(s) {
+    const P = fx.phase, m = P.moon;
+    if (!m) {
+      /* no place: the phase from the date, top right, at night */
+      if (P.name !== "night" || fx.stars < 0.2) return;
+      return moonDisc(s, W * 0.86, H * 0.12, Math.min(W, H) * 0.028 + 6 * DPR, legacyMoon(), 1);
+    }
+    if (m.alt < -1 * DEG || m.fraction < 0.02) return;
+    const p = skyPoint(m.az, m.alt);
+    if (!p) return;
+    /* by day the moon is a pale ghost; it brightens as the sky darkens */
+    const bright = 0.35 + 0.65 * P.dark;
+    moonDisc(s, p.x, p.y, Math.min(W, H) * 0.028 + 6 * DPR, m, bright);
+  }
+  function legacyMoon() {
+    const age = (((Date.now() - Date.UTC(2000, 0, 6, 18, 14)) / 864e5) % 29.530588853 + 29.530588853) % 29.530588853 / 29.530588853;
+    return { fraction: (1 - Math.cos(age * 2 * Math.PI)) / 2, limb: age < 0.5 ? -Math.PI / 2 : Math.PI / 2 };
+  }
+  function moonDisc(s, x, y, r, m, bright) {
+    const P = Math.PI;
+    if (fx.phase.dark > 0.3) {
+      const glow = s.createRadialGradient(x, y, r, x, y, r * 7);
+      glow.addColorStop(0, `rgba(210,225,255,${(0.18 * m.fraction * bright).toFixed(3)})`); glow.addColorStop(1, "rgba(210,225,255,0)");
+      s.fillStyle = glow; s.fillRect(x - r * 7, y - r * 7, r * 14, r * 14);
+    }
+    s.save();
+    s.translate(x, y);
+    /* turn so the lit side (local +x) points along the bright limb: `limb` is
+       from straight up towards the sky's east */
+    s.rotate(eastLeft() ? -P / 2 - m.limb : -P / 2 + m.limb);
+    s.fillStyle = `rgba(150,165,200,${(0.1 * bright).toFixed(3)})`;      // the dark part, faintly (earthshine)
+    s.beginPath(); s.arc(0, 0, r, 0, P * 2); s.fill();
+    /* the lit part: the half-disc on the bright side, closed by the terminator,
+       an ellipse that bulges into it while a crescent and away once gibbous */
+    const k = m.fraction, rx = r * (1 - 2 * k);
+    s.fillStyle = `rgba(240,243,252,${(0.95 * bright).toFixed(3)})`;
+    s.beginPath();
+    for (let i = 0; i <= 24; i++) { const a = -P / 2 + P * i / 24; s.lineTo(r * Math.cos(a), r * Math.sin(a)); }
+    for (let i = 0; i <= 24; i++) { const a = P / 2 - P * i / 24; s.lineTo(rx * Math.cos(a), r * Math.sin(a)); }
+    s.closePath(); s.fill();
+    s.restore();
+  }
+  /* a strike: from the cloud down through open sky to the land's edge, where
+     it lands; with no open sky worth the name, the flash alone */
   function makeBolt() {
     let x = 0, depth = 0;
-    for (let i = 0; i < 8 && depth < H * 0.18; i++) { x = rnd(0.12, 0.88) * W; depth = skyDepth(x); }
-    if (depth < H * 0.18) return null;
-    let y = 0;
+    for (let i = 0; i < 10 && depth < H * 0.16; i++) { x = rnd(0.1, 0.9) * W; depth = scene.sky ? H * rnd(0.6, 0.85) : skyDepth(x); }
+    if (depth < H * 0.16) return null;
+    const top = layers.deck ? 0 : rnd(0, 0.06) * H;
+    let y = top;
     const pts = [[x, y]], branches = [];
-    const end = depth * rnd(0.6, 0.95);
-    while (y < end) {
-      x += rnd(-28, 28) * DPR; y += rnd(14, 34) * DPR;
+    while (y < depth) {
+      x += rnd(-26, 26) * DPR; y = Math.min(depth, y + rnd(12, 30) * DPR);
       pts.push([x, y]);
-      if (Math.random() < 0.12) {
+      if (Math.random() < 0.14 && y < depth * 0.8) {
         const b = [[x, y]]; let bx = x, by = y;
-        for (let i = 0; i < 5; i++) { bx += rnd(-30, 30) * DPR; by += rnd(10, 26) * DPR; b.push([bx, by]); }
+        for (let i = 0; i < 6; i++) { bx += rnd(-30, 30) * DPR; by += rnd(10, 24) * DPR; b.push([bx, by]); }
         branches.push(b);
       }
     }
-    return { pts, branches };
+    return { pts, branches, hit: [x, depth] };
   }
 
-  /* the cloud in the sky, drawn at half size into its own canvas and cut to the
-     photo's sky there, so it fills the sky and never crosses a mountain */
-  function drawSky(dt) {
-    if (!layers.near) return;
+  /* the sky, drawn into its own canvas and cut to the photo's sky there: its
+     colour for the hour, stars, the moon, the sun, then the cloud — so cloud
+     covers them as it would, and none of it ever crosses a mountain */
+  function drawSky(dt, t, live) {
     const m = scene.sky ? null : maskOf(scene);
     if (!scene.sky && !m) return;
-    const sw = Math.ceil(W / 2), sh = Math.ceil(H / 2);
     if (!skyCv) skyCv = document.createElement("canvas");
-    if (skyCv.width !== sw || skyCv.height !== sh) { skyCv.width = sw; skyCv.height = sh; }
+    if (skyCv.width !== W || skyCv.height !== H) { skyCv.width = W; skyCv.height = H; }
     const s = skyCv.getContext("2d");
     s.globalCompositeOperation = "source-over";
     s.globalAlpha = 1;
-    s.clearRect(0, 0, sw, sh);
-    if (layers.over > 0) { s.fillStyle = rgba(layers.overCol, layers.over); s.fillRect(0, 0, sw, sh); }
-    const band = layers.skyH / 2 * 1.08;
-    for (const l of [layers.far, layers.near]) {
-      l.off += l.v * dt / 2;
-      tiled(s, l.img, l.off, 0, sw * (l === layers.far ? 1.5 : 2.1), band);
+    s.clearRect(0, 0, W, H);
+    const band = layers.skyH || H * 0.6;
+    skyWash(s, band);
+    if (stars.length) {
+      for (const p of stars) {
+        const a = live ? p.a * (0.7 + 0.3 * Math.sin(t * p.tw + p.ph)) : p.a;
+        s.fillStyle = `rgba(235,240,255,${(a * fx.stars).toFixed(3)})`;
+        s.fillRect(p.x, p.y, p.r, p.r);
+      }
+    }
+    drawMoonIn(s);
+    drawSunIn(s);
+    if (layers.near) {
+      if (layers.over > 0) { s.fillStyle = rgba(layers.overCol, layers.over); s.fillRect(0, 0, W, H); }
+      for (const l of [layers.far, layers.near]) {
+        l.off += l.v * dt;
+        tiled(s, l.img, l.off, 0, W * (l === layers.far ? 1.5 : 2.1), band * 1.08);
+      }
     }
     if (m) {
       const r = coverRect(m.w, m.h);
       s.globalCompositeOperation = "destination-in";
-      s.drawImage(m.img, r.x / 2, r.y / 2, r.w / 2, r.h / 2);
+      s.drawImage(m.img, r.x, r.y, r.w, r.h);
       s.globalCompositeOperation = "source-over";
     }
-    ctx.drawImage(skyCv, 0, 0, W, H);
+    ctx.drawImage(skyCv, 0, 0);
   }
 
   function frame(now) {
@@ -581,24 +712,14 @@
     /* the wind comes in gusts: everything it carries thickens and thins */
     const gust = live ? 0.72 + 0.28 * Math.sin(t * 0.9) * Math.sin(t * 0.37 + 1) + (f.gusty ? 0.25 * Math.max(0, Math.sin(t * 0.23)) : 0) : 0.85;
 
-    drawSun(now);
-    /* stars twinkle; the moon sits among them */
-    if (stars.length) {
-      for (const s of stars) {
-        const a = live ? s.a * (0.7 + 0.3 * Math.sin(t * s.tw + s.ph)) : s.a;
-        ctx.fillStyle = `rgba(235,240,255,${(a * f.stars).toFixed(3)})`;
-        ctx.fillRect(s.x, s.y, s.r, s.r);
-      }
-      drawMoon();
-    }
-    drawSky(dt);
+    drawSky(dt, t, live);
     /* spindrift streaming off the summits */
     if (plume.length || layers.peaks) {
       if (live) stepPlume(dt);
       const img = blobImg();
       /* each puff drawn long and low, so together they read as a banner */
       for (const p of plume) {
-        ctx.globalAlpha = 0.55 * (1 - p.age / p.life) * Math.min(1, p.age * 4) * gust;
+        ctx.globalAlpha = 0.55 * (1 - p.age / p.life) * Math.min(1, p.age * 4) * gust * (1 - f.phase.dark * 0.7);
         ctx.drawImage(img, p.x - p.r * 2.4, p.y - p.r, p.r * 4.8, p.r * 2);
       }
       ctx.globalAlpha = 1;
@@ -615,41 +736,44 @@
     /* rain and snow put a veil in the air, the far side of the picture first */
     if (f.rain || f.snow) {
       const g = ctx.createLinearGradient(0, 0, 0, H);
-      const c = f.snow ? [232, 238, 246] : f.phase.name === "night" ? [40, 46, 58] : [128, 140, 156];
+      const c = f.snow ? shade([232, 238, 246], 1 - f.phase.dark * 0.75) : shade([128, 140, 156], 1 - f.phase.dark * 0.7);
       const a = Math.min(0.32, (f.rain + f.snow) * 0.16);
       g.addColorStop(0, rgba(c, a)); g.addColorStop(0.55, rgba(c, a * 0.9)); g.addColorStop(1, rgba(c, a * 0.35));
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     }
-    /* fog: the picture goes into it */
+    /* fog: each part of the picture lost by as much as its distance says —
+       the sky and the far side first, the near ground last — and banks
+       moving through between them */
     if (layers.fog) {
-      const fg = layers.fog;
-      ctx.fillStyle = rgba(fg.col, f.fog * 0.5);
-      ctx.fillRect(0, 0, W, H);
-      const g = ctx.createLinearGradient(0, H * 0.3, 0, H);
-      g.addColorStop(0, rgba(fg.col, 0)); g.addColorStop(1, rgba(fg.col, f.fog * 0.3));
+      const fg = layers.fog, band = layers.skyH || H * 0.5;
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, rgba(fg.col, fg.far));
+      g.addColorStop(clamp(band / H, 0.05, 0.9), rgba(fg.col, fg.far));
+      g.addColorStop(1, rgba(fg.col, fg.near));
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
       fg.off += fg.v * dt;
-      ctx.globalAlpha = Math.min(1, f.fog * 0.85);
-      tiled(ctx, fg.img, fg.off, H * 0.1, W * 1.6, H * 0.95);
-      tiled(ctx, fg.img, -fg.off * 0.6 + W * 0.4, H * 0.35, W * 2.2, H * 0.7);
+      ctx.globalAlpha = clamp((fg.far - fg.near) * 0.7 + fg.near * 0.3, 0, 0.8);
+      tiled(ctx, fg.img, fg.off, band * 0.6, W * 1.6, H * 0.75);
+      tiled(ctx, fg.img, -fg.off * 0.6 + W * 0.4, band * 0.85, W * 2.2, H * 0.6);
       ctx.globalAlpha = 1;
     }
     /* wind: the low air hazed with what it carries, and sheets of it moving */
     if (layers.haze) {
       const g = ctx.createLinearGradient(0, H * 0.35, 0, H);
-      g.addColorStop(0, rgba(layers.haze.col, 0)); g.addColorStop(1, rgba(layers.haze.col, layers.haze.a * gust));
+      g.addColorStop(0, rgba(layers.haze.col, 0)); g.addColorStop(1, rgba(shade(layers.haze.col, 1 - f.phase.dark * 0.7), layers.haze.a * gust));
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     }
     if (layers.sheet) {
       const s = layers.sheet;
       s.off += s.v * dt;
-      ctx.globalAlpha = s.a * gust;
+      ctx.globalAlpha = s.a * gust * (1 - f.phase.dark * 0.65);
       tiled(ctx, s.img, s.off, H * 0.52, W * 1.4, H * 0.5);
       tiled(ctx, s.img, s.off * 1.6 + W * 0.3, H * 0.7, W * 0.9, H * 0.32);
       ctx.globalAlpha = 1;
     }
     /* rain and snow */
     if (parts.length) {
+      const lit = 1 - f.phase.dark * 0.45;                         // rain and snow catch less light at night
       ctx.lineCap = "round";
       ctx.strokeStyle = "rgba(210,225,245,1)";
       for (const p of parts) {
@@ -658,7 +782,7 @@
           if (p.y - p.len > H) { p.y = -rnd(0, 0.2) * H; p.x = rnd(-0.2, 1.2) * W; }
           if (p.x < -0.25 * W) p.x += 1.45 * W; else if (p.x > 1.25 * W) p.x -= 1.45 * W;
           const k = p.len / Math.hypot(p.vx, p.v);
-          ctx.globalAlpha = p.a;
+          ctx.globalAlpha = p.a * lit;
           ctx.lineWidth = (0.7 + p.z * 0.9) * DPR;
           ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * k, p.y - p.v * k); ctx.stroke();
         } else {
@@ -666,7 +790,7 @@
           p.x += (p.vx + Math.sin(p.ph) * 14 * DPR) * dt; p.y += p.v * dt;
           if (p.y - p.r > H) { p.y = -p.r * 2; p.x = rnd(0, W); }
           if (p.x < -10) p.x += W + 20; else if (p.x > W + 10) p.x -= W + 20;
-          ctx.globalAlpha = p.a;
+          ctx.globalAlpha = p.a * lit;
           ctx.fillStyle = "#fff";
           ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
         }
@@ -683,7 +807,7 @@
         p.ph += dt * 3;
         p.x += p.v * gust * dt; p.y += (p.lift + Math.sin(p.ph) * 12 * DPR) * dt;
         if (p.x > W * 1.1 || p.x < -W * 0.1 || p.y < H * 0.2 || p.y > H * 1.05) { dust[i] = newMote(g, f.blow, dir, false); continue; }
-        ctx.globalAlpha = p.a * gust;
+        ctx.globalAlpha = p.a * gust * (1 - f.phase.dark * 0.6);
         if (g.kind === "leaves") {
           ctx.fillStyle = rgba(p.col, 1);
           ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.ph);
@@ -730,18 +854,25 @@
         ctx.beginPath(); ctx.arc(d.x - d.r * 0.3, d.y - d.r * 0.38, Math.max(0.8 * DPR, d.r * 0.2), 0, Math.PI * 2); ctx.fill();
       }
     }
-    /* lightning: a flash of the whole picture, sometimes a bolt in the sky */
+    /* lightning: the sky lights, and most times a stroke comes down to the
+       land ("if its raining and lighting there is lightning strikes"); brighter
+       against a dark sky. Never with Moving weather off or reduced motion. */
     if (f.storm && live) {
       if (nextFlash && now >= nextFlash) {
-        flashT = now; bolt = Math.random() < 0.55 ? makeBolt() : null;
-        nextFlash = now + rnd(4500, 13000);
+        flashT = now; bolt = Math.random() < 0.8 ? makeBolt() : null;
+        nextFlash = now + (Math.random() < 0.25 ? rnd(600, 1500) : rnd(3000, 9000));   // strokes come in runs
       }
       if (flashT >= 0) {
-        const e = now - flashT;
+        const e = now - flashT, k = 0.75 + f.phase.dark * 0.45;
         /* two quick pulses, the way a stroke flickers */
-        const a = e < 70 ? 0.55 : e < 130 ? 0.12 : e < 210 ? 0.4 : Math.max(0, 0.4 - (e - 210) / 500);
-        flashEl.style.opacity = a.toFixed(3);
+        const a = (e < 70 ? 0.55 : e < 130 ? 0.12 : e < 210 ? 0.4 : Math.max(0, 0.4 - (e - 210) / 500)) * k;
+        flashEl.style.opacity = Math.min(0.85, a).toFixed(3);
         if (bolt && e < 260) {
+          /* where it lands, the ground lights */
+          const [hx, hy] = bolt.hit, R = 90 * DPR;
+          const gl = ctx.createRadialGradient(hx, hy, 0, hx, hy, R);
+          gl.addColorStop(0, `rgba(220,228,255,${e < 70 || (e > 130 && e < 210) ? 0.55 : 0.2})`); gl.addColorStop(1, "rgba(220,228,255,0)");
+          ctx.fillStyle = gl; ctx.fillRect(hx - R, hy - R, R * 2, R * 2);
           ctx.strokeStyle = `rgba(235,240,255,${e < 70 || (e > 130 && e < 210) ? 0.95 : 0.35})`;
           ctx.shadowColor = "rgba(190,200,255,.9)"; ctx.shadowBlur = 14 * DPR;
           for (const [pts, w] of [[bolt.pts, 2.2], ...bolt.branches.map((b) => [b, 1.1])]) {
@@ -790,7 +921,7 @@
   function update(s) {
     st = s;
     const next = effects(forced || s);
-    const key = JSON.stringify([scene.id, next.kind, next.phase.name, Math.round(next.rain * 10), Math.round(next.snow * 10), Math.round(next.fog * 10), Math.round(next.cloud * 10), Math.round(next.wind / 5), Math.round(next.blow * 5), next.gusty, Math.round(next.dirX * 4), Math.round(next.stars * 5)]);
+    const key = JSON.stringify([scene.id, next.kind, next.phase.name, Math.round(next.rain * 10), Math.round(next.snow * 10), Math.round(next.fog * 10), Math.round(next.cloud * 10), Math.round(next.wind / 5), Math.round(next.blow * 5), next.gusty, Math.round(next.dirX * 4), Math.round(next.stars * 5), Math.round(next.phase.dark * 10), Math.round(next.phase.warm * 5)]);
     fx = next;
     paintStill();
     if (key === lastKey && W) return;
@@ -799,8 +930,9 @@
     build();
     kick();
   }
-  /* the light moves on its own: dawn, golden hour and dusk come without a reload */
-  setInterval(() => { if (st !== undefined) update(st); }, 5 * 60e3);
+  /* the light moves on its own: the sun and moon move a quarter of a degree a
+     minute, so dawn, golden hour and dusk come on without a reload */
+  setInterval(() => { if (st !== undefined) update(st); }, 60e3);
 
   window.WxScene = {
     SCENES,
@@ -823,11 +955,28 @@
     /* to look at a weather that is not happening, from the console:
          WxScene.preview({ kind: "rain", cloud: 95, wind: 50, windDir: 270 })
        kinds: clear partly cloudy fog drizzle rain storm sleet snow; wind and
-       gust in km/h; isDay: false for night. preview(null) goes back to the
-       real reading. The page never calls it — the scene only ever shows the
+       gust in km/h; vis in metres; isDay: false for tonight, or at: a time in
+       ms; lat/lon for another place. preview(null) goes back to the real
+       reading. The page never calls it — the scene only ever shows the
        reading (header) — and nothing about it is kept. */
     preview(s) {
-      forced = s ? Object.assign({ isDay: true, cloud: null, wind: 0 }, s) : null;
+      forced = null;
+      if (s) {
+        /* the place is the real one unless given; `at` (ms) picks the time —
+           without one, isDay: false finds tonight's darkest hour and isDay:
+           true today's highest sun, so a preview shows that sky here */
+        const here = st && Number.isFinite(st.lat) ? { lat: st.lat, lon: st.lon } : {};
+        forced = Object.assign({ cloud: null, wind: 0 }, here, s);
+        if (!Number.isFinite(forced.at) && Number.isFinite(forced.lat) && window.WxAstro && s.isDay != null) {
+          let best = Date.now(), score = -Infinity;
+          for (let h = 0; h < 24; h += 0.25) {
+            const t = Date.now() + h * 3600e3, a = WxAstro.sun(t, forced.lat, forced.lon).alt;
+            const v = s.isDay ? a : -a;
+            if (v > score) { score = v; best = t; }
+          }
+          forced.at = best;
+        }
+      }
       lastKey = "";
       update(st);
     },

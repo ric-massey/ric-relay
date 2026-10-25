@@ -517,6 +517,8 @@ console.log('\nRULE  two pages, one room: Weather for everyone, Weather Pro for 
     ok(exif.length === 0, `no scene photo carries EXIF, so no GPS (${exif.join(', ') || 'none'})`);
     ok(!/WxScene\.preview/.test(app) && /gust: c\.gust\.v/.test(app),
       'the page never previews a weather — the scene shows only the reading, gusts included');
+    ok(simple.indexOf('assets/weather/astro.js') > 0 && simple.indexOf('assets/weather/astro.js') < simple.indexOf('assets/weather/scene.js') && /lat: S\.place\.lat, lon: S\.place\.lon/.test(app),
+      'the scene has the place and astro.js before it — the sun, moon, day and night are where the visitor is');
   }
   /* Pro's keys (2026-10-23): every product key opens a button that is on the page, and the sheet lists every key */
   const km = app.match(/const KEYMODES = (\{[^}]*\})/), keys = km ? Function(`return ${km[1]}`)() : {};

@@ -509,7 +509,7 @@
       const tomorrow = Wx.upcomingDays(fc, nowSec())[1] || {};
       WxScene.update({ kind: c.kind, isDay: c.isDay, rate: fc.current.precip ?? hr.precip ?? 0,
         wind: c.wind.v, gust: c.gust.v, windDir: c.windDir.v, cloud: fc.current.cloud ?? hr.cloud, vis: c.vis.v ?? hr.vis,
-        rise: today.sunrise, set: today.sunset, nextRise: tomorrow.sunrise });
+        rise: today.sunrise, set: today.sunset, nextRise: tomorrow.sunrise, lat: S.place.lat, lon: S.place.lon });
     }
     const k = clk();
     const rain = Wx.rainOutlook(fc, nowSec(), 3, (s) => k.time(s * 1000));

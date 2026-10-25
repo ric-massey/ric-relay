@@ -52,7 +52,7 @@ const SUITES = [
   /* Not live.mjs: that asks the real NWS and Open-Meteo, in its own lane
      (.github/workflows/weather-live.yml). wx.test.mjs also holds the
      Worker's /wx route to every request the page makes. */
-  ['the weather client', ['projects/weather/test/wx.test.mjs', 'projects/weather/test/sounding.test.mjs', 'projects/weather/test/verify.test.mjs', 'projects/weather/test/nowcast.test.mjs', 'projects/weather/test/decoders.test.mjs', 'projects/weather/test/workstation.test.mjs', 'projects/weather/test/palettes.test.mjs', 'projects/weather/test/terrain.test.mjs', 'projects/weather/test/route.test.mjs', 'projects/weather/test/watches.test.mjs', 'projects/weather/test/reanalysis.test.mjs', 'projects/weather/test/colormaps.test.mjs', 'projects/weather/test/radar3d.test.mjs', 'projects/weather/test/operational.test.mjs']],
+  ['the weather client', ['projects/weather/test/wx.test.mjs', 'projects/weather/test/astro.test.mjs', 'projects/weather/test/sounding.test.mjs', 'projects/weather/test/verify.test.mjs', 'projects/weather/test/nowcast.test.mjs', 'projects/weather/test/decoders.test.mjs', 'projects/weather/test/workstation.test.mjs', 'projects/weather/test/palettes.test.mjs', 'projects/weather/test/terrain.test.mjs', 'projects/weather/test/route.test.mjs', 'projects/weather/test/watches.test.mjs', 'projects/weather/test/reanalysis.test.mjs', 'projects/weather/test/colormaps.test.mjs', 'projects/weather/test/radar3d.test.mjs', 'projects/weather/test/operational.test.mjs']],
   ['the garmin puller', ['projects/training/garmin/test.mjs']],
   ["orrin's server", ['projects/orrin/server/test.mjs']],
   ["orrin's progress notes", ['.github/test/orrin-updates.mjs']],
