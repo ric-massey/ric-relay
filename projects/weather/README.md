@@ -1272,12 +1272,66 @@ scenes, then climbing.
     scenes draw cloud at half the plain Sky's scale: they look at the far sky,
     where the photos' own clouds are small. Over 70% a lit, moving overcast
     ceiling fills in behind.
+  - **Distance and light** (Ric: "what else can you do to improve it?" — "yes").
+    `scene-maps.py` also writes `<id>-depth.png` (Depth Anything V2, run once
+    offline: how far each pixel is) and `<id>-flat.jpg` (the photo relit as
+    under overcast: the large-scale light squeezed towards its mean by a
+    guided-filter base/detail split, the detail kept, a little cooler and
+    greyer). From the depth: haze and fog take each pixel by e^(−3.9·d/V) —
+    the far ridges first, a clear day's distance faintly blue, rain and snow
+    thickening the air by their rate (`seeing`); cloud shadows cross the land
+    on a sunny, partly cloudy day, the cloud field laid on the ground in
+    perspective and moving with the wind (three times real speed, so the eye
+    catches it); a lightning flash lights the near land more than the far.
+    The overcast photo fades in as the sky greys and once the sun is down — no
+    direct sun, no hard shadows (`overcast`). One camera over everything: a
+    moving film grain (stronger in the dark) and a soft vignette, and the
+    fair and clear footage colour-matched to the photo's own sky. No sun is
+    drawn over footage: every drawn sun on a real sky read as a moon.
+  - **The photo itself moves, on the GPU** (Ric, asked for all eleven: "yep. do
+    it all 1-11"). A small WebGL program (`drawGL` in scene.js; no library)
+    draws the photo pixel by pixel from the maps: plants (`<id>-plants.png`,
+    red = plant, green = how much it sways, anchored at its foot) sway in a
+    gusting field that follows the wind; near things shift against far ones as
+    the pointer moves or the phone tilts (depth parallax; far ridges and the sky
+    stay put so the mask still fits); the water ripples (waves measured on the
+    screen — measured on the photo they banded the shallows like a blind); the
+    beach's swash runs up the sand and slides back (`<id>-shore.png`, a
+    waterline traced by eye: the water map stops at the deep turquoise); the
+    overcast photo fades in; leaves turn gold and rust in autumn and dull in
+    winter by the visitor's hemisphere (`SEASONS`: Montreal's trees and the
+    meadow, not the spruce, pines or tropics); wet ground darkens and shines,
+    and snow lies on surfaces that face up (the depth map's slope). Without
+    WebGL the CSS photo and the 2D water show as before.
+  - **Rain and snow as a camera records them**: far drops fine and many, near
+    ones wide, soft and nearly clear (out of focus in front of the lens), drawn
+    to lighten what is behind; splashes where rain lands on nearby upward
+    ground; snow soft, near flakes big blurs. No freely licensed rain or snow
+    footage shot on black exists on Commons, so this is drawn — the one thing
+    in the sky still drawn by day.
+  - **Real lightning, Milky Way and moon** (`assets/weather/skies/make-night.py`,
+    `night.json` for credits): five strokes keyed out of real photographs
+    (CC BY), drawn into the sky so a ridge hides their foot and again over the
+    rain's haze so they stay the brightest thing in the frame; a National Park
+    Service photograph of the Milky Way behind a clear night (faint over the
+    city); NASA's LRO near-side mosaic as the moon, made grey and even as the
+    eye sees it, clipped to the real phase and turned to the sky's north here.
+  - **Sharper photos**: 3000 px from the Commons originals on a big screen, a
+    1600 copy on a phone (`BIG`); masks at 2000, the other maps at 800.
+  - **More than one sky of each kind**: `make-skies.py` entries carry a `kind`;
+    the page picks one clip of the needed kind once a visit (`variant`).
+  - **What was tried and dropped**: swapping in real photos of the same view in
+    other weather. Montreal has night and late-winter shots from Mount Royal,
+    but from a different spot on the lookout — feature matching found too few
+    agreeing points to line them up (the near round building and the towers
+    behind shift against each other), and nothing on Commons matches the other
+    scenes' viewpoints. The relit overcast photo and the drawn night stand in.
   - **The sky is real footage** (Ric: "i dont want people to be able to tell
     they are ai generated. and they have to move"). Drawn clouds, however
     tuned, read as drawn next to a photograph, so by day — and whenever there
     is cloud — the sky behind every scene is a real time-lapse: seven loops in
     `assets/weather/skies/` (clear, fair, grey, rain, storm, sunset, dusk), cut
-    by `make-skies.py` from freely licensed Commons clips (public domain or CC
+    by `make-skies.py` (1920 px) from freely licensed Commons clips (public domain or CC
     BY, never share-alike): one continuous stretch, the sky only, the last
     second cross-faded into the first so it loops with no jump, motion
     interpolated to twice the frame rate so the page can play it slowly. Each

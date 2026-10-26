@@ -1,0 +1,65 @@
+{
+ "bolts": [
+  {
+   "title": "3 Near-Simultaneous Lightning Strikes on One Exposure",
+   "url": "https://commons.wikimedia.org/wiki/File:3_Near-Simultaneous_Lightning_Strikes_on_One_Exposure.jpg",
+   "by": "Rollingskyphoto",
+   "licence": "CC BY 4.0",
+   "file": "bolt-0.png",
+   "w": 700,
+   "h": 577
+  },
+  {
+   "title": "3 Near-Simultaneous Lightning Strikes on One Exposure",
+   "url": "https://commons.wikimedia.org/wiki/File:3_Near-Simultaneous_Lightning_Strikes_on_One_Exposure.jpg",
+   "by": "Rollingskyphoto",
+   "licence": "CC BY 4.0",
+   "file": "bolt-1.png",
+   "w": 700,
+   "h": 464
+  },
+  {
+   "title": "CG lightning strike - Flickr - Axel Rouvin",
+   "url": "https://commons.wikimedia.org/wiki/File:CG_lightning_strike_-_Flickr_-_Axel_Rouvin.jpg",
+   "by": "Axel Rouvin from Paris, France",
+   "licence": "CC BY 2.0",
+   "file": "bolt-2.png",
+   "w": 700,
+   "h": 692
+  },
+  {
+   "title": "Lightning Strikes (70479607)",
+   "url": "https://commons.wikimedia.org/wiki/File:Lightning_Strikes_(70479607).jpeg",
+   "by": "Dan Perry",
+   "licence": "CC BY 3.0",
+   "file": "bolt-3.png",
+   "w": 700,
+   "h": 445
+  },
+  {
+   "title": "Lightning strike in the evening",
+   "url": "https://commons.wikimedia.org/wiki/File:Lightning_strike_in_the_evening.jpg",
+   "by": "\u0412\u0430\u043b\u0435\u0440\u0438\u044f \u0411\u043e\u0431\u044b\u043b\u0435\u043d\u043a\u043e",
+   "licence": "CC BY 4.0",
+   "file": "bolt-4.png",
+   "w": 700,
+   "h": 668
+  }
+ ],
+ "stars": {
+  "title": "Milky Way and starry night sky (26972689115)",
+  "url": "https://commons.wikimedia.org/wiki/File:Milky_Way_and_starry_night_sky_(26972689115).jpg",
+  "by": "NPS/Jacob W. Frank",
+  "licence": "Public domain",
+  "file": "stars.jpg",
+  "w": 2400,
+  "h": 640
+ },
+ "moon": {
+  "title": "Moon nearside LRO color mosaic",
+  "url": "https://commons.wikimedia.org/wiki/File:Moon_nearside_LRO_color_mosaic.png",
+  "by": "NASA/GSFC/Arizona State University",
+  "licence": "Public domain",
+  "file": "moon.png"
+ }
+}

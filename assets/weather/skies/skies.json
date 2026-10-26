@@ -1,16 +1,16 @@
 {
  "clear": {
-  "w": 1280,
-  "h": 532,
-  "seconds": 13.9,
+  "w": 1920,
+  "h": 800,
+  "seconds": 14.0,
   "title": "2020-04-29 timelapse-nuages-Belfort",
   "url": "https://commons.wikimedia.org/wiki/File:2020-04-29_timelapse-nuages-Belfort.webm",
   "by": "Thomas Bresson",
   "licence": "CC BY 4.0"
  },
  "dusk": {
-  "w": 1280,
-  "h": 720,
+  "w": 1920,
+  "h": 1080,
   "seconds": 8.5,
   "title": "Second Glow (video)",
   "url": "https://commons.wikimedia.org/wiki/File:Second_Glow_%28video%29.webm",
@@ -18,48 +18,88 @@
   "licence": "CC BY 2.0"
  },
  "fair": {
-  "w": 1280,
-  "h": 720,
-  "seconds": 22.6,
+  "w": 1920,
+  "h": 1080,
+  "seconds": 22.7,
   "title": "Clouds transformations",
   "url": "https://commons.wikimedia.org/wiki/File:Clouds_transformations.webm",
   "by": "Igor da Bari",
   "licence": "CC BY 4.0"
  },
+ "fair-3": {
+  "kind": "fair",
+  "w": 1920,
+  "h": 518,
+  "seconds": 31.0,
+  "title": "Atmospheric convection over New Braunfels",
+  "url": "https://commons.wikimedia.org/wiki/File:Atmospheric_convection_over_New_Braunfels.webm",
+  "by": "Brainandforce",
+  "licence": "CC BY 4.0"
+ },
+ "fair-4": {
+  "kind": "fair",
+  "w": 1920,
+  "h": 378,
+  "seconds": 41.0,
+  "title": "Grand Canyon Nat Park- Time-lapse Video from Yaki Point (8931531533)",
+  "url": "https://commons.wikimedia.org/wiki/File:Grand_Canyon_Nat_Park-_Time-lapse_Video_from_Yaki_Point_%288931531533%29.webm",
+  "by": "Grand Canyon National Park (NPS)",
+  "licence": "public domain"
+ },
  "grey": {
-  "w": 1280,
-  "h": 720,
-  "seconds": 20.4,
+  "w": 1920,
+  "h": 1080,
+  "seconds": 20.5,
   "title": "Clouds (time lapse)",
   "url": "https://commons.wikimedia.org/wiki/File:Clouds_%28time_lapse%29.webm",
   "by": "YouTube channel Editor",
   "licence": "CC BY 3.0"
  },
  "rain": {
-  "w": 1280,
-  "h": 446,
-  "seconds": 9.3,
+  "w": 1920,
+  "h": 670,
+  "seconds": 9.4,
   "title": "Cloudy sunset on the edge of small town. HD 1080p Timelapse (video)",
   "url": "https://commons.wikimedia.org/wiki/File:Cloudy_sunset_on_the_edge_of_small_town._HD_1080p_Timelapse_%28video%29.webm",
   "by": "Sparkus Design",
   "licence": "CC BY 2.0"
  },
  "storm": {
-  "w": 1280,
-  "h": 532,
-  "seconds": 6.5,
+  "w": 1920,
+  "h": 800,
+  "seconds": 6.6,
   "title": "Orage en Alsace dans la nuit du 1er juin - Colmar vers 18h30 le 31 mai",
   "url": "https://commons.wikimedia.org/wiki/File:Orage_en_Alsace_dans_la_nuit_du_1er_juin_-_Colmar_vers_18h30_le_31_mai.webm",
   "by": "France 3 Grand Est",
   "licence": "CC BY 3.0"
  },
  "sunset": {
-  "w": 1280,
-  "h": 404,
+  "w": 1920,
+  "h": 604,
   "seconds": 10.8,
   "title": "Clouds transformation",
   "url": "https://commons.wikimedia.org/wiki/File:Clouds_transformation.webm",
   "by": "Igor da Bari",
   "licence": "CC BY 4.0"
+ },
+ "sunset-2": {
+  "kind": "sunset",
+  "w": 1920,
+  "h": 280,
+  "seconds": 9.5,
+  "title": "Timelapse Joshua Tree Clouds and Sunset Near West Entrance",
+  "url": "https://commons.wikimedia.org/wiki/File:Timelapse_Joshua_Tree_Clouds_and_Sunset_Near_West_Entrance.webm",
+  "by": "Joshua Tree National Park (NPS)",
+  "licence": "public domain"
+ },
+ "sunset-3": {
+  "kind": "sunset",
+  "w": 1920,
+  "h": 584,
+  "seconds": 13.3,
+  "title": "Sunset timelapse on the beach in Libreville, Gabon",
+  "url": "https://commons.wikimedia.org/wiki/File:Sunset_timelapse_on_the_beach_in_Libreville%2C_Gabon.webm",
+  "by": "In Old News",
+  "licence": "CC0"
  }
 }

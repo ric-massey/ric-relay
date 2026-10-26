@@ -4,6 +4,14 @@
   <id>-sky.png      where the sky is: cloud, stars, the sun and moon go there
   <id>-water.png    where the water is: it ripples, glitters and takes the rain
   <id>-lights.json  the city's windows and tower tops: lit at night, the tops red
+  <id>-depth.png    how far away each pixel is (near white, far black): haze and
+                    fog by real distance, cloud shadows on the ground, lightning
+  <id>-shore.png    on a beach, the band either side of the waterline and the way
+                    to the sea (RG) — the page pulls the photo's own water and
+                    foam up the sand with each wave and lets it slide back
+  <id>-flat.jpg     the photo as it would look under an overcast sky — its hard
+                    sun shadows lifted, highlights tamed — cross-faded in as the
+                    sky greys over (Ric: "what else can you do to improve it?")
 
 Ric, 2026-10-25: "we need to make the pictures feel real so the ocean will have
 the water moving the city will have lights flickering and on."
@@ -62,8 +70,9 @@ from scipy import ndimage
 
 HERE = Path(__file__).resolve().parent
 CACHE = HERE / ".scene-cache"
-WIDTH = 800          # the water maps' width (the sky mask is made at the photo's own)
-PHOTO = 1600         # the scene photos' long side
+WIDTH = 800          # the water, depth and plant maps' width
+PHOTO = 3000         # the scene photos' long side (and a 1600 copy for phones: <id>-1600.jpg)
+MASK = 2000          # the sky mask's width
 
 # the photos' originals on Commons, and the JPEG quality each is saved at
 SOURCES = {
@@ -95,7 +104,7 @@ def original(sid):
         ctx = ssl.create_default_context(cafile="/etc/ssl/cert.pem")
         ua = {"User-Agent": "RicsWebsite-scene-maps/1.0 (personal site; ricmassey.com)"}
         q = urllib.parse.urlencode({"action": "query", "titles": "File:" + SOURCES[sid][0], "prop": "imageinfo",
-                                    "iiprop": "url", "iiurlwidth": 2400, "format": "json"})
+                                    "iiprop": "url", "iiurlwidth": PHOTO, "format": "json"})
         pg = next(iter(json.load(urllib.request.urlopen(urllib.request.Request(
             "https://commons.wikimedia.org/w/api.php?" + q, headers=ua), context=ctx))["query"]["pages"].values()))
         out.write_bytes(urllib.request.urlopen(urllib.request.Request(pg["imageinfo"][0]["thumburl"], headers=ua), context=ctx).read())
@@ -106,9 +115,13 @@ def original(sid):
     return clean
 
 
+PLANTS = ("tree", "grass", "plant", "palm", "flower")
+
+
 def sky_probability(im):
-    """the model's chance that each pixel is sky: the whole picture for context,
-    overlapping full-size tiles for detail"""
+    """the model's chance that each pixel is sky, and that it is a plant (tree,
+    grass, plant, palm, flower — what the wind moves): the whole picture for
+    context, overlapping full-size tiles for detail"""
     global _model
     import torch
     from transformers import SegformerForSemanticSegmentation
@@ -116,6 +129,7 @@ def sky_probability(im):
     if _model is None:
         _model = SegformerForSemanticSegmentation.from_pretrained(MODEL).to(dev).eval()
     sky_id = next(k for k, v in _model.config.id2label.items() if v == "sky")
+    plant_ids = [k for k, v in _model.config.id2label.items() if v in PLANTS]
     mean, std = np.array([0.485, 0.456, 0.406]), np.array([0.229, 0.224, 0.225])
 
     def probs(img):
@@ -124,18 +138,20 @@ def sky_probability(im):
         with torch.no_grad():
             lo = _model(pixel_values=x).logits
         lo = torch.nn.functional.interpolate(lo, size=a.shape[:2], mode="bilinear", align_corners=False)
-        return torch.softmax(lo, 1)[0, sky_id].cpu().numpy()
+        sm = torch.softmax(lo, 1)[0]
+        return torch.stack([sm[sky_id], sm[plant_ids].sum(0)]).cpu().numpy()
 
     W0, H0 = im.size
     s = 768 / max(W0, H0)
-    ctx = np.asarray(Image.fromarray(probs(im.resize((round(W0 * s), round(H0 * s)), Image.LANCZOS))).resize((W0, H0), Image.BILINEAR))
+    small = probs(im.resize((round(W0 * s), round(H0 * s)), Image.LANCZOS))
+    ctx = np.stack([np.asarray(Image.fromarray(c).resize((W0, H0), Image.BILINEAR)) for c in small])
     T, step = 640, 448
-    acc, wt = np.zeros((H0, W0), np.float32), np.zeros((H0, W0), np.float32)
+    acc, wt = np.zeros((2, H0, W0), np.float32), np.zeros((H0, W0), np.float32)
     for y in sorted(set(list(range(0, max(1, H0 - T), step)) + [max(0, H0 - T)])):
         for x in sorted(set(list(range(0, max(1, W0 - T), step)) + [max(0, W0 - T)])):
-            acc[y:y + T, x:x + T] += probs(im.crop((x, y, x + T, y + T)))
+            acc[:, y:y + T, x:x + T] += probs(im.crop((x, y, x + T, y + T)))
             wt[y:y + T, x:x + T] += 1
-    return 0.35 * ctx + 0.65 * acc / np.maximum(wt, 1)
+    return 0.35 * ctx + 0.65 * acc / np.maximum(wt, 1)[None]
 
 
 def guided(I, p, r, eps):
@@ -158,9 +174,10 @@ def guided(I, p, r, eps):
 def mask_for(path, sid):
     """returns the mask (LA image, sky in alpha), the share that is sky, and the
     photo with its edge pixels decontaminated"""
-    im = original(sid)
+    full = original(sid)
+    im = full.resize((MASK, round(full.height * MASK / full.width)), Image.LANCZOS)
     W0, H0 = im.size
-    p = sky_probability(im)
+    p, plants = sky_probability(im)
     p[round(H0 * FLOOR.get(sid, 1)):] = 0
     hard = p > 0.5
     lab, _ = ndimage.label(hard)
@@ -219,11 +236,14 @@ def mask_for(path, sid):
     edge_zone = (ndimage.distance_transform_edt(alpha < 0.5) <= 40) & (ksky > 0.05)
     darker = np.clip((sky_lum - lum - 0.10) / 0.12, 0, 1)
     alpha = np.where(edge_zone, alpha * (1 - darker), alpha)
-    # decontaminate: in edge pixels take out the old sky's colour B,
-    # F = (I − αB) / (1 − α), where B is the sky's colour nearby
+    # decontaminate, on the full-size photo: in edge pixels take out the old
+    # sky's colour B, F = (I − αB) / (1 − α), where B is the sky's colour nearby
     import cv2
+    m = Image.fromarray((alpha * 255 + 0.5).astype(np.uint8))
+    alpha = np.asarray(m.resize(full.size, Image.BILINEAR)).astype(np.float32) / 255
+    I = np.asarray(full).astype(np.float32) / 255
     sure = (alpha > 0.98).astype(np.float32)
-    blur = lambda x: cv2.GaussianBlur(x, (0, 0), 9)
+    blur = lambda x: cv2.GaussianBlur(x, (0, 0), 9 * full.width / MASK)
     B = np.stack([blur(I[..., c] * sure) for c in range(3)], -1) / np.maximum(blur(sure), 1e-4)[..., None]
     # only where the pixel is mostly land: dividing by a small 1 − α turned noise
     # into a jagged white line along Montreal's skyline (seen 2026-10-25), and a
@@ -234,10 +254,12 @@ def mask_for(path, sid):
     out = I.copy()
     out[band] = np.clip(F[band], 0, 1)
     photo = Image.fromarray((out * 255 + 0.5).astype(np.uint8))
-    m = Image.fromarray((alpha * 255 + 0.5).astype(np.uint8))
     mask = Image.new("LA", m.size, 255)
     mask.putalpha(m)
-    return mask, float((alpha > 0.5).mean()), photo
+    # what the wind moves, at the maps' width, never in the sky
+    pl = np.clip((plants - 0.35) / 0.4, 0, 1) * (1 - np.asarray(m).astype(np.float32) / 255)
+    plant_png = plant_map(pl, W0, H0)
+    return mask, float((alpha > 0.5).mean()), photo, plant_png, alpha
 
 
 # where the water is: the rows it lies between (shares of the height), and
@@ -260,6 +282,116 @@ WATER = {
     "mountains": {"rows": (0.62, 0.95), "seed": (0.3, 0.8), "kind": "deep"},
     "water": {"rows": (0.657, 1.0), "all": True},
 }
+
+
+DEPTH_MODEL = "depth-anything/Depth-Anything-V2-Base-hf"
+_depth = None
+
+
+def depth_for(photo, sky_alpha):
+    """Depth Anything V2 (run once, offline): relative inverse depth, 1 near …
+    0 far, at 800 px. The sky is set to 0 (as far as there is)."""
+    global _depth
+    import torch
+    from transformers import AutoImageProcessor, AutoModelForDepthEstimation
+    dev = "mps" if torch.backends.mps.is_available() else "cpu"
+    if _depth is None:
+        _depth = (AutoImageProcessor.from_pretrained(DEPTH_MODEL), AutoModelForDepthEstimation.from_pretrained(DEPTH_MODEL).to(dev).eval())
+    proc, model = _depth
+    with torch.no_grad():
+        d = model(**proc(images=photo, return_tensors="pt").to(dev)).predicted_depth
+    d = torch.nn.functional.interpolate(d[None], size=photo.size[::-1], mode="bicubic", align_corners=False)[0, 0].cpu().numpy()
+    land = 1 - sky_alpha
+    lo, hi = np.percentile(d[land > 0.5], 1), np.percentile(d[land > 0.5], 99.5)
+    d = np.clip((d - lo) / (hi - lo), 0, 1) * land
+    h = round(photo.height * WIDTH / photo.width)
+    return Image.fromarray((d * 255 + 0.5).astype(np.uint8)).resize((WIDTH, h), Image.LANCZOS)
+
+
+def flat_for(photo, sky_alpha):
+    """the photo under overcast light: the large-scale light (a heavily
+    smoothed copy of the brightness, edges kept by a guided filter) squeezed
+    towards its mean, the fine detail kept, a little cooler and less saturated"""
+    import cv2
+    I = np.asarray(photo).astype(np.float32) / 255
+    lum = np.maximum(I @ np.array([0.299, 0.587, 0.114], np.float32), 1e-3)
+    L = np.log(lum)
+    base = cv2.ximgproc.guidedFilter(L, L, 24, 0.02) if hasattr(cv2, "ximgproc") else _gray_guided(L, 24, 0.02)
+    land = (1 - sky_alpha) > 0.5
+    m = float(np.mean(base[land]))
+    base2 = m + (base - m) * 0.42 - 0.08                    # flatter, a touch darker overall
+    L2 = base2 + (L - base)
+    k = np.exp(L2) / lum
+    out = I * k[..., None]
+    g = out @ np.array([0.299, 0.587, 0.114], np.float32)
+    out = g[..., None] + (out - g[..., None]) * 0.82        # less saturated
+    out *= np.array([0.97, 0.99, 1.04], np.float32)          # cooler
+    out = np.where(land[..., None], out, I)                  # the sky is replaced anyway
+    return Image.fromarray(np.clip(out * 255 + 0.5, 0, 255).astype(np.uint8))
+
+
+def _gray_guided(I, r, eps):
+    import cv2
+    box = lambda x: cv2.boxFilter(x, -1, (2 * r + 1, 2 * r + 1))
+    mI = box(I); var = box(I * I) - mI * mI
+    a = var / (var + eps); b = mI - a * mI
+    return box(a) * I + box(b)
+
+
+def plant_map(pl, W0, H0):
+    """two things in one image: red is plant at all (the seasons colour all of
+    it), green how much it sways (anchored at its foot) — kept apart because
+    trees rising from the photo's bottom edge got no autumn when one weight did
+    both. RGB, not alpha: a browser loses colour where alpha is 0"""
+    pm = Image.fromarray((pl * 255 + 0.5).astype(np.uint8)).resize((WIDTH, round(H0 * WIDTH / W0)), Image.LANCZOS)
+    sway = anchored(pm)
+    return Image.merge("RGB", (pm, sway, Image.new("L", pm.size, 0)))
+
+
+def anchored(pm):
+    """a plant moves more the higher up it is: its roots and the foot of its
+    trunk are anchored, its crown sways. Each plant pixel is weighted by how
+    many plant pixels stand under it in its column (0 at the base, full by 70
+    px up at the maps' width)"""
+    a = np.asarray(pm).astype(np.float32) / 255
+    on = a > 0.15
+    run = np.zeros_like(a)
+    for y in range(a.shape[0] - 2, -1, -1):
+        run[y] = np.where(on[y], run[y + 1] + 1, 0)
+    w = np.clip(run / 70, 0, 1)
+    return Image.fromarray((a * (w * w * (3 - 2 * w)) * 255 + 0.5).astype(np.uint8))
+
+
+# beaches whose swash moves: the waterline where wet sand meets the last thin
+# foam, traced by eye (shares of width and height) — the water map stops at the
+# deep turquoise, out past the shallows, so it cannot say where the waves run —
+# and how far up and down the sand a wave runs, px at the maps' width
+SHORE = {"beach": ([(0.2, 0.68), (0.235, 0.74), (0.29, 0.8), (0.37, 0.85), (0.47, 0.885),
+                    (0.58, 0.915), (0.7, 0.955), (0.82, 0.99), (0.9, 1.01)], 18)}
+
+
+def shore_for(sid):
+    if sid not in SHORE:
+        return None
+    line, reach = SHORE[sid]
+    w = Image.open(HERE / f"{sid}-water.png")
+    W0, H0 = w.size
+    pts = np.array([(x * W0, y * H0) for x, y in line], np.float32)
+    yy, xx = np.mgrid[0:H0, 0:W0].astype(np.float32)
+    best = np.full((H0, W0), 1e9, np.float32)
+    nx, ny = np.zeros_like(best), np.zeros_like(best)
+    for (x0, y0), (x1, y1) in zip(pts[:-1], pts[1:]):
+        dx, dy = x1 - x0, y1 - y0
+        t = np.clip(((xx - x0) * dx + (yy - y0) * dy) / (dx * dx + dy * dy), 0, 1)
+        d = np.hypot(xx - (x0 + t * dx), yy - (y0 + t * dy))
+        L = np.hypot(dx, dy)
+        closer = d < best
+        best = np.where(closer, d, best)
+        nx = np.where(closer, dy / L, nx)                          # the normal on the sea's side (up and right)
+        ny = np.where(closer, -dx / L, ny)
+    band = ndimage.gaussian_filter(np.clip(1 - best / reach, 0, 1), 1.5)
+    rgb = np.dstack([(nx * 0.5 + 0.5) * 255, (ny * 0.5 + 0.5) * 255, band * 255]).clip(0, 255).astype(np.uint8)
+    return Image.fromarray(rgb)
 
 
 def water_for(path, sid):
@@ -304,6 +436,7 @@ def lights_for(path, sid, sky_png):
     if not spec:
         return None
     im = Image.open(path).convert("RGB")
+    im = im.resize((1600, round(im.height * 1600 / im.width)), Image.LANCZOS)   # the window grid was tuned at 1600
     W0, H0 = im.size
     a = np.asarray(im).astype(np.float32)
     r, g, b = a[..., 0], a[..., 1], a[..., 2]
@@ -351,17 +484,27 @@ def main(args):
         i = args.index("--sheet")
         sheet = Path(args[i + 1])
         args = args[:i] + args[i + 2:]
-    ids = args or sorted(p.stem for p in HERE.glob("*.jpg") if not p.stem.endswith("-thumb"))
+    ids = args or sorted(SOURCES)
     tiles = []
     for sid in ids:
-        out, share, photo = mask_for(HERE / f"{sid}.jpg", sid)
+        out, share, photo, plants, sky_a = mask_for(HERE / f"{sid}.jpg", sid)
         out.save(HERE / f"{sid}-sky.png", optimize=True)
-        photo.save(HERE / f"{sid}.jpg", "JPEG", quality=SOURCES[sid][1], optimize=True, progressive=True)
+        plants.save(HERE / f"{sid}-plants.png", optimize=True)
+        q = SOURCES[sid][1]
+        save = lambda im, name: im.save(HERE / name, "JPEG", quality=q, optimize=True, progressive=True)
+        small = lambda im: im.resize((1600, round(im.height * 1600 / im.width)), Image.LANCZOS)
+        flat = flat_for(photo, sky_a)
+        save(photo, f"{sid}.jpg"); save(small(photo), f"{sid}-1600.jpg")
+        save(flat, f"{sid}-flat.jpg"); save(small(flat), f"{sid}-flat-1600.jpg")
+        depth_for(small(photo), np.asarray(Image.fromarray((sky_a * 255).astype(np.uint8)).resize((1600, round(photo.height * 1600 / photo.width)))).astype(np.float32) / 255).save(HERE / f"{sid}-depth.png", optimize=True)
         print(f"{sid:10} sky {share:5.1%}  {(HERE / f'{sid}-sky.png').stat().st_size // 1024} KB")
         wet, wshare = water_for(HERE / f"{sid}.jpg", sid)
         if wet:
             wet.save(HERE / f"{sid}-water.png", optimize=True)
             print(f"{'':10} water {wshare:5.1%}")
+            sh = shore_for(sid)
+            if sh:
+                sh.save(HERE / f"{sid}-shore.png", optimize=True)
         lit = lights_for(HERE / f"{sid}.jpg", sid, HERE / f"{sid}-sky.png")
         if lit:
             (HERE / f"{sid}-lights.json").write_text(json.dumps(lit, separators=(",", ":")) + "\n")

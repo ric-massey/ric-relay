@@ -513,6 +513,16 @@ console.log('\nRULE  two pages, one room: Weather for everyone, Weather Pro for 
     const dir = 'assets/weather/scenes/';
     ok(ids.length >= 7 && ids.every(id => [`${id}.jpg`, `${id}-thumb.jpg`, `${id}-sky.png`].every(f => fs.existsSync(new URL(dir + f, root)))),
       `every photo scene has its photo, thumb and sky mask (${ids.join(', ')})`);
+    ok(ids.every(id => [`${id}-1600.jpg`, `${id}-flat-1600.jpg`, `${id}-plants.png`].every(f => fs.existsSync(new URL(dir + f, root)))) && fs.existsSync(new URL(dir + 'beach-shore.png', root)),
+      'every photo scene has its phone-size copies and its plant map (sway, seasons); the beach its shore map (the swash)');
+    {
+      const night = JSON.parse(fs.readFileSync(new URL('assets/weather/skies/night.json', root), 'utf8'));
+      const items = [...night.bolts, night.stars, night.moon];
+      ok(night.bolts.length >= 3 && items.every(x => fs.existsSync(new URL('assets/weather/skies/' + x.file, root)) && /^https:\/\/commons\.wikimedia\.org\//.test(x.url) && /^(CC BY \d|CC0|public domain)/i.test(x.licence) && !/SA/.test(x.licence)),
+        'the real lightning, Milky Way and moon are on disk, from Commons, under licences that ask only for credit');
+    }
+    ok(ids.every(id => [`${id}-depth.png`, `${id}-flat.jpg`].every(f => fs.existsSync(new URL(dir + f, root)))),
+      'every photo scene has its depth map and its overcast-light version (haze by distance, cloud shadows, no sunlit rock under a storm)');
     /* the pictures' own life (2026-10-25): Ric — "the ocean will have the water moving the city will have lights flickering" */
     const wet = (scene.match(/const WET = new Set\(\[([^\]]*)\]\)/) || [, ''])[1].match(/[a-z]+/g) || [];
     const glow = Object.keys(Function(`return ${(scene.match(/const GLOW = (\{[^}]*\})/) || [, '{}'])[1]}`)());
@@ -528,7 +538,7 @@ console.log('\nRULE  two pages, one room: Weather for everyone, Weather Pro for 
       `every real sky the scene can pick has its WebM, its H.264 for Safari and its still (${skyIds.join(', ')})`);
     ok(skyIds.every(id => skies[id] && skies[id].by && /^https:\/\/commons\.wikimedia\.org\//.test(skies[id].url) && /^(CC BY \d|CC0|public domain)/i.test(skies[id].licence) && !/SA/.test(skies[id].licence)),
       'every real sky is credited to its maker on Commons, under a licence that asks only for credit');
-    const exif = ids.flatMap(id => [`${id}.jpg`, `${id}-thumb.jpg`]).filter(f => fs.readFileSync(new URL(dir + f, root)).subarray(0, 65536).includes('Exif\0'));
+    const exif = [...ids.flatMap(id => [`${id}.jpg`, `${id}-1600.jpg`, `${id}-thumb.jpg`, `${id}-flat.jpg`, `${id}-flat-1600.jpg`]), '../skies/stars.jpg'].filter(f => fs.readFileSync(new URL(dir + f, root)).subarray(0, 65536).includes('Exif\0'));
     ok(exif.length === 0, `no scene photo carries EXIF, so no GPS (${exif.join(', ') || 'none'})`);
     ok(!/WxScene\.preview/.test(app) && /gust: c\.gust\.v/.test(app),
       'the page never previews a weather — the scene shows only the reading, gusts included');

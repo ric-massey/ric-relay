@@ -23,6 +23,10 @@
                         — dust, sand, grit, spray, leaves; spindrift streams off
                         Cerro Torre's summits; rain lays the dust, snow blows
      storm              darker still, and strokes down through open sky to the land
+     the photo itself   on the GPU: plants sway, near things shift as you move,
+                        water ripples, the swash runs up the beach, leaves turn
+                        with the season, wet ground shines, snow lies
+     the night          a real Milky Way and the real moon; real lightning
      day and night      from the sun's real height at the place (astro.js): the
                         sky's colour, the land's light, stars as it darkens; the
                         sun and moon drawn where they are, the moon at its phase
@@ -51,6 +55,12 @@
     cv = root.querySelector("canvas"), flashEl = root.querySelector(".flash");
   /* the photo's water, redrawn moving (drawWater): its own canvas between the
      photo and the light, carrying the photo's filter so it darkens with it */
+  /* the same photo under overcast light (<id>-flat.jpg, scene-maps.py), faded
+     in as the sky greys over and once the sun is down: no direct sun, no hard
+     shadows — under a storm sky the rock no longer looks sunlit */
+  const flatEl = document.createElement("div");
+  flatEl.className = "photo flat";
+  root.insertBefore(flatEl, photo.nextSibling);
   const waterCv = document.createElement("canvas");
   waterCv.className = "water";
   root.insertBefore(waterCv, tint);
@@ -65,6 +75,8 @@
   /* `horizon` is where the sky ends in the picture, as a share of its height
      from the top: stars, the moon and lightning bolts stay above it. `sky:
      true` is the picture-less scene, which draws its own clouds and sun. */
+  /* a big screen gets the 3000 px photo, a phone the 1600 px copy */
+  const BIG = Math.max(screen.width || 0, screen.height || 0) * (window.devicePixelRatio || 1) > 1900;
   const SCENES = [
     { id: "sky", name: "Sky", sky: true, horizon: 1, say: "The sky's own colour, and the weather in it." },
     /* the photos: all from Wikimedia Commons, public domain or CC BY (never
@@ -95,7 +107,7 @@
         url: "https://commons.wikimedia.org/wiki/File:Cerro_Torre_(5457586054).jpg" })
   ];
   function scenePhoto(id, name, horizon, pos, credit) {
-    return { id, name, horizon, pos, credit, photo: `assets/weather/scenes/${id}.jpg`, thumb: `assets/weather/scenes/${id}-thumb.jpg` };
+    return { id, name, horizon, pos, credit, photo: `assets/weather/scenes/${id}${BIG ? "" : "-1600"}.jpg`, thumb: `assets/weather/scenes/${id}-thumb.jpg` };
   }
 
   let scene = SCENES.find((s) => s.id === store.get("wx:scene", "sky")) || SCENES[0];
@@ -130,7 +142,7 @@
       return { name, elev, sun: null, at: t, lat: s.lat,
         dark: clamp((2 - elev) / 16, 0, 1),                      // 0 by day … 1 from 14° below
         warm: clamp(1 - Math.abs(elev - 1) / 10, 0, 1),          // the low sun's colour, most at sunrise and sunset
-        sunPos: su, moon: { alt: mo.alt, az: mo.az, fraction: ml.fraction, phase: ml.phase, limb: A.limb(t, s.lat, s.lon) } };
+        sunPos: su, moon: { alt: mo.alt, az: mo.az, pa: mo.pa, fraction: ml.fraction, phase: ml.phase, limb: A.limb(t, s.lat, s.lon) } };
     }
     return phaseByClock(s);
   }
@@ -183,6 +195,12 @@
     return { kind: k, phase, rain, snow, fog, vis, cloud, wind, windDir: s.windDir, blow, gusty, dirX, storm: k === "storm", stars };
   }
 
+  /* how much the light is overcast light: grey cloud, rain, snow, fog, a storm,
+     or the sun below the horizon */
+  function overcast(f) {
+    const P = f.phase, sunDown = P.elev != null ? clamp((3 - P.elev) / 8, 0, 1) : P.dark;
+    return Math.max(clamp((f.cloud - 0.55) / 0.35, 0, 1), f.rain || f.snow || f.storm ? 1 : 0, clamp((f.fog - 0.2) / 0.3, 0, 1), sunDown);
+  }
   /* ── the picture: a filter and a colour over it ── */
   function paintStill() {
     const f = fx;
@@ -197,18 +215,26 @@
       /* daylight on the picture: the more cloud, the flatter and darker; the
          lower the sun, the darker; a storm darker still */
       const wet = f.rain || f.snow, P = f.phase;
-      let b = 1 - f.cloud * 0.22 - (wet ? 0.14 : 0) - (f.storm ? 0.16 : 0);
+      /* the overcast photo (flatEl) carries most of what cloud does to the light
+         now; this only takes the edge off, or a bright day reads as dusk */
+      let b = 1 - f.cloud * 0.1 - (wet ? 0.12 : 0) - (f.storm ? 0.16 : 0);
       let sat = 1 - f.cloud * 0.35 - (wet ? 0.15 : 0) - f.fog * 0.3;
       /* the land goes dark with the sky; a high moon in a clear sky gives some back */
       const m = P.moon, moonlit = m && m.alt > 0 ? m.fraction * Math.min(1, m.alt / (25 * DEG)) * (1 - f.cloud) : 0;
       b *= 1 - P.dark * (0.74 - moonlit * 0.14);
       sat *= 1 - P.dark * 0.5 + P.warm * 0.12 * (1 - P.dark);
       photo.style.filter = `brightness(${b.toFixed(2)}) saturate(${sat.toFixed(2)})`;
-      waterCv.style.filter = photo.style.filter;
+      waterCv.style.filter = flatEl.style.filter = glCv.style.filter = photo.style.filter;
+      const fw = `url("assets/weather/scenes/${scene.id}-flat${BIG ? "" : "-1600"}.jpg")`;
+      if (flatEl.style.backgroundImage !== fw) flatEl.style.backgroundImage = fw;
+      flatEl.style.backgroundPosition = photo.style.backgroundPosition;
+      flatEl.style.opacity = overcast(f).toFixed(2);
     } else {
-      photo.style.backgroundImage = "";
-      photo.style.filter = "";
+      photo.style.backgroundImage = flatEl.style.backgroundImage = "";
+      photo.style.filter = flatEl.style.filter = "";
+      flatEl.style.opacity = "0";
     }
+    grain.style.opacity = (0.26 + f.phase.dark * 0.22).toFixed(2);       // a camera's noise rises in the dark
     /* the colour of the light on the land: the low sun's warmth (less under
        cloud), the blue of twilight and night, the grey of a wet day */
     const P = f.phase, wa = P.warm * (1 - P.dark * 0.6) * (1 - f.cloud * 0.7), nb = P.dark;
@@ -258,7 +284,7 @@
         return null;
       }
       m.img.onload = () => {
-        if (kind === "photo") { m.w = m.img.naturalWidth; m.h = m.img.naturalHeight; return done(); }
+        if (kind === "photo" || kind === "flat") { m.w = m.img.naturalWidth; m.h = m.img.naturalHeight; return done(); }
         try {
           const c = document.createElement("canvas");
           c.width = m.img.naturalWidth; c.height = m.img.naturalHeight;
@@ -270,7 +296,7 @@
         } catch (e) { m.data = null; }
         done();
       };
-      m.img.src = kind === "photo" ? sc.photo : `assets/weather/scenes/${sc.id}-${kind}.png`;
+      m.img.src = kind === "photo" ? sc.photo : kind === "flat" ? `assets/weather/scenes/${sc.id}-flat${BIG ? "" : "-1600"}.jpg` : `assets/weather/scenes/${sc.id}-${kind}.png`;
     }
     return m.w ? m : null;
   }
@@ -578,6 +604,7 @@
      spindrift in a wind — Cerro Torre, Torre Egger, Punta Herron and Standhardt. */
   /* scenes with water that moves, and with a town's light at night */
   const WET = new Set(["beach", "mountains", "water"]);
+  const SHORE = new Set(["beach"]);              // the swash runs up its sand (<id>-shore.png)
   const GLOW = { city: [255, 160, 90] };
   const GROUND = {
     crag: { kind: "dust", col: [204, 134, 92] },
@@ -714,7 +741,8 @@
         const y0 = Math.max(0, mr.y + wm.top * mr.h), y1 = Math.min(H, mr.y + wm.bottom * mr.h);
         const pts = wm.pts.map(([u, v]) => [mr.x + u * mr.w, mr.y + v * mr.h]).filter(([x, y]) => x > 0 && x < W && y > 0 && y < H)
           .map(([x, y]) => [x, y, clamp((y - y0) / Math.max(1, y1 - y0), 0, 1), rnd(2, 7), rnd(0, 6.28)]);
-        layers.water = { mask: wm, mr, img: ph.img, pr, y0, y1, pts, caps: [], rings: [],
+        const fl = overcast(f) > 0.5 && mapOf(scene, "flat");
+        layers.water = { mask: wm, mr, img: fl ? fl.img : ph.img, pr, y0, y1, pts, caps: [], rings: [],
           rough: clamp(f.wind / 45, 0, 1.3) + f.rain * 0.25 + (f.storm ? 0.3 : 0) };
       }
     }
@@ -746,12 +774,16 @@
       const tops = lj.json.tops.map(([u, v], i) => ({ x: r.x + u * r.w, y: r.y + v * r.h, ph: i * 0.07 }));
       layers.city = { wins, tops, share, next: 0 };
     }
+    const dmx = scene.photo && mapOf(scene, "depth");
+    if (dmx) dmx.spots = null;                                         // splash points are in screen pixels: remake them
+    layers.haze2 = scene.photo ? buildHaze(f) : null;
+    layers.shadows = scene.photo ? buildShadows(f) : null;
     nextFlash = f.storm ? performance.now() + rnd(800, 3000) : 0;
   }
   function newMote(g, b, dir, anywhere) {
     const z = Math.random();
     return { x: anywhere ? rnd(0, W) : dir > 0 ? -rnd(0, 0.2) * W : W * rnd(1, 1.2), y: H * rnd(g.kind === "leaves" ? 0.3 : 0.55, 1.02), z,
-      v: (220 + z * 620) * DPR * (0.45 + b * 0.8) * dir, lift: rnd(-30, 10) * DPR, len: rnd(8, 40) * (0.4 + z) * DPR * (0.5 + b),
+      v: (220 + z * 620) * DPR * (0.45 + b * 0.8) * dir, lift: rnd(-12, 6) * DPR, len: rnd(8, 40) * (0.4 + z) * DPR * (0.5 + b),
       a: (0.2 + z * 0.45) * rnd(0.6, 1), r: (0.8 + z * 2) * DPR, ph: rnd(0, 6.28), col: g.kind === "leaves" ? LEAVES[Math.floor(Math.random() * LEAVES.length)] : g.col };
   }
   /* each summit sends off puffs that grow and thin downwind */
@@ -769,6 +801,69 @@
     for (const p of plume) { p.age += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.r += 4 * DPR * dt; }
     plume = plume.filter((p) => p.age < p.life);
     if (plume.length > 600) plume.splice(0, plume.length - 600);
+  }
+  /* a raindrop's streak: soft across, brightest just behind its head */
+  let streakCv = null, flakeCv = null;
+  function streakImg() {
+    if (streakCv) return streakCv;
+    streakCv = document.createElement("canvas");
+    streakCv.width = 16; streakCv.height = 128;
+    const x = streakCv.getContext("2d"), im = x.createImageData(16, 128);
+    for (let y = 0; y < 128; y++) for (let i = 0; i < 16; i++) {
+      const across = Math.exp(-(((i - 7.5) / 3.2) ** 2)), along = Math.pow(y / 127, 1.6) * (1 - Math.max(0, (y - 118) / 10));
+      const o = (y * 16 + i) * 4;
+      im.data[o] = 225; im.data[o + 1] = 232; im.data[o + 2] = 242; im.data[o + 3] = 255 * across * along;
+    }
+    x.putImageData(im, 0, 0);
+    return streakCv;
+  }
+  function flakeImg() {
+    if (flakeCv) return flakeCv;
+    flakeCv = document.createElement("canvas");
+    flakeCv.width = flakeCv.height = 32;
+    const x = flakeCv.getContext("2d"), g = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+    g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.35, "rgba(255,255,255,.75)"); g.addColorStop(1, "rgba(255,255,255,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 32, 32);
+    return flakeCv;
+  }
+  /* where nearby ground faces up, from the depth map: where rain splashes */
+  function splashSpots() {
+    const dm = depthField();
+    if (!dm) return [];
+    if (dm.spots) return dm.spots;
+    const out = [], r = coverRect(dm.w, dm.h);
+    for (let n = 0; n < 6000 && out.length < 500; n++) {
+      const x = Math.floor(Math.random() * dm.w), y = 2 + Math.floor(Math.random() * (dm.h - 4));
+      const d = dm.data[(y * dm.w + x) * 4] / 255, below = dm.data[((y + 2) * dm.w + x) * 4] / 255, above = dm.data[((y - 2) * dm.w + x) * 4] / 255;
+      if (d > 0.45 && (below - above) * 30 > 0.5) out.push([r.x + (x + 0.5) / dm.w * r.w, r.y + (y + 0.5) / dm.h * r.h, d]);
+    }
+    return (dm.spots = out);
+  }
+  let splashes = [];
+  function drawSplashes(dt, live, lit) {
+    const f = fx;
+    if (!f.rain || f.snow || !scene.photo) { splashes = []; return; }
+    const spots = splashSpots();
+    if (!spots.length) return;
+    if (live) {
+      const n = f.rain * 90 * dt;
+      for (let i = 0; i < Math.floor(n) + (Math.random() < n % 1 ? 1 : 0); i++) {
+        const [x, y, d] = spots[Math.floor(Math.random() * spots.length)];
+        splashes.push({ x, y, s: (1 + d * 3) * DPR, age: 0, life: rnd(0.12, 0.22) });
+      }
+    }
+    ctx.globalCompositeOperation = "screen";
+    for (const sp of splashes) {
+      sp.age += dt;
+      const k = sp.age / sp.life, a = (1 - k) * 0.55 * lit;
+      ctx.fillStyle = `rgba(225,232,242,${a.toFixed(3)})`;
+      for (let j = -2; j <= 2; j++) {                                   // a little crown of droplets thrown up and out
+        const px = sp.x + j * sp.s * (0.6 + k * 1.6), py = sp.y - sp.s * (1.8 - Math.abs(j) * 0.4) * Math.sin(k * Math.PI);
+        ctx.fillRect(px, py, Math.max(1, sp.s * 0.45), Math.max(1, sp.s * 0.45));
+      }
+    }
+    ctx.globalCompositeOperation = "source-over";
+    splashes = splashes.filter((sp) => sp.age < sp.life);
   }
   function newDrop(anywhere) {
     const r = rnd(3, 8) * DPR;
@@ -796,6 +891,19 @@
      the settings sheet) — picked by the weather and the hour, cross-faded when
      either changes, run faster in a wind. The drawn sky stays for a clear
      night, where the real stars and moon belong, and if footage cannot load. */
+  /* the real night: a Milky Way photograph, the moon from NASA's mosaic, and
+     lightning strokes keyed out of real photographs (make-night.py, night.json) */
+  let nightMeta = null;
+  const nightImg = {};
+  const nightPic = (file) => {
+    if (!nightImg[file]) { nightImg[file] = new Image(); nightImg[file].src = `assets/weather/skies/${file}`; }
+    const im = nightImg[file];
+    return im.complete && im.naturalWidth ? im : null;
+  };
+  fetch("assets/weather/skies/night.json").then((r) => r.ok ? r.json() : null).then((j) => {
+    nightMeta = j;
+    if (j) { nightPic(j.moon.file); for (const b of j.bolts) nightPic(b.file); }
+  }).catch(() => {});
   let skiesMeta = null;
   fetch("assets/weather/skies/skies.json").then((r) => r.ok ? r.json() : null).then((j) => { skiesMeta = j; if (fx) { lastKey = ""; update(st); } }).catch(() => {});
   const videoKind = (() => {
@@ -825,16 +933,53 @@
     else if (P.dark >= 0.4) id = !wet && !f.storm && cloud < 0.85 ? "dusk" : f.storm ? "storm" : f.rain ? "rain" : "grey";
     else if (P.warm >= 0.45) id = !wet && !f.storm && cloud < 0.85 ? "sunset" : f.storm ? "storm" : f.rain ? "rain" : "grey";
     else id = f.storm ? "storm" : f.rain ? "rain" : f.snow || f.fog > 0.3 || cloud >= 0.7 ? "grey" : cloud >= 0.18 ? "fair" : "clear";
-    return id && skiesMeta[id] ? id : null;
+    return id && skiesMeta[id] ? variant(id) : null;
+  }
+  /* one of the clips of that kind, chosen once a visit: the same sky does not
+     loop past every time the page is opened */
+  const VISIT = Math.random();
+  const kindOf = (id) => (skiesMeta && skiesMeta[id] && skiesMeta[id].kind) || id;
+  function variant(kind) {
+    const ids = Object.keys(skiesMeta).filter((k) => kindOf(k) === kind).sort();
+    return ids.length ? ids[Math.floor(VISIT * ids.length) % ids.length] : kind;
   }
   /* how the footage is graded for the hour it is shown at: footage of the day
      darkened and cooled for night, warmed for a low sun */
-  function skyGrade(id, f) {
-    const P = f.phase;
+  /* the colour a photo's camera gave its own clear sky, against the clip's: a
+     fair or clear clip is nudged halfway towards it, so the footage looks shot
+     on the camera that took the land under it */
+  const avg = (img, w, h, mask) => {
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h);
+    const d = x.getImageData(0, 0, w, h).data, m = mask ? mask.getContext("2d").getImageData(0, 0, w, h).data : null;
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let i = 0; i < d.length; i += 4) { if (m && m[i + 3] < 230) continue; r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+    return n > 20 ? [r / n, g / n, b / n] : null;
+  };
+  const matches = {};
+  function skyMatch(id) {
+    const key = `${scene.id}:${id}`;
+    if (key in matches) return matches[key];
+    const ph = mapOf(scene, "photo"), sk = maskOf(scene), clip = videos[id];
+    if (!ph || !sk || !clip || !clip.still.complete || !clip.still.naturalWidth) return null;
+    try {
+      const mk = document.createElement("canvas"); mk.width = 96; mk.height = 64;
+      mk.getContext("2d").drawImage(sk.img, 0, 0, 96, 64);
+      const a = avg(ph.img, 96, 64, mk), b = avg(clip.still, 96, 54, null);
+      /* halfway (square root of the ratio), as a balance only: scaled so the
+         strongest channel stays whole — a multiply can only darken */
+      const k = a && b ? a.map((v, i) => clamp(Math.sqrt(v / b[i]), 0.85, 1.15)) : null;
+      matches[key] = k ? k.map((v) => Math.round(255 * v / Math.max(...k))) : null;
+    } catch (e) { matches[key] = null; }
+    return matches[key];
+  }
+  function skyGrade(clip, f) {
+    const P = f.phase, id = kindOf(clip);
     if (id === "sunset" || id === "dusk") return { mul: P.dark > 0.6 ? [150, 140, 170] : null, a: 1 };
     if (P.dark >= 0.85) return { mul: GLOW[scene.id] ? [70, 56, 52] : [42, 48, 70], a: 1 };
     if (P.dark >= 0.4) return { mul: [Math.round(120 - P.dark * 40), 100, 130], a: 1 };
     if (P.warm >= 0.3) return { mul: [255, Math.round(232 - P.warm * 40), Math.round(205 - P.warm * 70)], a: 1 };
+    if ((id === "fair" || id === "clear") && scene.photo) return { mul: skyMatch(clip), a: 1 };
     return { mul: null, a: 1 };
   }
   function playRate(f) { return clamp(0.32 + f.wind / 55, 0.32, 1.25); }
@@ -923,7 +1068,7 @@
     const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
     /* colours by the sun's height: golden, sunset, twilight, night */
     const stops = [[10, [120, 160, 220], [255, 196, 120], 0.25], [0, [70, 90, 170], [255, 140, 80], 0.55],
-      [-6, [24, 30, 80], [190, 90, 90], 0.85], [-12, [6, 10, 30], [24, 30, 64], 0.95], [-18, [3, 6, 18], [10, 16, 36], 0.97]];
+      [-6, [24, 30, 80], [190, 90, 90], 0.9], [-12, [6, 10, 30], [24, 30, 64], 1], [-18, [3, 6, 18], [10, 16, 36], 1]];   // fully opaque by night: the photo's own daytime clouds must not show through
     let top = stops[stops.length - 1][1], low = stops[stops.length - 1][2], a = stops[stops.length - 1][3];
     if (e >= stops[0][0]) { const t = clamp((e - 10) / 6, 0, 1); top = stops[0][1]; low = stops[0][2]; a = stops[0][3] * (1 - t); }
     else for (let i = 0; i < stops.length - 1; i++) {
@@ -1003,17 +1148,33 @@
     s.translate(x, y);
     /* turn so the lit side (local +x) points along the bright limb: `limb` is
        from straight up towards the sky's east */
-    s.rotate(eastLeft() ? -P / 2 - m.limb : -P / 2 + m.limb);
-    s.fillStyle = `rgba(150,165,200,${(0.1 * bright).toFixed(3)})`;      // the dark part, faintly (earthshine)
-    s.beginPath(); s.arc(0, 0, r, 0, P * 2); s.fill();
+    const turn = eastLeft() ? -P / 2 - m.limb : -P / 2 + m.limb;
+    /* the photograph's north turned to the sky's north here: the moon stands
+       on its head from the southern hemisphere */
+    const pic = nightMeta && nightPic(nightMeta.moon.file), north = m.pa == null ? 0 : eastLeft() ? -m.pa : P + m.pa;
+    if (pic) { s.rotate(north); s.globalAlpha = 0.07 * bright; s.drawImage(pic, -r, -r, 2 * r, 2 * r); s.globalAlpha = 1; s.rotate(-north); }
+    s.rotate(turn);
+    if (!pic) {
+      s.fillStyle = `rgba(150,165,200,${(0.1 * bright).toFixed(3)})`;      // the dark part, faintly (earthshine)
+      s.beginPath(); s.arc(0, 0, r, 0, P * 2); s.fill();
+    }
     /* the lit part: the half-disc on the bright side, closed by the terminator,
        an ellipse that bulges into it while a crescent and away once gibbous */
     const k = m.fraction, rx = r * (1 - 2 * k);
-    s.fillStyle = `rgba(240,243,252,${(0.95 * bright).toFixed(3)})`;
     s.beginPath();
     for (let i = 0; i <= 24; i++) { const a = -P / 2 + P * i / 24; s.lineTo(r * Math.cos(a), r * Math.sin(a)); }
     for (let i = 0; i <= 24; i++) { const a = P / 2 - P * i / 24; s.lineTo(rx * Math.cos(a), r * Math.sin(a)); }
-    s.closePath(); s.fill();
+    s.closePath();
+    if (pic) {
+      s.clip();
+      s.rotate(-turn + north);
+      s.globalAlpha = 0.97 * bright;
+      s.drawImage(pic, -r, -r, 2 * r, 2 * r);
+      s.globalAlpha = 1;
+    } else {
+      s.fillStyle = `rgba(240,243,252,${(0.95 * bright).toFixed(3)})`;
+      s.fill();
+    }
     s.restore();
   }
   /* a strike: from the cloud down through open sky to the land's edge, where
@@ -1034,7 +1195,9 @@
         branches.push(b);
       }
     }
-    return { pts, branches, hit: [x, depth] };
+    const sprites = nightMeta ? nightMeta.bolts.filter((b) => nightPic(b.file)) : [];
+    const sprite = sprites.length ? sprites[Math.floor(Math.random() * sprites.length)] : null;
+    return { pts, branches, hit: [x, depth], top, sprite, flip: Math.random() < 0.5 };
   }
 
   /* the sky, drawn into its own canvas and cut to the photo's sky there: its
@@ -1057,7 +1220,14 @@
     if (fading) { skyWash(s, band); if (layers.clouds) for (const L of layers.clouds.layers) drawPlane(s, L, layers.clouds.hy, dt); }
     const real = drawFootage(s, fb, now, live);
     if (!real) skyWash(s, band);
-    if (stars.length && !real) {
+    const sky = nightMeta && fx.stars > 0.02 && !real && nightPic(nightMeta.stars.file);
+    if (sky) {
+      /* the Milky Way, faint over a city: its own light hides most of it */
+      const k = Math.max(W / sky.naturalWidth, band / sky.naturalHeight);
+      s.globalAlpha = fx.stars * (GLOW[scene.id] ? 0.35 : 0.95);
+      s.drawImage(sky, (W - sky.naturalWidth * k) / 2, band - sky.naturalHeight * k, sky.naturalWidth * k, sky.naturalHeight * k);
+      s.globalAlpha = 1;
+    } else if (stars.length && !real) {
       for (const p of stars) {
         const a = live ? p.a * (0.7 + 0.3 * Math.sin(t * p.tw + p.ph)) : p.a;
         s.fillStyle = `rgba(235,240,255,${(a * fx.stars).toFixed(3)})`;
@@ -1065,8 +1235,24 @@
       }
     }
     if (!real) drawMoonIn(s);
-    /* the sun over footage only when that footage has open sky to put it in */
-    if (!real || layers.sky.id === "clear" || layers.sky.id === "fair") drawSunIn(s, real);
+    /* no sun drawn over footage: the footage is lit by its own, and every drawn
+       sun on a real sky read as a moon. The drawn sky keeps its sun. */
+    if (!real) drawSunIn(s, false);
+    /* a real stroke, drawn into the sky so the land in front hides its foot
+       when it falls behind a ridge */
+    if (bolt && bolt.sprite && flashT >= 0) {
+      const e = performance.now() - flashT;
+      if (e < 300) {
+        const b = bolt.sprite, im = nightPic(b.file), h = Math.max(20, bolt.hit[1] - bolt.top) * 1.04, w = b.w * h / b.h;
+        s.save();
+        s.globalCompositeOperation = "lighter";
+        s.globalAlpha = e < 70 || (e > 130 && e < 220) ? 1 : 0.35;
+        s.translate(bolt.hit[0], bolt.top);
+        if (bolt.flip) s.scale(-1, 1);
+        s.drawImage(im, -w / 2, 0, w, h);
+        s.restore();
+      }
+    }
     if (layers.clouds && !real && !fading) {
       const c = layers.clouds;
       for (const L of c.layers) drawPlane(s, L, c.hy, dt);
@@ -1078,6 +1264,378 @@
       s.globalCompositeOperation = "source-over";
     }
     ctx.drawImage(skyCv, 0, 0);
+  }
+
+  /* ── distance ──
+     Each photo's depth map (<id>-depth.png, Depth Anything V2 run once offline
+     by scene-maps.py: near white, far black, the sky black) makes the air
+     behave by real distance:
+       haze and fog   each pixel loses e^(−3.9·d/V) of itself to the air — the
+                      far ridges first; even a clear day hazes the farthest a
+                      little blue; rain and snow thicken the air by their rate
+       cloud shadows  on a sunny, partly cloudy day the clouds' shadows cross
+                      the land, the cloud field laid on the ground in
+                      perspective and moving with the wind
+       lightning      a strike lights the near land more than the far
+     DEPTH (above) turns the map's 0…1 into kilometres for each picture. */
+  function depthField() {
+    const dm = mapOf(scene, "depth");
+    if (!dm || !dm.data) return null;
+    if (dm.km && dm.km.scene === scene.id) return dm;
+    const [far, near] = DEPTH[scene.id] || DEPTH.sky;
+    const n = dm.w * dm.h, km = new Float32Array(n), land = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const v = dm.data[i * 4] / 255;
+      land[i] = v > 0.004 ? 1 : 0;
+      km[i] = v > 0.004 ? 1 / (v / near + (1 - v) / far) : far * 2.5;   // linear in 1/distance, as disparity is
+    }
+    dm.km = { scene: scene.id, km, land };
+    return dm;
+  }
+  /* how far you can see, metres: the report, then what rain or snow does to it */
+  function seeing(f) {
+    let V = f.vis >= 10000 ? 40000 : f.vis;
+    if (f.rain) V = Math.min(V, clamp(14000 / (1 + f.rain * 2.2), 1800, 14000));
+    if (f.snow) V = Math.min(V, clamp(5000 / (0.4 + f.snow * 1.6), 700, 6000));
+    return V;
+  }
+  /* the air between you and each pixel, as an image the size of the depth map */
+  function buildHaze(f) {
+    const dm = depthField();
+    if (!dm) return null;
+    const { km, land } = dm.km, V = seeing(f), L = light(f);
+    /* the sky behind the land takes the haze of the land's far edge, a little
+       lighter (the footage keeps some of its own air): laid on at the sky's
+       own great distance it hid the footage behind grey; left off, the ridges
+       stood as flat grey cut-outs against a clear sky. In real fog, all of it. */
+    const [far] = DEPTH[scene.id] || DEPTH.sky;
+    const clear = V >= 30000;
+    /* a clear day's distance is faintly blue; fog and rain are their own grey */
+    const col = clear ? shade([186, 202, 226], 1 - f.phase.dark * 0.8) : L.fog;
+    const cap = clear ? 0.32 : 1;
+    const skyA = Math.min(cap, 1 - Math.exp(-3.912 * far * 1000 / V)) * (V < 1500 ? 1 : 0.72);
+    const c = document.createElement("canvas");
+    c.width = dm.w; c.height = dm.h;
+    const x = c.getContext("2d"), im = x.createImageData(dm.w, dm.h), d = im.data;
+    let any = 0;
+    for (let i = 0; i < km.length; i++) {
+      const a = land[i] ? Math.min(cap, 1 - Math.exp(-3.912 * km[i] * 1000 / V)) : skyA;
+      d[i * 4] = col[0]; d[i * 4 + 1] = col[1]; d[i * 4 + 2] = col[2]; d[i * 4 + 3] = a * 255;
+      any = Math.max(any, a);
+    }
+    if (any < 0.02) return null;
+    x.putImageData(im, 0, 0);
+    return { cv: c, w: dm.w, h: dm.h };
+  }
+  /* cloud shadows: the cloud field on the ground, a texel 30 m, seen in
+     perspective (a pixel's ground position from its distance and how far off
+     centre it is), moving with the wind at three times its speed so the eye
+     catches it */
+  function buildShadows(f) {
+    const P = f.phase, dm = depthField();
+    if (!dm || f.rain || f.snow || f.storm || f.fog > 0.3 || f.cloud < 0.08 || f.cloud > 0.9) return null;
+    const sun = P.sunPos ? P.sunPos.alt / DEG : P.dark < 0.3 ? 40 : -1;
+    if (sun < 3 || P.dark > 0.25) return null;
+    const step = 2, w = Math.floor(dm.w / step), h = Math.floor(dm.h / step);
+    const { km, land } = dm.km, gx = new Float32Array(w * h), gy = new Float32Array(w * h), lw = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const j = y * step * dm.w + x * step, i = y * w + x, d = km[j];
+      gx[i] = (x / w - 0.5) * 1.15 * d / 0.03;
+      gy[i] = d / 0.03;
+      lw[i] = land[j];
+    }
+    cloudField();
+    const t = cloudQ[clamp(Math.floor((1 - f.cloud) * cloudQ.length), 0, cloudQ.length - 1)];
+    const to = ((f.windDir ?? 270) + 180) * DEG, view = (P.lat ?? 1) >= 0 ? Math.PI : 0;
+    const sp = 3 * Math.max(4, f.wind) / 3600 / 0.03;                  // texels a second
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    return { cv: c, ctx: c.getContext("2d"), w, h, gx, gy, lw, t, soft: cloudSpread * 0.35,
+      vu: -sp * f.dirX, vv: -sp * Math.cos(to - view), u: rnd(0, CN), v: rnd(0, CN), next: 0,
+      k: 0.32 * clamp((sun - 3) / 12, 0, 1) * (1 - f.cloud * 0.5) };
+  }
+  function drawShadows(now, live) {
+    const s = layers.shadows;
+    if (!s) return;
+    if (!s.drawn || (live && now >= s.next)) {
+      const dt = s.last ? (now - s.last) / 1000 : 0;
+      s.last = now; s.next = now + 110; s.drawn = true;
+      s.u += s.vu * dt; s.v += s.vv * dt;
+      const im = s.ctx.createImageData(s.w, s.h), d = im.data, F = cloudF, lo = s.t - s.soft, span = 2 * s.soft;
+      for (let i = 0; i < s.gx.length; i++) {
+        if (!s.lw[i]) continue;
+        const x = ((Math.floor(s.gx[i] + s.u) % CN) + CN) % CN, y = ((Math.floor(s.gy[i] + s.v) % CN) + CN) % CN;
+        let a = (F[y * CN + x] - lo) / span;
+        a = a < 0 ? 0 : a > 1 ? 1 : a * a * (3 - 2 * a);
+        d[i * 4] = 10; d[i * 4 + 1] = 14; d[i * 4 + 2] = 24; d[i * 4 + 3] = a * s.k * 255;   // shade, barely blue: a blue overlay read as a tint
+      }
+      s.ctx.putImageData(im, 0, 0);
+    }
+    const r = coverRect(s.w, s.h);
+    ctx.drawImage(s.cv, r.x, r.y, r.w, r.h);
+  }
+  /* the stroke again, over the haze and the rain — a bolt is the brightest
+     thing in the sky, and drawn only under them it showed as a faint thread —
+     with a glow round it, and cut to the sky so a ridge still hides its foot */
+  let boltCv = null;
+  function drawBoltOver() {
+    if (!bolt || !bolt.sprite || flashT < 0) return;
+    const e = performance.now() - flashT;
+    if (e >= 300) return;
+    const m = scene.sky ? null : maskOf(scene), im = nightPic(bolt.sprite.file);
+    if (!im) return;
+    if (!boltCv) boltCv = document.createElement("canvas");
+    if (boltCv.width !== W || boltCv.height !== H) { boltCv.width = W; boltCv.height = H; }
+    const b = boltCv.getContext("2d"), h = Math.max(20, bolt.hit[1] - bolt.top) * 1.04, w = bolt.sprite.w * h / bolt.sprite.h;
+    b.globalCompositeOperation = "source-over"; b.clearRect(0, 0, W, H);
+    b.save(); b.translate(bolt.hit[0], bolt.top); if (bolt.flip) b.scale(-1, 1);
+    b.globalAlpha = 0.35; b.drawImage(im, -w * 0.56, -h * 0.03, w * 1.12, h * 1.06);   // the glow: a larger, fainter copy
+    b.globalAlpha = 1; b.globalCompositeOperation = "lighter"; b.drawImage(im, -w / 2, 0, w, h); b.drawImage(im, -w / 2, 0, w, h);
+    b.restore();
+    if (m) {
+      const r = coverRect(m.w, m.h);
+      b.globalCompositeOperation = "destination-in";
+      b.drawImage(m.img, r.x, r.y, r.w, r.h);
+      b.globalCompositeOperation = "source-over";
+    }
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = e < 70 || (e > 130 && e < 220) ? 0.9 : 0.3;
+    ctx.drawImage(boltCv, 0, 0);
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  }
+  function drawHaze() {
+    const h = layers.haze2;
+    if (!h) return;
+    const r = coverRect(h.w, h.h);
+    ctx.drawImage(h.cv, r.x, r.y, r.w, r.h);
+  }
+  /* the land a flash lights: near more than far */
+  function nearLight() {
+    const dm = depthField();
+    if (!dm) return null;
+    if (dm.flash) return dm.flash;
+    const c = document.createElement("canvas");
+    c.width = dm.w; c.height = dm.h;
+    const x = c.getContext("2d"), im = x.createImageData(dm.w, dm.h), d = im.data;
+    for (let i = 0; i < dm.w * dm.h; i++) {
+      const v = dm.data[i * 4] / 255;
+      d[i * 4] = 225; d[i * 4 + 1] = 232; d[i * 4 + 2] = 255; d[i * 4 + 3] = v > 0.004 ? (0.25 + 0.75 * Math.pow(v, 0.7)) * 255 : 0;
+    }
+    x.putImageData(im, 0, 0);
+    return (dm.flash = { cv: c, w: dm.w, h: dm.h });
+  }
+
+  /* ── one camera ──
+     A real photograph has grain all through it and its corners fall off a
+     little; the photo and the footage came from different cameras, so one
+     grain and one vignette go over the whole picture (CSS blend modes, above
+     everything in the scene), the grain moving like a video's. */
+  const grain = document.createElement("div"), vignette = document.createElement("div");
+  grain.className = "grain"; vignette.className = "vignette";
+  root.appendChild(vignette); root.appendChild(grain);
+  (() => {
+    const c = document.createElement("canvas");
+    c.width = c.height = 256;
+    const x = c.getContext("2d"), im = x.createImageData(256, 256);
+    for (let i = 0; i < im.data.length; i += 4) {
+      const v = 128 + (Math.random() + Math.random() + Math.random() - 1.5) * 70;
+      im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255;
+    }
+    x.putImageData(im, 0, 0);
+    grain.style.backgroundImage = `url(${c.toDataURL()})`;
+  })();
+  let grainT = 0;
+  function moveGrain(now, live) {
+    if (!live || now - grainT < 42) return;
+    grainT = now;
+    grain.style.backgroundPosition = `${Math.floor(Math.random() * 256)}px ${Math.floor(Math.random() * 256)}px`;
+  }
+
+  /* ── the photo on the GPU ──
+     Ric, 2026-10-25: "do it all": plants that move in the wind, a little depth
+     when you move, the water, wet and snowy ground, the seasons. All of it is
+     the photo's own pixels moved or relit, per pixel, by a small WebGL program
+     (no library: the browser's own) reading the maps scene-maps.py made:
+       depth   near things shift against far ones as the pointer or the phone
+               moves (parallax); far ridges and the sky stay put, so the sky's
+               mask still fits them; and where the ground faces up (depth
+               falling away fast up the screen) wet shines and snow lies
+       plants  trees, grass and palms sway in a gusting field that moves with
+               the wind — more the nearer and the windier; in autumn their
+               green turns gold and rust, in winter dull brown (only for the
+               trees that turn: SEASONS below; by the visitor's own hemisphere)
+       water   the ripples, folded in here from the 2D water layer
+     plus the cross-fade to the overcast photo. The CSS photo stays underneath
+     and is all a browser without WebGL shows. */
+  const glCv = document.createElement("canvas");
+  glCv.className = "glphoto";
+  root.insertBefore(glCv, waterCv);
+  let gl = null;
+  try { gl = glCv.getContext("webgl", { alpha: false, antialias: false, premultipliedAlpha: false, preserveDrawingBuffer: false }); } catch (e) { gl = null; }
+  const VS = "attribute vec2 aPos; varying vec2 vPos; void main(){ vPos = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }";
+  const FS = `precision mediump float;
+varying vec2 vPos;
+uniform sampler2D uPhoto, uFlat, uDepth, uPlants, uWater, uShore;
+uniform vec4 uRect; uniform vec2 uRes, uPar, uWind, uTexel, uDTexel;
+uniform float uT, uFlatMix, uSway, uRipple, uWet, uSnow, uAutumn, uBare, uSwash, uWetSand, uDPR;
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }
+void main(){
+  vec2 s = vec2(vPos.x * uRes.x, (1.0 - vPos.y) * uRes.y);
+  vec2 uv = (s - uRect.xy) / uRect.zw;
+  float d = texture2D(uDepth, uv).r;
+  uv -= uPar * max(0.0, d - 0.18);
+  vec2 pp = texture2D(uPlants, uv).rg;                 // r: plant at all (for its colour), g: how much it sways
+  float p = pp.g;
+  if (p > 0.01 && uSway > 0.0) {
+    vec2 q = uv * vec2(38.0, 26.0);
+    float gust = 0.55 + 0.45 * noise(vec2(uv.x * 3.0 - uT * 0.35 * uWind.x, uT * 0.21));
+    float w = (noise(q + vec2(uT * 1.7, 0.0)) - 0.5) + 0.6 * (noise(q * 2.3 - vec2(uT * 2.9, uT * 0.7)) - 0.5);
+    float a = p * uSway * gust * (1.0 + 2.0 * d);
+    uv += a * vec2((w + 0.3 * uWind.x) * uTexel.x, w * 0.35 * uTexel.y);
+  }
+  vec3 sh = texture2D(uShore, uv).rgb;
+  if (sh.b > 0.01 && uSwash > 0.0) uv += (sh.rg * 2.0 - 1.0) * sh.b * uSwash * uDTexel * 8.0;
+  float wa = texture2D(uWater, uv).a;
+  if (wa > 0.01 && uRipple > 0.0) {
+    /* the waves are measured on the screen, about 50 px long near and shorter
+       far off (the old 2D strips' formula): measured on the photo they came out
+       a few pixels long and banded the shallows like a blind */
+    float f = 0.3 + d, q = s.y / uDPR / f, A = wa * uRipple * uDPR * (0.25 + 1.2 * d);
+    uv.x += A / uRect.z * (sin(uT * 1.1 + q * 0.13) + 0.55 * sin(uT * 1.9 + q * 0.29 + 2.0));
+    uv.y += A / uRect.w * 0.4 * sin(uT * 1.4 + q * 0.21 + 1.0);
+  }
+  vec3 c = texture2D(uPhoto, uv).rgb;
+  if (uFlatMix > 0.001) c = mix(c, texture2D(uFlat, uv).rgb, uFlatMix);
+  c *= 1.0 - sh.b * uWetSand * 0.16;
+  float lum = dot(c, vec3(0.299, 0.587, 0.114));
+  /* a leaf: greener than blue, and not redder than green — spring's
+     yellow-greens included, bark and trunks (red over green) left alone */
+  float green = clamp((c.g - c.b) * 5.0, 0.0, 1.0) * clamp(1.0 - (c.r - c.g) * 6.0, 0.0, 1.0) * pp.r;
+  if (uAutumn > 0.0) {
+    vec3 gold = vec3(lum * 1.38, lum * 1.0, lum * 0.32), rust = vec3(lum * 1.35, lum * 0.62, lum * 0.24);
+    c = mix(c, mix(gold, rust, noise(uv * 70.0)), uAutumn * green);
+  }
+  if (uBare > 0.0) c = mix(c, vec3(lum * 0.98, lum * 0.86, lum * 0.7), uBare * green);
+  float up = clamp((texture2D(uDepth, uv + vec2(0.0, 2.0 * uDTexel.y)).r - texture2D(uDepth, uv - vec2(0.0, 2.0 * uDTexel.y)).r) * 30.0, 0.0, 1.0);
+  if (uWet > 0.0) {
+    c = mix(c, c * c * 1.15, uWet * 0.45);
+    c += uWet * up * 0.07 * vec3(0.85, 0.9, 1.0);
+  }
+  if (uSnow > 0.0) {
+    float n = noise(uv * vec2(260.0, 190.0)) * 0.5 + noise(uv * 45.0) * 0.5;
+    float sn = clamp((up * 1.5 + lum * 0.4 - 0.45) * 2.2 + (n - 0.5) * 0.9, 0.0, 1.0) * uSnow;
+    c = mix(c, vec3(0.92, 0.94, 0.98) * (0.72 + 0.4 * lum), sn);
+  }
+  gl_FragColor = vec4(c, 1.0);
+}`;
+  const G = gl && (() => {
+    const sh = (t, src) => { const o = gl.createShader(t); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+    try {
+      const pr = gl.createProgram();
+      gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS));
+      gl.linkProgram(pr);
+      if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+      gl.useProgram(pr);
+      const buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(pr, "aPos");
+      gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      const U = {};
+      for (const n of ["uPhoto", "uFlat", "uDepth", "uPlants", "uWater", "uShore", "uSwash", "uWetSand", "uDPR", "uRect", "uRes", "uPar", "uWind", "uTexel", "uDTexel", "uT", "uFlatMix", "uSway", "uRipple", "uWet", "uSnow", "uAutumn", "uBare"]) U[n] = gl.getUniformLocation(pr, n);
+      const units = ["uPhoto", "uFlat", "uDepth", "uPlants", "uWater", "uShore"], tex = {}, src = {};
+      units.forEach((n, i) => {
+        tex[n] = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, tex[n]);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+        gl.uniform1i(U[n], i);
+      });
+      /* hand a texture its image once, and again only if the image changes */
+      const put = (n, img) => {
+        const i = units.indexOf(n);
+        if (!img || src[n] === img.src) return;
+        src[n] = img.src;
+        gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, tex[n]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      };
+      const clear = (n) => { const i = units.indexOf(n); if (!src[n]) return; src[n] = null; gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, tex[n]); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0])); };
+      return { U, put, clear, ready: false };
+    } catch (e) { console.warn("scene: the GPU layer is off, the plain photo shows", e); return null; }
+  })();
+  if (gl && G) glCv.addEventListener("webglcontextlost", (e) => { e.preventDefault(); G.lost = true; root.classList.remove("gl-on"); });
+
+  /* which trees turn: the city's maples and the meadow grass yes; the
+     spruce, the pines, the tropics, the bare rock no */
+  const SEASONS = { city: 1, mountains: 0.6 };
+  /* autumn and winter by the visitor's own hemisphere and the day of the year */
+  function season() {
+    const lat = st && Number.isFinite(st.lat) ? st.lat : 45;
+    const at = (fx && fx.phase.at) || Date.now();
+    const d0 = new Date(at), start = Date.UTC(d0.getUTCFullYear(), 0, 1);
+    let doy = (at - start) / 864e5;
+    if (lat < 0) doy = (doy + 182.6) % 365.25;
+    if (Math.abs(lat) < 23.5) return { autumn: 0, bare: 0 };                 // the tropics keep their green
+    const bump = (x, c, w) => Math.max(0, 1 - Math.abs(x - c) / w);
+    const autumn = bump(doy, 290, 32);                                         // peak mid-October
+    const bare = doy > 318 || doy < 95 ? 1 : doy <= 330 ? (doy - 318) / 12 : doy < 110 ? (110 - doy) / 15 : 0;
+    return { autumn: Math.min(1, autumn * 1.3), bare: Math.max(0, Math.min(1, bare)) };
+  }
+  /* the pointer or the phone's tilt, eased: how far the near things shift */
+  const par = { x: 0, y: 0, tx: 0, ty: 0 };
+  addEventListener("pointermove", (e) => { if (e.pointerType === "mouse") { par.tx = (e.clientX / innerWidth - 0.5); par.ty = (e.clientY / innerHeight - 0.5); } }, { passive: true });
+  addEventListener("deviceorientation", (e) => {
+    if (e.gamma == null) return;
+    par.tx = clamp(e.gamma / 30, -1, 1) * 0.5; par.ty = clamp((e.beta - 45) / 30, -1, 1) * 0.5;
+  }, { passive: true });
+
+  function glActive() { return !!(G && !G.lost && scene.photo && mapOf(scene, "photo")); }
+  function drawGL(t, dt, live) {
+    if (!glActive()) { root.classList.remove("gl-on"); return false; }
+    const f = fx, ph = mapOf(scene, "photo"), fl = mapOf(scene, "flat"), U = G.U;
+    const dm = mapOf(scene, "depth"), pm = mapOf(scene, "plants"), wm = WET.has(scene.id) ? mapOf(scene, "water") : null;
+    G.put("uPhoto", ph.img);
+    fl ? G.put("uFlat", fl.img) : G.clear("uFlat");
+    dm ? G.put("uDepth", dm.img) : G.clear("uDepth");
+    pm ? G.put("uPlants", pm.img) : G.clear("uPlants");
+    wm ? G.put("uWater", wm.img) : G.clear("uWater");
+    const sm = SHORE.has(scene.id) ? mapOf(scene, "shore") : null;
+    sm ? G.put("uShore", sm.img) : G.clear("uShore");
+    /* the swash: a wave runs up the sand fast and slides back slowly, about
+       every nine seconds and never quite the same; further in a wind, and the
+       sand it leaves stays dark a moment */
+    const sp = (t / 9 + 0.12 * Math.sin(t * 0.13) + 1) % 1, run = sp < 0.3 ? sp / 0.3 : 1 - (sp - 0.3) / 0.7;
+    const swash = run * run * (3 - 2 * run);
+    gl.uniform1f(U.uSwash, sm && live ? swash * (0.7 + clamp(f.wind / 45, 0, 0.8)) : 0);
+    gl.uniform1f(U.uWetSand, sm ? (live ? (1 - swash) * 0.9 : 0.5) : 0);
+    if (glCv.width !== W || glCv.height !== H) { glCv.width = W; glCv.height = H; gl.viewport(0, 0, W, H); }
+    const r = coverRect(ph.w, ph.h);
+    /* ease towards where the pointer is; still when motion is off */
+    const k = live ? Math.min(1, dt * 3) : 1;
+    par.x += ((live ? par.tx : 0) - par.x) * k; par.y += ((live ? par.ty : 0) - par.y) * k;
+    const se = SEASONS[scene.id] ? season() : { autumn: 0, bare: 0 };
+    const amt = SEASONS[scene.id] || 0;
+    gl.uniform4f(U.uRect, r.x, r.y, r.w, r.h);
+    gl.uniform2f(U.uRes, W, H);
+    gl.uniform2f(U.uPar, par.x * 0.012, par.y * 0.008);
+    gl.uniform2f(U.uWind, f.dirX >= 0 ? 1 : -1, 0);
+    gl.uniform2f(U.uTexel, 1 / ph.w, 1 / ph.h);
+    gl.uniform2f(U.uDTexel, dm ? 1 / dm.w : 0, dm ? 1 / dm.h : 0);
+    gl.uniform1f(U.uT, live ? t : 0);
+    gl.uniform1f(U.uFlatMix, fl ? overcast(f) : 0);
+    gl.uniform1f(U.uSway, live ? clamp(0.6 + f.wind / 7, 0.6, 9) * (ph.w / 1600) : 0);
+    gl.uniform1f(U.uRipple, live ? 0.35 + (layers.water ? layers.water.rough : 0) * 3.2 : 0);
+    gl.uniform1f(U.uDPR, DPR);
+    gl.uniform1f(U.uWet, f.rain ? clamp(0.5 + f.rain * 0.5, 0, 1) : 0);
+    gl.uniform1f(U.uSnow, f.snow ? clamp(0.45 + f.snow * 0.4, 0, 1) : 0);
+    gl.uniform1f(U.uAutumn, se.autumn * amt);
+    gl.uniform1f(U.uBare, se.bare * amt);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    root.classList.add("gl-on");
+    return true;
   }
 
   /* ── the picture's own life ──
@@ -1118,7 +1676,7 @@
   function drawWater(t) {
     const w = layers.water;
     wctx.clearRect(0, 0, W, H);
-    if (!w) return;
+    if (!w || root.classList.contains("gl-on")) return;                // the GPU layer ripples the water itself
     const img = w.img, r = w.pr, iw = img.naturalWidth, ih = img.naturalHeight;
     const hb = Math.max(2, Math.round(2 * DPR));
     for (let y = Math.floor(w.y0); y < w.y1; y += hb) {
@@ -1229,17 +1787,21 @@
 
   function frame(now) {
     const f = fx;
-    if (!f) return;
+    /* nothing to draw into until the scene has a size (a tab opened hidden) */
+    if (!f || !W || !H) return;
     const live = animated();
     const dt = live && lastT ? Math.min(0.06, (now - lastT) / 1000) : 0;
     lastT = now;
     ctx.clearRect(0, 0, W, H);
     const t = now / 1000;
     /* the wind comes in gusts: everything it carries thickens and thins */
+    moveGrain(now, live);
     const gust = live ? 0.72 + 0.28 * Math.sin(t * 0.9) * Math.sin(t * 0.37 + 1) + (f.gusty ? 0.25 * Math.max(0, Math.sin(t * 0.23)) : 0) : 0.85;
 
+    drawGL(t, dt, live);
     drawWater(t);
     drawSky(dt, t, live, now);
+    drawShadows(now, live);
     drawMirror(t);
     waterLife(t, dt, live);
     cityLights(t, dt, live, now);
@@ -1274,19 +1836,24 @@
     /* fog: each part of the picture lost by as much as its distance says —
        the sky and the far side first, the near ground last — and banks
        moving through between them */
+    drawHaze();
     if (layers.fog) {
       const fg = layers.fog, band = layers.skyH || H * 0.5;
-      const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, rgba(fg.col, fg.far));
-      g.addColorStop(clamp(band / H, 0.05, 0.9), rgba(fg.col, fg.far));
-      g.addColorStop(1, rgba(fg.col, fg.near));
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      /* the depth map does it pixel by pixel; without one, by height */
+      if (!layers.haze2) {
+        const g = ctx.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, rgba(fg.col, fg.far));
+        g.addColorStop(clamp(band / H, 0.05, 0.9), rgba(fg.col, fg.far));
+        g.addColorStop(1, rgba(fg.col, fg.near));
+        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      }
       fg.off += fg.v * dt;
       ctx.globalAlpha = clamp((fg.far - fg.near) * 0.7 + fg.near * 0.3, 0, 0.8);
       tiled(ctx, fg.img, fg.off, band * 0.6, W * 1.6, H * 0.75);
       tiled(ctx, fg.img, -fg.off * 0.6 + W * 0.4, band * 0.85, W * 2.2, H * 0.6);
       ctx.globalAlpha = 1;
     }
+    drawBoltOver();
     /* wind: the low air hazed with what it carries, and sheets of it moving */
     if (layers.haze) {
       const g = ctx.createLinearGradient(0, H * 0.35, 0, H);
@@ -1301,31 +1868,38 @@
       tiled(ctx, s.img, s.off * 1.6 + W * 0.3, H * 0.7, W * 0.9, H * 0.32);
       ctx.globalAlpha = 1;
     }
-    /* rain and snow */
+    /* rain and snow, as a camera records them: far drops fine and many, near
+       ones wide, soft and almost clear (out of focus in front of the lens);
+       drawn to lighten what is behind, so rain shows against dark rock and all
+       but vanishes against a bright sky. Snow the same: near flakes big blurs. */
     if (parts.length) {
       const lit = 1 - f.phase.dark * 0.45;                         // rain and snow catch less light at night
-      ctx.lineCap = "round";
-      ctx.strokeStyle = "rgba(210,225,245,1)";
+      const streak = streakImg(), flake = flakeImg();
+      ctx.globalCompositeOperation = "screen";
       for (const p of parts) {
         if (p.type === "r") {
           p.x += p.vx * dt; p.y += p.v * dt;
           if (p.y - p.len > H) { p.y = -rnd(0, 0.2) * H; p.x = rnd(-0.2, 1.2) * W; }
           if (p.x < -0.25 * W) p.x += 1.45 * W; else if (p.x > 1.25 * W) p.x -= 1.45 * W;
-          const k = p.len / Math.hypot(p.vx, p.v);
-          ctx.globalAlpha = p.a * lit;
-          ctx.lineWidth = (0.7 + p.z * 0.9) * DPR;
-          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * k, p.y - p.v * k); ctx.stroke();
+          const near = p.z > 0.88, wdt = (near ? 5 + (p.z - 0.88) * 60 : 0.7 + p.z * 1.4) * DPR;
+          const len = p.len * (near ? 2.4 : 1), ang = Math.atan2(p.vx, p.v);
+          ctx.globalAlpha = (near ? 0.07 : p.a * (0.55 + p.z * 0.6)) * lit;
+          ctx.setTransform(Math.cos(ang), -Math.sin(ang), Math.sin(ang), Math.cos(ang), p.x, p.y);
+          ctx.drawImage(streak, -wdt / 2, -len, wdt, len);
         } else {
           p.ph += dt * (0.8 + p.z);
           p.x += (p.vx + Math.sin(p.ph) * 14 * DPR) * dt; p.y += p.v * dt;
           if (p.y - p.r > H) { p.y = -p.r * 2; p.x = rnd(0, W); }
           if (p.x < -10) p.x += W + 20; else if (p.x > W + 10) p.x -= W + 20;
-          ctx.globalAlpha = p.a * lit;
-          ctx.fillStyle = "#fff";
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+          const near = p.z > 0.9, r = near ? p.r * 4 : p.r * 1.6;
+          ctx.globalAlpha = (near ? 0.18 : p.a) * lit;
+          ctx.drawImage(flake, p.x - r, p.y - r, r * 2, r * 2);
         }
       }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalCompositeOperation = "source-over";
       ctx.globalAlpha = 1;
+      drawSplashes(dt, live, lit);
     }
     /* what the wind carries, mote by mote: streaks of dust, sand, grit, spray
        and snow; leaves tumble */
@@ -1336,7 +1910,8 @@
         const p = dust[i];
         p.ph += dt * 3;
         p.x += p.v * gust * dt; p.y += (p.lift + Math.sin(p.ph) * 12 * DPR) * dt;
-        if (p.x > W * 1.1 || p.x < -W * 0.1 || p.y < H * 0.2 || p.y > H * 1.05) { dust[i] = newMote(g, f.blow, dir, false); continue; }
+        /* dust stays near the ground: risen into the sky it read as flocks of birds */
+        if (p.x > W * 1.1 || p.x < -W * 0.1 || p.y < H * (g.kind === "leaves" ? 0.2 : 0.48) || p.y > H * 1.05) { dust[i] = newMote(g, f.blow, dir, false); continue; }
         ctx.globalAlpha = p.a * gust * (1 - f.phase.dark * 0.6);
         if (g.kind === "leaves") {
           ctx.fillStyle = rgba(p.col, 1);
@@ -1397,6 +1972,13 @@
         /* two quick pulses, the way a stroke flickers */
         const a = (e < 70 ? 0.55 : e < 130 ? 0.12 : e < 210 ? 0.4 : Math.max(0, 0.4 - (e - 210) / 500)) * k;
         flashEl.style.opacity = Math.min(0.85, a).toFixed(3);
+        const nl = nearLight();
+        if (nl && a > 0.02) {
+          const r = coverRect(nl.w, nl.h);
+          ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = Math.min(0.3, a * 0.45);
+          ctx.drawImage(nl.cv, r.x, r.y, r.w, r.h);
+          ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+        }
         if (bolt && e < 260) {
           /* where it lands, the ground lights */
           const [hx, hy] = bolt.hit, R = 90 * DPR;
@@ -1405,7 +1987,8 @@
           ctx.fillStyle = gl; ctx.fillRect(hx - R, hy - R, R * 2, R * 2);
           ctx.strokeStyle = `rgba(235,240,255,${e < 70 || (e > 130 && e < 210) ? 0.95 : 0.35})`;
           ctx.shadowColor = "rgba(190,200,255,.9)"; ctx.shadowBlur = 14 * DPR;
-          for (const [pts, w] of [[bolt.pts, 2.2], ...bolt.branches.map((b) => [b, 1.1])]) {
+          /* drawn strokes only if the real ones could not load */
+          for (const [pts, w] of bolt.sprite ? [] : [[bolt.pts, 2.2], ...bolt.branches.map((b) => [b, 1.1])]) {
             ctx.lineWidth = w * DPR; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
             for (const [x, y] of pts) ctx.lineTo(x, y);
             ctx.stroke();
@@ -1430,7 +2013,7 @@
     lastT = 0;
     if (!fx) return;
     frame(performance.now());
-    if (animated() && (parts.length || drops.length || stars.length || dust.length || plume.length || layers.clouds || layers.sky || layers.deck || layers.fog || layers.sheet || layers.water || (layers.city && fx.phase.dark > 0.18) || fx.storm)) raf = requestAnimationFrame(loop);
+    if (animated() && (parts.length || drops.length || stars.length || dust.length || plume.length || layers.clouds || layers.sky || layers.shadows || glActive() || layers.deck || layers.fog || layers.sheet || layers.water || (layers.city && fx.phase.dark > 0.18) || fx.storm)) raf = requestAnimationFrame(loop);
     if (!animated()) flashEl.style.opacity = "0";
   }
   function size() {

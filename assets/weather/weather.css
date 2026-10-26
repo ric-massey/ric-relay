@@ -1597,6 +1597,14 @@ body[data-view="simple"] .topbar{z-index:30}
 .scene .photo,.scene .tint,.scene .flash,.scene canvas{position:absolute;inset:0;width:100%;height:100%}
 .scene .photo{background:center/cover no-repeat;transition:filter 1.2s ease;transform:scale(1.04)}
 .scene .water{transition:filter 1.2s ease}
+.scene .photo.flat{opacity:0;transition:filter 1.2s ease,opacity 1.6s ease}
+.scene .glphoto{transition:filter 1.2s ease;visibility:hidden}
+.scene.gl-on .glphoto{visibility:visible}
+/* with the GPU layer drawing the photo (scene.js), the CSS photo underneath is only the fallback */
+.scene.gl-on .photo{visibility:hidden}
+/* one camera over the photo and the footage: grain that moves, corners that fall off (scene.js) */
+.scene .grain{position:absolute;inset:0;pointer-events:none;mix-blend-mode:soft-light;opacity:.28}
+.scene .vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 75% 70% at 50% 45%,rgba(0,0,0,0) 58%,rgba(0,0,0,.18) 100%)}
 /* the real skies' footage plays here unseen; scene.js draws its frames into the sky (iOS decodes only video that is in the page) */
 .scene .skyclip{position:absolute;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none}
 .scene .tint{transition:opacity 1.2s ease}

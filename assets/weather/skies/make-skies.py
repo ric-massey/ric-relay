@@ -16,7 +16,7 @@ For each sky this script:
   - doubles the frame rate by motion interpolation, so the page can play it at
     half speed (clouds in a time-lapse race) and still move smoothly
   - writes <id>.webm (VP9) and <id>.mp4 (H.264, for Safari that cannot play
-    VP9), 1280 px wide, no sound, and <id>.jpg — the first frame, for a still
+    VP9), 1920 px wide, no sound, and <id>.jpg — the first frame, for a still
     sky when motion is off — and skies.json, each sky's size and credit
 
     python3 assets/weather/skies/make-skies.py          # every sky
@@ -40,7 +40,7 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 CACHE = HERE / ".sky-cache"
-WIDTH = 1280
+WIDTH = 1920
 CTX = ssl.create_default_context(cafile="/etc/ssl/cert.pem")
 UA = {"User-Agent": "RicsWebsite-skies/1.0 (personal site; ricmassey.com)"}
 
@@ -59,6 +59,16 @@ SKIES = {
                "by": "Igor da Bari", "licence": "CC BY 4.0"},
     "dusk": {"title": "Second Glow (video).webm", "start": 2.0, "end": 11.5, "crop": (0.0, 1.0),
              "by": "John Fowler", "licence": "CC BY 2.0"},
+    # more of each kind, so the same twenty seconds are not seen every visit;
+    # `kind` is the sky they stand in for (Ric: "do it all")
+    "fair-3": {"kind": "fair", "title": "Atmospheric convection over New Braunfels.webm", "start": 8.0, "end": 40.0, "crop": (0.0, 0.48),
+               "by": "Brainandforce", "licence": "CC BY 4.0"},
+    "fair-4": {"kind": "fair", "title": "Grand Canyon Nat Park- Time-lapse Video from Yaki Point (8931531533).webm", "start": 1.0, "end": 43.0, "crop": (0.0, 0.35),   # above the canyon rim
+               "by": "Grand Canyon National Park (NPS)", "licence": "public domain"},
+    "sunset-2": {"kind": "sunset", "title": "Timelapse Joshua Tree Clouds and Sunset Near West Entrance.webm", "start": 4.0, "end": 14.5, "crop": (0.0, 0.26),   # above the Joshua tree's crown
+                 "by": "Joshua Tree National Park (NPS)", "licence": "public domain"},
+    "sunset-3": {"kind": "sunset", "title": "Sunset timelapse on the beach in Libreville, Gabon.webm", "start": 0.5, "end": 14.8, "crop": (0.0, 0.54),
+                 "by": "In Old News", "licence": "CC0"},
 }
 
 
@@ -117,7 +127,7 @@ def make(sid, s):
     # what the page needs to know about it, credit included (skies.json)
     meta_path = HERE / "skies.json"
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
-    meta[sid] = {"w": WIDTH, "h": int(loop[0].shape[0]), "seconds": round(len(loop) / fps, 1), "title": s["title"].rsplit(".", 1)[0],
+    meta[sid] = {"kind": s.get("kind", sid), "w": WIDTH, "h": int(loop[0].shape[0]), "seconds": round(len(loop) / fps, 1), "title": s["title"].rsplit(".", 1)[0],
                  "url": "https://commons.wikimedia.org/wiki/File:" + urllib.parse.quote(s["title"].replace(" ", "_")), "by": s["by"], "licence": s["licence"]}
     meta_path.write_text(json.dumps(dict(sorted(meta.items())), indent=1) + "\n")
     sizes = " ".join(f"{e} {(HERE / f'{sid}.{e}').stat().st_size // 1024} KB" for e in ("webm", "mp4", "jpg"))

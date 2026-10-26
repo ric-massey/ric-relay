@@ -838,8 +838,13 @@ ones that must never break:
   is real time-lapse footage** (`assets/weather/skies/`, made by `make-skies.py`
   from Commons clips, PD or CC BY, credited) — Ric: "i dont want people to be
   able to tell they are ai generated. and they have to move". Never swap it for
-  generated imagery or video. Don't go back to dimming the photo for cloud, or
-  to a clock for the light. The weather drawn is only what the hero's reading says —
+  generated imagery or video. Each photo also has a depth map and an overcast
+  relight (`scene-maps.py`): haze and fog by real distance, cloud shadows on the
+  land, the overcast photo faded in under grey skies. The photo is drawn by a
+  WebGL layer (plants sway, depth parallax, water and swash, seasons, wet and
+  snowy ground) from more maps; lightning, the Milky Way and the moon are real
+  photographs (`make-night.py`). Don't go back to dimming
+  the photo for cloud, or to a clock for the light. The weather drawn is only what the hero's reading says —
   `WxScene.preview()` is for looking from the console and the page never calls
   it; "Moving weather" off and reduced motion draw a still frame. Weather only —
   Pro keeps its instrument look. A Mochi scene waits on Ric.
