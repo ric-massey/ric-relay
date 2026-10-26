@@ -104,7 +104,18 @@
        was like the weather of where you are" — which is what every scene does */
     scenePhoto("torre", "Cerro Torre", 0.35, "38% center",
       { title: "Cerro Torre", by: "Alex Proimos", licence: "CC BY 2.0",
-        url: "https://commons.wikimedia.org/wiki/File:Cerro_Torre_(5457586054).jpg" })
+        url: "https://commons.wikimedia.org/wiki/File:Cerro_Torre_(5457586054).jpg" }),
+    /* Ric, 2026-10-26: "another crag picture one that shows more of the sky",
+       "one for the smokeys", "one for the rockeys" */
+    scenePhoto("cliff", "Under the cliff", 0.3, "30% center",
+      { title: "High cliff in Lyse", by: "W.carter", licence: "CC0",
+        url: "https://commons.wikimedia.org/wiki/File:High_cliff_in_Lyse_with_climbers_1.jpg" }),
+    scenePhoto("smokies", "Smoky Mountains", 0.35, "center",
+      { title: "Blue Ridge, Great Smoky Mountains", by: "James St. John", licence: "CC BY 2.0",
+        url: "https://commons.wikimedia.org/wiki/File:Blue_Ridge_(Great_Smoky_Mountains,_North_Carolina,_USA)_1.jpg" }),
+    scenePhoto("rockies", "Rocky Mountains", 0.25, "62% center",
+      { title: "Meeker, Longs, Lady Washington", by: "mark byzewski", licence: "CC BY 2.0",
+        url: "https://commons.wikimedia.org/wiki/File:Meeker,_Longs,_Lady_Washington.jpg" })
   ];
   function scenePhoto(id, name, horizon, pos, credit) {
     return { id, name, horizon, pos, credit, photo: `assets/weather/scenes/${id}${BIG ? "" : "-1600"}.jpg`, thumb: `assets/weather/scenes/${id}-thumb.jpg` };
@@ -613,6 +624,9 @@
     beach: { kind: "sand", col: [238, 220, 178] },
     water: { kind: "spray", col: [232, 242, 252] },
     forest: { kind: "leaves", col: [176, 122, 52] },
+    cliff: { kind: "leaves", col: [170, 128, 60] },
+    smokies: { kind: "leaves", col: [184, 118, 48] },
+    rockies: { kind: "dust", col: [206, 180, 128] },
     torre: { kind: "snow", col: [246, 249, 255], peaks: [[0.375, 0.07], [0.47, 0.235], [0.6, 0.35]] }
   };
   /* how far off each picture's back and front look, km, for fog: Ric — "fog
@@ -624,7 +638,8 @@
      (a hazy day) took 86% of it; at 1.2 km it is a haze at 8 km (44%), mostly
      gone at 2 km (90%), white under 1 km. The crag's wall stays until the fog
      is thick (15% at 2 km, 65% at 300 m). */
-  const DEPTH = { sky: [2, 1], torre: [1.2, 0.35], mountains: [1, 0.1], city: [1.2, 0.15], water: [1.2, 0.04], beach: [1.8, 0.02], crag: [0.08, 0.03], forest: [0.15, 0.008] };
+  const DEPTH = { sky: [2, 1], torre: [1.2, 0.35], mountains: [1, 0.1], city: [1.2, 0.15], water: [1.2, 0.04], beach: [1.8, 0.02], crag: [0.08, 0.03], forest: [0.15, 0.008],
+    cliff: [0.1, 0.02], smokies: [1.5, 0.06], rockies: [1.1, 0.06] };
   const LEAVES = [[226, 160, 62], [204, 120, 44], [176, 184, 74], [238, 194, 96]];
   function blowing(f) {
     const g = GROUND[scene.id];
@@ -778,6 +793,7 @@
     if (dmx) dmx.spots = null;                                         // splash points are in screen pixels: remake them
     layers.haze2 = scene.photo ? buildHaze(f) : null;
     layers.shadows = scene.photo ? buildShadows(f) : null;
+    layers.beams = buildBeams(f);
     nextFlash = f.storm ? performance.now() + rnd(800, 3000) : 0;
   }
   function newMote(g, b, dir, anywhere) {
@@ -973,6 +989,27 @@
     } catch (e) { matches[key] = null; }
     return matches[key];
   }
+  /* the photo's own sky just above its land, averaged: what its horizon looked like */
+  function horizonTint() {
+    const key = `${scene.id}:hz`;
+    if (key in matches) return matches[key];
+    const ph = mapOf(scene, "photo"), sk = maskOf(scene);
+    if (!ph || !sk) return null;
+    try {
+      const w = 96, h = 64, c = document.createElement("canvas"); c.width = w; c.height = h;
+      const x = c.getContext("2d");
+      x.drawImage(sk.img, 0, 0, w, h); const m = x.getImageData(0, 0, w, h).data;
+      x.clearRect(0, 0, w, h); x.drawImage(ph.img, 0, 0, w, h); const p = x.getImageData(0, 0, w, h).data;
+      const sum = [0, 0, 0]; let n = 0;
+      for (let i = 0; i < w; i++) {
+        let y = h - 1;
+        while (y >= 0 && m[(y * w + i) * 4 + 3] < 200) y--;              // the lowest sky in this column
+        for (let j = y - 3; j <= y - 1; j++) if (j >= 0 && m[(j * w + i) * 4 + 3] >= 200) { const o = (j * w + i) * 4; sum[0] += p[o]; sum[1] += p[o + 1]; sum[2] += p[o + 2]; n++; }
+      }
+      matches[key] = n > 20 ? sum.map((v) => Math.round(v / n)) : null;
+    } catch (e) { matches[key] = null; }
+    return matches[key];
+  }
   function skyGrade(clip, f) {
     const P = f.phase, id = kindOf(clip);
     if (id === "sunset" || id === "dusk") return { mul: P.dark > 0.6 ? [150, 140, 170] : null, a: 1 };
@@ -982,7 +1019,14 @@
     if ((id === "fair" || id === "clear") && scene.photo) return { mul: skyMatch(clip), a: 1 };
     return { mul: null, a: 1 };
   }
-  function playRate(f) { return clamp(0.32 + f.wind / 55, 0.32, 1.25); }
+  /* how fast the sky's footage plays. The clips are time-lapses — a hundred
+     times real speed or more — so even played at half speed a 5 mph breeze
+     sent the clouds racing (Ric: "the weather is 5 mph and the clouds are
+     moving a million miles per hour"). Now: the slowest a browser allows
+     (1/16) up to a light breeze, rising with the wind to about a third in a
+     gale. At these speeds the frames step, so drawFootage blends each frame
+     into the last and the clouds drift instead. */
+  function playRate(f) { return clamp(0.03 + f.wind / 230, 0.0625, 0.35); }
   /* draw the sky's footage into the sky canvas, covering the sky with the
      clip's own horizon at the land line; the outgoing sky fades over 2 s */
   function drawFootage(s, band, now, live) {
@@ -998,8 +1042,18 @@
       const d = vis(o);
       if (!d || alpha <= 0) return false;
       const [img, iw, ih] = d, k = Math.max(W / iw, band / ih);
+      /* each new frame laid a fifth of the way over what was there: a slowed
+         time-lapse steps from frame to frame, and this turns the steps into a
+         drift (a still frame or a fresh start is laid on whole) */
+      if (!o.acc) o.acc = document.createElement("canvas");
+      const a = o.acc, fresh = a.width !== W || a.height !== Math.ceil(band);
+      if (fresh) { a.width = W; a.height = Math.ceil(band); }
+      const ax = a.getContext("2d");
+      ax.globalAlpha = fresh || !live || img === o.still ? 1 : 0.2;
+      ax.drawImage(img, (W - iw * k) / 2, band - ih * k, iw * k, ih * k);
+      ax.globalAlpha = 1;
       s.globalAlpha = alpha;
-      s.drawImage(img, (W - iw * k) / 2, band - ih * k, iw * k, ih * k);
+      s.drawImage(a, 0, 0);
       s.globalAlpha = 1;
       return true;
     };
@@ -1013,6 +1067,22 @@
     if (sk.from && t >= 1) { sk.from.v.pause(); sk.from = null; }
     if (!ok) return false;
     sk.cover = sk.from ? 1 : t;
+    /* a real sky is brightest at its horizon — the light comes through the
+       most air there — and the footage was shot looking up. So it fades into
+       the photo's own sky colour just above the land, which also matches the
+       far ridges to the sky they stood against (in the Smokies they were a
+       pale band against a dark sky) */
+    const hz = scene.photo && horizonTint();
+    if (hz && horizon.length) {
+      const lo = Math.max(...horizon), hi = Math.min(...horizon), y0 = Math.max(0, hi - band * 0.32);
+      const gr = s.createLinearGradient(0, y0, 0, lo);
+      const k = fx.storm || fx.rain ? 0.35 : 0.6;
+      gr.addColorStop(0, rgba(hz, 0));
+      gr.addColorStop(0.6, rgba(hz, k * 0.55));
+      gr.addColorStop(1, rgba(hz, k));
+      s.fillStyle = gr;
+      s.fillRect(0, y0, W, lo - y0);
+    }
     const g = sk.grade;
     if (g.mul) {
       s.globalCompositeOperation = "multiply";
@@ -1032,7 +1102,7 @@
     if (prev && prev.id !== id) { sk.from = prev.cur; }
     else if (prev) { sk.from = prev.from; sk.since = prev.since; }
     const v = cur.v;
-    v.playbackRate = playRate(f);
+    try { v.playbackRate = playRate(f); } catch (e) { v.playbackRate = 0.25; }   // a browser that will not go that slow goes as slow as it will
     if (animated()) { const p = v.play(); if (p && p.catch) p.catch(() => {}); } else v.pause();
     lastSky = sk;
     return sk;
@@ -1348,9 +1418,10 @@
     const t = cloudQ[clamp(Math.floor((1 - f.cloud) * cloudQ.length), 0, cloudQ.length - 1)];
     const to = ((f.windDir ?? 270) + 180) * DEG, view = (P.lat ?? 1) >= 0 ? Math.PI : 0;
     const sp = 3 * Math.max(4, f.wind) / 3600 / 0.03;                  // texels a second
-    const c = document.createElement("canvas");
-    c.width = w; c.height = h;
-    return { cv: c, ctx: c.getContext("2d"), w, h, gx, gy, lw, t, soft: cloudSpread * 0.35,
+    const c = document.createElement("canvas"), lc = document.createElement("canvas");
+    c.width = lc.width = w; c.height = lc.height = h;
+    return { cv: c, ctx: c.getContext("2d"), lit: lc, lctx: lc.getContext("2d"), w, h, gx, gy, lw, t, soft: cloudSpread * 0.35,
+      warm: P.warm > 0.3 ? [255, 214, 160] : [255, 244, 222],
       vu: -sp * f.dirX, vv: -sp * Math.cos(to - view), u: rnd(0, CN), v: rnd(0, CN), next: 0,
       k: 0.32 * clamp((sun - 3) / 12, 0, 1) * (1 - f.cloud * 0.5) };
   }
@@ -1362,17 +1433,87 @@
       s.last = now; s.next = now + 110; s.drawn = true;
       s.u += s.vu * dt; s.v += s.vv * dt;
       const im = s.ctx.createImageData(s.w, s.h), d = im.data, F = cloudF, lo = s.t - s.soft, span = 2 * s.soft;
+      const lm = s.lctx.createImageData(s.w, s.h), e = lm.data, [wr, wg, wb] = s.warm;
       for (let i = 0; i < s.gx.length; i++) {
         if (!s.lw[i]) continue;
         const x = ((Math.floor(s.gx[i] + s.u) % CN) + CN) % CN, y = ((Math.floor(s.gy[i] + s.v) % CN) + CN) % CN;
         let a = (F[y * CN + x] - lo) / span;
         a = a < 0 ? 0 : a > 1 ? 1 : a * a * (3 - 2 * a);
         d[i * 4] = 10; d[i * 4 + 1] = 14; d[i * 4 + 2] = 24; d[i * 4 + 3] = a * s.k * 255;   // shade, barely blue: a blue overlay read as a tint
+        /* and where the sun gets through, it lands: the gaps between the
+           shadows brighten and warm, so the light moves over the land in patches */
+        e[i * 4] = wr; e[i * 4 + 1] = wg; e[i * 4 + 2] = wb; e[i * 4 + 3] = (1 - a) * s.k * 0.75 * 255;
       }
       s.ctx.putImageData(im, 0, 0);
+      s.lctx.putImageData(lm, 0, 0);
     }
     const r = coverRect(s.w, s.h);
     ctx.drawImage(s.cv, r.x, r.y, r.w, r.h);
+    ctx.globalCompositeOperation = "soft-light";
+    ctx.drawImage(s.lit, r.x, r.y, r.w, r.h);
+    ctx.globalCompositeOperation = "source-over";
+  }
+  /* sun beams: a low sun behind broken cloud throws shafts of light through
+     the gaps, fanning out from the sun across the sky and down onto the land.
+     They show only in air with something in it, so they are faint on a crisp
+     day and strongest in a haze the sun still gets through; each shaft opens
+     and closes as the clouds over it move. Drawn at a sixteenth of the size and
+     stretched, which is what softens their edges. */
+  function buildBeams(f) {
+    const P = f.phase;
+    if (!scene.photo || f.rain || f.snow || f.storm || f.fog > 0.4 || f.cloud < 0.25 || f.cloud > 0.88) return null;
+    const alt = P.sunPos ? P.sunPos.alt / DEG : -1;
+    if (alt < 1 || alt > 32 || P.dark > 0.3) return null;
+    const murk = clamp(1 - (seeing(f) - 4000) / 30000, 0.6, 1);
+    const n = 5 + Math.floor(Math.random() * 4), rays = [];
+    for (let i = 0; i < n; i++) rays.push({ a: rnd(-1.15, 1.15), w: rnd(0.04, 0.1), ph: rnd(0, 6.3), sp: rnd(0.02, 0.07), b: rnd(0.5, 1) });
+    /* a shaft needs a long way of air to show in: kilometres of it, so the
+       sky and the far ridges carry them and a wall or a tree near you does not */
+    let far = null;
+    const dm = depthField();
+    if (dm) {
+      far = document.createElement("canvas"); far.width = dm.w; far.height = dm.h;
+      const fx2 = far.getContext("2d"), im = fx2.createImageData(dm.w, dm.h), { km, land } = dm.km;
+      for (let i = 0; i < km.length; i++) im.data[i * 4 + 3] = (land[i] ? clamp((km[i] - 0.3) / 1.2, 0, 1) * 0.4 : 1) * 255;   // on land, a hint: they light the haze, not the hills
+      fx2.putImageData(im, 0, 0);
+    }
+    const c = document.createElement("canvas");
+    return { rays, far, fw: dm && dm.w, fh: dm && dm.h, cv: c, x: c.getContext("2d"), k: 0.5 * murk * clamp((32 - alt) / 18, 0, 1) * clamp(alt / 3, 0, 1) * (1 - Math.abs(f.cloud - 0.55) * 0.9),
+      col: P.warm > 0.3 ? [255, 206, 140] : [255, 240, 210] };
+  }
+  function drawBeams(t) {
+    const B = layers.beams;
+    if (!B || !fx.phase.sunPos) return;
+    const p = skyPoint(fx.phase.sunPos.az, fx.phase.sunPos.alt);
+    if (!p) return;
+    const q = 16, w = Math.ceil(W / q), h = Math.ceil(H / q), c = B.cv, x = B.x;
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    x.clearRect(0, 0, w, h);
+    const sx = p.x / q, sy = p.y / q, L = Math.hypot(w, h) * 1.2;
+    for (const r of B.rays) {
+      const open = (0.2 + 0.8 * Math.max(0, Math.sin(t * r.sp + r.ph)) ** 2) * r.b;
+      const a = Math.PI / 2 + r.a, a0 = a - r.w / 2, a1 = a + r.w / 2;
+      const g = x.createLinearGradient(sx, sy, sx + Math.cos(a) * L * 0.8, sy + Math.sin(a) * L * 0.8);
+      g.addColorStop(0, rgba(B.col, 0));
+      g.addColorStop(0.25, rgba(B.col, open));
+      g.addColorStop(1, rgba(B.col, 0));
+      x.fillStyle = g;
+      x.beginPath(); x.moveTo(sx, sy);
+      x.lineTo(sx + Math.cos(a0) * L, sy + Math.sin(a0) * L);
+      x.lineTo(sx + Math.cos(a1) * L, sy + Math.sin(a1) * L);
+      x.closePath(); x.fill();
+    }
+    if (B.far) {
+      const r = coverRect(B.fw, B.fh);
+      x.globalCompositeOperation = "destination-in";
+      x.drawImage(B.far, r.x / q, r.y / q, r.w / q, r.h / q);
+      x.globalCompositeOperation = "source-over";
+    }
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = B.k;
+    ctx.drawImage(c, 0, 0, W, H);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
   }
   /* the stroke again, over the haze and the rain — a bolt is the brightest
      thing in the sky, and drawn only under them it showed as a faint thread —
@@ -1570,7 +1711,7 @@ void main(){
 
   /* which trees turn: the city's maples and the meadow grass yes; the
      spruce, the pines, the tropics, the bare rock no */
-  const SEASONS = { city: 1, mountains: 0.6 };
+  const SEASONS = { city: 1, mountains: 0.6, smokies: 0.8, cliff: 0.5 };   // the Smokies' hardwoods are what people drive there in October for
   /* autumn and winter by the visitor's own hemisphere and the day of the year */
   function season() {
     const lat = st && Number.isFinite(st.lat) ? st.lat : 45;
@@ -1837,6 +1978,7 @@ void main(){
        the sky and the far side first, the near ground last — and banks
        moving through between them */
     drawHaze();
+    drawBeams(t);
     if (layers.fog) {
       const fg = layers.fog, band = layers.skyH || H * 0.5;
       /* the depth map does it pixel by pixel; without one, by height */

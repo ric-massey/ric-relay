@@ -83,6 +83,11 @@ SOURCES = {
     "beach": ("Havelock Island, Mangrove tree on the beach, Andaman Islands.jpg", 80),
     "crag": ("The sandstone cliffs and spires of Colorado National Monument attract hundreds of climbers a year. (9e8ceddd-0a94-4c97-82dd-ee36edf697c7).jpg", 76),
     "torre": ("Cerro Torre (5457586054).jpg", 80),
+    # Ric, 2026-10-26: "another crag picture one that shows more of the sky",
+    # "one for the smokeys", "one for the rockeys"
+    "cliff": ("High cliff in Lyse with climbers 1.jpg", 76),
+    "smokies": ("Blue Ridge (Great Smoky Mountains, North Carolina, USA) 1.jpg", 80),
+    "rockies": ("Meeker, Longs, Lady Washington.jpg", 72),
 }
 # the lowest the sky reaches, as a share of the height: below it is sea, lake
 # or ground whatever the model thinks (a guard, not the main rule)
@@ -90,7 +95,7 @@ SOURCES = {
 # when no path of sky reaches them — the mangrove's leaves showed the photo's
 # blue through every hole. Only where nothing else near the sky is blue.
 HOLES = {"beach": 50}
-FLOOR = {"beach": 0.6, "city": 0.45, "water": 0.66, "mountains": 0.6, "torre": 0.8, "crag": 0.4, "forest": 0.45}
+FLOOR = {"beach": 0.6, "city": 0.45, "water": 0.66, "mountains": 0.6, "torre": 0.8, "crag": 0.4, "forest": 0.45, "cliff": 0.55, "smokies": 0.5, "rockies": 0.45}
 MODEL = "nvidia/segformer-b5-finetuned-ade-640-640"
 _model = None
 

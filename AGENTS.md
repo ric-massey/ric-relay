@@ -839,8 +839,11 @@ ones that must never break:
   from Commons clips, PD or CC BY, credited) — Ric: "i dont want people to be
   able to tell they are ai generated. and they have to move". Never swap it for
   generated imagery or video. Each photo also has a depth map and an overcast
-  relight (`scene-maps.py`): haze and fog by real distance, cloud shadows on the
-  land, the overcast photo faded in under grey skies. The photo is drawn by a
+  relight (`scene-maps.py`): haze and fog by real distance, cloud shadows and
+  sunlit patches on the land, sun beams from a low sun (never on near land),
+  the overcast photo faded in under grey skies. The footage plays at the
+  wind's speed — 1/16 of its own up to a breeze (Ric, 2026-10-26: "5 mph and
+  the clouds are moving a million miles per hour"); don't speed it back up. The photo is drawn by a
   WebGL layer (plants sway, depth parallax, water and swash, seasons, wet and
   snowy ground) from more maps; lightning, the Milky Way and the moon are real
   photographs (`make-night.py`). Don't go back to dimming

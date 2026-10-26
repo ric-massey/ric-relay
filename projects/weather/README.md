@@ -1282,7 +1282,14 @@ scenes, then climbing.
     thickening the air by their rate (`seeing`); cloud shadows cross the land
     on a sunny, partly cloudy day, the cloud field laid on the ground in
     perspective and moving with the wind (three times real speed, so the eye
-    catches it); a lightning flash lights the near land more than the far.
+    catches it), and between them the sun lands — the gaps brighten and warm
+    (a soft-light layer from the same field), so light moves over the land in
+    patches; a lightning flash lights the near land more than the far. With
+    the sun low (under 32°) behind broken cloud, **sun beams** fan from it
+    (`buildBeams`): a few soft shafts that open and close as cloud passes,
+    full in the sky, a hint over far land and none over near land — a shaft
+    needs kilometres of air to show in, so a wall or a tree beside you never
+    carries one. Hazy air shows them more.
     The overcast photo fades in as the sky greys and once the sun is down — no
     direct sun, no hard shadows (`overcast`). One camera over everything: a
     moving film grain (stronger in the dark) and a soft vignette, and the
@@ -1329,8 +1336,9 @@ scenes, then climbing.
   - **The sky is real footage** (Ric: "i dont want people to be able to tell
     they are ai generated. and they have to move"). Drawn clouds, however
     tuned, read as drawn next to a photograph, so by day — and whenever there
-    is cloud — the sky behind every scene is a real time-lapse: seven loops in
-    `assets/weather/skies/` (clear, fair, grey, rain, storm, sunset, dusk), cut
+    is cloud — the sky behind every scene is a real time-lapse: seven kinds of loop in
+    `assets/weather/skies/` (clear, fair, grey, rain, storm, sunset, dusk; eleven clips, the
+    spares picked once a visit), cut
     by `make-skies.py` (1920 px) from freely licensed Commons clips (public domain or CC
     BY, never share-alike): one continuous stretch, the sky only, the last
     second cross-faded into the first so it loops with no jump, motion
@@ -1339,8 +1347,17 @@ scenes, then climbing.
     for when motion is off; `skies.json` holds each one's credit, which the
     settings sheet shows beside the photo's. `skyChoice` picks by the weather
     first and the hour second; `skyGrade` darkens daytime footage for night
-    and warms it for a low sun; the clip plays faster in a wind and cross-fades
-    over two seconds when the choice changes. A clear night keeps the drawn sky
+    and warms it for a low sun; it cross-fades over two seconds when the
+    choice changes. **The clip plays at the wind's speed, not its own**
+    (2026-10-26, Ric: "the weather is 5 mph and the clouds are moving a million
+    miles per hour"): a time-lapse runs a hundred times real speed or more, so
+    `playRate` gives 1/16 (the slowest a browser allows) up to a breeze, rising
+    to about a third in a gale, and `drawFootage` lays each new frame a fifth
+    of the way over the last so the slowed frames drift instead of stepping.
+    Don't speed it back up to make the motion show. Just above the land the
+    footage fades into the photo's own horizon colour (`horizonTint`): a real
+    sky is brightest there, and without it the Smokies' pale far ridges stood
+    against a dark sky. A clear night keeps the drawn sky
     — the real stars and moon belong there — and the drawn clouds stand ready
     if the footage cannot load. Over footage the sun is a glare, never a disc.
     The source clips are cached in `skies/.sky-cache/` (gitignored); the script
@@ -1414,15 +1431,19 @@ scenes, then climbing.
   weather** off, or the system's reduced motion, draws one still frame and no
   lightning. With a photo a scrim and a shadow on the hero keep white type
   readable, and the cards' glass is darker.
-  **Eight scenes ship:** Sky (no photo) and seven photographs, added the same day
-  — Forest, Mountains, City, On the water, Beach, At the crag (a party on a
-  sandstone crack) and Cerro Torre, which Ric asked for by name: "what the
-  weather would be like there if it was like the weather of where you are", which
-  is what every scene already does. They are free-licensed photos from online, by Ric's word
+  **Eleven scenes ship:** Sky (no photo) and ten photographs — Forest, Mountains,
+  City, On the water, Beach, At the crag (a party on a sandstone crack) and
+  Cerro Torre, which Ric asked for by name: "what the weather would be like
+  there if it was like the weather of where you are", which is what every scene
+  already does; then on 2026-10-26 Under the cliff (a granite wall in Lyse,
+  Sweden, with a lot of sky: "another crag picture one that shows more of the
+  sky"), Smoky Mountains (the Blue Ridge's layered ridges; its hardwoods turn
+  in autumn) and Rocky Mountains (Meeker, Longs Peak and Lady Washington)
+  — "one for the smokeys … one for the rockeys". They are free-licensed photos from online, by Ric's word
   ("get pictures from online for now"): all from Wikimedia Commons, public
   domain or CC BY only — never share-alike, so the page owes nothing but the
   credit, which the settings sheet shows for the scene in use. Each is
-  `assets/weather/scenes/<id>.jpg` at 1600 px (200–350 KB), a 240 px
+  `assets/weather/scenes/<id>.jpg` at 3000 px with a `-1600.jpg` copy for phones, a 240 px
   `<id>-thumb.jpg` and its `<id>-sky.png` mask, re-encoded from a fresh image so no EXIF, XMP or ICC block
   survives (hard rule 1 — check with the command in AGENTS.md). `horizon` in
   each `SCENES` line is where that photo's sky ends, measured off the picture,
