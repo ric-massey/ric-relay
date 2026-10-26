@@ -48,8 +48,15 @@ BLUE = {"city": 22}
 # how strongly coloured blue sky must be: Cerro Torre's shaded summit snow is a
 # pale blue, its sky a deep one
 BLUE_SAT = {"torre": 0.4}
+# …except right of Standhardt, where pale sky meets the cloud bank and there is
+# no summit to protect: from this share of the width, a paler blue is sky too
+PALE_FROM = {"torre": 0.66}
 # the lowest the sky reaches, as a share of the height: below it is sea, lake
 # or ground however blue it is (the beach's sea touches its sky at the horizon)
+# where white still counts as sky in a photo that otherwise takes only blue
+# (left, top, right, bottom shares): Cerro Torre's two cloud banks, which
+# otherwise stayed bright daylight white under a night or an overcast sky
+CLOUD_BOX = {"torre": [(0.715, 0.26, 0.95, 0.66), (0.11, 0.3, 0.24, 0.52)]}
 # how many pixels the sky is grown into the land (see above); the beach's
 # mangrove is all thin branches, which growing and smoothing swallowed, so cloud
 # drew over its leaves
@@ -67,6 +74,14 @@ def mask_for(path, sid):
     blue = (b > r + BLUE.get(sid, 12)) & (b >= g - 4) & (v > 95) & (sat >= BLUE_SAT.get(sid, 0))
     white = (sat < 0.16) & (v > WHITE.get(sid, 190))
     cand = blue | white
+    if sid in PALE_FROM:
+        pale = (b > r + 8) & (v > 120)
+        pale[:, :round(WIDTH * PALE_FROM[sid])] = False
+        cand |= pale
+    for (x0, y0, x1, y1) in CLOUD_BOX.get(sid, []):
+        box = np.zeros_like(cand)
+        box[round(h * y0):round(h * y1), round(WIDTH * x0):round(WIDTH * x1)] = True
+        cand |= box & (sat < 0.32) & (v > 150)
     cand[round(h * FLOOR.get(sid, 1)):] = False
     # join up with the top edge, through sky only
     lab, _ = ndimage.label(cand)

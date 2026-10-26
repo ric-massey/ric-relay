@@ -177,7 +177,7 @@
     }
     /* stars come out as the sky darkens, under clear sky only */
     const stars = clamp((phase.dark - 0.55) / 0.4, 0, 1) * clamp(1 - cloud * 1.15, 0, 1) * (rain || snow ? 0 : 1) * (1 - fog);
-    return { kind: k, phase, rain, snow, fog, vis, cloud, wind, blow, gusty, dirX, storm: k === "storm", stars };
+    return { kind: k, phase, rain, snow, fog, vis, cloud, wind, windDir: s.windDir, blow, gusty, dirX, storm: k === "storm", stars };
   }
 
   /* ── the picture: a filter and a colour over it ── */
@@ -393,6 +393,182 @@
       fog: shade(ph === "night" ? [70, 78, 94] : warm ? [214, 196, 192] : [218, 224, 230], ph === "night" ? 1 : k * (f.rain ? 0.85 : 1)) };
   }
 
+  /* ── clouds ──
+     Ric, 2026-10-25: "the clouds … doesnt look realistic so spend more time
+     making it look good". The first clouds were one blurred noise stretched
+     across the sky with flat colour. These are:
+       shapes   swirled noise (fractal noise whose coordinates are themselves
+                pushed about by noise), made once — billowy heaps for fair
+                cumulus, broad lumpy sheets for overcast, thin streaks for cirrus
+       light    each texture lit for the moment: thick middles are the dim flat
+                bases you see from below, thin edges and the side towards the
+                sun bright; at sunset the undersides go orange and pink, at
+                night they take the moon's grey or a city's orange
+       place    drawn on a plane overhead in perspective — big above you, small
+                and crowded towards the horizon, fading into its haze — and
+                carried by the wind across and towards or away from you */
+  const CN = 384;
+  let cloudF = null, cloudQ = null, cloudSpread = 0.12;
+  function lattices(n, g0) {
+    const out = [];
+    for (let o = 0, g = g0; o < n; o++, g *= 2) { const v = new Float32Array(g * g); for (let i = 0; i < v.length; i++) v[i] = Math.random(); out.push({ g, v }); }
+    return out;
+  }
+  function fbmAt(L, u, v) {
+    let sum = 0, amp = 1, tot = 0;
+    for (const { g, v: a } of L) {
+      const x = u * g, y = v * g, x0 = Math.floor(x), y0 = Math.floor(y), tx = x - x0, ty = y - y0;
+      const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+      const xa = ((x0 % g) + g) % g, xb = (xa + 1) % g, ya = ((y0 % g) + g) % g, yb = (ya + 1) % g;
+      const p = a[ya * g + xa], q = a[ya * g + xb], r = a[yb * g + xa], s = a[yb * g + xb];
+      const top = p + (q - p) * sx, bot = r + (s - r) * sx;
+      sum += (top + (bot - top) * sy) * amp; tot += amp; amp *= 0.5;
+    }
+    return sum / tot;
+  }
+  function cloudField() {
+    if (cloudF) return cloudF;
+    const base = lattices(6, 3), wx = lattices(3, 2), wy = lattices(3, 2);
+    cloudF = new Float32Array(CN * CN);
+    for (let y = 0; y < CN; y++) for (let x = 0; x < CN; x++) {
+      const u = x / CN, v = y / CN;
+      const du = (fbmAt(wx, u, v) - 0.5) * 0.35, dv = (fbmAt(wy, u, v) - 0.5) * 0.35;
+      cloudF[y * CN + x] = fbmAt(base, ((u + du) % 1 + 1) % 1, ((v + dv) % 1 + 1) % 1);
+    }
+    cloudQ = Float32Array.from(cloudF).sort();
+    cloudSpread = cloudQ[Math.floor(CN * CN * 0.84)] - cloudQ[Math.floor(CN * CN * 0.16)];
+    return cloudF;
+  }
+  /* a cloud texture: `kind` cumulus | stratus | cirrus, `cover` 0…1, coloured
+     from `lit` (thin, sunward) to `base` (thick, the underside), the sun to the
+     left (−1) or right (+1) */
+  function cloudTex(kind, cover, lit, base, sunX, alphaMax) {
+    const F = cloudField(), c = document.createElement("canvas");
+    c.width = c.height = CN;
+    const x2 = c.getContext("2d"), im = x2.createImageData(CN, CN), d = im.data;
+    const W8 = (v) => ((v % CN) + CN) % CN, raw = (x, y) => F[W8(y) * CN + W8(x)];
+    /* cumulus get a finer billowing on top of their shape — the same field at
+       twice the scale, folded so it puffs (1 − |2n − 1|) — the cauliflower edge
+       a heap has; cirrus are the field squeezed four times top to bottom (whole
+       numbers, so it still tiles), long thin strands */
+    const at = kind === "cirrus" ? (x, y) => raw(x, y * 4)
+      : kind === "cumulus" ? (x, y) => raw(x, y) + 0.16 * cloudSpread * (1 - Math.abs(2 * raw(x * 2, y * 2) - 1) - 0.5)
+      : raw;
+    const t = cloudQ[clamp(Math.floor((1 - cover) * cloudQ.length), 0, cloudQ.length - 1)];
+    const S = cloudSpread, soft = (kind === "cumulus" ? 0.14 : kind === "cirrus" ? 0.5 : 0.7) * S;
+    const lx = Math.round(sunX * 5);
+    for (let y = 0; y < CN; y++) for (let x = 0; x < CN; x++) {
+      const n = at(x, y);
+      let a = clamp((n - t + soft) / (2 * soft), 0, 1);
+      a = a * a * (3 - 2 * a);
+      if (a <= 0.002) continue;
+      const dens = clamp((n - t) / (S * 0.9), 0, 1);
+      /* lower on the screen is nearer the horizon, where you see a heap's side:
+         with cloud above it on the screen a pixel is in the heap's lower part,
+         its base, and dim; the sunward side and the thin edges catch the light */
+      const above = clamp((at(x + lx, y - 5) - t) / (S * 0.9), 0, 1);
+      let sh;
+      if (kind === "cumulus") sh = clamp(0.12 + above * 0.55 + dens * 0.3 - (1 - dens) * 0.2, 0, 1);
+      else if (kind === "stratus") sh = clamp(0.45 + (n - t) / S * 0.35 + above * 0.15, 0, 1);
+      else sh = 0.15;
+      const i = (y * CN + x) * 4;
+      d[i] = lit[0] + (base[0] - lit[0]) * sh;
+      d[i + 1] = lit[1] + (base[1] - lit[1]) * sh;
+      d[i + 2] = lit[2] + (base[2] - lit[2]) * sh;
+      d[i + 3] = 255 * Math.min(1, a * (kind === "stratus" ? 1.25 : 1)) * alphaMax;
+    }
+    x2.putImageData(im, 0, 0);
+    return c;
+  }
+  /* the colour of cloud for the sun's height and the weather: the lit side and
+     the underside */
+  function cloudColours(f) {
+    const P = f.phase, e = P.elev ?? (P.name === "night" ? -20 : P.name === "day" ? 30 : P.name === "golden" ? 6 : -3);
+    const K = [[12, [255, 255, 255], [176, 186, 202]], [4, [255, 232, 196], [178, 170, 184]], [0, [255, 176, 112], [158, 116, 132]],
+      [-4, [232, 138, 120], [104, 86, 112]], [-9, [120, 104, 140], [52, 54, 80]], [-14, [62, 68, 92], [30, 34, 48]]];
+    let lit = K[K.length - 1][1], base = K[K.length - 1][2];
+    if (e >= K[0][0]) { lit = K[0][1]; base = K[0][2]; }
+    else for (let i = 0; i < K.length - 1; i++) {
+      const [e0, l0, b0] = K[i], [e1, l1, b1] = K[i + 1];
+      if (e <= e0 && e >= e1) { const k = (e0 - e) / (e0 - e1); lit = l0.map((v, j) => v + (l1[j] - v) * k); base = b0.map((v, j) => v + (b1[j] - v) * k); break; }
+    }
+    /* a full moon lights cloud a little; a city's streets light its underside */
+    if (P.dark > 0.6 && P.moon && P.moon.alt > 0) { const m = P.moon.fraction * 0.35 * (P.dark - 0.6) / 0.4; lit = lit.map((v, j) => v + ([150, 160, 186][j] - v) * m); }
+    if (GLOW[scene.id] && P.dark > 0.3) { const g = (P.dark - 0.3) / 0.7 * 0.55; base = base.map((v, j) => v + (GLOW[scene.id][j] * 0.62 - v) * g); lit = lit.map((v, j) => v + (GLOW[scene.id][j] * 0.75 - v) * g * 0.6); }
+    /* wet and heavy cloud is greyer and darker; a storm's is darkest */
+    const wet = f.storm ? 0.45 : f.rain || f.snow ? 0.66 : f.cloud > 0.85 ? 0.82 : 1;
+    const flat = f.storm || f.rain || f.snow ? 0.55 : f.cloud > 0.85 ? 0.35 : 0;   // overcast light is flat: lit and base closer
+    lit = lit.map((v, j) => (v + (base[j] - v) * flat * 0.6) * wet);
+    base = base.map((v) => v * wet * (f.storm ? 0.8 : 1));
+    return { lit: lit.map(Math.round), base: base.map(Math.round) };
+  }
+  /* build the cloud layers for this reading */
+  function buildClouds(f, hy) {
+    const C = cloudColours(f), P = f.phase;
+    let sunX = 0;
+    const sp = P.sunPos && P.sunPos.alt > -0.1 ? skyPoint(P.sunPos.az, Math.max(0, P.sunPos.alt)) : null;
+    if (sp) sunX = clamp((sp.x - W / 2) / (W / 2), -1, 1);
+    /* the wind carries them: across the screen, and towards or away from you */
+    const view = (P.lat ?? 1) >= 0 ? Math.PI : 0, to = ((f.windDir ?? 270) + 180) * DEG;
+    const speed = 0.5 + clamp(f.wind, 0, 110) * 0.12;                 // texture px a second
+    const vu = -speed * f.dirX, vv = -speed * Math.cos(to - view);
+    const wet = f.rain || f.snow || f.storm;
+    /* a photo looks at the far sky, near its horizon, where cloud is small — the
+       photos' own clouds are; the plain Sky looks straight up */
+    const z = scene.sky ? 1 : 0.5;
+    const out = [];
+    /* high cirrus on a fair day */
+    if (!wet && f.cloud > 0.08 && f.cloud < 0.7 && P.dark < 0.85) {
+      out.push({ img: cloudTex("cirrus", 0.22, C.lit, C.lit.map((v) => v * 0.92), sunX, 0.22), s0: 1.7 * z * W / CN, offU: rnd(0, CN), offV: rnd(0, CN), vu: vu * 0.5, vv: vv * 0.5, alpha: 1 });
+    }
+    /* a ceiling once it is mostly cloudy: the whole sky, lit unevenly, moving */
+    if (f.cloud > 0.7) {
+      out.push({ img: cloudTex("stratus", 1, C.lit, C.base, sunX, 1), s0: 1.5 * z * W / CN, offU: rnd(0, CN), offV: rnd(0, CN), vu: vu * 0.8, vv: vv * 0.8,
+        alpha: clamp((f.cloud - 0.7) / 0.22, 0, 1) });
+    }
+    /* the main layer: heaps on a fair day, lumpy sheets when it is wet or grey */
+    if (f.cloud > 0.03) {
+      const kind = wet || f.cloud > 0.75 ? "stratus" : "cumulus";
+      out.push({ img: cloudTex(kind, Math.min(0.97, f.cloud), C.lit, C.base, sunX, kind === "cumulus" ? 1 : 0.92), s0: (kind === "cumulus" ? 1.25 : 1.4) * z * W / CN,
+        offU: rnd(0, CN), offV: rnd(0, CN), vu, vv, alpha: 1 });
+    }
+    return { layers: out, hy, haze: C.base.map((v, j) => Math.round((v + C.lit[j]) / 2)) };
+  }
+  /* one layer on the plane overhead: each screen row a strip of the texture,
+     scaled for its distance — 1 at the top, growing towards the horizon `hy` */
+  /* far rows squeeze many texture pixels into one screen pixel and shimmer
+     into stripes; they read from a smaller, smoothed copy instead (each half
+     the size of the last) */
+  function mips(img) {
+    const out = [img];
+    for (let k = 1, src = img; k <= 4; k++) {
+      const c = document.createElement("canvas");
+      c.width = c.height = CN >> k;
+      const x = c.getContext("2d");
+      x.imageSmoothingQuality = "high";
+      x.drawImage(src, 0, 0, c.width, c.height);
+      out.push(c); src = c;
+    }
+    return out;
+  }
+  function drawPlane(s, L, hy, dt) {
+    L.offU = (L.offU + L.vu * dt) % CN; L.offV = (L.offV + L.vv * dt) % CN;
+    if (!L.pats) L.pats = mips(L.img).map((m) => s.createPattern(m, "repeat"));
+    const step = Math.max(2, Math.round(2 * DPR)), A0 = 1 / L.s0;
+    for (let y = 0, end = Math.min(hy - step, H); y < end; y += step) {
+      const d = hy - y, q = hy / d, A = A0 * q, dv = A0 * q * q, v = L.offV + A0 * hy * q;
+      const lv = clamp(Math.floor(Math.log2(Math.max(A, dv * step))), 0, 4), k = 1 << lv;
+      const pat = L.pats[lv];
+      pat.setTransform(new DOMMatrix([k / A, 0, 0, k / dv, W / 2 - L.offU / A, y - v / dv]));
+      s.fillStyle = pat;
+      /* far off, cloud thins into the horizon's haze */
+      const f = clamp(d / (hy * 0.35), 0, 1);
+      s.globalAlpha = L.alpha * (0.08 + 0.92 * f * f * (3 - 2 * f));
+      s.fillRect(0, y, W, step);
+    }
+    s.globalAlpha = 1;
+  }
+
   /* what the wind picks up in each picture. Rain lays dust, sand, grit and
      lying snow: in the wet only spray and leaves still blow. While it snows, everything
      blowing is snow. `peaks` are summits (shares of the photo) that stream
@@ -480,18 +656,13 @@
       else for (const y of horizon) d = Math.max(d, y);
       layers.skyH = Math.max(H * 0.25, d);
     }
-    if (sky && f.cloud > 0.04) {
-      /* cloud goes by at the wind's speed: a still day creeps, a gale races
-         ("if its windy and cloudy you see the clouds move") */
-      const drift = (4 + clamp(f.wind, 0, 100) * 0.9) * DPR * dir;
-      /* two layers each covering `each` overlap to cover 1 − (1 − each)² of
-         the sky: sized so together they cover what the reading says */
-      const each = 1 - Math.sqrt(1 - Math.min(0.97, f.cloud));
-      layers.far = { img: tex(each, L.lo, L.hi, 0.8, { soft: 0.16, shift: 97 }), off: rnd(0, W), v: drift * 0.55 };
-      layers.near = { img: tex(each, L.lo, L.hi, 0.95, { soft: 0.1, flip: true }), off: rnd(0, W), v: drift };
-      layers.over = clamp((f.cloud - 0.6) / 0.35, 0, 1) * (f.storm ? 1 : 0.96);
-      layers.overCol = L.mid;
-    }
+    /* cloud on a plane overhead, its horizon a little below where the land
+       meets the sky so it runs on behind the mountains; it goes by at the
+       wind's speed ("if its windy and cloudy you see the clouds move") */
+    /* the plane's horizon sits well below the screen's land line, as when you
+       look up at the sky: set just under it, nearly everything you see was the
+       most foreshortened part and heaps came out as streaks */
+    if (sky && f.cloud > 0.03) layers.clouds = buildClouds(f, scene.sky ? H * 1.5 : Math.max(H * 0.75, layers.skyH * 2));
     /* low cloud: thick, wet cloud comes down over the tops — Cerro Torre's
        spire goes into it first. Only on photos: the plain Sky has no tops. */
     if (scene.photo) {
@@ -767,12 +938,9 @@
     }
     drawMoonIn(s);
     drawSunIn(s);
-    if (layers.near) {
-      if (layers.over > 0) { s.fillStyle = rgba(layers.overCol, layers.over); s.fillRect(0, 0, W, H); }
-      for (const l of [layers.far, layers.near]) {
-        l.off += l.v * dt;
-        tiled(s, l.img, l.off, 0, W * (l === layers.far ? 1.5 : 2.1), band * 1.08);
-      }
+    if (layers.clouds) {
+      const c = layers.clouds;
+      for (const L of c.layers) drawPlane(s, L, c.hy, dt);
     }
     if (m) {
       const r = coverRect(m.w, m.h);
@@ -792,18 +960,40 @@
      shifted by two slow waves — a few pixels far off, more close up, more in
      wind and rain — so the sea and the lakes' reflections move. Cut to the water
      map, on the canvas that carries the photo's filter. */
+  /* how far a strip of water at row y is pushed, across and up, at time t */
+  function wave(w, y, t) {
+    const span = Math.max(1, w.y1 - w.y0), rough = w.rough;
+    const u = (y - w.y0) / span, f = 0.3 + u;                        // 0 far … 1 near
+    const A = DPR * (0.35 + rough * 3.2) * (0.25 + u * 1.2);
+    const q = y / DPR / f;
+    return [A * (Math.sin(t * (1.1 + rough) + q * 0.13) + 0.55 * Math.sin(t * (1.9 + rough * 1.4) + q * 0.29 + 2)),
+      A * 0.4 * Math.sin(t * (1.4 + rough) + q * 0.21 + 1)];
+  }
+  /* a still lake is a mirror: the sky above it — its colour, its cloud, the
+     stars, the moon — drawn upside down about the shore and rippled with the
+     water, over the photo's own reflection of a sky that is not there now */
+  const MIRROR = { water: 0.657 };
+  function drawMirror(t) {
+    const w = layers.water, m = MIRROR[scene.id];
+    if (!w || m == null || !skyCv) return;
+    const r = w.pr, ay = r.y + m * r.h;
+    const hb = Math.max(3, Math.round(3 * DPR));
+    ctx.globalAlpha = 0.72 * (1 - clamp(w.rough / 1.3, 0, 0.6));     // a rough lake mirrors less
+    for (let y = Math.max(Math.floor(ay), 0); y < Math.min(H, w.y1); y += hb) {
+      const [dx] = wave(w, y, t), sy = 2 * ay - y;                     // the sky row this one mirrors
+      if (sy < 0) break;
+      ctx.drawImage(skyCv, 0, Math.max(0, sy - hb), W, hb, dx, y, W, hb);
+    }
+    ctx.globalAlpha = 1;
+  }
   function drawWater(t) {
     const w = layers.water;
     wctx.clearRect(0, 0, W, H);
     if (!w) return;
     const img = w.img, r = w.pr, iw = img.naturalWidth, ih = img.naturalHeight;
-    const hb = Math.max(2, Math.round(2 * DPR)), span = Math.max(1, w.y1 - w.y0), rough = w.rough;
+    const hb = Math.max(2, Math.round(2 * DPR));
     for (let y = Math.floor(w.y0); y < w.y1; y += hb) {
-      const u = (y - w.y0) / span, f = 0.3 + u;                      // 0 far … 1 near
-      const A = DPR * (0.35 + rough * 3.2) * (0.25 + u * 1.2);
-      const q = y / DPR / f;
-      const dx = A * (Math.sin(t * (1.1 + rough) + q * 0.13) + 0.55 * Math.sin(t * (1.9 + rough * 1.4) + q * 0.29 + 2));
-      const dy = A * 0.4 * Math.sin(t * (1.4 + rough) + q * 0.21 + 1);
+      const [dx, dy] = wave(w, y, t);
       const sy = (y + dy - r.y) / r.h * ih;
       if (sy < 0 || sy >= ih) continue;
       wctx.drawImage(img, 0, sy, iw, Math.max(1, hb / r.h * ih), r.x + dx, y, r.w, hb);
@@ -921,6 +1111,7 @@
 
     drawWater(t);
     drawSky(dt, t, live);
+    drawMirror(t);
     waterLife(t, dt, live);
     cityLights(t, dt, live, now);
     /* spindrift streaming off the summits */
@@ -1110,7 +1301,7 @@
     lastT = 0;
     if (!fx) return;
     frame(performance.now());
-    if (animated() && (parts.length || drops.length || stars.length || dust.length || plume.length || layers.near || layers.deck || layers.fog || layers.sheet || layers.water || (layers.city && fx.phase.dark > 0.18) || fx.storm)) raf = requestAnimationFrame(loop);
+    if (animated() && (parts.length || drops.length || stars.length || dust.length || plume.length || layers.clouds || layers.deck || layers.fog || layers.sheet || layers.water || (layers.city && fx.phase.dark > 0.18) || fx.storm)) raf = requestAnimationFrame(loop);
     if (!animated()) flashEl.style.opacity = "0";
   }
   function size() {

@@ -1244,10 +1244,28 @@ scenes, then climbing.
     finds which pixels of each photo are sky (sky-coloured *and* joined to the
     top edge through sky, so a blue lake or white glacier is not) and writes
     `<id>-sky.png`, the photo at 800 px with the sky in its alpha, grown two
-    pixels into the land so no blue fringe shows round a ridge. Cloud is drawn
-    through it: two drifting layers sized so together they cover the reported
-    share (1 − (1 − each)²), then from 60% a grey ceiling until the blue is
-    gone. Stars, the moon and lightning bolts go only where the mask is sky.
+    pixels into the land so no blue fringe shows round a ridge. Cloud, stars,
+    the moon and lightning bolts go only where the mask is sky. Cerro Torre's
+    own cloud banks count as sky inside two boxes (`CLOUD_BOX`) — its summit
+    snow is as white as cloud, so elsewhere only blue does.
+  - **The clouds themselves** (Ric: "the clouds … doesnt look realistic so
+    spend more time making it look good"). The first ones were blurred noise
+    stretched across the sky in one flat colour. Now: a swirled noise field
+    (fractal noise whose coordinates are pushed about by more noise), made
+    once; from it, billowy heaps for fair cumulus (a finer folded copy puffs
+    their edges), broad lumpy sheets for overcast, faint strands of cirrus on a
+    fair day; each lit for the moment — thin edges and the sun's side bright,
+    the base dim, orange and pink undersides at sunset, the moon's grey or a
+    city's orange at night (`cloudColours`); and laid on a plane overhead in
+    perspective (`drawPlane`), big above you and small towards the horizon,
+    with smaller smoothed copies for the far rows so they don't shimmer, moved
+    by the wind across the screen and towards or away from you. The photo
+    scenes draw cloud at half the plain Sky's scale: they look at the far sky,
+    where the photos' own clouds are small. Over 70% a lit, moving overcast
+    ceiling fills in behind.
+  - **A still lake is a mirror** (`MIRROR`): the live sky — its colour, cloud,
+    stars and moon — is drawn upside down about the shore and rippled with the
+    water, over the photo's reflection of a sky that is not there now.
     Rerun the script when a photo changes; `--sheet <dir>` writes a check image.
   - **Thick, wet cloud comes down over the tops** — Cerro Torre's spire goes
     into it first. **Rain and snow** put a veil in the air as well as streaks
