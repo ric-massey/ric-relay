@@ -858,13 +858,16 @@
       s.globalAlpha = 1;
       return true;
     };
-    /* until the new sky can show, the old one stays, and the fade starts then */
-    if (sk.from && !vis(sk.cur)) { sk.since = now; return draw(sk.from, 1); }
-    const t = sk.from ? clamp((now - sk.since) / 2000, 0, 1) : 1;
+    /* until the new sky can show, the old one stays, and the fade starts then;
+       with no old one (the page has just opened) the drawn sky is under it and
+       the footage fades in over that rather than snapping on */
+    if (!vis(sk.cur)) { sk.since = now; return sk.from ? draw(sk.from, 1) : false; }
+    const t = clamp((now - sk.since) / (sk.from ? 2000 : 1200), 0, 1);
     if (sk.from && t < 1) draw(sk.from, 1);
     const ok = draw(sk.cur, t);
     if (sk.from && t >= 1) { sk.from.v.pause(); sk.from = null; }
     if (!ok) return false;
+    sk.cover = sk.from ? 1 : t;
     const g = sk.grade;
     if (g.mul) {
       s.globalCompositeOperation = "multiply";
@@ -961,7 +964,7 @@
       /* over real footage the sun is what a camera sees: a blown-out glare
          with no edge, not a disc (a disc read as a moon) */
       const b = s.createRadialGradient(x, y, 0, x, y, r * 4);
-      b.addColorStop(0, "rgba(255,255,250,1)"); b.addColorStop(0.18, "rgba(255,252,236,.9)"); b.addColorStop(0.5, "rgba(255,240,210,.3)"); b.addColorStop(1, "rgba(255,240,210,0)");
+      b.addColorStop(0, "rgba(255,255,250,1)"); b.addColorStop(0.05, "rgba(255,253,240,.9)"); b.addColorStop(0.16, "rgba(255,248,226,.42)"); b.addColorStop(0.45, "rgba(255,240,210,.12)"); b.addColorStop(1, "rgba(255,240,210,0)");
       s.globalCompositeOperation = "lighter";
       s.fillStyle = b; s.fillRect(x - r * 4, y - r * 4, r * 8, r * 8);
       s.globalCompositeOperation = "source-over";
@@ -1048,7 +1051,11 @@
     s.clearRect(0, 0, W, H);
     const band = layers.skyH || H * 0.6;
     /* footage first; the drawn sky only where there is none */
-    const real = drawFootage(s, scene.sky ? H : Math.min(H, band * 1.04), now, live);
+    const fb = scene.sky ? H : Math.min(H, band * 1.04);
+    /* the drawn sky goes under footage that is still fading in over nothing */
+    const fading = layers.sky && !layers.sky.from && (layers.sky.cover ?? 0) < 1;
+    if (fading) { skyWash(s, band); if (layers.clouds) for (const L of layers.clouds.layers) drawPlane(s, L, layers.clouds.hy, dt); }
+    const real = drawFootage(s, fb, now, live);
     if (!real) skyWash(s, band);
     if (stars.length && !real) {
       for (const p of stars) {
@@ -1060,7 +1067,7 @@
     if (!real) drawMoonIn(s);
     /* the sun over footage only when that footage has open sky to put it in */
     if (!real || layers.sky.id === "clear" || layers.sky.id === "fair") drawSunIn(s, real);
-    if (layers.clouds && !real) {
+    if (layers.clouds && !real && !fading) {
       const c = layers.clouds;
       for (const L of c.layers) drawPlane(s, L, c.hy, dt);
     }

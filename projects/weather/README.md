@@ -1240,11 +1240,20 @@ scenes, then climbing.
   the picture should have it be cloudy if its raining it should be raining if
   its snowing it should be snowing if its foggy it should have fog if its windy
   it should be kicking up dust". So now:
-  - **Cloud fills the photo's own sky.** `assets/weather/scenes/scene-maps.py`
-    finds which pixels of each photo are sky (sky-coloured *and* joined to the
-    top edge through sky, so a blue lake or white glacier is not) and writes
-    `<id>-sky.png`, the photo at 800 px with the sky in its alpha, grown two
-    pixels into the land so no blue fringe shows round a ridge. Cloud, stars,
+  - **Where the sky is** (`assets/weather/scenes/scene-maps.py` → `<id>-sky.png`,
+    the photo's full size, sky in alpha). First a colour rule; it called
+    Montreal's far horizon and four tower tops sky, swallowed the lake's snowy
+    summit and a Cerro Torre ridge, and grew every edge into the rock (Ric:
+    "there is mistakes on the mountains … it needs to be phenominal"). Now a
+    trained segmentation model (SegFormer-B5, ADE20K) run once offline says
+    which pixels are sky — whole photo for context, full-size tiles for detail;
+    only sky joined to the top edge; grown by colour into notches the model
+    hedged on; the edge snapped to the photo's own pixels by a guided filter; a
+    luminance key keeps twigs, wires and antennas; and the photo's edge pixels
+    are colour-decontaminated (the old sky's blue taken out) so no halo shows
+    against a new sky. Each photo is rebuilt from its Commons original every
+    run, so that never compounds. Check a mask by compositing it over a dark
+    sky at full size; the README's tests only prove the files exist. Cloud, stars,
     the moon and lightning bolts go only where the mask is sky. Cerro Torre's
     own cloud banks count as sky inside two boxes (`CLOUD_BOX`) — its summit
     snow is as white as cloud, so elsewhere only blue does.

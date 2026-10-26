@@ -105,3 +105,5 @@ projects/weather/verify/.state/
 
 # Weather skies: the source clips make-skies.py downloads (big, rebuildable)
 assets/weather/skies/.sky-cache/
+# Weather scenes: the original photos scene-maps.py fetches from Commons
+assets/weather/scenes/.scene-cache/

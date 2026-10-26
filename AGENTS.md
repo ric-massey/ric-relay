@@ -825,7 +825,9 @@ ones that must never break:
   1), never hotlinked. The weather happens *in* the picture, not over it (Ric:
   "if its cloudy the picture should have it be cloudy … if its windy it should be
   kicking up dust"): cloud fills each photo's own sky through its `<id>-sky.png`
-  mask (`assets/weather/scenes/scene-maps.py`), low cloud takes the tops, fog
+  mask (`assets/weather/scenes/scene-maps.py`: a segmentation model run
+  offline, edges refined and decontaminated — never go back to a colour rule,
+  it put sky over mountains), low cloud takes the tops, fog
   thins with distance by the measured visibility, wind blows what that ground
   gives up, a thunderstorm brings strokes down to the land. Day, twilight and
   night come from the sun's real height at the visitor's place, and the sun and
