@@ -832,8 +832,12 @@ ones that must never break:
   moon (its real phase, lit side as seen from that latitude) are drawn where
   they are (`assets/weather/astro.js`, held by `test/astro.test.mjs`). The
   pictures live too: the sea and lakes move, the city's windows light floor by
-  floor after dark and its towers blink red (maps from `scene-maps.py`). Don't go
-  back to dimming the photo for cloud, or to a clock for the light. The weather drawn is only what the hero's reading says —
+  floor after dark and its towers blink red (maps from `scene-maps.py`). **The sky
+  is real time-lapse footage** (`assets/weather/skies/`, made by `make-skies.py`
+  from Commons clips, PD or CC BY, credited) — Ric: "i dont want people to be
+  able to tell they are ai generated. and they have to move". Never swap it for
+  generated imagery or video. Don't go back to dimming the photo for cloud, or
+  to a clock for the light. The weather drawn is only what the hero's reading says —
   `WxScene.preview()` is for looking from the console and the page never calls
   it; "Moving weather" off and reduced motion draw a still frame. Weather only —
   Pro keeps its instrument look. A Mochi scene waits on Ric.

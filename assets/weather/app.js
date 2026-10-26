@@ -6713,7 +6713,9 @@
       $("#scenes").innerHTML = WxScene.SCENES.map((sc) => `<button type="button" role="radio" data-scene="${esc(sc.id)}" aria-checked="${sc.id === on.id}" aria-label="${esc(sc.name)}">
         <span class="sw"${sc.thumb ? ` style="background-image:url('${esc(sc.thumb)}')"` : ""}></span><span class="sn">${esc(sc.name)}</span></button>`).join("");
       const c = on.credit;
-      $("#scenecredit").innerHTML = c ? `Photo: <a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title || on.name)}</a> by ${esc(c.by)} · ${esc(c.licence)}` : on.say ? esc(on.say) : "";
+      const sk = WxScene.skyCredit && WxScene.skyCredit();
+      $("#scenecredit").innerHTML = (c ? `Photo: <a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title || on.name)}</a> by ${esc(c.by)} · ${esc(c.licence)}` : on.say ? esc(on.say) : "")
+        + (sk ? `<br>Sky: <a href="${esc(sk.url)}" target="_blank" rel="noopener">${esc(sk.title)}</a> by ${esc(sk.by)} · ${esc(sk.licence)}` : "");
       $("#motion").setAttribute("aria-checked", String(WxScene.motion()));
     };
     const openSettings = () => { renderScenes(); renderPlace(); setDlg.showModal ? setDlg.showModal() : setDlg.setAttribute("open", ""); };

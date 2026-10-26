@@ -521,6 +521,13 @@ console.log('\nRULE  two pages, one room: Weather for everyone, Weather Pro for 
       `every scene with moving water has its water map (${wet.join(', ')})`);
     ok(glow.length && lights.every(j => j && j.windows.length > 500 && j.tops.length && [...j.windows, ...j.tops].every(([u, v]) => u >= 0 && u <= 1 && v >= 0 && v <= 1)),
       `every city scene has its windows and tower tops mapped inside the photo (${glow.join(', ')})`);
+    /* the real skies (2026-10-25): Ric — "i dont want people to be able to tell they are ai generated. and they have to move" */
+    const skyIds = [...new Set([...scene.slice(scene.indexOf('function skyChoice'), scene.indexOf('function skyGrade')).matchAll(/"(clear|fair|grey|rain|storm|sunset|dusk)"/g)].map(m => m[1]))];
+    const skies = JSON.parse(fs.readFileSync(new URL('assets/weather/skies/skies.json', root), 'utf8'));
+    ok(skyIds.length === 7 && skyIds.every(id => ['webm', 'mp4', 'jpg'].every(e => fs.existsSync(new URL(`assets/weather/skies/${id}.${e}`, root)))),
+      `every real sky the scene can pick has its WebM, its H.264 for Safari and its still (${skyIds.join(', ')})`);
+    ok(skyIds.every(id => skies[id] && skies[id].by && /^https:\/\/commons\.wikimedia\.org\//.test(skies[id].url) && /^(CC BY \d|CC0|public domain)/i.test(skies[id].licence) && !/SA/.test(skies[id].licence)),
+      'every real sky is credited to its maker on Commons, under a licence that asks only for credit');
     const exif = ids.flatMap(id => [`${id}.jpg`, `${id}-thumb.jpg`]).filter(f => fs.readFileSync(new URL(dir + f, root)).subarray(0, 65536).includes('Exif\0'));
     ok(exif.length === 0, `no scene photo carries EXIF, so no GPS (${exif.join(', ') || 'none'})`);
     ok(!/WxScene\.preview/.test(app) && /gust: c\.gust\.v/.test(app),

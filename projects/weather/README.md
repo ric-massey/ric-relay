@@ -1263,6 +1263,25 @@ scenes, then climbing.
     scenes draw cloud at half the plain Sky's scale: they look at the far sky,
     where the photos' own clouds are small. Over 70% a lit, moving overcast
     ceiling fills in behind.
+  - **The sky is real footage** (Ric: "i dont want people to be able to tell
+    they are ai generated. and they have to move"). Drawn clouds, however
+    tuned, read as drawn next to a photograph, so by day — and whenever there
+    is cloud — the sky behind every scene is a real time-lapse: seven loops in
+    `assets/weather/skies/` (clear, fair, grey, rain, storm, sunset, dusk), cut
+    by `make-skies.py` from freely licensed Commons clips (public domain or CC
+    BY, never share-alike): one continuous stretch, the sky only, the last
+    second cross-faded into the first so it loops with no jump, motion
+    interpolated to twice the frame rate so the page can play it slowly. Each
+    is a VP9 WebM, an H.264 MP4 for Safari that cannot play VP9, and a still
+    for when motion is off; `skies.json` holds each one's credit, which the
+    settings sheet shows beside the photo's. `skyChoice` picks by the weather
+    first and the hour second; `skyGrade` darkens daytime footage for night
+    and warms it for a low sun; the clip plays faster in a wind and cross-fades
+    over two seconds when the choice changes. A clear night keeps the drawn sky
+    — the real stars and moon belong there — and the drawn clouds stand ready
+    if the footage cannot load. Over footage the sun is a glare, never a disc.
+    The source clips are cached in `skies/.sky-cache/` (gitignored); the script
+    downloads them again by title. Needs ffmpeg (`brew install ffmpeg`).
   - **A still lake is a mirror** (`MIRROR`): the live sky — its colour, cloud,
     stars and moon — is drawn upside down about the shore and rippled with the
     water, over the photo's reflection of a sky that is not there now.

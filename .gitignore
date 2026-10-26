@@ -102,3 +102,6 @@ projects/val/*.tmp
 projects/val/matches/*.tmp
 projects/cs/tools/
 projects/weather/verify/.state/
+
+# Weather skies: the source clips make-skies.py downloads (big, rebuildable)
+assets/weather/skies/.sky-cache/

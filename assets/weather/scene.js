@@ -8,6 +8,9 @@
    this file plays what app.js says is overhead right now — in the picture, not
    over it (Ric, same day: "if its cloudy the picture should have it be cloudy
    … if its windy it should be kicking up dust"):
+     the sky            real time-lapse footage, by the weather and the hour
+                        (skies/, make-skies.py) — the drawn sky below is for a
+                        clear night and for when footage cannot play
      cloud              fills the photo's own sky (its <id>-sky.png mask):
                         drifting cloud, then from 60% a grey ceiling until the
                         blue is gone; thick, wet cloud comes down over the tops
@@ -663,6 +666,9 @@
        look up at the sky: set just under it, nearly everything you see was the
        most foreshortened part and heaps came out as streaks */
     if (sky && f.cloud > 0.03) layers.clouds = buildClouds(f, scene.sky ? H * 1.5 : Math.max(H * 0.75, layers.skyH * 2));
+    /* a real sky when there is one for this weather and hour (the drawn
+       clouds above stay ready in case the footage cannot play) */
+    layers.sky = sky ? chooseSky(f) : null;
     /* low cloud: thick, wet cloud comes down over the tops — Cerro Torre's
        spire goes into it first. Only on photos: the plain Sky has no tops. */
     if (scene.photo) {
@@ -782,6 +788,109 @@
     return blob;
   }
 
+  /* ── real skies ──
+     Ric, 2026-10-25: "i dont want people to be able to tell they are ai
+     generated. and they have to move". So by day, and whenever there is cloud,
+     the sky is real time-lapse footage (assets/weather/skies/, cut into
+     seamless loops by make-skies.py from freely licensed clips, credited in
+     the settings sheet) — picked by the weather and the hour, cross-faded when
+     either changes, run faster in a wind. The drawn sky stays for a clear
+     night, where the real stars and moon belong, and if footage cannot load. */
+  let skiesMeta = null;
+  fetch("assets/weather/skies/skies.json").then((r) => r.ok ? r.json() : null).then((j) => { skiesMeta = j; if (fx) { lastKey = ""; update(st); } }).catch(() => {});
+  const videoKind = (() => {
+    const v = document.createElement("video");
+    return v.canPlayType && v.canPlayType('video/webm; codecs="vp9"') ? "webm" : "mp4";
+  })();
+  const videos = {};
+  function skyVideo(id) {
+    if (videos[id]) return videos[id];
+    const v = document.createElement("video");
+    v.muted = true; v.loop = true; v.playsInline = true; v.preload = "auto";
+    v.setAttribute("muted", ""); v.setAttribute("playsinline", ""); v.setAttribute("aria-hidden", "true");
+    v.className = "skyclip";
+    v.src = `assets/weather/skies/${id}.${videoKind}`;
+    v.poster = `assets/weather/skies/${id}.jpg`;
+    root.appendChild(v);                                             // iOS decodes only what is in the page
+    const still = new Image();
+    still.src = v.poster;
+    return (videos[id] = { v, still, id });
+  }
+  /* which real sky: the weather first, then the hour */
+  function skyChoice(f) {
+    if (!skiesMeta) return null;
+    const P = f.phase, wet = f.rain || f.snow, cloud = f.cloud;
+    let id;
+    if (P.dark >= 0.85) id = cloud < 0.3 ? null : f.storm ? "storm" : f.rain ? "rain" : "grey";
+    else if (P.dark >= 0.4) id = !wet && !f.storm && cloud < 0.85 ? "dusk" : f.storm ? "storm" : f.rain ? "rain" : "grey";
+    else if (P.warm >= 0.45) id = !wet && !f.storm && cloud < 0.85 ? "sunset" : f.storm ? "storm" : f.rain ? "rain" : "grey";
+    else id = f.storm ? "storm" : f.rain ? "rain" : f.snow || f.fog > 0.3 || cloud >= 0.7 ? "grey" : cloud >= 0.18 ? "fair" : "clear";
+    return id && skiesMeta[id] ? id : null;
+  }
+  /* how the footage is graded for the hour it is shown at: footage of the day
+     darkened and cooled for night, warmed for a low sun */
+  function skyGrade(id, f) {
+    const P = f.phase;
+    if (id === "sunset" || id === "dusk") return { mul: P.dark > 0.6 ? [150, 140, 170] : null, a: 1 };
+    if (P.dark >= 0.85) return { mul: GLOW[scene.id] ? [70, 56, 52] : [42, 48, 70], a: 1 };
+    if (P.dark >= 0.4) return { mul: [Math.round(120 - P.dark * 40), 100, 130], a: 1 };
+    if (P.warm >= 0.3) return { mul: [255, Math.round(232 - P.warm * 40), Math.round(205 - P.warm * 70)], a: 1 };
+    return { mul: null, a: 1 };
+  }
+  function playRate(f) { return clamp(0.32 + f.wind / 55, 0.32, 1.25); }
+  /* draw the sky's footage into the sky canvas, covering the sky with the
+     clip's own horizon at the land line; the outgoing sky fades over 2 s */
+  function drawFootage(s, band, now, live) {
+    const sk = layers.sky;
+    if (!sk) return false;
+    const vis = (o) => {
+      const v = o.v, ready = v.readyState >= 2 && v.videoWidth;
+      const img = live && ready ? v : o.still.complete && o.still.naturalWidth ? o.still : ready ? v : null;
+      if (!img) return null;
+      return [img, img.videoWidth || img.naturalWidth, img.videoHeight || img.naturalHeight];
+    };
+    const draw = (o, alpha) => {
+      const d = vis(o);
+      if (!d || alpha <= 0) return false;
+      const [img, iw, ih] = d, k = Math.max(W / iw, band / ih);
+      s.globalAlpha = alpha;
+      s.drawImage(img, (W - iw * k) / 2, band - ih * k, iw * k, ih * k);
+      s.globalAlpha = 1;
+      return true;
+    };
+    /* until the new sky can show, the old one stays, and the fade starts then */
+    if (sk.from && !vis(sk.cur)) { sk.since = now; return draw(sk.from, 1); }
+    const t = sk.from ? clamp((now - sk.since) / 2000, 0, 1) : 1;
+    if (sk.from && t < 1) draw(sk.from, 1);
+    const ok = draw(sk.cur, t);
+    if (sk.from && t >= 1) { sk.from.v.pause(); sk.from = null; }
+    if (!ok) return false;
+    const g = sk.grade;
+    if (g.mul) {
+      s.globalCompositeOperation = "multiply";
+      s.fillStyle = rgba(g.mul, 1);
+      s.fillRect(0, 0, W, band);
+      s.globalCompositeOperation = "source-over";
+    }
+    /* below the clip's horizon there is no footage: the sky carries on in
+       the colour of the clip's lowest row, under the mountains anyway */
+    return true;
+  }
+  function chooseSky(f) {
+    const id = skyChoice(f);
+    const prev = layers.sky || lastSky;
+    if (!id) { if (prev) { prev.cur.v.pause(); if (prev.from) prev.from.v.pause(); } lastSky = null; return null; }
+    const cur = skyVideo(id), sk = { cur, from: null, since: performance.now(), grade: skyGrade(id, f), id };
+    if (prev && prev.id !== id) { sk.from = prev.cur; }
+    else if (prev) { sk.from = prev.from; sk.since = prev.since; }
+    const v = cur.v;
+    v.playbackRate = playRate(f);
+    if (animated()) { const p = v.play(); if (p && p.catch) p.catch(() => {}); } else v.pause();
+    lastSky = sk;
+    return sk;
+  }
+  let lastSky = null;
+
   /* ── the sky itself: its colour, the sun, the moon, the stars ──
      Where a thing in the sky lands on the picture: the view faces the equator
      (south in the north, north in the south) and spans 180°, so the sun rises
@@ -826,7 +935,7 @@
     s.fillStyle = g;
     s.fillRect(0, 0, W, H);
   }
-  function drawSunIn(s) {
+  function drawSunIn(s, real) {
     const P = fx.phase;
     let x, y, altR;
     if (P.sunPos) {
@@ -848,6 +957,16 @@
     glow.addColorStop(0.07, `rgba(255,${Math.round(225 - low * 80)},${Math.round(170 - low * 100)},${0.3})`);
     glow.addColorStop(1, "rgba(255,200,140,0)");
     s.fillStyle = glow; s.fillRect(x - R, y - R, R * 2, R * 2);
+    if (real) {
+      /* over real footage the sun is what a camera sees: a blown-out glare
+         with no edge, not a disc (a disc read as a moon) */
+      const b = s.createRadialGradient(x, y, 0, x, y, r * 4);
+      b.addColorStop(0, "rgba(255,255,250,1)"); b.addColorStop(0.18, "rgba(255,252,236,.9)"); b.addColorStop(0.5, "rgba(255,240,210,.3)"); b.addColorStop(1, "rgba(255,240,210,0)");
+      s.globalCompositeOperation = "lighter";
+      s.fillStyle = b; s.fillRect(x - r * 4, y - r * 4, r * 8, r * 8);
+      s.globalCompositeOperation = "source-over";
+      return;
+    }
     s.fillStyle = `rgb(255,${Math.round(250 - low * 60)},${Math.round(232 - low * 120)})`;
     s.beginPath(); s.arc(x, y, r, 0, Math.PI * 2); s.fill();
   }
@@ -918,7 +1037,7 @@
   /* the sky, drawn into its own canvas and cut to the photo's sky there: its
      colour for the hour, stars, the moon, the sun, then the cloud — so cloud
      covers them as it would, and none of it ever crosses a mountain */
-  function drawSky(dt, t, live) {
+  function drawSky(dt, t, live, now) {
     const m = scene.sky ? null : maskOf(scene);
     if (!scene.sky && !m) return;
     if (!skyCv) skyCv = document.createElement("canvas");
@@ -928,17 +1047,20 @@
     s.globalAlpha = 1;
     s.clearRect(0, 0, W, H);
     const band = layers.skyH || H * 0.6;
-    skyWash(s, band);
-    if (stars.length) {
+    /* footage first; the drawn sky only where there is none */
+    const real = drawFootage(s, scene.sky ? H : Math.min(H, band * 1.04), now, live);
+    if (!real) skyWash(s, band);
+    if (stars.length && !real) {
       for (const p of stars) {
         const a = live ? p.a * (0.7 + 0.3 * Math.sin(t * p.tw + p.ph)) : p.a;
         s.fillStyle = `rgba(235,240,255,${(a * fx.stars).toFixed(3)})`;
         s.fillRect(p.x, p.y, p.r, p.r);
       }
     }
-    drawMoonIn(s);
-    drawSunIn(s);
-    if (layers.clouds) {
+    if (!real) drawMoonIn(s);
+    /* the sun over footage only when that footage has open sky to put it in */
+    if (!real || layers.sky.id === "clear" || layers.sky.id === "fair") drawSunIn(s, real);
+    if (layers.clouds && !real) {
       const c = layers.clouds;
       for (const L of c.layers) drawPlane(s, L, c.hy, dt);
     }
@@ -1110,7 +1232,7 @@
     const gust = live ? 0.72 + 0.28 * Math.sin(t * 0.9) * Math.sin(t * 0.37 + 1) + (f.gusty ? 0.25 * Math.max(0, Math.sin(t * 0.23)) : 0) : 0.85;
 
     drawWater(t);
-    drawSky(dt, t, live);
+    drawSky(dt, t, live, now);
     drawMirror(t);
     waterLife(t, dt, live);
     cityLights(t, dt, live, now);
@@ -1301,7 +1423,7 @@
     lastT = 0;
     if (!fx) return;
     frame(performance.now());
-    if (animated() && (parts.length || drops.length || stars.length || dust.length || plume.length || layers.clouds || layers.deck || layers.fog || layers.sheet || layers.water || (layers.city && fx.phase.dark > 0.18) || fx.storm)) raf = requestAnimationFrame(loop);
+    if (animated() && (parts.length || drops.length || stars.length || dust.length || plume.length || layers.clouds || layers.sky || layers.deck || layers.fog || layers.sheet || layers.water || (layers.city && fx.phase.dark > 0.18) || fx.storm)) raf = requestAnimationFrame(loop);
     if (!animated()) flashEl.style.opacity = "0";
   }
   function size() {
@@ -1314,7 +1436,12 @@
   }
   let resizeT = 0;
   addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (size() && fx) { build(); kick(); } }, 150); });
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) kick(); });
+  document.addEventListener("visibilitychange", () => {
+    /* a hidden tab plays no sky */
+    const v = layers && layers.sky && layers.sky.cur.v;
+    if (v) { if (document.hidden) v.pause(); else if (animated()) { const p = v.play(); if (p && p.catch) p.catch(() => {}); } }
+    if (!document.hidden) kick();
+  });
   reduced.addEventListener && reduced.addEventListener("change", () => { if (fx) { build(); kick(); } });
 
   /* the same reading again (app.js redraws often) changes nothing on screen */
@@ -1353,6 +1480,8 @@
       return moving;
     },
     update,
+    /* the real sky on screen now, for its credit in the settings sheet */
+    skyCredit: () => layers && layers.sky && skiesMeta ? skiesMeta[layers.sky.id] : null,
     /* to look at a weather that is not happening, from the console:
          WxScene.preview({ kind: "rain", cloud: 95, wind: 50, windDir: 270 })
        kinds: clear partly cloudy fog drizzle rain storm sleet snow; wind and
