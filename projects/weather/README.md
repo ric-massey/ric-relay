@@ -1441,7 +1441,9 @@ scenes, then climbing.
   weather** off, or the system's reduced motion, draws one still frame and no
   lightning. With a photo a scrim and a shadow on the hero keep white type
   readable, and the cards' glass is darker.
-  **Eleven scenes ship:** Sky (no photo) and ten photographs — Forest, Mountains,
+  **Ten scenes ship, all photographs** (the plain Sky scene came out on
+  2026-10-27 — Ric: "can you remove the sky one? its too boring"; Mountains is
+  the default, and anyone who had Sky chosen gets it) — Forest, Mountains,
   City, On the water, Beach, At the crag (a party on a sandstone crack) and
   Cerro Torre, which Ric asked for by name: "what the weather would be like
   there if it was like the weather of where you are", which is what every scene

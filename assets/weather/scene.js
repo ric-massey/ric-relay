@@ -79,9 +79,12 @@
      photo, up to 4000 px; a smaller one the 1600 px copy */
   const BIG = Math.max(screen.width || 0, screen.height || 0) * (window.devicePixelRatio || 1) > 1900;
   const SCENES = [
-    { id: "sky", name: "Sky", sky: true, horizon: 1, say: "The sky's own colour, and the weather in it." },
+    /* the plain Sky scene (no photo, the drawn sky alone) came out on
+       2026-10-27 — Ric: "can you remove the sky one? its too boring". Its
+       `scene.sky` branches below stay as the fallback drawing. A visitor who
+       had it chosen gets the default photo. */
     /* the photos: all from Wikimedia Commons, public domain or CC BY (never
-       share-alike), resized to 1600 px and re-encoded with no metadata.
+       share-alike), up to 4000 px (and a 1600 px copy), re-encoded with no metadata.
        `pos` keeps the subject in frame when a phone crops the sides. */
     scenePhoto("forest", "Forest", 0.1, "center",
       { title: "Bois Raquet, High Fens", by: "Trougnouf (Benoit Brummer)", licence: "CC BY 4.0",
@@ -122,7 +125,8 @@
     return { id, name, horizon, pos, credit, photo: `assets/weather/scenes/${id}${BIG ? "" : "-1600"}.jpg`, thumb: `assets/weather/scenes/${id}-thumb.jpg` };
   }
 
-  let scene = SCENES.find((s) => s.id === store.get("wx:scene", "sky")) || SCENES[0];
+  const DEFAULT_SCENE = "mountains";
+  let scene = SCENES.find((s) => s.id === store.get("wx:scene", DEFAULT_SCENE)) || SCENES.find((s) => s.id === DEFAULT_SCENE);
   let moving = store.get("wx:motion", true) !== false;
   let W = 0, H = 0, DPR = 1;
   let st = null;            // what is overhead, from app.js
@@ -2200,7 +2204,7 @@ void main(){
     SCENES,
     current: () => scene,
     use(id) {
-      scene = SCENES.find((s) => s.id === id) || SCENES[0];
+      scene = SCENES.find((s) => s.id === id) || SCENES.find((s) => s.id === DEFAULT_SCENE);
       store.set("wx:scene", scene.id);
       lastKey = "";
       update(st);
