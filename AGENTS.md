@@ -758,6 +758,9 @@ ones that must never break:
   `app.js`, because a shared link's layers must be in the address when the map
   starts. Only the visitor's own steps in time move the other maps (`userShow` in
   `app.js`) — never tell the bus from code that runs when something loads.
+  A panel fetches nothing it can borrow: it asks its page through `fromPage`
+  (`app.js`'s `SHARE` table, 2026-10-27), so a new fetch a panel makes goes
+  into `SHARE` too, and on a phone the maps are one at a time behind tabs.
 - **Weather speaks plainly, Pro technically** (2026-10-23, Ric: "1 and 2"). On
   Weather the source of every number is still said, in plain words —
   measured / forecast / worked out, a station by its name — and Pro keeps
@@ -903,6 +906,10 @@ ones that must never break:
   carry no CORS header, so don't swap the order back. They are decoded by
   `nexrad.js` + `bzip2.js`, `level2.js`, `mrms.js`, `glm.js`, `abi.js` and
   `grib2.js` (CCSDS and the RAP's rotated grid included) + `modelmaps.js` — written here, no library.
+  bzip2 runs off the main thread: `bzip2.js` is its own Web Worker, and page
+  code reads radar through `Nexrad.load` / `parseAsync` and `Level2.feedAsync` /
+  `stream` — never the sync `parse` / `feed`, which froze Pro for seconds a
+  volume (`docs/notes/weather-pro-audit-2026-10-27.md`).
   ECMWF's data is CC BY 4.0: the map's corner credits ECMWF whenever its fields
   are shown (`#eccredit`); keep it. The **mesoanalysis** map layer is the HRRR's
   analysis hour, not SPC's — never label it SPC's; SPC's own images are the
@@ -933,10 +940,6 @@ ones that must never break:
   shaded in the browser by `terrain.js` — one more host, fetched while the page
   runs and never committed, for the same reason as the map lines. It is shadow
   and light only, never a colour that could be read as radar; its credit is in
-  bzip2 runs off the main thread: `bzip2.js` is its own Web Worker, and page
-  code reads radar through `Nexrad.load` / `parseAsync` and `Level2.feedAsync` /
-  `stream` — never the sync `parse` / `feed`, which froze Pro for seconds a
-  volume (`docs/notes/weather-pro-audit-2026-10-27.md`).
   the map's corner while it shows. Geology was looked at and not built: little
   for a forecaster, and its sources could not be checked from here.
   **The UKMET** (2026-10-24) is the Met Office's open NetCDF on AWS

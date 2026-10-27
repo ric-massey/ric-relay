@@ -489,7 +489,7 @@
         if (e.target.closest('[data-px]')) removePanel(p);
         else if (e.target.closest('[data-pmain]')) swap(p);
       });
-      if (!quiet) W.same = null;
+      if (!quiet) { W.same = null; W.show = W.panels.length; }   // a map just added is the one shown
       layout();
       if (!quiet) changed();
       return p;
@@ -520,6 +520,39 @@
       W.panels.forEach((p, i) => { p.sec.querySelector('.pn').textContent = `Map ${i + 2}`; p.frame.title = `Map ${i + 2}: ${p.stamp ? p.stamp.layer : 'starting'}`; });
       box.dataset.n = String(W.panels.length);
       for (const p of W.panels) post(p, { type: 'compact', on: !!W.same });
+      tabsRender();
+    }
+    /* ── on a phone, one map at a time (2026-10-27) ──
+       Stacked in a screen that does not scroll, four maps were a quarter of
+       a phone each and the main map ~60 px tall (the audit's polish 2). Under
+       760 px the maps share one cell and a row of tabs picks which is seen;
+       the CSS only hides the others (visibility, not display), so each keeps
+       its size and keeps loading, and a switch is instant. Wider, the tabs
+       are not drawn and every map shows as before. */
+    /* made on first use: a saved workspace lays its panels out before this line runs */
+    var tabs = null;
+    function tabsRender() {
+      if (!tabs) {
+        tabs = document.createElement('div');
+        tabs.className = 'wstabs';
+        tabs.setAttribute('role', 'tablist');
+        tabs.setAttribute('aria-label', 'Which map');
+        tabs.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-wstab]');
+          if (!b) return;
+          W.show = Number(b.dataset.wstab);
+          tabsRender();
+        });
+        const mapcol = $('.mapcol');
+        if (mapcol) mapcol.insertBefore(tabs, mapcol.firstChild);
+      }
+      const n = W.panels.length + 1;
+      W.show = Math.min(W.show || 0, n - 1);
+      tabs.hidden = n < 2;
+      tabs.innerHTML = n < 2 ? '' : Array.from({ length: n }, (_, i) => `<button type="button" role="tab" data-wstab="${i}" aria-selected="${i === W.show}">Map ${i + 1}</button>`).join('');
+      const main$ = $('#radarcard');
+      if (main$) main$.classList.toggle('wsshown', W.show === 0);
+      W.panels.forEach((p, i) => p.sec.classList.toggle('wsshown', W.show === i + 1));
     }
     addEventListener('message', (e) => {
       const p = W.panels.find((x) => x.frame.contentWindow === e.source);

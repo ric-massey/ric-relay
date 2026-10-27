@@ -16,9 +16,13 @@ timeline labels that would overlap are dropped (polish 1); on a phone the
 credits are one line beside Layers, tap to open (polish 3), and the stamp
 hides its "(NOAA open data on AWS)" so the time shows (polish 4).
 
-Not done: side maps still fetch and decode their own copy of everything
-(lag 2 — the worker made it cheap, not shared), the sounding timeline and
-the hidden-tab age ticker (lag 4), and side maps on a phone (polish 2).
+Then, also the same day: side maps borrow the page's fetches and decoded
+radar (lag 2 — a panel went from 48 chunk downloads, 19 listings and the
+five map-line files to none; see WORKSTATION.md), draw the page's warnings
+(they drew none), and a phone shows one map at a time behind tabs
+(polish 2).
+
+Not done: the sounding timeline and the hidden-tab age ticker (lag 4).
 
 ## Short version
 

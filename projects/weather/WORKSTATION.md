@@ -142,6 +142,21 @@ warnings and storm mode stay on both pages, Pro keeps its own dark amber look.
       discussion, mesoanalysis, record…) are panels the page arranges — shown,
       hidden, reordered — and the sounding follows the shared time too
       (`sky.setTime`). At most four maps beside the main one.
+- [x] **A panel borrows the page's (2026-10-27).** Each frame used to fetch and
+      decode everything again: radar listings, Level II volumes, watches and MDs,
+      Natural Earth's lines, the sounding's column. It now asks its page
+      (`window.parent.WxPro.share`, same origin and same thread) through
+      `fromPage` in `app.js`; the page answers only the names in its `SHARE`
+      table and keeps each one for as long as it stays true (decoded radar in
+      the page's own `cached`). A panel opened on its own, or one whose page is
+      an older version, fetches for itself as before. A panel also draws its
+      page's warnings (`HOST.warnings()`) — it holds no place and showed none
+      before — and the page asks its panels to redraw when its warnings change.
+      `test/workstation.test.mjs` checks every name asked is one the page shares.
+- [x] **One map at a time on a phone (2026-10-27).** Under 760 px the maps share
+      one cell and tabs (Map 1, Map 2, …) pick which is seen; the others are
+      `visibility: hidden`, still laid out and still loading, so a switch is
+      instant. A map just added is the one shown. Wider, no tabs.
 - [x] One shared place + time bus (`assets/weather/workstation.js`). Move or zoom
       any map and the rest follow; step any loop, or the sounding's hour, and every
       map goes to its frame nearest that moment. A forecast goes to its valid hour;

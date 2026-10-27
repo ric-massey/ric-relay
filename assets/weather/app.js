@@ -18,6 +18,11 @@
   /* the workstation's shared helpers (the timeline's labels); Pro loads workstation.js first, Weather never */
   const WS = PRO ? window.WxWorkstation || null : null;
   if (PANEL) document.body.dataset.panel = "1";
+  /* the page a panel sits in, when it can be reached (the same origin, the
+     same thread): the panel borrows its fetches, decoded radar and warnings
+     instead of making its own (radar.share; 2026-10-27). A panel opened on
+     its own has none and fetches for itself, as before. */
+  const HOST = (() => { if (!PANEL) return null; try { return parent !== window && parent.WxPro && parent.WxPro.share ? parent.WxPro : null; } catch (e) { return null; } })();
   /* each page's own title, which a storm warning takes over and gives back */
   const TITLE = document.title;
 
@@ -311,6 +316,23 @@
 
   /* Storm warnings that cover the place: the point query returns alerts whose
      area holds it; a storm warning's area is its polygon. */
+  /* the warnings a map draws: here, the place's own and its state's (or the
+     country's with no place); in a side map, its page's — a panel holds no
+     place and fetched none, so its map showed no warnings at all until
+     2026-10-27 */
+  function warnList() {
+    if (HOST) { try { return HOST.warnings(); } catch (e) { return []; } }
+    return [...(S.place ? (S.alerts || []) : []), ...(S.place ? (S.state || []) : (S.national || []))];
+  }
+  /* new warnings here: the side maps draw them too (the page's map redraws
+     on every change of them; a panel only when told) */
+  let warnSeen = [];
+  function nudgePanels() {
+    const now = [S.place, S.alerts, S.state, S.national];
+    if (now.every((x, i) => x === warnSeen[i])) return;
+    warnSeen = now;
+    for (const f of document.querySelectorAll("iframe")) { try { const w = f.contentWindow; if (w && w.WxPro && w.WxPro.redraw) w.WxPro.redraw(); } catch (e) {} }
+  }
   const stormsHere = () => (S.place && S.alerts ? S.alerts.filter((a) => a.storm && (!a.polygon || Wx.inPolygon(S.place.lat, S.place.lon, a.polygon))) : []).sort(byDanger);
   /* Storm warnings in the same state that don't, nearest first, within 250 km. */
   function stormsNear() {
@@ -1638,18 +1660,18 @@
       const P = R.pro, now = Date.now(), jobs = [];
       if (R.ov.watches && (force || now - (P.wAt || 0) > 120e3)) {
         P.wAt = now;
-        jobs.push(Promise.all([Wx.proOverlays.watches().catch(() => P.watches), Wx.proOverlays.mcds().catch(() => P.mcds), Wx.proOverlays.mpds().catch(() => P.mpds)])
+        jobs.push(Promise.all([fromPage("watches", undefined, () => Wx.proOverlays.watches()).catch(() => P.watches), fromPage("mcds", undefined, () => Wx.proOverlays.mcds()).catch(() => P.mcds), fromPage("mpds", undefined, () => Wx.proOverlays.mpds()).catch(() => P.mpds)])
           .then(([w, m, d]) => { P.watches = w; P.mcds = m; P.mpds = d; P.wGot = Date.now(); }));
       }
-      if (R.ov.cells && (force || now - (P.cAt || 0) > 120e3)) { P.cAt = now; jobs.push(Wx.proOverlays.cells().then((c) => { P.cells = c; P.cGot = Date.now(); }).catch(() => {})); }
-      if (R.ov.fronts && (force || now - (P.fAt || 0) > 1800e3)) { P.fAt = now; jobs.push(Wx.surfaceAnalysis().then((s) => { P.surface = s; }).catch(() => {})); }
-      if (R.ov.reports && (force || now - (P.rAt || 0) > 120e3)) { P.rAt = now; jobs.push(Wx.proOverlays.reports().then((r) => { P.reports = r; P.rGot = Date.now(); }).catch(() => {})); }
+      if (R.ov.cells && (force || now - (P.cAt || 0) > 120e3)) { P.cAt = now; jobs.push(fromPage("cells", undefined, () => Wx.proOverlays.cells()).then((c) => { P.cells = c; P.cGot = Date.now(); }).catch(() => {})); }
+      if (R.ov.fronts && (force || now - (P.fAt || 0) > 1800e3)) { P.fAt = now; jobs.push(fromPage("surface", undefined, () => Wx.surfaceAnalysis()).then((s) => { P.surface = s; }).catch(() => {})); }
+      if (R.ov.reports && (force || now - (P.rAt || 0) > 120e3)) { P.rAt = now; jobs.push(fromPage("reports", undefined, () => Wx.proOverlays.reports()).then((r) => { P.reports = r; P.rGot = Date.now(); }).catch(() => {})); }
       /* the tropics: NHC's storms and outlook, every ten minutes (advisories come every six hours, intermediates every three) */
-      if (R.ov.tropics && (force || now - (P.tAt || 0) > 600e3)) { P.tAt = now; jobs.push(Wx.tropics().then((t) => { P.tropics = t; P.tErr = false; }).catch(() => { P.tErr = true; })); }
+      if (R.ov.tropics && (force || now - (P.tAt || 0) > 600e3)) { P.tAt = now; jobs.push(fromPage("tropics", undefined, () => Wx.tropics()).then((t) => { P.tropics = t; P.tErr = false; }).catch(() => { P.tErr = true; })); }
       /* the SPC outlook picked, when it is not the day-1 categorical the page already holds */
       if (R.outlook && R.olSel !== "d1:cat") {
         const have = R.olData[R.olSel];
-        if (force || !have || now - have.at > 600e3) { const k = R.olSel; jobs.push(Wx.outlookSet(k).then((l) => { R.olData[k] = { at: Date.now(), list: l }; }).catch(() => { R.olData[k] = { at: Date.now(), list: null }; })); }
+        if (force || !have || now - have.at > 600e3) { const k = R.olSel; jobs.push(fromPage("outlookSet", k, () => Wx.outlookSet(k)).then((l) => { R.olData[k] = { at: Date.now(), list: l }; }).catch(() => { R.olData[k] = { at: Date.now(), list: null }; })); }
       }
       if (!jobs.length) return;
       await Promise.all(jobs);
@@ -1841,7 +1863,7 @@
       const s4 = L2.site4(R.site.id);
       let v = x && !x.archive ? [...volInfo.values()].find((i) => i.sKey === x.key.split("|")[0]) : null;
       if (!v) {
-        const nv = R.l2vol && R.l2vol.site === s4 ? R.l2vol : (R.l2vol = await L2.newestVolume(s4));
+        const nv = R.l2vol && R.l2vol.site === s4 ? R.l2vol : (R.l2vol = await fromPage("newestVolume", s4, () => L2.newestVolume(s4), true));
         if (!nv) throw new Error(`${s4} has no full volume in NOAA's archive right now`);
         v = await volume(s4, nv.number, true);
         /* the newest still sweeping: the one before it is whole */
@@ -2203,7 +2225,7 @@
       if (l3()) return l3Frames(onlyIfNew);
       let scans = [];
       const mode = R.mode;
-      try { scans = await Wx.siteScans(R.site.id, mode); } catch (e) {}
+      try { scans = await fromPage("siteScans", { site: R.site.id, mode }, () => Wx.siteScans(R.site.id, mode)); } catch (e) {}
       if (R.mode !== mode) return;                     // switched away while asking: the newer mode owns the frames
       /* a refresh with no new scan leaves the loop alone */
       if (onlyIfNew && (!scans.length || scans[scans.length - 1].t === R.valid)) return;
@@ -2224,7 +2246,7 @@
       const mode = R.mode, P = l3(mode), site = R.site && R.site.id;
       if (!P || !site) return;
       let scans = [], failed = false;
-      try { scans = await NX.scans(site, tiltCode(P), { mins: 60 }); } catch (e) { failed = true; }
+      try { scans = await fromPage("scans", { site, code: tiltCode(P), opts: { mins: 60 } }, () => NX.scans(site, tiltCode(P), { mins: 60 })); } catch (e) { failed = true; }
       if (R.mode !== mode || !R.site || R.site.id !== site) return;
       if (onlyIfNew && (!scans.length || scans[scans.length - 1].t === R.valid)) return;
       if (!scans.length) {
@@ -2236,7 +2258,7 @@
       /* reflectivity: the CC scan of the same tilt, for clutter filtering —
          listed once; each file is fetched only when filtering is on */
       let ccs = [];
-      if (mode === "l3:ref") try { ccs = await NX.scans(site, tiltCode(NX.PRODUCTS.cc), { mins: 70 }); } catch (e) { ccs = []; }
+      if (mode === "l3:ref") try { ccs = await fromPage("scans", { site, code: tiltCode(NX.PRODUCTS.cc), opts: { mins: 70 } }, () => NX.scans(site, tiltCode(NX.PRODUCTS.cc), { mins: 70 })); } catch (e) { ccs = []; }
       if (R.mode !== mode || !R.site || R.site.id !== site) return;
       const ccFor = (t) => { const c = ccs.reduce((b, x) => (!b || Math.abs(x.t - t) < Math.abs(b.t - t) ? x : b), null); return c && Math.abs(c.t - t) < 3 * 60e3 ? c.url : null; };
       R.valid = scans[scans.length - 1].t;
@@ -2253,6 +2275,60 @@
       }
       return scanCache.get(key);
     };
+    /* ── what a side map borrows from the page (2026-10-27) ──
+       A panel is this whole page again in a frame, on the same thread, and it
+       fetched and decoded everything a second, third, fourth time — the
+       audit's lag 2. Now it asks the page (HOST.share) for listings,
+       overlays, map lines and decoded radar. Each request runs here, in the
+       page, so closing a panel never strands a half-made one; and each is
+       kept only as long as it stays true. Decoded files go through `cached`,
+       so the page's own loop and every panel hold one copy. Only names in
+       SHARE are answered. */
+    const SHARED = new Map();
+    const plain = (o) => (o === undefined ? undefined : JSON.parse(JSON.stringify(o)));
+    const SHARE = {
+      watches: [60e3, () => Wx.proOverlays.watches()],
+      mcds: [60e3, () => Wx.proOverlays.mcds()],
+      mpds: [60e3, () => Wx.proOverlays.mpds()],
+      cells: [60e3, () => Wx.proOverlays.cells()],
+      reports: [60e3, () => Wx.proOverlays.reports()],
+      surface: [600e3, () => Wx.surfaceAnalysis()],
+      tropics: [300e3, () => Wx.tropics()],
+      outlookSet: [300e3, (k) => Wx.outlookSet(k)],
+      mapLayer: [Infinity, (n) => Wx.mapLayer(n)],
+      siteScans: [15e3, (a) => Wx.siteScans(a.site, a.mode)],
+      radarSites: [600e3, (a) => Wx.radarSites(a.lat, a.lon)],
+      column: [300e3, (a) => Wx.column(a.model, a.lat, a.lon)],
+      modelRun: [300e3, (m) => Wx.modelRun(m)],
+      scans: [15e3, (a) => NX.scans(a.site, a.code, a.opts)],
+      newestVolume: [15e3, (s4) => L2.newestVolume(s4)],
+      chunks: [8e3, (a) => L2.chunks(a.s4, a.n)],
+      l2meta: [Infinity, async (url) => { const r = await NX.retrying(fetch)(url); if (!r.ok) throw new Error("HTTP " + r.status); return L2.feedAsync(new Uint8Array(await r.arrayBuffer())); }],
+      l3: [0, (url) => cached(url, () => NX.load(url))],
+      l2: [0, (q) => cached(q.key, () => loadL2(q))]
+    };
+    function share(name, arg) {
+      const S_ = SHARE[name];
+      if (!S_) return Promise.reject(new Error("not shared: " + name));
+      const a = plain(arg), [ttl, make] = S_;
+      if (!ttl) return make(a);
+      const key = name + "|" + JSON.stringify(a === undefined ? null : a), have = SHARED.get(key), now = Date.now();
+      if (have && now - have.at < ttl) return have.p;
+      const e = { at: now, p: Promise.resolve().then(() => make(a)) };
+      e.p.catch(() => { if (SHARED.get(key) === e) SHARED.delete(key); });
+      SHARED.delete(key); SHARED.set(key, e);
+      if (SHARED.size > 80) SHARED.delete(SHARED.keys().next().value);
+      return e.p;
+    }
+    /* the way to anything in SHARE: a panel asks its page; the page asks its
+       own SHARE, so it and its panels hold one copy (decoded files excepted —
+       the page's own are already in `cached`); elsewhere, `own`. `copy` for
+       the small lists the caller goes on to change (a volume's number) */
+    function fromPage(name, arg, own, copy) {
+      const via = HOST ? HOST.share : PRO && !PANEL && SHARE[name] && SHARE[name][0] ? share : null;
+      return via ? via(name, arg).then((v) => (copy && v != null ? JSON.parse(JSON.stringify(v)) : v)) : own();
+    }
+    function loadL3(url) { return fromPage("l3", url, () => NX.load(url)); }
     async function loadL2(q) {
       if (q.archive) {
         const st = await L2.stream(q.archive.url, { gz: q.archive.gz, until: (s) => L2.swept(s, q.mom, q.angle) });
@@ -2293,9 +2369,9 @@
       if (have && (atMs || Date.now() - have.at < 120e3)) return have.m;
       let m = null;
       try {
-        const scans = atMs ? await NX.scans(site, "N0S", { mins: 20, nowMs: atMs + 8 * 60e3 }) : await NX.scans(site, "N0S", { mins: 30 });
+        const so = atMs ? { mins: 20, nowMs: atMs + 8 * 60e3 } : { mins: 30 }, scans = await fromPage("scans", { site, code: "N0S", opts: so }, () => NX.scans(site, "N0S", so));
         const s = atMs ? scans.reduce((b, x) => (!b || Math.abs(x.t - atMs) < Math.abs(b.t - atMs) ? x : b), null) : scans[scans.length - 1];
-        if (s && (!atMs || Math.abs(s.t - atMs) < 12 * 60e3)) { const F = await cached(s.url, () => NX.load(s.url)); if (F.motion && F.motion.kt > 0) m = { ...F.motion, t: F.time }; }
+        if (s && (!atMs || Math.abs(s.t - atMs) < 12 * 60e3)) { const F = await cached(s.url, () => loadL3(s.url)); if (F.motion && F.motion.kt > 0) m = { ...F.motion, t: F.time }; }
       } catch (e) { m = null; }
       srm.nws.set(k, { at: Date.now(), m });
       if (srm.nws.size > 60) srm.nws.delete(srm.nws.keys().next().value);
@@ -2308,7 +2384,7 @@
         return { uE: u * 0.514444, vN: v * 0.514444, kt: own.kt, from: own.from, nws: true };
       }
       /* a feed that did not answer is said as that, never as "no storms" */
-      if (!srm.p || Date.now() - srm.at > 120e3) { srm.at = Date.now(); srm.p = Wx.proOverlays.cells().catch(() => { srm.at = 0; return null; }); }
+      if (!srm.p || Date.now() - srm.at > 120e3) { srm.at = Date.now(); srm.p = fromPage("cells", undefined, () => Wx.proOverlays.cells()).catch(() => { srm.at = 0; return null; }); }
       const all = await srm.p;
       if (!all) return { down: true };
       const cells = all.filter((c) => c.site === site && c.kt > 0 && c.from != null);
@@ -2341,7 +2417,7 @@
     function l3File(f) {
       const x = f.l3;
       /* full-volume velocity unfolded first when Dealias is on (NX.dealias), then storm-relative if asked */
-      if (!x.p) x.p = (x.l2 ? cached(x.l2.key, () => loadL2(x.l2)) : cached(x.url, () => NX.load(x.url))).then((file) => srmSweep(x, R.dealias && file.code === "L2" && file.moment === "VEL" ? NX.dealias(file) : file)).then((file) => {
+      if (!x.p) x.p = (x.l2 ? cached(x.l2.key, () => fromPage("l2", x.l2, () => loadL2(x.l2))) : cached(x.url, () => loadL3(x.url))).then((file) => srmSweep(x, R.dealias && file.code === "L2" && file.moment === "VEL" ? NX.dealias(file) : file)).then((file) => {
         x.file = file; x.colors = NX.colorTable(file, x.prod, R.pal);
         if (R.frames[R.frame] === f) { draw(); show(R.frame); tilts(); }
         return file;
@@ -2410,11 +2486,11 @@
     async function volume(s4, n, live) {
       const k = `${s4}/${n}`, have = volInfo.get(k);
       if (have && have.complete && !live) return have;
-      const ch = await L2.chunks(s4, n);
+      const ch = await fromPage("chunks", { s4, n }, () => L2.chunks(s4, n), true);
       const S = ch.find((c) => c.kind === "S");
       if (!S) return null;
       if (have && have.sKey === S.key && have.complete) return have;
-      const meta = have && have.sKey === S.key ? have.meta : await L2.feedAsync(new Uint8Array(await (await NX.retrying(fetch)(S.url)).arrayBuffer()));
+      const meta = have && have.sKey === S.key ? have.meta : await fromPage("l2meta", S.url, async () => L2.feedAsync(new Uint8Array(await (await NX.retrying(fetch)(S.url)).arrayBuffer())));
       if (!meta.vcp) return null;
       const info = { s4, n, sKey: S.key, sUrl: S.url, meta, plan: L2.plan(meta.vcp), byN: new Map(ch.map((c) => [c.n, c])), complete: ch.some((c) => c.kind === "E"), start: S.t };
       volInfo.set(k, info);
@@ -2428,10 +2504,10 @@
       const s4 = L2.site4(site);
       let nv = R.l2vol && R.l2vol.site === s4 ? R.l2vol : null, failed = false, vols = [];
       try {
-        if (!nv) nv = R.l2vol = await L2.newestVolume(s4);
+        if (!nv) nv = R.l2vol = await fromPage("newestVolume", s4, () => L2.newestVolume(s4), true);
         if (nv) {
           /* has the next volume begun since? */
-          const nx = L2.nextNumber(nv.number), nc = await L2.chunks(s4, nx);
+          const nx = L2.nextNumber(nv.number), nc = await fromPage("chunks", { s4, n: nx }, () => L2.chunks(s4, nx), true);
           if (nc.length && nc[0].t > Date.now() - 1800e3) { nv.number = nx; if (!nv.numbers.includes(nx)) nv.numbers = [...nv.numbers, nx].sort((a, b) => a - b); }
           const nums = [nv.number];
           while (nums.length < 6) nums.push(L2.prevNumber(nums[nums.length - 1], nv.numbers));
@@ -2992,7 +3068,7 @@
       if (GEO.layers[name]) return GEO.layers[name];
       if (!GEO.asked[name] && GeoOK) {
         GEO.asked[name] = true;
-        Wx.mapLayer(name).then((L) => { GEO.layers[name] = L; drawGeo(); })
+        fromPage("mapLayer", name, () => Wx.mapLayer(name)).then((L) => { GEO.layers[name] = L; drawGeo(); })
           .catch(() => setTimeout(() => { GEO.asked[name] = false; }, 60e3));   // ask again on a later draw
       }
       return null;
@@ -3217,7 +3293,7 @@
     /* the warnings drawn under the cursor: their event and end, in the readout (B9) */
     function warnsAt(lat, lon) {
       if (!PRO || R.mode === "replay") return "";
-      const list = [...(S.place ? (S.alerts || []) : []), ...(S.place ? (S.state || []) : (S.national || []))], seen = new Set(), k = clk(), out = [];
+      const list = warnList(), seen = new Set(), k = clk(), out = [];
       for (const a of list) {
         if (!a.polygon || seen.has(a.id) || !Wx.inPolygon(lat, lon, a.polygon)) continue;
         seen.add(a.id);
@@ -3753,7 +3829,7 @@
          a warning in force where the visitor is: storm mode's own warning is
          always drawn (AGENTS.md: warnings and storm mode stay on both pages) */
       const warns = R.wl && !R.wl.warn ? (S.place ? (S.alerts || []).filter((a) => a.tone === "warning" || a.storm) : [])
-        : [...(S.place ? (S.alerts || []) : []), ...(S.place ? (S.state || []) : (S.national || []))];
+        : warnList();
       const seen = new Set();
       for (const a of warns) {
         if (!a.polygon || seen.has(a.id)) continue;
@@ -3928,6 +4004,7 @@
     }
     function draw() {
       if (!R.started) return;
+      if (PRO && !PANEL) nudgePanels();
       tellView();
       const w = el.clientWidth, h = el.clientHeight;
       const left = R.cx - w / 2, top = R.cy - h / 2;
@@ -4143,7 +4220,7 @@
 
     /* the nearest NEXRAD to the middle of the map */
     async function sitesNear(lat, lon) {
-      const sites = await Wx.radarSites(Wx.round2(lat), Wx.round2(lon));
+      const at = { lat: Wx.round2(lat), lon: Wx.round2(lon) }, sites = await fromPage("radarSites", at, () => Wx.radarSites(at.lat, at.lon));
       if (sites.length) { R.sites = sites; siteOptions(); }
       return sites;
     }
@@ -4339,7 +4416,7 @@
       if (F.clut) return F.clut;
       if (F.cc === undefined) {
         if (F.code === "L2" || !x.ccUrl) F.cc = null;
-        else if (!x.ccP) x.ccP = cached(x.ccUrl, () => NX.load(x.ccUrl)).then((c) => { F.cc = c; }, () => { F.cc = null; F.ccErr = true; }).then(() => { F.clut = null; f.painted = null; if (R.frames[R.frame] === f) { draw(); legendBase(); } });
+        else if (!x.ccP) x.ccP = cached(x.ccUrl, () => loadL3(x.ccUrl)).then((c) => { F.cc = c; }, () => { F.cc = null; F.ccErr = true; }).then(() => { F.clut = null; f.painted = null; if (R.frames[R.frame] === f) { draw(); legendBase(); } });
         if (F.cc === undefined) return null;
       }
       return (F.clut = NX.clutterMask(F, F.cc));
@@ -6282,6 +6359,8 @@
     /* The lower 48, edge to edge: a map view, not anybody's place. */
     const CONUS = [24.4, -125, 49.5, -66.9];
     return {
+      /* what a side map borrows (SHARE) */
+      share, fromPage,
       /* the times said again (a panel given the page's time zone) */
       relabel() { if (R.frames.length) show(R.frame); label(); },
       /* a colour table chosen in the page or another map */
@@ -6390,7 +6469,7 @@
       if (K.colKey === key && K.col) return draw();
       K.busy = true; draw();
       try {
-        const [col, run] = await Promise.all([Wx.column(K.model, here().lat, here().lon), Wx.modelRun(K.model)]);
+        const h = here(), m = K.model, [col, run] = await Promise.all([radar.fromPage("column", { model: m, lat: h.lat, lon: h.lon }, () => Wx.column(m, h.lat, h.lon)), radar.fromPage("modelRun", m, () => Wx.modelRun(m))]);
         K.col = col; K.colKey = key; K.run = run;
         const first = col.hourly && col.hourly.time ? col.hourly.time.findIndex((t) => t * 1000 > Date.now() - 3600e3) : 0;
         K.hour = Math.max(0, first);
@@ -7015,7 +7094,7 @@
      connection, that city's weather, labelled as approximate. */
   /* Pro's workstation (workstation.js) reaches the map and the sounding
      through this, and nothing else of the page */
-  if (PRO) window.WxPro = { map: radar.panel, sky, choose, tz: () => tzNow() || null, setTZ: (tz) => { if (PANEL && (tz == null || /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/.test(tz)) && tz !== PANEL_TZ) { PANEL_TZ = tz || null; radar.relabel && radar.relabel(); } }, time: (ms) => clk().time(ms), day: (ms) => clk().day(ms), ymd: (ms) => clk().ymd(ms), get place() { return S.place ? { lat: S.place.lat, lon: S.place.lon, name: S.place.name } : null; } };
+  if (PRO) window.WxPro = { map: radar.panel, sky, choose, share: radar.share, warnings: () => warnList(), redraw: () => radar.draw(), tz: () => tzNow() || null, setTZ: (tz) => { if (PANEL && (tz == null || /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/.test(tz)) && tz !== PANEL_TZ) { PANEL_TZ = tz || null; radar.relabel && radar.relabel(); } }, time: (ms) => clk().time(ms), day: (ms) => clk().day(ms), ymd: (ms) => clk().ymd(ms), get place() { return S.place ? { lat: S.place.lat, lon: S.place.lon, name: S.place.name } : null; } };
   if (PANEL) {
     /* a panel is only its map: the parent page holds the place, the
        warnings and every card */

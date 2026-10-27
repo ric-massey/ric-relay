@@ -206,5 +206,18 @@ console.log('\nRULE  Compare puts a map beside another only if it shows the same
   ok(!bad.length, `every pair Compare makes shares the field's name${bad.length ? ' — not: ' + bad.slice(0, 5).join(', ') : ''}`);
 }
 
+/* A side map borrows the page's fetches (app.js SHARE, 2026-10-27). A name
+   asked that the page does not answer fails only in a browser with a panel
+   open, so it is checked here: every fromPage name is in SHARE. */
+console.log('\nRULE  a side map asks its page only for what the page shares');
+{
+  const app = readFileSync(new URL('../../../assets/weather/app.js', import.meta.url), 'utf8');
+  const block = /const SHARE = \{([\s\S]*?)\n {4}\};/.exec(app);
+  const names = new Set(block ? [...block[1].matchAll(/^\s+(\w+): \[/gm)].map((m) => m[1]) : []);
+  const asked = [...new Set([...app.matchAll(/fromPage\("(\w+)"/g)].map((m) => m[1]))];
+  const missing = asked.filter((n) => !names.has(n));
+  ok(names.size > 10 && asked.length > 10 && !missing.length, `${asked.length} names asked, all shared${missing.length ? ' — not: ' + missing.join(', ') : ''}`);
+}
+
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKSTATION RULES PASS'));
 process.exit(failures ? 1 : 0);
