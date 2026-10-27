@@ -657,16 +657,23 @@
             (c, i) => { c.strokeStyle = i % 3 === 0 ? "rgba(160,180,210,.3)" : "rgba(140,160,190,.14)"; c.lineWidth = i % 3 === 0 ? 1 : 0.6; });
           st.rain = noise2(st.r); st.cv = document.createElement("canvas");
           st.dir = st.r() * Math.PI * 2; st.px = w * (0.35 + st.r() * 0.3); st.py = h * (0.38 + st.r() * 0.24);
+          // and its own weather each visit (Ric, 2026-10-26: "make the heatmap
+          // random"): how big the cells are, how much falls, how hard, which way
+          // the band is stretched, how fast it moves and where in the noise it starts
+          st.wx = { size: 0.16 + st.r() * 0.34, wet: -0.035 + st.r() * 0.11, hard: 0.85 + st.r() * 0.3,
+            sx: 0.6 + st.r() * 0.8, speed: 0.025 + st.r() * 0.07, x0: st.r() * 60, y0: st.r() * 60 };
+          st.wx.sy = 1 / st.wx.sx;
         }
         x.fillStyle = "#141a22"; x.fillRect(0, 0, w, h);
         x.drawImage(st.map, 0, 0, w, h);
         const cell = 4, gw = Math.ceil(w / cell), gh = Math.ceil(h / cell), c = st.cv;
         if (c.width !== gw || c.height !== gh) { c.width = gw; c.height = gh; }
         const g = c.getContext("2d"), im = g.createImageData(gw, gh), d = im.data;
-        const sc = 1 / (Math.max(gw, gh) * 0.32), ox = Math.cos(st.dir) * t * 0.05, oy = Math.sin(st.dir) * t * 0.05;
+        const W = st.wx, sc = 1 / (Math.max(gw, gh) * W.size), ox = Math.cos(st.dir) * t * W.speed - W.x0, oy = Math.sin(st.dir) * t * W.speed - W.y0;
         const RAMP = [[0.61, [4, 233, 231]], [0.64, [1, 159, 244]], [0.67, [2, 253, 2]], [0.7, [1, 197, 1]], [0.73, [0, 142, 0]], [0.77, [253, 248, 2]], [0.8, [229, 188, 0]], [0.83, [253, 149, 0]], [0.86, [253, 0, 0]]];
         for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
-          const v = fbm(st.rain, i * sc - ox, j * sc - oy) + 0.03 * Math.sin(t * 0.4 + i * 0.07 + j * 0.05);
+          const f = fbm(st.rain, i * sc * W.sx - ox, j * sc * W.sy - oy) + W.wet;
+          const v = 0.61 + (f - 0.61) * W.hard + 0.03 * Math.sin(t * 0.4 + i * 0.07 + j * 0.05);
           let col = null;
           for (const [th, rgb] of RAMP) if (v >= th) col = rgb;
           if (!col) continue;
