@@ -1389,13 +1389,42 @@ scenes, then climbing.
     stars and moon — is drawn upside down about the shore and rippled with the
     water, over the photo's reflection of a sky that is not there now.
     Rerun the script when a photo changes; `--sheet <dir>` writes a check image.
+  - **Cerro Torre's own clouds** (2026-10-27, Ric: "There are some clouds on
+    the cerro Torre that never move? It's from the picture but the original
+    picture should show you what the clouds really look like … making it as
+    realistic as possible"). The photo had two clouds in it; the one over the
+    col left of the Torre sat below the sky mask, over rock, so it stayed put
+    while the sky moved behind it. `scenes/torre-clouds.py` (run after
+    `scene-maps.py torre`) takes both out of the photo — the sky behind fitted
+    to the clear blue around them with the photo's grain, the rock behind
+    rebuilt from the rock beside it (OpenCV shift-map inpainting) with the real
+    edges that showed through the mist laid back on, along a ridgeline drawn by
+    hand from a contrast-boosted copy (`RIDGE`) because the segmentation had
+    followed the cloud's edge — moves the sky mask down to that ridge, remakes
+    the overcast copy and the depth map's sky, and keeps the clouds themselves
+    as cut-outs (`torre-cloud-a/-b.png`, unmixed from the sky behind them; their
+    cut edges made ragged with fractal noise, since a smooth fade reads as a
+    cut-out; where each was in `torre-clouds.json`). `scene.js` makes them the
+    mountain's weather again: **banks** at the two cols, behind the ridges,
+    each forming, swelling, leaning with the wind and thinning over a minute or
+    two while another forms — anchored there, because one let float free showed
+    its cut edges — none on a clear still day, five or six overcast; and
+    **banners** off the summits in a fresh wind (the Torre from 22 km/h, Egger
+    sometimes from 30, Punta Herron only from 50), the photo's own cloud in a
+    plume narrow at the summit and wider and thinner downwind. Lit by mapping
+    each cloud's own light and shade onto the hour's underside and lit-side
+    colours — one flat tint made a sunset bank a tan patch. Dehazing the cloud
+    out (dark-channel prior) was tried first and failed: it took the distance
+    haze out of the clear parts and left the cloud.
   - **Thick, wet cloud comes down over the tops** — Cerro Torre's spire goes
     into it first. **Rain and snow** put a veil in the air as well as streaks
     and flakes. **Fog** whites the picture out: pale, flat, banks moving through.
   - **Wind picks up what the ground gives** from 18 km/h (full by 60, gusts
     counted at 85%): red dust at the crag, sand on the beach, grit in the city,
-    spray off the lake, leaves in the forest, and spindrift streaming off Cerro
-    Torre's summits (`GROUND` in scene.js). Dust in the air is drawn paler than
+    spray off the lake and leaves in the forest (`GROUND` in scene.js); on
+    Cerro Torre, kilometres off, only a haze — its drawn spindrift and motes
+    read as painted streaks and dashes and came out on 2026-10-27, for the
+    banners below. Dust in the air is drawn paler than
     the ground or it vanishes against it. Rain lays dust, sand, grit and lying
     snow; while it snows, everything blowing is snow.
   - **One texture does all of it** — tileable noise made once, cut to a cover

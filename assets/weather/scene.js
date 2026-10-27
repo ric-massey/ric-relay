@@ -11,6 +11,9 @@
      the sky            real time-lapse footage, by the weather and the hour
                         (skies/, make-skies.py) — the drawn sky below is for a
                         clear night and for when footage cannot play
+     Cerro Torre        its photo's own two clouds, lifted out of it and moving
+                        again — banks forming at the cols, banners off the
+                        summits (torre-clouds.py, buildTorreClouds)
      cloud              fills the photo's own sky (its <id>-sky.png mask):
                         drifting cloud, then from 60% a grey ceiling until the
                         blue is gone; thick, wet cloud comes down over the tops
@@ -632,7 +635,10 @@
     cliff: { kind: "leaves", col: [170, 128, 60] },
     smokies: { kind: "leaves", col: [184, 118, 48] },
     rockies: { kind: "dust", col: [206, 180, 128] },
-    torre: { kind: "snow", col: [246, 249, 255], peaks: [[0.375, 0.07], [0.47, 0.235], [0.6, 0.35]] }
+    /* Cerro Torre's summits no longer throw drawn spindrift (`peaks`, white
+       puffs stretched long): it read as three painted streaks. Its summits
+       fly banners of the photo's own cloud instead (BANNERS, 2026-10-27). */
+    torre: { kind: "snow", col: [246, 249, 255] }
   };
   /* how far off each picture's back and front look, km, for fog: Ric — "fog
      shouldnt be full whiteout unless thats what its like". Fog takes the far
@@ -716,6 +722,8 @@
     /* a real sky when there is one for this weather and hour (the drawn
        clouds above stay ready in case the footage cannot play) */
     layers.sky = sky ? chooseSky(f) : null;
+    /* Cerro Torre's own clouds, out of its photo, moving (torre-clouds.py) */
+    layers.tc = scene.id === "torre" && sky ? buildTorreClouds(f) : null;
     /* low cloud: thick, wet cloud comes down over the tops — Cerro Torre's
        spire goes into it first. Only on photos: the plain Sky has no tops. */
     if (scene.photo) {
@@ -744,7 +752,9 @@
       /* and a brown-out: the low air goes the colour of what it carries */
       if (g.kind === "dust" || g.kind === "sand" || g.kind === "grit") layers.haze = { col: air, a: b * 0.24 };
       const n = Math.round(b * clamp(area / 4000, 40, small ? 160 : 280) * (g.kind === "leaves" ? 0.45 : 1));
-      for (let i = 0; i < n; i++) dust.push(newMote(g, b, dir, true));
+      /* Cerro Torre is kilometres off: what the wind lifts there is a haze, not
+         streaks — drawn motes read as white dashes on its faces (2026-10-27) */
+      if (scene.id !== "torre") for (let i = 0; i < n; i++) dust.push(newMote(g, b, dir, true));
       layers.blow = g;
       /* spindrift off the summits, made a few seconds ahead so a still frame has it */
       if (scene.photo && (GROUND[scene.id] || {}).peaks && (g.kind === "snow" || g.kind === "spindrift")) {
@@ -1200,6 +1210,174 @@
   }
   let lastSky = null;
 
+  /* ── Cerro Torre's clouds (2026-10-27) ──
+     Ric: "There are some clouds on the cerro Torre that never move? It's from
+     the picture but the original picture should show you what the clouds
+     really look like … making it as realistic as possible". The photo's two
+     clouds — one pouring over the col left of the Torre, a bank rising behind
+     the near ridge on the right — are lifted out of it by torre-clouds.py and
+     kept as cut-outs (torre-cloud-a/-b.png, where they were in the photo in
+     torre-clouds.json). Here they are the mountain's weather again, and they
+     move:
+       banks    the photo's clouds at its two cols, behind the ridges: each
+                forms, swells a little, leans with the wind and thins away over
+                a minute or two, and another forms as it goes — cloud is made
+                at a col, not carried in. Anchored there, so the edges where
+                they were cut from the photo stay behind the rock (one let
+                float free read as a cut-out). None on a clear, still day, one
+                or two at half cover, five or six overcast
+       banners  in a strong wind the summits stream cloud off their lee side,
+                as Cerro Torre is known for: the scene's own cirrus texture in
+                a plume that starts narrow at the summit and widens and thins
+                downwind, made new every half minute or so
+     All of it is drawn into the sky, so the mountains stand in front of it
+     exactly as they did in the photo; it is lit by the hour's light (warm at
+     sunset, dim at night, grey under rain) and moves at the same crawl as the
+     rest of the scene's cloud (drift). */
+  let tcMeta = null;
+  const tcImg = {}, tcTint = {};
+  function torreMeta() {
+    if (tcMeta === null) {
+      tcMeta = false;
+      fetch("assets/weather/scenes/torre-clouds.json").then((r) => r.ok ? r.json() : null).then((j) => {
+        if (!j) return;
+        tcMeta = j;
+        for (const sp of j.sprites) {
+          const im = new Image();
+          im.onload = () => { if (scene.id === "torre" && fx) { lastKey = ""; update(st); } };
+          im.src = `assets/weather/scenes/${sp.file}`;
+          tcImg[sp.file] = im;
+        }
+      }).catch(() => {});
+    }
+    return tcMeta || null;
+  }
+  /* the summits that fly banners: Cerro Torre, Torre Egger, Punta Herron (the photo's shares) */
+  const BANNERS = [[0.375, 0.07], [0.47, 0.235], [0.6, 0.35]];
+  function buildTorreClouds(f) {
+    const meta = torreMeta();
+    if (!meta) return null;
+    const sp = meta.sprites.map((x) => ({ ...x, img: tcImg[x.file] }));
+    if (sp.some((x) => !x.img || !x.img.complete || !x.img.naturalWidth)) return null;
+    const wet = f.rain || f.snow || f.storm;
+    const n = f.cloud < 0.08 ? (f.wind > 30 ? 1 : 0) : Math.round(1 + f.cloud * 4 + (wet ? 1 : 0));
+    /* which summits fly one: the Torre itself from a fresh wind, Egger
+       sometimes as it rises, Punta Herron only in a gale */
+    const banner = f.wind >= 22 && (f.cloud >= 0.05 || f.wind >= 30)
+      ? BANNERS.filter((pk, i) => i === 0 || (i === 1 && f.wind >= 30 && Math.random() < 0.6) || (i === 2 && f.wind >= 50)) : null;
+    if (!n && !banner) return null;
+    const L = light(f);
+    const tc = { sp, n, banner, items: [], lit: L.hi, lo: L.lo, dir: f.dirX >= 0 ? 1 : -1, v: drift(f, 100), wind: f.wind,
+      peak: clamp(0.5 + f.cloud * 0.45 + (wet ? 0.1 : 0), 0.5, 0.95) };
+    /* already under way when the page opens: each at a different point of its life */
+    for (let i = 0; i < n; i++) tc.items.push(bank(tc, true));
+    if (banner) for (const pk of banner) tc.items.push(bannerAt(tc, pk, true));
+    return tc;
+  }
+  /* a bank: the photo's cloud, near where it was, a little bigger or smaller,
+     sometimes the other way round, never quite the same shape twice */
+  function bank(tc, midway) {
+    const sp = tc.sp[Math.random() < 0.5 ? 0 : 1], [bx, by, bw, bh] = sp.box;
+    const life = rnd(70, 170) / (1 + tc.wind / 30);
+    /* it leans with the wind as it lives, at most a twentieth of the picture
+       — at the wind's own crawl when that is less (vx is in shares a second) */
+    const lean = Math.min(tc.v / 1500, 0.05 / life);
+    return { sp, x: bx + bw / 2 + rnd(-0.02, 0.02), y: by + bh / 2 + rnd(0, 0.025), fw: bw, fh: bh,
+      sx: rnd(0.88, 1.12), sy: rnd(0.85, 1.1), flip: false, grow: rnd(0.05, 0.14),
+      vx: lean * tc.dir * rnd(0.7, 1.3), vy: -lean * rnd(0, 0.3), share: true,
+      age: midway ? rnd(0, life) : 0, life, peak: tc.peak * rnd(0.75, 1) };
+  }
+  /* a banner: the col's cloud drawn long and low from a summit, downwind */
+  function bannerAt(tc, pk, midway) {
+    const life = rnd(18, 40), fw = (0.11 + Math.min(tc.wind, 80) / 80 * 0.1) * (pk === BANNERS[0] ? 1 : 0.7);
+    return { img: bannerTex(tc), banner: pk, x: pk[0] + tc.dir * fw * 0.48, y: pk[1] + 0.03, fw, fh: fw * 0.5,
+      sx: rnd(0.85, 1.15), sy: rnd(0.8, 1.15), flip: tc.dir < 0, grow: rnd(0.15, 0.35),
+      vx: tc.v * tc.dir * rnd(0.4, 0.8), vy: 0,
+      age: midway ? rnd(0, life) : 0, life, peak: clamp(0.35 + (tc.wind - 22) / 50, 0.35, 0.8) };
+  }
+  /* a banner's picture: the photo's own cloud (the right bank's billowing
+     top, lit for the hour), drawn long and cut to a plume — narrow at the
+     summit (left), wider and thinner downwind, its edge uneven along its
+     length and sagging a little in the lee. A smooth lens of cirrus, the first
+     try, read as three painted streaks. */
+  function bannerTex(tc) {
+    const src = tinted(tc.sp[1], tc.lit, tc.lo), w = 512, h = 170;
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const x = c.getContext("2d");
+    const sw = src.width, sh = src.height;
+    /* from inside the cloud — its corners are the sky it was cut from */
+    x.drawImage(src, sw * rnd(0.18, 0.3), sh * rnd(0.22, 0.38), sw * rnd(0.45, 0.55), sh * rnd(0.26, 0.34), 0, 0, w, h);
+    const ph = [rnd(0, 6.3), rnd(0, 6.3), rnd(0, 6.3)], sag = rnd(0.05, 0.2);
+    const m = x.createImageData(w, h), d = m.data;
+    for (let i = 0; i < w; i++) {
+      const u = i / w;
+      const wob = 0.75 + 0.18 * Math.sin(u * 9 + ph[0]) + 0.1 * Math.sin(u * 23 + ph[1]) + 0.06 * Math.sin(u * 51 + ph[2]);
+      const half = (0.12 + 0.62 * Math.pow(u, 0.6)) * h / 2 * wob, yc = h * (0.4 + sag * u * u);
+      const env = Math.min(1, u / 0.05) * Math.pow(1 - u, 1.1);
+      for (let j = 0; j < h; j++) {
+        const q = 1 - Math.abs(j - yc) / half;
+        d[(j * w + i) * 4 + 3] = q > 0 ? 255 * env * Math.min(1, q * 2.2) : 0;
+      }
+    }
+    const mc = document.createElement("canvas");
+    mc.width = w; mc.height = h; mc.getContext("2d").putImageData(m, 0, 0);
+    x.globalCompositeOperation = "destination-in"; x.drawImage(mc, 0, 0);
+    return c;
+  }
+  /* the cut-out in this light: its own light and shade mapped onto the
+     hour's — the underside's colour where the photo's cloud was in shadow,
+     the lit side's where the sun caught it — its shape kept. One flat tint
+     (the first try) turned a sunset bank into a tan patch: at dusk a cloud
+     is grey-violet in its shadows and warm only where the light reaches. */
+  function tinted(sp, lit, lo) {
+    lo = lo || lit;
+    const key = `${sp.file}|${lit.join(",")}|${lo.join(",")}`;
+    if (tcTint[key]) return tcTint[key];
+    const c = document.createElement("canvas");
+    c.width = sp.img.naturalWidth; c.height = sp.img.naturalHeight;
+    const x = c.getContext("2d");
+    x.drawImage(sp.img, 0, 0);
+    const im = x.getImageData(0, 0, c.width, c.height), d = im.data;
+    let mn = 255, mx = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 128) { const l = (d[i] + d[i + 1] + d[i + 2]) / 3; if (l < mn) mn = l; if (l > mx) mx = l; }
+    const span = Math.max(1, mx - mn);
+    for (let i = 0; i < d.length; i += 4) {
+      const t = Math.pow(clamp(((d[i] + d[i + 1] + d[i + 2]) / 3 - mn) / span, 0, 1), 1.2);
+      d[i] = lo[0] + (lit[0] - lo[0]) * t; d[i + 1] = lo[1] + (lit[1] - lo[1]) * t; d[i + 2] = lo[2] + (lit[2] - lo[2]) * t;
+    }
+    x.putImageData(im, 0, 0);
+    for (const k of Object.keys(tcTint)) if (k.startsWith(sp.file + "|")) delete tcTint[k];   // one light at a time
+    return (tcTint[key] = c);
+  }
+  function drawTorreClouds(s, dt, live) {
+    const tc = layers.tc, r = photoRect();
+    if (live && dt > 0) {
+      for (const it of tc.items) {
+        it.age += dt;
+        if (it.share) { it.x += it.vx * dt; it.y += it.vy * dt; }        // a bank's lean is in shares of the picture
+        else { it.x += it.vx * dt / r.w; it.y += it.vy * dt / r.h; }   // a banner's stream in canvas pixels
+      }
+      tc.items = tc.items.filter((it) => it.age < it.life);
+      /* a new bank forms as an old one goes; a summit's next banner starts
+         while the last is still streaming, so it never blinks off */
+      for (let k = tc.items.filter((it) => !it.banner).length; k < tc.n; k++) tc.items.push(bank(tc, false));
+      if (tc.banner) for (const pk of tc.banner) if (!tc.items.some((it) => it.banner === pk && it.age < it.life * 0.55)) tc.items.push(bannerAt(tc, pk, false));
+    }
+    for (const it of tc.items) {
+      const k = it.age / it.life;
+      const a = it.peak * Math.min(1, k / 0.2) * Math.min(1, (1 - k) / 0.35);
+      if (a <= 0.004) continue;
+      const img = it.img || tinted(it.sp, tc.lit, tc.lo), g = 1 + it.grow * k;
+      const w = it.fw * r.w * it.sx * g, h = it.fh * r.h * it.sy * g;
+      const x = r.x + it.x * r.w, y = r.y + it.y * r.h;
+      s.globalAlpha = a;
+      if (it.flip) { s.save(); s.translate(x, y); s.scale(-1, 1); s.drawImage(img, -w / 2, -h / 2, w, h); s.restore(); }
+      else s.drawImage(img, x - w / 2, y - h / 2, w, h);
+    }
+    s.globalAlpha = 1;
+  }
+
   /* ── the sky itself: its colour, the sun, the moon, the stars ──
      Where a thing in the sky lands on the picture: the view faces the equator
      (south in the north, north in the south) and spans 180°, so the sun rises
@@ -1418,6 +1596,7 @@
       const c = layers.clouds;
       for (const L of c.layers) drawPlane(s, L, c.hy, dt);
     }
+    if (layers.tc) drawTorreClouds(s, dt, live);
     if (m) {
       const r = coverRect(m.w, m.h);
       s.globalCompositeOperation = "destination-in";
@@ -2251,7 +2430,7 @@ void main(){
     lastT = 0;
     if (!fx) return;
     frame(performance.now());
-    if (animated() && (parts.length || drops.length || stars.length || dust.length || plume.length || layers.clouds || layers.sky || layers.shadows || glActive() || layers.deck || layers.fog || layers.sheet || layers.water || (layers.city && fx.phase.dark > 0.18) || fx.storm)) raf = requestAnimationFrame(loop);
+    if (animated() && (parts.length || drops.length || stars.length || dust.length || plume.length || layers.clouds || layers.sky || layers.shadows || glActive() || layers.deck || layers.tc || layers.fog || layers.sheet || layers.water || (layers.city && fx.phase.dark > 0.18) || fx.storm)) raf = requestAnimationFrame(loop);
     if (!animated()) flashEl.style.opacity = "0";
   }
   function size() {

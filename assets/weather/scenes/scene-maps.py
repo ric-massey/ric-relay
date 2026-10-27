@@ -53,6 +53,10 @@ The mask is <id>-sky.png at the photo's full size, white, sky in alpha.
     python3 assets/weather/scenes/scene-maps.py            # every scene photo
     python3 assets/weather/scenes/scene-maps.py torre      # one
 
+Cerro Torre has a second step: torre-clouds.py takes the photo's two clouds out
+of it and keeps them as moving cut-outs. Run it after this one whenever this one
+remakes torre (it remakes torre.jpg, -flat, -sky and -depth).
+
 Needs numpy, scipy, Pillow, OpenCV, PyTorch and transformers (the model, about
 340 MB, downloads once into the Hugging Face cache). Rerun it when a photo
 changes. To check a mask, composite the photo over a dark sky and look along
