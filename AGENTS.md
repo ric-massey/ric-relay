@@ -838,7 +838,11 @@ ones that must never break:
   is real time-lapse footage** (`assets/weather/skies/`, made by `make-skies.py`
   from Commons clips, PD or CC BY, credited) — Ric: "i dont want people to be
   able to tell they are ai generated. and they have to move". Never swap it for
-  generated imagery or video. Each photo also has a depth map and an overcast
+  generated imagery or video. Nothing in a scene may give itself away as made:
+  photos and clips come from the original files, never Commons' recompressed
+  copies, clips are never motion-interpolated or stretched past their source,
+  and no sky is under 1920 × 560 (Ric, 2026-10-26: "make them higher quality
+  remember no ai should be able to tell an ai did it"). Each photo also has a depth map and an overcast
   relight (`scene-maps.py`): haze and fog by real distance, cloud shadows and
   sunlit patches on the land, sun beams from a low sun (never on near land),
   the overcast photo faded in under grey skies. The footage plays at the

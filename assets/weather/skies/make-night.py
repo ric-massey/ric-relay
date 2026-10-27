@@ -31,7 +31,7 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 CTX = ssl.create_default_context(cafile="/etc/ssl/cert.pem")
-UA = {"User-Agent": "RicsWebsite-night/1.0 (personal site; ricmassey.com)"}
+UA = {"User-Agent": "RicsWebsite-night/1.0 (personal site; https://ricmassey.com)"}
 
 # each bolt: the photo, and the box round one stroke (left, top, right, bottom shares)
 BOLTS = [

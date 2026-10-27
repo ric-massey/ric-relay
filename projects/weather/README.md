@@ -1337,12 +1337,22 @@ scenes, then climbing.
     they are ai generated. and they have to move"). Drawn clouds, however
     tuned, read as drawn next to a photograph, so by day — and whenever there
     is cloud — the sky behind every scene is a real time-lapse: seven kinds of loop in
-    `assets/weather/skies/` (clear, fair, grey, rain, storm, sunset, dusk; eleven clips, the
-    spares picked once a visit), cut
-    by `make-skies.py` (1920 px) from freely licensed Commons clips (public domain or CC
+    `assets/weather/skies/` (clear, fair, grey, rain, storm, sunset, dusk; eight clips, a
+    spare picked once a visit), cut
+    by `make-skies.py` from freely licensed Commons clips (public domain or CC
     BY, never share-alike): one continuous stretch, the sky only, the last
-    second cross-faded into the first so it loops with no jump, motion
-    interpolated to twice the frame rate so the page can play it slowly. Each
+    second cross-faded into the first so it loops with no jump. **Quality
+    rules** (2026-10-26, Ric: "make them higher quality remember no ai should
+    be able to tell an ai did it"): every clip is cut from the original file,
+    never Commons' 1080p transcode; kept as wide as its source up to 2560 px
+    and never enlarged; encoded generously (VP9 CRF 28, H.264 CRF 23 — a
+    starved encoder bands and blocks a sky first); no motion interpolation,
+    whose invented frames warp and smear exactly like generated video; and no
+    sky under 1920 × 560 (`test/wx.test.mjs`) — the 720p storm and canyon, the
+    two 1080p loops squeezed under a megabyte and the sunset cropped to a
+    280-pixel strip were all replaced that day, by New Braunfels (5K), a New
+    Mexico monsoon afternoon (its cumulus for fair, its rain shafts for storm)
+    and a Belfort overcast. Each
     is a VP9 WebM, an H.264 MP4 for Safari that cannot play VP9, and a still
     for when motion is off; `skies.json` holds each one's credit, which the
     settings sheet shows beside the photo's. `skyChoice` picks by the weather
@@ -1443,7 +1453,10 @@ scenes, then climbing.
   ("get pictures from online for now"): all from Wikimedia Commons, public
   domain or CC BY only — never share-alike, so the page owes nothing but the
   credit, which the settings sheet shows for the scene in use. Each is
-  `assets/weather/scenes/<id>.jpg` at 3000 px with a `-1600.jpg` copy for phones, a 240 px
+  `assets/weather/scenes/<id>.jpg` at up to 4000 px (the original's size if smaller), JPEG
+  quality 88, made from the photographer's original file rather than Commons'
+  recompressed copy (2026-10-26: a second JPEG pass at 60–80 left blocks in the
+  skies and shadows), with a `-1600.jpg` copy for small screens, a 240 px
   `<id>-thumb.jpg` and its `<id>-sky.png` mask, re-encoded from a fresh image so no EXIF, XMP or ICC block
   survives (hard rule 1 — check with the command in AGENTS.md). `horizon` in
   each `SCENES` line is where that photo's sky ends, measured off the picture,

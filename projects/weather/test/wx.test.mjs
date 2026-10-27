@@ -538,6 +538,11 @@ console.log('\nRULE  two pages, one room: Weather for everyone, Weather Pro for 
       `every real sky the scene can pick has its WebM, its H.264 for Safari and its still (${skyIds.join(', ')})`);
     ok(skyIds.every(id => skies[id] && skies[id].by && /^https:\/\/commons\.wikimedia\.org\//.test(skies[id].url) && /^(CC BY \d|CC0|public domain)/i.test(skies[id].licence) && !/SA/.test(skies[id].licence)),
       'every real sky is credited to its maker on Commons, under a licence that asks only for credit');
+    /* Ric, 2026-10-26: "make them higher quality remember no ai should be able to
+       tell an ai did it" — a sky cropped to a strip, or a 720p clip, is
+       stretched to fill a big screen and reads as soft and fake */
+    const thin = Object.entries(skies).filter(([, s]) => s.w < 1920 || s.h < 560).map(([id, s]) => `${id} ${s.w}×${s.h}`);
+    ok(!thin.length, `every real sky is at least 1920 wide and 560 tall${thin.length ? ' — not ' + thin.join(', ') : ''}`);
     const exif = [...ids.flatMap(id => [`${id}.jpg`, `${id}-1600.jpg`, `${id}-thumb.jpg`, `${id}-flat.jpg`, `${id}-flat-1600.jpg`]), '../skies/stars.jpg'].filter(f => fs.readFileSync(new URL(dir + f, root)).subarray(0, 65536).includes('Exif\0'));
     ok(exif.length === 0, `no scene photo carries EXIF, so no GPS (${exif.join(', ') || 'none'})`);
     ok(!/WxScene\.preview/.test(app) && /gust: c\.gust\.v/.test(app),

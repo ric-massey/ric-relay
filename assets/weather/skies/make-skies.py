@@ -9,14 +9,13 @@ domain or CC BY, never share-alike), credited in the page's settings sheet and
 in SKIES below.
 
 For each sky this script:
-  - downloads the clip's 1080p copy from Commons into .sky-cache/ (gitignored)
+  - downloads the clip's ORIGINAL file from Commons into .sky-cache/orig/
+    (gitignored) — not Commons' 1080p transcode, which is a second lossy pass
   - keeps one continuous stretch of it (`start`–`end`, seconds; some clips have
     cuts) and only the sky (`crop`: top and bottom as shares of the height)
   - makes it loop with no jump: the last second is cross-faded into the first
-  - doubles the frame rate by motion interpolation, so the page can play it at
-    half speed (clouds in a time-lapse race) and still move smoothly
   - writes <id>.webm (VP9) and <id>.mp4 (H.264, for Safari that cannot play
-    VP9), 1920 px wide, no sound, and <id>.jpg — the first frame, for a still
+    VP9), as wide as the source up to 2560 px — never enlarged — no sound, and <id>.jpg — the first frame, for a still
     sky when motion is off — and skies.json, each sky's size and credit
 
     python3 assets/weather/skies/make-skies.py          # every sky
@@ -40,35 +39,37 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 CACHE = HERE / ".sky-cache"
-WIDTH = 1920
+WIDTH = 2560          # the widest a sky is kept; a smaller source keeps its own width
+# No motion interpolation any more (2026-10-26). It invented in-between frames
+# so the clips could play at half speed, and its warps and smears are exactly
+# what gives away generated video. The page now plays them at 1/16 and blends
+# each frame into the last (drawFootage), which needs no invented frames.
 CTX = ssl.create_default_context(cafile="/etc/ssl/cert.pem")
-UA = {"User-Agent": "RicsWebsite-skies/1.0 (personal site; ricmassey.com)"}
+UA = {"User-Agent": "RicsWebsite-skies/1.0 (personal site; https://ricmassey.com)"}
 
 SKIES = {
-    "fair": {"title": "Clouds transformations.webm", "start": 0.5, "end": 24.2, "crop": (0.0, 1.0),
-             "by": "Igor da Bari", "licence": "CC BY 4.0"},
+    # rebuilt 2026-10-26 (Ric: "make them higher quality remember no ai should
+    # be able to tell an ai did it"): every sky from its original file, and the
+    # clips that could not stand up to a big screen replaced — two 1080p
+    # loops squeezed under a megabyte, a 720p storm, a 720p canyon and a
+    # sunset cropped to a 280-pixel strip
+    "fair": {"title": "Atmospheric convection over New Braunfels.webm", "start": 8.0, "end": 30.0, "crop": (0.0, 0.48),
+             "by": "Brainandforce", "licence": "CC BY 4.0"},
+    "fair-2": {"kind": "fair", "title": "Monsoon Clouds - Albuquerque, New Mexico, USA - 5 July 2015.webm", "start": 34.0, "end": 56.0, "crop": (0.0, 0.66),
+               "by": "John Fowler", "licence": "CC BY 2.0"},
     "clear": {"title": "2020-04-29 timelapse-nuages-Belfort.webm", "start": 12.0, "end": 27.0, "crop": (0.0, 0.74),
               "by": "Thomas Bresson", "licence": "CC BY 4.0"},
-    "grey": {"title": "Clouds (time lapse).webm", "start": 0.5, "end": 22.0, "crop": (0.0, 1.0),
-             "by": "YouTube channel Editor", "licence": "CC BY 3.0"},
+    "grey": {"title": "2012-07-29 14-54-20-timelapse-clouds-belfort-part1.ogv", "start": 22.0, "end": 44.0, "crop": (0.0, 0.64),   # above the aerial
+             "by": "Thomas Bresson", "licence": "CC BY 3.0"},
     "rain": {"title": "Cloudy sunset on the edge of small town. HD 1080p Timelapse (video).webm", "start": 0.2, "end": 10.6, "crop": (0.0, 0.62),
              "by": "Sparkus Design", "licence": "CC BY 2.0"},
-    "storm": {"title": "Orage en Alsace dans la nuit du 1er juin - Colmar vers 18h30 le 31 mai.webm", "start": 0.7, "end": 8.3, "crop": (0.0, 0.74),
-              "by": "France 3 Grand Est", "licence": "CC BY 3.0"},
-    "sunset": {"title": "Clouds transformation.webm", "start": 5.0, "end": 16.8, "crop": (0.0, 0.56),
-               "by": "Igor da Bari", "licence": "CC BY 4.0"},
+    # the same afternoon in New Mexico, after the cumulus grew: dark bases and rain shafts
+    "storm": {"title": "Monsoon Clouds - Albuquerque, New Mexico, USA - 5 July 2015.webm", "start": 85.0, "end": 103.0, "crop": (0.0, 0.88),
+              "by": "John Fowler", "licence": "CC BY 2.0"},
+    "sunset": {"title": "Sunset timelapse on the beach in Libreville, Gabon.webm", "start": 0.5, "end": 14.8, "crop": (0.0, 0.54),
+               "by": "In Old News", "licence": "CC0"},
     "dusk": {"title": "Second Glow (video).webm", "start": 2.0, "end": 11.5, "crop": (0.0, 1.0),
              "by": "John Fowler", "licence": "CC BY 2.0"},
-    # more of each kind, so the same twenty seconds are not seen every visit;
-    # `kind` is the sky they stand in for (Ric: "do it all")
-    "fair-3": {"kind": "fair", "title": "Atmospheric convection over New Braunfels.webm", "start": 8.0, "end": 40.0, "crop": (0.0, 0.48),
-               "by": "Brainandforce", "licence": "CC BY 4.0"},
-    "fair-4": {"kind": "fair", "title": "Grand Canyon Nat Park- Time-lapse Video from Yaki Point (8931531533).webm", "start": 1.0, "end": 43.0, "crop": (0.0, 0.35),   # above the canyon rim
-               "by": "Grand Canyon National Park (NPS)", "licence": "public domain"},
-    "sunset-2": {"kind": "sunset", "title": "Timelapse Joshua Tree Clouds and Sunset Near West Entrance.webm", "start": 4.0, "end": 14.5, "crop": (0.0, 0.26),   # above the Joshua tree's crown
-                 "by": "Joshua Tree National Park (NPS)", "licence": "public domain"},
-    "sunset-3": {"kind": "sunset", "title": "Sunset timelapse on the beach in Libreville, Gabon.webm", "start": 0.5, "end": 14.8, "crop": (0.0, 0.54),
-                 "by": "In Old News", "licence": "CC0"},
 }
 
 
@@ -80,15 +81,15 @@ def api(**p):
 
 def fetch(title):
     CACHE.mkdir(exist_ok=True)
-    out = CACHE / (re.sub(r"[^A-Za-z0-9]+", "_", title)[:60] + ".webm")
+    (CACHE / "orig").mkdir(parents=True, exist_ok=True)
+    out = CACHE / "orig" / (re.sub(r"[^A-Za-z0-9]+", "_", title)[:60] + "." + title.rsplit(".", 1)[1])
     if out.exists():
         return out
-    pg = next(iter(api(action="query", titles="File:" + title, prop="videoinfo", viprop="url|derivatives")["query"]["pages"].values()))
-    vi = pg["videoinfo"][0]
-    ders = sorted((d for d in vi.get("derivatives", []) if d.get("type", "").startswith("video/webm") and d.get("height", 0) <= 1080),
-                  key=lambda d: d.get("height", 0))
-    src = ders[-1]["src"] if ders else vi["url"]
-    out.write_bytes(urllib.request.urlopen(urllib.request.Request(src, headers=UA), context=CTX, timeout=600).read())
+    pg = next(iter(api(action="query", titles="File:" + title, prop="videoinfo", viprop="url")["query"]["pages"].values()))
+    src = pg["videoinfo"][0]["url"].split("?")[0]
+    # curl, not urllib: upload.wikimedia.org answered Python's requests with
+    # nothing but 429s on 2026-10-26 while curl's went straight through
+    subprocess.run(["curl", "-sSf", "--retry", "5", "--retry-delay", "20", "-A", UA["User-Agent"], "-o", str(out), src], check=True)
     return out
 
 
@@ -105,8 +106,9 @@ def make(sid, s):
         if k >= a:
             h = fr.shape[0]
             fr = fr[round(h * s["crop"][0]):round(h * s["crop"][1])]
-            oh = round(fr.shape[0] * WIDTH / fr.shape[1] / 2) * 2
-            frames.append(cv2.resize(fr, (WIDTH, oh), interpolation=cv2.INTER_AREA))
+            ow = min(WIDTH, fr.shape[1] // 2 * 2)
+            oh = round(fr.shape[0] * ow / fr.shape[1] / 2) * 2
+            frames.append(cv2.resize(fr, (ow, oh), interpolation=cv2.INTER_AREA))
         k += 1
     n, K = len(frames), int(fps)
     assert n > 3 * K, f"{sid}: too short ({n} frames)"
@@ -118,20 +120,22 @@ def make(sid, s):
     tmp = Path(tempfile.mkdtemp())
     for i, fr in enumerate(loop):
         cv2.imwrite(str(tmp / f"{i:05d}.png"), fr)
-    cv2.imwrite(str(HERE / f"{sid}.jpg"), loop[0], [cv2.IMWRITE_JPEG_QUALITY, 82])
-    interp = f"minterpolate=fps={int(round(fps)) * 2}:mi_mode=mci:mc_mode=aobmc:vsbmc=1"
-    ins = ["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", str(tmp / "%05d.png"), "-vf", interp, "-an"]
-    subprocess.run(ins + ["-c:v", "libvpx-vp9", "-crf", "36", "-b:v", "0", "-row-mt", "1", "-pix_fmt", "yuv420p", str(HERE / f"{sid}.webm")], check=True)
-    subprocess.run(ins + ["-c:v", "libx264", "-crf", "27", "-preset", "slow", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(HERE / f"{sid}.mp4")], check=True)
+    cv2.imwrite(str(HERE / f"{sid}.jpg"), loop[0], [cv2.IMWRITE_JPEG_QUALITY, 90])
+    # quality over size: a sky is soft gradients, where a starved encoder
+    # bands and blocks first (CRF 36 / 27 did, visibly, on a big screen)
+    ins = ["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", str(tmp / "%05d.png"), "-an"]
+    subprocess.run(ins + ["-c:v", "libvpx-vp9", "-crf", "28", "-b:v", "0", "-row-mt", "1", "-pix_fmt", "yuv420p", str(HERE / f"{sid}.webm")], check=True)
+    subprocess.run(ins + ["-c:v", "libx264", "-crf", "23", "-preset", "slow", "-tune", "film", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(HERE / f"{sid}.mp4")], check=True)
     shutil.rmtree(tmp)
     # what the page needs to know about it, credit included (skies.json)
     meta_path = HERE / "skies.json"
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
-    meta[sid] = {"kind": s.get("kind", sid), "w": WIDTH, "h": int(loop[0].shape[0]), "seconds": round(len(loop) / fps, 1), "title": s["title"].rsplit(".", 1)[0],
+    meta = {k: v for k, v in meta.items() if k in SKIES}
+    meta[sid] = {"kind": s.get("kind", sid), "w": int(loop[0].shape[1]), "h": int(loop[0].shape[0]), "seconds": round(len(loop) / fps, 1), "title": s["title"].rsplit(".", 1)[0],
                  "url": "https://commons.wikimedia.org/wiki/File:" + urllib.parse.quote(s["title"].replace(" ", "_")), "by": s["by"], "licence": s["licence"]}
     meta_path.write_text(json.dumps(dict(sorted(meta.items())), indent=1) + "\n")
     sizes = " ".join(f"{e} {(HERE / f'{sid}.{e}').stat().st_size // 1024} KB" for e in ("webm", "mp4", "jpg"))
-    print(f"{sid:7} {len(loop) / fps:5.1f}s loop  {WIDTH}x{loop[0].shape[0]}  {sizes}")
+    print(f"{sid:7} {len(loop) / fps:5.1f}s loop  {loop[0].shape[1]}x{loop[0].shape[0]}  {sizes}")
 
 
 if __name__ == "__main__":

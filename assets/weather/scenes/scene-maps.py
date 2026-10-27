@@ -71,23 +71,25 @@ from scipy import ndimage
 HERE = Path(__file__).resolve().parent
 CACHE = HERE / ".scene-cache"
 WIDTH = 800          # the water, depth and plant maps' width
-PHOTO = 3000         # the scene photos' long side (and a 1600 copy for phones: <id>-1600.jpg)
+PHOTO = 4000         # the scene photos' long side, or the original's if smaller (and a 1600 copy: <id>-1600.jpg)
+QUALITY = 88         # JPEG quality for every photo. 60–80 left blocks in skies and shadows a
+                     # viewer reads as a fake (Ric, 2026-10-26: "make them higher quality")
 MASK = 2000          # the sky mask's width
 
-# the photos' originals on Commons, and the JPEG quality each is saved at
+# the photos' originals on Commons
 SOURCES = {
-    "forest": ("Bois Raquet, in the High Fens – Eifel Nature Park (DSCF6655).jpg", 60),
-    "mountains": ("Mountain lake, Mylgval mountain cirque, Western Caucasus.jpg", 60),
-    "city": ("Montreal - QC - Skyline.jpg", 68),
-    "water": ("Lake Kinney mit Mount Whitehorn.jpg", 80),
-    "beach": ("Havelock Island, Mangrove tree on the beach, Andaman Islands.jpg", 80),
-    "crag": ("The sandstone cliffs and spires of Colorado National Monument attract hundreds of climbers a year. (9e8ceddd-0a94-4c97-82dd-ee36edf697c7).jpg", 76),
-    "torre": ("Cerro Torre (5457586054).jpg", 80),
+    "forest": "Bois Raquet, in the High Fens – Eifel Nature Park (DSCF6655).jpg",
+    "mountains": "Mountain lake, Mylgval mountain cirque, Western Caucasus.jpg",
+    "city": "Montreal - QC - Skyline.jpg",
+    "water": "Lake Kinney mit Mount Whitehorn.jpg",
+    "beach": "Havelock Island, Mangrove tree on the beach, Andaman Islands.jpg",
+    "crag": "The sandstone cliffs and spires of Colorado National Monument attract hundreds of climbers a year. (9e8ceddd-0a94-4c97-82dd-ee36edf697c7).jpg",
+    "torre": "Cerro Torre (5457586054).jpg",
     # Ric, 2026-10-26: "another crag picture one that shows more of the sky",
     # "one for the smokeys", "one for the rockeys"
-    "cliff": ("High cliff in Lyse with climbers 1.jpg", 76),
-    "smokies": ("Blue Ridge (Great Smoky Mountains, North Carolina, USA) 1.jpg", 80),
-    "rockies": ("Meeker, Longs, Lady Washington.jpg", 72),
+    "cliff": "High cliff in Lyse with climbers 1.jpg",
+    "smokies": "Blue Ridge (Great Smoky Mountains, North Carolina, USA) 1.jpg",
+    "rockies": "Meeker, Longs, Lady Washington.jpg",
 }
 # the lowest the sky reaches, as a share of the height: below it is sea, lake
 # or ground whatever the model thinks (a guard, not the main rule)
@@ -101,18 +103,23 @@ _model = None
 
 
 def original(sid):
-    """the photo as it was published, at 2400 px, before anything here touched it"""
+    """the photo as it was published, at PHOTO px at most, before anything here touched it"""
     import ssl, urllib.parse, urllib.request
     CACHE.mkdir(exist_ok=True)
-    out = CACHE / f"{sid}.jpg"
+    # the original file, not Commons' resized copy: that copy is a second JPEG
+    # pass at Commons' own quality, and every pass softens and blocks the picture
+    out = CACHE / f"{sid}-original.jpg"
     if not out.exists():
         ctx = ssl.create_default_context(cafile="/etc/ssl/cert.pem")
-        ua = {"User-Agent": "RicsWebsite-scene-maps/1.0 (personal site; ricmassey.com)"}
-        q = urllib.parse.urlencode({"action": "query", "titles": "File:" + SOURCES[sid][0], "prop": "imageinfo",
-                                    "iiprop": "url", "iiurlwidth": PHOTO, "format": "json"})
+        ua = {"User-Agent": "RicsWebsite-scene-maps/1.0 (personal site; https://ricmassey.com)"}
+        q = urllib.parse.urlencode({"action": "query", "titles": "File:" + SOURCES[sid], "prop": "imageinfo",
+                                    "iiprop": "url", "format": "json"})
         pg = next(iter(json.load(urllib.request.urlopen(urllib.request.Request(
             "https://commons.wikimedia.org/w/api.php?" + q, headers=ua), context=ctx))["query"]["pages"].values()))
-        out.write_bytes(urllib.request.urlopen(urllib.request.Request(pg["imageinfo"][0]["thumburl"], headers=ua), context=ctx).read())
+        # curl, not urllib: upload.wikimedia.org turned Python's requests away (429) on 2026-10-26
+        import subprocess
+        subprocess.run(["curl", "-sSf", "--retry", "5", "--retry-delay", "20", "-A", ua["User-Agent"], "-o", str(out),
+                        pg["imageinfo"][0]["url"].split("?")[0]], check=True)
     im = Image.open(out).convert("RGB")
     im.thumbnail((PHOTO, PHOTO), Image.LANCZOS)
     clean = Image.new("RGB", im.size)              # a fresh image: no EXIF, XMP or ICC (hard rule 1)
@@ -495,7 +502,7 @@ def main(args):
         out, share, photo, plants, sky_a = mask_for(HERE / f"{sid}.jpg", sid)
         out.save(HERE / f"{sid}-sky.png", optimize=True)
         plants.save(HERE / f"{sid}-plants.png", optimize=True)
-        q = SOURCES[sid][1]
+        q = QUALITY
         save = lambda im, name: im.save(HERE / name, "JPEG", quality=q, optimize=True, progressive=True)
         small = lambda im: im.resize((1600, round(im.height * 1600 / im.width)), Image.LANCZOS)
         flat = flat_for(photo, sky_a)

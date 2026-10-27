@@ -75,7 +75,8 @@
   /* `horizon` is where the sky ends in the picture, as a share of its height
      from the top: stars, the moon and lightning bolts stay above it. `sky:
      true` is the picture-less scene, which draws its own clouds and sun. */
-  /* a big screen gets the 3000 px photo, a phone the 1600 px copy */
+  /* a screen over 1900 device pixels (every recent phone too) gets the full
+     photo, up to 4000 px; a smaller one the 1600 px copy */
   const BIG = Math.max(screen.width || 0, screen.height || 0) * (window.devicePixelRatio || 1) > 1900;
   const SCENES = [
     { id: "sky", name: "Sky", sky: true, horizon: 1, say: "The sky's own colour, and the weather in it." },
@@ -1049,6 +1050,7 @@
       const a = o.acc, fresh = a.width !== W || a.height !== Math.ceil(band);
       if (fresh) { a.width = W; a.height = Math.ceil(band); }
       const ax = a.getContext("2d");
+      ax.imageSmoothingQuality = "high";                                // the default "low" is a bilinear that blurs an enlarged sky
       ax.globalAlpha = fresh || !live || img === o.still ? 1 : 0.2;
       ax.drawImage(img, (W - iw * k) / 2, band - ih * k, iw * k, ih * k);
       ax.globalAlpha = 1;

@@ -1,7 +1,8 @@
 {
  "clear": {
-  "w": 1920,
-  "h": 800,
+  "kind": "clear",
+  "w": 2560,
+  "h": 1066,
   "seconds": 14.0,
   "title": "2020-04-29 timelapse-nuages-Belfort",
   "url": "https://commons.wikimedia.org/wiki/File:2020-04-29_timelapse-nuages-Belfort.webm",
@@ -9,8 +10,9 @@
   "licence": "CC BY 4.0"
  },
  "dusk": {
-  "w": 1920,
-  "h": 1080,
+  "kind": "dusk",
+  "w": 2560,
+  "h": 1440,
   "seconds": 8.5,
   "title": "Second Glow (video)",
   "url": "https://commons.wikimedia.org/wiki/File:Second_Glow_%28video%29.webm",
@@ -18,44 +20,37 @@
   "licence": "CC BY 2.0"
  },
  "fair": {
-  "w": 1920,
-  "h": 1080,
-  "seconds": 22.7,
-  "title": "Clouds transformations",
-  "url": "https://commons.wikimedia.org/wiki/File:Clouds_transformations.webm",
-  "by": "Igor da Bari",
-  "licence": "CC BY 4.0"
- },
- "fair-3": {
   "kind": "fair",
-  "w": 1920,
-  "h": 518,
-  "seconds": 31.0,
+  "w": 2560,
+  "h": 692,
+  "seconds": 21.0,
   "title": "Atmospheric convection over New Braunfels",
   "url": "https://commons.wikimedia.org/wiki/File:Atmospheric_convection_over_New_Braunfels.webm",
   "by": "Brainandforce",
   "licence": "CC BY 4.0"
  },
- "fair-4": {
+ "fair-2": {
   "kind": "fair",
   "w": 1920,
-  "h": 378,
-  "seconds": 41.0,
-  "title": "Grand Canyon Nat Park- Time-lapse Video from Yaki Point (8931531533)",
-  "url": "https://commons.wikimedia.org/wiki/File:Grand_Canyon_Nat_Park-_Time-lapse_Video_from_Yaki_Point_%288931531533%29.webm",
-  "by": "Grand Canyon National Park (NPS)",
-  "licence": "public domain"
+  "h": 712,
+  "seconds": 21.1,
+  "title": "Monsoon Clouds - Albuquerque, New Mexico, USA - 5 July 2015",
+  "url": "https://commons.wikimedia.org/wiki/File:Monsoon_Clouds_-_Albuquerque%2C_New_Mexico%2C_USA_-_5_July_2015.webm",
+  "by": "John Fowler",
+  "licence": "CC BY 2.0"
  },
  "grey": {
+  "kind": "grey",
   "w": 1920,
-  "h": 1080,
-  "seconds": 20.5,
-  "title": "Clouds (time lapse)",
-  "url": "https://commons.wikimedia.org/wiki/File:Clouds_%28time_lapse%29.webm",
-  "by": "YouTube channel Editor",
+  "h": 692,
+  "seconds": 21.0,
+  "title": "2012-07-29 14-54-20-timelapse-clouds-belfort-part1",
+  "url": "https://commons.wikimedia.org/wiki/File:2012-07-29_14-54-20-timelapse-clouds-belfort-part1.ogv",
+  "by": "Thomas Bresson",
   "licence": "CC BY 3.0"
  },
  "rain": {
+  "kind": "rain",
   "w": 1920,
   "h": 670,
   "seconds": 9.4,
@@ -65,34 +60,16 @@
   "licence": "CC BY 2.0"
  },
  "storm": {
+  "kind": "storm",
   "w": 1920,
-  "h": 800,
-  "seconds": 6.6,
-  "title": "Orage en Alsace dans la nuit du 1er juin - Colmar vers 18h30 le 31 mai",
-  "url": "https://commons.wikimedia.org/wiki/File:Orage_en_Alsace_dans_la_nuit_du_1er_juin_-_Colmar_vers_18h30_le_31_mai.webm",
-  "by": "France 3 Grand Est",
-  "licence": "CC BY 3.0"
+  "h": 950,
+  "seconds": 17.0,
+  "title": "Monsoon Clouds - Albuquerque, New Mexico, USA - 5 July 2015",
+  "url": "https://commons.wikimedia.org/wiki/File:Monsoon_Clouds_-_Albuquerque%2C_New_Mexico%2C_USA_-_5_July_2015.webm",
+  "by": "John Fowler",
+  "licence": "CC BY 2.0"
  },
  "sunset": {
-  "w": 1920,
-  "h": 604,
-  "seconds": 10.8,
-  "title": "Clouds transformation",
-  "url": "https://commons.wikimedia.org/wiki/File:Clouds_transformation.webm",
-  "by": "Igor da Bari",
-  "licence": "CC BY 4.0"
- },
- "sunset-2": {
-  "kind": "sunset",
-  "w": 1920,
-  "h": 280,
-  "seconds": 9.5,
-  "title": "Timelapse Joshua Tree Clouds and Sunset Near West Entrance",
-  "url": "https://commons.wikimedia.org/wiki/File:Timelapse_Joshua_Tree_Clouds_and_Sunset_Near_West_Entrance.webm",
-  "by": "Joshua Tree National Park (NPS)",
-  "licence": "public domain"
- },
- "sunset-3": {
   "kind": "sunset",
   "w": 1920,
   "h": 584,
