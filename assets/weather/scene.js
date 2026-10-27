@@ -211,7 +211,10 @@
     }
     /* stars come out as the sky darkens, under clear sky only */
     const stars = clamp((phase.dark - 0.55) / 0.4, 0, 1) * clamp(1 - cloud * 1.15, 0, 1) * (rain || snow ? 0 : 1) * (1 - fog);
-    return { kind: k, phase, rain, snow, fog, vis, cloud, wind, windDir: s.windDir, blow, gusty, dirX, storm: k === "storm", stars };
+    /* how far the air is from saturating, °C: cloud forms about 125 m up for
+       each degree between the temperature and the dew point */
+    const spread = Number.isFinite(s.temp) && Number.isFinite(s.dew) ? Math.max(0, s.temp - s.dew) : null;
+    return { kind: k, phase, rain, snow, fog, vis, cloud, wind, windDir: s.windDir, blow, gusty, dirX, storm: k === "storm", stars, spread };
   }
 
   /* how much the light is overcast light: grey cloud, rain, snow, fog, a storm,
@@ -724,11 +727,13 @@
     layers.sky = sky ? chooseSky(f) : null;
     /* Cerro Torre's own clouds, out of its photo, moving (torre-clouds.py) */
     layers.tc = scene.id === "torre" && sky ? buildTorreClouds(f) : null;
+    /* and the cloud at its height, wrapped round the rock */
+    layers.band = scene.id === "torre" && sky ? buildBand(f, L0(f)) : null;
     /* low cloud: thick, wet cloud comes down over the tops — Cerro Torre's
        spire goes into it first. Only on photos: the plain Sky has no tops. */
     if (scene.photo) {
       const low = clamp(clamp((f.cloud - 0.72) / 0.28, 0, 1) * 0.5 + (f.rain ? 0.22 + f.rain * 0.1 : 0) + (f.snow ? 0.3 : 0) + (f.storm ? 0.2 : 0) + f.fog * 0.3, 0, 1);
-      if (low > 0.05) layers.deck = { img: tex(0.84, L.lo, L.hi, 0.95, { fade: [0, 0.6], soft: 0.5, shift: 211 }), low, off: rnd(0, W), v: drift(f, 100) * dir };
+      if (low > 0.05 && !layers.band) layers.deck = { img: tex(0.84, L.lo, L.hi, 0.95, { fade: [0, 0.6], soft: 0.5, shift: 211 }), low, off: rnd(0, W), v: drift(f, 100) * dir };
     }
     /* fog: a veil, and banks moving through it */
     if (f.fog > 0.02) {
@@ -1376,6 +1381,123 @@
       else s.drawImage(img, x - w / 2, y - h / 2, w, h);
     }
     s.globalAlpha = 1;
+  }
+
+  /* ── cloud at its height (2026-10-27) ──
+     Ric: "Clouds move around the rock. They are at a certain elevation so
+     they look a certain way too." A deck of cloud is a layer of air at a
+     height: where it meets the mountain it hides the rock at that height and
+     nothing else — the summit stands out above it, the walls show below it —
+     and it carries on into the sky beside the spire at the same height, so it
+     wraps round the rock rather than sitting behind it. A nearer, lower ridge
+     stands in front of it.
+     So every pixel of Cerro Torre's photo is given a height, in metres: the
+     depth map says how far off it is, and the mountain's own heights set the
+     scale (TORRE_GEO — the summit 3128 m, the glacier at the foot of the face
+     about 1100 m, the view from about 700 m by Laguna Torre; heights of a
+     famous peak, not a place of anyone's). The deck's base is where the
+     visitor's air would make cloud — about 125 m up for each °C between the
+     temperature and the dew point — and its depth comes with the cover: thin
+     at half cover, thousands of metres when it is overcast and raining. Dry
+     air puts the base above the summits and leaves the rock clear. The deck
+     itself is the scene's cloud texture, moving with the wind inside the band,
+     so its edges come and go as it moves. */
+  const TORRE_GEO = { viewer: 700, top: 3128, topY: 0.07, foot: 1100, footY: 0.95 };
+  const L0 = (f) => light(f);
+  let altCache = null;
+  function altitudes() {
+    const dm = depthField();
+    if (!dm) return null;
+    if (altCache && altCache.dm === dm && altCache.scene === scene.id) return altCache;
+    const G = TORRE_GEO, { km, land } = dm.km, w = dm.w, h = dm.h;
+    /* metres a photo-height spans at the massif's distance, and the eye's level (in photo heights) */
+    const span = (G.top - G.foot) / (G.footY - G.topY), eye = G.topY + (G.top - G.viewer) / span;
+    /* the massif's distance: the depth along the Torre's face */
+    const face = [];
+    for (let y = Math.round(h * 0.2); y < h * 0.6; y += 4) for (let x = Math.round(w * 0.3); x < w * 0.6; x += 4) if (land[y * w + x]) face.push(km[y * w + x]);
+    face.sort((a, b) => a - b);
+    const D = face.length ? face[face.length >> 1] : 1;
+    const alt = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      /* the massif's spires stand at about one distance: read as one, or the
+         depth map's small differences step the deck at every skyline (it did,
+         along Egger and Herron). Only what is clearly nearer — the ridge on
+         the right — keeps its own, and stands in front. The sky: cloud there
+         is at the massif's distance. */
+      const i = y * w + x, r = km[i] / D;
+      const k = land[i] ? (r >= 0.8 ? 1 : r <= 0.6 ? r : r + (1 - r) * (r - 0.6) / 0.2) : 1;
+      alt[i] = G.viewer + (eye - (y + 0.5) / h) * span * k;
+    }
+    return (altCache = { dm, scene: scene.id, alt, w, h });
+  }
+  function buildBand(f, L) {
+    const A = altitudes();
+    if (!A) return null;
+    const wet = f.rain || f.snow || f.storm;
+    if (f.cloud < 0.2 && !wet && f.fog < 0.2) return null;
+    /* the base: from the air's spread when there is one, else from how grey it is */
+    let base = f.spread != null ? TORRE_GEO.viewer + 125 * f.spread : TORRE_GEO.viewer + (wet ? 500 : 1500 - f.cloud * 600);
+    if (wet) base -= 150;
+    if (f.fog > 0.3) base = Math.min(base, TORRE_GEO.viewer + 200);
+    const depth = 250 + 1800 * f.cloud + (wet ? 900 : 0);
+    if (base > TORRE_GEO.top + 150) return null;                         // above the summits: the rock stands clear
+    const top = base + depth;
+    /* the band's edges rise and fall along the range, never a ruled line */
+    const ph = [rnd(0, 6.3), rnd(0, 6.3), rnd(0, 6.3)];
+    const wob = (u) => 110 * Math.sin(u * 7 + ph[0]) + 60 * Math.sin(u * 17 + ph[1]) + 35 * Math.sin(u * 41 + ph[2]);
+    const c = document.createElement("canvas");
+    c.width = A.w; c.height = A.h;
+    const x = c.getContext("2d"), im = x.createImageData(A.w, A.h), d = im.data;
+    const soft = 160, ss = (e0, e1, v) => { const t = clamp((v - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+    let any = 0;
+    for (let yy = 0; yy < A.h; yy++) for (let xx = 0; xx < A.w; xx++) {
+      const i = yy * A.w + xx, z = A.alt[i], wv = wob(xx / A.w);
+      const b = ss(base + wv - soft, base + wv + soft, z) * (1 - ss(top + wv * 1.5 - soft * 2, top + wv * 1.5 + soft * 2, z));
+      d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = 255; d[i * 4 + 3] = b * 255;
+      if (b > any) any = b;
+    }
+    if (any < 0.05) return null;
+    x.putImageData(im, 0, 0);
+    const cover = clamp(0.35 + f.cloud * 0.55 + (wet ? 0.15 : 0), 0.35, 0.97);
+    const dir = f.dirX >= 0 ? 1 : -1;
+    /* where the base and the top fall on the picture, at the massif's distance (shares of its height) */
+    const G = TORRE_GEO, span = (G.top - G.foot) / (G.footY - G.topY), eye = G.topY + (G.top - G.viewer) / span;
+    const yAt = (z) => eye - (z - G.viewer) / span;
+    return { mask: c, base, top, yBase: yAt(base), yTop: yAt(top), under: shade(L.lo, f.storm ? 0.6 : 0.78),
+      /* firm edges, the way a deck looks against rock; a thinner, softer one behind */
+      near: tex(cover, L.lo, L.hi, 0.97, { soft: 0.22, shift: 97 }),
+      far: tex(Math.min(0.98, cover + 0.05), L.lo, L.hi, 0.5, { soft: 0.4, shift: 301, flip: true }),
+      off: rnd(0, W), off2: rnd(0, W), v: drift(f, 100) * dir };
+  }
+  let bandCv = null;
+  function drawBand(dt) {
+    const b = layers.band;
+    if (!b) return;
+    if (!bandCv) bandCv = document.createElement("canvas");
+    if (bandCv.width !== W || bandCv.height !== H) { bandCv.width = W; bandCv.height = H; }
+    const x = bandCv.getContext("2d");
+    x.globalCompositeOperation = "source-over";
+    x.clearRect(0, 0, W, H);
+    /* two layers of the deck at their own speeds, the nearer quicker: it
+       folds and parts as it goes instead of sliding as one sheet */
+    b.off += b.v * dt; b.off2 += b.v * 0.6 * dt;
+    const r = photoRect();
+    tiled(x, b.far, b.off2, r.y, W * 2.2, r.h);
+    tiled(x, b.near, b.off, r.y + r.h * 0.05, W * 1.6, r.h * 0.9);
+    /* a deck is lit from above: bright on top, its underside grey */
+    const yb = r.y + b.yBase * r.h, yt = r.y + Math.max(-0.2, b.yTop) * r.h;
+    if (yb > yt + 4) {
+      const g = x.createLinearGradient(0, yt, 0, yb);
+      g.addColorStop(0, "rgba(255,255,255,0)");
+      g.addColorStop(0.55, rgba(b.under, 0.15));
+      g.addColorStop(1, rgba(b.under, 0.6));
+      x.globalCompositeOperation = "source-atop";
+      x.fillStyle = g; x.fillRect(0, Math.min(yt, yb), W, H);
+    }
+    x.globalCompositeOperation = "destination-in";
+    x.drawImage(b.mask, r.x, r.y, r.w, r.h);
+    x.globalCompositeOperation = "source-over";
+    ctx.drawImage(bandCv, 0, 0);
   }
 
   /* ── the sky itself: its colour, the sun, the moon, the stars ──
@@ -2218,6 +2340,7 @@ void main(){
     drawWater(t);
     drawSky(dt, t, live, now);
     drawShadows(now, live);
+    drawBand(live ? dt : 0);
     drawMirror(t);
     waterLife(t, dt, live);
     cityLights(t, dt, live, now);
@@ -2430,7 +2553,7 @@ void main(){
     lastT = 0;
     if (!fx) return;
     frame(performance.now());
-    if (animated() && (parts.length || drops.length || stars.length || dust.length || plume.length || layers.clouds || layers.sky || layers.shadows || glActive() || layers.deck || layers.tc || layers.fog || layers.sheet || layers.water || (layers.city && fx.phase.dark > 0.18) || fx.storm)) raf = requestAnimationFrame(loop);
+    if (animated() && (parts.length || drops.length || stars.length || dust.length || plume.length || layers.clouds || layers.sky || layers.shadows || glActive() || layers.deck || layers.tc || layers.band || layers.fog || layers.sheet || layers.water || (layers.city && fx.phase.dark > 0.18) || fx.storm)) raf = requestAnimationFrame(loop);
     if (!animated()) flashEl.style.opacity = "0";
   }
   function size() {

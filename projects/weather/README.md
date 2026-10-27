@@ -1416,6 +1416,23 @@ scenes, then climbing.
     colours — one flat tint made a sunset bank a tan patch. Dehazing the cloud
     out (dark-channel prior) was tried first and failed: it took the distance
     haze out of the clear parts and left the cloud.
+    **Cloud at its height** (2026-10-27, Ric: "Clouds move around the rock.
+    They are at a certain elevation so they look a certain way too"). Every
+    pixel of the photo gets a height in metres — the depth map for how far off
+    it is, the mountain's own heights for the scale (`TORRE_GEO`: the summit
+    3128 m, the glacier under the face about 1100 m, the view from about 700 m;
+    the massif's spires read as one distance, or the depth map's small
+    differences stepped the deck at every skyline). A deck's base is where the
+    visitor's air would make cloud — 125 m up for each °C between temperature
+    and dew point (app.js now passes both) — and its depth comes with the cover
+    and the rain. It hides the rock only at its own height and carries on into
+    the sky beside the spire at that height, so it wraps round the rock: the
+    summit stands out above a mid-height deck, the near ridge (clearly nearer,
+    so lower) stands in front of it, dry air lifts it over the summits and the
+    rock stands clear, and in rain the mountain goes. Two layers of the scene's
+    cloud texture move with the wind inside it, lit on top and grey underneath.
+    The drawn low-cloud deck that other scenes use stays off Cerro Torre while
+    this is up.
   - **Thick, wet cloud comes down over the tops** — Cerro Torre's spire goes
     into it first. **Rain and snow** put a veil in the air as well as streaks
     and flakes. **Fog** whites the picture out: pale, flat, banks moving through.
