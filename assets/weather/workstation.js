@@ -547,6 +547,18 @@
 
     /* ── headers and the clock ── */
     const fmt = { time: Pro.time, day: Pro.day, ymd: Pro.ymd };
+    /* The source in brackets ("(NOAA open data on AWS)") goes in its own span,
+       which a phone hides: two clamped lines cut off the observed time, the
+       part that matters, while the credit line already names the source
+       (audit, 2026-10-27). The text read out stays whole. */
+    function stampInto(el, t) {
+      /* only a source: "(backup — IEM's is down or late)" is news, and stays */
+      const m = /^(.*?)( \((?:NOAA open data on AWS|IEM)\))( · .*)?$/.exec(t);
+      if (!m) { el.textContent = t; return; }
+      const src = document.createElement('span');
+      src.className = 'pstsrc'; src.textContent = m[2];
+      el.replaceChildren(m[1], src, m[3] || '');
+    }
     function stamps() {
       const ms = $('#mainstamp');
       /* alone, the main map's time is told against the clock: "the shared time" means nothing with no other map to share it */
@@ -558,7 +570,7 @@
       if (W.same && [W.mainStamp, ...W.panels.map((p) => p.stamp)].some((st) => st && st.layer && Number.isFinite(st.t) && !st.layer.includes(W.same))) { W.same = null; for (const p of W.panels) post(p, { type: 'compact', on: false }); }
       const short = (st) => (W.same && st && st.layer && st.layer.includes(W.same) ? { ...st, layer: st.layer.replace(W.same, '').replace(/\s+/g, ' ').trim() || st.layer } : st);
       /* the main map keeps the field's full name — it is said once, there; the side maps lead with what differs */
-      if (ms) { const t = W.mainStamp ? stampText(W.mainStamp, W.panels.length ? W.busT : null, fmt) : ''; if (ms.textContent !== t) ms.textContent = t; }   // unchanged, untouched: a playing loop is not read out each frame
+      if (ms) { const t = W.mainStamp ? stampText(W.mainStamp, W.panels.length ? W.busT : null, fmt) : ''; if (ms.dataset.t !== t) { ms.dataset.t = t; stampInto(ms, t); } }   // unchanged, untouched: a playing loop is not read out each frame
       for (const p of W.panels) { const el = p.sec.querySelector('.pst'); if (el) el.textContent = stampText(short(p.stamp), W.busT, fmt); }
       const c = $('#wsclock');
       /* said only when it is not "now" (the Now button beside it brings it back) */

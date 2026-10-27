@@ -165,7 +165,52 @@
     return out.subarray(0, outLen);
   }
 
-  const api = { bunzip2 };
+  /* ── off the main thread ──
+     A full Level II volume is dozens of bzip2 records, ~125 ms each here,
+     and they froze the page for seconds — 6.6 s turning Full volume on, the
+     same again for every side map (audit, 2026-10-27). So this file is also
+     its own worker: started as one, it answers bunzip2 requests; in a page,
+     bunzip2Async sends the work there. Where a worker cannot start (a
+     file:// open, Node's tests) or dies, the same bunzip2 runs here as before,
+     so the answer never depends on which thread made it. */
+  const IN_WORKER = typeof WorkerGlobalScope !== 'undefined' && root instanceof WorkerGlobalScope;
+  if (IN_WORKER) {
+    root.onmessage = ({ data }) => {
+      try {
+        const out = bunzip2(new Uint8Array(data.bytes));
+        root.postMessage({ id: data.id, buf: out.buffer, len: out.length }, [out.buffer]);
+      } catch (e) { root.postMessage({ id: data.id, err: String(e && e.message || e) }); }
+    };
+  }
+  const SRC = !IN_WORKER && typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : null;
+  let worker = null, broken = !SRC || typeof Worker !== 'function', seq = 0;
+  const waiting = new Map();
+  function fail() {
+    broken = true;
+    if (worker) worker.terminate();
+    worker = null;
+    for (const [id, w] of waiting) { waiting.delete(id); try { w.ok(bunzip2(w.bytes)); } catch (e) { w.no(e); } }
+  }
+  function start() {
+    try {
+      worker = new Worker(SRC);
+      worker.onmessage = ({ data }) => {
+        const w = waiting.get(data.id);
+        if (!w) return;
+        waiting.delete(data.id);
+        if (data.err) w.no(new Error(data.err)); else w.ok(new Uint8Array(data.buf, 0, data.len));
+      };
+      worker.onerror = (e) => { if (e && e.preventDefault) e.preventDefault(); fail(); };
+    } catch (e) { fail(); }
+  }
+  function bunzip2Async(bytes) {
+    if (!broken && !worker) start();
+    if (broken) return new Promise((ok) => ok(bunzip2(bytes)));
+    const id = ++seq, copy = bytes.slice();       // the copy travels; `bytes` stays for the fallback
+    return new Promise((ok, no) => { waiting.set(id, { ok, no, bytes }); worker.postMessage({ id, bytes: copy.buffer }, [copy.buffer]); });
+  }
+
+  const api = { bunzip2, bunzip2Async };
   root.Bzip2 = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

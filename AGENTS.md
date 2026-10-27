@@ -933,6 +933,10 @@ ones that must never break:
   shaded in the browser by `terrain.js` — one more host, fetched while the page
   runs and never committed, for the same reason as the map lines. It is shadow
   and light only, never a colour that could be read as radar; its credit is in
+  bzip2 runs off the main thread: `bzip2.js` is its own Web Worker, and page
+  code reads radar through `Nexrad.load` / `parseAsync` and `Level2.feedAsync` /
+  `stream` — never the sync `parse` / `feed`, which froze Pro for seconds a
+  volume (`docs/notes/weather-pro-audit-2026-10-27.md`).
   the map's corner while it shows. Geology was looked at and not built: little
   for a forecaster, and its sources could not be checked from here.
   **The UKMET** (2026-10-24) is the Met Office's open NetCDF on AWS

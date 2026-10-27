@@ -1425,6 +1425,8 @@
   setInterval(() => {
     for (const el of document.querySelectorAll("[data-age]")) el.textContent = Wx.age(Date.now() - Number(el.dataset.age));
   }, 15000);
+  /* Pro's credits are one line on a phone; a tap (not on a link) opens them */
+  if (PRO) { const cr = $(".radar .credit"); if (cr) cr.addEventListener("click", (e) => { if (!e.target.closest("a")) cr.classList.toggle("open"); }); }
 
   /* ── radar ──
      A small slippy map, no library: OpenStreetMap underneath (darkened), a
@@ -1849,7 +1851,7 @@
       const urls = [v.sUrl, ...[...v.byN.values()].filter((c) => c.kind !== "S").sort((p, q) => p.n - q.n).map((c) => c.url)];
       const bufs = await Promise.all(urls.map(async (u) => { const r = await NX.retrying(fetch)(u); if (!r.ok) throw new Error("HTTP " + r.status); return new Uint8Array(await r.arrayBuffer()); }));
       let st = null;
-      for (const b of bufs) st = L2.feed(b, st);
+      for (const b of bufs) st = await L2.feedAsync(b, st);
       return st;
     }
     async function loadRadarXsec() {
@@ -2261,7 +2263,7 @@
       }
       const bufs = await Promise.all(q.urls.map(async (u) => { const r = await NX.retrying(fetch)(u); if (!r.ok) throw new Error("HTTP " + r.status); return new Uint8Array(await r.arrayBuffer()); }));
       let st = null;
-      for (const b of bufs) st = L2.feed(b, st);
+      for (const b of bufs) st = await L2.feedAsync(b, st);
       const sw = L2.sweep(st, q.elevNum, q.mom);
       if (!sw) throw new Error("no " + q.mom + " in this cut");
       return withCC(sw, st, q.elevNum);
@@ -2412,7 +2414,7 @@
       const S = ch.find((c) => c.kind === "S");
       if (!S) return null;
       if (have && have.sKey === S.key && have.complete) return have;
-      const meta = have && have.sKey === S.key ? have.meta : L2.feed(new Uint8Array(await (await NX.retrying(fetch)(S.url)).arrayBuffer()));
+      const meta = have && have.sKey === S.key ? have.meta : await L2.feedAsync(new Uint8Array(await (await NX.retrying(fetch)(S.url)).arrayBuffer()));
       if (!meta.vcp) return null;
       const info = { s4, n, sKey: S.key, sUrl: S.url, meta, plan: L2.plan(meta.vcp), byN: new Map(ch.map((c) => [c.n, c])), complete: ch.some((c) => c.kind === "E"), start: S.t };
       volInfo.set(k, info);
@@ -4658,13 +4660,35 @@
       });
       wrap.addEventListener("pointerleave", () => { const tip = $("#scrubtip"); if (tip) tip.classList.remove("peek"); timeline(); });
     }
+    /* Labels that would sit on each other are dropped. timelineMarks asks for
+       at least two, and on a phone the scrubber is ~166 px — two "11:02 PM"s
+       overlapped by 22 px (audit, 2026-10-27). Measured the way the CSS
+       anchors them: the first from its left, the last to its right, the rest
+       centred; 11 px mono is ~6.7 px a character. */
+    function fitMarks(marks, n, W) {
+      const wOf = (m) => m.text.length * 6.7 + 8, xOf = (m) => m.i / (n - 1) * W;
+      const kept = [];
+      let right = -Infinity;
+      for (const m of marks) {
+        const w = wOf(m), l = kept.length ? xOf(m) - w / 2 : xOf(m);
+        if (l >= right) { kept.push(m); right = l + w; }
+      }
+      /* the last is drawn right-anchored: it must clear the one before it */
+      while (kept.length > 1) {
+        const a = kept[kept.length - 2], b = kept[kept.length - 1];
+        const aR = (kept.length === 2 ? xOf(a) : xOf(a) - wOf(a) / 2) + wOf(a);
+        if (xOf(b) - wOf(b) >= aR) break;
+        kept.pop();
+      }
+      return kept;
+    }
     function timeline() {
       const box = $("#scrubticks"), tip = $("#scrubtip"), sc = $("#scrub");
       if (!box || !sc) return;
       const n = R.frames.length;
       if (n < 2) { box.innerHTML = ""; if (tip) tip.textContent = ""; sc.removeAttribute("aria-valuetext"); return; }
       const W = Math.max(80, box.clientWidth || sc.clientWidth || 300);
-      const marks = WS ? WS.timelineMarks(R.frames.map((f) => { const fh = frameFh(f); return fh != null ? { t: validTime(f), fh } : { t: validTime(f) }; }), clk(), Math.floor(W / 110)) : [];
+      const marks = fitMarks(WS ? WS.timelineMarks(R.frames.map((f) => { const fh = frameFh(f); return fh != null ? { t: validTime(f), fh } : { t: validTime(f) }; }), clk(), Math.floor(W / 110)) : [], n, W);
       const pos = (i) => (i / (n - 1) * 100).toFixed(2) + "%";
       let waiting = false;
       box.innerHTML = R.frames.map((f, i) => {

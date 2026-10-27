@@ -426,6 +426,26 @@ console.log('\nRULE  NEXRAD Level II reads as MetPy reads it — a volume\'s fir
   ok(L2.site4('TLX') === 'KTLX' && L2.nextNumber(999) === 1 && L2.prevNumber(1, [1, 5, 9]) === 9, 'site ids and the 1–999 volume numbers wrap as the bucket does');
 }
 
+/* The page inflates off the main thread (bzip2.js's worker, 2026-10-27);
+   with no worker — here — the async paths fall back to the same bunzip2.
+   They must read exactly what the sync ones read. */
+console.log('\nRULE  the async radar readers read what the sync ones read');
+{
+  const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  for (const file of Object.keys(expected.l3)) {
+    const s = N.parse(fx(file)), a = await N.parseAsync(fx(file));
+    ok(a.code === s.code && a.nRad === s.nRad && a.nBins === s.nBins && same(a.data, s.data) && a.volTime === s.volTime, `${file.slice(7, 10)}: parseAsync matches parse`);
+  }
+  let ss = null, sa = null;
+  for (const name of expected.l2.files) { ss = L2.feed(fx(name), ss); sa = await L2.feedAsync(fx(name), sa); }
+  const nums = Object.keys(ss.sweeps);
+  ok(nums.length && same(nums, Object.keys(sa.sweeps)) && nums.every((n) => ['REF', 'VEL'].every((m) => { const x = L2.sweep(ss, Number(n), m), y = L2.sweep(sa, Number(n), m); return !x === !y && (!x || same(x.data, y.data)); })),
+    `feedAsync builds the same ${nums.length} sweeps as feed`);
+  let threw = false;
+  try { await Bz.bunzip2Async(new Uint8Array([66, 90, 104, 57, 1, 2, 3])); } catch (e) { threw = true; }
+  ok(threw, 'a damaged stream is still an error when inflated asynchronously');
+}
+
 console.log('\nRULE  MRMS (gzip, GRIB2, PNG) reads as ecCodes reads it, pooled to its largest values');
 for (const [file, e] of Object.entries(expected.mrms)) {
   const m = await G.parseAsync(fx(file), { pool: e.pool });

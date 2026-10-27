@@ -125,7 +125,7 @@
   }
 
   /* ── one file ── */
-  function parse(bytes) {
+  function parse(bytes, inflate = Bz.bunzip2) {
     bytes = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
     /* the WMO header is text ending in \r\r\n twice ("SDUS54 KOUN 221908",
        "N0BTLX"); the message starts after it */
@@ -165,7 +165,7 @@
     let body = bytes.subarray(start), off = symOff;
     const compressed = [32, 94, 99, 134, 135, 138, 149, 152, 153, 154, 155, 159, 161, 163, 165, 167, 168, 170, 172, 173, 174, 175, 176, 177, 178, 179, 180, 182, 186, 193, 195, 202].includes(code) && dep[7] === 1;
     if (compressed) {
-      const inflated = Bz.bunzip2(body.subarray(P + 102));
+      const inflated = inflate(body.subarray(P + 102));
       const joined = new Uint8Array(P + 102 + inflated.length);
       joined.set(body.subarray(0, P + 102)); joined.set(inflated, P + 102);
       body = joined;
@@ -490,7 +490,17 @@
   async function load(url, { signal, fetchFn = fetch } = {}) {
     const r = await retrying(fetchFn)(url, { signal });
     if (!r.ok) throw new Error('nexrad: HTTP ' + r.status);
-    return parse(new Uint8Array(await r.arrayBuffer()));
+    return parseAsync(new Uint8Array(await r.arrayBuffer()));
+  }
+  /* parse, with the bzip2 block inflated off the main thread (bzip2.js):
+     the header is read once to find the block, then again with its answer */
+  const NEED = {};
+  async function parseAsync(bytes) {
+    bytes = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    let job = null;
+    try { return parse(bytes, (b) => { job = b; throw NEED; }); } catch (e) { if (e !== NEED) throw e; }
+    const out = await (Bz.bunzip2Async ? Bz.bunzip2Async(job) : Bz.bunzip2(job));
+    return parse(bytes, () => out);
   }
 
   /* ── storm-relative velocity at any tilt ──
@@ -753,7 +763,7 @@
     return { mask, echoes, removed, kept, cc: true };
   }
 
-  const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, SCHEMES, SCHEME_NAMES, paletteFor, setCustom, volumePoints, GATE_KM, gateStart, parse, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
+  const api = { BUCKET, PRODUCTS, HCA_CLASSES, PALETTES, SCHEMES, SCHEME_NAMES, paletteFor, setCustom, volumePoints, GATE_KM, gateStart, parse, parseAsync, lookup, float16, float32, gate, valueAt, azIndex, beamHeightKm,
     colorOf, colorTable, hourPrefix, keyTime, parseListing, scans, load, retrying, guarded, STALL_MS, stormRelative, locator, polarOf, CLUTTER, clutterMask, crossSection, dealias, vad };
   root.Nexrad = api;
   if (typeof module === 'object' && module.exports) module.exports = api;

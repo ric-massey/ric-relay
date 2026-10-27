@@ -131,6 +131,16 @@
     for (const rec of recs) messages(Bz.bunzip2(rec), s);
     return s;
   }
+  /* feed, with the records inflated off the main thread (bzip2.js) and read
+     in their order. One call at a time per `state`: await it before the next. */
+  const inflate = (b) => (Bz.bunzip2Async ? Bz.bunzip2Async(b) : Promise.resolve(Bz.bunzip2(b)));
+  async function feedAsync(bytes, state) {
+    const s = state || { header: null, site: null, vcp: null, vcpNumber: null, sweeps: {} };
+    const { header, records: recs } = records(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
+    if (header && !s.header) s.header = header;
+    for (const data of await Promise.all(recs.map(inflate))) messages(data, s);
+    return s;
+  }
 
   /* One sweep of one moment as the painter wants it — the same shape as a
      Level III file (nexrad.js): radials sorted by azimuth, one stored value
@@ -339,7 +349,7 @@
           while (p + 4 <= len) {
             const n = Math.abs(d.getInt32(p));
             if (!n || p + 4 + n > len) break;
-            messages(Bz.bunzip2(buf.subarray(p + 4, p + 4 + n)), st);
+            messages(await inflate(buf.subarray(p + 4, p + 4 + n)), st);
             p += 4 + n;
           }
         } else {
@@ -368,7 +378,7 @@
   /* the site's ID in four letters, from Level III's three (TLX → KTLX) */
   const site4 = (s3) => (s3.length === 4 ? s3 : /^[A-Z]{3}$/.test(s3) ? 'K' + s3 : s3);
 
-  const api = { CHUNKS, ARCHIVE, MOMENTS, records, feed, sweep, tilts, angles, plan, anglesOf, cutFor, list, newestVolume, chunks, archive, stream, swept, prevNumber, nextNumber, site4 };
+  const api = { CHUNKS, ARCHIVE, MOMENTS, records, feed, feedAsync, sweep, tilts, angles, plan, anglesOf, cutFor, list, newestVolume, chunks, archive, stream, swept, prevNumber, nextNumber, site4 };
   root.Level2 = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

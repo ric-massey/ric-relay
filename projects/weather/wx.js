@@ -1067,7 +1067,17 @@
      Denver read in Knoxville should still say the rain starts at 3 PM. */
   /* `zulu`: Weather Pro's UTC switch (2026-10-23) — 24-hour times with a Z,
      the way NWS products, model runs and scans are written */
+  /* Six Intl.DateTimeFormats are slow to build and the page asks for a
+     clock from fifty-odd places, on every loop frame among them — it was
+     most of the loop's script time (audit, 2026-10-27). One per zone. */
+  const CLOCKS = new Map();
   function clock(tz, zulu) {
+    const key = zulu ? 'Z' : 'tz:' + (tz || '');
+    let c = CLOCKS.get(key);
+    if (!c) { c = makeClock(tz, zulu); CLOCKS.set(key, c); }
+    return c;
+  }
+  function makeClock(tz, zulu) {
     if (zulu) {
       const z = (opts) => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', hourCycle: 'h23', ...opts });
       const t = z({ hour: '2-digit', minute: '2-digit' }), d = z({ weekday: 'short' }), dl = z({ weekday: 'long', month: 'short', day: 'numeric' });
