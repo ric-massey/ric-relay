@@ -1360,11 +1360,24 @@ scenes, then climbing.
     and warms it for a low sun; it cross-fades over two seconds when the
     choice changes. **The clip plays at the wind's speed, not its own**
     (2026-10-26, Ric: "the weather is 5 mph and the clouds are moving a million
-    miles per hour"): a time-lapse runs a hundred times real speed or more, so
-    `playRate` gives 1/16 (the slowest a browser allows) up to a breeze, rising
-    to about a third in a gale, and `drawFootage` lays each new frame a fifth
-    of the way over the last so the slowed frames drift instead of stepping.
-    Don't speed it back up to make the motion show. Just above the land the
+    miles per hour"): a time-lapse runs a hundred times real speed or more.
+    **The video is never played** (2026-10-27, Ric: "the clouds and stuff isn't
+    smooth it's laggy … still moves too fast for 3mph"). Played, even at a
+    browser's slowest (1/16), it was still several times too fast, and every
+    screen frame decoded a 2560-pixel frame and smeared the slowed steps
+    together. Now the video stays paused as a store of pictures: `pump` seeks
+    a little ahead, copies each frame once to a canvas at the size it is shown,
+    and `drawFootage` cross-fades from one to the next as the footage's own
+    clock runs at `footRate` — about 0.008 s of footage a second at 3 mph (a
+    clip takes about half an hour to go round), rising with the wind to about
+    0.2 in a gale. Three frames are held so the next is ready; a late seek
+    holds the frame rather than jumping. On iOS a clip is played for a moment
+    and paused (`prime`) so the phone loads it; with Low Power Mode it stays on
+    its still. Seeking needs a server that answers byte ranges — GitHub Pages
+    does, `python3 -m http.server` does not, so locally the sky sits on its
+    first frame. Low cloud and fog banks cross at `drift` (about 2 px a second
+    at 3 mph) and cloud shadows at one and a half times the wind, read between
+    texels so they glide. Don't speed any of it back up to make the motion show. Just above the land the
     footage fades into the photo's own horizon colour (`horizonTint`): a real
     sky is brightest there, and without it the Smokies' pale far ridges stood
     against a dark sky. A clear night keeps the drawn sky
@@ -1502,7 +1515,11 @@ scenes, then climbing.
   office's words.
 - **Rain**: the last 24 hours (the model's) and the next 24.
 - **Saved places** show their temperature, sky, high and low, in one request.
-- **Home screen**: `weather.webmanifest`, icons in `assets/weather/`, and
+- **Home screen**: both pages draw under an iPhone's status bar
+  (`black-translucent`, `viewport-fit=cover`), so the top bar is padded by
+  `env(safe-area-inset-top)` (and the sides by theirs) — without it the ★ Pro
+  button and the place sat up under the clock in the Home Screen app (Ric,
+  2026-10-27). `weather.webmanifest`, icons in `assets/weather/`, and
   `weather-sw.js` — the only service worker on the site, scoped to `./weather`
   so it controls this page and nothing else. Network first for same-origin
   files, last good copy when offline; it never touches another host. iPhones

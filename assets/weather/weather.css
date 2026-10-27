@@ -1727,3 +1727,13 @@ footer #sources .srcfold summary h2{margin:0;padding:4px 0;border:0}
 .ctable td.sh{background:rgba(124,196,255,calc(var(--a,0)*.32))}
 .ctable td.csky svg{width:26px;height:26px;display:block;margin:auto}
 .ctable tbody tr+tr td,.ctable tbody tr+tr th{border-top:1px solid rgba(255,255,255,.07)}
+
+/* ══ an iPhone Home Screen app (2026-10-27) ══════════════
+   Both pages ask iOS to draw under the status bar (black-translucent and
+   viewport-fit=cover, so the sky runs to the top edge), which means the bar
+   has to step down past the clock and the notch itself — it did not, and Ric
+   found the ★ Pro button and the top row up under the clock once the page
+   was added to the Home Screen. In a browser tab the insets are 0 and
+   nothing moves. Pro measures the bar into --tb, so its map follows. */
+.topbar{padding-top:env(safe-area-inset-top);padding-left:max(var(--gut),env(safe-area-inset-left));padding-right:max(var(--gut),env(safe-area-inset-right))}
+body[data-view="pro"]:not([data-panel]) .topbar.hasplace{padding-top:env(safe-area-inset-top);padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right))}

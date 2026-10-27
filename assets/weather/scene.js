@@ -555,7 +555,7 @@
     if (sp) sunX = clamp((sp.x - W / 2) / (W / 2), -1, 1);
     /* the wind carries them: across the screen, and towards or away from you */
     const view = (P.lat ?? 1) >= 0 ? Math.PI : 0, to = ((f.windDir ?? 270) + 180) * DEG;
-    const speed = 0.5 + clamp(f.wind, 0, 110) * 0.12;                 // texture px a second
+    const speed = 0.15 + clamp(f.wind, 0, 110) * 0.09;                // texture px a second (2026-10-27: slower near a calm, Ric: "too fast for 3mph")
     const vu = -speed * f.dirX, vv = -speed * Math.cos(to - view);
     const wet = f.rain || f.snow || f.storm;
     /* a photo looks at the far sky, near its horizon, where cloud is small — the
@@ -720,14 +720,14 @@
        spire goes into it first. Only on photos: the plain Sky has no tops. */
     if (scene.photo) {
       const low = clamp(clamp((f.cloud - 0.72) / 0.28, 0, 1) * 0.5 + (f.rain ? 0.22 + f.rain * 0.1 : 0) + (f.snow ? 0.3 : 0) + (f.storm ? 0.2 : 0) + f.fog * 0.3, 0, 1);
-      if (low > 0.05) layers.deck = { img: tex(0.84, L.lo, L.hi, 0.95, { fade: [0, 0.6], soft: 0.5, shift: 211 }), low, off: rnd(0, W), v: (3 + clamp(f.wind, 0, 100) * 0.7) * DPR * dir };
+      if (low > 0.05) layers.deck = { img: tex(0.84, L.lo, L.hi, 0.95, { fade: [0, 0.6], soft: 0.5, shift: 211 }), low, off: rnd(0, W), v: drift(f, 100) * dir };
     }
     /* fog: a veil, and banks moving through it */
     if (f.fog > 0.02) {
       const [far, near] = DEPTH[scene.id] || DEPTH.sky;
       const lost = (km) => 1 - Math.exp(-3.912 * km * 1000 / f.vis);
       layers.fog = { img: tex(0.78, shade(L.fog, 0.9), L.fog, 1, { fade: [0.3, 0.2], soft: 0.9, shift: 41 }), col: L.fog,
-        far: lost(far), near: lost(near), off: rnd(0, W), v: (3 + clamp(f.wind, 0, 40) * 0.6) * DPR * dir };
+        far: lost(far), near: lost(near), off: rnd(0, W), v: drift(f, 40) * dir };
     }
     /* wind: what it picks up blows across the ground */
     const g = blowing(f);
@@ -1024,40 +1024,126 @@
     if ((id === "fair" || id === "clear") && scene.photo) return { mul: skyMatch(clip), a: 1 };
     return { mul: null, a: 1 };
   }
-  /* how fast the sky's footage plays. The clips are time-lapses — a hundred
-     times real speed or more — so even played at half speed a 5 mph breeze
-     sent the clouds racing (Ric: "the weather is 5 mph and the clouds are
-     moving a million miles per hour"). Now: the slowest a browser allows
-     (1/16) up to a light breeze, rising with the wind to about a third in a
-     gale. At these speeds the frames step, so drawFootage blends each frame
-     into the last and the clouds drift instead. */
-  function playRate(f) { return clamp(0.03 + f.wind / 230, 0.0625, 0.35); }
+  /* how fast the sky's footage runs, in seconds of footage a second. The
+     clips are time-lapses — a hundred times real speed or more — and played as
+     video they could go no slower than a browser's floor (1/16), still several
+     times too fast: Ric, 2026-10-25, "the weather is 5 mph and the clouds are
+     moving a million miles per hour", and again 2026-10-27, "still moves too
+     fast for 3mph". So the video is never played (see footage below): this rate
+     is free to be as slow as the air. Near a calm a clip takes about forty
+     minutes to go round — the clouds all but hold still, as they do on a still
+     day; it rises with the wind's speed to about forty times that in a gale. */
+  /* how fast low cloud and fog banks cross the screen, in canvas pixels a
+     second: a crawl near a calm, quicker as the wind
+     rises — it was 3 px a second at a dead calm and 6 at 3 mph, which Ric
+     read as far too fast (2026-10-27); now about 2 at 3 mph */
+  function drift(f, cap) { return (0.6 + clamp(f.wind, 0, cap) * 0.3) * DPR; }
+  function footRate(f) { const w = clamp(f.wind, 0, 110) / 100; return 0.006 + w * Math.sqrt(w) * 0.2; }
+  /* ── the footage, slowed by hand (2026-10-27) ──
+     Played as video, every screen frame decoded a 2560-pixel frame and the
+     slowed steps were smeared into each other — Ric: "the clouds and stuff
+     isn't smooth it's laggy". Now the video stays paused and is only a store
+     of pictures: it is asked for the frame a little ahead (a seek), that frame
+     is copied once to a canvas at the size it is shown, and the screen
+     cross-fades from the frame it holds to the next as the footage's clock
+     runs on. Three are held, so the next is ready before it is needed; if a
+     seek is late the clock waits on the frame it has rather than jumping. */
+  const SLOT = 1 / 15;                                                  // seconds of footage between held frames
+  function footage(o, wantW, wantH) {
+    if (o.slow) return o.slow;
+    const v = o.v, st = o.slow = { frames: [], T: null, busy: null, at: 0, spare: [], w: wantW, h: wantH, last: 0, drawnM: -1, drawnA: null };
+    v.addEventListener("seeked", () => {
+      if (st.busy == null || !v.videoWidth) return;
+      const c = st.spare.pop() || document.createElement("canvas");
+      if (c.width !== st.w || c.height !== st.h) { c.width = st.w; c.height = st.h; }
+      const x = c.getContext("2d");
+      x.imageSmoothingQuality = "high";                                  // the default "low" is a bilinear that blurs an enlarged sky
+      x.drawImage(v, 0, 0, st.w, st.h);
+      st.frames.push({ t: st.busy, cv: c });
+      st.busy = null;
+    });
+    return st;
+  }
+  /* iOS loads a video only once it has been played: play it, and pause it as
+     soon as it does. If the phone will not play it (Low Power Mode), the
+     clip's still stands in, as it always has. */
+  function prime(o) {
+    if (o.primed) return;
+    o.primed = true;
+    const v = o.v;
+    const stop = () => { v.pause(); v.removeEventListener("playing", stop); };
+    v.addEventListener("playing", stop);
+    const p = v.play();
+    if (p && p.catch) p.catch(() => { o.primed = false; });
+  }
+  /* the footage's clock run on by `dt`, the frames it needs asked for, and the
+     two either side of now with how far between them it is */
+  function pump(o, dt, rate, w, h) {
+    const v = o.v, dur = v.duration;
+    if (!(dur > 0) || v.readyState < 1 || !v.videoWidth) return null;
+    const st = footage(o, w, h);
+    if (st.w !== w || st.h !== h) { st.w = w; st.h = h; st.spare.length = 0; st.frames.length = 0; st.busy = null; st.drawnA = null; }
+    if (st.T == null) st.T = Math.floor((v.currentTime || 0) / SLOT) * SLOT;
+    const last = st.frames[st.frames.length - 1];
+    st.T += rate * dt;
+    st.T = last ? Math.min(st.T, last.t) : st.T;                         // never past the frame it holds
+    while (st.frames.length > 1 && st.frames[1].t <= st.T) st.spare.push(st.frames.shift().cv);
+    if (st.busy != null && performance.now() - st.at > 2500) st.busy = null;   // a seek that never answered
+    if (st.busy == null && st.frames.length < 3) {
+      const want = last ? last.t + SLOT : Math.floor(st.T / SLOT) * SLOT;
+      if (!last) st.T = want;
+      st.busy = want; st.at = performance.now();
+      /* the clips are cut to loop seamlessly, so the clock runs on and the
+         footage wraps; never quite the end, where some browsers show black */
+      try { v.currentTime = Math.min(((want % dur) + dur) % dur, dur - 0.05); } catch (e) { st.busy = null; }
+    }
+    const A = st.frames[0], B = st.frames[1];
+    if (!A) return null;
+    return { st, A, B, m: B ? clamp((st.T - A.t) / (B.t - A.t), 0, 1) : 0 };
+  }
   /* draw the sky's footage into the sky canvas, covering the sky with the
      clip's own horizon at the land line; the outgoing sky fades over 2 s */
   function drawFootage(s, band, now, live) {
     const sk = layers.sky;
     if (!sk) return false;
+    const rate = footRate(fx);
+    /* what each clip shows now: two of its frames mid cross-fade while it is
+       moving, else its still (Moving weather off, or before it has loaded) */
     const vis = (o) => {
-      const v = o.v, ready = v.readyState >= 2 && v.videoWidth;
-      const img = live && ready ? v : o.still.complete && o.still.naturalWidth ? o.still : ready ? v : null;
-      if (!img) return null;
-      return [img, img.videoWidth || img.naturalWidth, img.videoHeight || img.naturalHeight];
+      const v = o.v, iw = v.videoWidth || o.still.naturalWidth, ih = v.videoHeight || o.still.naturalHeight;
+      if (!iw || !ih) return null;
+      const k = Math.max(W / iw, band / ih), w = Math.ceil(iw * k), h = Math.ceil(ih * k);
+      const box = [(W - w) / 2, band - h, w, h];
+      if (live) {
+        const dt = o.lastNow ? Math.min(0.25, (now - o.lastNow) / 1000) : 0;
+        o.lastNow = now;
+        const f = pump(o, dt, rate, w, h);
+        if (f) return { f, box };
+      }
+      return o.still.complete && o.still.naturalWidth ? { img: o.still, box } : null;
     };
     const draw = (o, alpha) => {
       const d = vis(o);
       if (!d || alpha <= 0) return false;
-      const [img, iw, ih] = d, k = Math.max(W / iw, band / ih);
-      /* each new frame laid a fifth of the way over what was there: a slowed
-         time-lapse steps from frame to frame, and this turns the steps into a
-         drift (a still frame or a fresh start is laid on whole) */
       if (!o.acc) o.acc = document.createElement("canvas");
       const a = o.acc, fresh = a.width !== W || a.height !== Math.ceil(band);
       if (fresh) { a.width = W; a.height = Math.ceil(band); }
-      const ax = a.getContext("2d");
-      ax.imageSmoothingQuality = "high";                                // the default "low" is a bilinear that blurs an enlarged sky
-      ax.globalAlpha = fresh || !live || img === o.still ? 1 : 0.2;
-      ax.drawImage(img, (W - iw * k) / 2, band - ih * k, iw * k, ih * k);
-      ax.globalAlpha = 1;
+      const ax = a.getContext("2d"), [x, y, w, h] = d.box;
+      if (d.f) {
+        /* the cross-fade moves a thousandth at a time near a calm: the two
+           frames are laid again only when it has moved enough to see */
+        const { st, A, B, m } = d.f;
+        if (fresh || st.drawnA !== A || Math.abs(m - st.drawnM) > 0.004 || (m === 0) !== (st.drawnM === 0)) {
+          ax.globalAlpha = 1;
+          ax.drawImage(A.cv, x, y, w, h);
+          if (B && m > 0) { ax.globalAlpha = m; ax.drawImage(B.cv, x, y, w, h); ax.globalAlpha = 1; }
+          st.drawnA = A; st.drawnM = m;
+        }
+      } else {
+        ax.imageSmoothingQuality = "high";
+        ax.drawImage(d.img, x, y, w, h);
+        if (o.slow) o.slow.drawnA = null;
+      }
       s.globalAlpha = alpha;
       s.drawImage(a, 0, 0);
       s.globalAlpha = 1;
@@ -1070,7 +1156,7 @@
     const t = clamp((now - sk.since) / (sk.from ? 2000 : 1200), 0, 1);
     if (sk.from && t < 1) draw(sk.from, 1);
     const ok = draw(sk.cur, t);
-    if (sk.from && t >= 1) { sk.from.v.pause(); sk.from = null; }
+    if (sk.from && t >= 1) sk.from = null;
     if (!ok) return false;
     sk.cover = sk.from ? 1 : t;
     /* a real sky is brightest at its horizon — the light comes through the
@@ -1107,9 +1193,8 @@
     const cur = skyVideo(id), sk = { cur, from: null, since: performance.now(), grade: skyGrade(id, f), id };
     if (prev && prev.id !== id) { sk.from = prev.cur; }
     else if (prev) { sk.from = prev.from; sk.since = prev.since; }
-    const v = cur.v;
-    try { v.playbackRate = playRate(f); } catch (e) { v.playbackRate = 0.25; }   // a browser that will not go that slow goes as slow as it will
-    if (animated()) { const p = v.play(); if (p && p.catch) p.catch(() => {}); } else v.pause();
+    /* never played, only primed to load (drawFootage runs it by hand) */
+    if (animated()) prime(cur);
     lastSky = sk;
     return sk;
   }
@@ -1423,7 +1508,7 @@
     cloudField();
     const t = cloudQ[clamp(Math.floor((1 - f.cloud) * cloudQ.length), 0, cloudQ.length - 1)];
     const to = ((f.windDir ?? 270) + 180) * DEG, view = (P.lat ?? 1) >= 0 ? Math.PI : 0;
-    const sp = 3 * Math.max(4, f.wind) / 3600 / 0.03;                  // texels a second
+    const sp = 1.5 * Math.max(2, f.wind) / 3600 / 0.03;                // texels a second (was 3× and a floor of 4 km/h: too quick near a calm, 2026-10-27)
     const c = document.createElement("canvas"), lc = document.createElement("canvas");
     c.width = lc.width = w; c.height = lc.height = h;
     return { cv: c, ctx: c.getContext("2d"), lit: lc, lctx: lc.getContext("2d"), w, h, gx, gy, lw, t, soft: cloudSpread * 0.35,
@@ -1436,14 +1521,19 @@
     if (!s) return;
     if (!s.drawn || (live && now >= s.next)) {
       const dt = s.last ? (now - s.last) / 1000 : 0;
-      s.last = now; s.next = now + 110; s.drawn = true;
+      s.last = now; s.next = now + 66; s.drawn = true;                  // 15 a second: with the reads between texels, that is a glide
       s.u += s.vu * dt; s.v += s.vv * dt;
       const im = s.ctx.createImageData(s.w, s.h), d = im.data, F = cloudF, lo = s.t - s.soft, span = 2 * s.soft;
       const lm = s.lctx.createImageData(s.w, s.h), e = lm.data, [wr, wg, wb] = s.warm;
       for (let i = 0; i < s.gx.length; i++) {
         if (!s.lw[i]) continue;
-        const x = ((Math.floor(s.gx[i] + s.u) % CN) + CN) % CN, y = ((Math.floor(s.gy[i] + s.v) % CN) + CN) % CN;
-        let a = (F[y * CN + x] - lo) / span;
+        /* read between texels, not the nearest one: a nearest read moved the
+           shadows in 30 m jumps, which near the camera are many pixels — the
+           land's light hopped instead of gliding (2026-10-27, "laggy") */
+        const gu = s.gx[i] + s.u, gv = s.gy[i] + s.v, fu = Math.floor(gu), fv = Math.floor(gv), tu = gu - fu, tv = gv - fv;
+        const x0 = ((fu % CN) + CN) % CN, y0 = ((fv % CN) + CN) % CN, x1 = (x0 + 1) % CN, y1 = (y0 + 1) % CN;
+        const top = F[y0 * CN + x0] + (F[y0 * CN + x1] - F[y0 * CN + x0]) * tu, bot = F[y1 * CN + x0] + (F[y1 * CN + x1] - F[y1 * CN + x0]) * tu;
+        let a = (top + (bot - top) * tv - lo) / span;
         a = a < 0 ? 0 : a > 1 ? 1 : a * a * (3 - 2 * a);
         d[i * 4] = 10; d[i * 4 + 1] = 14; d[i * 4 + 2] = 24; d[i * 4 + 3] = a * s.k * 255;   // shade, barely blue: a blue overlay read as a tint
         /* and where the sun gets through, it lands: the gaps between the
@@ -2175,9 +2265,11 @@ void main(){
   let resizeT = 0;
   addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (size() && fx) { build(); kick(); } }, 150); });
   document.addEventListener("visibilitychange", () => {
-    /* a hidden tab plays no sky */
-    const v = layers && layers.sky && layers.sky.cur.v;
-    if (v) { if (document.hidden) v.pause(); else if (animated()) { const p = v.play(); if (p && p.catch) p.catch(() => {}); } }
+    /* the sky's footage is never playing (it is run by hand, drawFootage), so
+       a hidden tab costs nothing; coming back, its clock picks up where it
+       stopped rather than jumping by the time away */
+    const sk = layers && layers.sky;
+    if (sk) for (const o of [sk.cur, sk.from]) if (o) o.lastNow = 0;
     if (!document.hidden) kick();
   });
   reduced.addEventListener && reduced.addEventListener("change", () => { if (fx) { build(); kick(); } });
