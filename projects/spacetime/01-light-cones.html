@@ -210,15 +210,15 @@
       <div class="controls">
         <div class="ctrl">
           <label>Event location <span class="val" id="xVal">x = 0</span></label>
-          <input type="range" id="x" min="-200" max="200" value="0">
+          <input type="range" id="x" aria-label="Event location" min="-200" max="200" value="0">
         </div>
         <div class="ctrl">
           <label>Event time <span class="val" id="tVal">t = 0</span></label>
-          <input type="range" id="t" min="-200" max="200" value="0">
+          <input type="range" id="t" aria-label="Event time" min="-200" max="200" value="0">
         </div>
         <div class="ctrl">
           <label>Show signal at <span class="val" id="dVal">distance = 100</span></label>
-          <input type="range" id="d" min="0" max="250" value="100">
+          <input type="range" id="d" aria-label="Signal distance" min="0" max="250" value="100">
         </div>
       </div>
       <div class="legend">
@@ -234,10 +234,10 @@
 
       <p>The two diagonal lines drawn through the event represent the speed of light. Anything moving slower than light traces a path steeper than these lines. Anything moving at light speed traces a path along them.</p>
 
-      <p>The yellow region above is your <em>future light cone</em> — every event you could possibly affect. The yellow region below is your <em>past light cone</em> — every event that could have affected you. Drag the orange dot to move the event.</p>
+      <p>The yellow region above is your <em>future light cone</em> — every event you could possibly affect. The yellow region below is your <em>past light cone</em> — every event that could have affected you. The first two sliders move the event.</p>
 
       <h2>The unreachable region</h2>
-      <p>Move the third slider. The point that appears outside the cone is in what physicists call <em>elsewhere</em> — it's neither in your past nor your future. It exists, but you cannot causally interact with it. Light signals haven't had time to travel between you. No information can pass either direction.</p>
+      <p>Move the third slider. It places a second event a fixed time after this one and as far away as you choose. Close enough, light gets there in time and it is green — reachable. Past the cone's edge it turns pink: it is in what physicists call <em>elsewhere</em> — it's neither in your past nor your future. It exists, but you cannot causally interact with it. Light signals haven't had time to travel between you. No information can pass either direction.</p>
 
       <p class="pullout">"All that matters is how long the information takes to get to you."</p>
 
@@ -280,6 +280,11 @@ function draw() {
   const eventX = cx + ex;
   const eventY = cy + et;
   const d = parseFloat(dSlider.value);
+  /* Canvas pixels per CSS pixel. The backing store is twice the CSS width on
+     every device, so text drawn at 18-20 px showed at 9-10 (bug sweep D3-12):
+     sizes are given in CSS pixels and scaled up here. */
+  const fs = w / (canvas.clientWidth || w / 2);
+  const mono = (px) => `${Math.round(px * fs)}px "JetBrains Mono", monospace`;
 
   ctx.fillStyle = '#0a0d12';
   ctx.fillRect(0, 0, w, h);
@@ -302,11 +307,11 @@ function draw() {
 
   // labels
   ctx.fillStyle = '#8a8578';
-  ctx.font = '20px "JetBrains Mono", monospace';
-  ctx.fillText('time →', cx + 12, 30);
-  ctx.fillText('space →', w - 100, cy - 12);
-  ctx.fillText('FUTURE', cx + 12, 60);
-  ctx.fillText('PAST', cx + 12, h - 30);
+  ctx.font = mono(12);
+  ctx.fillText('time →', cx + 12, 16 * fs);
+  ctx.fillText('space →', w - ctx.measureText('space →').width - 8 * fs, cy - 8 * fs);
+  ctx.fillText('FUTURE', cx + 12, 34 * fs);
+  ctx.fillText('PAST', cx + 12, h - 12 * fs);
 
   // future cone
   const coneSize = Math.max(w, h);
@@ -341,9 +346,15 @@ function draw() {
   ctx.lineTo(eventX + coneSize, eventY + coneSize);
   ctx.stroke();
 
-  // signal point
-  const signalX = eventX + d * (w/600);
-  const signalY = eventY;
+  /* The signal is an event SIGNAL_T later than this one, `distance` away.
+     It used to sit at the event's own time, so |Δt| was always 0 and it could
+     never be anything but elsewhere (bug sweep D3-6). Now the slider walks it
+     out across the cone's edge: reachable under SIGNAL_T, elsewhere past it.
+     Both axes in the same units, so light is the 45° line drawn above. */
+  const SIGNAL_T = 120;
+  const unit = w / 600;
+  const signalX = eventX + d * unit;
+  const signalY = eventY - SIGNAL_T * unit;
   const inFuture = signalY < eventY - Math.abs(signalX - eventX);
   const inPast = signalY > eventY + Math.abs(signalX - eventX);
   const inCone = inFuture || inPast;
@@ -355,8 +366,8 @@ function draw() {
   ctx.fill();
 
   ctx.fillStyle = isReachable ? '#6db5a3' : '#b56d8a';
-  ctx.font = '18px "JetBrains Mono", monospace';
-  ctx.fillText(isReachable ? 'REACHABLE' : 'ELSEWHERE', signalX + 18, signalY + 6);
+  ctx.font = mono(12);
+  ctx.fillText(isReachable ? 'REACHABLE' : 'ELSEWHERE', signalX + 10 * fs, signalY + 4 * fs);
 
   // event point
   ctx.fillStyle = '#d4a574';
@@ -369,12 +380,12 @@ function draw() {
   ctx.fill();
 
   ctx.fillStyle = '#d4a574';
-  ctx.font = '20px "Cormorant Garamond", serif';
-  ctx.fillText('event', eventX + 18, eventY - 14);
+  ctx.font = `${Math.round(15 * fs)}px "Cormorant Garamond", serif`;
+  ctx.fillText('event', eventX + 10 * fs, eventY - 8 * fs);
 
   xVal.textContent = `x = ${xSlider.value}`;
   tVal.textContent = `t = ${tSlider.value}`;
-  dVal.textContent = `distance = ${dSlider.value}`;
+  dVal.textContent = `distance = ${dSlider.value}, ${SIGNAL_T} later`;
 }
 
 [xSlider, tSlider, dSlider].forEach(s => s.addEventListener('input', draw));

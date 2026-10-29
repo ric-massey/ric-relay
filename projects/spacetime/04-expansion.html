@@ -245,11 +245,11 @@
       <div class="controls">
         <div class="ctrl">
           <label>Time elapsed <span class="val" id="tVal">0%</span></label>
-          <input type="range" id="t" min="0" max="100" value="0">
+          <input type="range" id="t" aria-label="Time elapsed" min="0" max="100" value="0">
         </div>
         <div class="ctrl">
           <label>Choose observer (perspective shift) <span class="val" id="obsVal">center</span></label>
-          <input type="range" id="obs" min="0" max="6" value="3">
+          <input type="range" id="obs" aria-label="Choose observer" min="0" max="6" value="3">
         </div>
       </div>
     </div>
@@ -432,20 +432,24 @@ function draw() {
   ctx.fill();
   ctx.shadowBlur = 0;
 
+  /* Sizes in CSS pixels, scaled to the backing store (twice the CSS width on
+     every device): drawn at 14-16 px they showed at 7-8 (bug sweep D3-12). */
+  const fs = w / (canvas.clientWidth || w / 2);
+  const px = (n) => Math.round(n * fs);
   ctx.fillStyle = '#d4a574';
-  ctx.font = '14px "JetBrains Mono", monospace';
-  ctx.fillText('YOU', cx + 14, cy + 5);
+  ctx.font = `${px(12)}px "JetBrains Mono", monospace`;
+  ctx.fillText('YOU', cx + 9 * fs, cy + 4 * fs);
 
   // info text
   ctx.fillStyle = '#8a8578';
-  ctx.font = '14px "JetBrains Mono", monospace';
-  ctx.fillText(`SCALE FACTOR: ${scale.toFixed(2)}×`, 24, 36);
-  ctx.fillText(`HUBBLE'S LAW: v ∝ d`, 24, 60);
+  ctx.font = `${px(12)}px "JetBrains Mono", monospace`;
+  ctx.fillText(`SCALE FACTOR: ${scale.toFixed(2)}×`, 12 * fs, 20 * fs);
+  ctx.fillText(`HUBBLE'S LAW: v ∝ d`, 12 * fs, 37 * fs);
 
   ctx.fillStyle = '#d4a574';
-  ctx.font = 'italic 16px "Cormorant Garamond", serif';
-  ctx.fillText('Farther galaxies recede faster — proportional to distance.', 24, h - 40);
-  ctx.fillText('Move the observer. The same pattern holds from every point.', 24, h - 18);
+  ctx.font = `italic ${px(14)}px "Cormorant Garamond", serif`;
+  ctx.fillText('Farther galaxies recede faster — proportional to distance.', 12 * fs, h - 26 * fs);
+  ctx.fillText('Move the observer. The same pattern holds from every point.', 12 * fs, h - 10 * fs);
 
   tVal.textContent = `${tSlider.value}%`;
   const labels = ['far left','left','near left','center','near right','right','far right'];

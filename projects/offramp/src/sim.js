@@ -601,6 +601,11 @@ const Sim = (() => {
     const px0 = o.px || 0, dir = o.dir == null ? 1 : o.dir;
     const when = o.when || { dow: 2, hour: 14, month: 6 };
     const st = o.state || null;
+    /* The state where a vehicle IS, when the caller can say (cars.js hands in
+       World.stateAt). A run used to keep the state it started in, so lorries
+       kept the old state's rule across a border — Arizona's 70 in the Mojave
+       where California's is 55 (bug sweep C2b-6). Headless, it is `st`. */
+    const stAt = (px) => (typeof o.stateAt === "function" ? (o.stateAt(px) || st) : st);
     const dt = o.dt || 0.1;
     const roadLen = o.length || 6000;
     const zone = o.zone || [2000, roadLen];
@@ -1000,7 +1005,10 @@ const Sim = (() => {
     const live = [];
     const pending = [];
     const byLane = [];                             // rebuilt each step
-    for (let i = 0; i <= MAX_LANES; i++) byLane.push([]);
+    /* 0 .. MAX_LANES, plus OFF_RIGHT: like bucket 0 on the left, a bucket no
+       loop ever iterates, for a body beside the road on the right. */
+    const OFF_RIGHT = MAX_LANES + 1;
+    for (let i = 0; i <= OFF_RIGHT; i++) byLane.push([]);
 
     /* `at` is where along the run the vehicle comes into existence, and
        it is 0 for everything arriving over the upstream boundary. An
@@ -1011,7 +1019,7 @@ const Sim = (() => {
       const s = at || 0;
       const px = pxAt(s);
       const kind = ofKind || TR.drawKind(px, when, rng);
-      const drv = TR.driver(kind, px, when, st, rng);
+      const drv = TR.driver(kind, px, when, stAt(px), rng);
       const p = IDM[kind] || IDM.car;
       const B = BODY[kind] || BODY.car;
       /* Attention, drawn once and kept — one trait producing both the
@@ -1033,7 +1041,7 @@ const Sim = (() => {
         latZ: zOf(rng(), rng(), rng()),            // how briskly it changes lane
         from: 0, to: 0, phase: 0, dur: 0, why: null,
         s, v: drv.want, a: 0, vy: 0,
-        limitAt: TR.limitFor(kind, px, st), changes: 0,
+        limitAt: TR.limitFor(kind, px, stAt(px)), changes: 0,
         /* perception */
         track: trackX * Math.max(TRACK.lo, Math.min(TRACK.hi,
                  TRACK.med * Math.exp(TRACK.sig * zOf(rng(), rng(), rng())))),
@@ -1122,6 +1130,7 @@ const Sim = (() => {
       // Bucket 0 too: nothing reads it, but a body left of the road is filed
       // there every tick, and it grew without end (bug sweep C2b-8).
       for (let i = 0; i <= nLanes; i++) if (byLane[i]) byLane[i].length = 0;
+      byLane[OFF_RIGHT].length = 0;
       for (let i = 0; i < live.length; i++) {
         const v = live[i];
         byLane[v.from].push(v);
@@ -2088,7 +2097,7 @@ const Sim = (() => {
       let inv = 0, n = 0;
       for (let i = 0; i < 120; i++) {
         const kind = TR.drawKind(px, when, rng);
-        const d = TR.driver(kind, px, when, st, rng);
+        const d = TR.driver(kind, px, when, stAt(px), rng);
         if (d.want > V_FLOOR) { inv += 1 / d.want; n++; }
       }
       if (n) vHarm = n / inv;
@@ -2681,10 +2690,11 @@ const Sim = (() => {
            wants — which is what traffic.js keeps `speedU` for. On a six
            kilometre stretch this almost never fires; on the day the
            harness is pointed at a state line it will. */
-        const lim = TR.limitFor(veh.kind, pxAt(veh.s), st);
+        const here = pxAt(veh.s), stHere = stAt(here);
+        const lim = TR.limitFor(veh.kind, here, stHere);
         if (lim !== veh.limitAt) {
           veh.limitAt = lim;
-          veh.drv.want = TR.desiredSpeed(veh.kind, pxAt(veh.s), when, st,
+          veh.drv.want = TR.desiredSpeed(veh.kind, here, when, stHere,
                                          veh.drv.speedU, veh.drv.govU);
         }
 
@@ -3091,8 +3101,12 @@ const Sim = (() => {
          iterated, which is exactly the right home for a body that is
          beside the road rather than on it. */
       driven.lane = p.lane;
-      driven.from = driven.to =
-        Math.max(0, Math.min(nLanes, Math.round(driven.lane)));
+      /* Off the right edge goes to OFF_RIGHT, as off the left goes to 0. It
+         was clamped INTO lane nLanes, so a car on the right shoulder or in a
+         deceleration lane was filed in the rightmost lane and the traffic
+         there braked for it (bug sweep C2b-10). */
+      const r = Math.round(driven.lane);
+      driven.from = driven.to = r < 1 ? 0 : r > nLanes ? OFF_RIGHT : r;
       /* Braking is what the vehicles behind actually watch, and the game
          knows whether the player is on the brakes far better than a
          difference of two positions would. */

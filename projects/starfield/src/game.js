@@ -380,6 +380,11 @@
     const code = event.code;
     // While the rebinding panel is listening, every key belongs to it.
     if (SF.bindings && SF.bindings.capture(code, event)) return;
+    /* With the star chart open, Tab, Enter and Space are the browser's: Tab
+       walks its rows and Enter or Space picks one. Tab is also the chart's own
+       key, so it used to be swallowed and close the chart before focus could
+       reach a destination (bug sweep C3-11). Escape still closes it. */
+    if (mapEl && !mapEl.hidden && (code === "Tab" || code === "Enter" || code === "Space")) return;
     if (CTRL.shouldSwallow(code)) event.preventDefault();
     if (event.repeat) return;
     CTRL.press(code);
@@ -534,6 +539,9 @@
     mapEl.hidden = false;
     state.paused = true;
     pauseEl.hidden = true;      // the chart is the overlay; no pause card behind it
+    // Focus on the first destination, so a keyboard starts inside the chart (C3-11).
+    const first = mapListEl && mapListEl.querySelector("button");
+    if (first) first.focus();
   }
 
   function closeMap() {

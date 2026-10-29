@@ -199,7 +199,7 @@
   }
   .panelsign .k {
     display: block;
-    font-size: 8.5px;
+    font-size: 11px;
     letter-spacing: .16em;
     color: rgba(242,240,230,.72);
     text-transform: uppercase;
@@ -213,7 +213,7 @@
     font-variant-numeric: tabular-nums;
     line-height: 1.15;
   }
-  .panelsign .v small { font-size: 9px; font-weight: 400; color: rgba(242,240,230,.7); }
+  .panelsign .v small { font-size: 11px; font-weight: 400; color: rgba(242,240,230,.7); }
   .panelsign.hot .v { color: var(--amber); }
 
   /* speed is a regulatory sign, not a guide sign — black on white */
@@ -229,7 +229,7 @@
   /* cabinet buttons: metal, not phosphor */
   .cabbtn {
     font: inherit;
-    font-size: 9.5px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: .14em;
     text-transform: uppercase;
@@ -347,7 +347,7 @@
     border-bottom: 2px solid var(--white);
   }
   .map-head strong {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: .16em;
     color: var(--white);
@@ -365,7 +365,7 @@
     flex: 0 0 auto;
     padding: .3rem .45rem .38rem;
     border-top: 1px solid #1d3226;
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: .08em;
     color: var(--white-dim);
     background: #070d09;
@@ -441,7 +441,7 @@
     border-radius: 3px;
   }
   .startpick .lbl {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: .2em;
     text-transform: uppercase;
@@ -471,13 +471,15 @@
      inherits the guide-sign panel treatment. */
   .whenpick {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* minmax(0, …): at 11px the labels' min-content pushed TIME past the
+       panel's edge on a phone. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: .4rem;
   }
-  .whenpick .startpick { margin-bottom: .3rem; }
-  .whenpick .lbl { letter-spacing: .14em; }
+  .whenpick .startpick { margin-bottom: .3rem; min-width: 0; }
+  .whenpick .lbl { letter-spacing: .06em; }
   .whennote {
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: .08em;
     text-transform: uppercase;
     color: rgba(242,240,230,.66);
@@ -544,7 +546,7 @@
     border-bottom-width: 3px;
     border-radius: 3px 3px 0 0;
     color: rgba(242,240,230,.55);
-    font: inherit; font-size: 10px; font-weight: 700; letter-spacing: .18em;
+    font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .18em;
     padding: .3rem .2rem .26rem;
     cursor: pointer;
   }
@@ -565,7 +567,7 @@
 
   /* how many of the garage you can actually drive */
   .gcount {
-    font-size: 9px; letter-spacing: .14em; margin: .1rem 0 0;
+    font-size: 11px; letter-spacing: .14em; margin: .1rem 0 0;
     color: rgba(242,240,230,.45);
   }
 
@@ -582,14 +584,14 @@
     background: rgba(0,0,0,.3);
     border-left: 3px solid rgba(242,240,230,.18);
     border-radius: 2px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .lrow.got { border-left-color: var(--go); }
   .lrow.now { border-left-color: var(--amber); background: rgba(255,176,32,.1); }
   .lrow .who { flex: 1 1 auto; text-align: left; color: rgba(242,240,230,.85); }
   .lrow.locked .who { color: rgba(242,240,230,.4); }
   .lrow .at {
-    font-size: 9px; letter-spacing: .06em; font-variant-numeric: tabular-nums;
+    font-size: 11px; letter-spacing: .06em; font-variant-numeric: tabular-nums;
     color: rgba(242,240,230,.45);
   }
   .lrow.got .at { color: var(--go); }
@@ -654,7 +656,7 @@
   .gsearch input:focus { outline: none; border-color: var(--amber); }
   .gsearch input::-webkit-search-cancel-button { -webkit-appearance: none; }
   .gfound {
-    font-size: 8px; letter-spacing: .14em; text-transform: uppercase;
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
     color: rgba(242,240,230,.45); margin: .12rem 0 0; min-height: .8em;
   }
   .gfound.miss { color: var(--alarm); }
@@ -678,7 +680,7 @@
   .gcard.locked .gfigs,
   .gcard.locked .gnote { opacity: .38; }
   .gmake {
-    font-size: 8px; letter-spacing: .24em; font-weight: 700;
+    font-size: 11px; letter-spacing: .24em; font-weight: 700;
     color: rgba(242,240,230,.55); margin: 0 0 .05rem;
   }
   .gmodel {
@@ -686,7 +688,7 @@
     color: var(--white); line-height: 1.05; margin: 0;
   }
   .gspec {
-    font-size: 9px; letter-spacing: .1em; color: rgba(242,240,230,.6);
+    font-size: 11px; letter-spacing: .1em; color: rgba(242,240,230,.6);
     margin: .12rem 0 .3rem;
   }
   /* 0–60, top speed and 60–0 as three stamped cells. These are the
@@ -702,20 +704,20 @@
     padding: .16rem .1rem .2rem;
   }
   .gfigs .k {
-    display: block; font-size: 7px; letter-spacing: .16em;
+    display: block; font-size: 11px; letter-spacing: .16em;
     color: rgba(242,240,230,.45); font-weight: 700;
   }
   .gfigs .v {
     display: block; font-size: 12px; font-weight: 800;
     color: var(--amber); line-height: 1.15;
   }
-  .gfigs .v small { font-size: 7px; letter-spacing: .06em; opacity: .75; }
+  .gfigs .v small { font-size: 11px; letter-spacing: .06em; opacity: .75; }
   .gnote {
-    font-size: 9px; font-style: italic; line-height: 1.3;
+    font-size: 11px; font-style: italic; line-height: 1.3;
     color: rgba(242,240,230,.5); margin: 0;
   }
   .glock {
-    font-size: 9px; font-weight: 700; letter-spacing: .16em;
+    font-size: 11px; font-weight: 700; letter-spacing: .16em;
     color: var(--alarm); margin: .25rem 0 0;
   }
   .glock b { color: var(--white); font-weight: 800; }
@@ -727,7 +729,7 @@
     margin: 0 0 .2rem;
   }
   .bankline span {
-    font-size: 8px; letter-spacing: .24em; font-weight: 700;
+    font-size: 11px; letter-spacing: .24em; font-weight: 700;
     color: rgba(242,240,230,.5);
   }
   .bankline b {
@@ -744,7 +746,7 @@
     transition: width .3s ease;
   }
   .banknext {
-    font-size: 9px; letter-spacing: .08em; color: rgba(242,240,230,.55);
+    font-size: 11px; letter-spacing: .08em; color: rgba(242,240,230,.55);
     margin: .2rem 0 0;
   }
   .banknext b { color: var(--amber); font-weight: 700; }
@@ -774,14 +776,14 @@
     border: 2px solid rgba(242,240,230,.32);
     border-radius: 3px;
     color: rgba(242,240,230,.8);
-    font: inherit; font-size: 10px; font-weight: 700; letter-spacing: .16em;
+    font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .16em;
     padding: 0 .5rem;
     cursor: pointer;
   }
   .codebox button:hover { background: rgba(0,0,0,.65); color: var(--white); }
   .codebox button:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
   .codenote {
-    font-size: 9px; letter-spacing: .08em; margin: .2rem 0 0;
+    font-size: 11px; letter-spacing: .08em; margin: .2rem 0 0;
     min-height: 1em;
     color: rgba(242,240,230,.55);
   }
@@ -805,7 +807,7 @@
   .panel p.tag {
     letter-spacing: .2em;
     text-transform: uppercase;
-    font-size: 9.5px;
+    font-size: 11px;
     color: rgba(242,240,230,.55);
   }
   /* The odds, after the fact. Quieter than the sentence above it and
@@ -817,8 +819,10 @@
     line-height: 1.5;
     letter-spacing: .07em;
     text-transform: uppercase;
-    font-size: 8.5px;
-    color: rgba(242,240,230,.40);
+    font-size: 11px;
+    /* 40% white was about 3.5:1 over the asphalt; the wreck arithmetic is the
+       number a player reads after every run (bug sweep C2a-9). */
+    color: rgba(242,240,230,.78);
     margin: -.15rem 0 .1rem;
     max-width: min(94%, 22rem);
   }
@@ -826,7 +830,7 @@
     display: grid;
     grid-template-columns: auto auto;
     gap: .12rem .55rem;
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: .08em;
     color: var(--white-dim);
     text-align: left;
@@ -855,7 +859,7 @@
     font-variant-numeric: tabular-nums;
   }
   .panel .score-lines span:nth-child(odd) { color: rgba(242,240,230,.55); text-align: right; }
-  .panel .best-new { color: var(--go); font-size: 10px; letter-spacing: .2em; font-weight: 700; }
+  .panel .best-new { color: var(--go); font-size: 11px; letter-spacing: .2em; font-weight: 700; }
   /* Leaving costs the carried pot, so the button is not styled as the
      friendly way out — it is bordered in the alarm colour and it says
      what it will cost on the line above. */
@@ -976,7 +980,7 @@
     border: 1px solid rgba(242,240,230,.75) !important;
     color: rgba(242,240,230,.9) !important;
     font-family: inherit !important;
-    font-size: 8.5px !important;
+    font-size: 11px !important;
     font-weight: 700 !important;
     letter-spacing: .12em !important;
     padding: .3rem .5rem !important;
@@ -1005,9 +1009,9 @@
        two now, so the numbers get their size back — this is the whole
        reason for taking things out of the row. */
     .panelsign { min-width: 0; flex: 0 0 auto; padding: .1rem .2rem .14rem; }
-    .panelsign .k { font-size: 8.5px; letter-spacing: .06em; }
+    .panelsign .k { font-size: 11px; letter-spacing: .06em; }
     .panelsign .v { font-size: 16px; }
-    .panelsign .v small { font-size: 8.5px; }
+    .panelsign .v small { font-size: 11px; }
     .cabbtn { padding: .26rem .3rem; letter-spacing: .04em; min-width: 0; font-size: 12px; }
     #stage { padding: 5px; }
   }
@@ -1015,6 +1019,9 @@
     .panel .go { animation: none; }
     .dir { transition: none; }
   }
+  /* Type at the site's 11px floor everywhere in the cabinet, and the two
+     cabinet buttons a thumb's height on a touch screen (bug sweep C2a-9). */
+  @media (pointer: coarse) { .cabbtn { min-height: 44px; } }
 </style>
   <script src="../../assets/visit.js" defer></script>
 </head>
@@ -1078,7 +1085,7 @@
 
   <div id="stage">
     <div id="frame">
-      <canvas id="road" width="256" height="416" aria-label="A pixel freeway seen from above. Your car drives alone through broad curves, full-width shoulders, barriers and branching exits."></canvas>
+      <canvas id="road" width="256" height="416" aria-label="A pixel freeway seen from above: your car among the traffic on Interstate 40, with its curves, shoulders, barriers and exits."></canvas>
 
       <div id="banner"></div>
 
@@ -1087,7 +1094,7 @@
           <strong id="map-title">ROUTE OVERVIEW</strong>
           <button id="map-close" class="cabbtn" type="button" aria-label="Close freeway map">× Close</button>
         </div>
-        <canvas id="map-canvas" width="256" height="132" aria-label="Overview of the complete fixed highway network"></canvas>
+        <canvas id="map-canvas" width="256" height="132" aria-label="A map of the I-40 corridor and where you are on it"></canvas>
         <p id="map-status"><b>■ YOU</b> · loading route</p>
       </section>
 

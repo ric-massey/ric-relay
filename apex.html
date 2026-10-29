@@ -550,6 +550,11 @@
   const D = window.APEX_DATA || {};
   const el = (id) => document.getElementById(id);
   const num = (n) => (typeof n === "number" && isFinite(n)) ? n.toLocaleString("en-US") : null;
+  /* Every string the Apex Legends Status API hands back — legend names (its
+     object keys), tracker names, rank names, its presence text — goes through
+     here on its way into markup. They went in raw (bug sweep B7-2). */
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
   /* ══ backdrop: one lit honeycomb ════════════════════════════
      Pointy-top hexes on a real offset lattice, so the seams line up the way a
@@ -672,7 +677,15 @@
         font-family="Arial Narrow,Impact,sans-serif" font-weight="700" font-size="17">${inner}</text>` : ""}
     </svg>`;
 
+  /* Presence is a snapshot from the last poll, not now. A reading from
+     August was drawn as Ric being in the lobby today (bug sweep B7-1), so
+     past ten minutes old it says when it was seen instead. */
+  const seenAt = Date.parse(status.checked || D.generated || "");
+  const fresh = Number.isFinite(seenAt) && Date.now() - seenAt < 10 * 60 * 1000;
+  const seenDay = Number.isFinite(seenAt)
+    ? new Date(seenAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
   const stateText = !D.live ? "Not connected"
+    : !fresh ? (seenDay ? `Last read ${seenDay}` : "Not read lately")
     : status.inGame ? "In match" : status.online ? (status.text || "In lobby") : "Offline";
   // No level yet means no badge — an empty hex reads as a broken asset.
   el("idhex").innerHTML =
@@ -680,7 +693,7 @@
   el("idtag").textContent = acct.name || "Gamertag pending";
   el("idmeta").innerHTML =
     `${PLATFORMS[acct.platform] || "Apex Legends"} ·
-     <span class="${D.live && (status.online || status.inGame) ? "live" : ""}">${stateText}</span>${
+     <span class="${D.live && fresh && (status.online || status.inGame) ? "live" : ""}">${esc(stateText)}</span>${
        typeof acct.prestige === "number" && acct.prestige > 0
          ? ` · Prestige ${acct.prestige}` : ""}`;
 
@@ -752,10 +765,10 @@
     const stage = el("hero");
     stage.setAttribute("style", accentOf(featured));
     stage.innerHTML = `
-      <div class="who">${featured}</div>
+      <div class="who">${esc(featured)}</div>
       <div class="n">${lead === null ? "—"
         : `${approx ? '<span class="tilde">~</span>' : ""}${num(lead)}`}</div>
-      <div class="lb">${leadLabel}${
+      <div class="lb">${esc(leadLabel)}${
         trackers.some((t) => t.source === "manual") ? " · hand-read" : ""}</div>`;
   } else {
     el("hero").innerHTML = `<div class="who" style="color:var(--dimmer)">No legend on the plinth</div>
@@ -774,9 +787,9 @@
     const label = kills !== null ? "kills"
       : trackers[0] ? (trackers[0].name || trackers[0].key) : "";
     return `<a class="slot" href="#legends" style="${accentOf(name)}">
-      <span><span class="nm">${name}</span>
+      <span><span class="nm">${esc(name)}</span>
         <span class="sub">${info.equipped ? "equipped" : "seen"}</span></span>
-      ${lead === null ? "" : `<span class="fig"><b>${num(lead)}</b><span>${label}</span></span>`}
+      ${lead === null ? "" : `<span class="fig"><b>${num(lead)}</b><span>${esc(label)}</span></span>`}
     </a>`;
   };
   const vacant = `<div class="slot vacant">
@@ -798,14 +811,15 @@
     card.style.setProperty("--tint", tint);
     card.innerHTML =
       `<div class="k">Ranked</div>
-       <div class="v" style="color:${tint}">${rank.name}${div}</div>
+       <div class="v" style="color:${tint}">${esc(rank.name)}${div}</div>
        <div class="rp">${num(rank.score) || "—"} RP${
          rank.ladderPos > 0 ? ` · #${num(rank.ladderPos)} on ${PLATFORMS[acct.platform] || "platform"}` : ""}</div>`;
   }
 
   /* ══ sync panel ════════════════════════════════════════════ */
   if (D.live) {
-    el("syncbox").classList.add("on");
+    // Lit only while the reading is current (B7-1).
+    el("syncbox").classList.toggle("on", fresh);
     el("syncstate").textContent = stateText;
     el("syncbody").innerHTML = `Polled <b>${(D.generated || "")
       .replace("T", " ").replace("Z", " UTC")}</b> through the Apex Legends Status API.
@@ -854,7 +868,7 @@
     // below Master. Only a real position is worth printing.
     if (rank.ladderPos > 0) bits.push(`#${num(rank.ladderPos)} on ${PLATFORMS[acct.platform] || "platform"}`);
     el("rankline").innerHTML = `<span class="cur">Your current rank is</span>
-      <span class="val" style="color:${tint}">${rank.name}${
+      <span class="val" style="color:${tint}">${esc(rank.name)}${
         rank.div ? " " + (ROMAN[rank.div] || rank.div) : ""}</span>
       <span class="rp">${bits.join(" · ")}</span>`;
     el("ladderlabel").textContent = "current rank marked";
@@ -885,11 +899,11 @@
               <text x="18" y="23" text-anchor="middle" fill="${ink}"
                     font-family="Arial Narrow,Impact,sans-serif" font-weight="700"
                     font-size="14">${initials}</text></svg>
-            <div><div class="nm">${name}</div>
+            <div><div class="nm">${esc(name)}</div>
               <div class="sb">${info.equipped ? "equipped" : "seen"}${
                 trackers.some((t) => t.source === "manual") ? " · hand-read" : ""}</div></div>
           </div>
-          <ul>${trackers.map((t) => `<li><span class="t">${t.name || t.key}</span>
+          <ul>${trackers.map((t) => `<li><span class="t">${esc(t.name || t.key)}</span>
             <span class="v">${t.approx ? "~" : ""}${num(t.value)}</span></li>`).join("")}</ul>
           ${free > 0 ? `<div class="free">${free} slot${free === 1 ? "" : "s"} free</div>` : ""}
         </div>`;
@@ -924,9 +938,24 @@
         <stop offset="1" stop-color="#ffc228" stop-opacity="0"/></linearGradient></defs>
       <path d="${line} L596 78 L4 78 Z" fill="url(#sg)"/>
       <path d="${line}" fill="none" stroke="#ffc228" stroke-width="2"/>`;
-    const gained = ys[ys.length - 1] - ys[0];
-    el("slopenote").innerHTML = `<b>+${num(gained)} kills</b> across ${history.length} days of
-      polling — about <b>${(gained / Math.max(1, history.length - 1)).toFixed(1)}/day</b>.`;
+    /* The rate counts only legends on record at both ends. The running sum
+       jumped by a legend's whole lifetime the day its kills tracker first
+       showed up, and the "slope" took that as a day's kills (bug sweep B7-3).
+       Points from before per-legend counts were kept fall back to the sum. */
+    const per = history.filter((p) => p.legendKills && typeof p.legendKills === "object");
+    let gained, days;
+    if (per.length >= 2) {
+      const a = per[0], b = per[per.length - 1];
+      gained = Object.keys(b.legendKills)
+        .filter((k) => typeof a.legendKills[k] === "number")
+        .reduce((s, k) => s + Math.max(0, b.legendKills[k] - a.legendKills[k]), 0);
+      days = Math.max(1, Math.round((Date.parse(b.d) - Date.parse(a.d)) / 86400000));
+    } else {
+      gained = ys[ys.length - 1] - ys[0];
+      days = Math.max(1, history.length - 1);
+    }
+    el("slopenote").innerHTML = `<b>+${num(gained)} kills</b> across ${days + 1} days of
+      polling — about <b>${(gained / days).toFixed(1)}/day</b>.`;
   } else {
     spark.innerHTML = `<line x1="4" y1="66" x2="596" y2="66" stroke="#1e3247"
       stroke-width="1" stroke-dasharray="4 5"/>`;
@@ -948,6 +977,13 @@
     no API returns it, so it only appears once it's been read off the lobby.`);
   if (names.length && names.length < 3) todo.push(`<b>More trackers</b> — one Kills tracker per
     legend played, and the total climbs toward the real career figure.`);
+  // A pull that has stopped is outstanding too (B7-1): it said "the daily
+  // poll carries it" fifty-seven days after the last one.
+  const lastPull = Date.parse(D.generated || "");
+  if (D.live && Number.isFinite(lastPull) && Date.now() - lastPull > 2 * 86400000) {
+    todo.push(`<b>The daily pull</b> — last ran ${esc(new Date(lastPull).toLocaleDateString("en-US",
+      { month: "short", day: "numeric", year: "numeric" }))}, so these numbers are that old.`);
+  }
   if (!todo.length) todo.push(`Nothing outstanding. The daily poll carries it from here.`);
   el("todo").innerHTML = todo.map((t) => `<li>${t}</li>`).join("");
 

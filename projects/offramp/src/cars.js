@@ -159,6 +159,12 @@ const Cars = (() => {
 
     const common = {
       px, when: when || clock(), state: state || null,
+      // Which state each vehicle is in, as it drives (C2b-6).
+      stateAt: (p) => {
+        if (typeof World === "undefined" || !World.stateAt) return null;
+        const s = World.stateAt(p);
+        return s ? s.name : null;
+      },
       decide: MO.decide, junctions: junctions(), exitShare: EXIT_SHARE,
       roam: { back: BACK, ahead: AHEAD, at: 0 },
     };

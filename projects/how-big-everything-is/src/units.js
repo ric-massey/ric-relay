@@ -39,7 +39,11 @@ window.U = (() => {
     if (!isFinite(v)) return "—";
     const a = Math.abs(v);
     if (a === 0) return "0";
-    const d = Math.max(0, Math.min(20, n - 1 - Math.floor(Math.log10(a))));
+    const mag = Math.floor(Math.log10(a));
+    const d = Math.max(0, Math.min(20, n - 1 - mag));
+    /* Past n whole digits, round the whole digits too: 123,456 printed in
+       full broke the sheet's promise of three figures everywhere (D3-14). */
+    if (mag >= n) { const p = Math.pow(10, mag - (n - 1)); v = Math.round(v / p) * p; }
     return Number(v.toFixed(d)).toLocaleString("en-US", { maximumFractionDigits: d });
   }
 

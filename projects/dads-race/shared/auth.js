@@ -71,8 +71,11 @@
 
   function profileName() {
     if (demo) {
-      const requested = String(document.body && document.body.dataset.profile || '').toLowerCase();
-      return knownNames[requested] || '';
+      const asked = String(document.body && document.body.dataset.profile || '');
+      const requested = asked.toLowerCase();
+      // The view page is for people added in the app, who are in no fixed list.
+      const onView = /\/profiles\/view\/(index\.html)?$/.test(location.pathname);
+      return knownNames[requested] || (onView ? asked.trim() : '');
     }
     const slug = slugFromSession();
     return knownNames[slug] || '';

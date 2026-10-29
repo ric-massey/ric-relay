@@ -11,7 +11,6 @@ window.APEX_DATA = {
  "live": true,
  "account": {
   "name": "RicGoneCrazy",
-  "uid": "2535464424730600",
   "platform": "X1",
   "level": 117,
   "prestige": 2,

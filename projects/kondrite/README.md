@@ -834,6 +834,9 @@ graph — the one the browser resolved, not the one a test read out of the marku
   `A` fires; `X` `Y` `LB` `RB` are the four Survey slots; `START` pauses. In a
   menu the stick or D-pad moves, `A` chooses and `B` goes back — a pad presses
   the same keys a keyboard would, so there is no second copy of any menu. The
+  pause screen draws a focus ring for it (`pauseTaps` in `game/settings.js`) and
+  the account door takes up, down, `A` and `B` (`padOnPanel` in `game/input.js`)
+  — both were pointer-only until the 2026-10-17 bug sweep (C1a-6, C1e-7). The
   mapping is fixed; the CONTROLLER tab names what is plugged in, lists the
   layout and shows what is being pressed. Nothing is read by anything but the
   ship on this machine: online, your pad flies your seat.

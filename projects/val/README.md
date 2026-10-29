@@ -49,8 +49,10 @@ once more after it closes, then exits. Started VALORANT some other way? Nothing 
 lost: the next session through the shortcut catches up on Riot's history.
 
 `sync.py` = `pull-val.py` → `export-llm.py` → commit `val-data.js`, `matches/`,
-`llm/`, `maps/` (on main, never mid-merge, never pushed). `"commit": false` in
-`val-account.json` stops the commits. Log: `%LOCALAPPDATA%\ric-terminal\val-session.log`.
+`llm/`, `maps/` (on main, never mid-merge) → push those commits, only if nothing
+else is waiting to go out (as the CS sync does; since 2026-10-29 — an unpushed
+VALORANT commit used to stop the CS auto-push). `"commit": false` in
+`val-account.json` stops the commits, `"push": false` the push. Log: `%LOCALAPPDATA%\ric-terminal\val-session.log`.
 
 ## By hand
 

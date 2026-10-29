@@ -545,7 +545,9 @@ that must never break:
 - `sync.py` commits the room's data only, on `main`, and **pushes those commits**
   (Ric's call, 2026-10-14: a session should reach the site by itself). It pushes
   nothing if any unpushed commit touches other files, and `"push": false` in
-  `cs-account.json` turns it off. VALORANT's sync still never pushes. A failed
+  `cs-account.json` turns it off. VALORANT's sync pushes the same way since
+  2026-10-29 (Ric: "VAL pushes like CS") — its unpushed commits used to switch
+  this one off. A failed
   step, commit or push — or a push held back — raises a Windows toast
   (`notify.py`); the log is otherwise the only place it shows.
 - **The radar is the game's own.** `extract-radars.py` unpacks CS2's radar images and
@@ -603,7 +605,9 @@ the rest. Rules:
 - **Every position is stored three ways**: game `x, y`, minimap `u, v`, and the nearest
   Riot callout — the page draws on the real minimap, and `llm/maps/<map>.md` gives an
   AI the callout table and the transform. Keep all three in anything new.
-- The archive only grows; `sync.py` commits the room's data only and never pushes.
+- The archive only grows; `sync.py` commits the room's data only and pushes those
+  commits as the CS sync does (2026-10-29, bug sweep B6-4); `"push": false` in
+  `val-account.json` turns the push off.
 
 **The front door (home since 2026-10-17).** It went live as `index.html` on 2026-10-16,
 was moved back out to `frontdoor.html` the same day while it was worked on, and became

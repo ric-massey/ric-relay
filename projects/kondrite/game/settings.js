@@ -692,7 +692,14 @@ function drawOver() {
 /* Paused is where you end up when something needs sorting out, so it is
    where the things you might need to sort out live: the keys, and the way
    out. Both are a tap as well as a key, because a phone has neither. */
+/* The pause screen's controls, as last drawn, and which one has the keyboard
+   or pad focus. Its thirteen controls were pointer-only: a gamepad, which
+   sends Enter and the arrows in a menu, could only resume (bug sweep C1a-6).
+   -1 is no focus until an arrow is pressed. */
+let pauseTaps = [], pauseFocus = -1;
+
 function drawPaused() {
+  const tapStart = taps.length;
   ctx.fillStyle = "rgba(0,0,0,0.62)";
   ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
   const mid = SCREEN_H / 2;
@@ -734,10 +741,17 @@ function drawPaused() {
     text("quitting drops the others too", SCREEN_W / 2, quitY + 28, 13,
          "#ffcb42", "center", 0.75);
   }
+  pauseTaps = taps.slice(tapStart);
+  if (pauseFocus >= pauseTaps.length) pauseFocus = -1;
+  if (pauseFocus >= 0) {
+    const t = pauseTaps[pauseFocus];
+    focusRing(t.x, t.y, t.w, t.h, "#ffe56d");
+  }
 }
 
 function pauseHere() {
   if (state !== "playing") return;
+  pauseFocus = -1;
   state = net.on ? "menu" : "paused";
   localPause = true;
   // Pausing mid-thrust must not leave the host flying this ship on a key

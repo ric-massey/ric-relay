@@ -125,6 +125,8 @@
   }
 
   canvas { width: 100%; height: auto; display: block; margin: 1.5rem 0; }
+  .stwrap { overflow-x: auto; }
+  .stwrap canvas { min-width: 1000px; }
 
   .controls {
     padding-top: 1.5rem;
@@ -269,12 +271,15 @@
         </div>
       </div>
 
-      <canvas id="spaceTime" width="1000" height="280"></canvas>
+      <!-- Never drawn smaller than its own 1000 px: shrunk to a phone's width its
+           sentences came out at 3 px. Narrower than that, it scrolls in its own
+           box (bug sweep D3-12). -->
+      <div class="stwrap"><canvas id="spaceTime" width="1000" height="280" aria-label="Spacetime diagram of the two clocks' paths"></canvas></div>
 
       <div class="controls">
         <div class="ctrl">
           <label>Their velocity (fraction of c) <span class="val" id="vVal">0.00 c</span></label>
-          <input type="range" id="v" min="0" max="99" value="50">
+          <input type="range" id="v" aria-label="Their velocity, fraction of c" min="0" max="99" value="50">
         </div>
         <div class="stats">
           <div class="stat">

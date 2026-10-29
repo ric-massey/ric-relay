@@ -538,8 +538,26 @@ function gpadPress(code) {
   const lob = document.getElementById("lobby");
   if (lob && !lob.hidden) return;
   const acct = document.getElementById("account");
-  if (acct && !acct.hidden) return;
+  if (acct && !acct.hidden) { padOnPanel(acct, code); return; }
   menuKey(code);
+}
+
+/* The door with a pad. A walked a pad player into it and then nothing on
+   the pad worked there — no focus, no guest, no way back (bug sweep C1e-7).
+   Up and down move between its buttons, A presses the one in focus and B is
+   "back". Typing an email still wants a keyboard; the guest button does not. */
+function padOnPanel(panel, code) {
+  const items = [...panel.querySelectorAll("button, input")]
+    .filter(el => !el.disabled && el.offsetParent !== null);
+  if (!items.length) return;
+  const at = items.indexOf(document.activeElement);
+  if (code === "ArrowDown" || code === "ArrowRight") { items[(at + 1) % items.length].focus(); return; }
+  if (code === "ArrowUp" || code === "ArrowLeft") { items[(at - 1 + items.length) % items.length].focus(); return; }
+  if (code === "Enter" && at >= 0 && items[at].tagName === "BUTTON") { items[at].click(); return; }
+  if (code === "Escape") {
+    const back = document.getElementById("btnAcctClose");
+    if (back && !back.hidden) back.click();
+  }
 }
 
 function readGamepad() {

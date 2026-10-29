@@ -1387,8 +1387,9 @@ window.PAINT = (() => {
     ctx.save(); ctx.translate(-0.5, 0);
     glow(ctx, 0.05, "rgba(255,215,150,$)", [[0, 0.95], [0.25, 0.35], [1, 0]]);
     ctx.restore();
-    // Voyager 1, 1/500th of the way
-    const vx = -0.5 + 1.0 * 0.00196;
+    // Voyager 1: about 167 AU out of Proxima's 268,000 — a sixteen-hundredth,
+    // as the fact says. It was drawn at a 500th, three times too far (D3-14).
+    const vx = -0.5 + 1.0 * (167 / 268000);
     ctx.fillStyle = "rgba(255,255,255,.9)";
     ctx.fillRect(vx - 0.0008, -0.012, 0.0016, 0.024);
     // Alpha Centauri A and B, and Proxima out on its own

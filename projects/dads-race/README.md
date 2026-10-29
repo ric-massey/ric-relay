@@ -45,6 +45,8 @@ Passwords are never stored in this project.
 - `index.html` is the crew directory.
 - `profiles/<name>/index.html` is that person's physical entry page.
 - `profiles/view/index.html` is a fallback for profiles added later through the app.
+  In the demo it opens the person named in `?profile=`; with the real database only
+  the eight crew accounts can sign in, so it is the demo's alone.
 
 The current profile URLs are:
 

@@ -342,11 +342,15 @@ const allReady = () => {
 
 /* Names come off other people's keyboards, so they are cut to size here and
    nowhere else. Drawn to a canvas and written with textContent, never as
-   markup — there is no path from a name to anything that runs. */
-const NAME_MAX = 12;
+   markup — there is no path from a name to anything that runs.
+
+   The same rule as an account's pilot name (cloud.js, PILOT: up to 16, with
+   `_`): this one was 12 without it, so the lobby offered you a different name
+   from the one the boards call you (bug sweep C1e-6). */
+const NAME_MAX = 16;
 function tidyName(raw) {
   return String(raw == null ? "" : raw)
-    .replace(/[^\p{L}\p{N} '\-]/gu, "")   // letters, digits, space, apostrophe, dash
+    .replace(/[^\p{L}\p{N} '_\-]/gu, "")   // letters, digits, space, apostrophe, underscore, dash
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, NAME_MAX)
@@ -1122,6 +1126,18 @@ function menuKey(code) {
     if (state === "paused" || state === "menu") {
       if (code === "KeyC") { state = openSettings(state); return; }
       if (code === "KeyQ") { leaveMatch(); return; }
+      /* The arrows (a pad's stick and D-pad arrive as these) walk the pause
+         screen's controls and Enter (the pad's A) presses the one in focus —
+         see `pauseTaps` in settings.js (bug sweep C1a-6). */
+      const n = pauseTaps.length;
+      if (n && (code === "ArrowDown" || code === "ArrowRight")) { pauseFocus = (pauseFocus + 1) % n; return; }
+      if (n && (code === "ArrowUp" || code === "ArrowLeft")) { pauseFocus = (pauseFocus - 1 + n) % n; return; }
+      if (pauseFocus >= 0 && pauseFocus < n && (code === "Enter" || code === "NumpadEnter")) {
+        const t = pauseTaps[pauseFocus];
+        pauseFocus = -1;
+        t.act();
+        return;
+      }
     }
     // Squad command: one key orders the whole allied wing. Mission-only, and
     // only while actually flying — not from a pause menu.

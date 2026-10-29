@@ -854,8 +854,13 @@ function buildChunk(cx, cy) {
   const done = site && (site.mod ? surv.lifted.has(site.id || site.key)
                                  : (surv.built.has(site.key) ||
                                     surv.carrying.has(site.key)));
-  if (!LEV_ONLY && site && !done) {
-    buildPartSite(site, out, R, rnd);
+  /* The place stays when the part goes. Skipped whole once the part was in
+     your hands, the two suns, the rogue world, the wreck field and the coil's
+     near gate went with it — and the coil's link went one-way (bug sweep
+     C1c-5). Only the part itself is left out now, and the chunk's rolls are
+     taken the same either way, so nothing after it in the chunk moves. */
+  if (!LEV_ONLY && site) {
+    buildPartSite(site, out, R, rnd, done);
   }
 
   /* ── P4: something worth buying, lying out here ───────────────────────
@@ -907,7 +912,7 @@ function buildChunk(cx, cy) {
   return out;
 }
 
-function buildPartSite(site, out, R, rnd) {
+function buildPartSite(site, out, R, rnd, gone) {
   if (site.key === "spar") {
     out.hazards.length = 0;
     for (let i = 0; i < 9; i++) {
@@ -943,8 +948,10 @@ function buildPartSite(site, out, R, rnd) {
     out.wrecks.push({ x: site.x, y: site.y, a: R() * Math.PI * 2, spin: 0.02,
                       size: 2.2, beacon: true });
   }
+  const phase = R() * Math.PI * 2;   // drawn either way: the rolls stay in step
+  if (gone) return;
   out.parts.push({ key: site.key, name: site.name, x: site.x, y: site.y,
-                   r: site.r, phase: R() * Math.PI * 2,
+                   r: site.r, phase,
                    /* A spare goes into the hold as a spare rather than onto
                       the manifest, and carries the id its site is remembered
                       by — see `surv.lifted`. */

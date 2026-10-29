@@ -1209,3 +1209,28 @@
     start();
   }
 })();
+
+/* ── a modal is modal ────────────────────────────────────────────────────
+   The cards say aria-modal, and focus still walked out of them into the
+   controls blurred or hidden behind (bug sweep D3-13). While one is open,
+   everything else on the page — the "Ric's Terminal" pill included — is
+   inert, so Tab and a screen reader stay inside the card. */
+(() => {
+  const dialogs = [...document.querySelectorAll('[role="dialog"][aria-modal="true"]')];
+  if (!dialogs.length || !("inert" in HTMLElement.prototype)) return;
+  let made = [];
+  const sync = () => {
+    made.forEach((el) => { el.inert = false; });
+    made = [];
+    const open = dialogs.find((d) => !d.hidden);
+    if (!open) return;
+    for (const el of document.body.children) {
+      if (el === open || el.contains(open) || el.tagName === "SCRIPT" || el.inert) continue;
+      el.inert = true;
+      made.push(el);
+    }
+  };
+  const watch = new MutationObserver(sync);
+  dialogs.forEach((d) => watch.observe(d, { attributes: true, attributeFilter: ["hidden"] }));
+  sync();
+})();
