@@ -505,8 +505,16 @@ function readLocalInput() {
        sits somewhere is a fight nobody asked for, so the keys win — they are
        a deliberate press and the cursor is just wherever the hand left it. */
     if (flyingByMouse() && me.alive && !me.input.l && !me.input.r) {
-      const sx = pointerAt.x - SCREEN_W / 2;
-      const sy = pointerAt.y - SCREEN_H / 2;
+      /* From the ship's own place on the screen, not the screen's middle:
+         Survival's camera never centres the ship, and after Tab hands the
+         view to another ship yours was steered from the wrong point
+         (bug sweep C1a-3). The same transform drawing uses. */
+      const dx = me.x - cam.x, dy = me.y - cam.y;
+      const c = Math.cos(cam.rot), s = Math.sin(cam.rot);
+      const shipX = SCREEN_W / 2 + (c * dx - s * dy) * cam.scale;
+      const shipY = SCREEN_H / 2 + (s * dx + c * dy) * cam.scale;
+      const sx = pointerAt.x - shipX;
+      const sy = pointerAt.y - shipY;
       // Far enough out to mean something: a cursor on the ship has no bearing.
       if (Math.hypot(sx, sy) > 26) {
         const t = turnToward(me, Math.atan2(sy, sx) - cam.rot);

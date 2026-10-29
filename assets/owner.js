@@ -109,7 +109,12 @@ window.Owner = (function () {
       return 'ok';
     },
 
-    signOut() { token = null; write(null); onChange(); },
+    /* Signing out on purpose also drops the writes still waiting for a
+       signal: they can hold private training notes, and this browser is not
+       Ric's any more once he has signed out of it (bug sweep A1-9). A 401
+       is not that — the password changed under him, he signs in again and
+       the queue goes up — so it keeps them. */
+    signOut(keepQueue) { token = null; write(null); if (keepQueue !== true) writeQ([]); onChange(); },
 
     /* Every write goes through here so there is one place that knows what a
        rejected password looks like.
@@ -142,7 +147,7 @@ window.Owner = (function () {
           headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
           body: JSON.stringify(body)
         });
-        if (r.status === 401) { this.signOut(); return null; }
+        if (r.status === 401) { this.signOut(true); return null; }
         if (!r.ok) return null;
         const out = await r.json();
         /* A successful write proves the connection is back, so drain anything
@@ -205,7 +210,7 @@ window.Owner = (function () {
               body: JSON.stringify(head.body)
             });
           } catch (e) { break; }               // no signal — keep everything, try later
-          if (r.status === 401) { this.signOut(); break; }
+          if (r.status === 401) { this.signOut(true); break; }
           /* Re-read before removing, so a write appended while that fetch was
              in flight survives. */
           const drop = () => { const q = readQ(); q.shift(); writeQ(q); };

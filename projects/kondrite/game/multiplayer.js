@@ -389,6 +389,16 @@ function applyInit(msg) {
   accounts = Array.isArray(msg.accounts) ? msg.accounts.map(a => String(a || "")) : [];
   accounts[msg.seat] = myAccount();
   matchId = typeof msg.matchId === "string" ? msg.matchId : null;
+  /* Checked before anything is built: an unknown mode threw half way, after
+     the role and names were already overwritten, and left the guest in a
+     lobby for a match it could never draw; and any player count was built,
+     however large (bug sweep C1e-3). A bad init is refused whole. */
+  if (!Object.prototype.hasOwnProperty.call(MODES, msg.mode) ||
+      !Number.isInteger(msg.players) || msg.players < 1 || msg.players > MAX_PLAYERS ||
+      !msg.arena || !(msg.arena.w > 0) || !(msg.arena.h > 0) ||
+      (msg.hazards != null && !Array.isArray(msg.hazards))) {
+    throw new Error("the host sent a match this game cannot build");
+  }
   mode = MODES[msg.mode];
   if (msg.mode === "survival") mode.friendlyFire = msg.friendlyFire !== false;
   arena = msg.arena;

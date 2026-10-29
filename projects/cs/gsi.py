@@ -59,7 +59,9 @@ class Recorder:
 
     # One match at a time. A new map name, or the menu, closes the old one.
     def feed(self, s):
-        if (s.get("auth") or {}).get("token") != self.token:
+        # No token set means nothing is accepted: an empty one matched any post
+        # that left the token out (bug sweep B5a-7).
+        if not self.token or (s.get("auth") or {}).get("token") != self.token:
             return
         with self.lock:
             mp = s.get("map")
@@ -151,6 +153,12 @@ class Recorder:
 def serve(recorder):
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
+            # CS2 posts with no Origin header. A web page cannot leave one
+            # off, so anything that carries one is a page, not the game (B5a-7).
+            if self.headers.get("Origin"):
+                self.send_response(403)
+                self.end_headers()
+                return
             try:
                 body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
                 recorder.feed(json.loads(body or b"{}"))

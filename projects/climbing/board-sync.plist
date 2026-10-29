@@ -10,7 +10,7 @@
       launchctl bootout gui/$UID/com.ricmassey.board-sync
       rm ~/Library/LaunchAgents/com.ricmassey.board-sync.plist
 
-  Run it right now without waiting for Sunday:
+  Run it right now without waiting for the hour:
 
       launchctl kickstart -p gui/$UID/com.ricmassey.board-sync
 -->

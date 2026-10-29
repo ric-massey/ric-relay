@@ -71,6 +71,7 @@
     Object.freeze(Object.assign({}, e, { ord: i })));
   const LKEY = 'entertainmentEdits';
   let REMOTE = {};
+  let REMOTE_UNREAD = false;   // the service answered, but not with the list (B3-5)
   let LOCAL = readLocal();
   let onRender = function () {};
 
@@ -506,7 +507,7 @@
       : (f.y || '');
     return '<li' + (unreleased ? ' class="soon"' : '') + '>' +
       '<span class="run-art">' +
-        '<img src="assets/posters/p' + f.id + '.jpg" alt="" loading="lazy" ' +
+        '<img src="assets/posters/p' + esc(f.id) + '.jpg" alt="" loading="lazy" ' +
           'decoding="async" onerror="this.remove()">' +
         (unreleased ? '<span class="soon-tag">soon</span>' : '') +
       '</span>' +
@@ -577,11 +578,11 @@
           '<h4>More like this</h4>' +
           '<ol class="run-list">' + e.like.map(f =>
             '<li><span class="run-art">' +
-              '<img src="assets/posters/p' + f.id + '.jpg" alt="" loading="lazy" ' +
+              '<img src="assets/posters/p' + esc(f.id) + '.jpg" alt="" loading="lazy" ' +
                 'decoding="async" onerror="this.remove()">' +
             '</span>' +
             '<b>' + esc(f.t) + '</b>' +
-            (f.y ? '<span>' + f.y + '</span>' : '') + '</li>').join('') +
+            (f.y ? '<span>' + esc(f.y) + '</span>' : '') + '</li>').join('') +   // stored as sent (B3-9)
           '</ol>' +
         '</section>'
       : '';
@@ -1029,6 +1030,9 @@
       said.textContent = 'looking…';
 
       const id = slug(title);
+      /* A title with no Latin letters slugs to nothing; the panel's form
+         refuses it and so does this now (bug sweep B3-8). */
+      if (!id) { said.textContent = 'that title needs at least one Latin letter or digit.'; return; }
       const dup = all().find(e => e.id === id);
       if (dup) {
         said.textContent = '“' + dup.title + '” is already on the ' +
@@ -1118,6 +1122,7 @@
         '<span class="dot ' + (n ? '' : 'off') + '"></span>' +
         '<span>' + (n
           ? n + ' edit' + (n === 1 ? '' : 's') + ' saved in this browser only — export below to commit them.'
+          : REMOTE_UNREAD ? 'The service could not be read just now — edits made elsewhere may be missing here.'
           : 'Everything here is either committed or saved to the service.') + '</span>' +
         '<button class="btn" type="button" id="signout">Sign out</button>' +
       '</div>' +
@@ -1231,9 +1236,22 @@
      of when anything happened. Sort this block by title and that record is gone
      for good — keep status first, then `ord`, and let the title only break a
      tie between two rows that never had an order to begin with. */
+  /* json.dumps(v, ensure_ascii=False) as Python writes it: ", " and ": ",
+     and `rating` — a float there — as 5.0, not 5. */
+  function pyJSON(v, key) {
+    if (Array.isArray(v)) return '[' + v.map(x => pyJSON(x)).join(', ') + ']';
+    if (v && typeof v === 'object') {
+      return '{' + Object.keys(v).filter(k => v[k] !== undefined)
+        .map(k => JSON.stringify(k) + ': ' + pyJSON(v[k], k)).join(', ') + '}';
+    }
+    if (key === 'rating' && Number.isInteger(v)) return v + '.0';
+    return JSON.stringify(v);
+  }
+
   async function exportFile() {
     const head = await readHeader();
     const rows = all()
+      .filter(e => e.id)          // a row with no id stops the puller's whole run (B3-8)
       .sort((a, b) => (a.status === b.status ? 0 : a.status === 'watched' ? -1 : 1) ||
                       (a.ord || 0) - (b.ord || 0) ||
                       a.title.localeCompare(b.title))
@@ -1242,20 +1260,29 @@
            to agree character for character or every export fights the last
            pull — and JSON is the shape because a regex reader has now eaten
            this file's data three times. */
+        /* Bug sweep B3-7: this used to write compact JSON and every key the
+           Worker merged in, so an export never matched a pull and made a
+           whole-file diff a lost row could hide in. Now: the same rules
+           write_rows() keeps (0 dropped from the known fields), the Worker's
+           bookkeeping left out as stage 0 leaves it out — `source`, `updated`,
+           and `added` on a row the committed file already had — and Python's
+           separators. */
         const out = {};
         for (const k of ['id', 'title', 'status'].concat(FIELDS)) {
           const v = e[k];
-          if (v === undefined || v === null || v === '' || v === false) continue;
+          if (v === undefined || v === null || v === '' || v === false || v === 0) continue;
           if (Array.isArray(v) && !v.length) continue;
           out[k] = v;
         }
+        const committed = BASE.some(b => b.id === e.id);
         for (const k of Object.keys(e).sort()) {      // anything hand-added
           if (k === 'ord' || k === 'local' || k in out) continue;
+          if (k === 'source' || k === 'updated' || (k === 'added' && committed)) continue;
           const v = e[k];
-          if (v === undefined || v === null || v === '' || v === false) continue;
+          if (v === undefined) continue;
           out[k] = v;
         }
-        return '  ' + JSON.stringify(out);
+        return '  ' + pyJSON(out);
       });
     return head + '\nwindow.ENTERTAINMENT_DATA = [\n' + rows.join(',\n') + '\n];\n';
   }
@@ -1281,12 +1308,13 @@
         Owner.init({ host: host, onChange: paintOwner });
         paintOwner();
       }
+      /* /movies is public, so the read carries no password. With one it was
+         a 429 during a lockout for exactly the person who needed the list,
+         and the panel still said all was saved (bug sweep B3-5). If the
+         service cannot be read, the panel says that instead. */
       try {
-        const r = await hostFetch('/movies', {
-          cache: 'no-store',
-          headers: window.Owner ? Owner.headers() : {}
-        });
-        if (!r.ok) return;                     // not deployed yet — committed file stands
+        const r = await hostFetch('/movies', { cache: 'no-store' });
+        if (!r.ok) { REMOTE_UNREAD = r.status !== 404; if (REMOTE_UNREAD) paintOwner(); return; }
         const items = (await r.json()).items || {};
         REMOTE = items;
         /* A local edit the service has now caught up with is no longer pending. */
@@ -1302,6 +1330,8 @@
       } catch (e) {
         /* No signal. A list with only the committed file on it is the right
            page; an error is not. */
+        REMOTE_UNREAD = true;
+        paintOwner();
       }
     })();
   }

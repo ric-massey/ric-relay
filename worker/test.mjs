@@ -269,6 +269,23 @@ console.log('\nRULE  guessing gets throttled, and the throttle refuses the right
   ok((await hit3('POST', '/auth', { password: 'another-guess' })).status === 429, 'bad bearer tokens count toward the same limit');
 }
 
+console.log('\nRULE  the throttle outlives the object (bug sweep A2a-5)');
+{
+  /* An idle object is evicted on its own and every deploy starts a new one.
+     With the misses kept only in memory, each restart was a fresh ten. */
+  const mem = new Map();
+  const storage = {
+    get: async k => mem.get(k), put: async (k, v) => { mem.set(k, v); },
+    delete: async k => { mem.delete(k); },
+    list: async ({ prefix }) => new Map([...mem].filter(([k]) => k.startsWith(prefix)))
+  };
+  const first = new TrainingLog({ storage }, { LOG_TOKEN: TOKEN });
+  for (let i = 0; i < 10; i++) await first.fetch(req('POST', '/auth', { password: 'guess' + i }));
+  const second = new TrainingLog({ storage }, { LOG_TOKEN: TOKEN });   // evicted, started again
+  ok((await second.fetch(req('POST', '/auth', { password: 'guess-again' }))).status === 429,
+     'a restarted object still knows the last ten misses');
+}
+
 console.log('\nRULE  a lockout is said out loud, never served as an emptied page');
 {
   /* Two wrong ways to handle the owner during a lockout, both seen here:

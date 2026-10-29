@@ -183,7 +183,9 @@ function trafficBump(t, i, me, near) {
       }
       if (!ram) t.hp -= 1;
       t.hit = 0.12;
-      if (t.hp <= 0) killTraffic(i, true);
+      // Ended, and says so: the caller stops this ship's frame there, or a
+      // hull rammed to death still fired on the way out (bug sweep C1a-5).
+      if (t.hp <= 0) { killTraffic(i, true); return true; }
     }
     let dx = me.x - t.x, dy = me.y - t.y;
     let d = Math.hypot(dx, dy);

@@ -3,8 +3,8 @@
    One file, two readers:
 
      projects/psyche/studies.html  the search, the detail sheet, the watchlist
-     index.html                    the trial alert under the NOTIFICATION banner,
-                                   drawn only when Ric is signed in
+     index.html                    the trial alert, drawn only for a signed-in
+                                   site account Ric has approved for Studies
 
    Everything that talks to the API, turns its nested records into something a
    card can draw, or decides that a tracked study has changed lives here, so
@@ -264,7 +264,8 @@
       interventions: (ai.interventions || []).map(i => ({ type: i.type || '', name: i.name || '', description: i.description || '' })),
       arms: (ai.armGroups || []).map(a => ({ label: a.label || '', type: a.type || '', description: a.description || '' })),
       sponsor: (sp.leadSponsor && sp.leadSponsor.name) || '',
-      enrollment: (de.enrollmentInfo && de.enrollmentInfo.count) || null,
+      // A number or nothing: it goes into markup unescaped (bug sweep B4-9).
+      enrollment: Number(de.enrollmentInfo && de.enrollmentInfo.count) || null,
       enrollmentType: (de.enrollmentInfo && de.enrollmentInfo.type) || '',
       locations: (cl.locations || []).map(l => ({
         facility: l.facility || '', city: l.city || '', state: l.state || '', country: l.country || '', status: l.status || ''
@@ -472,8 +473,10 @@
   }
 
   /* ── the watchlist ──
-     A snapshot is what the study looked like when Ric last said "seen". The
-     Worker stores it (and only these fields: cleanSnapshot in worker.mjs). */
+     A snapshot is what the study looked like when its owner last said "seen".
+     It is stored in Supabase's trial_watch table, one row per study per
+     approved account, readable only by its owner (README, "The watchlist";
+     the migration has the policies and the 200-row cap). */
   const snapshot = n => ({
     status: n.status || null,
     hasResults: n.hasResults === true,
@@ -538,7 +541,7 @@
     const params = buildParams(state, { ...opts, fields: !fieldsRefused });
     try {
       const { data, via } = await getJSON('/search', params, opts.signal);
-      return { studies: (data.studies || []).map(normalize), next: data.nextPageToken || null, total: data.totalCount, via, rewrite: effectiveQuery(state) };
+      return { studies: (data.studies || []).map(normalize), next: data.nextPageToken || null, total: Number.isFinite(Number(data.totalCount)) && data.totalCount != null ? Number(data.totalCount) : null, via, rewrite: effectiveQuery(state) };
     } catch (e) {
       if (e.status === 400 && !fieldsRefused && /field/i.test(e.message)) {
         fieldsRefused = true;
@@ -549,13 +552,16 @@
   }
 
   const studyMemo = new Map();
-  async function study(id, signal) {
+  /* The promise is kept, not the answer, so a hover, a touch and the tap
+     that follows share one download — they used to pull the same record, up
+     to 850 KB, three times (bug sweep B4-4). A failure is forgotten. */
+  function study(id, signal) {
     id = String(id).toUpperCase();
     if (studyMemo.has(id)) return studyMemo.get(id);
-    const { data } = await getJSON('/study/' + id, null, signal);
-    const n = normalize(data);
-    studyMemo.set(id, n);
-    return n;
+    const p = getJSON('/study/' + id, null, signal).then(({ data }) => normalize(data));
+    studyMemo.set(id, p);
+    p.catch(() => { if (studyMemo.get(id) === p) studyMemo.delete(id); });
+    return p;
   }
 
   async function byIds(ids, signal) {
@@ -660,6 +666,14 @@
 
   async function signIn(email, password) { await (await gate()).signIn(email, password); return access(); }
   async function signOut() { if (root.SiteGate || hasSession()) await (await gate()).signOut(); }
+  /* Deletes every tracked study of this account, with or without Studies —
+     the one thing an account that lost access can still do with its list
+     (forget_my_watchlist() in the migrations; bug sweep B4-11). */
+  async function forgetWatchlist() {
+    const { data, error } = await (await gate()).db().rpc('forget_my_watchlist');
+    if (error) throw new TrialError(error.message || 'Could not delete the list');
+    return data || 0;
+  }
   async function requestAccess() { await (await gate()).requestAccess(PAGE); return access(); }
   const accountUrl = () => SITE_ROOT + 'account/?for=' + PAGE;
 
@@ -682,7 +696,7 @@
     STATUS, STATUS_CHIPS, PHASE_CHIPS, SCOPES, SORTS, LIST_FIELDS, WATCH_FIELDS, NCT,
     statusOf, phaseText, asNct, effectiveQuery, BRANDS, WHOLE, buildParams, normalize, resultsOf, placeSummary, fmtDate, snapshot, changes,
     search, study, byIds, hasSession, access, signIn, signOut, requestAccess, accountUrl,
-    watchList, track, acknowledge, untrack, checkWatch, TrialError,
+    watchList, track, acknowledge, untrack, forgetWatchlist, checkWatch, TrialError,
     studyUrl: STUDY_URL, host
   };
   root.Trials = api;

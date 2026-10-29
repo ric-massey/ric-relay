@@ -158,8 +158,10 @@
     temperatureFromType(sp) {
       if (!sp) return 5000;
       const text = String(sp).trim().toUpperCase();
-      const white = text.match(/^D[ABCOQXZ]*\s*([\d.]+)/);
-      if (white) return 50400 / Math.max(0.5, parseFloat(white[1]));
+      const white = text.match(/^D[ABCOQXZ]*\s*([\d.]*)/);
+      // A white dwarf with no temperature digit ("DQZ", Procyon B) is still a
+      // white dwarf, not the 5,000 K fallback (bug sweep C3-14).
+      if (white) return white[1] ? 50400 / Math.max(0.5, parseFloat(white[1])) : 10000;
       const match = text.match(/^([OBAFGKMLTY])\s*([\d.]*)/);
       if (!match) return 5000;
       const range = CLASS_TEMPS[match[1]];

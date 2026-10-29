@@ -152,10 +152,11 @@
   // assets/site-gate.js). That decides only who is shown the demo — its data is
   // made up and its files are public, so this is a curtain, not a lock.
   const siteRoot = new URL('../../', appRoot);
-  function loadScript(src) {
+  function loadScript(src, integrity) {
     return new Promise((resolve, reject) => {
       const el = document.createElement('script');
       el.src = src;
+      if (integrity) { el.integrity = integrity; el.crossOrigin = 'anonymous'; }
       el.onload = resolve;
       el.onerror = () => reject(new Error(`could not load ${src}`));
       document.head.appendChild(el);
@@ -163,7 +164,10 @@
   }
   async function siteGate() {
     if (window.SiteGate) return window.SiteGate;
-    if (!window.supabase) await loadScript('https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js');
+    // The exact version ATLAS pins, with its hash: a floating @2 ran whatever
+    // unpkg served that day on the page where a password is typed (A4-3).
+    if (!window.supabase) await loadScript('https://unpkg.com/@supabase/supabase-js@2.117.2/dist/umd/supabase.js',
+      'sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok');
     if (!window.CONFIG) await loadScript(new URL('atlas/config.js', siteRoot).href);
     await loadScript(new URL('assets/site-gate.js', siteRoot).href);
     return window.SiteGate;

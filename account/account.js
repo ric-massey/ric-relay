@@ -38,11 +38,18 @@
   const requestedPages = () => (PAGES.some((p) => p.key === forKey) ? [forKey] : []);
 
   // A request typed before an email-confirmation step still has to reach Ric.
-  async function sendStoredRequest() {
+  async function sendStoredRequest(session) {
     let stored = null;
     try { stored = JSON.parse(localStorage.getItem(PENDING_KEY) || 'null'); } catch (_) {}
     if (!stored) return;
-    const { error } = await db.rpc('request_access', stored);
+    const mine = String((session && session.user && session.user.email) || '').toLowerCase();
+    if (!stored.email || stored.email !== mine) {
+      // Somebody else's, or one from before requests carried their address.
+      try { localStorage.removeItem(PENDING_KEY); } catch (_) {}
+      return;
+    }
+    const { email: _for, ...request } = stored;
+    const { error } = await db.rpc('request_access', request);
     // ATLAS makes every new account pick a password on first sign-in, which was
     // right when Ric texted out starting passwords. Somebody who signed up here
     // chose their own a minute ago, so they are not asked twice.
@@ -56,7 +63,7 @@
       show(location.hash === '#request' ? 'request-panel' : 'signin-panel');
       return;
     }
-    await sendStoredRequest();
+    await sendStoredRequest(session);
     const uid = session.user.id;
     const [{ data: request }, { data: access }, { data: isAdmin }] = await Promise.all([
       db.from('access_requests').select('status,pages').eq('user_id', uid).maybeSingle(),
@@ -107,9 +114,12 @@
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say('rq-msg', 'that email does not look right');
     if (password.length < 8) return say('rq-msg', 'password needs at least 8 characters');
     const request = { who: name, why: '', wanted };
+    // The request is kept with the address it was typed for, and dropped if
+    // the sign-up fails: it used to stay behind and go out for whoever signed
+    // in next on this browser, under their account (bug sweep A1-6).
     $('rq-go').disabled = true;
     try {
-      try { localStorage.setItem(PENDING_KEY, JSON.stringify(request)); } catch (_) {}
+      try { localStorage.setItem(PENDING_KEY, JSON.stringify({ ...request, email })); } catch (_) {}
       const { data, error } = await db.auth.signUp({
         email, password, options: { data: { display_name: name }, emailRedirectTo: location.href.split('#')[0] },
       });
@@ -121,6 +131,7 @@
         say('rq-msg', 'check your email to confirm the address — your request goes to Ric as soon as you sign in.', true);
       }
     } catch (err) {
+      try { localStorage.removeItem(PENDING_KEY); } catch (_) {}
       say('rq-msg', /registered|exists/i.test(err.message || '') ? 'that email already has an account — sign in instead'
         : /signups? not allowed|disabled/i.test(err.message || '') ? 'requests are switched off right now'
         : err.message);

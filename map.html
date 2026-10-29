@@ -53,7 +53,11 @@
         radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.65) 100%);
     }
 
+    /* Above the fixed scanlines and vignette, which are positioned and so
+       painted over the text, darkening its last lines under AA on a phone
+       (bug sweep D2-12). */
     .plate {
+      position: relative; z-index: 1;
       border: 1px solid var(--red-faint);
       max-width: 560px;
       margin: 1.25rem;

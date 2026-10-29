@@ -43,8 +43,11 @@ jobs:
           node-version: "22"
 
       # The same rules that guard every push, run again against what is about
-      # to go live.
+      # to go live — both of the Worker's suites: the visitor counter it
+      # imports is the only thing between visitors' rows and the public, and
+      # this ran only the first (bug sweep A6-4).
       - run: node worker/test.mjs
+      - run: node worker/visitors.test.mjs
 
       - name: Deploy
         working-directory: worker
@@ -56,4 +59,7 @@ jobs:
             echo "::error::Set the CLOUDFLARE_API_TOKEN secret first (Settings → Secrets and variables → Actions)."
             exit 1
           fi
-          npx --yes wrangler@latest deploy
+          # An exact version, not @latest: this step holds the Cloudflare token,
+          # and @latest ran whatever npm had that minute (bug sweep A2a-8).
+          # Move it up by hand, to a release a couple of weeks old.
+          npx --yes wrangler@4.150.0 deploy

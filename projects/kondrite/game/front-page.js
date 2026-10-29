@@ -59,7 +59,9 @@ function drawTitle(dt) {
      weight. A menu is drawn in screen units; say so. */
   const wasScale = wScale;
   wScale = 1;
-  if (attract) attract.draw(0, 0, SCREEN_W, SCREEN_H, menuClock());
+  /* Asked for less motion, the clock stands still and the run with it: a
+     still frame, as the drift field behind every other menu holds (C1b-9). */
+  if (attract) attract.draw(0, 0, SCREEN_W, SCREEN_H, reduceMotion ? 0 : menuClock());
 
   /* The scrim: darkest at the top and bottom, barely there across the
      middle, so the wordmark and the buttons have something to sit on while

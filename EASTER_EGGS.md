@@ -11,8 +11,9 @@ completion.
 | Type | What happens |
 |---|---|
 | `diagnose orrin` | Prints a classified-looking Orrin status record. |
-| `vod` | Pretends to retrieve the Apex VOD archive, then points at the real numbers. (`apex` itself is a listed project shortcut now — it opens the Apex banner.) |
+| `vod` | Pretends to retrieve the Apex VOD archive, then points at the real numbers. (`apex` itself is an unlisted room — it opens `apex.html`.) |
 | `sudo` | Politely denies administrative access. |
+| `tension` / `kilter` / `boards` / `woodshed` | Open the climbing boards page (`projects/climbing/board.html`), on that board for the first two. `woodshed` is the page's old name and still works. |
 | `unlock` | Asks for crew authentication without revealing the private map. |
 | `hermiscus` | Opens the crew sign-in for Dad's race (`projects/dads-race/login.html`). The lock is the login and the database rules behind it, not the command being secret. |
 | `login` / `account` | Opens the site account page (`account/`): one sign-in for ATLAS and HERMISCUS, and a form to ask Ric for access. Admins get a link to `admin/`. |
@@ -23,15 +24,16 @@ completion.
 | `coffee` | Dispenses one terminal-grade coffee. |
 | `exit` | Explains the architectural problem with leaving the Terminal. |
 | `404` | Deliberately loses the signal and opens a special version of the Terminal's 404 page. |
-| `mochi` | Wakes Mochi, a fluffy long-haired site cat, for the rest of that browser tab's session. The website is his home: he occupies real document positions, settles onto card and section edges with a contact shadow, and scrolls away with the page instead of sticking to the screen. His expanded animation set includes horizontal and diagonal walking with distinct passing and stride poses, matched turning frames, a five-step settle, sitting, loafing, grooming, looking back, peeking, stretching, an overhead return, a low click-to-run acceleration, and a complete look-up/rise/swat/recover sequence for the occasional slow-drifting feather. Every next frame is decoded while hidden and then replaces the old one instantly, so pose changes show neither a blank nor two cats; visible-body scale and grounding are calibrated across the differently posed artwork. His movement and idle loops use a more relaxed pace. He keeps ordinary wandering inside the visible page, walks to features before hiding behind them, sometimes studies or paws at links, buttons, and headings, and occasionally strolls fully off the page before returning later. When a room loads, he usually either pokes his head out from behind a feature or page edge, or walks to the clearest available place and settles; on packed pages he may sit over ordinary words, and clicking him exposes them. If scrolling leaves him behind, he walks into the newly visible part of the document after you stop and finds another place to settle. Click him and he bolts off the nearest edge before cautiously returning; there is no hover prompt. In Starfield only, he wears a bubble helmet and replaces every grounded action with four slow zero-gravity pose loops (three frames each); clicking sends him tumbling through space. Type `clear` or `/clear` at the Terminal to send him home. (`cat notes` still reads transmissions.) |
-| `lsd` | Turns on the fast, prismatic sitewide visual mode. It follows you into every room and project. |
+| `mochi` | Wakes Mochi, a fluffy long-haired site cat, for the rest of that browser tab's session. The website is his home: he occupies real document positions, settles onto card and section edges with a contact shadow, and scrolls away with the page instead of sticking to the screen. His expanded animation set includes horizontal and diagonal walking with distinct passing and stride poses, matched turning frames, a five-step settle, sitting, loafing, grooming, looking back, peeking, stretching, an overhead return, a low click-to-run acceleration, and a complete look-up/rise/swat/recover sequence for the occasional slow-drifting feather. Every next frame is decoded while hidden and then replaces the old one instantly, so pose changes show neither a blank nor two cats; visible-body scale and grounding are calibrated across the differently posed artwork. His movement and idle loops use a more relaxed pace. He keeps ordinary wandering inside the visible page, walks to features before hiding behind them, sometimes studies or paws at links, buttons, and headings, and occasionally strolls fully off the page before returning later. When a room loads, he usually either pokes his head out from behind a feature or page edge, or walks to the clearest available place and settles; on packed pages he may sit over ordinary words, and clicking him exposes them. If scrolling leaves him behind, he walks into the newly visible part of the document after you stop and finds another place to settle. Click him and he bolts off the nearest edge before cautiously returning; there is no hover prompt. In the space pages — Exploration, Starfield (both pages), KONDRITE, How Big Everything Is, How Speed Affects Time and Spacetime — he wears a bubble helmet and replaces every grounded action with four slow zero-gravity pose loops (three frames each); clicking sends him tumbling through space. Type `clear` or `/clear` at the Terminal to send him home. (`cat notes` still reads transmissions.) |
+| `lsd` | Turns on the fast, prismatic sitewide visual mode. It follows you into every room and project, except the full-screen canvas games — KONDRITE, OFFRAMP, FARLIGHT and Starfield's flight page — where a filter over the canvas is a second renderer (they still bring Mochi). |
 | `shrooms` | Turns on the slower, breathing sitewide visual mode. It follows you too. |
 | `sober` | Clears either visual mode and returns the site to normal. |
 
 The psychedelic modes follow normal links between rooms in the current tab. Refreshing
 any page clears the mode. Otherwise, return to the Terminal and type `sober`. There is no
 button or keyboard escape hatch. Visitors who prefer reduced motion get the color and
-static distortion treatment without the movement.
+static distortion treatment without the movement (the SVG ripples are taken out
+for them, since 2026-10-29 — before that they kept moving).
 
 ## Psyche (`psyche.html`)
 
@@ -69,7 +71,8 @@ No prompt is required.
 | Studies (Psyche) | `placebo` | `CONTROL GROUP DETECTED // YOU FEEL BETTER ANYWAY` |
 | Geometry of Spacetime / How Speed Affects Time | `now` | `NOW LOST // TRY ANOTHER REFERENCE FRAME` |
 | Siege Conductor | `66` | `COMMAND REJECTED // NICE TRY, PALPATINE` |
-| Starfield | `warp` | `NAV COMPUTER: THE SCENIC ROUTE IS FASTER` |
+| Starfield (the text page) | `warp` | `NAV COMPUTER: THE SCENIC ROUTE IS FASTER` |
+| Starfield (flying) | `tycho` | `TYCHO MAPPED THE SKY BY EYE // YOU HAVE A SHIP` — not `warp`, whose letters fly the ship |
 | How Big Everything Is | `googol` | `THAT IS A 1 WITH A HUNDRED ZEROES // STILL NOT ON THE LADDER` |
 | Boards (board log) | `beta` | `BETA RECEIVED // PULL HARDER` |
 | Interstate 40 (OFFRAMP) | `exit` | `EXIT NOT FOUND // THE ROAD JUST KEEPS GOING` |
@@ -98,8 +101,8 @@ These are visible, but they belong in the same field guide:
   steer with the player.
 - The Terminal supports command history with `↑`/`↓` and completion with
   `Tab`. `Tab` fills in as far as every match agrees before listing them, the
-  way a real shell does. `map` is the one room it won't complete — it answers
-  `[LOCKED]`, so completing to it is a dead end; `open map` still gets there.
+  way a real shell does. No room is `[LOCKED]` any more, so every room
+  completes — `map` included, since 2026-09-24.
 - Typing a room name works even with a trailing word (`mind whatever` still
   enters `/mind`), and typing the first character during the boot animation
   skips the boot *and* lands that character in the prompt.

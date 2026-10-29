@@ -169,8 +169,37 @@ const ROUND_TRIPS = [
       routes: [{ name: 'Romulus', grade: '5.10a', how: 'top rope', outcome: 'sent', repeats: 1 }]
     },
     expect: { styles: ['top rope'], outcome: 'sent' }
+  },
+  {
+    /* Bug sweep B1-4: "Sent" in the form wrote no word into the line, and
+       the note's "falls" turned it into an attempt. */
+    name: 'a send whose note mentions a fall',
+    day: {
+      date: '2026-08-25', area: 'Ijams Crag',
+      routes: [{ name: 'Suttree', grade: '5.10b', style: '', outcome: 'sent', repeats: 1, note: 'no falls' }]
+    },
+    expect: { outcome: 'sent', note: 'no falls' }
   }
 ];
+
+rule('a phone day keeps a sector change, a "#" in a name, and partners with accents');
+{
+  /* Bug sweeps B1-5 and B1-8. */
+  const trip = P.day(P.compose({
+    date: '2026-08-25', area: 'Ijams Crag', people: 'Émile, Zoë Ødegaard', notes: '# not a heading',
+    routes: [
+      { name: 'One', grade: '5.9', wall: 'Main Wall', outcome: 'sent', repeats: 1 },
+      { name: '#2 Crack', grade: '5.8', outcome: 'sent', repeats: 1 }
+    ]
+  }));
+  const r = trip ? trip.routes : [];
+  if (!trip || r.length !== 2) fail('the day did not come back with both routes');
+  else if (r[0].wall !== 'Main Wall' || r[1].wall !== null) fail(`walls came back ${JSON.stringify(r.map(x => x.wall))}`);
+  else if (r[1].name !== '#2 Crack') fail(`the second route came back as ${JSON.stringify(r[1].name)}`);
+  else if (JSON.stringify(trip.people) !== '["Émile","Zoë Ødegaard"]') fail(`partners came back ${JSON.stringify(trip.people)}`);
+  else if (!/\n# not a heading$/.test(trip.notes.trim())) fail(`notes came back ${JSON.stringify(trip.notes)}`);
+  else pass();
+}
 
 rule('a day composed by the page parses back as the day that went in');
 {

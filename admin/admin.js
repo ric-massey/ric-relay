@@ -191,7 +191,7 @@
     if (numbers) {
       $('notice').hidden = true;
       $('stats').innerHTML = '';
-      $('bulk').hidden = true;
+      $('bulk').hidden = true; document.body.classList.remove('bulk-on');
       return A.show($('body'), async () => {
         const { data: { session } } = await db.auth.getSession();
         return session ? session.access_token : '';
@@ -227,7 +227,7 @@
   function drawBulk() {
     if (!S.picked[S.tab]) return;
     const n = S.picked[S.tab].size;
-    $('bulk').hidden = !n;
+    $('bulk').hidden = !n; document.body.classList.toggle('bulk-on', !!n);
     $('bulk-count').textContent = `${n} selected`;
     $('compose').textContent = n ? `Email ${n}` : 'Email';
     const picked = list().filter((p) => S.picked[S.tab].has(p.id));
@@ -539,8 +539,10 @@
     const pages = [...$('inv-pages').querySelectorAll('input:checked')].map((i) => i.value);
     const ok = await busy($('inv-send'), async () => {
       try {
-        const { id } = await fn('invite', { email: $('inv-email').value, name: $('inv-name').value });
-        await rpc('admin_set_access', { target: id, new_status: 'approved', grant_pages: pages });
+        // The server sets the pages with the invite (A1-8). A function deployed
+        // before that answers without `pages`, and then the page still does it.
+        const out = await fn('invite', { email: $('inv-email').value, name: $('inv-name').value, pages });
+        if (!out.pages) await rpc('admin_set_access', { target: out.id, new_status: 'approved', grant_pages: pages });
         return true;
       } catch (err) { $('inv-msg').textContent = err.message; return false; }
     });

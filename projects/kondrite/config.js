@@ -5,10 +5,10 @@
  * still works. Fill these in to switch cloud saves on.
  *
  * ── where these come from ──
- * A Supabase project of its own — deliberately NOT the one ATLAS uses. ATLAS
- * grants reads to any signed-in account with no crew check, so its privacy
- * rests on signup being switched off in its dashboard, and a public game needs
- * signup switched on. See supabase/schema.sql.
+ * A Supabase project of its own — deliberately NOT the one ATLAS uses. That
+ * project is the site's one account now (sign-up on, every page behind Ric's
+ * approval through has_page_access()), and a public game's saves have no
+ * business sharing it. See supabase/schema.sql.
  *
  *   1. supabase.com → New project (the free plan is enough)
  *   2. SQL Editor → paste supabase/schema.sql → Run

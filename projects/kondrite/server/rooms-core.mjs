@@ -392,8 +392,13 @@ export function createRooms(config = {}) {
          that owns the room gets here, and a room is re-salted every time it is
          set — an unchanged password still gets a fresh hash. */
       if (typeof body.pass === "string") {
+        /* The count of wrong guesses is cleared only when the password really
+           changes. The host re-sends it every heartbeat, and clearing it on
+           each one held the "eight wrong in a minute" limit to eight per
+           two seconds (bug sweep A5-1). */
+        const changed = !(room.pass && await passOk(room, body.pass));
         room.pass = await makePass(body.pass);
-        room.fails = null;
+        if (changed) room.fails = null;
       }
 
       // Hand over the waiting offers and forget them: the host answers each one

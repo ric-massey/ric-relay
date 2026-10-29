@@ -973,8 +973,13 @@ function outOfRock(x, y) {
    region and a gap in the wall from the inside. */
 function caveSegsIn(cx, cy) {
   const ox = cx * CHUNK, oy = cy * CHUNK;
+  /* All four corners and the middle. One diagonal let a contour along it
+     leave rock in the other two corners with no discs under the drawn wall
+     (bug sweep C1d-9). */
   if (caveFillAt(ox + CHUNK / 2, oy + CHUNK / 2) <= 0.35 &&
       caveFillAt(ox, oy) <= 0.35 &&
+      caveFillAt(ox + CHUNK, oy) <= 0.35 &&
+      caveFillAt(ox, oy + CHUNK) <= 0.35 &&
       caveFillAt(ox + CHUNK, oy + CHUNK) <= 0.35) return [];
   const segs = [];
   const g0 = Math.ceil(ox / CAVE_CELL), g1 = Math.ceil((ox + CHUNK) / CAVE_CELL);

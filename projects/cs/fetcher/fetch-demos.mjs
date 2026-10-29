@@ -88,9 +88,15 @@ user.on("error", (e) => {
 });
 user.on("loggedOn", () => user.gamesPlayed([730]));
 
-const ask = (code) => new Promise((resolve) => {
+/* Only the answer for the match that was asked about. The first answer to
+   arrive used to be taken, whichever code it was for, so a late reply to the
+   last request could land under the next match's id (bug sweep B5a-6). */
+const ask = (vid, code) => new Promise((resolve) => {
   const done = (v) => { clearTimeout(t); csgo.removeListener("matchList", on); resolve(v); };
-  const on = (matches) => done(matches && matches[0]);
+  const on = (matches) => {
+    const m = (matches || []).find((x) => x && String(x.matchid) === String(vid));
+    if (m) done(m);
+  };
   const t = setTimeout(() => done(null), PER_MATCH_MS);
   csgo.on("matchList", on);
   csgo.requestGame(code);
@@ -100,7 +106,7 @@ csgo.on("connectedToGC", async () => {
   mkdirSync(INBOX, { recursive: true });
   let got = 0;
   for (const [vid, code] of todo) {
-    const match = await ask(code);
+    const match = await ask(vid, code);
     const url = (match?.roundstatsall || []).map((r) => r.map).filter(Boolean).pop();
     if (!url) {
       state.fetched[vid] = { error: "no demo link (expired, or Valve didn't answer)", at: new Date().toISOString() };

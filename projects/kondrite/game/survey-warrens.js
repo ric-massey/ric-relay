@@ -181,9 +181,9 @@ function drawSurveyWorld() {
      Each fills its footprint dark, and drawn after the traffic that fill
      painted over every ship inside the box — a raider chasing you into the
      Vault vanished at the door and shot at you from under the deck (A3,
-     "bots flying behind the walls"). The plates are drawn over a ship that
-     overlaps one, which is the right way round: a hull is behind a wall,
-     not in front of it. */
+     "bots flying behind the walls"). Since drawLeviathan moved ahead of the
+     traffic, a ship is drawn over the plates it overlaps, not under them
+     (bug sweep C1c-8: this note said the opposite). */
   if (surv.leviathan) drawLeviathan(surv.leviathan);
   if (surv.vault) drawVault(surv.vault);
   for (const t of surv.traffic) drawTraffic(t);

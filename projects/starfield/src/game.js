@@ -26,6 +26,7 @@
   const v3 = SF.v3;
 
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let lossTimer = 0;   // the SIGNAL LOST card, cancelled by a relaunch (C3-7)
 
   // How much radiated power the hull shrugs off, in watts per square metre
   // per unit of integrity per second. Tuned; everything feeding it is not.
@@ -131,9 +132,14 @@
     const bright = window.SF_STARS_BRIGHT || [];
     const seen = new Set();
 
+    /* "Sirius A" in the near list and "Sirius" in the bright one are one
+       star: keyed on the name without a trailing " A", or Sirius was in the
+       sky twice with two planet sets (bug sweep C3-14). A real companion —
+       "Procyon B" — keeps its own key. */
+    const key = (name) => String(name || "").replace(/\s+A$/, "");
     for (const entry of near.concat(bright)) {
-      if (seen.has(entry.name)) continue;
-      seen.add(entry.name);
+      if (seen.has(key(entry.name))) continue;
+      seen.add(key(entry.name));
       const { pos, distanceLy } = SF.systems.catalogueToCartesian(entry);
       const star = SF.systems.starFromCatalogue(entry, distanceLy);
       // Real stars keep their real light. Whether they have planets is our
@@ -238,6 +244,7 @@
   /* ── setup ──────────────────────────────────────────────────────────── */
 
   function restart() {
+    clearTimeout(lossTimer); lossTimer = 0;
     state.running = true;
     state.paused = false;
     // Start at rest in the Sun's frame. Relativity scales with speed, so from
@@ -1087,7 +1094,9 @@
 
     const message = SF.hud.describeDeath(cause, state);
     // Let the flash and the shake land before the modal takes the screen.
-    setTimeout(() => {
+    // Kept, so a relaunch inside those 420 ms can call it off — it used to
+    // land over the new, live flight (bug sweep C3-7).
+    lossTimer = setTimeout(() => {
       lossCode.textContent = message.code;
       lossTitle.textContent = message.title;
       lossDetail.textContent = message.detail;

@@ -262,8 +262,10 @@ function askYesNo(prompt, done) {
   wrap.className = "ask";
   wrap.innerHTML =
     '<label></label>' +
-    '<div><button type="button" data-ok>\\u2713</button>' +
-    '<button type="button" class="quiet" data-no>\\u2715</button></div>';
+    // The characters themselves: the doubled backslash reached the buttons as
+    // six letters of an escape code, not a tick (bug sweep C1c-6).
+    '<div><button type="button" data-ok aria-label="Remove">✓</button>' +
+    '<button type="button" class="quiet" data-no aria-label="Keep">✕</button></div>';
   wrap.querySelector("label").textContent = prompt;
   const close = ok => {
     drop(wrap); askEl = null; pendingAsk = null; if (ok) done();
@@ -771,7 +773,7 @@ function buildChunk(cx, cy) {
            for weeks. Six with damage counted means the starting cannon takes
            six hits and a rail lance takes two — a big gun should tell. */
         out.hulks.push({ x: p.x, y: p.y, r: rnd(52, 96), a: R() * Math.PI * 2,
-                         spin: rnd(-0.12, 0.12), hp: 6 });
+                         spin: rnd(-0.12, 0.12), hp: 6, full: 6 });
       }
     }
     /* Asteroid fields, out where the sector stops being tidy. Standing rock

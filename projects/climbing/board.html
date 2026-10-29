@@ -382,7 +382,10 @@
 
       // The terminal opens this page as board.html#kilter / #tension, so honour
       // the hash when it names a board that actually has data.
-      const hashBoard = decodeURIComponent(location.hash.replace(/^#/, "")).toLowerCase();
+      // A malformed hash (a stray "%") falls back to the first board rather
+      // than throwing with the page already half shown (bug sweep B1-7).
+      let hashBoard = "";
+      try { hashBoard = decodeURIComponent(location.hash.replace(/^#/, "")).toLowerCase(); } catch (e) {}
       let current = names.includes(hashBoard) ? hashBoard : names[0];
       let selected = null;
       let shown = 25;
@@ -872,5 +875,6 @@
     })();
   </script>
   <script src="../relay-return.js" data-home="../../index.html" data-egg="board"></script>
+<script src="../../effects.js"></script>
 </body>
 </html>

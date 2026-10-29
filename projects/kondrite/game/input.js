@@ -423,7 +423,15 @@ addEventListener("keydown", e => {
   const lob = document.getElementById("lobby");
   if (lob && !lob.hidden) return;
   const acct = document.getElementById("account");
-  if (acct && !acct.hidden) return;
+  if (acct && !acct.hidden) {
+    /* Escape is "back" on the door, as it closes the lobby panel; it did
+       nothing here (bug sweep C1e-7). */
+    if (e.key === "Escape") {
+      const back = document.getElementById("btnAcctClose");
+      if (back && !back.hidden) back.click();
+    }
+    return;
+  }
   if (typingInField()) return;
   // While a key is being listened for, the whole keyboard is ours: the point
   // is to catch the key itself, not what the browser would rather do with it.

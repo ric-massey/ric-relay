@@ -17,8 +17,9 @@ The website never has the database key, so it can't reach the family's data:
   (see `.gitignore`) and exists only on Ric's machine.
 - With no key, `auth.js` switches to demo mode: no sign-in, the login page opens onto a
   "look around" door, and the app runs on the made-up race in `shared/demo-data.js`,
-  stored only in the visitor's browser and re-seeded every few hours so it always looks
-  mid-race. A yellow DEMO strip sits on every app page.
+  stored only in the visitor's browser and re-seeded once a day. It is always the run-up
+  to race day — the plan is set and nobody has checked in yet. A yellow DEMO strip sits on
+  every app page.
 - `tests/auth-security.test.cjs` fails if a key, a JWT or a `*.supabase.co` project
   address appears in any file here other than `config.local.js`, or if that file stops
   being ignored. `.github/checks.mjs` runs it on every push.

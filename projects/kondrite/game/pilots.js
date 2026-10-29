@@ -599,7 +599,7 @@ function surveyTraffic(dt) {
        along it until the eight-second watchdog notices. */
     if (solidBounce(t, hullR(t))) bounceOff(t, 1.3);
 
-    trafficBump(t, i, me, near);
+    if (trafficBump(t, i, me, near)) continue;
 
     if (trafficFire(t, dt, me, armed, fake, skill)) continue;
   }

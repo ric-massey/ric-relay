@@ -35,6 +35,7 @@
    history. */
 
 import { createServer } from 'node:http';
+import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -95,9 +96,13 @@ async function authorize() {
   const id = clientId();
   const secret = clientSecret(id);
   const redirect = `http://localhost:${PORT}/exchange`;
+  /* A random state, checked on the way back, and a listener on loopback only:
+     before, anybody on the same network could hand this the first code it
+     saw and have it exchanged with Ric's client secret (bug sweep A2b-6). */
+  const state = randomBytes(16).toString('hex');
   const url = `https://www.strava.com/oauth/authorize?client_id=${encodeURIComponent(id)}` +
     `&redirect_uri=${encodeURIComponent(redirect)}&response_type=code&approval_prompt=force` +
-    `&scope=activity:read_all`;
+    `&scope=activity:read_all&state=${state}`;
 
   console.log('\nOpen this, and click Authorize:\n\n  ' + url + '\n');
   console.log('Waiting for Strava to come back...');
@@ -106,6 +111,7 @@ async function authorize() {
     const server = createServer((req, res) => {
       const u = new URL(req.url, `http://localhost:${PORT}`);
       if (u.pathname !== '/exchange') { res.writeHead(404).end(); return; }
+      if (u.searchParams.get('state') !== state) { res.writeHead(400).end('wrong state'); return; }
       const got = u.searchParams.get('code');
       const scope = u.searchParams.get('scope') || '';
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
@@ -119,7 +125,7 @@ async function authorize() {
       }
       resolve(got);
     });
-    server.listen(PORT);
+    server.listen(PORT, '127.0.0.1');
     /* Unreffed, or the five minutes outlive the authorize they were guarding:
        a pending timer keeps Node's event loop alive, so the prompt does not
        come back until it fires — long after the instructions have printed, and

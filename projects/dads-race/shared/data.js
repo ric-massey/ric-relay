@@ -1,5 +1,6 @@
 /* ================= DATA LAYER =================
-   Shared by both apps: Ric's (app.js) and the original crew app (original/app.js).
+   Used by the original crew app (original/app.js) and Ric's layers on top of it
+   (ric-layer.js, notes-layer.js).
    Sign-in headers, the offline queue, the demo store and profile-colour cleaning all
    live here, so the original app's screens can stay exactly as they were written. */
 const HERMISCUS_CONFIG = window.HERMISCUS_CONFIG || {};
@@ -134,6 +135,7 @@ async function flushOfflineQueue(options={}){
   let conflicts=0;
   try{
     for(const op of getOfflineQueue()){
+      if(op.refused) continue;
       try{
         const applied=await sendQueuedOperation(op);
         if(op.kind==='updateIfNull'&&!applied) conflicts++;
@@ -141,21 +143,27 @@ async function flushOfflineQueue(options={}){
         saveOfflineQueue(remaining);
         reportConnection(true);
       }catch(error){
-        // Network errors stay queued. A server error also stays queued rather than silently
-        // discarding race data; the connection chip keeps showing that work is waiting.
+        // Network errors, 5xx and a signed-out session stay queued and stop the flush:
+        // the next try may well work. A write the server refuses outright (4xx) is set
+        // aside instead — kept, never silently discarded, still counted on the chip —
+        // so it no longer holds every write behind it back for good (bug sweep A4-4).
+        if(!error.offline && !error.signedOut && error.status && error.status < 500 && error.status !== 408 && error.status !== 429){
+          saveOfflineQueue(getOfflineQueue().map(item=>item.queueId===op.queueId?{...item,refused:true,refusedWhy:String(error.message||'').slice(0,200)}:item));
+          continue;
+        }
         reportConnection(false);
         break;
       }
     }
   }finally{
     _flushingOfflineQueue=false;
-    reportConnection(getOfflineQueue().length?false:true);
+    reportConnection(getOfflineQueue().some(op=>!op.refused)?false:true);
   }
   const synced=startedCount-getOfflineQueue().length;
   if(synced&&!options.quiet){
     toast(conflicts?'Saved changes synced; another crew member logged one event first.':'Saved offline changes synced.');
   }
-  return getOfflineQueue().length===0;
+  return !getOfflineQueue().some(op=>!op.refused);
 }
 
 const LOCAL_KEY = 'hermesco_local_db_v1';
@@ -229,8 +237,21 @@ async function sbFetch(url, opts){
     // screen indefinitely (this was the "page loads blank until I refresh 3x" bug).
     const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     const to = ctrl ? setTimeout(() => ctrl.abort(), 12000) : null;
+    // A dead session is not a dropped connection. It used to be caught below as
+    // one, so a write after the session ran out was queued as "saved on phone",
+    // said "sent", and was wiped with the rest of the signed-in state on the next
+    // load (bug sweep A4-5). Now it is refused out loud and nothing claims it saved.
+    let authenticatedHeaders;
     try{
-      const authenticatedHeaders = await window.HermiscusAuth.authorizedHeaders((opts && opts.headers) || {});
+      authenticatedHeaders = await window.HermiscusAuth.authorizedHeaders((opts && opts.headers) || {});
+    }catch(e){
+      if(to) clearTimeout(to);
+      if(e && e.offline){ lastErr = e; res = null; continue; }
+      const error = new Error("You're signed out, so that was not saved. Sign in again and redo it.");
+      error.signedOut = true;
+      throw error;
+    }
+    try{
       const requestOptions = {...(opts || {}), headers:authenticatedHeaders};
       res = await fetch(url, ctrl ? {...requestOptions, signal: ctrl.signal} : requestOptions);
     }catch(e){
@@ -255,7 +276,9 @@ async function sbFetch(url, opts){
     reportConnection(false);
     let detail = '';
     try{ detail = await res.text(); }catch(e){}
-    throw new Error(`Save failed (${res.status}). ${detail.slice(0,180)}`);
+    const error = new Error(`Save failed (${res.status}). ${detail.slice(0,180)}`);
+    error.status = res.status;
+    throw error;
   }
   reportConnection(true);
   // A write of ours — drop the read cache and let the live-sync poll re-baseline silently

@@ -31,11 +31,13 @@ const ENEMY_COLOUR = "#ff6b6b";    // the enemy: cold red
 // harder settings drop back to the three-round burst the other modes use, so
 // every shot has to be picked and the extra difficulty isn't only in the hull.
 const DIFFICULTY = {
-  easy:       { pilotHull: 5, allOneHit: false, autoFire: true,  colour: "#6dffbf",
+  // `label` is what the setup screen's buttons say; without it all three
+  // read "undefined" (bug sweep C1b-2).
+  easy:       { label: "EASY", pilotHull: 5, allOneHit: false, autoFire: true,  colour: "#6dffbf",
                 blurb: "your ships take five hits · auto fire" },
-  hard:       { pilotHull: 3, allOneHit: false, autoFire: false, colour: "#ff8f77",
+  hard:       { label: "HARD", pilotHull: 3, allOneHit: false, autoFire: false, colour: "#ff8f77",
                 blurb: "your ships take three hits · burst fire" },
-  impossible: { pilotHull: 1, allOneHit: true,  autoFire: false, colour: "#ff6b6b",
+  impossible: { label: "IMPOSSIBLE", pilotHull: 1, allOneHit: true,  autoFire: false, colour: "#ff6b6b",
                 blurb: "one hit kills anything — you and them · burst fire" }
 };
 
@@ -817,10 +819,15 @@ function campaignWin() {
   // the same figures to the debrief. A loss leaves it untouched, so a retry
   // brings back exactly the fleet that flew this attempt.
   const carry = computeCarryover();
+  /* The ledger this mission started from rides along, so RETRY on a win flies
+     it from there again rather than banking the same win twice — "MISSIONS
+     WON 4" and the same ace listed twice in a three-mission war (C1b-8). */
+  const before = campRun ? Object.assign({}, campRun, { before: null }) : null;
   campRun = {
     fleet: carry.fleet, bonusReserve: carry.bonusReserve,
     veterans: carry.veterans, acesKilled: carry.acesKilled,
-    missionsWon: carry.missionsWon, kills: carry.kills
+    missionsWon: carry.missionsWon, kills: carry.kills,
+    before: before && { levelKey: camp.levelKey, ledger: before }
   };
   endMatch({ kind: "victory", levelKey: camp.levelKey, level: camp.level, carry });
 }
@@ -1003,6 +1010,10 @@ function driveCampaignBot(s, dt) {
 
   // Squad orders override an ally bot's own instincts — the fleet moves as one.
   if (s.team === TEAM_ALLY && camp.order) {
+    /* The order ends with its target. A downed fighter comes back as the same
+       object at its own edge, and the wing used to chase it across the map
+       (bug sweep C1b-7). */
+    if (camp.focusTarget && (!camp.focusTarget.alive || camp.focusTarget.dead)) camp.focusTarget = null;
     if (camp.order === "focus" && camp.focusTarget && camp.focusTarget.alive &&
         !camp.focusTarget.dead && !camp.focusTarget.shielded) {
       target = camp.focusTarget;

@@ -217,7 +217,9 @@
     this.lastSig = sig;
 
     const e = this.el;
-    e.wrap.style.opacity = v.ground > 0 || v.haze > 0 || heat > 0 ? "1" : "0";
+    // The airglow too: it is meant to fade out by 100 km, and leaving it out
+    // here switched the whole layer off at 16 km, airglow and all (D3-11).
+    e.wrap.style.opacity = v.ground > 0 || v.haze > 0 || heat > 0 || v.airglow > 0 ? "1" : "0";
 
     /* You are going straight up, so the canopy does not slide down the
        screen — it opens outward. Everything you are rising past spreads

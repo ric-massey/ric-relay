@@ -104,7 +104,7 @@ function forVisitor(a) {
      definition, so they publish rather than hide forever. */
   const t = Date.parse(a.at);
   if (!Number.isFinite(t) || Date.now() - t >= ROUTE_HOLD_MS) return a;
-  const out = { ...a };
+  const out = { ...a, held: true };   // says the map is coming, not missing (B2-10)
   delete out.route;
   return out;
 }
@@ -214,11 +214,13 @@ export class TrainingLog {
        not also stop a delete or an "Only You" on a real run from landing. */
     this.knownHooks = [];
     this.lookedAt = new Map();
-    /* Timestamps of recent failed attempts. In memory rather than storage on
-       purpose: there is exactly one instance of this object, so a plain array
-       is a global counter, and losing it when the object is evicted is fine —
-       an attacker cannot cause an eviction and a restart costs nothing. */
+    /* Timestamps of recent failed attempts. Kept in memory for speed and
+       written to storage on every miss: an idle object is evicted on its own
+       and every deploy starts a new one, so a memory-only count reset the
+       window to "ten guesses per idle gap" (bug sweep A2a-5). Read back the
+       first time the object is asked after starting. */
     this.fails = [];
+    this.failsLoaded = false;
   }
 
   /* Wrong passwords get slower. Ten failures in five minutes and everything
@@ -236,12 +238,20 @@ export class TrainingLog {
      because a throttle that waves it through tells the guesser which guess
      was right. See the note above authed() in fetch(). The right trade for a
      page that ticks boxes. */
-  throttled() {
+  async throttled() {
     const now = Date.now(), WINDOW = 5 * 60 * 1000, LIMIT = 10;
+    if (!this.failsLoaded) {
+      this.failsLoaded = true;
+      const kept = (await this.state.storage.get('auth:fails')) || [];
+      this.fails = [...kept, ...this.fails];
+    }
     this.fails = this.fails.filter(t => now - t < WINDOW);
     return this.fails.length >= LIMIT;
   }
-  noteFail() { this.fails.push(Date.now()); }
+  async noteFail() {
+    this.fails.push(Date.now());
+    await this.state.storage.put('auth:fails', this.fails.slice(-20));
+  }
 
   /* One more edit the poster job has not seen. Counted rather than flagged so
      that clearing it can never swallow a write that arrived while GitHub was
@@ -709,7 +719,7 @@ export class TrainingLog {
       const given = bearer();
       if (!given) return false;
       if (this.token && sameSecret(given, this.token)) return true;
-      this.noteFail();
+      this.noteFail();   // counted at once; the stored copy follows
       return false;
     };
     const lockout = () => json({ error: 'too many attempts — wait five minutes' }, 429, origin,
@@ -717,7 +727,7 @@ export class TrainingLog {
     /* Before any route: a credential presented during a lockout is refused
        unread. This is the whole throttle — everything below it may assume that
        a credential it gets to compare arrived while the door was open. */
-    if (bearer() && this.throttled()) return lockout();
+    if (bearer() && await this.throttled()) return lockout();
 
     /* ---------- POST /garmin-auth — internal only ----------
        Who is asking for the Garmin export: Ric (LOG_TOKEN, may read and
@@ -733,7 +743,7 @@ export class TrainingLog {
          opens health data, and it is typed by hand into two settings pages. */
       const reader = this.env.GARMIN_READ_TOKEN || '';
       if (given && reader.length >= 24 && sameSecret(given, reader)) return json({ role: 'reader' }, 200, origin);
-      if (given) this.noteFail();
+      if (given) await this.noteFail();
       return json({ error: 'nope' }, 401, origin);
     }
 
@@ -749,13 +759,13 @@ export class TrainingLog {
       /* Throttle first, then correctness. The other order is the oracle
          described above authed(): it only ever slowed down the guesses that
          were wrong. */
-      if (this.throttled()) return lockout();
+      if (await this.throttled()) return lockout();
       if (given && this.token && sameSecret(given, this.token)) {
         return json({ ok: true }, 200, origin);
       }
       /* A wrong password is a 401 with no detail — not "too short", not "close",
          nothing that narrows the search. */
-      this.noteFail();
+      await this.noteFail();
       return json({ error: 'nope' }, 401, origin);
     }
 
@@ -1259,6 +1269,10 @@ export class TrainingLog {
       const all = await this.state.storage.list({ prefix: 'd:' });
       const out = {};
       for (const [k, v] of all) out[k.slice(2)] = view(v);
+      /* A password that was presented and refused still gets the public view
+         — but is told so, or the page goes on saying "Signed in." while every
+         read counts toward the lockout (bug sweep B2-9). */
+      if (bearer() && !isOwner) return json({ days: out, refused: true }, 200, origin, { 'cache-control': 'private, no-store' });
       return json({ days: out }, 200, origin, { 'cache-control': cache });
     }
 
@@ -1519,6 +1533,7 @@ const TRIAL_PARAMS = ['query.term', 'query.cond', 'query.intr', 'query.titles', 
   'pageSize', 'pageToken', 'countTotal', 'fields'];
 const TRIAL_TTL_S = 300;                      // "a few minutes"
 const TRIAL_MEMO_MAX = 200;
+const TRIAL_MEMO_BODY_MAX = 256 * 1024;
 /* Per-isolate memory in front of the Cache API: free, and the only cache the
    tests and dev.mjs have. caches.default sits behind it in production, which is
    what carries a hit across isolates in the same colo. */
@@ -1596,8 +1611,14 @@ async function trialsProxy(request, env, ctx, parts, url) {
     return reply(body.slice(0, 4000) || JSON.stringify({ error: 'upstream ' + r.status }), status, 'miss');
   }
 
-  if (trialMemo.size >= TRIAL_MEMO_MAX) trialMemo.delete(trialMemo.keys().next().value);
-  trialMemo.set(upstream, { body, until: Date.now() + TRIAL_TTL_S * 1000 });
+  /* Only small answers are held in the isolate: entries were capped by count
+     and not by size, so a few dozen big queries could push an isolate past
+     its memory and fail every route on it (bug sweep A2a-7). The edge cache
+     below still holds the big ones. */
+  if (body.length <= TRIAL_MEMO_BODY_MAX) {
+    if (trialMemo.size >= TRIAL_MEMO_MAX) trialMemo.delete(trialMemo.keys().next().value);
+    trialMemo.set(upstream, { body, until: Date.now() + TRIAL_TTL_S * 1000 });
+  }
   if (edge) {
     const put = edge.put(key, new Response(body, {
       headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, max-age=${TRIAL_TTL_S}` }
@@ -2146,7 +2167,9 @@ export default {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ password: given })
         }));
-        return r.status === 200;
+        /* A lockout is a lockout, not "not the owner": collapsing the 429
+           into false made the page sign Ric out (bug sweep A2a-2). */
+        return r.status === 429 ? 'locked' : r.status === 200;
       };
       return handleVisitors(request, env, parts, url, isOwner, json);
     }
@@ -2363,7 +2386,7 @@ export default {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ password: given })
         }));
-        return r.status === 200;
+        return r.status === 429 ? 'locked' : r.status === 200;   // see /stats (A2a-2)
       };
 
       /* ---------- GET /media/file/<date>/<file> — the bytes ----------
@@ -2443,7 +2466,9 @@ export default {
 
       if (request.method === 'POST') {
         if (!date) return json({ error: 'POST needs a date: /media/YYYY-MM-DD' }, 400, origin);
-        if (!(await owner())) return json({ error: 'nope' }, 401, origin);
+        const who = await owner();
+        if (who === 'locked') return json({ error: 'too many tries — wait five minutes' }, 429, origin, { 'retry-after': '300' });
+        if (!who) return json({ error: 'nope' }, 401, origin);
 
         /* ---------- POST /media/<date>/<id> {remove:true} — take it down ----------
            A POST rather than a DELETE for the same reason /climb deletes that

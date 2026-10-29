@@ -501,10 +501,10 @@
     width: min(100%, 680px);
     border: 1px solid var(--phosphor-faint);
     background: #000;
-    /* The site's return-to-terminal button is fixed to the bottom-left corner
-       at a z-index nothing here can win, so the panel keeps its own last row
-       clear of it rather than letting a button hide under one. */
-    padding: 1.2rem 1.3rem max(1.4rem, 4.5rem);
+    /* No return-to-terminal button on this page (see the head), so nothing
+       to keep clear: the 4.5rem pushed "play as a guest" and "back" below the
+       fold on a sideways phone (bug sweep C1e-8). */
+    padding: 1.2rem 1.3rem 1.4rem;
     /* The panel does its own scrolling. Capping the height without this let the
        content spill straight past the box, which put the bottom padding — and
        so the clearance above — somewhere it could never do its job. */
@@ -817,29 +817,17 @@
 <body>
 
 <h1 class="sr-only">KONDRITE — a survey of endless space</h1>
+<!-- Rewritten 2026-10-29 (bug sweep C1e-9): it described the old five-ship
+     arena game and never mentioned Survey, which is the game now. -->
 <p class="sr-only">
-  A local or peer-to-peer online space combat game for one to five ships. Survival puts
-  every ship on the same side against a field of drifting rocks, sharing one pool of lives.
-  Friendly fire is optional: when enabled, a shot that hits your partner destroys them and
-  costs the team a life. Battle Royale is a
-  larger arena where every ship is an enemy and each has three lives. A bullet or
-  asteroid collision damages the ship's two-hit hull; the next hit costs a life. The
-  arena wall closes inward until only one ship is left flying, around stationary stars
-  and black holes that pull ships, rocks and shots towards them. In Survival the field
-  wraps: fly off one edge and you arrive at the opposite one, and so do the rocks and the
-  shots. Battle royale has solid walls instead — ships bounce off them and bullets are
-  destroyed by them. Once the walls close, they pass over rocks instead of pushing them.
-
-  One or two people play at the same keyboard, one player per phone, and up to five play
-  online with a screen each. Each player is named for the colour of their ship. Amber
-  steers with A and D, thrusts with W and fires with the space bar. Green, the second
-  player at a keyboard, steers with the left and right arrow keys, thrusts with the up
-  arrow and fires with Enter. Cyan, pink and violet are flown by bots or by other people
-  online. Those are the keys it starts with: press C at the title screen to open
-  Settings, where every key can be reassigned and the browser remembers your choices.
-  Press P or Escape to pause, or to open the game menu online. Tab in battle royale
-  follows a different ship. Phones use either a directional stick or separate turn and
-  acceleration buttons, with optional automatic fire.
+  KONDRITE is one game, Survey. You fly a ship out into an endless sector: chart it,
+  find the things its almanac lists, trade at its stations, and salvage parts to fit to
+  your ship. The front page offers to begin the survey, or continue it, and Settings.
+  The older arena modes, Survival and Battle Royale, are arcade machines inside the
+  stations, and can be played online. On a keyboard, A and D turn, W thrusts and the
+  space bar fires; press C for Settings, where every key can be reassigned. Press P or
+  Escape to pause. A phone plays held sideways, with an on-screen stick or buttons, and
+  a gamepad works too.
 </p>
 
 <div id="stage">

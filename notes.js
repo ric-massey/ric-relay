@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════
 //  NOTES FROM RIC
-//  This is the ONLY file you ever need to touch by hand.
+//  One of the two files edited by hand for the front door — the
+//  other is latest.js, the "new" pill (AGENTS.md).
 //  To post an update: copy one of the blocks below, paste it
 //  at the TOP of the list, and change the date + text.
 //  Then `git push` — GitHub Pages redeploys ricmassey.com automatically.

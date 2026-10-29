@@ -64,6 +64,14 @@ let wScale = 1;      // WORLD units → SCREEN units (1 while drawing the HUD)
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/* The resize listeners below are registered in this, the first chapter, and a
+   phone's visual viewport fires them while the page is still loading — before
+   the chapters padApply() reaches into (controls, world, pointer) have run.
+   That threw a ReferenceError on every phone load (bug sweep C1a-1). The pad
+   is placed only once boot.js says the whole game is there; boot then calls
+   padApply() and resize() itself. */
+let booted = false;
+
 function resize() {
   const dpr = window.devicePixelRatio || 1;
   const availW = stage.clientWidth - 2;
@@ -84,7 +92,7 @@ function resize() {
   canvas.height = Math.round(SCREEN_H * s * dpr);
   viewScale = s * dpr;
   // Turning the phone over can leave a control hanging off the short edge.
-  padApply();
+  if (booted) padApply();
 }
 window.addEventListener("resize", resize);
 /* A phone's toolbar sliding away changes what you can see without ever firing

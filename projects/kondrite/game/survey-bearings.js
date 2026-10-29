@@ -354,9 +354,10 @@ function surveyParts(dt) {
        the part is now lying where you fell, and the only mark on the board
        was the stale one, back where it started. */
     surv.known.delete(knownId("part", pt.x, pt.y));
-    const back = pt.id
-      ? surv.dropped.findIndex(d => d.id === pt.id)
-      : surv.dropped.findIndex(d => d.key === pt.key);
+    /* Only a pickup that IS a dropped part takes one off that list. A site's
+       spare has no id, and matching it by key deleted the spare of the same
+       part you had dropped when you died (bug sweep C1c-4). */
+    const back = pt.id ? surv.dropped.findIndex(d => d.id === pt.id) : -1;
     if (back >= 0) surv.dropped.splice(back, 1);
     burst(pt.x, pt.y, CASH, 26, 260 * U);
     gameSound("win", pt.x, pt.y);

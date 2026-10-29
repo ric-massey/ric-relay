@@ -484,14 +484,18 @@ function drawIcon(key, cx, cy, r, on) {
       /* A sealed box with a ring inside it and one way in. The picture has to
          say "somebody built this and locked it", which is a square, a ring and
          a gap — not a wreck and not a rock. */
-      ctx.strokeRect(cx - r * 0.85, cy - r * 0.85, r * 1.7, r * 1.7);
-      ctx.beginPath();
-      ctx.arc(cx, cy, r * 0.44, 0.5, 0.5 + Math.PI * 1.72);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx + r * 0.85, cy - r * 0.2);
-      ctx.lineTo(cx + r * 0.85, cy + r * 0.2);
-      ctx.stroke();
+      // Through stroke() like every other picture, so it is lit when found
+      // and grey when not, not whatever pen the last drawing left (C1d-12).
+      stroke(AMBER, 1.6, () => {
+        ctx.strokeRect(cx - r * 0.85, cy - r * 0.85, r * 1.7, r * 1.7);
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.44, 0.5, 0.5 + Math.PI * 1.72);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + r * 0.85, cy - r * 0.2);
+        ctx.lineTo(cx + r * 0.85, cy + r * 0.2);
+        ctx.stroke();
+      });
       disc(cx, cy, r * 0.14, on ? AMBER : VIOLET_LOW);
       break;
     case "node-01":

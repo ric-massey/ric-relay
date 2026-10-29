@@ -80,11 +80,21 @@ if [ $INSTALL -eq 0 ]; then
   exit 10
 fi
 
+# A Decline is remembered for that version, so the hourly sync does not put
+# the same dialog up every hour (bug sweep B1-13). A newer release asks again;
+# --force, or deleting this file, asks now.
+DECLINED="$HERE/.board-cache/declined-boardlib"
+if [ $FORCE -eq 0 ] && [ "$(cat "$DECLINED" 2>/dev/null)" = "$latest" ]; then
+  echo "boardlib $latest was declined before — staying on $installed"
+  exit 11
+fi
+
 if [ $FORCE -eq 0 ]; then
   answer=$(ask_permission "$installed" "$latest")
   case "$answer" in
     Accept)  echo "accepted by Ric" ;;
-    Decline) echo "declined — staying on $installed"; exit 11 ;;
+    Decline) mkdir -p "$(dirname "$DECLINED")"; echo "$latest" > "$DECLINED"
+             echo "declined — staying on $installed"; exit 11 ;;
     *)       echo "no answer (nobody at the Mac) — staying on $installed"; exit 11 ;;
   esac
 fi

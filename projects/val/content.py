@@ -81,13 +81,18 @@ class Content:
     def ability(self, agent_uuid, slot):
         a = self.c["agents"].get((agent_uuid or "").lower()) or {}
         s = (slot or "").lower()
-        return a.get("abilities", {}).get(s) or a.get("abilities", {}).get(s.replace("ability", "ability")) or slot
+        # Riot calls the grenade slot "GrenadeAbility"; valorant-api calls it
+        # "Grenade". The old fallback replaced "ability" with itself (B6-9).
+        return a.get("abilities", {}).get(s) or a.get("abilities", {}).get(s.replace("grenadeability", "grenade")) or slot
 
     def item(self, uuid):
         if not uuid:
             return None
-        self._ensure("weapons", uuid)
         u = uuid.lower()
+        # Armour is gear, not a weapon: looking only in weapons sent every
+        # armour id back to valorant-api.com, every match (bug sweep B6-7).
+        if u not in self.c["weapons"] and u not in self.c["gear"]:
+            self._ensure("weapons", uuid)
         return self.c["weapons"].get(u) or self.c["gear"].get(u) or None
 
     def tier(self, n):

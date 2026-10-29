@@ -371,7 +371,10 @@
   <!-- Lets the banner see days logged from a phone, not just the ones
        committed into climbs.md. latest.js uses it if it is there. The two
        parser files come first: a web day is stored as the markdown it would
-       have been, and these are what read it. -->
+       have been, and these are what read it. web-trips.js asks the log
+       service through climb-host.js, so that comes first of all — without it
+       fetchDays() threw, caught it and said "no days" (bug sweep D1-1). -->
+  <script src="projects/climbing/climb-host.js?v=1"></script>
   <script src="projects/climbing/climb-vocab.js?v=2"></script>
   <script src="projects/climbing/climb-parse.js?v=2"></script>
   <script src="projects/climbing/web-trips.js?v=4"></script>

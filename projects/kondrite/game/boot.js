@@ -490,6 +490,7 @@ refreshKeys();   // reading them in is not a change worth writing back
 // not after: the menus should already know what they are talking to.
 applyInputMode();     // the guess, or the player's word over it
 padLoad();
+booted = true;   // every chapter has run: resize() may place the pad now (C1a-1)
 padApply();
 resize();
 // Which way up it is, before the first frame rather than after the first

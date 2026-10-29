@@ -218,7 +218,10 @@ function grab(el, id) { try { el.setPointerCapture(id); } catch (_) {} }
    leave the ship flying on a control nobody is holding. */
 function padRelease() {
   stickRelease();
-  touch.l = touch.r = touch.th = touch.f = false;
+  // REVERSE too: it was the one control this let go of, so a blur mid-burn
+  // left the ship backing up with no finger on it (bug sweep C1a-4).
+  touch.l = touch.r = touch.th = touch.f = touch.rev = false;
+  revEl.classList.remove("down");
   leftEl.classList.remove("down");
   rightEl.classList.remove("down");
   accelEl.classList.remove("down");

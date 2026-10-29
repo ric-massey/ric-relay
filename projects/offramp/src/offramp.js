@@ -18,13 +18,13 @@
    ramp is a place the tarmac goes; taking it is a thing you do with
    the steering wheel and nothing else.
 
-   ── nobody else is here ────────────────────────────────────────────
-   Traffic existed, worked, and has been deleted — the map is being
-   rebuilt from a fictional region into one real corridor, and cars
-   that pick exits are worth nothing until the exits are the right
-   ones. Signals, queues and everything you could hit come back with
-   it. Until then the road itself is the whole opponent: the barrier,
-   the gore, the verge, and how fast you are taking them.
+   ── the traffic ────────────────────────────────────────────────────
+   It was deleted once, while the map became one real corridor, and it
+   is back: data/traffic.js and src/traffic.js say who is on the road,
+   src/sim.js steps them and src/motive.js decides their lane changes,
+   and src/cars.js puts them on the road you can see. None of that lives
+   in this file. (This note said "nobody else is here" until the bug
+   sweep of 2026-10-17, D4-6.)
 
    ── the camera is on the road, not on the car ──────────────────────
    This is the decision the whole feel hangs off, and it is worth being
@@ -90,7 +90,7 @@
   /* Once the top speed; now a fixed REFERENCE SPEED, and the difference
      matters enough to be worth the paragraph.
 
-     There is a garage as of today (`data/cars.js`), so "top speed" is a
+     There is a garage as of today (`data/garage.js`), so "top speed" is a
      property of what you are driving and lives on `S.car.vTop` — 193
      km/h in the Jetta, 330 in the built 911. But V_MAX was never only a
      ceiling: a dozen expressions in this file normalise on it to get a
@@ -248,7 +248,7 @@
   };
 
   /* A garage row's steering, which is its CLASS's row scaled by the two
-     figures data/cars.js derives — skidpad grip against a 0.85 g
+     figures data/garage.js derives — skidpad grip against a 0.85 g
      reference, and responsiveness off the square root of mass.
 
      The scaling is honest about being a modelling choice rather than
@@ -444,7 +444,7 @@
     gravelT: 0, newBest: false, hints: new Map(),
     onWhat: "lane", aimLane: 1,
     /* What is in the garage, and which row of STEER it drives like.
-       `S.car` is a row out of data/cars.js and it owns four things and
+       `S.car` is a row out of data/garage.js and it owns four things and
        only four: the pull, the brakes, the top speed and the mass.
        Everything else about how the game behaves is unchanged by it.
 
@@ -858,7 +858,10 @@
   function engineRpm(v, car) {
     const e = (car && car.eng) || ENG_DEF;
     const vTop = car ? car.vTop : V_MAX;
-    const frac = vTop > 0 ? Math.min(1, Math.abs(v) * (1 / PX_PER_KMH) / vTop) : 0;
+    // `v` is S.speed, already km/h like vTop. It was converted again as if it
+    // were px/s, so every car reached the gearbox at 64% of its speed and
+    // never met its limiter (bug sweep C2a-6).
+    const frac = vTop > 0 ? Math.min(1, Math.abs(v) / vTop) : 0;
     let within, first;
     if (frac >= TOP_AT) { within = (frac - TOP_AT) / (1 - TOP_AT); first = false; }
     else {
@@ -2002,6 +2005,7 @@
     const w = {
       dv: dvEff, dvEff, angle: 0, dirF: 1, ride: 1, gMean: null,
       kind: "roll", turns, vLat, pRoll: base, what: "soft ground",
+      vAt: S.speed,   // the speed the turns came from, for the panel (C2a-7)
     };
     judge(w);
     S.report = w;
@@ -2155,7 +2159,7 @@
 
            a(v) = a0 · (1 − (v/vTop)²)
 
-         `a0` and `vTop` are derived in data/cars.js from a published
+         `a0` and `vTop` are derived in data/garage.js from a published
          0–60 and a published top speed; the square term is drag, and it
          takes the acceleration to exactly ZERO at the top speed rather
          than leaving it pulling hard into a clamp the way the old
@@ -2430,24 +2434,10 @@
     place();
   }
 
-  /* ── there is nobody else on this road ──────────────────────────────
-     Traffic was written, worked, and has been deleted. It went because
-     the map is being rebuilt from a fictional region into one real
-     corridor, and a car that decides which exit to take is worth
-     nothing until the exits are the right exits in the right places.
-
-     What went with it: car-following, lane changes, the exit-choosing
-     AI, and a signal queue built out of a red light modelled as a
-     stopped car of zero length — which is how queues assembled and
-     overflowed backwards up a ramp without anybody writing that. It is
-     worth rebuilding that way again.
-
-     What went with it HERE: the separating-axis box test, contact
-     detection, and pass scoring. `crash()` still exists and the barrier
-     and the verge still use it, so leaving the road still ends a run;
-     there is simply nothing left to hit that moves. Score currently
-     comes from distance and from taking exits — see PLAN.md §2 for
-     where it should come from once there is a corridor to score. */
+  /* ── the other traffic ──────────────────────────────────────────────
+     Lives in src/cars.js (on the road you can see) over src/sim.js and
+     src/traffic.js; see the note at the top of this file. This block
+     used to say there was nobody else on the road (bug sweep D4-6). */
 
   /* How many vehicles per km per lane are around the player right now.
      The band that travels with you is BACK + AHEAD metres long and
@@ -2635,7 +2625,9 @@
        anybody was reading. It still drives the cell going hot. */
     hudScore.textContent = fmt(sc.carried);
     // BEST is off the gantry now; it lives on the RECORD tab
-    if (hudBest) hudBest.textContent = fmt(best);
+    /* The ledger's best too: it is raised by every way a run ends and by a
+       save code, where this one only ever saw a wreck (bug sweep C2a-5). */
+    if (hudBest) hudBest.textContent = fmt(Math.max(best, Math.floor(Progress.best || 0)));
     /* Hot above ×4, which needs at least two of the three terms to be
        doing something — it was ×1.5 when the multiplier could only ever
        reach ×2.8 off the exit combo. */
@@ -2713,7 +2705,8 @@
     const line = [];
     if (w.kind === "roll") {
       line.push(`${speedTxt(w.vLat)} of sideways in soft ground`);
-      line.push(`${w.turns} quarter-turn${w.turns === 1 ? "" : "s"} at ${speedTxt(S.topSpeed)}`);
+      // At the speed it went over, not the run's top speed (bug sweep C2a-7).
+      line.push(`${w.turns} quarter-turn${w.turns === 1 ? "" : "s"} at ${speedTxt(w.vAt != null ? w.vAt : S.topSpeed)}`);
       line.push(`the roll itself: ${pctTxt(w.pRoll)}`);
     } else {
       line.push(`${speedTxt(w.dv)} of delta-v into ${w.what || "it"}`);
@@ -2734,7 +2727,10 @@
     /* `disabling` is not `fatal`, and the difference is the whole
        reason the model has bands at all. The run is over either way,
        but the panel is allowed to say which one it was. */
-    const survived = S.report && S.report.outcome === "disabling";
+    /* Every outcome the driver lives through is SURVIVED — a roll you walk
+       away from ("damage") was headed WRECKED where a hurt one was not
+       (bug sweep C2a-7). */
+    const survived = S.report && S.report.outcome !== "fatal";
     const wh = el("wreck-head");
     if (wh) wh.textContent = S.cause === "fence" ? "OUT OF ROAD"
       : survived ? "SURVIVED" : "WRECKED";
@@ -2744,7 +2740,8 @@
       sums.textContent = t;
       sums.hidden = !t;
     }
-    el("w-dist").textContent = km().toFixed(2) + " km";
+    // In the units on the speedometer, like the HUD (C2a-7).
+    el("w-dist").textContent = units === "mph" ? (km() / KMH_PER_MPH).toFixed(2) + " mi" : km().toFixed(2) + " km";
     /* Banked, then what the wreck cost. The second line is the point of
        the whole checkpoint scheme and it should sting to read. */
     const r = S.run || { banked: 0, lost: 0, exits: 0 };
@@ -2760,7 +2757,7 @@
         : since === 0 ? `${r.exits} · all banked`
         : `${r.exits} · ${since} unbanked`;
     }
-    el("w-top").textContent = Math.round(S.topSpeed) + " km/h";
+    el("w-top").textContent = speedTxt(S.topSpeed);
     el("w-best").hidden = !S.newBest;
 
     /* And if the run opened a vehicle, that is the headline and not a
@@ -3089,7 +3086,7 @@
   /* ── looking one up ─────────────────────────────────────────────────
      (Ric, 2026-08-13: "also add a search bar.")
 
-     Sixteen rows is past what two arrows are pleasant for. Scored
+     Thirty-six rows is past what two arrows are pleasant for. Scored
      rather than filtered, because the answer has to be ONE vehicle —
      the card shows one — and "m5" should not lose to whichever row
      happens to sit earliest in the table and contain an m.
@@ -3458,6 +3455,20 @@
   if (el("code-go")) el("code-go").addEventListener("click", (e) => {
     e.stopPropagation(); enterCode();
   });
+  /* This browser's ledger as a save code: put in the box, selected, and
+     copied if the browser lets it be, so it can be pasted somewhere else. */
+  if (el("code-out")) el("code-out").addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const input = el("code-in"), note = el("code-note");
+    const code = Progress.exportCode();
+    input.value = code;
+    input.select();
+    let copied = false;
+    try { await navigator.clipboard.writeText(code); copied = true; } catch (err) { /* not allowed here */ }
+    note.textContent = copied ? "your save code is copied — paste it into another browser"
+                              : "your save code is in the box — copy it to another browser";
+    note.classList.add("good"); note.classList.remove("bad");
+  });
   if (el("code-in")) {
     /* Enter submits. The click handler on the frame would otherwise
        read a click in the box as "start driving", so both are stopped
@@ -3498,7 +3509,7 @@
       /* The month is not offered. It moves the counters by a few per
          cent and there is nothing to choose between one and another —
          unlike the hour, which moves them by a factor of ten. */
-      month: d.getMonth() + 1,
+      month: d.getMonth(),        // 0 = January, as the table is (C2b-4)
     };
   }
 
@@ -3647,6 +3658,11 @@
 
   addEventListener("keydown", (e) => {
     if (e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    /* Enter and Space on a focused button are that button's: a garage arrow
+       that kept focus after a click started the run on Enter and then swapped
+       the car mid-run as the button fired too (bug sweep C2a-10). */
+    if (e.target instanceof HTMLElement && e.target.tagName === "BUTTON" &&
+        (e.code === "Enter" || e.code === "NumpadEnter" || e.code === "Space")) return;
     if (e.code === "KeyG") { e.preventDefault(); setMap(!mapOpen); return; }
     if (mapOpen) {
       if (e.code === "Escape") setMap(false);
@@ -3674,12 +3690,11 @@
       if (e.code === "Digit1") { showPage("route"); return; }
       if (e.code === "Digit2") { showPage("garage"); return; }
       if (e.code === "Digit3") { showPage("record"); return; }
-      if (e.code === "Tab") {
-        e.preventDefault();
-        const i = PAGES.indexOf(page);
-        showPage(PAGES[(i + (e.shiftKey ? -1 : 1) + PAGES.length) % PAGES.length]);
-        return;
-      }
+      /* Tab is the browser's: it moves focus, which is how a keyboard
+         reaches the start exit, the day, the hour, the search and the code
+         box. Taking it for the tabs (which 1 2 3 already switch) left those
+         unreachable (bug sweep C2a-4). */
+      if (e.code === "Tab") return;
       /* A vehicle you have not earned is not a vehicle you can drive
          off in. Say so once rather than silently doing nothing. */
       if (!Progress.isUnlocked(Garage.ALL[carIdx].id)) { nudgeLocked(); return; }

@@ -1,7 +1,7 @@
 /* ══════════════════════════════════════════════════════════════════════
    THE GARAGE — what you can drive, as data.
 
-   Ten vehicles, one row each, and a row holds ONLY THINGS YOU COULD LOOK
+   Thirty-six vehicles, one row each, and a row holds ONLY THINGS YOU COULD LOOK
    UP. Power, kerb weight, 0–60 mph, top speed, 60–0 stopping distance,
    skidpad grip: every one of those is a figure a magazine printed about
    a real car. Nothing in the table is a game constant that somebody tuned

@@ -737,8 +737,11 @@
               <button type="button" data-del="${esc(k)}">remove</button></div>`;
           }).join('')
         : '<p class="lede">Nothing logged from the web yet.</p>';
-      document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => loadDay(days[b.dataset.edit]));
-      document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      /* Only this list's own buttons: the to-do's "remove" buttons carry
+         data-del too, and a document-wide bind gave them the day remover
+         (bug sweep B1-6). */
+      document.querySelectorAll('#recent [data-edit]').forEach(b => b.onclick = () => loadDay(days[b.dataset.edit]));
+      document.querySelectorAll('#recent [data-del]').forEach(b => b.onclick = async () => {
         if (!confirm(`Remove the ${b.dataset.del} entry? This only removes the one added here.`)) return;
         await Owner.post(`/climb/${b.dataset.del}`, { remove: true });
         listRecent();
@@ -874,5 +877,6 @@
     paint();
   })();
   </script>
+<script src="../../effects.js"></script>
 </body>
 </html>

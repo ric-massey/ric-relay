@@ -1643,7 +1643,11 @@
   }
 
   function skipToArrival() {
-    const b = S.beta > 0 ? S.beta : S.targetBeta;
+    /* Mid-ramp, the speed to settle the trip at is the one being ramped to,
+       as the preview line already reads it — not the momentary speed, which
+       early in the ramp made the rest of the trip take ten minutes against
+       the five seconds promised (bug sweep D3-2). */
+    const b = S.rampMs ? S.rampTo : (S.beta > 0 ? S.beta : S.targetBeta);
     if (!(b > 0)) return;
     const g = P.gamma(b);
     const earthLeg = S.distLs / b;
@@ -2405,7 +2409,9 @@
     }
     const url = new URLSearchParams(location.search);
     const b = parseFloat(url.get("b"));
-    if (isFinite(b) && b >= 0 && b < 1 && S.phase === "out") { S.beta = S.targetBeta = b; }
+    // Through the rail's own cap: an unclamped 0.99999999 read "1 c" and ran the
+    // clocks ten times past anything the rail can reach (bug sweep D3-9).
+    if (isFinite(b) && b >= 0 && b < 1 && S.phase === "out") { S.beta = S.targetBeta = Math.min(0.999999, b); }
     setRail(P.betaToSlider(S.targetBeta || S.beta));
     restoreMarks();
     markDetent();

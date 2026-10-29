@@ -278,6 +278,14 @@ function migrateSurveyBook(b) {
      and all. v5 keeps them per chunk. Nothing is dropped — a lost id is a
      cache that refills. */
   if (v === 4) {
+    /* A list or nothing. An object here is truthy and not iterable, and the
+       TypeError it threw was rethrown as a bug, which bricked the front page
+       instead of letting the backup have its turn (bug sweep C1d-7). */
+    for (const k of ["opened", "stripped", "lifted"]) {
+      if (b[k] != null && !Array.isArray(b[k])) {
+        throw new SaveError(SAVE_INVALID_SCHEMA, "v4 " + k + " is not a list");
+      }
+    }
     b = { ...b, version: 5,
           mutations: packMutations(b.opened || [], b.stripped || [],
                                    b.lifted || []) };
@@ -435,7 +443,9 @@ function validateSurveyBook(b) {
       battleAge: (() => {
         const out = {};
         const src = b.battleAge && typeof b.battleAge === "object" ? b.battleAge : {};
-        for (const k of Object.keys(src).slice(0, 400)) {
+        // The newest 400, not the oldest: past the cap the live battle and the
+        // ones just over were dropped, and fought again on reload (C1d-10).
+        for (const k of Object.keys(src).slice(-400)) {
           const v = Number(src[k]);
           if (Number.isFinite(v)) out[k] = Math.max(0, Math.min(9999, v));
         }

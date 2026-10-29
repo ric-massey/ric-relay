@@ -21,7 +21,12 @@ declare
   matched_profile uuid;
   account_slug text;
 begin
-  if split_part(lower(new.email), '@', 2) <> 'hermiscus.local' then
+  -- Only a confirmed account is linked. Ric makes the crew's accounts in the
+  -- dashboard with "Auto Confirm User", which sets email_confirmed_at; nobody
+  -- can confirm an address at hermiscus.local any other way. Without this,
+  -- anybody who could sign up with <name>@hermiscus.local while sign-ups were
+  -- open became that crew member (bug sweep A4-10).
+  if split_part(lower(new.email), '@', 2) <> 'hermiscus.local' or new.email_confirmed_at is null then
     return new;
   end if;
 
@@ -44,7 +49,7 @@ $$;
 
 drop trigger if exists on_hermiscus_user_created on auth.users;
 create trigger on_hermiscus_user_created
-  after insert or update of email on auth.users
+  after insert or update of email, email_confirmed_at on auth.users
   for each row execute function public.link_hermiscus_member();
 
 -- Link any matching accounts that were created before this script ran.
@@ -55,6 +60,7 @@ join public.profiles p
   on regexp_replace(lower(p.name), '[^a-z0-9]+', '', 'g') =
      regexp_replace(split_part(lower(u.email), '@', 1), '[^a-z0-9]+', '', 'g')
 where split_part(lower(u.email), '@', 2) = 'hermiscus.local'
+  and u.email_confirmed_at is not null
 on conflict (user_id) do update
   set profile_id = excluded.profile_id, active = true;
 
@@ -67,7 +73,8 @@ set search_path = public
 as $$
   select exists (
     select 1 from public.race_members m
-    where m.user_id = auth.uid() and m.active
+    join auth.users u on u.id = m.user_id
+    where m.user_id = auth.uid() and m.active and u.email_confirmed_at is not null
   );
 $$;
 

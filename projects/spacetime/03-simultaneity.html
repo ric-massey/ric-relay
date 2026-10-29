@@ -409,76 +409,55 @@ function reset() {
 function draw() {
   const stageW = stage.clientWidth;
   const stageH = stage.clientHeight;
-  const carW = 360;
   const v = parseFloat(vSlider.value) / 100;
+  const gamma = 1 / Math.sqrt(1 - v * v);
 
-  let carX, sourceX, leftX, rightX, youX, themX;
+  /* Worked in units where the car's own length is 1 and light goes 1 per
+     unit of time, then scaled to the stage. The first version moved the car
+     at a fixed pixel speed whatever the slider said and the light at a slower
+     one, so the train outran light at every setting — 0 c included — and the
+     front was never lit (bug sweep D3-1). Here the train goes at v, light at
+     c, the platform sees the car contracted by gamma, and the run lasts until
+     the light has reached the far end. */
+  const L = frame === 'you' ? 1 / gamma : 1;          // the car as this frame measures it
+  const tRear  = frame === 'you' ? L / (2 * (1 + v)) : 0.5;
+  const tFront = frame === 'you' ? L / (2 * (1 - v)) : 0.5;
+  const tEnd = tFront * 1.2 + 0.08;
+  const tau = (t / 1.2) * tEnd;                        // t is the run's progress, 0 → 1.2
+  const extent = frame === 'you' ? L + v * tEnd : 1.3;
+  const scale = Math.min(360, (stageW - 60) / extent); // px per car length
+  const carW = L * scale;
 
+  let carX, sourceX, youX, themX, photonLeftX, photonRightX;
   if (frame === 'you') {
-    // train moves rightward
-    const startX = -100;
-    const endX = stageW + 100;
-    carX = startX + (endX - startX) * (t * 0.5 + 0.3);
-    sourceX = carX + carW/2;
-    leftX = carX;
-    rightX = carX + carW;
-    youX = stageW / 2;
-    themX = sourceX;
-
-    // photons travel at c. From platform, both move at c regardless of train motion.
-    // Light starts at sourceX0 (when t=0 in this frame's "flash event").
-    // For visualization, flash happens at t=0 from this frame.
-    const flashTime = 0;
-    const cSpeed = 200; // pixels per "second" of t
-    const sourceAtFlash = (startX + (endX - startX) * (flashTime * 0.5 + 0.3)) + carW/2;
-    const photonLeftX = sourceAtFlash - cSpeed * t;
-    const photonRightX = sourceAtFlash + cSpeed * t;
-
-    // train ends at time t
-    const leftEndAtT = carX;
-    const rightEndAtT = carX + carW;
-
-    // hit detection - left end is moving toward photonLeft at velocity v, photonLeft moves left at c
-    // so photonLeft hits left end faster than photonRight hits right end (which is moving away)
-    const leftHit = photonLeftX <= leftEndAtT;
-    const rightHit = photonRightX >= rightEndAtT;
-
-    photonLeft.style.display = (t > 0 && !leftHit) ? 'block' : 'none';
-    photonRight.style.display = (t > 0 && !rightHit) ? 'block' : 'none';
-    photonLeft.style.left = photonLeftX + 'px';
-    photonRight.style.left = photonRightX + 'px';
-
-    leftEnd.classList.toggle('hit', leftHit);
-    rightEnd.classList.toggle('hit', rightHit);
-
+    // The platform's frame: the car moves right at v; the flash went off at
+    // its centre at tau = 0, right where you stand.
+    const left0 = (stageW - extent * scale) / 2;
+    carX = left0 + v * tau * scale;
+    const flashX = left0 + carW / 2;
+    sourceX = carX + carW / 2;
+    youX = flashX;
+    photonLeftX = flashX - tau * scale;
+    photonRightX = flashX + tau * scale;
   } else {
-    // their frame - train is stationary, you (platform) moves leftward
-    carX = stageW/2 - carW/2;
-    sourceX = carX + carW/2;
-    leftX = carX;
-    rightX = carX + carW;
-
-    const platformStart = stageW + 100;
-    const platformEnd = -100;
-    youX = platformStart + (platformEnd - platformStart) * (t * 0.5 + 0.3);
-    themX = sourceX;
-
-    // photons - both travel at c, train is stationary so both ends hit at same time
-    const cSpeed = 200;
-    const photonLeftX = sourceX - cSpeed * t;
-    const photonRightX = sourceX + cSpeed * t;
-
-    const leftHit = photonLeftX <= leftX;
-    const rightHit = photonRightX >= rightX;
-
-    photonLeft.style.display = (t > 0 && !leftHit) ? 'block' : 'none';
-    photonRight.style.display = (t > 0 && !rightHit) ? 'block' : 'none';
-    photonLeft.style.left = photonLeftX + 'px';
-    photonRight.style.left = photonRightX + 'px';
-
-    leftEnd.classList.toggle('hit', leftHit);
-    rightEnd.classList.toggle('hit', rightHit);
+    // The train's frame: the car stands still and the platform slides left.
+    carX = stageW / 2 - carW / 2;
+    sourceX = stageW / 2;
+    youX = sourceX - v * tau * scale;
+    photonLeftX = sourceX - tau * scale;
+    photonRightX = sourceX + tau * scale;
   }
+  themX = sourceX;
+  const leftHit = tau >= tRear;
+  const rightHit = tau >= tFront;
+
+  photonLeft.style.display = (tau > 0 && !leftHit) ? 'block' : 'none';
+  photonRight.style.display = (tau > 0 && !rightHit) ? 'block' : 'none';
+  photonLeft.style.left = photonLeftX + 'px';
+  photonRight.style.left = photonRightX + 'px';
+  leftEnd.classList.toggle('hit', leftHit);
+  rightEnd.classList.toggle('hit', rightHit);
+  trainCar.style.width = carW + 'px';
 
   trainCar.style.left = carX + 'px';
   source.style.left = (sourceX - carX) + 'px';
@@ -495,7 +474,10 @@ function draw() {
   vVal.textContent = `${v.toFixed(2)} c`;
 
   // verdict update
-  if (frame === 'you') {
+  if (v === 0) {
+    frameLabel.textContent = frame === 'you' ? 'FROM THE PLATFORM (you, stationary)' : 'FROM THE TRAIN (them, stationary in their frame)';
+    verdict.innerHTML = `<div class="order">The train is standing still: light reaches BOTH ends at the same moment.</div>With nothing moving, the platform and the train are one frame, and they agree. Move the slider to set the train going.`;
+  } else if (frame === 'you') {
     frameLabel.textContent = 'FROM THE PLATFORM (you, stationary)';
     verdict.innerHTML = `<div class="order">From the platform: light reaches the REAR of the train BEFORE the front.</div>The train is moving rightward. While light travels outward equally fast in both directions, the rear of the train moves toward the flash point and the front moves away. Light catches the rear first, then the front. Two events. One before the other.`;
   } else {

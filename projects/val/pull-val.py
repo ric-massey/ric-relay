@@ -63,8 +63,14 @@ def load_data():
     try:
         t = DATA_JS.read_text(encoding="utf-8")
         return json.loads(t[t.index(PREFIX) + len(PREFIX):].strip().rstrip(";"))
-    except (FileNotFoundError, ValueError):
+    except FileNotFoundError:
         return {"matches": []}
+    except ValueError as e:
+        # Not an empty archive: an unreadable one. Writing over it would keep
+        # only the new matches, and .val-state.json would never re-add the old
+        # ones — "the archive only grows" (bug sweep B6-5). Stop instead.
+        raise SystemExit(f"val: {DATA_JS.name} could not be read ({e.__class__.__name__}) — "
+                         "fix it (a merge conflict?) before pulling again. Nothing was written.")
 
 
 def save_data(d):
@@ -174,7 +180,13 @@ def process(raw, me, C, show_names):
             t = round(k.get("roundTime", 0) / 1000, 2)
             locs = {pl["subject"]: pl for pl in k.get("playerLocations") or []}
             before = [alive["us"], alive["them"]]
-            alive["us" if vc in us else "them"] -= 1
+            side = "us" if vc in us else "them"
+            # Dying a second time means they were revived in between, so they
+            # were counted dead once too often (bug sweep B6-6).
+            if vc in died:
+                alive[side] += 1
+                before = [alive["us"], alive["them"]]
+            alive[side] -= 1
             died.add(vc)
             if kr and kr != vc and (kr in us) != (vc in us):
                 killed[kr] += 1
@@ -388,6 +400,12 @@ def main():
             merge(data, s, (st.get("rr") or {}).get(mid))
             write_detail(d)
             new += 1
+    # A match pulled before Riot listed its rank update gets it now that the
+    # update is in the state; only --rebuild used to attach it (bug sweep B6-8).
+    late = {public_id(k): v for k, v in (st.get("rr") or {}).items()}
+    for m in data["matches"]:
+        if not m.get("rr") and m["id"] in late:
+            m["rr"] = late[m["id"]]
     st["seen"] = sorted(seen)
     write(STATE, json.dumps(st, indent=1))
     save_data(data)

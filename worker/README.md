@@ -51,8 +51,12 @@ Worker writes them to a **D1** database bound as `STATS`, and
 row holds; the short version is a random browser id, a random session id, the
 path, the referring site's hostname, the country / region / city, a browser /
 OS / device word, the language, a screen-width class, a `?ref=` / `utm_` tag,
-time on page and scroll depth, and the hostname of links clicked out. No IP
-address, no coordinates, no raw user agent, no other query strings, no cookies.
+time on page and scroll depth, and the hostname of links clicked out. The
+counter's database keeps no IP address, no coordinates, no raw user agent, no
+other query strings and no cookies. That promise is the database's: the Worker
+has Cloudflare's observability on (`wrangler.jsonc`), so Cloudflare keeps its
+own invocation log of every request, `/hit` included, for its retention period
+— turn `invocation_logs` off there if that should stop too (bug sweep A2b-7).
 
 `/stats` opens to the site password **or** to a site-account session from
 `ricmassey.com/admin` (header `x-admin-session`), which it checks by asking

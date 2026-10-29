@@ -123,7 +123,11 @@ window.addEventListener('online', async ()=>{ if(await flushOfflineQueue()) awai
 setInterval(()=>{ if(ME && getOfflineQueue().length && navigator.onLine) flushOfflineQueue({quiet:true}); }, 15000);
 '''
 
-    if re.search(r'eyJ[A-Za-z0-9_-]{10,}\.eyJ|[a-z0-9]{20}\.supabase\.co', app + styles[0] + shell.group(1)):
+    # The same three patterns tests/auth-security.test.cjs holds the published
+    # files to — that test runs after a push has already published, so this is
+    # the check that counts. It used to miss the sb_ keys (bug sweep A4-7).
+    if re.search(r'eyJ[A-Za-z0-9_-]{10,}\.eyJ|sb_(publishable|secret)_[A-Za-z0-9_-]{10,}|[a-z0-9]{20}\.supabase\.co',
+                 app + styles[0] + shell.group(1)):
         sys.exit('import-original: a database key or address survived the import. Not writing.')
 
     OUT.mkdir(parents=True, exist_ok=True)

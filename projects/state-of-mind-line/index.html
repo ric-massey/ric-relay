@@ -17,6 +17,8 @@
     header p{margin:5px 0 0;color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
     canvas{width:100%;height:min(64vh,520px);min-height:360px;display:block;background:#0c121a}
     .legend{max-width:78rem;padding:13px 20px 80px;color:var(--muted)}
+    .pause{float:right;margin:0 0 8px 12px;min-height:44px;padding:0 16px;border:1px solid #2c3a4f;border-radius:8px;background:#121b26;color:var(--ink);font:600 13px system-ui,sans-serif;cursor:pointer}
+    .pause:hover{border-color:var(--depressed)}
     @media(max-width:620px){
       header{padding:14px 15px}
       canvas{height:58vh;min-height:340px}
@@ -31,7 +33,10 @@
     <p>live model · not a diagnostic instrument</p>
   </header>
   <canvas id="chart" width="1200" height="520" aria-label="state-of-mind line"></canvas>
-  <div class="legend">Two baselines: the <em>highlighted band</em> is visual reference (−0.20 to +0.20). Your <strong>point baseline</strong> hugs the <strong>lower edge</strong> of that band (around −0.20) and can pop slightly above it on good baseline days. Added a <span style="color:#ff6b6b">red</span> "typical person" line with its own tail: stays inside the band ~95% of the time, may have a brief low once per year and a couple of "on-top-of-the-world" days.</div>
+  <!-- Rewritten for a visitor (bug sweep B4-12): it was a build note that
+       never said which line was which. -->
+  <div class="legend"><button type="button" id="pause" class="pause" aria-pressed="false">Pause</button>
+    The <span style="color:#7aa6ff">blue line</span> is a mood moving through bipolar episodes — up into mania, down into depression. Between episodes it rests at the <strong>lower edge</strong> of the shaded band (the ordinary range, −0.20 to +0.20) and can lift a little on good days. The <span style="color:#ff6b6b">red line</span> is a typical person: inside the band about 95% of the time, with a brief low about once a year and a couple of very good days. Both are a model, not a measurement of anyone.</div>
   <script>
     const canvas = document.getElementById('chart');
     const ctx = canvas.getContext('2d');
@@ -55,7 +60,7 @@
     const rnd = (a,b)=> a + Math.random()*(b-a);
     const choice = arr => arr[Math.floor(Math.random()*arr.length)];
 
-    // ================= Tuned model (YOU = blue) =================
+    // ================= Tuned model (the episode series = blue) =================
     // Visual band stays centered on 0. Your "baseline" hugs the LOWER edge of that band
     // and can go a bit above on good days.
     const EPISODES = {
@@ -76,13 +81,13 @@
     let yearDay = 0;
     let elevatedThisYear = 0;
 
-    // Blue series (you)
+    // Blue series (the episodes)
     let state = 0, prevDayState = 0, todayState = 0;
     // Red series (typical person)
     let stateN = 0, prevDayStateN = 0, todayStateN = 0;
 
     // ---------- Jitter models ----------
-    // ADHD jitter (you)
+    // ADHD jitter (blue series)
     let _jitter = 0;
     function stepADHDJitter(){
       _jitter = 0.82 * _jitter + (Math.random()*2 - 1) * 0.08; // no upward drift
@@ -139,7 +144,7 @@
     function dailyStep(){
       totalDays += 1; yearDay += 1; if(yearDay >= 365){ yearDay = 0; elevatedThisYear = 0; normYearEvents = {high:0, low:0}; }
 
-      // ---- BLUE SERIES (you) ----
+      // ---- BLUE SERIES (the episodes) ----
       episode.daysLeft -= 1;
       if(episode.daysLeft <= 0){
         let nextName = 'baseline';
@@ -216,7 +221,7 @@
     }
 
     const TAIL_PIXELS = 720;
-    // Blue series (you)
+    // Blue series (the episodes)
     const tail = Array.from({length: TAIL_PIXELS}, () => 0);
     // Red series (typical person)
     const tailN = Array.from({length: TAIL_PIXELS}, () => 0);
@@ -299,10 +304,20 @@
       ctx.fillStyle = '#ff4d4d';
       ctx.beginPath(); ctx.arc(hx, yHeadN, 5, 0, Math.PI*2); ctx.fill();
 
-      requestAnimationFrame(loop);
+      if (!paused) raf = requestAnimationFrame(loop);
     }
 
-    function loop(){ update(); draw(); }
+    /* It scrolls for as long as the page is open, so it can be stopped
+       (WCAG 2.2.2), and somebody who asked for less motion gets a still frame
+       until they press play (bug sweep B4-8). */
+    let raf = 0;
+    let paused = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const pauseBtn = document.getElementById('pause');
+    const paintPause = () => { pauseBtn.textContent = paused ? 'Play' : 'Pause'; pauseBtn.setAttribute('aria-pressed', String(paused)); };
+    pauseBtn.addEventListener('click', () => { paused = !paused; paintPause(); cancelAnimationFrame(raf); if (!paused) raf = requestAnimationFrame(loop); });
+    paintPause();
+
+    function loop(){ if (!paused) update(); draw(); }
     function onResize(){
       const rect = canvas.getBoundingClientRect();
       const nextW = Math.max(320, Math.round(rect.width));
@@ -399,7 +414,9 @@
     // Kick off
     onResize();
     dailyStep();
-    requestAnimationFrame(loop);
+    // A still frame still shows a stretch of line, not an empty chart.
+    if (paused) for (let i = 0; i < Math.ceil(W / 2 / PX_PER_FRAME); i++) update();
+    raf = requestAnimationFrame(loop);
   </script>
   <script src="../relay-return.js" data-home="../../index.html" data-egg="mind" defer></script>
 </body>

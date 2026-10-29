@@ -285,7 +285,11 @@ function update(dt) {
     for (let j = i + 1; j < ships.length; j++) {
       const a = ships[i], b = ships[j];
       if (!a.alive || !b.alive) continue;
-      if (gap2(a.x, a.y, b.x, b.y) >= (shipR * 2) ** 2) continue;
+      /* Each hull at its own size: every pair was tested at two fighters'
+         width, so the pilot flew straight into a mothership 150 across
+         (bug sweep C1b-3). Two fighters are the same 2 × shipR as ever. */
+      const reach = (a.radius || shipR) + (b.radius || shipR);
+      if (gap2(a.x, a.y, b.x, b.y) >= reach ** 2) continue;
       let dx = sepX(a.x, b.x), dy = sepY(a.y, b.y);
       let d = Math.hypot(dx, dy);
       if (d < 0.001) {

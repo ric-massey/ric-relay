@@ -81,7 +81,10 @@ const SUITES = [
        before and after a refactor and asserts nothing, so running it here
        would be four minutes of proving nothing. */
     .filter(f => !/(browser|smoke|page|traffic-trace)\.js$/.test(f)), 'slow'],
-  ['offramp', glob('projects/offramp/test', '.test.js'), 'slow']
+  /* corridor.js is the only check of the whole I-40 corridor and set a failing
+     exit code that nothing read (bug sweep A6-3). harness.js, i40.js and map.js
+     in the same folder are helpers, not suites. */
+  ['offramp', [...glob('projects/offramp/test', '.test.js'), 'projects/offramp/test/corridor.js'], 'slow']
 ];
 
 const args = process.argv.slice(2);
@@ -96,9 +99,16 @@ const started = Date.now();
    the row-level-security policies against a real Postgres, and with no local
    Supabase — which is every CI run — it reports `# pass 0 # skipped 1` and
    used to print here as green. A suite that proved nothing is said so. */
+/* Node 23 and later print the `spec` report even into a pipe — `ℹ pass 0`
+   rather than `# pass 0` — so both spellings are read, and every suite is run
+   with --test-reporter=tap besides (bug sweep A6-1). */
+const counts = out => {
+  const n = word => { const m = out.match(new RegExp(`^(?:#|ℹ) ${word} (\\d+)`, 'm')); return m ? Number(m[1]) : null; };
+  return { pass: n('pass'), skip: n('skipped') };
+};
 const provedNothing = out => {
-  const pass = out.match(/^# pass (\d+)/m), skip = out.match(/^# skipped (\d+)/m);
-  if (pass && skip && Number(pass[1]) === 0 && Number(skip[1]) > 0) return 'every test in it skipped';
+  const { pass, skip } = counts(out);
+  if (pass === 0 && skip > 0) return 'every test in it skipped';
   /* The hand-rolled suites say it in words: kondrite's sounds.js and browser.js
      print "SKIPPED — playwright is not installed" and exit 0. */
   const said = out.match(/^.*\bSKIPPED\b.*$/m);
@@ -115,7 +125,7 @@ for (const [name, files, speed] of SUITES) {
   console.log(`\n── ${name}`);
   for (const file of files) {
     const t0 = Date.now();
-    const r = spawnSync('node', [join(ROOT, file)], { cwd: ROOT, encoding: 'utf8' });
+    const r = spawnSync('node', ['--test-reporter=tap', join(ROOT, file)], { cwd: ROOT, encoding: 'utf8' });
     const secs = ((Date.now() - t0) / 1000).toFixed(1);
     ran++;
     const why = r.status === 0 ? provedNothing(r.stdout || '') : '';
@@ -123,7 +133,9 @@ for (const [name, files, speed] of SUITES) {
       skipped.push(file);
       console.log(`   skip  ${file}  (${secs}s) — ${why}`);
     } else if (r.status === 0) {
-      console.log(`   ok    ${file}  (${secs}s)`);
+      /* Green, but a suite that skipped some of its tests says how many. */
+      const { skip } = counts(r.stdout || '');
+      console.log(`   ok    ${file}  (${secs}s)${skip ? ` — ${skip} skipped` : ''}`);
     } else {
       failed.push(file);
       console.log(`   FAIL  ${file}  (${secs}s)`);

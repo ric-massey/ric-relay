@@ -292,6 +292,10 @@
     if (days > 0 && parts.length < 2) { parts.push(fmtUnit(days, "day")); }
     s -= days * 86400;
     if (parts.length < 2) {
+      // Rounded to what is printed BEFORE the carry: 59.97 printed as
+      // "60.0 sec", and 119.96 as "1 min 60.0 sec" (bug sweep D3-10).
+      const step = brief ? 1 : 0.1;
+      s = Math.round(s / step) * step;
       const h = Math.floor(s / 3600); s -= h * 3600;
       const m = Math.floor(s / 60); s -= m * 60;
       if (h > 0) parts.push(fmtUnit(h, "hour"));

@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- data-mochi-only: the trip modes filter every element, which over a
+     full-screen canvas took the game from 60 fps to 6 (bug sweep D1-6). -->
+<html lang="en" data-mochi-only>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1173,7 +1175,7 @@
              look at rather than something you page past on your way to
              the car you wanted. -->
         <div class="page" id="page-garage" role="tabpanel" aria-labelledby="tab-garage">
-        <!-- Sixteen rows is more than the arrows are pleasant for, so
+        <!-- Thirty-six rows is more than the arrows are pleasant for, so
              there is a way to say the name. It searches the LOCKED rows
              too: a ladder you cannot look up is not a ladder. -->
         <div class="gsearch">
@@ -1224,6 +1226,9 @@
           <input id="code-in" type="text" spellcheck="false" autocomplete="off"
                  placeholder="code" aria-label="Enter a code or a save code">
           <button id="code-go" type="button">ENTER</button>
+          <!-- The other half: a save code had no way out of a browser, so
+               there was never one to paste (bug sweep C2a-3). -->
+          <button id="code-out" type="button">MY CODE</button>
         </div>
         <p class="codenote" id="code-note"></p>
         </div><!-- /page-record -->

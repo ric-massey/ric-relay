@@ -4,10 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <!-- This is the one page on the site where a password is typed. The policy says the page
-       can only run its own scripts and only talk to Supabase, so even a compromised or
-       injected script has nowhere to send what it reads. The project's own address is
-       deliberately not named here: it lives only in the git-ignored config.local.js. -->
+  <!-- This is the one page on the site where a password is typed. The policy keeps the page
+       to its own scripts plus one pinned, hash-checked supabase-js from unpkg, and lets it
+       talk only to Supabase. That narrows where an injected script could send what it reads;
+       it does not close it — `*.supabase.co` admits any Supabase project, not only ours, and
+       no policy stops a top-level navigation. The project's own address is deliberately not
+       named here: it lives only in the git-ignored config.local.js (bug sweep A4-3). -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co http://127.0.0.1:54321; form-action 'none'; base-uri 'none'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="description" content="Crew access.">

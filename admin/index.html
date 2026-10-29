@@ -287,6 +287,10 @@
       .badge-cell:empty { display:none; }
       .side, .seen { display:none; }
       .bulk { left:12px; right:12px; transform:none; bottom:12px; gap:6px; padding:8px; }
+      /* The bar wraps to two rows here: leave room under the list for it, and
+         lift the toast clear of its Delete and Clear (bug sweep A1-14). */
+      body.bulk-on main { padding-bottom:150px; }
+      body.bulk-on .toast { bottom:128px; }
       .bulk .btn { padding:0 10px; }
       .bulk b { margin-right:2px; }
     }

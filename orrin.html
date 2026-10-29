@@ -684,8 +684,14 @@
         said(Array.isArray(data.speech) ? data.speech : []);
       }
 
+      /* Not while the tab is hidden: a forgotten tab asked the Worker every
+         30 seconds forever. Coming back asks at once (bug sweep D2-4). */
       tick();
-      setInterval(tick, REFRESH_MS);
+      let timer = setInterval(tick, REFRESH_MS);
+      document.addEventListener("visibilitychange", () => {
+        clearInterval(timer);
+        if (!document.hidden) { tick(); timer = setInterval(tick, REFRESH_MS); }
+      });
     })();
 
     gh(`/repos/${GH_USER}/${REPO}`)
@@ -733,7 +739,10 @@
       PublicEvent: () => "repository made public",
     };
 
-    gh(`/users/${GH_USER}/events/public?per_page=40`)
+    /* The repository's own feed, not the account's: hard rule 2 is Orrin's
+       repo and nothing else, and the account-wide page of 40 lost Orrin's
+       events whenever Ric had been busy elsewhere (bug sweep D2-1, D2-2). */
+    gh(`/repos/${GH_USER}/${REPO}/events?per_page=40`)
       .then((events) => {
         const box = document.getElementById("firing");
         box.innerHTML = "";

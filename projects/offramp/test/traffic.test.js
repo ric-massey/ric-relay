@@ -52,8 +52,9 @@ const AT = {
   OKC:      10894962.1,     // the Crosstown, 5 lanes each way
   Knoxville: 18548767.3,    // Papermill, the busiest place on the road
 };
-const FRI17 = { dow: 4, hour: 17, month: 6 };
-const SUN03 = { dow: 6, hour: 3, month: 6 };
+// Sunday = 0, as getDay() and the week table have it (bug sweep C2b-3).
+const FRI17 = { dow: 5, hour: 17, month: 6 };
+const SUN03 = { dow: 0, hour: 3, month: 6 };
 const MPH = 1 / 0.44704;
 
 /* ── 1. the file is there and is the right file ─────────────────────── */
@@ -103,7 +104,10 @@ for (const [name, px] of Object.entries(AT)) {
    return doing its job. Amarillo runs 57% eastbound at eight in the
    morning and 39% at five in the evening — the same people going home.
    A model where the two carriageways are mirror images has thrown that
-   away, so this asserts the asymmetry rather than tolerating it. */
+   away, so this asserts the asymmetry rather than tolerating it.
+   A Thursday (dow 4, Sunday = 0): demand() has always read the week table
+   Sunday-first, so that is the day these figures were measured on, though
+   the test called it Friday until the convention was settled (C2b-3). */
 const amE = (h) => {
   const e = T.demand(AT.Amarillo, { dow: 4, hour: h, month: 6 }, +1);
   const w = T.demand(AT.Amarillo, { dow: 4, hour: h, month: 6 }, -1);
@@ -134,7 +138,7 @@ ok("Knoxville carries this many times the Mojave",
 head("Nowhere on 2,551 miles exceeds a lane's capacity");
 let worst = 0, worstAt = 0;
 for (let px = 0; px < 22939401; px += 50000) {
-  for (const w of [FRI17, { dow: 3, hour: 8, month: 6 }]) {
+  for (const w of [FRI17, { dow: 4, hour: 8, month: 6 }]) {
     const q = T.demand(px, w, +1) / T.lanes(px);
     if (q > worst) { worst = q; worstAt = px; }
   }
@@ -147,8 +151,8 @@ within(`busiest lane anywhere (mile ${Math.round(worstAt * 0.179 / 1609.34)})`,
    is more than half articulated lorries, and on a Saturday afternoon it
    is one in eight. */
 head("Rural I-40 at night is mostly lorries");
-const m2 = T.mix(AT.Mojave, { dow: 1, hour: 2, month: 6 });
-const m16 = T.mix(AT.Mojave, { dow: 5, hour: 15, month: 6 });
+const m2 = T.mix(AT.Mojave, { dow: 2, hour: 2, month: 6 });
+const m16 = T.mix(AT.Mojave, { dow: 6, hour: 15, month: 6 });
 const sum = (m) => T.KINDS.reduce((a, k) => a + m[k], 0);
 ok("shares sum to one, 02:00", sum(m2), 1, 1e-9);
 ok("shares sum to one, Sat 15:00", sum(m16), 1, 1e-9);
@@ -161,7 +165,7 @@ within("the swing between them", m2.artic / m16.artic, 3.0, 6.0);
    seeded generator, so this is repeatable. */
 const rng = T.seeded(20260809);
 let got = { moto: 0, car: 0, rigid: 0, artic: 0 };
-for (let i = 0; i < 40000; i++) got[T.drawKind(AT.Mojave, { dow: 1, hour: 2, month: 6 }, rng)]++;
+for (let i = 0; i < 40000; i++) got[T.drawKind(AT.Mojave, { dow: 2, hour: 2, month: 6 }, rng)]++;
 ok("40,000 drawn vehicles reproduce the artic share",
    got.artic / 40000, m2.artic, 0.01);
 ok("...and the motorcycle share", got.moto / 40000, m2.moto, 0.004);
@@ -172,7 +176,7 @@ ok("...and the motorcycle share", got.moto / 40000, m2.moto, 0.004);
    else falls away faster than they do. Both halves matter: the first is
    why you see one at 3am, the second is why you do not see four. */
 head("Motorcycles: a bigger share of a much emptier road");
-const night = { dow: 2, hour: 3, month: 6 }, aft = { dow: 2, hour: 16, month: 6 };
+const night = { dow: 3, hour: 3, month: 6 }, aft = { dow: 3, hour: 16, month: 6 };
 const mN = T.mix(AT.Mojave, night), mA = T.mix(AT.Mojave, aft);
 within("share at 03:00", mN.moto * 100, 1.0, 1.4);
 within("share at 16:00", mA.moto * 100, 0.7, 0.95);
@@ -216,7 +220,7 @@ within("median offset from the sign, Fri 17:00", off[1], 2, 5);
 within("85th percentile offset", off[2], 10, 15);
 ok("the 15th percentile is under the limit", off[0] < 0, true);
 
-const nightOff = T.offsets({ dow: 1, hour: 3 });
+const nightOff = T.offsets({ dow: 2, hour: 3 });
 ok("night is SLOWER than afternoon, not faster", nightOff[1] < off[1], true);
 
 /* Draw a population and check the percentiles come back out. */
@@ -253,10 +257,10 @@ within("...the differential you can see out of the window",
 head("Somebody is always going far too fast");
 const P70 = 18548767.3;
 const shareOver = (arr, v) => arr.filter((x) => x > v).length / arr.length;
-const dayCars = speeds("car", P70, { dow: 2, hour: 16, month: 6 }, "TN", 200000);
-const nightCars = speeds("car", P70, { dow: 2, hour: 3, month: 6 }, "TN", 200000);
-const nightMoto = speeds("moto", P70, { dow: 2, hour: 3, month: 6 }, "TN", 200000);
-const nightArtic = speeds("artic", P70, { dow: 2, hour: 3, month: 6 }, "TN", 200000);
+const dayCars = speeds("car", P70, { dow: 3, hour: 16, month: 6 }, "TN", 200000);
+const nightCars = speeds("car", P70, { dow: 3, hour: 3, month: 6 }, "TN", 200000);
+const nightMoto = speeds("moto", P70, { dow: 3, hour: 3, month: 6 }, "TN", 200000);
+const nightArtic = speeds("artic", P70, { dow: 3, hour: 3, month: 6 }, "TN", 200000);
 
 /* Posted 65 at this pixel, not 70, so the measured 5%/10% over 85 is
    not the comparison — the shape is. Fewer fast vehicles at night, in

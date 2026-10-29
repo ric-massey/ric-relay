@@ -724,9 +724,12 @@ function drawCount() {
          : "more than two? play online — one screen each",
        SCREEN_W / 2, controlsY + 46 + most * 32, 13, "#ffcb42");
 
-  tapButton("BACK", SCREEN_W / 2, 650, 240, 44, "#ffcb42",
+  /* Side by side about the middle. SETTINGS sat at a fixed x = 650, which on
+     any screen wider than 1000 units landed on top of BACK and took its taps
+     (bug sweep C1b-10). */
+  tapButton("BACK", SCREEN_W / 2 - 130, 650, 240, 44, "#ffcb42",
             () => { state = countBack(); });
-  tapButton("SETTINGS", 650, 650, 240, 44, "#ffe56d",
+  tapButton("SETTINGS", SCREEN_W / 2 + 130, 650, 240, 44, "#ffe56d",
             () => { state = openSettings("count"); });
 }
 

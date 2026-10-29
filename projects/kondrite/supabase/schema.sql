@@ -3,11 +3,12 @@
 -- Safe to re-run: everything is guarded.
 --
 -- ── why this is its own project ────────────────────────────────────────────
--- Not the project ATLAS uses, deliberately. ATLAS grants reads with
--- `for select to authenticated` and no crew check, so its privacy rests
--- entirely on signup being switched off in the dashboard — and a public game
--- needs signup switched on. One project could not hold both without the first
--- stranger who saved a game being able to read the map.
+-- Not the project ATLAS uses, deliberately. When this was written ATLAS
+-- granted reads to any signed-in account, so its privacy rested on sign-up
+-- being off — and a public game needs sign-up on. Since 2026-09-23 ATLAS's
+-- project is the whole site's account, sign-up is on there too, and every
+-- place is behind a restrictive has_page_access('atlas') policy; the two still
+-- stay apart, so a game's saves never share a project with the map.
 --
 -- The lesson is taken here rather than repeated: every policy below names
 -- `auth.uid()`. A stranger with an account sees their own row and nothing else,

@@ -1151,6 +1151,19 @@ def stage_where(rows: list[dict], head: str, args) -> int:
 WORKER = "https://training-log.rmbuster82.workers.dev"
 
 
+def blank(v) -> bool:
+    return v in (None, "", False) or v == [] or v == {}
+
+
+def same_film(row: dict, patch: dict) -> bool:
+    """True when a Worker record names the film the row already is — by
+    Wikidata id, else by TMDB id."""
+    for key in ("wd", "tmdb"):
+        if not blank(patch.get(key)) and str(patch.get(key)) == str(row.get(key) or ""):
+            return True
+    return False
+
+
 def stage_sync(rows: list[dict], head: str, args) -> int:
     try:
         d = get_json(f"{WORKER}/movies")
@@ -1186,6 +1199,15 @@ def stage_sync(rows: list[dict], head: str, args) -> int:
             # stamp it puts on a row it merely EDITED is not that date — and
             # writing it would put a 2026 timestamp on a film from 1995.
             clean.pop("added", None)
+            # "Not the right film?" stores the new identity with every fact
+            # blanked, so the old film's facts go. The Worker keeps that record,
+            # and folding it again on every run blanked the facts stage 1 had
+            # since filled — a wipe, forever, on any run without TMDB (bug sweep
+            # B3-6). Once the row already IS that film, a blank in the record no
+            # longer clears anything.
+            if same_film(by[rid], clean):
+                clean = {k: v for k, v in clean.items()
+                         if not (blank(v) and not blank(by[rid].get(k)))}
             before = dict(by[rid])
             by[rid].update(clean)
             if by[rid] != before:

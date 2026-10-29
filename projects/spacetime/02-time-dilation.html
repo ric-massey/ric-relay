@@ -339,6 +339,10 @@ const earthYear = document.getElementById('earthYear');
 const hundred = document.getElementById('hundred');
 
 let elapsed = 0;
+/* Their clock adds up dt / γ frame by frame, so a speed change only changes
+   its rate from then on. Recomputed as all of `elapsed` over today's γ, every
+   change of the slider rewrote its past and it jumped backwards (D3-7). */
+let theirElapsed = 0;
 let lastTime = performance.now();
 
 function drawClock(ctx, time, color) {
@@ -500,7 +504,7 @@ function update(now) {
 
   const v = parseFloat(vSlider.value) / 100;
   const gamma = 1 / Math.sqrt(1 - v*v);
-  const theirElapsed = elapsed / gamma;
+  theirElapsed += dt / gamma;
 
   drawClock(clockA, elapsed, '#6db5a3');
   drawClock(clockB, theirElapsed, '#b56d8a');

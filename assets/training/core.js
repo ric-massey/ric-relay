@@ -36,7 +36,9 @@
   let ONCHANGE = () => {};
   const changed = () => ONCHANGE();
 
-  const LOG_HOST = location.origin.includes('localhost')
+  /* 127.0.0.1 is local too, as visit.js has it: a dev token sent to the live
+     Worker from there counted toward Ric's lockout (bug sweep B2-9). */
+  const LOG_HOST = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(location.origin)
     ? location.origin
     : 'https://training-log.rmbuster82.workers.dev';
   /* ── where the data lives, from wherever this page is ──
@@ -152,7 +154,7 @@
        mean opposite things. */
     const log = fetch(LOG_HOST + '/log', { cache: 'no-store', headers: Owner.headers() })
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(j => ({ days: j.days || {}, live: true }))
+      .then(j => ({ days: j.days || {}, live: true, refused: !!j.refused }))
       .catch(() => ({ days: Owner.on() ? (cachedLog() || {}) : publicView(cachedLog()), live: false }));
     /* The board logbook, straight from the file the Boards page already reads.
        It is a script that assigns a global rather than JSON, so it is fetched
@@ -187,13 +189,25 @@
          And the sign-in box still gets drawn, or a bad deploy would lock the
          owner out of the one control that might help. */
       console.error('training-plan.json failed to load — regenerate with: node projects/training/export.mjs', e);
-      $('#w-note').textContent = 'Couldn\'t load the plan just now.';
-      $('#today').innerHTML = '<div class="loadfail"><strong>The training plan isn\'t loading.</strong> ' +
-        'Nothing\'s broken on your end — try again in a bit.</div>';
-      mountOwnerBar();
-      return;
+      /* Every page, not one: #today has been on no page since the split and
+         #w-note is on one, so this path used to throw before reaching the
+         message or the sign-in box (bug sweep B2-6). Callers get false and
+         draw nothing that needs the plan. */
+      const note = $('#w-note');
+      if (note) note.textContent = 'Couldn\'t load the plan just now.';
+      const main = document.querySelector('.wrap') || document.body;
+      if (!main.querySelector('.loadfail')) {
+        main.insertAdjacentHTML('afterbegin', '<div class="loadfail"><strong>The training plan isn\'t loading.</strong> ' +
+          'Nothing\'s broken on your end — try again in a bit.</div>');
+      }
+      if ($('#ownerbar')) mountOwnerBar();
+      return false;
     }
     const logResult = await log;
+    /* The saved password was refused: sign out rather than keep sending it
+       on every read — each one counts toward the lockout (bug sweep B2-9).
+       Queued writes are kept; they go up when he signs in again. */
+    if (logResult.refused && Owner.on()) Owner.signOut(true);
     LOG = logResult.days || {};
     LOG_STALE = !logResult.live && Object.keys(LOG).length > 0;
     if (logResult.live) cacheLog();
@@ -687,8 +701,10 @@
        back from visitors until it is stale. Saying so is better than a gap:
        a missing map otherwise reads as something broken. Signed in there is
        nothing to explain — the route is always there. */
+    /* Only when the Worker says it held the route back: a treadmill run, or
+       one stored before routes were kept, has none to come (bug sweep B2-10). */
     const map = a.route ? routeMap(a.route)
-      : (Owner.on() ? '' : `<p class="runnote">The map turns up a few minutes after a
+      : (Owner.on() || !a.held ? '' : `<p class="runnote">The map turns up a few minutes after a
            run does — where Ric ran is not published while he might still be out on it.</p>`);
 
     return `${map}<div class="rungrid">${grid}</div>
@@ -701,6 +717,11 @@
      would flatter it. Same three sports the Worker will tick for. */
   const RUN_SPORTS = { Run: 1, TrailRun: 1, VirtualRun: 1 };
   const isRun = a => !!(RUN_SPORTS[a.sport_type] || RUN_SPORTS[a.type]);
+  /* The Worker's floor (MIN_RUN_M in worker.mjs): under 500 m it ticks
+     nothing, so the page does not fold it into a session either — it used to
+     retitle "Easy run · 5 mi planned" as 0.02 mi (bug sweep B2-11). */
+  const MIN_RUN_M = 500;
+  const countsAsRun = a => isRun(a) && (a.distance || 0) >= MIN_RUN_M;
 
   /* What was actually run in a plan week, from Strava, in metres.
      Signed in, this includes runs marked private on Strava: they are withheld
@@ -735,7 +756,7 @@
     const loose = [];
     let n = 0;
     all.forEach(a => {
-      if (!isRun(a) || !runSessions.length) { loose.push(a); return; }
+      if (!countsAsRun(a) || !runSessions.length) { loose.push(a); return; }
       const target = runSessions[Math.min(n++, runSessions.length - 1)];
       (bySession[target.id] = bySession[target.id] || []).push(a);
     });
@@ -775,7 +796,10 @@
 
     return Object.entries(byBoard).map(([key, entries]) => {
       const sends = entries.filter(e => e.ascent);
-      const hardest = sends.map(e => e.grade).filter(Boolean).sort().pop();
+      /* By the board's own difficulty number, not the text: "+" sorts before
+         "/", so 6C beat 6C+ as strings (bug sweep B2-12). */
+      const top = sends.filter(e => e.grade).sort((x, y) => (Number(x.difficulty) || 0) - (Number(y.difficulty) || 0)).pop();
+      const hardest = top ? top.grade : undefined;
       const rows = entries.map(e => `<div class="bclimb">
           <span class="bg">${esc(e.grade || '—')}</span>
           <span class="bn">${esc(e.name || 'unnamed')}${e.benchmark ? '<span class="bbm" title="benchmark">★</span>' : ''}</span>
@@ -1033,8 +1057,12 @@
         if (via) via.hidden = !wasVia;
       }
       /* Keep the month grid in step — a tick anywhere should turn its cell
-         green, including a tick made from inside the calendar itself. */
+         green, including a tick made from inside the calendar itself. The
+         re-render rewrites the owner bar, so a refusal says so again after
+         it, or "not saved — tap again." vanished the moment it was written
+         (bug sweep B2-7). */
       changed();
+      if (!out && Owner.on()) say('not saved — tap again.');
     }));
 
     /* Toggled in place rather than through a full re-render: the panel is
@@ -1143,7 +1171,7 @@
 
     /* what happened */
     stateOf, doneOf, doneCountOf, autoOf, climbOn, runSplit,
-    runsOn: iso => RUNS[iso] || [],
+    runsOn: iso => RUNS[iso] || [], isRun,
     boardOn: iso => BOARD[iso] || [],
     save,
 

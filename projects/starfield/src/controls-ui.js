@@ -24,6 +24,7 @@
 
   // action id → which slot is currently listening, or null when idle.
   let listening = null;
+  let wasPaused = false;   // the pause the panel found, put back on close (C3-6)
 
   const UI = SF.bindings = {
     /** True if the panel swallowed the key. */
@@ -44,6 +45,10 @@
       listening = null;
       UI.render();
       panel.hidden = false;
+      /* Remember whether it was already paused, and put that back on close:
+         closing always un-paused, so from the PAUSED card the game ran on
+         behind the card (bug sweep C3-6). */
+      wasPaused = !!(SF.state && SF.state.paused);
       if (SF.state && !SF.state.paused) SF.state.paused = true;
     },
 
@@ -53,7 +58,7 @@
       if (!panel || panel.hidden) return false;
       if (listening) { listening = null; UI.render(); return true; }
       panel.hidden = true;
-      if (SF.state) SF.state.paused = false;
+      if (SF.state) SF.state.paused = wasPaused;
       return true;
     },
 

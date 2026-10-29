@@ -62,7 +62,7 @@
   }
 
   .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex:0 0 auto}
-  .brand{font-weight:700;letter-spacing:.16em;font-size:10px;color:var(--muted);text-transform:uppercase}
+  .brand{font-weight:700;letter-spacing:.16em;font-size:11px;color:var(--muted);text-transform:uppercase}
   .brand b{color:var(--ink)}
   .topright{display:flex;align-items:center;gap:12px}
   .count{font-family:"Space Mono",monospace;font-size:11px;color:var(--muted)}
@@ -123,7 +123,7 @@
     display:flex;align-items:center;justify-content:center;gap:8px;
   }
   .go:hover{filter:brightness(1.07)}
-  .go .sub{font-size:10px;letter-spacing:.1em;opacity:.72;text-transform:uppercase}
+  .go .sub{font-size:11px;letter-spacing:.1em;opacity:.72;text-transform:uppercase}
 
   .lead{font-size:clamp(23px,7.5vw,34px);font-weight:700;line-height:1.05;letter-spacing:-.01em;margin-bottom:13px}
   .lead .a{color:var(--holo)} .lead .b{color:var(--ember)}
@@ -174,6 +174,10 @@
   @media (prefers-reduced-motion: reduce){
     .card{animation:none}.badge .dot{animation:none}.bar > i{transition:none}button:active{transform:none}.reset:active{transform:none}
   }
+  /* Room under the controls for the site's "← Ric's Terminal" pill, which is
+     fixed to the bottom-left and sat on Back and the corner of Done on a phone
+     (bug sweep C4-7). Type raised to the 11px floor above as well (C4-10). */
+  @media (max-width:760px){ .controls{margin-bottom:48px} }
 </style>
   <script src="../../assets/visit.js" defer></script>
 </head>
@@ -271,11 +275,11 @@ function render(){
   const switched=!prev||prev.show!==s.show;
   const pausedHint = (s.from!=="0:00" && !s.from.startsWith("E")) ? ` (paused at <b>${s.from}</b>)` : "";
   const cueText = switched
-    ? `<b>${setup.verb} your ${lane.label}.</b> Press play${pausedHint}, watch to <b>${s.to}</b>, then pause.`
-    : `<b>Stay on your ${lane.label}.</b> Keep rolling to <b>${s.to}</b>, then pause.`;
+    ? `<b>${setup.verb} your ${esc(lane.label)}.</b> Press play${pausedHint}, watch to <b>${s.to}</b>, then pause.`
+    : `<b>Stay on your ${esc(lane.label)}.</b> Keep rolling to <b>${s.to}</b>, then pause.`;
 
   card.innerHTML=`
-    <span class="badge"><span class="dot"></span><span class="glyph">${lane.glyph}</span>${lane.label}</span>
+    <span class="badge"><span class="dot"></span><span class="glyph">${lane.glyph}</span>${esc(lane.label)}</span>
     <div class="media">${s.media}</div>
     ${s.ep?`<div class="ep">${s.ep}</div>`:``}
     <div class="range"><span class="t">${s.from}</span><span class="arrow">→</span><span class="t">${s.to}</span></div>
@@ -288,7 +292,7 @@ function render(){
   const next=idx+1<steps.length?steps[idx+1]:null;
   if(next){
     const nl=laneOf(next.show);
-    const move = next.show===s.show ? "Continue" : `Switch → ${nl.label}`;
+    const move = next.show===s.show ? "Continue" : `Switch → ${esc(nl.label)}`;
     root.style.setProperty("--nextacc",showMeta[next.show].acc);
     goBtn.innerHTML=`<span>Done ✓</span><span class="sub">${move}</span>`;
     nextupEl.innerHTML=`Next: <b>${nl.glyph} ${next.media}${next.ep?` ${next.ep}`:""}</b> &nbsp;·&nbsp; ${next.from} → ${next.to}`;
@@ -312,8 +316,8 @@ function renderIntro(){
       <div class="note"><span class="k">→</span><div><b>One tap per step.</b> The button tells you which screen to grab next.</div></div>
     </div>
     <div class="legend">
-      <div class="chip p"><div class="h">${cw.glyph} ${cap(cw.label)}</div><div class="d">Clone Wars S7</div></div>
-      <div class="chip l"><div class="h">${rt.glyph} ${cap(rt.label)}</div><div class="d">Revenge of the Sith</div></div>
+      <div class="chip p"><div class="h">${cw.glyph} ${esc(cap(cw.label))}</div><div class="d">Clone Wars S7</div></div>
+      <div class="chip l"><div class="h">${rt.glyph} ${esc(cap(rt.label))}</div><div class="d">Revenge of the Sith</div></div>
     </div>`;
   countEl.innerHTML=`SETUP`;progEl.style.width="0%";
   goBtn.innerHTML=`<span>Start the watch</span>`;
@@ -391,6 +395,9 @@ function chooseCustom(){
 }
 
 function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+/* A label is drawn as typed: "<TV>" vanished as a tag, and markup typed as
+   a label ran on every later open (bug sweep C4-4). */
+function esc(s){ return String(s).replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]); }
 
 /* ---- events ---- */
 goBtn.addEventListener("click",()=>{ idx=(idx>=steps.length)?-1:idx+1; render(); });
@@ -404,11 +411,18 @@ document.addEventListener("click",(e)=>{
 });
 document.addEventListener("keydown",(e)=>{
   if(!setup) return;                 // let inputs behave normally on setup screen
+  // A focused button or field keeps its own keys: Space on Back went forward,
+  // and on ↺ Start over too (bug sweep C4-6).
+  const t=e.target, own=t&&(t.tagName==="BUTTON"||t.tagName==="INPUT"||t.tagName==="TEXTAREA");
+  if(e.key===" "&&own) return;
   if(e.key==="ArrowRight"||e.key===" "){e.preventDefault();goBtn.click();}
   if(e.key==="ArrowLeft"){e.preventDefault();if(!backBtn.disabled)backBtn.click();}
 });
 document.addEventListener("keydown",(e)=>{
   if(setup) return;
+  // Enter on a focused button is that button ("← back to presets" saved the
+  // default labels instead of going back, C4-6).
+  if(e.key==="Enter"&&e.target&&e.target.tagName==="BUTTON") return;
   if(e.key==="Enter"&&!document.getElementById("customBox").classList.contains("hide")) chooseCustom();
 });
 

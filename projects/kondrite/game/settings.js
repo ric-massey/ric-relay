@@ -369,7 +369,9 @@ function drawAudioPanel(sh) {
 function drawAccountPanel(sh) {
   panelHead(sh, "ACCOUNT", null, "#a08cff");
   let row = 0;
-  if (window.KondriteCloud) {
+  // Whether there IS an account service, not whether cloud.js loaded: it always
+  // does, so a build with a blank config.js offered SIGN IN to nothing (C1e-5).
+  if (cloud && cloud.enabled()) {
     /* The way in and the way back out, for somebody who chose guest at the
        door and has changed their mind — or who wants off this account. */
     const inAlready = !!(cloud && cloud.enabled() && cloud.session());
@@ -546,6 +548,8 @@ function playCampaignLevel(levelKey) {
   // NEXT and RETRY both come through here — a continued war, so the ledger
   // carries. A fresh pick from the mission list goes via startGame instead.
   campContinue = true;
+  // RETRY on a mission just won goes back to the ledger it started from (C1b-8).
+  if (campRun && campRun.before && campRun.before.levelKey === levelKey) campRun = campRun.before.ledger;
   startGame(levelKey, lastSetup.humans || 1, 0);
 }
 

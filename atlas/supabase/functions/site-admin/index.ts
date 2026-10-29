@@ -122,7 +122,14 @@ export function createHandler({ admin, env, fetch: fetchFn }) {
 
     // Add somebody. Supabase sends the invite through the project's own email
     // settings; the link lands on ATLAS, which asks them to pick a password.
-    async invite(_me, { email, name }) {
+    //
+    // The pages Ric ticked go in here, in the same call. They used to be a
+    // second call from the page, and the database approves ATLAS the moment
+    // an invite exists — so when that second call failed the invitee had the
+    // private map whatever was ticked, under an error that read as if the
+    // invite had failed (bug sweep A1-8). If the pages cannot be set, the
+    // account is taken back out and the whole invite is refused.
+    async invite(me, { email, name, pages }) {
       const addr = String(email || '').trim().toLowerCase();
       if (!EMAIL_RE.test(addr)) throw new Refusal(400, 'That email does not look right.');
       const { data, error } = await admin.auth.admin.inviteUserByEmail(addr, {
@@ -130,8 +137,25 @@ export function createHandler({ admin, env, fetch: fetchFn }) {
         redirectTo: site + '/atlas/',
       });
       if (error) throw new Refusal(400, /registered|exists/i.test(error.message) ? 'That email already has an account.' : error.message);
-      if (name) await admin.from('access_requests').update({ name: String(name).trim().slice(0, 60) }).eq('user_id', data.user.id);
-      return { id: data.user.id };
+      const id = data.user.id;
+      if (Array.isArray(pages)) {
+        const keys = [...new Set(pages.filter((k) => typeof k === 'string' && /^[a-z0-9-]{1,40}$/.test(k)))];
+        try {
+          const cleared = await admin.from('site_access').delete().eq('user_id', id);
+          if (cleared && cleared.error) throw cleared.error;
+          if (keys.length) {
+            const put = await admin.from('site_access').insert(keys.map((page_key) => ({ user_id: id, page_key, granted_by: me.id })));
+            if (put && put.error) throw put.error;
+          }
+          const req = await admin.from('access_requests').update({ status: 'approved', decided_at: new Date().toISOString(), decided_by: me.id }).eq('user_id', id);
+          if (req && req.error) throw req.error;
+        } catch (e) {
+          await admin.auth.admin.deleteUser(id);
+          throw new Refusal(500, 'The invite was taken back: its pages could not be set (' + ((e && e.message) || 'unknown error') + ').');
+        }
+      }
+      if (name) await admin.from('access_requests').update({ name: String(name).trim().slice(0, 60) }).eq('user_id', id);
+      return { id, pages: Array.isArray(pages) };
     },
 
     async update(_me, { id, email, name }) {

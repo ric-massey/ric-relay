@@ -333,7 +333,7 @@ type Sydney's cat's name for a surprise!</div>
            /training was one of them until it grew a 52-week plan, a calendar,
            and a log you can tick from a crag; it earned its place back.
            They are NOT gone: `ls`, `tree`, `find`, `open <room>`, typing the room
-           name, and the URL all still reach them. The room navs show the same eight
+           name, and the URL all still reach them. The room navs show the same rooms
            this list does, so the site says one thing about what it contains.
            Re-list one by flipping `listed` when it's actually built out. -->
       <nav id="dir" class="hidden" aria-label="Site directory"></nav>
@@ -878,8 +878,11 @@ type Sydney's cat's name for a surprise!</div>
       const verb = originalVerb.toLowerCase();
       const originalArg = originalRest.join(" ");
       const arg = originalArg.toLowerCase().replace(/^\/+/, "");
-      const pageArg = PAGE_ALIASES[arg] || arg;
-      const pageVerb = PAGE_ALIASES[verb] || verb;
+      /* Own keys only: "__proto__" or "constructor" typed at the prompt
+         found Object.prototype's and threw, or echoed (bug sweep D1-8). */
+      const own = (o, k) => (Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined);
+      const pageArg = own(PAGE_ALIASES, arg) || arg;
+      const pageVerb = own(PAGE_ALIASES, verb) || verb;
       const project = projectLookup.get(normalizeTarget(arg));
       const directProject = projectLookup.get(normalizeTarget(verb));
 
@@ -888,7 +891,7 @@ type Sydney's cat's name for a surprise!</div>
       if (/^front[\s_-]*door$/i.test(normalizedRaw) || /^(home|cd home|open home)$/i.test(normalizedRaw)) {
         print("walking out to the front door ...");
         setTimeout(() => goTo("index.html"), 400);
-      } else if ((verb === "open" || verb === "cd") && PAGES[pageArg]) {
+      } else if ((verb === "open" || verb === "cd") && own(PAGES, pageArg)) {
         print(`entering /${pageArg} ...`);
         setTimeout(() => goTo(PAGES[pageArg]), 400);
       } else if (verb === "open" && project) {
@@ -906,18 +909,19 @@ type Sydney's cat's name for a surprise!</div>
         }
       } else if (verb === "cat" && ["notes", "transmissions"].includes(arg)) {
         print(readNotes());
-      } else if (verb === "cd" && ["..", "/", "~"].includes(arg)) {
+      // `cd /` arrives here as "" — the slash is stripped above (D1-8).
+      } else if (verb === "cd" && ["..", "~", ""].includes(arg) && originalArg.trim() !== "") {
         print("already at /terminal. type `home` for the front door.");
       } else if (verb === "back") {
         print("returning to previous signal ...");
         setTimeout(goBack, 250);
-      } else if (PAGES[pageVerb]) {
+      } else if (own(PAGES, pageVerb)) {
         // A trailing word used to make this fall through to "command not
         // recognized: mind" — telling someone a room doesn't exist while it sits
         // in the directory right above. The room name wins; the rest is noise.
         print(`entering /${pageVerb} ...`);
         setTimeout(() => goTo(PAGES[pageVerb]), 400);
-      } else if (COMMANDS[verb]) {
+      } else if (own(COMMANDS, verb)) {
         const result = COMMANDS[verb](arg, originalArg);
         if (result) print(result);
       } else {

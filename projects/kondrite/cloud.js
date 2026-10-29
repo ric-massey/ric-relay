@@ -267,6 +267,15 @@
     const q = new URLSearchParams(h.slice(1));
     const access = q.get("access_token"), refresh = q.get("refresh_token");
     if (!access || !refresh) return false;
+    /* Somebody already signed in here stays signed in. A link carrying
+       another account's tokens used to replace them with nothing said, and
+       the next autosave then went up to that account (bug sweep A5-5). The
+       fragment is still scrubbed; to take a link for a different account,
+       sign out first and open it again. */
+    if (sess) {
+      try { history.replaceState(null, "", location.pathname + location.search); } catch (_) {}
+      return false;
+    }
     setSession({
       access, refresh,
       userId: "", email: "",

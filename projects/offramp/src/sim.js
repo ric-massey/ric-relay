@@ -1119,7 +1119,9 @@ const Sim = (() => {
        always already sorted, and V8's sort is linear on that, so this is
        far cheaper than maintaining order by hand would be. */
     function index() {
-      for (let i = 1; i <= nLanes; i++) byLane[i].length = 0;
+      // Bucket 0 too: nothing reads it, but a body left of the road is filed
+      // there every tick, and it grew without end (bug sweep C2b-8).
+      for (let i = 0; i <= nLanes; i++) if (byLane[i]) byLane[i].length = 0;
       for (let i = 0; i < live.length; i++) {
         const v = live[i];
         byLane[v.from].push(v);

@@ -153,7 +153,9 @@ function updateRicConnectionStatus(forceOnline){
   if(!el) return;
   if(typeof forceOnline==='boolean') RIC_DB_CONNECTED=forceOnline;
   if(!navigator.onLine) RIC_DB_CONNECTED=false;
-  const pending=getOfflineQueue().length;
+  const queue=getOfflineQueue();
+  const pending=queue.filter(op=>!op.refused).length;
+  const refused=queue.length-pending;
   const checking=navigator.onLine && RIC_DB_CONNECTED==null;
   const online=navigator.onLine && RIC_DB_CONNECTED===true;
   const rehearsal=isRaceSimulationActive();
@@ -161,7 +163,9 @@ function updateRicConnectionStatus(forceOnline){
   el.classList.toggle('checking',checking);
   el.classList.toggle('queued',pending>0);
   el.innerHTML = pending
-    ? `<i class="ti ti-device-mobile-check"></i> ${pending} saved on phone · ${_flushingOfflineQueue?'syncing':'waiting to sync'}`
+    ? `<i class="ti ti-device-mobile-check"></i> ${pending} saved on phone · ${_flushingOfflineQueue?'syncing':'waiting to sync'}${refused?` · ${refused} refused`:''}`
+    : refused
+      ? `<i class="ti ti-alert-triangle"></i> ${refused} saved on phone · the database refused ${refused===1?'it':'them'}`
     : checking
       ? '<i class="ti ti-loader-2"></i> Checking connection'
       : `<i class="ti ti-${rehearsal?'player-play-filled':online?'database-check':'wifi-off'}"></i> ${rehearsal?(online?'Rehearsal running · saves working':'Rehearsal running · saves will queue'):online?'Connected · saves working':'Offline · saves will queue'}`;
@@ -275,7 +279,10 @@ function goPage(name){
 async function renderRunningTotal(elId){
   const el = document.getElementById(elId);
   if(!el) return;
-  const rows = await dbList('splits', 'sort_order.asc');
+  // Cleaned like every other race-day screen: a walkthrough tap on the start line
+  // days before the gun made this card say LIVE and count from the rehearsal
+  // (bug sweep A4-11).
+  const rows = RIC_LOGIC.sanitizeRaceRows(await dbList('splits', 'sort_order.asc'), raceSessionStartDateTime().getTime());
   const sorted = [...rows].sort((a,b)=>(a.mile||0)-(b.mile||0));
   const startRow = sorted[0];
   const finishRow = sorted.length ? sorted[sorted.length-1] : null;

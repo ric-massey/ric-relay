@@ -119,7 +119,7 @@ terminal · orrin · psyche · climbing · training · weather · exploration ·
 **This set matches the home page's `#dir` listing on purpose.** The room navs used to
 carry different sets in different places, so the site said two different things about
 what it contains — a visitor landed on the terminal, saw one list, clicked into a room
-and was offered another. `apex`, `log` and `map` are out of the nav for the same reason
+and was offered another. `apex`, `cs`, `val`, `log` and `map` are out of the nav for the same reason
 they're out of `#dir`. Those pages still *carry* the nav (with no `.here` marked, since
 they aren't in it) rather than dropping it like `map.html` does — losing the way out of
 a room is worse than an unhighlighted bar.
@@ -153,12 +153,12 @@ With JS off nothing is injected and the nav renders exactly as it always did.
 - Each `<nav>` carries `aria-label="Terminal rooms"`.
 - `map.html` is deliberately left out of the room menus entirely.
 
-**`apex`, `log` and `map` are deliberately unlisted** — in `#dir` *and* in the room
+**`apex`, `cs`, `val`, `log` and `map` are deliberately unlisted** — in `#dir` *and* in the room
 navs (the front door, `index.html`, is the one exception, by Ric's word on
 2026-10-16: it shows Apex and ATLAS). They are the thin rooms and Ric does not want the front door advertising work
 that isn't done. They are *not* removed: `ls`, `tree`, `find`, `open <room>`, typing
 the room name and the plain URL all still reach them, and Tab completion offers all
-three. Don't "fix" this by putting them back. If one gets built out properly, that's
+of them. Don't "fix" this by putting them back. If one gets built out properly, that's
 the moment to re-list it.
 
 **There is one room list, in `terminal.html`.** The `ROOMS` array near the top of its script
@@ -428,8 +428,12 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
   the activity in, not `start_date_local`, which is a local time wearing a `Z` and can
   be a timezone out in either direction. `at` survives re-ingest so a rename does not
   send an old map back behind the hold.
-- **The run detail loads map tiles from openstreetmap.org.** This is the one external
-  host on the site and it breaks the "no external requests" line in the checklist below.
+- **The run detail loads map tiles from openstreetmap.org.** It was the first external
+  host on the site, and it is not the only one now: unpkg (account/, admin/, ATLAS,
+  HERMISCUS), Google Fonts (some rooms), jsDelivr (HERMISCUS), the GitHub API
+  (orrin.html), the orrin-status Worker, ClinicalTrials.gov when the Worker fails, and
+  the weather room's providers — each has its own note in this file and is listed in the
+  checklist below.
   Images only — no map library, no API key, no script. If tiles fail the route still
   draws on the background colour. Attribution is required and is in the corner of the
   map; do not remove it.
@@ -457,8 +461,9 @@ off. `projects/training/README.md` has the full rules; the three that constrain 
 
 **Garmin is pulled from a button, and none of it is public.** "pull Garmin" on the training
 page (signed in) asks the Worker to start `.github/workflows/garmin.yml`, which pulls sleep, HRV,
-resting HR, readiness and every activity and POSTs them to the Worker's `/garmin`, the one route
-that needs a token to *read*. The Actions log is public, so that job commits nothing, caches
+resting HR, readiness and every activity and POSTs them to the Worker's `/garmin`, one of
+the three routes that need a token to *read* — with `/garmin/session` (Garmin's parked
+login) and `/stats` (the visitor counter). A new route is public to read only on purpose. The Actions log is public, so that job commits nothing, caches
 nothing and prints no values. A Claude session reads it with
 `GARMIN_READ_TOKEN` (the `garmin` skill). Never write that export, or anything derived from it,
 into this repo. Its README has the rest.
@@ -1077,10 +1082,13 @@ for t in atlas/test/*.test.mjs; do node "$t" || break; done
 they are simulations, not unit tests. Let them finish.
 
 Served from a plain static server, `/climb`, `/media`, `/log` and `/strava` all 404:
-those are Cloudflare Worker endpoints, and on `localhost` the client points at the origin
-it was loaded from. Every caller treats a failed fetch as "no extra data" and falls back
-to the committed history, so those 404s in the console are expected and are **not** the
-bug you are looking for.
+those are Cloudflare Worker endpoints, and on `localhost` the client asks the origin it
+was loaded from first. Those 404s in the console are expected and are **not** the bug you
+are looking for. **But a local preview is not sealed off from production.** The
+climbing pages (`projects/climbing/climb-host.js`) and Entertainment (`room.js`) then
+fall back to the live Worker on purpose, so a local page shows live data — and a
+sign-in or a write made from it reaches the real Worker. The training pages do not fall
+back; they show the committed history. (Corrected 2026-10-29, bug sweep D4-4.)
 
 ## Quick verification checklist before you finish
 

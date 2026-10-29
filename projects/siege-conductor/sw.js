@@ -1,6 +1,12 @@
 /* Siege Conductor service worker — offline-first.
    Once the app has been opened on the web, it keeps working with no internet. */
-const CACHE = "siege-v3";
+/* v4 (2026-10-29, bug sweep C4-2 and C4-12): network first, so a returning
+   visitor gets today's page and the site's shared scripts instead of July's;
+   the cache is the fallback with no signal. Only good answers are kept — a
+   404 seen once was kept for good. And the precache takes each file on its
+   own, so one missing file (the shared scripts live outside this folder)
+   no longer stops the whole install. */
+const CACHE = "siege-v4";
 const ASSETS = [
   "./",
   "./index.html",
@@ -15,7 +21,9 @@ const ASSETS = [
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      .then((c) => Promise.all(ASSETS.map((a) => c.add(a).catch(() => {}))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -32,20 +40,18 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   e.respondWith(
-    caches.match(e.request).then((hit) => {
-      if (hit) return hit;
-      return fetch(e.request).then((resp) => {
-        // best-effort cache of same-origin assets (e.g. fonts fetched on first load)
-        try {
-          if (new URL(e.request.url).origin === location.origin) {
-            const copy = resp.clone();
-            caches.open(CACHE).then((c) => c.put(e.request, copy));
-          }
-        } catch (_) {}
-        return resp;
-      }).catch(() => e.request.mode === "navigate"
-        ? caches.match("./index.html")
-        : Response.error());
-    })
+    fetch(e.request).then((resp) => {
+      // A fresh copy of a good same-origin answer, for the next time offline.
+      try {
+        if (resp.ok && new URL(e.request.url).origin === location.origin) {
+          const copy = resp.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy));
+        }
+      } catch (_) {}
+      return resp;
+    }).catch(() => caches.open(CACHE).then((c) => c.match(e.request)).then((hit) =>
+      hit || (e.request.mode === "navigate"
+        ? caches.open(CACHE).then((c) => c.match("./index.html"))
+        : Response.error())))
   );
 });

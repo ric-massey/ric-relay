@@ -595,6 +595,21 @@ function marketPage(st, title, sub, footer, here, closeAct, only) {
     ticketed += c;
   });
 
+  /* The basket, from every ticked row — not only the ones the scroll window
+     draws. Built inside the draw loop, a ticked row scrolled out of view was
+     silently left out of BUY SELECTED (bug sweep C1d-4). Same arithmetic the
+     row itself uses below. */
+  rows.forEach(r => {
+    const id = r.id || r.kind + ":" + r.key;
+    if (!buyPick[id]) return;
+    const stocked = Math.max(1, r.most || 1);
+    const spare = cash - (ticketed - (committed[id] || 0));
+    const most = Math.max(1, Math.min(stocked, buyMostFor(r, Math.max(0, spare))));
+    const qty = r.kind === "repair" ? 1 : buyQtyOf(id, most);
+    basket.push({ r, id, qty });
+    bill += buyCostOf(r, qty);
+  });
+
   const inner = { x: full.x + 1, y: buyY + PAGE.HEAD - 8,
                   w: full.w - 2, h: buyH - PAGE.HEAD - 46 };
   ctx.save();
@@ -683,7 +698,6 @@ function marketPage(st, title, sub, footer, here, closeAct, only) {
 
     const qty = r.kind === "repair" ? 1 : buyQtyOf(id, most);
     const cost = buyCostOf(r, qty);
-    if (picked) { basket.push({ r, id, qty }); bill += cost; }
 
     const stepW = 38, boxW = 54;
     const plusCx = bRight - stepW / 2;

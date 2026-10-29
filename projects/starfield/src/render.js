@@ -1019,7 +1019,11 @@
       // In reverse the heading is behind the nose whatever the speed, and in a
       // faster-than-light gear β is zero — so the test cannot be β alone, or
       // backing away from a star would draw the heading dot dead ahead.
-      const moving = state.beta > 1e-4 || (state.warpLySec || 0) < 0;
+      /* On speed in metres a second, the units gear 1 works in: β above 1e-4
+         (30 km/s) left most of gear 1's range parked under the crosshair.
+         And warpLySec is a length, never negative, so its old test was dead;
+         a faster-than-light gear that is moving is (bug sweep C3-12). */
+      const moving = state.beta * 299792458 > 10 || (state.warpLySec || 0) > 0;
       let vel = null;
       if (moving) {
         const fwd = SF.view.forward;

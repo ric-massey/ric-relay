@@ -21,6 +21,10 @@
     reflection: ["spectrum", "HUMANS: STILL MORE COMPLICATED THAN CHECKBOXES"],
     studies: ["placebo", "CONTROL GROUP DETECTED // YOU FEEL BETTER ANYWAY"],
     starfield: ["warp", "NAV COMPUTER: THE SCENIC ROUTE IS FASTER"],
+    /* Starfield's flight page. Not "warp": W, A, R and P all fly the ship, so
+       typing it thrust, strafed, climbed and paused (bug sweep D1-7). No
+       letter of this one is bound to a control. */
+    starfly: ["tycho", "TYCHO MAPPED THE SKY BY EYE // YOU HAVE A SHIP"],
     board: ["beta", "BETA RECEIVED // PULL HARDER"],
     scale: ["googol", "THAT IS A 1 WITH A HUNDRED ZEROES // STILL NOT ON THE LADDER"],
     /* Interstate 40. No W, A, S or D in the word, because those drive the car. */

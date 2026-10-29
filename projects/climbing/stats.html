@@ -62,9 +62,11 @@
 
     t.routes.forEach(r => {
       if (r.outcome === "sent") sends++;
-      const key = (r.name || "").toLowerCase();
+      /* Folded the way the ledger folds them — aliases, smart quotes — and
+         "not sure what I got on" is not a route (bug sweep B1-3). */
+      const key = r.name && !r.unknown ? ClimbParse.canonicalRoute(r.name).toLowerCase() : "";
       if (key) {
-        const e = tally[key] || (tally[key] = { name: r.name, grade: r.grade, n: 0, days: new Set(), sends: 0 });
+        const e = tally[key] || (tally[key] = { name: ClimbParse.canonicalRoute(r.name), grade: r.grade, n: 0, days: new Set(), sends: 0 });
         e.n += r.repeats || 1;
         e.days.add(t.date);
         if (r.outcome === "sent") e.sends++;
@@ -211,5 +213,6 @@
 })();
 </script>
 
+<script src="../../effects.js"></script>
 </body>
 </html>

@@ -36,7 +36,7 @@ const users = () => ([
 ]);
 
 // A fake service-role client that records every call it is asked to make.
-function fakeAdmin({ admins = ['ric'], tokens = { good: RIC, other: { id: 'u1', email: 'a@x.test' } } } = {}) {
+function fakeAdmin({ admins = ['ric'], tokens = { good: RIC, other: { id: 'u1', email: 'a@x.test' } }, failOn = null } = {}) {
   const calls = [];
   const rec = (name, out) => (...args) => { calls.push([name, ...args]); return Promise.resolve(typeof out === 'function' ? out(...args) : out); };
   const tables = {
@@ -52,6 +52,8 @@ function fakeAdmin({ admins = ['ric'], tokens = { good: RIC, other: { id: 'u1', 
       eq(col, v) { q._filter = [col, v]; return q; },
       maybeSingle() { const r = q._rows.find((x) => x[q._filter[0]] === q._filter[1]); return Promise.resolve({ data: r || null }); },
       update(row) { calls.push(['update', t, row]); return { eq: (c, v) => { calls.push(['update.eq', t, c, v]); return Promise.resolve({}); } }; },
+      delete() { calls.push(['delete', t]); return { eq: (c, v) => { calls.push(['delete.eq', t, c, v]); return Promise.resolve(failOn === 'delete' ? { error: { message: 'boom' } } : {}); } }; },
+      insert(rows) { calls.push(['insert', t, rows]); return Promise.resolve(failOn === 'insert' ? { error: { message: 'boom' } } : {}); },
       then(res) { return Promise.resolve({ data: q._rows }).then(res); },
     };
     return q;
@@ -183,6 +185,23 @@ test('server: invite checks the address and says plainly when it exists', async 
   const inv = ok.calls.find(([c]) => c === 'inviteUserByEmail');
   assert.equal(inv[1], 'new@x.test');
   assert.match(inv[2].redirectTo, /\/atlas\/$/);
+});
+
+test('server: invite sets exactly the ticked pages in the same call, or takes the account back (A1-8)', async () => {
+  const ok = await hit({ body: { action: 'invite', email: 'n@x.test', pages: ['hermiscus'] } });
+  assert.equal(ok.json.pages, true);
+  assert.ok(ok.calls.some(([c, t]) => c === 'delete' && t === 'site_access'), 'the ATLAS grant from the trigger is cleared first');
+  const ins = ok.calls.find(([c, t]) => c === 'insert' && t === 'site_access');
+  assert.deepEqual(ins[2].map((r) => r.page_key), ['hermiscus']);
+  assert.ok(!ok.calls.some(([c]) => c === 'deleteUser'));
+
+  const none = await hit({ body: { action: 'invite', email: 'n@x.test', pages: [] } });
+  assert.ok(!none.calls.some(([c, t]) => c === 'insert' && t === 'site_access'), 'nothing ticked grants nothing');
+
+  const bad = await hit({ admin: fakeAdmin({ failOn: 'insert' }), body: { action: 'invite', email: 'n@x.test', pages: ['atlas'] } });
+  assert.equal(bad.res.status, 500);
+  assert.match(bad.json.error, /taken back/);
+  assert.ok(bad.calls.some(([c, id]) => c === 'deleteUser' && id === 'new'));
 });
 
 test('server: email is refused until it is set up, and never sends then', async () => {

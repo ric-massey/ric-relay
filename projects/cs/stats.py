@@ -68,6 +68,7 @@ def build(matches):
     WP = winprob.fit([R for _, R in loaded])        # refitted on every sync
     best = []
     died = {}                                       # name -> counts and an example of each
+    died_all = {"n": 0, "head": {}, "any": {}, "ex": {}}   # everybody, the "why you die" baseline
     duels = {}                                      # (a, b), a < b by name -> [a killed b, b killed a]
     stories = {}                                    # match id -> its story (story.py)
     found = []                                      # [game, round, t, key, victim seat] (feats.py)
@@ -87,13 +88,17 @@ def build(matches):
                     duels.setdefault(key_, [0, 0])[0 if ka == key_[0] else 1] += 1
         for ri_, f_, v_, tags in deaths.every_death(R):
             nm_ = names_.get(v_)
-            for key in ([nm_] if nm_ else []) + ["*"]:
-                d_ = died.setdefault(key, {"n": 0, "head": {}, "any": {}, "ex": {}})
+            # Everyone's totals live in their own field, `died_all`: under the
+            # key "*" a player who called themselves * was counted into them
+            # twice and lost their own row (bug sweep B5a-8).
+            targets = ([(died.setdefault(nm_, {"n": 0, "head": {}, "any": {}, "ex": {}}), True)] if nm_ else []) \
+                + [(died_all, False)]
+            for d_, own in targets:
                 d_["n"] += 1
                 d_["head"][tags[0]] = d_["head"].get(tags[0], 0) + 1
                 for tg in tags:
                     d_["any"][tg] = d_["any"].get(tg, 0) + 1
-                if key != "*":
+                if own:
                     d_["ex"][tags[0]] = [gi, ri_ + 1, round(max(0, f_["t"] - 5), 1)]
         # every player's most impressive round of this game (highlight.py)
         for seat, (ri_, sc, fx, tot) in highlight.best_rounds(WP["coef"], R).items():
@@ -103,10 +108,15 @@ def build(matches):
         games.append({"id": m["id"], "map": R["map"], "at": m.get("at"), "result": m["result"]})
         me = next((s["seat"] for s in R["seats"] if s.get("me")), 0)
         us = {s["seat"] for s in R["seats"] if s.get("us")}
-        for n, r in enumerate(R["rounds"], 1):
+        # The second pistol round is the first one on the other side: round 13
+        # in a 24-round game, round 9 in Wingman (bug sweep B5a-9).
+        rounds_ = R["rounds"]
+        second_half = next((i for i, r_ in enumerate(rounds_, 1)
+                            if rounds_ and r_["side"] != rounds_[0]["side"]), None)
+        for n, r in enumerate(rounds_, 1):
             side, fs = r["side"], r.get("fights") or []
             row = {"g": gi, "n": n, "side": side, "w": bool(r["w"]), "why": r.get("reason"),
-                   "pistol": n in (1, 13), "k": 0, "dmg": 0, "surv": True,
+                   "pistol": n == 1 or n == second_half, "k": 0, "dmg": 0, "surv": True,
                    "first": None, "op": None, "clutch": None, "he": 0, "fire": 0}
             # buy after freeze time: Ric's, and each team's average
             econ = r.get("economy") or {}
@@ -202,7 +212,7 @@ def build(matches):
             rounds.append(row)
     return {"games": games, "rounds": rounds, "fights": fights,
             "hits": [[mp, sd, d, g, c] for (mp, sd, d, g), c in sorted(hits.items())],
-            "nades": nades, "flashes": flashes, "wp": WP, "best": best, "died": died,
+            "nades": nades, "flashes": flashes, "wp": WP, "best": best, "died": died, "died_all": died_all,
             "duels": [[a, b, x, y] for (a, b), (x, y) in sorted(duels.items())], "story": stories,
             "feats": found, "featdefs": [list(f) for f in feats.FEATS]}
 

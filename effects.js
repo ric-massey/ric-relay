@@ -832,6 +832,11 @@
           </feDisplacementMap>
         </filter>
       </defs>`;
+    /* CSS `animation: none` does not reach SMIL, so with reduced motion the
+       ripples kept moving under the "static" treatment EASTER_EGGS.md
+       promises. Take the <animate>s out and the filters hold still on their
+       first values (bug sweep D1-2). */
+    if (reducedMotion) filterBank.querySelectorAll("animate").forEach((a) => a.remove());
     document.body.appendChild(filterBank);
   }
 
@@ -2855,7 +2860,8 @@
   };
 
   /* A game that wants Mochi and nothing else says so with
-     <html data-mochi-only>. KONDRITE is the one that does: a trip mode is a
+     <html data-mochi-only>. KONDRITE, OFFRAMP, FARLIGHT and Starfield's flight
+     page do (the last three since bug sweep D1-6, 60 fps to 6): a trip mode is a
      filter over every element on the page, which over a full-screen canvas is
      a second renderer fighting the first. So none of it starts here — no
      filters, no scene, no menu, no link rewriting — and the saved mode is left

@@ -154,7 +154,10 @@
     reindex() {
       const rev = {};
       for (const a of ACTIONS) {
-        for (const code of Controls.map[a.id] || []) (rev[code] ||= []).push(a.id);
+        for (const code of Controls.map[a.id] || []) {
+          const list = (rev[code] ||= []);
+          if (!list.includes(a.id)) list.push(a.id);   // once, even in both slots (C3-8)
+        }
       }
       Controls._reverse = rev;
     },
@@ -168,6 +171,11 @@
         if (at !== -1) keys.splice(at, 1);
       }
       const keys = Controls.map[actionId] || (Controls.map[actionId] = []);
+      /* Already in this action's other slot: move it rather than hold it
+         twice, which fired a press-once action twice — Pause never paused,
+         Shift up jumped two gears (bug sweep C3-8). */
+      const other = keys.indexOf(code);
+      if (other !== -1 && other !== slot) keys[other] = null;
       keys[slot] = code;
       Controls.map[actionId] = keys.filter(Boolean);
       Controls.reindex();

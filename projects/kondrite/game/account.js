@@ -431,7 +431,10 @@ function adoptCloud(book, quiet) {
   if (mode && mode.survey && surv) {
     surv = null;
     startGame("survey", 1, 0);
-    state = "playing";
+    /* Paused: the account's sector arrives behind a panel the keyboard cannot
+       reach past, and starting it "playing" ran the world — tanks draining,
+       the ship uncontrolled — while the player read the message (C1e-4). */
+    state = "paused"; localPause = true;
   }
   if (!quiet) note("Your saved survey is loaded.");
 }

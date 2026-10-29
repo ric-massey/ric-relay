@@ -15,7 +15,7 @@
 .traintop .inner{max-width:1060px;margin:0 auto;padding:.55rem 1.5rem;display:flex;align-items:center;gap:.6rem}
 .traintop a{text-decoration:none}
 .traintop .brand{color:#fff;font-weight:800;letter-spacing:.16em;font-size:.78rem}
-.traintop .up{margin-left:auto;color:#ffd9c9;font-size:.78rem}
+.traintop .up{margin-left:auto;color:#fff;font-size:.78rem}   /* #ffd9c9 was 3.5:1 on the bar (B2-13) */
 
 .trainnav{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
 .trainnav .inner{max-width:1060px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;gap:.3rem}

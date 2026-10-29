@@ -315,10 +315,11 @@ const modFitted = key =>
      surv.slots.some(sl => sl && sl.key === key && sl.fit <= 0));
 
 /* ── the almanac ──────────────────────────────────────────────────────────
-   Twenty-five entries, and the split between them is deliberate: seventeen
-   are conditions on telemetry the simulation already computes every frame,
-   seven are landmarks placed out in the dark at increasing distances, and one
-   is inside a rock. The count is cheap; the places are not.
+   Thirty-five entries, and the split between them is deliberate: twenty-two
+   are conditions on telemetry the simulation already computes every frame, and
+   thirteen are places — landmarks out in the dark at increasing distances, and
+   one inside a rock. The count is cheap; the places are not. (Recounted
+   2026-10-29, bug sweep C1c-8.)
 
    `test` entries are checked every tick against the telemetry block. The rest
    are events — arriving somewhere, breaking something — and call `surveyFind`
@@ -637,8 +638,8 @@ const LANDMARKS = [
    the supernebula close enough to visit on your first flight and buries the
    graveyard eight hours out, and the next one does the opposite.
 
-   Two things are deliberately not shuffled. The Leviathan stays on the last
-   rung, because it is the finale and the station's last part is inside it. And
+   Two things are deliberately not shuffled. The Leviathan is on no rung at all
+   — it is `fixed` at 40,000 in every sector (see its entry below). And
    the home band stays quiet in every world, because the opening two minutes
    are the same promise whatever the seed. */
 const TRAITS = [

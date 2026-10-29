@@ -1022,7 +1022,10 @@
      #genre=Action — so a "see all →" lands on the same cut of the list the
      shelf was showing. */
   function readHash() {
-    const h = decodeURIComponent(location.hash.replace(/^#/, ''));
+    /* A bad hash (a stray "%") is ignored rather than throwing before the
+       room boots and leaving the library blank (bug sweep B3-10). */
+    let h = '';
+    try { h = decodeURIComponent(location.hash.replace(/^#/, '')); } catch (e) { return; }
     if (!h) return;
     if (h === 'queue') state.view = 'watchlist';
     else if (h === 'together' || h === 'starred') state.view = 'together';
@@ -1103,7 +1106,8 @@
 
   function row(e) {
     const tags = [];
-    if (e.pick) tags.push('<span class="chip star">★ starred</span>');
+    // The partner mark is a person now, as on every other view (B3-12).
+    if (e.pick) tags.push('<span class="chip star">' + Room.PERSON + ' ' + Room.PARTNER_LABEL + '</span>');
     if (e.status === 'watched') tags.push('<span class="chip seen">✓ seen</span>');
     for (const w of Room.places(e))
       tags.push('<span class="chip where">' + esc(/^buy$/i.test(w) ? 'have to buy' : w) + '</span>');

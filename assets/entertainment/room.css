@@ -1245,7 +1245,7 @@
 }
 .run-list span {
   display: block;
-  font: 600 0.68rem/1.2 var(--mono);
+  font: 600 0.7rem/1.2 var(--mono);
   color: var(--dim);
 }
 
@@ -1411,6 +1411,10 @@ select.pick:hover,
    biggest breach by a distance. Raised, with the padding brought in to match
    so nothing grew. */
 .ticket .stub { font-size: 0.7rem; letter-spacing: 0.1em; }
+/* The stub's number and the strapline were missed the first time, at 6.7 and
+   6.9px (bug sweep B3-11). */
+.ticket .stub::after { font-size: 0.7rem; letter-spacing: 0.02em; }
+.ticket .words::after { font-size: 0.7rem; letter-spacing: 0.04em; }
 .ticket .words span { font-size: 0.7rem; letter-spacing: 0.14em; }
 .seen-tag { font-size: 0.7rem; padding: 3px 5px; }
 .spine .seen-tag { transform: translateX(-50%) rotate(-1.5deg); padding: 2px 4px; }
@@ -1426,13 +1430,14 @@ select.pick:hover,
   font: 700 0.72rem/1 var(--mono);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #7c7c7c;
+  color: var(--dim);
 }
 
 /* ── a film in a run that is not out yet ──
    A run holds the whole series, which includes films nobody has seen. Left
    looking like the rest, a row marked "seen" appears to claim them. */
-.run-list li.soon { opacity: 0.55; }
+/* Told apart by the dashed case and the dim title, not by fading the row:
+   at 0.55 opacity its words were about 3:1 (bug sweep B3-11). */
 .run-list li.soon .run-art { border-style: dashed; }
 .run-list li.soon b { color: var(--dim); }
 .soon-tag {
@@ -1508,8 +1513,8 @@ dialog.quick { width: min(440px, calc(100vw - 32px)); }
 .quick-in .hint {
   text-transform: none;
   letter-spacing: 0;
-  font: 500 0.68rem/1 var(--sans);
-  color: #7c7c7c;
+  font: 500 0.7rem/1 var(--sans);
+  color: var(--dim);
 }
 .quick-in input, .quick-in select {
   padding: 10px 11px;

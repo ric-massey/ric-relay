@@ -48,9 +48,12 @@ const Traffic = (() => {
   const profile = (key, px) => T ? at(T[key], px) : null;
 
   /* ── the clock ────────────────────────────────────────────────────────
-     `when` is { dow, hour, month } — dow 0 = Monday, to match the week
-     profile, which is TMAS's own convention and is why it is not 0 =
-     Sunday. `hour` may be fractional; the shapes are hourly and are
+     `when` is { dow, hour, month } — dow 0 = Sunday, as JavaScript's
+     getDay() gives it and as the week table is laid out, and month 0 =
+     January, as getMonth() gives it. This used to say dow 0 = Monday and
+     call days 5 and 6 the weekend, which made Friday a weekend and Sunday a
+     weekday for the lorry mix and the speeds while the volumes read the same
+     number Sunday-first (bug sweep C2b-3). `hour` may be fractional; the shapes are hourly and are
      interpolated across the boundary rather than stepped, because a
      vehicle crossing 17:00 should not see the road change under it. */
   function norm(when) {
@@ -59,7 +62,7 @@ const Traffic = (() => {
     let hour = w.hour == null ? 12 : w.hour;
     hour = ((hour % 24) + 24) % 24;
     const month = w.month == null ? 6 : (((w.month | 0) % 12) + 12) % 12;
-    return { dow, hour, month, weekend: dow >= 5 };
+    return { dow, hour, month, weekend: dow === 0 || dow === 6 };
   }
 
   /* Interpolate an hourly table at a fractional hour, wrapping midnight.
@@ -293,7 +296,9 @@ const Traffic = (() => {
      the traffic. */
   function limitFor(kind, px, st) {
     const posted = profile("speed", px) || 65;
-    if (kind === "car" || !st || !T || !T.states) return posted;
+    // The lorry differential is for lorries: a motorcycle fell through to it
+    // and wanted 58 among cars doing 73 in the Mojave (bug sweep C2b-5).
+    if ((kind !== "rigid" && kind !== "artic") || !st || !T || !T.states) return posted;
     const s = T.states.find((e) => e.name === st);
     if (!s) return posted;
     const urban = profile("urban", px) === 1;

@@ -304,8 +304,9 @@ const out = {
   days: days.map(({ miles, ...rest }) => rest)
 };
 
-mkdirSync(dirname(OUT), { recursive: true });
-writeFileSync(OUT, JSON.stringify(out));
+/* Nothing is written until every guard below has passed: they used to run
+   after both files were on disk, so a refused export left the leak sitting
+   there, ready to commit (bug sweep B2-5). */
 
 /* ── the crag index ──
    Every outdoor day in the year, with where it is. The climbing page shows the
@@ -330,12 +331,13 @@ if (placeless.length) {
   placeless.slice(0, 5).forEach(c => console.error(`  · ${c.date} "${c.title}" meta="${c.meta}"`));
   process.exit(1);
 }
-writeFileSync(CRAG_OUT, JSON.stringify({ generated: out.generated, days: cragDays }));
+const crag = { generated: out.generated, days: cragDays };
 
 /* ── the guard ──
    Fail loudly rather than publish a leak. If any of these strings reach the
    output, something private has been added to the allowlist by accident. */
 const text = JSON.stringify(out);
+const cragText = JSON.stringify(crag);
 const LEAKS = [
   ['work rota', /2:30 to 7:45|Gym desk/i],
   ['free hours', /\d+h\d\d free|free time/i],
@@ -344,7 +346,7 @@ const LEAKS = [
   ['home-relative drive times', /30 min each way to REI/i],
   ['the home crag', HOME_CRAG],
 ];
-const hits = LEAKS.filter(([, re]) => re.test(text));
+const hits = LEAKS.filter(([, re]) => re.test(text) || re.test(cragText));
 if (hits.length) {
   console.error('REFUSING TO PUBLISH — private content reached the output:');
   hits.forEach(([name]) => console.error('  · ' + name));
@@ -371,6 +373,10 @@ if (clashes.length) {
   console.error(`  (${clashes.length} total). Give one of them a distinct slot or kind.`);
   process.exit(1);
 }
+
+mkdirSync(dirname(OUT), { recursive: true });
+writeFileSync(OUT, text);
+writeFileSync(CRAG_OUT, cragText);
 
 const bytes = Buffer.byteLength(text);
 console.log(`wrote ${OUT.replace(ROOT + '/', '')} — ${days.length} days, ${(bytes / 1024).toFixed(0)} kB`);

@@ -199,7 +199,9 @@ const Cars = (() => {
      number nobody chose. */
   function clock() {
     const d = new Date();
-    return { dow: d.getDay(), hour: d.getHours(), month: d.getMonth() + 1 };
+    // getMonth() as it is: the table is 0 = January, and + 1 read every run
+    // one month late (bug sweep C2b-4).
+    return { dow: d.getDay(), hour: d.getHours(), month: d.getMonth() };
   }
 
   /* ── stepping ─────────────────────────────────────────────────────── */
@@ -274,7 +276,10 @@ const Cars = (() => {
          and the speed is negative — the player is going backwards
          through this world, which is exactly what they are doing. The
          lateral axis turns over with it. */
-      theirs.pilot(Object.assign({ s: -s - PL / 2, v: -vms,
+      /* sim.js keeps every body on [s - len, s] whatever way it is going,
+         so in the mirrored frame the front of that is -s + PL / 2; -s - PL / 2
+         put the body one car length ahead of the car (bug sweep C2b-7). */
+      theirs.pilot(Object.assign({ s: -s + PL / 2, v: -vms,
         lane: laneAt(road, rs, u, !fwd), vy: lat * (fwd ? -1 : 1) }, body));
     }
   }

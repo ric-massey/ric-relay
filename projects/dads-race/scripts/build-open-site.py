@@ -25,6 +25,7 @@ The output holds the real database key, so it is written OUTSIDE this repo (defa
 ~/Desktop/HERMISCUS for Victoria/). --demo builds a keyless copy on the made-up race, for
 testing without touching the live data.
 """
+import base64
 import json
 import pathlib
 import re
@@ -61,9 +62,29 @@ def real_config():
     key = re.search(r"publishableKey:\s*'([^']+)'", local)
     if not url or not key:
         sys.exit('build-open-site: shared/config.local.js has no database address/key.')
-    if key.group(1).startswith('sb_secret') or '"role":"service_role"' in key.group(1):
+    if not browser_key(key.group(1)):
         sys.exit('build-open-site: that is not a browser key. Refusing.')
     return url.group(1), key.group(1)
+
+
+def browser_key(key):
+    """True only for a key a browser may hold: sb_publishable_, or a legacy JWT
+    whose role is anon. A JWT's payload is base64url, so looking for the text
+    '"role":"service_role"' in the key itself never matched anything — the
+    check has to decode the middle part (bug sweep A4-6)."""
+    if key.startswith('sb_publishable_'):
+        return True
+    if key.startswith('sb_'):
+        return False
+    parts = key.split('.')
+    if len(parts) != 3:
+        return False
+    try:
+        pad = '=' * (-len(parts[1]) % 4)
+        claims = json.loads(base64.urlsafe_b64decode(parts[1] + pad))
+    except Exception:
+        return False
+    return claims.get('role') == 'anon'
 
 
 def main():

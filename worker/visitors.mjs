@@ -353,7 +353,9 @@ const sessionRow = x => ({
    the API is not called that because dev.mjs serves both from one origin. */
 export async function handleVisitors(request, env, parts, url, isOwner, json) {
   const origin = request.headers.get('origin');
-  if (!(await isOwner())) return json({ error: 'nope' }, 401, origin);
+  const who = await isOwner();
+  if (who === 'locked') return json({ error: 'too many tries — wait five minutes' }, 429, origin, { 'retry-after': '300' });
+  if (!who) return json({ error: 'nope' }, 401, origin);
   if (!env.STATS) return json({ configured: false }, 200, origin, { 'cache-control': 'no-store' });
   await ensure(env.STATS);
   const db = env.STATS;

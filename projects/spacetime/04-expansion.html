@@ -238,7 +238,8 @@
       <div class="buttons">
         <button id="play">▶ PLAY EXPANSION</button>
         <button id="reset">RESET</button>
-        <button id="toggleView" class="active">SHOW BOUND OBJECTS</button>
+        <!-- They start shown, so the button starts as HIDE (bug sweep D3-8). -->
+        <button id="toggleView" class="active" aria-pressed="true">HIDE BOUND OBJECTS</button>
       </div>
 
       <div class="controls">
@@ -478,6 +479,7 @@ resetBtn.addEventListener('click', () => {
 toggleBtn.addEventListener('click', () => {
   showBound = !showBound;
   toggleBtn.textContent = showBound ? 'HIDE BOUND OBJECTS' : 'SHOW BOUND OBJECTS';
+  toggleBtn.setAttribute('aria-pressed', String(showBound));
   toggleBtn.classList.toggle('active');
   draw();
 });

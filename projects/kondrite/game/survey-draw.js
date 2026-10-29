@@ -341,7 +341,9 @@ function drawHulk(h) {
   ctx.save();
   ctx.translate(h.x, h.y);
   ctx.rotate(h.a);
-  const dim = 0.4 + 0.6 * (h.hp / 4);
+  // Against its own full strength: written for 4 hit points, a cache's 6 went
+  // past 1 and a canvas drew it at the halo's faint alpha (bug sweep C1c-7).
+  const dim = 0.4 + 0.6 * Math.min(1, h.hp / (h.full || 4));
   glow(WRECK, 2, dim, () => {
     // A broken slab, drawn to its collision radius so the edge you see is the
     // edge you hit.

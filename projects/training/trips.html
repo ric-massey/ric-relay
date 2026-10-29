@@ -187,7 +187,7 @@
       .then(r => r.ok ? r.json() : { days: [] })
       .catch(() => ({ days: [] }))
       .then(j => { CRAG = j.days || []; return T.load(); })
-      .then(() => render(CRAG));
+      .then(ok => { if (ok !== false) render(CRAG); });
   })();
   </script>
   <script src="../../effects.js"></script>

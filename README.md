@@ -190,7 +190,8 @@ note and photo lives in Supabase behind a real login, and row-level security is 
 guards them — not the repo being private. `map.html` is the themed door that links
 through to it.
 
-The app is a MapLibre PWA on Supabase at $0: invite-only sign-in by real email, pins that
+The app is a MapLibre PWA on Supabase at $0: sign-up is open and every account waits for
+Ric's approval before it opens anything (the lock is `has_page_access()`), pins that
 carry who dropped them and when, everybody's notes on one person's pin, child pins for
 parking, a layers panel, per-person settings that sync last-change-wins, and offline
 tiles. It has its own test suite (`atlas/test/*.test.mjs`) and its own long README —
@@ -217,7 +218,7 @@ rename a room, update the menu on **every** page (see `AGENTS.md`).
 
 That set is `terminal · orrin · psyche · climbing · training · weather · exploration · gaming · workbench · captures · entertainment`
 — the rooms the home directory lists, plus `terminal` for the way home, so the
-site says one thing about what it contains. The unlisted rooms (`apex`, `log`, `map`)
+site says one thing about what it contains. The unlisted rooms (`apex`, `cs`, `val`, `log`, `map`)
 are still reachable by URL and from the terminal's `ls` / `tree` / `find` / `open`.
 
 One label is currently out of step: the front door and `ls` call the Psyche room
@@ -272,7 +273,9 @@ file — copy the example block, edit, done.
   Still give each entry a `room`: it is what a room banner would use to pick its own
   flavoured wording ("new route") if one is ever added back.
 - **`orrin.html` explains the architecture in plain language** and pulls public code
-  activity from the GitHub API. It does not expose Orrin's private runtime state.
+  activity from the GitHub API, for `ric-massey/orrin_v3` only. Its IS ORRIN RUNNING?
+  region shows the live run his own machine pushes to the `orrin-status` Worker
+  (`projects/orrin/producer/push_status.py`) — what is running, not his private thoughts.
 - **Never** commit real location data anywhere in this repo — coordinates, addresses,
   GPS traces, or the EXIF still sitting inside a phone photo. `atlas/` being here is not
   an exception: it is code, and the places live in Supabase.
@@ -421,8 +424,10 @@ for t in atlas/test/*.test.mjs; do node "$t" || break; done
 ```
 
 Served locally, the pages that talk to the Cloudflare Worker (`/climb`, `/media`, `/log`,
-`/strava`) will 404 against a plain static server. That is expected — each caller treats
-a failed fetch as "no extra data" and renders the committed history instead.
+`/strava`) get a 404 from a plain static server first. That is expected. The training
+pages then render the committed history; the climbing pages and Entertainment fall back
+to the **live** Worker, so a local preview of those shows live data, and a sign-in or a
+write made from one reaches production.
 
 ## Easter eggs
 

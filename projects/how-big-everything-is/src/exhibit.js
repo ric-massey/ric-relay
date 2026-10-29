@@ -1104,7 +1104,11 @@
     $("welcome").hidden = !open;
     document.body.classList.toggle("welcome-open", open);
     if (open) $("welcome-go").focus();
-    else { try { sessionStorage.setItem(KEY + ":seen", "1"); } catch (e) {} $("zoom").focus(); }
+    /* Not onto the zoom rail: there the browser's own range stepping takes the
+       arrows, 1 of 10,000 a press, and a keyboard visitor's first ten presses
+       moved nothing visible. The page's own arrow handler steps sensibly from
+       anywhere else (bug sweep D3-4). */
+    else { try { sessionStorage.setItem(KEY + ":seen", "1"); } catch (e) {} if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }
   }
 
   function wireWelcome() {
@@ -1158,7 +1162,10 @@
   }
 
   function restore() {
-    const id = decodeURIComponent(location.hash.replace(/^#/, ""));
+    // A stray "%" in the address threw here and stopped start() before the
+    // canvas was drawn or a control wired (bug sweep D3-3).
+    let id = "";
+    try { id = decodeURIComponent(location.hash.replace(/^#/, "")); } catch (e) {}
     if (id) {
       const k = L.findIndex((o) => o.id === id);
       if (k >= 0) { S.t = T[k]; return; }

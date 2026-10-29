@@ -646,7 +646,8 @@ function bossPower(t, dt) {
       t.droneCool = (t.droneCool == null ? 1 : t.droneCool) - dt;
       if (t.droneCool <= 0 && brood < 12) {
         t.droneCool = 3;
-        for (let k = 0; k < 4; k++) {
+        // Up to twelve, not past it: four at a time took her to fifteen (C1b-6).
+        for (let k = 0; k < Math.min(4, 12 - brood); k++) {
           const a = t.a + (k - 1.5) * 0.45;
           surv.drones.push(makeBug(t, t.x + Math.cos(a) * hullR(t),
                                    t.y + Math.sin(a) * hullR(t), null));
@@ -1155,11 +1156,17 @@ function surveyBullets() {
   for (let bi = bullets.length - 1; bi >= 0; bi--) {
     const b = bullets[bi];
     let spent = false;
+    /* What this round has already been through. A lance kept going but
+       remembered nothing, so it hit a big hull two or three times on its way
+       out of it and was spent inside the first thing it met (bug sweep C1b-4). */
+    let struck = null;
+    const been = (x) => b.struck && b.struck.has(x);
     for (let i = surv.drones.length - 1; i >= 0 && !spent; i--) {
       const d = surv.drones[i];
       if (d.ally) continue;              // your own bugs, out of a Brood Bay
+      if (been(d)) continue;
       if (dist2(b.x, b.y, d.x, d.y) > (18 * U) ** 2) continue;
-      spent = true;
+      spent = true; struck = d;
       d.hp -= (b.dmg || 1);
       // Your round on something taking a ship apart. See the distress branch.
       if (d.prey) d.prey.helped = true;
@@ -1174,8 +1181,9 @@ function surveyBullets() {
     for (let i = surv.traffic.length - 1; i >= 0 && !spent; i--) {
       const t = surv.traffic[i];
       const rr = hullR(t);
+      if (been(t)) continue;
       if (dist2(b.x, b.y, t.x, t.y) > rr * rr) continue;
-      spent = true;
+      spent = true; struck = t;
       takeHit(t, b.dmg || 1);
       /* Shot at, and armed. A patrol that took fire and carried on politely
          shooting at sentries was not a neutral, it was a target — being unable
@@ -1206,10 +1214,11 @@ function surveyBullets() {
        unreachable. See `solidHit`. */
     if (!spent && surv.leviathan) {
       for (const g of surv.leviathan.segs) {
+        if (been(g)) continue;
         if (dist2(b.x, b.y, g.x, g.y) < g.r * g.r) {
           burst(b.x, b.y, WRECK, 3, 90 * U);
           gameSound("hit", b.x, b.y);
-          spent = true;
+          spent = true; struck = g;
           break;
         }
       }
@@ -1218,7 +1227,11 @@ function surveyBullets() {
       if (b.boom) explode(b);
       // A lance goes through. It does not get to hit the same hull twice, but
       // the next thing behind it is fair game.
-      if (b.punch > 1) { b.punch--; continue; }
+      if (b.punch > 1) {
+        b.punch--;
+        if (struck) (b.struck || (b.struck = new Set())).add(struck);
+        continue;
+      }
       bullets.splice(bi, 1);
     }
   }

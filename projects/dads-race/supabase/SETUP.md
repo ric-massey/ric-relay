@@ -14,5 +14,6 @@ Supabase table names have been reviewed together.
 5. Confirm that both can read race data, neither can impersonate another URL, and
    only managers can alter profiles or delete race structure.
 
-The key in `shared/config.js` is Supabase's public browser key. It is not a
-password and cannot bypass RLS. A `service_role` key must never be used here.
+The key goes in the git-ignored `shared/config.local.js` (`shared/config.js` holds
+none). It is Supabase's public browser key: not a password, and it cannot bypass
+RLS. A `service_role` key must never be used here.

@@ -118,8 +118,9 @@ projects/climbing/.board-venv/bin/python projects/climbing/pull-boards.py
 ```
 
 Or just ask Claude to sync the boards — there's a `board-sync` skill for it.
-A launchd timer (`board-sync.plist`) also runs it every Sunday morning and
-commits the result locally, never pushing.
+A launchd timer (`board-sync.plist`) also runs it every hour and commits the
+result locally, never pushing. (The script is still called
+`board-sync-weekly.sh` — it ran weekly once.)
 
 **Tension** goes through boardlib and Aurora. **Kilter** no longer can: it left
 the Aurora platform in 2026 (the old `kilterboardapp.com` is dead) and stood up
@@ -170,7 +171,7 @@ projects/climbing/board-upgrade.sh            # what's installed vs what's out
 projects/climbing/board-upgrade.sh --install  # take the newer one
 ```
 
-The weekly job does that upgrade-and-retry on its own, but only when the failure
+The hourly job does that upgrade-and-retry on its own, but only when the failure
 could plausibly be boardlib's fault — a missing password just gets reported.
 
 **Credentials never live in this repo.** Usernames go in `board-accounts.json`

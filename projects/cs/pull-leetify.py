@@ -97,6 +97,21 @@ def seat(row, my_team, me_id):
     }
 
 
+# What cs.html and export-llm.py read from Leetify's profile, and nothing else.
+RATING_KEYS = ("aim", "positioning", "utility", "clutch", "opening", "ct_leetify", "t_leetify")
+RANK_KEYS = ("premier", "competitive")
+
+
+def pick(obj, keys):
+    if not isinstance(obj, dict):
+        return None
+    out = {k: obj.get(k) for k in keys if k in obj}
+    if isinstance(out.get("competitive"), list):
+        out["competitive"] = [{"map_name": r.get("map_name"), "rank": r.get("rank")}
+                              for r in out["competitive"] if isinstance(r, dict)]
+    return out
+
+
 def main():
     acct = csdata.account()
     me_id = acct["steam64"]
@@ -108,8 +123,10 @@ def main():
         "total_matches": profile.get("total_matches"),
         "first_match": (profile.get("first_match_date") or "")[:10] or None,
         "winrate": profile.get("winrate"),
-        "ranks": profile.get("ranks"),
-        "rating": profile.get("rating"),
+        # Only what the page reads, as everywhere else in this script: the
+        # whole objects went into the published file (bug sweep B5a-10).
+        "ranks": pick(profile.get("ranks"), RANK_KEYS),
+        "rating": pick(profile.get("rating"), RATING_KEYS),
     }
     data["player"] = acct.get("display_name") or profile.get("name")
 

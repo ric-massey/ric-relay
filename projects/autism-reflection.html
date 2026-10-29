@@ -13,10 +13,13 @@
     --paper-2:#ece4d6;
     --ink:#221c16;
     --ink-soft:#5c5247;
-    --line:#cabfa d;
     --line:#c9bda9;
     --accent:#9a4a2f;
     --accent-soft:#c47a52;
+    /* The soft accent as TEXT: #c47a52 is 2.9:1 on the paper, so words in it
+       use this one (5.7:1). The soft accent stays for fills and borders.
+       Bug sweep B4-7. */
+    --accent-dim:#8a4f30;
     --sage:#5e6b54;
     --gold:#b08642;
   }
@@ -82,7 +85,8 @@
     animation:fade .5s ease both;
   }
   @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-  .q .qnum{font-family:'Fraunces',serif;font-weight:600;font-size:12px;color:var(--accent-soft);letter-spacing:.1em}
+  .q.still{animation:none}
+  .q .qnum{font-family:'Fraunces',serif;font-weight:600;font-size:12px;color:var(--accent-dim);letter-spacing:.1em}
   .q .qtext{font-size:19px;line-height:1.4;margin:6px 0 16px;font-family:'Newsreader',serif}
   .opts{display:grid;gap:9px}
   .opt{
@@ -94,7 +98,8 @@
   }
   .opt:hover{border-color:var(--accent-soft);background:rgba(196,122,82,.06)}
   .opt .bub{
-    width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);
+    /* A control's outline wants 3:1; --line was 1.6:1 (bug sweep B4-7). */
+    width:18px;height:18px;border-radius:50%;border:1.5px solid var(--ink-soft);
     flex-shrink:0;transition:all .15s ease;position:relative;
   }
   .opt.sel{border-color:var(--accent);background:rgba(154,74,47,.09)}
@@ -126,17 +131,26 @@
   .scorerow{display:flex;justify-content:space-between;font-family:'Fraunces',serif;font-size:12px;color:var(--ink-soft);letter-spacing:.05em}
 
   .levels{display:grid;gap:0;margin:14px 0}
-  .lvl{border-left:3px solid var(--line);padding:10px 0 10px 16px;margin-bottom:4px;opacity:.5;transition:opacity .3s}
-  .lvl.on{opacity:1;border-left-color:var(--accent)}
+  /* The levels not picked were faded to half, which put their words at 2-3:1.
+     They are told apart by the border and the weight instead (B4-7). */
+  .lvl{border-left:3px solid var(--line);padding:10px 0 10px 16px;margin-bottom:4px}
+  .lvl:not(.on) h4{font-weight:400}
+  .lvl.on{border-left-color:var(--accent)}
   .lvl h4{font-family:'Fraunces',serif;font-weight:600;font-size:15px}
   .lvl p{font-size:14.5px;color:var(--ink-soft)}
 
   .crit{font-family:'Fraunces',serif;font-size:14px;display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px dotted var(--line)}
   .crit .mark{font-weight:800;flex-shrink:0}
   .crit .yes{color:var(--sage)}
-  .crit .no{color:var(--accent-soft)}
+  .crit .no{color:var(--accent-dim)}
 
   .hide{display:none !important}
+  /* Bug sweep B4-8: nothing slides, fades or grows for somebody who asked
+     their system for less motion. */
+  @media (prefers-reduced-motion: reduce){
+    .q{animation:none}
+    .meter .m,.opt,.opt .bub{transition:none}
+  }
   a{color:var(--accent)}
   .foot{font-size:13px;color:var(--ink-soft);margin-top:30px;font-style:italic;line-height:1.5}
 </style>
@@ -252,6 +266,8 @@ const el=id=>document.getElementById(id);
 el('startBtn').onclick=()=>{el('intro').classList.add('hide');el('quiz').classList.remove('hide');render();window.scrollTo(0,0);};
 el('restartBtn').onclick=()=>{Object.keys(answers).forEach(k=>delete answers[k]);idx=0;el('results').style.display='none';el('intro').classList.remove('hide');el('quiz').classList.add('hide');window.scrollTo(0,0);};
 
+let shownIdx=-1;
+const calm=()=>window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 function render(){
   const q=flat[idx], sec=sections[q.sec];
   const host=el('qhost'); host.innerHTML='';
@@ -265,14 +281,28 @@ function render(){
   }
 
   const card=document.createElement('div');
-  card.className='q';
-  card.innerHTML=`<div class="qnum">QUESTION ${idx+1}</div><div class="qtext">${q.t}</div>`;
+  /* The card fades in when the question changes, not on every answer. */
+  card.className='q'+(idx===shownIdx?' still':'');
+  shownIdx=idx;
+  card.innerHTML=`<div class="qnum" id="qnum">QUESTION ${idx+1}</div><div class="qtext" id="qtext">${q.t}</div>`;
+  /* A radio group, so a screen reader hears which answer is chosen, and the
+     focus comes back to the chosen answer after the card is redrawn — it fell
+     to the top of the page on every answer (bug sweep B4-6). */
   const opts=document.createElement('div');opts.className='opts';
+  opts.setAttribute('role','radiogroup');
+  opts.setAttribute('aria-labelledby','qnum qtext');
   scale.forEach(o=>{
     const b=document.createElement('button');
     b.className='opt'+(answers[idx]===o.v?' sel':'');
-    b.innerHTML=`<span class="bub"></span>${o.t}`;
-    b.onclick=()=>{answers[idx]=o.v;render();};
+    b.setAttribute('role','radio');
+    b.setAttribute('aria-checked',String(answers[idx]===o.v));
+    b.dataset.v=o.v;
+    b.innerHTML=`<span class="bub" aria-hidden="true"></span>${o.t}`;
+    b.onclick=()=>{
+      answers[idx]=o.v;render();
+      const chosen=el('qhost').querySelector('.opt.sel');
+      if(chosen) chosen.focus();
+    };
     opts.appendChild(b);
   });
   card.appendChild(opts);
@@ -289,7 +319,7 @@ function render(){
 }
 
 el('nextBtn').onclick=()=>{
-  if(idx<flat.length-1){idx++;render();window.scrollTo({top:0,behavior:'smooth'});}
+  if(idx<flat.length-1){idx++;render();window.scrollTo({top:0,behavior:calm()?'auto':'smooth'});}
   else showResults();
 };
 
@@ -325,6 +355,8 @@ function showResults(){
     3:{n:"Level 3 — Requiring very substantial support",d:"Severe differences cause major impairment; very limited initiation, extreme difficulty with change."},
   };
   const palette={0:"#9a9183",1:"#b08642",2:"#c47a52",3:"#9a4a2f"};
+  // The same four, dark enough to be read as words on the card (B4-7).
+  const ink={0:"#6b6458",1:"#7a5a24",2:"#8a4f30",3:"#9a4a2f"};
 
   el('resIntro').textContent = (aMet||bMet)
     ? "Here's how your answers sit against the manual's structure. Remember this is a mirror of the criteria, not a verdict."
@@ -333,7 +365,7 @@ function showResults(){
   function domainBlock(name,desc,score,lvl){
     return `<div class="res-band">
       <div class="label">${name}</div>
-      <div class="level" style="color:${palette[lvl]}">${lvlText[lvl].n}</div>
+      <div class="level" style="color:${ink[lvl]}">${lvlText[lvl].n}</div>
       <p style="font-size:15px;color:var(--ink-soft)">${desc}</p>
       <div class="meter"><div class="m" style="width:0%;background:${palette[lvl]}" data-w="${Math.round(score*100)}"></div></div>
       <div class="scorerow"><span>endorsement</span><span>${Math.round(score*100)}%</span></div>

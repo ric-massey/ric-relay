@@ -6,7 +6,8 @@
      document.documentElement.dataset.mochiWorld and nothing else sets it. Delete it and the cat quietly goes back to
      walking normally in deep space, and nobody notices for weeks.
      ═══════════════════════════════════════════════════════════════════ -->
-<html lang="en" data-mochi-world="space">
+<!-- data-mochi-only: trip modes over the canvas cost it 50 fps (D1-6). -->
+<html lang="en" data-mochi-world="space" data-mochi-only>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -224,6 +225,6 @@
   <!-- relay-return.js pulls in effects.js from the repo root by resolving
        "../effects.js" against its own src, so Mochi arrives without a
        second tag. Same call shape as farlight and the other project pages. -->
-  <script src="../relay-return.js" data-home="../../index.html" data-egg="starfield" defer></script>
+  <script src="../relay-return.js" data-home="../../index.html" data-egg="starfly" defer></script>
 </body>
 </html>

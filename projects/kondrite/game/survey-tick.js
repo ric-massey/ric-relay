@@ -155,7 +155,7 @@ function drawPart(pt) {
 }
 
 /* ── the tick ─────────────────────────────────────────────────────────────
-   Telemetry first, then the table. Everything the seventeen `test` entries
+   Telemetry first, then the table. Everything the twenty-two `test` entries
    need is gathered here once a frame; nothing walks the hazard list twice. */
 function surveyTick(dt) {
   const me = ships[0];

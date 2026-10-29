@@ -44,18 +44,18 @@
          to ask any of them. -->
     <div class="filters" id="filters">
       <div class="fgroup" role="group" aria-label="When">
-        <button type="button" data-when="soon" class="on">Upcoming</button>
-        <button type="button" data-when="past">Past</button>
-        <button type="button" data-when="all">All</button>
+        <button type="button" data-when="soon" class="on" aria-pressed="true">Upcoming</button>
+        <button type="button" data-when="past" aria-pressed="false">Past</button>
+        <button type="button" data-when="all" aria-pressed="false">All</button>
       </div>
       <div class="fgroup" role="group" aria-label="Kind">
-        <button type="button" data-kind="" class="on">Everything</button>
-        <button type="button" data-kind="climb">🧗 Climb</button>
-        <button type="button" data-kind="run">🏃 Run</button>
-        <button type="button" data-kind="body">🧘 Body</button>
+        <button type="button" data-kind="" class="on" aria-pressed="true">Everything</button>
+        <button type="button" data-kind="climb" aria-pressed="false">🧗 Climb</button>
+        <button type="button" data-kind="run" aria-pressed="false">🏃 Run</button>
+        <button type="button" data-kind="body" aria-pressed="false">🧘 Body</button>
       </div>
       <div class="fgroup" role="group" aria-label="Key sessions">
-        <button type="button" data-key="1">Key only</button>
+        <button type="button" data-key="1" aria-pressed="false">Key only</button>
       </div>
       <label class="fphase">Block
         <select id="fphase"><option value="">all</option></select>
@@ -181,7 +181,8 @@
       const el = $('#totals');
       if (!days.length) { el.hidden = true; return; }
       const metres = days.reduce((m, d) =>
-        m + T.runsOn(d.date).reduce((n, a) => n + (a.distance || 0), 0), 0);
+        // Runs only, like the weekly tiles — a ride does not flatter it (B2-8).
+        m + T.runsOn(d.date).filter(T.isRun).reduce((n, a) => n + (a.distance || 0), 0), 0);
       const sessions = days.reduce((n, d) =>
         n + T.doneCountOf(T.stateOf(d.date), d.sessions), 0);
       const climbs = days.filter(climbedOn).length;
@@ -280,12 +281,14 @@
         F.key = !F.key;
         b.classList.toggle('on', F.key);
       }
+      // The state is said, not only coloured (bug sweep B2-13).
+      $('#filters').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x.classList.contains('on'))));
       render();
     });
     $('#fphase').addEventListener('change', e => { F.phase = e.target.value; render(); });
 
     T.onChange(render);
-    T.load().then(fillPhases);
+    T.load().then(ok => { if (ok !== false) fillPhases(); });
   })();
   </script>
   <script src="../../effects.js"></script>

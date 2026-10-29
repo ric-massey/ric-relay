@@ -338,7 +338,11 @@ const guestHandlers = {
     say("That lobby closed. Here's what else is open.", true);
   },
   onMessage: msg => {
-    if (msg.t === "init") { applyInit(msg); closeLobby(); }
+    if (msg.t === "init") {
+      // A match this game cannot build is refused out loud, not half-built (C1e-3).
+      try { applyInit(msg); closeLobby(); }
+      catch (e) { netReset(); say("That host started a match this game can't build.", true); }
+    }
     else if (msg.t === "seats") {
       net.seat = msg.seat;
       if (Array.isArray(msg.skins)) skins = msg.skins.slice();
@@ -387,9 +391,19 @@ const guestHandlers = {
    reach. See archive/RENAME-KONDRITE.md §2. */
 const ROOM_HOST = "https://kondrite-rooms.rmbuster82.workers.dev";
 
-const ROOM_SERVICE =
-  (new URLSearchParams(location.search).get("rooms") || ROOM_HOST)
-    .trim().replace(/\/+$/, "");
+/* `?rooms=` points the lobby at a local room runner for testing, and only
+   that: anything but a loopback address is ignored, so a link cannot send a
+   player's host key and lobby password somewhere else (bug sweep A5-2). */
+const ROOM_SERVICE = (() => {
+  const asked = (new URLSearchParams(location.search).get("rooms") || "").trim();
+  try {
+    const u = new URL(asked);
+    if (/^https?:$/.test(u.protocol) && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(u.hostname)) {
+      return asked.replace(/\/+$/, "");
+    }
+  } catch (e) { /* not a URL: use the real one */ }
+  return ROOM_HOST;
+})();
 
 let roomsAlive = null, roomsAskedAt = 0;
 

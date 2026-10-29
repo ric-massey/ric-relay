@@ -160,6 +160,11 @@ const Progress = (() => {
      the 911. */
   function chosen() {
     if (P.car && isUnlocked(P.car)) return P.car;
+    /* With the garage door propped open the last unlocked row is the end of
+       the ladder — the superbike — not the newest thing earned, so a first
+       visit started there (bug sweep C2a-8). Open, a newcomer gets the
+       garage's own default. */
+    if (ALL_OPEN && typeof Garage !== "undefined" && Garage.DEFAULT && isUnlocked(Garage.DEFAULT)) return Garage.DEFAULT;
     const u = unlocked();
     return u.length ? u[u.length - 1].id
       : (typeof Garage !== "undefined" ? Garage.DEFAULT : null);

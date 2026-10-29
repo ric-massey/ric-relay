@@ -65,8 +65,11 @@
     while (b > a && chars.indexOf(s[b - 1]) >= 0) b--;
     return s.slice(a, b);
   }
-  const titleCase = s => s.replace(/[A-Za-z]+/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
-  const isLower = s => /[a-z]/.test(s) && s === s.toLowerCase();
+  /* Unicode letters, as Python's str.title() / islower() / isupper() / isalpha()
+     see them: with ASCII classes a day logged from the phone lost "Émile" and
+     cut "Zoë Ødegaard" to "Zoë" where climbs.md kept both (bug sweep B1-8). */
+  const titleCase = s => s.replace(/\p{L}+/gu, w => w[0].toUpperCase() + w.slice(1).toLowerCase());
+  const isLower = s => /\p{Ll}/u.test(s) && s === s.toLowerCase();
 
   /* ── headings ── */
   function normalize(name, table) {
@@ -201,12 +204,12 @@
         const kept = [];
         for (const word of words) {
           if (prose().has(strip(word.toLowerCase(), '.'))) break;
-          if (kept.length && !/^[A-Z]/.test(word)) break;
+          if (kept.length && !/^\p{Lu}/u.test(word)) break;
           kept.push(word);
         }
         if (!kept.length) continue;
         const name = strip(kept.join(' '), ' .');
-        if (name.length < 2 || kept.length > 3 || !/^[A-Za-z]/.test(name)) continue;
+        if (name.length < 2 || kept.length > 3 || !/^\p{L}/u.test(name)) continue;
         out.push(isLower(name) ? titleCase(name) : name);
       }
     }
@@ -368,6 +371,12 @@
       const w = String(r.wall || '').trim();
       if (!started || w !== current) {
         if (w) lines.push(wallLevel + w);
+        /* Back to no sector: say the area again, or the reader keeps the last
+           sector's heading over this route (bug sweep B1-5). */
+        else if (started && d.area) {
+          lines.push('## ' + String(d.area).trim());
+          if (d.region) lines.push('### ' + String(d.region).trim());
+        }
         current = w;
         started = true;
       }
@@ -383,22 +392,33 @@
     if (d.boulders) notes.push(d.boulders + (+d.boulders === 1 ? ' boulder' : ' boulders'));
     if (notes.length) {
       lines.push('### NOTES');
-      notes.forEach(n => String(n).split('\n').forEach(l => lines.push(l)));
+      notes.forEach(n => String(n).split('\n').forEach(l => lines.push(plain(l))));
     }
     return lines.join('\n');
+  }
+
+  /* A line typed on the phone that starts with "#" or a lone "-" would read
+     back as a heading or a separator. One leading space keeps it text: both
+     parsers anchor those at the very start of the line (bug sweep B1-5). */
+  function plain(text) {
+    const t = String(text);
+    return /^(#|-\s*$)/.test(t) ? ' ' + t : t;
   }
 
   /* One route, as its line. The tags go in the order the file uses them: the
      grade, how it went, how many, then anything left to say. */
   function routeLine(r) {
     const name = String(r.name || '').trim();
-    let head = (r.star ? '⭑ ' : '') + name;
+    let head = plain((r.star ? '⭑ ' : '') + name);
     if (r.grade) head += ' - ' + String(r.grade).trim();
 
     const bits = [];
     const style = String(r.style || '').trim();   // onsight | flash | redpoint | ''
     const how = String(r.how || '').trim();       // trad | top rope | free solo | mixed | aid | ''
     if (style) bits.push(style);
+    /* "Sent" from the form is said in the line. Unsaid, a note mentioning a
+       fall, a take or a clip read the route back as an attempt (B1-4). */
+    else if (r.outcome !== 'attempt') bits.push('sent');
     if (r.outcome === 'attempt') bits.push('attempts');
     const n = Math.max(1, parseInt(r.repeats, 10) || 1);
     if (n > 1) bits.push('x' + n);

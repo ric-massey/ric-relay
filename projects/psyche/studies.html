@@ -133,6 +133,9 @@
     .more{display:block;margin:16px auto 0;min-height:48px;padding:0 22px;border:2px solid var(--ink);background:var(--card);font:700 12px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;cursor:pointer;box-shadow:3px 3px 0 var(--violet-dark)}
     .more:hover{background:var(--paper-deep)}
     .more[disabled]{opacity:.6;cursor:progress}
+    /* `hidden` has to win over the display these set, or "Load more" and
+       "Clear filters" sat on every view with nothing to do (bug sweep B4-3). */
+    .more[hidden],.chip[hidden]{display:none}
     .btn{appearance:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 13px;border:1px solid var(--ink);background:var(--card);font:700 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;text-decoration:none;color:var(--ink)}
     .btn:hover{background:var(--paper-deep)}
     .btn.primary{background:var(--ink);color:var(--white)}
@@ -253,8 +256,9 @@
       <h1>Studies</h1>
       <p class="lede">Every clinical trial registered with ClinicalTrials.gov — what is being tested, on whom, where, and whether anybody has published what they found.</p>
 
-      <!-- Ric's trial alerts. Drawn only when he is signed in; the list itself
-           lives behind the Worker's password (/trials/watch). -->
+      <!-- Trial alerts for a signed-in site account approved for Studies. The
+           list is that account's rows in Supabase (trial_watch), readable only
+           by its owner — not the Worker any more. -->
       <section id="watch" class="watch" hidden aria-labelledby="watch-h">
         <div class="watch-head">
           <h2 id="watch-h">Trial alerts</h2>
@@ -468,11 +472,11 @@
     function startState() {
       results.classList.remove('skeleton');
       const recent = store.get('studiesRecent', []);
-      const hints = (label, words) => !words.length ? '' :
-        `<div class="hints"><span class="row-label">${label}</span>${words.map(w => `<button class="hint" type="button" data-q="${esc(w)}">${esc(w)}</button>`).join('')}</div>`;
+      const hints = (label, words, extra = '') => !words.length ? '' :
+        `<div class="hints"><span class="row-label">${label}</span>${words.map(w => `<button class="hint" type="button" data-q="${esc(w)}">${esc(w)}</button>`).join('')}${extra}</div>`;
       results.innerHTML = `<li class="state"><h2>Start anywhere.</h2>
         <p>Type a drug, a condition, a sponsor or a trial's NCT number. Narrow it with the chips — recruiting near you, phase 3 only, finished with results posted.</p>
-        ${hints('Recent', recent)}${hints('Try', STARTERS)}</li>`;
+        ${hints('Recent', recent, '<button class="hint" type="button" data-forget="1">clear</button>')}${hints('Try', STARTERS)}</li>`;
       $('count').textContent = ''; $('via').textContent = '';
       $('more').hidden = true;
       paintRewrite();
@@ -499,6 +503,10 @@
     results.addEventListener('click', e => {
       const h = e.target.closest('.hint');
       if (!h) return;
+      /* A health search left on a shared device is a small record of
+         someone's health. It can be cleared here, and signing out clears it
+         too (bug sweep B4-5). */
+      if (h.dataset.forget) { store.set('studiesRecent', []); startState(); return; }
       state.q = h.dataset.q; state.exact = false; q.value = state.q; remember(state.q); changed();
     });
 
@@ -971,7 +979,10 @@
              <button class="btn small" type="button" data-acct="out">Sign out</button></div>`;
       } else if (acct.state === 'denied') {
         sum.textContent = 'Trial alerts — not on this account';
-        body.innerHTML = `<p>${who} This account was not given Studies. Searching works the same without it.</p>${out}`;
+        body.innerHTML = `<p>${who} This account was not given Studies. Searching works the same without it.</p>
+          <p>Any studies it tracked before are still stored. You can delete them.</p>
+          <div class="acct-row"><button class="btn small" type="button" data-acct="forget">Delete my tracked studies</button>
+          <button class="btn small" type="button" data-acct="out">Sign out</button></div>`;
       } else if (acct.state === 'error') {
         sum.textContent = 'Trial alerts — account unavailable';
         body.innerHTML = '<p>Could not check your account just now — try again in a moment.</p><div class="acct-row"><button class="btn small" type="button" data-acct="retry">Try again</button></div>';
@@ -1012,8 +1023,12 @@
       if (!b) return;
       b.disabled = true;
       try {
-        if (b.dataset.acct === 'out') { await T.signOut(); toast('Signed out'); }
+        if (b.dataset.acct === 'out') { await T.signOut(); store.set('studiesRecent', []); toast('Signed out'); }
         if (b.dataset.acct === 'ask') { await T.requestAccess(); toast('Asked — Ric will see it'); }
+        if (b.dataset.acct === 'forget' && confirm('Delete every study this account tracked? This cannot be undone.')) {
+          const n = await T.forgetWatchlist();
+          toast(n ? `Deleted ${n} tracked stud${n === 1 ? 'y' : 'ies'}` : 'Nothing was stored');
+        }
       } catch (err) { toast(err.message || 'That did not work'); }
       await loadWatch();
     });

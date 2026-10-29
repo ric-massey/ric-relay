@@ -845,7 +845,11 @@ function jumpNear(st, wx, wy, snap) {
 function drawChartGrid(view, mx, my) {
   const { ctx } = api;
   const CHUNK = 2600;
-  const step = chart.scale < 0.01 ? CHUNK * 4 : CHUNK;
+  /* Lines at least ~24 px apart at any zoom: a fixed step drew thousands of
+     sub-pixel lines a frame at the widest zooms (bug sweep C1d-11). Doubling
+     keeps every line on a chunk boundary, so the numbers still mean chunks. */
+  let step = CHUNK;
+  while (step * chart.scale < 24) step *= 2;
   const x0 = Math.floor((chart.x - view.w / 2 / chart.scale) / step) * step;
   const x1 = chart.x + view.w / 2 / chart.scale;
   const y0 = Math.floor((chart.y - view.h / 2 / chart.scale) / step) * step;

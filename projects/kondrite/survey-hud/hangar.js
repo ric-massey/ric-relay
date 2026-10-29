@@ -152,7 +152,7 @@ function drawHull(sh, cx, cy, box, colour, alpha) {
 }
 
 HUD.drawHangar = function (st, dt) {
-  const { ctx, SCREEN_W } = api;
+  const { ctx, SCREEN_W, SCREEN_H } = api;
   st = st || {};
   const list = st.ships || [];
   if (!list.length) return;
@@ -403,7 +403,10 @@ HUD.drawHangar = function (st, dt) {
   const reach = sh.owned || sh.afford;
   button(sh.flying ? "FLYING" : sh.owned ? "FLY" :
            sh.afford ? "BUY " + hudMoney(sh.cost) : "NEED " + hudMoney(sh.cost),
-         SCREEN_W - PAGE.EDGE - 110, dy + detailH - 34, 200, 40,
+         /* Never below the page: on a touch screen a hull with a BURST stat
+            made the panel three rows tall and put this at 728 of 700, off
+            the canvas (bug sweep C1d-8). */
+         SCREEN_W - PAGE.EDGE - 110, Math.min(dy + detailH - 34, (SCREEN_H || 700) - 30), 200, 40,
          sh.flying ? VIOLET_LOW : reach ? HUD_CASH : WARN,
          sh.flying || !reach ? null
            : () => st.onBuyShip && st.onBuyShip(sh.key),

@@ -548,9 +548,11 @@ rather than the run, so the risk stays real without anything ending.
 
 ### The almanac
 
-Twenty-five entries. Seventeen are conditions on telemetry the simulation
-already computes every frame, seven are **landmarks** placed out in the dark,
-and one is inside a rock. Every entry has a **picture** — a small vector drawing
+Thirty-five entries. Twenty-two are conditions on telemetry the simulation
+already computes every frame; the other thirteen are **places** — landmarks
+out in the dark, and one inside a rock. (Recounted 2026-10-29 from `ALMANAC`
+in `game/survey-sector.js`; the numbers here had stayed at an earlier
+twenty-five.) Every entry has a **picture** — a small vector drawing
 of the thing it is asking you to find, which is what makes it a field guide
 rather than a checklist: a name tells you what you have not got, a picture tells
 you what to go and look for. Two entries keep their picture and lose their name
@@ -1137,7 +1139,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `cloud.js` | The account, and the book kept in it. No SDK, no request until asked |
 | `config.js` | The account service's URL and publishable key. Blank means no accounts |
 | `supabase/schema.sql` | Three tables: the private save, and the two the boards are made of. Run once in the SQL editor |
-| `supabase/admin.sql` | Ric's view of the pilots: an `admins` table and the admin-only functions `account/kondrite.js` calls (list, rename, wipe a save, clear scores, ban, delete). Run once after `schema.sql`, then add his account to `admins` by hand |
+| `supabase/admin.sql` | Ric's view of the pilots: an `admins` table and the admin-only functions `admin/kondrite.js` calls (list, rename, wipe a save, clear scores, ban, delete). Run once after `schema.sql`, then add his account to `admins` by hand |
 | `survey-world.js` | Where you are and what that means: chunk identity, the danger curve, the region lattice and the Warrens' rock. Pure functions of a seed and a pair of coordinates |
 | `survey-save.js` | The book: where it is kept, the four pieces a read is made of, and the write |
 | `survey-hud/` | Survey's interface, one file per page: the flight panel, the chart, the almanac, the station, the workbench, the ship, the record, the hangar, the machines |
@@ -1342,7 +1344,7 @@ swallowed by a star, an EMP stun, a ram), so when moving code in those branches,
 also check that every name it uses still resolves — that is how the phases in
 `game/traffic.js` were moved out of the loop.
 
-`test/survey.js` also proves all seventeen telemetry conditions can fire and
+`test/survey.js` also proves every telemetry condition can fire and
 that none fire on an empty block, that every almanac entry has its own picture,
 that all seven landmarks are placed at distinct bearings, and that the chart and
 the flight path round-trip through local storage — including that a new seed

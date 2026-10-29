@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- data-mochi-only: see effects.js — a trip mode over a full-screen canvas
+     is a second renderer fighting the first (bug sweep D1-6). -->
+<html lang="en" data-mochi-only>
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -18,7 +20,8 @@
     --slam:#ff5c6e;
     --violet:#a679ff;
     --text:#cfd9ef;
-    --text-dim:#5c6d90;
+    /* 5.6:1 on the void; #5c6d90 was 3.8:1 under every label (bug sweep C4-10). */
+    --text-dim:#7a89ad;
     --mono: ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
   }
   *{margin:0;padding:0;box-sizing:border-box}
@@ -30,13 +33,13 @@
   .hud{position:absolute;pointer-events:none;user-select:none;-webkit-user-select:none}
   .readout{top:22px;left:26px}
   .stat{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
-  .stat .label{font-size:10px;letter-spacing:.28em;color:var(--text-dim);text-transform:uppercase;min-width:74px}
+  .stat .label{font-size:11px;letter-spacing:.28em;color:var(--text-dim);text-transform:uppercase;min-width:74px}
   .stat .val{font-size:22px;letter-spacing:.02em;color:var(--text);font-variant-numeric:tabular-nums}
   .stat .val.speed{color:var(--surface)}
-  .stat small{font-size:10px;color:var(--text-dim);letter-spacing:.2em}
+  .stat small{font-size:11px;color:var(--text-dim);letter-spacing:.2em}
 
   .best{top:22px;right:26px;text-align:right}
-  .best .label{font-size:10px;letter-spacing:.28em;color:var(--text-dim);text-transform:uppercase}
+  .best .label{font-size:11px;letter-spacing:.28em;color:var(--text-dim);text-transform:uppercase}
   .best .val{font-size:15px;color:var(--machine);font-variant-numeric:tabular-nums;letter-spacing:.02em}
 
   .combo{top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity .12s}
@@ -49,8 +52,8 @@
   .hint b{color:var(--surface);font-weight:600}
   .hint .sep{color:#33405e;margin:0 8px}
 
-  .mute{position:absolute;bottom:18px;right:22px;pointer-events:auto;cursor:pointer;
-        font-size:10px;letter-spacing:.24em;color:var(--text-dim);text-transform:uppercase;
+  .mute{position:absolute;bottom:18px;right:22px;pointer-events:auto;cursor:pointer;font-family:inherit;
+        font-size:11px;letter-spacing:.24em;color:var(--text-dim);text-transform:uppercase;
         border:1px solid #1e2b46;border-radius:2px;padding:6px 10px;background:rgba(10,16,32,.5)}
   .mute:hover{color:var(--text);border-color:#33456b}
 
@@ -82,7 +85,7 @@
     }
     .touch-controls button{
       min-width:48px;min-height:44px;padding:8px 10px;border:1px solid #2a3a5c;border-radius:4px;
-      background:rgba(10,16,32,.82);color:var(--surface);font:600 10px/1 var(--mono);
+      background:rgba(10,16,32,.82);color:var(--surface);font:600 11px/1 var(--mono);
       letter-spacing:.09em;text-transform:uppercase;touch-action:none;-webkit-user-select:none;user-select:none;
     }
     .touch-controls button[data-action="thr"]{color:var(--machine);border-color:#5e4932}
@@ -94,7 +97,7 @@
     .readout{top:18px;left:14px}.best{top:18px;right:14px}
     .stat .label{min-width:54px}.stat .val{font-size:18px}
     .touch-controls{gap:4px}
-    .touch-controls button{min-width:42px;padding:8px 7px;font-size:9px}
+    .touch-controls button{min-width:42px;padding:8px 7px;font-size:11px}
   }
   @media (prefers-reduced-motion: reduce){.go{animation:none;opacity:.9}}
 </style>
@@ -123,10 +126,13 @@
     <b>hold Space</b> dive <span style="color:#33405e;margin:0 7px">/</span>
     <b>W</b> launch <span style="color:#33405e;margin:0 7px">/</span>
     <b>← →</b> tilt to match the slope <span style="color:#33405e;margin:0 7px">/</span>
-    <b>S</b> brake
+    <b>S</b> brake <span style="color:#33405e;margin:0 7px">/</span>
+    <b>R</b> new run <span style="color:#33405e;margin:0 7px">/</span>
+    <b>M</b> sound
   </div>
 
-  <div class="mute" id="mute">sound: off</div>
+  <!-- A button, so a keyboard can reach it (it was a div); M does the same (C4-11). -->
+  <button type="button" class="mute" id="mute">sound: off</button>
 
   <div class="touch-controls" aria-label="FARLIGHT touch controls">
     <button type="button" data-action="left" aria-label="Tilt left">←</button>
@@ -134,6 +140,8 @@
     <button type="button" data-action="launch">Launch</button>
     <button type="button" data-action="brake">Brake</button>
     <button type="button" data-action="right" aria-label="Tilt right">→</button>
+    <!-- R on a keyboard; a phone had no way to start again (C4-8). -->
+    <button type="button" data-action="newrun" aria-label="New run">↺</button>
   </div>
 
   <div id="overlay">
@@ -144,6 +152,8 @@
       <div class="k">launch<b>W</b></div><div style="text-align:left">leave the surface, keep your momentum</div>
       <div class="k">tilt<b>←</b><b>→</b></div><div style="text-align:left">rotate to meet the ground flat</div>
       <div class="k">brake<b>S</b></div><div style="text-align:left">slow down to read what's ahead</div>
+      <div class="k">new run<b>R</b></div><div style="text-align:left">start again from the top</div>
+      <div class="k">sound<b>M</b></div><div style="text-align:left">on or off</div>
     </div>
     <div class="go">click, tap, or press space to launch</div>
   </div>
@@ -215,6 +225,10 @@ window.addEventListener('keydown', e=>{
   else if(k==='m') toggleMute();
   if(!started) start();
 });
+// A key held when the window lost focus stays held otherwise (C4-9).
+const letGo = () => { for (const k in keys) keys[k] = false; };
+window.addEventListener('blur', letGo);
+document.addEventListener('visibilitychange', () => { if (document.hidden) letGo(); });
 window.addEventListener('keyup', e=>{
   const k=e.key.toLowerCase();
   if(k===' '||k==='spacebar') up('thr');
@@ -225,12 +239,20 @@ window.addEventListener('keyup', e=>{
 });
 canvas.addEventListener('mousedown', ()=>{ down('thr'); if(!started) start(); });
 window.addEventListener('mouseup', ()=> up('thr'));
-canvas.addEventListener('touchstart', e=>{ e.preventDefault(); down('thr'); if(!started) start(); }, {passive:false});
-window.addEventListener('touchend', ()=> up('thr'));
+/* Dive from the canvas belongs to the fingers that started it: lifting a
+   thumb off a button must not let go of a Dive the other thumb still holds.
+   So only canvas touches are counted, and Dive ends with the last of them. */
+const diveTouches=new Set();
+canvas.addEventListener('touchstart', e=>{ e.preventDefault(); for(const t of e.changedTouches) diveTouches.add(t.identifier); down('thr'); if(!started) start(); }, {passive:false});
+const liftDive=e=>{ if(!diveTouches.size) return; for(const t of e.changedTouches) diveTouches.delete(t.identifier); if(!diveTouches.size) up('thr'); };
+window.addEventListener('touchend', liftDive);
+window.addEventListener('touchcancel', liftDive);
 
 document.querySelectorAll('.touch-controls button').forEach(button=>{
   const action=button.dataset.action;
-  const press=e=>{ e.preventDefault(); e.stopPropagation(); down(action); if(!started) start(); };
+  const press=e=>{ e.preventDefault(); e.stopPropagation();
+    if(action==='newrun'){ resetRun(); if(!started) start(); return; }
+    down(action); if(!started) start(); };
   const release=e=>{ e.preventDefault(); e.stopPropagation(); up(action); };
   button.addEventListener('pointerdown',press);
   button.addEventListener('pointerup',release);
@@ -267,9 +289,17 @@ function toggleMute(){
   if(!AC) initAudio();
   audioOn=!audioOn;
   if(AC&&AC.state==='suspended') AC.resume();
+  // Off is silent: the hum's gain is only written while sound is on, so it
+  // has to be zeroed here or it drones on at its last level.
+  if(humGain&&!audioOn) humGain.gain.value=0;
   muteEl.textContent = 'sound: '+(audioOn?'on':'off');
 }
 muteEl.addEventListener('click', toggleMute);
+// A background tab makes no sound; coming back picks up where it was.
+document.addEventListener('visibilitychange', ()=>{
+  if(!AC) return;
+  if(document.hidden) AC.suspend(); else if(audioOn) AC.resume();
+});
 
 // ---- particles -------------------------------------------------------
 const parts=[];
@@ -289,8 +319,16 @@ function updateParts(dt){
 }
 
 // ---- game state ------------------------------------------------------
+/* Furthest run is kept in this browser; it was lost on every reload (C4-8). */
+const BEST_KEY='farlight.best.v1';
 let state, started=false, bestDist=0;
+try{ bestDist=Number(localStorage.getItem(BEST_KEY))||0; }catch(e){}
+// Written when a run ends or the page goes, not every frame.
+const keepBest=()=>{ try{ localStorage.setItem(BEST_KEY, String(Math.round(bestDist))); }catch(e){} };
+window.addEventListener('pagehide', keepBest);
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) keepBest(); });
 function resetRun(){
+  keepBest();
   state = {
     mode:'ground',       // 'ground' | 'air'
     x: 0, y: terrainY(0),

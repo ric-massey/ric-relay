@@ -308,7 +308,10 @@
       }
     });
     window.addEventListener("resize", () => { if (current) position(); });
-    window.addEventListener("scroll", () => { if (current) position(); }, { passive: true });
+    /* Capture phase, so a scroll inside the Info sheet counts: the page
+       itself never scrolls (html/body overflow: hidden), and the popover was
+       left where it was while its word moved under it (bug sweep D3-15). */
+    window.addEventListener("scroll", () => { if (current) position(); }, { passive: true, capture: true });
   }
 
   window.HSAT_GLOSSARY = {

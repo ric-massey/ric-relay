@@ -19,6 +19,8 @@ import json
 import re
 import uuid
 from collections import Counter, defaultdict
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -37,6 +39,25 @@ class KilterError(Exception):
 
 
 # ── auth ────────────────────────────────────────────────────────────────────
+
+
+def local_day(stamp):
+    """The day a log happened where Ric climbs. A stamp that carries its zone
+    (a Z or an offset) is a UTC moment, and slicing its first ten characters
+    put an evening session on the next day (bug sweep B1-12). One with no zone
+    is taken as already local, which is how the Aurora path's `date` reads."""
+    text = str(stamp or "")
+    try:
+        moment = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return text[:10]
+    if moment.tzinfo is None:
+        return moment.date().isoformat()
+    try:
+        zone = ZoneInfo("America/New_York")
+    except Exception:
+        zone = None      # Windows Python ships no tzdata: the machine's own zone
+    return moment.astimezone(zone).date().isoformat()
 
 
 def get_token(login, password):
@@ -317,7 +338,7 @@ def sync(account, password, log=print):
     for lg in order:
         cu = lg.get("climbUuid") or ""
         detail = climb_details.get(cu) or {}
-        day = str(lg.get("createdAt") or "")[:10]
+        day = local_day(lg.get("createdAt"))
         angle = int(lg.get("angle") or 0)
         grade = grades.get(str(lg.get("currentDifficultyId")), "") or \
             grades.get(str(detail.get("currentDifficultyId")), "")

@@ -193,8 +193,10 @@ def ask_code():
         return input("Garmin sent you a code — type it here: ").strip()
     except EOFError:
         raise Stop("Garmin asked for a two-step verification code, and nobody is here to\n"
-                   "type it. Run Garmin.command once from a Mac (or turn off two-step for\n"
-                   "Garmin); the session it makes is parked on the Worker and reused here.")
+                   "type it. On a Mac, run it once as GARMIN_REMOTE=1 ./Garmin.command and\n"
+                   "type the code there: only a run with GARMIN_REMOTE=1 parks its session\n"
+                   "on the Worker for this one to reuse (README, two-step). Or turn off\n"
+                   "two-step for Garmin.")
 
 
 def connect():
@@ -410,7 +412,14 @@ def main():
     cache = load_cache()
     seed_cache(cache)
     first = not cache["days"]
-    api = connect()
+    try:
+        api = connect()
+    except GarminConnectTooManyRequestsError:
+        # A rate limit at login is the same "press again later" as one mid-run,
+        # and ends the same way: exit 2, a warning (bug sweep A6-7).
+        print("\nGarmin is rate-limiting the login. Nothing new this time — press the\n"
+              "button again in an hour.", flush=True)
+        return 2
     if first:
         print("First run: walking back through your whole history. This can take a\n"
               "while — it is paced so Garmin does not lock you out. Later runs take\n"
@@ -453,3 +462,12 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\nStopped. Everything fetched so far is kept; press the button again to carry on.")
         sys.exit(130)
+    except Exception as e:
+        # On Actions the log is public, and the library's own words — which can
+        # carry response details — are not ours to vet. Its type name only, as
+        # park_session() does (bug sweep A6-7). On the Mac, the whole thing.
+        if not REMOTE:
+            raise
+        print(f"\nThe Garmin pull failed: {type(e).__name__}. Press again; if it keeps\n"
+              "failing, run Garmin.command on the Mac to see the full error.", file=sys.stderr)
+        sys.exit(1)

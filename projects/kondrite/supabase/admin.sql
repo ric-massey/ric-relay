@@ -3,7 +3,7 @@
 -- Safe to re-run: everything is guarded.
 --
 -- ── what this is for ───────────────────────────────────────────────────────
--- Typing `accounts` on the terminal opens account/, and for Ric that page lists
+-- ricmassey.com/admin/ (its KONDRITE tab, admin/kondrite.js) lists
 -- every pilot who made a KONDRITE account: the email they signed up with, the
 -- name on the boards, whether there is a save in the cloud and what they have
 -- on the boards — and lets him rename, wipe a save, clear scores, ban or delete.

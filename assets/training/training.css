@@ -805,7 +805,8 @@ button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; 
                background:none;border:0;border-radius:999px;padding:.4rem .75rem;min-height:36px;
                white-space:nowrap}
 .fgroup button:hover{color:var(--ink)}
-.fgroup button.on{background:var(--brand);color:#fff}
+/* --brand-dark, as the sign-in button: white on --brand is 3.4:1 (B2-13). */
+.fgroup button.on{background:var(--brand-dark);color:#fff}
 .fphase{display:flex;align-items:center;gap:.4rem;font-size:.82rem;font-weight:600;color:var(--soft)}
 .fphase select{font:inherit;font-size:.82rem;padding:.35rem .5rem;min-height:36px;
                border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
@@ -835,7 +836,7 @@ button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; 
 .w-t{display:block;font-weight:600;font-size:.9rem}
 .w-m{display:block;color:var(--soft);font-size:.76rem;margin-top:.1rem;
      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.w-slot{flex:0 0 auto;color:var(--soft);font-size:.66rem;font-weight:700;text-transform:uppercase;
+.w-slot{flex:0 0 auto;color:var(--soft);font-size:.7rem;font-weight:700;text-transform:uppercase;
         letter-spacing:.05em}
 @media(max-width:560px){
   .w-slot{display:none}           /* the meta line already says when */

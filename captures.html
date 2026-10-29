@@ -130,7 +130,9 @@
       border-color: var(--amber-safe);
       font-weight: 700;
     }
-    .gallery-tab-count { opacity: 0.72; }
+    /* --faint was lifted to clear AA; an opacity on top took the counts back
+       under it (bug sweep D2-11). */
+    .gallery-tab-count { opacity: 1; }
 
     [role="tabpanel"][hidden] { display: none; }
 
@@ -170,7 +172,10 @@
     }
 
     body.lightbox-open { overflow: hidden; }
+    /* margin: auto, after the reset's margin: 0 — which took the dialog's own
+       centring away and pinned it to the top-left (bug sweep D2-10). */
     .lightbox {
+      margin: auto;
       width: min(96vw, 1200px);
       height: min(94vh, 900px);
       max-width: none;

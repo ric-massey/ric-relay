@@ -1,0 +1,9 @@
+# Every text file is checked out with LF, on every machine. The suites read
+# source text and match patterns that assume \n, so a Windows checkout with
+# CRLF turned three of them red on bytes that pass everywhere else (bug sweep
+# A6-2).
+* text=auto eol=lf
+
+# Committed with CRLF and left as they are.
+assets/weather/fonts/OFL.txt -text
+projects/cs/steam.py -text

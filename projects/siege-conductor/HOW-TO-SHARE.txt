@@ -1,6 +1,13 @@
 SIEGE CONDUCTOR — how to put it online and send it to friends
 ==============================================================
 
+FIRST: it is already online. It lives at
+    https://ricmassey.com/projects/siege-conductor/
+and that is the link to send. Everything below is from before it did, and is
+only needed to host your own copy somewhere else. (A copy of this folder on
+its own still works, and still works offline; it just goes without the site's
+"Ric's Terminal" button and effects, which live outside the folder.)
+
 You can't text the app itself — you put it online once (free, ~2 min),
 get a LINK, and text the link. Friends tap the link and add it to their
 home screen as an app. No App Store, no warnings, nothing gets blocked.
