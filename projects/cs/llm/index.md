@@ -136,12 +136,12 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Bombsite A | 4 | 29% | 3 | 30% | 0.75 |
 | Middle | 4 | 29% | 0 | 0% | 0.00 |
 | Alley | 2 | 14% | 1 | 10% | 0.50 |
-| Side Hall | 1 | 7% | 1 | 10% | 1.00 |
 | T Side Upper | 1 | 7% | 1 | 10% | 1.00 |
 | Bombsite B | 1 | 7% | 1 | 10% | 1.00 |
+| Side Hall | 1 | 7% | 1 | 10% | 1.00 |
 | T Side Lower | 1 | 7% | 0 | 0% | 0.00 |
-| CT Spawn | 0 | 0% | 1 | 10% | — |
 | Top of Mid | 0 | 0% | 1 | 10% | — |
+| CT Spawn | 0 | 0% | 1 | 10% | — |
 | Outside | 0 | 0% | 1 | 10% | — |
 
 ### Anubis: where Ric dies and kills
@@ -157,8 +157,8 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Heaven | 2 | 6% | 1 | 6% | 0.50 |
 | Bridge | 2 | 6% | 1 | 6% | 0.50 |
 | Main | 1 | 3% | 1 | 6% | 1.00 |
-| Bricks | 1 | 3% | 0 | 0% | 0.00 |
 | Fountain | 1 | 3% | 0 | 0% | 0.00 |
+| Bricks | 1 | 3% | 0 | 0% | 0.00 |
 | Bombsite A | 0 | 0% | 3 | 17% | — |
 | Ruins | 0 | 0% | 2 | 11% | — |
 | Street | 0 | 0% | 1 | 6% | — |
@@ -176,9 +176,9 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 8% | 0 | 0% | 0.00 |
 | T Yard | 0 | 0% | 2 | 17% | — |
-| Vents | 0 | 0% | 1 | 8% | — |
-| A Stairs | 0 | 0% | 1 | 8% | — |
 | B Main | 0 | 0% | 1 | 8% | — |
+| A Stairs | 0 | 0% | 1 | 8% | — |
+| Vents | 0 | 0% | 1 | 8% | — |
 
 ### Dust II: where Ric dies and kills
 
@@ -197,12 +197,12 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Tunnel Stairs | 3 | 4% | 1 | 2% | 0.33 |
 | Under A | 2 | 2% | 5 | 8% | 2.50 |
 | Middle | 2 | 2% | 1 | 2% | 0.50 |
-| A Ramp | 2 | 2% | 0 | 0% | 0.00 |
 | Hole | 2 | 2% | 0 | 0% | 0.00 |
+| A Ramp | 2 | 2% | 0 | 0% | 0.00 |
 | Lower Tunnel | 1 | 1% | 3 | 5% | 3.00 |
 | Mid Doors | 1 | 1% | 1 | 2% | 1.00 |
-| Pit | 1 | 1% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 1% | 0 | 0% | 0.00 |
+| Pit | 1 | 1% | 0 | 0% | 0.00 |
 | Short Stairs | 0 | 0% | 4 | 6% | — |
 | CT Spawn | 0 | 0% | 1 | 2% | — |
 
@@ -218,8 +218,8 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Bombsite B | 3 | 9% | 8 | 33% | 2.67 |
 | Balcony | 2 | 6% | 1 | 4% | 0.50 |
 | Arch | 2 | 6% | 0 | 0% | 0.00 |
-| CT Spawn | 1 | 3% | 0 | 0% | 0.00 |
 | Library | 1 | 3% | 0 | 0% | 0.00 |
+| CT Spawn | 1 | 3% | 0 | 0% | 0.00 |
 | Second Mid | 1 | 3% | 0 | 0% | 0.00 |
 
 ### Mirage: where Ric dies and kills
@@ -231,12 +231,12 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Palace Interior | 16 | 11% | 13 | 12% | 0.81 |
 | Apartments | 15 | 10% | 25 | 23% | 1.67 |
 | Connector | 9 | 6% | 5 | 5% | 0.56 |
-| CT Spawn | 9 | 6% | 4 | 4% | 0.44 |
 | Truck | 9 | 6% | 4 | 4% | 0.44 |
+| CT Spawn | 9 | 6% | 4 | 4% | 0.44 |
 | Catwalk | 6 | 4% | 5 | 5% | 0.83 |
 | Middle | 5 | 3% | 6 | 6% | 1.20 |
-| Shop | 5 | 3% | 1 | 1% | 0.20 |
 | T Ramp | 5 | 3% | 1 | 1% | 0.20 |
+| Shop | 5 | 3% | 1 | 1% | 0.20 |
 | Underpass | 4 | 3% | 3 | 3% | 0.75 |
 | Scaffolding | 3 | 2% | 3 | 3% | 1.00 |
 | House | 3 | 2% | 1 | 1% | 0.33 |
@@ -263,8 +263,8 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Connector | 4 | 4% | 4 | 6% | 1.00 |
 | T Side Upper | 3 | 3% | 1 | 1% | 0.33 |
 | Alley | 2 | 2% | 1 | 1% | 0.50 |
-| Entrance | 1 | 1% | 2 | 3% | 2.00 |
 | Electrical Box | 1 | 1% | 2 | 3% | 2.00 |
+| Entrance | 1 | 1% | 2 | 3% | 2.00 |
 | Dumpster | 1 | 1% | 0 | 0% | 0.00 |
 
 ### Vertigo: where Ric dies and kills
@@ -275,12 +275,12 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Bombsite A | 3 | 20% | 0 | 0% | 0.00 |
 | T Corridor Up | 1 | 7% | 2 | 25% | 2.00 |
 | Elevator | 1 | 7% | 1 | 12% | 1.00 |
-| Tunnels | 1 | 7% | 0 | 0% | 0.00 |
-| T Spawn | 1 | 7% | 0 | 0% | 0.00 |
-| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
-| Mid | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
 | Crane | 1 | 7% | 0 | 0% | 0.00 |
+| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
+| Tunnels | 1 | 7% | 0 | 0% | 0.00 |
+| T Spawn | 1 | 7% | 0 | 0% | 0.00 |
+| Mid | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Top | 0 | 0% | 2 | 25% | — |
 | Top of Mid | 0 | 0% | 1 | 12% | — |
 | Connector | 0 | 0% | 1 | 12% | — |
