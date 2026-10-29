@@ -1,0 +1,3 @@
+# The replays live in Cloudflare R2 (upload-replays.py); these copies are this machine's.
+*
+!.gitignore

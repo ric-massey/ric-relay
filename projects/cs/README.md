@@ -84,7 +84,7 @@ Nothing runs between sessions. The `CS2 + Terminal` desktop shortcut does the sa
 thing (it launches CS2 through Steam). Log: `%LOCALAPPDATA%\ric-terminal\cs-session.log`.
 
 `sync.py` = demos → live feed → Steam → Leetify, each in its own process so one
-failing never stops the rest, sends new replays to R2, then **commits the room's data only** (`cs-data.js`, `stats.js`, `matches/` until it moves to R2, `llm/`, `p/`)
+failing never stops the rest, sends new replays to R2, then **commits the room's data only** (`cs-data.js`, `stats.js`, `llm/`, `p/` — not `matches/`, which moved to R2 on 2026-10-28)
 (on `main`, never mid-merge), then **pushes them** so a session reaches the site
 by itself (Ric's call, 2026-10-14). It pushes only commits that touch nothing but
 the room's data; if other work is waiting to go out it pushes nothing and says
@@ -152,6 +152,10 @@ one back to check it arrived byte for byte, and stamps its hash into
 `cs-data.js` as `replay_v` (the page's `?v=`, so a re-parse is a fresh URL).
 `--check` lists what R2 has, `--pull` rebuilds `matches/` from R2 on a machine
 that has none, and `--move` is the one-time cutover.
+
+**Done on 2026-10-28** (Ric: "Yes, move them"): all 32 replays went to R2, read
+back matching, and `matches/` was untracked. Never commit a replay again. The
+steps below are kept for rebuilding this on another machine.
 
 **Turning it on (once, in this order):**
 
