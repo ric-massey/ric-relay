@@ -186,6 +186,28 @@ and answers to its own `tension` / `kilter` / `boards` / `woodshed` commands ins
 It is called Boards now; `woodshed` still works because that is what the
 easter-egg notes have told people to type for years.)
 
+**`find` is a search engine over the whole site** (Ric, 2026-10-30: "make the search
+engine in terminal phenominal"). `assets/terminal/search.js` is the engine (UMD, so
+`.github/test/terminal-search.mjs` runs it on the real data); `terminal.html` feeds it
+`ROOMS`, `PROJECTS`, `assets/terminal/pages.js`, `latest.js` and `notes.js` at once, and
+the climbing log, board data, film list and CS matches the first time the prompt is
+touched (at once in the front door's hidden frame). Rules that keep it honest:
+
+- **`pages.js` is generated, never edited.** `node assets/terminal/build-pages.mjs`
+  reads every tracked page's own `<title>`, description and headings; every page is in
+  unless its `EXCLUDE` list says why not (Ric's tools, HERMISCUS, redirects, the CS
+  player pages). Add a page, rerun it — the test runs `--check` and goes red otherwise.
+- **A new data source is an adapter in `TerminalSearch.from`** plus a row in `DEEP` in
+  `terminal.html`, and a kind in the test's "every data source contributes" list. Every
+  result's `href` must be a file in this repo; the test checks each one.
+- **The ranking cases in the test are promises** (`climing` finds the climbing room,
+  `crossfire` finds KONDRITE, `mood` finds the mood model over `moon`). If a data change
+  turns one red, find out what took its place before touching the case.
+- **Nothing private goes in.** It indexes only files the site already serves publicly;
+  don't feed it the Worker's signed-in data, the Garmin export or anything behind a gate.
+- Typing something that isn't a command searches for it, after a one-edit near miss of a
+  real command (`lss` → `ls`) has been offered instead. Numbers open results.
+
 
 Per-room nav treatments (class on the `<nav>`):
 

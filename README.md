@@ -237,9 +237,21 @@ front door, and normalize to the clean site root when served on the web; the
 ## Terminal
 
 Type `help` for the current command list. Useful shortcuts include `/clear`, `tree`,
-`projects`, `find <word>`, `open <target>`, `latest`, `random`, `uptime`, and `reboot`.
+`projects`, `find <words>`, `open <target>`, `latest`, `random`, `uptime`, and `reboot`.
 Commands accept a leading slash, project shortcuts are searchable, and `↑`/`↓` plus
 `Tab` provide history and completion.
+
+**`find` searches the whole site** (since 2026-10-30, Ric: "make the search engine in
+terminal phenominal"): every room, project and public page, the climbing log (every day,
+route and to-do), the board sends, every film on the Entertainment list, every CS match
+and the notes. It forgives typos, folds plurals, takes `in:<room>`, `type:<kind>`,
+`"phrases"` and `-words`, numbers its results (type the number to open one, `more` for
+the next page) and shows the best five under the prompt as you type. Anything typed that
+is not a command is searched for too, and it answers the same way from the front door's
+prompt. The engine is `assets/terminal/search.js`; the page list is
+`assets/terminal/pages.js`, generated from the pages' own titles, descriptions and
+headings by `node assets/terminal/build-pages.mjs` — rerun it when a page is added,
+renamed or retitled (`.github/test/terminal-search.mjs` goes red until you do).
 
 Two arrays near the top of `terminal.html`'s script drive all of it: **`ROOMS`** (the
 directory, `ls`, `tree`, `find`, `random`, completion) and **`PROJECTS`** (the `projects`

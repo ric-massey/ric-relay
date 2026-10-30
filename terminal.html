@@ -243,6 +243,16 @@
     #output:empty { display: none; }
     #output { margin-bottom: .75rem; white-space: pre-wrap; color: var(--phosphor-dim); max-height: 14em; overflow-y: auto; }
     #output .bright { color: var(--phosphor); }
+    /* search results: the words that matched, the quiet half of a line, and
+       each result's title as a link (assets/terminal/search.js) */
+    #output .hl, #live .hl { color: var(--phosphor); text-shadow: 0 0 8px rgba(255,176,0,.45); }
+    /* .dim stays the plain output colour: --phosphor-dim is already the
+       dimmest amber that clears 4.5:1 here, and the titles are brighter */
+    #output a.res, #live a.res { color: var(--phosphor); text-decoration: none; }
+    #output a.res:hover, #output a.res:focus-visible, #live a.res:hover { text-decoration: underline; outline: none; }
+    #live:empty { display: none; }
+    #live { margin: .45rem 0 0; color: var(--phosphor-dim); white-space: pre-wrap; }
+    #live div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .prompt-row { display: flex; gap: 0.5rem; align-items: baseline; }
     .prompt { color: var(--flash-orrin); white-space: nowrap; }
@@ -315,6 +325,7 @@
               <span class="cursor" aria-hidden="true">▮</span>
             </span>
           </div>
+          <div id="live" aria-live="polite"></div>
         </div>
       </div>
 
@@ -389,6 +400,9 @@ type Sydney's cat's name for a surprise!</div>
   <script src="projects/climbing/climb-parse.js?v=2"></script>
   <script src="projects/climbing/web-trips.js?v=4"></script>
   <script src="latest.js?v=2"></script>
+  <!-- the search engine and its list of every public page -->
+  <script src="assets/terminal/search.js?v=1"></script>
+  <script src="assets/terminal/pages.js?v=1"></script>
   <script>
     // ─── boot sequence ───────────────────────────────────
     const BOOT_LINES = [
@@ -618,20 +632,189 @@ type Sydney's cat's name for a surprise!</div>
       return lines.join("\n");
     };
 
-    const findTerminal = (query) => {
-      const needle = query.trim().toLowerCase();
-      if (!needle) return "usage: find <word>\nexample: find mood";
-      const rooms = ROOMS.map((room) => ({
-        label: `/${room.name}`, command: `/${room.name}`, haystack: `${room.name} ${room.desc}`,
-      }));
-      const projects = PROJECTS.map((project) => ({
-        label: project.title, command: `open ${project.command}`,
-        haystack: `${project.title} ${project.description} ${project.room} ${project.command} ${project.aliases.join(" ")}`,
-      }));
-      const matches = [...rooms, ...projects].filter((item) => item.haystack.toLowerCase().includes(needle));
-      return matches.length
-        ? matches.map((item) => `  ${item.label}\n    ${item.command}`).join("\n")
-        : `no signals match “${query}”. try a broader word.`;
+    // ─── search ──────────────────────────────────────────
+    // The engine is assets/terminal/search.js; this is what it is fed and how
+    // its answers are printed. Rooms, projects and every public page are in
+    // the index from the start. The climbing log, the boards, the film list
+    // and the CS matches are the heavy files (~700 KB together), so they load
+    // the first time the prompt is touched — at once when this page is the
+    // front door's hidden frame, because that frame wakes when the visitor
+    // reaches for the prompt. A search run before they arrive answers from
+    // what is there and adds the rest when it lands.
+    const S = window.TerminalSearch;
+    const roomAlias = (w) => {
+      const k = normalizeTarget(w);
+      if (Object.prototype.hasOwnProperty.call(PAGES, k)) return k;
+      return Object.prototype.hasOwnProperty.call(PAGE_ALIASES, k) ? PAGE_ALIASES[k] : k;
+    };
+    const aliasesOf = (name) => Object.keys(PAGE_ALIASES).filter((a) => PAGE_ALIASES[a] === name);
+    const baseDocs = () => [
+      ...ROOMS.map((room) => ({
+        kind: "room", title: `/${room.name}`, href: room.href, room: room.name,
+        keys: [room.name, ...aliasesOf(room.name)].join(" "), body: room.desc,
+      })),
+      ...PROJECTS.map((p) => ({
+        kind: "project", title: p.title, href: p.href, room: roomAlias(p.room),
+        keys: [p.command, ...p.aliases].join(" "), body: p.description, open: `open ${p.command}`,
+      })),
+      ...(window.TERMINAL_PAGES || []).map((p) => ({ kind: "page", ...p })),
+      ...S.from.latest(window.RELAY_LATEST_ALL || window.RELAY_LATEST),
+      ...S.from.notes(typeof RIC_NOTES !== "undefined" ? RIC_NOTES : []),
+    ];
+    const deep = { state: "idle", docs: [] };
+    let searchIndex = S ? S.build(baseDocs()) : null;
+    const rebuild = () => { searchIndex = S.build([...baseDocs(), ...deep.docs]); };
+
+    const DEEP = [
+      ["projects/climbing/climbs-data.js", "CLIMBING_DATA", (D) => S.from.climbing(D)],
+      ["projects/climbing/board-data.js", "BOARD_DATA", (D) => S.from.boards(D)],
+      ["projects/entertainment/entertainment-data.js", "ENTERTAINMENT_DATA", (D) => S.from.films(D)],
+      ["projects/cs/cs-data.js", "CS_DATA", (D) => S.from.cs(D)],
+    ];
+    const loadScript = (src) => new Promise((ok) => {
+      const s = document.createElement("script");
+      s.src = src; s.async = true; s.onload = s.onerror = () => ok();
+      document.head.appendChild(s);
+    });
+    function loadDeep() {
+      if (!S || deep.state !== "idle") return;
+      deep.state = "loading";
+      const index = () => {
+        deep.docs = [];
+        for (const [, name, make] of DEEP) {
+          try { deep.docs.push(...make(window[name])); } catch (e) { console.warn("search: could not index", name, e); }
+        }
+        rebuild();
+      };
+      Promise.all(DEEP.map(([src]) => loadScript(src))).then(() => {
+        index();
+        deep.state = "ready";
+        // Days logged from a phone join quietly when the climbing service
+        // answers; nothing waits on it.
+        if (window.WebTrips && window.CLIMBING_DATA) {
+          Promise.resolve().then(() => window.WebTrips.merge(window.CLIMBING_DATA)).then(index, () => {});
+        }
+        // A search that ran before this landed gets its fuller answer now.
+        if (pending) {
+          const { query, verb } = pending; pending = null;
+          const mark = out.childElementCount;
+          showResults(query, S.search(searchIndex, query, { roomAlias }), verb);
+          forwardLate(mark);
+        } else if (lastSearch && lastSearch.shallow) {
+          const before = lastSearch.results.map((r) => r.doc.title).join("\n");
+          const fresh = S.search(searchIndex, lastSearch.query, { roomAlias });
+          if (fresh.results.map((r) => r.doc.title).join("\n") !== before) {
+            const mark = out.childElementCount;
+            print("…with the climbing log, the boards, the films and the matches loaded:");
+            showResults(lastSearch.query, fresh, lastSearch.verb);
+            forwardLate(mark);
+          }
+          lastSearch.shallow = false;
+        }
+      });
+    }
+
+    let lastSearch = null;     // { query, verb, results, page, shallow }
+    let pending = null;        // a search that found nothing while the rest was loading
+    const PAGE_SIZE = 8;
+    const KIND = (d) => (S.KINDS[d.kind] || { label: d.kind }).label;
+
+    // a string with marks → segments for printRich
+    const lit = (text, marks, cls) => {
+      const segs = []; let at = 0;
+      for (const [a, b] of marks || []) {
+        if (a > at) segs.push({ t: text.slice(at, a), c: cls });
+        segs.push({ t: text.slice(a, b), c: "hl" });
+        at = b;
+      }
+      if (at < text.length) segs.push({ t: text.slice(at), c: cls });
+      return segs;
+    };
+
+    function showResults(query, found, verb) {
+      const { results, partial, ms } = found;
+      if ((!results.length || partial) && deep.state !== "ready") {
+        // Nothing yet, but most of the site isn't in the index yet either.
+        print("searching the climbing log, the boards, the films and the matches …");
+        pending = { query, verb }; lastSearch = null;
+        return;
+      }
+      if (!results.length) {
+        const better = S.suggest(searchIndex, query);
+        print(`no signals match “${query}”.` + (better ? `\ndid you mean: ${verb || "find"} ${better}` : "\ntry fewer or broader words — or `find` with nothing to see how."));
+        lastSearch = null;
+        return;
+      }
+      lastSearch = { query, verb, results, page: 0, shallow: deep.state !== "ready" };
+      const n = results.length;
+      print(`${partial ? "nothing matched every word — closest " : ""}${n}${n === 50 ? "+" : ""} result${n === 1 ? "" : "s"} for “${query}” · ${Math.max(1, Math.round(ms))} ms`);
+      showPage(0);
+    }
+
+    function showPage(page) {
+      const { results } = lastSearch;
+      lastSearch.page = page;
+      const slice = results.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+      slice.forEach((r, k) => {
+        const n = page * PAGE_SIZE + k + 1, d = r.doc;
+        const where = d.room && d.kind !== "room" ? ` · /${d.room}` : "";
+        // a short sub line (year · director, grade · wall) rides on the title
+        // line unless it is where the match is, and then it gets its own
+        const subUp = d.sub && d.sub.length <= 60 && r.snippet.field !== "sub";
+        printRich([
+          { t: `${String(n).padStart(2)}  ` },
+          { href: d.href, n, segs: lit(d.title, r.snippet.titleMarks) },
+          { t: `  ${KIND(d)}${subUp ? " · " + d.sub : where}`, c: "dim" },
+        ]);
+        const line = r.snippet.line || (!subUp && d.sub) || (d.body && d.body.length < 110 ? d.body : "");
+        if (line) printRich([{ t: "    " }, ...(r.snippet.line ? lit(line, r.snippet.lineMarks, "dim") : [{ t: line, c: "dim" }])]);
+      });
+      const shown = Math.min(results.length, (page + 1) * PAGE_SIZE);
+      const tail = [];
+      if (shown < results.length) tail.push(`${shown} of ${results.length} · \`more\` for the next ${Math.min(PAGE_SIZE, results.length - shown)}`);
+      tail.push("type a number to open one");
+      if (page === 0 && results.length > PAGE_SIZE) tail.push("narrow with in:<room> or type:<kind>");
+      print(tail.join(" · "));
+    }
+
+    function runSearch(query, verb) {
+      if (!S) return "search is offline — its script did not load.";
+      const q = query.trim();
+      if (!q) return "usage: find <words>\n" +
+        "  find red river          every word must match, typos forgiven\n" +
+        "  find denzel films       a kind word narrows: films, routes, days, matches\n" +
+        "  find crimp in:climbing  in:<room> keeps to one room\n" +
+        "  find \"fox fire\"         quotes keep a phrase together\n" +
+        "  find kilter -tension    a minus leaves a word out\n" +
+        "  type:route · type:film · type:match · type:day · type:page · type:note\n" +
+        "the climbing log, boards, films, CS matches, notes and every page are searched.";
+      loadDeep();
+      showResults(q, S.search(searchIndex, q, { roomAlias }), verb);
+      return null;
+    }
+
+    function openResult(n) {
+      const r = lastSearch && lastSearch.results[n - 1];
+      if (!r) return false;
+      const d = r.doc;
+      if (d.kind === "note" && d.note) { print(`[${d.note.date}] ${d.note.text}`); return true; }
+      if (!d.href) return false;
+      print(`opening ${d.title} ...`);
+      setTimeout(() => goTo(d.href), 350);
+      return true;
+    }
+
+    // what someone meant by a command that isn't one: the nearest real one
+    const nearestCommand = (word) => {
+      if (!S || word.length < 2) return null;
+      let best = null;
+      for (const c of [...visibleCommands, ...ROOMS.map((r) => r.name)]) {
+        if (c.includes(" ")) continue;
+        const max = word.length >= 6 ? 2 : 1;
+        const d = S.distance(word, c, max);
+        if (d <= max && (!best || d < best.d)) best = { c, d };
+      }
+      return best && best.c;
     };
 
     const readNotes = () => {
@@ -647,7 +830,8 @@ type Sydney's cat's name for a surprise!</div>
         "  ls / rooms      list every room and what lives there\n" +
         "  tree            map the whole terminal and its projects\n" +
         "  projects        list project shortcuts\n" +
-        "  find <word>     search rooms and projects\n" +
+        "  find <words>    search the whole site — pages, climbs, films, matches\n" +
+        "                  (`find` alone for tricks; typing a search works too)\n" +
         "  open <target>   open a room or project shortcut\n" +
         "  latest / recent open the newest addition\n" +
         "  random          enter a random unlocked room\n" +
@@ -670,7 +854,20 @@ type Sydney's cat's name for a surprise!</div>
       rooms: listRooms,
       tree: siteTree,
       projects: listProjects,
-      find: (arg) => findTerminal(arg),
+      // `find` is the documented one; the rest are what people reach for.
+      find: (arg, originalArg) => runSearch(originalArg, "find"),
+      search: (arg, originalArg) => runSearch(originalArg, "search"),
+      grep: (arg, originalArg) => runSearch(originalArg, "grep"),
+      google: (arg, originalArg) => runSearch(originalArg, "google"),
+      s: (arg, originalArg) => runSearch(originalArg, "s"),
+      "?": (arg, originalArg) => runSearch(originalArg, "?"),
+      more: () => {
+        if (!lastSearch) return "nothing to show more of — `find <words>` first.";
+        const next = lastSearch.page + 1;
+        if (next * PAGE_SIZE >= lastSearch.results.length) return "that was all of them.";
+        showPage(next);
+        return null;
+      },
       // Only reached when the target didn't resolve — say which target, or the
       // visitor reads it as "you typed the command wrong".
       open: (arg, originalArg) => originalArg
@@ -811,7 +1008,7 @@ type Sydney's cat's name for a surprise!</div>
     const commandHistory = [];
     let historyIndex = 0;
 
-    const visibleCommands = ["help", "commands", "man", "ls", "rooms", "tree", "projects", "find", "open", "cd", "latest", "recent", "random", "cat notes", "history", "pwd", "whoami", "status", "uptime", "date", "echo", "home", "back", "clear", "reboot"];
+    const visibleCommands = ["help", "commands", "man", "ls", "rooms", "tree", "projects", "find", "search", "more", "open", "cd", "latest", "recent", "random", "cat notes", "history", "pwd", "whoami", "status", "uptime", "date", "echo", "home", "back", "clear", "reboot"];
     const completions = [
       ...visibleCommands,
       // locked rooms stay out — completing to something that answers [LOCKED]
@@ -891,6 +1088,9 @@ type Sydney's cat's name for a surprise!</div>
       if (/^front[\s_-]*door$/i.test(normalizedRaw) || /^(home|cd home|open home)$/i.test(normalizedRaw)) {
         print("walking out to the front door ...");
         setTimeout(() => goTo("index.html"), 400);
+      // a number after a search opens that result (`3`, `open 3`, `#3`)
+      } else if (lastSearch && /^#?\d{1,2}$/.test(verb) && openResult(+verb.replace("#", ""))) {
+      } else if (lastSearch && verb === "open" && /^#?\d{1,2}$/.test(arg) && openResult(+arg.replace("#", ""))) {
       } else if ((verb === "open" || verb === "cd") && own(PAGES, pageArg)) {
         print(`entering /${pageArg} ...`);
         setTimeout(() => goTo(PAGES[pageArg]), 400);
@@ -925,7 +1125,21 @@ type Sydney's cat's name for a surprise!</div>
         const result = COMMANDS[verb](arg, originalArg);
         if (result) print(result);
       } else {
-        print(`command not recognized: ${verb}\ntype \`help\` for options.`);
+        /* Not a command. A near miss of one ("lss", "trainign") is far more
+           likely a slip than a search, so that is said first; anything else
+           is searched for, because "denzel" or "red river" typed at a prompt
+           means "find me this". */
+        const near = !originalRest.length && nearestCommand(verb);
+        if (near) print(`command not recognized: ${verb} — did you mean \`${near}\`?`);
+        else if (S) {
+          loadDeep();
+          const found = S.search(searchIndex, normalizedRaw, { roomAlias });
+          if (found.results.length || deep.state !== "ready") { print(`no command called “${originalVerb}” — searched the site instead:`); showResults(normalizedRaw, found, "find"); }
+          else {
+            const better = S.suggest(searchIndex, normalizedRaw);
+            print(`command not recognized: ${verb}\n` + (better ? `nothing on the site matches either — did you mean \`find ${better}\`?` : "type `help` for options, or `find <words>` to search."));
+          }
+        } else print(`command not recognized: ${verb}\ntype \`help\` for options.`);
       }
       scrollNewestIntoView(mark);
     });
@@ -936,6 +1150,80 @@ type Sydney's cat's name for a surprise!</div>
       div.textContent = text;
       out.appendChild(div);
     }
+
+    /* One line made of segments: { t, c } is text with a class ("hl" for a
+       matched word, "dim"), and { href, n, segs } is a result's title as a
+       link. The segments ride along on the div so the front door, which
+       shows this terminal's output in its own panel, can draw the same. */
+    function printRich(parts) {
+      const div = document.createElement("div");
+      const put = (into, s) => {
+        const span = document.createElement("span");
+        if (s.c) span.className = s.c;
+        span.textContent = s.t;
+        into.appendChild(span);
+      };
+      for (const p of parts) {
+        if (p.segs) {
+          const a = document.createElement(p.href ? "a" : "span");
+          a.className = "res";
+          if (p.href) { a.href = p.href; a.dataset.n = p.n; }
+          p.segs.forEach((s) => put(a, s));
+          div.appendChild(a);
+        } else put(div, p);
+      }
+      div.segs = parts;
+      out.appendChild(div);
+    }
+
+    // a click on a result goes the way every other move does, through goTo()
+    out.addEventListener("click", (e) => {
+      const a = e.target.closest("a.res");
+      if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+      e.preventDefault();
+      openResult(+a.dataset.n) || goTo(a.getAttribute("href"));
+    });
+
+    // The lines printed since `mark`, in the shape the front door's panel reads.
+    const linesFrom = (mark) => [...out.children].slice(mark).map((d) => ({ text: d.textContent, bright: d.classList.contains("bright"), segs: d.segs || null }));
+    // Lines printed after a command has already answered (a search whose
+    // fuller results arrived later) still reach the front door's panel.
+    function forwardLate(mark) {
+      scrollNewestIntoView(mark);
+      if (window.TERMINAL_EMBED) window.TERMINAL_EMBED.send({ term: "out", cleared: false, lines: linesFrom(mark) });
+    }
+
+    /* As you type a search — `find`, `search` or `?` and a word — the best
+       five show under the prompt. Here only; the front door's panel answers
+       on Enter. */
+    const live = document.getElementById("live");
+    let liveTimer = 0;
+    cmd.addEventListener("input", () => {
+      loadDeep();
+      clearTimeout(liveTimer);
+      liveTimer = setTimeout(() => {
+        live.textContent = "";
+        const m = cmd.value.match(/^\/?(?:find|search|grep|\?)\s+(.{2,})$/i);
+        if (!m || !S || window.TERMINAL_EMBED) return;
+        const found = S.search(searchIndex, m[1], { roomAlias, limit: 5 });
+        for (const r of found.results) {
+          const div = document.createElement("div");
+          const a = document.createElement("a");
+          a.className = "res"; a.href = r.doc.href || "#";
+          for (const s of lit(r.doc.title, r.snippet.titleMarks)) { const sp = document.createElement("span"); if (s.c) sp.className = s.c; sp.textContent = s.t; a.appendChild(sp); }
+          const k = document.createElement("span"); k.className = "dim"; k.textContent = `  ${KIND(r.doc)}`;
+          div.append("↳ ", a, k);
+          live.appendChild(div);
+        }
+      }, 60);
+    });
+    cmd.addEventListener("keydown", (e) => { if (e.key === "Enter") live.textContent = ""; });
+    live.addEventListener("click", (e) => {
+      const a = e.target.closest("a.res");
+      if (!a || a.getAttribute("href") === "#" || e.metaKey || e.ctrlKey) return;
+      e.preventDefault(); live.textContent = ""; goTo(a.getAttribute("href"));
+    });
+    cmd.addEventListener("focus", loadDeep, { once: true });
 
     // #output is capped at 14em, so scrolling to the bottom left long answers
     // (`help` is ~20 lines) showing only their last few lines. Put the TOP of
@@ -963,9 +1251,12 @@ type Sydney's cat's name for a surprise!</div>
         cmd.value = String(e.data.cmd || "").slice(0, 200);
         cmd.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
         const now = out.childElementCount;
-        send({ term: "out", cleared: now < mark, lines: [...out.children].slice(Math.min(mark, now)).map((d) => ({ text: d.textContent, bright: d.classList.contains("bright") })) });
+        send({ term: "out", cleared: now < mark, lines: linesFrom(Math.min(mark, now)) });
       });
       send({ term: "ready" });
+      // The frame wakes when the visitor reaches for the front door's prompt,
+      // so the heavy half of the search index can start loading now.
+      loadDeep();
     }
 
     // A command sent from elsewhere — the front door's prompt sends

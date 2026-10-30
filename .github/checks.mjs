@@ -42,6 +42,9 @@ const SUITES = [
      a whole room down and that no other suite here would ever see. */
   ['every inline script parses', ['.github/test/inline-scripts.mjs']],
   ['the front door lists every room, and only real ones', ['.github/test/frontdoor.mjs']],
+  /* The terminal's search: ranking on the real data, every result's link,
+     and pages.js current with the pages it lists. */
+  ['the terminal search', ['.github/test/terminal-search.mjs']],
   ['the entertainment write path', ['projects/entertainment/test/write-path.mjs']],
   ['the worker (training-log)', ['worker/test.mjs']],
   ['the media location scrub', ['.github/test/scrub-media.mjs']],

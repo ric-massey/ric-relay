@@ -123,6 +123,11 @@
     .term-out .cmd { color: #ffb000; text-shadow: 0 0 10px rgba(255,176,0,.45); margin-top: 10px; }
     .term-out .cmd:first-child { margin-top: 0; }
     .term-out .cmd::before { content: "~$ "; color: #b07d00; text-shadow: none; }
+    /* search results from the terminal: matched words, the quiet half, links */
+    .term-out .hl { color: #ffb000; text-shadow: 0 0 8px rgba(255,176,0,.45); }
+    .term-out .dim { color: #c48d00; }
+    .term-out a.res { color: #ffb000; text-decoration: none; font: inherit; letter-spacing: normal; text-transform: none; }
+    .term-out a.res:hover, .term-out a.res:focus-visible { text-decoration: underline; outline: none; }
     .term-x { position: absolute; top: 6px; right: 8px; width: 28px; height: 28px; border: 0; background: none; color: #b07d00; font: 400 20px/1 var(--mono); cursor: pointer; }
     .term-x:hover, .term-x:focus-visible { color: #ffb000; outline: none; }
     .tbtn {
@@ -1609,9 +1614,24 @@
       const send = (cmd) => frame.contentWindow.postMessage({ term: "run", cmd, cats: !!window.RELAY_CATS?.active?.(), effect: window.RELAY_EFFECTS?.current?.() || null }, location.origin);
       const show = (list, cleared) => {
         if (cleared) lines.textContent = "";
-        for (const l of list) { const d = document.createElement("div"); if (l.bright) { d.className = "cmd"; d.textContent = l.text.replace(/^\$\s*/, ""); } else d.textContent = l.text; lines.appendChild(d); }
+        // A search result arrives as segments: words, matched words, and the
+        // title as a link (terminal.html's printRich). Links stay on this
+        // site — the terminal only ever names its own pages.
+        const span = (into, s) => { const e = document.createElement("span"); if (s.c === "hl" || s.c === "dim") e.className = s.c; e.textContent = String(s.t || ""); into.appendChild(e); };
+        const segs = (d, parts) => { for (const p of parts) {
+          if (!Array.isArray(p.segs)) { span(d, p); continue; }
+          const to = p.href && new URL(p.href, location.href);
+          const a = document.createElement(to && to.origin === location.origin ? "a" : "span");
+          a.className = "res"; if (a.tagName === "A") a.href = to.href;
+          p.segs.forEach((s) => span(a, s)); d.appendChild(a);
+        } };
+        let first = null;
+        for (const l of list) { const d = document.createElement("div"); if (l.bright) { d.className = "cmd"; d.textContent = l.text.replace(/^\$\s*/, ""); } else if (Array.isArray(l.segs)) segs(d, l.segs); else d.textContent = l.text; lines.appendChild(d); first ||= d; }
         panel.hidden = !lines.childElementCount;
-        panel.scrollTop = panel.scrollHeight;
+        // the top of what just arrived, not the bottom: a search answers in
+        // twenty lines and the best one is first (short answers still land
+        // at the bottom, because the scroll clamps)
+        if (first) panel.scrollTop += first.getBoundingClientRect().top - panel.getBoundingClientRect().top - 14;
       };
       addEventListener("message", (e) => {
         if (!frame || e.source !== frame.contentWindow || e.origin !== location.origin || !e.data) return;
@@ -1621,7 +1641,12 @@
         else if (m.term === "go") {
           const to = new URL(m.href, location.href);
           if (to.origin !== location.origin) return;
-          if (/\/(index\.html)?$/.test(to.pathname)) { panel.hidden = true; scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" }); }
+          // Home is this page only. The test was "ends in /index.html", which
+          // every project's own index.html also does — so `open kondrite` or
+          // a search result for a climbing day scrolled to the top here
+          // instead of going anywhere (found 2026-10-30).
+          const home = new URL("./", location.href).pathname;
+          if (to.pathname === home || to.pathname === home + "index.html") { panel.hidden = true; scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" }); }
           else location.href = to.href;
         }
         else if (m.term === "back") history.back();

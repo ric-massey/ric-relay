@@ -13,6 +13,7 @@ completion.
 | `diagnose orrin` | Prints a classified-looking Orrin status record. |
 | `vod` | Pretends to retrieve the Apex VOD archive, then points at the Log. |
 | `apex` | Says the Apex room is offline, and why — it came off the site on 2026-10-30. |
+| `search` / `grep` / `google` / `s` / `?` | All the same as `find`: search the whole site. `find` is the one `help` lists. Typing anything that isn't a command searches for it too. |
 | `sudo` | Politely denies administrative access. |
 | `tension` / `kilter` / `boards` / `woodshed` | Open the climbing boards page (`projects/climbing/board.html`), on that board for the first two. `woodshed` is the page's old name and still works. |
 | `unlock` | Asks for crew authentication without revealing the private map. |

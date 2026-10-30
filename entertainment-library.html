@@ -1031,6 +1031,9 @@
     else if (h === 'together' || h === 'starred') state.view = 'together';
     else if (h === 'watched') state.view = h;
     else if (h.startsWith('genre=')) state.genre = h.slice(6);
+    /* #q=<title> is the terminal's search handing over one film: the whole
+       list, with the search box already holding its name. */
+    else if (h.startsWith('q=')) { state.view = 'all'; state.q = h.slice(2).trim(); el('q').value = state.q; }
   }
 
   /* Only offer a filter the data can actually answer. Genre and decade are
