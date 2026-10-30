@@ -96,10 +96,10 @@
      hundred checkboxes is a different and much worse page — so each row is a
      way in, and the day itself is where the work gets marked off.
 
-     Body sessions are in the plan every single day. They are filterable rather
-     than hidden, because "what is the morning practice" is a fair question,
-     but they are NOT what you came for — so Upcoming hides the ones that are
-     only a morning practice, and the Body filter brings them back. */
+     Body sessions are in the plan most days. They are filterable rather
+     than hidden, because "what is the wind-down" is a fair question, but they
+     are NOT what you came for — so Upcoming hides the ones that are only a
+     standing routine, and the Body filter brings them back. */
   (function () {
     const $ = s => document.querySelector(s);
     const T = Training;
@@ -164,9 +164,9 @@
        hang, a heel raise, the heaviest clean five — but two of its six items
        are climbing and one of them is sending Kilter benchmarks. He was on a
        board that day. */
-    const GROUND = new Set(['lift', 'tendon', 'antagonist', 'wrist', 'wristdaily',
+    const GROUND = new Set(['lift', 'tendon', 'antagonist', 'wrist',
       'kneestrength', 'lowerleg', 'muscleup', 'mantel', 'calis', 'fingerprehab',
-      'micro', 'mobility', 'meditate', 'night', 'missed', 'pulley']);
+      'night', 'missed', 'pulley']);
     const onTheWall = x => x.kind === 'climb'
       && !((x.k || []).length && (x.k || []).every(k => GROUND.has(k)));
 
@@ -194,7 +194,7 @@
         `<div class="tot"><b>${climbs}</b><span>day${climbs === 1 ? '' : 's'} climbing</span></div>`;
     }
 
-    /* A day whose only content is the standing morning/night practice is
+    /* A day whose only content is the standing night routine is
        scaffolding on this page, not a workout. */
     const substantive = s => s.kind !== 'rest' && !(s.kind === 'body' && !s.key);
 

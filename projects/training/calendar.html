@@ -91,14 +91,14 @@
   let CAL_SEL = null;       // the day whose detail panel is open
   let SLIDE = 0;            // -1 / +1 for the month that was just turned, for the animation
 
-  /* The standing morning practice is on every day in the plan, so it can never
-     be what makes a day interesting. Same test the home page and the workout
+  /* A standing body routine (the wind-down) is on most days in the plan, so
+     it can never be what makes a day interesting. Same test the home page and the workout
      index use. */
   const substantive = s => s.kind !== 'rest' && !(s.kind === 'body' && !s.key);
 
-  /* What a day is FOR — the sessions worth naming in its cell. The morning
-     practice is on every day and would make every cell say the same thing, so
-     it does not count; a rest day keeps its rest so the cell is not blank. */
+  /* What a day is FOR — the sessions worth naming in its cell. A standing
+     body routine would make every cell say the same thing, so it does not
+     count; a rest day keeps its rest so the cell is not blank. */
   const headline = d => {
     const real = d.sessions.filter(substantive);
     return real.length ? real : d.sessions.filter(s => s.kind === 'rest');
@@ -150,8 +150,8 @@
     /* A past day still carrying real work nobody ticked. This is the whole
        point of the grid for catching up: glance, find the gaps, tap them.
 
-       "Real work" excludes the standing morning practice, because it is on
-       every single day of the year — counting it would paint the entire past
+       "Real work" excludes the standing body routines, because they are on
+       nearly every day of the year — counting it would paint the entire past
        as owed and the signal would mean nothing. A rest day cannot be owed
        either. */
     const owed = iso < today

@@ -98,12 +98,13 @@
 
     /* The next few days with something on them worth knowing about.
 
-       "Something" is doing work here. Every single day in the plan carries a
-       morning practice, and a rest day carries one too — so a plain "has a
-       session that is not a rest" test let Saturday through reading "Coming up:
-       Morning practice", which is both true and useless. A day earns a row by
-       having a session that is neither a rest nor the standing body practice;
-       the same test the workout index uses, for the same reason. */
+       "Something" is doing work here. Most days in the plan carry a standing
+       body routine (the wind-down; the morning practice did too until it was
+       taken out on 2026-10-30), and a rest day carries one too — so a plain
+       "has a session that is not a rest" test let Saturday through reading
+       "Coming up: Morning practice", which is both true and useless. A day
+       earns a row by having a session that is neither a rest nor a standing
+       body routine; the same test the workout index uses, for the same reason. */
     const substantive = s => s.kind !== 'rest' && !(s.kind === 'body' && !s.key);
 
     function renderSoon(todayISO) {
@@ -133,9 +134,9 @@
        Scanning back from today for the most recent day that carries evidence of
        real work, and then for the session on it that the evidence belongs to.
 
-       The morning practice is excluded on purpose — it happens every day, and a
-       home page reporting "your last workout was: stretching" would be true and
-       worthless. Rest days are out for the same reason.
+       The standing body routines are excluded on purpose — they happen every
+       day, and a home page reporting "your last workout was: stretching" would
+       be true and worthless. Rest days are out for the same reason.
 
        Weighting rather than first-match, because a day can hold more than one
        candidate: a run that landed off the watch, or climbs logged at a crag,

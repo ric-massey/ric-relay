@@ -47,6 +47,16 @@ node projects/training/export.mjs
 Regenerates `assets/training-plan.json`. Commit it. Pages serves it. Nothing
 about the schedule lives in the Worker, so nothing needs redeploying.
 
+**There is no morning routine any more** (Ric, 2026-10-30: "remove all the
+warmup morning stuff"). The Morning practice and Quick reset sessions came out
+of the planner along with their protocols (`wristdaily`, `micro`, `mobility`,
+`meditate`). The climbing warm-up that opens each climbing session is a
+different thing and stays. That change was made to the committed plan by
+filtering it, not by re-exporting: on that date the planner held weeks of
+unexported changes that move sessions between slots, and a session's tick is
+keyed on its slot (`morning-climb`, `after-work-run`), so a re-export would
+have orphaned ticks on past days. Check the diff before the next export.
+
 ## Deploying the log service
 
 Once:
@@ -162,7 +172,7 @@ activities belonging to the person who issued it.
 ### The rules it follows
 
 - **Only runs tick anything.** `Run`, `TrailRun`, `VirtualRun`. A
-  `WeightTraining` is not evidence the morning practice happened, and board
+  `WeightTraining` is not evidence a body session happened, and board
   sessions already have a real source on the climbing page — a watch ticking
   those too would double-count the one thing on this site that is properly
   pulled. Everything else is still recorded and shown; it just ticks nothing.

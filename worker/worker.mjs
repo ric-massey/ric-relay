@@ -110,8 +110,8 @@ function forVisitor(a) {
 }
 
 /* ── which activities tick something ──
-   Deliberately only runs. A Strava "WeightTraining" is not evidence the morning
-   practice happened, and board sessions are logged on the climbing page from the
+   Deliberately only runs. A Strava "WeightTraining" is not evidence a body
+   session happened, and board sessions are logged on the climbing page from the
    Kilter and Tension apps — having a watch tick a climbing session too would
    double-count the one thing on this site that already has a real source.
    Everything else is still recorded and still shown; it just ticks nothing. */
