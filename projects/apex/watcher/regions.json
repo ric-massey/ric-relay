@@ -1,0 +1,121 @@
+{
+  "_": [
+    "Where the numbers are on the screen.",
+    "",
+    "EVERY BOX IN THIS FILE IS AN ESTIMATE UNTIL calibrate.py HAS RUN.",
+    "They were written from the standard 1080p Apex layout without a real frame",
+    "to check against, which makes them a good starting point and nothing more.",
+    "The pipeline around them is finished; these four numbers per field are not.",
+    "Run `python calibrate.py` with the game open, look at the boxes it draws on",
+    "a real screenshot, and drag them until they sit on the digits. Then set",
+    "`calibrated` to true so the watcher stops warning about it on startup.",
+    "",
+    "Boxes are [x0, y0, x1, y1] as fractions of the CENTRED 16:9 SAFE AREA, not",
+    "of the monitor. Apex anchors its menus to 16:9 and fills the sides, so on an",
+    "ultrawide a fraction of the screen lands somewhere else entirely. See",
+    "ocr.safe_area(). This is also why these boxes work unchanged at 1440p."
+  ],
+
+  "calibrated": false,
+  "reference": { "width": 1920, "height": 1080 },
+
+  "screens": {
+
+    "match_summary": {
+      "_": [
+        "The screen that matters: it carries the match's real numbers.",
+        "Reached after the squad is out, and it sits there for long enough that",
+        "the reader gets its several looks. The player's own row is the first",
+        "one; squadmates' rows are deliberately not read — their stats are not",
+        "Ric's to publish."
+      ],
+      "anchors": [
+        { "box": [0.30, 0.06, 0.70, 0.14], "expect": ["MATCH SUMMARY", "SQUAD ELIMINATED", "SUMMARY"], "min": 0.65 }
+      ],
+      "fields": {
+        "place":    { "box": [0.44, 0.15, 0.56, 0.23], "kind": "int",   "config": "digits" },
+        "kills":    { "box": [0.30, 0.42, 0.37, 0.49], "kind": "int",   "config": "digits" },
+        "assists":  { "box": [0.38, 0.42, 0.45, 0.49], "kind": "int",   "config": "digits" },
+        "knocks":   { "box": [0.46, 0.42, 0.53, 0.49], "kind": "int",   "config": "digits" },
+        "damage":   { "box": [0.54, 0.42, 0.63, 0.49], "kind": "int",   "config": "digits_comma" },
+        "survival": { "box": [0.64, 0.42, 0.73, 0.49], "kind": "clock", "config": "clock" },
+        "revives":  { "box": [0.74, 0.42, 0.80, 0.49], "kind": "int",   "config": "digits" },
+        "respawns": { "box": [0.81, 0.42, 0.87, 0.49], "kind": "int",   "config": "digits" },
+        "legend":   { "box": [0.28, 0.33, 0.45, 0.39], "kind": "text",  "config": "words" }
+      }
+    },
+
+    "champion": {
+      "_": [
+        "A win. Same summary follows it, so this screen exists only to set",
+        "place=1 with certainty rather than trusting an OCR read of '#1' —",
+        "a 1 is the digit most often invented out of a UI edge, and a fake",
+        "win is the single most embarrassing thing this could publish."
+      ],
+      "anchors": [
+        { "box": [0.25, 0.30, 0.75, 0.45], "expect": ["APEX CHAMPIONS", "CHAMPIONS OF THE ARENA", "YOU ARE THE APEX CHAMPION"], "min": 0.6 }
+      ],
+      "fields": {}
+    },
+
+    "career": {
+      "_": [
+        "The account-wide panel — lobby, gamertag, career. The only place",
+        "these totals exist anywhere: no API on any platform returns them,",
+        "which is why they have been typed in by hand until now.",
+        "",
+        "Read whenever Ric happens to open it. Never on a timer, because",
+        "opening it for the watcher would mean the watcher was making him do",
+        "something, which is the exact thing this is supposed to end."
+      ],
+      "anchors": [
+        { "box": [0.05, 0.05, 0.35, 0.13], "expect": ["CAREER", "ACCOUNT"], "min": 0.7 }
+      ],
+      "fields": {
+        "kills":  { "box": [0.10, 0.30, 0.25, 0.37], "kind": "int", "config": "digits_comma" },
+        "wins":   { "box": [0.10, 0.38, 0.25, 0.45], "kind": "int", "config": "digits_comma" },
+        "games":  { "box": [0.10, 0.46, 0.25, 0.53], "kind": "int", "config": "digits_comma" },
+        "damage": { "box": [0.10, 0.54, 0.25, 0.61], "kind": "int", "config": "digits_comma" }
+      }
+    },
+
+    "legend_banner": {
+      "_": [
+        "A legend's three equipped trackers, on the banner in the lobby or on",
+        "the legend select screen. This is the same keyhole the ALS API reads",
+        "through — but read here it costs no API call, needs no key, and",
+        "updates the moment he scrolls past the legend instead of tomorrow."
+      ],
+      "anchors": [
+        { "box": [0.05, 0.78, 0.45, 0.86], "expect": ["TRACKERS", "TRACKER"], "min": 0.7 }
+      ],
+      "fields": {
+        "legend":    { "box": [0.05, 0.70, 0.30, 0.77], "kind": "text", "config": "words" },
+        "tracker1":  { "box": [0.05, 0.86, 0.20, 0.92], "kind": "int",  "config": "digits_comma" },
+        "tracker1n": { "box": [0.05, 0.82, 0.20, 0.86], "kind": "text", "config": "words" },
+        "tracker2":  { "box": [0.21, 0.86, 0.36, 0.92], "kind": "int",  "config": "digits_comma" },
+        "tracker2n": { "box": [0.21, 0.82, 0.36, 0.86], "kind": "text", "config": "words" },
+        "tracker3":  { "box": [0.37, 0.86, 0.52, 0.92], "kind": "int",  "config": "digits_comma" },
+        "tracker3n": { "box": [0.37, 0.82, 0.52, 0.86], "kind": "text", "config": "words" }
+      }
+    }
+  },
+
+  "gate": {
+    "_": [
+      "The cheap test that runs on every frame so the expensive one does not.",
+      "",
+      "OCR on a 1080p frame costs tens of milliseconds; at four frames a second",
+      "that is real CPU taken from a game running on the same machine, forever,",
+      "to answer 'no' about a frame of someone walking around Storm Point.",
+      "",
+      "So first: shrink the frame to a thumbnail and look at how bright it is.",
+      "Apex's summary and menu screens are dark, flat scrims. Live gameplay is",
+      "neither. Anything that fails this never reaches Tesseract, and the",
+      "watcher costs about a millisecond a frame while he is actually playing."
+    ],
+    "max_mean_brightness": 110,
+    "max_std_brightness": 70,
+    "thumb": 64
+  }
+}

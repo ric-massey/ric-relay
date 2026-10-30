@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>/apex — the drop</title>
-  <meta name="description" content="Ric's Apex Legends room — rank, career kills, and every legend carrying a tracker, read through the only keyhole the game leaves open.">
+  <meta name="description" content="Ric's Apex Legends room — every match as it ends, straight from the game's own event stream, plus rank, career kills and every legend carrying a tracker.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ric's Terminal">
   <meta property="og:title" content="Apex — Ric's Terminal">
@@ -403,6 +403,58 @@
       .tiles{grid-template-columns:1fr}
       .counter.level{display:none}
     }
+    /* ── the match feed ───────────────────────────────────────────
+       Everything above this line is a lobby: a portrait of an account, true
+       whenever it was last polled. This section is the opposite — a list of
+       things that happened, each one arriving within a second of happening,
+       which is a different kind of page and is allowed to look like one.
+
+       Deliberately a table and not a card grid. Twenty matches in cards is a
+       wall; twenty matches in rows is a session, and the eye can run down the
+       damage column and see the shape of a night. */
+    .feed{border:1px solid var(--line);background:var(--plate);border-radius:2px;
+      overflow:hidden}
+    .feedhd,.match{display:grid;gap:10px;align-items:center;
+      grid-template-columns:64px 1fr repeat(4,minmax(44px,58px)) 76px;
+      padding:9px 14px}
+    .feedhd{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+      color:var(--dimmer);border-bottom:1px solid var(--line);background:var(--void-2)}
+    .match{border-bottom:1px solid rgba(30,50,71,.5);font-size:13px}
+    .match:last-child{border-bottom:0}
+    .match .place{font-family:var(--display);font-size:19px;letter-spacing:.04em;
+      color:var(--dim)}
+    /* A win is the only thing on this page that gets the amber. */
+    .match.won .place{color:var(--amber);text-shadow:0 0 12px rgba(255,194,40,.45)}
+    .match .lg{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .match .lg b{font-weight:400;font-family:var(--display);letter-spacing:.1em;
+      font-size:14px}
+    .match .lg span{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+      color:var(--dimmer);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .match .n{font-family:var(--mono);font-size:13px;text-align:right;
+      font-variant-numeric:tabular-nums}
+    .match .n.zero{color:var(--dimmer)}
+    .match .when{font-size:10.5px;letter-spacing:.1em;color:var(--dimmer);
+      text-align:right;white-space:nowrap}
+    /* A number nobody has checked must not look like one that has been. This
+       is the whole argument of the page applied to a row. */
+    .match.review{background:rgba(232,66,47,.05)}
+    .match.review .place::after{content:"?";color:var(--red);font-size:12px;
+      vertical-align:super;margin-left:2px}
+    .feedempty{padding:22px 16px;font-size:12.5px;color:var(--dim);line-height:1.75}
+    .feednote{margin-top:10px;font-size:11.5px;color:var(--dimmer);line-height:1.7}
+    .livedot{width:6px;height:6px;border-radius:50%;background:var(--dim);
+      display:inline-block;margin-right:7px;vertical-align:middle}
+    .livedot.on{background:var(--red);box-shadow:0 0 9px var(--red);
+      animation:livepulse 2.4s ease-in-out infinite}
+    @keyframes livepulse{0%,100%{opacity:1}50%{opacity:.45}}
+    @media (prefers-reduced-motion:reduce){.livedot.on{animation:none}}
+    @media (max-width:760px){
+      /* Knocks and revives are the first things to go: on a phone the row has
+         to stay one line, and place/legend/kills/damage is the sentence. */
+      .feedhd,.match{grid-template-columns:44px 1fr 46px 58px;padding:9px 11px}
+      .feedhd .drop,.match .drop{display:none}
+      .match .when{display:none}
+    }
   </style>
   <script src="assets/visit.js" defer></script>
 </head>
@@ -456,6 +508,7 @@
         <a href="#lobby" class="on">Lobby</a>
         <a href="#ranked">Ranked</a>
         <a href="#legends">Legends</a>
+        <a href="#matches">Matches</a>
         <a href="#career">Career</a>
         <a href="#method">Method</a>
       </nav>
@@ -513,6 +566,19 @@
   <div id="legendmount"></div>
 </section>
 
+<!-- The one section on this page that is not a snapshot. Everything else here
+     describes an account as it was at the last poll; this describes matches, as
+     they happen. It is filled by the Worker rather than by apex-data.js, so on
+     a first visit with the Worker unreachable it says so and the rest of the
+     page is unaffected — the static file is still the page's floor. -->
+<section id="matches">
+  <div class="sechead"><h2>Matches</h2><span class="n" id="feedcount"></span></div>
+  <div class="feed" id="feed">
+    <div class="feedempty" id="feedempty">Reading the match feed…</div>
+  </div>
+  <p class="feednote" id="feednote"></p>
+</section>
+
 <section id="career">
   <div class="sechead"><h2>Career</h2><span class="n">account-wide</span></div>
   <div class="tiles" id="tiles"></div>
@@ -526,17 +592,34 @@
 <section id="method">
   <div class="sechead"><h2>How this gets read</h2></div>
   <div class="method">
-    <p>Apex has <b>no official API and no match log</b>. Every stats site reads the same
-      keyhole: the <b>three trackers equipped on the banner of the legend you're currently
-      playing</b>. Nothing else about a player is exposed. A legend with no tracker on it
-      has, as far as the internet is concerned, never been played.</p>
-    <p>So this isn't a logbook, it's an <b>accumulator</b>. <code>pull-apex.py</code> takes a
-      snapshot, keeps the highest number it has ever seen for each tracker, and writes one
-      history point a day. The totals only ever grow — the honest line is the slope.</p>
-    <p><b>Career kills</b> is the account-wide figure Apex shows in the lobby when you click
-      your gamertag, and it's the one number no API returns. Respawn made Career Kills and
-      Career Wins trackers for the 5th anniversary in 2024; without those, the career row
-      here is typed in by hand and stamped with the date it was read.</p>
+    <!-- This section used to open "Apex has no official API and no match log."
+         That was wrong, and it was the assumption the whole page was built on.
+         Respawn ship a LiveAPI and have since 2023 — it is sitting in the game
+         folder next to the executable. Correcting it here rather than quietly
+         deleting it: the page's argument is that it says where its numbers come
+         from, and that has to include the times it had them wrong. -->
+    <p>This page reads Apex <b>three different ways</b>, because three different
+      kinds of number live in three different places.</p>
+    <p><b>Matches come from the game itself.</b> Respawn ship a
+      <b>LiveAPI</b> — a first-party event stream, switched on with a launch
+      option, that pushes every hit, knock, kill and placement to a listener on
+      this machine as it happens. Those numbers are exact: they are Apex's own
+      state, not a reading of it. The placement arrives at the moment the squad
+      goes down, which is why a match is usually on this page before the
+      summary screen has faded.</p>
+    <p><b>Per-legend totals come through the keyhole.</b> Lifetime tracker
+      values are not gameplay events, so LiveAPI never mentions them — the only
+      public source is the <b>three trackers equipped on the banner of the
+      legend being played</b>. So this half of the page isn't a logbook, it's an
+      <b>accumulator</b>: <code>pull-apex.py</code> takes a daily snapshot, keeps
+      the highest number it has ever seen, and never lets one go down. A legend
+      with no tracker on it has, as far as the internet is concerned, never been
+      played.</p>
+    <p><b>Career totals are read off the screen.</b> The account-wide figure
+      Apex shows when you click your gamertag in the lobby is on no API of any
+      kind — not LiveAPI, not the community ones. It is read by OCR when that
+      panel happens to be open, or typed in by hand, and either way it is
+      stamped with the date it was read and shown with a <span class="tilde">~</span>.</p>
     <ol id="todo"></ol>
   </div>
 </section>
@@ -1017,6 +1100,140 @@
     }, { threshold: [0, .12, .35, .6, 1] });
     targets.forEach((t) => io.observe(t));
   }
+})();
+
+/* ══ the live feed ════════════════════════════════════════════════════════════
+   A second, separate script on purpose.
+
+   Everything above renders from `apex-data.js` — a static file committed to the
+   repo, shipped by Pages, and present before a single request goes out. That is
+   the page's floor and it must never depend on a network call. This block runs
+   afterwards, asks the Worker what has happened lately, and fills one section.
+   If it fails, the section says so and the rest of the page never knew.
+
+   The old shape of this page was a daily poll: `pull-apex.py` on a timer, one
+   reading a day, committed and deployed. That still runs and still owns rank,
+   level and the banner trackers. What it could never do is say "he died forty
+   seconds ago" — a commit is a deploy and a deploy is a minute. Matches now
+   come from Apex's own LiveAPI event stream, through a listener on Ric's
+   machine, into the Worker, and out here. Exact integers from the game's own
+   state, and typically on the page before the summary screen has faded. */
+(() => {
+  const HOST = location.origin.includes("localhost")
+    ? location.origin
+    : "https://apex-live.rmbuster82.workers.dev";
+
+  const el = (id) => document.getElementById(id);
+  const feed = el("feed"), empty = el("feedempty");
+  const num = (n) => (typeof n === "number" && isFinite(n)) ? n.toLocaleString("en-US") : null;
+
+  /* "4m ago" beats a timestamp for the top of the list and loses to one further
+     down, so it switches over at a day. The point of the feed is recency; the
+     point of the archive is when. */
+  const ago = (iso) => {
+    const then = Date.parse(iso);
+    if (!isFinite(then)) return "";
+    const secs = Math.max(0, (Date.now() - then) / 1000);
+    if (secs < 90) return "just now";
+    if (secs < 3600) return `${Math.round(secs / 60)}m ago`;
+    if (secs < 86400) return `${Math.round(secs / 3600)}h ago`;
+    return new Date(then).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  };
+
+  const cell = (v) => {
+    const shown = num(v);
+    return `<div class="n${shown === null || v === 0 ? " zero" : ""}">${shown ?? "—"}</div>`;
+  };
+
+  const row = (m) => {
+    const won = m.place === 1;
+    /* What killed him, when it is known. This is the one thing kept about
+       another player, and it is deliberately not their name — a weapon and a
+       legend are facts about the fight and identify nobody. */
+    const by = m.killedByWeapon
+      ? `${m.killedByLegend ? m.killedByLegend + " · " : ""}${m.killedByWeapon}`
+      : (m.playlist || m.map || "");
+    return `<div class="match${won ? " won" : ""}${m.review ? " review" : ""}"${
+        m.review ? ` title="${(m.reviewWhy || []).join("; ")}"` : ""}>
+      <div class="place">${won ? "#1" : (m.place ? "#" + m.place : "—")}</div>
+      <div class="lg"><b>${m.legend || "Unknown legend"}</b><span>${by}</span></div>
+      ${cell(m.kills)}${cell(m.knocks)}
+      <div class="drop">${cell(m.assists)}</div>
+      ${cell(m.damage)}
+      <div class="when">${ago(m.at)}</div>
+    </div>`;
+  };
+
+  const HEAD = `<div class="feedhd">
+    <div>Place</div><div>Legend</div><div class="n">K</div><div class="n">Kn</div>
+    <div class="drop n">A</div><div class="n">Dmg</div><div class="when">When</div>
+  </div>`;
+
+  const render = (data) => {
+    const matches = data.recent || [];
+    el("feedcount").textContent = matches.length
+      ? `${matches.length} most recent` : "";
+
+    if (!matches.length) {
+      empty.innerHTML = `Nothing recorded yet. Matches appear here the moment they
+        end — Apex's own event stream reports the placement as the squad goes
+        down, so a match is usually on this page before the summary screen has.`;
+      return;
+    }
+
+    feed.innerHTML = HEAD + matches.map(row).join("");
+
+    /* The live dot. `status` is written by the listener when the game connects
+       and again when it goes away, but a listener that is killed outright never
+       writes the second one — so anything older than ten minutes is treated as
+       stale here rather than believed. A page stuck on "in a match" all night
+       would be worse than one that says nothing. */
+    const status = data.status;
+    const fresh = status && (Date.now() - Date.parse(status.at)) < 10 * 60 * 1000;
+    const playing = fresh && status.state !== "away";
+
+    const today = (data.days || []).slice(-1)[0];
+    const bits = [];
+    if (playing) bits.push(`<span class="livedot on"></span><b>Playing now.</b>`);
+    if (today && today.matches) {
+      bits.push(`${today.matches} match${today.matches === 1 ? "" : "es"} on ${today.d}` +
+        (today.kills ? ` · <b>${num(today.kills)} kills</b>` : "") +
+        (today.avgDamage ? ` · ${num(today.avgDamage)} avg damage` : "") +
+        (today.wins ? ` · <b>${today.wins} win${today.wins === 1 ? "" : "s"}</b>` : ""));
+    }
+    /* A flagged row is not hidden — the matches most worth checking are exactly
+       the ones a filter would remove. It is marked, and the mark is explained. */
+    const flagged = matches.filter((m) => m.review).length;
+    if (flagged) {
+      bits.push(`${flagged} row${flagged === 1 ? "" : "s"} marked <b>?</b> — the
+        listener's own count disagreed with the game's, so a number there may be
+        short. Hover for what did not add up.`);
+    }
+    el("feednote").innerHTML = bits.join(" ");
+  };
+
+  const load = () => fetch(HOST + "/apex", { cache: "no-store" })
+    .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+    .then(render)
+    .catch(() => {
+      /* Deliberately plain. A visitor does not need to know which service is
+         down, and the honest statement is that this section is empty, not that
+         the account has no matches. */
+      empty.innerHTML = `The match feed isn't reachable right now. Everything else
+        on this page is a static file and is unaffected.`;
+    });
+
+  load();
+
+  /* Poll, but only while somebody is looking. A background tab refreshing all
+     day is a cost paid by every visitor to serve nobody. */
+  let timer = null;
+  const start = () => { stop(); timer = setInterval(load, 20000); };
+  const stop = () => { if (timer) clearInterval(timer); timer = null; };
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stop(); else { load(); start(); }
+  });
+  if (!document.hidden) start();
 })();
 </script>
 </body>

@@ -1,0 +1,42 @@
+# The watcher's dependencies. Four of them, all doing one job each, none of
+# them a model — see ocr.py for why that is deliberate rather than a limitation.
+#
+#     py -3.12 -m venv .venv
+#     .venv\Scripts\pip install -r requirements.txt
+#
+# Tesseract itself is not a Python package. Install it once, separately:
+#     winget install UB-Mannheim.TesseractOCR
+
+# The WebSocket server Apex's own LiveAPI connects out to. This is the primary
+# path now — exact integers from the game's event stream, no OCR involved — so
+# it is the one dependency here that is not optional. Pure Python, no build.
+websockets>=12.0
+
+# ── everything below is for the OCR menu-reader only ──────────────────────
+# LiveAPI does not report lifetime career totals or banner trackers, because
+# those are menu screens rather than gameplay events. Reading them off the
+# pixels is still the only way to get them. If you never care about the career
+# panel, the four packages below can be skipped and liveapi.py still runs.
+
+# Desktop Duplication capture. The fast path: takes the frame the Windows
+# compositor already has rather than asking for the screen to be redrawn.
+# Windows only, which is fine — so is Apex.
+dxcam==0.0.5
+
+# The fallback when duplication is unavailable (a remote session, a locked
+# workstation, an unusual GPU driver). Slower, works everywhere.
+mss>=9.0.1
+
+# Crop, upscale, threshold. Every step between a game frame and something
+# Tesseract was trained to read.
+opencv-python>=4.9.0
+
+# The wrapper around the tesseract binary. Thin — it shells out and parses TSV,
+# which is exactly what is wanted here.
+pytesseract>=0.3.10
+
+numpy>=1.26
+
+# Only used to drop the process below normal priority so it cannot take a frame
+# from the game. Optional: the watcher runs without it and says nothing.
+psutil>=5.9

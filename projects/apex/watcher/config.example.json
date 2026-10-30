@@ -1,0 +1,31 @@
+{
+  "_": [
+    "Copy to config.json and fill in. config.json is gitignored — the token in",
+    "it is the only thing standing between the internet and Ric's match log.",
+    "",
+    "The token is the one set on the Worker:",
+    "    cd ../server && npx wrangler@latest secret put APEX_TOKEN"
+  ],
+
+  "worker": "https://apex-live.rmbuster82.workers.dev",
+  "token": "",
+
+  "_monitor": "Which display Apex is on. 0 is primary. dxcam counts from 0.",
+  "monitor": 0,
+
+  "_mode": [
+    "What the watcher assumes it is watching when the screen does not say.",
+    "'br' or 'ranked' — it changes nothing about the read, only how the page",
+    "groups the match. Ranked also makes the win-too-short check apply."
+  ],
+  "mode": "br",
+
+  "_keep_frames": [
+    "Keep a JPEG of every frame a match was read from, in watcher/frames/.",
+    "They never leave the machine and are never uploaded — this is so a number",
+    "that looks wrong on the page can be checked against the pixels that made",
+    "it. About 200KB a match; a heavy night is 5MB. Worth it while the OCR is",
+    "still earning trust."
+  ],
+  "keep_frames": true
+}

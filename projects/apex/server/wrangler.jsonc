@@ -1,0 +1,30 @@
+{
+  // APEX live match service. Deploy from this directory:
+  //     npx wrangler@latest secret put APEX_TOKEN     # once — this is the gate
+  //     npx wrangler@latest deploy
+  //
+  // APEX_TOKEN is a secret, not a var. It must never appear in this file, in
+  // worker.mjs, or anywhere else in the repo: this repo is public. The same
+  // string goes in projects/apex/watcher/config.json, which is gitignored.
+  //
+  // Like the training log and unlike crossfire-rooms, this object genuinely
+  // writes to its SQLite storage — a match log is worth keeping, and Apex will
+  // not tell us about the match twice. `new_sqlite_classes` is what makes it
+  // free-plan eligible, and the write volume (one person, a few dozen matches
+  // on a heavy night) sits nowhere near the limit.
+  //
+  // No R2 binding and no plan URL: this Worker holds numbers and nothing else.
+  // The frames the watcher keeps stay on Ric's machine on purpose.
+
+  "name": "apex-live",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-08-01",
+
+  "durable_objects": {
+    "bindings": [{ "name": "APEX", "class_name": "ApexLog" }]
+  },
+
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ApexLog"] }],
+
+  "observability": { "enabled": true }
+}

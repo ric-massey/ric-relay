@@ -25,6 +25,26 @@ projects/climbing/__pycache__/
 projects/apex/apex-account.json
 projects/apex/__pycache__/
 
+# The screen watcher. Its config holds APEX_TOKEN, which is the whole security
+# model of the live match service — everything else here is local working data
+# that would be noise in a public repo.
+#
+# The code IS committed: watch-apex.py, ocr.py, screens.py, spool.py,
+# calibrate.py and regions.json are the watcher, and regions.json in particular
+# is the measurement of where Apex draws its numbers — losing it would mean
+# doing the calibration again.
+projects/apex/server/.wrangler/
+projects/apex/watcher/config.json
+projects/apex/watcher/liveapi-raw.jsonl
+projects/apex/watcher/spool.jsonl
+projects/apex/watcher/spool.tmp
+projects/apex/watcher/__pycache__/
+projects/apex/watcher/.venv/
+# Frames kept so a wrong number on the page can be traced to the pixels behind
+# it. Local evidence, not content — and a night of play is megabytes of JPEG.
+projects/apex/watcher/frames/
+projects/apex/watcher/shots/
+
 # OFFRAMP: the raw OpenStreetMap extracts are build input and re-fetchable
 # (data/osm/fetch2.sh, fetch_ramps.sh). 33 MB of them does not belong in a
 # Pages repo. The extractor scripts ARE committed, and so is the generated
@@ -100,6 +120,7 @@ projects/val/val-account.json
 projects/val/__pycache__/
 projects/val/*.tmp
 projects/val/matches/*.tmp
+
 projects/cs/tools/
 projects/weather/verify/.state/
 

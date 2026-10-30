@@ -298,6 +298,19 @@ belong here.
   Career kills are account-wide and no API returns them — they're typed into the `career`
   block by hand, marked `approx` so the page renders them with a `~`, and `pull-apex.py`
   preserves them on every run. Nothing else in that file should be edited by hand.
+
+  **Matches no longer come from any of that.** Apex has an official API — Respawn's
+  **LiveAPI**, shipped since 2023, sitting in `Apex Legends/LiveAPI/` in the game folder.
+  This README said the opposite for months. The game opens a WebSocket to
+  `projects/apex/watcher/liveapi.py`, which turns the event stream into one record per
+  match and posts it to the `apex-live` Worker; `apex.html` renders it in the Matches
+  section within a second of the squad going down. Exact integers from the game's own
+  state — kills, knocks, assists, damage per weapon, placement, and what killed him.
+  Switched on with the launch option `+cl_liveapi_enabled 1`.
+
+  The daily ALS pull stays, because LiveAPI reports gameplay and not lifetime totals:
+  rank, level and the banner trackers still come from it. Career totals still come off
+  the screen. `projects/apex/watcher/README.md` has the three-way split in full.
 - **Training** (`training.html`) is live: the plan is generated, ticks and notes are
   stored in a Cloudflare Worker, and runs push themselves in from Strava the moment a
   watch syncs — the run session planned for that date ticks itself off. The route is

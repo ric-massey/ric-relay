@@ -515,6 +515,36 @@ that must never break:
   `career` block by hand and the script preserves them. The page labels them as hand-read;
   keep that honesty intact.
 
+**Apex matches are pushed, not pulled — and "Apex has no API" was wrong.**
+Corrected 2026-08-29. Respawn ship a **LiveAPI** and have since 2023; it is in the game
+folder at `Apex Legends/LiveAPI/` with a readme, a changelog and `events.proto`. This
+file, `README.md`, `pull-apex.py` and the page itself all previously asserted the
+opposite, and that assertion is what shaped the whole room. Read this before writing
+anything else about how Apex data gets here:
+
+- **Matches** come from LiveAPI, over a WebSocket the game opens to
+  `projects/apex/watcher/liveapi.py` on localhost. Every hit, knock, kill, weapon and
+  placement, as exact integers out of the game's own state. `SquadEliminated` carries
+  `placement` and fires at the moment of death, which is what makes the feed instant.
+  Enabled with the launch option `+cl_liveapi_enabled 1`; config lives outside the repo
+  in `%USERPROFILE%\Saved Games\Respawn\Apex\assets\temp\live_api\config.json`.
+- **Per-legend trackers and rank** still come from the ALS daily pull. Lifetime tracker
+  values are not gameplay events, so LiveAPI never mentions them. The keyhole is real
+  for these and only these.
+- **Career totals** are on no API of any kind. OCR of the career panel
+  (`watch-apex.py`) or typed by hand, either way stamped with the date read.
+- Matches land in the `apex-live` Worker (`projects/apex/server/`), not in
+  `apex-data.js`. Same one-token model as the training log: public reads, `APEX_TOKEN`
+  on every write. `apex.html` renders the static file first and fills the Matches
+  section from the Worker afterwards, so the page still works with the Worker down.
+- **Other players' data never leaves the machine.** LiveAPI hands over every player in
+  the lobby with live positions and a stable `nucleusHash`. The listener keeps Ric's
+  numbers, plus the weapon and legend that killed him — facts about the fight that name
+  nobody. Do not widen this without a fresh decision.
+- A match is **never dropped**. Apex will not mention it again, so `spool.jsonl` holds
+  every record until the Worker confirms it, and the Worker deduplicates on the numbers
+  rather than the id so a retry cannot double a day's kills.
+
 **CS is pulled from Valve, and only while the game is open.** `cs.html` reads
 `projects/cs/cs-data.js` plus `projects/cs/matches/<id>.js` replays. Rules
 (`projects/cs/README.md` has the rest):

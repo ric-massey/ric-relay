@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
 """Pull Ric's Apex Legends numbers into apex-data.js.
 
-Apex has no official API and no match log. Every stats site reads the same
-keyhole: the three trackers equipped on the banner of the legend you are
-currently playing. So this script does not fetch a history — it takes a
-snapshot, and keeps its own.
+This script reads the ALS community API for the things Apex does not report as
+gameplay: rank, level, online status, and the three trackers equipped on the
+banner of the legend being played. That last one is a genuine keyhole — lifetime
+tracker values are not events, so nothing pushes them and they have to be
+sampled. So this script does not fetch a history: it takes a snapshot, and keeps
+its own.
+
+NOTE, added 2026-08-29: this file used to open "Apex has no official API and no
+match log." That was wrong. Respawn ship a LiveAPI — it is in the game folder at
+`Apex Legends/LiveAPI/` — and MATCHES now come from it, exactly, in real time,
+through `projects/apex/watcher/liveapi.py`. Nothing below changes: the ALS pull
+is still the only source for rank and the banner trackers. But this script is no
+longer the way matches reach the site, and it was never as blind as it thought.
 
 What that means in practice:
 
