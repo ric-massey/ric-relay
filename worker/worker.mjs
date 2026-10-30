@@ -24,7 +24,7 @@
    unlike a lobby list a training log is worth keeping. The volume is a handful
    of writes a day from one person, which sits far inside the free plan. */
 
-import { handleHit, handleVisitors, isSiteAdmin } from './visitors.mjs';
+import { handleHit, handleVisitors, handlePopular, isSiteAdmin } from './visitors.mjs';
 import '../assets/scrub-media.js';   // sets globalThis.ScrubMedia
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -1945,7 +1945,7 @@ async function wxProxy(request, env, ctx, parts, url) {
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'cs', 'meso', 'rap']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'popular', 'cs', 'meso', 'rap']);
 
 /* ── /cs/replay/<match id> — the CS room's replays, kept in R2 ──
    One file per match (projects/cs/matches/<id>.js, written by parse-demos.py),
@@ -2152,6 +2152,8 @@ export default {
        and whether the caller is Ric is asked of the object's /auth for the
        same reason /media asks it: one throttle for the one password. */
     if (parts[0] === 'hit') return handleHit(request, env, ctx);
+    /* the order pages are used in, for the front door to sort by — order only, public (visitors.mjs) */
+    if (parts[0] === 'popular') return handlePopular(request, env, ctx, json);
     if (parts[0] === 'stats') {
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(request.headers.get('origin')) });
       const isOwner = async () => {

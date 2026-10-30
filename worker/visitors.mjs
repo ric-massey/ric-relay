@@ -351,6 +351,43 @@ const sessionRow = x => ({
 
 /* ── /stats ── owner only. The page that reads it is ricmassey.com/visitors/;
    the API is not called that because dev.mjs serves both from one origin. */
+/* ---------- GET /popular — the order the site's pages are used in ----------
+   The front door sorts itself by this (Ric, 2026-10-30: "the most used page
+   always is on top … if a new page gets more popular it automatically goes
+   to the top"). It is public, so it says only the ORDER: no counts, no
+   visitors, no places — the numbers stay behind /stats. People, not views
+   (one visitor refreshing all afternoon is still one), over the last
+   POPULAR_DAYS, the devices Ric told to stop counting left out. `/weather`
+   and `/weather.html` are one page. The front door itself and the private
+   tools never appear. Cached at the edge for an hour, so a burst of visitors
+   costs one query, not one each. */
+export const POPULAR_DAYS = 30;
+const POPULAR_HIDDEN = /^\/(?:$|index|frontdoor|admin|visitors|account|404|systems|updates|projects\/dads-race|projects\/climbing\/add)/;
+export async function handlePopular(request, env, ctx, json) {
+  const origin = request.headers.get('origin');
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET', 'access-control-max-age': '86400' } });
+  if (request.method !== 'GET') return json({ error: 'method not allowed' }, 405, origin);
+  if (!env.STATS) return json({ order: [], days: POPULAR_DAYS }, 200, origin, { 'cache-control': 'public, max-age=300' });
+  const edge = typeof caches !== 'undefined' ? caches.default : null;
+  const key = new Request('https://cache.internal/popular/v1');
+  if (edge) { const hit = await edge.match(key); if (hit) { const body = await hit.text(); return new Response(body, { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=3600' } }); } }
+  await ensure(env.STATS);
+  const since = Date.now() - POPULAR_DAYS * 864e5;
+  const { results = [] } = await env.STATS.prepare(
+    `SELECT CASE WHEN path LIKE '%.html' THEN substr(path, 1, length(path) - 5) ELSE path END AS page,
+            COUNT(DISTINCT visitor) AS people, COUNT(*) AS views
+       FROM views
+      WHERE ts > ? AND visitor NOT IN (SELECT visitor FROM ignored)
+      GROUP BY page
+      ORDER BY people DESC, views DESC, page
+      LIMIT 80`).bind(since).all();
+  const order = results.map(r => r.page).filter(p => !POPULAR_HIDDEN.test(p));
+  const body = JSON.stringify({ order, days: POPULAR_DAYS, at: Date.now() });
+  const res = new Response(body, { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=3600' } });
+  if (edge && ctx?.waitUntil) ctx.waitUntil(edge.put(key, new Response(body, { headers: { 'cache-control': 'public, max-age=3600' } })));
+  return res;
+}
+
 export async function handleVisitors(request, env, parts, url, isOwner, json) {
   const origin = request.headers.get('origin');
   const who = await isOwner();

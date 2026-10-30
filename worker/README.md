@@ -17,6 +17,7 @@ is historical — every room that writes anything writes here:
 | `/trials` | Psyche → Studies | `/trials/search` and `/trials/study/<NCT>` pass ClinicalTrials.gov API v2 through, cached five minutes. The watchlist is on the site account, not here (`projects/psyche/README.md`) |
 | `/hit` | every page | page-view beacons from `assets/visit.js`, into D1 (`visitors.mjs`) |
 | `/stats` | `visitors/`, `admin/` | the visitor numbers, owner only; `?full=1` adds everything the admin Analytics tab draws (with `path=`, `ref=`, `country=`… filters, the previous period, and `seen=` for "since you last looked"), `/stats/live` is only who is online, `/stats/visitor?id=` is one browser's history, `/stats/exclude` is "ignore this device" |
+| `/popular` | the front door | the ORDER pages were used in over the last 30 days — people, not views, Ric's ignored devices left out, the front door and private tools never listed. Public, so order only: no counts, no visitors. Cached an hour (`visitors.mjs`, "Most used first" below) |
 | `/wx` | Weather | the weather room's providers passed through and cached (`projects/weather/README.md`, "How a request travels") |
 | `/cs` | Counter-Strike | `/cs/replay/<id>`: the match replays, in R2 (`projects/cs/README.md`) |
 | `/meso` | Weather Pro | the hourly mesoanalysis, in R2 for a day: `PUT /meso/<YYYYMMDDHH>` from `projects/weather/meso/build.mjs` (site password; only a mesoanalysis file for that hour is taken), `GET /meso/index` and `GET /meso/<hour>` public |
@@ -57,6 +58,26 @@ other query strings and no cookies. That promise is the database's: the Worker
 has Cloudflare's observability on (`wrangler.jsonc`), so Cloudflare keeps its
 own invocation log of every request, `/hit` included, for its retention period
 — turn `invocation_logs` off there if that should stop too (bug sweep A2b-7).
+
+### Most used first: `/popular`
+
+Ric, 2026-10-30: "the most used page always is on top… if a new page gets
+more popular it automatically goes to the top". `/popular` is how the front
+door knows. It answers `{ order: ["/weather-pro", "/weather", "/cs", …], days:
+30, at }`: every page path ranked by how many **different people** opened it
+in the last 30 days (`POPULAR_DAYS`), so one visitor refreshing all afternoon
+is still one and a page nobody has found yet can climb quickly. `/weather` and
+`/weather.html` are one page. The devices in `ignored` (Ric's own) never
+count. `POPULAR_HIDDEN` keeps the front door itself, `admin`, `visitors`,
+`account`, HERMISCUS (`projects/dads-race`) and Climbing's Add page out of the
+list entirely.
+
+It is the one public window onto the counter, so it publishes the ranking and
+nothing else — no counts, no ids, no countries; the test in
+`visitors.test.mjs` fails if any of those appear. The answer is cached at the
+edge for an hour, so a busy hour costs one query. A page that reads it should
+keep the last answer and sort by that, so nothing moves while someone is
+looking, and fall back to its own committed order when the service is down.
 
 `/stats` opens to the site password **or** to a site-account session from
 `ricmassey.com/admin` (header `x-admin-session`), which it checks by asking

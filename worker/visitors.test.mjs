@@ -352,4 +352,36 @@ await test('/stats/live answers who is here without reading the views', async ()
   assert.deepEqual(d.live, { count: 1, pages: [['/cs.html', 1]] });
 });
 
+await test('/popular gives the order pages are used in, and nothing else', async () => {
+  const { env, call, hit } = setup();
+  const V3 = 'cccccccc-3333-4333-8333-333333333333', V4 = 'dddddddd-4444-4444-8444-444444444444';
+  // three people on Weather (one by its pretty address), two on CS, one
+  // person refreshing Climbing ten times — people, not views, decide
+  await hit({ v: V1, s: S1, f: true, p: '/weather.html', k: 'view' });
+  await hit({ v: V2, s: S2, f: true, p: '/weather', k: 'view' });
+  await hit({ v: V3, s: S3, f: true, p: '/weather.html', k: 'view' });
+  await hit({ v: V1, s: S1, f: false, p: '/cs.html', k: 'view' });
+  await hit({ v: V2, s: S2, f: false, p: '/cs.html', k: 'view' });
+  for (let i = 0; i < 10; i++) await hit({ v: V3, s: S3, f: false, p: '/climbing.html', k: 'view' });
+  // the front door and a private tool never appear; an ignored device never counts
+  await hit({ v: V1, s: S1, f: false, p: '/', k: 'view' });
+  await hit({ v: V1, s: S1, f: false, p: '/admin/', k: 'view' });
+  await hit({ v: V1, s: S1, f: false, p: '/projects/climbing/add.html', k: 'view' });
+  await hit({ v: V4, s: S1, f: true, p: '/orrin.html', k: 'view' });
+  await hit({ v: V4, s: S1, f: false, p: '/orrin.html', k: 'view' });
+  env.STATS.raw.prepare('INSERT INTO ignored (visitor, ts) VALUES (?, ?)').run(V4, Date.now());
+  // a visit older than the window does not count
+  env.STATS.raw.prepare("UPDATE views SET ts = ? WHERE path = '/climbing.html' AND rowid IN (SELECT rowid FROM views WHERE path = '/climbing.html' LIMIT 1)").run(Date.now() - 40 * 864e5);
+  const r = await call('/popular', { headers: { origin: ORIGIN } });
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('cache-control'), /max-age=3600/);
+  const d = await r.json();
+  assert.deepEqual(d.order, ['/weather', '/cs', '/climbing']);
+  assert.equal(d.days, 30);
+  // order only: no counts, no visitor ids anywhere in what is published
+  const text = JSON.stringify(d);
+  for (const bad of [V1, V2, V3, V4, 'people', 'views', 'US']) assert.ok(!text.includes(bad), bad);
+  assert.equal((await call('/popular', { method: 'POST' })).status, 405);
+});
+
 console.log(`\n${n} passed`);
