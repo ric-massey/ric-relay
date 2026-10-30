@@ -16,11 +16,14 @@ Everything here is read off Valve's own demo events, nothing guessed:
   - where both players stood (distance), Ric's health after, and every shot
     he fired, which is what tells one bullet from two.
 
-Times in a replay are rounded to 0.1 s, and a rifle fires every 0.1 s, so two
-kills at the same moment aren't automatically one bullet. A collateral is two
-kills with the same gun at the same moment AND no more than one shot fired by
-Ric in that moment (a shotgun's pellets are one shot, so a shotgun double
-counts, as it does in game).
+A collateral is two kills from one bullet. parse-demos.py sees the exact
+game tick and marks them (`collateral`: how many others the same bullet
+killed), and it doesn't call the second man a wallbang: CS2's `penetrated`
+counts the first man's head as something the bullet went through
+(2026-10-21, Ric: "it just collated him"). Replays parsed before that only
+have times rounded to 0.1 s, where a rifle fires every 0.1 s; for those it's
+two kills with the same gun at the same moment and no more than one shot of
+Ric's in it (a shotgun's pellets are one shot, so a shotgun double counts).
 
 There is no groin hitbox in CS2: the game's hitgroups are head, neck, chest,
 stomach, arms and legs, and the stomach group takes in the pelvis. So a nut
@@ -130,8 +133,12 @@ def of_round(R, r, me, us):
             wa = weapon_of(a.get("weapon"))
             if wa != weapon_of(b.get("weapon")) or wa in NADES or wa.startswith(KNIVES) or wa == "taser":
                 continue
-            fired = sum(1 for s in shots if a["t"] - 0.15 <= s[0] <= b["t"] + 0.05)
-            if fired <= 1:
+            if "collateral" in b:
+                # parsed since 2026-10-21: the parser saw the ticks, so it knows
+                one = bool(b["collateral"])
+            else:
+                one = sum(1 for s in shots if a["t"] - 0.15 <= s[0] <= b["t"] + 0.05) <= 1
+            if one:
                 out.append((b["t"], "collat", b["victim"]))
                 used |= {id(a), id(b)}
     # two kills inside a second, when they weren't one bullet

@@ -501,6 +501,15 @@ def parse(path, me):
             before = [alive["us"], alive["them"]]
             if v is not None:
                 alive["us" if v in us_seats else "them"] -= 1
+            # One bullet, several kills: the same shooter and gun on the same
+            # tick. CS2's `penetrated` counts everything the bullet went
+            # through, players included, so the second man of a collateral is
+            # "penetrated" by the first man's head. It's a wallbang only when
+            # it went through more than the players ahead of it.
+            pen = _i(d.get("penetrated")) or 0
+            same = [e for e in ks if e is not d and e["tick"] == d["tick"] and a is not None
+                    and seat(e.get("attacker_steamid")) == a and e.get("weapon") == d.get("weapon")]
+            ahead = sum(1 for e in same if (_i(e.get("penetrated")) or 0) < pen)
             kx, ky, kz = _i(d.get("attacker_X")), _i(d.get("attacker_Y")), _i(d.get("attacker_Z"))
             vx, vy, vz = _i(d.get("user_X")), _i(d.get("user_Y")), _i(d.get("user_Z"))
             dist = (round(((kx - vx) ** 2 + (ky - vy) ** 2 + ((kz or 0) - (vz or 0)) ** 2) ** .5)
@@ -514,7 +523,8 @@ def parse(path, me):
                 "t": t, "killer": a, "victim": v, "assister": seat(d.get("assister_steamid")),
                 "flash_assist": _b(d.get("assistedflash")),
                 "weapon": d.get("weapon"), "headshot": bool(d.get("headshot")),
-                "wallbang": bool(d.get("penetrated")), "through_smoke": _b(d.get("thrusmoke")),
+                "wallbang": pen > ahead, "penetrated": pen, "collateral": len(same),
+                "through_smoke": _b(d.get("thrusmoke")),
                 "noscope": _b(d.get("noscope")), "killer_blind": _b(d.get("attackerblind")),
                 "killer_in_air": _b(d.get("attackerinair")),
                 "killer_at": {"x": kx, "y": ky, "z": kz,
