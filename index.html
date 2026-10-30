@@ -45,7 +45,9 @@
       --violet: #7b3cff;
       --magenta: #ff2d8a;
       --cyan: #00c2ff;
-      --gutter: clamp(16px, 4.4vw, 64px);
+      /* never narrower than the notch: viewport-fit=cover (for the phone's
+         bottom bar) lets the page run under it when the phone is sideways */
+      --gutter: max(clamp(16px, 4.4vw, 64px), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
       --post-pt: clamp(84px, 12vh, 140px); --post-pb: clamp(96px, 13vh, 150px);
       --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
       --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
@@ -294,6 +296,7 @@
       .portal { grid-template-columns: 1fr 1fr; }
       .portal > .m-wxf { grid-column: 1 / -1; }
       .rail { display: contents; }
+      .rail > .mod:last-child:nth-child(odd) { grid-column: 1 / -1; }
     }
 
     /* ── phone ── thumbs: a bar of the most used rooms at the bottom, the
@@ -301,14 +304,14 @@
     @media (max-width: 760px) {
       .bar { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: var(--bg) !important; height: 52px; justify-content: space-between; }
       .brand { font-size: 13px !important; letter-spacing: .14em !important; gap: 8px !important; min-height: 44px; display: inline-flex; align-items: center; }
-      .bar .term { display: none !important; position: fixed; left: 12px; right: 12px; bottom: calc(66px + env(safe-area-inset-bottom)); z-index: 100001; height: 50px;
+      .bar .term { display: none !important; position: fixed; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: calc(66px + env(safe-area-inset-bottom)); z-index: 100001; height: 50px;
         box-shadow: 0 12px 34px rgba(0,0,0,.55), 0 0 0 1px #6b4d00; }
       body.term-up .bar .term { display: flex !important; }
       .bar .term input { font-size: 16px; }
-      .term-out { position: fixed !important; left: 12px; right: 12px; top: auto !important; bottom: calc(126px + env(safe-area-inset-bottom)); max-height: 55vh; overflow: auto; z-index: 100001; }
+      .term-out { position: fixed !important; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); top: auto !important; bottom: calc(126px + env(safe-area-inset-bottom)); max-height: 55vh; overflow: auto; z-index: 100001; }
       body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
       .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 100002;
-        padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); }
+        padding: 4px max(6px, env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); background: var(--bg); border-top: 1px solid var(--line); }
       .tabbar a, .tabbar button { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
         min-height: 50px; font: 500 11px var(--sans); color: var(--muted); text-align: center; -webkit-tap-highlight-color: transparent; }
       .tabbar svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -1524,7 +1527,8 @@
     window.FD.TOP = RANKED[0]?.id; window.FD.byId = byId;
     const PHONE = matchMedia("(max-width: 760px)").matches, HOVER = matchMedia("(hover: hover) and (min-width: 1000px)").matches;
     // small stills for the drawings that otherwise pull full-size photographs or several clips
-    const THUMB = { captures: "assets/frontdoor/thumbs/captures.jpg", climbing: "assets/frontdoor/thumbs/climbing.jpg", gallery: "assets/frontdoor/thumbs/gallery.jpg", arcade: "assets/games/kondrite.jpg" };
+    const THUMB = { captures: "assets/frontdoor/thumbs/captures.jpg", climbing: "assets/frontdoor/thumbs/climbing.jpg", gallery: "assets/frontdoor/thumbs/gallery.jpg", arcade: "assets/games/kondrite.jpg",
+      entertainment: "assets/frontdoor/thumbs/films.jpg", library: "assets/frontdoor/thumbs/films.jpg" };
     let n = 0;
     feed.innerHTML = SHELVES.map(([id, title, ids], si) => `<section class="shelf" data-band="${id}" id="g-${id}" aria-labelledby="h-${id}"><div class="shelf-head"><h3 id="h-${id}">${esc(title)}</h3></div><div class="cards">${
       ids.map((k) => byId[k]).map((p, i) => {
@@ -1688,7 +1692,9 @@
         if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
         if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
         e.preventDefault();
-        input.focus();
+        // at phone width the prompt waits behind the bar's Terminal tab
+        const tt = document.getElementById("tt");
+        if (getComputedStyle(form).display === "none" && tt) tt.click(); else input.focus();
       });
     }
   </script>
