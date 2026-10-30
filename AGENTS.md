@@ -7,8 +7,9 @@ without breaking the concept or Ric's rules.**
 ## What this project is
 
 Ric Massey's personal website for friends and family. The concept: **"it's literally
-my own internet."** The home page (`index.html`) is **the front door** — a feed of every
-room (see "The front door" below); the terminal hub that used to be home is
+my own internet."** The home page (`index.html`) is **the front door** — a portal: quick stats, the
+room people use most, and every room by subject, most used first (see "The front
+door" below); the terminal hub that used to be home is
 `terminal.html` (moved 2026-10-17, Ric: "make the front door the main page"). Every other page is a **room** dressed up to look like the real app for that world (climbing → Mountain
 Project, training → Strava, Orrin → a brain, etc.). Plain HTML/CSS/JS, **no build
 step and no dependencies** — each page is a single self-contained `.html` file with its
@@ -50,7 +51,7 @@ index.html                  the front door — home
 terminal.html, <room>.html  the terminal and the rooms — one self-contained page each
 frontdoor.html              a redirect to index.html, where the front door was previewed
 effects.js                  sitewide: visual modes, the mobile room menu, Mochi
-latest.js, notes.js         the front door's banner and transmissions (hand-edited)
+latest.js, notes.js         the newest additions (the front door's "Newest", the terminal's `latest`) and the terminal's transmissions (hand-edited)
 orrin-updates.js            the Orrin page's progress notes (written by orrin_v3's scripts/site_update.py, or by hand)
 captures-data.js            the photo dates captures.html draws (made off-repo from the originals)
 systems.html, updates.html  redirects from old URLs — keep them, links out there still use them
@@ -363,8 +364,9 @@ edit it.
 `projects/climbing/index.html` and `projects/climbing/gallery.html` all read
 generated files. To add a climb, edit `projects/climbing/climbs.md` and run
 `python3 projects/climbing/build-data.py`. See `projects/climbing/readme.md`.
-That script also writes `projects/climbing/latest-climb.js`, which the front door loads
-so the newest day out leads the "latest" banner without anyone editing a list.
+That script also writes `projects/climbing/latest-climb.js`, which the front door's "Last
+climb" reads — with the days logged from a phone, which only the log service has, so it
+is right between builds too.
 
 **A day can also be logged from a phone at the crag.** `projects/climbing/add.html`
 takes either a day out or a route for the to-do. You get to it by signing in at the
@@ -390,7 +392,7 @@ and Tension apps. Rules for it:
   `.board-cache/` are not. The catalogues are megabytes and rebuild only on
   `--catalogue`, deliberately — don't wire them into the weekly sync.
 - It is **deliberately hidden** from the room menus: no room menu entry, no `.jump` link
-  (the preview front door shows it as a post, by Ric's word on 2026-10-16). The way in
+  (the front door lists it under Climbing, by Ric's word on 2026-10-16). The way in
   is the "the woodshed" button under the Climbing footer, or typing `board` on
   `climbing.html`. Don't "fix" this by promoting it into the nav.
 - Board sessions stay out of the sitewide "latest" banner for the same reason.
@@ -613,7 +615,7 @@ the rest. Rules:
 was moved back out to `frontdoor.html` the same day while it was worked on, and became
 home for good on 2026-10-17 (Ric: "make the front door the main page"). The terminal
 moved to `terminal.html`; `frontdoor.html` is now only a redirect home. From the terminal,
-`front door` / `home` or the **[ HOME ]** box in the corner of its frame come back here. It does not run the terminal, it hands it commands: the bar carries a
+`front door` / `home` or the **[ HOME ]** box in the corner of its frame come back here. It does not run the terminal, it hands it commands: on a desktop the bar carries a
 piece of the terminal's own screen (black glass, amber `#ffb000`, scanlines) — a `~$`
 prompt and a **TERMINAL** key (Ric, 2026-10-17). What is typed there **runs right
 there** (Ric, 2026-10-17: "it shouldn't move you to the terminal first. Like mochi"): the
@@ -630,69 +632,78 @@ prompt. If the frame never answers, or with JS off, the command goes to the term
 `terminal.html?run=<command>` (run once, as if typed, address cleaned). Don't put it in `ROOMS`, `PROJECTS` or
 `latest.js`.
 
-**It shows off the pages, not Ric** (Ric, 2026-10-16: "it's my internet, but it's an
-internet" — family and friends use these rooms). What fills a rip is **the room working**,
-never a screenshot of its page: Counter-Strike, KONDRITE and How Big Everything Is are
-clips recorded straight off their own canvas by `assets/frontdoor/record.mjs`
-(KONDRITE's follows the ship using the front-page run's own camera); Interstate 40,
-Starfield and FARLIGHT use the Arcade's clips; everything else is drawn live by a painter
-in `ART` — the Boards from `board-data.js` (a real board, one of Ric's sends lit hold by
-hold), the posters from the Entertainment list, the photographs, a made-up run over
-made-up hills for Training, an **invented** map for ATLAS, the registry search typing
-itself, real aberration and Doppler for How Speed Affects Time, a Minkowski diagram,
-Apex's biggest banner number from `apex-data.js`, the terminal answering real commands,
-the hardest send of each year from `climbs-data.js`, the Arcade's four clips playing
-at once, a Leviathan hull drafted along a scan line.
-**No real place is ever drawn**: Training's route and ATLAS's map are generated (hard
-rule 1). Few words inside any rip.
+On a phone the terminal waits behind the last tab of the bottom bar and rises above it
+when tapped; what it answers opens above that.
 
-**It is a feed of everything, it ends, and no two visits are alike** (Ric, same day:
-"like an insta feed", "generated at random so every time you open the page it's a bit
-different", then "when there are no more rooms it should end"). `POSTS` lists every room
-and every thing in a room a visitor can use — 35 today: the rooms themselves, the
-projects, and the sub-pages that stand on their own (the Leviathan, the four spacetime
-chapters, climbing's media and stats, training's calendar and races, the movie list) —
-each with a `tier`. Tier 0 (Weather, Counter-Strike, KONDRITE, the Boards) keeps its order,
-the other tiers are shuffled within themselves, each post appears once, and the page
-finishes on "That's every room." (`.fin`). Don't bring back the endless rounds. Every
-tear, seam and drawing is seeded from `VISIT`, a random number per page load.
-Mochi, the 404 page and the trip modes stay off it (Ric, 2026-10-16) — they are
-surprises for the rooms, not posts. VALORANT and the Workbench are off it too
-until they have something in them (no matches; one finished project). The Log came back
-on 2026-10-17 with its first real entry, the front door's build log — a post that opens onto an empty room costs the next click. **Every word on a
-post was checked against its page on 2026-10-17** (ClinicalTrials.gov, not "every
-trial in the world"; I-40's traffic is modelled from real counts, not live; KONDRITE's
-main game is solo Survey) — check again when you change a post, and never claim a
-count or a feature the page doesn't have. "Built by hand" is not to be said: it wasn't. **Boards and ATLAS are in by Ric's word** — the earlier rule that
-kept them off the front door is lifted here (ATLAS's post is a door to the sign-in; the
-map behind it is untouched). HERMISCUS and the private tools (admin, visitors, account)
-stay out (Ric, 2026-10-16: "Hermiscus can stay out"), and so do Climbing's add pages and
-the KONDRITE listening booth, which are tools for Ric. When something new ships, add it
-to `POSTS` at tier 0 and to the `<noscript>` list.
+**A portal since 2026-10-30.** The torn-paper feed of every room (2026-10-16 to -29) was
+replaced after a long round of mockups (`docs/mockups/`, kept for the record): Ric found the
+scroll too long ("the scroll thing just takes too long"), wanted people to find what they
+want "when they dont even know what they are looking for", and set the rules below. Read
+them before changing anything on this page.
 
-**Every post is torn from its room's own paper.** `data-skin` sets the post's paper,
-ink, accent and heading face — CS steel, the cinema's black and gold, the climbing log's
-cream, the darkroom's red, Strava white, the terminal's amber, and so on — every one
-checked for 4.5:1. Posts do **not** tear into each other (Ric, 2026-10-17: "smooth
-transitions, not another rip"): each post's `.blend` melts its paper into the next
-one's (`--next`, set by the script) across the padding between them. The rip in it is
-**its own shape every time** (Ric, 2026-10-17: "make the shape and angles of the
-cutouts change"): from the post's seed, `geometry()` picks how hard the top and bottom
-each close in or open out, a slant and a sag or swell along each edge — a wedge, a blade,
-a parallelogram, a lens — on phones and desktops alike, never closing below 56% of the
-box. The hole is see-through: nothing behind it is painted black. It is torn through a stack of that same paper (`paperOf()`
-derives the stack from `--paper`), painted on a canvas (`.rim`) inside the clipped `.cut`.
-On a phone the words come first, then a 210px strip. The picture (`.still`) slides with
-the screen ("depth"). **A post far off screen lets go of everything heavy** — its torn
-edges, its video, its drawing — and makes them again as it comes back, so a
-long feed costs no more than a short one. Never put a `filter` or `transform` on a
-`.cut`, keep anything laid over a cut *inside* it (Chromium paints outside the clip
-otherwise), and draw shadows on the canvas, never as a CSS or SVG blur. Night/day only
-changes the hero's paper.
+- **Most used first, always, measured.** Ric: "the most used page always is on top … if a
+  new page gets more popular it automatically goes to the top". The Worker's `/popular`
+  (worker/README.md, "Most used first") is the order pages were used in over 30 days —
+  people, not views, his own devices out — and the page sorts by it: the subject shelves,
+  the rooms in each, the desktop index, the big feature (whichever room is first; Weather
+  gets its own version with the visitor's sky and a Pro link) and the phone's bottom bar
+  (the top four rooms, then Terminal). It sorts by the order saved on the **last** visit
+  (`fd:popular` in localStorage), so nothing moves while someone is looking, and fetches a
+  fresh one for next time. With no saved order, the order in `SHELVES` stands — measured
+  from the visitor counter on 2026-10-29; the counts are in the comment above it. Don't
+  hand-order the page by feel.
+- **The quick stats under the title** (Ric: "simple info like the weather, my last run, my
+  last cs game and latest update … at the top easy to see", then "too many words … under
+  the title", then "i dont like the boxes"): Last run (Strava), Last climb (the newer of
+  `latest-climb.js` and the days logged from a phone through the log service, never a
+  "Home" day — `latest-climb.js` alone stops at the last build, and once said "3 months"
+  when the last climb was three days ago), Last CS game, Newest (the top of `latest.js`).
+  A run or a climb counts as an update (Ric: "if strava or climbing get updated that counts
+  as an update"): whichever of the three is newest wears a small "new" by its label, so
+  nothing is listed twice. One quiet line on a desktop, a 2×2 on a phone; no boxes.
+- **Right now:** the most used room as the big feature, then today's game to play, tonight's
+  film from the watchlist (the same pick all day), and something to explore — each a piece
+  of its own room (the cinema's bulbs, the game running) — plus a crag day or Orrin only
+  while fresh (three weeks; running). Play and Explore never repeat the feature. The film
+  list is the Entertainment room's whole file, so it is fetched after the page is up.
+- **Phones and desktops are laid out separately, in one style** (Ric: "optimized for phones
+  and desktop separately but still the same style"). Desktop (≥1000px): every room down
+  the left from the very top, staying put, in words (NN/g: visible, left, most important
+  first); the name beside the stats, their last lines measured onto one line; a grid with no
+  holes; up to 1,720px wide on a big monitor; a card's clip plays after the pointer settles
+  for 0.3s, only the big card on a shelf plays by itself. Phone (≤760px): a bottom bar under
+  the thumb; the right-now modules in one swipe row (three items, inside the 3–4 swipes
+  people give one); every room as one list row with a still thumbnail — never a clip or a
+  1600px photograph for an 88px picture (`assets/frontdoor/thumbs/`, stripped like every
+  photo, hard rule 1).
+- **Nothing that looks generated** (Ric: "i dont want it to look like an ai built it"): no
+  pills with dots, glowing rules, numbered headings, letter-spaced capitals, soft glows,
+  hover lifts, floating badges or tickers. The rooms bring the colour — their clips,
+  drawings, posters and papers (`data-skin`, every one checked for 4.5:1). Plain words, few
+  of them: each room says in two to four words what it is (`what` on its `POSTS` entry —
+  "space game", "Star Wars watch-along"), because the names alone mean nothing to a
+  stranger.
+- **What a picture shows is the room working, never a screenshot**: the clips recorded by
+  `assets/frontdoor/record.mjs` and the Arcade's, and the painters in `ART` drawing from
+  the rooms' own data. **No real place is ever drawn** — Training's route and ATLAS's map
+  are invented (hard rule 1).
+- **Which rooms**: every room and the sub-pages that stand on their own, on exactly one
+  shelf. The Log is off (Ric, 2026-10-29: "the log shouldnt be on there"). HERMISCUS, the
+  private tools (admin, visitors, account), Climbing's Add page and the KONDRITE listening
+  booth stay off — and `/popular` never lists them either. Mochi, the 404 page and the trip
+  modes stay off. `.github/test/frontdoor.mjs` fails if a room is on no shelf or two, has
+  no words, points at a page or picture that isn't there, is missing from the `<noscript>`
+  list, or if the Log comes back. When something new ships, give it a `POSTS` entry with
+  its `what`, put it on a shelf in `SHELVES` and in the `<noscript>` list — `/popular`
+  moves it up as people find it.
+- **Measure it.** What visitors open next from the front door is the test of this page.
+  Baseline, the old feed, 90 days to 2026-10-29: left without opening anything 29, reloaded
+  23, Weather 14, the terminal 9, CS 5, Training 3. The query to rerun is in the comment
+  above `SHELVES`.
 
 Homepage "transmissions" live in `notes.js`. Curated newest additions live
-in `latest.js` and are announced in exactly one place: the "new" pill on the front door
-(`index.html`), and the terminal's `latest` command opens the newest. The terminal
+in `latest.js` and are announced in exactly one place: "Newest" in the front door's quick
+stats (`index.html`), and the terminal's `latest` command opens the newest. The terminal
 itself carries no banner and no welcome copy any more (Ric, 2026-10-17: "remove the
 notifications") — it boots straight to the shell; don't put either back. Every room used to carry one in its own native style; they don't any
 more, so an addition is not repeated eight times. The per-room support is still in

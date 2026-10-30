@@ -15,7 +15,7 @@ to ask.
 ## The idea
 
 This is not a normal blog. The pitch is: *"imagine it's literally my own internet."*
-The home page is the front door — a feed of every room — with the terminal hub a
+The home page is the front door — quick stats, the most used room, and every room by subject, most used first — with the terminal hub a
 click (or a typed command) away at `terminal.html`; every other page is a **room** styled to look like
 the real app for that world — climbing looks like Mountain Project, training looks like
 Strava, and so on. Each room is its own self-contained `.html` file.
@@ -24,7 +24,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 
 | File | Room | What it is |
 |---|---|---|
-| `index.html` | — | The front door, home: a feed of all 34 rooms and things, newest first and reshuffled each visit, that ends when they run out — each torn from its own paper and showing the room working — with a terminal prompt in the bar that runs commands in place |
+| `index.html` | — | The front door, home: a portal — your last run, climb and CS game and the newest addition under the title; the most used room big; today's game, tonight's film and something to explore; then every room by subject, ordered by how many people use it (the Worker's `/popular`). Phones get a bottom bar of the most used rooms and a list; desktops a room index down the left. A terminal prompt runs commands in place |
 | `terminal.html` | Terminal | The terminal — boot sequence + working command line (try `help`); `home` or its [ HOME ] box goes back to the front door |
 | `frontdoor.html` | — | Redirect to `index.html`, where the front door was previewed |
 | `orrin.html` | Orrin | Plain-language tour of Orrin, progress notes after each run (`orrin-updates.js`), plus live public project activity from GitHub |
@@ -54,7 +54,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `captures-data.js` | — | Generated `[filename, date]` pairs for the 1,300+ photos `captures.html` draws |
 | `assets/` | — | Everything that isn't a photograph. Sitewide files sit at the top (`owner.js`, `site-gate.js`, the share image, and `training-plan.json`, which stays there because the deployed Worker fetches it by its full URL). Everything else has a folder: `cat/` (Mochi's sprite frames), `climbing/`, `training/` and `entertainment/` (each room's own styles, scripts and generated JSON), `games/` (covers and clips), `posters/` and `backdrops/` |
 | `notes.js` | — | Homepage "transmissions" — the one file you edit by hand to post a note |
-| `latest.js` | — | Curated newest additions: the front door's "new" pill and the terminal's `latest` command |
+| `latest.js` | — | Curated newest additions: "Newest" in the front door's quick stats and the terminal's `latest` command |
 | `effects.js` | — | Persistent visual modes, the shared mobile room-menu behaviour (`installRoomMenu()`), and Mochi — the reduced-motion-aware resident cat with progressively loaded, decoded instant frame swaps; calibrated visible-body scale; collision-safe placements; relaxed multi-angle movement; feature entrances and stretching; element interactions; occasional walk-offs; page-aware returns; a wall-climbing mode on the Climbing room; and a helmeted zero-gravity mode used only by compatible games |
 | `EASTER_EGGS.md` | — | Complete field guide to every hidden command and typed surprise |
 

@@ -41,6 +41,7 @@ const SUITES = [
   /* First, because a page that does not parse is the one failure that takes
      a whole room down and that no other suite here would ever see. */
   ['every inline script parses', ['.github/test/inline-scripts.mjs']],
+  ['the front door lists every room, and only real ones', ['.github/test/frontdoor.mjs']],
   ['the entertainment write path', ['projects/entertainment/test/write-path.mjs']],
   ['the worker (training-log)', ['worker/test.mjs']],
   ['the media location scrub', ['.github/test/scrub-media.mjs']],

@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>RIC//NET — Ric Massey's own internet</title>
-  <!-- the front door: home since 2026-10-17. The terminal is terminal.html. -->
+  <!-- the front door: home since 2026-10-17, a portal since 2026-10-30 — the
+       quick stats, the room people use most, today's game, tonight's film,
+       and every room by subject, most used first (AGENTS.md, "The front
+       door"). The terminal is terminal.html. -->
   <meta name="description" content="Ric Massey's own internet — games you can play, space you can explore, climbing, training, photos, and Orrin.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ric's Terminal">
@@ -55,13 +58,13 @@
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="day"]) {
         --bg: #0a0b0d; --bg-2: #15161a; --ink: #eef0f3; --muted: #9a9fa8;
-        --field: rgba(255,255,255,.05); --hair: rgba(255,255,255,.1); --head: rgba(10,11,13,.78);
+        --field: rgba(255,255,255,.05); --hair: rgba(255,255,255,.1); --head: rgba(10,11,13,.78); --ixmix: 62%;
         color-scheme: dark;
       }
     }
     :root[data-theme="night"] {
       --bg: #0a0b0d; --bg-2: #15161a; --ink: #eef0f3; --muted: #9a9fa8;
-      --field: rgba(255,255,255,.05); --hair: rgba(255,255,255,.1); --head: rgba(10,11,13,.78);
+      --field: rgba(255,255,255,.05); --hair: rgba(255,255,255,.1); --head: rgba(10,11,13,.78); --ixmix: 62%;
       color-scheme: dark;
     }
 
@@ -133,94 +136,206 @@
     .fin .tbtn { height: 50px; padding: 0 22px 0 24px; border: 1px solid #6b4d00; box-shadow: 0 0 22px rgba(255,176,0,.16); }
     @keyframes blink { 50% { opacity: 0; } }
 
-    /* ─── the hero: short, so the feed starts on the first screen ─── */
-    .hero { --paper: var(--bg); --pb: clamp(56px, 9vh, 104px); position: relative; z-index: 99999; background: var(--bg); padding: clamp(40px, 8vh, 96px) var(--gutter) var(--pb); }
-    .hero-in { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 380px); align-items: end; gap: 24px 72px; }
-    h1 { font: 600 clamp(44px, 7.6vw, 120px)/.9 var(--display); letter-spacing: -.055em; }
+    /* ─── the front door (mockup, 2026-10-30) ───
+       One block, written fresh. Phones (≤760px) and desktops (≥1000px) are
+       laid out separately on purpose — Ric: "optimized for phones and desktop
+       separately, but still the same style" — and nothing here may look like
+       a generated page: no pills with dots, glows, numbered headings, spaced
+       capitals or hover lifts (Ric: "i dont want it to look like an ai built
+       it"). The rooms bring the colour: their clips, drawings and papers. */
+
+    /* clip, not hidden: hidden makes <body> a scroll box, and then nothing
+       inside it — the bar, the desktop index — can stay put while you scroll */
+    body { overflow-x: clip; }
+
+    /* the top: the name, then the quick stats */
+    .hero { position: relative; z-index: 2; background: var(--bg); padding: clamp(36px, 7vh, 84px) var(--gutter) clamp(26px, 4vh, 40px); }
+    .hero-in { max-width: 1400px; margin: 0 auto; }
+    h1 { font: 600 clamp(40px, 7vw, 112px)/.92 var(--display); letter-spacing: -.055em; }
     h1 .dot { font-style: normal; color: var(--magenta); }
-    .lede { font-size: clamp(16px, 1.3vw, 19px); line-height: 1.5; color: var(--muted); max-width: 38ch; }
-    .lede b { color: var(--ink); font-weight: 500; }
-    #latest { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
-    .latest-relay { display: inline-flex; align-items: center; gap: 12px; max-width: 100%; padding: 7px 14px 7px 8px; text-decoration: none; font-size: 14px; background: var(--field); border: 1px solid var(--hair); }
-    .latest-relay[hidden] { display: none; }
-    .latest-relay .latest-kicker { font: 500 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--bg); background: var(--ink); padding: 4px 8px; white-space: nowrap; }
-    .latest-relay .latest-title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .latest-relay .latest-description { display: none; }
-    .latest-relay .latest-meta { display: inline-flex; gap: 10px; color: var(--muted); white-space: nowrap; }
+    #latest[hidden], .latest-relay[hidden] { display: none; }
 
-    /* ─── a post ───
-       Full-bleed, on its room's own paper (the skins below). Rooms don't tear
-       into each other: each post's foot melts into the next one's paper
-       (.blend, its --next set by the script), across its own bottom padding
-       and the next post's top padding, where nothing else is drawn. Each post
-       sits above the one after it, so the blend lies over the next one's top. */
-    .post {
-      position: relative; background: var(--paper); color: var(--ink);
-      padding: var(--post-pt) 0 var(--post-pb); --pb: var(--post-pb);
-      --ink: #111; --muted: #555; --accent: #7b3cff; --paper: #eee;
-      --hf: var(--display); --hw: 650; --htt: none; --hls: -.045em; --hstyle: normal;
-    }
-    .post::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--pattern, none); opacity: var(--pattern-o, 1); }
-    .blend {
-      position: absolute; left: 0; right: 0; top: calc(100% - var(--pb)); height: calc(var(--pb) + var(--post-pt)); z-index: 1; pointer-events: none;
-      background: linear-gradient(180deg in oklab, var(--paper), color-mix(in oklab, var(--paper) 88%, var(--next, var(--paper))) 22%,
-        color-mix(in oklab, var(--paper) 50%, var(--next, var(--paper))) 50%, color-mix(in oklab, var(--paper) 12%, var(--next, var(--paper))) 78%, var(--next, var(--paper)));
-    }
-    .post.long h2 { font-size: clamp(40px, 4.3vw, 70px); }
-    .post .row { position: relative; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; gap: clamp(24px, 4vw, 72px); }
-    .post[data-side="left"] .row { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
-    .post[data-side="left"] .f-copy { order: 2; padding: 0 var(--gutter) 0 0; }
-    .f-copy { position: relative; padding-left: var(--gutter); max-width: calc(580px + var(--gutter)); }
-    .f-tag { display: flex; align-items: center; gap: 10px; color: var(--muted); margin-bottom: 16px; }
-    .f-tag::before { content: ""; width: 22px; height: 2px; background: var(--accent); }
-    .f-tag .of { flex: none; margin-left: auto; padding-left: 12px; opacity: .85; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .f-tag .new { background: var(--accent); color: var(--paper); font-weight: 700; padding: 3px 7px; }
-    .post h2 { font-family: var(--hf); font-weight: var(--hw); font-style: var(--hstyle); text-transform: var(--htt); letter-spacing: var(--hls); font-size: clamp(44px, 5.4vw, 88px); line-height: .95; }
-    .f-lede { margin-top: 18px; font-size: clamp(17px, 1.25vw, 19px); line-height: 1.55; color: var(--muted); max-width: 40ch; }
-    .f-facts { list-style: none; display: flex; flex-wrap: wrap; margin: 24px 0 28px; border-top: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); }
-    .f-facts li { font: 500 12px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink); padding: 12px 18px 12px 0; margin-right: 18px; border-right: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); }
-    .f-facts li:last-child { border-right: 0; margin-right: 0; }
-    .btn {
-      display: inline-flex; align-items: center; gap: 14px; padding: 15px 22px 15px 20px; text-decoration: none;
-      background: var(--ink); color: var(--paper); font: 650 15px var(--sans);
-      clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
-    }
-    .btn i { display: block; width: 22px; height: 1.5px; background: currentColor; position: relative; transition: width .45s var(--ease); }
-    .btn i::after { content: ""; position: absolute; right: -1px; top: -3.5px; border-left: 7px solid currentColor; border-top: 4.25px solid transparent; border-bottom: 4.25px solid transparent; }
-    .btn:hover i, .post.hot .btn i { width: 38px; }
+    /* the quick stats: a word, a value, its age; a link each */
+    .glance { max-width: 1400px; margin: clamp(18px, 2.6vh, 28px) auto 0; display: flex; flex-wrap: wrap; gap: 6px 0; }
+    .gl { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-height: 48px; padding: 0 clamp(16px, 2vw, 28px); border-left: 1px solid var(--line); color: var(--ink); text-decoration: none; min-width: 0; }
+    .gl:first-child { padding-left: 0; border-left: 0; }
+    .gl-k { font: 400 13px var(--sans); color: var(--muted); }
+    .gl-k b { font-weight: 600; color: var(--magenta); margin-left: 6px; }
+    .gl-val { display: flex; align-items: baseline; gap: 7px; min-width: 0; white-space: nowrap; }
+    .gl-big { font: 600 clamp(17px, 1.5vw, 20px)/1.25 var(--display); letter-spacing: -.015em; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+    .gl-line { font: 400 13px var(--sans); color: var(--muted); }
+    .gl-src { display: none; }
+    .gl:hover .gl-big, .gl:focus-visible .gl-big { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+    .res { display: inline-block; padding: 0 5px; border-radius: 3px; font: 700 11px/17px var(--mono); vertical-align: 2px; color: #fff; }
+    .res.W { background: #1f8f4e; } .res.L { background: #b42d2d; } .res.T { background: #6b6f78; }
 
-    /* ─── the rips ───
-       A rip is a hole torn through a stack of the room's own paper. Its outline
-       is worked out in pixels and set as the cut's clip-path; the sheets under
-       the top one are painted on a canvas inside the cut (.rim). The picture
-       (.still) is a little taller than the rip and slides with the screen.
-       Never a filter or transform on a .cut or anything above it, and anything
-       laid over a cut goes INSIDE it: Chromium paints a sibling that fades in
-       over a clipped element outside the clip. */
-    .cutbox { position: relative; display: block; }
-    .f-rip { height: min(64vh, 640px); min-height: 420px; }
-    .cut { position: relative; z-index: 1; height: 100%; overflow: hidden; background: transparent; transition: clip-path 1.2s cubic-bezier(.7,0,.16,1); }
-    .cut .still { position: absolute; left: 0; right: 0; top: -7%; height: 114%; z-index: 0; pointer-events: none; will-change: transform; transition: scale .9s var(--ease); background: transparent; }
-    .cut .still video, .cut .still canvas, .cut .still img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
-    .cut .rim { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: no-repeat 0 0 / 100% 100%; }
-    .peek {
-      position: absolute; z-index: 5; right: calc(var(--gutter) + 18px); bottom: 46px;
-      display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px 9px 13px;
-      background: var(--paper); color: var(--ink); font: 700 11.5px var(--mono); letter-spacing: .14em; text-transform: uppercase;
-      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
-    }
-    .peek::after { content: "↗"; font: 600 14px var(--sans); }
-    [data-bleed="left"] .peek { right: auto; left: calc(var(--gutter) + 18px); }
-    .f-rip:hover .still, .post.hot .still { scale: 1.035; }
+    /* right now: modules, each a piece of its own room */
+    .portal { max-width: 1400px; margin: 0 auto; padding: 0 var(--gutter); display: grid; gap: 10px; }
+    .mod { position: relative; display: flex; flex-direction: column; min-width: 0; overflow: hidden; border-radius: 4px; padding: 16px 18px 14px;
+      background: var(--paper, var(--surface)); color: var(--ink); border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); }
+    .mod::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--pattern, none); }
+    .mod > * { position: relative; }
+    .mod-h { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font: 600 14px var(--sans); }
+    .mod-h a { margin-left: auto; display: inline-flex; align-items: center; min-height: 44px; margin-block: -12px; color: var(--muted); text-decoration: none; font-weight: 500; }
+    .mod-h a:hover { color: var(--ink); text-decoration: underline; }
+    .mod-b { flex: 1; min-width: 0; }
+    .src { margin-top: 12px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--ink) 16%, transparent); font-size: 12px; color: var(--muted); }
+    .k { font: 500 12px var(--sans); color: var(--muted); margin-bottom: 4px; }
+    .mid { font: 600 19px/1.2 var(--display); letter-spacing: -.02em; }
+    .row { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 14px; color: var(--muted); }
+    .row b { color: var(--ink); font-weight: 600; }
+    .said { margin-top: 2px; font: italic 15px/1.45 var(--serif); }
+    .live-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #2fdc86; margin-right: 8px; vertical-align: middle; }
 
-    /* the end of the feed: every room has been shown, and it says so */
-    .fin { --paper: var(--bg); position: relative; z-index: 0; background: var(--bg); padding: clamp(110px, 16vh, 180px) var(--gutter) clamp(90px, 14vh, 150px); text-align: center; }
-    .fin .fin-k { color: var(--muted); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; margin-bottom: 18px; }
-    .fin h2 { font: 600 clamp(40px, 6vw, 92px)/.95 var(--display); letter-spacing: -.05em; }
+    /* a room running: Weather, Play, Explore */
+    .m-run-room { padding: 0; min-height: 280px; color: #fff; }
+    .m-run-room canvas, .m-run-room video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+    .over { position: absolute !important; inset: auto 0 0 0; padding: 56px 18px 12px; background: linear-gradient(180deg, transparent, rgba(0,0,0,.78)); display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 4px 18px; }
+    .nm2 { font-family: var(--hf); font-weight: var(--hw); font-style: var(--hstyle); text-transform: var(--htt); letter-spacing: var(--hls); font-size: clamp(28px, 3vw, 40px); line-height: 1; color: var(--ink); }
+    .what2 { margin-top: 6px; font-size: 14px; color: rgba(255,255,255,.88); }
+    .what2 b { font-weight: 600; color: #fff; }
+    .go2s { display: flex; gap: 22px; }
+    .go2 { display: inline-flex; align-items: center; min-height: 44px; color: #fff; font: 600 15px var(--sans); text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+    .go2:hover { text-decoration-thickness: 2px; }
+
+    /* tonight: the cinema's black and gold, its bulbs along the top */
+    .mod.m-tv { --pattern: radial-gradient(circle, rgba(245,197,24,.75) 1.6px, transparent 2.6px) 6px 4px / 18px 12px repeat-x; padding-top: 24px; }
+    .m-tv .mod-h { font: 800 15px var(--narrow); letter-spacing: .12em; text-transform: uppercase; color: #f5c518; }
+    .m-tv .mod-h a { font: 600 13px var(--sans); letter-spacing: 0; text-transform: none; color: #c9b98a; }
+    .tv { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 14px; align-items: start; color: inherit; text-decoration: none; }
+    .tv img { width: 88px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 3px; display: block; }
+    .m-tv .mid { font: 800 22px/1 var(--narrow); text-transform: uppercase; color: #f5c518; }
+    .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+    .tag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 3px; border: 1px solid rgba(245,197,24,.35); font-size: 12px; color: #fff8e6; }
+
+    /* the crag day, when fresh: the climbing log's cream and serif */
+    .m-crag .mod-h { font: italic 400 17px var(--serif); }
+    .m-crag .mid { font: 400 21px/1.2 var(--serif); }
+    .m-crag .k { color: #3c7a3b; }
+    /* Orrin, while running: black, mono, a live green */
+    .m-orrin .mod-h { font: 500 13px var(--mono); letter-spacing: .06em; color: #38ff9c; }
+    .m-orrin .mid { font: 500 16px var(--mono); color: #38ff9c; }
+
+    /* every room */
+    .dir-h { max-width: 1400px; margin: clamp(46px, 7vh, 80px) auto 0; padding: 0 var(--gutter); }
+    .dir-h h2 { font: 600 clamp(28px, 3vw, 42px)/1 var(--display); letter-spacing: -.04em; }
+    .dir-h h2 .dot { font-style: normal; color: var(--magenta); }
+    #feed { max-width: 1400px; margin: 0 auto; padding: 0 var(--gutter) 30px; --page-ink: var(--ink); --page-muted: var(--muted); }
+    .shelf { padding-top: clamp(36px, 5vh, 56px); scroll-margin-top: 70px; }
+    .shelf-head h3 { font: 650 clamp(20px, 1.9vw, 26px)/1.1 var(--display); letter-spacing: -.025em; margin-bottom: 14px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); grid-auto-flow: dense; gap: 12px; }
+    .card { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 4px; background: var(--paper); color: var(--ink); text-decoration: none;
+      border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); }
+    .card::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: var(--pattern, none); }
+    .card .media, .card .txt { position: relative; z-index: 1; }
+    .card .media { aspect-ratio: 16 / 10; overflow: hidden; background: var(--paper); }
+    .card .media video, .card .media canvas, .card .media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+    .card .txt { display: flex; flex-direction: column; gap: 2px; padding: 12px 15px 14px; }
+    .card .nm { font-family: var(--hf); font-weight: var(--hw); font-style: var(--hstyle); text-transform: var(--htt); letter-spacing: var(--hls); font-size: 17px; line-height: 1.15; }
+    .card .what { font-size: 13px; color: var(--muted); }
+    .card:hover, .card:focus-visible { border-color: color-mix(in srgb, var(--ink) 40%, transparent); outline: 0; }
+    .card:hover .nm, .card:focus-visible .nm { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+    .card.big { grid-column: span 2; grid-row: span 2; }
+    .card.big .media { aspect-ratio: auto; flex: 1; min-height: 220px; }
+    .card.big .nm { font-size: 22px; }
+
+    /* the end */
+    .fin { max-width: 1400px; margin: clamp(40px, 6vh, 70px) auto 0; padding: 0 var(--gutter) clamp(50px, 8vh, 80px); text-align: center; }
+    .fin h2 { font: 600 clamp(24px, 2.6vw, 36px)/1 var(--display); letter-spacing: -.04em; }
     .fin h2 .dot { font-style: normal; color: var(--magenta); }
-    .fin .lede { margin: 20px auto 34px; }
-    .fin-b { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 14px 28px; }
-    .fin-top { color: var(--ink); font: 600 14px var(--mono); letter-spacing: .1em; text-transform: uppercase; text-underline-offset: 5px; }
+    .fin .lede { margin: 12px auto 18px; font-size: 15px; color: var(--muted); }
+    .fin-b { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px 28px; }
+    .fin-top { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink); font: 500 14px var(--sans); text-underline-offset: 4px; }
+    .tabbar { display: none; }
+
+    /* ── desktop ── (research pass, 2026-10-30) NN/g: on a big screen keep
+       the navigation visible, on the left, in words, most important first;
+       people scan by headings and look top-left; a sticky bar stays solid.
+       So: the rooms down the left from the very top, staying put, the page to
+       their right; the name beside the stats; a grid with no holes. */
+    .side { display: none; }
+    @media (min-width: 1000px) {
+      .bar { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: var(--bg) !important; }
+      main { display: grid; grid-template-columns: 210px minmax(0, 1fr); column-gap: clamp(28px, 3vw, 48px); max-width: 1440px; margin: 0 auto; padding: 0 var(--gutter); }
+      main > * { grid-column: 2; }
+      main > .side { grid-column: 1; grid-row: 1 / span 30; }
+      .side { display: block; position: sticky; top: 64px; align-self: start; max-height: calc(100vh - 64px); overflow-y: auto; padding: clamp(36px, 7vh, 84px) 6px 30px 0; scrollbar-width: thin; }
+      .side .sh { font: 600 13px var(--sans); color: var(--muted); margin: 18px 0 4px; }
+      .side .sh:first-child { margin-top: 0; }
+      .side .sh a { color: inherit; text-decoration: none; }
+      .side .sh.on a { color: var(--ink); }
+      .side ul { list-style: none; }
+      .side li a { display: block; padding: 3px 0; color: var(--ink); text-decoration: none; font: 400 14.5px/1.35 var(--sans); }
+      .side li a:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+      .side .home { display: block; margin-bottom: 4px; font: 600 15px var(--sans); color: var(--ink); text-decoration: none; }
+
+      .hero, .portal, .dir-h, #feed, .fin { max-width: none; margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+      /* the stats' last line sits on the name's last line; the name's tight
+         leading lets its letters hang below its box, so the script measures
+         that and drops the stats to match (--drop) */
+      .hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: end; column-gap: clamp(28px, 3vw, 56px); }
+      .hero > .hero-in, .hero > .glance { max-width: none; margin: 0; }
+      .glance { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 0; transform: translateY(var(--drop, 0px)); }
+      .glance > .gl:nth-child(2n+1) { padding-left: 0; border-left: 0; }
+      .portal { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-flow: dense; }
+      .portal > .m-wxf { grid-column: span 4; min-height: 330px; }
+      .rail { display: contents; }
+      .rail > .m-tv { grid-column: span 2; }
+      .rail > .m-play, .rail > .m-explore { grid-column: span 3; min-height: 300px; }
+      .rail > .m-crag, .rail > .m-orrin { grid-column: span 3; }
+      .dir-h { margin-top: clamp(46px, 7vh, 80px); }
+    }
+    /* a big monitor gets the width: about 1,700px of page and another card a row */
+    @media (min-width: 1700px) {
+      main { max-width: 1720px; }
+    }
+    /* ── between ── */
+    @media (min-width: 761px) and (max-width: 999px) {
+      .portal { grid-template-columns: 1fr 1fr; }
+      .portal > .m-wxf { grid-column: 1 / -1; }
+      .rail { display: contents; }
+    }
+
+    /* ── phone ── thumbs: a bar of the most used rooms at the bottom, the
+       terminal behind its tab, a swipe row for right-now, the rooms as a list */
+    @media (max-width: 760px) {
+      .bar { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: var(--bg) !important; height: 52px; justify-content: space-between; }
+      .brand { font-size: 13px !important; letter-spacing: .14em !important; gap: 8px !important; min-height: 44px; display: inline-flex; align-items: center; }
+      .bar .term { display: none !important; position: fixed; left: 12px; right: 12px; bottom: calc(66px + env(safe-area-inset-bottom)); z-index: 100001; height: 50px;
+        box-shadow: 0 12px 34px rgba(0,0,0,.55), 0 0 0 1px #6b4d00; }
+      body.term-up .bar .term { display: flex !important; }
+      .bar .term input { font-size: 16px; }
+      .term-out { position: fixed !important; left: 12px; right: 12px; top: auto !important; bottom: calc(126px + env(safe-area-inset-bottom)); max-height: 55vh; overflow: auto; z-index: 100001; }
+      body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+      .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 100002;
+        padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); }
+      .tabbar a, .tabbar button { all: unset; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+        min-height: 50px; font: 500 11px var(--sans); color: var(--muted); text-align: center; -webkit-tap-highlight-color: transparent; }
+      .tabbar svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+      .tabbar [aria-expanded="true"] { color: var(--ink); }
+      .tabbar .tt svg { stroke: #ffb000; }
+
+      .glance { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
+      .gl { padding: 0; border-left: 0; }
+      .gl-big { font-size: 17px; max-width: 100%; }
+      .portal { display: block; }
+      .portal > .m-wxf { min-height: 210px; margin-bottom: 10px; }
+      .rail { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none;
+        margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) 4px; scroll-padding: 0 var(--gutter); }
+      .rail::-webkit-scrollbar { display: none; }
+      .rail > .mod { flex: 0 0 84%; scroll-snap-align: start; min-height: 230px; }
+
+      .dir-h { margin-top: 40px; }
+      .shelf { padding-top: 26px; }
+      .shelf-head h3 { font: 600 15px var(--sans); letter-spacing: 0; color: var(--muted); margin-bottom: 4px; }
+      .cards { display: block; }
+      .cards > .card, .cards > .card.big { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; min-height: 66px;
+        border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; --ink: var(--page-ink); --muted: var(--page-muted); color: var(--page-ink); }
+      .cards > .card::before { display: none; }
+      .cards > .card .media, .cards > .card.big .media { width: 88px; height: 56px; aspect-ratio: auto; flex: none; min-height: 0; margin: 5px 0; border-radius: 3px; }
+      .cards > .card .txt { padding: 8px 0 8px 14px; gap: 1px; }
+      .cards > .card .nm, .cards > .card.big .nm { font-size: 16px; }
+    }
 
     /* things fade up the first time they come on screen — copy only, never a cut */
     .js .rv { opacity: 0; transform: translateY(18px); transition: opacity .8s var(--ease), transform 1s var(--ease); transition-delay: var(--d, 0s); }
@@ -268,38 +383,10 @@
     [data-skin="transmit"]  { --paper: #120e1a; --ink: #efe7ff; --muted: #b0a3c4; --accent: #d37bff; --hf: var(--serif); --hw: 400; --hls: -.02em; }
     [data-skin="crt"] h2 { text-shadow: 0 0 18px rgba(255,176,0,.45); }
 
-    @media (max-width: 860px) {
-      .hero-in { grid-template-columns: 1fr; gap: 14px; }
-      /* On a phone each post is a post in a feed: the words first, then a short
-         torn strip — two or three rooms to a screen. */
-      :root { --post-pt: 44px; --post-pb: 56px; }
-      .post.long h2 { font-size: clamp(28px, 8vw, 36px); }
-      .post .row, .post[data-side="left"] .row { grid-template-columns: 1fr; gap: 16px; }
-      .f-copy, .post[data-side="left"] .f-copy { order: 0; padding: 0 var(--gutter); }
-      .f-rip { order: 1; height: 210px; min-height: 0; }
-      .peek { bottom: 28px; padding: 7px 11px; font-size: 11px; }
-      [data-bleed="right"] .peek { right: 18px; } [data-bleed="left"] .peek { left: 18px; }
-      .f-facts { display: none; }
-      .f-tag { margin-bottom: 8px; font-size: 11px; }
-      .post h2 { font-size: clamp(32px, 9.4vw, 42px); }
-      .f-lede { margin-top: 8px; font-size: 15px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-      .f-copy > .btn { margin-top: 14px; padding: 11px 16px 11px 15px; font-size: 14px; }
-    }
     @media (max-width: 760px) {
-      .bar { height: 58px; gap: 10px; }
-      .brand { gap: 0; font-size: 0; letter-spacing: 0; margin-right: 0; }
-      .term { flex: 1; height: 40px; }
-      .term input { width: auto; flex: 1; font-size: 16px; padding: 0 6px; }
-      .term .ps { padding-left: 10px; }
-      /* the key keeps its word on a phone: an unlabelled box read as broken (2026-10-22) */
       .term .tbtn { padding: 0 10px; letter-spacing: .08em; gap: 6px; font-size: 11px; }
       .term .tbtn .cur { width: 6px; height: 11px; margin: 0; }
-      .mode { width: 38px; height: 38px; }
-      .hero { --pb: 44px; padding: 26px var(--gutter) var(--pb); }
-      #latest { margin-bottom: 14px; }
-      .latest-relay { font-size: 13px; }
-      .latest-relay .latest-meta { display: none; }
-      .lede { font-size: 15px; }
+      .mode { width: 44px; height: 44px; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; transition-delay: 0s !important; }
@@ -328,36 +415,57 @@
     <button class="mode" id="mode" type="button" aria-label="Switch between night and day"></button>
   </header>
 
+  <!-- phone only: the five most used rooms (visitor counter, 90 days to
+       2026-10-29) under the thumb; the terminal behind the last tab -->
+  <nav class="tabbar" aria-label="Most used">
+    <a href="weather.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.2 3.5 3.5 0 0 0 7 18z"/></svg>Weather</a>
+    <a href="cs.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></svg>CS</a>
+    <a href="training.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l5-6 4 4 4-7 5 9"/></svg>Training</a>
+    <a href="climbing.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20l6-11 4 6 3-4 5 9z"/></svg>Climbing</a>
+    <button class="tt" type="button" id="tt" aria-expanded="false" aria-controls="term"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8l4 4-4 4M12 16h7"/></svg>Terminal</button>
+  </nav>
+
   <main>
+    <!-- desktop: every room, by subject, in the order people use them; built from SHELVES -->
+    <nav class="side" id="side" aria-label="Every room"></nav>
     <section class="hero post-like" id="new" aria-labelledby="hero-h">
       <div class="hero-in">
         <div>
           <!-- Filled by latest.js from latest-climb.js + RELAY_LATEST. Don't hardcode
                an entry here — it goes stale the moment anything newer lands. -->
-          <div id="latest" class="rv" aria-label="Newest addition">
+          <div id="latest" class="rv" aria-label="Newest addition" hidden>
             <a class="latest-relay" data-latest-banner data-latest-prefix="new"></a>
             <!-- Trial alerts: only for a site account approved for Studies. -->
             <a class="latest-relay trial-alert" id="trial-alert" href="projects/psyche/studies.html#watch" hidden></a>
           </div>
           <h1 id="hero-h" class="rv">Ric Massey's own internet<i class="dot">.</i></h1>
         </div>
-        <p class="lede rv" style="--d:.15s">Games to play with your friends, every Counter-Strike match replayed, what to watch tonight, the universe to scale. <b>Everything on the site, one after another — scroll and pick one.</b></p>
       </div>
-      <div class="blend" aria-hidden="true"></div>
+      <!-- At a glance (Ric, 2026-10-29: "simple info like the weather, my last
+           run, my last cs game and latest update … at the top easy to see",
+           then "too many words … under the title"): four small tiles in the
+           page's own style, each a door to its page. -->
+      <div class="glance" id="glance" aria-label="At a glance"></div>
     </section>
 
-    <!-- The feed: every room as a post, laid down by the script below (POSTS),
-         newest first, each once — and then it ends. -->
+    <!-- the portal: modules for whoever is visiting, each a piece of its own
+         room. Ric's own activity joins only while it is fresh. Filled by the
+         script at the foot. -->
+    <section class="portal" id="portal" aria-label="Right now"></section>
+
+    <div class="dir-h"><h2>Every room<i class="dot">.</i></h2></div>
+
+    <!-- Every room, by subject, most used first: laid down by the script
+         below from SHELVES and POSTS. -->
     <div id="feed"></div>
     <noscript>
       <ul style="padding:40px var(--gutter);list-style:none;line-height:2">
-        <li><a href="weather.html">Weather</a></li><li><a href="cs.html">Counter-Strike Stats</a></li><li><a href="projects/kondrite/index.html">KONDRITE</a></li><li><a href="projects/climbing/board.html">The Boards</a></li><li><a href="entertainment.html">Entertainment</a></li><li><a href="projects/how-big-everything-is/index.html">How Big Everything Is</a></li><li><a href="training.html">Training</a></li><li><a href="map.html">ATLAS</a></li><li><a href="projects/psyche/studies.html">Studies</a></li><li><a href="projects/offramp/index.html">Interstate 40</a></li><li><a href="orrin.html">Orrin</a></li><li><a href="captures.html">Captures</a></li><li><a href="projects/starfield/fly.html">Starfield</a></li><li><a href="climbing.html">Climbing</a></li><li><a href="projects/how-speed-affects-time/index.html">How Speed Affects Time</a></li><li><a href="projects/state-of-mind-line/index.html">State of Mind</a></li><li><a href="projects/farlight/index.html">FARLIGHT</a></li><li><a href="projects/spacetime/index.html">The Geometry of Spacetime</a></li><li><a href="apex.html">Apex</a></li><li><a href="projects/siege-conductor/index.html">Siege Conductor</a></li><li><a href="projects/kondrite/leviathan.html">The Leviathan</a></li><li><a href="gaming.html">The Arcade</a></li><li><a href="projects/spacetime/02-time-dilation.html">Time Dilation</a></li><li><a href="projects/spacetime/03-simultaneity.html">The Loss of Now</a></li><li><a href="projects/spacetime/04-expansion.html">Space Expanding</a></li><li><a href="projects/climbing/gallery.html">Climbing Media</a></li><li><a href="projects/climbing/stats.html">Climbing Stats</a></li><li><a href="projects/training/calendar.html">Training Calendar</a></li><li><a href="projects/training/trips.html">Trips &amp; Races</a></li><li><a href="entertainment-library.html">The Library</a></li><li><a href="projects/autism-reflection.html">The Shape of the Criteria</a></li><li><a href="psyche.html">Psyche</a></li><li><a href="exploration.html">Exploration</a></li><li><a href="log.html">The Log</a></li><li><a href="terminal.html">The Terminal</a></li>
+        <li><a href="weather.html">Weather</a></li><li><a href="weather-pro.html">Weather Pro</a></li><li><a href="cs.html">Counter-Strike Stats</a></li><li><a href="projects/kondrite/index.html">KONDRITE</a></li><li><a href="projects/climbing/board.html">The Boards</a></li><li><a href="entertainment.html">Entertainment</a></li><li><a href="projects/how-big-everything-is/index.html">How Big Everything Is</a></li><li><a href="training.html">Training</a></li><li><a href="map.html">ATLAS</a></li><li><a href="projects/psyche/studies.html">Studies</a></li><li><a href="projects/offramp/index.html">Interstate 40</a></li><li><a href="orrin.html">Orrin</a></li><li><a href="captures.html">Captures</a></li><li><a href="projects/starfield/fly.html">Starfield</a></li><li><a href="climbing.html">Climbing</a></li><li><a href="projects/how-speed-affects-time/index.html">How Speed Affects Time</a></li><li><a href="projects/state-of-mind-line/index.html">State of Mind</a></li><li><a href="projects/farlight/index.html">FARLIGHT</a></li><li><a href="projects/spacetime/index.html">The Geometry of Spacetime</a></li><li><a href="apex.html">Apex</a></li><li><a href="projects/siege-conductor/index.html">Siege Conductor</a></li><li><a href="projects/kondrite/leviathan.html">The Leviathan</a></li><li><a href="gaming.html">The Arcade</a></li><li><a href="projects/spacetime/02-time-dilation.html">Time Dilation</a></li><li><a href="projects/spacetime/03-simultaneity.html">The Loss of Now</a></li><li><a href="projects/spacetime/04-expansion.html">Space Expanding</a></li><li><a href="projects/climbing/gallery.html">Climbing Media</a></li><li><a href="projects/climbing/stats.html">Climbing Stats</a></li><li><a href="projects/training/calendar.html">Training Calendar</a></li><li><a href="projects/training/trips.html">Trips &amp; Races</a></li><li><a href="entertainment-library.html">The Library</a></li><li><a href="projects/autism-reflection.html">The Shape of the Criteria</a></li><li><a href="psyche.html">Psyche</a></li><li><a href="exploration.html">Exploration</a></li><li><a href="terminal.html">The Terminal</a></li>
       </ul>
     </noscript>
     <section class="fin" id="end" aria-labelledby="fin-h">
-      <p class="fin-k">End of the feed</p>
       <h2 id="fin-h">That's every room<i class="dot">.</i></h2>
-      <p class="lede">When something new ships, it goes at the top. Or open the terminal and type your way around.</p>
+      <p class="lede">Or open the terminal and type your way around.</p>
       <div class="fin-b">
         <a class="tbtn" href="terminal.html">Terminal<i class="cur" aria-hidden="true"></i></a>
         <a class="fin-top" href="#top">Back to the top ↑</a>
@@ -453,143 +561,139 @@
     // live from the room's own data (see ART below). Boards and ATLAS are in by
     // Ric's word (2026-10-16), as rooms of their own.
     const POSTS = [
-      { id: "weather", tier: 0, skin: "wx", isNew: true, tag: "Weather · the sky over you", name: "Weather", href: "weather.html",
+      { id: "weather", shelf: "weather", what: "forecast & radar", tier: 0, skin: "wx", isNew: true, tag: "Weather · the sky over you", name: "Weather", href: "weather.html",
         lede: "The sky over wherever you are — when the rain starts, radar and satellite, ten days ahead, and the National Weather Service's warnings exactly as issued.",
         facts: ["Rain timing", "Radar & satellite", "Scored daily"], btn: "Check the sky", peek: "Open",
         media: { art: "radar" }, alt: "Made-up rain cells in radar colours drifting over an invented map" },
-      { id: "cs", tier: 0, skin: "cs", isNew: true, tag: "Gaming", name: "Counter-Strike Stats", href: "cs.html",
+      { id: "cs", shelf: "games", what: "match replays & stats", tier: 0, skin: "cs", isNew: true, tag: "Gaming", name: "Counter-Strike Stats", href: "cs.html",
         lede: "My Counter-Strike matches, rebuilt from the game's own recordings. Replay any round from above, freeze any kill, see where everyone stood.",
         facts: ["2D replays", "Kill snapshots", "Win chance"], btn: "Watch the replays", peek: "Open",
         media: { video: "assets/frontdoor/cs" }, alt: "A round of Counter-Strike playing out on the Mirage radar" },
-      { id: "kondrite", tier: 0, skin: "kondrite", tag: "Space game · in the browser", name: "KONDRITE", href: "projects/kondrite/index.html",
+      { id: "kondrite", shelf: "games", what: "space game", tier: 0, skin: "kondrite", tag: "Space game · in the browser", name: "KONDRITE", href: "projects/kondrite/index.html",
         lede: "A space game that runs right here. Chart an endless sector on your own, or open a lobby and fight with up to four friends.",
         facts: ["Endless survey", "1–5 players", "No install"], btn: "Play KONDRITE", peek: "Play",
         media: { video: "assets/frontdoor/kondrite" }, alt: "A KONDRITE ship flying through an asteroid field, shooting rocks" },
-      { id: "boards", tier: 0, skin: "boards", tag: "Climbing · Kilter & Tension", name: "The Boards", href: "projects/climbing/board.html",
+      { id: "boards", shelf: "climbing", what: "climbing board problems", tier: 0, skin: "boards", tag: "Climbing · Kilter & Tension", name: "The Boards", href: "projects/climbing/board.html",
         lede: "Every problem I've tried on the Kilter and Tension boards — tap one and the holds light up just like the wall in the gym.",
         facts: ["Kilter & Tension", "Holds lit up", "Grade pyramid"], btn: "See the boards", peek: "Open",
         media: { art: "boards" }, alt: "A climbing board with one of Ric's problems lit up hold by hold" },
-      { id: "entertainment", tier: 1, skin: "cinema", tag: "Films & shows", name: "Entertainment", href: "entertainment.html",
+      { id: "entertainment", shelf: "films", what: "what to watch", tier: 1, skin: "cinema", tag: "Films & shows", name: "Entertainment", href: "entertainment.html",
         lede: "Every film and show we've watched and the ones still waiting. Can't pick? It picks one and tells you where it's streaming.",
         facts: ["363 titles", "Watch together", "Where to stream"], btn: "Find something to watch", peek: "Open",
         media: { art: "posters" }, alt: "Columns of film posters from the list, drifting past" },
-      { id: "scale", tier: 1, skin: "scale", tag: "Exploration", name: "How Big Everything Is", href: "projects/how-big-everything-is/index.html",
+      { id: "scale", shelf: "space", what: "the universe to scale", tier: 1, skin: "scale", tag: "Exploration", name: "How Big Everything Is", href: "projects/how-big-everything-is/index.html",
         lede: "One rail from a quark to the edge of the observable universe, every rung to scale. Press Tour and let it walk you out.",
         facts: ["Quark to cosmos", "24 rungs", "Guided tour"], btn: "Start at a quark", peek: "Zoom",
         media: { video: "assets/frontdoor/scale" }, alt: "How Big Everything Is on its tour, zooming outward" },
-      { id: "training", tier: 1, skin: "strava", tag: "Training", name: "Training", href: "training.html",
+      { id: "training", shelf: "training", what: "runs & training plan", tier: 1, skin: "strava", tag: "Training", name: "Training", href: "training.html",
         lede: "Every run lands here the moment my watch syncs, and ticks off its day in a 52-week plan.",
         facts: ["Every run", "52-week plan", "Route maps"], btn: "See the training log", peek: "Open",
         media: { art: "run" }, alt: "A run drawn over a contour map, its miles, pace and climb counting up beside it" },
-      { id: "atlas", tier: 1, skin: "atlas", tag: "Crew only", name: "ATLAS", href: "map.html",
+      { id: "atlas", shelf: "built", what: "crew map · sign in", tier: 1, skin: "atlas", tag: "Crew only", name: "ATLAS", href: "map.html",
         lede: "A private map for the crew — every place worth going back to, pinned. Sign in to see it.",
         facts: ["Sign-in only", "Pins & photos", "Notes on each"], btn: "Open ATLAS", peek: "Sign in",
         media: { art: "atlas" }, alt: "A hand-drawn style map with pins dropping onto it — an illustration, not real places" },
-      { id: "studies", tier: 1, skin: "registry", tag: "Mind", name: "Studies", href: "projects/psyche/studies.html",
+      { id: "studies", shelf: "mind", what: "clinical trial search", tier: 1, skin: "registry", tag: "Mind", name: "Studies", href: "projects/psyche/studies.html",
         lede: "Search every trial on ClinicalTrials.gov — type a drug, even a brand or street name, and see what's recruiting, what finished and what they found.",
         facts: ["ClinicalTrials.gov", "Recruiting now", "Results"], btn: "Search the registry", peek: "Search",
         media: { art: "studies" }, alt: "A search for clinical trials being typed, the results filling in" },
-      { id: "interstate", tier: 2, skin: "highway", tag: "Gaming · plays in the browser", name: "Interstate 40", href: "projects/offramp/index.html",
+      { id: "interstate", shelf: "games", what: "driving game", tier: 2, skin: "highway", tag: "Gaming · plays in the browser", name: "Interstate 40", href: "projects/offramp/index.html",
         lede: "Drive the real I-40 from above, 2,551 miles exit to exit, through traffic built from real counts for this hour.",
         facts: ["The real road", "2,551 miles", "Real traffic counts"], btn: "Take the wheel", peek: "Drive",
         media: { video: "assets/games/offramp" }, alt: "Interstate 40 from above, cars weaving across the lanes" },
-      { id: "orrin", tier: 2, skin: "orrin", tag: "The project", name: "Orrin", href: "orrin.html",
+      { id: "orrin", shelf: "built", what: "an AI that runs on its own", tier: 2, skin: "orrin", tag: "The project", name: "Orrin", href: "orrin.html",
         lede: "A program I built that keeps running on its own — noticing, remembering, choosing and acting, whether or not anyone is talking to it.",
         facts: ["Runs on its own", "Remembers", "Live status"], btn: "Meet Orrin", peek: "Open",
         media: { art: "orrin" }, alt: "A web of nodes passing signals between them" },
-      { id: "captures", tier: 2, skin: "darkroom", tag: "Photographs", name: "Captures", href: "captures.html",
+      { id: "captures", shelf: "photos", what: "my photos", tier: 2, skin: "darkroom", tag: "Photographs", name: "Captures", href: "captures.html",
         lede: "Over 1,300 photographs — mountains, crags, motorcycles and sunrises, newest first. Tap any one to see it big.",
         facts: ["1,300+ frames", "Newest first", "Full-screen viewer"], btn: "Look through them", peek: "Open",
         media: { art: "darkroom" }, alt: "Photographs developing one after another under a red safelight" },
-      { id: "starfield", tier: 2, skin: "starfield", tag: "Gaming · plays in the browser", name: "Starfield", href: "projects/starfield/fly.html",
+      { id: "starfield", shelf: "games", what: "spaceflight game", tier: 2, skin: "starfield", tag: "Gaming · plays in the browser", name: "Starfield", href: "projects/starfield/fly.html",
         lede: "Fly a rocket through real stars and watch the sky bend as you near the speed of light.",
         facts: ["Real stars", "Relativity", "Six gears"], btn: "Launch", peek: "Fly",
         media: { video: "assets/games/starfield" }, alt: "Flying through a field of real stars" },
-      { id: "climbing", tier: 2, skin: "logbook", tag: "Climbing", name: "Climbing", href: "climbing.html",
+      { id: "climbing", shelf: "climbing", what: "climbing log", tier: 2, skin: "logbook", tag: "Climbing", name: "Climbing", href: "climbing.html",
         lede: "Every day out at the crag — what I sent, what I'm still working on, clips from the day, and when I'm next out.",
         facts: ["Days out", "Sends & clips", "The to-do list"], btn: "Open the logbook", peek: "Open",
         media: { art: "climbs" }, alt: "Photographs of climbing, one after another" },
-      { id: "speed", tier: 2, skin: "speed", tag: "Exploration", name: "How Speed Affects Time", href: "projects/how-speed-affects-time/index.html",
+      { id: "speed", shelf: "space", what: "what speed does to time", tier: 2, skin: "speed", tag: "Exploration", name: "How Speed Affects Time", href: "projects/how-speed-affects-time/index.html",
         lede: "One slider, two clocks, the real sky. Push toward light speed, watch the stars crowd ahead and turn blue, then fly home and see what it cost.",
         facts: ["One slider", "Two clocks", "The real sky"], btn: "Speed up", peek: "Open",
         media: { art: "speed" }, alt: "Stars crowding forward and turning blue as a ship nears the speed of light" },
-      { id: "mind", tier: 2, skin: "manila", tag: "Mind", name: "State of Mind", href: "projects/state-of-mind-line/index.html",
+      { id: "mind", shelf: "mind", what: "mood over time", tier: 2, skin: "manila", tag: "Mind", name: "State of Mind", href: "projects/state-of-mind-line/index.html",
         lede: "My mood as a moving line, set beside a typical person's — the highs, the long lows, and how little time I spend in the middle.",
         facts: ["Me vs typical", "Highs & lows", "Animated"], btn: "Watch the line", peek: "Open",
         media: { art: "mood" }, alt: "Two mood lines, red and blue, moving across a chart" },
-      { id: "farlight", tier: 2, skin: "farlight", tag: "Gaming · plays in the browser", name: "FARLIGHT", href: "projects/farlight/index.html",
+      { id: "farlight", shelf: "games", what: "landing game", tier: 2, skin: "farlight", tag: "Gaming · plays in the browser", name: "FARLIGHT", href: "projects/farlight/index.html",
         lede: "A little ship, a lot of hills, and the feel of getting a landing exactly right.",
         facts: ["Momentum", "Clean landings", "Plays on phones"], btn: "Play FARLIGHT", peek: "Play",
         media: { video: "assets/games/farlight" }, alt: "A glowing ship skimming over rolling blue hills" },
-      { id: "spacetime", tier: 2, skin: "minkowski", tag: "Exploration", name: "The Geometry of Spacetime", href: "projects/spacetime/index.html",
+      { id: "spacetime", shelf: "space", what: "relativity, explained", tier: 2, skin: "minkowski", tag: "Exploration", name: "The Geometry of Spacetime", href: "projects/spacetime/index.html",
         lede: "Special relativity and the expanding universe in four short chapters — light cones, slow clocks, the loss of “now”, and stretching space. Each one you can play with.",
         facts: ["Four chapters", "Light cones", "Interactive"], btn: "Start at chapter 1", peek: "Open",
         media: { art: "spacetime" }, alt: "A spacetime diagram, its grid shearing as a worldline tilts" },
-      { id: "apex", tier: 2, skin: "apex", tag: "Gaming", name: "Apex", href: "apex.html",
+      { id: "apex", shelf: "games", what: "Apex Legends stats", tier: 2, skin: "apex", tag: "Gaming", name: "Apex", href: "apex.html",
         lede: "My Apex Legends numbers — the kills on the legends I play most, my ranked tier, and my kills over time.",
         facts: ["Four legends", "Ranked", "Kills per day"], btn: "See the stats", peek: "Open",
         media: { art: "apex" }, alt: "An Apex kill count rolling up over a hexagon grid" },
-      { id: "siege", tier: 2, skin: "saber", tag: "Workbench", name: "Siege Conductor", href: "projects/siege-conductor/index.html",
+      { id: "siege", shelf: "films", what: "Star Wars watch-along", tier: 2, skin: "saber", tag: "Workbench", name: "Siege Conductor", href: "projects/siege-conductor/index.html",
         lede: "Watch The Clone Wars' Siege of Mandalore and Revenge of the Sith as one story. It tells you when to switch screens, scene by scene.",
         facts: ["Star Wars", "13 cues", "Two screens"], btn: "Start the watch", peek: "Open",
         media: { art: "siege" }, alt: "Two timelines, blue and red, weaving into one" },
-      { id: "leviathan", tier: 1, skin: "kondrite", tag: "KONDRITE · plan view", name: "The Leviathan", href: "projects/kondrite/leviathan.html",
+      { id: "leviathan", shelf: "space", what: "a derelict ship, drawn out", tier: 1, skin: "kondrite", tag: "KONDRITE · plan view", name: "The Leviathan", href: "projects/kondrite/leviathan.html",
         lede: "KONDRITE's giant derelict, laid out flat from the game's own geometry. Hit Another and it builds a new one, or see her as found, breached.",
         facts: ["Plan view", "From the game", "New every time"], btn: "See the plans", peek: "Open",
         media: { art: "leviathan" }, alt: "A derelict ship's hull drawn as a plan along a moving scan line" },
-      { id: "arcade", tier: 1, skin: "arcade", tag: "Gaming · the storefront", name: "The Arcade", href: "gaming.html",
+      { id: "arcade", shelf: "games", what: "every game, one shelf", tier: 1, skin: "arcade", tag: "Gaming · the storefront", name: "The Arcade", href: "gaming.html",
         lede: "Every game on the site on one shelf. Click a cover and you're playing — no install, no sign-in.",
         facts: ["Four games", "Click to play", "Phone or laptop"], btn: "Open the Arcade", peek: "Open",
         media: { art: "arcade" }, alt: "The covers of the site's games turning past on a carousel" },
-      { id: "dilation", tier: 2, skin: "minkowski", tag: "Spacetime · chapter 2", name: "Time Dilation", href: "projects/spacetime/02-time-dilation.html",
+      { id: "dilation", shelf: "space", what: "spacetime · chapter 2", tier: 2, skin: "minkowski", tag: "Spacetime · chapter 2", name: "Time Dilation", href: "projects/spacetime/02-time-dilation.html",
         lede: "Two clocks: mine stays put, theirs moves. Drag their speed toward light and watch their clock fall behind.",
         facts: ["Two clocks", "Drag the speed", "Chapter 2 of 4"], btn: "Drag the speed", peek: "Open",
         media: { art: "clocks" }, alt: "Two clock faces, the moving one ticking slower" },
-      { id: "simultaneity", tier: 2, skin: "minkowski", tag: "Spacetime · chapter 3", name: "The Loss of Now", href: "projects/spacetime/03-simultaneity.html",
+      { id: "simultaneity", shelf: "space", what: "spacetime · chapter 3", tier: 2, skin: "minkowski", tag: "Spacetime · chapter 3", name: "The Loss of Now", href: "projects/spacetime/03-simultaneity.html",
         lede: "A flash in the middle of a moving train. Does the light reach both ends at once? Switch sides and you get a different answer.",
         facts: ["One flash", "Two views", "Chapter 3 of 4"], btn: "Fire the flash", peek: "Open",
         media: { art: "simul" }, alt: "Light spreading from the middle of a moving train toward both ends" },
-      { id: "expansion", tier: 2, skin: "minkowski", tag: "Spacetime · chapter 4", name: "Space Expanding", href: "projects/spacetime/04-expansion.html",
+      { id: "expansion", shelf: "space", what: "spacetime · chapter 4", tier: 2, skin: "minkowski", tag: "Spacetime · chapter 4", name: "Space Expanding", href: "projects/spacetime/04-expansion.html",
         lede: "Every galaxy running from every other, and none of them moving. Stand on any one and it looks like the centre — space is what grows.",
         facts: ["Hubble's law", "Stretch it", "Chapter 4 of 4"], btn: "Let it grow", peek: "Open",
         media: { art: "expand" }, alt: "Galaxies drifting apart as the grid beneath them stretches" },
-      { id: "gallery", tier: 2, skin: "logbook", tag: "Climbing · media", name: "Climbing Media", href: "projects/climbing/gallery.html",
+      { id: "gallery", shelf: "climbing", what: "climbing photos", tier: 2, skin: "logbook", tag: "Climbing · media", name: "Climbing Media", href: "projects/climbing/gallery.html",
         lede: "Photos from days out climbing, each one tied to the day it was taken, newest first.",
         facts: ["Photos", "By the day", "Newest first"], btn: "Open the media", peek: "Open",
         media: { art: "mosaic" }, alt: "A grid of climbing photographs, one tile at a time turning over" },
-      { id: "stats", tier: 2, skin: "logbook", tag: "Climbing · stats", name: "Climbing Stats", href: "projects/climbing/stats.html",
+      { id: "stats", shelf: "climbing", what: "climbing numbers", tier: 2, skin: "logbook", tag: "Climbing · stats", name: "Climbing Stats", href: "projects/climbing/stats.html",
         lede: "The hardest climb each year, the crags, who I climb with and the routes I keep going back to — counted from the logbook.",
         facts: ["Hardest each year", "Crags", "Partners"], btn: "See the numbers", peek: "Open",
         media: { art: "grades" }, alt: "Bars growing for the hardest climb sent in each year" },
-      { id: "calendar", tier: 2, skin: "strava", tag: "Training · calendar", name: "Training Calendar", href: "projects/training/calendar.html",
+      { id: "calendar", shelf: "training", what: "training calendar", tier: 2, skin: "strava", tag: "Training · calendar", name: "Training Calendar", href: "projects/training/calendar.html",
         lede: "The whole year's plan, month by month — climbing, running, strength and rest. Runs tick themselves off when my watch syncs.",
         facts: ["Month by month", "Runs auto-tick", "Tap a day"], btn: "Open the calendar", peek: "Open",
         media: { art: "calendar" }, alt: "A month of training days, each one ticking off in turn" },
-      { id: "races", tier: 2, skin: "strava", tag: "Training · trips & races", name: "Trips & Races", href: "projects/training/trips.html",
+      { id: "races", shelf: "training", what: "races & trips", tier: 2, skin: "strava", tag: "Training · trips & races", name: "Trips & Races", href: "projects/training/trips.html",
         lede: "What's coming up — the races on the calendar and the trips the training is building toward.",
         facts: ["Races", "Trips", "Countdowns"], btn: "See what's next", peek: "Open",
         media: { art: "race" }, alt: "A made-up race course profile drawn out to the finish line" },
-      { id: "library", tier: 2, skin: "cinema", tag: "Films & shows · the catalogue", name: "The Library", href: "entertainment-library.html",
+      { id: "library", shelf: "films", what: "every film & show", tier: 2, skin: "cinema", tag: "Films & shows · the catalogue", name: "The Library", href: "entertainment-library.html",
         lede: "Every film and show on the list in one place — filter by service, genre or decade, as posters or a list.",
         facts: ["Every title", "Filters", "Posters or list"], btn: "Browse the library", peek: "Open",
         media: { art: "shelf" }, alt: "A wall of film posters rearranging itself" },
-      { id: "criteria", tier: 2, skin: "criteria", tag: "Mind · a reflection", name: "The Shape of the Criteria", href: "projects/autism-reflection.html",
+      { id: "criteria", shelf: "mind", what: "the autism criteria", tier: 2, skin: "criteria", tag: "Mind · a reflection", name: "The Shape of the Criteria", href: "projects/autism-reflection.html",
         lede: "A walk through how the DSM-5 describes autism — two domains, three levels of support. Sixteen short statements. Not a diagnosis.",
         facts: ["DSM-5", "Two domains", "16 statements"], btn: "Begin the reflection", peek: "Begin",
         media: { art: "criteria" }, alt: "Rows of four-point scales with markers settling on answers" },
-      { id: "psyche", tier: 2, skin: "casefile", tag: "Mind · the room", name: "Psyche", href: "psyche.html",
+      { id: "psyche", shelf: "mind", what: "notes on minds", tier: 2, skin: "casefile", tag: "Mind · the room", name: "Psyche", href: "psyche.html",
         lede: "My field notebook on minds — a mood line, the autism criteria, and a search through every clinical trial.",
         facts: ["Mood", "Criteria", "Trials"], btn: "Open the notebook", peek: "Open",
         media: { art: "inkblot" }, alt: "A mirrored ink blot slowly changing shape" },
-      { id: "exploration", tier: 2, skin: "deepspace", tag: "The deck", name: "Exploration", href: "exploration.html",
+      { id: "exploration", shelf: "space", what: "the space deck", tier: 2, skin: "deepspace", tag: "The deck", name: "Exploration", href: "exploration.html",
         lede: "The space deck — three walk-throughs: the universe to scale, what speed does to time, and spacetime drawn out.",
         facts: ["3 modules", "Space", "Interactive"], btn: "Board the deck", peek: "Open",
         media: { art: "orbits" }, alt: "Bodies going round a small sun on tilted orbits" },
-      { id: "log", tier: 2, skin: "transmit", tag: "Writing", name: "The Log", href: "log.html",
-        lede: "The long-form corner. The newest is how this front door was built; there are notes on the mood line and the autism reflection too.",
-        facts: ["Build notes", "Write-ups", "Newest first"], btn: "Read the log", peek: "Read",
-        media: { art: "signal" }, alt: "A signal trace on an oscilloscope, bursting now and then" },
-      { id: "terminal", tier: 2, skin: "crt", tag: "The original", name: "The Terminal", href: "terminal.html",
+      { id: "terminal", shelf: "built", what: "type to explore", tier: 2, skin: "crt", tag: "The original", name: "The Terminal", href: "terminal.html",
         lede: "Where it all started. Type a room's name and you're in — and there are commands nobody has found yet.",
         facts: ["Type anything", "Hidden commands", "The original"], btn: "Open the terminal", peek: "Type",
         media: { art: "terminal" }, alt: "Commands typed into an amber terminal, answering back" },
@@ -1339,137 +1443,11 @@
     const seedFor = (n) => (VISIT ^ Math.imul(n + 1, 2654435761)) >>> 0;
     const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(", ")})`;
 
-    // ── colour ──
-    const hex = (c) => { c = c.trim().replace("#", ""); if (c.length === 3) c = [...c].map((d) => d + d).join(""); const n = parseInt(c, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-    const mix = (a, b, f) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * f)).join(",")})`;
-    const lum = ([r, g, b]) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-    // a room's paper, as a stack: the page's own sheet, then three under it, and
-    // the colours a tear shows — fibre, the bright break, the shadow
-    function paperOf(el) {
-      const p = hex(getComputedStyle(el).getPropertyValue("--paper") || "#888"), L = lum(p), W = [255, 255, 255], K = [0, 0, 0];
-      const dark = L < 0.45, bright = L > 0.9;
-      const sheet = (i) => (i === 0 ? mix(p, p, 0) : dark ? mix(p, W, 0.035 + i * 0.03) : bright ? mix(p, K, 0.03 * i) : mix(p, W, 0.08 + i * 0.07));
-      return {
-        sheets: [0, 1, 2, 3].map(sheet),
-        coreTop: [0, 1, 2, 3].map((i) => (dark ? mix(p, W, 0.17 - i * 0.02) : mix(p, W, 0.55 - i * 0.04))),
-        coreBot: [0, 1, 2, 3].map((i) => (dark ? mix(p, W, 0.3 - i * 0.03) : mix(p, W, 0.8 - i * 0.03))),
-        edgeTop: [0, 1, 2, 3].map((i) => (dark ? mix(p, W, 0.3 - i * 0.04) : "rgb(255,255,255)")),
-        edgeBot: [0, 1, 2, 3].map((i) => (dark ? mix(p, W, 0.46 - i * 0.05) : "rgb(255,255,255)")),
-        shade: dark ? "rgba(0,0,0,.85)" : "rgba(26,22,18,.32)", photoShade: dark ? "rgba(0,0,0,.72)" : "rgba(0,0,0,.5)",
-        crease: dark ? 0.5 : 0.2, paper: p,
-      };
-    }
-
     // ── noise ──
     const smooth = (r, span) => {
       const v = Array.from({ length: Math.ceil(9800 / span) + 4 }, () => r() * 2 - 1);
       return (x) => { const f = (x + 400) / span, i = Math.floor(f), t = f - i, u = t * t * (3 - 2 * t); return v[i] + (v[i + 1] - v[i]) * u; };
     };
-
-    // ── the shape of every sheet's tear ──
-    // The rip's outline is a wedge — full height where it meets the screen's
-    // edge, closing in toward the words. The outline is walked once, all the
-    // way round, and every sheet's tear is that walk pushed inward along its
-    // own normal by a wandering, fraying amount.
-    function geometry(w, h, k, seed, small, torn, tallRight) {
-      const r = rng(seed), L = 4, STEP = 3, s = small ? 0.7 : 1, m = 22 * s;
-      const xL = torn.left ? m : -30, xR = torn.right ? w - m : w + 30;
-      // Every hole is its own shape. From the post's seed: how hard the top and
-      // the bottom each close in toward the words (or open out), a slant that
-      // tips the whole hole, and a sag or swell along each edge — a wedge, a
-      // blade, a parallelogram, a lens. It never closes below 56% of the box.
-      const q = rng(seed ^ 0x5bd1e995), span = (a, b) => a + (b - a) * q();
-      const kT = k * span(-0.5, 1.9), kB = k * span(-0.5, 1.9), tilt = h * span(-0.13, 0.13) * (q() < 0.25 ? 0 : 1);
-      const bT = h * span(-0.07, 0.09), bB = h * span(-0.07, 0.09);
-      const ux = (x) => Math.min(1, Math.max(0, x / w)), t = (x) => (tallRight ? 1 - ux(x) : ux(x));
-      const rawT = (x) => kT * t(x) + tilt * (ux(x) - 0.5) + bT * Math.sin(Math.PI * ux(x));
-      const rawB = (x) => kB * t(x) - tilt * (ux(x) - 0.5) + bB * Math.sin(Math.PI * ux(x));
-      const xs = Array.from({ length: 41 }, (_, i) => xL + (xR - xL) * i / 40);
-      const liftT = -Math.min(...xs.map(rawT)), liftB = -Math.min(...xs.map(rawB));
-      const room = h - 2 * m, most = Math.max(...xs.map((x) => rawT(x) + liftT + rawB(x) + liftB));
-      const fitK = most > room * 0.44 ? (room * 0.44) / most : 1;
-      const yT = (x) => m + (rawT(x) + liftT) * fitK, yB = (x) => h - m - (rawB(x) + liftB) * fitK;
-      const base = [], n = Math.max(2, Math.round((xR - xL) / STEP));
-      const side = (x, a, b) => { const c = Math.max(1, Math.round(Math.abs(b - a) / STEP)); for (let j = 0; j < c; j++) base.push([x, a + (b - a) * j / c]); };
-      for (let j = 0; j < n; j++) { const x = xL + (xR - xL) * j / n; base.push([x, yT(x)]); }
-      side(xR, yT(xR), yB(xR));
-      for (let j = 0; j < n; j++) { const x = xR - (xR - xL) * j / n; base.push([x, yB(x)]); }
-      side(xL, yB(xL), yT(xL));
-      const N = base.length;
-      const nrm = base.map((_, j) => {
-        let tx = 0, ty = 0;
-        for (let d = -10; d <= 10; d++) {
-          const a = base[(((j + d - 1) % N) + N) % N], b = base[(((j + d + 1) % N) + N) % N], lx = b[0] - a[0], ly = b[1] - a[1], ll = Math.hypot(lx, ly) || 1;
-          tx += lx / ll; ty += ly / ll;
-        }
-        const tl = Math.hypot(tx, ty) || 1; return [-ty / tl, tx / tl];
-      });
-      const arc = []; let acc = 0;
-      base.forEach((p, j) => { if (j) acc += Math.hypot(p[0] - base[j - 1][0], p[1] - base[j - 1][1]); arc.push(acc); });
-      const live = base.map(([x]) => (x < 0 || x > w ? 0 : 1));
-      const a = smooth(r, 150), b = smooth(r, 41), c = smooth(r, 11);
-      const own = [0, 1, 2, 3].map(() => smooth(r, 63)), gap = [0, 1, 2, 3].map(() => smooth(r, 110));
-      const fray = [0, 1, 2, 3].map(() => smooth(r, 34)), fine = [0, 1, 2, 3].map(() => smooth(r, 8));
-      const u = (f, x) => (f(x) + 1) / 2;
-      const wander = arc.map((t2, j) => live[j] * (s * (10 * a(t2) + 3.2 * b(t2) + 1.1 * c(t2)) + (r() - 0.5) * 0.8));
-      const inset = arc.map(() => 0), layers = [];
-      for (let i = 0; i < L; i++) {
-        const E = [], C = [], Mid = [];
-        for (let j = 0; j < N; j++) {
-          const t2 = arc[j];
-          if (i) inset[j] += s * 6 * (0.12 + 1.6 * u(gap[i], t2) ** 1.8);
-          const d = wander[j] + live[j] * s * 3 * own[i](t2) + inset[j];
-          const core = s * Math.max(0.4, 0.5 + 6 * u(fray[i], t2) ** 2.2 + 1.2 * fine[i](t2));
-          const [bx, by] = base[j], [nx, ny] = nrm[j];
-          E.push([bx + nx * d, by + ny * d]); Mid.push([bx + nx * (d + core * 0.5), by + ny * (d + core * 0.5)]); C.push([bx + nx * (d + core), by + ny * (d + core)]);
-        }
-        layers.push({ E, C, Mid });
-      }
-      const midY = (x) => (yT(x) + yB(x)) / 2;
-      const slit = layers[0].E.map(([x]) => { const cx = Math.min(xR, Math.max(xL, x)); return [cx, midY(cx)]; });
-      return { layers, nrm, slit };
-    }
-
-    // ── paint the stack under the top sheet, onto a canvas ──
-    function paintStack(M, geo, w, h, seed) {
-      const dpr = Math.min(2.5, window.devicePixelRatio || 1), cv = document.createElement("canvas");
-      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
-      const ctx = cv.getContext("2d"); ctx.scale(dpr, dpr);
-      const ring = (A) => { const p = new Path2D(); p.moveTo(A[0][0], A[0][1]); for (const [x, y] of A) p.lineTo(x, y); p.closePath(); return p; };
-      const outside = (A) => { const p = new Path2D(); p.rect(-200, -200, w + 400, h + 400); p.addPath(ring(A)); return p; };
-      const between = (A, B) => { const p = ring(A); p.addPath(ring(B)); return p; };
-      const lit = (top, bot) => { const g = ctx.createLinearGradient(0, h * 0.3, 0, h * 0.7); g.addColorStop(0, top); g.addColorStop(1, bot); return g; };
-      const L = geo.layers.length;
-      for (let i = L - 1; i >= 0; i--) {
-        const { E, C, Mid } = geo.layers[i];
-        ctx.save();
-        ctx.shadowColor = i === L - 1 ? M.photoShade : M.shade; ctx.shadowBlur = (i === L - 1 ? 16 : 9) * dpr;
-        ctx.shadowOffsetY = (i === L - 1 ? 6 : 3.5) * dpr; ctx.shadowOffsetX = 0.8 * dpr;
-        ctx.fillStyle = M.coreTop[i]; ctx.fill(outside(C), "evenodd"); ctx.restore();
-        ctx.fillStyle = lit(M.coreTop[i], M.coreBot[i]); ctx.fill(between(E, C), "evenodd");
-        ctx.fillStyle = lit(M.edgeTop[i], M.edgeBot[i]); ctx.fill(between(Mid, C), "evenodd");
-        const r = rng(seed + i * 31 + 7);
-        ctx.lineCap = "round"; ctx.strokeStyle = lit(M.edgeTop[i], M.edgeBot[i]);
-        for (const [alpha, width, every, reach] of [[0.32, 0.45, 1, 1.6], [0.45, 0.5, 6, 3.6]]) {
-          ctx.globalAlpha = alpha; ctx.lineWidth = width; ctx.beginPath();
-          for (let j = 0; j < C.length - 1; j++) {
-            const [nx, ny] = geo.nrm[j];
-            for (let q = 0; q < (every === 1 ? 3 : 1); q++) {
-              if (every > 1 && r() * every > 1) continue;
-              const tt = r(), x = C[j][0] + (C[j + 1][0] - C[j][0]) * tt, y = C[j][1] + (C[j + 1][1] - C[j][1]) * tt;
-              const len = (0.3 + r() * r()) * reach, ang = (r() - 0.5) * 1.6, ca = Math.cos(ang), sa = Math.sin(ang);
-              ctx.moveTo(x - nx * 0.3, y - ny * 0.3); ctx.lineTo(x + (nx * ca - ny * sa) * len, y + (nx * sa + ny * ca) * len);
-            }
-          }
-          ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = M.sheets[i]; ctx.fill(outside(E), "evenodd");
-        if (i > 0) { ctx.save(); ctx.globalAlpha = M.crease; ctx.strokeStyle = "#000"; ctx.lineWidth = 0.8; ctx.translate(0, 0.6); ctx.stroke(ring(geo.layers[i - 1].E)); ctx.restore(); }
-      }
-      return cv;
-    }
-    const toURL = (cv) => new Promise((ok) => cv.toBlob((b) => ok(b ? URL.createObjectURL(b) : "")));
 
     // ── the drawn media: one loop for every drawing on screen ──
     const live = new Set();
@@ -1486,140 +1464,151 @@
       }
       requestAnimationFrame(frame);
     })(last);
+    window.FD = { ART, live, rng, seedFor, POSTS };
 
-    // ── posts ──
+    // ── the shelves ──
+    // Nine subjects in a fixed order, the rooms on each in a fixed order, so
+    // a thing is always where it was last time.
+    // In the order people use them — measured from the visitor counter over
+    // the 90 days to 2026-10-29, Ric's own devices left out: Weather Pro 21
+    // people, Weather 17, Counter-Strike 13, the terminal 11, Training 8 (with
+    // its calendar 7), Climbing, the boards, KONDRITE and Entertainment 7
+    // each, everything else 4 or fewer. Re-measure before reordering by feel.
+    // What people open next from the front door is the test of this page.
+    // Baseline, the old feed, 90 days to 2026-10-29: left without opening
+    // anything 29, reloaded 23, Weather 14, the terminal 9, CS 5, Training 3.
+    // Rerun from worker/ to compare:
+    //   npx wrangler d1 execute visitors --remote --command "WITH v AS (SELECT session, path, ts,
+    //   LEAD(path) OVER (PARTITION BY session ORDER BY ts) AS nxt FROM views WHERE visitor NOT IN
+    //   (SELECT visitor FROM ignored) AND ts > (strftime('%s','now') - 90*86400) * 1000)
+    //   SELECT COALESCE(nxt,'(left)') AS next, COUNT(*) n FROM v WHERE path IN ('/','/index.html')
+    //   GROUP BY next ORDER BY n DESC"
+    const SHELVES = [
+      ["weather", "Weather", ["weather", "weather-pro"]],
+      ["games", "Games", ["cs", "kondrite", "arcade", "interstate", "starfield", "farlight", "apex"]],
+      ["training", "Training", ["training", "calendar", "races"]],
+      ["climbing", "Climbing", ["climbing", "boards", "stats", "gallery"]],
+      ["films", "Films & TV", ["entertainment", "siege", "library"]],
+      ["built", "Things I built", ["terminal", "orrin", "atlas"]],
+      ["space", "Space", ["exploration", "scale", "speed", "spacetime", "dilation", "simultaneity", "expansion", "leviathan"]],
+      ["mind", "Mind", ["psyche", "mind", "criteria", "studies"]],
+      ["photos", "Photos", ["captures"]],
+    ];
     const feed = document.getElementById("feed");
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-    let count = 0;
-    function makePost(p) {
-      const n = count++, side = n % 2 ? "left" : "right", seed = seedFor(n);
-      const el = document.createElement("section");
-      el.className = "post"; el.dataset.skin = p.skin; el.dataset.side = side; el.id = p.id;
-      el.style.zIndex = String(90000 - n);
-      el.classList.toggle("long", p.name.length > 15);
-      el.setAttribute("aria-label", p.name);
-      // Clips are H.264 .mp4: hardware-decoded on every device, sized for the
-      // rip, with an index so the loop restarts cleanly. (The .webm beside them
-      // are the Arcade room's.)
-      const media = p.media.video
-        ? `<video muted loop playsinline preload="none" poster="${p.media.video}.jpg" data-src="${p.media.video}.mp4" aria-hidden="true"></video>`
-        : `<canvas data-art="${p.media.art}" aria-hidden="true"></canvas>`;
-      el.innerHTML = `<div class="row">
-          <div class="f-copy">
-            <div class="f-tag mono rv">${p.isNew && n === 0 ? '<span class="new">New</span>' : ""}${esc(p.tag)}<span class="of">${String(n + 1).padStart(2, "0")} / ${POSTS.length}</span></div>
-            <h2 class="rv">${esc(p.name)}</h2>
-            <p class="f-lede rv">${esc(p.lede)}</p>
-            <ul class="f-facts rv">${p.facts.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
-            <a class="btn rv" href="${p.href}">${esc(p.btn)} <i></i></a>
-          </div>
-          <a class="f-rip cutbox" data-bleed="${side}" href="${p.href}" tabindex="-1" aria-label="Open ${esc(p.name)}">
-            <div class="cut"><div class="still" role="img" aria-label="${esc(p.alt)}">${media}</div><span class="peek">${esc(p.peek)}</span></div>
-          </a>
-        </div>
-        <div class="blend" aria-hidden="true"></div>`;
-      feed.appendChild(el);
-      wire(el, seed);
-      return el;
+    const byId = Object.fromEntries(POSTS.map((p) => [p.id, p]));
+    byId["weather-pro"] = { id: "weather-pro", skin: "wx", name: "Weather Pro", what: "radar, satellite, models", href: "weather-pro.html",
+      media: { art: "radar" }, alt: "Made-up rain cells in radar colours over an invented map" };
+    // ── most used first, always (Ric, 2026-10-30) ──
+    // The Worker's /popular is the order pages were used in over the last 30
+    // days (people, not views; Ric's own devices left out). The page sorts by
+    // the order it saved on the last visit, so nothing moves while you look,
+    // and fetches a fresh one for next time. Never fetched yet (a first visit)
+    // or the service down: the order in SHELVES, as measured on 2026-10-29.
+    const POPULAR_URL = "https://training-log.rmbuster82.workers.dev/popular";
+    let POP = null;
+    try { const c = JSON.parse(localStorage.getItem("fd:popular") || "null"); if (c && Array.isArray(c.order)) POP = c.order; } catch (e) {}
+    fetch(POPULAR_URL, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (d && Array.isArray(d.order)) try { localStorage.setItem("fd:popular", JSON.stringify({ order: d.order, at: Date.now() })); } catch (e) {}
+    }).catch(() => {});
+    const pageOf = (href) => ("/" + href).replace(/\/index\.html$/, "").replace(/\.html$/, "").replace(/\/$/, "");
+    const rankOf = (p) => { const i = POP ? POP.indexOf(pageOf(p.href)) : -1; return i < 0 ? Infinity : i; };
+    if (POP) {
+      // rooms within a shelf, then shelves by their best room; ties keep the measured order
+      SHELVES.forEach((sh) => { const o = sh[2].slice(); sh[2].sort((a, b) => (rankOf(byId[a]) - rankOf(byId[b])) || (o.indexOf(a) - o.indexOf(b))); });
+      const o = SHELVES.slice();
+      SHELVES.sort((a, b) => (rankOf(byId[a[2][0]]) - rankOf(byId[b[2][0]])) || (o.indexOf(a) - o.indexOf(b)));
     }
-
-    // every post: its rip, its media, its fade-in, its door
-    const posts = [];
-    function wire(el, seed) {
-      const box = el.querySelector(".f-rip"), cut = box.querySelector(".cut"), still = cut.querySelector(".still");
-      const vid = still.querySelector("video"), art = still.querySelector("canvas[data-art]");
-      if (art) art.st = { r: rng(seed ^ 0x9e3779b9) };
-      let geo = null, size = "", url = "", awake = false, open = STILL, seen = false;
-      // A clip loads two screens ahead but only plays while it is on screen:
-      // five clips decoding at once, most of them out of sight, was the lag.
-      const play = () => { if (vid && awake && seen && !STILL) vid.play().catch(() => {}); };
-      const see = (on) => {
-        seen = on;
-        if (art) { art.seen = on; if (!on) art.st.vids?.forEach((v) => v.pause()); }
-        if (vid) on ? play() : vid.pause();
-      };
-      const M = paperOf(el);
-      const clip = () => { if (geo) cut.style.clipPath = poly(open ? geo.layers[0].E : geo.slit); };
-      const draw = async () => {
-        const w = cut.clientWidth, h = cut.clientHeight, ph = phone();
-        if (!w || !h) return;
-        const key = `${w}x${h}x${ph}`;
-        if (key !== size || !geo) {
-          size = key;
-          const k = Math.round((h - 44) * (ph ? 0.14 : 0.16)), bleed = ph ? "both" : box.dataset.bleed;
-          geo = geometry(w, h, k, seed, w < 700, { left: bleed === "right", right: bleed === "left" }, box.dataset.bleed === "right");
-        }
-        clip();
-        let rim = cut.querySelector(".rim"); if (!rim) { rim = document.createElement("div"); rim.className = "rim"; cut.appendChild(rim); }
-        const u = await toURL(paintStack(M, geo, w, h, seed));
-        if (!awake) { URL.revokeObjectURL(u); return; }
-        if (url) URL.revokeObjectURL(url);
-        url = u; rim.style.backgroundImage = `url(${u})`;
-      };
-      const wake = () => {
-        if (awake) return; awake = true;
-        draw();
-        if (vid) { if (!vid.getAttribute("src")) { vid.preload = "auto"; vid.src = vid.dataset.src; } if (seen) play(); }
-        if (art) live.add(art);
-      };
-      const sleep = () => {
-        if (!awake) return; awake = false;
-        const rim = cut.querySelector(".rim"); if (rim) rim.style.backgroundImage = "";
-        if (url) { URL.revokeObjectURL(url); url = ""; }
-        if (vid) { vid.pause(); vid.removeAttribute("src"); vid.load(); }
-        if (art) { live.delete(art); art.width = art.height = 0; art.st.stop?.(); }
-      };
-      const post = { el, cut, still, wake, sleep, draw, see, open: () => { open = true; clip(); } };
-      posts.push(post);
-      near.observe(el); onscreen.observe(el); opener.observe(box); box.post = post; el.post = post;
-      for (const d of el.querySelectorAll(".btn, .f-rip")) {
-        d.addEventListener("pointerenter", () => el.classList.add("hot"));
-        d.addEventListener("pointerleave", () => el.classList.remove("hot"));
-      }
-      window.reveal(el);
-      fit(el.querySelector("h2"));
-      let t = 0; new ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => awake && draw(), 140); }).observe(cut);
-    }
-    // A name never runs past its column: a word too long for it (KONDRITE's
-    // tracking, ENTERTAINMENT in capitals) shrinks until it fits.
-    function fit(h) {
-      h.style.fontSize = "";
-      let px = parseFloat(getComputedStyle(h).fontSize);
-      while (h.scrollWidth > h.clientWidth + 1 && px > 22) { px *= 0.95; h.style.fontSize = `${px}px`; }
-    }
-    { let t = 0; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(() => feed.querySelectorAll(".post h2").forEach(fit), 150); }); }
-    // a post wakes as it comes within two screens, and lets go beyond that
-    const near = new IntersectionObserver((list) => list.forEach((e) => (e.isIntersecting ? e.target.post.wake() : e.target.post.sleep())), { rootMargin: "200% 0px" });
-    // and a clip plays only while some of it is in view
-    const onscreen = new IntersectionObserver((list) => list.forEach((e) => e.target.post.see(e.isIntersecting)));
-    // a rip opens from a slit the first time it is really on screen
-    const opener = new IntersectionObserver((list) => list.forEach((e) => { if (e.isIntersecting) { opener.unobserve(e.target); e.target.post.open(); } }), { threshold: 0.2 });
-
-    // ── depth: the picture sits behind the paper and slides with the screen ──
-    let queued = false;
-    const move = () => {
-      queued = false; const vh = innerHeight;
-      for (const p of posts) {
-        const r = p.cut.getBoundingClientRect(); if (r.bottom < -100 || r.top > vh + 100) continue;
-        const off = (r.top + r.height / 2 - vh / 2) / (vh / 2 + r.height / 2);
-        p.still.style.transform = `translate3d(0, ${(-off * r.height * 0.065).toFixed(1)}px, 0)`;
-      }
-    };
-    const queue = () => { if (!STILL && !queued) { queued = true; requestAnimationFrame(move); } };
-    addEventListener("scroll", queue, { passive: true }); addEventListener("resize", queue);
-
-    // ── the order ──
-    // Newest first: the first tier in its own order, the rest shuffled within
-    // their tier on every visit. Each room once, and then the feed ends.
-    const shuffle = (a, r) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-    const order = rng(seedFor(1000));
-    [0, 1, 2].flatMap((tier) => (tier === 0 ? POSTS.filter((p) => p.tier === 0) : shuffle(POSTS.filter((p) => p.tier === tier), order))).forEach(makePost);
-    queue();
-    // each paper melts into the next one's; the hero into the first room, the
-    // last room into the page behind the ending (which follows night and day)
+    // every room, most used first — the feature and the phone's bar read this
+    const RANKED = SHELVES.flatMap(([sid, , ids]) => ids.map((id) => ({ id, sid }))).sort((a, b) => POP ? (rankOf(byId[a.id]) - rankOf(byId[b.id])) : 0);
+    window.FD.TOP = RANKED[0]?.id; window.FD.byId = byId;
+    const PHONE = matchMedia("(max-width: 760px)").matches, HOVER = matchMedia("(hover: hover) and (min-width: 1000px)").matches;
+    // small stills for the drawings that otherwise pull full-size photographs or several clips
+    const THUMB = { captures: "assets/frontdoor/thumbs/captures.jpg", climbing: "assets/frontdoor/thumbs/climbing.jpg", gallery: "assets/frontdoor/thumbs/gallery.jpg", arcade: "assets/games/kondrite.jpg" };
+    let n = 0;
+    feed.innerHTML = SHELVES.map(([id, title, ids], si) => `<section class="shelf" data-band="${id}" id="g-${id}" aria-labelledby="h-${id}"><div class="shelf-head"><h3 id="h-${id}">${esc(title)}</h3></div><div class="cards">${
+      ids.map((k) => byId[k]).map((p, i) => {
+        // On a phone the list's thumbnails are 88px: a still, never a clip or
+        // a drawing that pulls 1600px photographs (web.dev: nothing off the
+        // first screen may weigh it down)
+        if (PHONE && (p.media.video || THUMB[p.id])) return `<a class="card" data-skin="${p.skin}" href="${p.href}"><div class="media"><img src="${p.media.video ? p.media.video + ".jpg" : THUMB[p.id]}" alt="" loading="lazy" decoding="async"></div><div class="txt"><span class="nm">${esc(p.name)}</span><span class="what">${esc(p.what)}</span></div></a>`;
+        const media = p.media.video
+          ? `<video muted loop playsinline preload="none" poster="${p.media.video}.jpg" data-src="${p.media.video}.mp4" aria-hidden="true"></video>`
+          : `<canvas data-art="${p.media.art}" data-n="${n++}" aria-hidden="true"></canvas>`;
+        return `<a class="card${i ? "" : " big"}" data-skin="${p.skin}" href="${p.href}"><div class="media" role="img" aria-label="${esc(p.alt)}">${media}</div><div class="txt"><span class="nm">${esc(p.name)}</span><span class="what">${esc(p.what)}</span></div></a>`;
+      }).join("")}</div></section>`).join("");
+    // the phone's bar is the four most used rooms, then the terminal; the
+    // markup's five are what a page without scripts shows
     {
-      const all = [document.querySelector(".hero"), ...feed.querySelectorAll(".post")];
-      all.forEach((el, i) => el.style.setProperty("--next", all[i + 1] ? getComputedStyle(all[i + 1]).getPropertyValue("--paper").trim() : "var(--bg)"));
+      const ICON = { weather: '<path d="M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.2 3.5 3.5 0 0 0 7 18z"/>',
+        games: '<circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>', training: '<path d="M3 17l5-6 4 4 4-7 5 9"/>',
+        climbing: '<path d="M3 20l6-11 4 6 3-4 5 9z"/>', films: '<rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 9h18M8 5v4M16 5v4"/>',
+        space: '<circle cx="12" cy="12" r="4"/><ellipse cx="12" cy="12" rx="10" ry="3.5"/>', mind: '<path d="M12 4a6 6 0 0 0-6 6c0 3 2 4 2 7h8c0-3 2-4 2-7a6 6 0 0 0-6-6zM9 20h6"/>',
+        built: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>', photos: '<rect x="3" y="6" width="18" height="13" rx="1"/><circle cx="12" cy="12.5" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/>' };
+      const SHORT = { cs: "CS", entertainment: "Films", "weather-pro": "Pro", "how-big": "Scale" };
+      ICON.pro = '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6.4-6.4"/>';
+      const top = RANKED.filter((r) => r.id !== "terminal").slice(0, 4);
+      const bar = document.querySelector(".tabbar"), tt = bar.querySelector(".tt");
+      bar.querySelectorAll("a").forEach((a) => a.remove());
+      top.forEach(({ id, sid }) => { const p = byId[id]; tt.insertAdjacentHTML("beforebegin", `<a href="${p.href}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[id === "weather-pro" ? "pro" : sid]}</svg>${esc(SHORT[id] || p.name)}</a>`); });
     }
+    // the terminal's tab: up above the bar, ready to type; again to put it away
+    {
+      const tt = document.getElementById("tt"), run = document.getElementById("run");
+      tt.addEventListener("click", () => {
+        const up = document.body.classList.toggle("term-up");
+        tt.setAttribute("aria-expanded", String(up));
+        if (up) run.focus(); else { run.blur(); document.getElementById("term-out").hidden = true; }
+      });
+    }
+    // desktop's room index, down the left from the top
+    {
+      const side = document.getElementById("side");
+      side.innerHTML = `<a class="home" href="terminal.html">Terminal</a>` + SHELVES.map(([id, title, ids]) =>
+        `<p class="sh" data-to="g-${id}"><a href="#g-${id}">${esc(title)}</a></p><ul>${ids.map((k) => byId[k]).map((p) => `<li><a href="${p.href}">${esc(p.name)}</a></li>`).join("")}</ul>`).join("");
+      // line the stats' last line up with the name's last line: measure both
+      // with no correction, then drop the stats by the difference
+      const lift = () => {
+        const g = document.getElementById("glance"), h = document.querySelector("h1");
+        g.style.setProperty("--drop", "0px");
+        if (!matchMedia("(min-width: 1000px)").matches || !g.querySelector(".gl-big")) return;
+        const textBottom = (el) => { const r = document.createRange(); r.selectNodeContents(el); const a = [...r.getClientRects()]; return a[a.length - 1].bottom; };
+        // the name may still be sliding up into place (.rv): measure where it will rest
+        const still = new DOMMatrixReadOnly(getComputedStyle(h).transform).m42;
+        g.style.setProperty("--drop", `${Math.round(textBottom(h) - still - textBottom([...g.querySelectorAll(".gl-big")].pop()))}px`);
+      };
+      // the stats are laid down by the portal's script further down the page
+      addEventListener("DOMContentLoaded", lift); addEventListener("resize", lift); document.fonts?.ready.then(lift);
+      side.addEventListener("click", (e) => { const h = e.target.closest(".sh"); if (!h) return; e.preventDefault(); document.getElementById(h.dataset.to).scrollIntoView({ behavior: STILL ? "auto" : "smooth" }); });
+      const on = new IntersectionObserver((list) => list.forEach((x) => { if (x.isIntersecting) side.querySelectorAll(".sh").forEach((h) => h.classList.toggle("on", h.dataset.to === x.target.id)); }), { rootMargin: "-40% 0px -55% 0px" });
+      feed.querySelectorAll(".shelf").forEach((sh) => on.observe(sh));
+    }
+
+    document.querySelector(".fin-top")?.addEventListener("click", (e) => { e.preventDefault(); scrollTo({ top: 0, behavior: STILL ? "auto" : "smooth" }); });
+
+    // A card's clip loads as it comes near and plays only while it's in view;
+    // a drawing runs only while it's in view.
+    const near = new IntersectionObserver((list) => list.forEach(({ target: c, isIntersecting: on }) => {
+      if (c.tagName === "VIDEO") { if (on && !c.getAttribute("src") && !held(c)) { c.preload = "auto"; c.src = c.dataset.src; } return; }
+      if (on) { c.st ||= { r: rng(seedFor(+c.dataset.n)) }; live.add(c); } else { live.delete(c); c.st?.vids?.forEach((v) => v.pause()); }
+    }), { rootMargin: "100% 0px" });
+    // On a desktop, five clips decoding at once was the old feed's lag; there
+    // a small card's clip, and the Arcade's four, play only under the pointer.
+    const held = (c) => HOVER && !c.closest(".card.big") && (c.tagName === "VIDEO" || c.dataset.art === "arcade");
+    const seen = new IntersectionObserver((list) => list.forEach(({ target: c, isIntersecting: on }) => {
+      c.inview = on;
+      if (held(c)) { if (!on) c.tagName === "VIDEO" ? c.pause() : (c.seen = false); return; }
+      if (c.tagName === "VIDEO") { on && !STILL ? c.play().catch(() => {}) : c.pause(); } else c.seen = on;
+    }));
+    // the pointer has to settle on a card for 0.3s before its clip starts
+    // (NN/g: 0.3–0.5s), so sweeping across the grid starts nothing
+    let wait = 0;
+    feed.addEventListener("pointerover", (e) => { const card = e.target.closest(".card"), c = card?.querySelector(".media > video, .media > canvas"); if (!c || !held(c) || STILL || card.contains(e.relatedTarget)) return;
+      clearTimeout(wait); wait = setTimeout(() => {
+        if (c.tagName === "VIDEO") { if (!c.getAttribute("src")) c.src = c.dataset.src; c.play().catch(() => {}); } else { c.st ||= { r: rng(seedFor(+c.dataset.n)) }; live.add(c); c.seen = true; } }, 300); });
+    feed.addEventListener("pointerout", (e) => { const card = e.target.closest(".card"); if (!card || card.contains(e.relatedTarget)) return; clearTimeout(wait); const c = card.querySelector(".media > video, .media > canvas"); if (!c || !held(c)) return;
+      if (c.tagName === "VIDEO") c.pause(); else c.seen = false; });
+    feed.querySelectorAll(".media > video, .media > canvas").forEach((c) => { near.observe(c); seen.observe(c); });
 
     // ─── the terminal ───────────────────────────────────
     // The prompt in the bar runs terminal commands right here: the terminal
@@ -1702,6 +1691,227 @@
         input.focus();
       });
     }
+  </script>
+
+  <script src="projects/cs/cs-data.js"></script>
+  <script>
+    // ─── the portal's modules ───
+    // For whoever is visiting first: their sky, something to play, something
+    // to watch, something to explore, what's new. Ric's own activity joins
+    // only while it is fresh — a page that says "right now" can't lead with
+    // July. Every module is dressed as its room, and says where its numbers
+    // came from and how old they are.
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+      const age = (t) => (Date.now() - new Date(t).getTime()) / 864e5;
+      const ago = (t) => {
+        const s = (Date.now() - new Date(t).getTime()) / 1000;
+        if (!isFinite(s)) return "";
+        if (s < 90) return "just now";
+        const m = s / 60, h = m / 60, d = h / 24;
+        return m < 60 ? `${Math.round(m)} min ago` : h < 36 ? `${Math.round(h)} h ago` : d < 45 ? `${Math.round(d)} days ago` : `${Math.round(d / 30)} months ago`;
+      };
+      const short = (t) => { const d = (Date.now() - new Date(t).getTime()) / 864e5; if (!isFinite(d)) return "";
+        return d < 1 / 24 ? "now" : d < 1 ? `${Math.round(d * 24)}h` : d < 45 ? `${Math.round(d)}d` : `${Math.round(d / 30)}mo`; };
+      const day = (iso) => new Date(iso + (iso.length === 10 ? "T12:00:00" : "")).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      const n = (v) => Number(v).toLocaleString();
+      const STILL = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const today = new Date(), DAY = Math.floor(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 864e5);
+      const FD = window.FD, byId = Object.fromEntries(FD.POSTS.map((p) => [p.id, p]));
+      const portal = $("portal");
+      let into = portal;
+
+      // A module: its room's paper, a heading in the room's way, a body, a source line.
+      function mod(cls, skin, head, link, body = "", src = "") {
+        const a = document.createElement("article");
+        a.className = `mod ${cls}`; if (skin) a.dataset.skin = skin;
+        a.innerHTML = `${head != null ? `<div class="mod-h"><h2 style="font:inherit">${head}</h2>${link ? `<a href="${link[0]}">${esc(link[1])} ↗</a>` : ""}</div>` : ""}<div class="mod-b">${body}</div>${src != null ? `<p class="src">${src}</p>` : ""}`;
+        into.appendChild(a); return a;
+      }
+      const feeds = new Map();
+      function feed(name, up) { feeds.set(name, up); if (!$("feeds")) return; $("feeds").innerHTML = [...feeds].map(([k, v]) => `<span class="${v ? "up" : "down"}">${esc(k)}</span>`).join(""); }
+      const clock = () => { const d = new Date();
+        $("clock").innerHTML = `${esc(d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }))} · <b>${esc(d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }))}</b> your time`; };
+      if ($("clock")) { clock(); setInterval(clock, 15000); }
+
+      // a room running, with one button: the clip if it has one, else its live drawing
+      function running(cls, p, kicker, verb) {
+        const a = mod(`${cls} m-run-room`, p.skin, null, null, "", null);
+        // nothing loads or runs until it is on screen: on a phone the rail's
+        // second and third modules sit off to the side until swiped to
+        const media = p.media.video
+          ? `<video muted loop playsinline preload="none" poster="${p.media.video}.jpg" data-src="${p.media.video}.mp4" aria-hidden="true"></video>`
+          : `<canvas data-art="${p.media.art}" aria-hidden="true"></canvas>`;
+        a.innerHTML = `${media}<div class="over"><div><h2 class="nm2">${esc(p.name)}</h2><p class="what2">${esc(p.what)}</p></div><a class="go2" href="${p.href}">${esc(verb)} →</a></div>`;
+        const c = a.querySelector("canvas"), v = a.querySelector("video");
+        if (c) { c.st = { r: FD.rng(FD.seedFor(900 + DAY)) }; FD.live.add(c); }
+        inView.observe(a);
+      }
+      const inView = new IntersectionObserver((list) => list.forEach(({ target: a, isIntersecting: on }) => {
+        const c = a.querySelector("canvas"), v = a.querySelector("video");
+        if (c) c.seen = on;
+        if (v) { if (on && !v.getAttribute("src")) { v.src = v.dataset.src; } on && !STILL ? v.play().catch(() => {}) : v.pause(); }
+      }), { threshold: 0.35 });
+
+      // ── at a glance: four tiles, each one big number and one line ──
+      const G = $("glance");
+      function gl(cls, skin, href, label) {
+        const a = document.createElement("a");
+        a.className = `gl ${cls}`; a.href = href; if (skin) a.dataset.skin = skin;
+        a.innerHTML = `<span class="gl-k">${esc(label)}</span><span class="gl-val"><span class="gl-big">…</span><span class="gl-line"></span></span><span class="gl-src"></span>`;
+        G.appendChild(a);
+        return (big, line, src) => { a.querySelector(".gl-big").innerHTML = big; a.querySelector(".gl-line").innerHTML = line; a.querySelector(".gl-src").textContent = src; };
+      }
+      const setRun = gl("gl-run", null, "training.html", "Last run");
+      const setClimb = gl("gl-climb", null, "climbing.html", "Last climb");
+      const setCs = gl("gl-cs", null, "cs.html", "Last CS game");
+      const setNew = gl("gl-new", null, "terminal.html", "Newest");
+      // A run or a day at the crag counts as an update (Ric, 2026-10-29: "if
+      // strava or climbing get updated that counts as an update"). Whichever of
+      // them and the site's newest addition happened last says "new" by its
+      // label, so a run is never listed twice; the Newest slot itself is the
+      // newest thing added to the site.
+      const news = [];
+      function offer(at, cls) {
+        news.push({ at: new Date(at).getTime(), cls });
+        G.querySelectorAll(".gl-k b").forEach((b) => b.remove());
+        const x = news.sort((a, b) => b.at - a.at)[0];
+        G.querySelector(`.${x.cls} .gl-k`).insertAdjacentHTML("beforeend", "<b>new</b>");
+      }
+
+      // the last run: numbers only — the route stays on the training page
+      fetch("https://training-log.rmbuster82.workers.dev/strava", { cache: "no-store" }).then((r) => (r.ok ? r.json() : Promise.reject())).then((d) => {
+        const r = Object.values(d.days || {}).flat().filter((a) => /Run/.test(a.sport_type || a.type)).sort((a, b) => b.start_date_local.localeCompare(a.start_date_local))[0];
+        if (!r) { setRun("—", "No runs yet", "Strava"); return; }
+        const mi = r.distance / 1609.344, pace = r.moving_time / 60 / mi;
+        setRun(`${mi.toFixed(1)} mi`, short(r.at || r.start_date_local), "");
+        offer(r.at || r.start_date_local, "gl-run");
+        feed("Strava", true);
+      }).catch(() => { setRun("—", "no answer", ""); feed("Strava", false); });
+
+      // the last CS game: Valve's own record of it
+      {
+        const m = (window.CS_DATA?.matches || []).slice().sort((a, b) => b.at.localeCompare(a.at))[0];
+        if (!m) setCs("—", "No matches yet", "Valve");
+        else {
+          const map = m.map.replace(/^de_|^cs_/, "").replace(/^./, (c) => c.toUpperCase());
+          setCs(`${m.score[0]}–${m.score[1]} <span class="res ${m.result}">${m.result}</span>`, `${esc(map)} · ${short(m.at)}`, "");
+        }
+      }
+
+      // the last day climbing outside: the newest of the committed log
+      // (latest-climb.js stops at the last build) and the days logged from a
+      // phone at the crag, which only the log service has. A day at "Home" is
+      // a board session at the house, not outside.
+      (async () => {
+        const days = [];
+        const c = window.RELAY_LATEST_CLIMB;
+        if (c) days.push({ date: c.date, name: c.title.split(" — ").pop(), href: c.href || "climbing.html" });
+        try {
+          const r = await (window.ClimbHost ? ClimbHost.fetch("/climb", { cache: "no-store" }) : fetch("https://training-log.rmbuster82.workers.dev/climb", { cache: "no-store" }));
+          if (r.ok) for (const d of Object.values((await r.json()).days || {})) {
+            if (/^home$/i.test((d.area || "").trim()) || !(d.routes || []).length) continue;
+            const sent = d.routes.find((x) => x.outcome === "sent") || d.routes[0];
+            days.push({ date: d.date, name: (d.area || "").trim() || sent.name, href: `projects/climbing/index.html#trip-${d.date}` });
+          }
+        } catch (e) { /* the committed log stands on its own */ }
+        const x = days.sort((a, b) => b.date.localeCompare(a.date))[0];
+        if (!x) { setClimb("—", "", ""); return; }
+        setClimb(esc(x.name), short(x.date + "T12:00:00"), "");
+        G.querySelector(".gl-climb").href = x.href;
+        offer(x.date + "T12:00:00", "gl-climb");
+      })();
+      // the newest thing added to the site
+      {
+        const x = (window.RELAY_LATEST || [])[0];
+        if (x) { setNew(esc(x.title), short(x.date + "T12:00:00"), ""); G.querySelector(".gl-new").href = x.href; offer(x.date + "T12:00:00", "gl-new"); }
+        else setNew("—", "", "");
+      }
+
+      // ── the most used room first ── whatever /popular puts on top. Weather
+      // (on top today) gets its own version: the sky where you are, and Pro.
+      const TOP = FD.TOP || "weather";
+      if (!/^weather/.test(TOP)) {
+        const p = FD.byId[TOP];
+        running("m-wxf", p, "", "Open");
+      } else {
+        const a = mod("m-run-room m-wxf", "wx", null, null, "", null);
+        a.innerHTML = `<canvas data-art="radar" aria-hidden="true"></canvas><div class="over"><div><h2 class="nm2">Weather</h2><p class="what2" id="wx-now">the sky where you are · radar · ten days</p></div>
+          <div class="go2s"><a class="go2" href="weather.html">Open →</a><a class="go2" href="weather-pro.html">Pro →</a></div></div>`;
+        const c = a.querySelector("canvas"); c.st = { r: FD.rng(FD.seedFor(7 + DAY)) }; c.seen = true; FD.live.add(c); inView.observe(a);
+        // the sky right now, for the place chosen on the Weather page — never a default
+        (async () => {
+          let place = null, units = "us";
+          try { place = JSON.parse(localStorage.getItem("wx:place")); units = JSON.parse(localStorage.getItem("wx:units")) === "metric" ? "metric" : "us"; } catch (e) {}
+          if (!(place && isFinite(+place.lat) && isFinite(+place.lon))) return;
+          const r2 = (v) => Math.round(+v * 100) / 100;
+          const toUnit = (c) => Math.round(units === "metric" ? c : c * 9 / 5 + 32);
+          const W = { 0: "clear", 1: "mostly clear", 2: "partly cloudy", 3: "overcast", 45: "fog", 48: "fog", 51: "drizzle", 53: "drizzle", 55: "drizzle", 61: "rain", 63: "rain", 65: "heavy rain", 71: "snow", 73: "snow", 75: "heavy snow", 80: "showers", 81: "showers", 82: "heavy showers", 95: "thunderstorms", 96: "thunderstorms", 99: "thunderstorms" };
+          try {
+            // the Weather room's own request, so the two share the Worker's cache;
+            // °C from the source, converted here. Asked of Open-Meteo directly if the Worker fails.
+            const q = `lat=${r2(place.lat)}&lon=${r2(place.lon)}`;
+            let res = await fetch(`https://training-log.rmbuster82.workers.dev/wx/om?${q}`).catch(() => null);
+            if (!res || !res.ok) res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${r2(place.lat)}&longitude=${r2(place.lon)}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&past_days=3&timezone=auto&timeformat=unixtime`);
+            if (!res.ok) throw 0;
+            const d = await res.json(), cur = d.current;
+            // today in the daily arrays (the Worker's answer starts three days back):
+            // each day is its local midnight in unix seconds, so find the one we're in
+            const off = d.utc_offset_seconds || 0, midnight = Math.floor((Date.now() / 1000 + off) / 86400) * 86400 - off;
+            const today = Math.max(0, (d.daily.time || []).indexOf(midnight));
+            $("wx-now").innerHTML = `<b>${toUnit(cur.temperature_2m)}°</b> ${esc(W[cur.weather_code] || "")} in ${esc(place.name)} · high ${toUnit(d.daily.temperature_2m_max[today])}° low ${toUnit(d.daily.temperature_2m_min[today])}°`;
+          } catch (e) { /* the line keeps saying what the room is */ }
+        })();
+      }
+
+      // everything after Weather sits in the rail
+      const rail = document.createElement("div"); rail.className = "rail"; rail.setAttribute("aria-label", "More right now"); portal.appendChild(rail); into = rail;
+
+      // ── play now: one of the games, a different one each day ──
+      // never the room that already has the big feature
+      const GAMES = ["kondrite", "interstate", "starfield", "farlight"].filter((g) => g !== TOP);
+      running("m-play", byId[GAMES[DAY % GAMES.length]], "Play", "Play");
+
+      // ── tonight's pick: one title from the watchlist, the same one all day ──
+      // The list is the Entertainment room's whole file (95 KB compressed), so
+      // it is fetched once the page is up; the module holds its place till then.
+      {
+        const slot = mod("m-tv", "cinema", "Tonight", ["entertainment.html", "More"], "", null);
+        const fill = () => {
+        const L = (window.ENTERTAINMENT_DATA || []).filter((t) => t.status === "watchlist" && t.poster);
+        if (!L.length) { slot.remove(); return; }
+        {
+          const t = L[DAY % L.length];
+          slot.querySelector(".mod-b").innerHTML = (
+            `<a class="tv" href="entertainment.html" style="color:inherit;text-decoration:none"><img src="assets/posters/${esc(t.id)}.jpg" alt="${esc(t.title)} poster" loading="lazy">
+            <div><div class="mid">${esc(t.title)}</div><div class="row" style="margin-top:4px"><span>${t.year || ""}</span>${t.runtime ? `<span>${Math.floor(t.runtime / 60)}h ${t.runtime % 60}m</span>` : ""}${t.rating ? `<span>★ <b>${t.rating}</b></span>` : ""}</div>
+            <div class="tags">${(t.streams || []).slice(0, 3).map((x) => `<span class="tag">${esc(x)}</span>`).join("") || `<span class="tag">Not streaming</span>`}</div></div></a>`);
+        }
+        };
+        const s = document.createElement("script"); s.src = "projects/entertainment/entertainment-data.js"; s.async = true;
+        s.onload = fill; s.onerror = () => slot.remove(); document.head.appendChild(s);
+      }
+
+      // ── explore: something to wander through, a different one each day ──
+      const EXPLORE = ["scale", "speed", "spacetime", "dilation", "simultaneity", "expansion"].filter((g) => g !== TOP);
+      running("m-explore", byId[EXPLORE[(DAY + 2) % EXPLORE.length]], "Explore", "Go");
+
+      // ── Ric, lately: each only while it's fresh ──
+      {
+        const c = window.RELAY_LATEST_CLIMB;
+        if (c && age(c.date + "T12:00:00") <= 21)
+          mod("m-crag", "logbook", "At the crag", ["climbing.html", "the log"],
+            `<p class="k">${esc(day(c.date))} · ${esc(c.kind)}</p><div class="mid">${esc(c.title)}</div><div class="row"><span>${esc(c.description)}</span></div>`, "from the climbing log");
+        fetch("https://orrin-status.rmbuster82.workers.dev/status", { headers: { accept: "application/json" } }).then((r) => (r.ok ? r.json() : Promise.reject())).then((d) => {
+          feed("Orrin", true);
+          const run = d.run; if (!d.live || !run) return;
+          mod("m-orrin", "orrin", "Orrin", ["orrin.html", "Watch"],
+            `<div class="mid"><span class="live-dot on"></span>Running</div><div class="row"><span>${run.startedAt ? `up since ${esc(ago(run.startedAt))}` : ""}</span>${run.cyclesTotal ? `<span><b>${n(run.cyclesTotal)}</b> cycles</span>` : ""}</div>
+            ${run.goal ? `<p class="k" style="margin-top:14px">Working on</p><p class="said">${esc(run.goal.replace(/^Answer:\s*/, ""))}</p>` : ""}`, "the status service · live");
+        }).catch(() => feed("Orrin", false));
+      }
+    })();
   </script>
 </body>
 </html>
