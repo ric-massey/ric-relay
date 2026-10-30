@@ -120,7 +120,7 @@ terminal · orrin · psyche · climbing · training · weather · exploration ·
 **This set matches the home page's `#dir` listing on purpose.** The room navs used to
 carry different sets in different places, so the site said two different things about
 what it contains — a visitor landed on the terminal, saw one list, clicked into a room
-and was offered another. `apex`, `cs`, `val`, `log` and `map` are out of the nav for the same reason
+and was offered another. `cs`, `val`, `log` and `map` are out of the nav for the same reason
 they're out of `#dir`. Those pages still *carry* the nav (with no `.here` marked, since
 they aren't in it) rather than dropping it like `map.html` does — losing the way out of
 a room is worse than an unhighlighted bar.
@@ -154,9 +154,9 @@ With JS off nothing is injected and the nav renders exactly as it always did.
 - Each `<nav>` carries `aria-label="Terminal rooms"`.
 - `map.html` is deliberately left out of the room menus entirely.
 
-**`apex`, `cs`, `val`, `log` and `map` are deliberately unlisted** — in `#dir` *and* in the room
+**`cs`, `val`, `log` and `map` are deliberately unlisted** — in `#dir` *and* in the room
 navs (the front door, `index.html`, is the one exception, by Ric's word on
-2026-10-16: it shows Apex and ATLAS). They are the thin rooms and Ric does not want the front door advertising work
+2026-10-16: it shows ATLAS). They are the thin rooms and Ric does not want the front door advertising work
 that isn't done. They are *not* removed: `ls`, `tree`, `find`, `open <room>`, typing
 the room name and the plain URL all still reach them, and Tab completion offers all
 of them. Don't "fix" this by putting them back. If one gets built out properly, that's
@@ -195,7 +195,6 @@ Per-room nav treatments (class on the `<nav>`):
 | psyche | psychological case-file tabs | `nav.case-tabs` |
 | climbing | its own section bar — see below | `.climbtop` + `.climbnav` |
 | training | its own section bar — see below | `.traintop` + `.trainnav` |
-| apex | Apex lobby tab strip (scrolls sideways, red underline on the current room) | `nav.lobbytabs` |
 | cs | CS2 main-menu strip (white underline) | `nav.mainmenu` |
 | val | VALORANT client tabs (red underline) | `nav.clienttabs` |
 | weather | frosted-glass pills over the sky | `nav.glass` |
@@ -252,8 +251,8 @@ everywhere — the navs must agree with each other *and* with the front door.
   `how-speed-affects-time` and `how-big-everything-is` → Exploration;
   `autism-reflection.html`, `state-of-mind-line` and `psyche/studies.html` → Psyche; `siege-conductor` →
   Workbench; `farlight`, `offramp`, `kondrite`, and `starfield` → Gaming; `climbing`
-  → Climbing (including the unlisted `climbing/board.html`); `training` and `apex` are
-  room data rather than pages. Each is self-contained and may carry its own assets/fonts;
+  → Climbing (including the unlisted `climbing/board.html`); `training` is
+  room data rather than a page (`apex` was too, until it was parked). Each is self-contained and may carry its own assets/fonts;
   the "no dependencies" rule is for the terminal's own room pages, not embedded projects.
   Keep their internal links relative.
 - **Moving a project means removing the old card, not just adding the new one.** When
@@ -498,52 +497,18 @@ that must never break:
   Worker. Never set `cancel-in-progress` on the entertainment workflow and never add a
   second workflow that writes the data file.
 
-**Apex is pulled, not written.** `apex.html` reads `projects/apex/apex-data.js`, which
-`projects/apex/pull-apex.py` generates from the Apex Legends Status API. Rules:
-
-- The **API key** lives in the macOS Keychain (`apex-als`) and never goes in the repo.
-  The **gamertag** is the script's input in `projects/apex/apex-account.json` (gitignored)
-  — but note it is *not* actually private: `pull-apex.py` writes it into `apex-data.js`,
-  which **is** committed, and the page renders it as the `<h1>`. That's fine (a gamertag
-  is public by nature), but don't rely on the gitignore as if it hid anything.
-- `apex-data.js` **is** committed — it's what the page reads.
-- Apex exposes only the three trackers on the banner of the legend being played, so the
-  script is an **accumulator**: it keeps the highest value ever seen per tracker and one
-  history point per day. Don't "fix" a number that looks low by hand-editing the data —
-  either the tracker isn't equipped or the upstream cache is stale.
-- Career kills/wins are account-wide but no API returns them. They are typed into the
-  `career` block by hand and the script preserves them. The page labels them as hand-read;
-  keep that honesty intact.
-
-**Apex matches are pushed, not pulled — and "Apex has no API" was wrong.**
-Corrected 2026-08-29. Respawn ship a **LiveAPI** and have since 2023; it is in the game
-folder at `Apex Legends/LiveAPI/` with a readme, a changelog and `events.proto`. This
-file, `README.md`, `pull-apex.py` and the page itself all previously asserted the
-opposite, and that assertion is what shaped the whole room. Read this before writing
-anything else about how Apex data gets here:
-
-- **Matches** come from LiveAPI, over a WebSocket the game opens to
-  `projects/apex/watcher/liveapi.py` on localhost. Every hit, knock, kill, weapon and
-  placement, as exact integers out of the game's own state. `SquadEliminated` carries
-  `placement` and fires at the moment of death, which is what makes the feed instant.
-  Enabled with the launch option `+cl_liveapi_enabled 1`; config lives outside the repo
-  in `%USERPROFILE%\Saved Games\Respawn\Apex\assets\temp\live_api\config.json`.
-- **Per-legend trackers and rank** still come from the ALS daily pull. Lifetime tracker
-  values are not gameplay events, so LiveAPI never mentions them. The keyhole is real
-  for these and only these.
-- **Career totals** are on no API of any kind. OCR of the career panel
-  (`watch-apex.py`) or typed by hand, either way stamped with the date read.
-- Matches land in the `apex-live` Worker (`projects/apex/server/`), not in
-  `apex-data.js`. Same one-token model as the training log: public reads, `APEX_TOKEN`
-  on every write. `apex.html` renders the static file first and fills the Matches
-  section from the Worker afterwards, so the page still works with the Worker down.
-- **Other players' data never leaves the machine.** LiveAPI hands over every player in
-  the lobby with live positions and a stable `nucleusHash`. The listener keeps Ric's
-  numbers, plus the weapon and legend that killed him — facts about the fight that name
-  nobody. Do not widen this without a fresh decision.
-- A match is **never dropped**. Apex will not mention it again, so `spool.jsonl` holds
-  every record until the Worker confirms it, and the Worker deduplicates on the numbers
-  rather than the id so a retry cannot double a day's kills.
+**Apex is parked, off the site** (Ric, 2026-10-30: "not enough info to be public, will work on if respawn releases api or an easier way is found to track info.").
+`apex.html` is gone, and so are its front-door post and painter, its `ROOMS` entry, its
+nav-table row, its `effects.js` scene and its `llms.txt` line. Typing `apex` in the
+terminal prints that sentence. The room as it last stood (LiveAPI matches through
+`projects/apex/watcher/` to the `apex-live` Worker in `projects/apex/server/`, trackers from
+the daily ALS pull, career totals off the screen) is commit `74d3b48`, tagged
+`apex-parked`: `git checkout apex-parked -- apex.html` brings the page back. The code and
+`apex-data.js` (the accumulator's only history) stay in `projects/apex/`, where
+`projects/apex/README.md` says the same. Don't put Apex back on any page until Ric
+says the data is there. If it comes back, the rules it ran under are in the tagged
+commit's copy of this file: the API key in the Keychain, other players' LiveAPI
+data never leaving the machine, and no match ever dropped from the spool.
 
 **CS is pulled from Valve, and only while the game is open.** `cs.html` reads
 `projects/cs/cs-data.js` plus `projects/cs/matches/<id>.js` replays. Rules
@@ -571,7 +536,7 @@ anything else about how Apex data gets here:
 - **Other players are shown by in-game name** — Ric decided this on 2026-10-13,
   since Leetify and the public stats sites already show them. Steam ids and share
   codes still never reach the committed files (a share code downloads the whole
-  demo). This is CS only; Apex's LiveAPI rule is unchanged.
+  demo). This is CS only.
 - Raw demos, the venv, `cs-account.json`, `.cs-state.json` and the GSI spool are
   gitignored. Steam Web API secrets live in Windows Credential Manager.
 - `sync.py` commits the room's data only, on `main`, and **pushes those commits**
@@ -1059,7 +1024,7 @@ migration marked "safe to re-run", and re-running it would have put the original
 ## House style
 
 - Match the existing voice: playful, terminal/hacker flavor, easter eggs welcome
-  (e.g. hidden terminal commands in `terminal.html`: `orrin`, `apex`, `sudo`, `coffee`, `exit`).
+  (e.g. hidden terminal commands in `terminal.html`: `orrin`, `sudo`, `coffee`, `exit`).
 - Keep every easter egg discoverable in `EASTER_EGGS.md`. Sitewide visual modes belong
   in `effects.js`; preserve the reduced-motion fallback, room-to-room persistence,
   refresh-to-reset behavior, and the `sober` terminal command. Do not add a visible

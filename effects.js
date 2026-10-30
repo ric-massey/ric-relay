@@ -333,7 +333,6 @@
       workbench: "workbench",
       captures: "captures",
       log: "log",
-      apex: "apex",
       map: "signal",
       404: "signal",
     })[page] || null;
@@ -2735,24 +2734,6 @@
       html.relay-scene-log .relay-scene::after {
         background: radial-gradient(circle at 50% 50%, rgba(255, 138, 224, 0.07), transparent 60%);
         animation: relay-scene-pulse 10s ease-in-out infinite;
-      }
-
-      html.relay-scene-apex .relay-scene {
-        opacity: .64;
-        background:
-          radial-gradient(circle at 50% 22%, rgba(65, 211, 232, 0.08), transparent 26%),
-          radial-gradient(circle at 18% 78%, rgba(232, 66, 47, 0.07), transparent 20%),
-          radial-gradient(circle at 82% 74%, rgba(255, 194, 40, 0.06), transparent 22%);
-      }
-      html.relay-scene-apex .relay-scene::before {
-        background:
-          repeating-linear-gradient(60deg, rgba(65, 211, 232, 0.05) 0 1px, transparent 1px 18px),
-          repeating-linear-gradient(120deg, rgba(232, 66, 47, 0.04) 0 1px, transparent 1px 18px);
-        animation: relay-scene-roll 48s linear infinite alternate;
-      }
-      html.relay-scene-apex .relay-scene::after {
-        background: radial-gradient(circle at 50% 46%, rgba(232, 66, 47, 0.08), transparent 24%);
-        animation: relay-scene-pulse 12s ease-in-out infinite;
       }
 
       html.relay-scene-signal .relay-scene {

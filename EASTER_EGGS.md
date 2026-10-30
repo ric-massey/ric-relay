@@ -11,7 +11,8 @@ completion.
 | Type | What happens |
 |---|---|
 | `diagnose orrin` | Prints a classified-looking Orrin status record. |
-| `vod` | Pretends to retrieve the Apex VOD archive, then points at the real numbers. (`apex` itself is an unlisted room — it opens `apex.html`.) |
+| `vod` | Pretends to retrieve the Apex VOD archive, then points at the Log. |
+| `apex` | Says the Apex room is offline, and why — it came off the site on 2026-10-30. |
 | `sudo` | Politely denies administrative access. |
 | `tension` / `kilter` / `boards` / `woodshed` | Open the climbing boards page (`projects/climbing/board.html`), on that board for the first two. `woodshed` is the page's old name and still works. |
 | `unlock` | Asks for crew authentication without revealing the private map. |

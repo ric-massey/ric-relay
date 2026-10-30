@@ -32,7 +32,6 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `climbing.html` | Climbing | Mountain-Project-style route ledger — projects, ticks, objectives |
 | `training.html` | Training | Strava-style feed — the generated plan, ticks and notes from a Worker, and runs pushed in by Strava as they finish |
 | `gaming.html` | Gaming | Modern game launcher — the playable builds live here with quick, readable entry points |
-| `apex.html` | Apex | Apex Legends lobby — rank ladder, career kills, and every legend carrying a tracker (data pulled by `projects/apex/pull-apex.py`) · *unlisted on the home directory* |
 | `cs.html` | CS | Counter-Strike 2 — every match, round by round, scoreboards and a 2D replay per round (data from Valve's demos and live feed, Leetify for the gaps; see `projects/cs/README.md`) · *unlisted on the home directory* |
 | `val.html` | VAL | VALORANT — every match, every round, every fight on the real minimap with all ten players' positions and facing (Riot's match data, read from the running client; see `projects/val/README.md`) · *unlisted on the home directory* |
 | `weather.html`, `weather-pro.html` | Weather, Weather Pro | Two pages, one tap apart. **Weather** is the everyday app and **Weather Pro** the depth. Between them — now (a real station's observation when there is one), when the rain starts in 15-minute steps, hourly, ten days with the forecast office's own words, NWS alerts and animated NEXRAD radar, each saying where it came from and how old it is; with no place, every storm warning in the country and SPC's outlook; inside a warning, storm mode (where the storm is and roughly when it could arrive, from the warning's own motion); single-site reflectivity and velocity; and a Skew-T, hodograph and storm ingredients from four models or the nearest weather balloon (which can be laid over the model at its launch site); on Pro's map, one radar's own dual-pol products (CC, ZDR, KDP, hydrometeor class, echo tops, VIL) at four tilts or its full Level II volume at every tilt, MRMS rotation tracks and hail swaths, GOES imagery straight from NOAA (all sixteen bands, the RGB composites, the 1-minute mesoscale sectors), a mesoanalysis on the map made SPC's way every hour on a server (with an in-browser fallback), HRRR, NAM, RAP, GFS, ECMWF and AIFS model maps hour by hour with the severe composites (STP, supercell composite) and time-lagged HRRR storm probabilities, the GEFS ensemble's mean, spread, spaghetti and chances, the National Blend's own chances, GOES lightning with flash density and each storm's flash rate and lightning jump, the NWS's storm reports, GOES satellite tiles, HRRR future radar, replays of past storms (the mosaic, or one radar's full volume from the Level II archive, with that moment's satellite, airport readings and model runs), airport, road, farm and gauge stations, storm-relative velocity at every tilt, cross-sections and state, county and town lines over it all, and any model field charted hour by hour at a point against the run before; and a workstation — more maps beside the main one on one shared place and time, each saying what it shows and when, saved and shared as workspaces, with Forecast Analysis and Severe Weather presets — the radar, satellite, lightning and model files read straight from NOAA and ECMWF in the visitor's browser. On Weather, a settings sheet picks Everyday or Climbing (humidity, dew point, rain in the last three days, cloud, wind and daylight, hour by hour — measurements only) and a background scene with the live weather happening in it. There is no ride outlook, by Ric's word: information, never a go/no-go verdict. The visitor picks the place; nothing about it is stored on the site (see `projects/weather/README.md`; the plan is `projects/weather/DESIGN.md`) |
@@ -69,7 +68,7 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | `projects/starfield/` | Gaming | "Starfield" — relativistic rocket flight through the real solar neighbourhood |
 | `projects/how-speed-affects-time/` | Exploration | "How Speed Affects Time" — two clocks and a real-sky special-relativity exhibit |
 | `projects/how-big-everything-is/` | Exploration | "How Big Everything Is" — a 45-decade scale ladder you zoom out through, from an electron to the observable universe |
-| `projects/apex/` | Apex (room data) | Not a page — the sync tooling and generated `apex-data.js` that `apex.html` reads |
+| `projects/apex/` | Apex (parked) | Not a page — the sync tooling and `apex-data.js` for an Apex room that is off the site; see its README |
 | `projects/entertainment/` | Entertainment (room data) | Not a page — the room's committed list, `entertainment-data.js`, and `pull-entertainment.py`, which fills it with years, runtimes, genres, directors and synopses from Wikidata (no key needed), then downloads the poster art from TMDB into `assets/posters/` |
 | `projects/cs/` | CS (room data) | Not a page — the session watcher, demo parser and generated `cs-data.js` / `matches/` that `cs.html` reads |
 | `projects/val/` | VAL (room data) | Not a page — the session watcher, Riot client reader and generated `val-data.js` / `matches/` / `llm/` / `maps/` that `val.html` reads |
@@ -218,7 +217,7 @@ rename a room, update the menu on **every** page (see `AGENTS.md`).
 
 That set is `terminal · orrin · psyche · climbing · training · weather · exploration · gaming · workbench · captures · entertainment`
 — the rooms the home directory lists, plus `terminal` for the way home, so the
-site says one thing about what it contains. The unlisted rooms (`apex`, `cs`, `val`, `log`, `map`)
+site says one thing about what it contains. The unlisted rooms (`cs`, `val`, `log`, `map`)
 are still reachable by URL and from the terminal's `ls` / `tree` / `find` / `open`.
 
 One label is currently out of step: the front door and `ls` call the Psyche room
@@ -285,32 +284,9 @@ file — copy the example block, edit, done.
 These notes used to be printed on the live pages, where family could read them. They
 belong here.
 
-- **Apex** (`apex.html`) is live. It reads a free API key from apexlegendsapi.com stored
-  in the macOS Keychain under `apex-als`, plus a gamertag in
-  `projects/apex/apex-account.json` (gitignored, and where the resolved UID is cached so
-  later runs skip the name lookup). `pull-apex.py` takes one snapshot per run;
-  `projects/apex/apex-sync.plist` runs it daily and commits `apex-data.js` when that is
-  the only thing that changed. It never pushes. Install it with:
-
-      cp projects/apex/apex-sync.plist ~/Library/LaunchAgents/com.ricmassey.apex-sync.plist
-      launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.ricmassey.apex-sync.plist
-
-  Career kills are account-wide and no API returns them — they're typed into the `career`
-  block by hand, marked `approx` so the page renders them with a `~`, and `pull-apex.py`
-  preserves them on every run. Nothing else in that file should be edited by hand.
-
-  **Matches no longer come from any of that.** Apex has an official API — Respawn's
-  **LiveAPI**, shipped since 2023, sitting in `Apex Legends/LiveAPI/` in the game folder.
-  This README said the opposite for months. The game opens a WebSocket to
-  `projects/apex/watcher/liveapi.py`, which turns the event stream into one record per
-  match and posts it to the `apex-live` Worker; `apex.html` renders it in the Matches
-  section within a second of the squad going down. Exact integers from the game's own
-  state — kills, knocks, assists, damage per weapon, placement, and what killed him.
-  Switched on with the launch option `+cl_liveapi_enabled 1`.
-
-  The daily ALS pull stays, because LiveAPI reports gameplay and not lifetime totals:
-  rank, level and the banner trackers still come from it. Career totals still come off
-  the screen. `projects/apex/watcher/README.md` has the three-way split in full.
+- **Apex is parked, off the site** (2026-10-30): "not enough info to be public, will work on if respawn releases api or an easier way is found to track info." The page, its front-door
+  post and its terminal room are gone; the last live state is the git tag
+  `apex-parked`, and `projects/apex/README.md` has how to bring it back.
 - **Training** (`training.html`) is live: the plan is generated, ticks and notes are
   stored in a Cloudflare Worker, and runs push themselves in from Strava the moment a
   watch syncs — the run session planned for that date ticks itself off. The route is

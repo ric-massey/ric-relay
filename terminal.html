@@ -40,7 +40,6 @@
          directory. Restore the entry and its hue together. */
       --flash-map: #ff3b30;
       --flash-training: #ff6a3d;
-      --flash-apex: #e8422f;
       --flash-cs: #e8b85a;
       --flash-val: #ff4655;
       --flash-weather: #7cc4ff;
@@ -327,8 +326,8 @@ type Sydney's cat's name for a surprise!</div>
            top of the script below, which is also what `ls`, `tree`, `find` and Tab
            completion read. To add or rename a room, edit ROOMS — not this markup.
 
-           Only the rooms with real depth appear here (`listed: true`). /apex,
-           /log and /map are left off the front door on purpose — they're the
+           Only the rooms with real depth appear here (`listed: true`). /log
+           and /map are left off the front door on purpose — they're the
            thin ones, and the home page shouldn't advertise work that isn't done.
            /training was one of them until it grew a 52-week plan, a calendar,
            and a log you can tick from a crag; it earned its place back.
@@ -480,7 +479,6 @@ type Sydney's cat's name for a surprise!</div>
       { name: "mind",          href: "psyche.html",        hue: "--flash-psyche",        desc: "human systems · psychology · philosophy", listed: true },
       { name: "climbing",      href: "climbing.html",      hue: "--flash-climbing",      desc: "routes · projects · mountaineering",      listed: true },
       { name: "training",      href: "training.html",      hue: "--flash-training",      desc: "runs · sessions · the 52-week plan",      listed: true },
-      { name: "apex",          href: "apex.html",          hue: "--flash-apex",          desc: "the drop · rank · career kills",          listed: false },
       { name: "cs",            href: "cs.html",            hue: "--flash-cs",            desc: "counter-strike · every match · 2D replays", listed: false },
       { name: "val",           href: "val.html",           hue: "--flash-val",           desc: "valorant · every fight on the minimap",     listed: false },
       { name: "weather",       href: "weather.html",       hue: "--flash-weather",       desc: "now · rain timing · radar · ten days",      listed: true },
@@ -750,9 +748,11 @@ type Sydney's cat's name for a surprise!</div>
         ? "SUBJECT: ORRIN\nstate: persistent. goal-driven. still running.\n" +
           "note: do not power down. it remembers.\n→ full diagnostics in /orrin"
         : "usage: diagnose <subject>\nknown subject: orrin",
-      // `apex` is a room now, so the VOD gag answers to `vod` instead.
+      // The Apex room came off the site on 2026-10-30 (tag apex-parked in git);
+      // the word still answers, with Ric's own reason.
+      apex: () => "apex: offline\nnot enough info to be public, will work on if respawn releases api or an easier way is found to track info.",
       vod: () => "pulling VOD archive...\naim rating: CLASSIFIED\nrotation IQ: improving\n" +
-        "→ reviews land in /log · the numbers live in /apex",
+        "→ reviews land in /log",
       sudo: () => "nice try. this terminal answers to ric only.",
       unlock: () => "crew authentication required.\nif you are the brother or the friend: you know who to ask.",
       // The crew app for Dad's race. Unlisted on purpose; the lock is the login
