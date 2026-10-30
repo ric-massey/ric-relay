@@ -320,7 +320,7 @@ everywhere — the navs must agree with each other *and* with the front door.
 - **Game clips.** Each cover also has a looping `assets/games/<game>.webm` — the featured
   game autoplays it (muted, looping), the others play on hover; both fall back to the `.jpg`
   poster and neither autoplays under `prefers-reduced-motion` (small inline script at the
-  foot of `gaming.html`). No ffmpeg on this box: the clips are recorded **in the browser**
+  foot of `gaming.html`). These clips were recorded **in the browser**
   by driving the game over CDP (as above), then `canvas.captureStream(30)` →
   `MediaRecorder('video/webm')`, collecting the blob and pulling it out as base64 (chunk it
   — a multi-MB `returnByValue` comes back `undefined`). The `.jpg` poster for each is a
@@ -329,6 +329,15 @@ everywhere — the navs must agree with each other *and* with the front door.
   over HTTP (`python3 -m http.server --bind 127.0.0.1`) and load video + wrapper from the same origin so the
   export is allowed. Keep clips a few seconds and reasonably compressed; webm needs a
   static-poster fallback for older Safari/iOS, which the `<video poster>` already gives.
+  **Never record a canvas in real time again.** A headless browser can't keep a game at
+  30 fps, so a live recording repeats frames, and the clip stutters for good. On
+  2026-10-30, Ric said the front page's videos were laggy. Half of KONDRITE's front door
+  frames and over half of How Big Everything Is's were repeats, and Starfield opened on a
+  0.6 s freeze. `assets/frontdoor/record.mjs` now runs the page on its own clock: rAF,
+  `performance.now` and `Date.now` belong to the script, each frame advances exactly
+  1/30 s, and each frame is copied out as a PNG. ffmpeg (`pip install imageio-ffmpeg`)
+  encodes the PNGs. Re-record a clip that way, and check it before committing:
+  `ffmpeg -i clip.mp4 -vf mpdecimate -f null -` should keep nearly every frame.
 - **A simulation's numbers are one machine's.** kondrite's front page and
   offramp's traffic fly identically on an arm64 Mac and an x86_64 runner for the
   first two minutes — same events, same tally — and have diverged by the
