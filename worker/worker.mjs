@@ -25,6 +25,7 @@
    of writes a day from one person, which sits far inside the free plan. */
 
 import { handleHit, handleVisitors, handlePopular, isSiteAdmin } from './visitors.mjs';
+import { tmdbRoute } from './tmdb.mjs';
 import '../assets/scrub-media.js';   // sets globalThis.ScrubMedia
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -1044,6 +1045,12 @@ export class TrainingLog {
         if (has('note')) entry.note = String(body.note || '').slice(0, 300);
         if (has('pick')) entry.pick = body.pick === true;
         if (has('series')) entry.series = body.series === true;
+        /* Ric's own score, 1–100 (2026-10-31). A whole number in range, or
+           cleared — he unticks a film and its score goes with it. */
+        if (has('mine')) {
+          const n = Math.round(Number(body.mine));
+          entry.mine = body.mine !== null && body.mine !== '' && Number.isFinite(n) && n >= 1 && n <= 100 ? n : null;
+        }
         if (has('count')) {
           const n = Math.floor(Number(body.count));
           entry.count = Number.isFinite(n) && n > 1 ? Math.min(n, 99) : null;
@@ -1945,7 +1952,7 @@ async function wxProxy(request, env, ctx, parts, url) {
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'popular', 'cs', 'meso', 'rap']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'popular', 'cs', 'meso', 'rap', 'tmdb']);
 
 /* ── /cs/replay/<match id> — the CS room's replays, kept in R2 ──
    One file per match (projects/cs/matches/<id>.js, written by parse-demos.py),
@@ -2144,6 +2151,7 @@ export default {
       return json({ ok: true, id, bytes: body.length }, 200, origin);
     }
     if (parts[0] === 'wx') return wxProxy(request, env, ctx, parts, url);
+    if (parts[0] === 'tmdb') return tmdbRoute(request, env, ctx, parts, url, { json, cors });
     if (parts[0] === 'meso') return mesoRoute(request, env, parts, stub);
     if (parts[0] === 'rap') return rapRoute(request, env, parts, url);
 

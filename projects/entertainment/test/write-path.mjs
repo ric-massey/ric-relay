@@ -119,7 +119,7 @@ const SAMPLE = {
   overview: 'A line about it.', rating: 'R', cast: ['Emily Blunt'],
   parts: [{ id: 'sicario-2', title: 'Sicario: Day of the Soldado' }],
   like: ['no-country-for-old-men'], poster: true, backdrop: true,
-  streams: ['Netflix'], rents: ['Buy'], checked: '2026-09-23'
+  streams: ['Netflix'], rents: ['Buy'], checked: '2026-09-23', mine: 82
 };
 
 console.log('\nRULE  every field the page can send survives the service');

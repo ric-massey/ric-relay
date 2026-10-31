@@ -523,7 +523,16 @@ that must never break:
   overwritten, and the titles he left as typed (`Curtis`, `Moments`, …) are not to be
   "fixed" without asking him.
 - Posters are downloaded and committed, never hotlinked. The chooser's Wikipedia
-  thumbnails are never committed.
+  thumbnails are never committed. A title the lookup found that is NOT on the list
+  shows its poster through the Worker's `/tmdb/img/`, never from TMDB's image host,
+  and nothing from a lookup is committed.
+- **Lookup, watch orders, the tick and the score** (Ric, 2026-10-31). The search
+  also asks the Worker's `/tmdb` (`worker/tmdb.mjs`; the TMDB key is a Worker secret,
+  never in a page). Where to watch is asked live when a sheet opens. Franchises whose
+  story order differs from release order, or that have shows in them, are hand-kept in
+  `assets/entertainment/watch-orders.js` in story order — release order is computed, never
+  written. The tick is `status`; `mine` is Ric's 1–100, only on a ticked title, public by
+  his call. `rating` stays TMDB's out of ten. The rules are in the room's README.
 - The page never holds a GitHub credential; the doorbell is `POST /movies/_pull` on the
   Worker. Never set `cancel-in-progress` on the entertainment workflow and never add a
   second workflow that writes the data file.

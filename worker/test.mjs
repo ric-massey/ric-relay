@@ -1177,6 +1177,14 @@ console.log('\nRULE  a title is required, and the slug is derived the way the pa
   ok(junk.body.item.status === 'watchlist', 'an unknown status falls back to the queue');
   ok(junk.body.item.count === null, 'a non-numeric count is dropped rather than stored');
   ok(junk.body.item.pick === false, 'pick is a boolean or it is false');
+
+  const rated = await hit('POST', '/movies/heat', { title: 'Heat', status: 'watched', mine: 87.6 }, TOKEN);
+  ok(rated.body.item.mine === 88, "Ric's own score is a whole number");
+  ok((await hit('POST', '/movies/heat', { mine: 400 }, TOKEN)).body.item.mine === null, 'and never past 100');
+  ok((await hit('POST', '/movies/heat', { mine: 0 }, TOKEN)).body.item.mine === null, 'or under 1');
+  ok((await hit('POST', '/movies/heat', { mine: 'great' }, TOKEN)).body.item.mine === null, 'or a word');
+  await hit('POST', '/movies/heat', { mine: 70 }, TOKEN);
+  ok((await hit('POST', '/movies/heat', { mine: null }, TOKEN)).body.item.mine === null, 'and null clears it');
 }
 
 /* ── the doorbell ──
@@ -1660,6 +1668,59 @@ console.log('\nRULE  /rap passes the RAP\'s native-grid files through, and nothi
   ok((await hit('/rap/' + f, { headers: { range: 'bytes=0-3,9-12' } })).status === 416, 'more than one range is refused');
   ok((await hit('/rap/' + f, { method: 'POST' })).status === 405, 'it is read-only');
   ok(asked.length === n, '— none of those reached NOAA');
+}
+
+console.log('\nRULE  /tmdb looks titles up through the Worker, cut down, and only along fixed paths');
+{
+  const asked = [];
+  const FAKE = {
+    '/search/multi': { page: 1, total_pages: 3, results: [
+      { media_type: 'movie', id: 1726, title: 'Iron Man', release_date: '2008-04-30', poster_path: '/78lPtwv72eTNqFW9COBYI0dWDJa.jpg', vote_average: 7.65, vote_count: 27000, overview: 'x', secret: 'y' },
+      { media_type: 'person', id: 3223, name: 'Robert Downey Jr.' },
+      { media_type: 'tv', id: 84958, name: 'Loki', first_air_date: '2021-06-09', poster_path: 'evil.png', vote_average: 8.2 }] },
+    '/movie/1726': { id: 1726, title: 'Iron Man', release_date: '2008-04-30', runtime: 126, genres: [{ name: 'Action' }],
+      overview: 'Tony.', imdb_id: 'tt0371746', vote_average: 7.6, belongs_to_collection: { id: 131292, name: 'Iron Man Collection' },
+      credits: { cast: [{ name: 'Robert Downey Jr.' }], crew: [{ job: 'Director', name: 'Jon Favreau' }] },
+      'watch/providers': { results: { US: { flatrate: [{ provider_name: 'Disney Plus' }, { provider_name: 'Netflix Standard with Ads' }],
+        rent: [{ provider_name: 'Apple TV' }, { provider_name: 'Amazon Video' }] } } },
+      recommendations: { results: [{ id: 10138, title: 'Iron Man 2', release_date: '2010-04-28' }] } },
+    '/search/movie': { results: [{ id: 9, title: 'Iron Man', release_date: '1951-01-01', vote_count: 3 },
+      { id: 1726, title: 'Iron Man', release_date: '2008-04-30', vote_count: 27000 }] }
+  };
+  const FETCH = async (u) => {
+    asked.push(String(u));
+    const path = new URL(u).pathname.replace(/^\/3/, '');
+    const body = FAKE[path];
+    return body ? new Response(JSON.stringify(body), { status: 200 }) : new Response('{}', { status: 404 });
+  };
+  const base = { LOG: { idFromName: () => 'training', get: () => fresh() }, FETCH };
+  const hit = (path, env = { ...base, TMDB_KEY: 'k'.repeat(32) }) => worker.fetch(new Request('https://x' + path), env, null);
+
+  ok((await hit('/tmdb/search?q=iron', base)).status === 503, 'with no key it says lookup is off');
+  const s = await hit('/tmdb/search?q=iron%20man');
+  const sb = await s.json();
+  ok(s.status === 200 && sb.results.length === 2, 'a search answers films and shows, never people');
+  ok(sb.results[0].t === 'Iron Man' && sb.results[0].y === 2008 && sb.results[0].p === '78lPtwv72eTNqFW9COBYI0dWDJa.jpg', 'cut down to a card');
+  ok(!('secret' in sb.results[0]) && !('overview' in sb.results[0]), 'with nothing TMDB added riding through');
+  ok(sb.results[1].k === 'tv' && sb.results[1].p === '', 'a poster path that is not a plain jpg is dropped');
+  ok(asked[0].startsWith('https://api.themoviedb.org/3/search/multi?') && asked[0].includes('include_adult=false'), 'from TMDB, adult titles off');
+  ok((await hit('/tmdb/search?q=i')).status === 400, 'one letter is not a search');
+
+  const t = await (await hit('/tmdb/title/movie/1726')).json();
+  ok(t.streams.join() === 'Disney+,Netflix' && t.rents.join() === 'Buy', 'services are called what the list calls them');
+  ok(t.director === 'Jon Favreau' && t.cast[0] === 'Robert Downey Jr.' && t.collection.id === 131292, 'a title carries its people and its franchise');
+  ok(/^\d{4}-\d\d-\d\d$/.test(t.checked) && t.like[0].t === 'Iron Man 2', 'the day it was checked, and what is like it');
+
+  const f = await (await hit('/tmdb/find?q=movie~Iron%20Man~2008|tv~~2021|book~X~1')).json();
+  ok(f.items.length === 3 && f.items[0].id === 1726, 'a name and a year find the right one, not the older namesake');
+  ok(f.items[1] === null && f.items[2] === null, 'and nonsense finds nothing');
+
+  const before = asked.length;
+  for (const bad of ['/tmdb/title/person/1', '/tmdb/title/movie/1726/account', '/tmdb/discover?x=1',
+                     '/tmdb/img/original/a.jpg', '/tmdb/img/w185/x.png', '/tmdb/collection/abc'])
+    ok((await hit(bad)).status === 404, bad + ' is not a path');
+  ok(asked.length === before, '— and none of those reached TMDB');
+  ok(asked.every(u => u.includes('k'.repeat(32)) ? /\/3\/(search|movie|tv|trending|collection)\//.test(u) : true), 'the key only ever goes to the fixed paths');
 }
 
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKER RULES PASS'));

@@ -12,7 +12,8 @@ is historical — every room that writes anything writes here:
 | `/climb` | Climbing | days logged from `projects/climbing/add.html` |
 | `/media` | Climbing | photos and clips for the media tab |
 | `/todo` | Climbing | the route to-do list |
-| `/movies` | Entertainment | edits on top of `projects/entertainment/entertainment-data.js` |
+| `/movies` | Entertainment | edits on top of `projects/entertainment/entertainment-data.js` — `mine` (Ric's 1–100) is clamped here |
+| `/tmdb` | Entertainment | any film or show looked up through TMDB, where it streams today, franchises and posters (`tmdb.mjs`): six fixed read-only shapes, cut down, cached at the edge. Needs the `TMDB_KEY` secret, which **Deploy Worker** copies from the repo's Actions secret; without it every path answers 503 (`projects/entertainment/README.md`, "Lookup …") |
 | `/garmin` | Training (owner bar) | Ric's Garmin export, token to read **and** write; `/garmin/_pull` starts the Actions job (`projects/training/garmin/`) |
 | `/trials` | Psyche → Studies | `/trials/search` and `/trials/study/<NCT>` pass ClinicalTrials.gov API v2 through, cached five minutes. The watchlist is on the site account, not here (`projects/psyche/README.md`) |
 | `/hit` | every page | page-view beacons from `assets/visit.js`, into D1 (`visitors.mjs`) |

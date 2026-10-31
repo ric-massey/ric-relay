@@ -9,6 +9,11 @@
 # can see more than one account. The Worker's own secrets (LOG_TOKEN,
 # GARMIN_READ_TOKEN, …) are set in the Cloudflare dashboard and a deploy leaves
 # them alone.
+#
+# One exception: TMDB_KEY, which the Entertainment room's lookup (/tmdb) needs.
+# The repo already holds it as an Actions secret for the puller, so this copies
+# it onto the Worker after each deploy rather than asking for it to be pasted
+# into Cloudflare by hand. Absent, the step is skipped and /tmdb answers 503.
 
 name: Deploy Worker
 
@@ -63,3 +68,18 @@ jobs:
           # and @latest ran whatever npm had that minute (bug sweep A2a-8).
           # Move it up by hand, to a release a couple of weeks old.
           npx --yes wrangler@4.150.0 deploy
+
+      - name: Give the Worker the TMDB key
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TMDB_KEY: ${{ secrets.TMDB_KEY }}
+        run: |
+          if [ -z "$TMDB_KEY" ]; then
+            echo "::warning::No TMDB_KEY secret, so the Entertainment lookup stays off."
+            exit 0
+          fi
+          # Piped on stdin, so the key is never on a command line or in the log.
+          printf '%s' "$TMDB_KEY" | npx --yes wrangler@4.150.0 secret put TMDB_KEY >/dev/null
+          echo "TMDB_KEY set on the Worker."

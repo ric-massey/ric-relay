@@ -237,7 +237,7 @@
     /* The partner mark is off the artwork everywhere, not just on the cases —
        the poster grid was still showing it, which is the sort of thing that
        makes two views of one list look like two lists. */
-    if (e.status === 'watched') return '<span class="badge seen">✓ seen</span>';
+    if (e.status === 'watched') return '<span class="badge seen">✓ ' + (e.mine ? e.mine : 'seen') + '</span>';
     return '';
   }
 
@@ -481,8 +481,10 @@
         '</span><div>' + chip('Search everywhere', 'rent') + '</div></div>');
     }
 
-    const stamp = e.checked
-      ? 'checked ' + esc(niceDate(e.checked))
+    /* `live` is an answer /tmdb gave as the sheet opened; TMDB's streaming
+       data is JustWatch's, and their terms want that said. */
+    const stamp = e.live ? 'checked just now · JustWatch'
+      : e.checked ? 'checked ' + esc(niceDate(e.checked))
       : 'not looked up yet';
 
     return '<section class="where">' +
@@ -497,7 +499,9 @@
      films that are not out yet — and a row marked "seen" listing a film nobody
      has seen is a small lie the page should not tell. The date decides,每 time
      it draws, so it cannot go stale the way a flag would. */
-  const TODAY = new Date().toISOString().slice(0, 10);
+  const localDay = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+  const TODAY = localDay(new Date());
 
   function runEntry(f) {
     const unreleased = f.d && f.d > TODAY;
@@ -535,12 +539,11 @@
     if (!e || !sheet) return;
     const meta = [];
     if (e.year) meta.push(esc(e.year));
-    if (e.rating) meta.push('<span class="score">★ ' + esc(e.rating) + '</span>');
     if (e.runtime) meta.push(hhmm(e.runtime));
     if (e.genres && e.genres.length) meta.push(esc(e.genres.join(' · ')));
     if (e.director) meta.push(esc(e.director));
     if (e.count) meta.push(esc(e.count + ' films'));
-    meta.push(e.status === 'watched' ? '✓ seen' : 'in the queue');
+    if (e.status !== 'watched') meta.push('in the queue');
     /* Who is in it is how a person actually recognises a film — Ric caught a
        wrong match by remembering one had "the guy from the office" in it. */
     /* Signed in, every name is a button: star the actor and a shelf of their
@@ -553,8 +556,8 @@
             (isFavActor(a) ? 'Remove from your people' : 'Add to your people') + '">' +
             PERSON + esc(a) + '</button>'
           : '<span class="actor">' + esc(a) + '</span>').join('') + '</p>'
-      : '';
-    if (e.seen) meta.push('watched ' + esc(new Date(e.seen).toLocaleDateString('en-US',
+      : '<p class="sheet-cast"></p>';
+    if (e.seen) meta.push('watched ' + esc(new Date(String(e.seen).slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US',
       { month: 'short', day: 'numeric', year: 'numeric' })));
 
     /* ── a franchise opens onto its films ──
@@ -563,7 +566,7 @@
        the run, in order, rather than pretending the first film is the whole
        thing. */
     const parts = (e.parts || []).length
-      ? '<section class="run">' +
+      ? '<section class="run parts">' +
           '<h4>All ' + e.parts.length + ' of them ' +
             '<span class="stamp">in order</span></h4>' +
           '<ol class="run-list">' + e.parts.map(runEntry).join('') +
@@ -590,9 +593,6 @@
     const links = watchLinks(e);
     const ownBlock = own
       ? '<div class="sheet-own">' +
-          (e.status === 'watchlist'
-            ? '<button type="button" data-act="watched" data-id="' + esc(e.id) + '">Mark watched</button>'
-            : '<button type="button" data-act="watchlist" data-id="' + esc(e.id) + '">Back to queue</button>') +
           '<button type="button" data-act="pick" data-id="' + esc(e.id) + '">' +
             (e.pick ? 'Not a together one' : 'Mark “' + PARTNER_LABEL + '”') + '</button>' +
           '<button type="button" data-act="identify" data-id="' + esc(e.id) + '">' +
@@ -605,19 +605,23 @@
       '<div class="sheet-art">' + artHtml(e, true) + '</div>' +
       '<div class="sheet-body">' +
         '<h3>' + esc(e.title) + '</h3>' +
-        '<p class="sheet-meta">' + metaLine(meta) + '</p>' + cast +
+        '<p class="sheet-meta">' + metaLine(meta) + '</p>' +
+        '<p class="sheet-meta sheet-scores">' + scoresHtml(e, null) + '</p>' +
+        mineHtml(e, null) + cast +
         /* Where to watch comes FIRST, above the synopsis. Opening a title is
            almost always "can I put this on tonight", and the answer to that
            should not sit below three paragraphs about the plot. */
-        whereBlock(e) + parts + like +
+        whereBlock(e) + '<div class="order-slot"></div>' + parts + like +
         (e.overview
           ? '<p class="blurb">' + esc(e.overview) + '</p>'
-          : '<p class="thin">No synopsis for this one.</p>') +
+          : '<p class="blurb thin">No synopsis for this one.</p>') +
+        (e.overview ? '' : '<div class="like-slot"></div>') +
         (e.note ? '<p class="thin">' + esc(e.note) + '</p>' : '') +
         (e.local ? '<p class="thin">This edit is saved in this browser only — not committed yet.</p>' : '') +
         ownBlock +
       '</div>';
     if (!sheet.open) sheet.showModal();
+    liveSheet(e, null);
   }
 
 
@@ -812,6 +816,536 @@
     });
   }
 
+  /* ══ lookup, watch orders, the tick and the score ══
+     Ric, 2026-10-31: "As long as it has all the popular movies and says where
+     to watch and shows the movies in order and the rating and my rating and
+     has an option for me to click watched."
+
+     The list is still the committed file. Everything here is ON TOP of it:
+     any film or show TMDB has, looked up through the Worker's /tmdb (the key
+     lives there, never here); where it streams today, asked when a title is
+     opened rather than read off the last puller run; the franchise it belongs
+     to, in story order and release order (assets/entertainment/watch-orders.js
+     for the ones where those differ, TMDB's own collection for the rest).
+
+     The tick is `status: 'watched'` — the same fact the list has always kept,
+     now one tap from anywhere a title appears. The score is `mine`, 1–100,
+     and exists only once a title is ticked (Ric: "The rating isn't needed at
+     all unless it is done"). Visitors see both (his call, same day). TMDB's
+     audience score is `rating`, out of ten, and is shown ×10 beside his so the
+     two read on one scale. */
+  const ORDERS = window.WATCH_ORDERS || [];
+  const norm = s => String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/&/g, 'and').replace(/[^a-z0-9]+/g, ' ').trim();
+  const kindOf = e => (e && (e.k === 'tv' || e.kind === 'tv')) ? 'tv' : 'movie';
+  const imgUrl = (p, size) => p ? HOST + '/tmdb/img/' + (size || 'w185') + '/' + p : '';
+  const own = () => !!(window.Owner && Owner.on());
+
+  /* Answers held for this visit, so opening a title twice asks once. */
+  const MEMO = new Map();
+  function tmdbGet(path) {
+    if (MEMO.has(path)) return MEMO.get(path);
+    const p = hostFetch('/tmdb' + path).then(r => {
+      if (r.ok) return r.json();
+      const err = new Error('lookup ' + r.status);
+      err.status = r.status;
+      throw err;
+    });
+    MEMO.set(path, p);
+    p.catch(() => MEMO.delete(path));
+    return p;
+  }
+
+  /* Is this title on the list? By TMDB id first, then by name and year —
+     the 363 committed rows mostly carry a tmdb id, rows added from a phone
+     may not yet. A film inside a franchise row ("Saw(1-10)") counts as that
+     row: seen if the row is. */
+  function rowFor(c) {
+    const rows = all();
+    const id = c.id != null ? String(c.id) : '';
+    const k = kindOf(c);
+    if (id) {
+      const hit = rows.find(e => e.tmdb && String(e.tmdb) === id && kindOf(e) === k);
+      if (hit) return { row: hit, whole: true };
+    }
+    const n = norm(c.t);
+    const named = rows.find(e => norm(plainTitle(e.title)) === n &&
+      (!e.year || !c.y || Math.abs(e.year - c.y) <= 1) &&
+      (!e.tmdb || !id || String(e.tmdb) === id || (e.year && c.y && e.year === c.y)));
+    if (named) return { row: named, whole: true };
+    if (id && k === 'movie') {
+      const inside = rows.find(e => (e.parts || []).some(p => String(p.id) === id));
+      if (inside) return { row: inside, whole: false };
+    }
+    return null;
+  }
+  const isSeen = c => { const r = rowFor(c); return !!(r && r.row.status === 'watched'); };
+
+  /* ── the orders a title belongs to ── */
+  const itemCard = it => ({ k: it[0] === 't' ? 'tv' : 'movie', t: it[1], y: it[2] });
+  function ordersFor(title, year, kind) {
+    const n = norm(plainTitle(title));
+    return ORDERS.filter(o => o.items.some(it =>
+      norm(it[1]) === n && (!year || Math.abs(it[2] - year) <= 1) &&
+      (!kind || itemCard(it).k === kind)));
+  }
+
+  /* Names to TMDB ids, a dozen at a time (the Worker's limit), kept in this
+     browser for two weeks — release dates and posters do not move. */
+  const OKEY = 'ent:order:';
+  function orderCache(id) {
+    try {
+      const v = JSON.parse(localStorage.getItem(OKEY + id) || 'null');
+      if (v && Date.now() - v.at < 14 * 86400000) return v.items;
+    } catch (e) { /* private mode */ }
+    return null;
+  }
+  const RESOLVING = new Map();
+  function resolveOrder(o) {
+    const have = orderCache(o.id + ':' + o.items.length);
+    if (have) return Promise.resolve(have);
+    if (RESOLVING.has(o.id)) return RESOLVING.get(o.id);
+    const chunks = [];
+    for (let i = 0; i < o.items.length; i += 12) chunks.push(o.items.slice(i, i + 12));
+    const p = Promise.all(chunks.map(ch => tmdbGet('/find?q=' + encodeURIComponent(
+      ch.map(it => (it[0] === 't' ? 'tv' : 'movie') + '~' + it[1].replace(/[~|]/g, ' ') + '~' + it[2]).join('|')))
+      .then(d => d.items || [])))
+      .then(parts => {
+        const items = [].concat(...parts);
+        try { localStorage.setItem(OKEY + o.id + ':' + o.items.length, JSON.stringify({ at: Date.now(), items })); }
+        catch (e) { /* the order still draws, it just asks again next visit */ }
+        return items;
+      });
+    RESOLVING.set(o.id, p);
+    p.catch(() => {}).then(() => RESOLVING.delete(o.id));
+    return p;
+  }
+
+  const ORDER_MODE = 'ent:ordermode';
+  function orderMode() { try { return localStorage.getItem(ORDER_MODE) === 'release' ? 'release' : 'story'; } catch (e) { return 'story'; } }
+
+  /* One order, drawn. `found` is the resolved cards (or null while asking),
+     `here` the title the sheet is open on, so it can be picked out. The same
+     title twice in one order (The Boys around Gen V) is two stops in the story
+     and one release. */
+  function orderHtml(o, found, here, others) {
+    const mode = orderMode();
+    const rows = o.items.map((it, i) => {
+      const f = found && found[i];
+      const c = f ? Object.assign({}, itemCard(it), f, { t: it[1] }) : itemCard(it);
+      return { i, it, c, d: (f && f.d) || (it[2] + '-12-31') };
+    });
+    let list = rows;
+    if (mode === 'release') {
+      const seenKey = new Set();
+      list = rows.filter(r => {
+        const key = r.c.k + ':' + norm(r.it[1]);
+        if (seenKey.has(key)) return false;
+        seenKey.add(key);
+        return true;
+      }).sort((a, b) => a.d.localeCompare(b.d) || a.i - b.i);
+    }
+    const uniq = new Map();
+    for (const r of rows) uniq.set(r.c.k + ':' + norm(r.it[1]), r.c);
+    const total = uniq.size;
+    const seen = [...uniq.values()].filter(isSeen).length;
+    /* the first unseen one that is out, in whichever order is showing */
+    const next = (mode === 'release' ? list : rows).find(r => !isSeen(r.c) && !(r.d > TODAY));
+    const hereN = here ? norm(plainTitle(here.title)) : '';
+
+    const li = rows => rows.map(r => {
+      const seenIt = isSeen(r.c);
+      const soon = r.d > TODAY && found && found[r.i];
+      const cur = hereN && norm(r.it[1]) === hereN && (!here.year || Math.abs(r.it[2] - here.year) <= 1);
+      const cls = [seenIt ? 'seen' : '', soon ? 'soon' : '', cur ? 'now' : ''].filter(Boolean).join(' ');
+      const when = soon
+        ? new Date(r.d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+        : (found && found[r.i] && found[r.i].y) || r.it[2];
+      return '<li' + (cls ? ' class="' + cls + '"' : '') + '>' +
+        '<button type="button" class="ostop" data-order="' + esc(o.id) + '" data-oi="' + r.i + '">' +
+        '<span class="run-art">' +
+          (r.c.p ? '<img src="' + esc(imgUrl(r.c.p, 'w185')) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
+          (seenIt ? '<span class="oseen" aria-label="seen">✓</span>' : '') +
+          (soon ? '<span class="soon-tag">soon</span>' : '') +
+        '</span>' +
+        '<b>' + esc(r.it[1]) + '</b>' +
+        '<span>' + esc(when) + (r.c.k === 'tv' ? ' · show' : '') + '</span>' +
+        (r.it[3] ? '<i>' + esc(r.it[3]) + '</i>' : '') +
+        '</button></li>';
+    }).join('');
+
+    return '<section class="run order" data-order="' + esc(o.id) + '">' +
+      '<h4>' + esc(o.name) + ' <span class="stamp">' +
+        (mode === 'story' ? 'story order' : 'release order') + ' · seen ' + seen + ' of ' + total + '</span></h4>' +
+      '<div class="ohead">' +
+        '<div class="seg omode" role="group" aria-label="Order">' +
+          '<button type="button" data-omode="story" aria-pressed="' + (mode === 'story') + '">Story order</button>' +
+          '<button type="button" data-omode="release" aria-pressed="' + (mode === 'release') + '">Release order</button>' +
+        '</div>' +
+        (next ? '<span class="onext">Next up: <b>' + esc(next.it[1]) + '</b></span>' : seen ? '<span class="onext">All seen.</span>' : '') +
+      '</div>' +
+      (o.note ? '<p class="thin">' + esc(o.note) + '</p>' : '') +
+      (others && others.length ? '<p class="oalso">Also in ' + others.map(x =>
+        '<button type="button" class="linkish" data-showorder="' + esc(x.id) + '">' + esc(x.name) + '</button>').join(', ') + '</p>' : '') +
+      '<ol class="run-list olist">' + li(mode === 'release' ? list : rows) + '</ol>' +
+      (found ? '' : '<p class="thin">Finding posters and release dates…</p>') +
+    '</section>';
+  }
+
+  /* A franchise TMDB keeps but nobody needs to reorder: shown in release
+     order, said to be that. */
+  function collectionHtml(col, here) {
+    const hereId = here && String(here.tmdb || '');
+    const parts = col.parts || [];
+    const seen = parts.filter(p => isSeen(Object.assign({ k: 'movie' }, p))).length;
+    return '<section class="run order" data-collection="' + esc(col.id) + '">' +
+      '<h4>' + esc(col.name) + ' <span class="stamp">release order · seen ' + seen + ' of ' + parts.length + '</span></h4>' +
+      '<ol class="run-list olist">' + parts.map(p => {
+        const c = Object.assign({ k: 'movie' }, p);
+        const s = isSeen(c), soon = p.d && p.d > TODAY;
+        const cls = [s ? 'seen' : '', soon ? 'soon' : '', hereId && String(p.id) === hereId ? 'now' : ''].filter(Boolean).join(' ');
+        return '<li' + (cls ? ' class="' + cls + '"' : '') + '>' +
+          '<button type="button" class="ostop" data-card="' + esc(JSON.stringify(c)) + '">' +
+          '<span class="run-art">' +
+            (p.p ? '<img src="' + esc(imgUrl(p.p, 'w185')) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
+            (s ? '<span class="oseen" aria-label="seen">✓</span>' : '') +
+            (soon ? '<span class="soon-tag">soon</span>' : '') +
+          '</span><b>' + esc(p.t) + '</b><span>' + esc(p.y || '') + '</span></button></li>';
+      }).join('') + '</ol>' +
+    '</section>';
+  }
+
+  /* ── the tick and the score ──
+     `e` is the list row if there is one; `c` the TMDB card for a title that
+     is not on the list yet. */
+  const TICKED = new Set();   // rows this visit's ticks created — untick removes them
+  function mineHtml(e, c) {
+    const seen = !!(e && e.status === 'watched');
+    const mine = e && e.mine;
+    const data = ' data-tick="' + esc(e ? e.id : '') + '"' + (e ? '' : ' data-card="' + esc(JSON.stringify(c)) + '"');
+    if (!own()) {
+      if (!seen) return '';
+      return '<div class="mine readonly"><span class="tickmark on" aria-hidden="true">✓</span>' +
+        '<span>Ric has seen it</span>' +
+        (mine ? '<span class="myscore"><b>' + mine + '</b>/100 from Ric</span>' : '') + '</div>';
+    }
+    return '<div class="mine">' +
+      '<button type="button" class="tick' + (seen ? ' on' : '') + '" aria-pressed="' + seen + '"' + data + '>' +
+        '<span class="tickmark" aria-hidden="true">✓</span>' + (seen ? 'Seen it' : 'Mark seen') + '</button>' +
+      (seen
+        ? '<label class="rate"><span>Your score</span>' +
+            '<input type="range" min="1" max="100" step="1" value="' + (mine || 50) + '" data-rate="' + esc(e.id) + '"' +
+              (mine ? '' : ' class="unset"') + ' aria-label="Your score out of 100">' +
+            '<output>' + (mine || '—') + '</output></label>' +
+          (mine ? '<button type="button" class="linkish" data-unrate="' + esc(e.id) + '">clear</button>' : '')
+        : '') +
+    '</div>';
+  }
+
+  /* The audience's score, out of 100 like his. His own sits right under it,
+     on the tick — once, not twice. */
+  function scoresHtml(e, live) {
+    const aud = (e && e.rating) || (live && live.r);
+    return aud ? '<span class="score">Audience ' + Math.round(aud * 10) + '/100</span>' : '';
+  }
+
+  async function tick(btn) {
+    if (!own()) return;
+    const id = btn.dataset.tick;
+    const row = id ? all().find(e => e.id === id) : null;
+    if (row && row.status === 'watched') {
+      if (TICKED.has(row.id)) {
+        /* Ticked from a lookup a moment ago and unticked again: it goes back
+           to being a title that is not on the list, still open. */
+        TICKED.delete(row.id);
+        await save(row.id, { removed: true });
+        openCard({ k: kindOf(row), id: row.tmdb || null, t: row.title, y: row.year || null, p: '' });
+        return;
+      }
+      await save(row.id, { status: 'watchlist', seen: '', mine: null });
+      openSheet(row.id);
+      return;
+    }
+    if (row) {
+      await save(row.id, { status: 'watched', where: '', pick: false, seen: today() });
+      openSheet(row.id);
+      return;
+    }
+    let c;
+    try { c = JSON.parse(btn.dataset.card || '{}'); } catch (e) { return; }
+    if (!c.t) return;
+    /* Same slug rule as everywhere; a different film already holding that
+       name ("Moments" is nine films) gets the year on the end instead. */
+    let nid = slug(c.t);
+    if (!nid) return;
+    if (all().some(e => e.id === nid)) nid = slug(c.t + ' ' + (c.y || c.k));
+    const patch = { title: c.t, status: 'watched', seen: today() };
+    if (c.id) patch.tmdb = c.id;
+    if (c.k === 'tv') patch.kind = 'tv';
+    if (c.y) patch.year = c.y;
+    TICKED.add(nid);
+    await save(nid, patch);
+    openSheet(nid);
+  }
+
+  /* ── the sheet's live half ──
+     Drawn after the sheet is up, so opening never waits on the network: where
+     it streams today, and the order it belongs in. */
+  let sheetFor = '';
+  async function liveSheet(e, c) {
+    const key = e ? e.id : 'tmdb:' + c.k + ':' + c.id;
+    sheetFor = key;
+    const box = el('sheet-in');
+    const k = e ? kindOf(e) : c.k;
+    const tid = e ? e.tmdb : c.id;
+    let live = null;
+    if (tid) {
+      try { live = await tmdbGet('/title/' + k + '/' + tid); } catch (err) { live = null; }
+    }
+    if (sheetFor !== key || !box) return;
+
+    if (live) {
+      const w = box.querySelector('.where');
+      const base = e || { title: c.t, id: key };
+      if (w) w.outerHTML = whereBlock(Object.assign({}, base, {
+        streams: live.streams || [], rents: live.rents || [], checked: live.checked, live: true }));
+      const s = box.querySelector('.sheet-scores');
+      if (s) s.innerHTML = scoresHtml(e || null, live);
+      /* A row the puller has not reached yet — ticked a minute ago, or added
+         from a phone — has no facts of its own, so it shows TMDB's. */
+      if (!e || !e.overview) fillRemote(box, live, e);
+    }
+
+    const title = e ? e.title : c.t, year = (e && e.year) || (live && live.y) || c && c.y;
+    const mine = ordersFor(title, year, k);
+    const slot = box.querySelector('.order-slot');
+    if (!slot) return;
+    if (mine.length) {
+      const o = mine[0];
+      showOrder(slot, o, { title, year }, mine.slice(1));
+      return;
+    }
+    if (live && live.collection) {
+      try {
+        const col = await tmdbGet('/collection/' + live.collection.id);
+        if (sheetFor !== key) return;
+        if ((col.parts || []).length > 1) {
+          slot.innerHTML = collectionHtml(col, { tmdb: tid });
+          const old = box.querySelector('.run.parts');
+          if (old) old.remove();
+        }
+      } catch (err) { /* the committed run, if any, stays */ }
+    }
+  }
+
+  function showOrder(slot, o, here, others) {
+    const draw = found => {
+      slot.innerHTML = orderHtml(o, found, here, others);
+      slot.dataset.order = o.id;
+      slot.dataset.here = JSON.stringify(here || null);
+      const old = slot.closest('.sheet-in') && slot.closest('.sheet-in').querySelector('.run.parts');
+      if (old) old.remove();
+    };
+    const cached = orderCache(o.id + ':' + o.items.length);
+    draw(cached);
+    if (!cached) resolveOrder(o).then(f => { if (slot.isConnected && slot.dataset.order === o.id) draw(f); },
+      () => { if (slot.isConnected) { const t = slot.querySelector('.order > p.thin:last-child'); if (t) t.remove(); } });
+  }
+
+  /* The facts a looked-up title has once TMDB answers. */
+  function fillRemote(box, live, e) {
+    const meta = [];
+    if (live.y) meta.push(esc(live.y));
+    meta.push(live.k === 'tv' ? 'show' + (live.seasons ? ' · ' + live.seasons + ' season' + (live.seasons === 1 ? '' : 's') : '') : 'film');
+    if (live.runtime) meta.push(hhmm(live.runtime));
+    if ((live.genres || []).length) meta.push(esc(live.genres.join(' · ')));
+    if (live.director) meta.push(esc(live.director));
+    if (e && e.seen) meta.push('watched ' + esc(new Date(String(e.seen).slice(0, 10) + 'T00:00:00')
+      .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })));
+    const m = box.querySelector('.sheet-meta');
+    if (m) m.innerHTML = metaLine(meta);
+    const cast = box.querySelector('.sheet-cast');
+    if (cast) cast.innerHTML = (live.cast || []).map(a => '<span class="actor">' + esc(a) + '</span>').join('');
+    const blurb = box.querySelector('.blurb');
+    if (blurb && live.overview) { blurb.textContent = live.overview; blurb.classList.remove('thin'); }
+    else if (blurb && !e) blurb.textContent = 'No synopsis for this one.';
+    const like = box.querySelector('.like-slot');
+    if (like && (live.like || []).length) like.innerHTML = '<section class="run"><h4>More like this</h4>' +
+      '<ol class="run-list olist">' + live.like.map(x => '<li><button type="button" class="ostop" data-card="' +
+        esc(JSON.stringify(x)) + '"><span class="run-art">' +
+        (x.p ? '<img src="' + esc(imgUrl(x.p)) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
+        (isSeen(x) ? '<span class="oseen" aria-label="seen">✓</span>' : '') +
+        '</span><b>' + esc(x.t) + '</b><span>' + esc(x.y || '') + '</span></button></li>').join('') + '</ol></section>';
+  }
+
+  /* A title that is not on the list: the card search gave us, filled in when
+     TMDB answers. */
+  function openCard(c) {
+    if (!c || !sheet) return;
+    const hit = rowFor(c);
+    if (hit && hit.whole) { openSheet(hit.row.id); return; }
+    const art = c.p
+      ? '<img src="' + esc(imgUrl(c.p, 'w342')) + '" alt="" width="342" height="513">'
+      : '<span class="plate is-bare" style="--plate-bg:hsl(220 18% 16%)"><span class="no-cover">no cover</span></span>';
+    el('sheet-in').innerHTML =
+      '<div class="sheet-art">' + art + '</div>' +
+      '<div class="sheet-body">' +
+        '<h3>' + esc(c.t) + '</h3>' +
+        '<p class="sheet-meta">' + metaLine([esc(c.y || ''), c.k === 'tv' ? 'show' : 'film']) + '</p>' +
+        '<p class="sheet-meta sheet-scores">' + scoresHtml(null, c) + '</p>' +
+        (hit && !hit.whole && hit.row.status === 'watched'
+          ? '<p class="thin">Seen as part of “' + esc(hit.row.title) + '”.</p>' : '') +
+        mineHtml(null, c) +
+        '<p class="sheet-cast"></p>' +
+        whereBlock({ title: c.t, id: 'tmdb', streams: [], rents: [], checked: '' }) +
+        '<div class="order-slot"></div>' +
+        '<p class="blurb">Looking it up…</p>' +
+        '<div class="like-slot"></div>' +
+        '<p class="thin">Not on Ric’s list.</p>' +
+      '</div>';
+    if (!sheet.open) sheet.showModal();
+    liveSheet(null, c);
+  }
+
+  /* A franchise on its own, opened from a search. */
+  function openOrder(id) {
+    const o = ORDERS.find(x => x.id === id);
+    if (!o || !sheet) return;
+    sheetFor = 'order:' + id;
+    el('sheet-in').innerHTML = '<div class="sheet-body"><h3>' + esc(o.name) + '</h3>' +
+      '<p class="sheet-meta">' + metaLine([o.items.length + ' films and shows']) + '</p>' +
+      '<div class="order-slot"></div></div>';
+    showOrder(el('sheet-in').querySelector('.order-slot'), o, null, []);
+    if (!sheet.open) sheet.showModal();
+  }
+
+  /* ── the search box, past the list ──
+     The page's own search answers from the list instantly; this adds what
+     the list does not have, under it. `box` is an element the page owns. */
+  let lookSeq = 0, lookTimer = 0;
+  function lookup(box, q) {
+    if (!box) return;
+    q = String(q || '').trim();
+    clearTimeout(lookTimer);
+    const seq = ++lookSeq;
+    if (q.length < 2) { box.hidden = true; box.innerHTML = ''; return; }
+    const nq = norm(q);
+    const orders = ORDERS.filter(o => norm(o.name).includes(nq) ||
+      (o.also || []).some(a => { const na = norm(a); return na === nq || (nq.length >= 3 && na.startsWith(nq)) || nq.includes(na); }) ||
+      /* "iron man" is a title, not a franchise's name — but it is in one */
+      (nq.length >= 4 && o.items.some(it => norm(it[1]).startsWith(nq))));
+    const ordersHtml = orders.map(o => {
+      const uniq = new Map();
+      for (const it of o.items) uniq.set(it[0] + norm(it[1]), itemCard(it));
+      const seen = [...uniq.values()].filter(isSeen).length;
+      return '<button type="button" class="look-order" data-showorder="' + esc(o.id) + '">' +
+        '<b>' + esc(o.name) + '</b><span>watch order · ' + uniq.size + ' titles' +
+        (seen ? ' · seen ' + seen : '') + '</span></button>';
+    }).join('');
+    box.hidden = false;
+    box.innerHTML = '<h3 class="look-h">Everything else</h3>' +
+      (ordersHtml ? '<div class="look-orders">' + ordersHtml + '</div>' : '') +
+      '<p class="thin look-wait">Looking for “' + esc(q) + '”…</p>';
+    lookTimer = setTimeout(async () => {
+      let d;
+      try { d = await tmdbGet('/search?q=' + encodeURIComponent(q)); }
+      catch (err) {
+        if (seq !== lookSeq) return;
+        const w = box.querySelector('.look-wait');
+        if (w) w.textContent = err.status === 503
+          ? 'Looking up films that are not on the list is not switched on yet.'
+          : 'Could not look that up just now.';
+        return;
+      }
+      if (seq !== lookSeq) return;
+      /* What the list already has is drawn above this, by the page. */
+      const res = (d.results || []).filter(c => (c.v > 0 || c.p) && !((rowFor(c) || {}).whole));
+      const w = box.querySelector('.look-wait');
+      if (!w) return;
+      w.outerHTML = res.length
+        ? '<ul class="look-grid">' + res.map(c => {
+            const r = rowFor(c), seen = !!(r && r.row.status === 'watched'), mine = r && r.whole && r.row.mine;
+            return '<li><button type="button" class="look" data-card="' + esc(JSON.stringify(c)) + '">' +
+              '<span class="run-art">' +
+                (c.p ? '<img src="' + esc(imgUrl(c.p, 'w185')) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
+                (seen ? '<span class="oseen" aria-label="seen">✓' + (mine ? ' ' + mine : '') + '</span>' : '') +
+              '</span>' +
+              '<b>' + esc(c.t) + '</b>' +
+              '<span>' + [c.y, c.k === 'tv' ? 'show' : 'film', c.r ? 'audience ' + Math.round(c.r * 10) : '']
+                .filter(Boolean).map(esc).join(' · ') + '</span>' +
+              (r && !seen ? '<span class="onlist">on the list</span>' : '') +
+            '</button></li>';
+          }).join('') + '</ul>' +
+          '<p class="thin look-credit">From TMDB; where to watch from JustWatch.</p>'
+        : '<p class="thin">Nothing else called “' + esc(q) + '”.</p>';
+    }, 280);
+  }
+
+  /* Clicks that belong to all of the above, wherever they were drawn. */
+  function wireLookup() {
+    document.addEventListener('click', async ev => {
+      const t = ev.target;
+      const tickBtn = t.closest('button[data-tick]');
+      if (tickBtn) { ev.preventDefault(); await tick(tickBtn); return; }
+      const unrate = t.closest('button[data-unrate]');
+      if (unrate) { await save(unrate.dataset.unrate, { mine: null }); openSheet(unrate.dataset.unrate); return; }
+      /* Story or release order, and which franchise when a title is in two
+         (Deadpool & Wolverine is X-Men and the MCU) — redrawn in place, the
+         title it was opened on still picked out. */
+      const mode = t.closest('button[data-omode]');
+      const so = !mode && t.closest('[data-showorder]');
+      if (mode || so) {
+        if (mode) { try { localStorage.setItem(ORDER_MODE, mode.dataset.omode); } catch (e) { /* this view only */ } }
+        const slot = (mode || so).closest('.order-slot');
+        const id = so ? so.dataset.showorder : slot && slot.dataset.order;
+        const o = ORDERS.find(x => x.id === id);
+        if (!o) return;
+        if (!slot) { openOrder(o.id); return; }
+        let here = null;
+        try { here = JSON.parse(slot.dataset.here || 'null'); } catch (e) { here = null; }
+        showOrder(slot, o, here, here ? ordersFor(here.title, here.year).filter(x => x.id !== o.id) : []);
+        return;
+      }
+      const stop = t.closest('button.ostop, button.look');
+      if (stop) {
+        if (stop.dataset.card) { try { openCard(JSON.parse(stop.dataset.card)); } catch (e) { /* bad card */ } return; }
+        const o = ORDERS.find(x => x.id === stop.dataset.order);
+        const i = Number(stop.dataset.oi);
+        if (!o || !o.items[i]) return;
+        const it = o.items[i];
+        const found = orderCache(o.id + ':' + o.items.length);
+        const f = found && found[i];
+        if (f) { openCard(Object.assign({}, f, { t: it[1] })); return; }
+        /* Not resolved yet: the list may already have it by name. */
+        const named = rowFor(itemCard(it));
+        if (named && named.whole) { openSheet(named.row.id); return; }
+        try {
+          const d = await tmdbGet('/find?q=' + encodeURIComponent((it[0] === 't' ? 'tv' : 'movie') + '~' + it[1] + '~' + it[2]));
+          if (d.items && d.items[0]) openCard(Object.assign({}, d.items[0], { t: it[1] }));
+        } catch (e) { /* nothing to open */ }
+      }
+    });
+    /* The score moves as the thumb does and is saved when it lets go —
+       one write per decision, not one per pixel. */
+    document.addEventListener('input', ev => {
+      const r = ev.target.closest && ev.target.closest('input[data-rate]');
+      if (!r) return;
+      r.classList.remove('unset');
+      const out = r.parentElement.querySelector('output');
+      if (out) out.textContent = r.value;
+    });
+    document.addEventListener('change', async ev => {
+      const r = ev.target.closest && ev.target.closest('input[data-rate]');
+      if (!r) return;
+      await save(r.dataset.rate, { mine: Number(r.value) });
+      const row = all().find(e => e.id === r.dataset.rate);
+      if (row && !el('sheet-in').querySelector('[data-unrate]')) {
+        const lab = r.closest('.rate');
+        if (lab) lab.insertAdjacentHTML('afterend', '<button type="button" class="linkish" data-unrate="' + esc(row.id) + '">clear</button>');
+      }
+    });
+  }
+
   /* ── writing ──
      Try the Worker; fall back to this browser. Either way the UI has already
      been told what happened by the time render() runs, so a tap never sits
@@ -840,6 +1374,10 @@
     const pending = LOCAL[id] || {};
     for (const k in pending) body[k] = pending[k];
     for (const k in patch) body[k] = patch[k];
+    /* A removal waiting in this browser is undone by any later save that is
+       not one — otherwise ticking a title you had just unticked sent the old
+       tombstone up with it and the title stayed gone (2026-10-31). */
+    if (patch.removed !== true) delete body.removed;
     if (window.Owner && Owner.on()) {
       const out = await Owner.post('/movies/' + id, body, { queue: true });
       if (out && !out.queued) {                 // the Worker took it
@@ -859,6 +1397,7 @@
          keep it visibly uncommitted rather than pretending it landed. */
     }
     LOCAL[id] = Object.assign({}, LOCAL[id] || {}, patch);
+    if (patch.removed !== true) delete LOCAL[id].removed;
     writeLocal(LOCAL);
     onRender();
   }
@@ -888,7 +1427,9 @@
     }, after == null ? 4000 : after);
   }
 
-  const today = () => new Date().toISOString().slice(0, 10);
+  /* The local date, not UTC's — a film ticked at nine at night is today's,
+     and toISOString() called it tomorrow's. */
+  const today = () => localDay(new Date());
 
   /* One click handler for both pages: tiles open the sheet, the sheet's own
      buttons write. Delegated at the document, so a page can redraw whatever it
@@ -1212,7 +1753,7 @@
                   'wd', 'wdok', 'tmdb', 'kind', 'imdb',
                   'year', 'runtime', 'genres', 'director', 'overview', 'rating',
                   'cast', 'parts', 'like', 'poster', 'backdrop',
-                  'streams', 'rents', 'checked'];
+                  'streams', 'rents', 'checked', 'mine'];
 
   const FALLBACK_HEAD =
     '/* The Entertainment room\'s list — committed truth; the pages layer edits on top.\n' +
@@ -1296,6 +1837,7 @@
     onRender = (opts && opts.render) || onRender;
     sheet = el('sheet');
     wireClicks();
+    wireLookup();
     /* Credit what was borrowed, and only once something has been. Before
        pull-entertainment.py runs, every word on the page is Ric's. */
     const credit = el('credit');
@@ -1344,6 +1886,7 @@
     esc: esc, slug: slug, exportFile: exportFile, PLAY: PLAY, metaLine: metaLine,
     chooseFilm: chooseFilm, openAdd: openAdd,
     actors: meta, isFavActor: isFavActor, toggleActor: toggleActor,
-    PERSON: PERSON, PARTNER_LABEL: PARTNER_LABEL
+    PERSON: PERSON, PARTNER_LABEL: PARTNER_LABEL,
+    lookup: lookup, openCard: openCard, openOrder: openOrder, orders: ORDERS
   };
 })();

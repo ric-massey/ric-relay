@@ -38,7 +38,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `exploration.html` | Exploration | Space deck — experiments dock here |
 | `workbench.html` | Workbench | Blueprint board of random / half-finished projects |
 | `captures.html` | Captures | Darkroom contact sheet for photos |
-| `entertainment.html` | Entertainment | The films-and-shows app — a billboard, a row of services, and shelves of poster tiles (starred first, then most recently watched). Every tile opens a detail sheet with a way through to whichever service it is on. Ric can add a title or move one between the lists from the page itself |
+| `entertainment.html` | Entertainment | The films-and-shows app — a billboard, a row of services, and shelves of poster tiles (starred first, then most recently watched). Every tile opens a detail sheet with a way through to whichever service it is on. The search also looks up any film or show on TMDB; a title shows where it streams today, the franchise it belongs to in story and release order (`assets/entertainment/watch-orders.js`), a seen tick and Ric's own score out of 100. Ric can add a title or move one between the lists from the page itself |
 | `entertainment-library.html` | — | The whole catalogue as stacked DVD spines on shelves, and the catalog half of the same room: every title, filterable by service, genre, decade and state, as posters or as a dense list · *linked from `entertainment.html`, not a room of its own* |
 | `log.html` | Log | Long-form write-ups, trip reports, Apex VOD reviews · *unlisted on the home directory* |
 | `updates.html` | — | Legacy redirect to the homepage's latest-signal banner |

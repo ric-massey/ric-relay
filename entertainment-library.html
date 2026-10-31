@@ -978,6 +978,8 @@
 
     <p class="tally" id="tally"></p>
     <ul class="grid" id="out"></ul>
+    <!-- anything TMDB has that the list does not (Room.lookup) -->
+    <section class="lookup" id="lookup" hidden></section>
 
     <!-- Same owner panel as the app page, same rules: signed out it is a
          password box and nothing else. -->
@@ -1008,6 +1010,7 @@
 
   <script src="projects/entertainment/entertainment-data.js"></script>
   <script src="assets/owner.js"></script>
+  <script src="assets/entertainment/watch-orders.js"></script>
   <script src="assets/entertainment/room.js"></script>
   <script>
   /* The library page. The list itself — merging, writing, the sheet, the owner
@@ -1147,6 +1150,7 @@
     if (c) c.addEventListener('click', () => {
       state.view = 'all'; state.q = ''; state.where = ''; state.genre = ''; state.decade = '';
       el('q').value = '';
+      Room.lookup(el('lookup'), '');
       for (const b of document.querySelectorAll('.seg button[data-view]'))
         b.setAttribute('aria-pressed', String(b.dataset.view === 'all'));
       history.replaceState(null, '', location.pathname);
@@ -1276,6 +1280,7 @@
     clearTimeout(qt);
     const v = ev.target.value.trim();
     qt = setTimeout(() => { state.q = v; render(); }, 90);
+    Room.lookup(el('lookup'), v);
   });
   el('f-where').addEventListener('change', ev => { state.where = ev.target.value; render(); });
   el('f-genre').addEventListener('change', ev => { state.genre = ev.target.value; render(); });
@@ -1291,6 +1296,7 @@
   readHash();
   syncSeg();
   Room.boot({ render: render });
+  if (state.q) Room.lookup(el('lookup'), state.q);
   </script>
   <script src="effects.js"></script>
 </body>

@@ -1055,6 +1055,8 @@
     <div class="results" id="results" hidden>
       <p class="count" id="count"></p>
       <ul class="grid" id="found"></ul>
+      <!-- anything TMDB has that the list does not (Room.lookup) -->
+      <section class="lookup" id="lookup" hidden></section>
     </div>
 
     <div class="store" id="shelves"></div>
@@ -1105,6 +1107,7 @@
 
   <script src="projects/entertainment/entertainment-data.js"></script>
   <script src="assets/owner.js"></script>
+  <script src="assets/entertainment/watch-orders.js"></script>
   <script src="assets/entertainment/room.js"></script>
   <script>
   /* The app page. Everything about the LIST — merging, writing, the detail
@@ -1391,6 +1394,7 @@
     el('clearf').addEventListener('click', () => {
       state.q = ''; state.service = '';
       el('q').value = '';
+      Room.lookup(el('lookup'), '');
       renderBrands();
       renderResults();
     });
@@ -1398,8 +1402,8 @@
     el('found').innerHTML = hits.length
       ? hits.map(e => Room.tile(e)).join('')
       : '<li class="empty">Nothing on the list matches ' +
-        (state.q ? '“' + esc(state.q) + '”' : 'that') + '. ' +
-        '<a href="entertainment-library.html">Try the library →</a></li>';
+        (state.q ? '“' + esc(state.q) + '”' : 'that') + '.' +
+        (state.q ? '' : ' <a href="entertainment-library.html">Try the library →</a>') + '</li>';
   }
 
   let qt;
@@ -1407,6 +1411,7 @@
     clearTimeout(qt);
     const v = ev.target.value.trim();
     qt = setTimeout(() => { state.q = v; renderResults(); }, 90);
+    Room.lookup(el('lookup'), v);
   });
 
   function render() {

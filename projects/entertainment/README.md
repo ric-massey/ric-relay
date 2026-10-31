@@ -14,6 +14,7 @@ day after one of them. Read them before changing the page, the data file, the pu
 - [How an edit reaches the list](#how-an-edit-reaches-the-list)
 - [The puller and the data file](#the-puller-and-the-data-file)
 - [The page](#the-page)
+- [Lookup, watch orders, the tick and the score](#lookup-watch-orders-the-tick-and-the-score)
 
 ## How an edit reaches the list
 
@@ -133,6 +134,9 @@ day after one of them. Read them before changing the page, the data file, the pu
   works opened off disk. That is hard rule 4's actual line: a CDN `<img src>` is a
   dependency and is out; a file in `assets/` is not. Ric asked for the pictures
   (2026-09-21) — the "unless asked" clause — but that bought art, not a CDN.
+  The one exception is a title the **lookup** found that is not on the list: its poster
+  comes through the Worker's `/tmdb/img/` (never straight from TMDB's image host), and
+  only while someone is looking at it. Nothing from a lookup is committed.
 - **Identity comes from an id, never from a title.** Titles on this list are short and
   collide brutally: `Greater`, `Moments`, `Obsession`, `Mercy`, `RIP` are all real films
   *and* real other things. The matcher requires the article title to equal the row title
@@ -271,3 +275,54 @@ day after one of them. Read them before changing the page, the data file, the pu
   - A title marked watched from the page gets a real `seen` date and sorts above the
     whole paper backlog, which is correct: it happened today. On export it lands at the
     bottom of the watched block, which is where the most recent thing belongs.
+
+## Lookup, watch orders, the tick and the score
+
+Ric, 2026-10-31: "As long as it has all the popular movies and says where to watch and
+shows the movies in order and the rating and my rating and has an option for me to
+clicked watched." Built on top of the list, not instead of it — the committed file still
+renders on its own, and everything below needs the Worker.
+
+- **Lookup is TMDB, through the Worker.** Typing in either page's search still answers
+  from the list first, instantly; under it, "Everything else" is `Room.lookup()` asking
+  the Worker's `/tmdb/search`, which asks TMDB with the key the puller already uses
+  (`TMDB_KEY`, a Worker secret — the deploy workflow copies it across from the repo's
+  Actions secret). The key is never in a page. Without it the route answers 503 and the
+  lookup says it is not switched on; the list is untouched. The route is six fixed shapes,
+  each cut down to what the page draws — `worker/tmdb.mjs` says which and why.
+- **Where to watch is asked when a title is opened.** Any title with a TMDB id — on the
+  list or not — gets `/tmdb/title/<kind>/<id>` when its sheet opens, and the "Where to
+  watch" block is replaced with that answer, stamped "checked just now · JustWatch".
+  The Worker holds an answer six hours. The committed `streams` / `rents` / `checked`
+  are still what shows first and what shows offline. TMDB's streaming data is
+  JustWatch's, and both want naming: the stamp and the lookup's credit line do it.
+  Service names go through the same rules as the puller's `provider_name()` — one copy in
+  Python, one in `worker/tmdb.mjs`; change both.
+- **Watch orders.** A title in a franchise opens onto the whole run with a **Story order /
+  Release order** switch, seen *n* of *m*, and the next one not seen. Where story and
+  release differ, or shows belong in among the films, the order is hand-kept in
+  `assets/entertainment/watch-orders.js` (31 franchises at launch — MCU, Star Wars,
+  Middle-earth, the Conjuring, Alien, …), written in story order; release order is the
+  same titles sorted by TMDB's release date, so the two can never disagree about what is
+  in it. Each item is looked up by name and year through `/tmdb/find` and cached in the
+  browser for two weeks. Any other franchise TMDB keeps as a collection is shown from
+  `/tmdb/collection/<id>`, in release order, and says so. Searching a franchise's name
+  (or one of its `also` words, or one of its titles) offers its order as a card.
+  Add a franchise to the file only when its story order differs or a show belongs in it.
+- **The tick is `status`.** One tap marks a title seen — on the list or not. A title not on
+  the list is added as watched (`tmdb`, `kind`, `year` and today's date, under the usual
+  slug, or the slug with its year when that name is taken), and the puller fills in the
+  rest on its next run; until then the sheet shows TMDB's facts. Unticking a list title
+  sends it back to the queue (the old "Back to queue"); unticking one ticked from a
+  lookup on this visit takes it back off. The old Mark watched / Back to queue buttons
+  are gone — the tick is both.
+- **`mine` is Ric's score, 1–100**, and appears only once a title is ticked (Ric: "The
+  rating isn't needed at all unless it is done"). A slider, saved when it is let go, not
+  on every pixel. Unticking clears it. Visitors see it — "91/100 from Ric" — by his call
+  (same day). The Worker clamps it: a whole number from 1 to 100, anything else stored
+  as `null`. It is in `FIELDS` in both places and the write-path test carries it.
+  `rating` stays TMDB's audience score out of 10; the sheet shows it ×10 ("Audience
+  77/100") so the two read on one scale.
+- **Dates are local.** `today()` used to be `toISOString()`, which is UTC: a film marked
+  watched at nine at night in America got tomorrow's date. It is the local day now, and
+  a stored `seen` is read as a local date, not midnight UTC.

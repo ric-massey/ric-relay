@@ -22,6 +22,14 @@
 //   },
 window.RELAY_LATEST = [
   {
+    date: "2026-10-31",
+    kind: "update",
+    room: "entertainment",
+    title: "Look up any movie or show",
+    description: "The movie list's search now finds any film or show, not just the ones on the list: where it's streaming today, the whole franchise in story order or release order (Marvel, Star Wars, the Conjuring and more, shows included), which ones Ric has seen, and his score out of 100.",
+    href: "entertainment.html",
+  },
+  {
     date: "2026-10-21",
     kind: "new room",
     room: "weather",

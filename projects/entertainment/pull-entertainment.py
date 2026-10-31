@@ -251,7 +251,7 @@ def download(url: str, dest: Path, replace: bool = False) -> bool:
 FIELDS = ["id", "title", "status", "count", "series", "where", "pick", "note",
           "seen", "wd", "wdok", "tmdb", "kind", "imdb", "year", "runtime", "genres", "director",
           "overview", "rating", "cast", "parts", "like", "poster", "backdrop",
-          "streams", "rents", "checked"]
+          "streams", "rents", "checked", "mine"]
 
 ASSIGN = "window.ENTERTAINMENT_DATA"
 
