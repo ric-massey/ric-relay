@@ -205,40 +205,40 @@ window.TERMINAL_PAGES = [
   "href": "projects/spacetime/01-light-cones.html",
   "title": "01 / Light Cones",
   "keys": "",
-  "body": "",
-  "text": "Light Cones · What you're looking at · The unreachable region",
+  "body": "Lesson one of The Geometry of Spacetime: how to read a spacetime diagram, why nothing tilts past 45°, and the light cone that splits the universe into your past, your future and the elsewhere you can never touch.",
+  "text": "Light Cones · A map with time going up · Nothing leans past 45° · The light cone · Every view of the sky is old news · Everyone has their own cone · Why it's called a cone · Four questions · Where the numbers come from",
   "room": "exploration"
  },
  {
   "href": "projects/spacetime/02-time-dilation.html",
   "title": "02 / Time Dilation",
   "keys": "",
-  "body": "",
-  "text": "Time Dilation · YOUR CLOCK · THEIR CLOCK (MOVING) · What you're seeing · The geometry · Why this is real",
+  "body": "Lesson two of The Geometry of Spacetime: the light clock that shows why moving clocks run slow, the muons that prove it, the twin paradox drawn out, and the GPS satellites that would drift 11 km a day without it.",
+  "text": "Time Dilation · The light clock · How much slower? · Moving through space, or through time · Proof from the sky: muons · What the muon says · Each sees the other's clock run slow · The twin paradox · Your phone needs this: GPS · Four questions · Where the numbers come from",
   "room": "exploration"
  },
  {
   "href": "projects/spacetime/03-simultaneity.html",
-  "title": "03 / Simultaneity",
+  "title": "03 / The Loss of Now",
   "keys": "",
-  "body": "",
-  "text": "The Loss of Now · What just happened · Why this breaks \"now\" · Why this is consistent",
+  "body": "Lesson three of The Geometry of Spacetime: what",
+  "text": "The Loss of Now · Seeing isn't happening · Einstein's train · The line of \"now\" tilts · Can first and second swap? · Walking changes \"now\" in Andromeda · The ladder in the barn · Four questions · Where the ideas come from",
   "room": "exploration"
  },
  {
   "href": "projects/spacetime/04-expansion.html",
   "title": "04 / Space Expanding",
   "keys": "",
-  "body": "",
-  "text": "Space Expanding · What you're seeing · Why atoms don't fall apart · No center, no edge · The receding horizon",
+  "body": "Lesson four of The Geometry of Spacetime: why every galaxy sees itself at the centre, Hubble",
+  "text": "Space Expanding · Everyone is the centre · Hubble's law, with real galaxies · Light gets stretched on the way · Why atoms and solar systems don't stretch · A horizon we can never see past · The whole history on one line · Four questions · Where the numbers come from",
   "room": "exploration"
  },
  {
   "href": "projects/spacetime/index.html",
   "title": "The Geometry of Spacetime",
   "keys": "",
-  "body": "",
-  "text": "The Geometry of Spacetime · Light Cones · Time Dilation · 03 / Simultaneity · The Loss of Now · Space Expanding",
+  "body": "Four interactive lessons on relativity and the expanding universe: light cones, time dilation, the relativity of simultaneity and cosmic expansion, each with figures you can drag and play.",
+  "text": "The Geometry of Spacetime · Light Cones · Time Dilation · The Loss of Now · Space Expanding",
   "room": "exploration"
  },
  {

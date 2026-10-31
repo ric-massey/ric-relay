@@ -1,523 +1,512 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-mochi-world="space">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>03 / Simultaneity</title>
+<title>03 / The Loss of Now</title>
+<meta name="description" content="Lesson three of The Geometry of Spacetime: what 'at the same time' really means, Einstein's train, the tilting line of 'now', when two events can swap order, and the ladder that fits in a barn it's too long for.">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0a0d12;
-    --bg-2: #11151c;
-    --ink: #e8e4d8;
-    --ink-dim: #8a8578;
-    --accent: #d4a574;
-    --light: #ffd982;
-    --you: #6db5a3;
-    --them: #b56d8a;
-    --line: #1f242d;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body {
-    background: var(--bg);
-    color: var(--ink);
-    font-family: 'Cormorant Garamond', serif;
-    min-height: 100vh;
-  }
-  .nav {
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.2em;
-  }
-  .nav a { color: var(--ink-dim); text-decoration: none; }
-  .nav a:hover { color: var(--accent); }
-  .nav .num { color: var(--accent); }
-
-  .container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 4rem 2rem 6rem;
-  }
-  .eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.4em;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-  }
-  h1 {
-    font-size: clamp(2.5rem, 6vw, 4rem);
-    font-weight: 300;
-    line-height: 1.05;
-    letter-spacing: -0.02em;
-    font-style: italic;
-    margin-bottom: 1.5rem;
-  }
-  .lede {
-    font-size: 1.25rem;
-    color: var(--ink-dim);
-    max-width: 38rem;
-    line-height: 1.6;
-    margin-bottom: 4rem;
-  }
-
-  .stage {
-    background: var(--bg-2);
-    border: 1px solid var(--line);
-    padding: 2rem;
-    margin-bottom: 2rem;
-  }
-
-  .train {
-    position: relative;
-    height: 200px;
-    background: var(--bg);
-    border: 1px solid var(--line);
-    margin-bottom: 2rem;
-    overflow: hidden;
-  }
-  .platform {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 30px;
-    background: linear-gradient(180deg, transparent, rgba(138, 133, 120, 0.1));
-    border-top: 1px solid var(--line);
-  }
-  .train-car {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 360px;
-    height: 80px;
-    border: 2px solid var(--them);
-    background: rgba(181, 109, 138, 0.05);
-  }
-  .train-source {
-    position: absolute;
-    top: 50%;
-    width: 12px;
-    height: 12px;
-    background: var(--accent);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-  }
-  .train-end {
-    position: absolute;
-    top: 50%;
-    width: 16px;
-    height: 60px;
-    transform: translate(-50%, -50%);
-    border-left: 2px solid var(--ink-dim);
-    border-right: 2px solid var(--ink-dim);
-  }
-  .train-end.left { border-left-color: var(--light); }
-  .train-end.right { border-right-color: var(--light); }
-  .train-end.hit { background: var(--light); border-color: var(--light); }
-
-  .photon {
-    position: absolute;
-    top: 50%;
-    width: 8px;
-    height: 8px;
-    background: var(--light);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 12px var(--light);
-  }
-
-  .frame-label {
-    position: absolute;
-    top: 12px;
-    left: 16px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.2em;
-    color: var(--ink-dim);
-  }
-
-  .observer {
-    position: absolute;
-    bottom: 30px;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    transform: translate(-50%, 50%);
-  }
-  .observer.you { background: var(--you); }
-  .observer.them { background: var(--them); top: 50%; bottom: auto; transform: translate(-50%, -50%); }
-  .observer-label {
-    position: absolute;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    letter-spacing: 0.15em;
-    color: var(--ink-dim);
-  }
-
-  .controls {
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--line);
-  }
-  .ctrl {
-    margin-bottom: 1rem;
-  }
-  .ctrl label {
-    display: block;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.15em;
-    color: var(--ink-dim);
-    text-transform: uppercase;
-    margin-bottom: 0.75rem;
-  }
-  .ctrl .val {
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--accent);
-    font-size: 0.9rem;
-  }
-  input[type=range] {
-    width: 100%;
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-    cursor: pointer;
-  }
-  input[type=range]::-webkit-slider-runnable-track {
-    height: 2px;
-    background: var(--line);
-  }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    height: 14px;
-    width: 14px;
-    background: var(--accent);
-    border-radius: 50%;
-    margin-top: -6px;
-  }
-  input[type=range]::-moz-range-track {
-    height: 2px;
-    background: var(--line);
-  }
-  input[type=range]::-moz-range-thumb {
-    height: 14px;
-    width: 14px;
-    background: var(--accent);
-    border-radius: 50%;
-    border: none;
-  }
-
-  .buttons {
-    display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
-    flex-wrap: wrap;
-  }
-  button {
-    background: transparent;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    padding: 0.75rem 1.5rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  button:hover { background: var(--accent); color: var(--bg); }
-  button.active { background: var(--accent); color: var(--bg); }
-
-  .verdict {
-    margin-top: 1.5rem;
-    padding: 1.5rem;
-    background: var(--bg);
-    border-left: 2px solid var(--accent);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-    line-height: 1.7;
-    color: var(--ink);
-  }
-  .verdict .order {
-    color: var(--accent);
-    font-size: 1rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .essay {
-    margin-top: 4rem;
-    max-width: 36rem;
-  }
-  .essay h2 {
-    font-size: 1.75rem;
-    font-weight: 400;
-    font-style: italic;
-    margin: 3rem 0 1rem;
-    color: var(--accent);
-  }
-  .essay p {
-    font-size: 1.125rem;
-    line-height: 1.7;
-    margin-bottom: 1.25rem;
-    color: var(--ink);
-  }
-  .essay em { color: var(--accent); font-style: italic; }
-  .essay .pullout {
-    border-left: 2px solid var(--accent);
-    padding-left: 1.5rem;
-    margin: 2rem 0;
-    font-size: 1.25rem;
-    font-style: italic;
-    color: var(--ink-dim);
-  }
-
-  .next {
-    margin-top: 5rem;
-    padding-top: 3rem;
-    border-top: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    letter-spacing: 0.15em;
-  }
-  .next a { color: var(--accent); text-decoration: none; }
-  .next a:hover { color: var(--ink); }
-</style>
-  <script src="../../assets/visit.js" defer></script>
+<link rel="stylesheet" href="lesson.css">
+<script src="../../assets/visit.js" defer></script>
 </head>
 <body>
-  <nav class="nav">
-    <a href="index.html">← THE GEOMETRY OF SPACETIME</a>
-    <span class="num">03 / 04</span>
+<header class="bar">
+  <a href="index.html">← <span class="home-long">The Geometry of </span>Spacetime</a>
+  <nav class="chapters" aria-label="Chapters">
+    <a href="01-light-cones.html" title="Light Cones">01</a>
+    <a href="02-time-dilation.html" title="Time Dilation">02</a>
+    <span aria-current="page" title="The Loss of Now">03</span>
+    <a href="04-expansion.html" title="Space Expanding">04</a>
   </nav>
+</header>
 
-  <main class="container">
-    <div class="eyebrow">— Two events. Two observers. Two different orderings. Both correct. —</div>
-    <h1>The Loss of Now</h1>
-    <p class="lede">A flashbulb in the middle of a moving train. Light hits both ends. Did it hit them at the same time, or one before the other? The answer depends on who's asking.</p>
+<div class="hero">
+  <p class="eyebrow">Chapter 3 of 4 · Simultaneity</p>
+  <h1>The Loss of Now</h1>
+  <p class="lede">Two things happen far apart. Did they happen at the same time? For three hundred years the answer seemed obvious. Einstein showed it <strong>depends on how you're moving</strong> — and that there is no single "now" stretching across the universe.</p>
+  <div class="youll">
+    <div><b>You'll learn</b>what "at the same time" means for things that are far apart.</div>
+    <div><b>You'll see</b>two observers disagree about which event came first, and both be right.</div>
+    <div><b>You'll try</b>a ladder that fits into a barn shorter than it is.</div>
+  </div>
+</div>
 
-    <div class="stage">
-      <div class="train" id="trainStage">
-        <div class="frame-label" id="frameLabel">FROM THE PLATFORM (you, stationary)</div>
-        <div class="train-car" id="trainCar">
-          <div class="train-source" id="source"></div>
-          <div class="train-end left" id="leftEnd"></div>
-          <div class="train-end right" id="rightEnd"></div>
-        </div>
-        <div class="photon" id="photonLeft" style="display:none"></div>
-        <div class="photon" id="photonRight" style="display:none"></div>
-        <div class="platform"></div>
-        <div class="observer you" id="youObs"></div>
-        <div class="observer-label" id="youLabel">YOU</div>
-        <div class="observer them" id="themObs"></div>
-        <div class="observer-label" id="themLabel">THEM</div>
-      </div>
+<div class="lesson">
+  <aside class="toc"><p>In this chapter</p><ol></ol></aside>
+  <main>
 
-      <div class="buttons">
-        <button id="frameYou" class="active">YOUR FRAME (PLATFORM)</button>
-        <button id="frameThem">THEIR FRAME (TRAIN)</button>
-        <button id="play">▶ PLAY</button>
-        <button id="reset">RESET</button>
-      </div>
-
-      <div class="controls">
-        <div class="ctrl">
-          <label>Train velocity (fraction of c) <span class="val" id="vVal">0.50 c</span></label>
-          <input type="range" id="v" aria-label="Train velocity, fraction of c" min="0" max="90" value="50">
-        </div>
-      </div>
-
-      <div class="verdict" id="verdict">
-        <div class="order">From the platform: light reaches the rear before the front.</div>
-        From the train, both ends stay the same distance from the centered flash, so light reaches them simultaneously. The two observers genuinely disagree about the timing of the events — and both are right.
-      </div>
+  <!-- ─────────────────────────────── 1 -->
+  <section class="part" id="define" data-short="Seeing isn't happening">
+    <div class="num">Part 1</div>
+    <h2>Seeing isn't happening</h2>
+    <div class="prose">
+      <p>You can't <em>see</em> two distant events at the moment they happen; you see their light when it arrives. So "these two happened at the same time" is never something you observe directly. It's something you work out: note when each light arrived, subtract how long it was travelling, and compare what's left.</p>
+      <p>Einstein turned that into a definition. Two lamps flash. If their light meets exactly halfway between them, they flashed at the same time. Below, two lamps flash together. Move yourself around the room.</p>
     </div>
 
-    <div class="essay">
-      <h2>What just happened</h2>
-      <p>A flashbulb fires from the center of a train car. Two pulses of light travel outward, one toward each end. From the platform, the train is moving — so during the time the light travels, the rear of the train moves toward where the flash happened, and the front moves away.</p>
+    <figure class="fig">
+      <div class="cap"><span>Figure 3.1 · Two lamps, one flash each</span><span>across: metres of light-travel · up: time</span></div>
+      <canvas id="see" role="img" aria-label="A spacetime diagram of two lamps that flash at the same moment. Their light travels toward an observer whose position can be changed, and arrives at different times unless the observer is exactly in the middle."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="you">Where you stand <output for="you"></output></label>
+          <input type="range" id="you" min="-2.8" max="2.8" step="0.1" value="1.5"></div>
+      </div>
+      <p class="read" id="seeRead" aria-live="polite"></p>
+    </figure>
 
-      <p>From <em>your</em> frame on the platform: light moves at c equally in both directions, but the train's ends do not stay put. The rear end moves toward its pulse while the front end moves away from the other. Light reaches the rear first. The events are <em>sequential</em>.</p>
+    <div class="prose">
+      <p>Everyone who does the subtraction honestly agrees, as long as they're all standing still relative to the lamps. The trouble starts when one of them is moving.</p>
+    </div>
+  </section>
 
-      <p>From <em>their</em> frame on the train: the train isn't moving, the platform is. The flashbulb is at the center of their car. Light moves at c equally in both directions. Both pulses cover the same distance. They arrive at the two ends at the same instant.</p>
-
-      <p>But here's the trap: both observers see the light moving at c. Both see the flash happen at the center. Yet from your view, the rear end gets hit first. From their view, both ends get hit together. The orderings are different. Neither is wrong.</p>
-
-      <h2>Why this breaks "now"</h2>
-      <p>If two observers can disagree about which of two events happened first, then there is no universal <em>now</em> connecting events at different locations. Your "this moment, everywhere" is a slice through spacetime that depends on your motion. Move differently, and your slice tilts differently — events you called simultaneous, they call sequential.</p>
-
-      <p class="pullout">"There is no master clock. There is no shared present. Each observer has their own slicing of spacetime, and all slicings are equally valid."</p>
-
-      <p>This is the deepest break with intuition in special relativity. Time dilation feels weird but acceptable — moving clocks tick slower, fine. The loss of simultaneity is harder. It says that the very concept of "what's happening right now over there" doesn't have a single answer. Reality doesn't come with a privileged ordering.</p>
-
-      <h2>Why this is consistent</h2>
-      <p>The two observers can never use this disagreement to send signals faster than light, or to violate cause-and-effect. Events that are causally connected (one inside the other's light cone) have a definite ordering everyone agrees on. Only events that are <em>causally disconnected</em> — too far apart for light to travel between them in the relevant time — can be ordered differently by different observers.</p>
-
-      <p>So the universe protects itself. You can disagree about simultaneity, but you can never disagree about causality. The loss of now is real, but it doesn't break the world. It just means the world is a 4D structure rather than a 3D thing evolving through a universal time.</p>
+  <!-- ─────────────────────────────── 2 -->
+  <section class="part" id="train" data-short="Einstein's train">
+    <div class="num">Part 2</div>
+    <h2>Einstein's train</h2>
+    <div class="prose">
+      <p>A flashbulb goes off in the exact middle of a moving train car. Light runs toward both ends. Someone riding in the car and someone standing on the platform both watch, and both know light travels at the same speed in every direction — for each of them.</p>
+      <p>The rider says: the bulb is in the middle, the ends are equally far away, so the light reaches both ends <strong>at the same time</strong>. The person on the platform says: while the light was travelling, the rear of the car moved <em>toward</em> its pulse and the front moved <em>away</em> from its pulse — so the <strong>rear is lit first</strong>.</p>
     </div>
 
-    <div class="next">
-      <a href="02-time-dilation.html">← 02 / TIME DILATION</a>
-      <a href="04-expansion.html">04 / EXPANSION →</a>
+    <figure class="fig">
+      <div class="cap"><span>Figure 3.2 · The same events, two points of view</span><span>each view runs on its own clock</span></div>
+      <canvas id="tr" role="img" aria-label="Two views of a train car with a flash at its centre. In the platform's view the car moves and light hits the rear end first. In the train's view the car is still and light hits both ends together."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="tv">Train speed <output for="tv"></output></label>
+          <input type="range" id="tv" min="0" max="0.9" step="0.01" value="0.5"></div>
+      </div>
+      <div class="btns"><button id="trPlay">▶ Play</button><button id="trAgain">↺ Again</button></div>
+      <p class="read" id="trRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="prose">
+      <p>Each of them followed the same honest rule — light goes at c, subtract its travel time — and they got different answers. Neither made a mistake. <strong>Whether two separated events are simultaneous depends on the motion of whoever is asking.</strong> (The platform also sees the car a little shorter than the rider does — length contraction, the other face of time dilation from chapter 2.)</p>
     </div>
+  </section>
+
+  <!-- ─────────────────────────────── 3 -->
+  <section class="part" id="tilt" data-short="The tilted now">
+    <div class="num">Part 3</div>
+    <h2>The line of "now" tilts</h2>
+    <div class="prose">
+      <p>On a spacetime diagram, "everything happening now" for someone at rest is a flat, horizontal line. For someone moving, it's tilted — toward the light line, by exactly as much as their own worldline leans the other way. Here is the train again, drawn as worldlines.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 3.3 · The train on a spacetime diagram, from the platform</span><span>across: car-lengths · up: car-lengths of light time</span></div>
+      <canvas id="tl" role="img" aria-label="The train's two ends drawn as tilted worldlines, the flash's light as 45-degree lines, and two lines of 'now': the platform's flat one and the train's tilted one, which passes through both moments the ends are lit."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="tv2">Train speed <output for="tv2"></output></label>
+          <input type="range" id="tv2" min="0" max="0.9" step="0.01" value="0.5"></div>
+      </div>
+      <div class="btns"><button id="tlGrid" aria-pressed="false">Show the train's whole grid</button></div>
+      <p class="read" id="tlRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="eq">t′ = γ · (t − v·x ⁄ c²)
+      <small>The Lorentz transformation for time. t′ is the time the train's clocks show for an event the platform labels (x, t). Events with the same t′ lie on a line of slope v/c — the train's "now". The v·x term is the whole story: the further away an event is, the more the two frames disagree about when it happened.</small></div>
+  </section>
+
+  <!-- ─────────────────────────────── 4 -->
+  <section class="part" id="order" data-short="Can order flip?">
+    <div class="num">Part 4</div>
+    <h2>Can first and second swap?</h2>
+    <div class="prose">
+      <p>If simultaneity depends on the observer, can the <em>order</em> of two events flip too? Sometimes. Drag event <span class="c-other">B</span> and change the speed of the observer whose "now" is drawn.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 3.4 · A at the centre, B anywhere</span><span>tap or drag to move B</span></div>
+      <canvas id="ord" role="img" aria-label="Event A at the centre of a spacetime diagram and a movable event B. A moving observer's line of 'now' through A is drawn, and the page says whether that observer sees B before, after or at the same time as A."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="ov">Observer's speed <output for="ov"></output></label>
+          <input type="range" id="ov" min="-0.95" max="0.95" step="0.01" value="0"></div>
+      </div>
+      <canvas id="ordPlot" role="img" aria-label="A small graph of how much later B is than A, for every observer speed."></canvas>
+      <p class="read" id="ordRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="try"><b>Try this</b><ol>
+      <li>Put B to the side of A, in the <span class="c-else">elsewhere</span>. Sweep the speed: at one speed B is simultaneous with A, and past it B comes <em>first</em>.</li>
+      <li>Now put B inside A's light cone. Sweep again. The order never flips, whatever the speed.</li>
+    </ol></div>
+
+    <div class="prose">
+      <p>That's the rule, and it's what keeps the universe sane. <strong>If one event could have caused the other — if they're inside each other's light cones — every observer agrees on their order.</strong> Only events too far apart for any signal to connect can be ordered differently. You can disagree about simultaneity; you can never disagree about cause and effect.</p>
+      <p>It's also why nothing can go faster than light. A faster-than-light message is a line in the elsewhere, and some observer would see it arrive before it was sent — they could, in principle, send a reply that arrives before the first message left.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────── 5 -->
+  <section class="part" id="andromeda" data-short="The Andromeda paradox">
+    <div class="num">Part 5</div>
+    <h2>Walking changes "now" in Andromeda</h2>
+    <div class="prose">
+      <p>The tilt of your "now" is tiny for everyday speeds, but the disagreement it causes grows with distance (that's the <span class="k">v·x</span> in the formula). Make the distance big enough and even a stroll matters. This is known as the <strong>Andromeda paradox</strong>, after Roger Penrose's telling of it.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 3.5 · Two people pass each other; one is walking</span><span>not to scale — the tilt is drawn huge so you can see it</span></div>
+      <canvas id="and" role="img" aria-label="Two lines of 'now' leaving the same point, one flat for a person standing still and one slightly tilted for a person walking. Far away, the gap between them is a span of time."></canvas>
+      <div class="btns" id="andV" role="group" aria-label="Speed">
+        <button data-v="1.4" aria-pressed="true">Walking</button>
+        <button data-v="31.3">Driving</button>
+        <button data-v="250">Flying</button>
+        <button data-v="7660">On the ISS</button>
+        <button data-v="29979245.8">10% of light</button>
+      </div>
+      <div class="btns" id="andD" role="group" aria-label="Distance">
+        <button data-v="moon">The Moon</button>
+        <button data-v="proxima">Nearest star</button>
+        <button data-v="core">Galactic centre</button>
+        <button data-v="andromeda" aria-pressed="true">Andromeda</button>
+        <button data-v="edge">Edge of the observable universe</button>
+      </div>
+      <p class="read" id="andRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="prose">
+      <p>Does that mean walking changes what is "really" happening in Andromeda? No — and this is where chapter 1 comes back. Everything in that span is in your <span class="c-else">elsewhere</span>. Neither of you can see it, affect it or be affected by it for 2.5 million years. "Now, there" is a label, not something either of you can check. <strong>Your "now" is a way of slicing spacetime, and different motions slice it differently.</strong></p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────── 6 -->
+  <section class="part" id="ladder" data-short="The ladder in the barn">
+    <div class="num">Part 6</div>
+    <h2>The ladder in the barn</h2>
+    <div class="prose">
+      <p>A classic puzzle that only simultaneity can untangle. A ladder twice as long as a barn is carried through it very fast. The barn's owner says: moving things are shorter, so for an instant the whole ladder is inside, and I can shut both doors at once. The ladder's carrier says: from where I'm standing it's the <em>barn</em> that's moving and shorter. There's no way the ladder fits.</p>
+      <p>Who's right? Both. Play it in each frame.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 3.6 · A ladder twice the barn's length</span><span id="ladFrameCap">—</span></div>
+      <canvas id="lad" role="img" aria-label="A ladder passing through a barn with a door at each end. In the barn's frame both doors close at once with the ladder inside. In the ladder's frame the far door opens before the near door closes."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="lv">Speed <output for="lv"></output></label>
+          <input type="range" id="lv" min="0.5" max="0.98" step="0.01" value="0.9"></div>
+      </div>
+      <div class="btns" id="ladF" role="group" aria-label="Frame">
+        <button data-v="barn" aria-pressed="true">The barn's frame</button>
+        <button data-v="ladder">The ladder's frame</button>
+      </div>
+      <div class="btns"><button id="ladPlay">▶ Play</button><button id="ladAgain">↺ Again</button></div>
+      <p class="read" id="ladRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="prose">
+      <p>The barn's owner shuts the two doors <em>at the same time — in the barn's frame</em>. Those two door events are far apart, so the ladder, moving, doesn't agree they're simultaneous: for the ladder, the far door shuts and opens again first, while the ladder's front still hasn't reached it, and only then does the near door shut behind the back end. The ladder is never trapped with both doors closed. Everyone agrees on what actually happens — no door ever hits the ladder — and they disagree only about which door moved first.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────── check -->
+  <section class="part check" id="check" data-short="Check yourself">
+    <div class="num">Check yourself</div>
+    <h2>Four questions</h2>
+
+    <div class="q" data-answer="b">
+      <p>In Einstein's train, who is right about the order the ends were lit?</p>
+      <div class="opts">
+        <button data-k="a">The rider — the train is the real frame</button>
+        <button data-k="b">Both of them — simultaneity depends on the observer's motion</button>
+        <button data-k="c">The platform — the ground is really at rest</button>
+      </div>
+      <p class="why" hidden><span></span>Neither frame is special. Each measured honestly; they slice spacetime differently.</p>
+    </div>
+
+    <div class="q" data-answer="c">
+      <p>Event A causes event B. Can a fast observer see B happen before A?</p>
+      <div class="opts">
+        <button data-k="a">Yes, if they go fast enough</button>
+        <button data-k="b">Only if they go faster than light</button>
+        <button data-k="c">No — events that can be causally linked keep their order for everyone</button>
+      </div>
+      <p class="why" hidden><span></span>A cause must be inside its effect's past light cone, and order inside a light cone is the same for every observer. Only spacelike pairs can swap.</p>
+    </div>
+
+    <div class="q" data-answer="a">
+      <p>You start walking. Your "now" in Andromeda moves by days. Can you use that to learn anything about Andromeda?</p>
+      <div class="opts">
+        <button data-k="a">No — everything in that span is in your elsewhere</button>
+        <button data-k="b">Yes, by walking faster</button>
+        <button data-k="c">Yes, with a big enough telescope</button>
+      </div>
+      <p class="why" hidden><span></span>The light from those events won't reach you for millions of years. Moving changes the label "now" on events you can't touch.</p>
+    </div>
+
+    <div class="q" data-answer="b">
+      <p>In the ladder-and-barn puzzle, what does the ladder's carrier see?</p>
+      <div class="opts">
+        <button data-k="a">Both doors shut at once and the ladder breaks</button>
+        <button data-k="b">The far door opens before the near door shuts</button>
+        <button data-k="c">The ladder shrinks to fit</button>
+      </div>
+      <p class="why" hidden><span></span>The doors closing "at the same time" is simultaneous only in the barn's frame. In the ladder's frame the far door's closing comes first, and it reopens in time.</p>
+    </div>
+
+    <div class="sources">
+      <h3>Where the ideas come from</h3>
+      <ul>
+        <li>A. Einstein, "On the Electrodynamics of Moving Bodies" (1905), §1 — the definition of simultaneity by light signals. The train version is from his popular book <em>Relativity: The Special and the General Theory</em> (1916), chapter 9.</li>
+        <li>The Andromeda paradox: R. Penrose, <em>The Emperor's New Mind</em> (1989), after an argument by C. W. Rietdijk and H. Putnam.</li>
+        <li>Distances: Andromeda 2.5 million light-years; the galactic centre about 26,000; the edge of the observable universe 46.5 billion.</li>
+      </ul>
+    </div>
+
+    <nav class="next" aria-label="Next and previous">
+      <a href="02-time-dilation.html">← Chapter 2 · Time Dilation</a>
+      <a href="04-expansion.html">Chapter 4 · Space Expanding →</a>
+    </nav>
+  </section>
   </main>
+</div>
 
+<script src="lesson.js"></script>
 <script>
-const trainCar = document.getElementById('trainCar');
-const source = document.getElementById('source');
-const leftEnd = document.getElementById('leftEnd');
-const rightEnd = document.getElementById('rightEnd');
-const photonLeft = document.getElementById('photonLeft');
-const photonRight = document.getElementById('photonRight');
-const youObs = document.getElementById('youObs');
-const youLabel = document.getElementById('youLabel');
-const themObs = document.getElementById('themObs');
-const themLabel = document.getElementById('themLabel');
-const frameLabel = document.getElementById('frameLabel');
-const verdict = document.getElementById('verdict');
-const vSlider = document.getElementById('v');
-const vVal = document.getElementById('vVal');
-const stage = document.getElementById('trainStage');
+(function () {
+  const { C, figure, animate, pointer, slider, choice, text, line, dot, arrow, poly, alpha, mink, gamma, fmt, dur, $ } = ST;
 
-const frameYouBtn = document.getElementById('frameYou');
-const frameThemBtn = document.getElementById('frameThem');
-const playBtn = document.getElementById('play');
-const resetBtn = document.getElementById('reset');
+  /* ── 3.1 seeing isn't happening ── */
+  const see = figure('see', (x, w, h) => {
+    const m = mink(w, h, 7.5, 0.5, 0.88), p = you();
+    m.grid(x, 1);
+    line(x, m.X(-3), m.Y(0), m.X(-3), 0, alpha(C.accent, 0.6), 2); line(x, m.X(3), m.Y(0), m.X(3), 0, alpha(C.accent, 0.6), 2);
+    line(x, m.X(p), m.Y(-0.4), m.X(p), 0, C.other, 2.5);
+    line(x, 0, m.Y(0), w, m.Y(0), alpha(C.ink, 0.35), 1, [5, 4]);
+    text(x, 'both lamps flash at this moment', 10, m.Y(0) - 6, { size: 11 });
+    const tl = Math.abs(p + 3), tr = Math.abs(3 - p);
+    arrow(x, m.X(-3), m.Y(0), m.X(p), m.Y(tl), C.light, 1.8, 8); arrow(x, m.X(3), m.Y(0), m.X(p), m.Y(tr), C.light, 1.8, 8);
+    dot(x, m.X(-3), m.Y(0), 7, C.light); dot(x, m.X(3), m.Y(0), 7, C.light);
+    dot(x, m.X(p), m.Y(tl), 5, C.ink); dot(x, m.X(p), m.Y(tr), 5, C.ink);
+    text(x, 'lamp', m.X(-3), m.Y(0) + 20, { size: 11, align: 'center', color: C.accent }); text(x, 'lamp', m.X(3), m.Y(0) + 20, { size: 11, align: 'center', color: C.accent });
+    text(x, 'you', m.X(p) + (p > 2.2 || (p > -3.8 && p < -2.2) ? -8 : 8), m.Y(-0.25), { size: 12, color: C.other, align: p > 2.2 || (p > -3.8 && p < -2.2) ? 'right' : 'left' });
+    text(x, 'left arrives', m.X(p) + (p < 2 ? 8 : -8), m.Y(tl) + 4, { size: 11, color: C.ink, align: p < 2 ? 'left' : 'right', bg: C.bg2 });
+    text(x, 'right arrives', m.X(p) + (p < 2 ? 8 : -8), m.Y(tr) + 4, { size: 11, color: C.ink, align: p < 2 ? 'left' : 'right', bg: C.bg2 });
+  }, { ratio: 0.55, max: 440 });
+  const you = slider('you', (p) => (p === 0 ? 'the middle' : Math.abs(p).toFixed(1) + (p < 0 ? ' left' : ' right') + ' of middle'), (p) => {
+    const tl = Math.abs(p + 3), tr = Math.abs(3 - p);
+    $('seeRead').innerHTML = Math.abs(tl - tr) < 0.05
+      ? 'You\'re in the middle: both flashes arrive together. Equal distances, equal travel times — they happened at the same time.'
+      : 'You see the <strong>' + (tl < tr ? 'left' : 'right') + '</strong> flash first, ' + Math.abs(tl - tr).toFixed(1) + ' units earlier. But the left light travelled ' + tl.toFixed(1) +
+        ' and the right ' + tr.toFixed(1) + '. Subtract the travel times and both flashed at <span class="k">0</span> — simultaneous, as everyone at rest here agrees.';
+    see.redraw();
+  });
 
-let frame = 'you';
-let playing = false;
-let t = 0;
-let animId = null;
-
-function reset() {
-  playing = false;
-  cancelAnimationFrame(animId);
-  t = 0;
-  draw();
-  playBtn.textContent = '▶ PLAY';
-}
-
-function draw() {
-  const stageW = stage.clientWidth;
-  const stageH = stage.clientHeight;
-  const v = parseFloat(vSlider.value) / 100;
-  const gamma = 1 / Math.sqrt(1 - v * v);
-
-  /* Worked in units where the car's own length is 1 and light goes 1 per
-     unit of time, then scaled to the stage. The first version moved the car
-     at a fixed pixel speed whatever the slider said and the light at a slower
-     one, so the train outran light at every setting — 0 c included — and the
-     front was never lit (bug sweep D3-1). Here the train goes at v, light at
-     c, the platform sees the car contracted by gamma, and the run lasts until
-     the light has reached the far end. */
-  const L = frame === 'you' ? 1 / gamma : 1;          // the car as this frame measures it
-  const tRear  = frame === 'you' ? L / (2 * (1 + v)) : 0.5;
-  const tFront = frame === 'you' ? L / (2 * (1 - v)) : 0.5;
-  const tEnd = tFront * 1.2 + 0.08;
-  const tau = (t / 1.2) * tEnd;                        // t is the run's progress, 0 → 1.2
-  const extent = frame === 'you' ? L + v * tEnd : 1.3;
-  const scale = Math.min(360, (stageW - 60) / extent); // px per car length
-  const carW = L * scale;
-
-  let carX, sourceX, youX, themX, photonLeftX, photonRightX;
-  if (frame === 'you') {
-    // The platform's frame: the car moves right at v; the flash went off at
-    // its centre at tau = 0, right where you stand.
-    const left0 = (stageW - extent * scale) / 2;
-    carX = left0 + v * tau * scale;
-    const flashX = left0 + carW / 2;
-    sourceX = carX + carW / 2;
-    youX = flashX;
-    photonLeftX = flashX - tau * scale;
-    photonRightX = flashX + tau * scale;
-  } else {
-    // The train's frame: the car stands still and the platform slides left.
-    carX = stageW / 2 - carW / 2;
-    sourceX = stageW / 2;
-    youX = sourceX - v * tau * scale;
-    photonLeftX = sourceX - tau * scale;
-    photonRightX = sourceX + tau * scale;
+  /* ── 3.2 the train, both views at once ── */
+  let tp = 0;   // progress through each view's own run, 0 → 1
+  const tr = figure('tr', (x, w, h) => {
+    const v = tv(), g = gamma(v), half = h / 2;
+    drawView(x, w, 0, half, 'platform', v, g);
+    line(x, 0, half, w, half, C.line, 1);
+    drawView(x, w, half, half, 'train', v, g);
+  }, { ratio: (w) => (w < 560 ? 0.95 : 0.5), max: 480, min: 300 });
+  function drawView(x, w, y0, hh, which, v, g) {
+    // the car's length is 1 in its own frame; light goes 1 per unit time
+    const plat = which === 'platform', L = plat ? 1 / g : 1;
+    const tRear = plat ? L / (2 * (1 + v)) : 0.5, tFront = plat ? L / (2 * (1 - v)) : 0.5;
+    const tEnd = Math.max(tRear, tFront) * 1.15 + 0.05, t = tp * tEnd;
+    const extent = plat ? L + v * tEnd + 0.15 : 1.5;
+    const sc = Math.min((w - 40) / extent, 420), mid = y0 + hh * 0.56;
+    const carLeft0 = plat ? 20 + 0.05 * sc : (w - sc) / 2;  // rear at t=0
+    const shift = plat ? v * t * sc : 0;
+    const rear = carLeft0 + shift, front = rear + L * sc, flashX = carLeft0 + L * sc / 2;
+    // platform: in the platform view it's fixed; in the train view it slides left
+    const platShift = plat ? 0 : -v * t * sc;
+    for (let k = -2; k < 30; k++) { const px = ((k * 60 + platShift) % (w + 60) + w + 60) % (w + 60) - 30; line(x, px, mid + 26, px + 20, mid + 26, alpha(C.dim, 0.4), 1); }
+    line(x, 0, mid + 22, w, mid + 22, alpha(C.dim, 0.6), 1);
+    x.fillStyle = alpha(C.accent, 0.12); x.fillRect(rear, mid - 20, front - rear, 38);
+    x.strokeStyle = C.accent; x.lineWidth = 1.5; x.strokeRect(rear, mid - 20, front - rear, 38);
+    const litR = t >= tRear, litF = t >= tFront;
+    x.fillStyle = litR ? C.light : C.dim; x.fillRect(rear - 3, mid - 20, 6, 38);
+    x.fillStyle = litF ? C.light : C.dim; x.fillRect(front - 3, mid - 20, 6, 38);
+    // the flash and its two pulses, at c in this frame, from where the bulb was when it fired
+    const fx = plat ? flashX : rear + L * sc / 2;
+    if (t > 0) {
+      const lp = Math.max(fx - t * sc, rear), rp = Math.min(fx + t * sc, front);
+      if (!litR) dot(x, lp, mid, 5, C.light); if (!litF) dot(x, rp, mid, 5, C.light);
+      if (t < 0.06) dot(x, fx, mid, 12, alpha(C.light, 0.5));
+    }
+    dot(x, rear + L * sc / 2, mid - 26, 3, C.accent);
+    text(x, plat ? 'FROM THE PLATFORM — the car moves →' : 'FROM THE TRAIN — the platform moves ←', 12, y0 + 18, { size: 11, color: C.ink });
+    text(x, 't = ' + t.toFixed(3), w - 12, y0 + 18, { size: 11, align: 'right' });
+    const line2 = (litR ? 'rear lit at ' + tRear.toFixed(3) : 'rear: dark') + '    ' + (litF ? 'front lit at ' + tFront.toFixed(3) : 'front: dark');
+    text(x, line2, 12, y0 + hh - 10, { size: 11, color: litR || litF ? C.light : C.dim });
   }
-  themX = sourceX;
-  const leftHit = tau >= tRear;
-  const rightHit = tau >= tFront;
+  animate(tr, (dt) => { tp += dt / 3; if (tp >= 1) { tp = 1; return false; } }, $('trPlay'), false);
+  $('trAgain').addEventListener('click', () => { tp = 0; tr.play(); });
+  const tv = slider('tv', (v) => v.toFixed(2) + ' c', (v) => {
+    const g = gamma(v), L = 1 / g, a = L / (2 * (1 + v)), b = L / (2 * (1 - v));
+    $('trRead').innerHTML = v === 0 ? 'At rest, the two views are the same: both ends lit together.'
+      : 'Platform: rear lit at <span class="k">' + a.toFixed(3) + '</span>, front at <span class="k">' + b.toFixed(3) + '</span> — the rear first, by ' + (b - a).toFixed(3) + '. Train: both at <span class="k">0.500</span>. (Time in units of the car\'s own length of light travel.)';
+    tp = 1; tr.redraw();
+  });
 
-  photonLeft.style.display = (tau > 0 && !leftHit) ? 'block' : 'none';
-  photonRight.style.display = (tau > 0 && !rightHit) ? 'block' : 'none';
-  photonLeft.style.left = photonLeftX + 'px';
-  photonRight.style.left = photonRightX + 'px';
-  leftEnd.classList.toggle('hit', leftHit);
-  rightEnd.classList.toggle('hit', rightHit);
-  trainCar.style.width = carW + 'px';
+  /* ── 3.3 the tilted now ── */
+  let grid2 = false;
+  const tl = figure('tl', (x, w, h) => {
+    const v = tv2(), g = gamma(v), L = 1 / g;
+    const m = mink(w, h, 2.6, 0.42, 0.85);
+    m.grid(x, 0.25);
+    if (grid2 && v > 0) {
+      // the train's own grid: lines of constant t′ (slope v) and constant x′ (slope 1/v)
+      for (let k = -8; k <= 8; k++) {
+        const s = k * 0.25;
+        m.ray(x, s * g * v, s * g, 1, v, alpha(C.other, 0.22), 1, null, true);   // t′ = s through (x=γvs, t=γs)
+        m.ray(x, s * g, s * g * v, v, 1, alpha(C.other, 0.22), 1, null, true);   // x′ = s
+      }
+    }
+    m.axes(x, 'space →', 'time ↑');
+    // the flash's light
+    m.ray(x, 0, 0, 1, 1, alpha(C.light, 0.8), 1.5); m.ray(x, 0, 0, -1, 1, alpha(C.light, 0.8), 1.5);
+    // ends of the car: rear at −L/2, front at +L/2 at t = 0, moving at v
+    m.ray(x, -L / 2, 0, v, 1, C.accent, 2, null, true); m.ray(x, L / 2, 0, v, 1, C.accent, 2, null, true);
+    const tR = L / (2 * (1 + v)), tF = L / (2 * (1 - v));
+    const R = [-L / 2 + v * tR, tR], F = [L / 2 + v * tF, tF];
+    // platform's now through the rear-lit event: flat
+    line(x, 0, m.Y(R[1]), w, m.Y(R[1]), alpha(C.ink, 0.6), 1.2, [6, 4]);
+    // train's now through both: slope v
+    m.ray(x, R[0], R[1], 1, v, C.other, 2, null, true);
+    dot(x, ...m.P(...R), 7, C.light); dot(x, ...m.P(...F), 7, C.light); dot(x, ...m.P(0, 0), 5, C.ink);
+    text(x, 'rear lit', m.X(R[0]) - 10, m.Y(R[1]) + 4, { size: 12, color: C.light, align: 'right', bg: C.bg2 });
+    text(x, 'front lit', m.X(F[0]) + 10, m.Y(F[1]) + 4, { size: 12, color: C.light, bg: C.bg2 });
+    text(x, 'flash', m.X(0) + 8, m.Y(0) + 14, { size: 11 });
+    text(x, 'platform\'s "now"', 10, m.Y(R[1]) - 6, { size: 11, color: C.ink });
+    const ex = m.xmax * 0.95; text(x, 'train\'s "now"', m.X(ex) - 4, m.Y(R[1] + v * (ex - R[0])) - 8, { size: 11, color: C.other, align: 'right', bg: C.bg2 });
+    text(x, 'rear', m.X(-L / 2 + v * m.tmax * 0.9) - 6, m.Y(m.tmax * 0.9), { size: 11, color: C.accent, align: 'right' });
+    text(x, 'front', m.X(L / 2 + v * m.tmax * 0.9) + 6, m.Y(m.tmax * 0.9), { size: 11, color: C.accent });
+  }, { ratio: 0.62, max: 560 });
+  const tv2 = slider('tv2', (v) => v.toFixed(2) + ' c', (v) => {
+    $('tlRead').innerHTML = v === 0 ? 'At rest the train\'s "now" is flat too, and passes through both lit ends.'
+      : 'The flat dashed line — the platform\'s "now" — passes through "rear lit" but goes under "front lit": for the platform, the front is lit later. The tilted blue line, slope <span class="k">' + v.toFixed(2) + '</span>, is the train\'s "now". It passes through <em>both</em>.';
+    tl.redraw();
+  });
+  $('tlGrid').addEventListener('click', (e) => { grid2 = !grid2; e.target.setAttribute('aria-pressed', String(grid2)); tl.redraw(); });
 
-  trainCar.style.left = carX + 'px';
-  source.style.left = (sourceX - carX) + 'px';
-  leftEnd.style.left = '0px';
-  rightEnd.style.left = carW + 'px';
-
-  youObs.style.left = youX + 'px';
-  youLabel.style.left = (youX - 14) + 'px';
-  youLabel.style.bottom = '4px';
-  themObs.style.left = themX + 'px';
-  themLabel.style.left = (themX - 16) + 'px';
-  themLabel.style.top = (stageH/2 + 18) + 'px';
-
-  vVal.textContent = `${v.toFixed(2)} c`;
-
-  // verdict update
-  if (v === 0) {
-    frameLabel.textContent = frame === 'you' ? 'FROM THE PLATFORM (you, stationary)' : 'FROM THE TRAIN (them, stationary in their frame)';
-    verdict.innerHTML = `<div class="order">The train is standing still: light reaches BOTH ends at the same moment.</div>With nothing moving, the platform and the train are one frame, and they agree. Move the slider to set the train going.`;
-  } else if (frame === 'you') {
-    frameLabel.textContent = 'FROM THE PLATFORM (you, stationary)';
-    verdict.innerHTML = `<div class="order">From the platform: light reaches the REAR of the train BEFORE the front.</div>The train is moving rightward. While light travels outward equally fast in both directions, the rear of the train moves toward the flash point and the front moves away. Light catches the rear first, then the front. Two events. One before the other.`;
-  } else {
-    frameLabel.textContent = 'FROM THE TRAIN (them, stationary in their frame)';
-    verdict.innerHTML = `<div class="order">From the train: light reaches BOTH ends at the EXACT same moment.</div>In their frame, the train isn't moving and the platform is. The flash happens at the exact center of the car. Light moves at c equally in both directions, covering the same distance to both ends. The two events are simultaneous. Both observers are correct.`;
+  /* ── 3.4 can order flip? ── */
+  let B = { x: 3, t: 1.2 }, om = null;
+  const ord = figure('ord', (x, w, h) => {
+    const v = ov(), m = om = mink(w, h, 10, 0.5, 0.5);
+    m.grid(x, 1); m.cone(x, 0, 0, 0.08, 0.08); m.axes(x, 'space →', 'time ↑');
+    // the observer's worldline and their "now" through A
+    m.ray(x, 0, 0, v, 1, alpha(C.accent, 0.55), 1.5, [3, 4], true);
+    m.ray(x, 0, 0, 1, v, C.accent, 2, null, true);
+    // their "now" through B, to show which side
+    m.ray(x, B.x, B.t, 1, v, alpha(C.other, 0.5), 1, [5, 4], true);
+    dot(x, ...m.P(0, 0), 7, C.accent); text(x, 'A', m.X(0) - 12, m.Y(0) + 16, { size: 15, serif: true, color: C.accent });
+    dot(x, ...m.P(B.x, B.t), 8, C.other); dot(x, ...m.P(B.x, B.t), 12, C.other, 1.5);
+    text(x, 'B', m.X(B.x) + 14, m.Y(B.t) - 8, { size: 15, serif: true, color: C.other });
+    text(x, 'observer\'s "now" through A', m.X(m.xmax * 0.95), m.Y(v * m.xmax * 0.95) - 8, { size: 11, color: C.accent, align: 'right', bg: C.bg2 });
+  }, { ratio: 0.55, max: 480 });
+  const op = figure('ordPlot', (x, w, h) => {
+    const L = 46, R = 14, T = 12, Bm = 26;
+    const vs = [], ts = [];
+    for (let i = 0; i <= 190; i++) { const v = -0.95 + i * 0.01; vs.push(v); ts.push(gamma(v) * (B.t - v * B.x)); }
+    const lim = Math.max(1, ...ts.map(Math.abs));
+    const X = (v) => L + (v + 0.95) / 1.9 * (w - L - R), Y = (t) => T + (1 - (t / lim + 1) / 2) * (h - T - Bm);
+    line(x, L, Y(0), w - R, Y(0), C.dim, 1);
+    text(x, 'B later', L - 6, T + 10, { size: 11, align: 'right', color: C.reach });
+    text(x, 'B first', L - 6, h - Bm, { size: 11, align: 'right', color: C.else });
+    text(x, 'observer speed →', w - R, h - 6, { size: 11, align: 'right' });
+    text(x, '−0.95', L, h - 6, { size: 11 });
+    x.strokeStyle = C.other; x.lineWidth = 2; x.beginPath(); vs.forEach((v, i) => (i ? x.lineTo(X(v), Y(ts[i])) : x.moveTo(X(v), Y(ts[i])))); x.stroke();
+    const v = ov(); dot(x, X(v), Y(gamma(v) * (B.t - v * B.x)), 5, C.accent);
+  }, { ratio: 0.18, min: 110, max: 150 });
+  function ordText() {
+    const v = ov(), d = gamma(v) * (B.t - v * B.x), ax = Math.abs(B.x), timelike = Math.abs(B.t) > ax;
+    const when = Math.abs(d) < 0.05 ? 'at the <strong>same time</strong> as A' : d > 0 ? '<strong>after</strong> A, by ' + d.toFixed(2) : '<strong>before</strong> A, by ' + (-d).toFixed(2);
+    const flip = !timelike && B.x !== 0 ? Math.abs(B.t / B.x) < 0.95 ? ' Any observer faster than <span class="k">' + Math.abs(B.t / B.x).toFixed(2) + ' c</span> in the right direction sees the order reversed.' : ' The swap needs a speed above 0.95 c here — but it exists.' : '';
+    $('ordRead').innerHTML = 'This observer sees B ' + when + '. ' + (timelike
+      ? 'B is <span class="c-reach">inside A\'s light cone</span>, so every observer agrees on the order.'
+      : 'B is in A\'s <span class="c-else">elsewhere</span>, so the order depends on the observer.' + flip);
   }
-}
+  const ov = slider('ov', (v) => (v >= 0 ? '' : '−') + Math.abs(v).toFixed(2) + ' c ' + (v > 0 ? '→' : v < 0 ? '←' : ''), () => { ordText(); ord.redraw(); op.redraw(); });
+  const setB = (px, py) => { B = { x: Math.round(om.x(px) * 10) / 10, t: Math.round(om.t(py) * 10) / 10 }; ordText(); op.redraw(); };
+  pointer(ord, { down: setB, drag: setB });
 
-function tick() {
-  if (!playing) return;
-  t += 0.012;
-  if (t > 1.2) t = 1.2;
-  draw();
-  if (t < 1.2) animId = requestAnimationFrame(tick);
-  else { playing = false; playBtn.textContent = '▶ REPLAY'; }
-}
+  /* ── 3.5 Andromeda ── */
+  const C0 = 299792458, LY = 9.4607e15;
+  const DIST = { moon: ['the Moon', 3.844e8], proxima: ['the nearest star', 4.24 * LY], core: ['the centre of the galaxy', 26000 * LY], andromeda: ['Andromeda', 2.5e6 * LY], edge: ['the edge of the observable universe', 4.65e10 * LY] };
+  let aV = 1.4, aD = 'andromeda';
+  const an = figure('and', (x, w, h) => {
+    const y0 = h * 0.55, x0 = 40, x1 = w - 30, tilt = 0.18;
+    line(x, x0, y0 - 80, x0, y0 + 80, alpha(C.ink, 0.25), 1);
+    line(x, x0, y0, x1, y0, C.ink, 2);
+    line(x, x0, y0, x1, y0 - (x1 - x0) * tilt, C.accent, 2);
+    dot(x, x0, y0, 7, C.ink);
+    text(x, 'standing still: "now"', x0 + 12, y0 + 18, { size: 11, color: C.ink });
+    const lx = x0 + (x1 - x0) * 0.4; text(x, 'walking: "now"', lx, y0 - (lx - x0) * tilt - 10, { size: 11, color: C.accent, align: 'right' });
+    line(x, x1, y0, x1, y0 - (x1 - x0) * tilt, C.light, 2);
+    const s = aV * DIST[aD][1] / (C0 * C0);
+    text(x, dur(s), x1 - 8, y0 - (x1 - x0) * tilt / 2 + 5, { size: 14, color: C.light, align: 'right', bg: C.bg2 });
+    text(x, DIST[aD][0] + ' →', x1, y0 + 18, { size: 11, align: 'right' });
+    text(x, 'you two, passing', x0 - 4, y0 + 36, { size: 11 });
+  }, { ratio: 0.32, min: 200, max: 280 });
+  function andText() {
+    const s = aV * DIST[aD][1] / (C0 * C0);
+    $('andRead').innerHTML = 'Moving at ' + fmt(aV, aV < 10 ? 1 : 0) + ' m/s, your "now" at ' + DIST[aD][0] + ' differs from the other person\'s by <span class="k">' + dur(s) + '</span> (Δt = v·d ⁄ c²). ' +
+      'Events in that span are "already happened" for one of you and "not yet" for the other.';
+    an.redraw();
+  }
+  choice('andV', (k) => { aV = +k; andText(); });
+  choice('andD', (k) => { aD = k; andText(); });
 
-frameYouBtn.addEventListener('click', () => {
-  frame = 'you';
-  frameYouBtn.classList.add('active');
-  frameThemBtn.classList.remove('active');
-  reset();
-});
-frameThemBtn.addEventListener('click', () => {
-  frame = 'them';
-  frameThemBtn.classList.add('active');
-  frameYouBtn.classList.remove('active');
-  reset();
-});
-playBtn.addEventListener('click', () => {
-  if (t >= 1.2) t = 0;
-  playing = !playing;
-  playBtn.textContent = playing ? '❚❚ PAUSE' : '▶ PLAY';
-  if (playing) animId = requestAnimationFrame(tick);
-});
-resetBtn.addEventListener('click', reset);
-vSlider.addEventListener('input', () => { reset(); });
-
-draw();
-window.addEventListener('resize', draw);
+  /* ── 3.6 the ladder in the barn ──
+     Barn frame: barn from x = 0 (entrance) to x = 1 (exit). The ladder's rest
+     length is 2, so 2/γ here. Its back passes the entrance at t = 0; both doors
+     shut at t = 0 and open at t = δ, a moment short enough that its front never
+     reaches the exit while it is shut. The ladder frame's door times come from
+     t′ = γ(t − v·x). */
+  let lt = 0, lframe = 'barn';
+  function ladderSetup() {
+    const v = lv(), g = gamma(v), Ll = 2 / g, fits = Ll < 1, d = fits ? 0.6 * (1 - Ll) / v : 0;
+    return { v, g, Ll, fits, d, entrance: [0, d], exit: [0, d], entP: [0, g * d], exitP: [-g * v, g * (d - v)] };
+  }
+  const lad = figure('lad', (x, w, h) => {
+    const S = ladderSetup(), barnF = lframe === 'barn';
+    const t0 = barnF ? -1.3 : -S.g * S.v - 0.9, t1 = barnF ? 1.2 : S.g * S.d + 1.2, t = t0 + lt * (t1 - t0);
+    // positions in this frame
+    let bx0, bx1, lx0, lx1, entShut, exitShut;
+    if (barnF) {
+      bx0 = 0; bx1 = 1; lx0 = S.v * t; lx1 = lx0 + S.Ll;
+      entShut = t >= S.entrance[0] && t < S.entrance[1]; exitShut = t >= S.exit[0] && t < S.exit[1];
+    } else {
+      lx0 = 0; lx1 = 2; bx0 = -S.v * t; bx1 = bx0 + 1 / S.g;
+      entShut = t >= S.entP[0] && t < S.entP[1]; exitShut = t >= S.exitP[0] && t < S.exitP[1];
+    }
+    const lo = barnF ? -2.6 : -2.4, hi = barnF ? 2.6 : 3.4, sc = (w - 40) / (hi - lo), X = (u) => 20 + (u - lo) * sc, mid = h * 0.52;
+    // the barn
+    x.fillStyle = alpha(C.other, 0.1); x.fillRect(X(bx0), mid - 40, X(bx1) - X(bx0), 80);
+    line(x, X(bx0), mid - 40, X(bx1), mid - 40, C.other, 2); line(x, X(bx0), mid + 40, X(bx1), mid + 40, C.other, 2);
+    const door = (px, shut) => { if (shut) line(x, px, mid - 40, px, mid + 40, C.else, 5); else { line(x, px, mid - 40, px, mid - 28, C.other, 2); line(x, px, mid + 28, px, mid + 40, C.other, 2); } };
+    door(X(bx0), entShut); door(X(bx1), exitShut);
+    text(x, 'barn', (X(bx0) + X(bx1)) / 2, mid - 50, { size: 12, color: C.other, align: 'center' });
+    // the ladder
+    line(x, X(lx0), mid - 8, X(lx1), mid - 8, C.accent, 3); line(x, X(lx0), mid + 8, X(lx1), mid + 8, C.accent, 3);
+    for (let k = 0; k <= 12; k++) { const u = lx0 + (lx1 - lx0) * k / 12; line(x, X(u), mid - 8, X(u), mid + 8, C.accent, 1.5); }
+    text(x, 'ladder', (X(lx0) + X(lx1)) / 2, mid + 30, { size: 12, color: C.accent, align: 'center' });
+    text(x, (barnF ? 'barn' : 'ladder') + '\'s clock: ' + t.toFixed(2), 12, 20, { size: 11, color: C.ink });
+    const inside = lx0 >= bx0 - 1e-9 && lx1 <= bx1 + 1e-9;
+    text(x, inside ? 'whole ladder inside' : '', w - 12, 20, { size: 11, color: C.reach, align: 'right' });
+    text(x, 'entrance' + (entShut ? ' SHUT' : ''), X(bx0) - 4, mid + 62, { size: 11, color: entShut ? C.else : C.dim, align: 'right' });
+    text(x, 'exit' + (exitShut ? ' SHUT' : ''), X(bx1) + 4, mid + 62, { size: 11, color: exitShut ? C.else : C.dim });
+  }, { ratio: (w) => (w < 560 ? 0.6 : 0.34), min: 220, max: 320 });
+  animate(lad, (dt) => { lt += dt / 6; if (lt >= 1) { lt = 1; return false; } }, $('ladPlay'), false);
+  $('ladAgain').addEventListener('click', () => { lt = 0; lad.play(); });
+  function ladText() {
+    const S = ladderSetup();
+    $('ladFrameCap').textContent = lframe === 'barn' ? 'the barn is still; the ladder moves →' : 'the ladder is still; the barn moves ←';
+    if (!S.fits) { $('ladRead').innerHTML = 'At ' + S.v.toFixed(2) + ' c the ladder is only shortened to ' + S.Ll.toFixed(2) + ' barn-lengths — it doesn\'t fit even in the barn\'s frame. Go faster than 0.87 c.'; return; }
+    $('ladRead').innerHTML = lframe === 'barn'
+      ? 'The barn sees the ladder shortened to <span class="k">' + S.Ll.toFixed(2) + '</span> barn-lengths. Both doors shut at time 0 with it entirely inside, and open again at ' + S.d.toFixed(3) + '.'
+      : 'The ladder sees the <em>barn</em> shortened to <span class="k">' + (1 / S.g).toFixed(2) + '</span> of its length. The exit shuts at ' + S.exitP[0].toFixed(2) + ' and opens at ' + S.exitP[1].toFixed(2) + ' — both before the entrance shuts at 0. The doors were never shut at the same time.';
+    // stop on the moment that matters: both doors shut (barn), or the exit shut (ladder)
+    const t0 = lframe === 'barn' ? -1.3 : -S.g * S.v - 0.9, t1 = lframe === 'barn' ? 1.2 : S.g * S.d + 1.2;
+    const at = lframe === 'barn' ? S.d / 2 : (S.exitP[0] + S.exitP[1]) / 2;
+    lt = (at - t0) / (t1 - t0); lad.redraw();
+  }
+  const lv = slider('lv', (v) => v.toFixed(2) + ' c · γ ' + gamma(v).toFixed(2), ladText);
+  choice('ladF', (k) => { lframe = k; ladText(); });
+})();
 </script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="spacetime" defer></script>
 </body>

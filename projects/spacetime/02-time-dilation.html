@@ -1,533 +1,611 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-mochi-world="space">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>02 / Time Dilation</title>
+<meta name="description" content="Lesson two of The Geometry of Spacetime: the light clock that shows why moving clocks run slow, the muons that prove it, the twin paradox drawn out, and the GPS satellites that would drift 11 km a day without it.">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0a0d12;
-    --bg-2: #11151c;
-    --ink: #e8e4d8;
-    --ink-dim: #8a8578;
-    --accent: #d4a574;
-    --you: #6db5a3;
-    --them: #b56d8a;
-    --line: #1f242d;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body {
-    background: var(--bg);
-    color: var(--ink);
-    font-family: 'Cormorant Garamond', serif;
-    min-height: 100vh;
-  }
-  .nav {
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.2em;
-  }
-  .nav a { color: var(--ink-dim); text-decoration: none; }
-  .nav a:hover { color: var(--accent); }
-  .nav .num { color: var(--accent); }
-
-  .container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 4rem 2rem 6rem;
-  }
-  .eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.4em;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-  }
-  h1 {
-    font-size: clamp(2.5rem, 6vw, 4rem);
-    font-weight: 300;
-    line-height: 1.05;
-    letter-spacing: -0.02em;
-    font-style: italic;
-    margin-bottom: 1.5rem;
-  }
-  .lede {
-    font-size: 1.25rem;
-    color: var(--ink-dim);
-    max-width: 38rem;
-    line-height: 1.6;
-    margin-bottom: 4rem;
-  }
-
-  .stage {
-    background: var(--bg-2);
-    border: 1px solid var(--line);
-    padding: 2rem;
-    margin-bottom: 2rem;
-  }
-
-  .clocks {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    margin-bottom: 2rem;
-  }
-  @media (max-width: 700px) {
-    .clocks { grid-template-columns: 1fr; }
-  }
-  .clock {
-    background: var(--bg);
-    padding: 2rem;
-    border: 1px solid var(--line);
-    text-align: center;
-    position: relative;
-  }
-  .clock h3 {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.2em;
-    color: var(--ink-dim);
-    text-transform: uppercase;
-    margin-bottom: 1.5rem;
-  }
-  .clock.you h3 { color: var(--you); }
-  .clock.them h3 { color: var(--them); }
-
-  .clock-face {
-    width: 180px;
-    height: 180px;
-    margin: 0 auto 1.5rem;
-    position: relative;
-  }
-
-  .digital {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 2rem;
-    letter-spacing: 0.05em;
-    color: var(--ink);
-    margin-bottom: 0.5rem;
-  }
-  .clock.you .digital { color: var(--you); }
-  .clock.them .digital { color: var(--them); }
-
-  .rate {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--ink-dim);
-    letter-spacing: 0.15em;
-  }
-
-  canvas { width: 100%; height: auto; display: block; margin: 1.5rem 0; }
-  .stwrap { overflow-x: auto; }
-  .stwrap canvas { min-width: 1000px; }
-
-  .controls {
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--line);
-  }
-  .ctrl label {
-    display: block;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.15em;
-    color: var(--ink-dim);
-    text-transform: uppercase;
-    margin-bottom: 0.75rem;
-  }
-  .ctrl .val {
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--accent);
-    font-size: 0.9rem;
-  }
-  input[type=range] {
-    width: 100%;
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-    cursor: pointer;
-  }
-  input[type=range]::-webkit-slider-runnable-track {
-    height: 2px;
-    background: var(--line);
-  }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    height: 14px;
-    width: 14px;
-    background: var(--accent);
-    border-radius: 50%;
-    margin-top: -6px;
-  }
-  input[type=range]::-moz-range-track {
-    height: 2px;
-    background: var(--line);
-  }
-  input[type=range]::-moz-range-thumb {
-    height: 14px;
-    width: 14px;
-    background: var(--accent);
-    border-radius: 50%;
-    border: none;
-  }
-
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .stat {
-    border-left: 2px solid var(--accent);
-    padding-left: 1rem;
-  }
-  .stat .label {
-    font-size: 0.65rem;
-    letter-spacing: 0.15em;
-    color: var(--ink-dim);
-    text-transform: uppercase;
-    margin-bottom: 0.5rem;
-  }
-  .stat .num {
-    font-size: 1.4rem;
-    color: var(--accent);
-  }
-
-  .essay {
-    margin-top: 4rem;
-    max-width: 36rem;
-  }
-  .essay h2 {
-    font-size: 1.75rem;
-    font-weight: 400;
-    font-style: italic;
-    margin: 3rem 0 1rem;
-    color: var(--accent);
-  }
-  .essay p {
-    font-size: 1.125rem;
-    line-height: 1.7;
-    margin-bottom: 1.25rem;
-    color: var(--ink);
-  }
-  .essay em { color: var(--accent); font-style: italic; }
-  .essay .pullout {
-    border-left: 2px solid var(--accent);
-    padding-left: 1.5rem;
-    margin: 2rem 0;
-    font-size: 1.25rem;
-    font-style: italic;
-    color: var(--ink-dim);
-  }
-
-  .next {
-    margin-top: 5rem;
-    padding-top: 3rem;
-    border-top: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    letter-spacing: 0.15em;
-  }
-  .next a { color: var(--accent); text-decoration: none; }
-  .next a:hover { color: var(--ink); }
-</style>
-  <script src="../../assets/visit.js" defer></script>
+<link rel="stylesheet" href="lesson.css">
+<script src="../../assets/visit.js" defer></script>
 </head>
 <body>
-  <nav class="nav">
-    <a href="index.html">← THE GEOMETRY OF SPACETIME</a>
-    <span class="num">02 / 04</span>
+<header class="bar">
+  <a href="index.html">← <span class="home-long">The Geometry of </span>Spacetime</a>
+  <nav class="chapters" aria-label="Chapters">
+    <a href="01-light-cones.html" title="Light Cones">01</a>
+    <span aria-current="page" title="Time Dilation">02</span>
+    <a href="03-simultaneity.html" title="The Loss of Now">03</a>
+    <a href="04-expansion.html" title="Space Expanding">04</a>
   </nav>
+</header>
 
-  <main class="container">
-    <div class="eyebrow">— Motion through time, traded for motion through space —</div>
-    <h1>Time Dilation</h1>
-    <p class="lede">Every object moves through spacetime at the speed of light. If you spend more of that motion on space, you spend less on time. Aging slows. The math forces it.</p>
+<div class="hero">
+  <p class="eyebrow">Chapter 2 of 4 · Moving clocks run slow</p>
+  <h1>Time Dilation</h1>
+  <p class="lede">If everyone measures light at the same speed — and they do — then <strong>a moving clock must tick slower than one at rest.</strong> Not because it's broken. Because the time between its ticks really is longer. Here's how one rule forces that, and the experiments that caught it happening.</p>
+  <div class="youll">
+    <div><b>You'll learn</b>where the famous γ formula comes from, using nothing but a triangle.</div>
+    <div><b>You'll see</b>particles from the sky that only reach the ground because their time runs slow.</div>
+    <div><b>You'll try</b>the twin paradox, and a GPS satellite with relativity switched off.</div>
+  </div>
+</div>
 
-    <div class="stage">
-      <div class="clocks">
-        <div class="clock you">
-          <h3>YOUR CLOCK</h3>
-          <canvas id="clockA" width="200" height="200"></canvas>
-          <div class="digital" id="timeA">00:00.00</div>
-          <div class="rate">RATE: 1.000×</div>
-        </div>
-        <div class="clock them">
-          <h3>THEIR CLOCK (MOVING)</h3>
-          <canvas id="clockB" width="200" height="200"></canvas>
-          <div class="digital" id="timeB">00:00.00</div>
-          <div class="rate" id="rateB">RATE: 1.000×</div>
-        </div>
+<div class="lesson">
+  <aside class="toc"><p>In this chapter</p><ol></ol></aside>
+  <main>
+
+  <!-- ─────────────────────────────── 1 -->
+  <section class="part" id="clock" data-short="The light clock">
+    <div class="num">Part 1</div>
+    <h2>The light clock</h2>
+    <div class="prose">
+      <p>Build the simplest clock possible: two mirrors facing each other, with a pulse of light bouncing between them. Each trip up and back is one tick. It's a real clock — every clock is just something that repeats — and its rhythm depends only on the speed of light.</p>
+      <p>Now take a second, identical clock and send it flying past you sideways. From where you stand, its light doesn't go straight up and down any more. The mirrors move while the light is in flight, so the light has to travel a <em>diagonal</em> — a longer path. And light can't go faster to make up for it: you measure it at the same speed as always. A longer path at the same speed takes longer. <strong>The moving clock ticks slower.</strong></p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 2.1 · Two identical light clocks, as you see them</span><span>you are standing still beside the left one</span></div>
+      <canvas id="lclock" role="img" aria-label="Two light clocks. The left one stands still and its light bounces straight up and down. The right one moves sideways, so its light zigzags along a longer diagonal path and it ticks less often."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="v1">Speed of the moving clock <output for="v1"></output></label>
+          <input type="range" id="v1" min="0" max="0.95" step="0.01" value="0.6"></div>
       </div>
+      <div class="btns"><button id="lcPlay">▶ Play</button><button id="lcTri" aria-pressed="false">Show the triangle</button></div>
+      <dl class="stats">
+        <div><dt>Still clock ticks</dt><dd id="tickA">0</dd></div>
+        <div><dt>Moving clock ticks</dt><dd id="tickB">0</dd></div>
+        <div><dt>Ratio, γ</dt><dd id="gam1">—</dd></div>
+      </dl>
+    </figure>
 
-      <!-- Never drawn smaller than its own 1000 px: shrunk to a phone's width its
-           sentences came out at 3 px. Narrower than that, it scrolls in its own
-           box (bug sweep D3-12). -->
-      <div class="stwrap"><canvas id="spaceTime" width="1000" height="280" aria-label="Spacetime diagram of the two clocks' paths"></canvas></div>
+    <div class="prose">
+      <p>Switch on the triangle. In the time <span class="k">t</span> that one half-tick takes, as you see it, the light goes <span class="k">c·t</span> along the diagonal while the clock moves <span class="k">v·t</span> sideways. The height between the mirrors is the same as for the still clock: <span class="k">c·t₀</span>, where <span class="k">t₀</span> is the half-tick of a clock at rest. Pythagoras:</p>
+    </div>
+    <div class="eq">(c·t)² = (c·t₀)² + (v·t)²<br>t = t₀ ⁄ √(1 − v²/c²) = γ · t₀
+      <small>γ ("gamma", the Lorentz factor) is how many of your seconds one tick of the moving clock takes. It's 1 at rest and grows without limit as v approaches c.</small></div>
+    <div class="prose">
+      <p>Every clock must agree with the light clock — a wristwatch, a heartbeat, an atom, a cell dividing — or you could stand in a moving ship, compare two clocks and work out your speed, and relativity's first rule (no experiment inside a smooth-moving ship can tell you it's moving) would be broken. So it isn't the clock that slows. It's <strong>time along that path</strong>.</p>
+    </div>
+  </section>
 
-      <div class="controls">
-        <div class="ctrl">
-          <label>Their velocity (fraction of c) <span class="val" id="vVal">0.00 c</span></label>
-          <input type="range" id="v" aria-label="Their velocity, fraction of c" min="0" max="99" value="50">
-        </div>
-        <div class="stats">
-          <div class="stat">
-            <div class="label">Lorentz factor γ</div>
-            <div class="num" id="gamma">1.155</div>
-          </div>
-          <div class="stat">
-            <div class="label">Their 1 sec</div>
-            <div class="num" id="theirSec">0.866 sec</div>
-          </div>
-          <div class="stat">
-            <div class="label">Per Earth year</div>
-            <div class="num" id="earthYear">0.866 yr</div>
-          </div>
-          <div class="stat">
-            <div class="label">100 yr trip</div>
-            <div class="num" id="hundred">86.6 yr</div>
-          </div>
-        </div>
+  <!-- ─────────────────────────────── 2 -->
+  <section class="part" id="gamma" data-short="How much slower?">
+    <div class="num">Part 2</div>
+    <h2>How much slower?</h2>
+    <div class="prose">
+      <p>The formula hides a surprise in its shape: for almost every speed, γ is so close to 1 that the effect is invisible, and then near light speed it shoots toward infinity.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 2.2 · γ against speed</span><span>drag along the curve</span></div>
+      <canvas id="gcurve" role="img" aria-label="A graph of the Lorentz factor gamma against speed as a fraction of light speed. It stays almost flat at 1 until about half light speed and then rises steeply toward infinity."></canvas>
+      <p class="read" id="gRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="scroll-x"><table class="data" id="speeds">
+      <thead><tr><th>Thing</th><th>Speed</th><th>γ</th><th>Its clock falls behind, per day of yours</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="prose">
+      <p>A day of walking costs you less than a trillionth of a second. An astronaut on the space station ages about 28 microseconds a day less from speed alone — measurable, but only with atomic clocks. It takes a particle accelerator to make the effect large.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────── 3 -->
+  <section class="part" id="budget" data-short="Space or time">
+    <div class="num">Part 3</div>
+    <h2>Moving through space, or through time</h2>
+    <div class="prose">
+      <p>There's a tidy way to picture the formula. Take your speed through space as a fraction of light, <span class="k">v/c</span>. Take your clock's rate — how many of its seconds pass per second of the person watching — <span class="k">1/γ</span>. Those two numbers always sit on the same circle:</p>
+    </div>
+    <div class="eq">(v/c)² + (clock rate)² = 1
+      <small>Square the clock rate √(1 − v²/c²) and add v²/c²: it's exactly 1, at every speed.</small></div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 2.3 · A fixed budget</span><span>across: speed through space · up: rate of your clock</span></div>
+      <canvas id="dial" role="img" aria-label="A quarter circle. A point on it moves from the top, where the clock runs at full rate and the speed is zero, toward the right, where speed approaches light and the clock rate approaches zero."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="v3">Speed <output for="v3"></output></label>
+          <input type="range" id="v3" min="0" max="0.999" step="0.001" value="0.6"></div>
       </div>
+      <p class="read" id="dialRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="aside"><b>A picture, not a law.</b> People say "everything moves through spacetime at the speed of light — sitting still, it's all in the time direction." That's this circle in words. It's a good way to remember the result, but spacetime isn't ordinary geometry (part 6 shows where the analogy breaks), so treat it as a memory aid, not the mechanism.</div>
+
+    <p class="pull">At light speed the point reaches the bottom of the circle: the clock rate is zero. Light itself doesn't experience the trip at all.</p>
+  </section>
+
+  <!-- ─────────────────────────────── 4 -->
+  <section class="part" id="muons" data-short="Proof from the sky">
+    <div class="num">Part 4</div>
+    <h2>Proof from the sky: muons</h2>
+    <div class="prose">
+      <p>Cosmic rays hit the top of the atmosphere all the time, about 15 km up, and make <strong>muons</strong>: heavy cousins of the electron that fall apart after an average of 2.2 millionths of a second. They come down at 99.8% of light speed.</p>
+      <p>Do the sum the old way. At nearly light speed, 2.2 µs is enough to travel about 660 metres. To fall 15 km takes 50 µs — over 22 lifetimes. Almost none should reach the ground: about one in ten billion.</p>
+      <p>But detectors on the ground count them all day long. Here's why.</p>
     </div>
 
-    <div class="essay">
-      <h2>What you're seeing</h2>
-      <p>Two clocks. Yours stays still. Theirs moves at some fraction of the speed of light. As their velocity climbs, their clock ticks slower from your perspective. Not because the clock is broken — because <em>time itself runs slower</em> along their path through spacetime.</p>
+    <figure class="fig">
+      <div class="cap"><span>Figure 2.4 · 400 muons born 15 km up</span><span>each fades when it decays</span></div>
+      <canvas id="mu" role="img" aria-label="Muons falling from the top of the atmosphere toward the ground. With relativity off almost all decay high up; with it on about a quarter reach the ground."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="muv">Muon speed <output for="muv"></output></label>
+          <input type="range" id="muv" min="0.95" max="0.9995" step="0.0005" value="0.998"></div>
+      </div>
+      <div class="btns" id="muRel" role="group" aria-label="Relativity">
+        <button data-v="off">Relativity off (old physics)</button>
+        <button data-v="on" aria-pressed="true">Relativity on</button>
+      </div>
+      <div class="btns"><button id="muGo">▶ Release</button></div>
+      <dl class="stats">
+        <div><dt>Reached the ground</dt><dd id="muN">—</dd></div>
+        <div><dt>Expected</dt><dd id="muE">—</dd></div>
+        <div><dt>Muon's own trip time</dt><dd id="muT">—</dd></div>
+      </dl>
+    </figure>
 
-      <p>The diagram below the clocks shows what's happening geometrically. Every object moves through spacetime at exactly c. Your "motion" is entirely in the time direction, since you're sitting still. Their motion is split — some space, some time. The faster they go through space, the less of their motion remains for traveling through time.</p>
+    <div class="prose">
+      <p>At 99.8% of light speed, γ is about 16. From the ground, the muon's clock runs 16 times slow, so its 2.2 µs stretch to 35 µs — enough that about a quarter survive the fall. This was measured: in 1963, Frisch and Smith counted about 560 muons an hour on top of Mount Washington and about 410 at sea level, 1,900 m lower. Without time dilation they should have counted around 25.</p>
+      <h3>What the muon says</h3>
+      <p>Ride along with the muon and its clock is perfectly normal: it does decay after about 2.2 µs of its own time. But from its point of view, the atmosphere is rushing up at 99.8% of light speed, and a moving thing is shorter along its direction of motion by the same factor γ. Its 15 km of air is less than 1 km thick. Both stories give the same count on the ground — <strong>time dilation for one observer is length contraction for the other.</strong></p>
+    </div>
+  </section>
 
-      <h2>The geometry</h2>
-      <p>This is captured by a single equation, the <em>Lorentz factor</em>:</p>
-      <p style="font-family: 'JetBrains Mono', monospace; text-align: center; font-size: 1.3rem; color: var(--accent); margin: 2rem 0;">γ = 1 / √(1 − v²/c²)</p>
-
-      <p>At v = 0, γ = 1 — no dilation. At v = 0.5c, γ ≈ 1.15 — their clock runs about 13% slower from your perspective. At v = 0.99c, γ ≈ 7 — one of their seconds is seven of yours. As v approaches c, γ approaches infinity — their time approaches a stop.</p>
-
-      <p class="pullout">"Move the slider all the way up. That's what happens to a photon. From light's perspective, no time passes between emission and absorption — even across billions of light-years."</p>
-
-      <h2>Why this is real</h2>
-      <p>This isn't an illusion or a measurement artifact. It applies to <em>every physical process</em> — atomic vibrations, chemical reactions, neuron firings, cellular aging. All of it slows down together along a fast-moving worldline. The astronaut who spends a year on the ISS comes back about 10 milliseconds younger than their twin on Earth. NASA tracked it with Scott and Mark Kelly. Genuine, measurable, real.</p>
-
-      <p>The slider above represents the same effect, just at speeds we can't physically achieve yet. The math doesn't change. Only the magnitude does.</p>
+  <!-- ─────────────────────────────── 5 -->
+  <section class="part" id="mutual" data-short="Who is really slow?">
+    <div class="num">Part 5</div>
+    <h2>Each sees the other's clock run slow</h2>
+    <div class="prose">
+      <p>Here is the part that sounds like a contradiction. Two ships pass each other. A says B's clock is slow. B — who is entitled to say she is the one at rest — says A's clock is slow. They can't both be right… can they?</p>
+      <p>They can, because "B's clock reads 1 when mine reads 2" compares clocks in two different places, and that needs a decision about which events count as happening <em>at the same time</em>. A and B decide differently. Draw it out and the contradiction disappears.</p>
     </div>
 
-    <div class="next">
-      <a href="01-light-cones.html">← 01 / LIGHT CONES</a>
-      <a href="03-simultaneity.html">03 / SIMULTANEITY →</a>
+    <figure class="fig">
+      <div class="cap"><span>Figure 2.5 · Ticks along two worldlines</span><span>dots: each clock's own hours</span></div>
+      <canvas id="mut" role="img" aria-label="A spacetime diagram with A's worldline straight up and B's tilted. Dashed lines of simultaneity connect each tick to the other clock, showing each observer finds the other's clock slow."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="v5">B's speed relative to A <output for="v5"></output></label>
+          <input type="range" id="v5" min="0.1" max="0.85" step="0.01" value="0.6"></div>
+      </div>
+      <div class="btns" id="mutView" role="group" aria-label="Whose 'same time'">
+        <button data-v="A" aria-pressed="true">A's "same time" lines</button>
+        <button data-v="B">B's "same time" lines</button>
+      </div>
+      <p class="read" id="mutRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="prose">
+      <p>A's lines of "same time" are flat. Follow the one from B's first tick across to A's worldline: A's clock already reads more than 1. Switch to B's lines — they're tilted, because B is moving (chapter 3 is about exactly this) — and the one from A's first tick meets B's worldline after B's clock has passed 1. Each observer, slicing time their own way, finds the other slow. Nobody is wrong; they're answering slightly different questions.</p>
     </div>
+  </section>
+
+  <!-- ─────────────────────────────── 6 -->
+  <section class="part" id="twins" data-short="The twin paradox">
+    <div class="num">Part 6</div>
+    <h2>The twin paradox</h2>
+    <div class="prose">
+      <p>One twin stays on Earth. The other flies to a star and back. When they meet again they can stand side by side and compare — no "same time over there" needed — and the traveller is younger. But if each sees the other slow, why isn't it symmetric?</p>
+      <p>Because the trips aren't symmetric. The Earth twin's worldline is straight. The traveller's has a <strong>corner</strong>: she turns around, and she can feel it (the engines fire, she is pushed into her seat). And in spacetime, unlike on paper, <em>a straight worldline between two events is the one with the most time on it</em>. Any detour — any corner — has less.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 2.6 · The trip</span><span>across: light-years · up: years on Earth</span></div>
+      <canvas id="tw" role="img" aria-label="A spacetime diagram of the twin paradox. Earth's worldline is straight up; the traveller's goes out and back in a V. Light signals sent each year cross between them."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="tv">Cruising speed <output for="tv"></output></label>
+          <input type="range" id="tv" min="0.2" max="0.99" step="0.01" value="0.8"></div>
+        <div class="ctrl"><label for="td">Distance to the star <output for="td"></output></label>
+          <input type="range" id="td" min="1" max="10" step="0.5" value="4"></div>
+      </div>
+      <div class="btns" id="twSig" role="group" aria-label="Signals">
+        <button data-v="none">No signals</button>
+        <button data-v="her" aria-pressed="true">Her yearly signals home</button>
+        <button data-v="home">Earth's yearly signals to her</button>
+      </div>
+      <dl class="stats">
+        <div><dt>Earth twin ages</dt><dd id="twE">—</dd></div>
+        <div><dt>Traveller ages</dt><dd id="twT">—</dd></div>
+        <div><dt>Difference</dt><dd id="twD">—</dd></div>
+      </dl>
+      <p class="read" id="twRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="try"><b>Try this</b><ol>
+      <li>Show <em>her</em> yearly signals. Earth receives them slowly for most of the trip, then in a rush at the end. Count them: they add up to her age.</li>
+      <li>Show <em>Earth's</em> signals. She receives them slowly on the way out and quickly on the way back, and the switch happens right at the turnaround — not at the end, as it does for Earth. That's the asymmetry, made visible.</li>
+    </ol></div>
+
+    <div class="prose">
+      <p>Want to take the trip yourself, watching Earth's clock race away out the window? <a href="../how-speed-affects-time/index.html">How Speed Affects Time</a>, another exhibit in Exploration, puts you in the pilot's seat.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────── 7 -->
+  <section class="part" id="gps" data-short="GPS and gravity">
+    <div class="num">Part 7</div>
+    <h2>Your phone needs this: GPS</h2>
+    <div class="prose">
+      <p>There's a second way to slow a clock, from Einstein's later theory of gravity: <strong>clocks deeper in gravity run slower</strong>. A clock on the ground ticks a little slower than one up a mountain. In 2010, optical atomic clocks at NIST caught the difference between two clocks just 33 cm apart in height.</p>
+      <p>GPS satellites feel both effects at once, in opposite directions. Their speed slows them. Their height — far up out of Earth's gravity well — speeds them up, by more. Move the satellite and see which one wins.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 2.7 · A clock in a circular orbit, against one on the ground</span><span>microseconds gained or lost per day</span></div>
+      <canvas id="orbit" role="img" aria-label="Bars showing how much a clock in orbit gains from being higher and loses from moving fast, and the total, for a chosen orbit height."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="alt">Orbit height <output for="alt"></output></label>
+          <input type="range" id="alt" min="200" max="40000" step="10" value="20200"></div>
+        <div class="ctrl"><label for="days">Days without correcting for relativity <output for="days"></output></label>
+          <input type="range" id="days" min="0" max="7" step="0.1" value="1"></div>
+      </div>
+      <div class="btns" id="altPick" role="group" aria-label="Orbits">
+        <button data-v="408">The ISS</button>
+        <button data-v="20200" aria-pressed="true">GPS</button>
+        <button data-v="35786">Geostationary</button>
+      </div>
+      <p class="read" id="orbitRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="prose">
+      <p>For GPS the net is about <strong>+38 microseconds a day</strong>. That sounds like nothing, but GPS finds you by timing radio signals that travel at light speed, and light covers 11.5 km in 38.5 µs. Without the correction, every position would drift by roughly 11.5 km a day. The satellites' clocks are deliberately set to tick slightly slow before launch — 10.22999999543 MHz instead of 10.23 MHz — so that up in orbit they keep pace with the ground.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────── check -->
+  <section class="part check" id="check" data-short="Check yourself">
+    <div class="num">Check yourself</div>
+    <h2>Four questions</h2>
+
+    <div class="q" data-answer="c">
+      <p>You fly past Earth at 0.8 c. What does your own wristwatch do?</p>
+      <div class="opts">
+        <button data-k="a">Runs 40% slow</button>
+        <button data-k="b">Runs 40% fast</button>
+        <button data-k="c">Runs normally — for you nothing has changed</button>
+      </div>
+      <p class="why" hidden><span></span>Time dilation is always someone else's clock. In your own frame you're at rest; it's Earth's clocks you'd say run slow.</p>
+    </div>
+
+    <div class="q" data-answer="b">
+      <p>Why do so many muons reach the ground?</p>
+      <div class="opts">
+        <button data-k="a">They travel faster than light</button>
+        <button data-k="b">Their clocks run slow from our point of view, so they live long enough</button>
+        <button data-k="c">The atmosphere protects them</button>
+      </div>
+      <p class="why" hidden><span></span>At 0.998 c their clocks run about 16 times slow as seen from the ground. From the muon's side, the same fact shows up as the atmosphere being 16 times thinner.</p>
+    </div>
+
+    <div class="q" data-answer="a">
+      <p>In the twin paradox, what breaks the symmetry?</p>
+      <div class="opts">
+        <button data-k="a">The traveller turns around — her worldline has a corner, Earth's doesn't</button>
+        <button data-k="b">Earth is bigger</button>
+        <button data-k="c">Nothing — they end up the same age</button>
+      </div>
+      <p class="why" hidden><span></span>Only the traveller changes frames, and she can feel it. Between two meetings, the straight worldline always has the most time on it.</p>
+    </div>
+
+    <div class="q" data-answer="c">
+      <p>GPS satellites' clocks, left alone, would…</p>
+      <div class="opts">
+        <button data-k="a">Run slow, because they're moving fast</button>
+        <button data-k="b">Keep perfect time with the ground</button>
+        <button data-k="c">Run fast by about 38 µs a day, because gravity's effect beats speed's</button>
+      </div>
+      <p class="why" hidden><span></span>Speed costs them about 7 µs a day; being higher up gains them about 46. The total is a gain of about 38, worth 11.5 km of position.</p>
+    </div>
+
+    <div class="sources">
+      <h3>Where the numbers come from</h3>
+      <ul>
+        <li>Muon lifetime 2.197 µs (Particle Data Group). Frisch &amp; Smith, "Measurement of the relativistic time dilation using μ-mesons", <em>American Journal of Physics</em> 31, 342 (1963).</li>
+        <li>Orbit figures are worked out live on this page from GM⊕ = 3.986×10¹⁴ m³/s² and Earth's mean radius, 6,371 km, for circular orbits; the ground clock's own rotation is left out.</li>
+        <li>GPS clock offset: N. Ashby, "Relativity in the Global Positioning System", <em>Living Reviews in Relativity</em> 6 (2003).</li>
+        <li>Clocks 33 cm apart: Chou et al., "Optical Clocks and Relativity", <em>Science</em> 329, 1630 (2010).</li>
+        <li>LHC protons at 6.8 TeV: γ ≈ 7,250.</li>
+      </ul>
+    </div>
+
+    <nav class="next" aria-label="Next and previous">
+      <a href="01-light-cones.html">← Chapter 1 · Light Cones</a>
+      <a href="03-simultaneity.html">Chapter 3 · The Loss of Now →</a>
+    </nav>
+  </section>
   </main>
+</div>
 
+<script src="lesson.js"></script>
 <script>
-const clockA = document.getElementById('clockA').getContext('2d');
-const clockB = document.getElementById('clockB').getContext('2d');
-const spaceCtx = document.getElementById('spaceTime');
-const sCtx = spaceCtx.getContext('2d');
-const vSlider = document.getElementById('v');
-const vVal = document.getElementById('vVal');
-const timeA = document.getElementById('timeA');
-const timeB = document.getElementById('timeB');
-const rateB = document.getElementById('rateB');
-const gammaEl = document.getElementById('gamma');
-const theirSec = document.getElementById('theirSec');
-const earthYear = document.getElementById('earthYear');
-const hundred = document.getElementById('hundred');
+(function () {
+  const { C, figure, animate, pointer, slider, choice, text, line, dot, arrow, poly, alpha, mink, gamma, lag, fmt, dur, $ } = ST;
+  const c = 299792458;
 
-let elapsed = 0;
-/* Their clock adds up dt / γ frame by frame, so a speed change only changes
-   its rate from then on. Recomputed as all of `elapsed` over today's γ, every
-   change of the slider rewrote its past and it jumped backwards (D3-7). */
-let theirElapsed = 0;
-let lastTime = performance.now();
+  /* ── 2.1 the light clock ── */
+  let T = 0, showTri = false, trail = [];
+  const lcl = figure('lclock', (x, w, h) => {
+    const v = v1(), g = gamma(v);
+    const narrow = w < 560;
+    const H = h - 70, top = 34, L = H;                 // mirror gap in px = one unit of length
+    const leftW = narrow ? w * 0.28 : w * 0.24;
+    // the still clock
+    const ax = leftW / 2;
+    const mir = (cx, col) => { line(x, cx - 28, top, cx + 28, top, col, 4); line(x, cx - 28, top + L, cx + 28, top + L, col, 4); };
+    mir(ax, C.dim);
+    const ph = (T % 2), yA = ph < 1 ? top + L - ph * L : top + (ph - 1) * L;
+    line(x, ax, top, ax, top + L, alpha(C.light, 0.25), 1, [3, 4]);
+    dot(x, ax, yA, 6, C.light);
+    text(x, 'still', ax, h - 12, { size: 12, align: 'center' });
+    line(x, leftW, 10, leftW, h - 10, C.line, 1);
+    // the moving clock: light goes up/down at c·√(1−v²) and sideways at v, in your frame
+    const span = w - leftW, sx = (u) => leftW + 40 + ((u % (span - 80)) + (span - 80)) % (span - 80);
+    const tb = T / g;                                    // the moving clock's own time
+    const pb = tb % 2, yB = pb < 1 ? top + L - pb * L : top + (pb - 1) * L;
+    const bx = sx(v * T * L);
+    mir(bx, C.accent);
+    // trail of the light's path
+    trail.push([v * T * L, yB]); if (trail.length > 400) trail.shift();
+    x.strokeStyle = alpha(C.light, 0.5); x.lineWidth = 1.2; x.beginPath();
+    let prev = null;
+    for (const [u, y] of trail) { const px = sx(u); if (prev !== null && Math.abs(px - prev) > 50) x.moveTo(px, y); else x.lineTo(px, y); prev = px; }
+    x.stroke();
+    dot(x, bx, yB, 6, C.light);
+    text(x, 'moving at ' + v.toFixed(2) + ' c →', leftW + span / 2, h - 12, { size: 12, align: 'center', color: C.accent });
+    if (showTri && v > 0.05) {
+      /* This tick's own triangle, from where the light last left the bottom
+         mirror: height L, width v·γ·L, hypotenuse γ·L (one half-tick each). */
+      const T0 = 2 * Math.floor(tb / 2) * g, x0 = sx(v * T0 * L), y0 = top + L, dx = v * g * L;
+      if (x0 + 2 * dx < w - 10 && x0 < bx + 1) {
+        line(x, x0 + dx, y0 - L, x0 + 2 * dx, y0, alpha(C.light, 0.35), 1.5, [5, 4]);
+        poly(x, [[x0, y0], [x0 + dx, y0 - L], [x0, y0 - L]], alpha(C.light, 0.06), null);
+        line(x, x0, y0, x0 + dx, y0 - L, C.light, 2);
+        line(x, x0, y0, x0, y0 - L, C.ink, 1.5); line(x, x0, y0 - L, x0 + dx, y0 - L, C.other, 1.5);
+        text(x, 'c·t₀', x0 - 6, y0 - L / 2, { size: 12, align: 'right', color: C.ink, bg: C.bg2 });
+        text(x, 'v·t', x0 + dx / 2, y0 - L - 6, { size: 12, align: 'center', color: C.other, bg: C.bg2 });
+        text(x, 'c·t', x0 + dx / 2 + 10, y0 - L / 2 + 14, { size: 12, color: C.light, bg: C.bg2 });
+      }
+    }
+    $('tickA').textContent = Math.floor(T / 2);
+    $('tickB').textContent = Math.floor(tb / 2);
+  }, { ratio: (w) => (w < 560 ? 0.8 : 0.42), max: 380, min: 260 });
+  const v1 = slider('v1', (v) => v.toFixed(2) + ' c', (v) => { trail = []; T = 0; $('gam1').textContent = gamma(v).toFixed(3); lcl.redraw(); });
+  animate(lcl, (dt) => { T += dt * 1.1; }, $('lcPlay'), true);
+  /* Showing the triangle stops the clocks at the top of the first tick, so
+     the triangle stands still long enough to read; Play runs on from there. */
+  $('lcTri').addEventListener('click', (e) => {
+    showTri = !showTri; e.target.setAttribute('aria-pressed', String(showTri));
+    if (showTri) { lcl.stop(); trail = []; T = gamma(v1()) * 0.999; }
+    lcl.redraw();
+  });
 
-function drawClock(ctx, time, color) {
-  const w = ctx.canvas.width;
-  const cx = w/2;
-  const cy = w/2;
-  const r = w/2 - 16;
-
-  ctx.clearRect(0, 0, w, w);
-
-  // outer ring
-  ctx.strokeStyle = '#1f242d';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // tick marks
-  ctx.strokeStyle = '#8a8578';
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 12; i++) {
-    const angle = (i / 12) * Math.PI * 2 - Math.PI/2;
-    ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(angle) * (r - 8), cy + Math.sin(angle) * (r - 8));
-    ctx.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
-    ctx.stroke();
+  /* ── 2.2 γ curve and the table of real speeds ── */
+  let gv = 0.866, gm = null;
+  const gc = figure('gcurve', (x, w, h) => {
+    const L = 46, R = 16, Tp = 16, B = 34, gmax = 10;
+    const X = (b) => L + b * (w - L - R), Y = (g) => h - B - (g - 1) / (gmax - 1) * (h - B - Tp);
+    gm = { X, Y, inv: (px) => (px - L) / (w - L - R) };
+    for (let g = 1; g <= gmax; g++) { line(x, L, Y(g), w - R, Y(g), C.grid, 1); text(x, g, L - 8, Y(g) + 4, { size: 11, align: 'right' }); }
+    for (let b = 0; b <= 1.001; b += 0.1) { line(x, X(b), Tp, X(b), h - B, C.grid, 1); text(x, b.toFixed(1), X(b), h - B + 16, { size: 11, align: 'center' }); }
+    text(x, 'speed (fraction of c) →', w - R, h - 4, { size: 11, align: 'right' });
+    text(x, 'γ', L - 30, Tp + 8, { size: 13 });
+    line(x, X(1), Tp, X(1), h - B, alpha(C.light, 0.6), 1, [4, 4]);
+    x.strokeStyle = C.accent; x.lineWidth = 2.5; x.beginPath();
+    for (let i = 0; i <= 600; i++) { const b = i / 600 * 0.995, g = gamma(b); if (g > gmax) break; const p = [X(b), Y(g)]; i ? x.lineTo(...p) : x.moveTo(...p); }
+    x.stroke();
+    const g = gamma(gv), py = Y(Math.min(g, gmax));
+    line(x, X(gv), h - B, X(gv), py, alpha(C.ink, 0.35), 1, [3, 3]); line(x, L, py, X(gv), py, alpha(C.ink, 0.35), 1, [3, 3]);
+    dot(x, X(gv), py, 7, C.light);
+    text(x, 'γ = ' + (g > 100 ? fmt(g, 0) : g.toFixed(3)), X(gv) + (gv > 0.8 ? -12 : 12), py - 10, { size: 12, color: C.light, align: gv > 0.8 ? 'right' : 'left', bg: C.bg2 });
+  }, { ratio: 0.48, max: 420 });
+  const setG = (px) => { gv = Math.max(0, Math.min(0.995, gm.inv(px))); gText(); };
+  pointer(gc, { down: setG, drag: setG });
+  function gText() {
+    const g = gamma(gv);
+    $('gRead').innerHTML = 'At <span class="k">' + gv.toFixed(3) + ' c</span>, γ = <span class="k">' + g.toFixed(3) + '</span>: one second of the moving clock takes ' + g.toFixed(3) +
+      ' of yours, and a year on board is ' + (g).toFixed(2) + ' years for you.' + (gv < 0.3 ? ' Still almost flat — the effect is under ' + Math.max(1, Math.ceil((g - 1) * 100)) + '%.' : '');
   }
+  gText();
+  const SPEEDS = [
+    ['Walking', 1.4], ['A car at 70 mph', 31.3], ['An airliner', 250], ['A rifle bullet', 900],
+    ['The GPS satellites', 3874], ['The space station', 7660], ['Earth around the Sun', 29780],
+    ['Parker Solar Probe, fastest', 191700], ['A cosmic-ray muon', 0.998 * c],
+    ['A proton in the LHC', c * Math.sqrt(1 - 1 / (7250 * 7250))],
+  ];
+  $('speeds').tBodies[0].innerHTML = SPEEDS.map(([n, s]) => {
+    const b = s / c, g = gamma(b), l = lag(b);
+    const sp = b > 0.01 ? (b > 0.9999 ? '0.99999999 c' : b.toFixed(3) + ' c') : fmt(s, s < 10 ? 1 : 0) + ' m/s';
+    // γ − 1 from β²/2 for slow things, where 1/√(1−β²) rounds to exactly 1
+    const gs = g > 1.5 ? fmt(g, 1) : '1 + ' + fmt(b < 1e-3 ? b * b / 2 : g - 1, 2);
+    const per = l > 0.5 ? 'a day for you is ' + (g > 100 ? fmt(86400 / g, 0) + ' s' : dur(86400 / g)) + ' for it' : dur(l * 86400);
+    return '<tr><td>' + n + '</td><td class="n">' + sp + '</td><td class="n">' + gs + '</td><td class="n">' + per + '</td></tr>';
+  }).join('');
 
-  // second hand
-  const sec = (time / 1000) % 60;
-  const angle = (sec / 60) * Math.PI * 2 - Math.PI/2;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.lineTo(cx + Math.cos(angle) * (r - 12), cy + Math.sin(angle) * (r - 12));
-  ctx.stroke();
+  /* ── 2.3 the circle ── */
+  const dl = figure('dial', (x, w, h) => {
+    const r = Math.min(w * 0.6, h - 60), ox = Math.max(56, (w - r) / 2 - 20), oy = h - 34;
+    x.strokeStyle = C.line; x.lineWidth = 1;
+    line(x, ox, oy, ox + r + 20, oy, C.dim, 1); line(x, ox, oy, ox, oy - r - 14, C.dim, 1);
+    x.strokeStyle = alpha(C.accent, 0.5); x.lineWidth = 2; x.beginPath(); x.arc(ox, oy, r, -Math.PI / 2, 0); x.stroke();
+    const b = v3(), rate = Math.sqrt(1 - b * b), px = ox + b * r, py = oy - rate * r;
+    arrow(x, ox, oy, px, py, C.accent, 2.5, 10);
+    line(x, px, py, px, oy, alpha(C.other, 0.8), 1.5, [4, 4]); line(x, px, py, ox, py, alpha(C.light, 0.8), 1.5, [4, 4]);
+    dot(x, px, py, 7, C.ink);
+    text(x, 'v/c = ' + b.toFixed(3), px, oy + 18, { size: 12, color: C.other, align: 'center' });
+    text(x, 'clock rate ' + rate.toFixed(3), ox - 6, py - 6, { size: 12, color: C.light, align: 'left', bg: C.bg2 });
+    text(x, 'space →', ox + r + 18, oy - 8, { size: 11, align: 'right' });
+    text(x, 'time ↑', ox + 6, oy - r - 4, { size: 11 });
+  }, { ratio: 0.5, max: 380, min: 260 });
+  const v3 = slider('v3', (v) => v.toFixed(3) + ' c', (b) => {
+    const rate = Math.sqrt(1 - b * b);
+    $('dialRead').innerHTML = 'At ' + b.toFixed(3) + ' c your clock runs at <span class="k">' + rate.toFixed(3) + '</span> of the rate of the clocks you\'re passing — ' +
+      (b < 0.1 ? 'barely different.' : 'one hour on board is ' + dur(3600 / rate) + ' for them.') + ' Check: ' + b.toFixed(3) + '² + ' + rate.toFixed(3) + '² = ' + (b * b + rate * rate).toFixed(3) + '.';
+    dl.redraw();
+  });
 
-  // minute hand
-  const min = (time / 60000) % 60;
-  const mAngle = (min / 60) * Math.PI * 2 - Math.PI/2;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.lineTo(cx + Math.cos(mAngle) * (r - 30), cy + Math.sin(mAngle) * (r - 30));
-  ctx.stroke();
-
-  // center dot
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function formatTime(ms) {
-  const totalSec = ms / 1000;
-  const min = Math.floor(totalSec / 60) % 60;
-  const sec = Math.floor(totalSec) % 60;
-  const cs = Math.floor((totalSec * 100) % 100);
-  return `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
-}
-
-function drawSpaceTime(v, gamma) {
-  const w = spaceCtx.width;
-  const h = spaceCtx.height;
-
-  sCtx.fillStyle = '#0a0d12';
-  sCtx.fillRect(0, 0, w, h);
-
-  // grid
-  sCtx.strokeStyle = '#1f242d';
-  sCtx.lineWidth = 1;
-  for (let i = 0; i < w; i += 40) {
-    sCtx.beginPath(); sCtx.moveTo(i, 0); sCtx.lineTo(i, h); sCtx.stroke();
+  /* ── 2.4 muons ── */
+  const TAU = 2.197e-6, ALT = 15000, N = 400;
+  let mus = [], mt = 0, relOn = true;
+  const muSpeed = () => muv();
+  function release() {
+    const b = muSpeed(), life = relOn ? TAU * gamma(b) : TAU;   // mean life as the ground sees it
+    mus = Array.from({ length: N }, (_, i) => ({ x: (i + Math.random()) / N, die: -Math.log(1 - Math.random()) * life, gone: false }));
+    mt = 0;
   }
-  for (let i = 0; i < h; i += 40) {
-    sCtx.beginPath(); sCtx.moveTo(0, i); sCtx.lineTo(w, i); sCtx.stroke();
+  const mu = figure('mu', (x, w, h) => {
+    const b = muSpeed(), trip = ALT / (b * c), top = 26, bot = h - 40;
+    // sky and ground
+    const g = x.createLinearGradient(0, top, 0, bot); g.addColorStop(0, '#0d1420'); g.addColorStop(1, '#16202e');
+    x.fillStyle = g; x.fillRect(0, top, w, bot - top);
+    x.fillStyle = '#1e1a14'; x.fillRect(0, bot, w, h - bot);
+    line(x, 0, bot, w, bot, C.accent, 1.5);
+    text(x, '15 km up — muons are made here', 10, top - 8, { size: 11 });
+    text(x, 'the ground', 10, bot + 18, { size: 11, color: C.accent });
+    const frac = Math.min(1, mt / trip);
+    let landed = 0;
+    for (const m of mus) {
+      const dead = m.die < Math.min(mt, trip);
+      const f = dead ? m.die / trip : frac;
+      const px = 8 + m.x * (w - 16), py = top + f * (bot - top);
+      if (dead) dot(x, px, py, 1.6, alpha(C.else, 0.55));
+      else { dot(x, px, py, 2.6, C.light); if (frac >= 1) landed++; }
+    }
+    if (mus.length && frac >= 1) $('muN').textContent = landed + ' of ' + N;
+    else if (mus.length) $('muN').textContent = 'falling…';
+    text(x, (mt * 1e6).toFixed(1) + ' µs', w - 10, top - 8, { size: 11, align: 'right', color: C.ink });
+  }, { ratio: (w) => (w < 560 ? 0.9 : 0.45), max: 420 });
+  animate(mu, (dt) => { const trip = ALT / (muSpeed() * c); mt += dt * trip / 3.5; if (mt > trip) { mt = trip; return false; } }, null, false);
+  function muText() {
+    const b = muSpeed(), g = gamma(b), trip = ALT / (b * c), life = relOn ? TAU * g : TAU, p = Math.exp(-trip / life);
+    $('muE').textContent = p * N >= 0.5 ? '≈ ' + Math.round(p * N) + ' of ' + N : fmt(p * N, 1) + ' of ' + N;
+    $('muT').textContent = relOn ? dur(trip / g) : dur(trip);
   }
+  const muv = slider('muv', (b) => b.toFixed(4) + ' c · γ ' + gamma(b).toFixed(1), () => { muText(); });
+  choice('muRel', (k) => { relOn = k === 'on'; muText(); });
+  $('muGo').addEventListener('click', () => { release(); $('muN').textContent = 'falling…'; mu.play(); });
+  queueMicrotask(() => { release(); mt = ALT / (muSpeed() * c); mu.redraw(); });
 
-  // labels
-  sCtx.fillStyle = '#8a8578';
-  sCtx.font = '12px "JetBrains Mono", monospace';
-  sCtx.fillText('SPACE →', 16, h - 14);
-  sCtx.save();
-  sCtx.translate(16, 24);
-  sCtx.rotate(0);
-  sCtx.fillText('TIME ↑', 0, 0);
-  sCtx.restore();
+  /* ── 2.5 each sees the other slow ── */
+  let mview = 'A';
+  const mut = figure('mut', (x, w, h) => {
+    const v = v5(), g = gamma(v), m = mink(w, h, 8, 0.22, 0.9);
+    m.grid(x, 1); m.axes(x, 'space →', 'time (A) ↑');
+    m.ray(x, 0, 0, 0, 1, C.accent, 2.5); m.ray(x, 0, 0, v, 1, C.other, 2.5);
+    const n = Math.floor(m.tmax / g) + 1;
+    for (let k = 1; k <= Math.ceil(m.tmax); k++) {
+      dot(x, ...m.P(0, k), 5, C.accent); text(x, k, m.X(0) - 10, m.Y(k) + 4, { size: 11, align: 'right', color: C.accent });
+    }
+    for (let k = 1; k <= n; k++) {
+      dot(x, ...m.P(v * g * k, g * k), 5, C.other); text(x, k, m.X(v * g * k) + 10, m.Y(g * k) + 4, { size: 11, color: C.other });
+    }
+    if (mview === 'A') {
+      // flat lines through B's ticks: meet A at t = γk
+      for (let k = 1; k <= n; k++) line(x, m.X(0), m.Y(g * k), m.X(v * g * k), m.Y(g * k), alpha(C.accent, 0.7), 1, [4, 4]);
+      const [px, py] = m.P(0, g); text(x, 'A reads ' + g.toFixed(2), px + 8, py - 6, { size: 11, color: C.accent, bg: C.bg2 });
+    } else {
+      // B's lines of same time through A's ticks: t = k + v·x, meeting B at t = γ²k, where B reads γk
+      for (let k = 1; k <= Math.ceil(m.tmax); k++) {
+        const t = g * g * k; line(x, m.X(0), m.Y(k), m.X(v * t), m.Y(t), alpha(C.other, 0.7), 1, [4, 4]);
+      }
+      const t = g * g; text(x, 'B reads ' + g.toFixed(2), m.X(v * t) + 10, m.Y(t) - 8, { size: 11, color: C.other, bg: C.bg2 });
+    }
+    text(x, 'A', m.X(0) + 6, m.Y(m.tmax) + 28, { size: 14, serif: true, color: C.accent });
+    text(x, 'B', m.X(v * m.tmax * 0.92) + 8, m.Y(m.tmax * 0.92) + 14, { size: 14, serif: true, color: C.other });
+  }, { ratio: 0.62, max: 560 });
+  const v5 = slider('v5', (v) => v.toFixed(2) + ' c · γ ' + gamma(v).toFixed(2), () => { mutText(); mut.redraw(); });
+  function mutText() {
+    const g = gamma(v5()).toFixed(2);
+    $('mutRead').innerHTML = mview === 'A'
+      ? 'Using <span class="c-accent">A\'s</span> "same time": when B\'s clock reads 1, A\'s reads <span class="k">' + g + '</span>. B is slow.'
+      : 'Using <span class="c-other">B\'s</span> "same time": when A\'s clock reads 1, B\'s reads <span class="k">' + g + '</span>. A is slow.';
+  }
+  choice('mutView', (k) => { mview = k; mutText(); mut.redraw(); });
 
-  const startX = 80;
-  const startY = h - 40;
-  const length = 200;
+  /* ── 2.6 the twins ── */
+  let sig = 'her';
+  const tw = figure('tw', (x, w, h) => {
+    const v = tv(), D = td(), g = gamma(v), Te = 2 * D / v, Tt = Te / g;
+    const m = mink(w, h, 1, 0.12, 0.94);
+    // fit the trip: width D, height Te
+    const s = Math.min((w * 0.72) / D, (h * 0.86) / Te);
+    m.s = s; const P = (X, T) => [m.X0 + X * s, m.Y0 - T * s];
+    for (let k = 0; k <= Te; k += 1) { line(x, 0, P(0, k)[1], w, P(0, k)[1], C.grid, 1); }
+    line(x, ...P(0, 0), ...P(0, Te + 0.4), C.accent, 2.5);
+    line(x, ...P(0, 0), ...P(D, Te / 2), C.other, 2.5); line(x, ...P(D, Te / 2), ...P(0, Te), C.other, 2.5);
+    line(x, ...P(D, 0), ...P(D, Te), alpha(C.dim, 0.5), 1, [3, 5]);
+    text(x, 'the star', P(D, 0)[0], P(D, 0)[1] + 16, { size: 11, align: 'center' });
+    text(x, 'Earth', P(0, 0)[0], P(0, 0)[1] + 16, { size: 11, align: 'center', color: C.accent });
+    // the traveller's own years: position at her proper time τ
+    const her = (tau) => { const t = tau * g; return t <= Te / 2 ? [v * t, t] : [D - v * (t - Te / 2), t]; };
+    for (let k = 1; k < Tt; k++) dot(x, ...P(...her(k)), 3.5, C.other);
+    for (let k = 1; k < Te; k++) dot(x, ...P(0, k), 3.5, C.accent);
+    x.save(); x.beginPath(); x.rect(0, 0, w, h); x.clip();
+    if (sig === 'her') {
+      for (let k = 1; k < Tt; k++) { const [hx, ht] = her(k); line(x, ...P(hx, ht), ...P(0, ht + hx), alpha(C.light, 0.75), 1); }
+    } else if (sig === 'home') {
+      // Earth's flash at t=k meets her where her x = t − k (going out) or D − ... solve on each leg
+      for (let k = 1; k < Te; k++) {
+        let t = k / (1 - v);                         // outbound: v t = t − k
+        if (t > Te / 2) t = (D + Te / 2 * v + k) / (1 + v); // inbound: D − v(t − Te/2) = t − k
+        if (t > Te) continue;
+        const hx = t <= Te / 2 ? v * t : D - v * (t - Te / 2);
+        line(x, ...P(0, k), ...P(hx, t), alpha(C.light, 0.75), 1);
+      }
+    }
+    x.restore();
+    dot(x, ...P(D, Te / 2), 6, C.other); text(x, 'turnaround', P(D, Te / 2)[0] + 10, P(D, Te / 2)[1] + 4, { size: 11, color: C.other });
+    dot(x, ...P(0, Te), 7, C.ink); text(x, 'they meet again', P(0, Te)[0] + 10, P(0, Te)[1] + 4, { size: 11, color: C.ink });
+  }, { ratio: (w) => (w < 560 ? 1.15 : 0.6), max: 600 });
+  function twText() {
+    const v = tv(), D = td(), g = gamma(v), Te = 2 * D / v, Tt = Te / g, k = Math.sqrt((1 - v) / (1 + v));
+    $('twE').textContent = Te.toFixed(2) + ' yr'; $('twT').textContent = Tt.toFixed(2) + ' yr'; $('twD').textContent = (Te - Tt).toFixed(2) + ' yr';
+    $('twRead').innerHTML = sig === 'her'
+      ? 'She flashes a light home every year of her life — ' + Math.floor(Tt) + ' flashes in all. On the way out Earth gets one every <span class="k">' + (1 / k).toFixed(2) + '</span> years; once her return signals start arriving, one every <span class="k">' + k.toFixed(2) + '</span>. Earth sees the switch only ' + (Te / 2 + D).toFixed(1) + ' years in, because the news of her turning round takes ' + D.toFixed(1) + ' years to come home.'
+      : sig === 'home' ? 'Earth flashes a light every year. She gets one every <span class="k">' + (1 / k).toFixed(2) + '</span> of her years going out and one every <span class="k">' + k.toFixed(2) + '</span> coming back — and for her the switch comes at the turnaround, halfway through her trip. That\'s the asymmetry.'
+      : 'A straight worldline from launch to reunion has ' + Te.toFixed(2) + ' years on it. Her bent one has ' + Tt.toFixed(2) + '.';
+  }
+  const tv = slider('tv', (v) => v.toFixed(2) + ' c', () => { twText(); tw.redraw(); });
+  const td = slider('td', (d) => d.toFixed(1) + ' light-years', () => { twText(); tw.redraw(); });
+  choice('twSig', (k) => { sig = k; twText(); tw.redraw(); });
 
-  // your worldline (straight up)
-  sCtx.strokeStyle = '#6db5a3';
-  sCtx.lineWidth = 3;
-  sCtx.beginPath();
-  sCtx.moveTo(startX, startY);
-  sCtx.lineTo(startX, startY - length);
-  sCtx.stroke();
-
-  sCtx.fillStyle = '#6db5a3';
-  sCtx.font = '14px "JetBrains Mono", monospace';
-  sCtx.fillText('YOU', startX - 12, startY + 22);
-
-  // their worldline (tilted)
-  const tiltedLength = length;
-  const dx = tiltedLength * v;
-  const dy = -tiltedLength * Math.sqrt(1 - v*v);
-  const themStartX = startX + 200;
-  sCtx.strokeStyle = '#b56d8a';
-  sCtx.lineWidth = 3;
-  sCtx.beginPath();
-  sCtx.moveTo(themStartX, startY);
-  sCtx.lineTo(themStartX + dx, startY + dy);
-  sCtx.stroke();
-
-  sCtx.fillStyle = '#b56d8a';
-  sCtx.fillText('THEM', themStartX - 16, startY + 22);
-
-  // arrows showing direction split
-  sCtx.strokeStyle = '#8a8578';
-  sCtx.setLineDash([3, 3]);
-  sCtx.lineWidth = 1;
-  sCtx.beginPath();
-  sCtx.moveTo(themStartX, startY);
-  sCtx.lineTo(themStartX, startY + dy);
-  sCtx.stroke();
-  sCtx.beginPath();
-  sCtx.moveTo(themStartX, startY + dy);
-  sCtx.lineTo(themStartX + dx, startY + dy);
-  sCtx.stroke();
-  sCtx.setLineDash([]);
-
-  sCtx.fillStyle = '#8a8578';
-  sCtx.font = '11px "JetBrains Mono", monospace';
-  sCtx.fillText('time component', themStartX - 80, startY + dy/2);
-  sCtx.fillText('space component', themStartX + dx/2 - 50, startY + dy - 8);
-
-  // explanation
-  sCtx.fillStyle = '#e8e4d8';
-  sCtx.font = '14px "Cormorant Garamond", serif';
-  sCtx.fillText('Both worldlines are the same length —', 540, 60);
-  sCtx.fillText('every object moves through spacetime at c.', 540, 84);
-  sCtx.fillStyle = '#d4a574';
-  sCtx.fillText('The faster you move through space,', 540, 120);
-  sCtx.fillText('the less of your motion goes into time.', 540, 144);
-
-  sCtx.fillStyle = '#8a8578';
-  sCtx.font = '12px "JetBrains Mono", monospace';
-  sCtx.fillText(`γ = ${gamma.toFixed(3)}`, 540, 180);
-  sCtx.fillText(`v/c = ${v.toFixed(2)}`, 540, 200);
-}
-
-function update(now) {
-  const dt = now - lastTime;
-  lastTime = now;
-  elapsed += dt;
-
-  const v = parseFloat(vSlider.value) / 100;
-  const gamma = 1 / Math.sqrt(1 - v*v);
-  theirElapsed += dt / gamma;
-
-  drawClock(clockA, elapsed, '#6db5a3');
-  drawClock(clockB, theirElapsed, '#b56d8a');
-  timeA.textContent = formatTime(elapsed);
-  timeB.textContent = formatTime(theirElapsed);
-  rateB.textContent = `RATE: ${(1/gamma).toFixed(3)}×`;
-  vVal.textContent = `${v.toFixed(2)} c`;
-  gammaEl.textContent = gamma.toFixed(3);
-  theirSec.textContent = `${(1/gamma).toFixed(3)} sec`;
-  earthYear.textContent = `${(1/gamma).toFixed(3)} yr`;
-  hundred.textContent = `${(100/gamma).toFixed(1)} yr`;
-
-  drawSpaceTime(v, gamma);
-
-  requestAnimationFrame(update);
-}
-
-requestAnimationFrame(update);
+  /* ── 2.7 orbits and GPS ── */
+  const GM = 3.986004e14, RE = 6.371e6, DAY = 86400;
+  // Rates against a clock on the ground (its own rotation left out): positive = the orbiting clock gains.
+  function rates(altKm) {
+    const r = RE + altKm * 1000, v2 = GM / r;
+    return { grav: GM * (1 / RE - 1 / r) / (c * c) * DAY * 1e6, speed: -v2 / (2 * c * c) * DAY * 1e6, v: Math.sqrt(v2) };
+  }
+  const ob = figure('orbit', (x, w, h) => {
+    const R = rates(alt()), net = R.grav + R.speed, vmax = 60;
+    const L = 140, Rr = 20, mid = L + (w - L - Rr) * 0.25, sc = (w - L - Rr) / (vmax + 20);
+    const X = (u) => mid + u * sc, rows = [['height (gravity)', R.grav, C.reach], ['speed', R.speed, C.else], ['total', net, C.light]];
+    line(x, X(0), 10, X(0), h - 24, C.dim, 1);
+    for (let u = -20; u <= vmax; u += 10) { line(x, X(u), 10, X(u), h - 24, C.grid, 1); text(x, (u > 0 ? '+' : '') + u, X(u), h - 8, { size: 11, align: 'center' }); }
+    const bh = Math.min(30, (h - 50) / 4);
+    rows.forEach(([n, val, col], i) => {
+      const y = 24 + i * (bh + 18);
+      x.fillStyle = alpha(col, i === 2 ? 0.9 : 0.6);
+      const a = X(Math.min(0, val)), b = X(Math.max(0, val));
+      x.fillRect(a, y, Math.max(1, b - a), bh);
+      text(x, n, L - 10, y + bh / 2 + 4, { size: 12, align: 'right', color: C.ink });
+      const tx = val >= 0 ? b + 6 : a - 6;
+      text(x, (val >= 0 ? '+' : '−') + Math.abs(val).toFixed(1) + ' µs', tx, y + bh / 2 + 4, { size: 12, align: val >= 0 ? 'left' : 'right', color: col });
+    });
+  }, { ratio: 0.32, min: 190, max: 260 });
+  function orbitText() {
+    const a = alt(), R = rates(a), net = R.grav + R.speed, d = days();
+    const err = Math.abs(net) * 1e-6 * d * c / 1000;
+    $('orbitRead').innerHTML = 'At ' + fmt(a, 0) + ' km the orbit speed is ' + (R.v / 1000).toFixed(2) + ' km/s. Net: the clock ' +
+      (net >= 0 ? 'gains' : 'loses') + ' <span class="k">' + Math.abs(net).toFixed(1) + ' µs a day</span>' +
+      (Math.abs(net) < 1 ? ' — near the height where the two effects cancel, about 3,190 km.' : '.') +
+      ' A navigation system timed by it would be off by <span class="k">' + fmt(err, err < 100 ? 1 : 0) + ' km</span> after ' + d.toFixed(1) + ' days.';
+    ob.redraw();
+  }
+  const alt = slider('alt', (a) => fmt(a, 0) + ' km', orbitText);
+  const days = slider('days', (d) => d.toFixed(1) + ' days', orbitText);
+  choice('altPick', (k) => alt.set(+k));
+})();
 </script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="spacetime" defer></script>
 </body>

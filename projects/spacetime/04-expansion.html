@@ -1,496 +1,632 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-mochi-world="space">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>04 / Space Expanding</title>
+<meta name="description" content="Lesson four of The Geometry of Spacetime: why every galaxy sees itself at the centre, Hubble's law with real galaxies, redshift as stretched light, why atoms and solar systems don't expand, the horizon we can never see past, and the universe's whole history.">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0a0d12;
-    --bg-2: #11151c;
-    --ink: #e8e4d8;
-    --ink-dim: #8a8578;
-    --accent: #d4a574;
-    --light: #ffd982;
-    --bound: #6db5a3;
-    --unbound: #b56d8a;
-    --line: #1f242d;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body {
-    background: var(--bg);
-    color: var(--ink);
-    font-family: 'Cormorant Garamond', serif;
-    min-height: 100vh;
-  }
-  .nav {
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.2em;
-  }
-  .nav a { color: var(--ink-dim); text-decoration: none; }
-  .nav a:hover { color: var(--accent); }
-  .nav .num { color: var(--accent); }
-
-  .container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 4rem 2rem 6rem;
-  }
-  .eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.4em;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-  }
-  h1 {
-    font-size: clamp(2.5rem, 6vw, 4rem);
-    font-weight: 300;
-    line-height: 1.05;
-    letter-spacing: -0.02em;
-    font-style: italic;
-    margin-bottom: 1.5rem;
-  }
-  .lede {
-    font-size: 1.25rem;
-    color: var(--ink-dim);
-    max-width: 38rem;
-    line-height: 1.6;
-    margin-bottom: 4rem;
-  }
-
-  .stage {
-    background: var(--bg-2);
-    border: 1px solid var(--line);
-    padding: 2rem;
-    margin-bottom: 2rem;
-  }
-
-  canvas { width: 100%; height: auto; display: block; background: var(--bg); }
-
-  .controls {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--line);
-  }
-  .ctrl {
-    margin-bottom: 1.25rem;
-  }
-  .ctrl label {
-    display: block;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.15em;
-    color: var(--ink-dim);
-    text-transform: uppercase;
-    margin-bottom: 0.75rem;
-  }
-  .ctrl .val {
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--accent);
-    font-size: 0.9rem;
-  }
-  input[type=range] {
-    width: 100%;
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-    cursor: pointer;
-  }
-  input[type=range]::-webkit-slider-runnable-track {
-    height: 2px;
-    background: var(--line);
-  }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    height: 14px;
-    width: 14px;
-    background: var(--accent);
-    border-radius: 50%;
-    margin-top: -6px;
-  }
-  input[type=range]::-moz-range-track {
-    height: 2px;
-    background: var(--line);
-  }
-  input[type=range]::-moz-range-thumb {
-    height: 14px;
-    width: 14px;
-    background: var(--accent);
-    border-radius: 50%;
-    border: none;
-  }
-
-  .buttons {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin-top: 1rem;
-  }
-  button {
-    background: transparent;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    padding: 0.75rem 1.5rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  button:hover { background: var(--accent); color: var(--bg); }
-  button.active { background: var(--accent); color: var(--bg); }
-
-  .legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2rem;
-    margin-top: 1rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.1em;
-    color: var(--ink-dim);
-  }
-  .legend span {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .swatch {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: inline-block;
-  }
-
-  .essay {
-    margin-top: 4rem;
-    max-width: 36rem;
-  }
-  .essay h2 {
-    font-size: 1.75rem;
-    font-weight: 400;
-    font-style: italic;
-    margin: 3rem 0 1rem;
-    color: var(--accent);
-  }
-  .essay p {
-    font-size: 1.125rem;
-    line-height: 1.7;
-    margin-bottom: 1.25rem;
-    color: var(--ink);
-  }
-  .essay em { color: var(--accent); font-style: italic; }
-  .essay .pullout {
-    border-left: 2px solid var(--accent);
-    padding-left: 1.5rem;
-    margin: 2rem 0;
-    font-size: 1.25rem;
-    font-style: italic;
-    color: var(--ink-dim);
-  }
-
-  .next {
-    margin-top: 5rem;
-    padding-top: 3rem;
-    border-top: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    letter-spacing: 0.15em;
-  }
-  .next a { color: var(--accent); text-decoration: none; }
-  .next a:hover { color: var(--ink); }
-</style>
-  <script src="../../assets/visit.js" defer></script>
+<link rel="stylesheet" href="lesson.css">
+<script src="../../assets/visit.js" defer></script>
 </head>
 <body>
-  <nav class="nav">
-    <a href="index.html">← THE GEOMETRY OF SPACETIME</a>
-    <span class="num">04 / 04</span>
+<header class="bar">
+  <a href="index.html">← <span class="home-long">The Geometry of </span>Spacetime</a>
+  <nav class="chapters" aria-label="Chapters">
+    <a href="01-light-cones.html" title="Light Cones">01</a>
+    <a href="02-time-dilation.html" title="Time Dilation">02</a>
+    <a href="03-simultaneity.html" title="The Loss of Now">03</a>
+    <span aria-current="page" title="Space Expanding">04</span>
   </nav>
+</header>
 
-  <main class="container">
-    <div class="eyebrow">— Space itself stretches. Bound things hold together. Unbound things drift away. —</div>
-    <h1>Space Expanding</h1>
-    <p class="lede">Every galaxy not bound to ours by gravity is receding from us, faster the farther it is. From any other galaxy, the same pattern. There is no center because expansion happens everywhere at once.</p>
+<div class="hero">
+  <p class="eyebrow">Chapter 4 of 4 · Cosmology</p>
+  <h1>Space Expanding</h1>
+  <p class="lede">Every distant galaxy is moving away from us, and the farther it is, the faster it goes. That doesn't put us at the centre of anything. It means <strong>the space between galaxies is growing</strong> — everywhere at once, with no centre and no edge.</p>
+  <div class="youll">
+    <div><b>You'll learn</b>why every galaxy sees itself at the centre, and why that's no contradiction.</div>
+    <div><b>You'll see</b>light stretched from blue to infrared, and a horizon we can never see past.</div>
+    <div><b>You'll try</b>the whole history of the universe on one slider, worked out live from today's measurements.</div>
+  </div>
+</div>
 
-    <div class="stage">
-      <canvas id="universe" width="1000" height="600"></canvas>
-      <div class="legend">
-        <span><span class="swatch" style="background:var(--accent)"></span>OBSERVER (CHOOSE ANY POINT)</span>
-        <span><span class="swatch" style="background:var(--bound)"></span>BOUND (ATOMS / GALAXIES)</span>
-        <span><span class="swatch" style="background:var(--unbound)"></span>UNBOUND (DRIFTS WITH SPACE)</span>
-      </div>
+<div class="lesson">
+  <aside class="toc"><p>In this chapter</p><ol></ol></aside>
+  <main>
 
-      <div class="buttons">
-        <button id="play">▶ PLAY EXPANSION</button>
-        <button id="reset">RESET</button>
-        <!-- They start shown, so the button starts as HIDE (bug sweep D3-8). -->
-        <button id="toggleView" class="active" aria-pressed="true">HIDE BOUND OBJECTS</button>
-      </div>
-
-      <div class="controls">
-        <div class="ctrl">
-          <label>Time elapsed <span class="val" id="tVal">0%</span></label>
-          <input type="range" id="t" aria-label="Time elapsed" min="0" max="100" value="0">
-        </div>
-        <div class="ctrl">
-          <label>Choose observer (perspective shift) <span class="val" id="obsVal">center</span></label>
-          <input type="range" id="obs" aria-label="Choose observer" min="0" max="6" value="3">
-        </div>
-      </div>
+  <!-- ─────────────────────────────── 1 -->
+  <section class="part" id="centre" data-short="Everyone is the centre">
+    <div class="num">Part 1</div>
+    <h2>Everyone is the centre</h2>
+    <div class="prose">
+      <p>Picture galaxies as raisins in a loaf of rising bread. As the dough rises, every raisin moves away from every other one. Raisins that started twice as far apart move apart twice as fast, simply because there's twice as much dough between them to grow.</p>
+      <p>Below is a patch of the universe. Press play, then <strong>tap any galaxy to stand on it</strong>. The arrows show how everything else moves from there.</p>
     </div>
 
-    <div class="essay">
-      <h2>What you're seeing</h2>
-      <p>A grid of galaxies. As time advances, the space between them stretches. Every galaxy moves away from every other galaxy — no privileged center, no edge. Slide the observer slider to put yourself at a different galaxy, and the same pattern holds: everything moves away from <em>you</em>, faster the farther out.</p>
+    <figure class="fig">
+      <div class="cap"><span>Figure 4.1 · A patch of galaxies, growing</span><span>tap a galaxy to stand on it</span></div>
+      <canvas id="gal" role="img" aria-label="A field of galaxies spreading apart. The chosen galaxy stays put and arrows show every other galaxy moving away from it, longer arrows for farther galaxies. A small graph beside it plots speed against distance as a straight line."></canvas>
+      <div class="btns"><button id="galPlay">▶ Expand</button><button id="galReset">↺ Reset</button></div>
+      <p class="read" id="galRead" aria-live="polite"></p>
+    </figure>
 
-      <p>This is the actual structure of cosmic expansion. The galaxies aren't flying through space — <em>space itself is expanding</em> between them. The distance grows because the metric is changing, not because anything is moving in the conventional sense.</p>
+    <div class="try"><b>Try this</b><ol>
+      <li>Stand on a galaxy in the middle, then one at the very edge. The picture you see — everything rushing away, faster the farther it is — is the same.</li>
+      <li>Watch the small graph. Wherever you stand, speed against distance is a straight line. That line is Hubble's law.</li>
+    </ol></div>
 
-      <h2>Why atoms don't fall apart</h2>
-      <p>Toggle "show bound objects" to see clusters of dots holding together while the larger grid stretches. These are atoms, planets, solar systems, galaxies, galaxy clusters — anything bound by a force stronger than expansion locally is. Within them, expansion is overwhelmed by gravity or electromagnetism by factors of 10³⁰ or more. Expansion still happens — it just doesn't win.</p>
+    <div class="prose">
+      <p>The patch has an edge only because a screen does. The real universe, as far as anyone can tell, is the same in every direction and from every place, and expansion is happening at every point at once. There's no spot it's expanding <em>from</em>. The Big Bang wasn't an explosion at a point in space; it was the moment all of space was much denser.</p>
+    </div>
+  </section>
 
-      <p class="pullout">"Expansion only matters where nothing is holding things together. Inside an atom, the electromagnetic force wins by 39 orders of magnitude. Inside a galaxy, gravity wins. Between unbound galaxies, expansion wins."</p>
-
-      <p>This is why your body doesn't tear apart even though space is expanding through it. Every chemical bond, every gravitational pull within Earth, every binding force is overwhelmingly stronger than the local stretch. You are a knot of bound systems sitting in a stretching universe, and the knots stay tied.</p>
-
-      <h2>No center, no edge</h2>
-      <p>Move the observer slider. Every position sees the same pattern — galaxies receding, faster the farther they are. This isn't a bug; it's the central feature of homogeneous expansion. There's no "real" center because expansion isn't happening <em>around</em> a point, it's happening <em>everywhere</em>. A 2D analog: dots painted on a balloon as it inflates. Every dot sees every other dot moving away. No dot is special. The "center" of inflation exists in a higher dimension that no dot can reach.</p>
-
-      <p>Our universe might be like the balloon (finite but unbounded) or genuinely infinite. We can't tell from inside. What we can verify is that the math of expansion is symmetric: every observer is the center of their own observable universe. All of them are correct.</p>
-
-      <h2>The receding horizon</h2>
-      <p>One more thing the math forces: galaxies far enough away are receding faster than light. This doesn't violate relativity because they aren't moving <em>through</em> space faster than light — the space <em>between</em> us is stretching faster than light. Their light will never reach us. They are permanently outside our reachable universe.</p>
-
-      <p>And because expansion is accelerating, more galaxies cross this horizon every second. The observable universe is shrinking relative to the total. In ~100 billion years, observers in the Milky Way will see only a few gravitationally-bound galaxies. Everything else will have receded into the dark.</p>
-
-      <p>Future astronomers will have no evidence of the Big Bang. No evidence of expansion. No evidence other galaxies ever existed. The information will have left their light cone forever. We're living in a privileged epoch where the expansion is still visible.</p>
+  <!-- ─────────────────────────────── 2 -->
+  <section class="part" id="hubble" data-short="Hubble's law">
+    <div class="num">Part 2</div>
+    <h2>Hubble's law, with real galaxies</h2>
+    <div class="prose">
+      <p>In 1929 Edwin Hubble plotted galaxies' distances against how fast they're receding, and got roughly a straight line. Today's measurements give a slope — the <strong>Hubble constant</strong> — of about 70 km/s for every megaparsec (a megaparsec is 3.26 million light-years).</p>
     </div>
 
-    <div class="next">
-      <a href="03-simultaneity.html">← 03 / SIMULTANEITY</a>
-      <a href="index.html">INDEX →</a>
+    <figure class="fig">
+      <div class="cap"><span>Figure 4.2 · Speed against distance, the nearby universe</span><span>drag along the line</span></div>
+      <canvas id="hub" role="img" aria-label="A graph of recession speed against distance for several real nearby galaxies and clusters, with the straight Hubble line through them. Andromeda sits below zero because it is approaching."></canvas>
+      <p class="read" id="hubRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="prose">
+      <p>Two honest footnotes. First, galaxies also move <em>through</em> space, at a few hundred km/s, because of their neighbours' gravity. Nearby, that motion can beat the expansion: Andromeda is coming <em>toward</em> us at 110 km/s and will merge with the Milky Way in about 4.5 billion years. Second, the slope isn't settled: the early-universe measurement (Planck, 67.4) and the nearby-supernova one (SH0ES, 73.0) disagree by more than either's error bars. This page uses 67.7. Nobody yet knows why they differ — it's called the <strong>Hubble tension</strong>.</p>
+      <p>Follow the line far enough and the speed passes the speed of light, at about 14.4 billion light-years. That doesn't break chapter 1's rule: nothing is moving <em>through</em> space faster than light. The space between is growing that fast.</p>
     </div>
+  </section>
+
+  <!-- ─────────────────────────────── 3 -->
+  <section class="part" id="redshift" data-short="Stretched light">
+    <div class="num">Part 3</div>
+    <h2>Light gets stretched on the way</h2>
+    <div class="prose">
+      <p>Light crossing expanding space is stretched along with it. When it arrives, its wavelength has grown by exactly the factor the universe grew while it was travelling. Astronomers call the stretch the <strong>redshift</strong>, <span class="k">z</span>:</p>
+    </div>
+    <div class="eq">1 + z = (size of the universe now) ⁄ (size when the light left)
+      <small>So light with z = 1 left when the universe was half its present size. z = 3: a quarter. The cosmic microwave background, z ≈ 1,100: a thousandth.</small></div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 4.3 · Hydrogen's fingerprint, redshifted</span><span>the lines are where hydrogen glows</span></div>
+      <canvas id="rs" role="img" aria-label="A light wave stretching as it travels, above a spectrum from ultraviolet to infrared on which hydrogen's bright lines slide toward the red as the redshift increases."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="z">Redshift z <output for="z"></output></label>
+          <input type="range" id="z" min="0" max="10" step="0.01" value="0.5"></div>
+      </div>
+      <div class="btns" id="zPick" role="group" aria-label="Examples">
+        <button data-v="0.0231">Coma Cluster</button>
+        <button data-v="0.158">Quasar 3C 273</button>
+        <button data-v="1">Half the size</button>
+        <button data-v="6.2">Early galaxy</button>
+        <button data-v="10">JWST record range</button>
+      </div>
+      <p class="read" id="rsRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="prose">
+      <p>This is how distances to the farthest galaxies are measured: hydrogen glows at fixed wavelengths, so finding its pattern slid toward the red tells you exactly how much the universe grew in the meantime. The most distant galaxies are so stretched that their light, which left as ultraviolet, arrives as infrared — which is why the James Webb Space Telescope is an infrared telescope.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────── 4 -->
+  <section class="part" id="bound" data-short="Why you don't stretch">
+    <div class="num">Part 4</div>
+    <h2>Why atoms and solar systems don't stretch</h2>
+    <div class="prose">
+      <p>If space is growing everywhere, why aren't you growing? Why isn't Earth drifting away from the Sun?</p>
+      <p>Because expansion isn't a force that pulls things apart. It's the momentum of a universe that started out flying apart. Anything held together by a force — gravity, electricity — simply stays together; its parts don't share in the drift. What's left is tiny: the dark energy that makes expansion speed up does push very gently, everywhere. Here's how gently.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 4.4 · Galaxies around a heavy cluster, all starting out with the expansion</span><span>a toy model, not to scale</span></div>
+      <canvas id="bd" role="img" aria-label="Galaxies start out moving apart with the expansion around a heavy central cluster. Those close in are pulled back and orbit; those farther out escape and drift away."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="mass">Mass of the central cluster <output for="mass"></output></label>
+          <input type="range" id="mass" min="0" max="1" step="0.05" value="0.5"></div>
+      </div>
+      <div class="btns"><button id="bdPlay">▶ Play</button><button id="bdReset">↺ Again</button></div>
+      <p class="read" id="bdRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="scroll-x"><table class="data" id="pushTable">
+      <thead><tr><th>System</th><th>Dark energy's push, against what holds it together</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="prose">
+      <p>Inside a hydrogen atom, the push is smaller than the electric pull holding it together by about seventy orders of magnitude. For Earth and the Sun, about twenty-two. Even for the Sun's orbit around our galaxy it's a few parts in a million. Atoms, people, planets, solar systems, galaxies and groups of galaxies all hold together. Only the gaps between groups grow.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────── 5 -->
+  <section class="part" id="horizon" data-short="The horizon">
+    <div class="num">Part 5</div>
+    <h2>A horizon we can never see past</h2>
+    <div class="prose">
+      <p>An old puzzle: an ant walks along a rubber band at a steady pace while someone keeps stretching the band. Does it ever reach the end? If the stretching slows down, yes. If it speeds up, maybe never. Light crossing the universe is that ant — and for about the last six billion years, the stretching has been speeding up.</p>
+      <p>A galaxy sends a flash of light toward us <strong>today</strong>. Choose how far away it is, and watch the light try to get here.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 4.5 · Light emitted today, heading our way</span><span>top: the band as it stretches · bottom: the light's distance from us</span></div>
+      <canvas id="hz" role="img" aria-label="A flash of light travelling toward us through expanding space. Above, a ruler stretches as the light crawls along it. Below, a graph shows the light's distance from us over time: it either reaches us or is carried away forever."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="d0">Distance when the light leaves <output for="d0"></output></label>
+          <input type="range" id="d0" min="1" max="25" step="0.1" value="15"></div>
+      </div>
+      <div class="btns" id="hzU" role="group" aria-label="Universe">
+        <button data-v="real" aria-pressed="true">Our universe</button>
+        <button data-v="nodark">Without dark energy</button>
+      </div>
+      <div class="btns"><button id="hzPlay">▶ Send the light</button></div>
+      <p class="read" id="hzRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="try"><b>Try this</b><ol>
+      <li>Start at 15 billion light-years. That galaxy is receding faster than light, and at first the light actually gets <em>farther</em> away. It arrives anyway.</li>
+      <li>Push it past the horizon, about 16.6 billion light-years. Now the light never arrives. Nothing that happens there today can ever affect us.</li>
+      <li>Switch off dark energy. Without acceleration there's no such horizon: given long enough, light from anywhere gets through.</li>
+    </ol></div>
+
+    <div class="prose">
+      <p>That boundary is the <strong>cosmic event horizon</strong>, and it is chapter 1's light cone at the scale of the universe: events beyond it are in our elsewhere forever. As expansion speeds up, galaxies cross it all the time. Over the next hundred billion years or so, everything outside our own gravitationally bound group will slip over the edge and fade into a redshift too extreme to detect. Astronomers then, living in one merged galaxy, might find no sign that other galaxies, or the expansion, ever existed.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────── 6 -->
+  <section class="part" id="history" data-short="The whole history">
+    <div class="num">Part 6</div>
+    <h2>The whole history on one line</h2>
+    <div class="prose">
+      <p>Everything in this chapter comes from one curve: how the size of the universe — the <strong>scale factor</strong>, 1 today — has changed with time. It's worked out on this page from four measured numbers: the Hubble constant, and how much of the universe is matter, radiation and dark energy. Drag through time.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 4.6 · The size of the universe, relative to today</span><span>drag along the curve</span></div>
+      <canvas id="hist" role="img" aria-label="The scale factor of the universe against time, from the Big Bang to thirty billion years. It rises steeply at first, slows down, and then curves upward again as dark energy takes over. Markers show the cosmic microwave background, the first stars, the Sun forming and today."></canvas>
+      <dl class="stats">
+        <div><dt>Age</dt><dd id="hAge">—</dd></div>
+        <div><dt>Size vs today</dt><dd id="hA">—</dd></div>
+        <div><dt>Redshift</dt><dd id="hZ">—</dd></div>
+        <div><dt>Background glow</dt><dd id="hT">—</dd></div>
+      </dl>
+      <p class="read" id="histRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="prose">
+      <p>Three things to notice. The curve starts steep and bends over: for its first seven and a half billion years, matter's gravity was slowing expansion down. About 7.6 billion years in, the bend reverses: dark energy, whose density doesn't thin out as space grows, took over, and expansion started speeding up. And the light we see from the very beginning — the cosmic microwave background — left from matter that is now about 46 billion light-years away, in a universe only 13.8 billion years old. There's no contradiction: the space it crossed kept growing behind it.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────── check -->
+  <section class="part check" id="check" data-short="Check yourself">
+    <div class="num">Check yourself</div>
+    <h2>Four questions</h2>
+
+    <div class="q" data-answer="c">
+      <p>Where is the centre of the universe's expansion?</p>
+      <div class="opts">
+        <button data-k="a">Near the Milky Way, since everything moves away from us</button>
+        <button data-k="b">At the spot where the Big Bang went off</button>
+        <button data-k="c">Nowhere — every galaxy sees the same pattern</button>
+      </div>
+      <p class="why" hidden><span></span>Uniform expansion looks the same from every point. Every observer sees everything receding from them, so none of them is special.</p>
+    </div>
+
+    <div class="q" data-answer="a">
+      <p>Is the distance from Earth to the Sun growing with the expansion of the universe?</p>
+      <div class="opts">
+        <button data-k="a">No — gravity holds the solar system together</button>
+        <button data-k="b">Yes, slowly</button>
+        <button data-k="c">Yes, at 70 km/s per megaparsec</button>
+      </div>
+      <p class="why" hidden><span></span>Bound systems don't take part in the expansion. Dark energy's push on Earth is about 10⁻²² of the Sun's pull: nothing measurable.</p>
+    </div>
+
+    <div class="q" data-answer="b">
+      <p>A galaxy 15 billion light-years away, receding faster than light, sends us a flash today. Will it ever arrive?</p>
+      <div class="opts">
+        <button data-k="a">No — it's receding faster than light</button>
+        <button data-k="b">Yes, eventually — it's inside the event horizon</button>
+        <button data-k="c">Only if expansion stops</button>
+      </div>
+      <p class="why" hidden><span></span>The light first loses ground, but the Hubble distance grows and it catches up. Only light from beyond about 16.6 billion light-years never makes it.</p>
+    </div>
+
+    <div class="q" data-answer="c">
+      <p>Light from a galaxy arrives with redshift z = 3. When it left, the universe was…</p>
+      <div class="opts">
+        <button data-k="a">Three times its present size</button>
+        <button data-k="b">A third of its present size</button>
+        <button data-k="c">A quarter of its present size</button>
+      </div>
+      <p class="why" hidden><span></span>1 + z is the factor the universe grew by: 1 + 3 = 4.</p>
+    </div>
+
+    <div class="sources">
+      <h3>Where the numbers come from</h3>
+      <ul>
+        <li>Cosmology: Planck 2018 results VI — H₀ = 67.7 km/s/Mpc, matter 31%, dark energy 69%, radiation 0.009%; flat. Every curve and horizon on this page is integrated live from those numbers.</li>
+        <li>SH0ES: Riess et al. 2022, H₀ = 73.0 ± 1.0.</li>
+        <li>Galaxy distances and velocities: NASA/IPAC Extragalactic Database. Andromeda's approach and merger: van der Marel et al. 2012.</li>
+        <li>Dark energy's push: the cosmological constant Λ ≈ 1.1×10⁻⁵² m⁻², giving an outward acceleration Λc²r⁄3 at distance r.</li>
+        <li>Fading sky: Krauss &amp; Scherrer, "The return of a static universe and the end of cosmology" (2007).</li>
+      </ul>
+    </div>
+
+    <nav class="next" aria-label="Next and previous">
+      <a href="03-simultaneity.html">← Chapter 3 · The Loss of Now</a>
+      <a href="index.html">All four chapters →</a>
+    </nav>
+  </section>
   </main>
+</div>
 
+<script src="lesson.js"></script>
 <script>
-const canvas = document.getElementById('universe');
-const ctx = canvas.getContext('2d');
-const tSlider = document.getElementById('t');
-const obsSlider = document.getElementById('obs');
-const tVal = document.getElementById('tVal');
-const obsVal = document.getElementById('obsVal');
-const playBtn = document.getElementById('play');
-const resetBtn = document.getElementById('reset');
-const toggleBtn = document.getElementById('toggleView');
+(function () {
+  const { C, figure, animate, pointer, slider, choice, text, line, dot, arrow, poly, alpha, fmt, $ } = ST;
 
-let playing = false;
-let showBound = true;
-let animId = null;
-
-const GRID = 7;
-const baseSpacing = 90;
-
-function resize() {
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * 2;
-  canvas.height = rect.width * 1.2;
-  draw();
-}
-window.addEventListener('resize', resize);
-
-function draw() {
-  const w = canvas.width;
-  const h = canvas.height;
-  const t = parseFloat(tSlider.value) / 100;
-  const obsIdx = parseInt(obsSlider.value);
-
-  ctx.fillStyle = '#0a0d12';
-  ctx.fillRect(0, 0, w, h);
-
-  // expansion factor: starts at 0.5, grows to 1.5
-  const scale = 0.5 + t * 1.5;
-
-  const cx = w/2;
-  const cy = h/2;
-  const spacing = baseSpacing * scale * (w / 1400);
-
-  // grid of galaxies
-  const galaxies = [];
-  for (let i = 0; i < GRID; i++) {
-    for (let j = 0; j < GRID; j++) {
-      galaxies.push({
-        gx: i,
-        gy: j,
-        x: cx + (i - 3) * spacing,
-        y: cy + (j - 3) * spacing,
-      });
+  /* ── cosmology, worked out from Planck 2018 ──
+     Flat ΛCDM. Time in Gyr, distance in Gly, so c = 1. Tables in ln a give
+     t(a) = ∫ dln a / H and the conformal time η(a) = ∫ dln a / (a H); η is
+     also the comoving distance light covers. */
+  const KMSMPC = 1 / 977.79;                // 1 km/s/Mpc in 1/Gyr
+  function cosmo(Om, Ol, Or) {
+    const H0 = 67.7 * KMSMPC, H = (a) => H0 * Math.sqrt(Or / a ** 4 + Om / a ** 3 + Ol);
+    const N = 6000, l0 = Math.log(1e-9), l1 = Math.log(200), dl = (l1 - l0) / N;
+    const la = new Float64Array(N + 1), t = new Float64Array(N + 1), eta = new Float64Array(N + 1);
+    // radiation era start: t ≈ a²/(2 H0 √Or), η ≈ a/(H0 √Or)
+    la[0] = l0; const a0 = Math.exp(l0);
+    t[0] = Or > 0 ? a0 * a0 / (2 * H0 * Math.sqrt(Or)) : 2 / 3 * a0 ** 1.5 / (H0 * Math.sqrt(Om));
+    eta[0] = Or > 0 ? a0 / (H0 * Math.sqrt(Or)) : 2 * Math.sqrt(a0) / (H0 * Math.sqrt(Om));
+    for (let i = 1; i <= N; i++) {
+      la[i] = l0 + i * dl;
+      const am = Math.exp(la[i] - dl / 2), hm = H(am);  // midpoint rule
+      t[i] = t[i - 1] + dl / hm; eta[i] = eta[i - 1] + dl / (am * hm);
     }
+    // what light still covers after a = 200: ∫ da/(a²H) ≈ 1/(a H) once H is constant
+    const etaInf = Ol > 0 ? eta[N] + 1 / (200 * H(200)) : Infinity;
+    const lerp = (xs, ys, x) => {
+      if (x <= xs[0]) return ys[0]; if (x >= xs[N]) return ys[N];
+      let lo = 0, hi = N; while (hi - lo > 1) { const m = (lo + hi) >> 1; xs[m] <= x ? (lo = m) : (hi = m); }
+      const f = (x - xs[lo]) / (xs[hi] - xs[lo]); return ys[lo] + f * (ys[hi] - ys[lo]);
+    };
+    const U = {
+      H, H0, Om, Ol, Or,
+      t: (a) => lerp(la, t, Math.log(a)), eta: (a) => lerp(la, eta, Math.log(a)),
+      aT: (tt) => Math.exp(lerp(t, la, tt)), aEta: (e) => Math.exp(lerp(eta, la, e)),
+      etaInf,
+    };
+    U.age = U.t(1); U.eta0 = U.eta(1);
+    U.eventHorizon = etaInf - U.eta0;       // comoving = proper today
+    U.hubbleDist = 1 / H0;
+    return U;
   }
+  const U = cosmo(0.31, 0.69, 9.1e-5);
+  const EdS = cosmo(1, 0, 0);               // "without dark energy"
 
-  // observer galaxy index along middle row
-  const obsRow = 3;
-  const obsGalaxy = galaxies[obsIdx * GRID + obsRow];
-  const offsetX = cx - obsGalaxy.x;
-  const offsetY = cy - obsGalaxy.y;
-
-  // shift everything so observer is centered
-  galaxies.forEach(g => { g.x += offsetX; g.y += offsetY; });
-
-  // draw expansion lines from observer
-  ctx.strokeStyle = 'rgba(212, 165, 116, 0.08)';
-  ctx.lineWidth = 1;
-  galaxies.forEach(g => {
-    if (g === obsGalaxy) return;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(g.x, g.y);
-    ctx.stroke();
-  });
-
-  // draw galaxies
-  galaxies.forEach(g => {
-    if (g === obsGalaxy) return;
-
-    const dx = g.x - cx;
-    const dy = g.y - cy;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    const maxDist = Math.sqrt(w*w + h*h) / 2;
-    const recessionRate = dist / maxDist; // 0 to 1
-
-    // unbound galaxies - drift with expansion
-    ctx.fillStyle = '#b56d8a';
-    ctx.shadowColor = '#b56d8a';
-    ctx.shadowBlur = 8;
-    ctx.beginPath();
-    ctx.arc(g.x, g.y, 4, 0, Math.PI * 2);
-    ctx.fill();
-
-    // velocity arrow proportional to distance (Hubble's law)
-    if (dist > 30) {
-      const arrowLen = recessionRate * 30;
-      const ux = dx/dist;
-      const uy = dy/dist;
-      ctx.strokeStyle = `rgba(181, 109, 138, ${0.3 + recessionRate * 0.5})`;
-      ctx.lineWidth = 2;
-      ctx.shadowBlur = 0;
-      ctx.beginPath();
-      ctx.moveTo(g.x, g.y);
-      ctx.lineTo(g.x + ux * arrowLen, g.y + uy * arrowLen);
-      ctx.stroke();
-      // arrowhead
-      const ah = 6;
-      const ang = Math.atan2(uy, ux);
-      ctx.beginPath();
-      ctx.moveTo(g.x + ux * arrowLen, g.y + uy * arrowLen);
-      ctx.lineTo(g.x + ux * arrowLen - ah * Math.cos(ang - 0.4), g.y + uy * arrowLen - ah * Math.sin(ang - 0.4));
-      ctx.moveTo(g.x + ux * arrowLen, g.y + uy * arrowLen);
-      ctx.lineTo(g.x + ux * arrowLen - ah * Math.cos(ang + 0.4), g.y + uy * arrowLen - ah * Math.sin(ang + 0.4));
-      ctx.stroke();
+  /* ── 4.1 the galaxy field ── */
+  let A = 1, me = null, gx = [];
+  (function seed() {
+    let s = 7; const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 9; i++) for (let j = 0; j < 6; j++) gx.push({ x: (i - 4) + (r() - 0.5) * 0.6, y: (j - 2.5) + (r() - 0.5) * 0.6, s: 1.5 + r() * 2.5 });
+    me = gx[4 * 6 + 2];
+  })();
+  const gal = figure('gal', (x, w, h) => {
+    const plotW = w < 560 ? 0 : Math.min(240, w * 0.3), fw = w - plotW, cx = fw / 2, cy = h / 2;
+    const unit = Math.min(fw / 10, h / 7);
+    const P = (g) => [cx + (g.x - me.x) * unit * A, cy + (g.y - me.y) * unit * A];
+    // the comoving grid, stretching with A, centred on whoever "me" is
+    x.save(); x.beginPath(); x.rect(0, 0, fw, h); x.clip();
+    for (let k = -12; k <= 12; k++) {
+      const px = cx + (k - me.x) * unit * A, py = cy + (k - me.y) * unit * A;
+      line(x, px, 0, px, h, C.grid, 1); line(x, 0, py, fw, py, C.grid, 1);
     }
+    const rate = 0.35;     // H in these units: arrows show velocity = H × separation
+    for (const g of gx) {
+      const [px, py] = P(g);
+      if (g !== me) {
+        const vx = (g.x - me.x) * A * rate * unit, vy = (g.y - me.y) * A * rate * unit;
+        arrow(x, px, py, px + vx, py + vy, alpha(C.other, 0.6), 1.2, 6);
+      }
+      dot(x, px, py, g.s, g === me ? C.accent : C.ink);
+    }
+    dot(x, cx, cy, 11, C.accent, 1.5);
+    text(x, 'you', cx + 14, cy - 10, { size: 13, serif: true, color: C.accent });
+    x.restore();
+    if (plotW) {
+      // Hubble plot from wherever you stand
+      const L = fw + 36, R = w - 12, T = 26, B = h - 30;
+      line(x, fw, 0, fw, h, C.line, 1);
+      line(x, L, B, R, B, C.dim, 1); line(x, L, B, L, T, C.dim, 1);
+      text(x, 'distance →', R, h - 10, { size: 11, align: 'right' }); text(x, 'speed ↑', L, T - 10, { size: 11 });
+      const dmax = 8;
+      for (const g of gx) {
+        if (g === me) continue;
+        const d = Math.hypot(g.x - me.x, g.y - me.y);
+        dot(x, L + d / dmax * (R - L), B - d / dmax * (B - T), 2.5, C.other);
+      }
+      line(x, L, B, R, T, alpha(C.light, 0.5), 1, [4, 4]);
+    }
+  }, { ratio: (w) => (w < 560 ? 0.8 : 0.48), max: 460 });
+  animate(gal, (dt) => { A *= Math.exp(dt * 0.12); if (A > 2.6) { A = 2.6; return false; } }, $('galPlay'), false);
+  $('galReset').addEventListener('click', () => { A = 1; gal.redraw(); });
+  pointer(gal, { down: (px, py) => {
+    const plotW = gal.w < 560 ? 0 : Math.min(240, gal.w * 0.3), fw = gal.w - plotW, unit = Math.min(fw / 10, gal.h / 7);
+    let best = null, bd = 1e9;
+    for (const g of gx) { const d = Math.hypot(fw / 2 + (g.x - me.x) * unit * A - px, gal.h / 2 + (g.y - me.y) * unit * A - py); if (d < bd) { bd = d; best = g; } }
+    if (best && bd < 40) { me = best; galText(); }
+  } });
+  gal.canvas.style.touchAction = 'pan-y';
+  function galText() {
+    const near = gx.filter((g) => g !== me).map((g) => Math.hypot(g.x - me.x, g.y - me.y)).sort((a, b) => a - b);
+    $('galRead').innerHTML = 'From where you stand, your nearest neighbour recedes at <span class="k">' + (near[0] * 0.35).toFixed(2) + '</span> and the farthest at <span class="k">' +
+      (near[near.length - 1] * 0.35).toFixed(2) + '</span> (in this toy\'s units). Speed ÷ distance is <span class="k">0.35</span> for every galaxy, from every galaxy.';
+  }
+  galText();
+
+  /* ── 4.2 Hubble's law ── */
+  const H0k = 67.7;   // km/s/Mpc
+  const REAL = [
+    ['Andromeda', 0.78, -110], ['Centaurus A', 3.8, 547], ['Virgo Cluster', 16.5, 1100],
+    ['Fornax Cluster', 19, 1379], ['Hydra Cluster', 54, 3777], ['Coma Cluster', 100, 6925],
+  ];
+  let hd = 60, hm = null;
+  const hub = figure('hub', (x, w, h) => {
+    const L = 64, R = 20, T = 18, B = 40, dmax = 110, vmax = 8000, vmin = -1000;
+    const X = (d) => L + d / dmax * (w - L - R), Y = (v) => T + (vmax - v) / (vmax - vmin) * (h - T - B);
+    hm = { inv: (px) => (px - L) / (w - L - R) * dmax };
+    for (let d = 0; d <= dmax; d += 20) { line(x, X(d), T, X(d), h - B, C.grid, 1); text(x, d, X(d), h - B + 16, { size: 11, align: 'center' }); }
+    for (let v = -1000; v <= vmax; v += 1000) { line(x, L, Y(v), w - R, Y(v), C.grid, 1); text(x, fmt(v, 0), L - 8, Y(v) + 4, { size: 11, align: 'right' }); }
+    line(x, L, Y(0), w - R, Y(0), C.dim, 1);
+    text(x, 'distance (megaparsecs) →', w - R, h - 6, { size: 11, align: 'right' });
+    text(x, 'speed away, km/s ↑', L + 8, T + 12, { size: 11, bg: C.bg2 });
+    // the band between the two measurements, then the line used here
+    poly(x, [[X(0), Y(0)], [X(dmax), Y(67.4 * dmax)], [X(dmax), Y(73 * dmax)]], alpha(C.light, 0.1));
+    line(x, X(0), Y(0), X(dmax), Y(H0k * dmax), C.light, 2);
+    for (const [n, d, v] of REAL) {
+      dot(x, X(d), Y(v), 5, C.other);
+      text(x, n, X(d) + 8, Y(v) + (n === 'Andromeda' || n === 'Virgo Cluster' ? 16 : -8), { size: 11, color: C.ink, bg: C.bg2 });
+    }
+    dot(x, X(hd), Y(H0k * hd), 7, C.accent);
+  }, { ratio: 0.55, max: 480 });
+  const setH = (px) => { hd = Math.max(1, Math.min(110, hm.inv(px))); hubText(); };
+  pointer(hub, { down: setH, drag: setH });
+  function hubText() {
+    const v = H0k * hd, ly = hd * 3.2616;
+    $('hubRead').innerHTML = 'At <span class="k">' + hd.toFixed(0) + ' Mpc</span> (' + ly.toFixed(0) + ' million light-years) the expansion carries a galaxy away at <span class="k">' + fmt(v, 0) + ' km/s</span> — ' +
+      (v / 299792.458 * 100).toFixed(2) + '% of light speed. That passes 100% at ' + (299792.458 / H0k).toFixed(0) + ' Mpc, about ' + (U.hubbleDist).toFixed(1) + ' billion light-years: the <strong>Hubble distance</strong>.';
+  }
+  hubText();
+
+  /* ── 4.3 redshift ── */
+  const LINES = [['Lyα', 121.6], ['Hδ', 410.2], ['Hγ', 434.0], ['Hβ', 486.1], ['Hα', 656.3]];
+  const nmColor = (nm) => {
+    // visible wavelengths to a rough colour; outside 380–750 nm, grey
+    if (nm < 380 || nm > 750) return null;
+    const stops = [[380, [120, 60, 200]], [440, [70, 80, 255]], [490, [0, 200, 220]], [510, [0, 220, 90]], [580, [240, 230, 0]], [645, [255, 60, 0]], [750, [160, 0, 0]]];
+    for (let i = 1; i < stops.length; i++) if (nm <= stops[i][0]) {
+      const [a, ca] = stops[i - 1], [b, cb] = stops[i], f = (nm - a) / (b - a);
+      return 'rgb(' + ca.map((c, k) => Math.round(c + f * (cb[k] - c))).join(',') + ')';
+    }
+  };
+  let wavePhase = 0;
+  const rs = figure('rs', (x, w, h) => {
+    const zz = z(), top = h * 0.48;
+    // the wave: wavelength grows from left (emitted) to right (arriving) by 1 + z
+    const L0 = 16, x0 = 20, x1 = w - 20;
+    x.strokeStyle = C.light; x.lineWidth = 2; x.beginPath();
+    let ph = wavePhase;
+    for (let px = x0; px <= x1; px += 1) {
+      const f = (px - x0) / (x1 - x0), lam = L0 * (1 + zz * f);
+      ph += (2 * Math.PI) / lam;
+      const y = top / 2 + Math.sin(ph) * top * 0.28;
+      px === x0 ? x.moveTo(px, y) : x.lineTo(px, y);
+    }
+    x.stroke();
+    text(x, 'leaves the galaxy', x0, 16, { size: 11 }); text(x, 'arrives here, ' + (1 + zz).toFixed(2) + '× longer', x1, 16, { size: 11, align: 'right', color: C.light });
+    // the spectrum, 100–7500 nm on a log scale
+    const sy = top + 30, sh = 34, lmin = Math.log(100), lmax = Math.log(8000), SX = (nm) => x0 + (Math.log(nm) - lmin) / (lmax - lmin) * (x1 - x0);
+    for (let px = x0; px <= x1; px++) {
+      const nm = Math.exp(lmin + (px - x0) / (x1 - x0) * (lmax - lmin)), col = nmColor(nm);
+      x.fillStyle = col ? alpha('#000000', 0) : '#141821'; if (col) x.fillStyle = col; x.globalAlpha = col ? 0.35 : 1;
+      x.fillRect(px, sy, 1.2, sh);
+    }
+    x.globalAlpha = 1;
+    text(x, 'ultraviolet', SX(200), sy + sh + 16, { size: 11, align: 'center' });
+    text(x, 'visible', SX(540), sy + sh + 16, { size: 11, align: 'center' });
+    text(x, 'infrared', SX(2500), sy + sh + 16, { size: 11, align: 'center' });
+    for (const [i, [n, nm]] of LINES.entries()) {
+      const at = nm * (1 + zz);
+      line(x, SX(nm), sy + sh + 24, SX(nm), sy + sh + 30, alpha(C.dim, 0.7), 1);
+      if (at > 8000) continue;
+      line(x, SX(at), sy - 4, SX(at), sy + sh + 4, C.ink, 2);
+      text(x, n, SX(at), sy - 8 - (i % 2) * 13, { size: 11, align: 'center', color: C.ink });
+    }
+    text(x, 'tick marks: where the lines are with no redshift', x0, h - 6, { size: 11 });
+  }, { ratio: (w) => (w < 560 ? 0.75 : 0.36), min: 240, max: 330 });
+  animate(rs, (dt) => { wavePhase -= dt * 4; }, null, true);
+  const z = slider('z', (v) => v.toFixed(2), (zz) => {
+    const a = 1 / (1 + zz), tl = U.age - U.t(a), chi = U.eta0 - U.eta(a);
+    $('rsRead').innerHTML = zz === 0 ? 'No stretch: light from nearby.'
+      : 'The light left when the universe was <span class="k">' + (100 * a).toFixed(a < 0.1 ? 1 : 0) + '%</span> of its present size, <span class="k">' + tl.toFixed(2) + ' billion years</span> ago. ' +
+        'Hα, red to the eye at 656 nm, arrives at ' + fmt(656.3 * (1 + zz), 0) + ' nm' + (656.3 * (1 + zz) > 750 ? ' — infrared, invisible to us.' : '.') +
+        ' The galaxy that sent it is now about <span class="k">' + chi.toFixed(1) + ' billion light-years</span> away.';
+    rs.redraw();
   });
+  choice('zPick', (k) => z.set(+k));
 
-  ctx.shadowBlur = 0;
+  /* ── 4.4 bound and unbound: a toy ──
+     Each galaxy feels the cluster's pull, GM/r², and dark energy's push, Λr,
+     and starts with the expansion's velocity H·r plus a little sideways drift.
+     Units are arbitrary (H = 0.6, Λ = 0.1, GM up to 2), chosen so that about
+     a third stay at the middle setting. Close in, the pull wins and they orbit. */
+  const LAM = 0.1, HUB = 0.6, GMof = (m) => 2 * m;
+  let bodies = [], bt = 0;
+  function bodiesReset() {
+    let s = 3; const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    bodies = [];
+    for (let i = 0; i < 70; i++) {
+      const R = 0.15 + 2.2 * r(), th = r() * Math.PI * 2, GM = GMof(mass());
+      const vt = 0.7 * Math.sqrt(GM / R) * (r() < 0.5 ? 1 : -1);
+      bodies.push({ x: R * Math.cos(th), y: R * Math.sin(th), vx: HUB * R * Math.cos(th) - vt * Math.sin(th), vy: HUB * R * Math.sin(th) + vt * Math.cos(th), trail: [] });
+    }
+    bt = 0;
+  }
+  const bd = figure('bd', (x, w, h) => {
+    const GM = GMof(mass()), cx = w / 2, cy = h / 2, sc = Math.min(w, h) / 7;
+    if (GM > 0) dot(x, cx, cy, 4 + 5 * GM, C.accent);
+    for (const b of bodies) {
+      // bound when its energy is below the top of the pull-and-push hill, at r = ∛(GM/Λ)
+      const r = Math.hypot(b.x, b.y), E = 0.5 * (b.vx * b.vx + b.vy * b.vy) - GM / Math.sqrt(r * r + 0.01) - 0.5 * LAM * r * r;
+      const vStar = GM > 0 ? -1.5 * Math.cbrt(GM * GM * LAM) : 0;
+      const boundNow = GM > 0 && E < vStar;
+      const col = boundNow ? C.reach : C.other;
+      if (b.trail.length > 1) { x.strokeStyle = alpha(col, 0.25); x.lineWidth = 1; x.beginPath(); b.trail.forEach(([u, v], i) => (i ? x.lineTo(cx + u * sc, cy + v * sc) : x.moveTo(cx + u * sc, cy + v * sc))); x.stroke(); }
+      dot(x, cx + b.x * sc, cy + b.y * sc, 3, col);
+    }
+    text(x, 'held by the cluster', 10, h - 26, { size: 11, color: C.reach }); text(x, 'carried off by the expansion', 10, h - 10, { size: 11, color: C.other });
+    text(x, 'time ' + bt.toFixed(1), w - 10, 18, { size: 11, align: 'right' });
+  }, { ratio: (w) => (w < 560 ? 0.95 : 0.55), max: 500 });
+  animate(bd, (dt) => {
+    const GM = GMof(mass()), n = 20, h = Math.min(dt, 0.04) / n * 1.2;
+    for (let k = 0; k < n; k++) for (const b of bodies) {
+      const r2 = b.x * b.x + b.y * b.y + 0.01, r = Math.sqrt(r2), g = -GM / (r2 * r) + LAM;
+      b.vx += g * b.x * h; b.vy += g * b.y * h; b.x += b.vx * h; b.y += b.vy * h;
+    }
+    bt += dt * 1.2;
+    for (const b of bodies) { b.trail.push([b.x, b.y]); if (b.trail.length > 90) b.trail.shift(); }
+    if (bt > 12) return false;
+  }, $('bdPlay'), false);
+  $('bdReset').addEventListener('click', () => { bodiesReset(); bd.redraw(); bd.play(); });
+  const mass = slider('mass', (m) => (m === 0 ? 'none' : m.toFixed(2)), (m) => {
+    bodiesReset(); bd.redraw();
+    $('bdRead').innerHTML = m === 0
+      ? 'With nothing holding them, every galaxy drifts apart with the expansion — and, with dark energy, ever faster.'
+      : 'Everything starts out moving apart with the expansion. Close to the cluster its pull wins: those galaxies slow, turn round and settle into orbit (green). Farther out, they\'re carried off for good (blue). Make the cluster heavier and it holds on to more.';
+  });
+  // the push table, from Λc²r/3 against each system's own binding acceleration
+  const LAMBDA = 1.1e-52, c2 = 299792458 ** 2, push = (r) => LAMBDA * c2 * r / 3;
+  const SYSTEMS = [
+    ['An electron in a hydrogen atom', 5.29e-11, 8.988e9 * (1.602e-19 ** 2) / (9.109e-31 * (5.29e-11) ** 2)],
+    ['Earth around the Sun', 1.496e11, 1.327e20 / (1.496e11) ** 2],
+    ['The Sun around the Milky Way', 2.46e20, (230e3) ** 2 / 2.46e20],
+  ];
+  $('pushTable').tBodies[0].innerHTML = SYSTEMS.map(([n, r, g]) => {
+    const e = Math.round(Math.log10(push(r) / g));
+    return '<tr><td>' + n + '</td><td class="n">about 1 part in 10' + ST.sup(-e) + '</td></tr>';
+  }).join('');
 
-  // bound objects (clusters that don't expand)
-  if (showBound) {
-    galaxies.forEach(g => {
-      if (g === obsGalaxy) return;
-      // small cluster of "bound" dots that DON'T grow
-      const cluster = [
-        { dx: -8, dy: -4 }, { dx: 8, dy: -4 },
-        { dx: -4, dy: 6 }, { dx: 5, dy: 5 },
-      ];
-      ctx.fillStyle = '#6db5a3';
-      cluster.forEach(c => {
-        ctx.beginPath();
-        ctx.arc(g.x + c.dx, g.y + c.dy, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-      });
+  /* ── 4.5 the horizon ── */
+  let uni = 'real', ht = 0, hzOn = false;
+  const run = () => {
+    const M = uni === 'real' ? U : EdS, D0 = d0();
+    // light emitted now from D0 (comoving = proper today) toward us; χ(t) = D0 − (η(t) − η0)
+    const tEnd = uni === 'real' ? 60 : 220, pts = [];
+    let arrive = null;
+    for (let i = 0; i <= 600; i++) {
+      const tt = M.age + i / 600 * tEnd, a = M.aT(tt), chi = D0 - (M.eta(a) - M.eta0);
+      if (chi <= 0) { arrive = tt; pts.push([tt, 0]); break; }
+      pts.push([tt, a * chi]);
+    }
+    return { M, D0, tEnd, pts, arrive, reaches: D0 < M.eventHorizon };
+  };
+  const hz = figure('hz', (x, w, h) => {
+    const R = run(), M = R.M, bandH = Math.min(110, h * 0.32), gy0 = bandH + 30;
+    // where the light is at the playhead
+    const t = M.age + ht * R.tEnd, a = M.aT(t), chi = Math.max(0, R.D0 - (M.eta(a) - M.eta0)), Dnow = a * chi;
+    const Dmax = Math.max(30, ...R.pts.map((p) => p[1])) * 1.05;
+    // the band: comoving marks every 2 Gly, at proper distance a·χ
+    const bx0 = 40, bx1 = w - 20, BX = (D) => bx0 + D / Dmax * (bx1 - bx0), by = bandH / 2 + 10;
+    line(x, bx0, by, bx1, by, alpha(C.accent, 0.5), 6);
+    for (let k = 2; a * k < Dmax; k += 2) line(x, BX(a * k), by - 9, BX(a * k), by + 9, alpha(C.ink, 0.5), 1);
+    dot(x, bx0, by, 7, C.accent); text(x, 'us', bx0, by + 26, { size: 12, align: 'center', color: C.accent });
+    if (R.D0 * a < Dmax) { dot(x, BX(R.D0 * a), by, 6, C.other); text(x, 'the galaxy', BX(R.D0 * a), by + 26, { size: 11, align: 'center', color: C.other }); }
+    if (chi > 0 || ht === 0) dot(x, BX(Dnow), by, 6, C.light);
+    text(x, 'ruler marks: every 2 billion light-years today', bx0, 14, { size: 11 });
+    // the graph: proper distance of the light against time
+    const L = 52, T = gy0 + 8, B = h - 28, GX = (tt) => L + (tt - M.age) / R.tEnd * (w - L - 20), GY = (D) => B - D / Dmax * (B - T);
+    line(x, L, B, w - 20, B, C.dim, 1); line(x, L, T, L, B, C.dim, 1);
+    for (let D = 0; D < Dmax; D += 10) { text(x, D, L - 8, GY(D) + 4, { size: 11, align: 'right' }); line(x, L, GY(D), w - 20, GY(D), C.grid, 1); }
+    for (let k = 0; k <= 4; k++) { const tt = M.age + k / 4 * R.tEnd; text(x, (k ? '+' : '') + (tt - M.age).toFixed(0), GX(tt), B + 16, { size: 11, align: 'center' }); }
+    text(x, 'billion years from now →', w - 20, h - 2, { size: 11, align: 'right' });
+    text(x, 'Gly', L - 8, T - 2, { size: 11, align: 'right' });
+    // Hubble distance c/H(t): beyond it, a point recedes faster than light
+    x.strokeStyle = alpha(C.else, 0.6); x.setLineDash([4, 4]); x.lineWidth = 1; x.beginPath();
+    for (let i = 0; i <= 100; i++) { const tt = M.age + i / 100 * R.tEnd, dH = 1 / M.H(M.aT(tt)); const p = [GX(tt), GY(Math.min(dH, Dmax))]; i ? x.lineTo(...p) : x.moveTo(...p); }
+    x.stroke(); x.setLineDash([]);
+    text(x, 'Hubble distance', w - 24, GY(Math.min(1 / M.H(M.aT(M.age + R.tEnd)), Dmax)) - 6, { size: 11, color: C.else, align: 'right' });
+    x.strokeStyle = alpha(C.light, 0.25); x.lineWidth = 1.5; x.beginPath();
+    R.pts.forEach(([tt, D], i) => (i ? x.lineTo(GX(tt), GY(D)) : x.moveTo(GX(tt), GY(D)))); x.stroke();
+    x.strokeStyle = C.light; x.lineWidth = 2.5; x.beginPath();
+    for (const [tt, D] of R.pts) { if (tt > t) break; x.lineTo(GX(tt), GY(D)); }
+    x.stroke();
+    if (chi > 0 || R.arrive == null) dot(x, GX(Math.min(t, M.age + R.tEnd)), GY(Dnow), 5, C.light);
+  }, { ratio: (w) => (w < 560 ? 1.1 : 0.58), max: 560 });
+  animate(hz, (dt) => { ht += dt / 7; if (ht >= 1) { ht = 1; return false; } }, $('hzPlay'), false);
+  $('hzPlay').addEventListener('click', () => { if (ht >= 1) ht = 0; });
+  function hzText() {
+    const R = run(), M = R.M;
+    const fast = R.D0 > M.hubbleDist;
+    $('hzRead').innerHTML = (fast ? 'At ' + R.D0.toFixed(1) + ' billion light-years the galaxy is receding <strong>faster than light</strong> (the Hubble distance is ' + M.hubbleDist.toFixed(1) + '). ' : '') +
+      (R.reaches
+        ? (R.arrive == null ? 'Just inside the horizon: the light does arrive, but only after more than ' + R.tEnd + ' billion years.' : 'The light reaches us after <span class="k">' + (R.arrive - M.age).toFixed(1) + ' billion years</span>' + (fast ? ', even though it first lost ground.' : '.'))
+        : 'It is beyond the event horizon, ' + M.eventHorizon.toFixed(1) + ' billion light-years: <span class="c-else">the light never arrives</span>, however long we wait.') +
+      (uni === 'nodark' ? ' (A universe of matter alone, with no dark energy: no horizon.)' : '');
+    ht = 0; hz.redraw();
+  }
+  const d0 = slider('d0', (d) => d.toFixed(1) + ' billion light-years', hzText);
+  choice('hzU', (k) => { uni = k; hzText(); });
+
+  /* ── 4.6 the history ── */
+  const MARKS = [
+    ['background glow released', U.t(1 / 1091)], ['first stars', U.t(1 / 21)], ['expansion starts speeding up', U.t(Math.cbrt(0.31 / (2 * 0.69)))],
+    ['the Sun forms', U.age - 4.6], ['today', U.age],
+  ];
+  let ta = U.age, hm2 = null;
+  const hist = figure('hist', (x, w, h) => {
+    const L = 46, R = 16, T = 16, B = 36, tmax = 30, amax = U.aT(tmax) * 1.05;
+    const X = (t) => L + t / tmax * (w - L - R), Y = (a) => B > 0 ? h - B - a / amax * (h - T - B) : 0;
+    hm2 = { inv: (px) => (px - L) / (w - L - R) * tmax };
+    for (let t = 0; t <= tmax; t += 5) { line(x, X(t), T, X(t), h - B, C.grid, 1); text(x, t, X(t), h - B + 16, { size: 11, align: 'center' }); }
+    for (let a = 0; a <= amax; a += 0.5) { line(x, L, Y(a), w - R, Y(a), C.grid, 1); text(x, a.toFixed(1), L - 8, Y(a) + 4, { size: 11, align: 'right' }); }
+    text(x, 'billion years since the Big Bang →', w - R, h - 4, { size: 11, align: 'right' });
+    x.fillStyle = alpha(C.accent, 0.06); x.fillRect(X(U.age), T, X(tmax) - X(U.age), h - T - B);
+    text(x, 'future', X(U.age) + 6, T + 12, { size: 11 });
+    x.strokeStyle = C.accent; x.lineWidth = 2.5; x.beginPath();
+    for (let i = 0; i <= 400; i++) { const t = i / 400 * tmax, p = [X(t), Y(U.aT(Math.max(t, 1e-6)))]; i ? x.lineTo(...p) : x.moveTo(...p); }
+    x.stroke();
+    const DY = [-8, -24, -10, -24, 18];
+    MARKS.forEach(([n, t], i) => {
+      const a = U.aT(t); dot(x, X(t), Y(a), 4, C.ink);
+      text(x, n, X(t) + 6, Y(a) + DY[i], { size: 11, color: C.ink, bg: C.bg2 });
     });
+    const a = U.aT(Math.max(ta, 1e-6));
+    line(x, X(ta), T, X(ta), h - B, alpha(C.light, 0.6), 1, [4, 4]);
+    dot(x, X(ta), Y(a), 7, C.light);
+  }, { ratio: 0.55, max: 480 });
+  const setT = (px) => { ta = Math.max(0.0004, Math.min(30, hm2.inv(px))); histText(); };
+  pointer(hist, { down: setT, drag: setT });
+  function histText() {
+    const a = U.aT(ta), zz = 1 / a - 1;
+    $('hAge').textContent = ta < 0.001 ? fmt(ta * 1e6, 0) + ' years' : ta < 1 ? fmt(ta * 1000, 0) + ' million yr' : ta.toFixed(2) + ' billion yr';
+    $('hA').textContent = a < 0.01 ? fmt(a, 2) : a.toFixed(3);
+    $('hZ').textContent = zz > 0 ? fmt(zz, zz < 10 ? 2 : 0) : '—';
+    $('hT').textContent = fmt(2.725 / a, 2.725 / a < 10 ? 2 : 0) + ' K';
+    const past = ta < U.age;
+    const chi = U.eta0 - U.eta(a);
+    $('histRead').innerHTML = past
+      ? 'Light that left anything at this moment and reaches us today has travelled for <span class="k">' + (U.age - ta).toFixed(2) + ' billion years</span>. When it left, its source was ' + (a * chi).toFixed(2) + ' billion light-years away; that matter is now <span class="k">' + chi.toFixed(1) + '</span>.'
+      : ta - U.age < 0.05 ? 'Today: 13.8 billion years in. The farthest matter we can see the light of is about <span class="k">' + U.eta0.toFixed(1) + ' billion light-years</span> away.'
+      : ta.toFixed(1) + ' billion years in, everything is ' + a.toFixed(2) + '× farther apart than today, and the gap is growing faster every year.';
   }
-
-  // observer (always center)
-  ctx.fillStyle = '#d4a574';
-  ctx.shadowColor = '#d4a574';
-  ctx.shadowBlur = 16;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowBlur = 0;
-
-  /* Sizes in CSS pixels, scaled to the backing store (twice the CSS width on
-     every device): drawn at 14-16 px they showed at 7-8 (bug sweep D3-12). */
-  const fs = w / (canvas.clientWidth || w / 2);
-  const px = (n) => Math.round(n * fs);
-  ctx.fillStyle = '#d4a574';
-  ctx.font = `${px(12)}px "JetBrains Mono", monospace`;
-  ctx.fillText('YOU', cx + 9 * fs, cy + 4 * fs);
-
-  // info text
-  ctx.fillStyle = '#8a8578';
-  ctx.font = `${px(12)}px "JetBrains Mono", monospace`;
-  ctx.fillText(`SCALE FACTOR: ${scale.toFixed(2)}×`, 12 * fs, 20 * fs);
-  ctx.fillText(`HUBBLE'S LAW: v ∝ d`, 12 * fs, 37 * fs);
-
-  ctx.fillStyle = '#d4a574';
-  ctx.font = `italic ${px(14)}px "Cormorant Garamond", serif`;
-  ctx.fillText('Farther galaxies recede faster — proportional to distance.', 12 * fs, h - 26 * fs);
-  ctx.fillText('Move the observer. The same pattern holds from every point.', 12 * fs, h - 10 * fs);
-
-  tVal.textContent = `${tSlider.value}%`;
-  const labels = ['far left','left','near left','center','near right','right','far right'];
-  obsVal.textContent = labels[obsIdx];
-}
-
-function tick() {
-  if (!playing) return;
-  let v = parseFloat(tSlider.value);
-  v += 0.4;
-  if (v > 100) v = 100;
-  tSlider.value = v;
-  draw();
-  if (v < 100) animId = requestAnimationFrame(tick);
-  else { playing = false; playBtn.textContent = '▶ REPLAY EXPANSION'; }
-}
-
-playBtn.addEventListener('click', () => {
-  if (parseFloat(tSlider.value) >= 100) tSlider.value = 0;
-  playing = !playing;
-  playBtn.textContent = playing ? '❚❚ PAUSE' : '▶ PLAY EXPANSION';
-  if (playing) animId = requestAnimationFrame(tick);
-});
-resetBtn.addEventListener('click', () => {
-  playing = false;
-  cancelAnimationFrame(animId);
-  tSlider.value = 0;
-  playBtn.textContent = '▶ PLAY EXPANSION';
-  draw();
-});
-toggleBtn.addEventListener('click', () => {
-  showBound = !showBound;
-  toggleBtn.textContent = showBound ? 'HIDE BOUND OBJECTS' : 'SHOW BOUND OBJECTS';
-  toggleBtn.setAttribute('aria-pressed', String(showBound));
-  toggleBtn.classList.toggle('active');
-  draw();
-});
-tSlider.addEventListener('input', draw);
-obsSlider.addEventListener('input', draw);
-
-resize();
+  histText();
+})();
 </script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="spacetime" defer></script>
 </body>

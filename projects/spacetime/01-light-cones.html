@@ -1,395 +1,539 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-mochi-world="space">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>01 / Light Cones</title>
+<meta name="description" content="Lesson one of The Geometry of Spacetime: how to read a spacetime diagram, why nothing tilts past 45°, and the light cone that splits the universe into your past, your future and the elsewhere you can never touch.">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0a0d12;
-    --bg-2: #11151c;
-    --ink: #e8e4d8;
-    --ink-dim: #8a8578;
-    --accent: #d4a574;
-    --light: #ffd982;
-    --reachable: #6db5a3;
-    --unreachable: #b56d8a;
-    --line: #1f242d;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body {
-    background: var(--bg);
-    color: var(--ink);
-    font-family: 'Cormorant Garamond', serif;
-    min-height: 100vh;
-  }
-  .nav {
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.2em;
-  }
-  .nav a { color: var(--ink-dim); text-decoration: none; }
-  .nav a:hover { color: var(--accent); }
-  .nav .num { color: var(--accent); }
-
-  .container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 4rem 2rem 6rem;
-  }
-  .eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.4em;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-  }
-  h1 {
-    font-size: clamp(2.5rem, 6vw, 4rem);
-    font-weight: 300;
-    line-height: 1.05;
-    letter-spacing: -0.02em;
-    font-style: italic;
-    margin-bottom: 1.5rem;
-  }
-  .lede {
-    font-size: 1.25rem;
-    color: var(--ink-dim);
-    max-width: 38rem;
-    line-height: 1.6;
-    margin-bottom: 4rem;
-  }
-
-  .stage {
-    background: var(--bg-2);
-    border: 1px solid var(--line);
-    padding: 2rem;
-    margin-bottom: 2rem;
-  }
-  canvas { width: 100%; height: auto; display: block; }
-
-  .controls {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--line);
-  }
-  .ctrl label {
-    display: block;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.15em;
-    color: var(--ink-dim);
-    text-transform: uppercase;
-    margin-bottom: 0.75rem;
-  }
-  .ctrl .val {
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--accent);
-    font-size: 0.9rem;
-  }
-  input[type=range] {
-    width: 100%;
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-    cursor: pointer;
-  }
-  input[type=range]::-webkit-slider-runnable-track {
-    height: 2px;
-    background: var(--line);
-  }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    height: 14px;
-    width: 14px;
-    background: var(--accent);
-    border-radius: 50%;
-    margin-top: -6px;
-  }
-  input[type=range]::-moz-range-track {
-    height: 2px;
-    background: var(--line);
-  }
-  input[type=range]::-moz-range-thumb {
-    height: 14px;
-    width: 14px;
-    background: var(--accent);
-    border-radius: 50%;
-    border: none;
-  }
-
-  .legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2rem;
-    margin-top: 1rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 0.1em;
-    color: var(--ink-dim);
-  }
-  .legend span {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .swatch {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: inline-block;
-  }
-
-  .essay {
-    margin-top: 4rem;
-    max-width: 36rem;
-  }
-  .essay h2 {
-    font-size: 1.75rem;
-    font-weight: 400;
-    font-style: italic;
-    margin: 3rem 0 1rem;
-    color: var(--accent);
-  }
-  .essay p {
-    font-size: 1.125rem;
-    line-height: 1.7;
-    margin-bottom: 1.25rem;
-    color: var(--ink);
-  }
-  .essay em { color: var(--accent); font-style: italic; }
-  .essay .pullout {
-    border-left: 2px solid var(--accent);
-    padding-left: 1.5rem;
-    margin: 2rem 0;
-    font-size: 1.25rem;
-    font-style: italic;
-    color: var(--ink-dim);
-  }
-
-  .next {
-    margin-top: 5rem;
-    padding-top: 3rem;
-    border-top: 1px solid var(--line);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    letter-spacing: 0.15em;
-  }
-  .next a { color: var(--accent); text-decoration: none; }
-  .next a:hover { color: var(--ink); }
-</style>
-  <script src="../../assets/visit.js" defer></script>
+<link rel="stylesheet" href="lesson.css">
+<script src="../../assets/visit.js" defer></script>
 </head>
 <body>
-  <nav class="nav">
-    <a href="index.html">← THE GEOMETRY OF SPACETIME</a>
-    <span class="num">01 / 04</span>
+<header class="bar">
+  <a href="index.html">← <span class="home-long">The Geometry of </span>Spacetime</a>
+  <nav class="chapters" aria-label="Chapters">
+    <span aria-current="page" title="Light Cones">01</span>
+    <a href="02-time-dilation.html" title="Time Dilation">02</a>
+    <a href="03-simultaneity.html" title="The Loss of Now">03</a>
+    <a href="04-expansion.html" title="Space Expanding">04</a>
   </nav>
+</header>
 
-  <main class="container">
-    <div class="eyebrow">— Causality has a shape —</div>
-    <h1>Light Cones</h1>
-    <p class="lede">Every event in the universe has a region of past events that could have caused it, and a region of future events it could affect. Outside that region: forever unreachable.</p>
+<div class="hero">
+  <p class="eyebrow">Chapter 1 of 4 · Causality has a shape</p>
+  <h1>Light Cones</h1>
+  <p class="lede">Nothing — no ship, no signal, no cause — travels faster than light. That one rule draws a shape around every moment in the universe: <strong>everything that could have caused it, everything it could ever affect, and a huge region it can never touch at all.</strong></p>
+  <div class="youll">
+    <div><b>You'll learn</b>to read a spacetime diagram — the one picture all four chapters are drawn in.</div>
+    <div><b>You'll see</b>why "now" on Mars or the Sun is something you can't know yet.</div>
+    <div><b>You'll try</b>six figures you can drag, play and break.</div>
+  </div>
+</div>
 
-    <div class="stage">
-      <canvas id="cone" width="1000" height="600"></canvas>
-      <div class="controls">
-        <div class="ctrl">
-          <label>Event location <span class="val" id="xVal">x = 0</span></label>
-          <input type="range" id="x" aria-label="Event location" min="-200" max="200" value="0">
-        </div>
-        <div class="ctrl">
-          <label>Event time <span class="val" id="tVal">t = 0</span></label>
-          <input type="range" id="t" aria-label="Event time" min="-200" max="200" value="0">
-        </div>
-        <div class="ctrl">
-          <label>Show signal at <span class="val" id="dVal">distance = 100</span></label>
-          <input type="range" id="d" aria-label="Signal distance" min="0" max="250" value="100">
-        </div>
+<div class="lesson">
+  <aside class="toc"><p>In this chapter</p><ol></ol></aside>
+  <main>
+
+  <!-- ─────────────────────────────── 1 -->
+  <section class="part" id="read" data-short="Reading the diagram">
+    <div class="num">Part 1</div>
+    <h2>A map with time going up</h2>
+    <div class="prose">
+      <p>A normal map shows <em>where</em> things are. A <strong>spacetime diagram</strong> shows where they are <em>and when</em>. Space runs left to right (just one direction of it, to keep things flat). Time runs up the page.</p>
+      <p>A single point on it is an <strong>event</strong>: a place at a moment. "My coffee cup, 9:00 this morning" is an event. A thing that lasts — you, a car, a photon — is a whole line of events, one for each moment. That line is its <strong>worldline</strong>.</p>
+      <p>The trick that makes the diagram useful is the units. Time is measured in seconds and distance in <strong>light-seconds</strong> — how far light goes in a second, about 300,000 km. In those units, light travels one square across for every square up. <em>Light is always a 45° line.</em></p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 1.1 · Worldlines of everyday things</span><span>across: light-seconds · up: seconds</span></div>
+      <canvas id="wl" role="img" aria-label="A spacetime diagram with the worldlines of several moving things drawn from the same starting event."></canvas>
+      <div class="btns" id="wlPick" role="group" aria-label="Choose a traveller">
+        <button data-v="still" aria-pressed="true">Sitting still</button>
+        <button data-v="walk">Walking</button>
+        <button data-v="car">Highway car</button>
+        <button data-v="jet">Airliner</button>
+        <button data-v="iss">The ISS</button>
+        <button data-v="probe">Fastest probe</button>
+        <button data-v="half">Half light speed</button>
+        <button data-v="light">Light</button>
       </div>
-      <div class="legend">
-        <span><span class="swatch" style="background:var(--light)"></span>LIGHT — TRAVELS AT C</span>
-        <span><span class="swatch" style="background:var(--reachable)"></span>REACHABLE / CAUSAL</span>
-        <span><span class="swatch" style="background:var(--unreachable)"></span>UNREACHABLE / ELSEWHERE</span>
+      <p class="read" id="wlRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="try"><b>Try this</b><ol>
+      <li>Go from <em>Sitting still</em> through <em>The ISS</em>. Every one of them is drawn straight up. They are not — they're moving — but next to light, even the space station is standing still.</li>
+      <li>Jump to <em>Half light speed</em>. Only now does the line visibly lean.</li>
+    </ol></div>
+
+    <div class="prose">
+      <p>That is the first surprise of the diagram: <strong>on the scale that matters to light, everything you have ever seen move is a vertical line.</strong> The space station covers 7.7 km every second, and in that second light covers 300,000. Its worldline leans less than a thousandth of a degree.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────── 2 -->
+  <section class="part" id="limit" data-short="The speed limit">
+    <div class="num">Part 2</div>
+    <h2>Nothing leans past 45°</h2>
+    <div class="prose">
+      <p>The faster something goes, the more its worldline leans. Light's line leans exactly 45°. Nothing with mass can reach that, and nothing at all — not matter, not a message — can lean past it.</p>
+      <p>This isn't an engineering limit, like "we don't have a big enough engine." It's built into the geometry: push a ship harder and its speed creeps closer to light without arriving (chapter 2 shows why). Slide past 1 c below and see what a faster-than-light path would mean.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 1.2 · Tilting a worldline</span><span>across: light-years · up: years</span></div>
+      <canvas id="tilt" role="img" aria-label="A rocket's worldline tilting as its speed rises, bounded by the 45-degree lines of light."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="beta">Rocket speed <output for="beta"></output></label>
+          <input type="range" id="beta" min="0" max="1.6" step="0.01" value="0.6"></div>
       </div>
+      <p class="read" id="tiltRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="prose">
+      <p>The two 45° lines leaving an event are the paths of light sent out to the left and to the right. Every possible future for anything at that event lies <em>between</em> them. That wedge has a name.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────── 3 -->
+  <section class="part" id="cone" data-short="Past, future, elsewhere">
+    <div class="num">Part 3</div>
+    <h2>The light cone</h2>
+    <div class="prose">
+      <p>Take any event — call it <span class="c-accent">here and now</span>. Light leaving it carves out a wedge going up: the <span class="c-light">future light cone</span>. Anything inside it, you could reach or send a signal to in time. The same lines extended downward carve out the <span class="c-reach">past light cone</span>: everything that could have reached you, and so could have caused something here.</p>
+      <p>Everything else — to the sides, outside both wedges — is <span class="c-else">elsewhere</span>. Those events are real. They are happening. But no signal can get from them to you or from you to them in time. Physicists call such a pair of events <strong>spacelike separated</strong>; inside the cone they're <strong>timelike</strong>, and exactly on its edge, <strong>lightlike</strong>.</p>
     </div>
 
-    <div class="essay">
-      <h2>What you're looking at</h2>
-      <p>This is a <em>spacetime diagram</em>. The horizontal axis is space (one dimension of it). The vertical axis is time, going up. A single point on this diagram is an <em>event</em> — a specific place at a specific moment.</p>
+    <figure class="fig">
+      <div class="cap"><span>Figure 1.3 · Drag the second event anywhere</span><span>across: light-years · up: years</span></div>
+      <canvas id="lc" role="img" aria-label="A light cone around an event. A second event can be dragged around the diagram, and the page says whether it lies in the past, the future or elsewhere."></canvas>
+      <p class="read" id="lcRead" aria-live="polite"></p>
+      <dl class="stats">
+        <div><dt>Distance apart</dt><dd id="lcDx">—</dd></div>
+        <div><dt>Time between</dt><dd id="lcDt">—</dd></div>
+        <div><dt>Light needs</dt><dd id="lcNeed">—</dd></div>
+        <div><dt>Kind</dt><dd id="lcKind">—</dd></div>
+      </dl>
+    </figure>
 
-      <p>The two diagonal lines drawn through the event represent the speed of light. Anything moving slower than light traces a path steeper than these lines. Anything moving at light speed traces a path along them.</p>
+    <div class="try"><b>Try this</b><ol>
+      <li>Drag the event straight up. It stays in the future however high you go: you can always reach a place you're already standing at.</li>
+      <li>Drag it 5 light-years to the side and only 2 years up. The dashed line shows light from here arriving 3 years too late.</li>
+      <li>Put it exactly on the yellow edge. Only light — nothing slower — gets there on time.</li>
+    </ol></div>
 
-      <p>The yellow region above is your <em>future light cone</em> — every event you could possibly affect. The yellow region below is your <em>past light cone</em> — every event that could have affected you. The first two sliders move the event.</p>
+    <p class="pull">"All that matters is how long the information takes to get to you."</p>
 
-      <h2>The unreachable region</h2>
-      <p>Move the third slider. It places a second event a fixed time after this one and as far away as you choose. Close enough, light gets there in time and it is green — reachable. Past the cone's edge it turns pink: it is in what physicists call <em>elsewhere</em> — it's neither in your past nor your future. It exists, but you cannot causally interact with it. Light signals haven't had time to travel between you. No information can pass either direction.</p>
+    <div class="prose">
+      <p>The elsewhere is not "the future we haven't reached yet" or "the past we've forgotten." It is a third category with no everyday name, because in everyday life it is too thin to notice: on Earth the elsewhere around you right now is only a fraction of a second deep. The next part makes it bigger.</p>
+    </div>
+  </section>
 
-      <p class="pullout">"All that matters is how long the information takes to get to you."</p>
-
-      <p>For an event 100 light-years away, anything happening there <em>now</em> sits in your "elsewhere." It's not in your past — its light hasn't reached you. It's not in your future — you can't affect it. It's a region of reality that's real but causally disconnected from you.</p>
-
-      <p>Every observer in the universe has their own light cone, centered on themselves. The universe is a network of overlapping cones. Reality is local. There is no master view.</p>
+  <!-- ─────────────────────────────── 4 -->
+  <section class="part" id="news" data-short="News from space">
+    <div class="num">Part 4</div>
+    <h2>Every view of the sky is old news</h2>
+    <div class="prose">
+      <p>You only find out about an event when its light — or any other signal — reaches you. Until then it is in your elsewhere: it has happened, and there is nothing anyone where you are could know about it. Pick a place and watch the news travel.</p>
     </div>
 
-    <div class="next">
-      <a href="index.html">← INDEX</a>
-      <a href="02-time-dilation.html">02 / TIME DILATION →</a>
+    <figure class="fig">
+      <div class="cap"><span>Figure 1.4 · When the news arrives</span><span id="newsUnits">—</span></div>
+      <canvas id="news-c" role="img" aria-label="A spacetime diagram with Earth on the left and a distant place on the right. Something happens at the distant place and its light travels toward Earth; Earth's past light cone sweeps up until it contains the event."></canvas>
+      <div class="btns" id="newsPick" role="group" aria-label="Choose a place">
+        <button data-v="moon" aria-pressed="true">The Moon</button>
+        <button data-v="sun">The Sun</button>
+        <button data-v="mars">Mars</button>
+        <button data-v="voyager">Voyager 1</button>
+        <button data-v="proxima">Nearest star</button>
+        <button data-v="betel">Betelgeuse</button>
+        <button data-v="andromeda">Andromeda</button>
+      </div>
+      <div class="ctrls" id="marsCtl" hidden>
+        <div class="ctrl"><label for="marsD">Where Mars is in its orbit <output for="marsD"></output></label>
+          <input type="range" id="marsD" min="0" max="1" step="0.01" value="0.35"></div>
+      </div>
+      <div class="btns"><button id="newsPlay">▶ Play</button><button id="newsReset">↺ Again</button></div>
+      <p class="read" id="newsRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="prose">
+      <p>The yellow wedge under Earth is Earth's past light cone at the moment the clock shows. It is the set of everything Earth <em>can</em> know about. It climbs as time passes, and the event becomes news only when the wedge swallows it.</p>
+      <ul>
+        <li><strong>Mars rovers can't be driven with a joystick.</strong> A command takes between 3 and 22 minutes to arrive, and the picture of what happened takes as long to come back. Engineers send a day's plan and let the rover drive itself.</li>
+        <li><strong>If the Sun vanished</strong>, Earth would keep orbiting the empty spot for about 8 minutes 20 seconds. Gravity's news travels at the speed of light too — the 2017 neutron-star collision GW170817 arrived as gravitational waves and as light within two seconds of each other, after 130 million years on the road.</li>
+        <li><strong>Betelgeuse may already have exploded.</strong> It is about 550 light-years away (the measurement is uncertain by a hundred or so). If it went supernova any time in the last five centuries, the news is still on its way.</li>
+      </ul>
     </div>
+  </section>
+
+  <!-- ─────────────────────────────── 5 -->
+  <section class="part" id="two" data-short="Two observers">
+    <div class="num">Part 5</div>
+    <h2>Everyone has their own cone</h2>
+    <div class="prose">
+      <p>There is no master light cone. Each event has its own, so two people standing apart have different pasts and different elsewheres. An event can be in your past and in my elsewhere — something you already know and I can't yet.</p>
+      <p>Where their cones overlap matters. The overlap of their <span class="c-reach">pasts</span> is <em>shared history</em>: events that could have influenced both of them, such as a common cause. The overlap of their <span class="c-light">futures</span> is everywhere they could both send a message, or meet.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 1.5 · <span class="c-accent">A</span> and <span class="c-other">B</span>, both at rest, a few light-years apart</span><span>tap or drag to place an event</span></div>
+      <canvas id="twin" role="img" aria-label="Two observers' light cones on one spacetime diagram, with the overlap of their pasts and futures shaded. A movable event is classified for each observer."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="sep">Distance between A and B <output for="sep"></output></label>
+          <input type="range" id="sep" min="1" max="8" step="0.5" value="4"></div>
+      </div>
+      <p class="read" id="twinRead" aria-live="polite"></p>
+    </figure>
+
+    <div class="try"><b>Try this</b><ol>
+      <li>Put the event straight above A, low down. It's in A's future and B's elsewhere: A can affect it, B can't yet.</li>
+      <li>Find the point where the two futures first overlap. That's the soonest A and B could hear about each other's "now".</li>
+    </ol></div>
+  </section>
+
+  <!-- ─────────────────────────────── 6 -->
+  <section class="part" id="threed" data-short="Why it's called a cone">
+    <div class="num">Part 6</div>
+    <h2>Why it's called a cone</h2>
+    <div class="prose">
+      <p>With one dimension of space, light leaving an event is two dots running apart, and the "cone" is a V. Add a second dimension and the flash spreads as a growing <em>circle</em>, like a ripple on a pond. Stack those circles up the time axis and you get a real cone.</p>
+      <p>Our universe has three dimensions of space, so a flash is a growing <em>sphere</em> of light, and the cone is a 4-dimensional shape no one can draw. But every slice you can picture works the same way.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="cap"><span>Figure 1.6 · A flash, with two dimensions of space</span><span>drag sideways to turn it</span></div>
+      <canvas id="cone3" role="img" aria-label="A three-dimensional light cone: a ring of light growing on a flat plane of space, with earlier rings stacked below it in time."></canvas>
+      <div class="ctrls">
+        <div class="ctrl"><label for="tau">Time since the flash <output for="tau"></output></label>
+          <input type="range" id="tau" min="0" max="4" step="0.01" value="2.5"></div>
+      </div>
+      <div class="btns"><button id="spin" aria-pressed="false">⟳ Turn</button><button id="past" aria-pressed="false">Show the past cone too</button></div>
+    </figure>
+  </section>
+
+  <!-- ─────────────────────────────── check -->
+  <section class="part check" id="check" data-short="Check yourself">
+    <div class="num">Check yourself</div>
+    <h2>Four questions</h2>
+
+    <div class="q" data-answer="b">
+      <p>On a spacetime diagram, a worldline leans 60° away from straight up. What is it?</p>
+      <div class="opts">
+        <button data-k="a">Something moving at 60% of light speed</button>
+        <button data-k="b">Something moving faster than light — which nothing can</button>
+        <button data-k="c">Something moving slowly, because steep lines are slow</button>
+      </div>
+      <p class="why" hidden><span></span>Light leans 45°. Leaning further means covering more space than light in the same time, which would carry it outside its own light cone.</p>
+    </div>
+
+    <div class="q" data-answer="c">
+      <p>Tonight you see a star 10 light-years away explode. When did it explode?</p>
+      <div class="opts">
+        <button data-k="a">Tonight</button>
+        <button data-k="b">10 years from now</button>
+        <button data-k="c">10 years ago</button>
+      </div>
+      <p class="why" hidden><span></span>The light took 10 years to reach you. You are seeing the explosion's light arrive, which means it entered your past light cone only now.</p>
+    </div>
+
+    <div class="q" data-answer="a">
+      <p>An event is 4 light-years from you and 2 years in your future. Can anything you do now affect it?</p>
+      <div class="opts">
+        <button data-k="a">No — it's in your elsewhere</button>
+        <button data-k="b">Yes, with a fast enough ship</button>
+        <button data-k="c">Yes, with a radio signal</button>
+      </div>
+      <p class="why" hidden><span></span>Even light needs 4 years to cover 4 light-years, and it only has 2. Nothing can get there in time.</p>
+    </div>
+
+    <div class="q" data-answer="b">
+      <p>The Sun vanishes. How long until Earth stops orbiting it?</p>
+      <div class="opts">
+        <button data-k="a">Instantly — gravity doesn't have to travel</button>
+        <button data-k="b">About 8 minutes 20 seconds</button>
+        <button data-k="c">About a year, one full orbit</button>
+      </div>
+      <p class="why" hidden><span></span>Changes in gravity travel at the speed of light, so Earth keeps swinging around the empty spot until the news arrives — the same 8 minutes 20 seconds the light takes.</p>
+    </div>
+
+    <div class="sources">
+      <h3>Where the numbers come from</h3>
+      <ul>
+        <li>Speed of light: 299,792,458 m/s, exact by definition of the metre.</li>
+        <li>Earth–Mars: 54.6 to 401 million km; Earth–Sun 1 AU; Earth–Moon 384,400 km on average.</li>
+        <li>Voyager 1: about 170 AU from the Sun in late 2026 (NASA JPL's mission status page).</li>
+        <li>GW170817: LIGO/Virgo and Fermi, <em>Astrophysical Journal Letters</em> 848 L13 (2017).</li>
+        <li>Betelgeuse: 548 (+90/−49) light-years, Joyce et al. 2020.</li>
+      </ul>
+    </div>
+
+    <nav class="next" aria-label="Next and previous">
+      <a href="index.html">← All four chapters</a>
+      <a href="02-time-dilation.html">Chapter 2 · Time Dilation →</a>
+    </nav>
+  </section>
   </main>
+</div>
 
+<script src="lesson.js"></script>
 <script>
-const canvas = document.getElementById('cone');
-const ctx = canvas.getContext('2d');
-const xSlider = document.getElementById('x');
-const tSlider = document.getElementById('t');
-const dSlider = document.getElementById('d');
-const xVal = document.getElementById('xVal');
-const tVal = document.getElementById('tVal');
-const dVal = document.getElementById('dVal');
+(function () {
+  const { C, figure, animate, pointer, slider, choice, text, line, dot, arrow, poly, alpha, mink, fmt, dur, $ } = ST;
+  const c = 299792458;
 
-function resize() {
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * 2;
-  canvas.height = rect.width * 1.2;
-  draw();
-}
-window.addEventListener('resize', resize);
+  /* ── 1.1 worldlines ── */
+  const TRAVELLERS = {
+    still: { name: 'Sitting still', v: 0, said: 'You, sitting still, cover no distance at all. Your worldline goes straight up: you move only through time.' },
+    walk: { name: 'Walking', v: 1.4 },
+    car: { name: 'A car at 70 mph', v: 31.3 },
+    jet: { name: 'An airliner', v: 250 },
+    iss: { name: 'The space station', v: 7660 },
+    probe: { name: 'Parker Solar Probe at its fastest', v: 191700 },
+    half: { name: 'A ship at half light speed', v: c / 2 },
+    light: { name: 'Light', v: c, said: 'Light covers one light-second every second: the 45° line. Nothing with mass ever gets onto it.' },
+  };
+  let pick = 'still', clock = 0;
+  const wl = figure('wl', (x, w, h) => {
+    const m = mink(w, h, 7, 0.12, 0.9);
+    m.grid(x, 1); m.axes(x, 'light-seconds →', 'seconds ↑');
+    for (const k in TRAVELLERS) {
+      const b = TRAVELLERS[k].v / c, on = k === pick;
+      if (on) continue;
+      m.ray(x, 0, 0, b, 1, alpha(C.dim, 0.35), 1);
+    }
+    const b = TRAVELLERS[pick].v / c, col = pick === 'light' ? C.light : C.accent;
+    m.ray(x, 0, 0, b, 1, col, 2.5);
+    const t = clock % m.tmax;
+    line(x, 0, m.Y(t), w, m.Y(t), alpha(C.ink, 0.25), 1, [4, 4]);
+    text(x, 'now: ' + t.toFixed(1) + ' s', w - 8, m.Y(t) - 6, { size: 11, align: 'right' });
+    dot(x, m.X(b * t), m.Y(t), 6, col);
+    for (let s = 1; s < m.xmax; s++) text(x, s, m.X(s), m.Y(0) + 15, { size: 11, align: 'center' });
+  }, { ratio: 0.5, max: 460 });
+  animate(wl, (dt) => { clock += dt * 0.9; }, null, true);
+  choice('wlPick', (k) => {
+    pick = k; const T = TRAVELLERS[k], b = T.v / c;
+    const ang = Math.atan(b) * 180 / Math.PI;
+    $('wlRead').innerHTML = T.said || (T.name + ' covers <span class="k">' + fmt(T.v, 1) + ' m</span> each second — <span class="k">' +
+      fmt(b, 2) + '</span> of a light-second. Its worldline leans <span class="k">' + fmt(ang, ang < 1 ? 6 : 1) + '°</span> from straight up' +
+      (ang < 0.5 ? ', far too little to see: it is drawn right on top of "sitting still".' : '.'));
+    wl.redraw();
+  });
 
-function draw() {
-  const w = canvas.width;
-  const h = canvas.height;
-  const cx = w/2;
-  const cy = h/2;
-  const ex = parseFloat(xSlider.value) * (w/600);
-  const et = -parseFloat(tSlider.value) * (h/600);
-  const eventX = cx + ex;
-  const eventY = cy + et;
-  const d = parseFloat(dSlider.value);
-  /* Canvas pixels per CSS pixel. The backing store is twice the CSS width on
-     every device, so text drawn at 18-20 px showed at 9-10 (bug sweep D3-12):
-     sizes are given in CSS pixels and scaled up here. */
-  const fs = w / (canvas.clientWidth || w / 2);
-  const mono = (px) => `${Math.round(px * fs)}px "JetBrains Mono", monospace`;
+  /* ── 1.2 tilt ── */
+  const tilt = figure('tilt', (x, w, h) => {
+    const m = mink(w, h, 7, 0.5, 0.86);
+    m.grid(x, 1); m.axes(x, 'light-years →', 'years ↑');
+    m.cone(x, 0, 0, 0.09, 0);
+    const b = beta(), fast = b > 1;
+    const col = fast ? C.else : C.accent;
+    m.ray(x, 0, 0, b, 1, col, 2.5, fast ? [8, 6] : null);
+    const T = Math.min(m.tmax * 0.75, (m.xmax * 0.85) / Math.max(b, 0.01));
+    dot(x, ...m.P(b * T, T), 6, col);
+    text(x, fast ? 'not allowed' : 'rocket', m.X(b * T) + 10, m.Y(T) + 4, { size: 12, color: col });
+    text(x, 'light', m.X(m.tmax * 0.62) + 6, m.Y(m.tmax * 0.62), { size: 11, color: C.light });
+    dot(x, ...m.P(0, 0), 5, C.ink);
+  }, { ratio: 0.5, max: 440 });
+  const beta = slider('beta', (b) => b.toFixed(2) + ' c', (b) => {
+    const ang = Math.atan(b) * 180 / Math.PI;
+    $('tiltRead').innerHTML = b > 1
+      ? '<span class="c-else">Faster than light: ' + b.toFixed(2) + ' light-years every year.</span> The path leaves the cone and enters the elsewhere. In chapter 3 you\'ll see that for some observers this ship would arrive <em>before</em> it left — which is why it can\'t exist.'
+      : b === 1 ? 'Exactly light speed: 45°. Only massless things like light travel here.'
+      : 'At ' + b.toFixed(2) + ' c the rocket crosses ' + b.toFixed(2) + ' light-years per year, leaning ' + ang.toFixed(1) + '°. It stays inside the cone, short of the light line, however hard it pushes.';
+    tilt.redraw();
+  });
 
-  ctx.fillStyle = '#0a0d12';
-  ctx.fillRect(0, 0, w, h);
-
-  // grid
-  ctx.strokeStyle = '#1f242d';
-  ctx.lineWidth = 1;
-  for (let i = 0; i < w; i += w/20) {
-    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke();
+  /* ── 1.3 the light cone, with a draggable event ── */
+  let E = { x: 2.5, t: 4 }, lcm = null;
+  const lc = figure('lc', (x, w, h) => {
+    const m = lcm = mink(w, h, 12, 0.5, 0.5);
+    m.grid(x, 1);
+    m.cone(x, 0, 0, 0.1, 0.1);
+    m.axes(x, 'light-years →', 'years ↑');
+    text(x, 'FUTURE', m.X(0), m.Y(m.tmax * 0.8), { size: 12, color: C.light, align: 'center' });
+    text(x, 'PAST', m.X(0), m.Y(m.tmin * 0.8), { size: 12, color: C.reach, align: 'center' });
+    text(x, 'ELSEWHERE', m.X(m.xmin * 0.7), m.Y(0) + 20, { size: 12, color: C.else, align: 'center' });
+    text(x, 'ELSEWHERE', m.X(m.xmax * 0.7), m.Y(0) + 20, { size: 12, color: C.else, align: 'center' });
+    const k = kind(E);
+    const col = k === 'future' || k === 'past' ? (k === 'future' ? C.light : C.reach) : k === 'light' ? C.light : C.else;
+    // where light from here gets to at E's place: the time it arrives there
+    const ax = Math.abs(E.x), sgn = Math.sign(E.x) || 1;
+    if (E.t >= 0) {
+      line(x, m.X(E.x), m.Y(0), m.X(E.x), m.Y(Math.max(E.t, ax) + 0.4), alpha(C.ink, 0.25), 1, [3, 4]);
+      arrow(x, m.X(0), m.Y(0), m.X(E.x), m.Y(ax), alpha(C.light, 0.9), 2, 9);
+      text(x, 'light gets here', m.X(E.x) + 8 * sgn, m.Y(ax) + 4, { size: 11, color: C.light, align: sgn > 0 ? 'left' : 'right', bg: C.bg2 });
+    }
+    dot(x, m.X(0), m.Y(0), 7, C.accent); text(x, 'here, now', m.X(0) + 10, m.Y(0) + 16, { size: 13, serif: true, color: C.accent });
+    dot(x, m.X(E.x), m.Y(E.t), 9, col); dot(x, m.X(E.x), m.Y(E.t), 13, col, 1.5);
+  }, { ratio: 0.62, max: 560 });
+  const kind = (e) => {
+    const ax = Math.abs(e.x);
+    if (Math.abs(Math.abs(e.t) - ax) < 0.06 && ax > 0) return 'light';
+    if (e.t > ax) return 'future'; if (e.t < -ax) return 'past'; return 'else';
+  };
+  function lcText() {
+    const k = kind(E), ax = Math.abs(E.x), at = Math.abs(E.t);
+    $('lcDx').textContent = ax.toFixed(1) + ' ly';
+    $('lcDt').textContent = (E.t >= 0 ? '+' : '−') + at.toFixed(1) + ' yr';
+    $('lcNeed').textContent = ax.toFixed(1) + ' yr';
+    $('lcKind').textContent = { future: 'timelike', past: 'timelike', light: 'lightlike', else: 'spacelike' }[k];
+    $('lcRead').innerHTML = {
+      future: 'In your <span class="c-light">future</span>. It is ' + ax.toFixed(1) + ' light-years away and ' + at.toFixed(1) + ' years from now; light needs only ' + ax.toFixed(1) + '. You could send a signal — or travel there yourself, slower than light — and arrive in time. <strong>You can cause it.</strong>',
+      past: 'In your <span class="c-reach">past</span>. It happened ' + at.toFixed(1) + ' years ago, ' + ax.toFixed(1) + ' light-years away, and its light reached you ' + (at - ax).toFixed(1) + ' years ago. <strong>It could have caused something here.</strong>',
+      light: 'Right on the cone\'s edge: only a signal at exactly light speed links the two. <strong>Lightlike</strong> — the light from one is arriving at the other.',
+      else: '<span class="c-else">Elsewhere.</span> It is ' + ax.toFixed(1) + ' light-years away but only ' + at.toFixed(1) + ' years ' + (E.t >= 0 ? 'later' : 'earlier') + '. Light would need ' + ax.toFixed(1) + '. <strong>Neither event can affect the other</strong> — no signal can bridge them.',
+    }[k];
   }
-  for (let i = 0; i < h; i += h/15) {
-    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke();
+  pointer(lc, { down: setE, drag: setE });
+  function setE(px, py) {
+    const m = lcm; E = { x: Math.round(m.x(px) * 10) / 10, t: Math.round(m.t(py) * 10) / 10 };
+    E.x = Math.max(m.xmin + 0.3, Math.min(m.xmax - 0.3, E.x)); E.t = Math.max(m.tmin + 0.3, Math.min(m.tmax - 0.3, E.t));
+    // snap onto the edge when it is close, so lightlike can be found by hand
+    if (Math.abs(Math.abs(E.t) - Math.abs(E.x)) < 0.15) E.t = Math.sign(E.t || 1) * Math.abs(E.x);
+    lcText();
   }
+  lcText();
 
-  // axes
-  ctx.strokeStyle = '#8a8578';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke();
+  /* ── 1.4 news from space ── */
+  const AU = 1.495978707e11, LY = 9.4607e15;
+  const PLACES = {
+    moon: { name: 'the Moon', d: 3.844e8, what: 'a meteorite hits the Moon' },
+    sun: { name: 'the Sun', d: AU, what: 'a flare goes off on the Sun' },
+    mars: { name: 'Mars', d: 0, what: 'the rover takes a picture' },
+    voyager: { name: 'Voyager 1', d: 170 * AU, what: 'Voyager 1 sends a reading' },
+    proxima: { name: 'Proxima Centauri', d: 4.24 * LY, what: 'Proxima Centauri flares' },
+    betel: { name: 'Betelgeuse', d: 548 * LY, what: 'Betelgeuse explodes' },
+    andromeda: { name: 'Andromeda', d: 2.5e6 * LY, what: 'a star in Andromeda explodes' },
+  };
+  let place = 'moon', nt = -0.15;           // nt: Earth's clock as a fraction of the light time
+  const marsD = () => 5.46e10 + (4.01e11 - 5.46e10) * marsPos();
+  const travel = () => (place === 'mars' ? marsD() : PLACES[place].d) / c;
+  const news = figure('news-c', (x, w, h) => {
+    // one unit = the light time T; Earth at x=0, the place at x=1
+    const narrow = w < 560;
+    const s = Math.min(w * (narrow ? 0.7 : 0.55), (h - (narrow ? 110 : 40)) / 1.6);
+    const X0 = w * 0.1, Y0 = h - 0.25 * s - 26;
+    const P = (X, T) => [X0 + X * s, Y0 - T * s];
+    x.save(); x.beginPath(); x.rect(0, 0, w, Y0 + 0.22 * s); x.clip();
+    x.strokeStyle = C.grid; x.lineWidth = 1;
+    for (let k = -0.2; k <= 1.3; k += 0.25) line(x, X0, P(0, k)[1], X0 + s, P(0, k)[1], C.grid, 1);
+    // Earth's past light cone at its present moment
+    poly(x, [P(0, nt), P(1.6, nt - 1.6), P(0, nt - 1.6)], alpha(C.light, 0.13));
+    line(x, ...P(0, nt), ...P(1.6, nt - 1.6), C.light, 1.5);
+    // worldlines
+    line(x, ...P(0, -0.25), ...P(0, 1.35), C.accent, 2.5);
+    line(x, ...P(1, -0.25), ...P(1, 1.35), C.other, 2.5);
+    x.restore();
+    text(x, 'Earth', X0, h - 8, { size: 12, color: C.accent, align: 'center' });
+    text(x, PLACES[place].name, X0 + s, h - 8, { size: 12, color: C.other, align: 'center' });
+    // the event and its light
+    const seen = nt >= 1;
+    arrow(x, ...P(1, 0), ...P(0, 1), alpha(C.light, 0.55), 1.5, 9);
+    dot(x, ...P(1, 0), 8, seen ? C.reach : C.else);
+    dot(x, ...P(0, nt), 6, C.accent);
+    line(x, ...P(0, nt), X0 + s * 1.15, P(0, nt)[1], alpha(C.ink, 0.3), 1, [4, 4]);
+    // the clock, to the right
+    const big = Math.max(16, Math.min(26, w / 28));
+    const tx = narrow ? 12 : X0 + s * 1.25 + 10, ty = narrow ? 22 : h * 0.3;
+    text(x, 'Earth\'s clock, since it happened', tx, ty, { size: 11 });
+    text(x, nt < 0 ? 'it hasn\'t happened yet' : '+' + dur(nt * travel()), tx, ty + big + 6, { size: nt < 0 ? 14 : big, color: C.ink });
+    if (nt >= 0) text(x, seen ? 'Earth knows.' : 'Earth can\'t know yet.', tx, ty + 2 * big + 14, { size: 13, color: seen ? C.reach : C.else });
+  }, { ratio: (w) => (w < 560 ? 1.05 : 0.55), max: 500 });
+  animate(news, (dt) => { nt += dt / 4; if (nt > 1.3) { nt = 1.3; return false; } }, $('newsPlay'));
+  $('newsReset').addEventListener('click', () => { nt = -0.15; news.redraw(); news.play(); });
+  const marsPos = slider('marsD', (p) => dur((5.46e10 + (4.01e11 - 5.46e10) * p) / c) + ' away', () => { newsText(); news.redraw(); });
+  function newsText() {
+    const P = PLACES[place], T = travel();
+    $('marsCtl').hidden = place !== 'mars';
+    $('newsUnits').textContent = 'across: distance · up: time · light takes ' + dur(T);
+    $('newsRead').innerHTML = 'When ' + P.what + ', the light takes <span class="k">' + dur(T) + '</span> to reach Earth' +
+      (place === 'mars' ? ' — and a reply takes as long again, so a question and its answer are <span class="k">' + dur(2 * T) + '</span> apart' : '') +
+      '. For all of that time the event is in Earth\'s <span class="c-else">elsewhere</span>: real, finished, and unknowable from here.';
+  }
+  choice('newsPick', (k) => { place = k; nt = -0.15; newsText(); news.redraw(); });
 
-  // labels
-  ctx.fillStyle = '#8a8578';
-  ctx.font = mono(12);
-  ctx.fillText('time →', cx + 12, 16 * fs);
-  ctx.fillText('space →', w - ctx.measureText('space →').width - 8 * fs, cy - 8 * fs);
-  ctx.fillText('FUTURE', cx + 12, 34 * fs);
-  ctx.fillText('PAST', cx + 12, h - 12 * fs);
+  /* ── 1.5 two observers ── */
+  let F = { x: -2, t: 1.2 }, twm = null;
+  const twin = figure('twin', (x, w, h) => {
+    const m = twm = mink(w, h, 13, 0.5, 0.5), a = sep() / 2, K = 30;
+    m.grid(x, 1);
+    // each cone, lightly
+    for (const [ox, col] of [[-a, C.accent], [a, C.other]]) {
+      poly(x, [m.P(ox, 0), m.P(ox - K, K), m.P(ox + K, K)], alpha(col, 0.06));
+      poly(x, [m.P(ox, 0), m.P(ox - K, -K), m.P(ox + K, -K)], alpha(col, 0.06));
+      m.ray(x, ox, 0, 1, 1, alpha(col, 0.7), 1.2, null, true); m.ray(x, ox, 0, -1, 1, alpha(col, 0.7), 1.2, null, true);
+      line(x, m.X(ox), 0, m.X(ox), x.canvas.height, alpha(col, 0.35), 1, [2, 5]);
+    }
+    // the overlaps: shared future above (0, a), shared past below (0, −a)
+    poly(x, [m.P(0, a), m.P(-K, a + K), m.P(K, a + K)], alpha(C.light, 0.16));
+    poly(x, [m.P(0, -a), m.P(-K, -a - K), m.P(K, -a - K)], alpha(C.reach, 0.16));
+    text(x, 'shared future', m.X(0), m.Y(Math.min(m.tmax - 0.6, a + 1.6)), { size: 11, color: C.light, align: 'center' });
+    text(x, 'shared history', m.X(0), m.Y(Math.max(m.tmin + 0.4, -a - 1.6)), { size: 11, color: C.reach, align: 'center' });
+    dot(x, ...m.P(-a, 0), 7, C.accent); text(x, 'A, now', m.X(-a) - 10, m.Y(0) + 18, { size: 13, serif: true, color: C.accent, align: 'right' });
+    dot(x, ...m.P(a, 0), 7, C.other); text(x, 'B, now', m.X(a) + 10, m.Y(0) + 18, { size: 13, serif: true, color: C.other });
+    dot(x, ...m.P(F.x, F.t), 8, C.ink); dot(x, ...m.P(F.x, F.t), 12, C.ink, 1.5);
+  }, { ratio: 0.6, max: 540 });
+  const rel = (dx, t) => (t > Math.abs(dx) ? 'future' : t < -Math.abs(dx) ? 'past' : 'elsewhere');
+  const word = { future: '<span class="c-light">future</span>', past: '<span class="c-reach">past</span>', elsewhere: '<span class="c-else">elsewhere</span>' };
+  function twinText() {
+    const a = sep() / 2, ra = rel(F.x + a, F.t), rb = rel(F.x - a, F.t);
+    const say = ra === rb ? 'In <b>both</b> their ' + word[ra] + 's.' : 'In A\'s ' + word[ra] + ' and B\'s ' + word[rb] + '.';
+    const why = ra === 'future' && rb === 'future' ? ' Either of them could affect it — a place they could meet.'
+      : ra === 'past' && rb === 'past' ? ' It could have influenced both of them: a possible common cause.'
+      : ra !== rb ? ' One of them can know or change it; the other can\'t.'
+      : ' Neither can know about it or change it.';
+    $('twinRead').innerHTML = say + why + ' The soonest B can learn what A is doing now is in <span class="k">' + (2 * a).toFixed(1) + ' years</span>.';
+  }
+  const sep = slider('sep', (s) => s.toFixed(1) + ' light-years', () => { twinText(); twin.redraw(); });
+  const setF = (px, py) => { F = { x: Math.round(twm.x(px) * 10) / 10, t: Math.round(twm.t(py) * 10) / 10 }; twinText(); };
+  pointer(twin, { down: setF, drag: setF });
+  twinText();
 
-  // future cone
-  const coneSize = Math.max(w, h);
-  ctx.fillStyle = 'rgba(255, 217, 130, 0.08)';
-  ctx.beginPath();
-  ctx.moveTo(eventX, eventY);
-  ctx.lineTo(eventX - coneSize, eventY - coneSize);
-  ctx.lineTo(eventX + coneSize, eventY - coneSize);
-  ctx.closePath();
-  ctx.fill();
-
-  // past cone
-  ctx.fillStyle = 'rgba(109, 181, 163, 0.08)';
-  ctx.beginPath();
-  ctx.moveTo(eventX, eventY);
-  ctx.lineTo(eventX - coneSize, eventY + coneSize);
-  ctx.lineTo(eventX + coneSize, eventY + coneSize);
-  ctx.closePath();
-  ctx.fill();
-
-  // light cone lines
-  ctx.strokeStyle = '#ffd982';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(eventX, eventY);
-  ctx.lineTo(eventX - coneSize, eventY - coneSize);
-  ctx.moveTo(eventX, eventY);
-  ctx.lineTo(eventX + coneSize, eventY - coneSize);
-  ctx.moveTo(eventX, eventY);
-  ctx.lineTo(eventX - coneSize, eventY + coneSize);
-  ctx.moveTo(eventX, eventY);
-  ctx.lineTo(eventX + coneSize, eventY + coneSize);
-  ctx.stroke();
-
-  /* The signal is an event SIGNAL_T later than this one, `distance` away.
-     It used to sit at the event's own time, so |Δt| was always 0 and it could
-     never be anything but elsewhere (bug sweep D3-6). Now the slider walks it
-     out across the cone's edge: reachable under SIGNAL_T, elsewhere past it.
-     Both axes in the same units, so light is the 45° line drawn above. */
-  const SIGNAL_T = 120;
-  const unit = w / 600;
-  const signalX = eventX + d * unit;
-  const signalY = eventY - SIGNAL_T * unit;
-  const inFuture = signalY < eventY - Math.abs(signalX - eventX);
-  const inPast = signalY > eventY + Math.abs(signalX - eventX);
-  const inCone = inFuture || inPast;
-  const isReachable = Math.abs(signalY - eventY) > Math.abs(signalX - eventX);
-
-  ctx.fillStyle = isReachable ? '#6db5a3' : '#b56d8a';
-  ctx.beginPath();
-  ctx.arc(signalX, signalY, 10, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = isReachable ? '#6db5a3' : '#b56d8a';
-  ctx.font = mono(12);
-  ctx.fillText(isReachable ? 'REACHABLE' : 'ELSEWHERE', signalX + 10 * fs, signalY + 4 * fs);
-
-  // event point
-  ctx.fillStyle = '#d4a574';
-  ctx.beginPath();
-  ctx.arc(eventX, eventY, 12, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#0a0d12';
-  ctx.beginPath();
-  ctx.arc(eventX, eventY, 5, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = '#d4a574';
-  ctx.font = `${Math.round(15 * fs)}px "Cormorant Garamond", serif`;
-  ctx.fillText('event', eventX + 10 * fs, eventY - 8 * fs);
-
-  xVal.textContent = `x = ${xSlider.value}`;
-  tVal.textContent = `t = ${tSlider.value}`;
-  dVal.textContent = `distance = ${dSlider.value}, ${SIGNAL_T} later`;
-}
-
-[xSlider, tSlider, dSlider].forEach(s => s.addEventListener('input', draw));
-resize();
+  /* ── 1.6 the cone with two dimensions of space ── */
+  let yaw = 0.6, showPast = false, dragX = null;
+  const cone3 = figure('cone3', (x, w, h) => {
+    const s = Math.min(w, h * 1.4) / 11, cx = w / 2, cy = h * (showPast ? 0.5 : 0.7);
+    const P = (X, Y, T) => {
+      const u = X * Math.cos(yaw) - Y * Math.sin(yaw), d = X * Math.sin(yaw) + Y * Math.cos(yaw);
+      return [cx + u * s, cy - T * s * 0.85 + d * s * 0.32];
+    };
+    const ring = (r, T, col, lw, fill) => {
+      x.beginPath();
+      for (let i = 0; i <= 64; i++) { const a = i / 64 * Math.PI * 2, [px, py] = P(r * Math.cos(a), r * Math.sin(a), T); i ? x.lineTo(px, py) : x.moveTo(px, py); }
+      if (fill) { x.fillStyle = fill; x.fill(); }
+      x.strokeStyle = col; x.lineWidth = lw; x.stroke();
+    };
+    // the plane of space at t = 0
+    for (let k = -4; k <= 4; k++) {
+      line(x, ...P(k, -4, 0), ...P(k, 4, 0), C.grid, 1); line(x, ...P(-4, k, 0), ...P(4, k, 0), C.grid, 1);
+    }
+    const T = tau(), top = 4;
+    if (showPast) for (let r = 0.25; r <= top; r += 0.25) ring(r, -r, alpha(C.reach, 0.22), 1);
+    for (let r = 0.25; r <= top; r += 0.25) ring(r, r, alpha(C.light, r <= T ? 0.32 : 0.1), 1);
+    // the sides of the cone
+    for (let i = 0; i < 2; i++) {
+      const sgn = i ? 1 : -1, ux = Math.cos(yaw) * sgn, uy = -Math.sin(yaw) * sgn;
+      line(x, ...P(0, 0, 0), ...P(ux * top, uy * top, top), C.light, 1.5);
+      if (showPast) line(x, ...P(0, 0, 0), ...P(ux * top, uy * top, -top), C.reach, 1.5);
+    }
+    // time axis
+    arrow(x, ...P(0, 0, showPast ? -top : 0), ...P(0, 0, top + 0.8), C.dim, 1, 7);
+    const [ax, ay] = P(0, 0, top + 0.8); text(x, 'time', ax + 6, ay + 4, { size: 11 });
+    // the present slice: the ring of light now, on its own plane
+    ring(T, T, C.light, 2.5, alpha(C.light, 0.08));
+    ring(T, 0, alpha(C.light, 0.5), 1);
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + 0.4; line(x, ...P(T * Math.cos(a), T * Math.sin(a), 0), ...P(T * Math.cos(a), T * Math.sin(a), T), alpha(C.light, 0.25), 1, [2, 4]); }
+    dot(x, ...P(0, 0, 0), 6, C.accent);
+    const [lx, ly] = P(T, 0, T);
+    text(x, 'the flash\'s light, ' + T.toFixed(1) + ' s later', Math.min(w - 8, lx + 10), ly, { size: 11, color: C.light, align: lx + 10 > w - 180 ? 'right' : 'left' });
+    text(x, 'space (two directions of it)', 8, h - 10, { size: 11 });
+  }, { ratio: 0.6, max: 520 });
+  const tau = slider('tau', (t) => t.toFixed(1) + ' s · radius ' + t.toFixed(1) + ' light-seconds', () => cone3.redraw());
+  animate(cone3, (dt) => { yaw += dt * 0.25; }, $('spin'), false);
+  $('past').addEventListener('click', (e) => { showPast = !showPast; e.target.setAttribute('aria-pressed', String(showPast)); cone3.redraw(); });
+  pointer(cone3, { down: (px) => { dragX = px; }, drag: (px) => { yaw += (px - dragX) * 0.01; dragX = px; }, up: () => { dragX = null; } });
+  cone3.canvas.style.touchAction = 'pan-y';
+})();
 </script>
 <script src="../relay-return.js" data-home="../../index.html" data-egg="spacetime" defer></script>
 </body>

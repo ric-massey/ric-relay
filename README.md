@@ -63,7 +63,7 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 
 | Project | Linked from | What it is |
 |---|---|---|
-| `projects/spacetime/` | Exploration | "The Geometry of Spacetime" — interactive special-relativity explainer |
+| `projects/spacetime/` | Exploration | "The Geometry of Spacetime" — four interactive lessons (light cones, time dilation, simultaneity, expansion), six or seven figures each |
 | `projects/farlight/` | Gaming | "FARLIGHT" — playable momentum and landing-feel prototype |
 | `projects/starfield/` | Gaming | "Starfield" — relativistic rocket flight through the real solar neighbourhood |
 | `projects/how-speed-affects-time/` | Exploration | "How Speed Affects Time" — two clocks and a real-sky special-relativity exhibit |

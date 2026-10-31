@@ -277,6 +277,11 @@ everywhere — the navs must agree with each other *and* with the front door.
   room data rather than a page (`apex` was too, until it was parked). Each is self-contained and may carry its own assets/fonts;
   the "no dependencies" rule is for the terminal's own room pages, not embedded projects.
   Keep their internal links relative.
+- **Spacetime is four lessons, not four exhibits** (Ric, 2026-10-31: "I want it to be
+  a tool used to teach and understand these things"). Each chapter is a long page of
+  parts, a figure in each, ending in questions; they share `projects/spacetime/lesson.css`
+  and `lesson.js` within the project. Every number on them is computed on the page or
+  sourced at its foot. Read `projects/spacetime/README.md` before changing one.
 - **Moving a project means removing the old card, not just adding the new one.** When
   the games moved to Gaming, `workbench.html` kept FARLIGHT, KONDRITE and Interstate 40
   as bench items and `exploration.html` kept Starfield as MODULE 004 for weeks, so four

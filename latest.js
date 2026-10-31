@@ -24,6 +24,14 @@ window.RELAY_LATEST = [
   {
     date: "2026-10-31",
     kind: "update",
+    room: "exploration",
+    title: "Spacetime, rebuilt as lessons",
+    description: "The Geometry of Spacetime is now four full lessons — light cones, time dilation, the loss of \"now\", and the expanding universe — with 25 figures you can drag and play: muons falling through the sky, the twin paradox drawn out, a GPS satellite with relativity switched off, and the whole history of the universe on one slider.",
+    href: "projects/spacetime/index.html",
+  },
+  {
+    date: "2026-10-31",
+    kind: "update",
     room: "entertainment",
     title: "Look up any movie or show",
     description: "The movie list's search now finds any film or show, not just the ones on the list: where it's streaming today, the whole franchise in story order or release order (Marvel, Star Wars, the Conjuring and more, shows included), which ones Ric has seen, and his score out of 100.",

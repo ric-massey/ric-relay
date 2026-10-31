@@ -1,0 +1,193 @@
+/* The Geometry of Spacetime — the four lessons' shared look.
+   One stylesheet inside one project, the way climbing and training share
+   theirs; hard rule 3 is about rooms looking alike, and these are chapters of
+   one exhibit. The index page keeps its own <style>. */
+
+:root {
+  --bg: #0a0d12;
+  --bg-2: #11151c;
+  --bg-3: #161b24;
+  --ink: #e8e4d8;
+  --ink-dim: #9a9588;      /* 6.2:1 on --bg, 5.6:1 on --bg-2 */
+  --accent: #d4a574;
+  --light: #ffd982;        /* light, and light cones */
+  --reach: #6db5a3;        /* causal: inside a cone */
+  --else: #d18aa8;         /* elsewhere: outside every cone (text-safe, 6:1) */
+  --other: #8fb3e8;        /* a second observer */
+  --line: #232935;
+  --grid: #1a1f28;
+  --serif: 'Cormorant Garamond', Georgia, serif;
+  --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; scroll-padding-top: 4.5rem; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+html, body { background: var(--bg); color: var(--ink); font-family: var(--serif); }
+body { min-height: 100vh; overflow-x: hidden; }
+a { color: var(--accent); }
+
+/* ── top bar ── */
+.bar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 1rem; justify-content: space-between;
+  padding: 0.9rem 1.5rem;
+  background: rgba(10, 13, 18, 0.92);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.08em;
+}
+.bar a { color: var(--ink-dim); text-decoration: none; }
+.bar a:hover, .bar a:focus-visible { color: var(--accent); }
+.bar .chapters { display: flex; gap: 0.4rem; }
+.bar .chapters a, .bar .chapters span {
+  display: inline-grid; place-items: center; min-width: 2rem; min-height: 2rem;
+  border: 1px solid var(--line); color: var(--ink-dim);
+}
+.bar .chapters span { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+
+/* ── page ── */
+.hero { max-width: 1180px; margin: 0 auto; padding: 4.5rem 1.5rem 2.5rem; }
+.eyebrow { font-family: var(--mono); font-size: 0.72rem; color: var(--accent); margin-bottom: 1rem; }
+h1 { font-size: clamp(2.6rem, 7vw, 4.6rem); font-weight: 300; font-style: italic; line-height: 1.02; letter-spacing: -0.02em; }
+.hero .lede { margin-top: 1.25rem; max-width: 40rem; font-size: 1.3rem; line-height: 1.55; color: var(--ink-dim); }
+.hero .lede strong { color: var(--ink); font-weight: 500; }
+.youll { margin-top: 2rem; max-width: 46rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem 2rem; }
+.youll div { border-top: 1px solid var(--line); padding-top: 0.7rem; font-size: 1.05rem; line-height: 1.4; }
+.youll b { display: block; font-family: var(--mono); font-weight: 400; font-size: 0.72rem; color: var(--accent); margin-bottom: 0.25rem; }
+
+.lesson {
+  max-width: 1180px; margin: 0 auto; padding: 0 1.5rem 5rem;
+  display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 3rem;
+}
+.lesson > main { min-width: 0; }
+.toc { position: sticky; top: 4.5rem; align-self: start; padding-top: 2.6rem; }
+.toc p { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-dim); margin-bottom: 0.8rem; }
+.toc ol { list-style: none; counter-reset: s; }
+.toc li { counter-increment: s; }
+.toc a {
+  display: grid; grid-template-columns: 1.6rem 1fr; padding: 0.42rem 0;
+  font-size: 1.02rem; line-height: 1.25; color: var(--ink-dim); text-decoration: none;
+  border-left: 2px solid transparent; padding-left: 0.7rem; margin-left: -0.7rem;
+}
+.toc a::before { content: counter(s); font-family: var(--mono); font-size: 0.74rem; padding-top: 0.15rem; }
+.toc a:hover { color: var(--ink); }
+.toc a.on { color: var(--ink); border-left-color: var(--accent); }
+.toc a.on::before { color: var(--accent); }
+
+section.part { padding-top: 2.6rem; border-top: 1px solid var(--line); margin-top: 2.6rem; }
+section.part:first-child { border-top: 0; margin-top: 0; }
+.part > .num { font-family: var(--mono); font-size: 0.72rem; color: var(--accent); }
+.part h2 { font-size: clamp(1.9rem, 4vw, 2.6rem); font-weight: 400; font-style: italic; line-height: 1.1; margin: 0.4rem 0 1.1rem; }
+.part h3 { font-size: 1.35rem; font-weight: 500; margin: 2rem 0 0.6rem; }
+.prose { max-width: 42rem; }
+.prose p, .prose li { font-size: 1.18rem; line-height: 1.68; }
+.prose p + p { margin-top: 1rem; }
+.prose ul, .prose ol { margin: 0.8rem 0 0 1.3rem; }
+.prose li + li { margin-top: 0.35rem; }
+.prose em { color: var(--accent); }
+.prose strong { font-weight: 500; color: #fff; }
+.k { font-family: var(--mono); font-size: 0.92em; }
+.c-light { color: var(--light); } .c-reach { color: var(--reach); } .c-else { color: var(--else); }
+.c-other { color: var(--other); } .c-accent { color: var(--accent); }
+
+.eq {
+  margin: 1.4rem 0; padding: 1rem 1.25rem; max-width: 42rem;
+  background: var(--bg-2); border-left: 2px solid var(--accent);
+  font-family: var(--mono); font-size: 1rem; line-height: 1.7; overflow-x: auto;
+}
+.eq small { display: block; font-size: 0.78rem; color: var(--ink-dim); line-height: 1.5; margin-top: 0.4rem; }
+.pull {
+  margin: 1.8rem 0; max-width: 40rem; padding-left: 1.4rem; border-left: 2px solid var(--light);
+  font-size: 1.4rem; line-height: 1.45; font-style: italic; color: var(--ink);
+}
+.aside {
+  margin: 1.6rem 0; max-width: 42rem; padding: 1rem 1.25rem; border: 1px dashed var(--line);
+  font-size: 1.05rem; line-height: 1.6; color: var(--ink-dim);
+}
+.aside b { color: var(--ink); font-weight: 500; }
+
+/* ── a figure: the drawing, its controls, what it reads ── */
+.fig { margin: 1.8rem 0; background: var(--bg-2); border: 1px solid var(--line); }
+.fig canvas { display: block; width: 100%; touch-action: pan-y; }
+.fig canvas.drag { cursor: crosshair; touch-action: none; }
+.fig .cap {
+  display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; align-items: baseline; justify-content: space-between;
+  padding: 0.8rem 1rem; border-bottom: 1px solid var(--line);
+  font-family: var(--mono); font-size: 0.74rem; color: var(--ink-dim);
+}
+.fig .cap b { color: var(--ink); font-weight: 400; }
+.ctrls { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem 1.5rem; padding: 1rem; border-top: 1px solid var(--line); }
+.ctrl label { display: flex; justify-content: space-between; gap: 0.5rem; font-family: var(--mono); font-size: 0.74rem; color: var(--ink-dim); margin-bottom: 0.45rem; }
+.ctrl output { color: var(--accent); }
+.btns { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 1rem; border-top: 1px solid var(--line); }
+.ctrls + .btns { border-top: 0; padding-top: 0; }
+button {
+  font: inherit; font-family: var(--mono); font-size: 0.78rem;
+  min-height: 2.5rem; padding: 0.4rem 0.9rem; cursor: pointer;
+  background: transparent; color: var(--ink); border: 1px solid var(--line);
+}
+button:hover { border-color: var(--accent); }
+button[aria-pressed="true"] { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--light); outline-offset: 2px; }
+.read { padding: 0.9rem 1rem; border-top: 1px solid var(--line); font-size: 1.08rem; line-height: 1.55; min-height: 3.3rem; }
+.read .k { color: var(--accent); }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); border-top: 1px solid var(--line); }
+.stats div { padding: 0.8rem 1rem; border-right: 1px solid var(--line); }
+.stats div:last-child { border-right: 0; }
+.stats dt { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-dim); }
+.stats dd { font-family: var(--mono); font-size: 1.15rem; color: var(--ink); margin-top: 0.2rem; }
+
+input[type=range] { width: 100%; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; height: 1.6rem; }
+input[type=range]::-webkit-slider-runnable-track { height: 2px; background: var(--line); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; height: 18px; width: 18px; background: var(--accent); border-radius: 50%; margin-top: -8px; }
+input[type=range]::-moz-range-track { height: 2px; background: var(--line); }
+input[type=range]::-moz-range-thumb { height: 18px; width: 18px; background: var(--accent); border-radius: 50%; border: 0; }
+
+.try { margin: 1.4rem 0; max-width: 42rem; padding: 0.9rem 1.2rem; background: var(--bg-3); }
+.try b { font-family: var(--mono); font-weight: 400; font-size: 0.74rem; color: var(--light); display: block; margin-bottom: 0.3rem; }
+.try ol { margin-left: 1.2rem; font-size: 1.08rem; line-height: 1.55; }
+.try li + li { margin-top: 0.25rem; }
+
+table.data { border-collapse: collapse; width: 100%; max-width: 42rem; margin: 1.4rem 0; font-size: 1.05rem; }
+table.data th, table.data td { text-align: left; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.data th { font-family: var(--mono); font-weight: 400; font-size: 0.72rem; color: var(--ink-dim); }
+table.data td.n { font-family: var(--mono); font-size: 0.9rem; white-space: nowrap; }
+.scroll-x { overflow-x: auto; }
+
+/* ── check yourself ── */
+.check .q { margin: 1.5rem 0; max-width: 42rem; }
+.check .q > p { font-size: 1.2rem; line-height: 1.5; margin-bottom: 0.7rem; }
+.check .opts { display: grid; gap: 0.5rem; }
+.check .opts button { text-align: left; font-family: var(--serif); font-size: 1.08rem; padding: 0.6rem 0.9rem; }
+.check .opts button.right { border-color: var(--reach); color: var(--reach); }
+.check .opts button.wrong { border-color: var(--else); color: var(--else); }
+.check .why { margin-top: 0.7rem; font-size: 1.08rem; line-height: 1.6; color: var(--ink-dim); }
+.check .why[hidden] { display: none; }
+
+.next {
+  margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between;
+  font-family: var(--mono); font-size: 0.78rem;
+}
+.next a { text-decoration: none; display: inline-block; padding: 0.6rem 0; }
+.next a:hover { color: var(--ink); }
+.sources { margin-top: 3rem; max-width: 42rem; font-size: 1rem; line-height: 1.6; color: var(--ink-dim); }
+.sources h3 { font-family: var(--mono); font-weight: 400; font-size: 0.72rem; color: var(--ink-dim); margin-bottom: 0.5rem; }
+.sources li { margin-left: 1.2rem; }
+
+@media (max-width: 960px) {
+  .lesson { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .toc { position: static; padding: 1rem 0 0; border-top: 1px solid var(--line); }
+  .toc ol { columns: 2; column-gap: 1.5rem; }
+  .toc a { min-height: 2.75rem; align-items: center; }
+}
+@media (max-width: 560px) {
+  .bar { padding: 0.6rem 1rem; }
+  .bar .home-long { display: none; }
+  .hero { padding: 2.5rem 1rem 1.5rem; }
+  .lesson { padding: 0 1rem 4rem; }
+  .toc ol { columns: 1; }
+  .prose p, .prose li { font-size: 1.1rem; }
+  .fig { margin-left: -1rem; margin-right: -1rem; border-left: 0; border-right: 0; }
+}
