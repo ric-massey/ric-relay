@@ -46,6 +46,8 @@ const SUITES = [
      and pages.js current with the pages it lists. */
   ['the terminal search', ['.github/test/terminal-search.mjs']],
   ['the entertainment write path', ['projects/entertainment/test/write-path.mjs']],
+  /* The finder's filters against the Worker's /tmdb/discover whitelist. */
+  ['the entertainment finder', ['projects/entertainment/test/finder.mjs']],
   ['the worker (training-log)', ['worker/test.mjs']],
   ['the media location scrub', ['.github/test/scrub-media.mjs']],
   ['nothing tracked is ignored', ['.github/test/tracked-ignored.mjs']],

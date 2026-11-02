@@ -15,6 +15,7 @@ day after one of them. Read them before changing the page, the data file, the pu
 - [The puller and the data file](#the-puller-and-the-data-file)
 - [The page](#the-page)
 - [Lookup, watch orders, the tick and the score](#lookup-watch-orders-the-tick-and-the-score)
+- [The finder](#the-finder)
 
 ## How an edit reaches the list
 
@@ -288,7 +289,7 @@ renders on its own, and everything below needs the Worker.
   the Worker's `/tmdb/search`, which asks TMDB with the key the puller already uses
   (`TMDB_KEY`, a Worker secret — the deploy workflow copies it across from the repo's
   Actions secret). The key is never in a page. Without it the route answers 503 and the
-  lookup says it is not switched on; the list is untouched. The route is six fixed shapes,
+  lookup says it is not switched on; the list is untouched. The route is seven fixed shapes (the finder added `/discover`),
   each cut down to what the page draws — `worker/tmdb.mjs` says which and why.
 - **Where to watch is asked when a title is opened.** Any title with a TMDB id — on the
   list or not — gets `/tmdb/title/<kind>/<id>` when its sheet opens, and the "Where to
@@ -326,3 +327,44 @@ renders on its own, and everything below needs the Worker.
 - **Dates are local.** `today()` used to be `toISOString()`, which is UTC: a film marked
   watched at nine at night in America got tomorrow's date. It is the local day now, and
   a stored `seen` is read as a local date, not midnight UTC.
+
+## The finder
+
+Ric, 2026-11-02: "i want it to be a website of all the movies and will help you find a
+movie to watch. and also me to have the ability to click on the movie and hit a check
+mark saying i watched it." The list stays what it was; this is the rest of the films.
+
+- **Where it is.** "Find something to watch", on `entertainment.html` under the
+  billboard, before his own shelves. `assets/entertainment/finder.js` — the filter rules
+  in its top half with no DOM, the page half below. The library page is unchanged.
+- **What it shows with nothing picked**: Trending this week (`/tmdb/popular`) and three
+  "Because Ric liked …" rows — his highest `mine` scores first, then what he watched
+  most recently, each with TMDB's recommendations from `/tmdb/title`. Films or Shows
+  switches all of it.
+- **The picker** is moods (ticket stubs), genre, streaming service, length, audience
+  score, decade and sort, plus "Hide what Ric has seen" and Surprise me (a random poster
+  from what is on screen that he has not seen). Any of them becomes ONE
+  `/tmdb/discover/<movie|tv>?…` query. The picker is remembered in this browser only.
+- **The Worker refuses anything it does not list.** `discoverParams()` in
+  `worker/tmdb.mjs` turns each value into its one TMDB parameter and answers 400 for
+  anything else, so a visitor chooses among the room's filters and never writes TMDB's
+  query string. Genre ids are TMDB's; a service is a name on the page and TMDB's US
+  provider id in the Worker. `test/finder.mjs` sends every mood, genre, service, length,
+  score, decade and sort the page offers through that check — **add one in both files**
+  or the test goes red. Best-rated wants 300 votes and Newest means released already,
+  so neither is a wall of unknowns.
+- **A mood is only genres, said out loud.** "Make me laugh" is Comedy with no horror,
+  and the line under the chips says so. It filters what TMDB has; it never re-sorts or
+  re-shelves his own list, which stays ordered by fact (above). A genre picked on top of
+  a mood narrows to that genre and is never excluded by it.
+- **Every card opens the same sheet** (`Room.openCard`), so where to watch, the watch
+  order and the tick are the ones described above: one tap adds a film he found here to
+  the list as watched (a PATCH to `/movies`, no second store), and every card on the
+  page grows its ✓ when the page redraws. Cards come from `Room.cardHtml`, which the
+  lookup under the search uses too.
+- **The phone has no search in the bar**, so the finder carries its own box there; it
+  hands its words to the page's search, so there is one search with two boxes.
+- **`/tmdb/discover` needs the Worker deployed** (Deploy Worker, by hand). An older
+  Worker answers 404, and the page then says the filters are not switched on yet and
+  shows trending and "because" instead — those use routes that were already live.
+

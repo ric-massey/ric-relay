@@ -11,7 +11,7 @@
    Actions secret). Unset, every route answers 503 "lookup is not switched on"
    and the room carries on with the list alone.
 
-   What it is NOT: a general TMDB proxy. Six shapes, each a fixed upstream
+   What it is NOT: a general TMDB proxy. Seven shapes, each a fixed upstream
    path, every answer cut down to the few fields the page draws — so nothing a
    visitor sends picks the path, and nothing TMDB adds tomorrow rides through.
    Read-only, no token, no state; cached at the edge for as long as each answer
@@ -19,6 +19,8 @@
 
      GET /tmdb/search?q=&page=          films and shows matching a name
      GET /tmdb/popular/<movie|tv>       what is trending this week
+     GET /tmdb/discover/<movie|tv>?g=&gx=&on=&len=&min=&era=&sort=&page=
+                                        filters, checked in discoverParams()
      GET /tmdb/title/<movie|tv>/<id>    one title, with where to watch (US)
      GET /tmdb/collection/<id>          a franchise in release order
      GET /tmdb/find?q=movie~Title~2008|tv~Loki~2021   names to ids, ≤ 12
@@ -36,7 +38,7 @@ const IMG = 'https://image.tmdb.org/t/p/';
    subrequests a request — twelve names is twenty-four at worst. */
 export const FIND_MAX = 12;
 const SIZES = new Set(['w92', 'w185', 'w342', 'w780']);
-const TTL = { search: 3600, popular: 3600 * 6, title: 3600 * 6, collection: 86400 * 7, find: 86400 * 7, img: 86400 * 30 };
+const TTL = { search: 3600, popular: 3600 * 6, discover: 3600 * 6, title: 3600 * 6, collection: 86400 * 7, find: 86400 * 7, img: 86400 * 30 };
 
 /* TMDB's provider names are the contractual ones ("Paramount Plus Essential",
    "Netflix Standard with Ads"). The same rules as provider_name() in
@@ -148,6 +150,85 @@ function pick(results, want, kind) {
   return pool.slice().sort((a, b) => (b.v || 0) - (a.v || 0))[0];
 }
 
+/* ── discover: finding something to watch ──
+   Ric, 2026-11-02: "a website of all the movies and will help you find a
+   movie to watch". The page's filters — genre, mood, length, score, decade,
+   which service it streams on — become ONE fixed TMDB query here. Every value
+   is checked against a list in this file and anything else is a 400, so a
+   visitor picks among the room's filters and never writes TMDB's query string.
+   Moods are the page's (a mood is a set of genres to include and exclude, said
+   out loud on the page); this end only sees genre ids.
+
+   Genre ids are TMDB's own and have not changed in a decade; a service is a
+   name here and TMDB's US provider id there. */
+export const GENRES = {
+  movie: new Set([28, 12, 16, 35, 80, 99, 18, 10751, 14, 36, 27, 10402, 9648, 10749, 878, 53, 10752, 37]),
+  tv: new Set([10759, 16, 35, 80, 99, 18, 10751, 10762, 9648, 10764, 10765, 10768, 37])
+};
+export const PROVIDERS = {
+  netflix: 8, prime: 9, disney: 337, max: 1899, hulu: 15, apple: 350, peacock: 386,
+  paramount: 531, tubi: 73, pluto: 300, starz: 43, amc: 526
+};
+const DISCOVER_KEYS = new Set(['g', 'gx', 'on', 'len', 'min', 'era', 'sort', 'page']);
+const LENGTHS = { short: [0, 99], mid: [90, 130], long: [130, 0] };
+const SORTS = { popular: 'popularity.desc', rated: 'vote_average.desc', new: null };
+
+export function discoverParams(kind, sp) {
+  for (const k of sp.keys()) if (!DISCOVER_KEYS.has(k)) return null;
+  const ids = v => {
+    if (!v) return [];
+    const out = String(v).split('.').slice(0, 6).map(Number);
+    return out.every(n => GENRES[kind].has(n)) ? out : null;
+  };
+  const g = ids(sp.get('g')), gx = ids(sp.get('gx'));
+  if (!g || !gx) return null;
+  const p = { include_adult: 'false', include_video: 'false' };
+  /* Dot-separated on the way in, TMDB's "|" (any of) on the way out: a mood
+     is "any of these", and one genre is a mood of one. */
+  if (g.length) p.with_genres = g.join('|');
+  if (gx.length) p.without_genres = gx.join(',');
+
+  const on = sp.get('on');
+  if (on) {
+    if (!PROVIDERS[on]) return null;
+    p.with_watch_providers = String(PROVIDERS[on]);
+    p.watch_region = 'US';
+    p.with_watch_monetization_types = 'flatrate|free|ads';
+  }
+  const len = sp.get('len');
+  if (len) {
+    if (!LENGTHS[len]) return null;
+    const [lo, hi] = LENGTHS[len];
+    if (lo) p['with_runtime.gte'] = String(lo);
+    if (hi) p['with_runtime.lte'] = String(hi);
+  }
+  const min = sp.get('min');
+  if (min) {
+    if (!/^[5-9]$/.test(min)) return null;
+    p['vote_average.gte'] = min;
+  }
+  const era = sp.get('era');
+  const dk = kind === 'movie' ? 'primary_release_date' : 'first_air_date';
+  if (era) {
+    if (!/^(19[2-9]0|20[0-2]0)$/.test(era)) return null;
+    p[dk + '.gte'] = era + '-01-01';
+    p[dk + '.lte'] = (Number(era) + 9) + '-12-31';
+  }
+  const sort = sp.get('sort') || 'popular';
+  if (!(sort in SORTS)) return null;
+  /* "Newest" means out already, not announced: release date no later than
+     today, and enough votes that it is a film people have seen. */
+  if (sort === 'new') {
+    p.sort_by = dk + '.desc';
+    const today = new Date().toISOString().slice(0, 10);
+    if (!p[dk + '.lte'] || p[dk + '.lte'] > today) p[dk + '.lte'] = today;
+  } else p.sort_by = SORTS[sort];
+  /* A 10/10 from three votes is not a great film. Best-rated wants a crowd;
+     everything else a small one, so the page is not a wall of unknowns. */
+  p['vote_count.gte'] = sort === 'rated' ? '300' : min ? '100' : '20';
+  return p;
+}
+
 /* ── the route ── */
 export async function tmdbRoute(request, env, ctx, parts, url, { json, cors }) {
   const origin = request.headers.get('origin');
@@ -215,6 +296,19 @@ export async function tmdbRoute(request, env, ctx, parts, url, { json, cors }) {
     return cached(TTL.popular, async () => {
       const d = await tmdb('/trending/' + parts[2] + '/week', { page: String(page) });
       return { results: ((d && d.results) || []).map(x => card(x, parts[2])).filter(Boolean) };
+    });
+  }
+
+  if (what === 'discover' && (parts[2] === 'movie' || parts[2] === 'tv') && !parts[3]) {
+    const params = discoverParams(parts[2], url.searchParams);
+    if (!params) return json({ error: 'not a filter this room offers' }, 400, origin);
+    return cached(TTL.discover, async () => {
+      const d = await tmdb('/discover/' + parts[2], { ...params, page: String(page) });
+      return {
+        results: ((d && d.results) || []).map(x => card(x, parts[2])).filter(Boolean),
+        more: !!(d && d.page < Math.min(d.total_pages, 10)),
+        total: (d && d.total_results) || 0
+      };
     });
   }
 

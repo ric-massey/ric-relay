@@ -21,6 +21,9 @@
      Room.openSheet(id)      the detail dialog.
      Room.watchLinks(e)      where you could actually watch it.
      Room.esc / .hue / .slug / .subline / .exportFile
+     Room.tmdb(path)         a /tmdb answer from the Worker, held for the visit
+     Room.cardHtml(c)        a TMDB title as a clickable poster card
+     Room.rowFor(c) / .isSeen(c)   is a TMDB title on the list, and seen?
 
    The page owns its own layout and supplies #sheet, #owner-box, #owner-tools
    and #owner-blurb. Everything else is here. */
@@ -1219,6 +1222,23 @@
     if (!sheet.open) sheet.showModal();
   }
 
+  /* One title TMDB found, as a poster to click — the lookup under the search
+     and the finder on the app page draw the same card. A ✓ (with his score)
+     when Ric has seen it, "on the list" when it is queued. */
+  function cardHtml(c) {
+    const r = rowFor(c), seen = !!(r && r.row.status === 'watched'), mine = r && r.whole && r.row.mine;
+    return '<li><button type="button" class="look" data-card="' + esc(JSON.stringify(c)) + '">' +
+      '<span class="run-art">' +
+        (c.p ? '<img src="' + esc(imgUrl(c.p, 'w185')) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
+        (seen ? '<span class="oseen" aria-label="Ric has seen it">✓' + (mine ? ' ' + mine : '') + '</span>' : '') +
+      '</span>' +
+      '<b>' + esc(c.t) + '</b>' +
+      '<span>' + [c.y, c.k === 'tv' ? 'show' : 'film', c.r ? 'audience ' + Math.round(c.r * 10) : '']
+        .filter(Boolean).map(esc).join(' · ') + '</span>' +
+      (r && !seen ? '<span class="onlist">on the list</span>' : '') +
+    '</button></li>';
+  }
+
   /* ── the search box, past the list ──
      The page's own search answers from the list instantly; this adds what
      the list does not have, under it. `box` is an element the page owns. */
@@ -1263,19 +1283,7 @@
       const w = box.querySelector('.look-wait');
       if (!w) return;
       w.outerHTML = res.length
-        ? '<ul class="look-grid">' + res.map(c => {
-            const r = rowFor(c), seen = !!(r && r.row.status === 'watched'), mine = r && r.whole && r.row.mine;
-            return '<li><button type="button" class="look" data-card="' + esc(JSON.stringify(c)) + '">' +
-              '<span class="run-art">' +
-                (c.p ? '<img src="' + esc(imgUrl(c.p, 'w185')) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()">' : '') +
-                (seen ? '<span class="oseen" aria-label="seen">✓' + (mine ? ' ' + mine : '') + '</span>' : '') +
-              '</span>' +
-              '<b>' + esc(c.t) + '</b>' +
-              '<span>' + [c.y, c.k === 'tv' ? 'show' : 'film', c.r ? 'audience ' + Math.round(c.r * 10) : '']
-                .filter(Boolean).map(esc).join(' · ') + '</span>' +
-              (r && !seen ? '<span class="onlist">on the list</span>' : '') +
-            '</button></li>';
-          }).join('') + '</ul>' +
+        ? '<ul class="look-grid">' + res.map(cardHtml).join('') + '</ul>' +
           '<p class="thin look-credit">From TMDB; where to watch from JustWatch.</p>'
         : '<p class="thin">Nothing else called “' + esc(q) + '”.</p>';
     }, 280);
@@ -1887,6 +1895,7 @@
     chooseFilm: chooseFilm, openAdd: openAdd,
     actors: meta, isFavActor: isFavActor, toggleActor: toggleActor,
     PERSON: PERSON, PARTNER_LABEL: PARTNER_LABEL,
-    lookup: lookup, openCard: openCard, openOrder: openOrder, orders: ORDERS
+    lookup: lookup, openCard: openCard, openOrder: openOrder, orders: ORDERS,
+    tmdb: tmdbGet, cardHtml: cardHtml, rowFor: rowFor, isSeen: isSeen
   };
 })();

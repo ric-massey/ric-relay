@@ -22,6 +22,14 @@
 //   },
 window.RELAY_LATEST = [
   {
+    date: "2026-11-02",
+    kind: "update",
+    room: "entertainment",
+    title: "Find something to watch",
+    description: "The movie room is every film and show now, not just Ric's list: what's trending, films like the ones he scored highest, and a picker for tonight — by mood, genre, length, score, decade or the streaming service you have — with a Surprise me button when you can't decide.",
+    href: "entertainment.html",
+  },
+  {
     date: "2026-10-31",
     kind: "update",
     room: "exploration",

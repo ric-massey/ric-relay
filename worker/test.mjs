@@ -1684,6 +1684,8 @@ console.log('\nRULE  /tmdb looks titles up through the Worker, cut down, and onl
       'watch/providers': { results: { US: { flatrate: [{ provider_name: 'Disney Plus' }, { provider_name: 'Netflix Standard with Ads' }],
         rent: [{ provider_name: 'Apple TV' }, { provider_name: 'Amazon Video' }] } } },
       recommendations: { results: [{ id: 10138, title: 'Iron Man 2', release_date: '2010-04-28' }] } },
+    '/discover/movie': { page: 1, total_pages: 40, total_results: 800, results: [
+      { id: 603, title: 'The Matrix', release_date: '1999-03-30', poster_path: '/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg', vote_average: 8.2, vote_count: 26000, overview: 'x' }] },
     '/search/movie': { results: [{ id: 9, title: 'Iron Man', release_date: '1951-01-01', vote_count: 3 },
       { id: 1726, title: 'Iron Man', release_date: '2008-04-30', vote_count: 27000 }] }
   };
@@ -1715,12 +1717,32 @@ console.log('\nRULE  /tmdb looks titles up through the Worker, cut down, and onl
   ok(f.items.length === 3 && f.items[0].id === 1726, 'a name and a year find the right one, not the older namesake');
   ok(f.items[1] === null && f.items[2] === null, 'and nonsense finds nothing');
 
+  const dn = asked.length;
+  const dv = await hit('/tmdb/discover/movie?g=878.28&gx=27&on=netflix&len=long&min=7&era=1990&sort=rated&page=2');
+  const db = await dv.json();
+  ok(dv.status === 200 && db.results[0].t === 'The Matrix' && db.more === true && db.total === 800 && !('overview' in db.results[0]),
+    'discover answers cards, and says there is more');
+  const dq = new URL(asked[dn]).searchParams;
+  ok(new URL(asked[dn]).pathname === '/3/discover/movie' && dq.get('with_genres') === '878|28' && dq.get('without_genres') === '27' &&
+     dq.get('with_watch_providers') === '8' && dq.get('watch_region') === 'US' && dq.get('with_runtime.gte') === '130' &&
+     dq.get('vote_average.gte') === '7' && dq.get('primary_release_date.gte') === '1990-01-01' &&
+     dq.get('primary_release_date.lte') === '1999-12-31' && dq.get('sort_by') === 'vote_average.desc' &&
+     dq.get('vote_count.gte') === '300' && dq.get('include_adult') === 'false' && dq.get('page') === '2',
+    'each filter becomes the one TMDB parameter it stands for');
+  await hit('/tmdb/discover/movie?sort=new');
+  const nq = new URL(asked[asked.length - 1]).searchParams;
+  ok(nq.get('sort_by') === 'primary_release_date.desc' && nq.get('primary_release_date.lte') <= new Date().toISOString().slice(0, 10),
+    'newest means out already, not announced');
   const before = asked.length;
-  for (const bad of ['/tmdb/title/person/1', '/tmdb/title/movie/1726/account', '/tmdb/discover?x=1',
+  for (const bad of ['/tmdb/discover/movie?x=1', '/tmdb/discover/movie?g=10765', '/tmdb/discover/tv?g=28',
+                     '/tmdb/discover/movie?on=hbo-free', '/tmdb/discover/movie?len=epic', '/tmdb/discover/movie?min=10',
+                     '/tmdb/discover/movie?era=1995', '/tmdb/discover/movie?sort=vote_count.asc', '/tmdb/discover/movie?with_genres=28'])
+    ok((await hit(bad)).status === 400, bad + ' is not a filter the room offers');
+  for (const bad of ['/tmdb/title/person/1', '/tmdb/title/movie/1726/account', '/tmdb/discover', '/tmdb/discover/person',
                      '/tmdb/img/original/a.jpg', '/tmdb/img/w185/x.png', '/tmdb/collection/abc'])
     ok((await hit(bad)).status === 404, bad + ' is not a path');
   ok(asked.length === before, '— and none of those reached TMDB');
-  ok(asked.every(u => u.includes('k'.repeat(32)) ? /\/3\/(search|movie|tv|trending|collection)\//.test(u) : true), 'the key only ever goes to the fixed paths');
+  ok(asked.every(u => u.includes('k'.repeat(32)) ? /\/3\/(search|movie|tv|trending|collection|discover)\//.test(u) : true), 'the key only ever goes to the fixed paths');
 }
 
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKER RULES PASS'));

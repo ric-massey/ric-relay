@@ -554,6 +554,15 @@ that must never break:
   `assets/entertainment/watch-orders.js` in story order — release order is computed, never
   written. The tick is `status`; `mine` is Ric's 1–100, only on a ticked title, public by
   his call. `rating` stays TMDB's out of ten. The rules are in the room's README.
+- **The finder** (Ric, 2026-11-02: "a website of all the movies and will help you find
+  a movie to watch"). `assets/entertainment/finder.js` puts every film and show on the
+  app page: trending, "because Ric liked …" from his top scores, and a picker (mood,
+  genre, service, length, score, decade, sort) that becomes one `/tmdb/discover` query.
+  The Worker accepts only the values in its own lists (`discoverParams` in
+  `worker/tmdb.mjs`) and `projects/entertainment/test/finder.mjs` holds the page's lists
+  to them — add a mood or a service in both. A mood is a set of genres the page says out
+  loud; it filters TMDB, never Ric's own shelves. Any card opens the same sheet, so the
+  tick is the same tick.
 - The page never holds a GitHub credential; the doorbell is `POST /movies/_pull` on the
   Worker. Never set `cancel-in-progress` on the entertainment workflow and never add a
   second workflow that writes the data file.

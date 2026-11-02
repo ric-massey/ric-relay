@@ -37,8 +37,8 @@ window.TERMINAL_PAGES = [
   "href": "entertainment.html",
   "title": "Entertainment",
   "keys": "what's on tonight",
-  "body": "Ric",
-  "text": "— · Keeping the list",
+  "body": "Every film and show, and help finding one to watch tonight — by mood, genre, length, score or the service you have — plus Ric",
+  "text": "— · Find something to watch · Keeping the list",
   "room": "entertainment"
  },
  {
