@@ -117,14 +117,14 @@ because it changes what you can expect.
 Strava pushes: a run is on the site seconds after the watch syncs, from
 Cloudflare, whether or not any of Ric's machines are on. Kilter and Tension have
 no webhooks at all, and their credentials are an account password rather than a
-revocable token — that is not going into Cloudflare, so the poll stays on the
-Mac. `board-sync.plist` runs `board-sync-weekly.sh` **hourly**; that pulls both
-logbooks as it always did, then runs `board-tick.mjs`, which posts the dates it
-found to the Worker's `/board`. So:
+revocable token — that is not going into Cloudflare, so something has to poll.
+Since 2026-11-02 that is `.github/workflows/boards.yml`, **hourly** on GitHub
+Actions (it was a launchd job on the Mac, which stopped in October): it pulls
+both logbooks, commits and pushes `board-data.js` when it changed, then runs
+`board-tick.mjs`, which posts the dates it found to the Worker's `/board`. So:
 
 - A board night ticks its climbing session **within the hour**, not instantly.
-- Nothing happens while the Mac is asleep or shut. launchd runs once on the next
-  wake rather than replaying every missed hour.
+- No computer has to be on. GitHub's clock can run a few minutes late.
 - It is safe to run as often as you like: the Worker refuses to tick a session
   that has already been decided, so a box you unticked on purpose stays
   unticked, and a re-run changes nothing.
@@ -135,7 +135,12 @@ there — a second copy inside the Worker would be the same logbook twice, free 
 drift apart. The climbing session's dropdown shows each board separately, with
 grade, angle and tries, on the board's own scale.
 
-The tick needs the training log's token, which lives in the Keychain:
+The climbing session's panel also draws the night's hardest route — sent or
+not, ranked by the board's own difficulty — lit on the board, the way the Boards
+page draws it, and the calendar marks a board night 🧗 like a day at the crag.
+
+Online the tick reads the `LOG_TOKEN` Actions secret. On the Mac it reads the
+Keychain:
 
 ```bash
 security add-generic-password -s training-log -a rmbuster82 -w

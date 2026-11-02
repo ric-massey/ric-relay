@@ -597,7 +597,7 @@ console.log('\nRULE  a run marked private on Strava ticks its session and is not
 
 console.log('\nRULE  a board session ticks the climbing session planned for its date');
 {
-  /* Kilter and Tension have no webhooks, so the Mac polls and posts the dates.
+  /* Kilter and Tension have no webhooks, so a clock polls and posts the dates.
      The endpoint can tick things, so it needs the token — and it matches the
      date to a session here rather than trusting the caller to say which. */
   const r = stravaRig();

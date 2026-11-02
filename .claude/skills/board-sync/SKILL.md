@@ -10,6 +10,19 @@ Pulls the Kilter and Tension logbooks out of the board apps and regenerates
 woodshed) reads. Tension comes through boardlib and Aurora; Kilter has its own
 path (see below). Both land in the same file.
 
+## It runs online, hourly
+
+Since 2026-11-02 the sync is `.github/workflows/boards.yml` on GitHub Actions:
+hourly, it pulls, commits and **pushes** `board-data.js` when the logbook
+changed, and ticks the training day. "Did it pull?" → look at the Boards
+workflow's latest run (Actions tab, or `gh run list --workflow boards.yml`), and
+"pull it now" → Run workflow there (`gh workflow run boards.yml`). Its secrets
+are `BOARD_ACCOUNTS`, `TENSION_PASSWORD`, `KILTER_PASSWORD`, `LOG_TOKEN` — Ric
+sets them himself; never ask for a password in chat. boardlib is pinned there
+(`boardlib==…`); bumping it is a deliberate edit, after checking the release.
+
+The rest of this file is the local run, on the Mac.
+
 ## Run it
 
 ```bash

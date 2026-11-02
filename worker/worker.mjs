@@ -775,7 +775,7 @@ export class TrainingLog {
 
        Unlike Strava, nothing pushes: Kilter and Tension have no webhooks, and
        their credentials are an account password, which is not going anywhere
-       near Cloudflare. So the Mac polls the boards on a timer and posts the
+       near Cloudflare. So a clock polls the boards (boards.yml) and posts the
        DATES it found here — with the log token, because this endpoint can tick
        things and is therefore not for strangers.
 

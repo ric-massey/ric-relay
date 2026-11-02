@@ -165,7 +165,7 @@
     if (allDone) cls.push('isdone');
     if (owed) cls.push('owed');
     if (d.deload) cls.push('deload');
-    const climbed = T.climbOn(iso) ? '<span class="cevent" aria-hidden="true">🧗</span>' : '';
+    const climbed = (T.climbOn(iso) || T.boardOn(iso).length) ? '<span class="cevent" aria-hidden="true">🧗</span>' : '';
     const chips = heads.slice(0, 2).map(s =>
       `<span class="chip ${s.kind}${s.key ? ' key' : ''}${T.doneOf(st, s) ? ' did' : ''}">${T.esc(shortTitle(iso, s))}</span>`).join('')
       + (heads.length > 2 ? `<span class="chip more">+${heads.length - 2}</span>` : '');

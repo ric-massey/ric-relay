@@ -224,7 +224,11 @@
       for (const e of (b.entries || [])) {
         const iso = String(e.date || '').slice(0, 10);
         if (!iso) continue;
-        (BOARD[iso] = BOARD[iso] || []).push({ ...e, board: e.board || key, label: b.label || key });
+        /* The climb's holds and the wall they sit on ride along, so the day can
+           draw the route without a second lookup. */
+        const climb = (b.climbs || {})[e.uuid] || null;
+        const layout = climb && b.layouts ? (b.layouts[climb.layout] || Object.values(b.layouts)[0]) : null;
+        (BOARD[iso] = BOARD[iso] || []).push({ ...e, board: e.board || key, label: b.label || key, climb, layout });
       }
     }
     RUNS = (await runs).days || {};
@@ -788,6 +792,50 @@
 
      Board grades stay board grades here — no conversion, no merging with the
      outdoor ledger. That rule is older than this feature. */
+  /* The route itself: the board's holds with this climb's lit, drawn the way
+     the Boards page draws it (projects/climbing/board.html, drawBoard) — the
+     same coordinates and role colours, so the two pictures agree. Board
+     coordinates run y-up and SVG runs y-down, hence the one flip. */
+  function routeSvg(layout, holds, label) {
+    if (!layout || !layout.frame || !(holds || []).length) return '';
+    const f = layout.frame, pad = 6;
+    const view = [f.x - pad, f.y - pad, f.w + pad * 2, f.h + pad * 2];
+    const flip = f.y * 2 + f.h;
+    const lit = new Set(holds.map(h => h[0] + ',' + h[1]));
+    const ghosts = (layout.grid || []).filter(([x, y]) => !lit.has(x + ',' + y))
+      .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1" fill="rgba(255,255,255,.09)"/>`).join('');
+    const rings = holds.map(([x, y, role]) => {
+      const info = (layout.roles || {})[String(role)] || { name: 'middle', color: '#ffffff' };
+      const foot = info.name === 'foot';
+      return `<circle cx="${x}" cy="${y}" r="${foot ? 2.4 : 3.4}" fill="none" stroke="${esc(info.color)}" ` +
+        `stroke-width="${foot ? 1.1 : 1.5}"><title>${esc(info.name)}</title></circle>`;
+    }).join('');
+    return `<svg viewBox="${view.join(' ')}" role="img" aria-label="${esc(label)}">` +
+      `<g transform="translate(0 ${flip}) scale(1 -1)">${ghosts}${rings}</g></svg>`;
+  }
+
+  /* The hardest thing on the wall that night, sent or not — what he was
+     working on is the point, so a failed V7 beats a flashed V4. Ranked by the
+     board's own difficulty number, as everywhere else here. */
+  function hardestRoute(entries) {
+    const drawable = entries.filter(e => e.climb && e.layout && (e.climb.holds || []).length);
+    if (!drawable.length) return '';
+    const top = drawable.slice().sort((x, y) =>
+      (Number(y.difficulty) || 0) - (Number(x.difficulty) || 0) || (y.ascent ? 1 : 0) - (x.ascent ? 1 : 0))[0];
+    const grade = top.communityGrade || top.grade || '';
+    const svg = routeSvg(top.layout, top.climb.holds, `${top.name || 'The route'} on the board, its holds lit`);
+    if (!svg) return '';
+    return `<figure class="broute">
+        <div class="broute-wall">${svg}</div>
+        <figcaption>
+          <span class="broute-k">Hardest that night</span>
+          <strong>${esc(top.name || 'unnamed')}</strong>
+          <span>${esc(grade)}${top.angle != null ? ' · ' + esc(String(top.angle)) + '°' : ''}</span>
+          <span>${top.ascent ? (top.tries === 1 ? 'flashed' : 'sent') : 'working it'}</span>
+        </figcaption>
+      </figure>`;
+  }
+
   function boardBlock(iso) {
     const list = BOARD[iso] || [];
     if (!list.length) return '';
@@ -815,6 +863,7 @@
             ${hardest ? `<span>hardest <b>${esc(hardest)}</b></span>` : ''}
           </span>
         </div>
+        ${hardestRoute(entries)}
         <div class="bclimbs">${rows}</div>
       </div>`;
     }).join('');

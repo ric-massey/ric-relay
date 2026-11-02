@@ -1,8 +1,9 @@
 /* BOARD → TRAINING LOG — tick the climbing session a board night answered
    ────────────────────────────────────────────────────────────────────────────
    Kilter and Tension have no webhooks. Strava pushes; the boards have to be
-   asked. So the Mac asks them on a timer (pull-boards.py), and this reads what
-   came back and tells the training log which days had a session on the wall.
+   asked. So a clock asks them (pull-boards.py, hourly in
+   .github/workflows/boards.yml), and this reads what came back and tells the
+   training log which days had a session on the wall.
 
        node projects/climbing/board-tick.mjs            # tell the Worker
        node projects/climbing/board-tick.mjs --dry-run  # say what it would tell it
@@ -11,8 +12,8 @@
    board-data.js and the training page reads it from there — a second copy in
    the Worker would be the same logbook twice, free to drift apart.
 
-   The token is the training log's own LOG_TOKEN, which lives in the Keychain
-   and never in this repo:
+   The token is the training log's own LOG_TOKEN — an Actions secret online,
+   the Keychain on the Mac, never this repo:
 
        security add-generic-password -s training-log -a rmbuster82 -w
 

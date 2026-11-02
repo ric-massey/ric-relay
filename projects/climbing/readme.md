@@ -118,9 +118,17 @@ projects/climbing/.board-venv/bin/python projects/climbing/pull-boards.py
 ```
 
 Or just ask Claude to sync the boards — there's a `board-sync` skill for it.
-A launchd timer (`board-sync.plist`) also runs it every hour and commits the
-result locally, never pushing. (The script is still called
-`board-sync-weekly.sh` — it ran weekly once.)
+**Online, every hour:** `.github/workflows/boards.yml` runs it on GitHub
+Actions, commits `board-data.js` and pushes it when the logbook changed, then
+ticks the training day (`board-tick.mjs`). No computer has to be on (Ric,
+2026-11-02). It needs four Actions secrets: `BOARD_ACCOUNTS` (the contents of
+`board-accounts.json`), `TENSION_PASSWORD`, `KILTER_PASSWORD` and `LOG_TOKEN`;
+a board with no password is skipped. Run it now from the Actions tab → Boards →
+Run workflow.
+
+The Mac's launchd timer (`board-sync.plist` → `board-sync-weekly.sh`) is the
+old way and still works if that Mac is on; it commits locally and never pushes.
+It stopped in October 2026, which is why the workflow exists.
 
 **Tension** goes through boardlib and Aurora. **Kilter** no longer can: it left
 the Aurora platform in 2026 (the old `kilterboardapp.com` is dead) and stood up

@@ -437,11 +437,22 @@ and Tension apps. Rules for it:
   keeps them on their own scale there too.
 - **A board night ticks its climbing session, but nothing pushes.** Kilter and
   Tension have no webhooks and their credentials are an account password, which
-  does not go near Cloudflare — so the Mac polls hourly (`board-sync.plist`) and
-  `board-tick.mjs` posts the DATES to the Worker's `/board`, which matches them
-  to the plan and ticks. Dates only: what was climbed is already in
-  `board-data.js` and the training page reads it from there rather than keeping
-  a second copy that could drift.
+  does not go near Cloudflare — so a clock polls them. That clock is
+  `.github/workflows/boards.yml`, hourly on GitHub Actions (Ric, 2026-11-02:
+  the sync should not need a computer — the Mac's launchd job,
+  `board-sync.plist`, had stopped and nothing pulled after 2026-10-04). It runs
+  `pull-boards.py` with the passwords as Actions secrets, commits
+  `board-data.js` **and pushes it** when the logbook itself changed (crowd
+  counts drifting alone are not a commit), then `board-tick.mjs` posts the
+  DATES to the Worker's `/board`, which matches them to the plan and ticks.
+  Dates only: what was climbed is already in `board-data.js` and the training
+  page reads it from there rather than keeping a second copy that could drift.
+  boardlib is pinned in that workflow — it is handed the password, so a new
+  version is a deliberate bump, never the timer's.
+- The training day draws the night's **hardest route** — sent or not — lit on
+  the board (`hardestRoute()` in `assets/training/core.js`, drawn like
+  `board.html`'s `drawBoard`), and the calendar marks a board night 🧗 like a
+  crag day.
 - `auto` in the training log holds WHICH source placed a tick — `strava`,
   `kilter`, `tension` — not just `true`. Ticks written before boards existed
   hold `true` and are read as Strava.

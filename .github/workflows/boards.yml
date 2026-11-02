@@ -1,0 +1,175 @@
+# Pull the Kilter and Tension logbooks every hour, without a computer.
+#
+# Ric, 2026-11-02: "doesnt the sync run not on a computer … something online
+# that is on a timer". It used to be a launchd job on the Mac
+# (board-sync-weekly.sh), and when the Mac stopped running it, the boards
+# stopped — nothing pulled after 2026-10-04. The boards have no webhooks (their
+# credentials are an account password and they push nothing), so a clock is the
+# only trigger there is. Hourly means a session shows up within the hour.
+#
+# Every run:
+#   1. pull-boards.py regenerates projects/climbing/board-data.js;
+#   2. if that file changed, commit it alone and push — the woodshed, the
+#      training day and its climbing session all read that file;
+#   3. board-tick.mjs tells the training log which days had a board session, so
+#      the climbing session planned for that day ticks itself off.
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   BOARD_ACCOUNTS    the contents of projects/climbing/board-accounts.json
+#   TENSION_PASSWORD  the Tension app password
+#   KILTER_PASSWORD   the Kilter app password
+#   LOG_TOKEN         the training log's token (already set for Garmin)
+# A board without its password is skipped, not failed.
+#
+# This repo is PUBLIC, and so is this log. pull-boards.py prints counts, names
+# of climbs and dates — all of which board-data.js publishes anyway — and
+# scrubs the password from anything boardlib says. The Kilter login is an email,
+# so it is masked below before anything runs.
+#
+# boardlib is pinned. It is the one package handed the board password, and
+# board-upgrade.sh's rule is that a new version of it is Ric's call, not the
+# timer's. Bump the pin by hand after checking the release.
+
+name: Boards
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:        # the Run workflow button, for "pull it now"
+
+permissions:
+  contents: write           # it commits board-data.js
+
+concurrency:
+  group: boards
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # pull-boards.py runs boardlib from this venv by path.
+      - name: Install boardlib (pinned)
+        run: |
+          python -m venv projects/climbing/.board-venv
+          projects/climbing/.board-venv/bin/pip install --quiet \
+            "boardlib==0.15.1" "pandas>=2.2,<3" Pillow requests
+
+      # Tension's climb database is ~90 MB of public climbs and holds — no
+      # account data (its users and ascents tables are empty; the logbook comes
+      # from the API). Kept between runs so each run downloads only the delta,
+      # and saved once a day rather than every hour.
+      - id: day
+        run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the climb database
+        id: db
+        uses: actions/cache/restore@v4
+        with:
+          path: projects/climbing/.board-cache/tension.db
+          key: board-db-${{ steps.day.outputs.day }}
+          restore-keys: board-db-
+
+      - name: Pull the boards
+        id: pull
+        env:
+          BOARD_ACCOUNTS: ${{ secrets.BOARD_ACCOUNTS }}
+          TENSION_PASSWORD: ${{ secrets.TENSION_PASSWORD }}
+          KILTER_PASSWORD: ${{ secrets.KILTER_PASSWORD }}
+        run: |
+          if [ -z "$BOARD_ACCOUNTS" ]; then
+            echo "::warning::No BOARD_ACCOUNTS secret, so nothing was pulled. Paste board-accounts.json into it (Settings → Secrets and variables → Actions)."
+            exit 0
+          fi
+          # Mask every login and username before anything can print one.
+          printf '%s' "$BOARD_ACCOUNTS" | python -c '
+          import json, sys
+          for b in json.load(sys.stdin)["boards"]:
+              for k in ("login", "username"):
+                  if b.get(k):
+                      print("::add-mask::" + b[k])
+          '
+          # Only the boards that have a password tonight.
+          printf '%s' "$BOARD_ACCOUNTS" | python -c '
+          import json, os, sys
+          data = json.load(sys.stdin)
+          data["boards"] = [b for b in data["boards"]
+                            if os.environ.get(b["board"].upper() + "_PASSWORD")]
+          json.dump(data, open("projects/climbing/board-accounts.json", "w"))
+          print("boards with a password:", ", ".join(b["board"] for b in data["boards"]) or "none")
+          '
+          # One board failing still publishes the other (the script keeps
+          # whatever it could not refresh); the job goes red at the end.
+          status=0
+          projects/climbing/.board-venv/bin/python projects/climbing/pull-boards.py || status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          rm -f projects/climbing/board-accounts.json projects/climbing/.board-cache/*.csv
+
+      - name: Save the climb database (first run of the day)
+        if: steps.db.outputs.cache-hit != 'true' && hashFiles('projects/climbing/.board-cache/tension.db') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: projects/climbing/.board-cache/tension.db
+          key: board-db-${{ steps.day.outputs.day }}
+
+      - name: Commit and publish, if anything changed
+        run: |
+          set -e
+          DATA=projects/climbing/board-data.js
+          if git diff --quiet -- "$DATA"; then
+            echo "No new board entries."
+            exit 0
+          fi
+          # Crowd counts and quality ratings drift every hour on their own.
+          # Commit only when the logbook itself changed — a new climb, a new
+          # try, a send — and let the drift ride along with the next one.
+          git show HEAD:"$DATA" > /tmp/board-before.js
+          if python - "$DATA" /tmp/board-before.js <<'EOF'
+          import json, sys
+          def rows(path):
+              t = open(path, encoding="utf-8").read()
+              d = json.loads(t[t.index("{"):t.rindex("}") + 1])
+              return sorted(json.dumps([k] + [e.get(f) for f in
+                                ("uuid", "date", "angle", "tries", "triesTotal", "ascent", "comment")])
+                            for k, b in d["boards"].items() for e in b.get("entries", []))
+          sys.exit(0 if rows(sys.argv[1]) == rows(sys.argv[2]) else 1)
+          EOF
+          then
+            echo "Logbook unchanged (only counts moved). Not committing."
+            git checkout -- "$DATA"
+            exit 0
+          fi
+          git config user.name  "ric-massey"
+          git config user.email "rmbuster82@gmail.com"
+          git add -- "$DATA"
+          git commit -m "Climbing: new board sessions
+
+          Pulled from Kilter and Tension by the hourly Boards workflow."
+          git push || { git pull --rebase && git push; }
+
+      - name: Tick the training day
+        env:
+          LOG_TOKEN: ${{ secrets.LOG_TOKEN }}
+        run: |
+          if [ -z "$LOG_TOKEN" ]; then
+            echo "::warning::No LOG_TOKEN secret, so no training sessions were ticked."
+            exit 0
+          fi
+          node projects/climbing/board-tick.mjs
+
+      - name: Report a failed pull
+        if: steps.pull.outputs.status != '' && steps.pull.outputs.status != '0'
+        run: |
+          echo "::error::pull-boards.py exited ${{ steps.pull.outputs.status }} — 2 is a missing password or username, 1 is the board's API (see the pull step)."
+          exit 1

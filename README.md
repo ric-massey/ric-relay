@@ -313,8 +313,10 @@ belong here.
 - **The boards** (`projects/climbing/board.html`, "Boards", once "the woodshed") are pulled, not
   written. `pull-boards.py` reads the Kilter and Tension apps and writes `board-data.js`;
   usernames live in `board-accounts.json` (gitignored) and passwords in the macOS
-  Keychain, never in this repo. `board-sync.plist` polls hourly and `board-tick.mjs`
-  posts the dates to the Worker so a board night ticks its climbing session. Board grades
+  Keychain (or Actions secrets), never in this repo. `.github/workflows/boards.yml` pulls
+  hourly online, pushes the new sessions, and `board-tick.mjs` posts the dates to the
+  Worker so a board night ticks its climbing session; the training day draws the
+  night's hardest route on the board. Board grades
   stay on their own scale and never merge into the outdoor ledger.
 - **Entertainment** (`entertainment.html`) is live and works with nothing deployed.
   `projects/entertainment/entertainment-data.js` is the committed list and renders on its own; edits made on the

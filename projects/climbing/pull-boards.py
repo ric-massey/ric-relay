@@ -13,6 +13,11 @@ Credentials never live in this repo. Usernames sit in board-accounts.json
 (gitignored); passwords sit in the macOS Keychain and are handed to boardlib
 through its own environment variable, so they never touch disk, argv or `ps`.
 
+Online, `.github/workflows/boards.yml` runs this every hour instead (Ric,
+2026-11-02: the sync should not need a computer). There the accounts file comes
+from the BOARD_ACCOUNTS secret and each password from <BOARD>_PASSWORD in the
+environment, which wins over the Keychain wherever it is set.
+
 Boardlib is unofficial — Aurora can change the API underneath it. When that
 happens this script fails loudly rather than writing a half-empty page.
 """
@@ -93,6 +98,11 @@ def keychain_password(board, username, account=None):
     one an account wants shouldn't mean re-storing the password. `keychain` in
     board-accounts.json pins the label; `username` is what gets sent to the board.
     """
+    # The hourly workflow has no Keychain; its secrets arrive as environment
+    # variables, under the same name boardlib reads its own password from.
+    from_env = os.environ.get(f"{board.upper()}_PASSWORD", "").strip()
+    if from_env:
+        return from_env
     service = KEYCHAIN_SERVICE.format(board=board)
     account = account or username
     found = subprocess.run(
