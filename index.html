@@ -1820,12 +1820,12 @@
           }
         } catch (e) { /* the committed log stands on its own */ }
         try {
-          if (!window.BOARD_DATA) await new Promise((ok, no) => {
-            const el = document.createElement("script");
-            el.src = "projects/climbing/board-data.js"; el.onload = ok; el.onerror = no;
-            document.head.appendChild(el);
-          });
-          for (const b of Object.values(window.BOARD_DATA?.boards || {})) {
+          // Fetched rather than loaded as a script, and asked fresh: a
+          // browser holding a July copy kept Obed on top after a board night
+          // (2026-11-02). Same reading the training page does.
+          const t = await fetch("projects/climbing/board-data.js", { cache: "no-cache" }).then((r) => (r.ok ? r.text() : Promise.reject()));
+          const bd = JSON.parse(t.slice(t.indexOf("{")).trim().replace(/;\s*$/, ""));
+          for (const b of Object.values(bd.boards || {})) {
             const d = (b.entries || []).map((e) => String(e.date || "").slice(0, 10)).sort().pop();
             if (d) days.push({ date: d, name: b.label || "the board", href: "projects/climbing/board.html" });
           }
