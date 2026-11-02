@@ -856,7 +856,7 @@
           <span class="broute-k">Hardest that night</span>
           <strong>${esc(top.name || 'unnamed')}</strong>
           <span>${esc(grade)}${top.angle != null ? ' · ' + esc(String(top.angle)) + '°' : ''}</span>
-          <span>${top.ascent ? (top.tries === 1 ? 'flashed' : 'sent') : 'working it'}</span>
+          <span>${top.ascent ? (top.tries === 1 ? 'flashed' : `sent in ${esc(String(top.tries))} attempts`) : `working it · ${esc(String(top.tries || '?'))} attempts`}${top.triesTotal > top.tries ? ` (${esc(String(top.triesTotal))} in all)` : ''}</span>
         </figcaption>
       </figure>`;
   }
@@ -873,11 +873,14 @@
          "/", so 6C beat 6C+ as strings (bug sweep B2-12). */
       const top = sends.filter(e => e.grade).sort((x, y) => (Number(x.difficulty) || 0) - (Number(y.difficulty) || 0)).pop();
       const hardest = top ? top.grade : undefined;
+      /* Every go on the wall that night, sent or not — Ric, 2026-11-02: "it
+         should say how many attempts". */
+      const attempts = entries.reduce((n, e) => n + (Number(e.tries) || 0), 0);
       const rows = entries.map(e => `<div class="bclimb">
           <span class="bg">${esc(e.grade || '—')}</span>
           <span class="bn">${esc(e.name || 'unnamed')}${e.benchmark ? '<span class="bbm" title="benchmark">★</span>' : ''}</span>
           <span class="ba">${e.angle != null ? esc(String(e.angle)) + '°' : ''}</span>
-          <span class="bt">${e.ascent ? (e.tries === 1 ? 'flash' : `${esc(String(e.tries || '?'))} tries`) : 'no send'}</span>
+          <span class="bt">${e.ascent && e.tries === 1 ? 'flash' : `${esc(String(e.tries || '?'))} ${e.tries === 1 ? 'try' : 'tries'}${e.ascent ? '' : ', no send'}`}</span>
         </div>`).join('');
       return `<div class="runblock">
         <div class="runhead">
@@ -885,6 +888,7 @@
           <span class="runstats">
             <span><b>${sends.length}</b> sent</span>
             <span><b>${entries.length}</b> logged</span>
+            ${attempts ? `<span><b>${attempts}</b> attempts</span>` : ''}
             ${hardest ? `<span>hardest <b>${esc(hardest)}</b></span>` : ''}
           </span>
         </div>

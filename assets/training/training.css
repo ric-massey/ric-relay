@@ -343,7 +343,7 @@ button.runlink { width: 100%; font: inherit; text-align: left; cursor: pointer; 
 .bclimb .bn { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bclimb .bbm { margin-left: 0.25rem; color: var(--brand-ink); }
 .bclimb .ba { flex: 0 0 2.2rem; color: var(--soft); text-align: right; font-variant-numeric: tabular-nums; }
-.bclimb .bt { flex: 0 0 4.4rem; color: var(--soft); text-align: right; white-space: nowrap; }
+.bclimb .bt { flex: 0 0 6.6rem; color: var(--soft); text-align: right; white-space: nowrap; }
 /* The night's hardest route, lit on the board. The wall is dark wood in the
    Boards room, so it stays dark here: role colours are the board's LEDs and
    only read on black. */

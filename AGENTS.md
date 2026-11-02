@@ -711,9 +711,10 @@ them before changing anything on this page.
 - **The quick stats under the title** (Ric: "simple info like the weather, my last run, my
   last cs game and latest update … at the top easy to see", then "too many words … under
   the title", then "i dont like the boxes"): Last run (Strava), Last climb (the newer of
-  `latest-climb.js` and the days logged from a phone through the log service, never a
-  "Home" day — `latest-climb.js` alone stops at the last build, and once said "3 months"
-  when the last climb was three days ago), Last CS game, Newest (the top of `latest.js`).
+  `latest-climb.js`, the days logged from a phone through the log service — never a
+  "Home" day — and the newest board night from `board-data.js`, which links to the Boards
+  page (Ric, 2026-11-02: a board session counts) — `latest-climb.js` alone stops at the
+  last build, and once said "3 months" when the last climb was three days ago), Last CS game, Newest (the top of `latest.js`).
   A run or a climb counts as an update (Ric: "if strava or climbing get updated that counts
   as an update"): whichever of the three is newest wears a small "new" by its label, so
   nothing is listed twice. One quiet line on a desktop, a 2×2 on a phone; no boxes.

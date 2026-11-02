@@ -1801,10 +1801,12 @@
         }
       }
 
-      // the last day climbing outside: the newest of the committed log
-      // (latest-climb.js stops at the last build) and the days logged from a
-      // phone at the crag, which only the log service has. A day at "Home" is
-      // a board session at the house, not outside.
+      // the last day climbing: the newest of the committed log (latest-climb.js
+      // stops at the last build), the days logged from a phone at the crag,
+      // which only the log service has, and the board log (Ric, 2026-11-02:
+      // "last climb on my main page should be updated" — a board night is a
+      // climb). A phone-logged day at "Home" is still skipped: it is a board
+      // session written by hand, and the board log has the real one.
       (async () => {
         const days = [];
         const c = window.RELAY_LATEST_CLIMB;
@@ -1817,6 +1819,17 @@
             days.push({ date: d.date, name: (d.area || "").trim() || sent.name, href: `projects/climbing/index.html#trip-${d.date}` });
           }
         } catch (e) { /* the committed log stands on its own */ }
+        try {
+          if (!window.BOARD_DATA) await new Promise((ok, no) => {
+            const el = document.createElement("script");
+            el.src = "projects/climbing/board-data.js"; el.onload = ok; el.onerror = no;
+            document.head.appendChild(el);
+          });
+          for (const b of Object.values(window.BOARD_DATA?.boards || {})) {
+            const d = (b.entries || []).map((e) => String(e.date || "").slice(0, 10)).sort().pop();
+            if (d) days.push({ date: d, name: b.label || "the board", href: "projects/climbing/board.html" });
+          }
+        } catch (e) { /* no boards is a shorter list, not an error */ }
         const x = days.sort((a, b) => b.date.localeCompare(a.date))[0];
         if (!x) { setClimb("—", "", ""); return; }
         setClimb(esc(x.name), short(x.date + "T12:00:00"), "");

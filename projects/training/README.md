@@ -137,7 +137,9 @@ grade, angle and tries, on the board's own scale.
 
 The climbing session's panel also draws the night's hardest route — sent or
 not, ranked by the board's own difficulty — lit on the board, the way the Boards
-page draws it, and the calendar marks a board night 🧗 like a day at the crag.
+page draws it, and the calendar marks a board night 🧗 like a day at the crag. Each board says how many attempts the night took in all, the route says
+its own count, and a climb that did not go says "N tries, no send" (Ric,
+2026-11-02).
 
 The page also ticks the session by itself from `board-data.js`
 (`tickBoardNights()` in `assets/training/core.js`, 2026-11-02): the day's first
