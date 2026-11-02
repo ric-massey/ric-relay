@@ -133,6 +133,17 @@ jobs:
                   print("::error::" + "%0A".join([line.strip()] + more))
           EOF
           fi
+          # And what came back, on a run that went fine too: the script's own
+          # summary lines (rows, sends, hardest, what was written), so "did it
+          # pull?" is answered from the run page. Logins are masked above.
+          python - <<'EOF'
+          import os
+          lines = [l.strip() for l in open("/tmp/pull.log", encoding="utf-8", errors="replace")
+                   if l.strip() and not l.startswith("  ! ") and not l.startswith("    ")]
+          db = "projects/climbing/.board-cache/tension.db"
+          lines.append(f"tension.db: {os.path.getsize(db) // 2**20} MB" if os.path.exists(db) else "tension.db: none")
+          print("::notice title=What the boards returned::" + "%0A".join(lines[-20:]))
+          EOF
           echo "status=$status" >> "$GITHUB_OUTPUT"
           rm -f projects/climbing/board-accounts.json projects/climbing/.board-cache/*.csv
 
