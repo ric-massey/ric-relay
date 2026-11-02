@@ -119,6 +119,10 @@ jobs:
           '
           # One board failing still publishes the other (the script keeps
           # whatever it could not refresh); the job goes red at the end.
+          # pipefail: a step's default shell is plain `bash -e`, under which a
+          # pipe answers with tee's status — run #3 failed on Tension and went
+          # green because of it.
+          set -o pipefail
           status=0
           projects/climbing/.board-venv/bin/python projects/climbing/pull-boards.py 2>&1 | tee /tmp/pull.log || status=$?
           # Put the reason in the run's summary, so nobody has to open the log
