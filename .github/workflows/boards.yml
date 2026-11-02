@@ -92,20 +92,28 @@ jobs:
             echo "::warning::No BOARD_ACCOUNTS secret, so nothing was pulled. Paste board-accounts.json into it (Settings → Secrets and variables → Actions)."
             exit 0
           fi
-          # Mask every login and username before anything can print one.
+          # Read the accounts forgivingly — a secret pasted with its ```json
+          # fence or with curly quotes is still meant as the JSON — and say so
+          # plainly when it is not. Mask every login and username before
+          # anything can print one, and keep only the boards with a password.
           printf '%s' "$BOARD_ACCOUNTS" | python -c '
-          import json, sys
-          for b in json.load(sys.stdin)["boards"]:
+          import json, os, re, sys
+          raw = sys.stdin.read().strip()
+          raw = re.sub(r"^```[a-z]*\s*|\s*```$", "", raw)
+          raw = raw.translate({0x201C: 34, 0x201D: 34, 0x2018: 39, 0x2019: 39})
+          try:
+              data = json.loads(raw)
+              boards = data["boards"]
+          except (ValueError, KeyError, TypeError) as err:
+              print("::error::BOARD_ACCOUNTS is not readable as board-accounts.json "
+                    f"({type(err).__name__}). It should look like "
+                    "{\"boards\":[{\"board\":\"tension\",\"username\":\"...\"}]}")
+              sys.exit(1)
+          for b in boards:
               for k in ("login", "username"):
                   if b.get(k):
                       print("::add-mask::" + b[k])
-          '
-          # Only the boards that have a password tonight.
-          printf '%s' "$BOARD_ACCOUNTS" | python -c '
-          import json, os, sys
-          data = json.load(sys.stdin)
-          data["boards"] = [b for b in data["boards"]
-                            if os.environ.get(b["board"].upper() + "_PASSWORD")]
+          data["boards"] = [b for b in boards if os.environ.get(b["board"].upper() + "_PASSWORD")]
           json.dump(data, open("projects/climbing/board-accounts.json", "w"))
           print("boards with a password:", ", ".join(b["board"] for b in data["boards"]) or "none")
           '
