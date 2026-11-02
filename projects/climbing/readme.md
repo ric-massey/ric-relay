@@ -121,9 +121,10 @@ Or just ask Claude to sync the boards — there's a `board-sync` skill for it.
 **Online, every hour:** `.github/workflows/boards.yml` runs it on GitHub
 Actions, commits `board-data.js` and pushes it when the logbook changed, then
 ticks the training day (`board-tick.mjs`). No computer has to be on (Ric,
-2026-11-02). It needs four Actions secrets: `BOARD_ACCOUNTS` (the contents of
-`board-accounts.json`), `TENSION_PASSWORD`, `KILTER_PASSWORD` and `LOG_TOKEN`;
-a board with no password is skipped. Run it now from the Actions tab → Boards →
+2026-11-02). Its Actions secrets: `BOARD_ACCOUNTS` (the contents of
+`board-accounts.json`), `TENSION_PASSWORD`, `KILTER_PASSWORD`; a board with no
+password is skipped. `LOG_TOKEN` is optional — the training page ticks a board
+night by itself. When a pull fails, the reason is in the run's annotations. Run it now from the Actions tab → Boards →
 Run workflow.
 
 The Mac's launchd timer (`board-sync.plist` → `board-sync-weekly.sh`) is the

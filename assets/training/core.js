@@ -231,6 +231,7 @@
         (BOARD[iso] = BOARD[iso] || []).push({ ...e, board: e.board || key, label: b.label || key, climb, layout });
       }
     }
+    tickBoardNights();
     RUNS = (await runs).days || {};
     const pending = normalizeLegacy();
     changed();
@@ -287,6 +288,30 @@
   }
 
   const dayOf = iso => (PLAN.days || []).find(d => d.date === iso);
+
+  /* ── a board night ticks its climbing session, here ──
+     The Worker's /board does this too, but only when board-tick.mjs is handed
+     the log token, and online that is one more secret to keep (Ric,
+     2026-11-02: "1 and 3" — the tick should need no setup). board-data.js is
+     already on this page, so the page applies the same rule itself: the
+     day's first climbing session, the way the Worker picks it. Only in memory,
+     never saved, and only where nothing was decided — `done` with no entry
+     for that session. A box he unticked holds false and stays unticked; a
+     tick the Worker placed is already there and is left alone. */
+  function tickBoardNights() {
+    if (!PLAN) return;
+    for (const iso of Object.keys(BOARD)) {
+      const day = dayOf(iso);
+      const s = day && (day.sessions || []).find(x => x.kind === 'climb');
+      if (!s) continue;                       // climbed on a day with nothing planned
+      const st = LOG[iso] = LOG[iso] || { done: {}, auto: {}, notes: [] };
+      st.done = st.done || {};
+      st.auto = st.auto || {};
+      if (st.done[s.id] !== undefined) continue;
+      st.done[s.id] = true;
+      st.auto[s.id] = BOARD[iso][0].board;
+    }
+  }
   const stateOf = iso => LOG[iso] || { done: {}, auto: {}, notes: [] };
 
   /* ── reading a tick ──
@@ -1053,6 +1078,7 @@
       return null;
     }
     LOG[iso] = { done: out.done, ticks: out.ticks, auto: out.auto || {}, notes: out.notes, updated: out.updated };
+    tickBoardNights();                        // the Worker's copy knows nothing of the page's
     cacheLog();
     say(Owner.pending() ? `saved — ${Owner.pending()} still waiting.` : 'saved.');
     return out;

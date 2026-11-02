@@ -17,7 +17,8 @@ hourly, it pulls, commits and **pushes** `board-data.js` when the logbook
 changed, and ticks the training day. "Did it pull?" → look at the Boards
 workflow's latest run (Actions tab, or `gh run list --workflow boards.yml`), and
 "pull it now" → Run workflow there (`gh workflow run boards.yml`). Its secrets
-are `BOARD_ACCOUNTS`, `TENSION_PASSWORD`, `KILTER_PASSWORD`, `LOG_TOKEN` — Ric
+are `BOARD_ACCOUNTS`, `TENSION_PASSWORD`, `KILTER_PASSWORD` (and optionally
+`LOG_TOKEN`; the training page ticks board nights without it) — Ric
 sets them himself; never ask for a password in chat. boardlib is pinned there
 (`boardlib==…`); bumping it is a deliberate edit, after checking the release.
 

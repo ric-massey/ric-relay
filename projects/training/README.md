@@ -139,8 +139,14 @@ The climbing session's panel also draws the night's hardest route — sent or
 not, ranked by the board's own difficulty — lit on the board, the way the Boards
 page draws it, and the calendar marks a board night 🧗 like a day at the crag.
 
-Online the tick reads the `LOG_TOKEN` Actions secret. On the Mac it reads the
-Keychain:
+The page also ticks the session by itself from `board-data.js`
+(`tickBoardNights()` in `assets/training/core.js`, 2026-11-02): the day's first
+climbing session, shown "via Kilter/Tension", only where you have not ticked or
+unticked it — so the check mark needs no token at all. It is not saved; the
+Worker's tick is the saved copy, and it needs the token.
+
+Online that is the `LOG_TOKEN` Actions secret (optional — without it the run
+leaves a notice and the page still ticks). On the Mac it reads the Keychain:
 
 ```bash
 security add-generic-password -s training-log -a rmbuster82 -w

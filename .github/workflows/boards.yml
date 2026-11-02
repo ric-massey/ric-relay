@@ -120,7 +120,19 @@ jobs:
           # One board failing still publishes the other (the script keeps
           # whatever it could not refresh); the job goes red at the end.
           status=0
-          projects/climbing/.board-venv/bin/python projects/climbing/pull-boards.py || status=$?
+          projects/climbing/.board-venv/bin/python projects/climbing/pull-boards.py 2>&1 | tee /tmp/pull.log || status=$?
+          # Put the reason in the run's summary, so nobody has to open the log
+          # to read it: each "  ! …" line and the few indented lines under it.
+          if [ "$status" != "0" ]; then
+            python - <<'EOF'
+          import re
+          lines = open("/tmp/pull.log", encoding="utf-8", errors="replace").read().splitlines()
+          for i, line in enumerate(lines):
+              if line.startswith("  ! ") or line.startswith("error:"):
+                  more = [l.strip() for l in lines[i + 1:i + 6] if l.startswith("    ")]
+                  print("::error::" + "%0A".join([line.strip()] + more))
+          EOF
+          fi
           echo "status=$status" >> "$GITHUB_OUTPUT"
           rm -f projects/climbing/board-accounts.json projects/climbing/.board-cache/*.csv
 
@@ -171,7 +183,9 @@ jobs:
           LOG_TOKEN: ${{ secrets.LOG_TOKEN }}
         run: |
           if [ -z "$LOG_TOKEN" ]; then
-            echo "::warning::No LOG_TOKEN secret, so no training sessions were ticked."
+            # Not needed: the training page ticks a board night itself from
+            # board-data.js. With the token the Worker records it as well.
+            echo "::notice::No LOG_TOKEN secret — fine, the training page ticks board nights by itself."
             exit 0
           fi
           node projects/climbing/board-tick.mjs

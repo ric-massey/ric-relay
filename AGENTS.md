@@ -449,6 +449,11 @@ and Tension apps. Rules for it:
   page reads it from there rather than keeping a second copy that could drift.
   boardlib is pinned in that workflow — it is handed the password, so a new
   version is a deliberate bump, never the timer's.
+  **The training page also ticks a board night itself** (`tickBoardNights()` in
+  `assets/training/core.js`, Ric 2026-11-02: no `LOG_TOKEN` setup needed): same
+  rule as the Worker, in memory only, and only where that session's `done` has
+  no entry — an untick is `false` and stays. The Worker's tick, when the token
+  is there, is the saved record of the same thing.
 - The training day draws the night's **hardest route** — sent or not — lit on
   the board (`hardestRoute()` in `assets/training/core.js`, drawn like
   `board.html`'s `drawBoard`), and the calendar marks a board night 🧗 like a
