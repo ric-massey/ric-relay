@@ -119,6 +119,17 @@ jobs:
           '
           # One board failing still publishes the other (the script keeps
           # whatever it could not refresh); the job goes red at the end.
+          # Fingerprints of what the secrets hold — length and 4 hex characters,
+          # the same formula as board-login-check.py — so a secret that does not
+          # match what works on the PC can be found without printing it.
+          python - <<'EOF'
+          import hashlib, json, os
+          fp = lambda v: f"{len(v)} chars, {hashlib.sha256(('board-check:' + v).encode()).hexdigest()[:4]}"
+          for b in json.load(open("projects/climbing/board-accounts.json"))["boards"]:
+              pw = os.environ.get(b["board"].upper() + "_PASSWORD", "")
+              print(f"::notice title={b['board']} secrets::username {fp(b['username'])}"
+                    f"%0Apassword {fp(pw)}" + ("%0A(password has a space or newline at an end)" if pw != pw.strip() else ""))
+          EOF
           # pipefail: a step's default shell is plain `bash -e`, under which a
           # pipe answers with tee's status — run #3 failed on Tension and went
           # green because of it.

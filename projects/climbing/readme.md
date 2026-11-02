@@ -124,7 +124,11 @@ ticks the training day (`board-tick.mjs`). No computer has to be on (Ric,
 2026-11-02). Its Actions secrets: `BOARD_ACCOUNTS` (the contents of
 `board-accounts.json`), `TENSION_PASSWORD`, `KILTER_PASSWORD`; a board with no
 password is skipped. `LOG_TOKEN` is optional — the training page ticks a board
-night by itself. When a pull fails, the reason is in the run's annotations. Run it now from the Actions tab → Boards →
+night by itself. When a pull fails, the reason is in the run's annotations.
+If Tension rejects the login online, run `board-login-check.py` on the PC: it
+tries the same login with the password typed in (never stored) and prints a
+fingerprint of each value that the workflow's run summary prints too, so a
+secret that differs can be found without anyone seeing it. Run it now from the Actions tab → Boards →
 Run workflow.
 
 The Mac's launchd timer (`board-sync.plist` → `board-sync-weekly.sh`) is the
