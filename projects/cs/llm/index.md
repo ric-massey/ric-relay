@@ -8,15 +8,15 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 | Stat | Value |
 |---|---|
-| Matches | 37 |
-| Won / lost / drawn | 10 / 24 / 3 |
-| Win rate | 27% |
-| Kills / deaths | 358 / 519 |
+| Matches | 38 |
+| Won / lost / drawn | 10 / 25 / 3 |
+| Win rate | 26% |
+| Kills / deaths | 361 / 527 |
 | K/D | 0.69 |
 | Headshot % | 41% |
-| Matches with full demo data | 36 |
+| Matches with full demo data | 37 |
 
-**Leetify skill ratings** (read 2026-11-03): aim 49/100, positioning 30/100, utility 12/100.
+**Leetify skill ratings** (read 2026-11-03): aim 48/100, positioning 30/100, utility 12/100.
 
 **Competitive rank by map:** Cache Unranked, Dust II Silver I, Train Silver I, Office Unranked, Anubis Unranked, Mirage Unranked, Ancient Unranked, Inferno Unranked, Vertigo Unranked. Premier rating: unrated.
 
@@ -24,6 +24,7 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 | Date | Map | Mode | Score | Result | K-D-A | ADR | HLTV 1.0 | Leetify rating | Full data | Report |
 |---|---|---|---|---|---|---|---|---|---|---|
+| 2026-11-03 01:12 UTC | Mirage | Competitive | 3–6 | loss | 3-8-3 | 61.2 | 0.37 | -6.09 | yes | [gsi-20261103T011228.md](gsi-20261103T011228.md) |
 | 2026-11-03 00:41 UTC | Mirage | Competitive | 13–1 | win | 14-7-2 | 93.7 | 1.49 | — | yes | [gsi-20261103T004146.md](gsi-20261103T004146.md) |
 | 2026-11-02 23:11 UTC | Train | Competitive | 2–13 | loss | 5-14-5 | 52.2 | 0.37 | — | yes | [gsi-20261102T231119.md](gsi-20261102T231119.md) |
 | 2026-11-02 22:49 UTC | Mirage | Competitive | 5–13 | loss | 5-16-12 | 80.4 | 0.36 | -6.74 | yes | [gsi-20261102T224937.md](gsi-20261102T224937.md) |
@@ -67,7 +68,7 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 | Map | Played | W-L-D | K/D |
 |---|---|---|---|
-| Mirage | 13 | 2-8-3 | 0.75 |
+| Mirage | 14 | 2-9-3 | 0.74 |
 | Train | 9 | 3-6-0 | 0.60 |
 | Dust II | 7 | 2-5-0 | 0.76 |
 | Inferno | 2 | 0-2-0 | 0.73 |
@@ -80,26 +81,26 @@ Sources: Valve's match demos (full detail, 2D positions), Valve's live game feed
 
 ## Breakdown (every game with a saved demo)
 
-36 games, 654 rounds, 354 kills and 509 deaths of Ric's, each with the callout both players stood at.
+37 games, 663 rounds, 357 kills and 517 deaths of Ric's, each with the callout both players stood at.
 
 | Stat | Value |
 |---|---|
-| Rounds won as CT | 45% (133/298) |
+| Rounds won as CT | 44% (136/307) |
 | Rounds won as T | 40% (141/353) |
-| Pistol rounds won | 32% (22/68) |
+| Pistol rounds won | 33% (23/69) |
 | Opening duels won | 37% (30/81) |
-| Rounds won after Ric's team got the first kill | 58% (168/288) |
-| Rounds won after the enemy got the first kill | 29% (106/363) |
-| Rounds survived | 22% (145/654) |
-| Deaths that were traded | 16% (81/509) |
-| Kills that traded a teammate | 15% (53/354) |
+| Rounds won after Ric's team got the first kill | 59% (171/291) |
+| Rounds won after the enemy got the first kill | 29% (106/369) |
+| Rounds survived | 22% (146/663) |
+| Deaths that were traded | 16% (82/517) |
+| Kills that traded a teammate | 15% (53/357) |
 | 1v1 clutches won | 35% (7/20) |
 | 1v2 clutches won | 15% (4/27) |
-| 1v3 clutches won | 0% (0/27) |
-| 1v4 clutches won | 3% (1/30) |
+| 1v3 clutches won | 0% (0/28) |
+| 1v4 clutches won | 3% (1/31) |
 | 1v5 clutches won | 0% (0/12) |
-| Grenades thrown | 109 smokes, 80 flashes, 32 HEs, 3 fires |
-| Enemies blinded per flash | 0.94 |
+| Grenades thrown | 109 smokes, 81 flashes, 32 HEs, 3 fires |
+| Enemies blinded per flash | 0.93 |
 | Teammates blinded by Ric's flashes | 40 |
 | Grenade damage (HE / fire) | 123 / 23 |
 
@@ -140,13 +141,13 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Bombsite A | 4 | 29% | 3 | 30% | 0.75 |
 | Middle | 4 | 29% | 0 | 0% | 0.00 |
 | Alley | 2 | 14% | 1 | 10% | 0.50 |
+| T Side Upper | 1 | 7% | 1 | 10% | 1.00 |
 | Side Hall | 1 | 7% | 1 | 10% | 1.00 |
 | Bombsite B | 1 | 7% | 1 | 10% | 1.00 |
-| T Side Upper | 1 | 7% | 1 | 10% | 1.00 |
 | T Side Lower | 1 | 7% | 0 | 0% | 0.00 |
-| CT Spawn | 0 | 0% | 1 | 10% | — |
-| Top of Mid | 0 | 0% | 1 | 10% | — |
 | Outside | 0 | 0% | 1 | 10% | — |
+| Top of Mid | 0 | 0% | 1 | 10% | — |
+| CT Spawn | 0 | 0% | 1 | 10% | — |
 
 ### Anubis: where Ric dies and kills
 
@@ -157,12 +158,12 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Walkway | 4 | 12% | 4 | 22% | 1.00 |
 | Bombsite B | 3 | 9% | 1 | 6% | 0.33 |
 | Canal | 3 | 9% | 0 | 0% | 0.00 |
-| Bridge | 2 | 6% | 1 | 6% | 0.50 |
-| Heaven | 2 | 6% | 1 | 6% | 0.50 |
 | Mid Doors | 2 | 6% | 1 | 6% | 0.50 |
+| Heaven | 2 | 6% | 1 | 6% | 0.50 |
+| Bridge | 2 | 6% | 1 | 6% | 0.50 |
 | Main | 1 | 3% | 1 | 6% | 1.00 |
-| Fountain | 1 | 3% | 0 | 0% | 0.00 |
 | Bricks | 1 | 3% | 0 | 0% | 0.00 |
+| Fountain | 1 | 3% | 0 | 0% | 0.00 |
 | Bombsite A | 0 | 0% | 3 | 17% | — |
 | Ruins | 0 | 0% | 2 | 11% | — |
 | Street | 0 | 0% | 1 | 6% | — |
@@ -176,13 +177,13 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Mid | 2 | 17% | 0 | 0% | 0.00 |
 | Outside A | 1 | 8% | 3 | 25% | 3.00 |
 | Bombsite B | 1 | 8% | 1 | 8% | 1.00 |
-| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | CT Lane | 1 | 8% | 0 | 0% | 0.00 |
 | T Spawn | 1 | 8% | 0 | 0% | 0.00 |
+| Heaven | 1 | 8% | 0 | 0% | 0.00 |
 | T Yard | 0 | 0% | 2 | 17% | — |
+| Vents | 0 | 0% | 1 | 8% | — |
 | A Stairs | 0 | 0% | 1 | 8% | — |
 | B Main | 0 | 0% | 1 | 8% | — |
-| Vents | 0 | 0% | 1 | 8% | — |
 
 ### Dust II: where Ric dies and kills
 
@@ -205,8 +206,8 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | A Ramp | 2 | 2% | 0 | 0% | 0.00 |
 | Lower Tunnel | 1 | 1% | 3 | 5% | 3.00 |
 | Mid Doors | 1 | 1% | 1 | 2% | 1.00 |
-| T Spawn | 1 | 1% | 0 | 0% | 0.00 |
 | Pit | 1 | 1% | 0 | 0% | 0.00 |
+| T Spawn | 1 | 1% | 0 | 0% | 0.00 |
 | Short Stairs | 0 | 0% | 4 | 6% | — |
 | CT Spawn | 0 | 0% | 1 | 2% | — |
 
@@ -222,25 +223,25 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Bombsite B | 3 | 9% | 8 | 33% | 2.67 |
 | Balcony | 2 | 6% | 1 | 4% | 0.50 |
 | Arch | 2 | 6% | 0 | 0% | 0.00 |
-| CT Spawn | 1 | 3% | 0 | 0% | 0.00 |
-| Second Mid | 1 | 3% | 0 | 0% | 0.00 |
 | Library | 1 | 3% | 0 | 0% | 0.00 |
+| Second Mid | 1 | 3% | 0 | 0% | 0.00 |
+| CT Spawn | 1 | 3% | 0 | 0% | 0.00 |
 
 ### Mirage: where Ric dies and kills
 
 | Callout (where Ric stood) | Deaths | % of deaths | Kills | % of kills | K/D there |
 |---|---|---|---|---|---|
-| Bombsite A | 29 | 17% | 22 | 16% | 0.76 |
+| Bombsite A | 32 | 17% | 22 | 16% | 0.69 |
 | Bombsite B | 23 | 13% | 15 | 11% | 0.65 |
-| Palace Interior | 19 | 11% | 14 | 10% | 0.74 |
-| Apartments | 15 | 9% | 27 | 20% | 1.80 |
-| Connector | 13 | 7% | 6 | 4% | 0.46 |
-| CT Spawn | 12 | 7% | 6 | 4% | 0.50 |
-| Truck | 10 | 6% | 4 | 3% | 0.40 |
-| Middle | 8 | 5% | 8 | 6% | 1.00 |
-| Catwalk | 8 | 5% | 7 | 5% | 0.88 |
+| Palace Interior | 19 | 10% | 14 | 10% | 0.74 |
+| Apartments | 15 | 8% | 27 | 20% | 1.80 |
+| Connector | 13 | 7% | 7 | 5% | 0.54 |
+| CT Spawn | 13 | 7% | 6 | 4% | 0.46 |
+| Catwalk | 10 | 5% | 8 | 6% | 0.80 |
+| Truck | 10 | 5% | 4 | 3% | 0.40 |
+| Middle | 8 | 4% | 8 | 6% | 1.00 |
+| Shop | 7 | 4% | 1 | 1% | 0.14 |
 | T Ramp | 6 | 3% | 3 | 2% | 0.50 |
-| Shop | 6 | 3% | 1 | 1% | 0.17 |
 | Underpass | 5 | 3% | 4 | 3% | 0.80 |
 | Scaffolding | 4 | 2% | 3 | 2% | 0.75 |
 | Palace Alley | 3 | 2% | 4 | 3% | 1.33 |
@@ -248,11 +249,11 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | House | 3 | 2% | 1 | 1% | 0.33 |
 | Stairs | 2 | 1% | 3 | 2% | 1.50 |
 | Snipers Nest | 2 | 1% | 0 | 0% | 0.00 |
+| Ladder | 1 | 1% | 3 | 2% | 3.00 |
 | Back Alley | 1 | 1% | 2 | 1% | 2.00 |
 | Jungle | 1 | 1% | 1 | 1% | 1.00 |
-| T Spawn | 1 | 1% | 0 | 0% | 0.00 |
 | Side Alley | 1 | 1% | 0 | 0% | 0.00 |
-| Ladder | 0 | 0% | 2 | 1% | — |
+| T Spawn | 1 | 1% | 0 | 0% | 0.00 |
 
 ### Train: where Ric dies and kills
 
@@ -281,12 +282,12 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 | Bombsite A | 3 | 20% | 0 | 0% | 0.00 |
 | T Corridor Up | 1 | 7% | 2 | 25% | 2.00 |
 | Elevator | 1 | 7% | 1 | 12% | 1.00 |
-| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
-| Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
 | Mid | 1 | 7% | 0 | 0% | 0.00 |
 | Crane | 1 | 7% | 0 | 0% | 0.00 |
-| T Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Tunnels | 1 | 7% | 0 | 0% | 0.00 |
+| T Spawn | 1 | 7% | 0 | 0% | 0.00 |
+| Ladder Bottom | 1 | 7% | 0 | 0% | 0.00 |
+| CT Spawn | 1 | 7% | 0 | 0% | 0.00 |
 | Ladder Top | 0 | 0% | 2 | 25% | — |
 | Top of Mid | 0 | 0% | 1 | 12% | — |
 | Connector | 0 | 0% | 1 | 12% | — |
@@ -294,27 +295,27 @@ Read off Valve's demo events (feats.py). There's no nut-shot banner: CS2 has no 
 
 ## Model check
 
-The chance-of-the-round model, tested on 5100 moments from 36 games it was not fitted on (10 folds, whole matches per fold). Lower is better on both scores; the table is a plain count of how often each men-alive state was won.
+The chance-of-the-round model, tested on 5156 moments from 37 games it was not fitted on (10 folds, whole matches per fold). Lower is better on both scores; the table is a plain count of how often each men-alive state was won.
 
 |  | Brier | Log loss |
 |---|---|---|
-| model | 0.1743 | 0.5198 |
-| men-alive table | 0.1816 | 0.5367 |
+| model | 0.1748 | 0.5207 |
+| men-alive table | 0.1814 | 0.536 |
 
 Calibration is off by 3.6% on average, so the page shows chances in 5% steps. Inputs used: men, planted, econ, ct, rank.
 
 | It said | Moments | Average it gave | Actually won |
 |---|---|---|---|
-| 0%–10% | 561 | 5% | 5% |
-| 10%–20% | 493 | 15% | 13% |
-| 20%–30% | 576 | 25% | 23% |
-| 30%–40% | 570 | 35% | 30% |
-| 40%–50% | 664 | 45% | 38% |
-| 50%–60% | 624 | 55% | 50% |
+| 0%–10% | 566 | 5% | 4% |
+| 10%–20% | 497 | 15% | 13% |
+| 20%–30% | 578 | 25% | 22% |
+| 30%–40% | 591 | 35% | 31% |
+| 40%–50% | 680 | 45% | 38% |
+| 50%–60% | 629 | 55% | 50% |
 | 60%–70% | 468 | 65% | 60% |
-| 70%–80% | 378 | 75% | 73% |
-| 80%–90% | 387 | 85% | 81% |
-| 90%–100% | 379 | 95% | 93% |
+| 70%–80% | 379 | 75% | 73% |
+| 80%–90% | 385 | 85% | 82% |
+| 90%–100% | 383 | 95% | 92% |
 
 ## What the numbers mean
 
