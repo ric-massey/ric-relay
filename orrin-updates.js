@@ -11,6 +11,13 @@
 // kind: "run result" | "build" | "design" | "note"
 window.ORRIN_UPDATES = [
   {
+    date: "2026-11-04",
+    kind: "run result",
+    title: "Run 14: cut short, and still too inward",
+    body: "Orrin's fourteenth life lasted 24 hours. It ended four hours early, not because of anything he did: the app his terminal ran in restarted and took him with it. Better than last time: his long-term memory is no longer mostly notes about himself (4% instead of 74%), and his research kept running instead of going quiet for hours. Not fixed: only 7% of what he remembers is about the outside world (the goal is a quarter), two habits still take nearly half his choices, and nothing he learned changed what he did. His own small language model also had to start over this life because of a mistake on our side, now fixed so it can't happen again. Next: cleaner topics from his reading, and running him somewhere an app restart can't touch.",
+    href: "https://github.com/ric-massey/orrin_v3/blob/main/docs/Behavioral%20Evaluation%20%26%20Runtime%20Diagnostics/demo_runs/2026-11-03-run/DEMO_RUN_2026-11-03.md",
+  },
+  {
     date: "2026-10-08",
     kind: "build",
     title: "Run 14 fixes built: less churn, a fed research lane, memory about the world",
