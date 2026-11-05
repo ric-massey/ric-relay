@@ -1448,6 +1448,59 @@ entry, not instead of it.
 selection is not; the README's search section has why, and the two limits that go with any result
 — evidence about this physics only, and a band defined by our own ladder.
 
+#### Settled — the Lab loops, and the shape is a hexagonal torus
+
+*(2026-11-05. Ric, asked whether walls should bounce or absorb: "Maybe having walls is a problem…
+What if we made it loop on itself. People talk about the universe being a shape", then "Loop it…
+can you research what shape would be best for our scenario?")*
+
+**Only two shapes are on the table, and that is a theorem, not a shortlist.** The Lab has to be
+flat everywhere — a curved surface cannot be tiled by identical hexagons, and every place the
+tiling bends is a place where the physics differs. Gauss–Bonnet says a closed surface's total
+curvature is 2π times its Euler characteristic, so a closed surface that is flat everywhere has
+Euler characteristic zero, and the only two such surfaces are the **torus** and the **Klein
+bottle**.
+
+**Turned down:**
+
+- **The sphere** — the shape of a closed universe. It cannot be tiled by hexagons alone: Euler's
+  formula forces exactly twelve pentagons in (the soccer-ball and geodesic-dome pattern). That
+  puts twelve hexagons in the world with five neighbours instead of six — twelve special places,
+  which is the "favourite places baked in" problem hexagons were chosen to avoid.
+- **The Klein bottle** — flat, closed, and one-sided: crossing one seam turns you into your mirror
+  image. That breaks law 1. A momentum carried round that loop comes back reflected, so the
+  component across the seam is not conserved — the symmetry that conservation of momentum comes
+  from (Noether) is missing in that direction. It would also make handedness flip across the
+  seam, on the day the tie rule was fixed precisely to keep the physics from having a handedness.
+- **Hyperbolic shapes** (two or more holes) are curved the other way and tile with heptagons, not
+  hexagons.
+- **No loop at all** — walls — is what this replaced: a momentum reservoir to count, a floor that
+  had to bounce or absorb (item 8), and an edge whose effects can look like structure.
+
+**Which torus.** Every torus here is flat; what differs is how its copies sit when you unroll it,
+and that decides how far something travels before meeting itself and whether that distance depends
+on direction. A rectangle of hexagons has two different loop lengths and breaks the lattice's
+six-fold symmetry — a favoured direction. The **hexagonal torus**, copies on an equilateral
+triangle pattern, has the same loop length in all six directions, and because the triangular
+lattice is the densest way to pack points in a plane (Lagrange 1773, Gauss 1831), it keeps a
+world's copies furthest apart for a given area: about 7½% further than the best rectangle with the
+same number of hexagons. Molecular simulation reached the same answer in 3D long ago: the rhombic
+dodecahedron box is preferred to the cube because all its neighbouring images are the same
+distance away, which saves about 29% of the volume for the same separation (GROMACS manual). And
+it is the easiest to build here: axial `q mod N, r mod N`, an `N × N` array.
+
+**The catch the research did not mention, found by checking.** Collisions resolve in three-hexagon
+blocks, and those only tile across the seam when `N` is a multiple of 3. Brute force over every
+site and all three partition offsets: 255, 258 and 4098 tile, and 256, 257 and 4096 break at the
+seam. Had the Lab been written at 256 on a loop, the collision step would have double-counted or
+skipped a band of hexagons along the seam every step — a conservation failure exactly where the
+world has no edge to blame. So the Lab is 258 × 258.
+
+**What it buys and what it costs.** Momentum is conserved exactly with no wall counter. Heat cannot
+leave, so the thermostat is the only exchange with outside, which is what a laboratory is meant to
+be. The cost is the World's question, not the Lab's: a looped World has no sink and no floor, and
+our universe's answer to the first — expansion — is a road not yet taken. README item 22.
+
 #### Correction — the pyramid leaks momentum
 
 *(Found by audit; credited to Barnes & Hut in `SOURCES.md`.)*

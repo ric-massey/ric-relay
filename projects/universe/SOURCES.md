@@ -405,6 +405,29 @@ maintain themselves. The benchmark for emergence-per-rule.
 
 ## Physics taken as background
 
+**Planck Collaboration (2016).** "Planck 2015 results. XVIII. Background geometry and topology of
+the Universe." *A&A* 594, A18. <https://www.aanda.org/10.1051/0004-6361/201525829> — that a flat
+universe can be finite with no edge (a 3-torus and its relatives), and that the search for the
+matched circles such a loop would leave on the microwave sky found no loop smaller than the
+visible universe. Taken for README item 22. Recorded 2026-11-05.
+
+**Gauss–Bonnet, and the flat closed surfaces.** A closed surface's total curvature is 2π times its
+Euler characteristic, so the only closed surfaces flat everywhere are the torus and the Klein
+bottle. Classical (Gauss, Bonnet); a modern statement with proof is Moroianu, arXiv:1101.2355
+<https://arxiv.org/abs/1101.2355>. With Euler's polyhedron formula — which forces twelve pentagons
+into any hexagon tiling of a sphere — it is why the Lab's shape had two candidates and not more.
+Recorded 2026-11-05.
+
+**Lagrange (1773) and Gauss (1831)**, that the triangular lattice is the densest lattice packing
+of circles in the plane. Taken for choosing the hexagonal torus over a rectangular one: its copies
+sit furthest apart for a given area. Recorded 2026-11-05.
+
+**GROMACS reference manual**, "Periodic boundary conditions."
+<https://manual.gromacs.org/2023/reference-manual/algorithms/periodic-boundary-conditions.html> —
+the molecular-simulation practice of choosing a box whose neighbouring images are all the same
+distance away (the rhombic dodecahedron in 3D, about 71% of a cube's volume for the same
+separation). Taken as the 3D precedent for the same choice in 2D. Recorded 2026-11-05.
+
 **Carr, B. J. & Rees, M. J. (1979).** "The anthropic principle and the structure of the physical
 world." *Nature* 278, 605–612. <https://doi.org/10.1038/278605a0> — that the sizes of planets,
 stars and living things follow from a few dimensionless constants, the number of atoms in a star

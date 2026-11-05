@@ -85,8 +85,8 @@ six hexagon directions, so stepping has to pick the nearest. Under option (A) th
 the momentum, so it could not be done without breaking conservation. Here the vector is stored
 untouched and the rounding only chooses a path, so nothing conserved is ever rounded.
 
-**A tie is broken by a fair coin.** *(Open as of 2026-11-05 — this is the proposed rule, not yet
-adopted; see `README.md` item 21.)* "The nearest" is not always one direction. An integer vector
+**A tie is broken by a fair coin.** *(Adopted 2026-11-05 — Ric: "the coin flip is definitely the
+way to go." `README.md` item 21.)* "The nearest" is not always one direction. An integer vector
 lies **exactly** halfway between two of the six all the time — `[-1,-1,2]` is one — and in an orbit
 that is 2 to 4 percent of steps. Nothing said what happens then, so `orbit.mjs` kept the first of
 the pair in its list, every time. That is a **handedness**: the path leans the same way at every
@@ -775,6 +775,36 @@ One primitive per hexagon gives exclusion and a hard occupancy limit for free, a
 mixtures free as well: a region where neighboring hexagons have different kinds **is** a
 mixture, needing no representation.
 
+**The Lab has no edge: it loops on itself, as a hexagonal torus.** *(2026-11-05. Ric: "Maybe
+having walls is a problem… What if we made it loop on itself", then "Loop it", and asked for the
+shape to be researched. The research and the shapes turned down are in `HOW-WE-DECIDED.md`.)* Walk
+off one side and you come back on the opposite side. In axial coordinates that is just
+`q mod N, r mod N`: an `N × N` rhombus with 60° corners, whose copies tile the plane in an
+equilateral triangle pattern. Three things follow, and they are why this shape and not another:
+
+- **It is flat everywhere and has no special place.** Every hexagon has six neighbours and the same
+  surroundings, so nothing about the shape can show up as structure (rule 11).
+- **The loop is the same length in all six directions.** Copies of the world sit on a triangular
+  lattice, which is the arrangement that keeps them furthest apart for a given area (Lagrange,
+  Gauss), so for a given number of hexagons something has to travel furthest before it meets its
+  own wake — about 7½% further than on a rectangle of hexagons with the same count, and without a
+  rectangle's two different loop lengths, which would be a favoured direction.
+- **`N` must be a multiple of 3.** Collisions resolve in three-hexagon blocks, and the blocks only
+  tile cleanly across the seam when 3 divides `N` — checked by brute force for every site and all
+  three partition offsets: 255, 258 and 4098 tile; 256, 257 and 4096 break at the seam. So the Lab
+  is **258 × 258**, 66,564 hexagons, the nearest such size at or above the planned 256².
+
+**What an edge used to do, and what replaces it.** Walls were a momentum reservoir and the place
+heat left. With no walls, **momentum is conserved exactly with nothing to count** — the wall
+counter is gone from the Lab. Heat has nowhere to leave, so a quantum on an empty line of
+hexagons goes round for ever, still counted as in flight; the Lab's only exchange with outside is
+its thermostat, which holds a hot band and a cold band as it always meant to. Angular momentum is
+not conserved on a torus — there is no rotation symmetry — but it never was on a hexagon lattice.
+
+**The World's shape is not decided** (`README.md` item 22). A loop removes the boundary that law 5
+uses as the world's heat sink, removes the floor that gives the World a *down*, and makes gravity
+sum across the seam. Our own universe answers the first with expansion.
+
 ### Only neighbors interact
 
 This creates *elsewhere*. If anything can affect anything there is one global state, one
@@ -1079,7 +1109,7 @@ more than the documents previously claimed.
 The Lab uses four of the five laws. Gravity is deliberately absent, and this needs real
 justification because it is load-bearing in the finished world.
 
-The weak version of the argument is that it's expensive and buys little at 256². True, but not
+The weak version of the argument is that it's expensive and buys little at 258². True, but not
 the reason.
 
 ### The Lab controls its conditions, which is what makes it a laboratory
@@ -1104,7 +1134,7 @@ thermostat in a laboratory is apparatus, not a smuggled answer.
 
 ### The supporting reasons
 
-**Nothing to structure.** Gravity's second job is large-scale structure, and at 256² there is no
+**Nothing to structure.** Gravity's second job is large-scale structure, and at 258² there is no
 large scale. Its third is making *down* exist, which is irrelevant to which clusters are stable.
 
 **The cost falls where it hurts most.** Gravity is the only non-local law and the most expensive

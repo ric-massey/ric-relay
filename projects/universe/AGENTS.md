@@ -107,7 +107,7 @@ separation is the entire reason option (B) works where (A) could not — under (
 *was* the momentum, so there was no way to round a path without breaking conservation, and no way
 for a force to express a strength at all.
 
-**A tie between two directions is a coin, never a fixed pick** *(proposed 2026-11-05, README item
+**A tie between two directions is a coin, never a fixed pick** *(adopted 2026-11-05, README item
 21)*. Integer vectors tie often, and a fixed tie-break is a handedness that spiralled every orbit in
 `orbit.mjs` into the centre. If you write a step function, check what it does on a tie.
 
@@ -188,6 +188,14 @@ momentum reservoir — a primitive that hits the floor either bounces or stops, 
 the world's total changes. Keep **wall momentum** as an integer hex-vector and assert
 `world momentum + wall momentum = constant`. Reality does exactly this and calls the reservoir
 the Earth. See law 1 in `THE-LAWS.md`.
+
+**In the Lab, two of these counters are zero by construction — assert that too.** The Lab loops
+on itself (2026-11-05), so it has no wall and no boundary: assert `world momentum = constant`
+exactly, and `radiated-away = 0` every step. A nonzero radiated-away in the Lab is not a small
+leak, it is code that still thinks there is an edge. **And the seam is where a looped world
+breaks quietly**: anything that reads a neighbour must wrap, and a neighbour lookup that forgets
+to is a wall nobody wrote down. Test the seam on its own — a collision block, a bond and a
+radiation line that each straddle it — before trusting a run.
 
 **And watch the gravity solver specifically.** A pyramid approximation does not produce exactly
 equal and opposite pair forces, so it leaks momentum every step and the world acquires a drift
@@ -426,7 +434,7 @@ pretty picture; **don't trust a number either.**
   physics constants. Do not reintroduce a mobile compute constraint without saying so out loud; at
   4096² the hexagon is 134MB per buffer and about 268MB double-buffered, which is comfortable on
   the 4GB card and would not have been on a phone.
-- **The Lab before the World.** The Lab is four laws at 256² (no gravity), in event-driven continuous time,
+- **The Lab before the World.** The Lab is four laws on a 258 × 258 hexagonal torus (no gravity, no edge), in event-driven continuous time,
   on the CPU, and it answers "what is matter here." The World is all five at scale, in a
   shader, with per-tick update probability standing in for continuous clocks. Do not start
   the World until the Lab has produced a periodic table with some depth.

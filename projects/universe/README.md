@@ -107,10 +107,15 @@ real *down* for dense things to settle into and a real *up* for energy to leave 
 
 ### How big
 
-- **The Lab**, 256²: 65,536 hexagons — 262 KB. Nothing.
-- **The World**, 2048²: 4.2 million — 17 MB.
-- **The World**, 4096²: **16.8 million hexagons — 67 MB.** The real target.
-- 8192²: 67 million — 268 MB. Heavy for a browser but possible.
+- **The Lab**, 258 × 258 on a torus: 66,564 hexagons — 532 KB. Nothing. *(256² until 2026-11-05;
+  a looped Lab needs a side divisible by 3.)*
+- **The World**, 2048²: 4.2 million — 34 MB.
+- **The World**, 4096²: **16.8 million hexagons — 134 MB.** The target as it stands; item 20 may
+  change it, and a looped World would be 4095 or 4098 on a side.
+- 8192²: 67 million — 537 MB. Heavy for a browser but possible.
+
+*(The megabytes were four-byte figures until 2026-11-05 and are now eight bytes a hexagon, one
+buffer.)*
 
 For scale: the BFF soup used 131,000 programs and Hutton's grid was far smaller. Seventeen
 million is large for this field.
@@ -162,7 +167,9 @@ including twelve corrections and five retractions — is in
 True of how the world is built rather than things that happen, but **break any of them and
 the world is as ruined as if a law had been dropped.**
 
-- **Hexagonal grid, one primitive per hexagon.** Isotropy, and exclusion for free.
+- **Hexagonal grid, one primitive per hexagon.** Isotropy, and exclusion for free. **The Lab
+  loops on itself** — a hexagonal torus, 258 × 258, no edge anywhere (2026-11-05); the World's
+  shape is item 22.
 - **Only neighbors interact.** This creates *elsewhere* — independent regions, parallel
   experiments, somewhere a rare thing can persist. It also hands you a **causal speed limit** —
   one hexagon per tick is the fastest anything can propagate, so cause has a finite reach and
@@ -215,7 +222,7 @@ primitives under the same laws. They differ in four things and nothing else:
 
 | | the Lab | the World |
 |---|---|---|
-| Size | ~256² | ~4096² |
+| Size | ~256² (258 × 258, looped) | ~4096² |
 | Gravity | off | on |
 | Conditions | set and held | emergent |
 | Time | continuous, event-driven | ticked, with per-tick probability |
@@ -254,7 +261,7 @@ calculated from a formula, **measured by running collisions.**
 That file is this universe's periodic table, and it is a *result*, not a design.
 
 The Lab also fails fast, which is the point of splitting it out. If no stable clusters form,
-the force law is wrong, and at 256² you learn that in minutes.
+the force law is wrong, and at 258² you learn that in minutes.
 
 ### The World — large and free
 
@@ -929,14 +936,28 @@ extreme. Either result is worth having, and it is also a measurement of the fine
 the anthropic question above. **What is settled is the direction and the four yardsticks; ε, the
 size and the momentum width stay open** until the Lab is running and this can be measured.
 
-**21. What does a step do when two directions tie?** Raised 2026-11-05 by `orbit.mjs` Check 9.
+**21. ~~What does a step do when two directions tie?~~** Raised 2026-11-05 by `orbit.mjs` Check 9.
 Law 1 rounds a step to the nearest of six directions and never said what happens when two are
 exactly as near — which an integer vector is on 2 to 4 percent of an orbit's steps. Always taking
 the same one is a handedness, and it spirals every orbit into the centre within a few laps; a fair
-coin does not. **Proposed: a coin**, from the draws the World already makes, stated in law 1 of
-`THE-LAWS.md`. *Decided by:* adopting it — the alternative fair rule, alternation, needs a stored bit
-per primitive. Not blocking the Lab, which has no gravity, but it does touch every collision path,
-so the Lab's movement rule should be written with it.
+coin does not. **Settled 2026-11-05: a coin** (Ric: *"the coin flip is definitely the way to go"*),
+from the draws the World already makes, stated in law 1 of `THE-LAWS.md`. The other fair rule,
+alternation, was passed over because it needs a stored bit per primitive. It touches every movement
+path, so the Lab's movement rule is written with it.
+
+**22. What shape is the World?** Raised 2026-11-05 with the Lab's loop. The Lab is a hexagonal
+torus (`THE-LAWS.md`, the hexagonal grid). The World could be one too — it is the most natural
+choice, and our own universe may be a loop: a flat universe can be finite with no edge, and the
+Planck satellite's search for the repeating circles that would show it found none smaller than the
+visible universe, which limits the loop's size without ruling it out. But three things ride on it:
+**the heat sink** (law 5's radiation leaves at the boundary; with none, the World fills with its
+own light and evens out — in reality, expansion is what takes the heat away, so this ties to the
+expanding world in *Roads not taken*); **down** (the World is described as a slice with a ground
+for dense matter to settle on; looping only left–right keeps a floor and a ceiling, looping both
+ways removes them); and **gravity across the seam** (a pairwise 1/r² sum has to count every copy of
+the world; the screened local field in item 12 handles a loop with no extra work). *Decided by:*
+not before the Lab, and together with item 20 — size, gravity's strength and shape are now one
+choice.
 
 ### Settled by running the Lab
 
@@ -955,8 +976,8 @@ hold.
 
 **8. Does the floor bounce or absorb?** Both conserve momentum once the wall counter exists.
 Bouncing keeps motion circulating through the dense regions; absorbing lets matter settle, and
-sedimentation is one of the two candidate ratchets. Low urgency in the Lab, which has no gravity to
-press anything against the floor.
+sedimentation is one of the two candidate ratchets. **No longer a Lab question** — the Lab loops
+and has no floor (2026-11-05). It stays open for the World only if the World keeps one (item 22).
 
 ### Open for the whole project
 

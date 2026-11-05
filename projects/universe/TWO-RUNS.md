@@ -17,7 +17,7 @@ individual.**
 |---|---|---|
 | The individual is | **a primitive** | **a primitive** |
 | Laws in play | 4 of the 5 (no gravity) | all 5 |
-| Size | ~256² | as large as the browser allows |
+| Size | ~256² (258 × 258, looped) | as large as the browser allows |
 | Length | minutes | long |
 | How many | thousands | one at a time |
 | Conditions | set and held — it's a laboratory | emergent — it's a world |
@@ -134,7 +134,7 @@ computational irreducibility, and it means **the only available method is search
 
 With one run, each candidate physics costs a full cosmological history before you learn
 whether its chemistry has any depth at all. If that is hours, a week of searching gets you
-tens of samples in a five-dimensional space. With the Lab at 256², a candidate costs
+tens of samples in a five-dimensional space. With the Lab at 258², a candidate costs
 minutes, so the same week gets you thousands.
 
 **The split is what makes search possible, and search is the only way to find a physics
