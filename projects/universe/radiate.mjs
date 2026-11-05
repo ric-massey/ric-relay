@@ -64,8 +64,8 @@ function checkReciprocity(label, kind) {
 // (p(T_i) - p(T_j)) * n_ij / 6, so its sign is the sign of the temperature
 // difference for ANY monotone emission rate p. Verify by direct enumeration
 // rather than by trusting the algebra.
-function checkSecondLaw(kind, energy, C) {
-  const p = (i) => Math.min(1, C * (energy[i] / kind[i]));   // clock rate, prop. to temperature
+function checkSecondLaw(kind, energy, clockScale) {
+  const p = (i) => Math.min(1, clockScale * (energy[i] / kind[i]));   // clock rate, prop. to temperature
   const flow = new Map();
   for (let r = 0; r < H; r++) for (let q = 0; q < W; q++) {
     const i = idx(q, r); if (!kind[i]) continue;
@@ -87,7 +87,7 @@ function checkSecondLaw(kind, energy, C) {
     else if (Math.sign(net) === Math.sign(dT)) downhill++;
     else { uphill++; worst = Math.max(worst, Math.abs(net)); }
   }
-  console.log(`  C=${String(C).padEnd(6)} clipped ${(100 * clipped / matter).toFixed(1).padStart(5)}% of matter | downhill ${downhill} flat ${flat} UPHILL ${uphill}${uphill ? ` (worst ${worst.toFixed(4)})` : ''}`);
+  console.log(`  clockScale=${String(clockScale).padEnd(6)} clipped ${(100 * clipped / matter).toFixed(1).padStart(5)}% of matter | downhill ${downhill} flat ${flat} UPHILL ${uphill}${uphill ? ` (worst ${worst.toFixed(4)})` : ''}`);
   return uphill;
 }
 
@@ -126,7 +126,7 @@ console.log(bad === 0 ? '\nEXACT. No violations at any density.\n' : `\nFAILED: 
 console.log('=== Check 2: net flow between every visible pair, clock rate prop. to temperature ===');
 {
   const { kind, energy } = makeWorld(7, 0.05);
-  for (const C of [0.0005, 0.005, 0.05, 0.5]) checkSecondLaw(kind, energy, C);
+  for (const clockScale of [0.0005, 0.005, 0.05, 0.5]) checkSecondLaw(kind, energy, clockScale);
   console.log('\n=== Check 3: control -- the flat clock in the search space today ===');
   checkFlatClock(kind, energy);
 }
@@ -138,7 +138,7 @@ console.log('=== Check 2: net flow between every visible pair, clock rate prop. 
 // energy is conserved against a boundary counter, measure how often the slot
 // is already full (that is a cap on radiative flux, and it is real), and see
 // whether a dense hot blob can actually cool.
-function run(steps, C, blobR, hotT, report) {
+function run(steps, clockScale, blobR, hotT, report) {
   const kind = new Uint8Array(W * H), energy = new Uint16Array(W * H);
   const slot = new Uint8Array(W * H);          // 6-bit occupancy, vacuum only
   const cq = (W / 2) | 0, cr = (H / 2) | 0;
@@ -178,7 +178,7 @@ function run(steps, C, blobR, hotT, report) {
     //    temperature, into one of six directions chosen uniformly
     for (let r = 0; r < H; r++) for (let q = 0; q < W; q++) {
       const i = idx(q, r); if (!kind[i] || !energy[i]) continue;
-      if (rnd() >= Math.min(1, C * (energy[i] / kind[i]))) continue;
+      if (rnd() >= Math.min(1, clockScale * (energy[i] / kind[i]))) continue;
       attempts++;
       const d = (rnd() * 6) | 0;
       const [dq, dr] = DIRS[d], q2 = q + dq, r2 = r + dr;
@@ -198,7 +198,7 @@ function run(steps, C, blobR, hotT, report) {
   for (let i = 0; i < W * H; i++) for (let d = 0; d < 6; d++) if (slot[i] & (1 << d)) inFlight++;
   const closes = inWorld + inFlight + radiatedAway === total0;
   if (report) {
-    console.log(`  blob r=${blobR} (${matter} cells) T0=${hotT} C=${C} after ${steps} steps:`);
+    console.log(`  blob r=${blobR} (${matter} cells) T0=${hotT} clockScale=${clockScale} after ${steps} steps:`);
     console.log(`    energy ${total0} = world ${inWorld} + in flight ${inFlight} + radiated away ${radiatedAway}  ->  ${closes ? 'CLOSES EXACTLY' : 'MISMATCH'}`);
     console.log(`    emission attempts ${attempts}, absorbed by matter ${absorbed}, slot already full ${blocked} (${(100 * blocked / Math.max(1, attempts)).toFixed(1)}% of attempts)`);
     console.log(`    peak quanta in flight in one step ${maxFlux}; mean temperature now ${(inWorld / (matter * 64)).toFixed(2)} (was ${hotT})`);
@@ -208,8 +208,8 @@ function run(steps, C, blobR, hotT, report) {
 
 console.log('\n=== Check 4: run it. Conservation, the six-slot cap, and whether a hot blob cools ===');
 let allClose = true;
-for (const [steps, C, blobR, hotT] of [[200, 0.02, 2, 30], [200, 0.02, 8, 30], [600, 0.02, 8, 30], [200, 0.4, 8, 30]]) {
-  const r = run(steps, C, blobR, hotT, true);
+for (const [steps, clockScale, blobR, hotT] of [[200, 0.02, 2, 30], [200, 0.02, 8, 30], [600, 0.02, 8, 30], [200, 0.4, 8, 30]]) {
+  const r = run(steps, clockScale, blobR, hotT, true);
   allClose = allClose && r.closes;
 }
 console.log(allClose ? '\nEnergy closed exactly in every run.' : '\nCONSERVATION FAILED.');
@@ -227,7 +227,7 @@ for (const blobR of [1, 2, 4, 8, 16]) {
 // nothing is ever absorbed -- the path objection 4 is actually about never
 // ran. Two blobs, hot and cold, separated by vacuum. Tag each quantum with
 // its emitter so the net exchange can be measured in both directions.
-function twoBlobs(steps, C, hotT, coldT, gap) {
+function twoBlobs(steps, clockScale, hotT, coldT, gap) {
   const kind = new Uint8Array(W * H), energy = new Uint16Array(W * H), side = new Int8Array(W * H);
   const R = 5, cr = (H / 2) | 0;
   const place = (cq, T, which) => {
@@ -265,7 +265,7 @@ function twoBlobs(steps, C, hotT, coldT, gap) {
     quanta = next;
     for (let r = 0; r < H; r++) for (let q = 0; q < W; q++) {
       const i = idx(q, r); if (!kind[i] || !energy[i]) continue;
-      if (rnd() >= Math.min(1, C * (energy[i] / kind[i]))) continue;
+      if (rnd() >= Math.min(1, clockScale * (energy[i] / kind[i]))) continue;
       const d = (rnd() * 6) | 0, [dq, dr] = DIRS[d], q2 = q + dq, r2 = r + dr;
       if (!inside(q2, r2)) { energy[i]--; radiated++; continue; }
       const j = idx(q2, r2);
@@ -279,7 +279,7 @@ function twoBlobs(steps, C, hotT, coldT, gap) {
   const closes = inWorld + quanta.length + radiated === total0;
   let hotE = 0, coldE = 0, hotN = 0, coldN = 0;
   for (let i = 0; i < W * H; i++) { if (side[i] === 1) { hotE += energy[i]; hotN++; } if (side[i] === 2) { coldE += energy[i]; coldN++; } }
-  console.log(`  gap ${String(gap).padStart(2)} C=${C} T ${hotT} vs ${coldT}, ${steps} steps:`);
+  console.log(`  gap ${String(gap).padStart(2)} clockScale=${clockScale} T ${hotT} vs ${coldT}, ${steps} steps:`);
   console.log(`    hot->cold ${String(xfer['1>2']).padStart(5)} units | cold->hot ${String(xfer['2>1']).padStart(5)} units | NET ${String(xfer['1>2'] - xfer['2>1']).padStart(5)} (positive = downhill)`);
   console.log(`    self-reabsorbed: hot ${xfer['1>1']}, cold ${xfer['2>2']} | radiated away ${radiated}`);
   console.log(`    temperatures ${hotT} -> ${(hotE / (hotN * 64)).toFixed(2)} and ${coldT} -> ${(coldE / (coldN * 64)).toFixed(2)}`);
@@ -289,8 +289,8 @@ function twoBlobs(steps, C, hotT, coldT, gap) {
 
 console.log('\n=== Check 6: two blobs across vacuum -- the absorption path objection 4 is about ===');
 let net = [], clashes = 0, closed = true;
-for (const [gap, C, hT, cT] of [[6, 0.05, 30, 2], [6, 0.05, 30, 25], [2, 0.05, 30, 2], [20, 0.05, 30, 2], [6, 0.5, 30, 2], [6, 0.05, 2, 2]]) {
-  const r = twoBlobs(500, C, hT, cT, gap);
+for (const [gap, clockScale, hT, cT] of [[6, 0.05, 30, 2], [6, 0.05, 30, 25], [2, 0.05, 30, 2], [20, 0.05, 30, 2], [6, 0.5, 30, 2], [6, 0.05, 2, 2]]) {
+  const r = twoBlobs(500, clockScale, hT, cT, gap);
   net.push(r.net); clashes += r.slotClash; closed = closed && r.closes;
 }
 console.log(`\nAll nets non-negative: ${net.every((n) => n >= 0)}  |  conservation held everywhere: ${closed}`);
@@ -304,7 +304,7 @@ console.log('     never both. So six bits is exact, not a cap.');
 // (cell, direction) has exactly one possible source, the neighbour behind
 // it, which is either matter or vacuum and never both. Stress the code that
 // implements it -- dense matter, saturated clocks, long runs.
-function stress(fill, C, steps, seed) {
+function stress(fill, clockScale, steps, seed) {
   let s = seed >>> 0;
   const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
   const kind = new Uint8Array(W * H), energy = new Uint16Array(W * H), slot = new Uint8Array(W * H);
@@ -328,7 +328,7 @@ function stress(fill, C, steps, seed) {
     slot.set(next);
     for (let r = 0; r < H; r++) for (let q = 0; q < W; q++) {
       const i = idx(q, r); if (!kind[i] || !energy[i]) continue;
-      if (rnd() >= Math.min(1, C * (energy[i] / kind[i]))) continue;
+      if (rnd() >= Math.min(1, clockScale * (energy[i] / kind[i]))) continue;
       const d = (rnd() * 6) | 0, [dq, dr] = DIRS[d], q2 = q + dq, r2 = r + dr;
       if (!inside(q2, r2)) { energy[i]--; radiated++; continue; }
       const j = idx(q2, r2);
@@ -341,14 +341,14 @@ function stress(fill, C, steps, seed) {
   for (let i = 0; i < W * H; i++) for (let d = 0; d < 6; d++) if (slot[i] & (1 << d)) inFlight++;
   const inWorld = energy.reduce((a, b) => a + b, 0);
   const closes = inWorld + inFlight + radiated === total0;
-  console.log(`  fill ${String(fill).padEnd(5)} C=${String(C).padEnd(6)} ${String(steps).padStart(4)} steps: emitted ${String(emitted).padStart(7)} absorbed ${String(absorbed).padStart(6)} | slot clashes ${clashes} | conservation ${closes ? 'EXACT' : 'MISMATCH'}`);
+  console.log(`  fill ${String(fill).padEnd(5)} clockScale=${String(clockScale).padEnd(6)} ${String(steps).padStart(4)} steps: emitted ${String(emitted).padStart(7)} absorbed ${String(absorbed).padStart(6)} | slot clashes ${clashes} | conservation ${closes ? 'EXACT' : 'MISMATCH'}`);
   return { clashes, closes };
 }
 
 console.log('\n=== Check 7: stress the six-bit representation and the energy books ===');
 let cl = 0, ok = true;
-for (const [fill, C, steps, seed] of [[0.4, 1, 300, 3], [0.6, 1, 300, 5], [0.05, 1, 600, 11], [0.25, 0.01, 600, 13], [0.9, 1, 200, 17]]) {
-  const r = stress(fill, C, steps, seed); cl += r.clashes; ok = ok && r.closes;
+for (const [fill, clockScale, steps, seed] of [[0.4, 1, 300, 3], [0.6, 1, 300, 5], [0.05, 1, 600, 11], [0.25, 0.01, 600, 13], [0.9, 1, 200, 17]]) {
+  const r = stress(fill, clockScale, steps, seed); cl += r.clashes; ok = ok && r.closes;
 }
 console.log(`\nSlot clashes across every stress run: ${cl}  |  energy closed exactly everywhere: ${ok}`);
 console.log('As argued: one slot, one possible source. Six bits is exact, not a cap.');

@@ -48,9 +48,16 @@ destroyed. All three are integers.
 
 **Momentum is an integer vector, and speed is derived from it: `v = p / k`.** Momentum is held
 in cube coordinates on the hex lattice's three axes — two independent signed components, each in
-±3 — and it is *not* the same thing as where the primitive goes next. That separation is the whole
+±15 — and it is *not* the same thing as where the primitive goes next. That separation is the whole
 point. Settled 2026-11-04 after measurement; it was "one unit in a direction, regardless of kind"
 until then, which is option (A) in `HOW-WE-DECIDED.md`.
+
+*(Said ±3 until 2026-11-05 — **in the headline statement of the law**, while the paragraph below
+had already been updated to ±15 when the word went to eight bytes on 2026-11-04. The same drift was
+in `README.md`'s five-law table and in `AGENTS.md` rule 5, and all three are corrected on the same
+pass. Worth recording rather than fixing quietly: the eight-byte change went in piecemeal, and the
+places it missed were the short authoritative statements rather than the long arguments — which are
+exactly the lines someone implementing from these documents would read.)*
 
 **Speed is a rate, not a distance.** A primitive steps **one hexagon every `k / |p|` ticks**, never
 more than one per tick. So nothing outruns the causal limit by construction, heavy matter is slow
@@ -65,7 +72,7 @@ a momentum of magnitude 1, so every kind `k` yields a step period of `k` ticks, 
 momentum field only adds finer values that round onto periods already present — ±1, ±3, ±7 and ±15
 all give 255. So "255 distinct speeds" is a restatement of "255 kinds" rather than an independent
 feature, and **momentum width is purely headroom for forces, never speed variety.** That is why the
-±3 paragraph below has to keep those two apart.)*
+momentum-range paragraph below has to keep those two apart.)*
 
 **Collisions conserve momentum exactly, and the outcome is drawn rather than computed.** Any
 redistribution with the same vector sum is legal; there are about 15 of them for a typical pair, so
@@ -82,9 +89,16 @@ untouched and the rounding only chooses a path, so nothing conserved is ever rou
 2026-11-04. It was an open question until then, and briefly before that it was wrongly called a
 measured impossibility — that retraction stands in `HOW-WE-DECIDED.md`.)*
 
-> **`KE(p, k) = floor(C · Q(p) / 2k)`**, where **`Q(p) = x² + y² + z²`** is the *un-halved* squared
+*(The scale constant is **`S`**, and it was `C` until 2026-11-05 — which collided with law 4's
+capacity, also `C`, and adopted the same day. Both are physics constants, so `AGENTS.md` rule 8
+puts them in the same module, where one name cannot mean two things: capacity runs 0 to 6 and is a
+count of bonds, this runs 2 to 291 and is a scale factor. This is the second rename in two days
+caused by the same shortage of letters — capacity itself was `k` until 2026-11-04 — and law 4 keeps
+`C`, since it is the law actually named Capacity.)*
+
+> **`KE(p, k) = floor(S · Q(p) / 2k)`**, where **`Q(p) = x² + y² + z²`** is the *un-halved* squared
 > length of the momentum vector on the cube axes — true `|p|²` is `Q/2`, and `Q` is carried to stay
-> in integers — and **`C = 64`**.
+> in integers — and **`S = 64`**.
 >
 > A collision conserves momentum exactly and moves whatever `KE` changes by **into or out of the
 > heat field**, so total energy is exact by construction.
@@ -104,15 +118,15 @@ primitive is cold. This is the one place kinetic energy was expected to touch la
 is that it does not: transport compares heat, never heat plus motion. Were the two to share one
 number, a thing would cool itself by moving and the second law would have a hole in it.
 
-**`C = 64` is a searched constant, not a derived one, and the window is wide.** Below **`C = 2`**
+**`S = 64` is a searched constant, not a derived one, and the window is wide.** Below **`S = 2`**
 the heaviest kinds read zero kinetic energy at any momentum — the heavy-matter failure arriving
-through a second door — and above **`C = 291`** a kind-1 primitive at full speed overflows the
+through a second door — and above **`S = 291`** a kind-1 primitive at full speed overflows the
 16-bit field. Inside that window 64 is chosen for three stated reasons: it is a power of two, every
 kind from 1 to 255 gets a usable amount, and it caps the largest kinetic energy at **22% of the
 energy field**, so a fast light primitive coming to a dead stop can dump its motion into a hexagon
-that was already warm. At `C = 291` that figure is 99.9% and the dump always overflows.
+that was already warm. At `S = 291` that figure is 99.9% and the dump always overflows.
 
-| at `C = 64` | heaviest kind's KE levels | max KE as % of the energy field |
+| at `S = 64` | heaviest kind's KE levels | max KE as % of the energy field |
 |---|---|---|
 | ±3 momentum, 11-bit energy *(until 2026-11-04)* | 2 | 28% |
 | **±15 momentum, 16-bit energy** *(now)* | **56** | **22%** |
@@ -183,7 +197,7 @@ calls the reservoir the Earth.
 **Still undecided here**, with the argument in `HOW-WE-DECIDED.md`: whether the wall bounces or
 absorbs. *(Three items came off this list on 2026-11-04: the option A/B fork is decided, "motion
 carries no energy" turned out to be forced rather than open — and kinetic energy was then adopted
-at `C = 64`, stated above — and bonded momentum is settled just below.)*
+at `S = 64`, stated above — and bonded momentum is settled just below.)*
 
 ### What momentum does when primitives are bonded
 
@@ -224,8 +238,8 @@ answer belongs.
 collision changes momenta and produces no heat, so nothing about how hard a strike was can ever
 reach a bond, and bonds break only from ambient warmth — you could melt a structure but never
 break one, and there would be no fracture, no erosion and no mechanical weathering anywhere.
-`AGENTS.md` rule 5 has the construction and `momentum.mjs` has it measured: `floor(C · Q(p) / 2k)`,
-with no free-energy pump over thousands of closed loops. **Adopted 2026-11-04 at `C = 64`**, so
+`AGENTS.md` rule 5 has the construction and `momentum.mjs` has it measured: `floor(S · Q(p) / 2k)`,
+with no free-energy pump over thousands of closed loops. **Adopted 2026-11-04 at `S = 64`**, so
 this dependency is satisfied rather than outstanding — law 1 states the definition. The scale
 factor was re-measured when the widths changed and the window moved from 29–227 to **2–291**. **So
 this is entangled with the kinetic-energy question, not with law 2** — the old note said law 2,
@@ -315,10 +329,17 @@ that decides what survives. See `HOW-WE-DECIDED.md`.)* *(The original wording wa
 their separation, short range" — a force. It was replaced over 2026-11-03 and -04; the whole
 argument, and every wrong turn in it, is below.)*
 
-**This is the version to build first, not a proof it is right.** The cap of 8 is forced by the
-field widths, and the slate of alternatives stays available if Run A comes back flat. What is
+**This is the version to build first, not a proof it is right.** The modulus of 8 is a **searched
+constant**, and the slate of alternatives stays available if Run A comes back flat. What is
 *settled* is the shape of the law: a rate-based binding energy over two integers, with no distance
 in it.
+
+*(Corrected 2026-11-05. This said "the cap of 8 is forced by the field widths," which was true at
+eleven bits of energy and stopped being true on 2026-11-04. At 16 bits the forced cap on `B` is
+**257**, so the 8 is chosen rather than derived — `README.md` item 17 retracts the one attempt to
+improve on it and says why the choice stands anyway. Leaving it as "forced" is the exact error that
+item 17 and `AGENTS.md` rule 12's fourth lesson are both about — a searched constant wearing a
+derivation's clothes — which is why this is a note rather than a silent fix.)*
 
 *(Until 2026-11-04 this law was `B = min(gcd(k₁, k₂), 8)`. **That is retracted on two measured
 grounds**, both added to `screen.mjs` the same day, and both invisible to the screen as it stood
@@ -344,12 +365,17 @@ symptom; the diagonal maximum is the cause. See `HOW-WE-DECIDED.md`.)*
 > **If you only need the law, you have it — stop here and go to law 3.**
 >
 > Everything below is **how it was arrived at**, in the order it happened, and it is by far the
-> longest section in this file because this law was the hardest. It contains **three retractions**,
+> longest section in this file because this law was the hardest. It contains **four retractions**,
 > each kept beside its fix: that the momentum constraint on the movement rule mattered (it was an
 > artifact of writing law 2 as a force), that the simplification deleted catalysis (it deleted the
-> old *argument* for catalysis, not the capability), and that no pure pair function could ever have
-> a selective catalyst (wrong — selectivity comes from a cluster's shape). Read it if you are about
+> old *argument* for catalysis, not the capability), that no pure pair function could ever have
+> a selective catalyst (wrong — selectivity comes from a cluster's shape), and that
+> `min(gcd(k₁, k₂), 8)` was the form to build (retracted hours after it was settled, on two
+> measurements about the table's *shape* that the screen could not see). Read it if you are about
 > to change law 2 or re-propose something; skip it otherwise.
+>
+> *(Said **three** until 2026-11-05 and omitted the `gcd` one, which `HOW-WE-DECIDED.md` numbers as
+> the fourth in this law.)*
 
 **Any replacement form must still be short.** The constraint that outlives whatever happens to `B`
 is **description length**: the law comes from a small fixed grammar of integer operations — sum,
@@ -512,7 +538,11 @@ A primitive can be bonded to at most **`C`** of its six neighbors.
 
 *(Called *k* until 2026-11-04, which collided with `k` for kind in laws 1 and 5 — `v = p/k` and
 `T = e/k` are both about mass, and `e ≥ B · k` in law 2 is too. Renamed before someone implemented
-the wrong one.)*
+the wrong one. **Then `C` collided too**, with the kinetic-energy scale constant adopted in law 1
+hours later: for a day `C` meant both "at most this many bonds" (0 to 6) and "multiply `Q/2k` by
+this" (64). Resolved 2026-11-05 by renaming **law 1's** scale to `S` and leaving capacity alone,
+because this is the law called Capacity. Two collisions in two days on one letter is what `AGENTS.md`
+rule 8 is for: the constants share a module, so they cannot share a name.)*
 
 **Why it is a rule.** This is the load-bearing one, and the least obvious.
 

@@ -79,8 +79,8 @@ for (const requireEnergy of [false, true]) {
   for (const R of [3, 7, 15]) {
     const vs = vectors(R).filter((p) => Q(p) > 0);
     let cases = 0, dead = 0, totalNon = 0, worstPairs = [];
-    let s = 7 >>> 0;
-    const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+    let seed = 7 >>> 0;
+    const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
     for (let t = 0; t < 4000; t++) {
       const k1 = 1 + ((rnd() * 255) | 0), k2 = 1 + ((rnd() * 255) | 0);
       const p1 = vs[(rnd() * vs.length) | 0], p2 = vs[(rnd() * vs.length) | 0];
@@ -122,8 +122,8 @@ console.log('\n=== 5. Inelastic instead: can the kinetic-energy shortfall be who
   const R = 3;
   const vs = vectors(R).filter((p) => Q(p) > 0);
   const all = vectors(R);
-  let s = 7 >>> 0;
-  const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  let seed = 7 >>> 0;
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
   let cases = 0, dead = 0, meanN = 0, dissipative = 0;
   for (let t = 0; t < 4000; t++) {
     const k1 = 1 + ((rnd() * 255) | 0), k2 = 1 + ((rnd() * 255) | 0);
@@ -152,8 +152,8 @@ console.log('\n=== 5. Inelastic instead: can the kinetic-energy shortfall be who
 console.log('\n=== 6. Control -- momentum-only collisions: does mass matter at all? ===');
 {
   const R = 3, all = vectors(R);
-  let s = 11 >>> 0;
-  const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  let seed = 11 >>> 0;
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
   // Does a heavy primitive end up slower than a light one after many random
   // momentum-conserving exchanges? That is the whole point of option B.
   const bands = [[1, 16], [100, 150], [240, 255]];
@@ -173,7 +173,7 @@ console.log('\n=== 6. Control -- momentum-only collisions: does mass matter at a
 
 // ------------------------------------------------------------------ 7
 // The corrected test. Stop demanding kinetic energy be a fraction and define it
-// as a whole number instead. KE(p,k) = floor(C * Q(p) / 2k), where Q is the
+// as a whole number instead. KE(p,k) = floor(S * Q(p) / 2k), where Q is the
 // UN-HALVED squared length (true |p|^2 is Q/2); a collision conserves momentum
 // exactly and moves whatever KE changes by into or out of the heat field, so
 // total energy is exact by construction.
@@ -184,16 +184,16 @@ console.log('\n=== 6. Control -- momentum-only collisions: does mass matter at a
 // four-byte window was 29 to 227. Both edges are printed below for each word.
 const EMAX = 65535;
 const RNOW = 15;
-const CADOPTED = 64;
+const SADOPTED = 64;
 
 function keWindow(R, emax) {
   const maxQ = Math.max(...vectors(R).map(Q));
   let lo = null, hi = null;
-  for (let C = 1; C <= 200000; C++) {
+  for (let S = 1; S <= 200000; S++) {
     let zero = 0;
-    for (let k = 1; k <= 255; k++) if (Math.floor(C * maxQ / (2 * k)) === 0) zero++;
-    if (lo === null && zero === 0) lo = C;
-    if (Math.floor(C * maxQ / 2) <= emax) hi = C;
+    for (let k = 1; k <= 255; k++) if (Math.floor(S * maxQ / (2 * k)) === 0) zero++;
+    if (lo === null && zero === 0) lo = S;
+    if (Math.floor(S * maxQ / 2) <= emax) hi = S;
     else if (lo !== null) break;
   }
   return { lo, hi, maxQ };
@@ -202,30 +202,30 @@ function keWindow(R, emax) {
 console.log('\n=== 7. Kinetic energy as a whole number: what scale factor works? ===');
 for (const [label, R, emax] of [['four bytes, until 2026-11-04', 3, 2047], ['eight bytes, now      ', RNOW, EMAX]]) {
   const w = keWindow(R, emax);
-  console.log(`  ${label}: +-${String(R).padStart(2)}, max Q ${String(w.maxQ).padStart(3)}, energy max ${String(emax).padStart(5)} -> C from ${w.lo} to ${w.hi}`);
+  console.log(`  ${label}: +-${String(R).padStart(2)}, max Q ${String(w.maxQ).padStart(3)}, energy max ${String(emax).padStart(5)} -> S from ${w.lo} to ${w.hi}`);
 }
 console.log('');
-console.log('     C   kind 1   kind 16   kind 64   kind 255   kinds reading zero   % of field   overflow?');
-for (const C of [1, 2, 16, 32, 64, 128, 256, 291]) {
-  const KE = (p, k) => Math.floor(C * Q(p) / (2 * k));
+console.log('     S   kind 1   kind 16   kind 64   kind 255   kinds reading zero   % of field   overflow?');
+for (const S of [1, 2, 16, 32, 64, 128, 256, 291]) {
+  const KE = (p, k) => Math.floor(S * Q(p) / (2 * k));
   const maxFor = (k) => Math.max(...vectors(RNOW).map((p) => KE(p, k)));
   let zero = 0;
   for (let k = 1; k <= 255; k++) if (maxFor(k) === 0) zero++;
   const pct = ((maxFor(1) / EMAX) * 100).toFixed(1) + '%';
-  const mark = C === CADOPTED ? ' <- ADOPTED' : '';
-  console.log(`  ${String(C).padStart(4)} ${String(maxFor(1)).padStart(8)} ${String(maxFor(16)).padStart(9)} ${String(maxFor(64)).padStart(9)} ${String(maxFor(255)).padStart(10)} ${String(zero).padStart(14)} ${String(pct).padStart(12)}       ${maxFor(1) > EMAX ? 'OVERFLOWS' : 'ok'}${mark}`);
+  const mark = S === SADOPTED ? ' <- ADOPTED' : '';
+  console.log(`  ${String(S).padStart(4)} ${String(maxFor(1)).padStart(8)} ${String(maxFor(16)).padStart(9)} ${String(maxFor(64)).padStart(9)} ${String(maxFor(255)).padStart(10)} ${String(zero).padStart(14)} ${String(pct).padStart(12)}       ${maxFor(1) > EMAX ? 'OVERFLOWS' : 'ok'}${mark}`);
 }
-console.log(`  -> window is 2 to 291. ADOPTED C = ${CADOPTED}: a power of two, no kind reads zero, and`);
+console.log(`  -> window is 2 to 291. ADOPTED S = ${SADOPTED}: a power of two, no kind reads zero, and`);
 console.log('     max KE is 22% of the field, so a primitive stopping dead can dump its motion');
-console.log('     into a hexagon that was already warm. At C = 291 that is 99.9% and the dump');
+console.log('     into a hexagon that was already warm. At S = 291 that is 99.9% and the dump');
 console.log('     always overflows. Law 1 in THE-LAWS.md states the choice and these edges.');
 
 // ------------------------------------------------------------------ 8
-console.log(`\n=== 8. Collisions under whole-number kinetic energy (C = ${CADOPTED}, +-${RNOW}) ===`);
+console.log(`\n=== 8. Collisions under whole-number kinetic energy (S = ${SADOPTED}, +-${RNOW}) ===`);
 {
-  const C = CADOPTED, R = RNOW, vs = vectors(R);
-  const KE = (p, k) => Math.floor(C * Q(p) / (2 * k));
-  let s = 99 >>> 0; const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const S = SADOPTED, R = RNOW, vs = vectors(R);
+  const KE = (p, k) => Math.floor(S * Q(p) / (2 * k));
+  let seed = 99 >>> 0; const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
   let dead = 0, cases = 0, mean = 0, toHeat = 0, fromHeat = 0;
   for (let t = 0; t < 4000; t++) {
     const k1 = 1 + ((rnd() * 255) | 0), k2 = 1 + ((rnd() * 255) | 0);
@@ -260,9 +260,9 @@ console.log('\n=== 9. Can the rounding be turned into a free-energy pump? ===');
 // gut it. The +-3 run is where the loop count comes from; the guarantee itself
 // is structural and holds at any width.
 for (const [R, trials] of [[3, 3000], [RNOW, 400]]) {
-  const C = CADOPTED, vs = vectors(R);
-  const KE = (p, k) => Math.floor(C * Q(p) / (2 * k));
-  let s = 5 >>> 0; const rnd = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const S = SADOPTED, vs = vectors(R);
+  const KE = (p, k) => Math.floor(S * Q(p) / (2 * k));
+  let seed = 5 >>> 0; const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
   let worst = 0, loops = 0;
   for (let trial = 0; trial < trials; trial++) {
     const k1 = 1 + ((rnd() * 255) | 0), k2 = 1 + ((rnd() * 255) | 0);

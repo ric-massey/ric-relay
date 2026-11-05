@@ -54,9 +54,9 @@ console.table(rows.map(({ kinds, energyMax, momentum, hottestHeavyKind, bits, sp
 // 2. The current layout, and the bit it leaves on the floor.
 const now = layout(8, 11, 3);
 const freeWin = layout(8, 12, 3);
-console.log('\nThe layout as documented, and the same layout using its spare bit for energy:');
+console.log('\nThe four-byte layout (documented until 2026-11-04), and the same using its spare bit:');
 console.table([
-  { which: 'documented  (kind 8, energy 11, p +-3)', ...pick(now) },
+  { which: 'four-byte, to 2026-11-04 (kind 8, energy 11, p +-3)', ...pick(now) },
   { which: 'spare bit to energy (energy 12)', ...pick(freeWin) },
 ]);
 console.log(`Giving the unused bit to energy takes the heaviest kind from ${now.hottestHeavyKind} ` +
@@ -104,7 +104,7 @@ console.table(counts.map((N) => shape(N, cappedGcd)));
 
 // ---------------------------------------------------------------------------
 // 4. Eight bytes, the only way to keep 255 kinds and fix both problems at once.
-console.log('\nEight bytes, for comparison (kind 8 + energy 16 + momentum 10 + bonds 6 = 40 of 64):');
+console.log('\nEight bytes -- THE DOCUMENTED LAYOUT since 2026-11-04 (kind 8 + energy 16 + momentum 10 + bonds 6 = 40 of 64):');
 console.table([{ kinds: 255, energyMax: 65535, momentum: '+-15',
   hottestHeavyKind: Math.floor(65535 / 255), bits: 40, spareBits: 24 }]);
 console.log('Run B at 4096^2: 67MB at four bytes, 134MB at eight. Still one native texel');

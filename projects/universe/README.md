@@ -29,12 +29,22 @@ reason to run the experiment and not a claim that nobody else's substrate could 
 [**Open questions**](#open-questions) · [Roads not taken](#roads-not-taken)
 
 **And the other files.** [`THE-LAWS.md`](THE-LAWS.md) states each law, justifies it and says what
-breaks without it. [`HOW-WE-DECIDED.md`](HOW-WE-DECIDED.md) is the record: eight corrections,
-three retractions, every rejected option and the six rules that came off the list. [`TWO-RUNS.md`](TWO-RUNS.md) is why the project runs twice,
+breaks without it. [`HOW-WE-DECIDED.md`](HOW-WE-DECIDED.md) is the record: eleven corrections,
+five retractions, every rejected option and the six rules that came off the list. [`TWO-RUNS.md`](TWO-RUNS.md) is why the project runs twice,
 and what it would be like as one run. [`AGENTS.md`](AGENTS.md) is the rules for anyone — human or
 otherwise — working on this. [`SOURCES.md`](SOURCES.md) credits everything borrowed, which is
-rule 1 and Ric's. And [`screen.mjs`](screen.mjs) is the only code here so far: `node screen.mjs`
-scores candidate forms for law 2 without simulating anything.
+rule 1 and Ric's.
+
+**And four tools, none of which is an engine.** [`screen.mjs`](screen.mjs) scores candidate forms
+for law 2 over all 65,025 pairs of kinds; [`budget.mjs`](budget.mjs) enumerates what fits in the
+hexagon's word; [`momentum.mjs`](momentum.mjs) settled law 1's momentum representation and the
+kinetic-energy scale; [`radiate.mjs`](radiate.mjs) settled law 5's radiation and the clock. Each
+answers a question by enumeration, with **no simulation anywhere** — `AGENTS.md` rule 12 says what
+each one can and cannot tell you. [`viewer.html`](viewer.html) renders.
+
+*(Corrected 2026-11-05. This said `screen.mjs` was "the only code here so far," which was true
+until 2026-11-04 and then stopped being true four times over that same day, as `radiate.mjs`, `budget.mjs`, `momentum.mjs` and the viewer landed. The corrected counts for the
+record are from the same pass; it said eight and three.)*
 
 If you read one thing past this file, read **Open questions**. It is the work list.
 
@@ -132,7 +142,7 @@ And precisely:
 
 | # | Law | |
 |---|-----|---|
-| 1 | **Conservation** | Matter (the **sum of kinds**), energy and momentum are never created or destroyed. All three are integers, so this holds exactly — *inside* the world. At the edges it is counted: energy leaves at the boundary, and the hard floor and ceiling are a **momentum reservoir**, the way the Earth is when a ball bounces off it. **Momentum is an integer vector and speed is `p/k`** — settled 2026-11-04 as option (B). It is stored on the hex axes, two components at ±3, and is deliberately *not* the same field as where the primitive goes next: stepping rounds to the nearest of six directions, but the conserved vector is never rounded. **Speed is a rate** — one hexagon every `k/|p|` ticks, capped at one — which keeps everything inside the causal limit, gives 255 distinct speeds and makes heavy matter slow instead of frozen. That is real inertia, measured. **Kinetic energy is not represented yet** — an open question, not a limit; an earlier claim that it was impossible is retracted in `HOW-WE-DECIDED.md`. |
+| 1 | **Conservation** | Matter (the **sum of kinds**), energy and momentum are never created or destroyed. All three are integers, so this holds exactly — *inside* the world. At the edges it is counted: energy leaves at the boundary, and the hard floor and ceiling are a **momentum reservoir**, the way the Earth is when a ball bounces off it. **Momentum is an integer vector and speed is `p/k`** — settled 2026-11-04 as option (B). It is stored on the hex axes, two components at ±15, and is deliberately *not* the same field as where the primitive goes next: stepping rounds to the nearest of six directions, but the conserved vector is never rounded. **Speed is a rate** — one hexagon every `k/|p|` ticks, capped at one — which keeps everything inside the causal limit, gives 255 distinct speeds and makes heavy matter slow instead of frozen. That is real inertia, measured. **Motion carries kinetic energy**, as the whole number `floor(S · Q(p) / 2k)` with the scale constant `S = 64` — recomputed from `(p, k)` rather than stored, so law 1's conserved total is `heat + Σ KE`. *(Corrected 2026-11-05. This row said momentum was ±3 and that kinetic energy was "not represented yet — an open question"; both were overtaken on 2026-11-04, when the word went to eight bytes and kinetic energy was adopted. The row summarising law 1 was the last place in this file still *stating* the pre-2026-11-04 law — item 3 below still carried a retracted argument about ±3, marked on the same pass — and a summary table is the worst place for it, being the first form of law 1 a reader meets.)* |
 | 2 | **Bonding** | Two adjacent primitives may bond, with binding energy **`B(k₁, k₂) = 8 − |v(k₁) + v(k₂) − 8|`**, where **`v(k) = k mod 8`** is a valence — so a bond is strongest when the two valences are **complementary** and weakens by one for each step away. *(It was `min(gcd(k₁, k₂), 8)` until 2026-11-04, retracted on two measurements: `gcd` is three and a half times rougher under fusion, and `gcd(k, k) = k` makes every kind's best partner itself, which builds crystals rather than copies. See `HOW-WE-DECIDED.md`.)*. Formation is **rate-based** — a fixed probability when the hexagon's clock fires, never instant on contact, which is what makes catalysis possible. No temperature term: the clock carries that for every law at once. *(It said "falling as temperature rises" until 2026-11-04, which was backwards — heating speeds formation up in real chemistry. See `HOW-WE-DECIDED.md`.)* A bond breaks when **`e ≥ B · kind`** at either endpoint, which is temperature exceeding `B`. No distance term and no force: exclusion already repels, gravity already gathers. This was the biggest hole in the project and is now the version to build first rather than a settled truth; `THE-LAWS.md` has the slate, the screen and every wrong turn. |
 | 3 | **Gravity** | All matter attracts all matter, falling off as 1/r², never cancelling. Acts on the sum of kinds and ignores how it's distributed. **The only non-local law, and the only remaining formula.** It earns both; see `THE-LAWS.md`. |
 | 4 | **Capacity** | A primitive can be bonded to at most **`C`** of its six neighbors. *(Called *k* until 2026-11-04, which collided with `k` for kind in laws 1, 2 and 5.)* **This law does not originate distinct types** — with a global `C` every kind has identical capacity, so all differentiation comes from law 2. Its real job is saturation: it stops a never-filling attraction collapsing everything into one blob. |
@@ -140,7 +150,7 @@ And precisely:
 
 Every justification, what breaks without each one, and the record of what was merged or
 rejected is in [`THE-LAWS.md`](THE-LAWS.md), and the full record of how each was arrived at —
-including eight corrections and three retractions — is in
+including eleven corrections and five retractions — is in
 [`HOW-WE-DECIDED.md`](HOW-WE-DECIDED.md).
 
 ## The five structural facts
@@ -273,7 +283,7 @@ width.** The cap of 8 on `B` was described as **derived** from the field widths 
 than searched. At eight bytes the forced cap is 257, so **law 2's modulus is a searched constant as
 of 2026-11-04** (item 17) — that is the sixth. And settling bonded momentum (item 4) required
 **kinetic energy**, whose construction carries a scale constant (`AGENTS.md` rule 5) — that is the
-seventh, **adopted 2026-11-04 at `C = 64`**, with the measured window 2–291 in law 1. What both have in common: they looked free while a width was doing the
+seventh, **adopted 2026-11-04 at `S = 64`**, with the measured window 2–291 in law 1. What both have in common: they looked free while a width was doing the
 choosing, and counting the budget is what exposed them.
 
 **The form.** Law 2 is a family, not a function, and which member you pick decides whether
@@ -289,7 +299,7 @@ what it can *produce*.
 
 1. gravity strength
 2. **gravity falloff exponent**
-3. capacity *k*
+3. capacity `C`
 4. transport rate
 5. **clock scale** — the constant of proportionality between a hexagon's temperature and its clock
    rate. It was a flat global rate until 2026-11-04; making it state-dependent changed no count.
@@ -506,7 +516,11 @@ speed is `p/k`, collisions resolve in Margolus blocks. What decided it:
 - **(A) has one speed, so it has no tail.** Chemistry runs on the rare fast particle that clears a
   barrier, and heating a mixture works by making that tail bigger. With every primitive at exactly
   one hexagon per tick there is no spread at all. (B) gives 255 distinct speeds — and the spread
-  comes mostly from *mass*, not from the momentum range, which is why ±3 is enough.
+  comes mostly from *mass*, not from the momentum range, which is why ±3 is enough. *(That last
+  clause is **retracted** — it is true of speed and false of headroom, and the two were conflated.
+  ±3 does give all 255 speeds; what it does not give is room for a force to change a momentum,
+  which is item 16. See law 1 in `THE-LAWS.md`. Marked 2026-11-05; the argument above is otherwise
+  left as it was made.)*
 
 **The cost, measured rather than assumed.** Speed had to become a **rate** (one step every `k/|p|`
 ticks) and not a distance, or (B) breaks at both ends: as sketched it left kind-255 matter moving
@@ -514,8 +528,8 @@ one hexagon in 85 ticks and let kind-1 matter travel three hexagons per tick, th
 limit. As a rate, nothing is frozen and nothing exceeds the limit. `momentum.mjs` has it.
 
 **7. ~~Motion carries no energy, so is there thermal pressure?~~ Settled 2026-11-04 — kinetic
-energy adopted at `C = 64`, and thermal pressure exists either way.** Motion now carries energy:
-`KE(p, k) = floor(C · Q(p) / 2k)`, derived from `(p, k)` rather than stored, with a collision moving
+energy adopted at `S = 64`, and thermal pressure exists either way.** Motion now carries energy:
+`KE(p, k) = floor(S · Q(p) / 2k)`, derived from `(p, k)` rather than stored, with a collision moving
 whatever it changes by into or out of the heat field. Law 1 in `THE-LAWS.md` states it and gives the
 window it was picked from. The record of the question follows.
 
@@ -533,11 +547,11 @@ no free-energy pump. Every kind from 1 to 255 got a usable amount and nothing ov
 11-bit field.
 
 *(Those figures were at `±3` and 11 bits. **`momentum.mjs` was brought to the eight-byte widths on
-2026-11-04** and re-measured at `C = 64`: **329.5** legal outcomes per collision, **0.0%** with
+2026-11-04** and re-measured at `S = 64`: **329.5** legal outcomes per collision, **0.0%** with
 none, motion converting to heat in **99%** of collisions and back in **99%** — against 16.2, 0.5%,
 88% and 83% before. **Dead collisions are gone entirely**, which is a real gain from the wider
 momentum range and not just more resolution. The window was re-solved in the file too, by solving
-both edges rather than scanning: **`C` from 2 to 291**, against **29 to 227** at four bytes. Its old
+both edges rather than scanning: **`S` from 2 to 291**, against **29 to 227** at four bytes. Its old
 printed conclusion "the window is 64 to 128" was wrong on two counts — stale, and always a
 coarse-scan artifact, since it probed only `{1, 16, 64, 128, 256}` and reported the bracket between
 the lowest probe that worked and the lowest that overflowed. The no-pump result is unchanged and
@@ -571,7 +585,7 @@ cluster and a hard one shatters it, with chemistry deciding which. Both original
 special cases of the one rule.
 *What it depends on:* **kinetic energy must be represented**, or nothing about how hard a strike was
 can reach a bond and structures can only melt, never break — no fracture, no erosion, no mechanical
-weathering. **Satisfied 2026-11-04 — adopted at `C = 64`; see item 7.** That is the real dependency;
+weathering. **Satisfied 2026-11-04 — adopted at `S = 64`; see item 7.** That is the real dependency;
 the old note said law 2, from a movement rule that no longer exists. See law 1 in `THE-LAWS.md`.
 
 **15. ~~The heavy-matter temperature fork.~~ Settled 2026-11-04 — the word went to eight bytes

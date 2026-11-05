@@ -193,13 +193,13 @@ Deliberately unresolved. The *bug* was the uncounted momentum and the counter fi
 behavior to pick has consequences we cannot predict from here, so it belongs in the search
 rather than in a guess made now.
 
-#### ~~Open — motion carries no energy~~ Settled 2026-11-04: kinetic energy adopted at `C = 64`
+#### ~~Open — motion carries no energy~~ Settled 2026-11-04: kinetic energy adopted at `S = 64`
 
 **Briefly marked resolved-as-impossible on 2026-11-04, and that is retracted the same day** — see
 *Retraction — kinetic energy is not impossible* at the end of this law. **It was then adopted the
-same day**: `floor(C · Q(p) / 2k)` with `C = 64`, derived from `(p, k)` rather than stored, so no
+same day**: `floor(S · Q(p) / 2k)` with `S = 64`, derived from `(p, k)` rather than stored, so no
 field is added and law 1's conserved total becomes `heat + Σ KE`. Law 1 in `THE-LAWS.md` states it
-and gives the measured window, `C` from 2 to 291 at the eight-byte widths. The entry below stands as
+and gives the measured window, `S` from 2 to 291 at the eight-byte widths. The entry below stands as
 written, as the record of the question while it was open.
 
 *(Audit.)* Nothing in these documents gives a moving primitive kinetic energy. A
@@ -423,7 +423,7 @@ arise:
 > whatever `KE` changes by into or out of the heat field.
 
 Total energy is then exact **by construction**, because the amount moved is the amount changed.
-Measured at `C = 128`:
+Measured at `S = 128`:
 
 | | |
 |---|---|
@@ -1461,6 +1461,19 @@ carrying the columns.
 **Also renamed.** Capacity was `k`, which collided with `k` for kind in laws 1, 2 and 5 — `v = p/k`
 and `T = e/k` are about mass, and so was the `k` in `e ≥ B · k`. It is `C` now. A notation
 collision in the one law whose failure mode is "no chemistry at all" is worth one rename.
+
+**And the rename collided in turn, which took a second one.** Kinetic energy was adopted in law 1
+later the same day with a scale constant also called `C`, so for a day `C` meant a bond count of 0
+to 6 *and* a scale factor of 64 — one of them in the formula `floor(C · Q(p) / 2k)`, two characters
+from the `k` that the first rename existed to get away from. **Settled 2026-11-05: law 1's scale is
+`S`, capacity keeps `C`**, on the grounds that law 4 is the one named Capacity and the scale
+constant has no claim on a letter. Propagated through all four documents and `momentum.mjs`.
+
+**Worth naming the pattern rather than just the fix.** Both collisions were introduced by the
+*repair* for a previous one, inside a day, because the constants are single letters drawn from a
+26-letter pool and `AGENTS.md` rule 8 requires them to live in one module. The structural fix is
+that module: the next constant gets checked against the ones already in it before it gets a letter,
+and `v`, `B`, `C`, `S`, `k`, `p`, `Q`, `e`, `T`, `G`, `c` are taken.
 
 ## 5. Transport
 

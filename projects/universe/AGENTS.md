@@ -91,9 +91,15 @@ amounts make every site a unique snowflake, so "a region of the same stuff" stop
 meaningful concept and the variance layer lights up uniformly, which destroys the only
 instrument we have for finding structure.
 
-Momentum is an **integer vector in cube coordinates** — two signed components at ±3, on the
+Momentum is an **integer vector in cube coordinates** — two signed components at **±15**, on the
 hex lattice's three axes — and **not** FHP's six occupancy channels, which are for a gas of
 identical particles and would mean six kinds per hexagon here. Don't reintroduce channels.
+
+*(Said ±3 until 2026-11-05. It was right until the word went to eight bytes on 2026-11-04 and
+momentum got 10 bits; the range appears twice in this rule and the two had drifted apart, with the
+stale one first. Worth a note rather than a silent fix, because a width is physics here — the
+paragraphs below say so at length — so a rules file carrying two different answers is the hazard
+those paragraphs are warning about.)*
 
 **Momentum is never stored as a direction. Keep those two things apart.** Stepping rounds the
 vector to the nearest of six hexagon directions; the vector itself is never rounded. That
@@ -112,9 +118,9 @@ forces only. Measured in `budget.mjs`.
 **Margolus blocks** rather than pairs, so conservation holds by construction. About 15 legal
 outcomes exist for a typical pair; pick one at random.
 
-**Kinetic energy is in, as of 2026-11-04, at `C = 64`.** *(A rule saying "do not try to add it"
+**Kinetic energy is in, as of 2026-11-04, at `S = 64`.** *(A rule saying "do not try to add it"
 stood here for about an hour that day and was wrong; it was then an open question until it was
-adopted.)* It is **a whole number** — `floor(C · Q(p) / 2k)` with a scale constant, because the
+adopted.)* It is **a whole number** — `floor(S · Q(p) / 2k)` with a scale constant, because the
 exact fraction `p²/2m` cannot be conserved on this lattice and because with the constant too small
 the heavy kinds read zero at any momentum. It is **derived, never stored**: the energy field holds
 heat, `KE` is recomputed from `(p, k)`, and law 1's conserved total is `heat + Σ KE`. The window is
@@ -330,12 +336,19 @@ flow over every visible pair, a flat-clock control, exact energy accounting over
 blob-radius sweep for opacity, and a density stress pass. It settled open question 2 and produced the clock constraint in
 rule 8.
 
-`budget.mjs` enumerates every field allocation that fits in the hexagon's four bytes and reports
-what each buys, including the number nobody had computed — the hottest temperature the *heaviest*
-kind can reach, `energyMax / kinds`, which is **8** at the documented layout and is why heavy
-matter is inert. It found that the layout leaves a bit unused, and that law 2's form is
+`budget.mjs` enumerates every field allocation that fits in the hexagon's **four** bytes and
+reports what each buys, including the number nobody had computed — the hottest temperature the
+*heaviest* kind can reach, `energyMax / kinds`, which was **8** at the four-byte layout and is why
+heavy matter was inert. It found that the layout left a bit unused, and that law 2's form is
 scale-invariant in the kind count, so kind bits can be spent on energy without costing chemistry.
 See README item 15.
+
+*(Corrected 2026-11-05. This said 8 is the figure "at the documented layout", which stopped being
+true when the documented layout became eight bytes on 2026-11-04 — **it is 257 now**, and heavy
+matter is no longer inert, which was the entire point of the change. The tool still enumerates the
+four-byte space, because that enumeration is what made the case for leaving it; its own output
+called that layout "documented" until this pass and now says "to 2026-11-04". Read its four-byte
+tables as history and its eight-byte section as the current word.)*
 
 `momentum.mjs` settled law 1's option (A) versus (B): it enumerates collision outcomes with and
 without kinetic energy, measures the speed spread by mass band, checks the bit budget, and finds
