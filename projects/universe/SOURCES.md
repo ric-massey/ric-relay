@@ -374,6 +374,15 @@ curiosity-driven search over universes. Precedent for the search methodology.
 **Mendeleev, Dmitri (1869).** He *discovered* the periodic table; he didn't invent it. The
 organizing principle of the Lab, and nearly the name of this project.
 
+**Lehmer, D. H. (1949)**, the linear congruential generator, *Mathematical methods in large-scale
+computing units*, Proc. 2nd Symposium on Large-Scale Digital Calculating Machinery; and **Press,
+Teukolsky, Vetterling & Flannery**, *Numerical Recipes*, for the constants `1664525` and
+`1013904223`. `orbit.mjs` uses it as a seeded dice cup — the coin that breaks a tie between two step
+directions, and the sampler in Check 7 — so a run is reproducible. Not physics. **Recorded after the
+code, not before**, on 2026-11-05; rule 1 says to say so. (Check 7 briefly used the ANSI C
+`rand()` constants, `1103515245` and `12345`, from the same family, before both were made one
+generator.)
+
 ## Materials-first simulation, from outside academia
 
 **The Powder Toy**, **Noita** (Nolla Games), **Sandspiel** (Maxim Bode). Falling-sand

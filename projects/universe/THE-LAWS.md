@@ -85,6 +85,18 @@ six hexagon directions, so stepping has to pick the nearest. Under option (A) th
 the momentum, so it could not be done without breaking conservation. Here the vector is stored
 untouched and the rounding only chooses a path, so nothing conserved is ever rounded.
 
+**A tie is broken by a fair coin.** *(Open as of 2026-11-05 — this is the proposed rule, not yet
+adopted; see `README.md` item 21.)* "The nearest" is not always one direction. An integer vector
+lies **exactly** halfway between two of the six all the time — `[-1,-1,2]` is one — and in an orbit
+that is 2 to 4 percent of steps. Nothing said what happens then, so `orbit.mjs` kept the first of
+the pair in its list, every time. That is a **handedness**: the path leans the same way at every
+tie, and it bled every integer orbit inward into a spiral that hit the centre within 3 to 15 laps.
+Break the tie with a coin and the same orbits hold. A fixed tie rule is the "preferred direction in
+the physics" that law 3 guards the gravity solver against, arriving through the step rule instead,
+so the rule has to be stated: **pick between the tied directions at random**, from the same draws
+the World already makes per tick. An alternation would also be fair but needs a stored bit per
+primitive. `orbit.mjs` Check 9 has both.
+
 **Motion carries kinetic energy, as a whole number, with one scale constant.** *(Adopted
 2026-11-04. It was an open question until then, and briefly before that it was wrongly called a
 measured impossibility — that retraction stands in `HOW-WE-DECIDED.md`.)*
@@ -148,14 +160,28 @@ well releases no more heat than one merely deep enough to saturate. The ceiling 
 chemistry's and it is still a ceiling. Law 3's prose should promise heat that **tracks** the fall,
 not heat that scales with it.
 
-**And the reason there are no orbits is that momentum is an integer.** Not geometry, and not
-energy. Gravity does supply the trade an orbit needs, with no stored potential required: falling in
-adds momentum so a primitive speeds up, climbing out subtracts so it slows. What defeats it is that
-the velocity change an orbit runs on is a **fraction of one unit per tick** and an integer field
-cannot carry a fraction — round it and gravity switches off entirely, carry it and the impulse
-arrives in lumps far too large. Measured in `orbit.mjs`, 2026-11-05: **0 of 6 orbited** with integer
-momentum, under both rules, at every radius. It costs law 3 nothing — gravity's job is to pull
-matter together and make heat from the falling, and falling in is the point.
+**Things do orbit, with integer momentum, on the hexagon — if the sub-unit pull is carried and a
+tie is a coin.** *(Rewritten 2026-11-05, the third version of this paragraph in two days; both
+earlier ones are below.)* Gravity supplies the trade an orbit needs with no stored potential:
+falling in adds momentum so a primitive speeds up, climbing out subtracts so it slows. The pull an
+orbit runs on is a **fraction of one unit per tick**, and whether that fraction is **rounded** or
+**carried** decides everything — rounded, gravity never acts and the body leaves in a straight line;
+carried, it orbits at ±7 and wider, for ten laps and more. Three harness bugs in `orbit.mjs` had
+hidden that, all pointing at "no orbits": a start 60° off tangent, a start on the edge of the
+momentum box, and a fixed tie-break (above) that turned every orbit into a slow spiral.
+
+**What an orbit is like here.** Eccentric — from a circular start the closest approach is half to
+three quarters of the starting radius — and **not permanent**: the coin makes the closest approach
+random-walk from lap to lap, so an orbit drifts until it hits something or leaves. And at a gravity
+law 3's filter allows (below), only the **heaviest kinds orbit, and only around the largest
+clumps**, because orbital speed is tiny there and momentum is speed times kind: under about 4 units
+of momentum one unit is too coarse to steer with. Kind 64 orbits nowhere `orbit.mjs` Check 8 looked.
+It still costs law 3 nothing — gravity's job is to pull matter together and make heat from the
+falling, and orbits were always a bonus.
+
+*(The version this replaces said: "the reason there are no orbits is that momentum is an integer…
+**0 of 6 orbited** with integer momentum, under both rules, at every radius." That was the start on
+the edge of the momentum box, not the integers — `orbit.mjs` Check 5 measures it.)*
 
 *(Corrected 2026-11-05, and the version it replaces was wrong in an instructive way. It said the
 cause was that a primitive travels in **one of six directions, one whole hexagon at a time**, so
@@ -173,6 +199,10 @@ reversible. `orbit.mjs` sweeps the range from ±3 to ±255, which is 85× and ru
 word's 10 bits on purpose. **Nothing orbits anywhere on that sweep**, including where the per-tick
 pull is twelve whole units. The range is not the lever; the integerisation is. Why integer momentum
 is fatal is not established by that tool and is open.)*
+
+*(That one is wrong as well, and so is the "integerisation" it settled on. The sweep was run from
+the edge of the momentum box; started at half of it, carried gravity orbits from ±7 up. ±3 is the
+one width that still fails, because half of ±3 is a momentum of about 1.)*
 
 **The momentum range is ±15, and it used to be ±3 because of the field widths.** At four bytes two
 components at ±7 already made the hexagon 33 bits and would not fit; the honest reading of that was
@@ -458,6 +488,63 @@ matter neutralizes and it vanishes at distance. Gravity has one sign. It only ev
 - **The solver computes each interaction once and applies it to both sides.** A pyramid
   approximation does not give exactly equal and opposite pair forces, so it leaks momentum every
   step and the world drifts — which looks like a preferred direction in the physics.
+- **A pull smaller than one unit of momentum is carried, never rounded.** *(2026-11-05, from
+  `orbit.mjs` Check 7.)* Rounding is not a choice between two physics, as `README.md` item 19 first
+  framed it: at any strength the first bullet allows, rounding switches gravity off everywhere in
+  the World, because the strongest pull anywhere — on the heaviest kind at the rim of a packed clump
+  — only reaches half a unit per tick when gravity is **three times stronger than the weakest
+  bond**. Where the remainder is kept is still open; that is item 19 now.
+
+### How strong — a ceiling, a floor, and no room between them at 4096²
+
+*(2026-11-05. Ric: "I have a hunch gravity is too strong right now." Measured in `orbit.mjs`
+Checks 6 and 7. **Open — this is `README.md` item 20.**)*
+
+**Nothing in these documents gives gravity a strength.** It is constant #1 in the search space and
+has never had a value. So state it in the one unit that matters, **ε: the energy two kind-255
+primitives release falling together into contact, in units of the weakest bond.**
+
+**The ceiling is the first bullet above:** ε ≪ 1. Read as two orders of magnitude, ε ≤ 0.01; the
+loosest reading, one order, is 0.1.
+
+**The floor is the reason the law exists, and it was never written as a number.** Gravity is "where
+the energy comes from": collapse turns potential into heat, and heat is what breaks bonds (`e ≥ B ·
+kind`, temperature ≥ `B`). So somewhere, collapse must lift temperature past the weakest bond, or
+nothing ever reacts. The heat a clump of radius `a` can give is its binding energy, which on the
+lattice grows as **6.15 × a** in pair sums (measured over real discs, not assumed). Spread over the
+clump's kinds, with the seeded mix of item 18:
+
+| collapse into | temperature at ε = 0.01 | at ε = 0.1 | ε needed for T = 1 |
+|---|---|---|---|
+| a clump of radius 64 | 0.004 | 0.04 | 2.6 |
+| a clump of radius 256 | 0.016 | 0.16 | 0.65 |
+| a clump of radius 1024 | 0.06 | 0.62 | 0.16 |
+| the whole World as one ball (radius 2151) | 0.13 | 1.3 | 0.08 |
+
+Those are **upper bounds** — they assume matter starts infinitely thin and that every unit of
+potential reaches the heat field, where the ±15 momentum box can only lose some.
+
+**So the ceiling and the floor do not overlap.** At two orders of magnitude the entire World
+collapsing into a single ball — the outcome 1/r² was chosen to avoid — warms to about a tenth of the
+weakest bond and stays frozen. At one order, only that single global ball melts anything. For the
+"many local collapses" this law is for, clumps of a few hundred hexagons, gravity has to be **as
+strong as the bonds**, which is exactly what the ceiling forbids.
+
+**Ric's hunch is right about the evidence and wrong about the plan.** The orbits `orbit.mjs` ran in
+its first five checks were set up at whatever gravity made the start circular, never checked
+against the ceiling — treated as a point mass, the centre pulled at **565 to 14,000** times the
+weakest bond. Too strong, by a lot. But the plan cannot make gravity much weaker, because the floor
+is already above the ceiling. The two jobs are separated only by the size of the clump — the floor
+falls as `1/a` — and reality affords 10³⁶ of separation because a star holds 10⁵⁷ atoms. 4096²
+affords about one order, and only for one clump.
+
+**The levers, none chosen.** A larger World (the floor falls as `1/a`). A looser ceiling (accept
+gravity within an order of the weakest bond, and with it some location-dependence in chemistry). A
+different exponent — the floor is set by how deep a clump's well is, and 1/r's logarithmic
+potential is far deeper than 1/r²'s, though 1/r was rejected below for global collapse and nothing
+has measured it here. Or heat given at the start, which gives up the sentence this law was bought
+for: that the only initial condition for energy is matter, spread out. The screened field
+(*Gravity can be made local*, below) makes it worse, not better — screening shallows every well.
 
 ### Gravity can be made local, and the old answer was reading the wrong formulation
 

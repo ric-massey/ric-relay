@@ -1,4 +1,5 @@
 // orbit.mjs -- does anything orbit here, and if not, which cause stops it?
+// And, since 2026-11-05: how strong is gravity allowed to be? (Checks 6-9.)
 //
 // README item 16. The documents say "nothing completed two laps" at radii of
 // 20, 100 and 500 and conclude that the lattice is what prevents orbits, filed
@@ -40,8 +41,12 @@
 // AGENTS.md rule 8: named, with units, no magic numbers in rule bodies.
 const RADII        = [20, 100, 500];  // hexagons -- the three the claim cites
 const RANGES       = [3, 15];         // momentum component limit, +-R
-const LAPS_TARGET  = 2;               // the claim is "nothing completed two laps"
-const MAX_TICKS    = 4000000;         // give up
+// The claim was "nothing completed two laps", and this was 2 until
+// 2026-11-05 -- which is too short to tell an orbit from a slow spiral, and
+// hid Check 9's tie-break bias for a day. Ten laps, and every run reports
+// its closest approach on its first lap and its last, so a spiral shows.
+const LAPS_TARGET  = 10;
+const MAX_TICKS    = 8000000;         // give up -- ten laps at r=500, +-3 needs 5.3M
 const FELL_IN      = 1.0;             // hexagons from centre -- counts as fallen in
 const ESCAPE_MULT  = 8;               // radius this many x r0 counts as escaped
 
@@ -104,13 +109,42 @@ function cubeRound(p) {
 
 // The one thing law 1 asks for: round the STEP to one of six directions,
 // leaving the momentum vector itself alone.
-function nearestDir(p) {
-  let best = DIRS[0], bestDot = -Infinity;
+//
+// AND WHAT LAW 1 DOES NOT SAY: what happens on a TIE. An integer cube vector
+// lands exactly halfway between two directions all the time -- [-1,-1,2],
+// this file's own starting tangent, is one -- and on 2 to 4 percent of steps
+// in an orbit. This function used to keep the first of the tied pair in
+// DIRS order, every time. That is a preferred handedness in the physics: the
+// path always leans the same way, and it bled every integer orbit inward
+// into a spiral that fell in within 3 to 15 laps (Check 9). It was the
+// fourth harness bug in this file, and the first that pushed AGAINST the
+// conclusion being tested -- Check 1 called those spirals orbits, because
+// two laps is too short to tell an ellipse from a spiral.
+//
+// TIE_COIN is the fix: a fair coin between the tied directions, from a
+// seeded generator so every run is reproducible. A coin rather than an
+// alternation because the World already draws per-tick probabilities and an
+// alternation would need a stored bit per primitive. "first" stays available
+// so Check 9 can show what it did.
+const TIE_COIN = "coin", TIE_FIRST = "first";
+const TIE_SEED = 12345;
+const SEEDS    = [1, 2, 3];           // Check 8 flies each orbit this many times
+function nearestDir(p, tie, rand) {
+  let bestDot = -Infinity, ties = [];
   for (const d of DIRS) {
     const v = dot(p, d);
-    if (v > bestDot) { bestDot = v; best = d; }
+    if (v > bestDot) { bestDot = v; ties = [d]; }
+    else if (v === bestDot) ties.push(d);
   }
-  return best;
+  if (ties.length === 1 || tie === TIE_FIRST) return ties[0];
+  return ties[Math.floor(rand() * ties.length)];
+}
+
+// A small seeded generator (a linear congruential one -- Knuth, SOURCES.md),
+// so a coin flip is reproducible run to run. Not physics; a dice cup.
+function seeded(seed) {
+  let s = seed >>> 0;
+  return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
 }
 
 // The symmetric clamp. THE-LAWS settles the PAIR case -- transfer as much as
@@ -131,11 +165,21 @@ function clampLegal(p, R) {
 // gm is chosen so the starting momentum is EXACTLY circular at r0: v = |p|/k
 // and v^2 = GM/r, so GM = (p0/k)^2 * r0. Each run starts from the best case
 // Newton allows and measures only what the lattice does to it.
-function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FRAC }) {
-  const k = KIND_ORBITER;
-  const p0mag = mag(scl([0, -1, 1], R)) * startFrac;    // see START_FRAC
+//
+// Checks 6 to 8 pass gm and k explicitly instead, because they ask what a
+// GIVEN strength of gravity does rather than what strength a circle needs.
+// Then p0 is whatever is circular at r0 under that gm. `surface` is the
+// radius of whatever sits at the centre: an orbit that dips inside it has
+// hit it, and two laps through a clump is a collision, not an orbit.
+function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FRAC,
+               gm: gmGiven, k = KIND_ORBITER, surface = FELL_IN, tie = TIE_COIN,
+               seed = TIE_SEED }) {
+  const rand = seeded(seed);
+  const p0mag = gmGiven === undefined
+    ? mag(scl([0, -1, 1], R)) * startFrac      // see START_FRAC
+    : k * Math.sqrt(gmGiven / r0);
   const v0 = p0mag / k;                        // hexagons per tick
-  const gm = v0 * v0 * r0;
+  const gm = gmGiven === undefined ? v0 * v0 * r0 : gmGiven;
 
   const start = scl(RADIAL, r0 / mag(RADIAL));
   let pos = latticeSteps ? cubeRound(start) : start;
@@ -150,6 +194,7 @@ function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FR
     return b;
   };
   let ticks = 0, laps = 0, stepAcc = 0;
+  const lapMin = {};                           // closest approach on each lap
   let minR = r0, maxR = r0, gravityZeroTicks = 0;
   const [sx, sy] = cart(pos);
   let angPrev = Math.atan2(sy, sx), angTotal = 0;
@@ -160,7 +205,7 @@ function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FR
 
     // --- law 3: gravity adds to momentum, falling off as 1/r^2 ---
     const r = mag(pos);
-    if (r < FELL_IN)            { outcome = "fell in"; break; }
+    if (r < surface)            { outcome = surface > FELL_IN ? "hit the clump" : "fell in"; break; }
     if (r > r0 * ESCAPE_MULT)   { outcome = "escaped"; break; }
 
     const dpMag = (k * gm) / (r * r);
@@ -184,7 +229,7 @@ function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FR
     const speed = Math.min(1, pm / k);         // hexagons per tick
     if (latticeSteps) {
       stepAcc += speed;
-      while (stepAcc >= 1) { pos = add(pos, nearestDir(p)); stepAcc -= 1; }
+      while (stepAcc >= 1) { pos = add(pos, nearestDir(p, tie, rand)); stepAcc -= 1; }
     } else {
       pos = add(pos, scl(p, speed / pm));
     }
@@ -200,12 +245,18 @@ function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FR
     while (d < -Math.PI) d += 2 * Math.PI;
     angTotal += d; angPrev = ang;
     laps = Math.abs(angTotal) / (2 * Math.PI);
+    const lap = Math.floor(laps);
+    if (!(lap in lapMin) || rNow < lapMin[lap]) lapMin[lap] = rNow;
     if (laps >= LAPS_TARGET) { outcome = "ORBITED"; break; }
   }
 
   return {
     laps: Number(laps.toFixed(2)), outcome, ticks,
     rMin: Number(minR.toFixed(1)), rMax: Number(maxR.toFixed(1)),
+    // closest approach on the first lap and on the last COMPLETE lap: equal
+    // is an ellipse, falling is a spiral. "-" when no lap completed.
+    close1: 0 in lapMin && 1 in lapMin ? Number(lapMin[0].toFixed(0)) : "-",
+    closeN: Math.floor(laps) >= 2 ? Number(lapMin[Math.floor(laps) - 1].toFixed(0)) : "-",
     noGravity: integerMomentum
       ? (100 * gravityZeroTicks / ticks).toFixed(0) + "%" : "-",
     clamped: integerMomentum ? clips : "-",
@@ -223,7 +274,7 @@ const MODES = [
 ];
 
 console.log("=== Check 1: each cause alone, then together, under both gravity rules ===");
-console.log(`orbiter is kind ${KIND_ORBITER}; p0 is the longest legal vector at each range.`);
+console.log(`orbiter is kind ${KIND_ORBITER}; p0 is START_FRAC (${START_FRAC}) of the longest legal vector; ${LAPS_TARGET} laps to pass.`);
 
 const rows = [];
 for (const r0 of RADII) {
@@ -356,8 +407,10 @@ console.log("  just as convincingly as it can confirm a wrong one. Rule 12 cuts 
 console.log("  directions and this file is now the evidence for the second direction.");
 console.log("");
 console.log("  Momentum RANGE is a lever, and the sweep says where it bites. Under the");
-console.log("  carry rule +-3 holds no orbit at any radius and +-15 holds one at all");
-console.log("  three, so the 2026-11-04 move to eight bytes is what bought orbits. The");
+console.log("  carry rule +-3 holds no orbit at any radius and +-7 and +-15 hold one at");
+console.log("  all three, so the 2026-11-04 move to eight bytes is what bought orbits --");
+console.log("  though +-7 would have done. (Before Check 9's tie-break fix +-7 fell in;");
+console.log("  that was the bias, not the width.) The");
 console.log("  reason +-3 fails is not the pull, it is that the box is too small to");
 console.log("  hold a margin and a usable resolution at the same time: half of +-3 is");
 console.log("  a momentum of about 1, and one unit of anything destroys it.");
@@ -401,3 +454,260 @@ console.log("  laws says a primitive starts at the edge of its own momentum rang
 console.log("  it is worth one line in law 1, because the shape of the legal set is a");
 console.log("  consequence of the field widths, and a world that puts matter near that");
 console.log("  boundary will see the same leak. That belongs in README as a question.");
+
+// ======================================================================
+// Checks 6 to 8 -- how strong is gravity, and how strong is it allowed to be?
+// (Added 2026-11-05. Ric: "I have a hunch gravity is too strong right now.")
+//
+// Nothing in the five documents gives gravity a strength. It is constant #1
+// in the search space with no value, and the only number law 3 states about
+// it is an upper bound: gravity between two ADJACENT primitives must be
+// negligible against the weakest bond -- "orders of magnitude, not a factor
+// of two". Check 1 above never had to choose a strength, because it solves
+// for whatever gm makes its start circular. So a strength was chosen for it,
+// silently, eighteen times -- the same way law 2's cap of 8 and law 3's
+// cutoff radius were chosen. Check 6 reads off what it chose. Check 7 finds
+// the strength the energy budget needs, which is the bound law 3 never wrote:
+// gravity is "where the energy comes from", so it must be strong enough that
+// collapse heats matter past its weakest bond, or chemistry never runs.
+// Check 8 asks whether anything orbits at a strength the filter allows.
+//
+// The unit everything is stated in: EPS, the energy two kind-255 primitives
+// release falling together into contact, in units of the weakest bond.
+// Law 3's filter is EPS << 1.
+// ======================================================================
+
+const KE_SCALE     = 64;              // S, law 1, adopted 2026-11-04
+// KE = floor(S * Q(p) / 2k) and Q is the UN-halved square, Q = 2|p|^2, so one
+// classical unit of p^2/2k is 2S units of energy. Gravity's work arrives in
+// classical units, so this is the conversion -- and it is 2S, not S.
+const ENERGY_PER   = 2 * KE_SCALE;
+const KIND_MAX     = 255;
+const KIND_MEAN    = 128;             // seeded uniform over 1-255, README item 18
+const B_WEAKEST    = 1;               // law 2: B = 8 - |v1 + v2 - 8|, weakest bond
+const B_STRONGEST  = 8;               //        and strongest
+const WORLD_SITES  = 4096 * 4096;     // the World
+const HEX_DENSITY  = 2 / Math.sqrt(3);// hexagon centres per unit area at spacing 1
+const FILTER       = [0.01, 0.1];     // "orders of magnitude": two, and the loosest reading, one
+const SAMPLE_SITES = 300;             // sites sampled per disc for the mean potential
+const DISC_RADII   = [16, 32, 64, 128, 256];  // radii summed exactly over the lattice
+
+// G in the units the run() engine uses (gm = G * mass in kinds), from EPS.
+const gFromEps = (eps) => (eps * B_WEAKEST) / (ENERGY_PER * KIND_MAX * KIND_MAX);
+const epsFromG = (g) => (g * ENERGY_PER * KIND_MAX * KIND_MAX) / B_WEAKEST;
+
+// Hexagon centres inside a disc of radius a, in cartesian units, by count.
+function discSites(a) {
+  const pts = [], rows = Math.ceil(a / SQ3H) + 1;
+  for (let r = -rows; r <= rows; r++) {
+    for (let q = -2 * rows; q <= 2 * rows; q++) {
+      const x = q + r / 2, y = SQ3H * r;
+      if (x * x + y * y <= a * a) pts.push([x, y]);
+    }
+  }
+  return pts;
+}
+
+// --------------------------------------------- check 6: what Check 1 chose
+console.log("");
+console.log("=== Check 6: the strength of gravity Check 1 chose without saying so ===");
+console.log("  Check 1 sets gm so its start is circular. gm = G x (mass at the centre),");
+console.log("  and the file never says what is at the centre, so here are both ends:");
+console.log("  one kind-255 primitive, and a packed kind-255 disc filling the orbit.");
+const chose = [];
+for (const r0 of RADII) {
+  const R = 15, p0mag = mag(scl([0, -1, 1], R)) * START_FRAC;
+  const gm = (p0mag / KIND_ORBITER) ** 2 * r0;
+  const discMass = discSites(r0 - 1).length * KIND_MAX;
+  chose.push({
+    r0, range: "+-" + R, gm: Number(gm.toFixed(4)),
+    "EPS, one primitive": Number(epsFromG(gm / KIND_MAX).toFixed(0)),
+    "EPS, packed disc": Number(epsFromG(gm / discMass).toFixed(3)),
+  });
+}
+console.table(chose);
+console.log("  Read as a point mass -- which is how the engine treats it -- gravity in");
+console.log("  Check 1 is 565 to 14,000 times STRONGER than the weakest bond, and 70 to");
+console.log("  1,800 times stronger than the strongest. Law 3's filter rejects every one");
+console.log("  of those runs before it starts. Read instead as the densest thing that");
+console.log("  could sit inside the orbit, none passes the filter at two orders of");
+console.log("  magnitude; r=100 and r=500 pass at one. So the hunch is right about the");
+console.log("  evidence: the orbits in Check 1 ran at a gravity the laws do not allow,");
+console.log("  unless the centre is a packed clump nearly as wide as the orbit, and");
+console.log("  nothing set one up. Check 1 still answers ITS question -- what the lattice");
+console.log("  does to an orbit -- but it says nothing about orbits at a legal strength.");
+console.log("  Check 8 does.");
+
+// ------------------------------------- check 7: the floor law 3 never wrote
+// Collapse turns potential into heat, and heat is what breaks bonds: a bond
+// breaks when e >= B * kind, i.e. temperature >= B. So the energy budget
+// needs collapse to lift temperature to at least B_WEAKEST somewhere.
+//
+// The heat available is the binding energy of the clump. Starting from
+// matter spread infinitely thin (the upper bound -- any real seeding starts
+// with some of it already spent), packing N primitives into a disc releases
+//     W = ENERGY_PER * G * sum over pairs k_i k_j / d_ij
+// and once that heat is shared evenly the temperature is W / (sum of kinds):
+//     T = ENERGY_PER * G * KIND_MEAN * phiMean / 2
+// where phiMean is the mean over sites of sum_j 1/d_ij -- pure geometry, and
+// measured here by summing over real lattice discs rather than assumed.
+console.log("");
+console.log("=== Check 7: the floor -- how strong gravity must be to heat anything ===");
+const geo = [];
+for (const a of DISC_RADII) {
+  const P = discSites(a), N = P.length;
+  let phiSum = 0;
+  const rnd = seeded(TIE_SEED);
+  for (let n = 0; n < SAMPLE_SITES; n++) {
+    const [xi, yi] = P[Math.floor(rnd() * N)];
+    for (const [x, y] of P) {
+      const d2 = (x - xi) ** 2 + (y - yi) ** 2;
+      if (d2 > 0) phiSum += 1 / Math.sqrt(d2);
+    }
+  }
+  // the pull on a site at the rim, summed exactly -- 1/r^2 in 2D has no
+  // shell theorem, so the rim field is NOT the point-mass field and must be
+  // summed rather than assumed
+  let rim = 0, bd = Infinity;
+  P.forEach(([x, y], i) => { const d = Math.hypot(x - a, y); if (d < bd) { bd = d; rim = i; } });
+  let fx = 0, fy = 0;
+  for (const [x, y] of P) {
+    const dx = x - P[rim][0], dy = y - P[rim][1], d2 = dx * dx + dy * dy;
+    if (d2 > 0) { const d = Math.sqrt(d2); fx += dx / (d2 * d); fy += dy / (d2 * d); }
+  }
+  geo.push({ a, sites: N, phiPerA: phiSum / SAMPLE_SITES / a, rimField: Math.hypot(fx, fy) });
+}
+console.table(geo.map((g) => ({ a: g.a, sites: g.sites,
+  "mean potential / a": g.phiPerA.toFixed(3), "rim pull (geometric)": g.rimField.toFixed(2) })));
+
+// mean potential is linear in a (the ratio column settles); the rim pull is
+// logarithmic (it gains the same amount every doubling). Extrapolate each by
+// its own measured shape from the two widest discs.
+const g1 = geo[geo.length - 2], g2 = geo[geo.length - 1];
+const PHI_PER_A = g2.phiPerA;                          // still rising slightly: conservative
+const RIM_PER_DOUBLING = g2.rimField - g1.rimField;
+const phiMean = (a) => PHI_PER_A * a;
+const rimField = (a) => g2.rimField + RIM_PER_DOUBLING * Math.log2(a / g2.a);
+const tempRise = (eps, a) => ENERGY_PER * gFromEps(eps) * KIND_MEAN * phiMean(a) / 2;
+const epsFor = (T, a) => T / tempRise(1, a);
+const A_WORLD = Math.sqrt(WORLD_SITES / (Math.PI * HEX_DENSITY));
+
+console.log(`  Mean potential grows as ${PHI_PER_A.toFixed(2)} x a; the rim pull gains ` +
+            `${RIM_PER_DOUBLING.toFixed(2)} per doubling.`);
+console.log(`  The whole World packed into one disc has radius ${A_WORLD.toFixed(0)}.`);
+console.log("");
+const floorRows = [];
+for (const [label, a] of [["a clump of radius 64", 64], ["a clump of radius 256", 256],
+                          ["a clump of radius 1024", 1024], ["the whole World, one clump", A_WORLD]]) {
+  floorRows.push({
+    "collapse into": label,
+    "T reached at EPS 0.01": Number(tempRise(0.01, a).toFixed(3)),
+    "T reached at EPS 0.1": Number(tempRise(0.1, a).toFixed(3)),
+    "EPS for T = 1": Number(epsFor(B_WEAKEST, a).toFixed(3)),
+    "EPS for T = 8": Number(epsFor(B_STRONGEST, a).toFixed(2)),
+  });
+}
+console.table(floorRows);
+console.log("  T is temperature (energy per unit of kind); a bond of strength B breaks");
+console.log("  at T >= B, so T = 1 is the first bond breaking anywhere and T = 8 is every");
+console.log("  bond. These are UPPER bounds: they assume matter starts infinitely thin.");
+console.log("");
+console.log("  THE FILTER AND THE FLOOR DO NOT OVERLAP AT 4096^2. At two orders of");
+console.log("  magnitude (EPS 0.01) the entire World collapsing into a single ball --");
+console.log("  the one outcome the project chose 1/r^2 to avoid -- warms to about a");
+console.log("  tenth of the weakest bond. Nothing breaks, so nothing reacts: a frozen");
+console.log("  world. Even the loosest reading of the filter (one order, EPS 0.1) only");
+console.log("  reaches T = 1 for the single global clump, and every smaller clump stays");
+console.log("  frozen. For clumps of a few hundred hexagons -- the 'many local");
+console.log("  collapses' law 3 is for -- gravity has to be as strong as the bonds.");
+console.log("");
+console.log("  So the plan's problem is not that gravity is too strong. It is that the");
+console.log("  plan asks two things of one number and the World is too small for both:");
+console.log("  weak against a bond at arm's length, strong enough summed over a clump to");
+console.log("  melt one. The ratio between those is the clump's size, so the floor falls");
+console.log("  as 1/a -- reality gets 10^36 of headroom from 10^57 atoms in a star.");
+
+// ------------------------------------------ check 7b: rounding, settled
+console.log("");
+console.log("  And it settles README item 19's ROUND rule. The strongest pull anywhere is");
+console.log("  on a kind-255 primitive at the rim of a packed kind-255 disc. Rounding");
+console.log("  lets gravity act only where that pull reaches half a unit per tick:");
+const roundRows = [];
+for (const [label, field] of [["one neighbour, touching", 1],
+                              ["rim of a clump of radius 256", rimField(256)],
+                              ["rim of the whole World, one clump", rimField(A_WORLD)]]) {
+  const dpPerEps = gFromEps(1) * KIND_MAX * KIND_MAX * field;   // momentum per tick per EPS
+  roundRows.push({ "pulled by": label,
+    "|dp| per tick at EPS 0.1": Number((0.1 * dpPerEps).toExponential(2)),
+    "EPS for rounding to act": Number((0.5 / dpPerEps).toFixed(1)) });
+}
+console.table(roundRows);
+console.log("  Under rounding, gravity does anything at all only when it is several");
+console.log("  times STRONGER than the weakest bond, everywhere in the World, which the");
+console.log("  filter forbids. Rounding is not a cutoff radius at a legal strength; it is");
+console.log("  gravity switched off. If law 3 exists, it carries the remainder.");
+
+// -------------------------------- check 8: does anything orbit when legal?
+// A packed clump of mean kind, treated as a point mass from outside (only
+// fair well outside it -- no shell theorem here), with the orbiter at 1.5a.
+// The control is the same gm with continuous momentum; rule 12 again.
+console.log("");
+console.log("=== Check 8: orbits at a strength the filter allows ===");
+console.log("  A packed clump of mean kind 128, the orbiter starting circular at 1.5x");
+console.log("  its radius. Integer momentum, lattice steps, carried gravity, coin ties,");
+console.log(`  ${SEEDS.length} seeds each (rule 11). The control is continuous momentum.`);
+const legal = [];
+for (const eps of FILTER) {
+  for (const a of [100, 300, 1000]) {
+    const r0 = 1.5 * a;
+    const gm = gFromEps(eps) * discSites(a).length * KIND_MEAN;
+    for (const k of [KIND_MAX, 64]) {
+      const base = { r0, R: 15, gm, k, latticeSteps: true, surface: a };
+      const ctl = run({ ...base, integerMomentum: false, carry: false });
+      const real = SEEDS.map((seed) => run({ ...base, integerMomentum: true, carry: true, seed }));
+      legal.push({ EPS: eps, clump: a, r0, orbiter: k,
+        "|p0|": Number((k * Math.sqrt(gm / r0)).toFixed(2)),
+        control: ctl.outcome,
+        "orbited 10 laps": `${real.filter((z) => z.outcome === "ORBITED").length} of ${SEEDS.length}`,
+        "otherwise": [...new Set(real.filter((z) => z.outcome !== "ORBITED").map((z) => z.outcome))].join(", ") || "-" });
+    }
+  }
+}
+console.table(legal);
+console.log("  The control orbits in every row, so the harness is not why an integer row");
+console.log("  fails. What decides the integer rows is |p0|: orbital speed goes as");
+console.log("  sqrt(EPS x a) and momentum is speed times kind. Under about 4 units, one");
+console.log("  unit of momentum is too coarse to steer with and the orbiter mostly hits");
+console.log("  the clump or leaves -- the +-3 box of Check 4 from the other side.");
+console.log("  Over about 10 it is past the safe part of the +-15 box and Check 5's");
+console.log("  clamp leak takes it in. Between, it orbits, and the closest approach");
+console.log("  wanders from lap to lap -- a random walk from the coin, not a decay -- so");
+console.log("  an orbit near its clump survives some seeds and not others.");
+console.log("");
+console.log("  So weak gravity does not rule orbits out. At a legal strength only the");
+console.log("  heaviest kinds orbit, only around the largest clumps, and not forever.");
+console.log("  Kind 64 orbits nowhere on this table.");
+
+// ------------------------------------------ check 9: the tie-break, kept
+console.log("");
+console.log("=== Check 9: the tie-break that made a spiral look like physics ===");
+console.log("  Integer momentum and lattice steps together, +-15, carried gravity, with");
+console.log("  ties between two step directions broken the old way (always the first");
+console.log("  in DIRS) and the new way (a fair coin).");
+const tieRows = [];
+for (const r0 of RADII) {
+  for (const tie of [TIE_FIRST, TIE_COIN]) {
+    const z = run({ r0, R: 15, integerMomentum: true, latticeSteps: true, carry: true, tie });
+    tieRows.push({ r0, tie, outcome: z.outcome, laps: z.laps,
+      "closest, lap 1": z.close1, "closest, last lap": z.closeN });
+  }
+}
+console.table(tieRows);
+console.log("  With the first-in-list rule every orbit spirals in: its closest approach");
+console.log("  falls lap after lap until it hits the centre. With a coin the closest");
+console.log("  approach holds. The only difference is which way an exact tie goes --");
+console.log("  2 to 4 percent of steps. A fixed rule is a handedness: the path leans");
+console.log("  the same way every time, which is the 'preferred direction in the");
+console.log("  physics' AGENTS.md rule 6 warns about, arriving through the step rule");
+console.log("  instead of the gravity solver. LAW 1 SAYS NOTHING ABOUT TIES, and an");
+console.log("  engine written from it would pick one silently. It has to say.");

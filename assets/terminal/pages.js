@@ -290,6 +290,14 @@ window.TERMINAL_PAGES = [
   "room": "training"
  },
  {
+  "href": "projects/universe/viewer.html",
+  "title": "Universe · Lattice Inspector",
+  "keys": "",
+  "body": "A hexagon of this universe, field by field: kind, valence, bonds, temperature. State, not dynamics.",
+  "text": "Lattice Inspector · Hexagon · B to each neighbour",
+  "room": null
+ },
+ {
   "href": "psyche.html",
   "title": "Psyche",
   "keys": "Human Systems",

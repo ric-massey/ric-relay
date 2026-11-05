@@ -18,7 +18,7 @@ same turn.
 ## What is in here
 
 - **Correction —** something these documents got wrong, with the wrong version kept beside the
-  fix. There are **twelve**, plus **five retractions** of claims made the same day they were
+  fix. There are **fourteen**, plus **five retractions** of claims made the same day they were
   written — four in law 2, and one in law 1 where a measurement was believed over an objection
   and turned out to be measuring the wrong thing.
 - **Open —** the full argument behind an undecided question. `README.md` holds the register of
@@ -29,7 +29,7 @@ same turn.
 Several entries carry **measurements** rather than argument, from the five design tools:
 `screen.mjs` for law 2's form, `radiate.mjs` for law 5's radiation and the clock,
 `momentum.mjs` for law 1's momentum, `budget.mjs` for the hexagon's four bytes, and `orbit.mjs`
-for whether anything orbits. Where a number appears in this file it came from one of those
+for whether anything orbits and how strong gravity may be. Where a number appears in this file it came from one of those
 and can be reproduced.
 
 Everything is grouped by the law it belongs to, in law order.
@@ -579,6 +579,38 @@ changes. Rule 12's fourth lesson, landing on the file that was written to apply 
 momentum, and at every radius tested the whole pull is a fraction — 0.00007 to 0.044 per tick.
 Rounding gives gravity a cutoff radius nobody chose; carrying the remainder needs a stored residual.
 That is README item 19, and it blocks writing the solver.
+
+***Superseded the same day, 2026-11-05, and the "0 of 6" above was the harness.*** Every run
+started on the edge of the momentum box, which is a hexagon and not a circle, so the clamp shaved
+`|p|` at some headings and not others and every orbit fell inward. Started at half the box, integer
+momentum with the pull carried orbits at ±15 at all three radii, and the sweep orbits from ±7 up —
+the prediction this entry called refuted was right. Recorded in the commit that fixed it; the
+documents were left stale until the corrections below.
+
+#### Correction — two laps called a spiral an orbit, and a tie-break was a handedness
+
+*(2026-11-05, `orbit.mjs` Check 9.)*
+
+**What it said.** After the start was moved off the clamp, "both, carry" — integer momentum on the
+lattice, the case the World will actually run — reported **3 of 6 orbited**, and that went into the
+commit message as the answer.
+
+**What was wrong.** Two things, the second hidden by the first. The bar was **two laps**, which
+cannot tell an ellipse from a slow spiral. Flown for twenty, every one of those runs fell into the
+centre: closest approach 49, 49, 42, 0 hexagons at r = 100, lap by lap. And the cause was not
+gravity, the integers or the range — it was **`nearestDir` keeping the first of two tied directions,
+every time.** An integer vector lies exactly between two hexagon directions on 2 to 4 percent of an
+orbit's steps, and always resolving the tie the same way leans the path the same way. Break ties
+with a coin and the same runs hold for twenty laps; alternate them and they hold too.
+
+**Why it matters beyond the tool.** Law 1 says a step rounds to the nearest of six directions and
+says nothing about a tie, so an engine written from it would pick one silently — a **handedness in
+the physics**, the exact failure `AGENTS.md` rule 6 names for the gravity solver, arriving by a
+route nobody was watching. README item 21; the proposed rule is in law 1.
+
+**And it is the first harness bug here that pushed against the conclusion being tested.** The three
+before it all made orbits fail. This one made spirals pass. Rule 12 cuts both ways, and so do bugs.
+The tool now flies ten laps and reports each run's closest approach on its first lap and its last.
 
 #### Settled — what a force does to momentum that is already at the limit
 
@@ -1346,6 +1378,45 @@ the scales are not separated and the Lab's measurements stop meaning anything at
 
 It is also a cheap **filter**: any candidate constant set that violates it is dead before it
 runs, and can be rejected without spending a universe on it.
+
+#### Correction — the ceiling had no floor, and at 4096² there is no room between them
+
+*(2026-11-05. Ric: "I have a hunch gravity is too strong right now." Measured in `orbit.mjs`
+Checks 6 and 7. Open as README item 20.)*
+
+**What it said.** The entry above set a ceiling — gravity at arm's length negligible against the
+weakest bond, "orders of magnitude, not a factor of two" — and called it a free filter. Nothing set
+a floor, and gravity was never given a value, so the ceiling read as the only constraint and
+"weaker" looked like the safe direction.
+
+**What was missing.** Law 3 exists because it is where the energy comes from. That is a
+requirement on strength just as much as the ceiling is: collapse has to heat *something* past the
+weakest bond, or the gradient it was bought to produce never reaches chemistry and the world is
+frozen solid. So stated in one unit, ε — what two kind-255 primitives release falling into contact,
+over the weakest bond — the ceiling is ε ≤ 0.01 and the floor is wherever a clump's binding energy,
+shared over its kinds, reaches temperature 1. The binding energy was measured over real lattice
+discs: mean pair potential **6.15 × radius**, linear from radius 64 to 256. At ε = 0.01 the whole
+World collapsed into a single ball reaches **0.13**. A clump of radius 256 needs ε = 0.65; radius 64
+needs 2.6.
+
+**So the two constraints exclude each other at this size.** The entry above was right that reality
+does not need its 10³⁶ — but reality *has* it, because a star is 10⁵⁷ atoms deep and the floor falls
+as one over the depth. A World 2,151 hexagons in radius has about one order of magnitude to spend,
+and only if all of it is one clump. That is item 13's worry made into a number, and it is worse than
+item 13 guessed.
+
+**What the hunch got right.** `orbit.mjs` had been choosing a strength silently, eighteen times —
+whatever made each start circular — and never checked it against the ceiling. Treated as a point
+mass the centre pulled at ε = 565 to 14,118. Those orbits were run at a gravity the laws forbid.
+
+**What it also settled.** Item 19's rounding rule is not a physics choice. The strongest pull anywhere
+in the World reaches half a unit per tick only at ε ≥ 3.2, so at any legal strength rounded gravity
+is off everywhere, not beyond some radius. Law 3 carries the remainder; where it lives is still open.
+
+**The levers**, recorded so nobody reaches for one without seeing the others: a bigger World; a
+looser ceiling, accepting some location-dependent chemistry; a different falloff exponent (1/r's
+logarithmic well is far deeper, and was rejected for global collapse — unmeasured here); or heat at
+the start, which deletes the sentence law 3 was bought for. The screened field makes it worse.
 
 #### Correction — the pyramid leaks momentum
 

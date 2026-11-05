@@ -39,8 +39,8 @@ rule 1 and Ric's.
 for law 2 over all 65,025 pairs of kinds; [`budget.mjs`](budget.mjs) enumerates what fits in the
 hexagon's word; [`momentum.mjs`](momentum.mjs) settled law 1's momentum representation and the
 kinetic-energy scale; [`radiate.mjs`](radiate.mjs) settled law 5's radiation and the clock; and
-[`orbit.mjs`](orbit.mjs) settled item 16 by finding that the hexagon was never what stopped an
-orbit. Four of the five answer a question by enumeration with **no simulation anywhere**;
+[`orbit.mjs`](orbit.mjs) settled item 16 — things do orbit — and then measured how strong gravity
+may be, which opened items 20 and 21. Four of the five answer a question by enumeration with **no simulation anywhere**;
 `orbit.mjs` is the exception and the first thing here that steps forward in time, which it is
 allowed to do because two primitives under one law is a measurement rather than a claimed world.
 `AGENTS.md` rule 12 says what each one can and cannot tell you. [`viewer.html`](viewer.html)
@@ -342,6 +342,13 @@ in reality gravity has no effect on chemistry whatsoever and only reaches it thr
 temperature. Violate the ordering and which reactions run starts depending on where in the
 world you are, which is the contamination the Lab exists to exclude. It is a free filter: any
 constant set that breaks it can be rejected without being run. `THE-LAWS.md`, law 3.
+
+**And gravity has a floor, which nobody had written down** *(2026-11-05, item 20)*: collapse has to
+heat something past the weakest bond, or the energy budget law 3 exists for never reaches chemistry.
+That is just as free to check — it is a function of the strength and the World's size — and **at
+4096² it sits above the ceiling.** So the two filters together currently reject every gravity
+strength. That is a finding, not a bug in the filters; `THE-LAWS.md` law 3 has the numbers and the
+levers.
 
 The exponent is the most consequential of the five: **strength sets how fast collapse
 happens, the exponent sets whether collapse is local or global.** True 2D geometry gives 1/r;
@@ -707,33 +714,44 @@ table goes empty above some kind, and whether 8 bytes measurably hurts the World
 cost already accepted rather than an open question.
 
 **16. ~~Did momentum clipping defeat the orbits, or did the dimension?~~ Settled 2026-11-05 —
-neither. It is integer momentum itself, and `orbit.mjs` exists now.** The question had three
-answers on offer and the measured one was not among them.
+neither, and not integer momentum either. Things orbit.** The question had three answers on offer,
+the measured one was not among them, and the first measured answer was wrong too. `orbit.mjs`, as
+it now stands:
 
-- **The control orbits, 6 of 6.** That had to be established first — rule 12 says a run reporting
-  zero of the thing it measures is a broken run. It reported zero twice before it was right: the
+- **The control orbits, 6 of 6**, for ten laps. It reported zero twice before it was right: the
   start velocity was 60° off perpendicular (`[0,-1,1]` *looks* tangential and is not), and the
-  orbiter was light enough that law 1's one-hexagon-per-tick cap clipped its speed, which silently
-  breaks the circular condition the run was set up with. Both are in the file.
-- **Direction quantization is not the cause, and that is the headline.** Switched on by itself it
-  orbits **6 of 6** — the path is a visible zigzag, the radius wobbles by about a quarter, and it
-  closes two laps every time. The documents' stated reason, that a primitive travels in one of six
-  directions so its path cannot curve and every lap leaks from the rounding, **is false.**
-- **Momentum range is not the cause either, which kills this item's own hypothesis.** The sweep runs
-  ±3 to ±255 — 85×, well outside the word's 10 bits deliberately — and **nothing orbits anywhere on
-  it**, including rows where the per-tick pull is twelve whole units. So the limitation is not a
-  width and is not reversible by widening one.
-- **What is left is the integerisation.** 0 of 6 with integer momentum, under both of the two
-  possible rules for a sub-unit pull. *Why* it is fatal is not established, and that is now the open
-  part.
+  orbiter was light enough that law 1's one-hexagon-per-tick cap clipped its speed. Both are in the
+  file.
+- **Direction quantization is not the cause.** Switched on by itself it orbits **6 of 6** — a
+  visible zigzag, the radius wobbling by about a third, ten laps every time. The documents' old
+  reason, that a primitive's path cannot curve on six directions, **is false.**
+- **Integer momentum is not the cause either.** With the sub-unit pull **carried**, it orbits at
+  ±15 at radii 20, 100 and 500, with the lattice on or off; the range sweep orbits from **±7 up**.
+  Only ±3 fails, because half of ±3 is a momentum of about 1. For one day this bullet said "0 of 6
+  with integer momentum… the integerisation itself" — every run had started on the **edge of the
+  momentum box**, where the hexagon-shaped legal set shaves `|p|` at some headings and not others
+  (Check 5).
+- **What does decide it is two unwritten rules.** A pull under one unit, **rounded**, never acts:
+  0 of 6 at every radius and range up to ±127 (item 19). And a step that ties between two directions,
+  broken the same way every time, is a handedness that spirals every orbit inward — each of the
+  three falls in within four laps (Check 9, item 21). Carry the pull and flip a coin on ties and orbits hold.
+
+**What they are like** is in law 1 of `THE-LAWS.md`: eccentric, not permanent — the closest approach
+random-walks lap to lap — and at a strength law 3 allows, only for the heaviest kinds around the
+largest clumps (Check 8, item 20).
+
+**And the harness lesson, the fourth in this file.** Four bugs, and the first three all pushed toward
+"no orbits", the conclusion being tested. The fourth pushed the other way: a two-lap bar called a
+spiral an orbit, and Check 1's "3 of 6" was spirals until the bar went to ten laps and every run
+reported its closest approach on its first lap and its last.
 
 **It also found an unwritten rule, which is the more useful half.** Law 3 says gravity falls off as
 1/r² and adds to momentum. It does not say **what happens when the pull is smaller than one unit**,
 and at every radius and range tested it is — between 0.00007 and 0.044 units per tick. Rounding it
-switches gravity off below half a unit, which is a cutoff radius nobody chose, arriving exactly the
-way law 2's cap of 8 did. Carrying the remainder needs a per-primitive residual, which is a stored
+switches gravity off below half a unit, which looked like a cutoff radius nobody chose — and at any
+strength law 3 allows it is worse than that, gravity off everywhere (item 19). Carrying the remainder needs a per-primitive residual, which is a stored
 field: the 24 spare bits exist, and `AGENTS.md` rule 5 says nothing goes in them without an entry in
-`THE-LAWS.md` and a reason. **That decision is open and is now item 19.**
+`THE-LAWS.md` and a reason. **That is item 19.**
 
 *And the old numbers were never reproducible.* "Nothing completed two laps at radii of 20, 100 or
 500" cited a tool that did not exist; `orbit.mjs` is the first orbit code in this project. Two
@@ -826,6 +844,48 @@ Two rules are available and they are different physics, not different implementa
 coded without picking one, and picking one silently is how two constants have already been chosen
 by accident here.
 
+**Half settled 2026-11-05: rounding is out.** It is not a cutoff radius at a strength law 3 allows;
+it is gravity off everywhere. The strongest pull in the World is on a kind-255 primitive at the rim
+of a packed clump, and it reaches half a unit per tick only when ε (item 20) is **3.2** for the
+whole World as one ball, 4.3 for a clump of radius 256 and 64 for two neighbours — gravity three to
+sixty times stronger than the weakest bond, which law 3's ceiling forbids outright (`orbit.mjs`
+Check 7). So law 3 carries the remainder. **What is still open is where it lives** — a residual in
+the spare bits needs its entry in `THE-LAWS.md` and a reason, and is Ric's call. One thing to weigh:
+at a legal strength the residual is the *whole* of gravity for almost every primitive almost every
+tick, so it is not patching a representation at the margin; it is where the law lives.
+
+**20. How strong is gravity — and is there any strength that does both its jobs?** Raised
+2026-11-05 by Ric: *"I have a hunch gravity is too strong right now."* Measured in `orbit.mjs`
+Checks 6 and 7; the full statement is under law 3 in `THE-LAWS.md`.
+
+Gravity has never had a value. In the unit **ε** — the energy two kind-255 primitives release falling
+into contact, over the weakest bond — it has a **ceiling** from the constraint above (ε ≪ 1: 0.01 for
+two orders of magnitude) and a **floor** nobody wrote down: collapse has to heat something past the
+weakest bond, or nothing ever reacts. At 4096² **the floor is above the ceiling.** At ε = 0.01 the
+whole World collapsed into one ball reaches a tenth of the weakest bond; clumps of a few hundred
+hexagons need ε near 1. The floor falls as 1/(clump radius), so the World's size is what is short.
+
+**The hunch, checked.** The orbits `orbit.mjs` ran were set up at ε of 565 to 14,000 if the centre
+is one primitive — far too strong, and never checked. But the plan as a whole cannot go weaker,
+because the floor is already above the ceiling: the problem is not that gravity is too strong, it is
+that one number is asked to be weak at arm's length and strong summed over a clump, and 4096² is not
+enough clump.
+
+*Decided by:* Ric. The levers, with what each costs, are in `THE-LAWS.md`: a bigger World, a looser
+ceiling (gravity within one order of the weakest bond, accepting a little location-dependent
+chemistry), a different exponent (unmeasured), or heat given at the start (which gives up law 3's
+reason for existing). **This sharpens item 13** — it asked whether 4096² has the range for a
+hierarchy of clumps, and the answer at ε = 0.01 is that it does not have the range for one.
+
+**21. What does a step do when two directions tie?** Raised 2026-11-05 by `orbit.mjs` Check 9.
+Law 1 rounds a step to the nearest of six directions and never said what happens when two are
+exactly as near — which an integer vector is on 2 to 4 percent of an orbit's steps. Always taking
+the same one is a handedness, and it spirals every orbit into the centre within a few laps; a fair
+coin does not. **Proposed: a coin**, from the draws the World already makes, stated in law 1 of
+`THE-LAWS.md`. *Decided by:* adopting it — the alternative fair rule, alternation, needs a stored bit
+per primitive. Not blocking the Lab, which has no gravity, but it does touch every collision path,
+so the Lab's movement rule should be written with it.
+
 ### Settled by running the Lab
 
 **5. Does the Lab produce a periodic table with any depth?** Unknown. Three stable clusters and
@@ -861,8 +921,11 @@ autocatalytic cycle → compartment → replicator. Prior art reaches replicator
 forever: takeover, stagnation, degradation, a new takeover.
 
 **11. Does something have to stop gravity, and is it law 6?** Gravity never cancels, and this
-world has no orbits to halt collapse, so a static the World plausibly ends as a single clump — the end
-of *elsewhere*. Two candidates in *Roads not taken*: true expansion with the loss counted, or
+world's orbits are too few to halt collapse — at a legal strength only the heaviest kinds orbit, only
+around the largest clumps, and not for good (item 16) — so a static World plausibly ends as a single
+clump, the end of *elsewhere*. *(Said "has no orbits" until 2026-11-05.)* **Item 20 cuts the other
+way:** at the strength law 3's ceiling allows, collapse may be too slow and too cold to need
+stopping at all. Two candidates in *Roads not taken*: true expansion with the loss counted, or
 gravity weakening as the world cools. The second keeps strict conservation and is the one to try.
 *Decided by:* not before the Lab. Adding law 6 before law 2 works would be choosing wallpaper before
 there is a foundation.
@@ -891,6 +954,11 @@ or four orders of magnitude in total — ample for several separate clumps, and 
 for clumps *of* clumps, which is where reality's interesting structure lives. If one level of
 clumping is all this size permits, law 3 pays its full cost as the only non-local law for less than
 its argument assumes.
+
+*(2026-11-05: item 20 puts a number on this from the energy side, and it is harsher. The heat a clump
+can make grows with its radius, and at the strength law 3's ceiling allows, even the whole World as
+one clump does not heat anything past its weakest bond. So the question is no longer whether 4096²
+has room for clumps of clumps; at ε = 0.01 it does not have room for one clump that matters.)*
 
 **14. 2D is topologically poor, and that one is permanent — but it is one claim now, not two.**
 *(2026-11-05: the absence of orbits was filed on this list as a second instance of the same
@@ -980,17 +1048,18 @@ prevented orbits.** A
 large clump absorbing momentum one unit at a time would jitter internally while its centre
 stayed put, which is close enough to "the Sun barely moves."
 
-**What prevents them is that momentum is an integer. Measured 2026-11-05 in `orbit.mjs`, after
-three wrong explanations.** Gravity *does* supply the trade an orbit needs, and it needs no stored
-potential to do it: falling in adds momentum so a primitive speeds up, climbing out subtracts so it
-slows. That is the kinetic–potential exchange, implemented as vector addition.
+**Orbits do exist here, and they are too few to halt collapse.** *(Rewritten 2026-11-05; the
+paragraph it replaces said "what prevents them is that momentum is an integer… 0 of 6 orbited", and
+that was a harness bug — item 16.)* Gravity supplies the trade an orbit needs with no stored
+potential: falling in adds momentum so a primitive speeds up, climbing out subtracts so it slows.
+With the sub-unit pull carried and step ties broken by a coin, `orbit.mjs` orbits at ±7 and wider.
+But at a strength law 3's ceiling allows, orbital speeds are tiny, and since momentum is speed times
+kind only the heaviest kinds have enough momentum to steer with, only around the largest clumps —
+and the orbits wander rather than close. So the argument above stands with a smaller premise: not
+"no orbits", but **not nearly enough of them to stop the collapse.**
 
-What defeats it is that the velocity change an orbit runs on is **a fraction of one unit per
-tick** — between 0.00007 and 0.044 at the radii tested — and an integer field cannot carry a
-fraction. Round it and gravity switches off; carry it and the impulse arrives in lumps far too
-large. **0 of 6 orbited** with integer momentum, under either rule, at every radius.
-
-*(Three earlier explanations were wrong and all three are retracted. The first blamed unweighted
+*(Every earlier explanation was wrong and is retracted, "integer momentum" — the paragraph this
+replaced — last. Of the three before it, the first blamed unweighted
 momentum; the second blamed kinetic energy being impossible, which it is not; **the third blamed
 the hexagon, and that one stood as settled fact for a day.** It said a primitive travels in one of
 six directions one whole hexagon at a time, so its path cannot curve and every lap leaks from the
@@ -1002,7 +1071,8 @@ them in the first place.)*
 *(A fourth explanation — that **momentum clipping** was the cause and a wider field would therefore
 buy orbits back — is also dead, and it was item 16's own hypothesis. The sweep runs ±3 to ±255 and
 nothing orbits anywhere on it. The range is not the lever. See item 16 for the whole result, and
-item 19 for the unwritten rule it uncovered.)*
+item 19 for the unwritten rule it uncovered.)* *(That sweep was started on the edge of the momentum
+box; started at half of it, carried gravity orbits from ±7 up. Item 16.)*
 
 **It costs law 3 nothing.** Gravity's job is to pull matter together and make heat from the falling.
 Falling in is the point; orbits were always a bonus.

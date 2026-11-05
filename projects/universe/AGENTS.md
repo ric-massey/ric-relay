@@ -107,6 +107,10 @@ separation is the entire reason option (B) works where (A) could not — under (
 *was* the momentum, so there was no way to round a path without breaking conservation, and no way
 for a force to express a strength at all.
 
+**A tie between two directions is a coin, never a fixed pick** *(proposed 2026-11-05, README item
+21)*. Integer vectors tie often, and a fixed tie-break is a handedness that spiralled every orbit in
+`orbit.mjs` into the centre. If you write a step function, check what it does on a tie.
+
 **Speed is a rate, not a distance:** one hexagon every `k / |p|` ticks, capped at one per tick.
 Never implement it as "move `p/k` hexagons" — that breaks the causal limit for light kinds and
 freezes heavy ones. As a rate it does neither, and it yields 255 distinct speeds —
@@ -247,6 +251,13 @@ a coin flip, so the second law switches off in the hottest part of the world. Th
 probability, so it clips at 1: with `rate(T) = floor + c · T`, assert **`floor + c · T_max ≤ 1`**.
 Assert both at startup and refuse to run.
 
+**And gravity has a floor as well as a ceiling** *(2026-11-05, README item 20)*. State its strength
+as **ε**, the energy two kind-255 primitives release falling into contact over the weakest bond; the
+ceiling above is ε ≪ 1. The floor is that collapse of the clumps the World can form must heat matter
+past the weakest bond, or chemistry never runs — `orbit.mjs` Check 7 computes it from the World's
+size. **At 4096² the floor is above the ceiling**, so as of this writing no strength passes both.
+Do not loosen either check quietly to get a run going; that choice is Ric's and is item 20.
+
 *(Corrected 2026-11-04. This said "the clock scale times the hottest reachable temperature must be
 below 1", which at 11 bits of energy forces the scale under 1/2047 and so a **2047:1 spread in
 update rates** — free in the Lab, close to fatal in the World, where the coldest matter would update once
@@ -356,17 +367,24 @@ the scale factor that makes whole-number kinetic energy work. It is also the rea
 was found — see rule 7. **Two of its nine checks are wrong and are labelled as such in the file
 rather than deleted**; read the note above check 5 before quoting any number from it.
 
-`orbit.mjs` settled item 16 — whether anything orbits, and what stops it. It is the **only tool
-here that steps forward in time**, which is allowed because two primitives under one law is a
-measurement, not a claimed world; the viewer's refusal to animate is about something else, a whole
-lattice pretending to run physics it has not been given. It runs a 2×2 — direction quantization on
-or off against integer momentum on or off — plus a sweep of momentum range from ±3 to ±255, and
-**its control is load-bearing**: with neither cause switched on it must orbit, and the first two
-times it did not, which found two harness bugs rather than two facts about the world. **It
-overturned a settled conclusion**: direction quantization orbits 6 of 6, so the hexagon was never
-what stopped an orbit. It also refutes a prediction written in its own file, and that prediction is
-kept beside the refutation rather than deleted, for the same reason `momentum.mjs` keeps checks 3
-and 5.
+`orbit.mjs` settled item 16 — whether anything orbits, and what stops it — and, since 2026-11-05,
+measures how strong gravity may be (items 19 to 21). It is the **only tool here that steps forward
+in time**, which is allowed because two primitives under one law is a measurement, not a claimed
+world; the viewer's refusal to animate is about something else, a whole lattice pretending to run
+physics it has not been given. Checks 1–5 run a 2×2 — direction quantization on or off against
+integer momentum on or off — under both rules for a sub-unit pull, plus a sweep of momentum range;
+Checks 6–8 state gravity's strength as ε (rule 8) and find its floor; Check 9 keeps the tie-break
+bug on show. **Its control is load-bearing**, and the file has had **four harness bugs**: a start
+60° off tangent, an orbiter light enough to hit the speed cap, a start on the edge of the momentum
+box, and a step tie always broken the same way. The first three made orbits fail; the fourth made
+spirals pass a two-lap bar. **So it flies ten laps and reports each run's closest approach on its
+first lap and its last** — equal is an ellipse, falling is a spiral. Read its own comments before
+quoting a number: two predictions in it read as refuted for a day and were right.
+
+**And a tool that solves for a constant has chosen one.** Checks 1–5 set gravity to whatever made
+each start circular and never compared it with law 3's ceiling; it was hundreds to thousands of
+times too strong. If a tool here derives a constant to make a scenario work, print it in the
+constant's real unit next to the limit it must obey.
 
 **Three lessons from these tools are worth more than the tools.** First, **the control run is where the result
 was.** Checking a temperature-dependent clock showed the second law closing; running the *flat*
