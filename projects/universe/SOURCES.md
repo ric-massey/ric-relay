@@ -195,7 +195,7 @@ arrived at the same place independently and is reassurance that the mapping is n
 The field's canonical review. Took the general framing (molecules, reaction rules,
 algorithm) and the lattice-with-bonding model class. Their note that bond *inhibition*
 rules — not valence counts alone — determine whether self-repair is likely is worth
-revisiting if Run A produces clusters that can't maintain themselves.
+revisiting if the Lab produces clusters that can't maintain themselves.
 
 **Fontana, Walter, and Leo Buss (1994).** *AlChemy* — lambda-calculus artificial
 chemistry in which self-maintaining organizations emerge. See also **Return to AlChemy**
@@ -352,7 +352,7 @@ Ecosystem Dynamics.* arXiv:2505.15998. <https://arxiv.org/abs/2505.15998> — au
 curiosity-driven search over universes. Precedent for the search methodology.
 
 **Mendeleev, Dmitri (1869).** He *discovered* the periodic table; he didn't invent it. The
-organizing principle of Run A, and nearly the name of this project.
+organizing principle of the Lab, and nearly the name of this project.
 
 ## Materials-first simulation, from outside academia
 
@@ -666,10 +666,10 @@ And three structural criticisms that changed the design:
   form into the search space, where it is a larger degree of freedom than any constant. Its
   observation that *the first real finding may be which interaction rules permit chemistry at
   all* is now in both the README and `THE-LAWS.md`.
-- **A measured table is still a table.** If Run B could only form species Run A surveyed, its
+- **A measured table is still a table.** If the World could only form species the Lab surveyed, its
   chemistry would have a ceiling set by that survey — the Avida disease arriving by a side
-  door. The coarse-graining was removed entirely: both runs simulate primitives, and Run A's
-  output is a dictionary for reading Run B rather than an input to it.
+  door. The coarse-graining was removed entirely: both runs simulate primitives, and the Lab's
+  output is a dictionary for reading the World rather than an input to it.
 - **Energy crossing the boundary needs explicit accounting**, or the conservation assertion is
   meaningless exactly where it matters.
 

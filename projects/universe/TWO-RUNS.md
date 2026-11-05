@@ -13,7 +13,7 @@ project possible at all. The split is a search strategy, not a permanent archite
 One engine. The law list does not change between runs. What changes is **what counts as an
 individual.**
 
-| | Run A | Run B |
+| | the Lab | the World |
 |---|---|---|
 | The individual is | **a primitive** | **a primitive** |
 | Laws in play | 4 of the 5 (no gravity) | all 5 |
@@ -28,9 +28,9 @@ individual.**
 
 ### Nothing is coarse-grained, and that is a correction
 
-*(External review, 2026-11-03; see `SOURCES.md`.)* This file originally had Run B's
-individuals be *cluster species Run A discovered*. That was a serious error. If Run B can
-only form species and reactions that Run A's survey happened to find, **its chemistry has a
+*(External review, 2026-11-03; see `SOURCES.md`.)* This file originally had the World's
+individuals be *cluster species the Lab discovered*. That was a serious error. If the World can
+only form species and reactions that the Lab's survey happened to find, **its chemistry has a
 ceiling set by the survey** — which is the Avida disease, arriving by a side door, in the one
 project that exists to avoid it. A measured table is still a table.
 
@@ -38,27 +38,27 @@ Keeping the primitive engine available for inspection, which is what this file p
 offered as mitigation, does not fix it either. Being able to look at a thing afterward does
 not restore reaction pathways that were never available during the run.
 
-**So the coarse-graining is gone.** Both runs simulate primitives under the same laws. Run
-A's table is never an input to Run B; it is the **dictionary you read Run B with.** Run B
-forms whatever its primitives form, including composites Run A never saw, because Run B is
+**So the coarse-graining is gone.** Both runs simulate primitives under the same laws. The
+Lab's table is never an input to the World; it is the **dictionary you read the World with.** The World
+forms whatever its primitives form, including composites the Lab never saw, because the World is
 running the physics rather than a summary of it.
 
 The row that used to differ is now the row that doesn't, and the four remaining differences —
 size, gravity, controlled conditions, ticked time — are all there is.
 
-Gravity sits out of Run A. The full reasoning is in `THE-LAWS.md`; the core
+Gravity sits out of the Lab. The full reasoning is in `THE-LAWS.md`; the core
 of it is that a measurement needs controlled conditions, and gravity makes conditions
 depend on the whole mass distribution as it changes, so the same experiment run twice gives
 two different tables.
 
-## What Run A produces
+## What the Lab produces
 
 A data file. For each stable cluster species: what it is made of, its binding energy, its
 leftover capacity, its density, and how it behaves when it meets each other species — all
 of it **measured by running collisions**, not computed from a formula anybody wrote.
 
 That file is this universe's periodic table. It is a *result*, and that distinction is the
-whole reason Run A exists. A hand-typed table of materials is arbitrary, and arbitrary
+whole reason the Lab exists. A hand-typed table of materials is arbitrary, and arbitrary
 tables are the exact disease that capped every prior system in `SOURCES.md` — Avida's
 complexity ceiling is literally computable from the size of its feature list. A table that
 your own deeper physics handed you is not arbitrary. It is a measurement.
@@ -99,12 +99,12 @@ pure version and the split is a compromise.
 our universe: hot, no atoms, cooling, recombination, then chemistry. A one-run world gets an
 era in which chemistry *cannot exist* and then an era in which it can, and the transition is
 physics rather than a chapter heading. **This is now the only real thing the split costs** —
-Run B starts from matter spread out rather than from a hot collapse, so it skips the era
+the World starts from matter spread out rather than from a hot collapse, so it skips the era
 whose whole content is "matter could not yet hold together."
 
 *(A second cost used to be listed here: that species reachable only through extreme
-gravitational compression would never make it into Run A's table and so would never exist in
-Run B. **That cost is gone**, because Run B no longer reads the table — it runs the same
+gravitational compression would never make it into the Lab's table and so would never exist in
+the World. **That cost is gone**, because the World no longer reads the table — it runs the same
 primitive physics and forms whatever it forms. The table's completeness stopped mattering
 the moment it stopped being an input. It is worth recording that removing the coarse-graining
 deleted a cost rather than trading one for another.)*
@@ -134,7 +134,7 @@ computational irreducibility, and it means **the only available method is search
 
 With one run, each candidate physics costs a full cosmological history before you learn
 whether its chemistry has any depth at all. If that is hours, a week of searching gets you
-tens of samples in a five-dimensional space. With Run A at 256², a candidate costs
+tens of samples in a five-dimensional space. With the Lab at 256², a candidate costs
 minutes, so the same week gets you thousands.
 
 **The split is what makes search possible, and search is the only way to find a physics
@@ -144,8 +144,8 @@ that works.** Without it the project is one guess, run slowly.
 structured, what is it? A cluster species? A compound? A dissipative pattern with no
 chemistry in it? Something alive? You would have no reference to check against.
 
-Run A's table is not only cheaper — it is the **interpretive key**. It is the dictionary
-you need to read Run B at all. Without it you are watching a world in a language you do not
+The Lab's table is not only cheaper — it is the **interpretive key**. It is the dictionary
+you need to read the World at all. Without it you are watching a world in a language you do not
 have, and "I think something interesting is happening" is as far as you can ever get.
 
 **4. Failures would be undiagnosable.** One run produces mud. Is the *form* of the pair force
@@ -157,38 +157,38 @@ vary it matters more than it did when the search was only over numbers.
 
 **5. It would defeat the project's actual goal.** The README's aim is behavior you can
 *trace* and still never have predicted — computational irreducibility, not mystery. One
-run gives you nothing to trace *to*. With Run A's table you can point at anything in Run B
+run gives you nothing to trace *to*. With the Lab's table you can point at anything in the World
 and ask which species that is and what it is made of, then go look at the primitive level
-and check. That is what makes Run B explicable all the way down.
+and check. That is what makes the World explicable all the way down.
 
 ---
 
 ## Keeping the dictionary honest
 
-Run A's table no longer feeds the world, so the question is not whether it is *complete* —
+The Lab's table no longer feeds the world, so the question is not whether it is *complete* —
 it is whether it is *trustworthy as a reference*.
 
-**Run A sweeps conditions; it does not pick one.** Measure across a range of temperatures and
+**The Lab sweeps conditions; it does not pick one.** Measure across a range of temperatures and
 pressures and record every species with the regime it exists in. A cluster that only forms
 under high compression is then a known entry with a known condition rather than a gap in the
-reference. Run B may well produce it regardless, since Run B isn't limited to the table — but
+reference. The World may well produce it regardless, since the World isn't limited to the table — but
 you would not recognize it.
 
-**Log the gaps, and read them the right way round.** When Run B does something the table
+**Log the gaps, and read them the right way round.** When the World does something the table
 cannot explain, that is a finding about the *table* — a species the laboratory never reached —
 not a bug in the world and not a failure of the physics. It goes in the notes (rule 10 of
 `AGENTS.md`), and over time those entries are how the dictionary grows.
 
-**Cross-validate the time scheme.** The two runs handle time differently — Run A with
-event-driven continuous time where nothing ever skips, Run B with per-tick update
-probability. Both are stochastic; only the time axis differs. Run A's version is strictly
+**Cross-validate the time scheme.** The two runs handle time differently — the Lab with
+event-driven continuous time where nothing ever skips, the World with per-tick update
+probability. Both are stochastic; only the time axis differs. The Lab's version is strictly
 better physics and is affordable at 65,000 cells;
-Run B's is an approximation forced by needing millions of cells in a browser, where queue
+the World's is an approximation forced by needing millions of cells in a browser, where queue
 churn and the loss of cache locality and parallelism cost more like 50–100× than 5–10×.
 
-Because Run A can do it properly, **the approximation can be tested rather than assumed.**
+Because the Lab can do it properly, **the approximation can be tested rather than assumed.**
 Take a small configuration, run it both ways, and compare the species that form, their
-binding energies, and the rates. Agreement validates Run B's compromise empirically.
+binding energies, and the rates. Agreement validates the World's compromise empirically.
 Divergence is a finding about where the approximation fails, which is worth far more than
 not knowing.
 
@@ -202,7 +202,7 @@ check an implementation against itself.
 
 The split is how you find a physics. One run is how you finally live in it.
 
-Once Run A has located a region of constant-space that produces a chemistry with real
+Once the Lab has located a region of constant-space that produces a chemistry with real
 depth, **the honest experiment is a single run from a hot start** — primitives spread out,
 all five laws, collapse, the hot era, recombination, and then whatever follows, with no
 table and no seam anywhere in it.

@@ -37,7 +37,7 @@ holds the register of every open question in one place, with what would decide e
 
 **And then** — [The five structural facts](#the-five-structural-facts) ·
 [Does our own universe have these?](#does-our-own-universe-have-these) ·
-[Why gravity is held out of Run A](#why-gravity-is-held-out-of-run-a)
+[Why gravity is held out of the Lab](#why-gravity-is-held-out-of-run-a)
 
 ---
 
@@ -205,7 +205,7 @@ at `S = 64`, stated above — and bonded momentum is settled just below.)*
 their velocities, equal and opposite, one hop per clock fire.** Nothing else is added.
 
 *(Settled 2026-11-04. An audit found nothing on this in any of the five documents, and it could not
-be deferred because Run A has both bonds and motion. Two options were on the table: bonds enforce
+be deferred because the Lab has both bonds and motion. Two options were on the table: bonds enforce
 joint motion, or bonds do not constrain motion at all. Neither is the answer, and the answer turned
 out to be **forced rather than chosen.**)*
 
@@ -330,7 +330,7 @@ their separation, short range" — a force. It was replaced over 2026-11-03 and 
 argument, and every wrong turn in it, is below.)*
 
 **This is the version to build first, not a proof it is right.** The modulus of 8 is a **searched
-constant**, and the slate of alternatives stays available if Run A comes back flat. What is
+constant**, and the slate of alternatives stays available if the Lab comes back flat. What is
 *settled* is the shape of the law: a rate-based binding energy over two integers, with no distance
 in it.
 
@@ -480,7 +480,7 @@ does not fit in the four bytes and so lives in a second array, and the fact that
 gravity no longer the single documented exception to neighbours-only, but **no exception at all**.
 
 **It is a candidate, not a measurement.** Whether a screened field clusters matter the way the
-1/r² sum does is a Run A comparison, logged in `README.md`.
+1/r² sum does is a Lab comparison, logged in `README.md`.
 
 ### Why 1/r² and not the 1/r that 2D actually gives
 
@@ -614,8 +614,8 @@ law needs a *monotonic* emission rate and not that specific exponent. Stated as 
 `HOW-WE-DECIDED.md` rather than claimed as a simplification.
 
 **The books are kept at the edges.** Two counters are mandatory: **radiated-away**, every unit that
-crossed the boundary outward, and **thermostat net**, every unit Run A's held gradient injected or
-removed. Run A gets the strict equality. **Run B gets a weaker invariant**, because gravitational
+crossed the boundary outward, and **thermostat net**, every unit the Lab's held gradient injected or
+removed. The Lab gets the strict equality. **The World gets a weaker invariant**, because gravitational
 potential is not stored anywhere, so collapse genuinely appears to create thermal energy from
 nothing — assert instead that energy rises only through collapse and falls only through the
 boundary, both logged.
@@ -713,7 +713,7 @@ beautiful, believe it, and be wrong.
 with asynchronous dynamics as a standard remedy for grid artifacts, alongside changing the
 grid. So this and the hex grid attack the same problem from two directions.
 
-#### Event-driven in Run A, probabilistic in Run B
+#### Event-driven in the Lab, probabilistic in the World
 
 The original wording was "each cell updates with some probability per tick," and Ric's
 objection to it was correct: **time doesn't skip.** Nothing in reality sits frozen while its
@@ -728,26 +728,26 @@ asserted — the thing relativity forbids.
 
 **Both schemes are stochastic. They differ only in whether time is ticked.**
 
-*(Corrected after external review.)* An earlier version of this file said Run A
+*(Corrected after external review.)* An earlier version of this file said the Lab
 was "continuous, not probabilistic," which conflated two independent axes: discrete-versus-
 continuous *time*, and deterministic-versus-stochastic *event selection*. Gillespie's
 algorithm is the standard counterexample — event-driven, continuous-time, and thoroughly
-stochastic. Run A draws event times from distributions; it is probabilistic throughout. What
+stochastic. The Lab draws event times from distributions; it is probabilistic throughout. What
 it does not do is round those times onto a global tick.
 
-**Run A uses event-driven continuous time**, where nothing ever skips at all. It is the
+**The Lab uses event-driven continuous time**, where nothing ever skips at all. It is the
 natural fit rather than a forced one, because the lattice is already fully discrete: every
 change in this world is already an event. At 65,000 hexagons a priority queue is comfortably
-affordable and the GPU isn't needed. And Run A's whole purpose is *measurement* — a known-wrong
+affordable and the GPU isn't needed. And the Lab's whole purpose is *measurement* — a known-wrong
 time model inside the instrument is worse than one in the world, because every number in the
 resulting table would carry the artifact.
 
-**Run B does not.** At seventeen million hexagons in a browser, queue churn and the loss of
+**The World does not.** At seventeen million hexagons in a browser, queue churn and the loss of
 cache locality and parallelism cost more like 50–100× than 5–10×, and it destroys the
 shader-shaped structure that lets this run in a browser at all.
 
 **The approximation gets checked rather than assumed.** Run the same small configuration under
-both schemes and compare the species, binding energies and rates. Agreement validates Run B's
+both schemes and compare the species, binding energies and rates. Agreement validates the World's
 compromise empirically; divergence is a finding about where it fails. A concrete task, not a
 hope — and the only place in the project where the same physics is implemented twice.
 
@@ -778,7 +778,7 @@ what this section demanded until 2026-11-04.
 
 *(The old wording required the clock constant times the hottest reachable temperature to stay below
 1. Energy was 11 bits, so that forced a constant under 1/2047 and a **2047:1 spread in clock rates** —
-free in Run A, where event times are drawn anyway, and close to fatal in Run B, where the coldest
+free in the Lab, where event times are drawn anyway, and close to fatal in the World, where the coldest
 matter would update once in 2047 ticks. The cold edge is exactly where the dissipative structures
 are meant to live, so that is not a performance detail.)*
 
@@ -972,18 +972,18 @@ more than the documents previously claimed.
 
 ---
 
-## Why gravity is held out of Run A
+## Why gravity is held out of the Lab
 
-Run A uses four of the five laws. Gravity is deliberately absent, and this needs real
+The Lab uses four of the five laws. Gravity is deliberately absent, and this needs real
 justification because it is load-bearing in the finished world.
 
 The weak version of the argument is that it's expensive and buys little at 256². True, but not
 the reason.
 
-### Run A is a laboratory, and a laboratory controls its conditions
+### The Lab controls its conditions, which is what makes it a laboratory
 
-Run A's job is to **measure**: which clusters are stable, each one's binding energy, its
-leftover capacity, how it behaves when it meets another. The output is a table of numbers Run B
+The Lab's job is to **measure**: which clusters are stable, each one's binding energy, its
+leftover capacity, how it behaves when it meets another. The output is a table of numbers the World
 will treat as fact.
 
 A measurement is worth something only if the conditions it was taken under are known and held
@@ -995,9 +995,9 @@ tables.
 
 That is not a periodic table. It is a travel diary.
 
-Chemists work at standard temperature and pressure for precisely this reason, and so does Run A:
+Chemists work at standard temperature and pressure for precisely this reason, and so does the Lab:
 set a thermal gradient and hold it. Setting that gradient is legitimate here in a way it would
-not be in Run B, because **Run A is not claiming to be a world.** It is an instrument, and a
+not be in the World, because **the Lab is not claiming to be a world.** It is an instrument, and a
 thermostat in a laboratory is apparatus, not a smuggled answer.
 
 ### The supporting reasons
@@ -1006,27 +1006,27 @@ thermostat in a laboratory is apparatus, not a smuggled answer.
 large scale. Its third is making *down* exist, which is irrelevant to which clusters are stable.
 
 **The cost falls where it hurts most.** Gravity is the only non-local law and the most expensive
-thing in the engine. Run A is where the *search* lives — thousands of short candidate universes —
+thing in the engine. The Lab is where the *search* lives — thousands of short candidate universes —
 so every cost there multiplies by thousands. Paying for the most expensive law for no measurement
 benefit, thousands of times, is the worst possible place to spend.
 
-**One variable at a time.** If Run A produced mud you would need to know whether the problem is
+**One variable at a time.** If the Lab produced mud you would need to know whether the problem is
 the chemistry or the cosmology. Holding gravity out isolates the chemistry completely. Ordinary
 experimental method.
 
 ### What this costs, honestly
 
 Species that only form under conditions the laboratory never sets will not appear in the table.
-If the only route to some cluster runs through extreme gravitational compression, Run A will
+If the only route to some cluster runs through extreme gravitational compression, the Lab will
 never find it — silently.
 
 **What that costs is the dictionary, not the world.** Since the coarse-graining was removed,
-Run B runs the same primitive physics and forms whatever its primitives form, so an absent
+the World runs the same primitive physics and forms whatever its primitives form, so an absent
 species still *exists* there. You simply would not recognize it when you saw it. That is a
 smaller cost than the one this section originally claimed, and the correction is recorded in
 `TWO-RUNS.md`.
 
-The mitigation: **Run A sweeps conditions rather than picking one.** Measure the table across a
+The mitigation: **the Lab sweeps conditions rather than picking one.** Measure the table across a
 range of temperatures and pressures, and record each species with the regime it exists in. A
 cluster that only appears under high compression is then a known entry with a known condition
 rather than an absence nobody notices.

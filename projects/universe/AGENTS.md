@@ -51,15 +51,15 @@ there's any chance of confusion.
 
 No list of materials. No list of reactions. No lookup table of what combines with what.
 
-If a table exists in this project, it was **measured by Run A**, and it ships next to the
+If a table exists in this project, it was **measured by the Lab**, and it ships next to the
 run that produced it with the constants that generated it. An enumerated feature set is the
 exact disease that capped Avida, whose complexity saturates at a value set by the information
 content of its niche because its feature set is fixed.
 
-**A measured table is still a table, so it is never an input.** Run A's output is the
-dictionary you *read* Run B with. Run B simulates primitives under the same laws and forms
-whatever they form, including composites Run A never saw. If you ever find yourself making
-Run B instantiate species from a list, stop — that reintroduces the ceiling by a side door.
+**A measured table is still a table, so it is never an input.** The Lab's output is the
+dictionary you *read* the World with. The World simulates primitives under the same laws and forms
+whatever they form, including composites the Lab never saw. If you ever find yourself making
+the World instantiate species from a list, stop — that reintroduces the ceiling by a side door.
 
 **And the pair force is the other loophole: watch its *form*.** `f(k₁, k₂, r)` could hold a
 periodic table as a few hundred special cases and satisfy every rule on this page. So the
@@ -167,7 +167,7 @@ rounding issue.** Fail loudly, print the step it first went wrong, and don't pap
 it with a tolerance.
 
 **Count what crosses the edge, or the assertion is worthless.** Energy leaves at the
-boundary and Run A's thermostat injects and removes it, so `world energy = constant` would
+boundary and the Lab's thermostat injects and removes it, so `world energy = constant` would
 pass while the world quietly gained or lost energy at the border — which is the one place it
 matters most. Keep two counters, **radiated-away** and **thermostat net**, and assert
 `world energy + radiated-away − thermostat net = constant`.
@@ -190,10 +190,10 @@ equal and opposite pair forces, so it leaks momentum every step and the world ac
 that looks like a preferred direction in the physics. Compute each interaction once and apply
 it to both sides. Law 3 has the detail.
 
-**Run A gets the strict equality. Run B gets a weaker invariant**, because gravitational
+**The Lab gets the strict equality. The World gets a weaker invariant**, because gravitational
 potential is not stored anywhere — it is implicit in the arrangement, so collapse genuinely
 appears to create thermal energy from nothing. That is correct physics and the whole energy
-budget depends on it, but it means total energy is not conserved in Run B. What is conserved
+budget depends on it, but it means total energy is not conserved in the World. What is conserved
 is energy plus potential, and since potential isn't represented, assert the monotonic form
 instead: energy rises only through collapse, falls only through the boundary, both logged.
 
@@ -249,7 +249,7 @@ Assert both at startup and refuse to run.
 
 *(Corrected 2026-11-04. This said "the clock scale times the hottest reachable temperature must be
 below 1", which at 11 bits of energy forces the scale under 1/2047 and so a **2047:1 spread in
-update rates** — free in Run A, close to fatal in Run B, where the coldest matter would update once
+update rates** — free in the Lab, close to fatal in the World, where the coldest matter would update once
 in 2047 ticks and the cold edge is where the dissipative structures are meant to live. The
 second-law argument only uses monotonicity, so `rate(T) = floor + c · T` is sound for **any** floor,
 and a floor at `c · T_max / 16` buys a 16:1 spread at the cost of transport speed rather than
@@ -293,7 +293,7 @@ checks:
 - Is it periodic with the update scheme? Then it is probably a clock artifact —
   synchronous updating in particular is known to generate cyclic patterns that look like
   self-organization and aren't. (This is part of why every hexagon keeps its own
-  clock.) In Run B specifically, check whether the structure survives in Run A's
+  clock.) In the World specifically, check whether the structure survives in the Lab's
   event-driven time, which has no tick to be periodic with.
 - Does it survive a change of random seed? If one seed produces it and others don't, it
   isn't a property of the physics.
@@ -389,21 +389,21 @@ pretty picture; **don't trust a number either.**
   because it means it works on Ric's phone off the live site. WebGL2 in a fragment shader
   is fine (no dependency). Figure a few million sites at interactive rates; do not design
   for more.
-- **The phone is a viewing target, not a compute target.** *(Ric, 2026-11-04.)* Run B computes on
+- **The phone is a viewing target, not a compute target.** *(Ric, 2026-11-04.)* the World computes on
   the PC and the phone only displays it. This matters because the phone was silently acting as a
   memory budget — it is what kept the hexagon at four bytes, and the four-byte word was choosing
   physics constants. Do not reintroduce a mobile compute constraint without saying so out loud; at
   4096² the hexagon is 134MB per buffer and about 268MB double-buffered, which is comfortable on
   the 4GB card and would not have been on a phone.
-- **Run A before Run B.** Run A is four laws at 256² (no gravity), in event-driven continuous time,
-  on the CPU, and it answers "what is matter here." Run B is all five at scale, in a
+- **The Lab before the World.** The Lab is four laws at 256² (no gravity), in event-driven continuous time,
+  on the CPU, and it answers "what is matter here." The World is all five at scale, in a
   shader, with per-tick update probability standing in for continuous clocks. Do not start
-  Run B until Run A has produced a periodic table with some depth.
+  the World until the Lab has produced a periodic table with some depth.
 - **The two time schemes are a test, not a compromise to forget.** Run the same small
   configuration both ways and compare the species, binding energies and rates. That is how
-  Run B's approximation gets validated instead of assumed, and it's the only place in the
+  the World's approximation gets validated instead of assumed, and it's the only place in the
   project where the same physics is implemented twice.
 - **The viewer is instrumentation, not decoration.** The pyramid with the variance layer
   is how structure gets found at all. It is not a polish task to do later.
-- **Fail fast and cheap.** The whole reason Run A is small is so a dead force law shows
+- **Fail fast and cheap.** The whole reason the Lab is small is so a dead force law shows
   up in minutes. Resist making it bigger.

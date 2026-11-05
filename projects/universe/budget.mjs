@@ -107,7 +107,7 @@ console.table(counts.map((N) => shape(N, cappedGcd)));
 console.log('\nEight bytes -- THE DOCUMENTED LAYOUT since 2026-11-04 (kind 8 + energy 16 + momentum 10 + bonds 6 = 40 of 64):');
 console.table([{ kinds: 255, energyMax: 65535, momentum: '+-15',
   hottestHeavyKind: Math.floor(65535 / 255), bits: 40, spareBits: 24 }]);
-console.log('Run B at 4096^2: 67MB at four bytes, 134MB at eight. Still one native texel');
+console.log('the World at 4096^2: 67MB at four bytes, 134MB at eight. Still one native texel');
 console.log('(RG32UI or RGBA16UI), so the shader structure survives; the cost is bandwidth.');
 
 // ---------------------------------------------------------------------------

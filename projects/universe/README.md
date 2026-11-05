@@ -103,9 +103,9 @@ real *down* for dense things to settle into and a real *up* for energy to leave 
 
 ### How big
 
-- **Run A**, 256²: 65,536 hexagons — 262 KB. Nothing.
-- **Run B**, 2048²: 4.2 million — 17 MB.
-- **Run B**, 4096²: **16.8 million hexagons — 67 MB.** The real target.
+- **The Lab**, 256²: 65,536 hexagons — 262 KB. Nothing.
+- **The World**, 2048²: 4.2 million — 17 MB.
+- **The World**, 4096²: **16.8 million hexagons — 67 MB.** The real target.
 - 8192²: 67 million — 268 MB. Heavy for a browser but possible.
 
 For scale: the BFF soup used 131,000 programs and Hutton's grid was far smaller. Seventeen
@@ -164,8 +164,8 @@ the world is as ruined as if a law had been dropped.**
   one hexagon per tick is the fastest anything can propagate, so cause has a finite reach and
   there is a light cone. Gravity is the single exception in the entire codebase.
 - **Each hexagon keeps its own time, at a rate proportional to its temperature.** No global
-  "now," which is real physics — relativity forbids universal simultaneity. Run A realizes this as
-  event-driven continuous time where nothing ever skips; Run B approximates it with per-tick update
+  "now," which is real physics — relativity forbids universal simultaneity. The Lab realizes this as
+  event-driven continuous time where nothing ever skips; the World approximates it with per-tick update
   probability, which is a hexagon's clock *rate*, not a hexagon skipping time. **The rate is the
   load-bearing part** and was decided only on 2026-11-04: hot matter acts often and cold matter
   rarely, which is what makes radiation carry heat at all, closes the second law exactly, supplies
@@ -209,32 +209,32 @@ it.
 **One engine, one physics, run twice. Nothing is coarse-grained.** Both runs simulate
 primitives under the same laws. They differ in four things and nothing else:
 
-| | Run A | Run B |
+| | the Lab | the World |
 |---|---|---|
 | Size | ~256² | ~4096² |
 | Gravity | off | on |
 | Conditions | set and held | emergent |
 | Time | continuous, event-driven | ticked, with per-tick probability |
 
-That is a correction, and an important one. The documents originally had Run B's individuals
-be *cluster species Run A discovered*, which would have given Run B a ceiling set by Run A's
+That is a correction, and an important one. The documents originally had the World's individuals
+be *cluster species the Lab discovered*, which would have given the World a ceiling set by the Lab's
 survey — **exactly the Avida disease this whole project exists to avoid.** A measured table
 is still a table. (Found by external review, 2026-11-03; see `SOURCES.md`.)
 
-So Run A's table is never an input to Run B. **It is the dictionary you read Run B with.**
-Run B forms whatever composites its primitives form, including ones Run A never saw, because
-Run B is running the same primitive physics rather than a summary of it.
+So the Lab's table is never an input to the World. **It is the dictionary you read the World with.**
+The World forms whatever composites its primitives form, including ones the Lab never saw, because
+the World is running the same primitive physics rather than a summary of it.
 
 [`TWO-RUNS.md`](TWO-RUNS.md) has the full argument, including what this would be like as a
 single run, why that version is in several ways better, and why it still loses.
 
-### Run A — small and deep
+### The Lab — small and deep
 
 **Four laws** — everything but gravity. The reason it's out isn't cost: a measurement needs
 *controlled* conditions, and gravity makes pressure and temperature at every hexagon depend
 on the whole mass distribution as it shifts, so the same experiment run twice gives two
-different tables. Run A sets a thermal gradient and holds it, the way a chemist works at
-standard temperature and pressure. That is legitimate here because **Run A isn't claiming
+different tables. The Lab sets a thermal gradient and holds it, the way a chemist works at
+standard temperature and pressure. That is legitimate here because **the Lab isn't claiming
 to be a world — it's an instrument.**
 
 Time is **event-driven and continuous**, not probabilistic. At 65,000 hexagons a priority
@@ -249,13 +249,13 @@ calculated from a formula, **measured by running collisions.**
 
 That file is this universe's periodic table, and it is a *result*, not a design.
 
-Run A also fails fast, which is the point of splitting it out. If no stable clusters form,
+The Lab also fails fast, which is the point of splitting it out. If no stable clusters form,
 the force law is wrong, and at 256² you learn that in minutes.
 
-### Run B — large and free
+### The World — large and free
 
 **All five laws**, gravity included, same primitives, same physics. Time is ticked with
-per-tick update probability — a stated approximation to Run A's continuous clocks, because at
+per-tick update probability — a stated approximation to the Lab's continuous clocks, because at
 seventeen million hexagons in a browser the queue churn costs 50–100×, not 5–10×. Both
 schemes are stochastic; only the time axis differs.
 
@@ -271,7 +271,7 @@ long enough to matter. Late is cold and still.
 ## The search space
 
 The laws are fixed, and as of 2026-11-04 **so is the form of law 2.** What is searched is **five
-numbers**, with the slate of alternative forms held in reserve if Run A comes back flat.
+numbers**, with the slate of alternative forms held in reserve if the Lab comes back flat.
 
 *(It was seven numbers plus an unknown form. Law 2's rewrite deleted pair force **strength** and
 **range** — a binding energy over two integers has neither — and folded a scale factor to 1 by
@@ -311,7 +311,7 @@ diagnostics — the binding-energy histogram, the family structure of the bondin
 count of near-inert kinds, and the spread of bonding degree — reject most candidate forms with
 no simulation at all. **So the biggest hole in the project is also the cheapest part of the
 search.** The screen can only prove a form *cannot* work; showing that one does still needs
-Run A.
+the Lab.
 
 **Two hard constraints, and both are free filters.** Each rejects a constant set without running
 it.
@@ -336,7 +336,7 @@ rather than as an absolute constant.)*
 **Gravity between two *adjacent* primitives must be negligible against the weakest pair force** — orders of magnitude, not a factor of two — because
 in reality gravity has no effect on chemistry whatsoever and only reaches it through
 temperature. Violate the ordering and which reactions run starts depending on where in the
-world you are, which is the contamination Run A exists to exclude. It is a free filter: any
+world you are, which is the contamination the Lab exists to exclude. It is a free filter: any
 constant set that breaks it can be rejected without being run. `THE-LAWS.md`, law 3.
 
 The exponent is the most consequential of the five: **strength sets how fast collapse
@@ -355,7 +355,7 @@ this.
 **This is why you search instead of design.** You cannot tell from reading a rule set what
 it will do — that's computational irreducibility, and it isn't a limitation here, it's the
 property we want. So: run thousands of short candidate universes, keep the ones that are
-neither dead nor noise, run those long. Run A is where the search lives, because that's
+neither dead nor noise, run those long. The Lab is where the search lives, because that's
 where it's cheap.
 
 ## Measurement
@@ -568,7 +568,7 @@ made a thing radiate.
 **Thermal pressure exists either way.** It comes from the clock — hot matter acts more often, so it
 moves more often, so hot regions push into cold ones — and that route needs no kinetic energy at
 all.
-*Decided by:* whether Run A shows any pressure response to temperature without it. **And a
+*Decided by:* whether the Lab shows any pressure response to temperature without it. **And a
 constraint that came with the clock:** an uneven clock means collisions are initiated unevenly, so
 whatever the movement rule is, exact momentum conservation has to survive being driven from one
 side.
@@ -592,7 +592,7 @@ the old note said law 2, from a movement rule that no longer exists. See law 1 i
 and energy to 16 bits.** The heaviest kind now reaches temperature 257, which is **32×** its
 strongest bond instead of exactly 1×, so melting, boiling and graded stability have somewhere to
 happen at every mass. Ric's call, on the grounds that wide dynamic range is what makes it like our
-world, and that Run B renders on the PC and is only *viewed* on the phone — which removed the
+world, and that the World renders on the PC and is only *viewed* on the phone — which removed the
 constraint that had been holding the word at four bytes. The record of the problem follows.
 
 Energy was 11 bits and temperature is `e/kind`, so a
@@ -623,7 +623,7 @@ first writing: widen the field.** "Widen energy to 16 bits and the cap becomes 2
 substantially dissolves, with no change to any law and no rounding to place. It does not fit four
 bytes: kind 8 + energy 16 + momentum 6 + bonds 6 is **36 bits**. At **eight bytes** it fits with 28
 to spare — enough to also widen momentum to ±15 (10 bits instead of 6) and settle item 16 in the
-same move. Run B's cost at 4096² goes from 67MB to 134MB, which a browser holds comfortably, and 8
+same move. The World's cost at 4096² goes from 67MB to 134MB, which a browser holds comfortably, and 8
 bytes is still a single native texel (`RG32UI` or `RGBA16UI`), so the shader structure survives.
 
 So the four-byte word is the thing to interrogate, not just the two definitions of energy. The
@@ -697,9 +697,9 @@ applies to the change that *did* land, and **that one went in piecemeal**: stale
 references survived in this file, `THE-LAWS.md` and `AGENTS.md`, and were corrected separately. How rich the mass axis should be is also a judgement rather than a
 measurement: 127 kinds over 8 valence columns is 16 members each, which is a legible periodic table,
 but nothing measures whether 255 would have been better.
-*Decided by:* settled by judgement rather than measurement — wide dynamic range, and Run B
-rendering on the PC. Both measurements that could have decided it are still unrun: whether Run A's
-table goes empty above some kind, and whether 8 bytes measurably hurts Run B. The second is now a
+*Decided by:* settled by judgement rather than measurement — wide dynamic range, and the World
+rendering on the PC. Both measurements that could have decided it are still unrun: whether the Lab's
+table goes empty above some kind, and whether 8 bytes measurably hurts the World. The second is now a
 cost already accepted rather than an open question.
 
 **16. Did momentum clipping defeat the orbits, or did the dimension?** Nothing completed two laps at
@@ -741,7 +741,7 @@ are 18, which is suggestive and is not evidence.
 
 **So the modulus stays at 8.** It works, it is written down, chemistry exists under it, and it is
 now a **searched constant** rather than a derived one — which is ordinary, since searching constants
-is what Run A is for.
+is what the Lab is for.
 *Decided by:* a sweep that scores gradation against family size, rather than one that rediscovers
 `1/m`. Low urgency, and nothing is blocked on it.
 
@@ -778,9 +778,9 @@ remains is a **choice**: seed uniform random over 1–255 and accept that the po
 take the fusion road, which is the only candidate that would let the distribution grow itself. Not
 blocking either way, and worth deciding knowingly rather than discovering in the output.
 
-### Settled by running Run A
+### Settled by running the Lab
 
-**5. Does Run A produce a periodic table with any depth?** Unknown. Three stable clusters and
+**5. Does the Lab produce a periodic table with any depth?** Unknown. Three stable clusters and
 nothing else is a plausible outcome, and would mean the pair force needs more structure.
 
 **6. Should capacity vary by kind?** `C` is one global number, so every kind has identical
@@ -795,7 +795,7 @@ hold.
 
 **8. Does the floor bounce or absorb?** Both conserve momentum once the wall counter exists.
 Bouncing keeps motion circulating through the dense regions; absorbing lets matter settle, and
-sedimentation is one of the two candidate ratchets. Low urgency in Run A, which has no gravity to
+sedimentation is one of the two candidate ratchets. Low urgency in the Lab, which has no gravity to
 press anything against the floor.
 
 ### Open for the whole project
@@ -813,10 +813,10 @@ autocatalytic cycle → compartment → replicator. Prior art reaches replicator
 forever: takeover, stagnation, degradation, a new takeover.
 
 **11. Does something have to stop gravity, and is it law 6?** Gravity never cancels, and this
-world has no orbits to halt collapse, so a static Run B plausibly ends as a single clump — the end
+world has no orbits to halt collapse, so a static the World plausibly ends as a single clump — the end
 of *elsewhere*. Two candidates in *Roads not taken*: true expansion with the loss counted, or
 gravity weakening as the world cools. The second keeps strict conservation and is the one to try.
-*Decided by:* not before Run A. Adding law 6 before law 2 works would be choosing wallpaper before
+*Decided by:* not before the Lab. Adding law 6 before law 2 works would be choosing wallpaper before
 there is a foundation.
 
 **12. ~~Can gravity ever become local?~~ Settled as a candidate 2026-11-04 — yes, as a screened
@@ -829,11 +829,11 @@ rejected, so take the screened form `∇²φ − m²φ = ρ` — still local, st
 like `e^(−mr)`, which is *faster* than 1/r² and therefore better at the "create elsewhere" job 1/r²
 was chosen for. The screening length `m⁻¹` becomes the knob for how large an independent region is.
 Costs one extra field per hexagon, outside the four bytes.
-*Decided by:* a Run A comparison — does a screened field cluster matter the way the 1/r² sum does?
+*Decided by:* a Lab comparison — does a screened field cluster matter the way the 1/r² sum does?
 
 **13. Does 4096² have the range for gravity to build a hierarchy?** *(This item gained a second,
 unrelated face on 2026-11-04: the temperature-proportional clock needs a 2047:1 spread in update
-rates, so Run B's coldest matter updates once in 2047 ticks. Same question — dynamic range — from a
+rates, so the World's coldest matter updates once in 2047 ticks. Same question — dynamic range — from a
 different direction. **That half is largely relieved as of 2026-11-04**: the second law only needs
 the clock rate to be strictly increasing and unsaturated, not to start from zero, so a floor in
 `rate(T) = floor + c · T` buys a 16:1 spread instead of 2047:1 at the cost of transport speed

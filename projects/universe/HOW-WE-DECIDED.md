@@ -86,7 +86,7 @@ direction. Exactly conserving, genuinely mass-weighted, and considerably more ma
 **(C) Approximate conservation.** Rejected. It violates rule 6 of `AGENTS.md`, and an
 accounting hole is the one kind of bug that disguises itself as a discovery.
 
-**We build (A) first and expect to end at (B).** (A) is simpler and Run A does not need inertia
+**We build (A) first and expect to end at (B).** (A) is simpler and the Lab does not need inertia
 to measure a periodic table, so it is the right starting point. But the reasons to stay on it
 have weakened — see *the best idea* below, which supersedes the fallback framing this paragraph
 originally had.
@@ -145,7 +145,7 @@ like extra machinery bought for nothing in particular. Three things have changed
 search confirmed nobody has exact unequal-mass conservation on a lattice, so (A) is not dodging
 a solved problem but it *is* giving up mass-weighting permanently; the orbit analysis showed
 variable speed is needed for anything to orbit; and block updates make (B) tractable. (A)
-remains the right thing to **build first**, because it is simpler and Run A does not need
+remains the right thing to **build first**, because it is simpler and the Lab does not need
 inertia to measure a periodic table. It is no longer the right thing to settle on.
 
 #### Correction — momentum at the wall
@@ -219,7 +219,7 @@ convection, which the README lists as rung one of the ladder, may not work the w
 documents assume.
 
 Left as an open question rather than patched. Giving motion an energy cost would couple laws 1
-and 5 and is a substantial change; the cheap test is whether Run A shows any pressure response
+and 5 and is a substantial change; the cheap test is whether the Lab shows any pressure response
 to temperature at all.
 
 #### ~~Open — momentum in bonded groups~~ Settled: shared along bonds
@@ -482,7 +482,7 @@ number either — check what the measurement assumed before believing what it sa
 ##### What remains open in this law
 
 Two items, both unchanged: whether the wall reflects or absorbs, and what momentum does in a
-**bonded group**. The second cannot be deferred, because Run A has both bonds and motion. Note that
+**bonded group**. The second cannot be deferred, because the Lab has both bonds and motion. Note that
 (B) changes its terms — a struck cluster now has a real momentum vector to share out, so "turns as
 a unit" and "shears apart" are both expressible, where under (A) the question was partly an
 artifact of having only a direction to flip.
@@ -657,7 +657,7 @@ the answer to the question that started the project** — why does metal melt at
 temperature — and nothing about it is written down. It is `B` and arithmetic.
 
 **What it costs.** Nothing seeks anything at short range any more, so clusters assemble only when
-thermal motion or gravity brings primitives into contact. In Run A, which has no gravity, that is
+thermal motion or gravity brings primitives into contact. In the Lab, which has no gravity, that is
 a gas bonding on contact — ordinary gas-phase chemistry, and fine. The risk is that elaborate
 structures never assemble because nothing draws their parts together. **The fallback, if clusters
 will not form:** attraction at exactly r = 2, gated on `B > 1`. That is one bit of distance
@@ -733,7 +733,7 @@ its keep.
 **The honest limit.** These four diagnostics are our own invention, not a validated instrument,
 and they measure **a table of pair energies, not a world.** Whether stable multi-primitive
 clusters actually form under motion, capacity and temperature is not readable off this table at
-all. The screen can show a form *cannot* work. Only Run A can show that one does.
+all. The screen can show a form *cannot* work. Only the Lab can show that one does.
 
 ##### What the four diagnostics are, and why these four
 
@@ -921,7 +921,7 @@ merely the simpler option — it is the one that makes catalysis possible at all
 heat-sink rule is not needed for this and loses its last advantage.
 
 **What is not settled, and must not be assumed.** The *mechanism* is available; whether this
-chemistry produces usable pockets is empirical and belongs to Run A and Run B. The specific real
+chemistry produces usable pockets is empirical and belongs to the Lab and the World. The specific real
 failure mode to watch for is **product inhibition**: a pocket that binds its product more tightly
 than its reactants never releases it and jams forever. For a product to leave, its kinds must
 have lower `B` with the pocket's lining than the reactants did — a real constraint, satisfied by
@@ -1044,7 +1044,7 @@ another open item:
 **The honest caveats.** The cap of 8 leaves only 8 distinct binding energies, which is a narrow
 palette — `min(gcd, 8)` keeps gcd's *topology* but compresses its thermal range, so bonds of
 strength 7 and 8 melt at nearly the same temperature. Whether 8 levels is enough thermal
-differentiation for a chemistry with depth is exactly what Run A is for, and it is the first thing
+differentiation for a chemistry with depth is exactly what the Lab is for, and it is the first thing
 to vary if the table comes out flat. And the 8 is a consequence of the **field widths**, not of the
 physics: widen energy to 16 bits and the cap becomes 257. That is a representation decision with a
 physics consequence, which `AGENTS.md` rule 5 warned about and this is the first case of it biting.
@@ -1285,12 +1285,12 @@ claims.
 force strength are two independent numbers in the search space with no stated relationship
 between them. Set them to comparable magnitudes and gravity perturbs bonding directly — and then
 **which reactions run depends on where in the world you are.** That is precisely the
-contamination Run A exists to exclude, walking back into Run B through the front door.
+contamination the Lab exists to exclude, walking back into the World through the front door.
 
 So this is a constraint on the search space rather than a preference: **the gravitational force
 between two adjacent primitives must be negligible against the weakest pair force.** Orders of
 magnitude, not a factor of two. Reality's 10³⁶ is not required, but the ordering has to hold, or
-the scales are not separated and Run A's measurements stop meaning anything at scale.
+the scales are not separated and the Lab's measurements stop meaning anything at scale.
 
 It is also a cheap **filter**: any candidate constant set that violates it is dead before it
 runs, and can be rejected without spending a universe on it.
@@ -1335,7 +1335,7 @@ A uniform downward pull (falling-sand style) is local, free, and gives you *down
 settling — but it is a boundary condition wearing a force's clothes, and it makes no energy.
 Still open, but not by either of these routes.
 
-**Held out of Run A** — see the end of this file.
+**Held out of the Lab** — see the end of this file.
 
 ---
 
@@ -1357,7 +1357,7 @@ But Newton's `1/r²` sum is a **solution**, not a law. The law underneath it is
 which is local: `φ` at a hexagon is fixed by `φ` at its neighbours and the matter there. Relax it
 by repeated neighbour-averaging — a few Jacobi passes per tick, multigrid if convergence matters —
 and read the force off as the gradient of `φ` between neighbours. O(N) per pass, no sum over
-distance, no formula over a separation, and shader-shaped, which is what Run B needs.
+distance, no formula over a separation, and shader-shaped, which is what the World needs.
 
 **Why this is not just adopting 2D's own gravity.** Relaxing `∇²φ = ρ` on a 2D lattice converges to
 a **1/r** force and a logarithmic potential, which is the single global collapse this project
@@ -1386,7 +1386,7 @@ local or global, and `m` sets *at what size*.
    purpose.
 
 **Not yet a measurement.** Whether a screened field clusters matter the way the 1/r² sum does is a
-Run A comparison, and it is the kind of thing that fails quietly: with `m` set badly, everything
+the Lab comparison, and it is the kind of thing that fails quietly: with `m` set badly, everything
 inside one screening length collapses together and nothing outside it interacts at all. Logged in
 `README.md` item 12 as a candidate, not as a settled law.
 
@@ -1411,7 +1411,7 @@ function of kind** — the same description-length discipline as law 2, drawn fr
 grammar, never a table of per-kind values. That adds no law and no state; it specifies one
 constant more carefully.
 
-Not yet decided, because it should be decided by what Run A does with a global `C` first. If
+Not yet decided, because it should be decided by what the Lab does with a global `C` first. If
 the table comes out with three species and no depth, this is the thing to vary — though as of
 2026-11-04 law 2 carries the columns itself in `v(k) = k mod 8`, so this is no longer the *only*
 place valence could come from, and that lowers its urgency rather than closing it.
@@ -1691,7 +1691,7 @@ With `rate(T) = floor + c · T` the filter is `floor + c · T_max ≤ 1`.
 
 *(Corrected later the same day, and the filter above is the part that survives. This went on to say
 the cost was that energy is 11 bits, so the constant must sit below 1/2047 and the clock therefore
-needs a **2047:1 spread in clock rates** — free in Run A, and in Run B the coldest matter updating
+needs a **2047:1 spread in clock rates** — free in the Lab, and in the World the coldest matter updating
 once in 2047 ticks, "the dynamic-range question arriving from a direction nobody expected."
 **The spread does not follow from the filter.** It is `(floor + c · T_max) / floor`, which reaches
 2047:1 only when there is no floor and the coldest matter sits at `c · 1`. Put a floor in and the
@@ -1793,7 +1793,7 @@ It took two blobs to see either problem.
 
 #### Correction — the books have to be kept at the edges
 
-*(Found by external review.)* Energy leaving at the boundary and Run A's
+*(Found by external review.)* Energy leaving at the boundary and the Lab's
 thermostat both move energy across the world's edge, and nothing in these documents said we
 *track* it. Without that, rule 6's conservation assertion is **meaningless wherever it
 matters most** — it would pass happily while the world gained or lost energy at the border.
@@ -1801,7 +1801,7 @@ matters most** — it would pass happily while the world gained or lost energy a
 So two counters are mandatory, not optional:
 
 - **radiated-away**, every unit that crossed the boundary outward
-- **thermostat net**, every unit Run A's held gradient injected or removed
+- **thermostat net**, every unit the Lab's held gradient injected or removed
 
 and the invariant that gets asserted is `world energy + radiated-away − thermostat net =
 constant`, not `world energy = constant`.
@@ -1810,10 +1810,10 @@ Binding energy is inside the world and already covered by the exact-accounting s
 fact. Gravitational potential is the subtle one: it is not stored anywhere, it is implicit in
 the arrangement, so collapse appears to *create* thermal energy from nothing. That is correct
 physics and it is what the whole energy budget depends on — but it means **total energy is
-not the conserved quantity in Run B.** What is conserved is energy plus gravitational
-potential, and since the potential isn't represented, the Run B assertion has to be the
+not the conserved quantity in the World.** What is conserved is energy plus gravitational
+potential, and since the potential isn't represented, the World assertion has to be the
 weaker one: energy only ever increases through collapse and only ever decreases through the
-boundary, both monotonic and both logged. Run A, which has no gravity, gets the strict
+boundary, both monotonic and both logged. The Lab, which has no gravity, gets the strict
 equality.
 
 ---
@@ -1826,7 +1826,7 @@ equality.
 
 **What it said.** "The clock constant times the hottest reachable temperature must be below 1." At
 11 bits of energy that forces a constant under 1/2047 and a **2047:1 spread in clock rates** — free
-in Run A, where event times are drawn from distributions anyway, and close to fatal in Run B, where
+in the Lab, where event times are drawn from distributions anyway, and close to fatal in the World, where
 the coldest matter would update once in 2047 ticks. The cold edge is exactly where the dissipative
 structures are meant to live, so that is not a performance detail. It is the sink going quiet.
 
@@ -1980,7 +1980,7 @@ not exist (item 16). Fixing what was measured and leaving momentum alone is the 
 method — change one thing at a time — and it keeps 127 kinds instead of 63. If the orbit test later
 says width was the cause, the 63/±7 row is still there.
 
-Eight bytes remains the only way to have all three, at twice Run B's bandwidth. A real option, not
+Eight bytes remains the only way to have all three, at twice the World's bandwidth. A real option, not
 a better one.
 
 **What it costs, and it must be recorded.** `B`'s forced cap rises from 8 to 65, so **the cap of 8
@@ -2001,7 +2001,7 @@ and range is the resemblance.
 
 And the first half dissolved the problem rather than solving it. **The four-byte word was being
 held in place by a mobile memory budget**, from `AGENTS.md`'s working note that this has to work on
-Ric's phone off the live site. Run B computes on the PC and the phone only *views* it, so that
+Ric's phone off the live site. The World computes on the PC and the phone only *views* it, so that
 budget never applied to the lattice at all. At 4096² the hexagon is 134MB per buffer, about 268MB
 double-buffered, comfortable on a 4GB card and impossible on a phone. **A constraint nobody had
 examined was choosing physics constants**, which is the same shape as the width finding itself.
