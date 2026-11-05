@@ -538,7 +538,11 @@ is already above the ceiling. The two jobs are separated only by the size of the
 falls as `1/a` — and reality affords 10³⁶ of separation because a star holds 10⁵⁷ atoms. 4096²
 affords about one order, and only for one clump.
 
-**The levers, none chosen.** A larger World (the floor falls as `1/a`). A looser ceiling (accept
+**The levers, none chosen.** A larger World (the floor falls as `1/a`) — the one Ric leans
+toward, 2026-11-05, and `orbit.mjs` Check 10 sizes it: about a billion hexagons per clump at ε =
+0.01. It does not work alone. Hot enough to melt a bond *means* falling at a certain speed, the
+same at every size, and at ±15 most of the mass is too heavy to carry it, so the clamp throws that
+energy away; momentum has to widen to ±63 or ±127 with it (README item 20). A looser ceiling (accept
 gravity within an order of the weakest bond, and with it some location-dependence in chemistry). A
 different exponent — the floor is set by how deep a clump's well is, and 1/r's logarithmic
 potential is far deeper than 1/r²'s, though 1/r was rejected below for global collapse and nothing

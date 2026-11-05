@@ -877,6 +877,21 @@ chemistry), a different exponent (unmeasured), or heat given at the start (which
 reason for existing). **This sharpens item 13** — it asked whether 4096² has the range for a
 hierarchy of clumps, and the answer at ε = 0.01 is that it does not have the range for one.
 
+**Ric leans toward a bigger World** (2026-11-05: *"I like the idea of a bigger world. I mean if you
+think of each of the hexagons being so small that it's the size of an atom then we would need
+billions for gravity to mean anything."*). `orbit.mjs` Check 10 says his figure is the measured
+one. At ε = 0.01 a single clump that melts its weakest bond is radius ~16,500 — **about a billion
+hexagons** — and a World with room for ten is ten billion, 160 GB double-buffered; at ε = 0.1 the
+same clump is ten million and ten of them is roughly today's World. **And it forces a second
+decision.** The infall speed at the rim of a clump that reaches temperature T depends on T alone —
+not on ε, not on size — and at T = 1 it is faster than any kind above 110 can carry inside ±15
+(81% of the seeded mass; at T = 8, kinds above 39 and 98%). The symmetric clamp declines the rest of
+the pull, so that energy never becomes heat. A bigger World only pays off if momentum widens with
+it: ±63 (14 bits) lets every kind carry the fall that melts the weakest bond, ±127 (16 bits) the
+strongest, both inside the 24 spare bits — and either moves law 1's kinetic-energy window, so
+`S = 64` would need re-measuring. **Not adopted**: the size, ε and the momentum width are one
+decision now, and none of the three is set.
+
 **21. What does a step do when two directions tie?** Raised 2026-11-05 by `orbit.mjs` Check 9.
 Law 1 rounds a step to the nearest of six directions and never said what happens when two are
 exactly as near — which an integer vector is on 2 to 4 percent of an orbit's steps. Always taking

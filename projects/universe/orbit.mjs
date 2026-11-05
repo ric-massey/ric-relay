@@ -1,5 +1,5 @@
 // orbit.mjs -- does anything orbit here, and if not, which cause stops it?
-// And, since 2026-11-05: how strong is gravity allowed to be? (Checks 6-9.)
+// And, since 2026-11-05: how strong is gravity allowed to be? (Checks 6-10.)
 //
 // README item 16. The documents say "nothing completed two laps" at radii of
 // 20, 100 and 500 and conclude that the lattice is what prevents orbits, filed
@@ -711,3 +711,84 @@ console.log("  the same way every time, which is the 'preferred direction in the
 console.log("  physics' AGENTS.md rule 6 warns about, arriving through the step rule");
 console.log("  instead of the gravity solver. LAW 1 SAYS NOTHING ABOUT TIES, and an");
 console.log("  engine written from it would pick one silently. It has to say.");
+
+// ------------------------------------- check 10: how big a World would do
+// (Added 2026-11-05. Ric, on item 20's levers: "I like the idea of a bigger
+// world. I mean if you think of each of the hexagons being so small that
+// it's the size of an atom then we would need billions for gravity to mean
+// anything.") Check 7 says the floor falls as 1/a, so invert it: the clump
+// radius at which collapse first reaches a temperature, at a given EPS.
+//
+// And the second thing a deeper well does. Falling from far away to the rim
+// of a clump gives a speed v with v^2 = 2GM/a (point mass from outside). A
+// primitive of kind k can only carry speed |p|/k, and |p| stops at the
+// longest legal vector, 15 -- so past some depth the heavy kinds cannot hold
+// the speed the fall gives them, the symmetric clamp declines the rest of the
+// pull (law 1), and that energy never becomes heat. THE-LAWS law 1 already
+// says "heat that tracks the fall, not heat that scales with it"; this puts
+// a kind on it.
+console.log("");
+console.log("=== Check 10: how big a World would have to be ===");
+const P_LONGEST = mag([15, -15, 0]);                   // the longest vector at +-15
+const BYTES_PER_HEX = 8 * 2;                           // eight-byte word, double-buffered
+const sitesIn = (a) => Math.PI * a * a * HEX_DENSITY;
+const bigRows = [];
+for (const eps of FILTER) {
+  for (const T of [B_WEAKEST, B_STRONGEST]) {
+    const a = T / tempRise(eps, 1);
+    const sites = sitesIn(a);
+    const v = Math.sqrt(2 * gFromEps(eps) * sites * KIND_MEAN / a);
+    bigRows.push({
+      EPS: eps, "to reach T": T,
+      "clump radius": Math.round(a),
+      "hexagons in one clump": Number(sites.toPrecision(2)),
+      "World side for 10 clumps": Math.round(Math.sqrt(10 * sites)),
+      "memory, GB": Number((10 * sites * BYTES_PER_HEX / 1e9).toPrecision(2)),
+      "infall speed at rim": Number(v.toFixed(3)),
+      "heaviest kind that can carry it": Math.min(KIND_MAX, Math.floor(P_LONGEST / v)),
+    });
+  }
+}
+console.table(bigRows);
+console.log(`  For scale, the World today is ${WORLD_SITES.toExponential(2)} hexagons and`);
+console.log(`  ${(WORLD_SITES * BYTES_PER_HEX / 1e9).toFixed(2)} GB. "World side for 10 clumps" packs ten clumps' worth of`);
+console.log("  matter into a square at full density; any spreading-out makes it bigger.");
+console.log("");
+console.log("  Ric's intuition is the measured answer. At two orders of magnitude, ONE");
+console.log("  clump that melts its weakest bond holds about a billion hexagons, and a");
+console.log("  World with room for ten is ten billion -- 160 GB, which no browser and");
+console.log("  no 4 GB card holds. At one order the same clump is ten");
+console.log("  million hexagons and ten of them is about the size of the World today.");
+console.log("");
+// Share of the seeded mass (uniform kinds 1-255, README item 18) in kinds
+// too heavy to carry a given speed inside the box.
+const massAbove = (kMax) => {
+  let all = 0, above = 0;
+  for (let k = 1; k <= KIND_MAX; k++) { all += k; if (k > kMax) above += k; }
+  return above / all;
+};
+const kAtT1 = Math.floor(P_LONGEST / bigRows[0]["infall speed at rim"]);
+const kAtT8 = Math.floor(P_LONGEST / bigRows[1]["infall speed at rim"]);
+console.log("  And the speed column does not depend on the World at all. The infall");
+console.log("  speed at the rim of a clump that reaches temperature T is the same at");
+console.log("  every EPS and every size -- hot enough to melt a bond MEANS falling that");
+console.log("  fast. So the momentum box sets a ceiling no bigger World can lift: kinds");
+console.log(`  above ${kAtT1} cannot carry the fall that melts the weakest bond, and kinds above`);
+console.log(`  ${kAtT8} cannot carry the one that melts the strongest. With the seeded mix that`);
+console.log(`  is ${(100 * massAbove(kAtT1)).toFixed(0)}% and ${(100 * massAbove(kAtT8)).toFixed(0)}% of all the mass. The clamp declines that part of the`);
+console.log("  pull (law 1), so it never becomes heat: heavy matter falls at its terminal");
+console.log("  speed and releases nothing on the way. Conduction can still warm it from");
+console.log("  the light matter around it, so it is not left cold -- but the heat budget");
+console.log("  this table assumes shrinks by up to that share, and a World big enough to");
+console.log("  matter needs momentum wider than +-15 to deliver it. Momentum width is a");
+console.log("  physics decision (AGENTS.md rule 5); this is the one a bigger World forces.");
+const pNeeded = (v) => Math.ceil(KIND_MAX * v);
+const bitsFor = (R) => 2 * Math.ceil(Math.log2(2 * R + 1));
+for (const [label, row] of [["weakest", bigRows[0]], ["strongest", bigRows[1]]]) {
+  const need = pNeeded(row["infall speed at rim"]);
+  const R = 2 ** Math.ceil(Math.log2(need + 1)) - 1;
+  console.log(`  To let kind 255 carry the fall that melts the ${label} bond: |p| ${need},`);
+  console.log(`  so +-${R} -- ${bitsFor(R)} bits of momentum against 10 today, inside the 24 spare.`);
+}
+console.log("  Widening momentum also moves law 1's kinetic-energy window (2 to 291 at");
+console.log("  +-15, measured in momentum.mjs), so S = 64 would need re-measuring.");

@@ -373,7 +373,8 @@ in time**, which is allowed because two primitives under one law is a measuremen
 world; the viewer's refusal to animate is about something else, a whole lattice pretending to run
 physics it has not been given. Checks 1–5 run a 2×2 — direction quantization on or off against
 integer momentum on or off — under both rules for a sub-unit pull, plus a sweep of momentum range;
-Checks 6–8 state gravity's strength as ε (rule 8) and find its floor; Check 9 keeps the tie-break
+Checks 6–8 state gravity's strength as ε (rule 8) and find its floor, Check 10 sizes the
+World that floor needs and the momentum width that World needs; Check 9 keeps the tie-break
 bug on show. **Its control is load-bearing**, and the file has had **four harness bugs**: a start
 60° off tangent, an orbiter light enough to hit the speed cap, a start on the edge of the momentum
 box, and a step tie always broken the same way. The first three made orbits fail; the fourth made
