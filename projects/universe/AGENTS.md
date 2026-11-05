@@ -316,7 +316,7 @@ Apply all of this before telling Ric something interesting happened.
 
 ## 12. Screen before you simulate
 
-Four tools in this directory, and none of them is part of the engine.
+Five tools in this directory, and none of them is part of the engine.
 
 `screen.mjs` scores a candidate form for law 2 over all 65,025 pairs of kinds — binding-energy
 spread, family structure, near-inert count, bonding degree spread — in milliseconds, with no
@@ -355,6 +355,18 @@ without kinetic energy, measures the speed spread by mass band, checks the bit b
 the scale factor that makes whole-number kinetic energy work. It is also the reason a phantom rule
 was found — see rule 7. **Two of its nine checks are wrong and are labelled as such in the file
 rather than deleted**; read the note above check 5 before quoting any number from it.
+
+`orbit.mjs` settled item 16 — whether anything orbits, and what stops it. It is the **only tool
+here that steps forward in time**, which is allowed because two primitives under one law is a
+measurement, not a claimed world; the viewer's refusal to animate is about something else, a whole
+lattice pretending to run physics it has not been given. It runs a 2×2 — direction quantization on
+or off against integer momentum on or off — plus a sweep of momentum range from ±3 to ±255, and
+**its control is load-bearing**: with neither cause switched on it must orbit, and the first two
+times it did not, which found two harness bugs rather than two facts about the world. **It
+overturned a settled conclusion**: direction quantization orbits 6 of 6, so the hexagon was never
+what stopped an orbit. It also refutes a prediction written in its own file, and that prediction is
+kept beside the refutation rather than deleted, for the same reason `momentum.mjs` keeps checks 3
+and 5.
 
 **Three lessons from these tools are worth more than the tools.** First, **the control run is where the result
 was.** Checking a temperature-dependent clock showed the second law closing; running the *flat*

@@ -241,6 +241,26 @@ Law 1's momentum clause and the hex grid both come from here. Took:
   **spuriously conserved third momentum component.** Rule 6 of `AGENTS.md` exists because
   of this.
 
+**Patel, Amit — Red Blob Games.** *Hexagonal Grids.*
+<https://www.redblobgames.com/grids/hexagons/>
+
+The hex coordinate machinery. Recorded 2026-11-05, before writing `orbit.mjs`, which is the first
+file here to use it explicitly — though the representation it describes is already law 1's.
+Took:
+
+- **Cube coordinates** — three axes summing to zero, so a hex vector is two independent signed
+  components and the third is forced. That is exactly how law 1 stores momentum, and the reason
+  it costs 10 bits rather than 15.
+- **Cube rounding** — rounding a continuous cube vector to the nearest hex by rounding each
+  component and then repairing whichever one moved furthest, so the three still sum to zero.
+  `orbit.mjs` uses it for the single thing law 1 asks for: round the **step** to the nearest of
+  six directions while leaving the momentum vector itself unrounded.
+- The **cube-to-cartesian** conversion, used here only for *measurement* — radius and accumulated
+  angle in the lap counter. No law reads it, and nothing in the physics is allowed to.
+
+**What we did not take:** the pathfinding, range, field-of-view or map-storage algorithms on the
+same page. If one of those turns up here later it is a separate debt and gets its own line.
+
 **Margolus, Norman; Toffoli, Tommaso; Fredkin, Edward.** Block (partitioning) cellular automata
 and reversible computing — the **Margolus neighbourhood**, in which the lattice is partitioned
 into blocks and each block is updated by a permutation of its own states, with the partition
@@ -493,6 +513,11 @@ matter became "add to the momentum" because that is what a force is. **It also d
 These documents had referred four times to "the deflection rule" for how gravity turns a primitive,
 a rule never defined anywhere; there is no such thing in Newton either, and once momentum is a
 vector none is needed.
+
+**And the circular-orbit condition**, `v² = GM/r`, which is just the inverse-square law set equal
+to the centripetal requirement. `orbit.mjs` uses it to pick the tangential speed that *should*
+produce a closed orbit at a given radius, so the test starts from the best case Newton allows and
+measures only what the lattice does to it. Taken 2026-11-05.
 
 **Momentum without mass.** A photon has no mass and carries momentum anyway — `p = E/c` — which is
 why radiation pressure is real and why solar sails work. Noted here because this project now has

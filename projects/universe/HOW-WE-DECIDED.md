@@ -18,7 +18,7 @@ same turn.
 ## What is in here
 
 - **Correction —** something these documents got wrong, with the wrong version kept beside the
-  fix. There are **eleven**, plus **five retractions** of claims made the same day they were
+  fix. There are **twelve**, plus **five retractions** of claims made the same day they were
   written — four in law 2, and one in law 1 where a measurement was believed over an objection
   and turned out to be measuring the wrong thing.
 - **Open —** the full argument behind an undecided question. `README.md` holds the register of
@@ -26,9 +26,10 @@ same turn.
 - **Rules that came off the list** — the six candidate laws that were deleted, and why. Read it
   before proposing a new law; `AGENTS.md` rule 7 requires it.
 
-Several entries carry **measurements** rather than argument, from the four design tools:
+Several entries carry **measurements** rather than argument, from the five design tools:
 `screen.mjs` for law 2's form, `radiate.mjs` for law 5's radiation and the clock,
-`momentum.mjs` for law 1's momentum, and `budget.mjs` for the hexagon's four bytes. Where a number appears in this file it came from one of those
+`momentum.mjs` for law 1's momentum, `budget.mjs` for the hexagon's four bytes, and `orbit.mjs`
+for whether anything orbits. Where a number appears in this file it came from one of those
 and can be reproduced.
 
 Everything is grouped by the law it belongs to, in law order.
@@ -467,6 +468,13 @@ So the absence of orbits belongs beside *2D is topologically poor* — a consequ
 of the energy budget — and it costs law 3 nothing, because gravity's job is collapse and falling in
 is the point.
 
+***Superseded 2026-11-05, and the numbers above were never real.*** `orbit.mjs` is the first orbit
+code this project has ever had, so the "96 settings" and the ±31 runs cited above came from
+nowhere. When the measurement was actually made, direction quantization orbited **6 of 6** and the
+conclusion inverted. What survives from this entry is its last clause — it costs law 3 nothing —
+and that was never the part in doubt. See *Correction — the hexagon was never what stopped an
+orbit* below.
+
 ##### What this says about the method
 
 Three claims about this one question were made and two were wrong, inside a single day. The pattern
@@ -527,6 +535,50 @@ stops being inference and becomes evidence.
 
 Worth naming as a general trap, because this project will meet it again: **a result with two
 sufficient causes measures neither.**
+
+#### Correction — the hexagon was never what stopped an orbit
+
+*(2026-11-05. `orbit.mjs`, written because README item 16 asked for it and because the entry above
+admitted its own numbers could not be rerun.)*
+
+**What it said.** Two things, in sequence, and both are now wrong. First, that what defeats an
+orbit is the lattice — a primitive travels in one of six directions, one whole hexagon at a time,
+so its path cannot curve and every lap leaks from the rounding. Then, correcting that, that the
+result had two sufficient causes and the other one — **momentum clipping** — might be the real
+cause, which would make the limitation a field width and therefore reversible.
+
+**What the measurement says.** Switch direction quantization on by itself and it orbits **6 of 6**,
+at radii 20, 100 and 500, at both momentum ranges. The path is a visible zigzag and the radius
+wobbles by about a quarter of itself, and it closes two laps every time. **The zigzag is
+survivable.** Switch integer momentum on by itself and it orbits **0 of 6**, under both of the two
+available rules for a sub-unit pull. Then sweep the range from ±3 to ±255 — 85×, running far
+outside the word's ten bits on purpose — and nothing orbits anywhere on it, including rows where
+the per-tick pull is twelve whole units. **So it is not the range either.** It is the
+integerisation itself, and *why* that is fatal is not established.
+
+**Both failed explanations were inferences dressed as measurements**, and that is the third time in
+this file. The first had no code behind it at all. The second had an argument that sounded
+mechanical — three integers of room before the clamp — and the sweep refutes it directly.
+
+**The control is the whole reason this is trustworthy, and it failed twice first.** `AGENTS.md`
+rule 12 says a run reporting zero of the thing it measures is a broken run. The first version
+reported zero orbits in every row including the control, which was two bugs in the harness and
+nothing about the world: the start velocity was 60° off perpendicular, because `[0,-1,1]` reads as
+tangential and is not, and the orbiter was light enough that law 1's one-hexagon-per-tick cap
+clipped its speed, which silently breaks the circular condition the run was built on. **Had the
+control not been in the table, both bugs would have been reported as findings** — and they would
+have agreed with the conclusion this entry is correcting, which is exactly how the wrong answer
+survived a day.
+
+**And the tool refutes a prediction written into its own file**, which is kept beside the
+refutation rather than deleted. It predicted orbits would appear once the range was wide enough for
+the pull to reach one whole unit, at about ±sqrt(k·r). The sweep crosses that line and nothing
+changes. Rule 12's fourth lesson, landing on the file that was written to apply it.
+
+**What it opened.** Law 3 never says what happens when the pull is smaller than one unit of
+momentum, and at every radius tested the whole pull is a fraction — 0.00007 to 0.044 per tick.
+Rounding gives gravity a cutoff radius nobody chose; carrying the remainder needs a stored residual.
+That is README item 19, and it blocks writing the solver.
 
 #### Settled — what a force does to momentum that is already at the limit
 

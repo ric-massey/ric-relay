@@ -148,23 +148,31 @@ well releases no more heat than one merely deep enough to saturate. The ceiling 
 chemistry's and it is still a ceiling. Law 3's prose should promise heat that **tracks** the fall,
 not heat that scales with it.
 
-**And the reason there are no orbits is geometry, not energy.** Gravity does supply the trade an
-orbit needs, with no stored potential required: falling in adds momentum so a primitive speeds up,
-climbing out subtracts so it slows. What defeats it is that a primitive travels in **one of six
-directions, one whole hexagon at a time**, so its path cannot curve smoothly and each lap leaks a
-little from the rounding. Tested at the mathematically correct orbit speed, at radii of 20, 100 and
-500 hexagons and at two momentum ranges: **nothing completed two laps.** This belongs with "2D is
-topologically poor" rather than with anything about energy, and it costs law 3 nothing — gravity's
-job is to pull matter together and make heat from the falling, and falling in is the point.
+**And the reason there are no orbits is that momentum is an integer.** Not geometry, and not
+energy. Gravity does supply the trade an orbit needs, with no stored potential required: falling in
+adds momentum so a primitive speeds up, climbing out subtracts so it slows. What defeats it is that
+the velocity change an orbit runs on is a **fraction of one unit per tick** and an integer field
+cannot carry a fraction — round it and gravity switches off entirely, carry it and the impulse
+arrives in lumps far too large. Measured in `orbit.mjs`, 2026-11-05: **0 of 6 orbited** with integer
+momentum, under both rules, at every radius. It costs law 3 nothing — gravity's job is to pull
+matter together and make heat from the falling, and falling in is the point.
 
-**That diagnosis is now provisional, and the test that would settle it has not been run.** An orbit
-runs on momentum *changing* as a primitive rises and falls, and at ±3 there are three integers of
-room before the clamp below stops the change entirely — so the velocity budget an orbit needs
-**cannot be represented**, whatever the path does. Direction quantization and momentum clipping
-were both present in every run and nothing separated them, so the runs cannot tell us which one
-defeated the orbits. The diagnostic is cheap: **rerun at ±7, breaking the four-byte budget for that
-test only.** If laps appear, the cause is the field width and not the dimension, and a conclusion
-filed as a settled fact about 2D has to come back off the list. Logged in `README.md`.
+*(Corrected 2026-11-05, and the version it replaces was wrong in an instructive way. It said the
+cause was that a primitive travels in **one of six directions, one whole hexagon at a time**, so
+its path cannot curve smoothly and each lap leaks from the rounding, "tested at radii of 20, 100
+and 500 hexagons" with **nothing completing two laps** — filed beside "2D is topologically poor."
+`orbit.mjs` switches direction quantization on by itself and it orbits **6 of 6**. The path is a
+visible zigzag, the radius wobbles by about a quarter, and it closes two laps every time. **The
+zigzag is survivable and the hexagon was never the problem.** The old numbers also had no tool
+behind them; see `HOW-WE-DECIDED.md`.)*
+
+*(And the follow-up that replaced it is wrong too, which is why both are written down. Item 16
+proposed that **momentum clipping** was the real cause — three integers of room at ±3 before the
+clamp — and that widening the field might therefore buy an orbit back, making the limitation
+reversible. `orbit.mjs` sweeps the range from ±3 to ±255, which is 85× and runs well outside the
+word's 10 bits on purpose. **Nothing orbits anywhere on that sweep**, including where the per-tick
+pull is twelve whole units. The range is not the lever; the integerisation is. Why integer momentum
+is fatal is not established by that tool and is open.)*
 
 **The momentum range is ±15, and it used to be ±3 because of the field widths.** At four bytes two
 components at ±7 already made the hexagon 33 bits and would not fit; the honest reading of that was

@@ -29,18 +29,22 @@ reason to run the experiment and not a claim that nobody else's substrate could 
 [**Open questions**](#open-questions) · [Roads not taken](#roads-not-taken)
 
 **And the other files.** [`THE-LAWS.md`](THE-LAWS.md) states each law, justifies it and says what
-breaks without it. [`HOW-WE-DECIDED.md`](HOW-WE-DECIDED.md) is the record: eleven corrections,
+breaks without it. [`HOW-WE-DECIDED.md`](HOW-WE-DECIDED.md) is the record: twelve corrections,
 five retractions, every rejected option and the six rules that came off the list. [`TWO-RUNS.md`](TWO-RUNS.md) is why the project runs twice,
 and what it would be like as one run. [`AGENTS.md`](AGENTS.md) is the rules for anyone — human or
 otherwise — working on this. [`SOURCES.md`](SOURCES.md) credits everything borrowed, which is
 rule 1 and Ric's.
 
-**And four tools, none of which is an engine.** [`screen.mjs`](screen.mjs) scores candidate forms
+**And five tools, none of which is an engine.** [`screen.mjs`](screen.mjs) scores candidate forms
 for law 2 over all 65,025 pairs of kinds; [`budget.mjs`](budget.mjs) enumerates what fits in the
 hexagon's word; [`momentum.mjs`](momentum.mjs) settled law 1's momentum representation and the
-kinetic-energy scale; [`radiate.mjs`](radiate.mjs) settled law 5's radiation and the clock. Each
-answers a question by enumeration, with **no simulation anywhere** — `AGENTS.md` rule 12 says what
-each one can and cannot tell you. [`viewer.html`](viewer.html) renders.
+kinetic-energy scale; [`radiate.mjs`](radiate.mjs) settled law 5's radiation and the clock; and
+[`orbit.mjs`](orbit.mjs) settled item 16 by finding that the hexagon was never what stopped an
+orbit. Four of the five answer a question by enumeration with **no simulation anywhere**;
+`orbit.mjs` is the exception and the first thing here that steps forward in time, which it is
+allowed to do because two primitives under one law is a measurement rather than a claimed world.
+`AGENTS.md` rule 12 says what each one can and cannot tell you. [`viewer.html`](viewer.html)
+renders.
 
 *(Corrected 2026-11-05. This said `screen.mjs` was "the only code here so far," which was true
 until 2026-11-04 and then stopped being true four times over that same day, as `radiate.mjs`, `budget.mjs`, `momentum.mjs` and the viewer landed. The corrected counts for the
@@ -150,7 +154,7 @@ And precisely:
 
 Every justification, what breaks without each one, and the record of what was merged or
 rejected is in [`THE-LAWS.md`](THE-LAWS.md), and the full record of how each was arrived at —
-including eleven corrections and five retractions — is in
+including twelve corrections and five retractions — is in
 [`HOW-WE-DECIDED.md`](HOW-WE-DECIDED.md).
 
 ## The five structural facts
@@ -702,17 +706,38 @@ rendering on the PC. Both measurements that could have decided it are still unru
 table goes empty above some kind, and whether 8 bytes measurably hurts the World. The second is now a
 cost already accepted rather than an open question.
 
-**16. Did momentum clipping defeat the orbits, or did the dimension?** Nothing completed two laps at
-radii of 20, 100 or 500, and that was filed as evidence that 2D is topologically poor. But an orbit
-runs on momentum *changing* as a primitive rises and falls, and at ±3 there are three integers of
-room before the symmetric clamp stops the change entirely — so the velocity budget an orbit needs
-**cannot be represented**, whatever the path does. Both causes were present in every run and nothing
-separated them.
-*Decided by:* writing the test and running it. **It no longer needs an out-of-budget run** —
-momentum is ±15 in the layout as of 2026-11-04, so the comparison is just ±3 against ±15 in the
-engine's own terms. If laps appear, item 14's "permanent" needs qualifying and a load-bearing
-conclusion comes back off the list. The test still does not exist, which is the part that matters:
-the original numbers cite a tool that never had an orbit in it.
+**16. ~~Did momentum clipping defeat the orbits, or did the dimension?~~ Settled 2026-11-05 —
+neither. It is integer momentum itself, and `orbit.mjs` exists now.** The question had three
+answers on offer and the measured one was not among them.
+
+- **The control orbits, 6 of 6.** That had to be established first — rule 12 says a run reporting
+  zero of the thing it measures is a broken run. It reported zero twice before it was right: the
+  start velocity was 60° off perpendicular (`[0,-1,1]` *looks* tangential and is not), and the
+  orbiter was light enough that law 1's one-hexagon-per-tick cap clipped its speed, which silently
+  breaks the circular condition the run was set up with. Both are in the file.
+- **Direction quantization is not the cause, and that is the headline.** Switched on by itself it
+  orbits **6 of 6** — the path is a visible zigzag, the radius wobbles by about a quarter, and it
+  closes two laps every time. The documents' stated reason, that a primitive travels in one of six
+  directions so its path cannot curve and every lap leaks from the rounding, **is false.**
+- **Momentum range is not the cause either, which kills this item's own hypothesis.** The sweep runs
+  ±3 to ±255 — 85×, well outside the word's 10 bits deliberately — and **nothing orbits anywhere on
+  it**, including rows where the per-tick pull is twelve whole units. So the limitation is not a
+  width and is not reversible by widening one.
+- **What is left is the integerisation.** 0 of 6 with integer momentum, under both of the two
+  possible rules for a sub-unit pull. *Why* it is fatal is not established, and that is now the open
+  part.
+
+**It also found an unwritten rule, which is the more useful half.** Law 3 says gravity falls off as
+1/r² and adds to momentum. It does not say **what happens when the pull is smaller than one unit**,
+and at every radius and range tested it is — between 0.00007 and 0.044 units per tick. Rounding it
+switches gravity off below half a unit, which is a cutoff radius nobody chose, arriving exactly the
+way law 2's cap of 8 did. Carrying the remainder needs a per-primitive residual, which is a stored
+field: the 24 spare bits exist, and `AGENTS.md` rule 5 says nothing goes in them without an entry in
+`THE-LAWS.md` and a reason. **That decision is open and is now item 19.**
+
+*And the old numbers were never reproducible.* "Nothing completed two laps at radii of 20, 100 or
+500" cited a tool that did not exist; `orbit.mjs` is the first orbit code in this project. Two
+conclusions rested on it and both are withdrawn — see item 14.
 
 **17. What should law 2's modulus be, now that nothing forces it?** At 16 bits of energy the forced
 cap on `B` is **257**, so the modulus of 8 stopped being an artifact of a field width on the same
@@ -777,6 +802,29 @@ therefore an initial condition.** Nothing stated that out loud. Two consequences
 remains is a **choice**: seed uniform random over 1–255 and accept that the population is given, or
 take the fusion road, which is the only candidate that would let the distribution grow itself. Not
 blocking either way, and worth deciding knowingly rather than discovering in the output.
+
+**19. What does law 3 do when the pull is smaller than one unit of momentum?** Raised 2026-11-05 by
+`orbit.mjs`, which could not run without answering it. Law 3 says gravity falls off as 1/r² and adds
+to momentum; momentum is an integer; **nothing says what happens to the fraction**, and at every
+radius and range that tool tested the whole pull *is* a fraction — 0.00007 to 0.044 units per tick.
+That is not a corner case, it is the normal case at any distance.
+
+Two rules are available and they are different physics, not different implementations:
+
+- **Round it.** Below half a unit gravity does nothing at all, so there is a **cutoff radius beyond
+  which gravity is simply off.** Nobody chose that radius; it falls out of a field width, exactly
+  the way law 2's cap of 8 fell out of the energy width. `AGENTS.md` rule 5 is about precisely this,
+  and says a width that silently picks a physics constant is the dangerous case because it looks
+  like a derivation.
+- **Carry the remainder** in a per-primitive residual and spend it in whole units. The impulse is
+  then exact in the long run but arrives in lumps. It **needs a new stored field**: the 24 spare
+  bits can hold it, and rule 5 says nothing goes in them without an entry in `THE-LAWS.md` and a
+  reason. It also sits uncomfortably close to the never-store list, being state that exists only to
+  patch a representation.
+
+*Decided by:* a sweep over both rules. **This blocks writing law 3's solver** — gravity cannot be
+coded without picking one, and picking one silently is how two constants have already been chosen
+by accident here.
 
 ### Settled by running the Lab
 
@@ -844,7 +892,11 @@ for clumps *of* clumps, which is where reality's interesting structure lives. If
 clumping is all this size permits, law 3 pays its full cost as the only non-local law for less than
 its argument assumes.
 
-**14. 2D is topologically poor, and that one is permanent.** Enclosure is total — a closed loop
+**14. 2D is topologically poor, and that one is permanent — but it is one claim now, not two.**
+*(2026-11-05: the absence of orbits was filed on this list as a second instance of the same
+coarseness. It has been withdrawn — `orbit.mjs` shows the hexagon orbits fine and the cause is
+integer momentum, which is not a fact about two dimensions at all. What remains below is the
+original claim, which never depended on orbits and still stands.)* Enclosure is total — a closed loop
 completely separates inside from outside, with no "mostly sealed." Since compartments are the
 ratchet we care about most, membranes here are all-or-nothing rather than a matter of degree. Not
 a decision; a limitation to design around.
@@ -928,32 +980,29 @@ prevented orbits.** A
 large clump absorbing momentum one unit at a time would jitter internally while its centre
 stayed put, which is close enough to "the Sun barely moves."
 
-**What prevents them is the lattice, and it was measured on 2026-11-04 after two wrong
-explanations.** Gravity *does* supply the trade an orbit needs, and it needs no stored potential to
-do it: falling in adds momentum so a primitive speeds up, climbing out subtracts so it slows. That
-is the kinetic–potential exchange, implemented as vector addition.
+**What prevents them is that momentum is an integer. Measured 2026-11-05 in `orbit.mjs`, after
+three wrong explanations.** Gravity *does* supply the trade an orbit needs, and it needs no stored
+potential to do it: falling in adds momentum so a primitive speeds up, climbing out subtracts so it
+slows. That is the kinetic–potential exchange, implemented as vector addition.
 
-What defeats it is that a primitive travels in **one of six directions, one whole hexagon at a
-time.** A real orbit is a smooth curve; the best this grid offers is a hexagonal zigzag, and every
-lap leaks a little energy from the rounding. Tested at the mathematically correct circular-orbit
-speed, at radii of 20, 100 and 500 hexagons, at two momentum ranges, and with the sub-hexagon
-position error carried rather than discarded: **nothing completed two laps.** Everything either
-fell in or flew off.
+What defeats it is that the velocity change an orbit runs on is **a fraction of one unit per
+tick** — between 0.00007 and 0.044 at the radii tested — and an integer field cannot carry a
+fraction. Round it and gravity switches off; carry it and the impulse arrives in lumps far too
+large. **0 of 6 orbited** with integer momentum, under either rule, at every radius.
 
-*(Both halves of that are now in doubt, as of 2026-11-04. **The result has two sufficient causes
-and separated neither**: an orbit runs on momentum *changing* as a primitive rises and falls, and
-at ±3 there are three integers of room before the clamp, so the velocity budget an orbit needs
-cannot be represented whatever the path does. Direction quantization and momentum clipping were
-both present throughout. **And the measurement is not reproducible** — no orbit test exists in
-`momentum.mjs`, `radiate.mjs` or `screen.mjs`, so by this project's own standard that every number
-came from one of the three tools and can be rerun, these numbers currently cannot. Writing the
-test and running it at ±3 and ±7 settles both at once. README item 16, and law 1 in
-`HOW-WE-DECIDED.md`.)*
+*(Three earlier explanations were wrong and all three are retracted. The first blamed unweighted
+momentum; the second blamed kinetic energy being impossible, which it is not; **the third blamed
+the hexagon, and that one stood as settled fact for a day.** It said a primitive travels in one of
+six directions one whole hexagon at a time, so its path cannot curve and every lap leaks from the
+rounding — "nothing completed two laps" at radii of 20, 100 and 500. `orbit.mjs` runs direction
+quantization on its own: it orbits **6 of 6**, zigzag path, radius wobbling by about a quarter, two
+laps closed every time. The hexagon was never the problem, and the old numbers had no tool behind
+them in the first place.)*
 
-*(Two earlier explanations were wrong and both are retracted. The first blamed unweighted momentum;
-the second blamed kinetic energy being impossible, which it is not. It is the six directions and
-the whole-hexagon positions — the same coarseness as "2D is topologically poor", and it belongs on
-that list rather than among the energy questions.)*
+*(A fourth explanation — that **momentum clipping** was the cause and a wider field would therefore
+buy orbits back — is also dead, and it was item 16's own hypothesis. The sweep runs ±3 to ±255 and
+nothing orbits anywhere on it. The range is not the lever. See item 16 for the whole result, and
+item 19 for the unwritten rule it uncovered.)*
 
 **It costs law 3 nothing.** Gravity's job is to pull matter together and make heat from the falling.
 Falling in is the point; orbits were always a bonus.

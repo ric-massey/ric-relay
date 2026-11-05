@@ -197,12 +197,13 @@ in. That is deliberate, and it is not the how-big-everything-is bug repeating �
 was unreachable because nobody had listed it; here it is reachable by name and the room card is
 pending on purpose. Everything else in there is docs — a spec, agent rules, a per-law statement
 (`THE-LAWS.md`), the record of how each law was decided (`HOW-WE-DECIDED.md`), a design note on
-the two runs, a sources file — plus **four design tools**, none of them part of an engine, each
+the two runs, a sources file — plus **five design tools**, none of them part of an engine, each
 run by hand: `screen.mjs` (`node screen.mjs`) scores candidate forms for the bonding law over all
 65,025 pairs of kinds, `radiate.mjs` checks that radiation across vacuum obeys the second law and
 that energy accounting closes exactly, `momentum.mjs` enumerates collision outcomes to settle how
-momentum is stored, and `budget.mjs` enumerates every field allocation that fits in the hexagon's
-word. Read `projects/universe/AGENTS.md` before touching anything in there; it has rules
+momentum is stored, `budget.mjs` enumerates every field allocation that fits in the hexagon's
+word, and `orbit.mjs` answers whether anything orbits — it is the only one that steps forward in
+time, because two primitives under one law is a measurement rather than a world. Read `projects/universe/AGENTS.md` before touching anything in there; it has rules
 of its own that are the whole point of the project, and Ric set the first one himself:
 everything borrowed gets credited in `projects/universe/SOURCES.md`.)
 
