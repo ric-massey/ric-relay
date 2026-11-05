@@ -405,6 +405,14 @@ maintain themselves. The benchmark for emergence-per-rule.
 
 ## Physics taken as background
 
+**Carr, B. J. & Rees, M. J. (1979).** "The anthropic principle and the structure of the physical
+world." *Nature* 278, 605–612. <https://doi.org/10.1038/278605a0> — that the sizes of planets,
+stars and living things follow from a few dimensionless constants, the number of atoms in a star
+going roughly as gravity's weakness to the −3/2. Taken for the argument in `HOW-WE-DECIDED.md`
+(*a hierarchy like ours*) that a gap sets a structure's size, and that choosing ε here is choosing
+that gap. (Splitting the anthropic argument into a fine-tuning half and a selection half is the
+usual reading in the literature, not something we can pin on one author.) Recorded 2026-11-05, in the same change that uses it.
+
 Textbook results rather than papers we lifted a technique from — but rule 1 says credit
 everything, and these documents lean on every one of them by name. **All of them were used
 before they were credited**, which is a rule 1 breach, found by audit on 2026-11-03 and

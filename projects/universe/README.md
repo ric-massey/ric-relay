@@ -363,6 +363,21 @@ where things happen. You are hunting that band, and it mirrors our own universe,
 laws look fixed and the constants look arbitrary. The fine-tuning question is about exactly
 this.
 
+**And the search can test half of it.** *(Ric, 2026-11-05: "Can we test the Anthropic theory
+through this? Technically?" — then, after talking it through, "Write it in. Just nervous about
+it.")* The anthropic argument is two claims. **Fine-tuning** — only a narrow band of constants
+gives complex structure — is measurable here, and nowhere else: sweep the constants, score every
+universe on the acceptance ladder, and the shape of the band is the answer. Narrow or wide, one
+band or several, a cliff at its edge or a slope. "Most settings give a dead universe" in the
+paragraph above is an expectation, not a result, and this is how it becomes one. **Selection** —
+we find ourselves in the band because nobody could exist outside it — is not testable: there are no
+observers here, "reached rung N" is the only stand-in, and the person keeping the interesting
+universes is the selection effect. Two limits to say every time a result is quoted: it is evidence
+about **this** physics, never ours, so it can show fine-tuning happening and can never show that
+our universe is tuned; and the ladder is our definition of interesting, so a band measured on it
+is a band of what we were looking for. Record the dead universes with the rest (rule 10) — here
+they are not the waste of the search, they are half of the measurement.
+
 **This is why you search instead of design.** You cannot tell from reading a rule set what
 it will do — that's computational irreducibility, and it isn't a limitation here, it's the
 property we want. So: run thousands of short candidate universes, keep the ones that are
@@ -891,6 +906,28 @@ it: ±63 (14 bits) lets every kind carry the fall that melts the weakest bond, �
 strongest, both inside the 24 spare bits — and either moves law 1's kinetic-energy window, so
 `S = 64` would need re-measuring. **Not adopted**: the size, ε and the momentum width are one
 decision now, and none of the three is set.
+
+**The direction is set: a hierarchy shaped like ours.** *(Ric, 2026-11-05: "I kinda want it
+similar to the universe I'm in. At least by ratio I feel like that's the most likely to cause
+emergence and not stagnation.")* Our ratio itself is out of reach — in two dimensions a clump's
+hexagon count grows as 1/ε², so 10⁻³⁶ would need some 10⁷⁷ per clump against a World of 10⁷. So
+"like ours" means **the same direction, as far as the hardware allows, judged by what the ratio
+buys rather than by the ratio**. Four separations, each a number a run can report:
+
+1. **Chemistry ignores gravity locally** — ε itself; which reactions run must not depend on where.
+2. **Structures are large against their parts** — primitives per clump; a big stage for chemistry.
+3. **There are many structures** — clumps per World; *elsewhere*, the reason 1/r² was chosen.
+4. **Timescales are far apart** — a clump's lifetime against a reaction's. Collapse must be slow
+   next to chemistry, or nothing has time to build. Easiest to forget, and probably the one that
+   decides stagnation.
+
+**And Ric's hunch is a hypothesis, so it gets tested rather than assumed.** Run the World at the
+smallest ε that fits — 10⁻¹, 10⁻², further if a machine allows — and look at whether emergence
+climbs as the separations grow. If it does, more like ours is better, and that is evidence for his
+hunch. If it peaks at a modest gap, that is a finding: in this physics, life does not need our
+extreme. Either result is worth having, and it is also a measurement of the fine-tuning half of
+the anthropic question above. **What is settled is the direction and the four yardsticks; ε, the
+size and the momentum width stay open** until the Lab is running and this can be measured.
 
 **21. What does a step do when two directions tie?** Raised 2026-11-05 by `orbit.mjs` Check 9.
 Law 1 rounds a step to the nearest of six directions and never said what happens when two are

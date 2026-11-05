@@ -1418,6 +1418,36 @@ looser ceiling, accepting some location-dependent chemistry; a different falloff
 logarithmic well is far deeper, and was rejected for global collapse — unmeasured here); or heat at
 the start, which deletes the sentence law 3 was bought for. The screened field makes it worse.
 
+#### Open — a hierarchy like ours, and what that can mean here
+
+*(2026-11-05. README item 20 holds the decision; this is the reasoning.)*
+
+**Why our universe has the gap it has is not known.** Gravity between two protons is about 10³⁶
+weaker than the electric force between them, and nothing in physics says why — the hierarchy
+problem. What *is* known is that the sizes follow from the gap: a star is the size at which
+gravity, summed over its atoms, squeezes them hot enough to fuse, which works out to roughly
+(gravity's weakness)^(−3/2), about 10⁵⁷ atoms (Carr & Rees 1979 did this for planets, mountains
+and living things too). Stars are huge *because* gravity is feeble. The explanations on offer for
+the gap itself are a deeper theory not yet found, anthropic selection, and a multiverse.
+
+**Here the hierarchy is a choice, and choosing ε is choosing it.** Clump size follows from it the
+way 10⁵⁷ follows from ours — in two dimensions as 1/ε² rather than 3D's 1/ε^(3/2), so the price of
+separation is steeper here than in reality. Ric wants it shaped like ours, on the hunch that it is
+the most likely to give emergence rather than stagnation.
+
+**Our ratio is overkill for everything it buys**, which is what makes the hunch workable. It buys
+four separations — chemistry blind to gravity, structures vast against their parts, many
+structures, and timescales far apart — and each of them could plausibly be had at a few orders of
+magnitude. So the target is those four, not the number.
+
+**What would change the decision:** the sweep in item 20. If emergence peaks at a modest gap rather
+than climbing with it, "like ours" was the wrong yardstick and the record should say so beside this
+entry, not instead of it.
+
+**On the anthropic question it raised.** Of its two halves, fine-tuning is measurable here and
+selection is not; the README's search section has why, and the two limits that go with any result
+— evidence about this physics only, and a band defined by our own ladder.
+
 #### Correction — the pyramid leaks momentum
 
 *(Found by audit; credited to Barnes & Hut in `SOURCES.md`.)*

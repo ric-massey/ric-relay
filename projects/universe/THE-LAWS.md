@@ -542,7 +542,10 @@ affords about one order, and only for one clump.
 toward, 2026-11-05, and `orbit.mjs` Check 10 sizes it: about a billion hexagons per clump at ε =
 0.01. It does not work alone. Hot enough to melt a bond *means* falling at a certain speed, the
 same at every size, and at ±15 most of the mass is too heavy to carry it, so the clamp throws that
-energy away; momentum has to widen to ±63 or ±127 with it (README item 20). A looser ceiling (accept
+energy away; momentum has to widen to ±63 or ±127 with it (README item 20). **The direction is
+Ric's (2026-11-05): a hierarchy shaped like ours** — as much separation as the hardware allows,
+judged by four separations (local chemistry, stage size, number of structures, timescales) rather
+than by the raw ratio, and tested by sweeping ε to see whether emergence really climbs with it. A looser ceiling (accept
 gravity within an order of the weakest bond, and with it some location-dependence in chemistry). A
 different exponent — the floor is set by how deep a clump's well is, and 1/r's logarithmic
 potential is far deeper than 1/r²'s, though 1/r was rejected below for global collapse and nothing
