@@ -1418,6 +1418,38 @@ looser ceiling, accepting some location-dependent chemistry; a different falloff
 logarithmic well is far deeper, and was rejected for global collapse — unmeasured here); or heat at
 the start, which deletes the sentence law 3 was bought for. The screened field makes it worse.
 
+#### Measured — where the remainder lives, and why not the coin
+
+*(2026-11-05, `orbit.mjs` Checks 11 and 12. README item 19. Recommended, not adopted.)*
+
+**What it said.** Check 7 had settled that law 3 carries a sub-unit pull instead of rounding it.
+It left one question open: where to keep it. The framing was a residual in the 24 spare bits,
+with an entry in `THE-LAWS.md` and a reason, as Ric's call.
+
+**What the framing missed.** A residual is a register, and a register rounds. Twelve bits a
+component in the spare 24 gives a step of 2⁻¹¹. Almost every pull at a legal strength (10⁻⁴ to
+10⁻⁹ a tick) is under half of that. So the spare bits would have repeated Check 7's mistake
+four thousand times further down. Gravity would be off for nearly everything, and the code would
+look as though it carried the remainder. That is the trap rule 5 describes, a width quietly
+choosing physics, and it was one sentence from being adopted.
+
+**The tempting alternative, rejected on measurement.** Store nothing and draw each tick's whole
+kick with the probability its fraction gives. This is stochastic rounding (Croci et al. 2022,
+`SOURCES.md`), done on the triangular lattice of momentum vectors so that no axis is
+preferred. It is exact on average, costs no memory, and matches the coin item 21 adopted for step
+ties, so it looked like the house style. It completed **no** legal orbit of 18. The reason is shot
+noise. A lap owes 2π|p| units and the coin delivers that ± its square root, so the scatter in a
+lap is √(2π/|p|) of the momentum: 1.1 at |p| = 5, and 0.3 even at 64. That spread is heat on
+anything coasting, with no fall to pay for it. It would read as collapse heating and break the
+World's monotonic energy invariant everywhere. **The coin is right for ties and wrong for
+gravity, and the difference is that a tie costs no momentum.** A tie picks between two equally
+good steps, and the momentum is the same either way. Gravity's coin moves momentum itself, so
+its noise accumulates.
+
+**What works.** 32 bits a component in a second array. It matched the grainless carry on every run
+and every seed, and loses at most one unit in about 2³² ticks. It is gravity's own state, like
+φ, not the matter word's, and the residual joins the momentum assertion.
+
 #### Open — a hierarchy like ours, and what that can mean here
 
 *(2026-11-05. README item 20 holds the decision; this is the reasoning.)*

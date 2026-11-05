@@ -843,7 +843,9 @@ remains is a **choice**: seed uniform random over 1–255 and accept that the po
 take the fusion road, which is the only candidate that would let the distribution grow itself. Not
 blocking either way, and worth deciding knowingly rather than discovering in the output.
 
-**19. What does law 3 do when the pull is smaller than one unit of momentum?** Raised 2026-11-05 by
+**19. What does law 3 do when the pull is smaller than one unit of momentum?** *(Measured
+2026-11-05, see the end of this item: it is stored, 32 bits a component, in a second array.
+**Recommended, not adopted**, and that call is Ric's.)* Raised 2026-11-05 by
 `orbit.mjs`, which could not run without answering it. Law 3 says gravity falls off as 1/r² and adds
 to momentum; momentum is an integer; **nothing says what happens to the fraction**, and at every
 radius and range that tool tested the whole pull *is* a fraction — 0.00007 to 0.044 units per tick.
@@ -875,6 +877,52 @@ Check 7). So law 3 carries the remainder. **What is still open is where it lives
 the spare bits needs its entry in `THE-LAWS.md` and a reason, and is Ric's call. One thing to weigh:
 at a legal strength the residual is the *whole* of gravity for almost every primitive almost every
 tick, so it is not patching a representation at the margin; it is where the law lives.
+
+**Measured 2026-11-05: where it can live** (`orbit.mjs` Checks 11 and 12). A residual is an
+integer register, so it has a grain of its own, and a pull under half that grain is rounded away,
+which is Check 7's failure again at a finer scale. So the question was first which home is
+*fine enough*. Three homes were measured:
+
+| home | stored | grain | at a legal ε | Check 8's heavy orbits, of 18 |
+|---|---|---|---|---|
+| exact carry, no grain (the reference) | — | 0 | — | 9 |
+| **the spare bits**, 12 a component | 24 bits | 2⁻¹¹ | off for almost every pull | 3, none at ε = 0.01 |
+| **a second array**, 32 a component | 64 bits | 2⁻³¹ | fine everywhere | 9, the same runs |
+| **the coin**: draw the kick, store nothing | none | 2⁻³² | fine everywhere | **0** |
+
+- **The spare bits are too coarse.** Legal pulls run from about 10⁻⁴ down to 10⁻⁹ a tick, and
+  2⁻¹¹ is 0.0005. A residual there switches gravity off for all but the heaviest kinds in the
+  deepest places, and where gravity does act its falloff comes in steps. No packing trick
+  closes a gap of about 20 bits.
+- **The coin is exact on average and wrong in its spread.** A whole kick drawn with probability f
+  per tick is shot noise: a pull owed N units arrives as N ± √N. Over one lap of the best legal
+  orbit that is 31 ± 5 units against a momentum of 4.9, so the orbit is gone inside a lap. A
+  ±127 box at |p| ≈ 64 still lost two seeds of three. Worse, **spread is heat**. It adds to p²
+  on anything coasting while the pull does no net work, so the coin is a heater that runs
+  wherever there is gravity. That breaks the World's invariant that energy rises only through
+  collapse, and the heat would look exactly like the collapse heating law 3 exists for, which
+  is the hole `AGENTS.md` rule 6 warns about. It was the tempting option: no storage, and it
+  matches the step tie-break of item 21. It is rejected on the measurement.
+- **A second array of 32 bits a component** orbits exactly where grainless carry does, row for row
+  and seed for seed. Its grain loses at most one unit of momentum in about four billion ticks.
+  It only becomes a visible share of the pull for the lightest kinds thousands of hexagons from
+  a small clump, where the pull is nearly nothing anyway.
+
+**The recommendation**: law 3's remainder is **gravity's own state, in a second array beside the
+eight-byte word**. That is 8 bytes a hexagon, two signed 32-bit components, and it moves with its
+primitive when the primitive steps. It is the same kind of thing as the screened field's φ, which
+already needs a second array (law 3, *Gravity can be made local*). It does not go in the spare bits,
+which stay reserved. The cost is memory: at 4096², double-buffered, 268 MB becomes 537 MB, which
+the 4 GB card holds. The bigger World of item 20 doubles with it.
+
+**Two things it carries with it, if adopted.** The undelivered impulse is momentum, so
+**`world momentum + wall momentum + Σ residual = constant`** is the assertion (`AGENTS.md`
+rule 6). Leave the residual out and its fluctuation reads as a leak. The solver also has to give
+each pair's pull, rounded once to the grain, to both sides with opposite signs, so the sum
+is exact in grain units. **Still unmeasured:** what a residual does when its primitive bonds
+(law 1 shares momentum along bonds; the residual presumably follows). Also unmeasured: whether
+whole kicks delivered to matter *resting* on matter make heat with no fall. That hazard comes
+from integer momentum, not from where the remainder lives, so it applies to every home.
 
 **20. How strong is gravity — and is there any strength that does both its jobs?** Raised
 2026-11-05 by Ric: *"I have a hunch gravity is too strong right now."* Measured in `orbit.mjs`

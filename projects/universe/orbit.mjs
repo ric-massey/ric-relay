@@ -1,5 +1,6 @@
 // orbit.mjs -- does anything orbit here, and if not, which cause stops it?
 // And, since 2026-11-05: how strong is gravity allowed to be? (Checks 6-10.)
+// And where does a pull smaller than one unit live? (Checks 11-12.)
 //
 // README item 16. The documents say "nothing completed two laps" at radii of
 // 20, 100 and 500 and conclude that the lattice is what prevents orbits, filed
@@ -147,6 +148,34 @@ function seeded(seed) {
   return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
 }
 
+// README item 19's third way to carry a pull smaller than one unit: carry it
+// nowhere. Each tick the pull is a point inside one triangle of the lattice
+// of whole momentum vectors (cube vectors summing to zero form a triangular
+// lattice), and the kick is one of that triangle's three corners, drawn with
+// the point's barycentric weights. The expected kick is the pull exactly, the
+// rule has the lattice's full symmetry -- no axis is preferred, which
+// rounding two axial components independently would not have -- and no bit
+// is stored anywhere. This is stochastic rounding (Croci et al.,
+// SOURCES.md) on a triangular lattice. Its floor is the draw's own grain:
+// rand() comes in steps of 2^-32, so a weight under that is never drawn.
+const CARRY_COIN = "coin";
+function coinRound(p, rand) {
+  const x = p[0], y = p[2];                   // axial q and r; s = -q - r
+  const fx = Math.floor(x), fy = Math.floor(y), u = x - fx, v = y - fy;
+  const c = rand();
+  let q, r;
+  if (u + v < 1) {                            // corners (0,0) (1,0) (0,1)
+    if (c < u) { q = fx + 1; r = fy; }
+    else if (c < u + v) { q = fx; r = fy + 1; }
+    else { q = fx; r = fy; }
+  } else {                                    // corners (1,1) (1,0) (0,1)
+    if (c < 1 - v) { q = fx + 1; r = fy; }
+    else if (c < 2 - u - v) { q = fx; r = fy + 1; }
+    else { q = fx + 1; r = fy + 1; }
+  }
+  return [q, -q - r, r];
+}
+
 // The symmetric clamp. THE-LAWS settles the PAIR case -- transfer as much as
 // both sides can take -- but says nothing about a single body in a field, so
 // this scales the whole vector back along its own direction rather than
@@ -212,6 +241,20 @@ function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FR
     const dp = scl(scl(pos, -1), dpMag / r);   // toward the centre
     if (!integerMomentum) {
       p = add(p, dp);
+    } else if (carry === CARRY_COIN) {
+      // No residual at all: draw the whole-unit kick, exact on average.
+      const kick = coinRound(dp, rand);
+      if (zero(kick)) gravityZeroTicks++;
+      else p = clampCount(add(p, kick));
+    } else if (typeof carry === "number") {
+      // A residual held in `carry` bits per component, one of them a sign:
+      // each tick's pull is rounded to the register's step before it is
+      // added, which is what an integer register does to it.
+      const step = 2 ** -(carry - 1);
+      residual = add(residual, scl(cubeRound(scl(dp, 1 / step)), step));
+      const whole = cubeRound(residual);
+      if (zero(whole)) gravityZeroTicks++;
+      else { p = clampCount(add(p, whole)); residual = sub(residual, whole); }
     } else if (carry) {
       residual = add(residual, dp);
       const whole = cubeRound(residual);
@@ -792,3 +835,138 @@ for (const [label, row] of [["weakest", bigRows[0]], ["strongest", bigRows[1]]])
 }
 console.log("  Widening momentum also moves law 1's kinetic-energy window (2 to 291 at");
 console.log("  +-15, measured in momentum.mjs), so S = 64 would need re-measuring.");
+
+// ======================================================================
+// Checks 11 and 12 -- WHERE the remainder lives (README item 19).
+// (Added 2026-11-05. Check 7 settled that law 3 carries a pull smaller than
+// one unit instead of rounding it; it left open where the unspent part is
+// kept, and called a residual in the 24 spare bits "Ric's call".)
+//
+// A residual is an integer register, so it has a grain of its own: a pull
+// smaller than half its step is rounded away exactly as rounding to whole
+// units was, only further down. So the first question is not which home is
+// tidier but which is FINE ENOUGH at a strength law 3 allows. Three homes:
+//   spare bits   -- 12 bits a component in the 24 spare, one a sign: 2^-11
+//   second array -- 32 bits a component, 8 more bytes a hexagon: 2^-31
+//   the coin     -- nothing stored; each tick's kick is drawn (coinRound),
+//                   exact on average, grain 2^-32 from the draw itself
+// ======================================================================
+const HOMES = [
+  { home: "spare bits (12 a component)", carry: 12, grain: 2 ** -11, stored: "24 bits" },
+  { home: "second array (32 a component)", carry: 32, grain: 2 ** -31, stored: "64 bits" },
+  { home: "the coin (nothing stored)", carry: CARRY_COIN, grain: 2 ** -32, stored: "none" },
+];
+// How a home delivers a pull of |dp|: a register rounds it to its step, so
+// under half a step it is off and above that it is wrong by up to half a
+// step; the coin's draw is wrong by at most one grain.
+const delivered = (dp, h) => {
+  if (h.carry === CARRY_COIN) return dp < h.grain ? "off" : "within " + pct(h.grain / dp);
+  return dp < h.grain / 2 ? "off" : "within " + pct(h.grain / 2 / dp);
+};
+const SPREAD_RUNS = 200;              // Check 12b: draws per row
+const pct = (x) => x < 1e-4 ? "<0.01%" : (100 * x).toPrecision(2) + "%";
+
+console.log("");
+console.log("=== Check 11: is each home fine enough for a legal pull? ===");
+const pulls = [];
+for (const eps of FILTER) {
+  const G = gFromEps(eps);
+  for (const [label, dp] of [
+    ["k255 touching a k255", G * KIND_MAX * KIND_MAX],
+    ["k255 at the rim of a clump, radius 256", G * KIND_MAX * KIND_MEAN * rimField(256)],
+    ["k255 orbiting a clump of 1000 at 1500", G * KIND_MAX * KIND_MEAN * sitesIn(1000) / 1500 ** 2],
+    ["k1 orbiting the same clump", G * 1 * KIND_MEAN * sitesIn(1000) / 1500 ** 2],
+    ["k1, 4000 from a clump of radius 100", G * 1 * KIND_MEAN * sitesIn(100) / 4000 ** 2],
+  ]) {
+    const row = { EPS: eps, "pulled": label, "|dp| per tick": Number(dp.toExponential(1)) };
+    for (const h of HOMES) row[h.home] = delivered(dp, h);
+    pulls.push(row);
+  }
+}
+console.table(pulls);
+console.log("  The spare bits are not fine enough at a legal strength. Their step is");
+console.log("  2^-11, about 0.0005 of a unit, and almost every legal pull is smaller than");
+console.log("  half of it -- so a residual there is Check 7's rounding again, four");
+console.log("  thousand times further down: gravity off for nearly all matter, and on");
+console.log("  only for the heaviest kinds in the deepest places, with a falloff that");
+console.log("  steps rather than curves. The 24 bits cannot be made to fit by being");
+console.log("  clever: a pull of 10^-9 needs about 30 bits of fraction a component.");
+console.log("  A second array of 32 bits a component and the coin are both fine enough");
+console.log("  for every row here -- and they have the same grain, one from storage and");
+console.log("  one from the draw.");
+
+console.log("");
+console.log("=== Check 12: what each home does to an orbit ===");
+console.log("  Check 8's heavy rows, every home, the same seeds. 'exact' is the old");
+console.log("  carry, a residual with no grain at all -- the best any home could do.");
+const homeRows = [];
+const homeTally = {};
+for (const eps of FILTER) {
+  for (const a of [100, 300, 1000]) {
+    const r0 = 1.5 * a, k = KIND_MAX;
+    const gm = gFromEps(eps) * discSites(a).length * KIND_MEAN;   // as Check 8
+    const base = { r0, R: 15, gm, k, latticeSteps: true, integerMomentum: true, surface: a };
+    const row = { EPS: eps, clump: a, "|p0|": Number((k * Math.sqrt(gm / r0)).toFixed(2)) };
+    for (const [name, carry] of [["exact", true], ...HOMES.map((h) => [h.home.split(" (")[0], h.carry])]) {
+      const zs = SEEDS.map((seed) => run({ ...base, carry, seed }));
+      const won = zs.filter((z) => z.outcome === "ORBITED").length;
+      homeTally[name] = (homeTally[name] || 0) + won;
+      row[name] = `${won} of ${SEEDS.length}` +
+        (won < SEEDS.length ? " (" + [...new Set(zs.filter((z) => z.outcome !== "ORBITED")
+          .map((z) => z.outcome === "hit the clump" ? "hit" : z.outcome))].join(", ") + ")" : "");
+    }
+    homeRows.push(row);
+  }
+}
+console.table(homeRows);
+console.log("  Orbits completed, of " + homeRows.length * SEEDS.length + ": " +
+  Object.entries(homeTally).map(([n, w]) => `${n} ${w}`).join(", ") + ".");
+console.log("  The second array orbits exactly where the grainless carry does, row for");
+console.log("  row and seed for seed: at 2^-31 the grain is invisible. The spare bits");
+console.log("  lose every orbit at EPS 0.01 -- 'escaped' is gravity switched off, the");
+console.log("  orbiter leaving in a straight line. And the coin loses every orbit there");
+console.log("  is, which needs explaining before it is believed (rule 12: a run that");
+console.log("  reports zero of something is wrong until shown otherwise).");
+
+// Check 12b: the coin is exact on average and wrong in its spread. A whole
+// kick drawn with probability f has variance f(1-f), so a body pulled at f
+// per tick for T ticks has gained f*T units on average and spread by about
+// sqrt(f*T) -- shot noise. A residual's error never exceeds one unit.
+console.log("");
+console.log("  Why: a straight pull of f per tick for T ticks, on a free body, " +
+  SPREAD_RUNS + " draws:");
+const spreadRows = [];
+for (const [f, T] of [[1e-3, 1e5], [1e-4, 1e6], [6.3e-5, 4.9e5]]) {
+  const rand = seeded(TIE_SEED);
+  let sum = 0, sq = 0;
+  for (let n = 0; n < SPREAD_RUNS; n++) {
+    let got = 0;
+    for (let t = 0; t < T; t++) got += coinRound([0, f, -f], rand)[1];
+    sum += got; sq += got * got;
+  }
+  const mean = sum / SPREAD_RUNS, sd = Math.sqrt(sq / SPREAD_RUNS - mean * mean);
+  spreadRows.push({ "pull per tick": f, ticks: T, "owed": Number((f * T).toFixed(0)),
+    "coin, mean": Number(mean.toFixed(1)), "coin, spread": Number(sd.toFixed(1)),
+    "residual, worst error": "< 1" });
+}
+console.table(spreadRows);
+const lap = spreadRows[spreadRows.length - 1];
+console.log("  The last row is one lap of Check 8's best orbit (clump 1000, EPS 0.01).");
+console.log(`  Its momentum is 4.9 units; a lap owes ${lap.owed}, and the coin scatters that by ` +
+  `${lap["coin, spread"]} --`);
+console.log("  as large as the momentum itself, so the orbit is gone inside a lap. A lap");
+console.log("  owes 2 pi |p|, so the scatter a lap is sqrt(2 pi / |p|) of the momentum:");
+console.log("  1.1 at |p| = 5 and still 0.3 at 64. Widening the box helps only slowly --");
+console.log("  at +-127 and |p| near 64 the coin lost two seeds of three (measured while");
+console.log("  writing this) -- and ten laps would need |p| in the hundreds.");
+console.log("");
+console.log("  And spread is HEAT. A random kick adds to p^2 on average even when the");
+console.log("  pull does no net work -- a circular orbit, anything coasting -- so the");
+console.log("  coin is a heater that runs on free matter wherever there is gravity,");
+console.log("  falling or not. The World's energy invariant is 'rises only through collapse'");
+console.log("  (AGENTS.md rule 6); the coin breaks it everywhere, quietly, and the heat");
+console.log("  would look like the collapse heating law 3 exists for. Rule 6 calls that");
+console.log("  an accounting hole that disguises itself as a discovery.");
+console.log("");
+console.log("  So the remainder is stored, and the spare bits are too coarse to store it.");
+console.log("  It needs about 32 bits a component: a second array, 8 bytes a hexagon.");

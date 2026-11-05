@@ -162,7 +162,9 @@ constants are wrong. (**Eight bytes as of 2026-11-04.** Kind 8 + bonds 6 +
 energy 16 is 30 bits, and law 1's option (B) spends 10 more on a momentum vector — two signed
 components at ±15, 5 bits each — for **40 of the 64**. The **24 spare bits are reserved**: nothing
 goes in them without an entry in `THE-LAWS.md` and a reason, because the old four-byte word was
-enforcing that by scarcity and no longer is. Never anything on the never-store list.)
+enforcing that by scarcity and no longer is. Never anything on the never-store list. **And not
+gravity's remainder**: at a legal strength 12 bits a component rounds it away, and it needs 32.
+See `orbit.mjs` Check 11 and README item 19.)
 
 ## 6. Assert conservation on every run
 
@@ -376,14 +378,15 @@ was found — see rule 7. **Two of its nine checks are wrong and are labelled as
 rather than deleted**; read the note above check 5 before quoting any number from it.
 
 `orbit.mjs` settled item 16 — whether anything orbits, and what stops it — and, since 2026-11-05,
-measures how strong gravity may be (items 19 to 21). It is the **only tool here that steps forward
+measures how strong gravity may be and where its remainder lives (items 19 to 21). It is the **only tool here that steps forward
 in time**, which is allowed because two primitives under one law is a measurement, not a claimed
 world; the viewer's refusal to animate is about something else, a whole lattice pretending to run
 physics it has not been given. Checks 1–5 run a 2×2 — direction quantization on or off against
 integer momentum on or off — under both rules for a sub-unit pull, plus a sweep of momentum range;
 Checks 6–8 state gravity's strength as ε (rule 8) and find its floor, Check 10 sizes the
-World that floor needs and the momentum width that World needs; Check 9 keeps the tie-break
-bug on show. **Its control is load-bearing**, and the file has had **four harness bugs**: a start
+World that floor needs and the momentum width that World needs; Checks 11–12 measure the three
+homes for a sub-unit pull (spare bits, a second array, a coin) at a legal strength; Check 9 keeps
+the tie-break bug on show. **Its control is load-bearing**, and the file has had **four harness bugs**: a start
 60° off tangent, an orbiter light enough to hit the speed cap, a start on the edge of the momentum
 box, and a step tie always broken the same way. The first three made orbits fail; the fourth made
 spirals pass a two-lap bar. **So it flies ten laps and reports each run's closest approach on its

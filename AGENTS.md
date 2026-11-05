@@ -202,7 +202,7 @@ run by hand: `screen.mjs` (`node screen.mjs`) scores candidate forms for the bon
 65,025 pairs of kinds, `radiate.mjs` checks that radiation across vacuum obeys the second law and
 that energy accounting closes exactly, `momentum.mjs` enumerates collision outcomes to settle how
 momentum is stored, `budget.mjs` enumerates every field allocation that fits in the hexagon's
-word, and `orbit.mjs` answers whether anything orbits and how strong gravity may be — it is the
+word, and `orbit.mjs` answers whether anything orbits, how strong gravity may be and where a pull smaller than one unit is kept — it is the
 only one that steps forward in time, because two primitives under one law is a measurement rather than a world. Read `projects/universe/AGENTS.md` before touching anything in there; it has rules
 of its own that are the whole point of the project, and Ric set the first one himself:
 everything borrowed gets credited in `projects/universe/SOURCES.md`.)

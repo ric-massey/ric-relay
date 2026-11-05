@@ -258,6 +258,24 @@ Took:
 - The **cube-to-cartesian** conversion, used here only for *measurement* — radius and accumulated
   angle in the lap counter. No law reads it, and nothing in the physics is allowed to.
 
+**Croci, Matteo, Massimiliano Fasi, Nicholas J. Higham, Theo Mary, Mantas Mikaitis (2022).**
+*Stochastic rounding: implementation, error analysis and applications.* Royal Society Open
+Science 9: 211631. <https://doi.org/10.1098/rsos.211631>
+
+Stochastic rounding, used in `orbit.mjs` Checks 11 and 12 as the coin, one of three candidate
+homes for README item 19's remainder. Recorded 2026-11-05. The survey says the idea was first
+proposed for computer arithmetic in the 1950s. It is usually credited to George Forsythe (1950),
+but that attribution was **not checked from here**. Took:
+
+- **Rounding to one of the two nearest values, with probability set by closeness**, so the
+  expected result is the exact value. `coinRound` does the same thing on the triangular lattice
+  of whole momentum vectors: three corners and barycentric weights, rather than two neighbours
+  on a line.
+- **Its known virtue: it is immune to stagnation**, where many tiny updates to a large number
+  are lost. That is exactly the failure of rounding in item 19.
+- What we found ourselves, and did not take from the survey: on a body in free flight, its
+  spread is momentum diffusion, so it heats. That is why it was rejected for law 3.
+
 **What we did not take:** the pathfinding, range, field-of-view or map-storage algorithms on the
 same page. If one of those turns up here later it is a separate debt and gets its own line.
 

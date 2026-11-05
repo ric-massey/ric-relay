@@ -493,7 +493,11 @@ matter neutralizes and it vanishes at distance. Gravity has one sign. It only ev
   framed it: at any strength the first bullet allows, rounding switches gravity off everywhere in
   the World, because the strongest pull anywhere — on the heaviest kind at the rim of a packed clump
   — only reaches half a unit per tick when gravity is **three times stronger than the weakest
-  bond**. Where the remainder is kept is still open; that is item 19 now.
+  bond**. Where the remainder is kept was measured the same day (`orbit.mjs` Checks 11 and 12).
+  The 24 spare bits are far too coarse, and drawing the kick by a coin, storing nothing, heats
+  free matter and kills every orbit. What works is a residual of 32 bits a component in a
+  second array, gravity's own state beside the word, counted in the momentum assertion.
+  **Recommended, not adopted**; README item 19.
 
 ### How strong — a ceiling, a floor, and no room between them at 4096²
 
