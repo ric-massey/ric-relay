@@ -1,0 +1,620 @@
+<title>Lattice Inspector</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Instrument layout: controls row, lattice canvas, inspector rail that drops
+     under the canvas at phone width. Dark-first — this is a screen you read
+     colour off, so the dark ground is the primary design. */
+  :root {
+    color-scheme: dark;
+
+    --plane:      #0d0d0d;
+    --surface:    #1a1a19;
+    --ink:        #f0efec;
+    --ink-2:      #c3c2b7;
+    --ink-muted:  #898781;
+    --grid:       #2c2c2a;
+    --axis:       #383835;
+    --hairline:   rgba(255, 255, 255, 0.10);
+    --raise:      rgba(255, 255, 255, 0.04);
+    --focus:      #6da7ec;
+
+    /* valence: diverging, poles at v0/v7, neutral at v4. Complementary
+       partners (v + v = 8) sit symmetrically opposite. Brightens away from
+       the midpoint so the poles read against the dark ground. */
+    --v0: #9ec5f4; --v1: #6da7ec; --v2: #3987e5; --v3: #256abf;
+    --v4: #52514e;
+    --v5: #a33a39; --v6: #d64c4b; --v7: #e88a89;
+
+    /* sequential, one hue each. blue = kind, orange = temperature. */
+    --seq-0: #15213a; --seq-1: #184f95; --seq-2: #256abf; --seq-3: #3987e5;
+    --seq-4: #6da7ec; --seq-5: #9ec5f4; --seq-6: #cde2fb;
+    --hot-0: #2a1a12; --hot-1: #7d3315; --hot-2: #b04a1f; --hot-3: #d95926;
+    --hot-4: #e8824f; --hot-5: #f3ad85; --hot-6: #fad3bd;
+
+    --state-matter: #3987e5;
+    --state-flight: #d95926;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      color-scheme: light;
+      --plane: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e;
+      --ink-muted: #898781; --grid: #e1e0d9; --axis: #c3c2b7;
+      --hairline: rgba(11, 11, 11, 0.10); --raise: rgba(11, 11, 11, 0.03);
+      --focus: #1c5cab;
+      --v0: #104281; --v1: #1c5cab; --v2: #2a78d6; --v3: #86b6ef;
+      --v4: #c3c2b7;
+      --v5: #e88a89; --v6: #d64c4b; --v7: #8f2b2a;
+      --seq-0: #eaf2fd; --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #5598e7;
+      --seq-4: #2a78d6; --seq-5: #184f95; --seq-6: #0d366b;
+      --hot-0: #fdeee4; --hot-1: #fad3bd; --hot-2: #f3ad85; --hot-3: #eb6834;
+      --hot-4: #c24c1c; --hot-5: #8f3613; --hot-6: #4a1e0d;
+      --state-matter: #2a78d6; --state-flight: #eb6834;
+    }
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --plane: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e;
+    --ink-muted: #898781; --grid: #e1e0d9; --axis: #c3c2b7;
+    --hairline: rgba(11, 11, 11, 0.10); --raise: rgba(11, 11, 11, 0.03);
+    --focus: #1c5cab;
+    --v0: #104281; --v1: #1c5cab; --v2: #2a78d6; --v3: #86b6ef;
+    --v4: #c3c2b7;
+    --v5: #e88a89; --v6: #d64c4b; --v7: #8f2b2a;
+    --seq-0: #eaf2fd; --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #5598e7;
+    --seq-4: #2a78d6; --seq-5: #184f95; --seq-6: #0d366b;
+    --hot-0: #fdeee4; --hot-1: #fad3bd; --hot-2: #f3ad85; --hot-3: #eb6834;
+    --hot-4: #c24c1c; --hot-5: #8f3613; --hot-6: #4a1e0d;
+    --state-matter: #2a78d6; --state-flight: #eb6834;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--plane);
+    color: var(--ink);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 32px;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  .mono {
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  header { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+  h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+  .word {
+    margin: 0; color: var(--ink-2); font-size: 12.5px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .word b { color: var(--ink); font-weight: 600; }
+  .note { margin: 0; color: var(--ink-muted); font-size: 12.5px; max-width: 68ch; }
+
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: flex-end;
+    padding: 12px 14px; margin: 16px 0 12px;
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px;
+  }
+  .ctl { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .ctl > span, legend {
+    font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--ink-muted); padding: 0;
+  }
+  fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+
+  .seg { display: flex; flex-wrap: wrap; gap: 3px; background: var(--raise); padding: 3px; border-radius: 7px; }
+  .seg label {
+    position: relative; font-size: 12.5px; padding: 5px 10px; border-radius: 5px;
+    cursor: pointer; color: var(--ink-2); white-space: nowrap;
+  }
+  .seg input { position: absolute; inset: 0; opacity: 0; cursor: pointer; margin: 0; }
+  .seg label:has(input:checked) { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--hairline); }
+  .seg label:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+  .checks { display: flex; gap: 14px; flex-wrap: wrap; }
+  .checks label { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; cursor: pointer; }
+  input[type="checkbox"] { accent-color: var(--focus); width: 15px; height: 15px; margin: 0; }
+  input[type="range"] { accent-color: var(--focus); width: 128px; margin: 0; }
+  .val { color: var(--ink); font-size: 12.5px; }
+
+  button {
+    font: inherit; font-size: 12.5px; padding: 7px 13px; cursor: pointer;
+    color: var(--ink); background: var(--raise);
+    border: 1px solid var(--hairline); border-radius: 7px;
+  }
+  button:hover { border-color: var(--axis); }
+  button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+  .stage { display: grid; grid-template-columns: minmax(0, 1fr) 286px; gap: 12px; align-items: start; }
+  @media (max-width: 860px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+
+  .panel {
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: 10px; padding: 12px; min-width: 0;
+  }
+  #lattice { display: block; width: 100%; height: auto; border-radius: 6px; cursor: crosshair; touch-action: manipulation; }
+
+  .tallies { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--hairline); }
+  .tally { display: flex; flex-direction: column; gap: 1px; }
+  .tally span { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); }
+  .tally b { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 11px; font-size: 11.5px; color: var(--ink-2); }
+  .legend .sw { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 13px; height: 13px; border-radius: 3px; box-shadow: inset 0 0 0 1px var(--hairline); }
+  .ramp { display: flex; height: 11px; width: 118px; border-radius: 3px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--hairline); }
+  .ramp i { flex: 1; border-radius: 0; box-shadow: none; }
+
+  h2 { margin: 0 0 9px; font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-muted); font-weight: 600; }
+  .rail { display: flex; flex-direction: column; gap: 12px; }
+
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12.5px; }
+  dt { color: var(--ink-muted); }
+  dd { margin: 0; text-align: right; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+  .bits { margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--hairline); }
+  .bitrow { font-size: 10.5px; line-height: 1.7; word-break: break-all; letter-spacing: 0.04em; }
+  .bitrow b { font-weight: 400; padding: 1px 0; }
+  .f-kind { color: var(--v2); } .f-energy { color: var(--hot-4); }
+  .f-mom { color: var(--v6); } .f-bond { color: var(--ink-2); }
+  .bitkey { display: flex; flex-wrap: wrap; gap: 3px 10px; margin-top: 5px; font-size: 10.5px; color: var(--ink-muted); }
+
+  table { border-collapse: collapse; width: 100%; font-size: 11px; }
+  caption { caption-side: top; text-align: left; color: var(--ink-muted); font-size: 11.5px; margin-bottom: 7px; }
+  th { font-weight: 500; color: var(--ink-muted); font-size: 10px; padding: 2px; }
+  td { padding: 0; }
+  .cell {
+    display: block; text-align: center; padding: 4px 0; border-radius: 2px;
+    font-variant-numeric: tabular-nums; outline-offset: -2px;
+  }
+  .nb { width: 100%; }
+  .nb td { padding: 2px 0; font-size: 12px; }
+  .nb .dir { color: var(--ink-muted); font-size: 11px; }
+  .bar { display: flex; align-items: center; gap: 6px; }
+  .bar i { height: 7px; border-radius: 2px; flex: none; }
+  .yes { color: var(--ink); } .no { color: var(--ink-muted); }
+
+  footer { margin-top: 18px; color: var(--ink-muted); font-size: 12px; max-width: 72ch; }
+  footer b { color: var(--ink-2); font-weight: 600; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header>
+  <h1>Lattice Inspector</h1>
+  <p class="word"><b>kind</b> 8 · <b>energy</b> 16 · <b>momentum</b> 10 · <b>bonds</b> 6 &nbsp;=&nbsp; 40 of 64 bits</p>
+  <p class="note">A hexagon is a primitive, a quantum of radiation in flight, or empty. Bonds here are placed
+    by law 2 itself — <span class="mono">B = 8 &minus; |v(k₁) + v(k₂) &minus; 8|</span> with
+    <span class="mono">v(k) = k mod 8</span> — and only survive where temperature stays under
+    <span class="mono">B</span> at both ends.</p>
+</header>
+
+<div class="controls">
+  <fieldset class="ctl">
+    <legend>Colour by</legend>
+    <div class="seg" id="layers">
+      <label><input type="radio" name="layer" value="valence" checked> Valence</label>
+      <label><input type="radio" name="layer" value="kind"> Kind</label>
+      <label><input type="radio" name="layer" value="temp"> Temperature</label>
+      <label><input type="radio" name="layer" value="state"> State</label>
+    </div>
+  </fieldset>
+
+  <fieldset class="ctl">
+    <legend>Overlay</legend>
+    <div class="checks">
+      <label><input type="checkbox" id="showBonds" checked> Bonds</label>
+      <label><input type="checkbox" id="showMom"> Momentum</label>
+    </div>
+  </fieldset>
+
+  <label class="ctl" for="density"><span>Matter <b class="val mono" id="densityVal">62%</b></span>
+    <input type="range" id="density" min="10" max="95" value="62"></label>
+
+  <label class="ctl" for="capacity"><span>Capacity C <b class="val mono" id="capacityVal">3</b></span>
+    <input type="range" id="capacity" min="1" max="6" value="3"></label>
+
+  <label class="ctl" for="heat"><span>Mean temp <b class="val mono" id="heatVal">6</b></span>
+    <input type="range" id="heat" min="1" max="30" value="6"></label>
+
+  <div class="ctl"><span>&nbsp;</span><button id="reseed" type="button">Reseed</button></div>
+</div>
+
+<div class="stage">
+  <div class="panel">
+    <canvas id="lattice" role="img" aria-label="Hexagonal lattice coloured by the selected layer"></canvas>
+    <div class="legend" id="legend"></div>
+    <div class="tallies">
+      <div class="tally"><span>Primitives</span><b id="tPrim">0</b></div>
+      <div class="tally"><span>Matter (&Sigma; kind)</span><b id="tMatter">0</b></div>
+      <div class="tally"><span>Bonds</span><b id="tBonds">0</b></div>
+      <div class="tally"><span>In flight</span><b id="tFlight">0</b></div>
+      <div class="tally"><span>Mean temp</span><b id="tTemp">0</b></div>
+    </div>
+  </div>
+
+  <div class="rail">
+    <div class="panel">
+      <h2>Hexagon</h2>
+      <dl id="fields"></dl>
+      <div class="bits">
+        <div class="bitrow mono" id="bits"></div>
+        <div class="bitkey">
+          <span class="f-kind">kind</span><span class="f-energy">energy</span>
+          <span class="f-mom">momentum</span><span class="f-bond">bonds</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>B to each neighbour</h2>
+      <table class="nb"><tbody id="neighbours"></tbody></table>
+    </div>
+
+    <div class="panel">
+      <table id="matrix">
+        <caption>Binding energy by valence pair. Complementary valences sum to 8.</caption>
+        <tbody id="matrixBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <b>This shows state, not dynamics.</b> Nothing here steps forward in time — a lattice that
+  appeared to run would be inventing physics the laws have not been given yet, and a convincing
+  animation is exactly the thing rule 11 says not to trust. The seed obeys law 2's breaking
+  condition and law 4's capacity, and nothing else.
+</footer>
+
+<script>
+(() => {
+  const COLS = 46, ROWS = 34;
+  const DIRS = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+  const DIR_NAMES = ["E","NE","NW","W","SW","SE"];
+  const HALF = [[1,0],[1,-1],[0,1]];           // each edge once
+  const EMAX = 65535, KMAX = 255, PMAX = 15, MOD = 8;
+
+  const cv = document.getElementById("lattice");
+  const ctx = cv.getContext("2d");
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  const B = (k1, k2) => Math.max(0, MOD - Math.abs((k1 % MOD) + (k2 % MOD) - MOD));
+  const temp = (c) => (c.kind ? Math.floor(c.energy / c.kind) : 0);
+  const pmag = (c) => { const a = c.pa, b = c.pb, d = -(a + b); return Math.sqrt((a*a + b*b + d*d) / 2); };
+
+  let grid = new Map(), selected = null, hovered = null;
+  const key = (q, r) => q + "," + r;
+  const at = (q, r) => grid.get(key(q, r));
+
+  // offset rows so the lattice reads as a rhombus-free block
+  function* cells() {
+    for (let r = 0; r < ROWS; r++) {
+      const shift = -Math.floor(r / 2);
+      for (let q = shift; q < shift + COLS; q++) yield [q, r];
+    }
+  }
+
+  let rng = mulberry(1);
+  function mulberry(a) {
+    return () => { a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  }
+
+  function seed() {
+    const density = +document.getElementById("density").value / 100;
+    const cap = +document.getElementById("capacity").value;
+    const meanT = +document.getElementById("heat").value;
+    grid = new Map();
+
+    for (const [q, r] of cells()) {
+      const c = { q, r, kind: 0, energy: 0, pa: 0, pb: 0, bonds: 0, flight: 0 };
+      if (rng() < density) {
+        c.kind = 1 + Math.floor(rng() * KMAX);
+        const t = Math.floor(-Math.log(1 - rng() * 0.999) * meanT);
+        c.energy = Math.min(EMAX, t * c.kind);
+        const p = () => (rng() < 0.5 ? -1 : 1) * Math.floor(Math.pow(rng(), 2.2) * (PMAX + 1));
+        c.pa = p(); c.pb = p();
+      } else if (rng() < 0.05) {
+        c.flight = 1 << Math.floor(rng() * 6);
+      }
+      grid.set(key(q, r), c);
+    }
+
+    // bonds: law 2's form, law 2's breaking condition, law 4's capacity
+    const edges = [];
+    for (const [q, r] of cells()) for (const [dq, dr] of HALF) edges.push([q, r, dq, dr]);
+    for (let i = edges.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1)); [edges[i], edges[j]] = [edges[j], edges[i]];
+    }
+    for (const [q, r, dq, dr] of edges) {
+      const a = at(q, r), b = at(q + dq, r + dr);
+      if (!a || !b || !a.kind || !b.kind) continue;
+      if (a.bonds >= cap || b.bonds >= cap) continue;
+      const e = B(a.kind, b.kind);
+      if (e < 1) continue;
+      if (temp(a) >= e || temp(b) >= e) continue;      // e >= B*kind at either end
+      const di = DIRS.findIndex(([x, y]) => x === dq && y === dr);
+      a.bondBits = (a.bondBits || 0) | (1 << di);
+      b.bondBits = (b.bondBits || 0) | (1 << ((di + 3) % 6));
+      a.bonds++; b.bonds++;
+    }
+
+    if (!selected || !at(selected.q, selected.r)) selected = null;
+    if (!selected) {
+      for (const [q, r] of cells()) { const c = at(q, r); if (c.kind && c.bonds) { selected = c; break; } }
+      if (!selected) for (const [q, r] of cells()) { const c = at(q, r); if (c.kind) { selected = c; break; } }
+    } else selected = at(selected.q, selected.r);
+  }
+
+  // ---- geometry -----------------------------------------------------------
+  let S = 10, OX = 0, OY = 0, DPR = 1;
+  const px = (q, r) => [OX + S * Math.sqrt(3) * (q + r / 2), OY + S * 1.5 * r];
+
+  function fit() {
+    const w = cv.parentElement.clientWidth - 24;
+    S = Math.max(5, w / (Math.sqrt(3) * (COLS + 0.6)));
+    const h = S * 1.5 * (ROWS - 1) + S * 2 + 2;
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
+    cv.style.height = h + "px";
+    OX = S * Math.sqrt(3) * 0.5 + 1; OY = S + 1;
+  }
+
+  function hexPath(x, y, rad) {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (Math.PI / 180) * (60 * i + 30);
+      const vx = x + rad * Math.cos(a), vy = y + rad * Math.sin(a);
+      i ? ctx.lineTo(vx, vy) : ctx.moveTo(vx, vy);
+    }
+    ctx.closePath();
+  }
+
+  // ---- colour -------------------------------------------------------------
+  const VAL = () => [css("--v0"),css("--v1"),css("--v2"),css("--v3"),css("--v4"),css("--v5"),css("--v6"),css("--v7")];
+  const SEQ = () => [css("--seq-0"),css("--seq-1"),css("--seq-2"),css("--seq-3"),css("--seq-4"),css("--seq-5"),css("--seq-6")];
+  const HOT = () => [css("--hot-0"),css("--hot-1"),css("--hot-2"),css("--hot-3"),css("--hot-4"),css("--hot-5"),css("--hot-6")];
+  const step = (ramp, t) => ramp[Math.max(0, Math.min(ramp.length - 1, Math.round(t * (ramp.length - 1))))];
+
+  function fillFor(c, layer, pal) {
+    if (!c.kind) return null;
+    if (layer === "valence") return pal.val[c.kind % MOD];
+    if (layer === "kind") return step(pal.seq, (c.kind - 1) / (KMAX - 1));
+    if (layer === "temp") return step(pal.hot, Math.min(1, temp(c) / 48));
+    return pal.matter;
+  }
+
+  function draw() {
+    const layer = document.querySelector('input[name="layer"]:checked').value;
+    const bonds = document.getElementById("showBonds").checked;
+    const moms = document.getElementById("showMom").checked;
+    const pal = { val: VAL(), seq: SEQ(), hot: HOT(), matter: css("--state-matter"),
+                  flight: css("--state-flight"), surface: css("--surface"),
+                  grid: css("--grid"), ink: css("--ink"), muted: css("--ink-muted"), focus: css("--focus") };
+
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    const rad = S * 0.94;   // leaves a surface gap between fills
+
+    for (const [q, r] of cells()) {
+      const c = at(q, r); const [x, y] = px(q, r);
+      hexPath(x, y, rad);
+      const f = fillFor(c, layer, pal);
+      if (f) { ctx.fillStyle = f; ctx.fill(); }
+      else if (c.flight) {
+        ctx.fillStyle = pal.flight; ctx.globalAlpha = 0.5; ctx.fill(); ctx.globalAlpha = 1;
+      } else {
+        ctx.strokeStyle = pal.grid; ctx.lineWidth = 1; ctx.stroke();
+      }
+    }
+
+    if (bonds) {
+      ctx.lineCap = "round";
+      for (const [q, r] of cells()) {
+        const a = at(q, r); if (!a || !a.bondBits) continue;
+        const [ax, ay] = px(q, r);
+        for (let i = 0; i < 3; i++) {
+          const [dq, dr] = HALF[i];
+          const di = DIRS.findIndex(([x, y]) => x === dq && y === dr);
+          if (!(a.bondBits & (1 << di))) continue;
+          const b = at(q + dq, r + dr); if (!b) continue;
+          const [bx, by] = px(q + dq, r + dr);
+          const e = B(a.kind, b.kind);
+          ctx.strokeStyle = pal.ink;
+          ctx.globalAlpha = 0.25 + 0.6 * (e / MOD);
+          ctx.lineWidth = Math.max(1.4, S * 0.1 * (0.4 + e / MOD));
+          ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    if (moms) {
+      ctx.strokeStyle = pal.ink; ctx.fillStyle = pal.ink; ctx.lineCap = "round";
+      for (const [q, r] of cells()) {
+        const c = at(q, r); if (!c.kind) continue;
+        const m = pmag(c); if (m < 0.5) continue;
+        const [x, y] = px(q, r);
+        let dx = Math.sqrt(3) * (c.pa + c.pb / 2), dy = 1.5 * c.pb;
+        const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+        const reach = rad * 0.82 * Math.min(1, m / 12);
+        ctx.globalAlpha = 0.5 + 0.45 * Math.min(1, m / 14);
+        ctx.lineWidth = Math.max(1, S * 0.07);
+        ctx.beginPath();
+        ctx.moveTo(x - dx * reach * 0.5, y - dy * reach * 0.5);
+        ctx.lineTo(x + dx * reach, y + dy * reach);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x + dx * reach, y + dy * reach, Math.max(1.1, S * 0.11), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    for (const c of [hovered, selected]) {
+      if (!c) continue;
+      const [x, y] = px(c.q, c.r);
+      hexPath(x, y, rad + 1.5);
+      ctx.strokeStyle = c === selected ? pal.focus : pal.muted;
+      ctx.lineWidth = c === selected ? 2.5 : 1.5;
+      ctx.stroke();
+    }
+  }
+
+  // ---- panels -------------------------------------------------------------
+  function bin(v, n) { return v.toString(2).padStart(n, "0"); }
+
+  function paintFields() {
+    const c = selected;
+    const dl = document.getElementById("fields");
+    const bitsEl = document.getElementById("bits");
+    const nb = document.getElementById("neighbours");
+
+    if (!c) { dl.innerHTML = ""; bitsEl.textContent = ""; nb.innerHTML = ""; return; }
+
+    const t = temp(c), m = pmag(c);
+    const state = c.kind ? "primitive" : c.flight ? "quantum in flight" : "empty";
+    const period = c.kind && m >= 1 ? Math.max(1, Math.round(c.kind / m)) : null;
+
+    const rows = [
+      ["axial", `${c.q}, ${c.r}`],
+      ["state", state],
+    ];
+    if (c.kind) rows.push(
+      ["kind", c.kind],
+      ["valence v", c.kind % MOD],
+      ["energy", c.energy],
+      ["temperature", `${t}  (e/kind)`],
+      ["momentum", `${c.pa}, ${c.pb}`],
+      ["|p|", m.toFixed(2)],
+      ["steps every", period ? `${period} tick${period === 1 ? "" : "s"}` : "— at rest"],
+      ["bonds", `${c.bonds} of ${document.getElementById("capacity").value}`],
+    );
+    dl.innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+
+    const mb = (v) => bin(v + 16, 5);
+    bitsEl.innerHTML = c.kind
+      ? `<b class="f-kind">${bin(c.kind, 8)}</b> <b class="f-energy">${bin(c.energy, 16)}</b> ` +
+        `<b class="f-mom">${mb(c.pa)}${mb(c.pb)}</b> <b class="f-bond">${bin(c.bondBits || 0, 6)}</b>`
+      : `<b class="f-kind">${bin(0, 8)}</b> <b class="f-energy">${bin(0, 16)}</b> ` +
+        `<b class="f-mom">${bin(0, 10)}</b> <b class="f-bond">${bin(c.flight || 0, 6)}</b>`;
+
+    if (!c.kind) { nb.innerHTML = `<tr><td class="no">Only a primitive has bonds.</td></tr>`; return; }
+    const maxB = MOD;
+    nb.innerHTML = DIRS.map(([dq, dr], i) => {
+      const n = at(c.q + dq, c.r + dr);
+      if (!n || !n.kind) return `<tr><td class="dir">${DIR_NAMES[i]}</td><td class="no" colspan="2">${n ? (n.flight ? "in flight" : "empty") : "edge"}</td></tr>`;
+      const e = B(c.kind, n.kind);
+      const bonded = !!((c.bondBits || 0) & (1 << i));
+      const w = Math.round(6 + 52 * (e / maxB));
+      return `<tr><td class="dir">${DIR_NAMES[i]}</td>` +
+        `<td><div class="bar"><i style="width:${w}px;background:${e ? "var(--seq-4)" : "var(--axis)"}"></i>` +
+        `<span class="mono">${e}</span></div></td>` +
+        `<td class="${bonded ? "yes" : "no"}" style="text-align:right">${bonded ? "bonded" : "—"}</td></tr>`;
+    }).join("");
+  }
+
+  function paintMatrix() {
+    const seq = SEQ(), body = document.getElementById("matrixBody");
+    const sel = selected && selected.kind ? selected.kind % MOD : -1;
+    let html = `<tr><th></th>${Array.from({length: MOD}, (_, j) => `<th>${j}</th>`).join("")}</tr>`;
+    for (let i = 0; i < MOD; i++) {
+      html += `<tr><th>${i}</th>`;
+      for (let j = 0; j < MOD; j++) {
+        const e = Math.max(0, MOD - Math.abs(i + j - MOD));
+        const bg = e === 0 ? css("--raise") : step(seq, 0.15 + 0.85 * (e / MOD));
+        const fg = e >= 5 ? "#ffffff" : "var(--ink-2)";
+        const ring = i === sel ? `outline:2px solid ${css("--focus")}` : "";
+        html += `<td><span class="cell mono" style="background:${bg};color:${fg};${ring}">${e}</span></td>`;
+      }
+      html += `</tr>`;
+    }
+    body.innerHTML = html;
+  }
+
+  function paintLegend() {
+    const layer = document.querySelector('input[name="layer"]:checked').value;
+    const el = document.getElementById("legend");
+    if (layer === "valence") {
+      el.innerHTML = `<span>v</span>` + VAL().map((c, i) =>
+        `<span class="sw"><i style="background:${c}"></i>${i}</span>`).join("") +
+        `<span style="color:var(--ink-muted)">complementary pairs sit opposite</span>`;
+    } else if (layer === "kind") {
+      el.innerHTML = `<span>kind 1</span><span class="ramp">${SEQ().map(c => `<i style="background:${c}"></i>`).join("")}</span><span>255</span>`;
+    } else if (layer === "temp") {
+      el.innerHTML = `<span>temp 0</span><span class="ramp">${HOT().map(c => `<i style="background:${c}"></i>`).join("")}</span><span>48+</span>` +
+        `<span style="color:var(--ink-muted)">e / kind</span>`;
+    } else {
+      el.innerHTML = `<span class="sw"><i style="background:var(--state-matter)"></i>primitive</span>` +
+        `<span class="sw"><i style="background:var(--state-flight);opacity:.5"></i>quantum in flight</span>` +
+        `<span class="sw"><i style="background:transparent;box-shadow:inset 0 0 0 1px var(--grid)"></i>empty</span>`;
+    }
+  }
+
+  function paintTallies() {
+    let prim = 0, matter = 0, bonds = 0, flight = 0, tsum = 0;
+    for (const [q, r] of cells()) {
+      const c = at(q, r);
+      if (c.kind) { prim++; matter += c.kind; bonds += c.bonds; tsum += temp(c); }
+      else if (c.flight) flight++;
+    }
+    document.getElementById("tPrim").textContent = prim.toLocaleString();
+    document.getElementById("tMatter").textContent = matter.toLocaleString();
+    document.getElementById("tBonds").textContent = (bonds / 2).toLocaleString();
+    document.getElementById("tFlight").textContent = flight.toLocaleString();
+    document.getElementById("tTemp").textContent = prim ? (tsum / prim).toFixed(1) : "0";
+  }
+
+  function render() { draw(); paintFields(); paintMatrix(); paintLegend(); paintTallies(); }
+  function reseedAll() { seed(); render(); }
+
+  // ---- picking ------------------------------------------------------------
+  function pick(ev) {
+    const b = cv.getBoundingClientRect();
+    const mx = ev.clientX - b.left, my = ev.clientY - b.top;
+    let best = null, bd = Infinity;
+    for (const [q, r] of cells()) {
+      const [x, y] = px(q, r);
+      const d = (x - mx) ** 2 + (y - my) ** 2;
+      if (d < bd) { bd = d; best = at(q, r); }
+    }
+    return bd <= (S * 1.1) ** 2 ? best : null;
+  }
+
+  cv.addEventListener("pointermove", (e) => {
+    const c = pick(e);
+    if (c !== hovered) { hovered = c; draw(); }
+  });
+  cv.addEventListener("pointerleave", () => { hovered = null; draw(); });
+  cv.addEventListener("click", (e) => { const c = pick(e); if (c) { selected = c; render(); } });
+
+  // ---- controls -----------------------------------------------------------
+  document.getElementById("layers").addEventListener("change", render);
+  document.getElementById("showBonds").addEventListener("change", render);
+  document.getElementById("showMom").addEventListener("change", render);
+  document.getElementById("reseed").addEventListener("click", () => { rng = mulberry((Math.random() * 1e9) | 0); reseedAll(); });
+
+  for (const [id, label, fmt] of [["density","densityVal",(v)=>v+"%"],["capacity","capacityVal",(v)=>v],["heat","heatVal",(v)=>v]]) {
+    const inp = document.getElementById(id);
+    inp.addEventListener("input", () => {
+      document.getElementById(label).textContent = fmt(inp.value);
+      reseedAll();
+    });
+  }
+
+  let raf = 0;
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => { fit(); draw(); });
+  });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+
+  fit(); reseedAll();
+})();
+</script>
