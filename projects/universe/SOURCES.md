@@ -405,6 +405,37 @@ maintain themselves. The benchmark for emergence-per-rule.
 
 ## Physics taken as background
 
+**Expansion, recorded 2026-11-05 for README item 22 (provisional) and the matching entry in
+`HOW-WE-DECIDED.md`:**
+
+- **Price, R. H. & Romano, J. D. (2012).** "In an expanding universe, what doesn't expand?" *Am. J.
+  Phys.* 80, 376. <https://arxiv.org/abs/gr-qc/0508052> — bound systems are all-or-nothing: tightly
+  bound keeps its size, loosely bound follows the expansion. Taken as the rule that new space never
+  splits a bond.
+- **Cooperstock, F. I., Faraoni, V. & Vollick, D. N. (1998).** "The influence of the cosmological
+  expansion on local systems." <https://arxiv.org/abs/astro-ph/9803097> — the effect on the solar
+  system is nonzero and unmeasurably small. With **Faraoni & Jacques**, "Cosmological expansion and
+  local physics" <https://arxiv.org/abs/0707.1350>, for the argument that the question is subtler
+  than "bound things are exempt".
+- **Carroll, S. (2010).** "Energy Is Not Conserved." *Discover*, Cosmic Variance.
+  <https://www.discovermagazine.com/energy-is-not-conserved-26516> — redshifted energy goes nowhere,
+  because expansion breaks time-translation symmetry. Taken for the counted expansion loss.
+- **Springel, V. et al. (2001)**, GADGET <https://arxiv.org/abs/astro-ph/0003162>, the **Enzo**
+  documentation <https://enzo.readthedocs.io/en/latest/physics/cosmology.html>, and **Figueroa,
+  Florio, Torrenti & Valkenburg**, CosmoLattice <https://arxiv.org/abs/2102.01031> and
+  <https://arxiv.org/abs/2312.15056> — comoving grids with a scale factor, and CosmoLattice's two
+  modes, a fixed background or expansion sourced by the fields. Taken as the control run and the
+  rate question.
+- **Ahmed, Dodelson, Greene & Sorkin (2004).** "Everpresent Λ." <https://arxiv.org/abs/astro-ph/0209274>
+  — discrete spacetime growing one element at a time. Inspiration for space that comes into being
+  in pieces; nothing of its mathematics is used.
+- **Wolfram Physics Project** <https://wolfram-physics.pages.dev/concepts/emergent-space/> — space as
+  a network grown by adding nodes. The same inspiration, and the same caveat.
+- **Zeno squeezing of cellular automata**, arXiv:0908.0835 <https://arxiv.org/abs/0908.0835> — a
+  lattice that grows by a cell when activity reaches its edge. Precedent for a growing grid.
+- **Springel, V. (2010).** AREPO, "E pur si muove." <https://arxiv.org/abs/0901.4107> — a moving
+  mesh; looked at and set aside.
+
 **Planck Collaboration (2016).** "Planck 2015 results. XVIII. Background geometry and topology of
 the Universe." *A&A* 594, A18. <https://www.aanda.org/10.1051/0004-6361/201525829> — that a flat
 universe can be finite with no edge (a 3-torus and its relatives), and that the search for the

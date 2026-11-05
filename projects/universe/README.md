@@ -959,6 +959,49 @@ the world; the screened local field in item 12 handles a loop with no extra work
 not before the Lab, and together with item 20 — size, gravity's strength and shape are now one
 choice.
 
+**Direction, provisional\*: a looped World that grows, then stops.** *(Ric, 2026-11-05: "I think
+for this thing a finite life is going to be the option but I think expansion will be the answer but
+we will put a size limit on the world. Start with the world being smaller and slowly growing until
+it maxes out at a certain size that would be too hard for my computer to run." Then, choosing
+between the rules below: "Let's do yours.")* Three rules, each modelled on what expansion does in
+reality, with the research behind them in `HOW-WE-DECIDED.md`:
+
+1. **New space appears along a line that no bond crosses.** A new line of empty hexagons runs all
+   the way round the loop, between two existing lines, wherever nothing on one side is bonded to
+   anything on the other. Its neighbours may be empty or may hold unbonded matter — two unbonded
+   primitives that were touching end up a hexagon apart, which is a gap opening in a gas. **Bound
+   matter is never split**, because reality is all-or-nothing about this: tightly bound things keep
+   their size and only unbound things follow the expansion (Price & Romano). Lines go in **threes**,
+   so each side stays a multiple of 3 for the collision blocks; growth **alternates** between the
+   lattice's directions so the loop stays near the same length every way; and **where** is drawn at
+   random among the eligible places, so the World grows everywhere on average. Inserting a line
+   looks non-local in memory and is not in the physics: the only thing that changes is that the
+   hexagons either side of it stop being neighbours.
+2. **Growth drains energy from what is not bound.** As the World grows, light in flight and the
+   motion of free (unbonded) primitives lose energy in proportion — whole units removed by chance,
+   matching the growth on average — into a counted **expansion loss**. Heat held in matter is not
+   drained. That is the cold, dark sky a loop with no edge was missing, and it is how reality does
+   it: light redshifts and free motion slows as space stretches. The invariant becomes
+   `world energy + in flight + expansion loss = constant` (plus the thermostat terms where there
+   is one), so the bug detector survives — energy is genuinely not conserved in an expanding
+   universe, and the counter is the honest way to say so.
+3. **The rate follows the World, not a clock, and stops at the hardware.** Fast while the World is
+   hot and dense, slowing as it cools — the way our universe's rate is set by what it contains —
+   and capped at the largest size Ric's computer runs, **measured by benchmark, not guessed.** After
+   the cap the drain stops, and the World lives out a finite life.
+
+**Not adopted yet, and it is law 6 if it is**, so `AGENTS.md` rule 7's written reason applies; the
+reason is the loop itself — with no edge, nothing else takes heat away. Open inside it: the exact
+drain (which quanta, which speeds, how a chance removal stays fair), the rate formula, and the
+starting state, since a small dense World is a hot, dense beginning and law 3 has so far said the
+only starting condition for energy is matter spread out. **A variant passed over:** prefer the
+emptiest eligible lines, so space appears mostly in vacuum. Kept here because it may be worth a
+comparison run. **A control to run:** the fixed-grid version every cosmology code uses — the same
+hexagons with a scale factor saying how far apart they are — which costs full size from the start
+but is simpler; if the two Worlds differ wildly, one has a bug or the difference is a finding.
+
+\* *Provisional: written 2026-11-05 for Ric to check. Remove the asterisk when he has.*
+
 ### Settled by running the Lab
 
 **5. Does the Lab produce a periodic table with any depth?** Unknown. Three stable clusters and
@@ -1086,6 +1129,11 @@ years in. Late eras here may need something like it to stay interesting.
 **An expanding world.** Ric's, 2026-11-03, and the most promising thing on this list. Reality's
 global energy conservation fails *because* the universe expands, so the obvious question is what
 happens if ours does too.
+
+*(\*Provisionally superseded 2026-11-05 — item 22. The paragraph below rejected a growing grid; the
+version now proposed is one, because inserting a line where no bond crosses touches no bond, adds
+no seam to the lattice, and growing memory is the point — start small, stop at the hardware. The
+old reasoning is kept, because it was right about inserting hexagons anywhere.)*
 
 *The mechanism would not be a growing grid.* Inserting hexagons breaks the six-bit bond field,
 puts seams in the lattice, and multiplies memory. It would be a single global **scale factor** —

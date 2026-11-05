@@ -2243,6 +2243,59 @@ recording what was true when a decision was made. Those stay. What changed is th
 specification — `README.md`'s *What exists*, law 1's momentum range, law 5's fork, `AGENTS.md` rule
 5, and `screen.mjs`'s ceiling — plus the note above saying the history is as-of.
 
+#### Open — how a looped World expands (provisional\*)
+
+*(2026-11-05. Ric asked for the ideas to be researched, then: "Let's do yours." The direction is in
+README item 22; this is the research and the reasoning. \*Written for Ric to check.)*
+
+**Why a loop needs it.** With an edge, radiation left the World and the dark beyond was its cold
+sink. A loop has no edge: light that leaves comes back, and a finite static loop fills with its own
+glow until it is as bright as its hottest things — Olbers' puzzle about our own sky, whose answer is
+partly that the universe expands. So the old verdict, that expansion's cooling argument had failed
+three times, was reached with an edge in place. **Removing the edge reverses it.**
+
+**What reality does, and what the research corrected.** Bound things do not grow with the universe,
+but not because they are exempt: a classical atom in an expanding universe is all-or-nothing —
+loosely bound, it follows the expansion; tightly bound, it settles at a fixed size and stops
+responding, with no case in between (Price & Romano 2012). The solar system feels an effect that is
+real and far too small to measure (Cooperstock, Faraoni & Vollick 1998). Light loses energy as it
+crosses stretching space, and free motion slows; that energy goes nowhere, because energy
+conservation comes from time-translation symmetry and an expanding universe has none (Carroll).
+
+**The approaches found, and what each would mean here:**
+
+- **A fixed grid with a scale factor** — every cosmology code (GADGET, Enzo, CosmoLattice): the grid
+  never changes, one number says how far apart its points are, moving things feel a drag and light
+  loses energy in step. Simpler than it sounds here, because law 2 has no distance term: chemistry
+  only knows who is adjacent, so a "stretched atom" has no consequence anyone inside could detect.
+  But it runs at full size from the first tick. **Kept as the control run.**
+- **Space that comes into being piece by piece** — causal sets grow by elements "coming into being,
+  one at a time", and one proposal from that growth puts the cosmological constant near the
+  observed value (Ahmed, Dodelson, Greene & Sorkin); the Wolfram model grows space by adding nodes
+  to a network; some cellular automata add a cell when activity reaches their edge. **The family
+  the chosen rule belongs to.**
+- **A mesh that moves with the matter** (AREPO) — cells drift with the flow. Incompatible with one
+  fixed lattice of identical hexagons. **Set aside.**
+
+**The step that made a growing grid workable.** The earlier entry rejected inserting hexagons because
+it breaks the bond field, seams the lattice and grows memory. Inserting a **whole line round the
+loop, where no bond crosses**, does none of the first two: in memory half the World shifts, but in
+the physics the only change is that the hexagons either side of the new line are no longer
+neighbours. And growing memory is what Ric asked for. A line cannot stop partway — that would leave a
+hexagon with five or seven neighbours, a dislocation, which is a special place — so a line is the
+smallest unit of new space this lattice has.
+
+**Why bonds and not emptiness decide where.** Ric asked whether new hexagons should only sit next to
+empty ones. That stricter rule needs a band empty all the way round, and early on, when the World is
+dense, there would be none, so it could not grow at exactly the stage when reality grew fastest —
+when everything was unbound gas being pulled apart. Requiring only that no bond crosses keeps the
+all-or-nothing rule from Price & Romano: anything bound is never split, anything unbound may be.
+
+**Still open:** the drain's exact form on integer quanta and speeds; the rate formula (CosmoLattice
+offers the same two modes this project argued over — a fixed background, or expansion sourced by
+the contents — and the second is the one rule 2 allows); the starting state; and whether law 6 earns
+its place against rule 7.
+
 ## Rules that came off the list
 
 The list stays short by things leaving it. This section is as important as the rest.
