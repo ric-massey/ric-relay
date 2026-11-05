@@ -1,5 +1,10 @@
-<title>Lattice Inspector</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Universe · Lattice Inspector</title>
+<meta name="description" content="A hexagon of this universe, field by field: kind, valence, bonds, temperature. State, not dynamics.">
 <style>
   /* Instrument layout: controls row, lattice canvas, inspector rail that drops
      under the canvas at phone width. Dark-first — this is a screen you read
@@ -182,6 +187,8 @@
   footer b { color: var(--ink-2); font-weight: 600; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
+</head>
+<body>
 
 <header>
   <h1>Lattice Inspector</h1>
@@ -618,3 +625,10 @@
   fit(); reseedAll();
 })();
 </script>
+
+<!-- The floating "Ric's Terminal" control every project page gets. data-home
+     names the site root's index.html; relay-return.js turns it into the
+     terminal.html beside it. -->
+<script src="../relay-return.js" data-home="../../index.html" defer></script>
+</body>
+</html>

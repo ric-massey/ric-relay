@@ -185,6 +185,26 @@ and `projects` did not know it existed; that was a bug, fixed 2026-09-24.)
 and answers to its own `tension` / `kilter` / `boards` / `woodshed` commands instead.
 It is called Boards now; `woodshed` still works because that is what the
 easter-egg notes have told people to type for years.)
+(`projects/universe/` is **in `PROJECTS` as of 2026-11-05**, under `universe`, with
+`relay-return.js` — this paragraph said to add it "in the same change that ships its first page,
+not before", and that is the change. The page is **`projects/universe/viewer.html`**, a lattice
+inspector, and it is an **instrument rather than a world**: it seeds a lattice from laws 2 and 4
+and lets you read it field by field, and **nothing in it steps forward in time, because there is
+no engine.** Do not describe it as a running simulation — the project's own rule 11 is "don't
+trust a pretty picture", and the page says this on its face. **It has no room card yet** (Ric,
+2026-11-05: "don't have to make a place on the main page yet"), so the terminal is the only way
+in. That is deliberate, and it is not the how-big-everything-is bug repeating — there the project
+was unreachable because nobody had listed it; here it is reachable by name and the room card is
+pending on purpose. Everything else in there is docs — a spec, agent rules, a per-law statement
+(`THE-LAWS.md`), the record of how each law was decided (`HOW-WE-DECIDED.md`), a design note on
+the two runs, a sources file — plus **four design tools**, none of them part of an engine, each
+run by hand: `screen.mjs` (`node screen.mjs`) scores candidate forms for the bonding law over all
+65,025 pairs of kinds, `radiate.mjs` checks that radiation across vacuum obeys the second law and
+that energy accounting closes exactly, `momentum.mjs` enumerates collision outcomes to settle how
+momentum is stored, and `budget.mjs` enumerates every field allocation that fits in the hexagon's
+word. Read `projects/universe/AGENTS.md` before touching anything in there; it has rules
+of its own that are the whole point of the project, and Ric set the first one himself:
+everything borrowed gets credited in `projects/universe/SOURCES.md`.)
 
 **`find` is a search engine over the whole site** (Ric, 2026-10-30: "make the search
 engine in terminal phenominal"). `assets/terminal/search.js` is the engine (UMD, so
