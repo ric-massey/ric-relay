@@ -1,0 +1,140 @@
+{
+  "format": "universe-lab-snapshot/1",
+  "warning": "CANDIDATE_ZERO is the plumbing test point, not a chosen physics. Every number in this run comes from an arbitrary point in the search space, and README item 31 is the standing reason to distrust any chemistry figure read off a run.",
+  "written": "2026-11-06T13:33:49.544Z",
+  "label": "default slate, seed 7",
+  "slot": "last",
+  "N": 258,
+  "cells": 66564,
+  "torus": true,
+  "layout": [
+    {
+      "field": "kind",
+      "type": "u8",
+      "offset": 0
+    },
+    {
+      "field": "energy",
+      "type": "u16",
+      "offset": 66564
+    },
+    {
+      "field": "mx",
+      "type": "i8",
+      "offset": 199692
+    },
+    {
+      "field": "my",
+      "type": "i8",
+      "offset": 266256
+    },
+    {
+      "field": "bonds",
+      "type": "u8",
+      "offset": 332820
+    }
+  ],
+  "run": {
+    "seed": 7,
+    "events": 150000,
+    "budget": 150000,
+    "clock": 84.58686755040856,
+    "fill": 0.35,
+    "momentumRange": 6,
+    "thermostat": {
+      "HOT_T": 64,
+      "COLD_T": 1,
+      "BAND_ROWS": 3
+    },
+    "wallMs": 569,
+    "eventsPerSecond": 263620,
+    "stillBeforeBudget": false
+  },
+  "counts": {
+    "stepped": 31402,
+    "blocked": 40316,
+    "collided": 7754,
+    "collisionDead": 32289,
+    "tooColdToMove": 693,
+    "bondsFormed": 4573,
+    "bondsBroken": 419,
+    "bondsStretched": 325,
+    "conducted": 3221,
+    "emitted": 4991,
+    "absorbed": 4509,
+    "quantaMoved": 8469,
+    "emissionBlocked": 14,
+    "quantumWaited": 25,
+    "momentumShared": 14542,
+    "momentumRangeDeclined": 0,
+    "shareUnaffordable": 18,
+    "thermostatFires": 724,
+    "thermalKicks": 4587,
+    "kickRangeDeclined": 0,
+    "kickUnaffordable": 928,
+    "kickNoPartner": 9489,
+    "dragged": 420,
+    "draggedMembers": 890,
+    "dragBlocked": 273,
+    "dragLargest": 7
+  },
+  "census": {
+    "seeded": {
+      "matter": 2986360,
+      "heat": 0,
+      "kinetic": 51461,
+      "inFlight": 0,
+      "pxSum": 0,
+      "pySum": -84,
+      "bondBits": 0,
+      "bondPotential": 0
+    },
+    "final": {
+      "matter": 2986360,
+      "heat": 2508335,
+      "kinetic": 40362,
+      "inFlight": 482,
+      "pxSum": 0,
+      "pySum": -84,
+      "bondBits": 8308,
+      "bondPotential": -22537
+    }
+  },
+  "constants": {
+    "settled": {
+      "KE_SCALE": 4,
+      "BOND_MODULUS": 8
+    },
+    "searched": {
+      "KE_SCALE": 4,
+      "BOND_MODULUS": 8,
+      "TRANSPORT_RATE": 0.5,
+      "CLOCK_SCALE": 0.000007629510948348211,
+      "CLOCK_FLOOR": 0.03125,
+      "BOND_FORM_PROB": 0.25,
+      "THERMAL_KICK_PROB": 0.25,
+      "GRAVITY_EPS": null,
+      "GRAVITY_FALLOFF": null
+    },
+    "momentumRange": 63,
+    "keScaleWindow": [
+      1,
+      16
+    ],
+    "lab": {
+      "N": 258,
+      "BLOCK_SIZE": 3,
+      "BLOCK_OFFSETS": 3
+    },
+    "capacityByValence": [
+      1,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      6
+    ]
+  }
+}
