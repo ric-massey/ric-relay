@@ -30,8 +30,8 @@
 //            reaches one. The impulse arrives late but exact.
 //
 // Physics from THE-LAWS.md: momentum is an integer cube vector with every
-// component in +-R; speed is a RATE, one hexagon every k/|p| ticks, capped at
-// one per tick; a step rounds to the nearest of six directions and the vector
+// component in +-R; speed is a RATE, |p| / sqrt(k^2 + |p|^2) hexagons per tick
+// (relativity's form since 2026-11-06, always under one); a step rounds to the nearest of six directions and the vector
 // itself is never rounded; gravity adds to momentum, falling off as 1/r^2.
 // Cube coordinates and cube rounding: Patel, Red Blob Games -- SOURCES.md.
 // The circular-orbit condition v^2 = GM/r: Newton -- SOURCES.md.
@@ -51,10 +51,11 @@ const MAX_TICKS    = 8000000;         // give up -- ten laps at r=500, +-3 needs
 const FELL_IN      = 1.0;             // hexagons from centre -- counts as fallen in
 const ESCAPE_MULT  = 8;               // radius this many x r0 counts as escaped
 
-// The orbiter is the HEAVIEST kind, and that is forced rather than chosen.
-// Speed is |p|/k and law 1 caps it at one hexagon per tick, so a circular
-// orbit needs |p| <= k or the causal cap breaks the circular condition the run
-// was set up with. Heavy also means the finest speed resolution available,
+// The orbiter is the HEAVIEST kind. That was forced while law 1 capped speed
+// at one hexagon per tick (min(1, |p|/k), until 2026-11-06): a circular orbit
+// needed |p| <= k or the cap broke the circular condition the run was set up
+// with. Relativity's speed has no cap to hit, so it is now a choice -- kept,
+// because it is the case the documents measured. Heavy also means the finest speed resolution available,
 // since one unit of momentum moves the speed by 1/k -- so this is the best
 // case an orbit can have here, which is what the test should be measuring.
 const KIND_ORBITER = 255;
@@ -78,6 +79,12 @@ const START_FRAC   = 0.5;
 // momentum.mjs carries it; true |p|^2 is Q/2, so |p| = sqrt(Q/2).
 const Q    = (p) => p[0] * p[0] + p[1] * p[1] + p[2] * p[2];
 const mag  = (p) => Math.sqrt(Q(p) / 2);
+// Law 1's speed, relativity's form since 2026-11-06 (lab.mjs matterSpeed):
+// v = |p| / sqrt(k^2 + |p|^2), never reaching the limit, and its inverse.
+// Every speed <-> momentum step in this file goes through these two, so the
+// tool runs the same law as the engine. Re-run under them on 2026-11-06.
+const speedOf     = (pm, k) => pm / Math.sqrt(k * k + pm * pm);
+const momentumFor = (v, k) => (k * v) / Math.sqrt(1 - v * v);
 const add  = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 const sub  = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const scl  = (a, t) => [a[0] * t, a[1] * t, a[2] * t];
@@ -191,8 +198,10 @@ function clampLegal(p, R) {
 // latticeSteps    -- position is a whole hexagon and steps go in six directions
 // carry           -- accumulate sub-unit gravity instead of rounding it away
 //
-// gm is chosen so the starting momentum is EXACTLY circular at r0: v = |p|/k
-// and v^2 = GM/r, so GM = (p0/k)^2 * r0. Each run starts from the best case
+// gm is chosen so the starting momentum is EXACTLY circular at r0. Gravity
+// adds k*GM/r^2 of momentum per tick and a circle needs |dp/dt| = |p| v / r,
+// so GM = |p| v r / k -- which is (p0/k)^2 * r0 when p = k v, and the same
+// formula keeps the start circular under the relativistic speed. Each run starts from the best case
 // Newton allows and measures only what the lattice does to it.
 //
 // Checks 6 to 8 pass gm and k explicitly instead, because they ask what a
@@ -204,11 +213,14 @@ function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FR
                gm: gmGiven, k = KIND_ORBITER, surface = FELL_IN, tie = TIE_COIN,
                seed = TIE_SEED }) {
   const rand = seeded(seed);
+  // With gm given, solve |p| v(|p|) r0 / k = gm for |p|: with c = gm k / r0,
+  // p^4 = c^2 (k^2 + p^2), so p^2 = (c^2 + sqrt(c^4 + 4 c^2 k^2)) / 2.
+  const cc = gmGiven === undefined ? 0 : gmGiven * k / r0;
   const p0mag = gmGiven === undefined
     ? mag(scl([0, -1, 1], R)) * startFrac      // see START_FRAC
-    : k * Math.sqrt(gmGiven / r0);
-  const v0 = p0mag / k;                        // hexagons per tick
-  const gm = gmGiven === undefined ? v0 * v0 * r0 : gmGiven;
+    : Math.sqrt((cc * cc + Math.sqrt(cc ** 4 + 4 * cc * cc * k * k)) / 2);
+  const v0 = speedOf(p0mag, k);                // hexagons per tick
+  const gm = gmGiven === undefined ? p0mag * v0 * r0 / k : gmGiven;
 
   const start = scl(RADIAL, r0 / mag(RADIAL));
   let pos = latticeSteps ? cubeRound(start) : start;
@@ -269,10 +281,8 @@ function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FR
     // --- law 1: speed is a rate, one hexagon every k/|p| ticks, max one ---
     const pm = mag(p);
     if (pm === 0) { outcome = "stopped dead"; break; }
-    // Law 1's speed rule before 2026-11-06; it is now relativity's
-    // pm / sqrt(k^2 + pm^2) (lab.mjs matterSpeed). Not re-run under the new
-    // rule; the two agree to within 3% wherever pm <= k / 4.
-    const speed = Math.min(1, pm / k);         // hexagons per tick
+    // Relativity's speed since 2026-11-06 (was min(1, pm / k)).
+    const speed = speedOf(pm, k);              // hexagons per tick, always < 1
     if (latticeSteps) {
       stepAcc += speed;
       while (stepAcc >= 1) { pos = add(pos, nearestDir(p, tie, rand)); stepAcc -= 1; }
@@ -389,11 +399,11 @@ if (won(control) === 0) {
 // ------------------------------------------- the gap, stated with its numbers
 console.log("");
 console.log("=== Check 3: the size of the sub-unit pull ===");
-console.log("  |dp| per tick at the starting radius is p0^2/(k*r0):");
+console.log("  |dp| per tick at the starting radius is p0*v0/r0 (p0^2/(k*r0) when slow):");
 for (const r0 of RADII) {
   for (const R of RANGES) {
     const p0mag = mag(scl([0, -1, 1], R));
-    const dp = (p0mag * p0mag) / (KIND_ORBITER * r0);
+    const dp = p0mag * speedOf(p0mag, KIND_ORBITER) / r0;
     const flag = dp < 0.5 ? "  <- rounds to ZERO: gravity never acts" : "";
     console.log(`    r=${String(r0).padStart(3)}  +-${String(R).padStart(2)}  |dp| = ${dp.toFixed(5)}${flag}`);
   }
@@ -414,11 +424,12 @@ console.log("  hold an orbit. Sub-unit pull was never the problem. Discarding it
 // Check 3 says the pull is unrepresentably small. That has an arithmetic
 // boundary rather than a vague one, so find it rather than asserting it.
 // A circular orbit needs the per-tick pull to be at least one unit:
-//     |dp| = p0^2 / (k*r0) >= 1   ->   p0 >= sqrt(k*r0)
-// and law 1's causal cap needs the speed under one hexagon per tick:
-//     v = p0/k <= 1              ->   p0 <= k
-// Both at once give sqrt(k*r0) <= k, which is r0 <= k. So the orbiter's KIND
-// is a hard ceiling on orbital radius, and no momentum width changes it.
+//     |dp| = p0 v0 / r0 >= 1, and p0 v0 = p0^2 / k while p0 << k.
+// Slow, that is p0 >= sqrt(k*r0). Under the old cap min(1, p0/k) the speed
+// stopped at 1 when p0 reached k, which made the orbiter's KIND a hard ceiling
+// on radius (r0 <= k). Under relativity's speed (2026-11-06) v0 < 1 always,
+// so |dp| >= 1 needs p0 > r0: the ceiling is no longer the kind but the
+// momentum width, and widening it does help -- slowly, because v0 flattens.
 console.log("");
 console.log("=== Check 4: the range at which an orbit first becomes representable ===");
 const SWEEP_RADII = [20, 100];
@@ -430,7 +441,7 @@ for (const r0 of SWEEP_RADII) {
     const row = {
       r0, range: "+-" + R,
       bits: Math.ceil(Math.log2(2 * R + 1)) * 2 + " of 10",
-      dpPerTick: Number(((p0mag * p0mag) / (KIND_ORBITER * r0)).toFixed(3)),
+      dpPerTick: Number((p0mag * speedOf(p0mag, KIND_ORBITER) / r0).toFixed(3)),
       round: run({ r0, R, integerMomentum: true, latticeSteps: true, carry: false }).outcome,
       carry: run({ r0, R, integerMomentum: true, latticeSteps: true, carry: true }).outcome,
     };
@@ -442,8 +453,12 @@ console.log("  THE PREDICTION ABOVE IS CORRECT, AND FOR A DAY A BROKEN START HID
 console.log("  It said an orbit should appear under the ROUNDING rule once the range is");
 console.log("  wide enough for |dp| to reach about one unit, at roughly +-sqrt(k*r0) --");
 console.log("  which is +-71 for r=20 and +-160 for r=100. The round column turns over");
-console.log("  between +-63 and +-127 at r=20, and between +-127 and +-255 at r=100.");
-console.log("  Both thresholds straddle the predicted number. It was right.");
+console.log("  between +-127 and +-255 at r=20 and at r=100. At r=100 that straddles the");
+console.log("  prediction. At r=20 it sits above it, and that is relativity, not a miss:");
+console.log("  the pull an orbit needs is |p| v / r, and once |p| nears k the speed v");
+console.log("  stops growing like |p| / k, so the same |dp| needs more momentum. Under");
+console.log("  min(1, |p|/k), before 2026-11-06, it turned over between +-63 and +-127 at");
+console.log("  r=20 and matched the prediction there too.");
 console.log("");
 console.log("  It read as refuted while START_FRAC was effectively 1.0, because every");
 console.log("  run then grazed the clamp and fell in before the prediction could show.");
@@ -563,7 +578,7 @@ console.log("  one kind-255 primitive, and a packed kind-255 disc filling the or
 const chose = [];
 for (const r0 of RADII) {
   const R = 15, p0mag = mag(scl([0, -1, 1], R)) * START_FRAC;
-  const gm = (p0mag / KIND_ORBITER) ** 2 * r0;
+  const gm = p0mag * speedOf(p0mag, KIND_ORBITER) * r0 / KIND_ORBITER;   // as run() sets it
   const discMass = discSites(r0 - 1).length * KIND_MAX;
   chose.push({
     r0, range: "+-" + R, gm: Number(gm.toFixed(4)),
@@ -791,7 +806,8 @@ for (const eps of FILTER) {
       "World side for 10 clumps": Math.round(Math.sqrt(10 * sites)),
       "memory, GB": Number((10 * sites * BYTES_PER_HEX / 1e9).toPrecision(2)),
       "infall speed at rim": Number(v.toFixed(3)),
-      "heaviest kind that can carry it": Math.min(KIND_MAX, Math.floor(P_LONGEST / v)),
+      // relativistic: v(p, k) >= v  <=>  k <= p sqrt(1 - v^2) / v
+      "heaviest kind that can carry it": Math.min(KIND_MAX, Math.floor(P_LONGEST * Math.sqrt(1 - v * v) / v)),
     });
   }
 }
@@ -813,8 +829,8 @@ const massAbove = (kMax) => {
   for (let k = 1; k <= KIND_MAX; k++) { all += k; if (k > kMax) above += k; }
   return above / all;
 };
-const kAtT1 = Math.floor(P_LONGEST / bigRows[0]["infall speed at rim"]);
-const kAtT8 = Math.floor(P_LONGEST / bigRows[1]["infall speed at rim"]);
+const kAtT1 = bigRows[0]["heaviest kind that can carry it"];   // same relativistic sum as the table
+const kAtT8 = bigRows[1]["heaviest kind that can carry it"];
 console.log("  And the speed column does not depend on the World at all. The infall");
 console.log("  speed at the rim of a clump that reaches temperature T is the same at");
 console.log("  every EPS and every size -- hot enough to melt a bond MEANS falling that");
@@ -828,7 +844,7 @@ console.log("  the light matter around it, so it is not left cold -- but the hea
 console.log("  this table assumes shrinks by up to that share, and a World big enough to");
 console.log("  matter needs momentum wider than +-15 to deliver it. Momentum width is a");
 console.log("  physics decision (AGENTS.md rule 5); this is the one a bigger World forces.");
-const pNeeded = (v) => Math.ceil(KIND_MAX * v);
+const pNeeded = (v) => Math.ceil(momentumFor(v, KIND_MAX));
 const bitsFor = (R) => 2 * Math.ceil(Math.log2(2 * R + 1));
 for (const [label, row] of [["weakest", bigRows[0]], ["strongest", bigRows[1]]]) {
   const need = pNeeded(row["infall speed at rim"]);

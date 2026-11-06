@@ -25,11 +25,10 @@ function vectors(R) {
 
 // ------------------------------------------------------------------ 1
 // Speed as a RATE: a primitive steps one hexagon every 1/v steps, where
-// (Law 1's speed rule until 2026-11-06. It is now relativity's
-// |p| / sqrt(k^2 + |p|^2) -- lab.mjs matterSpeed. This file keeps the old rule as
-// the record of what it measured.)
-// v = min(1, |p| / k). Never more than one hexagon per step, so the causal
-// limit holds by construction. How many distinct speeds does that give?
+// v = |p| / sqrt(k^2 + |p|^2) -- relativity's form, law 1's rule since
+// 2026-11-06 (lab.mjs matterSpeed); it was min(1, |p| / k). Always under one
+// hexagon per step, so the causal limit holds by construction and nothing
+// with mass ever reaches it. How many distinct speeds does that give?
 console.log('=== 1. Does speed-as-a-rate give a real spread of speeds? ===');
 for (const R of [3, 7, 15]) {
   const vs = vectors(R);
@@ -41,8 +40,8 @@ for (const R of [3, 7, 15]) {
       if (Q(p) === 0) continue;
       total++;
       // |p| = sqrt(Q/2); compare without floating point where it matters
-      const v = Math.sqrt(Q(p) / 2) / k;
-      if (v >= 1) { capped++; speeds.add(1); continue; }
+      const v = Math.sqrt(Q(p) / (2 * k * k + Q(p)));
+      if (v >= 1) { capped++; speeds.add(1); continue; }   // cannot happen now; kept as the check
       const stepEvery = Math.round(1 / v);
       if (stepEvery > 1000) { frozen++; continue; }   // one step per 1000+ ticks
       speeds.add(1 / stepEvery);
@@ -166,7 +165,7 @@ console.log('\n=== 6. Control -- momentum-only collisions: does mass matter at a
       const k = lo + ((rnd() * (hi - lo + 1)) | 0);
       const p = all[(rnd() * all.length) | 0];
       if (Q(p) === 0) continue;
-      speed += Math.min(1, Math.sqrt(Q(p) / 2) / k); n++;
+      speed += Math.sqrt(Q(p) / (2 * k * k + Q(p))); n++;
     }
     console.log(`  kinds ${String(lo).padStart(3)}-${String(hi).padStart(3)}: mean speed ${(speed / n).toFixed(4)} hexagons per step  (one step every ${(1 / (speed / n)).toFixed(0)})`);
   }

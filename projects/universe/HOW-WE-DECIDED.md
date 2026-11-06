@@ -2607,10 +2607,31 @@ kind 1 at full momentum, 0.99987. Kinetic energy stays Newtonian; that mismatch 
 **What it moved, measured with `wave.mjs` before and after:** the shipped engine's best mean `B`
 went from 6.36 to 6.41, bonded steps from 14,495 to 15,075 per million events, and the `|p| / K` arm's
 advantage from +0.08 to +0.05, now inside the 0.06 seed spread. A lone bonded pair travels about 15%
-less far, which is the slower speed and nothing else. The screening tools `momentum.mjs` and
-`orbit.mjs` still use the old rule and have not been re-run under the new one; the two agree to
-within 3% wherever `|p| ≤ k/4`, so slow results stand, and any figure from them at higher speeds is
-the old rule's.
+less far, which is the slower speed and nothing else. **`momentum.mjs` and `orbit.mjs` were re-run under it the same day** (Ric: "Rerun them with the new
+equation"), with every speed↔momentum relation made relativistic — the step, the circular-orbit
+setup (a circle needs `GM = |p| v r / k`, which is `v² r` only when `p = k v`), the per-tick pull
+`|p| v / r`, and Check 10's "heaviest kind that can carry it". What moved:
+
+- **`momentum.mjs`:** no (kind, momentum) pair sits at the limit any more (0.7–3.5% did at ±3 to
+  ±15); kinds 1–16 average 0.331 of the limit instead of 0.372; heavy kinds, the speed counts and
+  every collision figure are unchanged.
+- **`orbit.mjs` Check 4:** at r = 20 the rounding rule now first orbits between ±127 and ±255, not
+  ±63 and ±127 — relativity flattens `v` as `|p|` nears `k`, so the same pull needs more momentum.
+  The derivation in its comment changed with it: under the old cap the orbiter's kind was a hard
+  ceiling on radius (`r0 ≤ k`); under relativity there is no cap, and the ceiling is the momentum
+  width (`p0 > r0`). The carry column, where every conclusion about orbits lives, is unchanged.
+- **`orbit.mjs` Check 10:** kind 255 needs `|p|` 36 to carry the fall that melts the weakest bond
+  (was 35) and 107 for the strongest (was 98); the heaviest kinds that can carry those falls inside
+  ±15 are 109 and 36 (were 110 and 39). ±63 still covers the weakest; the strongest still needs ±127.
+- **`orbit.mjs` Checks 8 and 12 moved where they should not have,** and that is the finding. Their
+  heavy orbiters run at `|p|/k ≈ 0.006`, where the two speed rules differ by about two parts in a
+  hundred thousand — yet "1 of 3" became "0 of 3" in two rows, "2 of 3" became "3 of 3" in
+  another, and Check 12's count of completed orbits went from 9 of 18 to 8. A perturbation that
+  small flipping outcomes means those per-row counts are chaotic, not measurements: **read Checks 8
+  and 12 for their pattern** — heavy orbiters around large clumps, the coin losing everything, the
+  spare bits losing every orbit at ε = 0.01, the second array matching exact carry row for row
+  — **never for a single row's count.** Three seeds per row was rule 11's minimum and it is not
+  enough to quote a row.
 
 #### Correction — "115 hexagons" was a lap position, and the wave's rejection lost its main reason
 

@@ -258,7 +258,7 @@ These are upper bounds: they assume every unit of potential reaches the heat fie
 ball reaches a tenth of the weakest bond. Clumps of a few hundred hexagons need gravity as strong as
 the bonds, which the ceiling forbids. Reality affords 10³⁶ of separation because a star holds 10⁵⁷
 atoms; 4096² affords about one order, for one clump. Ric's hunch was right about the evidence — the
-first orbit runs used gravity 565 to 14,000 times the weakest bond — but gravity cannot simply go
+first orbit runs used gravity about 560 to 14,000 times the weakest bond — but gravity cannot simply go
 weaker, because the floor is already above the ceiling.
 
 **The levers, none chosen.** A bigger World — the floor falls as 1/a; at ε = 0.01 a clump that melts
