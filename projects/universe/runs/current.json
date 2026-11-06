@@ -1,7 +1,11 @@
 {
+  "engine": {
+    "lab": "6bf6e8b4be3a",
+    "constants": "88110704a028"
+  },
   "format": "universe-lab-snapshot/1",
   "warning": "CANDIDATE_ZERO is the plumbing test point, not a chosen physics. Every number in this run comes from an arbitrary point in the search space, and README item 31 is the standing reason to distrust any chemistry figure read off a run.",
-  "written": "2026-11-06T14:18:09.966Z",
+  "written": "2026-11-06T14:37:04.042Z",
   "label": "held hot band at 6, seed 21",
   "slot": "current",
   "N": 258,
@@ -46,8 +50,8 @@
       "COLD_T": 1,
       "BAND_ROWS": 3
     },
-    "wallMs": 1167,
-    "eventsPerSecond": 342759,
+    "wallMs": 1146,
+    "eventsPerSecond": 349040,
     "stillBeforeBudget": false
   },
   "counts": {

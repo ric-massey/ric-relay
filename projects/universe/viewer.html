@@ -250,6 +250,19 @@
   }
   .hud-mini canvas { display: block; width: 100%; height: 100%; }
 
+  .hud-fold {
+    left: 10px; bottom: 44px; max-width: 300px;
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--hairline); border-left: 2px solid var(--focus);
+    border-radius: 8px; padding: 8px 10px;
+    font-size: 11.5px; color: var(--ink-2); line-height: 1.45;
+  }
+  .hud-fold b { color: var(--ink); display: block; margin-bottom: 3px; }
+  .hud-fold span { display: block; margin-top: 5px; color: var(--ink-muted); }
+  .hud-fold[hidden] { display: none; }
+  body.touch .hud-fold { max-width: 220px; font-size: 11px; bottom: calc(44px + var(--sheet-peek, 56px)); }
+
   .tip {
     position: absolute; z-index: 3; pointer-events: none;
     background: color-mix(in srgb, var(--surface) 94%, transparent);
@@ -430,8 +443,9 @@
   <p class="word mono" id="wordLine"><b>8 bytes</b></p>
   <p class="note">
     Pan by dragging, zoom with the wheel or a pinch, and tap a hexagon to open it. Zoom far
-    enough out and the hexagons mesh into a field — there is no level at which every one of
-    66,564 is drawn separately, by design.
+    enough out and the hexagons mesh into a field, then the field repeats — a Lab run has no
+    edge, so the map has none either — and further out still it closes into the torus it has
+    been all along.
   </p>
 </header>
 
@@ -514,6 +528,8 @@
       <label><input type="checkbox" id="showMom">Momentum</label>
       <label><input type="checkbox" id="showGroup" checked>Group outline</label>
       <label><input type="checkbox" id="showBands" checked>Held bands</label>
+      <label><input type="checkbox" id="showLoop" checked>The loop</label>
+      <label><input type="checkbox" id="showFold" checked>Fold to torus</label>
     </div>
   </fieldset>
 </div>
@@ -540,6 +556,14 @@
       <span><b id="stZoom">—</b> px/hex</span>
       <span class="lod" id="stLod">—</span>
       <span id="stAt">—</span>
+    </div>
+
+    <div class="hud hud-fold" id="foldNote" hidden>
+      <b>The same world, closed up.</b> 258 × 258 with no edge: leaving by the east
+      arrives at the west, and leaving by the north arrives at the south.
+      <span>A torus drawn in three dimensions is the right topology and the wrong geometry —
+      the lattice is flat, every hexagon has the same six neighbours at the same distance.
+      The squeeze at the inner ring is the drawing, not the physics.</span>
     </div>
 
     <div class="tip mono" id="tip"></div>
@@ -600,6 +624,7 @@
   <span class="kbd">+</span> <span class="kbd">−</span> zoom · <span class="kbd">0</span> fit ·
   <span class="kbd">arrows</span> pan · <span class="kbd">b</span> bonds ·
   <span class="kbd">m</span> momentum · <span class="kbd">g</span> group outline ·
+  <span class="kbd">l</span> the loop · <span class="kbd">t</span> fold ·
   <span class="kbd">1</span>–<span class="kbd">6</span> layer ·
   <span class="kbd">esc</span> clear · double-click to zoom in
 </footer>
@@ -940,6 +965,24 @@ function worldFromSnapshot(header, buf) {
   return analyse(w);
 }
 
+// Does the engine in this folder still match the one that wrote the run?
+// The same two files, hashed the same way snapshot.mjs hashes them. A stale
+// snapshot is a perfectly good picture of an engine that no longer exists,
+// and the only dishonest version of this page is the one that cannot tell.
+let engineNow = null;
+async function engineHashes() {
+  if (engineNow) return engineNow;
+  if (!crypto?.subtle) return null;               // needs a secure context
+  const one = async (f) => {
+    const buf = await (await fetch(f, { cache: "no-store" })).arrayBuffer();
+    const h = await crypto.subtle.digest("SHA-256", buf);
+    return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 12);
+  };
+  try { engineNow = { lab: await one("lab.mjs"), constants: await one("constants.mjs") }; }
+  catch { engineNow = null; }
+  return engineNow;
+}
+
 async function loadRun(slot) {
   const h = await fetch(`runs/${slot}.json`, { cache: "no-store" });
   if (!h.ok) throw new Error(`no ${slot} run on this machine`);
@@ -1011,7 +1054,10 @@ function colourOf(w, i, layer, rgb) {
 
 // ===================================================================== camera
 const cam = { s: 10, ox: 0, oy: 0 };
-const S_MIN = 0.18, S_MAX = 72;
+// The origin the draw functions actually render from. It is the camera for a
+// single world and the camera plus a lattice translation for each repeat.
+let VX = 0, VY = 0;
+const S_MIN = 0.06, S_MAX = 72;
 
 const stage = document.getElementById("stage");
 const cv = document.getElementById("lattice");
@@ -1062,9 +1108,71 @@ function zoomAt(px, py, factor) {
   requestDraw();
 }
 
+// ===================================================== the loop, as geometry
+// THE LAB IS A TORUS, and that is not decoration: lab.mjs wraps every
+// neighbour lookup, so leaving a hexagon by the east edge arrives at the west
+// one. Drawing a single parallelogram with a dashed border said so in words
+// and showed the opposite.
+//
+// The two translations that leave the world unchanged are q -> q + cols and
+// r -> r + rows. In world units those are the vectors
+//
+//     a = (sqrt(3) * cols, 0)            the q loop
+//     b = (sqrt(3) * rows / 2, 1.5*rows) the r loop -- sheared, because the
+//                                        axial rows are
+//
+// so the plane tiles EXACTLY by copies at m*a + n*b, with no gap and no seam
+// to fudge. Every copy is the same world, not a mirror of it.
+const period = () => ({
+  ax: SQ3 * W.cols, ay: 0,
+  bx: SQ3 * W.rows / 2, by: 1.5 * W.rows,
+});
+
+// Reduce the camera into the fundamental domain instead of clamping it. On a
+// torus there is no edge to stop at, so panning never ends -- and without this
+// the offsets would grow without bound and eventually lose precision.
+function reduceCam() {
+  const p = period(), s = cam.s;
+  const n = Math.round((VH / 2 - cam.oy) / (s * p.by));
+  cam.oy += n * s * p.by; cam.ox += n * s * p.bx;
+  const m = Math.round((VW / 2 - cam.ox) / (s * p.ax));
+  cam.ox += m * s * p.ax;
+}
+
+// Which copies touch the viewport. The primary copy is first, so the seam and
+// the full-strength drawing land on it and the repeats read as repeats.
+const MAX_TILES = 49;
+function tileOffsets() {
+  if (!W.torus || !document.getElementById("showLoop").checked) return [[0, 0]];
+  const p = period(), s = cam.s;
+  const sp = worldSpan(W);
+  const w = (sp.x1 - sp.x0) * s, h = (sp.y1 - sp.y0) * s;
+  // how many copies fit either side of the viewport, in each lattice direction
+  const nSpan = Math.ceil((VH / 2 + h) / (s * p.by)) + 1;
+  const mSpan = Math.ceil((VW / 2 + w) / (s * p.ax)) + 1;
+  const out = [[0, 0]];
+  for (let n = -nSpan; n <= nSpan; n++) {
+    for (let m = -mSpan; m <= mSpan; m++) {
+      if (m === 0 && n === 0) continue;
+      const dx = s * (m * p.ax + n * p.bx), dy = s * (n * p.by);
+      // cheap reject: is this copy's box anywhere near the viewport?
+      const left = cam.ox + dx + sp.x0 * s, top = cam.oy + dy + sp.y0 * s;
+      if (left > VW || left + w < 0 || top > VH || top + h < 0) continue;
+      out.push([dx, dy]);
+      if (out.length >= MAX_TILES) return out;
+    }
+  }
+  return out;
+}
+
 // Pan is clamped so the lattice can never be lost off-screen: at least a third
-// of the viewport keeps something in it.
+// of the viewport keeps something in it. A torus has no off-screen to be lost
+// to, so it reduces instead.
 function clampCam() {
+  if (W && W.torus) { reduceCam(); return; }
+  return clampFinite();
+}
+function clampFinite() {
   const sp = worldSpan(W);
   const w = (sp.x1 - sp.x0) * cam.s, h = (sp.y1 - sp.y0) * cam.s;
   // where the lattice's bounding box currently sits, in viewport pixels
@@ -1131,8 +1239,8 @@ function visibleCells(s) {
 // the visible axial window, in grid indices
 function window_() {
   const pad = 2;
-  const r0 = Math.max(0, Math.floor(((0 - cam.oy) / cam.s) / 1.5) - pad);
-  const r1 = Math.min(W.rows - 1, Math.ceil(((VH - cam.oy) / cam.s) / 1.5) + pad);
+  const r0 = Math.max(0, Math.floor(((0 - VY) / cam.s) / 1.5) - pad);
+  const r1 = Math.min(W.rows - 1, Math.ceil(((VH - VY) / cam.s) / 1.5) + pad);
   return { r0, r1, pad };
 }
 
@@ -1173,6 +1281,34 @@ function draw() {
   ctx.fillRect(0, 0, cv.width, cv.height);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
+  // Far enough out, the tiled plane folds into the shape it has actually been
+  // all along. foldT runs 0 -> 1 so the two pictures cross-fade rather than
+  // one replacing the other, which is what makes it read as the same object.
+  const fold = foldAmount();
+  if (fold < 1) {
+    ctx.globalAlpha = 1 - fold;
+    const tiles = tileOffsets();
+    for (let t = 0; t < tiles.length; t++) {
+      VX = cam.ox + tiles[t][0];
+      VY = cam.oy + tiles[t][1];
+      // The repeats are dimmed so the fundamental domain is still findable --
+      // they are the same world, not neighbouring ones, and the seam says
+      // which copy you are reading coordinates off.
+      const a = (1 - fold) * (t === 0 ? 1 : 0.68);
+      ctx.globalAlpha = a;
+      drawTile(layer, t === 0);
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (fold > 0) drawTorus(layer, fold);
+
+  VX = cam.ox; VY = cam.oy;
+  drawHud();
+  drawMini();
+}
+
+// one copy of the world, at whatever origin VX/VY currently hold
+function drawTile(layer, primary) {
   if (document.getElementById("showBands").checked) drawBands();
 
   if (level === "mesh") drawMesh(layer);
@@ -1181,11 +1317,9 @@ function draw() {
   if (level !== "mesh" && document.getElementById("showBonds").checked && cam.s >= BUDGET.detail) drawBonds();
   if (level === "detail" && document.getElementById("showMom").checked) drawMomentum();
 
-  drawSeam();
+  if (primary) drawSeam();
   if (document.getElementById("showGroup").checked) drawGroupOutline();
   drawSelection();
-  drawHud();
-  drawMini();
 }
 
 function drawMesh(layer) {
@@ -1195,9 +1329,137 @@ function drawMesh(layer) {
   ctx.imageSmoothingQuality = "low";
   // the hexagon lattice IS an affine image of the (q, r) grid
   ctx.setTransform(DPR * cam.s * SQ3, 0, DPR * cam.s * SQ3 / 2, DPR * cam.s * 1.5,
-                   DPR * cam.ox, DPR * cam.oy);
+                   DPR * VX, DPR * VY);
   ctx.translate(-0.5, -0.5);
   ctx.drawImage(bmp, 0, 0);
+  ctx.restore();
+}
+
+// ======================================================= the fold, and the
+// ======================================================= shape underneath it
+//
+// A 258 x 258 hexagonal torus is a two-dimensional surface with no edge. Laid
+// flat it needs the repeats above to show that; closed up it is a doughnut,
+// and at the far end of the zoom the viewer closes it up.
+//
+// WHAT THIS PICTURE IS NOT. The lattice is INTRINSICALLY FLAT: every hexagon
+// has the same six neighbours at the same distance, everywhere, including
+// across the seam. A torus embedded in three dimensions cannot be flat -- the
+// inner ring has to be squeezed and the outer stretched -- so the doughnut
+// distorts distances that the physics keeps equal. It is the right topology
+// and the wrong geometry, which is worth having only because the topology is
+// the thing a flat picture gets wrong. The page says so on its face while it
+// is folded.
+// How much of the viewport one copy fills. At FIT this is exactly 1, so the
+// numbers below read as "a third of the way out from fit" and "a sixth".
+// MAX, not min: the world is small when BOTH of its dimensions are small, and
+// taking the min folded a wide flat world the moment it was short.
+const FOLD_IN = 0.28, FOLD_OUT = 0.20;
+function foldAmount() {
+  if (!W || !W.torus || !document.getElementById("showFold").checked) return 0;
+  const sp = worldSpan(W);
+  const ratio = Math.max((sp.x1 - sp.x0) * cam.s / VW, (sp.y1 - sp.y0) * cam.s / VH);
+  return Math.max(0, Math.min(1, (FOLD_IN - ratio) / (FOLD_IN - FOLD_OUT)));
+}
+
+const torusRot = { yaw: 0.6, pitch: 0.92 };
+const NU = 96, NV = 48;        // quads around the major ring and the tube
+
+// The colour of each quad is the MEAN of the hexagons it covers, not a sample
+// of one of them. At this size a quad spans about 2.7 x 5.4 hexagons, and
+// picking one would make a moire pattern out of a field that has none.
+let torusGridCache = null, torusGridKey = "";
+function torusGrid(layer) {
+  const key = `${W.meta?.source}:${W.cols}x${W.rows}:${layer}:${document.documentElement.dataset.theme || "auto"}`;
+  if (torusGridKey === key && torusGridCache) return torusGridCache;
+  const g = new Float32Array(NU * NV * 3), n = new Float32Array(NU * NV);
+  const plane = PAL.rgb.plane;
+  for (let r = 0; r < W.rows; r++) {
+    const iv = Math.min(NV - 1, (r * NV / W.rows) | 0);
+    for (let q = 0; q < W.cols; q++) {
+      const iu = Math.min(NU - 1, (q * NU / W.cols) | 0);
+      const c = colourOf(W, r * W.cols + q, layer, true) || plane;
+      const o = (iv * NU + iu) * 3;
+      g[o] += c[0]; g[o + 1] += c[1]; g[o + 2] += c[2];
+      n[iv * NU + iu]++;
+    }
+  }
+  for (let i = 0; i < NU * NV; i++) {
+    const k = n[i] || 1;
+    g[i * 3] /= k; g[i * 3 + 1] /= k; g[i * 3 + 2] /= k;
+  }
+  torusGridCache = g; torusGridKey = key;
+  return g;
+}
+
+// model -> view, orthographic. The camera sits on -Y looking toward +Y, so a
+// bigger Y is farther away and the painter's order is descending Y.
+function torusPoint(u, v, R, rr) {
+  const cu = Math.cos(u), su = Math.sin(u), cv2 = Math.cos(v), sv = Math.sin(v);
+  const X = (R + rr * cv2) * cu, Y = (R + rr * cv2) * su, Z = rr * sv;
+  const cy = Math.cos(torusRot.yaw), sy = Math.sin(torusRot.yaw);
+  const X1 = X * cy - Y * sy, Y1 = X * sy + Y * cy;
+  const cp = Math.cos(torusRot.pitch), sp2 = Math.sin(torusRot.pitch);
+  const Y2 = Y1 * cp - Z * sp2, Z2 = Y1 * sp2 + Z * cp;
+  return [X1, Y2, Z2];
+}
+function torusNormal(u, v) {
+  const cu = Math.cos(u), su = Math.sin(u), cv2 = Math.cos(v), sv = Math.sin(v);
+  const X = cv2 * cu, Y = cv2 * su, Z = sv;
+  const cy = Math.cos(torusRot.yaw), sy = Math.sin(torusRot.yaw);
+  const X1 = X * cy - Y * sy, Y1 = X * sy + Y * cy;
+  const cp = Math.cos(torusRot.pitch), sp2 = Math.sin(torusRot.pitch);
+  return [X1, Y1 * cp - Z * sp2, Y1 * sp2 + Z * cp];
+}
+
+function drawTorus(layer, alpha) {
+  const g = torusGrid(layer);
+  const R = 1, rr = 0.42;
+  const scale = Math.min(VW, VH) * 0.40 / (R + rr);
+  const cx = VW / 2, cy = VH / 2;
+  const L = [-0.42, -0.62, 0.66];        // light, in view space
+
+  const quads = [];
+  for (let iv = 0; iv < NV; iv++) {
+    const v0 = iv / NV * Math.PI * 2, v1 = (iv + 1) / NV * Math.PI * 2;
+    for (let iu = 0; iu < NU; iu++) {
+      const u0 = iu / NU * Math.PI * 2, u1 = (iu + 1) / NU * Math.PI * 2;
+      const nrm = torusNormal((u0 + u1) / 2, (v0 + v1) / 2);
+      if (nrm[1] > 0) continue;                       // facing away
+      const a = torusPoint(u0, v0, R, rr), b = torusPoint(u1, v0, R, rr);
+      const c = torusPoint(u1, v1, R, rr), d = torusPoint(u0, v1, R, rr);
+      const depth = (a[1] + b[1] + c[1] + d[1]) / 4;
+      // The camera is on -Y, so a visible face has n.y < 0 and the light sits
+      // on the same side: the dot product is taken as it comes. Negating it
+      // here put every front face in shadow and lit only what you cannot see.
+      const lam = 0.60 + 0.40 * Math.max(0, nrm[0] * L[0] + nrm[1] * L[1] + nrm[2] * L[2]);
+      quads.push([depth, a, b, c, d, (iv * NU + iu) * 3, lam]);
+    }
+  }
+  quads.sort((p, q) => q[0] - p[0]);                  // far to near
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const px = (p) => [cx + p[0] * scale, cy - p[2] * scale];
+  for (const [, a, b, c, d, o, lam] of quads) {
+    const A = px(a), B = px(b), C = px(c), D = px(d);
+    ctx.beginPath();
+    ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]);
+    ctx.lineTo(C[0], C[1]); ctx.lineTo(D[0], D[1]);
+    ctx.closePath();
+    ctx.fillStyle = `rgb(${(g[o] * lam) | 0},${(g[o + 1] * lam) | 0},${(g[o + 2] * lam) | 0})`;
+    ctx.fill();
+  }
+
+  // where the selected hexagon sits on the loop
+  if (sel >= 0) {
+    const u = qOf(W, sel) / W.cols * Math.PI * 2, v = rOf(W, sel) / W.rows * Math.PI * 2;
+    if (torusNormal(u, v)[1] <= 0) {
+      const P = px(torusPoint(u, v, R, rr));
+      ctx.strokeStyle = PAL.ink; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(P[0], P[1], 5, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
   ctx.restore();
 }
 
@@ -1227,13 +1489,13 @@ function drawHexes(layer, lvl) {
 
   for (let r = r0; r <= r1; r++) {
     const base = r * W.cols;
-    const y = cam.oy + cam.s * wy(0, r);
-    const q0 = Math.max(0, Math.floor(((0 - cam.ox) / cam.s - SQ3 * r / 2) / SQ3) - 2);
-    const q1 = Math.min(W.cols - 1, Math.ceil(((VW - cam.ox) / cam.s - SQ3 * r / 2) / SQ3) + 2);
+    const y = VY + cam.s * wy(0, r);
+    const q0 = Math.max(0, Math.floor(((0 - VX) / cam.s - SQ3 * r / 2) / SQ3) - 2);
+    const q1 = Math.min(W.cols - 1, Math.ceil(((VW - VX) / cam.s - SQ3 * r / 2) / SQ3) + 2);
     for (let q = q0; q <= q1; q++) {
       const i = base + q;
       const col = colourOf(W, i, layer, false);
-      const x = cam.ox + cam.s * wx(q, r);
+      const x = VX + cam.s * wx(q, r);
       if (!col) {
         if (!gridOn) continue;
         if (!gridPath) gridPath = [];
@@ -1280,14 +1542,14 @@ function drawBonds() {
     for (let q = 0; q < W.cols; q++) {
       const i = r * W.cols + q;
       if (!W.kind[i] || !W.bonds[i]) continue;
-      const x = cam.ox + cam.s * wx(q, r), y = cam.oy + cam.s * wy(q, r);
+      const x = VX + cam.s * wx(q, r), y = VY + cam.s * wy(q, r);
       if (x < -cam.s * 2 || x > VW + cam.s * 2) continue;
       for (const d of HALF) {
         if (!(W.bonds[i] & (1 << d))) continue;
         const j = nb(W, i, d);
         if (j < 0 || !W.kind[j]) continue;
         const [dq, dr] = DIRS[d];
-        const ex = cam.ox + cam.s * wx(q + dq, r + dr), ey = cam.oy + cam.s * wy(q + dq, r + dr);
+        const ex = VX + cam.s * wx(q + dq, r + dr), ey = VY + cam.s * wy(q + dq, r + dr);
         const t = wrapped(W, i, d) ? 0.42 : 1;   // a seam bond gets a stub
         ctx.moveTo(x, y);
         ctx.lineTo(x + (ex - x) * t, y + (ey - y) * t);
@@ -1297,7 +1559,7 @@ function drawBonds() {
       for (let d = 0; d < 6; d++) {
         if (HALF.includes(d) || !(W.bonds[i] & (1 << d)) || !wrapped(W, i, d)) continue;
         const [dq, dr] = DIRS[d];
-        const ex = cam.ox + cam.s * wx(q + dq, r + dr), ey = cam.oy + cam.s * wy(q + dq, r + dr);
+        const ex = VX + cam.s * wx(q + dq, r + dr), ey = VY + cam.s * wy(q + dq, r + dr);
         ctx.moveTo(x, y);
         ctx.lineTo(x + (ex - x) * 0.42, y + (ey - y) * 0.42);
         pending++; flush();
@@ -1325,7 +1587,7 @@ function drawMomentum() {
       const len = Math.hypot(ux, uy) || 1;
       const mag = Math.min(1, pmagOf(W, i) / PMAX);
       const reach = cam.s * (0.3 + 0.75 * mag);
-      const x = cam.ox + cam.s * wx(q, r), y = cam.oy + cam.s * wy(q, r);
+      const x = VX + cam.s * wx(q, r), y = VY + cam.s * wy(q, r);
       if (x < -cam.s || x > VW + cam.s) continue;
       const hx = x + (ux / len) * reach, hy = y + (uy / len) * reach;
       ctx.moveTo(x, y); ctx.lineTo(hx, hy);
@@ -1348,7 +1610,7 @@ function drawBands() {
   // A band is whole axial rows, so on screen it is a parallelogram: the four
   // corners are the four extreme hexagon centres, grown by one hexagon.
   const paint = (r0, r1, col) => {
-    const p = (q, r) => [cam.ox + cam.s * wx(q, r), cam.oy + cam.s * wy(q, r)];
+    const p = (q, r) => [VX + cam.s * wx(q, r), VY + cam.s * wy(q, r)];
     const g = cam.s;
     const a = p(0, r0), b = p(W.cols - 1, r0), c = p(W.cols - 1, r1), d = p(0, r1);
     ctx.fillStyle = col;
@@ -1365,10 +1627,12 @@ function drawSeam() {
   if (!W.torus) return;
   const sp = worldSpan(W);
   ctx.save();
-  ctx.strokeStyle = PAL.muted; ctx.globalAlpha = 0.45;
-  ctx.setLineDash([5, 5]); ctx.lineWidth = 1;
+  // The seam is the one place the repeats need telling apart: it marks which
+  // copy the coordinates in the readout belong to.
+  ctx.strokeStyle = PAL.focus; ctx.globalAlpha = 0.75;
+  ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5;
   ctx.beginPath();
-  const p = (q, r) => [cam.ox + cam.s * wx(q, r), cam.oy + cam.s * wy(q, r)];
+  const p = (q, r) => [VX + cam.s * wx(q, r), VY + cam.s * wy(q, r)];
   const a = p(0, 0), b = p(W.cols - 1, 0), c = p(W.cols - 1, W.rows - 1), d = p(0, W.rows - 1);
   ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]);
   ctx.lineTo(d[0], d[1]); ctx.closePath(); ctx.stroke();
@@ -1390,7 +1654,7 @@ function drawGroupOutline() {
   if (cam.s < BUDGET.flat) {
     let cxs = 0, cys = 0;
     for (const i of grp.members) { cxs += wx(qOf(W, i), rOf(W, i)); cys += wy(qOf(W, i), rOf(W, i)); }
-    const x = cam.ox + cam.s * (cxs / grp.size), y = cam.oy + cam.s * (cys / grp.size);
+    const x = VX + cam.s * (cxs / grp.size), y = VY + cam.s * (cys / grp.size);
     ctx.strokeStyle = PAL.focus; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(x, y, Math.max(7, cam.s * 2.2), 0, Math.PI * 2); ctx.stroke();
     return;
@@ -1402,7 +1666,7 @@ function drawGroupOutline() {
   let pending = 0;
   for (const i of grp.members) {
     const q = qOf(W, i), r = rOf(W, i);
-    const x = cam.ox + cam.s * wx(q, r), y = cam.oy + cam.s * wy(q, r);
+    const x = VX + cam.s * wx(q, r), y = VY + cam.s * wy(q, r);
     if (x < -cam.s * 2 || x > VW + cam.s * 2 || y < -cam.s * 2 || y > VH + cam.s * 2) continue;
     for (let d = 0; d < 6; d++) {
       const j = nb(W, i, d);
@@ -1419,7 +1683,7 @@ function drawGroupOutline() {
 function drawSelection() {
   const ring = (i, col, w) => {
     if (i < 0) return;
-    const x = cam.ox + cam.s * wx(qOf(W, i), rOf(W, i)), y = cam.oy + cam.s * wy(qOf(W, i), rOf(W, i));
+    const x = VX + cam.s * wx(qOf(W, i), rOf(W, i)), y = VY + cam.s * wy(qOf(W, i), rOf(W, i));
     ctx.strokeStyle = col; ctx.lineWidth = w;
     if (cam.s < 3) { ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.stroke(); return; }
     hexPath(x, y, cam.s * 1.04); ctx.stroke();
@@ -1430,9 +1694,16 @@ function drawSelection() {
 
 // ======================================================================= hud
 function drawHud() {
+  const fold = foldAmount();
   document.getElementById("stZoom").textContent = cam.s.toFixed(cam.s < 1 ? 2 : 1);
-  document.getElementById("stLod").textContent =
-    level === "detail" ? "full detail" : level === "flat" ? "fills only" : "meshed";
+  document.getElementById("stLod").textContent = fold >= 1 ? "folded · drag to turn"
+    : level === "detail" ? "full detail" : level === "flat" ? "fills only" : "meshed";
+  // The caveat belongs on the screen that earns it, not in a footer nobody
+  // reads: a doughnut drawn in three dimensions is the right topology and the
+  // wrong geometry, and it is on show exactly while that matters.
+  const note = document.getElementById("foldNote");
+  note.hidden = fold < 0.75;
+  if (!note.hidden) note.style.opacity = String(Math.min(1, (fold - 0.75) * 4));
   const at = document.getElementById("stAt");
   const i = TOUCH ? sel : (hov >= 0 ? hov : sel);
   at.textContent = i >= 0 ? `q ${qOf(W, i)} r ${rOf(W, i)}` : `${W.cols}×${W.rows}`;
@@ -1644,7 +1915,8 @@ function runHtml() {
     <dt>Heat</dt><dd>${fmt(c.heat)}</dd>
     <dt>Kinetic</dt><dd>${fmt(c.kinetic)}</dd>
     <dt>Net p</dt><dd>(${c.pxSum}, ${c.pySum}) ${conserved ? "· conserved" : "· DRIFTED"}</dd>
-  </dl>
+    <dt>Engine</dt><dd id="engineLine">${h.engine ? h.engine.lab : "not recorded"}</dd>
+  </dl>${engineWarning(h)}
   <p class="warn" style="margin-top:9px"><b>CANDIDATE_ZERO, not a chosen physics.</b>
   The searched constants in this run come from the plumbing test point, because the search has
   not happened — the header above lists every one of them. What chemistry a run shows turns on
@@ -1654,11 +1926,44 @@ function runHtml() {
   that table was measured, so a figure read here is not one of its figures. A run is one seed.</p>`;
 }
 
+// Filled in asynchronously, because hashing two files is a fetch. Absent or
+// unrecorded, it says so rather than implying a match.
+function engineWarning(h) {
+  if (!h.engine) {
+    return `<p class="warn" style="margin-top:9px;border-left-color:var(--ink-muted)">
+      <b>This run does not say which engine wrote it.</b> It was written before snapshot.mjs
+      recorded that, so whether it matches the Lab in this folder cannot be checked.</p>`;
+  }
+  return `<p class="warn" id="engineWarn" style="margin-top:9px;display:none"></p>`;
+}
+async function checkEngine() {
+  const h = W?.meta?.header;
+  const box = document.getElementById("engineWarn");
+  if (!h?.engine || !box) return;
+  const now = await engineHashes();
+  if (!now) return;
+  const same = now.lab === h.engine.lab && now.constants === h.engine.constants;
+  box.style.display = "";
+  if (same) {
+    box.style.borderLeftColor = "var(--state-matter)";
+    box.innerHTML = `<b>The engine in this folder is the one that wrote this run.</b>`;
+  } else {
+    box.innerHTML = `<b>Written by a different engine than the one in this folder.</b>
+      lab.mjs is <span class="mono">${now.lab}</span> here and
+      <span class="mono">${h.engine.lab}</span> in the run; constants.mjs is
+      <span class="mono">${now.constants}</span> against
+      <span class="mono">${h.engine.constants}</span>. The run is a good picture of an engine
+      that has since changed — write a new one with
+      <span class="mono">node snapshot.mjs</span>.`;
+  }
+}
+
 function paintReadouts() {
   el("hexBody").innerHTML = hexHtml(sel);
   el("groupBody").innerHTML = groupHtml(sel);
   el("neighbours").innerHTML = neighbourHtml(sel);
   el("runBody").innerHTML = runHtml();
+  checkEngine();
   const s = W.stats;
   el("tMatter").textContent = fmt(s.matter);
   el("tBonds").textContent = fmt(s.bonds);
@@ -1706,13 +2011,11 @@ function paintMatrix() {
 // ==================================================================== picking
 function pickAt(px, py) {
   const [q, r] = pickAxial(px, py, cam);
-  // a tap is allowed to be off by a touch radius: take the nearest centre
   if (q >= 0 && q < W.cols && r >= 0 && r < W.rows) return r * W.cols + q;
   if (!W.torus) return -1;
+  // On a torus every point of the plane IS a hexagon of the world: a tap on a
+  // repeat selects the hexagon it is a copy of, which is the same hexagon.
   const qq = ((q % W.cols) + W.cols) % W.cols, rr = ((r % W.rows) + W.rows) % W.rows;
-  // outside the drawn block: only accept it if the pointer is close
-  const x = cam.ox + cam.s * wx(q, r), y = cam.oy + cam.s * wy(q, r);
-  if (Math.hypot(px - x, py - y) > cam.s * 1.2) return -1;
   return rr * W.cols + qq;
 }
 
@@ -1787,6 +2090,16 @@ stage.addEventListener("pointermove", (e) => {
     cam.oy = my - (pinchFrom.my - pinchFrom.oy) * scale;
     userMoved = true;
     clampCam(); requestDraw();
+    return;
+  }
+
+  // Folded, a drag turns the thing over instead of sliding a plane around --
+  // there is no plane to slide. The wheel still zooms, so the way back out is
+  // the way you came in.
+  if (panFrom && foldAmount() > 0.5) {
+    torusRot.yaw += (p.x - prev.x) * 0.01;
+    torusRot.pitch = Math.max(-1.45, Math.min(1.45, torusRot.pitch + (p.y - prev.y) * 0.01));
+    requestDraw();
     return;
   }
 
@@ -1909,6 +2222,7 @@ addEventListener("keydown", (e) => {
     ArrowDown:  () => { cam.oy -= step; userMoved = true; clampCam(); requestDraw(); },
     b: () => toggle("showBonds"), m: () => toggle("showMom"),
     g: () => toggle("showGroup"), h: () => toggle("showBands"),
+    l: () => toggle("showLoop"), t: () => toggle("showFold"),
     Escape: () => select(-1),
   };
   if (keys[e.key]) { e.preventDefault(); keys[e.key](); return; }
@@ -2003,7 +2317,7 @@ function buildSeed(refit) {
   const spread = +el("spread").value;
   const seed = Math.max(1, +el("seedNum").value || 1);
   W = seedWorld({ density, meanT, spread, seed });
-  meshKey = "";
+  meshKey = ""; torusGridKey = "";
   sel = -1; hov = -1;
   if (refit) fit(false);
   paintReadouts(); drawLegend(); requestDraw();
@@ -2015,7 +2329,7 @@ async function showRun(slot) {
   try {
     let w = runCache.get(slot);
     if (!w) { w = await loadRun(slot); runCache.set(slot, w); }
-    W = w; meshKey = ""; sel = -1; hov = -1;
+    W = w; meshKey = ""; torusGridKey = ""; sel = -1; hov = -1;
     const h = W.meta.header;
     el("runLine").textContent =
       `${h.label || slot} · ${fmt(h.run.events)} events · seed ${h.run.seed} · ${new Date(h.written).toLocaleString()}`;
@@ -2047,7 +2361,7 @@ el("runFile").addEventListener("change", async (e) => {
   try {
     const header = JSON.parse(await j.text());
     W = worldFromSnapshot(header, await b.arrayBuffer());
-    meshKey = ""; sel = -1; hov = -1;
+    meshKey = ""; torusGridKey = ""; sel = -1; hov = -1;
     el("runLine").textContent = `${header.label || j.name} · ${fmt(header.run.events)} events · seed ${header.run.seed}`;
     msg(null); fit(false); paintReadouts(); drawLegend(); requestDraw();
   } catch (err) {
@@ -2056,9 +2370,11 @@ el("runFile").addEventListener("change", async (e) => {
 });
 
 // ================================================================== controls
-function onLayer() { meshKey = ""; drawLegend(); requestDraw(); }
+function onLayer() { meshKey = ""; torusGridKey = ""; drawLegend(); requestDraw(); }
 for (const r of document.querySelectorAll('input[name="layer"]')) r.addEventListener("change", onLayer);
-for (const id of ["showBonds", "showMom", "showGroup", "showBands"]) el(id).addEventListener("change", requestDraw);
+for (const id of ["showBonds", "showMom", "showGroup", "showBands", "showLoop", "showFold"]) {
+  el(id).addEventListener("change", requestDraw);
+}
 
 const live = (id, out, fn) => {
   const input = el(id);
@@ -2077,7 +2393,8 @@ el("reseed").addEventListener("click", () => {
 
 // theme and size changes repaint the palette, because every colour is a token
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-  readPalette(); meshKey = ""; paintMatrix(); drawLegend(); paintReadouts(); requestDraw();
+  readPalette(); meshKey = ""; torusGridKey = "";
+  paintMatrix(); drawLegend(); paintReadouts(); requestDraw();
 });
 new ResizeObserver(() => resize()).observe(stage);
 

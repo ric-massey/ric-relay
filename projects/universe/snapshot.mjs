@@ -41,6 +41,7 @@
 //   node snapshot.mjs --fill 0.2 --momentum 0          a thin, still world
 //   node snapshot.mjs --to last                        write the `last` slot
 
+import { createHash } from "node:crypto";
 import { writeFileSync, readFileSync, mkdirSync, existsSync, renameSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -119,8 +120,23 @@ Buffer.from(w.mx.buffer, w.mx.byteOffset, CELLS).copy(bin, CELLS * 3);
 Buffer.from(w.my.buffer, w.my.byteOffset, CELLS).copy(bin, CELLS * 4);
 Buffer.from(w.bonds.buffer, w.bonds.byteOffset, CELLS).copy(bin, CELLS * 5);
 
+// -------------------------------------------------------------- the engine
+// WHICH ENGINE WROTE THIS. A snapshot is a photograph of a run, and the Lab
+// changes daily -- GAP 3's reading changed twice on 2026-11-06 alone, and each
+// time every run already on disk became a picture of an engine that no longer
+// exists. Nothing in the file said so, which made a stale run indistinguishable
+// from a fresh one.
+//
+// A hash of the two files the physics lives in is enough: the viewer hashes
+// the same two files where it is served and says plainly whether they match.
+// It is not a version number anybody has to remember to raise.
+const digest = (f) => createHash("sha256")
+  .update(readFileSync(join(HERE, f))).digest("hex").slice(0, 12);
+const engine = { lab: digest("lab.mjs"), constants: digest("constants.mjs") };
+
 // -------------------------------------------------------------- the header
 const header = {
+  engine,
   format: "universe-lab-snapshot/1",
   warning: "CANDIDATE_ZERO is the plumbing test point, not a chosen physics. "
          + "Every number in this run comes from an arbitrary point in the search "
