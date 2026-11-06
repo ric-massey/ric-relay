@@ -209,8 +209,8 @@ the two runs, a sources file — and **five screening tools**, each run by hand:
 closes exactly, `momentum.mjs` enumerates collision outcomes to settle how momentum is stored,
 `budget.mjs` enumerates every field allocation that fits in the hexagon's word, and `orbit.mjs`
 answers whether anything orbits, how strong gravity may be and where a pull smaller than one unit
-is kept. **None of the universe checks is in `.github/checks.mjs` yet** — run `lab-check.mjs` by
-hand after touching the engine. Read `projects/universe/AGENTS.md` before touching anything in there; it has rules
+is kept. `lab-check.mjs` runs in the slow lane of `.github/checks.mjs` (`--only universe --slow`) and in
+`simulations.yml` whenever `projects/universe/` changes. Read `projects/universe/AGENTS.md` before touching anything in there; it has rules
 of its own that are the whole point of the project, and Ric set the first one himself:
 everything borrowed gets credited in `projects/universe/SOURCES.md`.)
 
@@ -1155,7 +1155,8 @@ migration marked "safe to re-run", and re-running it would have put the original
 ## Verifying a change
 
 There is no build. There is a test runner — `node .github/checks.mjs` runs every quick
-suite in the repo in a couple of seconds and `--slow` adds the two games' simulations —
+suite in the repo in a couple of seconds and `--slow` adds the two games' simulations and the
+universe Lab's pre-flight —
 and CI runs it on every push. So verification is: run that, serve the folder, and open
 the pages you touched.
 
@@ -1183,6 +1184,7 @@ node projects/kondrite/test/smoke.js      # syntax, transport, room service
 node projects/kondrite/test/campaign.js   # headless play-through of all three missions
 node worker/test.mjs     # worker rules: auth, strava, media, todo, movies
 node projects/climbing/test/parse-parity.js  # build-data.py and climb-parse.js agree
+node projects/universe/lab-check.mjs      # the universe Lab: seam, books, seeds (~30s)
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
 for t in atlas/test/*.test.mjs; do node "$t" || break; done
 ```

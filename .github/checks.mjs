@@ -90,7 +90,11 @@ const SUITES = [
   /* corridor.js is the only check of the whole I-40 corridor and set a failing
      exit code that nothing read (bug sweep A6-3). harness.js, i40.js and map.js
      in the same folder are helpers, not suites. */
-  ['offramp', [...glob('projects/offramp/test', '.test.js'), 'projects/offramp/test/corridor.js'], 'slow']
+  ['offramp', [...glob('projects/offramp/test', '.test.js'), 'projects/offramp/test/corridor.js'], 'slow'],
+  /* The universe Lab's pre-flight: the torus seam, the books asserted through
+     a run, five seeds and five constant changes. About 30 seconds, so slow
+     lane (Ric, 2026-11-06: "Sure"). */
+  ['universe', ['projects/universe/lab-check.mjs'], 'slow']
 ];
 
 const args = process.argv.slice(2);

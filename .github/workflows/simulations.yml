@@ -1,4 +1,4 @@
-# The two games' long simulations, in their own lane.
+# The two games' long simulations, and the universe Lab's pre-flight, in their own lane.
 #
 # These are not slow because they are badly written. They are slow because of
 # what they assert: a lane gradient across a motorway's worth of traffic, and
@@ -29,6 +29,7 @@ on:
     paths:
       - 'projects/kondrite/**'
       - 'projects/offramp/**'
+      - 'projects/universe/**'
       - '.github/workflows/simulations.yml'
       - '.github/checks.mjs'
   schedule:
@@ -49,7 +50,7 @@ jobs:
     strategy:
       fail-fast: false        # one game breaking is not news about the other
       matrix:
-        game: [kondrite, offramp]
+        game: [kondrite, offramp, universe]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
