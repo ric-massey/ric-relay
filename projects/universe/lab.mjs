@@ -41,6 +41,7 @@
 import {
   KIND_MAX, ENERGY_MAX, MOMENTUM_RANGE, DIRECTIONS, LAB, SETTLED,
   clockRate, causalRate, validateForLab, CANDIDATE_ZERO, THERMOSTAT_DEFAULT,
+  capacityOf,
 } from "./constants.mjs";
 
 // ====================================================================== rng
@@ -326,6 +327,7 @@ export class Lab {
       conducted: 0, emitted: 0, absorbed: 0, quantaMoved: 0,
       emissionBlocked: 0, quantumWaited: 0,
       momentumShared: 0, momentumRangeDeclined: 0, shareUnaffordable: 0, thermostatFires: 0,
+      thermalKicks: 0, kickRangeDeclined: 0, kickUnaffordable: 0, kickNoPartner: 0,
     };
   }
 
@@ -406,15 +408,21 @@ export class Lab {
   // Law 2 forming, under law 4's capacity. "A bond forms with a fixed
   // probability when the clock fires -- never instantly on contact." Forming
   // releases precisely B into the hexagon as heat.
+  //
+  // CAPACITY IS PER KIND as of 2026-11-06 (Ric, README item 6). It was one
+  // global number, so every kind held the same number of bonds and nothing
+  // had a valence. capacityOf(k) reads the same v(k) law 2 reads; see
+  // constants.mjs for the form and for the fact that it is candidate one and
+  // has not been screened.
   tryFormBond(i) {
     const w = this.w;
     if (this.rng.u01() >= this.c.BOND_FORM_PROB) return;
-    if (bondCount(w, i) >= this.c.CAPACITY) return;        // law 4
+    if (bondCount(w, i) >= capacityOf(w.kind[i], this.c)) return;   // law 4, by kind
     const d = this.rng.below(DIRECTIONS);
     if (w.bonds[i] & (1 << d)) return;                     // already bonded
     const j = neighbour(i, d);
     if (!isMatter(w, j)) return;
-    if (bondCount(w, j) >= this.c.CAPACITY) return;        // law 4, both ends
+    if (bondCount(w, j) >= capacityOf(w.kind[j], this.c)) return;   // law 4, both ends
     const B = bindingEnergy(w.kind[i], w.kind[j]);
     if (B === 0) return;                                   // this pair cannot bond at all
     // Note what is NOT done here: no check that the bond will survive its own
@@ -555,6 +563,92 @@ export class Lab {
       if (owed !== 0) throw new Error(`momentum hop could not pay ${owed} it had checked for`);
     }
     this.counts.momentumShared++;
+  }
+
+  // ------------------------------------------------- law 1, the thermal kick
+  // HEAT BECOMES MOTION. New on 2026-11-06, and the only piece of machinery
+  // this project has added rather than removed, so it is written out in full.
+  //
+  // README item 29 measured that nothing here ever turns heat into movement:
+  // stepping runs on law 1's own rate, min(1, |p|/k), which does not read
+  // temperature, so a primitive at any heat with no momentum never moves. The
+  // clock was credited with producing thermal pressure and did not. Item 27
+  // measured the other half: with gravity out, NO law can create momentum, so
+  // motion had to be supplied by hand as a held condition.
+  //
+  // Ric's rule, 2026-11-06, and the pairing is the whole of it: "can't just
+  // make one hexagon start moving. make them move in pairs, in opposite
+  // directions. One goes left, its neighbour goes right. Add them up, you get
+  // zero."
+  //
+  // WHY THAT IS A LAW AND NOT A LEAK. A single hexagon starting to move is
+  // momentum from nowhere, which is law 1's one inviolable thing and would
+  // also be a preferred direction in the physics. A pair moving oppositely
+  // sums to zero exactly, in integers, with nothing left over -- the same
+  // construction law 1 already uses for a bonded pair's exchange, and the
+  // reason that one conserves.
+  //
+  // The accounting is shareMomentum's, deliberately: momentum is linear and
+  // cancels by construction, kinetic energy is QUADRATIC and does not, so the
+  // difference is paid to or from the heat field. That seam cost 34,864 units
+  // the first time it was missed (item 28), so this reuses the pattern rather
+  // than inventing a second one.
+  //
+  // Note what the kick does NOT read: it never looks at temperature to decide
+  // its direction or size. It is offered at every clock fire, and the clock
+  // already fires more often when hot -- so hot regions kick more, which is
+  // where thermal pressure comes from, without temperature appearing in this
+  // function at all.
+  tryThermalKick(i) {
+    const w = this.w;
+    if (this.rng.u01() >= this.c.THERMAL_KICK_PROB) return;
+
+    // A partner, and it must be matter. Vacuum cannot take the other half of
+    // the pair, so there is nothing to cancel against and the kick is off.
+    const d = this.rng.below(DIRECTIONS);
+    const j = neighbour(i, d);
+    if (!isMatter(w, j)) { this.counts.kickNoPartner++; return; }
+
+    // One unit along the cube axes, opposite ways. This is the pairing.
+    const u = DIR_CUBE[d];
+    const nxI = w.mx[i] + u[0], nyI = w.my[i] + u[1];
+    const nxJ = w.mx[j] - u[0], nyJ = w.my[j] - u[1];
+    if (!this.legalMomentum(nxI, nyI) || !this.legalMomentum(nxJ, nyJ)) {
+      this.counts.kickRangeDeclined++;
+      return;
+    }
+
+    const ki = w.kind[i], kj = w.kind[j];
+    const keBefore = keAt(w, i) + keAt(w, j);
+    const zI = -nxI - nyI, zJ = -nxJ - nyJ;
+    const keAfter = keOf(nxI * nxI + nyI * nyI + zI * zI, ki)
+                  + keOf(nxJ * nxJ + nyJ * nyJ + zJ * zJ, kj);
+    const delta = keBefore - keAfter;        // < 0 means the pair sped up
+
+    if (delta < 0) {
+      // Speeding up costs heat, and the heat has to actually be there. A cold
+      // pair simply does not kick -- which is the right physics as well as
+      // the right accounting, since cold matter should be still.
+      const available = w.energy[i] + w.energy[j];
+      if (available < -delta) { this.counts.kickUnaffordable++; return; }
+    }
+
+    w.mx[i] = nxI; w.my[i] = nyI;
+    w.mx[j] = nxJ; w.my[j] = nyJ;
+
+    if (delta > 0) {
+      addEnergy(w, i, delta, "thermal kick shed kinetic energy");
+    } else if (delta < 0) {
+      let owed = -delta;
+      for (const m of [i, j]) {
+        const take = Math.min(owed, w.energy[m]);
+        addEnergy(w, m, -take, "thermal kick absorbed heat");
+        owed -= take;
+        if (owed === 0) break;
+      }
+      if (owed !== 0) throw new Error(`thermal kick could not pay ${owed} it had checked for`);
+    }
+    this.counts.thermalKicks++;
   }
 
   legalMomentum(x, y) {
@@ -930,6 +1024,7 @@ export class Lab {
             if (isMatter(w, i)) this.tryFormBond(i);
             if (isMatter(w, i)) this.tryTransport(i);
             if (isMatter(w, i)) this.shareMomentum(i);
+            if (isMatter(w, i)) this.tryThermalKick(i);
           } else {
             this.step(i);
           }

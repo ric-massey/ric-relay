@@ -19,19 +19,36 @@
 // Nothing here is named after anything in our universe (rule 3).
 
 // --------------------------------------------------------------- the widths
-// Eight bytes, 2026-11-04. kind 8 + bonds 6 + energy 16 + momentum 10 = 40
-// of 64. The 24 spare bits are RESERVED: nothing goes in them without an
-// entry in THE-LAWS.md and a reason (rule 5), and not gravity's remainder.
+// Eight bytes, 2026-11-04. kind 8 + bonds 6 + energy 16 + momentum 14 = 44
+// of 64, and 20 spare. The spare bits are RESERVED: nothing goes in them
+// without an entry in THE-LAWS.md and a reason (rule 5), and not gravity's
+// remainder.
+//
+// MOMENTUM WENT FROM 10 BITS TO 14 on 2026-11-06 -- +-15 to +-63 per cube
+// component. Ric's call, README item 20, and it is a change to the PHYSICS
+// rather than to a buffer size (rule 5). What forced it: with gravity bolted
+// onto the Lab from outside, the symmetric clamp refused every pull it was
+// offered -- 562,344 attempts, not one impulse landed, because the world was
+// already near +-15 and every legal move was taken. Item 20 had predicted
+// exactly this from the energy side: the infall speed at the rim of a clump
+// depends on temperature alone, and at T = 1 it is faster than any kind above
+// 110 can carry inside +-15, which is 81% of the seeded mass. +-63 lets every
+// kind carry the fall that melts the WEAKEST bond; +-127 would carry the
+// strongest and was the other option on the table.
+//
+// AND IT MOVES LAW 1'S ENERGY WINDOW, which is the cost. KE = floor(S*Q/2k)
+// and Q grows as the square of the component range, so KE_SCALE_WINDOW was
+// measured at +-15 and does not transfer. See KE_SCALE_WINDOW below.
 export const WIDTHS = {
   KIND_BITS:      8,    // bits -- a primitive's kind, 1..255; 0 means not matter
   BONDS_BITS:     6,    // bits -- one per neighbour; in vacuum, one per in-flight direction
   ENERGY_BITS:   16,    // bits -- heat held by a primitive
-  MOMENTUM_BITS: 10,    // bits -- two signed cube components, 5 each
+  MOMENTUM_BITS: 14,    // bits -- two signed cube components, 7 each (2026-11-06)
 };
 
 export const KIND_MAX       = (1 << WIDTHS.KIND_BITS) - 1;    // 255
 export const ENERGY_MAX     = (1 << WIDTHS.ENERGY_BITS) - 1;  // 65535
-export const MOMENTUM_RANGE = 15;   // +-R on each cube component (law 1, 2026-11-04)
+export const MOMENTUM_RANGE = 63;   // +-R on each cube component (law 1; 15 -> 63 on 2026-11-06)
 export const DIRECTIONS     = 6;    // hexagon neighbours; also vacuum's in-flight slots
 
 // The hottest temperature any hexagon can reach. Temperature is e/kind, so
@@ -54,8 +71,27 @@ export const LAB = {
 // ------------------------------------------------------------- the settled
 export const SETTLED = {
   // Law 1's kinetic-energy scale. KE(p,k) = floor(S * Q(p) / 2k).
-  // Adopted 2026-11-04. The measured window is 2..291; law 1 says why 64.
-  KE_SCALE: 64,
+  //
+  // 64 -> 4 ON 2026-11-06, AND THIS IS FORCED, NOT CHOSEN. Widening momentum
+  // to +-63 raised the largest legal Q from 450 to 7938 -- 17.64x -- and the
+  // window's ceiling is the S at which a KIND-1 primitive at full speed
+  // overflows the 16-bit energy field, so the ceiling falls by the same
+  // factor. The window went from 2..291 to 1..16 and 64 LEFT IT. Running on
+  // at 64 would have meant a fast light primitive coming to a dead stop
+  // overflowing the field as a matter of routine.
+  //
+  // 4 is then picked by S=64's OWN three stated reasons, which are in law 1:
+  // a power of two; every kind from 1 to 255 gets a usable amount; and the
+  // largest kinetic energy stays a modest share of the energy field so a dead
+  // stop can dump into an already-warm hexagon. At +-63, S=4 puts that share
+  // at 24.2% against the 22% that S=64 gave at +-15 -- the same world, re-
+  // scaled. S=16 would be legal and sits at 96.9%, which is the failure the
+  // third reason exists to avoid.
+  //
+  // Measured, with the method first reproducing the documented 2..291 before
+  // being trusted on 1..16. Item 20 predicted this cost in advance: "either
+  // moves law 1's kinetic-energy window, so S = 64 would need re-measuring."
+  KE_SCALE: 4,
 
   // Law 2's valence modulus. v(k) = k mod 8, B = 8 - |v1 + v2 - 8|.
   // This is a searched constant carrying a chosen value: THE-LAWS.md calls 8
@@ -66,15 +102,56 @@ export const SETTLED = {
   BOND_MODULUS: 8,
 };
 
-export const KE_SCALE_WINDOW = [2, 291];   // measured in law 1; outside it, KE misbehaves
+// RE-MEASURED 2026-11-06 for +-63. Both ends are derived from law 1's own
+// definitions, so this is measurement rather than preference:
+//   floor    the smallest S at which the HEAVIEST kind reads KE >= 1 somewhere
+//   ceiling  the largest S at which a KIND-1 primitive at full speed still
+//            fits the 16-bit energy field
+// Largest legal Q went 450 -> 7938 (at the vector (-63, 0, 63)), so the
+// ceiling fell by that factor and the floor reached 1.
+//
+// The superseded pair is kept rather than overwritten: at +-15 it was [2, 291],
+// and before the eight-byte word it was [29, 227]. Three widths, three windows,
+// which is rule 5 in one line -- a width is physics, and this is the physics it
+// was quietly setting.
+export const KE_SCALE_WINDOW = [1, 16];    // at +-63; was [2, 291] at +-15, [29, 227] at +-3
+
+// ---------------------------------------------------- law 4, derived by kind
+// CAPACITY STOPPED BEING ONE GLOBAL NUMBER on 2026-11-06. Ric's call on README
+// item 6: "per kind". The item's own objection to a global number is that every
+// kind then holds the same number of bonds, so nothing has a valence -- and
+// valence is most of what gives our chemistry its shape.
+//
+// The form reads the SAME valence law 2 reads, v(k) = k mod BOND_MODULUS, and
+// clamps it into law 4's legal 1..6. Nothing new is stored and no table is
+// typed by hand, which is rule 2: this is derived from kind exactly as B is.
+//
+// What falls out of it, unasked, is the argument for this form over an
+// arbitrary one:
+//   v = 0  capacity 1, and B(0,0) = 0 -- monovalent, and it cannot bond to its
+//          own kind at all. Its one good partner is v = 7, at B = 7.
+//   v = 4  capacity 4, and B(4,4) = 8 -- tetravalent and its own best partner,
+//          which is the shape carbon chemistry is built on.
+//   v = 7  capacity 6 but B(7,7) = 2 -- many weak bonds, a gas-like corner.
+// None of that was put in. It is what reading law 2's own valence for law 4
+// produces, and it is an argument rather than a proof.
+//
+// IT IS CANDIDATE FORM ONE AND HAS NOT BEEN SCREENED. Law 2's form earned its
+// place against ten rivals in screen.mjs, on measured spread, family count,
+// roughness and the diagonal maximum. This has earned nothing yet, and it
+// belongs in the same harness before it is called settled (README item 6).
+export const capacityOf = (k, c = SETTLED) =>
+  Math.min(6, Math.max(1, k % c.BOND_MODULUS));
 
 // ------------------------------------------------------------ the searched
 // NULL on purpose. See the header. Supply a full set to run.
 export const SEARCHED = {
-  // Law 4. A primitive may be bonded to at most C of its six neighbours.
-  // One global number, so every kind has identical capacity and all
-  // differentiation comes from law 2. Whether it should vary by kind is open.
-  CAPACITY: null,                 // bonds, integer 0..6
+  // Law 4's CAPACITY IS GONE FROM HERE as of 2026-11-06. It is no longer a
+  // number to search: it is capacityOf(k) above, derived from the same valence
+  // law 2 reads. Worth stating plainly because the arithmetic looks like a
+  // coincidence and is not one -- removing CAPACITY and naming BOND_FORM_PROB
+  // on the same day leaves the count unchanged. One constant became a form; a
+  // different one that had been running unnamed got a name.
 
   // Law 5's transport rate: the probability that a clock fire moves one unit
   // of energy to the chosen colder neighbour.
@@ -88,13 +165,30 @@ export const SEARCHED = {
   // Law 2's formation probability. THE-LAWS.md: "A bond forms with a fixed
   // probability when the clock fires -- never instantly on contact."
   //
-  // NOT IN README'S LIST OF SEVEN. Found 2026-11-05 while writing this file:
-  // law 2 requires this number, the search space does not count it, and no
-  // document gives it a value. Either it is an eighth searched constant or it
-  // folds into the clock -- that is a question for Ric, not for this file to
-  // settle, so it is null like the rest and the engine refuses to run without
-  // it. Logged as a README item rather than quietly given a value.
+  // SETTLED 2026-11-06: a searched constant in its own right, not a fold into
+  // the clock. Ric's call on README item 28, which this file raised on
+  // 2026-11-05 after finding that law 2 needs the number, no document gave it
+  // one, and the search space did not count it.
+  //
+  // Why not the clock: the clock sets how OFTEN a site acts, and this sets
+  // WHICH act happens when it does -- the same fire may bond, transport, share
+  // momentum or now kick. Folding them would make one number do two jobs, and
+  // law 2 would have had to say so in writing. Different job, own name.
   BOND_FORM_PROB: null,           // probability 0..1
+
+  // Law 1's THERMAL KICK -- the probability that a clock fire attempts to turn
+  // heat into motion. NEW MACHINERY, 2026-11-06, and new machinery costs a
+  // constant: that is rule 7's price, paid out loud rather than absorbed.
+  // README item 29 found that heat never becomes motion here, so the clock's
+  // fourth job -- thermal pressure -- did not follow from the laws. Ric's call
+  // was to connect them, with the mechanism: "can't just make one hexagon
+  // start moving. make them move in pairs, in opposite directions. One goes
+  // left, its neighbour goes right. Add them up, you get zero."
+  //
+  // That pairing is what makes it a law rather than a momentum leak, and it is
+  // the same trick law 1 already uses for a bonded pair's exchange. See
+  // tryThermalKick in lab.mjs.
+  THERMAL_KICK_PROB: null,        // probability 0..1
 
   // Law 3. Not used by the Lab -- gravity is deliberately held out, because a
   // measurement needs controlled conditions. Here for completeness, and
@@ -109,11 +203,11 @@ export const SEARCHED = {
 };
 
 export const SEARCHED_RANGES = {
-  CAPACITY:        [1, 6],
   TRANSPORT_RATE:  [0, 1],
   CLOCK_SCALE:     [0, 1 / TEMPERATURE_MAX],
   CLOCK_FLOOR:     [0, 1],
   BOND_FORM_PROB:  [0, 1],
+  THERMAL_KICK_PROB: [0, 1],
   GRAVITY_EPS:     [0, 1],
   GRAVITY_FALLOFF: [1, 3],
 };
@@ -121,7 +215,8 @@ export const SEARCHED_RANGES = {
 // Which of the searched constants the Lab actually needs. Gravity is not on
 // this list, and that absence is law 3 being held out, not an oversight.
 export const LAB_REQUIRES = [
-  "CAPACITY", "TRANSPORT_RATE", "CLOCK_SCALE", "CLOCK_FLOOR", "BOND_FORM_PROB",
+  "TRANSPORT_RATE", "CLOCK_SCALE", "CLOCK_FLOOR", "BOND_FORM_PROB",
+  "THERMAL_KICK_PROB",
 ];
 
 // ------------------------------------------------------- the clock, derived
@@ -196,9 +291,23 @@ export function validateForLab(c) {
   }
 
   // FILTER 3 -- capacity is a count of bonds and cannot exceed the neighbours
-  // there are, nor the bond field's width.
-  if (!Number.isInteger(c.CAPACITY) || c.CAPACITY < 1 || c.CAPACITY > DIRECTIONS) {
-    problems.push("CAPACITY must be an integer in 1.." + DIRECTIONS + "; got " + c.CAPACITY + ".");
+  // there are, nor the bond field's width. Since 2026-11-06 capacity is a FORM
+  // rather than a number (capacityOf, above), so the filter checks the form
+  // across every kind that can exist instead of checking one value. A form that
+  // returned 0 for some kind would make that kind permanently inert -- which is
+  // exactly the heavy-matter failure item 15 was about, arriving from law 4
+  // instead of from a field width.
+  {
+    const bad = [];
+    for (let k = 1; k <= KIND_MAX; k++) {
+      const cap = capacityOf(k, c);
+      if (!Number.isInteger(cap) || cap < 1 || cap > DIRECTIONS) bad.push(k + "->" + cap);
+      if (bad.length >= 4) break;
+    }
+    if (bad.length) {
+      problems.push("capacityOf must give an integer in 1.." + DIRECTIONS
+        + " for every kind 1.." + KIND_MAX + "; it does not: " + bad.join(", ") + ".");
+    }
   }
 
   // FILTER 4 -- the KE scale must sit inside its measured window, or heavy
@@ -226,11 +335,11 @@ export function validateForLab(c) {
 const CZ_SCALE = 1 / (TEMPERATURE_MAX * 2);        // leaves headroom under the clip
 export const CANDIDATE_ZERO = {
   ...SETTLED,
-  CAPACITY:        3,
   TRANSPORT_RATE:  0.5,
   CLOCK_SCALE:     CZ_SCALE,
   CLOCK_FLOOR:     CZ_SCALE * TEMPERATURE_MAX / 16,   // the 16:1 spread law 5 suggests
-  BOND_FORM_PROB:  0.25,
+  BOND_FORM_PROB:    0.25,
+  THERMAL_KICK_PROB: 0.25,
   GRAVITY_EPS:     null,
   GRAVITY_FALLOFF: null,
 };

@@ -2399,3 +2399,49 @@ primitives, and putting one primitive in one hexagon. That is the strongest evid
 that both decisions are right.
 
 ---
+
+
+---
+
+## The decisions of 2026-11-06
+
+Five choices, made by Ric in one pass over the register, plus the two things they forced. Recorded
+here because four of the five change a law, and a decision that is not written down is a decision
+that will look derived a week later.
+
+**Momentum to ±63** (item 20). Offered ±15, ±63 or ±127. What forced the question: gravity bolted
+onto the Lab from outside had **562,344 pulls refused and none accepted**, because the symmetric
+clamp had no room left. ±63 lets every kind carry the fall that melts the weakest bond; ±127 would
+carry the strongest. **It forced `S` from 64 to 4**, because the largest legal `Q` rose 17.64× and
+the window's ceiling fell with it, from 2–291 to 1–16. The re-measurement reproduced the documented
+2–291 at ±15 before it was trusted at ±63 — rule 12's fourth lesson, applied to the measurement
+rather than to the result.
+
+**Heat connected to motion, in opposite-moving pairs** (item 29). Ric's own mechanism, and the
+pairing is what makes it a law rather than a leak: *"can't just make one hexagon start moving. make
+them move in pairs, in opposite directions. One goes left, its neighbour goes right. Add them up,
+you get zero."* The world now steps with no momentum supplied, 0 → ~1,400 per run, and its net
+momentum is still exactly (0, 0). This is the first piece of machinery this project has **added**
+rather than deleted, and it cost a constant, which rule 7 said it would.
+
+**Capacity per kind** (item 6), derived as `clamp(k mod 8, 1, 6)` from the same valence law 2
+reads, so nothing is stored and no table is typed. It gives a monovalent `v = 0` that cannot bond
+to its own kind, a tetravalent `v = 4` that is its own best partner, and a six-bonded `v = 7` whose
+bonds are all weak. That was not put in. **It is candidate form one and has been screened by
+nothing**, which is the same position law 2's form was in before `screen.mjs` ran.
+
+**Formation probability as a constant of its own** (item 28), not a fold into the clock: the clock
+sets how often a site acts, this sets which act happens. The searched list stayed at seven, because
+capacity left it the same day.
+
+**GAP 3 tested rather than ratified** (item 25): *"run it hot and run it cold. test both."* The
+file's single rule — motion breaks a stretched bond at cost `B`, and what cannot pay does not move
+— turns out to produce both candidate behaviours, rigid below a held temperature of about 1 and
+shattering above it, with a sharp crossover and no wide middle.
+
+**And the bill, which is item 31.** Testing hot and cold immediately after the width change showed
+that the bond-quality peak measured at ±15 the day before **does not survive at ±63**, and that
+standing bonds collapse 14× across the crossover. Three causes are tangled — the wider momentum,
+an unscreened kick probability of 0.25, and GAP 3's reading — and separating them is the next
+measurement. The honest summary of the day: four laws changed, every book still balances, and the
+one number that had looked like progress was measured under a width that no longer exists.

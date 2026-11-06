@@ -13,7 +13,7 @@
 import {
   Lab, neighbour, opposite, bindingEnergy, census, N, CELLS, at, qOf, rOf,
 } from "./lab.mjs";
-import { LAB, CANDIDATE_ZERO, DIRECTIONS } from "./constants.mjs";
+import { LAB, CANDIDATE_ZERO, DIRECTIONS, capacityOf } from "./constants.mjs";
 
 let failures = 0;
 function report(name, ok, detail) {
@@ -197,11 +197,40 @@ console.log(`\n=== Check 6: the engine refuses an unset constant set ===`);
   report("a clipping clock is refused before anything runs", refused !== null
     && /clock clips/.test(refused), refused ? refused.split("\n")[1].trim().slice(0, 70) : "ran anyway");
 
+  // Was CAPACITY until 2026-11-06, which stopped being a searched constant
+  // when law 4 started deriving it from kind. Aimed at THERMAL_KICK_PROB now:
+  // the newest constant is the one most likely to be forgotten by a caller.
   let refused2 = null;
-  try { new Lab({ constants: { ...CANDIDATE_ZERO, CAPACITY: null } }); }
+  try { new Lab({ constants: { ...CANDIDATE_ZERO, THERMAL_KICK_PROB: null } }); }
   catch (e) { refused2 = e.message; }
   report("an unset searched constant is refused", refused2 !== null
-    && /CAPACITY is not set/.test(refused2), refused2 ? "CAPACITY" : "ran anyway");
+    && /THERMAL_KICK_PROB is not set/.test(refused2), refused2 ? "THERMAL_KICK_PROB" : "ran anyway");
+
+  // And law 4's capacity is now a FORM, so what needs checking is the form
+  // over every kind that can exist rather than one value. An inert kind -- one
+  // with capacity 0 -- would be item 15's heavy-matter failure arriving from
+  // law 4 instead of from a field width.
+  //
+  // Note what this does NOT do: it does not try to provoke a refusal. The
+  // first version of this check did, by setting BOND_MODULUS to 1, and it
+  // could never have worked -- capacityOf clamps with Math.max(1, ...), so no
+  // modulus reaches 0 and FILTER 3 cannot fire for this form. The filter is
+  // kept anyway, because the clamp is a property of candidate form ONE and the
+  // next form may not have one. So: assert the property, and record that it is
+  // the clamp and not the modulus that delivers it.
+  {
+    let worst = null, worstK = 0;
+    for (let k = 1; k <= 255; k++) {
+      const cap = capacityOf(k, CANDIDATE_ZERO);
+      if (worst === null || cap < worst) { worst = cap; worstK = k; }
+    }
+    const caps = new Set();
+    for (let k = 1; k <= 255; k++) caps.add(capacityOf(k, CANDIDATE_ZERO));
+    report("every kind has a legal capacity, so none is born inert",
+      worst >= 1, `lowest is ${worst} at kind ${worstK}; ${caps.size} distinct capacities over 255 kinds`);
+    report("and capacity actually VARIES by kind, which is the point of item 6",
+      caps.size > 1, `capacities present: ${[...caps].sort((a, b) => a - b).join(", ")}`);
+  }
 }
 
 console.log(`\n=== Check 7: a real run, with the books asserted all the way through ===`);
@@ -267,7 +296,24 @@ console.log(`\n=== Check 9: do the findings survive a seed and a constant change
   // and it was. This is the answer, and it is the reason the numbers in those
   // items are ranges rather than single figures.
   const KEYS = ["tooColdToMove", "emissionBlocked", "quantumWaited", "bondsStretched"];
-  const EV = 120000;
+
+  // EV WENT 120,000 -> 400,000 ON 2026-11-06, and the reason is worth keeping
+  // because it is a lesson about this check rather than about the physics.
+  //
+  // "transport 0.1" began reporting LOST: quantumWaited. It looked like a
+  // regression from the same day's KE_SCALE change and it was not. Measured:
+  // quantumWaited is the rarest of the four by a long way -- about 110 per
+  // seed per 400,000 events at baseline, and transport 0.1 makes it roughly
+  // FIFTY TIMES rarer still, about 1. At 120,000 events that variation
+  // expects well under one occurrence per seed, so reading zero was the
+  // sample being too small to contain the effect.
+  //
+  // It was already marginal before anything changed: at 40,000 events the
+  // BASELINE reads zero on two seeds in five. So the check had been passing
+  // on luck, and the honest fix is more events rather than fewer effects --
+  // dropping quantumWaited from KEYS would have made the symptom go away and
+  // thrown out the one effect that is sensitive to law 5's rate.
+  const EV = 400000;
   const sample = (constants, seeds) => {
     const rows = seeds.map((seed) => {
       const lab = new Lab({ constants, seed });
@@ -293,15 +339,15 @@ console.log(`\n=== Check 9: do the findings survive a seed and a constant change
 
   // The other half of rule 11: a small change of constants.
   const variants = [
-    ["capacity 1", { ...CANDIDATE_ZERO, CAPACITY: 1 }],
-    ["capacity 6", { ...CANDIDATE_ZERO, CAPACITY: 6 }],
+    ["kick 0.05", { ...CANDIDATE_ZERO, THERMAL_KICK_PROB: 0.05 }],
+    ["kick 0.90", { ...CANDIDATE_ZERO, THERMAL_KICK_PROB: 0.90 }],
     ["form 0.05", { ...CANDIDATE_ZERO, BOND_FORM_PROB: 0.05 }],
     ["transport 0.1", { ...CANDIDATE_ZERO, TRANSPORT_RATE: 0.1 }],
     ["clock floor x4", { ...CANDIDATE_ZERO, CLOCK_FLOOR: CANDIDATE_ZERO.CLOCK_FLOOR * 4 }],
   ];
   let allSurvive = true;
   for (const [label, constants] of variants) {
-    const r = sample(constants, [1, 2]);
+    const r = sample(constants, [1, 2, 3]);   // three, not two -- see EV above
     const dead = r.filter((x) => x.zero === x.zero && x.lo === 0 && x.hi === 0);
     if (dead.length) allSurvive = false;
     console.log(`      ${label.padEnd(18)} ${dead.length ? "LOST: " + dead.map((d) => d.k).join(", ")
@@ -311,12 +357,20 @@ console.log(`\n=== Check 9: do the findings survive a seed and a constant change
     `${variants.length} variations`);
 }
 
-console.log(`\n=== Check 10: does heat ever become motion? ===`);
+console.log(`\n=== Check 10: does heat become motion, and does it still sum to zero? ===`);
 {
-  // THE-LAWS.md credits the clock with four jobs, the fourth being thermal
-  // pressure: "Hot matter moves more often, so hot regions expand against cold
-  // ones with nothing written down to make them." Stepping is law 1's own rate,
-  // min(1, |p|/k), which does not read temperature -- so test it.
+  // REWRITTEN 2026-11-06, and the old version is worth keeping in view: it
+  // asserted that NOTHING steps at any temperature, which was true and was
+  // README item 29 -- the clock was credited with producing thermal pressure
+  // and could not, because stepping runs on law 1's rate min(1, |p|/k) and
+  // that never reads temperature.
+  //
+  // Ric's call was to connect them (item 29, 2026-11-06), so the assertion
+  // inverts: heat must now move matter. The number that matters more than
+  // that one is the SECOND assertion. The kick works by giving a pair equal
+  // and opposite momentum, so the world's total must still be exactly zero
+  // after millions of kicks -- if it is not, the kick is a leak wearing a
+  // law's clothes, and no amount of plausible motion makes up for it.
   const rows = [];
   for (const hotT of [1, 64, 200]) {
     const lab = new Lab({ thermostat: { HOT_T: hotT, COLD_T: 1, BAND_ROWS: 3 }, seed: 31 });
@@ -324,16 +378,32 @@ console.log(`\n=== Check 10: does heat ever become motion? ===`);
     lab.start();
     lab.run(150000);
     const c = census(lab.w);
-    rows.push({ hotT, stepped: lab.counts.stepped, heat: c.heat, bonds: c.bondBits / 2 });
+    rows.push({ hotT, stepped: lab.counts.stepped, heat: c.heat, bonds: c.bondBits / 2,
+      kicks: lab.counts.thermalKicks, px: c.pxSum, py: c.pySum });
     console.log(`      hot band ${String(hotT).padStart(4)}:  stepped ${String(lab.counts.stepped).padStart(6)}`
-      + `   heat ${String(c.heat).padStart(8)}   bonds ${String(c.bondBits / 2).padStart(6)}`);
+      + `   kicks ${String(lab.counts.thermalKicks).padStart(6)}`
+      + `   heat ${String(c.heat).padStart(8)}   bonds ${String(c.bondBits / 2).padStart(6)}`
+      + `   net p (${c.pxSum}, ${c.pySum})`);
   }
-  report("nothing steps at any temperature with no initial momentum",
-    rows.every((r) => r.stepped === 0),
-    `so there is no thermal motion -- README item 29`);
-  report("chemistry runs anyway, with nothing moving",
-    rows.every((r) => r.bonds > 0), `${rows[2].bonds} bonds at the hottest band`);
-  console.log(`      Momentum is therefore a MIXING condition, not a chemistry one (item 27).`);
+  report("heat moves matter, with no momentum supplied at the start",
+    rows.every((r) => r.stepped > 0),
+    `${rows[0].stepped}, ${rows[1].stepped}, ${rows[2].stepped} steps -- item 29 settled by connecting them`);
+  report("and the world's momentum is still exactly zero",
+    rows.every((r) => r.px === 0 && r.py === 0),
+    `the pair cancels in integers, so there is no preferred direction`);
+  report("chemistry still runs", rows.every((r) => r.bonds > 0),
+    `${rows[2].bonds} bonds at the hottest band`);
+  // Reported, NOT asserted. Thermal pressure needs hot regions to move more
+  // than cold ones, and the trend here is in the right direction -- but it is
+  // three bands on one seed, and the clock's rate is not the only thing that
+  // differs between them. It belongs in a sweep before anyone claims it.
+  // Thermal pressure would need hot regions to move MORE than cold ones. Do
+  // not read that off these three numbers: the trend was monotonic at
+  // KE_SCALE 64 and stopped being monotonic at 4, which is all the evidence
+  // needed that three bands on one seed cannot tell the difference between a
+  // trend and noise. Printed as data, with no claim attached.
+  console.log(`      steps by band: ${rows.map((r) => r.stepped).join(", ")} -- NOT a trend on one seed.`);
+  console.log(`      Whether hot regions really move more than cold ones needs a sweep (item 29).`);
 }
 
 console.log(`\n${failures === 0 ? "All checks passed." : failures + " CHECK(S) FAILED."}`);

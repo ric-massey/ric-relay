@@ -300,6 +300,13 @@ long enough to matter. Late is cold and still.
 The laws are fixed, and as of 2026-11-04 **so is the form of law 2.** What is searched is **five
 numbers**, with the slate of alternative forms held in reserve if the Lab comes back flat.
 
+*(**And it changed again on 2026-11-06, without changing size.** Law 4's `CAPACITY` stopped being
+a number and became a form derived from kind (item 6), while law 2's formation probability was
+adopted as a constant in its own right (item 28) and law 1's thermal kick added one more (item 29).
+So the list is: `TRANSPORT_RATE`, `CLOCK_SCALE`, `CLOCK_FLOOR`, `BOND_FORM_PROB`,
+`THERMAL_KICK_PROB`, `GRAVITY_EPS`, `GRAVITY_FALLOFF` — still seven, and `constants.mjs` is the
+file of record. `KE_SCALE` and `BOND_MODULUS` carry chosen values and sit in `SETTLED`.)*
+
 *(It was seven numbers plus an unknown form. Law 2's rewrite deleted pair force **strength** and
 **range** — a binding energy over two integers has neither — and folded a scale factor to 1 by
 choice of units. The form itself was then settled, twice over, on measurement: see law 2 in
@@ -940,7 +947,29 @@ is exact in grain units. **Still unmeasured:** what a residual does when its pri
 whole kicks delivered to matter *resting* on matter make heat with no fall. That hazard comes
 from integer momentum, not from where the remainder lives, so it applies to every home.
 
-**20. How strong is gravity — and is there any strength that does both its jobs?** Raised
+**20. How strong is gravity — and is there any strength that does both its jobs?** **The momentum
+half is settled as of 2026-11-06: ±63.** *(Ric, choosing between ±15, ±63 and ±127.)* The width went
+from 10 bits to 14, so the word is 44 of 64 with 20 spare, and `MOMENTUM_RANGE` is 63.
+
+**What forced it, measured.** Gravity was bolted onto the Lab from outside and the symmetric clamp
+refused **every pull it was offered — 562,344 attempts, not one impulse landed**, because the world
+sat near ±15 already and every legal move was taken. At the strongest setting tried, gravity
+produced output byte-identical to the no-gravity control. This item had predicted it from the
+energy side; that is the same wall reached from the other direction.
+
+**And it cost exactly what this item said it would** — "either moves law 1's kinetic-energy window,
+so `S = 64` would need re-measuring." It does. The largest legal `Q` went from 450 to 7,938 at the
+vector (−63, 0, 63), which is 17.64×, and the window's ceiling is the `S` at which a kind-1
+primitive at full speed overflows the 16-bit energy field — so **the window fell from 2–291 to
+1–16, and `S = 64` left it.** `S` is now **4**, picked by `S = 64`'s own three stated reasons: a
+power of two, every kind gets a usable amount, and the largest kinetic energy stays a modest share
+of the field (24.2% at ±63 with `S = 4`, against the 22% that `S = 64` gave at ±15 — the same
+world, rescaled). `S = 16` is legal and sits at 96.9%, which is the failure the third reason
+exists to prevent. The method was validated by reproducing the documented 2–291 before being
+trusted on 1–16.
+
+**The strength, the size and the shape are still open**, and they are still one decision. What
+follows is the original item. Raised
 2026-11-05 by Ric: *"I have a hunch gravity is too strong right now."* Measured in `orbit.mjs`
 Checks 6 and 7; the full statement is under law 3 in `THE-LAWS.md`.
 
@@ -1104,7 +1133,28 @@ the answer law 1 already gives a tied direction, for the same reason. That makes
 fresh per collision rather than offset per step, so no boundary can persist. It is not obviously
 equivalent to what the law asks for, and the equivalence has not been measured.
 
-**25. May a bonded primitive step, and what happens to a bond that motion stretches?** *(Raised
+**25. ~~May a bonded primitive step, and what happens to a bond that motion stretches?~~ Settled
+2026-11-06 — the file's reading stands, and it was tested rather than ratified.** *(Ric: "run it
+hot and run it cold. test both.")*
+
+The reading in `lab.mjs` is that the bond cannot stretch, so motion breaks it at its full cost of
+`B`, and a primitive that cannot pay does not move. **That one rule produces both candidate
+behaviours depending on temperature**, which is why hot-and-cold is the test and not a compromise:
+cold clusters are rigid because nothing can afford to come apart, and hot ones shatter because
+breaking is cheap. Measured over 3 seeds and 1M events each, with no momentum supplied so every
+move is the new thermal kick:
+
+| held T | steps | stretch-breaks | blocked, too cold | bonds standing |
+|---|---|---|---|---|
+| 0 | 34,908 | 4,563 | **56,308** | **14,180** |
+| 2 | 408,822 | 10,755 | 7,266 | 991 |
+| 6 | 413,750 | 8,173 | 2,761 | 717 |
+| 60 | 412,926 | 6,403 | 475 | 506 |
+
+**The crossover is real and it is sharp — it sits between 0 and 2.** Rigid below it, shattering
+above it, with no wide middle. See item 31 for the part of this that is a problem.
+
+*(Superseded framing follows.)* ~~Raised~~
 2026-11-05 by `lab.mjs`.)* Law 1 settles that clusters are **elastic rather than rigid** — a strike
 travels through one as a wave at no more than one hexagon per tick — so bonded primitives do move.
 Nothing says what becomes of a bond whose partner is left out of reach.
@@ -1167,7 +1217,19 @@ than chosen, and the open question is only whether `TWO-RUNS.md` should name it 
 draws it and then cancels the net to zero, because a looped world has no wall to absorb a drift and
 a net drift would look exactly like "a preferred direction in the physics".
 
-**28. Law 2's formation probability is not among the search space's seven.** *(Found 2026-11-05
+**28. ~~Law 2's formation probability is not among the search space's seven.~~ Settled 2026-11-06
+— it is a searched constant in its own right, not a fold into the clock.** *(Ric: "make it
+eighth".)* `BOND_FORM_PROB` keeps its name in `constants.mjs` and the engine still refuses to run
+without it.
+
+**Why not the clock:** the clock sets how *often* a site acts, and this sets *which* act happens
+when it does — the same fire may bond, transport, share momentum or now kick. Folding them would
+make one number do two jobs, and law 2 would have had to say so in writing.
+
+**And the count did not actually go to eight**, which is worth stating so it does not look like a
+coincidence later: law 4's `CAPACITY` left the searched set the same day (item 6), so one constant
+became a form while a different one that had been running unnamed got a name. *Original text
+follows.* *(Found 2026-11-05
 while writing `constants.mjs`.)* Law 2 says "a bond forms with a fixed probability when the clock
 fires — never instantly on contact." That is a number, it is derived from nothing, and *The search
 space* above does not count it. Either it is an eighth searched constant, or it folds into the
@@ -1190,7 +1252,30 @@ the Lab found two more of exactly that shape, both caught by the assertion rathe
   world every time it flexed, which is precisely the slow, silent, physics-looking failure that
   structural fact warns about.
 
-**29. Heat never becomes motion, so the clock's fourth job does not follow.** *(Found 2026-11-05 by
+**29. ~~Heat never becomes motion, so the clock's fourth job does not follow.~~ Settled 2026-11-06
+— connect them, in opposite-moving pairs.** *(Ric: "connect them. can't just make one hexagon start
+moving. make them move in pairs, in opposite directions. One goes left, its neighbour goes right.
+Add them up, you get zero.")*
+
+**The pairing is the whole of it.** A single hexagon starting to move is momentum from nowhere,
+which is law 1's one inviolable thing, and it would also be a preferred direction in the physics. A
+pair moving oppositely sums to zero exactly, in integers, with nothing left over — the same
+construction law 1 already uses for a bonded pair's exchange, and the reason that one conserves.
+The kinetic energy is paid to or from the heat field, because momentum is linear and cancels while
+KE is quadratic and does not; that seam cost 34,864 units the first time it was missed, so
+`tryThermalKick` reuses `shareMomentum`'s accounting rather than inventing a second one.
+
+**New machinery costs a constant, and rule 7's price is paid out loud:** `THERMAL_KICK_PROB`.
+
+**Measured** in `lab-check.mjs` Check 10, which previously asserted the opposite: with no momentum
+supplied at all, the world now steps 1,356 / 1,528 / 1,473 times at the three held bands where it
+stepped **0 / 0 / 0** before — and the world's net momentum is still exactly **(0, 0)** at every
+band. The old assertion is quoted in the check so the inversion is visible.
+
+**What is NOT yet shown is thermal pressure itself.** Hot regions have to move *more* than cold
+ones, and three bands on one seed cannot tell a trend from noise — the step counts were monotonic
+at `KE_SCALE 64` and stopped being monotonic at 4. That needs a sweep. *Original text follows.*
+*(Found 2026-11-05 by
 measuring item 27 properly.)* The clock section of `THE-LAWS.md` credits the temperature-dependent
 rate with four jobs, and the fourth is:
 
@@ -1226,13 +1311,60 @@ says what that costs.
 Neither is a question about the physics; both are constraints on the sweep, and they belong wherever
 the Lab's conditions get written down, because a sweep that walks `HOT_T` upward will hit them.
 
+**31. At ±63 with the kick on, motion destroys the chemistry — and the sweet spot found the day
+before does not survive.** *(Found 2026-11-06 by testing item 25 hot and cold, immediately after
+adopting ±63, `S = 4` and the thermal kick.)* **This is the bill for item 20's momentum decision
+and nobody predicted it.**
+
+On 2026-11-05, at ±15 with momentum supplied by hand, bond quality peaked at a held temperature
+of 6: mean `B` of **5.93** against 5.26 for blind grabbing, about 40% of the way to a perfect 8,
+and ten times the seed-to-seed spread. **That peak is gone.** At ±63 with the kick supplying the
+motion, mean `B` reads 5.73 at `T = 0`, 5.54 at 2, 5.72 at 6 and 5.36 at 60 — no peak, and the
+best figure is now at **zero temperature**.
+
+Worse, the bonds themselves collapse: **14,180 standing at `T = 0` against 991 at `T = 2`**, a 14×
+fall across the crossover, and 506 at `T = 60`. A world that moves this hard shatters everything
+it builds. Three candidate causes, unseparated:
+
+1. **±63 makes motion violent.** The largest `Q` is 17.64× what it was, so a stretched bond is
+   broken by far more of the velocity distribution than before.
+2. **`THERMAL_KICK_PROB = 0.25` is almost certainly far too high.** It is `CANDIDATE_ZERO`'s
+   arbitrary value and it is offered at every clock fire, which may simply be a world being
+   shaken to pieces on purpose.
+3. **GAP 3's reading may be wrong after all** — `lab.mjs` says of it "the one most likely to be
+   wrong in this file", and item 25 has just ratified it on a test that did not vary the width.
+
+*Decided by:* separating those three, which is a 2×2×2 and cheap. **Nothing should be concluded
+about the chemistry's depth until it is done**, because the one measurement that looked like
+progress was taken under the old width. Note what is NOT in doubt: momentum stayed exactly (0, 0)
+through every run, so the kick is not leaking — this is the physics being violent, not the books
+being wrong.
+
 
 ### Settled by running the Lab
 
 **5. Does the Lab produce a periodic table with any depth?** Unknown. Three stable clusters and
 nothing else is a plausible outcome, and would mean the pair force needs more structure.
 
-**6. Should capacity vary by kind?** `C` is one global number, so every kind has identical
+**6. ~~Should capacity vary by kind?~~ Settled 2026-11-06 — yes, and it derives from the same
+valence law 2 reads: `capacityOf(k) = clamp(k mod 8, 1, 6)`.** *(Ric: "per kind".)* `CAPACITY`
+is no longer a searched constant; it is a form, in `constants.mjs`, and law 4 reads the kind.
+
+**What came out of it unasked**, and is the argument for this form over an arbitrary one: `v = 0`
+gets capacity 1 and `B(0,0) = 0`, so it is monovalent and cannot bond to its own kind at all, its
+one good partner being `v = 7`. `v = 4` gets capacity 4 and `B(4,4) = 8`, so it is tetravalent
+and its own best partner — the shape carbon chemistry is built on. `v = 7` gets capacity 6 but
+`B(7,7) = 2`: many weak bonds, a gas-like corner. None of that was put in. Measured in
+`lab-check.mjs` Check 6: all six capacities 1–6 are present across the 255 kinds, and no kind is
+born inert.
+
+**It is candidate form one and has been screened by nothing.** Law 2's form earned its place
+against ten rivals in `screen.mjs` on measured spread, family count, roughness and the diagonal
+maximum. This has earned nothing, and it belongs in the same harness before anyone calls it
+settled. *The paragraph below is the superseded text, kept because its retraction of law 4's claim
+still stands:*
+
+~~`C` is one global number, so every kind has identical~~
 capacity. **Law 4's claim to be the origin of distinct types is now retracted outright rather than
 called overstated** — with a global `C` it contributes *nothing* to differentiation, and all of it
 comes from law 2, which since 2026-11-04 carries the columns itself in `v(k) = k mod 8`. What law 4

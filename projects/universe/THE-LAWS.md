@@ -110,7 +110,14 @@ caused by the same shortage of letters — capacity itself was `k` until 2026-11
 
 > **`KE(p, k) = floor(S · Q(p) / 2k)`**, where **`Q(p) = x² + y² + z²`** is the *un-halved* squared
 > length of the momentum vector on the cube axes — true `|p|²` is `Q/2`, and `Q` is carried to stay
-> in integers — and **`S = 64`**.
+> in integers — and **`S = 4`**.
+
+**`S` WAS 64 UNTIL 2026-11-06, and it changed because the momentum range did.** Widening momentum
+to ±63 (README item 20) raised the largest legal `Q` from 450 to 7,938 — the vector (−63, 0, 63) —
+and the window's ceiling is the `S` at which a kind-1 primitive at full speed overflows the 16-bit
+energy field, so the ceiling fell by the same 17.64×. **The window went from 2–291 to 1–16 and 64
+left it.** Everything below in this section that quotes 64, 2, 291 or ±15 is the ±15 world and is
+kept as the superseded record.
 >
 > A collision conserves momentum exactly and moves whatever `KE` changes by **into or out of the
 > heat field**, so total energy is exact by construction.
@@ -130,7 +137,14 @@ primitive is cold. This is the one place kinetic energy was expected to touch la
 is that it does not: transport compares heat, never heat plus motion. Were the two to share one
 number, a thing would cool itself by moving and the second law would have a hole in it.
 
-**`S = 64` is a searched constant, not a derived one, and the window is wide.** Below **`S = 2`**
+**At ±63 the window is 1–16 and `S = 4`.** It is picked by the same three reasons that picked 64:
+a power of two, every kind from 1 to 255 gets a usable amount, and the largest kinetic energy stays
+a modest share of the energy field — **24.2%**, against the 22% that `S = 64` gave at ±15, so it is
+the same world rescaled. `S = 16` is legal and sits at **96.9%**, which is exactly the failure the
+third reason exists to prevent. Measured 2026-11-06, by a method that first reproduced the
+documented 2–291 at ±15 before it was trusted at ±63.
+
+*(Superseded, and true at ±15:)* **`S = 64` is a searched constant, not a derived one, and the window is wide.** Below **`S = 2`**
 the heaviest kinds read zero kinetic energy at any momentum — the heavy-matter failure arriving
 through a second door — and above **`S = 291`** a kind-1 primitive at full speed overflows the
 16-bit field. Inside that window 64 is chosen for three stated reasons: it is a power of two, every
@@ -141,7 +155,8 @@ that was already warm. At `S = 291` that figure is 99.9% and the dump always ove
 | at `S = 64` | heaviest kind's KE levels | max KE as % of the energy field |
 |---|---|---|
 | ±3 momentum, 11-bit energy *(until 2026-11-04)* | 2 | 28% |
-| **±15 momentum, 16-bit energy** *(now)* | **56** | **22%** |
+| ±15 momentum, 16-bit energy *(2026-11-04 to 2026-11-06)* | 56 | 22% |
+| **±63 momentum, 16-bit energy, `S = 4`** *(now)* | **235** | **24%** |
 
 So the eight-byte word bought the heaviest kind **28 times** the kinetic-energy resolution and
 dropped the window's floor from 29 to 2, as a side effect nobody was tracking when it was decided.
@@ -204,7 +219,13 @@ is fatal is not established by that tool and is open.)*
 the edge of the momentum box; started at half of it, carried gravity orbits from ±7 up. ±3 is the
 one width that still fails, because half of ±3 is a momentum of about 1.)*
 
-**The momentum range is ±15, and it used to be ±3 because of the field widths.** At four bytes two
+**The momentum range is ±63 as of 2026-11-06.** Ric's call on README item 20, forced by gravity:
+bolted onto the Lab from outside, the symmetric clamp refused **562,344 pulls and accepted none**,
+because the world already sat near ±15 and every legal move was taken. ±63 lets every kind carry
+the fall that melts the weakest bond. The word is now 44 of 64 bits with 20 spare. It cost law 1's
+energy window, which is stated above.
+
+*(Superseded:)* **The momentum range is ±15, and it used to be ±3 because of the field widths.** At four bytes two
 components at ±7 already made the hexagon 33 bits and would not fit; the honest reading of that was
 "±3 gives all 255 speeds, so **no speed is lost — but headroom is**", and running those two
 together is what made the orbit result above look settled. **Settled 2026-11-04 by going to eight
@@ -640,7 +661,16 @@ gradient instead of discovering it.
 
 ## 4. Capacity
 
-A primitive can be bonded to at most **`C`** of its six neighbors.
+A primitive can be bonded to at most **`C(k)`** of its six neighbors, and **since 2026-11-06 that
+depends on the kind**: `C(k) = clamp(v(k), 1, 6)` with `v(k) = k mod 8` — law 2's own valence,
+read by law 4 as well, so nothing is stored and no table is written by hand.
+
+*(It was one global number `C` for every kind until then. Ric's call on README item 6, whose
+objection to the global version was that it gives nothing a valence, and valence is most of what
+gives our chemistry its shape. What the form produces, unasked: `v = 0` is monovalent and cannot
+bond to its own kind at all, since `B(0,0) = 0`; `v = 4` is tetravalent and its own best partner
+at `B(4,4) = 8`; `v = 7` holds six bonds that are all weak. **It is candidate form one and has
+been screened by nothing**, where law 2's form beat ten rivals in `screen.mjs` first.)*
 
 *(Called *k* until 2026-11-04, which collided with `k` for kind in laws 1 and 5 — `v = p/k` and
 `T = e/k` are both about mass, and `e ≥ B · k` in law 2 is too. Renamed before someone implemented
@@ -907,6 +937,17 @@ one line of code and does four jobs:
   This is the attempt-frequency half of an Arrhenius rate; law 2's binding energy is the other half.
 - **It is where thermal pressure comes from.** Hot matter moves more often, so hot regions expand
   against cold ones with nothing written down to make them.
+
+  **This was measured false on 2026-11-05 and made true again on 2026-11-06, by a different route
+  than the one claimed here.** The claim as written was that the clock alone produces it, and it
+  does not: stepping runs on law 1's own rate, `min(1, |p|/k)`, which never reads temperature, so a
+  primitive at any heat with no momentum never moved (README item 29). The fix is law 1's **thermal
+  kick** — a pair of neighbours given equal and opposite momentum, paid for out of heat — so the
+  clock still does not move anything by itself, but a hot site fires more often and therefore kicks
+  more often. **What is measured is that heat now moves matter at all** (0 steps → ~1,400 per run,
+  with the world's net momentum still exactly zero). **What is NOT yet measured is this bullet's
+  own claim**, that hot regions expand against cold ones; that needs a sweep, and three bands on
+  one seed cannot tell a trend from noise.
 
 **The hard constraint, stated correctly.** The rate must be **strictly increasing in temperature
 and must never saturate.** That is all the second-law argument above uses, and it is weaker than
