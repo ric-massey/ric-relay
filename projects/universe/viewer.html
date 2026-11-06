@@ -261,7 +261,27 @@
   .hud-fold b { color: var(--ink); display: block; margin-bottom: 3px; }
   .hud-fold span { display: block; margin-top: 5px; color: var(--ink-muted); }
   .hud-fold[hidden] { display: none; }
-  body.touch .hud-fold { max-width: 220px; font-size: 11px; bottom: calc(44px + var(--sheet-peek, 56px)); }
+  /* On a phone the caveat is most of the stage, and it was covering the very
+     thing it is a caveat about. It keeps all of its words -- they are the
+     honest part -- but it caps its height and scrolls, so the picture stays
+     visible behind it. */
+  /* On a phone the caveat was most of the stage, covering the very thing it
+     is a caveat about. It keeps every word -- they are the honest part -- but
+     on touch it starts folded to its first line and opens on a tap. Nothing
+     is removed and nothing is behind a setting; the picture is just visible
+     while you look at it. */
+  body.touch .hud-fold {
+    max-width: 215px; font-size: 10.5px; line-height: 1.4;
+    bottom: calc(44px + var(--sheet-peek, 56px));
+    max-height: 44%; overflow-y: auto; overscroll-behavior: contain;
+    pointer-events: auto; cursor: pointer;
+  }
+  body.touch .hud-fold.folded span { display: none; }
+  body.touch .hud-fold.folded::after {
+    content: "tap for what this picture gets right and wrong";
+    display: block; margin-top: 4px; color: var(--focus); font-size: 10px;
+  }
+  @media (max-height: 560px) { .hud-fold { max-height: 52%; overflow-y: auto; } }
 
   .tip {
     position: absolute; z-index: 3; pointer-events: none;
@@ -442,10 +462,11 @@
   <h1>A hexagon of this universe</h1>
   <p class="word mono" id="wordLine"><b>8 bytes</b></p>
   <p class="note">
-    Pan by dragging, zoom with the wheel or a pinch, and tap a hexagon to open it. Zoom far
-    enough out and the hexagons mesh into a field, then the field repeats — a Lab run has no
-    edge, so the map has none either — and further out still it closes into the torus it has
-    been all along.
+    Pan by dragging, zoom with the wheel or a pinch, and tap a hexagon to open it. Zoom out
+    and the hexagons mesh into a field; the outlined patch is the one that is actually being
+    simulated, and the copies fading around it are that same patch again, because a looping
+    run has no edge to stop at. Further out it rolls into the tube it has been all along —
+    an isometry, so nothing on that surface is a different size from the run.
   </p>
 </header>
 
@@ -555,8 +576,20 @@
       <label><input type="checkbox" id="showMom">Momentum</label>
       <label><input type="checkbox" id="showGroup" checked>Group outline</label>
       <label><input type="checkbox" id="showBands" checked>Held bands</label>
-      <label><input type="checkbox" id="showLoop" checked>The loop</label>
-      <label><input type="checkbox" id="showFold" checked>Fold to torus</label>
+      <label><input type="checkbox" id="showLoop" checked>The repeats</label>
+    </div>
+  </fieldset>
+  <fieldset class="ctl">
+    <legend>Zoomed out</legend>
+    <div class="seg" id="shapes">
+      <label title="The sheet, with its edge drawn and its repeats fading out">
+        <input type="radio" autocomplete="off" name="shape" value="flat">Flat</label>
+      <label title="Roll the q loop into a tube. An isometry: nothing is stretched.">
+        <input type="radio" autocomplete="off" name="shape" value="roll-q" checked>Roll ↔</label>
+      <label title="Roll the r loop into a tube. An isometry: nothing is stretched.">
+        <input type="radio" autocomplete="off" name="shape" value="roll-r">Roll ↕</label>
+      <label title="Both loops at once — but a flat torus cannot be drawn in 3D without stretching">
+        <input type="radio" autocomplete="off" name="shape" value="donut">Donut</label>
     </div>
   </fieldset>
 </div>
@@ -586,11 +619,9 @@
     </div>
 
     <div class="hud hud-fold" id="foldNote" hidden>
-      <b>The same world, closed up.</b> 258 × 258 with no edge: leaving by the east
-      arrives at the west, and leaving by the north arrives at the south.
-      <span>A torus drawn in three dimensions is the right topology and the wrong geometry —
-      the lattice is flat, every hexagon has the same six neighbours at the same distance.
-      The squeeze at the inner ring is the drawing, not the physics.</span>
+      <b id="foldTitle">The same world, closed up.</b>
+      <span id="foldWhat"></span>
+      <span id="foldCost"></span>
     </div>
 
     <div class="tip mono" id="tip"></div>
@@ -1213,27 +1244,38 @@ function reduceCam() {
   cam.ox += m * s * p.ax;
 }
 
-// Which copies touch the viewport. The primary copy is first, so the seam and
-// the full-strength drawing land on it and the repeats read as repeats.
+// Which copies touch the viewport, and HOW FAR OUT each one is.
+//
+// The ring matters because of what Ric asked for: copies used to be drawn at
+// one flat alpha as far as the viewport reached, so the plane looked like
+// more world forever and nothing said where the simulation stopped. Each
+// copy now carries its ring, the alpha falls off with it, and MAX_RING ends
+// them. Past the last ring is not more world and not a dimmer copy -- it is
+// the empty plane, and it should look like it.
 const MAX_TILES = 49;
+const MAX_RING = 3;
+const RING_ALPHA = [1, 0.42, 0.20, 0.09];
 function tileOffsets() {
-  if (!W.torus || !document.getElementById("showLoop").checked) return [[0, 0]];
+  if (!W.torus || !document.getElementById("showLoop").checked) return [[0, 0, 0]];
   const p = period(), s = cam.s;
   const sp = worldSpan(W);
   const w = (sp.x1 - sp.x0) * s, h = (sp.y1 - sp.y0) * s;
   // how many copies fit either side of the viewport, in each lattice direction
   const nSpan = Math.ceil((VH / 2 + h) / (s * p.by)) + 1;
   const mSpan = Math.ceil((VW / 2 + w) / (s * p.ax)) + 1;
-  const out = [[0, 0]];
-  for (let n = -nSpan; n <= nSpan; n++) {
-    for (let m = -mSpan; m <= mSpan; m++) {
-      if (m === 0 && n === 0) continue;
-      const dx = s * (m * p.ax + n * p.bx), dy = s * (n * p.by);
-      // cheap reject: is this copy's box anywhere near the viewport?
-      const left = cam.ox + dx + sp.x0 * s, top = cam.oy + dy + sp.y0 * s;
-      if (left > VW || left + w < 0 || top > VH || top + h < 0) continue;
-      out.push([dx, dy]);
-      if (out.length >= MAX_TILES) return out;
+  const out = [[0, 0, 0]];
+  // nearest first, so the ones that matter survive the MAX_TILES cap
+  for (let ring = 1; ring <= Math.min(MAX_RING, Math.max(nSpan, mSpan)); ring++) {
+    for (let n = -ring; n <= ring; n++) {
+      for (let m = -ring; m <= ring; m++) {
+        if (Math.max(Math.abs(m), Math.abs(n)) !== ring) continue;   // this ring only
+        const dx = s * (m * p.ax + n * p.bx), dy = s * (n * p.by);
+        // cheap reject: is this copy's box anywhere near the viewport?
+        const left = cam.ox + dx + sp.x0 * s, top = cam.oy + dy + sp.y0 * s;
+        if (left > VW || left + w < 0 || top > VH || top + h < 0) continue;
+        out.push([dx, dy, ring]);
+        if (out.length >= MAX_TILES) return out;
+      }
     }
   }
   return out;
@@ -1359,22 +1401,29 @@ function draw() {
   // all along. foldT runs 0 -> 1 so the two pictures cross-fade rather than
   // one replacing the other, which is what makes it read as the same object.
   const fold = foldAmount();
+  const shape = shapeOf();
   if (fold < 1) {
-    ctx.globalAlpha = 1 - fold;
     const tiles = tileOffsets();
-    for (let t = 0; t < tiles.length; t++) {
+    // Far copies first, the real world LAST, so nothing is ever painted over
+    // the thing that is actually being simulated.
+    for (let t = tiles.length - 1; t >= 0; t--) {
       VX = cam.ox + tiles[t][0];
       VY = cam.oy + tiles[t][1];
-      // The repeats are dimmed so the fundamental domain is still findable --
-      // they are the same world, not neighbouring ones, and the seam says
-      // which copy you are reading coordinates off.
-      const a = (1 - fold) * (t === 0 ? 1 : 0.68);
-      ctx.globalAlpha = a;
+      ctx.globalAlpha = (1 - fold) * (RING_ALPHA[tiles[t][2]] ?? 0);
       drawTile(layer, t === 0);
     }
+    ctx.globalAlpha = 1 - fold;
+    VX = cam.ox; VY = cam.oy;
+    // The edge of the real world, over the top of every copy. It is the one
+    // mark on the screen that says which hexagons exist.
+    drawEdge(tiles.length > 1);
     ctx.globalAlpha = 1;
   }
-  if (fold > 0) drawTorus(layer, fold);
+  if (fold > 0) {
+    if (shape === "donut") drawTorus(layer, fold);
+    else if (shape === "roll-q") drawRoll(layer, fold, 0);
+    else if (shape === "roll-r") drawRoll(layer, fold, 1);
+  }
 
   VX = cam.ox; VY = cam.oy;
   drawHud();
@@ -1391,7 +1440,6 @@ function drawTile(layer, primary) {
   if (level !== "mesh" && document.getElementById("showBonds").checked && cam.s >= BUDGET.detail) drawBonds();
   if (level === "detail" && document.getElementById("showMom").checked) drawMomentum();
 
-  if (primary) drawSeam();
   if (document.getElementById("showGroup").checked) drawGroupOutline();
   drawSelection();
 }
@@ -1424,13 +1472,75 @@ function drawMesh(layer) {
 // and the wrong geometry, which is worth having only because the topology is
 // the thing a flat picture gets wrong. The page says so on its face while it
 // is folded.
+// ================================================== the shape, zoomed out
+//
+// Ric, 2026-11-07: "There needs to be an end, we need to visually be able to
+// see the loop. Without stretch. And it needs to be accurate. If I zoom out I
+// need to see where the simulation really isn't there anymore."
+//
+// Three complaints, and all three were fair:
+//
+//   1. THE REPEATS HAD NO END. Copies were drawn at a flat 0.68 alpha out to
+//      whatever filled the viewport, so the plane looked like more world in
+//      every direction and nothing on screen said where the simulation
+//      stopped. They now fade by ring and the ring count is capped, so the
+//      copies visibly run out and the dark beyond them is the truth: there is
+//      nothing there.
+//   2. THE REAL WORLD HAD NO EDGE. A thin dashed line at 0.75 alpha, drawn
+//      inside the tile loop so later copies painted over it. It is drawn last
+//      now, solid, with its corners marked, and it is the one thing on screen
+//      that says "this, and only this, is being simulated".
+//   3. THE DOUGHNUT STRETCHES. It does, and it has to.
+//
+// WHY THE DOUGHNUT HAS TO STRETCH, AND WHAT TO DO INSTEAD. The lattice is
+// intrinsically FLAT: every hexagon has the same six neighbours at the same
+// distance, everywhere, seam included. A flat torus cannot be embedded in
+// three dimensions -- that is a theorem, not a shortcoming of this file -- so
+// any doughnut squeezes the inner ring and stretches the outer. At the radii
+// drawn here the outer circumference is 2.45x the inner, which means the same
+// row of hexagons is drawn two and a half times longer on one side than the
+// other. The physics keeps those equal.
+//
+// A CYLINDER DOES NOT. Rolling a flat sheet into a tube is an isometry:
+// lengths, angles and areas on the surface are exactly the lengths, angles and
+// areas on the sheet, with nothing stretched anywhere. So the default shape is
+// now a ROLL -- one axis closed into a tube, which you can see meet itself,
+// with the other axis left flat and ITS TWO ENDS DRAWN. That is the loop,
+// visible, without stretch, with an end. One roll shows one of the two loops,
+// and the flat view shows both, so neither picture is complete on its own and
+// the page says which one it is showing.
+//
+// The sheet is a RHOMBUS, not a rectangle -- the axial rows shear -- so rolling
+// it gives a band that spirals up the tube rather than a straight sleeve. That
+// is not an artefact to correct; it is the shear, drawn. The two spiral rims
+// are where the other axis is cut, which is where the simulation stops.
+
+// The two period vectors of the lattice, in world units. a closes the q loop
+// and b closes the r loop; both have length sqrt(3) per cell, which is what
+// makes the shear 60 degrees rather than something to apologise for.
+const periodVectors = () => ({
+  a: { x: SQ3 * W.cols, y: 0 },
+  b: { x: SQ3 * W.rows / 2, y: 1.5 * W.rows },
+});
+
+function shapeOf() {
+  const picked = document.querySelector('input[name="shape"]:checked');
+  const want = picked ? picked.value : "roll-q";
+  // A shape that claims a loop the run does not have is exactly the lie the
+  // space block exists to stop. Fall back rather than draw it.
+  if (want === "roll-q" && !W.wrapQ) return W.wrapR ? "roll-r" : "flat";
+  if (want === "roll-r" && !W.wrapR) return W.wrapQ ? "roll-q" : "flat";
+  if (want === "donut" && !(W.wrapQ && W.wrapR)) return W.wrapQ ? "roll-q" : W.wrapR ? "roll-r" : "flat";
+  return want;
+}
+
 // How much of the viewport one copy fills. At FIT this is exactly 1, so the
 // numbers below read as "a third of the way out from fit" and "a sixth".
 // MAX, not min: the world is small when BOTH of its dimensions are small, and
 // taking the min folded a wide flat world the moment it was short.
 const FOLD_IN = 0.28, FOLD_OUT = 0.20;
 function foldAmount() {
-  if (!W || !W.torus || !document.getElementById("showFold").checked) return 0;
+  if (!W || shapeOf() === "flat") return 0;
   const sp = worldSpan(W);
   const ratio = Math.max((sp.x1 - sp.x0) * cam.s / VW, (sp.y1 - sp.y0) * cam.s / VH);
   return Math.max(0, Math.min(1, (FOLD_IN - ratio) / (FOLD_IN - FOLD_OUT)));
@@ -1466,24 +1576,138 @@ function torusGrid(layer) {
   return g;
 }
 
-// model -> view, orthographic. The camera sits on -Y looking toward +Y, so a
+// yaw then pitch, orthographic. The camera sits on -Y looking toward +Y, so a
 // bigger Y is farther away and the painter's order is descending Y.
-function torusPoint(u, v, R, rr) {
-  const cu = Math.cos(u), su = Math.sin(u), cv2 = Math.cos(v), sv = Math.sin(v);
-  const X = (R + rr * cv2) * cu, Y = (R + rr * cv2) * su, Z = rr * sv;
-  const cy = Math.cos(torusRot.yaw), sy = Math.sin(torusRot.yaw);
-  const X1 = X * cy - Y * sy, Y1 = X * sy + Y * cy;
-  const cp = Math.cos(torusRot.pitch), sp2 = Math.sin(torusRot.pitch);
-  const Y2 = Y1 * cp - Z * sp2, Z2 = Y1 * sp2 + Z * cp;
-  return [X1, Y2, Z2];
-}
-function torusNormal(u, v) {
-  const cu = Math.cos(u), su = Math.sin(u), cv2 = Math.cos(v), sv = Math.sin(v);
-  const X = cv2 * cu, Y = cv2 * su, Z = sv;
+function spin(X, Y, Z) {
   const cy = Math.cos(torusRot.yaw), sy = Math.sin(torusRot.yaw);
   const X1 = X * cy - Y * sy, Y1 = X * sy + Y * cy;
   const cp = Math.cos(torusRot.pitch), sp2 = Math.sin(torusRot.pitch);
   return [X1, Y1 * cp - Z * sp2, Y1 * sp2 + Z * cp];
+}
+
+// model -> view, orthographic. The camera sits on -Y looking toward +Y, so a
+// bigger Y is farther away and the painter's order is descending Y.
+function torusPoint(u, v, R, rr) {
+  const cu = Math.cos(u), su = Math.sin(u), cv2 = Math.cos(v), sv = Math.sin(v);
+  return spin((R + rr * cv2) * cu, (R + rr * cv2) * su, rr * sv);
+}
+function torusNormal(u, v) {
+  const cu = Math.cos(u), su = Math.sin(u), cv2 = Math.cos(v), sv = Math.sin(v);
+  return spin(cv2 * cu, cv2 * su, sv);
+}
+
+// ------------------------------------------------------------------ the roll
+// THE ONE THAT DOES NOT STRETCH.
+//
+// Quotient the plane by ONE period vector instead of both. P is the one being
+// closed up; Q is left open and its two edges are the ends you can see. A
+// point at lattice fractions (sq along a, sr along b) sits at sq*a + sr*b in
+// the plane; split that into the part along P, which becomes an angle, and the
+// part across P, which becomes height. Arc length around equals distance along
+// P exactly, and height equals distance across P exactly, so NOTHING on this
+// surface is a different size from the sheet it came from.
+function rollFrame(axis) {
+  const { a, b } = periodVectors();
+  const P = axis === 0 ? a : b;
+  const Lp = Math.hypot(P.x, P.y);
+  const ux = P.x / Lp, uy = P.y / Lp;        // along the roll
+  return { a, b, Lp, ux, uy, nx: -uy, ny: ux, R: Lp / (2 * Math.PI) };
+}
+function rollPoint(f, sq, sr) {
+  const wxp = sq * f.a.x + sr * f.b.x, wyp = sq * f.a.y + sr * f.b.y;
+  const along = wxp * f.ux + wyp * f.uy;
+  const perp = wxp * f.nx + wyp * f.ny;
+  const th = 2 * Math.PI * along / f.Lp;
+  return { p: spin(f.R * Math.cos(th), f.R * Math.sin(th), perp), th };
+}
+function rollNormal(th) { return spin(Math.cos(th), Math.sin(th), 0); }
+
+function drawRoll(layer, alpha, axis) {
+  const g = torusGrid(layer);
+  const f = rollFrame(axis);
+  const L = [-0.42, -0.62, 0.66];
+  // Around the tube and along it. The grid is binned by q then r, so which of
+  // its two indices goes around depends on which axis is rolled.
+  const around = axis === 0 ? NU : NV;
+  const along = axis === 0 ? NV : NU;
+  const at = (ia, ib) => (axis === 0 ? (ib * NU + ia) : (ia * NU + ib)) * 3;
+
+  // Fit by measuring, not by a constant: the silhouette changes as it turns,
+  // and a fixed scale let it walk off the top at some angles.
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  const corner = (sq, sr) => {
+    const { p } = rollPoint(f, sq, sr);
+    if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0];
+    if (p[2] < y0) y0 = p[2]; if (p[2] > y1) y1 = p[2];
+  };
+  for (let k = 0; k <= 24; k++) {
+    const t = k / 24;
+    corner(t, 0); corner(t, 1); corner(0, t); corner(1, t);
+    // the tube's silhouette is the full circle, not just the band's corners
+    const fr = axis === 0 ? { sq: t, sr: 0 } : { sq: 0, sr: t };
+    corner(fr.sq, fr.sr);
+  }
+  const scale = Math.min(VW / Math.max(1e-6, x1 - x0), VH / Math.max(1e-6, y1 - y0)) * 0.82;
+  const cx = VW / 2 - ((x0 + x1) / 2) * scale, cy = VH / 2 + ((y0 + y1) / 2) * scale;
+  const toPx = (p) => [cx + p[0] * scale, cy - p[2] * scale];
+
+  const quads = [];
+  for (let ib = 0; ib < along; ib++) {
+    const t0 = ib / along, t1 = (ib + 1) / along;
+    for (let ia = 0; ia < around; ia++) {
+      const s0 = ia / around, s1 = (ia + 1) / around;
+      const c = [
+        axis === 0 ? rollPoint(f, s0, t0) : rollPoint(f, t0, s0),
+        axis === 0 ? rollPoint(f, s1, t0) : rollPoint(f, t0, s1),
+        axis === 0 ? rollPoint(f, s1, t1) : rollPoint(f, t1, s1),
+        axis === 0 ? rollPoint(f, s0, t1) : rollPoint(f, t1, s0),
+      ];
+      const n = rollNormal((c[0].th + c[1].th) / 2);
+      if (n[1] > 0) continue;                       // facing away
+      const depth = (c[0].p[1] + c[1].p[1] + c[2].p[1] + c[3].p[1]) / 4;
+      const o = at(ia, ib);
+      const lam = Math.max(0, n[0] * L[0] + n[1] * L[1] + n[2] * L[2]);
+      const sh = 0.60 + 0.40 * lam;
+      quads.push({ depth, pts: c.map((k) => toPx(k.p)),
+        col: `rgb(${g[o] * sh | 0},${g[o + 1] * sh | 0},${g[o + 2] * sh | 0})` });
+    }
+  }
+  quads.sort((p, q) => q.depth - p.depth);
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  for (const qd of quads) {
+    ctx.fillStyle = qd.col;
+    ctx.beginPath();
+    ctx.moveTo(qd.pts[0][0], qd.pts[0][1]);
+    for (let k = 1; k < 4; k++) ctx.lineTo(qd.pts[k][0], qd.pts[k][1]);
+    ctx.closePath();
+    ctx.fill();
+    // hairline along the same path, because a gap between quads shows the
+    // background through and reads as a hole in the world
+    ctx.strokeStyle = qd.col; ctx.lineWidth = 1; ctx.stroke();
+  }
+
+  // THE ENDS. This is the part Ric asked for: the other axis is CUT, and these
+  // two rims are where it is cut. Everything past them is not a copy and not
+  // more world -- it is nothing, and the picture should look like that.
+  for (const end of [0, 1]) {
+    ctx.beginPath();
+    let started = false;
+    for (let k = 0; k <= around; k++) {
+      const s = k / around;
+      const { p, th } = axis === 0 ? rollPoint(f, s, end) : rollPoint(f, end, s);
+      const n = rollNormal(th);
+      if (n[1] > 0) { started = false; continue; }     // round the back
+      const px = toPx(p);
+      if (!started) { ctx.moveTo(px[0], px[1]); started = true; } else ctx.lineTo(px[0], px[1]);
+    }
+    ctx.strokeStyle = PAL.focus;
+    ctx.lineWidth = 2.5;
+    ctx.globalAlpha = alpha;
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function drawTorus(layer, alpha) {
@@ -1697,21 +1921,65 @@ function drawBands() {
   paint(W.rows - band, W.rows - 1, PAL.bandCold);
 }
 
-function drawSeam() {
-  if (!W.torus) return;
-  const sp = worldSpan(W);
-  ctx.save();
-  // The seam is the one place the repeats need telling apart: it marks which
-  // copy the coordinates in the readout belong to.
-  ctx.strokeStyle = PAL.focus; ctx.globalAlpha = 0.75;
-  ctx.setLineDash([6, 4]); ctx.lineWidth = 1.5;
-  ctx.beginPath();
+// WHERE THE SIMULATION IS, AND WHERE IT STOPS.
+//
+// This replaces a thin dashed seam that was drawn inside the tile loop, so
+// every later copy painted over it and at zoom-out there was nothing on
+// screen distinguishing the world from a picture of the world. It is drawn
+// once, last, over everything.
+//
+// A WRAPPING edge is a seam: the hexagons on the far side are the same
+// hexagons, and the copies beyond it are repeats. A NON-WRAPPING edge is a
+// real boundary with nothing past it. They are drawn differently, because
+// they are different facts, and which is which comes off the run's own
+// measured `wraps`.
+function drawEdge(repeating) {
   const p = (q, r) => [VX + cam.s * wx(q, r), VY + cam.s * wy(q, r)];
-  const a = p(0, 0), b = p(W.cols - 1, 0), c = p(W.cols - 1, W.rows - 1), d = p(0, W.rows - 1);
-  ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]);
-  ctx.lineTo(d[0], d[1]); ctx.closePath(); ctx.stroke();
+  const c0 = p(0, 0), c1 = p(W.cols - 1, 0), c2 = p(W.cols - 1, W.rows - 1), c3 = p(0, W.rows - 1);
+  // the four sides, each labelled with whether crossing it wraps
+  const sides = [
+    { from: c0, to: c1, wraps: W.wrapR },   // the r = 0 edge: crossing it moves in r
+    { from: c1, to: c2, wraps: W.wrapQ },
+    { from: c2, to: c3, wraps: W.wrapR },
+    { from: c3, to: c0, wraps: W.wrapQ },
+  ];
+  ctx.save();
+  // Thicker as it gets smaller: at the zoom where this matters most the
+  // world is a thumbnail, and a 1.5px line around a thumbnail is invisible.
+  const lw = cam.s < 1 ? 2.5 : cam.s < 4 ? 2 : 1.5;
+  for (const side of sides) {
+    ctx.beginPath();
+    ctx.moveTo(side.from[0], side.from[1]);
+    ctx.lineTo(side.to[0], side.to[1]);
+    if (side.wraps) {
+      // a seam: dashed, because it is not a boundary -- you can cross it
+      ctx.setLineDash([7, 5]); ctx.strokeStyle = PAL.focus; ctx.globalAlpha = 0.85;
+    } else {
+      // a real edge: solid, because there is nothing on the other side
+      ctx.setLineDash([]); ctx.strokeStyle = PAL.ink; ctx.globalAlpha = 0.9;
+    }
+    ctx.lineWidth = lw;
+    ctx.stroke();
+  }
+  // Corners, so the domain reads as one shape rather than four lines, and so
+  // it is still findable when the sides are shorter than their own dashes.
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = PAL.focus;
+  ctx.lineWidth = lw + 0.5;
+  const tick = Math.max(6, Math.min(18, cam.s * 3));
+  for (const [a, b, c] of [[c0, c1, c3], [c1, c2, c0], [c2, c3, c1], [c3, c0, c2]]) {
+    const unit = (f, t) => { const dx = t[0] - f[0], dy = t[1] - f[1]; const m = Math.hypot(dx, dy) || 1;
+      return [dx / m, dy / m]; };
+    const u1 = unit(a, b), u2 = unit(a, c);
+    ctx.beginPath();
+    ctx.moveTo(a[0] + u1[0] * tick, a[1] + u1[1] * tick);
+    ctx.lineTo(a[0], a[1]);
+    ctx.lineTo(a[0] + u2[0] * tick, a[1] + u2[1] * tick);
+    ctx.stroke();
+  }
+  void repeating;
   ctx.restore();
-  void sp;
 }
 
 // ------------------------------------------------------------- the selection
@@ -1769,15 +2037,50 @@ function drawSelection() {
 // ======================================================================= hud
 function drawHud() {
   const fold = foldAmount();
+  const shape = shapeOf();
   document.getElementById("stZoom").textContent = cam.s.toFixed(cam.s < 1 ? 2 : 1);
-  document.getElementById("stLod").textContent = fold >= 1 ? "folded · drag to turn"
+  document.getElementById("stLod").textContent =
+    fold >= 1 ? (shape === "donut" ? "donut · drag to turn" : "rolled · drag to turn")
     : level === "detail" ? "full detail" : level === "flat" ? "fills only" : "meshed";
-  // The caveat belongs on the screen that earns it, not in a footer nobody
-  // reads: a doughnut drawn in three dimensions is the right topology and the
-  // wrong geometry, and it is on show exactly while that matters.
+
+  // WHAT YOU ARE LOOKING AT AND WHAT IT COSTS, on the screen that earns it
+  // rather than in a footer nobody reads. Each shape tells a different
+  // partial truth about a surface that cannot be drawn whole, so each one
+  // says which part it is getting wrong while it is the one on show.
   const note = document.getElementById("foldNote");
+  const wasHidden = note.hidden;
   note.hidden = fold < 0.75;
-  if (!note.hidden) note.style.opacity = String(Math.min(1, (fold - 0.75) * 4));
+  // Folded again each time it reappears, so a tap to read it does not leave
+  // it open over every later picture.
+  if (TOUCH && wasHidden && !note.hidden) note.classList.add("folded");
+  if (!note.hidden) {
+    note.style.opacity = String(Math.min(1, (fold - 0.75) * 4));
+    const size = `${W.cols} × ${W.rows}`;
+    const t = document.getElementById("foldTitle");
+    const what = document.getElementById("foldWhat");
+    const cost = document.getElementById("foldCost");
+    if (shape === "donut") {
+      t.textContent = "The same world, closed up both ways.";
+      what.textContent = `${size} with no edge anywhere: leaving by the east arrives at the `
+        + `west, and leaving by the north arrives at the south.`;
+      cost.innerHTML = "<b>This picture stretches.</b> A flat torus cannot be drawn in three "
+        + "dimensions — the outer ring here is <b>2.4× the inner</b>, so the same row of "
+        + "hexagons is drawn two and a half times longer on one side than the other. The "
+        + "lattice is flat: every hexagon has the same six neighbours at the same distance. "
+        + "Right topology, wrong geometry. Roll ↔ or Roll ↕ shows one loop with nothing stretched.";
+    } else {
+      const rolled = shape === "roll-q" ? "east–west" : "north–south";
+      const open = shape === "roll-q" ? "north–south" : "east–west";
+      t.textContent = `One loop, rolled. Nothing is stretched.`;
+      what.textContent = `${size}. The ${rolled} loop is closed into the tube — that seam is `
+        + `real, and you are seeing it meet itself. Rolling a flat sheet changes no length `
+        + `and no angle, so every hexagon on this surface is the size it is in the run.`;
+      cost.innerHTML = `<b>The two bright rims are the ends.</b> The ${open} loop is cut `
+        + `there — past them is not more world and not a copy, it is nothing. That loop is `
+        + `real too, and only the flat view shows it; no single picture shows both without `
+        + `stretching something.`;
+    }
+  }
   const at = document.getElementById("stAt");
   const i = TOUCH ? sel : (hov >= 0 ? hov : sel);
   at.textContent = i >= 0 ? `q ${qOf(W, i)} r ${rOf(W, i)}` : `${W.cols}×${W.rows}`;
@@ -2095,7 +2398,50 @@ async function checkEngine() {
   }
 }
 
+// WHAT THE USER ASKED FOR, kept apart from what this run can honestly show.
+//
+// The seeded lattice has edges in both directions, so it can only be drawn
+// flat. The first version let that overwrite the choice, and switching from
+// the seeded lattice to a Lab run left the control stuck on Flat for the
+// rest of the session with no way to tell why. The want is remembered and
+// the run decides what is legal; the control shows the closest legal thing
+// to the want, every time the world changes.
+let wantShape = "roll-q";
+const SHAPE_FALLBACK = {
+  "flat":   ["flat"],
+  "roll-q": ["roll-q", "roll-r", "donut", "flat"],
+  "roll-r": ["roll-r", "roll-q", "donut", "flat"],
+  "donut":  ["donut", "roll-q", "roll-r", "flat"],
+};
+function syncShapes() {
+  if (!W) return;
+  const legal = { "flat": true, "roll-q": !!W.wrapQ, "roll-r": !!W.wrapR,
+                  "donut": !!(W.wrapQ && W.wrapR) };
+  const use = (SHAPE_FALLBACK[wantShape] || ["flat"]).find((v) => legal[v]) || "flat";
+  for (const r of document.querySelectorAll('input[name="shape"]')) {
+    const ok = legal[r.value];
+    r.disabled = !ok;
+    r.checked = r.value === use;
+    r.parentElement.style.opacity = ok ? "" : "0.4";
+    r.parentElement.title = ok ? (r.parentElement.dataset.why || r.parentElement.title)
+      : "This run does not loop that way, so there is nothing to roll.";
+    if (ok && !r.parentElement.dataset.why) r.parentElement.dataset.why = r.parentElement.title;
+  }
+}
+
+function cycleShape() {
+  const all = [...document.querySelectorAll('input[name="shape"]')].filter((r) => !r.disabled);
+  if (all.length < 2) return;
+  const at = all.findIndex((r) => r.checked);
+  const next = all[(at + 1) % all.length];
+  next.checked = true;
+  wantShape = next.value;
+  torusGridKey = "";
+  requestDraw();
+}
+
 function paintReadouts() {
+  syncShapes();
   el("hexBody").innerHTML = hexHtml(sel);
   el("groupBody").innerHTML = groupHtml(sel);
   el("neighbours").innerHTML = neighbourHtml(sel);
@@ -2364,7 +2710,7 @@ addEventListener("keydown", (e) => {
     ArrowDown:  () => { cam.oy -= step; userMoved = true; clampCam(); requestDraw(); },
     b: () => toggle("showBonds"), m: () => toggle("showMom"),
     g: () => toggle("showGroup"), h: () => toggle("showBands"),
-    l: () => toggle("showLoop"), t: () => toggle("showFold"),
+    l: () => toggle("showLoop"), t: () => cycleShape(),
     Escape: () => select(-1),
   };
   if (keys[e.key]) { e.preventDefault(); keys[e.key](); return; }
@@ -2713,6 +3059,14 @@ if (location.port === "8787") {
 el("liveUrl").value = liveState.src === "local" ? LOCAL : RELAY;
 el("liveUrl").placeholder = RELAY;
 
+// The caveat opens and closes on a tap, on touch only -- there is room for
+// all of it on a desktop and no reason to make anyone ask.
+if (TOUCH) {
+  const note = document.getElementById("foldNote");
+  note.classList.add("folded");
+  note.addEventListener("click", () => note.classList.toggle("folded"));
+}
+
 // Leaving the tab stops the asking. A phone in a pocket pulling half a
 // megabyte a second is not watching anything.
 document.addEventListener("visibilitychange", () => {
@@ -2723,7 +3077,14 @@ document.addEventListener("visibilitychange", () => {
 // ================================================================== controls
 function onLayer() { meshKey = ""; torusGridKey = ""; drawLegend(); requestDraw(); }
 for (const r of document.querySelectorAll('input[name="layer"]')) r.addEventListener("change", onLayer);
-for (const id of ["showBonds", "showMom", "showGroup", "showBands", "showLoop", "showFold"]) {
+for (const r of document.querySelectorAll('input[name="shape"]')) {
+  r.addEventListener("change", () => {
+    if (r.checked) wantShape = r.value;        // the ask, not the fallback
+    torusGridKey = "";
+    requestDraw();
+  });
+}
+for (const id of ["showBonds", "showMom", "showGroup", "showBands", "showLoop"]) {
   el(id).addEventListener("change", requestDraw);
 }
 
