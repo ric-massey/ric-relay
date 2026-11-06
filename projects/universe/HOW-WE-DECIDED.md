@@ -2445,3 +2445,44 @@ standing bonds collapse 14× across the crossover. Three causes are tangled — 
 an unscreened kick probability of 0.25, and GAP 3's reading — and separating them is the next
 measurement. The honest summary of the day: four laws changed, every book still balances, and the
 one number that had looked like progress was measured under a width that no longer exists.
+
+### Later the same day: GAP 3, and three guesses in the wrong order
+
+Ric said "sure" to separating item 31's three causes, and the 2×2×2 came back with the ranking
+reversed. **`THERMAL_KICK_PROB` was the prime suspect and it is innocent** — a twelve-fold change
+in how often the world is shaken moves the result by at most 0.15 and changes no ranking, so the
+constant is not load-bearing and should not be searched hard. **±63 is guilty but secondary.**
+**GAP 3's reading was the cause**, worth more than everything else together, and it is the one
+thing of the three that is a choice rather than a number. That re-opened item 25 hours after it
+had been settled.
+
+Then he said: "fix them. And continue they should move as units if the bond is strong enough but
+I don't want to write that in." He did not need to write it in. Law 1 already says both halves —
+*a soft strike moves a cluster together*, and *the group steps at `|p| / K`* — and the Lab had
+never implemented either, because it moves one hexagon at a time. Implementing them settled GAP 3
+with no new law and no new constant: mean binding energy **7.03 against 5.26 for blind grabbing**,
+the best this project has measured, where the two readings that had been argued over for two days
+scored 6.70 and 7.04-but-frozen.
+
+**His own condition is the part that did not survive, and it is worth recording why.** "If the
+bond is strong enough" is the engine's `owed > energy` test, and that is what was built first. It
+came last of the three readings that let a cluster move. At the temperatures where chemistry
+happens almost every bond *is* affordable, so it snapped before the drag was reached — the drag
+fired 572 times a run instead of thousands, and the gate was permitting exactly what it was meant
+to prevent. What survives is the half doing the work, that a bond holds against motion; what went
+is heat deciding it *there*, because **law 2 already owns breaking and owns it with a sharper
+test.** Letting law 1 break bonds too was GAP 3's invention from the start.
+
+**And the fix broke rule 9, which is recorded here rather than resolved.** Finding a cluster
+reads past a hexagon's neighbours. Rule 9 allows one exception, has the gravity pyramid in it,
+and says to raise a second rather than add it — so item 32 raises it, and the engine carries the
+violation meanwhile. The argument against allowing it is in law 1's own wording: "once momentum
+has *spread* across a bonded group" describes momentum diffusing along bonds, which is local,
+with `|p| / K` as the outcome rather than the recipe. **Reading a description of an outcome as an
+algorithm is what cost both the locality and the light cone**, and one local mechanism would buy
+both back. The chemistry does not depend on the choice — the local-but-frozen reading ties on
+every chemistry number — so what the exception buys is moving matter, not selectivity.
+
+The lesson from the day, and it is the same one twice: **two of item 31's three causes were only
+as large as they were because of the third, and the third was the one nobody suspected.** Guessing
+the ranking of tangled causes went 0 for 3.

@@ -295,7 +295,15 @@ console.log(`\n=== Check 9: do the findings survive a seed and a constant change
   // unscreened constant set. Ric asked whether that was all they rested on,
   // and it was. This is the answer, and it is the reason the numbers in those
   // items are ranges rather than single figures.
-  const KEYS = ["tooColdToMove", "emissionBlocked", "quantumWaited", "bondsStretched"];
+  // bondsStretched -> dragged ON 2026-11-06, and this is a replacement rather
+  // than a deletion. The effect it watched was "motion broke a bond", and
+  // after GAP 3 was settled motion cannot break a bond at all, so that
+  // counter is zero by construction in every run -- not rare, impossible.
+  // Dropping it and leaving three keys would have been the dishonest move:
+  // it would read as a check that got easier. What replaced the effect in the
+  // physics is the drag, so that is what replaces it here, and the list is
+  // still four effects that must survive a seed and a constant change.
+  const KEYS = ["tooColdToMove", "emissionBlocked", "quantumWaited", "dragged"];
 
   // EV WENT 120,000 -> 400,000 ON 2026-11-06, and the reason is worth keeping
   // because it is a lesson about this check rather than about the physics.

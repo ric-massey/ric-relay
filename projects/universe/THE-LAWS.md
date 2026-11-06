@@ -280,15 +280,27 @@ cluster as a wave at no more than one hexagon per tick, so a cluster has a **spe
 it is bounded by the causal limit with nothing written down to bound it. Long clusters flex. That
 is better physics than rigidity rather than a compromise with it.
 
-**THE LAB DOES NOT IMPLEMENT THIS, AND ON 2026-11-06 THAT TURNED OUT TO BE EXPENSIVE.** The
-engine moves one hexagon at a time, so "a soft strike moves a cluster together" has nowhere to
-happen: it has to either break the bonds a step would stretch, or refuse the step. Both are
-written down as GAP 3 and neither is this paragraph. The cost was measured — the breaking reading
-leaves motion sorting bonds no better than a frozen world does, and the refusing reading sorts
-them three times better but freezes every bonded cluster solid (README items 25 and 31, 96 runs).
-**So this paragraph is not a description of anything that runs yet; it is the specification for
-the thing that would fix both.** Moving a bonded group as a unit, at `|p| / K` by the paragraph
-below, is the open work.
+**THE LAB DID NOT IMPLEMENT THIS UNTIL 2026-11-06, AND NOT DOING SO TURNED OUT TO BE EXPENSIVE.**
+The engine moved one hexagon at a time, so "a soft strike moves a cluster together" had nowhere to
+happen: a step could only break the bonds it would stretch, or not happen. Both are written down
+as GAP 3 and neither is this paragraph. Measured, the breaking reading left motion sorting bonds
+no better than a frozen world does, and refusing the step sorted them three times better while
+freezing every bonded cluster solid (README items 25 and 31).
+
+**It is implemented now, and this paragraph is what settled GAP 3.** `dragCluster` translates the
+bonded group one hexagon and `motionRateAt` reads the group's total kind, so both halves of law 1
+are in force together: the cluster goes, and it goes more slowly the heavier it is. Motion no
+longer breaks bonds at all — law 2 owns breaking, by the sharper test it already had — and mean
+binding energy reached **7.03 against 5.26 for blind grabbing**, the strongest selectivity the
+project has measured. No law and no constant was added to get it.
+
+**Two things about it are still wrong, and they are one thing.** The translation is instantaneous,
+so a cluster of n hexagons moves information n hexagons in one event where the speed of sound in
+this very paragraph says n ticks; and finding the cluster reads past a hexagon's neighbours, which
+breaks rule 9. The fix for both is the phrase in the paragraph below — momentum **spreading**
+across the group, bond by bond, which is local and takes time. **So the Lab now does what this
+paragraph says, by a mechanism this paragraph does not describe.** README item 32 is the open
+decision.
 
 **Inertia then comes out proportional to total kind, not to primitive count.** Once momentum has
 spread across a bonded group of total kind `K`, the group steps at `|p| / K` by law 1's own rate

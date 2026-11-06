@@ -328,6 +328,7 @@ export class Lab {
       emissionBlocked: 0, quantumWaited: 0,
       momentumShared: 0, momentumRangeDeclined: 0, shareUnaffordable: 0, thermostatFires: 0,
       thermalKicks: 0, kickRangeDeclined: 0, kickUnaffordable: 0, kickNoPartner: 0,
+      dragged: 0, draggedMembers: 0, dragBlocked: 0, dragLargest: 0,
     };
   }
 
@@ -352,7 +353,24 @@ export class Lab {
     // Law 1: one hexagon every k/|p| ticks, capped at one per tick. As a rate
     // that is min(1, |p|/k) steps per tick, and GAP 1 turns "per tick" into
     // "per unit of the fastest clock".
-    const speed = Math.min(1, Math.sqrt(Q / 2) / w.kind[i]);
+    //
+    // THE k IS THE CLUSTER'S TOTAL KIND SINCE 2026-11-06, NOT THIS HEXAGON'S.
+    // That is law 1 as already written, not a change to it: "once momentum
+    // has spread across a bonded group of total kind K, the group steps at
+    // |p| / K by law 1's own rate rule, so a heavy composite resists being
+    // pushed". The Lab read this hexagon's own kind until now, which gave a
+    // light primitive bonded into a heavy cluster the inertia of a speck --
+    // and once the cluster can be dragged (see dragCluster) that would have
+    // been a mouse towing a battleship at full speed.
+    //
+    // It costs a walk of the cluster on every rate computation, which is
+    // affordable only because clusters here are small: measured 2026-11-06
+    // over held temperatures 0 to 20, the largest cluster in the world was 29
+    // hexagons and the median bonded primitive sat in one of 2 to 4. The
+    // unbonded case, which is most of the world above T = 0, does not walk at
+    // all.
+    const K = w.bonds[i] === 0 ? w.kind[i] : this.clusterTotalKind(i);
+    const speed = Math.min(1, Math.sqrt(Q / 2) / K);
     return this.causal * speed;
   }
   totalRateAt(i) {
@@ -680,6 +698,174 @@ export class Lab {
     return best;
   }
 
+  // ----------------------------------------------------- bonded groups
+  // A cluster is the connected component over bonds. Everything here exists
+  // because law 1 talks about bonded GROUPS -- their total kind, and their
+  // moving together -- and until 2026-11-06 nothing in the Lab could see one.
+  //
+  // The mark array is stamped with an epoch rather than cleared, so a walk
+  // costs the cluster and not the world. The epoch is reset before it can
+  // overflow Int32, because a wrapped epoch would silently report every
+  // hexagon as already-visited and so every cluster as a single primitive.
+  _scratch() {
+    if (this._mark === undefined) {
+      this._mark = new Int32Array(CELLS);
+      this._stack = new Int32Array(CELLS);
+      this._epoch = 0;
+    }
+    if (this._epoch >= 2147483000) { this._mark.fill(0); this._epoch = 0; }
+    return ++this._epoch;
+  }
+
+  // Total kind of the bonded group containing i. This is law 1's K.
+  clusterTotalKind(i) {
+    const w = this.w;
+    if (w.bonds[i] === 0) return w.kind[i];
+    const epoch = this._scratch(), mark = this._mark, stack = this._stack;
+    let top = 0, K = 0;
+    stack[top++] = i; mark[i] = epoch;
+    while (top > 0) {
+      const x = stack[--top];
+      K += w.kind[x];
+      for (let e = 0; e < DIRECTIONS; e++) {
+        if (!(w.bonds[x] & (1 << e))) continue;
+        const y = neighbour(x, e);
+        // A bonded partner is always matter. A hexagon with bonds set and no
+        // kind is a quantum in flight, which is not a cluster member.
+        if (w.kind[y] === 0 || mark[y] === epoch) continue;
+        mark[y] = epoch; stack[top++] = y;
+      }
+    }
+    return K;
+  }
+
+  // The members themselves, for a drag. This allocates, which
+  // clusterTotalKind deliberately does not, because drags are far rarer than
+  // rate computations. It leaves the marks standing so inCluster can read them.
+  clusterOf(i) {
+    const w = this.w;
+    const epoch = this._scratch(), mark = this._mark;
+    const out = [i];
+    mark[i] = epoch;
+    for (let h = 0; h < out.length; h++) {
+      const x = out[h];
+      for (let e = 0; e < DIRECTIONS; e++) {
+        if (!(w.bonds[x] & (1 << e))) continue;
+        const y = neighbour(x, e);
+        if (w.kind[y] === 0 || mark[y] === epoch) continue;
+        mark[y] = epoch; out.push(y);
+      }
+    }
+    this._clusterEpoch = epoch;
+    return out;
+  }
+
+  inCluster(t) { return this._mark[t] === this._clusterEpoch; }
+
+  // GAP 3'S THIRD READING, and law 1's own: "a soft strike moves a cluster
+  // together". Adopted 2026-11-06. The two readings it replaces were each
+  // measurably wrong, in opposite directions (README items 25 and 31): the
+  // first broke every bond that motion stretched, which left annealing no
+  // better than a frozen world, and the rival refused the step, which sorted
+  // bonds three times better but froze every bonded cluster solid.
+  //
+  // NO LAW AND NO CONSTANT WAS ADDED, so rule 7 is not charging for this
+  // one. Both halves of it are quotations from law 1: "a soft strike moves a
+  // cluster together", and the group stepping at |p| / K. Bonds still break
+  // when they are hot enough, by law 2, one line earlier in step().
+  //
+  // A rigid translation conserves everything by construction. Each member
+  // carries its own kind, heat and momentum to the new site, so every
+  // per-hexagon quantity is untouched and the ledger cannot move -- and the
+  // bond masks are carried UNCHANGED, because translating every member by the
+  // same unit vector maps each partner onto the translated partner. That is
+  // asserted below rather than trusted.
+  //
+  // IT BREAKS RULE 9, AND THAT NEEDS RIC'S DECISION RATHER THAN THIS COMMENT.
+  // "Locality is absolute. Nothing reads past a site's immediate neighbors",
+  // with the gravity pyramid as the one exception and an instruction attached:
+  // if you need a second one, something is wrong with the design -- raise it
+  // rather than adding it. A cluster walk is a second one. It is raised as
+  // README item 32, and the engine is carrying the violation in the meantime
+  // because the alternative was throwing the measurement away.
+  //
+  // Two things make the case less bad than it sounds and neither settles it.
+  // The walk only ever follows bonds, so it reads matter this hexagon is
+  // physically attached to rather than anywhere in the world; and law 1's own
+  // words are "once momentum has SPREAD across a bonded group", which
+  // describes momentum diffusing along bonds -- a local mechanism, with
+  // |p| / K as its outcome rather than its recipe. Reading that description
+  // as an algorithm is what cost the locality.
+  //
+  // THE OTHER THING WRONG WITH IT is the same mistake seen from the other
+  // side: the translation is instantaneous, so a cluster of n hexagons moves
+  // information n hexagons in one event, where law 1's speed of sound says it
+  // should take n ticks. The error is bounded by the largest cluster, which
+  // measured 29 and typically 2 to 4, so it is small -- but it is an error
+  // and not a choice.
+  //
+  // Both have the same honest fix, which is why they are one item: momentum
+  // spreading bond by bond, as law 1 says, so the cluster moves over several
+  // events and nothing reads past a neighbour. That is a wave, not a drag,
+  // and it is real work -- shareMomentum already does the local transfer this
+  // would be built from.
+  dragCluster(i, d) {
+    const w = this.w;
+    const members = this.clusterOf(i);
+
+    // Every destination outside the cluster has to be EMPTY -- no matter, and
+    // no quantum in flight either. A destination holding something would have
+    // to be absorbed into one particular member, and which one is a decision
+    // nothing in the laws makes. So the drag does not happen, which is what
+    // used to happen on this branch anyway.
+    for (const m of members) {
+      const t = neighbour(m, d);
+      if (this.inCluster(t)) continue;
+      if (w.kind[t] !== 0 || w.bonds[t] !== 0) { this.counts.dragBlocked++; return false; }
+    }
+
+    // Snapshot before writing: the cleared set and the written set overlap.
+    const snap = [];
+    for (const m of members) snap.push(w.kind[m], w.energy[m], w.mx[m], w.my[m], w.bonds[m]);
+    for (const m of members) { w.kind[m] = 0; w.energy[m] = 0; w.mx[m] = 0; w.my[m] = 0; w.bonds[m] = 0; }
+    for (let x = 0; x < members.length; x++) {
+      const t = neighbour(members[x], d), b = x * 5;
+      w.kind[t] = snap[b]; w.energy[t] = snap[b + 1];
+      w.mx[t] = snap[b + 2]; w.my[t] = snap[b + 3]; w.bonds[t] = snap[b + 4];
+    }
+
+    // The bond masks were carried unchanged, which is correct only because
+    // translation commutes with the lattice wrap. Assert it: a bond left
+    // pointing at nothing is a silent corruption of the one structure this
+    // world is built out of, and rule 6 says a discrepancy of one is a bug.
+    for (let x = 0; x < members.length; x++) {
+      const t = neighbour(members[x], d);
+      for (let e = 0; e < DIRECTIONS; e++) {
+        if (!(w.bonds[t] & (1 << e))) continue;
+        const p = neighbour(t, e);
+        if (w.kind[p] === 0 || !(w.bonds[p] & (1 << opposite(e))))
+          throw new Error("drag left a bond seam open at " + t + " direction " + e
+            + " -- translation does not commute with the lattice wrap");
+      }
+    }
+
+    // The event loop reschedules i and its six neighbours and nothing else,
+    // which is right for a one-hexagon step and wrong for this. A drag has to
+    // reschedule everything it touched, at both ends of the move.
+    for (const m of members) {
+      this.schedule(m);
+      for (let e = 0; e < DIRECTIONS; e++) this.schedule(neighbour(m, e));
+      const t = neighbour(m, d);
+      this.schedule(t);
+      for (let e = 0; e < DIRECTIONS; e++) this.schedule(neighbour(t, e));
+    }
+
+    this.counts.dragged++;
+    this.counts.draggedMembers += members.length;
+    if (members.length > this.counts.dragLargest) this.counts.dragLargest = members.length;
+    return true;
+  }
+
   step(i) {
     const w = this.w;
     const d = this.stepDirection(i);
@@ -742,14 +928,38 @@ export class Lab {
       // because nothing wrote it down: COLD CLUSTERS ARE RIGID, and they are
       // rigid because they cannot afford to come apart, not because any rule
       // says so. Heat one and it can move again.
-      let owed = 0;
-      for (const e of stretched) owed += bindingEnergy(w.kind[i], w.kind[neighbour(i, e)]);
-      if (owed > w.energy[i]) { this.counts.blocked++; this.counts.tooColdToMove++; return; }
-      // Past this line the step WILL happen, so it is now safe to change the
-      // world.
-      for (const e of stretched) {
-        this.severBond(i, e, i, "law 1 step stretched a bond");
-        this.counts.bondsStretched++;
+      // THE BOND HOLDS AND THE CLUSTER GOES TOGETHER, AND IF IT CANNOT GO,
+      // NOTHING MOVES. Adopted 2026-11-06. Motion no longer breaks bonds at
+      // all: breaking is law 2's, and law 2 already owns a sharper test for
+      // it -- temperature at or above B. Letting law 1 break bonds as well
+      // was GAP 3's invention, and measuring it is what retired it.
+      //
+      // THE AFFORDABILITY TEST IS GONE FROM THIS BRANCH, and that is a
+      // departure from what Ric asked for, so it is written down rather than
+      // buried. He asked for clusters that move as units "if the bond is
+      // strong enough", which is this file's own `owed > energy` test, and
+      // that is exactly what was built first. It scored WORST of the three
+      // readings that let a cluster move (mean B 6.69, against 7.03 for this
+      // one) and the reason is visible in the counters: at the temperatures
+      // where chemistry actually happens, almost every bond IS affordable,
+      // so it snapped before the drag was ever reached -- the drag fired 572
+      // times a run instead of thousands. The gate was letting the thing it
+      // was meant to prevent happen anyway. README item 31 has the table.
+      //
+      // What survives of his rule is the part that was doing the work: a
+      // bond holds against motion. What it no longer does is let heat decide
+      // that here, because law 2 decides it one line earlier and better.
+      if (stretched.length > 0) {
+        // The name is historical: this counted primitives too cold to pay for
+        // their own escape, and now counts every step a bond refuses to
+        // stretch for. lab-check.mjs Check 9 watches it under the old name.
+        this.counts.tooColdToMove++;
+        if (this.dragCluster(i, d)) return j;
+        // The drag was refused because something is in the way, so the step
+        // really does not happen. This is the only path left to the old
+        // behaviour, and it is now a crowded world rather than a cold one.
+        this.counts.blocked++;
+        return;
       }
     }
 

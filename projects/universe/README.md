@@ -1172,9 +1172,39 @@ implements, is the one law 1 actually describes: the cluster moves together.** T
 rather than a choice between two lines, because nothing in the engine can presently move more
 than one hexagon at a time.
 
-*Decided by:* whether a cluster can be made to move as a unit without breaking the light cone or
-the ledger. Until it can, the choice is between a reading that shatters chemistry and a reading
-that freezes clusters solid.
+**SETTLED THE SAME DAY, on the third reading, which is law 1's own.** *(Ric: "fix them. And
+continue they should move as units if the bond is strong enough but I don't want to write that
+in.")* He was right that it needs no writing in — law 1 already says both halves, *"a soft strike
+moves a cluster together"* and *"the group steps at `|p| / K`"*. The Lab now implements them:
+`dragCluster` translates the bonded group one hexagon, and `motionRateAt` reads the group's total
+kind instead of the hexagon's, so a heavy composite resists being pushed. **No law and no constant
+was added.** Five readings, each swept over held `T` of 0, 2, 6, 20, 3 seeds, 1M events, in
+`gap3-split.mjs`:
+
+| reading | what happens to a stretched bond | best mean `B` | over blind | clusters move? |
+|---|---|---|---|---|
+| **hold** | the cluster goes, and if it cannot go, nothing moves | **7.03** | **+1.77** | **yes** |
+| rigid | the step does not happen, ever | 7.04 | +1.78 | no |
+| first | the cluster goes; if it cannot, the bond breaks if affordable | 6.89 | +1.63 | yes |
+| break | the bond breaks if affordable, else nothing happens | 6.70 | +1.44 | no |
+| drag | the bond breaks if affordable, else the cluster goes | 6.69 | +1.43 | yes |
+
+**`hold` ties `rigid` to within noise and the clusters move, so it wins on physics at no cost in
+chemistry.** 7.03 against 5.26 for blind grabbing is the strongest selectivity this project has
+measured.
+
+**The part of Ric's rule that did not survive, stated plainly because it was his.** "If the bond
+is strong enough" is this file's own `owed > energy` test, and it was built that way first — it is
+the `drag` row, and it came **last** of the three readings that let a cluster move. The counters
+say why: at the temperatures where chemistry happens almost every bond *is* affordable, so it
+snapped before the drag was reached, and the drag fired 572 times a run instead of thousands. The
+gate was permitting the thing it was meant to prevent. What survives is the half that was doing
+the work — a bond holds against motion — and what went is heat deciding that *here*, because law 2
+decides it one line earlier and with a sharper test, temperature at or above `B`. **Letting law 1
+break bonds as well was GAP 3's invention, not law 1's.**
+
+*What is left open:* the implementation reads past a hexagon's neighbours, which breaks rule 9.
+See item 32 — that is a decision, not a detail.
 
 *(Superseded framing follows.)* ~~Raised~~
 2026-11-05 by `lab.mjs`.)* Law 1 settles that clusters are **elastic rather than rigid** — a strike
@@ -1404,8 +1434,51 @@ carries the argument. And a gain of +0.03 or +0.05 is noise, so the two bottom r
 read as **no peak**, not as a small one.
 
 *What is left of this item:* nothing to separate. It is a pointer to item 25, which is where the
-decision moved. Note what was never in doubt: momentum stayed exactly (0, 0) through all 96 runs
-— at either width, under either reading, at either probability. The kick does not leak.
+decision moved and was then settled the same day on a third reading neither of these arms
+contained. Note what was never in doubt: momentum stayed exactly (0, 0) through all 96 runs — at
+either width, under either reading, at either probability. The kick does not leak.
+
+**One figure here is superseded and worth keeping visible.** This item's headline was that ±63
+cost 94% of the annealing gain. That was measured with the shipped GAP 3 reading, and under the
+reading adopted in item 25 the width costs **+1.77 → +1.19 over blind**, a third rather than
+almost all of it. ±63 is still the more violent world; it is no longer the expensive mistake this
+item made it look like. **The general lesson, which is the reason not to overwrite the paragraph
+above:** two of the three causes in this item were only as large as they were *because of the
+third*, and the third was the one nobody suspected.
+
+**32. The Lab now reads past a hexagon's neighbours, and rule 9 says that is Ric's call rather
+than mine.** *(2026-11-06, with the drag.)* Rule 9 is three words and an instruction: *"Locality is
+absolute. Nothing reads past a site's immediate neighbors"*, the gravity pyramid is the one
+exception, and **"if you need a second one, something is wrong with the design — raise it rather
+than adding it."* This is the raising. The violation is in the engine in the meantime, because the
+alternative was discarding the measurement in item 25.
+
+**What reads too far.** `clusterOf` and `clusterTotalKind` walk the connected component over
+bonds, so two things now depend on hexagons up to 29 sites away: the drag, which needs to know
+who moves, and `motionRateAt`, which needs the group's total kind for law 1's `|p| / K`. The
+second is the worse offender, because it runs on every rate computation rather than only on a
+drag.
+
+**The case for allowing it.** The walk only ever follows bonds, so it reads matter this hexagon
+is physically attached to rather than anywhere in the world — a cluster is arguably one object
+with one velocity, and asking what it weighs is not the same kind of reach as the gravity
+pyramid's. It is also cheap: clusters measured 29 at the largest and 2 to 4 typically.
+
+**The case against, which is stronger.** Law 1's actual words are *"once momentum has **spread**
+across a bonded group of total kind K, the group steps at `|p| / K`"* — that describes momentum
+diffusing along bonds, which is local, with `|p| / K` as the *outcome*. Reading a description of
+an outcome as an algorithm is what cost the locality, and it cost the light cone in the same
+stroke: a rigid translation moves information across n hexagons in one event where the speed of
+sound says n ticks. **Both symptoms have one fix** — momentum spreading bond by bond, so the
+cluster moves over several events and nothing reads past a neighbour. `shareMomentum` already
+does the local transfer it would be built from. That is a wave rather than a drag, and it is real
+work rather than a line.
+
+*Decided by:* Ric, between three options. Allow a second exception and write it into rule 9;
+build the wave and keep locality absolute; or revert to `rigid` (item 25's table), which keeps
+locality, keeps the full 7.04 of chemistry, and gives up clusters that move at all. **The
+chemistry does not depend on this choice** — `hold` and `rigid` tie — so what is being bought
+with the exception is moving matter, not selectivity.
 
 
 ### Settled by running the Lab

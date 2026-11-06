@@ -289,6 +289,17 @@ The gravity solver reads the pyramid, and **that is the only exception in the co
 If you need a second one, something is wrong with the design — raise it rather than
 adding it.
 
+**AS OF 2026-11-06 THERE IS A SECOND ONE IN `lab.mjs`, AND IT IS RAISED RATHER THAN RATIFIED.**
+`clusterOf` and `clusterTotalKind` walk the connected component over bonds, so the drag and law
+1's `|p| / K` inertia both read hexagons up to 29 sites away. **This paragraph is not permission.**
+README item 32 is the raising this rule asks for and the decision is Ric's: allow it and amend
+this rule, build the local version (momentum spreading bond by bond, which is what law 1 actually
+describes — "once momentum has *spread* across a bonded group"), or revert to the reading that
+keeps locality and gives up clusters that move. **Do not cite this note as the precedent for a
+third exception**, and do not quietly delete it to make the rule read clean again — the exception
+is in the code either way, and a rules file that hides it is the hazard rule 5's paragraphs warn
+about in the other direction.
+
 **And as of 2026-11-04 that exception may be removable, which changes how to read this rule.** Law
 3 now has a local candidate: `∇²φ − m²φ = ρ`, relaxed by neighbour-averaging, with the force read
 off as the gradient between neighbours. If it is adopted the pyramid goes and **nothing in the
