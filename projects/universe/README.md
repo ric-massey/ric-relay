@@ -377,7 +377,7 @@ since rule 2 forbids storing a cluster id.
 | 8 | Floor bounce or absorb | Not a Lab question — the Lab has no floor. Returns only if the World keeps one (item 22) |
 | 15 | Heavy matter inert at four bytes | The word went to eight bytes and energy to 16 bits; the heaviest kind now reaches 32× its strongest bond (2026-11-04) |
 | 16 | Do things orbit? | Yes — with the sub-unit pull carried and step ties broken by a coin. Too few to halt collapse (2026-11-05) |
-| 21 | A step that ties two directions | A coin (Ric: "the coin flip is definitely the way to go", 2026-11-05). A fixed pick spiralled every orbit inward. Under tracked stepping (item 34) exact ties no longer arise, so the coin only serves `STEPPING: "nearest"` |
+| 21 | A step that ties two directions | A coin (Ric: "the coin flip is definitely the way to go", 2026-11-05). A fixed pick spiralled every orbit inward. Ric's rule (a coin on the first tie, then the opposite each time) measured better: 0 hexagons off the line after 10,000 tied steps against the coin's 43. Under tracked stepping (item 34) exact ties no longer arise, so the coin only serves `STEPPING: "nearest"` |
 | 25 | A bond that motion would stretch | It holds, and the step does not happen. Four readings measured; the shortest won. Clusters still move — bonds within 60° of travel survive a step (2026-11-06) |
 | 28 | Law 2's formation probability | Its own searched constant, `BOND_FORM_PROB` (Ric: "make it eighth", 2026-11-06) |
 | 29 | Heat never became motion | The thermal kick: heat becomes motion in opposite-moving pairs, summing to zero (Ric, 2026-11-06). Thermal pressure itself not yet shown — needs a sweep |

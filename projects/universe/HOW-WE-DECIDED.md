@@ -3319,6 +3319,13 @@ from the draws the World already makes, stated in law 1 of `THE-LAWS.md`. The ot
 alternation, was passed over because it needs a stored bit per primitive. It touches every movement
 path, so the Lab's movement rule is written with it.
 
+*(Superseded 2026-11-06, item 34.)* The coin fixed the handedness but not the wander: every tied step
+is a fresh draw, so a tied path random-walks off its line — 43 hexagons after 10,000 steps, 121 at
+worst (`orbit.mjs` Check 13). Ric then found the better tie rule himself — *"it needs to actually be
+50/50 on the first move but then every time needs to be the opposite"* — which is Bresenham's rule,
+and measured 0 (worst 0.5). Neither went into the engine: tracked stepping (item 34) makes an exact
+tie a probability-zero event, so the tie rule now matters only under `STEPPING: "nearest"`.
+
 **22. What shape is the World?** Raised 2026-11-05 with the Lab's loop. The Lab is a hexagonal
 torus (`THE-LAWS.md`, the hexagonal grid). The World could be one too — it is the most natural
 choice, and our own universe may be a loop: a flat universe can be finite with no edge, and the
