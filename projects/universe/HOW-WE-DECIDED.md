@@ -2460,9 +2460,12 @@ Then he said: "fix them. And continue they should move as units if the bond is s
 I don't want to write that in." He did not need to write it in. Law 1 already says both halves —
 *a soft strike moves a cluster together*, and *the group steps at `|p| / K`* — and the Lab had
 never implemented either, because it moves one hexagon at a time. Implementing them settled GAP 3
-with no new law and no new constant: mean binding energy **7.03 against 5.26 for blind grabbing**,
-the best this project has measured, where the two readings that had been argued over for two days
-scored 6.70 and 7.04-but-frozen.
+with no new law and no new constant: at **±15**, mean binding energy 7.03 against 5.26 for blind
+grabbing, where the two readings argued over for two days scored 6.70 and 7.04.
+
+*(Every figure in this paragraph is a **±15** figure and the Lab ships at ±63, where the same
+readings score 6.45, 5.83 and 6.44. Quoting them without the width is the error the end of this
+section is about — left standing here, labelled, because the mistake is the record.)*
 
 **His own condition is the part that did not survive, and it is worth recording why.** "If the
 bond is strong enough" is the engine's `owed > energy` test, and that is what was built first. It
@@ -2535,11 +2538,23 @@ steps, and the 86,000–183,000 "blocked" counts that looked like frozen cluster
 longitudinal refusals only. `lab-check.mjs` Check 9 now watches `bondedStepped`, chosen because it
 is the effect this project had been wrong about.
 
-**The drag's chemistry advantage is unexplained rather than beaten.** It scored 0.67 of mean `B`
-above every other reading, and it carried law 1's `|p| / K` inertia, which came in with it and
-went out with it. **Two variables moved at once and were never separated** — which is exactly the
-error item 31 was written to record, made again, four items later, by the same hand. It is item 33
-and it is cheap to settle.
+**The drag's chemistry advantage was claimed to be 0.67 and unexplained. Both halves were wrong,
+and the same day's "Run it. Why not?" settled it.** The 0.67 came from putting a **±15** figure
+beside **±63** figures from a different harness — the two-variables-at-once error, committed inside
+the sentence complaining about two variables at once. Measured properly, all four arms at the
+shipped width: neither 6.36, `|p| / K` only **6.44**, the drag only 6.38, both 6.45. **`|p| / K`
+carries all of it and all of it is 0.08**; the drag alone is 0.02, inside the seed spread. The real
+gap across every arm is 0.09, about 7% of the +1.10 the engine already has over blind grabbing.
+
+So **the rule 9 exception would have bought 0.08 of mean `B`**, and removing it cost almost nothing
+— which is the useful thing to know, and the opposite of what the previous paragraph feared. The
+two runs cross-validate: the earlier harness's `rigid` and `hold` arms at ±63 are the same two
+configurations and scored 6.44 and 6.45, reproduced to the second decimal by different code.
+
+The lesson repeats rather than extends: **three times in two days, a number was quoted across a
+change of conditions.** Item 31's three tangled causes, the drag arm's two variables, and then this
+figure. The habit that catches it is cheap and was available every time — say which width, which
+reading and which harness a number came from, in the sentence that quotes it.
 
 A prediction was also wrong and the control was again where the result was. The prediction: a pair
 whose bond lies along its travel cannot translate at all. It translates, at 56 hexagons against

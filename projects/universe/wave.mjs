@@ -230,7 +230,8 @@ function worldRun(which, T, seed) {
     throw new Error(`momentum leaked at ${which} T=${T}: ${c.pxSum},${c.pySum}`);
   const b = bondStats(lab.w);
   return { n: b.n, mb: b.meanB, st: lab.counts.stepped,
-    bs: lab.counts.bondedStepped, pu: lab.counts.pushedAlongBond || 0, w: lab.w };
+    bs: lab.counts.bondedStepped, pu: lab.counts.pushedAlongBond || 0,
+    dr: lab.counts.dragged || 0, w: lab.w };
 }
 
 console.log("\n=== B. the same thing in a full world ===");
@@ -288,3 +289,91 @@ console.log("   of |p| / K emerging. Read it as evidence and not a verdict: it i
 console.log("   seed, and a snapshot of momentum rather than a rate of movement. A");
 console.log("   real measurement needs clusters tracked through time, and the engine");
 console.log("   carries no identity to track them by. README item 33.");
+
+// ----------------------------- D: item 33, the drag and |p| / K separated
+// Ric, 2026-11-06: "Run it. Why not?"
+//
+// The removed drag reading scored higher than everything else on chemistry,
+// and it came with a second change: motionRateAt read the bonded CLUSTER's
+// total kind rather than the hexagon's, which is law 1's |p| / K. Two
+// variables moved at once and were never separated -- the error README item
+// 31 was written to record, made again four items later. So: a 2x2, all four
+// arms at the SHIPPED momentum width, which is the other half of the mistake.
+//
+// The arms carry the cluster walk, which is rule 9's forbidden non-local
+// read. That is why none of them can ship whatever they score -- this is a
+// measurement of what the removed code was worth, not a candidate.
+const DRAGDOC = readFileSync(join(HERE, "rejected", "cluster-drag.txt"), "utf8");
+function between(a, b) {
+  const i = DRAGDOC.indexOf(a);
+  if (i < 0) throw new Error(`marker missing from cluster-drag.txt: ${a}`);
+  const from = i + a.length;
+  const j = b ? DRAGDOC.indexOf(b, from) : DRAGDOC.length;
+  if (b && j < 0) throw new Error(`marker missing from cluster-drag.txt: ${b}`);
+  return DRAGDOC.slice(from, j).replace(/^\r?\n/, "").replace(/\r?\n\s*$/, "");
+}
+const M_METHODS = "--- METHODS BELOW THIS LINE ---";
+const M_RATE = "--- RATE LINE BELOW THIS LINE ---";
+const M_CALL = "--- DRAG CALL BELOW THIS LINE ---";
+const CLUSTER_METHODS = between(M_METHODS, M_RATE);
+const K_RATE = between(M_RATE, M_CALL);
+const DRAG_CALL = between(M_CALL, null);
+const A_RATE = "    const speed = Math.min(1, Math.sqrt(Q / 2) / w.kind[i]);";
+const A_COLD = "        this.counts.tooColdToMove++;";
+
+function arm(useDrag, useK) {
+  let s = SRC.replace('} from "./constants.mjs";', "} from " + JSON.stringify(CONSTS) + ";");
+  for (const [name, anchor] of [["counters", A_COUNTS], ["method", A_METHOD],
+                                ["rate", A_RATE], ["cold", A_COLD]]) {
+    if (s.split(anchor).length - 1 !== 1)
+      throw new Error(`the ${name} anchor matched ${s.split(anchor).length - 1} times, need 1`);
+  }
+  // The drag's own counters, which dragCluster increments.
+  s = s.replace(A_COUNTS, A_COUNTS
+    + "\n      dragged: 0, draggedMembers: 0, dragBlocked: 0, dragLargest: 0,");
+  s = s.replace(A_METHOD, CLUSTER_METHODS + "\n\n" + A_METHOD);
+  if (useK) s = s.replace(A_RATE, K_RATE);
+  if (useDrag) s = s.replace(A_COLD, A_COLD + "\n" + DRAG_CALL);
+  const p = join(TMP, "lab-" + (useDrag ? "drag" : "nodrag") + "-" + (useK ? "K" : "k") + ".mjs");
+  writeFileSync(p, s);
+  return p;
+}
+for (const [useDrag, useK, name] of [[false, true, "k-only"], [true, false, "drag-only"],
+                                     [true, true, "both"]]) {
+  engines[name] = await import(pathToFileURL(arm(useDrag, useK)).href);
+}
+
+console.log("\n=== D. item 33: the drag and |p| / K, separated at last ===");
+console.log("    all four arms at the SHIPPED momentum width, which is the half of");
+console.log("    the earlier comparison that was also wrong\n");
+const D = [["plain", "neither -- as it ships"], ["k-only", "|p| / K only"],
+           ["drag-only", "the drag only"], ["both", "both, as it was removed"]];
+console.log("   arm                        best meanB   over blind   seed spread   drags");
+const dres = [];
+for (const [key, label] of D) {
+  let best = null;
+  for (const T of TEMPS) {
+    // Keep the per-seed values, because the whole question here is whether a
+    // difference between arms is bigger than the difference between seeds.
+    const each = SEEDS.map((s) => worldRun(key, T, s));
+    const mb = each.reduce((a, r) => a + r.mb, 0) / each.length;
+    if (!best || mb > best.mb) best = { T, mb,
+      lo: Math.min(...each.map((r) => r.mb)), hi: Math.max(...each.map((r) => r.mb)),
+      bs: Math.round(each.reduce((a, r) => a + r.bs, 0) / each.length),
+      dr: Math.round(each.reduce((a, r) => a + r.dr, 0) / each.length) };
+  }
+  dres.push({ label, ...best });
+  console.log(`   ${label.padEnd(24)}   ${best.mb.toFixed(2).padStart(10)}`
+    + `   ${("+" + (best.mb - BLIND).toFixed(2)).padStart(10)}`
+    + `   ${(best.hi - best.lo).toFixed(2).padStart(11)}   ${String(best.dr).padStart(5)}`);
+}
+const span = Math.max(...dres.map((r) => r.mb)) - Math.min(...dres.map((r) => r.mb));
+const noise = Math.max(...dres.map((r) => r.hi - r.lo));
+console.log(`\n   Spread across all four arms: ${span.toFixed(2)} of mean B.`);
+console.log(`   Largest seed-to-seed spread within one arm: ${noise.toFixed(2)}.`);
+console.log(`   ${span > noise ? "The arms differ by more than the seeds do."
+  : "THE ARMS DIFFER BY LESS THAN THE SEEDS DO -- neither variable matters."}`);
+console.log("\n   The gap this item was raised to explain was stated as 0.67, and that");
+console.log("   figure compared a +-15 arm against a +-63 one -- the same");
+console.log("   two-variables-at-once error, one level up, in the sentence that");
+console.log("   complained about it. The table above is the honest version.");

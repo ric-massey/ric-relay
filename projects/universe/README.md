@@ -1178,12 +1178,18 @@ enough but I don't want to write that in", then, told the drag broke rule 9 and 
 resolves it, "Do it".)* Four readings were built and measured over two days. The shortest won, on
 the measurement as well as on rule 7's preference for removing.
 
-| reading | what happens to a stretched bond | best mean `B` | over blind | clusters move? |
+| reading | what happens to a stretched bond | mean `B` | over blind | clusters move? |
 |---|---|---|---|---|
-| **hold** | nothing happens; the step is refused | **6.36** | **+1.10** | **yes — 14,495 bonded steps** |
-| wave | the momentum goes along the bond instead | 6.34 | +1.08 | yes — 14,812 |
-| drag | the whole bonded cluster translates at once | 7.03 | +1.77 | yes, but non-locally |
-| break | the bond breaks if the stepper can pay | 6.70 | +1.44 | yes |
+| **holds** | nothing happens; the step is refused | **6.36** | **+1.10** | **yes — 14,495 bonded steps** |
+| drag | the whole bonded cluster translates at once | 6.38 | +1.12 | yes, but non-locally |
+| wave | the momentum goes along the bond instead | 6.34 | +1.08 | yes |
+| break | the bond breaks if the stepper can pay | 5.83 | +0.57 | yes |
+
+**All four at the shipped momentum width, ±63, which the first version of this table got wrong —
+see correction 2.** Blind grabbing is 5.26 and a perfect bond is 8. The whole table spans **0.09**,
+against a seed-to-seed spread inside one arm of up to 0.04, so GAP 3's reading is worth very little
+to the chemistry either way. What the reading decides is whether bonds survive at all, and `break`
+is the one that answers differently: it is the only row below +1.0.
 
 **Two corrections are more valuable than the decision, and both are retractions of things this
 project said confidently.**
@@ -1200,13 +1206,32 @@ not exist, and the 86,000–183,000 "blocked" counts that were read as frozen cl
 *longitudinal refusals only*. `lab-check.mjs` Check 9 now watches `bondedStepped` for exactly this
 reason.
 
-**2. The `drag` row's 7.03 is not comparable to the others and the table above should not be read
-as it losing narrowly.** It was measured with `|p| / K` inertia in place, which came in with the
-drag and went out with it. What it really shows is that the two differ by **0.67 of mean `B` with
-two variables moved at once**, which is the mistake item 31 was written about. Separating them was
-not done, because the drag was removed for breaking rule 9 rather than for its score — but **the
-honest statement is that the drag's chemistry advantage is unexplained**, not that it was beaten.
-Item 33.
+**2. The first version of this table said the drag scored 7.03 and that its 0.67 advantage was
+unexplained. Both halves of that were wrong, and the error was mine twice over.** The 7.03 is a
+**±15** figure and it was put beside **±63** figures from a different harness — so the "0.67 gap"
+was mostly the momentum width, which is the two-variables-at-once mistake *inside the sentence
+complaining about two variables at once*. And the drag arm also carried `|p| / K` inertia that no
+other arm had, so even at one width it moved two things.
+
+**Separated 2026-11-06** *(Ric: "Run it. Why not?")*, all four arms at ±63, in `wave.mjs` section D:
+
+| arm | mean `B` | over blind | seed spread |
+|---|---|---|---|
+| neither — as it ships | 6.36 | +1.10 | 0.01 |
+| `\|p\| / K` only | **6.44** | **+1.18** | 0.02 |
+| the drag only | 6.38 | +1.12 | 0.01 |
+| both, as it was removed | 6.45 | +1.19 | 0.04 |
+
+**`|p| / K` carries essentially all of it, and all of it is 0.08.** The drag alone is worth 0.02,
+inside the seed noise. The real gap was never 0.67; it is **0.09 across every arm**, about 7% of
+the +1.10 the engine already has over blind grabbing. So nothing was given up by removing either:
+**a rule 9 exception would have bought 0.08 of mean `B`.** Item 33 has what this does and does not
+settle.
+
+*(The two runs cross-validate, which is the reason to believe them: the earlier harness's `rigid`
+and `hold` arms at ±63 scored 6.44 and 6.45, and they are the same two configurations as
+`|p| / K only` and `both` here — reproduced to the second decimal by different code on different
+seeds.)*
 
 **What Ric asked for, and what he got.** He asked for clusters that move as units if the bond is
 strong enough. They do move — he was right that it needed no writing in, and righter than the
@@ -1544,12 +1569,25 @@ identity to track them by** — which is itself the finding, because rule 2 forb
 id, so the instrument has to re-identify clusters every sample and match them up. That is the work
 this item is waiting on.
 
-**And it is tangled with item 25's second correction.** The drag arm scored 0.67 of mean `B` higher
-than everything else, and it carried `|p| / K` inertia that no other arm had. Either that inertia
-is worth a great deal to the chemistry — in which case this item matters much more than it looks —
-or the drag's advantage came from somewhere else entirely. **Two variables moved at once and were
-never separated**, which is precisely the error item 31 was written to record. *Decided by:* putting
-`|p| / K` back on its own, with no drag, and measuring. That is cheap and has not been done.
+**Half of this item is now settled, and it is the half about whether the removal cost anything.**
+*(Ric: "Run it. Why not?")* `|p| / K` was put back on its own, with no drag, at the shipped width —
+item 25's correction 2 has the table. It is worth **+0.08 of mean `B`** (6.36 → 6.44), the drag
+alone is worth 0.02 which is inside the seed noise, and the two together give 6.45. **So the
+non-local read would have bought 0.08**, against the +1.10 the engine already has over blind
+grabbing, and removing it cost almost nothing. It is real — 0.09 across the arms against a 0.04
+seed spread — but it is small.
+
+**What is NOT settled is whether it emerges, and the evidence still says no.** An inertia worth
++0.08 when imposed is not an inertia that appears on its own, and the momentum-per-member figures
+above are flat to slightly rising where `|p| / K` predicts a fall. Two honest readings of that:
+either the mechanism that should produce it is missing, or `|p| / K` is not a big enough effect in
+this world to see at these cluster sizes — the largest cluster measured 29 hexagons, so the heaviest
+`K` is only about 30× the lightest, and the momentum has nowhere far to spread.
+
+*Decided by:* clusters tracked through time, which is what would turn a snapshot of momentum into a
+rate of movement. **The engine carries no identity to track them by** — rule 2 forbids storing a
+cluster id — so the instrument has to re-identify clusters every sample and match them across
+samples. That is the work left, and it is now worth less than it looked, because the prize is 0.08.
 
 
 ### Settled by running the Lab

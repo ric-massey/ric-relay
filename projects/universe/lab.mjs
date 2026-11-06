@@ -875,7 +875,8 @@ export class Lab {
       // buried. He asked for clusters that move as units "if the bond is
       // strong enough", which is this file's own `owed > energy` test, and
       // that is exactly what was built first. It scored WORST of the three
-      // readings that let a cluster move (mean B 6.69 against 7.03), because
+      // readings that let a cluster move (mean B 6.69 against 7.03 at +-15,
+      // and both are +-15 figures -- see README item 25 correction 2), because
       // at the temperatures where chemistry happens almost every bond IS
       // affordable, so it snapped before anything else was reached. The gate
       // was permitting the thing it was meant to prevent. What survives of
