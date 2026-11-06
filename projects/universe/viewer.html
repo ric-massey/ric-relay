@@ -1647,9 +1647,11 @@ function runHtml() {
   </dl>
   <p class="warn" style="margin-top:9px"><b>CANDIDATE_ZERO, not a chosen physics.</b>
   The searched constants in this run come from the plumbing test point, because the search has
-  not happened. README item 31 is the standing reason to distrust any chemistry figure read off a
-  run: at ±${PMAX} with the thermal kick on, the bond-quality peak measured the day before did
-  not survive, and three causes are still tangled.</p>`;
+  not happened — the header above lists every one of them. What chemistry a run shows turns on
+  <b>GAP 3's reading</b> far more than on anything in that list: item 31's 2×2×2 found it worth
+  more gain than the momentum width and the thermal kick put together, and found the kick
+  probability is not a cause at all. The engine's reading of GAP 3 changed on 2026-11-06, after
+  that table was measured, so a figure read here is not one of its figures. A run is one seed.</p>`;
 }
 
 function paintReadouts() {
@@ -1730,7 +1732,8 @@ let vx = 0, vy = 0, lastMove = 0, inertiaRaf = 0;
 
 stage.addEventListener("pointerdown", (e) => {
   if (e.target.closest(".hud")) return;
-  stage.setPointerCapture?.(e.pointerId);
+  // A capture that throws must not take the rest of the gesture down with it.
+  try { stage.setPointerCapture(e.pointerId); } catch { /* no active pointer */ }
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   cancelAnimationFrame(inertiaRaf);
   cancelAnimationFrame(glideRaf);
@@ -1871,7 +1874,10 @@ function miniJump(e) {
   userMoved = true;
   clampCam(); requestDraw();
 }
-mini.addEventListener("pointerdown", (e) => { mini.setPointerCapture(e.pointerId); miniJump(e); });
+mini.addEventListener("pointerdown", (e) => {
+  try { mini.setPointerCapture(e.pointerId); } catch { /* no active pointer */ }
+  miniJump(e);
+});
 mini.addEventListener("pointermove", (e) => { if (e.buttons) miniJump(e); });
 
 // tooltip, desktop only
@@ -1933,7 +1939,7 @@ if (TOUCH) {
   const onDown = (e) => {
     from = { y: e.clientY, t: sheet.getBoundingClientRect().top };
     sheet.classList.add("dragging");
-    grab.setPointerCapture(e.pointerId);
+    try { grab.setPointerCapture(e.pointerId); } catch { /* no active pointer */ }
   };
   const onMove = (e) => {
     if (!from) return;
