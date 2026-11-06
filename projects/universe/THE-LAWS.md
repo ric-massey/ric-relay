@@ -48,9 +48,13 @@ destroyed. All three are integers.
 
 **Momentum is an integer vector, and speed is derived from it: `v = p / k`.** Momentum is held
 in cube coordinates on the hex lattice's three axes — two independent signed components, each in
-±15 — and it is *not* the same thing as where the primitive goes next. That separation is the whole
+±63 — and it is *not* the same thing as where the primitive goes next. That separation is the whole
 point. Settled 2026-11-04 after measurement; it was "one unit in a direction, regardless of kind"
 until then, which is option (A) in `HOW-WE-DECIDED.md`.
+
+*(±15 from 2026-11-04 to 2026-11-06, when momentum went to ±63 by Ric's call on README item 20 —
+and this headline was again the last place to hear about it, still saying ±15 until the doc pass of
+the same day. Item 20 and the range paragraph below have the reasons.)*
 
 *(Said ±3 until 2026-11-05 — **in the headline statement of the law**, while the paragraph below
 had already been updated to ±15 when the word went to eight bytes on 2026-11-04. The same drift was
@@ -546,7 +550,7 @@ matter neutralizes and it vanishes at distance. Gravity has one sign. It only ev
   the World, because the strongest pull anywhere — on the heaviest kind at the rim of a packed clump
   — only reaches half a unit per tick when gravity is **three times stronger than the weakest
   bond**. Where the remainder is kept was measured the same day (`orbit.mjs` Checks 11 and 12).
-  The 24 spare bits are far too coarse, and drawing the kick by a coin, storing nothing, heats
+  The 24 spare bits (20 since ±63) are far too coarse, and drawing the kick by a coin, storing nothing, heats
   free matter and kills every orbit. What works is a residual of 32 bits a component in a
   second array, gravity's own state beside the word, counted in the momentum assertion.
   **Recommended, not adopted**; README item 19.

@@ -29,15 +29,18 @@ same turn.
 Several entries carry **measurements** rather than argument, from the five design tools:
 `screen.mjs` for law 2's form, `radiate.mjs` for law 5's radiation and the clock,
 `momentum.mjs` for law 1's momentum, `budget.mjs` for the hexagon's four bytes, and `orbit.mjs`
-for whether anything orbits and how strong gravity may be. Where a number appears in this file it came from one of those
-and can be reproduced.
+for whether anything orbits and how strong gravity may be — and, since 2026-11-05, from the Lab
+itself: `lab.mjs` with `lab-check.mjs`, and `wave.mjs` for the runs that settled GAP 3 and item 33.
+Where a number appears in this file it came from one of those and can be reproduced.
 
 Everything is grouped by the law it belongs to, in law order.
 
 **Numbers in these entries are as-of.** The hexagon was **four bytes** — kind 8, energy 11,
 momentum two components at ±3, bonds 6 — until 2026-11-04, when it went to **eight bytes** with
-energy at 16 bits and momentum at ±15. Entries written before that cite `2047`, `11 bits`, `±3` and
-`31 bits`, and **they are left as written**, because an entry that records why a decision was made
+energy at 16 bits and momentum at ±15 — and on 2026-11-06 momentum went to **±63** (14 bits, so 44 of
+64 used and 20 spare) and law 1's kinetic-energy scale from `S = 64` to `S = 4`, forced by the width
+(README item 20). Entries written before either change cite `2047`, `11 bits`, `±3`, `31 bits`, `±15`
+or `S = 64`, and **they are left as written**, because an entry that records why a decision was made
 has to show the numbers it was made under. `README.md`'s *What exists* is the one authoritative
 statement of the current layout; where an entry's reasoning was overturned by the change, it says
 so in place.

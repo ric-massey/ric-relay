@@ -91,7 +91,7 @@ amounts make every site a unique snowflake, so "a region of the same stuff" stop
 meaningful concept and the variance layer lights up uniformly, which destroys the only
 instrument we have for finding structure.
 
-Momentum is an **integer vector in cube coordinates** — two signed components at **±15**, on the
+Momentum is an **integer vector in cube coordinates** — two signed components at **±63**, on the
 hex lattice's three axes — and **not** FHP's six occupancy channels, which are for a gas of
 identical particles and would mean six kinds per hexagon here. Don't reintroduce channels.
 
@@ -100,6 +100,12 @@ momentum got 10 bits; the range appears twice in this rule and the two had drift
 stale one first. Worth a note rather than a silent fix, because a width is physics here — the
 paragraphs below say so at length — so a rules file carrying two different answers is the hazard
 those paragraphs are warning about.)*
+
+*(And then it happened again. Momentum went from ±15 to **±63** — 10 bits to 14 — on 2026-11-06,
+Ric's call on README item 20, and `constants.mjs`, `THE-LAWS.md` and the README all said so the same
+day while this rule went on saying ±15, `S = 64` and 24 spare bits until the doc pass of
+2026-11-06. **`constants.mjs` is what the engine runs on; if this file and it ever disagree, the
+module is the fact and this file is the bug.**)*
 
 **Momentum is never stored as a direction. Keep those two things apart.** Stepping rounds the
 vector to the nearest of six hexagon directions; the vector itself is never rounded. That
@@ -122,13 +128,16 @@ forces only. Measured in `budget.mjs`.
 **Margolus blocks** rather than pairs, so conservation holds by construction. About 15 legal
 outcomes exist for a typical pair; pick one at random.
 
-**Kinetic energy is in, as of 2026-11-04, at `S = 64`.** *(A rule saying "do not try to add it"
+**Kinetic energy is in, as of 2026-11-04 — at `S = 64` then, `S = 4` since 2026-11-06.** *(A rule saying "do not try to add it"
 stood here for about an hour that day and was wrong; it was then an open question until it was
 adopted.)* It is **a whole number** — `floor(S · Q(p) / 2k)` with a scale constant, because the
 exact fraction `p²/2m` cannot be conserved on this lattice and because with the constant too small
 the heavy kinds read zero at any momentum. It is **derived, never stored**: the energy field holds
 heat, `KE` is recomputed from `(p, k)`, and law 1's conserved total is `heat + Σ KE`. The window is
-**2 to 291** at the current widths and law 1 says why 64 inside it. Then a collision conserves momentum exactly and moves whatever kinetic
+**1 to 16** at ±63 and law 1 says why 4 inside it. *(It was 2 to 291 at ±15, where `S` was 64. Widening
+momentum raised the largest legal `Q` from 450 to 7,938, the ceiling fell by the same factor, and 64
+left the window — **forced, not chosen**; `SETTLED.KE_SCALE` in `constants.mjs` has the
+measurement.)* Then a collision conserves momentum exactly and moves whatever kinetic
 energy changes by into or out of the heat field, so the total is exact by construction. **That
 construction is also what makes it safe:** kinetic energy is a pure function of mass and momentum,
 so a round trip through collision states returns exactly the energy it borrowed and no free-energy
@@ -159,8 +168,9 @@ or clamp breaks conservation with no law having been violated. **Any operation t
 exceed a field must fail loudly**, exactly like a drift of 1. Don't clamp, don't saturate,
 don't widen the field quietly: a world that keeps hitting the ceiling is telling you the
 constants are wrong. (**Eight bytes as of 2026-11-04.** Kind 8 + bonds 6 +
-energy 16 is 30 bits, and law 1's option (B) spends 10 more on a momentum vector — two signed
-components at ±15, 5 bits each — for **40 of the 64**. The **24 spare bits are reserved**: nothing
+energy 16 is 30 bits, and law 1's option (B) spends 14 more on a momentum vector — two signed
+components at ±63, 7 bits each, since 2026-11-06 (10 bits at ±15 before it) — for **44 of the 64**.
+The **20 spare bits are reserved**: nothing
 goes in them without an entry in `THE-LAWS.md` and a reason, because the old four-byte word was
 enforcing that by scarcity and no longer is. Never anything on the never-store list. **And not
 gravity's remainder**: at a legal strength 12 bits a component rounds it away, and it needs 32.
@@ -353,9 +363,12 @@ Apply all of this before telling Ric something interesting happened.
 
 ## 12. Screen before you simulate
 
-Five tools in this directory, and none of them is part of the engine. **The engine itself arrived
-2026-11-05 and is `lab.mjs`, with `constants.mjs` and `lab-check.mjs`** — this rule is about the
-five, and it still binds: screening is cheap and a run is not, so a candidate form goes through
+Five screening tools in this directory, and none of them is part of the engine. **The engine itself
+arrived 2026-11-05 and is `lab.mjs`, with `constants.mjs` and `lab-check.mjs`** (`node lab-check.mjs`,
+ten checks, about 30 seconds). Two more files run the engine without being it: `wave.mjs` is a
+measurement harness that injects variants into a copy of `lab.mjs` (GAP 3, items 25, 32 and 33, and
+the mechanisms kept in `rejected/`), and `snapshot.mjs` freezes a Lab run into `runs/` for the
+viewer. This rule is about the five, and it still binds: screening is cheap and a run is not, so a candidate form goes through
 `screen.mjs` before it goes through the Lab.
 
 **What the Lab added to this rule rather than replacing.** It found eight things the five tools
@@ -489,5 +502,14 @@ pretty picture; **don't trust a number either.**
   project where the same physics is implemented twice.
 - **The viewer is instrumentation, not decoration.** The pyramid with the variance layer
   is how structure gets found at all. It is not a polish task to do later.
+- **The viewer reads frozen runs, and says whose engine made them.** `node snapshot.mjs` runs the
+  Lab and writes `runs/current.bin` + `.json`, rotating the previous one to `runs/last.*`; the
+  `.bin` is the five world arrays and **nothing derived** (rule 2) — groups, temperature and `B`
+  are worked out in the page. The header carries the seed, the settings, a hash of `lab.mjs` and
+  `constants.mjs` (the page re-hashes them and says when a run is older than the engine), and since
+  2026-11-06 a `space` block whose `wraps` is **measured** by stepping off each edge through the
+  engine's own `neighbour()`. **The viewer still reads the older `torus` flag, not `space`** — the
+  last commit of 2026-11-06 left that half undone, so a run that wraps one axis only (item 22's
+  cylinder) would still be drawn as a torus. Regenerate both runs whenever the engine changes.
 - **Fail fast and cheap.** The whole reason the Lab is small is so a dead force law shows
   up in minutes. Resist making it bigger.

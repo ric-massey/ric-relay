@@ -293,8 +293,8 @@ window.TERMINAL_PAGES = [
   "href": "projects/universe/viewer.html",
   "title": "Universe · Lattice Inspector",
   "keys": "",
-  "body": "A hexagon of this universe, field by field: kind, valence, bonds, temperature. State, not dynamics.",
-  "text": "Lattice Inspector · Hexagon · B to each neighbour",
+  "body": "Zoom, pan and open a hexagon of this universe: kind, valence, bonds, temperature, and the bonded group it belongs to. Reads the Lab",
+  "text": "A hexagon of this universe · World — · Hexagon · Group · Run · B to each neighbour",
   "room": null
  },
  {

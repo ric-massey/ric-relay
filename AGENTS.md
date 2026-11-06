@@ -188,22 +188,29 @@ easter-egg notes have told people to type for years.)
 (`projects/universe/` is **in `PROJECTS` as of 2026-11-05**, under `universe`, with
 `relay-return.js` — this paragraph said to add it "in the same change that ships its first page,
 not before", and that is the change. The page is **`projects/universe/viewer.html`**, a lattice
-inspector, and it is an **instrument rather than a world**: it seeds a lattice from laws 2 and 4
-and lets you read it field by field, and **nothing in it steps forward in time, because there is
-no engine.** Do not describe it as a running simulation — the project's own rule 11 is "don't
+inspector, and it is an **instrument rather than a world**: it reads frozen runs of the Lab (or seeds
+a lattice of its own) and lets you open any hexagon field by field, and **nothing on it steps
+forward in time.** Do not describe it as a running simulation — the project's own rule 11 is "don't
 trust a pretty picture", and the page says this on its face. **It has no room card yet** (Ric,
 2026-11-05: "don't have to make a place on the main page yet"), so the terminal is the only way
 in. That is deliberate, and it is not the how-big-everything-is bug repeating — there the project
 was unreachable because nobody had listed it; here it is reachable by name and the room card is
-pending on purpose. Everything else in there is docs — a spec, agent rules, a per-law statement
+pending on purpose. **There is an engine now** (2026-11-05): `lab.mjs` is the Lab — four of the
+five laws, no gravity, on a 258 × 258 hexagonal torus in event-driven time, asserting every
+conservation total — with `constants.mjs` (every physics constant; it refuses to run on an unchosen
+one) and `lab-check.mjs` (`node lab-check.mjs`, ten checks, about 30 seconds). `snapshot.mjs`
+freezes a Lab run into `runs/` for the viewer, `wave.mjs` is a measurement harness over copies of
+the engine, and `rejected/` keeps the mechanisms that came out, with the numbers that removed them.
+Around that: docs — a spec and work list (`README.md`), agent rules, a per-law statement
 (`THE-LAWS.md`), the record of how each law was decided (`HOW-WE-DECIDED.md`), a design note on
-the two runs, a sources file — plus **five design tools**, none of them part of an engine, each
-run by hand: `screen.mjs` (`node screen.mjs`) scores candidate forms for the bonding law over all
-65,025 pairs of kinds, `radiate.mjs` checks that radiation across vacuum obeys the second law and
-that energy accounting closes exactly, `momentum.mjs` enumerates collision outcomes to settle how
-momentum is stored, `budget.mjs` enumerates every field allocation that fits in the hexagon's
-word, and `orbit.mjs` answers whether anything orbits, how strong gravity may be and where a pull smaller than one unit is kept — it is the
-only one that steps forward in time, because two primitives under one law is a measurement rather than a world. Read `projects/universe/AGENTS.md` before touching anything in there; it has rules
+the two runs, a sources file — and **five screening tools**, each run by hand: `screen.mjs`
+(`node screen.mjs`) scores candidate forms for the bonding law over all 65,025 pairs of kinds,
+`radiate.mjs` checks that radiation across vacuum obeys the second law and that energy accounting
+closes exactly, `momentum.mjs` enumerates collision outcomes to settle how momentum is stored,
+`budget.mjs` enumerates every field allocation that fits in the hexagon's word, and `orbit.mjs`
+answers whether anything orbits, how strong gravity may be and where a pull smaller than one unit
+is kept. **None of the universe checks is in `.github/checks.mjs` yet** — run `lab-check.mjs` by
+hand after touching the engine. Read `projects/universe/AGENTS.md` before touching anything in there; it has rules
 of its own that are the whole point of the project, and Ric set the first one himself:
 everything borrowed gets credited in `projects/universe/SOURCES.md`.)
 
