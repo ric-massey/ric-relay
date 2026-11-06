@@ -2653,6 +2653,51 @@ removing fifty lines that buy nothing. `rejected/push-along-bond.txt` carries th
 above its original one. **The lesson, now `AGENTS.md` rule 12's seventh: on a torus, a distance is a
 path, not a difference.**
 
+
+#### Open — motion on the lattice: six headings, a coin, and momentum too coarse to orbit (item 34)
+
+Ric asked whether the orbits are like reality. Measured against it: the mechanism matches (gravity
+adds momentum, falling speeds a body up), but circles go lopsided, orbits wander, only the heaviest
+kinds orbit, orbits are rare, and single results are chaotic. Asked how to fix that with the least
+added, the diagnosis was two root causes — whole-unit momentum is too coarse at legal strengths, and
+position is snapped to the hexagon — and two additions: finer momentum units, and a position within
+the hexagon. Then Ric found a third face of the second cause himself: *"if the direction of movement
+is right on the corner ... it needs to actually be 50/50 on the first move but then every time needs
+to be the opposite."* A coin on every tied step is a random walk off the line, and his alternation is
+Bresenham's rule for a tie (credited in `SOURCES.md` before use).
+
+**Measured, `orbit.mjs` Checks 13 and 14, 2026-11-06:**
+
+| | coin (today) | Ric's alternation | tracked position |
+|---|---|---|---|
+| exact tie, off the line after 10,000 steps | 43 hexagons (worst 121) | 0 (worst 0.5) | 0.5 |
+| 10° off a lattice direction | 1,736 — travels at 0° | 1,736 — travels at 0° | 0.17 |
+| 20° off | 3,420 — travels at 0° | 3,420 — travels at 0° | 0.11 |
+
+So Ric was right about ties and the problem is wider than ties: nearest-of-six gives the world six
+headings outright, a grid artifact of exactly the kind hexagons were chosen to avoid. Alternation
+fixes the tie; only tracking fixes the heading.
+
+| orbits, ±63 | today | fine momentum | fine + alternation | fine + tracked position | control (Newton) |
+|---|---|---|---|---|---|
+| eccentricity from a circular start (r 20/100/500) | 0.47 / 0.30 / 0.38 | 0.32 / 0.20 / 0.19 | same as fine | 0.001 / 0 / 0 | 0.001 / 0 / 0 |
+| angular momentum change per lap | +2.0% / +1.7% / +1.1% | −1.5% / −0.26% / −0.11% | same as fine | 0 | 0 |
+| legal strength, kinds 255 / 64 / 1 orbit | 255 only, larger clumps only | all, every seed | all | all | all |
+| Kepler, T²/r³ at 2× and 4× the radius | 1.048 / 1.198 | — | — | 0.9997 / 0.9996 | 0.9997 / 0.9996 |
+
+**Fine momentum** alone fixes who can orbit; **the tracked position** fixes the shape and the
+angular momentum; together they are indistinguishable from the continuous control in every row
+measured. Alternation does nothing once momentum is fine, because exact ties stop occurring. The
+angular momentum holds exactly because `orbit.mjs` updates momentum from the pull at the current
+position and then position from the new momentum — symplectic Euler, which conserves it under any
+central force (Hairer, Lubich & Wanner, credited). The lattice alone could never conserve it; this
+update order does, by construction.
+
+**Not adopted** — it is Ric's call and two pieces of stored state under rule 5 — and the README item
+lists what must be settled before it can go into the engine: the tracked position under a blocked
+step, scheduling an edge crossing in event-driven time, collisions over a fine outcome set, `S`, and
+the Lab's chemistry re-checked.
+
 ---
 
 ## The register in full

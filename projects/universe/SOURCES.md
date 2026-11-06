@@ -243,6 +243,23 @@ Law 1's momentum clause and the hex grid both come from here. Took:
   **spuriously conserved third momentum component.** Rule 6 of `AGENTS.md` exists because
   of this.
 
+**Bresenham, Jack E. (1965).** *Algorithm for computer control of a digital plotter.* IBM Systems
+Journal 4(1): 25–30. <https://doi.org/10.1147/sj.41.0025>
+
+Drawing a straight line on a grid by carrying the error between the true line and the cells chosen,
+and stepping to reduce it, so the drawn path never strays more than a cell from the real one.
+Recorded 2026-11-06 before `orbit.mjs` Check 13 used its idea, after Ric found that a coin on every
+tied step makes a diagonal path random-walk off its line (*"it needs to actually be 50/50 on the
+first move but then every time needs to be the opposite"*) — which is Bresenham's rule for an exact
+tie. Took: the error-carrying principle only, in the form of a continuous position whose rounding
+is the occupied hexagon. Not Bresenham's integer arithmetic.
+
+**Hairer, Ernst; Lubich, Christian; Wanner, Gerhard (2006).** *Geometric Numerical Integration*, 2nd
+ed., Springer. The result that symplectic Euler — update momentum from the force at the current
+position, then position from the new momentum — conserves angular momentum exactly under a central
+force, because the pull is parallel to the position it is evaluated at. Recorded 2026-11-06 before
+Check 14 relied on it for the rotational-momentum measurement.
+
 **Patel, Amit — Red Blob Games.** *Hexagonal Grids.*
 <https://www.redblobgames.com/grids/hexagons/>
 

@@ -67,7 +67,9 @@ variance layer.
   identical particles.
 - **Momentum is never stored as a direction.** A step rounds the vector to one of six directions;
   the vector is never rounded. **A tie between two directions is a coin**, never a fixed pick — a
-  fixed tie-break was a handedness that spiralled every orbit inward (item 21).
+  fixed tie-break was a handedness that spiralled every orbit inward (item 21). **But nearest-of-six
+  is itself a flaw** (item 34, measured): every off-axis heading travels along a lattice direction,
+  and the coin random-walks a tied path. Don't build on it as if it were settled.
 - **Speed is a rate, not a distance, and matter never reaches the limit:** `matterSpeed(Q, k)` in
   `lab.mjs` is relativity's `|p| / √(k² + |p|²)` of the causal limit (Ric, 2026-11-06: "I don't want
   anything of matter to reach that speed"). Only radiation travels at the limit; `lab-check.mjs`
@@ -229,9 +231,10 @@ through the Lab. The five screening tools — `screen.mjs`, `budget.mjs`, `momen
   section is the current word.
 - **`momentum.mjs`** settled the momentum representation and the KE scale. **Two of its checks are
   labelled wrong in the file** — read the note above check 5 before quoting it.
-- **`orbit.mjs`** settled that things orbit and measures gravity's strength and remainder. It flies
-  ten laps and reports the closest approach on the first and last — equal is an ellipse, falling is
-  a spiral. It has had four harness bugs; read its comments before quoting a number.
+- **`orbit.mjs`** settled that things orbit and measures gravity's strength and remainder; Checks 13
+  and 14 measure how a step is chosen and the two additions of item 34. It flies ten laps and reports
+  the closest approach on the first and last — equal is an ellipse, falling is a spiral. It has had
+  four harness bugs; read its comments before quoting a number. About a minute to run.
 
 **What the tools cannot see.** The Lab found eight things they could not (items 23–30), three of them
 about time, which an enumeration does not have. A screen cannot find a hole in the *dynamics*; the

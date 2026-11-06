@@ -209,9 +209,24 @@ function clampLegal(p, R) {
 // Then p0 is whatever is circular at r0 under that gm. `surface` is the
 // radius of whatever sits at the centre: an orbit that dips inside it has
 // hit it, and two laps through a clump is a collision, not an orbit.
+// Added 2026-11-06 for Checks 13 and 14 (README items 21 and 34), defaults
+// unchanged so every earlier check reproduces:
+//   fine   momentum held in units of 2^-32 (FINE) instead of whole units --
+//          still whole numbers, so still exactly conserved, just a finer
+//          unit. Gravity's pull is rounded to that grain once per tick.
+//   step   how a lattice step is chosen. "nearest" is law 1 as it stands
+//          (nearest of six, `tie` breaks exact ties). "alternate" is Ric's
+//          rule for a tie: a coin the first time, then the opposite one
+//          every time after. "track" keeps a continuous position q and
+//          occupies the hexagon it rounds to -- Bresenham's error-carrying
+//          (SOURCES.md), which covers ties and off-axis headings alike and
+//          needs no coin. Gravity then reads q.
+//   laps   how many laps count as an orbit.
+const FINE = 2 ** -32;
 function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FRAC,
                gm: gmGiven, k = KIND_ORBITER, surface = FELL_IN, tie = TIE_COIN,
-               seed = TIE_SEED }) {
+               seed = TIE_SEED, fine = false, step = "nearest", laps: lapsTarget = LAPS_TARGET,
+               measure = false }) {
   const rand = seeded(seed);
   // With gm given, solve |p| v(|p|) r0 / k = gm for |p|: with c = gm k / r0,
   // p^4 = c^2 (k^2 + p^2), so p^2 = (c^2 + sqrt(c^4 + 4 c^2 k^2)) / 2.
@@ -224,8 +239,16 @@ function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FR
 
   const start = scl(RADIAL, r0 / mag(RADIAL));
   let pos = latticeSteps ? cubeRound(start) : start;
+  let q = start;                               // continuous position, "track" only
   let p = scl(TANGENT, p0mag / mag(TANGENT));
   if (integerMomentum) p = clampLegal(cubeRound(p), R);
+  if (fine) p = scl(cubeRound(scl(p, 1 / FINE)), FINE);
+  let altState = -1;                           // "alternate": which of a tied pair next
+  const tracking = latticeSteps && step === "track";
+  const here = () => (tracking ? q : pos);     // the position gravity reads
+  const Lof = () => { const [x, y] = cart(here()), [px, py] = cart(p); return x * py - y * px; };
+  const L0 = Lof();
+  let lapTicks0 = 0, lapTicksN = 0;
 
   let residual = [0, 0, 0];                    // unspent gravity, carry mode
   let clips = 0;                               // ticks the clamp shaved |p| on
@@ -245,13 +268,15 @@ function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FR
     ticks++;
 
     // --- law 3: gravity adds to momentum, falling off as 1/r^2 ---
-    const r = mag(pos);
+    const r = mag(here());
     if (r < surface)            { outcome = surface > FELL_IN ? "hit the clump" : "fell in"; break; }
     if (r > r0 * ESCAPE_MULT)   { outcome = "escaped"; break; }
 
     const dpMag = (k * gm) / (r * r);
-    const dp = scl(scl(pos, -1), dpMag / r);   // toward the centre
-    if (!integerMomentum) {
+    const dp = scl(scl(here(), -1), dpMag / r);   // toward the centre
+    if (fine) {
+      p = clampCount(add(p, scl(cubeRound(scl(dp, 1 / FINE)), FINE)));
+    } else if (!integerMomentum) {
       p = add(p, dp);
     } else if (carry === CARRY_COIN) {
       // No residual at all: draw the whole-unit kick, exact on average.
@@ -283,18 +308,33 @@ function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FR
     if (pm === 0) { outcome = "stopped dead"; break; }
     // Relativity's speed since 2026-11-06 (was min(1, pm / k)).
     const speed = speedOf(pm, k);              // hexagons per tick, always < 1
-    if (latticeSteps) {
+    if (tracking) {
+      q = add(q, scl(p, speed / pm));
+      pos = cubeRound(q);
+    } else if (latticeSteps) {
       stepAcc += speed;
-      while (stepAcc >= 1) { pos = add(pos, nearestDir(p, tie, rand)); stepAcc -= 1; }
+      while (stepAcc >= 1) {
+        let d;
+        if (step === "alternate") {
+          let bestDot = -Infinity, ties = [];
+          for (const c of DIRS) {
+            const v = dot(p, c);
+            if (v > bestDot) { bestDot = v; ties = [c]; } else if (v === bestDot) ties.push(c);
+          }
+          if (ties.length === 1) d = ties[0];
+          else { if (altState < 0) altState = rand() < 0.5 ? 0 : 1; d = ties[altState]; altState ^= 1; }
+        } else d = nearestDir(p, tie, rand);
+        pos = add(pos, d); stepAcc -= 1;
+      }
     } else {
       pos = add(pos, scl(p, speed / pm));
     }
 
     // --- measurement only ---
-    const rNow = mag(pos);
+    const rNow = mag(here());
     if (rNow < minR) minR = rNow;
     if (rNow > maxR) maxR = rNow;
-    const [cx, cy] = cart(pos);
+    const [cx, cy] = cart(here());
     const ang = Math.atan2(cy, cx);
     let d = ang - angPrev;
     while (d > Math.PI) d -= 2 * Math.PI;
@@ -303,7 +343,8 @@ function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FR
     laps = Math.abs(angTotal) / (2 * Math.PI);
     const lap = Math.floor(laps);
     if (!(lap in lapMin) || rNow < lapMin[lap]) lapMin[lap] = rNow;
-    if (laps >= LAPS_TARGET) { outcome = "ORBITED"; break; }
+    if (lap === 1 && !lapTicks0) lapTicks0 = ticks;
+    if (laps >= lapsTarget) { outcome = "ORBITED"; break; }
   }
 
   return {
@@ -316,6 +357,14 @@ function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FR
     noGravity: integerMomentum
       ? (100 * gravityZeroTicks / ticks).toFixed(0) + "%" : "-",
     clamped: integerMomentum ? clips : "-",
+    // For Check 14 only (measure: true): eccentricity of the whole path, the
+    // change in angular momentum per lap as a share of where it started, and
+    // ticks per lap.
+    ...(measure ? {
+      ecc: (maxR - minR) / (maxR + minR),
+      dLperLap: laps > 0 ? (Lof() - L0) / Math.abs(L0) / laps : NaN,
+      period: laps > 0 ? ticks / laps : NaN,
+    } : {}),
   };
 }
 
@@ -989,3 +1038,140 @@ console.log("  an accounting hole that disguises itself as a discovery.");
 console.log("");
 console.log("  So the remainder is stored, and the spare bits are too coarse to store it.");
 console.log("  It needs about 32 bits a component: a second array, 8 bytes a hexagon.");
+
+// ======================================================================
+// Check 13 -- how a step is chosen, on a straight line (README item 34).
+// Ric, 2026-11-06: "So if the direction of movement is right on the corner.
+// It's thing is 5050. ... it needs to actually be 5050 on the first move but
+// then every time needs to be the opposite." Three rules, no gravity, a fixed
+// heading, and how far the lattice path strays from the true straight line:
+//   coin       law 1 as it stands -- nearest of six, a fair coin on a tie
+//   alternate  Ric's rule -- a coin on the first tie, then the opposite one
+//   track      Bresenham's (SOURCES.md) -- keep the true position, occupy the
+//              hexagon it rounds to; no coin anywhere
+// Headings: -30 deg is an exact tie between two lattice directions; 10 and
+// 20 deg are ordinary headings that are not a lattice direction at all.
+console.log("");
+console.log("=== Check 13: choosing a step, on a straight line ===");
+{
+  const toCube = (x, y) => { const c = y / SQ3H, a = x - c / 2; return [a, -a - c, c]; };
+  const LINE_SEEDS = 20;
+  const lineRows = [];
+  for (const deg of [-30, 10, 20]) {
+    const th = (deg * Math.PI) / 180, ux = Math.cos(th), uy = Math.sin(th);
+    const p = toCube(ux, uy);                        // a unit heading, in cube form
+    const off = (pos) => { const [x, y] = cart(pos); return x * uy - y * ux; };   // signed distance from the line
+    const heading = (pos) => { const [x, y] = cart(pos); return (Math.atan2(y, x) * 180) / Math.PI; };
+    for (const rule of ["coin", "alternate", "track"]) {
+      const at100 = [], at10k = [], worst = [], hd = [];
+      const seeds = rule === "track" ? 1 : LINE_SEEDS;
+      for (let sd = 1; sd <= seeds; sd++) {
+        const rand = seeded(1000 + sd);
+        let pos = [0, 0, 0], q = [0, 0, 0], alt = -1, mx = 0;
+        for (let n = 1; n <= 10000; n++) {
+          if (rule === "track") { q = add(q, p); pos = cubeRound(q); }
+          else if (rule === "coin") pos = add(pos, nearestDir(p, TIE_COIN, rand));
+          else {
+            let best = -Infinity, ties = [];
+            for (const d of DIRS) { const v = dot(p, d);
+              if (v > best + 1e-12) { best = v; ties = [d]; } else if (Math.abs(v - best) <= 1e-12) ties.push(d); }
+            let d = ties[0];
+            if (ties.length > 1) { if (alt < 0) alt = rand() < 0.5 ? 0 : 1; d = ties[alt]; alt ^= 1; }
+            pos = add(pos, d);
+          }
+          const o = Math.abs(off(pos));
+          if (o > mx) mx = o;
+          if (n === 100) at100.push(o);
+          if (n === 10000) { at10k.push(o); hd.push(heading(pos)); }
+        }
+        worst.push(mx);
+      }
+      const rms = (a) => Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length);
+      lineRows.push({ heading: deg + " deg", rule,
+        "off line, 100 steps": Number(rms(at100).toFixed(2)),
+        "off line, 10,000 steps": Number(rms(at10k).toFixed(2)),
+        "worst ever": Number(Math.max(...worst).toFixed(2)),
+        "heading travelled": Number((hd.reduce((s, v) => s + v, 0) / hd.length).toFixed(2)) + " deg" });
+    }
+  }
+  console.table(lineRows);
+  console.log(`  Distances in hexagons; coin and alternate are the root mean square over`);
+  console.log(`  ${LINE_SEEDS} seeds. "heading travelled" is the direction from start to the 10,000th step.`);
+}
+
+// ======================================================================
+// Check 14 -- the two additions, on orbits (README item 34).
+//   today          integer momentum, carried gravity, nearest-of-six steps,
+//                  a coin on ties: the engine as it stands, at +-63.
+//   fine           momentum in units of 2^-32 (still whole numbers), the
+//                  same steps.
+//   fine+alternate fine, with Ric's tie rule.
+//   fine+track     fine, and a continuous position whose rounding is the
+//                  occupied hexagon (Bresenham) -- both additions.
+//   control        continuous momentum and position: Newton, the target.
+// Measured: did it complete 10 laps; eccentricity of the whole path ((max -
+// min) / (max + min) of the radius, 0 for a circle); closest approach on the
+// first and last lap; and the change in angular momentum per lap as a share
+// of where it started. A real orbit holds its angular momentum exactly.
+console.log("");
+console.log("=== Check 14: the two additions, on orbits ===");
+{
+  const R14 = 63;
+  const MODES14 = [
+    { key: "today",          integerMomentum: true,  latticeSteps: true,  carry: true },
+    { key: "fine",           integerMomentum: false, latticeSteps: true,  carry: false, fine: true },
+    { key: "fine+alternate", integerMomentum: false, latticeSteps: true,  carry: false, fine: true, step: "alternate" },
+    { key: "fine+track",     integerMomentum: false, latticeSteps: true,  carry: false, fine: true, step: "track" },
+    { key: "control",        integerMomentum: false, latticeSteps: false, carry: false },
+  ];
+  const fmt = (x, d) => (Number.isFinite(x) ? Number(x.toFixed(d)) : "-");
+  const usesCoin = (m) => m.integerMomentum || (m.latticeSteps && m.step !== "track");
+
+  console.log("  A. Check 1's circular starts, +-63, orbiter kind 255 (gravity set to");
+  console.log("     make each start circular, as Check 1 does).");
+  const shape = [];
+  for (const r0 of RADII) {
+    for (const m of MODES14) {
+      const z = run({ r0, R: R14, startFrac: START_FRAC * 15 / R14, measure: true, ...m });
+      shape.push({ r0, mode: m.key, outcome: z.outcome, laps: z.laps, ecc: fmt(z.ecc, 3),
+        "closest lap 1": z.close1, "closest last lap": z.closeN, "dL per lap": fmt(z.dLperLap, 6) });
+    }
+  }
+  console.table(shape);
+
+  console.log("  B. At a strength the filter allows, and for light kinds. Packed clump of");
+  console.log(`     mean kind ${KIND_MEAN}, orbiter at 1.5x its radius, ${SEEDS.length} seeds where a coin is involved.`);
+  const legal14 = [];
+  for (const eps of FILTER) {
+    for (const a of [300, 1000]) {
+      const r0 = 1.5 * a, gm = gFromEps(eps) * discSites(a).length * KIND_MEAN;
+      for (const k of [KIND_MAX, 64, 1]) {
+        const row = { EPS: eps, clump: a, orbiter: k };
+        for (const m of MODES14) {
+          const seeds = usesCoin(m) ? SEEDS : [SEEDS[0]];
+          const zs = seeds.map((seed) => run({ r0, R: R14, gm, k, surface: a, seed, measure: true, ...m }));
+          const ok = zs.filter((z) => z.outcome === "ORBITED");
+          row[m.key] = `${ok.length}/${zs.length}` + (ok.length ? ` e${fmt(ok[0].ecc, 2)}` : "");
+        }
+        legal14.push(row);
+      }
+    }
+  }
+  console.table(legal14);
+  console.log("  Each cell: orbits completed of runs, and the first orbit's eccentricity.");
+
+  console.log("  C. Kepler's third law: the square of the period over the cube of the");
+  console.log("     radius should be the same at every radius. Fixed gravity (EPS 0.1,");
+  console.log("     clump 300 as a point mass), circular starts, kind 255, 3 laps.");
+  const gmK = gFromEps(0.1) * discSites(300).length * KIND_MEAN;
+  const kep = [];
+  for (const m of [MODES14[3], MODES14[4], MODES14[0]]) {
+    const ts = [450, 900, 1800].map((r0) => run({ r0, R: R14, gm: gmK, laps: 3, measure: true, ...m }));
+    const base = ts[0].period ** 2 / 450 ** 3;
+    kep.push({ mode: m.key,
+      "T^2/r^3 at 900, vs 450": ts[1].outcome === "ORBITED" ? fmt(ts[1].period ** 2 / 900 ** 3 / base, 4) : ts[1].outcome,
+      "T^2/r^3 at 1800, vs 450": ts[2].outcome === "ORBITED" ? fmt(ts[2].period ** 2 / 1800 ** 3 / base, 4) : ts[2].outcome });
+  }
+  console.table(kep);
+  console.log("  1 is Kepler exactly.");
+}

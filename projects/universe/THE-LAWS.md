@@ -40,6 +40,9 @@ where the primitive goes next. A step rounds the vector to the nearest of the si
 vector itself is never rounded, so nothing conserved is ever rounded. **A tie between two directions
 is broken by a fair coin** (item 21): an integer vector lies exactly between two directions on 2–4%
 of an orbit's steps, and a fixed pick is a handedness that spiralled every orbit into the centre.
+**Known flaw (item 34):** rounding to the nearest direction gives matter six headings — a primitive
+heading 10° off a lattice direction travels at 0° for ever — and on a tie the coin random-walks the
+path off its line. A tracked position within the hexagon fixes both; it is recommended, not adopted.
 
 **Speed is a rate, not a distance, and matter never reaches the limit.** A primitive steps at
 

@@ -208,8 +208,8 @@ the two runs, a sources file — and **five screening tools**, each run by hand:
 `radiate.mjs` checks that radiation across vacuum obeys the second law and that energy accounting
 closes exactly, `momentum.mjs` enumerates collision outcomes to settle how momentum is stored,
 `budget.mjs` enumerates every field allocation that fits in the hexagon's word, and `orbit.mjs`
-answers whether anything orbits, how strong gravity may be and where a pull smaller than one unit
-is kept. `lab-check.mjs` runs in the slow lane of `.github/checks.mjs` (`--only universe --slow`) and in
+answers whether anything orbits, how strong gravity may be, where a pull smaller than one unit
+is kept and how a step on the lattice should be chosen. `lab-check.mjs` runs in the slow lane of `.github/checks.mjs` (`--only universe --slow`) and in
 `simulations.yml` whenever `projects/universe/` changes. Read `projects/universe/AGENTS.md` before touching anything in there; it has rules
 of its own that are the whole point of the project, and Ric set the first one himself:
 everything borrowed gets credited in `projects/universe/SOURCES.md`.)

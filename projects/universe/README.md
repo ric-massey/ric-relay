@@ -52,7 +52,7 @@ The World, the large run with gravity, is not built. Everything open is in
 | [`budget.mjs`](budget.mjs) | Enumerates what fits in the hexagon's word. |
 | [`momentum.mjs`](momentum.mjs) | Settled how momentum is stored and the kinetic-energy scale. |
 | [`radiate.mjs`](radiate.mjs) | Settled radiation across vacuum and the clock. |
-| [`orbit.mjs`](orbit.mjs) | Settled that things orbit; measures how strong gravity may be. The only tool that steps in time — two primitives under one law is a measurement, not a world. |
+| [`orbit.mjs`](orbit.mjs) | Settled that things orbit; measures how strong gravity may be, and how motion on the lattice should be stepped (item 34). The only tool that steps in time — two primitives under one law is a measurement, not a world. |
 
 `AGENTS.md` rule 12 says what each tool can and cannot tell you.
 
@@ -363,6 +363,38 @@ Nothing computes `K` any more, so it would have to emerge — and first evidence
 momentum per member is flat with cluster size. Imposed by hand it was worth +0.05 of mean `B`, inside
 the 0.06 spread between seeds. *Decided by:* tracking clusters through time, which needs re-identifying them every sample,
 since rule 2 forbids storing a cluster id.
+
+**34. Motion on the lattice has six headings, and momentum is too coarse to orbit.** *(Raised
+2026-11-06. Ric asked whether orbits are like reality and how to make them more so with the least
+added; then found that a coin on every tied step makes a diagonal path random-walk off its line.)*
+`orbit.mjs` Checks 13 and 14 measured it:
+
+- **Rounding a step to the nearest of six directions gives the world six headings.** A primitive
+  heading 10° or 20° off a lattice direction travels at exactly 0°, forever — 1,736 and 3,420
+  hexagons off its true line after 10,000 steps. On an exact tie the coin is a random walk: 43
+  hexagons off after 10,000 steps, worst 121. **Ric's rule** — a coin on the first tie, then the
+  opposite every time — fixes ties exactly (never more than half a hexagon off) but not the
+  off-axis headings. **Tracking a continuous position and occupying the hexagon it rounds to**
+  (Bresenham's principle) fixes both: under 0.6 of a hexagon off at any heading, no coin anywhere.
+- **Whole-unit momentum is what stops light kinds orbiting.** At strengths the filter allows, today's
+  rule orbits only kind 255 around the larger clumps; kinds 64 and 1 never do. With momentum in units
+  of 2⁻³² (still whole numbers, still exactly conserved) every kind orbits, every seed.
+- **Together the two additions match Newton.** Fine momentum alone gives stable but lopsided orbits
+  (eccentricity 0.19–0.32) that still lose 0.1–1.5% of their angular momentum a lap. Fine momentum
+  plus a tracked position gives eccentricity 0 and **no** angular-momentum drift — identical to the
+  continuous control in every row — and Kepler's third law to 0.9997, against 1.05–1.20 today.
+  Ric's tie rule changes nothing once momentum is fine, because exact ties stop happening.
+
+**Recommended, not adopted**, and it is two new pieces of stored state, so rule 5's written reason
+applies. **Fine momentum** replaces the 14 momentum bits in the word with two 32-bit components in a
+second array — the array item 19 already recommends for gravity's remainder, which this makes part
+of momentum, settling item 19 too. **A position within the hexagon** is two more components. Together
+about 24 bytes a hexagon against 8. Open before it can go in the engine: what happens to the tracked
+position when the step it implies is blocked (the hexagon is occupied, or a bond holds); how the
+Lab's event-driven time schedules a step at the moment the position crosses a hexagon's edge — which
+would also make matter's speed limit hard rather than an average; collisions drawing an outcome
+from a set too large to list; re-measuring `S`; and re-checking the Lab's chemistry, since stepping
+would stop being random in time. *Decided by:* Ric, then a Lab run with both, compared with today's.
 
 ### Settled
 
