@@ -1152,7 +1152,29 @@ move is the new thermal kick:
 | 60 | 412,926 | 6,403 | 475 | 506 |
 
 **The crossover is real and it is sharp — it sits between 0 and 2.** Rigid below it, shattering
-above it, with no wide middle. See item 31 for the part of this that is a problem.
+above it, with no wide middle.
+
+**RE-OPENED THE SAME DAY, and the strikethrough above should be read as struck through again.**
+The test above asked whether the file's reading produces both behaviours, and it does. It did not
+ask whether a rival reading produces *better chemistry*, and item 31's 2×2×2 says one does, by a
+wide margin. The rival: **a step that would stretch any bond simply does not happen**, at any
+temperature — bonds are unbreakable by motion, and break only thermally at `e ≥ B·kind`. Against
+the file's reading it roughly triples how much motion sorts bonds toward favoured pairings
+(+1.46 against +0.54 at ±15, +0.93 against +0.05 at ±63) and keeps three to four times as many
+bonds standing. **It is now the leading reading, and the file holds the other one.**
+
+What it costs, and why this is not a one-line fix: the rival **contradicts law 1's elasticity**,
+which says a strike travels through a cluster as a wave. Under it a bonded cluster cannot move at
+all — the blocked-too-cold count runs to 86,000–183,000 per run, every one of them a bonded
+primitive frozen in place — so clusters never move as units and never collide as units. Both
+readings are therefore wrong about something, and **the third reading, which neither variant
+implements, is the one law 1 actually describes: the cluster moves together.** That is real work
+rather than a choice between two lines, because nothing in the engine can presently move more
+than one hexagon at a time.
+
+*Decided by:* whether a cluster can be made to move as a unit without breaking the light cone or
+the ledger. Until it can, the choice is between a reading that shatters chemistry and a reading
+that freezes clusters solid.
 
 *(Superseded framing follows.)* ~~Raised~~
 2026-11-05 by `lab.mjs`.)* Law 1 settles that clusters are **elastic rather than rigid** — a strike
@@ -1334,11 +1356,56 @@ it builds. Three candidate causes, unseparated:
 3. **GAP 3's reading may be wrong after all** — `lab.mjs` says of it "the one most likely to be
    wrong in this file", and item 25 has just ratified it on a test that did not vary the width.
 
-*Decided by:* separating those three, which is a 2×2×2 and cheap. **Nothing should be concluded
-about the chemistry's depth until it is done**, because the one measurement that looked like
-progress was taken under the old width. Note what is NOT in doubt: momentum stayed exactly (0, 0)
-through every run, so the kick is not leaking — this is the physics being violent, not the books
-being wrong.
+**SEPARATED 2026-11-06, the same day.** *(Ric: "sure".)* A 2×2×2 over the three causes, each arm
+swept over held `T` of 0, 2, 6 and 20, 3 seeds and 1M events per point — 96 runs, in
+`gap3-split.mjs`, which generates the four engine variants it needs into the OS temp directory
+and never writes to `lab.mjs`. Everything else is the physics of 2026-11-06, `S = 4` included, so
+**the ±15 arm is not the 2026-11-04 world** — it is today's world with narrower momentum, which
+is what isolates the width. "Gain" is the best mean `B` at any `T > 0` minus the frozen value,
+which is the annealing claim stated as a number. Blind grabbing is 5.26.
+
+| momentum | GAP 3 | kick | best mean `B` | gain over frozen | bonds kept |
+|---|---|---|---|---|---|
+| ±15 | rigid | 0.02 | **7.03** at T=6 | **+1.46** | 40% |
+| ±15 | rigid | 0.25 | 7.01 at T=6 | +1.45 | 38% |
+| ±63 | rigid | 0.02 | 6.50 at T=6 | +0.93 | 24% |
+| ±63 | rigid | 0.25 | 6.36 at T=6 | +0.78 | 21% |
+| ±15 | break | 0.02 | 6.30 at T=6 | +0.54 | 11% |
+| ±15 | break | 0.25 | 6.32 at T=6 | +0.50 | 12% |
+| ±63 | break | 0.02 | 5.67 at T=6 | +0.05 | 5% |
+| **±63** | **break** | **0.25** | **5.74** at T=6 | **+0.03** | **5%** |
+
+The bottom row is what ships. **The three causes are nowhere near comparable in size, and the
+ranking is the reverse of the order they were guessed in.**
+
+1. **GAP 3's reading is the cause.** It is worth +0.92 of gain at ±15 and +0.80 at ±63, which is
+   more than everything else put together, and it is a *choice* rather than a constant. Item 25
+   is re-opened on it.
+2. **±63 is a real but secondary cause, and its cost depends on cause 1.** Under the rival
+   reading the width costs 0.53 of gain; under the file's reading it costs 0.51 of a much smaller
+   number, wiping out 94% of what is there. So ±63 does its damage mainly by making bonds
+   breakable-and-broken, and **if GAP 3 is settled the other way, item 20's momentum decision
+   costs far less than this item first claimed.**
+3. **`THERMAL_KICK_PROB` is not a cause at all.** 0.02 against 0.25 — a 12× change in how often
+   the world is shaken — moves the gain by at most 0.15 and the ranking not at all. **It was the
+   prime suspect and it is exonerated**, which also says the constant is not load-bearing and
+   should not be searched hard.
+
+**The headline is better than this item was written to report.** The peak is not gone from the
+physics, only from the configuration that shipped, and at ±15 under the rival reading mean `B`
+reaches **7.03 against 5.26 blind** — the strongest selectivity this project has measured, where
+2026-11-05 got 5.93. The crossover temperature never moved either: **all eight arms peak at
+T = 6**, which is itself a result, because T = 6 was found at a different width, a different `S`,
+and with momentum supplied by hand rather than by the kick.
+
+Two cautions on the table. "Bonds kept" is partly tautological under the rival reading, since
+that reading removes one of the ways a bond can die; mean `B` is not, and it is the column that
+carries the argument. And a gain of +0.03 or +0.05 is noise, so the two bottom rows should be
+read as **no peak**, not as a small one.
+
+*What is left of this item:* nothing to separate. It is a pointer to item 25, which is where the
+decision moved. Note what was never in doubt: momentum stayed exactly (0, 0) through all 96 runs
+— at either width, under either reading, at either probability. The kick does not leak.
 
 
 ### Settled by running the Lab

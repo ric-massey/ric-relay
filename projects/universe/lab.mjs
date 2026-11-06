@@ -704,6 +704,23 @@ export class Lab {
     // light cone, and it makes a hard strike shatter a cluster, which is what
     // law 1 says should happen. It is still a choice and it is the one most
     // likely to be wrong in this file.
+    //
+    // MEASURED 2026-11-06, AND IT IS LOSING. The rival reading -- a step that
+    // would stretch any bond simply does not happen, at any temperature -- was
+    // run against this one over a 2x2x2 with the momentum width and
+    // THERMAL_KICK_PROB (README item 31, 96 runs). It roughly TRIPLES how much
+    // motion sorts bonds toward favoured pairings: best mean B of 7.03 against
+    // 6.30 at +-15, and 6.50 against 5.67 at +-63, where blind grabbing is
+    // 5.26. On the shipped physics this reading leaves a gain of +0.03 over a
+    // frozen world, which is noise -- it shatters the chemistry it builds.
+    //
+    // It has NOT been switched, and the reason is that the rival is wrong too.
+    // Under it a bonded cluster cannot move at all, so clusters never move or
+    // collide as units, which contradicts law 1's elasticity as flatly as this
+    // reading obeys it. The reading law 1 actually describes is a third one --
+    // the cluster moves TOGETHER -- and nothing here can move more than one
+    // hexagon at a time, so it is work rather than a line. README item 25 is
+    // re-opened on exactly this and holds the numbers.
     const carriedBonds = w.bonds[i];
     const stretched = [];
     if (carriedBonds !== 0) {

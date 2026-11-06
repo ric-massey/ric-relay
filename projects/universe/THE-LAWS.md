@@ -280,6 +280,16 @@ cluster as a wave at no more than one hexagon per tick, so a cluster has a **spe
 it is bounded by the causal limit with nothing written down to bound it. Long clusters flex. That
 is better physics than rigidity rather than a compromise with it.
 
+**THE LAB DOES NOT IMPLEMENT THIS, AND ON 2026-11-06 THAT TURNED OUT TO BE EXPENSIVE.** The
+engine moves one hexagon at a time, so "a soft strike moves a cluster together" has nowhere to
+happen: it has to either break the bonds a step would stretch, or refuse the step. Both are
+written down as GAP 3 and neither is this paragraph. The cost was measured — the breaking reading
+leaves motion sorting bonds no better than a frozen world does, and the refusing reading sorts
+them three times better but freezes every bonded cluster solid (README items 25 and 31, 96 runs).
+**So this paragraph is not a description of anything that runs yet; it is the specification for
+the thing that would fix both.** Moving a bonded group as a unit, at `|p| / K` by the paragraph
+below, is the open work.
+
 **Inertia then comes out proportional to total kind, not to primitive count.** Once momentum has
 spread across a bonded group of total kind `K`, the group steps at `|p| / K` by law 1's own rate
 rule, so a heavy composite resists being pushed — and it resists through the same quantity law 1
