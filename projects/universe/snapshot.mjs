@@ -46,7 +46,7 @@ import { writeFileSync, readFileSync, mkdirSync, existsSync, renameSync } from "
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Lab, census, N, CELLS } from "./lab.mjs";
+import { Lab, census, N, CELLS, neighbour, at, qOf, rOf, DIR_AXIAL } from "./lab.mjs";
 import { CANDIDATE_ZERO, SETTLED, MOMENTUM_RANGE, KE_SCALE_WINDOW, LAB,
          THERMOSTAT_DEFAULT, capacityOf } from "./constants.mjs";
 
@@ -120,6 +120,35 @@ Buffer.from(w.mx.buffer, w.mx.byteOffset, CELLS).copy(bin, CELLS * 3);
 Buffer.from(w.my.buffer, w.my.byteOffset, CELLS).copy(bin, CELLS * 4);
 Buffer.from(w.bonds.buffer, w.bonds.byteOffset, CELLS).copy(bin, CELLS * 5);
 
+// --------------------------------------------------------------- the space
+// WHAT SHAPE THIS RUN IS, MEASURED FROM THE ENGINE RATHER THAN ASSERTED HERE.
+//
+// A viewer that knows "the Lab is a torus" because someone typed it will draw
+// a torus for a run that is not one. The Lab wraps both axes; README item 22
+// has the World possibly looping only left-right, which keeps a floor and a
+// ceiling and is a cylinder, not a torus -- and that question is open. So the
+// file says which axes wrap, and it finds out by asking the engine's own
+// neighbour function what lies west of the west edge.
+//
+// The test: step off the q = 0 edge going west. If the engine wraps that axis
+// the answer is q = N-1. Anything else -- an edge, a clamp, a refusal -- is
+// not a wrap. Same going north off r = 0.
+function probeWraps() {
+  const west = DIR_AXIAL.findIndex(([dq, dr]) => dq === -1 && dr === 0);
+  const north = DIR_AXIAL.findIndex(([dq, dr]) => dq === 0 && dr === -1);
+  const probe = (q, r, d, read, want) => {
+    try {
+      const j = neighbour(at(q, r), d);
+      return typeof j === "number" && j >= 0 && read(j) === want;
+    } catch { return false; }
+  };
+  return [
+    probe(0, 1, west, qOf, N - 1),    // does q loop?
+    probe(1, 0, north, rOf, N - 1),   // does r loop?
+  ];
+}
+const wraps = probeWraps();
+
 // -------------------------------------------------------------- the engine
 // WHICH ENGINE WROTE THIS. A snapshot is a photograph of a run, and the Lab
 // changes daily -- GAP 3's reading changed twice on 2026-11-06 alone, and each
@@ -146,9 +175,33 @@ const header = {
   label: RUN.label,
   slot: RUN.slot,
 
+  // THE SPACE. This is what the map draws from, and nothing else: a viewer
+  // that recognises `lattice` and reads `size` and `wraps` draws this run
+  // correctly without knowing which engine produced it, and one that does not
+  // recognise the lattice should say so rather than fall back on a guess.
+  //
+  //   lattice  how the cells are arranged and indexed
+  //   size     [cols, rows] at the END of the run, which is what the bytes are
+  //   sizeAtStart  present only when the run changed size, so a growing World
+  //            can be read as having grown; absent means it did not
+  //   wraps    [q, r] -- measured, see probeWraps()
+  //
+  // Both axes wrapping is a torus. One is a cylinder, with a real boundary at
+  // the other two edges. Neither is a bounded patch. The Lab is the first;
+  // README item 22 has not settled which the World will be.
+  space: {
+    lattice: "hex-axial-pointy",
+    size: [N, N],
+    wraps,
+    indexing: "i = r * cols + q",
+    note: wraps[0] && wraps[1] ? "hexagonal torus -- no edge in either direction"
+        : wraps[0] || wraps[1] ? "cylinder -- one looping axis, a boundary on the other"
+        : "bounded patch -- edges in both directions",
+  },
+
   // the world
   N, cells: CELLS,
-  torus: true,
+  torus: wraps[0] && wraps[1],
   layout: [
     { field: "kind",   type: "u8",  offset: 0 },
     { field: "energy", type: "u16", offset: CELLS },
