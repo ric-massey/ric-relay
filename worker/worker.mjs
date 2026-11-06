@@ -1952,7 +1952,7 @@ async function wxProxy(request, env, ctx, parts, url) {
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'popular', 'cs', 'meso', 'rap', 'tmdb']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'popular', 'cs', 'meso', 'rap', 'tmdb', 'universe']);
 
 /* ── /cs/replay/<match id> — the CS room's replays, kept in R2 ──
    One file per match (projects/cs/matches/<id>.js, written by parse-demos.py),
@@ -1967,6 +1967,121 @@ const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media'
    URL and a day's cache is safe. PUT needs the site password, like every
    other write here; the throttle is the one in the object's /auth. */
 const CS_REPLAY_PREFIX = 'cs/replays/';
+
+/* ── /universe/live.{json,bin} — the World, running on Ric's PC, relayed ──
+   projects/universe/world-stream.mjs runs the World there and PUTs a frame
+   here every few seconds; projects/universe/viewer.html GETs it. The site is
+   static and the PC is behind a home router, so the traffic has to go this
+   way round — the same shape as /cs/replay above, and for the same reason.
+
+   GET is public and uncached: a frame is a photograph of a run that is still
+   happening, and a cached one is a lie about the present. PUT needs the site
+   password, checked by the object's /auth, which carries the one throttle.
+
+   Two objects, overwritten in place. The bytes go up BEFORE the header, so a
+   reader that polls the header and then fetches the bytes never gets bytes
+   older than the header describing them. R2 and not the Durable Object: half
+   a megabyte every ten seconds is a blob, not a record.
+
+   The frames are NOT kept. There is one live slot and the previous frame is
+   gone, because a run is reproducible from its seed and nobody wants a
+   thousand half-megabyte photographs of a Tuesday. Writing a run worth
+   keeping is what projects/universe/snapshot.mjs is for. */
+const UNIVERSE_PREFIX = 'universe/';
+const UNIVERSE_SLOTS = new Set(['live.json', 'live.bin']);
+const MAX_UNIVERSE_BYTES = 12 * 1024 * 1024;
+
+async function universeRoute(request, env, parts, stub) {
+  const origin = request.headers.get('origin');
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: { ...cors(origin), 'access-control-allow-methods': 'GET,PUT,OPTIONS' }
+    });
+  }
+  const name = parts[1] || '';
+  if (parts[2] || !UNIVERSE_SLOTS.has(name)) return json({ error: 'not found' }, 404, origin);
+  if (!env.MEDIA) {
+    /* Deployable before the binding exists, like /media and /cs: a GET says
+       there is nothing here rather than failing in a way that looks like the
+       run died. */
+    return json({ error: 'frame storage is not configured' },
+      request.method === 'GET' || request.method === 'HEAD' ? 404 : 503, origin);
+  }
+  const key = UNIVERSE_PREFIX + name;
+  const isJson = name.endsWith('.json');
+
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    const obj = await env.MEDIA.get(key);
+    if (!obj) {
+      return json({ error: 'no frame — nothing is streaming right now' }, 404, origin);
+    }
+    const headers = new Headers(cors(origin));
+    headers.set('content-type', isJson
+      ? 'application/json; charset=utf-8' : 'application/octet-stream');
+    headers.set('cache-control', 'no-store');
+    headers.set('x-content-type-options', 'nosniff');
+    headers.set('etag', obj.httpEtag);
+    /* world-stream.mjs gzips before it sends, and R2 hands the bytes back
+       exactly as they arrived, so the encoding has to be declared or the
+       browser gets gzip and tries to parse it as JSON. */
+    const enc = obj.httpMetadata?.contentEncoding;
+    if (enc) headers.set('content-encoding', enc);
+    headers.set('x-frame-uploaded', obj.uploaded.toISOString());
+    return new Response(request.method === 'HEAD' ? null : obj.body, { status: 200, headers });
+  }
+
+  if (request.method !== 'PUT') return json({ error: 'method not allowed' }, 405, origin);
+
+  const a = request.headers.get('authorization') || '';
+  const given = a.startsWith('Bearer ') ? a.slice(7) : '';
+  if (!given) return json({ error: 'unauthorized' }, 401, origin);
+  const auth = await stub.fetch(new Request('https://internal/auth', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ password: given })
+  }));
+  if (auth.status === 429) return json({ error: 'too many tries — wait five minutes' }, 429, origin);
+  if (auth.status !== 200) return json({ error: 'unauthorized' }, 401, origin);
+
+  const body = await request.arrayBuffer();
+  if (body.byteLength > MAX_UNIVERSE_BYTES) return json({ error: 'too big' }, 413, origin);
+  if (!body.byteLength) return json({ error: 'empty' }, 400, origin);
+
+  const contentEncoding = request.headers.get('content-encoding') || undefined;
+  if (contentEncoding && contentEncoding !== 'gzip') {
+    return json({ error: 'only gzip or nothing' }, 415, origin);
+  }
+
+  /* The header must be a frame and not just any JSON, so that a PUT cannot
+     turn the live slot into a way to serve something else from the site's own
+     Worker. The bytes are checked only for size: they are opaque to this
+     Worker, and the viewer checks them against the header's own layout. */
+  if (isJson) {
+    let text = null;
+    try {
+      text = contentEncoding === 'gzip'
+        ? await new Response(new Response(body).body.pipeThrough(new DecompressionStream('gzip'))).text()
+        : new TextDecoder().decode(body);
+    } catch { return json({ error: 'not readable' }, 400, origin); }
+    let header = null;
+    try { header = JSON.parse(text); } catch {}
+    if (!header || typeof header !== 'object'
+      || !/^universe-(world-frame|lab-snapshot)\/1$/.test(String(header.format))
+      || !header.space || !Array.isArray(header.space.size) || !Array.isArray(header.layout)) {
+      return json({ error: 'not a universe frame' }, 400, origin);
+    }
+  }
+
+  await env.MEDIA.put(key, body, {
+    httpMetadata: {
+      contentType: isJson ? 'application/json; charset=utf-8' : 'application/octet-stream',
+      ...(contentEncoding ? { contentEncoding } : {})
+    }
+  });
+  return json({ ok: true, slot: name, bytes: body.byteLength }, 200, origin);
+}
+
 
 /* ── /meso — the weather room's mesoanalysis, kept in R2 ──
    projects/weather/meso/build.mjs computes it once an hour, SPC's way (the
@@ -2153,6 +2268,7 @@ export default {
     if (parts[0] === 'wx') return wxProxy(request, env, ctx, parts, url);
     if (parts[0] === 'tmdb') return tmdbRoute(request, env, ctx, parts, url, { json, cors });
     if (parts[0] === 'meso') return mesoRoute(request, env, parts, stub);
+    if (parts[0] === 'universe') return universeRoute(request, env, parts, stub);
     if (parts[0] === 'rap') return rapRoute(request, env, parts, url);
 
     /* ── /hit and /stats ── the site's own visitor counter (visitors.mjs).

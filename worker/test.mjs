@@ -1745,5 +1745,98 @@ console.log('\nRULE  /tmdb looks titles up through the Worker, cut down, and onl
   ok(asked.every(u => u.includes('k'.repeat(32)) ? /\/3\/(search|movie|tv|trending|collection|discover)\//.test(u) : true), 'the key only ever goes to the fixed paths');
 }
 
+console.log('\nRULE  the universe live slot: public to read, the password to write');
+{
+  /* projects/universe/world-stream.mjs PUTs a frame of a running World here
+     and projects/universe/viewer.html GETs it. The whole security model is
+     "the Worker rejects writes without the token, and accepts nothing that is
+     not a frame", so both halves are asserted. Through the outer Worker, so
+     the route whitelist is part of what is tested. */
+  const bucket = memoryBucket();
+  const log = fresh();
+  const env = { LOG: { idFromName: () => 'training', get: () => log }, MEDIA: bucket };
+  const hit = async (method, path, body, token, headers = {}) => {
+    const r = await worker.fetch(new Request('https://x' + path, {
+      method,
+      headers: { ...(token ? { authorization: 'Bearer ' + token } : {}), ...headers },
+      ...(body === undefined ? {} : { body })
+    }), env, null);
+    const text = await r.text();
+    let parsed = null; try { parsed = JSON.parse(text); } catch {}
+    return { status: r.status, text, body: parsed, headers: r.headers };
+  };
+
+  const frame = JSON.stringify({
+    format: 'universe-world-frame/1',
+    space: { lattice: 'hex-axial-pointy', size: [12, 12], wraps: [true, true] },
+    cells: 144,
+    layout: [{ field: 'kind', type: 'u8', offset: 0 }],
+    live: { tick: 40 },
+  });
+  const bytes = new Uint8Array(144 * 6).fill(7);
+
+  ok((await hit('GET', '/universe/live.json')).status === 404,
+    'with nothing streaming, a read says so rather than erroring');
+
+  ok((await hit('PUT', '/universe/live.json', frame)).status === 401, 'a PUT with no token is rejected');
+  ok((await hit('PUT', '/universe/live.json', frame, 'wrong-token-entirely')).status === 401,
+    'a PUT with the wrong token is rejected');
+  ok((await hit('GET', '/universe/live.json')).status === 404, 'and neither of them stored anything');
+
+  ok((await hit('PUT', '/universe/live.json', JSON.stringify({ hello: 'there' }), TOKEN)).status === 400,
+    'the token is not enough: arbitrary JSON is not a frame');
+  ok((await hit('PUT', '/universe/live.json', '<script>alert(1)</script>', TOKEN)).status === 400,
+    'nor is anything that does not parse -- the live slot cannot be made to serve a script');
+  ok((await hit('PUT', '/universe/live.json',
+    JSON.stringify({ format: 'universe-world-frame/1' }), TOKEN)).status === 400,
+    'nor a frame with no space block, which is the thing the map draws from');
+  ok((await hit('GET', '/universe/live.json')).status === 404, 'none of those three stored anything either');
+
+  ok((await hit('PUT', '/universe/live.json', frame, TOKEN)).status === 200, 'a real frame with the token is accepted');
+  ok((await hit('PUT', '/universe/live.bin', bytes, TOKEN)).status === 200, 'and so are its bytes');
+
+  const got = await hit('GET', '/universe/live.json');
+  ok(got.status === 200 && got.body.live.tick === 40, 'readable with no token at all -- the site is public');
+  ok(got.headers.get('cache-control') === 'no-store',
+    'and never cached: a cached photograph of a running world is a lie about the present');
+  ok(got.headers.get('content-type').startsWith('application/json'), 'served as JSON');
+  ok(!!got.headers.get('x-frame-uploaded'), 'carrying when it arrived, so a stalled stream is visible');
+
+  const gotBin = await hit('GET', '/universe/live.bin');
+  ok(gotBin.status === 200 && gotBin.text.length === 144 * 6, 'the bytes come back whole');
+  ok(gotBin.headers.get('content-type') === 'application/octet-stream', 'as bytes, not as text');
+
+  /* The stream gzips before it sends, and R2 returns bytes exactly as they
+     arrived, so the encoding has to be declared back or the browser gets gzip
+     and tries to parse it as JSON. */
+  const gz = new Uint8Array(await new Response(
+    new Response(frame).body.pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+  ok((await hit('PUT', '/universe/live.json', gz, TOKEN, { 'content-encoding': 'gzip' })).status === 200,
+    'a gzipped frame is accepted, and read to check it is a frame');
+  ok((await hit('GET', '/universe/live.json')).headers.get('content-encoding') === 'gzip',
+    'and comes back declared as gzip');
+  ok((await hit('PUT', '/universe/live.json', frame, TOKEN, { 'content-encoding': 'br' })).status === 415,
+    'an encoding the Worker cannot read to check is refused');
+
+  ok((await hit('GET', '/universe/live.txt')).status === 404, 'there is no third slot');
+  ok((await hit('GET', '/universe/live.json/extra')).status === 404, 'and no path under one');
+  ok((await hit('GET', '/universe')).status === 404, 'and no listing');
+  ok((await hit('POST', '/universe/live.json', frame, TOKEN)).status === 405, 'POST is not how a frame arrives');
+  ok((await hit('DELETE', '/universe/live.json', undefined, TOKEN)).status === 405,
+    'and a frame is overwritten, never deleted through here');
+
+  /* The climbing media route builds keys under climb/ and cannot be pointed at
+     these, which is what keeps one bucket safe to share. */
+  ok((await hit('GET', '/media/file/../universe/live.bin')).status !== 200,
+    'the media route cannot reach a universe key');
+
+  /* Deployable before the R2 binding exists, like /media and /cs: a read says
+     there is nothing here rather than failing in a way that looks like the run
+     died. */
+  const noBucket = { LOG: { idFromName: () => 'training', get: () => fresh() } };
+  const bare = await worker.fetch(new Request('https://x/universe/live.json'), noBucket, null);
+  ok(bare.status === 404, 'with no bucket bound at all, a read is a plain 404');
+}
+
 console.log('\n' + (failures ? `${failures} FAILURE${failures > 1 ? 'S' : ''}` : 'ALL WORKER RULES PASS'));
 process.exit(failures ? 1 : 0);

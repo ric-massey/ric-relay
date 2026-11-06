@@ -452,6 +452,7 @@
 <div class="tabs" role="tablist" aria-label="Which lattice">
   <button id="tab-seed" role="tab" aria-selected="true" aria-controls="bar-seed">Seeded lattice</button>
   <button id="tab-lab"  role="tab" aria-selected="false" aria-controls="bar-lab">Lab runs</button>
+  <button id="tab-live" role="tab" aria-selected="false" aria-controls="bar-live">Live World</button>
 </div>
 
 <!-- ------------------------------------------------------------ seed source -->
@@ -505,6 +506,32 @@
   <div class="ctl" style="flex:1 1 230px">
     <span>Run</span>
     <span class="val mono" id="runLine" style="min-width:0;color:var(--ink-2)">nothing loaded</span>
+  </div>
+</div>
+
+<!-- ------------------------------------------------------------ live source -->
+<!-- A World running on Ric's PC, watched from here. Two ways in and the page
+     tries both: the stream directly (same wifi, nothing in the middle) and the
+     Worker's live slot (anywhere, relayed). See projects/universe/world-stream.mjs. -->
+<div class="bar" id="bar-live" hidden>
+  <div class="ctl" style="flex:1 1 300px">
+    <span>Where the run is</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <input type="text" id="liveUrl" spellcheck="false"
+             style="flex:1;min-width:0;font:12px/1.4 ui-monospace,monospace" />
+      <button class="btn" id="liveGo">Watch</button>
+    </div>
+  </div>
+  <fieldset class="ctl">
+    <legend>Follow</legend>
+    <div class="seg" id="livePick">
+      <label><input type="radio" name="livesrc" value="relay" checked>Website relay</label>
+      <label><input type="radio" name="livesrc" value="local">This wifi</label>
+    </div>
+  </fieldset>
+  <div class="ctl" style="flex:1 1 240px">
+    <span>Stream</span>
+    <span class="val mono" id="liveLine" style="min-width:0;color:var(--ink-2)">not watching</span>
   </div>
 </div>
 
@@ -767,9 +794,24 @@ const EDGE = Array.from({ length: 6 }, (_, d) => [(6 - d - 1) % 6, (6 - d) % 6])
 // One shape for both tabs: dense typed arrays over cols x rows, index
 // i = r * cols + q. The Lab's snapshot IS this layout, so loading a run is a
 // copy and nothing is reshaped.
-function makeWorld(cols, rows, torus) {
+// WHICH AXES WRAP, not "is it a torus". Ric, 2026-11-07: "the map needs to be
+// an accurate representation of exactly what the run is showing." A run
+// declares its space (snapshot.mjs and world-stream.mjs both write a `space`
+// block with a MEASURED `wraps`), and README item 22 leaves open a World that
+// loops left-right only -- which is a cylinder with a real floor and ceiling,
+// not a torus. One boolean cannot say that, so this takes two.
+//
+//   both axes   a hexagonal torus: no edge anywhere
+//   one axis    a cylinder: a seam on one pair of sides, a boundary on the other
+//   neither     a bounded patch, which is what the seeded lattice is
+function makeWorld(cols, rows, wraps) {
+  const w2 = Array.isArray(wraps) ? wraps.map(Boolean) : [!!wraps, !!wraps];
   return {
-    cols, rows, torus, cells: cols * rows,
+    cols, rows, cells: cols * rows,
+    wrapQ: w2[0], wrapR: w2[1],
+    // kept because the tiling and the fold are written for the full torus and
+    // ask this question; it is now DERIVED rather than declared.
+    torus: w2[0] && w2[1],
     kind:   new Uint8Array(cols * rows),
     energy: new Uint16Array(cols * rows),
     mx:     new Int8Array(cols * rows),
@@ -790,21 +832,20 @@ const rOf = (w, i) => (i - (i % w.cols)) / w.cols;
 function nb(w, i, d) {
   const [dq, dr] = DIRS[d];
   let q = qOf(w, i) + dq, r = rOf(w, i) + dr;
-  if (w.torus) {
-    q = ((q % w.cols) + w.cols) % w.cols;
-    r = ((r % w.rows) + w.rows) % w.rows;
-    return r * w.cols + q;
-  }
-  if (q < 0 || q >= w.cols || r < 0 || r >= w.rows) return -1;
+  // Per axis, because a cylinder wraps one and not the other. An all-or-
+  // nothing wrap here drew a wall where a seam was, or a seam where a wall was.
+  if (w.wrapQ) q = ((q % w.cols) + w.cols) % w.cols;
+  else if (q < 0 || q >= w.cols) return -1;
+  if (w.wrapR) r = ((r % w.rows) + w.rows) % w.rows;
+  else if (r < 0 || r >= w.rows) return -1;
   return r * w.cols + q;
 }
 // did that neighbour cross the seam? A bond across it is real and its line is
 // drawn as a stub, because the honest alternative is a line across the world.
 function wrapped(w, i, d) {
-  if (!w.torus) return false;
   const [dq, dr] = DIRS[d];
   const q = qOf(w, i) + dq, r = rOf(w, i) + dr;
-  return q < 0 || q >= w.cols || r < 0 || r >= w.rows;
+  return (w.wrapQ && (q < 0 || q >= w.cols)) || (w.wrapR && (r < 0 || r >= w.rows));
 }
 
 // ------------------------------------------------------- derived quantities
@@ -951,19 +992,45 @@ function seedWorld({ cols = 96, rows = 72, density, meanT, spread, seed }) {
 // tracked position inside its hexagon (ox, oy, float32), which this page
 // does not draw yet. Nothing is derived in the file: the viewer
 // computes temperature, groups and kinetic energy itself.
+// THE RUN DECLARES ITS SPACE AND THIS DRAWS EXACTLY THAT. Nothing here knows
+// what a Lab run or a World run is shaped like; it reads the "space" block
+// snapshot.mjs and world-stream.mjs both write, in which "wraps" was MEASURED
+// by asking the engine where its own edges lead. A run with no space block is
+// an older file, and falls back to its square N and its one torus flag.
 function worldFromSnapshot(header, buf) {
-  const N = header.N, cells = header.cells;
-  if (N * N !== cells) throw new Error("snapshot header disagrees with itself about its size");
-  if (buf.byteLength < cells * 6) throw new Error("snapshot is shorter than its header says");
-  const w = makeWorld(N, N, !!header.torus);
+  const space = header.space || null;
+  if (space && space.lattice && space.lattice !== "hex-axial-pointy") {
+    // Say so rather than guess. A map that draws an arrangement it does not
+    // know as if it were this one is wrong in a way nobody can see.
+    throw new Error("this run is on a \"" + space.lattice + "\" lattice. This map draws "
+      + "hex-axial-pointy and does not know how to draw that one.");
+  }
+  const size = space && Array.isArray(space.size) && space.size.length === 2
+    ? space.size.map(Number)
+    : [header.N, header.N];
+  const [cols, rows] = size;
+  const cells = Number(header.cells) || cols * rows;
+  if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1) {
+    throw new Error("the run does not say what size it is");
+  }
+  if (cols * rows !== cells) throw new Error("the run header disagrees with itself about its size");
+  if (buf.byteLength < cells * 6) throw new Error("the run is shorter than its header says");
+  // Which axes wrap, as the run measured it -- not as this page assumes.
+  const wraps = space && Array.isArray(space.wraps) && space.wraps.length === 2
+    ? space.wraps.map(Boolean)
+    : [!!header.torus, !!header.torus];
+  const w = makeWorld(cols, rows, wraps);
   const off = {};
   for (const f of header.layout) off[f.field] = f.offset;
+  for (const need of ["kind", "energy", "mx", "my", "bonds"]) {
+    if (!(need in off)) throw new Error("the run header does not say where " + need + " is");
+  }
   w.kind.set(new Uint8Array(buf, off.kind, cells));
   w.energy.set(new Uint16Array(buf.slice(off.energy, off.energy + cells * 2)));
   w.mx.set(new Int8Array(buf, off.mx, cells));
   w.my.set(new Int8Array(buf, off.my, cells));
   w.bonds.set(new Uint8Array(buf, off.bonds, cells));
-  w.meta = { source: "lab", header };
+  w.meta = { source: header.kind === "world" ? "world" : "lab", header };
   return analyse(w);
 }
 
@@ -971,18 +1038,23 @@ function worldFromSnapshot(header, buf) {
 // The same two files, hashed the same way snapshot.mjs hashes them. A stale
 // snapshot is a perfectly good picture of an engine that no longer exists,
 // and the only dishonest version of this page is the one that cannot tell.
-let engineNow = null;
-async function engineHashes() {
-  if (engineNow) return engineNow;
+// WHICH engine, because there are two. A Lab snapshot names lab.mjs and a
+// World frame names world.mjs, and both name constants.mjs -- so the file to
+// hash is read off the run rather than assumed here.
+const engineNow = new Map();
+async function engineHashes(file) {
+  if (engineNow.has(file)) return engineNow.get(file);
   if (!crypto?.subtle) return null;               // needs a secure context
   const one = async (f) => {
     const buf = await (await fetch(f, { cache: "no-store" })).arrayBuffer();
     const h = await crypto.subtle.digest("SHA-256", buf);
     return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 12);
   };
-  try { engineNow = { lab: await one("lab.mjs"), constants: await one("constants.mjs") }; }
-  catch { engineNow = null; }
-  return engineNow;
+  let got = null;
+  try { got = { engine: await one(file), constants: await one("constants.mjs") }; }
+  catch { got = null; }
+  engineNow.set(file, got);
+  return got;
 }
 
 async function loadRun(slot) {
@@ -1896,8 +1968,63 @@ function worldHtml() {
   </div>`;
 }
 
+// A LIVE WORLD FRAME IS NOT A LAB SNAPSHOT, and the panel below was written
+// entirely for the second one: it reads a thermostat, a momentum range and a
+// census of a finished run, none of which a World has. Rather than fill those
+// rows with blanks, a World frame gets its own panel saying the things that
+// are true of it -- the dial, the books with their terms named, and what the
+// run is approximating.
+function worldRunHtml(h) {
+  const L = h.live || {}, b = h.books || {}, c = h.counts || {}, r = h.run || {};
+  const g = r.gravity;
+  const sp = h.space || {};
+  const closes = b.closes !== false;
+  const grew = Array.isArray(sp.sizeAtStart);
+  return `<dl>
+    <dt>Label</dt><dd class="wide">${h.label || "a World"}</dd>
+    <dt>Tick</dt><dd>${fmt(L.tick || 0)}${L.stopped ? " · stopped" : ""}</dd>
+    <dt>Speed</dt><dd>${L.ticksPerSecond ? L.ticksPerSecond + " ticks/s" : "—"}</dd>
+    <dt>Space</dt><dd class="wide">${sp.note || "—"}</dd>
+    <dt>Size</dt><dd>${(sp.size || []).join(" × ")}${grew ? " · grew from " + sp.sizeAtStart.join(" × ") : ""}</dd>
+    <dt>Seed</dt><dd>${r.seed}</dd>
+    <dt>Fill</dt><dd>${r.fill}</dd>
+    <dt>Gravity</dt><dd class="wide">${g
+      ? "ε " + g.eps + " · screening " + g.screen + " (range ~" + (1 / g.screen).toFixed(1) +
+        " hexagons) · " + g.relax + " sweeps"
+      : "off — the control"}</dd>
+    <dt>Heat</dt><dd>${fmt(b.heat || 0)}</dd>
+    <dt>Kinetic</dt><dd>${fmt(b.kinetic || 0)}</dd>
+    <dt>In flight</dt><dd>${fmt(b.inFlight || 0)}</dd>
+    <dt>Bond potential</dt><dd>${fmt(b.bondPotential || 0)}</dd>
+    <dt>Gravity potential</dt><dd>${fmt(b.gravityPotential || 0)}</dd>
+    <dt>Expansion loss</dt><dd>${fmt(b.expansionLoss || 0)}</dd>
+    <dt>Net p</dt><dd>(${(b.momentum || [0, 0]).join(", ")})</dd>
+    <dt>Books</dt><dd class="wide">${closes
+      ? "closed at tick " + fmt(b.closedAtTick || 0) + " — energy, matter and momentum"
+      : "DID NOT CLOSE"}</dd>
+    <dt>Steps</dt><dd>${fmt(c.stepped || 0)} · ${fmt(c.blocked || 0)} blocked</dd>
+    <dt>Bonds</dt><dd>${fmt(c.bondsFormed || 0)} formed · ${fmt(c.bondsBroken || 0)} broken</dd>
+    <dt>Shared</dt><dd>${fmt(c.momentumShared || 0)} hops along bonds</dd>
+    <dt>Kicks</dt><dd>${fmt(c.thermalKicks || 0)} heat → motion</dd>
+    <dt>Pulls</dt><dd>${fmt(c.gravityCarries || 0)} carried · ${fmt(c.gravityDeclined || 0)} declined</dd>
+    <dt>Engine</dt><dd id="engineLine">${h.engine ? h.engine.world : "not recorded"}</dd>
+  </dl>${engineWarning(h)}
+  ${closes ? "" : `<p class="warn" style="margin-top:9px"><b>THE BOOKS DID NOT CLOSE.</b>
+    The run stopped because its own conservation check failed. Nothing on this map is
+    a picture of the physics any more; it is a picture of the moment it broke.</p>`}
+  <p class="warn" style="margin-top:9px"><b>Gravity\u2019s strength here is a DIAL.</b>
+  README item 20 put gravity\u2019s floor above its ceiling, under a physics that stopped
+  existing on 2026-11-06, and nobody has re-measured it — so the ε above was typed on a
+  command line, not measured. CANDIDATE_ZERO is the plumbing test point, not a chosen
+  physics. This run also approximates: ${(r.approximations || []).join("; ")}.
+  Nothing read off it is a result.</p>`;
+}
+
 function runHtml() {
   const h = W.meta?.header;
+  if (h && (h.kind === "world" || String(h.format).startsWith("universe-world-frame"))) {
+    return worldRunHtml(h);
+  }
   if (!h) {
     const m = W.meta;
     return `<p class="empty">The seeded lattice is generated in this page, not run.
@@ -1942,21 +2069,29 @@ async function checkEngine() {
   const h = W?.meta?.header;
   const box = document.getElementById("engineWarn");
   if (!h?.engine || !box) return;
-  const now = await engineHashes();
+  const which = h.engine.world !== undefined ? "world" : "lab";
+  const file = which + ".mjs";
+  const theirs = h.engine[which];
+  const now = await engineHashes(file);
   if (!now) return;
-  const same = now.lab === h.engine.lab && now.constants === h.engine.constants;
+  const same = now.engine === theirs && now.constants === h.engine.constants;
+  const live = h.kind === "world" && h.live && !h.live.stopped;
   box.style.display = "";
   if (same) {
     box.style.borderLeftColor = "var(--state-matter)";
-    box.innerHTML = `<b>The engine in this folder is the one that wrote this run.</b>`;
+    box.innerHTML = `<b>The engine in this folder is the one ` +
+      (live ? `running this.</b>` : `that wrote this run.</b>`);
   } else {
-    box.innerHTML = `<b>Written by a different engine than the one in this folder.</b>
-      lab.mjs is <span class="mono">${now.lab}</span> here and
-      <span class="mono">${h.engine.lab}</span> in the run; constants.mjs is
+    box.innerHTML = `<b>` + (live ? `Being run by` : `Written by`) +
+      ` a different engine than the one in this folder.</b>
+      ${file} is <span class="mono">${now.engine}</span> here and
+      <span class="mono">${theirs}</span> there; constants.mjs is
       <span class="mono">${now.constants}</span> against
-      <span class="mono">${h.engine.constants}</span>. The run is a good picture of an engine
-      that has since changed — write a new one with
-      <span class="mono">node snapshot.mjs</span>.`;
+      <span class="mono">${h.engine.constants}</span>. ` +
+      (live
+        ? `What is on screen is a real run of an engine that is not the one in this folder.`
+        : `The run is a good picture of an engine that has since changed — write a new one with ` +
+          `<span class="mono">node snapshot.mjs</span>.`);
   }
 }
 
@@ -1973,7 +2108,8 @@ function paintReadouts() {
   el("tLargest").textContent = fmt(s.largest);
   el("tFlight").textContent = fmt(s.inFlight);
   el("tTemp").textContent = s.meanTemp.toFixed(1);
-  el("worldChip").textContent = `${W.cols}×${W.rows}${W.torus ? " torus" : ""}`;
+  el("worldChip").textContent = `${W.cols}×${W.rows}` + (W.wrapQ && W.wrapR ? " torus"
+    : W.wrapQ ? " cylinder, q loops" : W.wrapR ? " cylinder, r loops" : "");
   el("hexChip").textContent = sel >= 0 ? `q ${qOf(W, sel)} r ${rOf(W, sel)}` : "";
   el("groupChip").textContent = sel >= 0 && W.group[sel] >= 0 ? `#${W.group[sel]}` : "";
 
@@ -2014,10 +2150,14 @@ function paintMatrix() {
 function pickAt(px, py) {
   const [q, r] = pickAxial(px, py, cam);
   if (q >= 0 && q < W.cols && r >= 0 && r < W.rows) return r * W.cols + q;
-  if (!W.torus) return -1;
-  // On a torus every point of the plane IS a hexagon of the world: a tap on a
-  // repeat selects the hexagon it is a copy of, which is the same hexagon.
-  const qq = ((q % W.cols) + W.cols) % W.cols, rr = ((r % W.rows) + W.rows) % W.rows;
+  // On a wrapping axis every point of the plane IS a hexagon of the world: a
+  // tap on a repeat selects the hexagon it is a copy of, which is the same
+  // hexagon. On a NON-wrapping axis there is nothing out there to select, and
+  // folding it in anyway is how a tap past the ceiling used to select a
+  // hexagon on the floor.
+  const qq = W.wrapQ ? ((q % W.cols) + W.cols) % W.cols : q;
+  const rr = W.wrapR ? ((r % W.rows) + W.rows) % W.rows : r;
+  if (qq < 0 || qq >= W.cols || rr < 0 || rr >= W.rows) return -1;
   return rr * W.cols + qq;
 }
 
@@ -2290,20 +2430,29 @@ if (TOUCH) {
 
 // ====================================================================== tabs
 let W = null;
-const tabSeed = el("tab-seed"), tabLab = el("tab-lab");
+const tabSeed = el("tab-seed"), tabLab = el("tab-lab"), tabLive = el("tab-live");
 let tab = "seed";
 
 async function showTab(which) {
   tab = which;
-  tabSeed.setAttribute("aria-selected", String(which === "seed"));
-  tabLab.setAttribute("aria-selected", String(which === "lab"));
-  el("bar-seed").hidden = which !== "seed";
-  el("bar-lab").hidden = which !== "lab";
+  for (const [name, btn] of [["seed", tabSeed], ["lab", tabLab], ["live", tabLive]]) {
+    btn.setAttribute("aria-selected", String(which === name));
+    el("bar-" + name).hidden = which !== name;
+  }
+  // Leaving the live tab stops the fetching. Nothing is watching the map,
+  // and a stream nobody is looking at still costs the machine running it.
+  if (which !== "live") liveStop();
   if (which === "seed") buildSeed(true);
-  else await showRun(document.querySelector('input[name="run"]:checked').value);
+  else if (which === "lab") await showRun(document.querySelector('input[name="run"]:checked').value);
+  else {
+    msg("Looking for a run…");
+    liveConnect();
+    el("liveGo").textContent = "Stop";
+  }
 }
 tabSeed.onclick = () => showTab("seed");
 tabLab.onclick = () => showTab("lab");
+tabLive.onclick = () => showTab("live");
 
 function msg(html) {
   const box = el("stageMsg");
@@ -2371,6 +2520,206 @@ el("runFile").addEventListener("change", async (e) => {
   }
 });
 
+// ================================================================ live World
+// A World running on Ric's PC, watched from here. projects/universe/world-stream.mjs
+// is the other half; it runs the engine and hands out frames.
+//
+// TWO WAYS IN, and they are different routes rather than a fallback chain:
+//
+//   This wifi        straight at the process -- http://<that machine>:8787.
+//                    Nothing in the middle, a frame every few ticks, and it
+//                    only works while the phone and the PC are on the same
+//                    network.
+//   Website relay    the Worker's live slot. The PC pushes a frame up every
+//                    few seconds and this fetches it, so it works from
+//                    anywhere, a few seconds behind.
+//
+// WHAT THIS DOES NOT DO: it never runs the physics. A live frame is read with
+// worldFromSnapshot, the same function a run off disk goes through, so the map
+// is drawing the run's own bytes and its own declared space and nothing this
+// page inferred. If the stream stops, the last frame stays on screen and the
+// line says when it arrived -- a frozen picture that admits it is frozen
+// beats a smooth one that is making things up.
+// The Worker, which is where every other live thing on this site comes from
+// (assets/training/core.js, cs.html, assets/entertainment/room.js all name it).
+const RELAY = "https://training-log.rmbuster82.workers.dev/universe";
+// The stream's own default port, and the host this page came from if it came
+// from the stream itself -- which it does when you open http://localhost:8787/.
+const LOCAL = (location.port === "8787" || location.pathname.endsWith("viewer.html"))
+  && location.protocol.startsWith("http")
+  ? location.origin
+  : "http://localhost:8787";
+
+const liveState = {
+  on: false, src: "relay", base: "", es: null, timer: null,
+  lastTick: null, lastAt: 0, frames: 0, busy: false, err: null, stalled: false,
+};
+
+const liveSay = (text, warn) => {
+  const box = el("liveLine");
+  box.textContent = text;
+  box.style.color = warn ? "var(--state-flight)" : "var(--ink-2)";
+};
+
+function liveBase() {
+  const typed = el("liveUrl").value.trim();
+  if (typed) return typed.replace(/\/+$/, "");
+  return liveState.src === "local" ? LOCAL : RELAY;
+}
+
+// One fetch of one frame: the header first, then the bytes, then draw. The
+// stream pushes the bytes BEFORE the header for exactly this order, so a
+// header this fetch reads is never newer than the bytes it describes.
+// A FLOOR ON HOW OFTEN THIS ASKS, which is not the same as how often the
+// stream offers. Measured 2026-11-07 on the same machine as the run: the
+// stream was pushing events as fast as it could tick and this page pulled
+// 250 frames in a few seconds -- a quarter of a megabyte each, none of them
+// on screen long enough to see. The eye does not want more than a handful a
+// second and neither does a phone.
+const PULL_FLOOR = TOUCH ? 400 : 180;
+async function pullFrame() {
+  if (liveState.busy || !liveState.on) return;
+  if (Date.now() - liveState.lastAt < PULL_FLOOR) return;
+  liveState.busy = true;
+  try {
+    const base = liveState.base;
+    const h = await fetch(`${base}/live.json`, { cache: "no-store" });
+    if (!h.ok) throw new Error(h.status === 404
+      ? "nothing is streaming right now"
+      : `the stream answered ${h.status}`);
+    const header = await h.json();
+    const b = await fetch(`${base}/live.bin`, { cache: "no-store" });
+    if (!b.ok) throw new Error("the frame's header is there but its bytes are not");
+    const buf = await b.arrayBuffer();
+
+    const sameTick = header.live && header.live.tick === liveState.lastTick;
+    if (!sameTick) {
+      const keepCamera = W !== null && W.meta && W.meta.source === "world";
+      W = worldFromSnapshot(header, buf);
+      meshKey = ""; torusGridKey = "";
+      hov = -1;
+      // The selection is an index into the lattice, and the World's lattice
+      // GROWS, so an index is only meaningful while the size holds.
+      if (sel >= 0 && sel >= W.cells) sel = -1;
+      if (!keepCamera) fit(false);
+      liveState.lastTick = header.live ? header.live.tick : null;
+      liveState.frames++;
+      paintReadouts(); drawLegend(); requestDraw();
+    }
+    liveState.lastAt = Date.now();
+    liveState.err = null;
+    liveState.stalled = false;
+    liveSayFrame(header, h.headers.get("x-frame-uploaded"));
+    msg(null);
+  } catch (err) {
+    liveState.err = err.message || String(err);
+    liveSay(liveState.err, true);
+    if (!W || W.meta?.source !== "world") {
+      msg(`<b>Nothing is streaming.</b><br><br>Start it on the machine with the run:
+        <br><span class="mono">node world-stream.mjs</span>
+        &nbsp;— then watch <span class="mono">This wifi</span>.<br><br>
+        For the website relay, the same command with
+        <span class="mono">--push ${RELAY}</span>
+        and <span class="mono">UNIVERSE_TOKEN</span> set in that shell.
+        <br><br><span style="color:var(--ink-muted)">${liveState.err}</span>`);
+    }
+  } finally {
+    liveState.busy = false;
+  }
+}
+
+function liveSayFrame(header, uploadedAt) {
+  const L = header.live || {};
+  const bits = [];
+  bits.push(`tick ${fmt(L.tick ?? 0)}`);
+  if (L.ticksPerSecond) bits.push(`${L.ticksPerSecond}/s`);
+  if (header.space) bits.push(header.space.size.join("×"));
+  if (header.books) bits.push(header.books.closes ? "books close" : "BOOKS DID NOT CLOSE");
+  if (L.stopped) bits.push("stopped");
+  // How old the frame is, which is the one thing a live view must not hide.
+  const age = uploadedAt ? Date.now() - Date.parse(uploadedAt)
+            : header.written ? Date.now() - Date.parse(header.written) : null;
+  if (age !== null && age > 2500) bits.push(`${Math.round(age / 1000)}s behind`);
+  liveSay(bits.join(" · "), header.books && !header.books.closes);
+}
+
+// The stream offers server-sent events, so on the same wifi the page is TOLD
+// when a frame exists instead of asking. The relay cannot do that -- R2 has
+// nothing to push with -- so that route polls. Both end up calling pullFrame.
+function liveConnect() {
+  liveStop(true);
+  liveState.on = true;
+  liveState.base = liveBase();
+  el("liveUrl").value = liveState.base;
+  liveSay("connecting…");
+  pullFrame();
+
+  if (liveState.src === "local" && typeof EventSource === "function") {
+    try {
+      const es = new EventSource(`${liveState.base}/events`);
+      es.addEventListener("frame", () => pullFrame());
+      es.onerror = () => {
+        // The stream went away or this is the relay, which has no /events.
+        // Falling back to polling rather than going dark.
+        if (!liveState.timer && liveState.on) liveState.timer = setInterval(pullFrame, 1000);
+      };
+      liveState.es = es;
+    } catch { liveState.timer = setInterval(pullFrame, 1000); }
+  } else {
+    liveState.timer = setInterval(pullFrame, liveState.src === "local" ? 1000 : 3000);
+  }
+
+  // A watchdog, because "the numbers stopped changing" and "the page stopped
+  // asking" look identical on screen and are not the same thing.
+  clearInterval(liveState.watch);
+  liveState.watch = setInterval(() => {
+    if (!liveState.on || !liveState.lastAt) return;
+    const idle = Date.now() - liveState.lastAt;
+    if (idle > 15000 && !liveState.stalled) {
+      liveState.stalled = true;
+      liveSay(`no new frame for ${Math.round(idle / 1000)}s — showing the last one`, true);
+    }
+  }, 5000);
+}
+
+function liveStop(quiet) {
+  liveState.on = false;
+  if (liveState.es) { try { liveState.es.close(); } catch {} liveState.es = null; }
+  if (liveState.timer) { clearInterval(liveState.timer); liveState.timer = null; }
+  clearInterval(liveState.watch);
+  if (!quiet) liveSay("not watching");
+}
+
+el("liveGo").onclick = () => {
+  if (liveState.on) { liveStop(); el("liveGo").textContent = "Watch"; }
+  else { liveConnect(); el("liveGo").textContent = "Stop"; }
+};
+el("liveUrl").addEventListener("change", () => { if (liveState.on) liveConnect(); });
+for (const r of document.querySelectorAll('input[name="livesrc"]')) {
+  r.addEventListener("change", () => {
+    liveState.src = r.value;
+    el("liveUrl").value = liveState.src === "local" ? LOCAL : RELAY;
+    if (liveState.on) liveConnect();
+  });
+}
+// If this page was served BY the stream, the stream is the obvious thing to
+// watch and the relay is the detour. Opening http://localhost:8787/ should
+// show the run immediately rather than an error about a Worker.
+if (location.port === "8787") {
+  liveState.src = "local";
+  const pick = document.querySelector('input[name="livesrc"][value="local"]');
+  if (pick) pick.checked = true;
+}
+el("liveUrl").value = liveState.src === "local" ? LOCAL : RELAY;
+el("liveUrl").placeholder = RELAY;
+
+// Leaving the tab stops the asking. A phone in a pocket pulling half a
+// megabyte a second is not watching anything.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && liveState.on) { liveStop(true); liveState.resume = true; }
+  else if (liveState.resume && tab === "live") { liveState.resume = false; liveConnect(); }
+});
+
 // ================================================================== controls
 function onLayer() { meshKey = ""; torusGridKey = ""; drawLegend(); requestDraw(); }
 for (const r of document.querySelectorAll('input[name="layer"]')) r.addEventListener("change", onLayer);
@@ -2411,7 +2760,7 @@ if (TOUCH) {
   const view = el("sheetView");
   view.innerHTML = `<h2>View</h2><p class="empty" style="margin-bottom:10px">
     Drag to pan · pinch to zoom · double-tap to zoom in · tap a hexagon to open it.</p>`;
-  view.append(el("bar-seed"), el("bar-lab"), el("bar-view"));
+  view.append(el("bar-seed"), el("bar-lab"), el("bar-live"), el("bar-view"));
 }
 
 // the chrome height the phone layout subtracts, measured rather than guessed

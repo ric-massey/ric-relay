@@ -93,8 +93,14 @@ const SUITES = [
   ['offramp', [...glob('projects/offramp/test', '.test.js'), 'projects/offramp/test/corridor.js'], 'slow'],
   /* The universe Lab's pre-flight: the torus seam, the books asserted through
      a run, five seeds and five constant changes. About 30 seconds, so slow
-     lane (Ric, 2026-11-06: "Sure"). */
-  ['universe', ['projects/universe/lab-check.mjs'], 'slow']
+     lane (Ric, 2026-11-06: "Sure").
+
+     world-check.mjs is the World's, and specifically law 1's two exchanges:
+     they move momentum between neighbours without anything travelling, which
+     is the operation that can conserve momentum perfectly while quietly
+     creating or destroying energy. That failure cost 34,864 units in the Lab
+     (README item 28) with no error and nothing visibly wrong. */
+  ['universe', ['projects/universe/lab-check.mjs', 'projects/universe/world-check.mjs'], 'slow']
 ];
 
 const args = process.argv.slice(2);
