@@ -224,9 +224,14 @@ Screening is cheap and a run is not, so a candidate form goes through `screen.mj
 through the Lab. The five screening tools — `screen.mjs`, `budget.mjs`, `momentum.mjs`,
 `radiate.mjs`, `orbit.mjs` — are not part of the engine. The engine is `lab.mjs`, `constants.mjs` and
 `lab-check.mjs` (`node lab-check.mjs`, thirteen checks, ~30 s; also in the repo's slow lane and in
-`simulations.yml`). `wave.mjs` and `snapshot.mjs` run the engine without being it: `wave.mjs`
-compares the engine with and without the momentum wave, and injects the removed cluster drag from
-`rejected/` to price it.
+`simulations.yml`). `wave.mjs`, `snapshot.mjs`, `census.mjs` and `collide.mjs` run the engine
+without being it: `wave.mjs` compares the engine with and without the momentum wave, and injects
+the removed cluster drag from `rejected/` to price it; `snapshot.mjs` freezes a run for the viewer;
+`census.mjs` (`node census.mjs`, ~15 s) names every standing cluster by its valence multiset and
+measures lifetimes and encounters over a free run; `collide.mjs` (`node collide.mjs`, ~100 s) aims
+two chosen clusters at each other in an empty world, which is README item 5's "measured by running
+collisions". Both import the one cluster walk in `clusters.mjs` and cross-check it against
+`census(w).bondBits` every sample. They are instruments, so rule 9 does not bind them.
 
 - **`screen.mjs`** scores a law-2 form over all 65,025 pairs of kinds: binding-energy spread, family
   structure, near-inert count, bonding-degree spread, roughness under a change of kind, and whether

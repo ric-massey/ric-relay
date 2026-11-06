@@ -495,6 +495,27 @@ code, not before**, on 2026-11-05; rule 1 says to say so. (Check 7 briefly used 
 `rand()` constants, `1103515245` and `12345`, from the same family, before both were made one
 generator.)
 
+**Tarjan, Robert (1972).** *Depth-first search and linear graph algorithms*, SIAM J. Comput. 1(2).
+`clusters.mjs` walks the bond bits as a graph and returns its connected components, which is this
+and nothing cleverer. It is the whole of what "find every cluster" means here, and it is an
+instrument rather than a law -- the same walk inside `lab.mjs` was README item 32 and came out for
+breaking rule 9. **Recorded after the code**, 2026-11-06; rule 1 says to say so.
+
+**Feller, William (1950).** *An Introduction to Probability Theory and Its Applications*, Vol. 1,
+the **occupancy problem**. `census.mjs` needs to know whether a count of cluster signatures means
+the laws are selecting or just that many combinations exist, so it compares the observed count
+against the distinct-cell count expected from throwing that many balls into that many boxes,
+`P(1 - (1 - 1/P)^n)`. That null is the first thing this project has that can tell variety from
+depth, and it immediately retracted a reading: measured over all samples it said the laws select
+strongly at cluster size 8, and on independent clusters it says they barely select at all.
+
+**Kaplan, E. L. and Paul Meier (1958).** *Nonparametric estimation from incomplete observations*,
+JASA 53(282) -- for the idea of **right-censoring** only. More than half the clusters `census.mjs`
+measures are still alive when the run ends, so their lifetimes are lower bounds and a median over
+the ones that died is biased low. The censored and uncensored groups are therefore reported
+separately. **The estimator itself is not used** and no survival curve is fitted; taking the
+concept without the method is worth saying out loud.
+
 ## Materials-first simulation, from outside academia
 
 **The Powder Toy**, **Noita** (Nolla Games), **Sandspiel** (Maxim Bode). Falling-sand

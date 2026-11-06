@@ -18,7 +18,9 @@ That is a reason to run the experiment, not a claim that nobody else's substrate
 
 **Where it stands (2026-11-06).** The laws are written and the Lab — the first engine — runs four
 of them on a small looped lattice and conserves exactly. Matter moves at its real heading, never at
-the speed limit, and bonds push back when strained. It has not yet produced a periodic table.
+the speed limit, and bonds push back when strained. It produces clusters in enormous variety
+but, at the one point in the search space tried so far, **does not select between them** —
+measured 2026-11-06, [item 5](#open-questions).
 The World, the large run with gravity, is not built. Everything open is in
 [Open questions](#open-questions), which is the work list.
 
@@ -295,9 +297,52 @@ argument behind each — with the wrong turns — is in `HOW-WE-DECIDED.md`, *Th
 
 ### Open
 
-**5. Does the Lab produce a periodic table with any depth?** The central question, and unanswered.
-A handful of stable clusters and nothing else would mean law 2 needs more structure.
-*Decided by:* sweeping the search space and measuring the cluster species.
+**5. Does the Lab produce a periodic table with any depth?** The central question. **Measured for
+the first time 2026-11-06 by `census.mjs` and `collide.mjs`, at `CANDIDATE_ZERO` only, and the
+answer there is variety without selection -- which is the OPPOSITE failure to the one this item
+was watching for.** The item stays open, because one point in the search space is not the space.
+
+*(The text this replaces said: "The central question, and unanswered. A handful of stable clusters
+and nothing else would mean law 2 needs more structure." The fear was too few species. There are
+too many, and they are not chosen.)*
+
+- **Variety is enormous.** 3,911 distinct valence signatures over three seeds, 688 of them on every
+  seed, clusters standing at every size from 2 to 26.
+- **Selection is absent wherever it can be measured.** A signature count is not depth: a cluster of
+  size `n` has `C(n + 7, 7)` possible valence multisets whether or not the laws do anything, so the
+  count is compared against the distinct-signature count expected from drawing that many at random
+  (Feller's occupancy problem, `SOURCES.md`). On **independent** clusters the ratio is **0.97 at
+  size 2, 0.97 at size 3, 0.92 at size 4** — nearly every combination that could stand, does.
+  Above size 5 there are fewer clusters than possible signatures, so the ratio is arithmetic and
+  says nothing. **A periodic table needs some combinations stable and others not. This has no such
+  discrimination at the sizes where the question can be asked.**
+- **And the measurement caught itself.** Computed over all samples instead of independent ones, the
+  same ratio reads 0.12 at size 8 and looks like strong selection. It is not: a cluster outlives
+  about sixteen sample intervals, so its signature recurs because it is the same cluster. Rule 11,
+  arriving through the statistics rather than through a picture.
+- **The most abundant species is inert and fragile, and that is law 4 working.** `0-1` stands more
+  often than anything else, and it has the **weakest bond the law can make** (`B = 1`) with
+  **capacity 1 at both ends**, so it cannot bond to anything further. Across all fifteen collision
+  cells it was given, it never once merged — it bounces, and at momentum 63 it shatters into free
+  primitives. **Abundance here measures dead-endedness, not stability**, which is worth keeping in
+  view when the sweep scores a run on how much matter is bound.
+- **Collisions build slowly and break quickly.** Aiming two chosen clusters at each other
+  (`collide.mjs`, bond across the line of travel, 25 pairs x 3 seeds): at momentum 4, **52% merge**;
+  at 16, **16%**; at 63, **8% merge and 32% shatter**. Conservation closed and net momentum ended at
+  exactly (0, 0) in all 450 collisions.
+- **Lifetimes are long but only bounded below.** 69.7% of cluster instances last at least 50 time
+  units; the longest-lived sizes are 3 to 5. More than half were still alive when the run ended, so
+  the median of those that died is biased low and is a floor, not an estimate.
+- **One finding about law 1, not law 2, fell out of building the harness** and may deserve an item
+  of its own: a dimer whose bond lies **along** its line of travel records `stepped = 0` at momentum
+  16 and above — its trailing member can only step into its own leader — so it cannot be aimed at
+  all. With the bond across travel it moves freely. A control with one dimer alone also shows a
+  cluster **colliding with itself** in both orientations, which is why `collided` cannot be used to
+  detect an encounter.
+
+*Decided by:* sweeping the search space and scoring each run on this census — which is the next
+step, and the reason the census exists. What would count as depth is now a number rather than an
+impression: a selectivity ratio well below 1 at sizes 2 to 4, where the measurement has power.
 
 **9. What is the ratchet?** Prior systems lack a reason the world cannot retreat. Candidates:
 compound formation (undoing it costs binding energy back) and sedimentation (burial is
