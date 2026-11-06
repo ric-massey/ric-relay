@@ -65,11 +65,14 @@ variance layer.
 - **Momentum** is an integer vector in cube coordinates: two signed components at **±63** (since
   2026-11-06; ±15 before, ±3 before that). Not FHP's six occupancy channels — those are for a gas of
   identical particles.
-- **Momentum is never stored as a direction.** A step rounds the vector to one of six directions;
-  the vector is never rounded. **A tie between two directions is a coin**, never a fixed pick — a
-  fixed tie-break was a handedness that spiralled every orbit inward (item 21). **But nearest-of-six
-  is itself a flaw** (item 34, measured): every off-axis heading travels along a lattice direction,
-  and the coin random-walks a tied path. Don't build on it as if it were settled.
+- **Momentum is never stored as a direction, and a primitive goes where it points.** Since
+  2026-11-06 (item 34) each primitive keeps its true position inside its hexagon and steps into the
+  hexagon its straight path enters next; `SETTLED.STEPPING` is `"track"`. Don't go back to rounding
+  to the nearest of six directions: it gave matter six headings and random-walked tied paths. If you
+  touch stepping, `lab-check.mjs` Check 13 must still show every heading travelling true. Any tie
+  that does arise is a coin, never a fixed pick — a fixed pick was a handedness that spiralled every
+  orbit inward (item 21). **The position is new state, and so is fine momentum** (units of 2⁻³²),
+  adopted for the World and built with gravity; both are Ric's call, written down in item 34.
 - **Speed is a rate, not a distance, and matter never reaches the limit:** `matterSpeed(Q, k)` in
   `lab.mjs` is relativity's `|p| / √(k² + |p|²)` of the causal limit (Ric, 2026-11-06: "I don't want
   anything of matter to reach that speed"). Only radiation travels at the limit; `lab-check.mjs`
@@ -218,7 +221,7 @@ Apply all of this before telling Ric something interesting happened.
 Screening is cheap and a run is not, so a candidate form goes through `screen.mjs` before it goes
 through the Lab. The five screening tools — `screen.mjs`, `budget.mjs`, `momentum.mjs`,
 `radiate.mjs`, `orbit.mjs` — are not part of the engine. The engine is `lab.mjs`, `constants.mjs` and
-`lab-check.mjs` (`node lab-check.mjs`, eleven checks, ~30 s; also in the repo's slow lane and in
+`lab-check.mjs` (`node lab-check.mjs`, thirteen checks, ~30 s; also in the repo's slow lane and in
 `simulations.yml`). `wave.mjs` and `snapshot.mjs` run the engine without being it.
 
 - **`screen.mjs`** scores a law-2 form over all 65,025 pairs of kinds: binding-energy spread, family

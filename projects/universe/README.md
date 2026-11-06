@@ -59,7 +59,7 @@ The World, the large run with gravity, is not built. Everything open is in
 ### Running it
 
 ```sh
-node lab-check.mjs                     # the Lab's eleven checks, ~30 s
+node lab-check.mjs                     # the Lab's thirteen checks, ~30 s
 node snapshot.mjs --seed 21 --hot 6    # freeze a run into runs/ for the viewer
 node screen.mjs                        # any screening tool runs the same way
 python3 -m http.server 8912 --bind 127.0.0.1   # then open /projects/universe/viewer.html
@@ -129,7 +129,7 @@ Precisely:
 
 | # | Law | |
 |---|-----|---|
-| 1 | **Conservation** | Matter (the **sum of kinds**), energy and momentum are integers and are never created or destroyed. Where something crosses an edge it is counted. **Momentum** is an integer vector and **speed is a rate** that never reaches the limit: `|p| / √(k² + |p|²)`, relativity's form (Ric: "I don't want anything of matter to reach that speed") — so heavy matter is slow rather than frozen and only radiation travels at the causal limit. A step rounds the vector to one of six directions; the vector itself is never rounded, and a tie is a coin. **Kinetic energy** is the whole number `floor(S · Q(p) / 2k)` with `S = 4`, recomputed from `(p, k)` rather than stored, so the conserved total is heat + Σ KE. Collisions resolve in three-hexagon blocks, conserve momentum exactly, and draw their outcome at random. A **thermal kick** turns heat into motion in opposite-moving pairs, so momentum still sums to zero. |
+| 1 | **Conservation** | Matter (the **sum of kinds**), energy and momentum are integers and are never created or destroyed. Where something crosses an edge it is counted. **Momentum** is an integer vector and **speed is a rate** that never reaches the limit: `|p| / √(k² + |p|²)`, relativity's form (Ric: "I don't want anything of matter to reach that speed") — so heavy matter is slow rather than frozen and only radiation travels at the causal limit. A primitive keeps its true position inside its hexagon and steps into the hexagon its straight path enters next (item 34), so it travels at its real heading, not along one of six. **Kinetic energy** is the whole number `floor(S · Q(p) / 2k)` with `S = 4`, recomputed from `(p, k)` rather than stored, so the conserved total is heat + Σ KE. Collisions resolve in three-hexagon blocks, conserve momentum exactly, and draw their outcome at random. A **thermal kick** turns heat into motion in opposite-moving pairs, so momentum still sums to zero. |
 | 2 | **Bonding** | Adjacent primitives may bond with binding energy **`B(k₁, k₂) = 8 − |v(k₁) + v(k₂) − 8|`**, `v(k) = k mod 8` — strongest when the two valences are complementary. A bond forms with probability `BOND_FORM_PROB` when a clock fires, never instantly on contact, which is what makes catalysis possible. It breaks when **`e ≥ B · kind`** at either end — temperature at or above `B`. Motion never breaks a bond: a step that would stretch one does not happen. No distance term and no force — exclusion already repels and gravity already gathers. |
 | 3 | **Gravity** | All matter attracts all matter as 1/r², never cancelling, acting on the sum of kinds. The only non-local law. A pull smaller than one unit of momentum is carried, not rounded (item 19). A local screened-field version is the candidate replacement (item 12). Not in the Lab. |
 | 4 | **Capacity** | A primitive bonds to at most `capacityOf(k) = clamp(k mod 8, 1, 6)` neighbours — read from the same valence law 2 uses, so kinds have valences (item 6). Its job is saturation: without it attraction collapses everything into one blob. |
@@ -360,41 +360,9 @@ condition.
 
 **33. Does law 1's `|p| / K` inertia emerge?** Law 1 says a heavy composite resists being pushed.
 Nothing computes `K` any more, so it would have to emerge — and first evidence says it does not:
-momentum per member is flat with cluster size. Imposed by hand it was worth +0.05 of mean `B`, inside
-the 0.06 spread between seeds. *Decided by:* tracking clusters through time, which needs re-identifying them every sample,
+momentum per member is flat with cluster size. Imposed by hand it was worth +0.07 of mean `B` under tracked
+stepping, inside the 0.08 spread between seeds. *Decided by:* tracking clusters through time, which needs re-identifying them every sample,
 since rule 2 forbids storing a cluster id.
-
-**34. Motion on the lattice has six headings, and momentum is too coarse to orbit.** *(Raised
-2026-11-06. Ric asked whether orbits are like reality and how to make them more so with the least
-added; then found that a coin on every tied step makes a diagonal path random-walk off its line.)*
-`orbit.mjs` Checks 13 and 14 measured it:
-
-- **Rounding a step to the nearest of six directions gives the world six headings.** A primitive
-  heading 10° or 20° off a lattice direction travels at exactly 0°, forever — 1,736 and 3,420
-  hexagons off its true line after 10,000 steps. On an exact tie the coin is a random walk: 43
-  hexagons off after 10,000 steps, worst 121. **Ric's rule** — a coin on the first tie, then the
-  opposite every time — fixes ties exactly (never more than half a hexagon off) but not the
-  off-axis headings. **Tracking a continuous position and occupying the hexagon it rounds to**
-  (Bresenham's principle) fixes both: under 0.6 of a hexagon off at any heading, no coin anywhere.
-- **Whole-unit momentum is what stops light kinds orbiting.** At strengths the filter allows, today's
-  rule orbits only kind 255 around the larger clumps; kinds 64 and 1 never do. With momentum in units
-  of 2⁻³² (still whole numbers, still exactly conserved) every kind orbits, every seed.
-- **Together the two additions match Newton.** Fine momentum alone gives stable but lopsided orbits
-  (eccentricity 0.19–0.32) that still lose 0.1–1.5% of their angular momentum a lap. Fine momentum
-  plus a tracked position gives eccentricity 0 and **no** angular-momentum drift — identical to the
-  continuous control in every row — and Kepler's third law to 0.9997, against 1.05–1.20 today.
-  Ric's tie rule changes nothing once momentum is fine, because exact ties stop happening.
-
-**Recommended, not adopted**, and it is two new pieces of stored state, so rule 5's written reason
-applies. **Fine momentum** replaces the 14 momentum bits in the word with two 32-bit components in a
-second array — the array item 19 already recommends for gravity's remainder, which this makes part
-of momentum, settling item 19 too. **A position within the hexagon** is two more components. Together
-about 24 bytes a hexagon against 8. Open before it can go in the engine: what happens to the tracked
-position when the step it implies is blocked (the hexagon is occupied, or a bond holds); how the
-Lab's event-driven time schedules a step at the moment the position crosses a hexagon's edge — which
-would also make matter's speed limit hard rather than an average; collisions drawing an outcome
-from a set too large to list; re-measuring `S`; and re-checking the Lab's chemistry, since stepping
-would stop being random in time. *Decided by:* Ric, then a Lab run with both, compared with today's.
 
 ### Settled
 
@@ -409,13 +377,14 @@ would stop being random in time. *Decided by:* Ric, then a Lab run with both, co
 | 8 | Floor bounce or absorb | Not a Lab question — the Lab has no floor. Returns only if the World keeps one (item 22) |
 | 15 | Heavy matter inert at four bytes | The word went to eight bytes and energy to 16 bits; the heaviest kind now reaches 32× its strongest bond (2026-11-04) |
 | 16 | Do things orbit? | Yes — with the sub-unit pull carried and step ties broken by a coin. Too few to halt collapse (2026-11-05) |
-| 21 | A step that ties two directions | A coin (Ric: "the coin flip is definitely the way to go", 2026-11-05). A fixed pick spiralled every orbit inward |
+| 21 | A step that ties two directions | A coin (Ric: "the coin flip is definitely the way to go", 2026-11-05). A fixed pick spiralled every orbit inward. Under tracked stepping (item 34) exact ties no longer arise, so the coin only serves `STEPPING: "nearest"` |
 | 25 | A bond that motion would stretch | It holds, and the step does not happen. Four readings measured; the shortest won. Clusters still move — bonds within 60° of travel survive a step (2026-11-06) |
 | 28 | Law 2's formation probability | Its own searched constant, `BOND_FORM_PROB` (Ric: "make it eighth", 2026-11-06) |
 | 29 | Heat never became motion | The thermal kick: heat becomes motion in opposite-moving pairs, summing to zero (Ric, 2026-11-06). Thermal pressure itself not yet shown — needs a sweep |
 | 30 | The hot band's ceiling | `HOT_T_MAX = floor(65535 / 255) − 1 = 256`, derived in `constants.mjs`; the Lab refuses a hotter band at startup instead of throwing mid-run. The headroom is measured: arriving energy used at most 3.9% of it (`lab-check.mjs` Check 11, 3 seeds). `THERMOSTAT_SWEEP` said 4096 until then (2026-11-06) |
 | 31 | Motion shattering chemistry at ±63 | Separated: GAP 3's reading was the main cause, the width secondary, the kick probability not a cause. Closed by item 25 |
 | 32 | A cluster walk broke rule 9 | Removed. Reality has no rigid bodies, and nothing computes a body's total mass. The pyramid is again the only non-local read (2026-11-06) |
+| 34 | Matter moved along six headings, and momentum was too coarse to orbit | **Tracked stepping adopted** (Ric: "I'm fine with the added state it's not much", 2026-11-06): each primitive keeps its position inside its hexagon and enters the hexagon its straight path enters next, at speed over the distance to that edge. Off-axis headings travel true (was up to 30° off) at the right speed (`lab-check.mjs` Check 13); orbits match Newton (`orbit.mjs` Checks 13–14). **Fine momentum** (units of 2⁻³²) is adopted for the World and built with gravity — nothing in the Lab makes fractions. Costs: about 2.3× the events per unit of time, and the T = 6 chemistry peak falls 6.41 → 6.23 at equal time |
 
 ## Roads not taken
 

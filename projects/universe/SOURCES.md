@@ -254,6 +254,13 @@ first move but then every time needs to be the opposite"*) — which is Bresenha
 tie. Took: the error-carrying principle only, in the form of a continuous position whose rounding
 is the occupied hexagon. Not Bresenham's integer arithmetic.
 
+**Amanatides, John; Woo, Andrew (1987).** *A Fast Voxel Traversal Algorithm for Ray Tracing.*
+Eurographics '87. Walking a ray through a grid one cell at a time by finding which face of the
+current cell it leaves through, and how far along the ray that is. Recorded 2026-11-06 before
+`lab.mjs` used it for law 1's tracked stepping (README item 34): each motion event moves a
+primitive into the hexagon its true straight-line path enters next, at a rate of speed over the
+distance to that hexagon's edge. Took: exit-face traversal, on hexagons rather than voxels.
+
 **Hairer, Ernst; Lubich, Christian; Wanner, Gerhard (2006).** *Geometric Numerical Integration*, 2nd
 ed., Springer. The result that symplectic Euler — update momentum from the force at the current
 position, then position from the new momentum — conserves angular momentum exactly under a central

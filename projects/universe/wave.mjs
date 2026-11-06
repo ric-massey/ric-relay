@@ -231,9 +231,11 @@ for (const [bondDir, label] of [[1, "  60 deg"], [5, " -60 deg"], [2, " 120 deg"
     + (a.bonded ? "" : "   BOND LOST")
     + (b.bonded ? "" : "   wave arm lost its bond"));
 }
-console.log("\n   Every orientation translates, about equally far, so the prediction that a");
-console.log("   longitudinal pair cannot move was wrong. The wave does not carry it any");
-console.log("   further. Distances are the unwrapped path on the torus (travelled()).");
+console.log("\n   Every orientation translates, so the prediction that a longitudinal pair");
+console.log("   cannot move was wrong. Under nearest-of-six stepping the wave carried it");
+console.log("   no further; under tracked stepping (item 34, 2026-11-06) it carries it");
+console.log("   10-25% further -- read the numbers above, not this sentence, if they move");
+console.log("   again. Distances are the unwrapped path on the torus (travelled()).");
 console.log("   (each run asserts the world's momentum is UNCHANGED, not zero:");
 console.log("    a pair carrying p in one direction sums to 2p, which is the point)");
 

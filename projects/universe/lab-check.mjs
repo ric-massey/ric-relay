@@ -493,5 +493,44 @@ console.log(`\n=== Check 12: no matter reaches the speed limit ===`);
     `|p| = k/10 moves at ${(matterSpeed(2 * 1, 10) / 0.1).toFixed(4)} of |p|/k`);
 }
 
+console.log(`\n=== Check 13: a free primitive travels true, at the right speed (item 34) ===`);
+{
+  // Law 1 steps by "track" since 2026-11-06: the primitive keeps its true
+  // position inside its hexagon and enters the hexagon its straight path
+  // enters next. Under nearest-of-six a heading 20 degrees off a lattice
+  // direction travelled at 0 degrees for ever. One primitive, alone, five
+  // headings, sampled every 50 events so the 258-wide loop is never lapped
+  // between samples (wave.mjs's lesson: on a torus a distance is a path).
+  const wrapd = (v) => ((v + N / 2) % N + N) % N - N / 2;
+  let worstHead = 0, worstSpeed = 0;
+  const rows = [];
+  for (const [x, y] of [[20, -20], [13, -20], [7, -20], [-11, -9], [3, 17]]) {
+    const lab = new Lab({ thermostat: { HOT_T: 0, COLD_T: 0, BAND_ROWS: 0 }, seed: 5 });
+    const w = lab.w, i0 = at(N >> 1, N >> 1);
+    w.kind[i0] = 40; w.mx[i0] = x; w.my[i0] = y;
+    lab.start();
+    let cur = i0, cq = 0, cr = 0;
+    for (let e = 1; e <= 400; e++) {
+      lab.run(e * 50);
+      let k = 0; while (!w.kind[k]) k++;
+      cq += wrapd(qOf(k) - qOf(cur)); cr += wrapd(rOf(k) - rOf(cur)); cur = k;
+    }
+    const X = cq + cr / 2 + w.ox[cur], Y = cr * Math.sqrt(3) / 2 + w.oy[cur];
+    const z = -x - y, ux = x + z / 2, uy = z * Math.sqrt(3) / 2;
+    let dh = (Math.atan2(Y, X) - Math.atan2(uy, ux)) * 180 / Math.PI;
+    dh = ((dh + 540) % 360) - 180;
+    const Q = x * x + y * y + z * z;
+    const speed = Math.hypot(X, Y) / lab.now / (lab.causal * matterSpeed(Q, 40));
+    worstHead = Math.max(worstHead, Math.abs(dh));
+    worstSpeed = Math.max(worstSpeed, Math.abs(speed - 1));
+    rows.push(`(${x},${y}) ${dh.toFixed(2)} deg, speed ${speed.toFixed(3)}`);
+  }
+  console.log("      " + rows.join("   "));
+  report("every heading travels true, not along a lattice direction", worstHead < 0.5,
+    `worst heading error ${worstHead.toFixed(2)} deg -- nearest-of-six missed by up to 30`);
+  report("and at the speed law 1 gives it", worstSpeed < 0.02,
+    `worst ${(100 * worstSpeed).toFixed(1)}% off -- LAB.TRACK_EDGE_FLOOR costs only corner clips`);
+}
+
 console.log(`\n${failures === 0 ? "All checks passed." : failures + " CHECK(S) FAILED."}`);
 if (failures > 0) process.exitCode = 1;

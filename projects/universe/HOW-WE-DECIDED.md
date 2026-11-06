@@ -2698,6 +2698,42 @@ lists what must be settled before it can go into the engine: the tracked positio
 step, scheduling an edge crossing in event-driven time, collisions over a fine outcome set, `S`, and
 the Lab's chemistry re-checked.
 
+
+#### Settled — tracked stepping goes into the Lab, fine momentum waits for gravity (item 34)
+
+Ric, 2026-11-06: *"I'm fine with the added state it's not much."* Two decisions followed.
+
+**Fine momentum is adopted for the World and not built into the Lab.** In the Lab every change to
+momentum is whole units — collisions, sharing along a bond, the thermal kick — and only gravity's pull
+makes fractions, and gravity is held out of the Lab. So fine units there would be a change of
+representation with no change of behaviour. It goes in with law 3's solver, and item 19's residual
+is part of it.
+
+**Tracked stepping is built and is the default** (`SETTLED.STEPPING = "track"`). Simpler than first
+proposed: a motion event moves the primitive into the hexagon its straight path enters next, at a
+rate of speed over the distance to that edge, so timing needs no new machinery and at most one
+hexagon is crossed per event. Each primitive starts at a random point in its hexagon, which is Ric's
+"50/50 on the first move" done once — from a random point an exact tie has probability zero.
+
+**The first version jammed the world, and the counter said why.** A path that clips a corner can be a
+billionth of a spacing from its next edge; if a bond refuses that crossing the primitive retries a
+billion times faster than anything else. 387,477 of 400,000 events were refusals. `LAB.TRACK_EDGE_FLOOR`
+(1/16 of a spacing) floors the distance; a free primitive's speed is unharmed, within 1.2% on five
+headings with heading error 0.00° (`lab-check.mjs` Check 13; nearest-of-six missed by 20–27°).
+
+**What it moved, at equal simulated time** (three seeds, held T, mean `B`; nearest → tracked): T 0
+5.56 → 5.57, T 2 5.80 → 5.82, **T 6 6.41 → 6.23**, T 20 5.36 → 5.42. The peak stays at T 6 and falls
+by 0.18, beyond the 0.02–0.04 seed spread. Bonded steps rise about threefold — clusters move more —
+and the run costs about 2.3× the events per unit of time, because a primitive that bounces back sits
+on the edge it just crossed and re-crosses it at once. Distance travelled per unit time is still
+right; it is hexagon crossings that multiply. `wave.mjs` under tracked stepping: shipped 6.27 at T 6,
+`|p| / K` +0.07 inside a 0.08 spread (item 33).
+
+**One reversal to flag rather than act on.** Under tracked stepping the rejected momentum wave
+carries a lone bonded pair 10–25% further (1,026–1,051 hexagons against 824–978). Its rejection rested
+on buying nothing; chemistry is still a tie (6.27 each), but motion now favours it. It stays in
+`rejected/` until Ric says otherwise.
+
 ---
 
 ## The register in full

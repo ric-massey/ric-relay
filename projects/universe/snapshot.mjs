@@ -3,12 +3,13 @@
 // This file runs the Lab and writes what the world LOOKED LIKE when the event
 // budget ran out. It is a reader, not a law: it imports lab.mjs and
 // constants.mjs and changes neither, and it computes nothing the viewer could
-// not compute itself from the same six bytes per hexagon.
+// not compute itself from the same arrays.
 //
 // Rules this file is standing under:
 //
 //   rule 2   nothing stored that should emerge. The written file carries the
-//            five world arrays and NOTHING derived -- no cluster ids, no
+//            world arrays -- the five of the word, and since 2026-11-06 the
+//            tracked position inside each hexagon -- and NOTHING derived -- no cluster ids, no
 //            species, no temperature field. The viewer derives all of that on
 //            the fly, the same way lab.mjs does.
 //   rule 8   no physics number lives here. The run settings below (how full
@@ -113,12 +114,17 @@ const elapsed = Date.now() - started;
 // bits are not stored because nothing is in them. This is a transport format
 // for a viewer, not a claim about the word.
 const w = lab.w;
-const bin = Buffer.alloc(CELLS * 6);
+// Six bytes of the word, then the tracked position inside each hexagon
+// (README item 34) as two float32s -- ample for a picture, and the run's own
+// arithmetic stays in the engine's float64.
+const bin = Buffer.alloc(CELLS * 14);
 Buffer.from(w.kind.buffer, w.kind.byteOffset, CELLS).copy(bin, 0);
 Buffer.from(w.energy.buffer, w.energy.byteOffset, CELLS * 2).copy(bin, CELLS);
 Buffer.from(w.mx.buffer, w.mx.byteOffset, CELLS).copy(bin, CELLS * 3);
 Buffer.from(w.my.buffer, w.my.byteOffset, CELLS).copy(bin, CELLS * 4);
 Buffer.from(w.bonds.buffer, w.bonds.byteOffset, CELLS).copy(bin, CELLS * 5);
+Buffer.from(Float32Array.from(w.ox).buffer).copy(bin, CELLS * 6);
+Buffer.from(Float32Array.from(w.oy).buffer).copy(bin, CELLS * 10);
 
 // --------------------------------------------------------------- the space
 // WHAT SHAPE THIS RUN IS, MEASURED FROM THE ENGINE RATHER THAN ASSERTED HERE.
@@ -208,6 +214,8 @@ const header = {
     { field: "mx",     type: "i8",  offset: CELLS * 3 },
     { field: "my",     type: "i8",  offset: CELLS * 4 },
     { field: "bonds",  type: "u8",  offset: CELLS * 5 },
+    { field: "ox",     type: "f32", offset: CELLS * 6 },    // tracked position, cartesian,
+    { field: "oy",     type: "f32", offset: CELLS * 10 },   // in spacings from the centre
   ],
 
   // the run

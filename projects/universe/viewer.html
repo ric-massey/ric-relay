@@ -947,7 +947,9 @@ function seedWorld({ cols = 96, rows = 72, density, meanT, spread, seed }) {
 
 // =============================================================== the lab tab
 // A snapshot is six bytes per hexagon in the layout snapshot.mjs documents,
-// little-endian, axial order. Nothing is derived in the file: the viewer
+// little-endian, axial order -- plus, since 2026-11-06, each primitive's
+// tracked position inside its hexagon (ox, oy, float32), which this page
+// does not draw yet. Nothing is derived in the file: the viewer
 // computes temperature, groups and kinetic energy itself.
 function worldFromSnapshot(header, buf) {
   const N = header.N, cells = header.cells;

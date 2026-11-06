@@ -36,13 +36,18 @@ All three are integers.
 
 **Momentum is an integer vector, and speed is derived from it.** It is held in cube coordinates on
 the hex lattice's three axes, two independent signed components each in **±63**, and it is *not*
-where the primitive goes next. A step rounds the vector to the nearest of the six directions; the
-vector itself is never rounded, so nothing conserved is ever rounded. **A tie between two directions
-is broken by a fair coin** (item 21): an integer vector lies exactly between two directions on 2–4%
-of an orbit's steps, and a fixed pick is a handedness that spiralled every orbit into the centre.
-**Known flaw (item 34):** rounding to the nearest direction gives matter six headings — a primitive
-heading 10° off a lattice direction travels at 0° for ever — and on a tie the coin random-walks the
-path off its line. A tracked position within the hexagon fixes both; it is recommended, not adopted.
+where the primitive goes next.
+
+**A primitive goes where its momentum points, not along one of six directions** (item 34, adopted
+2026-11-06). It keeps its true position inside its hexagon, and a motion event moves it into the
+hexagon its straight-line path enters next — the edge it reaches first — at a rate of its speed over
+the distance to that edge (Amanatides & Woo's grid traversal). Nothing conserved is touched: the
+position is not conserved and the momentum is never rounded. If the hexagon is occupied or a bond
+refuses, the position stays where it was. Each primitive starts at a random point in its hexagon,
+so an exact tie between two edges has probability zero and needs no coin. *(Until then a step
+rounded the momentum to the nearest of six directions, with a coin on a tie — item 21. That gave
+matter six headings: a primitive heading 10° off a lattice direction travelled at 0° for ever, and a
+tied path random-walked off its line. Ric found the tie case; `orbit.mjs` Check 13 measured both.)*
 
 **Speed is a rate, not a distance, and matter never reaches the limit.** A primitive steps at
 
@@ -125,9 +130,9 @@ and reality forbids it for the same reason.
 **Motion never stretches a bond: a step that would stretch one does not happen** (item 25). Clusters
 still move. On a hex lattice `i` and `i + d` share two neighbours, so a bond within 60° of the
 direction of travel survives the step; only bonds at 120° and 180° refuse. Shear is cheap and
-compression dear, which is the right way round for matter. Measured: bonded matter steps about
-15,000 times per million events, and a lone bonded pair travels about 1,050 hexagons in 200,000 events
-— four laps of the Lab — whatever the angle of its bond.
+compression dear, which is the right way round for matter. Measured under tracked stepping: bonded
+matter steps about 18,000 times per million events, and a lone bonded pair travels 820–980 hexagons
+in 200,000 events — three or four laps of the Lab — whatever the angle of its bond.
 
 **Breaking is law 2's, by temperature.** A hard strike breaks a cluster by heating it: the
 collision's KE change goes to heat, and if an endpoint reaches `e ≥ B · kind` the bond breaks. A soft

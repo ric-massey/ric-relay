@@ -1,11 +1,11 @@
 {
   "engine": {
-    "lab": "f6c7a35145a9",
-    "constants": "b9f1e41ce443"
+    "lab": "42a0140cc21e",
+    "constants": "ada4bc2bc9f7"
   },
   "format": "universe-lab-snapshot/1",
   "warning": "CANDIDATE_ZERO is the plumbing test point, not a chosen physics. Every number in this run comes from an arbitrary point in the search space, and README item 31 is the standing reason to distrust any chemistry figure read off a run.",
-  "written": "2026-11-06T16:41:28.501Z",
+  "written": "2026-11-06T17:44:40.670Z",
   "label": "held hot band at 6, seed 21",
   "slot": "current",
   "space": {
@@ -49,13 +49,23 @@
       "field": "bonds",
       "type": "u8",
       "offset": 332820
+    },
+    {
+      "field": "ox",
+      "type": "f32",
+      "offset": 399384
+    },
+    {
+      "field": "oy",
+      "type": "f32",
+      "offset": 665640
     }
   ],
   "run": {
     "seed": 21,
     "events": 400000,
     "budget": 400000,
-    "clock": 207.71493707585105,
+    "clock": 124.93879894460915,
     "fill": 0.35,
     "momentumRange": 6,
     "thermostat": {
@@ -63,34 +73,34 @@
       "COLD_T": 1,
       "BAND_ROWS": 3
     },
-    "wallMs": 1292,
-    "eventsPerSecond": 309598,
+    "wallMs": 1870,
+    "eventsPerSecond": 213904,
     "stillBeforeBudget": false
   },
   "counts": {
-    "stepped": 55847,
-    "blocked": 124654,
-    "collided": 21236,
-    "collisionDead": 81046,
-    "tooColdToMove": 22372,
-    "bondsFormed": 9804,
-    "bondsBroken": 254,
+    "stepped": 66175,
+    "blocked": 193560,
+    "collided": 26001,
+    "collisionDead": 109945,
+    "tooColdToMove": 57614,
+    "bondsFormed": 6613,
+    "bondsBroken": 145,
     "bondsStretched": 0,
-    "conducted": 11742,
-    "emitted": 19808,
-    "absorbed": 18941,
-    "quantaMoved": 40055,
-    "emissionBlocked": 67,
-    "quantumWaited": 109,
-    "momentumShared": 62485,
+    "conducted": 6035,
+    "emitted": 10290,
+    "absorbed": 9576,
+    "quantaMoved": 18278,
+    "emissionBlocked": 30,
+    "quantumWaited": 51,
+    "momentumShared": 29096,
     "momentumRangeDeclined": 0,
-    "shareUnaffordable": 94,
-    "thermostatFires": 1012,
-    "thermalKicks": 13619,
+    "shareUnaffordable": 27,
+    "thermostatFires": 894,
+    "thermalKicks": 7624,
     "kickRangeDeclined": 0,
-    "kickUnaffordable": 1571,
-    "kickNoPartner": 21668,
-    "bondedStepped": 4732
+    "kickUnaffordable": 1169,
+    "kickNoPartner": 13781,
+    "bondedStepped": 4574
   },
   "census": {
     "seeded": {
@@ -105,23 +115,25 @@
     },
     "final": {
       "matter": 3002446,
-      "heat": 341447,
-      "kinetic": 51256,
-      "inFlight": 867,
+      "heat": 321805,
+      "kinetic": 50365,
+      "inFlight": 714,
       "pxSum": 0,
       "pySum": 0,
-      "bondBits": 19100,
-      "bondPotential": -52607
+      "bondBits": 12936,
+      "bondPotential": -35165
     }
   },
   "constants": {
     "settled": {
       "KE_SCALE": 4,
-      "BOND_MODULUS": 8
+      "BOND_MODULUS": 8,
+      "STEPPING": "track"
     },
     "searched": {
       "KE_SCALE": 4,
       "BOND_MODULUS": 8,
+      "STEPPING": "track",
       "TRANSPORT_RATE": 0.5,
       "CLOCK_SCALE": 0.000007629510948348211,
       "CLOCK_FLOOR": 0.03125,
@@ -136,6 +148,7 @@
       16
     ],
     "lab": {
+      "TRACK_EDGE_FLOOR": 0.0625,
       "N": 258,
       "BLOCK_SIZE": 3,
       "BLOCK_OFFSETS": 3

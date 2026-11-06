@@ -104,7 +104,39 @@ function makeWorld() {
     mx:     new Int8Array(CELLS),     // momentum, cube x
     my:     new Int8Array(CELLS),     // momentum, cube y;  z = -x-y
     bonds:  new Uint8Array(CELLS),    // matter: which neighbours. vacuum: in-flight slots.
+    // The primitive's true position inside its hexagon, cartesian, relative
+    // to the centre, in hexagon spacings (README item 34). Read only when law
+    // 1 steps by "track". Not conserved and not derived: it is where the
+    // primitive is, which the hexagon alone rounds away.
+    ox:     new Float64Array(CELLS),
+    oy:     new Float64Array(CELLS),
   };
+}
+
+// The six neighbour directions as cartesian unit vectors, for tracked
+// stepping. Cube (x, y, z) -> cartesian (x + z/2, z * sqrt(3)/2), the same
+// mapping orbit.mjs and the viewer use; each is length 1 because neighbouring
+// centres are one spacing apart, and a hexagon's edge toward neighbour d is
+// the line at distance 1/2 along NORMAL[d].
+const NORMAL = DIR_CUBE.map(([x, , z]) => [x + z / 2, z * Math.sqrt(3) / 2]);
+const HALF = 0.5;
+// Where a primitive's straight path leaves its hexagon: through the edge
+// toward which neighbour, and how far along the path. The path is the line
+// of its momentum from its tracked position. Null when it is not moving.
+function exitOf(w, i) {
+  const x = w.mx[i], y = w.my[i], z = -x - y;
+  if (x === 0 && y === 0) return null;
+  let ux = x + z / 2, uy = z * Math.sqrt(3) / 2;
+  const m = Math.hypot(ux, uy); ux /= m; uy /= m;
+  const px = w.ox[i], py = w.oy[i];
+  let best = -1, bt = Infinity;
+  for (let d = 0; d < DIRECTIONS; d++) {
+    const along = ux * NORMAL[d][0] + uy * NORMAL[d][1];
+    if (along <= 0) continue;
+    const t = (HALF - (px * NORMAL[d][0] + py * NORMAL[d][1])) / along;
+    if (t < bt) { bt = t; best = d; }
+  }
+  return { d: best, t: Math.max(bt, 0), ux, uy };
 }
 
 const isMatter = (w, i) => w.kind[i] !== 0;
@@ -325,6 +357,10 @@ export class Lab {
         + refusals.join("\n  - "));
     }
     this.c = constants;
+    this.tracking = (constants.STEPPING || SETTLED.STEPPING) === "track";
+    // Positions inside hexagons are drawn from their own stream, so turning
+    // tracking on or off leaves every other draw in a run exactly as it was.
+    this.posRng = makeRng((seed ^ 0x5bd1e995) >>> 0);
     this.thermostat = thermostat;
     // README item 30's headroom, measured: the largest share of a held
     // hexagon's room under the energy field that arriving energy had used by
@@ -403,6 +439,15 @@ export class Lab {
     // and the slight trend runs the wrong way. One seed and a snapshot rather
     // than a rate, so it is evidence and not a verdict.
     const speed = matterSpeed(Q, w.kind[i]);
+    if (this.tracking) {
+      // One event = one hexagon crossed, so the rate is speed over the
+      // distance left to the edge the path leaves by -- floored, because a
+      // path that clips a corner can be a billionth of a spacing from its
+      // next edge, and a refused crossing there would retry a billion times
+      // faster than anything else (LAB.TRACK_EDGE_FLOOR has the history).
+      const ex = exitOf(w, i);
+      return this.causal * speed / Math.max(ex.t, LAB.TRACK_EDGE_FLOOR);
+    }
     return this.causal * speed;
   }
   totalRateAt(i) {
@@ -788,8 +833,23 @@ export class Lab {
   // is where it goes. That is shear being cheap and compression being dear,
   // which is the right way round for matter, and none of it was written down.
   step(i) {
+    if (!this.tracking) return this.moveOne(i, this.stepDirection(i));
+    // Tracked (README item 34): cross into the hexagon the true path enters
+    // next. If the move happens, the position lands on the shared edge, as
+    // seen from the new hexagon's centre. If it is refused -- occupied, or a
+    // bond would stretch -- the position stays where it was.
     const w = this.w;
-    const d = this.stepDirection(i);
+    const ex = exitOf(w, i);
+    if (!ex) return undefined;
+    const nx = w.ox[i] + ex.t * ex.ux - NORMAL[ex.d][0];
+    const ny = w.oy[i] + ex.t * ex.uy - NORMAL[ex.d][1];
+    const j = this.moveOne(i, ex.d);
+    if (j !== undefined) { w.ox[j] = nx; w.oy[j] = ny; }
+    return j;
+  }
+
+  moveOne(i, d) {
+    const w = this.w;
     const j = neighbour(i, d);
 
     if (isMatter(w, j)) { this.collide(i, j, d); return; }
@@ -931,8 +991,10 @@ export class Lab {
     }
     w.kind[j] = w.kind[i]; w.energy[j] = w.energy[i];
     w.mx[j] = w.mx[i]; w.my[j] = w.my[i];
+    w.ox[j] = w.ox[i]; w.oy[j] = w.oy[i];
     w.bonds[j] = 0;
     w.kind[i] = 0; w.energy[i] = 0; w.mx[i] = 0; w.my[i] = 0; w.bonds[i] = 0;
+    w.ox[i] = 0; w.oy[i] = 0;
     for (const partner of survivors) {
       for (let f = 0; f < DIRECTIONS; f++) {
         if (neighbour(j, f) === partner) {
@@ -1136,6 +1198,15 @@ export class Lab {
       w.kind[i] = kindDraw(this.rng);
       w.energy[i] = 0;
       w.bonds[i] = 0;
+      if (this.tracking) {
+        // Somewhere inside its hexagon, uniformly. This is the "coin on the
+        // first move" of Ric's tie rule, done once: from a random point an
+        // exact tie between two edges has probability zero.
+        let x, y;
+        do { x = this.posRng.u01() - 0.5; y = (this.posRng.u01() - 0.5) * 2 / Math.sqrt(3); }
+        while (NORMAL.some(([a, b]) => x * a + y * b > HALF));
+        w.ox[i] = x; w.oy[i] = y;
+      }
       if (R > 0) {
         // Drawn independently; the WHOLE WORLD is brought to zero total
         // momentum afterwards by cancelNetMomentum(). Otherwise the world has a

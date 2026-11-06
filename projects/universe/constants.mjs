@@ -63,6 +63,15 @@ export const TEMPERATURE_MAX = ENERGY_MAX;   // 65535, at kind 1
 // resolve in three-hexagon blocks that only tile across the seam when 3
 // divides N. 258 is the nearest such size at or above the planned 256.
 export const LAB = {
+  // The shortest distance to a hexagon's edge that tracked stepping (law 1,
+  // README item 34) will divide by. A path that clips a corner can come
+  // within a billionth of a spacing of its next edge, and if a bond refuses
+  // that crossing the primitive would retry a billion times faster than
+  // anything else and eat the whole run -- the first tracked run did exactly
+  // that, 387,477 refusals in 400,000 events. A numerical guard, not
+  // physics: it slows only corner-clipping crossings, and lab-check.mjs
+  // Check 13 measures that a free primitive's average speed is unharmed.
+  TRACK_EDGE_FLOOR: 1 / 16,   // hexagon spacings
   N:             258,   // hexagons per axis -- 66,564 cells
   BLOCK_SIZE:      3,   // hexagons per Margolus block
   BLOCK_OFFSETS:   3,   // partition offsets, cycled so information crosses
@@ -100,6 +109,17 @@ export const SETTLED = {
   // SEARCHED because a value IS chosen and the slate is held in reserve --
   // but it is the first thing to vary if the Lab comes back flat.
   BOND_MODULUS: 8,
+
+  // Law 1's stepping (README item 34; Ric, 2026-11-06: "I'm fine with the
+  // added state it's not much"). "nearest" rounds every step to the nearest
+  // of six directions, with a coin on a tie -- the rule until 2026-11-06,
+  // which gives matter six headings and random-walks a tied path. "track"
+  // keeps each primitive's true position inside its hexagon and moves it into
+  // the hexagon its straight-line path enters next (Amanatides & Woo), at a
+  // rate of speed over the distance to that edge. Not a searched constant:
+  // a choice between two forms of the law, kept switchable so they can be
+  // compared.
+  STEPPING: "track",
 };
 
 // RE-MEASURED 2026-11-06 for +-63. Both ends are derived from law 1's own

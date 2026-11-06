@@ -198,7 +198,7 @@ was unreachable because nobody had listed it; here it is reachable by name and t
 pending on purpose. **There is an engine now** (2026-11-05): `lab.mjs` is the Lab — four of the
 five laws, no gravity, on a 258 × 258 hexagonal torus in event-driven time, asserting every
 conservation total — with `constants.mjs` (every physics constant; it refuses to run on an unchosen
-one) and `lab-check.mjs` (`node lab-check.mjs`, eleven checks, about 30 seconds). `snapshot.mjs`
+one) and `lab-check.mjs` (`node lab-check.mjs`, thirteen checks, about 30 seconds). `snapshot.mjs`
 freezes a Lab run into `runs/` for the viewer, `wave.mjs` is a measurement harness over copies of
 the engine, and `rejected/` keeps the mechanisms that came out, with the numbers that removed them.
 Around that: docs — a spec and work list (`README.md`), agent rules, a per-law statement
