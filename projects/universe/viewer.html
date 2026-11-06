@@ -1402,17 +1402,27 @@ function draw() {
   // one replacing the other, which is what makes it read as the same object.
   const fold = foldAmount();
   const shape = shapeOf();
-  if (fold < 1) {
+
+  // THE HANDOVER, and it is deliberately not a cross-fade between two
+  // pictures of the world. The flat path draws real hexagons through the LOD
+  // machinery; the morph draws one aggregated surface. At small t they are
+  // the same surface in the same place at the same size, so handing over
+  // there reads as a change of DETAIL -- which is what it is -- rather than
+  // as one image dissolving into another somewhere else on screen. Past that
+  // narrow band only the morph draws, because by then the sheet has left the
+  // plane and a flat copy of it underneath would be a second world.
+  const flatA = 1 - Math.min(1, fold / 0.22);
+  if (flatA > 0) {
     const tiles = tileOffsets();
     // Far copies first, the real world LAST, so nothing is ever painted over
     // the thing that is actually being simulated.
     for (let t = tiles.length - 1; t >= 0; t--) {
       VX = cam.ox + tiles[t][0];
       VY = cam.oy + tiles[t][1];
-      ctx.globalAlpha = (1 - fold) * (RING_ALPHA[tiles[t][2]] ?? 0);
+      ctx.globalAlpha = flatA * (RING_ALPHA[tiles[t][2]] ?? 0);
       drawTile(layer, t === 0);
     }
-    ctx.globalAlpha = 1 - fold;
+    ctx.globalAlpha = flatA;
     VX = cam.ox; VY = cam.oy;
     // The edge of the real world, over the top of every copy. It is the one
     // mark on the screen that says which hexagons exist.
@@ -1420,9 +1430,10 @@ function draw() {
     ctx.globalAlpha = 1;
   }
   if (fold > 0) {
-    if (shape === "donut") drawTorus(layer, fold);
-    else if (shape === "roll-q") drawRoll(layer, fold, 0);
-    else if (shape === "roll-r") drawRoll(layer, fold, 1);
+    VX = cam.ox; VY = cam.oy;
+    ctx.globalAlpha = Math.min(1, fold / 0.10);
+    drawMorph(layer, shape, fold);
+    ctx.globalAlpha = 1;
   }
 
   VX = cam.ox; VY = cam.oy;
@@ -1474,46 +1485,39 @@ function drawMesh(layer) {
 // is folded.
 // ================================================== the shape, zoomed out
 //
-// Ric, 2026-11-07: "There needs to be an end, we need to visually be able to
-// see the loop. Without stretch. And it needs to be accurate. If I zoom out I
-// need to see where the simulation really isn't there anymore."
+// Ric, 2026-11-07, on the zoomed-out map: "There needs to be an end, we need
+// to visually be able to see the loop. Without stretch. And it needs to be
+// accurate. If I zoom out I need to see where the simulation really isn't
+// there anymore." Then, on the first attempt at it: "If you zoom in on the
+// donut, let's say you zoom in on the inner donut — then what. Last time it
+// just phased to the flat version and that just looked stupid."
 //
-// Three complaints, and all three were fair:
+// He is right and the second complaint is the deeper one. The flat picture
+// and the folded picture were two different drawings of the same world, and
+// the viewer CROSS-FADED between them: one dissolved out while the other
+// dissolved in, at whatever place and size each happened to want. Nothing
+// moved, nothing connected, and where you landed had nothing to do with what
+// you had been looking at. A dissolve says "here is another picture". It
+// does not say "this is the same surface".
 //
-//   1. THE REPEATS HAD NO END. Copies were drawn at a flat 0.68 alpha out to
-//      whatever filled the viewport, so the plane looked like more world in
-//      every direction and nothing on screen said where the simulation
-//      stopped. They now fade by ring and the ring count is capped, so the
-//      copies visibly run out and the dark beyond them is the truth: there is
-//      nothing there.
-//   2. THE REAL WORLD HAD NO EDGE. A thin dashed line at 0.75 alpha, drawn
-//      inside the tile loop so later copies painted over it. It is drawn last
-//      now, solid, with its corners marked, and it is the one thing on screen
-//      that says "this, and only this, is being simulated".
-//   3. THE DOUGHNUT STRETCHES. It does, and it has to.
+// So there is no cross-fade any more. There is ONE SURFACE and one continuous
+// motion, and zoom drives it:
 //
-// WHY THE DOUGHNUT HAS TO STRETCH, AND WHAT TO DO INSTEAD. The lattice is
-// intrinsically FLAT: every hexagon has the same six neighbours at the same
-// distance, everywhere, seam included. A flat torus cannot be embedded in
-// three dimensions -- that is a theorem, not a shortcoming of this file -- so
-// any doughnut squeezes the inner ring and stretches the outer. At the radii
-// drawn here the outer circumference is 2.45x the inner, which means the same
-// row of hexagons is drawn two and a half times longer on one side than the
-// other. The physics keeps those equal.
+//     zoom in                                                     zoom out
+//     flat sheet  <--  unrolled tube  <--  tube  <--  bent ring  <--  donut
 //
-// A CYLINDER DOES NOT. Rolling a flat sheet into a tube is an isometry:
-// lengths, angles and areas on the surface are exactly the lengths, angles and
-// areas on the sheet, with nothing stretched anywhere. So the default shape is
-// now a ROLL -- one axis closed into a tube, which you can see meet itself,
-// with the other axis left flat and ITS TWO ENDS DRAWN. That is the loop,
-// visible, without stretch, with an end. One roll shows one of the two loops,
-// and the flat view shows both, so neither picture is complete on its own and
-// the page says which one it is showing.
+// Rolling and unrolling a sheet is an ISOMETRY -- at every angle in between,
+// including every frame of the animation, no length and no angle has changed.
+// So the whole left-hand half of that line is exact: the sheet curls up and
+// uncurls, and nothing is ever stretched at any point. Only the last step,
+// bending the tube round into a ring, distorts, which is why the donut is
+// the one shape labelled as such. Zoom in on it and you watch the distortion
+// leave: the ring straightens, the stretch goes, and then the tube unrolls.
 //
-// The sheet is a RHOMBUS, not a rectangle -- the axial rows shear -- so rolling
-// it gives a band that spirals up the tube rather than a straight sleeve. That
-// is not an artefact to correct; it is the shear, drawn. The two spiral rims
-// are where the other axis is cut, which is where the simulation stops.
+// AND IT LANDS WHERE YOU WERE. The morph's scale, centre and rotation all
+// converge on the flat camera's own, so at the end of the motion the surface
+// IS the flat view, in the same place, at the same size. There is no jump to
+// arrange, because there is no jump.
 
 // The two period vectors of the lattice, in world units. a closes the q loop
 // and b closes the r loop; both have length sqrt(3) per cell, which is what
@@ -1538,37 +1542,48 @@ function shapeOf() {
 // numbers below read as "a third of the way out from fit" and "a sixth".
 // MAX, not min: the world is small when BOTH of its dimensions are small, and
 // taking the min folded a wide flat world the moment it was short.
-const FOLD_IN = 0.28, FOLD_OUT = 0.20;
+const FOLD_IN = 0.28, FOLD_OUT = 0.14;
 function foldAmount() {
   if (!W || shapeOf() === "flat") return 0;
   const sp = worldSpan(W);
   const ratio = Math.max((sp.x1 - sp.x0) * cam.s / VW, (sp.y1 - sp.y0) * cam.s / VH);
   return Math.max(0, Math.min(1, (FOLD_IN - ratio) / (FOLD_IN - FOLD_OUT)));
 }
+// Ease the motion so it starts and ends still. A linear fold made the sheet
+// leap off the plane the instant you touched the wheel.
+const ease = (t) => t * t * (3 - 2 * t);
 
 const torusRot = { yaw: 0.6, pitch: 0.92 };
-const NU = 96, NV = 48;        // quads around the major ring and the tube
+const TWO_PI = Math.PI * 2;
+
+// The quad grid. Square-ish rather than 96x48, because which of the two
+// lattice directions goes around the tube depends on which axis is rolled,
+// and the old grid gave the r-roll only 48 quads to make a circle out of.
+// Coarser while a gesture is in flight, for the same reason the hexagons are.
+const gridN = () => (gesturing ? (TOUCH ? 40 : 56) : (TOUCH ? 72 : 104));
 
 // The colour of each quad is the MEAN of the hexagons it covers, not a sample
-// of one of them. At this size a quad spans about 2.7 x 5.4 hexagons, and
-// picking one would make a moire pattern out of a field that has none.
+// of one of them. At this size a quad spans several hexagons, and picking one
+// would make a moire pattern out of a field that has none.
 let torusGridCache = null, torusGridKey = "";
 function torusGrid(layer) {
-  const key = `${W.meta?.source}:${W.cols}x${W.rows}:${layer}:${document.documentElement.dataset.theme || "auto"}`;
+  const N = gridN();
+  const key = `${W.meta?.source}:${W.cols}x${W.rows}:${layer}:${N}:`
+    + `${document.documentElement.dataset.theme || "auto"}`;
   if (torusGridKey === key && torusGridCache) return torusGridCache;
-  const g = new Float32Array(NU * NV * 3), n = new Float32Array(NU * NV);
+  const g = new Float32Array(N * N * 3), n = new Float32Array(N * N);
   const plane = PAL.rgb.plane;
   for (let r = 0; r < W.rows; r++) {
-    const iv = Math.min(NV - 1, (r * NV / W.rows) | 0);
+    const iv = Math.min(N - 1, (r * N / W.rows) | 0);
     for (let q = 0; q < W.cols; q++) {
-      const iu = Math.min(NU - 1, (q * NU / W.cols) | 0);
+      const iu = Math.min(N - 1, (q * N / W.cols) | 0);
       const c = colourOf(W, r * W.cols + q, layer, true) || plane;
-      const o = (iv * NU + iu) * 3;
+      const o = (iv * N + iu) * 3;
       g[o] += c[0]; g[o + 1] += c[1]; g[o + 2] += c[2];
-      n[iv * NU + iu]++;
+      n[iv * N + iu]++;
     }
   }
-  for (let i = 0; i < NU * NV; i++) {
+  for (let i = 0; i < N * N; i++) {
     const k = n[i] || 1;
     g[i * 3] /= k; g[i * 3 + 1] /= k; g[i * 3 + 2] /= k;
   }
@@ -1576,186 +1591,200 @@ function torusGrid(layer) {
   return g;
 }
 
-// yaw then pitch, orthographic. The camera sits on -Y looking toward +Y, so a
-// bigger Y is farther away and the painter's order is descending Y.
-function spin(X, Y, Z) {
-  const cy = Math.cos(torusRot.yaw), sy = Math.sin(torusRot.yaw);
-  const X1 = X * cy - Y * sy, Y1 = X * sy + Y * cy;
-  const cp = Math.cos(torusRot.pitch), sp2 = Math.sin(torusRot.pitch);
-  return [X1, Y1 * cp - Z * sp2, Y1 * sp2 + Z * cp];
-}
-
-// model -> view, orthographic. The camera sits on -Y looking toward +Y, so a
-// bigger Y is farther away and the painter's order is descending Y.
-function torusPoint(u, v, R, rr) {
-  const cu = Math.cos(u), su = Math.sin(u), cv2 = Math.cos(v), sv = Math.sin(v);
-  return spin((R + rr * cv2) * cu, (R + rr * cv2) * su, rr * sv);
-}
-function torusNormal(u, v) {
-  const cu = Math.cos(u), su = Math.sin(u), cv2 = Math.cos(v), sv = Math.sin(v);
-  return spin(cv2 * cu, cv2 * su, sv);
-}
-
-// ------------------------------------------------------------------ the roll
-// THE ONE THAT DOES NOT STRETCH.
+// ---------------------------------------------------------------- the morph
+// One frame of the motion, worked out once per draw and handed to every point.
 //
-// Quotient the plane by ONE period vector instead of both. P is the one being
-// closed up; Q is left open and its two edges are the ends you can see. A
-// point at lattice fractions (sq along a, sr along b) sits at sq*a + sr*b in
-// the plane; split that into the part along P, which becomes an angle, and the
-// part across P, which becomes height. Arc length around equals distance along
-// P exactly, and height equals distance across P exactly, so NOTHING on this
-// surface is a different size from the sheet it came from.
-function rollFrame(axis) {
+// t = 0 is the flat sheet under the ordinary camera; t = 1 is the shape fully
+// formed. Between them EVERY term travels: the bend angles, the two view
+// rotations, the scale and the centre. That is the whole trick -- at t = 0 the
+// rotations are zero, the scale is cam.s and the centre is the camera's own,
+// so the surface and the flat view are not two pictures that have to be
+// reconciled. They are the same drawing with t = 0.
+function morphFrame(shape, t) {
   const { a, b } = periodVectors();
+  const e = ease(t);
+  // Which period is rolled up, and which is left to run along the tube.
+  const axis = shape === "roll-r" ? 1 : 0;
   const P = axis === 0 ? a : b;
-  const Lp = Math.hypot(P.x, P.y);
-  const ux = P.x / Lp, uy = P.y / Lp;        // along the roll
-  return { a, b, Lp, ux, uy, nx: -uy, ny: ux, R: Lp / (2 * Math.PI) };
-}
-function rollPoint(f, sq, sr) {
-  const wxp = sq * f.a.x + sr * f.b.x, wyp = sq * f.a.y + sr * f.b.y;
-  const along = wxp * f.ux + wyp * f.uy;
-  const perp = wxp * f.nx + wyp * f.ny;
-  const th = 2 * Math.PI * along / f.Lp;
-  return { p: spin(f.R * Math.cos(th), f.R * Math.sin(th), perp), th };
-}
-function rollNormal(th) { return spin(Math.cos(th), Math.sin(th), 0); }
-
-function drawRoll(layer, alpha, axis) {
-  const g = torusGrid(layer);
-  const f = rollFrame(axis);
-  const L = [-0.42, -0.62, 0.66];
-  // Around the tube and along it. The grid is binned by q then r, so which of
-  // its two indices goes around depends on which axis is rolled.
-  const around = axis === 0 ? NU : NV;
-  const along = axis === 0 ? NV : NU;
-  const at = (ia, ib) => (axis === 0 ? (ib * NU + ia) : (ia * NU + ib)) * 3;
-
-  // Fit by measuring, not by a constant: the silhouette changes as it turns,
-  // and a fixed scale let it walk off the top at some angles.
-  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-  const corner = (sq, sr) => {
-    const { p } = rollPoint(f, sq, sr);
-    if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0];
-    if (p[2] < y0) y0 = p[2]; if (p[2] > y1) y1 = p[2];
+  const Lu = Math.hypot(P.x, P.y);
+  const ux = P.x / Lu, uy = P.y / Lu;
+  const area = Math.abs(a.x * b.y - a.y * b.x);
+  const Lv = area / Lu;                       // the extent across the roll
+  // The donut is the roll plus a second bend, and the two happen in turn
+  // rather than together: zoom in and the RING straightens first, then the
+  // straight tube unrolls. Each half is then a simple motion, and the half
+  // that distorts is the one you watch leave.
+  const donut = shape === "donut";
+  const a1 = donut ? TWO_PI * ease(Math.min(1, t * 2)) : TWO_PI * e;
+  const a2 = donut ? TWO_PI * ease(Math.max(0, t * 2 - 1)) : 0;
+  return {
+    a1, a2, Lu, Lv, ux, uy, nx: -uy, ny: ux, e,
+    yaw: torusRot.yaw * e, pitch: torusRot.pitch * e,
+    aa: a, bb: b,
   };
-  for (let k = 0; k <= 24; k++) {
-    const t = k / 24;
-    corner(t, 0); corner(t, 1); corner(0, t); corner(1, t);
-    // the tube's silhouette is the full circle, not just the band's corners
-    const fr = axis === 0 ? { sq: t, sr: 0 } : { sq: 0, sr: t };
-    corner(fr.sq, fr.sr);
-  }
-  const scale = Math.min(VW / Math.max(1e-6, x1 - x0), VH / Math.max(1e-6, y1 - y0)) * 0.82;
-  const cx = VW / 2 - ((x0 + x1) / 2) * scale, cy = VH / 2 + ((y0 + y1) / 2) * scale;
-  const toPx = (p) => [cx + p[0] * scale, cy - p[2] * scale];
-
-  const quads = [];
-  for (let ib = 0; ib < along; ib++) {
-    const t0 = ib / along, t1 = (ib + 1) / along;
-    for (let ia = 0; ia < around; ia++) {
-      const s0 = ia / around, s1 = (ia + 1) / around;
-      const c = [
-        axis === 0 ? rollPoint(f, s0, t0) : rollPoint(f, t0, s0),
-        axis === 0 ? rollPoint(f, s1, t0) : rollPoint(f, t0, s1),
-        axis === 0 ? rollPoint(f, s1, t1) : rollPoint(f, t1, s1),
-        axis === 0 ? rollPoint(f, s0, t1) : rollPoint(f, t1, s0),
-      ];
-      const n = rollNormal((c[0].th + c[1].th) / 2);
-      if (n[1] > 0) continue;                       // facing away
-      const depth = (c[0].p[1] + c[1].p[1] + c[2].p[1] + c[3].p[1]) / 4;
-      const o = at(ia, ib);
-      const lam = Math.max(0, n[0] * L[0] + n[1] * L[1] + n[2] * L[2]);
-      const sh = 0.60 + 0.40 * lam;
-      quads.push({ depth, pts: c.map((k) => toPx(k.p)),
-        col: `rgb(${g[o] * sh | 0},${g[o + 1] * sh | 0},${g[o + 2] * sh | 0})` });
-    }
-  }
-  quads.sort((p, q) => q.depth - p.depth);
-
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  for (const qd of quads) {
-    ctx.fillStyle = qd.col;
-    ctx.beginPath();
-    ctx.moveTo(qd.pts[0][0], qd.pts[0][1]);
-    for (let k = 1; k < 4; k++) ctx.lineTo(qd.pts[k][0], qd.pts[k][1]);
-    ctx.closePath();
-    ctx.fill();
-    // hairline along the same path, because a gap between quads shows the
-    // background through and reads as a hole in the world
-    ctx.strokeStyle = qd.col; ctx.lineWidth = 1; ctx.stroke();
-  }
-
-  // THE ENDS. This is the part Ric asked for: the other axis is CUT, and these
-  // two rims are where it is cut. Everything past them is not a copy and not
-  // more world -- it is nothing, and the picture should look like that.
-  for (const end of [0, 1]) {
-    ctx.beginPath();
-    let started = false;
-    for (let k = 0; k <= around; k++) {
-      const s = k / around;
-      const { p, th } = axis === 0 ? rollPoint(f, s, end) : rollPoint(f, end, s);
-      const n = rollNormal(th);
-      if (n[1] > 0) { started = false; continue; }     // round the back
-      const px = toPx(p);
-      if (!started) { ctx.moveTo(px[0], px[1]); started = true; } else ctx.lineTo(px[0], px[1]);
-    }
-    ctx.strokeStyle = PAL.focus;
-    ctx.lineWidth = 2.5;
-    ctx.globalAlpha = alpha;
-    ctx.stroke();
-  }
-  ctx.restore();
 }
 
-function drawTorus(layer, alpha) {
-  const g = torusGrid(layer);
-  const R = 1, rr = 0.42;
-  const scale = Math.min(VW, VH) * 0.40 / (R + rr);
-  const cx = VW / 2, cy = VH / 2;
-  const L = [-0.42, -0.62, 0.66];        // light, in view space
+// A lattice fraction (sq along a, sr along b) to a point in model space.
+// mx is screen-right, my is screen-down, mz is toward the viewer -- so at
+// t = 0 the model IS the flat world point and mz is zero.
+function morphPoint(sq, sr, M) {
+  const Wx = sq * M.aa.x + sr * M.bb.x, Wy = sq * M.aa.y + sr * M.bb.y;
+  let p = Wx * M.ux + Wy * M.uy;        // along the direction being rolled
+  let c = Wx * M.nx + Wy * M.ny;        // across it
+  let d = 0;                            // out of the sheet
 
-  const quads = [];
-  for (let iv = 0; iv < NV; iv++) {
-    const v0 = iv / NV * Math.PI * 2, v1 = (iv + 1) / NV * Math.PI * 2;
-    for (let iu = 0; iu < NU; iu++) {
-      const u0 = iu / NU * Math.PI * 2, u1 = (iu + 1) / NU * Math.PI * 2;
-      const nrm = torusNormal((u0 + u1) / 2, (v0 + v1) / 2);
-      if (nrm[1] > 0) continue;                       // facing away
-      const a = torusPoint(u0, v0, R, rr), b = torusPoint(u1, v0, R, rr);
-      const c = torusPoint(u1, v1, R, rr), d = torusPoint(u0, v1, R, rr);
-      const depth = (a[1] + b[1] + c[1] + d[1]) / 4;
-      // The camera is on -Y, so a visible face has n.y < 0 and the light sits
-      // on the same side: the dot product is taken as it comes. Negating it
-      // here put every front face in shadow and lit only what you cannot see.
-      const lam = 0.60 + 0.40 * Math.max(0, nrm[0] * L[0] + nrm[1] * L[1] + nrm[2] * L[2]);
-      quads.push([depth, a, b, c, d, (iv * NU + iu) * 3, lam]);
+  // THE ROLL. A flat strip of length Lu bent into an arc subtending a1 has
+  // radius Lu / a1, and its arc length is Lu whatever a1 is -- which is the
+  // whole reason this is an isometry and not a stretch. a1 = 2*pi closes it
+  // into a tube; a1 -> 0 gives an infinite radius, which is flat.
+  if (M.a1 > 1e-4) {
+    const R = M.Lu / M.a1, th = p / R - M.a1 / 2;
+    p = R * Math.sin(th) + M.Lu / 2;
+    d = R * (Math.cos(th) - Math.cos(M.a1 / 2));
+  }
+  // THE RING, for the donut only. Same arc, applied to the tube's own axis,
+  // and THIS one stretches: the outside of the ring has further to go than
+  // the inside, so a row of hexagons on the outer rim is drawn longer than
+  // the same row on the inner. No embedding in three dimensions avoids it.
+  if (M.a2 > 1e-4) {
+    const R2 = M.Lv / M.a2, ps = c / R2 - M.a2 / 2;
+    const radial = R2 + d;
+    c = radial * Math.sin(ps) + M.Lv / 2;
+    d = radial * Math.cos(ps) - R2 * Math.cos(M.a2 / 2);
+  }
+  // back onto the sheet's own axes, so at t = 0 this reconstructs W exactly
+  return [p * M.ux + c * M.nx, p * M.uy + c * M.ny, d];
+}
+
+// model -> view. Yaw about the screen-down axis, then pitch about
+// screen-right, both scaled by the ease so they unwind to nothing at t = 0.
+function morphView(m, M) {
+  const cy = Math.cos(M.yaw), sy = Math.sin(M.yaw);
+  const X1 = m[0] * cy + m[2] * sy, Z1 = -m[0] * sy + m[2] * cy;
+  const cp = Math.cos(M.pitch), sp = Math.sin(M.pitch);
+  return [X1, m[1] * cp - Z1 * sp, m[1] * sp + Z1 * cp];   // x, y(down), depth
+}
+
+// Where the surface sits on screen. At t = 1 it is fitted to the viewport; at
+// t = 0 it is exactly where the flat camera puts it; in between it travels, so
+// zooming into the shape walks you down onto the sheet rather than cutting.
+function morphPlacement(M, pts, N) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  const n = (N + 1) * (N + 1);
+  for (let i = 0; i < n; i++) {
+    const x = pts[i * 3], y = pts[i * 3 + 1];
+    if (x < x0) x0 = x; if (x > x1) x1 = x;
+    if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  const fit = Math.min(VW / Math.max(1e-6, x1 - x0), VH / Math.max(1e-6, y1 - y0)) * 0.82;
+  const s = cam.s + (fit - cam.s) * M.e;
+  // the flat camera's placement of the same model point, and the fitted one
+  const cxFlat = VX, cyFlat = VY;
+  const cxFit = VW / 2 - ((x0 + x1) / 2) * s, cyFit = VH / 2 - ((y0 + y1) / 2) * s;
+  return {
+    s,
+    cx: cxFlat + (cxFit - cxFlat) * M.e,
+    cy: cyFlat + (cyFit - cyFlat) * M.e,
+  };
+}
+
+function drawMorph(layer, shape, t) {
+  const M = morphFrame(shape, t);
+  const N = gridN();
+  const g = torusGrid(layer);
+  const L = [-0.42, -0.62, 0.66];           // light, in view space
+
+  // Every grid corner once: (N+1)^2 points rather than 4 per quad.
+  const pts = new Float64Array((N + 1) * (N + 1) * 3);
+  for (let iv = 0; iv <= N; iv++) {
+    for (let iu = 0; iu <= N; iu++) {
+      const v = morphView(morphPoint(iu / N, iv / N, M), M);
+      const o = (iv * (N + 1) + iu) * 3;
+      pts[o] = v[0]; pts[o + 1] = v[1]; pts[o + 2] = v[2];
     }
   }
-  quads.sort((p, q) => q[0] - p[0]);                  // far to near
+  const pl = morphPlacement(M, pts, N);
+  const px = (o) => [pl.cx + pts[o] * pl.s, pl.cy + pts[o + 1] * pl.s];
+
+  const quads = [];
+  for (let iv = 0; iv < N; iv++) {
+    for (let iu = 0; iu < N; iu++) {
+      const oA = (iv * (N + 1) + iu) * 3, oB = oA + 3;
+      const oD = ((iv + 1) * (N + 1) + iu) * 3, oC = oD + 3;
+      const A = px(oA), B = px(oB), C = px(oC), D = px(oD);
+      // Backface by the projected winding, which is exactly right for an
+      // orthographic view and needs no surface normal of its own.
+      const area = (B[0] - A[0]) * (C[1] - A[1]) - (C[0] - A[0]) * (B[1] - A[1]);
+      if (area <= 0) continue;
+      const depth = (pts[oA + 2] + pts[oB + 2] + pts[oC + 2] + pts[oD + 2]) / 4;
+      // A cheap normal from the same two edges, lifted into three dimensions
+      // only for the lighting. Flat-on reads as 1, edge-on as 0.
+      const e1 = [pts[oB] - pts[oA], pts[oB + 1] - pts[oA + 1], pts[oB + 2] - pts[oA + 2]];
+      const e2 = [pts[oD] - pts[oA], pts[oD + 1] - pts[oA + 1], pts[oD + 2] - pts[oA + 2]];
+      let nx = e1[1] * e2[2] - e1[2] * e2[1];
+      let ny = e1[2] * e2[0] - e1[0] * e2[2];
+      let nz = e1[0] * e2[1] - e1[1] * e2[0];
+      const nm = Math.hypot(nx, ny, nz) || 1;
+      nx /= nm; ny /= nm; nz /= nm;
+      // Lit only as much as the surface is actually curved: a flat sheet
+      // should look like the flat view, not like a sheet under a lamp.
+      const lam = Math.max(0, nx * L[0] + ny * L[1] + nz * L[2]);
+      const sh = 1 - M.e * (0.40 - 0.40 * lam);
+      const o = (iv * N + iu) * 3;
+      quads.push([depth, A, B, C, D,
+        `rgb(${(g[o] * sh) | 0},${(g[o + 1] * sh) | 0},${(g[o + 2] * sh) | 0})`]);
+    }
+  }
+  quads.sort((p, q) => p[0] - q[0]);          // far to near
 
   ctx.save();
-  ctx.globalAlpha = alpha;
-  const px = (p) => [cx + p[0] * scale, cy - p[2] * scale];
-  for (const [, a, b, c, d, o, lam] of quads) {
-    const A = px(a), B = px(b), C = px(c), D = px(d);
+  for (const [, A, B, C, D, col] of quads) {
     ctx.beginPath();
     ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]);
     ctx.lineTo(C[0], C[1]); ctx.lineTo(D[0], D[1]);
     ctx.closePath();
-    ctx.fillStyle = `rgb(${(g[o] * lam) | 0},${(g[o + 1] * lam) | 0},${(g[o + 2] * lam) | 0})`;
-    ctx.fill();
+    ctx.fillStyle = col; ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.stroke();   // no seams between quads
   }
 
-  // where the selected hexagon sits on the loop
+  // THE ENDS, and the seams. An edge that is rolled up has MET ITSELF and is
+  // a seam; an edge that is still open is where the world stops. Both are
+  // drawn, and which is which falls out of the bend angle rather than being
+  // decided here -- at t = 1 the rolled pair have closed and only the open
+  // pair are rims.
+  const edge = (fixed, along, closed) => {
+    ctx.beginPath();
+    let on = false;
+    for (let k = 0; k <= N; k++) {
+      const iu = along === 0 ? k : fixed * N, iv = along === 0 ? fixed * N : k;
+      const o = (iv * (N + 1) + iu) * 3;
+      // only the part facing the viewer, or the line draws through the solid
+      const facing = pts[o + 2] >= -1e-9 || M.e < 0.02;
+      if (!facing) { on = false; continue; }
+      const P = px(o);
+      if (!on) { ctx.moveTo(P[0], P[1]); on = true; } else ctx.lineTo(P[0], P[1]);
+    }
+    ctx.setLineDash(closed ? [7, 5] : []);
+    ctx.strokeStyle = PAL.focus;
+    ctx.globalAlpha = closed ? 0.55 : 1;
+    ctx.lineWidth = closed ? 1.5 : 2.5;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+  };
+  const rolledClosed = M.a1 > TWO_PI - 1e-3;
+  const ringClosed = M.a2 > TWO_PI - 1e-3;
+  edge(0, 0, rolledClosed); edge(1, 0, rolledClosed);     // the two u edges
+  edge(0, 1, ringClosed);   edge(1, 1, ringClosed);       // the two v edges
+
+  // where the selected hexagon sits on the surface
   if (sel >= 0) {
-    const u = qOf(W, sel) / W.cols * Math.PI * 2, v = rOf(W, sel) / W.rows * Math.PI * 2;
-    if (torusNormal(u, v)[1] <= 0) {
-      const P = px(torusPoint(u, v, R, rr));
+    const m = morphView(morphPoint(qOf(W, sel) / W.cols, rOf(W, sel) / W.rows, M), M);
+    if (m[2] >= 0 || M.e < 0.02) {
       ctx.strokeStyle = PAL.ink; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(P[0], P[1], 5, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(pl.cx + m[0] * pl.s, pl.cy + m[1] * pl.s, 5, 0, TWO_PI);
+      ctx.stroke();
     }
   }
   ctx.restore();
@@ -2041,6 +2070,7 @@ function drawHud() {
   document.getElementById("stZoom").textContent = cam.s.toFixed(cam.s < 1 ? 2 : 1);
   document.getElementById("stLod").textContent =
     fold >= 1 ? (shape === "donut" ? "donut · drag to turn" : "rolled · drag to turn")
+    : fold > 0 ? `${Math.round(fold * 100)}% ${shape === "donut" ? "bent" : "rolled"}`
     : level === "detail" ? "full detail" : level === "flat" ? "fills only" : "meshed";
 
   // WHAT YOU ARE LOOKING AT AND WHAT IT COSTS, on the screen that earns it
@@ -2049,7 +2079,7 @@ function drawHud() {
   // says which part it is getting wrong while it is the one on show.
   const note = document.getElementById("foldNote");
   const wasHidden = note.hidden;
-  note.hidden = fold < 0.75;
+  note.hidden = fold < 0.95;
   // Folded again each time it reappears, so a tap to read it does not leave
   // it open over every later picture.
   if (TOUCH && wasHidden && !note.hidden) note.classList.add("folded");
@@ -2584,7 +2614,7 @@ stage.addEventListener("pointermove", (e) => {
   // Folded, a drag turns the thing over instead of sliding a plane around --
   // there is no plane to slide. The wheel still zooms, so the way back out is
   // the way you came in.
-  if (panFrom && foldAmount() > 0.5) {
+  if (panFrom && foldAmount() >= 0.999) {
     torusRot.yaw += (p.x - prev.x) * 0.01;
     torusRot.pitch = Math.max(-1.45, Math.min(1.45, torusRot.pitch + (p.y - prev.y) * 0.01));
     requestDraw();
