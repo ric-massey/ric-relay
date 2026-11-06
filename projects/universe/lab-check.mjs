@@ -13,7 +13,7 @@
 import {
   Lab, neighbour, opposite, bindingEnergy, census, N, CELLS, at, qOf, rOf,
 } from "./lab.mjs";
-import { LAB, CANDIDATE_ZERO, DIRECTIONS, capacityOf } from "./constants.mjs";
+import { LAB, CANDIDATE_ZERO, DIRECTIONS, capacityOf, HOT_T_MAX, KIND_MAX, ENERGY_MAX } from "./constants.mjs";
 
 let failures = 0;
 function report(name, ok, detail) {
@@ -424,6 +424,35 @@ console.log(`\n=== Check 10: does heat become motion, and does it still sum to z
   // trend and noise. Printed as data, with no claim attached.
   console.log(`      steps by band: ${rows.map((r) => r.stepped).join(", ")} -- NOT a trend on one seed.`);
   console.log(`      Whether hot regions really move more than cold ones needs a sweep (item 29).`);
+}
+
+console.log(`\n=== Check 11: the hot band fits, with room for what arrives (item 30) ===`);
+{
+  // Item 30: a held band cannot exceed ENERGY_MAX / heaviest kind, and needs
+  // headroom under that for arriving radiation. HOT_T_MAX is derived from the
+  // first half; this checks the engine refuses past it at startup, and then
+  // MEASURES the second half rather than trusting the - 1.
+  let refused = false;
+  try { new Lab({ thermostat: { HOT_T: HOT_T_MAX + 1, COLD_T: 1, BAND_ROWS: 3 }, seed: 1 }); }
+  catch (e) { refused = /item 30/.test(e.message); }
+  report(`a band at ${HOT_T_MAX + 1} is refused before the run, not during it`, refused,
+    `${HOT_T_MAX + 1} x ${KIND_MAX} = ${(HOT_T_MAX + 1) * KIND_MAX} against ${ENERGY_MAX}`);
+
+  const used = [];
+  for (const seed of [41, 42, 43]) {
+    const lab = new Lab({ thermostat: { HOT_T: HOT_T_MAX, COLD_T: 1, BAND_ROWS: 3 }, seed });
+    lab.seedWorld(0.35, (rng) => 1 + rng.below(255), { momentumRange: 6 });
+    lab.start();
+    lab.run(200000);              // throws if any hexagon ever passed the field
+    used.push(lab.thermostatHeadroomUsed);
+  }
+  const worst = Math.max(...used);
+  console.log(`      held at ${HOT_T_MAX}, share of headroom used before the thermostat refired: `
+    + used.map((u) => (100 * u).toFixed(1) + "%").join(", "));
+  report(`the band holds at ${HOT_T_MAX} for 200,000 events on 3 seeds, field never reached`, true,
+    `worst ${(100 * worst).toFixed(1)}% of the room used`);
+  report("and uses well under half its headroom, so the margin is not luck", worst < 0.5,
+    `${(100 * worst).toFixed(1)}% -- if this rises, widen the margin in HOT_T_MAX, do not loosen this`);
 }
 
 console.log(`\n${failures === 0 ? "All checks passed." : failures + " CHECK(S) FAILED."}`);

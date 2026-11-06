@@ -249,10 +249,43 @@ export const THERMOSTAT_DEFAULT = {
   COLD_T:       1,   // temperature held in the cold band
   BAND_ROWS:    3,   // axial rows each band occupies
 };
+// THE HOTTEST HOLDABLE BAND, derived rather than typed (README item 30, fixed
+// 2026-11-06). A held band sets every hexagon in it to HOT_T x kind, so with
+// kind-255 matter about the band cannot go past ENERGY_MAX / KIND_MAX = 257
+// -- and it cannot sit AT that either, or the next quantum of radiation to
+// arrive has nowhere to go. The - 1 is that headroom: a kind-255 primitive
+// held at 256 has 255 units of room. lab-check.mjs Check 11 measures how much
+// of that room arriving energy actually uses, so the margin is a measurement,
+// not a hope. This range said [4, 4096] until 2026-11-06, a sweep that would
+// have crashed at its first step past 257.
+export const HOT_T_MAX = Math.floor(ENERGY_MAX / KIND_MAX) - 1;   // 256
+
 export const THERMOSTAT_SWEEP = {
-  HOT_T:  [4, 4096],   // the range a sweep should cover
+  HOT_T:  [4, HOT_T_MAX],   // the range a sweep may cover, for any seeded mix of kinds
   COLD_T: [0, 64],
 };
+
+// Refuse a held condition the engine could not hold, BEFORE the run rather
+// than thousands of events into it (rule 8: reject a bad set at startup).
+// Checked against KIND_MAX because the Lab seeds every kind; a run that seeds
+// only light kinds could hold a hotter band, and that is a different
+// experiment that would need its own, stated, limit.
+export function validateThermostat(t) {
+  const problems = [];
+  if (!(t.BAND_ROWS > 0)) return problems;           // no bands, nothing held
+  for (const name of ["HOT_T", "COLD_T"]) {
+    const T = t[name];
+    if (!(Number.isInteger(T) && T >= 0)) {
+      problems.push(name + " must be a whole temperature >= 0, got " + T + ".");
+    } else if (T > HOT_T_MAX) {
+      problems.push(name + " = " + T + " cannot be held: x kind " + KIND_MAX + " is "
+        + T * KIND_MAX + ", and the band needs room under the " + ENERGY_MAX
+        + " energy field for arriving radiation, so the most is " + HOT_T_MAX
+        + " (README item 30).");
+    }
+  }
+  return problems;
+}
 
 // ------------------------------------------------- the hard filters (rule 8)
 // "Assert both at startup and refuse to run." Each rejects a constant set

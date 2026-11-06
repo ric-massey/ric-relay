@@ -59,7 +59,7 @@ The World, the large run with gravity, is not built. Everything open is in
 ### Running it
 
 ```sh
-node lab-check.mjs                     # the Lab's ten checks, ~30 s
+node lab-check.mjs                     # the Lab's eleven checks, ~30 s
 node snapshot.mjs --seed 21 --hot 6    # freeze a run into runs/ for the viewer
 node screen.mjs                        # any screening tool runs the same way
 python3 -m http.server 8912 --bind 127.0.0.1   # then open /projects/universe/viewer.html
@@ -358,10 +358,6 @@ but only between pairs the seeding placed together. Motion is what lets the tabl
 instead of the initial arrangement. Open: whether `TWO-RUNS.md` names initial momentum as a held
 condition.
 
-**30. The hot band has a ceiling.** A held band can be at most `65535 / heaviest kind present`
-— 257 with kind 255 about — and needs headroom below that for arriving radiation. A constraint on
-any sweep of `HOT_T`. *(`THERMOSTAT_SWEEP` in `constants.mjs` still says 4096.)*
-
 **33. Does law 1's `|p| / K` inertia emerge?** Law 1 says a heavy composite resists being pushed.
 Nothing computes `K` any more, so it would have to emerge — and first evidence says it does not:
 momentum per member is flat or rising with cluster size. Imposed by hand it was worth only +0.08 of
@@ -385,6 +381,7 @@ since rule 2 forbids storing a cluster id.
 | 25 | A bond that motion would stretch | It holds, and the step does not happen. Four readings measured; the shortest won. Clusters still move — bonds within 60° of travel survive a step (2026-11-06) |
 | 28 | Law 2's formation probability | Its own searched constant, `BOND_FORM_PROB` (Ric: "make it eighth", 2026-11-06) |
 | 29 | Heat never became motion | The thermal kick: heat becomes motion in opposite-moving pairs, summing to zero (Ric, 2026-11-06). Thermal pressure itself not yet shown — needs a sweep |
+| 30 | The hot band's ceiling | `HOT_T_MAX = floor(65535 / 255) − 1 = 256`, derived in `constants.mjs`; the Lab refuses a hotter band at startup instead of throwing mid-run. The headroom is measured: arriving energy used at most 3.9% of it (`lab-check.mjs` Check 11, 3 seeds). `THERMOSTAT_SWEEP` said 4096 until then (2026-11-06) |
 | 31 | Motion shattering chemistry at ±63 | Separated: GAP 3's reading was the main cause, the width secondary, the kick probability not a cause. Closed by item 25 |
 | 32 | A cluster walk broke rule 9 | Removed. Reality has no rigid bodies, and nothing computes a body's total mass. The pyramid is again the only non-local read (2026-11-06) |
 

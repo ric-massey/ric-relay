@@ -3519,6 +3519,17 @@ says what that costs.
 Neither is a question about the physics; both are constraints on the sweep, and they belong wherever
 the Lab's conditions get written down, because a sweep that walks `HOT_T` upward will hit them.
 
+**Settled 2026-11-06** *(Ric: "Fix it please")*. Both bullets became code. The ceiling is derived,
+`HOT_T_MAX = floor(ENERGY_MAX / KIND_MAX) − 1 = 256`, and `THERMOSTAT_SWEEP.HOT_T` reads it — it had
+said `[4, 4096]`, so a sweep would have crashed at its first step past 257. `validateThermostat()`
+refuses a band past it when the `Lab` is built, so the failure comes before the run, not thousands
+of events in. The `− 1` is the headroom, and it was measured rather than assumed: the Lab records
+the largest share of a held hexagon's room under the field that arriving energy used before the
+thermostat refired, and at 256 on three seeds over 200,000 events that was **1.8%, 0.1% and 3.9%**
+(`lab-check.mjs` Check 11, which fails above 50%). It is checked against kind 255 because the Lab
+seeds every kind; a run that seeded only light kinds could hold a hotter band, and that would be a
+separate experiment with its own stated limit.
+
 **31. At ±63 with the kick on, motion destroys the chemistry — and the sweet spot found the day
 before does not survive.** *(Found 2026-11-06 by testing item 25 hot and cold, immediately after
 adopting ±63, `S = 4` and the thermal kick.)* **This is the bill for item 20's momentum decision

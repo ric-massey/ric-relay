@@ -213,7 +213,7 @@ Apply all of this before telling Ric something interesting happened.
 Screening is cheap and a run is not, so a candidate form goes through `screen.mjs` before it goes
 through the Lab. The five screening tools — `screen.mjs`, `budget.mjs`, `momentum.mjs`,
 `radiate.mjs`, `orbit.mjs` — are not part of the engine. The engine is `lab.mjs`, `constants.mjs` and
-`lab-check.mjs` (`node lab-check.mjs`, ten checks, ~30 s; also in the repo's slow lane and in
+`lab-check.mjs` (`node lab-check.mjs`, eleven checks, ~30 s; also in the repo's slow lane and in
 `simulations.yml`). `wave.mjs` and `snapshot.mjs` run the engine without being it.
 
 - **`screen.mjs`** scores a law-2 form over all 65,025 pairs of kinds: binding-energy spread, family

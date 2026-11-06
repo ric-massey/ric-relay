@@ -40,7 +40,7 @@
 
 import {
   KIND_MAX, ENERGY_MAX, MOMENTUM_RANGE, DIRECTIONS, LAB, SETTLED,
-  clockRate, causalRate, validateForLab, CANDIDATE_ZERO, THERMOSTAT_DEFAULT,
+  clockRate, causalRate, validateForLab, validateThermostat, CANDIDATE_ZERO, THERMOSTAT_DEFAULT,
   capacityOf,
 } from "./constants.mjs";
 
@@ -308,13 +308,17 @@ class Queue {
 // ==================================================================== lab
 export class Lab {
   constructor({ constants = CANDIDATE_ZERO, thermostat = THERMOSTAT_DEFAULT, seed = 1 } = {}) {
-    const refusals = validateForLab(constants);
+    const refusals = [...validateForLab(constants), ...validateThermostat(thermostat)];
     if (refusals.length) {
       throw new Error("REFUSING TO RUN. " + refusals.length + " constant problem(s):\n  - "
         + refusals.join("\n  - "));
     }
     this.c = constants;
     this.thermostat = thermostat;
+    // README item 30's headroom, measured: the largest share of a held
+    // hexagon's room under the energy field that arriving energy had used by
+    // the time the thermostat next fired. 1 would mean the field was reached.
+    this.thermostatHeadroomUsed = 0;
     this.rng = makeRng(seed);
     this.seed = seed;
     this.w = makeWorld();
@@ -1077,6 +1081,11 @@ export class Lab {
         + `energy field. The held condition is out of range for this kind.`);
     }
     const delta = want - w.energy[i];
+    if (delta < 0) {
+      const room = ENERGY_MAX - want;
+      const used = room > 0 ? -delta / room : 1;
+      if (used > this.thermostatHeadroomUsed) this.thermostatHeadroomUsed = used;
+    }
     if (delta === 0) return true;
     w.energy[i] = want;
     this.ledger.thermostatNet += delta;
