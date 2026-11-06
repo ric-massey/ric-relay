@@ -254,6 +254,19 @@ console.log(`\n=== Check 7: a real run, with the books asserted all the way thro
     + `${out.midRunChecks} mid-run assertions`);
   report("matter conserved exactly", before.matter === after.matter,
     `${before.matter} -> ${after.matter}`);
+  report("the world starts at exactly zero momentum", before.pxSum === 0 && before.pySum === 0,
+    `(${before.pxSum}, ${before.pySum}) -- seeds 7 and 107 did not until 2026-11-06`);
+  {
+    // The two seeds the old 1,000-pass cap left drifting. Checked directly,
+    // because a constant total is all the run's own assertion can see.
+    const starts = [7, 107].map((seed) => {
+      const l = new Lab({ seed });
+      l.seedWorld(0.35, (rng) => 1 + rng.below(255), { momentumRange: 6 });
+      const c = census(l.w); return `${seed}: (${c.pxSum}, ${c.pySum})`;
+    });
+    report("including the seeds that used to start drifting", starts.every((s) => s.endsWith("(0, 0)")),
+      starts.join(", "));
+  }
   report("momentum conserved exactly -- no wall to hide a drift in",
     before.pxSum === after.pxSum && before.pySum === after.pySum,
     `(${after.pxSum}, ${after.pySum})`);

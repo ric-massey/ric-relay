@@ -1122,10 +1122,10 @@ export class Lab {
       w.energy[i] = 0;
       w.bonds[i] = 0;
       if (R > 0) {
-        // Drawn so the WHOLE WORLD starts at zero total momentum: every draw is
-        // paired with its opposite. Otherwise the world has a net drift that
-        // looks exactly like "a preferred direction in the physics", which is
-        // the thing law 3 guards its solver against.
+        // Drawn independently; the WHOLE WORLD is brought to zero total
+        // momentum afterwards by cancelNetMomentum(). Otherwise the world has a
+        // net drift that looks exactly like "a preferred direction in the
+        // physics", which is the thing law 3 guards its solver against.
         let x = 0, y = 0;
         for (let t = 0; t < 8; t++) {
           x = this.rng.below(2 * R + 1) - R;
@@ -1144,26 +1144,42 @@ export class Lab {
     this.cancelNetMomentum();
   }
 
+  // FIXED 2026-11-06. This used to stop after 1,000 passes of one unit per
+  // axis and return quietly, with a comment claiming "the assertion will say
+  // so". It would not: the conservation assertion checks that momentum stays
+  // CONSTANT, not that it starts at zero. A world drawing ~23,000 momenta at
+  // +-6 can start more than 1,000 units off, and seeds 7 and 107 did -- they
+  // ran with a built-in drift of (0, -84) and (0, -656), the preferred
+  // direction rule 6 warns about. Now it runs until the total is exactly zero,
+  // and throws if it cannot get there.
   cancelNetMomentum() {
     const w = this.w;
     const occupied = [];
-    for (let i = 0; i < CELLS; i++) if (isMatter(w, i)) occupied.push(i);
-    if (occupied.length === 0) return;
-    for (let guard = 0; guard < 1000; guard++) {
-      let sx = 0, sy = 0;
-      for (const i of occupied) { sx += w.mx[i]; sy += w.my[i]; }
-      if (sx === 0 && sy === 0) return;
-      // Push one unit against the drift, onto a primitive that can hold it.
-      const want = [-Math.sign(sx), -Math.sign(sy)];
-      let moved = false;
-      for (let t = 0; t < occupied.length; t++) {
+    let sx = 0, sy = 0;
+    for (let i = 0; i < CELLS; i++) {
+      if (!isMatter(w, i)) continue;
+      occupied.push(i); sx += w.mx[i]; sy += w.my[i];
+    }
+    while (sx !== 0 || sy !== 0) {
+      // Push one unit against the drift on each axis that has one, onto a
+      // primitive that can hold it. Random picks first; a full scan before
+      // giving up, so "nobody can take it" is a fact and not a bad draw.
+      const dx = -Math.sign(sx), dy = -Math.sign(sy);
+      let took = -1;
+      for (let t = 0; t < 64 && took < 0; t++) {
         const i = occupied[this.rng.below(occupied.length)];
-        const nx = w.mx[i] + (sx !== 0 ? want[0] : 0);
-        const ny = w.my[i] + (sy !== 0 ? want[1] : 0);
-        if (!this.legalMomentum(nx, ny)) continue;
-        w.mx[i] = nx; w.my[i] = ny; moved = true; break;
+        if (this.legalMomentum(w.mx[i] + dx, w.my[i] + dy)) took = i;
       }
-      if (!moved) return;   // cannot be cancelled; the assertion will say so
+      for (let k = 0; k < occupied.length && took < 0; k++) {
+        const i = occupied[k];
+        if (this.legalMomentum(w.mx[i] + dx, w.my[i] + dy)) took = i;
+      }
+      if (took < 0) {
+        throw new Error(`cannot cancel the seeded net momentum (${sx}, ${sy}): no primitive `
+          + `can take another unit inside +-${MOMENTUM_RANGE}. The Lab would start with a drift.`);
+      }
+      w.mx[took] += dx; w.my[took] += dy;
+      sx += dx; sy += dy;
     }
   }
 

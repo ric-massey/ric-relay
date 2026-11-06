@@ -2569,6 +2569,26 @@ wave's control run — the identical engine with one line removed — is the onl
 caught: it looked perfectly reasonable, it conserved exactly, every check passed, and it was
 making the world worse.
 
+
+#### Correction — the Lab did not always start at zero momentum
+
+Found 2026-11-06 in a frozen run's header, fixed the same day (Ric: "Yep"). `seedWorld` draws each
+primitive's momentum independently and `cancelNetMomentum()` then hands the remainder back one unit
+at a time. It **stopped after 1,000 passes and returned quietly**, with a comment saying "the
+assertion will say so" — which it could not, because the conservation assertion checks that momentum
+stays *constant*, not that it starts at zero. About 23,000 draws at ±6 can sum to more than 1,000, so
+x reached zero and y did not: seed 7 started at **(0, −84)** and seed 107 at **(0, −656)**, a
+built-in preferred direction of exactly the kind rule 6 warns about. It now runs until the total is
+exactly zero and throws if nothing can take the next unit; `lab-check.mjs` Check 7 asserts a zero
+start, on seeds 7 and 107 by name. *(The seed-107 figure came from a sweep of 21 seeds run to find
+which were affected; nothing in the project uses 107.)*
+
+**What it touched:** only the frozen `runs/last` snapshot (seed 7) — 4,372 standing bonds became
+4,319. Every other seed the checks and tools use cancelled within the cap, consumes the same random
+draws under the fix, and reproduced byte-for-byte; items 25 and 33 were measured by `wave.mjs` with no
+seeded momentum at all. The lesson is the one item 25 taught: **a comment that says something else
+will catch a failure is a claim, and it needs a check of its own.**
+
 ---
 
 ## The register in full

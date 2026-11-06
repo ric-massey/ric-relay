@@ -1,11 +1,11 @@
 {
   "engine": {
-    "lab": "00c57532a408",
+    "lab": "50c76c6a32eb",
     "constants": "b9f1e41ce443"
   },
   "format": "universe-lab-snapshot/1",
   "warning": "CANDIDATE_ZERO is the plumbing test point, not a chosen physics. Every number in this run comes from an arbitrary point in the search space, and README item 31 is the standing reason to distrust any chemistry figure read off a run.",
-  "written": "2026-11-06T16:19:40.964Z",
+  "written": "2026-11-06T16:23:43.983Z",
   "label": "default slate, seed 7",
   "slot": "last",
   "space": {
@@ -55,7 +55,7 @@
     "seed": 7,
     "events": 150000,
     "budget": 150000,
-    "clock": 80.19804301267537,
+    "clock": 80.34878883761618,
     "fill": 0.35,
     "momentumRange": 6,
     "thermostat": {
@@ -63,55 +63,55 @@
       "COLD_T": 1,
       "BAND_ROWS": 3
     },
-    "wallMs": 654,
-    "eventsPerSecond": 229358,
+    "wallMs": 599,
+    "eventsPerSecond": 250417,
     "stillBeforeBudget": false
   },
   "counts": {
-    "stepped": 29948,
-    "blocked": 46767,
-    "collided": 8123,
-    "collisionDead": 34483,
-    "tooColdToMove": 4161,
-    "bondsFormed": 4461,
-    "bondsBroken": 89,
+    "stepped": 30368,
+    "blocked": 46300,
+    "collided": 8169,
+    "collisionDead": 34254,
+    "tooColdToMove": 3877,
+    "bondsFormed": 4409,
+    "bondsBroken": 90,
     "bondsStretched": 0,
-    "conducted": 3068,
-    "emitted": 4661,
-    "absorbed": 4150,
-    "quantaMoved": 8060,
-    "emissionBlocked": 12,
-    "quantumWaited": 25,
-    "momentumShared": 14085,
+    "conducted": 2957,
+    "emitted": 4701,
+    "absorbed": 4178,
+    "quantaMoved": 8197,
+    "emissionBlocked": 19,
+    "quantumWaited": 27,
+    "momentumShared": 14124,
     "momentumRangeDeclined": 0,
-    "shareUnaffordable": 5,
-    "thermostatFires": 709,
-    "thermalKicks": 4472,
+    "shareUnaffordable": 6,
+    "thermostatFires": 704,
+    "thermalKicks": 4462,
     "kickRangeDeclined": 0,
-    "kickUnaffordable": 896,
-    "kickNoPartner": 8974,
-    "bondedStepped": 1134
+    "kickUnaffordable": 910,
+    "kickNoPartner": 8751,
+    "bondedStepped": 1143
   },
   "census": {
     "seeded": {
       "matter": 2986360,
       "heat": 0,
-      "kinetic": 51461,
+      "kinetic": 51446,
       "inFlight": 0,
       "pxSum": 0,
-      "pySum": -84,
+      "pySum": 0,
       "bondBits": 0,
       "bondPotential": 0
     },
     "final": {
       "matter": 2986360,
-      "heat": 2447341,
-      "kinetic": 41926,
-      "inFlight": 511,
+      "heat": 2436046,
+      "kinetic": 49886,
+      "inFlight": 523,
       "pxSum": 0,
-      "pySum": -84,
-      "bondBits": 8744,
-      "bondPotential": -23752
+      "pySum": 0,
+      "bondBits": 8638,
+      "bondPotential": -23204
     }
   },
   "constants": {
