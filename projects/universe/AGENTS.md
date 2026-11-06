@@ -95,8 +95,10 @@ hitting a ceiling is telling you the constants are wrong.
 
 **The word is eight bytes: kind 8, bonds 6, energy 16, momentum 14 — 44 of 64 bits.** The **20
 spare bits are reserved**: nothing goes in them without an entry in `THE-LAWS.md` and a reason, and
-never anything on the never-store list. Not gravity's remainder either — it needs 32 bits a
-component (item 19). **`constants.mjs` is what the engine runs on; if a document disagrees with it,
+never anything on the never-store list. **Two pieces of state live beside the word** (item 34,
+2026-11-06): each primitive's position inside its hexagon (Lab: `w.ox`, `w.oy`), and, in the World
+only, fine momentum in units of 2⁻³² in a second array, which is where gravity's sub-unit pull is
+held (item 19). **`constants.mjs` is what the engine runs on; if a document disagrees with it,
 the document is the bug.** This rule has drifted from the code twice already.
 
 ## 6. Assert conservation on every run
@@ -222,7 +224,9 @@ Screening is cheap and a run is not, so a candidate form goes through `screen.mj
 through the Lab. The five screening tools — `screen.mjs`, `budget.mjs`, `momentum.mjs`,
 `radiate.mjs`, `orbit.mjs` — are not part of the engine. The engine is `lab.mjs`, `constants.mjs` and
 `lab-check.mjs` (`node lab-check.mjs`, thirteen checks, ~30 s; also in the repo's slow lane and in
-`simulations.yml`). `wave.mjs` and `snapshot.mjs` run the engine without being it.
+`simulations.yml`). `wave.mjs` and `snapshot.mjs` run the engine without being it: `wave.mjs`
+compares the engine with and without the momentum wave, and injects the removed cluster drag from
+`rejected/` to price it.
 
 - **`screen.mjs`** scores a law-2 form over all 65,025 pairs of kinds: binding-energy spread, family
   structure, near-inert count, bonding-degree spread, roughness under a change of kind, and whether
@@ -259,7 +263,8 @@ Lab's assertion can, and caught two seams by failing (18,541 and 34,864 units).
    days because nothing counted bonded steps; there were 14,500 per million events.
 7. **On a torus, a distance is a path, not a difference.** `wave.mjs` reported a bonded pair moving
    "115 hexagons" by subtracting its start from its end — and it had lapped the 258-wide Lab four
-   times, so the figure was a lap position. It took the rejected wave's main argument with it.
+   times, so the figure was a lap position. It took the momentum wave's rejection with it, and the
+   wave is back in the engine.
    Sample often enough that nothing moves half the world between samples, and sum the unwrapped
    steps.
 

@@ -240,8 +240,9 @@ build structure at scale.
   give equal and opposite forces, so it leaks momentum and fakes a preferred direction.
 - **A pull smaller than one unit of momentum is carried, never rounded.** At any legal strength the
   strongest pull anywhere is under half a unit a tick, so rounding switches gravity off everywhere.
-  Where the remainder lives is item 19: a second array, 32 bits a component, is recommended and not
-  adopted; the spare bits are too coarse, and a coin per tick heats matter and kills orbits.
+  It is held in **fine momentum** — units of 2⁻³², two 32-bit components in a second array — adopted
+  for the World on 2026-11-06 (items 19 and 34) and built with this law's solver; the spare bits were
+  too coarse, and a coin per tick heats matter and kills orbits.
 
 ### How strong — a ceiling, a floor, and no room between them at 4096²
 

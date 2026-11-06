@@ -17,7 +17,8 @@ That is a reason to run the experiment, not a claim that nobody else's substrate
 (`SOURCES.md` has the citations).
 
 **Where it stands (2026-11-06).** The laws are written and the Lab — the first engine — runs four
-of them on a small looped lattice and conserves exactly. It has not yet produced a periodic table.
+of them on a small looped lattice and conserves exactly. Matter moves at its real heading, never at
+the speed limit, and bonds push back when strained. It has not yet produced a periodic table.
 The World, the large run with gravity, is not built. Everything open is in
 [Open questions](#open-questions), which is the work list.
 
@@ -80,12 +81,12 @@ point, and the page says so.
 ## What exists
 
 **A hexagon is a primitive, a quantum of radiation in flight, or empty.** One per hexagon, never
-more. It holds four things:
+more. Its word holds four things:
 
 | | | bits |
 |---|---|---|
 | **kind** | how much stuff this primitive is made of — this universe's mass, 1–255 | 8 |
-| **momentum** | an integer vector on the hex axes, two components at ±63; speed is `p/k` | 14 |
+| **momentum** | an integer vector on the hex axes, two components at ±63; speed is `|p| / √(k² + |p|²)` of the limit | 14 |
 | **bonds** | which of its six neighbours it is bonded to (in vacuum: a quantum's direction) | 6 |
 | **energy** | heat it is carrying, 0–65535 | 16 |
 
@@ -93,6 +94,18 @@ more. It holds four things:
 in `THE-LAWS.md` and a reason (`AGENTS.md` rule 5). A width is physics here: the old four-byte word
 made heavy matter permanently inert (item 15), and momentum went from ±15 to ±63 on 2026-11-06
 (item 20). `constants.mjs` is the word the engine runs on.
+
+**Beside the word, since 2026-11-06 (item 34; Ric: "I'm fine with the added state it's not much"):**
+
+- **Position inside the hexagon** — where the primitive really is, two components. A step goes into
+  the hexagon its straight path enters next, so matter travels at its real heading. In the Lab it is
+  two float64s (`w.ox`, `w.oy`); the World's plan is two 32-bit components.
+- **Fine momentum, World only** — momentum in units of 2⁻³² rather than whole units, two 32-bit
+  components in a second array, so gravity's tiny pulls are held exactly (this settles item 19). Not
+  built in the Lab, where nothing makes fractions; it goes in with gravity's solver.
+
+With both, the World is about 24 bytes a hexagon rather than 8 — around 400 MB at 4096², 800 MB
+double-buffered.
 
 **Hitting a ceiling fails loudly.** Kind stops at 255 and energy at 65535; anything that would
 exceed a field is an error, never a wrap or a clamp, because either would break conservation with
@@ -130,8 +143,8 @@ Precisely:
 | # | Law | |
 |---|-----|---|
 | 1 | **Conservation** | Matter (the **sum of kinds**), energy and momentum are integers and are never created or destroyed. Where something crosses an edge it is counted. **Momentum** is an integer vector and **speed is a rate** that never reaches the limit: `|p| / √(k² + |p|²)`, relativity's form (Ric: "I don't want anything of matter to reach that speed") — so heavy matter is slow rather than frozen and only radiation travels at the causal limit. A primitive keeps its true position inside its hexagon and steps into the hexagon its straight path enters next (item 34), so it travels at its real heading, not along one of six. **Kinetic energy** is the whole number `floor(S · Q(p) / 2k)` with `S = 4`, recomputed from `(p, k)` rather than stored, so the conserved total is heat + Σ KE. Collisions resolve in three-hexagon blocks, conserve momentum exactly, and draw their outcome at random. A **thermal kick** turns heat into motion in opposite-moving pairs, so momentum still sums to zero. |
-| 2 | **Bonding** | Adjacent primitives may bond with binding energy **`B(k₁, k₂) = 8 − |v(k₁) + v(k₂) − 8|`**, `v(k) = k mod 8` — strongest when the two valences are complementary. A bond forms with probability `BOND_FORM_PROB` when a clock fires, never instantly on contact, which is what makes catalysis possible. It breaks when **`e ≥ B · kind`** at either end — temperature at or above `B`. Motion never breaks a bond: a step that would stretch one does not happen. No distance term and no force — exclusion already repels and gravity already gathers. |
-| 3 | **Gravity** | All matter attracts all matter as 1/r², never cancelling, acting on the sum of kinds. The only non-local law. A pull smaller than one unit of momentum is carried, not rounded (item 19). A local screened-field version is the candidate replacement (item 12). Not in the Lab. |
+| 2 | **Bonding** | Adjacent primitives may bond with binding energy **`B(k₁, k₂) = 8 − |v(k₁) + v(k₂) − 8|`**, `v(k) = k mod 8` — strongest when the two valences are complementary. A bond forms with probability `BOND_FORM_PROB` when a clock fires, never instantly on contact, which is what makes catalysis possible. It breaks when **`e ≥ B · kind`** at either end — temperature at or above `B`. Motion never breaks a bond: a step that would stretch one does not happen, and the bond reacts — one unit of momentum passes along it to the partner, as a real bond's tension would. No distance term and no force — exclusion already repels and gravity already gathers. |
+| 3 | **Gravity** | All matter attracts all matter as 1/r², never cancelling, acting on the sum of kinds. The only non-local law. A pull smaller than one unit of momentum is held in fine momentum, never rounded (items 19, 34). A local screened-field version is the candidate replacement (item 12). Not in the Lab. |
 | 4 | **Capacity** | A primitive bonds to at most `capacityOf(k) = clamp(k mod 8, 1, 6)` neighbours — read from the same valence law 2 uses, so kinds have valences (item 6). Its job is saturation: without it attraction collapses everything into one blob. |
 | 5 | **Transport** | Energy hops toward a neighbour at a **lower temperature** — compared as `e₁·k₂` vs `e₂·k₁`, exact in integers. Temperature, not energy: comparing raw energy would move heat uphill into heavy cold matter. Across a gap it travels as radiation (the fifth structural fact). At the World's boundary it leaves for good. |
 
@@ -318,11 +331,6 @@ no fusion), so the kinds you seed are the kinds there are, forever. Consistent w
 floor — primitives are assumed, not derived — but a choice to make knowingly: seed uniform kinds, or
 take the fusion road.
 
-**19. Where does gravity's sub-unit remainder live?** Rounding is out — at a legal strength it
-switches gravity off everywhere. Measured: the spare bits are too coarse and a coin per tick heats
-matter and kills orbits. **Recommended, not adopted:** a second array, two signed 32-bit components
-a hexagon, moving with its primitive and counted in the momentum assertion. Ric's call.
-
 **20. How strong is gravity, how big is the World, what shape is it?** One decision.
 *Settled half:* momentum is ±63 (Ric, 2026-11-06), which forced `S` from 64 to 4. *Open:* the
 strength, the size and the shape. The floor (collapse must melt the weakest bond) falls as
@@ -378,6 +386,7 @@ since rule 2 forbids storing a cluster id.
 | 8 | Floor bounce or absorb | Not a Lab question — the Lab has no floor. Returns only if the World keeps one (item 22) |
 | 15 | Heavy matter inert at four bytes | The word went to eight bytes and energy to 16 bits; the heaviest kind now reaches 32× its strongest bond (2026-11-04) |
 | 16 | Do things orbit? | Yes — with the sub-unit pull carried and step ties broken by a coin. Too few to halt collapse (2026-11-05) |
+| 19 | Where gravity's sub-unit pull lives | In momentum itself: fine momentum, units of 2⁻³², two 32-bit components in a second array — adopted with item 34 (2026-11-06) and built with gravity's solver. Rounding switched gravity off everywhere; the spare bits were too coarse; a coin per tick heated matter and killed orbits |
 | 21 | A step that ties two directions | A coin (Ric: "the coin flip is definitely the way to go", 2026-11-05). A fixed pick spiralled every orbit inward. Under tracked stepping (item 34) exact ties no longer arise, so the coin only serves `STEPPING: "nearest"` |
 | 25 | A bond that motion would stretch | It holds, the step does not happen, and the bond reacts: one unit of momentum passes along it to the partner, as a real bond's tension would (the "wave", rejected and re-adopted the same day — Ric: "Closer to reality it is"). Clusters still move — bonds within 60° of travel survive a step (2026-11-06) |
 | 28 | Law 2's formation probability | Its own searched constant, `BOND_FORM_PROB` (Ric: "make it eighth", 2026-11-06) |

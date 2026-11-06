@@ -200,7 +200,7 @@ five laws, no gravity, on a 258 × 258 hexagonal torus in event-driven time, ass
 conservation total — with `constants.mjs` (every physics constant; it refuses to run on an unchosen
 one) and `lab-check.mjs` (`node lab-check.mjs`, thirteen checks, about 30 seconds). `snapshot.mjs`
 freezes a Lab run into `runs/` for the viewer, `wave.mjs` is a measurement harness over copies of
-the engine, and `rejected/` keeps the mechanisms that came out, with the numbers that removed them.
+the engine, and `rejected/` keeps the mechanisms that came out, with the numbers that removed them (one, the momentum wave, has since come back). Law 1 steps by a tracked position inside each hexagon since 2026-11-06, so matter travels at its real heading.
 Around that: docs — a spec and work list (`README.md`), agent rules, a per-law statement
 (`THE-LAWS.md`), the record of how each law was decided (`HOW-WE-DECIDED.md`), a design note on
 the two runs, a sources file — and **five screening tools**, each run by hand: `screen.mjs`
