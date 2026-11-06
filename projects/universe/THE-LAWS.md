@@ -127,8 +127,12 @@ quadratic), exactly as a collision's does.
 hexagons in one tick, which breaks the causal limit. Perfect rigidity is an infinite speed of sound,
 and reality forbids it for the same reason.
 
-**Motion never stretches a bond: a step that would stretch one does not happen** (item 25). Clusters
-still move. On a hex lattice `i` and `i + d` share two neighbours, so a bond within 60° of the
+**Motion never stretches a bond: a step that would stretch one does not happen** (item 25), **and the
+bond reacts.** One unit of momentum passes along it to the partner, in the step's direction, and the
+kinetic energy that changes goes to or from heat — what a real bond's tension does, with the relative
+motion becoming vibration. *(Re-adopted 2026-11-06, Ric: "Closer to reality it is". Without it a bond
+was a wall: the refused primitive kept its momentum pointing at the constraint and nothing pushed
+back.)* Clusters still move. On a hex lattice `i` and `i + d` share two neighbours, so a bond within 60° of the
 direction of travel survives the step; only bonds at 120° and 180° refuse. Shear is cheap and
 compression dear, which is the right way round for matter. Measured under tracked stepping: bonded
 matter steps about 18,000 times per million events, and a lone bonded pair travels 820–980 hexagons

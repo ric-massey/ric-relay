@@ -53,40 +53,30 @@ const { CANDIDATE_ZERO, DIRECTIONS, SETTLED } = await import(CONSTS);
 const M = SETTLED.BOND_MODULUS;
 const BE = (a, b) => M - Math.abs((a % M) + (b % M) - M);
 
-// --------------------------------------------- the rejected mechanism, back
-// lab.mjs no longer contains the push, so the comparison arm is built by
-// putting it back rather than by taking it out. Three inserts, each anchored
-// on a line that would be noticed if it moved -- an anchor that silently
-// stops matching would leave this reporting the plain engine twice and
-// calling it a null result, which is the failure mode rule 12 warns about.
+// ---------------------------------------------- the engine without the wave
+// The wave (pushAlongBond) was RE-ADOPTED into lab.mjs on 2026-11-06, so the
+// comparison arm is now the engine WITHOUT it, built by deleting its one call.
+// The anchor must match exactly once -- one that silently stopped matching
+// would report the shipped engine twice and call it a null result, which is
+// the failure rule 12 warns about. The keys stay "plain" (no wave) and
+// "push" (with it, as it ships).
 const SRC = readFileSync(join(HERE, "lab.mjs"), "utf8");
-const DOC = readFileSync(join(HERE, "rejected", "push-along-bond.txt"), "utf8");
-const MARKER = "--- METHOD BELOW THIS LINE ---";
-if (!DOC.includes(MARKER)) throw new Error("the rejected method's marker is gone");
-const METHOD = DOC.slice(DOC.indexOf(MARKER) + MARKER.length).replace(/^\r?\n/, "");
-
 const A_METHOD = "  step(i) {";
-const A_CALL = "        this.counts.tooColdToMove++;\n        this.counts.blocked++;";
+const A_PUSHCALL = "        this.pushAlongBond(i, d, stretched);\n";
 const A_COUNTS = "      bondedStepped: 0,";
 const TMP = mkdtempSync(join(tmpdir(), "wave-"));
 
-function withPush() {
+function withoutPush() {
   let s = SRC.replace('} from "./constants.mjs";', "} from " + JSON.stringify(CONSTS) + ";");
-  for (const [name, anchor] of [["method", A_METHOD], ["call", A_CALL], ["counters", A_COUNTS]]) {
-    if (s.split(anchor).length - 1 !== 1)
-      throw new Error(`the ${name} anchor matched ${s.split(anchor).length - 1} times, need 1`);
-  }
-  s = s.replace(A_COUNTS, A_COUNTS
-    + "\n      pushedAlongBond: 0, pushRangeDeclined: 0, pushUnaffordable: 0,");
-  s = s.replace(A_METHOD, METHOD + "\n" + A_METHOD);
-  s = s.replace(A_CALL, "        this.counts.tooColdToMove++;\n"
-    + "        this.pushAlongBond(i, d, stretched);\n        this.counts.blocked++;");
-  const p = join(TMP, "lab-push.mjs");
+  if (s.split(A_PUSHCALL).length - 1 !== 1)
+    throw new Error(`the push call anchor matched ${s.split(A_PUSHCALL).length - 1} times, need 1`);
+  s = s.replace(A_PUSHCALL, "");
+  const p = join(TMP, "lab-nopush.mjs");
   writeFileSync(p, s);
   return p;
 }
-const PUSH = await import(pathToFileURL(withPush()).href);
-const engines = { plain: PLAIN, push: PUSH };
+const NOPUSH = await import(pathToFileURL(withoutPush()).href);
+const engines = { plain: NOPUSH, push: PLAIN };
 
 // ---------------------------------------------------------------- observer
 function clusters(w) {
@@ -217,8 +207,8 @@ function pairRun({ bondDir, moveDir, kinds, p, events, which = "plain" }) {
 
 console.log("=== A. one bonded pair alone in a vacuum, moving ===");
 console.log("    does it translate, does the bond's angle matter, and did the");
-console.log("    rejected momentum wave help? (centre of mass, 200k events)\n");
-console.log("                     as it ships      with the rejected wave");
+console.log("    momentum wave help? (centre of mass, 200k events)\n");
+console.log("                     without the wave  as it ships (wave)");
 console.log("   bond vs travel      moved           moved   pushes");
 // Direction 0 is the travel direction throughout. Bond direction 1 is 60
 // degrees off it, 2 is 120, 3 is 180 (directly behind), 5 is -60.
@@ -267,7 +257,7 @@ console.log("\n=== B. the same thing in a full world ===");
 console.log(`    ${TEMPS.length} temperatures, ${SEEDS.length} seeds, ${EV / 1e6}M events each; `
   + `blind grabbing gives mean B ${BLIND}\n`);
 for (const which of ["plain", "push"]) {
-  console.log(`  ${which === "plain" ? "as it ships" : "with the rejected wave"}`);
+  console.log(`  ${which === "plain" ? "without the wave" : "as it ships, with the wave"}`);
   console.log("      T    steps   bonded steps   pushes    bonds   meanB");
   const pts = [];
   for (const T of TEMPS) {
@@ -295,7 +285,7 @@ console.log("   never frozen; nothing had counted them.\n");
 // --------------------------------------------- C: does |p| / K come out?
 console.log("=== C. does law 1's |p| / K inertia emerge, with nothing computing K? ===");
 console.log("    nothing in lab.mjs reads a cluster's total kind\n");
-const r = worldRun("plain", 6, 31);
+const r = worldRun("push", 6, 31);   // the engine as it ships, with the wave
 const cs = clusters(r.w).filter((c) => c.members.length > 1);
 console.log("   cluster size   clusters   members   mean K   mean |p| per member");
 for (const [lo, hi] of [[2, 2], [3, 4], [5, 8], [9, 999]]) {
@@ -375,7 +365,7 @@ for (const [useDrag, useK, name] of [[false, true, "k-only"], [true, false, "dra
 console.log("\n=== D. item 33: the drag and |p| / K, separated at last ===");
 console.log("    all four arms at the SHIPPED momentum width, which is the half of");
 console.log("    the earlier comparison that was also wrong\n");
-const D = [["plain", "neither -- as it ships"], ["k-only", "|p| / K only"],
+const D = [["push", "neither -- as it ships"], ["k-only", "|p| / K only"],
            ["drag-only", "the drag only"], ["both", "both, as it was removed"]];
 console.log("   arm                        best meanB   over blind   seed spread   drags");
 const dres = [];

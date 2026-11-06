@@ -2734,6 +2734,29 @@ carries a lone bonded pair 10–25% further (1,026–1,051 hexagons against 824�
 on buying nothing; chemistry is still a tie (6.27 each), but motion now favours it. It stays in
 `rejected/` until Ric says otherwise.
 
+
+#### Settled — the wave comes back: a bond is a force, not a wall
+
+Ric asked whether a bond that only refuses a step is like reality. It is not. A real bond is a force:
+as two bonded atoms begin to separate, its tension slows the leading one and speeds the trailing one,
+equal and opposite, and the energy of their relative motion becomes vibration — heat. The engine's
+bond was a wall: a refused step changed nothing, so the primitive's momentum stayed pointed at the
+constraint for ever. The rejected momentum wave is exactly the force — one unit along the bond to the
+partner, the kinetic-energy change paid to or from heat — and its rejection had rested on the
+lap-position measurement corrected earlier the same day. Ric: *"Closer to reality it is."*
+
+`pushAlongBond` is back in `lab.mjs`, called wherever a bond refuses a step; `wave.mjs` now builds
+its comparison arm by deleting that one call. **Measured, tracked stepping:** a lone bonded pair
+travels 1,027–1,051 hexagons with the wave against 824–978 without it; chemistry ties at best mean
+`B` 6.27 at T = 6 either way; bonded steps rise from 18,128 to 20,181 per million events. Item 33's
+momentum per member, flat without the wave, now falls with cluster size for the first time (37.2,
+37.6, 31.6 at sizes 2, 3–4, 5–8) — the direction `|p| / K` predicts, on five clusters and one seed.
+`|p| / K` imposed by hand is now +0.05 inside a 0.10 seed spread. All Lab checks pass.
+
+**What it still is not.** Momentum moves in whole units, one per refused step, not as a continuous
+spring, and a bond stores no stretch to give back — the energy goes straight to heat, where a real bond
+would ring briefly first.
+
 ---
 
 ## The register in full

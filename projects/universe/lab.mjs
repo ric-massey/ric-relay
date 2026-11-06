@@ -385,6 +385,9 @@ export class Lab {
       // stretching step "freezes clusters solid". It does not: this reads
       // about 14,500 per million events at the temperature chemistry likes.
       bondedStepped: 0,
+      // The bond's reaction to a refused step (pushAlongBond, re-adopted
+      // 2026-11-06): units passed along a bond, and the two ways one is not.
+      pushedAlongBond: 0, pushRangeDeclined: 0, pushUnaffordable: 0,
     };
   }
 
@@ -428,12 +431,9 @@ export class Lab {
     //
     // WHAT PRODUCES THE OUTCOME HERE IS NOT SETTLED, and that is item 33
     // rather than a gap in this function. A mechanism was built for it the
-    // same day -- momentum spreading bond by bond -- and measured, and it
-    // bought nothing: clusters travel no further with it and chemistry is no
-    // better. (It was first said to damp clusters, on distances that turned
-    // out to be lap positions on the torus.) It is in
-    // rejected/push-along-bond.txt with the numbers. Measured snapshot after
-    // its removal: mean momentum per member across cluster sizes reads 37.66
+    // same day -- momentum spreading bond by bond -- removed, and then
+    // re-adopted the same day as pushAlongBond (Ric: "Closer to reality it
+    // is"). Measured snapshot while it was out: mean momentum per member across cluster sizes reads 37.66
     // at size 2, 38.05 at 3-4 and 39.17 at 5-8. If heavy clusters resisted
     // being pushed that should FALL, so there is no sign of |p| / K emerging
     // and the slight trend runs the wrong way. One seed and a snapshot rather
@@ -832,6 +832,76 @@ export class Lab {
   // therefore FLOWS rather than translating: it deforms, and the deformation
   // is where it goes. That is shear being cheap and compression being dear,
   // which is the right way round for matter, and none of it was written down.
+  // ------------------------------------- law 1, a bond reacts to strain
+  // RE-ADOPTED 2026-11-06 (Ric: "Closer to reality it is"). In reality a bond
+  // is a force: when two bonded atoms start to separate, its tension slows the
+  // leading one and speeds the trailing one, equal and opposite, and their
+  // relative motion goes into vibration -- internal energy, heat. Without
+  // this the bond was a wall: a refused step left the primitive's momentum
+  // pointing at the constraint for ever and nothing pushed back. So when a
+  // step is refused for a bond, one unit of momentum passes along that bond
+  // to the partner, and the kinetic energy that changes goes to or from heat.
+  //
+  // It was rejected the same morning for "damping" a moving pair two to five
+  // times. That measurement was wrong -- lap positions on a 258-wide torus,
+  // not distances (README item 25, HOW-WE-DECIDED.md) -- and under tracked
+  // stepping it carries a lone pair 10-25% FURTHER, with chemistry tied.
+  // rejected/push-along-bond.txt keeps the history.
+  pushAlongBond(i, d, stretched) {
+    const w = this.w;
+    // One of the bonds that refused the step. In reality the push reaches
+    // every one of them at once; here one per event IS the wave, because the
+    // next event draws again.
+    const e = stretched[this.rng.below(stretched.length)];
+    const j = neighbour(i, e);
+    const u = DIR_CUBE[d];
+    const nxI = w.mx[i] - u[0], nyI = w.my[i] - u[1];
+    const nxJ = w.mx[j] + u[0], nyJ = w.my[j] + u[1];
+
+    // Momentum has a range and exceeding a field must not be papered over.
+    // Declining conserves exactly; clamping would not.
+    if (!this.legalMomentum(nxI, nyI) || !this.legalMomentum(nxJ, nyJ)) {
+      this.counts.pushRangeDeclined++;
+      return false;
+    }
+
+    // THE PUSH IS INELASTIC AND HAS TO PAY FOR ITSELF, for the reason written
+    // out at length in shareMomentum: momentum is linear and its sum is
+    // conserved here by construction, but kinetic energy is QUADRATIC, so
+    // moving a unit between two primitives changes the total. That difference
+    // goes into or out of the heat field, or the world cools every time a
+    // cluster is leaned on.
+    const ki = w.kind[i], kj = w.kind[j];
+    const keBefore = keAt(w, i) + keAt(w, j);
+    const zI = -nxI - nyI, zJ = -nxJ - nyJ;
+    const keAfter = keOf(nxI * nxI + nyI * nyI + zI * zI, ki)
+                  + keOf(nxJ * nxJ + nyJ * nyJ + zJ * zJ, kj);
+    const delta = keBefore - keAfter;        // > 0 sheds heat, < 0 needs heat
+
+    if (delta < 0 && w.energy[i] + w.energy[j] < -delta) {
+      this.counts.pushUnaffordable++;
+      return false;
+    }
+
+    w.mx[i] = nxI; w.my[i] = nyI;
+    w.mx[j] = nxJ; w.my[j] = nyJ;
+
+    if (delta > 0) {
+      addEnergy(w, i, delta, "a push along a bond shed kinetic energy");
+    } else if (delta < 0) {
+      let owed = -delta;
+      for (const m of [i, j]) {
+        const take = Math.min(owed, w.energy[m]);
+        addEnergy(w, m, -take, "a push along a bond absorbed heat");
+        owed -= take;
+        if (owed === 0) break;
+      }
+      if (owed !== 0) throw new Error(`a push along a bond could not pay ${owed} it had checked for`);
+    }
+    this.counts.pushedAlongBond++;
+    return true;
+  }
+
   step(i) {
     if (!this.tracking) return this.moveOne(i, this.stepDirection(i));
     // Tracked (README item 34): cross into the hexagon the true path enters
@@ -869,15 +939,14 @@ export class Lab {
     // past adjacency. This was the last open gap in the file and it was the
     // one its own comment called "most likely to be wrong"; it was, twice.
     //
-    // THE ANSWER, 2026-11-06: the bond holds and the step does not happen.
-    // Nothing is added -- no law, no constant, no field, no machinery. Four
-    // readings were built and measured over two days and this is the
-    // shortest, and also the best on chemistry: best mean binding energy 6.36
-    // against 5.26 for blind grabbing. README item 25 has all four with their
-    // numbers.
+    // THE ANSWER, 2026-11-06: the bond holds, the step does not happen, and
+    // the bond REACTS -- one unit of momentum passes along it to the partner
+    // (pushAlongBond, above). That last part was built, rejected and
+    // re-adopted the same day; see its comment. README item 25 has every
+    // reading with its numbers.
     //
-    // The two that were built and removed are worth knowing about, because
-    // both looked right:
+    // The readings that were built and are not used, because each looked
+    // right:
     //
     //   motion breaks the bond, at its cost of B, and a primitive that cannot
     //     pay does not move. This was the file's original reading. It leaves
@@ -889,11 +958,9 @@ export class Lab {
     //     says to raise rather than add. README item 32, and reality is what
     //     settled it: there are no rigid bodies, and nothing anywhere
     //     computes a body's total mass.
-    //   the momentum goes along the bond instead, one unit per event. Local,
-    //     conserving, and exactly what law 1's "once momentum has SPREAD
-    //     across a bonded group" describes -- and it made clusters move LESS,
-    //     because every transfer is inelastic and a cluster is damped by its
-    //     own wave. rejected/push-along-bond.txt has the table.
+    //   (the momentum going along the bond -- the wave -- was on this list
+    //     until it came back: the measurement that removed it was lap
+    //     positions on the torus, not distances.)
     //
     // BREAKING IS LAW 2'S AND ONLY LAW 2'S. It already owns a sharper test --
     // temperature at or above B, applied in breakBondsIfHot before this
@@ -922,13 +989,9 @@ export class Lab {
       // rigid because they cannot afford to come apart, not because any rule
       // says so. Heat one and it can move again.
       // GAP 3, SETTLED 2026-11-06: THE BOND HOLDS AND THE STEP DOES NOT
-      // HAPPEN. That is all of it. Four readings were built and measured over
-      // two days and this is the shortest, the only one that adds nothing,
-      // and the best on chemistry -- best mean binding energy 6.36 against
-      // 5.26 for blind grabbing. README item 25 has all four with their
-      // numbers; rejected/push-along-bond.txt holds the one that was almost
-      // adopted, and why it was not. Rule 7 prefers removing, and here
-      // removing won on the measurement as well as on the rule.
+      // HAPPEN, and the bond passes one unit of momentum to its partner, as a
+      // real bond's tension would (pushAlongBond; re-adopted the same day).
+      // README item 25 has every reading with its numbers.
       //
       // Motion never breaks a bond: breaking is law 2's, by the sharper test
       // it already had -- temperature at or above B, one line earlier in this
@@ -966,6 +1029,7 @@ export class Lab {
         // their own escape, and now counts every step a bond refuses to
         // stretch for. lab-check.mjs Check 9 watches it under the old name.
         this.counts.tooColdToMove++;
+        this.pushAlongBond(i, d, stretched);
         this.counts.blocked++;
         return;
       }

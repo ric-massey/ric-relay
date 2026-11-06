@@ -1,3 +1,18 @@
+RE-ADOPTED 2026-11-06, the same day it was rejected -- it is in lab.mjs now.
+
+Ric asked whether a bond that simply refuses a step is like reality. It is
+not: a real bond is a force, and when bonded atoms start to separate its
+tension passes momentum from one to the other, equal and opposite, with the
+relative motion going into vibration -- heat. That is this method. Its
+rejection rested on a measurement that turned out to be lap positions on the
+torus (the correction below), and under tracked stepping (README item 34) it
+carries a lone bonded pair 10-25% further than the engine without it, with
+chemistry tied at mean B 6.27. Ric: "Closer to reality it is".
+
+This file stays as the record of why it was rejected and why that was wrong
+(AGENTS.md rule 10). wave.mjs no longer reads it; the method below is a copy
+of what was moved into lab.mjs, not a source.
+
 REJECTED 2026-11-06, by measurement, the same day it was built.
 
 This is not part of the Lab and is deliberately not importable code. It is a

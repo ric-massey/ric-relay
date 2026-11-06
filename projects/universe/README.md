@@ -46,7 +46,7 @@ The World, the large run with gravity, is not built. Everything open is in
 | [`snapshot.mjs`](snapshot.mjs) | Freezes a Lab run into [`runs/`](runs/) for the viewer. |
 | [`viewer.html`](viewer.html) | Lattice inspector. Reads a frozen run and lets you open any hexagon. State, not dynamics. |
 | [`wave.mjs`](wave.mjs) | Measurement harness over copies of the engine (items 25, 32, 33). |
-| [`rejected/`](rejected/) | Mechanisms that came out of the engine, kept with the numbers that removed them. |
+| [`rejected/`](rejected/) | Mechanisms that came out of the engine, kept with the numbers that removed them — and one, the momentum wave, that has since come back and says why. |
 | **Screening tools** — answer a question without running a world | |
 | [`screen.mjs`](screen.mjs) | Scores candidate forms of law 2 over all 65,025 pairs of kinds. |
 | [`budget.mjs`](budget.mjs) | Enumerates what fits in the hexagon's word. |
@@ -359,9 +359,10 @@ instead of the initial arrangement. Open: whether `TWO-RUNS.md` names initial mo
 condition.
 
 **33. Does law 1's `|p| / K` inertia emerge?** Law 1 says a heavy composite resists being pushed.
-Nothing computes `K` any more, so it would have to emerge — and first evidence says it does not:
-momentum per member is flat with cluster size. Imposed by hand it was worth +0.07 of mean `B` under tracked
-stepping, inside the 0.08 spread between seeds. *Decided by:* tracking clusters through time, which needs re-identifying them every sample,
+Nothing computes `K` any more, so it would have to emerge. Without the wave, momentum per member was
+flat with cluster size. **With the wave back it falls for the first time** — 37.2 at size 2, 37.6 at
+3–4, 31.6 at 5–8 — but the last bin is five clusters on one seed: a hint, not a finding. Imposed by
+hand, `|p| / K` is now worth +0.05 of mean `B`, inside the 0.10 spread between seeds. *Decided by:* tracking clusters through time, which needs re-identifying them every sample,
 since rule 2 forbids storing a cluster id.
 
 ### Settled
@@ -378,7 +379,7 @@ since rule 2 forbids storing a cluster id.
 | 15 | Heavy matter inert at four bytes | The word went to eight bytes and energy to 16 bits; the heaviest kind now reaches 32× its strongest bond (2026-11-04) |
 | 16 | Do things orbit? | Yes — with the sub-unit pull carried and step ties broken by a coin. Too few to halt collapse (2026-11-05) |
 | 21 | A step that ties two directions | A coin (Ric: "the coin flip is definitely the way to go", 2026-11-05). A fixed pick spiralled every orbit inward. Under tracked stepping (item 34) exact ties no longer arise, so the coin only serves `STEPPING: "nearest"` |
-| 25 | A bond that motion would stretch | It holds, and the step does not happen. Four readings measured; the shortest won. Clusters still move — bonds within 60° of travel survive a step (2026-11-06) |
+| 25 | A bond that motion would stretch | It holds, the step does not happen, and the bond reacts: one unit of momentum passes along it to the partner, as a real bond's tension would (the "wave", rejected and re-adopted the same day — Ric: "Closer to reality it is"). Clusters still move — bonds within 60° of travel survive a step (2026-11-06) |
 | 28 | Law 2's formation probability | Its own searched constant, `BOND_FORM_PROB` (Ric: "make it eighth", 2026-11-06) |
 | 29 | Heat never became motion | The thermal kick: heat becomes motion in opposite-moving pairs, summing to zero (Ric, 2026-11-06). Thermal pressure itself not yet shown — needs a sweep |
 | 30 | The hot band's ceiling | `HOT_T_MAX = floor(65535 / 255) − 1 = 256`, derived in `constants.mjs`; the Lab refuses a hotter band at startup instead of throwing mid-run. The headroom is measured: arriving energy used at most 3.9% of it (`lab-check.mjs` Check 11, 3 seeds). `THERMOSTAT_SWEEP` said 4096 until then (2026-11-06) |
