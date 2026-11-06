@@ -148,6 +148,24 @@ if (!gravity) {
   console.log(`  It heated and stayed hot: bonds are being broken faster than they form. That is`);
   console.log(`  gravity above its ceiling, or simply not enough ticks for radiation to carry the`);
   console.log(`  heat off. Try --eps ${(OPT.eps / 10).toExponential(0)} or more --ticks.`);
+} else if (hotPeak.tick === last.tick) {
+  // The hot era peaked on the LAST sample, so the world is still heating when
+  // the run stops. Nothing can be said about recombination yet -- a bonded
+  // fraction that rose while the temperature was still climbing is not
+  // recombination, it is bonding that the heat has not caught up with. The
+  // earlier version of this file printed "the shape the chronology is supposed
+  // to have" here, directly under an era line reading NOT AFTER A HOT ERA. It
+  // was wrong twice for the same reason: the verdict has to read `saw`.
+  console.log(`  COLLAPSE AND HEATING, BUT THE RUN STOPS WHILE STILL HEATING. The hot era peaked`);
+  console.log(`  on the last sample (tick ${last.tick}), so radiation has not had time to carry the`);
+  console.log(`  heat off and recombination cannot be judged from this run at all. The bonded`);
+  console.log(`  fraction rose, but it rose DURING the heating, which is not the same thing.`);
+  console.log(`  Run it longer -- more --ticks -- and watch for the temperature to turn over.`);
+} else if (!saw.recombination) {
+  console.log(`  Collapse and a hot era, but the bonds did not come after the heat: the bonded`);
+  console.log(`  fraction peaked at tick ${bondPeak.tick} and the temperature at tick ${hotPeak.tick}.`);
+  console.log(`  So the three eras happened in the wrong order, which is a finding about the dial`);
+  console.log(`  and not about the engine.`);
 } else {
   console.log(`  Collapse, heat and then bonds -- the shape the chronology is supposed to have.`);
   console.log(`  Worth a second seed before believing it (rule 11).`);
@@ -160,6 +178,18 @@ console.log(`  motion:  ${world.counts.stepped.toLocaleString()} steps, `
   + `${world.counts.bondsStretched.toLocaleString()} held by a bond`);
 console.log(`  bonds:   ${world.counts.bondsFormed.toLocaleString()} formed, `
   + `${world.counts.bondsBroken.toLocaleString()} broken`);
+// The two exchanges, ported 2026-11-07. Each refusal is printed separately
+// because they mean different things, and a run where one dominates is the
+// run telling you which ceiling it is sitting against.
+console.log(`  shared:  ${world.counts.momentumShared.toLocaleString()} momentum hops along bonds, `
+  + `${world.counts.shareUnaffordable.toLocaleString()} too cold, `
+  + `${world.counts.shareRangeDeclined.toLocaleString()} at law 1 range, `
+  + `${world.counts.shareNoRoom.toLocaleString()} no room for the heat`);
+console.log(`  kicks:   ${world.counts.thermalKicks.toLocaleString()} heat-to-motion kicks, `
+  + `${world.counts.kickUnaffordable.toLocaleString()} too cold, `
+  + `${world.counts.kickNoPartner.toLocaleString()} no partner, `
+  + `${world.counts.kickRangeDeclined.toLocaleString()} at law 1 range, `
+  + `${world.counts.kickNoRoom.toLocaleString()} no room`);
 console.log(`  light:   ${world.counts.emitted.toLocaleString()} emitted, `
   + `${world.counts.absorbed.toLocaleString()} absorbed, `
   + `${world.counts.quantaMoved.toLocaleString()} moved`);

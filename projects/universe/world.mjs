@@ -134,6 +134,11 @@ function neighbour(w, i, d) {
 const tempOf = (w, i) => (w.kind[i] ? (w.energy[i] / w.kind[i]) | 0 : 0);
 const Qof = (w, i) => { const x = w.mx[i], y = w.my[i], z = -x - y; return x * x + y * y + z * z; };
 const keAt = (w, i) => (w.kind[i] ? ((KE_SCALE * Qof(w, i)) / (2 * w.kind[i])) | 0 : 0);
+// The same number for a momentum a hexagon does not have yet, which is what
+// the exchanges below need to price a hop BEFORE taking it. Truncated the same
+// way as keAt, deliberately: if the two rounded differently, every exchange
+// would leak a unit or two past the ledger.
+const keOf = (x, y, k) => (k ? ((KE_SCALE * (x * x + y * y + (-x - y) * (-x - y))) / (2 * k)) | 0 : 0);
 const legalMomentum = (x, y) =>
   Math.abs(x) <= MOMENTUM_RANGE && Math.abs(y) <= MOMENTUM_RANGE &&
   Math.abs(-x - y) <= MOMENTUM_RANGE;
@@ -245,7 +250,13 @@ export class World {
       stepped: 0, blocked: 0, collided: 0, tooColdToMove: 0,
       bondsFormed: 0, bondsBroken: 0, bondsStretched: 0,
       conducted: 0, emitted: 0, absorbed: 0, quantaMoved: 0,
-      momentumShared: 0, thermalKicks: 0,
+      // law 1 exchanges. Each refusal has its OWN counter because the three
+      // reasons mean different things: "range" is law 1 field width being hit,
+      // "unaffordable" is matter too cold to move, "noRoom" is the heat field
+      // ceiling. Lumping them would hide which one a run is telling you about.
+      momentumShared: 0, shareRangeDeclined: 0, shareUnaffordable: 0, shareNoRoom: 0,
+      thermalKicks: 0, kickRangeDeclined: 0, kickUnaffordable: 0, kickNoRoom: 0,
+      kickNoPartner: 0,
       gravityCarries: 0, gravityDeclined: 0,
       grew: 0, growthBlocked: 0, expansionDrained: 0,
     };
@@ -463,6 +474,169 @@ export class World {
     }
   }
 
+  // ----------------------------------------------------- law 1, the exchanges
+  // TWO WAYS MOMENTUM MOVES BETWEEN NEIGHBOURS WITHOUT ANYTHING TRAVELLING.
+  // Ported from the Lab on 2026-11-07 at Ric's instruction. Both are settled
+  // physics -- the first is law 1's own second sentence, the second is README
+  // item 29 settled on 2026-11-06 -- and the World ran without either, which
+  // made it an incomplete physics rather than a different one:
+  //
+  //   shareMomentum   a bonded pair equalising. This is what lets a bonded
+  //                   GROUP respond to a push as a group: gravity pulls on one
+  //                   end and the bond carries that momentum through the
+  //                   cluster, one hop per clock fire. Without it a cluster is
+  //                   not an object, just a set of hexagons that cannot move.
+  //   tryThermalKick  heat becoming motion. Without it a primitive with no
+  //                   momentum never moves at any temperature, because law 1's
+  //                   step rate min(1, |p|/k) does not read heat -- so hot
+  //                   matter sat still, which is item 29's measurement.
+  //
+  // THEY SHARE THEIR ACCOUNTING, and that sharing is the physics rather than a
+  // tidiness. Momentum is LINEAR and cancels by construction: one end gains
+  // exactly the integer vector the other loses, so the world's total cannot
+  // move and there is no preferred direction. Kinetic energy is QUADRATIC and
+  // does NOT cancel, so every such exchange changes the total energy of
+  // motion, and the difference has to be paid to or from the heat field.
+  //
+  // Missing that seam cost the Lab 34,864 units over 50,000 events (README
+  // item 28) -- no error, nothing visibly wrong, a cluster quietly cooling the
+  // world every time it flexed. The World's ledger would catch it the same
+  // way. That is why the accounting is written once here and used twice, and
+  // why neither function below does its own.
+
+  // A dry run, then a commit, exactly as pullPair is and for the same reason:
+  // an exchange that cannot be paid for in full does not happen at all,
+  // because declining conserves exactly where clamping would not. Returns
+  // null on success, or the reason it did not happen.
+  exchange(i, j, nxI, nyI, nxJ, nyJ) {
+    const w = this.w;
+    // Law 1's range is a field width, and rule 5 says a field must not be
+    // papered over. Declining the hop conserves; clipping it is what README
+    // item 20 found gravity dying of.
+    if (!legalMomentum(nxI, nyI) || !legalMomentum(nxJ, nyJ)) return "range";
+
+    const keBefore = keAt(w, i) + keAt(w, j);
+    const keAfter = keOf(nxI, nyI, w.kind[i]) + keOf(nxJ, nyJ, w.kind[j]);
+    const delta = keBefore - keAfter;        // > 0 sheds heat, < 0 needs heat
+
+    // Speeding the pair up costs heat, and the heat has to actually be there.
+    // A cold pair simply does not exchange, which is the right physics as well
+    // as the right accounting: cold matter should be still.
+    if (delta < 0 && w.energy[i] + w.energy[j] < -delta) return "unaffordable";
+
+    // And shedding has to FIT. The Lab THROWS here -- rule 5, "a world that
+    // keeps hitting the ceiling is telling you the constants are wrong" --
+    // because the Lab is where constants are judged, under a thermostat, at a
+    // fixed size. The World has no thermostat and a ceiling collapse can
+    // genuinely reach, so it declines the exchange and counts it instead.
+    // That conserves exactly, where a clamp would destroy the difference in
+    // silence. A run with a large count here is saying what the Lab's throw
+    // would say, and the counter is in the output for that reason.
+    const room = (ENERGY_MAX - w.energy[i]) + (ENERGY_MAX - w.energy[j]);
+    if (delta > 0 && room < delta) return "noRoom";
+
+    w.mx[i] = nxI; w.my[i] = nyI;
+    w.mx[j] = nxJ; w.my[j] = nyJ;
+
+    // The heat is spread over BOTH ends rather than dumped on one, so a pair
+    // near the ceiling can still exchange where a single hexagon could not.
+    // The two branches are each other's mirror, and both assert they finished
+    // what the dry run promised.
+    let owed = delta > 0 ? delta : -delta;
+    const ends = [i, j];
+    if (delta > 0) {
+      for (const m of ends) {
+        const take = Math.min(owed, ENERGY_MAX - w.energy[m]);
+        w.energy[m] += take; owed -= take;
+        if (owed === 0) break;
+      }
+    } else if (delta < 0) {
+      for (const m of ends) {
+        const take = Math.min(owed, w.energy[m]);
+        w.energy[m] -= take; owed -= take;
+        if (owed === 0) break;
+      }
+    }
+    if (owed !== 0) throw new Error(`exchange could not move ${owed} of ${delta} it had checked for`);
+    return null;
+  }
+
+  // Law 1, bonded: "a bonded pair exchanges integer momentum toward equalizing
+  // their velocities, equal and opposite, one hop per clock fire."
+  shareMomentum(i) {
+    const w = this.w;
+    if (!w.bonds[i]) return;
+    // Only bonds to matter. On a matter hexagon every bond bit should point at
+    // matter, but the World's space GROWS underneath these arrays, so this
+    // reads the lattice rather than trusting it.
+    const live = [];
+    for (let d = 0; d < DIRECTIONS; d++) {
+      if (!(w.bonds[i] & (1 << d))) continue;
+      if (isMatter(w, neighbour(w, i, d))) live.push(d);
+    }
+    if (!live.length) return;
+    const j = neighbour(w, i, live[this.rng.below(live.length)]);
+
+    // velocity is p/k. Move one unit cube vector from i to j: the one that
+    // most reduces the velocity difference, which is the equalising the law
+    // asks for. If no direction reduces it, the velocities are already equal
+    // and nothing happens.
+    const ki = w.kind[i], kj = w.kind[j];
+    const gx = w.mx[i] / ki - w.mx[j] / kj;
+    const gy = w.my[i] / ki - w.my[j] / kj;
+    const gz = (-w.mx[i] - w.my[i]) / ki - (-w.mx[j] - w.my[j]) / kj;
+    let best = -1, bestDot = 0;
+    for (let e = 0; e < DIRECTIONS; e++) {
+      const [ux, uy, uz] = DIR_CUBE[e];
+      const dot = ux * gx + uy * gy + uz * gz;
+      if (dot > bestDot) { bestDot = dot; best = e; }
+    }
+    if (best < 0) return;
+    const [ux, uy] = DIR_CUBE[best];
+
+    const why = this.exchange(i, j, w.mx[i] - ux, w.my[i] - uy, w.mx[j] + ux, w.my[j] + uy);
+    if (why === null) this.counts.momentumShared++;
+    else if (why === "range") this.counts.shareRangeDeclined++;
+    else if (why === "unaffordable") this.counts.shareUnaffordable++;
+    else this.counts.shareNoRoom++;
+  }
+
+  // Law 1, the thermal kick. HEAT BECOMES MOTION.
+  //
+  // Ric's rule, 2026-11-06, and the pairing is the whole of it: "can't just
+  // make one hexagon start moving. make them move in pairs, in opposite
+  // directions. One goes left, its neighbour goes right. Add them up, you get
+  // zero." A single hexagon starting to move is momentum from nowhere, which
+  // is law 1's one inviolable thing, and it would be a preferred direction in
+  // the physics as well. A pair moving oppositely sums to zero exactly, in
+  // integers, with nothing left over.
+  //
+  // NOTE WHAT IT DOES NOT READ: temperature. Not for its direction, not for
+  // its size. It is offered at every clock fire, and the clock ALREADY fires
+  // more often when hot -- so hot regions kick more often than cold ones, and
+  // that is where thermal pressure comes from, without temperature appearing
+  // in this function at all. The World's clock is the same rate the Lab's is
+  // (clockRate over the causal limit, per tick), so the mechanism carries over
+  // unchanged.
+  tryThermalKick(i) {
+    const w = this.w;
+    if (this.rng.u01() >= this.c.THERMAL_KICK_PROB) return;
+
+    // A partner, and it must be matter. Vacuum cannot take the other half of
+    // the pair, so there is nothing to cancel against and the kick is off.
+    const d = this.rng.below(DIRECTIONS);
+    const j = neighbour(w, i, d);
+    if (!isMatter(w, j)) { this.counts.kickNoPartner++; return; }
+
+    // One unit along the cube axes, opposite ways. This is the pairing.
+    const [ux, uy] = DIR_CUBE[d];
+    const why = this.exchange(i, j, w.mx[i] + ux, w.my[i] + uy, w.mx[j] - ux, w.my[j] - uy);
+    if (why === null) this.counts.thermalKicks++;
+    else if (why === "range") this.counts.kickRangeDeclined++;
+    else if (why === "unaffordable") this.counts.kickUnaffordable++;
+    else this.counts.kickNoRoom++;
+  }
+
   // ------------------------------------------------------- law 1, the motion
   // "one hexagon every k/|p| ticks, capped at one per tick", read as a
   // probability per tick -- which is the law's own sentence, not a scheme
@@ -623,6 +797,13 @@ export class World {
           this.breakBondsIfHot(i);
           if (isMatter(w, i)) this.tryFormBond(i);
           if (isMatter(w, i)) this.tryTransport(i);
+          // The two exchanges, in the Lab clock fire order so the two engines
+          // can still be compared event for event (TWO-RUNS.md, "cross-validate
+          // the time scheme"). Both are offered per clock fire, not per tick,
+          // which is how the kick ends up temperature-driven without reading
+          // temperature: the clock is the thing that reads it.
+          if (isMatter(w, i)) this.shareMomentum(i);
+          if (isMatter(w, i)) this.tryThermalKick(i);
         }
         if (this.rng.u01() < this.stepProbability(i)) this.step(i);
       }
