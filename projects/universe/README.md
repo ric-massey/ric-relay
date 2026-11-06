@@ -35,6 +35,22 @@ and what it would be like as one run. [`AGENTS.md`](AGENTS.md) is the rules for 
 otherwise — working on this. [`SOURCES.md`](SOURCES.md) credits everything borrowed, which is
 rule 1 and Ric's.
 
+**And an engine, as of 2026-11-05.** [`lab.mjs`](lab.mjs) is the Lab: four of the five laws
+(no gravity) on the 258 x 258 hexagonal torus, in event-driven continuous time, with every
+conservation assertion rule 6 asks for. [`constants.mjs`](constants.mjs) is the one place every
+physics constant lives, and it **refuses to run** on a set with an unchosen constant or a clipping
+clock. [`lab-check.mjs`](lab-check.mjs) is its pre-flight: the seam tested on its own, a run with
+the books asserted throughout, and the same run on five seeds.
+
+It does not yet produce a periodic table — it produces a world that conserves. What it has produced
+is **eight findings about the laws**, items 23 to 30 — four of them things no document had settled,
+two conservation seams caught by the assertion rather than by reading, one claim in `THE-LAWS.md`
+that does not follow from the laws (item 29, thermal pressure), and two limits on the sweep. Each
+one's numbers were then measured over 8 seeds and 6 variations of the constants, because the first
+version of all of them rested on a single run. That is the Lab
+doing the job `TWO-RUNS.md` gives it: it is "the only place in the project where the same physics is
+implemented twice", so it is the only place the documents can be checked against themselves.
+
 **And five tools, none of which is an engine.** [`screen.mjs`](screen.mjs) scores candidate forms
 for law 2 over all 65,025 pairs of kinds; [`budget.mjs`](budget.mjs) enumerates what fits in the
 hexagon's word; [`momentum.mjs`](momentum.mjs) settled law 1's momentum representation and the
@@ -1049,6 +1065,167 @@ hexagons with a scale factor saying how far apart they are — which costs full 
 but is simpler; if the two Worlds differ wildly, one has a bug or the difference is a finding.
 
 \* *Provisional: written 2026-11-05 for Ric to check. Remove the asterisk when he has.*
+
+*(**Where the numbers in items 23 to 30 come from.** Every count below was first written from a
+single run on one seed with one unscreened constant set, which is not what rule 10 asks for and not
+what rule 11 accepts. Ric asked. They were then measured across **8 seeds** at 400,000 events and
+**6 variations of the constants** — capacity 1 and 6, formation probability 0.05 and 0.9, transport
+rate 0.1, and a clock floor giving a 4:1 spread instead of 17:1. **Every effect is nonzero on every
+seed and every variation**, and the spread across seeds is about 3%: cold-rigid steps 3,669-3,845,
+emissions blocked 98-137, quanta waiting 171-231, bonds stretched 5,627-5,862. The magnitudes do
+move with the constants, as they should — five times less formation probability gives four times
+fewer bonds — so read any single number as "with `CANDIDATE_ZERO`, which is screened by nothing",
+and the ranges as the thing that survived.)*
+
+**23. What is the causal limit, in a world with no tick?** *(Raised 2026-11-05 by writing
+`lab.mjs`, which could not start without an answer.)* Law 1 states speed as "one hexagon every
+`k/|p|` **ticks**, capped at one per tick", and the locality fact states the limit as "one hexagon
+per **tick**". The World is ticked, so both read straight across. **The Lab is not** — `TWO-RUNS.md`
+puts it in event-driven continuous time on purpose, so "per tick" has no referent there and
+something has to supply one.
+
+What `lab.mjs` does, which is a choice and not a derivation: the causal limit is the rate of the
+**fastest clock the world can have**, `clockRate(T_max)`. Then nothing outruns the hottest matter,
+radiation rides exactly at the limit as the structural fact says, and no new constant is
+introduced. Two things to weigh against it. It makes the causal limit depend on the **clock
+constants**, so changing the clock changes the speed of light — which is either a deep feature or a
+bug, and nothing here says which. And the limit is then set by a temperature nothing in the Lab
+ever reaches, so in practice the cap almost never binds.
+
+**24. What does "offset the partition each step" mean with no step?** *(Raised 2026-11-05 by
+`lab.mjs`.)* Law 1 resolves collisions in Margolus blocks and says to "offset the partition each
+step so information still crosses the whole lattice". The offset exists to stop a fixed block
+boundary from becoming a feature of the physics. **In continuous time there is no step to offset
+on.**
+
+`lab.mjs` builds the block as the triangle of three mutually adjacent hexagons containing the
+colliding pair — of which there are exactly two — and picks between them with a **coin**, which is
+the answer law 1 already gives a tied direction, for the same reason. That makes the partition
+fresh per collision rather than offset per step, so no boundary can persist. It is not obviously
+equivalent to what the law asks for, and the equivalence has not been measured.
+
+**25. May a bonded primitive step, and what happens to a bond that motion stretches?** *(Raised
+2026-11-05 by `lab.mjs`.)* Law 1 settles that clusters are **elastic rather than rigid** — a strike
+travels through one as a wave at no more than one hexagon per tick — so bonded primitives do move.
+Nothing says what becomes of a bond whose partner is left out of reach.
+
+`lab.mjs` takes it that a bond cannot stretch, so a step that would stretch one **breaks** it at
+its proper cost of `B`. That keeps the light cone, keeps the accounting exact, and makes a hard
+strike shatter a cluster, which is what law 1 says should happen.
+
+**It also produced a consequence nobody wrote down, and this is the part worth reading.** Breaking
+absorbs `B`, so a step that would stretch bonds has to be able to **pay** for them — and a cold
+primitive cannot. So **cold clusters are rigid, and they are rigid because they cannot afford to
+come apart**, not because any rule says so. Heat one and it can move again. That is melting
+arriving out of laws 1 and 2 meeting, with nothing added. It fired 3,765 times in the first
+400,000-event run.
+
+**26. Radiation's six bits are exact only under lockstep.** *(Found 2026-11-05 by `lab.mjs`
+crashing on its own assertion.)* The radiation fact argues the six direction bits are "exact rather
+than a cap", because a quantum in a given slot "can only come from the one neighbour behind it —
+and that neighbour is either matter or vacuum, never both. There is no third source to collide
+with." **That argument assumes every quantum moves at the same moment.** `radiate.mjs` measures it
+under ticked time and finds zero collisions, which is correct for ticked time.
+
+In the Lab every hexagon propagates at its own drawn time, so a trailing quantum catches the one
+ahead and finds the slot full — and one emitter can emit twice before its first quantum has moved
+on. Of the ways out, dropping the quantum destroys energy, widening the field is what rule 5
+forbids without a reason written here, and going synchronous abandons the Lab's time model. So
+`lab.mjs` makes the **quantum wait**: nothing moves, nothing is lost, and the attempt is counted
+(119 emissions blocked and 161 quanta waiting in 400,000 events). **What that costs is the claim
+that radiation always travels at the causal limit and never slower**, which `THE-LAWS.md` makes
+twice. Either that claim is ticked-time-only, or the Lab needs a different answer.
+
+**27. Momentum is a mixing condition, not a chemistry one.** *(Raised 2026-11-05 by the first run
+reporting kinetic energy of exactly zero. **Reframed the same day by Ric, and the first framing was
+wrong enough to be worth keeping below.**)*
+
+With gravity held out, **none of the four remaining laws can produce momentum where there was
+none.** Law 1 conserves it; law 2 has no distance term and so no force; law 4 is a constraint; law 5
+moves energy and not momentum. A collision can turn heat into motion, but a collision only happens
+when something steps into something else, which needs momentum already.
+
+*(This first said that made the Lab "frozen for ever" and treated it as a hole the laws had to fill.
+Ric: "Gravity isn't in the lab..... lol. The lab is just the chemistry right? Gravity doesn't really
+effect the chemistry..." That is correct and it is the whole design — law 3's own constraint is that
+gravity stays orders of magnitude below the weakest pair force precisely so it cannot touch
+chemistry, and `TWO-RUNS.md` has the Lab's conditions "set and held — it's a laboratory". A
+laboratory you supply the conditions to is not a world with a missing law. The finding is smaller
+and more useful than the one first written here.)*
+
+**Chemistry does not need motion at all, measured.** With zero initial momentum, nothing in the
+lattice ever steps — at a held temperature of 1, 64 or 200, through 6.4 million units of heat — and
+**12,222 bonds still stand**. Bonding is driven by the clock and by `B`, and neither reads momentum.
+
+So what motion buys the Lab is **mixing**, and that is a real need rather than a law's job: without
+it only the pairs the seeding happened to place next to each other ever react, so the table measures
+the initial arrangement instead of the chemistry. It also **costs** bonds — 4,653 standing with
+±6 momentum against 12,222 with none, because stretched bonds break (item 25).
+
+That makes initial momentum a **third held condition** beside the hot and cold bands, swept rather
+than chosen, and the open question is only whether `TWO-RUNS.md` should name it as one. `lab.mjs`
+draws it and then cancels the net to zero, because a looped world has no wall to absorb a drift and
+a net drift would look exactly like "a preferred direction in the physics".
+
+**28. Law 2's formation probability is not among the search space's seven.** *(Found 2026-11-05
+while writing `constants.mjs`.)* Law 2 says "a bond forms with a fixed probability when the clock
+fires — never instantly on contact." That is a number, it is derived from nothing, and *The search
+space* above does not count it. Either it is an eighth searched constant, or it folds into the
+clock and law 2 should say so. `constants.mjs` holds it as `BOND_FORM_PROB` with **no value**, and
+the Lab refuses to run until it is given one.
+
+**And two more conservation seams, both now closed.** The structural fact *Bond energy accounting
+is exact* names the laws 2-and-5 seam as "the one place conservation is actually at risk". Building
+the Lab found two more of exactly that shape, both caught by the assertion rather than by reading:
+
+- **A standing bond holds negative potential.** Forming releases `B` into the heat field, so the
+  bonded state is `B` lower than the unbonded one. Leave that term out of the ledger and a bond
+  that forms and stays formed looks like heat arriving from nowhere — 18,541 units over 50,000
+  events. The conserved total is `heat + Σ KE + in flight − Σ B over standing bonds`.
+- **Momentum sharing along a bond is inelastic.** Law 1 says a bonded pair exchanges momentum
+  "equal and opposite, one hop per clock fire. Nothing else is added." Momentum is linear and its
+  sum is conserved by that construction — but **kinetic energy is quadratic**, so equalizing two
+  velocities destroys some of it, and that has to go into the heat field exactly as a collision's
+  does. 34,864 units over 50,000 events before it did. A cluster would have quietly cooled the
+  world every time it flexed, which is precisely the slow, silent, physics-looking failure that
+  structural fact warns about.
+
+**29. Heat never becomes motion, so the clock's fourth job does not follow.** *(Found 2026-11-05 by
+measuring item 27 properly.)* The clock section of `THE-LAWS.md` credits the temperature-dependent
+rate with four jobs, and the fourth is:
+
+> **It is where thermal pressure comes from.** Hot matter moves more often, so hot regions expand
+> against cold ones with nothing written down to make them.
+
+**The middle clause is not true as the laws stand.** A hot hexagon's clock fires more often, so it
+bonds, transports and shares momentum more often — but *stepping* is law 1's own rate,
+`min(1, |p|/k)`, and it knows nothing about temperature. A hot primitive carrying no momentum does
+not move, however hot it gets: **zero steps at every temperature tested, with 6.4 million units of
+heat in the lattice.**
+
+This is the one place the project has split something our own universe does not: here temperature
+and kinetic energy are two separate fields, and in reality temperature *is* kinetic energy. The
+other three of the clock's jobs are untouched — radiation, the second law and reaction rates all
+only need the clock to act more often, and it does. But there is no thermal motion, no diffusion
+and no Brownian mixing anywhere in this physics, and **this is a claim about the World as much as
+the Lab**, because it is the clock that was supposed to supply it. Either the fourth job comes off
+the list, or something has to couple heat to momentum — which would be new machinery, and rule 7
+says what that costs.
+
+**30. The held hot band has a ceiling, and it needs headroom.** *(Found 2026-11-05, twice, by
+`lab.mjs` refusing to continue.)* Two separate loud failures, both of them rule 5 working:
+
+- `HOT_T` x kind must fit the energy field. A band held at 4,096 is impossible the moment a kind-20
+  primitive enters it: 81,920 over a 65,535 field. So the hottest holdable band is
+  `ENERGY_MAX / heaviest kind present` — **257 with kind-255 matter around**, which is item 15's
+  heavy-matter ceiling arriving as an experimental limit rather than a chemistry one.
+- And it cannot sit *at* that ceiling either. A kind-255 primitive held at exactly 257 holds the
+  whole field, so the next quantum of radiation to arrive has nowhere to go. The band needs room
+  beneath the ceiling for whatever radiation can deliver.
+
+Neither is a question about the physics; both are constraints on the sweep, and they belong wherever
+the Lab's conditions get written down, because a sweep that walks `HOT_T` upward will hit them.
+
 
 ### Settled by running the Lab
 

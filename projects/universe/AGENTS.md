@@ -337,7 +337,33 @@ Apply all of this before telling Ric something interesting happened.
 
 ## 12. Screen before you simulate
 
-Five tools in this directory, and none of them is part of the engine.
+Five tools in this directory, and none of them is part of the engine. **The engine itself arrived
+2026-11-05 and is `lab.mjs`, with `constants.mjs` and `lab-check.mjs`** — this rule is about the
+five, and it still binds: screening is cheap and a run is not, so a candidate form goes through
+`screen.mjs` before it goes through the Lab.
+
+**What the Lab added to this rule rather than replacing.** It found eight things the five tools
+could not, items 23 to 30, and three of them are about **time**, which the tools do not have: the
+causal limit has no meaning without a tick (23), the Margolus offset has no step to happen on (24),
+and radiation's "six bits are exact" holds only under lockstep (26). A stretched bond has no stated
+fate (25). Law 2's formation probability is not in the search space (28). The hot band has a ceiling
+and needs headroom under it (30). **None of those is visible to a tool that enumerates a table.**
+
+Two more are worth reading as a pair, because the first one was wrong. Item 27 began as "nothing in
+the Lab creates momentum", written as a hole in the laws — and Ric pointed out that the Lab is the
+chemistry and gravity has no business in it, which is the design and not a gap. Measuring it
+properly gave the real finding and then item **29**: chemistry runs perfectly with nothing moving
+(12,222 bonds, zero steps), so momentum is a *mixing* condition — and **heat never becomes motion at
+all**, because stepping is `min(1, |p|/k)` and reads no temperature. That makes the clock's fourth
+claimed job, thermal pressure, not follow from the laws. A tool that enumerates a table cannot find
+that either, and neither could the engine until somebody asked the right question about it.
+
+So the lesson alongside "screen before you simulate": a screen cannot find a hole in the
+*dynamics*, and the Lab's assertion can — two of the eight were caught by the ledger failing, at
+18,541 and 34,864 units, not by anyone reading the law. **And a count from one run is not a
+finding.** All eight were first written from a single seed and one unscreened constant set; they
+are now measured over 8 seeds and 6 variations, and `lab-check.mjs` Checks 9 and 10 keep them that
+way.
 
 `screen.mjs` scores a candidate form for law 2 over all 65,025 pairs of kinds — binding-energy
 spread, family structure, near-inert count, bonding degree spread — in milliseconds, with no

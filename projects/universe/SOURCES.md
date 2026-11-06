@@ -295,6 +295,74 @@ theoretical. See *the momentum problem* in `HOW-WE-DECIDED.md`.
 Note that Nozawa & Kondo's reversible lattice molecular automata (below) almost certainly rests
 on this machinery, which is a further reason to read it.
 
+**Bortz, A. B., Kalos, M. H. & Lebowitz, J. L. (1975).** *A new algorithm for Monte Carlo
+simulation of Ising spin systems.* Journal of Computational Physics 17(1): 10-18.
+<https://doi.org/10.1016/0021-9991(75)90060-1>
+
+The **n-fold way**: rejection-free kinetic Monte Carlo on a lattice. Recorded 2026-11-05, before
+writing `lab.mjs`. This is the primary citation for the Lab's time model, and a closer one than
+Gillespie below, because it is spatial from the start where Gillespie's derivation assumes a
+well-mixed volume. Took:
+
+- **Event-driven continuous time on a lattice**: instead of visiting every site and usually doing
+  nothing, draw *which* site acts next and *when*, from the sites' own rates. This is what
+  `TWO-RUNS.md` means by "nothing ever skips", and it is why the Lab needs no tick.
+- **A rate per site, summed to drive the clock.** Each hexagon's rate is law 5's `floor + c*T`, so
+  the structural fact *Each hexagon keeps its own time* is the n-fold way's rate list by another
+  name.
+
+**What we did not take:** the Ising energy function, the Metropolis acceptance test, and the
+spin-flip move set. None of them apply — the moves here are the four laws.
+
+**Gillespie, Daniel T. (1977).** *Exact stochastic simulation of coupled chemical reactions.*
+Journal of Physical Chemistry 81(25): 2340-2361. <https://doi.org/10.1021/j100540a008>
+
+Recorded 2026-11-05, before writing `lab.mjs`. It was already named in the external review above,
+as the counterexample showing that "continuous, not probabilistic" is a category error; this is the
+entry that owes it properly, now that the technique is being used rather than cited. Took:
+
+- **Exponential waiting times by inverse transform** -- `dt = -ln(U)/rate` for a process of
+  constant rate, which is how every event time in the Lab is drawn.
+- **The category point itself**: event-driven, continuous-time and thoroughly stochastic are
+  compatible, which is what the structural fact now says.
+
+**What we did not take:** the chemical master equation, the well-mixed assumption, and tau-leaping.
+The Lab is spatial and never leaps.
+
+**Gibson, Michael A. & Bruck, Jehoshua (2000).** *Efficient exact stochastic simulation of chemical
+systems with many species and many channels.* Journal of Physical Chemistry A 104(9): 1876-1889.
+<https://doi.org/10.1021/jp993732q>
+
+The **Next Reaction Method**. Recorded 2026-11-05, before writing `lab.mjs`. Took:
+
+- **An indexed priority queue holding one next-event time per site**, so a step costs a pop and a
+  few pushes rather than a scan of 66,564 hexagons.
+- **Reschedule only what changed.** An event touches a hexagon and its six neighbours, so only
+  those seven get new times. This is the thing that makes locality a performance property as well
+  as a physical one, and it is why rule 9 and the event loop agree rather than fight.
+
+**Williams, J. W. J. (1964).** *Algorithm 232: Heapsort.* Communications of the ACM 7(6): 347-348.
+<https://doi.org/10.1145/512274.512284>
+
+The implicit **binary heap**. Recorded 2026-11-05, before writing `lab.mjs`. Took the array-backed
+heap itself -- parent at `(i-1)>>1`, children at `2i+1` and `2i+2` -- as the event queue's
+structure. Nothing physical rests on it; it is the data structure the method above needs.
+
+**Marsaglia, George (2003).** *Xorshift RNGs.* Journal of Statistical Software 8(14): 1-6.
+<https://doi.org/10.18637/jss.v008.i14>
+
+Recorded 2026-11-05, before writing `lab.mjs`. Took **xorshift128** as the seeded generator. The
+reason a seeded one is required rather than `Math.random` is `AGENTS.md` rule 11: "does it survive
+a change of random seed" is only a check you can run if the seed is an input you control, so the
+seed is a logged parameter of every run. Every draw the physics makes -- the collision outcome, the
+tie-break coin, the bond-formation attempt, the emission direction, the event times -- comes from
+this one stream.
+
+**What we did not take:** any claim about its statistical quality. Marsaglia's own xorshift family
+is known to fail some spectral tests, and if the Lab's results ever turn out to depend on the
+generator that is a finding to record under rule 10 and a reason to move to a stronger one, not a
+detail.
+
 **Succi, Sauro et al. (2022).** *Lattice Fluid Dynamics: Thirty-five Years Down the Road.*
 arXiv:2209.13436. <https://arxiv.org/abs/2209.13436> — the retrospective that states the
 minimum conservation set plainly.
