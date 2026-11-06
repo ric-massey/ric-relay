@@ -129,7 +129,7 @@ Precisely:
 
 | # | Law | |
 |---|-----|---|
-| 1 | **Conservation** | Matter (the **sum of kinds**), energy and momentum are integers and are never created or destroyed. Where something crosses an edge it is counted. **Momentum** is an integer vector and **speed is a rate**: one hexagon every `k/|p|` ticks, capped at one — so heavy matter is slow rather than frozen and nothing outruns the causal limit. A step rounds the vector to one of six directions; the vector itself is never rounded, and a tie is a coin. **Kinetic energy** is the whole number `floor(S · Q(p) / 2k)` with `S = 4`, recomputed from `(p, k)` rather than stored, so the conserved total is heat + Σ KE. Collisions resolve in three-hexagon blocks, conserve momentum exactly, and draw their outcome at random. A **thermal kick** turns heat into motion in opposite-moving pairs, so momentum still sums to zero. |
+| 1 | **Conservation** | Matter (the **sum of kinds**), energy and momentum are integers and are never created or destroyed. Where something crosses an edge it is counted. **Momentum** is an integer vector and **speed is a rate** that never reaches the limit: `|p| / √(k² + |p|²)`, relativity's form (Ric: "I don't want anything of matter to reach that speed") — so heavy matter is slow rather than frozen and only radiation travels at the causal limit. A step rounds the vector to one of six directions; the vector itself is never rounded, and a tie is a coin. **Kinetic energy** is the whole number `floor(S · Q(p) / 2k)` with `S = 4`, recomputed from `(p, k)` rather than stored, so the conserved total is heat + Σ KE. Collisions resolve in three-hexagon blocks, conserve momentum exactly, and draw their outcome at random. A **thermal kick** turns heat into motion in opposite-moving pairs, so momentum still sums to zero. |
 | 2 | **Bonding** | Adjacent primitives may bond with binding energy **`B(k₁, k₂) = 8 − |v(k₁) + v(k₂) − 8|`**, `v(k) = k mod 8` — strongest when the two valences are complementary. A bond forms with probability `BOND_FORM_PROB` when a clock fires, never instantly on contact, which is what makes catalysis possible. It breaks when **`e ≥ B · kind`** at either end — temperature at or above `B`. Motion never breaks a bond: a step that would stretch one does not happen. No distance term and no force — exclusion already repels and gravity already gathers. |
 | 3 | **Gravity** | All matter attracts all matter as 1/r², never cancelling, acting on the sum of kinds. The only non-local law. A pull smaller than one unit of momentum is carried, not rounded (item 19). A local screened-field version is the candidate replacement (item 12). Not in the Lab. |
 | 4 | **Capacity** | A primitive bonds to at most `capacityOf(k) = clamp(k mod 8, 1, 6)` neighbours — read from the same valence law 2 uses, so kinds have valences (item 6). Its job is saturation: without it attraction collapses everything into one blob. |
@@ -360,8 +360,8 @@ condition.
 
 **33. Does law 1's `|p| / K` inertia emerge?** Law 1 says a heavy composite resists being pushed.
 Nothing computes `K` any more, so it would have to emerge — and first evidence says it does not:
-momentum per member is flat or rising with cluster size. Imposed by hand it was worth only +0.08 of
-mean `B`. *Decided by:* tracking clusters through time, which needs re-identifying them every sample,
+momentum per member is flat with cluster size. Imposed by hand it was worth +0.05 of mean `B`, inside
+the 0.06 spread between seeds. *Decided by:* tracking clusters through time, which needs re-identifying them every sample,
 since rule 2 forbids storing a cluster id.
 
 ### Settled

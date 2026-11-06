@@ -25,6 +25,9 @@ function vectors(R) {
 
 // ------------------------------------------------------------------ 1
 // Speed as a RATE: a primitive steps one hexagon every 1/v steps, where
+// (Law 1's speed rule until 2026-11-06. It is now relativity's
+// |p| / sqrt(k^2 + |p|^2) -- lab.mjs matterSpeed. This file keeps the old rule as
+// the record of what it measured.)
 // v = min(1, |p| / k). Never more than one hexagon per step, so the causal
 // limit holds by construction. How many distinct speeds does that give?
 console.log('=== 1. Does speed-as-a-rate give a real spread of speeds? ===');

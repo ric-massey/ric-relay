@@ -11,9 +11,10 @@
 // because rule 11 is about not believing output that only says it passed.
 
 import {
-  Lab, neighbour, opposite, bindingEnergy, census, N, CELLS, at, qOf, rOf,
+  Lab, neighbour, opposite, bindingEnergy, census, N, CELLS, at, qOf, rOf, matterSpeed,
 } from "./lab.mjs";
-import { LAB, CANDIDATE_ZERO, DIRECTIONS, capacityOf, HOT_T_MAX, KIND_MAX, ENERGY_MAX } from "./constants.mjs";
+import { LAB, CANDIDATE_ZERO, DIRECTIONS, capacityOf, HOT_T_MAX, KIND_MAX, ENERGY_MAX,
+  MOMENTUM_RANGE } from "./constants.mjs";
 
 let failures = 0;
 function report(name, ok, detail) {
@@ -466,6 +467,30 @@ console.log(`\n=== Check 11: the hot band fits, with room for what arrives (item
     `worst ${(100 * worst).toFixed(1)}% of the room used`);
   report("and uses well under half its headroom, so the margin is not luck", worst < 0.5,
     `${(100 * worst).toFixed(1)}% -- if this rises, widen the margin in HOT_T_MAX, do not loosen this`);
+}
+
+console.log(`\n=== Check 12: no matter reaches the speed limit ===`);
+{
+  // Ric, 2026-11-06: "I don't want anything of matter to reach that speed."
+  // Law 1's speed is relativity's |p| / sqrt(k^2 + |p|^2). Checked over every
+  // kind and every legal momentum vector, in the engine's own floating point,
+  // because 0.99999... rounding to 1 would be the same failure as before.
+  let fastest = 0, at = "";
+  for (let x = -MOMENTUM_RANGE; x <= MOMENTUM_RANGE; x++) {
+    for (let y = -MOMENTUM_RANGE; y <= MOMENTUM_RANGE; y++) {
+      const z = -x - y;
+      if (Math.abs(z) > MOMENTUM_RANGE) continue;
+      const Q = x * x + y * y + z * z;
+      for (let k = 1; k <= KIND_MAX; k++) {
+        const v = matterSpeed(Q, k);
+        if (v > fastest) { fastest = v; at = `kind ${k}, p (${x}, ${y}, ${z})`; }
+      }
+    }
+  }
+  report("every kind at every legal momentum moves strictly slower than the limit", fastest < 1,
+    `fastest is ${fastest.toFixed(6)} of the limit, at ${at}`);
+  report("slow matter is unchanged in practice", Math.abs(matterSpeed(2 * 1, 10) / 0.1 - 1) < 0.01,
+    `|p| = k/10 moves at ${(matterSpeed(2 * 1, 10) / 0.1).toFixed(4)} of |p|/k`);
 }
 
 console.log(`\n${failures === 0 ? "All checks passed." : failures + " CHECK(S) FAILED."}`);

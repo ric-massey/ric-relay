@@ -24,6 +24,27 @@ as a compression wave at the speed of sound, and nothing anywhere computes a
 body's total mass. So this was meant to be the local mechanism law 1 already
 describes, "once momentum has SPREAD across a bonded group of total kind K".
 
+CORRECTED LATER ON 2026-11-06 -- READ THIS BEFORE THE NEXT SECTION. The table
+below is wrong, and so is the argument built on it. wave.mjs measured "distance
+travelled" as the centre's position after the run minus before, on a world
+that is a 258-wide loop, and the pair laps it about four times in 200,000
+events. So every number in the table is just where on its last lap the run
+stopped. Measured properly -- the path unwrapped, sampled every 2,000 events --
+the pair travels about as far with the push as without it:
+
+    bond vs travel     with the push     without it      (relativistic speed rule)
+         60 deg            1058.5           1043.5
+        -60 deg            1049.0           1043.0
+        120 deg            1049.0           1043.0
+        180 deg            1024.8           1078.8
+
+So it is NOT shown to damp anything. The rejection still stands, on what is
+left: in a full world it is no better for chemistry (best mean B 6.39 against
+6.41 now; 6.34 against 6.36 before) and no different for how often bonded
+matter steps -- fifty lines and three counters that buy nothing measurable,
+and rule 7 prefers removing. "Internal friction" below is the original,
+superseded reasoning.
+
 WHY IT WAS REJECTED. It is internal friction, not propulsion. Every transfer
 is inelastic, so each one sheds kinetic energy into the heat field, and a pair
 being pushed along is damped by its own wave. Measured on one bonded pair

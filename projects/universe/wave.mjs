@@ -16,18 +16,20 @@
 //      lies ALONG its travel cannot translate at all -- the front member
 //      would need the bond to span two hexagons, and the back member has the
 //      front one in its way.
-//      MEASURED: WRONG. All four orientations translate. A longitudinal pair
-//      manages 56 hexagons against 115 for a transverse one, because the
-//      pair ROTATES out of the locked geometry rather than stalling in it:
-//      each refused step leaves the momentum where it was, the step direction
-//      is redrawn from it, and the pair reorients. Slower, not impossible.
+//      MEASURED: WRONG. All four orientations translate, and about EQUALLY
+//      far: ~1,040-1,080 hexagons in 200,000 events, four laps of the world.
+//      (Until a correction later on 2026-11-06 this said a longitudinal pair
+//      "manages 56 against 115" and rotates out of the locked geometry. Those
+//      were before-and-after positions on a 258-wide torus -- where on its
+//      last lap each run stopped -- not distances. See travelled() below.)
 //
 //   B  Did the momentum wave buy anything? A method was built the same day
 //      to carry a refused step's momentum along the bond, one unit per event
 //      -- local, conserving, and exactly what law 1's "once momentum has
 //      SPREAD across a bonded group" describes.
-//      MEASURED: it made things worse. It is in rejected/push-along-bond.txt
-//      with the table. This file injects it back into a copy of the engine so
+//      MEASURED: it bought nothing -- no further travel once distance is
+//      measured properly, and no better chemistry in a full world. It is in
+//      rejected/push-along-bond.txt with the table. This file injects it back into a copy of the engine so
 //      that run can be repeated.
 //
 //   C  Does law 1's |p| / K inertia emerge, with nothing computing K?
@@ -127,14 +129,43 @@ function bondStats(w) {
 
 // Kind-weighted centre of a cluster, without wrapping -- these runs start in
 // the middle and are short, so nothing reaches the seam.
+// The centre of a group, in axial (q, r), unwrapped around its first member
+// so a group straddling the seam is not averaged to the middle of the world.
 function centre(w, members) {
-  let K = 0, cx = 0, cy = 0;
+  const q0 = members[0] % N, r0 = (members[0] - q0) / N;
+  const wrap = (d) => ((d + N / 2) % N + N) % N - N / 2;
+  let K = 0, cq = 0, cr = 0;
   for (const m of members) {
     const q = m % N, r = (m - q) / N;
     const k = w.kind[m];
-    K += k; cx += q * k; cy += r * k;
+    K += k; cq += (q0 + wrap(q - q0)) * k; cr += (r0 + wrap(r - r0)) * k;
   }
-  return [cx / K, cy / K, K];
+  return [cq / K, cr / K, K];
+}
+
+// HOW FAR A GROUP TRAVELLED, ON A TORUS. FIXED 2026-11-06. This file used to
+// compare the centre before and after the whole run, and the Lab is a 258-wide
+// loop: a pair at kind 44 and |p| 30 takes ~3,500 steps in 200,000 events and
+// laps the world several times, so the before-after difference was just where
+// on its last lap the run stopped. Item 25's "115 hexagons" and "56 for a
+// longitudinal pair" were that, never distances. Now the run is sampled often
+// enough that the centre moves far less than half the world between samples,
+// each step's displacement is unwrapped, and the path is summed -- reported
+// as the net distance from the start in hexagon widths.
+function travelled(lab, w, events, members0, chunk = 2000) {
+  const wrap = (d) => ((d + N / 2) % N + N) % N - N / 2;
+  const groupNow = () => { const cs = clusters(w).filter((c) => c.members.length > 1);
+    return cs.length === 1 ? cs[0].members : null; };
+  let prev = centre(w, members0), dq = 0, dr = 0, done = 0;
+  while (done < events) {
+    done = Math.min(events, done + chunk);
+    lab.run(done, {});
+    const g = groupNow();
+    if (!g) return { distance: Math.hypot(dq + dr / 2, dr * Math.sqrt(3) / 2), bonded: false };
+    const c = centre(w, g);
+    dq += wrap(c[0] - prev[0]); dr += wrap(c[1] - prev[1]); prev = c;
+  }
+  return { distance: Math.hypot(dq + dr / 2, dr * Math.sqrt(3) / 2), bonded: true };
 }
 
 // ------------------------------------------------- A: one pair in a vacuum
@@ -168,22 +199,19 @@ function pairRun({ bondDir, moveDir, kinds, p, events, which = "plain" }) {
   if (cap === 0) throw new Error(`kinds ${kinds} do not bond: B = 0`);
   for (const m of [i, j]) w.energy[m] = Math.floor(cap / 4);
   lab.start();
-  const before = centre(w, [i, j]);
+
   // The pair is moving, so the world's momentum is NOT zero here -- it is the
   // 2p that was put in, and the thing to assert is that it does not CHANGE.
   // (Asserting zero was this file's own bug for one run: the Lab reported
   // (60, -60) and was right. The engine's own runs start at zero because the
   // thermal kick only ever makes opposite pairs.)
   const p0 = census(w);
-  lab.run(events, {});
+  const tr = travelled(lab, w, events, [i, j]);
   const c = census(w);
   if (c.pxSum !== p0.pxSum || c.pySum !== p0.pySum)
     throw new Error(`momentum changed: started (${p0.pxSum}, ${p0.pySum}), `
       + `ended (${c.pxSum}, ${c.pySum})`);
-  const cs = clusters(w).filter((c2) => c2.members.length > 1);
-  const after = cs.length === 1 ? centre(w, cs[0].members) : null;
-  const moved = after ? Math.hypot(after[0] - before[0], after[1] - before[1]) : 0;
-  return { moved, bonded: cs.length === 1, steps: lab.counts.stepped,
+  return { moved: tr.distance, bonded: tr.bonded, steps: lab.counts.stepped,
     pushes: lab.counts.pushedAlongBond || 0 };
 }
 
@@ -203,10 +231,9 @@ for (const [bondDir, label] of [[1, "  60 deg"], [5, " -60 deg"], [2, " 120 deg"
     + (a.bonded ? "" : "   BOND LOST")
     + (b.bonded ? "" : "   wave arm lost its bond"));
 }
-console.log("\n   Every orientation translates, so the prediction that a longitudinal");
-console.log("   pair cannot move was wrong -- it rotates out of the locked geometry");
-console.log("   instead of stalling in it. And the wave moves it LESS in all four,");
-console.log("   because each transfer is inelastic and damps the pair it carries.");
+console.log("\n   Every orientation translates, about equally far, so the prediction that a");
+console.log("   longitudinal pair cannot move was wrong. The wave does not carry it any");
+console.log("   further. Distances are the unwrapped path on the torus (travelled()).");
 console.log("   (each run asserts the world's momentum is UNCHANGED, not zero:");
 console.log("    a pair carrying p in one direction sums to 2p, which is the point)");
 
@@ -318,7 +345,7 @@ const M_CALL = "--- DRAG CALL BELOW THIS LINE ---";
 const CLUSTER_METHODS = between(M_METHODS, M_RATE);
 const K_RATE = between(M_RATE, M_CALL);
 const DRAG_CALL = between(M_CALL, null);
-const A_RATE = "    const speed = Math.min(1, Math.sqrt(Q / 2) / w.kind[i]);";
+const A_RATE = "    const speed = matterSpeed(Q, w.kind[i]);";
 const A_COLD = "        this.counts.tooColdToMove++;";
 
 function arm(useDrag, useK) {

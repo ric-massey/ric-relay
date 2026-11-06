@@ -606,6 +606,14 @@ this argument: a law short enough to write in one line **cannot contain** a peri
 because there is not room in it. The direction matters and is easy to reverse — shortness
 limits what can have been written *in*, never what can come *out*.
 
+**Einstein, Albert (1905).** *Zur Elektrodynamik bewegter Körper*, Annalen der Physik 17 — special
+relativity, and from it the speed of a body in terms of its momentum, `v = pc / √((mc)² + p²)`.
+Taken 2026-11-06 for law 1's speed rule, with the causal limit as `c` and kind as `m`, because Ric
+did not want matter to reach the limit (*"I don't want anything of matter to reach that speed"*):
+under it a body's speed approaches the limit as its momentum grows and never arrives, at any finite
+momentum, with no new constant. Only the speed is taken. Kinetic energy stays law 1's Newtonian
+`floor(S · Q / 2k)`, which is a stated mismatch and not an oversight — see law 1 in `THE-LAWS.md`.
+
 **Newton, Isaac (1687)** and **Einstein, Albert (1915).** Law 3's *why the force exists at
 all*: Newton gave the inverse-square law and explicitly declined to invent a cause for it;
 general relativity replaced the force with spacetime curvature and left *why mass curves

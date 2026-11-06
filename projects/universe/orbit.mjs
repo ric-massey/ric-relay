@@ -269,6 +269,9 @@ function run({ r0, R, integerMomentum, latticeSteps, carry, startFrac = START_FR
     // --- law 1: speed is a rate, one hexagon every k/|p| ticks, max one ---
     const pm = mag(p);
     if (pm === 0) { outcome = "stopped dead"; break; }
+    // Law 1's speed rule before 2026-11-06; it is now relativity's
+    // pm / sqrt(k^2 + pm^2) (lab.mjs matterSpeed). Not re-run under the new
+    // rule; the two agree to within 3% wherever pm <= k / 4.
     const speed = Math.min(1, pm / k);         // hexagons per tick
     if (latticeSteps) {
       stepAcc += speed;

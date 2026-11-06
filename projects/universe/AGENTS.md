@@ -68,8 +68,11 @@ variance layer.
 - **Momentum is never stored as a direction.** A step rounds the vector to one of six directions;
   the vector is never rounded. **A tie between two directions is a coin**, never a fixed pick — a
   fixed tie-break was a handedness that spiralled every orbit inward (item 21).
-- **Speed is a rate, not a distance:** one hexagon every `k/|p|` ticks, capped at one per tick.
-  "Move `p/k` hexagons" would break the causal limit for light kinds and freeze heavy ones.
+- **Speed is a rate, not a distance, and matter never reaches the limit:** `matterSpeed(Q, k)` in
+  `lab.mjs` is relativity's `|p| / √(k² + |p|²)` of the causal limit (Ric, 2026-11-06: "I don't want
+  anything of matter to reach that speed"). Only radiation travels at the limit; `lab-check.mjs`
+  Check 12 holds every kind at every momentum below it. Don't go back to `min(1, |p|/k)`, which let
+  the lightest kinds hit it. "Move `p/k` hexagons" would break the causal limit and freeze heavy kinds.
 - **Collisions** resolve in three-hexagon Margolus blocks, conserve momentum by construction, and
   draw their outcome at random from the legal ones.
 - **Kinetic energy** is `floor(S · Q(p) / 2k)`, **derived from `(p, k)`, never stored**; the conserved
@@ -248,6 +251,11 @@ Lab's assertion can, and caught two seams by failing (18,541 and 34,864 units).
    next to the limit it must obey — `orbit.mjs` once used gravity thousands of times too strong.
 6. **Count the thing a claim is about.** "Refusing the step freezes clusters solid" stood for two
    days because nothing counted bonded steps; there were 14,500 per million events.
+7. **On a torus, a distance is a path, not a difference.** `wave.mjs` reported a bonded pair moving
+   "115 hexagons" by subtracting its start from its end — and it had lapped the 258-wide Lab four
+   times, so the figure was a lap position. It took the rejected wave's main argument with it.
+   Sample often enough that nothing moves half the world between samples, and sum the unwrapped
+   steps.
 
 ---
 

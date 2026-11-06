@@ -2589,6 +2589,49 @@ draws under the fix, and reproduced byte-for-byte; items 25 and 33 were measured
 seeded momentum at all. The lesson is the one item 25 taught: **a comment that says something else
 will catch a failure is a claim, and it needs a check of its own.**
 
+
+#### Settled — matter never reaches the speed limit
+
+Asked 2026-11-06 whether anything moves at the information speed limit, the answer was radiation —
+and the lightest matter: law 1's speed was `min(1, |p|/k)`, so any primitive whose momentum reached
+its kind moved at exactly the limit, kinds 1–63 could, and a kind-1 primitive needed one unit.
+Nothing in the laws forbade it. Ric: *"I don't want anything of matter to reach that speed."*
+
+Two rules were offered: relativity's `|p| / √(k² + |p|²)`, or a ceiling `min(V_MAX, |p|/k)`. A
+ceiling costs a searched constant (rule 7) and flattens everything above it to one speed; relativity
+costs nothing, approaches the limit without arriving, and is how reality does it. **Ric chose
+relativity.** It is `matterSpeed()` in `lab.mjs`, credited to Einstein (1905) in `SOURCES.md`, and
+`lab-check.mjs` Check 12 holds every kind at every legal momentum below the limit — the fastest is
+kind 1 at full momentum, 0.99987. Kinetic energy stays Newtonian; that mismatch is stated in law 1.
+
+**What it moved, measured with `wave.mjs` before and after:** the shipped engine's best mean `B`
+went from 6.36 to 6.41, bonded steps from 14,495 to 15,075 per million events, and the `|p| / K` arm's
+advantage from +0.08 to +0.05, now inside the 0.06 seed spread. A lone bonded pair travels about 15%
+less far, which is the slower speed and nothing else. The screening tools `momentum.mjs` and
+`orbit.mjs` still use the old rule and have not been re-run under the new one; the two agree to
+within 3% wherever `|p| ≤ k/4`, so slow results stand, and any figure from them at higher speeds is
+the old rule's.
+
+#### Correction — "115 hexagons" was a lap position, and the wave's rejection lost its main reason
+
+Found the same day, by the speed change: one figure dropped tenfold where the rule could only explain
+17%. `wave.mjs` measured how far a bonded pair travelled as its centre's position at the end minus at
+the start. The Lab is a loop 258 hexagons wide, and the pair takes about 3,500 steps in 200,000
+events — **it laps the world about four times**, so the difference was only where on its last lap
+the run stopped. Every distance in section A was that: item 25's "115 hexagons in 200,000 events",
+"a longitudinal pair manages 56", and the table that rejected the momentum wave for damping the pair
+"by two to five times". The centre was also computed without unwrapping, so a pair straddling the
+seam averaged to the middle of the world.
+
+Measured properly — sampled every 2,000 events, each step unwrapped, the path summed — **every
+orientation travels about equally far** (1,043–1,079 hexagons), and **the wave carries the pair no
+further and no less** (1,025–1,059). So the claims that a longitudinal pair is slowed and that the
+wave damps motion are withdrawn. **The wave stays rejected**, on what remains: it is no better for
+chemistry in a full world (6.39 against 6.41) and no different for bonded steps, and rule 7 prefers
+removing fifty lines that buy nothing. `rejected/push-along-bond.txt` carries the corrected table
+above its original one. **The lesson, now `AGENTS.md` rule 12's seventh: on a torus, a distance is a
+path, not a difference.**
+
 ---
 
 ## The register in full

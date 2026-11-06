@@ -50,6 +50,11 @@ BOTH PIECES ARE BELOW AND THEY GO IN INDEPENDENTLY. wave.mjs injects the
 methods always, the drag CALL only for the drag arms, and the rate line only
 for the |p| / K arms.
 
+(2026-11-06, later: law 1's speed became relativity's |p| / sqrt(K^2 + |p|^2),
+so the rate line below calls the engine's matterSpeed() with the cluster's K
+instead of min(1, |p| / K). That keeps wave.mjs section D like for like with the
+engine it is injected into. Its numbers before the change are in item 25.)
+
 --- METHODS BELOW THIS LINE ---
   // ----------------------------------------------------- bonded groups
   // A cluster is the connected component over bonds. Everything here exists
@@ -220,6 +225,6 @@ for the |p| / K arms.
   }
 --- RATE LINE BELOW THIS LINE ---
     const K = w.bonds[i] === 0 ? w.kind[i] : this.clusterTotalKind(i);
-    const speed = Math.min(1, Math.sqrt(Q / 2) / K);
+    const speed = matterSpeed(Q, K);
 --- DRAG CALL BELOW THIS LINE ---
         if (this.dragCluster(i, d)) return j;

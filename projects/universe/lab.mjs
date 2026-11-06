@@ -305,6 +305,17 @@ class Queue {
   }
 }
 
+// Law 1's speed, as a fraction of the causal limit. CHANGED 2026-11-06 (Ric:
+// "I don't want anything of matter to reach that speed"). It was
+// min(1, |p| / k), which let kinds 1-63 move at exactly the limit -- a kind-1
+// primitive needed one unit of momentum. Now it is special relativity's
+// v = |p| / sqrt(k^2 + |p|^2), with |p|^2 = Q / 2 on the cube axes: close to
+// |p| / k for slow matter (0.995 of it at |p| = k/10), 0.71 at |p| = k, and
+// below 1 at every momentum the field can hold -- the most a kind-1 primitive
+// reaches is sqrt(7938 / 7940) = 0.99987. Radiation is the only thing that
+// travels at the limit. Credited in SOURCES.md (Einstein 1905).
+export const matterSpeed = (Q, k) => Math.sqrt(Q / (2 * k * k + Q));
+
 // ==================================================================== lab
 export class Lab {
   constructor({ constants = CANDIDATE_ZERO, thermostat = THERMOSTAT_DEFAULT, seed = 1 } = {}) {
@@ -359,9 +370,10 @@ export class Lab {
     const w = this.w;
     const Q = Qof(w, i);
     if (Q === 0) return 0;
-    // Law 1: one hexagon every k/|p| ticks, capped at one per tick. As a rate
-    // that is min(1, |p|/k) steps per tick, and GAP 1 turns "per tick" into
-    // "per unit of the fastest clock".
+    // Law 1: speed is matterSpeed(Q, k) of the causal limit -- relativity's
+    // |p| / sqrt(k^2 + |p|^2), so matter never reaches the limit (see
+    // matterSpeed below). GAP 1 turns "per tick" into "per unit of the
+    // fastest clock".
     //
     // THE k IS THIS HEXAGON'S OWN KIND, AND IT HAS TO BE, which is worth a
     // note because for part of 2026-11-06 it was the bonded cluster's total
@@ -381,15 +393,16 @@ export class Lab {
     // WHAT PRODUCES THE OUTCOME HERE IS NOT SETTLED, and that is item 33
     // rather than a gap in this function. A mechanism was built for it the
     // same day -- momentum spreading bond by bond -- and measured, and it
-    // made clusters move LESS rather than more, because every transfer is
-    // inelastic and a cluster was damped by its own wave. It is in
+    // bought nothing: clusters travel no further with it and chemistry is no
+    // better. (It was first said to damp clusters, on distances that turned
+    // out to be lap positions on the torus.) It is in
     // rejected/push-along-bond.txt with the numbers. Measured snapshot after
     // its removal: mean momentum per member across cluster sizes reads 37.66
     // at size 2, 38.05 at 3-4 and 39.17 at 5-8. If heavy clusters resisted
     // being pushed that should FALL, so there is no sign of |p| / K emerging
     // and the slight trend runs the wrong way. One seed and a snapshot rather
     // than a rate, so it is evidence and not a verdict.
-    const speed = Math.min(1, Math.sqrt(Q / 2) / w.kind[i]);
+    const speed = matterSpeed(Q, w.kind[i]);
     return this.causal * speed;
   }
   totalRateAt(i) {
@@ -869,7 +882,9 @@ export class Lab {
       // below carries it across. Transverse motion was always free. Measured:
       // bonded primitives take about 14,500 steps per million events at the
       // temperature chemistry likes, and a bonded pair alone in a vacuum
-      // carries its centre of mass 115 hexagons in 200,000 events. Every
+      // carries its centre of mass about 1,050 hexagons in 200,000 events --
+      // four laps of the torus. (Said 115 until a later 2026-11-06 fix to how
+      // wave.mjs measures distance: 115 was a lap position, not a distance.) Every
       // claim in this project that this reading "freezes clusters solid" was
       // wrong, and it was wrong because nothing counted bonded steps until
       // bondedStepped existed.

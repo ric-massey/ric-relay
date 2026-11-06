@@ -41,12 +41,23 @@ vector itself is never rounded, so nothing conserved is ever rounded. **A tie be
 is broken by a fair coin** (item 21): an integer vector lies exactly between two directions on 2–4%
 of an orbit's steps, and a fixed pick is a handedness that spiralled every orbit into the centre.
 
-**Speed is a rate, not a distance.** A primitive steps **one hexagon every `k / |p|` ticks**, never
-more than one per tick. So nothing outruns the causal limit, heavy matter is slow rather than frozen,
-and there are **255 distinct speeds** — exactly the count of kinds, because a momentum of magnitude
-1 gives kind `k` a period of `k` ticks. Momentum width adds headroom for forces, never speed variety.
-Mass alone gives a 38-fold spread: kinds 1–16 step about every third tick, kinds 240–255 about every
-hundredth. That is inertia.
+**Speed is a rate, not a distance, and matter never reaches the limit.** A primitive steps at
+
+> **`v = |p| / √(k² + |p|²)`** of the causal limit
+
+— special relativity's speed for a body of mass `k` and momentum `p`, with the limit as `c` (Ric,
+2026-11-06: *"I don't want anything of matter to reach that speed"*). For slow matter it is `|p| / k`
+to within half a percent at `|p| = k/10`, so heavy matter is slow rather than frozen and that is
+inertia. As momentum grows the speed approaches the limit and never arrives: `|p| = k` gives 0.71,
+and the fastest thing the field allows — kind 1 at full momentum — reaches 0.99987. **Only radiation
+travels at the limit.** `lab-check.mjs` Check 12 checks every kind at every legal momentum. *(Until
+2026-11-06 the rule was `min(1, |p|/k)`, which let kinds 1–63 move at exactly the limit, and gave
+exactly 255 distinct speeds; the relativistic rule gives many more, so speed variety now comes from
+momentum as well as mass.)*
+
+**Kinetic energy stays Newtonian, and that is a stated mismatch.** Only the speed is relativistic.
+`KE` below is still `floor(S · Q / 2k)`, the low-speed form; the relativistic `√(k² + |p|²) − k` would
+not be a whole number. The two agree for slow matter, which is nearly all of it.
 
 **Collisions conserve momentum exactly, and the outcome is drawn rather than computed.** They
 resolve in three-hexagon Margolus blocks; any redistribution with the same vector sum is legal, and
@@ -112,8 +123,8 @@ and reality forbids it for the same reason.
 still move. On a hex lattice `i` and `i + d` share two neighbours, so a bond within 60° of the
 direction of travel survives the step; only bonds at 120° and 180° refuse. Shear is cheap and
 compression dear, which is the right way round for matter. Measured: bonded matter steps about
-14,500 times per million events, and a lone bonded pair carries its centre 115 hexagons in 200,000
-events.
+15,000 times per million events, and a lone bonded pair travels about 1,050 hexagons in 200,000 events
+— four laps of the Lab — whatever the angle of its bond.
 
 **Breaking is law 2's, by temperature.** A hard strike breaks a cluster by heating it: the
 collision's KE change goes to heat, and if an endpoint reaches `e ≥ B · kind` the bond breaks. A soft
