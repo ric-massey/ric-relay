@@ -98,16 +98,11 @@ pure version and the split is a compromise.
 **The chronology is free and it is correct.** That sequence above is the actual history of
 our universe: hot, no atoms, cooling, recombination, then chemistry. A one-run world gets an
 era in which chemistry *cannot exist* and then an era in which it can, and the transition is
-physics rather than a chapter heading. **This is now the only real thing the split costs** —
-the World starts from matter spread out rather than from a hot collapse, so it skips the era
-whose whole content is "matter could not yet hold together."
-
-*(A second cost used to be listed here: that species reachable only through extreme
-gravitational compression would never make it into the Lab's table and so would never exist in
-the World. **That cost is gone**, because the World no longer reads the table — it runs the same
-primitive physics and forms whatever it forms. The table's completeness stopped mattering
-the moment it stopped being an input. It is worth recording that removing the coarse-graining
-deleted a cost rather than trading one for another.)*
+physics rather than a chapter heading. **This is the only real thing the split costs** — the
+World starts from matter spread out rather than from a hot collapse, so it skips the era whose
+whole content is "matter could not yet hold together." *(A second cost — species reachable only
+under extreme compression never existing in the World — went when the World stopped reading the
+table.)*
 
 **There is no seam.** A measured table is still a snapshot taken under conditions a person
 chose — which matters for how much you should trust the *dictionary*, even now that it isn't
@@ -126,8 +121,8 @@ entire output is "and then it cooled down."
 
 **2. You could not iterate, and iteration is the whole method.** This is the decisive one.
 
-The constants are unknown — five of them, since law 2's proposal removed two (`README.md`,
-*The search space*). Most settings give a dead universe — frozen solid or
+The constants are unknown — seven of them (`README.md`, *The search space*), five of which the
+Lab needs. Most settings give a dead universe — frozen solid or
 boiling noise — and a narrow band gives one where things happen. You cannot reason your way
 to that band, because you cannot tell from reading a rule set what it will do. That is
 computational irreducibility, and it means **the only available method is search.**
@@ -151,9 +146,9 @@ have, and "I think something interesting is happening" is as far as you can ever
 **4. Failures would be undiagnosable.** One run produces mud. Is the *form* of the pair force
 wrong, or one of the constants? Is the problem in the chemistry, the thermodynamics, or
 the gravity? You would have one observation confounding all of it. The split isolates the
-chemistry completely, which is ordinary experimental method: change one thing at a time. And
-since the force law's form is now the largest thing being searched, having somewhere cheap to
-vary it matters more than it did when the search was only over numbers.
+chemistry completely, which is ordinary experimental method: change one thing at a time. And if
+the Lab comes back flat, law 2's form goes back on the table, and that needs somewhere cheap to
+vary it.
 
 **5. It would defeat the project's actual goal.** The README's aim is behavior you can
 *trace* and still never have predicted — computational irreducibility, not mystery. One
@@ -182,7 +177,7 @@ not a bug in the world and not a failure of the physics. It goes in the notes (r
 **Cross-validate the time scheme.** The two runs handle time differently — the Lab with
 event-driven continuous time where nothing ever skips, the World with per-tick update
 probability. Both are stochastic; only the time axis differs. The Lab's version is strictly
-better physics and is affordable at 65,000 cells;
+better physics and is affordable at 66,564 hexagons;
 the World's is an approximation forced by needing millions of cells in a browser, where queue
 churn and the loss of cache locality and parallelism cost more like 50–100× than 5–10×.
 

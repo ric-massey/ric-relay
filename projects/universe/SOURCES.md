@@ -7,7 +7,8 @@ Rule 1 of `AGENTS.md`: **add the entry before using the technique, not after.** 
 originator of an idea can't be established, say so in the entry rather than leaving it
 uncredited.
 
-Started 2026-11-03.
+Started 2026-11-03. **Law numbers follow the current five-law list** (`THE-LAWS.md`); some entries
+were first written against the eleven-rule list of 2026-11-03 and were renumbered on 2026-11-06.
 
 ---
 
@@ -23,8 +24,9 @@ The central document behind this design. Their five necessary conditions, and th
 of what existing systems are missing, shaped most of the law set. Specifically taken:
 
 - **"No entropy or decay"** — digital physics typically lacks rot, so organisms never
-  need self-maintenance. Law 6 and the bond-energy coupling exist because of this. (It
-  later turned out decay is a *consequence* of laws 4 and 6, not a law, which is better.)
+  need self-maintenance. Law 2's breaking condition and the exact bond-energy accounting exist
+  because of this. (It later turned out decay is a *consequence* of laws 2 and 5 — bonds break
+  when heat arrives — not a law of its own, which is better.)
 - **Hard-wired protection limits interaction** — Tierra and Avida buy robustness with
   write-locks, banning the richest class of interactions. Why nothing here is protected.
 - **Non-evolvable interpretation machinery** — Tierra's virtual CPU can't evolve. Why the
@@ -113,7 +115,7 @@ Took two things, one positive and one cautionary:
   principle as primitives carrying their own integer kind.
 - The warning that **mass conservation acts as a regularizer limiting what can emerge**,
   with patterns going static or near-static. Conservation alone makes a world tidy, not
-  alive. This is why the draining energy budget (laws 3 and 7) matters as much as law 1.
+  alive. This is why the draining energy budget (laws 3 and 5) matters as much as law 1.
 
 **Plantec et al. (2025).** *Flow-Lenia: Emergent evolutionary dynamics in mass
 conservative continuous cellular automata.* arXiv:2506.08569.
@@ -384,7 +386,7 @@ based solidification models.*
 Took: square grids as a source of **artificial (grid) anisotropy** producing "solid cells
 along the axes," and the list of remedies — change the grid, the neighborhood, the local
 function, or replace synchronous dynamics with asynchronous ones. The last is a second,
-independent reason for law 8.
+independent reason for the structural fact that each hexagon keeps its own time.
 
 **(2024).** *The Cellular Potts Model on Disordered Lattices.* arXiv:2404.09055.
 <https://arxiv.org/abs/2404.09055> — lattice artifacts visible on a square lattice
@@ -396,7 +398,7 @@ disappear on a disordered one. The better-but-harder option noted in the README.
 
 Took: that **some apparent self-organization is an artifact of the global clock**, and
 that cyclic patterns in particular are inherent to synchronous updating. Rule 11 of
-`AGENTS.md` and law 8 both come from this.
+`AGENTS.md` and the per-hexagon clock both come from this.
 
 **Schönfisch, Birgitt, and André de Roos (1999).** *Synchronous and asynchronous updating
 in cellular automata.* BioSystems.
@@ -427,7 +429,7 @@ Kinetics.* Life 13(11). <https://doi.org/10.3390/life13112171>
 
 Took: the argument that self-organization in living systems cannot be explained without
 coupling growth and evolution to **energy dissipation**, and that this coupling is what
-lets selection uncover new function open-endedly. Law 7 earns its place here.
+lets selection uncover new function open-endedly. Law 5's sink earns its place here.
 
 **Kauffman, Stuart** — autocatalytic sets; formalized as **RAF theory** by **Mike
 Hordijk and Mike Steel.** The result that self-sustaining autocatalytic networks appear
@@ -608,6 +610,20 @@ limits what can have been written *in*, never what can come *out*.
 all*: Newton gave the inverse-square law and explicitly declined to invent a cause for it;
 general relativity replaced the force with spacetime curvature and left *why mass curves
 spacetime* open. Cited to establish that every physics has a floor, so ours is allowed one.
+
+**Born, Max (1909)**, *Die Theorie des starren Elektrons in der Kinematik des
+Relativitätsprinzips*, Annalen der Physik 30; **Herglotz, Gustav (1910)** and **Noether, Fritz
+(1910)** on Born-rigid motion. A body rigid in the relativistic sense has only three degrees of
+freedom of motion rather than six, and a truly rigid body would signal faster than light. Taken on
+2026-11-06 as reality's answer to README item 32: there are no rigid bodies, a push travels as a
+compression wave, so the cluster walk that moved a bonded group in one event came out of the Lab.
+*(Credited after use, in the doc pass of 2026-11-06 — rule 1 asks for before.)*
+
+**Yukawa, Hideki (1935)**, *On the Interaction of Elementary Particles*, Proc. Phys.-Math. Soc. Japan
+17 — the screened potential `e^(−mr)/r` that solves `∇²φ − m²φ = ρ`. And **Jacobi relaxation /
+multigrid** (Jacobi 1845; Brandt 1977) as the standard way to solve such an equation by repeated
+neighbour-averaging. Together they are law 3's local candidate (README item 12). *(Credited in the
+doc pass of 2026-11-06; the candidate was written 2026-11-04 without the entry.)*
 
 **The proximity and orientation effect** — standard enzymology. A large part of how a real enzyme
 accelerates a reaction is simply **holding the reactants next to each other, in the right

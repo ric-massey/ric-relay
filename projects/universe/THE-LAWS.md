@@ -1,578 +1,238 @@
 # The Laws
 
-Every rule in this universe, with the specific reason it earned its place and what breaks
-without it. **Five laws and five structural facts.**
+Every rule in this universe, the reason it earned its place, and what breaks without it. **Five laws
+and five structural facts.**
 
-The count matters. Every rule is a place where an answer could be smuggled in, so the list
-being short is the point rather than an aesthetic. **Nothing goes on it without a reason
-written here, and nothing stays on it that turns out to be a consequence of something
-else.** Six candidates have already come off — see *What came off the list*, which is the
-most useful section in this file.
-
-*(This file was `THE-ELEVEN.md` until 2026-11-03, when Ric's "11 or 9 seems like a lot"
-turned out to be right: three of the eleven were restatements of one principle, one was a
-formula with no mechanism, and two were artifacts of a representation we deleted. Renamed
-to something that doesn't encode a number that moves.)*
+The count matters. Every rule is a place where an answer could be smuggled in, so a short list is
+the point, not an aesthetic. **Nothing goes on it without a reason written here, and nothing stays
+on it that turns out to be a consequence of something else.** Six candidates have already come off
+— see *Rules that came off the list* in `HOW-WE-DECIDED.md`. *(This file was `THE-ELEVEN.md` until
+2026-11-03, when Ric's "11 or 9 seems like a lot" turned out to be right.)*
 
 ## How to read this file
 
-**This file says what the laws are. It does not say how we got there.** Every correction, every
-retraction, every option weighed and rejected, and the reasoning behind each open question lives in
-[`HOW-WE-DECIDED.md`](HOW-WE-DECIDED.md) — split out on 2026-11-04 because this file had reached
-1,593 lines, two thirds of it argument, with law 2 alone running 555 lines and its answer buried at
-line 438.
+**This file says what the laws are, not how we got there.** Corrections, retractions, rejected
+options and the argument behind each numbered item are in [`HOW-WE-DECIDED.md`](HOW-WE-DECIDED.md).
+Each law is **stated**, then **justified** (*Why it is a rule*), then closed with **what breaks
+without it**. Where something is undecided, it says so in a line and gives the item number in
+[`README.md`](README.md), which holds the work list.
 
-So each law here is **stated**, then **justified** (*Why it is a rule*), then closed with **what
-breaks without it**, and those two brackets stay put — everything else goes between them, never
-before or after, because a law whose justification sits behind its own argument reads as though
-nobody knows why it is there.
+**`constants.mjs` is the engine's source of truth for every number.** If this file disagrees with
+it, this file is wrong. *(The long form of this file, with every superseded paragraph beside its
+replacement, is at commit `59d5d928`: `git show 59d5d928:projects/universe/THE-LAWS.md`.)*
 
-Where a law is still undecided, it says so in a line or two and points at the record. `README.md`
-holds the register of every open question in one place, with what would decide each.
-
-### Contents
-
-**The five laws** — [1. Conservation](#1-conservation) · [2. Bonding](#2-bonding-the-pair-force) ·
-[3. Gravity](#3-gravity) · [4. Capacity](#4-capacity) · [5. Transport](#5-transport)
-
-**And then** — [The five structural facts](#the-five-structural-facts) ·
+**Contents** — [1. Conservation](#1-conservation) · [2. Bonding](#2-bonding) ·
+[3. Gravity](#3-gravity) · [4. Capacity](#4-capacity) · [5. Transport](#5-transport) ·
+[The five structural facts](#the-five-structural-facts) ·
 [Does our own universe have these?](#does-our-own-universe-have-these) ·
-[Why gravity is held out of the Lab](#why-gravity-is-held-out-of-run-a)
+[Why gravity is held out of the Lab](#why-gravity-is-held-out-of-the-lab)
 
 ---
 
 ## 1. Conservation
 
-Matter — the **sum of all primitive kinds** — plus energy and momentum are never created or
-destroyed. All three are integers.
+Matter — the **sum of all primitive kinds** — energy and momentum are never created or destroyed.
+All three are integers.
 
-**Momentum is an integer vector, and speed is derived from it: `v = p / k`.** Momentum is held
-in cube coordinates on the hex lattice's three axes — two independent signed components, each in
-±63 — and it is *not* the same thing as where the primitive goes next. That separation is the whole
-point. Settled 2026-11-04 after measurement; it was "one unit in a direction, regardless of kind"
-until then, which is option (A) in `HOW-WE-DECIDED.md`.
-
-*(±15 from 2026-11-04 to 2026-11-06, when momentum went to ±63 by Ric's call on README item 20 —
-and this headline was again the last place to hear about it, still saying ±15 until the doc pass of
-the same day. Item 20 and the range paragraph below have the reasons.)*
-
-*(Said ±3 until 2026-11-05 — **in the headline statement of the law**, while the paragraph below
-had already been updated to ±15 when the word went to eight bytes on 2026-11-04. The same drift was
-in `README.md`'s five-law table and in `AGENTS.md` rule 5, and all three are corrected on the same
-pass. Worth recording rather than fixing quietly: the eight-byte change went in piecemeal, and the
-places it missed were the short authoritative statements rather than the long arguments — which are
-exactly the lines someone implementing from these documents would read.)*
+**Momentum is an integer vector, and speed is derived from it.** It is held in cube coordinates on
+the hex lattice's three axes, two independent signed components each in **±63**, and it is *not*
+where the primitive goes next. A step rounds the vector to the nearest of the six directions; the
+vector itself is never rounded, so nothing conserved is ever rounded. **A tie between two directions
+is broken by a fair coin** (item 21): an integer vector lies exactly between two directions on 2–4%
+of an orbit's steps, and a fixed pick is a handedness that spiralled every orbit into the centre.
 
 **Speed is a rate, not a distance.** A primitive steps **one hexagon every `k / |p|` ticks**, never
-more than one per tick. So nothing outruns the causal limit by construction, heavy matter is slow
-rather than frozen, and the lattice gets a real spread of speeds: **255 distinct ones**, from every
-tick down to one step in 255. Mass alone gives a 38-fold spread — kinds 1–16 step about every third
-tick, kinds 240–255 about every hundredth. **That is inertia**, and it needs no kinetic energy to
-work. Measured in `momentum.mjs`.
+more than one per tick. So nothing outruns the causal limit, heavy matter is slow rather than frozen,
+and there are **255 distinct speeds** — exactly the count of kinds, because a momentum of magnitude
+1 gives kind `k` a period of `k` ticks. Momentum width adds headroom for forces, never speed variety.
+Mass alone gives a 38-fold spread: kinds 1–16 step about every third tick, kinds 240–255 about every
+hundredth. That is inertia.
 
-*(One thing to know about that number, measured in `budget.mjs` on 2026-11-04: **the count of
-distinct speeds is exactly the count of kinds**, and no momentum width changes it. There is always
-a momentum of magnitude 1, so every kind `k` yields a step period of `k` ticks, and a wider
-momentum field only adds finer values that round onto periods already present — ±1, ±3, ±7 and ±15
-all give 255. So "255 distinct speeds" is a restatement of "255 kinds" rather than an independent
-feature, and **momentum width is purely headroom for forces, never speed variety.** That is why the
-momentum-range paragraph below has to keep those two apart.)*
+**Collisions conserve momentum exactly, and the outcome is drawn rather than computed.** They
+resolve in three-hexagon Margolus blocks; any redistribution with the same vector sum is legal, and
+one is picked at random, so conservation holds by construction. In the Lab, with no step to offset
+a partition on, each collision's block is one of the two triangles containing the pair, chosen by a
+coin (item 24).
 
-**Collisions conserve momentum exactly, and the outcome is drawn rather than computed.** Any
-redistribution with the same vector sum is legal; there are about 15 of them for a typical pair, so
-one is chosen at random. Resolve them in **Margolus blocks** rather than pairs — partition the
-lattice, update each block by a permutation of its own states, offset the partition each step — so
-conservation holds by construction instead of by algebra.
+**Motion carries kinetic energy, as a whole number.**
 
-**Rounding is now harmless, and that is the gain.** A momentum vector does not line up with one of
-six hexagon directions, so stepping has to pick the nearest. Under option (A) that rounding *was*
-the momentum, so it could not be done without breaking conservation. Here the vector is stored
-untouched and the rounding only chooses a path, so nothing conserved is ever rounded.
+> **`KE(p, k) = floor(S · Q(p) / 2k)`**, where `Q(p) = x² + y² + z²` is the un-halved squared length
+> of the momentum vector on the cube axes (true `|p|²` is `Q/2`), and **`S = 4`**.
 
-**A tie is broken by a fair coin.** *(Adopted 2026-11-05 — Ric: "the coin flip is definitely the
-way to go." `README.md` item 21.)* "The nearest" is not always one direction. An integer vector
-lies **exactly** halfway between two of the six all the time — `[-1,-1,2]` is one — and in an orbit
-that is 2 to 4 percent of steps. Nothing said what happens then, so `orbit.mjs` kept the first of
-the pair in its list, every time. That is a **handedness**: the path leans the same way at every
-tie, and it bled every integer orbit inward into a spiral that hit the centre within 3 to 15 laps.
-Break the tie with a coin and the same orbits hold. A fixed tie rule is the "preferred direction in
-the physics" that law 3 guards the gravity solver against, arriving through the step rule instead,
-so the rule has to be stated: **pick between the tied directions at random**, from the same draws
-the World already makes per tick. An alternation would also be fair but needs a stored bit per
-primitive. `orbit.mjs` Check 9 has both.
+- **It is derived, never stored.** The energy field holds heat only; law 1's conserved total is
+  **heat + Σ KE**.
+- **It cannot be pumped.** KE is a pure function of mass and momentum, so any path back to a
+  starting state returns exactly the energy it borrowed — a structural guarantee, confirmed over
+  thousands of closed loops in `momentum.mjs`.
+- **Temperature stays `e / kind` on heat alone,** so a fast cold primitive is cold and motion does
+  not radiate.
+- **`S` is chosen inside a measured window,** 1–16 at ±63: below it the heaviest kinds read zero KE,
+  above it a kind-1 primitive at full speed overflows the 16-bit energy field. 4 is a power of two,
+  gives every kind a usable amount (235 levels for the heaviest), and keeps the largest KE at 24% of
+  the energy field so a dead stop can dump into an already-warm hexagon. *(It was 64 inside 2–291 at
+  ±15; widening momentum forced it down.)*
 
-**Motion carries kinetic energy, as a whole number, with one scale constant.** *(Adopted
-2026-11-04. It was an open question until then, and briefly before that it was wrongly called a
-measured impossibility — that retraction stands in `HOW-WE-DECIDED.md`.)*
+**What it buys is fracture.** A collision's KE change goes into heat, so how hard a strike was can
+reach a bond. Without it structures could melt but never break — no erosion, no weathering.
 
-*(The scale constant is **`S`**, and it was `C` until 2026-11-05 — which collided with law 4's
-capacity, also `C`, and adopted the same day. Both are physics constants, so `AGENTS.md` rule 8
-puts them in the same module, where one name cannot mean two things: capacity runs 0 to 6 and is a
-count of bonds, this runs 2 to 291 and is a scale factor. This is the second rename in two days
-caused by the same shortage of letters — capacity itself was `k` until 2026-11-04 — and law 4 keeps
-`C`, since it is the law actually named Capacity.)*
+**A force pushing on momentum near the limit transfers as much as both sides can take, and no
+more.** Gravity is applied once per pair, equal and opposite. Clipping one side and not the other
+would leak momentum asymmetrically, which looks like a preferred direction. So the clamp is
+**symmetric or it does not happen**. Past the limit a deeper well releases no more heat, so law 3's
+heat *tracks* the fall rather than scaling with it without bound.
 
-> **`KE(p, k) = floor(S · Q(p) / 2k)`**, where **`Q(p) = x² + y² + z²`** is the *un-halved* squared
-> length of the momentum vector on the cube axes — true `|p|²` is `Q/2`, and `Q` is carried to stay
-> in integers — and **`S = 4`**.
+**Heat becomes motion in opposite pairs** (item 29, Ric 2026-11-06: "make them move in pairs, in
+opposite directions … Add them up, you get zero"). With probability `THERMAL_KICK_PROB` per clock
+fire, a site and a neighbour get equal and opposite momentum, paid for from heat. A single site
+starting to move would be momentum from nowhere; a pair sums to zero in integers.
 
-**`S` WAS 64 UNTIL 2026-11-06, and it changed because the momentum range did.** Widening momentum
-to ±63 (README item 20) raised the largest legal `Q` from 450 to 7,938 — the vector (−63, 0, 63) —
-and the window's ceiling is the `S` at which a kind-1 primitive at full speed overflows the 16-bit
-energy field, so the ceiling fell by the same 17.64×. **The window went from 2–291 to 1–16 and 64
-left it.** Everything below in this section that quotes 64, 2, 291 or ±15 is the ±15 world and is
-kept as the superseded record.
->
-> A collision conserves momentum exactly and moves whatever `KE` changes by **into or out of the
-> heat field**, so total energy is exact by construction.
+**Things orbit.** Gravity supplies the trade an orbit needs with no stored potential: falling in adds
+momentum, climbing out subtracts it. With the sub-unit pull carried and ties broken by a coin,
+`orbit.mjs` orbits at ±7 and wider. Orbits here are eccentric and not permanent — the closest
+approach random-walks lap to lap — and at a strength law 3 allows only the heaviest kinds orbit,
+only around the largest clumps. Orbits were always a bonus; gravity's job is to gather and heat.
 
-**The energy field holds heat only, and `KE` is derived rather than stored.** A primitive's kinetic
-energy is recomputed from `(p, k)` whenever it is needed, so **no field is added**, the word stays
-at eight bytes, and law 1's conserved total becomes **`heat + Σ KE(p, k)`** rather than the heat
-field alone. The asserted invariant gains a term; it does not gain a mechanism.
-
-**Why the construction is safe rather than merely convenient.** `KE` is a pure function of mass and
-momentum, so any path returning a primitive to its starting state returns exactly the energy it
-borrowed. That is a **structural guarantee, not a statistical one** — there is no free-energy pump
-available to be found. `momentum.mjs` check 9 confirms it over 22,215 closed loops, worst gain zero.
-
-**Temperature stays `e / kind` on the heat field alone, so motion does not radiate.** A fast cold
-primitive is cold. This is the one place kinetic energy was expected to touch law 5, and the answer
-is that it does not: transport compares heat, never heat plus motion. Were the two to share one
-number, a thing would cool itself by moving and the second law would have a hole in it.
-
-**At ±63 the window is 1–16 and `S = 4`.** It is picked by the same three reasons that picked 64:
-a power of two, every kind from 1 to 255 gets a usable amount, and the largest kinetic energy stays
-a modest share of the energy field — **24.2%**, against the 22% that `S = 64` gave at ±15, so it is
-the same world rescaled. `S = 16` is legal and sits at **96.9%**, which is exactly the failure the
-third reason exists to prevent. Measured 2026-11-06, by a method that first reproduced the
-documented 2–291 at ±15 before it was trusted at ±63.
-
-*(Superseded, and true at ±15:)* **`S = 64` is a searched constant, not a derived one, and the window is wide.** Below **`S = 2`**
-the heaviest kinds read zero kinetic energy at any momentum — the heavy-matter failure arriving
-through a second door — and above **`S = 291`** a kind-1 primitive at full speed overflows the
-16-bit field. Inside that window 64 is chosen for three stated reasons: it is a power of two, every
-kind from 1 to 255 gets a usable amount, and it caps the largest kinetic energy at **22% of the
-energy field**, so a fast light primitive coming to a dead stop can dump its motion into a hexagon
-that was already warm. At `S = 291` that figure is 99.9% and the dump always overflows.
-
-| at `S = 64` | heaviest kind's KE levels | max KE as % of the energy field |
-|---|---|---|
-| ±3 momentum, 11-bit energy *(until 2026-11-04)* | 2 | 28% |
-| ±15 momentum, 16-bit energy *(2026-11-04 to 2026-11-06)* | 56 | 22% |
-| **±63 momentum, 16-bit energy, `S = 4`** *(now)* | **235** | **24%** |
-
-So the eight-byte word bought the heaviest kind **28 times** the kinetic-energy resolution and
-dropped the window's floor from 29 to 2, as a side effect nobody was tracking when it was decided.
-The window itself is only about **1.5× wider** in absolute terms — 198 values against 289 — so the
-gain is resolution and low-end freedom, not room to manoeuvre.
-
-**What it buys is fracture.** Without kinetic energy a collision changes momenta and produces no
-heat, so nothing about how hard a strike was can ever reach a bond: structures melt but never
-break, and there is no erosion and no mechanical weathering anywhere. With it, **shearing needs no
-new rule** — see *Shearing is automatic* below. That dependency is why this was adopted rather than
-left open: it was blocking a question already settled.
-
-**What it does not buy is heat that grows without bound with well depth.** Gravity adds momentum as
-a primitive falls and `KE` rises with `Q`, but momentum saturates at ±15, so past that a deeper
-well releases no more heat than one merely deep enough to saturate. The ceiling is higher than
-chemistry's and it is still a ceiling. Law 3's prose should promise heat that **tracks** the fall,
-not heat that scales with it.
-
-**Things do orbit, with integer momentum, on the hexagon — if the sub-unit pull is carried and a
-tie is a coin.** *(Rewritten 2026-11-05, the third version of this paragraph in two days; both
-earlier ones are below.)* Gravity supplies the trade an orbit needs with no stored potential:
-falling in adds momentum so a primitive speeds up, climbing out subtracts so it slows. The pull an
-orbit runs on is a **fraction of one unit per tick**, and whether that fraction is **rounded** or
-**carried** decides everything — rounded, gravity never acts and the body leaves in a straight line;
-carried, it orbits at ±7 and wider, for ten laps and more. Three harness bugs in `orbit.mjs` had
-hidden that, all pointing at "no orbits": a start 60° off tangent, a start on the edge of the
-momentum box, and a fixed tie-break (above) that turned every orbit into a slow spiral.
-
-**What an orbit is like here.** Eccentric — from a circular start the closest approach is half to
-three quarters of the starting radius — and **not permanent**: the coin makes the closest approach
-random-walk from lap to lap, so an orbit drifts until it hits something or leaves. And at a gravity
-law 3's filter allows (below), only the **heaviest kinds orbit, and only around the largest
-clumps**, because orbital speed is tiny there and momentum is speed times kind: under about 4 units
-of momentum one unit is too coarse to steer with. Kind 64 orbits nowhere `orbit.mjs` Check 8 looked.
-It still costs law 3 nothing — gravity's job is to pull matter together and make heat from the
-falling, and orbits were always a bonus.
-
-*(The version this replaces said: "the reason there are no orbits is that momentum is an integer…
-**0 of 6 orbited** with integer momentum, under both rules, at every radius." That was the start on
-the edge of the momentum box, not the integers — `orbit.mjs` Check 5 measures it.)*
-
-*(Corrected 2026-11-05, and the version it replaces was wrong in an instructive way. It said the
-cause was that a primitive travels in **one of six directions, one whole hexagon at a time**, so
-its path cannot curve smoothly and each lap leaks from the rounding, "tested at radii of 20, 100
-and 500 hexagons" with **nothing completing two laps** — filed beside "2D is topologically poor."
-`orbit.mjs` switches direction quantization on by itself and it orbits **6 of 6**. The path is a
-visible zigzag, the radius wobbles by about a quarter, and it closes two laps every time. **The
-zigzag is survivable and the hexagon was never the problem.** The old numbers also had no tool
-behind them; see `HOW-WE-DECIDED.md`.)*
-
-*(And the follow-up that replaced it is wrong too, which is why both are written down. Item 16
-proposed that **momentum clipping** was the real cause — three integers of room at ±3 before the
-clamp — and that widening the field might therefore buy an orbit back, making the limitation
-reversible. `orbit.mjs` sweeps the range from ±3 to ±255, which is 85× and runs well outside the
-word's 10 bits on purpose. **Nothing orbits anywhere on that sweep**, including where the per-tick
-pull is twelve whole units. The range is not the lever; the integerisation is. Why integer momentum
-is fatal is not established by that tool and is open.)*
-
-*(That one is wrong as well, and so is the "integerisation" it settled on. The sweep was run from
-the edge of the momentum box; started at half of it, carried gravity orbits from ±7 up. ±3 is the
-one width that still fails, because half of ±3 is a momentum of about 1.)*
-
-**The momentum range is ±63 as of 2026-11-06.** Ric's call on README item 20, forced by gravity:
-bolted onto the Lab from outside, the symmetric clamp refused **562,344 pulls and accepted none**,
-because the world already sat near ±15 and every legal move was taken. ±63 lets every kind carry
-the fall that melts the weakest bond. The word is now 44 of 64 bits with 20 spare. It cost law 1's
-energy window, which is stated above.
-
-*(Superseded:)* **The momentum range is ±15, and it used to be ±3 because of the field widths.** At four bytes two
-components at ±7 already made the hexagon 33 bits and would not fit; the honest reading of that was
-"±3 gives all 255 speeds, so **no speed is lost — but headroom is**", and running those two
-together is what made the orbit result above look settled. **Settled 2026-11-04 by going to eight
-bytes**, where momentum gets 10 bits and the trade disappears — see `README.md` item 15 for why the
-four-byte word had to go, and note that momentum width was never about speed at all: the count of
-distinct speeds is exactly the count of kinds, at every width.
-
-**What happens when a force pushes on momentum already at ±3: the pair transfers as much as both
-sides can take, and no more.** Gravity adds to momentum (law 3), applied once per pair, equal and
-opposite. If one side has room for 2 and the other for 1, the transfer is 1. Clipping one side
-without the other would leak momentum every step, asymmetrically, and an asymmetric leak looks like
-a preferred direction in the physics — the same failure mode as the pyramid approximation law 3
-rules out. So the clamp is **symmetric or it does not happen**, and law 1 stays exact by
-construction rather than by assertion.
-
-The honest consequence is that **gravity has a terminal velocity and it arrives in about three
-steps.** A primitive deep in a well and one at the rim move at the same speed. That is fine for
-gravity's actual job — gather matter, make heat from the falling — and it is not fine for anything
-needing a velocity *budget*, which is the orbit case above.
-
-**The edges are counted, not sealed.** Energy leaves at the boundary, and the hard floor and
-ceiling are a **momentum reservoir** — a primitive that hits the floor either bounces or stops, and
-either way the world's total changes. So the asserted invariants are
-`world energy + radiated-away − thermostat net = constant` and
-`world momentum + wall momentum = constant`, never the bare totals. Reality does exactly this and
-calls the reservoir the Earth.
-
-**Still undecided here**, with the argument in `HOW-WE-DECIDED.md`: whether the wall bounces or
-absorbs. *(Three items came off this list on 2026-11-04: the option A/B fork is decided, "motion
-carries no energy" turned out to be forced rather than open — and kinetic energy was then adopted
-at `S = 64`, stated above — and bonded momentum is settled just below.)*
+**Edges are counted, not sealed.** The Lab is a torus with no edge, so its momentum total is exact
+with nothing to count, and its only exchange with outside is the thermostat. If the World keeps a
+boundary, energy leaving is `radiated-away` and a floor is a momentum reservoir counted as wall
+momentum — reality does this and calls the reservoir the Earth. Whether a floor bounces or absorbs
+is open only if the World has one (items 8, 22).
 
 ### What momentum does when primitives are bonded
 
-**Momentum is shared along bonds — a bonded pair exchanges integer momentum toward equalizing
-their velocities, equal and opposite, one hop per clock fire.** Nothing else is added.
+**A bonded pair exchanges integer momentum toward equal velocities, equal and opposite, one hop per
+clock fire.** The kinetic energy that equalizing destroys goes into heat (momentum is linear, KE is
+quadratic), exactly as a collision's does.
 
-*(Settled 2026-11-04. An audit found nothing on this in any of the five documents, and it could not
-be deferred because the Lab has both bonds and motion. Two options were on the table: bonds enforce
-joint motion, or bonds do not constrain motion at all. Neither is the answer, and the answer turned
-out to be **forced rather than chosen.**)*
+**Joint motion is illegal.** Moving a 50-hexagon cluster at once is information crossing 50
+hexagons in one tick, which breaks the causal limit. Perfect rigidity is an infinite speed of sound,
+and reality forbids it for the same reason.
 
-**Joint motion is illegal, and that is what decides it.** Flipping every direction in a 50-hexagon
-cluster at once is information crossing 50 hexagons in a single tick, which breaks the causal limit
-the locality fact asserts — the light cone, the most valuable thing this project gets for nothing.
-Perfect rigidity is an infinite speed of sound, and reality forbids it for exactly the same reason.
-So joint motion was never the appealing option that shouldn't be assumed; it is the option that
-cannot be built without giving up the light cone.
+**Motion never stretches a bond: a step that would stretch one does not happen** (item 25). Clusters
+still move. On a hex lattice `i` and `i + d` share two neighbours, so a bond within 60° of the
+direction of travel survives the step; only bonds at 120° and 180° refuse. Shear is cheap and
+compression dear, which is the right way round for matter. Measured: bonded matter steps about
+14,500 times per million events, and a lone bonded pair carries its centre 115 hexagons in 200,000
+events.
 
-**What falls out instead: clusters are elastic, not rigid.** A strike at one end travels through a
-cluster as a wave at no more than one hexagon per tick, so a cluster has a **speed of sound** and
-it is bounded by the causal limit with nothing written down to bound it. Long clusters flex. That
-is better physics than rigidity rather than a compromise with it.
+**Breaking is law 2's, by temperature.** A hard strike breaks a cluster by heating it: the
+collision's KE change goes to heat, and if an endpoint reaches `e ≥ B · kind` the bond breaks. A soft
+strike moves a cluster; a hard one shatters it; chemistry decides which.
 
-**THE LAB DID NOT IMPLEMENT THIS UNTIL 2026-11-06, AND NOT DOING SO TURNED OUT TO BE EXPENSIVE.**
-The engine moved one hexagon at a time, so "a soft strike moves a cluster together" had nowhere to
-happen: a step could only break the bonds it would stretch, or not happen. Both are written down
-as GAP 3 and neither is this paragraph. Measured, the breaking reading left motion sorting bonds
-barely better than a frozen world does, and refusing the step sorted them three times better —
-**and was then believed, wrongly, to freeze every bonded cluster solid.** It does not, and that
-mistaken belief is what drove two days of work; the correction is the paragraph below and README
-item 25.
+**Claimed and not yet shown:** that a cluster has a speed of sound, and that a group of total kind
+`K` steps at `|p| / K`. Nothing computes `K`, so this inertia has to emerge, and first evidence says
+it does not (item 33).
 
-**THE SENTENCE ABOVE WAS TRUE ALL ALONG AND NOBODY HAD MEASURED IT.** Two mechanisms were built on
-2026-11-06 to make clusters move — a rigid drag of the whole bonded group, then a momentum wave
-along the bonds — and **both were removed**, the first for reading past a hexagon's neighbours
-(rule 9; README item 32) and the second because it damps the motion it carries
-(`rejected/push-along-bond.txt`). What settled GAP 3 is that **a step which would stretch a bond
-simply does not happen**, and nothing else.
-
-**Clusters flex and move under that rule, and they always did.** On a hex lattice `i` and `i + d`
-share two common neighbours, so a bond within 60° of the direction of travel survives the step;
-only bonds at 120° and 180° refuse. So **transverse motion is free, longitudinal motion is held,
-and a cluster goes by deforming** — shear cheap, compression dear, which is the right way round
-for matter. Measured: bonded matter steps about **14,500 times per million events**, and a bonded
-pair alone in a vacuum carries its centre of mass **115 hexagons in 200,000 events**; a pair whose
-bond lies along its travel still manages 56, because it *rotates* out of the locked geometry
-rather than stalling in it.
-
-**This paragraph's own claim about the speed of sound is still not implemented, and that is now
-the honest gap.** A cluster here has no measured speed of sound, and the paragraph below's
-`|p| / K` has no measured mechanism — momentum per member came out flat across cluster sizes when
-nothing computed `K` (README item 33). So the elasticity is real and the *numbers* attached to it
-are not yet earned.
-
-**Inertia then comes out proportional to total kind, not to primitive count.** Once momentum has
-spread across a bonded group of total kind `K`, the group steps at `|p| / K` by law 1's own rate
-rule, so a heavy composite resists being pushed — and it resists through the same quantity law 1
-conserves and law 3 acts on. The earlier sketch had inertia proportional to how many primitives a
-cluster holds; total kind is that idea done consistently.
-
-**Shearing is automatic, conditional, and needs no new rule.** A collision's kinetic-energy change
-goes into the heat field, and if that heat pushes either endpoint over `e ≥ B · kind` the bond
-breaks and the pieces separate carrying their own momentum. A soft strike moves a cluster together;
-a hard one shatters it. **Both original options are special cases of this single rule**, and which
-one you get depends on binding energy and temperature — that is, on chemistry, which is where the
-answer belongs.
-
-**The dependency this creates is real: kinetic energy has to be represented.** Without it a
-collision changes momenta and produces no heat, so nothing about how hard a strike was can ever
-reach a bond, and bonds break only from ambient warmth — you could melt a structure but never
-break one, and there would be no fracture, no erosion and no mechanical weathering anywhere.
-`AGENTS.md` rule 5 has the construction and `momentum.mjs` has it measured: `floor(S · Q(p) / 2k)`,
-with no free-energy pump over thousands of closed loops. **Adopted 2026-11-04 at `S = 64`**, so
-this dependency is satisfied rather than outstanding — law 1 states the definition. The scale
-factor was re-measured when the widths changed and the window moved from 29–227 to **2–291**. **So
-this is entangled with the kinetic-energy question, not with law 2** — the old note said law 2,
-inherited from a movement rule that no longer exists.
-
-**One deviation, recorded rather than buried.** Momentum sharing runs on the hexagon's clock, so
-hot clusters redistribute internally faster than cold ones and a cluster's speed of sound rises
-with temperature. Real solids do the opposite, mildly. The effect is small, it adds no constant,
-and it is the price of having exactly one clock in the design.
-
-**Why it is a rule.** Scarcity is what makes anything that happens *mean* something. If
-matter is free then growth costs nothing, no structure ever has to be efficient, and there
-is nothing for one arrangement to be better at than another. Conservation turns growth into
-theft, and theft is what makes competition real. Every prior system in `SOURCES.md` has
-this law; it is the field's one piece of universal agreement.
-
-The integers are not a detail. Floats leak — over a billion steps, rounding quietly bleeds
-mass and the law breaks without ever raising an error. Integers make the guarantee exact
-forever. They also keep hexagons genuinely *identical* to one another, which is what makes
-"a region of the same stuff" a meaningful idea and keeps the variance layer usable as an
-instrument.
+**One deviation, recorded.** Sharing runs on the clock, so a hot cluster's speed of sound is faster
+than a cold one's. Real solids do the opposite, mildly. It is the price of having one clock.
 
 ### Why the sum of kinds, and not the count of primitives
 
-The law originally said "primitives are never created or destroyed," which conflicted with
-the fusion analogue. The conflict at its simplest:
+Conserve the count and fusion is forbidden: two kind-1s merging into one kind-2 destroys a
+primitive. Conserve the sum and it is bookkeeping — 1 + 1 → 2, 4 → 2 + 2. This is **baryon number**
+in our universe: fusion conserves it while not conserving particle count.
 
-> Two primitives of kind 1 are squeezed until they merge into **one** primitive of kind 2,
-> releasing energy. You had 2 primitives. Now you have 1. The law said primitives are never
-> destroyed, and one just was.
+It also made kind mean something: **kind is how much stuff a primitive is made of** — a mass. So the
+thing gravity acts on and the thing being conserved are the same number, and a fixed budget buys
+fewer heavy primitives than light ones by arithmetic.
 
-Conserve the right quantity and it dissolves. Two kind-1s sum to 2; one kind-2 sums to 2.
-Nothing was lost — **the bookkeeping unit was wrong.** Fusion: 1 + 1 → 2. Splitting: 4 → 2
-+ 2. Ordinary bonding doesn't merge anything at all.
+**Nothing here changes a kind.** Fusion is a road not taken, so the kinds seeded are the kinds there
+are, forever (item 18). That is where this physics stops asking why: we assume primitives exist
+rather than deriving them, and ask for the *cluster* chemistry to emerge, not the inventory.
 
-This is what our universe does. It is **baryon number**: a proton is 1, a helium nucleus is
-4, and fusion conserves baryon number while emphatically not conserving particle count.
+**Why it is a rule.** Scarcity is what makes anything that happens mean something. If matter is free,
+growth costs nothing and no structure has to be efficient. Conservation turns growth into theft, and
+theft is what makes competition real. Every prior system in `SOURCES.md` has this law. **The integers
+are not a detail:** floats leak, and over a billion steps rounding bleeds mass with no error.
+Integers also keep hexagons genuinely identical, so "a region of the same stuff" means something.
 
-**And the fix was worth more than the bug.** Before it, a primitive's kind was an arbitrary
-identity tag that meant nothing on its own. Now the kind is **how much stuff the primitive
-is made of** — a mass. So law 3 is provably consistent with law 1, because the thing gravity
-acts on and the thing being conserved are the same number. And a fixed matter budget buys **fewer
-heavy primitives than light ones**, which is arithmetic rather than a mechanism: the sum of kinds
-is conserved, so one kind-255 primitive costs exactly what 255 kind-1s would.
+**What breaks without it.** Matter accumulates until nothing can move, or drains until the world is
+empty — both slowly enough that you blame something else first.
 
-*(Two sentences came off here on 2026-11-04, after Ric asked whether the hole they implied was
-real. They said heavy primitives are rare because "making one requires merging", and that the
-periodic table gets a reason to be structured — "light kinds common and everywhere, heavy kinds
-only where matter got crushed hard enough to make them. Which is our universe." **Nothing here
-makes a primitive.** No law changes a kind, and fusion is in `README.md`'s roads-not-taken, so
-**kind is immutable**: the distribution of kinds at the end of a run is the one seeded at the
-start. That prose described the fusion road as though it had been built. What survives is the
-rarity-by-arithmetic point above, and it is a weaker claim — heavy primitives are *expensive*,
-which is not the same as something producing them.)*
-
-**And that is where this physics stops asking why, which was already written down.** *What reality
-has that this doesn't* states it outright: we **assume primitives exist rather than deriving
-them.** A seeded distribution of kinds is that assumption made concrete rather than a gap in it.
-What the project asks to emerge is the **cluster** chemistry — which kinds combine, which are
-inert, which are promiscuous — not the inventory of primitives those clusters are built from.
-
-**What breaks without it.** Matter accumulates until the world is full and nothing can move,
-or drains until it's empty. Both are death, and both arrive slowly enough that you'd spend a
-long time blaming something else.
-
-## 2. Bonding (the pair force)
+## 2. Bonding
 
 Two adjacent primitives may bond, with a **binding energy over their two kinds**:
 
 > **`B(k₁, k₂) = 8 − |v(k₁) + v(k₂) − 8|`**, where **`v(k) = k mod 8`**
 >
-> A bond **forms** with a fixed probability when the clock fires — never instantly on contact.
-> A bond **breaks** when `e ≥ B · kind` at either endpoint, which is temperature exceeding `B`.
-> `B = 0` means the pair cannot bond at all.
+> A bond **forms** with probability `BOND_FORM_PROB` when the clock fires — never instantly on contact.
+> A bond **breaks** when `e ≥ B · kind` at either endpoint — temperature at or above `B`.
+> `B = 0` means the pair cannot bond.
 
-`v` is a **valence** — which of eight columns a kind sits in. A bond is strongest when the two
-valences are **complementary**, meaning they sum to 8, and weakens by one for every step away from
-that. So `v=1` pairs best with `v=7`, `v=2` with `v=6`, and `v=4` with itself. Fusion moves a kind
-one column at a time, because adding 1 to a kind adds 1 to its valence.
+`v` is a **valence**, one of eight columns. A bond is strongest when the two valences are
+**complementary** — sum to 8 — and weakens by one per step away. So `v = 1` pairs best with `v = 7`,
+`v = 2` with `v = 6`, `v = 4` with itself. One unit of kind moves a kind one column.
 
-No distance term, no force magnitude, no range: exclusion already supplies hard-core repulsion and
-gravity already supplies long-range gathering, so the only job left is which pairs bond and how
-strongly. **And no temperature term either** — the clock carries that, for every law at once.
-*(Until 2026-11-04 this said formation happens "at a rate that falls as local temperature rises,"
-which was backwards: in real chemistry heating speeds formation up. It is the breaking condition
-that decides what survives. See `HOW-WE-DECIDED.md`.)* *(The original wording was "attraction or repulsion as a function of their two kinds and
-their separation, short range" — a force. It was replaced over 2026-11-03 and -04; the whole
-argument, and every wrong turn in it, is below.)*
+**No distance term, no force, no range.** Exclusion already repels at short range and gravity already
+gathers at long range, so the only job left is which pairs bond and how strongly. **No temperature
+term either** — the clock carries that for every law at once.
 
-**This is the version to build first, not a proof it is right.** The modulus of 8 is a **searched
-constant**, and the slate of alternatives stays available if the Lab comes back flat. What is
-*settled* is the shape of the law: a rate-based binding energy over two integers, with no distance
-in it.
+**Formation is rate-based on purpose.** Catalysis here is geometric: a cluster with a pocket holds two
+reactants in contact longer than chance, and is selective because of which kinds line it. That only
+buys anything if bonds do not form on first contact. It is how real enzymes work — atoms interacting
+pairwise, no three-body term underneath.
 
-*(Corrected 2026-11-05. This said "the cap of 8 is forced by the field widths," which was true at
-eleven bits of energy and stopped being true on 2026-11-04. At 16 bits the forced cap on `B` is
-**257**, so the 8 is chosen rather than derived — `README.md` item 17 retracts the one attempt to
-improve on it and says why the choice stands anyway. Leaving it as "forced" is the exact error that
-item 17 and `AGENTS.md` rule 12's fourth lesson are both about — a searched constant wearing a
-derivation's clothes — which is why this is a note rather than a silent fix.)*
+**Why this form.** Ten forms were screened (`screen.mjs`). `min(gcd, 8)` was the prediction and was
+retracted on two measurements of the table's *shape*: changing a kind by one moved its binding
+energies by 92% of their mean (roughness 0.916 against 0.259 here), and `gcd(k, k) = k` made every
+kind its own best partner, which builds crystals rather than copies. Under this form 75% of kinds
+bond best with something else. The modulus 8 is a searched constant carrying a chosen value (item
+17), and the slate stays available if the Lab comes back flat.
 
-*(Until 2026-11-04 this law was `B = min(gcd(k₁, k₂), 8)`. **That is retracted on two measured
-grounds**, both added to `screen.mjs` the same day, and both invisible to the screen as it stood
-because both are about the **shape** of the table rather than its spread.*
+**Any replacement must be short.** The form comes from a small fixed grammar of integer operations —
+sum, difference, parity, gcd, divisibility, remainder — and never a table of cases: *the law's
+description must be shorter than the table it produces.* A one-line law cannot contain a periodic
+table. Short is not weak; Rule 110 is a few bits and Turing-complete.
 
-*First, `gcd` is too rough to climb. Its **roughness is 0.916** — change a kind by one unit and its
-binding energies move by 92% of their own mean — because fusion grows kinds by **addition** while
-`gcd` reads **multiplicative** structure, and those two interact chaotically. Mass 60 is a
-super-bonder, mass 61 is near-inert, and all 48 near-inert kinds are the large primes, which are
-chemically identical to one another. Nothing accumulates on a landscape that rough, because a
-structure cannot improve by a small step if every small step re-rolls its chemistry. The
-complementary form measures **0.259** — three and a half times smoother — and the like-with-like
-control measures 0.254, confirming the metric is reading shape and not noise.*
+**Why it is a rule.** It is the entire source of differentiation. Without it every kind is
+chemically identical and "kinds" are a number carried around that never matters. Law 2 does the
+differentiating; law 4 does the saturating.
 
-*Second, and worse: **`gcd(k, k) = k` is always the maximum, so under `gcd` every kind's single
-best partner is itself — 100% of them, measured.** A pocket lined with kinds whose best partner is
-themselves grips copies of its own lining, which is crystal growth: it templates **sameness**, and
-sameness carries no information, so there is nothing for accumulation to accumulate. Under the
-complementary form **75%** of kinds bond best with something other than themselves. This is the
-same fault the log already half-caught as "unbreakable heavy self-bonds" — that was the thermal
-symptom; the diagonal maximum is the cause. See `HOW-WE-DECIDED.md`.)*
-
-> **If you only need the law, you have it — stop here and go to law 3.**
->
-> Everything below is **how it was arrived at**, in the order it happened, and it is by far the
-> longest section in this file because this law was the hardest. It contains **four retractions**,
-> each kept beside its fix: that the momentum constraint on the movement rule mattered (it was an
-> artifact of writing law 2 as a force), that the simplification deleted catalysis (it deleted the
-> old *argument* for catalysis, not the capability), that no pure pair function could ever have
-> a selective catalyst (wrong — selectivity comes from a cluster's shape), and that
-> `min(gcd(k₁, k₂), 8)` was the form to build (retracted hours after it was settled, on two
-> measurements about the table's *shape* that the screen could not see). Read it if you are about
-> to change law 2 or re-propose something; skip it otherwise.
->
-> *(Said **three** until 2026-11-05 and omitted the `gcd` one, which `HOW-WE-DECIDED.md` numbers as
-> the fourth in this law.)*
-
-**Any replacement form must still be short.** The constraint that outlives whatever happens to `B`
-is **description length**: the law comes from a small fixed grammar of integer operations — sum,
-difference, parity, gcd, divisibility, remainder — and never a table of cases, because the test is that *the
-law's description is shorter than the table it produces.* A law short enough to write on one line
-cannot contain a periodic table; there is not room in it. Short does not mean weak — Rule 110 is a
-few bits and is Turing-complete. Shortness limits what can have been written **in**, not what can
-come **out**.
-
-**Why it is a rule.** It is the entire source of differentiation. Without it all matter is
-identical and nothing can combine into anything in particular — "kinds" would be nominal, a
-number carried around that never affects anything.
-
-This law plus law 4 is the whole of chemistry, and between them they are why there is a
-periodic table to *discover* rather than one to write. **Law 2 does the differentiating and law 4
-does the saturating** — crediting law 4 with differentiation was wrong, and is corrected there.
-
-**What breaks without it.** A featureless gas. Gravity compresses it, compression heats it,
-transport cools it, and that is the entire history of the world.
+**What breaks without it.** A featureless gas. Gravity compresses it, compression heats it, transport
+cools it, and that is the whole history of the world.
 
 ## 3. Gravity
 
-All matter attracts all matter, falling off as 1/r², never cancelling. Acts on the sum of
-kinds and is indifferent to how that sum is distributed among primitives.
+All matter attracts all matter, falling off as 1/r², never cancelling. It acts on the sum of kinds,
+and **it adds to momentum** — that is all a force is, `F = dp/dt`. No separate deflection rule is
+needed.
 
-**What it does to matter: it adds to momentum.** That is all a force is — `F = dp/dt` — and since
-law 1 now stores momentum as a vector, gravity's pull is simply added to it, strength and all. No
-separate rule is needed and none exists. *(Until 2026-11-04 these documents referred four times to
-"the deflection rule", a rule that was never defined anywhere. It was a placeholder invented
-because option (A) stored momentum as a direction and so had no way to express a strength: a pull
-could only turn a primitive, and twice the gravity would have done exactly the same thing as half.
-Choosing option (B) deleted the need for it rather than defining it. See `HOW-WE-DECIDED.md`.)*
+**The only non-local law.** That cost is earned here, and a local replacement is a candidate (below).
+Not in the Lab.
 
-**The only non-local law and the only remaining formula in the project.** Both are real
-costs and this is the one place they are earned — and both now have a candidate that removes them;
-see *Gravity can be made local* below.
+**Why it is a rule: it is where the energy comes from.** Without it you must hand the world energy at
+the start or pump it in at a boundary forever — both are the designer choosing where life may live.
+With gravity, spread-out matter holds potential, collapse turns it into heat, and the gradient
+appears by itself: hot where compressed, cool at the edges. **The only initial condition for energy
+is matter, spread out.** (The *composition* of that matter is a second initial condition — item 18.)
+It also drains on its own: once everything has fallen in the world cools, so its arc is a consequence
+rather than a schedule. And gravity is the only force with one sign, so it is the only one that can
+build structure at scale.
 
-**Why it is a rule.** Because it is where the energy comes from, which is subtler than it
-sounds.
+**Three constraints on the implementation:**
 
-Without gravity you must *hand* the world energy at the start, or pump it in at a boundary
-forever. Both are arbitrary decisions by the designer, and both amount to choosing where in
-the world life is permitted to live. With gravity the budget comes from the **arrangement**
-of matter: spread-out matter holds gravitational potential, collapse converts it to heat,
-and the gradient appears by itself with no boundary condition anywhere — hot where
-compressed, cool at the edges.
-
-So the only initial condition **for energy** becomes **matter, spread out.** That is barely a
-decision at all, and it is the whole reason this law is worth its cost.
-
-*(The two-word qualifier was added 2026-11-04. The **composition** of that matter — which kinds, in
-what proportion — is a second initial condition, because kind is immutable and nothing here makes
-one; see `README.md` item 18. Gravity makes the **energy** budget emergent, which is the entire
-thing it was bought for and is untouched by this. It was never claiming to make the matter
-inventory emergent, and the sentence read as though it were.)*
-
-It also drains on its own. Once everything has fallen together there is no potential left to
-convert and the world cools, so the world's arc is a consequence rather than a schedule.
-
-And gravity is the only force that never cancels, which makes it the only one that can build
-structure at scale. Electromagnetism is ~10³⁶ times stronger but comes in two signs, so bulk
-matter neutralizes and it vanishes at distance. Gravity has one sign. It only ever adds.
-
-**Two constraints on how it is implemented**, both from corrections recorded in
-`HOW-WE-DECIDED.md`:
-
-- **Gravity must never touch chemistry.** In reality gravity has no effect on bonding whatsoever;
-  it reaches chemistry only through temperature. So gravity between two *adjacent* primitives must
-  be negligible against the weakest pair force — orders of magnitude, not a factor of two. Violate
-  the ordering and which reactions run starts depending on where in the world you are. It is also a
-  free filter: any constant set that breaks it is dead before it runs.
-- **The solver computes each interaction once and applies it to both sides.** A pyramid
-  approximation does not give exactly equal and opposite pair forces, so it leaks momentum every
-  step and the world drifts — which looks like a preferred direction in the physics.
-- **A pull smaller than one unit of momentum is carried, never rounded.** *(2026-11-05, from
-  `orbit.mjs` Check 7.)* Rounding is not a choice between two physics, as `README.md` item 19 first
-  framed it: at any strength the first bullet allows, rounding switches gravity off everywhere in
-  the World, because the strongest pull anywhere — on the heaviest kind at the rim of a packed clump
-  — only reaches half a unit per tick when gravity is **three times stronger than the weakest
-  bond**. Where the remainder is kept was measured the same day (`orbit.mjs` Checks 11 and 12).
-  The 24 spare bits (20 since ±63) are far too coarse, and drawing the kick by a coin, storing nothing, heats
-  free matter and kills every orbit. What works is a residual of 32 bits a component in a
-  second array, gravity's own state beside the word, counted in the momentum assertion.
-  **Recommended, not adopted**; README item 19.
+- **Gravity never touches chemistry.** Between two adjacent primitives it must be orders of magnitude
+  below the weakest bond, or which reactions run depends on where you are.
+- **Each interaction is computed once and applied to both sides.** A pyramid approximation does not
+  give equal and opposite forces, so it leaks momentum and fakes a preferred direction.
+- **A pull smaller than one unit of momentum is carried, never rounded.** At any legal strength the
+  strongest pull anywhere is under half a unit a tick, so rounding switches gravity off everywhere.
+  Where the remainder lives is item 19: a second array, 32 bits a component, is recommended and not
+  adopted; the spare bits are too coarse, and a coin per tick heats matter and kills orbits.
 
 ### How strong — a ceiling, a floor, and no room between them at 4096²
 
-*(2026-11-05. Ric: "I have a hunch gravity is too strong right now." Measured in `orbit.mjs`
-Checks 6 and 7. **Open — this is `README.md` item 20.**)*
+*(2026-11-05. Ric: "I have a hunch gravity is too strong right now." Measured in `orbit.mjs` Checks
+6–10. Open — item 20.)*
 
-**Nothing in these documents gives gravity a strength.** It is constant #1 in the search space and
-has never had a value. So state it in the one unit that matters, **ε: the energy two kind-255
-primitives release falling together into contact, in units of the weakest bond.**
+State the strength as **ε: the energy two kind-255 primitives release falling into contact, in units
+of the weakest bond.**
 
-**The ceiling is the first bullet above:** ε ≪ 1. Read as two orders of magnitude, ε ≤ 0.01; the
-loosest reading, one order, is 0.1.
-
-**The floor is the reason the law exists, and it was never written as a number.** Gravity is "where
-the energy comes from": collapse turns potential into heat, and heat is what breaks bonds (`e ≥ B ·
-kind`, temperature ≥ `B`). So somewhere, collapse must lift temperature past the weakest bond, or
-nothing ever reacts. The heat a clump of radius `a` can give is its binding energy, which on the
-lattice grows as **6.15 × a** in pair sums (measured over real discs, not assumed). Spread over the
-clump's kinds, with the seeded mix of item 18:
+- **The ceiling** is the first constraint above: ε ≪ 1 — 0.01 for two orders of magnitude, 0.1 for
+  one.
+- **The floor** is the reason the law exists: collapse must heat matter past the weakest bond, or
+  nothing ever reacts. A clump of radius `a` can give heat growing as **6.15 × a** in pair sums
+  (measured over real discs). Spread over its kinds:
 
 | collapse into | temperature at ε = 0.01 | at ε = 0.1 | ε needed for T = 1 |
 |---|---|---|---|
@@ -581,667 +241,312 @@ clump's kinds, with the seeded mix of item 18:
 | a clump of radius 1024 | 0.06 | 0.62 | 0.16 |
 | the whole World as one ball (radius 2151) | 0.13 | 1.3 | 0.08 |
 
-Those are **upper bounds** — they assume matter starts infinitely thin and that every unit of
-potential reaches the heat field, where the ±15 momentum box can only lose some.
+These are upper bounds: they assume every unit of potential reaches the heat field.
 
-**So the ceiling and the floor do not overlap.** At two orders of magnitude the entire World
-collapsing into a single ball — the outcome 1/r² was chosen to avoid — warms to about a tenth of the
-weakest bond and stays frozen. At one order, only that single global ball melts anything. For the
-"many local collapses" this law is for, clumps of a few hundred hexagons, gravity has to be **as
-strong as the bonds**, which is exactly what the ceiling forbids.
+**The ceiling and the floor do not overlap.** At ε = 0.01 even the whole World collapsing into one
+ball reaches a tenth of the weakest bond. Clumps of a few hundred hexagons need gravity as strong as
+the bonds, which the ceiling forbids. Reality affords 10³⁶ of separation because a star holds 10⁵⁷
+atoms; 4096² affords about one order, for one clump. Ric's hunch was right about the evidence — the
+first orbit runs used gravity 565 to 14,000 times the weakest bond — but gravity cannot simply go
+weaker, because the floor is already above the ceiling.
 
-**Ric's hunch is right about the evidence and wrong about the plan.** The orbits `orbit.mjs` ran in
-its first five checks were set up at whatever gravity made the start circular, never checked
-against the ceiling — treated as a point mass, the centre pulled at **565 to 14,000** times the
-weakest bond. Too strong, by a lot. But the plan cannot make gravity much weaker, because the floor
-is already above the ceiling. The two jobs are separated only by the size of the clump — the floor
-falls as `1/a` — and reality affords 10³⁶ of separation because a star holds 10⁵⁷ atoms. 4096²
-affords about one order, and only for one clump.
+**The levers, none chosen.** A bigger World — the floor falls as 1/a; at ε = 0.01 a clump that melts
+anything is about a billion hexagons (`orbit.mjs` Check 10). Ric leans this way. It also needs momentum wide
+enough to carry the fall — one reason momentum went to ±63. A looser ceiling, accepting some location-dependent
+chemistry. A different exponent — 1/r's logarithmic well is far deeper, though it was rejected below
+for global collapse. Or heat given at the start, which gives up this law's reason to exist. The
+screened field below makes it worse: screening shallows every well. **The direction is Ric's**: a
+hierarchy shaped like ours, as far as the hardware allows, judged by the four yardsticks in item 20.
 
-**The levers, none chosen.** A larger World (the floor falls as `1/a`) — the one Ric leans
-toward, 2026-11-05, and `orbit.mjs` Check 10 sizes it: about a billion hexagons per clump at ε =
-0.01. It does not work alone. Hot enough to melt a bond *means* falling at a certain speed, the
-same at every size, and at ±15 most of the mass is too heavy to carry it, so the clamp throws that
-energy away; momentum has to widen to ±63 or ±127 with it (README item 20). **The direction is
-Ric's (2026-11-05): a hierarchy shaped like ours** — as much separation as the hardware allows,
-judged by four separations (local chemistry, stage size, number of structures, timescales) rather
-than by the raw ratio, and tested by sweeping ε to see whether emergence really climbs with it. A looser ceiling (accept
-gravity within an order of the weakest bond, and with it some location-dependence in chemistry). A
-different exponent — the floor is set by how deep a clump's well is, and 1/r's logarithmic
-potential is far deeper than 1/r²'s, though 1/r was rejected below for global collapse and nothing
-has measured it here. Or heat given at the start, which gives up the sentence this law was bought
-for: that the only initial condition for energy is matter, spread out. The screened field
-(*Gravity can be made local*, below) makes it worse, not better — screening shallows every well.
+### Gravity can be made local
 
-### Gravity can be made local, and the old answer was reading the wrong formulation
+Gravity as a **sum over pairs** is non-local. Gravity as a **field** is not: `∇²φ = ρ` is a local
+equation, relaxed by repeated neighbour-averaging, with the force read off as the gradient of `φ`
+between neighbours. That is how reality does it; the non-locality in Newton's version is an artifact
+of having solved the equation.
 
-*(Settled as a candidate 2026-11-04. This replaces "still undecided: whether gravity can ever be
-made local. Both candidate routes fail." Both of those routes tried to approximate the **sum**.)*
-
-Gravity as a **sum over pairs** is non-local and always will be. Gravity as a **field** is not:
-`∇²φ = ρ` is a local equation, relaxed by repeated neighbour-averaging — a few Jacobi or multigrid
-passes per tick — with the force read off as the gradient of `φ` between neighbours. That is O(N)
-per pass, shader-shaped, and it is how reality does it; Poisson's equation is local, and the
-non-locality in Newton's version is an artifact of having solved it.
-
-The catch is that relaxing `∇²φ = ρ` on a 2D lattice gives the dimension's own falloff, **1/r**,
-which is the single global collapse this project rejected. So take the **screened** equation:
+On a 2D lattice that gives 1/r and a single global collapse, so take the **screened** form:
 
 > **`∇²φ − m²φ = ρ`**
 
-Still one local equation, still relaxed the same way, and its potential decays like `e^(−mr)` —
-**faster** than 1/r², and therefore *better* at the "create elsewhere" job that 1/r² was chosen for
-in the first place. The screening length `m⁻¹` becomes a constant that sets **how large an
-independent region is**, which is the knob this project wants most and currently has no direct
-control over.
+Still local, and it decays like `e^(−mr)` — faster than 1/r², so better at creating *elsewhere*. The
+screening length `m⁻¹` sets how large an independent region is, the knob this project most wants.
+Costs: one extra field per hexagon in a second array. Gain: **nothing in the codebase non-local at
+all**. A candidate, not a measurement (item 12).
 
-Departing from Newtonian geometry is already licensed here — 1/r² in a 2D world is itself a
-departure, made for exactly this reason — so this goes the same direction, for the same stated
-purpose, and buys locality with it. Two costs, both real: **one extra field per hexagon**, which
-does not fit in the four bytes and so lives in a second array, and the fact that this would make
-gravity no longer the single documented exception to neighbours-only, but **no exception at all**.
+### Why 1/r² and not the 1/r that 2D gives
 
-**It is a candidate, not a measurement.** Whether a screened field clusters matter the way the
-1/r² sum does is a Lab comparison, logged in `README.md`.
+In *d* dimensions gravity falls as 1/r^(d−1), because a mass's flux spreads over a sphere's area in
+3D and a circle's circumference in 2D. So 2D gravity is 1/r, with a potential that grows as ln(r)
+without bound: every particle pulls meaningfully on everything.
 
-### Why 1/r² and not the 1/r that 2D actually gives
+**We use 1/r² because 1/r fights locality.** Locality exists to create *elsewhere* — independent
+regions where a rare thing can persist. Under 1/r the likely outcome is one collapse, one clump, one
+experiment. Under 1/r² you get many local collapses. The departure is licensed by treating this world
+as a slice of a larger one rather than a true 2D cosmos.
 
-In *d* dimensions gravity falls off as 1/r^(d-1), and the reason is flux geometry rather
-than convention: total flux from a mass is fixed, and what you feel is its density — flux
-divided by the area it has spread over. In 3D that's a sphere's 4πr², giving 1/r². In 2D
-it's a circle's circumference 2πr, giving **1/r**. In 1D it's two points and gravity
-wouldn't fall off at all.
-
-The difference is not small. At distance 10, 1/r is ten times stronger than 1/r²; at 100, a
-hundred times. Worse, the 2D potential goes as **ln(r)**, which grows without bound, where
-the 3D potential decays to nothing. In a large 2D world with roughly even matter every
-particle therefore feels a meaningful pull from *everything*.
-
-**We use 1/r² anyway, and the reason isn't accuracy — it's that 1/r fights the
-neighbors-only structural fact.**
-
-Locality exists to create *elsewhere*: independent regions, parallel experiments, somewhere a
-rare thing can persist while the rest of the world does something else. With 1/r and a
-logarithmic potential, everything pulls meaningfully on everything, and the likely outcome is
-a **single collapse** — one clump, one set of conditions, one experiment. That guts the thing
-this project depends on most for diversity. With 1/r² you get **many local collapses**, which
-is many independent regions, which is the point.
-
-The justification for departing from the geometry is that this world is conceptually a
-**slice** rather than a true two-dimensional cosmos — already baked in, since it has a real
-up and down, a ground, and things that settle, none of which a genuine 2D universe has.
-
-**The exponent is constant #2 in the search space** and was missing from the original list.
-Strength and falloff do different jobs: strength sets how *fast* collapse happens, the
-exponent sets whether collapse is *local or global*. The exponent is the more consequential.
+**The exponent is a searched constant** (`GRAVITY_FALLOFF`). Strength sets how *fast* collapse
+happens; the exponent sets whether it is *local or global*, and is the more consequential.
 
 ### Why the force exists at all
 
-It doesn't have an answer, and that is worth stating rather than leaving implied.
+There is no deeper answer, and it is worth saying so. Newton gave the formula and declined to invent
+a cause; Einstein made gravity geometry, but why mass bends spacetime is unknown. Every physics has a
+floor and gravity is at this one's — but **ours exists for a stated reason**, which is more than our
+own universe offers about itself.
 
-In our universe gravity is a brute fact at the floor of physics. Newton gave the formula in
-1687 and said outright that he had not discovered its cause and would not invent one.
-Einstein did better in 1915 — gravity is not a force but the curvature of spacetime, and
-things moving straight through bent spacetime look like they are attracting. But *why* mass
-bends spacetime is unknown, why there is spacetime is unknown, and reconciling gravity with
-quantum mechanics has been the largest open problem in physics for a century.
-
-Every physics has a floor and gravity is at this one's. The difference is that **ours exists
-for a stated reason.** We can't say why it's there in any deeper sense, but we can say
-exactly what it's *for*. That is more than our own universe offers about itself.
-
-**What breaks without it.** A world with imposed energy and no large-scale structure, and no
-*down*, which makes layering and sedimentation meaningless. You would be designing the
-gradient instead of discovering it.
+**What breaks without it.** A world with imposed energy and no large-scale structure. You would be
+designing the gradient instead of discovering it.
 
 ## 4. Capacity
 
-A primitive can be bonded to at most **`C(k)`** of its six neighbors, and **since 2026-11-06 that
-depends on the kind**: `C(k) = clamp(v(k), 1, 6)` with `v(k) = k mod 8` — law 2's own valence,
-read by law 4 as well, so nothing is stored and no table is written by hand.
+A primitive can be bonded to at most **`capacityOf(k) = clamp(v(k), 1, 6)`** of its six neighbours,
+with `v(k) = k mod 8` — law 2's own valence, read by law 4 too, so nothing is stored and no table is
+written. *(One global number until 2026-11-06; Ric: "per kind", item 6.)*
 
-*(It was one global number `C` for every kind until then. Ric's call on README item 6, whose
-objection to the global version was that it gives nothing a valence, and valence is most of what
-gives our chemistry its shape. What the form produces, unasked: `v = 0` is monovalent and cannot
-bond to its own kind at all, since `B(0,0) = 0`; `v = 4` is tetravalent and its own best partner
-at `B(4,4) = 8`; `v = 7` holds six bonds that are all weak. **It is candidate form one and has
-been screened by nothing**, where law 2's form beat ten rivals in `screen.mjs` first.)*
+What falls out, unasked: `v = 0` holds one bond and cannot bond to its own kind (`B(0,0) = 0`);
+`v = 4` holds four and is its own best partner (`B(4,4) = 8`) — the shape carbon chemistry is built
+on; `v = 7` holds six, all weak. **This form has been screened by nothing** — law 2's form beat ten
+rivals first, and this one should go through `screen.mjs` before anyone calls it settled.
 
-*(Called *k* until 2026-11-04, which collided with `k` for kind in laws 1 and 5 — `v = p/k` and
-`T = e/k` are both about mass, and `e ≥ B · k` in law 2 is too. Renamed before someone implemented
-the wrong one. **Then `C` collided too**, with the kinetic-energy scale constant adopted in law 1
-hours later: for a day `C` meant both "at most this many bonds" (0 to 6) and "multiply `Q/2k` by
-this" (64). Resolved 2026-11-05 by renaming **law 1's** scale to `S` and leaving capacity alone,
-because this is the law called Capacity. Two collisions in two days on one letter is what `AGENTS.md`
-rule 8 is for: the constants share a module, so they cannot share a name.)*
+**Why it is a rule.** Saturation. An attraction that never fills up collapses everything into one
+undifferentiated blob; capacity makes **structures** instead of lumps, and makes "how many can still
+fit" a real question — a saturated primitive is inert, a nearly-saturated one grabs. With capacity
+read from valence, it also adds to differentiation, which a single global number did not.
 
-**Why it is a rule.** This is the load-bearing one, and the least obvious.
-
-Capacity is the exclusion principle, and it is what makes **"how many can still fit"** a
-meaningful question. That question is the sole origin of distinct types with distinct
-behavior: a saturated primitive is inert, a nearly-saturated one grabs, a nearly-empty one
-gives away. *That is chemistry.* All of it. Everything about how our own elements behave is
-"how far is the outer shell from full," and that question only exists because things cannot
-share a state.
-
-Saturation is also what makes **structures** instead of lumps — an attraction that never
-saturates collapses everything into one undifferentiated blob.
-
-**This law is not the origin of distinct types, and saying it was is now corrected.** `C` is one
-global number, so every kind has identical capacity and **all** differentiation comes from law 2.
-Earlier wording said a global `C` "weakens this law's claim to be the origin of distinct types" —
-it does not weaken it, it removes it. What this law actually does is the saturation job above: it
-stops an attraction that never fills up from collapsing everything into one blob. That is
-load-bearing, and it is a different job than the one it was credited with.
-
-Law 2 now carries the columns, in `v(k) = k mod 8`. Whether capacity should *also* vary by kind —
-`C(k)`, a second short integer function — stays open, but it is now a question about how much
-structure one law should hold rather than about whether chemistry exists at all.
-
-**What breaks without it.** No chemistry at all, ever, at any setting of any other constant.
-The most catastrophic omission available on this list.
+**What breaks without it.** No chemistry, at any setting of any other constant. The most
+catastrophic omission available on this list.
 
 ## 5. Transport
 
-Energy hops toward any neighbor at a **lower temperature** — through matter or across empty
-space — and at the world's boundary it leaves forever.
+Energy hops toward any neighbour at a **lower temperature** — through matter, or across empty space
+as radiation — and at the World's boundary, if it has one, it leaves for good.
 
 **Temperature, not energy.** Temperature is energy per unit of kind, so a heavy cold primitive can
-hold more total energy than a light hot one, and comparing raw energy would move heat *uphill*. The
-comparison is `e₁·k₂` against `e₂·k₁` — two integer multiplications, exact, no division, valid
-because kind is at least 1 in any occupied hexagon.
+hold more energy than a light hot one, and comparing raw energy would move heat uphill. The
+comparison is `e₁·k₂` against `e₂·k₁` — two integer multiplications, exact.
 
-**What this cost heavy kinds, which was never written down.** *(Resolved 2026-11-04 — energy is 16
-bits now and the heaviest kind reaches 257. The resolution is two paragraphs down; what follows is
-the record of the problem, in the past tense because none of it is true any more.)* Energy was 11
-bits, so a hexagon held at most 2047, and temperature is `e/kind` — so the hottest a kind-1
-primitive could get was 2047 and the hottest a kind-255 primitive could get was **8**. The cap on
-`B` was *derived* from exactly this (`floor(2047/255) = 8` is what made every bond breakable by
-every kind, and `screen.mjs` had printed it all along), but the consequence was never stated:
-**heavy kinds had eight distinguishable temperatures, and a `B=8` bond between two of them broke
-only at `e ≥ 2040` out of a possible 2047.** Heavy matter was therefore close to permanently cold
-and permanently bonded. Melting, graded stability, phase behaviour and anything with a measurable
-reaction rate lived among the light kinds only — which is a real cost to the conservation story in law 1, whose whole purpose
-was to make heavy matter possible.
+**The ceilings.** Energy is 16 bits, so a kind-1 primitive reaches temperature 65535 and a kind-255
+one reaches 257 — 32 times its strongest bond, so heavy matter can melt and boil. *(At 11 bits it
+reached 8, and heavy matter was permanently bonded — item 15.)*
 
-The tension was structural and had no free fix *at four bytes*. A fixed-width **total**-energy
-field, a temperature of `e/kind`, and a uniform temperature range across kinds cannot all three
-hold at a fixed word size; this world had the first two. Storing **temperature** instead, with `T · kind` as the conserved
-quantity, would give every kind the full range and make exact integer transport between unequal
-kinds the hard part instead. Named as **the heavy-matter temperature fork** in `README.md` rather
-than left implied.
+**Radiation is linear in temperature, not T⁴.** Vacuum has no kind, so it is absolute zero, and
+emission is one unit per clock fire. The second law needs only a *monotonic* emission rate, so this
+is a deviation from our universe, not an error.
 
-**Resolved 2026-11-04: the word went to eight bytes and energy to 16 bits.** The heaviest kind can
-now reach temperature 257, which is **32 times** its strongest bond rather than exactly once, so
-melting, boiling and graded stability have somewhere to happen at every mass. Storing temperature
-instead of total energy — the obvious alternative — turned out to be dead on arithmetic: `(T, r)`
-is the same information as `e` at the same width, measured at **−1 bit**. And the cap on `B` is no
-longer forced at all: at 16 bits of energy the forced cap is 257, so **law 2's modulus of 8 became a
-choice the same day it stopped being an artifact.** Wider is measurably better — see `README.md`. An empty hexagon has no kind, so it is absolute
-zero — the gradient into empty space is permanently maximal, which is why **nothing here needs a
-T⁴ curve**: emission is one unit per clock fire, so radiated power is linear in temperature. That is
-a real deviation from our own universe, where it goes as T⁴, and it is sound only because the second
-law needs a *monotonic* emission rate and not that specific exponent. Stated as a deviation in
-`HOW-WE-DECIDED.md` rather than claimed as a simplification.
+**The books are kept at the edges.** The Lab's only exchange with outside is its thermostat, counted
+as **thermostat net**. If the World has a boundary, every unit crossing it is **radiated-away**.
+The World gets a weaker invariant, because gravitational potential is not stored: energy rises only
+through collapse and falls only through the boundary, both logged.
 
-**The books are kept at the edges.** Two counters are mandatory: **radiated-away**, every unit that
-crossed the boundary outward, and **thermostat net**, every unit the Lab's held gradient injected or
-removed. The Lab gets the strict equality. **The World gets a weaker invariant**, because gravitational
-potential is not stored anywhere, so collapse genuinely appears to create thermal energy from
-nothing — assert instead that energy rises only through collapse and falls only through the
-boundary, both logged.
+**Across empty space it is radiation** — a structural fact, not part of this law. Vacuum has no kind,
+so the comparison reads `0` against `0`; energy entering an empty hexagon becomes a quantum in
+flight. Emission itself is this law, with vacuum colder than anything.
 
-**Across empty space it is radiation, and that is a structural fact rather than part of this law.**
-The comparison above governs matter touching matter. Vacuum has no kind, so the comparison is
-undefined there — it reads `0` against `0` — and the sink was unreachable until 2026-11-04. The fix
-is not in this law: energy entering an empty hexagon becomes **a quantum in flight**, which travels
-in a straight line until matter absorbs it or the boundary takes it. See *Radiation crosses vacuum
-in a straight line* among the structural facts. Emission itself needs no new rule — it is this law,
-with vacuum asserted to be colder than anything.
+**One constraint on the clock.** Net radiative flow is downhill only because hotter matter acts more
+often, so the clock rate must never saturate (see *Each hexagon keeps its own time*).
 
-**One constraint this law now places on the clock.** Net radiative flow is downhill only because
-hotter matter acts more often, and that fails the moment the clock rate saturates. The clock
-constant times the hottest reachable temperature must stay **below 1**. Above it, radiative flow is
-not merely slow — its direction becomes a coin flip. Measured in `radiate.mjs`; the numbers are in
-`HOW-WE-DECIDED.md`.
+**Why it is a rule.** Energy has to be local or nothing is hot or cold *somewhere*, and movement
+toward less couples regions so what happens here reaches there. And the empty-space half is the
+**sink**: matter is conserved, so if energy could only move through matter it would accumulate and
+the world would heat to uniform death. A gradient needs two ends. This is the one place the books
+don't balance inside the world — loss to the outside — and it is load-bearing.
 
-**Why it is a rule.** Two jobs, and it used to be two laws.
-
-Energy has to be a *local* quantity or nothing can be hot or cold *somewhere*, and a gradient
-is meaningless. Movement toward less then couples regions thermally, so what happens here
-reaches there; without it the world is a grid of sealed boxes.
-
-And the clause about empty space is the **sink**, which is the most easily overlooked
-requirement in the whole design. Thinking about a world's energy naturally means thinking
-about where it comes *from*. But matter is conserved and bounded, so if energy could only
-move through matter it would have nowhere to go. It accumulates. The world heats toward
-uniform death and stays there forever. A gradient needs two ends, and this is the far one.
-
-Note that this law is the single deliberate exception to "nothing is destroyed." It isn't
-really destruction — it's loss to the outside — but it is the one place the books don't
-balance inside the world, and it is load-bearing.
-
-**What breaks without it.** Without the local-and-conducting half: temperature doesn't exist,
-so phase doesn't, so melting and freezing and decay don't, and reaction rates have nothing to
-depend on. **Every item on the README's "never written" list requires it.** Without the
-empty-space half: no gradient, therefore no dissipative structures, therefore no ladder,
-therefore nothing. The project fails at rung zero.
+**What breaks without it.** Without conduction, temperature doesn't exist, so phase, melting, decay
+and every reaction rate go with it. Without the sink, no gradient, no dissipative structures, no
+ladder. The project fails at rung zero.
 
 ## The five structural facts
 
-Not laws — true of how the world is built. But break any one and the world is as ruined as if
-a law had been dropped, which is why they are documented here with the rest. *(It was four until
-2026-11-04, when radiation was settled and filed here rather than as a sixth law.)*
+Not laws — true of how the world is built. Break one and the world is as ruined as if a law had been
+dropped.
 
 ### Hexagonal grid, one primitive per hexagon
 
-Isotropy, for the reason in the README: a square grid has favorite directions baked in and
-would hand you expanding squares and axis-locked growth, which a project whose method is
-"find structure you didn't expect" cannot survive. Hex is a large improvement, not a cure —
-some artifacts remain, and a fully disordered lattice is better still and much more work.
+Isotropy: a square grid has favourite directions and hands you expanding squares and axis-locked
+growth, which a project whose method is "find structure you didn't expect" cannot survive. Hex is a
+large improvement, not a cure; a fully disordered lattice would be better and much more work. One
+primitive per hexagon gives exclusion and a hard occupancy limit for free, and mixtures need no
+representation.
 
-One primitive per hexagon gives exclusion and a hard occupancy limit for free, and makes
-mixtures free as well: a region where neighboring hexagons have different kinds **is** a
-mixture, needing no representation.
+**The Lab loops on itself as a hexagonal torus** (2026-11-05; Ric: "What if we made it loop on
+itself", then "Loop it"). In axial coordinates that is `q mod N, r mod N`: an `N × N` rhombus whose
+copies tile the plane in a triangular pattern.
 
-**The Lab has no edge: it loops on itself, as a hexagonal torus.** *(2026-11-05. Ric: "Maybe
-having walls is a problem… What if we made it loop on itself", then "Loop it", and asked for the
-shape to be researched. The research and the shapes turned down are in `HOW-WE-DECIDED.md`.)* Walk
-off one side and you come back on the opposite side. In axial coordinates that is just
-`q mod N, r mod N`: an `N × N` rhombus with 60° corners, whose copies tile the plane in an
-equilateral triangle pattern. Three things follow, and they are why this shape and not another:
+- **It is flat everywhere with no special place.** Every hexagon has the same six neighbours, so the
+  shape cannot show up as structure.
+- **The loop is the same length in all six directions.** Copies sit on a triangular lattice, which
+  keeps them furthest apart for a given area — about 7½% further than a rectangle of hexagons, and
+  without a rectangle's two loop lengths, which would be a favoured direction.
+- **`N` must be a multiple of 3,** or the three-hexagon collision blocks don't tile across the seam —
+  checked by brute force. So the Lab is **258 × 258**, 66,564 hexagons.
 
-- **It is flat everywhere and has no special place.** Every hexagon has six neighbours and the same
-  surroundings, so nothing about the shape can show up as structure (rule 11).
-- **The loop is the same length in all six directions.** Copies of the world sit on a triangular
-  lattice, which is the arrangement that keeps them furthest apart for a given area (Lagrange,
-  Gauss), so for a given number of hexagons something has to travel furthest before it meets its
-  own wake — about 7½% further than on a rectangle of hexagons with the same count, and without a
-  rectangle's two different loop lengths, which would be a favoured direction.
-- **`N` must be a multiple of 3.** Collisions resolve in three-hexagon blocks, and the blocks only
-  tile cleanly across the seam when 3 divides `N` — checked by brute force for every site and all
-  three partition offsets: 255, 258 and 4098 tile; 256, 257 and 4096 break at the seam. So the Lab
-  is **258 × 258**, 66,564 hexagons, the nearest such size at or above the planned 256².
+With no edge, momentum is conserved exactly with nothing to count, and a quantum on an empty line
+goes round for ever, still counted as in flight. **The World's shape is open** (item 22): a loop
+removes the heat sink, the floor that gives a *down*, and makes gravity sum across the seam.
 
-**What an edge used to do, and what replaces it.** Walls were a momentum reservoir and the place
-heat left. With no walls, **momentum is conserved exactly with nothing to count** — the wall
-counter is gone from the Lab. Heat has nowhere to leave, so a quantum on an empty line of
-hexagons goes round for ever, still counted as in flight; the Lab's only exchange with outside is
-its thermostat, which holds a hot band and a cold band as it always meant to. Angular momentum is
-not conserved on a torus — there is no rotation symmetry — but it never was on a hexagon lattice.
+### Only neighbours interact
 
-**The World's shape is not decided** (`README.md` item 22). A loop removes the boundary that law 5
-uses as the world's heat sink, removes the floor that gives the World a *down*, and makes gravity
-sum across the seam. Our own universe answers the first with expansion.
+This creates *elsewhere*. If anything can affect anything there is one global state and one
+experiment. With locality, distant regions are independent — thousands of parallel experiments, and
+a rare thing can survive in one corner. **Niches exist because of this and nothing else.**
 
-### Only neighbors interact
+It also gives a **causal speed limit** for nothing: one hexagon per tick is the fastest information
+can move, so there is a light cone. *(Called "a speed of light" until Ric pointed out it is about
+information, not light — as in reality, where light merely sits at the limit.)* And it is why the
+thing runs at all: local rules are parallel and shader-shaped.
 
-This creates *elsewhere*. If anything can affect anything there is one global state, one
-attractor, one experiment. With locality, distant regions are genuinely independent —
-thousands of parallel experiments, and a rare thing can survive in one corner while the rest
-of the world does something else. **Niches exist because of this and nothing else.**
-
-It also hands you a **causal speed limit** for nothing: one hexagon per tick is the maximum rate
-anything can propagate, so cause has a finite reach and there is a light cone. That is relativity's
-single most important feature, acquired as a side effect.
-
-*(Called "a speed of light" here until 2026-11-04, when Ric pointed out the limit has nothing to do
-with light — it is the fastest **information** can move, and it falls straight out of locality. Real
-physics agrees: `c` is the causal limit, and light merely sits at it because photons are massless.
-The same thing happened here by accident — radiation was added a day earlier and travels at exactly
-one hexagon per tick, never slower, so this world now has something light-like riding its limit.
-The limit came first and does not depend on it.)* And it is why the
-thing can run at all — local rules are parallel, cache-friendly and shader-shaped.
-
-**Gravity is the only exception in the entire codebase.** A second one means something is
-wrong with the design.
+**Gravity is the only exception.** A second one means something is wrong with the design.
 
 ### Each hexagon keeps its own time
 
-There is no global synchronized "now," and that half is real physics: relativity is
-unambiguous that simultaneity is relative, so "everything updates at once" is *provably* not
-how anything works, because there is no "at once" to update at.
+There is no global "now", and that is real physics: relativity makes simultaneity relative. It
+matters here twice over. **It stops the clock lying to you** — synchronous updating manufactures
+cyclic patterns that look like self-organization. And **it reduces lattice anisotropy**, a standard
+remedy in the cellular-automaton literature.
 
-Two independent reasons it matters here:
+**Event-driven in the Lab, probabilistic in the World.** Ric's objection to "each cell updates with
+some probability per tick" was right: **time doesn't skip.** A hexagon is not frozen between
+updates; its clock runs at a different rate. Both schemes are stochastic — Gillespie's algorithm is
+event-driven, continuous-time and random — and differ only in whether time is ticked. The Lab uses
+event-driven continuous time: every change is already an event, a priority queue is cheap at 66,000
+hexagons, and an instrument should not carry a known artifact. The World cannot: at 17 million
+hexagons in a browser a queue costs 50–100×. **The approximation gets checked**, by running one small
+configuration both ways and comparing species, binding energies and rates.
 
-**It stops the clock from lying to you.** Synchronous updating *manufactures* apparent
-self-organization — cyclic patterns in particular are inherent to a global clock, an artifact
-of scheduling rather than a property of the physics. For a project whose method is finding
-unexpected structure, being fooled by your own update loop is fatal: you'd find something
-beautiful, believe it, and be wrong.
-
-**It independently reduces lattice anisotropy.** The CA literature lists replacing synchronous
-with asynchronous dynamics as a standard remedy for grid artifacts, alongside changing the
-grid. So this and the hex grid attack the same problem from two directions.
-
-#### Event-driven in the Lab, probabilistic in the World
-
-The original wording was "each cell updates with some probability per tick," and Ric's
-objection to it was correct: **time doesn't skip.** Nothing in reality sits frozen while its
-neighbor acts. Real time is continuous and local; every point has its own proper time flowing
-without interruption.
-
-The right framing is that a hexagon is not skipping time — **its clock is running at a
-different rate.** One at probability 0.5 is not frozen half the time; over many ticks it is
-experiencing time half as fast. That is a coherent notion of local proper time and is
-genuinely *closer* to relativity than synchronous updating, where one universal clock is
-asserted — the thing relativity forbids.
-
-**Both schemes are stochastic. They differ only in whether time is ticked.**
-
-*(Corrected after external review.)* An earlier version of this file said the Lab
-was "continuous, not probabilistic," which conflated two independent axes: discrete-versus-
-continuous *time*, and deterministic-versus-stochastic *event selection*. Gillespie's
-algorithm is the standard counterexample — event-driven, continuous-time, and thoroughly
-stochastic. The Lab draws event times from distributions; it is probabilistic throughout. What
-it does not do is round those times onto a global tick.
-
-**The Lab uses event-driven continuous time**, where nothing ever skips at all. It is the
-natural fit rather than a forced one, because the lattice is already fully discrete: every
-change in this world is already an event. At 65,000 hexagons a priority queue is comfortably
-affordable and the GPU isn't needed. And the Lab's whole purpose is *measurement* — a known-wrong
-time model inside the instrument is worse than one in the world, because every number in the
-resulting table would carry the artifact.
-
-**The World does not.** At seventeen million hexagons in a browser, queue churn and the loss of
-cache locality and parallelism cost more like 50–100× than 5–10×, and it destroys the
-shader-shaped structure that lets this run in a browser at all.
-
-**The approximation gets checked rather than assumed.** Run the same small configuration under
-both schemes and compare the species, binding energies and rates. Agreement validates the World's
-compromise empirically; divergence is a finding about where it fails. A concrete task, not a
-hope — and the only place in the project where the same physics is implemented twice.
-
-#### What sets the rate: temperature
-
-*(Decided 2026-11-04. The rate was a single global constant and nothing said what varied it.)*
-
-**A hexagon's clock runs at a rate proportional to its own temperature**, with a floor so that cold
-matter is slow rather than frozen. Hot matter therefore acts often and cold matter rarely, which is
-one line of code and does four jobs:
-
-- **It makes radiation work at all.** Sight lines on this lattice are exactly reciprocal, so under
-  a flat clock every pair of hexagons exchanges energy at an identical rate and the **net flow is
-  exactly zero** — radiation would transport no heat in either direction. A temperature-dependent
-  rate is the only thing that unbalances it. This is why our own universe has a Stefan–Boltzmann
-  law at all, and it is not a patch on radiation but the thing that makes it a channel.
-- **It closes the second law exactly**, rather than statistically as reality does. Net flow between
-  any two hexagons that can see each other is downhill for *any* rate that rises with temperature,
-  because the sight lines between them are reciprocal and the only asymmetry left is the rate.
-- **It gives reaction rates their temperature dependence for free**, so no law has to carry one.
-  This is the attempt-frequency half of an Arrhenius rate; law 2's binding energy is the other half.
-- **It is where thermal pressure comes from.** Hot matter moves more often, so hot regions expand
-  against cold ones with nothing written down to make them.
-
-  **This was measured false on 2026-11-05 and made true again on 2026-11-06, by a different route
-  than the one claimed here.** The claim as written was that the clock alone produces it, and it
-  does not: stepping runs on law 1's own rate, `min(1, |p|/k)`, which never reads temperature, so a
-  primitive at any heat with no momentum never moved (README item 29). The fix is law 1's **thermal
-  kick** — a pair of neighbours given equal and opposite momentum, paid for out of heat — so the
-  clock still does not move anything by itself, but a hot site fires more often and therefore kicks
-  more often. **What is measured is that heat now moves matter at all** (0 steps → ~1,400 per run,
-  with the world's net momentum still exactly zero). **What is NOT yet measured is this bullet's
-  own claim**, that hot regions expand against cold ones; that needs a sweep, and three bands on
-  one seed cannot tell a trend from noise.
-
-**The hard constraint, stated correctly.** The rate must be **strictly increasing in temperature
-and must never saturate.** That is all the second-law argument above uses, and it is weaker than
-what this section demanded until 2026-11-04.
-
-*(The old wording required the clock constant times the hottest reachable temperature to stay below
-1. Energy was 11 bits, so that forced a constant under 1/2047 and a **2047:1 spread in clock rates** —
-free in the Lab, where event times are drawn anyway, and close to fatal in the World, where the coldest
-matter would update once in 2047 ticks. The cold edge is exactly where the dissipative structures
-are meant to live, so that is not a performance detail.)*
-
-The floor the rule already has is the knob:
+**What sets the rate: temperature.**
 
 > **`rate(T) = floor + c · T`**
 
-This is strictly increasing for **any** floor, so net flow between two hexagons that can see each
-other is still downhill and its direction never flips. Raising the floor shrinks the *asymmetry*
-`(r_hot − r_cold) / (r_hot + r_cold)`, so heat moves slowly relative to how much energy sloshes
-back and forth — **diffusive rather than ballistic, which is what conduction is in reality
-anyway**, and slow equilibration helps structure persist rather than hurting it. A floor at
-`c · T_max / 16` buys a **16:1** spread instead of 2047:1, and costs transport speed rather than
-correctness.
+Hot matter acts often and cold matter rarely. That one line does three jobs:
 
-What still switches off abruptly is **saturation, not spread.** If the rate flattens at the top,
-two hexagons at different temperatures act equally often, net radiative flow goes to zero, and its
-direction becomes a coin flip — measured at 10 of 20 seeds running *uphill*. The second law does
-not degrade gracefully there; it switches off. Keep the rate linear and unsaturated and that cannot
-happen at any floor.
+- **It makes radiation carry heat.** Sight lines here are exactly reciprocal, so under a flat clock
+  every pair exchanges energy at the same rate and net flow is **exactly zero**. A temperature-
+  dependent rate is the only thing that unbalances it — which is why our universe has a
+  Stefan–Boltzmann law at all.
+- **It closes the second law exactly**, not statistically: between any two hexagons that see each
+  other, net flow is downhill for any rate that rises with temperature.
+- **It gives reaction rates their temperature dependence**, the attempt-frequency half of an
+  Arrhenius rate, so no law has to carry one.
 
-**What breaks without it.** With a flat clock: radiation transports exactly nothing, so the sink is
-dead even once the mechanism is right, and every reaction rate has to carry its own temperature
-term. With a saturating clock: the second law is simply absent above the saturation point.
+A fourth job, thermal pressure — hot regions expanding against cold — **does not follow from the
+clock alone**, because stepping reads momentum, not temperature. The thermal kick (law 1) now turns
+heat into motion, and hot sites fire and kick more often. That hot regions actually expand is
+**not yet measured** (item 29).
+
+**The constraint: strictly increasing, never saturating.** The rate is a probability, so it clips at
+1, and above the clip net radiative flow goes to zero and its direction becomes a coin flip —
+measured at 10 seeds of 20 running heat *uphill*. So assert `floor + c · T_max ≤ 1`. Any floor
+satisfies the second-law argument; a floor at `c · T_max / 16` gives a 16:1 spread between hottest
+and coldest, which costs transport speed, not correctness. *(An older form forced a 2047:1 spread and
+would refuse a correct configuration.)*
+
+**What breaks without it.** Flat clock: radiation transports nothing, and every reaction rate needs
+its own temperature term. Saturating clock: the second law is absent above the clip.
 
 ### Bond energy accounting is exact
 
-A bond forming releases **precisely** its binding energy into the hexagon as heat. Breaking
-absorbs precisely that much.
+A bond forming releases **precisely** `B` as heat; breaking absorbs precisely that much. This is the
+seam between laws 2 and 5, and the conversion between bonded and thermal energy is where
+conservation goes quietly wrong. Release more and you have a free-energy pump; release less and the
+world bleeds energy every time chemistry happens. Both failures are slow, silent and look like
+physics. *(Ric predicted this entry before reading it, asking whether a rule might "come from how 2
+others interact". That is exactly what it is, and why it isn't a law.)*
 
-**Why it's here rather than in a comment.** This is the seam between laws 2 and 5, and the one
-place conservation is actually at risk. Laws 1 and 5 are easy to satisfy in isolation; it is
-the *conversion* between bonded energy and thermal energy that goes quietly wrong.
+**In the ledger, a standing bond holds −`B`.** The Lab's conserved total is
+heat + Σ KE + in flight − Σ B over standing bonds; leave the last term out and every bond that forms
+looks like heat from nowhere.
 
-Release more than the binding energy and you have built a free-energy pump: structures form,
-dump surplus heat, reform, and the world runs away. Release less and energy bleeds out of
-existence every time chemistry happens, and the world dies cold on a timescale set by how
-often bonds form.
-
-The reason it earns a documented entry is the **failure mode**: both versions are slow, silent,
-and look like physics. No error, no assertion, no obvious moment. You would watch a world get
-steadily hotter or steadily deader and spend weeks adjusting the pair force, the capacity and
-the transport rate before suspecting the seam.
-
-Ric predicted this entry before reading it, asking whether one of the rules might "come from
-how 2 others interact." That is exactly what it is, and exactly why it isn't a law.
-
-**Why it cannot currently break, which is worth stating because it is load-bearing and invisible.**
-The modulus is a global constant and `B` is **recomputed from the two kinds** every time a bond is
-evaluated, never stored — the six bond bits record *which* neighbours, never *how strongly*. So `B`
-is stable exactly as long as the kinds are, and **nothing in this world changes a primitive's kind.
-Kind is immutable.** No law does it, and fusion — the only thing that would — is in *Roads not
-taken*. A recomputed `B` therefore returns the same value forever, and this seam holds by
-construction.
-
-*(Said the other way round on 2026-11-04 and immediately retracted after Ric asked whether it was a
-real hole: it is not. The claim was that a bonded primitive which fuses would break its bond at a
-different `B` than it formed at. True, and unreachable, because there is no fusion. Law 1's talk of
-`1 + 1 → 2` is a **bookkeeping choice** made so the fusion road stays open, not a mechanism that
-exists — which is a justification being read as a specification. The real consequence is recorded
-on the fusion entry in `README.md`'s roads-not-taken, where it belongs: anything that makes kind
-mutable has to pay every affected bond's `B` at the pre-change kinds first.)*
+**Why it cannot currently break.** `B` is recomputed from the two kinds every time, never stored, and
+**nothing changes a primitive's kind.** So a recomputed `B` is the same forever. Anything that ever
+makes kind mutable (fusion) must first break every bond on the changing primitive at the old kinds.
 
 ### Radiation crosses vacuum in a straight line
 
-An empty hexagon holding energy and a direction of travel **is** a quantum of radiation in flight.
-It moves one hexagon per step — exactly the causal limit the locality fact already asserts, which
-makes it the one thing in this world that always travels at the limit and never slower — and it
-stops at the first matter it meets, which absorbs it. At the boundary it leaves forever and `radiated-away`
-counts it.
+An empty hexagon holding energy and a direction **is** a quantum in flight: one unit, one hexagon per
+step, absorbed by the first matter it meets. At a boundary, if there is one, it leaves and
+`radiated-away` counts it. Emission direction is uniform over the six — forced, because the
+second-law argument needs it.
 
-**One unit of energy per quantum, and one quantum per direction per hexagon.** That is six bits,
-and an empty hexagon's six bond bits are unused by definition, so it is the same four bytes. The
-six bits are **exact rather than a cap**: a quantum arriving at a given hexagon travelling in a
-given direction, and a fresh emission into that same slot, can only come from the one neighbour
-behind it — and that neighbour is either matter or vacuum, never both. There is no third source to
-collide with. Zero collisions in every run of `radiate.mjs`.
+**Six bits, one per direction, in the bond field an empty hexagon never uses.** Under ticked time the
+bits are exact rather than a cap: a quantum arriving in a slot and an emission into it can only come
+from the one neighbour behind, which is matter or vacuum, never both. **Under the Lab's continuous
+time they are not**: a trailing quantum can catch the one ahead, and the Lab makes it wait, so
+radiation there can travel slower than the causal limit (item 26).
 
-**Emission is law 5, not a new rule.** Matter sheds a unit toward a neighbour that is colder, and
-vacuum is colder than anything. The direction is uniform over the six, and that is **forced, not
-chosen** — the second-law argument below needs it.
+**Why a fact and not a sixth law.** It says how energy crosses a gap, of a piece with the lattice and
+the causal limit; the force is still law 5. The case against — this hands the project photons back —
+is fair and recorded in `HOW-WE-DECIDED.md`.
 
-**Why this is a fact and not a sixth law.** It says how energy crosses a gap, which is of a piece
-with the lattice, locality and the causal limit; the force that moves it is still law 5. The
-contrary case is fair and is recorded: this hands the project photons back, and the reason
-radiation was merged into transport in the first place was that there were none. Call it a sixth
-law if you prefer — what matters is that nothing here is hidden in a spare field.
-
-**So a hexagon is one of three things**, and the README's "a primitive, or empty" was two:
+**So a hexagon is one of three things:**
 
 | | kind | energy | momentum | bonds |
 |---|---|---|---|---|
-| **a primitive** | 1–255 | its heat | an integer vector; speed is `p/k` | who it is bonded to |
+| **a primitive** | 1–255 | its heat | an integer vector | who it is bonded to |
 | **a quantum in flight** | 0 | — | — | one bit per direction in flight |
 | **empty** | 0 | 0 | — | 0 |
 
-**What breaks without it.** The sink is unreachable, because the transport comparison is undefined
-against vacuum and energy never leaves matter. The world heats to uniform death and the ladder
-never starts. And separated structures could never reach each other at all: every gap would be a
-hole in the universe, and gravity would be the world's only long-range channel.
+**What breaks without it.** The sink is unreachable, energy never leaves matter, and every gap is a
+hole in the universe with gravity the only long-range channel.
 
 ---
 
 ## Does our own universe have these?
 
-Worth checking, since the list was reasoned out from "what would a world need" rather than
-copied from physics. Audited 2026-11-03. **Four of the five laws are real laws of our
-universe.**
+The list was reasoned from "what would a world need", not copied from physics. Audited 2026-11-03:
+**four of the five laws are real laws of our universe.**
 
 | # | Here | In our universe |
 |---|------|-----------------|
-| 1 | Conservation of kinds, energy, momentum | **Matter: yes. Energy and momentum: locally yes, globally no.** Worth splitting, because lumping them invites the wrong conclusion. **Matter** is the solid one: it matches *baryon number* rather than mass (fusion converts mass to energy, which is why this law had to be restated), and no violation has ever been observed — though one must have happened very early, or there would be no matter/antimatter asymmetry and nothing here. **Energy and momentum** are exact in any local region and simply **not defined globally in an expanding universe**, because expansion removes the time-translation symmetry Noether's theorem runs on: photon energy redshifts away with no destination at all, and peculiar momentum decays as 1/a. Raised by Ric. See `SOURCES.md`. |
-| 2 | Pair force by kind | **Yes** — electromagnetism. Charge-dependent, attractive or repulsive, and responsible for essentially all of chemistry. Technically long-range, but *effectively* short-range in bulk matter because charges cancel, which is what our short-range version is a shortcut to. |
-| 3 | Gravity | **Yes**, though reality's is spacetime curvature rather than a force, and is 1/r² because space is 3D rather than because we chose it. |
-| 4 | Capacity | **Yes, and the closest match on the list** — the Pauli exclusion principle, which does exactly the job claimed. It is why electrons occupy shells instead of collapsing into the ground state, which is why valence exists, which is why chemistry exists. |
-| 5 | Transport | **Yes.** Heat conduction, and blackbody radiation for the empty-space half. Reality's emission goes as T⁴; ours gets the same steepness from geometry instead. |
+| 1 | Conservation of kinds, energy, momentum | **Matter: yes** — it matches *baryon number*, never observed to be violated. **Energy and momentum: locally yes, globally no.** Expansion removes the time-translation symmetry Noether's theorem needs, so photon energy redshifts away and peculiar momentum decays as 1/a. Raised by Ric. |
+| 2 | Bonding by kind | **Yes** — electromagnetism, effectively short-range in bulk matter because charges cancel. |
+| 3 | Gravity | **Yes**, though reality's is spacetime curvature, and 1/r² because space is 3D. |
+| 4 | Capacity | **Yes, the closest match** — the Pauli exclusion principle, which is why shells, valence and chemistry exist. |
+| 5 | Transport | **Yes** — conduction, and blackbody radiation for the empty-space half (T⁴ there, linear here). |
 
-### And none of that makes our law 1 wrong
+**None of that makes our law 1 wrong.** Reality's global energy conservation fails because the
+universe expands. The Lab does not expand: its laws are the same at all times, so Noether gives
+exactly the conservation we assert. Everything this project cares about is local anyway, and local
+conservation has never been seen to fail. And strictness is load-bearing regardless, because the
+assertion is the project's only bug detector. *(If the World grows — item 22 — its expansion loss is
+counted, which is how reality would say it too.)*
 
-It makes it **right for our world**, which is a different thing and the row above should not be
-read as a confession.
+Of the structural facts, locality is firmly real, and no universal "now" is real but discretizing it
+is ours. The hexagonal lattice is entirely ours — reality has no lattice, the single largest
+departure here.
 
-Reality's global energy conservation fails for one specific reason: the universe expands, and
-expansion is what destroys the time-translation symmetry Noether's theorem needs. **Our grid
-does not expand.** The laws here are the same at all times, the lattice is the same everywhere,
-and nothing stretches. The symmetries are intact, so the conservation laws are exactly what
-Noether says you get — we are not asserting something reality denies, we are asserting what
-holds in a universe that doesn't expand.
-
-Two things follow. First, everything this project cares about is local anyway: chemistry,
-structure, the ratchet, anything that could become alive. Local conservation is exact in
-reality too, and has never been observed to fail. Second, **strictness is load-bearing here
-regardless of what reality does**, because the assertion is the only bug detector the project
-has. A world where energy can quietly appear is a world where the most exciting thing you ever
-see is an accounting leak.
-
-What *is* genuinely unknown in reality is not the mechanism — that part is a derived theorem —
-but why there is expansion at all, and why it is accelerating. Dark energy is a name for the
-observation, not an explanation of it.
-
-Of the structural facts: locality is firmly real (nothing propagates faster than light;
-entanglement is the apparent exception and transmits no information). No universal "now" is
-real and relativistic, but discretizing it is ours, because this is a computation rather than
-a world. The hexagonal lattice is entirely ours — reality has no lattice at all, which is the
-single largest departure in the project.
-
-That law 4 turns out to be a direct analogue of a fundamental law is the most reassuring result
-in the audit. It went on the list because there would be no chemistry without it — which is
-exactly why our universe has it too.
-
-### What reality has that this doesn't
-
-The **strong force**, which makes stable composite particles and therefore gives reality its
-library of distinct primitives. We *assume* primitives exist rather than deriving them: that is
-where this physics stops asking why. The **weak force** (identity change, slow decay).
-**Fusion** as a second energy budget. **Three dimensions.** **Continuous space.** And quantum
-mechanics generally — superposition, wave behavior. These primitives are classical.
+**What reality has that this doesn't:** the strong force, which builds distinct primitives (we assume
+them); the weak force; fusion as a second energy budget; three dimensions; continuous space; quantum
+mechanics.
 
 ### On math
 
-A useful diagnostic rather than a rule, and Ric's point: **our universe does not do math.**
-Nothing anywhere computes a gravitational formula. Equations are *our description* of what
-happens; matter simply moves, and calculus was invented afterward to describe the moving.
-
-So every time a formula gets written here, ask whether it is *describing* or *implementing*. A
-formula that **is** the law is fine. A formula that **computes a result the world should have
-produced** is a smuggled answer — which is what the deleted property function was, and what the
-deleted T⁴ curve was.
-
-Most of this design is token mechanics rather than equations: integer kinds, counting bonds
-against capacity, a direction per primitive, collisions by swap.
-
-But **"almost no math" was oversold**, and the honest inventory is three places:
-
-1. **The pair force.** Still unspecified — see law 2 — but **the goal stated here has since been
-   reached.** "Converting it to a pure condition on the two integers" is exactly what law 2's
-   proposal does: `B(k₁, k₂)` with no distance term, one operation from a fixed grammar. That is
-   still arithmetic (`mod` and absolute difference are arithmetic) but it is no longer a *formula* — there is no magnitude
-   computed over a distance, only a number looked up from two integers by one operation. If the
-   proposal is adopted this item shrinks to its smallest possible form rather than disappearing.
-2. **Gravity.** A sum over distance, and the project's only non-local operation — though law 3
-   now has a local candidate, a screened field relaxed by neighbour-averaging, which would remove
-   the non-locality and the formula together and leave a constant in their place.
-3. **The temperature comparison.** Two integer multiplications per transport step
-   (`e₁·k₂` vs `e₂·k₁`). Exact, cheap, and unavoidable — comparing energy *per unit of kind*
-   cannot be done by counting alone. Found by external review after the first version of law
-   5 compared raw energy and opened a second-law hole.
-
-Three places, named. That is the accurate answer to "is there still math in here," and it is
-more than the documents previously claimed.
+Ric's point: **our universe does not do math.** Nothing computes a gravitational formula; equations
+describe what happens. So for every formula here, ask whether it is *the law* or *a result the world
+should have produced* — the second is a smuggled answer, like the deleted property function and T⁴
+curve. The honest inventory is three places: law 2's binding energy (one operation on two integers,
+no magnitude over a distance), gravity (a sum over distance, with a local candidate that would replace
+it), and the temperature comparison (two integer multiplications, unavoidable).
 
 ---
 
 ## Why gravity is held out of the Lab
 
-The Lab uses four of the five laws. Gravity is deliberately absent, and this needs real
-justification because it is load-bearing in the finished world.
+The Lab uses four laws. Cost is a reason but not *the* reason.
 
-The weak version of the argument is that it's expensive and buys little at 258². True, but not
-the reason.
+**The Lab controls its conditions, which is what makes it a laboratory.** Its job is to measure which
+clusters are stable and how they behave. A measurement is worth something only if its conditions are
+known and held still, and gravity makes that impossible: pressure and temperature everywhere depend
+on the whole shifting mass, so the same experiment run twice gives two tables. That is not a periodic
+table; it is a travel diary. Chemists work at standard temperature and pressure for this reason, and
+the Lab holds a hot and a cold band. That is legitimate because **the Lab is not claiming to be a
+world** — a thermostat in a laboratory is apparatus.
 
-### The Lab controls its conditions, which is what makes it a laboratory
+**Supporting reasons.** At 258² there is no large scale to structure. Gravity is the most expensive
+law and the Lab is where the search runs thousands of universes. And holding it out means a Lab that
+produces mud is a chemistry problem, not a cosmology one.
 
-The Lab's job is to **measure**: which clusters are stable, each one's binding energy, its
-leftover capacity, how it behaves when it meets another. The output is a table of numbers the World
-will treat as fact.
-
-A measurement is worth something only if the conditions it was taken under are known and held
-still. **Gravity makes that impossible.** With gravity running, pressure and temperature at any
-hexagon depend on the entire mass distribution, which is itself changing throughout the run. A
-cluster's measured binding energy would be contaminated by where in the box it happened to form
-and when, with no way to separate the two. Run the same experiment twice and get two different
-tables.
-
-That is not a periodic table. It is a travel diary.
-
-Chemists work at standard temperature and pressure for precisely this reason, and so does the Lab:
-set a thermal gradient and hold it. Setting that gradient is legitimate here in a way it would
-not be in the World, because **the Lab is not claiming to be a world.** It is an instrument, and a
-thermostat in a laboratory is apparatus, not a smuggled answer.
-
-### The supporting reasons
-
-**Nothing to structure.** Gravity's second job is large-scale structure, and at 258² there is no
-large scale. Its third is making *down* exist, which is irrelevant to which clusters are stable.
-
-**The cost falls where it hurts most.** Gravity is the only non-local law and the most expensive
-thing in the engine. The Lab is where the *search* lives — thousands of short candidate universes —
-so every cost there multiplies by thousands. Paying for the most expensive law for no measurement
-benefit, thousands of times, is the worst possible place to spend.
-
-**One variable at a time.** If the Lab produced mud you would need to know whether the problem is
-the chemistry or the cosmology. Holding gravity out isolates the chemistry completely. Ordinary
-experimental method.
-
-### What this costs, honestly
-
-Species that only form under conditions the laboratory never sets will not appear in the table.
-If the only route to some cluster runs through extreme gravitational compression, the Lab will
-never find it — silently.
-
-**What that costs is the dictionary, not the world.** Since the coarse-graining was removed,
-the World runs the same primitive physics and forms whatever its primitives form, so an absent
-species still *exists* there. You simply would not recognize it when you saw it. That is a
-smaller cost than the one this section originally claimed, and the correction is recorded in
-`TWO-RUNS.md`.
-
-The mitigation: **the Lab sweeps conditions rather than picking one.** Measure the table across a
-range of temperatures and pressures, and record each species with the regime it exists in. A
-cluster that only appears under high compression is then a known entry with a known condition
-rather than an absence nobody notices.
-
-`TWO-RUNS.md` covers the rest of this trade, including what the whole project would look like as a
-single run.
+**What it costs.** A species that only forms under strong gravitational compression won't appear in
+the table. Since the World runs the same primitive physics it still *exists* there; you just wouldn't
+recognize it. The mitigation: **the Lab sweeps conditions rather than picking one**, and records each
+species with the regime it was found in. `TWO-RUNS.md` covers the rest.
