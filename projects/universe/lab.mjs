@@ -328,7 +328,12 @@ export class Lab {
       emissionBlocked: 0, quantumWaited: 0,
       momentumShared: 0, momentumRangeDeclined: 0, shareUnaffordable: 0, thermostatFires: 0,
       thermalKicks: 0, kickRangeDeclined: 0, kickUnaffordable: 0, kickNoPartner: 0,
-      dragged: 0, draggedMembers: 0, dragBlocked: 0, dragLargest: 0,
+      // Steps taken by a primitive that was bonded at the time -- the direct
+      // measure of whether clusters move at all, which no other counter gave,
+      // and whose absence let this project say for two days that refusing a
+      // stretching step "freezes clusters solid". It does not: this reads
+      // about 14,500 per million events at the temperature chemistry likes.
+      bondedStepped: 0,
     };
   }
 
@@ -354,23 +359,33 @@ export class Lab {
     // that is min(1, |p|/k) steps per tick, and GAP 1 turns "per tick" into
     // "per unit of the fastest clock".
     //
-    // THE k IS THE CLUSTER'S TOTAL KIND SINCE 2026-11-06, NOT THIS HEXAGON'S.
-    // That is law 1 as already written, not a change to it: "once momentum
-    // has spread across a bonded group of total kind K, the group steps at
-    // |p| / K by law 1's own rate rule, so a heavy composite resists being
-    // pushed". The Lab read this hexagon's own kind until now, which gave a
-    // light primitive bonded into a heavy cluster the inertia of a speck --
-    // and once the cluster can be dragged (see dragCluster) that would have
-    // been a mouse towing a battleship at full speed.
+    // THE k IS THIS HEXAGON'S OWN KIND, AND IT HAS TO BE, which is worth a
+    // note because for part of 2026-11-06 it was the bonded cluster's total
+    // kind instead. Law 1 says "once momentum has spread across a bonded
+    // group of total kind K, the group steps at |p| / K ... so a heavy
+    // composite resists being pushed", and reading K off the cluster here
+    // looked like implementing that sentence. It was not: it was a non-local
+    // read, rule 9's second exception, taken to produce a number that is
+    // supposed to EMERGE.
     //
-    // It costs a walk of the cluster on every rate computation, which is
-    // affordable only because clusters here are small: measured 2026-11-06
-    // over held temperatures 0 to 20, the largest cluster in the world was 29
-    // hexagons and the median bonded primitive sat in one of 2 to 4. The
-    // unbonded case, which is most of the world above T = 0, does not walk at
-    // all.
-    const K = w.bonds[i] === 0 ? w.kind[i] : this.clusterTotalKind(i);
-    const speed = Math.min(1, Math.sqrt(Q / 2) / K);
+    // Reality is the argument. Nothing there computes a body's total mass --
+    // each atom answers to its own neighbours, and F = Ma for the whole
+    // object is a theorem out of Newton's third law rather than an algorithm
+    // anything runs. So |p| / K is law 1 describing an OUTCOME, and reading
+    // it off a cluster walk was taking a description for a recipe.
+    //
+    // WHAT PRODUCES THE OUTCOME HERE IS NOT SETTLED, and that is item 33
+    // rather than a gap in this function. A mechanism was built for it the
+    // same day -- momentum spreading bond by bond -- and measured, and it
+    // made clusters move LESS rather than more, because every transfer is
+    // inelastic and a cluster was damped by its own wave. It is in
+    // rejected/push-along-bond.txt with the numbers. Measured snapshot after
+    // its removal: mean momentum per member across cluster sizes reads 37.66
+    // at size 2, 38.05 at 3-4 and 39.17 at 5-8. If heavy clusters resisted
+    // being pushed that should FALL, so there is no sign of |p| / K emerging
+    // and the slight trend runs the wrong way. One seed and a snapshot rather
+    // than a rate, so it is evidence and not a verdict.
+    const speed = Math.min(1, Math.sqrt(Q / 2) / w.kind[i]);
     return this.causal * speed;
   }
   totalRateAt(i) {
@@ -698,174 +713,63 @@ export class Lab {
     return best;
   }
 
-  // ----------------------------------------------------- bonded groups
-  // A cluster is the connected component over bonds. Everything here exists
-  // because law 1 talks about bonded GROUPS -- their total kind, and their
-  // moving together -- and until 2026-11-06 nothing in the Lab could see one.
+  // ------------------------------------------- law 1, the push along a bond
+  // GAP 3, SETTLED 2026-11-06 ON THE FOURTH READING, WHICH IS REALITY'S.
   //
-  // The mark array is stamped with an epoch rather than cleared, so a walk
-  // costs the cluster and not the world. The epoch is reset before it can
-  // overflow Int32, because a wrapped epoch would silently report every
-  // hexagon as already-visited and so every cluster as a single primitive.
-  _scratch() {
-    if (this._mark === undefined) {
-      this._mark = new Int32Array(CELLS);
-      this._stack = new Int32Array(CELLS);
-      this._epoch = 0;
-    }
-    if (this._epoch >= 2147483000) { this._mark.fill(0); this._epoch = 0; }
-    return ++this._epoch;
-  }
-
-  // Total kind of the bonded group containing i. This is law 1's K.
-  clusterTotalKind(i) {
-    const w = this.w;
-    if (w.bonds[i] === 0) return w.kind[i];
-    const epoch = this._scratch(), mark = this._mark, stack = this._stack;
-    let top = 0, K = 0;
-    stack[top++] = i; mark[i] = epoch;
-    while (top > 0) {
-      const x = stack[--top];
-      K += w.kind[x];
-      for (let e = 0; e < DIRECTIONS; e++) {
-        if (!(w.bonds[x] & (1 << e))) continue;
-        const y = neighbour(x, e);
-        // A bonded partner is always matter. A hexagon with bonds set and no
-        // kind is a quantum in flight, which is not a cluster member.
-        if (w.kind[y] === 0 || mark[y] === epoch) continue;
-        mark[y] = epoch; stack[top++] = y;
-      }
-    }
-    return K;
-  }
-
-  // The members themselves, for a drag. This allocates, which
-  // clusterTotalKind deliberately does not, because drags are far rarer than
-  // rate computations. It leaves the marks standing so inCluster can read them.
-  clusterOf(i) {
-    const w = this.w;
-    const epoch = this._scratch(), mark = this._mark;
-    const out = [i];
-    mark[i] = epoch;
-    for (let h = 0; h < out.length; h++) {
-      const x = out[h];
-      for (let e = 0; e < DIRECTIONS; e++) {
-        if (!(w.bonds[x] & (1 << e))) continue;
-        const y = neighbour(x, e);
-        if (w.kind[y] === 0 || mark[y] === epoch) continue;
-        mark[y] = epoch; out.push(y);
-      }
-    }
-    this._clusterEpoch = epoch;
-    return out;
-  }
-
-  inCluster(t) { return this._mark[t] === this._clusterEpoch; }
-
-  // GAP 3'S THIRD READING, and law 1's own: "a soft strike moves a cluster
-  // together". Adopted 2026-11-06. The two readings it replaces were each
-  // measurably wrong, in opposite directions (README items 25 and 31): the
-  // first broke every bond that motion stretched, which left annealing no
-  // better than a frozen world, and the rival refused the step, which sorted
-  // bonds three times better but froze every bonded cluster solid.
+  // Three readings were argued over and measured before this one, and all
+  // three are in README item 25 with their numbers. What retired them was Ric
+  // asking how reality resolves it. The answer is that it does not have the
+  // problem, because it has no rigid bodies and no non-local reads:
   //
-  // NO LAW AND NO CONSTANT WAS ADDED, so rule 7 is not charging for this
-  // one. Both halves of it are quotations from law 1: "a soft strike moves a
-  // cluster together", and the group stepping at |p| / K. Bonds still break
-  // when they are hot enough, by law 2, one line earlier in step().
+  //   Push one end of a steel bar and the far end does not know yet. The push
+  //   is a compression wave at the speed of sound -- about 5,900 m/s in
+  //   steel, four to five orders of magnitude under light. A truly rigid body
+  //   would signal faster than light, which is why relativity excludes it
+  //   outright rather than merely discouraging it (Born rigidity; the
+  //   Herglotz-Noether theorem leaves a rigid body three degrees of freedom
+  //   of motion instead of six).
   //
-  // A rigid translation conserves everything by construction. Each member
-  // carries its own kind, heat and momentum to the new site, so every
-  // per-hexagon quantity is untouched and the ledger cannot move -- and the
-  // bond masks are carried UNCHANGED, because translating every member by the
-  // same unit vector maps each partner onto the translated partner. That is
-  // asserted below rather than trusted.
+  //   And nothing computes a body's total mass. Each atom answers to its own
+  //   neighbours; F = Ma for the whole object is a THEOREM out of Newton's
+  //   third law, not an algorithm anything runs. There is not even a fact
+  //   about which atoms are in the body.
   //
-  // IT BREAKS RULE 9, AND THAT NEEDS RIC'S DECISION RATHER THAN THIS COMMENT.
-  // "Locality is absolute. Nothing reads past a site's immediate neighbors",
-  // with the gravity pyramid as the one exception and an instruction attached:
-  // if you need a second one, something is wrong with the design -- raise it
-  // rather than adding it. A cluster walk is a second one. It is raised as
-  // README item 32, and the engine is carrying the violation in the meantime
-  // because the alternative was throwing the measurement away.
+  // So law 1's |p| / K is an OUTCOME and not a recipe, and the previous
+  // version of this file read the description as the algorithm: it walked the
+  // cluster to total its kind and translated the whole thing in one event.
+  // That bought a non-local read (rule 9's second exception, which rule 9
+  // says to raise rather than add) and an instantaneous one, both at once.
+  // Momentum spreading bond by bond buys them both back, and it is what law 1
+  // says in the first place: "once momentum has SPREAD across a bonded group
+  // of total kind K, the group steps at |p| / K".
   //
-  // Two things make the case less bad than it sounds and neither settles it.
-  // The walk only ever follows bonds, so it reads matter this hexagon is
-  // physically attached to rather than anywhere in the world; and law 1's own
-  // words are "once momentum has SPREAD across a bonded group", which
-  // describes momentum diffusing along bonds -- a local mechanism, with
-  // |p| / K as its outcome rather than its recipe. Reading that description
-  // as an algorithm is what cost the locality.
+  // WHAT THIS DOES. A step that would stretch a bond does not happen; the
+  // momentum goes along the bond instead, one unit in the step's own
+  // direction, from the primitive that wanted to move into the one holding it
+  // back. That is a compression wave, it travels one hexagon per event, and
+  // nothing reads past a neighbour. No law, no constant, no field: the
+  // transfer is shareMomentum's, which has done exactly this on the clock
+  // since 2026-11-05 -- only the trigger and the direction are new, and both
+  // come from the refused step.
   //
-  // THE OTHER THING WRONG WITH IT is the same mistake seen from the other
-  // side: the translation is instantaneous, so a cluster of n hexagons moves
-  // information n hexagons in one event, where law 1's speed of sound says it
-  // should take n ticks. The error is bounded by the largest cluster, which
-  // measured 29 and typically 2 to 4, so it is small -- but it is an error
-  // and not a choice.
+  // WHAT IT DOES NOT DO, AND THIS IS THE FINDING RATHER THAN A CAVEAT. It
+  // does not translate a longitudinal chain, and no local rule can. If i is
+  // in front of its partner along the direction of travel, i cannot step
+  // without the bond spanning two hexagons, and the partner cannot step
+  // because i is standing there. Reality escapes this by letting the bond
+  // STRETCH and holding the difference as strain; a bond here is one bit per
+  // direction and means adjacency, so it has no length to lend. The momentum
+  // then sloshes along the chain instead of moving it.
   //
-  // Both have the same honest fix, which is why they are one item: momentum
-  // spreading bond by bond, as law 1 says, so the cluster moves over several
-  // events and nothing reads past a neighbour. That is a wave, not a drag,
-  // and it is real work -- shareMomentum already does the local transfer this
-  // would be built from.
-  dragCluster(i, d) {
-    const w = this.w;
-    const members = this.clusterOf(i);
-
-    // Every destination outside the cluster has to be EMPTY -- no matter, and
-    // no quantum in flight either. A destination holding something would have
-    // to be absorbed into one particular member, and which one is a decision
-    // nothing in the laws makes. So the drag does not happen, which is what
-    // used to happen on this branch anyway.
-    for (const m of members) {
-      const t = neighbour(m, d);
-      if (this.inCluster(t)) continue;
-      if (w.kind[t] !== 0 || w.bonds[t] !== 0) { this.counts.dragBlocked++; return false; }
-    }
-
-    // Snapshot before writing: the cleared set and the written set overlap.
-    const snap = [];
-    for (const m of members) snap.push(w.kind[m], w.energy[m], w.mx[m], w.my[m], w.bonds[m]);
-    for (const m of members) { w.kind[m] = 0; w.energy[m] = 0; w.mx[m] = 0; w.my[m] = 0; w.bonds[m] = 0; }
-    for (let x = 0; x < members.length; x++) {
-      const t = neighbour(members[x], d), b = x * 5;
-      w.kind[t] = snap[b]; w.energy[t] = snap[b + 1];
-      w.mx[t] = snap[b + 2]; w.my[t] = snap[b + 3]; w.bonds[t] = snap[b + 4];
-    }
-
-    // The bond masks were carried unchanged, which is correct only because
-    // translation commutes with the lattice wrap. Assert it: a bond left
-    // pointing at nothing is a silent corruption of the one structure this
-    // world is built out of, and rule 6 says a discrepancy of one is a bug.
-    for (let x = 0; x < members.length; x++) {
-      const t = neighbour(members[x], d);
-      for (let e = 0; e < DIRECTIONS; e++) {
-        if (!(w.bonds[t] & (1 << e))) continue;
-        const p = neighbour(t, e);
-        if (w.kind[p] === 0 || !(w.bonds[p] & (1 << opposite(e))))
-          throw new Error("drag left a bond seam open at " + t + " direction " + e
-            + " -- translation does not commute with the lattice wrap");
-      }
-    }
-
-    // The event loop reschedules i and its six neighbours and nothing else,
-    // which is right for a one-hexagon step and wrong for this. A drag has to
-    // reschedule everything it touched, at both ends of the move.
-    for (const m of members) {
-      this.schedule(m);
-      for (let e = 0; e < DIRECTIONS; e++) this.schedule(neighbour(m, e));
-      const t = neighbour(m, d);
-      this.schedule(t);
-      for (let e = 0; e < DIRECTIONS; e++) this.schedule(neighbour(t, e));
-    }
-
-    this.counts.dragged++;
-    this.counts.draggedMembers += members.length;
-    if (members.length > this.counts.dragLargest) this.counts.dragLargest = members.length;
-    return true;
-  }
-
+  // What DOES move is everything else, and it is more than it sounds. On a
+  // hex lattice i and i+d share two common neighbours, so a bond within 60
+  // degrees of the direction of travel SURVIVES the step -- the partner is
+  // still adjacent afterwards and the existing re-pointing code carries it.
+  // Only bonds at 120 and 180 degrees refuse. So transverse motion was always
+  // free and nobody had noticed, longitudinal motion is held, and a cluster
+  // therefore FLOWS rather than translating: it deforms, and the deformation
+  // is where it goes. That is shear being cheap and compression being dear,
+  // which is the right way round for matter, and none of it was written down.
   step(i) {
     const w = this.w;
     const d = this.stepDirection(i);
@@ -882,31 +786,43 @@ export class Lab {
     // which is the smallest thing rule 6 is written to catch and the reason it
     // says a drift of 1 is a bug rather than a rounding issue.
 
-    // GAP 3. Law 1 says clusters are elastic and a strike travels through one
-    // as a wave, which means bonded primitives do move -- but nothing says
-    // what happens to a bond that a step would stretch past adjacency. The
-    // reading taken here: the bond cannot stretch, so motion BREAKS it, at
-    // its proper cost of B. That keeps the accounting exact and keeps the
-    // light cone, and it makes a hard strike shatter a cluster, which is what
-    // law 1 says should happen. It is still a choice and it is the one most
-    // likely to be wrong in this file.
+    // GAP 3, AND IT IS SETTLED. Law 1 says clusters are elastic and a strike
+    // travels through one as a wave, so bonded primitives do move -- but
+    // nothing in it says what happens to a bond that a step would stretch
+    // past adjacency. This was the last open gap in the file and it was the
+    // one its own comment called "most likely to be wrong"; it was, twice.
     //
-    // MEASURED 2026-11-06, AND IT IS LOSING. The rival reading -- a step that
-    // would stretch any bond simply does not happen, at any temperature -- was
-    // run against this one over a 2x2x2 with the momentum width and
-    // THERMAL_KICK_PROB (README item 31, 96 runs). It roughly TRIPLES how much
-    // motion sorts bonds toward favoured pairings: best mean B of 7.03 against
-    // 6.30 at +-15, and 6.50 against 5.67 at +-63, where blind grabbing is
-    // 5.26. On the shipped physics this reading leaves a gain of +0.03 over a
-    // frozen world, which is noise -- it shatters the chemistry it builds.
+    // THE ANSWER, 2026-11-06: the bond holds and the step does not happen.
+    // Nothing is added -- no law, no constant, no field, no machinery. Four
+    // readings were built and measured over two days and this is the
+    // shortest, and also the best on chemistry: best mean binding energy 6.36
+    // against 5.26 for blind grabbing. README item 25 has all four with their
+    // numbers.
     //
-    // It has NOT been switched, and the reason is that the rival is wrong too.
-    // Under it a bonded cluster cannot move at all, so clusters never move or
-    // collide as units, which contradicts law 1's elasticity as flatly as this
-    // reading obeys it. The reading law 1 actually describes is a third one --
-    // the cluster moves TOGETHER -- and nothing here can move more than one
-    // hexagon at a time, so it is work rather than a line. README item 25 is
-    // re-opened on exactly this and holds the numbers.
+    // The two that were built and removed are worth knowing about, because
+    // both looked right:
+    //
+    //   motion breaks the bond, at its cost of B, and a primitive that cannot
+    //     pay does not move. This was the file's original reading. It leaves
+    //     annealing barely better than a frozen world, because at the
+    //     temperatures where chemistry happens almost every bond is
+    //     affordable, so almost everything snaps.
+    //   the whole bonded cluster translates at once. Removed for reading past
+    //     a hexagon's neighbours -- rule 9's second exception, which rule 9
+    //     says to raise rather than add. README item 32, and reality is what
+    //     settled it: there are no rigid bodies, and nothing anywhere
+    //     computes a body's total mass.
+    //   the momentum goes along the bond instead, one unit per event. Local,
+    //     conserving, and exactly what law 1's "once momentum has SPREAD
+    //     across a bonded group" describes -- and it made clusters move LESS,
+    //     because every transfer is inelastic and a cluster is damped by its
+    //     own wave. rejected/push-along-bond.txt has the table.
+    //
+    // BREAKING IS LAW 2'S AND ONLY LAW 2'S. It already owns a sharper test --
+    // temperature at or above B, applied in breakBondsIfHot before this
+    // method ever runs. Letting law 1 break bonds as well was GAP 3's own
+    // invention, not anything law 1 asked for.
+
     const carriedBonds = w.bonds[i];
     const stretched = [];
     if (carriedBonds !== 0) {
@@ -928,36 +844,48 @@ export class Lab {
       // because nothing wrote it down: COLD CLUSTERS ARE RIGID, and they are
       // rigid because they cannot afford to come apart, not because any rule
       // says so. Heat one and it can move again.
-      // THE BOND HOLDS AND THE CLUSTER GOES TOGETHER, AND IF IT CANNOT GO,
-      // NOTHING MOVES. Adopted 2026-11-06. Motion no longer breaks bonds at
-      // all: breaking is law 2's, and law 2 already owns a sharper test for
-      // it -- temperature at or above B. Letting law 1 break bonds as well
-      // was GAP 3's invention, and measuring it is what retired it.
+      // GAP 3, SETTLED 2026-11-06: THE BOND HOLDS AND THE STEP DOES NOT
+      // HAPPEN. That is all of it. Four readings were built and measured over
+      // two days and this is the shortest, the only one that adds nothing,
+      // and the best on chemistry -- best mean binding energy 6.36 against
+      // 5.26 for blind grabbing. README item 25 has all four with their
+      // numbers; rejected/push-along-bond.txt holds the one that was almost
+      // adopted, and why it was not. Rule 7 prefers removing, and here
+      // removing won on the measurement as well as on the rule.
+      //
+      // Motion never breaks a bond: breaking is law 2's, by the sharper test
+      // it already had -- temperature at or above B, one line earlier in this
+      // method. Letting law 1 break bonds too was GAP 3's own invention.
+      //
+      // AND CLUSTERS STILL MOVE, WHICH IS THE THING THIS FILE GOT WRONG FOR
+      // TWO DAYS. Only bonds at 120 and 180 degrees to the step reach this
+      // branch. A bond within 60 degrees of the direction of travel SURVIVES
+      // the step -- i and i+d share two common neighbours on a hex lattice,
+      // so the partner is still adjacent afterwards and the re-pointing code
+      // below carries it across. Transverse motion was always free. Measured:
+      // bonded primitives take about 14,500 steps per million events at the
+      // temperature chemistry likes, and a bonded pair alone in a vacuum
+      // carries its centre of mass 115 hexagons in 200,000 events. Every
+      // claim in this project that this reading "freezes clusters solid" was
+      // wrong, and it was wrong because nothing counted bonded steps until
+      // bondedStepped existed.
       //
       // THE AFFORDABILITY TEST IS GONE FROM THIS BRANCH, and that is a
       // departure from what Ric asked for, so it is written down rather than
       // buried. He asked for clusters that move as units "if the bond is
       // strong enough", which is this file's own `owed > energy` test, and
       // that is exactly what was built first. It scored WORST of the three
-      // readings that let a cluster move (mean B 6.69, against 7.03 for this
-      // one) and the reason is visible in the counters: at the temperatures
-      // where chemistry actually happens, almost every bond IS affordable,
-      // so it snapped before the drag was ever reached -- the drag fired 572
-      // times a run instead of thousands. The gate was letting the thing it
-      // was meant to prevent happen anyway. README item 31 has the table.
-      //
-      // What survives of his rule is the part that was doing the work: a
-      // bond holds against motion. What it no longer does is let heat decide
-      // that here, because law 2 decides it one line earlier and better.
+      // readings that let a cluster move (mean B 6.69 against 7.03), because
+      // at the temperatures where chemistry happens almost every bond IS
+      // affordable, so it snapped before anything else was reached. The gate
+      // was permitting the thing it was meant to prevent. What survives of
+      // his rule is the half that was doing the work: a bond holds against
+      // motion. README item 25 has the table.
       if (stretched.length > 0) {
         // The name is historical: this counted primitives too cold to pay for
         // their own escape, and now counts every step a bond refuses to
         // stretch for. lab-check.mjs Check 9 watches it under the old name.
         this.counts.tooColdToMove++;
-        if (this.dragCluster(i, d)) return j;
-        // The drag was refused because something is in the way, so the step
-        // really does not happen. This is the only path left to the old
-        // behaviour, and it is now a crowded world rather than a cold one.
         this.counts.blocked++;
         return;
       }
@@ -996,6 +924,10 @@ export class Lab {
     }
     if (pickup > 0) addEnergy(w, j, pickup, "radiation absorbed by moving matter");
     this.counts.stepped++;
+    // A bonded primitive that got here moved WITH its bonds intact, carrying
+    // them to the new site. That is a cluster deforming, and counting it is
+    // the only direct evidence that clusters move at all.
+    if (carriedBonds !== 0) this.counts.bondedStepped++;
     return j;
   }
 

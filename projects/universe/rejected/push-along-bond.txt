@@ -1,0 +1,108 @@
+REJECTED 2026-11-06, by measurement, the same day it was built.
+
+This is not part of the Lab and is deliberately not importable code. It is a
+method that was in lab.mjs for about an hour; wave.mjs reads the block below
+the marker and injects it into a copy of the engine, so the run that rejected
+it can be repeated. Rule 10: a thing that did not work is written down with
+the numbers that killed it.
+
+WHAT IT WAS. GAP 3 asks what happens to a bond that motion would stretch.
+This was the fourth of four readings and the only local one that tried to MOVE
+anything: a step that would stretch a bond does not happen, and the momentum
+goes along the bond instead, one unit in the step's own direction, from the
+primitive that wanted to move into the one holding it back. A compression
+wave, one hexagon per event, nothing read past a neighbour. The transfer is
+shareMomentum's, which has done the same thing on the clock since 2026-11-05;
+only the trigger and the direction were new.
+
+WHY IT WAS BUILT. The reading before it walked the bonded cluster and
+translated the whole thing in one event, which was both non-local -- rule 9's
+second exception, which rule 9 says to raise rather than add -- and
+instantaneous. Ric asked how reality resolves that, and reality's answer is
+that it does not have the problem: there are no rigid bodies, a push travels
+as a compression wave at the speed of sound, and nothing anywhere computes a
+body's total mass. So this was meant to be the local mechanism law 1 already
+describes, "once momentum has SPREAD across a bonded group of total kind K".
+
+WHY IT WAS REJECTED. It is internal friction, not propulsion. Every transfer
+is inelastic, so each one sheds kinetic energy into the heat field, and a pair
+being pushed along is damped by its own wave. Measured on one bonded pair
+alone in a vacuum -- the distance its centre of mass travelled over 200,000
+events, against the identical engine with this method's call removed:
+
+    bond vs travel     with the push     without it
+         60 deg             45.0            116.0
+        -60 deg             99.0            115.5
+        120 deg             99.0            115.5
+        180 deg             11.0             56.5
+
+It moves LESS in every orientation, by two to five times. In a full world it
+is also marginally worse on chemistry (best mean B 6.34 against 6.36) and
+makes no difference to how often bonded matter steps (14,812 against 14,495).
+It cost three counters and fifty lines and bought nothing.
+
+WHAT REPLACED IT IS NOTHING, which is rule 7 preferring removal. The answer to
+GAP 3 is that a step which would stretch a bond simply does not happen.
+Clusters move anyway, and always did: on a hex lattice i and i+d share two
+common neighbours, so a bond within 60 degrees of the direction of travel
+SURVIVES the step, and the existing re-pointing code carries it. Only bonds at
+120 and 180 degrees refuse. Transverse motion was free the whole time and
+nobody had noticed -- which is why "refusing the step freezes clusters solid"
+was wrong every time this project said it, including in its own commit
+messages.
+
+--- METHOD BELOW THIS LINE ---
+  pushAlongBond(i, d, stretched) {
+    const w = this.w;
+    // One of the bonds that refused the step. In reality the push reaches
+    // every one of them at once; here one per event IS the wave, because the
+    // next event draws again.
+    const e = stretched[this.rng.below(stretched.length)];
+    const j = neighbour(i, e);
+    const u = DIR_CUBE[d];
+    const nxI = w.mx[i] - u[0], nyI = w.my[i] - u[1];
+    const nxJ = w.mx[j] + u[0], nyJ = w.my[j] + u[1];
+
+    // Momentum has a range and exceeding a field must not be papered over.
+    // Declining conserves exactly; clamping would not.
+    if (!this.legalMomentum(nxI, nyI) || !this.legalMomentum(nxJ, nyJ)) {
+      this.counts.pushRangeDeclined++;
+      return false;
+    }
+
+    // THE PUSH IS INELASTIC AND HAS TO PAY FOR ITSELF, for the reason written
+    // out at length in shareMomentum: momentum is linear and its sum is
+    // conserved here by construction, but kinetic energy is QUADRATIC, so
+    // moving a unit between two primitives changes the total. That difference
+    // goes into or out of the heat field, or the world cools every time a
+    // cluster is leaned on.
+    const ki = w.kind[i], kj = w.kind[j];
+    const keBefore = keAt(w, i) + keAt(w, j);
+    const zI = -nxI - nyI, zJ = -nxJ - nyJ;
+    const keAfter = keOf(nxI * nxI + nyI * nyI + zI * zI, ki)
+                  + keOf(nxJ * nxJ + nyJ * nyJ + zJ * zJ, kj);
+    const delta = keBefore - keAfter;        // > 0 sheds heat, < 0 needs heat
+
+    if (delta < 0 && w.energy[i] + w.energy[j] < -delta) {
+      this.counts.pushUnaffordable++;
+      return false;
+    }
+
+    w.mx[i] = nxI; w.my[i] = nyI;
+    w.mx[j] = nxJ; w.my[j] = nyJ;
+
+    if (delta > 0) {
+      addEnergy(w, i, delta, "a push along a bond shed kinetic energy");
+    } else if (delta < 0) {
+      let owed = -delta;
+      for (const m of [i, j]) {
+        const take = Math.min(owed, w.energy[m]);
+        addEnergy(w, m, -take, "a push along a bond absorbed heat");
+        owed -= take;
+        if (owed === 0) break;
+      }
+      if (owed !== 0) throw new Error(`a push along a bond could not pay ${owed} it had checked for`);
+    }
+    this.counts.pushedAlongBond++;
+    return true;
+  }

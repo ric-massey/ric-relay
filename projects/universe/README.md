@@ -1172,39 +1172,54 @@ implements, is the one law 1 actually describes: the cluster moves together.** T
 rather than a choice between two lines, because nothing in the engine can presently move more
 than one hexagon at a time.
 
-**SETTLED THE SAME DAY, on the third reading, which is law 1's own.** *(Ric: "fix them. And
-continue they should move as units if the bond is strong enough but I don't want to write that
-in.")* He was right that it needs no writing in — law 1 already says both halves, *"a soft strike
-moves a cluster together"* and *"the group steps at `|p| / K`"*. The Lab now implements them:
-`dragCluster` translates the bonded group one hexagon, and `motionRateAt` reads the group's total
-kind instead of the hexagon's, so a heavy composite resists being pushed. **No law and no constant
-was added.** Five readings, each swept over held `T` of 0, 2, 6, 20, 3 seeds, 1M events, in
-`gap3-split.mjs`:
+**SETTLED 2026-11-06 — the bond holds and the step does not happen. That is the whole answer, and
+it adds nothing.** *(Ric: "fix them. And continue they should move as units if the bond is strong
+enough but I don't want to write that in", then, told the drag broke rule 9 and asked how reality
+resolves it, "Do it".)* Four readings were built and measured over two days. The shortest won, on
+the measurement as well as on rule 7's preference for removing.
 
 | reading | what happens to a stretched bond | best mean `B` | over blind | clusters move? |
 |---|---|---|---|---|
-| **hold** | the cluster goes, and if it cannot go, nothing moves | **7.03** | **+1.77** | **yes** |
-| rigid | the step does not happen, ever | 7.04 | +1.78 | no |
-| first | the cluster goes; if it cannot, the bond breaks if affordable | 6.89 | +1.63 | yes |
-| break | the bond breaks if affordable, else nothing happens | 6.70 | +1.44 | no |
-| drag | the bond breaks if affordable, else the cluster goes | 6.69 | +1.43 | yes |
+| **hold** | nothing happens; the step is refused | **6.36** | **+1.10** | **yes — 14,495 bonded steps** |
+| wave | the momentum goes along the bond instead | 6.34 | +1.08 | yes — 14,812 |
+| drag | the whole bonded cluster translates at once | 7.03 | +1.77 | yes, but non-locally |
+| break | the bond breaks if the stepper can pay | 6.70 | +1.44 | yes |
 
-**`hold` ties `rigid` to within noise and the clusters move, so it wins on physics at no cost in
-chemistry.** 7.03 against 5.26 for blind grabbing is the strongest selectivity this project has
-measured.
+**Two corrections are more valuable than the decision, and both are retractions of things this
+project said confidently.**
 
-**The part of Ric's rule that did not survive, stated plainly because it was his.** "If the bond
-is strong enough" is this file's own `owed > energy` test, and it was built that way first — it is
-the `drag` row, and it came **last** of the three readings that let a cluster move. The counters
-say why: at the temperatures where chemistry happens almost every bond *is* affordable, so it
-snapped before the drag was reached, and the drag fired 572 times a run instead of thousands. The
-gate was permitting the thing it was meant to prevent. What survives is the half that was doing
-the work — a bond holds against motion — and what went is heat deciding that *here*, because law 2
-decides it one line earlier and with a sharper test, temperature at or above `B`. **Letting law 1
-break bonds as well was GAP 3's invention, not law 1's.**
+**1. "Refusing the step freezes clusters solid" was wrong every time it was said** — in items 25
+and 31, in `THE-LAWS.md`, in two commit messages and in `lab.mjs`'s own comments. **Clusters were
+never frozen.** On a hex lattice `i` and `i + d` share two common neighbours, so **a bond within
+60° of the direction of travel survives the step** and the existing re-pointing code carries it;
+only bonds at 120° and 180° refuse. Transverse motion was free the entire time. Measured once a
+counter existed for it: bonded matter takes about **14,500 steps per million events** at the
+temperature chemistry likes, and a bonded pair alone in a vacuum carries its centre of mass **115
+hexagons in 200,000 events**. The claim went unchallenged for two days because `bondedStepped` did
+not exist, and the 86,000–183,000 "blocked" counts that were read as frozen clusters were the
+*longitudinal refusals only*. `lab-check.mjs` Check 9 now watches `bondedStepped` for exactly this
+reason.
 
-*What is left open:* the implementation reads past a hexagon's neighbours, which breaks rule 9.
-See item 32 — that is a decision, not a detail.
+**2. The `drag` row's 7.03 is not comparable to the others and the table above should not be read
+as it losing narrowly.** It was measured with `|p| / K` inertia in place, which came in with the
+drag and went out with it. What it really shows is that the two differ by **0.67 of mean `B` with
+two variables moved at once**, which is the mistake item 31 was written about. Separating them was
+not done, because the drag was removed for breaking rule 9 rather than for its score — but **the
+honest statement is that the drag's chemistry advantage is unexplained**, not that it was beaten.
+Item 33.
+
+**What Ric asked for, and what he got.** He asked for clusters that move as units if the bond is
+strong enough. They do move — he was right that it needed no writing in, and righter than the
+implementation that was built for it. "If the bond is strong enough" is the engine's own
+`owed > energy` test and it was built that way first; it is the `break` row, and the gate let
+almost everything through, because at the temperatures where chemistry happens almost every bond
+*is* affordable. What survives is the half doing the work: **a bond holds against motion.**
+Breaking is law 2's, by the sharper test it already had — temperature at or above `B`. Letting law
+1 break bonds as well was GAP 3's own invention from the start.
+
+*Reproduce:* `node wave.mjs` for the pair runs and the world comparison;
+`rejected/push-along-bond.txt` holds the mechanism that was almost adopted, with the numbers that
+killed it.
 
 *(Superseded framing follows.)* ~~Raised~~
 2026-11-05 by `lab.mjs`.)* Law 1 settles that clusters are **elastic rather than rigid** — a strike
@@ -1388,8 +1403,12 @@ it builds. Three candidate causes, unseparated:
 
 **SEPARATED 2026-11-06, the same day.** *(Ric: "sure".)* A 2×2×2 over the three causes, each arm
 swept over held `T` of 0, 2, 6 and 20, 3 seeds and 1M events per point — 96 runs, in
-`gap3-split.mjs`, which generates the four engine variants it needs into the OS temp directory
-and never writes to `lab.mjs`. Everything else is the physics of 2026-11-06, `S = 4` included, so
+`gap3-split.mjs`, which generated the four engine variants it needed into the OS temp directory
+and never wrote to `lab.mjs`. **That file was deleted later the same day and this run reproduces at
+commit `31517359`, not at HEAD** — it worked by patching GAP 3's branch, and settling GAP 3 removed
+every anchor it patched, so it could only have been kept as a file that throws. `wave.mjs` is its
+replacement for the engine as it stands. Everything else is the physics of 2026-11-06, `S = 4`
+included, so
 **the ±15 arm is not the 2026-11-04 world** — it is today's world with narrower momentum, which
 is what isolates the width. "Gain" is the best mean `B` at any `T > 0` minus the frozen value,
 which is the annealing claim stated as a number. Blind grabbing is 5.26.
@@ -1446,8 +1465,39 @@ item made it look like. **The general lesson, which is the reason not to overwri
 above:** two of the three causes in this item were only as large as they were *because of the
 third*, and the third was the one nobody suspected.
 
-**32. The Lab now reads past a hexagon's neighbours, and rule 9 says that is Ric's call rather
-than mine.** *(2026-11-06, with the drag.)* Rule 9 is three words and an instruction: *"Locality is
+**32. ~~The Lab now reads past a hexagon's neighbours, and rule 9 says that is Ric's call rather
+than mine.~~ Closed the same day — the read is gone and rule 9 is back to one exception.** *(Ric,
+told the drag broke rule 9 and asked how reality resolves it: "Do it".)* **Locality is absolute in
+`lab.mjs` again.** `dragCluster`, `clusterOf`, `clusterTotalKind` and the cluster-walking
+`motionRateAt` are all removed; the gravity pyramid is once more the only non-local read in the
+codebase, and `wave.mjs`'s cluster walks are an **observer**, which rule 9 does not bind — it
+constrains the laws, not the instruments.
+
+**What reality's answer was, because it decided this and is worth keeping.** Reality does not have
+the problem. **There are no rigid bodies:** push one end of a steel bar and the far end does not
+know yet — the push is a compression wave at the speed of sound, about 5,900 m/s in steel, four to
+five orders of magnitude under light. A truly rigid body would signal faster than light, so
+relativity *excludes* it rather than merely discouraging it (Born rigidity; the Herglotz–Noether
+theorem leaves such a body three degrees of freedom of motion instead of six). **And nothing
+computes a body's total mass:** each atom answers to its own neighbours, and `F = Ma` for the whole
+object is a *theorem* out of Newton's third law rather than an algorithm anything runs. There is
+not even a fact about which atoms are in the body. So `|p| / K` is law 1 describing an **outcome**,
+and the drag read the description as the recipe.
+
+**The local mechanism reality points at was then built and rejected by its own measurement** —
+momentum spreading bond by bond, which is `rejected/push-along-bond.txt`. It is internal friction
+rather than propulsion: every transfer is inelastic, so a cluster is damped by its own wave, and a
+bonded pair travelled **56 hexagons instead of 115**. See item 25.
+
+**One thing from this is worth carrying past the item.** Reality's answer also argues against rule
+9's *existing* exception. Gravity is local in reality — field equations, not action at a distance —
+and Newton's instantaneous force is the approximation we inherited. Law 3 already has a local
+candidate written down, `∇²φ − m²φ = ρ` relaxed by neighbour-averaging, which rule 9 itself notes
+would leave nothing non-local at all. **Reality's answer to "how many exceptions" is zero, not
+one.**
+
+*(The original raising is kept below, because the argument in it is what produced the answer.)*
+~~Rule 9 is three words and an instruction:~~ *"Locality is
 absolute. Nothing reads past a site's immediate neighbors"*, the gravity pyramid is the one
 exception, and **"if you need a second one, something is wrong with the design — raise it rather
 than adding it."* This is the raising. The violation is in the engine in the meantime, because the
@@ -1474,11 +1524,32 @@ cluster moves over several events and nothing reads past a neighbour. `shareMome
 does the local transfer it would be built from. That is a wave rather than a drag, and it is real
 work rather than a line.
 
-*Decided by:* Ric, between three options. Allow a second exception and write it into rule 9;
-build the wave and keep locality absolute; or revert to `rigid` (item 25's table), which keeps
-locality, keeps the full 7.04 of chemistry, and gives up clusters that move at all. **The
-chemistry does not depend on this choice** — `hold` and `rigid` tie — so what is being bought
-with the exception is moving matter, not selectivity.
+~~*Decided by:* Ric, between three options.~~ **Decided: the second and the third at once.** The
+wave was built, and the reading that keeps locality was kept — and the third option's stated cost,
+"gives up clusters that move at all", **turned out not to be a cost, because it was not true.**
+Clusters move under it. Nothing had counted them. That is item 25's first correction and it is the
+most expensive mistake of the two days.
+
+**33. Does law 1's `|p| / K` inertia emerge, now that nothing computes `K`?** *(Raised 2026-11-06,
+when the cluster walk came out.)* Law 1 says a heavy composite resists being pushed, with `|p| / K`
+as the rate. Nothing in the engine reads a cluster's total kind any more, so if the sentence is
+right the slowness has to come from momentum having to reach all of a cluster before any of it
+moves. **First evidence says it does not.** Momentum per member, measured across cluster sizes at
+`T = 6`: **37.66** at size 2, **38.05** at 3–4, **39.17** at 5–8. If heavy clusters were resisting,
+that should **fall**. It is flat to slightly rising, which is the wrong direction.
+
+Read it as evidence and not a verdict: one seed, and a snapshot of *momentum* rather than a rate of
+*movement*. **A real measurement needs clusters tracked through time, and the engine carries no
+identity to track them by** — which is itself the finding, because rule 2 forbids storing a cluster
+id, so the instrument has to re-identify clusters every sample and match them up. That is the work
+this item is waiting on.
+
+**And it is tangled with item 25's second correction.** The drag arm scored 0.67 of mean `B` higher
+than everything else, and it carried `|p| / K` inertia that no other arm had. Either that inertia
+is worth a great deal to the chemistry — in which case this item matters much more than it looks —
+or the drag's advantage came from somewhere else entirely. **Two variables moved at once and were
+never separated**, which is precisely the error item 31 was written to record. *Decided by:* putting
+`|p| / K` back on its own, with no drag, and measuring. That is cheap and has not been done.
 
 
 ### Settled by running the Lab

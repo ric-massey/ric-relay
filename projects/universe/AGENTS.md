@@ -289,16 +289,21 @@ The gravity solver reads the pyramid, and **that is the only exception in the co
 If you need a second one, something is wrong with the design — raise it rather than
 adding it.
 
-**AS OF 2026-11-06 THERE IS A SECOND ONE IN `lab.mjs`, AND IT IS RAISED RATHER THAN RATIFIED.**
-`clusterOf` and `clusterTotalKind` walk the connected component over bonds, so the drag and law
-1's `|p| / K` inertia both read hexagons up to 29 sites away. **This paragraph is not permission.**
-README item 32 is the raising this rule asks for and the decision is Ric's: allow it and amend
-this rule, build the local version (momentum spreading bond by bond, which is what law 1 actually
-describes — "once momentum has *spread* across a bonded group"), or revert to the reading that
-keeps locality and gives up clusters that move. **Do not cite this note as the precedent for a
-third exception**, and do not quietly delete it to make the rule read clean again — the exception
-is in the code either way, and a rules file that hides it is the hazard rule 5's paragraphs warn
-about in the other direction.
+**THE COUNT WENT TO TWO FOR ABOUT TWO HOURS ON 2026-11-06, AND THE RULE WORKED.** A cluster walk
+went into `lab.mjs` to drag a bonded group and to read law 1's `|p| / K` off its total kind,
+reading hexagons up to 29 sites away. It was raised as README item 32 rather than ratified, as
+this rule says to; Ric's answer was to ask **how reality resolves it**, and reality's answer
+removed it. There are no rigid bodies — a push travels as a compression wave, and a rigid body
+would signal faster than light — and nothing anywhere computes a body's total mass, because
+`F = Ma` for a whole object is a theorem out of Newton's third law rather than an algorithm. So
+`|p| / K` is law 1 describing an **outcome**, and the walk was reading a description as a recipe.
+It is gone; the pyramid is the only exception again.
+
+**Two things to carry from it.** First, the process is the point: the exception was written down
+and raised, and that is what got it looked at rather than inherited. Second, **reality argues
+against the exception this rule still has.** Gravity is local in reality — field equations, not
+action at a distance — so the pyramid is an artifact of using Newton's instantaneous force, and
+law 3's local candidate is already noted below. The honest target is **zero** exceptions, not one.
 
 **And as of 2026-11-04 that exception may be removable, which changes how to read this rule.** Law
 3 now has a local candidate: `∇²φ − m²φ = ρ`, relaxed by neighbour-averaging, with the force read

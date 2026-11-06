@@ -295,15 +295,27 @@ console.log(`\n=== Check 9: do the findings survive a seed and a constant change
   // unscreened constant set. Ric asked whether that was all they rested on,
   // and it was. This is the answer, and it is the reason the numbers in those
   // items are ranges rather than single figures.
-  // bondsStretched -> dragged ON 2026-11-06, and this is a replacement rather
-  // than a deletion. The effect it watched was "motion broke a bond", and
-  // after GAP 3 was settled motion cannot break a bond at all, so that
+  // bondsStretched -> bondedStepped ON 2026-11-06, and this is a replacement
+  // rather than a deletion. The effect it watched was "motion broke a bond",
+  // and once GAP 3 was settled motion cannot break a bond at all, so that
   // counter is zero by construction in every run -- not rare, impossible.
-  // Dropping it and leaving three keys would have been the dishonest move:
-  // it would read as a check that got easier. What replaced the effect in the
-  // physics is the drag, so that is what replaces it here, and the list is
-  // still four effects that must survive a seed and a constant change.
-  const KEYS = ["tooColdToMove", "emissionBlocked", "quantumWaited", "dragged"];
+  // Dropping it and leaving three keys would have been the dishonest move: it
+  // would read as a check that got easier.
+  //
+  // bondedStepped is the right replacement because it is the effect this
+  // project had been WRONG about. It counts steps taken by a primitive that
+  // was bonded at the time -- clusters moving without coming apart -- and
+  // nothing counted it until GAP 3 was settled, which is why "refusing a
+  // stretching step freezes clusters solid" went unchallenged for two days.
+  // It is also the effect most likely to disappear silently if someone
+  // changes how bonds are re-pointed after a step, and nothing else here
+  // would notice.
+  //
+  // (For part of that day this read "dragged" and then "pushedAlongBond", for
+  // two mechanisms that were built and removed the same day. Both are in the
+  // git history; the second is in rejected/push-along-bond.txt with the
+  // numbers that killed it, and README item 32 has the first.)
+  const KEYS = ["tooColdToMove", "emissionBlocked", "quantumWaited", "bondedStepped"];
 
   // EV WENT 120,000 -> 400,000 ON 2026-11-06, and the reason is worth keeping
   // because it is a lesson about this check rather than about the physics.

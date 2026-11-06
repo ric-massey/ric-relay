@@ -284,23 +284,32 @@ is better physics than rigidity rather than a compromise with it.
 The engine moved one hexagon at a time, so "a soft strike moves a cluster together" had nowhere to
 happen: a step could only break the bonds it would stretch, or not happen. Both are written down
 as GAP 3 and neither is this paragraph. Measured, the breaking reading left motion sorting bonds
-no better than a frozen world does, and refusing the step sorted them three times better while
-freezing every bonded cluster solid (README items 25 and 31).
+barely better than a frozen world does, and refusing the step sorted them three times better —
+**and was then believed, wrongly, to freeze every bonded cluster solid.** It does not, and that
+mistaken belief is what drove two days of work; the correction is the paragraph below and README
+item 25.
 
-**It is implemented now, and this paragraph is what settled GAP 3.** `dragCluster` translates the
-bonded group one hexagon and `motionRateAt` reads the group's total kind, so both halves of law 1
-are in force together: the cluster goes, and it goes more slowly the heavier it is. Motion no
-longer breaks bonds at all — law 2 owns breaking, by the sharper test it already had — and mean
-binding energy reached **7.03 against 5.26 for blind grabbing**, the strongest selectivity the
-project has measured. No law and no constant was added to get it.
+**THE SENTENCE ABOVE WAS TRUE ALL ALONG AND NOBODY HAD MEASURED IT.** Two mechanisms were built on
+2026-11-06 to make clusters move — a rigid drag of the whole bonded group, then a momentum wave
+along the bonds — and **both were removed**, the first for reading past a hexagon's neighbours
+(rule 9; README item 32) and the second because it damps the motion it carries
+(`rejected/push-along-bond.txt`). What settled GAP 3 is that **a step which would stretch a bond
+simply does not happen**, and nothing else.
 
-**Two things about it are still wrong, and they are one thing.** The translation is instantaneous,
-so a cluster of n hexagons moves information n hexagons in one event where the speed of sound in
-this very paragraph says n ticks; and finding the cluster reads past a hexagon's neighbours, which
-breaks rule 9. The fix for both is the phrase in the paragraph below — momentum **spreading**
-across the group, bond by bond, which is local and takes time. **So the Lab now does what this
-paragraph says, by a mechanism this paragraph does not describe.** README item 32 is the open
-decision.
+**Clusters flex and move under that rule, and they always did.** On a hex lattice `i` and `i + d`
+share two common neighbours, so a bond within 60° of the direction of travel survives the step;
+only bonds at 120° and 180° refuse. So **transverse motion is free, longitudinal motion is held,
+and a cluster goes by deforming** — shear cheap, compression dear, which is the right way round
+for matter. Measured: bonded matter steps about **14,500 times per million events**, and a bonded
+pair alone in a vacuum carries its centre of mass **115 hexagons in 200,000 events**; a pair whose
+bond lies along its travel still manages 56, because it *rotates* out of the locked geometry
+rather than stalling in it.
+
+**This paragraph's own claim about the speed of sound is still not implemented, and that is now
+the honest gap.** A cluster here has no measured speed of sound, and the paragraph below's
+`|p| / K` has no measured mechanism — momentum per member came out flat across cluster sizes when
+nothing computed `K` (README item 33). So the elasticity is real and the *numbers* attached to it
+are not yet earned.
 
 **Inertia then comes out proportional to total kind, not to primitive count.** Once momentum has
 spread across a bonded group of total kind `K`, the group steps at `|p| / K` by law 1's own rate

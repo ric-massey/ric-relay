@@ -2486,3 +2486,64 @@ every chemistry number — so what the exception buys is moving matter, not sele
 The lesson from the day, and it is the same one twice: **two of item 31's three causes were only
 as large as they were because of the third, and the third was the one nobody suspected.** Guessing
 the ranking of tangled causes went 0 for 3.
+
+### And then: "How does reality resolve that issue?"
+
+That question ended GAP 3, after two days in which it had been settled twice and re-opened twice.
+
+The drag had just gone in and it broke rule 9 — finding a bonded cluster reads past a hexagon's
+neighbours. Rule 9 allows one exception, spends it on the gravity pyramid, and says to raise a
+second rather than add it, so it was raised as item 32 rather than ratified. Ric did not pick from
+the three options offered. He asked how reality handles it.
+
+**Reality does not have the problem.** There are no rigid bodies: push one end of a steel bar and
+the far end does not know yet, because the push is a compression wave at the speed of sound —
+about 5,900 m/s in steel, four to five orders of magnitude under light. A truly rigid body would
+signal faster than light, so relativity *excludes* it rather than merely discouraging it (Born
+rigidity; the Herglotz–Noether theorem leaves such a body three degrees of freedom of motion
+instead of six). **And nothing computes a body's total mass** — each atom answers to its own
+neighbours, and `F = Ma` for the whole object is a theorem out of Newton's third law rather than
+an algorithm anything runs. There is not even a fact about which atoms are in the body.
+
+So law 1's `|p| / K` describes an **outcome**, and the drag had read the description as the
+recipe. That is the general error worth keeping: *a law that states a consequence is not handing
+you an algorithm, and implementing the consequence directly is how a non-local read gets in
+wearing a law's clothes.*
+
+Ric said "Do it", and the local mechanism reality points at was built: momentum spreading bond by
+bond, one unit per event, triggered by the refused step — `shareMomentum`'s own transfer with a
+new trigger and direction. **It was then rejected by its own measurement.** It is internal
+friction and not propulsion: every transfer is inelastic, so each one sheds kinetic energy into
+heat and a cluster is damped by its own wave. A bonded pair alone in a vacuum travelled **56
+hexagons instead of 115**, worse in all four orientations, and in a full world it was marginally
+worse on chemistry too. It is kept in `rejected/push-along-bond.txt` with the table, and `wave.mjs`
+injects it back into a copy of the engine so the run can be repeated. Rule 7 prefers removing;
+here removing won on the numbers as well.
+
+**What GAP 3 settled on is the shortest of the four readings and adds nothing: the bond holds and
+the step does not happen.**
+
+**And the two corrections are worth more than the decision.**
+
+**"Refusing the step freezes clusters solid" was wrong every time this project said it** — in
+items 25 and 31, in `THE-LAWS.md`, in two commit messages and in `lab.mjs`'s own comments. On a hex
+lattice `i` and `i + d` share two common neighbours, so a bond within 60° of the direction of
+travel survives the step; only 120° and 180° refuse. **Transverse motion was free the whole time.**
+Bonded matter steps about 14,500 times per million events; a bonded pair alone in a vacuum carries
+its centre of mass 115 hexagons. The claim stood for two days because nothing counted bonded
+steps, and the 86,000–183,000 "blocked" counts that looked like frozen clusters were the
+longitudinal refusals only. `lab-check.mjs` Check 9 now watches `bondedStepped`, chosen because it
+is the effect this project had been wrong about.
+
+**The drag's chemistry advantage is unexplained rather than beaten.** It scored 0.67 of mean `B`
+above every other reading, and it carried law 1's `|p| / K` inertia, which came in with it and
+went out with it. **Two variables moved at once and were never separated** — which is exactly the
+error item 31 was written to record, made again, four items later, by the same hand. It is item 33
+and it is cheap to settle.
+
+A prediction was also wrong and the control was again where the result was. The prediction: a pair
+whose bond lies along its travel cannot translate at all. It translates, at 56 hexagons against
+115, because the pair **rotates** out of the locked geometry instead of stalling in it. And the
+wave's control run — the identical engine with one line removed — is the only reason the wave was
+caught: it looked perfectly reasonable, it conserved exactly, every check passed, and it was
+making the world worse.
