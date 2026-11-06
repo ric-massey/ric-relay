@@ -1,33 +1,33 @@
 # Anubis — map reference (`de_anubis`)
 
-CS2 tags every player position with a callout name. This table is built from 2 of Ric's own demos on this map: each callout's centre is the average of every position tagged with it, and the box is the area those positions covered. Coordinates are CS2 map units (x east, y north).
+CS2 tags every player position with a callout name. This table is built from 3 of Ric's own demos on this map: each callout's centre is the average of every position tagged with it, and the box is the area those positions covered. Coordinates are CS2 map units (x east, y north).
 
 | Callout | Centre x | Centre y | Covers x | Covers y | Positions seen |
 |---|---|---|---|---|---|
-| Alley | -1191 | 1256 | -1321 to -1066 | 999 to 1546 | 31 |
-| Back of B | -712 | 673 | -860 to -629 | 497 to 947 | 43 |
-| Bombsite A | 1277 | 1719 | 964 to 1560 | 1411 to 2123 | 119 |
-| Bombsite B | -1169 | 577 | -1604 to -818 | 250 to 992 | 334 |
-| Bricks | -927 | 1114 | -1014 to -829 | 985 to 1184 | 64 |
-| Bridge | -172 | 75 | -503 to 50 | -527 to 649 | 190 |
-| CT Side Upper | -401 | 2105 | -833 to -132 | 1897 to 2497 | 20 |
-| CT Spawn | -128 | 2511 | -433 to 131 | 2457 to 2547 | 3 |
-| Canal | 624 | 318 | -591 to 1321 | -5 to 935 | 245 |
-| Connector | -711 | 212 | -847 to -490 | 52 to 370 | 62 |
-| Fountain | 1710 | 1826 | 1603 to 1799 | 1685 to 1977 | 47 |
-| Heaven | 877 | 2066 | 740 to 1012 | 1687 to 2298 | 62 |
-| Lower Tunnel | -970 | 1637 | -1096 to -808 | 1535 to 1885 | 7 |
-| Main | 1599 | 1137 | 1266 to 1784 | 806 to 1641 | 123 |
-| Mid Doors | 210 | 508 | -38 to 366 | 380 to 702 | 89 |
-| Middle | 203 | 1119 | -165 to 698 | 604 to 1623 | 325 |
-| Outside Long | -1645 | 95 | -1942 to -952 | -491 to 446 | 234 |
-| Palace Interior | -370 | 1334 | -822 to 29 | 1006 to 1790 | 182 |
-| Ruins | -999 | -550 | -1471 to -482 | -1151 to -195 | 63 |
-| Snipers Nest | -1107 | 1830 | -1204 to -949 | 1657 to 2003 | 10 |
-| Street | 749 | -525 | 159 to 1372 | -859 to -281 | 38 |
-| T Side Upper | 1348 | 292 | 1261 to 1442 | -176 to 572 | 28 |
-| T Spawn | -98 | -1464 | -826 to 661 | -1680 to -1163 | 9 |
-| T Stairs | 796 | -163 | 743 to 891 | -325 to -25 | 18 |
-| Tunnel | 320 | 2226 | 225 to 460 | 2023 to 2470 | 12 |
-| Tunnel Stairs | 527 | 1970 | 218 to 684 | 1911 to 2067 | 16 |
-| Walkway | 757 | 1416 | 405 to 1078 | 1244 to 1684 | 132 |
+| Alley | -1206 | 1299 | -1321 to -1066 | 999 to 1575 | 47 |
+| Back of B | -706 | 671 | -860 to -564 | 497 to 947 | 75 |
+| Bombsite A | 1276 | 1743 | 897 to 1560 | 1411 to 2123 | 260 |
+| Bombsite B | -1166 | 574 | -1619 to -818 | 250 to 992 | 548 |
+| Bricks | -924 | 1106 | -1014 to -819 | 985 to 1184 | 113 |
+| Bridge | -171 | 37 | -515 to 80 | -527 to 660 | 321 |
+| CT Side Upper | -413 | 2110 | -862 to -132 | 1897 to 2497 | 35 |
+| CT Spawn | -278 | 2490 | -742 to 131 | 2346 to 2585 | 9 |
+| Canal | 593 | 293 | -591 to 1321 | -12 to 935 | 458 |
+| Connector | -734 | 191 | -859 to -490 | 52 to 379 | 191 |
+| Fountain | 1720 | 1827 | 1603 to 1800 | 1664 to 1977 | 81 |
+| Heaven | 882 | 2100 | 706 to 1050 | 1683 to 2344 | 157 |
+| Lower Tunnel | -930 | 1591 | -1096 to -808 | 1469 to 1885 | 11 |
+| Main | 1618 | 1175 | 1266 to 1804 | 800 to 1663 | 273 |
+| Mid Doors | 201 | 516 | -38 to 366 | 309 to 720 | 159 |
+| Middle | 210 | 1117 | -165 to 698 | 604 to 1623 | 458 |
+| Outside Long | -1623 | 81 | -1948 to -952 | -526 to 446 | 391 |
+| Palace Interior | -384 | 1314 | -831 to 29 | 1006 to 1790 | 252 |
+| Ruins | -956 | -600 | -1471 to -482 | -1230 to -195 | 132 |
+| Snipers Nest | -1111 | 1831 | -1204 to -949 | 1657 to 2003 | 11 |
+| Street | 653 | -525 | 122 to 1372 | -859 to -265 | 65 |
+| T Side Upper | 1346 | 337 | 1243 to 1442 | -249 to 572 | 55 |
+| T Spawn | -152 | -1469 | -826 to 661 | -1680 to -1163 | 13 |
+| T Stairs | 794 | -142 | 743 to 891 | -325 to -25 | 32 |
+| Tunnel | 332 | 2214 | 225 to 460 | 2023 to 2470 | 17 |
+| Tunnel Stairs | 541 | 1973 | 218 to 684 | 1911 to 2067 | 18 |
+| Walkway | 779 | 1454 | 405 to 1078 | 1244 to 1686 | 234 |
