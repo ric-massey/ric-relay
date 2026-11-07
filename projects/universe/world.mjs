@@ -228,7 +228,7 @@ export class World {
   constructor({
     cols = 258, rows = 258, seed = 1,
     constants = CANDIDATE_ZERO,
-    gravity = null,          // { eps, screen, relax } -- null means law 3 off
+    gravity = null,          // { eps, screen, relax, cap } -- null means law 3 off
   } = {}) {
     if (cols % 3 || rows % 3) {
       throw new Error(`${cols}x${rows}: both sides must be multiples of 3, because collisions `
@@ -249,6 +249,18 @@ export class World {
     this.counts = {
       stepped: 0, blocked: 0, collided: 0, tooColdToMove: 0,
       bondsFormed: 0, bondsBroken: 0, bondsStretched: 0,
+      // Steps taken by a primitive that was bonded at the time -- the direct
+      // measure of whether clusters move at all. The World ran without it
+      // until 2026-11-07 and therefore could not see that it had frozen: a
+      // 1500-tick run took 19,389 steps against 2,626,838 gravity carries and
+      // nothing in the output said why. The Lab's counter of the same name is
+      // the reason the Lab knows its own number (~14,500 per million events).
+      bondedStepped: 0,
+      // The bond's reaction to a refused step (pushAlongBond), and the three
+      // ways the exchange seam can decline it. Each refusal is counted apart
+      // because they mean different things -- law 1's field width, matter too
+      // cold to pay, and the heat ceiling.
+      pushedAlongBond: 0, pushRangeDeclined: 0, pushUnaffordable: 0, pushNoRoom: 0,
       conducted: 0, emitted: 0, absorbed: 0, quantaMoved: 0,
       // law 1 exchanges. Each refusal has its OWN counter because the three
       // reasons mean different things: "range" is law 1 field width being hit,
@@ -258,9 +270,10 @@ export class World {
       thermalKicks: 0, kickRangeDeclined: 0, kickUnaffordable: 0, kickNoRoom: 0,
       kickNoPartner: 0,
       gravityCarries: 0, gravityDeclined: 0,
-      grew: 0, growthBlocked: 0, expansionDrained: 0,
+      grew: 0, growthBlocked: 0, expansionDrained: 0, expansionDeclined: 0,
     };
     this.history = [];
+    this.stopped = null;         // set when the gravity cap ends a run early
   }
 
   // ----------------------------------------------------------- law 3, local
@@ -661,6 +674,54 @@ export class World {
     return best;
   }
 
+  // ------------------------------------- law 1, a bond reacts to strain
+  // PORTED FROM THE LAB 2026-11-07, and the port is a correction rather than
+  // an addition: until today this file ran law 1's RETIRED reading, in which
+  // a bond is a wall. The Lab settled GAP 3 on 2026-11-06 (lab.mjs moveOne,
+  // README item 25) and the World was never brought across, so the two
+  // engines were running different physics while TWO-RUNS.md said they ran
+  // the same laws with two time schemes.
+  //
+  // In reality a bond is a force: when two bonded atoms start to separate its
+  // tension slows the leading one and speeds the trailing one, equal and
+  // opposite, and their relative motion goes into vibration -- heat. So when
+  // a step is refused for a bond, one unit of momentum passes along that bond
+  // to the partner, in the step's own direction.
+  //
+  // The transfer is the exchange seam's, unchanged: shareMomentum and
+  // tryThermalKick have used it since the World was written, and only the
+  // trigger and the direction are new. Nothing here reads past a neighbour.
+  pushAlongBond(i, d, stretched) {
+    const w = this.w;
+    // One of the bonds that refused the step. In reality the push reaches
+    // every one of them at once; here one per step IS the wave, because the
+    // next step draws again.
+    const e = stretched[this.rng.below(stretched.length)];
+    const j = neighbour(w, i, e);
+    // A bond bit on matter should point at matter, but the World's space grows
+    // underneath these arrays, so this reads the lattice rather than trusting
+    // it -- the same guard shareMomentum uses.
+    if (!isMatter(w, j)) return;
+    const [ux, uy] = DIR_CUBE[d];
+    const why = this.exchange(i, j, w.mx[i] - ux, w.my[i] - uy, w.mx[j] + ux, w.my[j] + uy);
+    if (why === null) this.counts.pushedAlongBond++;
+    else if (why === "range") this.counts.pushRangeDeclined++;
+    else if (why === "unaffordable") this.counts.pushUnaffordable++;
+    else this.counts.pushNoRoom++;
+  }
+
+  // GAP 3, AS THE LAB SETTLED IT. The bond holds, the step does not happen,
+  // the bond reacts -- and CLUSTERS STILL MOVE, which is the half this file
+  // was missing. On a hex lattice i and i+d share two common neighbours, so a
+  // bond within 60 degrees of the direction of travel SURVIVES the step: the
+  // partner is still adjacent afterwards and the re-pointing below carries it
+  // across. Only bonds at 120 and 180 degrees refuse. Transverse motion is
+  // free, longitudinal motion is held, and a cluster therefore FLOWS rather
+  // than translating -- shear cheap, compression dear, which is the right way
+  // round for matter.
+  //
+  // Breaking is law 2's and only law 2's, by the sharper test it already has
+  // in breakBondsIfHot. Motion never breaks a bond here.
   step(i) {
     const w = this.w;
     const d = this.stepDirection(i);
@@ -668,16 +729,56 @@ export class World {
     const j = neighbour(w, i, d);
     if (isMatter(w, j)) { this.counts.blocked++; return; }
     if (w.bonds[j]) { this.counts.blocked++; return; }    // a quantum is there
-    // a bond that motion would stretch costs B, and what cannot pay does not
-    // move -- GAP 3 as the Lab settled it
-    if (w.bonds[i]) { this.counts.bondsStretched++; return; }
+
+    const carriedBonds = w.bonds[i];
+    if (carriedBonds !== 0) {
+      const stretched = [];
+      for (let e = 0; e < DIRECTIONS; e++) {
+        if (!(carriedBonds & (1 << e))) continue;
+        const partner = neighbour(w, i, e);
+        // After the step, would the partner still be adjacent?
+        let stillAdjacent = false;
+        for (let f = 0; f < DIRECTIONS; f++) {
+          if (neighbour(w, j, f) === partner) { stillAdjacent = true; break; }
+        }
+        if (!stillAdjacent) stretched.push(e);
+      }
+      if (stretched.length > 0) {
+        this.counts.bondsStretched++;
+        this.pushAlongBond(i, d, stretched);
+        return;
+      }
+    }
+
+    // Carry the whole primitive. Bonds that survived have to be re-pointed at
+    // the new position, which is what makes this fiddly rather than a swap.
+    const survivors = [];
+    for (let e = 0; e < DIRECTIONS; e++) {
+      if (!(carriedBonds & (1 << e))) continue;
+      const partner = neighbour(w, i, e);
+      survivors.push(partner);
+      w.bonds[partner] &= ~(1 << opposite(e));
+    }
     w.kind[j] = w.kind[i]; w.energy[j] = w.energy[i];
     w.mx[j] = w.mx[i]; w.my[j] = w.my[i];
     w.fineX[j] = w.fineX[i]; w.fineY[j] = w.fineY[i];
     w.bonds[j] = 0;
     w.kind[i] = 0; w.energy[i] = 0; w.mx[i] = 0; w.my[i] = 0;
     w.fineX[i] = 0; w.fineY[i] = 0; w.bonds[i] = 0;
+    for (const partner of survivors) {
+      for (let f = 0; f < DIRECTIONS; f++) {
+        if (neighbour(w, j, f) === partner) {
+          w.bonds[j] |= (1 << f);
+          w.bonds[partner] |= (1 << opposite(f));
+          break;
+        }
+      }
+    }
     this.counts.stepped++;
+    // A bonded primitive that got here moved WITH its bonds intact, carrying
+    // them to the new site. That is a cluster deforming, and counting it is
+    // the only direct evidence that clusters move at all.
+    if (carriedBonds !== 0) this.counts.bondedStepped++;
   }
 
   // ------------------------------------------------------------- the growth
@@ -753,13 +854,38 @@ export class World {
         if (w.bonds[i]) continue;                    // bound: not drained
         if (w.mx[i] === 0 && w.my[i] === 0) continue;
         if (this.rng.u01() >= fraction) continue;
+        // A DRY RUN AND THEN A COMMIT, like every other transfer in this file,
+        // AND IT HAD TO BECOME ONE. This used to take a unit off whichever
+        // axis was non-zero and then record the energy difference only `if
+        // (lost > 0)`. On cube coordinates that discards energy out of the
+        // books: momentum is three components summing to zero, so taking a
+        // unit off x moves z the other way, and for mx = 1, my = -5 the
+        // kinetic energy RISES when mx goes to 0 (Q = 42 -> 50). The
+        // difference then existed in the world and in no counter.
+        //
+        // It was invisible until 2026-11-07 because nothing in the World ever
+        // had momentum at seeding and bonded matter is skipped here, so the
+        // branch only ran on gravity's own slow carries. The first run with
+        // --p0 set broke the books by 60 units in 100 ticks, which is rule 6
+        // doing exactly its job.
+        //
+        // So: find a unit whose removal actually sheds, take that one, and
+        // decline if neither axis does. Expansion must never be able to make
+        // the world hotter.
         const before = keAt(w, i);
-        const sx = Math.sign(w.mx[i]), sy = Math.sign(w.my[i]);
-        if (sx) { w.mx[i] -= sx; this.ledger.pxDrained += sx; }
-        else if (sy) { w.my[i] -= sy; this.ledger.pyDrained += sy; }
-        else continue;
-        const lost = before - keAt(w, i);
-        if (lost > 0) { this.ledger.expansionLoss += lost; this.counts.expansionDrained++; }
+        const tries = [];
+        if (w.mx[i] !== 0) tries.push([Math.sign(w.mx[i]), 0]);
+        if (w.my[i] !== 0) tries.push([0, Math.sign(w.my[i])]);
+        let took = null, lost = 0;
+        for (const [dx, dy] of tries) {
+          const after = keOf(w.mx[i] - dx, w.my[i] - dy, w.kind[i]);
+          if (after <= before) { took = [dx, dy]; lost = before - after; break; }
+        }
+        if (!took) { this.counts.expansionDeclined++; continue; }
+        w.mx[i] -= took[0]; w.my[i] -= took[1];
+        this.ledger.pxDrained += took[0]; this.ledger.pyDrained += took[1];
+        this.ledger.expansionLoss += lost;
+        this.counts.expansionDrained++;
       } else if (w.bonds[i]) {
         for (let d = 0; d < DIRECTIONS; d++) {
           if (!(w.bonds[i] & (1 << d))) continue;
@@ -815,13 +941,91 @@ export class World {
   // THE-LAWS.md: "The only initial condition for energy is matter, spread
   // out." No momentum, no heat -- gravity is supposed to supply both, and
   // whether it does at a given strength is the thing being watched.
-  seed_(fill, kindDraw) {
+  // TWO DIALS ON TOP OF THAT, ADDED 2026-11-07, and they exist because the
+  // sentence above turned out to decide the whole run rather than leave it
+  // open. A world seeded at absolute zero bonds before it can fall: at T = 0
+  // every adjacent pair that can bond does (tryFormBond's own test is
+  // temperature below B), and the first 1500-tick runs were 50-91% bonded
+  // within a hundred ticks, with gravity pulling on a solid for the rest of
+  // the run. The hot era cannot FOLLOW collapse in a world that was never
+  // given the chance to be hot, so being hot has to be sayable as an initial
+  // condition. Neither dial has a default: left alone this is the old
+  // behaviour exactly, and a run records what it was given.
+  //
+  //   temp0          energy per unit of kind, which is what tempOf reads. At
+  //                  or above BOND_MODULUS no bond can form at all, since the
+  //                  deepest possible B is the modulus itself.
+  //   momentumRange  momentum components drawn in +-R, then the world brought
+  //                  to exactly zero total momentum, as the Lab's seedWorld
+  //                  does. A net drift looks exactly like a preferred
+  //                  direction in the physics.
+  seed_(fill, kindDraw, { temp0 = 0, momentumRange = 0 } = {}) {
     const w = this.w;
+    const R = Math.min(momentumRange, MOMENTUM_RANGE);
     for (let i = 0; i < w.cells; i++) {
       if (this.rng.u01() >= fill) continue;
-      w.kind[i] = kindDraw(this.rng);
+      const k = kindDraw(this.rng);
+      w.kind[i] = k;
+      // Heat is a FIELD WIDTH (rule 5), so an asked-for temperature that will
+      // not fit is a refusal and not a clamp: a quietly clamped seed would
+      // make every heavy primitive colder than the light ones and nothing
+      // would say so.
+      if (temp0 > 0) {
+        const e = temp0 * k;
+        if (e > ENERGY_MAX) {
+          throw new Error(`temp0 ${temp0} needs ${e} units on a kind-${k} primitive and the `
+            + `energy field holds ${ENERGY_MAX}. The highest temperature every kind can hold `
+            + `is ${Math.floor(ENERGY_MAX / KIND_MAX)}.`);
+        }
+        w.energy[i] = e;
+      }
+      if (R > 0) {
+        let x = 0, y = 0;
+        for (let t = 0; t < 8; t++) {
+          x = this.rng.below(2 * R + 1) - R;
+          y = this.rng.below(2 * R + 1) - R;
+          if (legalMomentum(x, y)) break;
+          x = 0; y = 0;
+        }
+        w.mx[i] = x; w.my[i] = y;
+      }
     }
+    if (R > 0) this.cancelNetMomentum();
     this.ledger = new Ledger(w);
+  }
+
+  // Hand the remainder of the draws back one unit at a time, until the total
+  // is exactly zero. The Lab learned this the hard way: its own version used
+  // to give up after 1,000 passes and trust the conservation assertion to
+  // notice, which it cannot -- the assertion checks that momentum stays
+  // CONSTANT, not that it starts at zero. Seeds 7 and 107 ran with a built-in
+  // drift of (0, -84) and (0, -656).
+  cancelNetMomentum() {
+    const w = this.w;
+    const occupied = [];
+    let sx = 0, sy = 0;
+    for (let i = 0; i < w.cells; i++) {
+      if (!isMatter(w, i)) continue;
+      occupied.push(i); sx += w.mx[i]; sy += w.my[i];
+    }
+    while (sx !== 0 || sy !== 0) {
+      const dx = -Math.sign(sx), dy = -Math.sign(sy);
+      let took = -1;
+      for (let t = 0; t < 64 && took < 0; t++) {
+        const i = occupied[this.rng.below(occupied.length)];
+        if (legalMomentum(w.mx[i] + dx, w.my[i] + dy)) took = i;
+      }
+      for (let k = 0; k < occupied.length && took < 0; k++) {
+        const i = occupied[k];
+        if (legalMomentum(w.mx[i] + dx, w.my[i] + dy)) took = i;
+      }
+      if (took < 0) {
+        throw new Error(`cannot cancel the seeded net momentum (${sx}, ${sy}): no primitive `
+          + `can take another unit inside +-${MOMENTUM_RANGE}. The World would start with a drift.`);
+      }
+      w.mx[took] += dx; w.my[took] += dy;
+      sx += dx; sy += dy;
+    }
   }
 
   // ----------------------------------------------------------- the eras
@@ -830,17 +1034,44 @@ export class World {
   // is one line of the history, and nothing here is stored in the world.
   sample() {
     const w = this.w, c = census(w);
-    let maxLocal = 0, occupied = 0;
-    // local density: matter in a hexagon's own neighbourhood, which is the
-    // most local thing that can show a collapse at all
-    for (let i = 0; i < w.cells; i += 7) {
+    // LOCAL DENSITY, AND THE STATISTIC REPLACED ON 2026-11-07. The old reading
+    // was the MAXIMUM of (self + matter neighbours) over every seventh cell:
+    // an integer that cannot exceed 7, over a one-in-seven sample. At fill
+    // 0.30 a full neighbourhood occurs about twice by chance in a sample that
+    // size, so it read 7 within a hundred ticks of every run and could never
+    // read higher -- the whole evidence for "collapse" in the first runs was
+    // 6 -> 7, which is a saturated order statistic and not a measurement. At
+    // fill 0.08 it sat at 6 for 1500 ticks and said NOT SEEN whatever gravity
+    // did. A statistic with a ceiling two steps above its floor cannot show a
+    // collapse.
+    //
+    // What replaces it is a CONTRAST against the null the configuration
+    // itself provides. Conditional on a hexagon holding matter, each of its
+    // six neighbours holds matter with probability f if matter is spread at
+    // random, so the mean neighbourhood is 1 + 6f. Therefore
+    //
+    //     contrast = (mean neighbourhood - 1) / 6f
+    //
+    // is 1.0 for matter spread at random, above 1 for matter that has
+    // gathered, below 1 for matter that has spread itself out, and it has no
+    // ceiling until 1/f. No constant, nothing fitted: the denominator is the
+    // fill the same pass measured. The max is kept beside it because it costs
+    // nothing and because dropping a reading silently is how the old one
+    // survived.
+    let maxLocal = 0, sumLocal = 0, matterCells = 0, fieldBinding = 0;
+    for (let i = 0; i < w.cells; i++) {
       if (!isMatter(w, i)) continue;
-      occupied++;
+      matterCells++;
+      if (this.g) fieldBinding += w.kind[i] * w.phi[i];
       let near = 1;
       for (let d = 0; d < DIRECTIONS; d++) if (isMatter(w, neighbour(w, i, d))) near++;
+      sumLocal += near;
       if (near > maxLocal) maxLocal = near;
     }
-    const matterCells = countMatter(w);
+    const fillNow = matterCells / w.cells;
+    const meanLocal = matterCells ? sumLocal / matterCells : 0;
+    const densityContrast = matterCells && fillNow > 0
+      ? (meanLocal - 1) / (6 * fillNow) : 0;
     const row = {
       tick: this.tick,
       cols: w.cols, rows: w.rows, cells: w.cells,
@@ -848,10 +1079,26 @@ export class World {
       fill: matterCells / w.cells,
       meanTemp: matterCells ? c.heat / Math.max(1, c.matter) : 0,
       heat: c.heat, kinetic: c.kinetic, inFlight: c.inFlight,
-      expansionLoss: this.ledger.expansionLoss,
+      // The ledger may not exist yet: sample() is also an instrument, called
+      // on a world placed by hand before any baseline is taken.
+      expansionLoss: this.ledger ? this.ledger.expansionLoss : 0,
       bonds: c.bonds,
       bondedFraction: matterCells ? c.bonded / matterCells : 0,
       maxLocalDensity: maxLocal,
+      meanLocalDensity: meanLocal,
+      densityContrast,
+      // WHAT GRAVITY HAS PAID OUT, and the field's own reading beside it.
+      // gravityPotential is a counter with no floor: every unit of kinetic
+      // energy a pull creates is debited to it, so the books close by
+      // construction however much energy gravity hands out. The first runs
+      // paid out 558,000 units into matter that took 19,389 steps -- work
+      // without displacement, which real gravity cannot do, and nothing in
+      // the output showed it. These two numbers are what show it: paid is
+      // energy, binding is the field integral sum(kind * phi) the law's own
+      // equation produces, and paid rising while binding and contrast stay
+      // flat is the signature of a pump.
+      gravityPaid: this.ledger ? -this.ledger.gravityPotential : 0,
+      fieldBinding,
       netMomentum: [c.px, c.py],
     };
     this.history.push(row);
@@ -877,9 +1124,29 @@ export class World {
         const row = this.sample();
         if (onSample) onSample(row);
       }
+      // THE ONE GUARD ON THE COUNTER WITH NO FLOOR. gravityPotential can go
+      // arbitrarily negative and the books will still close, so a long run
+      // can manufacture any amount of kinetic energy and report nothing wrong.
+      // A cap is not physics and is never defaulted: it is a typed limit that
+      // stops the run and says so, the way a fuse is not a theory of
+      // electricity. The physics question underneath -- whether a pull that
+      // moves nothing should be allowed to pay out at all, which needs the
+      // force to be the gradient of an energy it cannot overdraw, and it is
+      // not one in this engine -- is open and is Ric's.
+      if (this.g && this.g.cap > 0 && -this.ledger.gravityPotential > this.g.cap) {
+        this.stopped = `gravity paid out ${(-this.ledger.gravityPotential).toLocaleString()} `
+          + `units of kinetic energy at tick ${this.tick}, past the cap of `
+          + `${this.g.cap.toLocaleString()}. Nothing is wrong with the books: the cap is the `
+          + `only thing in this engine that bounds what gravity may hand out.`;
+        break;
+      }
     }
     this.ledger.check(this.w, `end of run at tick ${this.tick}`);
-    return { ticks: this.tick, cells: this.w.cells, history: this.history };
+    if (sampleEvery && this.history[this.history.length - 1]?.tick !== this.tick) {
+      const row = this.sample();
+      if (onSample) onSample(row);
+    }
+    return { ticks: this.tick, cells: this.w.cells, history: this.history, stopped: this.stopped || null };
   }
 }
 

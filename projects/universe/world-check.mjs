@@ -18,6 +18,13 @@
 //   4. neither exchange ever clips at law 1's range; it declines, all-or-nothing
 //   5. the heat seam is exact over thousands of random exchanges
 //   6. heat MOVES MATTER in a real run, with gravity off, from zero momentum
+//   7. a world at absolute zero heats itself, and then moves
+//   8. the kick is free above a kind threshold, which is a leak, measured
+//   9. GAP 3 as the Lab settled it: a bonded primitive steps when the bond
+//      survives, and the bond pushes back when it does not
+//  10. the density contrast reads 1.0 on matter spread at random -- the
+//      instrument validated against the null it claims, rule 12
+//  11. the gravity cap stops a run and says so
 //
 // Every check prints what it measured rather than "ok", because rule 11 is
 // about not believing output that only says it passed.
@@ -424,6 +431,148 @@ console.log(`\n=== Check 8: the kick is FREE above a kind threshold, and that is
   report("the threshold is exactly where the arithmetic says it is, not somewhere odd",
     locked.every((k) => k <= SETTLED.KE_SCALE) && free.every((k) => k > SETTLED.KE_SCALE),
     `locked k <= ${SETTLED.KE_SCALE} < free k -- so raising KE_SCALE is one of the levers`);
+}
+
+// ===========================================================================
+// PORTED FROM THE LAB 2026-11-07, and this check exists because the World ran
+// the RETIRED reading of GAP 3 until today: any bonded primitive was refused
+// its step outright, so clusters could not move at all. Nothing in the World
+// said so, because nothing counted a bonded step. The claim being checked is
+// geometric and exact: on a hex lattice i and i+d share two common
+// neighbours, so a bond within 60 degrees of the direction of travel survives
+// the step and only 120 and 180 degree bonds refuse it.
+console.log(`\n=== Check 9: a bond within 60 degrees lets the step happen; 120 pushes back ===`);
+{
+  // Bond pointing along direction 0, and two attempts to walk away from it.
+  const setup = (travel) => {
+    const world = bare(12, 12, 1);
+    const w = world.w;
+    const i = at(w, 5, 5), j = neighbour(w, i, 0);
+    w.kind[i] = 6; w.kind[j] = 6;
+    w.energy[i] = 400; w.energy[j] = 400;       // warm, so a push is affordable
+    w.bonds[i] = 1 << 0; w.bonds[j] = 1 << 3;   // opposite(0) === 3
+    const [ux, uy] = DIR_CUBE[travel];
+    w.mx[i] = 6 * ux; w.my[i] = 6 * uy;
+    baseline(world);
+    return { world, w, i, j };
+  };
+
+  // 60 degrees: the partner is still a neighbour afterwards.
+  const a = setup(1);
+  const dest = neighbour(a.w, a.i, 1);
+  a.world.step(a.i);
+  const moved = a.w.kind[dest] === 6 && a.w.kind[a.i] === 0;
+  let repointed = false;
+  for (let f = 0; f < DIRECTIONS; f++) {
+    if ((a.w.bonds[dest] & (1 << f)) && neighbour(a.w, dest, f) === a.j) repointed = true;
+  }
+  report("a bonded primitive STEPS when the bond survives, which it could not do before today",
+    moved && a.world.counts.bondedStepped === 1,
+    `${a.world.counts.stepped} step, bondedStepped ${a.world.counts.bondedStepped}`);
+  report("and the bond came with it, re-pointed at the new hexagon",
+    repointed && a.w.bonds[a.j] !== 0,
+    `the pair is still bonded across the move, both ends agreeing`);
+  let threw = null;
+  try { a.world.ledger.check(a.w, "after a bonded step"); } catch (e) { threw = e.message; }
+  report("and the books close over a bonded step", threw === null, threw || "exactly conserving");
+
+  // 120 degrees: the bond cannot stretch, so it pushes instead.
+  const b = setup(2);
+  const pBefore = totalMomentum(b.w);
+  const eBefore = totalEnergy(b.w);
+  const pi0 = [b.w.mx[b.i], b.w.my[b.i]], pj0 = [b.w.mx[b.j], b.w.my[b.j]];
+  b.world.step(b.i);
+  const pi1 = [b.w.mx[b.i], b.w.my[b.i]], pj1 = [b.w.mx[b.j], b.w.my[b.j]];
+  const pAfter = totalMomentum(b.w);
+  report("a step that would stretch the bond past adjacency does not happen",
+    b.world.counts.stepped === 0 && b.world.counts.bondsStretched === 1,
+    `${b.world.counts.bondsStretched} refused, ${b.world.counts.stepped} steps`);
+  report("the bond PUSHES BACK: one unit of momentum goes along it to the partner",
+    b.world.counts.pushedAlongBond === 1
+      && (pi1[0] !== pi0[0] || pi1[1] !== pi0[1])
+      && (pj1[0] !== pj0[0] || pj1[1] !== pj0[1])
+      && pi1[0] + pj1[0] === pi0[0] + pj0[0] && pi1[1] + pj1[1] === pi0[1] + pj0[1],
+    `i (${pi0.join(", ")}) -> (${pi1.join(", ")}), partner (${pj0.join(", ")}) -> (${pj1.join(", ")}) `
+    + `-- one unit of the travel direction, handed over`);
+  report("and the push moves no net momentum, as an equal-and-opposite transfer cannot",
+    pAfter[0] === pBefore[0] && pAfter[1] === pBefore[1],
+    `(${pBefore.join(", ")}) -> (${pAfter.join(", ")})`);
+  report("and the quadratic difference went to the heat field, not nowhere",
+    totalEnergy(b.w) === eBefore, `${eBefore} units, unchanged`);
+}
+
+// ===========================================================================
+// RULE 12, APPLIED TO AN INSTRUMENT RATHER THAN A PHYSICS. The statistic this
+// replaces could not fail this check, because it had no null to be compared
+// with: a maximum over a sample is not an estimate of anything. The contrast
+// claims one specific thing -- 1.0 when matter is spread at random -- so that
+// is what is measured here, at the fills a run actually uses.
+console.log(`\n=== Check 10: the density contrast reads 1.0 on matter spread at random ===`);
+{
+  const rows = [];
+  for (const fill of [0.10, 0.30, 0.60]) {
+    const world = new World({ cols: 258, rows: 258, seed: 11, constants: CANDIDATE_ZERO, gravity: null });
+    world.seed_(fill, (rng) => 1 + rng.below(255));
+    const r = world.sample();
+    rows.push({ fill, ...r });
+    console.log(`      fill ${fill.toFixed(2)}: mean neighbourhood ${r.meanLocalDensity.toFixed(4)} `
+      + `against the null's ${(1 + 6 * r.fill).toFixed(4)}, contrast ${r.densityContrast.toFixed(4)}, `
+      + `max ${r.maxLocalDensity}`);
+  }
+  report("a world spread at random reads 1.00, at every fill a run uses",
+    rows.every((r) => Math.abs(r.densityContrast - 1) < 0.02),
+    `worst ${Math.max(...rows.map((r) => Math.abs(r.densityContrast - 1))).toFixed(4)} off 1.00`);
+  report("the old statistic saturates where this one does not, which is why it was replaced",
+    rows[1].maxLocalDensity === 7 && rows[2].maxLocalDensity === 7,
+    `max reads 7 at fill 0.30 AND at 0.60 -- two different worlds, the same number`);
+
+  // And it has to be able to see a clump, or 1.00 everywhere proves nothing.
+  const clump = new World({ cols: 96, rows: 96, seed: 1, constants: CANDIDATE_ZERO, gravity: null });
+  const cw = clump.w;
+  for (let r = 20; r < 50; r++) for (let q = 20; q < 50; q++) cw.kind[r * cw.cols + q] = 7;
+  const c = clump.sample();
+  console.log(`      a solid 30x30 block in a 96x96 world: fill ${c.fill.toFixed(4)}, `
+    + `contrast ${c.densityContrast.toFixed(2)}`);
+  report("and matter that HAS gathered reads far above 1.00",
+    c.densityContrast > 5, `contrast ${c.densityContrast.toFixed(2)} on a block of solid matter`);
+}
+
+// ===========================================================================
+// The counter gravityPotential has no floor: every unit of kinetic energy a
+// pull creates is debited to it, so the books close however much gravity hands
+// out. The first World runs paid out 558,000 units into matter that took
+// 19,389 steps -- work without displacement. The cap does not fix that (the
+// fix is a physics decision about whether the force is the gradient of an
+// energy it cannot overdraw, and it is not one here); it stops a run from
+// doing it unnoticed.
+console.log(`\n=== Check 11: the gravity cap stops a run and says so ===`);
+{
+  const world = new World({
+    cols: 96, rows: 96, seed: 5, constants: CANDIDATE_ZERO,
+    gravity: { eps: 2e-5, screen: 0.25, relax: 2, cap: 50 },
+  });
+  world.seed_(0.30, (rng) => 1 + rng.below(255));
+  const out = world.run(200, { checkEvery: 10, sampleEvery: 50 });
+  report("the run ends early, with the reason in words rather than a flag",
+    typeof out.stopped === "string" && /gravity paid out/.test(out.stopped),
+    out.stopped || "it ran to the end -- the cap did nothing");
+  report("it stopped because gravity went past the cap, not for some other reason",
+    -world.ledger.gravityPotential > 50 && out.ticks < 200,
+    `paid ${(-world.ledger.gravityPotential).toLocaleString()} units past a cap of 50, `
+    + `at tick ${out.ticks} of 200`);
+  let threw = null;
+  try { world.ledger.check(world.w, "after the cap fired"); } catch (e) { threw = e.message; }
+  report("and the books close at the point it stopped -- the cap is a fuse, not a repair",
+    threw === null, threw || "exactly conserving, which is the problem: they always did");
+  const uncapped = new World({
+    cols: 96, rows: 96, seed: 5, constants: CANDIDATE_ZERO,
+    gravity: { eps: 2e-5, screen: 0.25, relax: 2 },
+  });
+  uncapped.seed_(0.30, (rng) => 1 + rng.below(255));
+  const full = uncapped.run(200, { checkEvery: 100 });
+  report("with no cap the same run goes the distance, so the cap is never a default",
+    full.stopped === null && full.ticks === 200,
+    `200 ticks, gravity paid ${(-uncapped.ledger.gravityPotential).toLocaleString()} units`);
 }
 
 console.log();

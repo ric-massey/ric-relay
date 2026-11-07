@@ -222,9 +222,14 @@ Apply all of this before telling Ric something interesting happened.
 
 Screening is cheap and a run is not, so a candidate form goes through `screen.mjs` before it goes
 through the Lab. The five screening tools — `screen.mjs`, `budget.mjs`, `momentum.mjs`,
-`radiate.mjs`, `orbit.mjs` — are not part of the engine. The engine is `lab.mjs`, `constants.mjs` and
-`lab-check.mjs` (`node lab-check.mjs`, thirteen checks, ~30 s; also in the repo's slow lane and in
-`simulations.yml`). `wave.mjs`, `snapshot.mjs`, `census.mjs` and `collide.mjs` run the engine
+`radiate.mjs`, `orbit.mjs` — are not part of the engine. There are two engines: the Lab is
+`lab.mjs`, `constants.mjs` and `lab-check.mjs` (`node lab-check.mjs`, thirteen checks, ~30 s; also
+in the repo's slow lane and in `simulations.yml`), and the World is `world.mjs`, `constants.mjs` and
+`world-check.mjs` (`node world-check.mjs`, eleven checks, ~20 s). **A law settled in one engine is
+not in the other until someone carries it across.** The World ran law 1's retired reading for a day
+because nobody did — README item 37, and the reason `world-check.mjs` Check 9 exists. `world-run.mjs`
+runs the World and reads the three eras off it; its gravity strength is a dial typed on the command
+line, so nothing it prints is a result, and it writes every run to `runs/`. `wave.mjs`, `snapshot.mjs`, `census.mjs` and `collide.mjs` run the engine
 without being it: `wave.mjs` compares the engine with and without the momentum wave, and injects
 the removed cluster drag from `rejected/` to price it; `snapshot.mjs` freezes a run for the viewer;
 `census.mjs` (`node census.mjs`, ~15 s) names every standing cluster by its valence multiset and

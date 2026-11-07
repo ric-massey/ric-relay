@@ -45,10 +45,18 @@ The World, the large run with gravity, is not built. Everything open is in
 | [`lab.mjs`](lab.mjs) | The Lab: four laws (no gravity) on a 258 × 258 hexagonal torus, event-driven continuous time, every conservation total asserted. |
 | [`constants.mjs`](constants.mjs) | Every physics constant, with units and ranges. Refuses to run on an unchosen constant or a clock that clips. |
 | [`lab-check.mjs`](lab-check.mjs) | The Lab's pre-flight: the seam, the books through a run, five seeds, five constant changes. |
+| **The World** — all five laws, ticked time, a space that grows | |
+| [`world.mjs`](world.mjs) | The World: gravity as a screened field, no thermostat, and the same four laws the Lab has. Ran law 1's **retired** reading until 2026-11-07 (item 37). |
+| [`world-run.mjs`](world-run.mjs) | Runs it and reads the three eras off the history, three seeds by default, every run written to [`runs/`](runs/). Gravity's strength is a dial typed here, never a default. |
+| [`world-check.mjs`](world-check.mjs) | The World's pre-flight: the two exchanges, the heat seam, GAP 3's geometry, and the density contrast validated against its own null. |
+| [`world-stream.mjs`](world-stream.mjs) | Serves a run that is still happening, on the wifi or through the site's Worker. See [`STREAMING.md`](STREAMING.md). |
 | **Around the engine** | |
 | [`snapshot.mjs`](snapshot.mjs) | Freezes a Lab run into [`runs/`](runs/) for the viewer. |
 | [`viewer.html`](viewer.html) | Lattice inspector. Reads a frozen run and lets you open any hexagon. State, not dynamics. |
 | [`wave.mjs`](wave.mjs) | Measurement harness over copies of the engine (items 25, 32, 33). |
+| [`census.mjs`](census.mjs) | Every standing cluster in a Lab run, grouped by what it is made of: the first periodic table (item 5). |
+| [`collide.mjs`](collide.mjs) | Aims two clusters at each other on purpose and reports what the meeting does. |
+| [`clusters.mjs`](clusters.mjs) | The one connected-component walk both of those use, outside the engine where rule 9 does not bind it. |
 | [`rejected/`](rejected/) | Mechanisms that came out of the engine, kept with the numbers that removed them — and one, the momentum wave, that has since come back and says why. |
 | **Screening tools** — answer a question without running a world | |
 | [`screen.mjs`](screen.mjs) | Scores candidate forms of law 2 over all 65,025 pairs of kinds. |
@@ -418,6 +426,28 @@ flat with cluster size. **With the wave back it falls for the first time** — 3
 hand, `|p| / K` is now worth +0.05 of mean `B`, inside the 0.10 spread between seeds. *Decided by:* tracking clusters through time, which needs re-identifying them every sample,
 since rule 2 forbids storing a cluster id.
 
+**35. Gravity pays out with no floor, and the books close anyway.** Every unit of kinetic energy a
+pull creates is debited to `Ledger.gravityPotential`, so the counter *is* the potential spent — and
+nothing bounds it. It can go arbitrarily negative and rule 6's assertion will pass, because the
+counter is defined as the complement of everything else. Measured 2026-11-07: the first 1500-tick
+run at `--eps 2e-7` paid out **557,999 units into matter that took 19,389 steps**, with 2,626,838
+pulls carried — work without displacement, which gravity cannot do. After item 37 the same dial pays
+out **1.92 million** over 1500 ticks and the matter *does* gather (contrast 1.00 → 1.50 on three
+seeds), so part of that payout is now real; what fraction is, is unmeasured. The force here is not
+the gradient of an energy it can overdraw, so there is no floor to derive without changing law 3.
+`--gcap` stops a run that goes past a typed limit, which is a fuse and not a theory. *Decided by:*
+whether a pull that moves nothing may pay out at all — Ric's call, and it is a change to law 3.
+
+**36. The World has exactly one energy sink, and it is far too small.** Recombination needs the heat
+to go away. In a closed torus it cannot: energy is conserved, so heat can only become kinetic energy,
+bond potential or light in flight, all of which are bounded — the temperature plateaus rather than
+falling. The only true sink is `drainForGrowth`, and it never touches heat held in matter, only free
+kinetic energy and quanta in flight. Measured: at `--grow 100 --drain 0.05` over 3000 ticks the drain
+removed **102,936 units against 23 million units of heat**, and radiation is reabsorbed almost
+immediately (820,195 emitted, 815,538 absorbed). So a cooling era, as the engine stands, is a 0.4%
+effect. *Decided by:* whether matter may radiate into a growing space in a way the drain can reach,
+or whether the World needs an outside for light to leave into at all.
+
 ### Settled
 
 | # | Question | Answer |
@@ -440,6 +470,9 @@ since rule 2 forbids storing a cluster id.
 | 31 | Motion shattering chemistry at ±63 | Separated: GAP 3's reading was the main cause, the width secondary, the kick probability not a cause. Closed by item 25 |
 | 32 | A cluster walk broke rule 9 | Removed. Reality has no rigid bodies, and nothing computes a body's total mass. The pyramid is again the only non-local read (2026-11-06) |
 | 34 | Matter moved along six headings, and momentum was too coarse to orbit | **Tracked stepping adopted** (Ric: "I'm fine with the added state it's not much", 2026-11-06): each primitive keeps its position inside its hexagon and enters the hexagon its straight path enters next, at speed over the distance to that edge. Off-axis headings travel true (was up to 30° off) at the right speed (`lab-check.mjs` Check 13); orbits match Newton (`orbit.mjs` Checks 13–14). **Fine momentum** (units of 2⁻³²) is adopted for the World and built with gravity — nothing in the Lab makes fractions. Costs: about 2.3× the events per unit of time, and the T = 6 chemistry peak falls 6.41 → 6.23 at equal time |
+| 37 | The World ran law 1's retired reading | **Ported 2026-11-07** (Ric: "Fix all 4"). `world.mjs` refused a step to *any* bonded primitive — a bond as a wall — which is the reading item 25 replaced on 2026-11-06 in the Lab and nobody carried across. So the two engines ran different physics while `TWO-RUNS.md` said they ran the same laws two ways. The World froze: 91.5% bonded by tick 1100, 19,389 steps in 1500 ticks against 2.6 million gravity carries, and no dial could move it. Now 60°-survival and `pushAlongBond` are both in, through the exchange seam the World already had. Measured on the same dial and conditions: steps 19,389 → **33,367, of which 11,895 by bonded matter**, 349,224 pushes along bonds, and collapse becomes visible for the first time (contrast 1.00 → 1.50, three seeds of three). `world-check.mjs` Check 9 holds the geometry |
+| 38 | The expansion drain could create energy | **Fixed 2026-11-07.** It took a unit off whichever momentum axis was non-zero and recorded the difference only `if (lost > 0)`. On cube coordinates removing a unit can *raise* the kinetic energy — for `p = (1, −5)`, `Q` goes 42 → 50 — and the difference then existed in the world and in no counter. Invisible until the World could be seeded with momentum: the first `--p0 6` run broke the books by **60 units in 100 ticks**, which is rule 6 earning its keep. Now it is a dry run that takes a unit only if it sheds, and declines otherwise |
+| 39 | The collapse statistic could not show a collapse | **Replaced 2026-11-07.** It was the *maximum* of (self + matter neighbours) over every seventh cell: an integer that cannot exceed 7. At fill 0.30 a full neighbourhood turns up about twice by chance in a sample that size, so it read 7 within a hundred ticks of every run; at fill 0.08 it sat at 6 for 1500 ticks and said NOT SEEN whatever gravity did. The whole evidence for collapse in the first World runs was "6 → 7", a saturated order statistic. Now it is the contrast against the null the configuration provides: conditional on a hexagon holding matter, each neighbour holds matter with probability `f` if matter is spread at random, so `(mean neighbourhood − 1) / 6f` is 1.0 for random and has no ceiling until `1/f`. Validated at 1.00 ± 0.02 at fills 0.10, 0.30 and 0.60, and 9.79 on a solid block (`world-check.mjs` Check 10) |
 
 ## Roads not taken
 

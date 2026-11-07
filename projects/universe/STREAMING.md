@@ -50,8 +50,24 @@ node world-stream.mjs --host 127.0.0.1              # this machine only
 node world-stream.mjs --save runs/world             # also write frames to disk
 ```
 
-Every dial `world-run.mjs` has, this has, and they mean the same things. The two
-that are only here:
+```bash
+node world-stream.mjs --temp0 9 --p0 6              # start hot and moving
+node world-stream.mjs --gcap 500000                 # stop if gravity pumps
+```
+
+Every dial `world-run.mjs` has, this has, and they mean the same things. Three
+are worth naming because they decide what the run can show at all:
+
+- **`--temp0 N`** energy per unit of kind at tick 0, which is what temperature
+  means here. At or above 8 no bond can form, because the deepest possible bond
+  is the bond modulus. A World left at absolute zero bonds before it can fall.
+- **`--p0 N`** momentum components drawn in ±N, then the whole World brought to
+  exactly zero total momentum, so there is no preferred direction.
+- **`--gcap N`** stops the run if gravity has paid out more than N units of
+  kinetic energy. The counter it watches has no floor (README item 35), so
+  without this a stream left open can pump energy for as long as it runs.
+
+The two that are only here:
 
 - **`--every N`** ticks between frames, default 5.
 - **`--min-ms N`** and at most one frame every N milliseconds, default 200.

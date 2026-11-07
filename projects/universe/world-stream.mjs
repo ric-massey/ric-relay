@@ -63,9 +63,15 @@ const OPT = {
   seed:   num("seed", 1),
   fill:   num("fill", 0.30),
   ticks:  num("ticks", Infinity),       // runs until stopped by default
+  // The initial state, added 2026-11-07 for the reason world-run.mjs gives at
+  // length: a World seeded at absolute zero bonds before it can fall, so
+  // being hot has to be sayable rather than hoped for.
+  temp0:  num("temp0", 0),              // energy per unit of kind, at tick 0
+  p0:     num("p0", 0),                 // momentum components drawn in +-p0
   eps:    num("eps", 2e-7),
   screen: num("screen", 0.25),
   relax:  num("relax", 2),
+  gcap:   num("gcap", 0),               // stop if gravity pays out more than this
   grow:   num("grow", 0),
   drain:  num("drain", 0.02),
   max:    num("max", 400000),
@@ -90,7 +96,9 @@ const OPT = {
   save:      flag("save", null),        // write each frame to <save>.{json,bin}
 };
 
-const gravity = OPT.eps > 0 ? { eps: OPT.eps, screen: OPT.screen, relax: OPT.relax } : null;
+const gravity = OPT.eps > 0
+  ? { eps: OPT.eps, screen: OPT.screen, relax: OPT.relax, cap: OPT.gcap }
+  : null;
 
 // ------------------------------------------------------------- the engine id
 // Which engine is producing this. snapshot.mjs hashes lab.mjs and
@@ -106,7 +114,8 @@ const world = new World({
   cols: OPT.size, rows: OPT.size, seed: OPT.seed,
   constants: CANDIDATE_ZERO, gravity,
 });
-world.seed_(OPT.fill, (rng) => 1 + rng.below(255));
+world.seed_(OPT.fill, (rng) => 1 + rng.below(255),
+            { temp0: OPT.temp0, momentumRange: OPT.p0 });
 const sizeAtStart = [world.w.cols, world.w.rows];
 
 // WHICH AXES ACTUALLY WRAP, asked of the engine rather than asserted here.
@@ -308,6 +317,16 @@ function slice() {
         lastCheckedTick = world.tick; booksClose = true;
       }
       if (world.tick >= OPT.ticks) { stopped = true; break; }
+      // The gravity cap, as World.run enforces it: this loop is the run, so it
+      // has to make the same stop. The counter it watches has no floor, so
+      // without this a stream can pump energy for as long as it is left open.
+      if (gravity && OPT.gcap > 0 && -world.ledger.gravityPotential > OPT.gcap) {
+        lastError = `gravity paid out ${(-world.ledger.gravityPotential).toLocaleString()} units `
+          + `of kinetic energy at tick ${world.tick}, past the cap of ${OPT.gcap.toLocaleString()}`;
+        stopped = true;
+        console.error(`\n  STOPPED AT THE GRAVITY CAP: ${lastError}\n`);
+        break;
+      }
       if (world.tick % OPT.every === 0) break;        // frame time
     }
   } catch (err) {
@@ -454,6 +473,12 @@ server.listen(OPT.port, OPT.host, () => {
   console.log(gravity
     ? `  gravity ON   eps ${OPT.eps}  screen ${OPT.screen}  relax ${OPT.relax}   -- a DIAL, not a measurement`
     : `  gravity OFF  -- the control. Nothing creates momentum, so nothing moves.`);
+  console.log(OPT.temp0 || OPT.p0
+    ? `  start        temperature ${OPT.temp0}, momentum +-${OPT.p0}, net zero`
+    : `  start        absolute zero: no heat, no momentum. Every pair that can bond will, at once.`);
+  if (gravity && OPT.gcap) {
+    console.log(`  gravity cap  the run stops if gravity pays out more than ${OPT.gcap.toLocaleString()} units`);
+  }
   console.log(`  a frame every ${OPT.every} ticks and at most every ${OPT.minMs} ms; `
     + `the books asserted every ${OPT.check}`);
   console.log();
