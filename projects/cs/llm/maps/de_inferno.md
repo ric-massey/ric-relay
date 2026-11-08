@@ -1,29 +1,29 @@
 # Inferno — map reference (`de_inferno`)
 
-CS2 tags every player position with a callout name. This table is built from 4 of Ric's own demos on this map: each callout's centre is the average of every position tagged with it, and the box is the area those positions covered. Coordinates are CS2 map units (x east, y north).
+CS2 tags every player position with a callout name. This table is built from 5 of Ric's own demos on this map: each callout's centre is the average of every position tagged with it, and the box is the area those positions covered. Coordinates are CS2 map units (x east, y north).
 
 | Callout | Centre x | Centre y | Covers x | Covers y | Positions seen |
 |---|---|---|---|---|---|
-| Apartments | 1234 | -231 | -275 to 1931 | -688 to 373 | 656 |
-| Arch | 1767 | 1190 | 1520 to 2408 | 1010 to 1587 | 116 |
-| Back Alley | 836 | -587 | 458 to 983 | -697 to -289 | 105 |
-| Balcony | 1641 | -178 | 812 to 2092 | -393 to 58 | 85 |
-| Banana | 421 | 1800 | -82 to 1038 | 942 to 2336 | 1317 |
-| Bombsite A | 2095 | 453 | 1531 to 2498 | -125 to 1234 | 310 |
-| Bombsite B | 545 | 2776 | 1 to 1012 | 2237 to 3514 | 730 |
-| Bridge | -369 | -145 | -409 to -344 | -313 to -10 | 15 |
-| CT Spawn | 1998 | 2259 | 1610 to 2500 | 1586 to 2876 | 146 |
-| Deck | 90 | 68 | -78 to 288 | 25 to 174 | 12 |
-| Kitchen | -120 | 271 | -253 to -39 | 214 to 307 | 4 |
-| Library | 2518 | 1235 | 2419 to 2607 | 1104 to 1506 | 53 |
-| Lower Mid | -630 | 499 | -1039 to -416 | -379 to 907 | 68 |
-| Middle | 526 | 620 | 33 to 1342 | 410 to 952 | 566 |
-| Pit | 2477 | -139 | 2089 to 2645 | -308 to -19 | 48 |
-| Quad | 1490 | -70 | 1460 to 1525 | -81 to -53 | 5 |
-| Ruins | 1195 | 2913 | 833 to 1612 | 2648 to 3467 | 115 |
-| Second Mid | 658 | 35 | -593 to 954 | -306 to 402 | 292 |
-| T Ramp | -221 | 855 | -570 to 54 | 763 to 915 | 375 |
+| Apartments | 1215 | -243 | -386 to 1938 | -688 to 373 | 832 |
+| Arch | 1773 | 1201 | 1506 to 2408 | 1010 to 1587 | 163 |
+| Back Alley | 833 | -587 | 458 to 991 | -756 to -263 | 145 |
+| Balcony | 1632 | -174 | 812 to 2182 | -393 to 58 | 104 |
+| Banana | 416 | 1796 | -82 to 1038 | 942 to 2343 | 1664 |
+| Bombsite A | 2084 | 453 | 1531 to 2498 | -125 to 1236 | 399 |
+| Bombsite B | 555 | 2774 | 1 to 1012 | 2237 to 3514 | 831 |
+| Bridge | -374 | -125 | -409 to -344 | -313 to 58 | 21 |
+| CT Spawn | 2035 | 2303 | 1610 to 2500 | 1586 to 2903 | 205 |
+| Deck | 127 | 67 | -78 to 301 | 24 to 174 | 22 |
+| Kitchen | -110 | 261 | -253 to -23 | 174 to 313 | 7 |
+| Library | 2515 | 1239 | 2340 to 2607 | 1103 to 1527 | 72 |
+| Lower Mid | -649 | 464 | -1039 to -416 | -379 to 907 | 77 |
+| Middle | 512 | 623 | 33 to 1342 | 169 to 952 | 785 |
+| Pit | 2476 | -155 | 2089 to 2645 | -388 to -19 | 63 |
+| Quad | 1474 | -60 | 1416 to 1525 | -81 to -27 | 7 |
+| Ruins | 1231 | 2909 | 833 to 1631 | 2648 to 3467 | 168 |
+| Second Mid | 645 | 25 | -593 to 954 | -306 to 417 | 352 |
+| T Ramp | -204 | 853 | -570 to 54 | 724 to 915 | 462 |
 | T Spawn | -1309 | 468 | -1657 to -922 | 232 to 611 | 17 |
-| Top of Mid | 1414 | 581 | 1279 to 1577 | 38 to 1228 | 426 |
-| Underpass | 287 | 523 | 260 to 302 | 30 to 726 | 50 |
-| Upstairs | -540 | 200 | -589 to -406 | 64 to 367 | 10 |
+| Top of Mid | 1414 | 578 | 1279 to 1577 | 38 to 1228 | 542 |
+| Underpass | 288 | 514 | 260 to 302 | 30 to 726 | 67 |
+| Upstairs | -525 | 195 | -589 to -333 | 64 to 367 | 15 |
