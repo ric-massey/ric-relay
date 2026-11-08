@@ -1,7 +1,25 @@
 # The Laws
 
 Every rule in this universe, the reason it earned its place, and what breaks without it. **Five laws
-and five structural facts.**
+and five structural facts — and as of 2026-11-08, four of the five laws run.**
+
+## One hexagon is one atom
+
+**Nothing in this project said what a hexagon was until 2026-11-08, and every argument about
+gravity's strength was downstream of that silence.** Ric settled it by asking the question the whole
+thing turned on: *"think about how much DNA gets affected by gravity. And how many atoms are in
+DNA."*
+
+So: **one hexagon is one atom.** One primitive is one atom, a bond is a chemical bond, and the
+lattice is a two-dimensional sheet of matter. That single sentence is what law 3's strength was
+missing, and with it written down the strength is no longer a dial — it is a number, and the number
+is zero at any size this project can run. The arithmetic is in [3. Gravity](#3-gravity).
+
+It also sets the scale of everything else. The largest World the hardware will hold is 2.1 billion
+hexagons, which is a sheet 14 µm across — **one atom thick, the footprint of a single cell.** A
+runnable World of 17 million hexagons is a bacterium's footprint. Nothing at that size has a
+collapse, a hot era or a star in it, and a law that needs one is a law for a world 10¹³ times
+larger.
 
 The count matters. Every rule is a place where an answer could be smuggled in, so a short list is
 the point, not an aesthetic. **Nothing goes on it without a reason written here, and nothing stays
@@ -216,12 +234,39 @@ cools it, and that is the whole history of the world.
 
 ## 3. Gravity
 
+> **NOT IN EITHER ENGINE SINCE 2026-11-08, AND THE REASON IS THE SCALE.** The law below is still
+> what gravity is. It is simply, at one atom per hexagon, too small to represent.
+>
+> A sheet of 4.26 million atoms weighs about 8.5 × 10⁻²⁰ kg and is 0.6 µm across, so its **entire**
+> self-gravitational binding energy is around 10⁻⁴² J. One chemical bond is about 5 × 10⁻¹⁹ J. The
+> whole world's gravity is therefore **10⁻²⁴ of a single bond inside it** — and for a 2D sheet
+> self-gravity grows as N^1.5 while the bond does not, so the crossing point where the sheet's
+> gravity is worth one bond is near **3 × 10²² hexagons: a lattice 180 billion a side, a sheet of
+> atoms 54 metres across.** The hardware reaches 2.1 billion cells, 14 µm. That gap does not close
+> with a better computer.
+>
+> What was in `world.mjs` instead was a dial, and a swept measurement on 2026-11-07 showed how far
+> out it was: at ε = 2 × 10⁻⁷, the strength every World run had used, **53% of pulls were refused at
+> law 1's momentum range and 4,387 were clamped** — a clamped pull is this law's own "under half a
+> unit a tick" being violated — and it broke 3.6× the bonds a gravity-off control did, which is the
+> first constraint below failing. The legal window was one decade wide, ε ≈ 2 × 10⁻⁸, where gravity's
+> contribution to gathering was +6% over a control that gathers on its own. **Chemistry does the
+> gathering in this universe, not gravity** (README items 20, 35, 37).
+>
+> Taking it out also removed `fineX`/`fineY` and `phi` — three of the engine's eight arrays, and
+> every float in the state — and three quarters of the cost of a tick.
+>
+> **The law is kept here, not deleted.** Rule 7 says a law needs a written reason to go on the list;
+> this one has one, it is still true of the universe, and it would be the law that matters in a
+> World large enough to need it. Nothing implements it.
+
 All matter attracts all matter, falling off as 1/r², never cancelling. It acts on the sum of kinds,
 and **it adds to momentum** — that is all a force is, `F = dp/dt`. No separate deflection rule is
 needed.
 
-**The only non-local law.** That cost is earned here, and a local replacement is a candidate (below).
-Not in the Lab.
+**It was the only non-local law.** With it out of the engine, rule 9's locality is absolute and has
+no exception left to argue about — the pyramid is gone, and so is the screened field that replaced
+it.
 
 **Why it is a rule: it is where the energy comes from.** Without it you must hand the world energy at
 the start or pump it in at a boundary forever — both are the designer choosing where life may live.
@@ -406,8 +451,23 @@ copies tile the plane in a triangular pattern.
   checked by brute force. So the Lab is **258 × 258**, 66,564 hexagons.
 
 With no edge, momentum is conserved exactly with nothing to count, and a quantum on an empty line
-goes round for ever, still counted as in flight. **The World's shape is open** (item 22): a loop
-removes the heat sink, the floor that gives a *down*, and makes gravity sum across the seam.
+goes round for ever, still counted as in flight.
+
+**THE WORLD IS A BOUNDED SHEET** (2026-11-08; Ric: *"Edge it seems the way to go. No expansion and no
+gravity."*). The shape question of item 22 was settled by what it decides — the heat sink. A torus has
+none: measured on 2026-11-07, 815,538 of 820,195 emitted quanta were reabsorbed inside the loop, and
+the expansion drain that was supposed to be the sink removed 102,936 units against 23 million of
+heat, then switched off entirely when the space hit its cap. So the World keeps its edges, and a
+quantum that steps off one is **gone, counted on the way out, and never seen again.** That is the
+only channel out of the World and the only reason it can cool.
+
+Two consequences worth stating before anyone reads chemistry off a boundary. An edge hexagon has
+fewer than six neighbours, and **an axial corner has only two** — `[1,0]` and `[0,1]`; the other four
+steps take `q` or `r` negative — so it cannot reach law 4's capacity. And a surface sink drains a
+perimeter while the heat lives in an area, so **cooling scales as 1/side**: the bigger the sheet, the
+longer its interior stays hot. That is not a flaw to fix; it is why real matter has a surface
+temperature and an inside temperature, and the World's own temperature-by-depth readout exists to
+measure it.
 
 ### Only neighbours interact
 
@@ -492,6 +552,15 @@ step, absorbed by the first matter it meets. At a boundary, if there is one, it 
 `radiated-away` counts it. Emission direction is uniform over the six — forced, because the
 second-law argument needs it.
 
+**That sentence about the boundary was a conditional for four days and is now the World's whole
+energy budget.** Since 2026-11-08 this is the only way energy leaves a World run, and with gravity
+gone law 2 is the only way any arrives — so a run is: bonds form, the binding energy comes out as
+heat, the heat finds its way to an edge as radiation, and it leaves. A cold 96 × 96 sheet run for
+20,000 ticks released 13,412 units through chemistry, radiated 7,250 of them away (54% of everything
+it ever had), and ended frozen at 89.1% bonded. Matter on the very edge radiating outward has no
+hexagon to put the quantum in at all, so its energy leaves in the same tick and is counted
+separately (`emittedOff`) — the skin cooling directly, rather than through its own skin.
+
 **Six bits, one per direction, in the bond field an empty hexagon never uses.** Under ticked time the
 bits are exact rather than a cap: a quantum arriving in a slot and an emission into it can only come
 from the one neighbour behind, which is matter or vacuum, never both. **Under the Lab's continuous
@@ -555,6 +624,14 @@ it), and the temperature comparison (two integer multiplications, unavoidable).
 ---
 
 ## Why gravity is held out of the Lab
+
+> **AND THEN OUT OF THE WORLD, 2026-11-08.** This section argued that the Lab excludes gravity
+> because a laboratory holds its conditions still, and that the World keeps it because a world has no
+> conditions to hold. Both halves were right; the second was answered by the scale instead. Nothing
+> below has been retracted — the Lab's reasons stand, and they are now the reasons two engines are
+> still worth having at all, since "four laws versus five" is no longer one of them. What separates
+> them is in `TWO-RUNS.md`: **the Lab holds conditions to measure chemistry; the World holds nothing
+> and cools through its edge.**
 
 The Lab uses four laws. Cost is a reason but not *the* reason.
 

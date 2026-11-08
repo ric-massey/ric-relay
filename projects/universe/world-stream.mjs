@@ -34,7 +34,7 @@
 // Usage:
 //   node world-stream.mjs                           local, 258x258, port 8787
 //   node world-stream.mjs --size 150 --every 2       smaller, a frame every 2 ticks
-//   node world-stream.mjs --eps 2e-5 --grow 200      turn the dials
+//   node world-stream.mjs --temp0 9 --p0 6           start it hot and moving
 //   node world-stream.mjs --push https://training-log.rmbuster82.workers.dev/universe
 //   node world-stream.mjs --host 127.0.0.1           this machine only
 //   node world-stream.mjs --save runs/world          also write frames to disk
@@ -68,12 +68,6 @@ const OPT = {
   // being hot has to be sayable rather than hoped for.
   temp0:  num("temp0", 0),              // energy per unit of kind, at tick 0
   p0:     num("p0", 0),                 // momentum components drawn in +-p0
-  eps:    num("eps", 2e-7),
-  screen: num("screen", 0.25),
-  relax:  num("relax", 2),
-  gcap:   num("gcap", 0),               // stop if gravity pays out more than this
-  grow:   num("grow", 0),
-  drain:  num("drain", 0.02),
   max:    num("max", 400000),
   check:  num("check", 200),            // the books, every N ticks
 
@@ -96,9 +90,6 @@ const OPT = {
   save:      flag("save", null),        // write each frame to <save>.{json,bin}
 };
 
-const gravity = OPT.eps > 0
-  ? { eps: OPT.eps, screen: OPT.screen, relax: OPT.relax, cap: OPT.gcap }
-  : null;
 
 // ------------------------------------------------------------- the engine id
 // Which engine is producing this. snapshot.mjs hashes lab.mjs and
@@ -112,11 +103,10 @@ const engine = { world: digest("world.mjs"), constants: digest("constants.mjs") 
 // ---------------------------------------------------------------- the world
 const world = new World({
   cols: OPT.size, rows: OPT.size, seed: OPT.seed,
-  constants: CANDIDATE_ZERO, gravity,
+  constants: CANDIDATE_ZERO,
 });
 world.seed_(OPT.fill, (rng) => 1 + rng.below(255),
             { temp0: OPT.temp0, momentumRange: OPT.p0 });
-const sizeAtStart = [world.w.cols, world.w.rows];
 
 // WHICH AXES ACTUALLY WRAP, asked of the engine rather than asserted here.
 // Ric, 2026-11-07, on the map: "it needs to be an accurate representation of
@@ -177,15 +167,15 @@ let ticksAtLastFrame = 0, lastFrameAt = started, ticksPerSecond = 0;
 function frameHeader() {
   const w = world.w, cells = w.cells, c = census(w);
   const row = world.history[world.history.length - 1] || null;
-  const grew = w.cols !== sizeAtStart[0] || w.rows !== sizeAtStart[1];
   return {
     engine,
     format: "universe-world-frame/1",
     kind: "world",
-    warning: "A LIVE FRAME FROM A RUNNING WORLD, and gravity's strength here is "
-      + "a DIAL rather than a measured constant: README item 20's floor-above-ceiling "
-      + "finding predates the 2026-11-06 physics and has not been redone. CANDIDATE_ZERO "
-      + "is the plumbing test point, not a chosen physics. Nothing read off this is a result.",
+    warning: "A LIVE FRAME FROM A RUNNING WORLD: a bounded sheet with four laws, no "
+      + "gravity and no expansion, as of 2026-11-08 -- one hexagon is one atom, and at "
+      + "that scale gravity is 10^-24 of a single bond (README items 20, 22, 37). "
+      + "CANDIDATE_ZERO is the plumbing test point, not a chosen physics. Nothing read "
+      + "off this is a result.",
     written: new Date().toISOString(),
     label: `World, live -- tick ${world.tick}`,
     slot: "live",
@@ -194,12 +184,16 @@ function frameHeader() {
     space: {
       lattice: "hex-axial-pointy",
       size: [w.cols, w.rows],
-      ...(grew ? { sizeAtStart } : {}),
       wraps,
       indexing: "i = r * cols + q",
+      // Measured by asking the engine where its own edges lead, not asserted.
+      // Since 2026-11-08 the World is bounded, so this reads false twice and
+      // the map draws a sheet with edges -- which is what the run now is. It
+      // stays a measurement rather than a constant because the shape is still
+      // README item 22's open question.
       note: wraps[0] && wraps[1] ? "hexagonal torus -- no edge in either direction"
           : wraps[0] || wraps[1] ? "cylinder -- one looping axis, a boundary on the other"
-          : "bounded patch -- edges in both directions",
+          : "bounded sheet -- edges in both directions, and light leaves through them",
     },
 
     // the old square-world fields, kept so an older viewer still opens this.
@@ -230,11 +224,10 @@ function frameHeader() {
       events: world.tick,                 // the viewer's run line reads this
       ticks: world.tick,
       fill: OPT.fill,
-      gravity,
-      growing: OPT.grow ? { everyTicks: OPT.grow, drain: OPT.drain, maxCells: OPT.max } : null,
+      temp0: OPT.temp0,
+      p0: OPT.p0,
       approximations: [
         "ticked time rather than the Lab's event queue (TWO-RUNS.md)",
-        `the potential is RELAXED ${gravity ? gravity.relax : 0} sweeps a tick, not solved`,
       ],
     },
 
@@ -244,9 +237,8 @@ function frameHeader() {
     books: {
       matter: c.matter, heat: c.heat, kinetic: c.kinetic, inFlight: c.inFlight,
       momentum: [c.px, c.py],
-      expansionLoss: world.ledger.expansionLoss,
       bondPotential: world.ledger.bondPotential,
-      gravityPotential: world.ledger.gravityPotential,
+      radiatedAway: world.ledger.escaped,
       closedAtTick: lastCheckedTick,
       closes: booksClose,
     },
@@ -265,7 +257,6 @@ function frameHeader() {
 let stopped = false, booksClose = true, lastCheckedTick = 0, lastError = null;
 let frame = { header: null, bin: null, json: null, gzJson: null, gzBin: null, at: 0 };
 const watchers = new Set();
-let growAxis = 0;
 
 function buildFrame() {
   world.sample();
@@ -305,28 +296,11 @@ function slice() {
   try {
     for (let n = 0; n < OPT.batch; n++) {
       world.doTick();
-      if (OPT.grow && world.tick % OPT.grow === 0 && world.w.cells < OPT.max) {
-        if (world.grow(growAxis)) {
-          growAxis ^= 1;
-          if (OPT.drain > 0) world.drainForGrowth(OPT.drain);
-          world.order = null;
-        }
-      }
       if (OPT.check && world.tick % OPT.check === 0) {
         world.ledger.check(world.w, `tick ${world.tick}`);
         lastCheckedTick = world.tick; booksClose = true;
       }
       if (world.tick >= OPT.ticks) { stopped = true; break; }
-      // The gravity cap, as World.run enforces it: this loop is the run, so it
-      // has to make the same stop. The counter it watches has no floor, so
-      // without this a stream can pump energy for as long as it is left open.
-      if (gravity && OPT.gcap > 0 && -world.ledger.gravityPotential > OPT.gcap) {
-        lastError = `gravity paid out ${(-world.ledger.gravityPotential).toLocaleString()} units `
-          + `of kinetic energy at tick ${world.tick}, past the cap of ${OPT.gcap.toLocaleString()}`;
-        stopped = true;
-        console.error(`\n  STOPPED AT THE GRAVITY CAP: ${lastError}\n`);
-        break;
-      }
       if (world.tick % OPT.every === 0) break;        // frame time
     }
   } catch (err) {
@@ -470,15 +444,10 @@ server.listen(OPT.port, OPT.host, () => {
   const w = world.w;
   console.log(`The World is running here, and can be watched.`);
   console.log(`  ${w.cols}x${w.rows} = ${w.cells.toLocaleString()} hexagons, seed ${OPT.seed}, fill ${OPT.fill}`);
-  console.log(gravity
-    ? `  gravity ON   eps ${OPT.eps}  screen ${OPT.screen}  relax ${OPT.relax}   -- a DIAL, not a measurement`
-    : `  gravity OFF  -- the control. Nothing creates momentum, so nothing moves.`);
+  console.log(`  a bounded sheet: four laws, no thermostat, and an EDGE light leaves through.`);
   console.log(OPT.temp0 || OPT.p0
     ? `  start        temperature ${OPT.temp0}, momentum +-${OPT.p0}, net zero`
     : `  start        absolute zero: no heat, no momentum. Every pair that can bond will, at once.`);
-  if (gravity && OPT.gcap) {
-    console.log(`  gravity cap  the run stops if gravity pays out more than ${OPT.gcap.toLocaleString()} units`);
-  }
   console.log(`  a frame every ${OPT.every} ticks and at most every ${OPT.minMs} ms; `
     + `the books asserted every ${OPT.check}`);
   console.log();

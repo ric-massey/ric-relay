@@ -1,9 +1,15 @@
 // world.mjs -- the World. The second of the two runs, and the one that is
-// meant to be lived in rather than measured: all five laws, a space that
-// grows, and no held conditions anywhere.
+// meant to be lived in rather than measured: a sheet of matter with an edge,
+// no thermostat, and no held conditions anywhere.
+//
+// ONE HEXAGON IS ONE ATOM. Nothing in this project said so until 2026-11-08,
+// and every argument about gravity was downstream of that silence. Ric settled
+// it with the question the whole thing turned on -- "think about how much DNA
+// gets affected by gravity, and how many atoms are in DNA" -- and with the
+// scale declared, two of this file's four differences from the Lab had to go.
 //
 // Read TWO-RUNS.md, THE-LAWS.md and AGENTS.md before changing anything here.
-// What this file is NOT is a bigger Lab. Four things differ, and each is a
+// What this file is NOT is a bigger Lab. Three things differ, and each is a
 // decision written down somewhere rather than a convenience:
 //
 //   TICKED TIME.        The Lab uses event-driven continuous time where
@@ -14,44 +20,49 @@
 //                       hexagon every k/|p| ticks, capped at one per tick" --
 //                       so here it is the original and the Lab's GAP 1 is the
 //                       approximation, which is the reverse of how it looks.
-//   GRAVITY IS IN.      Law 3 is held out of the Lab because a measurement
-//                       needs controlled conditions. The World has no
-//                       controlled conditions, so it has gravity.
 //   NO THERMOSTAT.      The Lab holds a hot band and a cold band. The World
-//                       holds nothing: collapse supplies the energy and the
-//                       growth takes it away.
-//   THE SPACE GROWS.    README item 22, rules 1-3.
+//                       holds nothing. Chemistry supplies the heat and the
+//                       edge takes it away.
+//   THE SPACE HAS AN    The Lab is a torus with no edge, so nothing ever
+//   EDGE.               leaves it. The World is a bounded sheet: a quantum of
+//                       radiation that steps off is GONE -- counted on the way
+//                       out, never seen again. That edge is the World's only
+//                       sink, and README item 22 said all along that the shape
+//                       is what decides the heat sink.
+//
+// TWO THINGS CAME OUT ON 2026-11-08, and both removals are the scale talking:
+//
+//   GRAVITY (law 3).    A sheet of 4.26 million atoms has a self-gravitational
+//                       binding energy around 10^-42 J, against ~5x10^-19 J for
+//                       one chemical bond: gravity is 10^-24 of a single bond.
+//                       The crossing point, where the whole sheet's gravity is
+//                       worth one bond, is near 3x10^22 hexagons -- a lattice
+//                       180 billion a side. The hardware reaches 2.1 billion
+//                       cells. So gravity is not weak here, it is absent, and
+//                       a dial that made it visible was 10^22 out. It also
+//                       cost three quarters of every tick and paid out
+//                       17,120,848 units of manufactured energy in the one
+//                       long run (README items 20, 35 and 37).
+//   EXPANSION.          It was the only sink and far too small -- 102,936 units
+//                       drained against 23 million of heat, and it switched off
+//                       the moment the space hit its cap. The edge replaces it
+//                       (README items 22 and 36).
 //
 // Rules this file stands under, each marked where it bites:
 //
 //   rule 2   nothing stored that should emerge. No species field, no cluster
-//            id, no temperature field. The potential IS stored, and that is
-//            not an exception: it is a field the law is written in terms of.
+//            id, no temperature field.
 //   rule 5   integers for everything conserved. Energy and momentum are
-//            integers. The potential is a float because a potential is not
-//            conserved -- the momentum it produces is, and that is carried in
-//            integers through the fine-momentum array.
-//   rule 6   conservation asserted, with the edge counters. In a growing
-//            world energy is genuinely NOT conserved, so the invariant gains
-//            a term rather than being dropped: see Ledger.
+//            integers, with no float anywhere in the state: fine momentum went
+//            out with gravity, which is the only thing that ever made a
+//            fraction.
+//   rule 6   conservation asserted, and with one sink the invariant is as
+//            strict as the Lab's. Energy leaves only through the edge and is
+//            counted as it goes: see Ledger.
+//   rule 7   "Prefer removing." Five laws became four here.
 //   rule 8   no physics number in this file.
-//   rule 9   nothing reads past a site's immediate neighbours -- INCLUDING
-//            GRAVITY, which is why it is the screened field and not a sum
-//            over pairs. See "law 3" below.
-//
-// GRAVITY'S STRENGTH IS A DIAL ON THIS FILE AND THAT IS DELIBERATE.
-// README item 20 measured gravity's floor above its ceiling at 4096 squared,
-// under +-15 and S = 64 -- a physics that stopped existing on 2026-11-06. So
-// there is no legal strength to read off, and no re-measurement yet either.
-// Ric's call, 2026-11-07: run it, watch collapse, the hot era and
-// recombination, and move the dial between runs. Every run therefore records
-// the strength it used and the eras it produced, which is what makes the next
-// run an experiment rather than a guess.
-//
-// WHEN A STRENGTH IS CHOSEN IT BELONGS IN constants.mjs AS A SEARCHED
-// CONSTANT, not here. These are run settings in exactly the sense
-// snapshot.mjs's are: typed on the command line, recorded in the output,
-// never defaulted silently into the physics.
+//   rule 9   nothing reads past a site's immediate neighbours. With gravity
+//            gone there is no exception left to argue about.
 
 import {
   SETTLED, WIDTHS, KIND_MAX, ENERGY_MAX, MOMENTUM_RANGE, DIRECTIONS,
@@ -65,11 +76,17 @@ import {
 // state rather than constants.
 const DIR_CUBE = [[1, -1, 0], [1, 0, -1], [0, 1, -1], [-1, 1, 0], [-1, 0, 1], [0, -1, 1]];
 const DIR_AXIAL = DIR_CUBE.map(([x, , z]) => [x, z]);
-const HALF = [0, 1, 5];                     // one of each edge pair
 const opposite = (d) => (d + 3) % DIRECTIONS;
 
 const MOD = SETTLED.BOND_MODULUS;
 const KE_SCALE = SETTLED.KE_SCALE;
+
+// How many depth bands sample() reports temperature in. This is a RESOLUTION,
+// not a physics number (rule 8): it says how finely a run is willing to look at
+// its own skin, the way the sample interval says how often. Eight because the
+// smallest World anyone runs is 96 across, which gives each band six hexagons
+// of depth to average over.
+const BANDS = 8;
 
 const bindingEnergy = (k1, k2) => MOD - Math.abs((k1 % MOD) + (k2 % MOD) - MOD);
 const popcount6 = (b) => { let n = 0; for (let d = 0; d < DIRECTIONS; d++) if (b & (1 << d)) n++; return n; };
@@ -86,19 +103,18 @@ function makeRng(seed) {
 }
 
 // ================================================================= the world
-// Eight arrays. Five are the Lab's; three are the World's own and each one is
-// a decision from THE-LAWS.md rather than an optimisation:
+// FIVE ARRAYS, SIX BYTES A HEXAGON, and they are exactly the Lab's. There were
+// eight until 2026-11-08: fineX and fineY carried gravity's sub-unit pull in
+// units of 2^-32 (item 19) and phi was law 3's potential, and all three went
+// out with gravity. What is left is the same six bytes snapshot.mjs has always
+// written to disk and the viewer has always read, so the frame format did not
+// have to change when the engine did.
 //
-//   fineX/fineY  LAW 3's "a pull smaller than one unit of momentum is carried,
-//                never rounded". Units of 2^-32, two 32-bit components, which
-//                is the form adopted for the World on 2026-11-06 (items 19 and
-//                34). An Int32 holds [-2^31, 2^31) of those, which is exactly
-//                +-half a momentum unit -- and the law says the strongest legal
-//                pull anywhere is under half a unit a tick, so a whole unit is
-//                carried the moment the accumulator wraps. The wrap IS the
-//                carry, which is why this width and not another.
-//   phi          LAW 3's potential. Stored because the screened field equation
-//                is written in terms of it; see law 3 below.
+// The word in THE-LAWS.md packs the same state into eight bytes -- kind 8,
+// energy 16, momentum 14, bonds 6 -- and these arrays spend two bytes on
+// momentum where the word spends fourteen bits. That is the one place the
+// engine is looser than the word, and it is deliberate: a byte per component
+// is addressable and 7 bits is not.
 function makeWorld(cols, rows) {
   const n = cols * rows;
   return {
@@ -108,13 +124,15 @@ function makeWorld(cols, rows) {
     mx:     new Int8Array(n),
     my:     new Int8Array(n),
     bonds:  new Uint8Array(n),
-    fineX:  new Int32Array(n),
-    fineY:  new Int32Array(n),
-    phi:    new Float32Array(n),
   };
 }
 
-const isMatter = (w, i) => w.kind[i] !== 0;
+// OFF THE SHEET IS NOT MATTER, and this one comparison is why the edge did not
+// have to be threaded through twenty call sites. Without it `isMatter(w, -1)`
+// reads w.kind[-1], which is `undefined`, and `undefined !== 0` is TRUE -- so
+// every "is my neighbour matter?" test in the engine would have answered yes
+// at the boundary, and bonds would have formed with the outside.
+const isMatter = (w, i) => i >= 0 && w.kind[i] !== 0;
 const qOf = (w, i) => i % w.cols;
 const rOf = (w, i) => (i - (i % w.cols)) / w.cols;
 
@@ -122,12 +140,20 @@ const rOf = (w, i) => (i - (i % w.cols)) / w.cols;
 // README item 22's shape question is open and this is the provisional
 // direction, so it is recorded in the run's `space` block and can change
 // without anything else here changing.
+// THE EDGE LIVES HERE AND NOWHERE ELSE, which is the whole point of putting it
+// in this one function: -1 means "off the sheet". Until 2026-11-08 this wrapped
+// both axes and the World was a torus; now a step off the side returns -1 and
+// every caller has to say what that means for it. Radiation says "gone, and
+// counted". Everything else says "not there", which is the same answer it gives
+// for vacuum or for a neighbour it cannot use.
+//
+// A guard this cheap is worth having in one place: the alternative, four
+// if-statements per caller, is how a seam goes quietly wrong (rule 6).
 function neighbour(w, i, d) {
   const [dq, dr] = DIR_AXIAL[d];
   const q = qOf(w, i) + dq, r = rOf(w, i) + dr;
-  const qq = q < 0 ? q + w.cols : q >= w.cols ? q - w.cols : q;
-  const rr = r < 0 ? r + w.rows : r >= w.rows ? r - w.rows : r;
-  return rr * w.cols + qq;
+  if (q < 0 || q >= w.cols || r < 0 || r >= w.rows) return -1;
+  return r * w.cols + q;
 }
 
 // ---------------------------------------------------- derived, never stored
@@ -144,23 +170,25 @@ const legalMomentum = (x, y) =>
   Math.abs(-x - y) <= MOMENTUM_RANGE;
 
 // ================================================================= the books
-// rule 6, with the term a growing world forces. Energy is NOT conserved when
-// space is created -- that is physics, not a bug (README item 22, rule 2) --
-// so the invariant carries the loss rather than pretending otherwise:
+// rule 6, and as of 2026-11-08 it is as strict as the Lab's. The invariant is
 //
-//     heat + kinetic + in flight + expansion loss  =  constant
+//     heat + kinetic + in flight + bond potential + radiated away  =  constant
 //
-// Momentum IS conserved, gravity included, because every pull is computed
-// once per edge and applied equal and opposite to its two ends.
+// and every term on the left is an integer. It used to carry an expansion loss
+// and a gravitational potential as well: the first because creating space
+// destroys energy, the second because a force that adds momentum adds kinetic
+// energy and it has to come from somewhere. Both are gone, and the second was
+// worth the trouble it caused -- it is a counter with no floor, so the books
+// closed however much energy gravity invented, and one long run manufactured
+// 17 million units before anything noticed (README item 35).
+//
+// "Radiated away" is the only channel out, and it is counted one quantum at a
+// time as it crosses the edge. Nothing else can leave: matter never steps off
+// the sheet, and radiation in this physics carries energy without momentum, so
+// MOMENTUM IS EXACTLY CONSTANT with no drain term at all.
 function census(w) {
   let matter = 0, heat = 0, kinetic = 0, inFlight = 0, px = 0, py = 0, bondEnds = 0, bonded = 0;
-  // The fine accumulators are part of the momentum, not a side table: a carry
-  // adds 1 to mx and wraps fineX by exactly -2^32, so mx*2^32 + fineX is
-  // invariant across a carry and the whole-unit part alone is NOT. Summing
-  // both is what makes the momentum check exact.
-  let fx = 0, fy = 0;
   for (let i = 0; i < w.cells; i++) {
-    fx += w.fineX[i]; fy += w.fineY[i];
     if (w.kind[i] !== 0) {
       matter += w.kind[i];
       heat += w.energy[i];
@@ -173,7 +201,7 @@ function census(w) {
       inFlight += popcount6(w.bonds[i]);
     }
   }
-  return { matter, heat, kinetic, inFlight, px, py, fx, fy, bonds: bondEnds / 2, bonded };
+  return { matter, heat, kinetic, inFlight, px, py, bonds: bondEnds / 2, bonded };
 }
 
 class Ledger {
@@ -181,44 +209,30 @@ class Ledger {
     const c = census(w);
     this.matter0 = c.matter;
     this.energy0 = c.heat + c.kinetic + c.inFlight;
-    this.px0 = c.px * 4294967296 + c.fx;
-    this.py0 = c.py * 4294967296 + c.fy;
-    this.expansionLoss = 0;
+    this.px0 = c.px;
+    this.py0 = c.py;
     this.bondPotential = 0;       // released on forming, absorbed on breaking
-    // Expansion takes MOMENTUM as well as energy -- free motion slows as space
-    // stretches, which is the same redshift seen from the other side. So the
-    // momentum invariant gains a term exactly as the energy one did, rather
-    // than the check being switched off because it became inconvenient.
-    this.pxDrained = 0; this.pyDrained = 0;
-    // GRAVITATIONAL POTENTIAL. THE-LAWS.md: "spread-out matter holds
-    // potential, collapse turns it into heat." A force that adds momentum
-    // adds kinetic energy, and that energy has to come from somewhere or the
-    // world is a perpetual motion machine -- which is exactly what the first
-    // run of this engine was, caught by this check at tick 20 with 40 units
-    // from nowhere. Every unit of kinetic energy gravity creates is debited
-    // here, so the counter IS the potential spent, and watching it drain is
-    // watching the collapse pay for the hot era.
-    this.gravityPotential = 0;
+    // RADIATED AWAY. The one way out, counted on the way out. A quantum that
+    // steps off the sheet is added here and removed from the lattice in the
+    // same statement (propagateAll), which is what makes "it left" different
+    // from "it leaked" -- and the difference is the whole of rule 6.
+    this.escaped = 0;
   }
   check(w, label) {
     const c = census(w);
-    const energy = c.heat + c.kinetic + c.inFlight
-      + this.expansionLoss + this.bondPotential + this.gravityPotential;
+    const energy = c.heat + c.kinetic + c.inFlight + this.bondPotential + this.escaped;
     if (c.matter !== this.matter0) {
       throw new Error(`${label}: matter ${c.matter} was ${this.matter0}`);
     }
     if (energy !== this.energy0) {
       throw new Error(`${label}: energy ${energy} was ${this.energy0} `
         + `(heat ${c.heat} kinetic ${c.kinetic} flight ${c.inFlight} `
-        + `expansion ${this.expansionLoss} bonds ${this.bondPotential} `
-        + `gravity ${this.gravityPotential})`);
+        + `bonds ${this.bondPotential} radiated ${this.escaped})`);
     }
-    const px = (c.px + this.pxDrained) * 4294967296 + c.fx;
-    const py = (c.py + this.pyDrained) * 4294967296 + c.fy;
-    if (px !== this.px0 || py !== this.py0) {
-      throw new Error(`${label}: momentum (${px}, ${py}) was (${this.px0}, ${this.py0}) `
-        + `-- gravity is applied per edge so it cannot move the total, and expansion's `
-        + `share is counted in pxDrained/pyDrained`);
+    if (c.px !== this.px0 || c.py !== this.py0) {
+      throw new Error(`${label}: momentum (${c.px}, ${c.py}) was (${this.px0}, ${this.py0}) `
+        + `-- nothing in this engine can move the total: every exchange is equal and `
+        + `opposite, matter cannot leave the sheet, and radiation carries no momentum`);
     }
   }
 }
@@ -228,19 +242,20 @@ export class World {
   constructor({
     cols = 258, rows = 258, seed = 1,
     constants = CANDIDATE_ZERO,
-    gravity = null,          // { eps, screen, relax, cap } -- null means law 3 off
   } = {}) {
-    if (cols % 3 || rows % 3) {
-      throw new Error(`${cols}x${rows}: both sides must be multiples of 3, because collisions `
-        + `resolve in three-hexagon blocks that only tile across the seam when 3 divides the side`);
-    }
+    // The multiple-of-three requirement went with the torus. It was there
+    // because collisions resolve in three-hexagon Margolus blocks, which only
+    // tile across a SEAM when 3 divides the side -- and a bounded sheet has no
+    // seam. Keeping a constraint whose reason has gone is how a document ends
+    // up disagreeing with the code (rule 5, "a width is physics"), so it is
+    // recorded here rather than left standing. If the shape ever loops again,
+    // this comes back with it.
     const refusals = validateForLab(constants);
     if (refusals.length) {
       throw new Error("REFUSING TO RUN. " + refusals.length + " constant problem(s):\n  - "
         + refusals.join("\n  - "));
     }
     this.c = constants;
-    this.g = gravity;
     this.rng = makeRng(seed);
     this.seed = seed;
     this.w = makeWorld(cols, rows);
@@ -269,127 +284,22 @@ export class World {
       momentumShared: 0, shareRangeDeclined: 0, shareUnaffordable: 0, shareNoRoom: 0,
       thermalKicks: 0, kickRangeDeclined: 0, kickUnaffordable: 0, kickNoRoom: 0,
       kickNoPartner: 0,
-      gravityCarries: 0, gravityDeclined: 0,
-      grew: 0, growthBlocked: 0, expansionDrained: 0, expansionDeclined: 0,
+      // THE EDGE. `escaped` is quanta that crossed it and are gone, which is
+      // the same number the ledger carries; `emittedOff` is matter at the very
+      // edge radiating straight out, which never spends a tick in flight at
+      // all. They are counted apart because they are different pictures of
+      // the same sink: one is the sheet's interior cooling THROUGH its skin,
+      // the other is the skin cooling directly.
+      escaped: 0, emittedOff: 0,
     };
     this.history = [];
-    this.stopped = null;         // set when the gravity cap ends a run early
-  }
-
-  // ----------------------------------------------------------- law 3, local
-  // "Gravity as a sum over pairs is non-local. Gravity as a field is not."
-  // THE-LAWS.md, "Gravity can be made local": the screened Poisson equation
-  //
-  //     laplacian(phi) - m^2 phi = -rho
-  //
-  // relaxed by repeated neighbour-averaging, with the force read off as the
-  // gradient between neighbours. On the hex lattice the discrete laplacian is
-  // (sum of six neighbours - 6 phi), so a relaxation step is
-  //
-  //     phi = (sum of neighbours + rho) / (6 + m^2)
-  //
-  // and phi is large where matter is, so a primitive is pulled UP the
-  // gradient. This is item 12's candidate, taken because rule 9 is worth more
-  // than the pairwise form's exactness, and because a pairwise sum over
-  // millions of cells is not a thing a browser does.
-  //
-  // IT IS RELAXED, NOT SOLVED. A few sweeps a tick track a density that moves
-  // slowly compared to the relaxation. That is an approximation and it is the
-  // World's second one after ticked time; both are listed in the run's output
-  // so neither can be forgotten.
-  relaxPotential() {
-    const w = this.w, m2 = this.g.screen * this.g.screen, denom = 6 + m2;
-    for (let pass = 0; pass < this.g.relax; pass++) {
-      for (let i = 0; i < w.cells; i++) {
-        let sum = 0;
-        for (let d = 0; d < DIRECTIONS; d++) sum += w.phi[neighbour(w, i, d)];
-        w.phi[i] = (sum + w.kind[i]) / denom;
-      }
-    }
-  }
-
-  // One Int32 of fine momentum is 2^-32 of a unit, so the accumulator covers
-  // +-half a unit and WRAPS at exactly one whole unit. Detecting the wrap is
-  // the carry -- no division, no rounding, and nothing is ever dropped.
-  //
-  // This is a DRY RUN: it works out what would happen without touching
-  // anything, because a pull is only legal if it is legal at BOTH ends. See
-  // pullPair.
-  wouldCarry(before, delta) {
-    const after = (before + delta) | 0;
-    const carry = delta > 0 && after < before ? 1
-                : delta < 0 && after > before ? -1 : 0;
-    return [after, carry];
-  }
-
-  // "Each interaction is computed once and applied to both sides." Walking
-  // edges rather than cells is what makes that true by construction: the pair
-  // gets one number, +F to one end and -F to the other, so the world's total
-  // momentum cannot move however wrong the potential is.
-  applyGravity() {
-    const w = this.w;
-    this.relaxPotential();
-    const scale = this.g.eps * 4294967296;     // into units of 2^-32
-    for (let i = 0; i < w.cells; i++) {
-      if (!isMatter(w, i)) continue;
-      for (const d of HALF) {
-        const j = neighbour(w, i, d);
-        if (!isMatter(w, j)) continue;
-        // symmetric weight, antisymmetric gradient -> equal and opposite
-        let f = scale * w.kind[i] * w.kind[j] * (w.phi[j] - w.phi[i]);
-        if (!f) continue;
-        // |0 on anything past 2^31 wraps, which would turn the strongest pull
-        // in the world into a pull the other way. Clamp first and count it:
-        // a dial set this high is outside the law's "under half a unit a
-        // tick" and the run should say so rather than silently invert.
-        if (f > 2147483647 || f < -2147483648) { this.counts.gravityDeclined++; f = f > 0 ? 2147483647 : -2147483648; }
-        const [ux, uy] = DIR_CUBE[d];
-        const fx = (f * ux) | 0, fy = (f * uy) | 0;
-        if (fx === 0 && fy === 0) { this.counts.gravityDeclined++; continue; }
-        this.pullPair(i, j, fx, fy);
-      }
-    }
-  }
-
-  // ONE EDGE, SETTLED AS ONE TRANSACTION, and that is forced rather than
-  // tidy. The law says each interaction is "computed once and applied to both
-  // sides", and the first version applied the two sides independently: when
-  // one end was already at law 1's momentum range and refused its half, the
-  // other end took its half anyway and the world's momentum walked off --
-  // caught by the ledger at (-21, 11) after twenty ticks.
-  //
-  // So the pull is all-or-nothing. If either end cannot legally take it,
-  // neither does, and the edge is counted as declined. A pull is never
-  // clipped: clipping is what item 20 found gravity dying of.
-  pullPair(i, j, fx, fy) {
-    const w = this.w;
-    const [aix, cix] = this.wouldCarry(w.fineX[i], fx);
-    const [aiy, ciy] = this.wouldCarry(w.fineY[i], fy);
-    const [ajx, cjx] = this.wouldCarry(w.fineX[j], -fx);
-    const [ajy, cjy] = this.wouldCarry(w.fineY[j], -fy);
-
-    if ((cix || ciy) && !legalMomentum(w.mx[i] + cix, w.my[i] + ciy)) {
-      this.counts.gravityDeclined++; return;
-    }
-    if ((cjx || cjy) && !legalMomentum(w.mx[j] + cjx, w.my[j] + cjy)) {
-      this.counts.gravityDeclined++; return;
-    }
-
-    w.fineX[i] = aix; w.fineY[i] = aiy;
-    w.fineX[j] = ajx; w.fineY[j] = ajy;
-
-    if (cix || ciy) {
-      const before = keAt(w, i);
-      w.mx[i] += cix; w.my[i] += ciy;
-      this.ledger.gravityPotential -= keAt(w, i) - before;
-      this.counts.gravityCarries++;
-    }
-    if (cjx || cjy) {
-      const before = keAt(w, j);
-      w.mx[j] += cjx; w.my[j] += cjy;
-      this.ledger.gravityPotential -= keAt(w, j) - before;
-      this.counts.gravityCarries++;
-    }
+    // A LEDGER FROM THE FIRST TICK, not from the first seed. propagateAll and
+    // tryTransport both count escaped energy into it, so it has to exist
+    // before anything can run -- an empty world's books are all zeros, and
+    // seed_ replaces this one once matter is placed. `seeded` is what run()
+    // checks, since "the ledger exists" no longer means "the world was set up".
+    this.ledger = new Ledger(this.w);
+    this.seeded = false;
   }
 
   // ------------------------------------------------------------ law 2, bonds
@@ -449,6 +359,19 @@ export class World {
       this.counts.quantaMoved++;
       return;
     }
+    // STRAIGHT OFF THE SHEET. Matter on the very edge, radiating outward, has
+    // nowhere to put the quantum -- there is no hexagon to hold it. It is not
+    // blocked and it is not kept: the energy leaves, counted as it goes. This
+    // is the skin cooling directly, and without this branch `w.bonds[-1] |= …`
+    // would have written to nothing and destroyed the unit in silence, which
+    // is the exact shape of leak rule 6 exists to catch.
+    if (j < 0) {
+      w.energy[i]--;
+      this.ledger.escaped++;
+      this.counts.emitted++;
+      this.counts.emittedOff++;
+      return;
+    }
     // vacuum: emit one unit as a quantum in flight, travelling in direction d
     if (w.bonds[j] & (1 << d)) return;      // that slot is occupied
     w.energy[i]--;
@@ -474,6 +397,11 @@ export class World {
       for (let d = 0; d < DIRECTIONS; d++) {
         if (!(slots & (1 << d))) continue;
         const j = neighbour(w, i, d);
+        // THE SINK. A quantum that steps off the sheet is gone: added to the
+        // one counter that is allowed to grow and not written anywhere on the
+        // lattice. This is the only line in the engine that removes energy
+        // from the world, and the only reason the World can cool at all.
+        if (j < 0) { this.ledger.escaped++; this.counts.escaped++; continue; }
         if (isMatter(w, j)) {
           if (w.energy[j] < ENERGY_MAX) { w.energy[j]++; this.counts.absorbed++; }
           else w.bonds[i] |= 1 << d;            // absorber full: it waits here
@@ -495,10 +423,12 @@ export class World {
   // made it an incomplete physics rather than a different one:
   //
   //   shareMomentum   a bonded pair equalising. This is what lets a bonded
-  //                   GROUP respond to a push as a group: gravity pulls on one
-  //                   end and the bond carries that momentum through the
+  //                   GROUP respond to a push as a group: something leans on
+  //                   one end and the bond carries that momentum through the
   //                   cluster, one hop per clock fire. Without it a cluster is
   //                   not an object, just a set of hexagons that cannot move.
+  //                   (It was gravity doing the leaning until 2026-11-08; now
+  //                   it is a collision, a thermal kick or a refused step.)
   //   tryThermalKick  heat becoming motion. Without it a primitive with no
   //                   momentum never moves at any temperature, because law 1's
   //                   step rate min(1, |p|/k) does not read heat -- so hot
@@ -517,15 +447,16 @@ export class World {
   // way. That is why the accounting is written once here and used twice, and
   // why neither function below does its own.
 
-  // A dry run, then a commit, exactly as pullPair is and for the same reason:
-  // an exchange that cannot be paid for in full does not happen at all,
-  // because declining conserves exactly where clamping would not. Returns
-  // null on success, or the reason it did not happen.
+  // A dry run, then a commit, for the reason every transfer in this file does
+  // it that way: an exchange that cannot be paid for in full does not happen
+  // at all, because declining conserves exactly where clamping would not.
+  // Returns null on success, or the reason it did not happen.
   exchange(i, j, nxI, nyI, nxJ, nyJ) {
     const w = this.w;
     // Law 1's range is a field width, and rule 5 says a field must not be
-    // papered over. Declining the hop conserves; clipping it is what README
-    // item 20 found gravity dying of.
+    // papered over. Declining the hop conserves; clipping it would not, and
+    // clipping a sub-unit pull is what README item 20 found gravity dying of
+    // back when there was a gravity to die.
     if (!legalMomentum(nxI, nyI) || !legalMomentum(nxJ, nyJ)) return "range";
 
     const keBefore = keAt(w, i) + keAt(w, j);
@@ -727,6 +658,14 @@ export class World {
     const d = this.stepDirection(i);
     if (d < 0) { this.counts.tooColdToMove++; return; }
     const j = neighbour(w, i, d);
+    // THE EDGE HOLDS MATTER IN. Only light leaves; a primitive that would walk
+    // off the sheet stays where it is, keeping its momentum, and the step is
+    // counted as blocked like any other. Without this the move below would
+    // write the primitive to index -1 -- which a typed array accepts and
+    // discards, so matter would quietly evaporate at the boundary and the
+    // matter total would fall. That is a leak with a plausible story attached,
+    // which is the kind rule 6 warns is the most dangerous.
+    if (j < 0) { this.counts.blocked++; return; }
     if (isMatter(w, j)) { this.counts.blocked++; return; }
     if (w.bonds[j]) { this.counts.blocked++; return; }    // a quantum is there
 
@@ -761,10 +700,8 @@ export class World {
     }
     w.kind[j] = w.kind[i]; w.energy[j] = w.energy[i];
     w.mx[j] = w.mx[i]; w.my[j] = w.my[i];
-    w.fineX[j] = w.fineX[i]; w.fineY[j] = w.fineY[i];
     w.bonds[j] = 0;
-    w.kind[i] = 0; w.energy[i] = 0; w.mx[i] = 0; w.my[i] = 0;
-    w.fineX[i] = 0; w.fineY[i] = 0; w.bonds[i] = 0;
+    w.kind[i] = 0; w.energy[i] = 0; w.mx[i] = 0; w.my[i] = 0; w.bonds[i] = 0;
     for (const partner of survivors) {
       for (let f = 0; f < DIRECTIONS; f++) {
         if (neighbour(w, j, f) === partner) {
@@ -781,123 +718,6 @@ export class World {
     if (carriedBonds !== 0) this.counts.bondedStepped++;
   }
 
-  // ------------------------------------------------------------- the growth
-  // README item 22, rule 1: a new line of empty hexagons all the way round the
-  // loop, between two existing lines, WHERE NOTHING ON ONE SIDE IS BONDED TO
-  // ANYTHING ON THE OTHER. Bound matter is never split. Lines go in threes so
-  // each side stays a multiple of 3, and the axis alternates.
-  rowIsCuttable(r) {
-    const w = this.w;
-    // a cut between row r-1 and row r: no bond may cross it
-    for (let q = 0; q < w.cols; q++) {
-      const i = (r === 0 ? w.rows - 1 : r - 1) * w.cols + q;
-      if (!w.bonds[i]) continue;
-      for (let d = 0; d < DIRECTIONS; d++) {
-        if (!(w.bonds[i] & (1 << d))) continue;
-        if (DIR_AXIAL[d][1] === 1) return false;      // reaches into row r
-      }
-    }
-    return true;
-  }
-  colIsCuttable(q) {
-    const w = this.w;
-    for (let r = 0; r < w.rows; r++) {
-      const i = r * w.cols + (q === 0 ? w.cols - 1 : q - 1);
-      if (!w.bonds[i]) continue;
-      for (let d = 0; d < DIRECTIONS; d++) {
-        if (!(w.bonds[i] & (1 << d))) continue;
-        if (DIR_AXIAL[d][0] === 1) return false;
-      }
-    }
-    return true;
-  }
-
-  grow(axis) {
-    const w = this.w;
-    const along = axis === 0 ? w.cols : w.rows;
-    const eligible = [];
-    for (let k = 0; k < along; k++) {
-      if (axis === 0 ? this.colIsCuttable(k) : this.rowIsCuttable(k)) eligible.push(k);
-    }
-    if (!eligible.length) { this.counts.growthBlocked++; return false; }
-    const atK = eligible[this.rng.below(eligible.length)];
-
-    const cols = axis === 0 ? w.cols + 3 : w.cols;
-    const rows = axis === 1 ? w.rows + 3 : w.rows;
-    const n = makeWorld(cols, rows);
-    const copy = (si, di) => {
-      n.kind[di] = w.kind[si]; n.energy[di] = w.energy[si];
-      n.mx[di] = w.mx[si]; n.my[di] = w.my[si]; n.bonds[di] = w.bonds[si];
-      n.fineX[di] = w.fineX[si]; n.fineY[di] = w.fineY[si]; n.phi[di] = w.phi[si];
-    };
-    for (let r = 0; r < w.rows; r++) {
-      for (let q = 0; q < w.cols; q++) {
-        const si = r * w.cols + q;
-        const dq = axis === 0 && q >= atK ? q + 3 : q;
-        const dr = axis === 1 && r >= atK ? r + 3 : r;
-        copy(si, dr * cols + dq);
-      }
-    }
-    this.w = n;
-    this.counts.grew++;
-    return true;
-  }
-
-  // rule 2: growth drains energy from what is NOT bound -- light in flight and
-  // the motion of free primitives -- in proportion, into a counted loss. Heat
-  // held in matter is not drained. That is the cold dark sky a loop with no
-  // edge was missing.
-  drainForGrowth(fraction) {
-    const w = this.w;
-    for (let i = 0; i < w.cells; i++) {
-      if (isMatter(w, i)) {
-        if (w.bonds[i]) continue;                    // bound: not drained
-        if (w.mx[i] === 0 && w.my[i] === 0) continue;
-        if (this.rng.u01() >= fraction) continue;
-        // A DRY RUN AND THEN A COMMIT, like every other transfer in this file,
-        // AND IT HAD TO BECOME ONE. This used to take a unit off whichever
-        // axis was non-zero and then record the energy difference only `if
-        // (lost > 0)`. On cube coordinates that discards energy out of the
-        // books: momentum is three components summing to zero, so taking a
-        // unit off x moves z the other way, and for mx = 1, my = -5 the
-        // kinetic energy RISES when mx goes to 0 (Q = 42 -> 50). The
-        // difference then existed in the world and in no counter.
-        //
-        // It was invisible until 2026-11-07 because nothing in the World ever
-        // had momentum at seeding and bonded matter is skipped here, so the
-        // branch only ran on gravity's own slow carries. The first run with
-        // --p0 set broke the books by 60 units in 100 ticks, which is rule 6
-        // doing exactly its job.
-        //
-        // So: find a unit whose removal actually sheds, take that one, and
-        // decline if neither axis does. Expansion must never be able to make
-        // the world hotter.
-        const before = keAt(w, i);
-        const tries = [];
-        if (w.mx[i] !== 0) tries.push([Math.sign(w.mx[i]), 0]);
-        if (w.my[i] !== 0) tries.push([0, Math.sign(w.my[i])]);
-        let took = null, lost = 0;
-        for (const [dx, dy] of tries) {
-          const after = keOf(w.mx[i] - dx, w.my[i] - dy, w.kind[i]);
-          if (after <= before) { took = [dx, dy]; lost = before - after; break; }
-        }
-        if (!took) { this.counts.expansionDeclined++; continue; }
-        w.mx[i] -= took[0]; w.my[i] -= took[1];
-        this.ledger.pxDrained += took[0]; this.ledger.pyDrained += took[1];
-        this.ledger.expansionLoss += lost;
-        this.counts.expansionDrained++;
-      } else if (w.bonds[i]) {
-        for (let d = 0; d < DIRECTIONS; d++) {
-          if (!(w.bonds[i] & (1 << d))) continue;
-          if (this.rng.u01() >= fraction) continue;
-          w.bonds[i] &= ~(1 << d);                   // the quantum redshifts away
-          this.ledger.expansionLoss += 1;
-          this.counts.expansionDrained++;
-        }
-      }
-    }
-  }
-
   // ---------------------------------------------------------------- a tick
   // Every hexagon gets its chance every tick, in a shuffled order so position
   // does not become a hidden priority. This is the per-tick update
@@ -905,7 +725,6 @@ export class World {
   // fires at all.
   doTick() {
     const w = this.w;
-    if (this.g) this.applyGravity();
     this.propagateAll();          // the light field moves as one, from a copy
 
     const order = this.order && this.order.length === w.cells
@@ -939,18 +758,21 @@ export class World {
 
   // ------------------------------------------------------- the initial state
   // THE-LAWS.md: "The only initial condition for energy is matter, spread
-  // out." No momentum, no heat -- gravity is supposed to supply both, and
-  // whether it does at a given strength is the thing being watched.
+  // out." That sentence was written when gravity was expected to supply the
+  // heat and the motion, and with gravity gone it is the whole of the World's
+  // energy budget: whatever is placed here, plus what law 2 releases when a
+  // bond forms, is all the energy the run will ever have. Nothing adds any
+  // after tick 0, and the edge only takes it away.
+  //
   // TWO DIALS ON TOP OF THAT, ADDED 2026-11-07, and they exist because the
   // sentence above turned out to decide the whole run rather than leave it
-  // open. A world seeded at absolute zero bonds before it can fall: at T = 0
-  // every adjacent pair that can bond does (tryFormBond's own test is
-  // temperature below B), and the first 1500-tick runs were 50-91% bonded
-  // within a hundred ticks, with gravity pulling on a solid for the rest of
-  // the run. The hot era cannot FOLLOW collapse in a world that was never
-  // given the chance to be hot, so being hot has to be sayable as an initial
-  // condition. Neither dial has a default: left alone this is the old
-  // behaviour exactly, and a run records what it was given.
+  // open. A world seeded at absolute zero bonds at once: at T = 0 every
+  // adjacent pair that can bond does (tryFormBond's own test is temperature
+  // below B), and the first 1500-tick runs were 50-91% bonded within a
+  // hundred ticks. So a world that is to be hot has to be SEEDED hot, and
+  // being hot is now the only way a run gets a hot era at all. Neither dial
+  // has a default: left alone this is the old behaviour exactly, and a run
+  // records what it was given.
   //
   //   temp0          energy per unit of kind, which is what tempOf reads. At
   //                  or above BOND_MODULUS no bond can form at all, since the
@@ -992,6 +814,7 @@ export class World {
     }
     if (R > 0) this.cancelNetMomentum();
     this.ledger = new Ledger(w);
+    this.seeded = true;
   }
 
   // Hand the remainder of the draws back one unit at a time, until the total
@@ -1028,10 +851,13 @@ export class World {
     }
   }
 
-  // ----------------------------------------------------------- the eras
-  // What the run is FOR, at this stage: making collapse, the hot era and
-  // recombination visible enough to move gravity's dial against. Each sample
-  // is one line of the history, and nothing here is stored in the world.
+  // -------------------------------------------------------- what a run shows
+  // What the run is FOR, at this stage: making the chemistry, the cooling and
+  // the gradient visible enough to judge. It used to be collapse, the hot era
+  // and recombination -- the chronology TWO-RUNS.md describes -- and two of
+  // those three needed gravity, so what a run can show changed with the laws
+  // on 2026-11-08. Each sample is one line of the history, and nothing here is
+  // stored in the world (rule 2).
   sample() {
     const w = this.w, c = census(w);
     // LOCAL DENSITY, AND THE STATISTIC REPLACED ON 2026-11-07. The old reading
@@ -1058,16 +884,37 @@ export class World {
     // fill the same pass measured. The max is kept beside it because it costs
     // nothing and because dropping a reading silently is how the old one
     // survived.
-    let maxLocal = 0, sumLocal = 0, matterCells = 0, fieldBinding = 0;
+    //
+    // AND THE PROFILE, ADDED 2026-11-08 WITH THE EDGE, because the edge makes
+    // the World's temperature a function of WHERE. A surface sink drains the
+    // perimeter, and perimeter over area falls as 1/side, so a big sheet
+    // cannot cool evenly however long it runs: what it can do is grow a cool
+    // skin over a hot interior, which is what real matter does and what a
+    // photosphere is. A single mean temperature cannot see that at all, so
+    // every sample also reports temperature by DEPTH -- how far a hexagon is
+    // from the nearest edge, in BANDS equal fractions of the way in. Band 0 is
+    // the skin.
+    const bandSum = new Float64Array(BANDS), bandMatter = new Int32Array(BANDS);
+    const bandCells = new Int32Array(BANDS);
+    const halfMin = Math.max(1, Math.min(w.cols, w.rows) / 2);
+    let maxLocal = 0, sumLocal = 0, matterCells = 0;
     for (let i = 0; i < w.cells; i++) {
+      const q = qOf(w, i), r = rOf(w, i);
+      const depth = Math.min(q, w.cols - 1 - q, r, w.rows - 1 - r);
+      const band = Math.min(BANDS - 1, Math.floor((depth / halfMin) * BANDS));
+      bandCells[band]++;
       if (!isMatter(w, i)) continue;
       matterCells++;
-      if (this.g) fieldBinding += w.kind[i] * w.phi[i];
+      bandSum[band] += w.energy[i]; bandMatter[band] += w.kind[i];
       let near = 1;
       for (let d = 0; d < DIRECTIONS; d++) if (isMatter(w, neighbour(w, i, d))) near++;
       sumLocal += near;
       if (near > maxLocal) maxLocal = near;
     }
+    // Temperature is energy over kind, the same ratio tempOf uses, summed over
+    // the band rather than averaged over primitives -- so a band of heavy
+    // matter is not reported as cold for being heavy.
+    const bandTemp = Array.from(bandMatter, (m, b) => (m ? bandSum[b] / m : 0));
     const fillNow = matterCells / w.cells;
     const meanLocal = matterCells ? sumLocal / matterCells : 0;
     const densityContrast = matterCells && fillNow > 0
@@ -1079,66 +926,32 @@ export class World {
       fill: matterCells / w.cells,
       meanTemp: matterCells ? c.heat / Math.max(1, c.matter) : 0,
       heat: c.heat, kinetic: c.kinetic, inFlight: c.inFlight,
-      // The ledger may not exist yet: sample() is also an instrument, called
-      // on a world placed by hand before any baseline is taken.
-      expansionLoss: this.ledger ? this.ledger.expansionLoss : 0,
+      // The one channel out, and the only number here that can only rise.
+      radiated: this.ledger.escaped,
       bonds: c.bonds,
       bondedFraction: matterCells ? c.bonded / matterCells : 0,
       maxLocalDensity: maxLocal,
       meanLocalDensity: meanLocal,
       densityContrast,
-      // WHAT GRAVITY HAS PAID OUT, and the field's own reading beside it.
-      // gravityPotential is a counter with no floor: every unit of kinetic
-      // energy a pull creates is debited to it, so the books close by
-      // construction however much energy gravity hands out. The first runs
-      // paid out 558,000 units into matter that took 19,389 steps -- work
-      // without displacement, which real gravity cannot do, and nothing in
-      // the output showed it. These two numbers are what show it: paid is
-      // energy, binding is the field integral sum(kind * phi) the law's own
-      // equation produces, and paid rising while binding and contrast stay
-      // flat is the signature of a pump.
-      gravityPaid: this.ledger ? -this.ledger.gravityPotential : 0,
-      fieldBinding,
+      // Temperature by depth, skin first, and the matter in each band so a
+      // band with nothing in it cannot be read as a cold one.
+      bandTemp,
+      bandMatter: Array.from(bandMatter),
+      bandCells: Array.from(bandCells),
       netMomentum: [c.px, c.py],
     };
     this.history.push(row);
     return row;
   }
 
-  run(ticks, { sampleEvery = 0, checkEvery = 0, growEvery = 0, growthDrain = 0,
-               maxCells = Infinity, onSample = null } = {}) {
-    if (!this.ledger) throw new Error("seed the world before running it");
-    let growAxis = 0;
+  run(ticks, { sampleEvery = 0, checkEvery = 0, onSample = null } = {}) {
+    if (!this.seeded) throw new Error("seed the world before running it");
     for (let t = 0; t < ticks; t++) {
       this.doTick();
-      if (growEvery && this.tick % growEvery === 0 && this.w.cells < maxCells) {
-        // rule 3: the rate follows the World and stops at the hardware
-        if (this.grow(growAxis)) {
-          growAxis ^= 1;                       // alternate, so the loop stays even
-          if (growthDrain > 0) this.drainForGrowth(growthDrain);
-          this.order = null;                   // the world changed size
-        }
-      }
       if (checkEvery && this.tick % checkEvery === 0) this.ledger.check(this.w, `tick ${this.tick}`);
       if (sampleEvery && this.tick % sampleEvery === 0) {
         const row = this.sample();
         if (onSample) onSample(row);
-      }
-      // THE ONE GUARD ON THE COUNTER WITH NO FLOOR. gravityPotential can go
-      // arbitrarily negative and the books will still close, so a long run
-      // can manufacture any amount of kinetic energy and report nothing wrong.
-      // A cap is not physics and is never defaulted: it is a typed limit that
-      // stops the run and says so, the way a fuse is not a theory of
-      // electricity. The physics question underneath -- whether a pull that
-      // moves nothing should be allowed to pay out at all, which needs the
-      // force to be the gradient of an energy it cannot overdraw, and it is
-      // not one in this engine -- is open and is Ric's.
-      if (this.g && this.g.cap > 0 && -this.ledger.gravityPotential > this.g.cap) {
-        this.stopped = `gravity paid out ${(-this.ledger.gravityPotential).toLocaleString()} `
-          + `units of kinetic energy at tick ${this.tick}, past the cap of `
-          + `${this.g.cap.toLocaleString()}. Nothing is wrong with the books: the cap is the `
-          + `only thing in this engine that bounds what gravity may hand out.`;
-        break;
       }
     }
     this.ledger.check(this.w, `end of run at tick ${this.tick}`);
@@ -1146,7 +959,7 @@ export class World {
       const row = this.sample();
       if (onSample) onSample(row);
     }
-    return { ticks: this.tick, cells: this.w.cells, history: this.history, stopped: this.stopped || null };
+    return { ticks: this.tick, cells: this.w.cells, history: this.history };
   }
 }
 

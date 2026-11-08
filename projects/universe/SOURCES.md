@@ -538,6 +538,29 @@ maintain themselves. The benchmark for emergence-per-rule.
 
 ## Physics taken as background
 
+**The scale of gravity against chemistry, recorded 2026-11-08 for README items 20, 40 and 41 — the
+arithmetic that took law 3 out of both engines.** Ric made the argument himself ("think about how
+much DNA gets affected by gravity. And how many atoms are in DNA"); what is borrowed is the standard
+physics it was checked against.
+
+- **The gravitational-to-electrostatic force ratio between two protons, `Gm²/ke² ≈ 8 × 10⁻³⁷`**, is a
+  textbook quantity — it appears in essentially every introductory treatment of the four forces, so
+  no single author can be credited for it. Taken as the sanity check on the sheet's own figure: the
+  World's self-gravity works out at 10⁻²⁴ of one of its bonds, which is weaker than one bond by
+  rather less than the proton pair's ratio, exactly as adding 4 million masses should make it.
+- **Atomic spacing of about 0.3 nm, and atom counts for a ribosome (~10⁶), a virus (~10⁸), *E. coli*
+  (~10¹⁰) and a human cell (~10¹⁴)** are standard reference values from molecular biology and
+  materials science, used only to say what size of object a given lattice *is*. No source is doing
+  anything but supplying an order of magnitude.
+- **Surface-to-volume scaling, and the fact that a radiating body with a surface sink develops a
+  cooler skin than its interior** — the reason a star has a photosphere — is classical
+  thermodynamics, taken as the prediction that item 41 then measured in this engine rather than as a
+  result imported into it. The measurement (skin 1.077–1.088× cooler than the bulk, 3 of 3 seeds) is
+  the World's own and is not claimed to resemble any real body.
+
+*Recorded after the decision rather than before it, which rule 1 asks not to do: the argument was
+Ric's and was made in conversation, and the textbook numbers were checked against it the same hour.*
+
 **Expansion, recorded 2026-11-05 for README item 22 (provisional) and the matching entry in
 `HOW-WE-DECIDED.md`:**
 

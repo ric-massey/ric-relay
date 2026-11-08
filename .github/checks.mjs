@@ -95,11 +95,14 @@ const SUITES = [
      a run, five seeds and five constant changes. About 30 seconds, so slow
      lane (Ric, 2026-11-06: "Sure").
 
-     world-check.mjs is the World's, and specifically law 1's two exchanges:
-     they move momentum between neighbours without anything travelling, which
-     is the operation that can conserve momentum perfectly while quietly
-     creating or destroying energy. That failure cost 34,864 units in the Lab
-     (README item 28) with no error and nothing visibly wrong. */
+     world-check.mjs is the World's, eleven checks. Law 1's two exchanges move
+     momentum between neighbours without anything travelling, which is the
+     operation that can conserve momentum perfectly while quietly creating or
+     destroying energy — that failure cost 34,864 units in the Lab (README item
+     28) with no error and nothing visibly wrong. Check 11 watches the World's
+     EDGE, added 2026-11-08: light leaves through it and matter does not, and
+     "it radiated away" has to be distinguishable from "it vanished", which is
+     the same class of bug one level out. */
   ['universe', ['projects/universe/lab-check.mjs', 'projects/universe/world-check.mjs'], 'slow']
 ];
 

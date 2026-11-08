@@ -16,15 +16,28 @@ individual.**
 | | the Lab | the World |
 |---|---|---|
 | The individual is | **a primitive** | **a primitive** |
-| Laws in play | 4 of the 5 (no gravity) | all 5 |
-| Size | ~256² (258 × 258, looped) | as large as the browser allows |
+| Laws in play | 4 of the 5 (no gravity) | **4 of the 5 — also no gravity, since 2026-11-08** |
+| Shape | a hexagonal torus: no edge | **a bounded sheet: edges, and light leaves through them** |
+| Conditions | set and held — it's a laboratory | **nothing held: chemistry heats it, the edge cools it** |
+| Size | ~256² (258 × 258, looped) | as large as the hardware allows |
 | Length | minutes | long |
 | How many | thousands | one at a time |
-| Conditions | set and held — it's a laboratory | emergent — it's a world |
 | Time | event-driven, continuous, stochastic | ticked, stochastic — an approximation |
 | Runs on | CPU is fine | GPU, as a shader |
 | The question | **what is matter here?** | **what can matter do here?** |
 | Output | a table of species, measured | a world you look at |
+
+**THE LAW LIST IS NOW THE SAME IN BOTH, AND THAT IS NOT A COLLAPSE OF THE SPLIT.** Gravity left the
+World on 2026-11-08, because one hexagon was declared to be one atom and at that scale gravity is
+10⁻²⁴ of a single bond (`THE-LAWS.md`, *One hexagon is one atom*). So the sentence this file opened
+with for four days — four laws against five — is no longer what separates the two runs. What
+separates them is the two rows now in bold: **the Lab holds its conditions still and has no edge; the
+World holds nothing and has one.** A thermostat is apparatus, and the Lab is apparatus. The World's
+temperature is whatever chemistry and its own perimeter leave it with.
+
+That is a sharper distinction than the law count ever was, because it is the one that decides what
+each run can answer. A held temperature is what makes a species measurement repeatable; an edge is
+what lets a world have a history.
 
 ### Nothing is coarse-grained, and that is a correction
 
@@ -88,6 +101,25 @@ What happens, in order:
    Which species appear depends on the conditions the world happens to have produced.
 4. **Chemistry, then whatever is above it.** Compounds. Then the ladder, if the constants
    allow it.
+
+> **THAT CHRONOLOGY NEEDS A WORLD 10¹³ TIMES LARGER THAN THE HARDWARE, and it was written
+> before anyone said what a hexagon was.** Steps 1 and 2 are gravity's, and at one atom per
+> hexagon gravity cannot do them: a sheet of 4.26 million atoms has a self-gravity 10⁻²⁴ of
+> one of its own bonds, and the crossing point is 3 × 10²² hexagons (`THE-LAWS.md`,
+> *3. Gravity*). A World this project can run is a bacterium's footprint one atom thick, and
+> a bacterium has no collapse and no hot era.
+>
+> **What a run has instead, measured 2026-11-08:** matter spread out at absolute zero, law 2
+> forming bonds and releasing their binding energy as heat, that heat crossing the sheet as
+> radiation, and leaving through the edge. A cold 96 × 96 sheet released 13,412 units of heat
+> through chemistry, radiated 7,250 of them into the dark, and froze at 89.1% bonded. So the
+> order is **chemistry, warming, cooling, and then whatever is above it** — the hot era is not
+> skipped so much as supplied by chemistry rather than by falling, and recombination is what
+> the whole run is.
+>
+> Steps 3 and 4 survive unchanged, which is the part that mattered. The rest of this section is
+> kept because its argument — that one run is the more honest design — does not depend on where
+> the heat came from.
 
 ### Why that is genuinely better
 

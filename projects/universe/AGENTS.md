@@ -72,7 +72,8 @@ variance layer.
   touch stepping, `lab-check.mjs` Check 13 must still show every heading travelling true. Any tie
   that does arise is a coin, never a fixed pick — a fixed pick was a handedness that spiralled every
   orbit inward (item 21). **The position is new state, and so is fine momentum** (units of 2⁻³²),
-  adopted for the World and built with gravity; both are Ric's call, written down in item 34.
+  adopted for the World and built with gravity — and the fine momentum came back out on 2026-11-08
+  when gravity did; the position stays. Both were Ric's call, written down in item 34.
 - **Speed is a rate, not a distance, and matter never reaches the limit:** `matterSpeed(Q, k)` in
   `lab.mjs` is relativity's `|p| / √(k² + |p|²)` of the causal limit (Ric, 2026-11-06: "I don't want
   anything of matter to reach that speed"). Only radiation travels at the limit; `lab-check.mjs`
@@ -95,10 +96,11 @@ hitting a ceiling is telling you the constants are wrong.
 
 **The word is eight bytes: kind 8, bonds 6, energy 16, momentum 14 — 44 of 64 bits.** The **20
 spare bits are reserved**: nothing goes in them without an entry in `THE-LAWS.md` and a reason, and
-never anything on the never-store list. **Two pieces of state live beside the word** (item 34,
-2026-11-06): each primitive's position inside its hexagon (Lab: `w.ox`, `w.oy`), and, in the World
-only, fine momentum in units of 2⁻³² in a second array, which is where gravity's sub-unit pull is
-held (item 19). **`constants.mjs` is what the engine runs on; if a document disagrees with it,
+never anything on the never-store list. **One piece of state lives beside the word** (item 34,
+2026-11-06): each primitive's position inside its hexagon (Lab: `w.ox`, `w.oy`). Fine momentum —
+units of 2⁻³², where gravity's sub-unit pull was held (item 19) — **came out on 2026-11-08 with
+gravity**, and with it the last float in the World's state. The World's engine is now five arrays
+and six bytes a hexagon, which is exactly the frame `snapshot.mjs` writes. **`constants.mjs` is what the engine runs on; if a document disagrees with it,
 the document is the bug.** This rule has drifted from the code twice already.
 
 ## 6. Assert conservation on every run
@@ -124,13 +126,22 @@ where a looped world breaks quietly:** every neighbour lookup must wrap. Test th
 a collision block, a bond and a radiation line that each straddle it — before trusting a run
 (`lab-check.mjs` Checks 1–5).
 
-**Watch the gravity solver.** A pyramid approximation does not give equal and opposite pair forces,
-so it leaks momentum and fakes a preferred direction. Compute each interaction once and apply it to
-both sides.
+**Watch any pair interaction, and this rule is the reason the one that mattered was caught.** A
+solver that does not give equal and opposite pair forces leaks momentum and fakes a preferred
+direction. Compute each interaction once and apply it to both sides, all-or-nothing: the World's
+`exchange` seam is that rule in code, and gravity's `pullPair` was built this way after an earlier
+version applied the two halves independently and walked the world's momentum off by (−21, 11) in
+twenty ticks. Gravity is gone; the seam it taught us to build is what `shareMomentum`,
+`tryThermalKick` and `pushAlongBond` all run through.
 
-**The World gets a weaker invariant.** Gravitational potential is not stored, so collapse genuinely
-appears to create heat. Assert the monotonic form: energy rises only through collapse, falls only
-through the boundary, both logged.
+**The World's invariant is now as strict as the Lab's** (2026-11-08). It used to be weaker, because
+gravitational potential was not stored and collapse genuinely appeared to create heat — so the World
+carried a `gravityPotential` counter with no floor, and one long run manufactured 17,120,848 units
+while the books closed perfectly (item 35). With gravity and expansion gone the invariant is
+`heat + kinetic + in flight + bond potential + radiated away = constant`, every term an integer, and
+**radiated away is the only one allowed to grow**. Momentum is exactly constant with no drain term at
+all: matter cannot leave the sheet and radiation carries energy without momentum. If a World run's
+books do not close to the unit, it is a bug and there is nowhere left to hide it.
 
 **Why this is strict: an accounting hole disguises itself as a discovery.** A structure exploiting a
 leak looks exactly like emergent propulsion or metabolism, and it will be the most exciting thing
@@ -140,8 +151,12 @@ three-body collision to avoid it). Check that we conserve exactly what we think 
 
 ## 7. Five laws; adding one needs a written reason
 
-Five laws and five structural facts. Every law is a place an answer could be smuggled in, so fewer
-laws means more of the behaviour belongs to the world.
+Five laws and five structural facts — **and since 2026-11-08 four of the five laws run.** Gravity is
+still on the list and is implemented nowhere: one hexagon is one atom, and at that scale it is 10⁻²⁴
+of a single bond (items 20, 40). It is kept written down because it is true of the universe and would
+run a World 10¹³ times larger, and because this rule's own instruction is to **prefer removing**.
+Every law is a place an answer could be smuggled in, so fewer laws means more of the behaviour
+belongs to the world.
 
 To add one, write an entry in `THE-LAWS.md` saying what it buys and **why it could not have emerged
 instead**. Read *Rules that came off the list* in `HOW-WE-DECIDED.md` first — the list went from
@@ -161,8 +176,11 @@ The constants are the search space. They live in `constants.mjs`, named, with un
 **No magic numbers inline, anywhere.** Searched constants are `null` until a caller supplies them,
 and the engine refuses to run without them.
 
-**Three filters, checked before a run.** The engine asserts the clock and refuses to run if it fails;
-the gravity pair applies to the World, which is not built yet.
+**Three filters, checked before a run.** The engine asserts the clock and refuses to run if it fails.
+**The gravity pair below is history as of 2026-11-08** — `GRAVITY_EPS` and `GRAVITY_FALLOFF` are used
+by neither engine and stay `null`, which is the honest state and not an oversight. Both filters are
+kept here because they are how the strength was judged, and because the sweep that removed gravity
+failed the ceiling exactly as this rule predicted.
 
 - **The clock never clips:** with `rate(T) = floor + c · T`, `floor + c · T_max ≤ 1`. The rate is a
   probability; where it saturates, radiation's direction becomes a coin flip and the second law
@@ -175,13 +193,17 @@ the gravity pair applies to the World, which is not built yet.
 - **Gravity's floor:** collapse of the clumps the World can form must heat matter past the weakest
   bond. State strength as **ε**, the energy two kind-255 primitives release falling into contact,
   over the weakest bond. **At 4096² the floor is above the ceiling**, so no strength passes both.
-  Don't loosen either check to get a run going; that is Ric's call (item 20).
+  Don't loosen either check to get a run going; that was Ric's call (item 20), and the call he made
+  on 2026-11-08 was to take the law out rather than loosen the check. **The swept measurement agreed
+  with the ceiling:** at the strength every World run had used, more pulls were refused at law 1's
+  momentum range than carried, and chemistry lost 3.6× the bonds a control did.
 
 ## 9. Locality is absolute
 
-Nothing reads past a site's immediate neighbours. **The gravity pyramid is the only exception, and
-the honest target is zero** — gravity is local in reality, and law 3 has a local candidate
-(`∇²φ − m²φ = ρ`, item 12) that would remove it.
+Nothing reads past a site's immediate neighbours. **There is no exception left, and that is new as
+of 2026-11-08:** the gravity pyramid was the one, the screened field (`∇²φ − m²φ = ρ`, item 12)
+replaced it to make gravity local, and then gravity itself came out with the scale (items 20, 40).
+The honest target was zero and the target is met.
 
 If you need a second exception, **raise it rather than adding it.** That process worked on
 2026-11-06: a cluster walk went into `lab.mjs` reading up to 29 sites away, was raised as item 32,
@@ -228,8 +250,9 @@ in the repo's slow lane and in `simulations.yml`), and the World is `world.mjs`,
 `world-check.mjs` (`node world-check.mjs`, eleven checks, ~20 s). **A law settled in one engine is
 not in the other until someone carries it across.** The World ran law 1's retired reading for a day
 because nobody did — README item 37, and the reason `world-check.mjs` Check 9 exists. `world-run.mjs`
-runs the World and reads the three eras off it; its gravity strength is a dial typed on the command
-line, so nothing it prints is a result, and it writes every run to `runs/`. `wave.mjs`, `snapshot.mjs`, `census.mjs` and `collide.mjs` run the engine
+runs the World and reads three things off it — chemistry, cooling, and the temperature gradient from
+skin to core — three seeds by default, and it writes every run to `runs/`. It has no gravity dial any
+more: there is nothing to dial (items 20, 40). `wave.mjs`, `snapshot.mjs`, `census.mjs` and `collide.mjs` run the engine
 without being it: `wave.mjs` compares the engine with and without the momentum wave, and injects
 the removed cluster drag from `rejected/` to price it; `snapshot.mjs` freezes a run for the viewer;
 `census.mjs` (`node census.mjs`, ~15 s) names every standing cluster by its valence multiset and
@@ -286,9 +309,23 @@ Lab's assertion can, and caught two seams by failing (18,541 and 34,864 units).
   fine (no dependency). Design for a few million sites at interactive rates.
 - **The phone views; the PC computes** (Ric, 2026-11-04). The phone was silently acting as a memory
   budget and keeping the word at four bytes, which was choosing physics. Don't reintroduce a mobile
-  compute constraint without saying so. At 4096², double-buffered, the World is about 268 MB.
+  compute constraint without saying so. **At six bytes a hexagon (2026-11-08) memory stopped being
+  the limit at all:** 17 million hexagons is 170 MB, the structural ceiling is 2.1 billion cells
+  (where the `Int32Array` of indices and 24 GB of RAM run out together), and the binding constraint
+  is the clock — three days of wall clock is ~155,000 ticks at 17 million and ~1,200 at two billion.
+  Measured 2026-11-07: about 98 ns per cell per tick, which is ~300 CPU cycles to look at one byte
+  and mostly skip, so the ceiling is the loop and not the machine. The shuffle walks every cell
+  every tick, which at 17 million is 17 million random draws before any physics happens.
 - **The Lab before the World.** Don't start the World until the Lab has produced a periodic table
-  with some depth.
+  with some depth. *(Not followed: the World was built on 2026-11-07, before item 5 had an answer with
+  any depth. Ric asked for it; it is written down here rather than quietly dropped, and item 5 is
+  still the central question.)*
+- **The World is where the big runs go, and its size is a time budget, not a memory one.** Six bytes
+  a hexagon, no reallocation, nothing to relax: what is left per cell per tick is the shuffle, two
+  random draws per primitive, and the four laws. A long run needs two things this engine does not yet
+  have — a resume (nothing loads a World back, so a three-day run dies with the process) and a reason
+  to trust it over millions of ticks (a stream reached tick 569,750 and the books were off by one
+  unit, which under rule 6 is a bug and is unfound).
 - **The two time schemes are a test.** Run the same small configuration in both and compare species,
   binding energies and rates. That is how the World's approximation gets validated.
 - **The viewer is instrumentation, not decoration.** It reads frozen runs: `node snapshot.mjs` writes

@@ -21,12 +21,12 @@ of them on a small looped lattice and conserves exactly. Matter moves at its rea
 the speed limit, and bonds push back when strained. It produces clusters in enormous variety
 but, at the one point in the search space tried so far, **does not select between them** —
 measured 2026-11-06, [item 5](#open-questions).
-The World, the large run with gravity, is not built. Everything open is in
+The World is built and runs: a bounded sheet, four laws, cooling through its edge. Everything open is in
 [Open questions](#open-questions), which is the work list.
 
 ## Contents
 
-[Files](#files) · [What exists](#what-exists) · [The five laws](#the-five-laws) ·
+[Files](#files) · [What exists](#what-exists) · [The five laws](#the-five-laws-four-of-which-run) ·
 [The five structural facts](#the-five-structural-facts) ·
 [What is never written](#what-is-never-written) · [The two runs](#the-two-runs) ·
 [The search space](#the-search-space) · [Measurement](#measurement) ·
@@ -46,9 +46,9 @@ The World, the large run with gravity, is not built. Everything open is in
 | [`constants.mjs`](constants.mjs) | Every physics constant, with units and ranges. Refuses to run on an unchosen constant or a clock that clips. |
 | [`lab-check.mjs`](lab-check.mjs) | The Lab's pre-flight: the seam, the books through a run, five seeds, five constant changes. |
 | **The World** — all five laws, ticked time, a space that grows | |
-| [`world.mjs`](world.mjs) | The World: gravity as a screened field, no thermostat, and the same four laws the Lab has. Ran law 1's **retired** reading until 2026-11-07 (item 37). |
-| [`world-run.mjs`](world-run.mjs) | Runs it and reads the three eras off the history, three seeds by default, every run written to [`runs/`](runs/). Gravity's strength is a dial typed here, never a default. |
-| [`world-check.mjs`](world-check.mjs) | The World's pre-flight: the two exchanges, the heat seam, GAP 3's geometry, and the density contrast validated against its own null. |
+| [`world.mjs`](world.mjs) | The World: a bounded sheet of matter, the same four laws the Lab has, no thermostat, and an **edge that light leaves through** — its only energy sink. Six bytes a hexagon since gravity and expansion came out (2026-11-08). |
+| [`world-run.mjs`](world-run.mjs) | Runs it and reads three things off the history — chemistry, cooling, and the temperature gradient from skin to core — three seeds by default, every run written to [`runs/`](runs/). |
+| [`world-check.mjs`](world-check.mjs) | The World's pre-flight, eleven checks: the two exchanges, the heat seam, GAP 3's geometry, the density contrast against its own null, and the edge (light leaves and is counted, matter never does). |
 | [`world-stream.mjs`](world-stream.mjs) | Serves a run that is still happening, on the wifi or through the site's Worker. See [`STREAMING.md`](STREAMING.md). |
 | **Around the engine** | |
 | [`snapshot.mjs`](snapshot.mjs) | Freezes a Lab run into [`runs/`](runs/) for the viewer. |
@@ -110,12 +110,17 @@ made heavy matter permanently inert (item 15), and momentum went from ±15 to ±
 - **Position inside the hexagon** — where the primitive really is, two components. A step goes into
   the hexagon its straight path enters next, so matter travels at its real heading. In the Lab it is
   two float64s (`w.ox`, `w.oy`); the World's plan is two 32-bit components.
-- **Fine momentum, World only** — momentum in units of 2⁻³² rather than whole units, two 32-bit
-  components in a second array, so gravity's tiny pulls are held exactly (this settles item 19). Not
-  built in the Lab, where nothing makes fractions; it goes in with gravity's solver.
+- ~~**Fine momentum, World only**~~ — momentum in units of 2⁻³², which is where gravity's sub-unit
+  pull was held (item 19). **Out on 2026-11-08 with gravity**, and with it the last float in the
+  World's state. Nothing else in this universe makes a fraction.
 
-With both, the World is about 24 bytes a hexagon rather than 8 — around 400 MB at 4096², 800 MB
-double-buffered.
+So the World's engine is **six bytes a hexagon** — kind, energy, two momentum components, bonds —
+which is exactly what `snapshot.mjs` has always written to disk and the viewer has always read. At
+six bytes the arithmetic of "how big" is: 17 million hexagons is 170 MB and runs at about 1.7 s a
+tick, and the structural ceiling is **2.1 billion hexagons**, where the `Int32Array` of cell indices
+runs out at 2³¹−1 and 24 GB of RAM runs out at the same moment. Time is the real limit long before
+memory: three days of wall clock is ~155,000 ticks at 17 million hexagons and ~1,200 at two billion.
+The Lab keeps its two float64 positions, where nothing is the size of a world.
 
 **Hitting a ceiling fails loudly.** Kind stops at 255 and energy at 65535; anything that would
 exceed a field is an error, never a wrap or a clamp, because either would break conservation with
@@ -125,10 +130,16 @@ There are no materials and no mixtures. Materials are what you go looking for; a
 neighbouring hexagons of different kinds.
 
 **Shape.** The Lab is a hexagonal torus, 258 × 258, with no edge anywhere (a side divisible by 3,
-for the collision blocks). The World's shape is open — item 22.
+for the collision blocks). **The World is a bounded sheet** — item 22, settled 2026-11-08 by what the
+shape decides, which is the heat sink: a quantum that steps off an edge is gone and counted, and that
+is the only way energy leaves a World run. An edge hexagon has fewer than six neighbours and an axial
+corner has only two, so chemistry at the boundary is not chemistry in the middle.
 
-**Size.** The Lab is 66,564 hexagons, 532 KB. The World's working target is 4096², 16.8 million
-hexagons and 134 MB a buffer; item 20 may change it. For scale, the BFF soup used 131,000 programs.
+**Size, and what it means as a physical object.** The Lab is 66,564 hexagons, 532 KB. One hexagon is
+one atom at about 0.3 nm, so a 258² Lab is a flake 77 nm across — and the Worlds that matter are:
+17 million hexagons (4128², 170 MB) is **1.2 µm square, a bacterium's footprint, one atom thick**,
+and the 2.1-billion ceiling is **14 µm, a human cell's footprint**. For scale in the other direction,
+the BFF soup used 131,000 programs, and gravity would need a sheet 54 metres across.
 
 **Why hexagons.** On a square grid a diagonal step is 1.41× a side step, so the world gets
 favourite directions — ripples come out square and growth locks to the axes. That is fatal when the
@@ -137,14 +148,19 @@ neighbours are equidistant, which is why the square lattice gas HPP was abandone
 FHP. Six neighbours plus a bond limit also give molecular **shape** — angles, branching, isomers —
 with no extra law.
 
-## The five laws
+## The five laws, four of which run
+
+**One hexagon is one atom** (Ric, 2026-11-08). That was never written down before, and law 3 is a
+consequence of it: at one atom per hexagon the whole World's self-gravity is 10⁻²⁴ of one of its own
+bonds, so gravity is **not in either engine**. It stays on the list because it is still true of the
+universe and would run a World 10¹³ times larger. `THE-LAWS.md` has the arithmetic.
 
 In plain words:
 
 1. Nothing is ever created or destroyed.
 2. Bits of stuff next to each other can hold hands, tightly or loosely depending on what they are.
    Heat shakes them loose.
-3. All stuff pulls on all other stuff, however far away.
+3. All stuff pulls on all other stuff, however far away. *(Too weak to matter at this size.)*
 4. A bit of stuff can only hold hands with so many others at once.
 5. Heat spreads toward wherever it's colder, and leaves at the edge of the world.
 
@@ -154,9 +170,9 @@ Precisely:
 |---|-----|---|
 | 1 | **Conservation** | Matter (the **sum of kinds**), energy and momentum are integers and are never created or destroyed. Where something crosses an edge it is counted. **Momentum** is an integer vector and **speed is a rate** that never reaches the limit: `|p| / √(k² + |p|²)`, relativity's form (Ric: "I don't want anything of matter to reach that speed") — so heavy matter is slow rather than frozen and only radiation travels at the causal limit. A primitive keeps its true position inside its hexagon and steps into the hexagon its straight path enters next (item 34), so it travels at its real heading, not along one of six. **Kinetic energy** is the whole number `floor(S · Q(p) / 2k)` with `S = 4`, recomputed from `(p, k)` rather than stored, so the conserved total is heat + Σ KE. Collisions resolve in three-hexagon blocks, conserve momentum exactly, and draw their outcome at random. A **thermal kick** turns heat into motion in opposite-moving pairs, so momentum still sums to zero. |
 | 2 | **Bonding** | Adjacent primitives may bond with binding energy **`B(k₁, k₂) = 8 − |v(k₁) + v(k₂) − 8|`**, `v(k) = k mod 8` — strongest when the two valences are complementary. A bond forms with probability `BOND_FORM_PROB` when a clock fires, never instantly on contact, which is what makes catalysis possible. It breaks when **`e ≥ B · kind`** at either end — temperature at or above `B`. Motion never breaks a bond: a step that would stretch one does not happen, and the bond reacts — one unit of momentum passes along it to the partner, as a real bond's tension would. No distance term and no force — exclusion already repels and gravity already gathers. |
-| 3 | **Gravity** | All matter attracts all matter as 1/r², never cancelling, acting on the sum of kinds. The only non-local law. A pull smaller than one unit of momentum is held in fine momentum, never rounded (items 19, 34). A local screened-field version is the candidate replacement (item 12). Not in the Lab. |
+| 3 | **Gravity** | All matter attracts all matter as 1/r², never cancelling, acting on the sum of kinds. **Not in either engine since 2026-11-08, and the reason is arithmetic rather than taste:** one hexagon is one atom, a 4.26-million-hexagon sheet has a self-gravitational binding energy around 10⁻⁴² J against 5 × 10⁻¹⁹ J for one bond, and the crossing point is 3 × 10²² hexagons — a sheet of atoms 54 metres across, against the 14 µm the hardware holds. Swept first (item 20): at the strength every World run had used, 53% of pulls were refused at law 1's momentum range and chemistry lost 3.6× the bonds a control did. Its fine momentum and its potential field went with it, and with them every float in the state and three quarters of the cost of a tick. |
 | 4 | **Capacity** | A primitive bonds to at most `capacityOf(k) = clamp(k mod 8, 1, 6)` neighbours — read from the same valence law 2 uses, so kinds have valences (item 6). Its job is saturation: without it attraction collapses everything into one blob. |
-| 5 | **Transport** | Energy hops toward a neighbour at a **lower temperature** — compared as `e₁·k₂` vs `e₂·k₁`, exact in integers. Temperature, not energy: comparing raw energy would move heat uphill into heavy cold matter. Across a gap it travels as radiation (the fifth structural fact). At the World's boundary it leaves for good. |
+| 5 | **Transport** | **The World's only sink, and now the only one it has ever needed.** Energy hops toward a neighbour at a **lower temperature** — compared as `e₁·k₂` vs `e₂·k₁`, exact in integers. Temperature, not energy: comparing raw energy would move heat uphill into heavy cold matter. Across a gap it travels as radiation (the fifth structural fact). At the World's boundary it leaves for good — counted on the way out, and a cold 96 × 96 sheet radiated away 54% of everything law 2 ever gave it. |
 
 `THE-LAWS.md` justifies each law and says what breaks without it. `HOW-WE-DECIDED.md` has how each
 was reached, including fourteen corrections and five retractions.
@@ -199,9 +215,10 @@ and one hexagon became one primitive — `HOW-WE-DECIDED.md`, *Rules that came o
 
 | | the Lab | the World |
 |---|---|---|
-| Size | 258 × 258, looped | ~4096² (item 20) |
-| Laws | four — no gravity | all five |
-| Conditions | set and held, like a laboratory | emergent |
+| Size | 258 × 258, looped | as large as the clock allows — 4128² runs (item 20) |
+| Laws | four — no gravity | **four — no gravity either, since 2026-11-08** |
+| Shape | a torus: no edge | **a bounded sheet: light leaves through the edges** |
+| Conditions | set and held, like a laboratory | **nothing held: law 2 heats it, the edge cools it** |
 | Time | event-driven, continuous | ticked, with a per-tick probability |
 | Question | **what is matter here?** | **what can matter do here?** |
 
@@ -212,9 +229,17 @@ universe's periodic table: the stable clusters, what each is made of, and how ea
 meets another — **measured by running collisions**, not computed. It is small so a dead law shows up
 in minutes.
 
-**The World** starts as matter spread out with noise. Gravity pulls it together, the falling makes
-heat, and the gradient appears by itself. Early is hot and violent, the middle is where structure
-can hold, late is cold and still — an arc nobody scheduled.
+**The World** starts as matter spread out with noise, and what happens then is no longer gravity's
+(item 40 settled the scale, and item 20 settled gravity with it). Bonds form; law 2 releases their
+binding energy as heat; the heat crosses the sheet as radiation; it leaves through the edge and is
+counted. Early is bonding and warming, late is cold and still, and the arc is the sheet spending the
+only energy it will ever have. Still nobody's schedule — and measured: 54% of that budget left a
+96 × 96 sheet in 20,000 ticks, which ended frozen at 89.1% bonded.
+
+**What the two runs now differ by is conditions and shape, not laws.** The Lab holds a temperature
+because that is what makes a species measurement repeatable. The World holds nothing and has an edge,
+because that is what lets it have a history. That is a sharper split than "four laws against five"
+ever was.
 
 **The Lab's table is never an input to the World.** A measured table is still a table, and feeding
 one in would cap the World at what the Lab surveyed — the Avida ceiling. The table is the dictionary
@@ -252,7 +277,9 @@ the answer. Short does not mean weak: Rule 110 is a few bits and is Turing-compl
   weakest bond, or which reactions run depends on where you are.
 - **Gravity's floor:** collapse must heat matter past the weakest bond, or chemistry never runs.
   **At 4096² the floor is above the ceiling**, so no strength passes both. That is a finding, not a
-  bug — item 20.
+  bug — item 20, and on 2026-11-08 it was settled by taking the law out rather than by finding a
+  strength. `GRAVITY_EPS` and `GRAVITY_FALLOFF` are still `null` and are used by neither engine:
+  **two of the seven searched constants are no longer part of the search.**
 
 **Why search instead of design.** You cannot tell from reading a rule set what it will do. So run
 thousands of short candidate universes, keep the ones that are neither dead nor noise, and run those
@@ -359,10 +386,12 @@ irreversible, and gives the world a history).
 **10. Can anything climb past rung two?** Prior work reaches replicators from a soup (Hutton 2002;
 BFF 2024) but nothing has produced *cumulative* novelty afterwards.
 
-**11. Does something have to stop gravity — a law 6?** Orbits are too few to halt collapse (item
-16), so a static World may end as one clump. But at the strength law 3's ceiling allows, collapse may
-be too slow to need stopping (item 20). Candidates are under *Roads not taken*. Not before the Lab
-works.
+**11. Does something have to stop gravity — a law 6?** ~~Orbits are too few to halt collapse (item
+16), so a static World may end as one clump.~~ **Moot at this scale since 2026-11-08** (items 20, 40):
+gravity does not run, so nothing has to stop it, and no law 6 is needed for that reason. The question
+returns only for a World of 10²² hexagons, which is not a World anything here can run. Kept open
+rather than settled because the answer is "the question does not arise", which is not the same as an
+answer. Candidates are under *Roads not taken*.
 
 **12. Local gravity.** A screened field, `∇²φ − m²φ = ρ`, relaxed by neighbour-averaging, would make
 gravity local and leave nothing non-local in the codebase; it decays faster than 1/r², and its
@@ -383,23 +412,6 @@ gives finer gradation along the mass axis; smaller gives bigger families. Low ur
 no fusion), so the kinds you seed are the kinds there are, forever. Consistent with the declared
 floor — primitives are assumed, not derived — but a choice to make knowingly: seed uniform kinds, or
 take the fusion road.
-
-**20. How strong is gravity, how big is the World, what shape is it?** One decision.
-*Settled half:* momentum is ±63 (Ric, 2026-11-06), which forced `S` from 64 to 4. *Open:* the
-strength, the size and the shape. The floor (collapse must melt the weakest bond) falls as
-1/clump radius; at ε = 0.01 a clump that melts anything is ~a billion hexagons. Ric leans toward a
-bigger World, and set the direction: **a hierarchy shaped like ours** — as much separation as the
-hardware allows, judged by four yardsticks a run can report: chemistry ignoring gravity locally,
-structures large against their parts, many structures, and timescales far apart. *Decided by:* runs
-at the smallest ε that fits, checking whether emergence climbs as the separations grow.
-
-**22. What shape is the World?** A torus, a cylinder (keeps a floor and a ceiling), or something
-else. It decides the heat sink, whether there is a *down*, and how gravity crosses a seam.
-**Provisional direction\*: a looped World that grows, then stops** (Ric, 2026-11-05). New space
-appears along lines no bond crosses, three at a time; growth drains energy from light and free
-motion into a counted expansion loss; the rate follows the World and stops at the size Ric's
-computer can run, measured by benchmark. That would be law 6, so rule 7's written reason applies.
-\* *Written 2026-11-05 for Ric to check. Remove the asterisk when he has.*
 
 **23. The causal limit in a world with no tick.** Law 1 says "per tick" and the Lab has none.
 `lab.mjs` takes the fastest clock the world can have, `clockRate(T_max)`. A choice, not a
@@ -426,28 +438,6 @@ flat with cluster size. **With the wave back it falls for the first time** — 3
 hand, `|p| / K` is now worth +0.05 of mean `B`, inside the 0.10 spread between seeds. *Decided by:* tracking clusters through time, which needs re-identifying them every sample,
 since rule 2 forbids storing a cluster id.
 
-**35. Gravity pays out with no floor, and the books close anyway.** Every unit of kinetic energy a
-pull creates is debited to `Ledger.gravityPotential`, so the counter *is* the potential spent — and
-nothing bounds it. It can go arbitrarily negative and rule 6's assertion will pass, because the
-counter is defined as the complement of everything else. Measured 2026-11-07: the first 1500-tick
-run at `--eps 2e-7` paid out **557,999 units into matter that took 19,389 steps**, with 2,626,838
-pulls carried — work without displacement, which gravity cannot do. After item 37 the same dial pays
-out **1.92 million** over 1500 ticks and the matter *does* gather (contrast 1.00 → 1.50 on three
-seeds), so part of that payout is now real; what fraction is, is unmeasured. The force here is not
-the gradient of an energy it can overdraw, so there is no floor to derive without changing law 3.
-`--gcap` stops a run that goes past a typed limit, which is a fuse and not a theory. *Decided by:*
-whether a pull that moves nothing may pay out at all — Ric's call, and it is a change to law 3.
-
-**36. The World has exactly one energy sink, and it is far too small.** Recombination needs the heat
-to go away. In a closed torus it cannot: energy is conserved, so heat can only become kinetic energy,
-bond potential or light in flight, all of which are bounded — the temperature plateaus rather than
-falling. The only true sink is `drainForGrowth`, and it never touches heat held in matter, only free
-kinetic energy and quanta in flight. Measured: at `--grow 100 --drain 0.05` over 3000 ticks the drain
-removed **102,936 units against 23 million units of heat**, and radiation is reabsorbed almost
-immediately (820,195 emitted, 815,538 absorbed). So a cooling era, as the engine stands, is a 0.4%
-effect. *Decided by:* whether matter may radiate into a growing space in a way the drain can reach,
-or whether the World needs an outside for light to leave into at all.
-
 ### Settled
 
 | # | Question | Answer |
@@ -472,7 +462,13 @@ or whether the World needs an outside for light to leave into at all.
 | 34 | Matter moved along six headings, and momentum was too coarse to orbit | **Tracked stepping adopted** (Ric: "I'm fine with the added state it's not much", 2026-11-06): each primitive keeps its position inside its hexagon and enters the hexagon its straight path enters next, at speed over the distance to that edge. Off-axis headings travel true (was up to 30° off) at the right speed (`lab-check.mjs` Check 13); orbits match Newton (`orbit.mjs` Checks 13–14). **Fine momentum** (units of 2⁻³²) is adopted for the World and built with gravity — nothing in the Lab makes fractions. Costs: about 2.3× the events per unit of time, and the T = 6 chemistry peak falls 6.41 → 6.23 at equal time |
 | 37 | The World ran law 1's retired reading | **Ported 2026-11-07** (Ric: "Fix all 4"). `world.mjs` refused a step to *any* bonded primitive — a bond as a wall — which is the reading item 25 replaced on 2026-11-06 in the Lab and nobody carried across. So the two engines ran different physics while `TWO-RUNS.md` said they ran the same laws two ways. The World froze: 91.5% bonded by tick 1100, 19,389 steps in 1500 ticks against 2.6 million gravity carries, and no dial could move it. Now 60°-survival and `pushAlongBond` are both in, through the exchange seam the World already had. Measured on the same dial and conditions: steps 19,389 → **33,367, of which 11,895 by bonded matter**, 349,224 pushes along bonds, and collapse becomes visible for the first time (contrast 1.00 → 1.50, three seeds of three). `world-check.mjs` Check 9 holds the geometry |
 | 38 | The expansion drain could create energy | **Fixed 2026-11-07.** It took a unit off whichever momentum axis was non-zero and recorded the difference only `if (lost > 0)`. On cube coordinates removing a unit can *raise* the kinetic energy — for `p = (1, −5)`, `Q` goes 42 → 50 — and the difference then existed in the world and in no counter. Invisible until the World could be seeded with momentum: the first `--p0 6` run broke the books by **60 units in 100 ticks**, which is rule 6 earning its keep. Now it is a dry run that takes a unit only if it sheds, and declines otherwise |
-| 39 | The collapse statistic could not show a collapse | **Replaced 2026-11-07.** It was the *maximum* of (self + matter neighbours) over every seventh cell: an integer that cannot exceed 7. At fill 0.30 a full neighbourhood turns up about twice by chance in a sample that size, so it read 7 within a hundred ticks of every run; at fill 0.08 it sat at 6 for 1500 ticks and said NOT SEEN whatever gravity did. The whole evidence for collapse in the first World runs was "6 → 7", a saturated order statistic. Now it is the contrast against the null the configuration provides: conditional on a hexagon holding matter, each neighbour holds matter with probability `f` if matter is spread at random, so `(mean neighbourhood − 1) / 6f` is 1.0 for random and has no ceiling until `1/f`. Validated at 1.00 ± 0.02 at fills 0.10, 0.30 and 0.60, and 9.79 on a solid block (`world-check.mjs` Check 10) |
+| 39 | The collapse statistic could not show a collapse | **Replaced 2026-11-07.** It was the *maximum* of (self + matter neighbours) over every seventh cell: an integer that cannot exceed 7. At fill 0.30 a full neighbourhood turns up about twice by chance in a sample that size, so it read 7 within a hundred ticks of every run; at fill 0.08 it sat at 6 for 1500 ticks and said NOT SEEN whatever gravity did. The whole evidence for collapse in the first World runs was "6 → 7", a saturated order statistic. Now it is the contrast against the null the configuration provides: conditional on a hexagon holding matter, each neighbour holds matter with probability `f` if matter is spread at random, so `(mean neighbourhood − 1) / 6f` is 1.0 for random and has no ceiling until `1/f`. Validated at 1.00 ± 0.02 at fills 0.10, 0.30 and 0.60, and 9.79 on a solid block (`world-check.mjs` Check 10). **It was confounded in a growing world, and that is measured, not suspected:** its null is "spread at random *at the current fill*", and a World that adds space faster than matter can spread into it leaves matter clumped against the new fill for nothing. Gravity on, `--grow 10`, reached contrast 7.33 while fill fell 0.301 → 0.050 — but the gravity-off control at the same growth reached **4.10**, so more than half of it was dilution. The honest column there was the raw mean neighbourhood, which **rose 2.810 → 3.198 with gravity and fell 2.810 → 2.229 without it**: a 1.8× effect and not a 7× one. *(Historical as of 2026-11-08: a World's space no longer grows, so the fill is fixed and the confound cannot arise — but the lesson generalises to any statistic whose null moves while the run does.)* |
+| 20 | How strong is gravity, how big is the World, what shape is it? | **All three, 2026-11-08, and the scale answered them together** (item 40). *Strength:* zero — at one atom per hexagon the whole sheet's self-gravity is 10⁻²⁴ of one of its bonds, and the crossing point is 3 × 10²² hexagons. The 2026-11-07 sweep had already shown the dial every run used was above law 1's own momentum range (53% of pulls refused, 4,387 clamped) and cost chemistry 3.6× the bonds a control lost. *Shape:* a bounded sheet (item 22). *Size:* limited by time, not memory — six bytes a hexagon means 2.1 billion cells fit in 24 GB and the `Int32Array` of indices runs out at the same place, but three days of wall clock is 155,000 ticks at 17 million hexagons and 1,200 at two billion |
+| 22 | What shape is the World? | **A bounded sheet** (Ric, 2026-11-08: "Edge it seems the way to go. No expansion and no gravity."). The shape decides the heat sink, and that is what settled it: a torus has none, measured — 815,538 of 820,195 quanta reabsorbed inside the loop, and the expansion drain that was to be the sink took 102,936 units against 23 million of heat before switching off at the cell cap. A quantum that steps off an edge is gone and counted. The growth machinery went with the torus: no `grow`, no drain, no cell cap, and the arrays stop being reallocated mid-run. An edge hexagon has fewer than six neighbours and an axial corner only two, which is a real asymmetry and is now checked (`world-check.mjs` Check 11) rather than discovered later |
+| 35 | Gravity pays out with no floor | **Gone with the law, 2026-11-08.** It was never fixed, and it is worth keeping the number: a stream left running for 569,750 ticks manufactured **17,120,848 units** of kinetic energy, three quarters of everything the world contained, and the books closed throughout because the counter was defined as the complement of everything else. The question it raised — whether a force may pay out when nothing moves — is a real one and is now moot here |
+| 36 | The World has exactly one energy sink, and it is far too small | **Answered by the shape, 2026-11-08.** Expansion drained 0.4% of the heat; the edge drains properly. Measured: a cold 96 × 96 sheet released 13,412 units through law 2 and **radiated 7,250 of them away, 54% of everything it ever had**, finishing frozen at 89.1% bonded. The sink costs nothing per tick, where the drain cost a whole-world reallocation. It is a SURFACE, so it scales as 1/side — 20,000 ticks shed 54% of the budget at 96² and 1.92% at 258² — and that is the finding rather than a limitation: it is why the World grows a cool skin |
+| 40 | What is one hexagon? | **One atom** (Ric, 2026-11-08: "think about how much DNA gets affected by gravity. And how many atoms are in DNA"). **Nothing in this project had ever said**, which is why law 3's strength was a dial with no derivation for three days and why `world-run.mjs` had an `--eps` at all. With the scale written down, gravity is arithmetic rather than opinion (item 20), a bond is a chemical bond, and the World is a physical object of a known size: 17 million hexagons is a bacterium's footprint one atom thick, 2.1 billion is a human cell's. It also fixes what the project cannot ask for: a star needs 10⁵⁷ atoms, so no dial and no hardware will put one in this lattice |
+| 41 | Does an edge actually cool a World, and what shape does the cooling have? | **Yes, and it is a skin effect.** Measured 2026-11-08, the run the rebuild rested on (`runs/world-edge-258-hot.json`): 258², seeded at temperature 4, 20,000 ticks, three seeds. Chemistry, cooling and a gradient on **3 of 3** — the skin reads **3.40 against the bulk's 3.67, so the interior is 1.077–1.088× hotter**, and the profile is one band deep with a flat interior rather than a smooth slope from edge to centre. It is a surface sink, so it scales as 1/side: 20,000 ticks shed **54% of the energy budget at 96²** (that sheet finished frozen at 89.1% bonded, mean temperature 0.000) against **1.92% at 258²**. The first statistic for this was wrong in the usual way — it compared the skin with the *innermost* band, which holds a fifteenth of the skin's matter and swings on noise, and it reported NO GRADIENT on a seed whose skin was plainly 7% cooler; the bulk is now the matter-weighted mean of every band but the skin. **Open underneath it:** whether the gradient steepens with size, which is the same run at a larger `--size` |
 
 ## Roads not taken
 

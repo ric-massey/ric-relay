@@ -201,6 +201,18 @@ conservation total — with `constants.mjs` (every physics constant; it refuses 
 one) and `lab-check.mjs` (`node lab-check.mjs`, thirteen checks, about 30 seconds). `snapshot.mjs`
 freezes a Lab run into `runs/` for the viewer, `wave.mjs` is a measurement harness over copies of
 the engine, and `rejected/` keeps the mechanisms that came out, with the numbers that removed them (one, the momentum wave, has since come back). Law 1 steps by a tracked position inside each hexagon since 2026-11-06, so matter travels at its real heading.
+**There is a second engine now, the World** (2026-11-07): `world.mjs`, with `world-check.mjs`
+(`node world-check.mjs`, eleven checks, about 20 seconds) and `world-run.mjs`, which runs it and
+reads chemistry, cooling and a skin-to-core temperature gradient off the run. It is the same four
+laws in **ticked** time on a **bounded sheet** — not a torus — and a quantum of radiation that steps
+off an edge is gone and counted, which is the World's only energy sink. **Gravity is in neither
+engine as of 2026-11-08**, and that is a decision rather than a gap: Ric settled that one hexagon is
+one atom ("think about how much DNA gets affected by gravity. And how many atoms are in DNA"), and at
+that scale a whole sheet's self-gravity is about 10⁻²⁴ of one of its own bonds. `world-stream.mjs`
+serves a run that is still happening to the viewer's Live World tab, on the wifi or through the
+Worker's `/universe` route (`projects/universe/STREAMING.md`); the relay needs the **Deploy Worker**
+workflow run once, because that route is newer than the deployed Worker. `census.mjs` and
+`collide.mjs` measure the Lab's clusters and what they do when two of them meet.
 Around that: docs — a spec and work list (`README.md`), agent rules, a per-law statement
 (`THE-LAWS.md`), the record of how each law was decided (`HOW-WE-DECIDED.md`), a design note on
 the two runs, a sources file — and **five screening tools**, each run by hand: `screen.mjs`

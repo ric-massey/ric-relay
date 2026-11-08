@@ -2305,14 +2305,23 @@ function worldHtml() {
 // entirely for the second one: it reads a thermostat, a momentum range and a
 // census of a finished run, none of which a World has. Rather than fill those
 // rows with blanks, a World frame gets its own panel saying the things that
-// are true of it -- the dial, the books with their terms named, and what the
-// run is approximating.
+// are true of it -- the books with their terms named, and what the run is
+// approximating.
+//
+// UPDATED 2026-11-08. It used to lead with gravity's strength, because that was
+// the dial a run was steered by. Gravity is in neither engine now (one hexagon
+// is one atom, and at that scale it is 10^-24 of a single bond), and a World is
+// a bounded sheet whose only energy sink is its edge -- so the row that matters
+// is what has radiated away. An older frame still carries the old terms, and
+// they are shown when they are there rather than dropped, since a frame from
+// before the change is still a true picture of what it was.
 function worldRunHtml(h) {
   const L = h.live || {}, b = h.books || {}, c = h.counts || {}, r = h.run || {};
   const g = r.gravity;
   const sp = h.space || {};
   const closes = b.closes !== false;
   const grew = Array.isArray(sp.sizeAtStart);
+  const old = (v) => v !== undefined && v !== null;
   return `<dl>
     <dt>Label</dt><dd class="wide">${h.label || "a World"}</dd>
     <dt>Tick</dt><dd>${fmt(L.tick || 0)}${L.stopped ? " · stopped" : ""}</dd>
@@ -2321,16 +2330,19 @@ function worldRunHtml(h) {
     <dt>Size</dt><dd>${(sp.size || []).join(" × ")}${grew ? " · grew from " + sp.sizeAtStart.join(" × ") : ""}</dd>
     <dt>Seed</dt><dd>${r.seed}</dd>
     <dt>Fill</dt><dd>${r.fill}</dd>
-    <dt>Gravity</dt><dd class="wide">${g
-      ? "ε " + g.eps + " · screening " + g.screen + " (range ~" + (1 / g.screen).toFixed(1) +
-        " hexagons) · " + g.relax + " sweeps"
-      : "off — the control"}</dd>
+    <dt>Start</dt><dd class="wide">${r.temp0 || r.p0
+      ? "temperature " + (r.temp0 || 0) + " · momentum ±" + (r.p0 || 0) + ", net zero"
+      : "absolute zero — law 2 is the only thing that can warm it"}</dd>
+    ${g ? `<dt>Gravity</dt><dd class="wide">ε ${g.eps} · ${g.relax} sweeps —
+      <b>an older frame: gravity left both engines on 2026-11-08</b></dd>` : ""}
     <dt>Heat</dt><dd>${fmt(b.heat || 0)}</dd>
     <dt>Kinetic</dt><dd>${fmt(b.kinetic || 0)}</dd>
     <dt>In flight</dt><dd>${fmt(b.inFlight || 0)}</dd>
     <dt>Bond potential</dt><dd>${fmt(b.bondPotential || 0)}</dd>
-    <dt>Gravity potential</dt><dd>${fmt(b.gravityPotential || 0)}</dd>
-    <dt>Expansion loss</dt><dd>${fmt(b.expansionLoss || 0)}</dd>
+    <dt>Radiated away</dt><dd>${fmt(b.radiatedAway || 0)}${
+      b.radiatedAway ? " — out through the edge, for good" : ""}</dd>
+    ${old(b.gravityPotential) ? `<dt>Gravity potential</dt><dd>${fmt(b.gravityPotential)}</dd>` : ""}
+    ${old(b.expansionLoss) ? `<dt>Expansion loss</dt><dd>${fmt(b.expansionLoss)}</dd>` : ""}
     <dt>Net p</dt><dd>(${(b.momentum || [0, 0]).join(", ")})</dd>
     <dt>Books</dt><dd class="wide">${closes
       ? "closed at tick " + fmt(b.closedAtTick || 0) + " — energy, matter and momentum"
@@ -2339,18 +2351,19 @@ function worldRunHtml(h) {
     <dt>Bonds</dt><dd>${fmt(c.bondsFormed || 0)} formed · ${fmt(c.bondsBroken || 0)} broken</dd>
     <dt>Shared</dt><dd>${fmt(c.momentumShared || 0)} hops along bonds</dd>
     <dt>Kicks</dt><dd>${fmt(c.thermalKicks || 0)} heat → motion</dd>
-    <dt>Pulls</dt><dd>${fmt(c.gravityCarries || 0)} carried · ${fmt(c.gravityDeclined || 0)} declined</dd>
+    <dt>The edge</dt><dd>${fmt(c.escaped || 0)} quanta crossed it · ${fmt(c.emittedOff || 0)}
+      straight off the skin</dd>
+    ${old(c.gravityCarries) ? `<dt>Pulls</dt><dd>${fmt(c.gravityCarries)} carried — an older frame</dd>` : ""}
     <dt>Engine</dt><dd id="engineLine">${h.engine ? h.engine.world : "not recorded"}</dd>
   </dl>${engineWarning(h)}
   ${closes ? "" : `<p class="warn" style="margin-top:9px"><b>THE BOOKS DID NOT CLOSE.</b>
     The run stopped because its own conservation check failed. Nothing on this map is
     a picture of the physics any more; it is a picture of the moment it broke.</p>`}
-  <p class="warn" style="margin-top:9px"><b>Gravity\u2019s strength here is a DIAL.</b>
-  README item 20 put gravity\u2019s floor above its ceiling, under a physics that stopped
-  existing on 2026-11-06, and nobody has re-measured it — so the ε above was typed on a
-  command line, not measured. CANDIDATE_ZERO is the plumbing test point, not a chosen
-  physics. This run also approximates: ${(r.approximations || []).join("; ")}.
-  Nothing read off it is a result.</p>`;
+  <p class="warn" style="margin-top:9px"><b>Nothing read off this is a result.</b>
+  CANDIDATE_ZERO is the plumbing test point, not a chosen physics, so a live picture is a
+  picture of the plumbing working. The World is a bounded sheet of four laws: law 2 is the
+  only thing that adds energy and the edge is the only thing that removes it. This run also
+  approximates: ${(r.approximations || []).join("; ")}.</p>`;
 }
 
 function runHtml() {

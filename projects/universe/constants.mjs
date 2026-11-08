@@ -210,14 +210,19 @@ export const SEARCHED = {
   // tryThermalKick in lab.mjs.
   THERMAL_KICK_PROB: null,        // probability 0..1
 
-  // Law 3. Not used by the Lab -- gravity is deliberately held out, because a
-  // measurement needs controlled conditions. Here for completeness, and
-  // because rule 8 says ONE module.
+  // Law 3. USED BY NEITHER ENGINE AS OF 2026-11-08, and kept here rather than
+  // deleted because the law is still true of the universe and rule 8 says one
+  // module holds every constant.
   //
-  // THE-LAWS.md: the strength has a ceiling (eps << 1, or gravity contaminates
-  // chemistry) AND a floor (collapse must heat matter past the weakest bond or
-  // chemistry never runs). At 4096 squared the floor is above the ceiling, so
-  // as of 2026-11-05 no strength passes both. README item 20, Ric's call.
+  // One hexagon is one atom (README item 40), and at that scale the whole
+  // sheet's self-gravity is about 10^-24 of one of its own bonds: the strength
+  // that would matter needs 3x10^22 hexagons, and the hardware holds 2.1
+  // billion. So there is no value to search for here at any size this project
+  // can run, and leaving these null is the honest state rather than an
+  // oversight. The old reading -- a ceiling (eps << 1 or gravity contaminates
+  // chemistry) above a floor (collapse must melt a bond) with no room between
+  // them at 4096 squared -- is still in README item 20, now with the sweep
+  // that confirmed it from the other direction.
   GRAVITY_EPS:     null,          // energy two kind-255 release falling to contact, over weakest bond
   GRAVITY_FALLOFF: null,          // the exponent in 1/r^n
 };

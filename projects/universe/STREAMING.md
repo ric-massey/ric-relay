@@ -43,29 +43,27 @@ the same Worker, the same bucket and the same password.
 
 ```bash
 node world-stream.mjs --size 150 --every 2          # smaller, more frames
-node world-stream.mjs --eps 2e-5                    # gravity up 100x
-node world-stream.mjs --eps 0                       # gravity off: the control
-node world-stream.mjs --grow 200 --max 600000       # let the space grow
 node world-stream.mjs --host 127.0.0.1              # this machine only
 node world-stream.mjs --save runs/world             # also write frames to disk
 ```
 
 ```bash
-node world-stream.mjs --temp0 9 --p0 6              # start hot and moving
-node world-stream.mjs --gcap 500000                 # stop if gravity pumps
+node world-stream.mjs --temp0 4 --p0 3              # start warm and moving
 ```
 
-Every dial `world-run.mjs` has, this has, and they mean the same things. Three
-are worth naming because they decide what the run can show at all:
+Every dial `world-run.mjs` has, this has, and they mean the same things. Two are
+worth naming because they decide what the run can show at all:
 
 - **`--temp0 N`** energy per unit of kind at tick 0, which is what temperature
   means here. At or above 8 no bond can form, because the deepest possible bond
-  is the bond modulus. A World left at absolute zero bonds before it can fall.
+  is the bond modulus — so `--temp0 9` is a sheet that cannot do chemistry, and
+  `--temp0 0` is one that bonds immediately and warms itself doing it.
 - **`--p0 N`** momentum components drawn in ±N, then the whole World brought to
   exactly zero total momentum, so there is no preferred direction.
-- **`--gcap N`** stops the run if gravity has paid out more than N units of
-  kinetic energy. The counter it watches has no floor (README item 35), so
-  without this a stream left open can pump energy for as long as it runs.
+
+There are no gravity or expansion dials: both laws came out on 2026-11-08
+(README items 20, 22 and 40), so a run has four laws, an edge, and nothing to
+tune but its size, its heat and its seed.
 
 The two that are only here:
 
@@ -133,20 +131,23 @@ The header carries what a picture of a running world has to carry to be honest:
 
 - **`space`** — the lattice, the size, and **which axes wrap**, measured by
   asking the engine where its own edges lead rather than asserted. The map draws
-  exactly that. A World that grew says what it grew from.
+  exactly that. Since 2026-11-08 the answer is "neither" — the World is a
+  bounded sheet — and it is still measured rather than hard-coded, because the
+  shape is the kind of thing that changes.
 - **`engine`** — a hash of `world.mjs` and `constants.mjs`. The viewer hashes
   the same two files where it is served and says plainly whether they match, so
   a frame from an engine that has since changed cannot pass as a current one.
-- **`books`** — heat, kinetic, in flight, bond potential, gravity potential,
-  expansion loss, net momentum, and the tick the conservation check last passed.
-  If it ever fails the run stops and the frame says so in red.
-- **`run.approximations`** — ticked time, and the number of relaxation sweeps
-  the potential got. Neither is hidden.
+- **`books`** — heat, kinetic, in flight, bond potential, **radiated away**, net
+  momentum, and the tick the conservation check last passed. If it ever fails the
+  run stops and the frame says so in red. `radiatedAway` is the only term allowed
+  to grow: it is energy that left through the edge, counted on the way out, and
+  it is what makes "it cooled" different from "it leaked".
+- **`run.approximations`** — ticked time. That is the only one left; the
+  relaxation sweeps went with gravity.
 
-Gravity's strength is a **dial**, typed on a command line. README item 20 put
-its floor above its ceiling under a physics that stopped existing on 2026-11-06
-and nobody has re-measured it. Every frame says so, and nothing read off one is
-a result.
+**Nothing read off a frame is a result**, and the reason is in the frame's own
+warning: `CANDIDATE_ZERO` is the plumbing test point rather than a chosen
+physics, so a live picture is a picture of the plumbing working.
 
 ---
 

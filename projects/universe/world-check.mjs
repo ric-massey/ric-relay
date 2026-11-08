@@ -17,14 +17,15 @@
 //   3. a push travels THROUGH a bonded chain, which is what makes a cluster an object
 //   4. neither exchange ever clips at law 1's range; it declines, all-or-nothing
 //   5. the heat seam is exact over thousands of random exchanges
-//   6. heat MOVES MATTER in a real run, with gravity off, from zero momentum
+//   6. heat MOVES MATTER in a real run, from zero momentum
 //   7. a world at absolute zero heats itself, and then moves
 //   8. the kick is free above a kind threshold, which is a leak, measured
 //   9. GAP 3 as the Lab settled it: a bonded primitive steps when the bond
 //      survives, and the bond pushes back when it does not
 //  10. the density contrast reads 1.0 on matter spread at random -- the
 //      instrument validated against the null it claims, rule 12
-//  11. the gravity cap stops a run and says so
+//  11. the EDGE: light leaves through it and is counted, matter never does,
+//      and no bond forms with the outside
 //
 // Every check prints what it measured rather than "ok", because rule 11 is
 // about not believing output that only says it passed.
@@ -39,12 +40,12 @@ function report(name, ok, detail) {
   console.log(`  ${ok ? "ok  " : "FAIL"}  ${name}${detail ? "  --  " + detail : ""}`);
 }
 
-// A World with no gravity, nothing seeded, and the ledger baseline taken AFTER
+// A World with nothing seeded, and the ledger baseline taken AFTER
 // the state is placed by hand. seed_ with fill 0 adds no matter and then
 // snapshots the books, which is the only way in from outside the class -- and
 // the right way, since the baseline must include whatever was placed.
 function bare(cols = 12, rows = 12, seed = 1) {
-  const w = new World({ cols, rows, seed, constants: CANDIDATE_ZERO, gravity: null });
+  const w = new World({ cols, rows, seed, constants: CANDIDATE_ZERO });
   return w;
 }
 const baseline = (world) => world.seed_(0, () => 1);
@@ -58,7 +59,7 @@ console.log(`=== Check 1: the kick's pair cancels exactly, and has no preferred 
   const world = bare();
   const w = world.w;
   // A field of pairs, all with heat and no momentum. The kick is the only
-  // thing that can run here: no gravity, no momentum to step with.
+  // thing that can run here: nothing has momentum to step with.
   for (let i = 0; i < w.cells; i++) { w.kind[i] = 4; w.energy[i] = 2000; }
   baseline(world);
 
@@ -131,7 +132,7 @@ console.log(`\n=== Check 3: a push travels through a bonded chain ===`);
   // kind so their velocities are comparable. One end is given momentum and
   // nothing else is. If sharing works, the far end ends up moving -- which is
   // what "a bonded group responds to a push as a group" means, and the reason
-  // this law matters for gravity.
+  // this law matters at all -- it is what makes a cluster an object.
   const world = bare(24, 24);
   const w = world.w;
   const L = 10, r = 8;
@@ -285,9 +286,9 @@ console.log(`\n=== Check 5: the heat seam is exact over thousands of random exch
 }
 
 // ===========================================================================
-console.log(`\n=== Check 6: with gravity OFF and no momentum, does heat move matter? ===`);
+console.log(`\n=== Check 6: with no momentum at all, does heat move matter? ===`);
 {
-  // This is item 29 in the World rather than in the Lab. Gravity off means no
+  // This is item 29 in the World rather than in the Lab. No momentum means no
   // law can create momentum except the kick, and the world starts with none.
   //
   // THE CONTROL TOOK TWO GOES TO GET RIGHT, and both corrections are findings
@@ -306,7 +307,7 @@ console.log(`\n=== Check 6: with gravity OFF and no momentum, does heat move mat
   const stillborn = { ...CANDIDATE_ZERO, BOND_FORM_PROB: 0 };
   const rows = [];
   for (const heat of [0, 40, 200]) {
-    const world = new World({ cols: 96, rows: 96, seed: 3, constants: stillborn, gravity: null });
+    const world = new World({ cols: 96, rows: 96, seed: 3, constants: stillborn });
     world.seed_(0.30, (rng) => 1 + rng.below(4));          // kinds 1..4: cold-lockable
     const w = world.w;
     for (let i = 0; i < w.cells; i++) {
@@ -327,7 +328,7 @@ console.log(`\n=== Check 6: with gravity OFF and no momentum, does heat move mat
       + `kinetic ${String(r.kinetic).padStart(7)}, net p (${r.px}, ${r.py})`);
   }
   const cold = rows[0], hot = rows[rows.length - 1];
-  report("with no heat, no gravity and no chemistry, NOTHING moves",
+  report("with no heat and no chemistry, NOTHING moves",
     cold.stepped === 0 && cold.kicks === 0,
     `${cold.cold.toLocaleString()} kicks refused for want of heat -- README item 27 restated`);
   report("add heat and the same world moves, with no momentum supplied",
@@ -342,17 +343,17 @@ console.log(`\n=== Check 6: with gravity OFF and no momentum, does heat move mat
 // ===========================================================================
 console.log(`\n=== Check 7: a world at absolute zero heats ITSELF, and then moves ===`);
 {
-  // Found 2026-11-07 by check 6's control failing: with gravity off, no
-  // momentum and no heat anywhere, the world still took steps. Nothing was
-  // broken. Forming a bond RELEASES its binding energy as heat (law 2), the
-  // kick turns heat into motion (law 1), and the two compose -- so chemistry
-  // is an energy source at T = 0, and the first one gravity has to beat.
+  // Found 2026-11-07 by check 6's control failing: with no momentum and no
+  // heat anywhere, the world still took steps. Nothing was broken. Forming a
+  // bond RELEASES its binding energy as heat (law 2), the kick turns heat into
+  // motion (law 1), and the two compose -- so chemistry is an energy source at
+  // T = 0.
   //
-  // This bears on the chronology. TWO-RUNS.md expects collapse, then a hot
-  // era, then recombination. If bonding alone can warm and stir the world
-  // before gravity has gathered anything, the first era has competition that
-  // THE-LAWS.md does not mention. Recorded here rather than argued.
-  const world = new World({ cols: 96, rows: 96, seed: 3, constants: CANDIDATE_ZERO, gravity: null });
+  // THAT MATTERS MORE SINCE 2026-11-08 than it did when it was found, because
+  // gravity is gone: law 2 is now the ONLY source of energy a World run has
+  // after tick 0, and the edge is the only sink. This check is the evidence
+  // that the source exists at all.
+  const world = new World({ cols: 96, rows: 96, seed: 3, constants: CANDIDATE_ZERO });
   world.seed_(0.30, (rng) => 1 + rng.below(255));
   const w = world.w;
   for (let i = 0; i < w.cells; i++) w.energy[i] = 0;
@@ -405,7 +406,7 @@ console.log(`\n=== Check 8: the kick is FREE above a kind threshold, and that is
   // matter does drift -- and rule 8 puts that in constants.mjs and THE-LAWS.md,
   // which is Ric's call and not this file's. So it is MEASURED here, so that
   // it cannot be rediscovered as a surprise a third time.
-  const world = new World({ cols: 12, rows: 12, seed: 1, constants: CANDIDATE_ZERO, gravity: null });
+  const world = new World({ cols: 12, rows: 12, seed: 1, constants: CANDIDATE_ZERO });
   const w = world.w;
   const free = [], locked = [];
   for (let k = 1; k <= KIND_MAX; k++) {
@@ -511,7 +512,7 @@ console.log(`\n=== Check 10: the density contrast reads 1.0 on matter spread at 
 {
   const rows = [];
   for (const fill of [0.10, 0.30, 0.60]) {
-    const world = new World({ cols: 258, rows: 258, seed: 11, constants: CANDIDATE_ZERO, gravity: null });
+    const world = new World({ cols: 258, rows: 258, seed: 11, constants: CANDIDATE_ZERO });
     world.seed_(fill, (rng) => 1 + rng.below(255));
     const r = world.sample();
     rows.push({ fill, ...r });
@@ -527,7 +528,7 @@ console.log(`\n=== Check 10: the density contrast reads 1.0 on matter spread at 
     `max reads 7 at fill 0.30 AND at 0.60 -- two different worlds, the same number`);
 
   // And it has to be able to see a clump, or 1.00 everywhere proves nothing.
-  const clump = new World({ cols: 96, rows: 96, seed: 1, constants: CANDIDATE_ZERO, gravity: null });
+  const clump = new World({ cols: 96, rows: 96, seed: 1, constants: CANDIDATE_ZERO });
   const cw = clump.w;
   for (let r = 20; r < 50; r++) for (let q = 20; q < 50; q++) cw.kind[r * cw.cols + q] = 7;
   const c = clump.sample();
@@ -538,43 +539,91 @@ console.log(`\n=== Check 10: the density contrast reads 1.0 on matter spread at 
 }
 
 // ===========================================================================
-// The counter gravityPotential has no floor: every unit of kinetic energy a
-// pull creates is debited to it, so the books close however much gravity hands
-// out. The first World runs paid out 558,000 units into matter that took
-// 19,389 steps -- work without displacement. The cap does not fix that (the
-// fix is a physics decision about whether the force is the gradient of an
-// energy it cannot overdraw, and it is not one here); it stops a run from
-// doing it unnoticed.
-console.log(`\n=== Check 11: the gravity cap stops a run and says so ===`);
+// THE EDGE, ADDED 2026-11-08 WITH IT. This is the one place in the engine where
+// something leaves the world, so it is the one place a leak can hide behind a
+// true story: "it radiated away" and "it vanished" look identical in a total
+// that does not count the difference. Rule 6 is written for exactly this, and
+// the three claims are that light leaves and is COUNTED, that matter never
+// leaves at all, and that nothing bonds with the outside.
+//
+// The boundary is also where `isMatter(w, -1)` would have read undefined and
+// answered true, which would have made every edge hexagon think it had six
+// neighbours. That is why the third claim is checked rather than assumed.
+console.log(`\n=== Check 11: light leaves through the edge, matter does not, and the books say so ===`);
 {
-  const world = new World({
-    cols: 96, rows: 96, seed: 5, constants: CANDIDATE_ZERO,
-    gravity: { eps: 2e-5, screen: 0.25, relax: 2, cap: 50 },
-  });
-  world.seed_(0.30, (rng) => 1 + rng.below(255));
-  const out = world.run(200, { checkEvery: 10, sampleEvery: 50 });
-  report("the run ends early, with the reason in words rather than a flag",
-    typeof out.stopped === "string" && /gravity paid out/.test(out.stopped),
-    out.stopped || "it ran to the end -- the cap did nothing");
-  report("it stopped because gravity went past the cap, not for some other reason",
-    -world.ledger.gravityPotential > 50 && out.ticks < 200,
-    `paid ${(-world.ledger.gravityPotential).toLocaleString()} units past a cap of 50, `
-    + `at tick ${out.ticks} of 200`);
-  let threw = null;
-  try { world.ledger.check(world.w, "after the cap fired"); } catch (e) { threw = e.message; }
-  report("and the books close at the point it stopped -- the cap is a fuse, not a repair",
-    threw === null, threw || "exactly conserving, which is the problem: they always did");
-  const uncapped = new World({
-    cols: 96, rows: 96, seed: 5, constants: CANDIDATE_ZERO,
-    gravity: { eps: 2e-5, screen: 0.25, relax: 2 },
-  });
-  uncapped.seed_(0.30, (rng) => 1 + rng.below(255));
-  const full = uncapped.run(200, { checkEvery: 100 });
-  report("with no cap the same run goes the distance, so the cap is never a default",
-    full.stopped === null && full.ticks === 200,
-    `200 ticks, gravity paid ${(-uncapped.ledger.gravityPotential).toLocaleString()} units`);
+  // One hot primitive in the corner of a small sheet, with nothing else in it.
+  // Every quantum it emits either crosses the edge within a few ticks or is
+  // reabsorbed by the only matter there is, so the totals are small enough to
+  // reason about by hand.
+  const world = bare(12, 12, 4);
+  const w = world.w;
+  const corner = 0;                              // q = 0, r = 0: two edges meet
+  w.kind[corner] = 6; w.energy[corner] = 600;
+  baseline(world);
+  const energy0 = world.ledger.energy0;
+
+  const out = world.run(400, { checkEvery: 20, sampleEvery: 400 });
+  const c = census(w);
+  report("the books close over 400 ticks with energy leaving the world",
+    true, `asserted every 20 ticks, and at the end`);
+  report("energy DID leave, and the ledger has every unit of it",
+    world.ledger.escaped > 0
+      && c.heat + c.kinetic + c.inFlight + world.ledger.bondPotential + world.ledger.escaped === energy0,
+    `${world.ledger.escaped} units radiated away of ${energy0}; `
+    + `heat ${c.heat} + flight ${c.inFlight} + radiated ${world.ledger.escaped} = ${energy0}`);
+  report("the two edge counters agree with the ledger, so neither is double-counting",
+    world.counts.escaped + world.counts.emittedOff === world.ledger.escaped,
+    `${world.counts.escaped} crossed + ${world.counts.emittedOff} straight off `
+    + `= ${world.ledger.escaped}`);
+  report("matter never left: the matter total is untouched",
+    c.matter === world.ledger.matter0, `${c.matter} of ${world.ledger.matter0}`);
+  report("and it cooled, which is the point of having an edge at all",
+    tempOf(w, corner) < 100 || world.ledger.escaped > 100,
+    `the corner is at temperature ${tempOf(w, corner)}, from 100`);
+
+  // A hexagon on the edge has fewer neighbours, and the engine has to know it.
+  let offSheet = 0, onSheet = 0;
+  for (let d = 0; d < DIRECTIONS; d++) {
+    const j = neighbour(w, corner, d);
+    if (j < 0) offSheet++; else onSheet++;
+  }
+  // MEASURED, NOT GUESSED, AND THE GUESS WAS WRONG. This check first asserted
+  // three on and three off, by analogy with a square grid's corner. The axial
+  // corner at q = 0, r = 0 keeps only TWO: of the six axial steps, [1,0] and
+  // [0,1] stay on the sheet and the other four -- [1,-1], [-1,1], [-1,0] and
+  // [0,-1] -- each take q or r negative. So a corner hexagon in this lattice
+  // is a two-neighbour site, which is worth knowing before anyone reads
+  // chemistry off the boundary: an edge hexagon cannot reach law 2's capacity.
+  report("a corner hexagon has neighbours off the sheet, and neighbour() says so",
+    offSheet === 4 && onSheet === 2,
+    `${onSheet} on, ${offSheet} off -- an axial corner keeps only [1,0] and [0,1]`);
+  report("the trap that makes the edge dangerous is real: w.kind[-1] is undefined, not 0",
+    w.kind[-1] === undefined,
+    `so an unguarded "kind !== 0" answers TRUE off the sheet -- which is why isMatter `
+    + `tests the index first, and why the next line is checked rather than assumed`);
+  report("no bond ever formed on a lone primitive, so none formed with the edge",
+    w.bonds[corner] === 0 && world.counts.bondsFormed === 0,
+    `${world.counts.bondsFormed} bonds formed in 400 ticks with nothing to bond to`);
+
+  // And the strict version of the whole thing: run a real world long enough to
+  // radiate a lot, and the invariant still has to hold exactly.
+  const big = new World({ cols: 96, rows: 96, seed: 7, constants: CANDIDATE_ZERO });
+  big.seed_(0.30, (rng) => 1 + rng.below(255), { temp0: 4, momentumRange: 3 });
+  const e0 = big.ledger.energy0;
+  big.run(600, { checkEvery: 50 });
+  const bc = census(big.w);
+  report("a seeded 96x96 world radiates through its edge and the books still close exactly",
+    bc.heat + bc.kinetic + bc.inFlight + big.ledger.bondPotential + big.ledger.escaped === e0
+      && big.ledger.escaped > 0,
+    `${big.ledger.escaped.toLocaleString()} units left of ${e0.toLocaleString()} `
+    + `(${((big.ledger.escaped / e0) * 100).toFixed(2)}%), and the totals add up to the unit`);
+  report("and its momentum is still EXACTLY what it started with, with no drain term",
+    bc.px === big.ledger.px0 && bc.py === big.ledger.py0,
+    `(${bc.px}, ${bc.py}) -- radiation carries energy and not momentum, so there is `
+    + `nothing for a drain term to hold`);
 }
 
+// ===========================================================================
 console.log();
 if (failures) {
   console.log(`${failures} CHECK(S) FAILED.`);
