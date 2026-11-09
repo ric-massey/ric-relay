@@ -3910,6 +3910,49 @@ samples. That is the work left, and it is now worth less than it looked, because
 **5. Does the Lab produce a periodic table with any depth?** Unknown. Three stable clusters and
 nothing else is a plausible outcome, and would mean the pair force needs more structure.
 
+#### Correction, 2026-11-08 — "variety without selection" was a blind statistic in a cold world
+
+The 2026-11-06 answer (README item 5) was that the Lab makes clusters in enormous variety and
+does not choose between them. Two things were wrong with how that was read, and either one alone
+would have produced it.
+
+**The statistic could not move.** Selectivity was distinct signatures over the Feller expectation
+— presence or absence. At size 2 there are 36 valence pairs and one of them, (0, 0), has `B` = 0
+and cannot bond, so the ceiling is 35/36 = 0.972, and with thousands of dimers standing every
+bondable pair turns up whether the laws favour it or not. It read 0.97 at the cold control, at
+`census.mjs`'s conditions, and in a warm world that selects threefold: one number for three
+different physics. This is the trap item 39 records (a maximum over a 1..7 count, saturated from
+tick 0) arriving a third time. The question to ask of any statistic before believing it: *what
+value would it take if the thing were present?* — and if the answer is "the same one", it is not a
+measurement.
+
+**The world was too cold for law 2 to discriminate.** Law 2 breaks a bond when `e ≥ B · kind`,
+i.e. temperature ≥ `B`, with `B` from 1 to 8. A bond survives or not by that comparison and by
+nothing else, so selection by `B` needs temperatures *between* 1 and 8. `seedWorld` sets every
+energy to 0, the only source is the thermostat's 6 held rows of 258, and over 1.2 million events
+(about 52 per primitive) the heat does not get far: at the end the bulk's median temperature is
+0.016 and 97.4% of matter is below 1. Below 1 no bond ever breaks, so what stands is whatever
+formed, and formation does not read `B` (item 28: one probability for every pair). The census
+therefore measured formation, and formation has no favourites.
+
+**What does show it** (`selection.mjs`, thermostat off so the seeded temperature is the only
+condition, three seeds, final sample): per-signature dimer count against `B`. Cold control,
+seeded T = 0: B=8 ÷ B=2 is **0.76×** (0.72, 0.74, 0.81), weak bonds slightly commoner, mean `B`
+4.90. Seeded T = 8: **2.66×** (3.06, 2.53, 2.49), mean `B` 5.78, rising with `B` though not
+strictly (B=3 stands more than B=4). The control is AGENTS.md lesson 1 doing its job: without it,
+2.66× could have been the lattice favouring some valences for reasons unrelated to bond strength.
+
+**The confound.** Valence 0 has capacity 1, so a `0-x` pair is a dimer for ever — it cannot grow
+into anything larger. That puts extra weight on the low-`B` classes for a reason that is law 4,
+not law 2, and it is why the B = 1 point is left out of the trend.
+
+**What it does to the plan.** The next step was a sweep over the five searched constants still
+open, scored on the census. None of them appears in `temperature ≥ B`, and the score was the
+pinned ratio, so that sweep would have returned 0.97 at every point and looked like a robust
+negative. Bulk temperature is a held condition, not a constant (`TWO-RUNS.md`: the Lab sweeps
+conditions), and it is the first axis to sweep. Sizes 3 and 4 have not been read by abundance
+yet; nothing is claimed about them.
+
 **6. ~~Should capacity vary by kind?~~ Settled 2026-11-06 — yes, and it derives from the same
 valence law 2 reads: `capacityOf(k) = clamp(k mod 8, 1, 6)`.** *(Ric: "per kind".)* `CAPACITY`
 is no longer a searched constant; it is a form, in `constants.mjs`, and law 4 reads the kind.

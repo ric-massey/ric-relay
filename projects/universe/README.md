@@ -16,11 +16,14 @@ takeovers without accumulating anything. This project tries to avoid those parti
 That is a reason to run the experiment, not a claim that nobody else's substrate could work
 (`SOURCES.md` has the citations).
 
-**Where it stands (2026-11-06).** The laws are written and the Lab — the first engine — runs four
+**Where it stands (2026-11-08).** The laws are written and the Lab — the first engine — runs four
 of them on a small looped lattice and conserves exactly. Matter moves at its real heading, never at
-the speed limit, and bonds push back when strained. It produces clusters in enormous variety
-but, at the one point in the search space tried so far, **does not select between them** —
-measured 2026-11-06, [item 5](#open-questions).
+the speed limit, and bonds push back when strained. It produces clusters in enormous variety, and
+**it selects between them when it is warm**: seeded at temperature 8, a strongly bonded dimer
+stands 2.66× as often as a weakly bonded one, against 0.76× in a cold control. Under the conditions
+every earlier run used, the bulk sat near temperature 0 and law 2's break rule almost never ran —
+[item 5](#open-questions). *(Until 2026-11-08 this said the Lab "does not select between them"; that
+was a statistic that could not see selection, measured in a world too cold to have any.)*
 The World is built and runs: a bounded sheet, four laws, cooling through its edge. Everything open is in
 [Open questions](#open-questions), which is the work list.
 
@@ -55,6 +58,7 @@ The World is built and runs: a bounded sheet, four laws, cooling through its edg
 | [`viewer.html`](viewer.html) | Lattice inspector. Reads a frozen run and lets you open any hexagon. State, not dynamics. |
 | [`wave.mjs`](wave.mjs) | Measurement harness over copies of the engine (items 25, 32, 33). |
 | [`census.mjs`](census.mjs) | Every standing cluster in a Lab run, grouped by what it is made of: the first periodic table (item 5). |
+| [`selection.mjs`](selection.mjs) | Item 5 by abundance: standing dimers per signature against `B`, cold and warm, with the bulk temperature each run actually reached. |
 | [`collide.mjs`](collide.mjs) | Aims two clusters at each other on purpose and reports what the meeting does. |
 | [`clusters.mjs`](clusters.mjs) | The one connected-component walk both of those use, outside the engine where rule 9 does not bind it. |
 | [`rejected/`](rejected/) | Mechanisms that came out of the engine, kept with the numbers that removed them — and one, the momentum wave, that has since come back and says why. |
@@ -332,10 +336,41 @@ argument behind each — with the wrong turns — is in `HOW-WE-DECIDED.md`, *Th
 
 ### Open
 
-**5. Does the Lab produce a periodic table with any depth?** The central question. **Measured for
-the first time 2026-11-06 by `census.mjs` and `collide.mjs`, at `CANDIDATE_ZERO` only, and the
-answer there is variety without selection -- which is the OPPOSITE failure to the one this item
-was watching for.** The item stays open, because one point in the search space is not the space.
+**5. Does the Lab produce a periodic table with any depth?** The central question. **Reopened
+2026-11-08: selection is there, and the 2026-11-06 statistic could not see it.** Still at
+`CANDIDATE_ZERO` only, so still open.
+
+- **The presence statistic is pinned by arithmetic.** At size 2 it reads 0.97 under every
+  condition tried, and 0.97 is 35 / 36: every valence pair but (0, 0), whose `B` is 0. With
+  thousands of dimers standing, a pair the laws suppress threefold still *appears*. The third
+  instance of the trap this item already records twice (item 39 is another).
+- **Abundance shows it, against a cold control.** `selection.mjs`: thermostat off, every primitive
+  seeded at one temperature, 1.2 million events, three seeds, dimers per signature at the end:
+
+  | | dimers per seed | mean `B` | per-signature B=8 ÷ B=2 | per seed |
+  |---|---|---|---|---|
+  | seeded T = 0 (control) | 2,291 | 4.90 | **0.76×** — weak bonds slightly *commoner* | 0.72, 0.74, 0.81 |
+  | seeded T = 8 | 1,201 | 5.78 | **2.66×** — rising with `B` (not strictly: B=3 > B=4) | 3.06, 2.53, 2.49 |
+
+- **Temperature is the switch, and the Lab had it off.** Law 2 breaks a bond when temperature ≥ `B`,
+  `B` ∈ 1..8. Under `census.mjs`'s own conditions the bulk ends at **median temperature 0.016, p90
+  0.157, 97.4% of matter below 1** — `seedWorld` sets energy to 0 and the only source is the
+  thermostat's 6 held rows of 258. The break rule effectively never runs, and that is why `0-1`
+  (`B` = 1, the weakest bond there is) was the census's most abundant species: nothing ever broke it.
+- **Confound kept in view:** valence 0 has capacity 1, so every `0-x` pair is pinned in a dimer
+  (law 4, not law 2) and inflates the low-`B` counts. Read B = 2..8, not the B = 1 point.
+- **What it changes for the sweep:** none of the five searched constants still open appears in
+  `temperature ≥ B`. A sweep over them at a cold bulk would have come back flat at 0.97 everywhere.
+  The axis that drives this item is a **held condition** — bulk temperature — which `TWO-RUNS.md`
+  already says the Lab sweeps.
+
+*Everything below is the 2026-11-06 reading. Its numbers stand; its conclusion — "variety without
+selection" — does not, because both the statistic and the temperature it was measured at were blind
+to selection.*
+
+~~**Measured for the first time 2026-11-06 by `census.mjs` and `collide.mjs`, at `CANDIDATE_ZERO`
+only, and the answer there is variety without selection -- which is the OPPOSITE failure to the one
+this item was watching for.**~~ The item stays open, because one point in the search space is not the space.
 
 *(The text this replaces said: "The central question, and unanswered. A handful of stable clusters
 and nothing else would mean law 2 needs more structure." The fear was too few species. There are
@@ -343,7 +378,8 @@ too many, and they are not chosen.)*
 
 - **Variety is enormous.** 3,911 distinct valence signatures over three seeds, 688 of them on every
   seed, clusters standing at every size from 2 to 26.
-- **Selection is absent wherever it can be measured.** A signature count is not depth: a cluster of
+- ~~**Selection is absent wherever it can be measured.**~~ *(Superseded 2026-11-08: absent from
+  presence, which cannot show it; present in abundance once the bulk is warm.)* A signature count is not depth: a cluster of
   size `n` has `C(n + 7, 7)` possible valence multisets whether or not the laws do anything, so the
   count is compared against the distinct-signature count expected from drawing that many at random
   (Feller's occupancy problem, `SOURCES.md`). On **independent** clusters the ratio is **0.97 at
@@ -360,7 +396,9 @@ too many, and they are not chosen.)*
   **capacity 1 at both ends**, so it cannot bond to anything further. Across all fifteen collision
   cells it was given, it never once merged — it bounces, and at momentum 63 it shatters into free
   primitives. **Abundance here measures dead-endedness, not stability**, which is worth keeping in
-  view when the sweep scores a run on how much matter is bound.
+  view when the sweep scores a run on how much matter is bound. *(2026-11-08: and it was abundant
+  because the bulk never reached temperature 1, so law 2 never broke it. Seeded at temperature 8,
+  `B` = 1 pairs fall from 578 per signature in the cold control to 89.)*
 - **Collisions build slowly and break quickly.** Aiming two chosen clusters at each other
   (`collide.mjs`, bond across the line of travel, 25 pairs x 3 seeds): at momentum 4, **52% merge**;
   at 16, **16%**; at 63, **8% merge and 32% shatter**. Conservation closed and net momentum ended at
@@ -375,9 +413,11 @@ too many, and they are not chosen.)*
   cluster **colliding with itself** in both orientations, which is why `collided` cannot be used to
   detect an encounter.
 
-*Decided by:* sweeping the search space and scoring each run on this census — which is the next
-step, and the reason the census exists. What would count as depth is now a number rather than an
-impression: a selectivity ratio well below 1 at sizes 2 to 4, where the measurement has power.
+*Decided by:* sweeping **bulk temperature** first, then the search space, and scoring each run on
+abundance against `B` with a cold control beside it — not on presence. ~~What would count as depth is
+now a number rather than an impression: a selectivity ratio well below 1 at sizes 2 to 4, where the
+measurement has power.~~ *(Superseded 2026-11-08: at size 2 that ratio is 35/36 by construction.
+Sizes 3 and 4 need the same abundance reading before anything is said about them.)*
 
 **9. What is the ratchet?** Prior systems lack a reason the world cannot retreat. Candidates:
 compound formation (undoing it costs binding energy back) and sedimentation (burial is
