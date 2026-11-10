@@ -242,6 +242,17 @@ Type `help` for the current command list. Useful shortcuts include `/clear`, `tr
 Commands accept a leading slash, project shortcuts are searchable, and `↑`/`↓` plus
 `Tab` provide history and completion.
 
+**The shell** (cleaned up 2026-11-10). The window that answers is as tall as the screen
+allows — it was eight lines, so `help` showed a third of itself. `ls`, `tree`, `projects`
+and `help` print rows whose names are links: tap a room or project to go there, tap a
+command in `help` (or `/help` and `/ls` in the hints under the prompt) to run it, which
+is what makes the terminal usable on a phone. `Tab` completes after a verb (`open cl` →
+`open climbing`); `↑` keeps the half-typed line and history lasts the tab's session, so
+it is still there after a trip into a room; `Esc` empties the line and `Ctrl+L` wipes the
+screen. `help` (the `HELP` array), Tab completion (`visibleCommands`) and the `COMMANDS`
+table are held to each other by `.github/test/terminal-shell.mjs` — document a command
+in all three or the test goes red.
+
 **`find` searches the whole site** (since 2026-10-30, Ric: "make the search engine in
 terminal phenominal"): every room, project and public page, the climbing log (every day,
 route and to-do), the board sends, every film on the Entertainment list, every CS match

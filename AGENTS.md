@@ -248,6 +248,32 @@ touched (at once in the front door's hidden frame). Rules that keep it honest:
 - Typing something that isn't a command searches for it, after a one-edit near miss of a
   real command (`lss` → `ls`) has been offered instead. Numbers open results.
 
+**The terminal's shell has three lists of commands, and a test that holds them together.**
+`HELP` (what `help` prints), `visibleCommands` (what Tab completes) and the `COMMANDS`
+table (what answers) are kept by hand in `terminal.html`; `.github/test/terminal-shell.mjs`
+fails if one names a command the others do not know, or if a command takes the name of a
+room or project (rooms and projects are matched first, so it would never run). An
+undocumented command goes in `COMMANDS` and `EASTER_EGGS.md` only. What else that
+cleanup (2026-11-10) settled, so nobody undoes it:
+
+- **`#output` is sized to the screen** (`--vvh`, the visual viewport, so a phone's
+  keyboard is counted). It was `14em` — eight lines for a 25-line `help` and a search
+  that prints sixteen. Don't cap it back down.
+- **Lines that list things are printed with `printRow` / `printRich`, not as one string
+  with `\n` in it.** A row's name is a link (a room, a project) or a command that runs
+  when tapped (`run`), and its words wrap under the words, by a hanging indent (`--in`) —
+  not flex columns, which put a line break inside every copied line. On a phone the words
+  go under the name (`.stack`).
+- **The same lines are drawn by the front door's panel.** `linesFrom()` sends each line's
+  segments and its `indent`; `index.html` draws them. The front door also has a `.res`
+  class of its own (the film card's badge), so `.term-out a.res` there has to undo it —
+  the test checks that it still does. A new class on a segment means nothing on the front
+  door unless its `span()` passes it (today: `hl` and `dim`).
+- **`#cmd` keeps `autocapitalize="none"`, `autocorrect="off"` and 16px on a phone.**
+  Without them a phone types `Is` for `ls` and zooms the page when the prompt is tapped.
+- **History is in `sessionStorage`** (`terminal:history`) so it survives `open <room>`
+  and Back; never when embedded, where the front door's prompt keeps its own.
+
 
 Per-room nav treatments (class on the `<nav>`):
 

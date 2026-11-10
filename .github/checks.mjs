@@ -45,6 +45,10 @@ const SUITES = [
   /* The terminal's search: ranking on the real data, every result's link,
      and pages.js current with the pages it lists. */
   ['the terminal search', ['.github/test/terminal-search.mjs']],
+  /* The terminal's shell: `help`, Tab completion and the command table are
+     three hand-kept lists, held to each other here; and the phone and
+     front-door fixes of 2026-11-10 stay in. */
+  ['the terminal shell', ['.github/test/terminal-shell.mjs']],
   ['the entertainment write path', ['projects/entertainment/test/write-path.mjs']],
   /* The finder's filters against the Worker's /tmdb/discover whitelist. */
   ['the entertainment finder', ['projects/entertainment/test/finder.mjs']],

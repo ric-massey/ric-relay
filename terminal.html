@@ -109,6 +109,9 @@
 
     #boot { white-space: pre-wrap; min-height: 6.8em; }
     #boot .ok { color: var(--flash-orrin); }
+    /* a status that will not fit beside its line moves down whole, instead of
+       breaking after its first word on a phone */
+    #boot span { display: inline-block; }
     #boot .dim { color: var(--phosphor-dim); }
 
     .terminal-help {
@@ -116,6 +119,14 @@
       margin-top: 1rem;
       white-space: pre-line;
     }
+
+    /* A command named in a hint is a button that runs it — on a phone, tapping
+       `/help` beats typing it. It reads as the text it sits in. */
+    button.cmd-hint {
+      font: inherit; color: var(--phosphor); background: none; border: 0; padding: 0.3em 0.1em; margin: -0.3em 0;
+      cursor: pointer; text-decoration: underline dotted var(--phosphor-dim); text-underline-offset: 0.25em;
+    }
+    button.cmd-hint:hover, button.cmd-hint:focus-visible { text-shadow: 0 0 10px rgba(255,176,0,.6); text-decoration-style: solid; outline: none; }
 
     #shell-status { margin-top: 1.1rem; }
     #shell-status .ok { color: var(--flash-orrin); }
@@ -241,15 +252,37 @@
     }
 
     #output:empty { display: none; }
-    #output { margin-bottom: .75rem; white-space: pre-wrap; color: var(--phosphor-dim); max-height: 14em; overflow-y: auto; }
+    /* As tall as the screen allows. This was 14em — eight lines — so `help`
+       showed seven of its twenty-five and a search four of its eight results.
+       --vvh is the part of the screen not under a phone's keyboard (set by the
+       script from visualViewport); the 16rem is the window's own chrome, the
+       prompt and the live results under it, so the prompt stays on screen. */
+    #output {
+      margin-bottom: .75rem; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--phosphor-dim);
+      max-height: clamp(9em, calc(var(--vvh, 100vh) - 16rem), 40em); overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: var(--phosphor-faint) transparent;
+    }
+    #output:focus-visible { outline: 1px dotted var(--phosphor-dim); outline-offset: 4px; }
     #output .bright { color: var(--phosphor); }
+    #output .bright:not(:first-child) { margin-top: .6em; }
+    /* a name and what it is (`ls`, `tree`, `projects`, `help`): words that
+       wrap continue under the words, not under the name. --in is how far in
+       the words start, set per line by printRow. A hanging indent rather than
+       two flex columns, so a copied line is still one line of text. */
+    #output .row { padding-left: calc(var(--in) * 1ch); text-indent: calc(var(--in) * -1ch); }
+    /* a search result that wraps continues under its title, not under its number */
+    #output .hang { padding-left: 4ch; text-indent: -4ch; }
+    #output .k { color: var(--phosphor); }
+    /* tight enough that the branches of `tree` join up */
+    #output .branch { line-height: 1.3; }
+    #output .head { letter-spacing: .15em; font-size: .8rem; margin-top: .7em; }
     /* search results: the words that matched, the quiet half of a line, and
        each result's title as a link (assets/terminal/search.js) */
     #output .hl, #live .hl { color: var(--phosphor); text-shadow: 0 0 8px rgba(255,176,0,.45); }
     /* .dim stays the plain output colour: --phosphor-dim is already the
        dimmest amber that clears 4.5:1 here, and the titles are brighter */
     #output a.res, #live a.res { color: var(--phosphor); text-decoration: none; }
-    #output a.res:hover, #output a.res:focus-visible, #live a.res:hover { text-decoration: underline; outline: none; }
+    #output a.res:hover, #output a.res:focus-visible, #live a.res:hover, #live a.res:focus-visible { text-decoration: underline; outline: none; }
     #live:empty { display: none; }
     #live { margin: .45rem 0 0; color: var(--phosphor-dim); white-space: pre-wrap; }
     #live div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -295,6 +328,19 @@
       a.entry { flex-wrap: wrap; row-gap: 0.1rem; }
       a.entry .desc { flex-basis: 100%; order: 3; }
       a.entry .go { margin-left: auto; }
+      /* The frame's padding was a fifth of a phone's width, on a page whose
+         answers are columns of text. */
+      .wrap { padding: 1.5rem 0.75rem 3rem; }
+      .frame { padding: 1.1rem 0.9rem; }
+      .terminal-screen { padding: 0.85rem 0.8rem 1rem; }
+      /* Two columns of words do not fit beside each other here: the name gets
+         its own line and the words sit under it. `tree` keeps its one line —
+         its branches are the point and its words are short. */
+      #output .row.stack { padding-left: 0; text-indent: 0; }
+      #output .row.stack > :nth-last-child(2) { display: none; }
+      #output .row.stack > :last-child { display: block; padding-left: 4ch; }
+      /* iOS zooms the whole page when an input under 16px takes focus */
+      #cmd { font-size: 16px; }
     }
   </style>
   <script src="assets/visit.js" defer></script>
@@ -317,11 +363,11 @@
       <div id="cmdline" class="hidden">
         <div class="terminal-chrome" aria-hidden="true"><span></span><span></span><span></span></div>
         <div class="terminal-screen">
-          <div id="output"></div>
+          <div id="output" role="log" aria-live="polite" aria-label="terminal output" tabindex="0"></div>
           <div class="prompt-row">
             <label class="prompt" for="cmd">guest@ric-terminal:~$</label>
             <span class="input-wrap">
-              <input id="cmd" autocomplete="off" spellcheck="false" placeholder=" " aria-label="terminal command input">
+              <input id="cmd" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder=" " aria-label="terminal command input">
               <span class="cursor" aria-hidden="true">▮</span>
             </span>
           </div>
@@ -329,8 +375,8 @@
         </div>
       </div>
 
-      <div id="terminal-help" class="terminal-help hidden">type /help for a list of commands that make getting around easier!
-type /ls to list out all the directories you can go to!
+      <div id="terminal-help" class="terminal-help hidden">type <button type="button" class="cmd-hint" data-run="help">/help</button> for a list of commands that make getting around easier!
+type <button type="button" class="cmd-hint" data-run="ls">/ls</button> to list out all the directories you can go to!
 type Sydney's cat's name for a surprise!</div>
 
       <!-- Deliberately empty: the entries are rendered from the ROOMS array at the
@@ -348,7 +394,7 @@ type Sydney's cat's name for a surprise!</div>
            Re-list one by flipping `listed` when it's actually built out. -->
       <nav id="dir" class="hidden" aria-label="Site directory"></nav>
 
-      <p id="dir-more" class="dir-more hidden">more rooms? type <span class="cmd-hint">/ls</span></p>
+      <p id="dir-more" class="dir-more hidden">more rooms? type <button type="button" class="cmd-hint" data-run="ls">/ls</button></p>
 
     </div>
 
@@ -622,28 +668,36 @@ type Sydney's cat's name for a surprise!</div>
       }
     }
 
-    const listRooms = () => ROOMS
-      .map((room) => `  /${room.name.padEnd(13)} ${room.desc}`)
-      .join("\n");
+    /* `ls`, `projects`, `tree` and `help` print rows (printRow, below): the
+       name is a link — a room, a project, or a command that runs when tapped —
+       so nobody has to retype what the terminal just showed them. A project's
+       room is printed under the name `ls` gives it (/mind, not /psyche). */
+    const roomOf = (project) => PAGE_ALIASES[project.room] || project.room;
+    const listRooms = () => {
+      for (const room of ROOMS) printRow(`/${room.name}`, room.desc, { href: room.href, width: 15 }).classList.add("stack");
+      print("type a name, or tap one, to go there.");
+      return null;
+    };
 
-    const listProjects = () => PROJECTS
-      .map((project) => `  ${project.command.padEnd(13)} ${project.title}  [/${project.room}]`)
-      .join("\n");
+    const listProjects = () => {
+      for (const project of PROJECTS) printRow(project.command, `${project.title} · /${roomOf(project)}`, { href: project.href, width: 11 }).classList.add("stack");
+      print("type a name, or tap one, to open it.");
+      return null;
+    };
 
     // drawn from ROOMS + PROJECTS, so a new room shows up here for free
     const siteTree = () => {
-      const lines = ["/terminal"];
+      print("/terminal");
       ROOMS.forEach((room, index) => {
         const last = index === ROOMS.length - 1;
-        const label = room.locked ? `/${room.name}`.padEnd(15) + "[LOCKED]" : `/${room.name}`;
-        lines.push(`${last ? "└──" : "├──"} ${label}`);
-        const nested = PROJECTS.filter((p) => (PAGE_ALIASES[p.room] || p.room) === room.name);
+        printRow(`/${room.name}`, room.locked ? "[LOCKED]" : "", { href: room.href, lead: `${last ? "└──" : "├──"} `, width: 15 }).classList.add("branch");
+        const nested = PROJECTS.filter((p) => roomOf(p) === room.name);
         nested.forEach((project, projectIndex) => {
           const branch = projectIndex === nested.length - 1 ? "└──" : "├──";
-          lines.push(`${last ? "    " : "│   "}${branch} ${project.command.padEnd(11)}${project.title}`);
+          printRow(project.command, project.title, { href: project.href, lead: `${last ? "    " : "│   "}${branch} `, width: 11 }).classList.add("branch");
         });
       });
-      return lines.join("\n");
+      return null;
     };
 
     // ─── search ──────────────────────────────────────────
@@ -779,9 +833,9 @@ type Sydney's cat's name for a surprise!</div>
           { t: `${String(n).padStart(2)}  ` },
           { href: d.href, n, segs: lit(d.title, r.snippet.titleMarks) },
           { t: `  ${KIND(d)}${subUp ? " · " + d.sub : where}`, c: "dim" },
-        ]);
+        ]).classList.add("hang");
         const line = r.snippet.line || (!subUp && d.sub) || (d.body && d.body.length < 110 ? d.body : "");
-        if (line) printRich([{ t: "    " }, ...(r.snippet.line ? lit(line, r.snippet.lineMarks, "dim") : [{ t: line, c: "dim" }])]);
+        if (line) printRich([{ t: "    " }, ...(r.snippet.line ? lit(line, r.snippet.lineMarks, "dim") : [{ t: line, c: "dim" }])]).classList.add("hang");
       });
       const shown = Math.min(results.length, (page + 1) * PAGE_SIZE);
       const tail = [];
@@ -838,32 +892,44 @@ type Sydney's cat's name for a surprise!</div>
         : "no transmissions found.";
     };
 
+    // [name, what it does, the command a tap on the name runs]; a lone string
+    // is a heading. Every documented command is here — and in visibleCommands.
+    const HELP = [
+      ["GET AROUND"],
+      ["ls / rooms", "list every room and what lives there", "ls"],
+      ["tree", "map the whole terminal and its projects", "tree"],
+      ["projects", "list project shortcuts", "projects"],
+      ["open <target>", "open a room or project — or just type its name"],
+      ["latest / recent", "open the newest addition", "latest"],
+      ["random", "enter a random unlocked room", "random"],
+      ["home", "go to the front door", "home"],
+      ["back", "return to the previous page", "back"],
+      ["LOOK THINGS UP"],
+      ["find <words>", "search the whole site — pages, climbs, films, matches (`find` alone for tricks; typing a search works too)", "find"],
+      ["cat notes", "read the latest transmissions", "cat notes"],
+      ["status", "check Ric and Orrin's status", "status"],
+      ["whoami", "show visitor identity", "whoami"],
+      ["THE TERMINAL ITSELF"],
+      ["history", "show commands used this visit", "history"],
+      ["pwd", "show your current location", "pwd"],
+      ["date", "read the local clock", "date"],
+      ["uptime", "show how long this terminal has been awake", "uptime"],
+      ["echo <text>", "make the terminal repeat something"],
+      ["clear", "wipe terminal output (`/clear` works too)", "clear"],
+      ["reboot", "replay the boot sequence", "reboot"],
+    ];
+
     const COMMANDS = {
-      help: () =>
-        "available commands:\n" +
-        "  ls / rooms      list every room and what lives there\n" +
-        "  tree            map the whole terminal and its projects\n" +
-        "  projects        list project shortcuts\n" +
-        "  find <words>    search the whole site — pages, climbs, films, matches\n" +
-        "                  (`find` alone for tricks; typing a search works too)\n" +
-        "  open <target>   open a room or project shortcut\n" +
-        "  latest / recent open the newest addition\n" +
-        "  random          enter a random unlocked room\n" +
-        "  cat notes       read the latest transmissions\n" +
-        "  history         show commands used this visit\n" +
-        "  pwd             show your current location\n" +
-        "  whoami          show visitor identity\n" +
-        "  status          check Ric and Orrin's status\n" +
-        "  uptime          show how long this terminal has been awake\n" +
-        "  echo <text>     make the terminal repeat something\n" +
-        "  reboot          replay the boot sequence\n" +
-        "  date            read the local clock\n" +
-        "  home            go to the front door\n" +
-        "  back            return to the previous page\n" +
-        "  clear           wipe terminal output (`/clear` works too)\n" +
-        "\ncommands also accept a leading / — try /mind or /clear.\n" +
-        "use ↑/↓ for command history and Tab to complete.\n" +
-        "…there may be undocumented commands.",
+      help: () => {
+        for (const row of HELP) {
+          if (row.length === 1) printRich([{ t: row[0] }]).classList.add("head");
+          else printRow(row[0], row[1], { run: row[2], c: "k", width: 17 }).classList.add("stack");
+        }
+        print("\nnames take a leading / too — /mind, /clear.\n" +
+          "↑ ↓ recall commands · Tab completes · Esc empties the line · Ctrl+L clears\n" +
+          "…there may be undocumented commands.");
+        return null;
+      },
       ls: listRooms,
       rooms: listRooms,
       tree: siteTree,
@@ -915,7 +981,7 @@ type Sydney's cat's name for a surprise!</div>
       date: () => new Date().toLocaleString([], { dateStyle: "full", timeStyle: "medium" }),
       clear: () => {
         window.RELAY_CATS?.clear();
-        out.textContent = "";
+        wipe();
         return null;
       },
       // "" is falsy and print() would swallow the command silently — answer with
@@ -1019,18 +1085,46 @@ type Sydney's cat's name for a surprise!</div>
 
     const out = document.getElementById("output");
     const cmd = document.getElementById("cmd");
-    const commandHistory = [];
-    let historyIndex = 0;
+    const live = document.getElementById("live");   // results as you type, under the prompt
+    let liveTimer = 0;
+    /* History lasts the tab's session, not the page: `open climbing`, then
+       Back, and ↑ still has what was typed. Not when embedded — the front
+       door's prompt keeps its own. Storage can throw (private windows), and
+       then history is simply this page's. */
+    const HISTORY_KEY = "terminal:history";
+    const commandHistory = (() => {
+      if (window.TERMINAL_EMBED) return [];
+      try {
+        const kept = JSON.parse(sessionStorage.getItem(HISTORY_KEY) || "[]");
+        return Array.isArray(kept) ? kept.filter((x) => typeof x === "string").slice(-100) : [];
+      } catch (e) { return []; }
+    })();
+    let historyIndex = commandHistory.length;
+    let draft = "";   // what was on the line before ↑ took it away
+    const remember = (raw) => {
+      // the same thing twice in a row is one entry, as in a real shell
+      if (commandHistory[commandHistory.length - 1] !== raw) commandHistory.push(raw);
+      if (commandHistory.length > 100) commandHistory.shift();
+      historyIndex = commandHistory.length;
+      draft = "";
+      if (window.TERMINAL_EMBED) return;
+      try { sessionStorage.setItem(HISTORY_KEY, JSON.stringify(commandHistory)); } catch (e) {}
+    };
 
     const visibleCommands = ["help", "commands", "man", "ls", "rooms", "tree", "projects", "find", "search", "more", "open", "cd", "latest", "recent", "random", "cat notes", "history", "pwd", "whoami", "status", "uptime", "date", "echo", "home", "back", "clear", "reboot"];
+    // locked rooms stay out — completing to something that answers [LOCKED]
+    // is a dead end. `ls`, `tree`, `find` and `open map` still reach it.
+    const roomNames = ROOMS.filter((room) => !room.locked).map((room) => room.name);
     const completions = [
       ...visibleCommands,
-      // locked rooms stay out — completing to something that answers [LOCKED]
-      // is a dead end. `ls`, `tree`, `find` and `open map` still reach it.
-      ...ROOMS.filter((room) => !room.locked).map((room) => room.name),
+      ...roomNames,
       ...PROJECTS.map((project) => project.command),
+      // after a verb: `open cl` + Tab is `open climbing`, `cd w` offers the w rooms
+      ...roomNames.flatMap((name) => [`open ${name}`, `cd ${name}`]),
       ...PROJECTS.map((project) => `open ${project.command}`),
     ];
+    // verbs that are waiting for a word: completing one leaves the space typed
+    const TAKES_WORD = ["open", "cd", "find", "search", "echo"];
 
     // longest string every match starts with — what a real shell fills in for you
     const commonPrefix = (values) => values.reduce((prefix, value) => {
@@ -1039,38 +1133,62 @@ type Sydney's cat's name for a surprise!</div>
       return prefix.slice(0, i);
     });
 
+    const wipe = () => { out.textContent = ""; live.textContent = ""; };
+
     cmd.addEventListener("keydown", (e) => {
       if (e.key === "ArrowUp" || e.key === "ArrowDown") {
         if (!commandHistory.length) return;
         e.preventDefault();
+        if (historyIndex >= commandHistory.length) draft = cmd.value;
         historyIndex = e.key === "ArrowUp"
           ? Math.max(0, historyIndex - 1)
           : Math.min(commandHistory.length, historyIndex + 1);
-        cmd.value = historyIndex < commandHistory.length ? commandHistory[historyIndex] : "";
+        cmd.value = historyIndex < commandHistory.length ? commandHistory[historyIndex] : draft;
+        // the caret goes to the end, where the next keystroke belongs
+        requestAnimationFrame(() => cmd.setSelectionRange(cmd.value.length, cmd.value.length));
+        return;
+      }
+      // Esc empties the line; Ctrl+L wipes the screen and keeps the line.
+      // (Ctrl+L leaves Mochi be — sending him home is `clear`'s own job.)
+      if (e.key === "Escape") {
+        cmd.value = ""; live.textContent = ""; clearTimeout(liveTimer);
+        historyIndex = commandHistory.length; draft = "";
+        return;
+      }
+      if (e.key.toLowerCase() === "l" && e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        wipe();
         return;
       }
       if (e.key === "Tab") {
+        // Shift+Tab is how a keyboard gets back out of the prompt
+        if (e.shiftKey) return;
         e.preventDefault();
-        const typed = cmd.value.trim().toLowerCase();
+        // What is typed so far, as the completions spell it: lower case, one
+        // space between words — and the space after a verb kept, because
+        // `open ` + Tab means "open what?", not "what starts with open?".
+        const typed = cmd.value.replace(/^\s+/, "").toLowerCase().replace(/\s+/g, " ");
         const slash = typed.startsWith("/");
         const needle = slash ? typed.slice(1) : typed;
         // Everything startsWith(""), so a bare Tab used to dump ~40 commands
         // into the output box. Point at `help` instead.
-        if (!needle) {
+        if (!needle.trim()) {
           print("nothing typed yet — try `help` for commands or `ls` for rooms.");
           scrollNewestIntoView(out.childElementCount - 1);
           return;
         }
-        const matches = completions.filter((candidate) => candidate.startsWith(needle));
+        const matches = [...new Set(completions.filter((candidate) => candidate.startsWith(needle)))];
         if (!matches.length) return;
         const decorate = (value) => slash ? `/${value}` : value;
-        if (matches.length === 1) { cmd.value = decorate(matches[0]); return; }
+        if (matches.length === 1) { cmd.value = decorate(matches[0]) + (TAKES_WORD.includes(matches[0]) ? " " : ""); return; }
         // fill in as far as every match agrees, then show what's left
         const shared = commonPrefix(matches);
         if (shared.length > needle.length) cmd.value = decorate(shared);
         else {
           const mark = out.childElementCount;
-          print(matches.map(decorate).join("   "));
+          // after a verb, list only the words that could follow it
+          const said = needle.includes(" ") ? needle.slice(0, needle.lastIndexOf(" ") + 1) : "";
+          print(matches.map((m) => said ? m.slice(said.length) : decorate(m)).join("   "));
           scrollNewestIntoView(mark);
         }
         return;
@@ -1079,8 +1197,14 @@ type Sydney's cat's name for a surprise!</div>
       const raw = cmd.value.trim();
       cmd.value = "";
       if (!raw) return;
-      commandHistory.push(raw);
-      historyIndex = commandHistory.length;
+      run(raw);
+    });
+
+    /* Run one command as if it had been typed: the Enter key, a tapped hint
+       under the prompt, a tapped command in `help`. */
+    function run(raw) {
+      live.textContent = "";
+      remember(raw);
       const mark = out.childElementCount;
       print(`$ ${raw}`, true);
 
@@ -1109,10 +1233,10 @@ type Sydney's cat's name for a surprise!</div>
         print(`entering /${pageArg} ...`);
         setTimeout(() => goTo(PAGES[pageArg]), 400);
       } else if (verb === "open" && project) {
-        print(`opening ${project.title} in /${project.room} ...`);
+        print(`opening ${project.title} in /${roomOf(project)} ...`);
         setTimeout(() => goTo(project.href), 400);
       } else if (directProject) {
-        print(`opening ${directProject.title} in /${directProject.room} ...`);
+        print(`opening ${directProject.title} in /${roomOf(directProject)} ...`);
         setTimeout(() => goTo(directProject.href), 400);
       } else if ((verb === "open" && ["latest", "recent"].includes(arg)) || ["latest", "recent"].includes(verb)) {
         const newest = (window.RELAY_LATEST_ALL || window.RELAY_LATEST || [])[0];
@@ -1156,7 +1280,9 @@ type Sydney's cat's name for a surprise!</div>
         } else print(`command not recognized: ${verb}\ntype \`help\` for options.`);
       }
       scrollNewestIntoView(mark);
-    });
+      // The answer made the window taller; keep the prompt on the screen.
+      if (!window.TERMINAL_EMBED) document.getElementById("cmdline").scrollIntoView({ block: "nearest" });
+    }
 
     function print(text, bright) {
       const div = document.createElement("div");
@@ -1181,13 +1307,32 @@ type Sydney's cat's name for a surprise!</div>
         if (p.segs) {
           const a = document.createElement(p.href ? "a" : "span");
           a.className = "res";
-          if (p.href) { a.href = p.href; a.dataset.n = p.n; }
+          if (p.href) { a.href = p.href; if (p.n != null) a.dataset.n = p.n; if (p.run) a.dataset.run = p.run; }
           p.segs.forEach((s) => put(a, s));
           div.appendChild(a);
         } else put(div, p);
       }
       div.segs = parts;
       out.appendChild(div);
+      return div;
+    }
+
+    /* A name and what it is, as one line: `/climbing   routes · projects`.
+       The name is padded to `width` so the words line up, and never wraps;
+       the words wrap in their own column (.row). `href` makes the name a
+       link; `run` makes it a command that runs here when tapped — its href
+       is terminal.html?run=…, which is what it does from the front door's
+       panel, where there is no prompt to run it in. */
+    function printRow(name, words, { href, run, lead = "  ", width = 15, c } = {}) {
+      const to = href || (run && `terminal.html?run=${encodeURIComponent(run)}`);
+      const div = printRich([
+        { t: lead },
+        to ? { href: to, run, segs: [{ t: name }] } : { t: name, c },
+        ...(words ? [{ t: " ".repeat(Math.max(1, width - name.length)) }, { t: words }] : []),
+      ]);
+      div.classList.add("row");
+      div.style.setProperty("--in", lead.length + Math.max(name.length + 1, width));
+      return div;
     }
 
     // a click on a result goes the way every other move does, through goTo()
@@ -1195,11 +1340,17 @@ type Sydney's cat's name for a surprise!</div>
       const a = e.target.closest("a.res");
       if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
       e.preventDefault();
-      openResult(+a.dataset.n) || goTo(a.getAttribute("href"));
+      if (a.dataset.run) return run(a.dataset.run);
+      (a.dataset.n && openResult(+a.dataset.n)) || goTo(a.getAttribute("href"));
     });
 
     // The lines printed since `mark`, in the shape the front door's panel reads.
-    const linesFrom = (mark) => [...out.children].slice(mark).map((d) => ({ text: d.textContent, bright: d.classList.contains("bright"), segs: d.segs || null }));
+    // `indent` is the line's hanging indent in characters (a row's --in, a
+    // search result's 4), so a wrapped line continues in the same place there.
+    const linesFrom = (mark) => [...out.children].slice(mark).map((d) => ({
+      text: d.textContent, bright: d.classList.contains("bright"), segs: d.segs || null,
+      indent: +d.style.getPropertyValue("--in") || (d.classList.contains("hang") ? 4 : 0),
+    }));
     // Lines printed after a command has already answered (a search whose
     // fuller results arrived later) still reach the front door's panel.
     function forwardLate(mark) {
@@ -1210,8 +1361,6 @@ type Sydney's cat's name for a surprise!</div>
     /* As you type a search — `find`, `search` or `?` and a word — the best
        five show under the prompt. Here only; the front door's panel answers
        on Enter. */
-    const live = document.getElementById("live");
-    let liveTimer = 0;
     cmd.addEventListener("input", () => {
       loadDeep();
       clearTimeout(liveTimer);
@@ -1249,8 +1398,25 @@ type Sydney's cat's name for a surprise!</div>
       out.scrollTop += first.getBoundingClientRect().top - out.getBoundingClientRect().top;
     }
 
-    // clicking anywhere in the cmdline area focuses the input
-    document.getElementById("cmdline").addEventListener("click", () => cmd.focus());
+    // Clicking anywhere in the cmdline area focuses the input — unless that
+    // click finished selecting some output (focusing would drop the selection
+    // before it could be copied) or landed on a link.
+    document.getElementById("cmdline").addEventListener("click", (e) => {
+      if (String(getSelection()) || e.target.closest("a")) return;
+      cmd.focus({ preventScroll: true });
+    });
+
+    // The commands named in the hints under the prompt run when tapped.
+    for (const hint of document.querySelectorAll("button.cmd-hint[data-run]")) {
+      hint.addEventListener("click", () => run(hint.dataset.run));
+    }
+
+    // How much screen there is above a phone's keyboard; #output sizes to it.
+    if (window.visualViewport) {
+      const fit = () => document.documentElement.style.setProperty("--vvh", `${Math.round(visualViewport.height)}px`);
+      visualViewport.addEventListener("resize", fit);
+      fit();
+    }
 
     // Embedded in the front door: run what its prompt sends, as if typed here,
     // and hand back what the terminal printed. Only the page holding this

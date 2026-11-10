@@ -126,7 +126,11 @@
     /* search results from the terminal: matched words, the quiet half, links */
     .term-out .hl { color: #ffb000; text-shadow: 0 0 8px rgba(255,176,0,.45); }
     .term-out .dim { color: #c48d00; }
-    .term-out a.res { color: #ffb000; text-decoration: none; font: inherit; letter-spacing: normal; text-transform: none; }
+    /* .res is also the film card's resolution badge further down; everything
+       that rule sets has to be undone here, or a title in this panel sits 2px
+       high with 5px of padding either side and the columns of `ls` and `help`
+       stop lining up. */
+    .term-out a.res { color: #ffb000; text-decoration: none; font: inherit; letter-spacing: normal; text-transform: none; display: inline; padding: 0; border-radius: 0; vertical-align: baseline; }
     .term-out a.res:hover, .term-out a.res:focus-visible { text-decoration: underline; outline: none; }
     .term-x { position: absolute; top: 6px; right: 8px; width: 28px; height: 28px; border: 0; background: none; color: #b07d00; font: 400 20px/1 var(--mono); cursor: pointer; }
     .term-x:hover, .term-x:focus-visible { color: #ffb000; outline: none; }
@@ -1626,7 +1630,14 @@
           p.segs.forEach((s) => span(a, s)); d.appendChild(a);
         } };
         let first = null;
-        for (const l of list) { const d = document.createElement("div"); if (l.bright) { d.className = "cmd"; d.textContent = l.text.replace(/^\$\s*/, ""); } else if (Array.isArray(l.segs)) segs(d, l.segs); else d.textContent = l.text; lines.appendChild(d); first ||= d; }
+        for (const l of list) { const d = document.createElement("div"); if (l.bright) { d.className = "cmd"; d.textContent = l.text.replace(/^\$\s*/, ""); } else if (Array.isArray(l.segs)) segs(d, l.segs); else d.textContent = l.text;
+          // A line that wraps continues under its words (`ls`, `help`, a search
+          // result), as it does in the terminal: `indent` is how many
+          // characters in. A narrow panel has no room for a wide column, so
+          // there the continuation only steps in a little.
+          const indent = Math.min(40, Math.max(0, Math.floor(+l.indent || 0)));
+          if (indent) { const ch = innerWidth < 600 ? Math.min(indent, 4) : indent; d.style.paddingLeft = `${ch}ch`; d.style.textIndent = `-${ch}ch`; }
+          lines.appendChild(d); first ||= d; }
         panel.hidden = !lines.childElementCount;
         // the top of what just arrived, not the bottom: a search answers in
         // twenty lines and the best one is first (short answers still land

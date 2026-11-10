@@ -104,7 +104,13 @@ These are visible, but they belong in the same field guide:
 - The Terminal supports command history with `↑`/`↓` and completion with
   `Tab`. `Tab` fills in as far as every match agrees before listing them, the
   way a real shell does. No room is `[LOCKED]` any more, so every room
-  completes — `map` included, since 2026-09-24.
+  completes — `map` included, since 2026-09-24. Since 2026-11-10 `Tab` also
+  completes the word after `open` or `cd` (`open cl` → `open climbing`), `↑`
+  gives back a half-typed line when you come back down, history survives a
+  visit to a room and back (it lasts the tab's session), `Esc` empties the line
+  and `Ctrl+L` wipes the screen without sending Mochi home.
+- The names in `ls`, `tree`, `projects` and `help` are links: tap one to go
+  there, or to run that command. So are `/help` and `/ls` in the hints.
 - Typing a room name works even with a trailing word (`mind whatever` still
   enters `/mind`), and typing the first character during the boot animation
   skips the boot *and* lands that character in the prompt.
