@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>/map — ATLAS</title>
-  <meta name="description" content="Crew access only.">
+  <meta name="description" content="The door to ATLAS, the crew's private map. Sign in, or ask Ric for an account.">
   <meta name="robots" content="noindex">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Ric's Terminal">
   <meta property="og:title" content="/map — ATLAS">
-  <meta property="og:description" content="Crew access only. A private map, behind a real login.">
+  <meta property="og:description" content="The door to ATLAS, the crew's private map. Sign in, or ask Ric for an account.">
   <meta property="og:url" content="https://ricmassey.com/map.html">
   <meta property="og:image" content="https://ricmassey.com/assets/og-terminal.png">
   <meta property="og:image:width" content="1200">
@@ -53,16 +53,23 @@
         radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.65) 100%);
     }
 
+    /* The chart table behind the plate: invented ground, drawn by the script at
+       the foot of the page. Under everything, the scanlines included. */
+    #chart { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; }
+
     /* Above the fixed scanlines and vignette, which are positioned and so
        painted over the text, darkening its last lines under AA on a phone
        (bug sweep D2-12). */
     .plate {
       position: relative; z-index: 1;
+      /* Solid, so the words keep their contrast whatever the chart draws
+         behind them. */
+      background: var(--bg);
       border: 1px solid var(--red-faint);
       max-width: 560px;
       margin: 1.25rem;
       padding: 2.2rem 2.4rem;
-      box-shadow: 0 0 60px rgba(255, 59, 48, 0.06) inset;
+      box-shadow: 0 0 60px rgba(255, 59, 48, 0.06) inset, 0 0 0 6px var(--bg);
     }
 
     .stripe {
@@ -93,7 +100,7 @@
 
     .enter {
       display: block;
-      margin: 1.8rem 0 1.2rem;
+      margin: 1.5rem 0 1.2rem;
       padding: 0.9rem 1rem;
       text-align: center;
       color: var(--bg);
@@ -106,27 +113,230 @@
     .enter:hover { background: #ffc63d; text-shadow: none; }
     .enter:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 
+    /* The second way in: anybody may ask for an account since 2026-09-23. */
+    .ask {
+      display: block;
+      margin: 0 0 1.4rem;
+      padding: 0.75rem 1rem;
+      min-height: 44px;
+      text-align: center;
+      border: 1px solid var(--red-dim);
+      color: var(--amber);
+      letter-spacing: 0.08em;
+    }
+    .ask:hover { border-color: var(--amber); }
+    .ask:focus-visible, .ways a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
     p.small { font-size: 0.82rem; }
+
+    .ways { margin: 1rem 0 0; display: flex; flex-wrap: wrap; gap: 0 1.6rem; }
+    .ways a { display: inline-flex; align-items: center; min-height: 44px; }
+
+    /* On a phone the plate is the whole width, so the chart gets a window of
+       its own above it — the script keeps the lamp up there. */
+    @media (max-width: 520px) {
+      body { font-size: 14px; place-items: start center; padding-top: 132px; }
+      .plate { margin: 0.9rem; padding: 1.5rem 1.3rem; }
+      h1 { letter-spacing: 0.12em; }
+      .stripe { letter-spacing: 0.25em; margin-bottom: 1.2rem; }
+    }
   </style>
   <script src="assets/visit.js" defer></script>
 </head>
 <body>
-  <div class="plate">
+  <canvas id="chart" aria-hidden="true"></canvas>
+  <main class="plate">
     <span class="stripe">RESTRICTED AREA</span>
-    <h1>/map — CREDENTIALS REQUIRED <span class="blink">▮</span></h1>
+    <h1>/map — CREDENTIALS REQUIRED <span class="blink" aria-hidden="true">▮</span></h1>
     <p class="bright">the door is here. it does not open for everyone.</p>
     <p>behind it: ATLAS — a private map of places the crew has found. caves worth
       going back to, bridges worth a rope. every pin carries who dropped it and when,
       so you can go somewhere your brother found without your brother.</p>
-    <p>no coordinates are stored on this site and never will be. they live behind a
-      real login, and the database refuses to answer anyone without one. that is the
-      whole security model — there is nothing here to find.</p>
     <p>status: <span class="bright">ONLINE</span>.</p>
     <a class="enter" href="atlas/">OPEN ATLAS →</a>
-    <p class="small">if you're not crew, it will ask you for a password you don't have,
-      and tell you nothing else.</p>
-    <p style="margin-top: 1.8rem;"><a href="terminal.html">← return to the terminal</a></p>
-  </div>
+    <a class="ask" href="account/?for=atlas#request">no account? ask Ric for one</a>
+    <p class="small">asking is not getting in. the request goes to Ric, and he opens
+      the door by hand.</p>
+    <p class="small">no coordinates are stored on this site and never will be. they live behind a
+      real login, and the database refuses to answer anyone without one. that is the
+      whole security model — there is nothing here to find.</p>
+    <p class="small" id="chartnote" hidden>the ground behind this plate is made up, and
+      made up again every visit. run a light over it if you like — the pins won't talk.</p>
+    <p class="ways"><a href="terminal.html">← return to the terminal</a>
+      <a href="index.html">↑ front door</a></p>
+  </main>
+  <script>
+  /* The chart behind the door.
+   *
+   * Hard rule 1 (AGENTS.md): no real place is ever drawn on this site. So this
+   * is ground from a noise function and a seed thrown away when the page closes
+   * — contours, water, a few pins — and a different nowhere on every visit. It is
+   * nearly dark until a light crosses it: the pointer, a finger, or with neither
+   * a lamp that wanders by itself. The pins' labels are bars, and stay bars.
+   *
+   * With JS off the canvas is empty and the page is the plate, as it always was.
+   */
+  (function () {
+    var cv = document.getElementById("chart"), cx = cv.getContext && cv.getContext("2d");
+    if (!cx) return;
+    document.getElementById("chartnote").hidden = false;
+
+    var still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var seed = (Math.random() * 4294967296) >>> 0;
+    var W, H, dpr, dim, lit, scratch, sx, pins = [], R, narrow = 0;
+    var lamp = { x: 0, y: 0, held: 0 }, t0 = performance.now(), raf = 0;
+    var SAY = ["sign in.", "nice try.", "still redacted.", "ask Ric.", "not from out here."];
+
+    function rng(a) {            // mulberry32
+      return function () {
+        a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function terrain(r) {        // value noise, four octaves, 0..1
+      var N = 256, g = new Float32Array(N * N);
+      for (var i = 0; i < g.length; i++) g[i] = r();
+      function at(x, y) {
+        var xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+        fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+        var a = g[(yi & 255) * N + (xi & 255)], b = g[(yi & 255) * N + ((xi + 1) & 255)],
+            c = g[((yi + 1) & 255) * N + (xi & 255)], d = g[((yi + 1) & 255) * N + ((xi + 1) & 255)];
+        return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+      }
+      return function (x, y) {
+        var v = 0, amp = 0.5, f = 1;
+        for (var o = 0; o < 4; o++) { v += at(x * f + o * 17.3, y * f + o * 9.1) * amp; amp *= 0.5; f *= 2; }
+        return v / 0.9375;
+      };
+    }
+
+    function layer() {
+      var c = document.createElement("canvas"); c.width = W * dpr; c.height = H * dpr;
+      var x = c.getContext("2d"); x.scale(dpr, dpr); return x;
+    }
+
+    function build() {
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      W = window.innerWidth; H = window.innerHeight;
+      cv.width = W * dpr; cv.height = H * dpr;
+      R = Math.max(150, Math.min(W, H) * 0.3); if (W < 520) R = 130;
+      var r = rng(seed), h = terrain(r), sc = 1 / 300;
+      var g = 8, cols = Math.ceil(W / g) + 1, rows = Math.ceil(H / g) + 1, f = new Float32Array(cols * rows);
+      for (var j = 0; j < rows; j++) for (var i = 0; i < cols; i++) f[j * cols + i] = h(i * g * sc, j * g * sc);
+
+      // Marching squares, one path per kind of line: shore, every fourth
+      // contour heavy (as on a real sheet), the rest fine.
+      var SEA = 0.4, fine = new Path2D(), heavy = new Path2D(), shore = new Path2D(), water = new Path2D();
+      for (var n = 0; n < 12; n++) {
+        var L = SEA + n * 0.035, P = n === 0 ? shore : n % 4 === 0 ? heavy : fine;
+        for (j = 0; j < rows - 1; j++) for (i = 0; i < cols - 1; i++) {
+          var a = f[j * cols + i], b = f[j * cols + i + 1], c = f[(j + 1) * cols + i + 1], d = f[(j + 1) * cols + i];
+          var k = (a > L) | (b > L) << 1 | (c > L) << 2 | (d > L) << 3;
+          if (!k || k === 15) continue;
+          var x0 = i * g, y0 = j * g;
+          var T = [x0 + g * (L - a) / (b - a), y0], Rt = [x0 + g, y0 + g * (L - b) / (c - b)],
+              B = [x0 + g * (L - d) / (c - d), y0 + g], Lf = [x0, y0 + g * (L - a) / (d - a)];
+          var S = { 1: [Lf, T], 2: [T, Rt], 3: [Lf, Rt], 4: [Rt, B], 6: [T, B], 7: [Lf, B], 8: [B, Lf],
+                    9: [B, T], 11: [B, Rt], 12: [Rt, Lf], 13: [Rt, T], 14: [T, Lf] }[k];
+          if (S) { P.moveTo(S[0][0], S[0][1]); P.lineTo(S[1][0], S[1][1]); }
+          else if (k === 5) { P.moveTo(Lf[0], Lf[1]); P.lineTo(T[0], T[1]); P.moveTo(Rt[0], Rt[1]); P.lineTo(B[0], B[1]); }
+          else { P.moveTo(T[0], T[1]); P.lineTo(Rt[0], Rt[1]); P.moveTo(B[0], B[1]); P.lineTo(Lf[0], Lf[1]); }
+        }
+      }
+      // Water is ruled, the way an engraver marks it.
+      for (j = 1; j < rows; j += 2) for (i = 0; i < cols - 1; i++)
+        if (f[j * cols + i] < SEA - 0.012 && f[j * cols + i + 1] < SEA - 0.012 && (i + j) % 3) { water.moveTo(i * g, j * g + 0.5); water.lineTo(i * g + g, j * g + 0.5); }
+
+      // The neatline and its ticks. No numbers on them: a graticule says where.
+      var frame = new Path2D(), m = 12;
+      frame.rect(m + 0.5, m + 0.5, W - 2 * m - 1, H - 2 * m - 1);
+      for (i = m + 80; i < W - m; i += 80) { frame.moveTo(i + 0.5, m); frame.lineTo(i + 0.5, m + 7); frame.moveTo(i + 0.5, H - m); frame.lineTo(i + 0.5, H - m - 7); }
+      for (j = m + 80; j < H - m; j += 80) { frame.moveTo(m, j + 0.5); frame.lineTo(m + 7, j + 0.5); frame.moveTo(W - m, j + 0.5); frame.lineTo(W - m - 7, j + 0.5); }
+
+      // Pins: on land, clear of the frame, and never under the plate where
+      // nobody could find them.
+      var box = document.querySelector(".plate").getBoundingClientRect();
+      narrow = box.width > W * 0.8 ? Math.max(60, box.top + window.scrollY) : 0;
+      pins = [];
+      for (var tries = 0; tries < 400 && pins.length < (narrow ? 3 : Math.max(6, Math.round(W * H / 110000))); tries++) {
+        var px = 40 + r() * (W - 150), py = (narrow ? 44 : 50) + r() * ((narrow || H) - 60);
+        if (h(px * sc, py * sc) < SEA + 0.03) continue;
+        if (!narrow && px > box.left - 110 && px < box.right + 16 && py > box.top - 16 && py < box.bottom + 30) continue;
+        if (pins.some(function (p) { return Math.abs(p.x - px) < 120 && Math.abs(p.y - py) < 44; })) continue;
+        pins.push({ x: Math.round(px), y: Math.round(py), bar: 34 + Math.round(r() * 44), say: SAY[pins.length % SAY.length] });
+      }
+
+      dim = layer(); lit = layer();
+      [[dim, 0.2], [lit, 1]].forEach(function (p) {
+        var x = p[0], k = p[1];
+        x.lineJoin = x.lineCap = "round";
+        x.strokeStyle = "rgba(255,59,48," + 0.28 * k + ")"; x.lineWidth = 1; x.stroke(water);
+        x.strokeStyle = "rgba(255,84,70," + 0.6 * k + ")"; x.lineWidth = 1; x.stroke(fine);
+        x.strokeStyle = "rgba(255,84,70," + 0.95 * k + ")"; x.lineWidth = 1.6; x.stroke(heavy);
+        x.strokeStyle = "rgba(255,176,0," + 0.8 * k + ")"; x.lineWidth = 1.4; x.stroke(shore);
+        x.strokeStyle = "rgba(255,59,48," + Math.min(1, 0.7 * k + 0.2) + ")"; x.lineWidth = 1; x.stroke(frame);
+        pins.forEach(function (q) {
+          var a = Math.min(1, k + 0.25);
+          x.fillStyle = "rgba(255,176,0," + a + ")";
+          x.beginPath(); x.moveTo(q.x, q.y); x.bezierCurveTo(q.x - 8, q.y - 11, q.x - 7, q.y - 21, q.x, q.y - 21);
+          x.bezierCurveTo(q.x + 7, q.y - 21, q.x + 8, q.y - 11, q.x, q.y); x.fill();
+          x.fillStyle = "#0a0a0a"; x.beginPath(); x.arc(q.x, q.y - 14, 2.6, 0, 7); x.fill();
+          x.fillStyle = "rgba(212,88,78," + a + ")"; x.fillRect(q.x + 12, q.y - 19, q.bar, 9);   // the label, redacted
+        });
+      });
+      scratch = document.createElement("canvas"); sx = scratch.getContext("2d");
+      scratch.width = scratch.height = Math.ceil(R * 2 * dpr);
+    }
+
+    function draw(now) {
+      raf = 0;
+      var t = (now - t0) / 1000;
+      // Nobody is holding the light: it wanders. With reduced motion it does
+      // not — it rests where it was hung, or where the visitor last left it.
+      if (!still && now > lamp.held) {
+        var tx = W * (0.5 + 0.42 * Math.sin(t * 0.13 + 1.2)), ty = H * (0.5 + 0.38 * Math.sin(t * 0.19));
+        if (narrow) ty = narrow * (0.5 + 0.2 * Math.sin(t * 0.19));   // the window above the plate
+        lamp.x += (tx - lamp.x) * 0.02; lamp.y += (ty - lamp.y) * 0.02;
+      }
+      cx.setTransform(1, 0, 0, 1, 0, 0);
+      cx.clearRect(0, 0, cv.width, cv.height);
+      cx.drawImage(dim.canvas, 0, 0);
+      var s = scratch.width, ox = Math.round((lamp.x - R) * dpr), oy = Math.round((lamp.y - R) * dpr);
+      sx.globalCompositeOperation = "source-over"; sx.clearRect(0, 0, s, s);
+      sx.drawImage(lit.canvas, -ox, -oy);
+      var gr = sx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+      gr.addColorStop(0, "rgba(0,0,0,1)"); gr.addColorStop(0.45, "rgba(0,0,0,.8)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+      sx.globalCompositeOperation = "destination-in"; sx.fillStyle = gr; sx.fillRect(0, 0, s, s);
+      cx.drawImage(scratch, ox, oy);
+
+      // A pin with the light right on it answers, and tells you nothing.
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cx.font = "12px ui-monospace, 'SF Mono', Menlo, Consolas, monospace"; cx.textBaseline = "top";
+      pins.forEach(function (q) {
+        var d = Math.hypot(lamp.x - q.x, lamp.y - (q.y - 10));
+        if (d > 46) return;
+        cx.fillStyle = "#ffb000"; cx.fillText(q.say, q.x + 12, q.y - 4);
+      });
+      if (!still) go();
+    }
+    function go() { if (!raf && !document.hidden) raf = requestAnimationFrame(draw); }
+
+    // (0, 0) exactly is a browser announcing a pointer it has not seen move yet.
+    function hold(e) { if (!e.clientX && !e.clientY) return; lamp.x = e.clientX; lamp.y = e.clientY; lamp.held = performance.now() + (e.pointerType === "mouse" ? 2500 : 4000); go(); }
+    addEventListener("pointermove", hold, { passive: true });
+    addEventListener("pointerdown", hold, { passive: true });
+    document.addEventListener("visibilitychange", go);
+    var rz = 0;
+    addEventListener("resize", function () {
+      clearTimeout(rz);
+      rz = setTimeout(function () { if (window.innerWidth !== W || Math.abs(window.innerHeight - H) > 120) { build(); go(); } }, 150);
+    });
+
+    build(); lamp.x = W * 0.8; lamp.y = narrow ? narrow * 0.5 : H * 0.24; go();
+  })();
+  </script>
   <script src="effects.js"></script>
 </body>
 </html>

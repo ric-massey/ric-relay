@@ -90,6 +90,13 @@ included) and run the checks.
    publishable key in `atlas/config.js` is public by design and is fine).
    `map.html` stays as the themed door that links through to `atlas/` — don't
    "fix" it back into a dead placeholder.
+   The chart drawn behind that door (2026-11-10) is **noise from a seed thrown away
+   when the page closes** — contours, water and pins that exist nowhere, different
+   on every visit, its pins' labels drawn as bars. Keep it that way: no real outline,
+   no tile, no number on its ticks, and nothing read from ATLAS. The door also
+   offers `account/?for=atlas#request`, the same link ATLAS's own sign-in does —
+   it used to say a stranger would be asked for "a password you don't have", which
+   stopped being true on 2026-09-23 when anybody could ask for an account.
    **This includes photo EXIF.** A phone photo carries the exact coordinates it was
    taken at, and six committed `climbing-*.jpg` were publishing crag and home-area
    positions to anyone who downloaded them (found and stripped 2026-07-31). **Strip

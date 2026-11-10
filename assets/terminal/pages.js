@@ -77,7 +77,7 @@ window.TERMINAL_PAGES = [
   "href": "map.html",
   "title": "/map",
   "keys": "ATLAS",
-  "body": "Crew access only.",
+  "body": "The door to ATLAS, the crew",
   "text": "/map — CREDENTIALS REQUIRED ▮",
   "room": "map"
  },

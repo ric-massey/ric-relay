@@ -44,6 +44,14 @@ for them, since 2026-10-29 — before that they kept moving).
 - Type `normal` anywhere on the page to reveal: **NORMAL IS A STATISTICAL
   NEIGHBORHOOD, NOT AN ADDRESS.**
 
+## The map door (`map.html`)
+
+- The chart behind the plate is dark until a light crosses it. Move the pointer (or
+  drag a finger) and the contours come up under it; leave it alone and the lamp
+  wanders by itself. The ground is invented and redrawn on every visit.
+- Put the light right on a pin and it answers — `sign in.`, `nice try.`,
+  `still redacted.`, `ask Ric.`, `not from out here.` — and its label stays a bar.
+
 ## Climbing (`climbing.html`)
 
 - Type `send` anywhere outside a form field for a brief **SEND!** and chalk-cloud
