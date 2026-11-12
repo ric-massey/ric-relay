@@ -135,6 +135,13 @@ boundary, energy leaving is `radiated-away` and a floor is a momentum reservoir 
 momentum — reality does this and calls the reservoir the Earth. Whether a floor bounces or absorbs
 is open only if the World has one (items 8, 22).
 
+> **2026-11-09 — the World now does what this section says.** Collisions were in the Lab from its
+> first day and in the World never: matter that met matter simply stopped (README item 42). They are
+> carried across (`world.mjs` `collide`), with the light a moving primitive runs into absorbed as the
+> radiation fact says. And the World's edge, which the "floor" sentence below anticipates, now turns
+> matter back and counts the wall's share. Bounce-or-absorb (item 8) came back with it and Ric
+> settled it on 2026-11-10: "Keep returning."
+
 ### What momentum does when primitives are bonded
 
 **A bonded pair exchanges integer momentum toward equal velocities, equal and opposite, one hop per

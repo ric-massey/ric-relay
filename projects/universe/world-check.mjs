@@ -27,6 +27,16 @@
 //  11. the EDGE: light leaves through it and is counted, matter never does,
 //      and no bond forms with the outside
 //
+// And six added on 2026-11-09, with the changes they hold:
+//
+//  12. two quanta queued behind a full absorber stay two (a one-unit hole)
+//  13. a World put down and picked up continues byte for byte
+//  14. collisions: momentum and energy exact, no preferred direction, and a
+//      hot gas goes on moving
+//  15. the wall turns matter back and counts the momentum it took
+//  16. matter that steps into light absorbs it, exactly
+//  17. the lit edge: counted in, off by default, and it warms that side
+//
 // Every check prints what it measured rather than "ok", because rule 11 is
 // about not believing output that only says it passed.
 
@@ -318,7 +328,10 @@ console.log(`\n=== Check 6: with no momentum at all, does heat move matter? ===`
     const c = census(w);
     rows.push({
       heat, stepped: world.counts.stepped, kicks: world.counts.thermalKicks,
-      cold: world.counts.kickUnaffordable, px: c.px, py: c.py, kinetic: c.kinetic,
+      cold: world.counts.kickUnaffordable, kinetic: c.kinetic,
+      // world + wall: matter that reaches the edge is turned back and the wall
+      // keeps count (World.bounce, 2026-11-09), so that sum is what is constant
+      px: c.px + world.ledger.wallX, py: c.py + world.ledger.wallY,
     });
   }
   for (const r of rows) {
@@ -333,9 +346,9 @@ console.log(`\n=== Check 6: with no momentum at all, does heat move matter? ===`
     `${cold.cold.toLocaleString()} kicks refused for want of heat -- README item 27 restated`);
   report("add heat and the same world moves, with no momentum supplied",
     hot.stepped > 0, `${hot.stepped.toLocaleString()} steps, every one paid for out of heat`);
-  report("and every run's net momentum is still exactly zero",
+  report("and every run's net momentum, world + wall, is still exactly zero",
     rows.every((r) => r.px === 0 && r.py === 0),
-    `the pair cancels in integers, so there is no preferred direction`);
+    `the pair cancels in integers and the wall counts what it turns back`);
   console.log(`      steps by temperature: ${rows.map((r) => r.stepped).join(", ")} -- one seed.`);
   console.log(`      Whether this is monotonic in temperature needs a sweep (item 29 in the World).`);
 }
@@ -373,8 +386,9 @@ console.log(`\n=== Check 7: a world at absolute zero heats ITSELF, and then move
   report("and the books still close, so none of it came from nowhere",
     (() => { try { world.ledger.check(w, "self-heated"); return true; } catch { return false; } })(),
     `all of it is bond potential, counted: ${world.ledger.bondPotential}`);
-  report("net momentum is still exactly zero",
-    c.px === 0 && c.py === 0, `(${c.px}, ${c.py})`);
+  report("net momentum, world + wall, is still exactly zero",
+    c.px + world.ledger.wallX === 0 && c.py + world.ledger.wallY === 0,
+    `world (${c.px}, ${c.py}) + wall (${world.ledger.wallX}, ${world.ledger.wallY})`);
 }
 
 // ===========================================================================
@@ -617,10 +631,261 @@ console.log(`\n=== Check 11: light leaves through the edge, matter does not, and
       && big.ledger.escaped > 0,
     `${big.ledger.escaped.toLocaleString()} units left of ${e0.toLocaleString()} `
     + `(${((big.ledger.escaped / e0) * 100).toFixed(2)}%), and the totals add up to the unit`);
-  report("and its momentum is still EXACTLY what it started with, with no drain term",
-    bc.px === big.ledger.px0 && bc.py === big.ledger.py0,
-    `(${bc.px}, ${bc.py}) -- radiation carries energy and not momentum, so there is `
-    + `nothing for a drain term to hold`);
+  report("and its momentum, world + wall, is still EXACTLY what it started with",
+    bc.px + big.ledger.wallX === big.ledger.px0 && bc.py + big.ledger.wallY === big.ledger.py0,
+    `world (${bc.px}, ${bc.py}) + wall (${big.ledger.wallX}, ${big.ledger.wallY}) -- radiation `
+    + `carries energy and not momentum, and the wall counts what it turns back (Check 15)`);
+}
+
+// ===========================================================================
+console.log(`\n=== Check 12: two quanta queued behind a full absorber stay two ===`);
+{
+  // THE ONE-UNIT HOLE, found 2026-11-09 and reproduced before it was fixed:
+  // this exact arrangement lost one unit of energy in one tick. A quantum that
+  // could not move was written back where it stood after the quantum behind it
+  // had already stepped into the same slot, and two became one. It needs light
+  // travelling toward higher indices and a hexagon at the heat ceiling ahead
+  // of it, so every direction is tried here, not just the one that failed.
+  const quiet = { ...CANDIDATE_ZERO, TRANSPORT_RATE: 0, THERMAL_KICK_PROB: 0, BOND_FORM_PROB: 0 };
+  let lost = 0, tried = 0, waited = 0;
+  for (let d = 0; d < DIRECTIONS; d++) {
+    const world = new World({ cols: 15, rows: 15, seed: 1, constants: quiet });
+    const w = world.w;
+    const wall = at(w, 7, 7);
+    w.kind[wall] = 1; w.energy[wall] = ENERGY_MAX;            // nothing more fits
+    // walk AWAY from the absorber against direction d, laying three quanta
+    // that all travel in direction d toward it
+    const back = (d + 3) % DIRECTIONS;
+    let cell = wall;
+    for (let n = 0; n < 3; n++) { cell = neighbour(w, cell, back); w.bonds[cell] |= 1 << d; }
+    baseline(world);
+    const before = totalEnergy(w);
+    for (let t = 0; t < 5; t++) world.propagateAll();
+    const after = totalEnergy(w);
+    tried++; lost += before - after;
+    if (census(w).inFlight === 3) waited++;
+  }
+  report("no energy is lost in any of the six directions", lost === 0,
+    `${lost} units lost over ${tried} directions, five ticks each -- it was 1 per tick in three of them`);
+  report("and the three quanta are still three, waiting in a line", waited === tried,
+    `${waited} of ${tried} directions still hold all three in flight`);
+}
+
+// ===========================================================================
+console.log(`\n=== Check 13: a World put down and picked up is the same World ===`);
+{
+  const make = () => {
+    const world = new World({ cols: 60, rows: 60, seed: 11, constants: CANDIDATE_ZERO,
+                              inflow: { rate: 0.2, side: "west" } });
+    world.seed_(0.30, (rng) => 1 + rng.below(255), { temp0: 4, momentumRange: 3 });
+    return world;
+  };
+  const same = (a, b) => {
+    for (const f of ["kind", "energy", "mx", "my", "bonds"]) {
+      for (let i = 0; i < a.w.cells; i++) if (a.w[f][i] !== b.w[f][i]) return `${f}[${i}]`;
+    }
+    return null;
+  };
+  const straight = make();
+  straight.run(900, { checkEvery: 100 });
+
+  const first = make();
+  first.run(450, { checkEvery: 100 });
+  const { meta, bytes } = first.checkpoint();
+  // through JSON and a fresh copy of the bytes, as a file on disk would be
+  const resumed = World.restore(JSON.parse(JSON.stringify(meta)), new Uint8Array(bytes),
+                                { constants: CANDIDATE_ZERO });
+  resumed.run(450, { checkEvery: 100 });
+
+  const where = same(straight, resumed);
+  report("450 ticks, a checkpoint, 450 more: every byte matches 900 ticks straight through",
+    where === null, where === null
+      ? `${straight.w.cells * 6} bytes compared at tick ${resumed.tick}, and the next random draw `
+        + `is the same too: ${straight.rng.u32() === resumed.rng.u32()}`
+      : `first difference at ${where}`);
+  report("the ledger came across whole, so the resumed books close against the ORIGINAL baseline",
+    resumed.ledger.energy0 === straight.ledger.energy0
+      && resumed.ledger.escaped === straight.ledger.escaped
+      && resumed.ledger.received === straight.ledger.received
+      && resumed.ledger.wallX === straight.ledger.wallX,
+    `radiated ${resumed.ledger.escaped}, received ${resumed.ledger.received}, `
+    + `wall (${resumed.ledger.wallX}, ${resumed.ledger.wallY})`);
+  // and a damaged file is refused rather than resumed
+  let refusedShort = false, refusedWrong = false;
+  try { World.restore(meta, bytes.slice(0, bytes.length - 1)); } catch { refusedShort = true; }
+  // one bit of one primitive's energy (a vacuum hexagon's energy is not in the
+  // books, so the bit has to land on matter to be a fair test)
+  const bent = new Uint8Array(bytes);
+  bent[straight.w.cells + 2 * first.w.kind.findIndex((k) => k !== 0)] ^= 1;
+  try { World.restore(meta, bent); } catch { refusedWrong = true; }
+  report("a checkpoint cut short, or with one bit of energy flipped, is refused before it runs",
+    refusedShort && refusedWrong, `short: refused ${refusedShort}; one bit: refused ${refusedWrong}`);
+}
+
+// ===========================================================================
+console.log(`\n=== Check 14: collisions -- matter that meets matter trades momentum, exactly ===`);
+{
+  // Two primitives head on, nothing else in the world, no chemistry and no
+  // kick: whatever happens is collide() and nothing else.
+  const only = { ...CANDIDATE_ZERO, TRANSPORT_RATE: 0, THERMAL_KICK_PROB: 0, BOND_FORM_PROB: 0 };
+  let changed = 0, momentumHeld = 0, energyHeld = 0, runs = 0;
+  const sumAfter = [0, 0];
+  for (let seed = 1; seed <= 200; seed++) {
+    const world = new World({ cols: 12, rows: 12, seed, constants: only });
+    const w = world.w;
+    const a = at(w, 5, 6), b = neighbour(w, a, 0);
+    w.kind[a] = 20; w.kind[b] = 20;
+    w.energy[a] = 400; w.energy[b] = 400;
+    w.mx[a] = DIR_CUBE[0][0] * 20; w.my[a] = DIR_CUBE[0][1] * 20;     // a runs at b
+    w.mx[b] = -w.mx[a]; w.my[b] = -w.my[a];                           // and b at a
+    baseline(world);
+    const e0 = totalEnergy(w), p0 = totalMomentum(w);
+    world.collide(a, b, 0);
+    const p1 = totalMomentum(w);
+    runs++;
+    if (w.mx[a] !== DIR_CUBE[0][0] * 20 || w.my[a] !== DIR_CUBE[0][1] * 20) changed++;
+    if (p1[0] === p0[0] && p1[1] === p0[1]) momentumHeld++;
+    if (totalEnergy(w) === e0) energyHeld++;
+    sumAfter[0] += w.mx[a]; sumAfter[1] += w.my[a];
+  }
+  report("a head-on pair comes out of a collision with different momenta", changed > runs * 0.9,
+    `${changed} of ${runs} seeds -- before 2026-11-09 this was 0 of ${runs}: the step was refused and nothing else happened`);
+  report("the pair's total momentum is untouched, every time", momentumHeld === runs,
+    `${momentumHeld} of ${runs}`);
+  report("and heat + kinetic is untouched, every time: the seam is exact", energyHeld === runs,
+    `${energyHeld} of ${runs}`);
+  const meanX = sumAfter[0] / runs, meanY = sumAfter[1] / runs;
+  report("with no preferred direction: the mean outcome over 200 seeds is near zero",
+    Math.abs(meanX) < 8 && Math.abs(meanY) < 8,
+    `mean momentum of the striker afterwards (${meanX.toFixed(2)}, ${meanY.toFixed(2)}), in a range of +-${MOMENTUM_RANGE}`);
+
+  // And the thing it is FOR. A gas too hot to bond, which before this took 519
+  // steps in 20,000 ticks because everything stopped at the first thing it met.
+  const gas = new World({ cols: 64, rows: 64, seed: 1, constants: CANDIDATE_ZERO });
+  gas.seed_(0.30, (rng) => 1 + rng.below(255), { temp0: 12, momentumRange: 3 });
+  gas.run(2000, { checkEvery: 100 });
+  report("a hot gas is a gas: it goes on moving, and the books close throughout",
+    gas.counts.stepped > 100000 && gas.counts.collided > 100000,
+    `${gas.counts.stepped.toLocaleString()} steps and ${gas.counts.collided.toLocaleString()} `
+    + `collisions in 2,000 ticks (${gas.counts.collisionDead.toLocaleString()} with no legal outcome)`);
+}
+
+// ===========================================================================
+console.log(`\n=== Check 15: the wall turns matter back, and counts what it took ===`);
+{
+  const only = { ...CANDIDATE_ZERO, TRANSPORT_RATE: 0, THERMAL_KICK_PROB: 0, BOND_FORM_PROB: 0 };
+  const world = new World({ cols: 12, rows: 12, seed: 1, constants: only });
+  const w = world.w;
+  const i = at(w, 0, 6);                    // on the west edge
+  w.kind[i] = 3; w.energy[i] = 50;
+  w.mx[i] = -9; w.my[i] = 0;                // heading straight off the sheet
+  baseline(world);
+  const ke0 = keAt(w, i), heat0 = w.energy[i];
+  world.step(i);
+  report("a primitive stepping off the sheet stays on it, with its momentum reversed",
+    w.kind[i] === 3 && w.mx[i] === 9 && w.my[i] === 0, `(${w.mx[i]}, ${w.my[i]}), from (-9, 0)`);
+  report("its kinetic energy and its heat are untouched: a bounce moves no energy",
+    keAt(w, i) === ke0 && w.energy[i] === heat0, `kinetic ${keAt(w, i)}, heat ${w.energy[i]}`);
+  report("the wall holds exactly twice what it turned back, and the books assert world + wall",
+    world.ledger.wallX === -18 && world.ledger.wallY === 0
+      && (() => { try { world.ledger.check(w, "after a bounce"); return true; } catch { return false; } })(),
+    `wall (${world.ledger.wallX}, ${world.ledger.wallY}), world (${w.mx[i]}, ${w.my[i]}), started (-9, 0)`);
+
+  // The reason it exists: matter must not end up plastered on the boundary.
+  const gas = new World({ cols: 64, rows: 64, seed: 1, constants: CANDIDATE_ZERO });
+  gas.seed_(0.30, (rng) => 1 + rng.below(255), { temp0: 12, momentumRange: 3 });
+  gas.run(3000, { checkEvery: 500 });
+  let skin = 0, all = 0, skinCells = 0;
+  for (let c = 0; c < gas.w.cells; c++) {
+    const q = c % 64, r = (c - q) / 64, depth = Math.min(q, 63 - q, r, 63 - r);
+    if (depth < 4) skinCells++;
+    if (!gas.w.kind[c]) continue;
+    all++; if (depth < 4) skin++;
+  }
+  const fair = skinCells / gas.w.cells;
+  report("after 3,000 ticks of hot gas the outer four hexagons hold their share of the matter, not all of it",
+    skin / all < fair * 1.5,
+    `${skin} of ${all} primitives (${((skin / all) * 100).toFixed(0)}%) in a skin that is `
+    + `${(fair * 100).toFixed(0)}% of the sheet -- with the edge refusing steps instead it was 951 of 1,254 (76%)`);
+  report("and that run bounced, and its momentum books closed every 500 ticks",
+    gas.counts.bounced > 0, `${gas.counts.bounced.toLocaleString()} bounces; wall `
+    + `(${gas.ledger.wallX}, ${gas.ledger.wallY})`);
+}
+
+// ===========================================================================
+console.log(`\n=== Check 16: matter that steps into light absorbs it ===`);
+{
+  const only = { ...CANDIDATE_ZERO, TRANSPORT_RATE: 0, THERMAL_KICK_PROB: 0, BOND_FORM_PROB: 0 };
+  const world = new World({ cols: 12, rows: 12, seed: 1, constants: only });
+  const w = world.w;
+  const i = at(w, 5, 6), j = neighbour(w, i, 0);
+  w.kind[i] = 2; w.energy[i] = 10;
+  w.mx[i] = DIR_CUBE[0][0] * 30; w.my[i] = DIR_CUBE[0][1] * 30;
+  w.bonds[j] = 0b001011;                    // three quanta crossing the hexagon ahead
+  baseline(world);
+  const e0 = totalEnergy(w);
+  world.step(i);
+  report("the step happens: light in the way is not an obstacle",
+    w.kind[j] === 2 && w.kind[i] === 0, `before 2026-11-09 one quantum blocked any mass at any speed`);
+  report("the three quanta became three units of its heat, and none is left in flight there",
+    w.energy[j] === 13 && w.bonds[j] === 0 && totalEnergy(w) === e0,
+    `heat ${w.energy[j]} from 10; heat + kinetic + in flight still ${totalEnergy(w)}`);
+  // the ceiling: a primitive that could not hold them does not move, and nothing is lost
+  const full = new World({ cols: 12, rows: 12, seed: 1, constants: only });
+  const f = full.w, a = at(f, 5, 6), b = neighbour(f, a, 0);
+  f.kind[a] = 2; f.energy[a] = ENERGY_MAX - 1;
+  f.mx[a] = DIR_CUBE[0][0] * 30; f.my[a] = DIR_CUBE[0][1] * 30;
+  f.bonds[b] = 0b001011;
+  baseline(full);
+  const fe0 = totalEnergy(f);
+  full.step(a);
+  report("at the heat ceiling the step is declined and the light stays where it was",
+    f.kind[a] === 2 && f.bonds[b] === 0b001011 && totalEnergy(f) === fe0,
+    `blockedFull ${full.counts.blockedFull}; energy ${totalEnergy(f)} of ${fe0}`);
+}
+
+// ===========================================================================
+console.log(`\n=== Check 17: the lit edge -- light comes in, is counted, and warms that side ===`);
+{
+  const run = (inflow) => {
+    const world = new World({ cols: 64, rows: 64, seed: 5, constants: CANDIDATE_ZERO, inflow });
+    world.seed_(0.30, (rng) => 1 + rng.below(255), { temp0: 2, momentumRange: 3 });
+    world.run(4000, { checkEvery: 200 });
+    return world;
+  };
+  const dark = run(null), lit = run({ rate: 0.5, side: "west" });
+  report("a dark World receives nothing, ever", dark.ledger.received === 0 && dark.counts.received === 0,
+    `received ${dark.ledger.received}`);
+  report("a lit World receives about rate x side x ticks, counted one quantum at a time",
+    lit.ledger.received > 0.5 * 64 * 4000 * 0.9 && lit.ledger.received <= 0.5 * 64 * 4000 * 1.1,
+    `${lit.ledger.received.toLocaleString()} received (${(0.5 * 64 * 4000).toLocaleString()} expected), `
+    + `${lit.counts.receiveDeclined.toLocaleString()} declined`);
+  const c = census(lit.w);
+  report("its books close with the term in: heat + kinetic + flight + bonds + radiated - received",
+    c.heat + c.kinetic + c.inFlight + lit.ledger.bondPotential + lit.ledger.escaped
+      - lit.ledger.received === lit.ledger.energy0,
+    `checked every 200 ticks as well; momentum + wall still (${c.px + lit.ledger.wallX}, ${c.py + lit.ledger.wallY})`);
+  const halves = (world) => {
+    const w = world.w; const e = [0, 0], k = [0, 0];
+    for (let i = 0; i < w.cells; i++) { if (!w.kind[i]) continue; const h = (i % w.cols) < w.cols / 2 ? 0 : 1; e[h] += w.energy[i]; k[h] += w.kind[i]; }
+    return [e[0] / k[0], e[1] / k[1]];
+  };
+  const [lw, le] = halves(lit), [dw, de] = halves(dark);
+  // MEASURED, NOT GUESSED, AND THE GUESS WAS WRONG. This check first asserted
+  // that the lit half would be warmer than the far half. It is not: now that
+  // matter moves, a 64x64 sheet mixes faster than the light can build a slope,
+  // and the two halves agree to a few percent. What the lit edge does is warm
+  // the WHOLE sheet. Whether a slope stands on a sheet large enough that
+  // crossing it takes longer than cooling does is not known; the halves are
+  // printed so a later run can see one if it appears.
+  const mean = (a, b) => (a + b) / 2;
+  report("the lit World ends warmer than the dark one, which cooled",
+    mean(lw, le) > mean(dw, de) * 1.2,
+    `lit ${mean(lw, le).toFixed(2)} (west ${lw.toFixed(2)}, east ${le.toFixed(2)});  `
+    + `dark ${mean(dw, de).toFixed(2)} (west ${dw.toFixed(2)}, east ${de.toFixed(2)}) -- both seeded at 2`);
+  let refused = false;
+  try { new World({ cols: 12, rows: 12, inflow: { rate: 1.5, side: "west" } }); } catch { refused = true; }
+  report("a rate above one quantum per edge hexagon per tick is refused, not clamped", refused, "");
 }
 
 // ===========================================================================

@@ -21,6 +21,63 @@ wifi on a phone. The **Live World** tab is already watching.
 
 ---
 
+## A world that is left running
+
+Added 2026-11-09 (Ric: "i wanted to start a world and let it run and check in on it every once in a
+while with the chance of something crazy happening").
+
+```bash
+run-world.cmd
+```
+
+That is the whole of it. The world **lives in `runs/eternal/`**: it is saved there every five minutes
+and when the window is closed with Ctrl-C, and the next start carries on from the same tick — exactly,
+not approximately (`world-check.mjs` Check 13). Shutting the PC down costs at most the last five
+minutes. To begin a different world, move that folder away first; nothing here deletes it.
+
+| | |
+|---|---|
+| check in on this machine | `http://localhost:8787/` — opens on the run |
+| on the wifi | the address the window prints |
+| from anywhere | the website's viewer, **Live World** tab (`viewer.html#live`) — once the site password is stored, below |
+| what happened while you were away | the **Journal** panel: firsts and records, newest first, the new ones marked. A tap goes to where the thing was. The same lines are in `runs/eternal/journal.jsonl` |
+| start it with Windows | `powershell -ExecutionPolicy Bypass -File autostart.ps1 install` (`remove` undoes it) |
+
+**What `run-world.cmd` passes**, each of which `world-stream.mjs` takes on its own:
+
+| flag | what it does |
+|---|---|
+| `--keep runs/eternal` | the world lives in that folder: checkpoints, resume, journal |
+| `--size 258 --temp0 4 --p0 3` | only used the first time, to make the world; after that it has its own |
+| `--lit` | light comes in through the west edge — a held condition, off without it |
+| `--hold` | trim that brightness to keep the mean temperature near 4. No fixed brightness is stable (README item 43) |
+| `--yield-to cs2.exe,…` | stand still while a game is running; the page says so |
+| `--low` | lowest CPU priority |
+| `--push … --push-every 30` | only when the site password is stored |
+
+**The site password, once.** The relay's PUT needs it, and it must not go in a file or on a command
+line. Store it in Windows Credential Manager, where the CS room's secrets already live:
+
+```bash
+python ..\cs\creds.py set ric-terminal/universe
+```
+
+Type the password, Enter, Ctrl-Z, Enter. `run-world.cmd` reads it from there at start and pushes a
+frame every thirty seconds; without it the world is on the wifi only and says so.
+
+**If the books ever fail to close** the run stops, the journal says so in red, and the checkpoint on
+disk — which is from *before* the failure and still balances — is left alone. Starting again replays
+from it, and because a resume is exact the failure will happen again at the same tick, which is what
+makes it findable.
+
+**If the engine changes** (`world.mjs` or `constants.mjs` edited) the world carries on under the new
+one from its next start, and the journal records the change with both hashes. Everything before that
+entry happened under the old physics.
+
+**An entry in the journal is what one run's instrument saw, not a finding.** `AGENTS.md` rule 11.
+
+---
+
 ## The two ways in
 
 They are different routes, not a fallback chain, and the viewer offers both.

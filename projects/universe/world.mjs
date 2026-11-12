@@ -8,6 +8,26 @@
 // gets affected by gravity, and how many atoms are in DNA" -- and with the
 // scale declared, two of this file's four differences from the Lab had to go.
 //
+// FOUR THINGS WENT IN ON 2026-11-09, when Ric asked for a world he could start
+// and leave running. Each is written up where it lives:
+//
+//   COLLISIONS          law 1's, which the Lab has always had and this file
+//   (collide)           never did. Without them matter that met matter stopped
+//                       for ever, and a hot gas took 519 steps in 20,000 ticks.
+//   LIGHT IS ABSORBED   by matter that steps into it, as in the Lab. It used to
+//   (step)              block the step, so warm matter could not move through
+//                       its own radiation.
+//   THE WALL ANSWERS    matter at the edge is turned back and the wall's
+//   (bounce)            momentum is counted, which is rule 6's own instruction.
+//   A LIT EDGE          light IN through one side: a held condition, off unless
+//   (receiveAtEdge)     a run asks. It is the only thing here that is not a
+//                       correction, and the "no held conditions" below is true
+//                       of every run that does not ask for it.
+//
+// Also that day: a World can be put down and picked up exactly (checkpoint,
+// restore), and a one-unit hole in how light moves was found and closed
+// (propagateAll).
+//
 // Read TWO-RUNS.md, THE-LAWS.md and AGENTS.md before changing anything here.
 // What this file is NOT is a bigger Lab. Three things differ, and each is a
 // decision written down somewhere rather than a convenience:
@@ -67,7 +87,7 @@
 import {
   SETTLED, WIDTHS, KIND_MAX, ENERGY_MAX, MOMENTUM_RANGE, DIRECTIONS,
   clockRate, causalRate, validateForLab, CANDIDATE_ZERO,
-  capacityOf,
+  capacityOf, validateInflow,
 } from "./constants.mjs";
 
 // ------------------------------------------------------------- the lattice
@@ -77,6 +97,24 @@ import {
 const DIR_CUBE = [[1, -1, 0], [1, 0, -1], [0, 1, -1], [-1, 1, 0], [-1, 0, 1], [0, -1, 1]];
 const DIR_AXIAL = DIR_CUBE.map(([x, , z]) => [x, z]);
 const opposite = (d) => (d + 3) % DIRECTIONS;
+
+// FOR EACH DIRECTION, IS THE HEXAGON AHEAD AT A HIGHER INDEX? With
+// i = r * cols + q a step of (dq, dr) changes the index by dr * cols + dq, so
+// the sign is dr's, and dq's when dr is zero. propagateAll needs this to walk
+// each line of light head first (2026-11-09; the reason is written there).
+const AHEAD_IS_HIGHER = DIR_AXIAL.map(([dq, dr]) => dr > 0 || (dr === 0 && dq > 0));
+
+// WHICH WAY IN, for each side a World may be lit from (the inflow, below).
+// One direction per side: the one that runs straight along a row or a column
+// of the axial sheet, so light entering at an edge hexagon crosses the sheet
+// on that hexagon's own line and nothing has to be chosen per quantum.
+const dirOf = (dq, dr) => DIR_AXIAL.findIndex(([a, b]) => a === dq && b === dr);
+const INFLOW_SIDES = {
+  west:  { dir: dirOf(1, 0),  cells: (w) => Array.from({ length: w.rows }, (_, r) => r * w.cols) },
+  east:  { dir: dirOf(-1, 0), cells: (w) => Array.from({ length: w.rows }, (_, r) => r * w.cols + w.cols - 1) },
+  north: { dir: dirOf(0, 1),  cells: (w) => Array.from({ length: w.cols }, (_, q) => q) },
+  south: { dir: dirOf(0, -1), cells: (w) => Array.from({ length: w.cols }, (_, q) => (w.rows - 1) * w.cols + q) },
+};
 
 const MOD = SETTLED.BOND_MODULUS;
 const KE_SCALE = SETTLED.KE_SCALE;
@@ -99,6 +137,10 @@ function makeRng(seed) {
     u32: next,
     u01: () => next() / 4294967296,
     below: (n) => next() % n,
+    // The whole of the generator is one 32-bit word, so a run can be put down
+    // and picked up exactly where it was (World.checkpoint, 2026-11-09).
+    state: () => x,
+    restore: (v) => { x = (v | 0) || 1; },
   };
 }
 
@@ -184,8 +226,10 @@ const legalMomentum = (x, y) =>
 //
 // "Radiated away" is the only channel out, and it is counted one quantum at a
 // time as it crosses the edge. Nothing else can leave: matter never steps off
-// the sheet, and radiation in this physics carries energy without momentum, so
-// MOMENTUM IS EXACTLY CONSTANT with no drain term at all.
+// the sheet, and radiation in this physics carries energy without momentum.
+// MOMENTUM: world + wall is exactly constant. It was "exactly constant, no
+// term at all" until 2026-11-09, which was true only because matter at the
+// edge was refused rather than answered; see World.bounce.
 function census(w) {
   let matter = 0, heat = 0, kinetic = 0, inFlight = 0, px = 0, py = 0, bondEnds = 0, bonded = 0;
   for (let i = 0; i < w.cells; i++) {
@@ -217,22 +261,37 @@ class Ledger {
     // same statement (propagateAll), which is what makes "it left" different
     // from "it leaked" -- and the difference is the whole of rule 6.
     this.escaped = 0;
+    // RECEIVED. The one way in, and it is zero unless a run is lit (the
+    // inflow, 2026-11-09): a quantum that enters at the lit edge is added
+    // here in the same statement that puts it on the lattice. With it the
+    // invariant reads
+    //     heat + kinetic + in flight + bond potential + radiated away
+    //                                             - received  =  constant
+    // and a run with no inflow has received 0 for ever, which is the old
+    // invariant unchanged.
+    this.received = 0;
+    // THE WALL'S MOMENTUM. Matter that reaches the edge is turned back
+    // (World.bounce, 2026-11-09) and the wall takes twice what it carried.
+    // Rule 6: "keep wall momentum as an integer vector and assert world
+    // momentum + wall momentum = constant."
+    this.wallX = 0; this.wallY = 0;
   }
   check(w, label) {
     const c = census(w);
-    const energy = c.heat + c.kinetic + c.inFlight + this.bondPotential + this.escaped;
+    const energy = c.heat + c.kinetic + c.inFlight + this.bondPotential + this.escaped
+      - this.received;
     if (c.matter !== this.matter0) {
       throw new Error(`${label}: matter ${c.matter} was ${this.matter0}`);
     }
     if (energy !== this.energy0) {
       throw new Error(`${label}: energy ${energy} was ${this.energy0} `
         + `(heat ${c.heat} kinetic ${c.kinetic} flight ${c.inFlight} `
-        + `bonds ${this.bondPotential} radiated ${this.escaped})`);
+        + `bonds ${this.bondPotential} radiated ${this.escaped} received ${this.received})`);
     }
-    if (c.px !== this.px0 || c.py !== this.py0) {
-      throw new Error(`${label}: momentum (${c.px}, ${c.py}) was (${this.px0}, ${this.py0}) `
-        + `-- nothing in this engine can move the total: every exchange is equal and `
-        + `opposite, matter cannot leave the sheet, and radiation carries no momentum`);
+    if (c.px + this.wallX !== this.px0 || c.py + this.wallY !== this.py0) {
+      throw new Error(`${label}: momentum (${c.px}, ${c.py}) + wall (${this.wallX}, ${this.wallY}) `
+        + `was (${this.px0}, ${this.py0}) -- every exchange and every collision is equal and `
+        + `opposite, the wall counts what it turns back, and radiation carries no momentum`);
     }
   }
 }
@@ -242,6 +301,9 @@ export class World {
   constructor({
     cols = 258, rows = 258, seed = 1,
     constants = CANDIDATE_ZERO,
+    // A HELD CONDITION, NOT A LAW, and absent unless a run asks for it: light
+    // entering through one edge. See receiveAtEdge.
+    inflow = null,
   } = {}) {
     // The multiple-of-three requirement went with the torus. It was there
     // because collisions resolve in three-hexagon Margolus blocks, which only
@@ -255,6 +317,14 @@ export class World {
       throw new Error("REFUSING TO RUN. " + refusals.length + " constant problem(s):\n  - "
         + refusals.join("\n  - "));
     }
+    if (inflow && inflow.rate > 0) {
+      const problems = validateInflow(inflow);
+      if (!INFLOW_SIDES[inflow.side]) {
+        problems.push(`inflow side "${inflow.side}" is not one of ${Object.keys(INFLOW_SIDES).join(", ")}`);
+      }
+      if (problems.length) throw new Error("REFUSING TO RUN. " + problems.join("; "));
+      this.inflow = { rate: inflow.rate, side: inflow.side };
+    } else this.inflow = null;
     this.c = constants;
     this.rng = makeRng(seed);
     this.seed = seed;
@@ -263,6 +333,18 @@ export class World {
     this.causal = causalRate(constants);
     this.counts = {
       stepped: 0, blocked: 0, collided: 0, tooColdToMove: 0,
+      // LAW 1'S COLLISIONS, carried across from the Lab on 2026-11-09 (see
+      // collide). `collided` sat here at 0 from the day this file was written
+      // and printed as if it were a measurement; it was an absence.
+      // `collisionDead` is a collision with no legal outcome in 64 draws, and
+      // `collisionNoRoom` is one whose shed heat would not fit, which the
+      // World declines where the Lab throws. `bounced` is matter turned back
+      // at the edge (bounce), and `blockedFull` is the one step that still
+      // simply does not happen: light in the way and no room to absorb it.
+      collisionDead: 0, collisionNoRoom: 0, bounced: 0, blockedFull: 0,
+      // quanta picked up by matter stepping into them, counted in `absorbed`
+      // as well -- this is the part of `absorbed` that motion did
+      sweptUp: 0,
       bondsFormed: 0, bondsBroken: 0, bondsStretched: 0,
       // Steps taken by a primitive that was bonded at the time -- the direct
       // measure of whether clusters move at all. The World ran without it
@@ -291,6 +373,11 @@ export class World {
       // the same sink: one is the sheet's interior cooling THROUGH its skin,
       // the other is the skin cooling directly.
       escaped: 0, emittedOff: 0,
+      // THE LIT EDGE, when there is one. `received` is the ledger's number;
+      // `receiveDeclined` is a quantum the edge could not take that tick (the
+      // slot was full, or the matter there was at the heat ceiling), which
+      // simply did not arrive -- nothing is owed for it.
+      received: 0, receiveDeclined: 0,
     };
     this.history = [];
     // A LEDGER FROM THE FIRST TICK, not from the first seed. propagateAll and
@@ -384,6 +471,23 @@ export class World {
   // copy. Moving them in the same shuffled pass as matter let a quantum be
   // found again further along the same tick and travel several hexagons,
   // which is the causal limit broken by an implementation detail.
+  //
+  // HEAD FIRST, AND THAT ORDER IS AN ACCOUNTING RULE (2026-11-09). This used
+  // to be one pass over the hexagons in index order, every direction at once,
+  // and it could lose a unit: a quantum that cannot move ("the absorber is
+  // full", or "the slot ahead is taken") is written back where it stood -- but
+  // if the quantum BEHIND it had been looked at first, that one had already
+  // stepped into the same slot, the write-back found the bit set, and two
+  // quanta became one. One unit of energy gone, no error, and only for light
+  // travelling toward higher indices behind a hexagon at the heat ceiling,
+  // which is why it would take a long run to meet. AGENTS.md carried "a
+  // stream reached tick 569,750 and the books were off by one unit ... and
+  // it is unfound"; whether that run died of exactly this cannot be shown,
+  // because it ran under gravity and its settings were not kept, but this is
+  // a one-unit hole of the right shape and world-check.mjs Check 12 holds it
+  // shut. The fix moves nothing differently when nothing is blocked: each
+  // line of light is walked from its head backwards, so the quantum in front
+  // has always been decided before the one behind it asks.
   propagateAll() {
     const w = this.w;
     if (!this.flight || this.flight.length !== w.cells) this.flight = new Uint8Array(w.cells);
@@ -391,27 +495,102 @@ export class World {
     for (let i = 0; i < w.cells; i++) { was[i] = isMatter(w, i) ? 0 : w.bonds[i]; }
     for (let i = 0; i < w.cells; i++) if (!isMatter(w, i)) w.bonds[i] = 0;
 
-    for (let i = 0; i < w.cells; i++) {
-      const slots = was[i];
-      if (!slots) continue;
-      for (let d = 0; d < DIRECTIONS; d++) {
-        if (!(slots & (1 << d))) continue;
-        const j = neighbour(w, i, d);
-        // THE SINK. A quantum that steps off the sheet is gone: added to the
-        // one counter that is allowed to grow and not written anywhere on the
-        // lattice. This is the only line in the engine that removes energy
-        // from the world, and the only reason the World can cool at all.
-        if (j < 0) { this.ledger.escaped++; this.counts.escaped++; continue; }
-        if (isMatter(w, j)) {
-          if (w.energy[j] < ENERGY_MAX) { w.energy[j]++; this.counts.absorbed++; }
-          else w.bonds[i] |= 1 << d;            // absorber full: it waits here
-        } else if (w.bonds[j] & (1 << d)) {
-          w.bonds[i] |= 1 << d;                 // the slot ahead is taken
-        } else {
-          w.bonds[j] |= 1 << d;
-          this.counts.quantaMoved++;
-        }
+    let up = 0, down = 0;                   // the directions each pass handles
+    for (let d = 0; d < DIRECTIONS; d++) { if (AHEAD_IS_HIGHER[d]) up |= 1 << d; else down |= 1 << d; }
+    // ahead is at a higher index: walk downward, so the head of a line is first
+    for (let i = w.cells - 1; i >= 0; i--) { const s = was[i] & up; if (s) this.moveQuanta(i, s); }
+    // ahead is at a lower index: walk upward
+    for (let i = 0; i < w.cells; i++) { const s = was[i] & down; if (s) this.moveQuanta(i, s); }
+  }
+
+  moveQuanta(i, slots) {
+    const w = this.w;
+    for (let d = 0; d < DIRECTIONS; d++) {
+      if (!(slots & (1 << d))) continue;
+      const j = neighbour(w, i, d);
+      // THE SINK. A quantum that steps off the sheet is gone: added to the
+      // one counter that is allowed to grow and not written anywhere on the
+      // lattice. This is the only line in the engine that removes energy
+      // from the world, and the only reason the World can cool at all.
+      if (j < 0) { this.ledger.escaped++; this.counts.escaped++; continue; }
+      if (isMatter(w, j)) {
+        if (w.energy[j] < ENERGY_MAX) { w.energy[j]++; this.counts.absorbed++; }
+        else w.bonds[i] |= 1 << d;            // absorber full: it waits here
+      } else if (w.bonds[j] & (1 << d)) {
+        w.bonds[i] |= 1 << d;                 // the slot ahead is taken
+      } else {
+        w.bonds[j] |= 1 << d;
+        this.counts.quantaMoved++;
       }
+    }
+  }
+
+  // ------------------------------------------------- the lit edge (a condition)
+  // LIGHT COMES IN THROUGH ONE EDGE. Added 2026-11-09, off unless a run asks,
+  // and it is a HELD CONDITION in the sense TWO-RUNS.md uses the words -- not
+  // a sixth law, and not a thermostat either.
+  //
+  // WHY IT EXISTS. The World has one sink (the edge) and one source (law 2,
+  // which pays out once per bond). So every World ends the same way: it bonds,
+  // it radiates what the bonding released, and it stops. A cold 96x96 sheet
+  // was measured doing exactly that on 2026-11-08 -- 54% of everything it ever
+  // had gone out through the edge, 89.1% bonded, mean temperature 0.000 -- and
+  // nothing can happen in it afterwards, however long it is left. Ric,
+  // 2026-11-09: "i wanted to start a world and let it run and check in on it
+  // every once in a while with the chance of something crazy happening". A
+  // world that is to keep happening needs energy passing THROUGH it: in at one
+  // place, out at another. Item 5's reopening (2026-11-08) had already said
+  // the same from the other side: law 2 only selects where matter is warm.
+  //
+  // WHY THIS SHAPE. The edge already lets light out; this lets light in
+  // through one side of it. It uses the radiation the physics has, one quantum
+  // at a time, travelling at the causal limit like any other -- no temperature
+  // is set anywhere, nothing is held hot, and what the matter does with the
+  // light is the four laws' business. (It was expected to leave the sheet warm
+  // on the lit side and cold on the far one. Measured the same day, it does
+  // not: matter mixes a 64x64 sheet faster than light builds a slope, and the
+  // whole sheet warms together -- world-check.mjs Check 17.)
+  // The alternatives were a held hot patch (a thermostat: it SETS a
+  // temperature, which is the Lab's kind of condition and overrides whatever
+  // the matter there was doing) and random hot spots (energy appearing in the
+  // interior with no path in, which is the nearest of the three to a leak).
+  //
+  // WHAT IT COSTS, said out loud (rule 7): one number, the chance per tick
+  // that an edge hexagon on the lit side receives a quantum (constants.mjs,
+  // INFLOW), and one term in the books (Ledger.received). It reads nothing
+  // past the edge hexagon it writes to (rule 9), it is integers (rule 5), and
+  // it carries no momentum, as radiation here never does -- so the momentum
+  // total is still exactly constant.
+  // The brightness may be changed between ticks -- a run's caller is allowed to
+  // vary a held condition, as a Lab sweep varies its thermostat -- and it goes
+  // through the same refusal the constructor uses. null or 0 turns it off.
+  setInflow(inflow) {
+    if (!inflow || !(inflow.rate > 0)) { this.inflow = null; return; }
+    const problems = validateInflow(inflow);
+    if (!INFLOW_SIDES[inflow.side]) problems.push(`inflow side "${inflow.side}" is not a side`);
+    if (problems.length) throw new Error("REFUSING. " + problems.join("; "));
+    if (!this.inflow || this.inflow.side !== inflow.side) this.litCells = null;
+    this.inflow = { rate: inflow.rate, side: inflow.side };
+  }
+
+  receiveAtEdge() {
+    const w = this.w, { rate, side } = this.inflow;
+    const { dir, cells } = INFLOW_SIDES[side];
+    const lit = this.litCells || (this.litCells = cells(w));
+    for (let n = 0; n < lit.length; n++) {
+      if (this.rng.u01() >= rate) continue;
+      const i = lit[n];
+      if (isMatter(w, i)) {
+        // matter standing on the lit edge takes the quantum directly, the
+        // mirror of tryTransport's "straight off the sheet"
+        if (w.energy[i] >= ENERGY_MAX) { this.counts.receiveDeclined++; continue; }
+        w.energy[i]++;
+      } else {
+        if (w.bonds[i] & (1 << dir)) { this.counts.receiveDeclined++; continue; }
+        w.bonds[i] |= 1 << dir;
+      }
+      this.ledger.received++;
+      this.counts.received++;
     }
   }
 
@@ -659,15 +838,30 @@ export class World {
     if (d < 0) { this.counts.tooColdToMove++; return; }
     const j = neighbour(w, i, d);
     // THE EDGE HOLDS MATTER IN. Only light leaves; a primitive that would walk
-    // off the sheet stays where it is, keeping its momentum, and the step is
-    // counted as blocked like any other. Without this the move below would
+    // off the sheet is turned back (bounce, below). Without this the move below would
     // write the primitive to index -1 -- which a typed array accepts and
     // discards, so matter would quietly evaporate at the boundary and the
     // matter total would fall. That is a leak with a plausible story attached,
     // which is the kind rule 6 warns is the most dangerous.
-    if (j < 0) { this.counts.blocked++; return; }
-    if (isMatter(w, j)) { this.counts.blocked++; return; }
-    if (w.bonds[j]) { this.counts.blocked++; return; }    // a quantum is there
+    if (j < 0) { this.bounce(i); return; }
+    // MATTER IN THE WAY IS A COLLISION, not a wall (2026-11-09, below).
+    if (isMatter(w, j)) { this.collide(i, j, d); return; }
+    // LIGHT IN THE WAY IS ABSORBED, not an obstacle (2026-11-09). This line
+    // used to read "a quantum is there: blocked", so one unit of radiation
+    // anywhere in a hexagon stopped any mass at any speed from entering it,
+    // and warm matter -- which fills the vacuum around itself with light --
+    // could not move through its own glow. The Lab has always had it the
+    // other way, which is the radiation fact's own sentence: "it stops at the
+    // first matter it meets, which absorbs it" (lab.mjs moveOne). The quanta
+    // are collected below, AFTER the step is known to be legal, for the reason
+    // the Lab gives: picking them up first and then refusing the step
+    // destroyed one unit, and rule 6 caught it as a drift of exactly 1.
+    const pickup = w.bonds[j] ? popcount6(w.bonds[j]) : 0;
+    // A heat field that could not hold them is the one case that still blocks:
+    // declining conserves, and clamping would not (rule 5).
+    if (pickup && w.energy[i] + pickup > ENERGY_MAX) {
+      this.counts.blocked++; this.counts.blockedFull++; return;
+    }
 
     const carriedBonds = w.bonds[i];
     if (carriedBonds !== 0) {
@@ -698,9 +892,10 @@ export class World {
       survivors.push(partner);
       w.bonds[partner] &= ~(1 << opposite(e));
     }
-    w.kind[j] = w.kind[i]; w.energy[j] = w.energy[i];
+    w.kind[j] = w.kind[i]; w.energy[j] = w.energy[i] + pickup;
     w.mx[j] = w.mx[i]; w.my[j] = w.my[i];
-    w.bonds[j] = 0;
+    w.bonds[j] = 0;                       // the quanta that stood here are now its heat
+    if (pickup) { this.counts.absorbed += pickup; this.counts.sweptUp += pickup; }
     w.kind[i] = 0; w.energy[i] = 0; w.mx[i] = 0; w.my[i] = 0; w.bonds[i] = 0;
     for (const partner of survivors) {
       for (let f = 0; f < DIRECTIONS; f++) {
@@ -718,6 +913,169 @@ export class World {
     if (carriedBonds !== 0) this.counts.bondedStepped++;
   }
 
+  // ------------------------------------------------ law 1, matter at the edge
+  // THE EDGE RETURNS MATTER. Added 2026-11-09, in the same change that gave the
+  // World its collisions, because the first made the second necessary.
+  //
+  // Until then "the edge holds matter in" meant the step off the sheet was
+  // refused and the primitive kept its momentum -- so it tried again next tick,
+  // and the tick after, for ever. While nothing in the World moved, that could
+  // not be seen. With collisions it could not be missed: a 64x64 sheet seeded
+  // at temperature 12 had 951 of its 1,254 primitives inside the outermost four
+  // hexagons after 3,000 ticks, 2.4 million refused steps at the edge behind
+  // them, all leaning outward on a boundary that neither let them through nor
+  // answered. A wall that takes any push and gives nothing back is a place
+  // momentum goes to stop mattering, which is a sink nobody chose.
+  //
+  // SO THE WALL ANSWERS. A primitive that would step off the sheet has its
+  // momentum reversed, exactly: (x, y) becomes (-x, -y). Q is unchanged, so its
+  // kinetic energy is unchanged to the unit and no heat changes hands; and the
+  // 2p the wall took is COUNTED, in the ledger, which is rule 6's own line --
+  // "momentum at a wall or floor: keep wall momentum as an integer vector and
+  // assert world momentum + wall momentum = constant". That rule was written
+  // for exactly this and had nothing to bind until now. The momentum invariant
+  // was "exactly constant, no drain term"; it is now "world + wall, exactly
+  // constant", and Ledger.check asserts that form.
+  //
+  // STRAIGHT BACK, NOT MIRRORED. A mirror would keep the part of the momentum
+  // that runs along the edge and reverse only the part across it, which is
+  // what a smooth wall does. It was not chosen because the sheet's four sides
+  // are not all lines of the lattice's symmetry in axial coordinates, so a
+  // mirror would need a different rule for the q edges and the r edges, and a
+  // rounding where the mirrored vector is not an integer one. Reversal is one
+  // rule for every side and exact for every momentum. It is a choice, and what
+  // it costs is that the edge scatters like a rough wall rather than a smooth
+  // one. Light still leaves through the edge exactly as before: the wall is
+  // for matter only.
+  bounce(i) {
+    const w = this.w;
+    this.ledger.wallX += 2 * w.mx[i];
+    this.ledger.wallY += 2 * w.my[i];
+    w.mx[i] = -w.mx[i]; w.my[i] = -w.my[i];
+    this.counts.blocked++;                  // the step itself did not happen
+    this.counts.bounced++;
+  }
+
+  // ------------------------------------------------- law 1, the collisions
+  // CARRIED ACROSS FROM THE LAB ON 2026-11-09, and like the port of 2026-11-07
+  // it is a correction rather than an addition. Law 1 has said since it was
+  // written that matter running into matter is a collision -- "any
+  // redistribution with the same vector sum is legal ... resolve them in
+  // Margolus blocks rather than pairs, so conservation holds by construction"
+  // -- and the Lab has resolved them that way from its first day (lab.mjs
+  // collide). This file never did. A primitive that met another one simply did
+  // not move, kept every unit of its momentum, and tried again next tick, for
+  // ever.
+  //
+  // WHAT THAT DID, measured the day it was found (64x64, fill 0.30, seeded at
+  // temperature 12 where no bond can stand, 20,000 ticks): 519 steps taken
+  // against 9,333,810 refused, while the thermal kick went on turning heat
+  // into momentum that nothing could spend -- mean |p| climbed from 2.8 to
+  // 53.9, against law 1's range of 63, and 270,207 units of energy stood as
+  // motion in a world where nothing moved. Every primitive drifted until it
+  // touched something and then leaned on it. A gas could not be a gas. This is
+  // the same shape as the freeze of 2026-11-07 (a bond as a wall: 19,389 steps
+  // against 2.6 million carries) and it survived that fix because the counter
+  // that would have shown it, `collided`, printed 0 and 0 reads as physics.
+  //
+  // THE RULE IS THE LAB'S, unchanged: the block is the triangle of three
+  // mutually adjacent hexagons that holds i and j, chosen between the two by a
+  // coin (a fixed pick is a handedness -- item 21); the matter in it has its
+  // momentum redrawn at random with the same vector sum; an outcome is legal
+  // if every momentum is inside law 1's range and the change in kinetic energy
+  // can be paid out of the heat that is actually in the block. Momentum is
+  // conserved by construction, because the last member takes whatever the
+  // others left.
+  //
+  // TWO THINGS DIFFER FROM THE LAB, and each is the World's standing habit
+  // rather than a new choice:
+  //
+  //   the edge   the third hexagon may be off the sheet, and then it is simply
+  //              not in the block -- the same answer isMatter gives everywhere.
+  //   the heat   shed kinetic energy is spread over the block's members and
+  //   ceiling    has to FIT. The Lab puts it all on the hexagon that acted and
+  //              THROWS if that overflows, because the Lab is where constants
+  //              are judged; the World declines the outcome and counts it
+  //              (collisionNoRoom), as exchange() does and for the reason
+  //              written there.
+  //
+  // Nothing here reads past the neighbours of i (rule 9): j and the third
+  // hexagon are both adjacent to it.
+  collide(i, j, d) {
+    const w = this.w;
+    const side = this.rng.below(2) ? (d + 1) % DIRECTIONS : (d + 5) % DIRECTIONS;
+    const third = neighbour(w, i, side);
+    const members = isMatter(w, third) ? [i, j, third] : [i, j];
+
+    let sx = 0, sy = 0, keBefore = 0, heat = 0, room = 0;
+    for (const m of members) {
+      sx += w.mx[m]; sy += w.my[m]; keBefore += keAt(w, m);
+      heat += w.energy[m]; room += ENERGY_MAX - w.energy[m];
+    }
+
+    // Draw an outcome, as the Lab does: sampled rather than enumerated, and
+    // the identity allowed only if nothing else turned up in the tries.
+    const R = MOMENTUM_RANGE, tries = 64;
+    let chosen = null, sawNoRoom = false;
+    for (let t = 0; t < tries; t++) {
+      const cand = [];
+      let ax = 0, ay = 0, ok = true;
+      for (let m = 0; m < members.length - 1; m++) {
+        const x = this.rng.below(2 * R + 1) - R;
+        const y = this.rng.below(2 * R + 1) - R;
+        if (!legalMomentum(x, y)) { ok = false; break; }
+        cand.push(x, y); ax += x; ay += y;
+      }
+      if (!ok) continue;
+      const lastX = sx - ax, lastY = sy - ay;
+      if (!legalMomentum(lastX, lastY)) continue;
+      cand.push(lastX, lastY);
+
+      let keAfter = 0;
+      for (let m = 0; m < members.length; m++) keAfter += keOf(cand[2 * m], cand[2 * m + 1], w.kind[members[m]]);
+      const delta = keBefore - keAfter;       // > 0 sheds heat, < 0 needs heat
+      if (delta < 0 && heat < -delta) continue;            // the heat is not there
+      if (delta > 0 && room < delta) { sawNoRoom = true; continue; }   // and it must fit
+      chosen = { cand, delta };
+      let changed = false;
+      for (let m = 0; m < members.length; m++) {
+        if (cand[2 * m] !== w.mx[members[m]] || cand[2 * m + 1] !== w.my[members[m]]) { changed = true; break; }
+      }
+      if (changed) break;
+    }
+
+    this.counts.blocked++;                  // the step itself never happens
+    if (chosen === null) {
+      // No legal outcome. Nothing changes, which conserves everything exactly.
+      if (sawNoRoom) this.counts.collisionNoRoom++; else this.counts.collisionDead++;
+      return;
+    }
+
+    for (let m = 0; m < members.length; m++) {
+      w.mx[members[m]] = chosen.cand[2 * m];
+      w.my[members[m]] = chosen.cand[2 * m + 1];
+    }
+    // The kinetic-energy change goes into or out of the heat field, spread
+    // over the block the way exchange() spreads it over a pair, and asserted
+    // to have finished what the dry run promised.
+    let owed = Math.abs(chosen.delta);
+    if (chosen.delta > 0) {
+      for (const m of members) {
+        const take = Math.min(owed, ENERGY_MAX - w.energy[m]);
+        w.energy[m] += take; owed -= take;
+        if (owed === 0) break;
+      }
+    } else if (chosen.delta < 0) {
+      for (const m of members) {
+        const take = Math.min(owed, w.energy[m]);
+        w.energy[m] -= take; owed -= take;
+        if (owed === 0) break;
+      }
+    }
+    if (owed !== 0) throw new Error(`collision could not move ${owed} of ${chosen.delta} it had checked for`);
+    this.counts.collided++;
+  }
+
   // ---------------------------------------------------------------- a tick
   // Every hexagon gets its chance every tick, in a shuffled order so position
   // does not become a hidden priority. This is the per-tick update
@@ -726,6 +1084,9 @@ export class World {
   doTick() {
     const w = this.w;
     this.propagateAll();          // the light field moves as one, from a copy
+    // After the field has moved, so a quantum that arrives this tick stands
+    // on the edge hexagon for one tick like any other and moves on the next.
+    if (this.inflow) this.receiveAtEdge();
 
     const order = this.order && this.order.length === w.cells
       ? this.order : (this.order = new Int32Array(w.cells).map((_, i) => i));
@@ -928,6 +1289,8 @@ export class World {
       heat: c.heat, kinetic: c.kinetic, inFlight: c.inFlight,
       // The one channel out, and the only number here that can only rise.
       radiated: this.ledger.escaped,
+      // and the one way in, which is 0 for ever unless the run is lit
+      received: this.ledger.received,
       bonds: c.bonds,
       bondedFraction: matterCells ? c.bonded / matterCells : 0,
       maxLocalDensity: maxLocal,
@@ -942,6 +1305,85 @@ export class World {
     };
     this.history.push(row);
     return row;
+  }
+
+  // ------------------------------------------------ putting a run down, and
+  // ------------------------------------------------ picking it up again
+  // Added 2026-11-09. AGENTS.md had this as one of the two things a long run
+  // needs and the engine did not have: "nothing loads a World back, so a
+  // three-day run dies with the process."
+  //
+  // EXACT, and that is the only kind worth having here. A World picked up
+  // from a checkpoint continues bit for bit as if it had never stopped --
+  // world-check.mjs Check 13 runs one world straight through and another
+  // through a checkpoint and compares every byte. So a checkpoint is not a
+  // new run with a similar look; it is the same run, and a books failure at
+  // tick N can be replayed from the checkpoint before it as many times as it
+  // takes to find.
+  //
+  // What that needs is everything the next tick reads: the five arrays, the
+  // generator's one word, the tick, the ledger's baseline and its counters --
+  // and `order`, the shuffle. doTick shuffles the PREVIOUS tick's order in
+  // place rather than starting from 0..n-1, so the order is state, four bytes
+  // a hexagon, and leaving it out gives a run that conserves perfectly and
+  // has silently become a different run.
+  //
+  // The bytes are the frame's six per hexagon in the frame's own order
+  // (kind, energy, mx, my, bonds), then the order. Nothing derived (rule 2).
+  checkpoint() {
+    const w = this.w, n = w.cells;
+    const order = this.order && this.order.length === n ? this.order : null;
+    const bytes = new Uint8Array(n * 6 + (order ? n * 4 : 0));
+    const put = (arr, at) => bytes.set(new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength), at);
+    put(w.kind, 0); put(w.energy, n); put(w.mx, n * 3); put(w.my, n * 4); put(w.bonds, n * 5);
+    if (order) put(order, n * 6);
+    const meta = {
+      format: "universe-world-checkpoint/1",
+      cols: w.cols, rows: w.rows, cells: n,
+      seed: this.seed, tick: this.tick, rng: this.rng.state(),
+      hasOrder: !!order,
+      inflow: this.inflow,
+      ledger: { ...this.ledger },
+      counts: { ...this.counts },
+      history: this.history.slice(-400),
+    };
+    return { meta, bytes };
+  }
+
+  static restore(meta, bytes, { constants = CANDIDATE_ZERO } = {}) {
+    if (meta.format !== "universe-world-checkpoint/1") {
+      throw new Error(`not a World checkpoint: format ${meta.format}`);
+    }
+    const n = meta.cols * meta.rows;
+    const want = n * 6 + (meta.hasOrder ? n * 4 : 0);
+    if (bytes.length !== want) {
+      throw new Error(`checkpoint is ${bytes.length} bytes and a ${meta.cols}x${meta.rows} `
+        + `World is ${want}: it was cut short, and a short world is not resumed`);
+    }
+    const world = new World({ cols: meta.cols, rows: meta.rows, seed: meta.seed,
+                              constants, inflow: meta.inflow });
+    const w = world.w;
+    // copied, not viewed: an odd byte offset cannot back a Uint16Array
+    const take = (Type, at, count) =>
+      new Type(bytes.slice(at, at + count * Type.BYTES_PER_ELEMENT).buffer);
+    w.kind.set(take(Uint8Array, 0, n));
+    w.energy.set(take(Uint16Array, n, n));
+    w.mx.set(take(Int8Array, n * 3, n));
+    w.my.set(take(Int8Array, n * 4, n));
+    w.bonds.set(take(Uint8Array, n * 5, n));
+    if (meta.hasOrder) world.order = take(Int32Array, n * 6, n);
+    world.tick = meta.tick;
+    world.rng.restore(meta.rng);
+    world.ledger = Object.assign(new Ledger(w), meta.ledger);
+    Object.assign(world.counts, meta.counts);
+    world.history = meta.history || [];
+    world.seeded = true;
+    // THE BOOKS, BEFORE ANYTHING RUNS. A checkpoint that does not balance
+    // against its own ledger was damaged on disk or written by a different
+    // engine, and resuming it would turn that into a mystery a million ticks
+    // later.
+    world.ledger.check(w, `checkpoint at tick ${meta.tick}`);
+    return world;
   }
 
   run(ticks, { sampleEvery = 0, checkEvery = 0, onSample = null } = {}) {

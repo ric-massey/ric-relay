@@ -294,7 +294,7 @@ window.TERMINAL_PAGES = [
   "title": "Universe · Lattice Inspector",
   "keys": "",
   "body": "Zoom, pan and open a hexagon of this universe: kind, valence, bonds, temperature, and the bonded group it belongs to. Reads the Lab",
-  "text": "A hexagon of this universe · World — · Hexagon · Group · Run · B to each neighbour",
+  "text": "A hexagon of this universe · Journal · World — · Hexagon · Group · Run · B to each neighbour",
   "room": null
  },
  {

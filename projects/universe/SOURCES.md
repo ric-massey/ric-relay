@@ -963,6 +963,25 @@ structure regenerated, accumulation, robustness across seeds and nearby settings
 in the README's measurement section. So is its warning that the variance layer lights up for
 crystals, boundaries and ordinary clumping, and is therefore a pointer rather than a detector.
 
+## Borrowed on 2026-11-09, for the world that is left running
+
+- **Proportional-integral control.** Minorsky, N. (1922). *Directional stability of automatically
+  steered bodies.* Journal of the American Society of Naval Engineers 34(2), 280–309 — the usual
+  first citation for a controller that adds a term proportional to the error to one that
+  accumulates it. `world-stream.mjs` `steer` is that, trimming how bright the lit edge is toward a
+  target mean temperature. What we took: the form, and the standard advice that the accumulating
+  term be much slower than the proportional one, which is why the base rate learns ten times more
+  slowly than the push acts. It is outside the engine and is not physics.
+- **Checkpoint and restart**, writing to a temporary file and renaming over the old one so a crash
+  mid-write cannot leave a half-written state. Standard practice in long-running computation and
+  in every journalled file system; no single originator found to credit.
+- **Connected-component labelling** by a stack-based flood fill, in `journal.mjs` — the same walk
+  `clusters.mjs` already does for the Lab. Rosenfeld, A. & Pfaltz, J. L. (1966). *Sequential
+  operations in digital picture processing.* Journal of the ACM 13(4), 471–494.
+- **A reflecting boundary that keeps a count of the momentum it returns** is this project's own
+  earlier decision (`HOW-WE-DECIDED.md`, *Correction — momentum at the wall*), which credits the
+  everyday physics of a ball and the Earth. Nothing new was borrowed for `World.bounce`.
+
 ## Not yet credited
 
 Searched 2026-11-03 and **found no prior work combining self-gravity with an artificial

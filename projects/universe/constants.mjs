@@ -290,6 +290,51 @@ export const THERMOSTAT_SWEEP = {
   COLD_T: [0, 64],
 };
 
+// ------------------------------------------- the World's one held condition
+// LIGHT IN THROUGH ONE EDGE (world.mjs, receiveAtEdge; 2026-11-09). Like the
+// thermostat above this is an experiment's independent variable and not a
+// physics constant, and unlike it there is no default that is "on": a World
+// is dark unless a run gives it a rate.
+//
+// RATE is the chance per tick that one edge hexagon on the lit side receives
+// one quantum, so it cannot exceed 1 -- an edge hexagon has one slot facing
+// inward along its line, and one quantum a tick is the causal limit's worth.
+// The most a sheet can be given is therefore `side` quanta a tick.
+//
+// LONG_RUN is what world-stream.mjs uses when it is asked to light a world
+// without being told how. THESE ARE CHOSEN NUMBERS, NOT DERIVED ONES, measured
+// at CANDIDATE_ZERO on 2026-11-09 and belonging to it (HOW-WE-DECIDED.md,
+// "A world that is left running", has the runs):
+//
+//   rate    0.035. A 64x64 sheet radiates about 2.2 quanta a tick whatever its
+//           temperature, which is 0.034 per lit edge hexagon, so this is
+//           roughly the brightness at which a sheet neither warms nor cools.
+//           It is only where the steering starts from.
+//   holdT   half of law 2's modulus: bonds are worth 1..8, so at 4 about half
+//           of them can stand. Measured there, about half of all matter is
+//           bonded and bonds form and break faster than at any hotter setting.
+//
+// HOLD is how the run trims the brightness to stay near holdT (the reason it
+// has to is written above `steer` in world-stream.mjs). KP is the extra rate
+// per degree the sheet is below target; KI is how fast the base rate learns;
+// EVERY is ticks between corrections. They set how the steering behaves, not
+// what the physics is, and were picked so the base learns ten times more
+// slowly than the push acts.
+export const INFLOW = {
+  RATE:  [0, 1],     // the range a run may ask for
+  SIDES: ["west", "east", "north", "south"],
+  LONG_RUN: { rate: 0.035, side: "west", holdT: SETTLED.BOND_MODULUS / 2 },
+  HOLD: { KP: 0.05, KI: 0.05 / 2000, EVERY: 1000 },
+};
+export function validateInflow(f) {
+  const problems = [];
+  if (!(f.rate >= INFLOW.RATE[0] && f.rate <= INFLOW.RATE[1])) {
+    problems.push(`inflow rate ${f.rate} is outside ${INFLOW.RATE[0]}..${INFLOW.RATE[1]}: `
+      + `it is a chance per edge hexagon per tick, and one slot holds one quantum`);
+  }
+  return problems;
+}
+
 // Refuse a held condition the engine could not hold, BEFORE the run rather
 // than thousands of events into it (rule 8: reject a bad set at startup).
 // Checked against KIND_MAX because the Lab seeds every kind; a run that seeds

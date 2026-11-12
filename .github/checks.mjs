@@ -99,7 +99,9 @@ const SUITES = [
      a run, five seeds and five constant changes. About 30 seconds, so slow
      lane (Ric, 2026-11-06: "Sure").
 
-     world-check.mjs is the World's, eleven checks. Law 1's two exchanges move
+     world-check.mjs is the World's, seventeen checks (eleven until
+     2026-11-09, when the World got its collisions, its wall, an exact resume
+     and a lit edge, and Checks 12 to 17 with them). Law 1's two exchanges move
      momentum between neighbours without anything travelling, which is the
      operation that can conserve momentum perfectly while quietly creating or
      destroying energy — that failure cost 34,864 units in the Lab (README item

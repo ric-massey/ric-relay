@@ -39,6 +39,13 @@ That is a sharper distinction than the law count ever was, because it is the one
 each run can answer. A held temperature is what makes a species measurement repeatable; an edge is
 what lets a world have a history.
 
+> **2026-11-09 — one held condition, when a run asks for it.** The World "holds nothing" is still
+> true of every run that does not ask. A run that is meant to be left going for days may light one
+> edge (`world.mjs` `receiveAtEdge`) and have that brightness steered toward a mean temperature
+> (`world-stream.mjs --hold`). That is the Lab's kind of thing — an independent variable, not a law —
+> and it is here because a World with one source and one sink can only run down. It acts only through
+> light at the edge and never sets a temperature. `HOW-WE-DECIDED.md`, *A world that is left running*.
+
 ### Nothing is coarse-grained, and that is a correction
 
 *(External review, 2026-11-03; see `SOURCES.md`.)* This file originally had the World's

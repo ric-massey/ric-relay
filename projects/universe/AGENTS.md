@@ -134,13 +134,22 @@ version applied the two halves independently and walked the world's momentum off
 twenty ticks. Gravity is gone; the seam it taught us to build is what `shareMomentum`,
 `tryThermalKick` and `pushAlongBond` all run through.
 
+**Two terms were added on 2026-11-09 and the form to assert is now**
+`heat + kinetic + in flight + bond potential + radiated away − received = constant` and
+`world momentum + wall momentum = constant`. `received` is light that came in through a lit edge and
+is 0 for ever in a run that is not lit. The wall is the edge turning matter back (`World.bounce`),
+which is the "momentum at a wall" bullet above finally having something to bind — until then the
+World's momentum was "exactly constant, no term" only because nothing ever arrived at the edge
+moving. Read the next paragraph with both in mind.
+
 **The World's invariant is now as strict as the Lab's** (2026-11-08). It used to be weaker, because
 gravitational potential was not stored and collapse genuinely appeared to create heat — so the World
 carried a `gravityPotential` counter with no floor, and one long run manufactured 17,120,848 units
 while the books closed perfectly (item 35). With gravity and expansion gone the invariant is
 `heat + kinetic + in flight + bond potential + radiated away = constant`, every term an integer, and
-**radiated away is the only one allowed to grow**. Momentum is exactly constant with no drain term at
-all: matter cannot leave the sheet and radiation carries energy without momentum. If a World run's
+**radiated away is the only one allowed to grow** (and `received`, in a lit run — see the paragraph
+above). ~~Momentum is exactly constant with no drain term at all~~ *(superseded 2026-11-09: world +
+wall is what is constant)*: matter cannot leave the sheet and radiation carries energy without momentum. If a World run's
 books do not close to the unit, it is a bug and there is nowhere left to hide it.
 
 **Why this is strict: an accounting hole disguises itself as a discovery.** A structure exploiting a
@@ -247,9 +256,12 @@ through the Lab. The five screening tools — `screen.mjs`, `budget.mjs`, `momen
 `radiate.mjs`, `orbit.mjs` — are not part of the engine. There are two engines: the Lab is
 `lab.mjs`, `constants.mjs` and `lab-check.mjs` (`node lab-check.mjs`, thirteen checks, ~30 s; also
 in the repo's slow lane and in `simulations.yml`), and the World is `world.mjs`, `constants.mjs` and
-`world-check.mjs` (`node world-check.mjs`, eleven checks, ~20 s). **A law settled in one engine is
+`world-check.mjs` (`node world-check.mjs`, seventeen checks, ~12 s). **A law settled in one engine is
 not in the other until someone carries it across.** The World ran law 1's retired reading for a day
-because nobody did — README item 37, and the reason `world-check.mjs` Check 9 exists. `world-run.mjs`
+because nobody did — README item 37, and the reason `world-check.mjs` Check 9 exists. **And it ran
+with no collisions at all until 2026-11-09** (item 42): matter that met matter stopped, a hot gas took
+519 steps in 15,000 ticks, and the counter that would have said so printed 0. When you port a law,
+port the whole method and then count the thing it is for. `world-run.mjs`
 runs the World and reads three things off it — chemistry, cooling, and the temperature gradient from
 skin to core — three seeds by default, and it writes every run to `runs/`. It has no gravity dial any
 more: there is nothing to dial (items 20, 40). `wave.mjs`, `snapshot.mjs`, `census.mjs` and `collide.mjs` run the engine
@@ -322,10 +334,20 @@ Lab's assertion can, and caught two seams by failing (18,541 and 34,864 units).
   still the central question.)*
 - **The World is where the big runs go, and its size is a time budget, not a memory one.** Six bytes
   a hexagon, no reallocation, nothing to relax: what is left per cell per tick is the shuffle, two
-  random draws per primitive, and the four laws. A long run needs two things this engine does not yet
-  have — a resume (nothing loads a World back, so a three-day run dies with the process) and a reason
-  to trust it over millions of ticks (a stream reached tick 569,750 and the books were off by one
-  unit, which under rule 6 is a bug and is unfound).
+  random draws per primitive, and the four laws. ~~A long run needs two things this engine does not yet
+  have — a resume … and a reason to trust it over millions of ticks (a stream reached tick 569,750
+  and the books were off by one unit, which under rule 6 is a bug and is unfound).~~ **Both exist as of
+  2026-11-09:** `World.checkpoint` / `restore` are exact, and a one-unit hole in how light moves was
+  found and closed (items 45, 46; `HOW-WE-DECIDED.md`, *A world that is left running*). Whether that
+  hole was the 569,750-tick one cannot be shown.
+- **The world that is left running** lives in `runs/eternal/` (not committed) and starts with
+  `run-world.cmd`. It is lit from the west and its brightness is steered toward temperature 4, because
+  no fixed brightness is stable (item 43). **Do not delete or overwrite that folder**: it is the only
+  copy of a run that may be days old. Changing `world.mjs` or `constants.mjs` changes the physics under
+  it from the next start, and its journal records that with both hashes — so say so to Ric before
+  editing the engine while a world he cares about is standing.
+- **`journal.mjs` is an instrument and its entries are not findings.** Rule 11 applies to every one of
+  them before anything is said to Ric about what a world did.
 - **The two time schemes are a test.** Run the same small configuration in both and compare species,
   binding energies and rates. That is how the World's approximation gets validated.
 - **The viewer is instrumentation, not decoration.** It reads frozen runs: `node snapshot.mjs` writes

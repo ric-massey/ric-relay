@@ -2759,6 +2759,241 @@ would ring briefly first.
 
 ---
 
+## A world that is left running (2026-11-09)
+
+*Ric, 2026-11-09: "i wanted to start a world and let it run and check in on it every once in a while
+with the chance of something crazy happening … like emergent happening." Then: "do all 5", and after
+the sweep, "do those things that you find." This section is what that took. Most of it was not the
+plumbing that was asked for. It was finding out that the World could not do anything while it ran.*
+
+**What was asked for** was five things: energy flowing through the World, a resume, a journal of what
+happened while nobody watched, the website relay, and a start with the PC. All five exist now and are
+described at the end. Three of them turned up things that were wrong with the engine, and those come
+first because everything else rests on them. Every number below is `CANDIDATE_ZERO`, one seed unless
+it says otherwise, and none of it is a result about the physics — it is a record of what the engine
+did before and after each change.
+
+### 1. A one-unit hole in how light moves — found, reproduced, closed
+
+`AGENTS.md` carried this for two days: *"a stream reached tick 569,750 and the books were off by one
+unit, which under rule 6 is a bug and is unfound."*
+
+`propagateAll` moved every quantum in one pass over the hexagons in index order. A quantum that could
+not move — the absorber ahead was at the heat ceiling, or the slot ahead was taken — was written back
+where it stood. But if the quantum *behind* it had been looked at first, that one had already stepped
+into the same slot; the write-back found the bit set, and two quanta became one. One unit of energy,
+no error. It needs light travelling toward higher indices behind a hexagon holding 65,535 units, which
+is why only a long run would meet it.
+
+- **Reproduced before it was fixed:** a kind-1 primitive at 65,535 with two quanta queued behind it
+  heading east. One tick: `heat 65535, in flight 2` became `heat 65535, in flight 1`, and the ledger
+  threw `energy 65536 was 65537`.
+- **The fix** walks each line of light from its head backwards — two passes, one for the directions
+  whose neighbour is at a higher index and one for the rest — so the quantum in front has always
+  been decided before the one behind asks.
+- **It changes nothing else:** a 96 × 96 world, seed 7, seeded at temperature 4, run 1,500 ticks on
+  the old engine and the new, ended with **identical bytes in all five arrays** and 5,543 units
+  radiated in both.
+- `world-check.mjs` **Check 12** lays three quanta behind a full absorber in each of the six
+  directions and holds the count.
+
+**What cannot be said:** that this is *the* unit the 569,750-tick stream lost. That run was under
+gravity and its settings were not kept, so it cannot be replayed. This is a one-unit hole of the
+right shape, and it is the only one found.
+
+### 2. The World had no collisions, and so nothing in it moved
+
+The lit edge (below) was built first, and its first measurements made no sense: light poured into the
+west side of a 64 × 64 sheet for 600,000 ticks and the heat never got past the first three of eight
+bands — the lit band read temperature 233 and the far five read 0.0. Heat was not being carried,
+because matter was not moving. Counting it (lesson 6: count the thing a claim is about):
+
+| 64 × 64, fill 0.30, ticks 5,000–20,000 | steps taken | steps refused | mean \|p\| at the end |
+|---|---|---|---|
+| seeded at temperature 12 (no bond can stand) | **519** | **9,333,810** | 53.9 of 63 |
+| seeded at temperature 4 | **260** | **2,304,804** | 16.9 |
+
+A gas too hot to bond took 519 steps in fifteen thousand ticks. `step()` read:
+
+```js
+if (isMatter(w, j)) { this.counts.blocked++; return; }
+if (w.bonds[j])     { this.counts.blocked++; return; }    // a quantum is there
+```
+
+**Two pieces of settled Lab physics had never been carried across**, which is the trap `AGENTS.md`
+rule 12 names and item 37 already fell into once:
+
+- **Collisions.** Law 1 has always said matter meeting matter is a collision — "any redistribution
+  with the same vector sum is legal … resolve them in Margolus blocks" — and `lab.mjs` `collide` has
+  done it since the Lab's first day. The World refused the step and did nothing else, so a primitive
+  kept every unit of its momentum and leaned on whatever it had touched, for ever. Meanwhile the
+  thermal kick went on turning heat into momentum that nothing could spend: 270,207 units of energy
+  stood as motion in a world where nothing moved. The counter that would have shown it, `collided`,
+  printed 0 on every run, and a 0 reads as physics.
+- **Moving matter absorbs light.** In the Lab a primitive that steps into a hexagon holding quanta
+  takes them as heat ("it stops at the first matter it meets, which absorbs it"). In the World one
+  quantum anywhere in a hexagon blocked any mass at any speed, so warm matter could not move through
+  its own glow.
+
+Both are ported as the Lab has them. Two differences, each the World's standing habit: the third
+hexagon of a collision block may be off the sheet and is then not in the block; and shed kinetic
+energy is spread over the block and has to *fit*, where the Lab puts it on one hexagon and throws —
+the World declines and counts it (`collisionNoRoom`), as `exchange()` does. `world-check.mjs`
+**Check 14** (200 head-on pairs: momentum and energy exact every time, mean outcome near zero, and a
+hot gas takes 677,416 steps in 2,000 ticks) and **Check 16** (three quanta absorbed as three units;
+declined whole at the heat ceiling).
+
+### 3. And then everything ended up against the wall — item 8 comes back
+
+With collisions on, the same hot 64 × 64 sheet had **951 of its 1,254 primitives inside the outermost
+four hexagons after 3,000 ticks**, and 2.4 million refused steps behind them. "The edge holds matter
+in" had meant the step off the sheet was refused and the primitive kept its momentum; while nothing
+moved, that could not be seen.
+
+This is **README item 8** — "floor bounce or absorb" — which was parked on 2026-11-06 with the note
+"returns only if the World keeps one." The World has four. The *Correction — momentum at the wall*
+in section 1 above already says what to do about the accounting: a wall is a momentum reservoir, and
+the invariant is `world momentum + wall momentum = constant`. That is now what `Ledger.check` asserts
+(it was `world momentum = constant`, true only because nothing ever reached the edge with momentum
+that mattered).
+
+**Which behaviour** that section left "deliberately unresolved … it belongs in the search rather than
+in a guess made now", so both were measured — 64 × 64, 20,000 ticks, books closing throughout:
+
+| wall | seeded at | matter in the outer 4 hexagons (a fair share is 23%) | bonded (skin) | steps | bonds formed / broken |
+|---|---|---|---|---|---|
+| refuses the step (before) | 12 | **76%**, at 3,000 ticks | — | 171 in the last 15,000 | — |
+| **returns it** (`p → −p`, wall takes `2p`) | 4 | 30% | 58% (68%) | 5,588,192 | 24,175 / 23,411 |
+| **returns it** | 12 | 31% | 41% (55%) | 6,542,365 | 17,079 / 16,582 |
+| absorbs it (`p → 0`, its KE to its heat, wall takes `p`) | 4 | 48% | 64% (73%) | 4,564,309 | 20,813 / 19,908 |
+| absorbs it | 12 | 47% | 45% (59%) | 5,444,474 | 16,813 / 16,222 |
+
+**The engine returns it** (`World.bounce`). That was a choice made on 2026-11-09 to get a World that
+moves, and it was put to Ric with the table above. **Settled 2026-11-10 — Ric: "Keep returning."** Both conserve. Absorbing does what section 1
+predicted: matter settles on the boundary, twice its fair share, which is the sedimentation ratchet —
+and here it would be sedimentation onto all four edges of the sheet at once, with nothing to say
+which way is down. Returning keeps matter in the interior. *Straight back rather than mirrored:* a
+mirror keeps the momentum along the edge and reverses the part across it, which needs a different
+rule for the q edges and the r edges of an axial sheet and a rounding where the mirrored vector is
+not an integer one; reversal is one rule for every side and exact for every momentum, at the price of
+a wall that scatters like a rough one. `world-check.mjs` **Check 15**.
+
+**What the three changes did together**, on one warm 64 × 64 sheet over 60,000 ticks: 16,830,492
+steps, 12,755,204 collisions, 69,106 bonds formed and 68,303 broken, 59% of matter bonded and holding
+there, and the books — energy, matter, and world-plus-wall momentum — closing at every check. The
+same sheet on the engine of the day before took a few hundred steps.
+
+**Every World number quoted before 2026-11-09 was measured on an engine in which matter did not
+move**, and is superseded: items 36 and 41 (a cold 96² sheet "finishing frozen at 89.1% bonded"; the
+skin 1.08× cooler than the bulk at 258²), the 1/side cooling figures, and every `runs/world-*.json`.
+They are left where they are, marked. A cold 258² sheet now reaches 98.5% bonded in 3,000 ticks
+(`world-run.mjs`, seed 1). Nothing has been re-measured to replace items 36 and 41 yet.
+
+### 4. Light in through one edge, and why a fixed brightness does not work
+
+**What was wanted** was energy passing *through* the World, since a World with one source (law 2,
+paid once per bond) and one sink (the edge) can only run down. Three shapes were on offer: a held hot
+patch, light in through an edge, random hot spots. **The edge was chosen** (`receiveAtEdge`): it uses
+the radiation the physics already has, one quantum at a time at the causal limit; it sets no
+temperature anywhere, which a hot patch would; and it has a path in, which a hot spot in the interior
+does not. It costs one number (the chance per tick that a lit edge hexagon receives a quantum) and
+one term in the books (`received`), and it is **a held condition, not a sixth law** — off unless a
+run asks, so every existing run and check is unchanged by it. `world-check.mjs` **Check 17**.
+
+Two things about it were guessed wrong and measured right:
+
+- **It does not make a gradient.** It was expected to leave the sheet warm on the lit side and cold
+  on the far one. Once matter moves, a 64 × 64 sheet mixes faster than light can build a slope: at
+  rate 0.5 for 4,000 ticks the west half read 1.96 and the east half 1.99, against a dark control's
+  1.43 and 1.27. It warms the whole sheet. Whether a slope stands on a much larger sheet is not known.
+- **No fixed brightness is stable**, and this is the finding that matters. 64 × 64, seeded at 4,
+  300,000 ticks, six rates:
+
+| rate (per lit hexagon per tick) | quanta in / tick | quanta out / tick | mean temperature, roughly, start → end |
+|---|---|---|---|
+| 0 (dark) | 0 | 2.13 → 2.10 | 2.6 → 0.9 (at 200,000) |
+| 0.05 | 3.20 | 2.16 → 2.21 | 3.5 → 4.6 |
+| 0.1 | 6.40 | 2.16 → 2.27 | 4.9 → 11 |
+| 0.2 | 12.8 | 2.17 → 2.31 | 6.6 → 23 |
+| 0.4 | 25.6 | 2.20 → 2.37 | 10 → 46 |
+| 1 | 64.0 | 2.26 → 2.52 | 22 → 118 |
+
+  **What the sheet radiates hardly depends on how hot it is**: 2.13 quanta a tick at temperature 2.5
+  and 2.52 at temperature 118 — a fifty-fold change in temperature for an 18% change in output. So
+  there is no temperature at which "out" rises to meet "in". A lit World either cools until it stops
+  or heats until nothing can bond, and a few percent of brightness decides which. That is **README
+  item 43**, and its cause is the clock: see below.
+
+**So the long run steers.** `world-stream.mjs --hold T` trims the brightness every 1,000 ticks toward
+a target mean temperature — a slowly-learned base rate plus a push proportional to the error. It is a
+held condition of the same kind as the Lab's thermostat, with one difference worth keeping: it acts
+only through the light at the edge and never sets a temperature. The target defaults to 4, half of
+law 2's modulus: bonds are worth 1 to 8, so about half of them can stand there, and measured at that
+temperature about half of all matter is bonded and bonds turn over faster than at any hotter setting
+(1.1 a tick on a 64 × 64 sheet, against 0.4 at temperature 45). **4 and the starting rate 0.035 are
+chosen numbers**, in `constants.mjs` `INFLOW` with their reasons, and they belong to `CANDIDATE_ZERO`.
+The steering runs at fixed ticks from saved state, so a resumed World steers exactly as it would have.
+
+### 5. Two things the sweep found and did not change — they are Ric's
+
+**The clock is flat everywhere chemistry lives (item 43).** `rate(T) = floor + c·T`, and rule 8's
+filter requires `floor + c·T_max ≤ 1` with `T_max = 65,535` — the hottest a kind-1 primitive's energy
+field could ever hold. At `CANDIDATE_ZERO` that makes the chance a primitive's clock fires in a tick
+`(4,096 + T) / 69,631`: **0.05882 at absolute zero and 0.05894 at temperature 8**, the deepest bond
+there is. Two tenths of one percent. Everything the clock is supposed to carry — hot matter radiating
+more, thermal pressure, the kick reading temperature "without reading it" — rides on that 0.2%. It is
+why output does not follow temperature (above), and it would also mean item 29's thermal pressure is
+not there in any World that can hold a bond. `radiate.mjs` settled that only monotonicity matters for
+the second law's *direction*; this is about its *size*. What would decide it: a clock whose slope is
+set by the temperatures matter can reach while bonded rather than by the field's ceiling — which is a
+change to a searched constant's range and to filter 1, and so not something to do in passing.
+
+**Momentum sits at the field's ceiling (item 44).** A collision redraws the block's momenta
+*uniformly* over law 1's whole ±63 range, subject only to the heat being there to pay. So collisions
+do not thermalise momentum, they flatten it across the field: after 60,000 ticks at temperature 4,
+mean \|p\| was about 54 of 63 and 222 of 1,254 primitives had a component within 8 of the limit. And
+because kinetic energy is `S·Q / 2k`, the light kinds soak up heat as motion without limit that
+matters: **67 primitives of kind below 16 held 43,394 units of kinetic energy (648 each) while the
+other 1,187 held 82,738 (70 each)**. This is rule 5's dangerous case — "a width that silently picks a
+constant, because it looks like a derivation": how fast matter moves is being set by the width of the
+momentum field, not by how hot it is. The Lab draws outcomes the same way, so whatever this means, it
+means it in both engines. What would decide it: measure the Lab's momentum distribution at a held
+temperature and see whether it also sits at the range; if it does, the legal set of collision
+outcomes needs a reason to prefer small exchanges, and that is a change to law 1.
+
+### 6. The plumbing that was asked for
+
+- **Resume** (`World.checkpoint`, `World.restore`). Exact: 450 ticks, a checkpoint through JSON and a
+  copy of the bytes, 450 more, against 900 straight through — every byte of the five arrays equal and
+  the next random draw equal (`world-check.mjs` **Check 13**). What made it exact was `order`: `doTick`
+  shuffles the *previous* tick's order in place, so the shuffle is state, four bytes a hexagon, and a
+  resume that left it out conserved perfectly and was a different run. A checkpoint that does not
+  balance against its own ledger is refused before it runs. A books failure at tick N can therefore
+  be replayed from the checkpoint before it.
+- **A kept world** (`world-stream.mjs --keep <folder>`, `run-world.cmd`). Checkpointed every five
+  minutes straight after the books close, written whole and renamed with the previous one kept, and
+  again on Ctrl-C. Tested by killing the process outright: a 96 × 96 world came back at tick 27,000
+  with its journal and its steering. If the engine's hash has changed since the world was begun, the
+  journal says so with both hashes and the run goes on — from that tick it is a different physics and
+  the record must not credit the old structures to the new laws.
+- **A journal** (`journal.mjs`). An instrument, outside the engine: every 500 ticks it walks the
+  bonded structures and writes down firsts and records — the largest ever, the first closed loop, the
+  longest-standing, the furthest-travelled in one piece, a composition become common, a sudden loss
+  of bonds, the sheet freezing or thawing, the books failing. Its walk is cross-checked against the
+  engine's bond count at every look. **An entry is what one run's instrument saw, not a finding**, and
+  the file and the page both say so; "the same structure" in it means "made of exactly the same
+  kinds", an identity the journal invents and the world does not have (rule 2).
+- **The viewer** shows the journal on the Live World tab, marks what is new since that browser last
+  looked, draws the world's whole life as three lines (temperature, bonded, largest structure), and a
+  tap on an entry goes to where the thing was. `viewer.html#live` opens on the run.
+- **The relay** needed nothing built: the Worker's `/universe` route was already deployed and answers
+  "nothing is streaming". `run-world.cmd` pushes to it when the site password is in Windows Credential
+  Manager under `ric-terminal/universe`, and stays on the wifi when it is not.
+- **Starting with the PC** (`autostart.ps1 install`): one shortcut in the Startup folder, nothing
+  else. The run is at the lowest CPU priority and stands still while `cs2.exe` or VALORANT is open.
+- **Speed:** 129 ticks a second at 258 × 258 (117 ns per cell per tick, from 98 — collisions cost),
+  which is about eleven million ticks a day.
+
 ## The register in full
 
 *Moved here from `README.md` on 2026-11-06, verbatim, when the README was cut down to a short spec

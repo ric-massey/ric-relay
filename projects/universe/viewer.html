@@ -453,6 +453,32 @@
   .sheet-body > .panel { border: 0; background: transparent; padding: 4px 0 14px; }
   .sheet-body > .panel + .panel { border-top: 1px solid var(--hairline); }
   .sheet-pane[hidden] { display: none; }
+
+  /* The journal of a world that is left running (2026-11-09): what happened
+     while nobody was looking. Plain rows; the ones since the last visit carry
+     a rule down their left edge and nothing louder than that. */
+  #railJournal[hidden], #sheetJournal[hidden] { display: none; }
+  .jr-status { margin: 0 0 10px; font-size: 12px; color: var(--ink-2); line-height: 1.5; }
+  .jr-status b { color: var(--ink); font-weight: 600; }
+  .jr-status .still { color: var(--state-flight); }
+  .jr-since { margin: 0 0 6px; font-size: 11px; color: var(--ink-muted); }
+  /* its whole life in three lines: one hue, no axes, the range said in words */
+  .jr-trend { display: grid; grid-template-columns: auto 1fr auto; gap: 5px 9px; align-items: center;
+    margin: 0 0 11px; font-size: 11px; color: var(--ink-muted); }
+  .jr-trend svg { width: 100%; height: 22px; display: block; overflow: visible; }
+  .jr-trend polyline { fill: none; stroke: var(--ink-2); stroke-width: 1.25; vector-effect: non-scaling-stroke;
+    stroke-linejoin: round; stroke-linecap: round; }
+  .jr-trend b { color: var(--ink); font-weight: 600; }
+  .jr-list { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+  .jr-list li { padding: 7px 0 7px 9px; border-top: 1px solid var(--hairline);
+    border-left: 2px solid transparent; font-size: 12.5px; line-height: 1.4; color: var(--ink-2); }
+  .jr-list li.fresh { border-left-color: var(--state-flight); color: var(--ink); }
+  .jr-list li.grave { color: var(--state-flight); }
+  .jr-list .when { display: block; font-size: 11px; color: var(--ink-muted); margin-bottom: 1px; }
+  .jr-list button { appearance: none; border: 0; background: none; padding: 0; margin: 0;
+    font: inherit; color: inherit; text-align: left; cursor: pointer; }
+  .jr-list button:hover, .jr-list button:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+  .jr-note { margin: 9px 0 0; font-size: 11px; color: var(--ink-muted); line-height: 1.45; }
 </style>
 </head>
 <body>
@@ -630,6 +656,11 @@
 
   <!-- the standing rail: desktop -->
   <div class="rail" id="rail">
+    <div class="panel" id="railJournal" hidden>
+      <h2>Journal <span class="chip mono" id="journalChip"></span></h2>
+      <div id="journalBody"></div>
+    </div>
+
     <div class="panel">
       <h2>World <span class="chip mono" id="worldChip">—</span></h2>
       <div class="tallies">
@@ -711,6 +742,7 @@
       <div class="panel" id="sheetGroup"></div>
     </div>
     <div class="sheet-pane" data-pane="world" hidden>
+      <div class="panel" id="sheetJournal" hidden></div>
       <div class="panel" id="sheetWorld"></div>
       <div class="panel" id="sheetRun"></div>
     </div>
@@ -902,12 +934,12 @@ function analyse(w) {
   // percolating cluster is exactly what we would want to look at.
   const stack = [];
 
-  let matter = 0, heat = 0, kinetic = 0, inFlight = 0, bondEnds = 0, tempSum = 0, pxs = 0, pys = 0;
+  let matter = 0, heat = 0, kinetic = 0, inFlight = 0, bondEnds = 0, tempSum = 0, kindSum = 0, pxs = 0, pys = 0;
 
   for (let i = 0; i < n; i++) {
     if (w.kind[i] === 0) { inFlight += popcount6(w.bonds[i]); continue; }
     matter++; heat += w.energy[i]; kinetic += keOf(w, i);
-    tempSum += tempOf(w, i); bondEnds += popcount6(w.bonds[i]);
+    tempSum += tempOf(w, i); kindSum += w.kind[i]; bondEnds += popcount6(w.bonds[i]);
     pxs += w.mx[i]; pys += w.my[i];
   }
 
@@ -951,7 +983,12 @@ function analyse(w) {
   w.groups = groups;
   w.stats = {
     matter, heat, kinetic, inFlight, bonds: bondEnds / 2,
-    meanTemp: matter ? tempSum / matter : 0,
+    // HEAT OVER KIND, SUMMED -- the engine's own definition (world.mjs sample,
+    // and what the long run's steering reads). This was the mean of each
+    // primitive's own temperature, which a handful of light, hot primitives
+    // drag far upward: on the first kept world the two read 20.9 and 3.15 on
+    // the same screen (2026-11-09). One number, one meaning.
+    meanTemp: kindSum ? heat / kindSum : 0,
     groups: groups.length, largest, bonded,
     px: pxs, py: pys,
   };
@@ -2341,6 +2378,8 @@ function worldRunHtml(h) {
     <dt>Bond potential</dt><dd>${fmt(b.bondPotential || 0)}</dd>
     <dt>Radiated away</dt><dd>${fmt(b.radiatedAway || 0)}${
       b.radiatedAway ? " — out through the edge, for good" : ""}</dd>
+    ${b.received ? `<dt>Received</dt><dd>${fmt(b.received)} — light in through the lit edge, counted</dd>` : ""}
+    ${old(b.wall) ? `<dt>The wall</dt><dd>(${b.wall.join(", ")}) — momentum it took turning matter back</dd>` : ""}
     ${old(b.gravityPotential) ? `<dt>Gravity potential</dt><dd>${fmt(b.gravityPotential)}</dd>` : ""}
     ${old(b.expansionLoss) ? `<dt>Expansion loss</dt><dd>${fmt(b.expansionLoss)}</dd>` : ""}
     <dt>Net p</dt><dd>(${(b.momentum || [0, 0]).join(", ")})</dd>
@@ -2348,6 +2387,7 @@ function worldRunHtml(h) {
       ? "closed at tick " + fmt(b.closedAtTick || 0) + " — energy, matter and momentum"
       : "DID NOT CLOSE"}</dd>
     <dt>Steps</dt><dd>${fmt(c.stepped || 0)} · ${fmt(c.blocked || 0)} blocked</dd>
+    ${old(c.bounced) ? `<dt>Collisions</dt><dd>${fmt(c.collided || 0)} · ${fmt(c.bounced || 0)} turned back at the edge</dd>` : ""}
     <dt>Bonds</dt><dd>${fmt(c.bondsFormed || 0)} formed · ${fmt(c.bondsBroken || 0)} broken</dd>
     <dt>Shared</dt><dd>${fmt(c.momentumShared || 0)} hops along bonds</dd>
     <dt>Kicks</dt><dd>${fmt(c.thermalKicks || 0)} heat → motion</dd>
@@ -2361,8 +2401,9 @@ function worldRunHtml(h) {
     a picture of the physics any more; it is a picture of the moment it broke.</p>`}
   <p class="warn" style="margin-top:9px"><b>Nothing read off this is a result.</b>
   CANDIDATE_ZERO is the plumbing test point, not a chosen physics, so a live picture is a
-  picture of the plumbing working. The World is a bounded sheet of four laws: law 2 is the
-  only thing that adds energy and the edge is the only thing that removes it. This run also
+  picture of the plumbing working. The World is a bounded sheet of four laws: ${b.received
+    ? "light comes in through one lit edge and law 2 pays out once per bond, and the edge"
+    : "law 2 is the only thing that adds energy and the edge"} is the only thing that removes it. This run also
   approximates: ${(r.approximations || []).join("; ")}.</p>`;
 }
 
@@ -2483,7 +2524,116 @@ function cycleShape() {
   requestDraw();
 }
 
+// ------------------------------------------------------------- the journal
+// A world that is left running keeps a journal (journal.mjs) and every frame
+// carries the tail of it. This shows it, newest first, and marks what is new
+// since the last time THIS browser looked -- which it remembers per world, by
+// the moment the world was begun, in localStorage and nowhere else.
+//
+// It is the instrument's notebook, and the page says so under it: an entry is
+// what one run's instrument saw, not a finding (the project's rule 11).
+const journalSeen = { born: null, atLoad: 0, newest: 0, key: "" };
+const seenKey = (born) => "universe:journal-seen:" + born;
+function journalRemember() {
+  if (!journalSeen.born || !journalSeen.newest) return;
+  try { localStorage.setItem(seenKey(journalSeen.born), String(journalSeen.newest)); } catch { /* private window */ }
+}
+addEventListener("pagehide", journalRemember);
+document.addEventListener("visibilitychange", () => { if (document.hidden) journalRemember(); });
+
+const ago = (iso) => {
+  const s = (Date.now() - Date.parse(iso)) / 1000;
+  if (!isFinite(s)) return "";
+  return s < 90 ? "just now" : s < 5400 ? Math.round(s / 60) + " min ago"
+    : s < 129600 ? Math.round(s / 3600) + " h ago" : Math.round(s / 86400) + " days ago";
+};
+const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+
+function paintJournal() {
+  const h = W?.meta?.header, L = h && h.longRun, J = h && h.journal;
+  const boxes = [el("railJournal"), el("sheetJournal")];
+  if (!L || !Array.isArray(J)) { for (const b of boxes) b.hidden = true; return; }
+  if (journalSeen.born !== L.born) {
+    journalSeen.born = L.born; journalSeen.newest = 0; journalSeen.key = "";
+    try { journalSeen.atLoad = Number(localStorage.getItem(seenKey(L.born))) || 0; } catch { journalSeen.atLoad = 0; }
+  }
+  const tick = (h.live && h.live.tick) || 0;
+  const hold = L.hold, lit = L.inflow;
+  const status = `<p class="jr-status">
+    Begun <b>${esc(new Date(L.born).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }))}</b>
+    · <b>${fmt(tick)}</b> ticks old${L.sessions > 1 ? ` · picked up ${L.sessions - 1} time${L.sessions > 2 ? "s" : ""}` : ""}<br>
+    ${lit ? `Lit from the ${esc(lit.side)}${hold ? `, held near temperature <b>${hold.target}</b>${
+      hold.reading != null ? ` (reads ${hold.reading.toFixed(2)})` : ""}` : ""}` : "Dark: no light comes in"}<br>
+    ${L.checkpoint && L.checkpoint.at ? `Saved at tick ${fmt(L.checkpoint.tick)}, ${ago(L.checkpoint.at)}` : "Not saved yet"}
+    ${L.paused ? `<br><span class="still">${esc(L.paused[0].toUpperCase() + L.paused.slice(1))}.</span>` : ""}
+    ${L.engineChanges ? `<br>The engine has changed under it ${L.engineChanges} time${L.engineChanges > 1 ? "s" : ""}.` : ""}</p>`;
+
+  // ITS WHOLE LIFE, in three lines: temperature, how much is bonded, and the
+  // largest structure standing. Each is drawn across its own range, and the
+  // range is written beside it, because a line with no scale says nothing.
+  let trend = "";
+  const T = L.trend && L.trend.points && L.trend.points.length > 2 ? L.trend.points : null;
+  if (T) {
+    const line = (label, col, show) => {
+      let lo = Infinity, hi = -Infinity;
+      for (const p of T) { if (p[col] < lo) lo = p[col]; if (p[col] > hi) hi = p[col]; }
+      const t0 = T[0][0], t1 = T[T.length - 1][0], span = hi - lo || 1;
+      const pts = T.map((p) => `${(((p[0] - t0) / (t1 - t0 || 1)) * 100).toFixed(1)},${(20 - ((p[col] - lo) / span) * 18 - 1).toFixed(1)}`).join(" ");
+      return `<span>${label}</span>
+        <svg viewBox="0 0 100 20" preserveAspectRatio="none" role="img" aria-label="${label} over the life of this world, from ${show(lo)} to ${show(hi)}"><polyline points="${pts}"/></svg>
+        <span class="mono"><b>${show(T[T.length - 1][col])}</b> · ${show(lo)}–${show(hi)}</span>`;
+    };
+    trend = `<div class="jr-trend">${line("Temperature", 1, (v) => v.toFixed(1))}${
+      line("Bonded", 2, (v) => Math.round(v * 100) + "%")}${line("Largest", 3, (v) => fmt(v))}</div>`;
+  }
+
+  // the list is rebuilt only when it changes, so a tap on a row is not lost
+  // to the next frame
+  const key = J.length + ":" + (J.length ? J[J.length - 1].tick + J[J.length - 1].type : "");
+  const fresh = J.filter((e) => e.tick > journalSeen.atLoad).length;
+  const first = journalSeen.atLoad === 0;
+  for (const box of boxes) {
+    box.hidden = false;
+    const body = box.id === "railJournal" ? el("journalBody") : box;
+    if (journalSeen.key !== key || !body.querySelector(".jr-list")) {
+      const rows = J.slice().reverse().map((e, i) => {
+        const cls = [e.tick > journalSeen.atLoad && !first ? "fresh" : "", e.type === "books" ? "grave" : ""].join(" ").trim();
+        const text = esc(e.text);
+        const at = e.q != null && e.r != null;
+        return `<li${cls ? ` class="${cls}"` : ""}><span class="when mono">tick ${fmt(e.tick)} · ${esc(ago(e.at))}</span>${
+          at ? `<button type="button" data-q="${e.q}" data-r="${e.r}" title="Go to where it was at that tick. It may have moved or come apart since.">${text}</button>` : text}</li>`;
+      }).join("");
+      body.innerHTML = (box.id === "railJournal" ? "" : `<h2>Journal</h2>`)
+        + `<div class="jr-top"></div>`
+        + (J.length ? `<p class="jr-since">${first ? "Everything so far, newest first."
+            : fresh ? `${fresh} new since you last looked.` : "Nothing new since you last looked."}</p>
+           <ul class="jr-list">${rows}</ul>` : `<p class="empty">Nothing worth writing down yet.</p>`)
+        + `<p class="jr-note">What one run's instrument saw, not a finding. Go and look before believing it.</p>`;
+    }
+    body.querySelector(".jr-top").innerHTML = status + trend;
+  }
+  journalSeen.key = key;
+  if (J.length) journalSeen.newest = J[J.length - 1].tick;
+  el("journalChip").textContent = fresh && !first ? `${fresh} new` : "";
+}
+
+// a tap on an entry goes to where the thing was when it was written down
+function journalGo(e) {
+  const b = e.target.closest("button[data-q]");
+  if (!b || !W) return;
+  const q = Math.max(0, Math.min(W.cols - 1, +b.dataset.q)), r = Math.max(0, Math.min(W.rows - 1, +b.dataset.r));
+  cam.s = Math.max(cam.s, 16);
+  cam.ox = VW / 2 - wx(q, r) * cam.s;
+  cam.oy = VH / 2 - wy(q, r) * cam.s;
+  userMoved = true;
+  sel = r * W.cols + q;
+  clampCam(); paintReadouts(); requestDraw();
+}
+el("railJournal").addEventListener("click", journalGo);
+el("sheetJournal").addEventListener("click", journalGo);
+
 function paintReadouts() {
+  paintJournal();
   syncShapes();
   el("hexBody").innerHTML = hexHtml(sel);
   el("groupBody").innerHTML = groupHtml(sel);
@@ -3006,7 +3156,8 @@ async function pullFrame() {
     if (!W || W.meta?.source !== "world") {
       msg(`<b>Nothing is streaming.</b><br><br>Start it on the machine with the run:
         <br><span class="mono">node world-stream.mjs</span>
-        &nbsp;— then watch <span class="mono">This wifi</span>.<br><br>
+        &nbsp;— then watch <span class="mono">This wifi</span>.
+        <br>The world that is left running starts with <span class="mono">run-world.cmd</span>.<br><br>
         For the website relay, the same command with
         <span class="mono">--push ${RELAY}</span>
         and <span class="mono">UNIVERSE_TOKEN</span> set in that shell.
@@ -3179,7 +3330,9 @@ if (TOUCH) {
   addEventListener("resize", setChrome);
 }
 resize();
-await showTab("seed");
+// The stream's own page opens on the run, and so does a link that asks for it
+// (viewer.html#live -- the bookmark for checking in on a world from a phone).
+await showTab(location.port === "8787" || location.hash === "#live" ? "live" : "seed");
 // If runs are on this machine, say how many on the Lab tab's own label, rather
 // than making the user click to find out there are none.
 Promise.all(["current", "last"].map((s) =>

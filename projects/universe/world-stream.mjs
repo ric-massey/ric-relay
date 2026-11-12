@@ -38,17 +38,42 @@
 //   node world-stream.mjs --push https://training-log.rmbuster82.workers.dev/universe
 //   node world-stream.mjs --host 127.0.0.1           this machine only
 //   node world-stream.mjs --save runs/world          also write frames to disk
+//
+// A WORLD THAT IS LEFT RUNNING (2026-11-09). Ric: "i wanted to start a world and
+// let it run and check in on it every once in a while with the chance of
+// something crazy happening". Four flags, and run-world.cmd passes all of them:
+//
+//   --keep runs/eternal      the world LIVES in that folder. It is checkpointed
+//                            there every few minutes and on Ctrl-C, and the next
+//                            start picks the same world up at the same tick,
+//                            exactly (world-check.mjs Check 13). Without --keep
+//                            a run still dies with the process, as it always did.
+//   --lit [rate]             light comes in through the west edge (world.mjs,
+//                            receiveAtEdge). A held condition, off by default.
+//   --hold [T]               trim the brightness to keep the mean temperature
+//                            near T. See "steer" below for why a fixed
+//                            brightness is not enough.
+//   --yield-to cs2.exe       stand still while that program is running, so the
+//                            world does not take a core from a game.
+//
+// With --keep the run also keeps a JOURNAL (journal.mjs): the firsts and the
+// records, written to <keep>/journal.jsonl and carried in every frame, so the
+// viewer can say what happened since the last time anyone looked.
 
 import { createServer } from "node:http";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, appendFileSync,
+         copyFileSync } from "node:fs";
+import { execFile } from "node:child_process";
+import os from "node:os";
 import { gzipSync } from "node:zlib";
 import { join, dirname, extname, resolve, normalize } from "node:path";
 import { networkInterfaces } from "node:os";
 import { fileURLToPath } from "node:url";
 import { World, census, countMatter, neighbour, qOf, rOf } from "./world.mjs";
-import { CANDIDATE_ZERO } from "./constants.mjs";
+import { CANDIDATE_ZERO, INFLOW } from "./constants.mjs";
+import { Journal } from "./journal.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -56,6 +81,13 @@ const argv = process.argv.slice(2);
 const flag = (n, d) => { const i = argv.indexOf("--" + n); return i === -1 ? d : argv[i + 1]; };
 const num = (n, d) => { const v = flag(n, null); return v === null ? d : Number(v); };
 const has = (n) => argv.includes("--" + n);
+// a flag that may stand alone or carry a number: --lit, --lit 0.05
+const optional = (n, d) => {
+  const i = argv.indexOf("--" + n);
+  if (i === -1) return null;
+  const v = argv[i + 1];
+  return v === undefined || v.startsWith("--") ? d : Number(v);
+};
 
 const OPT = {
   // the run -- the same dials world-run.mjs has, and they mean the same things
@@ -88,7 +120,19 @@ const OPT = {
   tokenEnv:  flag("token-env", "UNIVERSE_TOKEN"),
   pushEvery: num("push-every", 10),     // SECONDS between pushes, not ticks
   save:      flag("save", null),        // write each frame to <save>.{json,bin}
+
+  // a world that is left running -- see the top of the file
+  keep:          flag("keep", null),                    // the folder the world lives in
+  checkpointMin: num("checkpoint-min", 5),              // minutes between checkpoints
+  lit:           optional("lit", INFLOW.LONG_RUN.rate), // chance per edge hexagon per tick
+  hold:          optional("hold", INFLOW.LONG_RUN.holdT),   // mean temperature to steer toward
+  journalEvery:  num("journal-every", 500),             // ticks between the journal's looks
+  yieldTo:       (flag("yield-to", "") || "").split(",").map((x) => x.trim()).filter(Boolean),
+  low:           has("low"),                            // run at the lowest CPU priority
 };
+if (OPT.hold !== null && OPT.lit === null) OPT.lit = INFLOW.LONG_RUN.rate;   // holding needs a light
+if (OPT.low) { try { os.setPriority(os.constants.priority.PRIORITY_LOW); } catch { /* not allowed: run as we are */ } }
+
 
 
 // ------------------------------------------------------------- the engine id
@@ -101,12 +145,151 @@ const digest = (f) => createHash("sha256")
 const engine = { world: digest("world.mjs"), constants: digest("constants.mjs") };
 
 // ---------------------------------------------------------------- the world
-const world = new World({
-  cols: OPT.size, rows: OPT.size, seed: OPT.seed,
-  constants: CANDIDATE_ZERO,
-});
-world.seed_(OPT.fill, (rng) => 1 + rng.below(255),
-            { temp0: OPT.temp0, momentumRange: OPT.p0 });
+// EITHER THE ONE THAT WAS LEFT HERE, OR A NEW ONE. With --keep and a checkpoint
+// in the folder, the world on disk is picked up exactly where it stopped and
+// every run flag that would have shaped a NEW world (size, seed, fill, temp0,
+// p0) is ignored, because that world already has them. It is said out loud at
+// startup which of the two happened.
+const KEEP = OPT.keep ? join(HERE, OPT.keep) : null;
+const CK = KEEP ? { json: join(KEEP, "world.json"), bin: join(KEEP, "world.bin"),
+                    journal: join(KEEP, "journal.jsonl") } : null;
+let world, journal = new Journal(), life;
+// `life` is what a kept world knows about itself that is not physics: when it
+// was first started, how many times it has been picked up, and the state of
+// the brightness steering. It rides in the checkpoint beside the world.
+if (CK && existsSync(CK.json) && existsSync(CK.bin)) {
+  const meta = JSON.parse(readFileSync(CK.json, "utf8"));
+  world = World.restore(meta, new Uint8Array(readFileSync(CK.bin)), { constants: CANDIDATE_ZERO });
+  journal = Journal.load(meta.journal);
+  life = meta.life;
+  life.sessions++;
+  life.resumedAtTick = world.tick;
+  // THE ENGINE MAY HAVE CHANGED UNDER IT. A checkpoint is a state, and any
+  // engine can run a state forward -- but from this tick on it is a different
+  // physics, and a record that did not say so would let a week-old structure
+  // be credited to laws it never lived under. So it is written into the
+  // journal, with both hashes, and the run goes on.
+  if (life.engine.world !== engine.world || life.engine.constants !== engine.constants) {
+    journal.note(world.tick, "engine", `The engine changed under this world. It was running `
+      + `world.mjs ${life.engine.world} / constants.mjs ${life.engine.constants} and continues on `
+      + `${engine.world} / ${engine.constants}. Everything before this tick happened under the old one.`,
+      { from: life.engine, to: engine });
+    life.engineChanges = (life.engineChanges || 0) + 1;
+    life.engine = engine;
+  }
+  journal.note(world.tick, "resumed", `Picked up again at tick ${world.tick.toLocaleString("en-US")}.`);
+} else {
+  world = new World({
+    cols: OPT.size, rows: OPT.size, seed: OPT.seed,
+    constants: CANDIDATE_ZERO,
+    inflow: OPT.lit !== null ? { rate: OPT.lit, side: INFLOW.LONG_RUN.side } : null,
+  });
+  world.seed_(OPT.fill, (rng) => 1 + rng.below(255),
+              { temp0: OPT.temp0, momentumRange: OPT.p0 });
+  life = {
+    born: new Date().toISOString(), sessions: 1, resumedAtTick: 0, engine, engineChanges: 0,
+    seed: OPT.seed, fill: OPT.fill, temp0: OPT.temp0, p0: OPT.p0,
+    hold: OPT.hold !== null ? { target: OPT.hold, integral: OPT.lit ?? INFLOW.LONG_RUN.rate } : null,
+  };
+  if (CK) {
+    journal.note(0, "born", `A new world: ${OPT.size} x ${OPT.size} hexagons, seed ${OPT.seed}, `
+      + `${Math.round(OPT.fill * 100)}% matter, seeded at temperature ${OPT.temp0}`
+      + (OPT.lit !== null ? `, lit from the west` : `, dark`)
+      + (OPT.hold !== null ? ` and held near temperature ${OPT.hold}.` : `.`));
+  }
+}
+
+// --------------------------------------------------------- steering the light
+// WHY A FIXED BRIGHTNESS IS NOT ENOUGH, measured 2026-11-09 on a 64x64 sheet
+// over 300,000 ticks at six brightnesses: what the sheet radiates barely
+// depends on how hot it is -- 2.13 quanta a tick at temperature 2.5, 2.52 at
+// temperature 115. A primitive sheds one quantum when its clock fires, and at
+// CANDIDATE_ZERO the clock's rate is flat to a fraction of a percent across
+// every temperature a World actually reaches (its slope is set by the hottest
+// temperature the energy field could ever hold, 65535, and chemistry lives
+// below 8). So there is no temperature at which "out" rises to meet "in": a
+// world lit at a fixed rate either cools until it stops or heats until
+// nothing can bond, and which one is decided by a few percent of brightness.
+// That is a finding about the clock and it is in README as an open item. Until
+// it is settled, a world that is meant to go on being interesting has to have
+// its brightness trimmed, and this is that trim.
+//
+// IT IS A HELD CONDITION, the same kind of thing the Lab's thermostat is --
+// but it acts only through the light at the edge, never by setting a
+// temperature anywhere. Every INFLOW.HOLD.EVERY ticks it reads the sheet's
+// mean temperature and sets the edge's rate to a slowly-learned base plus a
+// push proportional to how far off the target the sheet is. It runs at fixed
+// ticks from saved state, so a resumed world steers exactly as it would have.
+function steer() {
+  const h = life.hold;
+  if (!h) return;
+  const c = census(world.w);
+  const T = c.matter ? c.heat / c.matter : 0;
+  const err = h.target - T;
+  h.integral = Math.min(INFLOW.RATE[1], Math.max(INFLOW.RATE[0], h.integral + INFLOW.HOLD.KI * err));
+  const rate = Math.min(INFLOW.RATE[1], Math.max(INFLOW.RATE[0], h.integral + INFLOW.HOLD.KP * err));
+  h.reading = T; h.rate = rate;
+  world.setInflow(rate > 0 ? { rate, side: INFLOW.LONG_RUN.side } : null);
+}
+
+// ------------------------------------------------------------ the journal
+const TREND_MAX = 360;      // points kept; a drawing's resolution, not physics
+let lastLook = null;
+function look() {
+  const { fresh, now } = journal.observe(world);
+  lastLook = now;
+  // THE TREND: a few numbers from each look, kept for the whole life of the
+  // world so the viewer can draw what it has been doing and not only what it
+  // is doing. It never grows past TREND_MAX points: when it fills, every
+  // other point is dropped and the stride doubles, so a week and an hour are
+  // both a few hundred points and the old end simply gets coarser.
+  const tr = life.trend || (life.trend = { stride: 1, points: [] });
+  if (journal.looks % tr.stride === 0) {
+    tr.points.push([now.tick, +now.meanTemp.toFixed(3), +now.bondedFraction.toFixed(4), now.largest, now.sorts]);
+    if (tr.points.length > TREND_MAX) { tr.points = tr.points.filter((_, i) => i % 2 === 1); tr.stride *= 2; }
+  }
+  if (CK && fresh.length) {
+    appendFileSync(CK.journal, fresh.map((e) => JSON.stringify(e)).join("\n") + "\n");
+    for (const e of fresh) console.log(`  [tick ${e.tick.toLocaleString("en-US")}] ${e.text}`);
+  }
+}
+
+// ---------------------------------------------------------- the checkpoint
+// Written whole to a .tmp and renamed, with the previous one kept as .prev, so
+// a power cut during a write costs at most a few minutes and never the world.
+// Only ever taken straight after the books have closed at this exact tick: a
+// state that does not balance is not saved over one that does.
+let lastCheckpoint = { tick: null, at: null }, lastCheckpointMs = Date.now();
+function writeCheckpoint() {
+  if (!CK) return;
+  mkdirSync(KEEP, { recursive: true });
+  const { meta, bytes } = world.checkpoint();
+  meta.life = life; meta.journal = journal.save(); meta.written = new Date().toISOString();
+  writeFileSync(CK.bin + ".tmp", bytes);
+  writeFileSync(CK.json + ".tmp", JSON.stringify(meta));
+  if (existsSync(CK.json) && existsSync(CK.bin)) {
+    copyFileSync(CK.bin, CK.bin + ".prev"); copyFileSync(CK.json, CK.json + ".prev");
+  }
+  renameSync(CK.bin + ".tmp", CK.bin);
+  renameSync(CK.json + ".tmp", CK.json);
+  lastCheckpoint = { tick: world.tick, at: meta.written };
+  lastCheckpointMs = Date.now();
+}
+
+// ------------------------------------------------------- standing aside
+// --yield-to: while any of the named programs is running, the world does not
+// tick. It still answers the viewer, and says why it is still.
+let paused = null;
+function checkYield() {
+  if (!OPT.yieldTo.length || process.platform !== "win32") return;
+  execFile("tasklist", ["/FO", "CSV", "/NH"], { windowsHide: true }, (err, out) => {
+    if (err) return;
+    const running = out.toLowerCase();
+    const hit = OPT.yieldTo.find((name) => running.includes(`"${name.toLowerCase()}"`));
+    paused = hit ? `standing still while ${hit} is running` : null;
+  });
+}
+if (OPT.yieldTo.length) { checkYield(); setInterval(checkYield, 15000).unref(); }
 
 // WHICH AXES ACTUALLY WRAP, asked of the engine rather than asserted here.
 // Ric, 2026-11-07, on the map: "it needs to be an accurate representation of
@@ -219,13 +402,28 @@ function frameHeader() {
       frameEvery: OPT.every,
     },
 
+    // A world that is left running: when it began, what holds it, what it has
+    // done. null for an ordinary run, and the viewer shows nothing extra.
+    longRun: CK ? {
+      born: life.born, sessions: life.sessions, resumedAtTick: life.resumedAtTick,
+      engineChanges: life.engineChanges || 0,
+      paused,
+      checkpoint: lastCheckpoint,
+      inflow: world.inflow,
+      hold: life.hold ? { target: life.hold.target, reading: life.hold.reading ?? null } : null,
+      look: lastLook,
+      trend: life.trend ? { fields: ["tick", "meanTemp", "bondedFraction", "largest", "sorts"],
+                            points: life.trend.points } : null,
+    } : null,
+    journal: CK ? journal.entries.slice(-80) : null,
+
     run: {
-      seed: OPT.seed,
+      seed: life.seed ?? OPT.seed,
       events: world.tick,                 // the viewer's run line reads this
       ticks: world.tick,
-      fill: OPT.fill,
-      temp0: OPT.temp0,
-      p0: OPT.p0,
+      fill: life.fill ?? OPT.fill,
+      temp0: life.temp0 ?? OPT.temp0,
+      p0: life.p0 ?? OPT.p0,
       approximations: [
         "ticked time rather than the Lab's event queue (TWO-RUNS.md)",
       ],
@@ -239,6 +437,8 @@ function frameHeader() {
       momentum: [c.px, c.py],
       bondPotential: world.ledger.bondPotential,
       radiatedAway: world.ledger.escaped,
+      received: world.ledger.received,
+      wall: [world.ledger.wallX, world.ledger.wallY],
       closedAtTick: lastCheckedTick,
       closes: booksClose,
     },
@@ -293,12 +493,21 @@ async function saveFrame() {
 
 function slice() {
   if (stopped) return;
+  if (paused) {                            // --yield-to: answer the viewer, do no work
+    if (Date.now() - lastFrameAt >= 5000) buildFrame();
+    setTimeout(slice, 1000);
+    return;
+  }
   try {
     for (let n = 0; n < OPT.batch; n++) {
       world.doTick();
+      if (life.hold && world.tick % INFLOW.HOLD.EVERY === 0) steer();
+      if (CK && OPT.journalEvery && world.tick % OPT.journalEvery === 0) look();
       if (OPT.check && world.tick % OPT.check === 0) {
         world.ledger.check(world.w, `tick ${world.tick}`);
         lastCheckedTick = world.tick; booksClose = true;
+        // straight after the books closed, and only then
+        if (CK && Date.now() - lastCheckpointMs >= OPT.checkpointMin * 60000) writeCheckpoint();
       }
       if (world.tick >= OPT.ticks) { stopped = true; break; }
       if (world.tick % OPT.every === 0) break;        // frame time
@@ -308,6 +517,17 @@ function slice() {
     // stops and the frame SAYS SO rather than carrying on looking fine.
     booksClose = false; stopped = true; lastError = err.message;
     console.error(`\n  THE BOOKS DID NOT CLOSE at tick ${world.tick}:\n  ${err.message}\n`);
+    // The checkpoint on disk is from BEFORE this and still balances, so the
+    // failure can be replayed from it exactly. It is not overwritten.
+    if (CK) {
+      try {
+        const e = journal.note(world.tick, "books", `THE BOOKS DID NOT CLOSE at tick `
+          + `${world.tick.toLocaleString("en-US")}: ${err.message.slice(0, 300)} The run has stopped. `
+          + `The last checkpoint (tick ${lastCheckpoint.tick ?? "none"}) is from before it and can be replayed.`);
+        mkdirSync(KEEP, { recursive: true });
+        appendFileSync(CK.journal, JSON.stringify(e) + "\n");
+      } catch { /* the console has it */ }
+    }
   }
   const due = world.tick % OPT.every === 0 && Date.now() - lastFrameAt >= OPT.minMs;
   if (due || stopped) buildFrame();
@@ -382,6 +602,8 @@ const server = createServer(async (req, res) => {
       cells: world.w.cells, size: [world.w.cols, world.w.rows],
       booksClose, lastError, watchers: watchers.size,
       pushing: !!OPT.push, pushedAt: pushedAt, pushError,
+      kept: KEEP, paused, checkpoint: lastCheckpoint, inflow: world.inflow,
+      hold: life.hold, sessions: life.sessions, born: life.born,
     }, null, 2));
   }
 
@@ -443,11 +665,22 @@ async function pushOnce() {
 server.listen(OPT.port, OPT.host, () => {
   const w = world.w;
   console.log(`The World is running here, and can be watched.`);
-  console.log(`  ${w.cols}x${w.rows} = ${w.cells.toLocaleString()} hexagons, seed ${OPT.seed}, fill ${OPT.fill}`);
+  console.log(`  ${w.cols}x${w.rows} = ${w.cells.toLocaleString()} hexagons, seed ${life.seed}, fill ${life.fill}`);
   console.log(`  a bounded sheet: four laws, no thermostat, and an EDGE light leaves through.`);
-  console.log(OPT.temp0 || OPT.p0
-    ? `  start        temperature ${OPT.temp0}, momentum +-${OPT.p0}, net zero`
-    : `  start        absolute zero: no heat, no momentum. Every pair that can bond will, at once.`);
+  if (CK && life.sessions > 1) {
+    console.log(`  PICKED UP    at tick ${world.tick.toLocaleString()} from ${OPT.keep}/ -- `
+      + `begun ${life.born.slice(0, 10)}, session ${life.sessions}. Size, seed and seeding are the world's own.`);
+  } else {
+    console.log(life.temp0 || life.p0
+      ? `  start        temperature ${life.temp0}, momentum +-${life.p0}, net zero`
+      : `  start        absolute zero: no heat, no momentum. Every pair that can bond will, at once.`);
+  }
+  if (world.inflow) {
+    console.log(`  lit          from the ${world.inflow.side}, ${world.inflow.rate.toFixed(4)} quanta per edge hexagon per tick`
+      + (life.hold ? `, steered to hold temperature ${life.hold.target}` : `, fixed`));
+  }
+  if (CK) console.log(`  kept in      ${OPT.keep}/ -- a checkpoint every ${OPT.checkpointMin} min and on Ctrl-C; the journal beside it`);
+  if (OPT.yieldTo.length) console.log(`  stands still while running: ${OPT.yieldTo.join(", ")}`);
   console.log(`  a frame every ${OPT.every} ticks and at most every ${OPT.minMs} ms; `
     + `the books asserted every ${OPT.check}`);
   console.log();
@@ -474,8 +707,10 @@ server.listen(OPT.port, OPT.host, () => {
     console.log(`  not pushing anywhere. --push <worker url>/universe sends frames to the website.`);
   }
   console.log();
-  console.log(`  Ctrl-C stops it. The run is NOT saved unless --save was given.`);
+  console.log(CK ? `  Ctrl-C stops it and saves it. Start it again and it carries on from the same tick.`
+                 : `  Ctrl-C stops it. The run is NOT kept unless --keep was given.`);
   console.log();
+  if (CK) { look(); if (life.sessions === 1) writeCheckpoint(); }
   buildFrame();
   slice();
 });
@@ -486,9 +721,18 @@ const bye = () => {
   console.log(`\n  stopped at tick ${world.tick}.`
     + (booksClose ? ` The books closed at tick ${lastCheckedTick}.` : ` THE BOOKS DID NOT CLOSE.`));
   if (OPT.save) console.log(`  the last frame is in ${OPT.save}.json and ${OPT.save}.bin`);
+  // A kept world is saved on the way out -- but only a state whose books close
+  // right now, checked here rather than assumed.
+  if (CK && booksClose) {
+    try {
+      world.ledger.check(world.w, `stopping at tick ${world.tick}`);
+      writeCheckpoint();
+      console.log(`  saved in ${OPT.keep}/ at tick ${world.tick.toLocaleString()}. Start it again to carry on.`);
+    } catch (e) { console.error(`  NOT SAVED: ${e.message}`); }
+  }
   server.close(() => process.exit(booksClose ? 0 : 1));
   setTimeout(() => process.exit(booksClose ? 0 : 1), 500);
 };
 process.on("SIGINT", bye);
 process.on("SIGTERM", bye);
-if (has("help")) { console.log(readFileSync(new URL(import.meta.url)).toString().split("\n").slice(0, 42).join("\n")); process.exit(0); }
+if (has("help")) { console.log(readFileSync(new URL(import.meta.url)).toString().split("\n").slice(0, 62).join("\n")); process.exit(0); }
