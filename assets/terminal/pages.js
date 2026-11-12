@@ -46,7 +46,7 @@ window.TERMINAL_PAGES = [
   "title": "/exploration",
   "keys": "event horizon",
   "body": "Ric Massey",
-  "text": "Exploration · How Speed Affects Time · How Big Everything Is · The Geometry of Spacetime · Experiments",
+  "text": "Exploration · How Speed Affects Time · How Big Everything Is · The Geometry of Spacetime · World Builder · Experiments",
   "room": "exploration"
  },
  {
@@ -295,6 +295,14 @@ window.TERMINAL_PAGES = [
   "keys": "",
   "body": "Zoom, pan and open a hexagon of this universe: kind, valence, bonds, temperature, and the bonded group it belongs to. Reads the Lab",
   "text": "A hexagon of this universe · Journal · World — · Hexagon · Group · Run · B to each neighbour",
+  "room": null
+ },
+ {
+  "href": "projects/world-builder/index.html",
+  "title": "World Builder",
+  "keys": "set the rules, run a world",
+  "body": "Choose a physics sandbox or a people sandbox, set how the world works — gravity, chemistry, money, how long lives are — and run it.",
+  "text": "World Builder · Physics sandbox · People sandbox",
   "room": null
  },
  {

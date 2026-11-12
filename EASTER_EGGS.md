@@ -75,6 +75,7 @@ No prompt is required.
 | Siege Conductor | `66` | `COMMAND REJECTED // NICE TRY, PALPATINE` |
 | Starfield (the text page) | `warp` | `NAV COMPUTER: THE SCENIC ROUTE IS FASTER` |
 | Starfield (flying) | `tycho` | `TYCHO MAPPED THE SKY BY EYE // YOU HAVE A SHIP` — not `warp`, whose letters fly the ship |
+| World Builder | `genesis` | `DAY ONE // NO REFUNDS ON WORLDS YOU MADE YOURSELF` |
 | How Big Everything Is | `googol` | `THAT IS A 1 WITH A HUNDRED ZEROES // STILL NOT ON THE LADDER` |
 | Boards (board log) | `beta` | `BETA RECEIVED // PULL HARDER` |
 | Interstate 40 (OFFRAMP) | `exit` | `EXIT NOT FOUND // THE ROAD JUST KEEPS GOING` |

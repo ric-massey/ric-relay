@@ -30,6 +30,7 @@ on:
       - 'projects/kondrite/**'
       - 'projects/offramp/**'
       - 'projects/universe/**'
+      - 'projects/world-builder/**'
       - '.github/workflows/simulations.yml'
       - '.github/checks.mjs'
   schedule:
@@ -50,7 +51,7 @@ jobs:
     strategy:
       fail-fast: false        # one game breaking is not news about the other
       matrix:
-        game: [kondrite, offramp, universe]
+        game: [kondrite, offramp, universe, world-builder]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

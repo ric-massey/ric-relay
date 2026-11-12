@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>World Builder — set the rules, run a world</title>
+<meta name="description" content="Choose a physics sandbox or a people sandbox, set how the world works — gravity, chemistry, money, how long lives are — and run it.">
+<meta name="theme-color" content="#0c1113">
+<script src="../../assets/visit.js" defer></script>
+<style>
+  /* WORLD BUILDER
+     Its own look, on purpose (the site's rule 3): a dark table with a world on
+     it, one ochre accent, a serif for the things that have names. Every colour
+     that carries words clears 4.5:1 on the surface it sits on — --dim is the
+     faintest text there is, and it is 6.9:1 on --panel. Nothing is set under
+     12px. No rounded pills, glows or lifted cards. */
+  :root {
+    --bg: #0c1113; --panel: #12191c; --raise: #182226; --line: #2a383f;
+    --ink: #e3e9e6; --dim: #98a8a5; --acc: #e0a340; --acc-ink: #1a1304;
+    --warn: #ef8a7c; --good: #8fd39a;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); -webkit-text-size-adjust: 100%; }
+  button, select, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  a { color: var(--acc); }
+  :focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0; }
+
+  .btn { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .55rem .9rem; min-height: 44px; }
+  .btn:hover { border-color: var(--dim); }
+  .btn.go { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); font-weight: 700; }
+  .btn.go:hover { filter: brightness(1.08); }
+  .btn.quiet { background: none; }
+  .btn[aria-pressed="true"] { border-color: var(--acc); color: var(--acc); }
+
+  /* ── the first screen: two doors ── */
+  #pick { min-height: 100%; display: flex; flex-direction: column; padding: clamp(1.2rem, 4vw, 3rem) 16px 5rem; max-width: 1080px; margin: 0 auto; }
+  #pick header { margin-bottom: clamp(1rem, 3vw, 2rem); }
+  #pick h1 { font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.05; }
+  #pick header p { color: var(--dim); max-width: 46ch; margin: .6rem 0 0; font-size: 1.05rem; }
+  .doors { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; }
+  .door { display: flex; flex-direction: column; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 0; overflow: hidden; }
+  .door:hover, .door:focus-visible { border-color: var(--acc); }
+  .door canvas { display: block; width: 100%; aspect-ratio: 16 / 10; background: #070a0b; }
+  .door .words { padding: 1rem 1.1rem 1.2rem; }
+  .door h2 { font-size: 1.6rem; }
+  .door p { margin: .35rem 0 0; color: var(--dim); }
+  .door .enter { display: inline-block; margin-top: .8rem; color: var(--acc); font-weight: 600; }
+  @media (max-width: 720px) { .doors { grid-template-columns: 1fr; } }
+
+  /* ── the second screen: the settings ── */
+  #setup { max-width: 860px; margin: 0 auto; padding: 1rem 16px 7rem; }
+  #setup .top { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin: .4rem 0 1rem; }
+  #setup .top h1 { font-size: clamp(1.7rem, 5vw, 2.4rem); }
+  #setup .top p { color: var(--dim); margin: 0; flex-basis: 100%; }
+  .linkish { background: none; border: 0; padding: .6rem 0; color: var(--acc); min-height: 44px; }
+  .presets { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 10px; margin: 0 -16px 1rem; padding-inline: 16px; scrollbar-width: thin; }
+  .preset { flex: 0 0 auto; width: 190px; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: .6rem .7rem; }
+  .preset b { display: block; font-family: var(--serif); font-size: 1.02rem; }
+  .preset span { display: block; color: var(--dim); font-size: .82rem; line-height: 1.35; margin-top: .15rem; }
+  .preset[aria-pressed="true"] { border-color: var(--acc); }
+  details.group { border-top: 1px solid var(--line); }
+  details.group:last-of-type { border-bottom: 1px solid var(--line); }
+  details.group > summary { list-style: none; cursor: pointer; padding: .85rem 0; display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; min-height: 44px; }
+  details.group > summary::-webkit-details-marker { display: none; }
+  details.group > summary h2 { font-size: 1.25rem; }
+  details.group > summary .sum { color: var(--dim); font-size: .85rem; text-align: right; }
+  details.group[open] > summary .sum { visibility: hidden; }
+  .row { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(0, 1.5fr); gap: .2rem 1.2rem; align-items: center; padding: .55rem 0; }
+  .row label, .row .lab { font-weight: 600; }
+  .row .help { grid-column: 1 / -1; color: var(--dim); font-size: .85rem; margin: 0; }
+  .row .ctl { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+  .row .val { color: var(--acc); font-size: .9rem; min-height: 1.3em; }
+  .row.off { opacity: .42; }
+  .row.off .help { display: none; }
+  input[type=range] { width: 100%; height: 32px; accent-color: var(--acc); background: none; margin: 0; }
+  select { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .5rem .6rem; min-height: 44px; width: 100%; }
+  .tog { display: flex; align-items: center; gap: .6rem; min-height: 44px; }
+  .tog input { width: 22px; height: 22px; accent-color: var(--acc); }
+  @media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
+  .launch { position: fixed; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--bg) 92%, transparent); border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: flex; gap: 8px; justify-content: flex-end; align-items: center; z-index: 5; }
+  .launch .changed { color: var(--dim); font-size: .85rem; margin-right: auto; padding-left: 0; }
+  .launch .btn { white-space: nowrap; }
+  /* The way back to the terminal sits above the bar here, not under it. */
+  body.setting .relay-return { bottom: calc(76px + env(safe-area-inset-bottom)); }
+  @media (max-width: 720px) { .launch .changed { display: none; } .launch .btn { padding-inline: .7rem; } }
+
+  /* ── the third screen: the world ── */
+  body.running { overflow: hidden; }
+  body.running .relay-return { display: none; }       /* "← Settings" is the way out here; the return control is on the other two screens */
+  #run { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: auto minmax(0, 1fr); }
+  #bar { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--panel); overflow-x: auto; white-space: nowrap; }
+  #bar .btn { min-height: 40px; padding: .35rem .7rem; flex: 0 0 auto; }
+  #bar .title { font-family: var(--serif); font-size: 1.05rem; margin: 0 .5rem 0 .3rem; flex: 0 0 auto; }
+  #bar .clock { color: var(--dim); font: 13px var(--mono); margin-left: auto; flex: 0 0 auto; padding-left: .6rem; }
+  #bar .seg { display: inline-flex; flex: 0 0 auto; }
+  #bar .seg .btn { border-radius: 0; margin-left: -1px; min-width: 40px; padding: .35rem .5rem; }
+  #bar .seg .btn:first-child { border-radius: 3px 0 0 3px; margin-left: 0; }
+  #bar .seg .btn:last-child { border-radius: 0 3px 3px 0; }
+  #bar .seg .btn[aria-pressed="true"] { position: relative; z-index: 1; }
+  #stage { position: relative; min-width: 0; min-height: 0; background: #070a0b; }
+  #view { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  #view.drag { cursor: grabbing; }
+  #hint { position: absolute; left: 10px; bottom: 10px; color: var(--dim); font-size: 12px; background: rgba(7,10,11,.7); padding: 3px 7px; border-radius: 3px; pointer-events: none; }
+  #slow { position: absolute; right: 10px; top: 10px; color: var(--warn); font-size: 12px; background: rgba(7,10,11,.8); padding: 3px 7px; border-radius: 3px; }
+  #side { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+  #tabs { display: flex; border-bottom: 1px solid var(--line); }
+  #tabs button { flex: 1; background: none; border: 0; border-bottom: 2px solid transparent; padding: .6rem .2rem; min-height: 44px; color: var(--dim); }
+  #tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--acc); }
+  #panes { flex: 1; overflow-y: auto; min-height: 0; padding: 10px 12px 14px; -webkit-overflow-scrolling: touch; }
+  #panes h3 { font-size: 1.05rem; margin: .2rem 0 .4rem; }
+  #panes p { margin: .3rem 0; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: .15rem .8rem; font-size: .92rem; }
+  .kv dt { color: var(--dim); } .kv dd { margin: 0; font-family: var(--mono); font-size: .86rem; text-align: right; }
+  .meter { height: 14px; display: flex; border: 1px solid var(--line); margin: .3rem 0 .2rem; }
+  .meter i { display: block; height: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: .1rem .8rem; font-size: 12px; color: var(--dim); }
+  .legend b { display: inline-block; width: 9px; height: 9px; margin-right: 4px; }
+  .small { color: var(--dim); font-size: .85rem; }
+  .fac { display: block; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: .55rem 0; }
+  .fac:first-of-type { border-top: 0; }
+  .fac .nm { font-family: var(--serif); font-size: 1.02rem; }
+  .fac .sw, .sw { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: baseline; }
+  .fac .ln { display: block; color: var(--dim); font-size: .85rem; }
+  .fac .war { color: var(--warn); }
+  .item { display: block; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: .5rem 0; font-size: .92rem; }
+  .item:first-child { border-top: 0; }
+  .item .yr { color: var(--dim); font: 12px var(--mono); margin-right: .5rem; }
+  .item.big { color: var(--ink); font-weight: 600; }
+  .talk .who { font-weight: 600; }
+  .talk q { quotes: "“" "”"; }
+  .bars { display: grid; grid-template-columns: auto 1fr; gap: .25rem .6rem; align-items: center; font-size: .88rem; margin: .4rem 0; }
+  .bars span { color: var(--dim); }
+  .bars i { display: block; height: 8px; background: var(--raise); border: 1px solid var(--line); }
+  .bars i b { display: block; height: 100%; background: var(--acc); }
+  #chart { display: block; width: 100%; height: 84px; margin: .2rem 0 .6rem; border: 1px solid var(--line); background: var(--bg); }
+  @media (max-width: 860px) {
+    #run { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) minmax(0, 42dvh); }
+    #side { border-left: 0; border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ 1 · choose a sandbox ═══════════════════════════════════════════════ -->
+<main id="pick">
+  <header>
+    <h1>World Builder</h1>
+    <p>Pick a kind of world, decide how it works, and run it. Nothing in it is scripted: what happens is whatever your rules do.</p>
+  </header>
+  <div class="doors">
+    <button class="door" data-mode="physics">
+      <canvas id="mini-physics" width="480" height="300" aria-hidden="true"></canvas>
+      <span class="words">
+        <h2>Physics sandbox</h2>
+        <p>A world of hexagons. Choose how strong gravity is, whether anything bonds, how heat moves, what happens when two things hit. Atoms or planets — the hexagons are whichever your settings make them.</p>
+        <span class="enter">Set the physics →</span>
+      </span>
+    </button>
+    <button class="door" data-mode="people">
+      <canvas id="mini-people" width="480" height="300" aria-hidden="true"></canvas>
+      <span class="words">
+        <h2>People sandbox</h2>
+        <p>Hundreds of people who farm, trade, talk, pair up and grow old. Choose how long they live, how money works, who leads. Factions, wars and breakaways are whatever they make of it.</p>
+        <span class="enter">Set the people →</span>
+      </span>
+    </button>
+  </div>
+  <noscript><p>World Builder runs its worlds in your browser, so it needs JavaScript switched on.</p></noscript>
+</main>
+
+<!-- ═══ 2 · set it up ══════════════════════════════════════════════════════ -->
+<main id="setup" hidden>
+  <button class="linkish" id="back-pick">← Both sandboxes</button>
+  <div class="top">
+    <h1 id="setup-title"></h1>
+    <p id="setup-note"></p>
+  </div>
+  <div class="presets" id="presets" role="group" aria-label="Starting points"></div>
+  <form id="form" autocomplete="off"></form>
+  <div class="launch">
+    <span class="changed" id="changed"></span>
+    <button class="btn quiet" id="dice" type="button">Surprise me</button>
+    <button class="btn quiet" id="reset" type="button">Reset</button>
+    <button class="btn go" id="go" type="button">Run this world</button>
+  </div>
+</main>
+
+<!-- ═══ 3 · the world ══════════════════════════════════════════════════════ -->
+<div id="run" hidden>
+  <div id="bar">
+    <button class="btn" id="to-setup">← Settings</button>
+    <span class="title" id="run-title"></span>
+    <button class="btn" id="pause" aria-pressed="false">Pause</button>
+    <span class="seg" id="speeds" role="group" aria-label="Speed"></span>
+    <span class="seg" id="views" role="group" aria-label="Colour by"></span>
+    <button class="btn" id="fit">Whole world</button>
+    <button class="btn" id="again">Start again</button>
+    <button class="btn" id="share">Copy link</button>
+    <span class="clock" id="clock"></span>
+  </div>
+  <div id="stage">
+    <canvas id="view"></canvas>
+    <span id="hint">Drag to move · scroll or pinch to zoom · tap anything to look at it</span>
+    <span id="slow" hidden>Running behind — fewer things or a slower clock will catch it up</span>
+  </div>
+  <aside id="side">
+    <div id="tabs" role="tablist"></div>
+    <div id="panes"></div>
+  </aside>
+</div>
+
+<script src="physics.js"></script>
+<script src="people.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const ENGINES = {
+    physics: { api: window.WBPhysics, title: "Physics sandbox", note: "Every setting is a term in the physics. Start from one of these, or set each thing yourself." },
+    people:  { api: window.WBPeople,  title: "People sandbox",  note: "Every setting changes what people need or do. Start from one of these, or set each thing yourself." },
+  };
+  const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  let mode = null, values = {}, preset = null;
+  const screens = { pick: $("pick"), setup: $("setup"), run: $("run") };
+  function show(name) {
+    for (const k in screens) screens[k].hidden = k !== name;
+    document.body.classList.toggle("running", name === "run");
+    document.body.classList.toggle("setting", name === "setup");
+    if (name !== "run") stopRun();
+    if (name === "pick") startMinis(); else stopMinis();
+    window.scrollTo(0, 0);
+  }
+
+  /* ── the address ─────────────────────────────────────────────────────────
+     #people?people=900&rich=0.5 — the sandbox and only what differs from its
+     defaults, so a link to a world is short and still opens after a setting is
+     added. "&run" on the end goes straight to the world. */
+  function toHash(andRun) {
+    const E = ENGINES[mode].api, parts = [];
+    for (const k in values) if (values[k] !== E.DEFAULTS[k]) parts.push(k + "=" + encodeURIComponent(values[k]));
+    return "#" + mode + (parts.length || andRun ? "?" + parts.concat(andRun ? ["run"] : []).join("&") : "");
+  }
+  function fromHash() {
+    const m = /^#(physics|people)(?:\?(.*))?$/.exec(location.hash);
+    if (!m) return null;
+    const out = { mode: m[1], set: {}, run: false };
+    for (const part of (m[2] || "").split("&")) {
+      if (part === "run") { out.run = true; continue; }
+      const i = part.indexOf("=");
+      if (i > 0) out.set[part.slice(0, i)] = decodeURIComponent(part.slice(i + 1));
+    }
+    return out;
+  }
+  function setHash(h) { try { history.replaceState(null, "", h || location.pathname + location.search); } catch (e) { /* file:// in some browsers */ } }
+
+  /* ── the settings form, built from the engine's own list ───────────────── */
+  const controls = {};
+  /* A slider whose range is wide runs on a curve, so the low end — where the
+     interesting part usually is — gets most of the travel. */
+  function posToValue(it, pos) {
+    const u = Math.pow(pos / 1000, it.curve || 1);
+    let v = it.min + (it.max - it.min) * u;
+    v = Math.round((v - it.min) / it.step) * it.step + it.min;
+    return Math.min(it.max, Math.max(it.min, parseFloat(v.toFixed(4))));
+  }
+  function valueToPos(it, v) { return Math.round(Math.pow((v - it.min) / (it.max - it.min), 1 / (it.curve || 1)) * 1000); }
+  function words(it, v) {
+    if (it.type === "range") return it.say ? it.say(v) : String(v);
+    if (it.type === "toggle") return v ? "on" : "off";
+    return (it.options.find(o => o[0] === v) || ["", ""])[1];
+  }
+
+  function buildSetup() {
+    const E = ENGINES[mode];
+    $("setup-title").textContent = E.title;
+    $("setup-note").textContent = E.note;
+    const pr = $("presets"); pr.textContent = "";
+    for (const p of E.api.PRESETS) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "preset"; b.dataset.id = p.id;
+      b.innerHTML = "<b>" + esc(p.name) + "</b><span>" + esc(p.note) + "</span>";
+      b.addEventListener("click", () => { values = E.api.clean(p.set); preset = p.id; fill(); });
+      pr.appendChild(b);
+    }
+    const form = $("form"); form.textContent = "";
+    for (const k in controls) delete controls[k];
+    E.api.SCHEMA.forEach((g, gi) => {
+      const d = document.createElement("details"); d.className = "group"; d.open = gi < 2 || window.innerWidth > 860;
+      const s = document.createElement("summary");
+      s.innerHTML = "<h2>" + esc(g.title) + "</h2><span class='sum'></span>";
+      d.appendChild(s);
+      for (const it of g.items) {
+        const row = document.createElement("div"); row.className = "row";
+        const id = "set-" + it.key;
+        let ctl;
+        if (it.type === "range") {
+          row.innerHTML = "<label for='" + id + "'>" + esc(it.label) + "</label><div class='ctl'><input type='range' id='" + id + "' min='0' max='1000' step='1'><span class='val'></span></div>";
+          ctl = row.querySelector("input");
+          ctl.addEventListener("input", () => { values[it.key] = posToValue(it, +ctl.value); preset = null; refresh(); });
+        } else if (it.type === "select") {
+          row.innerHTML = "<label for='" + id + "'>" + esc(it.label) + "</label><div class='ctl'><select id='" + id + "'>" +
+            it.options.map(o => "<option value='" + esc(o[0]) + "'>" + esc(o[1]) + "</option>").join("") + "</select></div>";
+          ctl = row.querySelector("select");
+          ctl.addEventListener("change", () => { values[it.key] = ctl.value; preset = null; refresh(); });
+        } else {
+          row.innerHTML = "<span class='lab'>" + esc(it.label) + "</span><div class='ctl'><label class='tog'><input type='checkbox' id='" + id + "'><span class='val'></span></label></div>";
+          ctl = row.querySelector("input");
+          ctl.addEventListener("change", () => { values[it.key] = ctl.checked; preset = null; refresh(); });
+        }
+        if (it.help) { const h = document.createElement("p"); h.className = "help"; h.textContent = it.help; row.appendChild(h); }
+        controls[it.key] = { it: it, row: row, ctl: ctl, val: row.querySelector(".val"), group: s.querySelector(".sum") };
+        d.appendChild(row);
+      }
+      form.appendChild(d);
+    });
+    fill();
+  }
+  function fill() {
+    for (const k in controls) {
+      const c = controls[k], v = values[k];
+      if (c.it.type === "range") c.ctl.value = valueToPos(c.it, v);
+      else if (c.it.type === "select") c.ctl.value = v;
+      else c.ctl.checked = v;
+    }
+    refresh();
+  }
+  /* Everything that depends on the values: the words beside each slider, which
+     rows are greyed because another setting has switched them off, the line
+     that sums a closed group up, and the address. */
+  function refresh() {
+    const E = ENGINES[mode].api;
+    let changed = 0;
+    const sums = new Map();
+    for (const k in controls) {
+      const c = controls[k], v = values[k];
+      if (c.val) c.val.textContent = words(c.it, v);
+      if (c.it.type === "range") c.ctl.setAttribute("aria-valuetext", words(c.it, v));
+      const on = !c.it.when || c.it.when(values);
+      c.row.classList.toggle("off", !on);
+      c.ctl.disabled = !on;
+      if (v !== E.DEFAULTS[k]) { changed++; if (on) { if (!sums.has(c.group)) sums.set(c.group, []); sums.get(c.group).push(c.it.label.toLowerCase() + ": " + words(c.it, v)); } }
+    }
+    for (const k in controls) controls[k].group.textContent = "";
+    for (const [el, list] of sums) el.textContent = list.slice(0, 2).join(" · ") + (list.length > 2 ? " · +" + (list.length - 2) : "");
+    $("changed").textContent = changed ? changed + (changed === 1 ? " setting" : " settings") + " changed from the usual" : "Everything as usual";
+    for (const b of $("presets").children) b.setAttribute("aria-pressed", String(b.dataset.id === preset));
+    setHash(toHash(false));
+  }
+  function openSetup(m, set) {
+    mode = m; values = ENGINES[m].api.clean(set || {}); preset = set ? null : ENGINES[m].api.PRESETS[0].id;
+    if (!set) values = ENGINES[m].api.clean(ENGINES[m].api.PRESETS[0].set);
+    buildSetup(); show("setup");
+  }
+  $("reset").addEventListener("click", () => { values = ENGINES[mode].api.clean({}); preset = null; fill(); });
+  $("dice").addEventListener("click", () => {
+    /* Every setting drawn from its own range. Most of these are bad worlds,
+       which is the fun of it. */
+    const E = ENGINES[mode].api, next = {};
+    for (const g of E.SCHEMA) for (const it of g.items) {
+      if (it.key === "rate") continue;
+      if (it.type === "range") next[it.key] = posToValue(it, Math.random() * 1000);
+      else if (it.type === "toggle") next[it.key] = Math.random() < 0.7;
+      else next[it.key] = it.options[Math.floor(Math.random() * it.options.length)][0];
+    }
+    if (mode === "physics") next.count = Math.min(next.count, 1800);
+    values = E.clean(next); preset = null; fill();
+  });
+  $("back-pick").addEventListener("click", () => { setHash(""); show("pick"); });
+  for (const d of document.querySelectorAll(".door")) d.addEventListener("click", () => openSetup(d.dataset.mode));
+  $("go").addEventListener("click", startRun);
+
+  /* ═══ the world ════════════════════════════════════════════════════════ */
+  const canvas = $("view"), ctx = canvas.getContext("2d");
+  let world = null, raf = 0, paused = false, rate = 1, last = 0, owed = 0, lag = 0;
+  let cam = { x: 0, y: 0, s: 1, held: false }, viewMode = "kind", picked = null, follow = false, tab = "", paneAt = 0;
+  let land = null, landAt = -1e9;
+
+  function sizeCanvas() {
+    const r = canvas.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.max(1, Math.round(r.width * d)), h = Math.max(1, Math.round(r.height * d));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    return d;
+  }
+  function fit() {
+    const r = canvas.getBoundingClientRect();
+    const W = mode === "physics" ? world.width : world.cols, H = mode === "physics" ? world.height : world.rows;
+    cam.s = Math.min(r.width / W, r.height / H) * 0.94; cam.x = W / 2; cam.y = H / 2; cam.held = false; follow = false;
+  }
+
+  function startRun() {
+    stopRun();
+    const E = ENGINES[mode].api;
+    world = E.create(values);
+    rate = values.rate; paused = false; picked = null; follow = false; owed = 0; lag = 0; land = null; landAt = -1e9;
+    setHash(toHash(true));
+    $("run-title").textContent = ENGINES[mode].title;
+    $("pause").textContent = "Pause"; $("pause").setAttribute("aria-pressed", "false");
+    buildBar(); buildTabs();
+    show("run");
+    sizeCanvas(); fit();
+    last = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+  function stopRun() { if (raf) cancelAnimationFrame(raf); raf = 0; }
+
+  function buildBar() {
+    const sp = $("speeds"); sp.textContent = "";
+    const list = mode === "physics" ? [0.25, 0.5, 1, 2, 4] : [0.5, 1, 2, 4, 8, 16];
+    if (list.indexOf(rate) < 0) list.push(rate);
+    list.sort((a, b) => a - b);
+    for (const r of list) {
+      const b = document.createElement("button"); b.className = "btn"; b.textContent = r + "×";
+      b.setAttribute("aria-pressed", String(r === rate));
+      b.addEventListener("click", () => { rate = r; for (const o of sp.children) o.setAttribute("aria-pressed", String(o === b)); });
+      sp.appendChild(b);
+    }
+    const vw = $("views"); vw.textContent = "";
+    const kinds = mode === "physics" ? [["kind", "Kind"], ["heat", "Heat"], ["speed", "Speed"]]
+                                     : [["faction", "Factions"], ["mood", "Mood"], ["views", "Beliefs"], ["wealth", "Wealth"]];
+    viewMode = kinds[0][0];
+    for (const k of kinds) {
+      const b = document.createElement("button"); b.className = "btn"; b.textContent = k[1];
+      b.setAttribute("aria-pressed", String(k[0] === viewMode));
+      b.addEventListener("click", () => { viewMode = k[0]; for (const o of vw.children) o.setAttribute("aria-pressed", String(o === b)); });
+      vw.appendChild(b);
+    }
+  }
+  function buildTabs() {
+    const names = mode === "physics" ? [["world", "World"], ["look", "Hexagon"]]
+                                     : [["factions", "Factions"], ["news", "News"], ["talk", "Talk"], ["look", "Person"], ["world", "World"]];
+    const el = $("tabs"); el.textContent = "";
+    for (const n of names) {
+      const b = document.createElement("button"); b.textContent = n[1]; b.dataset.tab = n[0]; b.setAttribute("role", "tab");
+      b.addEventListener("click", () => setTab(n[0]));
+      el.appendChild(b);
+    }
+    setTab(names[0][0]);
+  }
+  function setTab(name) {
+    tab = name;
+    for (const b of $("tabs").children) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+    $("panes").scrollTop = 0; paneAt = 0;
+    pane();
+  }
+
+  $("to-setup").addEventListener("click", () => { show("setup"); refresh(); });
+  $("again").addEventListener("click", startRun);
+  $("fit").addEventListener("click", fit);
+  $("pause").addEventListener("click", () => {
+    paused = !paused;
+    $("pause").textContent = paused ? "Resume" : "Pause"; $("pause").setAttribute("aria-pressed", String(paused));
+  });
+  $("share").addEventListener("click", () => {
+    const url = location.href.split("#")[0] + toHash(true);
+    const done = () => { $("share").textContent = "Copied"; setTimeout(() => { $("share").textContent = "Copy link"; }, 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => window.prompt("Link to this world", url));
+    else window.prompt("Link to this world", url);
+  });
+  window.addEventListener("keydown", e => {
+    if (screens.run.hidden || e.target.closest("input, select, textarea")) return;
+    if (e.code === "Space") { e.preventDefault(); $("pause").click(); }
+  });
+
+  /* ── moving the view ───────────────────────────────────────────────────── */
+  const ptrs = new Map();
+  let moved = 0, pinch = 0;
+  const toWorld = (px, py) => {
+    const r = canvas.getBoundingClientRect();
+    return [cam.x + (px - r.left - r.width / 2) / cam.s, cam.y + (py - r.top - r.height / 2) / cam.s];
+  };
+  function zoomAt(px, py, k) {
+    const before = toWorld(px, py);
+    cam.s = Math.min(mode === "people" ? 64 : 160, Math.max(0.4, cam.s * k));
+    const after = toWorld(px, py);
+    cam.x += before[0] - after[0]; cam.y += before[1] - after[1]; cam.held = true;
+  }
+  canvas.addEventListener("pointerdown", e => {
+    canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (ptrs.size === 1) moved = 0;
+    if (ptrs.size === 2) { const p = [...ptrs.values()]; pinch = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); }
+    canvas.classList.add("drag");
+  });
+  canvas.addEventListener("pointermove", e => {
+    const was = ptrs.get(e.pointerId); if (!was) return;
+    if (ptrs.size === 1) {
+      const dx = e.clientX - was[0], dy = e.clientY - was[1];
+      moved += Math.abs(dx) + Math.abs(dy);
+      if (moved > 6) { cam.x -= dx / cam.s; cam.y -= dy / cam.s; cam.held = true; follow = false; }
+    }
+    ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (ptrs.size === 2) {
+      const p = [...ptrs.values()], d = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]);
+      if (pinch > 0) zoomAt((p[0][0] + p[1][0]) / 2, (p[0][1] + p[1][1]) / 2, d / pinch);
+      pinch = d; moved = 99;
+    }
+  });
+  const lift = e => {
+    if (!ptrs.has(e.pointerId)) return;
+    ptrs.delete(e.pointerId);
+    if (!ptrs.size) canvas.classList.remove("drag");
+    if (e.type === "pointerup" && moved <= 6 && !ptrs.size) tap(e.clientX, e.clientY);
+  };
+  canvas.addEventListener("pointerup", lift); canvas.addEventListener("pointercancel", lift);
+  canvas.addEventListener("wheel", e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+
+  function tap(px, py) {
+    const w = toWorld(px, py);
+    if (mode === "physics") {
+      const i = world.at(w[0], w[1]);
+      picked = i >= 0 ? { body: i } : null;
+    } else {
+      const hit = world.at(w[0], w[1], Math.max(0.6, 14 / cam.s));
+      picked = hit ? (hit.person ? { person: hit.person.id, name: hit.person.name } : { village: hit.village.id }) : null;
+      follow = !!(hit && hit.person);
+    }
+    if (picked) setTab("look"); else pane();
+    $("hint").hidden = true;
+  }
+
+  /* ── the loop ──────────────────────────────────────────────────────────── */
+  function frame(now) {
+    raf = requestAnimationFrame(frame);
+    const real = Math.min(0.1, (now - last) / 1000); last = now;
+    if (!paused) {
+      const t0 = performance.now();
+      if (mode === "physics") world.step(Math.min(1 / 30, real) * rate);
+      else {
+        /* Thirty ticks a second at 1×. What a slow frame could not afford is
+           dropped rather than owed, so the page never spirals. */
+        owed += real * 30 * rate;
+        let n = Math.min(Math.floor(owed), 48); owed -= Math.floor(owed);
+        while (n-- > 0) { world.step(1); if (performance.now() - t0 > 28) break; }
+      }
+      lag = lag * 0.95 + (performance.now() - t0 > 30 ? 1 : 0) * 0.05;
+      $("slow").hidden = lag < 0.5;
+    }
+    const d = sizeCanvas();
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    const r = canvas.getBoundingClientRect();
+    if (mode === "physics") drawPhysics(r.width, r.height); else drawPeople(r.width, r.height);
+    if (now - paneAt > (tab === "look" ? 150 : 500)) { paneAt = now; pane(); }
+  }
+
+  /* ═══ drawing the physics ══════════════════════════════════════════════ */
+  const KIND = ["#6fb7ff", "#ffd166", "#ef6f6c", "#7bd88f", "#c59bff", "#ff9f5a", "#5ad1c8", "#f4a6d7"];
+  const HEX = []; for (let k = 0; k < 6; k++) HEX.push([Math.cos(Math.PI / 6 + k * Math.PI / 3), Math.sin(Math.PI / 6 + k * Math.PI / 3)]);
+  const RAMP = (stops) => { const out = []; for (let i = 0; i < 24; i++) { const u = i / 23 * (stops.length - 1), a = Math.floor(u), b = Math.min(stops.length - 1, a + 1), f = u - a;
+    out.push("rgb(" + [0, 1, 2].map(c => Math.round(stops[a][c] + (stops[b][c] - stops[a][c]) * f)).join(",") + ")"); } return out; };
+  const HOT = RAMP([[40, 44, 70], [120, 40, 90], [220, 70, 50], [255, 190, 70], [255, 250, 225]]);
+  const FAST = RAMP([[36, 52, 70], [50, 120, 170], [110, 210, 220], [240, 250, 255]]);
+  const MOOD = RAMP([[214, 84, 74], [226, 170, 90], [200, 205, 190], [120, 205, 140]]);
+  let hotTop = 1, fastTop = 1;
+  function hexPath(p, x, y, rad) {
+    if (rad < 1.7) { p.rect(x - rad, y - rad, rad * 2, rad * 2); return; }
+    p.moveTo(x + HEX[0][0] * rad, y + HEX[0][1] * rad);
+    for (let k = 1; k < 6; k++) p.lineTo(x + HEX[k][0] * rad, y + HEX[k][1] * rad);
+    p.closePath();
+  }
+  function drawPhysics(W, H) {
+    const w = world, S = w.settings, n = w.n;
+    /* An open world has no frame to hold still, so the view rides with the
+       middle of everything until somebody takes hold of it. */
+    if (S.edge === "open" && !cam.held) {
+      let mx = 0, my = 0, mt = 0;
+      for (let i = 0; i < n; i++) if (w.alive[i]) { mx += w.m[i] * w.x[i]; my += w.m[i] * w.y[i]; mt += w.m[i]; }
+      if (mt > 0) { cam.x += (mx / mt - cam.x) * 0.05; cam.y += (my / mt - cam.y) * 0.05; }
+    }
+    ctx.fillStyle = "#070a0b"; ctx.fillRect(0, 0, W, H);
+    const s = cam.s, ox = W / 2 - cam.x * s, oy = H / 2 - cam.y * s;
+    if (S.edge !== "open") {
+      ctx.strokeStyle = "#2a383f"; ctx.lineWidth = 1; ctx.setLineDash(S.edge === "wrap" ? [5, 5] : []);
+      ctx.strokeRect(ox, oy, w.width * s, w.height * s); ctx.setLineDash([]);
+    }
+    if (S.heater === "centre") { ctx.strokeStyle = "rgba(239,138,124,.5)"; ctx.beginPath(); ctx.arc(ox + w.width / 2 * s, oy + w.height / 2 * s, w.width * 0.1 * s, 0, 6.2832); ctx.stroke(); }
+    if (S.heater === "floor") { ctx.fillStyle = "rgba(239,138,124,.22)"; ctx.fillRect(ox, oy + (w.height - 2.5) * s, w.width * s, 2.5 * s); }
+
+    if (w.bonds.size && s > 2.5) {
+      ctx.strokeStyle = "rgba(255,255,255,.4)"; ctx.lineWidth = Math.max(1, s * 0.14); ctx.beginPath();
+      for (const b of w.bonds.values()) {
+        const dx = w.x[b.b] - w.x[b.a], dy = w.y[b.b] - w.y[b.a];
+        if (Math.abs(dx) > w.width / 2 || Math.abs(dy) > w.height / 2) continue;
+        ctx.moveTo(ox + w.x[b.a] * s, oy + w.y[b.a] * s); ctx.lineTo(ox + w.x[b.b] * s, oy + w.y[b.b] * s);
+      }
+      ctx.stroke();
+    }
+    const paths = new Map();
+    let topT = 0.05, topV = 0.5;
+    for (let i = 0; i < n; i++) {
+      if (!w.alive[i]) continue;
+      const T = w.heat[i] / w.m[i], v = Math.hypot(w.vx[i], w.vy[i]);
+      if (T > topT) topT = T; if (v > topV) topV = v;
+      const x = ox + w.x[i] * s, y = oy + w.y[i] * s, rad = w.r[i] * s * 1.12;
+      if (x < -rad || y < -rad || x > W + rad || y > H + rad) continue;
+      const col = viewMode === "kind" ? KIND[(w.kind[i] - 1) % S.kinds % 8]
+                : viewMode === "heat" ? HOT[Math.min(23, Math.floor(Math.sqrt(T / hotTop) * 23))]
+                : FAST[Math.min(23, Math.floor(v / fastTop * 23))];
+      let p = paths.get(col); if (!p) { p = new Path2D(); paths.set(col, p); }
+      hexPath(p, x, y, rad);
+    }
+    /* The scales ease toward the hottest and fastest thing there is, so the
+       colours do not flicker when one body spikes. */
+    hotTop += (topT - hotTop) * 0.05; fastTop += (topV - fastTop) * 0.05;
+    for (const [col, p] of paths) { ctx.fillStyle = col; ctx.fill(p); }
+    if (s > 9) { ctx.strokeStyle = "rgba(7,10,11,.55)"; ctx.lineWidth = 1; for (const p of paths.values()) ctx.stroke(p); }
+    if (picked && w.alive[picked.body]) {
+      const i = picked.body; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(ox + w.x[i] * s, oy + w.y[i] * s, w.r[i] * s * 1.12 + 5, 0, 6.2832); ctx.stroke();
+    }
+    const st = world.stats();
+    $("clock").textContent = st.time.toFixed(1) + " s · " + st.count.toLocaleString("en-US") + " hexagons";
+  }
+
+  /* ═══ drawing the people ═══════════════════════════════════════════════ */
+  const mix = (a, b, f) => a.map((v, i) => Math.round(v + (b[i] - v) * f));
+  const rgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  function paintLand() {
+    const w = world, px = 8;
+    if (!land) { land = document.createElement("canvas"); land.width = w.cols * px; land.height = w.rows * px; }
+    const g = land.getContext("2d");
+    for (let y = 0; y < w.rows; y++) for (let x = 0; x < w.cols; x++) {
+      const i = y * w.cols + x, f = w.fert[i];
+      /* Dry tan to green by how well it grows, paler where it has been
+         harvested, and washed with the colour of whoever holds it. */
+      let c = mix([92, 80, 58], [52, 104, 62], f);
+      const full = f > 0 ? Math.min(1, w.stock[i] / (f * 3.2)) : 1;
+      c = mix(mix(c, [120, 108, 80], 0.5), c, full);
+      if (w.ore[i] > 0.55) c = mix(c, [96, 96, 104], (w.ore[i] - 0.55) * 1.2);
+      c = mix(c, [10, 14, 16], 0.42);
+      const o = w.owner[i];
+      if (o >= 0) c = mix(c, rgb(w.factions[w.villages[o].f].colour), 0.3);
+      g.fillStyle = "rgb(" + c.join(",") + ")"; g.fillRect(x * px, y * px, px, px);
+    }
+    /* A line wherever one faction's land meets another's. */
+    g.fillStyle = "rgba(255,255,255,.55)";
+    const fo = i => (w.owner[i] < 0 ? -1 : w.villages[w.owner[i]].f);
+    for (let y = 0; y < w.rows; y++) for (let x = 0; x < w.cols; x++) {
+      const a = fo(y * w.cols + x);
+      if (x + 1 < w.cols) { const b = fo(y * w.cols + x + 1); if (a !== b && a >= 0 && b >= 0) g.fillRect((x + 1) * px - 1, y * px, 2, px); }
+      if (y + 1 < w.rows) { const b = fo((y + 1) * w.cols + x); if (a !== b && a >= 0 && b >= 0) g.fillRect(x * px, (y + 1) * px - 1, px, 2); }
+    }
+  }
+  function personColour(p) {
+    if (viewMode === "faction") return world.factions[p.f].colour;
+    if (viewMode === "mood") return MOOD[Math.min(23, Math.max(0, Math.round(p.mood * 23)))];
+    if (viewMode === "views") return p.views > 0.25 ? "#7bd88f" : p.views < -0.25 ? "#ffd166" : "#b9c4c1";
+    return FAST[Math.min(23, Math.round(Math.sqrt(Math.min(1, p.coins / 40)) * 23))];
+  }
+  function drawPeople(W, H) {
+    const w = world;
+    if (w.tick - landAt >= 20 || !land) { paintLand(); landAt = w.tick; }
+    if (follow && picked && picked.person) {
+      const p = w.byId.get(picked.person);
+      if (p) { cam.x += (p.x - cam.x) * 0.12; cam.y += (p.y - cam.y) * 0.12; }
+    }
+    ctx.fillStyle = "#070a0b"; ctx.fillRect(0, 0, W, H);
+    const s = cam.s, ox = W / 2 - cam.x * s, oy = H / 2 - cam.y * s;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(land, ox, oy, w.cols * s, w.rows * s);
+
+    /* Villages. */
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (const v of w.villages) {
+      if (!v.alive) continue;
+      const x = ox + v.x * s, y = oy + v.y * s, k = Math.max(4, s * 0.55);
+      ctx.fillStyle = "#0c1113"; ctx.fillRect(x - k - 1, y - k - 1, k * 2 + 2, k * 2 + 2);
+      ctx.fillStyle = w.factions[v.f].colour; ctx.fillRect(x - k, y - k, k * 2, k * 2);
+      if (v.siege > 0) { ctx.strokeStyle = "#ef8a7c"; ctx.lineWidth = 2; ctx.strokeRect(x - k - 4, y - k - 4, k * 2 + 8, k * 2 + 8); }
+      if (s > 7) {
+        ctx.font = "600 12px system-ui, sans-serif";
+        const tw = ctx.measureText(v.name).width;
+        ctx.fillStyle = "rgba(7,10,11,.72)"; ctx.fillRect(x - tw / 2 - 3, y + k + 3, tw + 6, 16);
+        ctx.fillStyle = "#e3e9e6"; ctx.fillText(v.name, x, y + k + 5);
+      }
+    }
+    /* People. Batched by colour; soldiers are triangles, children are small. */
+    const dots = new Map(), talking = [];
+    const rad = Math.max(1.6, s * 0.2);
+    for (const p of w.people) {
+      const x = ox + p.x * s, y = oy + p.y * s;
+      if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
+      const col = personColour(p);
+      let path = dots.get(col); if (!path) { path = new Path2D(); dots.set(col, path); }
+      const r = p.job === "child" ? rad * 0.62 : rad;
+      if (p.job === "soldier" && s > 5) { path.moveTo(x, y - r * 1.5); path.lineTo(x + r * 1.3, y + r); path.lineTo(x - r * 1.3, y + r); path.closePath(); }
+      else { path.moveTo(x + r, y); path.arc(x, y, r, 0, 6.2832); }
+      if (p.sayT > 0 && p.say) talking.push(p);
+      if (p.hit > 0) { ctx.strokeStyle = "#ff5d4d"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r + 3, 0, 6.2832); ctx.stroke(); }
+      if (s > 9) {
+        if (p.sick > 0) { ctx.fillStyle = "#b6f36a"; ctx.fillRect(x + r, y - r - 2, 3, 3); }
+        if (w.factions[p.f].leader === p.id) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r + 2.5, 0, 6.2832); ctx.stroke(); }
+      }
+    }
+    ctx.lineWidth = 1; ctx.strokeStyle = "rgba(7,10,11,.8)";
+    for (const [col, path] of dots) { ctx.fillStyle = col; ctx.fill(path); if (s > 6) ctx.stroke(path); }
+
+    /* What is being said. Close in, the words; far out, a mark that somebody
+       is speaking — a few hundred sentences at once is nothing anyone can read. */
+    if (s >= 20) {
+      talking.sort((a, b) => Math.hypot(a.x - cam.x, a.y - cam.y) - Math.hypot(b.x - cam.x, b.y - cam.y));
+      ctx.font = "12px system-ui, sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "left";
+      const boxes = [];
+      for (const p of talking.slice(0, 16)) {
+        const text = p.say.length > 64 ? p.say.slice(0, 62) + "…" : p.say;
+        const tw = ctx.measureText(text).width, x = ox + p.x * s + 8, y = oy + p.y * s - 16;
+        if (boxes.some(b => Math.abs(b[1] - y) < 19 && x < b[0] + b[2] && x + tw > b[0])) continue;
+        boxes.push([x, y, tw]);
+        ctx.fillStyle = "rgba(240,244,242,.94)"; ctx.fillRect(x - 5, y - 9, tw + 10, 18);
+        ctx.fillStyle = "#101517"; ctx.fillText(text, x, y);
+      }
+    } else if (s > 4) {
+      ctx.fillStyle = "rgba(240,244,242,.9)";
+      for (const p of talking) ctx.fillRect(ox + p.x * s + rad, oy + p.y * s - rad - 4, 3, 3);
+    }
+    if (picked && picked.person) {
+      const p = w.byId.get(picked.person);
+      if (p) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ox + p.x * s, oy + p.y * s, rad + 6, 0, 6.2832); ctx.stroke(); }
+    }
+    const st = w.stats();
+    $("clock").textContent = "Year " + Math.floor(st.year) + " · " + st.people.toLocaleString("en-US") + " people";
+  }
+
+  /* ═══ the side panel ═══════════════════════════════════════════════════ */
+  const num = (v, d) => (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString("en-US") : v.toFixed(d == null ? 1 : d));
+  function pane() {
+    if (!world || screens.run.hidden) return;
+    const el = $("panes"), keep = el.scrollTop;
+    el.innerHTML = mode === "physics" ? physicsPane() : peoplePane();
+    el.scrollTop = keep;
+    if (mode === "people" && tab === "factions") drawChart();
+  }
+  $("panes").addEventListener("click", e => {
+    const b = e.target.closest("[data-go]"); if (!b) return;
+    const a = b.dataset.go.split(":");
+    if (a[0] === "at") { cam.x = +a[1]; cam.y = +a[2]; cam.s = Math.max(cam.s, 14); cam.held = true; follow = false; }
+    if (a[0] === "person" && world.byId.get(+a[1])) { picked = { person: +a[1], name: world.byId.get(+a[1]).name }; follow = true; cam.s = Math.max(cam.s, 22); setTab("look"); }
+    if (a[0] === "village") { const v = world.villages[+a[1]]; picked = { village: v.id }; cam.x = v.x; cam.y = v.y; cam.s = Math.max(cam.s, 14); follow = false; setTab("look"); }
+    if (a[0] === "follow") { follow = !follow; pane(); }
+    if (a[0] === "body") { picked = { body: +a[1] }; pane(); }
+  });
+
+  function physicsPane() {
+    const st = world.stats(), S = world.settings;
+    if (tab === "look") {
+      const d = picked ? world.describe(picked.body) : null;
+      if (!d) return "<p class='small'>" + (picked ? "That hexagon is gone — fused into another, or off the edge." : "Tap a hexagon to see what it is.") + "</p>";
+      return "<h3><span class='sw' style='background:" + KIND[(d.kind - 1) % S.kinds % 8] + "'></span>" + (d.mass > S.kinds ? "A fused body" : "Kind " + d.kind) + "</h3>" +
+        "<dl class='kv'><dt>Mass</dt><dd>" + num(d.mass, 0) + "</dd><dt>Temperature</dt><dd>" + num(d.temperature, 2) + "</dd>" +
+        "<dt>Speed</dt><dd>" + num(d.speed, 2) + " a second</dd><dt>Bonds</dt><dd>" + d.bonds.length + " of " + S.maxBonds + "</dd></dl>" +
+        (d.bonds.length ? "<h3 style='margin-top:.8rem'>Bonded to</h3>" + d.bonds.map(b => "<button class='item' data-go='body:" + b.other + "'><span class='sw' style='background:" +
+          KIND[(world.kind[b.other] - 1) % S.kinds % 8] + "'></span>kind " + world.kind[b.other] + " · strength " + num(b.strength, 1) + "</button>").join("") : "");
+    }
+    const tot = Math.max(1e-9, st.motion + st.heat + st.radiated + st.dragged);
+    const seg = (v, c) => "<i style='width:" + (v / tot * 100).toFixed(2) + "%;background:" + c + "'></i>";
+    return "<h3>What is in it</h3><dl class='kv'>" +
+      "<dt>Hexagons</dt><dd>" + st.count.toLocaleString("en-US") + (st.count !== st.started ? " of " + st.started.toLocaleString("en-US") : "") + "</dd>" +
+      (st.fused ? "<dt>Fused together</dt><dd>" + st.fused.toLocaleString("en-US") + "</dd>" : "") +
+      (st.left ? "<dt>Left the world</dt><dd>" + st.left.toLocaleString("en-US") + "</dd>" : "") +
+      "<dt>Heaviest</dt><dd>" + num(st.heaviest, 0) + "</dd>" +
+      "<dt>Temperature</dt><dd>" + num(st.temperature, 2) + "</dd>" +
+      (S.bonding !== "none" ? "<dt>Bonds standing</dt><dd>" + st.bonds.toLocaleString("en-US") + "</dd><dt>Clusters</dt><dd>" + st.clusters.toLocaleString("en-US") +
+        "</dd><dt>Biggest cluster</dt><dd>" + st.biggest + " hexagons</dd><dt>Bonds made / broken</dt><dd>" + st.bondsMade.toLocaleString("en-US") + " / " + st.bondsBroken.toLocaleString("en-US") + "</dd>" : "") +
+      "</dl><h3 style='margin-top:.9rem'>Where the energy is</h3><div class='meter'>" +
+      seg(st.motion, "#6fb7ff") + seg(st.heat, "#ef6f6c") + seg(st.radiated, "#55616a") + seg(st.dragged, "#3b454b") + "</div>" +
+      "<div class='legend'><span><b style='background:#6fb7ff'></b>motion " + num(st.motion, 0) + "</span><span><b style='background:#ef6f6c'></b>heat " + num(st.heat, 0) +
+      "</span><span><b style='background:#55616a'></b>leaked away " + num(st.radiated, 0) + "</span>" + (st.dragged > 0 ? "<span><b style='background:#3b454b'></b>lost to drag " + num(st.dragged, 0) + "</span>" : "") + "</div>" +
+      (S.bonding !== "none" ? "<p class='small'>Held in bonds: " + num(st.bondEnergy, 0) + " — given off as heat when they formed.</p>" : "") +
+      (S.gravity > 0 || S.fall > 0 ? "<p class='small'>Gravity's own energy is not in the bar: things falling together turn it into motion, which is why the total can grow.</p>" : "") +
+      "<p class='small'>Colours: " + (viewMode === "kind" ? "one per kind; a fused body takes the colour its mass works out to." : viewMode === "heat" ? "dark is cold, white is the hottest thing in the world right now." : "dark is still, white is the fastest thing in the world right now.") + "</p>";
+  }
+
+  function peoplePane() {
+    const w = world, st = w.stats(), Y = w.YEAR;
+    const fname = id => "<span class='sw' style='background:" + w.factions[id].colour + "'></span>" + esc(w.factions[id].name);
+    if (tab === "factions") {
+      const alive = w.factions.filter(f => f.alive).sort((a, b) => b.pop - a.pop);
+      const gone = w.factions.filter(f => !f.alive);
+      return "<canvas id='chart' width='632' height='168' aria-label='Population of each faction over time'></canvas>" +
+        alive.map(f => {
+          const lead = w.byId.get(f.leader), vs = w.villages.filter(v => v.alive && v.f === f.id);
+          const big = vs.slice().sort((a, b) => b.pop - a.pop)[0];
+          const foes = w.factions.filter(o => o.alive && o !== f && f.rel[o.id].war).map(o => esc(o.name));
+          return "<button class='fac' data-go='" + (big ? "at:" + big.x + ":" + big.y : "") + "'><span class='nm'>" + fname(f.id) + "</span>" +
+            "<span class='ln'>" + f.pop + " people · " + vs.length + (vs.length === 1 ? " village" : " villages") + " · " + f.soldiers + " under arms</span>" +
+            "<span class='ln'>Led by " + (lead ? esc(lead.name) + ", " + Math.floor(lead.age) : "nobody") +
+            (w.settings.money === "coins" ? " · tax " + Math.round(f.tax * 100) + "%" : "") + " · loyalty " + Math.round(f.loyal * 100) + "%</span>" +
+            (foes.length ? "<span class='ln war'>At war with " + foes.join(", ") + "</span>" : "") + "</button>";
+        }).join("") +
+        (gone.length ? "<p class='small' style='margin-top:.8rem'>Gone: " + gone.map(f => esc(f.name)).join(", ") + ".</p>" : "");
+    }
+    if (tab === "news") {
+      const list = w.events.slice(-80).reverse();
+      if (!list.length) return "<p class='small'>Nothing has happened yet that anybody would remember.</p>";
+      return list.map(e => "<button class='item" + (e.weight >= 3.5 ? " big" : "") + "' data-go='at:" + e.x + ":" + e.y + "'><span class='yr'>Year " + e.year + "</span>" + esc(e.text) + "</button>").join("");
+    }
+    if (tab === "talk") {
+      const list = w.chatter.slice(-40).reverse();
+      if (!list.length) return "<p class='small'>Nobody has said anything yet.</p>";
+      return "<p class='small'>Every line is something that just happened between the two of them. Tap one to follow whoever spoke.</p>" +
+        list.map(c => "<button class='item talk' data-go='person:" + c.a + "'><span class='sw' style='background:" + w.factions[c.fa].colour + "'></span><span class='who'>" + esc(c.an) +
+          "</span> <q>" + esc(c.la) + "</q>" + (c.lb ? "<br><span class='sw' style='background:" + w.factions[c.fb].colour + "'></span><span class='who'>" + esc(c.bn) + "</span> <q>" + esc(c.lb) + "</q>" : "") + "</button>").join("");
+    }
+    if (tab === "look") {
+      if (picked && picked.village != null) {
+        const v = w.villages[picked.village];
+        return "<h3>" + esc(v.name) + "</h3><p>" + fname(v.f) + (v.alive ? "" : " — abandoned") + "</p><dl class='kv'>" +
+          "<dt>People</dt><dd>" + v.pop + "</dd><dt>Going hungry</dt><dd>" + v.hungry + "</dd><dt>Sick</dt><dd>" + v.sick + "</dd>" +
+          "<dt>Food in the store</dt><dd>" + num(v.food, 0) + "</dd><dt>Goods</dt><dd>" + num(v.goods, 0) + "</dd>" +
+          (w.settings.money === "coins" ? "<dt>Price of grain</dt><dd>" + num(v.priceFood, 2) + "</dd><dt>Coins in the till</dt><dd>" + num(v.till, 0) + "</dd>" : "") +
+          "<dt>Loyalty</dt><dd>" + Math.round(v.loyal * 100) + "%</dd><dt>Founded</dt><dd>year " + Math.floor(v.founded / Y) + "</dd></dl>" +
+          (v.siege > 0 ? "<p class='fac'><span class='war'>Enemy soldiers are at the walls and nobody is defending it.</span></p>" : "");
+      }
+      const p = picked && picked.person ? w.byId.get(picked.person) : null;
+      if (!p) return "<p class='small'>" + (picked && picked.person ? esc(picked.name) + " has died." : "Tap a person or a village to see who they are. Zoom in close and you can read what people say.") + "</p>";
+      const f = w.factions[p.f], home = w.villages[p.home], mate = w.byId.get(p.partner);
+      const friends = [...p.friends].filter(x => w.byId.get(x[0])).sort((a, b) => b[1] - a[1]);
+      const likes = friends.filter(x => x[1] > 0.2).slice(0, 4), hates = friends.filter(x => x[1] < -0.2).slice(-3).reverse();
+      const link = id => "<button class='linkish' style='min-height:0;padding:0' data-go='person:" + id + "'>" + esc(w.byId.get(id).name) + "</button>";
+      const job = p.job === "child" ? "a child" : p.id === f.leader ? "leader of " + esc(f.name) + ", and a " + p.job : "a " + p.job;
+      const bar = (label, v) => "<span>" + label + "</span><i><b style='width:" + Math.round(v * 100) + "%'></b></i>";
+      return "<h3>" + esc(p.name) + "</h3>" +
+        "<p>" + Math.floor(p.age) + " years old, " + job + " in <button class='linkish' style='min-height:0;padding:0' data-go='village:" + home.id + "'>" + esc(home.name) + "</button>.</p>" +
+        "<p>" + fname(p.f) + (p.from !== p.f ? " <span class='small'>— born under " + esc(w.factions[p.from].name) + "</span>" : "") + "</p>" +
+        "<p class='small'>" + (w.leans(p) === "share" ? "Believes what is grown should be shared out." : w.leans(p) === "keep" ? "Believes each should keep what they grow." : "Sees both sides of the argument.") +
+        (p.hungry > 0 ? " <span style='color:var(--warn)'>Going hungry.</span>" : "") + (p.sick > 0 ? " <span style='color:var(--warn)'>Sick.</span>" : "") + "</p>" +
+        "<div class='bars'>" + bar("Mood", p.mood) + bar("Loyalty", p.loyal) + bar("Bold", p.bold) + bar("Kind", p.warm) + "</div>" +
+        "<dl class='kv'><dt>Food carried</dt><dd>" + num(p.food, 1) + "</dd>" + (w.settings.money === "coins" ? "<dt>Coins</dt><dd>" + num(p.coins, 1) + "</dd>" : "") +
+        "<dt>Children</dt><dd>" + p.kids + "</dd></dl>" +
+        (mate ? "<p>Paired with " + link(mate.id) + ".</p>" : "") +
+        (likes.length ? "<p>Friends: " + likes.map(x => link(x[0])).join(", ") + ".</p>" : "") +
+        (hates.length ? "<p>Cannot stand: " + hates.map(x => link(x[0])).join(", ") + ".</p>" : "") +
+        (p.say ? "<p class='small'>Last said: “" + esc(p.say) + "”</p>" : "") +
+        "<button class='btn' data-go='follow' aria-pressed='" + follow + "'>" + (follow ? "Following" : "Follow") + "</button>";
+    }
+    const rows = [["People alive", st.people], ["Average age", num(st.meanAge, 0)], ["Villages", st.villages], ["Factions", st.factions], ["Wars going on", st.atWar],
+      ["Born", st.births], ["Died of old age", st.old], ["Starved", st.starved], ["Killed in battle", st.battle], ["Died of sickness", st.sick],
+      ["Conversations", st.talks], ["Changed faction", st.switched], ["Thefts", st.thefts],
+      ["Wars started", st.wars], ["Peaces made", st.peaces], ["Villages taken", st.captures], ["Villages founded", st.founded], ["Breakaways", st.secessions], ["Votes held", st.elections], ["Factions fallen", st.fallen]];
+    if (w.settings.money === "coins") rows.push(["Coins in the world", num(st.money, 0)], ["Held by the richest tenth", Math.round(st.topShare * 100) + "%"]);
+    return "<h3>Since year 0</h3><dl class='kv'>" + rows.map(r => "<dt>" + r[0] + "</dt><dd>" + (typeof r[1] === "number" ? r[1].toLocaleString("en-US") : r[1]) + "</dd>").join("") + "</dl>" +
+      "<p class='small'>Dots are people; triangles are soldiers; small dots are children; a white ring is a leader. Squares are villages. The land is paler where it has been harvested.</p>";
+  }
+  /* Each faction's head count, stacked, since the world began. */
+  function drawChart() {
+    const c = $("chart"); if (!c) return;
+    const g = c.getContext("2d"), W = c.width, H = c.height, hist = world.history;
+    g.clearRect(0, 0, W, H);
+    if (hist.length < 2) return;
+    let top = 1;
+    for (const r of hist) { let t = 0; for (const k in r.pop) t += r.pop[k]; if (t > top) top = t; }
+    const ids = world.factions.map(f => f.id), base = hist.map(() => 0);
+    for (const id of ids) {
+      g.beginPath();
+      for (let i = 0; i < hist.length; i++) g.lineTo(i / (hist.length - 1) * W, H - (base[i] + (hist[i].pop[id] || 0)) / top * (H - 4));
+      for (let i = hist.length - 1; i >= 0; i--) { g.lineTo(i / (hist.length - 1) * W, H - base[i] / top * (H - 4)); base[i] += hist[i].pop[id] || 0; }
+      g.closePath(); g.fillStyle = world.factions[id].colour; g.fill();
+    }
+  }
+
+  /* ═══ the two small worlds on the first screen ═════════════════════════
+     Each door shows its own engine running, not a picture of it. */
+  let minis = null, miniRaf = 0;
+  function startMinis() {
+    if (miniRaf) return;
+    if (!minis) minis = {
+      physics: window.WBPhysics.create({ count: 260, size: 70, kinds: 4, sized: false, layout: "cloud", gravity: 1.2, reach: "near", bonding: "sum",
+                                         bondStrength: 6, startTemp: 3, startSpeed: 1.5, radiate: 0.03, bounce: 0.6, seed: 3 }),
+      people: window.WBPeople.create({ map: "small", people: 150, factions: 3, villages: 2, seed: 5 }),
+    };
+    const draw = () => {
+      for (const m of ["physics", "people"]) {
+        const cv = $("mini-" + m), g = cv.getContext("2d"), w = minis[m], W = cv.width, H = cv.height;
+        g.fillStyle = "#070a0b"; g.fillRect(0, 0, W, H);
+        if (m === "physics") {
+          w.step(1 / 40);
+          const s = H / w.height * 1.25, ox = W / 2 - w.width / 2 * s, oy = H / 2 - w.height / 2 * s;
+          g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 1.5; g.beginPath();
+          for (const b of w.bonds.values()) if (Math.abs(w.x[b.b] - w.x[b.a]) < 9 && Math.abs(w.y[b.b] - w.y[b.a]) < 9) { g.moveTo(ox + w.x[b.a] * s, oy + w.y[b.a] * s); g.lineTo(ox + w.x[b.b] * s, oy + w.y[b.b] * s); }
+          g.stroke();
+          for (let i = 0; i < w.n; i++) { if (!w.alive[i]) continue; const p = new Path2D(); hexPath(p, ox + w.x[i] * s, oy + w.y[i] * s, w.r[i] * s * 1.12); g.fillStyle = KIND[(w.kind[i] - 1) % 4]; g.fill(p); }
+        } else {
+          w.step(2);
+          const s = Math.max(W / w.cols, H / w.rows), ox = (W - w.cols * s) / 2, oy = (H - w.rows * s) / 2;
+          for (let y = 0; y < w.rows; y++) for (let x = 0; x < w.cols; x++) {
+            const i = y * w.cols + x; let c = mix(mix([92, 80, 58], [52, 104, 62], w.fert[i]), [10, 14, 16], 0.45);
+            if (w.owner[i] >= 0) c = mix(c, rgb(w.factions[w.villages[w.owner[i]].f].colour), 0.3);
+            g.fillStyle = "rgb(" + c.join(",") + ")"; g.fillRect(ox + x * s, oy + y * s, s + 0.5, s + 0.5);
+          }
+          for (const v of w.villages) if (v.alive) { g.fillStyle = w.factions[v.f].colour; g.fillRect(ox + v.x * s - 4, oy + v.y * s - 4, 8, 8); }
+          for (const p of w.people) { g.fillStyle = w.factions[p.f].colour; g.beginPath(); g.arc(ox + p.x * s, oy + p.y * s, p.job === "child" ? 1.6 : 2.4, 0, 6.2832); g.fill(); }
+        }
+      }
+    };
+    if (still) { for (let i = 0; i < 120; i++) { minis.physics.step(1 / 40); minis.people.step(2); } draw(); return; }
+    const loop = () => { miniRaf = requestAnimationFrame(loop); draw(); };
+    miniRaf = requestAnimationFrame(loop);
+  }
+  function stopMinis() { if (miniRaf) cancelAnimationFrame(miniRaf); miniRaf = 0; }
+  document.addEventListener("visibilitychange", () => { if (document.hidden) stopMinis(); else if (!screens.pick.hidden) startMinis(); last = performance.now(); });
+
+  /* ── arriving ──────────────────────────────────────────────────────────── */
+  function arrive() {
+    const h = fromHash();
+    if (!h) { show("pick"); return; }
+    openSetup(h.mode, h.set);
+    if (h.run) startRun();
+  }
+  window.addEventListener("hashchange", () => { const h = fromHash(); if (h && screens.run.hidden && (h.mode !== mode || screens.setup.hidden)) arrive(); else if (!h && location.hash === "") show("pick"); });
+  arrive();
+})();
+</script>
+<script src="../relay-return.js" data-home="../../index.html" data-egg="worlds" defer></script>
+</body>
+</html>

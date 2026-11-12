@@ -425,7 +425,7 @@ nobody had linked was a page nobody could find.
 
 - **Sub-projects** live in `projects/<name>/` (or a single `.html`) and are **linked
   from the room that fits them — from exactly one room.** Current: `spacetime`,
-  `how-speed-affects-time` and `how-big-everything-is` → Exploration;
+  `how-speed-affects-time`, `how-big-everything-is` and `world-builder` → Exploration;
   `autism-reflection.html`, `state-of-mind-line` and `psyche/studies.html` → Psyche; `siege-conductor` →
   Workbench; `farlight`, `offramp`, `kondrite`, and `starfield` → Gaming; `climbing`
   → Climbing (including the unlisted `climbing/board.html`); `training` is
@@ -443,7 +443,24 @@ nobody had linked was a page nobody could find.
   projects were advertised from two rooms each — and the Workbench copy for Interstate
   40 described a version of OFFRAMP that had not existed for months. Those cards came
   out on 2026-09-24; the Workbench is Siege Conductor and an empty slot, and Exploration
-  is three modules and a berth.
+  is four modules and a berth (World Builder took the fourth on 2026-11-12).
+- **World Builder (`projects/world-builder/`) is two sandboxes behind one page** (Ric,
+  2026-11-12: "One page. It opens. It gives two options. Physics sandbox. People
+  sandbox. … You then can choose options for the worlds. … Like tons of settings. Then
+  you hit run it opens the world."). It is **its own code** — Ric: "this is not going to
+  open Kondrite. Those were just the already written code that you could look at to get
+  an idea of what I wanted" — so it shares nothing with KONDRITE or `projects/universe/`,
+  and it must not: the Universe project forbids a constant anybody can turn, and this
+  page is nothing but. Three rules, all in its `README.md`: **every setting does
+  something** (the page builds its controls from each engine's `SCHEMA`, and the test
+  walks the list and fails on a control that changes nothing); **nothing is scripted**
+  (no function starts a war, a famine or a breakaway on a timer — KONDRITE's rule,
+  "nothing forced or faked", carried over); and **what people say reports what just
+  happened between them, never causes it**. No AI model talks for them and none should
+  be wired in: the lines are templates over real exchanges, which is why hundreds can
+  talk at once for free. **It is not on the front door or in `latest.js` yet** — it has
+  an Exploration card and the terminal's `worlds`, and the front door waits on Ric
+  having looked at it (it needs a `POSTS` entry, a shelf and a picture when it goes).
 - **`projects/dads-race/` (HERMISCUS) is the one project with no room.** It is the
   crew app for Dad's race, mostly built by Ric's sister, and the only way in is the
   undocumented `hermiscus` terminal command — like the boards, don't promote it. **The
@@ -1346,8 +1363,8 @@ migration marked "safe to re-run", and re-running it would have put the original
 ## Verifying a change
 
 There is no build. There is a test runner — `node .github/checks.mjs` runs every quick
-suite in the repo in a couple of seconds and `--slow` adds the two games' simulations and the
-universe Lab's pre-flight —
+suite in the repo in a couple of seconds and `--slow` adds the two games' simulations, the
+universe Lab's pre-flight and World Builder's two engines —
 and CI runs it on every push. So verification is: run that, serve the folder, and open
 the pages you touched.
 
@@ -1376,6 +1393,7 @@ node projects/kondrite/test/campaign.js   # headless play-through of all three m
 node worker/test.mjs     # worker rules: auth, strava, media, todo, movies
 node projects/climbing/test/parse-parity.js  # build-data.py and climb-parse.js agree
 node projects/universe/lab-check.mjs      # the universe Lab: seam, books, seeds (~30s)
+node projects/world-builder/test/world-builder.test.mjs   # both sandboxes: every setting live (~25s)
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
 for t in atlas/test/*.test.mjs; do node "$t" || break; done
 ```
