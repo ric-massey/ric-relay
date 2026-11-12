@@ -16,6 +16,19 @@ step and no dependencies** — each page is a single self-contained `.html` file
 CSS in a `<style>` tag and its JS in a `<script>` tag. Keep it that way unless Ric
 explicitly asks to add tooling.
 
+**The site is called RIC//NET. The terminal is a room in it called Ric's Terminal.**
+Settled 2026-11-12, when the two were being used as if they were the same thing: the
+front door said RIC//NET while all 429 pages' `og:site_name` said "Ric's Terminal", so
+a link shared from any room announced a different site from the one it was on. So:
+`og:site_name` is **RIC//NET** everywhere, and a `<title>` that ends in the site's name
+ends in RIC//NET. **"Ric's Terminal" stays exactly where it means the terminal** —
+`terminal.html`'s own `<title>`, the "RIC'S TERMINAL" brands, every "← Ric's Terminal"
+control, the 404's way back — and `assets/og-terminal.png`'s `og:image:alt` still
+describes the terminal, because that is what the picture is of. A room still keeps its
+own themed `<title>` (Arcade, Psyche, /cs); it is the *site* name that is one name.
+`projects/cs/cards.py` generates 415 of those pages — change it there too, or the next
+sync writes the old name back.
+
 Deploy = `git push` to `main` → GitHub Pages. So **a push is a publish.** Ric's
 rule (2026-09-25): **push to `main` when a project's worth of work is done and
 verified** — one push per finished piece of work, not one per commit and not
@@ -54,12 +67,13 @@ effects.js                  sitewide: visual modes, the mobile room menu, Mochi
 latest.js, notes.js         the newest additions (the front door's "Newest", the terminal's `latest`) and the terminal's transmissions (hand-edited)
 orrin-updates.js            the Orrin page's progress notes (written by orrin_v3's scripts/site_update.py, or by hand)
 captures-data.js            the photo dates captures.html draws (made off-repo from the originals)
+projects/photos/            upload-photos.py — the photographs' way into R2, and its README
 systems.html, updates.html  redirects from old URLs — keep them, links out there still use them
 assets/                     sitewide files at the top: owner.js, site-gate.js, training-plan.json
   cat/                      Mochi's sprite frames
   climbing/ training/ entertainment/   one room's own scripts, styles and generated JSON
   games/ posters/ backdrops/           art
-photos/                     web-optimised photos, EXIF stripped (hard rule 1)
+photos/                     web-optimised photos, EXIF stripped (hard rule 1) — served from R2, see below
 projects/<name>/            sub-projects, and room data that has a generator next to it
 worker/                     the one Cloudflare Worker (deployed as training-log) — see its README
 atlas/, account/            ATLAS and the site account — an app, not a page: see atlas/README.md
@@ -114,7 +128,7 @@ There is intentionally **no shared nav component**. Each page has its own `<nav>
 labels** so navigation stays predictable:
 
 ```
-terminal · orrin · psyche · climbing · training · weather · exploration · gaming · workbench · captures · entertainment
+terminal · orrin · psyche · climbing · training · cs · weather · exploration · gaming · captures · entertainment
 ```
 
 **This set matches the home page's `#dir` listing on purpose.** The room navs used to
@@ -136,11 +150,14 @@ screen. Hide it (`display: none`) at the widths where the whole nav fits. Tap ta
 With JS off nothing is injected and the nav renders exactly as it always did.
 
 - `href` targets and link text are **identical on every page** — only the CSS differs.
-- **Known drift, not a licence to add more:** the front door and `ls` render the Psyche
-  room as `/mind` (that is its `name` in `ROOMS`), while every room nav still says
-  `psyche`. `PAGE_ALIASES` in `terminal.html` maps `psyche` → `mind` so both words work,
-  but a visitor sees two names for one room. If you are asked to settle it, change the
-  `ROOMS` name **or** the nine navs — not one page of them.
+- **Settled 2026-11-12: the room is `psyche`.** It answered to both for months — the
+  front door and `ls` said `/mind` (its `name` in `ROOMS`) while the navs, the file and
+  the page's own `<title>` said Psyche. `psyche` won because everything except that one
+  array already said it; the `ROOMS` name changed and nothing else had to.
+  `PAGE_ALIASES` now maps `mind` → `psyche`, so both words still work. **`Mind` is still
+  a shelf on the front door** — a category holding Psyche, Studies, State of Mind and
+  the criteria reflection — and that is a different thing from the room; don't
+  "fix" it to match.
 - A link that says **terminal** goes to `terminal.html` — every room nav's `terminal`
   entry, the "RIC'S TERMINAL" brands, the "← Ric's Terminal" controls, the 404's way
   back. A plain home link (the climbing and training bars' `↑ all rooms`) goes to
@@ -154,13 +171,21 @@ With JS off nothing is injected and the nav renders exactly as it always did.
 - Each `<nav>` carries `aria-label="Terminal rooms"`.
 - `map.html` is deliberately left out of the room menus entirely.
 
-**`cs`, `val`, `log` and `map` are deliberately unlisted** — in `#dir` *and* in the room
-navs (the front door, `index.html`, is the one exception, by Ric's word on
+**`val`, `log`, `map` and `workbench` are deliberately unlisted** — in `#dir` *and* in
+the room navs (the front door, `index.html`, is the one exception, by Ric's word on
 2026-10-16: it shows ATLAS). They are the thin rooms and Ric does not want the front door advertising work
 that isn't done. They are *not* removed: `ls`, `tree`, `find`, `open <room>`, typing
 the room name and the plain URL all still reach them, and Tab completion offers all
-of them. Don't "fix" this by putting them back. If one gets built out properly, that's
-the moment to re-list it.
+of them. Don't "fix" this by putting them back.
+
+**The rule cuts both ways, and on 2026-11-12 it was applied in both directions.**
+`cs` had been unlisted since it was thin, and had quietly become one of the deepest
+rooms on the site — every match, a 2D replay of every round, a page per player — while
+`workbench` was in every nav holding one item and a card reading "Empty slot". So the
+nav was saying the opposite of the rule. `cs` is listed now and `workbench` is not.
+That is the moment the paragraph above means by "if one gets built out properly":
+**when you list or unlist a room, the `ROOMS` array and all thirteen room navs change
+together**, or the site says two different things about what it contains again.
 
 **There is one room list, in `terminal.html`.** The `ROOMS` array near the top of its script
 is the single source for the `#dir` markup (rendered from it), `PAGES`, `ls`, `tree`,
@@ -202,7 +227,7 @@ one) and `lab-check.mjs` (`node lab-check.mjs`, thirteen checks, about 30 second
 freezes a Lab run into `runs/` for the viewer, `wave.mjs` is a measurement harness over copies of
 the engine, and `rejected/` keeps the mechanisms that came out, with the numbers that removed them (one, the momentum wave, has since come back). Law 1 steps by a tracked position inside each hexagon since 2026-11-06, so matter travels at its real heading.
 **There is a second engine now, the World** (2026-11-07): `world.mjs`, with `world-check.mjs`
-(`node world-check.mjs`, eleven checks, about 20 seconds) and `world-run.mjs`, which runs it and
+(`node world-check.mjs`, seventeen checks, about 12 seconds) and `world-run.mjs`, which runs it and
 reads chemistry, cooling and a skin-to-core temperature gradient off the run. It is the same four
 laws in **ticked** time on a **bounded sheet** — not a torus — and a quantum of radiation that steps
 off an edge is gone and counted, which is the World's only energy sink. **Gravity is in neither
@@ -213,6 +238,16 @@ serves a run that is still happening to the viewer's Live World tab, on the wifi
 Worker's `/universe` route (`projects/universe/STREAMING.md`); the relay needs the **Deploy Worker**
 workflow run once, because that route is newer than the deployed Worker. `census.mjs` and
 `collide.mjs` measure the Lab's clusters and what they do when two of them meet.
+**A World can be left running since 2026-11-09** (Ric: "i wanted to start a world and let it run and
+check in on it every once in a while with the chance of something crazy happening"):
+`projects/universe/run-world.cmd` starts one that lives in `projects/universe/runs/eternal/` — a
+folder that is **gitignored, is the only copy of a run that may be days old, and must not be deleted
+or committed** — saves it every five minutes, picks it up at the same tick, keeps a journal of what
+happened (`journal.mjs`) and shows it on the viewer's Live World tab. `autostart.ps1` starts it with
+Windows. That work also found the World had never had law 1's collisions, so every World number
+before that date is superseded; `projects/universe/HOW-WE-DECIDED.md`, *A world that is left
+running*, has all of it. Editing `world.mjs` or `constants.mjs` changes the physics under a standing
+world from its next start, so say so to Ric first.
 Around that: docs — a spec and work list (`README.md`), agent rules, a per-law statement
 (`THE-LAWS.md`), the record of how each law was decided (`HOW-WE-DECIDED.md`), a design note on
 the two runs, a sources file — and **five screening tools**, each run by hand: `screen.mjs`
@@ -376,6 +411,35 @@ everywhere — the navs must agree with each other *and* with the front door.
   **not** commit full-res originals — they belong in `_photo-originals/`, which is
   gitignored. `captures.html` reads a `FRAMES` array; `climbing.html` rotates a few as
   a hero banner. If you add photos, optimize first (`sips -Z 1600 -s format jpeg …`).
+- **The album is served from R2, not from Pages** (2026-11-12). The 1,287
+  `website-NNNN.jpg` are 417 MB of the repo's 432 MB of photographs — most of the
+  gigabyte GitHub Pages allows, with the rest of the site at ~310 MB and the album still
+  growing, which is the same wall the CS replays hit in October. **The 38
+  `climbing-NN.jpg` stay in git**: they are 15 MB and they are page furniture rather
+  than album — `climbing.html` paints two of them as its hero and its band, the front
+  door deals them into two of its moving tiles, and `projects/climbing/photos-data.js`
+  is a generated index of all 38. Moving those would buy 15 MB and put four more pages
+  behind a network hop, so `upload-photos.py` only ever touches `website-*`. `GET /photo/<name>` on the Worker is public and **immutable** (a name here
+  never points at different bytes), `PUT` needs the site password, and the objects sit
+  under `captures/` in the `photos` bucket, where no `/media` or `/cs` path can build a
+  key. `projects/photos/upload-photos.py` sends them; read `projects/photos/README.md`
+  before touching any of it — **the order matters, and `--move` is last.**
+  The route is `/photo/` and **not** `/photos/` on purpose: `worker/dev.mjs` serves the
+  repo and the Worker on one origin, so a route named after a folder in the repo shadows
+  that folder — and `photos/` is exactly the folder the page falls back to.
+  `captures.html` asks R2 first and falls back to the repo's copy on an `error`, so the
+  page is right whether or not `photos/` is still tracked. **Keep that fallback**: it is
+  what lets the upload and the untracking be different days, and it is the only thing
+  standing between a bad deploy and a room full of broken frames.
+- **Captures opens on thirty chosen frames, not on the newest one.** (2026-11-12, Ric:
+  "Captures is an archive, not a gallery.") It used to render all 1,163 newest-first —
+  about 303,000 pixels of scroll on a phone — so whatever was shot last was the front of
+  the room, and for a while that was six near-identical photographs of one mushroom. The
+  `SELECTED` array at the top of `captures.html`'s script is the front page and the only
+  thing that decides it; **Everything** and **Unassorted** are the archive behind it and
+  still hold every frame. Swap a file name to change a pick — order is the order they
+  appear. Keep it under about forty or the front page becomes the archive again. An
+  emptied `SELECTED` hides its own tab and opens on the archive rather than on nothing.
 - **Game cover art** for `gaming.html` lives in `assets/games/<game>.jpg` and is **real
   in-game screenshots**, not mockups, gradients, or menu grabs — the room is a storefront
   and lives or dies on real art. The games are canvas-rendered. A plain headless
@@ -793,6 +857,13 @@ them before changing anything on this page.
   A run or a climb counts as an update (Ric: "if strava or climbing get updated that counts
   as an update"): whichever of the three is newest wears a small "new" by its label, so
   nothing is listed twice. One quiet line on a desktop, a 2×2 on a phone; no boxes.
+  Three things about them were wrong until 2026-11-09 (Ric: "they almost all have bugs"),
+  so keep them right: **the last CS game is the newest match that has a time** — one read
+  from a demo alone has `at: null`, and it sat on top for good, dated "692mo" (1970);
+  **an age is hours under a day and calendar days after**, and a thing with a day but no
+  time (a climb, an addition) says "today", never "now" or "21h" (`short(t, dated)`);
+  and **a long name takes a second or third line, never an ellipsis** — "Find something
+  to watch" read "Find somethin…", and a narrow window cut the CS score itself.
 - **Right now:** the most used room as the big feature, then today's game to play, tonight's
   film from the watchlist (the same pick all day), and something to explore — each a piece
   of its own room (the cinema's bulbs, the game running) — plus a crag day or Orrin only

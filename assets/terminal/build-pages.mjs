@@ -33,7 +33,12 @@ const ROOM_OF = [
   ['projects/climbing/', 'climbing'], ['climbing.html', 'climbing'],
   ['projects/training/', 'training'], ['training.html', 'training'],
   ['projects/spacetime/', 'exploration'], ['projects/how-', 'exploration'], ['exploration.html', 'exploration'],
-  ['projects/psyche/', 'mind'], ['projects/state-of-mind-line/', 'mind'], ['projects/autism-reflection.html', 'mind'], ['psyche.html', 'mind'],
+  // The room is `psyche` since 2026-11-12 (AGENTS.md, "The menu system"). This
+  // has to be the room's real name, not an alias of it: `in:<room>` resolves
+  // the word someone typed through PAGE_ALIASES and then compares it with what
+  // is written here, so tagging these 'mind' made both `in:mind` and
+  // `in:psyche` match nothing at all.
+  ['projects/psyche/', 'psyche'], ['projects/state-of-mind-line/', 'psyche'], ['projects/autism-reflection.html', 'psyche'], ['psyche.html', 'psyche'],
   ['projects/kondrite/', 'gaming'], ['projects/farlight/', 'gaming'], ['projects/offramp/', 'gaming'], ['projects/starfield/', 'gaming'], ['gaming.html', 'gaming'],
   ['projects/siege-conductor/', 'workbench'], ['workbench.html', 'workbench'],
   ['entertainment', 'entertainment'], ['weather', 'weather'],

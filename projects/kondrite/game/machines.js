@@ -259,12 +259,26 @@ function leaveLevels() {
   state = "modes";
 }
 
-/* Survey, with the account question in front of it. It was inside `playCard`
-   while the game was a card; it is the front page's own button now, and the
-   card path calls this rather than keeping a second copy of the rule. */
+/* Survey. It was inside `playCard` while the game was a card; it is the front
+   page's own button now, and the card path calls this rather than keeping a
+   second copy of the rule.
+
+   **Playing is not behind the account question any more** (2026-11-12). The
+   plan's step 3 put the door "before single player and before multiplayer",
+   and its argument was boards: "every board needs a name to put on it". That
+   argument is true of boards and of nothing else -- and single player's boards
+   are the made-up ones, generated per station with your name among them, which
+   work perfectly well for a guest. What the door actually did was make a
+   stranger's first click an email box, in a game nobody has heard of, reached
+   from a link somebody shared. So the first thing a new player meets is the
+   game; `openLobby` keeps the door, because that is where a real board is and
+   a real board is the thing that needs a name.
+
+   Nothing is lost on the way in: SETTINGS still opens the same panel, a
+   returning player with a session is still signed in, and `cloud.js` still
+   syncs the sector of anyone who has an account. */
 function playSurvey() {
-  const fly = () => startGame("survey", 1, 0);
-  if (needsDoor()) openAccount(fly); else fly();
+  startGame("survey", 1, 0);
 }
 
 /* The machines, behind the same door as the game. The plan puts the question

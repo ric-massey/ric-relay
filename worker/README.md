@@ -21,6 +21,7 @@ is historical — every room that writes anything writes here:
 | `/popular` | the front door | the ORDER pages were used in over the last 30 days — people, not views, Ric's ignored devices left out, the front door and private tools never listed. Public, so order only: no counts, no visitors. Cached an hour (`visitors.mjs`, "Most used first" below) |
 | `/wx` | Weather | the weather room's providers passed through and cached (`projects/weather/README.md`, "How a request travels") |
 | `/cs` | Counter-Strike | `/cs/replay/<id>`: the match replays, in R2 (`projects/cs/README.md`) |
+| `/photo` | Captures | `/photo/<name>`: the photographs, in R2 under `captures/` — public, immutable, `PUT` needs the site password (`projects/photos/README.md`). Named `/photo` and not `/photos` so it cannot shadow the repo's own `photos/` folder in `dev.mjs` |
 | `/meso` | Weather Pro | the hourly mesoanalysis, in R2 for a day: `PUT /meso/<YYYYMMDDHH>` from `projects/weather/meso/build.mjs` (site password; only a mesoanalysis file for that hour is taken), `GET /meso/index` and `GET /meso/<hour>` public |
 | `/rap` | Weather Pro | the RAP model's native-grid files passed through (NOAA's `noaa-rap-pds` sends no CORS header): only `rap.YYYYMMDD/rap.tHHz.wrfprsfNN.grib2` and its `.idx`, and the listing of one run; a single byte range passed on, the bytes streamed untouched, nothing stored; read-only |
 | `/auth` | all of them | Ric's sign-in (`assets/owner.js`) |

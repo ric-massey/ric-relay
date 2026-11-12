@@ -128,3 +128,13 @@ projects/weather/verify/.state/
 assets/weather/skies/.sky-cache/
 # Weather scenes: the original photos scene-maps.py fetches from Commons
 assets/weather/scenes/.scene-cache/
+
+# Universe: the world that is left running lives here -- a checkpoint rewritten
+# every five minutes and its journal. It is one machine's run, megabytes of it,
+# and it changes constantly; the engine that makes it IS committed.
+projects/universe/runs/eternal/
+projects/universe/runs/_test/
+
+# Photos: what this machine has already sent to R2 (projects/photos/README.md).
+# Machine state, not the album -- another machine's copy says nothing useful.
+projects/photos/.uploaded.json

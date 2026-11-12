@@ -70,11 +70,12 @@
   // URL, so there is no bucket to find. Remove this binding and the Worker
   // still runs: /media answers "nothing here" and every page renders as it did
   // before, which is what makes it safe to deploy this ahead of the bucket.
-  // Two other things share this bucket and neither needs its own: the CS
-  // room's replays under cs/replays/, and the universe live frame under
-  // universe/ (projects/universe/STREAMING.md). The keys are built from fixed
-  // prefixes in worker.mjs, and the /media route only ever builds climb/ ones,
-  // so no path through one reaches another.
+  // Three other things share this bucket and none needs its own: the CS
+  // room's replays under cs/replays/, the universe live frame under
+  // universe/ (projects/universe/STREAMING.md), and the Captures room's
+  // photographs under captures/ (projects/photos/README.md). The keys are
+  // built from fixed prefixes in worker.mjs, and the /media route only ever
+  // builds climb/ ones, so no path through one reaches another.
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "photos" }],
 
   // The visitor counter's database (visitors.mjs, ricmassey.com/visitors/ and

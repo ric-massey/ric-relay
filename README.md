@@ -32,12 +32,12 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `climbing.html` | Climbing | Mountain-Project-style route ledger — projects, ticks, objectives |
 | `training.html` | Training | Strava-style feed — the generated plan, ticks and notes from a Worker, and runs pushed in by Strava as they finish |
 | `gaming.html` | Gaming | Modern game launcher — the playable builds live here with quick, readable entry points |
-| `cs.html` | CS | Counter-Strike 2 — every match, round by round, scoreboards and a 2D replay per round (data from Valve's demos and live feed, Leetify for the gaps; see `projects/cs/README.md`) · *unlisted on the home directory* |
+| `cs.html` | CS | Counter-Strike 2 — every match, round by round, scoreboards and a 2D replay per round (data from Valve's demos and live feed, Leetify for the gaps; see `projects/cs/README.md`) |
 | `val.html` | VAL | VALORANT — every match, every round, every fight on the real minimap with all ten players' positions and facing (Riot's match data, read from the running client; see `projects/val/README.md`) · *unlisted on the home directory* |
 | `weather.html`, `weather-pro.html` | Weather, Weather Pro | Two pages, one tap apart. **Weather** is the everyday app and **Weather Pro** the depth. Between them — now (a real station's observation when there is one), when the rain starts in 15-minute steps, hourly, ten days with the forecast office's own words, NWS alerts and animated NEXRAD radar, each saying where it came from and how old it is; with no place, every storm warning in the country and SPC's outlook; inside a warning, storm mode (where the storm is and roughly when it could arrive, from the warning's own motion); single-site reflectivity and velocity; and a Skew-T, hodograph and storm ingredients from four models or the nearest weather balloon (which can be laid over the model at its launch site); on Pro's map, one radar's own dual-pol products (CC, ZDR, KDP, hydrometeor class, echo tops, VIL) at four tilts or its full Level II volume at every tilt, MRMS rotation tracks and hail swaths, GOES imagery straight from NOAA (all sixteen bands, the RGB composites, the 1-minute mesoscale sectors), a mesoanalysis on the map made SPC's way every hour on a server (with an in-browser fallback), HRRR, NAM, RAP, GFS, ECMWF and AIFS model maps hour by hour with the severe composites (STP, supercell composite) and time-lagged HRRR storm probabilities, the GEFS ensemble's mean, spread, spaghetti and chances, the National Blend's own chances, GOES lightning with flash density and each storm's flash rate and lightning jump, the NWS's storm reports, GOES satellite tiles, HRRR future radar, replays of past storms (the mosaic, or one radar's full volume from the Level II archive, with that moment's satellite, airport readings and model runs), airport, road, farm and gauge stations, storm-relative velocity at every tilt, cross-sections and state, county and town lines over it all, and any model field charted hour by hour at a point against the run before; and a workstation — more maps beside the main one on one shared place and time, each saying what it shows and when, saved and shared as workspaces, with Forecast Analysis and Severe Weather presets — the radar, satellite, lightning and model files read straight from NOAA and ECMWF in the visitor's browser. On Weather, a settings sheet picks Everyday or Climbing (humidity, dew point, rain in the last three days, cloud, wind and daylight, hour by hour — measurements only) and a background scene with the live weather happening in it. There is no ride outlook, by Ric's word: information, never a go/no-go verdict. The visitor picks the place; nothing about it is stored on the site (see `projects/weather/README.md`; the plan is `projects/weather/DESIGN.md`) |
 | `exploration.html` | Exploration | Space deck — experiments dock here |
-| `workbench.html` | Workbench | Blueprint board of random / half-finished projects |
-| `captures.html` | Captures | Darkroom contact sheet for photos |
+| `workbench.html` | Workbench | Blueprint board of random / half-finished projects · *unlisted on the home directory* |
+| `captures.html` | Captures | Darkroom contact sheet for photos — opens on thirty chosen frames (`SELECTED`), with the full 1,163-frame archive behind them |
 | `entertainment.html` | Entertainment | The films-and-shows app — a billboard, then **Find something to watch**: every film and show on TMDB, trending, "because Ric liked …", and a picker by mood, genre, streaming service, length, score and decade (`assets/entertainment/finder.js`). Under it his own list: a row of services and shelves of poster tiles (starred first, then most recently watched). Every tile opens a detail sheet with a way through to whichever service it is on. The search also looks up any film or show on TMDB; a title shows where it streams today, the franchise it belongs to in story and release order (`assets/entertainment/watch-orders.js`), a seen tick and Ric's own score out of 100. Ric can add a title or move one between the lists from the page itself |
 | `entertainment-library.html` | — | The whole catalogue as stacked DVD spines on shelves, and the catalog half of the same room: every title, filterable by service, genre, decade and state, as posters or as a dense list · *linked from `entertainment.html`, not a room of its own* |
 | `log.html` | Log | Long-form write-ups, trip reports, Apex VOD reviews · *unlisted on the home directory* |
@@ -49,7 +49,7 @@ Strava, and so on. Each room is its own self-contained `.html` file.
 | `worker/` | — | The one Cloudflare Worker behind every room that writes anything — training, climbing and entertainment. See [`worker/README.md`](worker/README.md) |
 | `docs/` | — | Notes, audits, design mockups and plans that are about the site rather than part of it |
 | `projects/` | — | Self-contained sub-projects, each linked from a room (see below) |
-| `photos/` | — | Web-optimized images (originals stay out of git in `_photo-originals/`) |
+| `photos/` | — | Web-optimized images (originals stay out of git in `_photo-originals/`). The album — 1,287 `website-*.jpg`, 417 MB — is **served from Cloudflare R2** via the Worker's `/photo/<name>` rather than from Pages; the 38 `climbing-*.jpg` stay in git because four other pages read them by path. See [`projects/photos/README.md`](projects/photos/README.md) |
 | `captures-data.js` | — | Generated `[filename, date]` pairs for the 1,300+ photos `captures.html` draws |
 | `assets/` | — | Everything that isn't a photograph. Sitewide files sit at the top (`owner.js`, `site-gate.js`, the share image, and `training-plan.json`, which stays there because the deployed Worker fetches it by its full URL). Everything else has a folder: `cat/` (Mochi's sprite frames), `climbing/`, `training/` and `entertainment/` (each room's own styles, scripts and generated JSON), `games/` (covers and clips), `posters/` and `backdrops/` |
 | `notes.js` | — | Homepage "transmissions" — the one file you edit by hand to post a note |
@@ -216,16 +216,20 @@ pill switcher in Orrin, case-file tabs in Psyche, a film strip on captures, and 
 **same set of rooms with the same labels** — only the styling differs. If you add or
 rename a room, update the menu on **every** page (see `AGENTS.md`).
 
-That set is `terminal · orrin · psyche · climbing · training · weather · exploration · gaming · workbench · captures · entertainment`
+That set is `terminal · orrin · psyche · climbing · training · cs · weather · exploration · gaming · captures · entertainment`
 — the rooms the home directory lists, plus `terminal` for the way home, so the
-site says one thing about what it contains. The unlisted rooms (`cs`, `val`, `log`, `map`)
-are still reachable by URL and from the terminal's `ls` / `tree` / `find` / `open`.
+site says one thing about what it contains. The unlisted rooms (`val`, `log`, `map`,
+`workbench`) are still reachable by URL and from the terminal's `ls` / `tree` / `find` /
+`open`. **CS came into the set and Workbench went out on 2026-11-12**: CS had grown into
+one of the deepest rooms on the site while it was still hidden, and Workbench was in
+every nav holding one project and a card reading "Empty slot".
 
-One label is currently out of step: the front door and `ls` call the Psyche room
-**`/mind`**, while every room nav still says **`psyche`**. Typing either works
-(`PAGE_ALIASES` in `terminal.html` maps `psyche` → `mind`), but the two names are visible
-in different places, which is exactly the drift the shared label set exists to prevent.
-Pick one and make the other follow.
+That label was out of step until 2026-11-12: the front door and `ls` called the Psyche
+room **`/mind`** while every room nav said **`psyche`**. It is `psyche` everywhere now —
+the file, the page title and nine navs already said so, and only the `ROOMS` array
+disagreed. Typing `mind` still works (`PAGE_ALIASES` in `terminal.html` maps it through).
+**Mind** remains a *shelf* on the front door, which is a category of four things and not
+the room.
 
 On a phone the menu collapses behind a single button with full-size tap targets. The
 behaviour is shared (`installRoomMenu()` in `effects.js`, so there aren't nine copies of

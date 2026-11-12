@@ -10,7 +10,7 @@
        door"). The terminal is terminal.html. -->
   <meta name="description" content="Ric Massey's own internet — games you can play, space you can explore, climbing, training, photos, and Orrin.">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Ric's Terminal">
+  <meta property="og:site_name" content="RIC//NET">
   <meta property="og:title" content="RIC//NET — Ric Massey's own internet">
   <meta property="og:description" content="Games you can play, space you can explore, climbing, training, photos, and Orrin.">
   <meta property="og:url" content="https://ricmassey.com/">
@@ -168,13 +168,17 @@
 
     /* the quick stats: a word, a value, its age; a link each */
     .glance { max-width: 1400px; margin: clamp(18px, 2.6vh, 28px) auto 0; display: flex; flex-wrap: wrap; gap: 6px 0; }
-    .gl { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-height: 48px; padding: 0 clamp(16px, 2vw, 28px); border-left: 1px solid var(--line); color: var(--ink); text-decoration: none; min-width: 0; }
+    .gl { display: flex; flex-direction: column; justify-content: flex-start; gap: 2px; min-height: 48px; padding: 0 clamp(16px, 2vw, 28px); border-left: 1px solid var(--line); color: var(--ink); text-decoration: none; min-width: 0; }
     .gl:first-child { padding-left: 0; border-left: 0; }
     .gl-k { font: 400 13px var(--sans); color: var(--muted); }
     .gl-k b { font-weight: 600; color: var(--magenta); margin-left: 6px; }
-    .gl-val { display: flex; align-items: baseline; gap: 7px; min-width: 0; white-space: nowrap; }
-    .gl-big { font: 600 clamp(17px, 1.5vw, 20px)/1.25 var(--display); letter-spacing: -.015em; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
-    .gl-line { font: 400 13px var(--sans); color: var(--muted); }
+    /* A long name takes a second line and the age follows it; nothing here is
+       cut to an ellipsis unless it runs past three lines. On one line, "Find
+       something to watch" read "Find somethin…" on a desktop and a phone
+       both, and a narrow window cut the CS score itself to "1…" (2026-11-09). */
+    .gl-val { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 7px; min-width: 0; }
+    .gl-big { font: 600 clamp(17px, 1.5vw, 20px)/1.25 var(--display); letter-spacing: -.015em; overflow: hidden; max-width: 240px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+    .gl-line { font: 400 13px var(--sans); color: var(--muted); white-space: nowrap; }
     .gl-src { display: none; }
     .gl:hover .gl-big, .gl:focus-visible .gl-big { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
     .res { display: inline-block; padding: 0 5px; border-radius: 3px; font: 700 11px/17px var(--mono); vertical-align: 2px; color: #fff; }
@@ -711,8 +715,20 @@
     // state — its random stream (st.r), the frame's dt, anything it keeps.
     // They are drawn only while their rip is on screen.
     const IMG = new Map();
+    /* The album (website-NNNN.jpg) is served from R2 by the Worker, not from
+       Pages — 417 MB of it was most of the gigabyte Pages allows
+       (projects/photos/README.md). The repo's copy is the fallback while both
+       exist, so the darkroom tile is never blank because of a deploy. The 38
+       climbing-NN.jpg stay in the repo and are asked for by path. */
+    const PHOTO_BASE = "https://training-log.rmbuster82.workers.dev/photo/";
+    const repoPhoto = (src) => (src.startsWith(PHOTO_BASE) ? "photos/" + src.slice(PHOTO_BASE.length) : null);
     const img = (src) => {
-      if (!IMG.has(src)) { const i = new Image(); i.decoding = "async"; i.src = src; IMG.set(src, i); }
+      if (!IMG.has(src)) {
+        const i = new Image(); i.decoding = "async";
+        const back = repoPhoto(src);
+        if (back) i.addEventListener("error", function again() { i.removeEventListener("error", again); i.src = back; });
+        i.src = src; IMG.set(src, i);
+      }
       const i = IMG.get(src);
       return i.complete && i.naturalWidth ? i : null;
     };
@@ -755,7 +771,7 @@
     };
     const POSTERS = ["2-guns", "the-equalizer", "the-accountant", "american-gangster", "keep-watching", "the-belko-experiment", "the-last-stand", "patriots-day", "sahara", "mud", "white-boy-rick", "american-made", "mr-mrs-smith", "conspiracy-theory", "freerunner", "minority-report", "elysium", "now-you-see-me", "the-sixth-sense", "game-night", "13-hours", "world-war-z", "snatch", "django-unchained", "sinbad", "catch-me-if-you-can", "tag", "after-earth", "the-dark-knight-trilogy", "fight-club", "alita-battle-angel", "300", "gladiator", "the-patriot", "i-am-legend", "eraser", "predator", "braveheart", "mcfarland-usa", "the-big-short", "security", "robocop", "snowpiercer", "the-adam-project", "don-t-look-up", "hacksaw-ridge", "click", "the-social-network", "exodus-gods-and-kings", "tomorrowland", "nerve", "gran-turismo", "zoolander", "baby-driver", "the-quick-and-the-dead", "yes-man", "focus", "carry-on", "blackkklansman", "no-country-for-old-men", "the-ballad-of-buster-scruggs", "crazy-stupid-love", "where-the-crawdads-sing", "her", "awakenings", "the-dawn-wall", "fahrenheit-451", "pulp-fiction", "f1-the-movie", "valley-uprising", "the-secret-life-of-walter-mitty", "ad-astra", "barbarian", "in-time", "imperium", "mickey-17", "idiocracy", "se7en", "horrible-bosses", "collateral", "inside-man", "looper", "arrival", "whiplash", "saving-private-ryan", "the-matrix", "the-equalizer-2", "inside-man-most-wanted", "the-italian-job", "jack-reacher", "black-hawk-down", "fury", "jarhead", "oblivion", "district-9", "total-recall", "terminator", "alien-vs-predator", "edge-of-tomorrow", "star-wars", "inception", "interstellar", "the-bourne-trilogy", "forrest-gump", "the-truman-show", "good-will-hunting", "the-wolf-of-wall-street", "superbad", "21-jump-street", "white-house-down", "commando", "the-running-man", "last-action-hero", "true-lies", "end-of-days", "collateral-damage", "twins", "kindergarten-cop", "junior", "jingle-all-the-way", "the-expendables", "escape-plan", "killing-gunther", "batman-robin", "aftermath", "mad-max", "law-abiding-citizen", "avatar", "iron-man", "captain-america", "the-avengers", "thor", "guardians-of-the-galaxy", "doctor-strange", "black-panther", "ant-man", "deadpool", "x-men", "venom", "logan", "man-of-steel", "batman-v-superman-dawn-of-justice", "zack-snyder-s-justice-league", "wonder-woman", "aquaman", "shazam", "suicide-squad", "joker", "here-comes-the-boom", "zookeeper", "school-of-rock", "kung-fu-panda", "shrek", "inside-out", "deadpool-wolverine", "despicable-me", "a-quiet-place", "twister", "dune", "the-fall-guy", "oppenheimer", "ant-man-and-the-wasp", "the-nun", "the-meg", "cocaine-bear", "saw", "napoleon", "avatar-the-way-of-water", "the-batman", "elvis", "bullet-train", "smile", "free-guy", "aladdin", "jumanji", "it", "ford-v-ferrari", "1917", "glass", "moana", "split", "hamilton", "free-solo", "wonka", "the-shining", "this-is-the-end", "the-butterfly-effect", "get-out", "hellboy", "zombieland", "bird-box", "the-happening", "the-conjuring", "halloween", "a-nightmare-on-elm-street", "the-silence-of-the-lambs", "gremlins", "dumb-and-dumber", "groundhog-day", "superman", "american-sniper", "maggie", "a-man-called-otto", "the-gentlemen", "the-gorge", "tetris", "life", "absolutely-anything", "the-amateur", "the-long-walk", "i-love-you-man", "tropic-thunder", "it-miniseries", "28-days-later", "28-weeks-later", "28-years-later", "tron-ares", "code-3", "the-menu", "honey-don-t", "caught-stealing", "source-code", "greenland", "greenland-migration", "zodiac", "jurassic-world", "jurassic-world-fallen-kingdom", "jurassic-world-dominion", "jurassic-world-rebirth", "jurassic-park", "the-lost-world-jurassic-park", "jurassic-park-iii", "daybreak", "mercy", "the-odyssey", "spider-man-brand-new-day", "obsession", "rush", "lamborghini", "the-angriest-man-in-brooklyn", "four-brothers", "lone-survivor", "american-honey", "seven-pounds", "knowing", "we-are-your-friends", "triangle", "no-hard-feelings", "the-notebook", "the-prestige", "the-departed", "v-for-vendetta", "the-wall", "samaritan", "training-day", "you-should-have-left", "taxi-driver", "the-family-plan", "what-women-want", "unstoppable", "greater-good", "the-hunt", "equilibrium", "mayhem", "heathers", "the-jester", "pawn-sacrifice", "finch", "next", "adaptation", "10-cloverfield-lane", "argo", "man-on-fire", "green-book", "carriers", "premium-rush", "all-eyez-on-me", "my-name-is-earl", "end-of-watch", "only-the-brave", "men-of-honor", "the-aviator", "sin-city", "the-day-of-the-jackal", "downsizing", "kill-bill", "three-thousand-years-of-longing", "the-taking-of-pelham-one-two-three", "moneyball", "the-sound", "a-i-rising", "the-town", "a-prayer-before-dawn", "jungle", "into-the-blue", "speed", "friendship", "the-impossible", "the-roses", "inglourious-basterds", "blended", "if-only", "odd-thomas", "magazine-dreams", "the-whale", "demolition", "the-heartbreak-kid", "another-earth", "the-flash", "wanted", "where-hope-grows", "john-wick", "goodfellas", "casino", "scarface", "moments", "the-machinist", "blade-runner", "2001-a-space-odyssey", "the-godfather", "talladega-nights", "shutter-island", "children-of-men", "greater", "the-room", "kiss-kiss-bang-bang", "shooter", "the-losers", "the-ministry-of-ungentlemanly-warfare", "the-others", "shaun-of-the-dead", "anaconda", "flight-risk", "guns-akimbo", "marty-supreme", "roofman", "the-revenant", "the-place-beyond-the-pines", "ray", "ghosted", "tommy-boy", "the-devil-s-advocate", "send-help", "smokey-and-the-bandit", "rip", "the-master", "just-friends", "boss-level", "knives-out", "ruby-sparks", "pumping-iron", "the-dark-tower", "hypnotic", "heat", "fallen", "war-machine", "the-adventures-of-tintin", "what-happened-to-monday", "lawless", "we-live-in-time", "nightcrawler"];
     const CLIMBS = Array.from({ length: 38 }, (_, i) => `photos/climbing-${String(i + 1).padStart(2, "0")}.jpg`);
-    const PHOTOS = (r, n) => Array.from({ length: n }, () => `photos/website-${String(1 + Math.floor(r() * 1287)).padStart(4, "0")}.jpg`);
+    const PHOTOS = (r, n) => Array.from({ length: n }, () => `${PHOTO_BASE}website-${String(1 + Math.floor(r() * 1287)).padStart(4, "0")}.jpg`);
     const font = (px, kind = "sans", weight = 600) => `${weight} ${px}px ${kind === "mono" ? 'ui-monospace, "SF Mono", Menlo, Consolas, monospace' : kind === "serif" ? 'Georgia, "Times New Roman", serif' : '-apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif'}`;
 
     const ART = {
@@ -1097,7 +1113,7 @@
       // The terminal itself, answering: real commands, typed.
       terminal(x, w, h, t, st) {
         const S = [
-          ["$ ls", "  /orrin  /mind  /climbing  /training", "  /exploration  /gaming  /captures ..."],
+          ["$ ls", "  /orrin  /psyche  /climbing  /training", "  /exploration  /gaming  /captures ..."],
           ["$ whoami", "guest — but if you're reading this,", "you're probably family. hi."],
           ["$ coffee", "brewing... ☕ dispensed. carry on."],
           ["$ exit", "there is no exit. there is only the terminal."],
@@ -1562,6 +1578,9 @@
       };
       // the stats are laid down by the portal's script further down the page
       addEventListener("DOMContentLoaded", lift); addEventListener("resize", lift); document.fonts?.ready.then(lift);
+      // and again whenever a stat arrives and changes the block's height (a
+      // name that takes a second line); --drop is a transform, so this cannot loop
+      if (window.ResizeObserver) new ResizeObserver(lift).observe(document.getElementById("glance"));
       side.addEventListener("click", (e) => { const h = e.target.closest(".sh"); if (!h) return; e.preventDefault(); document.getElementById(h.dataset.to).scrollIntoView({ behavior: STILL ? "auto" : "smooth" }); });
       const on = new IntersectionObserver((list) => list.forEach((x) => { if (x.isIntersecting) side.querySelectorAll(".sh").forEach((h) => h.classList.toggle("on", h.dataset.to === x.target.id)); }), { rootMargin: "-40% 0px -55% 0px" });
       feed.querySelectorAll(".shelf").forEach((sh) => on.observe(sh));
@@ -1724,8 +1743,17 @@
         const m = s / 60, h = m / 60, d = h / 24;
         return m < 60 ? `${Math.round(m)} min ago` : h < 36 ? `${Math.round(h)} h ago` : d < 45 ? `${Math.round(d)} days ago` : `${Math.round(d / 30)} months ago`;
       };
-      const short = (t) => { const d = (Date.now() - new Date(t).getTime()) / 864e5; if (!isFinite(d)) return "";
-        return d < 1 / 24 ? "now" : d < 1 ? `${Math.round(d * 24)}h` : d < 45 ? `${Math.round(d)}d` : `${Math.round(d / 30)}mo`; };
+      // How long ago, in a word. Under a day it is hours; from then on it is
+      // counted by the calendar, so yesterday's run is "1d" at 37 hours as it
+      // is at 25 (rounding the hours called it "2d"). `dated` is for a thing
+      // that has a day and no time — a climb, an addition: "today", never
+      // "now" at 11am and "21h" the next morning, which claimed an hour nobody
+      // recorded. Nothing without a real date gets an age at all: a CS match
+      // with no time used to read "692mo", which is 1970. (2026-11-09)
+      const short = (t, dated) => { const then = new Date(t ?? NaN), d = (Date.now() - then.getTime()) / 864e5; if (!isFinite(d)) return "";
+        if (!dated && d < 1) return d < 1 / 24 ? "now" : `${Math.round(d * 24)}h`;
+        const mid = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(), days = Math.round((mid(new Date()) - mid(then)) / 864e5);
+        return days <= 0 ? "today" : days < 45 ? `${days}d` : days < 548 ? `${Math.round(days / 30)}mo` : `${Math.round(days / 365)}y`; };
       const day = (iso) => new Date(iso + (iso.length === 10 ? "T12:00:00" : "")).toLocaleDateString(undefined, { month: "short", day: "numeric" });
       const n = (v) => Number(v).toLocaleString();
       const STILL = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1797,14 +1825,20 @@
         const r = Object.values(d.days || {}).flat().filter((a) => /Run/.test(a.sport_type || a.type)).sort((a, b) => b.start_date_local.localeCompare(a.start_date_local))[0];
         if (!r) { setRun("—", "No runs yet", "Strava"); return; }
         const mi = r.distance / 1609.344, pace = r.moving_time / 60 / mi;
-        setRun(`${mi.toFixed(1)} mi`, short(r.at || r.start_date_local), "");
-        offer(r.at || r.start_date_local, "gl-run");
+        // `at` is when the Worker took it in; without it, start_date_local is a
+        // local time wearing a Z, so the Z comes off before it is read
+        const when = r.at || r.start_date_local.replace(/Z$/, "");
+        setRun(`${mi.toFixed(1)} mi`, short(when), "");
+        offer(when, "gl-run");
         feed("Strava", true);
       }).catch(() => { setRun("—", "no answer", ""); feed("Strava", false); });
 
       // the last CS game: Valve's own record of it
       {
-        const m = (window.CS_DATA?.matches || []).slice().sort((a, b) => b.at.localeCompare(a.at))[0];
+        // Only matches that have a time: one read from a demo alone has
+        // `at: null`, and sorting on it put that game on top for good, dated
+        // 1970 (2026-11-09). cs.html sorts those last the same way.
+        const m = (window.CS_DATA?.matches || []).filter((x) => x.at).sort((a, b) => b.at.localeCompare(a.at))[0];
         if (!m) setCs("—", "No matches yet", "Valve");
         else {
           const map = m.map.replace(/^de_|^cs_/, "").replace(/^./, (c) => c.toUpperCase());
@@ -1843,14 +1877,14 @@
         } catch (e) { /* no boards is a shorter list, not an error */ }
         const x = days.sort((a, b) => b.date.localeCompare(a.date))[0];
         if (!x) { setClimb("—", "", ""); return; }
-        setClimb(esc(x.name), short(x.date + "T12:00:00"), "");
+        setClimb(esc(x.name), short(x.date + "T12:00:00", true), "");
         G.querySelector(".gl-climb").href = x.href;
         offer(x.date + "T12:00:00", "gl-climb");
       })();
       // the newest thing added to the site
       {
         const x = (window.RELAY_LATEST || [])[0];
-        if (x) { setNew(esc(x.title), short(x.date + "T12:00:00"), ""); G.querySelector(".gl-new").href = x.href; offer(x.date + "T12:00:00", "gl-new"); }
+        if (x) { setNew(esc(x.title), short(x.date + "T12:00:00", true), ""); G.querySelector(".gl-new").href = x.href; offer(x.date + "T12:00:00", "gl-new"); }
         else setNew("—", "", "");
       }
 

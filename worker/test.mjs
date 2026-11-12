@@ -1611,6 +1611,39 @@ console.log('\nRULE  CS replays: only the owner uploads, everyone can load them,
   ok((await r.hit('GET', '/media/file/..%2Fcs%2Freplays%2F' + id + '.js')).status !== 200, 'and /media cannot reach the replays');
 }
 
+/* ── /photo ──
+   The Captures room's photographs. Same shape as /cs/replay: everyone reads,
+   only the owner writes. What is stored has to be a picture of the kind the
+   name claims, because these are served from the site's own Worker. */
+console.log('\nRULE  the photographs: only the owner uploads, everyone can load them, and only a picture is taken');
+{
+  const r = mediaRig();
+  const name = 'website-0001.jpg';
+  const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6, 7, 8]);
+  const put = (opts, path = '/photo/' + name) => r.hit('PUT', path, { type: 'image/jpeg', ...opts });
+
+  ok((await put({ body: jpeg })).status === 401, 'an upload with no token is refused');
+  ok((await put({ token: 'wrong', body: jpeg })).status === 401, 'and with the wrong one');
+  ok((await r.hit('GET', '/photo/' + name)).status === 404, 'nothing is there before an upload');
+  ok((await put({ token: TOKEN, body: jpeg })).status === 200, 'the owner can upload one');
+  const got = await r.hit('GET', '/photo/' + name);
+  const back = new Uint8Array(await got.arrayBuffer());
+  ok(got.status === 200 && back.length === jpeg.length && back.every((b, i) => b === jpeg[i]),
+    'anyone can load it back, byte for byte');
+  ok(got.headers.get('content-type') === 'image/jpeg', 'served as the picture it is');
+  ok(/immutable/.test(got.headers.get('cache-control') || ''),
+    'and cached for good: a name here never points at different bytes');
+  ok(got.headers.get('x-content-type-options') === 'nosniff', 'and never sniffed into something runnable');
+  ok((await put({ token: TOKEN, body: new TextEncoder().encode('<script>alert(1)</script>') })).status === 400,
+    'something that is not a JPEG is refused under a .jpg name');
+  ok((await r.hit('PUT', '/photo/evil.html', { type: 'image/jpeg', token: TOKEN, body: jpeg })).status === 404,
+    'and a name that is not a picture never reaches the bucket');
+  ok((await put({ token: TOKEN, body: jpeg }, '/photo/..%2Fclimb%2Fx.jpg')).status === 404,
+    'nor does one that tries to climb out of the prefix');
+  ok((await r.hit('GET', '/media/file/..%2Fcaptures%2F' + name)).status !== 200,
+    'and /media cannot reach the photographs');
+}
+
 /* ── /meso ──
    The weather room's mesoanalysis: one file an hour from the builder.
    Everyone reads; only the owner's token writes; only a real mesoanalysis

@@ -1952,7 +1952,7 @@ async function wxProxy(request, env, ctx, parts, url) {
 /* Paths the outside world may reach. A whitelist rather than a blacklist,
    because the only thing standing between the internet and /strava-ingest is
    this line — and a blacklist is one forgotten entry away from being wrong. */
-const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'popular', 'cs', 'meso', 'rap', 'tmdb', 'universe']);
+const PUBLIC_PATHS = new Set(['log', 'climb', 'auth', 'strava', 'board', 'media', 'todo', 'movies', 'garmin', 'trials', 'wx', 'hit', 'stats', 'popular', 'cs', 'meso', 'rap', 'tmdb', 'universe', 'photo']);
 
 /* ── /cs/replay/<match id> — the CS room's replays, kept in R2 ──
    One file per match (projects/cs/matches/<id>.js, written by parse-demos.py),
@@ -2203,6 +2203,89 @@ async function rapRoute(request, env, parts, url) {
 const CS_REPLAY_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const MAX_CS_REPLAY_BYTES = 20 * 1024 * 1024;
 
+/* -- /photo/<name> -- the Captures room's photographs, kept in R2 --
+   1,325 web-optimised JPEGs, ~430 MB. GitHub Pages serves a site up to about
+   a gigabyte and the rest of the site is ~310 MB of that, so the photographs
+   were most of the ceiling and the album still grows. Same reasoning, same
+   bucket and same shape as /cs/replay above: `captures/`, which no /media or
+   /cs path can build a key under.
+
+   The route is /photo/ and not /photos/ on purpose: worker/dev.mjs serves
+   the repo and the Worker on one origin, so a route named for a folder in
+   the repo shadows that folder's files -- and photos/ is exactly the
+   folder the page falls back to.
+
+   GET is public and the answer is immutable: a file name here never points at
+   different bytes (website-0001.jpg is that frame for good), so a browser and
+   Cloudflare may both keep it for a year. A replaced photograph is a new name,
+   the way a re-parsed replay is a new ?v=. PUT needs the site password, like
+   every other write here; projects/photos/upload-photos.py sends them.
+
+   Nothing here is served as HTML or JavaScript -- the content type is decided
+   from the name's own extension and sent with nosniff, so an object in this
+   prefix can never run on the site's origin. */
+const PHOTOS_PREFIX = 'captures/';
+const PHOTO_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,80}\.(jpg|jpeg|png|webp)$/;
+const PHOTO_TYPES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+const MAX_PHOTO_BYTES = 12 * 1024 * 1024;
+
+async function photosRoute(request, env, parts, stub) {
+  const origin = request.headers.get('origin');
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: { ...cors(origin), 'access-control-allow-methods': 'GET,PUT,OPTIONS' }
+    });
+  }
+  const name = parts[1] ? decodeURIComponent(parts[1]) : '';
+  if (parts[2] || !PHOTO_NAME.test(name)) return json({ error: 'not found' }, 404, origin);
+  if (!env.MEDIA) {
+    /* Deployable before the bucket is filled, like /media, /cs and /universe:
+       a GET says there is nothing here rather than failing. */
+    return json({ error: 'photo storage is not configured' },
+      request.method === 'GET' || request.method === 'HEAD' ? 404 : 503, origin);
+  }
+  const key = PHOTOS_PREFIX + name;
+  const type = PHOTO_TYPES[name.slice(name.lastIndexOf('.') + 1).toLowerCase()];
+
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    const obj = await env.MEDIA.get(key);
+    if (!obj) return json({ error: 'not found' }, 404, origin);
+    const headers = new Headers(cors(origin));
+    headers.set('content-type', type);
+    headers.set('etag', obj.httpEtag);
+    headers.set('cache-control', 'public, max-age=31536000, immutable');
+    headers.set('x-content-type-options', 'nosniff');
+    return new Response(request.method === 'HEAD' ? null : obj.body, { status: 200, headers });
+  }
+
+  if (request.method !== 'PUT') return json({ error: 'method not allowed' }, 405, origin);
+  const a = request.headers.get('authorization') || '';
+  const given = a.startsWith('Bearer ') ? a.slice(7) : '';
+  if (!given) return json({ error: 'unauthorized' }, 401, origin);
+  const auth = await stub.fetch(new Request('https://internal/auth', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: given })
+  }));
+  if (auth.status === 429) return json({ error: 'too many tries -- wait five minutes' }, 429, origin);
+  if (auth.status !== 200) return json({ error: 'unauthorized' }, 401, origin);
+
+  const body = await request.arrayBuffer();
+  if (body.byteLength > MAX_PHOTO_BYTES) return json({ error: 'too big' }, 413, origin);
+  if (!body.byteLength) return json({ error: 'empty' }, 400, origin);
+  /* It has to be the kind of picture the name claims: the first bytes are
+     checked, so a PUT cannot park something else under an image's name. */
+  const b = new Uint8Array(body);
+  const isJpeg = b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+  const isPng = b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47;
+  const isWebp = b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46
+    && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50;
+  const ok = type === 'image/jpeg' ? isJpeg : type === 'image/png' ? isPng : isWebp;
+  if (!ok) return json({ error: 'not a ' + type }, 400, origin);
+
+  await env.MEDIA.put(key, body, { httpMetadata: { contentType: type } });
+  return json({ ok: true, name, bytes: body.byteLength }, 200, origin);
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -2269,6 +2352,7 @@ export default {
     if (parts[0] === 'tmdb') return tmdbRoute(request, env, ctx, parts, url, { json, cors });
     if (parts[0] === 'meso') return mesoRoute(request, env, parts, stub);
     if (parts[0] === 'universe') return universeRoute(request, env, parts, stub);
+    if (parts[0] === 'photo') return photosRoute(request, env, parts, stub);
     if (parts[0] === 'rap') return rapRoute(request, env, parts, url);
 
     /* ── /hit and /stats ── the site's own visitor counter (visitors.mjs).

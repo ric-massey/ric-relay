@@ -6,7 +6,7 @@
   <title>Terminal — Ric Massey's corner of the internet</title>
   <meta name="description" content="Ric Massey's personal terminal — Orrin, psyche, climbing, training, exploration, and gaming.">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Ric's Terminal">
+  <meta property="og:site_name" content="RIC//NET">
   <meta property="og:title" content="Terminal — Ric Massey's corner of the internet">
   <meta property="og:description" content="A personal terminal for family & friends — Orrin, climbing, training, gaming, photos, and write-ups.">
   <meta property="og:url" content="https://ricmassey.com/terminal.html">
@@ -536,15 +536,15 @@ type Sydney's cat's name for a surprise!</div>
     //   locked — reachable but answers [LOCKED]; kept out of `random` and Tab
     const ROOMS = [
       { name: "orrin",         href: "orrin.html",         hue: "--flash-orrin",         desc: "cognition · code · ORRIN runtime",        listed: true },
-      { name: "mind",          href: "psyche.html",        hue: "--flash-psyche",        desc: "human systems · psychology · philosophy", listed: true },
+      { name: "psyche",        href: "psyche.html",        hue: "--flash-psyche",        desc: "human systems · psychology · philosophy", listed: true },
       { name: "climbing",      href: "climbing.html",      hue: "--flash-climbing",      desc: "routes · projects · mountaineering",      listed: true },
       { name: "training",      href: "training.html",      hue: "--flash-training",      desc: "runs · sessions · the 52-week plan",      listed: true },
-      { name: "cs",            href: "cs.html",            hue: "--flash-cs",            desc: "counter-strike · every match · 2D replays", listed: false },
+      { name: "cs",            href: "cs.html",            hue: "--flash-cs",            desc: "counter-strike · every match · 2D replays", listed: true },
       { name: "val",           href: "val.html",           hue: "--flash-val",           desc: "valorant · every fight on the minimap",     listed: false },
       { name: "weather",       href: "weather.html",       hue: "--flash-weather",       desc: "now · rain timing · radar · ten days",      listed: true },
       { name: "exploration",   href: "exploration.html",   hue: "--flash-exploration",   desc: "space · physics · science",               listed: true },
       { name: "gaming",        href: "gaming.html",        hue: "--flash-gaming",        desc: "games · launches · playable builds",      listed: true },
-      { name: "workbench",     href: "workbench.html",     hue: "--flash-workbench",     desc: "random projects · ideas · hobbies",       listed: true },
+      { name: "workbench",     href: "workbench.html",     hue: "--flash-workbench",     desc: "random projects · ideas · hobbies",       listed: false },
       { name: "captures",      href: "captures.html",      hue: "--flash-captures",      desc: "photographs",                             listed: true },
       { name: "entertainment", href: "entertainment.html", hue: "--flash-entertainment", desc: "films · shows · what is queued up",       listed: true },
       { name: "log",           href: "log.html",           hue: "--flash-log",           desc: "notes · theories · written",              listed: false },
@@ -554,7 +554,7 @@ type Sydney's cat's name for a surprise!</div>
     const PAGES = Object.fromEntries(ROOMS.map((room) => [room.name, room.href]));
     // What someone types when they aren't thinking in room names: the page is
     // called /training, but the thing they came for is the run.
-    const PAGE_ALIASES = { psyche: "mind", run: "training", cs2: "cs", "counter-strike": "cs", valorant: "val", wx: "weather", forecast: "weather", radar: "weather", rain: "weather" };
+    const PAGE_ALIASES = { mind: "psyche", run: "training", cs2: "cs", "counter-strike": "cs", valorant: "val", wx: "weather", forecast: "weather", radar: "weather", rain: "weather" };
 
     // render the front-door directory from the same list
     (() => {
@@ -671,7 +671,11 @@ type Sydney's cat's name for a surprise!</div>
     /* `ls`, `projects`, `tree` and `help` print rows (printRow, below): the
        name is a link — a room, a project, or a command that runs when tapped —
        so nobody has to retype what the terminal just showed them. A project's
-       room is printed under the name `ls` gives it (/mind, not /psyche). */
+       room is printed under the name `ls` gives it. The Psyche room is
+       `psyche` everywhere since 2026-11-12, and `PAGE_ALIASES` now points
+       `mind` at it — so a project whose `room` is still "mind" (which is
+       what build-pages.mjs writes) resolves to /psyche, the name `ls`
+       prints. The alias is doing the same job in the other direction. */
     const roomOf = (project) => PAGE_ALIASES[project.room] || project.room;
     const listRooms = () => {
       for (const room of ROOMS) printRow(`/${room.name}`, room.desc, { href: room.href, width: 15 }).classList.add("stack");
@@ -925,7 +929,7 @@ type Sydney's cat's name for a surprise!</div>
           if (row.length === 1) printRich([{ t: row[0] }]).classList.add("head");
           else printRow(row[0], row[1], { run: row[2], c: "k", width: 17 }).classList.add("stack");
         }
-        print("\nnames take a leading / too — /mind, /clear.\n" +
+        print("\nnames take a leading / too — /psyche, /clear.\n" +
           "↑ ↓ recall commands · Tab completes · Esc empties the line · Ctrl+L clears\n" +
           "…there may be undocumented commands.");
         return null;

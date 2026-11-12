@@ -12,7 +12,7 @@ window.TERMINAL_PAGES = [
  {
   "href": "climbing.html",
   "title": "Climbing",
-  "keys": "Ric's Terminal",
+  "keys": "RIC//NET",
   "body": "Ric",
   "text": "Climbing · Last days out",
   "room": "climbing"
@@ -20,7 +20,7 @@ window.TERMINAL_PAGES = [
  {
   "href": "cs.html",
   "title": "/cs",
-  "keys": "your matches",
+  "keys": "every match",
   "body": "Ric",
   "text": "Latest match · RicGoneCrazy · Skill profile · Damage per round, game by game · Leetify rating, game by game · Records · Banners · Why Ric dies · Stats · Your Matches · Kill Snapshots · Players · 2D Replay · Maps",
   "room": "cs"
@@ -95,7 +95,7 @@ window.TERMINAL_PAGES = [
   "keys": "",
   "body": "",
   "text": "The shape of the criteria · How it lines up",
-  "room": "mind"
+  "room": "psyche"
  },
  {
   "href": "projects/climbing/board.html",
@@ -116,7 +116,7 @@ window.TERMINAL_PAGES = [
  {
   "href": "projects/climbing/index.html",
   "title": "The Climbing Log",
-  "keys": "Ric's Terminal",
+  "keys": "RIC//NET",
   "body": "Every climb Ric has recorded outside — searchable by route, crag, date and partner.",
   "text": "The log",
   "room": "climbing"
@@ -191,7 +191,7 @@ window.TERMINAL_PAGES = [
   "keys": "Psyche",
   "body": "Search every registered clinical trial on ClinicalTrials.gov — by drug, condition, phase, status and country — from the Psyche room of Ric",
   "text": "Studies · Trial alerts",
-  "room": "mind"
+  "room": "psyche"
  },
  {
   "href": "projects/siege-conductor/index.html",
@@ -263,7 +263,7 @@ window.TERMINAL_PAGES = [
   "keys": "Mania↑ / Depression↓",
   "body": "An animated comparison of bipolar mood episodes and a typical baseline over time.",
   "text": "State-of-Mind Line — Mania↑ / Depression↓",
-  "room": "mind"
+  "room": "psyche"
  },
  {
   "href": "projects/training/calendar.html",
@@ -303,12 +303,12 @@ window.TERMINAL_PAGES = [
   "keys": "Human Systems",
   "body": "Ric",
   "text": "Psyche Human systems, observed from inside · State-of-Mind Line · The Shape of the Criteria · Studies",
-  "room": "mind"
+  "room": "psyche"
  },
  {
   "href": "training.html",
   "title": "Training",
-  "keys": "Ric's Terminal",
+  "keys": "RIC//NET",
   "body": "Ric",
   "text": "Ric Massey · This Week",
   "room": "training"

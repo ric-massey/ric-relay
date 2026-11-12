@@ -278,9 +278,20 @@ const FAKE = { url: "https://example.invalid", anonKey: "sb_publishable_test" };
   console.log("  guest      the guest door is open: it starts the game, is remembered, posts nothing, and is only offered at the door");
 }
 
-// ── 3. signed out, the door stands in front of both of them ────────────────
-/* "Before single player and before multiplayer" — so the game's button and the
-   machines' button, which is every way into a match from the front page. */
+// ── 3. the game plays signed out; the lobby still asks ────────────────────
+/* **Reversed 2026-11-12, and this is the promise now.** The plan's step 3 put
+   the door "before single player and before multiplayer" on one argument:
+   every board needs a name to put on it. That is true of a *real* board. The
+   boards in single player are the made-up ones, generated per station with
+   your name among them, and a guest has one of those like anybody else, so
+   the door in front of Survey was collecting an email address from a stranger
+   whose first click on a game nobody has heard of was a sign-up form.
+
+   So: pressing the game plays the game. Online keeps the door, because that
+   is where the witnessed board is, and that board is the thing that needs a
+   name. The two checks below are each other's control: if the second ever
+   goes the way of the first, the account has stopped being asked for anywhere
+   and the boards have nothing to print. */
 {
   const g = boot({ cloud: FAKE });
   check(g.cloud.enabled(), "the fake service did not configure");
@@ -288,10 +299,13 @@ const FAKE = { url: "https://example.invalid", anonKey: "sb_publishable_test" };
 
   g.cf.screen("title");
   g.cf.title ? g.cf.title() : null;
+  /* Set hidden explicitly first: the element stub starts it undefined, so
+     "the panel stayed shut" has to be asserted against a known shut. */
+  g.el("account").hidden = true;
   g.cf.key("Enter");                       // the game
-  check(g.cf.peek().mode !== "SURVEY" || g.cf.screenNow() === "title",
-        "the game started with nobody signed in");
-  check(!g.el("account").hidden, "pressing the game did not open the door");
+  check(g.el("account").hidden, "pressing the game put a sign-in form in front of it");
+  check(g.cf.peek().mode === "SURVEY" || g.cf.screenNow() !== "title",
+        "pressing the game did not start the game");
 
   /* The other door on the front page is online (`O`): the machines are one
      floor down inside a sector now, behind the same door as the game. An
@@ -305,7 +319,7 @@ const FAKE = { url: "https://example.invalid", anonKey: "sb_publishable_test" };
   g2.cf.key("KeyO");
   check(g2.el("lobby").hidden, "the lobby opened with nobody signed in");
   check(!g2.el("account").hidden, "pressing online did not open the door");
-  console.log("  bothdoors  signed out, neither the game nor the lobby opens");
+  console.log("  playfirst  the game plays signed out, and online still asks");
 }
 
 // ── 4. a cached session plays, and plays with no network at all ────────────
@@ -601,10 +615,14 @@ async function guestChecks() {
   await g.el("btnAcctOut").click();
   check(!g.cloud.session(), "signing out left a session behind");
   check(g.store[GUEST_KEY] === undefined, "signing out left the guest choice standing");
+  /* The door is asked again where it is still asked: online. Pressing the
+     game would not reopen it since 2026-11-12 (section 3), so asking there
+     would be testing the old promise under the new name. */
   g.el("account").hidden = true;
-  g.cf.key("Enter");
+  g.el("lobby").hidden = true;
+  g.cf.key("KeyO");
   check(!g.el("account").hidden, "after signing out, the door did not come back");
-  console.log("  guestgone  signing out clears the guest choice, and the door is asked again");
+  console.log("  guestgone  signing out clears the guest choice, and online asks again");
 }
 
 refreshChecks().then(witnessChecks).then(guestChecks).then(() => {

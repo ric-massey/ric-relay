@@ -79,7 +79,10 @@ const cases = [
   ['kondrite', (d) => d.title === 'KONDRITE', 'a project'],
   ['crossfire', (d) => d.title === 'KONDRITE', "the game's old name"],
   ['i40', (d) => d.title === 'Interstate 40', 'an alias'],
-  ['mood', (d) => d.title === 'State-of-Mind Line' || d.title === '/mind', 'a word in a description, over near misses'],
+  // The Psyche room answered to '/mind' until 2026-11-12, when the room's two
+  // names were settled on 'psyche' (AGENTS.md, "The menu system"). Same room,
+  // same promise: a word in a description still beats the near misses.
+  ['mood', (d) => d.title === 'State-of-Mind Line' || d.title === '/psyche', 'a word in a description, over near misses'],
   ['routes', (d) => d.title === '/climbing' || d.title === 'The Climbing Log', 'a kind word alone finds where they live'],
   ['light cones', (d) => /Light Cones/.test(d.title), 'a page by its title'],
   ['amarilo sunset', (d) => d.kind === 'route' && /amarillo sunset/i.test(d.title), 'a route, misspelled'],

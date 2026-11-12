@@ -6,8 +6,8 @@
   <title>/captures — photographic records</title>
   <meta name="description" content="Ric Massey's photographic records.">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Ric's Terminal">
-  <meta property="og:title" content="Captures — Ric's Terminal">
+  <meta property="og:site_name" content="RIC//NET">
+  <meta property="og:title" content="Captures — RIC//NET">
   <meta property="og:description" content="The contact sheet — frames from trips, walls, machines, and dogs.">
   <meta property="og:url" content="https://ricmassey.com/captures.html">
   <meta property="og:image" content="https://ricmassey.com/assets/og-terminal.png">
@@ -283,22 +283,26 @@
         <a href="psyche.html">psyche</a>
         <a href="climbing.html">climbing</a>
         <a href="training.html">training</a>
+        <a href="cs.html">cs</a>
         <a href="weather.html">weather</a>
         <a href="exploration.html">exploration</a>
         <a href="gaming.html">gaming</a>
-        <a href="workbench.html">workbench</a>
         <span class="here" aria-current="page">captures</span>
         <a href="entertainment.html">entertainment</a>
       </nav>
     </header>
 
     <h1>Captures</h1>
-    <p class="subtitle">The contact sheet. Newest first — frames from trips, walls, machines, and dogs.</p>
+    <p class="subtitle">Thirty frames worth stopping on, and the whole roll behind them — trips, walls, machines, and dogs.</p>
 
     <div class="gallery-tabs" role="tablist" aria-label="Capture collections">
+      <button id="selected-tab" class="gallery-tab" type="button" role="tab"
+              aria-selected="true" aria-controls="selected-panel">
+        Selected <span id="selected-count" class="gallery-tab-count"></span>
+      </button>
       <button id="dated-tab" class="gallery-tab" type="button" role="tab"
-              aria-selected="true" aria-controls="dated-panel">
-        Newest first <span id="dated-count" class="gallery-tab-count"></span>
+              aria-selected="false" aria-controls="dated-panel" tabindex="-1">
+        Everything <span id="dated-count" class="gallery-tab-count"></span>
       </button>
       <button id="unassorted-tab" class="gallery-tab" type="button" role="tab"
               aria-selected="false" aria-controls="unassorted-panel" tabindex="-1">
@@ -307,7 +311,10 @@
     </div>
 
     <div id="empty" class="empty" hidden>NO EXPOSURES DEVELOPED YET — FILM STILL IN THE CAMERA</div>
-    <section id="dated-panel" role="tabpanel" aria-labelledby="dated-tab">
+    <section id="selected-panel" role="tabpanel" aria-labelledby="selected-tab">
+      <div id="selected-sheet" class="sheet" aria-label="Selected contact sheet"></div>
+    </section>
+    <section id="dated-panel" role="tabpanel" aria-labelledby="dated-tab" hidden>
       <div id="dated-sheet" class="sheet" aria-label="Dated contact sheet"></div>
     </section>
     <section id="unassorted-panel" role="tabpanel" aria-labelledby="unassorted-tab" hidden>
@@ -437,6 +444,65 @@
         alt: "A motorcycle up on one wheel on a green, tree-lined road." },
     ];
 
+    // ═════════════════════════════════════════════════════
+    //  THE THIRTY. This list, and only this list, is what the room opens on.
+    //  The archive still holds every frame; it is a tab behind these.
+    //
+    //  Why it exists: the page used to open on 1,163 frames newest-first, so
+    //  whatever was shot last was the front of the room — for a while that
+    //  was six near-identical photographs of the same mushroom. Newest is not
+    //  the same as best, and a contact sheet is not a gallery.
+    //
+    //  To change it: swap a file name. Order is the order they appear. There
+    //  is nothing magic about thirty — it is about one screen on a laptop and
+    //  a short scroll on a phone. Keep it under about forty or it becomes the
+    //  archive again.
+    // ═════════════════════════════════════════════════════
+    const SELECTED = [
+      "website-0629.jpg", "website-0573.jpg", "website-0987.jpg", "website-0985.jpg",
+      "website-0085.jpg", "website-0087.jpg", "website-0971.jpg", "website-1049.jpg",
+      "website-0158.jpg", "website-1185.jpg", "website-1171.jpg", "website-0615.jpg",
+      "climbing-10.jpg",  "website-0272.jpg", "website-0707.jpg", "website-0727.jpg",
+      "website-1281.jpg", "website-0746.jpg", "website-0769.jpg", "website-0690.jpg",
+      "website-1069.jpg", "website-0805.jpg", "website-0966.jpg", "website-1041.jpg",
+      "website-0554.jpg", "website-1229.jpg", "website-0933.jpg", "website-0911.jpg",
+      "website-1106.jpg", "climbing-21.jpg",
+    ];
+
+    /* Where a photograph's bytes come from.
+
+       The album — the 1,287 website-NNNN.jpg — lives in Cloudflare R2 and is
+       served by the Worker (projects/photos/README.md): 417 MB of it was most
+       of the gigabyte GitHub Pages allows, and it still grows.
+
+       The 38 climbing-NN.jpg stay in git and are read from the repo. They are
+       only 15 MB, and they are page furniture rather than album: climbing.html
+       paints two of them as its hero and its band, the front door deals them
+       into two of its moving tiles, and projects/climbing/ has a whole
+       generated index of them. Sending those through R2 would buy nothing and
+       put four more pages behind one network hop.
+
+       Either way the repo's own copy is the fallback, so this page is correct
+       whether or not photos/ is still tracked — which is what lets the upload
+       and the untracking happen on different days. */
+    const PHOTO_BASE = "https://training-log.rmbuster82.workers.dev/photo/";
+    const photoFile = src => src.slice(src.lastIndexOf("/") + 1);
+    const inR2 = file => file.startsWith("website-");
+    function setPhoto(img, src) {
+      const file = photoFile(src);
+      if (!inR2(file)) { img.src = src; return; }
+      img.dataset.local = src;
+      img.addEventListener("error", onPhotoError);
+      img.src = PHOTO_BASE + encodeURIComponent(file);
+    }
+    function onPhotoError(event) {
+      /* One retry, against the repo's copy. Removing the listener first is
+         what stops a missing file looping between the two. */
+      const img = event.currentTarget;
+      img.removeEventListener("error", onPhotoError);
+      if (img.dataset.local) img.src = img.dataset.local;
+    }
+
     const FRAME_DETAILS_BY_FILE = new Map(
       FRAME_DETAILS.map(frame => [frame.src.replace("photos/", ""), frame])
     );
@@ -446,6 +512,10 @@
     }));
     const DATED_FRAMES = FRAMES.filter(frame => frame.date);
     const UNASSORTED_FRAMES = FRAMES.filter(frame => !frame.date);
+    /* In SELECTED's order, not the archive's. A name that no longer exists is
+       skipped rather than rendering a broken frame. */
+    const FRAMES_BY_FILE = new Map(FRAMES.map(frame => [photoFile(frame.src || ""), frame]));
+    const SELECTED_FRAMES = SELECTED.map(file => FRAMES_BY_FILE.get(file)).filter(Boolean);
     const captureDateFormatter = new Intl.DateTimeFormat("en-US", {
       year: "numeric",
       month: "short",
@@ -461,13 +531,15 @@
       return `${frame.caption} · ${formatCaptureDate(frame.date)}`;
     }
 
-    const datedTab = document.getElementById("dated-tab");
-    const unassortedTab = document.getElementById("unassorted-tab");
-    const galleryTabs = [datedTab, unassortedTab];
-    const datedPanel = document.getElementById("dated-panel");
-    const unassortedPanel = document.getElementById("unassorted-panel");
-    const datedSheet = document.getElementById("dated-sheet");
-    const unassortedSheet = document.getElementById("unassorted-sheet");
+    /* Three galleries now, so they are a list rather than a pair of booleans:
+       adding a fourth is one row here and one <section> above. */
+    const GALLERIES = ["selected", "dated", "unassorted"].map(name => ({
+      name,
+      tab: document.getElementById(`${name}-tab`),
+      panel: document.getElementById(`${name}-panel`),
+      sheet: document.getElementById(`${name}-sheet`),
+    }));
+    const galleryTabs = GALLERIES.map(gallery => gallery.tab);
     const lightbox = document.getElementById("lightbox");
     const lightboxImage = document.getElementById("lightbox-image");
     const lightboxLabel = document.getElementById("lightbox-label");
@@ -482,7 +554,7 @@
     function showFrame(index) {
       currentFrameIndex = (index + lightboxFrames.length) % lightboxFrames.length;
       const frame = lightboxFrames[currentFrameIndex];
-      lightboxImage.src = frame.src;
+      setPhoto(lightboxImage, frame.src);
       lightboxImage.alt = frame.alt || "";
       lightboxLabel.textContent = formatFrameLabel(frame);
       lightboxCount.textContent = `${currentFrameIndex + 1} / ${lightboxFrames.length}`;
@@ -535,7 +607,7 @@
         openButton.setAttribute("aria-label", `Open ${formatFrameLabel(frame)}`);
         openButton.addEventListener("click", () => openLightbox(index, openButton, frames));
         const img = document.createElement("img");
-        img.src = frame.src;
+        setPhoto(img, frame.src);
         // No description written yet → decorative, and the figcaption speaks.
         // Never fall back to the frame number: it reads as a wall of serials.
         img.alt = frame.alt || "";
@@ -550,18 +622,18 @@
     }
 
     function selectGallery(tab, { focus = false } = {}) {
-      const showUnassorted = tab === unassortedTab;
-      datedTab.setAttribute("aria-selected", String(!showUnassorted));
-      datedTab.tabIndex = showUnassorted ? -1 : 0;
-      unassortedTab.setAttribute("aria-selected", String(showUnassorted));
-      unassortedTab.tabIndex = showUnassorted ? 0 : -1;
-      datedPanel.hidden = showUnassorted;
-      unassortedPanel.hidden = !showUnassorted;
+      for (const gallery of GALLERIES) {
+        const on = gallery.tab === tab;
+        gallery.tab.setAttribute("aria-selected", String(on));
+        gallery.tab.tabIndex = on ? 0 : -1;
+        gallery.panel.hidden = !on;
+      }
       if (focus) tab.focus();
     }
 
-    datedTab.addEventListener("click", () => selectGallery(datedTab));
-    unassortedTab.addEventListener("click", () => selectGallery(unassortedTab));
+    GALLERIES.forEach(gallery => {
+      gallery.tab.addEventListener("click", () => selectGallery(gallery.tab));
+    });
     galleryTabs.forEach((tab, index) => {
       tab.addEventListener("keydown", event => {
         if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
@@ -571,11 +643,21 @@
       });
     });
 
-    document.getElementById("dated-count").textContent = `(${DATED_FRAMES.length})`;
-    document.getElementById("unassorted-count").textContent = `(${UNASSORTED_FRAMES.length})`;
+    const SHEETS = {
+      selected: SELECTED_FRAMES, dated: DATED_FRAMES, unassorted: UNASSORTED_FRAMES,
+    };
+    for (const gallery of GALLERIES) {
+      const frames = SHEETS[gallery.name];
+      document.getElementById(`${gallery.name}-count`).textContent = `(${frames.length})`;
+      renderFrames(gallery.sheet, frames);
+    }
     if (FRAMES.length === 0) document.getElementById("empty").hidden = false;
-    renderFrames(datedSheet, DATED_FRAMES);
-    renderFrames(unassortedSheet, UNASSORTED_FRAMES);
+    /* Nothing picked yet (an emptied SELECTED, or every name missing) would
+       otherwise open the room on a blank sheet: fall back to the archive. */
+    if (!SELECTED_FRAMES.length) {
+      GALLERIES[0].tab.hidden = true;
+      selectGallery(GALLERIES[1].tab);
+    }
   </script>
 </body>
 </html>
