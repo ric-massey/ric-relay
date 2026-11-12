@@ -1,0 +1,39 @@
+# ricmassey.com — Ric Massey's own internet.
+#
+# Nobody shares a home page. The pieces people pass around are a single
+# explainer, a single game, a single room — so the point of this file is less
+# to keep crawlers out than to stop them spending their time on sign-in
+# screens, and to say where the map is.
+
+User-agent: *
+Allow: /
+
+# Ric's own tools. They answer nothing without a sign-in, so a crawler that
+# fetches them learns only what a login form looks like.
+Disallow: /admin/
+Disallow: /visitors/
+Disallow: /account/
+
+# ATLAS, the private crew map. The app is public code on purpose — it holds no
+# places at all. Every pin, coordinate and photo is in Supabase behind a real
+# login and row-level security (AGENTS.md, hard rule 1). Nothing here would
+# leak a location; it is listed because the app is useless without an account.
+Disallow: /atlas/
+
+# HERMISCUS, the crew app for Dad's race. It stays unpromoted, and the site
+# only ever runs its made-up demo data.
+Disallow: /projects/dads-race/
+
+# The forms Ric logs climbs and routes with.
+Disallow: /projects/climbing/add.html
+Disallow: /projects/climbing/add-route.html
+
+# NOT disallowed, deliberately: /projects/cs/p/ — one page per CS player.
+# Each already carries <meta name="robots" content="noindex">, which is the
+# right tool: those pages exist to be *shared by the person in them*, and a
+# link preview is a crawler fetching the page to read its og: tags. Disallow
+# would stop that fetch, break every preview, and — because the page is never
+# read — stop the noindex being seen at all. Keep them crawlable and
+# unindexed, which is exactly what noindex alone does.
+
+Sitemap: https://ricmassey.com/sitemap.xml

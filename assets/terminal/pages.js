@@ -54,7 +54,7 @@ window.TERMINAL_PAGES = [
   "title": "Arcade",
   "keys": "playable games",
   "body": "A small arcade of playable games — vector combat, a relativistic rocket, a momentum prototype, and Interstate 40 as an arcade cabinet. Click a cover to play.",
-  "text": "Kondrite · Three more, in beta · A rocket at lightspeed · All momentum, all feel · Interstate 40, exit to exit · Nothing to install",
+  "text": "Kondrite · Three more, in beta · A rocket at lightspeed · All momentum, all feel · Interstate 40, exit to exit · Nothing to install, nothing to sign into",
   "room": "gaming"
  },
  {

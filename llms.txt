@@ -1,6 +1,7 @@
-# Ric's Terminal
+# RIC//NET
 
-> Ric Massey's personal website for friends and family. The home page is a
+> Ric Massey's personal website for friends and family. The site is RIC//NET;
+> the terminal is a room in it, called Ric's Terminal. The home page is a
 > feed of every room; the terminal is its own page. Every other page is a "room" styled like the real app for that part
 > of his life. Most rooms draw themselves with JavaScript, so where a room has
 > plain-text data it is linked below.

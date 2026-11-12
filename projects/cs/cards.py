@@ -32,6 +32,7 @@ import highlight  # noqa: E402
 import stats  # noqa: E402
 
 OUT = csdata.HERE / "p"
+OPT_OUT = csdata.HERE / "opt-out.txt"
 ROOT = csdata.HERE.parent.parent
 W, H = 1200, 630
 SIDE = H                                 # the radar is a square on the left
@@ -217,6 +218,32 @@ def page(name, slug, n_games, m, why, base):
 """
 
 
+def opted_out():
+    """Names that get no preview page, from opt-out.txt — one per line.
+
+    These pages are a sharing loop aimed at somebody else: the person in the
+    card is the one who passes it around, and they never asked to have a page.
+    So there has to be a way off, and it has to survive a sync — deleting
+    p/<slug>.html by hand would last until the next game they were in.
+
+    Matched case-insensitively on the in-game name, because that is the only
+    thing the room records about another player (no Steam id goes near these
+    files) and it is what somebody would quote when they asked.
+
+    Dropping a name here removes their page, their picture and their row in
+    cards.js, so the "copy link" button on cs.html stops offering them too, and
+    main()'s cleanup unlinks the files that are already there. It does NOT
+    change how they appear in a scoreboard inside cs.html — the room shows
+    other players by in-game name by Ric's call of 2026-10-13, and that is a
+    separate decision from this one."""
+    try:
+        lines = OPT_OUT.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return set()
+    return {ln.strip().casefold() for ln in lines
+            if ln.strip() and not ln.lstrip().startswith("#")}
+
+
 def main():
     st = (csdata.HERE / "stats.js").read_text(encoding="utf-8")
     S = json.loads(st[st.index("{"):st.rindex("}") + 1])
@@ -229,12 +256,24 @@ def main():
             if b.get("name") and not b.get("me"):
                 games_of.setdefault(b["name"], 0)
                 games_of[b["name"]] += 1
+    # Slugs are worked out over EVERY name, including the ones about to be
+    # removed. `slugs()` only adds the hash suffix where two names collide, so
+    # working them out after a removal would turn the survivor of a collided
+    # pair from `gg-1a2b3c` back into `gg` -- renaming a page somebody else had
+    # already shared, because a third party asked to be taken off. Extra
+    # entries in here are harmless: `keep` below is built from `best`.
+    slug = slugs(sorted(games_of))
+
+    gone = opted_out()
+    skipped = sorted(n for n in games_of if n.casefold() in gone)
+    for n in skipped:
+        del games_of[n]
+
     best = {}
     for g, nm, rnd, sc, _t, why, *tot in S.get("best") or []:
         total = tot[0] if tot else sc
         if nm in games_of and (nm not in best or total > best[nm][3]):
             best[nm] = (S["games"][g]["id"], rnd, why, total)
-    slug = slugs(sorted(games_of))
     OUT.mkdir(exist_ok=True)
     reps, written = {}, 0
     for nm, (mid, rnd, why, _tot) in sorted(best.items()):
@@ -261,7 +300,8 @@ def main():
                                   # anyway and its Copy link 404'd (bug sweep B5b-9)
                                   + json.dumps({n: slug[n] for n in sorted(best) if (OUT / f"{slug[n]}.html").exists()}, ensure_ascii=False,
                                                separators=(",", ":")) + ";\n", encoding="utf-8", newline="\n")
-    print(f"cards: {written} player previews")
+    print(f"cards: {written} player previews"
+          + (f", {len(skipped)} opted out ({', '.join(skipped)})" if skipped else ""))
 
 
 if __name__ == "__main__":

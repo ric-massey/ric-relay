@@ -551,6 +551,25 @@ type Sydney's cat's name for a surprise!</div>
       { name: "map",           href: "map.html",           hue: "--flash-map",           desc: "crew access only · ATLAS, the private map", listed: false },
     ];
 
+    /* Who made this and what it is -- see the `about` command below. Kept with
+       the room list because it is the other thing a stranger needs, and the one
+       the site never said. */
+    const CONTACT = "ricmassey.work@gmail.com";
+    const ABOUT = [
+      "RIC//NET — Ric Massey's own internet.",
+      "",
+      "A personal site for friends and family, and for anyone who got sent one page of it.",
+      "Every room is dressed up as the app for that part of his life: climbing as a route",
+      "ledger, training as a feed, the weather as a forecast app, Counter-Strike as a match",
+      "history with a replay of every round. The games and the explainers are the parts",
+      "people usually arrive at — they run in the browser, there is nothing to install and",
+      "nothing to sign into.",
+      "",
+      "Plain HTML, CSS and JavaScript. No framework, no build step, no dependencies: every",
+      "page is one file you can read. Type `tree` to see all of it, or `ls` for the rooms.",
+    ];
+    window.RELAY_ABOUT = { lines: ABOUT, contact: CONTACT };
+
     const PAGES = Object.fromEntries(ROOMS.map((room) => [room.name, room.href]));
     // What someone types when they aren't thinking in room names: the page is
     // called /training, but the thing they came for is the run.
@@ -912,6 +931,7 @@ type Sydney's cat's name for a surprise!</div>
       ["find <words>", "search the whole site — pages, climbs, films, matches (`find` alone for tricks; typing a search works too)", "find"],
       ["cat notes", "read the latest transmissions", "cat notes"],
       ["status", "check Ric and Orrin's status", "status"],
+      ["about", "what this site is, and who made it", "about"],
       ["whoami", "show visitor identity", "whoami"],
       ["THE TERMINAL ITSELF"],
       ["history", "show commands used this visit", "history"],
@@ -977,6 +997,17 @@ type Sydney's cat's name for a surprise!</div>
       pwd: () => "/terminal",
       whoami: () => "guest — but if you're reading this, you're probably family. hi.",
       status: () => "subject is alive, caffeinated, and pushing commits to ORRIN.\nsee /orrin for a plain-language tour and public project activity.",
+      /* `about` says what this is and who made it, because every other page
+         assumes you already know. A stranger arrives at one explainer or one
+         game somebody sent them, not at the front door, so the one question
+         the site never answered was "whose is this, and what is it".
+
+         CONTACT is the only thing to fill in. While it is empty the contact
+         line is left off entirely -- an about box that offers a way to write
+         and then prints a placeholder is worse than one that does not offer.
+         Put an address in it and the line appears here and on the front door,
+         which reads the same constant through RELAY_ABOUT. */
+      about: () => ABOUT.join("\n") + (CONTACT ? "\n\nwrite: " + CONTACT : ""),
       uptime: () => {
         const seconds = Math.floor(performance.now() / 1000);
         const minutes = Math.floor(seconds / 60);
@@ -1115,7 +1146,7 @@ type Sydney's cat's name for a surprise!</div>
       try { sessionStorage.setItem(HISTORY_KEY, JSON.stringify(commandHistory)); } catch (e) {}
     };
 
-    const visibleCommands = ["help", "commands", "man", "ls", "rooms", "tree", "projects", "find", "search", "more", "open", "cd", "latest", "recent", "random", "cat notes", "history", "pwd", "whoami", "status", "uptime", "date", "echo", "home", "back", "clear", "reboot"];
+    const visibleCommands = ["help", "commands", "man", "ls", "rooms", "tree", "projects", "find", "search", "more", "open", "cd", "latest", "recent", "random", "cat notes", "history", "pwd", "whoami", "status", "about", "uptime", "date", "echo", "home", "back", "clear", "reboot"];
     // locked rooms stay out — completing to something that answers [LOCKED]
     // is a dead end. `ls`, `tree`, `find` and `open map` still reach it.
     const roomNames = ROOMS.filter((room) => !room.locked).map((room) => room.name);

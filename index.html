@@ -481,6 +481,15 @@
     <section class="fin" id="end" aria-labelledby="fin-h">
       <h2 id="fin-h">That's every room<i class="dot">.</i></h2>
       <p class="lede">Or open the terminal and type your way around.</p>
+      <!-- Who made this, for the stranger who arrived at one page of it and has
+           no idea whose site they are on. The long version is the terminal's
+           `about` command; this is the line that stops the question being
+           unanswered on the page most people actually land on.
+           A contact address goes here AND in `CONTACT` in terminal.html — keep
+           the two the same, or the site offers two different ways to write. -->
+      <p class="lede about">Made by Ric Massey — a personal site for friends and family, built by hand in plain
+        HTML, CSS and JavaScript. Type <a href="terminal.html?run=about">about</a> for the longer answer, or
+        write to <a href="mailto:ricmassey.work@gmail.com">ricmassey.work@gmail.com</a>.</p>
       <div class="fin-b">
         <a class="tbtn" href="terminal.html">Terminal<i class="cur" aria-hidden="true"></i></a>
         <a class="fin-top" href="#top">Back to the top ↑</a>
@@ -1517,8 +1526,39 @@
       const o = SHELVES.slice();
       SHELVES.sort((a, b) => (rankOf(byId[a[2][0]]) - rankOf(byId[b[2][0]])) || (o.indexOf(a) - o.indexOf(b)));
     }
-    // every room, most used first — the feature and the phone's bar read this
-    const RANKED = SHELVES.flatMap(([sid, , ids]) => ids.map((id) => ({ id, sid }))).sort((a, b) => POP ? (rankOf(byId[a.id]) - rankOf(byId[b.id])) : 0);
+    /* ── a first visit ──
+       `POP` is the order *this browser* last saw, and a stranger has none — so
+       until the first `/popular` lands they were shown the fallback order in
+       SHELVES, which is the order Ric's family uses the site in. That is the
+       right answer for the fifth visit and the wrong one for the first: it
+       opens a stranger on the weather forecast for a place the site does not
+       know, ranked by people they have never met.
+
+       Nobody arrives at a home page anyway — they arrive at one explainer or
+       one game somebody sent them, and the front door is what they see *after*
+       that. So a first visit opens on three things chosen to be worth a
+       stranger's first click, and the rooms follow underneath exactly as they
+       always do. These three still appear in their own shelves below; this is
+       a way in, not a different site.
+
+       It lasts one page load. The `/popular` fetch above saves its answer the
+       moment it lands, so the second visit has an order of its own and this
+       shelf is gone. If the service is down it stays, which is the better
+       failure of the two. */
+    const FIRST_VISIT = [
+      "scale",     // How Big Everything Is — the one that travels furthest
+      "kondrite",  // a game that starts on click, no sign-in (gaming.html says so)
+      "weather",   // the one thing here anybody has a use for today
+    ].filter((id) => byId[id]);
+    if (!POP && FIRST_VISIT.length === 3) SHELVES.unshift(["start", "Start here", FIRST_VISIT]);
+
+    /* Every room, most used first — the feature and the phone's bar read this.
+       The "start" shelf is left out on purpose: its three are repeats of rooms
+       that are already in a subject shelf, and this list is read by position.
+       Including it put Weather in the phone bar twice and asked ICON for a
+       `start` icon that does not exist. */
+    const RANKED = SHELVES.filter(([sid]) => sid !== "start")
+      .flatMap(([sid, , ids]) => ids.map((id) => ({ id, sid }))).sort((a, b) => POP ? (rankOf(byId[a.id]) - rankOf(byId[b.id])) : 0);
     window.FD.TOP = RANKED[0]?.id; window.FD.byId = byId;
     const PHONE = matchMedia("(max-width: 760px)").matches, HOVER = matchMedia("(hover: hover) and (min-width: 1000px)").matches;
     // small stills for the drawings that otherwise pull full-size photographs or several clips

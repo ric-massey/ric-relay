@@ -242,12 +242,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://ricmassey.com/val.html</loc>
-    <lastmod>2026-11-12</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://ricmassey.com/weather-pro.html</loc>
     <lastmod>2026-11-12</lastmod>
     <changefreq>daily</changefreq>
@@ -258,11 +252,5 @@
     <lastmod>2026-11-12</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://ricmassey.com/workbench.html</loc>
-    <lastmod>2026-11-12</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
   </url>
 </urlset>

@@ -1,0 +1,26 @@
+# Players who get no preview page.
+#
+# cs.html gives every player Ric has played with a small page of their own at
+# p/<slug>.html, so that a link to their games unfurls as a card with their
+# name and their best round on it. That page exists to be shared BY the person
+# in it — and they never asked for it. This file is the way off.
+#
+# Requests arrive at ricmassey.work@gmail.com (the address on the front door
+# and in the terminal's `about`). Add the name here and run a sync.
+#
+# One in-game name per line. Matching ignores case and surrounding spaces.
+# Lines starting with # are notes.
+#
+# What it does, on the next `python projects/cs/cards.py` (every sync runs it):
+#   · no p/<slug>.html and no p/<slug>.jpg is written
+#   · any that are already there are deleted by the cleanup at the end of main()
+#   · the name leaves p/cards.js, so cs.html stops offering "copy link" for them
+#
+# What it does NOT do: their name still appears in the scoreboard of matches
+# they played, like every other player. The room shows other players by
+# in-game name (Ric's call, 2026-10-13, since Leetify and the public stats
+# sites already do) and changing that is a separate decision. If someone wants
+# more than their page gone, that is a conversation, not a line in this file.
+#
+# Nothing here is a Steam id. No Steam id goes near these files — see
+# projects/cs/README.md.

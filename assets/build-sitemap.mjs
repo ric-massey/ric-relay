@@ -43,6 +43,14 @@ const EXCLUDE = [
   [/^projects\/crossfire\//, 'a redirect to KONDRITE'],
   [/^projects\/climbing\/add(-route)?\.html$/, "Ric's logging forms"],
   [/^projects\/kondrite\/sounds\//, "Ric's listening booth"],
+  /* The rooms that are unlisted because they are thin (AGENTS.md, "The menu
+     system"). Keeping them out of the navs and then handing them to a search
+     engine would be advertising the unfinished work the rule exists to not
+     advertise. They stay reachable by URL and from the terminal.
+     Measured 2026-11-12: VAL has 0 matches, Workbench has 1 card and an
+     "Empty slot". Climbing Media is NOT here — it has 8 items (5 send clips,
+     3 photos) and is listed. */
+  [/^(val|workbench)\.html$/, 'unlisted because thin — not advertised to crawlers either'],
 ];
 
 /* How often a page is worth re-reading, and how much of the site it is. Both

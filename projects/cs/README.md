@@ -5,6 +5,17 @@
 The replays are kept in Cloudflare R2, not git (see **Replays live in R2** below);
 `matches/` is this machine's copy.
 
+## A player can ask for their page to go
+
+Every player Ric has played with gets a preview page at `p/<slug>.html` so a link
+to their games unfurls with their name and best round on it. They never asked for
+one, so `opt-out.txt` is the way off: in-game names, one per line, matched
+case-insensitively. `cards.py` then writes no page and no picture for them, and
+its cleanup deletes any that are already there; the name also leaves `p/cards.js`,
+so cs.html stops offering "copy link". Their name still appears in the scoreboards
+of matches they played, like every other player — that is the room's existing rule
+and a separate decision. Requests come to the address on the front door.
+
 ## Where the numbers come from
 
 Three sources, most complete first. Every match records which ones it has.

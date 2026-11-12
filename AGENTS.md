@@ -69,10 +69,12 @@ orrin-updates.js            the Orrin page's progress notes (written by orrin_v3
 captures-data.js            the photo dates captures.html draws (made off-repo from the originals)
 projects/photos/            upload-photos.py — the photographs' way into R2, and its README
 systems.html, updates.html  redirects from old URLs — keep them, links out there still use them
+robots.txt, sitemap.xml     what crawlers may read, and the map — sitemap.xml is generated (assets/build-sitemap.mjs)
 assets/                     sitewide files at the top: owner.js, site-gate.js, training-plan.json
   cat/                      Mochi's sprite frames
   climbing/ training/ entertainment/   one room's own scripts, styles and generated JSON
   games/ posters/ backdrops/           art
+  og/                        the share cards, one per game and explainer, and build-og.py
 photos/                     web-optimised photos, EXIF stripped (hard rule 1) — served from R2, see below
 projects/<name>/            sub-projects, and room data that has a generator next to it
 worker/                     the one Cloudflare Worker (deployed as training-log) — see its README
@@ -367,6 +369,58 @@ directory, `ls`, `tree`, `find` and completion in one place), then update the `<
 **every** room page, the table in `README.md`, and this file. Keep the label set in sync
 everywhere — the navs must agree with each other *and* with the front door.
 
+## Being found, and being shared
+
+Added 2026-11-12. The thing this site did not do was stand up away from itself:
+**nobody shares a home page.** What gets passed around is one explainer, one game,
+one match — and until that date every one of those pages had **no `og:` tags at all**,
+so a link to KONDRITE unfurled as a bare URL, while twenty-one other pages all shared
+the one terminal screenshot. There was no `robots.txt` and no sitemap either, so a page
+nobody had linked was a page nobody could find.
+
+- **`sitemap.xml` is generated** — `node assets/build-sitemap.mjs`, with `--check`.
+  `lastmod` is each file's last commit date, which means **committing the sitemap changes
+  the dates the sitemap reports**: it is one commit behind by construction. That is fine
+  for a hint a crawler may ignore, and it is why there is no `--check` in
+  `.github/checks.mjs` — wiring one in would go red on its own commit. Rerun it by hand
+  when a page is added or removed. Its `EXCLUDE` list is deliberately *not* the same as
+  `build-pages.mjs`'s: a sitemap answers a different question from the search box, and
+  each difference carries its reason.
+- **The thin rooms are out of the sitemap too.** Keeping `val` and `workbench` out of the
+  navs and then handing them to Google would be advertising exactly the unfinished work
+  the unlisted rule exists not to advertise.
+- **`robots.txt` does not disallow `/projects/cs/p/`, on purpose.** Those pages already
+  carry `noindex`, which is the right tool. `Disallow` would stop the fetch — and a link
+  preview *is* a fetch — so it would break every unfurl **and** mean the `noindex` is
+  never read. Crawlable and unindexed is what is wanted; `noindex` alone does it.
+- **Share cards live in `assets/og/`**, one per game and explainer, 1200×630, written by
+  `assets/og/build-og.py` from a manifest in that file. `python assets/og/build-og.py`
+  draws them; `--tags` writes the `og:` block onto each page and is **idempotent** — a
+  block it wrote is replaced whole, a page with og tags of its own (Weather Pro) keeps its
+  words and only has its picture swapped. One manifest decides both, so a title cannot
+  drift between the picture and the tag. It needs Pillow, which nothing else here does, so
+  it runs from a throwaway venv and is not in the checks.
+- Where a piece has real art, that art is the card's background (the Arcade's covers are
+  real in-game screenshots — see the rule below). Where it does not, the card is
+  typographic: a screenshot of a page that is mostly prose is just small grey text. The
+  scrim starts a third of the way down rather than at the top edge, because a flat
+  darkening turned the game covers into black rectangles.
+- **A first visit does not get the family's ranking.** `/popular` is the order *this
+  browser* last saw, and a stranger has none — so the front door used to fall back to the
+  order measured off Ric's family, which opens a stranger on a forecast for a place the
+  site does not know. With no saved order the feed now opens on a **Start here** shelf of
+  three: an explainer, a game and Weather (`FIRST_VISIT` in `index.html`). It lasts one
+  page load, because the `/popular` fetch saves its answer as soon as it lands. The three
+  still appear in their own shelves below, and the shelf is **excluded from `RANKED`** —
+  including it put Weather in the phone bar twice and asked `ICON` for a `start` icon
+  that does not exist.
+- **`about` is a command and a line in the front door's foot.** Every page assumed you
+  already knew whose site this was. `CONTACT` in `terminal.html` is the one value to fill
+  in; **while it is empty the contact line is left off entirely** rather than printing a
+  placeholder. An address goes in that constant *and* in the front door's foot — keep the
+  two the same. `about` is in `HELP`, `visibleCommands` and `COMMANDS`, as
+  `terminal-shell.mjs` requires.
+
 ## Projects and photos
 
 - **Sub-projects** live in `projects/<name>/` (or a single `.html`) and are **linked
@@ -440,6 +494,22 @@ everywhere — the navs must agree with each other *and* with the front door.
   still hold every frame. Swap a file name to change a pick — order is the order they
   appear. Keep it under about forty or the front page becomes the archive again. An
   emptied `SELECTED` hides its own tab and opens on the archive rather than on nothing.
+- **The games play without signing in** (2026-11-12). KONDRITE's door used to stand in
+  front of Survey and the machines, on the plan's argument that "every board needs a name
+  to put on it" (`archive/SIMULATIONS.md`, step 3). That is true of the **witnessed**
+  board and of nothing else — single player's boards are the made-up ones, generated per
+  station, and a guest has those like anybody else. What the door actually did was make a
+  stranger's first click an email box, in a game nobody has heard of, reached from a link
+  somebody shared. `playSurvey()` goes straight in now; **`openLobby` keeps the door**,
+  because that is where the real board is. `test/door.js` section 3 holds both halves and
+  says so — the two checks are each other's control. The Arcade's copy promised "no
+  sign-in" three times while the game it leads with asked for one; that promise is now
+  true, and it is made in the hero where it is needed rather than only in the beta
+  section, where it read as a contrast with KONDRITE.
+- **Climbing Media is NOT a thin room** — checked 2026-11-12 against the Worker's
+  `/media`: 8 items over 8 days, 5 send clips and 3 photographs, with route names. It
+  stays listed. `val` (0 matches) and `workbench` (1 card and an "Empty slot") are the
+  thin ones, and both are unlisted. Measure before hiding something.
 - **Game cover art** for `gaming.html` lives in `assets/games/<game>.jpg` and is **real
   in-game screenshots**, not mockups, gradients, or menu grabs — the room is a storefront
   and lives or dies on real art. The games are canvas-rendered. A plain headless
@@ -733,6 +803,18 @@ data never leaving the machine, and no match ever dropped from the spool.
 - **The archive only grows.** Valve deletes demos after a few weeks; `cs-data.js` is the
   permanent record and no script removes a match from it. Sources merge on Valve's
   match id, else on map + score + Ric's K/D.
+- **A player can ask for their page to go** (2026-11-12). The `p/<slug>.html` previews
+  are a sharing loop aimed at somebody else — the person in the card is the one who
+  passes it around, and they never asked to have a page — so there has to be a way off
+  that survives a sync. `projects/cs/opt-out.txt` is it: in-game names, one per line,
+  matched case-insensitively (the only thing the room records about another player).
+  `cards.py` writes no page and no picture for them, and `main()`'s existing cleanup
+  unlinks the ones already there. **Slugs are worked out before the removal, over every
+  name**, because `slugs()` only adds its hash suffix where two base names collide —
+  working them out afterwards would turn the survivor of a collided pair from
+  `gg-1a2b3c` back into `gg` and rename a page a third party had already shared.
+  It does **not** change how they appear in a scoreboard; that is the next rule and a
+  separate decision. Requests come to the address on the front door.
 - **Other players are shown by in-game name** — Ric decided this on 2026-10-13,
   since Leetify and the public stats sites already show them. Steam ids and share
   codes still never reach the committed files (a share code downloads the whole
