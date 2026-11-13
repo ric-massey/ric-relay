@@ -52,9 +52,9 @@ No build step and no dependencies. `python3 -m http.server 8912 --bind 127.0.0.1
 A hexagon is a body with a mass, a position, a velocity and some heat. Whether that is an atom or
 a planet is the visitor's settings — "Hexagons as planets" is a preset, not a mode.
 
-31 settings in seven groups: the world (size, edge, seed), matter (how many, kinds, layout, spin),
+32 settings in seven groups: the world (size, edge, seed), matter (how many, kinds, layout, spin),
 gravity (strength, reach, a steady "down"), collisions (bounce, fusing), chemistry (what bonds, how
-strongly, how many bonds each), heat (shaking, spreading, leaking, a heater) and space and time
+strongly, how many bonds each, whether a bond changes what it holds), heat (shaking, spreading, leaking, a heater) and space and time
 (drag, a speed limit, the clock).
 
 How it works, briefly:
@@ -71,6 +71,49 @@ How it works, briefly:
 - **Bonds** are springs at touching distance. Forming one gives off its energy as heat; heat
   shakes one loose only if the pair has that much heat to pay for it.
 - **Heat becomes motion** as a random shove charged for exactly the kinetic energy it made.
+
+### Making emergence possible
+
+Ric, 2026-11-13: *"how do we make it so emergence is something thats possible?"* The first version
+could not get past clumps, because a bond meant only "these two stick": nothing a hexagon was
+joined to changed what it did next. Three things were added for that, and none of them puts an
+outcome in:
+
+- **A bond changes what it holds** (`shift`, off by default). A hexagon bonds as its kind moved on
+  by `shift` for every bond it already has, so what it is joined to decides what it joins next.
+  `react()` re-reads each standing bond off its two ends as they are now: worth more, the
+  difference comes out as heat; worth less, the pair's heat pays; worth nothing, it lets go. So a
+  newcomer can knock an old neighbour off, and chains of that are reactions. It is still
+  arithmetic on two kinds — no table of which reactions exist. Off, a world is byte for byte what
+  it was before the setting existed.
+- **A census** (`census()`, "What it has made" in the World tab). Every bonded thing named by the
+  kinds in it, counted, with how many different things exist now and how many this world has ever
+  made. Without it a world that keeps inventing looks the same as one stuck making pairs. Read
+  off the bonds when asked; never stored.
+- **Energy going through.** Reactions need heat arriving and leaving, so the "Things that react"
+  preset has a hot middle and a leak. A sealed cold world reacts until it runs out and stops.
+
+What this does **not** do, and should not be claimed: bonds have no direction, so a thing has no
+shape — a chain and a ring of the same kinds are one entry in the census. Nothing copies itself,
+and nothing here says it will. Bonds that hold an angle are the next step if this is taken
+further, and they need each hexagon to have a facing.
+
+### Hands
+
+Ric, same day: *"i need a way to place them like place hexigons or give them stuff and modify
+hexigons."* A running physics world has a tool row: **Look**, **Place** (tap or drag), **Throw**
+(drag and let go), **Erase**, **Heat**, **Cool** and **Pin**. Place and Throw use a palette: a kind
+and how heavy. Tapping a hexagon in Look opens it in the Hexagon tab, where its kind, weight and
+heat can be changed, it can be stopped, pinned, have its bonds broken, or be removed. "A blank
+world" starts empty for building from nothing. The tools work while paused.
+
+- A **pinned** hexagon is held where it is: collisions treat it as having no end of mass, heat
+  still moves through it, and gravity still pulls on everything else from it. That is what makes
+  walls, floors and anchors.
+- A world has room for 3,000 hexagons added by hand on top of what it started with; a removed
+  one's place is reused.
+- **None of it is physics.** It is somebody reaching in, and the World tab counts how many were
+  put in and taken out. Hand edits are not in a copied link — the link is the settings.
 
 **What it conserves, and what it does not.** Mass exactly (fusing adds the two). Energy to nine
 digits when nothing is meant to take it — the test holds motion + heat + leaked to 1e-6 — and
@@ -158,7 +201,7 @@ Things found while tuning it, so nobody undoes them:
 - A share card. `assets/og/build-og.py` draws them with Windows' own fonts, and this page was
   built in a cloud session that has none, so a card drawn there would not match the others. Add
   a row to that script's manifest and run it with `--tags` from the Windows machine.
-- Physics: no way to drop a body in by hand, and nothing is saved between visits.
+- Physics: bonds have no direction (see above), and a hand-built world is not saved or shared.
 - People: nobody remembers a dead friend, there is no trade in more than two goods, and soldiers
   never attack anyone but soldiers.
 - Neither world has sound.

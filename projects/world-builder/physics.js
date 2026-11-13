@@ -56,7 +56,9 @@
         help: "Off, every hexagon is the same size whatever it weighs." },
       { key: "layout", label: "How it starts", type: "select", def: "scatter",
         options: [["scatter", "Scattered everywhere"], ["cloud", "One cloud"], ["spin", "A spinning disc"],
-                  ["two", "Two clouds on course to meet"], ["sun", "One big body and a ring of dust"]] },
+                  ["two", "Two clouds on course to meet"], ["sun", "One big body and a ring of dust"],
+                  ["empty", "Empty — I will build it myself"]],
+        help: "An empty world starts with nothing in it. Use Place and Throw once it is running." },
       { key: "bigMass", when: s => s.layout === "sun", label: "The big body's mass", type: "range", min: 20, max: 3000, step: 10, def: 600, curve: 2,
         say: v => v + "× the smallest", help: "Only used when it starts as one big body and a ring." },
       { key: "spin", when: s => s.layout === "spin" || s.layout === "sun", label: "Starting spin", type: "range", min: 0, max: 1.5, step: 0.05, def: 1,
@@ -96,6 +98,9 @@
         say: pct, help: "The chance that two hexagons that could bond do, each time they touch." },
       { key: "maxBonds", when: s => s.bonding !== "none", label: "Bonds per hexagon", type: "range", min: 1, max: 6, step: 1, def: 3,
         say: v => "up to " + v, help: "One makes pairs, two makes chains and rings, three or more makes sheets." },
+      { key: "shift", when: s => s.bonding !== "none" && s.bonding !== "any", label: "A bond changes what it holds", type: "range", min: 0, max: 3, step: 1, def: 0,
+        say: v => (v === 0 ? "no — a kind is always that kind" : "each bond moves a hexagon " + v + (v === 1 ? " kind" : " kinds") + " on"),
+        help: "With this on, a hexagon that is already bonded bonds like a different kind — so what it is joined to decides what it joins next, and a new neighbour can knock an old one off. This is what lets things react instead of only stick." },
       { key: "bondSpeed", when: s => s.bonding !== "none", label: "Too fast to bond", type: "range", min: 0.5, max: 30, step: 0.5, def: 6,
         say: v => "over " + v + " a second", help: "Two hexagons meeting faster than this bounce instead." },
     ]},
@@ -144,6 +149,12 @@
     { id: "collide", name: "Two clouds collide", note: "Gravity holds each together until they meet.",
       set: { layout: "two", count: 1200, size: 240, kinds: 3, edge: "open", gravity: 0.5, startSpeed: 3, bounce: 0.4,
              fuse: "hard", fuseHit: 30, shake: 0.2 } },
+    { id: "react", name: "Things that react", note: "Each bond changes what a hexagon bonds with next, over a hot middle.",
+      set: { count: 1200, size: 64, kinds: 5, sized: false, bonding: "sum", shift: 1, bondStrength: 7, maxBonds: 3, bondChance: 0.6,
+             startTemp: 1.5, startSpeed: 1.5, radiate: 0.08, bounce: 0.6, heater: "centre", heaterTemp: 9, shake: 0.5, conduct: 0.5 } },
+    { id: "blank", name: "A blank world", note: "Nothing in it. Place, throw and pin your own.",
+      set: { layout: "empty", size: 60, kinds: 5, edge: "walls", bonding: "sum", shift: 1, bondStrength: 7, maxBonds: 3,
+             bounce: 0.6, radiate: 0.03, startTemp: 0.5 } },
     { id: "ground", name: "A world with a floor", note: "Down, walls, a hot floor and things that bond.",
       set: { count: 900, size: 90, kinds: 4, edge: "walls", fall: 3, bounce: 0.3, bonding: "any", bondStrength: 4,
              maxBonds: 2, heater: "floor", heaterTemp: 12, shake: 0.6, conduct: 0.6, radiate: 0.15, startSpeed: 2 } },
@@ -184,11 +195,13 @@
      table of cases — the Universe project's rule 4, and its law 2 is where
      "sum" comes from: B = M − |v₁ + v₂ − M|. A fused body's kind is its mass,
      so it goes through the same arithmetic by remainder. */
-  function affinity(rule, k1, k2, kinds) {
+  function affinity(rule, k1, k2, kinds, s1, s2) {
     if (rule === "none") return 0;
     if (rule === "any") return 1;
     const M = kinds + 1;
-    const v1 = ((k1 - 1) % kinds) + 1, v2 = ((k2 - 1) % kinds) + 1;
+    /* s1 and s2 are how far each has been moved on by the bonds it already
+       holds (the "a bond changes what it holds" setting). Still arithmetic. */
+    const v1 = ((k1 - 1 + (s1 || 0)) % kinds) + 1, v2 = ((k2 - 1 + (s2 || 0)) % kinds) + 1;
     if (rule === "same") return v1 === v2 ? 1 : 0;
     if (rule === "other") return v1 !== v2 ? 1 : 0;
     return Math.max(0, (M - Math.abs(v1 + v2 - M)) / M);        // "sum"
@@ -203,6 +216,8 @@
   const BOND_DAMP = 3;       // and what it loses to heat as it rings
   const BOND_SNAP = 1.7;     // times its rest length before it tears
   const BREAK_RATE = 3;      // attempts a second at shaking a bond loose
+  const SPARE = 3000;        // hexagons a visitor may add to a running world
+  const REACT_RATE = 4;      // times a second a bond notices its ends have changed
   const GRID = 16;           // gravity's coarse grid, cells a side
   const DIRECT_MAX = 500;    // bodies below which gravity is every pair exactly
 
@@ -211,7 +226,8 @@
     const R = rng(S.seed * 2654435761);
     const W = S.size, H = S.size;
     const wrap = S.edge === "wrap";
-    const cap = S.count;
+    /* Room for everything it starts with and for what a visitor adds by hand. */
+    const cap = (S.layout === "empty" ? 0 : S.count) + SPARE;
 
     const x = new Float64Array(cap), y = new Float64Array(cap);
     const vx = new Float64Array(cap), vy = new Float64Array(cap);
@@ -221,15 +237,20 @@
     const kind = new Int32Array(cap);
     const nb = new Uint8Array(cap);
     const alive = new Uint8Array(cap);
+    const pinned = new Uint8Array(cap);       // held where it was put; nothing moves it
     const bonds = new Map();      // a * cap + b (a < b) → { a, b, B, rest }
     let n = 0;                    // slots used; dead ones stay where they are
-    const tally = { time: 0, radiated: 0, dragged: 0, heated: 0, fused: 0, left: 0, bondsMade: 0, bondsBroken: 0 };
+    const tally = { time: 0, radiated: 0, dragged: 0, heated: 0, fused: 0, left: 0, bondsMade: 0, bondsBroken: 0,
+                    placed: 0, removed: 0, reacted: 0 };
 
     const radiusOf = mass => (S.sized ? 0.5 * Math.sqrt(mass) : 0.5);
 
     function add(px, py, k, pvx, pvy, mass) {
-      if (n >= cap) return -1;
-      const i = n++;
+      let i = -1;
+      if (n < cap) i = n++;
+      else { for (let q = 0; q < cap; q++) if (!alive[q]) { i = q; break; } }     // full: take a dead one's place
+      if (i < 0) return -1;
+      nb[i] = 0; pinned[i] = 0;
       x[i] = px; y[i] = py; vx[i] = pvx || 0; vy[i] = pvy || 0;
       kind[i] = k; m[i] = mass || k; r[i] = radiusOf(m[i]);
       heat[i] = S.startTemp * m[i]; alive[i] = 1;
@@ -288,13 +309,13 @@
 
       if (S.layout === "scatter") {
         const all = shuffle(sites(false));
-        for (let i = 0; i < all.length && n < cap; i++) {
+        for (let i = 0; i < all.length && n < S.count; i++) {
           const v = thermal();
           add(all[i][0] + jig(), all[i][1] + jig(), pickKind(), v[0], v[1]);
         }
       } else if (S.layout === "cloud" || S.layout === "spin") {
-        const discR = discFor(cap, S.layout === "spin" ? 2.6 : 1.5);
-        const all = shuffle(sites(true, discR, cx, cy)).slice(0, cap).sort((a, b) => a[2] - b[2]);
+        const discR = discFor(S.count, S.layout === "spin" ? 2.6 : 1.5);
+        const all = shuffle(sites(true, discR, cx, cy)).slice(0, S.count).sort((a, b) => a[2] - b[2]);
         const kinds = all.map(() => pickKind());
         let inside = 0;
         for (let i = 0; i < all.length; i++) {
@@ -307,8 +328,10 @@
           inside += kinds[i];
           add(s[0] + jig(), s[1] + jig(), kinds[i], v[0] + tx, v[1] + ty);
         }
+      } else if (S.layout === "empty") {
+        /* Nothing. The visitor builds it. */
       } else if (S.layout === "two") {
-        const each = Math.floor(cap / 2);
+        const each = Math.floor(S.count / 2);
         const discR = Math.min(W * 0.2, discFor(each, 1.5));
         const closing = Math.max(1, S.startSpeed);
         for (const side of [-1, 1]) {
@@ -319,7 +342,7 @@
       } else {                                                    // "sun"
         const big = add(cx, cy, Math.round(S.bigMass), 0, 0, S.bigMass);
         const inner = r[big] + 6 * rmax + 2, outer = Math.max(inner + gap * 3, W * 0.44);
-        const all = shuffle(sites(true, outer, cx, cy).filter(s => s[2] >= inner)).slice(0, cap - 1);
+        const all = shuffle(sites(true, outer, cx, cy).filter(s => s[2] >= inner)).slice(0, S.count - 1);
         for (const s of all) {
           const sp = orbit(S.bigMass, s[2]), v = thermal();
           add(s[0] + jig(), s[1] + jig(), pickKind(),
@@ -482,6 +505,37 @@
       }
     }
 
+    /* ── reacting ──────────────────────────────────────────────────────────
+       Only with "a bond changes what it holds" on. A bond's strength is read
+       off its two ends as they are NOW — each moved on by the other bonds it
+       holds — so when a third hexagon bonds to one end, this bond is worth
+       something different. Worth more: the difference comes out as heat.
+       Worth less: the pair's heat has to pay the difference, and if it is
+       worth nothing at all the bond lets go. That is a reaction: nothing here
+       says which ones happen, only the arithmetic the visitor chose. */
+    function react(dt) {
+      if (S.shift === 0 || !bonds.size) return;
+      const odds = REACT_RATE * dt;
+      for (const [k, bd] of bonds) {
+        if (R() > odds) continue;
+        const a = bd.a, b = bd.b;
+        const want = S.bondStrength * affinity(S.bonding, kind[a], kind[b], S.kinds, (nb[a] - 1) * S.shift, (nb[b] - 1) * S.shift);
+        if (want === bd.B) continue;
+        const have = heat[a] + heat[b];
+        if (want > bd.B) {
+          const out = want - bd.B, wa = m[a] / (m[a] + m[b]);
+          heat[a] += out * wa; heat[b] += out * (1 - wa);
+        } else {
+          const need = bd.B - want;
+          if (have < need) continue;                 // too cold to rearrange; it stays as it was
+          const share = need / have;
+          heat[a] -= heat[a] * share; heat[b] -= heat[b] * share;
+        }
+        bd.B = want; tally.reacted++;
+        if (want === 0) unbond(k, bd);
+      }
+    }
+
     /* ── touching ──────────────────────────────────────────────────────────
        A uniform grid finds who is near whom. A body bigger than a cell is kept
        off the grid and tested against everybody, because there are never many
@@ -576,8 +630,11 @@
       if (d > reach) return;
       const bonded = bonds.has(key(i, j));
       const vn = (vx[j] - vx[i]) * ux + (vy[j] - vy[i]) * uy;
-      const mu = m[i] * m[j] / (m[i] + m[j]);
-      if (!bonded && S.fuse !== "never" && (S.fuse === "always" || (vn < 0 && 0.5 * mu * vn * vn > S.fuseHit))) {
+      /* A pinned hexagon has, as far as a collision can tell, no end of mass. */
+      const ii = pinned[i] ? 0 : 1 / m[i], ij = pinned[j] ? 0 : 1 / m[j], isum = ii + ij;
+      if (isum === 0) return;
+      const mu = 1 / isum, held = pinned[i] || pinned[j];
+      if (!bonded && !held && S.fuse !== "never" && (S.fuse === "always" || (vn < 0 && 0.5 * mu * vn * vn > S.fuseHit))) {
         fuse(i, j);
         return;
       }
@@ -585,24 +642,26 @@
       /* Pushed apart so they do not sit inside each other, the lighter one
          moving most, and bounced if they were closing. */
       const over = (reach - d) * 0.5;
-      const wi = m[j] / (m[i] + m[j]), wj = m[i] / (m[i] + m[j]);
+      const wi = ii / isum, wj = ij / isum;
+      /* Heat from the meeting is shared by mass, or evenly when one is pinned. */
+      const hi = held ? 0.5 : wj, hj = 1 - hi;
       x[i] -= ux * over * 2 * wi; y[i] -= uy * over * 2 * wi;
       x[j] += ux * over * 2 * wj; y[j] += uy * over * 2 * wj;
       if (vn < 0) {
         const e = S.bounce;
         const jn = -(1 + e) * vn * mu;
-        vx[i] -= jn * ux / m[i]; vy[i] -= jn * uy / m[i];
-        vx[j] += jn * ux / m[j]; vy[j] += jn * uy / m[j];
+        vx[i] -= jn * ux * ii; vy[i] -= jn * uy * ii;
+        vx[j] += jn * ux * ij; vy[j] += jn * uy * ij;
         const lost = 0.5 * mu * vn * vn * (1 - e * e);
-        heat[i] += lost * wj; heat[j] += lost * wi;
+        heat[i] += lost * hi; heat[j] += lost * hj;
       }
       if (S.bonding !== "none" && nb[i] < S.maxBonds && nb[j] < S.maxBonds && Math.abs(vn) < S.bondSpeed) {
-        const a = affinity(S.bonding, kind[i], kind[j], S.kinds);
+        const a = affinity(S.bonding, kind[i], kind[j], S.kinds, nb[i] * S.shift, nb[j] * S.shift);
         if (a > 0 && R() < S.bondChance * Math.min(1, dt * 30)) {
           const B = S.bondStrength * a;
           bonds.set(key(i, j), { a: Math.min(i, j), b: Math.max(i, j), B: B, rest: reach });
           nb[i]++; nb[j]++; tally.bondsMade++;
-          heat[i] += B * wj; heat[j] += B * wi;
+          heat[i] += B * hi; heat[j] += B * hj;
         }
       }
     }
@@ -625,7 +684,7 @@
         /* Heat becomes a shove in a random direction, and is charged for
            exactly the motion the shove made — so energy is neither made nor
            lost here, only moved. */
-        if (S.shake > 0 && heat[i] > 1e-9) {
+        if (S.shake > 0 && heat[i] > 1e-9 && !pinned[i]) {
           const dE = heat[i] * Math.min(0.5, S.shake * 2 * dt);
           const a = R() * 6.283185307, dv = Math.sqrt(2 * dE / m[i]);
           const kx = Math.cos(a) * dv, ky = Math.sin(a) * dv;
@@ -637,7 +696,7 @@
 
     function edges() {
       for (let i = 0; i < n; i++) {
-        if (!alive[i]) continue;
+        if (!alive[i] || pinned[i]) continue;
         if (wrap) {
           if (x[i] < 0) x[i] += W; else if (x[i] >= W) x[i] -= W;
           if (y[i] < 0) y[i] += H; else if (y[i] >= H) y[i] -= H;
@@ -667,6 +726,7 @@
       const lim = S.limit, keep = S.drag > 0 ? Math.exp(-S.drag * dt) : 1;
       for (let i = 0; i < n; i++) {
         if (!alive[i]) continue;
+        if (pinned[i]) { vx[i] = 0; vy[i] = 0; continue; }
         vx[i] += ax[i] * dt; vy[i] += (ay[i] + S.fall) * dt;
         if (keep < 1) {
           const before = vx[i] * vx[i] + vy[i] * vy[i];
@@ -681,6 +741,7 @@
       buildHash();
       eachPair((i, j) => touch(i, j, dt));
       heatStep(dt);
+      react(dt);
       shakeBonds(dt);
       tally.time += dt;
     }
@@ -730,7 +791,79 @@
         clustered: clustered, heaviest: heaviest,
         radiated: tally.radiated, dragged: tally.dragged, heated: tally.heated,
         fused: tally.fused, left: tally.left, bondsMade: tally.bondsMade, bondsBroken: tally.bondsBroken,
+        placed: tally.placed, removed: tally.removed, reacted: tally.reacted, room: cap - count,
       };
+    }
+
+    /* Every bonded thing in the world, grouped by what it is made of. A thing
+       is named by the kinds in it, smallest first — "1·1·4" — and nothing else:
+       the list is read off the bonds when asked and never kept. This is how to
+       tell whether a world is making anything new or only more of the same. */
+    function census() {
+      for (let i = 0; i < n; i++) parent[i] = i;
+      for (const bd of bonds.values()) { const a = find(bd.a), b = find(bd.b); if (a !== b) parent[a] = b; }
+      const groups = new Map();
+      for (let i = 0; i < n; i++) if (alive[i] && nb[i] > 0) {
+        const f = find(i);
+        let g = groups.get(f); if (!g) { g = []; groups.set(f, g); }
+        g.push(((kind[i] - 1) % S.kinds) + 1);
+      }
+      const types = new Map();
+      let free = 0;
+      for (let i = 0; i < n; i++) if (alive[i] && nb[i] === 0) free++;
+      for (const g of groups.values()) {
+        g.sort((a, b) => a - b);
+        const sig = g.length > 12 ? g.length + " hexagons" : g.join("\u00b7");
+        const t = types.get(sig);
+        if (t) t.count++; else types.set(sig, { sig: sig, kinds: g.length > 12 ? null : g, size: g.length, count: 1 });
+      }
+      const list = [...types.values()].sort((a, b) => b.count - a.count || b.size - a.size);
+      return { free: free, things: groups.size, distinct: list.length, types: list };
+    }
+
+    /* ── a visitor's hands ─────────────────────────────────────────────────
+       Putting a hexagon in, taking one out, and changing one that is there.
+       None of this is physics: it is somebody reaching into the world, and the
+       tallies say how often they did. */
+    function place(px, py, k, pvx, pvy, mass) {
+      if (wrap) { px = ((px % W) + W) % W; py = ((py % H) + H) % H; }
+      k = Math.max(1, Math.round(k || 1));
+      const i = add(px, py, k, pvx, pvy, mass && mass > 0 ? mass : k);
+      if (i >= 0) tally.placed++;
+      return i;
+    }
+    function loosen(i) { for (const [k, bd] of bonds) if (bd.a === i || bd.b === i) unbond(k, bd); }
+    function remove(i) {
+      if (i < 0 || i >= n || !alive[i]) return false;
+      loosen(i); alive[i] = 0; pinned[i] = 0; tally.removed++;
+      return true;
+    }
+    function edit(i, change) {
+      if (i < 0 || i >= n || !alive[i]) return false;
+      const T = heat[i] / m[i];
+      if (change.kind != null) kind[i] = Math.max(1, Math.round(change.kind));
+      if (change.mass != null && change.mass > 0) { m[i] = change.mass; r[i] = radiusOf(m[i]); heat[i] = T * m[i]; }
+      if (change.temperature != null) heat[i] = Math.max(0, change.temperature) * m[i];
+      if (change.vx != null) vx[i] = change.vx;
+      if (change.vy != null) vy[i] = change.vy;
+      if (change.pinned != null) { pinned[i] = change.pinned ? 1 : 0; if (pinned[i]) { vx[i] = 0; vy[i] = 0; } }
+      if (change.loosen) loosen(i);
+      return true;
+    }
+    /* Everything within `reach` of a point, nearest first. */
+    function near(px, py, reach) {
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        if (!alive[i]) continue;
+        const d = Math.hypot(sep(px - x[i], W), sep(py - y[i], H)) - r[i];
+        if (d < reach) out.push([d, i]);
+      }
+      return out.sort((a, b) => a[0] - b[0]).map(o => o[1]);
+    }
+    function warm(px, py, reach, by) {
+      let touched = 0;
+      for (const i of near(px, py, reach)) { heat[i] = Math.max(0, heat[i] + by * m[i]); touched++; }
+      return touched;
     }
 
     /* The body under a point, for the inspector. */
@@ -748,14 +881,17 @@
       const with_ = [];
       for (const bd of bonds.values()) if (bd.a === i || bd.b === i) with_.push({ other: bd.a === i ? bd.b : bd.a, strength: bd.B });
       return { id: i, kind: kind[i], mass: m[i], temperature: heat[i] / m[i], heat: heat[i],
-               speed: Math.hypot(vx[i], vy[i]), bonds: with_ };
+               speed: Math.hypot(vx[i], vy[i]), bonds: with_, pinned: !!pinned[i],
+               /* The kind it bonds as right now, moved on by the bonds it holds. */
+               actsAs: ((kind[i] - 1 + nb[i] * S.shift) % S.kinds) + 1 };
     }
 
     return {
       settings: S, width: W, height: H, cap: cap,
-      x: x, y: y, vx: vx, vy: vy, m: m, r: r, heat: heat, kind: kind, nb: nb, alive: alive, bonds: bonds,
+      x: x, y: y, vx: vx, vy: vy, m: m, r: r, heat: heat, kind: kind, nb: nb, alive: alive, pinned: pinned, bonds: bonds,
       get n() { return n; },
-      step: step, stats: stats, at: at, describe: describe,
+      step: step, stats: stats, at: at, describe: describe, census: census,
+      place: place, remove: remove, edit: edit, near: near, warm: warm,
       /* The clock and a few others can be turned while it runs. */
       set: function (k, v) { const next = clean(Object.assign({}, S, { [k]: v })); S[k] = next[k]; },
     };

@@ -108,6 +108,17 @@
   #view { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
   #view.drag { cursor: grabbing; }
   #hint { position: absolute; left: 10px; bottom: 10px; color: var(--dim); font-size: 12px; background: rgba(7,10,11,.7); padding: 3px 7px; border-radius: 3px; pointer-events: none; }
+  #palette { position: absolute; left: 10px; bottom: 38px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: calc(100% - 20px);
+             background: rgba(12,17,19,.92); border: 1px solid var(--line); border-radius: 3px; padding: 6px; }
+  #palette .sw-btn { width: 40px; height: 40px; border: 2px solid transparent; border-radius: 3px; color: #101517; font: 700 14px var(--mono); }
+  #palette .sw-btn[aria-pressed="true"] { border-color: #fff; }
+  #palette select { width: auto; min-height: 40px; padding: .3rem .5rem; }
+  #palette .lab { color: var(--dim); font-size: 12px; }
+  .edits { display: flex; flex-wrap: wrap; gap: 6px; margin-top: .7rem; }
+  .edits .btn { min-height: 40px; padding: .35rem .65rem; font-size: .9rem; }
+  .thing { display: flex; align-items: center; gap: 3px; padding: .25rem 0; font-size: .88rem; }
+  .thing b { display: inline-block; width: 11px; height: 11px; }
+  .thing span { margin-left: auto; color: var(--dim); font-family: var(--mono); font-size: .82rem; }
   #slow { position: absolute; right: 10px; top: 10px; color: var(--warn); font-size: 12px; background: rgba(7,10,11,.8); padding: 3px 7px; border-radius: 3px; }
   #side { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
   #tabs { display: flex; border-bottom: 1px solid var(--line); }
@@ -198,6 +209,7 @@
     <button class="btn" id="to-setup">← Settings</button>
     <span class="title" id="run-title"></span>
     <button class="btn" id="pause" aria-pressed="false">Pause</button>
+    <span class="seg" id="tools" role="group" aria-label="What a tap does"></span>
     <span class="seg" id="speeds" role="group" aria-label="Speed"></span>
     <span class="seg" id="views" role="group" aria-label="Colour by"></span>
     <button class="btn" id="fit">Whole world</button>
@@ -208,6 +220,7 @@
   <div id="stage">
     <canvas id="view"></canvas>
     <span id="hint">Drag to move · scroll or pinch to zoom · tap anything to look at it</span>
+    <div id="palette" hidden></div>
     <span id="slow" hidden>Running behind — fewer things or a slower clock will catch it up</span>
   </div>
   <aside id="side">
@@ -383,6 +396,19 @@
   let world = null, raf = 0, paused = false, rate = 1, last = 0, owed = 0, lag = 0;
   let cam = { x: 0, y: 0, s: 1, held: false }, viewMode = "kind", picked = null, follow = false, tab = "", paneAt = 0;
   let land = null, landAt = -1e9;
+  /* A visitor's hands in the physics world: which tool a tap uses, what Place
+     and Throw put down, where the pointer is held, and every kind of bonded
+     thing this world has ever made (for "ever seen" in the World tab). */
+  let tool = "look", brushKind = 1, brushMass = 1, held = null, aim = null, lastPut = null, everSeen = new Set();
+  const TOOLS = [
+    ["look", "Look", "Drag to move \u00b7 scroll or pinch to zoom \u00b7 tap anything to look at it"],
+    ["place", "Place", "Tap or drag to put hexagons down \u00b7 two fingers to zoom"],
+    ["throw", "Throw", "Drag and let go: the hexagon leaves the way you dragged, faster the further"],
+    ["erase", "Erase", "Drag over hexagons to take them out"],
+    ["heat", "Heat", "Hold on hexagons to heat them"],
+    ["cool", "Cool", "Hold on hexagons to cool them"],
+    ["pin", "Pin", "Tap a hexagon to hold it still, or to let it go again"],
+  ];
 
   function sizeCanvas() {
     const r = canvas.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
@@ -401,10 +427,11 @@
     const E = ENGINES[mode].api;
     world = E.create(values);
     rate = values.rate; paused = false; picked = null; follow = false; owed = 0; lag = 0; land = null; landAt = -1e9;
+    tool = "look"; held = null; aim = null; lastPut = null; everSeen = new Set(); brushKind = 1; brushMass = 1;
     setHash(toHash(true));
     $("run-title").textContent = ENGINES[mode].title;
     $("pause").textContent = "Pause"; $("pause").setAttribute("aria-pressed", "false");
-    buildBar(); buildTabs();
+    buildBar(); buildTools(); buildTabs();
     show("run");
     sizeCanvas(); fit();
     last = performance.now();
@@ -434,6 +461,66 @@
       vw.appendChild(b);
     }
   }
+  function buildTools() {
+    const el = $("tools"), pal = $("palette");
+    el.textContent = ""; pal.textContent = ""; pal.hidden = true;
+    el.hidden = mode !== "physics";
+    $("hint").textContent = TOOLS[0][2]; $("hint").hidden = false;
+    if (mode !== "physics") return;
+    for (const t of TOOLS) {
+      const b = document.createElement("button"); b.className = "btn"; b.textContent = t[1];
+      b.setAttribute("aria-pressed", String(t[0] === tool));
+      b.addEventListener("click", () => {
+        tool = t[0]; held = null; aim = null;
+        for (const o of el.children) o.setAttribute("aria-pressed", String(o === b));
+        pal.hidden = !(tool === "place" || tool === "throw");
+        $("hint").textContent = t[2]; $("hint").hidden = false;
+        canvas.style.cursor = tool === "look" ? "" : "crosshair";
+      });
+      el.appendChild(b);
+    }
+    /* What Place and Throw put down: a kind, and how heavy. */
+    const lab = document.createElement("span"); lab.className = "lab"; lab.textContent = "Kind"; pal.appendChild(lab);
+    for (let k = 1; k <= world.settings.kinds; k++) {
+      const b = document.createElement("button"); b.className = "sw-btn"; b.textContent = k; b.style.background = KIND[(k - 1) % 8];
+      b.setAttribute("aria-label", "Kind " + k); b.setAttribute("aria-pressed", String(k === brushKind));
+      b.addEventListener("click", () => { brushKind = k; for (const o of pal.querySelectorAll(".sw-btn")) o.setAttribute("aria-pressed", String(o === b)); });
+      pal.appendChild(b);
+    }
+    const sel = document.createElement("select"); sel.setAttribute("aria-label", "How heavy");
+    for (const o of [[1, "Its usual weight"], [4, "4\u00d7 heavier"], [25, "25\u00d7 heavier"], [150, "150\u00d7 heavier"], [1000, "1,000\u00d7 heavier"]]) {
+      const op = document.createElement("option"); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op);
+    }
+    sel.addEventListener("change", () => { brushMass = +sel.value; });
+    pal.appendChild(sel);
+    canvas.style.cursor = "";
+  }
+  /* What the chosen tool does at a point of the world. `first` is the moment
+     the finger went down; after that it is called as the finger moves. */
+  const brushReach = () => Math.max(0.8, 20 / cam.s);
+  function useTool(wx, wy, first) {
+    const w = world;
+    if (tool === "place") {
+      const mass = brushKind * brushMass, rad = w.settings.sized ? 0.5 * Math.sqrt(mass) : 0.5;
+      if (lastPut && Math.hypot(wx - lastPut[0], wy - lastPut[1]) < rad * 2.1) return;
+      if (w.near(wx, wy, rad * 0.9).length) return;
+      if (w.place(wx, wy, brushKind, 0, 0, mass) < 0) { $("hint").textContent = "This world is full \u2014 erase something first"; return; }
+      lastPut = [wx, wy];
+    } else if (tool === "throw") {
+      if (first) aim = { x0: wx, y0: wy, x1: wx, y1: wy }; else if (aim) { aim.x1 = wx; aim.y1 = wy; }
+    } else if (tool === "pin" && first) {
+      const i = w.at(wx, wy);
+      if (i >= 0) w.edit(i, { pinned: !w.pinned[i] });
+    }
+  }
+  /* Erasing, heating and cooling go on for as long as the finger is held. */
+  function holdTool(seconds) {
+    if (!held || mode !== "physics") return;
+    if (tool === "erase") for (const i of world.near(held[0], held[1], brushReach())) world.remove(i);
+    else if (tool === "heat") world.warm(held[0], held[1], brushReach(), 12 * seconds);
+    else if (tool === "cool") world.warm(held[0], held[1], brushReach(), -12 * seconds);
+  }
+
   function buildTabs() {
     const names = mode === "physics" ? [["world", "World"], ["look", "Hexagon"]]
                                      : [["factions", "Factions"], ["news", "News"], ["talk", "Talk"], ["look", "Person"], ["world", "World"]];
@@ -486,12 +573,20 @@
   canvas.addEventListener("pointerdown", e => {
     canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]);
     if (ptrs.size === 1) moved = 0;
-    if (ptrs.size === 2) { const p = [...ptrs.values()]; pinch = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); }
+    if (ptrs.size === 2) { const p = [...ptrs.values()]; pinch = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); held = null; aim = null; }
+    if (ptrs.size === 1 && mode === "physics" && tool !== "look") {
+      const w = toWorld(e.clientX, e.clientY);
+      held = w; lastPut = null; useTool(w[0], w[1], true);
+      return;
+    }
     canvas.classList.add("drag");
   });
   canvas.addEventListener("pointermove", e => {
     const was = ptrs.get(e.pointerId); if (!was) return;
-    if (ptrs.size === 1) {
+    if (ptrs.size === 1 && held) {
+      const w = toWorld(e.clientX, e.clientY);
+      held = w; useTool(w[0], w[1], false);
+    } else if (ptrs.size === 1) {
       const dx = e.clientX - was[0], dy = e.clientY - was[1];
       moved += Math.abs(dx) + Math.abs(dy);
       if (moved > 6) { cam.x -= dx / cam.s; cam.y -= dy / cam.s; cam.held = true; follow = false; }
@@ -507,6 +602,16 @@
     if (!ptrs.has(e.pointerId)) return;
     ptrs.delete(e.pointerId);
     if (!ptrs.size) canvas.classList.remove("drag");
+    if (held || aim) {
+      /* Letting go of a throw: it leaves the way it was dragged, and a longer
+         drag is a harder throw. */
+      if (aim && e.type === "pointerup") {
+        const mass = brushKind * brushMass;
+        world.place(aim.x0, aim.y0, brushKind, (aim.x1 - aim.x0) * 1.6, (aim.y1 - aim.y0) * 1.6, mass);
+      }
+      held = null; aim = null;
+      return;
+    }
     if (e.type === "pointerup" && moved <= 6 && !ptrs.size) tap(e.clientX, e.clientY);
   };
   canvas.addEventListener("pointerup", lift); canvas.addEventListener("pointercancel", lift);
@@ -523,13 +628,14 @@
       follow = !!(hit && hit.person);
     }
     if (picked) setTab("look"); else pane();
-    $("hint").hidden = true;
+    if (mode !== "physics") $("hint").hidden = true;
   }
 
   /* ── the loop ──────────────────────────────────────────────────────────── */
   function frame(now) {
     raf = requestAnimationFrame(frame);
     const real = Math.min(0.1, (now - last) / 1000); last = now;
+    holdTool(real);
     if (!paused) {
       const t0 = performance.now();
       if (mode === "physics") world.step(Math.min(1 / 30, real) * rate);
@@ -547,7 +653,7 @@
     ctx.setTransform(d, 0, 0, d, 0, 0);
     const r = canvas.getBoundingClientRect();
     if (mode === "physics") drawPhysics(r.width, r.height); else drawPeople(r.width, r.height);
-    if (now - paneAt > (tab === "look" ? 150 : 500)) { paneAt = now; pane(); }
+    if (!paneHeld && now - paneAt > (tab === "look" ? 150 : 500)) { paneAt = now; pane(); }
   }
 
   /* ═══ drawing the physics ══════════════════════════════════════════════ */
@@ -611,7 +717,20 @@
     hotTop += (topT - hotTop) * 0.05; fastTop += (topV - fastTop) * 0.05;
     for (const [col, p] of paths) { ctx.fillStyle = col; ctx.fill(p); }
     if (s > 9) { ctx.strokeStyle = "rgba(7,10,11,.55)"; ctx.lineWidth = 1; for (const p of paths.values()) ctx.stroke(p); }
-    if (picked && w.alive[picked.body]) {
+    /* Pinned hexagons carry a dark stud, so it is plain which ones will not move. */
+    ctx.fillStyle = "#070a0b";
+    for (let i = 0; i < n; i++) if (w.alive[i] && w.pinned[i]) { const pr = Math.max(1.5, w.r[i] * s * 0.34); ctx.fillRect(ox + w.x[i] * s - pr, oy + w.y[i] * s - pr, pr * 2, pr * 2); }
+    if (aim) {
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath();
+      ctx.moveTo(ox + aim.x0 * s, oy + aim.y0 * s); ctx.lineTo(ox + aim.x1 * s, oy + aim.y1 * s); ctx.stroke();
+      const p = new Path2D(); hexPath(p, ox + aim.x0 * s, oy + aim.y0 * s, (S.sized ? 0.5 * Math.sqrt(brushKind * brushMass) : 0.5) * s * 1.12);
+      ctx.fillStyle = KIND[(brushKind - 1) % 8]; ctx.fill(p);
+    }
+    if (held && (tool === "erase" || tool === "heat" || tool === "cool")) {
+      ctx.strokeStyle = tool === "heat" ? "#ef8a7c" : tool === "cool" ? "#6fb7ff" : "#fff"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(ox + held[0] * s, oy + held[1] * s, brushReach() * s, 0, 6.2832); ctx.stroke();
+    }
+    if (picked && picked.body != null && w.alive[picked.body]) {
       const i = picked.body; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(ox + w.x[i] * s, oy + w.y[i] * s, w.r[i] * s * 1.12 + 5, 0, 6.2832); ctx.stroke();
     }
@@ -737,6 +856,11 @@
     el.scrollTop = keep;
     if (mode === "people" && tab === "factions") drawChart();
   }
+  /* The panel redraws itself several times a second. Not while a finger is on
+     it, or the button being pressed is replaced before the click lands. */
+  let paneHeld = false;
+  $("panes").addEventListener("pointerdown", () => { paneHeld = true; });
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) $("panes").addEventListener(ev, () => { setTimeout(() => { paneHeld = false; }, 60); });
   $("panes").addEventListener("click", e => {
     const b = e.target.closest("[data-go]"); if (!b) return;
     const a = b.dataset.go.split(":");
@@ -745,23 +869,45 @@
     if (a[0] === "village") { const v = world.villages[+a[1]]; picked = { village: v.id }; cam.x = v.x; cam.y = v.y; cam.s = Math.max(cam.s, 14); follow = false; setTab("look"); }
     if (a[0] === "follow") { follow = !follow; pane(); }
     if (a[0] === "body") { picked = { body: +a[1] }; pane(); }
+    if (a[0] === "ed" && picked && picked.body != null) {
+      const i = picked.body, d = world.describe(i);
+      if (!d) return;
+      if (a[1] === "kind") world.edit(i, { kind: Math.min(world.settings.kinds, Math.max(1, d.kind + +a[2])) });
+      if (a[1] === "mass") world.edit(i, { mass: Math.max(0.25, d.mass * +a[2]) });
+      if (a[1] === "temp") world.edit(i, { temperature: +a[2] > 0 ? d.temperature * 1.5 + 1 : d.temperature / 1.5 - 0.5 });
+      if (a[1] === "stop") world.edit(i, { vx: 0, vy: 0 });
+      if (a[1] === "pin") world.edit(i, { pinned: !d.pinned });
+      if (a[1] === "loose") world.edit(i, { loosen: true });
+      if (a[1] === "del") { world.remove(i); picked = null; }
+      pane();
+    }
   });
 
   function physicsPane() {
     const st = world.stats(), S = world.settings;
     if (tab === "look") {
       const d = picked ? world.describe(picked.body) : null;
-      if (!d) return "<p class='small'>" + (picked ? "That hexagon is gone — fused into another, or off the edge." : "Tap a hexagon to see what it is.") + "</p>";
+      if (!d) return "<p class='small'>" + (picked ? "That hexagon is gone — fused into another, removed, or off the edge." : "Tap a hexagon to see what it is, and to change it: its kind, weight, heat, or whether it can move.") + "</p>";
       return "<h3><span class='sw' style='background:" + KIND[(d.kind - 1) % S.kinds % 8] + "'></span>" + (d.mass > S.kinds ? "A fused body" : "Kind " + d.kind) + "</h3>" +
         "<dl class='kv'><dt>Mass</dt><dd>" + num(d.mass, 0) + "</dd><dt>Temperature</dt><dd>" + num(d.temperature, 2) + "</dd>" +
-        "<dt>Speed</dt><dd>" + num(d.speed, 2) + " a second</dd><dt>Bonds</dt><dd>" + d.bonds.length + " of " + S.maxBonds + "</dd></dl>" +
+        "<dt>Speed</dt><dd>" + num(d.speed, 2) + " a second</dd><dt>Bonds</dt><dd>" + d.bonds.length + " of " + S.maxBonds + "</dd>" +
+        (S.shift > 0 && S.bonding !== "none" && d.bonds.length ? "<dt>Bonds like</dt><dd>kind " + d.actsAs + " for now</dd>" : "") +
+        (d.pinned ? "<dt>Pinned</dt><dd>held still</dd>" : "") + "</dl>" +
+        "<div class='edits'>" +
+        "<button class='btn' data-go='ed:kind:-1'>Kind \u2212</button><button class='btn' data-go='ed:kind:1'>Kind +</button>" +
+        "<button class='btn' data-go='ed:mass:0.5'>Lighter</button><button class='btn' data-go='ed:mass:2'>Heavier</button>" +
+        "<button class='btn' data-go='ed:temp:-1'>Colder</button><button class='btn' data-go='ed:temp:1'>Hotter</button>" +
+        "<button class='btn' data-go='ed:stop'>Stop it</button>" +
+        "<button class='btn' data-go='ed:pin' aria-pressed='" + d.pinned + "'>" + (d.pinned ? "Unpin" : "Pin") + "</button>" +
+        (d.bonds.length ? "<button class='btn' data-go='ed:loose'>Break its bonds</button>" : "") +
+        "<button class='btn' data-go='ed:del'>Remove</button></div>" +
         (d.bonds.length ? "<h3 style='margin-top:.8rem'>Bonded to</h3>" + d.bonds.map(b => "<button class='item' data-go='body:" + b.other + "'><span class='sw' style='background:" +
           KIND[(world.kind[b.other] - 1) % S.kinds % 8] + "'></span>kind " + world.kind[b.other] + " · strength " + num(b.strength, 1) + "</button>").join("") : "");
     }
     const tot = Math.max(1e-9, st.motion + st.heat + st.radiated + st.dragged);
     const seg = (v, c) => "<i style='width:" + (v / tot * 100).toFixed(2) + "%;background:" + c + "'></i>";
     return "<h3>What is in it</h3><dl class='kv'>" +
-      "<dt>Hexagons</dt><dd>" + st.count.toLocaleString("en-US") + (st.count !== st.started ? " of " + st.started.toLocaleString("en-US") : "") + "</dd>" +
+      "<dt>Hexagons</dt><dd>" + st.count.toLocaleString("en-US") + (st.count !== st.started && !st.placed && !st.removed ? " of " + st.started.toLocaleString("en-US") : "") + "</dd>" +
       (st.fused ? "<dt>Fused together</dt><dd>" + st.fused.toLocaleString("en-US") + "</dd>" : "") +
       (st.left ? "<dt>Left the world</dt><dd>" + st.left.toLocaleString("en-US") + "</dd>" : "") +
       "<dt>Heaviest</dt><dd>" + num(st.heaviest, 0) + "</dd>" +
@@ -773,8 +919,32 @@
       "<div class='legend'><span><b style='background:#6fb7ff'></b>motion " + num(st.motion, 0) + "</span><span><b style='background:#ef6f6c'></b>heat " + num(st.heat, 0) +
       "</span><span><b style='background:#55616a'></b>leaked away " + num(st.radiated, 0) + "</span>" + (st.dragged > 0 ? "<span><b style='background:#3b454b'></b>lost to drag " + num(st.dragged, 0) + "</span>" : "") + "</div>" +
       (S.bonding !== "none" ? "<p class='small'>Held in bonds: " + num(st.bondEnergy, 0) + " — given off as heat when they formed.</p>" : "") +
+      censusPane(S) +
+      (st.placed || st.removed ? "<p class='small'>By hand: " + st.placed.toLocaleString("en-US") + " put in, " + st.removed.toLocaleString("en-US") + " taken out.</p>" : "") +
       (S.gravity > 0 || S.fall > 0 ? "<p class='small'>Gravity's own energy is not in the bar: things falling together turn it into motion, which is why the total can grow.</p>" : "") +
       "<p class='small'>Colours: " + (viewMode === "kind" ? "one per kind; a fused body takes the colour its mass works out to." : viewMode === "heat" ? "dark is cold, white is the hottest thing in the world right now." : "dark is still, white is the fastest thing in the world right now.") + "</p>";
+  }
+
+  /* What the world has made. A thing is named by the kinds in it; the count
+     of different things, now and ever, is the plainest sign of whether a
+     world is making anything new or only more of the same. */
+  function censusPane(S) {
+    if (S.bonding === "none") return "";
+    const c = world.census();
+    for (const t of c.types) everSeen.add(t.sig);
+    if (everSeen.size > 20000) everSeen = new Set(c.types.map(t => t.sig));
+    const st = world.stats();
+    let out = "<h3 style='margin-top:.9rem'>What it has made</h3><dl class='kv'>" +
+      "<dt>Different things now</dt><dd>" + c.distinct.toLocaleString("en-US") + "</dd>" +
+      "<dt>Different things ever</dt><dd>" + everSeen.size.toLocaleString("en-US") + "</dd>" +
+      "<dt>Loose hexagons</dt><dd>" + c.free.toLocaleString("en-US") + "</dd>" +
+      (S.shift > 0 ? "<dt>Reactions</dt><dd>" + st.reacted.toLocaleString("en-US") + "</dd>" : "") + "</dl>";
+    for (const t of c.types.slice(0, 10)) {
+      out += "<div class='thing'>" + (t.kinds ? t.kinds.map(k => "<b style='background:" + KIND[(k - 1) % 8] + "' title='kind " + k + "'></b>").join("") : esc(t.sig)) +
+             "<span>" + (t.kinds ? t.size + " \u00b7 " : "") + "\u00d7" + t.count + "</span></div>";
+    }
+    if (!c.types.length) out += "<p class='small'>Nothing is bonded to anything yet.</p>";
+    return out;
   }
 
   function peoplePane() {

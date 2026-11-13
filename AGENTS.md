@@ -458,7 +458,13 @@ nobody had linked was a page nobody could find.
   "nothing forced or faked", carried over); and **what people say reports what just
   happened between them, never causes it**. No AI model talks for them and none should
   be wired in: the lines are templates over real exchanges, which is why hundreds can
-  talk at once for free. **It is not on the front door or in `latest.js` yet** — it has
+  talk at once for free. **The physics world can be built by hand and can react**
+  (Ric, 2026-11-13: "how do we make it so emergence is something thats possible? and i
+  need a way to place them … and modify hexigons"): a tool row places, throws, erases,
+  heats, cools and pins hexagons, and the `shift` setting makes a bond change what a
+  hexagon bonds with next, so things react instead of only stick. The README's "Making
+  emergence possible" says what was added and — as important — what must not be claimed
+  for it. **It is not on the front door or in `latest.js` yet** — it has
   an Exploration card and the terminal's `worlds`, and the front door waits on Ric
   having looked at it (it needs a `POSTS` entry, a shelf and a picture when it goes).
 - **`projects/dads-race/` (HERMISCUS) is the one project with no room.** It is the

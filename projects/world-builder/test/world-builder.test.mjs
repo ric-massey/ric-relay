@@ -76,9 +76,9 @@ function other(it, base, alt) {
     let bad = 0;
     for (let i = 0; i < w.n; i++) if (w.alive[i] && !(isFinite(w.x[i]) && isFinite(w.y[i]) && isFinite(w.vx[i]) && isFinite(w.heat[i]) && w.heat[i] > -1e-6 && w.m[i] > 0)) bad++;
     check(bad === 0, `physics preset "${p.name}": ${bad} bodies with a number that is not one`);
-    check(s0.count > 1, `physics preset "${p.name}" starts with nothing in it`);
+    check(s0.count > 1 || p.set.layout === "empty", `physics preset "${p.name}" starts with nothing in it`);
     /* Mass only ever leaves over an open edge. */
-    if (s.left === 0) check(Math.abs(s.mass - s0.mass) < 1e-6 * s0.mass, `physics preset "${p.name}": mass went from ${s0.mass} to ${s.mass}`);
+    if (s.left === 0) check(Math.abs(s.mass - s0.mass) <= 1e-6 * s0.mass, `physics preset "${p.name}": mass went from ${s0.mass} to ${s.mass}`);
     check(s.count + s.fused + s.left === s0.count, `physics preset "${p.name}": ${s0.count} bodies became ${s.count} + ${s.fused} fused + ${s.left} gone`);
   }
 
@@ -121,6 +121,49 @@ function other(it, base, alt) {
   }
   check(run({ count: 300, size: 30, bonding: "none" }, 200).bonds.size === 0, "physics: bonds formed with chemistry off");
   check(run({ count: 500, size: 30, kinds: 4, bonding: "any", startTemp: 0, startSpeed: 2 }, 300).bonds.size > 50, "physics: almost nothing bonded with chemistry on");
+  /* A bond that changes what it holds: off, a world is exactly what it was
+     before the setting existed; on, bonds are re-read and things react. */
+  {
+    const base = { count: 500, size: 34, kinds: 5, bonding: "sum", startTemp: 2, startSpeed: 2, shake: 0.4, radiate: 0.03, heater: "centre", heaterTemp: 8 };
+    const off = run(base, 400).stats(), on = run(Object.assign({}, base, { shift: 1 }), 400).stats();
+    check(off.reacted === 0, "physics: bonds reacted with the setting off");
+    check(on.reacted > 20, `physics: only ${on.reacted} reactions in a warm world with the setting on`);
+    check(Physics.affinity("sum", 1, 5, 5) === 1 && Physics.affinity("sum", 1, 5, 5, 1, 0) < 1, "physics: a held bond does not change what a hexagon bonds as");
+  }
+  /* A visitor's hands: put in, change, pin, take out — and the world keeps
+     running with every number still a number. */
+  {
+    const w = Physics.create({ layout: "empty", size: 40, edge: "walls", fall: 6, kinds: 4, bonding: "any", startTemp: 0 });
+    check(w.stats().count === 0, "physics: an empty world starts with something in it");
+    const a = w.place(20, 5, 2), b = w.place(20, 30, 3), c = w.place(8, 8, 1, 3, 0, 40);
+    check(a >= 0 && b >= 0 && c >= 0 && w.stats().count === 3 && w.stats().mass === 2 + 3 + 40, "physics: placing three did not put three in");
+    w.edit(b, { pinned: true });
+    w.edit(a, { kind: 4, temperature: 5 });
+    check(w.kind[a] === 4 && Math.abs(w.heat[a] / w.m[a] - 5) < 1e-9, "physics: an edit did not take");
+    w.edit(c, { mass: 80 });
+    check(w.m[c] === 80 && w.r[c] > w.r[a], "physics: making one heavier did not make it heavier and bigger");
+    for (let f = 0; f < 600; f++) w.step(1 / 60);
+    check(w.x[b] === 20 && w.y[b] === 30 && w.vx[b] === 0 && w.vy[b] === 0, "physics: a pinned hexagon moved");
+    check(w.y[a] > 6 && w.y[a] < 30, `physics: the loose one above the pin fell to ${w.y[a]}, through it or not at all`);
+    check(w.warm(20, 30, 2, 10) >= 1 && w.heat[b] > 0, "physics: heating a place heated nothing");
+    check(w.remove(a) && !w.remove(a) && w.stats().count === 2 && w.describe(a) === null, "physics: removing one did not remove exactly one");
+    let bad = 0;
+    for (let i = 0; i < w.n; i++) if (w.alive[i] && !(isFinite(w.x[i]) && isFinite(w.vx[i]) && isFinite(w.heat[i]))) bad++;
+    check(bad === 0, "physics: a hand-built world has a number that is not one");
+    /* Full is full, and a removed hexagon's place can be used again. */
+    const tiny = Physics.create({ layout: "empty", size: 400 });
+    let put = 0;
+    for (let i = 0; i < 3200; i++) if (tiny.place(2 + (i % 190) * 2, 2 + Math.floor(i / 190) * 2, 1) >= 0) put++;
+    check(put === 3000 && tiny.stats().room === 0, `physics: an empty world took ${put} by hand, not 3,000`);
+    tiny.remove(7);
+    check(tiny.place(390, 390, 2) === 7, "physics: a removed hexagon's place was not reused");
+  }
+  /* The census names things by what they are made of and counts each once. */
+  {
+    const w = run({ count: 400, size: 26, kinds: 3, bonding: "any", startTemp: 0, startSpeed: 2, shake: 0 }, 300), c = w.census(), s = w.stats();
+    check(c.things === s.clusters && c.distinct >= 1 && c.distinct <= c.things, "physics: the census and the cluster count disagree");
+    check(c.types.reduce((t, x) => t + x.count, 0) === c.things && c.free + s.clustered === s.count, "physics: the census lost or invented something");
+  }
   /* Junk in, a legal world out. */
   const junk = Physics.clean({ count: "lots", gravity: 1e9, edge: "sideways", sized: "true", kinds: -4 });
   check(junk.count === Physics.DEFAULTS.count && junk.gravity === 60 && junk.edge === "wrap" && junk.sized === true && junk.kinds === 1, "physics: clean() let a bad setting through");
