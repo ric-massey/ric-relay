@@ -17,11 +17,18 @@ Linked from Exploration (MODULE 004) and the terminal (`worlds`). Not on the fro
 
 ## Files
 
+The [People sandbox master vision](PEOPLE-VISION.md) records Ric's 2026-11-12 feedback and the
+full direction being refined: individual lives and civilizations, deeper work and relationships,
+communication, clarity, selection, following, control and equipment. It separates stated goals
+from proposed mechanics; its implementation baseline and next-deliverable proposal distinguish
+what has shipped from future direction, including the unresolved long-term timing model.
+
 | File | What it is |
 |---|---|
 | `index.html` | The page: choose a sandbox → settings → the running world. Styles and page script inline. |
 | `physics.js` | The physics sandbox's engine. No DOM; runs the same in node. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
+| `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
 | `test/world-builder.test.mjs` | Both engines, headless. Several minutes; in the slow lane of `.github/checks.mjs` (`--only world-builder --slow`) and in `simulations.yml`. |
 
 No build step and no dependencies. `python3 -m http.server 8912 --bind 127.0.0.1`, then open

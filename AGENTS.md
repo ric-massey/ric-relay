@@ -467,6 +467,14 @@ nobody had linked was a page nobody could find.
   for it. **It is not on the front door or in `latest.js` yet** — it has
   an Exploration card and the terminal's `worlds`, and the front door waits on Ric
   having looked at it (it needs a `POSTS` entry, a shelf and a picture when it goes).
+  **The People sandbox's master vision is `projects/world-builder/PEOPLE-VISION.md`**
+  (2026-11-12, Ric: "all the ideas we were talking about not ust the last ones"). It covers
+  individual lives and civilization growth, production, learning, relationships, communication,
+  clarity, finding and following people, taking control and visible equipment. It is a living
+  design draft, with stated goals distinguished from proposed mechanics, not a list of shipped
+  features or an instruction to implement everything at once. Its current-state table records
+  the shipped readability pass; its next-deliverable proposal and timing discussion remain
+  proposals. Read it before planning that work.
   **People playback changed on 2026-11-12:** Ric: "1x should be a 20 minute day", "the
   people should move slower", and "they shouldnt" walk inside each other. `advance(seconds)`
   separates five activity ticks per second from the 200 demographic ticks per year; 365 days
