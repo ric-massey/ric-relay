@@ -170,6 +170,14 @@ const SURVEY_HOLD    = 60;    // units of material the hold takes before it is f
    pull has to beat your own speed to close the gap, so the trade is time
    against cargo, which is the trade the whole mode is made of. */
 const SURVEY_TRACTOR = 340;   // reach of the beam, once it is unlocked
+/* The first rung, against that. It was half, and Ric cut it on 2026-11-12 —
+   "leave mk1 but make it a bit less powerful" — in the same breath as taking
+   the MK2's build away: the MK1 is the one beam you can still make out of
+   rock, so the rung the cache sells has to be worth flying for. One constant,
+   read by the effect and by the line that describes it, because a part whose
+   description and behaviour are typed out separately is how this mode has
+   shipped a lie three times. */
+const MK1_REACH = -0.65;
 const TRACTOR_PULL   = 380;   // and how hard it draws at the rim
 const SURVEY_DOCK    = 260;   // how close is docked
 const PLANET_DOCK    = 190;   // and how far above a world's surface counts
@@ -379,20 +387,40 @@ function worldBlocked(x, y, r) {
    odds in that table, so a change to the drop rates has one other line to fix
    and it is directly underneath. Depth leans every table toward the dear end,
    which is why each of these ends with the same promise. */
+/* ── and what it is all worth ─────────────────────────────────────────────
+   Every price in the mode is quoted against these six numbers, so they are
+   the one place the whole economy can be turned at once — which is what Ric
+   asked for on 2026-11-12, in the same breath as the hulls: *"was the rest of
+   the economy fixed? including the ships? they are all way too cheap."*
+
+   They came down about a fifth: ice 1, iron 3 → 2, alloy 9 → 7, electronics
+   16 → 13, iridium 22 → 18, core 48 → 38. By source that is rock 3.20 → 2.48
+   a unit, a hulk 9.22 → 7.21 and a cache 13.75 → 11.00 — an even cut, so the
+   gap between mining a rock and cracking a cache, which is the whole reason
+   to fly somewhere dangerous, is exactly where it was.
+
+   Two knock-ons worth knowing before touching these again. A **build** is
+   priced in materials and a **part** is priced in cash, so cutting these
+   makes every recipe look cheaper against the shelf — the ratio ceiling in
+   `test/survey.js` is what catches that, and the grapple line went over it
+   and had its shop price corrected rather than its recipe inflated. And
+   **water and food are flat cash** (`WATER_PRICE`, `FOOD_PRICE`), so a cut
+   here quietly makes staying alive dearer. Both are deliberate; neither is
+   obvious from this table alone. */
 const MATERIALS = [
   { key: "ice",     name: "ICE",     colour: "#87d8ff", value: 1,
     note: "common, cheap, and one day it is water",
     where: "Break rocks — nearly half of what they give is ice. A rime field " +
            "is made of it, and a melter turns it into water." },
-  { key: "iron",    name: "IRON",    colour: "#c0a487", value: 3,
+  { key: "iron",    name: "IRON",    colour: "#c0a487", value: 2,
     note: "what most rocks are made of",
     where: "Break rocks. It is the other half of what a field gives, and " +
            "every build wants some." },
-  { key: "alloy",   name: "ALLOY",   colour: "#ffcb42", value: 9,
+  { key: "alloy",   name: "ALLOY",   colour: "#ffcb42", value: 7,
     note: "refined — it comes out of things that were built",
     where: "Strip caches, wrecks and dead drones — about half of what comes " +
            "out of anything built is alloy. Rocks almost never have it." },
-  { key: "iridium", name: "IRIDIUM", colour: "#a08cff", value: 22,
+  { key: "iridium", name: "IRIDIUM", colour: "#a08cff", value: 18,
     note: "deep, dense and rare; the reason to go somewhere bad",
     where: "Guarded caches, which are a third iridium. Rocks give a little, " +
            "and everything gives more where the sky is dangerous." },
@@ -401,11 +429,11 @@ const MATERIALS = [
      stopping for even when your hold is nearly full of ore. They are the
      ingredients the builds are short of, on purpose: a part you can build
      from four units of iron is a part you buy by flying in circles. */
-  { key: "electronics", name: "ELECTRONICS", colour: "#6dffbf", value: 16,
+  { key: "electronics", name: "ELECTRONICS", colour: "#6dffbf", value: 13,
     note: "pulled out of things that were wired; never out of a rock",
     where: "Strip drones and caches. Never a rock — no amount of mining will " +
            "find one, and the builds that want them are why you stop." },
-  { key: "core", name: "REACTOR CORE", colour: "#ff8f77", value: 48,
+  { key: "core", name: "REACTOR CORE", colour: "#ff8f77", value: 38,
     note: "the heart of something that used to run; rare and always salvage",
     where: "The rarest thing there is: a few in a hundred from a cache or a " +
            "drone, and never from a rock." }
@@ -648,27 +676,52 @@ const MODULES = [
      the same category, and there was no bottom rung for somebody who had just
      finished the gate and had nothing to reach for.
 
-     MK1 is half the reach: enough to make a broken rock one pass instead of
-     nine, and little enough that MK2 is a real step. MK2 is the beam as it
-     was. MK3 is the hot one, which used to be called the HEAVY BEAM. */
+     MK1 is about a third of the reach: enough to make a broken rock one pass
+     instead of nine, and little enough that MK2 is a real step. MK2 is the
+     beam as it was. MK3 is the hot one, once called the HEAVY BEAM.
+
+     **One rung, one way to get it — and the best one is the one you cannot
+     buy.** Ric set this on 2026-11-12, watching a new player: *"crafting can
+     make finding parts feel pointless."*
+
+       MK1   given and bought.  The arrow after the gate leads to one, and any
+             shop has them. It is the rung you are handed.
+       MK2   built or found.    A cache has them, and the workbench makes one.
+       MK3   found, and hard to find. No shelf sells one and nothing builds
+             one: it is `rare`, so the cache weighting only really turns one
+             up a long way out, in bad sky.
+
+     The first cut of this had it the other way round — MK2 find-only, MK3
+     bought — on the old rule that the best of a category is the bought one.
+     Ric flipped it the same evening: *"mk3 should be found and hard to find
+     and mk2 should be built or found and mk1 is given at the end of the parts
+     thing and mk1 can also be bought."* It is the better shape: the top of the
+     ladder becomes the one thing in the category money cannot answer, and the
+     sector is where you have to go for it. See `CRAFTS`. */
   { key: "tractormk1", name: "TRACTOR BEAM MK1", cat: "tractor",
-    rarity: "common", cost: 550, deep: 0, get: ["find", "craft"],
+    rarity: "common", cost: 550, deep: 0, get: ["find", "buy"],
     where: "out in the dark, on its own \u2014 the first thing worth looking " +
-           "for once the station is whole",
-    note: "a grapple field on the nose, at half the reach of the mark two. " +
-          "Loose salvage inside " + Math.round(SURVEY_TRACTOR * 0.5) +
+           "for once the station is whole, and on any shelf if you would " +
+           "rather simply buy one",
+    note: "a grapple field on the nose, at about a third of the mark two's " +
+          "reach. Loose salvage inside " +
+          Math.round(SURVEY_TRACTOR * (1 + MK1_REACH)) +
           " units comes in on its own",
-    eff: { tractor: 1, reach: -0.5 } },
+    eff: { tractor: 1, reach: MK1_REACH } },
   { key: "tractorrig", name: "TRACTOR BEAM MK2", cat: "tractor",
     rarity: "common", cost: 1000, deep: 0, get: ["find", "craft"],
     where: "in caches — the commonest part out there, and the first one that " +
-           "changes how you play",
+           "changes how you play. No shelf stocks one, but the workbench " +
+           "will build you one",
     note: "the same field at its full reach. Loose salvage inside " +
           SURVEY_TRACTOR + " units is drawn in and stowed on its own, so a " +
           "broken rock is one pass instead of nine",
     eff: { tractor: 1 } },
   { key: "heavyrig", name: "TRACTOR BEAM MK3", cat: "tractor",
-    rarity: "uncommon", cost: 2500, deep: 0.16, get: ["buy"],
+    rarity: "rare", cost: 2500, deep: 0, get: ["find"],
+    where: "deep caches, in the worst sky there is. Nobody sells one and " +
+           "nothing builds one \u2014 the best beam in the game is the one " +
+           "thing in its category you have to go out and take",
     note: "the field run hot: 60% further out than the mark two and a harder " +
           "pull, so a field of debris comes in while you are still crossing it",
     eff: { tractor: 1, reach: 0.6, pull: 0.5 } },
@@ -1175,8 +1228,14 @@ MODULES.push(
      the line moves you, gravity and the cave; the cloak moves sentries,
      hunting ships and a seeker in the air; the burst moves sentries, mines
      and every engine in reach, your own included. */
+  /* 1600 until 2026-11-12, when the material cut put its build at 20.5x
+     under the shelf price — the worst in the game and over the ceiling the
+     craft test holds. The recipe was not the thing that was wrong: this is
+     "the cheapest verb in the game" and meant to be a new pilot's first
+     build, and it was priced above the MK2 beam, the layered plate and the
+     cargo ejector. The shelf price came down to sit with them instead. */
   { key: "grappleline", name: "GRAPPLE LINE", cat: "device", rarity: "common",
-    cost: 1600, deep: 0, get: ["buy", "craft"],
+    cost: 1100, deep: 0, get: ["buy", "craft"],
     note: "a line and a winch. It does not pull things to you \u2014 it " +
           "pulls you to them, hard, at whatever is in front of the nose. " +
           "A way out of a well that is not a bigger engine, and the fastest " +

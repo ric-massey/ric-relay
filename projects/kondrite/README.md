@@ -374,6 +374,29 @@ in the hold, cannot be sold, and are not dropped when your hull goes — the
 manifest is the spine of the mode, and a part lost in deep space would be a run
 you could not finish.
 
+**And for the first few parts, it says so across the top of the screen.** Ric
+watched somebody play cold on 2026-11-12: they enjoyed it, left when something
+else came up, and the first few minutes were what he wanted changed — *"for the
+first few parts it needs to be a banner on the top saying to go get a part."*
+
+There was a band up there once and it came off for a good reason: it answered a
+question nobody asks twice, every frame, forever, and it was the busiest thing
+on the HUD. What replaced it was a notification, which is right for *water low*
+and no use at all to somebody who looks up thirty seconds later having forgotten
+what they were flying towards.
+
+So the band is back as a banner that **retires**. Two rows in the gap between
+the cash column and the chart — what to do, and which of the six parts this is
+with the kind of place to look in — and it is gone for good once three parts are
+home, which is one fetch, one sale and one return: the loop learned. It states
+`st.objective` and nothing of its own, so there is still exactly one thing in
+the mode that knows what you are doing. On the way out it says where the
+manifest went (the inventory page), the way the low-tank warning teaches its
+triangle and then leaves you the triangle. `bannerWanted` in `game/factions.js`
+owns the rule, `drawObjectiveBanner` in `survey-hud/panel.js` draws it, and
+`test/survey.js` §15b holds both halves — that it is there cold, and that it
+leaves.
+
 ### The living world
 
 The sector runs a political simulation on top of the war — LIVING-WORLD.md, first
@@ -574,6 +597,63 @@ pulls overlap — are now rolled per chunk, roughly one in eight. That is the
 endless-space answer to a problem the fixed arena solved by hand: an entry that
 needs a configuration cannot depend on a single lucky spot when there is no
 single sector, so both are always somewhere ahead of you.
+
+### Build, find, buy — and what things cost
+
+Every part has at least one way in, and most have exactly one: **buy** it off a
+shelf (how far out that shelf is, is `deep`), **build** it at a workbench, or
+**find** it in a cache out in the dark. That is most of what makes a part feel
+like a part rather than a line in a shop.
+
+On 2026-11-12 Ric watched a new player and the whole economy came out of it:
+*"crafting can make finding parts feel pointless"*, then *"they are all way too
+cheap"* about the ships. Both were measurable.
+
+**Builds were an arbitrage.** Every material carries a value, so a recipe is a
+number — and priced against the shelf, nothing craftable was ever worth buying:
+29.6x on the grapple line, 27.6x on the EMP charge, 9.0x on the MK2 beam. Every
+build now costs **twice what it did**, by value rather than by more rock: where
+a recipe already wanted electronics, iridium or a core, those grew most, because
+the three you cannot mine are what an ingredient list is for. Cores are the one
+exception — a few in a hundred from a cache or a drone is rare enough that
+doubling them would make three builds a waiting game rather than a journey, so
+they went up by one each.
+
+**The tractor ladder got one way in per rung.** It was the only place in the
+game where a part was both findable and craftable, so it was where "finding
+feels pointless" actually bit:
+
+| rung | how you get one | |
+|---|---|---|
+| MK1 | given, and bought | the arrow after the gate leads to one, and any shop has them |
+| MK2 | built or found | a cache has them, and the workbench makes one |
+| MK3 | found, and hard to find | no shelf, no build, and `rare`, so only deep caches really carry one |
+
+The top of the ladder is the one thing in its category money cannot answer. The
+MK1 was also cut to about a third of the MK2's reach (170 → 119 units) so that
+the rungs you go out for are worth the trip.
+
+**And the ships were pocket money.** A full skiff hold — 150 units — is worth
+about 480 as rock, 1,400 as wreck salvage, 2,060 out of a cache, so the first
+four hulls each cost roughly one good trip. The ladder is pushed up on a curve
+rather than a multiplier, because the two ends had different problems: about 5x
+at the bottom, 1.3x at the top (`28.9 * cost^0.742`). The NEEDLE goes 900 →
+4,500 and the TENDER 168,000 → 218,000, and nothing overtakes anything.
+
+**What salvage fetches came down about a fifth** at the same time — iron 3 → 2,
+alloy 9 → 7, electronics 16 → 13, iridium 22 → 18, core 48 → 38 — so parts,
+refits, water and food all got dearer, not only hulls. The cut is even across
+sources, so the gap between mining a rock (3.20 → 2.48 a unit) and cracking a
+cache (13.75 → 11.00) is exactly where it was: flying somewhere dangerous pays
+the same multiple it always did.
+
+One knock-on worth knowing: a build is priced in materials and a part is priced
+in cash, so cutting material values makes every recipe look cheaper against the
+shelf. `test/survey.js` holds a ceiling — no build may be more than eighteen
+times under its part's shelf price — and it is what caught the grapple line
+afterwards at 20.5x. Its recipe was not the problem; it was priced above the MK2
+beam at 1,600 for "the cheapest verb in the game", so the shelf price came down
+to 1,100 instead.
 
 ### Two kinds of progression
 

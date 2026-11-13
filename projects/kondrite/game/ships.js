@@ -33,6 +33,28 @@
    what makes a panelled ship read as panelled rather than as a wider triangle.
    Drawn rather than described, because a hauler has to be unmistakable from a
    fighter at a glance and a paragraph of stats cannot do that. */
+/* ── what a hull costs, and the day it stopped being pocket money ────────
+   Ric, 2026-11-12, after watching a new player: the NEEDLE at 900 "costing
+   almost nothing", and then *"they are all way too cheap."*
+
+   He was right, and the yardstick is the hold. A full skiff load — 150 units —
+   is worth about 480 if it is rock, 1,400 if it is wreck salvage and 2,060 if
+   it came out of a cache. So the first four hulls in the game each cost about
+   **one good trip**, and the second ship stopped being a goal before anybody
+   had flown far enough to want one.
+
+   The ladder is pushed up on a curve rather than by a multiplier, because the
+   two ends had different problems. The cheap end was free and the dear end was
+   already an expedition — the TENDER at 168,000 is eighty holds — so the rise
+   is about 5x at the bottom and 1.3x at the top: `28.9 * cost^0.742`, rounded
+   to figures a shop would print. Every rung now costs several holds of the one
+   below it, and the order of the ladder is untouched: nothing overtakes
+   anything, which `test/survey.js` checks.
+
+   Read alongside the material values in survey-outfit.js, which came down
+   about a fifth on the same evening. The two together are the whole of "money
+   arrives too fast": what you sell is worth less and what you want costs
+   more. */
 const SHIPS = [
   /* The drawings are not in these rows any more. See `HULL_ART` below. */
   // ── explorers: range, useful holds, and no single way to travel ─────────
@@ -42,46 +64,46 @@ const SHIPS = [
     note: "the little explorer everybody starts in" },
 
   // ── sport: tiny holds, hot drives, and very little forgiveness ──────────
-  { key: "needle", name: "NEEDLE", category: "SPORT", best: "SPEED", cost: 900,
+  { key: "needle", name: "NEEDLE", category: "SPORT", best: "SPEED", cost: 4500,
     hull: 4, dmg: 2.4, rate: 0.85, cargo: 30, speed: 2.2,
     turn: 1.91, drag: 0.26, punch: 7, burst: 1, shot: 1.05, size: 0.86,
     note: "quicker than it is sensible" },
 
   // ── couriers: acceleration first, because late cargo is worthless ──────
-  { key: "kite", name: "KITE", category: "COURIER", best: "ACCEL", cost: 1600,
+  { key: "kite", name: "KITE", category: "COURIER", best: "ACCEL", cost: 6900,
     hull: 6, dmg: 0.9, rate: 1, cargo: 25, speed: 2.7,
     turn: 1.55, drag: 2.6, spool: 3.4, shot: 0.92, size: 0.94,
     note: "all engine and urgent paperwork" },
 
-  { key: "vane", name: "VANE", category: "SPORT", best: "TURN", cost: 2600,
+  { key: "vane", name: "VANE", category: "SPORT", best: "TURN", cost: 9900,
     hull: 6, dmg: 3.6, rate: 1, cargo: 60, speed: 1.95,
     turn: 1.63, drag: 0.22, punch: 7, burst: 1, shot: 0.95, size: 0.9,
     note: "changes its mind before you do" },
 
-  { key: "mote", name: "MOTE", category: "SPORT", best: "FIRE RATE", cost: 4200,
+  { key: "mote", name: "MOTE", category: "SPORT", best: "FIRE RATE", cost: 14000,
     hull: 9, dmg: 2.7, rate: 1.2, cargo: 90, speed: 2.05,
     turn: 1.77, drag: 0.3, punch: 7, burst: 1, shot: 1, size: 0.78,
     note: "small enough to mistake for a bad idea" },
 
   // ── military: armour and guns, with just enough hold for a mission ──────
-  { key: "lance", name: "LANCE", category: "MILITARY", best: "PRICE", cost: 3400,
+  { key: "lance", name: "LANCE", category: "MILITARY", best: "PRICE", cost: 12000,
     hull: 14, dmg: 1.6, rate: 0.95, cargo: 50, speed: 1,
     turn: 1, drag: 4, shot: 1.3, size: 1.05,
     note: "a pursuit drive with a gun sight" },
 
   // ── commuters: quick away from a dock, civil, and easy to live with ─────
-  { key: "wedge", name: "HOPPER", category: "COMMUTER", best: "ACCEL", cost: 5200,
+  { key: "wedge", name: "HOPPER", category: "COMMUTER", best: "ACCEL", cost: 16500,
     hull: 7, dmg: 0.6, rate: 0.75, cargo: 100, speed: 1.95,
     turn: 0.88, drag: 1.3, spool: 5.5, bite: 0.5, ram: 1, shot: 0.84, size: 1.1,
     note: "made for the short jump between stations" },
 
-  { key: "harrier", name: "SWALLOW", category: "COMMUTER", best: "FIRE RATE", cost: 7600,
+  { key: "harrier", name: "SWALLOW", category: "COMMUTER", best: "FIRE RATE", cost: 22000,
     hull: 12, dmg: 0.8, rate: 0.95, cargo: 200, speed: 2.15,
     turn: 0.98, drag: 1.45, spool: 5, bite: 0.45, ram: 1, shot: 0.78, size: 1.06,
     note: "a fast civil hull with teeth" },
 
   // ── utility: manoeuvrable working hulls with room for the job ───────────
-  { key: "cradle", name: "CRADLE", category: "UTILITY", best: "TURN", cost: 9800,
+  { key: "cradle", name: "CRADLE", category: "UTILITY", best: "TURN", cost: 26500,
     hull: 40, dmg: 1, rate: 0.85, cargo: 600, speed: 0.62,
     turn: 0.4, drag: 0.1, tough: 1, weapon: "claw", shot: 0.8, size: 1.24,
     note: "gets a work crew into awkward places" },
@@ -89,7 +111,7 @@ const SHIPS = [
   /* The one that reads as a TIE without being one: a slab of a cockpit between
      two flat panels, and nothing else. Straight lines only — the silhouette is
      the whole joke and any curve on it would spoil the reference. */
-  { key: "louvre", name: "JACKAL", category: "MILITARY", best: "DAMAGE", cost: 74000,
+  { key: "louvre", name: "JACKAL", category: "MILITARY", best: "DAMAGE", cost: 119000,
     hull: 26, dmg: 4.2, rate: 1.45, cargo: 75, speed: 1.55,
     /* The top of the military ladder and the most glued-down hull in the
        game. Its heading half-life is six hundredths of a second — point it
@@ -100,79 +122,79 @@ const SHIPS = [
     turn: 1.2, drag: 12, burst: 4, shot: 2.75, size: 1.14,
     note: "four guns between two unmistakable louvers" },
 
-  { key: "spur", name: "SPUR", category: "MILITARY", best: "VALUE", cost: 17000,
+  { key: "spur", name: "SPUR", category: "MILITARY", best: "VALUE", cost: 40000,
     hull: 24, dmg: 2.4, rate: 1.1, cargo: 120, speed: 1.06,
     turn: 1.12, drag: 6, shot: 1.34, size: 1.22,
     note: "a compact strike hull built around the first shot" },
 
-  { key: "runner", name: "RUNNER", category: "COURIER", best: "CARGO", cost: 6400,
+  { key: "runner", name: "RUNNER", category: "COURIER", best: "CARGO", cost: 19500,
     hull: 10, dmg: 0.7, rate: 0.8, cargo: 44, speed: 2.3,
     turn: 1.35, drag: 2.3, spool: 4.2, shot: 0.8, size: 1.16,
     note: "a parcel hold with an engine behind it" },
 
-  { key: "pannier", name: "PANNIER", category: "COMMUTER", best: "CARGO", cost: 11000,
+  { key: "pannier", name: "PANNIER", category: "COMMUTER", best: "CARGO", cost: 29000,
     hull: 24, dmg: 0.72, rate: 0.85, cargo: 300, speed: 2.4,
     turn: 1.1, drag: 1.6, spool: 4.5, bite: 0.4, ram: 1, shot: 0.72, size: 1.34,
     note: "two cabins, two holds, one patient crew" },
 
-  { key: "stride", name: "STRIDE", category: "COURIER", best: "DAMAGE", cost: 19500,
+  { key: "stride", name: "STRIDE", category: "COURIER", best: "DAMAGE", cost: 44000,
     hull: 12, dmg: 1, rate: 0.9, cargo: 35, speed: 2.5,
     turn: 1.45, drag: 2.45, spool: 3.8, shot: 0.86, size: 1.46,
     note: "the armed dispatch ship for difficult routes" },
 
-  { key: "carrack", name: "CARRACK", category: "EXPLORER", best: "CARGO", cost: 31000,
+  { key: "carrack", name: "CARRACK", category: "EXPLORER", best: "CARGO", cost: 62000,
     hull: 18, dmg: 1.2, rate: 0.95, cargo: 600, speed: 1.15,
     turn: 0.69, drag: 0.55, shot: 0.85, size: 1.62,
     note: "the long survey, done properly" },
 
   // ── cargo: holds first, with enough ship wrapped around them ────────────
-  { key: "drayman", name: "DRAYMAN", category: "CARGO", best: "SPEED", cost: 15000,
+  { key: "drayman", name: "DRAYMAN", category: "CARGO", best: "SPEED", cost: 36500,
     hull: 26, dmg: 0.8, rate: 0.7, cargo: 900, speed: 0.86,
     turn: 0.6, drag: 0.5, spool: 0.6, shot: 0.64, size: 1.7,
     note: "the quick end of moving things for money" },
 
-  { key: "coffer", name: "COFFER", category: "CARGO", best: "DRAG", cost: 26000,
+  { key: "coffer", name: "COFFER", category: "CARGO", best: "DRAG", cost: 55000,
     hull: 40, dmg: 0.9, rate: 0.75, cargo: 1500, speed: 0.76,
     turn: 0.54, drag: 0.48, spool: 0.7, shot: 0.58, size: 1.88,
     note: "a safe with a drive and a great deal of momentum" },
 
   // ── industrial: armoured working machinery that happens to fly ─────────
-  { key: "windlass", name: "WINDLASS", category: "INDUSTRIAL", best: "CARGO", cost: 42000,
+  { key: "windlass", name: "WINDLASS", category: "INDUSTRIAL", best: "CARGO", cost: 78000,
     hull: 60, dmg: 1.2, rate: 0.8, cargo: 900, speed: 0.52,
     turn: 0.3, drag: 0.058, tough: 1, weapon: "beam", shot: 0.62, size: 2.05,
     note: "built round the winch" },
 
-  { key: "granary", name: "GRANARY", category: "CARGO", best: "CARGO", cost: 63000,
+  { key: "granary", name: "GRANARY", category: "CARGO", best: "CARGO", cost: 105000,
     hull: 55, dmg: 1, rate: 0.8, cargo: 2400, speed: 0.66,
     turn: 0.48, drag: 0.46, spool: 0.8, shot: 0.52, size: 2.3,
     note: "the largest hold on the civilian register" },
 
-  { key: "bastion", name: "BASTION", category: "MILITARY", best: "BURST", cost: 24000,
+  { key: "bastion", name: "BASTION", category: "MILITARY", best: "BURST", cost: 51000,
     hull: 30, dmg: 2.7, rate: 1.15, cargo: 300, speed: 1.1,
     turn: 1.18, drag: 7, burst: 4, shot: 1.38, size: 1.66,
     note: "armour first and everything else behind it" },
 
-  { key: "reprisal", name: "REPRISAL", category: "MILITARY", best: "HULL", cost: 38000,
+  { key: "reprisal", name: "REPRISAL", category: "MILITARY", best: "HULL", cost: 72000,
     hull: 44, dmg: 3.3, rate: 1.3, cargo: 180, speed: 1.16,
     turn: 1.28, drag: 9.5, shot: 2.5, size: 1.74,
     note: "the answer to whatever fired first" },
 
-  { key: "ironmonger", name: "IRONMONGER", category: "INDUSTRIAL", best: "HULL", cost: 58000,
+  { key: "ironmonger", name: "IRONMONGER", category: "INDUSTRIAL", best: "HULL", cost: 99000,
     hull: 80, dmg: 1.4, rate: 0.75, cargo: 750, speed: 0.38,
     turn: 0.24, drag: 0.045, tough: 1, weapon: "beam", shot: 0.5, size: 1.98,
     note: "a foundry that flies" },
 
-  { key: "revenant", name: "LONGVIEW", category: "EXPLORER", best: "SPEED", cost: 86000,
+  { key: "revenant", name: "LONGVIEW", category: "EXPLORER", best: "SPEED", cost: 133000,
     hull: 20, dmg: 1.5, rate: 1.1, cargo: 900, speed: 1.6,
     turn: 0.69, drag: 0.55, shot: 0.92, size: 2.6,
     note: "built to make the far edge come closer" },
 
-  { key: "cathedral", name: "GANTRY", category: "INDUSTRIAL", best: "CARGO", cost: 112000,
+  { key: "cathedral", name: "GANTRY", category: "INDUSTRIAL", best: "CARGO", cost: 161000,
     hull: 70, dmg: 1.3, rate: 0.78, cargo: 1300, speed: 0.46,
     turn: 0.27, drag: 0.052, tough: 1, weapon: "beam", shot: 0.56, size: 3,
     note: "a mobile yard with engines under it" },
 
-  { key: "ossuary", name: "TENDER", category: "UTILITY", best: "CARGO", cost: 168000,
+  { key: "ossuary", name: "TENDER", category: "UTILITY", best: "CARGO", cost: 218000,
     hull: 55, dmg: 1.2, rate: 0.9, cargo: 900, speed: 0.78,
     /* Ric flew it and wanted it nearer the gunships: quicker, sharper off the
        mark, and far less adrift. Grip 2.6 puts its heading half-life at a

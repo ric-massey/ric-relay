@@ -198,7 +198,7 @@ function objective() {
       .map(k => partSpec(k)).filter(Boolean).map(b => b.name).join("  ·  ");
     if (names) {
       return { text: "CARRYING " + names, sub: "take it home to the station",
-               colour: CASH };
+               brief: "take it home", colour: CASH };
     }
   }
   const n = nextPart();
@@ -209,9 +209,16 @@ function objective() {
   if (partDropped(n.key)) {
     return { text: "GO BACK FOR THE " + n.name,
              sub: "you were carrying it when you died — it is where you fell",
-             colour: NEBULA };
+             brief: "where you fell", colour: NEBULA };
   }
-  return { text: "FIND THE " + n.name, sub: n.clue, colour: NEBULA };
+  /* `brief` is the clue said in three words — the kind of place rather than
+     the sentence about it. The notification and the missions page have room
+     for `sub`; the opening banner has one row and a column of HUD either side
+     of it, and a clue shrunk to the 16px floor and then cut with an ellipsis
+     is the one line a new player cannot read. Same fact, two lengths, one
+     source: see `drawObjectiveBanner`. */
+  return { text: "FIND THE " + n.name, sub: n.clue, brief: n.where,
+           colour: NEBULA };
 }
 
 /* The bearing and the range, worked out fresh every time the HUD asks. A

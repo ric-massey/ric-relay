@@ -39,6 +39,7 @@ HUD.drawPanel = function (st, dt) {
   drawPanelChart(st);
   drawPowers(st);
   drawCounters(st);
+  drawObjectiveBanner(st);
   drawWarnBand(st);
   drawStrip(st);
   /* Written with the drive and never called, so a run at eight times top
@@ -48,21 +49,78 @@ HUD.drawPanel = function (st, dt) {
   drawNotes(st);
 };
 
-/* ── what you are doing ───────────────────────────────────────────────────
-   Survey went a long time without answering this. It had an almanac, which
-   records what you happened to see, and a scan, which returned a number to a
-   message feed — between them a new pilot could fly for an hour without the
-   mode ever stating a goal. So the goal is on screen, always, in three lines
-   at the top of the frame:
+/* ── what you are doing, while you are still new ──────────────────────────
+   This comment used to describe a band of three lines across the top of the
+   frame — what to find, the clue, a bearing and a range — and it went on
+   describing it for a while after the band was taken off, which is how the
+   next session comes to put a thing back for the wrong reason. The band, and
+   why it went, are in the note above `panelBox`.
 
-     what to find      the part the yard is short of
-     where to look     the clue, which describes a kind of place
-     which way         a bearing and a range band, never a position
+   What is here now is a banner that **retires**. Ric watched a new player on
+   2026-11-12: *"for the first few parts it needs to be a banner on the top
+   saying to go get a part."* The old band's fault was being permanent — it
+   answered a question nobody asks twice, every frame, forever. A new player is
+   the one person still asking it, and the notification that replaced the band
+   has faded nine seconds later. So the banner is on for the first few parts
+   and then it is gone for the rest of the run; `bannerWanted` in factions.js
+   owns that rule and `st.tutorBanner` is the answer.
 
-   The bearing is here rather than behind the scan key for the same reason the
-   rest of it is: a button you have to press to be told what you are doing is a
-   button doing the interface's job. The scan is for what is *near* you now;
-   this is for where you are going. */
+   Two rows and a hairline, in the gap between the cash column and the chart:
+
+     what to do        `st.objective.text`, the line that already answers it
+     which of six      the tally, and the kind of place to look in
+
+   It states nothing of its own. The objective line has answered every state
+   of the manifest for a year — finding, carrying, going back for one you died
+   holding — and a second copy of that here is precisely the bug this mode has
+   shipped three times (B4, B8, A5): two lists of names kept in step by hand. */
+function drawObjectiveBanner(st) {
+  if (!st.tutorBanner) return;
+  const obj = st.objective;
+  if (!obj || !obj.text) return;
+  const { ctx } = api;
+
+  /* The gap is measured, not guessed. On the left, the cash and cargo column
+     runs to about 240; on the right, the chart's box — which moves in on a
+     phone and again for a notch, see `padGuard` — carries the sector readout
+     above it, and that is allowed 40 units past the box's own left edge. */
+  const left = 250;
+  const right = panelBox().x - 44;
+  const w = right - left;
+  // Narrower than this and it would be two cut words. The arrow still points.
+  if (w < 200) return;
+  const cx = left + w / 2;
+
+  const colour = obj.colour || VIOLET;
+  fitText(obj.text, cx, 40, SIZE.val, colour, "center", 0.95, w, "0.08em");
+
+  /* The tally is the half Ric's player did not have: one part is an errand,
+     "4 of 6" is a list with an end on it. `brief` rather than the clue — the
+     sentence belongs in the notification and on the missions page, and a
+     sentence squeezed into this row would be shrunk to the floor and then cut
+     (see `fitText`), which makes the one line a new player most needs the one
+     they cannot read. */
+  const home = st.home;
+  if (home && home.needs) {
+    const n = Math.min((home.built || 0) + 1, home.needs);
+    const tally = "PART " + n + " OF " + home.needs;
+    const line = obj.brief ? tally + "  ·  " + obj.brief : tally;
+    fitText(line, cx, 62, SIZE.cap, VIOLET_DIM, "center", 0.8, w, "0.06em");
+  }
+
+  /* A hairline under the two rows, so they read as one band rather than two
+     captions adrift over the sky. It stops short of the ends of the gap for
+     the same reason the type is centred in it. */
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - w * 0.36, 72);
+  ctx.lineTo(cx + w * 0.36, 72);
+  ctx.stroke();
+  ctx.restore();
+}
 /* The gravity warning. Loud, central, and above the objective — it is the one
    thing on this HUD that is about the next four seconds rather than the next
    four minutes, so it takes the position the eye goes to first and it is the
@@ -244,7 +302,12 @@ function drawLightRun(st) {
    changes and then not again for twenty minutes.
 
    So it is a notification now, fired when it changes, and the whole manifest
-   lives on a page you can open. See `HUD.notify` and `HUD.drawMissions`. */
+   lives on a page you can open. See `HUD.notify` and `HUD.drawMissions`.
+
+   One exception, added 2026-11-12 on Ric's instruction after he watched a new
+   player: for the first few parts there is a banner at the top again — two
+   rows, and it retires. The band's fault was never that it was at the top, it
+   was that it never stopped. See `drawObjectiveBanner`. */
 
 /* The chart sits below the sector readout rather than at the very top, so the
    right-hand column reads downward as one thing: where you are, the map around
@@ -780,6 +843,38 @@ function paintMarks(st, mx, my, big, scale) {
    informative reading and that turned out to be the wrong trade: two m:ss
    clocks and their bars took four lines and a lot of width to say something a
    player checks with a glance, and a glance is all a percentage needs. */
+/* ── the low-tank row's geometry ──────────────────────────────────────────
+   Pure, and out here on its own, because what Ric asked for on 2026-11-12 is
+   entirely about *where* and *when*: the word to the left of the mark, and
+   gone before the mark slides into where it was. A handover is the one thing
+   you cannot check by looking at a screenshot — both halves look right in any
+   single frame — so the harness reads this (`HUD.warnRow`) rather than the
+   drawing reading a second copy of the arithmetic.
+
+   Where the mark parks is measured, not guessed: the number column at its
+   widest ("100%"), the word's own width at this size, and the same gap either
+   side. So the word fits between the number and the mark at every reading and
+   on every glass, and the mark parks in one place rather than dodging it.
+
+   The ten seconds are cut in two, in the order the lesson is taught. `said`
+   is the word: full while it is being read, then two seconds of fade. `mark`
+   does not move until `said` has reached nothing, and then eases in beside
+   the number. They meet at SLIDE, which is the whole point — one hands over
+   to the other, and before this they simply ran at the same time. */
+const WARN_WORD = "WARNING", WARN_TRACK = "0.16em", WARN_GAP = 18;
+const WARN_SLIDE = 0.25, WARN_FADE = 0.2;
+
+function warnRow(numW, shout) {
+  const home = 108 + numW;
+  const wordW = widthOf(WARN_WORD, SIZE.cap, WARN_TRACK);
+  const away = 108 + (4 * 11 + 6) + WARN_GAP + wordW + WARN_GAP;
+  const said = Math.max(0, Math.min(1, (shout - WARN_SLIDE) / WARN_FADE));
+  const s = Math.max(0, Math.min(1, shout / WARN_SLIDE));
+  return { home, away, wordW, wordRight: away - WARN_GAP, said,
+           mark: home + (away - home) * (s * s * (3 - 2 * s)) };
+}
+HUD.warnRow = warnRow;
+
 function drawCounters(st) {
   const { ctx } = api;
 
@@ -830,9 +925,9 @@ function drawCounters(st) {
     /* ── the low mark ───────────────────────────────────────────────────
        A tank quietly dropping is a tank you do not notice until it is a
        countdown. So it says so: the first couple of times a tank falls past
-       half, the word WARNING appears beside it for ten seconds — and then the
-       word goes and the triangle *slides in next to the number* and stays
-       there while the tank is low.
+       half, the word WARNING appears **to the left of the mark** for ten
+       seconds — and then the word goes, and only then does the triangle
+       *slide in next to the number* and stay there while the tank is low.
 
        The slide is the point. It teaches what the mark means by showing them
        together, then leaves you the mark. After two lessons there is no word
@@ -840,19 +935,25 @@ function drawCounters(st) {
     const w = m.warn;
     if (w && w.lit && !out) {
       const shout = w.shout || 0;
-      /* Where the mark sits: out beside the word while it is shouting, tucked
-         against the number once it is done. Eased, so it reads as one thing
-         moving rather than two things blinking. */
+      /* Ric, 2026-11-12: *"the words should be on the left of the exclamation
+         mark, and then warning disappears when the triangle slides to the
+         left, for food and water."* Both halves are one instruction. With the
+         word on the left, the mark slides **through** where the word was, so
+         the two cannot be up together at the end — and they were: the word
+         held at full strength for seven of its ten seconds while the mark was
+         already most of the way home, because the fade and the slide were
+         timed independently of each other.
+
+         So the ten seconds are cut in two, in the order the lesson is taught:
+         the word is said, with the mark parked out past it; the word goes; and
+         only then does the mark slide in beside the number and stay. */
       const numW = String(Math.round(m.frac * 100) + "%").length * 11 + 6;
-      const home = 108 + numW;
-      const away = 214;
-      const t = shout > 0 ? shout * shout : 0;      // slow at first, then quick
-      const mx = home + (away - home) * t;
-      warnMark(mx, y - 5, 8, colour, out ? beat : 1);
-      if (shout > 0) {
-        label("WARNING", away + 18, y, SIZE.cap, WARN, "left",
-              Math.min(1, shout * 4) *
-              (0.6 + 0.4 * Math.abs(Math.sin(Date.now() / 260))), "0.16em");
+      const r = warnRow(numW, shout);
+      warnMark(r.mark, y - 5, 8, colour, out ? beat : 1);
+      if (r.said > 0) {
+        label(WARN_WORD, r.wordRight, y, SIZE.cap, WARN, "right",
+              r.said * (0.6 + 0.4 * Math.abs(Math.sin(Date.now() / 260))),
+              WARN_TRACK);
       }
     }
   });

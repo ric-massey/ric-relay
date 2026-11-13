@@ -2,6 +2,67 @@
 
 Design proposal, 11 September 2026. These are proposed additions, not claims about what is already implemented.
 
+## Playtest discussion — 12 November 2026
+
+**Ideas to revisit, not an implementation brief.** Ric watched someone enjoy
+playing, then leave because they had something else to do. The concern was
+whether they had a reason to return. The concrete playtest reports are in
+[`TODO.md`, N1–N7](TODO.md#watching-a-new-player--2026-11-12); the open design
+questions are N8–N9. No gameplay changes were requested in this discussion.
+
+### A world the player has a history in
+
+Ric wanted a sense of "that's mine", then clarified: "maybe not my station
+maybe the world." Explore attachment through places the player recognizes,
+encounters they remember, and consequences of their involvement. Station
+building was discussed earlier, but has not been chosen as the direction.
+The following are possibilities, not a settled feature list:
+
+- **Parts teach through use.** Ric: "you get one part it teaches you something
+  like how the wormhole works." Each early recovery could introduce a mechanic
+  and give the player an immediate reason to try it. A task after unlocking the
+  wormhole could take them through it to somewhere worth visiting. Specific
+  lessons and their order still need deciding.
+- **Quests introduce the world.** Ric: "quests are almost needed to show more
+  of the world." A delivery could reveal an unfamiliar station; salvage work
+  could lead into a dangerous wreck; helping somewhere could introduce a
+  faction and its circumstances. Each task should reveal a place, mechanic,
+  person or conflict worth knowing about, alongside its material reward.
+- **Leave a lead before the opening ends.** Let the player encounter something
+  intriguing while still recovering the station parts, so completing the
+  opening leaves them with somewhere they already want to go. No particular
+  lead, quest chain or mandatory destination has been chosen.
+- **Needs could come from the world.** A station affected by real convoy losses
+  might need supplies. The player could deliver them, assist an evacuation,
+  profit from the prices, or leave. Any eventual quest should agree with the
+  actual situation and its outcome should affect that situation. This extends
+  the event-and-consequence ideas below; it does not authorize inventing a
+  shortage merely to display a quest.
+- **Encounters could continue.** A rescued pilot could recur, with a later
+  salvage opportunity connected to the ship they abandoned. Familiar stations,
+  captains and factions could retain a record of the player's involvement.
+  These were assistant examples, not approved characters or missions. Present
+  any such connection through the visual computer and observed behaviour,
+  consistent with section 3; no dialogue system has been agreed.
+- **Exploration could leave unfinished business.** A discovery beyond the
+  current ship's capabilities could be marked for a later expedition. The chart
+  could become a personal record of routes survived, places revisited and
+  discoveries still to investigate. A better ship or component then serves a
+  goal the player has formed. This is an idea beyond N7's concrete request to
+  display explored space like the minimap.
+
+Two possible reasons to return emerged: curiosity about what is out there,
+and caring about what happens there. Their relative emphasis remains open.
+Upgrades and earnings could support those interests; no economy values were
+chosen, and making everything take longer is not itself the proposed goal.
+
+**Question for the next design pass:** what can happen during the first half
+hour that the player will still be thinking about after closing the game?
+Treat the reported play session as a useful observation, not proof of why
+players stop or a decision to fill every empty region with encounters.
+
+---
+
 Survey's premise stays: you are a person exploring in the middle of a much larger world. The sector is inhabited near home, stranger and lonelier farther out. Spare vector visuals, direct flight controls, a quiet screen, and rare authored discoveries carry the experience.
 
 The three ideas below belong together. A biome determines what a place provides and what makes travel difficult. Those conditions shape trade and conflict. People live with the consequences and give the player a way to understand them.

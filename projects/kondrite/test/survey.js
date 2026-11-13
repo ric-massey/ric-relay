@@ -2292,6 +2292,99 @@ const storeOf = (cf, key) => {
               "bearing and never a range · and only a full book is finished");
 }
 
+// ── 15b. the first few parts get a banner, and then they do not ──────────
+/* Ric, 2026-11-12, watching somebody play cold: "for the first few parts it
+   needs to be a banner on the top saying to go get a part." The thing worth
+   checking is not that the words exist — it is the retirement. A banner that
+   never goes away is the band this HUD already took off once, and the only way
+   to see either half from here is to count what the game actually paints. */
+{
+  const { cf } = boot("?debug=1&seed=1357");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+
+  now += 1000 / 60; cf.step(); cf.draw();
+  const fresh = textDrawn();
+  const tallyOf = words => words.find(w => /^PART \d+ OF 6/.test(w)) || "";
+  check(!!tallyOf(fresh),
+        "a brand new survey paints no banner tally — which is the state Ric " +
+        "watched a new player sit in: " + fresh.slice(0, 12).join(" | "));
+  check(/^PART 1 OF 6/.test(tallyOf(fresh)),
+        "the banner counts the first part as something other than 1 of 6: " +
+        tallyOf(fresh));
+  check(/·\s+\S/.test(tallyOf(fresh)),
+        "the tally says nothing about where to look: " + tallyOf(fresh));
+  /* The short form, not the clue. A clue is a sentence and this row is one
+     line between two columns of HUD, so the long one would be shrunk to the
+     16px floor and then cut with an ellipsis — the one line a new player most
+     needs would be the one they cannot read. */
+  check(!/…/.test(tallyOf(fresh)),
+        "the banner's second row was cut to fit, so it is not readable: " +
+        tallyOf(fresh));
+  check(fresh.some(w => /^(FIND|GO BACK FOR) THE /.test(w)),
+        "the banner is up and never says to go and get anything");
+
+  /* Carrying one. The banner states the objective line and nothing of its
+     own, so the half of the loop that is *bring it home* has to come through
+     without a second copy of the manifest living in the panel. */
+  const first = cf.objective();
+  const key = ["spar", "core", "lens", "coil", "beacon", "plate"]
+    .find(k => new RegExp(k === "spar" ? "SPAR" : k, "i").test(first.text)) ||
+    "spar";
+  /* Drawn without stepping, deliberately. A new survey starts **docked at the
+     home station**, so a part put in the hold is fitted on the very next tick
+     and the state under test would be gone before it was drawn. The panel
+     reads the objective fresh every frame, so a draw is all it takes. */
+  surv.carrying.add(key);
+  cf.draw();
+  const laden = textDrawn();
+  check(laden.some(w => /^CARRYING /.test(w)),
+        "carrying a part, the banner still says to go and find one");
+  check(/take it home/.test(tallyOf(laden)),
+        "the banner does not say what to do with a part you are holding: " +
+        tallyOf(laden));
+  surv.carrying.delete(key);
+
+  /* And now the whole point of it. Three parts home is the loop learned —
+     fetch, sell, come back — so the banner goes, and the one thing it is
+     allowed to say on the way out is where the manifest went. */
+  surv.built.add("spar");
+  now += 1000 / 60; cf.step(); cf.draw();
+  check(!!tallyOf(textDrawn()),
+        "the banner left after a single part — the brief is the first few");
+
+  surv.built.add("core");
+  surv.built.add("lens");
+  now += 1000 / 60; cf.step(); cf.draw();
+  const after = textDrawn();
+  check(!tallyOf(after),
+        "three parts home and the banner is still across the top: " +
+        tallyOf(after));
+  check(after.some(w => /HANG OF THIS/.test(w)),
+        "the banner vanished without a word about where the manifest went: " +
+        after.slice(0, 12).join(" | "));
+  // It is gone for good, not gone for a frame.
+  for (let i = 0; i < 90; i++) { now += 1000 / 60; cf.step(); }
+  cf.draw();
+  check(!tallyOf(textDrawn()), "the banner came back a second and a half later");
+
+  /* A save resumed past the banner has never seen it, so it must not be told
+     it has gone — the goodbye is only a goodbye to somebody who was there. */
+  const second = boot("?debug=1&seed=1357").cf;
+  second.start("survey", 1);
+  const s2 = second.survey();
+  for (const k of ["spar", "core", "lens", "coil"]) s2.built.add(k);
+  now += 1000 / 60; second.step(); second.draw();
+  const cold = textDrawn();
+  check(!tallyOf(cold) && !cold.some(w => /HANG OF THIS/.test(w)),
+        "a run resumed with four parts home was shown the opening banner or " +
+        "told it was over: " + cold.slice(0, 12).join(" | "));
+
+  console.log("  banner     the first few parts get it, it says which of six " +
+              "and where to look, it survives a part coming home · and at " +
+              "three it retires, once, saying where the manifest went");
+}
+
 // ── 16. the scan reports what is near, and the refit makes it reach ──────
 /* The old scan returned a compass bearing to an almanac entry and printed it in
    a message feed, which is why nobody could tell what it was for. It sweeps a
@@ -5313,6 +5406,49 @@ const storeOf = (cf, key) => {
   surv.hold.iron = 4;
   now += 1000 / 60; cf.step();
   check(surv.taught.has("material"), "picking material up explained nothing");
+
+  /* ── and the one beat about money ──────────────────────────────────────
+     It fired at a flat **200** until 2026-11-12. That figure is left over
+     from the refit tracks — three tiers bought with cash, the first of them
+     cheap — which were taken out when parts became the whole upgrade system.
+     The cheapest thing anybody sells is the DRIVE SPAR at 650, so the one
+     beat in the opening whose job is to say *you can buy something* was
+     telling a new pilot so three hundred coins early, and the hull re-pricing
+     the same evening would have widened that further.
+
+     It asks the shelf now. Three refusals, and the test is all three: no
+     counter at home until the fusion core is in, nothing that is not stocked,
+     and nothing you cannot pay for. */
+  const beats = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+  surv.cash = 50000;
+  beats(12);
+  check(!surv.taught.has("spend"),
+        "the opening offered a part over the home counter, which has no " +
+        "power at all until the fusion core is delivered");
+
+  surv.built.add("core");            // the counter lights
+  surv.cash = 1;
+  beats(6);
+  const shelf = cf.surveyView().market.filter(r => r.kind === "part");
+  check(shelf.length > 0, "the counter is lit and the shop lists no parts");
+  const cheapest = Math.min(...shelf.map(r => r.cost));
+  check(cheapest > 200,
+        "the cheapest part on the first shelf is " + cheapest + " — the old " +
+        "flat 200 would have been honest after all, so this test is moot");
+  check(!surv.taught.has("spend"),
+        "the opening offered a part with one coin aboard");
+
+  surv.cash = cheapest - 1;
+  beats(6);
+  check(!surv.taught.has("spend"),
+        "the opening said YOU CAN AFFORD A PART at " + (cheapest - 1) +
+        " with the cheapest thing on the shelf at " + cheapest);
+
+  surv.cash = cheapest;
+  beats(6);
+  check(surv.taught.has("spend"),
+        "with exactly the price of the cheapest part on the shelf (" +
+        cheapest + "), nothing said it could be spent");
 
   // Each fires once. Emptying and refilling must not start it over.
   const seen = surv.taught.size;
@@ -8571,9 +8707,46 @@ const storeOf = (cf, key) => {
   check(again.cf.surveyView().water.warn.shout === 0,
         "a resumed sector shouts a lesson it has already given twice");
 
+  /* Where the word sits, and when it leaves. Ric, 2026-11-12: "the words
+     should be on the left of the exclamation mark, and then warning
+     disappears when the triangle slides to the left, for food and water."
+
+     Read as geometry rather than off the screen, for two reasons: the mark is
+     a drawn vector and not a word, so nothing about it ever reaches
+     `textDrawn`; and a handover is the one thing a single frame cannot show
+     you — the word and the mark each looked right on their own while the two
+     were in the middle of the row together for seven of the ten seconds. */
+  {
+    const row = cf.hud().warnRow;
+    const numW = "29%".length * 11 + 6;
+    const near = (a, b) => Math.abs(a - b) < 0.01;
+
+    const loud = row(numW, 1);
+    check(loud.said === 1, "the word is not at full while the tank shouts");
+    check(near(loud.mark, loud.away),
+          "the mark is already on the move while the word is being read");
+    check(loud.wordRight < loud.away,
+          "the word is not to the left of the mark");
+    check(loud.wordRight - loud.wordW > loud.home,
+          "the word runs back over the number it is about");
+
+    // The handover: the word is gone at the moment the mark sets off.
+    const over = row(numW, 0.25);
+    check(over.said === 0 && near(over.mark, over.away),
+          "the word and the mark are in the middle of the row together");
+    const sliding = row(numW, 0.12);
+    check(sliding.said === 0 && sliding.mark < over.mark - 1,
+          "the mark never slides, or slides while the word is still there");
+    check(near(row(numW, 0).mark, row(numW, 0).home),
+          "the mark does not finish tucked against the number");
+    /* Both tanks draw this one row, so there is no second copy to drift —
+       the loop above has already flown it for water and for food. */
+  }
+
   console.log("  lowtank    half a tank shouts twice, ten seconds each, then the " +
               "triangle stays \u00b7 steps every 15% after \u00b7 both tanks " +
-              "\u00b7 the lessons survive the tab");
+              "\u00b7 the lessons survive the tab " +
+              "\u00b7 the word sits left of the mark and goes before it slides");
 }
 
 // ── wants that collide, and an economy that hears about it ───────────────
@@ -9834,9 +10007,9 @@ const storeOf = (cf, key) => {
 }
 
 // ── a ladder's rungs do not fight each other ─────────────────────────────
-/* The tractor is three rungs of one idea — MK1 at half the base reach, MK2 at
-   the base, MK3 at 60% over it — and nothing stops you fitting two of them at
-   once, because slots are four and a category is not exclusive.
+/* The tractor is three rungs of one idea — MK1 at about a third of the base
+   reach, MK2 at the base, MK3 at 60% over it — and nothing stops you fitting
+   two of them at once, because slots are four and a category is not exclusive.
 
    `mods()` sums every numeric effect, which was harmless while every effect was
    a bonus. `reach` is the first one that can be negative, and summing a
@@ -9866,8 +10039,14 @@ const storeOf = (cf, key) => {
   check(beamWith() === 0, "a ship with no beam fitted still has a beam");
   check(one > 0 && two > one && three > two,
         "the ladder does not climb: " + one + " → " + two + " → " + three);
-  check(Math.abs(one - two / 2) <= 1,
-        "MK1 is " + one + ", which is not half of MK2's " + two);
+  /* A third-ish, not a half. Ric cut the MK1 on 2026-11-12 — "leave mk1 but
+     make it a bit less powerful" — on the same day the MK2's build went, so
+     that the rung you have to go and find is worth the trip. A band rather
+     than a number, because the exact figure is a tuning knob and the shape is
+     not: well under half, and still a beam worth having. */
+  check(one / two > 0.28 && one / two < 0.42,
+        "MK1 reaches " + one + " against MK2's " + two + " — the first rung " +
+        "is meant to be about a third of the second");
 
   /* The whole point: any mix reaches as far as the best rung in it. */
   for (const mix of [[MK1, MK2], [MK1, MK3], [MK2, MK3], [MK1, MK2, MK3]]) {
@@ -9877,8 +10056,77 @@ const storeOf = (cf, key) => {
           mix.join(" + ") + " reaches " + got + " where the best of them alone " +
           "reaches " + best + " — a worse rung must not cost you reach");
   }
+  /* ── one rung, one way to get it ─────────────────────────────────────
+     Ric, 2026-11-12: "crafting can make finding parts feel pointless", with
+     the MK2 as his example — it was the commonest thing in a cache *and* six
+     iron, five alloy and three electronics, so nobody ever opened a cache
+     hoping for one. Then, the same evening: "mk3 should be found and hard to
+     find and mk2 should be built or found and mk1 is given at the end of the
+     parts thing and mk1 can also be bought."
+
+     So the shape is: handed to you and sold, built or found, found only. The
+     top rung is the one thing in the category money cannot answer, which is
+     the opposite of the rule this ladder was built on — do not "fix" it back
+     to a bought MK3. */
+  const part = k => cf.parts().find(p => p.key === k);
+  const ways = k => part(k).get.slice().sort().join("+");
+  check(ways(MK1) === "buy+find",
+        "the MK1 is " + ways(MK1) + " — it is the rung you are handed after " +
+        "the gate and can also simply buy");
+  check(ways(MK2) === "craft+find",
+        "the MK2 is " + ways(MK2) + " — the middle rung is built or found");
+  check(ways(MK3) === "find",
+        "the MK3 is " + ways(MK3) + " — the best beam is found and nothing " +
+        "else, and that is the point of it");
+  for (const k of [MK2, MK3]) {
+    check(part(k).inCachePool,
+          part(k).name + " cannot be bought and is not in the cache pool " +
+          "either, so there is no way to one at all");
+  }
+  /* And hard to find, which in this sector means `rare`: the cache weighting
+     is 6 - deep*3 for a common part against 1 + deep*4 for a rare one, so a
+     rare part is something a deep cache has and a shallow one almost never
+     does. A common MK3 would turn up in the first cache off the origin. */
+  check(part(MK3).rarity === "rare",
+        "the MK3 is " + part(MK3).rarity + " — a find-only beam that is not " +
+        "rare is not hard to find, it is just unbuyable");
+
+  /* ── and what a build costs ──────────────────────────────────────────
+     The same day, the whole table doubled: priced against the shop, every
+     recipe was an arbitrage — 29.6x on the grapple line, 27.6x on the EMP,
+     9.0x on the MK2 — so nothing craftable was ever worth buying. Ric: "make
+     it a bit more to craft like 2x more to craft. because it should be kinda
+     hard to find somewhere that sels the exact thing you want."
+
+     So this is a ceiling, not a target. Building stays much cheaper than
+     buying on purpose; what it may not be again is free. The worst row after
+     the re-cut is the grapple line at 14.8x, which is the one build meant to
+     be a new pilot's first. */
+  const value = {};
+  for (const m of cf.surveyView().materials) value[m.key] = m.value;
+  const WORST = 18;
+  let dearest = null;
+  for (const r of cf.allCrafts()) {
+    const p = part(r.out);
+    let mat = 0;
+    for (const k of Object.keys(r.need)) mat += r.need[k] * (value[k] || 0);
+    if (r.part) mat += part(r.part).cost;      // a build that eats a part
+    check(mat > 0, p.name + " is built out of nothing at all");
+    check(p.cost / mat <= WORST,
+          p.name + " costs " + p.cost + " in a shop and " + mat + " to build " +
+          "(" + (p.cost / mat).toFixed(1) + "x) — a build that cheap is why " +
+          "nobody buys anything");
+    if (!dearest || p.cost / mat > dearest.r) {
+      dearest = { n: p.name, r: p.cost / mat };
+    }
+  }
+
   console.log("  ladder     tractor " + one + " → " + two + " → " + three +
-              " units · every mix of rungs reaches as far as its best one");
+              " units · every mix of rungs reaches as far as its best one · " +
+              "build, find, buy — one rung each · " + cf.allCrafts().length +
+              " builds, the cheapest against its shelf price being the " +
+              dearest.n.toLowerCase() + " at " + dearest.r.toFixed(1) + "x " +
+              "(ceiling " + WORST + "x)");
 }
 
 // ── every part can actually be got hold of ──────────────────────

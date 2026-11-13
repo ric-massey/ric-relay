@@ -84,6 +84,63 @@ function lightJump(x, y) {
    already acted on is noise the second time. None of them stops the game or
    asks for a click. If you already know all this, the whole thing is four
    notifications you can ignore over two minutes and then never see again. */
+/* ── the banner the first few parts get ───────────────────────────────────
+   Ric watched somebody play cold on 2026-11-12. They enjoyed it and left when
+   something else came up, and the first few minutes were what he wanted
+   changed: *"for the first few parts it needs to be a banner on the top
+   saying to go get a part."*
+
+   There was a band across the top of the HUD once and it came off for a good
+   reason — it was the busiest thing on the screen and it answered a question
+   nobody asks twice (see `drawObjectiveBanner`). The beats below replaced it,
+   and a beat is nine seconds: exactly right for *water low*, and no use at all
+   to somebody who looks up thirty seconds later having forgotten what they
+   were flying towards.
+
+   So both are true, and the banner is the one that retires. It is on until
+   three of the six parts are home, which is long enough to have fetched one,
+   sold something and come back for the next — and then it goes, because by
+   then the arrow, the chart and the manifest page are all things you have
+   used. Three rather than one: one part is luck, three is the loop. */
+const BANNER_PARTS = 3;
+
+/* The cheapest part the place you are standing in will actually sell you,
+   right now, or Infinity if it will sell you none. Used by the opening's one
+   money beat; see `spend`.
+
+   All three refusals the till makes, in the order the till makes them: the
+   dead home station has no counter until the fusion core is in, a part nobody
+   sells is not on any shelf, and a shelf carries *stock* rather than a
+   catalogue. A beat that said YOU CAN AFFORD A PART over a dark counter would
+   be the interface lying to the one player who cannot tell. */
+function cheapestOnTheShelf() {
+  const at = surv && surv.docked;
+  if (!at) return Infinity;
+  if (at.home && !stationHas("counter")) return Infinity;
+  const shelf = shelfOf(at);
+  if (!shelf || !shelf.parts) return Infinity;
+  const deep = stationDepth();
+  let best = Infinity;
+  for (const m of MODULES) {
+    if (!sellsIt(m) || m.deep > deep) continue;
+    if ((shelf.parts[m.key] || 0) <= 0) continue;
+    if (m.cost < best) best = m.cost;
+  }
+  return best;
+}
+
+function bannerWanted() {
+  if (!surv || LEV_ONLY) return false;
+  if (stationWhole() || surv.built.size >= BANNER_PARTS) return false;
+  /* Remembered, so the beat that says goodbye can only fire for somebody who
+     was actually shown the thing. A save resumed with four parts already home
+     has never seen the banner and must not be told it has gone. `taught` is
+     where the mode already keeps "this has been said once" and it survives the
+     book; the beats below read it by their own keys and ignore this one. */
+  surv.taught.add("bannerseen");
+  return true;
+}
+
 const OPENING = [
   { key: "thirst",
     when: () => surv.docked && surv.water < WATER_FULL * 0.45,
@@ -111,8 +168,18 @@ const OPENING = [
     text: "STORAGE FILLING UP",
     sub: "find a station and sell what you are carrying",
     colour: CASH },
+  /* Asked of the shelf rather than hard-coded. This said 200, which was a
+     figure from the days of the refit tracks — three tiers bought with cash,
+     the first of them cheap. Those are gone and parts are the whole upgrade
+     system now, so the cheapest thing a station sells is the DRIVE SPAR at
+     650, and the one beat in the opening whose whole job is to say *you can
+     buy something* was telling a new pilot so three hundred coins early.
+
+     It reads the shelf in front of them: this station's stock at this
+     station's depth, cheapest row. So it cannot go stale again when a price
+     moves — and prices did move, the evening this was found (N3). */
   { key: "spend",
-    when: () => surv.cash >= 200 && surv.docked,
+    when: () => !!surv.docked && surv.cash >= cheapestOnTheShelf(),
     text: "YOU CAN AFFORD A PART",
     sub: "the station sells them, and fits them on the spot",
     colour: CASH },
@@ -173,6 +240,18 @@ const OPENING = [
      until now there was nowhere a player could meet one — so the best part in
      every category was something you could only get by accident. The list is
      on the missions page; this is the once that says so. */
+  /* The banner's goodbye. It is the water triangle's trick — teach the thing
+     while it is needed, then take the teaching away and leave the instrument —
+     and the one place it is allowed to say so is the moment it stops. It names
+     where the manifest went, because that is the question a player who liked
+     the banner is about to have. */
+  { key: "handoff",
+    when: () => surv.taught.has("bannerseen") &&
+                !stationWhole() && surv.built.size >= BANNER_PARTS,
+    text: "YOU HAVE THE HANG OF THIS",
+    sub: "the banner is done — the manifest is on the inventory page",
+    colour: CASH },
+
   { key: "longlist",
     when: () => stationWhole() && !!surv.docked,
     text: "SOME PARTS ARE NOT FOR SALE HERE",

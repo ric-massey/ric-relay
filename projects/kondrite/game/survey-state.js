@@ -456,6 +456,11 @@ function surveyState() {
     onBuyPart: key => buyModule(key),
     objective: objective(),
     fix: objectiveFix(),
+    /* Whether the opening still needs its banner. The rule lives next to the
+       beat that retires it (`bannerWanted`, in factions.js) rather than in the
+       panel, so the thing that draws it and the thing that says goodbye to it
+       cannot disagree about when it is over. */
+    tutorBanner: bannerWanted(),
     /* Flattened for the panel: the minimap draws these as dots for as long as
        they last, which is the half of a scan that used to be missing. Anything
        a scan reaches is up to 3,885 units away and the view is about 700

@@ -178,44 +178,84 @@ function weaponsFitted() {
        holds by construction — and the test checks it anyway.
      · nothing exists only to be an ingredient. Every ingredient is a part you
        could have flown. */
+/* ── what a build costs, and the day it doubled ───────────────────────────
+   Ric, 2026-11-12, after watching a new player: *"crafting can make finding
+   parts feel pointless"*, with the MK2 tractor beam as the example. Priced
+   against the shop — every material carries a `value`, so a recipe has a
+   number — the whole table was an arbitrage rather than one bad row:
+
+     GRAPPLE LINE   54 of materials for a 1600 part    29.6x
+     EMP CHARGE    330 of materials for a 9100 part    27.6x
+     MK2 BEAM      111 of materials for a 1000 part     9.0x
+     DRIVE SPAR    138 of materials for a  650 part     4.7x
+
+   Nothing craftable was ever worth buying, and the two parts you could also
+   *find* — the MK1 and MK2 beams, the only two in the game with `find` and
+   `craft` together — were worth less than the trip out to them.
+
+   Two answers, both Ric's. **The tractor ladder got one way in per rung** —
+   MK1 handed to you after the gate and sold everywhere, MK2 built or found,
+   MK3 found and hard to find, nowhere sold and nowhere built. (The first cut
+   of that had MK2 and MK3 the other way about; he flipped them the same
+   evening, and it is the better shape — the top of the ladder is the one
+   thing money cannot answer.) And every build costs **twice what it did** —
+   "a bit more to craft ... because it should be kinda hard to find somewhere
+   that sells the exact thing you want". Twice, not parity: building is still
+   much cheaper than buying, because a shop that has the exact part you want
+   is itself a thing you have to go and find.
+
+   The doubling is by *value*, not by piling on more rock. Where a build
+   already wanted electronics, iridium or a core — the three you cannot mine —
+   those grew the most, because they are what the ingredient list was always
+   for: a part you can build out of four units of iron is a part you buy by
+   flying in circles. Unit counts went up by about half; prices doubled.
+
+   One exception inside that, and it is the difference between a trip and a
+   wall: **cores did not double.** A core is a few in a hundred from a cache
+   or a drone — the rarest thing there is — so doubling the one ingredient
+   with no reliable source would have turned three builds into a waiting game
+   rather than a journey. They went up by one each, and the electronics and
+   iridium beside them carried the rest. */
 const CRAFTS = [
   // ── the cheap end: things worth building rather than buying ────────────
-  { out: "layerplate", need: { iron: 8, alloy: 3 } },
-  { out: "vernier",    need: { iron: 5, alloy: 4, electronics: 2 } },
-  { out: "pulsecoil",  need: { alloy: 4, electronics: 5 } },
-  /* The ladder's first two rungs. MK3 is not here — it is the best of its
-     category, and the best of a category is bought or found, never built. */
-  { out: "tractormk1", need: { iron: 4, alloy: 2 } },
-  { out: "tractorrig", need: { iron: 6, alloy: 5, electronics: 3 } },
-  { out: "scattergun", need: { iron: 7, alloy: 5, electronics: 2 } },
+  { out: "layerplate", need: { iron: 14, alloy: 7 } },
+  { out: "vernier",    need: { iron: 6, alloy: 6, electronics: 6 } },
+  { out: "pulsecoil",  need: { alloy: 10, electronics: 9 } },
+  /* The ladder's middle rung, and the only one with a build. MK1 is not here
+     because you are handed one after the gate and any shop sells them; MK3 is
+     not here because it is the one thing in its category you have to go out
+     and find. See the ladder's own note in MODULES. */
+  { out: "tractorrig", need: { iron: 12, alloy: 10, electronics: 6 } },
+  { out: "scattergun", need: { iron: 8, alloy: 8, electronics: 6 } },
 
   /* The ice melter, which is the reason this system exists at all: the answer
      to a long haul is something you build, not something you buy. */
-  { out: "icemelter",  need: { iron: 6, alloy: 6, electronics: 4 } },
+  { out: "icemelter",  need: { iron: 8, alloy: 10, electronics: 10 } },
 
   /* Six of the seven devices. The emergency jump is not here, and that is
      the rule from the bottom of this list rather than an oversight: it is the
      best thing in its category, so it is bought and never built. */
-  { out: "ejector",    need: { iron: 7, alloy: 4 } },
-  { out: "decoylauncher", need: { iron: 5, alloy: 6, electronics: 5 } },
-  { out: "minelayer",  need: { iron: 8, alloy: 7, electronics: 4 } },
+  { out: "ejector",    need: { iron: 12, alloy: 9 } },
+  { out: "decoylauncher", need: { iron: 6, alloy: 10, electronics: 10, iridium: 1 } },
+  { out: "minelayer",  need: { iron: 10, alloy: 10, electronics: 11 } },
   /* A line and a winch: iron and a little wiring, and the cheapest verb in
-     the game. It is meant to be the one a new pilot builds first. */
-  { out: "grappleline", need: { iron: 9, alloy: 3 } },
+     the game. It is meant to be the one a new pilot builds first, so it stays
+     the one build that asks for nothing you cannot get out of a rock. */
+  { out: "grappleline", need: { iron: 18, alloy: 6 } },
 
-  // ── the middle: a core, so it is a trip rather than an afternoon ───────
-  { out: "seekerrack", need: { alloy: 9, electronics: 7, core: 1 } },
-  /* The burst takes two cores, which is what puts it on the far side of a
+  // ── the middle: cores, so it is a trip rather than an afternoon ────────
+  { out: "seekerrack", need: { alloy: 14, electronics: 15, core: 2 } },
+  /* The burst takes three cores, which is what puts it on the far side of a
      trip: a thing that stops a room should not be an afternoon's mining.
      SILENT RUNNING is not here — it is the best device in the game and the
      best of a category is never built. */
-  { out: "empcharge",  need: { alloy: 10, electronics: 9, core: 2 } },
+  { out: "empcharge",  need: { alloy: 18, electronics: 24, core: 3 } },
   /* Panels. Built rather than only bought, because the thing they do — a star
      mends your hull — is the answer to being a long way from a station, and
      being a long way from a station is exactly when you cannot buy one. */
-  { out: "solarwing",  need: { alloy: 8, electronics: 6, iridium: 2 } },
-  { out: "coolantloop", need: { ice: 8, iron: 5, electronics: 4 } },
-  { out: "sparthruster", need: { iron: 9, alloy: 7, electronics: 3 } },
+  { out: "solarwing",  need: { alloy: 10, electronics: 11, iridium: 7 } },
+  { out: "coolantloop", need: { ice: 10, iron: 6, electronics: 10 } },
+  { out: "sparthruster", need: { iron: 10, alloy: 10, electronics: 9 } },
 
   /* ── built out of what you were flying ────────────────────────────────
      Each of these eats the part below it. That is the whole of the nesting and
@@ -223,13 +263,13 @@ const CRAFTS = [
 
 
   { out: "burstcharge", part: "scattergun",
-    need: { alloy: 10, electronics: 8, iridium: 3, core: 1 } },
+    need: { alloy: 14, electronics: 18, iridium: 6, core: 2 } },
 
   // ── the far end: iridium and cores, which are a reason to go out ───────
   /* Built out of the melter you have been running, which is the good version
      of depth: the better thing is visibly made from the thing you know. */
   { out: "starsiphon", part: "icemelter",
-    need: { ice: 6, alloy: 10, electronics: 8, iridium: 6, core: 2 } }
+    need: { ice: 8, alloy: 16, electronics: 20, iridium: 12, core: 3 } }
 
   /* ── and the ones with no build at all ────────────────────────────────
      One rule, and it is worth stating as a rule because it decides every part

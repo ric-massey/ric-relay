@@ -13,13 +13,210 @@ here said 27 items and 26 done and named A3 as the only one left, which had
 stopped being true twice over: C4 and C5 were added to SETTINGS after it was
 written, and C6 was added open.
 
-**Left: nothing on this list.** The open briefs are elsewhere and are not
-bugs: `PLAYER-HISTORY.md`, and "the Leviathan is a ship you can buy" in
+**Current: eight playtest items — four done, four open — and two design
+questions**, recorded below on 2026-11-12. N1, N2, N3 and N10 were built the
+same day; N10 came later that evening and is not from the watched session. The September batch above is complete; these are new reports.
+Other open briefs are elsewhere: `PLAYER-HISTORY.md`, and "the Leviathan is a ship you can buy" in
 `SURVEY-PLAN.md`. `LIVING-WORLD.md` has its first version and its first
 expansion built (2026-09-24, see its status line): §27, §16 and §28 — leaders,
 laws, bounties, and the people, whose provinces can add up to a cause and, rarely,
 a flag of their own — with the visuals doing the talking on Ric's instruction.
 Important NPCs and §29 onward are still brief.
+
+---
+
+## Watching a new player — 2026-11-12
+
+Ric watched someone play after some time away from working on the game. The
+player seemed to enjoy it and stopped because they had something else to do;
+Ric was unsure whether there was enough to bring them back. These are Ric's
+observations and requests, not reproduced diagnoses or completed fixes. This
+session is for recording and discussing them only; no gameplay changes yet.
+
+### Bugs, clarity and balance
+
+- [x] **N1 · The opening tutorial needs a persistent objective banner.** For
+  the first few parts, put a banner at the top saying to go get a part. Ric:
+  "for the first few parts it needs to be a banner on the top saying to go get
+  a part." The current tutorial does not give a new player enough guidance.
+
+  *Built 2026-11-12, and the interesting half is that it retires.* There was a
+  band across the top of this HUD once and it was taken off for a good reason:
+  it answered a question nobody asks twice, every frame, forever, and it was
+  the busiest thing on the screen. What replaced it was a notification — right
+  for WATER LOW, and no use at all to somebody who looks up thirty seconds
+  later having forgotten what they were flying towards, which is the player
+  Ric watched. So the band is back as a banner with an end on it: two rows in
+  the gap between the cash column and the chart — the objective line, and
+  **PART n OF 6** with the kind of place to look in — and it is gone for good
+  once three parts are home, which is one fetch, one sale and one return. On
+  the way out it says where the manifest went, the way the low-tank warning
+  teaches its triangle and then leaves you the triangle. It states
+  `st.objective` and nothing of its own, so there is still exactly one thing in
+  the mode that knows what you are doing (B4, B8 and A5 were all two lists kept
+  in step by hand). `bannerWanted` in `game/factions.js` owns the rule,
+  `drawObjectiveBanner` in `survey-hud/panel.js` draws it, `test/survey.js`
+  §15b holds both halves — it is there cold, it survives a part coming home,
+  it leaves at three, and a save resumed past it is not told it has gone.
+- [x] **N2 · Crafting can make finding parts feel pointless.** Certain parts
+  are much easier to craft than to find; Ric's example is the **MK2 tractor
+  beam**. Review the relative effort and rewards.
+
+  *Reviewed and re-cut 2026-11-12.* The review is a number rather than an
+  impression: every material carries a `value`, so a recipe can be priced
+  against the shelf price of the thing it makes. Two findings.
+
+  **One.** Exactly two parts in the game are findable *and* craftable — the
+  MK1 and MK2 tractor beams. Everything else is buy+craft (16), buy-only (9),
+  find-only (2) or off a boss (5). So "crafting makes finding pointless" lands
+  on precisely the part Ric named, and on its little brother.
+
+  **Two.** The whole craft table was an arbitrage, not one bad row:
+
+  | part | shelf | to build | |
+  |---|---|---|---|
+  | GRAPPLE LINE | 1600 | 54 | 29.6x |
+  | EMP CHARGE | 9100 | 330 | 27.6x |
+  | COOLANT LOOP | 2300 | 87 | 26.4x |
+  | TRACTOR BEAM MK1 | 550 | 30 | 18.3x |
+  | **TRACTOR BEAM MK2** | **1000** | **111** | **9.0x** |
+  | DRIVE SPAR | 650 | 138 | 4.7x |
+  | STAR SIPHON | 5200 | 1552 | 3.4x |
+
+  Nothing craftable was ever worth buying either.
+
+  Ric's calls. **Every build costs twice what it did**: "make it a bit more to
+  craft like 2x more to craft. because it should be kinda hard to find
+  somewhere that sels the exact thing you want" — twice, not parity, because a
+  shop with the exact part you want is itself something you have to go and
+  find. The doubling is by value rather than by more rock: electronics,
+  iridium and cores grew most, since the three you cannot mine are what an
+  ingredient list is for. Cores are the one exception and went up by one each
+  — a few in a hundred from a cache is rare enough that doubling them makes a
+  build a waiting game rather than a journey.
+
+  **And the tractor ladder got one way in per rung.** The first cut had MK2
+  find-only and MK3 bought, on the old rule that the best of a category is the
+  bought one. Ric flipped it the same evening: *"mk3 should be found and hard
+  to find and mk2 should be built or found and mk1 is given at the end of the
+  parts thing and mk1 can also be bought."* So:
+
+  | rung | how you get one |
+  |---|---|
+  | MK1 | given after the gate, and on any shelf |
+  | MK2 | built or found |
+  | MK3 | found, and hard to find — no shelf, no build, and `rare`, so only deep caches really carry one |
+
+  It is the better shape: the top of the ladder is the one thing in its
+  category money cannot answer. **The MK1 is also a bit less powerful** —
+  asked whether to leave it craftable at all (P1 says it is, deliberately,
+  because the post-gate arrow sends you for one): "leave mk1 but make it a bit
+  less powerful." Its reach goes from half the MK2's to about a third, 170 →
+  119 units, through one constant `MK1_REACH` read by both the effect and the
+  line that describes it. `CRAFTS` and `MODULES`; `test/survey.js` holds the
+  one-way-per-rung and a ceiling of 18x on any build.
+- [x] **N3 · Ships feel too cheap.** Ric cited the **Needle at 900 coins** as
+  costing almost nothing during the playtest. Review ship prices against how
+  quickly money is earned.
+
+  *Re-priced 2026-11-12, and the income side with it.* Ric, after the craft
+  re-cut: "was the rest of the economy fixed? including the ships? they are
+  all way too cheap." The yardstick is the hold: a full skiff load of 150
+  units was worth about 480 as rock, 1,400 as wreck salvage and 2,060 out of a
+  cache — so the first four hulls each cost about **one good trip**, and the
+  second ship stopped being a goal before anybody had flown far enough to want
+  one.
+
+  **The ladder goes up on a curve, not a multiplier**, because the two ends
+  had different problems: the cheap end was free and the dear end was already
+  eighty holds. `28.9 * cost^0.742`, rounded to figures a shop would print —
+  about 5x at the bottom and 1.3x at the top, with the order untouched.
+
+  | | was | now |
+  |---|---|---|
+  | NEEDLE | 900 | 4,500 |
+  | KITE | 1,600 | 6,900 |
+  | LANCE | 3,400 | 12,000 |
+  | DRAYMAN | 15,000 | 36,500 |
+  | GRANARY | 63,000 | 105,000 |
+  | TENDER | 168,000 | 218,000 |
+
+  **And what salvage fetches came down about a fifth** — Ric asked for that
+  too, so that parts, refits, water and food got dearer and not only hulls.
+  iron 3 → 2, alloy 9 → 7, electronics 16 → 13, iridium 22 → 18, core 48 → 38.
+  Evenly, so the gap between mining a rock (3.20 → 2.48 a unit) and cracking a
+  cache (13.75 → 11.00) is exactly where it was — flying somewhere dangerous
+  pays the same multiple it always did. Taken together the early game is about
+  six times harder than it was, which is more than either change alone: worth
+  flying before deciding it is right.
+
+  One knock-on, caught by the craft ceiling: with materials worth less, the
+  grapple line's build came out at 20.5x under its shelf price, the worst in
+  the game. Its recipe was not the problem — it was priced at 1,600 for "the
+  cheapest verb in the game", above the MK2 beam and the layered plate — so
+  the shelf price came down to 1,100. `SHIPS` in `game/ships.js`, `MATERIALS`
+  in `game/survey-outfit.js`.
+
+  *Found while pricing, and fixed with it:* the opening's money beat fired at
+  **200 coins** and said YOU CAN AFFORD A PART. That figure is left over from
+  the refit tracks — three tiers bought with cash, the first of them cheap —
+  which were removed when parts became the whole upgrade system. The cheapest
+  thing a station sells is the DRIVE SPAR at 650, so the one beat in the
+  opening whose job is to say *you can buy something* was telling a new pilot
+  so three hundred coins early, and it would have gone further out of step
+  with every price moved above. It asks the shelf now — this station, at this
+  station's depth, in stock, and nothing at all while the home counter is dark
+  for want of a fusion core. `cheapestOnTheShelf` in `game/factions.js`.
+- [ ] **N4 · The Leviathan's hitbox feels wrong.** Ric observed collision
+  behaviour that did not match the visible structure. Reproduce and locate
+  the mismatch before deciding on a fix.
+- [ ] **N5 · Enemies can shoot through the Leviathan.** Reported during the
+  same playtest. Reproduce projectile passage through its solid structure;
+  whether this shares N4's cause is unknown.
+- [ ] **N6 · Scanning calls wormholes gates.** Scan returns should call them
+  **wormholes**. This is a request about player-facing scan wording, not a
+  decision to rename internal identifiers or every use of "gate".
+- [ ] **N7 · The full map should show visited space like the minimap.** Ric:
+  "it needs to look like the mini map in how it shows where they have been."
+  Match the minimap's representation of explored space on the full map; the
+  request is specifically about showing where the player has travelled.
+
+- [x] **N10 · The low-tank word goes on the left of the mark.** Ric,
+  2026-11-12: "warning for the water, the words should be on the left of the
+  exclamation mark, and then warning disappears when the triangle slides to
+  the left, for food and water."
+
+  *Built the same day, and the two halves turned out to be one bug.* With the
+  word on the left, the mark slides **through** where the word was — and the
+  two were up together, because the fade and the slide were timed
+  independently: the word held at full strength for seven of its ten seconds
+  while the mark was already most of the way home. The ten seconds are cut in
+  two now, in the order the lesson is taught — the word is said with the mark
+  parked out past it, the word goes, and only then does the mark ease in
+  beside the number. Where it parks is measured rather than guessed (the
+  number column at its widest, the word's own width, the same gap either
+  side), so the word fits at any reading and on any glass, and both tanks get
+  it because they were always one loop. `drawCounters` in
+  `survey-hud/panel.js`.
+
+### Design questions — still being discussed
+
+The expanded ideas from this conversation are in
+[`WORLD-IDEAS.md`, Playtest discussion](WORLD-IDEAS.md#playtest-discussion--12-november-2026).
+They remain proposals; recording them is not a request to implement them.
+
+- [?] **N8 · What pulls the player onward after the opening?** Ric felt that
+  after finishing the tutorial there was no clear next thing to do. Revisit
+  the experience despite the September changes recorded under "The
+  thirty-minute wall" below. Quests were discussed, but no quest system,
+  objective chain or implementation has been chosen.
+- [?] **N9 · Give the player a reason to return to this world.** Ric wants a
+  sense of "that's mine", then clarified: "maybe not my station maybe the
+  world." The desired attachment is to the world and the player's experience
+  of it; a station-building direction has not been agreed. Space feeling empty
+  and uncertainty about how quests should work remain open questions.
+  Familiar people, remembered encounters and continuing threads were assistant
+  suggestions in the discussion, not approved features.
 
 ---
 
@@ -164,6 +361,12 @@ Important NPCs and §29 onward are still brief.
         to TRACTOR BEAM MK1 instead — placed like a landmark about 33k out, and
         it is a *spare*, so it goes into the hold rather than onto the gate
 
+  *Two rungs moved on 2026-11-12, under **N2** above.* The MK2's
+  build is gone (it is found and nothing else now), and the MK1 dropped from
+  half the MK2's reach to about a third, 170 → 119 units. The rest of P1 stands:
+  MK1 is still craftable and still find-only, MK3 is still bought, and the
+  post-gate arrow still leads to an MK1.
+
   *Found while building it:* a category is not exclusive and `mods()` sums
   every effect, so fitting MK1 beside MK3 reached 374 units where MK3 alone
   reaches 544 — the ladder made `reach` the first effect that can be negative.
@@ -223,7 +426,8 @@ Important NPCs and §29 onward are still brief.
 
 1. **P1 — MK3 is the HEAVY BEAM.** The tractor category becomes one ladder:
    MK1 at half today's radius, MK2 = today's TRACTOR BEAM, MK3 = today's HEAVY
-   BEAM. HEAVY BEAM stops being a separate name.
+   BEAM. HEAVY BEAM stops being a separate name. *(MK1 is about a third rather
+   than half since 2026-11-12, and the MK2 has no build any more — N2.)*
 2. **H3 — a jump is free, to any *charted* station.** Seeing one on the chart
    is enough; you do not have to have docked there. You still have to be docked
    *somewhere* to make the jump.
