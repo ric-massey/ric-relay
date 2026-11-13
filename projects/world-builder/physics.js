@@ -86,6 +86,12 @@
         help: "Two hexagons that fuse become one, with the mass of both." },
       { key: "fuseHit", when: s => s.fuse === "hard", label: "How hard a hit fuses", type: "range", min: 0.5, max: 200, step: 0.5, def: 20, curve: 2,
         say: v => v + " energy", help: "Only used when fusing needs a hard hit." },
+      { key: "breaking", label: "Things can break apart", type: "toggle", def: true,
+        help: "Hard hits can chip or split a body. Enough heat can make it shed pieces. Nothing disappears." },
+      { key: "toughness", when: s => s.breaking, label: "Material strength", type: "range", min: 0.1, max: 100, step: 0.1, def: 8, curve: 2,
+        say: v => v + " energy per unit of mass", help: "The energy it takes to free a piece. Stronger material survives harder hits and more heating." },
+      { key: "fragmentMass", when: s => s.breaking, label: "Smallest fragment", type: "range", min: 0.1, max: 10, step: 0.1, def: 1,
+        say: v => v + " mass", help: "Neither piece can be smaller than this. Raise it to keep the world from filling with dust." },
     ]},
     { title: "Chemistry", items: [
       { key: "bonding", label: "What bonds", type: "select", def: "none",
@@ -107,8 +113,10 @@
     { title: "Heat", items: [
       { key: "startTemp", label: "Starting temperature", type: "range", min: 0, max: 40, step: 0.5, def: 0.5,
         say: v => (v === 0 ? "absolute zero" : String(v)), help: "Heat each hexagon starts with, per unit of mass." },
+      { key: "meltTemp", when: s => s.breaking, label: "Hot enough to shed pieces", type: "range", min: 1, max: 100, step: 1, def: 20,
+        say: v => v + " temperature", help: "Above this temperature, a body gradually sheds material. Far above it, larger pieces can break away. Size alone never breaks it." },
       { key: "shake", label: "Heat shakes things", type: "range", min: 0, max: 1, step: 0.05, def: 0.3,
-        say: off(pct), help: "How quickly a hot hexagon turns its heat into motion. Off, heat is only a number." },
+        say: off(pct), help: "How quickly a hot hexagon turns its heat into random motion. Off, it gets no random shove." },
       { key: "conduct", label: "Heat spreads by touch", type: "range", min: 0, max: 1, step: 0.05, def: 0.4,
         say: off(pct), help: "How quickly heat moves between hexagons that touch or are bonded." },
       { key: "radiate", label: "Heat leaks away", type: "range", min: 0, max: 0.5, step: 0.005, def: 0.01, curve: 2,
@@ -138,7 +146,7 @@
     size: [4, 1000], count: [0, 20000], kinds: [1, 64], seed: [0, 4294967295],
     bigMass: [0.000001, 1e12], bounce: [0, 1], bondChance: [0, 1],
     maxBonds: [0, 255], shake: [0, 1], conduct: [0, 1],
-    limit: [0, 1e12], rate: [0.001, 100]
+    limit: [0, 1e12], rate: [0.001, 100], toughness: [0.000001, 1e12], fragmentMass: [0.000001, 1e12]
   };
   const WHOLE = new Set(["count", "kinds", "seed", "maxBonds", "shift"]);
   for (const g of SCHEMA) for (const it of g.items) if (it.type === "range") {
@@ -166,6 +174,12 @@
     { id: "collide", name: "Two clouds collide", note: "Gravity holds each together until they meet.",
       set: { layout: "two", count: 1200, size: 240, kinds: 3, edge: "open", gravity: 0.5, startSpeed: 3, bounce: 0.4,
              fuse: "hard", fuseHit: 30, shake: 0.2 } },
+    { id: "break", name: "Things that break", note: "Two clouds meet. Hard hits chip what they cannot hold.",
+      set: { layout: "two", count: 160, size: 100, kinds: 8, edge: "wrap", startSpeed: 12, startTemp: 0,
+             bounce: 0.5, fuse: "always", toughness: 2, fragmentMass: 0.5, meltTemp: 15, shake: 0, radiate: 0.05 } },
+    { id: "hot", name: "A hot body", note: "One hot body, shedding pieces as it cools.",
+      set: { layout: "sun", count: 1, size: 80, bigMass: 200, startSpeed: 0, startTemp: 80,
+             shake: 0, radiate: 0.02, meltTemp: 20, toughness: 8 } },
     { id: "react", name: "Things that react", note: "Each bond changes what a hexagon bonds with next, over a hot middle.",
       set: { count: 1200, size: 64, kinds: 5, sized: false, bonding: "sum", shift: 1, bondStrength: 7, maxBonds: 3, bondChance: 0.6,
              startTemp: 1.5, startSpeed: 1.5, radiate: 0.08, bounce: 0.6, heater: "centre", heaterTemp: 9, shake: 0.5, conduct: 0.5 } },
@@ -244,7 +258,7 @@
     const R = rng(S.seed * 2654435761);
     const W = S.size, H = S.size;
     const wrap = S.edge === "wrap";
-    /* Room for everything it starts with and for what a visitor adds by hand. */
+    /* Room for everything it starts with, hand placements and fragments. */
     const cap = (S.layout === "empty" ? 0 : S.count) + SPARE;
 
     const x = new Float64Array(cap), y = new Float64Array(cap);
@@ -257,10 +271,13 @@
     const nb = new Uint8Array(cap);
     const alive = new Uint8Array(cap);
     const pinned = new Uint8Array(cap);       // held where it was put; nothing moves it
+    const impact = new Float64Array(cap), impactX = new Float64Array(cap), impactY = new Float64Array(cap);
+    const shedding = new Float64Array(cap), broken = new Uint8Array(cap);
     const bonds = new Map();      // a * cap + b (a < b) → { a, b, B, rest }
     let n = 0;                    // slots used; dead ones stay where they are
     const tally = { time: 0, radiated: 0, dragged: 0, heated: 0, fused: 0, left: 0, bondsMade: 0, bondsBroken: 0,
-                    placed: 0, removed: 0, reacted: 0 };
+                    placed: 0, removed: 0, reacted: 0, fractured: 0, shed: 0, breakWork: 0 };
+    let fragmentLimit = false;
 
     const radiusOf = mass => (S.sized ? 0.5 * Math.sqrt(mass) : 0.5);
 
@@ -269,7 +286,8 @@
       if (n < cap) i = n++;
       else { for (let q = 0; q < cap; q++) if (!alive[q]) { i = q; break; } }     // full: take a dead one's place
       if (i < 0) return -1;
-      nb[i] = 0; pinned[i] = 0;
+      nb[i] = 0; pinned[i] = 0; shedding[i] = 0; broken[i] = 0;
+      impact[i] = 0; impactX[i] = 0; impactY[i] = 0;
       x[i] = px; y[i] = py; vx[i] = pvx || 0; vy[i] = pvy || 0;
       kind[i] = k; m[i] = mass || k; r[i] = radiusOf(m[i]);
       heat[i] = S.startTemp * m[i]; alive[i] = 1;
@@ -614,6 +632,63 @@
       }
     }
 
+    /* A split is paid for from heat already present (including energy taken
+       from an impact). Surface/fracture work is kept in the energy ledger;
+       another equal amount becomes relative motion, never a free explosion.
+       Positions and velocities are split about the original centre of mass.
+       Queue impacts until the spatial-hash walk is over: reusing a dead slot
+       during that walk would corrupt its linked lists. */
+    function split(i, amount, budget, ux, uy, thermal) {
+      if (!alive[i] || pinned[i] || broken[i]) return false;
+      if (amount < S.fragmentMass || Math.min(heat[i], budget) < 2 * S.toughness * S.fragmentMass) return false;
+      let bondCost = 0;
+      for (const bd of bonds.values()) if (bd.a === i || bd.b === i) bondCost += bd.B;
+      const available = Math.min(heat[i], budget) - bondCost;
+      amount = Math.min(amount, m[i] / 2, available / (2 * S.toughness));
+      if (!(amount >= S.fragmentMass && m[i] - amount >= S.fragmentMass)) return false;
+      const j = add(x[i], y[i], kind[i], 0, 0, amount);
+      if (j < 0) { fragmentLimit = true; return false; }
+      if (!ux && !uy) { const angle = R() * Math.PI * 2; ux = Math.cos(angle); uy = Math.sin(angle); }
+      const length = Math.hypot(ux, uy); ux /= length; uy /= length;
+      const M = m[i], remain = M - amount, part = amount / M;
+      const cost = S.toughness * amount, kick = cost;
+      const h = Math.max(0, heat[i] - bondCost - cost - kick);
+      const distance = (radiusOf(remain) + radiusOf(amount)) * 1.001;
+      const speed = Math.sqrt(2 * kick / (remain * part));
+      x[j] = x[i] + ux * distance * (1 - part); y[j] = y[i] + uy * distance * (1 - part);
+      x[i] -= ux * distance * part; y[i] -= uy * distance * part;
+      vx[j] = vx[i] + ux * speed * (1 - part); vy[j] = vy[i] + uy * speed * (1 - part);
+      vx[i] -= ux * speed * part; vy[i] -= uy * speed * part;
+      m[i] = remain; r[i] = radiusOf(remain);
+      heat[j] = h * part; heat[i] = h - heat[j];
+      for (const [k, bd] of bonds) if (bd.a === i || bd.b === i) unbond(k, bd);
+      // The field is held for this frame; a new/reused slot inherits its parent's acceleration.
+      gax[j] = gax[i]; gay[j] = gay[i];
+      broken[i] = broken[j] = 1;
+      shedding[i] = Math.max(0, shedding[i] - amount);
+      tally.breakWork += cost;
+      if (thermal) tally.shed++; else tally.fractured++;
+      return true;
+    }
+
+    function breakBodies(dt) {
+      if (!S.breaking) return;
+      fragmentLimit = false;
+      const before = n;
+      for (let i = 0; i < before; i++) {
+        if (!alive[i] || pinned[i] || broken[i] || m[i] < 2 * S.fragmentMass) continue;
+        if (impact[i] > 0 && split(i, m[i] / 2, impact[i], impactX[i], impactY[i], false)) continue;
+        if (fragmentLimit) return;
+        const T = heat[i] / m[i];
+        if (T <= S.meltTemp) { shedding[i] = 0; continue; }
+        // Integrate a loss of mass per second, so a small hot body can accumulate a chip
+        // over several substeps instead of being immune because each substep is short.
+        shedding[i] = Math.min(m[i] / 2, shedding[i] + m[i] * -Math.expm1(-dt * (T - S.meltTemp) / Math.max(1, S.meltTemp)));
+        split(i, shedding[i], heat[i] - m[i] * S.meltTemp, 0, 0, true);
+        if (fragmentLimit) return;
+      }
+    }
+
     function fuse(a, b) {
       /* The heavier one stays. Momentum is kept exactly; the motion the pair
          had relative to each other has nowhere to go but heat. */
@@ -630,6 +705,10 @@
         heat[a] += 0; unbond(k, bd); tally.bondsBroken--;       // dissolved into the new body, not broken
       }
       alive[b] = 0; tally.fused++;
+    }
+
+    function canChip(i, energy) {
+      return S.breaking && !pinned[i] && !broken[i] && m[i] >= 2 * S.fragmentMass && energy >= 2 * S.toughness * S.fragmentMass;
     }
 
     function touch(i, j, dt) {
@@ -653,7 +732,10 @@
       const ii = pinned[i] ? 0 : 1 / m[i], ij = pinned[j] ? 0 : 1 / m[j], isum = ii + ij;
       if (isum === 0) return;
       const mu = 1 / isum, held = pinned[i] || pinned[j];
-      if (!bonded && !held && S.fuse !== "never" && (S.fuse === "always" || (vn < 0 && 0.5 * mu * vn * vn > S.fuseHit))) {
+      const hit = vn < 0 ? 0.5 * mu * vn * vn : 0;
+      const hi = held ? 0.5 : ij / isum, hj = 1 - hi;
+      const chipI = !bonded && canChip(i, hit * 0.5 * hi), chipJ = !bonded && canChip(j, hit * 0.5 * hj);
+      if (!bonded && !held && !chipI && !chipJ && !impact[i] && !impact[j] && S.fuse !== "never" && (S.fuse === "always" || hit > S.fuseHit)) {
         fuse(i, j);
         return;
       }
@@ -663,18 +745,21 @@
       const over = (reach - d) * 0.5;
       const wi = ii / isum, wj = ij / isum;
       /* Heat from the meeting is shared by mass, or evenly when one is pinned. */
-      const hi = held ? 0.5 : wj, hj = 1 - hi;
       x[i] -= ux * over * 2 * wi; y[i] -= uy * over * 2 * wi;
       x[j] += ux * over * 2 * wj; y[j] += uy * over * 2 * wj;
       if (vn < 0) {
-        const e = S.bounce;
+        // A fracturing impact diverts at least half its normal collision energy
+        // into heat. Even a perfectly elastic material must pay for its fragments.
+        const e = chipI || chipJ ? Math.min(S.bounce, Math.SQRT1_2) : S.bounce;
         const jn = -(1 + e) * vn * mu;
         vx[i] -= jn * ux * ii; vy[i] -= jn * uy * ii;
         vx[j] += jn * ux * ij; vy[j] += jn * uy * ij;
         const lost = 0.5 * mu * vn * vn * (1 - e * e);
         heat[i] += lost * hi; heat[j] += lost * hj;
+        if (chipI) { impact[i] += lost * hi; impactX[i] -= ux * lost * hi; impactY[i] -= uy * lost * hi; }
+        if (chipJ) { impact[j] += lost * hj; impactX[j] += ux * lost * hj; impactY[j] += uy * lost * hj; }
       }
-      if (S.bonding !== "none" && nb[i] < S.maxBonds && nb[j] < S.maxBonds && Math.abs(vn) < S.bondSpeed) {
+      if (!chipI && !chipJ && S.bonding !== "none" && nb[i] < S.maxBonds && nb[j] < S.maxBonds && Math.abs(vn) < S.bondSpeed) {
         const a = affinity(S.bonding, kind[i], kind[j], S.kinds, nb[i] * S.shift, nb[j] * S.shift);
         if (a > 0 && R() < S.bondChance * Math.min(1, dt * 30)) {
           const B = S.bondStrength * a;
@@ -758,8 +843,10 @@
       }
       edges();
       buildHash();
+      impact.fill(0); impactX.fill(0); impactY.fill(0);
       eachPair((i, j) => touch(i, j, dt));
       heatStep(dt);
+      breakBodies(dt);
       react(dt);
       shakeBonds(dt);
       tally.time += dt;
@@ -769,6 +856,7 @@
        enough that the fastest thing in the world crosses less than a third of
        the smallest hexagon in one, so nothing tunnels through anything. */
     function step(seconds) {
+      broken.fill(0); fragmentLimit = false;
       let fastest = 1;
       for (let i = 0; i < n; i++) if (alive[i]) {
         const sp = Math.abs(vx[i]) + Math.abs(vy[i]);
@@ -811,6 +899,8 @@
         radiated: tally.radiated, dragged: tally.dragged, heated: tally.heated,
         fused: tally.fused, left: tally.left, bondsMade: tally.bondsMade, bondsBroken: tally.bondsBroken,
         placed: tally.placed, removed: tally.removed, reacted: tally.reacted, room: cap - count,
+        fractured: tally.fractured, shed: tally.shed, fragments: tally.fractured + tally.shed,
+        breakWork: tally.breakWork, fragmentLimit: fragmentLimit,
       };
     }
 

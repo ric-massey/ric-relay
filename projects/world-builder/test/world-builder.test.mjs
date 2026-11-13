@@ -22,6 +22,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const Physics = require("../physics.js");
 const People = require("../people.js");
+const physicsOnly = process.argv.includes("--physics");
 
 const problems = [];
 const check = (ok, msg) => { if (!ok) problems.push(msg); };
@@ -53,7 +54,9 @@ function other(it, base, alt) {
                  heater: "centre", startTemp: 3, startSpeed: 3, drag: 0.05, edge: "walls", shake: 0.4, radiate: 0.05 };
   /* Some settings only bite in a world that pushes on them. */
   const cold = { size: 30, count: 420, kinds: 4, bonding: "any", startTemp: 0, startSpeed: 3, gravity: 0, shake: 0 };
-  const needs = { bigMass: { layout: "sun" }, maxBonds: cold, bondSpeed: cold };
+  const hot = { layout: "sun", count: 1, size: 80, bigMass: 80, gravity: 0, fall: 0, bonding: "none", fuse: "never", startTemp: 80, startSpeed: 0, shake: 0, conduct: 0, radiate: 0, meltTemp: 20, toughness: 8, fragmentMass: 1, sized: false, edge: "wrap" };
+  const needs = { bigMass: { layout: "sun" }, maxBonds: cold, bondSpeed: cold,
+                  breaking: hot, toughness: hot, fragmentMass: hot, meltTemp: hot };
   const alt = { limit: 3, maxBonds: 1, bondSpeed: 0.5 };
   for (const it of items(Physics)) {
     const base = needs[it.key] === cold ? cold : Object.assign({}, busy, needs[it.key] || {});
@@ -76,15 +79,15 @@ function other(it, base, alt) {
     let bad = 0;
     for (let i = 0; i < w.n; i++) if (w.alive[i] && !(isFinite(w.x[i]) && isFinite(w.y[i]) && isFinite(w.vx[i]) && isFinite(w.heat[i]) && w.heat[i] > -1e-6 && w.m[i] > 0)) bad++;
     check(bad === 0, `physics preset "${p.name}": ${bad} bodies with a number that is not one`);
-    check(s0.count > 1 || p.set.layout === "empty", `physics preset "${p.name}" starts with nothing in it`);
+    check(s0.count > 1 || p.set.layout === "empty" || p.set.count === 1 && s0.count === 1, `physics preset "${p.name}" starts with nothing in it`);
     /* Mass only ever leaves over an open edge. */
     if (s.left === 0) check(Math.abs(s.mass - s0.mass) <= 1e-6 * s0.mass, `physics preset "${p.name}": mass went from ${s0.mass} to ${s.mass}`);
-    check(s.count + s.fused + s.left === s0.count, `physics preset "${p.name}": ${s0.count} bodies became ${s.count} + ${s.fused} fused + ${s.left} gone`);
+    check(s.count + s.fused + s.left === s0.count + s.fragments, `physics preset "${p.name}": body count does not account for fusing, leaving and fragments`);
   }
 
   /* Perfect bounces and nothing else: motion is all there is, and it is kept. */
   {
-    const w = Physics.create({ count: 300, size: 50, kinds: 3, edge: "walls", bounce: 1, startSpeed: 5, startTemp: 0, shake: 0, radiate: 0 });
+    const w = Physics.create({ count: 300, size: 50, kinds: 3, edge: "walls", bounce: 1, breaking: false, startSpeed: 5, startTemp: 0, shake: 0, radiate: 0 });
     const e0 = w.stats().motion;
     for (let f = 0; f < 600; f++) w.step(1 / 60);
     const e = w.stats();
@@ -101,13 +104,13 @@ function other(it, base, alt) {
     const w = Physics.create({ count: 300, size: 50, kinds: 3, edge: "wrap", bounce: 0.4, startSpeed: 5, startTemp: 2, shake: 0.5, conduct: 0.5, radiate: 0.05 });
     const s0 = w.stats(), e0 = s0.motion + s0.heat;
     for (let f = 0; f < 600; f++) w.step(1 / 60);
-    const s = w.stats(), e = s.motion + s.heat + s.radiated;
+    const s = w.stats(), e = s.motion + s.heat + s.radiated + s.breakWork;
     check(Math.abs(e - e0) < 1e-6 * e0, `physics: energy went from ${e0} to ${e} with nothing to take it`);
     check(s.radiated > 0, "physics: nothing leaked away with leaking on");
   }
   /* Fusing keeps momentum as well as mass. */
   {
-    const w = Physics.create({ count: 200, size: 40, kinds: 3, edge: "wrap", fuse: "always", startSpeed: 4, shake: 0 });
+    const w = Physics.create({ count: 200, size: 40, kinds: 3, edge: "wrap", fuse: "always", breaking: false, startSpeed: 4, shake: 0 });
     const s0 = w.stats();
     for (let f = 0; f < 400; f++) w.step(1 / 60);
     const s = w.stats();
@@ -133,7 +136,7 @@ function other(it, base, alt) {
   /* A visitor's hands: put in, change, pin, take out — and the world keeps
      running with every number still a number. */
   {
-    const w = Physics.create({ layout: "empty", size: 40, edge: "walls", fall: 6, kinds: 4, bonding: "any", startTemp: 0 });
+    const w = Physics.create({ layout: "empty", size: 40, edge: "walls", fall: 6, kinds: 4, bonding: "any", startTemp: 0, breaking: false });
     check(w.stats().count === 0, "physics: an empty world starts with something in it");
     const a = w.place(20, 5, 2), b = w.place(20, 30, 3), c = w.place(8, 8, 1, 3, 0, 40);
     check(a >= 0 && b >= 0 && c >= 0 && w.stats().count === 3 && w.stats().mass === 2 + 3 + 40, "physics: placing three did not put three in");
@@ -185,7 +188,7 @@ function other(it, base, alt) {
 }
 
 /* ═══ people ════════════════════════════════════════════════════════════ */
-{
+if (!physicsOnly) {
   const Y = People.YEAR;
   const print = w => {
     let h = w.people.length * 1000 + w.events.length * 31 + w.stats().talks;
@@ -285,7 +288,7 @@ function other(it, base, alt) {
 }
 
 /* The watchable clock, crowded spawns, and crossing paths use the page's actual API. */
-{
+if (!physicsOnly) {
   const w = People.create({ people: 80, map: "small", talk: 0, seed: 17 });
   const coins = w.stats().money;
   const separated = () => w.people.every((p, i) => w.people.slice(i + 1).every(q => Math.hypot(p.x - q.x, p.y - q.y) >= 0.42 - 1e-8));
@@ -353,4 +356,4 @@ if (problems.length) {
   for (const p of problems) console.error("  ✗ " + p);
   process.exit(1);
 }
-console.log("world builder: both engines hold — " + items(Physics).length + " physics settings, " + items(People).length + " people settings, all live");
+console.log(physicsOnly ? "world builder: physics holds — " + items(Physics).length + " settings, all live" : "world builder: both engines hold — " + items(Physics).length + " physics settings, " + items(People).length + " people settings, all live");

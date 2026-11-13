@@ -495,6 +495,15 @@ nobody had linked was a page nobody could find.
   round decimal entries to slider steps. Place/Throw take a typed mass multiplier; the
   inspector accepts mass, temperature and both velocity components. Keep these ordinary
   controls without promotional copy (Ric: "dont say this is a feature its intuitive").
+  **Bodies can fracture and shed material** (2026-11-12, Ric: "yeah add it in please make sure
+  it matches with the look of everytrhing else"). `breaking`, `toughness`, `fragmentMass` and
+  `meltTemp` live in the existing Collisions/Heat groups. Size alone never causes breakup;
+  impacts and excess heat must pay for both fracture work and fragment motion. Fragments
+  use the same hexagon renderer and share spare capacity with hand placements. The nearest
+  README records the accounting and limits; `projects/world-builder/test/breakup.test.mjs`
+  checks mass, momentum, energy, bonds and capacity in the quick lane. Do not replace this
+  with disappearing bodies or free explosions. The World's existing energy bar includes
+  **spent breaking**, the cumulative irreversible work of fracture.
 
 - **`projects/dads-race/` (HERMISCUS) is the one project with no room.** It is the
   crew app for Dad's race, mostly built by Ric's sister, and the only way in is the
@@ -1429,6 +1438,8 @@ node worker/test.mjs     # worker rules: auth, strava, media, todo, movies
 node projects/climbing/test/parse-parity.js  # build-data.py and climb-parse.js agree
 node projects/universe/lab-check.mjs      # the universe Lab: seam, books, seeds (~30s)
 node projects/world-builder/test/world-builder.test.mjs   # both sandboxes: every setting live (several minutes)
+node projects/world-builder/test/breakup.test.mjs         # fracture/shedding: mass, momentum, energy and capacity (quick)
+node projects/world-builder/test/world-builder.test.mjs --physics  # physics settings, presets and conservation only
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
 for t in atlas/test/*.test.mjs; do node "$t" || break; done
 ```

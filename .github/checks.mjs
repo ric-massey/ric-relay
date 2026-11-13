@@ -49,6 +49,7 @@ const SUITES = [
      three hand-kept lists, held to each other here; and the phone and
      front-door fixes of 2026-11-10 stay in. */
   ['the terminal shell', ['.github/test/terminal-shell.mjs']],
+  ['world-builder breakup keeps its books', ['projects/world-builder/test/breakup.test.mjs']],
   ['the entertainment write path', ['projects/entertainment/test/write-path.mjs']],
   /* The finder's filters against the Worker's /tmdb/discover whitelist. */
   ['the entertainment finder', ['projects/entertainment/test/finder.mjs']],

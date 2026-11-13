@@ -27,6 +27,7 @@ what has shipped from future direction, including the unresolved long-term timin
 |---|---|
 | `index.html` | The page: choose a sandbox → settings → the running world. Styles and page script inline. |
 | `physics.js` | The physics sandbox's engine. No DOM; runs the same in node. |
+| `test/breakup.test.mjs` | Quick physics checks: fracture/shedding, mass, momentum, energy, large bodies, bonds, capacity and repeatable links. Runs in the quick lane of `.github/checks.mjs`. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
 | `test/conversations.test.mjs` | Quick receipt checks: observed effects, a conserved grain transfer, stable IDs and a held record surviving history eviction. |
@@ -60,8 +61,9 @@ No build step and no dependencies. `python3 -m http.server 8912 --bind 127.0.0.1
 A hexagon is a body with a mass, a position, a velocity and some heat. Whether that is an atom or
 a planet is the visitor's settings — "Hexagons as planets" is a preset, not a mode.
 
-32 settings in seven groups: the world (size, edge, seed), matter (how many, kinds, layout, spin),
-gravity (strength, reach, a steady "down"), collisions (bounce, fusing), chemistry (what bonds, how
+36 settings in seven groups: the world (size, edge, seed), matter (how many, kinds, layout, spin),
+gravity (strength, reach, a steady "down"), collisions (bounce, fusing, fracture, material strength,
+smallest fragment), chemistry (what bonds, how
 strongly, how many bonds each, whether a bond changes what it holds), heat (shaking, spreading, leaking, a heater) and space and time
 (drag, a speed limit, the clock).
 
@@ -79,6 +81,44 @@ How it works, briefly:
 - **Bonds** are springs at touching distance. Forming one gives off its energy as heat; heat
   shakes one loose only if the pair has that much heat to pay for it.
 - **Heat becomes motion** as a random shove charged for exactly the kinetic energy it made.
+
+### Breaking apart
+
+Ric, 2026-11-12, after asking whether heat and impacts could break up the large bodies:
+*"yeah add it in please make sure it matches with the look of everytrhing else."* The four
+controls use the existing Collisions and Heat groups, sliders and typed numbers. Fragments
+are ordinary hexagons drawn by the same renderer. "Things that break" and "A hot body" are
+settings presets; no outcome is scheduled.
+
+- `breaking` is on by default. Off, neither impact fracture nor thermal shedding runs.
+- `toughness` is fracture work per mass freed; `fragmentMass` is the minimum mass of **either**
+  resulting piece. A body below twice that mass cannot split. Body size never triggers breakup.
+- A hard hit may chip each body before fusing is considered. If half the normal impact energy,
+  apportioned as collision heat, can pay for a minimum piece and its outward motion, restitution
+  is reduced to at most √½. The lost collision motion becomes heat first. Once the collision
+  walk finishes, that heat pays for a piece of at most half the body. This also lets a tiny
+  impact chip a large body without destroying the whole large body. Gentle hits still bounce/fuse.
+- Above `meltTemp`, **heat per mass** drives a gradual shedding flux. It accumulates across
+  substeps, so small bodies can eventually free a minimum piece. A hotter body accumulates
+  larger pieces faster. Only heat above the threshold may pay for thermal shedding.
+- Each split spends `toughness × piece mass` as fracture work and the same amount on relative
+  motion. Attached bonds must also be paid out of the available heat before they are removed.
+  Positions and velocities preserve the centre of mass and momentum; remaining heat is divided
+  by mass, and both pieces inherit the original material kind. No mass is deleted or invented.
+- `breakWork` is cumulative, irreversible work, shown as **spent breaking** in the existing
+  energy bar. It is not recovered by fusing. With gravity, drag, heating, radiation, shaking,
+  speed clamps and bonds disabled, motion + heat + fracture work stays constant. External bonds
+  use their existing negative potential convention (subtract `bondEnergy` in the books).
+- A body splits at most once per outer `step()`; newborn fragments wait until the next step.
+  This bounds the cascade within a frame. Breakup and hand placement share the fixed spare
+  capacity; when full, the split waits without spending heat or changing mass, and the World
+  tab says so. Dead slots are reused only after the spatial-hash walk ends. Pinned bodies stay
+  whole, so a wall or anchor remains held.
+
+`node projects/world-builder/test/breakup.test.mjs` checks these accounts quickly on every push;
+the longer sandbox suite also checks that each new setting changes a world and each preset runs.
+Use `node projects/world-builder/test/world-builder.test.mjs --physics` for just its physics
+settings, presets and conservation checks; the default still runs both engines.
 
 ### Making emergence possible
 
@@ -119,14 +159,14 @@ world" starts empty for building from nothing. The tools work while paused.
 - A **pinned** hexagon is held where it is: collisions treat it as having no end of mass, heat
   still moves through it, and gravity still pulls on everything else from it. That is what makes
   walls, floors and anchors.
-- A world has room for 3,000 hexagons added by hand on top of what it started with; a removed
+- A world has room for 3,000 extra hexagons (hand placements and fragments share it) on top of what it started with; a removed
   one's place is reused.
 - **None of it is physics.** It is somebody reaching in, and the World tab counts how many were
   put in and taken out. Hand edits are not in a copied link — the link is the settings.
 
-**What it conserves, and what it does not.** Mass exactly (fusing adds the two). Energy to nine
-digits when nothing is meant to take it — the test holds motion + heat + leaked to 1e-6 — and
-momentum exactly through collisions and fusing. Three known limits, on purpose:
+**What it conserves, and what it does not.** Mass exactly (fusing adds the two; breakup divides
+it). Energy to nine digits when nothing is meant to take it — the test holds motion + heat +
+leaked + fracture work to 1e-6 — and momentum through collisions, fusing and breakup. Three known limits, on purpose:
 
 - Heat's shoves are one body at a time, so they keep energy exactly and momentum only on average.
 - Gravity's potential energy is not tracked, so the energy bar says so when gravity is on.

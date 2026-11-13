@@ -1027,20 +1027,23 @@
         (d.bonds.length ? "<h3 style='margin-top:.8rem'>Bonded to</h3>" + d.bonds.map(b => "<button class='item' data-go='body:" + b.other + "'><span class='sw' style='background:" +
           KIND[(world.kind[b.other] - 1) % S.kinds % 8] + "'></span>kind " + world.kind[b.other] + " · strength " + num(b.strength, 1) + "</button>").join("") : "");
     }
-    const tot = Math.max(1e-9, st.motion + st.heat + st.radiated + st.dragged);
+    const tot = Math.max(1e-9, st.motion + st.heat + st.radiated + st.dragged + st.breakWork);
     const seg = (v, c) => "<i style='width:" + (v / tot * 100).toFixed(2) + "%;background:" + c + "'></i>";
     return "<h3>What is in it</h3><dl class='kv'>" +
-      "<dt>Hexagons</dt><dd>" + st.count.toLocaleString("en-US") + (st.count !== st.started && !st.placed && !st.removed ? " of " + st.started.toLocaleString("en-US") : "") + "</dd>" +
+      "<dt>Hexagons</dt><dd>" + st.count.toLocaleString("en-US") + (st.count !== st.started && !st.placed && !st.removed && !st.fragments ? " of " + st.started.toLocaleString("en-US") : "") + "</dd>" +
       (st.fused ? "<dt>Fused together</dt><dd>" + st.fused.toLocaleString("en-US") + "</dd>" : "") +
+      (st.fractured ? "<dt>Impact fractures</dt><dd>" + st.fractured.toLocaleString("en-US") + "</dd>" : "") +
+      (st.shed ? "<dt>Pieces shed by heat</dt><dd>" + st.shed.toLocaleString("en-US") + "</dd>" : "") +
       (st.left ? "<dt>Left the world</dt><dd>" + st.left.toLocaleString("en-US") + "</dd>" : "") +
       "<dt>Heaviest</dt><dd>" + num(st.heaviest, 0) + "</dd>" +
       "<dt>Temperature</dt><dd>" + num(st.temperature, 2) + "</dd>" +
       (S.bonding !== "none" ? "<dt>Bonds standing</dt><dd>" + st.bonds.toLocaleString("en-US") + "</dd><dt>Clusters</dt><dd>" + st.clusters.toLocaleString("en-US") +
         "</dd><dt>Biggest cluster</dt><dd>" + st.biggest + " hexagons</dd><dt>Bonds made / broken</dt><dd>" + st.bondsMade.toLocaleString("en-US") + " / " + st.bondsBroken.toLocaleString("en-US") + "</dd>" : "") +
       "</dl><h3 style='margin-top:.9rem'>Where the energy is</h3><div class='meter'>" +
-      seg(st.motion, "#6fb7ff") + seg(st.heat, "#ef6f6c") + seg(st.radiated, "#55616a") + seg(st.dragged, "#3b454b") + "</div>" +
+      seg(st.motion, "#6fb7ff") + seg(st.heat, "#ef6f6c") + seg(st.radiated, "#55616a") + seg(st.dragged, "#3b454b") + seg(st.breakWork, "var(--acc)") + "</div>" +
       "<div class='legend'><span><b style='background:#6fb7ff'></b>motion " + num(st.motion, 0) + "</span><span><b style='background:#ef6f6c'></b>heat " + num(st.heat, 0) +
-      "</span><span><b style='background:#55616a'></b>leaked away " + num(st.radiated, 0) + "</span>" + (st.dragged > 0 ? "<span><b style='background:#3b454b'></b>lost to drag " + num(st.dragged, 0) + "</span>" : "") + "</div>" +
+      "</span><span><b style='background:#55616a'></b>leaked away " + num(st.radiated, 0) + "</span>" + (st.dragged > 0 ? "<span><b style='background:#3b454b'></b>lost to drag " + num(st.dragged, 0) + "</span>" : "") + (st.breakWork > 0 ? "<span><b style='background:var(--acc)'></b>spent breaking " + num(st.breakWork, 0) + "</span>" : "") + "</div>" +
+      (st.fragmentLimit ? "<p class='small'>No room for more fragments. Bodies keep their mass and heat until a place is free.</p>" : "") +
       (S.bonding !== "none" ? "<p class='small'>Held in bonds: " + num(st.bondEnergy, 0) + " — given off as heat when they formed.</p>" : "") +
       censusPane(S) +
       (st.placed || st.removed ? "<p class='small'>By hand: " + st.placed.toLocaleString("en-US") + " put in, " + st.removed.toLocaleString("en-US") + " taken out.</p>" : "") +
