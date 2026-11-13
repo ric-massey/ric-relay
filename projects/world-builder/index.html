@@ -80,6 +80,13 @@
   .row.off { opacity: .42; }
   .row.off .help { display: none; }
   input[type=range] { width: 100%; height: 32px; accent-color: var(--acc); background: none; margin: 0; }
+  input[type=number] { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .5rem .6rem; min-height: 44px; min-width: 0; width: 100%; font-size: 16px; }
+  input[type=number]:focus { outline: 2px solid var(--acc); outline-offset: 2px; }
+  .numeric { display: flex; align-items: center; gap: .7rem; }
+  .numeric input[type=number] { flex: 0 1 190px; }
+  .numeric .val { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .body-values { display: grid; gap: .5rem; margin: .8rem 0; }
+  .body-values label { display: grid; grid-template-columns: 1fr minmax(0, 1.4fr); align-items: center; gap: .5rem; }
   select { background: var(--raise); border: 1px solid var(--line); border-radius: 3px; padding: .5rem .6rem; min-height: 44px; width: 100%; }
   .tog { display: flex; align-items: center; gap: .6rem; min-height: 44px; }
   .tog input { width: 22px; height: 22px; accent-color: var(--acc); }
@@ -112,7 +119,8 @@
              background: rgba(12,17,19,.92); border: 1px solid var(--line); border-radius: 3px; padding: 6px; }
   #palette .sw-btn { width: 40px; height: 40px; border: 2px solid transparent; border-radius: 3px; color: #101517; font: 700 14px var(--mono); }
   #palette .sw-btn[aria-pressed="true"] { border-color: #fff; }
-  #palette select { width: auto; min-height: 40px; padding: .3rem .5rem; }
+  #palette label { display: flex; align-items: center; gap: .4rem; min-width: 0; }
+  #palette input { width: 170px; max-width: 100%; }
   #palette .lab { color: var(--dim); font-size: 12px; }
   .edits { display: flex; flex-wrap: wrap; gap: 6px; margin-top: .7rem; }
   .edits .btn { min-height: 40px; padding: .35rem .65rem; font-size: .9rem; }
@@ -243,7 +251,7 @@
     people:  { api: window.WBPeople,  title: "People sandbox",  note: "Every setting changes what people need or do. Start from one of these, or set each thing yourself." },
   };
   const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   let mode = null, values = {}, preset = null;
   const screens = { pick: $("pick"), setup: $("setup"), run: $("run") };
@@ -288,7 +296,7 @@
     v = Math.round((v - it.min) / it.step) * it.step + it.min;
     return Math.min(it.max, Math.max(it.min, parseFloat(v.toFixed(4))));
   }
-  function valueToPos(it, v) { return Math.round(Math.pow((v - it.min) / (it.max - it.min), 1 / (it.curve || 1)) * 1000); }
+  function valueToPos(it, v) { return Math.round(Math.pow(Math.min(1, Math.max(0, (v - it.min) / (it.max - it.min))), 1 / (it.curve || 1)) * 1000); }
   function words(it, v) {
     if (it.type === "range") return it.say ? it.say(v) : String(v);
     if (it.type === "toggle") return v ? "on" : "off";
@@ -317,11 +325,21 @@
       for (const it of g.items) {
         const row = document.createElement("div"); row.className = "row";
         const id = "set-" + it.key;
-        let ctl;
+        let ctl, numeric = null;
         if (it.type === "range") {
-          row.innerHTML = "<label for='" + id + "'>" + esc(it.label) + "</label><div class='ctl'><input type='range' id='" + id + "' min='0' max='1000' step='1'><span class='val'></span></div>";
-          ctl = row.querySelector("input");
-          ctl.addEventListener("input", () => { values[it.key] = posToValue(it, +ctl.value); preset = null; refresh(); });
+          const typed = mode === "physics";
+          row.innerHTML = "<label for='" + id + "'>" + esc(it.label) + "</label><div class='ctl'><input type='range' id='" + id + (typed ? "-slider" : "") + "' aria-label='" + esc(it.label) + "' min='0' max='1000' step='1'>" +
+            (typed ? "<div class='numeric'><input type='number' required id='" + id + "' min='" + it.inputMin + "' max='" + it.inputMax + "' step='" + (it.integer ? "1" : "any") + "'><span class='val' id='" + id + "-words'></span></div>" : "<span class='val'></span>") + "</div>";
+          ctl = row.querySelector("input[type=range]");
+          numeric = row.querySelector("input[type=number]");
+          ctl.addEventListener("input", () => { values[it.key] = posToValue(it, +ctl.value); if (numeric) numeric.value = values[it.key]; preset = null; refresh(); });
+          if (numeric) {
+            numeric.setAttribute("aria-describedby", id + "-words");
+            numeric.addEventListener("input", () => {
+              if (!numeric.checkValidity()) return;
+              values[it.key] = +numeric.value; ctl.value = valueToPos(it, values[it.key]); preset = null; refresh();
+            });
+          }
         } else if (it.type === "select") {
           row.innerHTML = "<label for='" + id + "'>" + esc(it.label) + "</label><div class='ctl'><select id='" + id + "'>" +
             it.options.map(o => "<option value='" + esc(o[0]) + "'>" + esc(o[1]) + "</option>").join("") + "</select></div>";
@@ -333,7 +351,7 @@
           ctl.addEventListener("change", () => { values[it.key] = ctl.checked; preset = null; refresh(); });
         }
         if (it.help) { const h = document.createElement("p"); h.className = "help"; h.textContent = it.help; row.appendChild(h); }
-        controls[it.key] = { it: it, row: row, ctl: ctl, val: row.querySelector(".val"), group: s.querySelector(".sum") };
+        controls[it.key] = { it: it, row: row, ctl: ctl, numeric: numeric, val: row.querySelector(".val"), group: s.querySelector(".sum") };
         d.appendChild(row);
       }
       form.appendChild(d);
@@ -346,6 +364,7 @@
       if (c.it.type === "range") c.ctl.value = valueToPos(c.it, v);
       else if (c.it.type === "select") c.ctl.value = v;
       else c.ctl.checked = v;
+      if (c.numeric) c.numeric.value = v;
     }
     refresh();
   }
@@ -363,6 +382,7 @@
       const on = !c.it.when || c.it.when(values);
       c.row.classList.toggle("off", !on);
       c.ctl.disabled = !on;
+      if (c.numeric) c.numeric.disabled = !on;
       if (v !== E.DEFAULTS[k]) { changed++; if (on) { if (!sums.has(c.group)) sums.set(c.group, []); sums.get(c.group).push(c.it.label.toLowerCase() + ": " + words(c.it, v)); } }
     }
     for (const k in controls) controls[k].group.textContent = "";
@@ -392,7 +412,13 @@
   });
   $("back-pick").addEventListener("click", () => { setHash(""); show("pick"); });
   for (const d of document.querySelectorAll(".door")) d.addEventListener("click", () => openSetup(d.dataset.mode));
-  $("go").addEventListener("click", startRun);
+  function launchSetup() {
+    // Invalid/unfinished entries stay visible until corrected, never launch an old value.
+    for (const c of Object.values(controls)) if (c.numeric && !c.numeric.disabled && !c.numeric.checkValidity()) c.row.closest("details").open = true;
+    if ($("form").reportValidity()) startRun();
+  }
+  $("form").addEventListener("submit", e => { e.preventDefault(); launchSetup(); });
+  $("go").addEventListener("click", launchSetup);
 
   /* ═══ the world ════════════════════════════════════════════════════════ */
   const canvas = $("view"), ctx = canvas.getContext("2d");
@@ -491,12 +517,11 @@
       b.addEventListener("click", () => { brushKind = k; for (const o of pal.querySelectorAll(".sw-btn")) o.setAttribute("aria-pressed", String(o === b)); });
       pal.appendChild(b);
     }
-    const sel = document.createElement("select"); sel.setAttribute("aria-label", "How heavy");
-    for (const o of [[1, "Its usual weight"], [4, "4\u00d7 heavier"], [25, "25\u00d7 heavier"], [150, "150\u00d7 heavier"], [1000, "1,000\u00d7 heavier"]]) {
-      const op = document.createElement("option"); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op);
-    }
-    sel.addEventListener("change", () => { brushMass = +sel.value; });
-    pal.appendChild(sel);
+    const weight = document.createElement("label"); weight.textContent = "Mass × ";
+    const sel = document.createElement("input"); sel.type = "number"; sel.min = "0.000001"; sel.max = "1000000000000"; sel.step = "any"; sel.value = brushMass; sel.required = true; sel.setAttribute("aria-label", "Mass multiplier");
+    sel.addEventListener("input", () => { if (sel.checkValidity()) brushMass = +sel.value; });
+    weight.appendChild(sel);
+    pal.appendChild(weight);
     canvas.style.cursor = "";
   }
   /* What the chosen tool does at a point of the world. `first` is the moment
@@ -504,6 +529,7 @@
   const brushReach = () => Math.max(0.8, 20 / cam.s);
   function useTool(wx, wy, first) {
     const w = world;
+    if ((tool === "place" || tool === "throw") && !$("palette").querySelector("input").reportValidity()) return;
     if (tool === "place") {
       const mass = brushKind * brushMass, rad = w.settings.sized ? 0.5 * Math.sqrt(mass) : 0.5;
       if (lastPut && Math.hypot(wx - lastPut[0], wy - lastPut[1]) < rad * 2.1) return;
@@ -655,7 +681,7 @@
     ctx.setTransform(d, 0, 0, d, 0, 0);
     const r = canvas.getBoundingClientRect();
     if (mode === "physics") drawPhysics(r.width, r.height); else drawPeople(r.width, r.height);
-    if (!paneHeld && now - paneAt > (tab === "look" ? 150 : 500)) { paneAt = now; pane(); }
+    if (!paneHeld && !$("panes").querySelector("input:focus") && now - paneAt > (tab === "look" ? 150 : 500)) { paneAt = now; pane(); }
   }
 
   /* ═══ drawing the physics ══════════════════════════════════════════════ */
@@ -891,6 +917,11 @@
   /* The panel redraws itself several times a second. Not while a finger is on
      it, or the button being pressed is replaced before the click lands. */
   let paneHeld = false;
+  $("panes").addEventListener("input", e => {
+    const input = e.target.closest("input[data-edit]");
+    if (!input || !input.checkValidity() || !picked || picked.body == null || mode !== "physics") return;
+    world.edit(picked.body, { [input.dataset.edit]: +input.value });
+  });
   $("panes").addEventListener("pointerdown", () => { paneHeld = true; });
   for (const ev of ["pointerup", "pointercancel", "pointerleave"]) $("panes").addEventListener(ev, () => { setTimeout(() => { paneHeld = false; }, 60); });
   $("panes").addEventListener("click", e => {
@@ -925,6 +956,8 @@
         "<dt>Speed</dt><dd>" + num(d.speed, 2) + " a second</dd><dt>Bonds</dt><dd>" + d.bonds.length + " of " + S.maxBonds + "</dd>" +
         (S.shift > 0 && S.bonding !== "none" && d.bonds.length ? "<dt>Bonds like</dt><dd>kind " + d.actsAs + " for now</dd>" : "") +
         (d.pinned ? "<dt>Pinned</dt><dd>held still</dd>" : "") + "</dl>" +
+        "<div class='body-values'>" + [["mass", "Mass", d.mass, 0.000001], ["temperature", "Temperature", d.temperature, 0], ["vx", "Velocity X", world.vx[d.id], -1e12], ["vy", "Velocity Y", world.vy[d.id], -1e12]].map(a =>
+          "<label>" + a[1] + "<input type='number' required step='any' min='" + a[3] + "' max='1000000000000' data-edit='" + a[0] + "' value='" + a[2] + "'></label>").join("") + "</div>" +
         "<div class='edits'>" +
         "<button class='btn' data-go='ed:kind:-1'>Kind \u2212</button><button class='btn' data-go='ed:kind:1'>Kind +</button>" +
         "<button class='btn' data-go='ed:mass:0.5'>Lighter</button><button class='btn' data-go='ed:mass:2'>Heavier</button>" +

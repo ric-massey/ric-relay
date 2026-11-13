@@ -165,8 +165,23 @@ function other(it, base, alt) {
     check(c.types.reduce((t, x) => t + x.count, 0) === c.things && c.free + s.clustered === s.count, "physics: the census lost or invented something");
   }
   /* Junk in, a legal world out. */
-  const junk = Physics.clean({ count: "lots", gravity: 1e9, edge: "sideways", sized: "true", kinds: -4 });
-  check(junk.count === Physics.DEFAULTS.count && junk.gravity === 60 && junk.edge === "wrap" && junk.sized === true && junk.kinds === 1, "physics: clean() let a bad setting through");
+  const junk = Physics.clean({ count: "lots", gravity: Infinity, edge: "sideways", sized: "true", kinds: -4 });
+  check(junk.count === Physics.DEFAULTS.count && junk.gravity === Physics.DEFAULTS.gravity && junk.edge === "wrap" && junk.sized === true && junk.kinds === 1, "physics: clean() let a bad setting through");
+  /* Slider limits are not experiment limits. The engine and a shared link
+     must preserve typed decimals and a trillion-mass sun without Int32 wrap. */
+  {
+    const set = { layout: "sun", count: 12, sized: false, bigMass: 1e12, gravity: 123.456789,
+                  startTemp: 0.0123456789, startSpeed: 0, limit: 1234, bounce: 0.321 };
+    const linked = Object.fromEntries(new URLSearchParams(set));
+    check(JSON.stringify(Physics.clean(linked)) === JSON.stringify(Physics.clean(set)), "physics: a copied link changed exact numeric settings");
+    const w = Physics.create(linked);
+    check(w.m[0] === 1e12 && w.kind[0] === 1e12, "physics: a trillion-mass sun was clamped or its kind overflowed");
+    check(w.settings.gravity === 123.456789 && w.settings.startTemp === 0.0123456789 && w.settings.bounce === 0.321, "physics: typed values were snapped to slider steps or limits");
+    for (let i = 0; i < 20; i++) w.step(1 / 60);
+    check(Number.isFinite(w.stats().mass) && Number.isFinite(w.stats().motion), "physics: the large custom sun stopped producing finite measurements");
+    const bounds = Physics.clean({ bounce: 2, bondChance: -1, maxBonds: 999, count: 1e12, size: 1e12, seed: "", rate: 0 });
+    check(bounds.bounce === 1 && bounds.bondChance === 0 && bounds.maxBonds === 255 && bounds.count === 20000 && bounds.size === 1000 && bounds.seed === Physics.DEFAULTS.seed && bounds.rate === 0.001, "physics: numeric entry lost its storage, fraction or browser bounds");
+  }
 }
 
 /* ═══ people ════════════════════════════════════════════════════════════ */

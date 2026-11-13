@@ -129,6 +129,23 @@
     ]},
   ];
 
+  /* Sliders are a useful sweep, not the limits of an experiment (Ric,
+     2026-11-12: "you can type one"). Keep actual limits on the schema too,
+     so typed values and copied links survive the same clean() path. Counts
+     and dimensions stay bounded for browser memory; fractions keep their
+     meaning, and bond counts must fit nb's Uint8 storage. */
+  const INPUT_LIMITS = {
+    size: [4, 1000], count: [0, 20000], kinds: [1, 64], seed: [0, 4294967295],
+    bigMass: [0.000001, 1e12], bounce: [0, 1], bondChance: [0, 1],
+    maxBonds: [0, 255], shake: [0, 1], conduct: [0, 1],
+    limit: [0, 1e12], rate: [0.001, 100]
+  };
+  const WHOLE = new Set(["count", "kinds", "seed", "maxBonds", "shift"]);
+  for (const g of SCHEMA) for (const it of g.items) if (it.type === "range") {
+    [it.inputMin, it.inputMax] = INPUT_LIMITS[it.key] || [0, 1e12];
+    it.integer = WHOLE.has(it.key);
+  }
+
   const DEFAULTS = {};
   for (const g of SCHEMA) for (const it of g.items) DEFAULTS[it.key] = it.def;
 
@@ -168,9 +185,10 @@
     for (const g of SCHEMA) for (const it of g.items) {
       let v = input && it.key in input ? input[it.key] : it.def;
       if (it.type === "range") {
-        v = Number(v);
+        v = typeof v === "string" && !v.trim() ? NaN : Number(v);
         if (!isFinite(v)) v = it.def;
-        v = Math.min(it.max, Math.max(it.min, v));
+        v = Math.min(it.inputMax, Math.max(it.inputMin, v));
+        if (it.integer) v = Math.round(v);
       } else if (it.type === "toggle") {
         v = v === true || v === "true" || v === 1 || v === "1";
       } else if (!it.options.some(o => o[0] === v)) v = it.def;
@@ -234,7 +252,8 @@
     const ax = new Float64Array(cap), ay = new Float64Array(cap);
     const m = new Float64Array(cap), r = new Float64Array(cap);
     const heat = new Float64Array(cap);
-    const kind = new Int32Array(cap);
+    // A sun or fused body's kind is its mass; billion-plus experiments must not wrap negative.
+    const kind = new Float64Array(cap);
     const nb = new Uint8Array(cap);
     const alive = new Uint8Array(cap);
     const pinned = new Uint8Array(cap);       // held where it was put; nothing moves it

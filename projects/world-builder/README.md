@@ -103,7 +103,8 @@ further, and they need each hexagon to have a facing.
 Ric, same day: *"i need a way to place them like place hexigons or give them stuff and modify
 hexigons."* A running physics world has a tool row: **Look**, **Place** (tap or drag), **Throw**
 (drag and let go), **Erase**, **Heat**, **Cool** and **Pin**. Place and Throw use a palette: a kind
-and how heavy. Tapping a hexagon in Look opens it in the Hexagon tab, where its kind, weight and
+and a typed mass multiplier. Tapping a hexagon in Look opens it in the Hexagon tab, where exact
+mass, temperature and X/Y velocity can be typed; its kind, weight and
 heat can be changed, it can be stopped, pinned, have its bonds broken, or be removed. "A blank
 world" starts empty for building from nothing. The tools work while paused.
 
@@ -189,6 +190,18 @@ Things found while tuning it, so nobody undoes them:
 
 ## The page
 
+- **Physics numbers are editable beside their sliders** (Ric, 2026-11-12: "you can type one",
+  after taking a particle above a billion in mass; "dont say this is a feature its intuitive").
+  The page adds no announcement. Slider ranges and steps remain convenient sweeps; typed decimals
+  retain their precision and can go beyond them. `SCHEMA.inputMin` / `inputMax` are the actual
+  limits used by the fields and `clean()`, including when opening a shared link. Most physical
+  quantities allow 0–10¹²; mass allows 10⁻⁶–10¹², fractions stay 0–1, and integral counts stay
+  integral. World width is 4–1,000 and starting bodies 0–20,000 to bound browser work; kinds are
+  1–64, bonds per body 0–255 (byte storage), seeds 0–2³²−1 and clock 0.001–100×. Layouts still
+  place only as many bodies as fit. Invalid or unfinished setup fields block Run; changing
+  presets or Reset replaces them. The particle inspector holds its fields while focused so
+  the live redraw cannot eat an edit. Body kinds use float storage because a sun/fused body's
+  kind follows its mass and must not overflow at 2³¹.
 - **Three screens in one file.** The address carries the sandbox and only the settings that differ
   from the defaults (`#people?people=900&rich=0.5`), so a link stays short and still opens after a
   setting is added. `&run` goes straight to the world; "Copy link" makes one.

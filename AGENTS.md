@@ -476,6 +476,13 @@ nobody had linked was a page nobody could find.
   experiment (eight actions per demographic tick), not a reproduction of the real-time economy;
   the nearest README explains that limitation. The existing World Builder suite also checks
   the real-time day and spacing.
+  **Physics numbers are typed as well as slid** (Ric, 2026-11-12: "you can type one",
+  after pushing a particle above a billion). Sliders keep their convenient sweeps; actual
+  numeric limits live on `SCHEMA.inputMin` / `inputMax` and `clean()` uses those for typed
+  values and shared links. Do not clamp custom experiments back to the slider limits or
+  round decimal entries to slider steps. Place/Throw take a typed mass multiplier; the
+  inspector accepts mass, temperature and both velocity components. Keep these ordinary
+  controls without promotional copy (Ric: "dont say this is a feature its intuitive").
 
 - **`projects/dads-race/` (HERMISCUS) is the one project with no room.** It is the
   crew app for Dad's race, mostly built by Ric's sister, and the only way in is the

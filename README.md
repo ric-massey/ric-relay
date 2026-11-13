@@ -87,6 +87,9 @@ Standalone builds live in `projects/` and are surfaced from the room that fits t
 | `projects/climbing/board.html` | Climbing | "Boards" — Kilter and Tension board logbook, pulled from the apps and drawn on the board itself |
 | `projects/training/` | Training (room data) | Not a page — the plan exporter, the Cloudflare Worker that holds ticks, notes, runs and board ticks, and the Strava wiring. The planning app itself (`projects/training/index.html`) is **gitignored and never published**. See [`projects/training/README.md`](projects/training/README.md) |
 
+World Builder's physics settings have editable numbers beside their sliders, including masses
+above a billion. The running world also accepts exact particle mass, temperature and velocity.
+
 These are self-contained and may carry their own assets/fonts — that's fine; the
 "no dependencies" rule applies to the terminal's own room pages, not embedded projects.
 
