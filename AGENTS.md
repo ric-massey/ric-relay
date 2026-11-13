@@ -474,7 +474,11 @@ nobody had linked was a page nobody could find.
   design draft, with stated goals distinguished from proposed mechanics, not a list of shipped
   features or an instruction to implement everything at once. Its current-state table records
   the shipped readability pass and searchable People browser with living-family navigation;
-  deeper conversations, equipment and the timing redesign remain future work. Read it before planning that work.
+  the held conversation inspector and its before/after receipts have also shipped. Equipment,
+  multi-step agreements and the timing redesign remain future work. Conversation records surround
+  the entire interaction, since several branches change state after speaking; do not infer an
+  outcome from a dialogue type or move those effects into the renderer. The quick checks are in
+  `projects/world-builder/test/conversations.test.mjs` and `.github/checks.mjs`. Read the vision before planning further milestones.
   **People playback changed on 2026-11-12:** Ric: "1x should be a 20 minute day", "the
   people should move slower", and "they shouldnt" walk inside each other. `advance(seconds)`
   separates five activity ticks per second from the 200 demographic ticks per year; 365 days

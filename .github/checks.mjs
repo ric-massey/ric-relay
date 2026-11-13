@@ -110,9 +110,11 @@ const SUITES = [
      "it radiated away" has to be distinguishable from "it vanished", which is
      the same class of bug one level out. */
   ['universe', ['projects/universe/lab-check.mjs', 'projects/universe/world-check.mjs'], 'slow'],
+  /* Actual effects and a held transcript that survives rolling history. */
+  ['world-builder conversations', ['projects/world-builder/test/conversations.test.mjs']],
   /* World Builder's two engines: every setting on the page changes the world
      it makes, every preset runs, physics keeps its mass and energy, the people
-     keep their coins, and a switch that is off is off. About 25 seconds —
+     keep their coins, and a switch that is off is off. Several minutes —
      it runs a century of a people world — so slow lane. The page itself is
      parsed by the inline-scripts suite on every push. */
   ['world-builder', ['projects/world-builder/test/world-builder.test.mjs'], 'slow']

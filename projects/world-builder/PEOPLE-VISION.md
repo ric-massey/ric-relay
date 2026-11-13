@@ -21,7 +21,7 @@ next features from the vision". This table records implementation, not approval 
 | Recognizing people | Human figures, smaller children, a leader ring and faction/mood/belief/wealth colour views. | Equipment and personal appearance. |
 | Understanding actions | Close-up role/activity labels, an activity line in inspection, visible harvesting patches. | Reasons for choices, blocked-action explanations and lasting work sites. |
 | Selecting and following | People list with name search, settlement/faction/job filters, pagination and preserved list position; select and follow on the map; living-family links and either Talk participant selectable. | Bookmarks, durable family histories and navigation to the dead. |
-| Conversation | Real exchanges with a paired reply; named speech bubbles, a connection between participants, a recent Talk list with both names selectable, a link to the current conversation partner, and a short pause while speaking. | A selected exchange that stays readable, longer interaction sequences, agreements and remembered follow-through. |
+| Conversation | Real exchanges with a paired reply; named speech bubbles, a connection between participants, a recent Talk list, a held exchange with original context and before/after effects, participant navigation, map location and a short pause while speaking. | Longer interaction sequences, agreements and remembered follow-through. |
 | Pacing and bodies | Twenty-minute days at 1×, slower walking, separate body positions and local avoidance of neighbours. | One consistent time model for daily needs, production and long-term development; reliable navigation through very dense crowds. |
 | Work and society | Farming, generic goods, trade, families, leaders, factions, conflict and breakaways. | Seasonal cultivation, useful tools, buildings, learning and the connected economic systems described below. |
 | Continuity and control | A running world lives in the current page; copied links reproduce settings. | Saved worlds, durable family histories and player control. |
@@ -41,9 +41,21 @@ conversation partner; each Talk exchange lets the visitor select either particip
 
 This milestone uses existing identities and actions. It does not introduce resources or change
 people's decisions. Bookmarks, a permanent record of the dead, equipment and direct control remain
-future work. The next proposed piece is a conversation inspector that holds a selected exchange
-still for reading and explains the actual interaction and consequences. Its exact design remains
-open; this does not authorize implementing the rest of the vision at once.
+future work.
+
+**Delivered on 2026-11-12: read and understand an exchange.** Ric asked to continue with the next
+piece. Read exchange holds the chosen transcript and original circumstances still while the
+world continues. It records actual before/after changes around the whole interaction, including
+changes that happen after speech. Both participants can be inspected, with a way back to that
+exchange. The original location is reachable and the living participants are marked on the map.
+A selected exchange survives the bounded recent history rolling past it; it is not a permanent
+archive and resets with a new world. Pause is explicit. No new decisions or dialogue outcomes
+were added to make the inspector interesting.
+
+The next proposed readability piece is visible equipment backed by real owned/carried/used
+items, as described in section 13. Agree on a small connected set of useful tools and their
+availability before expanding production or combat. Multi-step agreements and remembered
+follow-through remain separate social-system work.
 
 ## 1. What Ric wants
 
@@ -365,8 +377,9 @@ This order was suggested during the conversation; Ric has not settled it.
 
 1. **Finish making the existing people readable.** The first pass of figures, activity labels,
    conversation connections, following, pacing and body separation has shipped. The population
-   browser and living-family navigation have now shipped too. Next: a stable conversation
-   inspector and equipment backed by actual inventory. Validate each piece before calling this milestone complete.
+   browser and living-family navigation have now shipped too. The conversation
+   inspector has now shipped with recorded effects too. The next readability piece is equipment
+   backed by actual inventory. Validate each piece before calling this milestone complete.
 2. **Make one village worth watching.** Households, seasonal farming, storage, tools,
    construction, learned skills and explanations of growth or shortages.
 3. **Deepen social interaction.** Shared memories, teaching, purposeful conversations,
@@ -425,3 +438,9 @@ problem that must be addressed before treating long-term economic outcomes as va
 People browser, preserved filtered-list navigation, living-family/current-partner links and
 selection of either conversation participant. The timing redesign, equipment and the larger
 village/civilization systems remain future work.
+
+**2026-11-12 conversation milestone:** built the held exchange inspector and observational receipts,
+with a return from participant inspection and original-place navigation. Checks cover real grain
+transfers, effects made after speech, stable IDs and retention after history eviction. A comparison
+against the pre-change engine found identical trajectories for the same seeds and elapsed time;
+recording conversations must remain observational.

@@ -29,6 +29,7 @@ what has shipped from future direction, including the unresolved long-term timin
 | `physics.js` | The physics sandbox's engine. No DOM; runs the same in node. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
+| `test/conversations.test.mjs` | Quick receipt checks: observed effects, a conserved grain transfer, stable IDs and a held record surviving history eviction. |
 | `test/world-builder.test.mjs` | Both engines, headless. Several minutes; in the slow lane of `.github/checks.mjs` (`--only world-builder --slow`) and in `simulations.yml`. |
 
 No build step and no dependencies. `python3 -m http.server 8912 --bind 127.0.0.1`, then open
@@ -236,6 +237,20 @@ Things found while tuning it, so nobody undoes them:
 - **Harvesting takes five seconds at 1×**, on the field where food is actually collected; a crop
   outline and stalks mark it. Walking to a field, bringing food home, making goods, trading and
   guarding have separate activity labels.
+- **Read exchange holds one conversation still while the world continues** (2026-11-12,
+  next milestone from the People vision). Talk lists the latest forty exchanges; selecting one
+  keeps its transcript, participants, time, original circumstances and before/after effects.
+  Inspect either participant and return to the selected exchange, return to the live recent list,
+  or locate where it happened. Gold rings identify the living participants on the map while
+  reading. This does not pause the world; Pause remains explicit.
+- **Conversation effects are receipts, not interpretations of the dialogue.** `converse()`
+  snapshots both people before calling the unchanged interaction logic and attaches actual
+  changes after it returns, including changes made after `said()`. Food, possessions, beliefs,
+  loyalty, the relationship toward the other participant, home, faction, occupation, partner,
+  learned news, sickness and faction relations can be recorded. The observer makes no RNG calls
+  and writes no model state. The rolling history remains capped at 160, with monotonic exchange
+  IDs; the page holds just one selected record outside it until cleared or a new world starts.
+  These are facts from that exchange, not current beliefs, a saved world or a full life history.
 - **Conversations stop both people for six seconds at 1×.** A gold line joins the actual pair,
   and speech bubbles name speaker and listener. Work is not interrupted by a new conversation
   while harvesting or making goods.

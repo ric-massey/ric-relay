@@ -207,7 +207,7 @@
     const events = [], chatter = [], history = [];
     const count = { births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0 };
-    let t = 0, nextId = 1, usedNames = new Set();
+    let t = 0, nextId = 1, nextExchange = 1, usedNames = new Set();
 
     const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
     const pick = a => a[Math.floor(R() * a.length)];
@@ -769,7 +769,7 @@
     function said(a, b, kind, la, lb) {
       a.say = la; a.sayT = 30; b.say = lb || ""; b.sayT = 30;
       a.talkingTo = b.id; b.talkingTo = a.id;
-      chatter.push({ t: t, kind: kind, a: a.id, b: b.id, an: a.name, bn: b.name, fa: a.f, fb: b.f, la: la, lb: lb || "", x: a.x, y: a.y });
+      chatter.push({ id: nextExchange++, day: Math.max(elapsed / DAY_SECONDS, t / YEAR * 365), t: t, kind: kind, a: a.id, b: b.id, an: a.name, bn: b.name, fa: a.f, fb: b.f, la: la, lb: lb || "", x: a.x, y: a.y });
       if (chatter.length > 160) chatter.splice(0, chatter.length - 160);
     }
     function kin(a, b) {
@@ -777,7 +777,41 @@
              (a.mum && a.mum === b.mum) || (a.dad && a.dad === b.dad);
     }
 
+    // Receipts surround the whole interaction: several branches speak before
+    // moving house or changing friendship. Capture after return, without RNG calls
+    // or model writes, so reading an exchange cannot change its outcome.
+    function conversationState(p, other) {
+      return { id: p.id, name: p.name, age: Math.floor(p.age), job: p.job,
+        home: villages[p.home].name, faction: factions[p.f].name,
+        food: p.food, coins: p.coins, goods: p.goods, views: p.views, loyal: p.loyal,
+        trust: p.friends.get(other.id) || 0, partner: byId.get(p.partner)?.name || "None",
+        news: p.news, sick: p.sick > 0, hungry: p.hungry > 0 };
+    }
     function converse(a, b) {
+      const before = [conversationState(a, b), conversationState(b, a)], previous = nextExchange;
+      const diplomacy = a.f !== b.f ? [factions[a.f], factions[b.f]].map((f, i) => {
+        const other = i === 0 ? b.f : a.f;
+        return { faction: f, other, value: f.rel[other].op };
+      }) : [];
+      exchange(a, b);
+      const c = chatter[chatter.length - 1];
+      if (!c || c.id < previous) return;
+      const after = [conversationState(a, b), conversationState(b, a)];
+      c.people = before; c.effects = [];
+      for (let i = 0; i < before.length; i++) {
+        const old = before[i], now = after[i];
+        for (const field of ["food", "coins", "goods", "views", "loyal", "trust", "home", "faction", "job", "partner", "news", "sick"]) {
+          if (typeof old[field] === "number" ? Math.abs(now[field] - old[field]) < 1e-12 : now[field] === old[field]) continue;
+          c.effects.push({ person: old.id, name: old.name, field, before: old[field], after: now[field],
+            detail: field === "news" ? events.find(e => e.id === now.news)?.text || "News passed on." : "" });
+        }
+      }
+      for (const d of diplomacy) if (d.value !== d.faction.rel[d.other].op) {
+        c.effects.push({ name: d.faction.name, field: "diplomacy", detail: factions[d.other].name,
+          before: d.value, after: d.faction.rel[d.other].op });
+      }
+    }
+    function exchange(a, b) {
       count.talks++;
       a.talk = 25 + Math.floor(R() * 50 * (1.2 - S.talk)); b.talk = 25 + Math.floor(R() * 50 * (1.2 - S.talk));
       const same = a.f === b.f, war = atWar(a.f, b.f);

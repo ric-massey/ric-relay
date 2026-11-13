@@ -169,6 +169,8 @@
   .item:first-child { border-top: 0; }
   .item .yr { color: var(--dim); font: 12px var(--mono); margin-right: .5rem; }
   .item.big { color: var(--ink); font-weight: 600; }
+  .exchange-effects { padding-left: 20px; }
+  .exchange-effects li { margin-bottom: 10px; }
   .talk .who { font-weight: 600; }
   .talk q { quotes: "“" "”"; }
   .bars { display: grid; grid-template-columns: auto 1fr; gap: .25rem .6rem; align-items: center; font-size: .88rem; margin: .4rem 0; }
@@ -449,7 +451,7 @@
   let world = null, raf = 0, paused = false, rate = 1, last = 0, lag = 0;
   let cam = { x: 0, y: 0, s: 1, held: false }, viewMode = "kind", picked = null, follow = false, tab = "", paneAt = 0;
   let land = null, landAt = -1e9;
-  let populationPage = 0, populationScroll = 0;
+  let populationPage = 0, populationScroll = 0, selectedExchange = null, talkScroll = 0;
   const POPULATION_PAGE = 60;
   /* A visitor's hands in the physics world: which tool a tap uses, what Place
      and Throw put down, where the pointer is held, and every kind of bonded
@@ -481,7 +483,7 @@
     stopRun();
     const E = ENGINES[mode].api;
     world = E.create(values);
-    populationPage = 0; populationScroll = 0;
+    populationPage = 0; populationScroll = 0; selectedExchange = null; talkScroll = 0;
     for (const id of ["people-search", "people-settlement", "people-faction", "people-job"]) $(id).value = "";
     rate = values.rate; paused = false; picked = null; follow = false; lag = 0; land = null; landAt = -1e9;
     tool = "look"; held = null; aim = null; lastPut = null; everSeen = new Set(); brushKind = 1; brushMass = 1;
@@ -594,7 +596,7 @@
     tab = name;
     for (const b of $("tabs").children) b.setAttribute("aria-selected", String(b.dataset.tab === name));
     $("population-controls").hidden = mode !== "people" || name !== "people";
-    $("panes").scrollTop = name === "people" ? populationScroll : 0; paneAt = 0;
+    $("panes").scrollTop = name === "people" ? populationScroll : name === "talk" ? (selectedExchange ? 0 : talkScroll) : 0; paneAt = 0;
     pane();
   }
 
@@ -924,6 +926,10 @@
       ctx.fillStyle = "rgba(240,244,242,.9)";
       for (const p of talking) ctx.fillRect(ox + p.x * s + rad, oy + p.y * s - rad - 4, 3, 3);
     }
+    if (tab === "talk" && selectedExchange) for (const id of [selectedExchange.a, selectedExchange.b]) {
+      const person = w.byId.get(id); if (!person) continue;
+      ctx.strokeStyle = "#ffe39b"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ox + person.x * s, oy + person.y * s, rad + 5, 0, Math.PI * 2); ctx.stroke();
+    }
     if (picked && picked.person) {
       const p = w.byId.get(picked.person);
       if (p) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ox + p.x * s, oy + p.y * s, rad + 6, 0, 6.2832); ctx.stroke(); }
@@ -938,7 +944,11 @@
   const num = (v, d) => (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString("en-US") : v.toFixed(d == null ? 1 : d));
   function pane() {
     if (!world || screens.run.hidden) return;
+    // Hold a selected transcript still: automatic redraws must not replace text
+    // while it is being read or selected. Navigation explicitly invalidates it.
+    if (mode === "people" && tab === "talk" && selectedExchange && $("panes").dataset.exchange === String(selectedExchange.id)) return;
     const el = $("panes"), keep = el.scrollTop;
+    el.dataset.exchange = mode === "people" && tab === "talk" && selectedExchange ? selectedExchange.id : "";
     // A live result must not steal keyboard focus when its activity changes.
     const active = el.contains(document.activeElement) ? document.activeElement.dataset.go : null;
     el.innerHTML = mode === "physics" ? physicsPane() : peoplePane();
@@ -960,6 +970,13 @@
     const b = e.target.closest("[data-go]"); if (!b) return;
     const a = b.dataset.go.split(":");
     if (a[0] === "at") { cam.x = +a[1]; cam.y = +a[2]; cam.s = Math.max(cam.s, 14); cam.held = true; follow = false; }
+    if (a[0] === "exchange") {
+      const found = world.chatter.find(c => c.id === +a[1]);
+      if (found) { talkScroll = $("panes").scrollTop; selectedExchange = found; $("panes").dataset.exchange = ""; $("panes").scrollTop = 0; pane(); }
+    }
+    if (a[0] === "recent-talk") { selectedExchange = null; setTab("talk"); }
+    if (a[0] === "read-talk") { $("panes").dataset.exchange = ""; setTab("talk"); }
+    if (a[0] === "exchange-place" && selectedExchange) { cam.x = selectedExchange.x; cam.y = selectedExchange.y; cam.s = Math.max(cam.s, 28); follow = false; }
     if (a[0] === "people") setTab("people");
     if (a[0] === "people-page") { populationPage += +a[1]; populationScroll = 0; $("panes").scrollTop = 0; pane(); }
     if (a[0] === "person") {
@@ -1086,6 +1103,32 @@
         "<button class='item person-row' data-go='person:" + p.id + "'" + (picked?.person === p.id ? " aria-current='true'" : "") + "><strong>" + esc(p.name) + "</strong><span class='small'>" + Math.floor(p.age) + (Math.floor(p.age) === 1 ? " year · " : " years · ") + esc(p.job) + " · " + esc(world.villages[p.home].name) + "</span><span class='small'>" + esc(world.factions[p.f].name) + "</span><span>" + esc(world.activity(p)) + "</span></button>").join("") + pager);
   }
 
+  const TALK_TOPICS = { help: "Asking for food", refuse: "Help refused", pair: "Choosing a partner", news: "Passing on news", switch: "An invitation to move", politics: "Talking about leadership", agree: "Finding common ground", argue: "A disagreement", small: "Everyday conversation" };
+  function exchangeTime(c) {
+    const day = c.day || 0, minute = Math.floor(day % 1 * 1440);
+    return "Year " + (Math.floor(day / 365) + 1) + " · day " + (Math.floor(day % 365) + 1) + " · " + String(Math.floor(minute / 60)).padStart(2, "0") + ":" + String(minute % 60).padStart(2, "0");
+  }
+  function exchangePerson(id, name) {
+    return world.byId.has(id) ? "<button class='btn family-link' data-go='person:" + id + "'>" + esc(name) + "</button>" : "<span>" + esc(name) + " (no longer living)</span>";
+  }
+  function exchangeEffect(e, c) {
+    const other = c.people.find(p => p.id !== e.person);
+    const labels = { food: "Food carried", coins: "Coins", goods: "Goods carried", loyal: "Loyalty", views: "Views (−1 keep / +1 share)", trust: "Relationship toward " + (other ? other.name : "the other person") + " (−1 rival / +1 friend)", home: "Home", faction: "Faction", job: "Occupation", partner: "Partner", diplomacy: "Relations with " + e.detail + " (−1 hostile / +1 friendly)" };
+    if (e.field === "news") return esc(e.name) + " learned: " + esc(e.detail);
+    if (e.field === "sick") return esc(e.name) + (e.after ? " became sick during the exchange." : " was no longer sick.");
+    const value = v => typeof v === "number" ? (e.field === "loyal" ? (v * 100).toFixed(1) + "%" : v.toFixed(3).replace(/\.?0+$/, "")) : v;
+    return esc(e.name) + " — " + esc(labels[e.field] || e.field) + ": " + esc(value(e.before)) + " → " + esc(value(e.after));
+  }
+  function exchangePane(c) {
+    return "<button class='btn' data-go='recent-talk'>Recent exchanges</button><h3>" + esc(TALK_TOPICS[c.kind] || "Conversation") + "</h3>" +
+      "<p class='small'>" + exchangeTime(c) + "</p><p class='small'>This exchange stays here while the world continues. Use Pause to stop the world.</p>" +
+      "<div class='talk'>" + exchangePerson(c.a, c.an) + " → " + exchangePerson(c.b, c.bn) +
+      "<p><strong>" + esc(c.an) + ":</strong> <q>" + esc(c.la) + "</q></p>" + (c.lb ? "<p><strong>" + esc(c.bn) + ":</strong> <q>" + esc(c.lb) + "</q></p>" : "") + "</div>" +
+      "<h3>When they spoke</h3>" + (c.people || []).map(p => "<p><strong>" + esc(p.name) + "</strong> · " + p.age + " years · " + esc(p.job) + "<br><span class='small'>" + esc(p.home) + " · " + esc(p.faction) + " · " + (p.hungry ? "Going hungry" : "Not going hungry") + " · food carried " + p.food.toFixed(2) + "</span></p>").join("") +
+      "<h3>What changed</h3>" + (c.effects?.length ? "<ul class='exchange-effects'>" + c.effects.map(e => "<li>" + exchangeEffect(e, c) + "</li>").join("") + "</ul>" : "<p>No change was recorded in food, possessions, beliefs, loyalty, relationships, home, faction, news or sickness.</p>") +
+      "<p class='small'>Changes are recorded at the time of the exchange. They do not describe what these people think now.</p><button class='btn' data-go='exchange-place'>Where they spoke</button>";
+  }
+
   function peoplePane() {
     const w = world, st = w.stats(), Y = w.YEAR;
     if (tab === "people") return populationPane();
@@ -1112,11 +1155,12 @@
       return list.map(e => "<button class='item" + (e.weight >= 3.5 ? " big" : "") + "' data-go='at:" + e.x + ":" + e.y + "'><span class='yr'>Year " + e.year + "</span>" + esc(e.text) + "</button>").join("");
     }
     if (tab === "talk") {
+      if (selectedExchange) return exchangePane(selectedExchange);
       const list = w.chatter.slice(-40).reverse();
       if (!list.length) return "<p class='small'>Nobody has said anything yet.</p>";
       const participant = (id, name) => w.byId.has(id) ? "<button class='btn family-link' data-go='person:" + id + "'>" + esc(name) + "</button>" : "<span>" + esc(name) + " (died)</span>";
       return "<p class='small'>Every exchange reports what happened between these people. Choose either name to follow them.</p>" + list.map(c =>
-        "<article class='item talk'>" + participant(c.a, c.an) + " → " + participant(c.b, c.bn) + "<p><strong>" + esc(c.an) + ":</strong> <q>" + esc(c.la) + "</q></p>" +
+        "<article class='item talk'><p class='small'>" + esc(TALK_TOPICS[c.kind] || "Conversation") + " · " + exchangeTime(c) + "</p><button class='btn' data-go='exchange:" + c.id + "'>Read exchange</button> " + participant(c.a, c.an) + " → " + participant(c.b, c.bn) + "<p><strong>" + esc(c.an) + ":</strong> <q>" + esc(c.la) + "</q></p>" +
         (c.lb ? "<p><strong>" + esc(c.bn) + ":</strong> <q>" + esc(c.lb) + "</q></p>" : "") + "</article>").join("");
     }
     if (tab === "look") {
@@ -1142,7 +1186,7 @@
       const familyLink = id => "<button class='btn family-link' data-go='person:" + id + "'>" + esc(w.byId.get(id).name) + "</button>";
       const job = p.job === "child" ? "a child" : p.id === f.leader ? "leader of " + esc(f.name) + ", and a " + p.job : "a " + p.job;
       const bar = (label, v) => "<span>" + label + "</span><i><b style='width:" + Math.round(v * 100) + "%'></b></i>";
-      return "<button class='btn' data-go='people'>Back to People</button><h3>" + esc(p.name) + "</h3>" +
+      return "<button class='btn' data-go='people'>Back to People</button>" + (selectedExchange ? " <button class='btn' data-go='read-talk'>Back to selected exchange</button>" : "") + "<h3>" + esc(p.name) + "</h3>" +
         "<p>" + Math.floor(p.age) + " years old, " + job + " in <button class='linkish' style='min-height:0;padding:0' data-go='village:" + home.id + "'>" + esc(home.name) + "</button>.</p>" +
         "<p><strong>Now: " + esc(w.activity(p)) + "</strong></p>" +
         "<p>" + fname(p.f) + (p.from !== p.f ? " <span class='small'>— born under " + esc(w.factions[p.from].name) + "</span>" : "") + "</p>" +
