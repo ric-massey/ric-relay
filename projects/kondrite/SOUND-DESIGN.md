@@ -905,7 +905,7 @@ Recordings stay the base.
 
 ## 11. Music
 
-**Deferred.** Ric wants some and has not decided what kind. When it comes back:
+**A proposal is in `MUSIC.md`** (2026-11-13). Ric wants some and has not decided what kind. Whatever is chosen:
 
 - **Music in the world**, such as something playing in a station while docked, fits the
   realism with no argument.
