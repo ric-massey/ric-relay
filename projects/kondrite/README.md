@@ -1087,7 +1087,9 @@ and event in the game, with a replacement for each built from real recordings ra
 than oscillators, and a recipe of what to record. In the plan, space carries sound as if
 it were air: sound fades and dulls with distance, slides in pitch as things pass, and
 echoes in the caves. On top of that, a sensor feed lifts whatever is aimed at you. No
-speech anywhere. It also has the research behind it and the questions still open. Nothing
+speech anywhere. The sounds are to be made by a small sound engine in this repository
+from short, credited excerpts of free public recordings, such as NASA's launch
+microphones. The simulators keep an arcade sound, because they are arcade cabinets. It also has the research behind it and the questions still open. Nothing
 in it is built yet, so the description above is still what plays. Its first finding is
 a bug: `alarm` is called three times and has no voice, so the boss alarms are silent.
 

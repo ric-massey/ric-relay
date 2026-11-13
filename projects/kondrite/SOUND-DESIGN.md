@@ -288,8 +288,8 @@ renders the sound the way it would arrive across open air:
 screen is cut dead. Under these rules, distance fades a sound out before the screen
 edge cuts it, so things just off screen are faint and things far off are gone. A
 battle two screens away is a low rumble, and a big one carries further. The README's
-rule becomes *if it is close enough to hear, you hear it*. This needs Ric's agreement
-(§12). Online, the host already sends every sound with its position, so each guest can
+rule becomes *if it is close enough to hear, you hear it*. Ric agreed on 2026-11-13
+("I like the new plan"). Online, the host already sends every sound with its position, so each guest can
 apply its own distance.
 
 ### 4.2 The listener has two places
@@ -341,30 +341,88 @@ Running turns it off. In all three, physics is all you have left.
   warning receiver, an active sonar.
 - **Silence is a material.** The Long Empty, a death, the moment after a wormhole.
 
-### 4.5 The source material
+### 4.5 The source material: free recordings, and an engine that multiplies them
 
-Ultra-realistic sound cannot come from oscillators, and should not come from an AI
-generator. The weather room's rule for its sky footage applies here too: real material,
-credited. Options:
+Ric, 2026-11-13: *"First try free public ones. Or if there is a way we can make a small
+sound design engine? That would make it so we never have to worry about sounds because
+we could make them."*
 
-| Source | Fits | Watch for |
+The answer is both, as one system. **Free public recordings are the raw material, and a
+small sound engine in this repository turns a few of them into every sound the game
+needs**, in endless variations, from recipes written as code. Nothing comes from an AI
+generator. The weather room's rule for its sky footage applies: real material, credited.
+
+#### Why not the engine alone
+
+It is the obvious hope: an engine that makes every sound from nothing, so there are no
+files to find. It can't be all of it, and the evidence says where it falls short.
+
+- **What synthesis does well, and has shipped.** Modal synthesis builds an impact from
+  the resonant modes of the struck object. Its own literature calls the results
+  convincing for falling objects and debris, and a version shipped in *Crackdown 2*: it
+  fits a modal model to **one recorded impact** and generates variations on the fly
+  ([Raghuvanshi et al., Microsoft Research](https://microsoft.com/en-us/research/?p=309038);
+  [Ren, Yeh & Lin](https://typeset.io/pdf/example-guided-physically-based-modal-sound-synthesis-1z2lkvntsi.pdf);
+  [UNC, sheet metal](https://www.cs.unc.edu/~austonst/tempSupportDamping/data/vrsub.pdf)).
+  Andy Farnell's *Designing Sound* works through fire, wind, water, gunshots and
+  explosions as procedural models. Fire, for example, is filtered noise with distortion
+  ([MIT Press practicals](https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/8375/designing_sound.zip/practical31.html);
+  [A Sound Effect](https://asoundeffect.com/procedural-game-sound-design);
+  [MCV](https://mcvuk.com/development-news/procedural-audio-with-unity/)).
+- **Where it stops.** In a 2022 listening test of over 50 people, Queen Mary and
+  Nemisindo's thunder model was rated the most realistic synthesised thunder, and was
+  **still distinguishable from a real recording**. The study cites an earlier comparison
+  where no synthesised extract sounded as real as the real thing
+  ([Fineberg, Walters & Reiss](https://arxiv.org/pdf/2204.08026.pdf);
+  [Queen Mary](https://qmul.ac.uk/media/news/2021/se/queen-mary-spinout-nemisindo-launches-online-sound-design-service-based-on-procedural-audio-technology-.html)).
+
+So, by category:
+
+| Made by the engine from nothing | Made by the engine from a real recording | Needs the recording itself |
 |---|---|---|
-| **Recorded by Ric** | metal, tools, doors, cars, electric motors, water, air, a garage, a workshop | the best option wherever possible; no licence questions |
-| **CC0 libraries** (e.g. Freesound filtered to CC0) | machinery, impacts, electrical arcs, rocket tests | check each file's licence and keep the original |
-| **Royalty-free bundles** (e.g. the Sonniss GDC bundles) | professional field recordings: jets, explosions, industry | read whether the licence allows files in a public repository |
-| **Public-domain government audio** | launches, engine tests, military test footage | confirm each file's status |
+| wind, air, buffeting, a moving energy wall | **impacts**: one real hit per material (metal plate, rock, ice, hull) → endless variations by modal synthesis | the **body of big roars**: the drive, a star, the light drive (from NASA launches) |
+| electrical crackle, static, arcs, the Murk | **hull creaks and stress**: a few real creaks resynthesised | **explosions'** low body and debris |
+| ice-grain and dust patter on the hull | **machinery**: servos, clamps, conveyors, hatches, cut into grains and re-sequenced | complex machines with many parts: cranes, a station's industry |
+| fire and furnace texture over a recorded body | **guns**: a real snap, twang or report per weapon, layered and varied | pneumatics and airlocks |
+| the scanner, warning tones, radio squelch and data bursts (the only tones in the game) | **the cockpit's and caves' echo**: rendered from a measured or synthesised impulse response | |
+| distance, air absorption, Doppler, echo and occlusion: all processing, no files | | |
 
-Every file gets a credit line in `sounds/SOURCES.md`, the way the universe project keeps
-its `SOURCES.md`.
+#### What the engine is
 
-**Size.** The site is near GitHub Pages' 1 GB limit, which is why the photographs and
-the CS replays moved to R2. Short sounds can live in the repository. Long loops and
-region beds should go to R2 and be fetched lazily. **Fallbacks must stay real.** The
-current fallback is a synth voice, which would bring the arcade back whenever a fetch
-fails. A missing bed falls back to silence, and a missing one-shot to the nearest real
-sound already loaded. A page opened straight off disk cannot fetch at all, so the core
-set should be committed rather than fetched. Use a compressed format and check it plays
-in Safari before choosing it.
+- **Recipes, not files.** A sound is a short piece of code: the sources it draws on, the
+  layers, the processing, and which parameters a game event can turn (mass, material,
+  speed, distance). `sounds/make-lasers.py` already works this way for the five guns.
+  The engine generalises it, so that a sound can be "changed by editing a recipe" rather
+  than "found again".
+- **It runs in the game, in the browser.** The same code renders the voices into buffers
+  when the game loads (Web Audio's `OfflineAudioContext`), each one with its own
+  variations. Nothing has to be fetched, so it works opened off disk. It also runs in
+  `node` for `test/sounds.js` and in the listening booth, which renders it the same way.
+- **Seeds, not libraries.** Real recordings come in as short, trimmed **seed** excerpts:
+  a second or two of a hit, a few seconds of a roar. The engine multiplies them. Full
+  originals are never committed. They go in a git-ignored `_sound-originals/`, the way
+  the photographs use `_photo-originals/`.
+- **One budget.** The seeds plus any pre-rendered files stay within about **25 MB**,
+  which is affordable now that the photograph album is moving to R2. Long region beds
+  are rendered from seeds at load instead of being stored.
+- **Fallbacks stay real.** If a seed is missing, the engine's purely procedural version
+  of that sound plays, never an arcade tone. A missing bed is silence.
+- **No dependencies in the game.** A one-off tool may use something that is not in the
+  page, such as ffmpeg (already used for the front door's clips) to trim and convert a
+  seed. The game itself is plain Web Audio.
+
+#### Where the recordings come from: what was tried on 2026-11-13
+
+| Source | Licence | From a cloud session | Notes |
+|---|---|---|---|
+| **NASA** (`images-api.nasa.gov`) | public domain; credit NASA | **works** | real pad-microphone launch recordings, e.g. the Artemis II launch at Pad Camera Site 6: 192 kHz, 32-bit, 14 min 44 s, credited NASA/Lorne Mathre. The best source in the world for the drive's roar. Launch clips with commentary carry a voice, which is out (no speech); use the pad and camera-site microphones only |
+| **Freesound** (CC0 filter) | CC0 per file | **refused**: Freesound denies this cloud machine's connection before the API key is checked | the largest CC0 library. The key is saved; downloads have to happen from Ric's own computer, signed in (originals need a login; previews do not) ([API docs](https://www.freesound.org/docs/api/overview.html)) |
+| **Wikimedia Commons** | PD / CC0 / CC BY per file | **rate-limited** (429) on the shared address | may work later, or from Ric's computer |
+| Recorded by Ric | his own | — | metal, tools, doors, the car, a garage. The best seeds for impacts, and the easiest to get |
+
+Every seed gets a line in `sounds/SOURCES.md`: what it is, where it came from, its
+licence and its credit. That follows the universe project's `SOURCES.md` and the weather
+scenes' credits.
 
 ### 4.6 The interface
 
@@ -376,7 +434,7 @@ page plays nothing.
 
 **The simulators are the one exception.** They are arcade cabinets inside the world
 (README, "The game, and the simulators"), so arcade sound is realistic there, played
-through a cabinet's small speaker inside the station room. §6.11 has the alternative.
+through a cabinet's small speaker inside the station room (Ric, 2026-11-13; §6.11).
 
 ---
 
@@ -622,13 +680,12 @@ is texture that is never shown, stays silent.
 
 ### 6.11 The simulators (Survival, Battle Royale, Campaign)
 
-These are arcade cabinets in a station (§4.6). Two choices:
-
-- **Inside the cabinet** (recommended). The match plays as arcade sound through a small
-  speaker, with the station room behind it. That is realistic for a cabinet, and it
-  keeps the arcade sound in the one place it belongs.
-- **As the real thing.** The cabinet is a simulator, so it sounds like the war it
-  simulates, using the same palette as Survey.
+These are arcade cabinets in a station (§4.6), and **they sound like arcade games**
+(Ric, 2026-11-13: "Simulators can be arcade sounding"). The match plays as arcade sound
+through the cabinet's small speaker, with the station room behind it. That is realistic
+for a cabinet, and it keeps the arcade sound in the one place it belongs. Today's
+oscillator voices can retire into the cabinets rather than being deleted. The test in
+§10.2 exempts them there and nowhere else.
 
 | Event | Today | Proposal | P |
 |---|---|---|---|
@@ -666,11 +723,16 @@ These are arcade cabinets in a station (§4.6). Two choices:
 
 ## 8. Music
 
-Ultra-realism argues against a score. Survey should have none, because the regions, the
-ships and the machines do that job and the Long Empty has to be empty. What stays
-realistic is **music that exists in the world**: something playing in a station while you
-are docked, and the cabinets. A score is Ric's call, and if it comes it gets its own dial
-and never plays in the Long Empty.
+**Deferred.** Ric, 2026-11-13: *"we will come back to music I want some but I'm not
+sure what to do about it yet."* So there will be some, and what kind is open. Things to
+weigh when it comes back:
+
+- **Music in the world**, such as something playing in a station while you are docked,
+  fits ultra-realism without any argument.
+- **A score over Survey** works against the Long Empty, which has to be empty, and
+  against the regions doing their job by ear. If there is a score, the vertical-layering
+  shape (FTL's two layers, §3) lets it thin out to nothing there.
+- Whatever it is, it gets its own dial, and the engine in §4.5 leaves a MUSIC bus for it.
 
 ## 9. Accessibility
 
@@ -710,9 +772,14 @@ fatigue, and change how it is measured:
 ## 11. Order of work
 
 1. **P0**: give `alarm` a real voice, and add the test in §10.1.
-2. **Answer §12**, especially where the recordings come from.
-3. **The foundation**: a sample loader, take rotation, the cockpit convolver, the bus
-   layout in §5, and a loop manager. Nothing should sound different yet.
+2. **The engine's skeleton** (§4.5): recipes, rendering at load with
+   `OfflineAudioContext`, the same code in `node` for the tests and in the listening
+   booth, and the bus layout in §5 with a loop manager. Prove it with three sounds made
+   from nothing (wind, electrical crackle, ice patter), and one made from a seed: the
+   drive's roar from a NASA launch excerpt.
+3. **Seeds**: NASA's launches from here; from Ric's computer, a first set of CC0
+   impacts and machinery from Freesound, or his own recordings. Start
+   `sounds/SOURCES.md` with the first seed. Modal impacts per material follow.
 4. **Space as air** (§4.1): distance, air absorption, pan, occlusion, Doppler, pass-bys
    and the big-event delay. Then move the hearing edge from the screen edge to distance.
 5. **The ship**: idle, engine, RCS, hull impacts by material, breach, death. This is the
@@ -726,26 +793,40 @@ fatigue, and change how it is measured:
 11. **Devices**, Silent Running and the EMP first.
 12. **Regions** (§6.6) with the AMBIENCE dial, and echo in the Warrens and the Leviathan.
 13. The interface hardware, the cabinets and the finale.
-14. Delete the oscillator voices and `make-lasers.py`, and update the README's sound
-    section to say what is then true.
+14. Move the oscillator voices into the cabinets, retire `make-lasers.py` once the engine
+    makes the guns, and update the README's sound section to say what is then true.
 
 ## 12. Settled, and still open
 
-**Settled by Ric, 2026-11-13:** ultra realistic, futuristic, sound carried through space
-as if it were air, the sensor feed, and no speech: the ship does not speak.
+**Settled by Ric, 2026-11-13:**
+
+- Ultra realistic, futuristic, and sound carried through space as if it were air.
+- The sensor feed.
+- No speech: the ship does not speak.
+- Sound fades with distance instead of stopping at the screen edge.
+- The simulators sound like arcade games.
+- Free public recordings first, made into every sound by a small sound engine (§4.5).
+- Music: there will be some, and what kind is decided later (§8).
 
 **Still open:**
 
-1. **Where do the recordings come from?** Ones you make yourself, CC0 libraries, a
-   royalty-free bundle, or a mix (§4.5)? Every file is credited either way.
-2. **The hearing edge.** May sound fade out with distance instead of stopping at the
-   screen edge (§4.1)? That changes the README's rule that off screen means silent.
-3. **The simulators.** Should they sound like arcade cabinets in the room, or like the
-   real war (§6.11)?
-4. **Music.** None in Survey, or a score with its own dial (§8)?
+1. **Downloading from Freesound.** It refuses cloud machines, so a first set of CC0
+   seeds has to come from Ric's computer, or from recordings he makes. Which first?
+2. **The music**, when it comes back (§8).
 
 ## Sources
 
+- Procedural and modal synthesis — [Raghuvanshi et al., Microsoft Research](https://microsoft.com/en-us/research/?p=309038) ·
+  [Ren, Yeh & Lin](https://typeset.io/pdf/example-guided-physically-based-modal-sound-synthesis-1z2lkvntsi.pdf) ·
+  [UNC, sheet metal](https://www.cs.unc.edu/~austonst/tempSupportDamping/data/vrsub.pdf) ·
+  [Farnell, MIT Press practicals](https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/8375/designing_sound.zip/practical31.html) ·
+  [A Sound Effect](https://asoundeffect.com/procedural-game-sound-design) ·
+  [MCV](https://mcvuk.com/development-news/procedural-audio-with-unity/) ·
+  [Fineberg, Walters & Reiss, thunder](https://arxiv.org/pdf/2204.08026.pdf) ·
+  [Queen Mary / Nemisindo](https://qmul.ac.uk/media/news/2021/se/queen-mary-spinout-nemisindo-launches-online-sound-design-service-based-on-procedural-audio-technology-.html)
+- Free sources — [NASA Image and Video Library API](https://images-api.nasa.gov/search?q=launch&media_type=audio) ·
+  [Freesound API](https://www.freesound.org/docs/api/overview.html) ·
+  [CDM on NASA's sound library](https://cdm.link/nasa-posts-huge-library-space-sounds-youre-free-use/)
 - Hyperrealism and Foley — [arXiv 2605.31082](https://arxiv.org/html/2605.31082) ·
   [Langkjær (CORE)](https://core.ac.uk/download/233629168.pdf) ·
   [Designing Sound](https://designingsound.org/2016/02/28/sunday-sound-thought-9-constructing-which-reality/)
