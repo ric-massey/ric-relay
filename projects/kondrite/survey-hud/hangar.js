@@ -403,10 +403,18 @@ HUD.drawHangar = function (st, dt) {
   /* The rule, on the page where the hull is bought and in the place the eye
      is already going — beside the price. A pilot who learns it from the death
      screen learned it by losing a ship; this is the cheaper lesson. */
+  /* Three sentences, one per kind of hull. The haulers get their own,
+     because towing is the thing they are for and it is worth money: the
+     cheapest of them is the first ship that can go and fetch the others. */
+  const hauls = sh.category === "CARGO" || sh.category === "INDUSTRIAL" ||
+                sh.category === "UTILITY";
   fitText(sh.key === "skiff"
             ? "THE SKIFF ALWAYS COMES HOME " + '\u2014' + " THE ONE HULL YOU CANNOT LOSE"
+            : hauls
+            ? "DIE IN IT AND IT STAYS WHERE YOU FELL " + '\u2014' +
+              " BUT THIS ONE TOWS A DEAD HULL WITHOUT A RIG"
             : "DIE IN IT AND IT STAYS WHERE YOU FELL " + '\u2014' +
-              " THE SKIFF ALWAYS COMES HOME",
+              " A TOW RIG BRINGS IT HOME",
           PAGE.EDGE + PAGE.PAD,
           Math.min(dy + detailH - 14, (SCREEN_H || 700) - 10),
           SIZE.cap, sh.key === "skiff" ? CASH_DIM : WARN, "left", 0.85,

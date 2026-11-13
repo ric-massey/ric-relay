@@ -126,8 +126,143 @@ function label3(str, x, y, colour, size) {
   ctx.restore();
 }
 
+/* ── the hull on the line ───────────────────────────────────
+   Where the ship you are dragging actually is, a frame at a time. Pulled
+   toward a point behind you rather than welded to it, so a hard turn throws
+   it wide and the weight is on the screen as well as in the drive. Snapped
+   back if the gap ever opens past the line's length, which is what a warp, a
+   wormhole and a respawn all look like from in here. */
+const TOW_LEN = 3.4;          // multiples of your own radius
+/* How big the thing on the line is, for a round aimed at it and for a rock it
+   is dragged into. The same number the pickup used when it was lying on the
+   floor, so what you could reach is what can now be hit — a function and
+   not a constant, because `PART_RING` is declared in a later chapter. */
+const towRadius = () => (40 + PART_RING) * 0.95;
+
+/* ── the line parts ─────────────────────────────────────
+   One place, because it happens three ways now — shot off, scraped off, or
+   the ship on the other end of it dying — and a hull that only comes off
+   the line properly in one of them is a hull the other two delete. `why` is
+   the sentence the pilot gets; the death screen says it itself, so dying
+   passes nothing. */
+function towGoesSlack(why) {
+  const t = surv.tow, me = ships[0];
+  if (!t) return null;
+  const hx = Number.isFinite(t.x) ? t.x : (me ? me.x : 0);
+  const hy = Number.isFinite(t.y) ? t.y : (me ? me.y : 0);
+  const spot = safeDrop(hx, hy);
+  const back = { key: t.key, hull: true, x: spot.x, y: spot.y,
+                 id: t.id || dropId() };
+  back.name = droppedName(back);
+  surv.dropped.push(back);
+  noteKnown("part", spot.x, spot.y, back.name);
+  surv.tow = null;
+  if (me) applyRefit(me);
+  if (why) {
+    burst(spot.x, spot.y, "#ff8f77", 24, 280 * U);
+    addShake(8);
+    gameSound("lose", spot.x, spot.y);
+    if (surveyHUD) {
+      surveyHUD.notify("THE LINE IS CUT",
+                       why + " " + '\u2014' + " the " + back.name +
+                       " is where it fell", "#ff8f77", 12);
+    }
+    chatter("The line went. The " + back.name + " is back on the floor.",
+            "#ff8f77");
+  }
+  saveSurveyBook();
+  return back;
+}
+
+/* What the line will take before it goes: three hits, or three hard scrapes.
+   Enough that one unlucky round does not undo an hour's flight, little enough
+   that dragging a hull through a fight is a decision rather than a formality
+   with a slower drive. The first one is said out loud, because a line quietly
+   two thirds gone is a rule nobody can see. */
+const TOW_LINE = 3;
+function towStrain(n, why) {
+  const t = surv.tow;
+  if (!t) return;
+  t.strain = (t.strain || 0) + n;
+  addShake(4);
+  if (t.strain >= TOW_LINE) { towGoesSlack(why); return; }
+  gameSound("hit", t.x, t.y);
+  if (!t.warned) {
+    t.warned = true;
+    if (surveyHUD) {
+      surveyHUD.notify("THE LINE IS TAKING IT",
+                       "a hull on a line is not armour " + '\u2014' +
+                       " another hit or two and the " + t.name +
+                       " goes where it falls", "#ffcf5a", 10);
+    }
+  }
+}
+
+function towTick(dt) {
+  const t = surv.tow, me = ships[0];
+  if (!t || !me) return;
+  const len = shipRadius() * TOW_LEN;
+  if (!Number.isFinite(t.x) || !Number.isFinite(t.y)) {
+    t.x = me.x - Math.cos(me.a) * len;
+    t.y = me.y - Math.sin(me.a) * len;
+  }
+  const tx = me.x - Math.cos(me.a) * len;
+  const ty = me.y - Math.sin(me.a) * len;
+  const k = Math.min(1, dt * 4.5);
+  t.x += (tx - t.x) * k;
+  t.y += (ty - t.y) * k;
+  const gap = Math.hypot(t.x - me.x, t.y - me.y);
+  if (gap > len * 1.9) {
+    const f = (len * 1.9) / gap;
+    t.x = me.x + (t.x - me.x) * f;
+    t.y = me.y + (t.y - me.y) * f;
+  }
+
+  /* ── and it is solid ─────────────────────────────────
+     Ric, 2026-11-13, on the first cut of the tow: it "passes through rocks."
+     It does not any more. A hull on a line is wider than the ship pulling it
+     and it does not steer, so what you clip with it is the price of the
+     shortcut you took through a field — and the jerk is felt in your own
+     drive, because the line is short and stiff and whatever the far end
+     caught on takes your speed with it.
+
+     Not while docked or landed: the hull hangs over whatever you have parked
+     on top of, and losing a ship to sitting still would be absurd. It is
+     still pushed out of it, so it is never drawn inside anything. */
+  const t0 = { x: t.x, y: t.y, a: t.a || 0 };
+  const r = towRadius();
+  let snag = false;
+  for (const rk of rocks) {
+    const dx = t.x - rk.x, dy = t.y - rk.y;
+    const d = Math.hypot(dx, dy);
+    const min = rk.r + r;
+    if (d >= min) continue;
+    const nx = d > 1 ? dx / d : 1, ny = d > 1 ? dy / d : 0;
+    t.x = rk.x + nx * min;
+    t.y = rk.y + ny * min;
+    snag = true;
+  }
+  t0.x = t.x; t0.y = t.y;
+  if (solidBounce(t0, r)) { t.x = t0.x; t.y = t0.y; snag = true; }
+  t.hurt = Math.max(0, (t.hurt || 0) - dt);
+  if (snag && !surv.docked && !surv.landed) {
+    me.vx *= 0.78; me.vy *= 0.78;
+    if (t.hurt <= 0) {
+      t.hurt = 0.6;
+      towStrain(1, "you dragged it through something solid");
+      if (!surv.tow) return;
+    }
+  }
+  t.a = Math.atan2(me.y - t.y, me.x - t.x);
+}
+
 function drawPart(pt) {
   if (!onScreen(pt.x, pt.y, 130)) return;
+  /* A dead hull is drawn as the hull it is, not as the spinning triangle
+     every other dropped thing uses. It is a ship lying in the dark with your
+     name on it and at a glance it has to read as one — the triangle made
+     the most expensive thing you have ever lost look like a spare. */
+  if (pt.hull) { drawDeadHull(pt); return; }
   const spin = reduceMotion ? 0 : clock * 0.9 + pt.phase;
   const beat = 0.55 + 0.45 * Math.sin(clock * 2.4 + pt.phase);
   ctx.save();
@@ -172,6 +307,8 @@ function surveyTick(dt) {
      than off the key, so a tap of thrust lights you up again and holding
      course does not. */
   surv.quiet = me.thrusting ? 0 : surv.quiet + dt;
+  // Where the ship on the line has got to. See `towTick`.
+  towTick(dt);
   /* The three verbs that leave something running. The cloak is the only one
      with a rule attached: firing ends it, and `me.firedAt` is set by the
      trigger rather than read from the key, so a shot from any weapon counts

@@ -100,6 +100,22 @@ function applyRefit(ship) {
   ship.speedMul  = sh.speed * (1 + m.speed);
   ship.turnMul   = sh.turn * (1 + m.turn);
   ship.drag      = sh.drag;
+  /* ── and the weight of somebody else's hull on the line ───────────
+     Dead mass behind your own centre, charged in the three numbers that make
+     a ship feel like itself. The ratio of the two hulls rather than a flat
+     penalty: a hauler bringing a courier home barely notices, and a SKIFF
+     dragging a freighter is the long slow frightening trip that makes losing
+     a big hull hurt. Called from wherever the tow is attached or comes off,
+     because this function is not run per frame. See `canTow`. */
+  const towed = surv && surv.tow ? shipSpec(surv.tow.key) : null;
+  ship.towLoad = 0;
+  if (towed) {
+    const load = Math.max(0.5, (towed.size || 1) / (sh.size || 1));
+    ship.towLoad   = load;
+    ship.speedMul  /= 1 + 0.50 * load;
+    ship.thrustMul /= 1 + 0.90 * load;
+    ship.turnMul   /= 1 + 0.70 * load;
+  }
   ship.dmgMul    = sh.dmg;
   ship.rateMul   = sh.rate;
   /* How fast this hull's rounds leave it. A hull already decides what a shot

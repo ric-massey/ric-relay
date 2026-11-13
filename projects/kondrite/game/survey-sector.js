@@ -227,6 +227,10 @@ const CRAFTS = [
      and find. See the ladder's own note in MODULES. */
   { out: "tractorrig", need: { iron: 12, alloy: 10, electronics: 6 } },
   { out: "scattergun", need: { iron: 8, alloy: 8, electronics: 6 } },
+  /* The line and the winch. On the list because the one part a pilot needs
+     after a bad run is the one part they must never be unable to get: a shelf
+     is a flight away and the workbench is at home. */
+  { out: "towrig",     need: { iron: 10, alloy: 8, electronics: 5 } },
 
   /* The ice melter, which is the reason this system exists at all: the answer
      to a long haul is something you build, not something you buy. */
@@ -310,6 +314,8 @@ const MOD_CATS = [
 function mods() {
   const out = { hull: 0, speed: 0, thrust: 0, turn: 0, scan: 0,
                 tractor: 0, reach: 0, pull: 0, reverse: 0, skim: 0, life: 0,
+                // Whether anything on the ship can drag a dead hull home.
+                tow: 0,
                 // The four that used to be the hull's own, or the book's.
                 solar: 0, warp: 0, quiet: 0, melt: 0,
                 // How much of the scanner's cooldown is bought back, 0 to 1.

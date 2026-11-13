@@ -114,6 +114,16 @@ function setupSurvey() {
       .map(d => ({ key: d.key, name: droppedName(d),
                    mod: !!d.mod, hull: !!d.hull, id: d.id || dropId(),
                    x: Math.round(+d.x || 0), y: Math.round(+d.y || 0) })),
+    /* And one on the line, if you closed the tab mid-tow. Re-seated behind
+       the ship by `towTick` on the first frame, which is what the unset
+       position means. */
+    tow: (() => {
+      const t = carried && book.tow;
+      if (!t || typeof t.key !== "string") return null;
+      if (!SHIPS.some(sh => sh.key === t.key)) return null;
+      return { key: t.key, name: droppedName({ key: t.key, hull: true }),
+               id: t.id || dropId(), x: NaN, y: NaN, a: 0 };
+    })(),
     /* The four slots, and the parts you own but are not flying. A slot is
        `null`, or `{ key, fit }` where `fit` is the seconds of installation
        left — zero means it is working. */

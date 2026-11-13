@@ -44,7 +44,7 @@ HUD.drawDeath = function (st, dt) {
      is here. Not lost: left. It names the ship and says the trip is theirs. */
   if (d.hull) {
     fitText("YOUR " + d.hull + " IS STILL OUT THERE " + '\u2014' +
-            " FLY BACK FOR IT", cx, 218, SIZE.val, WARN, "center",
+            " FLY BACK AND TOW IT HOME", cx, 218, SIZE.val, WARN, "center",
             0.6 + 0.4 * beat, SCREEN_W - 160, "0.1em");
   }
 
@@ -127,7 +127,7 @@ HUD.drawDeath = function (st, dt) {
   /* The hull first, then what was bolted to it, then the manifest's parts:
      in the order a pilot would count them. */
   const out = (d.hull ? [d.hull + " HULL"] : [])
-    .concat(d.bolted || [], d.dropped || []);
+    .concat(d.towed ? [d.towed] : [], d.bolted || [], d.dropped || []);
   if (out.length) {
     const line = out.join("  \u00b7  ");
     label("STILL OUT THERE", cx, by + bh + 30, SIZE.cap, AMBER, "center",

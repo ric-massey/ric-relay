@@ -713,6 +713,23 @@ function surveyShots(dt) {
       continue;
     }
 
+    /* ── and the hull you are dragging is in the way ──────────────
+       Ric, 2026-11-13, on the tow as first built: nothing could shoot it off
+       the line. A tow you can only lose by dying yourself is not a risk, and
+       a ship hanging a couple of hundred units behind yours is the easiest
+       thing in the sector to hit. Rounds stop on it whoever fired them, for
+       the same reason a stray round can hit you: it is a real object in the
+       same world. Three of them part the line — see `towStrain`. */
+    if (surv.tow && Number.isFinite(surv.tow.x)) {
+      const tr = towRadius();
+      if (dist2(b.x, b.y, surv.tow.x, surv.tow.y) < tr * tr) {
+        surv.shots.splice(i, 1);
+        burst(b.x, b.y, b.colour || WRECK, 4, 110 * U);
+        towStrain(b.dmg || 1, "they shot it off the line");
+        continue;
+      }
+    }
+
     /* A patrol's rounds go the other way. They are in the same list because
        they are the same object and the same drawing; the only difference is
        who they are allowed to hit — and a neutral whose fire could clip you
@@ -898,6 +915,28 @@ function surveyStations() {
       break;
     }
   }
+  /* ── and a hull comes off the line ──────────────────────────
+     Your own dock and nowhere else: the hangar is at home, and the trip back
+     to it is what a ship you died in now costs. Ric, 2026-11-13, on hull
+     loss: *"you would have to be able to tow it."* This is the end of that
+     sentence — a tow is only a tow until it is in the dock. */
+  if (surv.docked && surv.docked.home && surv.tow) {
+    const got = surv.tow;
+    surv.owned.add(got.key);
+    surv.tow = null;
+    applyRefit(me);
+    burst(me.x, me.y, CASH, 30, 300 * U);
+    gameSound("win", me.x, me.y);
+    addShake(4);
+    if (surveyHUD) {
+      surveyHUD.notify(got.name + " RECOVERED",
+                       "back in your hangar, and yours to fly again",
+                       CASH, 11);
+    }
+    chatter("The " + got.name + " is in the dock. It is yours again.", CASH);
+    saveSurveyBook();
+  }
+
   /* Arriving is the moment the shelf is read, not every frame you sit on it —
      this whole block runs per frame and clears `docked` at the top, so without
      the comparison this would be a set rebuilt sixty times a second. */

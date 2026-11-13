@@ -68,6 +68,60 @@ function drawWreck(w) {
 
 // The wall's markers: a corner bracket each, so four of them read as one
 // square from the middle even though you can only ever see one at a time.
+/* A hull lying where its pilot died, drawn as the ship it is. The art is
+   scaled to the pickup ring rather than to the hull's own size, because the
+   ring is the hitbox and a picture bigger than its hitbox is a lie you fly
+   through. */
+function drawDeadHull(pt) {
+  const spec = shipSpec(pt.key);
+  if (!spec) return;
+  const r = (pt.r + PART_RING) * 0.95;
+  const beat = 0.55 + 0.45 * Math.sin(clock * 2.4 + (pt.phase || 0));
+  ctx.save();
+  ctx.translate(pt.x, pt.y);
+  // Dead and drifting: a slow turn, off the same phase as everything else.
+  ctx.rotate((pt.phase || 0) + (reduceMotion ? 0 : clock * 0.08));
+  ctx.scale(r / 12, r / 12);
+  drawHullArt(spec, "#8a97a8", 12 / r, 0.85, { line: 1.7 });
+  ctx.restore();
+  glow(CASH, 1.6, 0.22 + beat * 0.42, () => {
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, pt.r + PART_RING + beat * 18, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+  label3(pt.name, pt.x, pt.y + pt.r + 62, CASH);
+}
+
+/* The one you are dragging home: the line, and the hull at the end of it.
+   Drawn before the ships, so your own hull sits over the line rather than
+   under it. */
+function drawTow() {
+  const t = surv.tow, me = ships[0];
+  if (!t || !me || !me.alive) return;
+  if (!Number.isFinite(t.x)) return;
+  const spec = shipSpec(t.key);
+  if (!spec) return;
+  if (!onScreen(t.x, t.y, 260) && !onScreen(me.x, me.y, 260)) return;
+  // The same radius a round is tested against. See `towRadius`.
+  const r = towRadius();
+  ctx.save();
+  ctx.strokeStyle = "#8a97a8";
+  ctx.globalAlpha = 0.8;
+  ctx.lineWidth = 2.4 * U;
+  ctx.beginPath();
+  ctx.moveTo(me.x, me.y);
+  ctx.lineTo(t.x, t.y);
+  ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.translate(t.x, t.y);
+  ctx.rotate(t.a || 0);
+  ctx.scale(r / 12, r / 12);
+  drawHullArt(spec, "#9fb0c2", 12 / r, 0.92, { line: 1.7 });
+  ctx.restore();
+  label3(t.name, t.x, t.y + r + 54, "#9fb0c2");
+}
+
 function drawMark(m) {
   if (!onScreen(m.x, m.y, 120)) return;
   const beat = 0.6 + 0.4 * Math.sin(clock * 2 + m.x * 0.01);

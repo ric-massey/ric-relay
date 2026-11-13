@@ -202,6 +202,11 @@ function afterGate() {
 }
 
 function objectiveTarget() {
+  /* A hull already on the line: the errand is the dock, not the wreck. */
+  if (surv.tow) {
+    return { key: "tow", name: "YOUR OWN DOCK",
+             x: HOME_STATION.x, y: HOME_STATION.y };
+  }
   /* Before anything else: the hull you died in. It is the one thing on the
      board with a clock on it — anything out there can take it first — and an
      arrow that went on pointing at a landmark while your ship lay in the dark
@@ -258,11 +263,22 @@ const bearingTo = (me, t) =>
   Math.round(((Math.atan2(t.y - me.y, t.x - me.x) * 180) / Math.PI + 450) % 360);
 
 function objective() {
+  if (surv.tow) {
+    return { text: "TOW THE " + surv.tow.name + " HOME",
+             sub: "it is not yours again until it is in your own dock",
+             brief: "tow it home", colour: CASH };
+  }
   const wreck = lostHull();
   if (wreck) {
+    /* Two sentences, and which one depends on whether the pilot can finish
+       the errand they are being sent on. Telling somebody to go and fetch a
+       ship they have no way to move is worse than saying nothing. */
     return { text: "GO BACK FOR YOUR " + droppedName(wreck),
-             sub: "it is where you fell, with what was bolted to it " + '\u2014' +
-                  " until something else takes it",
+             sub: canTow()
+                    ? "it is where you fell, with what was bolted to it " +
+                      '\u2014' + " until something else takes it"
+                    : "you cannot move it yet " + '\u2014' + " fit a TOW " +
+                      "RIG, or go back in a hauler",
              brief: "where you fell", colour: "#ff8f77" };
   }
   if (stationWhole()) {
@@ -455,22 +471,54 @@ function surveyParts(dt) {
     /* A spare takes room, so it can be refused — and being refused must leave
        it lying there rather than quietly deleting it. Said once a pass, by the
        same words every other full-hold refusal uses. */
-    /* Your own hull, lying where you died in it. It does not go in the
-       hold — it is a ship — so there is nothing to refuse it: reaching it is
-       the whole errand, and it is back in the hangar at home when you do. */
+    /* Your own hull, lying where you died in it. It does not go in the hold
+       — it is a ship — so touching it is not taking it. Ric, 2026-11-13:
+       *"for hull loss you would have to be able to tow it, which means u need
+       the part for it attatched to your ship or the ships that can tow
+       others."* Reaching it is half the errand; the line home is the other
+       half, and the dock at the end of it is where it becomes yours again. */
     if (pt.hull) {
+      if (surv.tow) {
+        if (!pt.said) {
+          pt.said = true;
+          gameSound("hit", pt.x, pt.y);
+          if (surveyHUD) {
+            surveyHUD.notify("ONE AT A TIME",
+                             "you are already towing the " + surv.tow.name,
+                             "#ff8f77", 8);
+          }
+        }
+        continue;
+      }
+      /* Refused rather than taken, and said out loud: a pilot who flew back
+         for a ship and bounced off it would conclude the game was broken. */
+      if (!canTow()) {
+        if (!pt.said) {
+          pt.said = true;
+          gameSound("hit", pt.x, pt.y);
+          if (surveyHUD) {
+            surveyHUD.notify("NOTHING TO TOW IT WITH",
+                             "fit a TOW RIG \u2014 any shelf has one \u2014 or " +
+                             "come back in a hauler", "#ff8f77", 11);
+          }
+        }
+        continue;
+      }
       surv.parts.splice(i, 1);
       dropEchoAt(pt.x, pt.y);
       surv.known.delete(knownId("part", pt.x, pt.y));
       const lost = surv.dropped.findIndex(d => d.id === pt.id);
       if (lost >= 0) surv.dropped.splice(lost, 1);
-      surv.owned.add(pt.key);
-      burst(pt.x, pt.y, CASH, 30, 300 * U);
+      surv.tow = { key: pt.key, name: pt.name, id: pt.id,
+                   x: pt.x, y: pt.y, a: me.a };
+      // The drive has to know what it is pulling before the next frame.
+      applyRefit(me);
       gameSound("win", pt.x, pt.y);
       addShake(5);
       if (surveyHUD) {
-        surveyHUD.notify(pt.name + " RECOVERED",
-                         "it is back in your hangar at home", CASH, 10);
+        surveyHUD.notify(pt.name + " ON THE LINE",
+                         "tow it to your own dock \u2014 it is not yours " +
+                         "until it is in the hangar", CASH, 11);
       }
       saveSurveyBook();
       continue;

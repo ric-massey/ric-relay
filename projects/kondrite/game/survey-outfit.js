@@ -118,6 +118,21 @@ const SHIP_CATEGORIES = [
   "INDUSTRIAL", "CARGO", "UTILITY", "COURIER"
 ];
 
+/* ── who can tow, and what it costs ────────────────────────────────────
+   A dead hull is a ship, not a part: nothing carries it and nothing stows it.
+   Either there is a line on your nose or you are flying something built to
+   drag things, and those three categories are the ships that are built to.
+
+   The cost is weight. A hull on the line is dead mass behind your own centre,
+   and `applyRefit` charges for it in the three numbers that make a ship feel
+   like itself: how fast it will go, how hard it pulls away and how well it
+   turns. The charge is the ratio of the two hulls, so a hauler bringing a
+   courier home barely notices and a SKIFF dragging a GRANARY is a long, slow,
+   frightening trip — which is the whole of the risk Ric asked for. */
+const TOW_HULLS = ["CARGO", "INDUSTRIAL", "UTILITY"];
+const hullTows = key => TOW_HULLS.indexOf(shipSpec(key).category) >= 0;
+const canTow = () => !!surv && (mods().tow > 0 || hullTows(surv.ship));
+
 const shipSpec = key =>
   SHIPS.find(sh => sh.key === key) || SHIPS[0];
 
@@ -725,6 +740,34 @@ const MODULES = [
     note: "the field run hot: 60% further out than the mark two and a harder " +
           "pull, so a field of debris comes in while you are still crossing it",
     eff: { tractor: 1, reach: 0.6, pull: 0.5 } },
+
+  /* ── the tow rig ──────────────────────────────────────
+     Ric, 2026-11-13, on losing a hull: *"for hull loss you would have to be
+     able to tow it, which means u need the part for it attatched to your ship
+     or the ships that can tow others."* Until this, reaching your own wreck
+     recovered it on touch, which made the trip back a formality — you flew
+     out, brushed against it, and it was in your hangar.
+
+     So the beam's category gets a fourth entry that is not a beam. A tractor
+     field stows loose salvage; this is a hard line and a winch, and the only
+     thing in the game that can move a dead ship. It is cheap and any shelf
+     has one, deliberately: you wake up in the SKIFF with whatever the last
+     run left you, and a rule whose answer you cannot afford is a rule that
+     deletes ships.
+
+     The haulers need none — see `hullTows`. Moving something bigger than
+     itself is what a CARGO, INDUSTRIAL or UTILITY hull is *for*, and the
+     cheapest of them (the CRADLE) is twenty times this part, so the rig stays
+     the early answer and the hauler is the one you grow into. */
+  { key: "towrig", name: "TOW RIG", cat: "tractor",
+    rarity: "common", cost: 800, deep: 0, get: ["buy", "craft"],
+    where: "any shelf there is, and the workbench builds one out of a line " +
+           "and a winch \u2014 it is meant to be the one part you can always " +
+           "get back to",
+    note: "a hard line and a winch. The one part that can bring a dead hull " +
+          "home: reach the ship you died in and it comes back on the line, " +
+          "slowly. The big haulers tow without one",
+    eff: { tow: 1 } },
 
   /* ── weapons ──────────────────────────────────────────────────────────
      Each fires on the trigger you already have, at its own rate, on top of the

@@ -196,6 +196,8 @@ function drawSurveyWorld() {
   for (const d of surv.drones) drawDrone(d);
   for (const m of surv.marks) drawMark(m);
   for (const pt of surv.parts) drawPart(pt);
+  // The ship on the line, under your own. See `drawTow`.
+  drawTow();
   for (const p of pickups) if (onScreen(p.x, p.y, 30)) drawPickup(p);
   drawDevices();
   drawCash();

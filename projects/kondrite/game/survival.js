@@ -515,6 +515,19 @@ function surveyDie(cause) {
     surv.death.bolted = bolted.map(k => moduleSpec(k).name);
   }
 
+  /* And the one on the line, if you were dragging a ship home when it
+     happened. It stops where it is rather than where you are: the line goes
+     slack, and a tow is a few hundred units behind you. Two wrecks on the
+     floor is a legal state, and the arrow takes the nearer — see
+     `lostHull`. */
+  /* Through the same door as a line that is shot or scraped off, so the
+     three ways of losing a tow cannot drift apart. It says nothing of its
+     own: the death screen is already saying it. */
+  if (surv.tow) {
+    const back = towGoesSlack(null);
+    if (back) surv.death.towed = back.name;
+  }
+
   burst(ship.x, ship.y, "#ff8f77", 40, 420 * U);
   addShake(12);
   gameSound("lose", ship.x, ship.y);

@@ -1192,21 +1192,260 @@ const storeOf = (cf, key) => {
         "the lost hull did not survive the book");
   check(!s2.owned.has("lance"), "reloading handed the lost hull back");
 
-  // Fly back for it, and it is yours again.
+  /* Fly back to it in the SKIFF with four empty slots, and nothing
+     happens: it is a ship, and a ship has to be towed. Ric, 2026-11-13.
+     What the game must not do here is quietly recover it, and what it must
+     not do either is bounce the pilot off it in silence. */
   const w2 = s2.dropped.find(x => x.hull);
   s2.docked = null;
   m2.x = w2.x; m2.y = w2.y; m2.vx = m2.vy = 0;
   for (let i = 0; i < 30; i++) { m2.invuln = 999; now += 1000 / 60; again.cf.step(); }
-  check(s2.owned.has("lance"), "reaching your own hull did not recover it");
-  check(!s2.dropped.some(x => x.hull), "the recovered hull is still on the floor");
-  check(!/GO BACK FOR/.test(again.cf.objective().text),
-        "the objective still sends you back for a hull you have: " +
-        again.cf.objective().text);
+  check(!s2.owned.has("lance") && !s2.tow,
+        "a hull came home on touch, with nothing aboard that could tow it");
+  check(s2.dropped.some(x => x.hull),
+        "the hull it could not tow left the floor anyway");
+  check(/TOW RIG/.test(again.cf.objective().sub),
+        "nothing says what it takes to bring it home: " +
+        again.cf.objective().sub);
 
   console.log("  hullloss   the SKIFF always comes home \u00b7 a bought hull " +
               "stays where you fell with what was bolted to it \u00b7 the " +
-              "death screen, the objective and the book all say so \u00b7 fly " +
-              "back and it is yours");
+              "death screen, the objective and the book all say so \u00b7 and " +
+              "an empty SKIFF cannot take it off the floor");
+}
+
+// ── 8e. and a hull comes home on a line ────────────────────────
+/* Ric, 2026-11-13: "for hull loss you would have to be able to tow it, which
+   means u need the part for it attatched to your ship or the ships that can
+   tow others." Two ways to be able to, then: the TOW RIG in one of your four
+   slots, or a hull built to drag things — CARGO, INDUSTRIAL, UTILITY.
+
+   Both are flown the whole way here, because the trip is the point: out to
+   the wreck, onto the line, and home to the one dock that has your hangar in
+   it. Half of this suite is that the tow *costs* something; the other half is
+   that it ends. */
+{
+  const towRun = (seed, how) => {
+    const { cf } = boot("?debug=1&seed=" + seed);
+    cf.start("survey", 1);
+    const surv = cf.survey();
+    const me = cf.live().ships[0];
+    const home = cf.home();
+    const step = n => {
+      for (let i = 0; i < n; i++) {
+        me.invuln = 999; now += 1000 / 60; cf.step();
+      }
+    };
+    // Lose a LANCE a long way out, and wake up in the SKIFF.
+    surv.owned.add("lance"); surv.ship = "lance";
+    surv.docked = null;
+    me.x = home.x + 52000; me.y = home.y + 9000; me.vx = me.vy = 0;
+    step(4);
+    cf.die("rock");
+    cf.respawn();
+    const wreck = surv.dropped.find(d => d.hull);
+    check(!!wreck, seed + ": nothing was left on the floor to go back for");
+    if (how === "rig") surv.slots[0] = { key: "towrig", fit: 0 };
+    else { surv.owned.add("drayman"); surv.ship = "drayman"; }
+    cf.applyParts();
+    const loose = me.speedMul;
+    // Out to it.
+    surv.docked = null;
+    me.x = wreck.x; me.y = wreck.y; me.vx = me.vy = 0;
+    step(6);
+    return { cf, surv, me, home, wreck, loose, step };
+  };
+
+  // ── the part ────────────────────────────────────────────────────────────
+  {
+    const r = towRun(8805, "rig");
+    const { cf, surv, me } = r;
+    check(!!surv.tow && surv.tow.key === "lance",
+          "a rig fitted and the hull did not come onto the line");
+    check(!surv.dropped.some(d => d.hull),
+          "the hull is on the line and lying on the floor at the same time");
+    check(!surv.owned.has("lance"),
+          "a hull is back in the hangar before it has been towed there");
+    /* It has to be felt. A tow with no weight on it is a touch pickup with
+       extra steps, which is the thing this change exists to undo. */
+    check(me.towLoad > 0 && me.speedMul < r.loose,
+          "towing a hull cost the drive nothing: " + r.loose + " to " +
+          me.speedMul);
+    check(/TOW THE LANCE HULL HOME/.test(cf.objective().text),
+          "the objective while towing reads: " + cf.objective().text);
+    const tgt = cf.objectiveTarget();
+    check(!!tgt && Math.hypot(tgt.x - r.home.x, tgt.y - r.home.y) < 1,
+          "the arrow while towing does not point at your own dock");
+
+    // It hangs behind you rather than inside you.
+    r.step(40);
+    const gap = Math.hypot(surv.tow.x - me.x, surv.tow.y - me.y);
+    check(Number.isFinite(gap) && gap > 1,
+          "the hull on the line is nowhere in particular: " + gap);
+
+    // It survives the tab, which is the whole reason it is in the book.
+    cf.leave();
+    const again = bootKeepingStorage("?debug=1&seed=8805");
+    again.cf.start("survey", 1);
+    const s2 = again.cf.survey();
+    check(!!s2.tow && s2.tow.key === "lance",
+          "closing the tab mid-tow lost the ship on the line");
+    check(!s2.owned.has("lance"), "the reload handed the towed hull back");
+
+    // And the dock is where it stops being a tow.
+    const m2 = again.cf.live().ships[0];
+    s2.slots[0] = { key: "towrig", fit: 0 };
+    again.cf.applyParts();
+    m2.x = r.home.x + 40; m2.y = r.home.y; m2.vx = m2.vy = 0;
+    for (let i = 0; i < 8; i++) { m2.invuln = 999; now += 1000 / 60; again.cf.step(); }
+    check(again.cf.places().home, "the harness never got the ship into the dock");
+    check(!s2.tow, "docking at home left the hull on the line");
+    check(s2.owned.has("lance"),
+          "a hull towed into your own dock is not in the hangar");
+    check(m2.towLoad === 0 && !/TOW THE/.test(again.cf.objective().text),
+          "still towing a ship that is sitting in the dock");
+  }
+
+  // ── or the hull ─────────────────────────────────────────────────────────
+  {
+    const r = towRun(8806, "hauler");
+    const { surv, me } = r;
+    check(surv.slots.every(sl => !sl),
+          "the hauler was given a rig after all, which proves nothing");
+    check(!!surv.tow && surv.tow.key === "lance",
+          "a DRAYMAN could not take a hull on the line without a rig");
+    check(me.towLoad > 0 && me.speedMul < r.loose,
+          "the hauler felt no weight: " + r.loose + " to " + me.speedMul);
+    /* And it is the better tool, which is the point of buying one: the same
+       hull behind a hauler is a smaller fraction of the hauler. */
+    check(me.towLoad < 1,
+          "a hauler tows a courier as badly as a SKIFF would: " + me.towLoad);
+  }
+
+  // ── and a sport hull with nothing fitted cannot ─────────────────────────
+  {
+    const { cf } = boot("?debug=1&seed=8807");
+    cf.start("survey", 1);
+    const surv = cf.survey();
+    const me = cf.live().ships[0];
+    const home = cf.home();
+    surv.owned.add("lance"); surv.ship = "lance";
+    surv.docked = null;
+    me.x = home.x + 44000; me.y = home.y - 7000; me.vx = me.vy = 0;
+    for (let i = 0; i < 4; i++) { now += 1000 / 60; cf.step(); }
+    cf.die("rock");
+    cf.respawn();
+    const wreck = surv.dropped.find(d => d.hull);
+    surv.owned.add("needle"); surv.ship = "needle";
+    cf.applyParts();
+    surv.docked = null;
+    me.x = wreck.x; me.y = wreck.y; me.vx = me.vy = 0;
+    for (let i = 0; i < 10; i++) { me.invuln = 999; now += 1000 / 60; cf.step(); }
+    check(!surv.tow && !surv.owned.has("lance"),
+          "a NEEDLE with four empty slots towed a hull home");
+    check(surv.dropped.some(d => d.hull), "it left the floor anyway");
+  }
+
+  /* ── it is a real object: it can be shot off the line ────────────
+     Ric, 2026-11-13, on the first cut of the tow: nothing could shoot it off
+     and it passed through rock. A tow you can only lose by dying yourself is
+     a formality with a slower drive. */
+  {
+    const r = towRun(8809, "rig");
+    const { cf, surv, me } = r;
+    const live = cf.live();
+    check(!!surv.tow, "nothing on the line to shoot at");
+    r.step(20);
+    /* The field goes first: a round has to be able to *reach* the hull, and
+       nothing here can promise open sky three hundred units behind you. */
+    live.rocks.length = 0;
+    surv.tow.strain = 0;
+    const put = () => {
+      surv.shots.push({ x: surv.tow.x, y: surv.tow.y, vx: 2, vy: 0,
+                        life: 3, dmg: 1, colour: "#ffffff" });
+      me.invuln = 999; now += 1000 / 60; cf.step();
+    };
+    put();
+    check(!surv.shots.length, "a round flew straight through the hull on the line");
+    check(!!surv.tow && surv.tow.strain >= 1,
+          "the round cost the line nothing: " +
+          (surv.tow && surv.tow.strain));
+    put();
+    check(!!surv.tow, "two rounds parted the line, and the line takes three");
+    put();
+    check(!surv.tow, "three rounds into the hull and the line held");
+    const down = surv.dropped.filter(d => d.hull);
+    check(down.length === 1 && down[0].key === "lance",
+          "the hull shot off the line is not lying on the floor");
+    check(me.towLoad === 0,
+          "the drive is still dragging a hull that is not there");
+  }
+
+  /* ── and it does not pass through a world ──────────────────── */
+  {
+    const r = towRun(8810, "rig");
+    const { cf, surv, me } = r;
+    const pl = surv.planets[0];
+    check(!!pl, "this sector made no world to drag a hull into");
+    if (pl) {
+      me.x = pl.x + pl.r + 40; me.y = pl.y; me.a = 0; me.vx = me.vy = 0;
+      // The worst case there is: the hull starting dead centre in a world.
+      surv.tow.x = pl.x; surv.tow.y = pl.y; surv.tow.strain = 0;
+      for (let i = 0; i < 3; i++) { me.invuln = 999; now += 1000 / 60; cf.step(); }
+      const out = surv.tow
+        ? Math.hypot(surv.tow.x - pl.x, surv.tow.y - pl.y) : Infinity;
+      check(out >= pl.r,
+            "the hull on the line sat inside a world: " + Math.round(out) +
+            " from the middle of one " + Math.round(pl.r) + " in radius");
+      check(!!surv.tow, "one scrape parted the line, and the line takes three");
+    }
+  }
+
+  /* ── and dying with one on the line ────────────────────────
+     The state this system has to be able to be in: a hauler, towing the hull
+     it went out to fetch, killed on the way home. Two wrecks on the floor,
+     both of them real places, and one arrow that has to choose. */
+  {
+    const r = towRun(8808, "hauler");
+    const { cf, surv, me } = r;
+    check(!!surv.tow, "nothing was on the line to lose");
+    r.step(30);
+    const hung = { x: surv.tow.x, y: surv.tow.y };
+    cf.die("rock");
+    const hulls = surv.dropped.filter(d => d.hull);
+    check(hulls.length === 2,
+          "dying while towing left " + hulls.length + " hulls on the floor, " +
+          "not the one you were flying and the one you were dragging");
+    check(hulls.every(d => Number.isFinite(d.x) && Number.isFinite(d.y)),
+          "a wreck was left at no particular place");
+    check(!surv.tow, "the line held after the ship on the end of it was dead");
+    check(surv.death.towed === "LANCE HULL",
+          "the death screen does not say what was on the line: " +
+          surv.death.towed);
+    const towed = hulls.find(d => d.key === "lance");
+    check(!!towed && Math.hypot(towed.x - hung.x, towed.y - hung.y) < 12000,
+          "the towed hull did not stop where it was hanging");
+    check(hulls.some(d => d.key === "drayman"),
+          "the hauler it happened in came home anyway");
+
+    /* And the arrow takes the nearer of the two, because one that picked the
+       older would fly you past the closer one. */
+    cf.respawn();
+    r.step(2);
+    const near = hulls.reduce((a, b) =>
+      Math.hypot(a.x - me.x, a.y - me.y) <= Math.hypot(b.x - me.x, b.y - me.y)
+        ? a : b);
+    const tgt = cf.objectiveTarget();
+    check(!!tgt && tgt.key === "hull" && tgt.x === near.x && tgt.y === near.y,
+          "the arrow does not lead to the nearer of two wrecks");
+  }
+
+  console.log("  tow        a dead hull needs a TOW RIG or a hauler \u00b7 it " +
+              "comes onto a line behind you, slower and worse to turn \u00b7 " +
+              "it survives the tab \u00b7 your own dock is where it " +
+              "becomes yours again \u00b7 three rounds or three scrapes part " +
+              "the line \u00b7 and dying on the way home leaves two wrecks " +
+              "and one arrow");
 }
 
 // ── 9. every trick is a part, and the ship itself has none ────────────────

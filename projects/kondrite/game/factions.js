@@ -45,9 +45,22 @@ const droppedName = d => {
   if (!spec) return (d && d.name) || "";
   return d.hull ? spec.name + " HULL" : spec.name;
 };
-// The hull you died in and have not gone back for, if there is one.
-const lostHull = () =>
-  (surv && surv.dropped || []).find(d => d && d.hull) || null;
+/* The hull you died in and have not gone back for. There can be two of
+   them — die while towing one and both are on the floor — so it is the
+   nearest, because an arrow that picked the older of two wrecks would send
+   you past the closer one. */
+const lostHull = () => {
+  const list = (surv && surv.dropped || []).filter(d => d && d.hull);
+  if (list.length < 2) return list[0] || null;
+  const me = ships[0];
+  if (!me) return list[0];
+  let best = list[0], bd = Infinity;
+  for (const d of list) {
+    const dd = Math.hypot(d.x - me.x, d.y - me.y);
+    if (dd < bd) { bd = dd; best = d; }
+  }
+  return best;
+};
 
 /* Jumping. Only to somewhere already written down, and only once the drive is
    built — this is fast travel across ground you have covered, never a way to
@@ -227,7 +240,8 @@ const OPENING = [
     when: () => surv.ship !== "skiff" && !surv.docked && !surv.landed,
     text: "THIS HULL DOES NOT COME HOME ON ITS OWN",
     sub: "die in it and it stays where you fell, with everything bolted to " +
-         "it. the skiff always comes back",
+         "it. a tow rig or a hauler brings one home. the skiff always comes " +
+         "back on its own",
     colour: "#ff8f77" },
 
   { key: "leash",

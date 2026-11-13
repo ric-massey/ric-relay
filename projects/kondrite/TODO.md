@@ -373,20 +373,99 @@ communicated clearer." That one is not built.
   wreck so the arrow lets go of it, and a hull a scavenger takes is gone with
   no way to buy it back except new.
 
-- [ ] **N16 - You have to tow a hull home.** Ric, 2026-11-13: *"for hull loss
-  you would have to be able to tow it, which means u need the part for it
-  attatched to your ship or the ships that can tow others."* Right now reaching
-  your own wreck recovers it on touch (the `pt.hull` branch in
-  `game/survey-bearings.js`), which makes the trip back a formality. It should
-  need a capability: a tow part fitted, or a hull that can tow on its own.
+- [x] **N18 · You have to tow a hull home.** Ric, 2026-11-13, on the hull
+  loss built the same day: *"for hull loss you would have to be able to tow it,
+  which means u need the part for it attatched to your ship or the ships that
+  can tow others."* He was right, and it was the hole in N15: reaching your own
+  wreck recovered it **on touch**, so the consequence the game had just handed
+  you was undone by brushing against it. Numbered N18 because another session
+  had already taken N16 and N17 while this was being written.
 
-  *Not built.* The one thing whoever builds this must solve first: you wake in
-  the SKIFF. If the tow needs a part, the SKIFF has to be able to fit it and you
-  have to be able to afford it, or a dead hull is unrecoverable and the loss is
-  permanent after all - which is not what was agreed. Likely shape: the SKIFF
-  can always fit a cheap tow rig, the haulers tow without one, and towing is
-  slow enough to be its own risk. Interacts with the tractor ladder (MK1 bought
-  / MK2 built or found / MK3 found) in `game/survey-outfit.js`.
+  *Built.* Two ways to be able to tow, exactly as he put it.
+
+    · **The part.** `towrig`, the TOW RIG: 800, `cat: "tractor"`, on every
+      shelf in the sector and on the workbench for 10 iron, 8 alloy and 5
+      electronics. A hard line and a winch rather than a field — the beams
+      stow loose salvage and this moves a dead ship, which is why it is the
+      category's fourth entry and not a fourth rung.
+    · **The hull.** `hullTows`: CARGO, INDUSTRIAL and UTILITY tow without
+      one, because dragging something bigger than itself is what a hauler is
+      *for*. The cheapest of them is the CRADLE at 16,000, twenty times the
+      rig, so the rig stays the early answer and the hauler is the one you
+      grow into — and the hangar page says so on every hauler.
+
+  **What it costs.** `applyRefit` charges dead mass behind your centre against
+  the three numbers that make a hull feel like itself: top speed, pull-away and
+  turn, scaled by the *ratio* of the two hulls. A SKIFF dragging a freighter is
+  a long slow frightening trip; a hauler bringing a courier home barely
+  notices. That ratio is the whole of the risk — towing is not a button, it
+  is a flight you have to survive twice.
+
+  **The line.** `towTick` hangs it three and a bit radii behind you, pulled
+  toward that point rather than welded to it, so a hard turn throws it wide;
+  snapped back if the gap ever opens past 1.9x, which is what a warp, a
+  wormhole and a respawn look like from in there. `drawTow` draws the line and
+  the hull at the end of it. And a wreck on the floor is now drawn as **the
+  hull it is** (`drawDeadHull`) instead of the spinning triangle every dropped
+  thing shared: the most expensive thing you have ever lost looked like a
+  spare.
+
+  **Where it ends: your own dock, and nowhere else.** `surveyStations` takes it
+  off the line at the home station — the hangar is there — and only then
+  is it back in `surv.owned`. Die on the way and it stops where it hung, so two
+  wrecks on the floor is a legal state and `lostHull` takes the nearer of them.
+  It survives a closed tab: the book carries `tow` as a key and an id, and the
+  position is re-seated on the next frame.
+
+  **Said five times**, since "phenomenally clearly" was the condition for the
+  whole idea: the hangar line under the price (three versions — skiff,
+  hauler, everything else), the at-risk beat the first time you leave a dock in
+  a bought hull, the death screen (FLY BACK AND **TOW** IT HOME, with the towed
+  hull listed under STILL OUT THERE), the objective while a wreck is out there
+  (*"you cannot move it yet — fit a TOW RIG, or go back in a hauler"* when
+  you cannot, the wreck's bearing when you can), and the objective while you
+  are towing (TOW THE LANCE HULL HOME, arrow on your own dock). Reaching a hull
+  you cannot move says NOTHING TO TOW IT WITH rather than bouncing you off it
+  in silence.
+
+  **The trap, solved:** you wake in the SKIFF, and a rule whose answer you
+  cannot afford would delete ships. Every hull has four slots, the rig is 800,
+  and every shop stocks one. The cost is a slot for the trip.
+
+  `test/survey.js` §8d (an empty SKIFF cannot take it off the floor) and
+  §8e (the rig, the hauler, the weight, the tab, the dock, and a NEEDLE
+  that cannot).
+
+  **And it is a real object**, which for the first hour of its life it was
+  not. Ric read my own note back at me: *"the towed hull has no hitbox, so
+  nothing can shoot it off the line and it passes through rocks."* That was
+  the thing that would have made the whole errand a formality with a slower
+  drive — a tow you can only lose by dying yourself is not a risk. So:
+
+    · `towRadius` is the same disc the wreck had while it lay on the floor,
+      so what you could reach is exactly what can be hit.
+    · Any round that reaches it stops on it, whoever fired it, for the same
+      reason a stray round in a war can hit you.
+    · It is pushed out of rock, worlds, dead hulls, the Leviathan, the Vault
+      and the Warrens — `solidBounce`, the same test every other ship in
+      the sector obeys — and what it catches on takes speed off *your*
+      drive, because the line is short and stiff.
+    · The line takes three hits or three hard scrapes (`TOW_LINE`; a scrape
+      counts no oftener than once every 0.6s) and then parts, dropping the
+      hull where it hung. The first strain is said out loud, because a line
+      quietly two thirds gone is a rule nobody can see.
+    · Not while docked or landed. The hull hangs over whatever you have
+      parked on top of, and losing a ship to sitting still would be absurd.
+
+  `towGoesSlack` is the one door all three ways out of a tow go through —
+  shot off, scraped off, or the ship on the other end dying — because a
+  hull that only comes off the line properly in one of them is a hull the
+  other two delete.
+
+  *Not done:* no insurance, and still no way to abandon a wreck so the arrow
+  lets go of it. A scavenger reaching one first takes it for good. And enemy
+  *ships* still fly through the hull on the line; only their rounds stop on
+  it.
 
 ---
 

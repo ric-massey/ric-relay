@@ -728,11 +728,29 @@ else gets there first. Nothing is destroyed by dying: it is on the chart by
 name and the arrow leads to it. What it costs is the trip — made in the worst
 ship you own, to the place that just killed you in a better one.
 
-It is said four times, because the condition was that it be communicated
+It is said five times, because the condition was that it be communicated
 "phenomenally clearly": on the hangar page beside the price, the first time
-you leave a dock in a bought hull, on the death screen in its own line, and
-by the objective afterwards. Hull prices came down to match — a ship you can
-lose has to be a ship you can afford to lose.
+you leave a dock in a bought hull, on the death screen in its own line, by the
+objective afterwards, and again by the objective while you are dragging one
+home. Hull prices came down to match — a ship you can lose has to be a ship
+you can afford to lose.
+
+**And you have to tow it.** Ric, the same day: *"for hull loss you would have
+to be able to tow it, which means u need the part for it attatched to your ship
+or the ships that can tow others."* Touching your own wreck does nothing —
+it is a ship, not a part. Either a TOW RIG is in one of your four slots (800,
+on every shelf) or you are flying a hauler, which needs none. Then it comes
+onto a line behind you and you are slower, slower to pull away and worse to
+turn, by the ratio of the two hulls: a SKIFF dragging a freighter is a long
+frightening trip, a hauler bringing a courier home hardly notices. It is yours
+again when it is in your own dock, and nowhere else.
+
+And it is a real object out there, not a decoration: rounds stop on it whoever
+fired them, it is pushed out of rock and worlds and walls like any other ship,
+and what it catches on takes speed off your own drive. Three hits or three hard
+scrapes and the line parts, leaving the hull where it hung — as does dying
+on the way home, which is how two wrecks end up on the floor with one arrow
+between them.
 
 **And how far you can go is drawn on the chart.** One dashed ring round home:
 out and back on one tank, in the hull you are flying. The arrow stays inside

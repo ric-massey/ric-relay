@@ -110,6 +110,12 @@ function surveyBook() {
       carrying: [...surv.carrying],
       built: [...surv.built],
       dropped: surv.dropped,
+      /* The hull on the line. Key and id only — where it is hanging is a
+         frame's worth of physics and is re-seated behind you on the next
+         tick. A tow that did not survive a closed tab would be a ship
+         deleted by a reload, which is the one thing this whole system is
+         supposed not to do. */
+      tow: surv.tow ? { key: surv.tow.key, id: surv.tow.id } : null,
       friends: surv.friends,
       grudges: surv.grudges,
       coilFired: !!surv.coilFired,

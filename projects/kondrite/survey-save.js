@@ -238,7 +238,7 @@ function freshBook() {
                   carrying: [], built: [], pins: [], known: [],
                   slots: [], store: {}, battleAge: {}, sims: {},
                   memorials: [], bossesDown: [],
-                  dropped: [], coilFired: false,
+                  dropped: [], tow: null, coilFired: false,
                   friends: [], grudges: [], claims: [], mapped: [], war: null,
                   living: null,
            alert: { water: { taught: 0 }, food: { taught: 0 } } };
@@ -353,6 +353,12 @@ function validateSurveyBook(b) {
          with no stats and no shape, and every read of it downstream would be
          an undefined. */
       ship: SHIPS().some(sh => sh.key === b.ship) ? b.ship : "skiff",
+      /* The hull you are towing home, if there is one. A ship key and an id:
+         anything further is this frame's physics. */
+      tow: b.tow && typeof b.tow.key === "string" &&
+           SHIPS().some(sh => sh.key === b.tow.key)
+             ? { key: b.tow.key, id: b.tow.id }
+             : null,
       owned: (Array.isArray(b.owned) ? b.owned : [])
         .filter(k => SHIPS().some(sh => sh.key === k))
         .concat("skiff")
