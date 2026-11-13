@@ -219,6 +219,16 @@ Things found while tuning it, so nobody undoes them:
   the point.
 - **A frame advances at most a tenth of a second of real time** rather than owing a growing
   backlog, so a slow phone runs slower instead of freezing; a note says when it is behind.
+- **People opens on a searchable population list** (2026-11-12, Ric: "Build the next features
+  from the vision"). Name search combines with settlement, faction and occupation filters.
+  Each row shows age, job, settlement, faction and current activity; selecting it locates and
+  follows that person. Back to People preserves filters, page and scroll position; a new world
+  resets them. Results are alphabetical, sixty per page, with live counts and an empty state.
+  Search/filter controls stay outside the live result redraw so typing and focus survive updates;
+  filters collapse to leave room for results on a phone. Living parents, children, partners and
+  the current conversation partner are linked in inspection. Either name in Talk can be selected;
+  people who have died are labelled rather than linked. A selected person's death has a way back
+  to the living population. There is still no archive of the dead or saved bookmarks.
 - **People are human figures, with smaller children and a white ring on leaders.** Roles are
   written beside them at close zoom, rather than encoded as triangles or dots. Tapping a person
   zooms in and follows them; the Person tab states their current activity. A map key explains this

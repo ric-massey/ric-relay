@@ -135,6 +135,21 @@
   #tabs button { flex: 1; background: none; border: 0; border-bottom: 2px solid transparent; padding: .6rem .2rem; min-height: 44px; color: var(--dim); }
   #tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--acc); }
   #panes { flex: 1; overflow-y: auto; min-height: 0; padding: 10px 12px 14px; -webkit-overflow-scrolling: touch; }
+  #population-controls { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  #population-controls label { display: block; font-size: 12px; color: var(--dim); }
+  #population-controls input, #population-controls select { width: 100%; min-width: 0; min-height: 44px; font-size: 16px; margin: 3px 0 7px; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 3px; padding: 8px; }
+  .population-search { display: flex; align-items: center; gap: 8px; }
+  .population-search input { flex: 1; }
+  #people-filter-details summary { cursor: pointer; min-height: 44px; padding: 10px 0; color: var(--ink); }
+  #people-filter-details[open] { max-height: 205px; overflow-y: auto; }
+  .population-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+  .population-filters label:last-child { grid-column: 1 / -1; }
+  #tabs button { min-width: 0; font-size: 12px; }
+  .person-row strong, .person-row span { display: block; }
+  .person-row { min-height: 64px; }
+  .person-row[aria-current="true"] { border-left: 3px solid var(--acc); padding-left: 8px; }
+  .population-pages { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+  .family-link { min-height: 44px; padding: 5px 8px; }
   #panes h3 { font-size: 1.05rem; margin: .2rem 0 .4rem; }
   #panes p { margin: .3rem 0; }
   .kv { display: grid; grid-template-columns: 1fr auto; gap: .15rem .8rem; font-size: .92rem; }
@@ -236,6 +251,15 @@
   </div>
   <aside id="side">
     <div id="tabs" role="tablist"></div>
+    <div id="population-controls" hidden>
+      <label for="people-search">Find someone by name</label>
+      <div class="population-search"><input id="people-search" type="search" autocomplete="off" placeholder="Search people" aria-controls="panes"><button class="btn" id="people-clear" type="button" aria-label="Clear filters">Clear</button></div>
+      <details id="people-filter-details"><summary>Filter people</summary><div class="population-filters">
+        <label for="people-settlement">Settlement<select id="people-settlement"><option value="">All settlements</option></select></label>
+        <label for="people-faction">Faction<select id="people-faction"><option value="">All factions</option></select></label>
+        <label for="people-job">Occupation<select id="people-job"><option value="">All occupations</option><option value="child">Child</option><option value="farmer">Farmer</option><option value="crafter">Crafter</option><option value="trader">Trader</option><option value="soldier">Soldier</option></select></label>
+      </div></details>
+    </div>
     <div id="panes"></div>
   </aside>
 </div>
@@ -425,6 +449,8 @@
   let world = null, raf = 0, paused = false, rate = 1, last = 0, lag = 0;
   let cam = { x: 0, y: 0, s: 1, held: false }, viewMode = "kind", picked = null, follow = false, tab = "", paneAt = 0;
   let land = null, landAt = -1e9;
+  let populationPage = 0, populationScroll = 0;
+  const POPULATION_PAGE = 60;
   /* A visitor's hands in the physics world: which tool a tap uses, what Place
      and Throw put down, where the pointer is held, and every kind of bonded
      thing this world has ever made (for "ever seen" in the World tab). */
@@ -455,6 +481,8 @@
     stopRun();
     const E = ENGINES[mode].api;
     world = E.create(values);
+    populationPage = 0; populationScroll = 0;
+    for (const id of ["people-search", "people-settlement", "people-faction", "people-job"]) $(id).value = "";
     rate = values.rate; paused = false; picked = null; follow = false; lag = 0; land = null; landAt = -1e9;
     tool = "look"; held = null; aim = null; lastPut = null; everSeen = new Set(); brushKind = 1; brushMass = 1;
     setHash(toHash(true));
@@ -553,7 +581,7 @@
 
   function buildTabs() {
     const names = mode === "physics" ? [["world", "World"], ["look", "Hexagon"]]
-                                     : [["factions", "Factions"], ["news", "News"], ["talk", "Talk"], ["look", "Person"], ["world", "World"]];
+                                     : [["people", "People"], ["factions", "Factions"], ["news", "News"], ["talk", "Talk"], ["look", "Person"], ["world", "World"]];
     const el = $("tabs"); el.textContent = "";
     for (const n of names) {
       const b = document.createElement("button"); b.textContent = n[1]; b.dataset.tab = n[0]; b.setAttribute("role", "tab");
@@ -565,7 +593,8 @@
   function setTab(name) {
     tab = name;
     for (const b of $("tabs").children) b.setAttribute("aria-selected", String(b.dataset.tab === name));
-    $("panes").scrollTop = 0; paneAt = 0;
+    $("population-controls").hidden = mode !== "people" || name !== "people";
+    $("panes").scrollTop = name === "people" ? populationScroll : 0; paneAt = 0;
     pane();
   }
 
@@ -910,7 +939,10 @@
   function pane() {
     if (!world || screens.run.hidden) return;
     const el = $("panes"), keep = el.scrollTop;
+    // A live result must not steal keyboard focus when its activity changes.
+    const active = el.contains(document.activeElement) ? document.activeElement.dataset.go : null;
     el.innerHTML = mode === "physics" ? physicsPane() : peoplePane();
+    if (active) [...el.querySelectorAll("button[data-go]")].find(b => b.dataset.go === active)?.focus({ preventScroll: true });
     el.scrollTop = keep;
     if (mode === "people" && tab === "factions") drawChart();
   }
@@ -928,7 +960,16 @@
     const b = e.target.closest("[data-go]"); if (!b) return;
     const a = b.dataset.go.split(":");
     if (a[0] === "at") { cam.x = +a[1]; cam.y = +a[2]; cam.s = Math.max(cam.s, 14); cam.held = true; follow = false; }
-    if (a[0] === "person" && world.byId.get(+a[1])) { picked = { person: +a[1], name: world.byId.get(+a[1]).name }; follow = true; cam.s = Math.max(cam.s, 36); setTab("look"); }
+    if (a[0] === "people") setTab("people");
+    if (a[0] === "people-page") { populationPage += +a[1]; populationScroll = 0; $("panes").scrollTop = 0; pane(); }
+    if (a[0] === "person") {
+      const person = world.byId.get(+a[1]);
+      if (tab === "people") populationScroll = $("panes").scrollTop;
+      picked = { person: +a[1], name: person ? person.name : b.textContent.trim() };
+      follow = !!person;
+      if (person) { cam.x = person.x; cam.y = person.y; cam.s = Math.max(cam.s, 36); }
+      setTab("look");
+    }
     if (a[0] === "village") { const v = world.villages[+a[1]]; picked = { village: v.id }; cam.x = v.x; cam.y = v.y; cam.s = Math.max(cam.s, 14); follow = false; setTab("look"); }
     if (a[0] === "follow") { follow = !follow; pane(); }
     if (a[0] === "body") { picked = { body: +a[1] }; pane(); }
@@ -1012,8 +1053,42 @@
     return out;
   }
 
+  function syncPopulationFilters() {
+    for (const [id, items, all] of [["people-settlement", world.villages, "All settlements"], ["people-faction", world.factions, "All factions"]]) {
+      const el = $(id), value = el.value;
+      const html = "<option value=''>" + all + "</option>" + items.map(x => "<option value='" + x.id + "'>" + esc(x.name) + (x.alive ? "" : " (gone)") + "</option>").join("");
+      if (el.innerHTML !== html && el.dataset.options !== html) { el.innerHTML = html; el.value = value; el.dataset.options = html; }
+    }
+  }
+  function populationChanged() {
+    populationPage = 0; populationScroll = 0; $("panes").scrollTop = 0; pane();
+  }
+  $("people-search").addEventListener("input", populationChanged);
+  for (const id of ["people-settlement", "people-faction", "people-job"]) $(id).addEventListener("change", populationChanged);
+  $("people-clear").addEventListener("click", () => {
+    for (const id of ["people-search", "people-settlement", "people-faction", "people-job"]) $(id).value = "";
+    populationChanged(); $("people-search").focus();
+  });
+  $("panes").addEventListener("scroll", () => { if (mode === "people" && tab === "people") populationScroll = $("panes").scrollTop; });
+  function populationPane() {
+    syncPopulationFilters();
+    const query = $("people-search").value.trim().toLocaleLowerCase(), settlement = $("people-settlement").value,
+      faction = $("people-faction").value, job = $("people-job").value;
+    const list = world.people.filter(p => p.name.toLocaleLowerCase().includes(query) &&
+      (settlement === "" || p.home === +settlement) && (faction === "" || p.f === +faction) && (!job || p.job === job))
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+    const pages = Math.max(1, Math.ceil(list.length / POPULATION_PAGE));
+    populationPage = Math.min(populationPage, pages - 1);
+    const start = populationPage * POPULATION_PAGE;
+    const pager = pages > 1 ? "<div class='population-pages'><button class='btn' data-go='people-page:-1' " + (populationPage === 0 ? "disabled" : "") + ">Previous</button><span class='small'>" + (populationPage + 1) + " / " + pages + "</span><button class='btn' data-go='people-page:1' " + (populationPage === pages - 1 ? "disabled" : "") + ">Next</button></div>" : "";
+    return "<p class='small' role='status'>" + list.length + " of " + world.people.length + " people" + (list.length ? " · showing " + (start + 1) + "–" + Math.min(start + POPULATION_PAGE, list.length) : "") + "</p>" +
+      (!list.length ? "<p>No one matches these filters. Try another name or clear the filters.</p>" : "<p class='small'>Choose someone to locate and follow them.</p>" + pager + list.slice(start, start + POPULATION_PAGE).map(p =>
+        "<button class='item person-row' data-go='person:" + p.id + "'" + (picked?.person === p.id ? " aria-current='true'" : "") + "><strong>" + esc(p.name) + "</strong><span class='small'>" + Math.floor(p.age) + (Math.floor(p.age) === 1 ? " year · " : " years · ") + esc(p.job) + " · " + esc(world.villages[p.home].name) + "</span><span class='small'>" + esc(world.factions[p.f].name) + "</span><span>" + esc(world.activity(p)) + "</span></button>").join("") + pager);
+  }
+
   function peoplePane() {
     const w = world, st = w.stats(), Y = w.YEAR;
+    if (tab === "people") return populationPane();
     const fname = id => "<span class='sw' style='background:" + w.factions[id].colour + "'></span>" + esc(w.factions[id].name);
     if (tab === "factions") {
       const alive = w.factions.filter(f => f.alive).sort((a, b) => b.pop - a.pop);
@@ -1039,9 +1114,10 @@
     if (tab === "talk") {
       const list = w.chatter.slice(-40).reverse();
       if (!list.length) return "<p class='small'>Nobody has said anything yet.</p>";
-      return "<p class='small'>Every line is something that just happened between the two of them. Tap one to follow whoever spoke.</p>" +
-        list.map(c => "<button class='item talk' data-go='person:" + c.a + "'><span class='sw' style='background:" + w.factions[c.fa].colour + "'></span><span class='who'>" + esc(c.an) +
-          "</span> <q>" + esc(c.la) + "</q>" + (c.lb ? "<br><span class='sw' style='background:" + w.factions[c.fb].colour + "'></span><span class='who'>" + esc(c.bn) + "</span> <q>" + esc(c.lb) + "</q>" : "") + "</button>").join("");
+      const participant = (id, name) => w.byId.has(id) ? "<button class='btn family-link' data-go='person:" + id + "'>" + esc(name) + "</button>" : "<span>" + esc(name) + " (died)</span>";
+      return "<p class='small'>Every exchange reports what happened between these people. Choose either name to follow them.</p>" + list.map(c =>
+        "<article class='item talk'>" + participant(c.a, c.an) + " → " + participant(c.b, c.bn) + "<p><strong>" + esc(c.an) + ":</strong> <q>" + esc(c.la) + "</q></p>" +
+        (c.lb ? "<p><strong>" + esc(c.bn) + ":</strong> <q>" + esc(c.lb) + "</q></p>" : "") + "</article>").join("");
     }
     if (tab === "look") {
       if (picked && picked.village != null) {
@@ -1054,14 +1130,19 @@
           (v.siege > 0 ? "<p class='fac'><span class='war'>Enemy soldiers are at the walls and nobody is defending it.</span></p>" : "");
       }
       const p = picked && picked.person ? w.byId.get(picked.person) : null;
-      if (!p) return "<p class='small'>" + (picked && picked.person ? esc(picked.name) + " has died." : "Tap a person or a village to see who they are. Zoom in close and you can read what people say.") + "</p>";
+      if (!p) return "<p class='small'>" + (picked && picked.person ? esc(picked.name) + " has died. They are no longer in the living population." : "Choose someone from People, or tap a person on the map.") + "</p><button class='btn' data-go='people'>Back to People</button>";
       const f = w.factions[p.f], home = w.villages[p.home], mate = w.byId.get(p.partner);
       const friends = [...p.friends].filter(x => w.byId.get(x[0])).sort((a, b) => b[1] - a[1]);
       const likes = friends.filter(x => x[1] > 0.2).slice(0, 4), hates = friends.filter(x => x[1] < -0.2).slice(-3).reverse();
       const link = id => "<button class='linkish' style='min-height:0;padding:0' data-go='person:" + id + "'>" + esc(w.byId.get(id).name) + "</button>";
+      const parents = [p.mum, p.dad].filter(id => id && w.byId.has(id));
+      const children = w.people.filter(q => q.mum === p.id || q.dad === p.id);
+      const talking = p.sayT > 0 && w.byId.get(p.talkingTo);
+      const listener = talking && talking.sayT > 0 && talking.talkingTo === p.id ? talking : null;
+      const familyLink = id => "<button class='btn family-link' data-go='person:" + id + "'>" + esc(w.byId.get(id).name) + "</button>";
       const job = p.job === "child" ? "a child" : p.id === f.leader ? "leader of " + esc(f.name) + ", and a " + p.job : "a " + p.job;
       const bar = (label, v) => "<span>" + label + "</span><i><b style='width:" + Math.round(v * 100) + "%'></b></i>";
-      return "<h3>" + esc(p.name) + "</h3>" +
+      return "<button class='btn' data-go='people'>Back to People</button><h3>" + esc(p.name) + "</h3>" +
         "<p>" + Math.floor(p.age) + " years old, " + job + " in <button class='linkish' style='min-height:0;padding:0' data-go='village:" + home.id + "'>" + esc(home.name) + "</button>.</p>" +
         "<p><strong>Now: " + esc(w.activity(p)) + "</strong></p>" +
         "<p>" + fname(p.f) + (p.from !== p.f ? " <span class='small'>— born under " + esc(w.factions[p.from].name) + "</span>" : "") + "</p>" +
@@ -1070,7 +1151,11 @@
         "<div class='bars'>" + bar("Mood", p.mood) + bar("Loyalty", p.loyal) + bar("Bold", p.bold) + bar("Kind", p.warm) + "</div>" +
         "<dl class='kv'><dt>Food carried</dt><dd>" + num(p.food, 1) + "</dd>" + (w.settings.money === "coins" ? "<dt>Coins</dt><dd>" + num(p.coins, 1) + "</dd>" : "") +
         "<dt>Children</dt><dd>" + p.kids + "</dd></dl>" +
-        (mate ? "<p>Paired with " + link(mate.id) + ".</p>" : "") +
+        (listener ? "<p>Talking to " + familyLink(listener.id) + "</p>" : "") +
+        "<h3>Family</h3>" +
+        (mate ? "<p>Partner: " + familyLink(mate.id) + "</p>" : "<p class='small'>No living partner.</p>") +
+        "<p>Parents: " + (parents.length ? parents.map(familyLink).join(" ") : "<span class='small'>No living parents recorded.</span>") + "</p>" +
+        "<p>Living children: " + (children.length ? children.map(q => familyLink(q.id)).join(" ") : "<span class='small'>None.</span>") + "</p>" +
         (likes.length ? "<p>Friends: " + likes.map(x => link(x[0])).join(", ") + ".</p>" : "") +
         (hates.length ? "<p>Cannot stand: " + hates.map(x => link(x[0])).join(", ") + ".</p>" : "") +
         (p.say ? "<p class='small'>Last said: “" + esc(p.say) + "”</p>" : "") +

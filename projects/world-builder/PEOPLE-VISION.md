@@ -10,17 +10,18 @@ The [README](README.md) describes the implementation; this document describes th
 Several sessions have worked on the two sandboxes. Check the implementation baseline below
 and the current code before starting a milestone; preserve work that has already shipped.
 
-## Current implementation and the next proposed piece
+## Current implementation and the next piece
 
 Reviewed 2026-11-12 against `people.js`, `index.html` and the README, following the readability
-update in commit `88890e2e`. This table records implementation, not approval of future proposals.
+update in commit `88890e2e` and the population-browser milestone authorized by Ric: "Build the
+next features from the vision". This table records implementation, not approval of all proposals.
 
 | Area | What exists | What remains from this vision |
 |---|---|---|
-| Recognizing people | Human figures, smaller children, a leader ring and faction/mood/belief/wealth colour views. | Equipment, personal appearance and a searchable population browser. |
+| Recognizing people | Human figures, smaller children, a leader ring and faction/mood/belief/wealth colour views. | Equipment and personal appearance. |
 | Understanding actions | Close-up role/activity labels, an activity line in inspection, visible harvesting patches. | Reasons for choices, blocked-action explanations and lasting work sites. |
-| Selecting and following | Tap a person to zoom and follow; select the speaker from a Talk entry; links to partner and some friends/rivals. | Search, filters, bookmarks, both conversation participants as selectable entries, and complete family navigation. |
-| Conversation | Real exchanges with a paired reply; named speech bubbles, a connection between participants, a recent Talk list and a short pause while speaking. | A selected exchange that stays readable, longer interaction sequences, agreements and remembered follow-through. |
+| Selecting and following | People list with name search, settlement/faction/job filters, pagination and preserved list position; select and follow on the map; living-family links and either Talk participant selectable. | Bookmarks, durable family histories and navigation to the dead. |
+| Conversation | Real exchanges with a paired reply; named speech bubbles, a connection between participants, a recent Talk list with both names selectable, a link to the current conversation partner, and a short pause while speaking. | A selected exchange that stays readable, longer interaction sequences, agreements and remembered follow-through. |
 | Pacing and bodies | Twenty-minute days at 1×, slower walking, separate body positions and local avoidance of neighbours. | One consistent time model for daily needs, production and long-term development; reliable navigation through very dense crowds. |
 | Work and society | Farming, generic goods, trade, families, leaders, factions, conflict and breakaways. | Seasonal cultivation, useful tools, buildings, learning and the connected economic systems described below. |
 | Continuity and control | A running world lives in the current page; copied links reproduce settings. | Saved worlds, durable family histories and player control. |
@@ -29,18 +30,20 @@ The readability work is a first pass. A visible harvesting marker is not seasona
 and a line between speakers is not a system of agreements. Keep those distinctions in progress
 reports and future README edits.
 
-**Proposed next deliverable: find and follow anyone.** Add a population browser over the existing
-people, with name search and settlement/faction/occupation filters. A result should show name,
-age, occupation, location and current activity; selecting it locates that same person on the map.
-Keep the search and filters while inspecting and returning to the list. Show live counts, a clear
-empty result and a clear response if a selected person dies. Include links to living parents,
-children and the current conversation partner where the engine has those identities.
+**Delivered on 2026-11-12: find and follow anyone.** The People tab opens with the living
+population. Name search combines with settlement, faction and occupation filters. Results show
+name, age, occupation, settlement, faction and current activity. Selecting a result locates and
+follows that same person on the map. Returning to People keeps the search, filters, page and list
+position; a new world resets them. Sixty results per page keep the live list bounded, with every
+matching person reachable through pagination. Empty results and a selected person's death have
+explicit messages. Person inspection links to living parents, children, partner and the current
+conversation partner; each Talk exchange lets the visitor select either participant.
 
-This is a proposed bounded piece, not a newly approved development order. It adds a reliable way
-to reach the existing simulation without introducing new resources or changing people's decisions.
-It is complete when a visitor can find a named person without chasing a moving figure, follow
-them, inspect someone connected to them and return to the same filtered list on a phone or desktop.
-Bookmarks, a permanent record of the dead, equipment and direct control remain separate work.
+This milestone uses existing identities and actions. It does not introduce resources or change
+people's decisions. Bookmarks, a permanent record of the dead, equipment and direct control remain
+future work. The next proposed piece is a conversation inspector that holds a selected exchange
+still for reading and explains the actual interaction and consequences. Its exact design remains
+open; this does not authorize implementing the rest of the vision at once.
 
 ## 1. What Ric wants
 
@@ -361,9 +364,9 @@ fast-forward controls need an explicit design decision; this paragraph does not 
 This order was suggested during the conversation; Ric has not settled it.
 
 1. **Finish making the existing people readable.** The first pass of figures, activity labels,
-   conversation connections, following, pacing and body separation has shipped. The proposed next
-   piece is the population browser above, then a stable conversation inspector and equipment
-   backed by actual inventory. Validate each piece before calling this milestone complete.
+   conversation connections, following, pacing and body separation has shipped. The population
+   browser and living-family navigation have now shipped too. Next: a stable conversation
+   inspector and equipment backed by actual inventory. Validate each piece before calling this milestone complete.
 2. **Make one village worth watching.** Households, seasonal farming, storage, tools,
    construction, learned skills and explanations of growth or shortages.
 3. **Deepen social interaction.** Shared memories, teaching, purposeful conversations,
@@ -418,4 +421,7 @@ make it implemented. Keep all of the connected themes here as the design develop
 **2026-11-12 baseline review:** added the shipped readability work, Ric's explicit pacing and
 body-separation requirements, a bounded proposal for finding people, and the unresolved timing
 problem that must be addressed before treating long-term economic outcomes as validated.
-The population browser and timing redesign remain proposals until implementation work is chosen.
+**2026-11-12 population milestone:** Ric chose implementation of the next features. Built the
+People browser, preserved filtered-list navigation, living-family/current-partner links and
+selection of either conversation participant. The timing redesign, equipment and the larger
+village/civilization systems remain future work.
