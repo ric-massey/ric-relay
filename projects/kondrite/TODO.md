@@ -373,6 +373,21 @@ communicated clearer." That one is not built.
   wreck so the arrow lets go of it, and a hull a scavenger takes is gone with
   no way to buy it back except new.
 
+- [ ] **N16 - You have to tow a hull home.** Ric, 2026-11-13: *"for hull loss
+  you would have to be able to tow it, which means u need the part for it
+  attatched to your ship or the ships that can tow others."* Right now reaching
+  your own wreck recovers it on touch (the `pt.hull` branch in
+  `game/survey-bearings.js`), which makes the trip back a formality. It should
+  need a capability: a tow part fitted, or a hull that can tow on its own.
+
+  *Not built.* The one thing whoever builds this must solve first: you wake in
+  the SKIFF. If the tow needs a part, the SKIFF has to be able to fit it and you
+  have to be able to afford it, or a dead hull is unrecoverable and the loss is
+  permanent after all - which is not what was agreed. Likely shape: the SKIFF
+  can always fit a cheap tow rig, the haulers tow without one, and towing is
+  slow enough to be its own risk. Interacts with the tractor ladder (MK1 bought
+  / MK2 built or found / MK3 found) in `game/survey-outfit.js`.
+
 ---
 
 ## Flying it himself — 2026-11-13
