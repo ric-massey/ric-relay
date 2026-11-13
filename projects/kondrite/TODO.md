@@ -373,6 +373,14 @@ communicated clearer." That one is not built.
   wreck so the arrow lets go of it, and a hull a scavenger takes is gone with
   no way to buy it back except new.
 
+- [x] **N18 · The station's jump is FAST TRAVEL, not WORMHOLE.** Ric,
+  2026-11-13: *"Wormhole is incorrect. A wormhole you fly into and it takes
+  you. fast travel is what wormhole should be called in the menu."* *Built.*
+  The station tab, its page (header STATIONS YOU KNOW, "tap one to travel
+  there"), the chart's button, the manifest's sixth room and the whole-station
+  banner say FAST TRAVEL. WORMHOLE is left to the sector's mouths. Keys
+  (`wormhole`, `mouth`) unchanged, so saves are untouched. `test/survey.js`
+  checks the page says FAST TRAVEL and never WORMHOLE or MOUTH.
 ---
 
 ## Flying it himself — 2026-11-13
@@ -614,7 +622,7 @@ They remain proposals; recording them is not a request to implement them.
 - [x] **H2 · Group what a place will not buy.** In SELL, everything marked
   "this place doesn't buy these" moves to the bottom under one heading:
   `NOT PURCHASING TODAY`.
-- [x] **H3 · A WORMHOLE tab.** Appears beside INVENTORY once the manmade
+- [x] **H3 · A WORMHOLE tab** — called **FAST TRAVEL** since N18 (2026-11-13). Appears beside INVENTORY once the manmade
   wormhole is built. It is a map, but *only* for teleporting between stations —
   not the chart page. Free, and any station you have **charted** is a
   destination. You still have to be docked somewhere to make the jump.

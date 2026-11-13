@@ -894,15 +894,20 @@ HUD.drawWormhole = function (st, dt) {
   const me = st.ship || { x: 0, y: 0 };
   const docked = !!(st.docked || st.landed);
 
-  pageFrame("WORMHOLE", stations.length +
+  /* Ric, 2026-11-13: *"Wormhole is incorrect. A wormhole you fly into and it
+   takes you. fast travel is what wormhole should be called in the menu."*
+   The station's jump between moorings is FAST TRAVEL to the player; the
+   word WORMHOLE belongs only to the mouths out in the sector you fly into.
+   The code's keys (`wormhole`, `mouth`) stay, as `gate` did in N6. */
+  pageFrame("FAST TRAVEL", stations.length +
             (stations.length === 1 ? " MOORING KNOWN" : " MOORINGS KNOWN"),
             "", PLACE_TONE);
 
   const full = { x: PAGE.EDGE, w: SCREEN_W - PAGE.EDGE * 2 };
   const top = PAGE.TOP + 6;
   const view = { x: full.x, y: top, w: full.w, h: SCREEN_H - top - 74 };
-  panel(view.x, view.y, view.w, view.h, VIOLET, "THE MOUTHS",
-        docked ? "TAP ONE TO OPEN IT" : "YOU MUST BE DOCKED TO JUMP");
+  panel(view.x, view.y, view.w, view.h, VIOLET, "STATIONS YOU KNOW",
+        docked ? "TAP ONE TO TRAVEL THERE" : "YOU MUST BE DOCKED TO TRAVEL");
 
   if (!stations.length) {
     fitText("No moorings yet. Fly past a station, or sweep one with a scan, " +

@@ -574,7 +574,7 @@ function surveyParts(dt) {
        manifest is the tutorial; this is where the game starts. So the banner
        faces forwards. */
     banner = { text: "THE STATION IS WHOLE", t: 4.6, colour: CASH,
-               sub: "the mouth is open \u2014 now go somewhere you have not been" };
+               sub: "fast travel is open \u2014 now go somewhere you have not been" };
   }
   saveSurveyBook();
 }

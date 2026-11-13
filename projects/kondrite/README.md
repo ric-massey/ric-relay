@@ -608,6 +608,13 @@ one you build at your station was already a wormhole. All four say wormhole now
 (Ric, 2026-11-12). The code, the save and the tests still say `gate`, for the
 same reason a hulk is still a `hulk`.
 
+**And the station's jump is called fast travel.** Ric, 2026-11-13: *"Wormhole is
+incorrect. A wormhole you fly into and it takes you. fast travel is what wormhole
+should be called in the menu."* The station's tab, its page, the chart's button,
+the sixth room on the manifest and the banner when the station is whole all say
+FAST TRAVEL now. WORMHOLE means only a mouth in the sector you fly into. The code
+keeps `wormhole` and `mouth` as keys, so saves are untouched.
+
 **A gravity well is a tool as much as a hazard.** A star is the one place a hull
 repairs, so it is a destination rather than only a way to die, and a black hole
 is the fastest way across open space if you are willing to fall into one on

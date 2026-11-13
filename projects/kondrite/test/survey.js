@@ -5503,6 +5503,20 @@ console.log("  levdraw    every sponson's drawn outline lies inside a plate, " +
     view().onWormhole();
     check(cf.screenNow() === "wormhole", "the built gate did not open its map");
 
+    /* Ric, 2026-11-13: "Wormhole is incorrect. A wormhole you fly into and it
+       takes you. fast travel is what wormhole should be called in the menu."
+       So the page, its tab and the chart's button say FAST TRAVEL, and the
+       word WORMHOLE is left to the mouths you fly into. */
+    textDrawn(); cf.draw();
+    {
+      const words = textDrawn();
+      check(words.some(w => /FAST TRAVEL/.test(w)),
+            "the station's jump page never says FAST TRAVEL");
+      check(!words.some(w => /WORMHOLE|MOUTH/.test(w)),
+            "the station's jump page still calls itself a wormhole: " +
+            words.filter(w => /WORMHOLE|MOUTH/.test(w)).join(" | "));
+    }
+
     /* ── only what you have been to, and nothing is called anything ──────
        Ric: "Don't name the other stations and only show ones you've passed or
        scanned at."

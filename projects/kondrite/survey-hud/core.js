@@ -763,7 +763,12 @@ function pageNav(st, here, only, tone) {
        leave. It draws dim, like the berth beside it. */
     { key: "stationinv", name: "INVENTORY",
       live: !!(st.docked || st.landed), act: st.onStationInv },
-    { key: "wormhole",  name: "WORMHOLE", live: !!(st.wormhole && st.docked),
+    /* Ric, 2026-11-13: *"Wormhole is incorrect. A wormhole you fly into and it
+   takes you. fast travel is what wormhole should be called in the menu."*
+   The station's jump between moorings is FAST TRAVEL to the player; the
+   word WORMHOLE belongs only to the mouths out in the sector you fly into.
+   The code's keys (`wormhole`, `mouth`) stay, as `gate` did in N6. */
+    { key: "wormhole",  name: "FAST TRAVEL", live: !!(st.wormhole && st.docked),
       act: st.onWormhole },
     /* The machines in the corner. Live wherever you can trade — a station's
        counter or an inhabited world's surface — because a cabinet you can

@@ -674,7 +674,8 @@ HUD.drawChart = function (st, dt) {
      first colour in the list. The prompt that opens when you place one asks
      for the colour and the name together, at the moment you know both. */
   if (canJump) {
-    button(chart.jump ? "CANCEL" : "WORMHOLE  \u25b8",
+    // FAST TRAVEL, not WORMHOLE: Ric, 2026-11-13 — see HUD.drawWormhole.
+    button(chart.jump ? "CANCEL" : "FAST TRAVEL  \u25b8",
            rail.x + rail.w / 2, ry + 19, rail.w, 38,
            chart.jump ? WARN : HUD_CASH,
            () => { chart.jump = !chart.jump; chart.pinning = false; },

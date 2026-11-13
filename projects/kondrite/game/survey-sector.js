@@ -541,7 +541,8 @@ const SERVICES = [
     does: "the only berth there is" },
   { key: "stock",   name: "STOCK",       part: "beacon",
     does: "it can order in" },
-  { key: "mouth",   name: "THE MOUTH",   part: "plate",
+  /* FAST TRAVEL to the player (Ric, 2026-11-13); `mouth` stays the key. */
+  { key: "mouth",   name: "FAST TRAVEL", part: "plate",
     does: "every charted station" }
 ];
 const serviceSpec = k => SERVICES.find(s => s.key === k);
@@ -571,7 +572,7 @@ const stationWhole = () => !!surv && surv.built.size >= BUILD.length;
    build afterwards; see LIGHT_DRIVE below. */
 const STATION_BUILD = {
   name: "YOUR STATION",
-  does: "whole \u2014 and the mouth opens on any station you have charted",
+  does: "whole \u2014 and fast travel to any station you have charted",
   blurb: "Six parts, none of them near each other, and each one turns " +
          "something here back on. Somebody tried the last of it before, on a " +
          "frame a mile across, and it did not open."
