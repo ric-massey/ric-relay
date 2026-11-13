@@ -30,7 +30,8 @@
 - [Climbing](https://ricmassey.com/climbing.html): routes and climbing days
 - [Training](https://ricmassey.com/training.html): runs and the training plan
 - [Exploration](https://ricmassey.com/exploration.html): space, physics, science explainers
-- [Gaming](https://ricmassey.com/gaming.html): games Ric has built, playable in the browser
+- [Gaming](https://ricmassey.com/gaming.html): four original games and the nine-game Classics collection, playable in the browser
+- [The Classics](https://ricmassey.com/projects/classics/): Solitaire, Tic-tac-toe, Chess, Wordle, Sudoku, Minesweeper, Tetris, Checkers and Snake; initials and shared scoreboards
 - [Workbench](https://ricmassey.com/workbench.html): side projects
 - [Captures](https://ricmassey.com/captures.html): photographs
 - [Entertainment](https://ricmassey.com/entertainment.html): films and shows, and what is queued up

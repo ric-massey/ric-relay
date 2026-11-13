@@ -14,11 +14,10 @@
    question from the search box, so the two lists differ on purpose and the
    reasons are written against each rule below.
 
-   NOT WIRED INTO THE CHECKS YET (2026-11-12). build-pages.mjs has a test that
-   runs its --check, so a page added without a rerun goes red; this one has no
-   such test, so sitemap.xml can silently go stale. Add `node
-   assets/build-sitemap.mjs --check` to a suite in .github/checks.mjs before
-   relying on it. Until then, rerun it by hand when a page is added or removed. */
+   Deliberately not in the checks (2026-11-12): committing a changed page
+   changes its lastmod, so a commit containing the regenerated sitemap is
+   already one commit ahead of the dates it reports. Rerun by hand when a
+   page is added or removed; dates are crawler hints, not a build invariant. */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';

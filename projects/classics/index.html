@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#132e29">
+  <title>Classics — RIC//NET</title>
+  <meta name="description" content="Nine familiar games, ready to play: Solitaire, Tic-tac-toe, Chess, Wordle, Sudoku, Minesweeper, Tetris, Checkers and Snake. Leave your initials on the scoreboards.">
+  <meta property="og:site_name" content="RIC//NET">
+  <meta property="og:title" content="The Classics — nine games, one more round">
+  <meta property="og:description" content="Cards, boards and little obsessions. Play in your browser and put your initials on the scoreboard.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ricmassey.com/projects/classics/">
+  <meta property="og:image" content="https://ricmassey.com/assets/games/classics.jpg">
+  <meta property="og:image:alt" content="A game of Solitaire on the Classics' green felt table.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="style.css">
+  <script src="../../assets/visit.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><a href="../../gaming.html" class="back">← The Arcade</a><a href="#" class="wordmark">RIC<span>//</span>NET <span class="small">game room</span></a><button id="soundless" class="quiet" type="button">How to play</button></header>
+  <main>
+    <section id="lobby" aria-labelledby="lobby-title">
+      <div class="intro"><div><p class="kicker">Make yourself at home.</p><h1 id="lobby-title">The classics.</h1><p class="lede">A clear table. A little friendly competition.<br>Always time for one more round.</p></div><div class="intro-note"><span>♠</span><p>Nine familiar games.<br>No downloads. No sign-in.<br>Just play.</p></div></div>
+      <div id="catalog" class="catalog"></div>
+      <p class="lobby-foot">For the long afternoon, the five-minute break, and “last one, I promise.”</p>
+    </section>
+    <section id="playroom" hidden aria-labelledby="game-title">
+      <div class="game-heading"><div><button id="all-games" class="text-button">← All games</button><h1 id="game-title"></h1><p id="game-subtitle"></p></div><div class="game-actions"><label id="mode-wrap" hidden><span class="sr-only">Game mode</span><select id="mode"></select></label><button id="new-game" class="solid">New game</button><button id="pause" hidden>Pause</button></div></div>
+      <div class="room-layout"><div class="table-wrap"><div class="table-head"><span id="status" role="status" aria-live="polite"></span><span id="metric" aria-live="off"></span></div><div id="stage" class="stage"></div><div id="tools" class="tools"></div><p id="hint" class="hint"></p></div>
+      <aside class="sidebar"><section id="score-panel"><div class="score-heading"><h2>Scoreboard</h2><button id="refresh-scores" class="text-button" aria-label="Refresh scoreboard">↻</button></div><p id="score-kind" class="muted"></p><p id="score-source" class="score-source" role="status"></p><ol id="scores" class="scores"></ol></section><section class="rules"><h2>At the table</h2><p id="rules"></p></section></aside></div>
+    </section>
+    <noscript><p>These games need JavaScript to play. <a href="../../gaming.html">Return to the Arcade.</a></p></noscript>
+  </main>
+  <dialog id="result-dialog"><form id="score-form"><p class="kicker" id="result-eyebrow">Good game.</p><h2 id="result-title"></h2><p id="result-description"></p><div id="initials-wrap"><label for="initials">Your initials</label><input id="initials" name="initials" maxlength="3" minlength="1" pattern="[A-Za-z]{1,3}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="AAA"><p class="muted">1–3 letters. Shared with everyone on this board.</p></div><p id="save-message" role="status"></p><div class="dialog-actions"><button type="button" id="close-result">Back to game</button><button id="save-score" class="solid" type="submit">Save score</button></div></form></dialog>
+  <dialog id="help-dialog"><h2>A seat at the table.</h2><p>Choose a game to see its rules and controls. Everything works with taps or clicks. Snake and Tetris also have keyboard controls and a pause button.</p><p>Scoreboards are shared across the site. If you’re offline, scores stay on this browser and the board says so. Daily Wordle uses the same word for everyone, changing at midnight UTC.</p><button id="close-help" class="solid">Got it</button></dialog>
+  <script src="engine.js"></script>
+  <script src="words.js"></script>
+  <script src="app.js"></script>
+  <script src="../relay-return.js" data-home="../../index.html"></script>
+</body>
+</html>

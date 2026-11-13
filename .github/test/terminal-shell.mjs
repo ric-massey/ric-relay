@@ -71,7 +71,8 @@ ok('no command shadows a room or a project shortcut', () => {
 });
 
 ok('every row `ls`, `tree` and `projects` links to is a file here', () => {
-  for (const { href } of [...ROOMS, ...PROJECTS]) assert.ok(existsSync(join(ROOT, href)), `${href} does not exist`);
+  // A fragment selects a game inside the Classics page; it is not a filename.
+  for (const { href } of [...ROOMS, ...PROJECTS]) assert.ok(existsSync(join(ROOT, href.split(/[?#]/)[0])), `${href} does not exist`);
 });
 
 ok('the prompt is typeable on a phone and its answers are announced', () => {
