@@ -30,6 +30,7 @@ what has shipped from future direction, including the unresolved long-term timin
 | `test/breakup.test.mjs` | Quick physics checks: fracture/shedding, mass, momentum, energy, large bodies, bonds, capacity and repeatable links. Runs in the quick lane of `.github/checks.mjs`. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
+| `test/equipment.test.mjs` | Quick equipment checks: paid materials, repairs, real harvest/cargo/combat effects, wear, stored/broken items and death salvage. |
 | `test/conversations.test.mjs` | Quick receipt checks: observed effects, a conserved grain transfer, stable IDs and a held record surviving history eviction. |
 | `test/world-builder.test.mjs` | Both engines, headless. Several minutes; in the slow lane of `.github/checks.mjs` (`--only world-builder --slow`) and in `simulations.yml`. |
 
@@ -235,6 +236,41 @@ Things found while tuning it, so nobody undoes them:
 - **Coin worlds are harsher than shared ones, and that is left in.** A broke person can starve
   beside a full store unless the leader believes in sharing or a neighbour is kind. That is what
   the money setting is for.
+
+### Equipment: a first connected set
+
+Added 2026-11-12 as the next readability milestone in the People vision. Items are in each
+person's `gear`, with condition from 0 to 1. Nobody starts with free gear. At a village, an adult
+with at least 0.6 food fits the equipment for their occupation using owned goods or goods bought
+through the existing market. Children do not outfit themselves. Coins transfer through the same
+till/tax paths as any purchase; shared stores supply actual goods without coins.
+
+| Item | Goods for a new item | Use | Condition used per completed use |
+|---|---:|---|---:|
+| Work tool | 0.6 | Farmers take up to 4.5 food rather than 3.6 per harvest, deducted from actual fields; crafters make 20% more goods per batch. | 0.003 |
+| Trade pack | 0.8 | Traders can buy/carry up to 5 rather than 3 units, still limited by stock and money. | 0.004 per delivered load |
+| Weapon | 1 | Soldiers deal 25% more damage on a successful hit. | 0.01 per successful hit |
+| Shield | 1 | Soldiers take 25% less damage on a successful hit. | 0.01 per hit received |
+
+These costs and effects are implementation choices for this first set, not requirements Ric
+specified. Generic goods already produced by crafters provide the material; there are no new
+metal, textile or recipe chains yet. The weapon and shield are generic equipment, not a chosen
+historical technology progression.
+
+At 25% condition or below, a person seeks repair when next shopping. Repair consumes the item's
+cost times its worn fraction and restores condition to 1; no material means no repair. Working
+condition gives the listed benefit until it reaches zero. Gear stays owned when a person changes
+occupation but is stored and inactive if unsuitable. On death, remaining usable material returns
+to the home village's goods; worn material does not. This is salvage, not inherited named items.
+
+At close zoom the renderer reads equipped items to draw the work tool, pack, weapon and shield;
+an actual trade load adds a crate. People-list rows name gear in use. Person inspection distinguishes
+Equipped, Stored and Broken, reports condition and the active benefit, and shows loose goods and
+trade cargo. Selecting someone now zooms to 48 pixels per tile to make equipment readable. This
+is a first inventory/work connection. Following someone limits labels and speech to that person
+and their conversation partner so text does not hide carried gear; bubbles sit above the items.
+Individual item provenance, specialist equipment makers,
+player equipment choices and the larger production system remain future work.
 
 ## The page
 

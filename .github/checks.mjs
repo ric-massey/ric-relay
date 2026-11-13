@@ -112,6 +112,7 @@ const SUITES = [
      the same class of bug one level out. */
   ['universe', ['projects/universe/lab-check.mjs', 'projects/universe/world-check.mjs'], 'slow'],
   /* Actual effects and a held transcript that survives rolling history. */
+  ['world-builder equipment', ['projects/world-builder/test/equipment.test.mjs']],
   ['world-builder conversations', ['projects/world-builder/test/conversations.test.mjs']],
   /* World Builder's two engines: every setting on the page changes the world
      it makes, every preset runs, physics keeps its mass and energy, the people

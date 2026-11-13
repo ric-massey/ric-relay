@@ -18,12 +18,12 @@ next features from the vision". This table records implementation, not approval 
 
 | Area | What exists | What remains from this vision |
 |---|---|---|
-| Recognizing people | Human figures, smaller children, a leader ring and faction/mood/belief/wealth colour views. | Equipment and personal appearance. |
+| Recognizing people | Human figures, smaller children, a leader ring and faction/mood/belief/wealth colour views. | Individual appearance and more varied equipment. |
 | Understanding actions | Close-up role/activity labels, an activity line in inspection, visible harvesting patches. | Reasons for choices, blocked-action explanations and lasting work sites. |
 | Selecting and following | People list with name search, settlement/faction/job filters, pagination and preserved list position; select and follow on the map; living-family links and either Talk participant selectable. | Bookmarks, durable family histories and navigation to the dead. |
 | Conversation | Real exchanges with a paired reply; named speech bubbles, a connection between participants, a recent Talk list, a held exchange with original context and before/after effects, participant navigation, map location and a short pause while speaking. | Longer interaction sequences, agreements and remembered follow-through. |
 | Pacing and bodies | Twenty-minute days at 1×, slower walking, separate body positions and local avoidance of neighbours. | One consistent time model for daily needs, production and long-term development; reliable navigation through very dense crowds. |
-| Work and society | Farming, generic goods, trade, families, leaders, factions, conflict and breakaways. | Seasonal cultivation, useful tools, buildings, learning and the connected economic systems described below. |
+| Work and society | Farming, generic goods, trade, families, leaders, factions, conflict and breakaways. | Seasonal cultivation, buildings, learning and deeper production chains; a first set of useful tools and equipment now exists. |
 | Continuity and control | A running world lives in the current page; copied links reproduce settings. | Saved worlds, durable family histories and player control. |
 
 The readability work is a first pass. A visible harvesting marker is not seasonal farming,
@@ -52,10 +52,19 @@ A selected exchange survives the bounded recent history rolling past it; it is n
 archive and resets with a new world. Pause is explicit. No new decisions or dialogue outcomes
 were added to make the inspector interesting.
 
-The next proposed readability piece is visible equipment backed by real owned/carried/used
-items, as described in section 13. Agree on a small connected set of useful tools and their
-availability before expanding production or combat. Multi-step agreements and remembered
-follow-through remain separate social-system work.
+**Delivered on 2026-11-12: visible equipment with real effects.** The next continuation added
+work tools, trade packs, weapons and shields. Adults obtain them at villages from actual goods;
+coin worlds require payment for purchased material. Tools change harvest/crafting output, packs
+change actual cargo capacity, and weapons/shields change combat damage. Items wear with use,
+need materials for repair and stop helping when broken. Gear remains owned but inactive when
+unsuitable for a new occupation. Inspection reports ownership/use/condition and People rows show
+items in use. The map draws equipped gear and actual trade loads. Generic goods remain the
+material source; detailed recipes, specialist makers, weapon types and named-item inheritance
+are not implemented.
+
+The next foundation proposed here is consistent simulation time for food, work and long-term
+development (section 14), before seasonal farming and a richer village economy. Multi-step
+agreements and remembered follow-through remain separate social-system work.
 
 ## 1. What Ric wants
 
@@ -312,7 +321,8 @@ Ric explicitly wants to see people's weaponry and equipment.
 - Military service draws people and resources from the same economy everyone depends on.
 - Conflict should be understandable through participants, equipment, causes and consequences.
 
-Exact weapon types, armor, combat detail, supply arrangements and the player's combat
+The first implementation uses generic weapons and shields supplied through village goods.
+Exact weapon types, additional armor, detailed supply arrangements and the player's combat
 controls remain undecided. Visible items must correspond to actual simulation state.
 
 ## 14. Clarity, pacing and understanding causes
@@ -378,8 +388,9 @@ This order was suggested during the conversation; Ric has not settled it.
 1. **Finish making the existing people readable.** The first pass of figures, activity labels,
    conversation connections, following, pacing and body separation has shipped. The population
    browser and living-family navigation have now shipped too. The conversation
-   inspector has now shipped with recorded effects too. The next readability piece is equipment
-   backed by actual inventory. Validate each piece before calling this milestone complete.
+   inspector has shipped with recorded effects, and the first equipment set is backed by actual
+   goods, ownership, condition and effects. Continue reviewing visual clarity; detailed equipment
+   production remains part of the next village systems.
 2. **Make one village worth watching.** Households, seasonal farming, storage, tools,
    construction, learned skills and explanations of growth or shortages.
 3. **Deepen social interaction.** Shared memories, teaching, purposeful conversations,
@@ -436,11 +447,16 @@ body-separation requirements, a bounded proposal for finding people, and the unr
 problem that must be addressed before treating long-term economic outcomes as validated.
 **2026-11-12 population milestone:** Ric chose implementation of the next features. Built the
 People browser, preserved filtered-list navigation, living-family/current-partner links and
-selection of either conversation participant. The timing redesign, equipment and the larger
-village/civilization systems remain future work.
+selection of either conversation participant. At that milestone the timing redesign, equipment
+and the larger village/civilization systems remained future work.
 
 **2026-11-12 conversation milestone:** built the held exchange inspector and observational receipts,
 with a return from participant inspection and original-place navigation. Checks cover real grain
 transfers, effects made after speech, stable IDs and retention after history eviction. A comparison
 against the pre-change engine found identical trajectories for the same seeds and elapsed time;
 recording conversations must remain observational.
+
+**2026-11-12 equipment milestone:** implemented the first useful equipment set after Ric's
+"continue". Costs, capacity/damage modifiers and wear rates are initial implementation choices,
+recorded in the README. Checks cover actual transfers and effects, repair costs, inactive/broken
+states, coin conservation and salvage; the century/preset checks still apply to this changed economy.

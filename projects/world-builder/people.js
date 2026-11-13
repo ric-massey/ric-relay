@@ -191,6 +191,14 @@
   const TILE_CAP = 3.2;             // food a perfect field holds
   const REGROW = TILE_CAP / 130;    // and how fast it comes back
   const WAGE = 0.2;                 // coins a soldier is paid, every twenty ticks
+  // Equipment uses the existing goods economy. Costs are goods converted into
+  // the item, not coins minted or a second resource appearing from nowhere.
+  const GEAR = {
+    tool: { name: "Work tool", cost: 0.6, jobs: ["farmer", "crafter"], wear: 0.003, benefit: "+25% harvest capacity; +20% goods per batch" },
+    pack: { name: "Trade pack", cost: 0.8, jobs: ["trader"], wear: 0.004, benefit: "Carry up to 5 trade goods instead of 3" },
+    weapon: { name: "Weapon", cost: 1, jobs: ["soldier"], wear: 0.01, benefit: "+25% damage on a successful hit" },
+    shield: { name: "Shield", cost: 1, jobs: ["soldier"], wear: 0.01, benefit: "25% less damage from a successful hit" }
+  };
   const PATCH = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
 
   function create(input) {
@@ -275,7 +283,7 @@
       const f = factions[v.f];
       const p = { id: nextId++, name: unique(() => word(R() < 0.5 ? 2 : 3)), age: age, f: v.f, home: v.id, born: t,
                   dieAt: S.life * (0.72 + R() * 0.56), job: "child", x: v.x + (R() - 0.5) * v.radius * 1.5, y: v.y + (R() - 0.5) * v.radius * 1.5,
-                  tx: v.x, ty: v.y, task: "idle", wait: Math.floor(R() * 30), food: 0.8 + R() * 0.6, coins: 0, goods: 0,
+                  tx: v.x, ty: v.y, task: "idle", wait: Math.floor(R() * 30), food: 0.8 + R() * 0.6, coins: 0, goods: 0, gear: {},
                   hp: 1, bold: R(), warm: R(), greed: R(), views: 0, loyal: clamp(0.35 + S.loyalty * 0.5 + (R() - 0.5) * 0.2, 0, 1),
                   mood: 0.6, friends: new Map(), partner: 0, mum: mum ? mum.id : 0, dad: dad ? dad.id : 0, kids: 0,
                   talk: Math.floor(R() * 40), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, news: -1, sick: 0, immune: false,
@@ -522,7 +530,34 @@
           if (amount > 0.05 && f.treasury >= cost) { f.treasury -= cost; v.till += cost; v.food -= amount; p.food += amount; }
         }
       }
+      outfit(p, v);
       if (p.goods < 0.15 && (shared ? v.goods > v.pop * 0.05 : p.coins > v.priceGoods * 3)) buy(p, v, "goods", 1);
+    }
+    function equipped(p, key) { return GEAR[key].jobs.includes(p.job) && (p.gear[key] || 0) > 0; }
+    function equipment(p) {
+      return Object.keys(p.gear).map(key => ({ key, name: GEAR[key].name, condition: p.gear[key],
+        equipped: equipped(p, key), benefit: GEAR[key].benefit, cost: GEAR[key].cost }));
+    }
+    function outfit(p, v) {
+      // Fit/repair an item only at a real village, after feeding the household.
+      // Shop transactions preserve money; partial unaffordable goods stay owned.
+      if (!adult(p) || p.hp <= 0 || p.food < 0.6 || dist(p, v) > 2.5 || atWar(p.f, v.f)) return;
+      for (const [key, spec] of Object.entries(GEAR)) {
+        if (!spec.jobs.includes(p.job) || (p.gear[key] || 0) > 0.25) continue;
+        const condition = p.gear[key] || 0, needed = spec.cost * (1 - condition);
+        if (p.goods < needed) buy(p, v, "goods", needed - p.goods);
+        if (p.goods + 1e-10 < needed) continue;
+        p.goods = Math.max(0, p.goods - needed); p.gear[key] = 1;
+      }
+    }
+    function wear(p, key) { if (equipped(p, key)) p.gear[key] = Math.max(0, p.gear[key] - GEAR[key].wear); }
+    const harvestCapacity = p => CARRY * (equipped(p, "tool") ? 1.25 : 1);
+    const tradeCapacity = p => equipped(p, "pack") ? 5 : 3;
+    const craftOutput = (p, v) => (0.35 + v.ore * 1.1) * (equipped(p, "tool") ? 1.2 : 1);
+    function strike(p, foe, base) {
+      const damage = base * (equipped(p, "weapon") ? 1.25 : 1) * (equipped(foe, "shield") ? 0.75 : 1);
+      foe.hp -= damage; wear(p, "weapon"); wear(foe, "shield");
+      return damage;
     }
 
     function work(p) {
@@ -548,14 +583,16 @@
           /* A day's work covers the field they are standing in and the ones
              round it. */
           const fx = Math.floor(p.x), fy = Math.floor(p.y);
-          let need = CARRY;
+          const capacity = harvestCapacity(p);
+          let need = capacity;
           for (let k = 0; k < 9 && need > 0.01; k++) {
             const x = fx + PATCH[k][0], y = fy + PATCH[k][1];
             if (x < 0 || y < 0 || x >= cols || y >= rows) continue;
             const ti = y * cols + x, got = Math.min(stock[ti], need);
             stock[ti] -= got; need -= got;
           }
-          p.food += CARRY - need;
+          p.food += capacity - need;
+          if (capacity > need) wear(p, "tool");
           p.wait = 6; go(p, v.x + (R() - 0.5) * 1.5, v.y + (R() - 0.5) * 1.5, "home");
         } else if (p.task === "home") {
           const keep = 1.1 + p.kids * 0.5;
@@ -566,7 +603,8 @@
       } else if (p.job === "crafter") {
         if (p.task === "idle") { go(p, v.x + (R() - 0.5) * 2, v.y + (R() - 0.5) * 2, "make"); }
         else {
-          const made = 0.35 + v.ore * 1.1;
+          const made = craftOutput(p, v);
+          wear(p, "tool");
           p.goods += made;
           if (p.goods > 1) { const sold = sell(p, v, "goods", p.goods - 1); p.goods -= sold; }
           shop(p, v);
@@ -592,7 +630,7 @@
           const got = sell(p, here, p.cargo.what, p.cargo.amount);
           if (p.cargo.what === "food") p.food += p.cargo.amount - got; else p.goods += p.cargo.amount - got;
           if (here.f !== p.f && got > 0) { factions[here.f].rel[p.f].op = clamp(factions[here.f].rel[p.f].op + 0.012, -1, 1); factions[p.f].rel[here.f].op = clamp(factions[p.f].rel[here.f].op + 0.012, -1, 1); }
-          p.cargo = null;
+          p.cargo = null; wear(p, "pack");
         }
         shop(p, here);
         p.task = "idle"; p.wait = 8;
@@ -623,7 +661,7 @@
         return;
       }
       const before = what === "food" ? p.food : p.goods;
-      const got = buy(p, here, what, 3);
+      const got = buy(p, here, what, tradeCapacity(p));
       if (what === "food") p.food = before; else p.goods = before;
       if (got <= 0.01) { near(p, here, 2); p.wait = 40; return; }
       p.cargo = { what: what, amount: got };
@@ -653,7 +691,7 @@
         if (dist(p, foe) < 0.8) {
           p.hit = 6;
           if (R() < 0.07 * S.deadly) {
-            foe.hp -= 0.35 + R() * 0.45;
+            strike(p, foe, 0.35 + R() * 0.45);
             if (foe.hp <= 0) die(foe, "battle", p);
           }
           p.task = "idle"; p.wait = 0;
@@ -680,6 +718,9 @@
       const v = villages[p.home], f = factions[p.f];
       if (p.cargo) { if (p.cargo.what === "food") v.food += p.cargo.amount; else v.goods += p.cargo.amount; }
       v.food += p.food; v.goods += p.goods;
+      // Remaining usable material returns to the village; worn material is gone.
+      for (const [key, condition] of Object.entries(p.gear)) v.goods += GEAR[key].cost * condition;
+      p.gear = {};
       /* Coins. */
       if (p.coins > 0) {
         let heirs = [];
@@ -1516,7 +1557,7 @@
       fert: fert, ore: ore, stock: stock, owner: owner,
       people: people, byId: byId, villages: villages, factions: factions,
       events: events, chatter: chatter, history: history,
-      step: step, advance: advance, activity: activity, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
+      step: step, advance: advance, activity: activity, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
       get tick() { return t; },
       get days() { return elapsed / DAY_SECONDS; },
       get sceneTick() { return sceneTick; },
