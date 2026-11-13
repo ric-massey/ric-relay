@@ -1078,11 +1078,15 @@ of `game/sound.js` at load rather than keeping a copy, so it always plays what t
 game plays; `test/sounds.js` checks it still finds it. Served only — it cannot
 fetch the game off disk, and says so. Not linked from the game.
 
-**What it should sound like next is `SOUND-DESIGN.md`** (2026-11-13): an audit of
-every action, animation, place and event against the voices above, what is silent
-or sharing a voice it should not, a plan for loops, ambience and a threat-aware mix,
-and the research behind each choice. It is a plan, not a build. Its first finding is
-a bug — `alarm` is called three times and has no voice, so the boss alarms are silent.
+**All of the above is going to be replaced.** Ric, 2026-11-13: *"The sounds that
+exist now are going to change. I don't want the game to sound like an arcade game. I
+want it to sound like a hyperrealistic game."* `SOUND-DESIGN.md` is the plan: every
+action, animation, place and event in the game, a hyperreal replacement for each, built
+from real recordings rather than oscillators, and heard only the ways sound can reach a
+ship in a vacuum (through the hull, through the air where there is any, and through the
+instruments). It also has the research behind it and the questions still open. Nothing
+in it is built yet, so the description above is still what plays. Its first finding is
+a bug: `alarm` is called three times and has no voice, so the boss alarms are silent.
 
 Sound starts on the first keypress or tap and can be muted
 from the title, Settings or pause menu; that preference is saved locally.
