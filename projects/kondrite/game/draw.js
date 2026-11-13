@@ -571,6 +571,37 @@ function drawPlanet(pl) {
   ctx.save();
   ctx.translate(pl.x, pl.y);
 
+  /* ── the body ───────────────────────────────────────────────────────────
+     A world was an **outline**: an atmosphere ring, the circle, four chords
+     across it, a name round the rim — and the inside left as bare starfield.
+
+     On a small world that passes, because the whole circle is on the screen at
+     once and reads as a disc. On a big one it is the whole of a bug Ric found
+     by flying into one (2026-11-13): *"you can click e on some planets before
+     you can see them."* At 189 units above the surface of a 2,601-unit world
+     — the distance that lights the prompt — the centre is 2,790 away, the
+     circle is far wider than the view, and the only thing on screen is a thin
+     stroked arc. Seven lit pixels across the middle row of the canvas,
+     measured. The latitude bands are chords off a centre that is nowhere near
+     the screen, so none of those is drawn either. Everything inside the limb
+     is identical to open space.
+
+     And a world is **solid** — `solidHit` and `solidBounce` both stop you at
+     `pl.r` — so the inside of that circle is somewhere you can never be.
+     Drawing it as empty sky is a lie about the one object in the sector you
+     cannot miss. The Leviathan had this lesson first: *a hull you can see
+     stars through is a fence.*
+
+     Dark enough that the lit rim is still the edge and the bands still read as
+     markings on it, and mixed off the world's own band colour so an ember
+     world is not the same body as an ice one. A rogue takes the same mix
+     through its own `dim`, which leaves it nearly black — it has nothing
+     warming it, and it is still a place rather than a hole. */
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.fillStyle = mixHex("#05070c", kind.band, 0.26 * dim);
+  ctx.fill();
+
   if (!pl.rogue) {
     glow(kind.halo, 3, (0.42 + 0.14 * Math.sin(clock * 1.5)) * dim, () => {
       ctx.beginPath();

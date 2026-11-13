@@ -2678,6 +2678,102 @@ console.log("  levdraw    every sponson's drawn outline lies inside a plate, " +
               "left on screen calls the same thing a gate");
 }
 
+// ── 15d. a world is a thing the game can see ─────────────────────────────
+/* Ric, 2026-11-13, flying it himself: *"when scanning worlds dont pop up on
+   the map and you can click e on some planets before you can see them. that
+   shouldnt be possible."* Two reports, two causes, and they are checked
+   together because they are the same complaint from two directions — the
+   biggest objects in the sector were the ones the game was worst at
+   admitting were there.
+
+   **The scan never looked.** It walked parts, caches, stations, gates, hulks,
+   sentries, traffic and loose salvage, and never `surv.planets`.
+
+   **And a world was an outline.** `drawPlanet` stroked an atmosphere ring,
+   stroked the circle, drew four latitude chords and wrote the name round the
+   rim, and never filled the disc. On a small world that reads as a disc
+   because the whole circle is on screen; on a big one, at the distance that
+   lights the LAND prompt, the only thing on screen is a thin arc. */
+{
+  const { cf } = boot("?debug=1&seed=4242");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+
+  // The biggest world within reach of home, which is the case that fails.
+  let big = null;
+  for (let ring = 0; ring <= 10 && !big; ring++) {
+    for (let cx = -ring; cx <= ring; cx++) {
+      for (let cy = -ring; cy <= ring; cy++) {
+        for (const p of cf.chunk(cx, cy).planets) {
+          if (!big || p.r > big.r) big = p;
+        }
+      }
+    }
+  }
+  check(!!big, "no world anywhere near home to look at");
+  check(big.r > 900,
+        "the biggest world near home is only " + Math.round(big.r) +
+        " units — the bug is about one wider than the screen");
+
+  /* Parked where the prompt lights: just off the surface. The centre is then
+     most of a kilometre away and the disc is far wider than the view. */
+  me.x = big.x + big.r + 189; me.y = big.y; me.vx = me.vy = 0;
+  for (let i = 0; i < 8; i++) { me.invuln = 999; now += 1000 / 60; cf.step(); }
+  const near = surv.planets.find(p => p.x === big.x && p.y === big.y);
+  check(!!near, "standing on a world did not stream it in");
+
+  /* ── it has a body ───────────────────────────────────────────────────
+     Two frames that differ by exactly one thing: whether the world is in the
+     list. A world that paints nothing but strokes is a world you cannot see
+     from on top of it, which is the whole report. */
+  const held = surv.planets.slice();
+  // `callCount` reads *and* clears, so it has to be flushed first or the
+  // first reading is every fill the suite has made since it started.
+  callCount("fill");
+  surv.planets.length = 0;
+  cf.draw(); const empty = callCount("fill");
+  surv.planets.push(...held);
+  cf.draw(); const full = callCount("fill");
+  check(full > empty,
+        "a world painted no body at all (" + full + " fills against " + empty +
+        " with the sky empty) — from 189 units above the surface there is " +
+        "nothing on the screen but a stroked arc");
+
+  /* ── and the scan reports it ─────────────────────────────────────────
+     Measured to the surface. The scan reaches 2,100 and a world can be 3,210
+     in radius, so a scan that measures to the centre sweeps straight through
+     the surface of a big one and comes back with nothing. */
+  surv.echoes.length = 0;
+  surv.scan.charge = 1;              // a scanner that is flat returns silence
+  cf.scan();
+  const hit = surv.echoes.find(e => e.kind === "planet");
+  check(!!hit, "a scan taken from 189 units above a world did not report it");
+  check(!!hit && hit.name === "WORLD",
+        "the scan calls a world " + (hit && JSON.stringify(hit.name)));
+
+  // Far enough out that the centre is past the scan and the surface is not.
+  const reach = cf.scanRange();
+  me.x = big.x + big.r + reach * 0.5; me.y = big.y;
+  for (let i = 0; i < 4; i++) { me.invuln = 999; now += 1000 / 60; cf.step(); }
+  check(big.r + reach * 0.5 > reach,
+        "this seed's world is too small to put its centre out of scan range");
+  surv.echoes.length = 0;
+  /* Charged by hand. The scan above flattened it, four frames is nowhere near
+     a recharge, and `surveyScan` returns in silence when it has nothing to
+     fire — so without this the second scan is not a scan and the check
+     measures the charge rather than the range. */
+  surv.scan.charge = 1;
+  cf.scan();
+  check(surv.echoes.some(e => e.kind === "planet"),
+        "a world whose surface is inside the scan and whose centre is not " +
+        "came back as nothing — the scan is measuring to the middle of it");
+
+  console.log("  worlds     a world paints a body, not an outline · a scan " +
+              "reports one · and it is measured to the surface, so a " +
+              Math.round(big.r) + "-unit world cannot hide its centre");
+}
+
 // ── 16. the scan reports what is near, and the refit makes it reach ──────
 /* The old scan returned a compass bearing to an almanac entry and printed it in
    a message feed, which is why nobody could tell what it was for. It sweeps a

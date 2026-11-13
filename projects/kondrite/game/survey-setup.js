@@ -623,7 +623,12 @@ const ECHO_KINDS = {
   traffic: { name: "TRAFFIC",   colour: "#8fb4d8",     bad: false },
   patrol:  { name: "PATROL",    colour: CASH,          bad: false },
   distress:{ name: "DISTRESS",  colour: "#ffcb42",     bad: false },
-  hunter:  { name: "HUNTER",    colour: "#ff6b6b",     bad: true }
+  hunter:  { name: "HUNTER",    colour: "#ff6b6b",     bad: true },
+  /* The largest things in the sector, and until 2026-11-13 the one kind a
+     scan had never reported — Ric: "when scanning worlds dont pop up on the
+     map." The same word the chart uses for them, so a return and the mark it
+     becomes say one thing. See `CHART_MARKS`. */
+  planet:  { name: "WORLD",     colour: "#87d8ff",     bad: false }
 };
 
 /* A thing the scan reported is gone — picked up, opened, stripped — so its
@@ -665,12 +670,25 @@ function surveyScan() {
      second, and it read as sentries "not showing up right". An echo with a
      reference reads its position every frame instead, and disappears when the
      thing it is following does. */
-  const add = (kind, x, y, ref) => {
-    if (dist2(x, y, me.x, me.y) <= r2) {
+  /* `size` is the radius of the thing, and it is there for one kind of
+     return: a world can be 3,210 units across the middle, so a scan that
+     measures to the centre can sweep straight through a planet's surface and
+     report nothing. Everything else out here is small enough that its centre
+     is the honest answer, and passes nothing. */
+  const add = (kind, x, y, ref, size) => {
+    const to = reach + (size || 0);
+    if (dist2(x, y, me.x, me.y) <= to * to) {
       found.push({ kind, x, y, t: ECHO_LIFE, ref: ref || null });
     }
   };
 
+  /* Worlds. They were missing altogether: a scan walked parts, caches,
+     stations, gates, hulks, sentries, traffic and loose salvage, and never
+     `surv.planets` — so the biggest object a pilot can point at was the one
+     thing the scanner would not admit was there. One reached the chart only
+     by being flown near (`recordSurroundings` writes it at `sight + r`),
+     which is why this read as intermittent rather than missing. */
+  for (const pl of surv.planets) add("planet", pl.x, pl.y, null, pl.r);
   for (const pt of surv.parts) add("part", pt.x, pt.y);
   for (const c of surv.caches) add(c.sealed ? "sealed" : "cache", c.x, c.y);
   for (const st of surv.stations) add("station", st.x, st.y);

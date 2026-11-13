@@ -316,9 +316,9 @@ session is for recording and discussing them only; no gameplay changes yet.
 Ric, after the list above was cleared: *"when scanning worlds dont pop up on
 the map and you can click e on some planets before you can see them. that
 shouldnt be possible."* Two reports, two separate causes, and the second one
-turned out to be bigger than the sentence.
+turned out to be bigger than the sentence. **Both fixed the same day.**
 
-- [ ] **N11 · A scan does not return worlds.** `surveyScan` walks parts,
+- [x] **N11 · A scan does not return worlds.** `surveyScan` walks parts,
   caches, stations, gates, hulks, sentries, traffic and loose salvage. It
   never touches `surv.planets`, and there is no `planet` row in `ECHO_KINDS`
   — so the largest objects in the sector are the one kind of thing a scan has
@@ -330,7 +330,15 @@ turned out to be bigger than the sentence.
   range, and a world can be 3,210 units in radius, so a world whose surface is
   well inside a scan can have its centre well outside it.
 
-- [ ] **N12 · A world is an outline, not a body — so up close there is
+  *Done 2026-11-13.* `ECHO_KINDS` gains a `planet` row named **WORLD** — the
+  same word the chart already uses, so a return and the mark it becomes say
+  one thing — and `add` takes an optional radius, used by this one kind and
+  nothing else. No arrow: three kinds of arrow is the rule (A6), and a world
+  is not a decision, it is scenery you can see. `test/survey.js` §15d scans
+  one from above its surface, and again from far enough out that its centre
+  is past the scan and its surface is not.
+
+- [x] **N12 · A world is an outline, not a body — so up close there is
   nothing to see.** This is the "press E before you can see them" half, and
   the cause is that `drawPlanet` **never fills the disc**. It strokes an
   atmosphere ring, strokes the circle, draws four latitude chords and writes
@@ -351,6 +359,27 @@ turned out to be bigger than the sentence.
   both stop you at `pl.r`), so the inside of that circle is somewhere you can
   never be, and drawing it as empty space is a straight lie about the one
   object in the sector you cannot miss.
+
+  *Done 2026-11-13.* The disc is filled before anything is stroked over it,
+  dark enough that the lit rim is still the edge and the bands still read as
+  markings on it, and mixed off the world's own band colour so an ember world
+  is not the same body as an ice one. A rogue takes the same mix through its
+  own `dim` and comes out nearly black — it has nothing warming it, and it is
+  still a place rather than a hole.
+
+  Measured in the running game, parked 189 units above a 2,601-unit ember
+  world, sampling the middle row of the canvas:
+
+  | screen x | before | after |
+  |---|---|---|
+  | 50 · 150 · 250 · 340 (inside the limb) | black | `rgb(54,27,25)` |
+  | 380 · 450 (outside it) | black | black |
+
+  The limb lands at x=364, where the geometry says. Before, the whole strip
+  was five lit pixels — the stroked arc and nothing else. `test/survey.js`
+  §15d draws two frames that differ by exactly one thing, whether the world
+  is in the list, and fails if the one with it in paints no more than the one
+  without.
 
 ### Design questions — still being discussed
 

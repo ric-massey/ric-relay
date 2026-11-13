@@ -540,6 +540,16 @@ they could clearly see, they stop trusting every other edge in the sector. A slo
 brush is free and only a real impact costs hull, because a world that charges a
 hull point for every graze is a world you fly through the middle of.
 
+**And the shape you can see has to be there to see.** A world was drawn as an
+outline — an atmosphere ring, the circle, four latitude chords, a name round
+the rim, and the inside left as bare starfield. On a small one that passes,
+because the whole circle is on screen at once. On a big one it is the whole
+bug Ric found by flying into one (2026-11-13): at the distance that lights the
+LAND prompt, 189 units above the surface of a 2,601-unit world, the only thing
+on screen is a thin stroked arc. Measured: five lit pixels across the middle
+row of the canvas. A world is solid, so the inside of that circle is somewhere
+you can never be. It is filled now.
+
 Two sides of that rule were found broken on 2026-11-12, when Ric said the
 Leviathan's hitbox did not match what he could see and that enemies were
 shooting through her.
