@@ -1078,6 +1078,12 @@ of `game/sound.js` at load rather than keeping a copy, so it always plays what t
 game plays; `test/sounds.js` checks it still finds it. Served only — it cannot
 fetch the game off disk, and says so. Not linked from the game.
 
+**What it should sound like next is `SOUND-DESIGN.md`** (2026-11-13): an audit of
+every action, animation, place and event against the voices above, what is silent
+or sharing a voice it should not, a plan for loops, ambience and a threat-aware mix,
+and the research behind each choice. It is a plan, not a build. Its first finding is
+a bug — `alarm` is called three times and has no voice, so the boss alarms are silent.
+
 Sound starts on the first keypress or tap and can be muted
 from the title, Settings or pause menu; that preference is saved locally.
 Fullscreen is available from those same screens when the browser supports the
