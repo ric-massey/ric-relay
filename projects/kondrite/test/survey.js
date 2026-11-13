@@ -1520,17 +1520,38 @@ const storeOf = (cf, key) => {
    in — the flank run is cut there — so asking for plate along it fails by up
    to 169 units on a shape that is drawn exactly right. That the hull itself
    is honest is the grid measurement above, not this. */
-{
-  const { cf } = boot("?debug=1&seed=8888");
+const levOf = search => {
+  const { cf } = boot(search);
   cf.start("survey", 1);
   const surv = cf.survey();
   const me = cf.live().ships[0];
   const lm = surv.landmarks.find(l => l.key === "leviathan");
-  check(!!lm, "the sector has no Leviathan");
+  check(!!lm, search + ": the sector has no Leviathan");
   me.x = lm.x; me.y = lm.y; me.vx = me.vy = 0;
   now += 1000 / 60; cf.step();
-  const lev = surv.leviathan;
-  check(!!lev, "standing on the Leviathan did not stream its hull in");
+  check(!!surv.leviathan, search + ": standing on her streamed no hull in");
+  return { cf, lev: surv.leviathan };
+};
+
+function checkLeviathanDrawing(search, wantTorn) {
+  const { cf, lev } = levOf(search);
+
+  /* The ship's own frame. Everything below is in it: the walls and the bays
+     are local, the collision discs are world, and the two have to be asked
+     the same question. */
+  const toLocal = (x, y) => {
+    const dx = x - lev.x, dy = y - lev.y;
+    return { u: dx * lev.ca + dy * lev.sa, v: -dx * lev.sa + dy * lev.ca };
+  };
+  const inPoly = (poly, u, v) => {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      if ((poly[i][1] > v) !== (poly[j][1] > v) &&
+          u < (poly[j][0] - poly[i][0]) * (v - poly[i][1]) /
+              (poly[j][1] - poly[i][1]) + poly[i][0]) inside = !inside;
+    }
+    return inside;
+  };
 
   /* How far a point is outside every plate on the ship. Zero or less means it
      is inside one — which is what "this edge is a wall" means. */
@@ -1590,18 +1611,92 @@ const storeOf = (cf, key) => {
       edgeIsWall(b.poly[3], b.poly[2], name + "the outer face");
     }
   }
-  /* The wrecked hull is the one that can be drawn as something it is not, so
-     the seed is held to producing one. If this ever fails, pick a seed that
-     wrecks her rather than deleting the check. */
-  check(torn === 1,
-        "seed 8888's Leviathan has " + torn + " torn sponsons — the test " +
-        "wants the wrecked one, because a whole wing drawn over a stump is " +
-        "the worst case this is about");
+  check(torn === wantTorn,
+        search + ": " + torn + " torn sponsons, wanted " + wantTorn);
 
-  console.log("  levdraw    every sponson's drawn outline lies inside a plate · " +
-              lev.bays.length + " of them, one of them torn off · drawn " +
-              "from the corners its walls are stamped on");
+  /* ── and the black part is open ────────────────────────────────────────
+     Ric, asked to double-check this: "there shouldn't be walls on the black
+     part of the Leviathan." The fill is painted first and the plates are
+     stroked over it, so the black you are left looking at is the room — and
+     a room has to be a room. The biggest circle that fits inside each bay,
+     against the biggest collision circle in the game: the TENDER's hull is
+     68 across its own outline, so a bay that admits 70 admits anything.
+
+     Measured when this was written: 339 and 352 in the two hangars, 99 in
+     each forward sponson. The torn one is solid all through, which is what a
+     wing that has been torn off is. */
+  const HULL = 70;
+  for (const b of lev.bays) {
+    let clear = 0;
+    for (let u = b.u - b.hw; u <= b.u + b.hw; u += 6) {
+      for (let k = 0; k <= b.depth; k += 6) {
+        const v = b.side * (b.root + k);
+        if (!inPoly(b.poly, u, v)) continue;
+        let d = Infinity;
+        for (const g of lev.segs) {
+          const l = toLocal(g.x, g.y);
+          d = Math.min(d, Math.hypot(u - l.u, v - l.v) - g.r);
+          if (d <= clear) break;
+        }
+        if (d > clear) clear = d;
+      }
+    }
+    const where = search + ": sponson at u=" + Math.round(b.u) +
+                  " side " + b.side;
+    if (b.torn) {
+      check(clear <= 0,
+            where + " is torn off and still has " + Math.round(clear) +
+            " units of room inside it — a stump is structure, not a chamber");
+    } else {
+      check(clear >= HULL,
+            where + " admits a circle of only " + Math.round(clear) +
+            " units, against a " + HULL + "-unit hull — it draws as a room " +
+            "and cannot be flown into");
+      biggest = Math.max(biggest, clear);
+      smallest = Math.min(smallest, clear);
+    }
+  }
 }
+
+let biggest = 0, smallest = Infinity;
+checkLeviathanDrawing("?debug=1&seed=8888", 1);
+/* And the one you only ever see with `?intact`, where all four sponsons are
+   whole. `wrecked` is `!LEV_INTACT` — a URL flag, not a roll — so she is
+   torn in every real game and this is the variant nobody plays. It is still
+   drawn by the same code, so it is still held to the same rule. */
+checkLeviathanDrawing("?debug=1&seed=8888&intact", 0);
+
+/* **The sponsons are not seeded**, which is what makes checking one seed
+   above honest, and it is worth proving rather than assuming — "I think the
+   broken one is seeded?" is exactly the question this invites.
+
+   Something on her *is*: the breach in the flank is placed at
+   `-half * 0.34 + rnd(-260, 260)`, off the sector's own generator, so the
+   plate run around the wound differs from seed to seed and a comparison of
+   whole hulls would fail on it. The bays are built from constants, and which
+   one is torn is `bays[3]` every time — the roll decides where she was holed,
+   not which wing came off. */
+{
+  const bayShape = search => {
+    const { lev } = levOf(search);
+    return JSON.stringify(lev.bays.map(b => [
+      Math.round(b.u), b.side, Math.round(b.hw), Math.round(b.depth),
+      b.rake, Math.round(b.root), !!b.torn
+    ]));
+  };
+  const a = bayShape("?debug=1&seed=8888");
+  for (const other of ["?debug=1&seed=4242", "?debug=1&seed=606060"]) {
+    check(bayShape(other) === a,
+          "the Leviathan's sponsons differ on " + other + " — if they have " +
+          "become seeded, every check above is about one sector only");
+  }
+}
+
+console.log("  levdraw    every sponson's drawn outline lies inside a plate, " +
+            "wrecked and intact · the room inside runs " +
+            Math.round(smallest) + "–" + Math.round(biggest) +
+            " units of clearance against a 68-unit hull · the torn one " +
+            "is solid through · and the sponsons are the same on every seed");
 
 // ── 10d. somebody else's rounds stop at a wall ───────────────────────────
 /* Ric, same session: *"enemies can shoot through the Leviathan."* They did —

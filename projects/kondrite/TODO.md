@@ -197,6 +197,29 @@ session is for recording and discussing them only; no gameplay changes yet.
   read `lev.outline` since it stopped being a rectangle. `test/survey.js`
   §10c walks every edge of every drawn sponson and fails if any of it is
   outside every plate on the ship.
+
+  *Double-checked on Ric's instruction, and two things he asked about.*
+
+  **"There shouldn't be walls on the black part."** There are not. The fill is
+  painted first and the plates are stroked over it, so the black you are left
+  looking at is the room — and every room is a room: the biggest circle that
+  fits inside the two hangars is **339 and 352 units**, and **99** in each
+  forward sponson, against the largest collision circle in the game, the
+  TENDER's at 68. So every bay admits every hull. The exception is the torn
+  one, which is solid all the way through — correct, because a wing that has
+  been torn off is structure rather than a chamber. The test holds both: a
+  whole sponson has to admit 70 units, a torn one has to admit none.
+
+  **"I think the broken one is seeded?"** It is not. `wrecked = !LEV_INTACT`
+  is a **URL flag** (`?intact`), so she is torn in every real game, and the
+  wing that comes off is `bays[3]` every time. The test now runs the drawing
+  checks on both — the wrecked hull everybody flies and the intact one nobody
+  does — and compares the sponsons across three seeds.
+
+  Something on her *is* seeded, and it is worth writing down: the **breach in
+  the flank** sits at `-half * 0.34 + rnd(-260, 260)`, off the sector's own
+  generator, so the plate run around the wound differs from seed to seed. The
+  roll decides where she was holed, not which wing came off.
 - [x] **N5 · Enemies can shoot through the Leviathan.** Reported during the
   same playtest. Reproduce projectile passage through its solid structure;
   whether this shares N4's cause is unknown.
@@ -285,6 +308,49 @@ session is for recording and discussing them only; no gameplay changes yet.
   side), so the word fits at any reading and on any glass, and both tanks get
   it because they were always one loop. `drawCounters` in
   `survey-hud/panel.js`.
+
+---
+
+## Flying it himself — 2026-11-13
+
+Ric, after the list above was cleared: *"when scanning worlds dont pop up on
+the map and you can click e on some planets before you can see them. that
+shouldnt be possible."* Two reports, two separate causes, and the second one
+turned out to be bigger than the sentence.
+
+- [ ] **N11 · A scan does not return worlds.** `surveyScan` walks parts,
+  caches, stations, gates, hulks, sentries, traffic and loose salvage. It
+  never touches `surv.planets`, and there is no `planet` row in `ECHO_KINDS`
+  — so the largest objects in the sector are the one kind of thing a scan has
+  never reported, and nothing a scan finds puts one on the chart. (A world
+  does reach the chart by being *flown near*: `recordSurroundings` writes one
+  at `sight + r`. That is why it looks intermittent rather than absent.)
+
+  Worth fixing with the radius in hand: `add` tests a point against the scan
+  range, and a world can be 3,210 units in radius, so a world whose surface is
+  well inside a scan can have its centre well outside it.
+
+- [ ] **N12 · A world is an outline, not a body — so up close there is
+  nothing to see.** This is the "press E before you can see them" half, and
+  the cause is that `drawPlanet` **never fills the disc**. It strokes an
+  atmosphere ring, strokes the circle, draws four latitude chords and writes
+  the name round the rim. The inside of a world is left as bare starfield.
+
+  That is invisible on a small world, because the whole circle fits on the
+  screen and reads as a disc. On a big one it is the whole bug: at 189 units
+  above the surface of a 2,601-unit world — the distance that lights the
+  prompt — the centre is 2,790 units away and **the only thing on screen is a
+  thin stroked arc**. Measured: seven lit pixels across the middle row of the
+  canvas. The bands are chords measured from a centre that is far off screen,
+  so none of them is drawn either. Everything inside the limb is identical to
+  open space, which is exactly why "you can press E on some planets before you
+  can see them" — *some* being the big ones.
+
+  The Leviathan learned this already: *"Filled dark first — a hull you can see
+  stars through is a fence."* A world is solid (`solidHit` and `solidBounce`
+  both stop you at `pl.r`), so the inside of that circle is somewhere you can
+  never be, and drawing it as empty space is a straight lie about the one
+  object in the sector you cannot miss.
 
 ### Design questions — still being discussed
 
