@@ -400,6 +400,18 @@ HUD.drawHangar = function (st, dt) {
     }
   });
 
+  /* The rule, on the page where the hull is bought and in the place the eye
+     is already going — beside the price. A pilot who learns it from the death
+     screen learned it by losing a ship; this is the cheaper lesson. */
+  fitText(sh.key === "skiff"
+            ? "THE SKIFF ALWAYS COMES HOME " + '\u2014' + " THE ONE HULL YOU CANNOT LOSE"
+            : "DIE IN IT AND IT STAYS WHERE YOU FELL " + '\u2014' +
+              " THE SKIFF ALWAYS COMES HOME",
+          PAGE.EDGE + PAGE.PAD,
+          Math.min(dy + detailH - 14, (SCREEN_H || 700) - 10),
+          SIZE.cap, sh.key === "skiff" ? CASH_DIM : WARN, "left", 0.85,
+          SCREEN_W - PAGE.EDGE * 2 - PAGE.PAD - 240, "0.06em");
+
   const reach = sh.owned || sh.afford;
   button(sh.flying ? "FLYING" : sh.owned ? "FLY" :
            sh.afford ? "BUY " + hudMoney(sh.cost) : "NEED " + hudMoney(sh.cost),

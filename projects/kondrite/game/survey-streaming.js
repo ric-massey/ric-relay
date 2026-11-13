@@ -322,8 +322,8 @@ function streamChunks(force) {
         Math.abs(d.y - ships[0].y) > CHUNK * 3) continue;
     const spec = droppedSpec(d);
     if (!spec) continue;
-    surv.parts.push({ key: d.key, name: spec.name, x: d.x, y: d.y, r: 40,
-                      dropped: true, mod: !!d.mod, id: d.id });
+    surv.parts.push({ key: d.key, name: droppedName(d), x: d.x, y: d.y, r: 40,
+                      dropped: true, mod: !!d.mod, hull: !!d.hull, id: d.id });
   }
 
   /* And who did not come back. A pirate you shot and did not finish is only

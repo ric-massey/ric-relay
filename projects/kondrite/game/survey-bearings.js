@@ -34,7 +34,7 @@
    carrying is a fitted part and has nothing to do with the manifest, so only
    an entry without it can stand in for one of these six. */
 const partDropped = key =>
-  (surv.dropped || []).find(d => d && !d.mod && d.key === key) || null;
+  (surv.dropped || []).find(d => d && !d.mod && !d.hull && d.key === key) || null;
 const partWhere = b => {
   if (!b) return null;
   const fell = partDropped(b.key);
@@ -118,7 +118,100 @@ function nextUnlogged() {
    that from forty thousand units away. */
 const lmEntry = lm => (lm && ALMANAC.find(e => e.key === lm.key)) || null;
 
+/* ── how far you can go and still get home ────────────────────────────────
+   Ric, 2026-11-13, agreeing to it: the middle of the game needed a direction
+   of its own once the light drive stopped being pocket money. The landmark
+   ladder runs 13k, 30k, 70k, 160k and then 360k, 780k, 1.25M and 3.4M — and a
+   starting hull carries twenty minutes of water. So after the fourth landmark
+   the one arrow in the mode pointed at places a pilot could not practically
+   reach for the next ten hours, and said nothing about why.
+
+   Reach is the answer to "why", as a number the pilot can grow: half of what
+   the tighter tank lasts, at this hull's top speed, less a margin for not
+   flying in a straight line. It is measured from the home station because
+   that is the one place that is always where you left it. A faster hull, a
+   longer larder, anything that slows the drain — each of them moves it, which
+   makes range the thing the middle of the game is *about*.
+
+   It is honest about what it is not. A station or an inhabited world on the
+   way refills you, and an ice melter makes water out of a field; a pilot who
+   plans a route goes further than this. It is the unsupported round trip —
+   the distance you can be wrong about and still come back. */
+function surveyReach() {
+  if (!surv) return 0;
+  const top = MAX_SPEED * (shipSpec(surv.ship).speed || 1) *
+              (1 + (mods().speed || 0));
+  const lasts = Math.min(WATER_FULL, foodCap()) /
+                Math.max(0.2, 1 + (mods().life || 0));
+  return Math.round(0.5 * lasts * top * 0.85);
+}
+const fromHome = p => Math.hypot(p.x - HOME_STATION.x, p.y - HOME_STATION.y);
+
+/* The boss skies inside that reach, still flying. Asked every frame by the
+   objective, and each square asks the territory map, so the answer is kept
+   until the reach, the seed or the kill list changes. */
+let reachLairCache = { key: "", list: [] };
+function reachLairs(reach) {
+  const span = Math.min(12, Math.ceil(reach / LAIR_CELL) + 1);
+  const key = surv.seed + ":" + Math.round(reach / 4000) + ":" +
+              surv.bossesDown.size;
+  if (reachLairCache.key === key) return reachLairCache.list;
+  const list = [];
+  for (let i = -span; i <= span; i++) {
+    for (let j = -span; j <= span; j++) {
+      const L = lairFresh(i, j);
+      if (L && !L.dead && fromHome(L) <= reach) list.push(L);
+    }
+  }
+  reachLairCache = { key, list };
+  return list;
+}
+
+/* What the arrow is for once the manifest and the MK1 are done — decided in
+   one place, because the arrow and the line that explains it are the same
+   fact said twice and have drifted apart before.
+
+     landmark   the nearest thing missing from the book that you can reach
+     lair       none of those is in range, but a boss's sky is: somewhere to
+                go that pays, and that a better ship is the answer to
+     beyond     nothing at all is in range. The arrow still points at the
+                nearest landmark, and says that it is past your range — a
+                thing you can see and cannot have yet, which is the only way
+                this mode has ever told anybody what to want
+
+   A full book returns nothing, and the line says so itself. */
+function afterGate() {
+  const me = ships[0];
+  if (!me || !surv || !surv.landmarks) return null;
+  const open = surv.landmarks.filter(l => !l.found);
+  if (!open.length) return null;
+  const nearest = list => {
+    let best = null, bd = Infinity;
+    for (const p of list) {
+      const d = dist2(p.x, p.y, me.x, me.y);
+      if (d < bd) { bd = d; best = p; }
+    }
+    return best;
+  };
+  const reach = surveyReach();
+  const inReach = open.filter(l => fromHome(l) <= reach);
+  if (inReach.length) return { kind: "landmark", at: nearest(inReach) };
+  const lair = nearest(reachLairs(reach));
+  if (lair) return { kind: "lair", at: lair };
+  return { kind: "beyond", at: nearest(open) };
+}
+
 function objectiveTarget() {
+  /* Before anything else: the hull you died in. It is the one thing on the
+     board with a clock on it — anything out there can take it first — and an
+     arrow that went on pointing at a landmark while your ship lay in the dark
+     would be the game hiding the consequence it had just handed you. A known
+     place, so it gets a number rather than a band. */
+  const wreck = lostHull();
+  if (wreck) {
+    return { key: "hull", name: droppedName(wreck), x: wreck.x, y: wreck.y,
+             fell: true };
+  }
   /* The manifest is finished and the arrow used to go out with it, which is
      the right shape for "the tutorial is over" and the wrong one for the ten
      hours after: the mode's answer to *now what* was a sector with nothing
@@ -134,10 +227,15 @@ function objectiveTarget() {
        rule this mode's navigation has never broken is that nothing hands you
        a position. The manifest's arrow states units because a delivery is
        not a search. */
-    const lm = nextUnlogged();
-    if (!lm) return null;
+    const next = afterGate();
+    if (!next) return null;
+    if (next.kind === "lair") {
+      return { key: "lair", vague: true, name: next.at.name,
+               x: next.at.x, y: next.at.y };
+    }
+    const lm = next.at;
     const e = lmEntry(lm);
-    return { key: "landmark", vague: true,
+    return { key: "landmark", vague: true, beyond: next.kind === "beyond",
              name: e && e.secret ? "SOMETHING UNLOGGED" : lm.name,
              x: lm.x, y: lm.y };
   }
@@ -160,6 +258,13 @@ const bearingTo = (me, t) =>
   Math.round(((Math.atan2(t.y - me.y, t.x - me.x) * 180) / Math.PI + 450) % 360);
 
 function objective() {
+  const wreck = lostHull();
+  if (wreck) {
+    return { text: "GO BACK FOR YOUR " + droppedName(wreck),
+             sub: "it is where you fell, with what was bolted to it " + '\u2014' +
+                  " until something else takes it",
+             brief: "where you fell", colour: "#ff8f77" };
+  }
   if (stationWhole()) {
     if (mk1Wanted()) {
       return { text: "FIND THE " + surv.mk1Site.name,
@@ -174,10 +279,27 @@ function objective() {
        People stopped playing here, and they were reading it correctly.
 
        So it keeps answering, out of the book, for the rest of the run. */
-    const lm = nextUnlogged();
-    if (lm) {
+    const next = afterGate();
+    if (next && next.kind === "lair") {
+      return { text: next.at.name,
+               sub: "what is left in the book is past your range. this sky " +
+                    "is not",
+               colour: "#ff4dd2" };
+    }
+    if (next) {
+      const lm = next.at;
       const e = lmEntry(lm);
-      return { text: e && e.secret ? "SOMETHING UNLOGGED" : lm.name,
+      const name = e && e.secret ? "SOMETHING UNLOGGED" : lm.name;
+      if (next.kind === "beyond") {
+        /* Said, rather than left for the pilot to find out with a dry tank
+           two hundred thousand units from anywhere. It names the cure and
+           not the purchase: which hull, which part, is theirs to work out. */
+        return { text: name + " \u2014 PAST YOUR RANGE",
+                 sub: "further than one tank gets you there and back. a " +
+                      "faster hull or a longer tank moves the line",
+                 colour: NEBULA };
+      }
+      return { text: name,
                sub: e && !e.secret && e.note
                       ? e.note
                       : "nobody has written down what is out that way",
@@ -333,6 +455,26 @@ function surveyParts(dt) {
     /* A spare takes room, so it can be refused — and being refused must leave
        it lying there rather than quietly deleting it. Said once a pass, by the
        same words every other full-hold refusal uses. */
+    /* Your own hull, lying where you died in it. It does not go in the
+       hold — it is a ship — so there is nothing to refuse it: reaching it is
+       the whole errand, and it is back in the hangar at home when you do. */
+    if (pt.hull) {
+      surv.parts.splice(i, 1);
+      dropEchoAt(pt.x, pt.y);
+      surv.known.delete(knownId("part", pt.x, pt.y));
+      const lost = surv.dropped.findIndex(d => d.id === pt.id);
+      if (lost >= 0) surv.dropped.splice(lost, 1);
+      surv.owned.add(pt.key);
+      burst(pt.x, pt.y, CASH, 30, 300 * U);
+      gameSound("win", pt.x, pt.y);
+      addShake(5);
+      if (surveyHUD) {
+        surveyHUD.notify(pt.name + " RECOVERED",
+                         "it is back in your hangar at home", CASH, 10);
+      }
+      saveSurveyBook();
+      continue;
+    }
     if (pt.mod && !roomForPart(pt.key)) {
       if (!pt.said) { pt.said = true; noRoomFor(pt.key); }
       continue;

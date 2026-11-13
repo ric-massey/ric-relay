@@ -684,6 +684,9 @@ four hulls each cost roughly one good trip. The ladder is pushed up on a curve
 rather than a multiplier, because the two ends had different problems: about 5x
 at the bottom, 1.3x at the top (`28.9 * cost^0.742`). The NEEDLE goes 900 →
 4,500 and the TENDER 168,000 → 218,000, and nothing overtakes anything.
+(That stood for one day. Once a bought hull could be lost, the rise was halved
+to `8.22 * cost^0.825`: NEEDLE 2,200, TENDER 168,000 again. See "What you fly
+out in is what you are risking".)
 
 **What salvage fetches came down about a fifth** at the same time — iron 3 → 2,
 alloy 9 → 7, electronics 16 → 13, iridium 22 → 18, core 48 → 38 — so parts,
@@ -699,6 +702,31 @@ times under its part's shelf price — and it is what caught the grapple line
 afterwards at 20.5x. Its recipe was not the problem; it was priced above the MK2
 beam at 1,600 for "the cheapest verb in the game", so the shelf price came down
 to 1,100 instead.
+
+### What you fly out in is what you are risking
+
+Ric, 2026-11-13: *"This is seeming somewhat like an extraction shooter in
+space. And I like that. So let's keep it like that."*
+
+**The SKIFF always comes home.** Any other hull stays where you die in it,
+with everything that was bolted to it, until you fly back for it or something
+else gets there first. Nothing is destroyed by dying: it is on the chart by
+name and the arrow leads to it. What it costs is the trip — made in the worst
+ship you own, to the place that just killed you in a better one.
+
+It is said four times, because the condition was that it be communicated
+"phenomenally clearly": on the hangar page beside the price, the first time
+you leave a dock in a bought hull, on the death screen in its own line, and
+by the objective afterwards. Hull prices came down to match — a ship you can
+lose has to be a ship you can afford to lose.
+
+**And how far you can go is drawn on the chart.** One dashed ring round home:
+out and back on one tank, in the hull you are flying. The arrow stays inside
+it for as long as there is anything inside it to point at — an unlogged
+landmark, then a boss's sky — and when there is not, it says the next thing
+is past your range. A faster hull or a longer tank moves the line, which makes
+range the thing the middle of the game is about, and the light drive
+(150,000, and meant to be hours away) the thing that finally breaks it.
 
 ### Two kinds of progression
 

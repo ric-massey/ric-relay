@@ -461,6 +461,9 @@ function surveyState() {
        panel, so the thing that draws it and the thing that says goodbye to it
        cannot disagree about when it is over. */
     tutorBanner: bannerWanted(),
+    /* How far out and back on one tank, for the ring on the chart. See
+       `surveyReach`; the objective reads the same number. */
+    reach: surveyReach(),
     /* Flattened for the panel: the minimap draws these as dots for as long as
        they last, which is the half of a scan that used to be missing. Anything
        a scan reaches is up to 3,885 units away and the view is about 700
@@ -496,7 +499,7 @@ function surveyState() {
         if (surv.known.has(knownId("part", d.x, d.y))) continue;
         const spec = droppedSpec(d);
         out.push({ k: "part", x: d.x, y: d.y,
-                   name: spec ? spec.name : (d.name || ""), r: 0 });
+                   name: spec ? droppedName(d) : (d.name || ""), r: 0 });
       }
       return out;
     })(),

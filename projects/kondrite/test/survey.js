@@ -1105,6 +1105,110 @@ const storeOf = (cf, key) => {
               "back at the station");
 }
 
+// ── 8d. what you fly out in stays where you fall ─────────────────────────
+/* Ric, 2026-11-13: "this is seeming somewhat like an extraction shooter in
+   space. And I like that. So let's keep it like that." A bought hull is at
+   risk: die in it and it stays where you fell, with everything bolted to it,
+   until you go back or something else gets there first. The SKIFF always
+   comes home.
+
+   His condition was that it be "communicated phenomenally clearly", so half
+   of this is the rule and half is whether the game *says* the rule: on the
+   death screen, in the line that tells you what you are doing, and after the
+   tab has been closed and opened again. */
+{
+  const { cf } = boot("?debug=1&seed=4242");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+
+  /* The SKIFF first, because it is the promise the rest hangs on: a pilot who
+     has bought nothing loses nothing they did not lose before. */
+  surv.docked = null;
+  surv.slots[0] = { key: "layerplate", fit: 0 };
+  me.x = 30000; me.y = -12000; me.vx = me.vy = 0;
+  step(4);
+  cf.die("rock");
+  check(!surv.death.hull, "dying in the SKIFF left a hull behind");
+  check(!!surv.slots[0] && surv.slots[0].key === "layerplate",
+        "dying in the SKIFF took what was bolted to it");
+  check(!surv.dropped.some(d => d.hull), "the SKIFF is lying on the floor");
+  cf.respawn();
+  check(surv.ship === "skiff" && surv.owned.has("skiff"),
+        "the SKIFF did not come home");
+
+  // Now a hull that was paid for, with the same plate bolted to it.
+  surv.owned.add("lance"); surv.ship = "lance";
+  surv.docked = null;
+  me.x = 41000; me.y = 9000; me.vx = me.vy = 0;
+  step(4);
+  const fell = { x: me.x, y: me.y };
+  cf.die("rock");
+  const d = surv.death;
+  check(!!d && d.hull === "LANCE",
+        "the death does not name the hull that was lost: " + (d && d.hull));
+  check(!surv.owned.has("lance"), "a hull you died in is still in the hangar");
+  check(surv.ship === "skiff", "you wake up in " + surv.ship + ", not the SKIFF");
+  check(surv.slots.every(sl => !sl),
+        "what was bolted to the hull came home without it");
+  check((d.bolted || []).includes("LAYERED PLATE"),
+        "the death does not say what was bolted on: " + JSON.stringify(d.bolted));
+  const wreck = surv.dropped.find(x => x.hull);
+  check(!!wreck && wreck.key === "lance", "no hull was left where you fell");
+  check(!!wreck && Math.hypot(wreck.x - fell.x, wreck.y - fell.y) < 12000,
+        "the hull was left nowhere near where you died");
+  check(surv.dropped.some(x => x.mod && x.key === "layerplate"),
+        "the plate that was bolted on is not lying beside the hull");
+
+  // Said on the page a pilot is certain to be reading.
+  textDrawn(); cf.draw();
+  const page = textDrawn();
+  check(page.some(w => /YOUR LANCE IS STILL OUT THERE/.test(w)),
+        "the death screen does not say the hull is out there: " +
+        page.slice(0, 10).join(" | "));
+  check(page.some(w => /SKIFF/.test(w)),
+        "the death screen does not say what you wake up in");
+  check(page.some(w => /LANCE HULL/.test(w) && /LAYERED PLATE/.test(w)),
+        "STILL OUT THERE does not list the hull and what was bolted to it");
+
+  // And by the line that answers "what am I doing".
+  cf.respawn();
+  step(2);
+  check(/GO BACK FOR YOUR LANCE HULL/.test(cf.objective().text),
+        "after losing a hull the objective reads: " + cf.objective().text);
+  const tgt = cf.objectiveTarget();
+  check(!!tgt && tgt.key === "hull" && tgt.x === wreck.x && tgt.y === wreck.y,
+        "the arrow does not lead back to the hull");
+  check(me.maxHull > 0 && surv.ship === "skiff",
+        "the SKIFF you woke up in has no hull of its own");
+
+  // It survives the tab: closing the game must not be a way to lose a ship.
+  cf.leave();
+  const again = bootKeepingStorage("?debug=1&seed=4242");
+  again.cf.start("survey", 1);
+  const s2 = again.cf.survey(), m2 = again.cf.live().ships[0];
+  check(s2.dropped.some(x => x.hull && x.key === "lance"),
+        "the lost hull did not survive the book");
+  check(!s2.owned.has("lance"), "reloading handed the lost hull back");
+
+  // Fly back for it, and it is yours again.
+  const w2 = s2.dropped.find(x => x.hull);
+  s2.docked = null;
+  m2.x = w2.x; m2.y = w2.y; m2.vx = m2.vy = 0;
+  for (let i = 0; i < 30; i++) { m2.invuln = 999; now += 1000 / 60; again.cf.step(); }
+  check(s2.owned.has("lance"), "reaching your own hull did not recover it");
+  check(!s2.dropped.some(x => x.hull), "the recovered hull is still on the floor");
+  check(!/GO BACK FOR/.test(again.cf.objective().text),
+        "the objective still sends you back for a hull you have: " +
+        again.cf.objective().text);
+
+  console.log("  hullloss   the SKIFF always comes home \u00b7 a bought hull " +
+              "stays where you fell with what was bolted to it \u00b7 the " +
+              "death screen, the objective and the book all say so \u00b7 fly " +
+              "back and it is yours");
+}
+
 // ── 9. every trick is a part, and the ship itself has none ────────────────
 /* The rule, in Ric's words: *a ship without that stuff is a normal ship. No
    tricks. All the tricks are the parts you attach yourself, so they know what
@@ -2772,6 +2876,84 @@ console.log("  levdraw    every sponson's drawn outline lies inside a plate, " +
   console.log("  worlds     a world paints a body, not an outline · a scan " +
               "reports one · and it is measured to the surface, so a " +
               Math.round(big.r) + "-unit world cannot hide its centre");
+}
+
+// ── 15e. how far you can go, and an arrow that knows it ──────────────────
+/* Ric agreed this on 2026-11-13 as the middle of the game's own direction.
+   The landmark ladder runs 13k, 30k, 70k, 160k and then 360k and up; a
+   starting hull carries twenty minutes of water; and once the light drive
+   stopped being pocket money, the one arrow in the mode pointed at places a
+   pilot could not practically reach for hours, and said nothing about why.
+
+   So there is a reach — out and back on one tank, in the hull you are flying
+   — drawn as a ring on the chart, and the arrow stays inside it for as long
+   as there is anything inside it to point at. */
+{
+  const { cf } = boot("?debug=1&seed=1357");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const step = n => { for (let i = 0; i < n; i++) { now += 1000 / 60; cf.step(); } };
+  const home = cf.home();
+  const far = p => Math.hypot(p.x - home.x, p.y - home.y);
+
+  const skiff = cf.surveyView().reach;
+  check(skiff > 60000 && skiff < 400000,
+        "a SKIFF's reach is " + skiff + " units — it should be somewhere " +
+        "between the fourth landmark and the fifth");
+  // A faster hull moves the line. That is the whole of the progression.
+  surv.owned.add("kite"); surv.ship = "kite";
+  const kite = cf.surveyView().reach;
+  check(kite > skiff * 1.5,
+        "a courier reaches " + kite + " against the SKIFF's " + skiff +
+        " — a faster hull is meant to move the line");
+  surv.ship = "skiff"; surv.owned.delete("kite");
+
+  // And the chart draws it.
+  textDrawn(); cf.hud().drawChart(cf.surveyView(), 0);
+  check(textDrawn().includes("RANGE ON ONE TANK"),
+        "the chart does not draw the range ring");
+
+  // Past the manifest and the MK1, which is where the arrow goes looking.
+  for (const k of ["spar", "core", "lens", "coil", "beacon", "plate"]) surv.built.add(k);
+  surv.lifted.add(surv.mk1Site.id || surv.mk1Site.key);
+  step(2);
+  const reach = cf.surveyView().reach;
+  const near = cf.objectiveTarget();
+  check(!!near && near.key === "landmark" && !near.beyond && far(near) <= reach,
+        "with landmarks in range the arrow points at " +
+        JSON.stringify(near && { k: near.key, b: near.beyond, d: Math.round(far(near)) }) +
+        " and the reach is " + reach);
+
+  /* Log everything inside the ring. What is left of the book is out of range,
+     and the arrow must either find something else that is in range or say
+     plainly that what it points at is not. */
+  let outside = 0;
+  for (const l of surv.landmarks) {
+    if (far(l) <= reach) l.found = true; else outside++;
+  }
+  check(outside > 0, "this seed has no landmark past a SKIFF's reach");
+  step(2);
+  const next = cf.objectiveTarget();
+  const line = cf.objective();
+  check(!!next, "nothing in range and the arrow went out");
+  if (next && next.key === "lair") {
+    check(far(next) <= reach,
+          "the arrow chose a boss's sky " + Math.round(far(next)) +
+          " units out with a reach of " + reach);
+    check(/range/.test(line.sub), "the line does not say why it changed: " + line.sub);
+  } else {
+    check(!!next && next.beyond === true,
+          "the arrow points " + Math.round(far(next)) + " units out, past a " +
+          "reach of " + reach + ", without saying so");
+    check(/PAST YOUR RANGE/.test(line.text),
+          "a landmark out of range is not called one: " + line.text);
+  }
+
+  console.log("  reach      a SKIFF goes " + Math.round(skiff / 1000) + "k out and " +
+              "back, a courier " + Math.round(kite / 1000) + "k \u00b7 the " +
+              "chart draws the ring \u00b7 the arrow stays inside it, then " +
+              (next && next.key === "lair" ? "finds a boss's sky that is"
+                                           : "says the next thing is past it"));
 }
 
 // ── 16. the scan reports what is near, and the refit makes it reach ──────

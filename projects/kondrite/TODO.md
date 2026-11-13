@@ -311,6 +311,70 @@ session is for recording and discussing them only; no gameplay changes yet.
 
 ---
 
+## An extraction shooter in space — 2026-11-13
+
+Ric asked what would hold attention for hundreds of hours, was told six
+things the plan had missed, and agreed to two of the fixes: *"I like the idea
+of 3"*, and of losing a hull, *"those things would need to be communicated
+phenomenally clearly and if that's the case the price of things would
+probably need to go down more."* Then the sentence that sets the direction:
+**"This is seeming somewhat like an extraction shooter in space. And I like
+that. So let's keep it like that."**
+
+He did **not** agree to waking the home sky up after three parts: "the first
+like 30 min is good of fixing ur station ... things just need to be
+communicated clearer." That one is not built.
+
+- [x] **N14 · A range ring, and an arrow that stays inside it.** The landmark
+  ladder runs 13k, 30k, 70k, 160k and then 360k, 780k, 1.25M and 3.4M, and a
+  starting hull carries twenty minutes of water. Once the light drive stopped
+  being pocket money (N13), the one arrow in the mode pointed at places a
+  pilot could not practically reach for hours and said nothing about why.
+
+  *Built.* `surveyReach` is out and back on one tank in the hull you are
+  flying: half of what the tighter tank lasts, at top speed, less a margin.
+  A SKIFF comes out at about 165,000 units and a courier at well over twice
+  that, so **range is now the thing the middle of the game grows**. The chart
+  draws it as a dashed ring round home, RANGE ON ONE TANK. After the gate the
+  arrow picks, in order: the nearest unlogged landmark inside the ring; then
+  a boss's sky inside it, still flying; and only then the nearest landmark
+  outside it, which the line calls **PAST YOUR RANGE** and says what moves the
+  line. It is honest about what it is not — a station on the way refills you
+  and a melter makes water — so it is the unsupported round trip, the
+  distance you can be wrong about and still come home. `test/survey.js` §15e.
+
+- [x] **N15 · A bought hull stays where you die in it.** The SKIFF always
+  comes home: it is free, and a pilot who has bought nothing loses nothing
+  they did not lose before. Any other hull stays where you fell with
+  everything bolted to it — the hull as one thing to fly back for, each fitted
+  part lying beside it the way a spare already does. Nothing is destroyed by
+  dying. It is on the chart by name, and the only thing that takes it for good
+  is somebody else getting there first, which pirates and scavengers already
+  do to anything left on the floor.
+
+  *Said four times, because that was the condition.* **Before the money
+  changes hands:** the hangar prints the rule beside the price. **Before it
+  can cost anything:** a beat fires the first time you are out of a dock in a
+  hull that is not the SKIFF. **When it happens:** the death screen names the
+  ship on its own line — YOUR LANCE IS STILL OUT THERE — FLY BACK FOR IT —
+  lists the hull and what was bolted to it under STILL OUT THERE, and says you
+  wake in the SKIFF. **Afterwards:** the objective reads GO BACK FOR YOUR
+  LANCE HULL and the arrow leads to it with a real distance, ahead of
+  everything else on the board, until it is recovered or taken.
+
+  **And prices came back down**, as he said they would have to. The hull curve
+  is `8.22 * cost^0.825` — about 2.5x the original at the bottom and the
+  original figure at the top — where for one day it was 5x and 1.3x. NEEDLE
+  2,200, LANCE 6,700, DRAYMAN 23,000, TENDER 168,000. Parts and salvage are
+  unchanged. `surveyDie` in `game/survival.js`; `test/survey.js` §8d flies
+  the whole thing, through the book and back.
+
+  *Not built, and worth knowing:* there is no insurance, no way to abandon a
+  wreck so the arrow lets go of it, and a hull a scavenger takes is gone with
+  no way to buy it back except new.
+
+---
+
 ## Flying it himself — 2026-11-13
 
 Ric, after the list above was cleared: *"when scanning worlds dont pop up on

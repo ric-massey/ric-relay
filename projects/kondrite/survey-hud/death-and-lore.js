@@ -38,6 +38,15 @@ HUD.drawDeath = function (st, dt) {
   const cx = SCREEN_W / 2;
   label("YOU DIED", cx, 148, SIZE.huge, WARN, "center", 1, "0.3em");
   fitText(d.reason, cx, 186, SIZE.val, AMBER, "center", 0.95, SCREEN_W - 200);
+  /* The hull, said on its own line and before anything else on the page. Ric
+     agreed to losing a bought hull on one condition — that it be "communicated
+     phenomenally clearly" — and the one place a pilot is certain to be reading
+     is here. Not lost: left. It names the ship and says the trip is theirs. */
+  if (d.hull) {
+    fitText("YOUR " + d.hull + " IS STILL OUT THERE " + '\u2014' +
+            " FLY BACK FOR IT", cx, 218, SIZE.val, WARN, "center",
+            0.6 + 0.4 * beat, SCREEN_W - 160, "0.1em");
+  }
 
   /* The run, as three numbers on one line. Where, how far, how long — the
      three things you will want to say out loud about it. */
@@ -101,7 +110,9 @@ HUD.drawDeath = function (st, dt) {
   [d.cash + " CASH",
    d.found + " ALMANAC " + (d.found === 1 ? "ENTRY" : "ENTRIES"),
    fmtCells(d.charted) + " CELLS CHARTED",
-   "your station and everything fitted"
+   /* What you wake up in, said plainly when it is not what you left in. */
+   d.hull ? "your station, and the SKIFF waiting in it"
+          : "your station and everything fitted"
   ].forEach((k, i) => {
     label("·", R.x + PAGE.PAD, ROW(by, i), SIZE.cap, CASH_DIM, "left", 0.6);
     fitText(k, R.x + PAGE.PAD + 16, ROW(by, i), SIZE.cap, CASH_DIM, "left",
@@ -113,8 +124,12 @@ HUD.drawDeath = function (st, dt) {
      that says so — because a part that vanished from your hold with no
      explanation reads as a bug, and a trip you have to make reads as a trip
      only if somebody tells you to make it. */
-  if (d.dropped && d.dropped.length) {
-    const line = d.dropped.join("  \u00b7  ");
+  /* The hull first, then what was bolted to it, then the manifest's parts:
+     in the order a pilot would count them. */
+  const out = (d.hull ? [d.hull + " HULL"] : [])
+    .concat(d.bolted || [], d.dropped || []);
+  if (out.length) {
+    const line = out.join("  \u00b7  ");
     label("STILL OUT THERE", cx, by + bh + 30, SIZE.cap, AMBER, "center",
           0.9, "0.2em");
     fitText(line + "  \u2014  where you fell, on the chart, waiting",
@@ -125,7 +140,7 @@ HUD.drawDeath = function (st, dt) {
   /* Under whichever of the two lines above is showing, so the two cannot
      print through each other on a run where both are true. */
   if (st.deaths > 1) {
-    const dy = (d.dropped && d.dropped.length) ? 82 : 28;
+    const dy = out.length ? 82 : 28;
     label("DEATH " + st.deaths, cx, by + bh + dy, SIZE.cap, VIOLET_LOW,
           "center", 0.6, "0.2em");
   }

@@ -111,8 +111,8 @@ function setupSurvey() {
        twice. */
     dropped: (carried && Array.isArray(book.dropped) ? book.dropped : [])
       .filter(d => d && droppedSpec(d))
-      .map(d => ({ key: d.key, name: droppedSpec(d).name,
-                   mod: !!d.mod, id: d.id || dropId(),
+      .map(d => ({ key: d.key, name: droppedName(d),
+                   mod: !!d.mod, hull: !!d.hull, id: d.id || dropId(),
                    x: Math.round(+d.x || 0), y: Math.round(+d.y || 0) })),
     /* The four slots, and the parts you own but are not flying. A slot is
        `null`, or `{ key, fit }` where `fit` is the seconds of installation

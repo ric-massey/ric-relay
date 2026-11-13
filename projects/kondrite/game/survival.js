@@ -470,6 +470,51 @@ function surveyDie(cause) {
     });
     surv.death.spares = spares.map(k => moduleSpec(k).name);
   }
+  /* ── and the hull, if it was one you bought ────────────────────────────
+     Ric, 2026-11-13: *"this is seeming somewhat like an extraction shooter
+     in space. And I like that. So let's keep it like that."* What you fly
+     out in is what you are risking.
+
+     The SKIFF always comes home — it is free, it is the one hull nobody
+     chose to risk, and a new pilot must not lose something they never
+     bought. Any other hull **stays where you fell**, and everything bolted
+     to it stays with it: the hull as one thing to fly back for, each fitted
+     part lying beside it the way a spare already does. Nothing is destroyed
+     by dying. It is on the chart by name, the arrow leads back to it, and
+     the only thing that takes it for good is somebody else getting there
+     first — which pirates and scavengers already do to anything left on
+     the floor (see `lootNear`).
+
+     Until then you are in the SKIFF, which is the whole of the cost: the
+     trip back is made in the worst ship you own, to the place that just
+     killed you in a better one. */
+  const flown = surv.ship;
+  if (!LEV_ONLY && flown !== "skiff") {
+    const hullSpec = SHIPS.find(s => s.key === flown);
+    const bolted = [];
+    surv.slots.forEach((sl, i) => {
+      if (sl && sl.key) { bolted.push(sl.key); surv.slots[i] = null; }
+    });
+    bolted.forEach((key, i) => {
+      const m = moduleSpec(key);
+      const a = (i / Math.max(1, bolted.length)) * Math.PI * 2 + 1.1;
+      const spot = safeDrop(ship.x + Math.cos(a) * (190 + 60 * i),
+                            ship.y + Math.sin(a) * (190 + 60 * i));
+      surv.dropped.push({ key, name: m.name, x: spot.x, y: spot.y,
+                          mod: true, id: dropId() });
+      noteKnown("part", spot.x, spot.y, m.name);
+    });
+    const at = safeDrop(ship.x, ship.y);
+    const wreck = { key: flown, hull: true, x: at.x, y: at.y, id: dropId() };
+    wreck.name = droppedName(wreck);
+    surv.dropped.push(wreck);
+    noteKnown("part", at.x, at.y, wreck.name);
+    surv.owned.delete(flown);
+    surv.ship = "skiff";
+    surv.death.hull = hullSpec ? hullSpec.name : flown.toUpperCase();
+    surv.death.bolted = bolted.map(k => moduleSpec(k).name);
+  }
+
   burst(ship.x, ship.y, "#ff8f77", 40, 420 * U);
   addShake(12);
   gameSound("lose", ship.x, ship.y);
@@ -518,6 +563,10 @@ function surveyRespawn() {
   ship.vx = ship.vy = 0;
   ship.a = -Math.PI / 2;
   ship.alive = true;
+  /* The hull under you may have changed: a bought one stays where it fell
+     and you wake in the SKIFF (see `surveyDie`). Its numbers have to be the
+     SKIFF's before anything reads them. */
+  applyRefit(ship);
   ship.hull = ship.maxHull;
   ship.invuln = INVULN;
   /* Resupplied. The station you come back to is the one place that would
@@ -535,6 +584,10 @@ function surveyRespawn() {
   streamChunks(true);
   streamRocks();
   state = "playing";
-  chatter("Back at the station. The hold went down with the last one.", CASH);
+  const left = lostHull();
+  chatter(left
+    ? "Back at the station, in the SKIFF. Your " + droppedName(left) +
+      " is where you fell."
+    : "Back at the station. The hold went down with the last one.", CASH);
   saveSurveyBook();
 }

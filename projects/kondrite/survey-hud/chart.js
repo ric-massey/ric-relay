@@ -542,6 +542,7 @@ HUD.drawChart = function (st, dt) {
   drawChartGrid(view, mx, my);
   paintFog(mx, my, chart.x, chart.y, span, chart.scale, chart.scale, 0.26);
   drawTerrain(st, view, mx, my);
+  drawReach(st, mx, my);
   paintMarks(st, mx, my, true, chart.scale);
   paintEchoes(st, mx, my, true);
   drawPins(st, mx, my, true);
@@ -842,6 +843,40 @@ function jumpNear(st, wx, wy, snap) {
 /* A grid you can navigate by. Lines every chunk, and the coordinate is the
    chunk index rather than raw units — a number small enough to say out loud
    is a number you can use to tell somebody where you found something. */
+/* ── how far you can go ───────────────────────────────────────────────────
+   One dashed ring round the home station: out and back on one tank, in the
+   hull you are flying. Ric agreed it on 2026-11-13 as the middle of the
+   game's own direction — the landmark ladder runs out past what a starting
+   hull can reach, and until this the mode said so with a dry tank.
+
+   A ring rather than a number because it sits on the same chart as everything
+   you might want: a thing inside it is a trip, a thing outside it is a reason
+   to buy something. It grows when the hull or the parts change and nothing
+   else moves it, so watching it get bigger *is* the progression.
+
+   In the water's colour, since the tank is what it is a picture of. Not drawn
+   once it is a few pixels across — at the widest zooms the sector is the
+   subject and a dot round the origin is noise. */
+function drawReach(st, mx, my) {
+  if (!st.reach || !st.home) return;
+  const { ctx } = api;
+  const r = st.reach * chart.scale;
+  if (r < 14) return;
+  const cx = mx(st.home.x), cy = my(st.home.y);
+  ctx.save();
+  ctx.strokeStyle = ICE;
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([10, 8]);
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+  label("RANGE ON ONE TANK", cx, cy - r - 8, SIZE.cap, ICE, "center", 0.75,
+        "0.14em");
+}
+
 function drawChartGrid(view, mx, my) {
   const { ctx } = api;
   const CHUNK = 2600;

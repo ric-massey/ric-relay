@@ -30,9 +30,24 @@ const partSpec = key => BUILD.find(b => b.key === key);
 let dropSeq = 0;
 const dropId = () => "d" + (++dropSeq) + "." + Math.floor(Math.random() * 1e6);
 
-// What a dropped thing is, whichever kind it is.
+/* What a dropped thing is, whichever kind it is. Three kinds since
+   2026-11-13: a manifest part, a spare, and **the hull you were flying** —
+   see `surveyDie`. A whitelist that knows about two of them throws the third
+   away in silence, which this list has now been warned about three times. */
 const droppedSpec = d =>
-  d && d.mod ? moduleSpec(d.key) : partSpec(d && d.key);
+  d && d.hull ? (SHIPS.find(s => s.key === d.key) || null)
+  : d && d.mod ? moduleSpec(d.key) : partSpec(d && d.key);
+/* And what it is called on the chart, on the floor and in the sentence a
+   scavenger gets when it takes one. A hull says it is a hull, because "LANCE"
+   on a map could be anybody's. */
+const droppedName = d => {
+  const spec = droppedSpec(d);
+  if (!spec) return (d && d.name) || "";
+  return d.hull ? spec.name + " HULL" : spec.name;
+};
+// The hull you died in and have not gone back for, if there is one.
+const lostHull = () =>
+  (surv && surv.dropped || []).find(d => d && d.hull) || null;
 
 /* Jumping. Only to somewhere already written down, and only once the drive is
    built — this is fast travel across ground you have covered, never a way to
@@ -203,6 +218,18 @@ const OPENING = [
      is a thing you build rather than a thing you buy — which is the only
      reason the melter exists. Deliberately not fired near home: docked at the
      origin with a dry tank you have a shop, not a problem. */
+  /* The warning, given the first time it can matter and before it can cost
+     anything: the first time you are out of a dock in a hull that is not the
+     SKIFF. Ric's condition for the whole idea was that it be "communicated
+     phenomenally clearly", and a rule you learn from the death screen is a
+     rule you learned by losing a ship. */
+  { key: "atrisk",
+    when: () => surv.ship !== "skiff" && !surv.docked && !surv.landed,
+    text: "THIS HULL DOES NOT COME HOME ON ITS OWN",
+    sub: "die in it and it stays where you fell, with everything bolted to " +
+         "it. the skiff always comes back",
+    colour: "#ff8f77" },
+
   { key: "leash",
     when: () => !surv.docked && !surv.landed &&
                 surv.water < WATER_FULL * 0.25 &&

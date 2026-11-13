@@ -638,9 +638,14 @@ function validateSurveyBook(b) {
       dropped: Array.isArray(b.dropped)
         ? b.dropped.filter(d => d && typeof d.key === "string" &&
                                 (BUILD().some(x => x.key === d.key) ||
-                                 MODULES().some(x => x.key === d.key)) &&
+                                 MODULES().some(x => x.key === d.key) ||
+                                 /* The hull you died in. The third kind, and
+                                    the third time this filter has had to be
+                                    told there is another one. */
+                                 (d.hull === true &&
+                                  SHIPS().some(x => x.key === d.key))) &&
                                 Number.isFinite(d.x) && Number.isFinite(d.y))
-                   .map(d => ({ key: d.key, mod: !!d.mod,
+                   .map(d => ({ key: d.key, mod: !!d.mod, hull: d.hull === true,
                                 id: typeof d.id === "string" ? d.id.slice(0, 40) : "",
                                 x: Math.round(d.x), y: Math.round(d.y) }))
                    // A death can put a hold's worth of spares on the floor.
