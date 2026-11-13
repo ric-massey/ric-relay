@@ -1080,11 +1080,14 @@ fetch the game off disk, and says so. Not linked from the game.
 
 **All of the above is going to be replaced.** Ric, 2026-11-13: *"The sounds that
 exist now are going to change. I don't want the game to sound like an arcade game. I
-want it to sound like a hyperrealistic game."* `SOUND-DESIGN.md` is the plan: every
-action, animation, place and event in the game, a hyperreal replacement for each, built
-from real recordings rather than oscillators, and heard only the ways sound can reach a
-ship in a vacuum (through the hull, through the air where there is any, and through the
-instruments). It also has the research behind it and the questions still open. Nothing
+want it to sound like a hyperrealistic game."* And then: *"Ship doesn't speak. Sensor
+feed. I say ultra realistic. Think futuristic. … Sound doesn't travel in a vacuum but
+imagine it did."* `SOUND-DESIGN.md` is the plan. It covers every action, animation, place
+and event in the game, with a replacement for each built from real recordings rather
+than oscillators, and a recipe of what to record. In the plan, space carries sound as if
+it were air: sound fades and dulls with distance, slides in pitch as things pass, and
+echoes in the caves. On top of that, a sensor feed lifts whatever is aimed at you. No
+speech anywhere. It also has the research behind it and the questions still open. Nothing
 in it is built yet, so the description above is still what plays. Its first finding is
 a bug: `alarm` is called three times and has no voice, so the boss alarms are silent.
 

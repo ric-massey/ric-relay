@@ -3,22 +3,41 @@
 **Status: an audit and a plan, written 2026-11-13. None of the proposals below are
 built.**
 
-**The direction, in Ric's words (2026-11-13):** *"The sounds that exist now are going to
-change. I don't want the game to sound like an arcade game. I want it to sound like a
-hyperrealistic game."*
+**The direction, in Ric's words (2026-11-13):**
 
-So this file is three things:
+> *"The sounds that exist now are going to change. I don't want the game to sound like
+> an arcade game. I want it to sound like a hyperrealistic game."*
+>
+> *"Ship doesn't speak. Sensor feed. I say ultra realistic. Think futuristic. Like.
+> Sound doesn't travel in a vacuum but imagine it did."*
 
-1. **An inventory** of every action, animation, place and event in the game that
-   makes a sound or should. That part does not depend on how anything sounds.
-2. **The rules for hyperreal sound** in a game set in a vacuum, and the research
-   behind them.
-3. **A replacement for every sound**, the 18 that exist and the ones that do not yet.
+So the brief is:
 
-Nothing in the current palette is kept as it is. The engine around it mostly is: the
-four dials, the 35 ms de-duplication, the per-play variation, off-screen culling, the
-compressor, `test/sounds.js` and the listening booth (`sounds/listen.html`). That is the
-pipeline. What goes through it changes.
+- **Ultra realistic.** Every sound is built from real recordings and behaves the way
+  real sound behaves. Nothing is an arcade tone and nothing is a tune.
+- **Futuristic.** The machines are invented (fusion drives, beam cannons, rail lances,
+  wormholes), so each one is given a believable mechanism and made from real sounds
+  that would plausibly come out of it.
+- **Space carries sound as if it were air.** Out there you hear other ships, guns,
+  explosions, stars and rocks, and they sound the way they would across open air: they
+  get quieter and duller with distance, slide in pitch as they pass, and echo where
+  there is something to echo off.
+- **Sensor feed.** On top of that physics, the ship brings forward what matters to
+  you, so a threat aimed at you is clearer than a fight that isn't yours.
+- **The ship does not speak.** No voice callouts and no spoken radio. Warnings are
+  tones, the way real avionics alerts are.
+
+This file has three parts:
+
+1. **An inventory** (§6) of every action, animation, place and event in the game that
+   makes a sound or should.
+2. **The rules** (§4) and the research behind them (§3).
+3. **A replacement for every sound**, with a recipe of the real sources it is built from.
+
+Nothing in the current palette is kept. Most of the engine around it is: the dials, the
+35 ms de-duplication, the per-play variation, the compressor, `test/sounds.js` and the
+listening booth (`sounds/listen.html`). That is the pipeline, and what goes through it
+changes.
 
 ---
 
@@ -33,190 +52,215 @@ Eighteen voices, all one-shots under 0.4 s:
 | SHIP & GADGETS | `warp` `thrust` `pickup` |
 | INTERFACE | `start` `win` `lose` |
 
-They are called from about 190 places, every one through `gameSound(kind, x, y)`
-(`game/world.js`). The arcade sound comes from four things, and all four go:
+They are called from about 190 places, all through `gameSound(kind, x, y)`
+(`game/world.js`). Four things make them sound like an arcade, and all four go:
 
-- **Oscillators.** Square, sawtooth and triangle waves with pitch sweeps
-  (`soundTone`) are what 1980s cabinets were built from. No physical object makes a
-  pure sweeping square wave. Even the "recorded" lasers are synthesised by a script.
-- **Tunes as feedback.** `start`, `win` and `lose` are little melodies, and ore pickups
-  are notes off a pentatonic scale. A real cockpit does not play a major third when
-  you sell something.
-- **One generic noise.** Every impact is the same white-noise buffer through a
-  low-pass. Rock, ice, metal, a hulk and a ship's hull all sound like one material.
-- **No space, no weight.** Every sound is dry and short and the same size. A
-  20-tonne Skiff and a 200,000-credit Tender sound identical, and nothing has a tail.
+- **Oscillators.** Square, sawtooth and triangle waves with pitch sweeps (`soundTone`)
+  are what 1980s cabinets were built from. Even the gun "recordings" are synthesised
+  by a script.
+- **Tunes as feedback.** `start`, `win` and `lose` are melodies, and ore pickups are
+  notes off a pentatonic scale.
+- **One noise for everything.** Every impact is the same white-noise buffer through a
+  low-pass filter, so rock, ice and metal all sound like one material.
+- **No space and no weight.** Every sound is dry, short and the same size. A Skiff and a
+  Tender sound alike, and nothing near sounds different from far.
 
 ## 2. What is wrong besides the palette
 
-These are structural. They hold whatever the sounds become.
+These are structural problems, and they hold whatever the sounds become.
 
 ### 2.1 A bug: `alarm` is silent
 
 `gameSound("alarm")` is called three times: crossing into a boss's sky
 (`game/bosses.js:271`), the warlord calling its pack in at half hull
 (`game/bosses.js:315`), and a grudge ship coming back for you
-(`game/sector-places.js:1059`). `sfxVoice` has no `alarm` branch and `SFX_CHANNEL` has
-no entry, so all three play nothing. `test/sounds.js` misses it because it renders the
-voices `sfxVoice` knows, not the names the game asks for. **Add a test that every
-literal passed to `gameSound` is a voice.** That holds through the whole rebuild.
+(`game/sector-places.js:1059`). `sfxVoice` has no `alarm` branch, so all three play
+nothing. `test/sounds.js` misses it because it checks the voices the engine knows, not
+the names the game asks for. **Add a test that every name passed to `gameSound` is a
+voice.** That test holds through the whole rebuild.
 
 ### 2.2 Three voices mean everything
 
 | Voice | What it currently means |
 |---|---|
 | `win` | an almanac entry · a part picked up · a hull recovered · a part fitted · a light drive engaged · a sale · a boss killed · a bounty · a hauler saved · a workbench build · a ship bought · a cache opened |
-| `hit` | your hull taking damage · an EMP going off · the Flagship Screen soaking a shot · **every refused button in every shop** · water at half · "too deep in a well to run" |
+| `hit` | your hull taking damage · an EMP · the Flagship Screen soaking a shot · **every refused button in every shop** · water at half · "too deep in a well to run" |
 | `start` | the round starting · a purchase · a squad order · campaign salvage · **the decoy** · **the cloak** · a part delivered · a fit begun |
 
-A sound only teaches if it means one thing. In a realistic design this falls out on its
-own: a docking clamp, a cargo pump and a hull breach cannot be confused.
+A sound only teaches if it means one thing. Realism fixes this by itself: a docking
+clamp, a cargo conveyor and a hull breach can't be confused.
 
 ### 2.3 The signature actions borrow other things' voices
 
 The scan, which Survey mode is built around, plays `shot`, the cannon's fallback. The
-cloak and the decoy play the round-start tune. The EMP plays a hull hit. Laying a mine,
-the Corsair Burner and the Brood Bay all play `shot`. The Burst Charge plays the
-seeker's sound.
+cloak and the decoy play the round-start tune. The EMP plays a hull hit. The mine, the
+Corsair Burner and the Brood Bay play `shot`, and the Burst Charge plays the seeker.
 
 ### 2.4 Nothing continuous makes a sound
 
-There is no engine. Thrust, the most-performed action in the game, is silent; `thrust`
-is used once, by the grapple. The light drive, the tractor beam, the melter, skimming an
-atmosphere, a fit in progress, a gravity well's pull, a star repairing you, the Murk,
-the Battle Royale wall and the cloak's ten seconds are all silent. **Realism lives in the
-continuous sounds**: an engine, pumps, fans and the frame under strain are most of what
-a real vehicle sounds like.
+There is no engine: holding thrust, the most-performed action in the game, is silent.
+The light drive, tractor beam, melter, atmosphere skimming, fitting, gravity, a star
+repairing you, the Murk, the Battle Royale wall and the cloak are silent too. Realism
+lives mostly in continuous sound. Engines, fans, pumps and a structure under load are
+most of what a real vehicle sounds like.
 
 ### 2.5 Warnings that are only drawn
 
-- **Gravity**: `surveyWarning` (`survey-bearings.js:814`) has four levels, from GRAVITY
+- **Gravity:** `surveyWarning` (`survey-bearings.js:814`) has four levels, from GRAVITY
   AHEAD to CANNOT ESCAPE, and none of them makes a sound.
-- **Hull at zero**: "the next one kills you" plays the same `hit` as a graze.
+- **Hull at zero:** "the next one kills you" plays the same `hit` as a graze.
 - **A sentry waking** (`sector-places.js:546`), **a patrol's last warning**
-  (`pilots.js:246`), **a distress call** (`traffic.js:89`), **an enemy ace entering**
-  (`campaign.js:216`): all silent.
+  (`pilots.js:246`), **a distress call** (`traffic.js:89`) and **an enemy ace entering**
+  (`campaign.js:216`) are all silent.
 
 ### 2.6 Arrivals that are silent
 
-Docking, landing, coming out of a wormhole, arriving off the light drive, respawning,
-and a station section coming back online when you deliver its part.
+Docking, landing, coming out of a wormhole, arriving off the light drive, respawning, and
+a station section coming back online when you deliver its part.
 
-### 2.7 No priority between sounds
+### 2.7 No priority and no distance
 
-Your own cannon and a sentry's shot at you are the same voice at the same level, and the
-compressor sorts out the pile. The round about to hit you is no louder than forty that
-are not.
+Your own cannon and a sentry's shot at you are the same voice at the same level. A ship
+at the edge of the screen sounds exactly like one beside you, only panned. The README's
+rule is that off screen means silent, so sound stops at a hard edge rather than fading
+with distance.
 
 ### 2.8 Smaller things
 
-- The mothership finale runs in slow motion (`slowmo(0.45, 1.4)`) while its sound runs
-  at full speed.
+- The mothership finale runs in slow motion (`slowmo(0.45, 1.4)`), but its sound runs at
+  full speed.
 - The audio is not suspended when the tab is hidden.
-- There is no mono option, and no ambience dial.
+- There is no mono option and no ambience dial.
 
 ---
 
-## 3. Research: what hyperreal means, and how space does it
+## 3. Research
 
-### 3.1 Hyperreal is "more real than real", not accurate
+### 3.1 Hyperreal means "more real than real"
 
 A microphone at a real punch records a dull pat. Foley exists because recorded reality
 sounds weak, and Tomlinson Holman called Foley "hyper-real": it sounds natural only in
-context, because it is exaggerated. The working definition is amplified reality, with
-sound bigger, closer and more detailed than life
+context, because it is exaggerated. Hyperrealism amplifies reality so that sound is
+bigger and more detailed than life
 ([arXiv 2605.31082](https://arxiv.org/html/2605.31082);
 [Langkjær, via CORE](https://core.ac.uk/download/233629168.pdf);
 [Designing Sound](https://designingsound.org/2016/02/28/sunday-sound-thought-9-constructing-which-reality/)).
 
-**For KONDRITE:** every sound starts from a **real physical source**: metal, air, water,
-machinery, electricity, rock. It is then layered and pushed past life until it feels
-right. Nothing is an oscillator playing a note. Tones survive only where real hardware
-makes them: avionics alerts, radio, sensor read-outs.
+**For KONDRITE:** real sources, pushed past life in the sub and in the transient (the
+attack at the start of a sound), so that the result feels heavier than reality and
+still sounds like reality.
 
-### 3.2 Sound in a vacuum: hear what touches you
+### 3.2 Imaginary machines from real sounds
 
-*Gravity* won the Oscar for sound editing by refusing to let sound cross a vacuum. The
-character "hears things through touch, via her suit, which contains oxygen and air".
-Glenn Freemantle conveyed "resonance that occurs through physical contact and other
-vibrations, such as breathing and movement". The sound itself was built by layering real
-recordings, adding sub and high-frequency detail, then pitching, stretching and
-filtering them
-([AFI catalog](https://catalog.afi.com/Film/69732-GRAVITY);
-[British Cinematographer](https://britishcinematographer.co.uk/glenn-freemantle-gravity/);
-[Jim Hill Media / HuffPost](https://jimhillmedia.com/huffington-post-how-alfonso-cuarn-sculpted-authentic-sounding-audio-for-gravity-s-silence-filled-space/?amp=1);
-[Senses of Cinema](https://www.sensesofcinema.com/2014/feature-articles/there-is-nothing-to-carry-sound-defamiliarization-and-reported-realism-in-gravity/)).
+This is the core technique for "futuristic but ultra realistic", and it is the oldest
+trick in science-fiction sound:
 
-*The Expanse* started from "scientific accuracy, like there's no sound in space" and then
-let battles be "bigger, louder, and more in your face". Its weapons start "with a real
-sound, like a real gun sound, and then alter it"
-([A Sound Effect](https://www.asoundeffect.com/the-expanse-sound)). The tie-in game is
-reported to send weapons in vacuum as tremors through the suit, with the mechanism
-audible and the report absent
-([fan wiki, unverified](https://thegameswiki.com/the-expanse-osiris-reborn/wiki/sound-design)).
+- **Star Wars.** Ben Burtt made the blaster by striking a radio tower's guy-wire with a
+  wrench or hammer (accounts differ). The TIE fighter is a heavily altered elephant
+  bellow, with a car on wet pavement in some accounts, and the lightsaber hum is a TV
+  set and a projector motor
+  ([No Film School](https://nofilmschool.com/star-wars-sound-design);
+  [Film Sound](https://www.filmsound.org/starwars/);
+  [CDM](https://cdm.link/star-wars-and-sound-design/)).
+- **Dune (2021).** Mark Mangini and Theo Green's team made about 3,200 new sounds, and
+  only three or four began as electronic or synthetic. The ornithopter came from
+  beehives or a cat's purr and a beetle's wingbeats, and from Mangini's Chevy Volt.
+  Mangini: *"We can't find a worm, a shield, or an ornithopter in a sound library."*
+  They avoided plain helicopter blades so the machine would not sound borrowed
+  ([MPA](https://www.motionpictures.org/2022/03/dune-oscar-nominated-sound-team-on-sandworms-ornithopters-more/);
+  [Tor](https://tor.com/2021/11/05/dune-ornithopter-sound-design);
+  [Synthtopia](https://www.synthtopia.com/content/2022/02/01/the-sound-design-of-dune/)).
+- **The Expanse.** The team starts "with a real sound, like a real gun sound, and then
+  alter[s] it", adding textures a real gun would not have so that the audience
+  recognises a gunshot while it still sounds new
+  ([A Sound Effect](https://www.asoundeffect.com/the-expanse-sound)).
 
-Elite Dangerous's soundscape is commonly explained by its players as sound transmitted
-through the ship ([Frontier forums](https://forums.frontier.co.uk/threads/the-answer-why-there-is-sound-in-space.239479);
-[A Sound Effect](https://www.asoundeffect.com/?p=26142)). The physics is real: vibration
-travels through a hull into the air inside a pressurised cabin
-([New Space Economy](https://newspaceeconomy.ca/2026/04/16/why-cant-we-hear-sound-in-space.md)).
+**For KONDRITE:** each invented machine gets (a) a **mechanism**, meaning what is
+physically happening when it works, and (b) a **recipe** of real recordings that would
+plausibly sound like that mechanism. If no oscillator is allowed into the recipe, the
+result can't sound like an arcade. And just as Dune avoided helicopter blades, avoid the
+obvious source: a laser should not be a laser sound effect from a library.
 
-### 3.3 Real machinery and a world that answers
+### 3.3 How sound behaves across open air
 
-Alien: Isolation built its realism from the original film's own effects tracks, which
-Fox handed over from the eight-track masters, and from run-time systems that let them
-"manipulate pretty much any aspect of the audio" so the world reacts
-([PC Gamer](https://pcgamer.com/the-audio-of-alien-isolation);
-[The Sound Architect](https://www.thesoundarchitect.co.uk/alienisolation/);
-[MCV](https://mcvuk.com/development-news/how-alien-isolation-is-using-audio-to-manipulate-player-emotions)).
-The criticism is worth keeping too: "everything makes noise"
-([AV Club](https://avclub.com/alien-isolation-fills-up-the-quiet-space-that-keeps-re-1798273762)).
-Realism needs silence in it to land.
+If space carries sound like air, it should behave like sound outdoors:
 
-### 3.4 Realism still has to be playable
+- **Distance.** Level falls with distance. Past a certain distance, air absorbs the high
+  frequencies more than the lows, so far sounds are muffled. Games model this with a
+  low-pass filter whose cutoff falls with distance. Arma 3 filters every sound this way,
+  and Unreal and Wwise both have an air-absorption setting
+  ([Audiokinetic](https://audiokinetic.com/a-wwise-approach-to-spatial-audio-part-1);
+  [Arma 3](https://community.bistudio.com/wiki/Arma_3_Sound:_Filters);
+  [Unreal](https://dev.epicgames.com/documentation/en-us/unreal-engine/sound-attenuation-in-unreal-engine)).
+- **Delay.** Sound takes time to arrive. Delaying every sound by distance just reads as
+  sound out of sync with the picture, and film keeps the delay for huge explosions with
+  a visible shock wave
+  ([Godot forum](https://forum.godotengine.org/t/how-do-i-make-every-single-node-simulate-the-speed-of-sound-with-delays/143645);
+  [Taylor & Francis](https://www.taylorfrancis.com/books/e/9781351653954/chapters/10.1201%2Fb22247-10)).
+- **Passing projectiles.** In PUBG, a bullet passing you is a *whizz*, and a supersonic
+  one also makes a *crack* from its shock wave. Hearing both means it was very close.
+  The whizz is mostly Doppler, and it is triggered when a round's path passes near the
+  listener ([PC Gamer](https://pcgamer.com/how-gunshot-sounds-work-in-playerunknowns-battlegrounds);
+  [Morphic](https://morphic.com/resources/sounds/bullet-fly-by-sound-effects);
+  [Zapsplat](https://www.zapsplat.com/?p=42787)).
+
+### 3.4 Realism has to stay playable: the sensor feed
 
 Overwatch's team found that "the loudest sound wins" did not let people play by sound.
 They built an importance system that weights each enemy by distance, whether it is
 looking at you and whether it is shooting at you, and remixes live
 ([PC Gamer](https://pcgamer.com/how-overwatch-uses-sound-to-pinpoint-threats-you-cant-see);
 [GDC Vault](https://gdcvault.com/play/1023010/Overwatch-The-Elusive-Goal-Play)). DICE's
-rule for Battlefield's HDR audio was "play the right sounds, not all sounds"
+rule for Battlefield was "play the right sounds, not all sounds"
 ([Frostbite](https://frostbite.com/frostbite/news/how-hdr-audio-makes-battlefield-bad-company-go-boom)).
 Battlefield 6 lists threat-based mixing in current work
 ([ESA](https://www.theesa.com/behind-the-scenes/an-orchestra-of-the-battlefield-inside-the-audio-design-of-battlefield-6-with-mari-saastamoinen-minto/)).
 
+**For KONDRITE, this is the sensor feed.** The physics in §3.3 decides what reaches the
+ship. The sensor feed decides what the pilot is given, and it lifts and sharpens
+anything aimed at you. Because it is a ship system, the world can degrade it: the Murk
+jams it, your own EMP takes it down, and Silent Running turns it off. That makes it a
+rule of the world rather than a mixing trick.
+
+### 3.5 Real machinery, and room for silence
+
+Alien: Isolation built its realism from the original film's effects masters and from
+run-time systems that let the audio react to everything
+([PC Gamer](https://pcgamer.com/the-audio-of-alien-isolation);
+[The Sound Architect](https://www.thesoundarchitect.co.uk/alienisolation/)). Its
+criticism is useful too: "everything makes noise"
+([AV Club](https://avclub.com/alien-isolation-fills-up-the-quiet-space-that-keeps-re-1798273762)).
+Realism needs quiet in it to land, which is what the Long Empty is for.
+
+### 3.6 Sound as navigation, and an endless place
+
+Outer Wilds built its exploration around hearing distant sources and following them,
+and every world has a sound you can track
+([Mobius Digital](https://www.mobiusdigitalgames.com/news/separating-the-signal-from-the-noise)).
+No Man's Sky shows that an endless procedural universe can carry procedural audio
+([Audiokinetic Q&A with Paul Weir](https://www.audiokinetic.com/en/blog/behind-the-sound-of-no-mans-sky-a-qa-with-paul-weir-on-procedural-audio)).
 Sound is also half of what makes a game feel good to touch
 ([Game feel](https://www.wikipedia.org/wiki/Game_feel);
 [Juice it or lose it](https://gamejuice.pages.dev/articles/juice-it-or-lose-it-lessons)).
-Realism does not excuse an action that answers with nothing.
 
-### 3.5 Navigation by what the instruments hear
+### 3.7 In the browser
 
-Outer Wilds built much of its narrative around the Signalscope, which picks up signals
-across the system, and every world has its own sound you can track
-([Mobius Digital](https://www.mobiusdigitalgames.com/news/separating-the-signal-from-the-noise);
-[Wikipedia](https://wikipedia.com/wiki/Outer_Wilds)). Radio is realistic in a vacuum,
-because it is the one thing that does cross it.
-
-### 3.6 Space in the browser
-
-Web Audio's `ConvolverNode` puts a sound inside the room its impulse response was
-recorded in; short responses of 0.5–1.5 s keep the CPU cost down
+Web Audio's `ConvolverNode` places a sound in the space its impulse response was
+recorded in. An impulse response is a recording of how a space echoes a single short
+click. Short ones, 0.5–1.5 s, keep the CPU cost down
 ([MDN](https://developer.mozilla.org/en-US/docs/web/api/convolvernode);
 [Abratabia, a vendor blog](https://www.abratabia.com/web-game-audio/spatial-audio-games.php)).
-One cockpit-sized response on the ship bus is the cheapest single change that makes
-everything sound physical. No Man's Sky shows that an endless procedural universe can
-carry procedural audio ([Audiokinetic Q&A with Paul Weir](https://www.audiokinetic.com/en/blog/behind-the-sound-of-no-mans-sky-a-qa-with-paul-weir-on-procedural-audio)).
+Web Audio's `PannerNode` and `BiquadFilterNode` cover distance, Doppler (by ramping
+playback rate) and air absorption without any library.
 
-### 3.7 Loudness and accessibility
+### 3.8 Loudness and accessibility
 
 Sony's guidance is reported as about −24 LUFS integrated for home platforms and −18 LUFS
 for portable ones, with a −1 dBTP peak
 ([Designing Sound](https://designingsound.org/2012/07/30/video-games-and-loudness-standards-interview-with-sonys-garry-taylor/);
 [Audiokinetic](https://audiokinetic.com/loudness-processing-best-practices-series-chapter1-loudness-measurement-part1)).
-XAG 105 asks for separate dials for at least music, voice, active effects and
-background/ambient effects; XAG 103 asks that every important cue reach more than one
-sense
+XAG 105 asks for separate dials for music, effects and ambience at least. XAG 103 asks
+that every important cue reach more than one sense
 ([XAG 105](https://learn.microsoft.com/en-us/gaming/accessibility/xbox-accessibility-guidelines/105);
 [XAG 103](https://learn.microsoft.com/en-gb/gaming/accessibility/xbox-accessibility-guidelines/103)).
 
@@ -224,494 +268,511 @@ sense
 
 ## 4. The rules
 
-### 4.1 Three ways a sound reaches you, and no fourth
+### 4.1 Space carries sound, and it behaves like air
 
-| Path | What travels it | How it sounds |
+Every sound in the world has a source position, and the ship is the listener. The game
+renders the sound the way it would arrive across open air:
+
+| Effect | Rule | Web Audio |
 |---|---|---|
-| **1. Through the hull** | your own engine, thrusters, guns, pumps, fans, servos; anything that **touches** the hull: rounds, rock, debris, ice, the grapple line, docking clamps | physical, low-heavy, inside a small metal room (the cockpit impulse response) |
-| **2. Through the air** | only where there is air: an atmosphere you are skimming or landing in, and a station once the docking seal is made | outside sound coming back: wind, buffeting, the station's own noise |
-| **3. Through the instruments** | radio (comms, distress, news, broadcasts), the scanner, threat warnings, system alerts | real avionics and radio: band-limited, squelch, static, alert tones that copy real cockpit practice |
+| **Level** | falls with distance from the ship; a big event (an explosion, a capital ship) has a bigger reference distance and carries further | gain from distance, per source size |
+| **Air absorption** | the further away, the duller: a near cannon cracks, a far one thuds | low-pass whose cutoff falls with distance |
+| **Direction** | panned by bearing from the ship | `StereoPanner` (`PannerNode` later) |
+| **Doppler** | anything fast passing the ship (rounds, missiles, ships under boost, the corsair) rises in pitch as it comes and drops as it goes | ramp `playbackRate` |
+| **Pass-by** | a round whose path passes close to you makes a whizz; a fast heavy one (the lance) also cracks | triggered by closest approach |
+| **Delay** | **only for big events**: an explosion's boom, a capital ship dying, a wormhole forming. Far enough away, the flash comes first and the boom after, like thunder. Everything else is instant | `start(when)` |
+| **Occlusion** | a planet, the Leviathan's plates or a Warrens wall between you and a source muffles it | extra low-pass; the game's solid geometry already answers whether the line is blocked |
+| **Reflection** | sound echoes where there is something to echo off: the Warrens, inside the Leviathan, the Vault, a station's interior, and close against a big hull | a convolver per kind of space, mixed by how enclosed you are |
 
-**Nothing crosses a vacuum by itself.** Another ship's gun firing makes no sound. That
-ship blowing up makes no sound until its debris reaches your hull, which takes time.
-**The delay is information**: a near wreck patters a moment later, a far one never
-reaches you.
+**The hearing edge moves from the screen edge to the physics.** Today a sound off
+screen is cut dead. Under these rules, distance fades a sound out before the screen
+edge cuts it, so things just off screen are faint and things far off are gone. A
+battle two screens away is a low rumble, and a big one carries further. The README's
+rule becomes *if it is close enough to hear, you hear it*. This needs Ric's agreement
+(§12). Online, the host already sends every sound with its position, so each guest can
+apply its own distance.
 
-### 4.2 What this does to "if you can see it you can hear it"
+### 4.2 The listener has two places
 
-The README's rule (seen means heard, unseen means silent) has to be read more strictly.
-**Seeing a thing is not enough to hear it. It has to touch you, or your instruments have
-to pick it up.**
+- **On board.** Your own engine, guns, systems and hull are heard from inside the ship.
+  They are full-range, close and heavy, in the small metal space of the cockpit (one
+  short convolver).
+- **Out there.** Everything else arrives through the rules in §4.1.
 
-That takes away the sound of a fight between two other ships, and a player needs threats
-to be audible (§3.4). There are two honest answers, and this is Ric's call:
+Your ship is the loudest, clearest thing in your world, because it is the closest.
 
-- **Strict (Gravity).** Out there is silent. Threats come only as instrument warnings:
-  a lock tone when something targets you, a missile-approach warning, a proximity alarm.
-  It is the purest version, and the hardest to read in a busy fight.
-- **Sensor feed (Elite, and the Expanse in battle) — recommended.** The ship's external
-  sensors turn nearby events into a low, dull, filtered rendering in the cockpit, and
-  the instruments know which ones are aimed at you. It is a device the ship has, so it
-  can be degraded: it fails inside the Murk, under your own EMP, and in Silent Running.
-  That makes it a rule the world can take away, not a cheat. Your own ship stays
-  full-range, and the out-there layer never sounds like it is in the room.
+### 4.3 The sensor feed
 
-The sections below are written for the recommended version. They mark the sounds that
-come only from the sensor feed, so the strict version can be had by turning them off.
+Applied after the physics and before the mix:
 
-### 4.3 How each sound is built
+| Source | Treatment |
+|---|---|
+| aimed at you: a round on a collision course, a seeker locked on, a ship firing at you, a sentry awake on you | lifted (+4–6 dB), and its air absorption reduced so it stays bright |
+| hostile and near, not aimed at you | as the physics says |
+| not your fight (two powers at war, a raid on someone else) | dipped (−4 dB) and dulled a little more |
+| your own ship | always full |
 
-- **Real recorded sources, layered.** A sound has a transient (the attack), a body (the
-  material) and a tail (the space), and below 100 Hz a sub layer that you feel. The
-  exaggeration goes into the sub and the transient. That is where "more real than real"
-  lives.
-- **Several takes, not one file pitched up and down.** Variation of ±5% in pitch is not
-  enough when the source is real. Keep three to six recordings of anything that repeats
-  and rotate through them, with small pitch and level variation on top.
-- **Mass and material are parameters.** An impact knows what hit what: rock, ice, metal
-  plate, a hulk, a hull. It also knows how fast and how heavy. The Skiff and the Tender
-  do not share an engine.
-- **Everything has a tail, and a tail can be cut.** A gun that fires eight times a
-  second steals its own tail rather than stacking it.
-- **No melodies, ever.** No jingle, no scale and no chord stands for success. A success is
-  the physical thing succeeding: a clamp locking, a seal holding, a pump filling.
-- **Tones only from real hardware.** Avionics alerts, radio squelch and sensor read-outs.
-  Each should be designed after the real thing it imitates, such as aircraft caution and
-  warning tones, radar warning receivers, and the ground proximity warning.
-- **Silence is a material.** The Long Empty, a death, the moment after a wormhole. Quiet
-  has to be quiet enough to notice.
+The feed also adds the warnings that a sensor would raise: a **lock tone** when
+something targets you, and a **missile-approach tone** that quickens as a seeker closes.
+These are modelled on a real radar warning receiver. The Murk jams the feed (lifting
+stops and the warnings break up), your own EMP takes it down for `EMP_STUN`, and Silent
+Running turns it off. In all three, physics is all you have left.
 
-### 4.4 The source material
+### 4.4 How each sound is built
 
-This is the biggest practical change. Hyperreal sound cannot be made from oscillators,
-and it should not be made with an AI generator. The weather room's rule for its sky
-footage applies here too: real material, credited. The options:
+- **A mechanism and a recipe for each.** §6 gives both for every sound.
+- **Layers.** A transient (the attack), a body (the material), a tail (the space) and,
+  below about 100 Hz, a sub you feel. The exaggeration goes into the sub and the
+  transient.
+- **Takes, not pitch-shifting.** Keep three to six recordings of anything that repeats
+  and rotate through them, with small pitch and level changes on top.
+- **Mass and material are parameters.** An impact knows what hit what (rock, ice, metal
+  plate, a hulk, a hull), how fast, and how heavy. Each hull has its own engine and its
+  own hits.
+- **Every sound has a tail, and a tail can be cut.** A gun that fires several times a
+  second cuts off its own tail rather than stacking it.
+- **No melodies, ever.** A success is the physical thing succeeding: a clamp locking, a
+  seal holding, a machine starting.
+- **No speech, anywhere.** The ship does not speak, and neither does anyone on the
+  radio. Comms are squelch, data bursts and carriers, with the words on screen as they
+  are now. Warnings are tones.
+- **Tones only where real hardware would make them:** warning tones, the scanner, radio
+  data. Design them after the real thing: aircraft caution and warning tones, a radar
+  warning receiver, an active sonar.
+- **Silence is a material.** The Long Empty, a death, the moment after a wormhole.
+
+### 4.5 The source material
+
+Ultra-realistic sound cannot come from oscillators, and should not come from an AI
+generator. The weather room's rule for its sky footage applies here too: real material,
+credited. Options:
 
 | Source | Fits | Watch for |
 |---|---|---|
-| **Recorded by Ric** | metal, tools, doors, water, air, servos, cars, a garage | the best option where possible; no licence questions |
-| **CC0 libraries** (e.g. Freesound filtered to CC0) | machinery, impacts, rocket tests, radio | check each file's licence; keep the original |
-| **Royalty-free bundles** (e.g. the Sonniss GDC bundles) | professional field recordings | read the licence for redistribution in a public repository |
-| **Public-domain space-agency audio** | launch and engine recordings, comms, radio emissions | confirm the status of each file |
+| **Recorded by Ric** | metal, tools, doors, cars, electric motors, water, air, a garage, a workshop | the best option wherever possible; no licence questions |
+| **CC0 libraries** (e.g. Freesound filtered to CC0) | machinery, impacts, electrical arcs, rocket tests | check each file's licence and keep the original |
+| **Royalty-free bundles** (e.g. the Sonniss GDC bundles) | professional field recordings: jets, explosions, industry | read whether the licence allows files in a public repository |
+| **Public-domain government audio** | launches, engine tests, military test footage | confirm each file's status |
 
-Every file gets a credit line in a `sounds/SOURCES.md`. The universe project keeps a
-`SOURCES.md` file the same way.
+Every file gets a credit line in `sounds/SOURCES.md`, the way the universe project keeps
+its `SOURCES.md`.
 
-**Size.** The site is near GitHub Pages' 1 GB limit; the photographs and the CS replays
-already moved to R2 for that reason. Short sounds can live in the repository. Long loops
-and ambience beds should go to R2 and be fetched lazily by region. Every sound needs a
-fallback. Today the fallback is a synth voice, and a synth fallback would bring the
-arcade back the moment a fetch fails. The right fallback for a missing bed is silence;
-for a missing one-shot it is the nearest real sound already loaded. A page opened off
-disk cannot fetch at all (the README already says so), so the core set is better
-committed than fetched.
+**Size.** The site is near GitHub Pages' 1 GB limit, which is why the photographs and
+the CS replays moved to R2. Short sounds can live in the repository. Long loops and
+region beds should go to R2 and be fetched lazily. **Fallbacks must stay real.** The
+current fallback is a synth voice, which would bring the arcade back whenever a fetch
+fails. A missing bed falls back to silence, and a missing one-shot to the nearest real
+sound already loaded. A page opened straight off disk cannot fetch at all, so the core
+set should be committed rather than fetched. Use a compressed format and check it plays
+in Safari before choosing it.
 
-**Format.** Compressed and decoded once. Test the chosen format in Safari before
-committing to it.
+### 4.6 The interface
 
-### 4.5 The interface
+Pages that are part of the ship (the chart, almanac, station, hangar and inventory)
+sound like hardware: a detented switch, a relay, a membrane key, a print head. They
+never beep a note. Pages outside the fiction (the front page, Settings, the account
+door) are almost silent, with one tactile click to move and one to choose. The front
+page plays nothing.
 
-Pages that are part of the ship are part of the ship: the chart, the almanac, the
-station, the hangar, inventory. They sound like hardware. A detented switch, a relay, a
-membrane key, a print head. They never beep a note.
-
-Pages outside the fiction (the front page, Settings, the account door) are almost silent.
-One soft, tactile click to move and one to choose. The front page plays nothing, and a
-browser would not allow it before a gesture anyway.
-
-**The simulators are the exception, and a useful one.** They are arcade cabinets inside
-the world (README, "The game, and the simulators"), so arcade sound is correct there.
-Play it the way it would reach you in the room: through a cabinet's small speaker, inside
-the station. The arcade sound survives in the one place where it is realistic.
+**The simulators are the one exception.** They are arcade cabinets inside the world
+(README, "The game, and the simulators"), so arcade sound is realistic there, played
+through a cabinet's small speaker inside the station room. §6.11 has the alternative.
 
 ---
 
 ## 5. Mix
 
 ```
-source → material/mass layering → [path]
-   path 1 (hull):        cockpit convolver → SHIP bus
-   path 2 (air):         outside/air chain → AMBIENCE bus
-   path 3 (instruments): radio/avionics chain → INSTRUMENTS bus
-   sensor feed:          heavy low-pass + importance gain → WORLD bus
-all buses → duck → master → compressor → limiter → out
+world source ─► takes/layers ─► distance gain ─► air low-pass ─► occlusion ─► doppler/delay ─► pan
+                                                                                  │
+                                                       sensor feed (importance) ◄─┘
+                                                                                  │
+                     space convolver (open / cave / hull interior / station) ◄────┘ ─► WORLD bus
+own ship ─► takes/layers ─► cockpit convolver ─► SHIP bus
+warnings, scanner, radio ─► INSTRUMENTS bus
+region beds ─► AMBIENCE bus
+all buses ─► duck ─► master ─► compressor ─► limiter ─► out
 ```
 
-- **Importance** (§3.4): for sensor-feed sounds, one value from 0 to 1. It is 1 for
-  something aimed at you, less for something hostile near you, and least for a fight
-  that is not yours. It sets gain and low-pass cutoff. Hull and instrument sounds are
-  always 1.
-- **Ducking**: an instrument warning or a comms line pulls the world bus down while it
-  plays.
-- **Loops**: a manager that starts, updates and stops loops with ramps and caps them. Two
-  engine layers, one hull-stress bed, one beam, one region bed, one alarm.
-- **Voice cap per kind**, stealing the least important sound first.
-- **Dials**: WEAPONS, IMPACTS, SHIP, INSTRUMENTS (alerts and radio), AMBIENCE, INTERFACE,
-  and MUSIC only if §8 happens. Plus a **mono** switch, because pan carries direction.
+- **Ducking:** a warning or the scan pulls the world bus down while it plays, and a
+  discovery (§6.8) pulls everything down for a second so it can be heard.
+- **Loops:** a manager that starts, updates and stops loops with ramps, and caps them.
+  It allows the engine (two layers), one hull-stress bed, one beam, one region bed, one
+  alarm and up to six nearby engines.
+- **Voice cap per kind**, which stops the least important sound first.
+- **Dials:** WEAPONS, IMPACTS, SHIP, INSTRUMENTS, AMBIENCE and INTERFACE, with MUSIC only
+  if §8 happens. Plus a **mono** switch, because pan carries direction.
 
 ---
 
 ## 6. The inventory
 
 Every row is an event the game already has. **Today** is what plays now (— means
-silence). **Path** is 1 hull, 2 air, 3 instruments, S sensor feed. **P** is priority:
-P0 broken, P1 core, P2 depth, P3 polish.
+silence). **Recipe** is the real material to start from; it is a starting point to be
+judged by ear, not a rule. **P** is priority: P0 broken, P1 core, P2 depth, P3 polish.
 
 ### 6.1 Your ship
 
-| Event | Code | Today | Hyperreal sound | Path | P |
+The drive is a fusion torch. Plasma is pushed through a magnetic nozzle, fed by pumps,
+and the frame carries all of it.
+
+| Event | Code | Today | Mechanism → sound | Recipe | P |
 |---|---|---|---|---|---|
-| Thrust held | ship update | — | **Engine loop.** Combustion rumble and the turbopump's whine carried through the frame (rocket test-stand recordings, low-passed); level and brightness follow throttle; a release tail. Each hull has its own: the Skiff light and rattly, the Tender deep and slow | 1 | P1 |
-| Engine start / stop | first thrust after rest | — | ignition thump and pump spin-up; spin-down and valves closing | 1 | P2 |
-| Reverse thrust | ship update | — | the same loop through the forward nozzles: thinner, more hiss | 1 | P2 |
-| Turning | ship update | — | **RCS**: solenoid valve clicks and short cold-gas pops, one per burst (Apollo and Shuttle RCS bangs are the reference) | 1 | P2 |
-| Above cruise speed (slingshot, burner) | `me.boost` | — | frame strain: a faint structural hum rising with boost and dying as it bleeds off | 1 | P2 |
-| Idle | always | — | the ship is never silent: life-support fan, a coolant pump, the odd relay. Quiet, and the first thing a player notices if it stops | 1 | P1 |
-| Hull hit | `physics.js:321–340` | `hit` | metal impact chosen by **what** hit you (a round, rock, ice, a ship) and **how hard**; transient + plate ring + sub; panned from where it struck | 1 | P1 |
-| Hull reaches zero | `physics.js:339` | `hit` | a crack through the frame, then a **breach loop**: a thin air-leak hiss, the pressure alarm, structural creaks. It stops when you mend | 1+3 | P1 |
-| Brush with a solid (no damage) | collision | — | a scrape by contact speed: metal on rock, metal on metal | 1 | P2 |
-| Hard contact | collision | `hit` | a scrape into a heavy clank | 1 | P2 |
-| Death (Survey) | `survival.js:520` | `lose` | explosive decompression: a roar of venting air cut to **total silence**, held for a beat before the death screen | 1 | P1 |
-| Respawn at the station | `survival.js:560` | — | systems coming up: fans spin, pumps prime, relays click in sequence; the station heard through the docking collar | 1+2 | P1 |
-| Invulnerability ending | `ship.invuln` | — | none. It is a game rule, not a physical event | — | — |
+| Thrust held | ship update | — | **Engine loop.** A roar at the nozzle, a turbopump's whine, a magnetic hum, carried through the frame. Level and brightness follow throttle, with a release tail. Each hull has its own: the Skiff light and rattly, the Tender deep and slow | jet turbine run-ups, rocket test-stand roar (low-passed), a large transformer's hum, a sub layer | P1 |
+| Engine start / stop | first thrust after rest | — | ignition thump, pumps spinning up; spin-down and valves closing | turbine starter, heavy solenoid, a pump spinning down | P2 |
+| Reverse thrust | ship update | — | forward nozzles: thinner, more hiss | the engine loop high-passed, compressed-air hiss | P2 |
+| Turning | ship update | — | **RCS jets**: valve clicks and short pops of gas, one per burst | solenoid valves, air-brake and compressor blow-offs, air-tool bursts | P2 |
+| Above cruise speed (slingshot, burner) | `me.boost` | — | the frame under strain, and the engine screaming; it bleeds off with the boost | the engine loop pitched up, metal-structure hum, wind noise at speed | P2 |
+| Idle | always | — | the ship is never silent: life-support fans, a coolant pump, the odd relay. Quiet, and the first thing a player misses when it stops | HVAC fans, a car's cooling fan, aquarium or coolant pumps, relays | P1 |
+| Hull hit | `physics.js:321–340` | `hit` | an impact chosen by **what** hit you (a round, rock, ice, a ship) and **how hard**: transient, plate ring, sub. Panned from where it struck | steel plate and car-door impacts, a sledgehammer on sheet metal, a dumpster, a sub thump | P1 |
+| Hull reaches zero | `physics.js:339` | `hit` | a crack through the frame, then a **breach loop** (air venting, a pressure alarm, creaking) until you mend | metal tearing, a tyre or air-line leak, ship-hull creaks | P1 |
+| Brush with a solid (no damage) | collision | — | a scrape at contact speed: metal on rock, metal on metal | metal dragged on concrete and on stone | P2 |
+| Hard contact | collision | `hit` | the scrape into a heavy clank | car-crash foley, a heavy chain dropped | P2 |
+| Death (Survey) | `survival.js:520` | `lose` | the ship going up from inside: an explosion, then **total silence**, held for a beat before the death screen | a close explosion, a decompression roar, then nothing | P1 |
+| Respawn at the station | `survival.js:560` | — | systems coming up in sequence: fans spin, pumps prime, relays click, with the station's room around it | the same sources as the idle, starting one at a time | P1 |
+| Invulnerability ending | `ship.invuln` | — | none; it is a game rule, not a physical event | — | — |
 
 ### 6.2 Weapons
 
-In vacuum the report is missing. You hear the **mechanism**: capacitors, rails, the
-breech and the recoil through the frame.
+With sound in space, every gun has a **report** heard out there, as well as the
+**mechanism** heard on board when it is yours.
 
-| Event | Code | Today | Hyperreal sound | Path | P |
+| Weapon | Code | Today | Mechanism → sound | Recipe | P |
 |---|---|---|---|---|---|
-| Cannon | `physics.js:610` | `laser.wav` | capacitor discharge crack + a recoil thump through the mount + a cooling tick. Short, with its own tail cut. Three to six takes | 1 | P1 |
-| Industrial beam | `physics.js:610` | `beam.wav` | a sustained electrical hum and the emitter's whine while it holds, with an arcing texture when it bites rock | 1 | P1 |
-| Scatter gun | `physics.js:674` | `scatter.wav` | three overlapping mechanical reports, slightly staggered | 1 | P1 |
-| Seeker rack | `physics.js:674` | `seeker.wav` | a launch-rail clank + the motor's ignition rumble carried briefly through the pylon | 1 | P1 |
-| Burst Charge | `physics.js:674` | `seeker` | a heavier, lower launch thump; different from the seeker | 1 | P2 |
-| Rail lance | `physics.js:674` | `lance.wav` | a capacitor charge whine, then a huge rail discharge: the loudest thing on your own ship, with a frame ring after | 1 | P1 |
-| War Fan / Warden's Swarm | boss parts | scatter / seeker | foreign hardware that sounds unlike yours: harsher rails, a different motor | 1 | P2 |
-| Another ship firing | many | the same `.wav`s | **Strict:** nothing. **Sensor feed:** a dull, low-passed thump, louder when it is aimed at you | S | P1 |
-| A round coming at you | bullet update | — | threat warning: a **lock tone** when a ship or sentry targets you, and a missile-approach warning that quickens for a seeker closing on you (modelled on a radar warning receiver) | 3 | P1 |
-| Your round hits rock | `update.js:339, 353` | `tink` | **nothing**: it is not touching you. The sensor feed can carry a faint crumble for a close one | S | P2 |
+| Cannon | `physics.js:610` | `laser.wav` | a pulsed beam ionising whatever is in its path: an electrical snap, a twang along the bolt, a capacitor recharge whine. Short, and it cuts its own tail | high-voltage arc snaps, a struck tensioned cable or slinky (the Burtt method), a camera flash recharging | P1 |
+| Industrial beam | `physics.js:610` | `beam.wav` | a continuous beam: a hard buzz while it holds, frying and spitting when it bites rock | arc welder, plasma cutter, Tesla-coil buzz, frying fat for the spit | P1 |
+| Scatter gun | `physics.js:674` | `scatter.wav` | three bolts at once, slightly staggered, heavier and shorter than the cannon | three arc snaps layered over a shotgun body | P1 |
+| Seeker rack | `physics.js:674` | `seeker.wav` | a launch-rail clank, then a small motor lighting; heard out there as a missile's hiss travelling, with Doppler as it passes | real missile and model-rocket launches, a rail clank, a blowtorch ignition | P1 |
+| Burst Charge | `physics.js:674` | `seeker` | a heavier launch thump, lobbed rather than flown | a mortar or grenade launcher's thump | P2 |
+| Burst Charge goes off | `physics.js:731` | `boom` | an explosion with a 190-unit blast; delayed if far away (§4.1) | real explosions, a sub layer, then debris rattle | P1 |
+| Rail lance | `physics.js:674` | `lance.wav` | an electromagnetic rail dumping a capacitor bank: a rising charge whine, a huge thump through the frame, the slug cracking the "air" at hypersonic speed, the rails ringing after | a camera-flash or defibrillator charge, a large gun's report, a supersonic crack, a struck steel I-beam | P1 |
+| War Fan / Warden's Swarm | boss parts | scatter / seeker | foreign hardware that sounds unlike yours: rougher rails, a different motor | your recipes with different sources: older, cruder machines | P2 |
+| Another ship firing | many | the same `.wav`s | the same voices, through distance, air absorption and the sensor feed | — | P1 |
+| A round passing close | bullet update | — | a **whizz** with Doppler; the lance also **cracks** | race-car pass-bys with the engine filtered out, a bullet-crack layer | P1 |
+| Targeted / missile closing | sensor feed | — | lock tone, and a missile-approach tone that quickens | modelled on a radar warning receiver; the only synthetic tones in the game | P1 |
+| Your round hits rock | `update.js:339, 353` | `tink` | the round striking, at the rock's distance: stone chips for rock, glassy cracks for ice, a ring for metal | stone chiselling, ice cracking, a struck steel plate | P1 |
 | Your round expires | `update.js:365` | `fizz` | nothing | — | — |
-| A Burst Charge goes off | `physics.js:731` | `boom` | nothing directly; then the debris patter on the hull after a delay, if you are close enough to be hit by it | 1 | P2 |
 
 ### 6.3 Devices (the four slots)
 
-| Device | Today | Hyperreal sound | P |
-|---|---|---|---|
-| Decoy | `start` | a pneumatic launch thump and a hatch cycling; then on the instruments, the decoy's beacon is heard leaving | P1 |
-| Mine laid | `shot` | a magazine clunk and a release latch; an arming relay at 1.6 s, heard faintly on the instruments | P2 |
-| Near your own armed mine | — | a proximity alert from the instruments that quickens as you close | P2 |
-| Mine fizzles out | `fizz` | a short instrument note that the contact is gone; nothing physical | P3 |
-| Cargo eject | `rock` | the bay door motor, a pressure thump, cargo scraping out along the rails | P1 |
-| Emergency jump | `warp` | the jump drive tearing: a rising electrical overload into a structural bang, then arrival in **near silence**, with even the idle fans cut for a moment (no scan, lost) | P1 |
-| Grapple | `thrust` | a harpoon launch, the cable paying out, a hard catch clank, tension creak through the winch during the pull. "Nothing to hook" is the launcher's dry click | P1 |
-| Silent Running | `start` | the ship powering down: fans spin down, pumps stop, relays drop one by one, until only the engine's breath is left and a pilot's breathing becomes audible. Firing slams everything back on | P1 |
-| EMP | `hit` | a capacitor bank's charge whine, a deep electrical *whump* through the frame, then **your own systems dying**: fans stop, the instruments cut to dead air. A reboot sequence returns them after `EMP_STUN` | P1 |
-| Corsair Burner | `shot` | an afterburner ignition roar through the frame into the boost strain | P2 |
-| Brood Bay | `shot` | three bay hatches cycling in sequence, a wet mechanical release | P2 |
-| Flagship Screen absorbs a hit | `hit` | an energy field taking a load: a deep electrical thrum and an overload crackle, **not** a hull impact. A rising hum as it recharges after 12 s | P1 |
+| Device | Today | Mechanism → sound | Recipe | P |
+|---|---|---|---|---|
+| Decoy | `start` | a pneumatic launch and a hatch cycling; then the decoy's emitter pretending to be your engine, drifting away with Doppler | a paintball or pneumatic launcher, a hatch, your engine loop thinned | P1 |
+| Mine laid | `shot` | a magazine clunk, a release latch, and a faint arming relay at 1.6 s | a heavy latch, an ammo can, a relay | P2 |
+| Near your own armed mine | — | the sensor feed's proximity tone, quickening as you close | warning tone | P2 |
+| A mine goes off | `boom` | an explosion (§6.2) | — | P1 |
+| A mine fizzles | `fizz` | its emitter going dead: a short electrical die-off | a tube amp powering off | P3 |
+| Cargo eject | `rock` | bay doors, a pressure thump, cargo scraping out | hydraulic doors, a pneumatic blast, crates on a ramp | P1 |
+| Emergency jump | `warp` | the jump drive tearing a hole: rising electrical overload, a structural bang, then arrival in **near silence** with even the fans cut for a moment | a transformer failing, a huge electrical arc, a steel bridge's bang, then nothing | P1 |
+| Grapple | `thrust` | a harpoon launch, cable paying out, a hard catch, winch strain during the pull. "Nothing to hook" is the launcher's dry click | a speargun, a winch or fishing reel, a steel cable under load | P1 |
+| Silent Running | `start` | the ship powering down: fans spin down, pumps stop, relays drop one by one, the sensor feed goes off. Everything outside is heard bare. Firing slams it all back on | the idle's sources stopping in turn; then all of them restarting at once | P1 |
+| EMP | `hit` | a capacitor bank's charge whine, a deep electrical *whump*, then **your own systems dying**: fans stop, the sensor feed and scanner cut out. A reboot sequence brings them back after `EMP_STUN`. Out there, every stunned machine's sound stops too | a defibrillator charge, a transformer explosion, a power cut, a computer booting | P1 |
+| Corsair Burner | `shot` | an afterburner lighting, a roar into the boost strain, a Doppler pass for anyone you go by | a jet afterburner, a dragster launch | P2 |
+| Brood Bay | `shot` | three bay hatches in sequence, an organic, chittering release | hatches; beetle and insect wingbeats slowed (the Dune approach) | P2 |
+| Flagship Screen absorbs a hit | `hit` | an energy field taking a load: a deep electrical thrum and an overload crackle, **not** a hull impact. A rising hum as it recharges after 12 s | transformer hum, electrical crackle, a huge bell's hum | P1 |
 
 ### 6.4 The Survey instruments
 
-| Event | Code | Today | Hyperreal sound | P |
-|---|---|---|---|---|
-| **Scan pulse** | `survey-setup.js:661` | `shot` | the active sensor firing: a transmitter thump and the outgoing ping, as a real active sonar or radar operator would hear it | P1 |
-| **Scan returns** | `surveyScan` | — | each contact comes back as a return **delayed by its distance**, panned by bearing, with its character set by what it is. Metal (a station, a cache, a wreck) returns sharp and ringing; rock returns soft; a wormhole returns distorted; a sentry or boss returns as a pulsed, active emitter. Closest first, capped at about 8 | P1 |
-| Scan finds nothing | `survey-setup.js:782` | — | the ping alone, and the dead hiss of an empty receiver after it | P2 |
-| Scan blocked by your own EMP | `survey-setup.js:654` | — | the dead receiver | P3 |
-| Scan in the Murk | `scanRange()` | — | the same ping smeared in interference, returns broken up. Realistic: the Murk is sensor interference | P2 |
-| Tractor beam pulling | tractor | — | an electromagnetic hum while something is in the beam, rising as it gets close, then a contact clunk at the intake | P2 |
-| Ore into the hold | `sector.js:730` | `pickup` (25%) | the intake conveyor and a rattle of ore landing in the hold, getting fuller-sounding as the hold fills | P2 |
-| Hold full | `sector.js:171` | — | the intake jams: a grinding stop and a cargo alert | P2 |
-| Melter running | `factions.js:877` | — | ice in the melter: a hissing, popping boil and a water pump | P3 |
-| Skimming an atmosphere | `surv.overAir` | — | **path 2 comes on**: the scoop's roar, buffeting through the hull, rising with depth | P1 |
-| A fit completes | `factions.js:651` | `win` | torque tools, a final mechanical lock, the new part's own system spinning up | P2 |
-| Light drive engages | `survival.js:51` | `win` | a heavy power-up: a deep electrical spool climbing into a sustained high resonance that the whole frame carries for the run | P1 |
-| Light drive disengages / is cut | `survival.js:39, 118`, `physics.js:330` | — | spool-down. A cut is an abrupt overload bang and a falling whine | P1 |
-| "Too deep in a well to run" | `survival.js:46` | `hit` | the drive tries and fails to spool: a stalled whine | P2 |
+| Event | Code | Today | Mechanism → sound | Recipe | P |
+|---|---|---|---|---|---|
+| **Scan pulse** | `survey-setup.js:661` | `shot` | an active sensor firing: a transmitter thump and an outgoing ping that travels | a submarine active-sonar ping, a radar transmitter's thump | P1 |
+| **Scan returns** | `surveyScan` | — | each contact comes back **delayed by its distance**, panned by bearing, with a character set by what it is: metal (a station, cache or wreck) sharp and ringing, rock soft, a wormhole bent, a sentry or boss pulsed. Closest first, capped at about 8 | the ping's echo, through filters per material | P1 |
+| Scan finds nothing | `survey-setup.js:782` | — | the ping, and the empty hiss of a receiver after it | receiver hiss | P2 |
+| Scan blocked by your own EMP | `survey-setup.js:654` | — | the dead transmitter's click | a relay with nothing behind it | P3 |
+| Scan in the Murk | `scanRange()` | — | the ping smeared by interference, returns broken up | the ping through crackle and dropouts | P2 |
+| Tractor beam pulling | tractor | — | an electromagnetic hum while something is in the beam, rising as it nears, then a clunk at the intake | MRI or maglev hum, a magnet snapping to steel | P2 |
+| Ore into the hold | `sector.js:730` | `pickup` (25%) | a conveyor and a rattle of ore landing, sounding fuller as the hold fills | gravel into a steel bin, a conveyor | P2 |
+| Rock breaking | `physics.js:167` etc. | `rock` | the rock splitting at its distance, its pieces tumbling | quarry rock breaking, boulders falling; ice cracking for the Rime | P1 |
+| Hold full | `sector.js:171` | — | the intake jamming: a grinding stop | a conveyor jamming | P2 |
+| Melter running | `factions.js:877` | — | ice in the melter: hissing, popping boil and a water pump | a kettle, ice in a hot pan, a pump | P3 |
+| Skimming an atmosphere | `surv.overAir` | — | a real atmosphere around the hull: the scoop roaring, buffeting rising with depth | wind at speed, a car window down on a highway, aircraft cabin buffeting | P1 |
+| A fit completes | `factions.js:651` | `win` | torque tools, a final lock, the new part's own system spinning up | impact wrenches, a heavy latch, a motor starting | P2 |
+| Light drive engages | `survival.js:51` | `win` | a heavy power-up: a deep spool climbing into a sustained high resonance that the whole frame carries for the run | a jet engine spooling to full power, a turbine at speed, a power-station hum | P1 |
+| Light drive off / cut | `survival.js:39, 118`, `physics.js:330` | — | spool-down; a cut is an overload bang and a falling whine | a turbine winding down; a breaker tripping | P1 |
+| "Too deep in a well to run" | `survival.js:46` | `hit` | the drive trying and failing: a stalled spool | an engine stalling on a starter | P2 |
 
 ### 6.5 Gravity, stars and the places that kill
 
-Gravity is where realism is most useful, because a strong field puts stress on a
-structure, and stressed metal makes noise.
-
-| Event | Code | Today | Hyperreal sound | P |
-|---|---|---|---|---|
-| GRAVITY AHEAD → CANNOT ESCAPE | `surveyWarning` | — | instruments: a caution tone at GRAVITY AHEAD, a warning tone at HEAVY PULL, a continuous master warning at PULL EXCEEDS DRIVE; at CANNOT ESCAPE the master warning and a recorded voice callout (§6.13) | P1 |
-| Inside a well's pull | hazards | — | **hull stress**: creaks, groans and pings through the frame, more and deeper the stronger the pull | P1 |
-| Near a star | hazards | — | **heat**: the hull ticking as it expands, coolant pumps working harder, a fan rising. On the radio, the star's own noise: real solar radio emission is a hiss, and it rises as you close | P2 |
-| A star repairing you | star heal | — | the repair system's servos and welding arcs, a step per hull point | P2 |
-| Near a black hole | hazards | — | tidal stress: a long, low structural groan that falls in pitch, and instruments going wrong as the field rises | P2 |
-| A slingshot letting go | telemetry | — | the hull stress releasing at once: one big frame-wide settle, then the boost strain bleeding off | P2 |
-| Burned in a star | death | `lose` | the coolant boiling, the alarms, a roar, then silence | P2 |
-| Swallowed by a black hole | death | `lose` | the groan stretching lower and lower until it is below hearing | P2 |
-| Battle Royale wall | BR | — | a proximity alarm as you near it; a bounce is a hard collision | P2 |
-| Into a wormhole | `sector-places.js:192` | `warp` | the frame wrenched: a structural shriek and an electrical surge through every system | P1 |
-| Out the far side | arrival | — | systems re-latching, the instruments resetting, then a held, deeply quiet moment | P2 |
+| Event | Code | Today | Mechanism → sound | Recipe | P |
+|---|---|---|---|---|---|
+| GRAVITY AHEAD → CANNOT ESCAPE | `surveyWarning` | — | warning tones, one per level, escalating from a caution to a continuous master warning | modelled on aircraft caution and warning tones | P1 |
+| Inside a well's pull | hazards | — | **hull stress**: creaks, groans and pings through the frame, more and deeper as the pull grows | ship-hull and tanker creaks, ice-sheet groans, a steel structure loaded | P1 |
+| A star | hazards | — | **a star is the loudest thing in the sector**: a vast roar, like a furnace heard from far off, rising as you close. Near it, the hull ticks with heat and the coolant pumps work harder | a blast furnace, a forest fire, a gas flare stack; metal ticking as it cools; pumps | P1 |
+| A star repairing you | star heal | — | the repair system: servos and welding arcs, one step per hull point | welding, servos | P2 |
+| A black hole | hazards | — | a deep rumble at the edge of hearing, mostly felt, falling in pitch the closer you get, with tidal stress on the hull | earthquake recordings, an infrasonic thunder roll, hull groans | P1 |
+| A slingshot letting go | telemetry | — | the hull stress releasing at once, then the engine screaming at speed | a structure settling, wind at speed | P2 |
+| Burned in a star | death | `lose` | the roar swallowing everything, then silence | — | P2 |
+| Swallowed by a black hole | death | `lose` | the rumble stretching lower and slower until it is below hearing | the same rumble, time-stretched | P2 |
+| A binary pair | almanac | — | two roars beating against each other | two furnaces | P3 |
+| Battle Royale wall | BR | — | a moving energy wall: a deep hum that you hear before you reach it, and a hard bounce | an electrical substation, a power-line hum, a heavy collision | P2 |
+| Into a wormhole | `sector-places.js:192` | `warp` | a tear in space: a structural shriek, a huge rushing pull, every system surging | a big bridge or ship under load, reversed explosions, a tornado's roar | P1 |
+| Out the far side | arrival | — | the rush releasing; systems latching back; a held, quiet moment | the same, ending; then silence | P2 |
+| A wormhole, idle | hazards | — | a mouth in space: a low, slowly turning roar | a wind tunnel, a turbine intake | P2 |
 
 ### 6.6 Places and regions
 
-In vacuum a region has no sound of its own, so a region is heard through what it **does
-to the ship** and what the **radio** picks up. Every bed fades in by `regionDepth`, the
-function that already tints the starfield, so you notice it over thousands of units and
-nobody names it. That is the audio half of BIOMES.md.
+With sound in space, a region sounds like what is in it. Every bed fades in by
+`regionDepth`, the function that already tints the starfield, so it arrives over
+thousands of units and nothing names it. That is the audio half of BIOMES.md.
 
-| Place | What you hear, and why it is real |
-|---|---|
-| Ordinary space | the ship's idle (6.1), and a radio band with a faint background hiss |
-| The Belt / Shards / Rounds | the odd dust grain pattering on the hull; the radio quiet |
-| **The Rime** | **ice grains on the hull**: a fine, constant patter, heavier where the ice is denser. You hear the region before you understand it |
-| The Violet Cloud | particles of the cloud on the hull: a soft, continuous sandblast hiss |
-| **The Murk** | **sensor and radio interference** growing to the middle: static, tearing and dropouts on every instrument sound. It follows the screen grain and turns off under reduced motion, like the grain |
-| Wells region | low hull stress that never quite stops |
-| Lanes / Settled reach | the radio busy with traffic control and ships talking (band-limited, unintelligible, real radio processing) |
-| The Works | industrial radio traffic and the occasional heavy transponder |
-| The Boneyard | dead transponders and fragments of automatic distress beacons on the radio |
-| **The Long Empty** | **nothing on the radio at all, and the idle a little quieter**: the one place where taking sound away is the design |
-| City (1.8%) | radio saturation that builds with distance to the city: traffic, beacons and broadcasts, the scale arriving by ear |
-| The Warrens | no echo (there is no air), but **close**: rock dust on the hull, the proximity sensor clicking as walls come near, and squeezes loud with scrapes |
-| The Leviathan (inside) | the same, plus her dead hull's structure groaning against yours where you touch, and her old systems on the radio |
-| The Vault | a sealed interior holding pressure: once inside and sealed, path 2 comes on, and the room is heard |
-| NODE 01 | "somebody else's terminal": a data carrier on the radio, structured and inhuman |
-| LAST TRANSMISSION | **the one landmark heard before it is seen**: its broadcast faint on the radio at the edge of range, clearer as you close (the Outer Wilds idea, and realistic) |
-| A station (near) | its beacon and traffic control on the radio, a different one per owner |
-| An inhabited world (near) | its radio traffic; once in the air, path 2 |
+| Place | What you hear | Recipe |
+|---|---|---|
+| Ordinary space | almost nothing: your idle, and now and then something far off | — |
+| The Belt | rocks grinding against each other in the distance, slow and heavy | boulders, a quarry crusher heard from afar |
+| The Shards / The Rounds | the same, sharper and brittle / softer and rolling | broken glass and slate / rolling stones |
+| **The Rime** | **ice bodies colliding**: a high, glassy crackle all around, like a frozen lake | lake ice singing and cracking, ice cubes, icebergs calving far off |
+| The Violet Cloud | a wide soft wind, closing in like fog, with gusts | wind through grass, distant surf |
+| **The Murk** | a charged storm: crackling static all around, getting denser toward the middle; it also jams the sensor feed. It follows the screen grain and turns off under reduced motion | dry electrical crackle, a thunderstorm's static, a dust storm |
+| Wells region | several deep roars beating against each other, and low hull stress | — |
+| Lanes / Settled reach | ships passing in the distance, with Doppler, and beacons | distant aircraft, highway traffic far off |
+| The Works | industry at a distance: heavy machines, a slow rhythm | a steelworks, a shipyard, a port |
+| The Boneyard | dead metal: wreckage drifting into wreckage, slow clanks, groans | a scrapyard, a shipbreaking yard, wind through wreckage |
+| **The Long Empty** | **nothing at all**, and your idle a little quieter. The one place where taking sound away is the design | — |
+| City (1.8%) | a whole world's noise, swelling as you approach: traffic, industry, a constant roar | city ambience from a high building, an airport, a motorway |
+| **The Warrens** | **echo** off the rock: your engine and guns ring off the walls, tight in a squeeze and huge in a chamber; dust trickling; scrapes when you touch | cave and mine impulse responses, a quarry tunnel |
+| The Leviathan (inside) | her hollow hull: deep metallic reverb, slow structural groans, old machinery still turning somewhere | the inside of a tanker or a grain silo, a big empty tank |
+| The Vault | a sealed, pressurised room: a tight, still space and a held low tone from whatever is locking it | a bank vault, a sealed bunker |
+| NODE 01 | "somebody else's terminal": a machine room humming, structured and inhuman | a server room, a data centre |
+| LAST TRANSMISSION | **the one landmark heard before it is seen**: its beacon carries a long way and gets clearer as you close | a lighthouse fog signal, a distant beacon |
+| A station | its machinery and traffic: docking ships, cargo moving, a different mix per owner | a port, a container terminal, a factory |
+| An inhabited world | its traffic in the sky above it, and its weather once you are in its air | — |
+| A battle | the fight itself, through §4.1 and the sensor feed; no bed on top | — |
 
 ### 6.7 Stations, money and the ship's own pages
 
-| Event | Today | Hyperreal sound | P |
-|---|---|---|---|
-| Docking | — | proximity alarm, clamps driving home (two heavy clanks), the seal, and a **pressure-equalisation hiss**. Then path 2 comes on and the station is heard: machinery, fans, people | P1 |
-| Undocking | — | the seal breaking, clamps releasing, the station's sound sucked away to vacuum, the engine back | P1 |
-| Landing on a world | — | the descent through air (path 2): rising roar, buffeting, then landing struts and the engine winding down | P2 |
-| News headline on docking | text | traffic control on the radio before the line appears | P3 |
-| Selling cargo | `win` | the hold's transfer: conveyors, cargo crates rolling out, then a terminal's confirmation (a print head, a stamp, a clunk) | P1 |
-| Buying | `start` / `win` | crates coming in and being stowed | P1 |
-| Refused | `hit` | the terminal's dry refusal: a membrane key that does nothing, a relay that does not close | P1 |
-| Part delivered: a section comes back on | `start` | **the station comes alive around you**: that section's machinery starting up, heard through the collar. Six sections, six machines, and the station gets louder and fuller each time. This is the replacement for the rising chord | P1 |
-| THE STATION (all six) | `win` | every section running at once, and a long held moment of it | P1 |
-| Ship bought / swapped | `win` | hangar cranes, clamps, the new hull's engine starting in its own voice | P2 |
-| Workbench build | `win` | real tools: a grinder, a welder, torque wrenches, in sequence | P2 |
-| Hull repaired at a dock | `win` | the repair crew's tools on your hull, heard through it | P2 |
-| Water / food bought | `start` | water pumped into the tank; crates stowed | P3 |
-| Chart, almanac, station pages: open / close | — | a hardware screen waking: a soft relay, a display's faint whine | P2 |
-| Moving through a page | — | a detented switch, quiet | P2 |
-| Chart pin drop / lift | — | a hard key press | P3 |
-| Chart zoom step | — | a rotary detent | P3 |
-| Save pressed | — | a write: a short drive spin and a click ("say out loud that it worked") | P2 |
-| Reset survey: first press arms | — | a master caution held for the four seconds | P2 |
-| Reset survey: second press | — | everything powered off, then silence | P2 |
-| Front page, settings, account door | — | almost nothing: one tactile click to move, one to choose | P2 |
+| Event | Today | Mechanism → sound | Recipe | P |
+|---|---|---|---|---|
+| Docking | — | proximity alarm, clamps driving home, a seal, a pressure hiss; the station's noise all around | train coupling, hydraulic clamps, an airlock's pneumatics | P1 |
+| Undocking | — | the seal breaking, clamps releasing, engines back | the same, reversed in order | P1 |
+| Landing on a world | — | a descent through air: roar and buffeting, landing struts, the engine winding down | aircraft landing from inside, landing gear | P2 |
+| News headline on docking | text | a data burst on the comms before the line appears | a fax or modem's burst, radio squelch | P3 |
+| Selling cargo | `win` | the hold unloading (conveyors, crates rolling out), then a terminal confirming (a print head, a stamp) | conveyor belts, pallet jacks, a receipt printer | P1 |
+| Buying | `start` / `win` | crates coming in and stowed | forklifts, crates | P1 |
+| Refused | `hit` | the terminal's dry refusal: a key that does nothing, a relay that does not close | a dead membrane key, a buzzer from real hardware | P1 |
+| A part delivered: a section comes back on | `start` | **the station coming alive around you**: that section's machinery starting up. Six sections, six machines, and the station is fuller each time. This replaces the old rising chord | big motors starting, a power-plant spin-up, ventilation coming on | P1 |
+| THE STATION (all six) | `win` | every section running at once, and a long held moment of it | — | P1 |
+| Ship bought / swapped | `win` | hangar cranes, clamps, the new hull's engine starting in its own voice | an overhead crane, a shipyard | P2 |
+| Workbench build | `win` | real tools in sequence: grinder, welder, torque wrench | — | P2 |
+| Hull repaired at a dock | `win` | the repair crew's tools on your hull | rivet guns, welding | P2 |
+| Water / food bought | `start` | water pumped into the tank; crates stowed | a fuel pump, a hose coupling | P3 |
+| Chart, almanac, station pages open / close | — | a hardware screen waking: a soft relay, a faint display whine | a CRT or monitor waking, a relay | P2 |
+| Moving through a page | — | a detented switch, quiet | a rotary switch | P2 |
+| Chart pin drop / lift | — | a hard key press | a mechanical keyboard | P3 |
+| Chart zoom step | — | a rotary detent | a camera lens ring | P3 |
+| Save pressed | — | a write: a short drive spin and a click ("say out loud that it worked") | a hard drive seeking | P2 |
+| Reset survey: first press arms | — | a master caution held for the four seconds | warning tone | P2 |
+| Reset survey: second press | — | everything powering off, then silence | — | P2 |
+| Front page, settings, account door | — | almost nothing: one tactile click to move, one to choose | a quality switch | P2 |
 
 ### 6.8 Discovery
 
 A discovery used to be a tune. Now it is the ship recording what it found, and the moment
-is given room by everything else getting quieter, not by a sound getting louder.
+gets room because everything else goes quiet, not because a sound gets louder.
 
-| Event | Today | Hyperreal sound | P |
+| Event | Today | Mechanism → sound | P |
 |---|---|---|---|
-| Almanac entry logged | `win` | the ship writing it down: a recorder's mechanism, the sensors settling, and the world ducked under it for a second. A landmark holds longer | P1 |
-| A secret entry (NODE 01, THE LEVIATHAN) | `win` | the instruments failing to identify it: a strange return no other entry makes | P2 |
-| An almanac verb unlocked (6 / 12 / 18) | — | the new system coming online for the first time: its own machine starting | P1 |
-| A part picked up | `win` | grapple and lift, then the part secured in a cradle: heavy, physical, one solid lock | P1 |
+| Almanac entry logged | `win` | the world ducks for a second and the ship's recorder takes it down: a print head, the sensors settling. A landmark holds longer | P1 |
+| A secret entry (NODE 01, THE LEVIATHAN) | `win` | the instruments failing to identify it: a return no other entry makes | P2 |
+| An almanac verb unlocked (6 / 12 / 18) | — | the new system starting for the first time, as its own machine | P1 |
+| A part picked up | `win` | grappled and lifted, then secured in a cradle: one heavy, solid lock | P1 |
 | One of the six station parts | `win` | the same, heavier, and the part's own hum on board from then on, quietly, until it is delivered | P1 |
-| Your hull recovered | `win` | the old ship's systems answering on the radio, then clamps | P2 |
-| Cache opened / the deep hold | `win` | a seal breaking: the hiss of a pressurised container venting, locks releasing. The deep hold is bigger and older | P1 |
+| Your hull recovered | `win` | its engine answering yours, then clamps | P2 |
+| Cache opened / the deep hold | `win` | a pressurised container venting, locks releasing; the deep hold bigger and older | P1 |
 | A pale dot in the Long Empty | — | nothing. The silence before it is the sound | — |
 
 ### 6.9 The living world, traffic and war
 
-The living world is "shown before it is said". Its sound comes through the radio, and only
-for things that happen near you or to you. Everything written with `chatter(…, false)`,
-which is texture that is never shown, stays silent.
+The living world is "shown before it is said", and its sound follows the same rule. Ships
+and fights are heard through §4.1 like anything else. Comms are data bursts and squelch
+under the line on screen, never voices. Everything written with `chatter(…, false)`, which
+is texture that is never shown, stays silent.
 
-| Event | Today | Hyperreal sound | P |
+| Event | Today | Proposal | P |
 |---|---|---|---|
-| Patrol: "that is close enough" | — | a radio call: squelch, band-limited voice or comms carrier, the patrol's transponder | P1 |
-| Patrol: "they told you once" | — | the radio call cut short, and your lock warning | P1 |
-| Distress call | — | an automatic distress beacon on the radio, repeating and weak, panned to the hauler | P1 |
-| Hauler saved / water handed across | `win` | a hose coupling, water pumping across, the hauler's radio thanking you | P2 |
-| A battle seen | — | the radio full of combat traffic; the fight itself through the sensor feed | P2 |
-| A battle ends / a memorial | — | the radio goes quiet | P3 |
-| A scavenger takes your part / a pirate takes your cargo | — | their tractor on the radio and your hold's alarm | P2 |
-| Bounty paid | `win` | a payment transfer on the terminal, the same hardware as a sale | P3 |
-| War declared / ceasefire / a leader falls / secession | — | silent unless docked; then traffic control reads the headline | — |
+| Ships passing | — | their engines, with distance and Doppler; a hauler slow and deep, a patrol sharp | P1 |
+| Patrol: "that is close enough" | — | a comms burst in the patrol's own sound (each faction gets one) | P1 |
+| Patrol: "they told you once" | — | the burst cut short and the lock tone | P1 |
+| Distress call | — | a repeating automatic beacon, weak, from the hauler's direction | P1 |
+| Hauler adrift | — | its systems failing: an engine coughing, a breach venting | P2 |
+| Hauler saved / water handed across | `win` | a hose coupling, water pumping across, its engine relighting | P2 |
+| A battle in view | — | the fight itself, distant: guns, booms arriving late, ships dying | P1 |
+| A battle ends / a memorial | — | the noise thinning out to nothing | P3 |
+| A scavenger takes your part / a pirate takes your cargo | — | their tractor's hum and your hold's alarm | P2 |
+| Bounty paid | `win` | the terminal's transfer, the same hardware as a sale | P3 |
+| War declared / ceasefire / a leader falls / secession | — | silent unless docked; then a comms burst before the headline | — |
 
 ### 6.10 Bosses and sentries
 
-| Event | Today | Hyperreal sound | P |
+| Event | Today | Proposal | P |
 |---|---|---|---|
-| "Coming up on X's sky" | — | a radio intercept: a strong, hostile transmission at the edge of hearing | P1 |
-| Crossing into a boss's sky | **`alarm` (silent: bug)** | a real alarm: your threat warning system declaring a hostile capital, with that boss's own transmission over it (the warlord broadcasts on every channel; the admiral is fleet traffic; the queen is a wall of salvage-tractor noise) | **P0** |
-| Warlord calls the pack in | **`alarm` (silent)** | the warlord's broadcast and three answering transponders appearing on the radio | **P0** |
-| The grudge ship returns | **`alarm` (silent)** | its transponder appearing on the radio, and your lock warning | **P0** |
-| Out of the sky | — | the transmission fading to the band's background | P2 |
-| A boss is hurt (50%, 25%) | hits | sensor feed: heavier strikes; its radio traffic turning frantic | P2 |
-| The Admiral's screen | hit | the same field load as the Flagship Screen, through the sensor feed | P2 |
-| Corsair dash | — | a hard engine bloom through the sensor feed, and your lock warning if it is coming at you | P2 |
-| A boss destroyed | `explode` + `win` | nothing, then its debris on your hull in waves, and its radio cutting out mid-transmission | P1 |
-| Sentry wakes | — | a servo motor driving up, then the lock tone. Its targeting radar on your warning receiver is what a real pilot would hear | P1 |
-| Sentry loses you | — | the lock tone dropping | P2 |
-| Guarded cache unsealed | — | a lock releasing on its beacon | P2 |
+| "Coming up on X's sky" | — | the boss heard before it is seen: a capital ship's engines carry a long way (§4.1) | P1 |
+| Crossing into a boss's sky | **`alarm` (silent: bug)** | the sensor feed's hostile-capital warning, and the boss's own sound rising: the warlord's raiders, the admiral's fleet, the queen's salvage tractors | **P0** |
+| Warlord calls the pack in | **`alarm` (silent)** | a burst on every channel, and three engines appearing in the distance | **P0** |
+| The grudge ship returns | **`alarm` (silent)** | its engine coming up behind you, and the lock tone | **P0** |
+| Out of the sky | — | the boss's noise falling away behind you | P2 |
+| A boss hurt (50%, 25%) | hits | heavier strikes, and its systems failing audibly | P2 |
+| The Admiral's screen | hit | the same field load as your Flagship Screen, heard out there | P2 |
+| Corsair dash | — | an afterburner roar with a Doppler pass | P2 |
+| Queen sends a taken ship | — | the Brood Bay's release, bigger | P2 |
+| A boss destroyed | `explode` + `win` | a long, layered death: several staggered explosions, a final one delayed by distance, then debris | P1 |
+| Sentry wakes | — | a servo driving up to target, then the lock tone | P1 |
+| Sentry loses you | — | the servo settling, the tone dropping | P2 |
+| Guarded cache unsealed | — | a lock releasing | P2 |
 | Rammed by the warlord | `hit` | a ship-to-ship collision: the heaviest impact in the game | P2 |
 
 ### 6.11 The simulators (Survival, Battle Royale, Campaign)
 
-These are arcade cabinets in a station (§4.5). Two honest choices:
+These are arcade cabinets in a station (§4.6). Two choices:
 
-- **Inside the cabinet** — recommended. The match plays as arcade sound through a small
-  cabinet speaker, with the station room behind it. That is realistic, and it makes the
-  machines feel like machines. The rows below then only need cabinet versions of the
-  same events.
+- **Inside the cabinet** (recommended). The match plays as arcade sound through a small
+  speaker, with the station room behind it. That is realistic for a cabinet, and it
+  keeps the arcade sound in the one place it belongs.
 - **As the real thing.** The cabinet is a simulator, so it sounds like the war it
   simulates, using the same palette as Survey.
 
 | Event | Today | Proposal | P |
 |---|---|---|---|
-| Cabinet booting | — | the power switch, a CRT degauss thunk, a rising flyback whine | P2 |
-| Round start / win / lose | jingles | cabinet jingles through the cabinet speaker, the only tunes left in the game | P2 |
-| Campaign: squad order 1/2/3 | `start` | three different radio acknowledgements | P2 |
-| Campaign: enemy ace enters | — | its transmission and a lock warning | P1 |
-| Campaign: mothership finale | `boom` (5% per frame) | **sound slowed with the picture**: playback rate scaled by `slowScale`, a long low structural failure, then silence and debris | P1 |
-| Back from the cabinet | — | the room again, then the dock | P3 |
+| Cabinet booting | — | a power switch, a CRT's degauss thunk, a rising high whine | P2 |
+| Round start / win / lose | jingles | cabinet jingles through the cabinet speaker: the only tunes left in the game | P2 |
+| Campaign: squad order 1/2/3 | `start` | three distinct comms acknowledgements (bursts, no voice) | P2 |
+| Campaign: enemy ace enters | — | its engine heard arriving, and the lock tone | P1 |
+| Campaign: mothership finale | `boom` (5% per frame) | **sound slowed with the picture**: playback rate scaled by `slowScale`, a long structural failure, then the biggest boom in the game, delayed | P1 |
+| Back from the cabinet | — | the room, then the dock | P3 |
 
 ### 6.12 Multiplayer and the front page
 
 | Event | Today | Proposal | P |
 |---|---|---|---|
 | Front page attract loop | — | stays silent | — |
-| Player joins / leaves the lobby | — | a radio carrier on and off | P3 |
-| Connection lost | — | dead air and the warning tone | P3 |
-
-### 6.13 A voice for the ship, if Ric wants one
-
-Real cockpits speak. A ground proximity warning says "PULL UP", and airliners announce
-failures by name. A short set of recorded lines for the ship is the realistic form of
-the warnings in 6.5, 6.1 and 6.10: GRAVITY WELL, PULL EXCEEDS DRIVE, HULL CRITICAL,
-WATER LOW, LOCK, MISSILE.
-
-The browser's built-in speech synthesis needs no files, but it sounds different on
-every device and mostly sounds like a computer, which is the opposite of the point. It
-should be recorded, a few dozen lines at most. Voice also needs its own dial (XAG 105)
-and subtitles for every line (XAG 104), and the game already draws the text.
+| Player joins / leaves the lobby | — | a comms carrier on and off | P3 |
+| Connection lost | — | dead air and a warning tone | P3 |
 
 ---
 
 ## 7. Animations that should be synced to sound
 
-- **EMP ring** (`EMP_RING_TIME`, 0.55 s): the whump as it leaves, your systems dying as
-  it passes you, silence when it stops.
+- **EMP ring** (`EMP_RING_TIME`, 0.55 s): the whump as it leaves, each stunned thing
+  going quiet as the ring passes it, and your own systems dying when it starts.
 - **Grapple line** (`surv.grappleTo`, 0.45 s): launch, catch and winch on the drawn line.
 - **Scan ring** (`surveyHUD.ping`): each return as the ring reaches its echo.
-- **Debris after an explosion**: patter arriving after a delay of distance ÷ debris
-  speed, so near things arrive soon and far things never do.
-- **Shake** (`addShake`): any shake of 5 or more has sub-bass in it. A shake with no bass
+- **Explosions**: the flash on the frame, and the boom when the distance delay says.
+  Debris arrives after the boom.
+- **Shake** (`addShake`): any shake of 5 or more needs sub-bass. A shake without bass
   reads as a camera bug.
-- **Murk dither**: interference density follows the same depth value as the shader.
+- **Murk dither**: the static's density follows the same depth value as the shader.
 - **The mothership coming apart**: slowed with the picture.
 - **Docking clamps and the hangar**: timed to their drawn motion.
+- **Engine flame**: the loop's level follows the drawn flame exactly.
 
 ## 8. Music
 
-Hyperrealism argues against a score. Survey should have none: the regions, the radio and
-the ship do that job, and the Long Empty has to be empty.
-
-What stays realistic is **music that exists in the world**: a station's radio playing
-something through the collar while you are docked, a pirate broadcast, the cabinets. A
-score over the top is Ric's call, and if it comes it gets its own dial and never plays in
-the Long Empty.
+Ultra-realism argues against a score. Survey should have none, because the regions, the
+ships and the machines do that job and the Long Empty has to be empty. What stays
+realistic is **music that exists in the world**: something playing in a station while you
+are docked, and the cabinets. A score is Ric's call, and if it comes it gets its own dial
+and never plays in the Long Empty.
 
 ## 9. Accessibility
 
-- Dials per §5, a mono switch, and a voice dial with subtitles if §6.13 is built.
-- Realism takes sound away (strict vacuum, Silent Running, the EMP), so **every cue that
-  is lost to the ear must still be on screen.** The game already draws almost all of them.
-- Reduced motion turns off the Murk interference bed, as it does the grain.
+- Dials per §5, and a mono switch.
+- The sensor feed, distance and the regions all carry information by sound, and every
+  piece of it is already drawn as well. Keep it that way: no cue that is sound-only.
+- Reduced motion turns off the Murk's crackle, as it turns off the grain.
 - The breach loop and the alarms stop when the page is paused or hidden.
 
 ## 10. Testing
 
-`test/sounds.js` was tuned for synth voices. Its limits were: no more than 20% of energy
-in 2–5 kHz, no more than 15% above 5 kHz, and 0.2 s for anything that repeats. **Real
-recordings will break those limits for good reasons.** Air, metal and debris live
-above 5 kHz, and a real gun has a tail. Keep the intent, which is no ear fatigue, and
-change how it is measured:
+`test/sounds.js` was tuned for synth voices. Its limits are no more than 20% of energy in
+2–5 kHz, no more than 15% above 5 kHz, and at most 0.2 s for anything that repeats. **Real
+recordings will break those limits for good reasons**: air, metal, ice and electrical
+arcs live above 5 kHz, and a real gun has a tail. Keep the intent, which is no ear
+fatigue, and change how it is measured:
 
 1. **Every voice called exists.** Collect every literal `gameSound("…")` and
    `playSfx("…")` and fail on one the engine does not know. That catches §2.1.
-2. **No synthesised oscillator in a shipped voice.** Fail if a game voice is built from
-   `createOscillator`. That keeps the arcade from coming back through a fallback. The
-   cabinets are exempt.
-3. **Fatigue by loudness and repetition, not by spectrum.** The short-term loudness of
-   a repeated sound stays under a ceiling; a sound that plays several times a second
-   rotates through at least three takes; and a tail is cut by the next instance rather
-   than stacking.
-4. **Loops** start and stop without clicks, and their number is capped.
-5. **A scripted ten-minute Survey session** (thrust, mining, a scan every 12 s, a fight, a
-   dock) measured against about −18 LUFS integrated (§3.7).
-6. **Every file credited.** Each file in `sounds/` has a line in `sounds/SOURCES.md`.
-7. **The listening booth** gets a scene per loop and per family. Somebody still has to
-   listen; it is the only test of whether something sounds real.
+2. **No oscillator in a shipped voice.** Fail if a game voice is built from
+   `createOscillator`, except the warning tones and the cabinets. That keeps the arcade
+   from coming back through a fallback.
+3. **Fatigue by loudness and repetition, not by spectrum.** Short-term loudness of a
+   repeated sound stays under a ceiling, a sound that plays several times a second
+   rotates through at least three takes, and tails are cut rather than stacked.
+4. **Distance does what it says.** The same sound rendered near and far loses level and
+   high frequencies monotonically, and a source behind a solid object is quieter and
+   duller than the same source in the open.
+5. **Loops** start and stop without clicks, and their number is capped.
+6. **A scripted ten-minute Survey session** (thrust, mining, a scan every 12 s, a fight,
+   a dock) is measured against about −18 LUFS integrated (§3.8).
+7. **Every file credited** in `sounds/SOURCES.md`.
+8. **The listening booth** gets a scene per loop, per region and per weapon at three
+   distances. Somebody still has to listen; it is the only test of whether something
+   sounds real.
 
 ## 11. Order of work
 
-1. **P0**: give `alarm` a voice, and add the test in §10.1.
-2. **Decide the three questions** in §12. They change everything after this.
+1. **P0**: give `alarm` a real voice, and add the test in §10.1.
+2. **Answer §12**, especially where the recordings come from.
 3. **The foundation**: a sample loader, take rotation, the cockpit convolver, the bus
-   layout in §5 and a loop manager. Nothing should sound different yet.
-4. **The ship**: idle, engine, RCS, hull impacts by material, breach, death. This is the
-   largest change in feel for the work.
-5. **Weapons as mechanisms**, and the threat warnings that replace hearing other ships.
-6. **The instruments**: scan as active sensor, gravity stress and warnings, the light drive.
-7. **Docking and the station coming alive**, which replace every jingle in Survey.
-8. **Devices**: Silent Running and the EMP first, because they are about sound.
-9. **The sensor feed and importance mix**, if §12 chooses it.
-10. **Regions and radio** (6.6), with the AMBIENCE dial.
-11. The interface hardware, the cabinets, the finale, and a voice if wanted.
-12. Delete the oscillator voices and `make-lasers.py`, and update the README's sound
+   layout in §5, and a loop manager. Nothing should sound different yet.
+4. **Space as air** (§4.1): distance, air absorption, pan, occlusion, Doppler, pass-bys
+   and the big-event delay. Then move the hearing edge from the screen edge to distance.
+5. **The ship**: idle, engine, RCS, hull impacts by material, breach, death. This is the
+   biggest change in feel for the work.
+6. **Weapons**, mechanism and report, with the whizz and crack.
+7. **The sensor feed** (§4.3): importance, lock and missile tones, and its failures in
+   the Murk, under EMP and in Silent Running.
+8. **Instruments**: the scan, gravity stress and warnings, the light drive.
+9. **Stars, black holes and wormholes**.
+10. **Docking and the station coming alive**, which replace every jingle in Survey.
+11. **Devices**, Silent Running and the EMP first.
+12. **Regions** (§6.6) with the AMBIENCE dial, and echo in the Warrens and the Leviathan.
+13. The interface hardware, the cabinets and the finale.
+14. Delete the oscillator voices and `make-lasers.py`, and update the README's sound
     section to say what is then true.
 
-## 12. Open questions for Ric
+## 12. Settled, and still open
 
-1. **How strict is the vacuum?** Strict, so you hear only what touches you and what the
-   instruments say? Or the sensor feed (§4.2), where nearby events come through dull and
-   filtered, and threats are louder? Recommended: the sensor feed.
-2. **Where do the recordings come from?** Recorded yourself, CC0 libraries, a paid or
-   royalty-free bundle, or a mix (§4.4)? Every file is credited either way.
-3. **Does the ship speak?** A small set of recorded warning callouts (§6.13), or tones
-   only?
-4. *(Smaller)* Should the simulators sound like arcade cabinets in the room, or like the
+**Settled by Ric, 2026-11-13:** ultra realistic, futuristic, sound carried through space
+as if it were air, the sensor feed, and no speech: the ship does not speak.
+
+**Still open:**
+
+1. **Where do the recordings come from?** Ones you make yourself, CC0 libraries, a
+   royalty-free bundle, or a mix (§4.5)? Every file is credited either way.
+2. **The hearing edge.** May sound fade out with distance instead of stopping at the
+   screen edge (§4.1)? That changes the README's rule that off screen means silent.
+3. **The simulators.** Should they sound like arcade cabinets in the room, or like the
    real war (§6.11)?
+4. **Music.** None in Survey, or a score with its own dial (§8)?
 
 ## Sources
 
 - Hyperrealism and Foley — [arXiv 2605.31082](https://arxiv.org/html/2605.31082) ·
   [Langkjær (CORE)](https://core.ac.uk/download/233629168.pdf) ·
-  [Designing Sound](https://designingsound.org/2016/02/28/sunday-sound-thought-9-constructing-which-reality/) ·
-  [BloomWiki](https://bloomwiki.org/index.php/Sound_Design,_Foley,_and_the_Psychoacoustics_of_Cinema)
-- Gravity — [AFI catalog](https://catalog.afi.com/Film/69732-GRAVITY) ·
-  [British Cinematographer](https://britishcinematographer.co.uk/glenn-freemantle-gravity/) ·
-  [Jim Hill Media / HuffPost](https://jimhillmedia.com/huffington-post-how-alfonso-cuarn-sculpted-authentic-sounding-audio-for-gravity-s-silence-filled-space/?amp=1) ·
-  [Senses of Cinema](https://www.sensesofcinema.com/2014/feature-articles/there-is-nothing-to-carry-sound-defamiliarization-and-reported-realism-in-gravity/) ·
-  [16:9](https://16-9.dk/?p=389) · [/Film](https://www.slashfilm.com/958573/gravitys-crew-had-to-get-creative-to-make-sound-work-in-space)
-- The Expanse — [A Sound Effect](https://www.asoundeffect.com/the-expanse-sound) ·
-  [Osiris Reborn fan wiki](https://thegameswiki.com/the-expanse-osiris-reborn/wiki/sound-design)
-- Elite Dangerous and sound in space — [Frontier forums](https://forums.frontier.co.uk/threads/the-answer-why-there-is-sound-in-space.239479) ·
-  [A Sound Effect](https://www.asoundeffect.com/?p=26142) ·
-  [New Space Economy](https://newspaceeconomy.ca/2026/04/16/why-cant-we-hear-sound-in-space.md)
-- Alien: Isolation — [PC Gamer](https://pcgamer.com/the-audio-of-alien-isolation) ·
-  [The Sound Architect](https://www.thesoundarchitect.co.uk/alienisolation/) ·
-  [MCV](https://mcvuk.com/development-news/how-alien-isolation-is-using-audio-to-manipulate-player-emotions) ·
-  [AV Club](https://avclub.com/alien-isolation-fills-up-the-quiet-space-that-keeps-re-1798273762)
+  [Designing Sound](https://designingsound.org/2016/02/28/sunday-sound-thought-9-constructing-which-reality/)
+- Star Wars — [No Film School](https://nofilmschool.com/star-wars-sound-design) ·
+  [Film Sound](https://www.filmsound.org/starwars/) · [CDM](https://cdm.link/star-wars-and-sound-design/) ·
+  [Bell of Lost Souls](https://www.belloflostsouls.net/?p=375665)
+- Dune — [MPA](https://www.motionpictures.org/2022/03/dune-oscar-nominated-sound-team-on-sandworms-ornithopters-more/) ·
+  [Tor](https://tor.com/2021/11/05/dune-ornithopter-sound-design) ·
+  [Synthtopia](https://www.synthtopia.com/content/2022/02/01/the-sound-design-of-dune/)
+- The Expanse — [A Sound Effect](https://www.asoundeffect.com/the-expanse-sound)
+- Distance and air absorption — [Audiokinetic](https://audiokinetic.com/a-wwise-approach-to-spatial-audio-part-1) ·
+  [Arma 3](https://community.bistudio.com/wiki/Arma_3_Sound:_Filters) ·
+  [Unreal](https://dev.epicgames.com/documentation/en-us/unreal-engine/sound-attenuation-in-unreal-engine) ·
+  [Godot forum](https://forum.godotengine.org/t/how-do-i-make-every-single-node-simulate-the-speed-of-sound-with-delays/143645) ·
+  [Taylor & Francis](https://www.taylorfrancis.com/books/e/9781351653954/chapters/10.1201%2Fb22247-10)
+- Pass-bys and cracks — [PC Gamer on PUBG](https://pcgamer.com/how-gunshot-sounds-work-in-playerunknowns-battlegrounds) ·
+  [Morphic](https://morphic.com/resources/sounds/bullet-fly-by-sound-effects) ·
+  [Zapsplat](https://www.zapsplat.com/?p=42787)
 - Overwatch — [GDC Vault](https://gdcvault.com/play/1023010/Overwatch-The-Elusive-Goal-Play) ·
   [PC Gamer](https://pcgamer.com/how-overwatch-uses-sound-to-pinpoint-threats-you-cant-see) ·
   [Audiokinetic](https://www.audiokinetic.com/ko/blog/overwatch-game-audio-using-wwise-1)
 - DICE — [Frostbite](https://frostbite.com/frostbite/news/how-hdr-audio-makes-battlefield-bad-company-go-boom) ·
-  [Adaptive mixing in Frostbite](https://www.slideshare.net/slideshow/adaptive-mixing-in-frostbite/3128152) ·
   [ESA, Battlefield 6](https://www.theesa.com/behind-the-scenes/an-orchestra-of-the-battlefield-inside-the-audio-design-of-battlefield-6-with-mari-saastamoinen-minto/)
-- Outer Wilds — [Mobius Digital](https://www.mobiusdigitalgames.com/news/separating-the-signal-from-the-noise) ·
-  [Wikipedia](https://wikipedia.com/wiki/Outer_Wilds)
+- Alien: Isolation — [PC Gamer](https://pcgamer.com/the-audio-of-alien-isolation) ·
+  [The Sound Architect](https://www.thesoundarchitect.co.uk/alienisolation/) ·
+  [AV Club](https://avclub.com/alien-isolation-fills-up-the-quiet-space-that-keeps-re-1798273762)
+- Outer Wilds — [Mobius Digital](https://www.mobiusdigitalgames.com/news/separating-the-signal-from-the-noise)
 - No Man's Sky — [Audiokinetic Q&A with Paul Weir](https://www.audiokinetic.com/en/blog/behind-the-sound-of-no-mans-sky-a-qa-with-paul-weir-on-procedural-audio)
 - Game feel — [Wikipedia](https://www.wikipedia.org/wiki/Game_feel) ·
   [Juice it or lose it](https://gamejuice.pages.dev/articles/juice-it-or-lose-it-lessons)
@@ -722,8 +783,9 @@ change how it is measured:
 - Accessibility — [XAG 105](https://learn.microsoft.com/en-us/gaming/accessibility/xbox-accessibility-guidelines/105) ·
   [XAG 103](https://learn.microsoft.com/en-gb/gaming/accessibility/xbox-accessibility-guidelines/103)
 
-The Overwatch, DICE and No Man's Sky talks are behind the GDC Vault, so their details
-here come from press coverage and interviews. The Osiris Reborn notes come from a fan wiki
-and are unconfirmed. Sony's loudness figures are from secondary sources. Nobody has
-listened to any of this yet. It is a plan to be built and then judged by ear in
+The Overwatch and DICE talks are behind the GDC Vault, so their details here come from
+press coverage. The Star Wars sources are popular-press accounts and differ on small
+details, such as the tool used on the guy-wire. Sony's loudness figures are from
+secondary sources. The recipes in §6 are starting points, not findings. Nobody has
+listened to any of this yet: it is a plan to be built and then judged by ear in
 `sounds/listen.html`.
