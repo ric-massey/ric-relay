@@ -381,6 +381,19 @@ turned out to be bigger than the sentence. **Both fixed the same day.**
   is in the list, and fails if the one with it in paints no more than the one
   without.
 
+- [x] **N13 · The light drive is something you work up to.** Ric,
+  2026-11-13: "the warp drive needs to be massive expensive. It needs to be to
+  the point that they have to buy new ships and fly around for the first like
+  10-20hrs. The warp drive should be something they have to work up towards."
+
+  *Done the same day: 2,400 → 150,000.* At 2,400 it cost less than the
+  cheapest hull and it is the most powerful thing a pilot can own — eight
+  times the drive turns the far half of the landmark ladder from hours into
+  minutes, so buying it first skipped the sky the mode is made of. The figure
+  is placed against the hull ladder, not a clock: nothing in the game records
+  how fast money is earned, so "ten to twenty hours" is the intent and has not
+  been measured. `LIGHT_DRIVE` in `game/survey-sector.js` is the one constant.
+
 ### Design questions — still being discussed
 
 The expanded ideas from this conversation are in

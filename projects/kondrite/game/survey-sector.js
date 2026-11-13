@@ -588,9 +588,25 @@ const STATION_BUILD = {
    things in the sector big enough to matter are a massive world and a
    supermassive well, and the drive says so five seconds before you arrive,
    which is the same bargain phase 1.2 struck with the gravity warning. */
+/* **150,000**, and it was 2,400. Ric, 2026-11-13: *"the warp drive needs to be
+   massive expensive. It needs to be to the point that they have to buy new
+   ships and fly around for the first like 10-20hrs. The warp drive should be
+   something they have to work up towards."*
+
+   At 2,400 it cost less than the cheapest hull in the game (the NEEDLE, 4,500
+   since the same week's re-pricing) and it is the most powerful thing a pilot
+   can own: eight times the drive turns the far half of the landmark ladder
+   from hours into minutes, so buying it first skipped the sky the mode is
+   made of. It now sits above the LONGVIEW and below the GANTRY, so several
+   hulls come before it by price alone.
+
+   The figure is placed against the hull ladder, not against a clock. Nothing
+   in the game records how fast money is earned, so "ten to twenty hours" is
+   the intent and not something this number has been measured to produce —
+   if it lands short or long, this is the one constant to move. */
 const LIGHT_DRIVE = {
   name: "LIGHT DRIVE",
-  cost: 2400,
+  cost: 150000,
   does: "run in one direction at eight times your drive",
   blurb: "No turning, no stopping short. Worlds and supermassive wells will " +
          "still kill you, and it will tell you five seconds out."
