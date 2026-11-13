@@ -119,6 +119,8 @@
   .thing { display: flex; align-items: center; gap: 3px; padding: .25rem 0; font-size: .88rem; }
   .thing b { display: inline-block; width: 11px; height: 11px; }
   .thing span { margin-left: auto; color: var(--dim); font-family: var(--mono); font-size: .82rem; }
+  #people-key { position: absolute; left: 10px; top: 10px; max-width: min(340px, calc(100% - 20px)); padding: 8px 10px; background: rgba(7,10,11,.92); color: #e3e9e6; font-size: 12px; pointer-events: none; border: 1px solid #53645b; border-radius: 4px; }
+  #people-key strong { display: block; margin-bottom: 3px; }
   #slow { position: absolute; right: 10px; top: 10px; color: var(--warn); font-size: 12px; background: rgba(7,10,11,.8); padding: 3px 7px; border-radius: 3px; }
   #side { border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
   #tabs { display: flex; border-bottom: 1px solid var(--line); }
@@ -219,6 +221,7 @@
   </div>
   <div id="stage">
     <canvas id="view"></canvas>
+    <div id="people-key" hidden><strong id="people-time">Day 1 · 00:00</strong>At 1×, one day = 20 minutes.<br>Colour follows the selected view (faction by default). Small figures are children; a white ring marks a leader. A gold line joins people talking.<br>Tap a person to zoom in and follow their work.</div>
     <span id="hint">Drag to move · scroll or pinch to zoom · tap anything to look at it</span>
     <div id="palette" hidden></div>
     <span id="slow" hidden>Running behind — fewer things or a slower clock will catch it up</span>
@@ -393,7 +396,7 @@
 
   /* ═══ the world ════════════════════════════════════════════════════════ */
   const canvas = $("view"), ctx = canvas.getContext("2d");
-  let world = null, raf = 0, paused = false, rate = 1, last = 0, owed = 0, lag = 0;
+  let world = null, raf = 0, paused = false, rate = 1, last = 0, lag = 0;
   let cam = { x: 0, y: 0, s: 1, held: false }, viewMode = "kind", picked = null, follow = false, tab = "", paneAt = 0;
   let land = null, landAt = -1e9;
   /* A visitor's hands in the physics world: which tool a tap uses, what Place
@@ -426,11 +429,12 @@
     stopRun();
     const E = ENGINES[mode].api;
     world = E.create(values);
-    rate = values.rate; paused = false; picked = null; follow = false; owed = 0; lag = 0; land = null; landAt = -1e9;
+    rate = values.rate; paused = false; picked = null; follow = false; lag = 0; land = null; landAt = -1e9;
     tool = "look"; held = null; aim = null; lastPut = null; everSeen = new Set(); brushKind = 1; brushMass = 1;
     setHash(toHash(true));
     $("run-title").textContent = ENGINES[mode].title;
     $("pause").textContent = "Pause"; $("pause").setAttribute("aria-pressed", "false");
+    $("people-key").hidden = mode !== "people";
     buildBar(); buildTools(); buildTabs();
     show("run");
     sizeCanvas(); fit();
@@ -626,6 +630,7 @@
       const hit = world.at(w[0], w[1], Math.max(0.6, 14 / cam.s));
       picked = hit ? (hit.person ? { person: hit.person.id, name: hit.person.name } : { village: hit.village.id }) : null;
       follow = !!(hit && hit.person);
+      if (follow) cam.s = Math.max(cam.s, 32);
     }
     if (picked) setTab("look"); else pane();
     if (mode !== "physics") $("hint").hidden = true;
@@ -640,11 +645,8 @@
       const t0 = performance.now();
       if (mode === "physics") world.step(Math.min(1 / 30, real) * rate);
       else {
-        /* Thirty ticks a second at 1×. What a slow frame could not afford is
-           dropped rather than owed, so the page never spirals. */
-        owed += real * 30 * rate;
-        let n = Math.min(Math.floor(owed), 48); owed -= Math.floor(owed);
-        while (n-- > 0) { world.step(1); if (performance.now() - t0 > 28) break; }
+        // Activity keeps moving while the twenty-minute calendar day advances.
+        world.advance(real * rate);
       }
       lag = lag * 0.95 + (performance.now() - t0 > 30 ? 1 : 0) * 0.05;
       $("slow").hidden = lag < 0.5;
@@ -775,7 +777,7 @@
   }
   function drawPeople(W, H) {
     const w = world;
-    if (w.tick - landAt >= 20 || !land) { paintLand(); landAt = w.tick; }
+    if (w.sceneTick - landAt >= 5 || !land) { paintLand(); landAt = w.sceneTick; }
     if (follow && picked && picked.person) {
       const p = w.byId.get(picked.person);
       if (p) { cam.x += (p.x - cam.x) * 0.12; cam.y += (p.y - cam.y) * 0.12; }
@@ -800,26 +802,52 @@
         ctx.fillStyle = "#e3e9e6"; ctx.fillText(v.name, x, y + k + 5);
       }
     }
-    /* People. Batched by colour; soldiers are triangles, children are small. */
-    const dots = new Map(), talking = [];
-    const rad = Math.max(1.6, s * 0.2);
+    /* All adults have the same human silhouette. Work is named, not encoded in shapes. */
+    const talking = [], labels = [];
+    const rad = Math.max(1, s * 0.20);
+    for (const p of w.people) {
+      const q = p.sayT > 0 && w.byId.get(p.talkingTo);
+      if (!q || q.sayT <= 0 || q.talkingTo !== p.id || p.id > q.id) continue;
+      ctx.strokeStyle = "#ffe39b"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(ox + p.x * s, oy + p.y * s); ctx.lineTo(ox + q.x * s, oy + q.y * s); ctx.stroke();
+    }
     for (const p of w.people) {
       const x = ox + p.x * s, y = oy + p.y * s;
       if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
-      const col = personColour(p);
-      let path = dots.get(col); if (!path) { path = new Path2D(); dots.set(col, path); }
-      const r = p.job === "child" ? rad * 0.62 : rad;
-      if (p.job === "soldier" && s > 5) { path.moveTo(x, y - r * 1.5); path.lineTo(x + r * 1.3, y + r); path.lineTo(x - r * 1.3, y + r); path.closePath(); }
-      else { path.moveTo(x + r, y); path.arc(x, y, r, 0, 6.2832); }
+      const r = p.job === "child" ? rad * 0.68 : rad;
+      ctx.fillStyle = personColour(p); ctx.strokeStyle = "#070a0b"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x, y - r * 0.56, r * 0.40, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(x - r * 0.42, y - r * 0.06, r * 0.84, r * 0.65, r * 0.2); ctx.fill(); ctx.stroke();
+      if (s >= 20) {
+        ctx.strokeStyle = personColour(p); ctx.lineWidth = Math.max(1.2, r * 0.25); ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(x - r * 0.72, y + r * 0.35); ctx.lineTo(x, y + r * 0.08); ctx.lineTo(x + r * 0.72, y + r * 0.35);
+        ctx.moveTo(x - r * 0.26, y + r * 0.92); ctx.lineTo(x, y + r * 0.45); ctx.lineTo(x + r * 0.26, y + r * 0.92); ctx.stroke(); ctx.lineCap = "butt";
+      }
       if (p.sayT > 0 && p.say) talking.push(p);
       if (p.hit > 0) { ctx.strokeStyle = "#ff5d4d"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r + 3, 0, 6.2832); ctx.stroke(); }
       if (s > 9) {
         if (p.sick > 0) { ctx.fillStyle = "#b6f36a"; ctx.fillRect(x + r, y - r - 2, 3, 3); }
         if (w.factions[p.f].leader === p.id) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r + 2.5, 0, 6.2832); ctx.stroke(); }
       }
+      if (s >= 28 || picked?.person === p.id) labels.push({ p, x, y, r });
+      // A visible patch and stalks show harvesting at the actual field.
+      if (s >= 14 && w.activity(p) === "Harvesting") {
+        ctx.strokeStyle = "#e8d890"; ctx.lineWidth = 1.5;
+        ctx.strokeRect(x - s * 0.42, y - s * 0.42, s * 0.84, s * 0.84);
+        for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(x + k * s * 0.28, y + s * 0.4); ctx.lineTo(x + k * s * 0.28, y + s * 0.18); ctx.stroke(); }
+      }
     }
-    ctx.lineWidth = 1; ctx.strokeStyle = "rgba(7,10,11,.8)";
-    for (const [col, path] of dots) { ctx.fillStyle = col; ctx.fill(path); if (s > 6) ctx.stroke(path); }
+    labels.sort((a, b) => Number(b.p.id === picked?.person) - Number(a.p.id === picked?.person));
+    const used = [];
+    ctx.font = "12px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (const { p, x, y, r } of labels) {
+      const text = p.job + " · " + w.activity(p), width = ctx.measureText(text).width + 10;
+      const box = [x - width / 2, y + r + 5, width, 19];
+      if (used.some(b => box[0] < b[0] + b[2] && box[0] + width > b[0] && Math.abs(box[1] - b[1]) < 20)) continue;
+      used.push(box);
+      ctx.fillStyle = "rgba(7,10,11,.94)"; ctx.fillRect(...box);
+      ctx.fillStyle = "#f2f4ed"; ctx.fillText(text, x, box[1] + 2);
+    }
 
     /* What is being said. Close in, the words; far out, a mark that somebody
        is speaking — a few hundred sentences at once is nothing anyone can read. */
@@ -828,7 +856,9 @@
       ctx.font = "12px system-ui, sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "left";
       const boxes = [];
       for (const p of talking.slice(0, 16)) {
-        const text = p.say.length > 64 ? p.say.slice(0, 62) + "…" : p.say;
+        const partner = w.byId.get(p.talkingTo);
+        const words = p.name + (partner ? " → " + partner.name : "") + ": " + p.say;
+        const text = words.length > 85 ? words.slice(0, 83) + "…" : words;
         const tw = ctx.measureText(text).width, x = ox + p.x * s + 8, y = oy + p.y * s - 16;
         if (boxes.some(b => Math.abs(b[1] - y) < 19 && x < b[0] + b[2] && x + tw > b[0])) continue;
         boxes.push([x, y, tw]);
@@ -844,7 +874,9 @@
       if (p) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ox + p.x * s, oy + p.y * s, rad + 6, 0, 6.2832); ctx.stroke(); }
     }
     const st = w.stats();
-    $("clock").textContent = "Year " + Math.floor(st.year) + " · " + st.people.toLocaleString("en-US") + " people";
+    const clockText = "Day " + (Math.floor(w.days % 365) + 1) + " · " + String(Math.floor(w.days % 1 * 24)).padStart(2, "0") + ":" + String(Math.floor(w.days % 1 * 1440) % 60).padStart(2, "0") + " · Year " + (Math.floor(w.days / 365) + 1) + " · " + st.people.toLocaleString("en-US") + " people";
+    $("clock").textContent = clockText;
+    $("people-time").textContent = clockText;
   }
 
   /* ═══ the side panel ═══════════════════════════════════════════════════ */
@@ -865,7 +897,7 @@
     const b = e.target.closest("[data-go]"); if (!b) return;
     const a = b.dataset.go.split(":");
     if (a[0] === "at") { cam.x = +a[1]; cam.y = +a[2]; cam.s = Math.max(cam.s, 14); cam.held = true; follow = false; }
-    if (a[0] === "person" && world.byId.get(+a[1])) { picked = { person: +a[1], name: world.byId.get(+a[1]).name }; follow = true; cam.s = Math.max(cam.s, 22); setTab("look"); }
+    if (a[0] === "person" && world.byId.get(+a[1])) { picked = { person: +a[1], name: world.byId.get(+a[1]).name }; follow = true; cam.s = Math.max(cam.s, 36); setTab("look"); }
     if (a[0] === "village") { const v = world.villages[+a[1]]; picked = { village: v.id }; cam.x = v.x; cam.y = v.y; cam.s = Math.max(cam.s, 14); follow = false; setTab("look"); }
     if (a[0] === "follow") { follow = !follow; pane(); }
     if (a[0] === "body") { picked = { body: +a[1] }; pane(); }
@@ -998,6 +1030,7 @@
       const bar = (label, v) => "<span>" + label + "</span><i><b style='width:" + Math.round(v * 100) + "%'></b></i>";
       return "<h3>" + esc(p.name) + "</h3>" +
         "<p>" + Math.floor(p.age) + " years old, " + job + " in <button class='linkish' style='min-height:0;padding:0' data-go='village:" + home.id + "'>" + esc(home.name) + "</button>.</p>" +
+        "<p><strong>Now: " + esc(w.activity(p)) + "</strong></p>" +
         "<p>" + fname(p.f) + (p.from !== p.f ? " <span class='small'>— born under " + esc(w.factions[p.from].name) + "</span>" : "") + "</p>" +
         "<p class='small'>" + (w.leans(p) === "share" ? "Believes what is grown should be shared out." : w.leans(p) === "keep" ? "Believes each should keep what they grow." : "Sees both sides of the argument.") +
         (p.hungry > 0 ? " <span style='color:var(--warn)'>Going hungry.</span>" : "") + (p.sick > 0 ? " <span style='color:var(--warn)'>Sick.</span>" : "") + "</p>" +
@@ -1016,7 +1049,7 @@
       ["Wars started", st.wars], ["Peaces made", st.peaces], ["Villages taken", st.captures], ["Villages founded", st.founded], ["Breakaways", st.secessions], ["Votes held", st.elections], ["Factions fallen", st.fallen]];
     if (w.settings.money === "coins") rows.push(["Coins in the world", num(st.money, 0)], ["Held by the richest tenth", Math.round(st.topShare * 100) + "%"]);
     return "<h3>Since year 0</h3><dl class='kv'>" + rows.map(r => "<dt>" + r[0] + "</dt><dd>" + (typeof r[1] === "number" ? r[1].toLocaleString("en-US") : r[1]) + "</dd>").join("") + "</dl>" +
-      "<p class='small'>Dots are people; triangles are soldiers; small dots are children; a white ring is a leader. Squares are villages. The land is paler where it has been harvested.</p>";
+      "<p class='small'>Figures are people; small figures are children; a white ring is a leader. Colour follows the selected colour view. Gold lines join conversation partners. Tap a person to zoom in: their role and current activity appear beside them. Squares are villages; outlined crop patches show harvesting. At 1× a day takes twenty minutes.</p>";
   }
   /* Each faction's head count, stacked, since the world began. */
   function drawChart() {
@@ -1057,7 +1090,7 @@
           g.stroke();
           for (let i = 0; i < w.n; i++) { if (!w.alive[i]) continue; const p = new Path2D(); hexPath(p, ox + w.x[i] * s, oy + w.y[i] * s, w.r[i] * s * 1.12); g.fillStyle = KIND[(w.kind[i] - 1) % 4]; g.fill(p); }
         } else {
-          w.step(2);
+          w.advance(1 / 60);
           const s = Math.max(W / w.cols, H / w.rows), ox = (W - w.cols * s) / 2, oy = (H - w.rows * s) / 2;
           for (let y = 0; y < w.rows; y++) for (let x = 0; x < w.cols; x++) {
             const i = y * w.cols + x; let c = mix(mix([92, 80, 58], [52, 104, 62], w.fert[i]), [10, 14, 16], 0.45);
@@ -1069,7 +1102,7 @@
         }
       }
     };
-    if (still) { for (let i = 0; i < 120; i++) { minis.physics.step(1 / 40); minis.people.step(2); } draw(); return; }
+    if (still) { for (let i = 0; i < 120; i++) { minis.physics.step(1 / 40); minis.people.advance(0.2); } draw(); return; }
     const loop = () => { miniRaf = requestAnimationFrame(loop); draw(); };
     miniRaf = requestAnimationFrame(loop);
   }

@@ -28,6 +28,7 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
+  const DAY_SECONDS = 1200;         // Ric, 2026-11-12: a day at 1× takes twenty minutes
   const YEAR = 200;                 // ticks in a year
   const pct = v => Math.round(v * 100) + "%";
   const scale = (words) => v => words[Math.min(words.length - 1, Math.floor(v * words.length))];
@@ -123,7 +124,7 @@
     ]},
     { title: "Time", items: [
       { key: "rate", label: "Clock", type: "range", min: 0.25, max: 16, step: 0.25, def: 1, curve: 2,
-        say: v => v + "×", help: "At 1× a year takes about seven seconds. You can change this while it runs." },
+        say: v => v + "×", help: "At 1× one day takes twenty minutes. You can change this while it runs." },
     ]},
   ];
 
@@ -273,11 +274,11 @@
     function newPerson(v, age, mum, dad) {
       const f = factions[v.f];
       const p = { id: nextId++, name: unique(() => word(R() < 0.5 ? 2 : 3)), age: age, f: v.f, home: v.id, born: t,
-                  dieAt: S.life * (0.72 + R() * 0.56), job: "child", x: v.x + (R() - 0.5) * 3, y: v.y + (R() - 0.5) * 3,
+                  dieAt: S.life * (0.72 + R() * 0.56), job: "child", x: v.x + (R() - 0.5) * v.radius * 1.5, y: v.y + (R() - 0.5) * v.radius * 1.5,
                   tx: v.x, ty: v.y, task: "idle", wait: Math.floor(R() * 30), food: 0.8 + R() * 0.6, coins: 0, goods: 0,
                   hp: 1, bold: R(), warm: R(), greed: R(), views: 0, loyal: clamp(0.35 + S.loyalty * 0.5 + (R() - 0.5) * 0.2, 0, 1),
                   mood: 0.6, friends: new Map(), partner: 0, mum: mum ? mum.id : 0, dad: dad ? dad.id : 0, kids: 0,
-                  talk: Math.floor(R() * 40), say: "", sayT: 0, cargo: null, hungry: 0, news: -1, sick: 0, immune: false,
+                  talk: Math.floor(R() * 40), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, news: -1, sick: 0, immune: false,
                   unpaid: 0, hit: 0, from: v.f, ate: -999, at: v.id };
       if (mum && dad) {
         p.bold = clamp((mum.bold + dad.bold) / 2 + (R() - 0.5) * 0.3, 0, 1);
@@ -452,7 +453,18 @@
       if (roll < craft + trade && villages.filter(o => o.alive).length > 1) return "trader";
       return "farmer";
     }
-    function go(p, x, y, task) { p.tx = clamp(x, 0.5, cols - 0.5); p.ty = clamp(y, 0.5, rows - 0.5); p.task = task; }
+    function go(p, x, y, task) {
+      p.tx = clamp(x, 0.5, cols - 0.5); p.ty = clamp(y, 0.5, rows - 0.5); p.task = task;
+      // A destination is a place beside somebody, not a claim on their body.
+      if (!free(p, p.tx, p.ty)) {
+        search: for (let ring = 1; ring <= 6; ring++) for (let k = 0; k < 16; k++) {
+          const a = (k / 16 + p.id * 0.618) * Math.PI * 2;
+          const nx = x + Math.cos(a) * BODY * ring, ny = y + Math.sin(a) * BODY * ring;
+          if (free(p, nx, ny)) { p.tx = nx; p.ty = ny; break search; }
+        }
+      }
+      p.lastDistance = Infinity; p.stuck = 0;
+    }
     function near(p, v, spread) { go(p, v.x + (R() - 0.5) * spread, v.y + (R() - 0.5) * spread, "idle"); p.wait = 10 + Math.floor(R() * 30); }
 
     function pickField(p, v) {
@@ -531,6 +543,8 @@
           if (ti < 0) { near(p, v, 3); return; }
           go(p, (ti % cols) + 0.2 + R() * 0.6, Math.floor(ti / cols) + 0.2 + R() * 0.6, "field");
         } else if (p.task === "field") {
+          if (!p.harvesting) { p.harvesting = true; p.wait = 25; return; }
+          p.harvesting = false;
           /* A day's work covers the field they are standing in and the ones
              round it. */
           const fx = Math.floor(p.x), fy = Math.floor(p.y);
@@ -753,7 +767,8 @@
     }
     const leans = p => (p.views > 0.25 ? "share" : p.views < -0.25 ? "keep" : "middle");
     function said(a, b, kind, la, lb) {
-      a.say = la; a.sayT = 70; b.say = lb || ""; b.sayT = lb ? 70 : 0;
+      a.say = la; a.sayT = 30; b.say = lb || ""; b.sayT = 30;
+      a.talkingTo = b.id; b.talkingTo = a.id;
       chatter.push({ t: t, kind: kind, a: a.id, b: b.id, an: a.name, bn: b.name, fa: a.f, fb: b.f, la: la, lb: lb || "", x: a.x, y: a.y });
       if (chatter.length > 160) chatter.splice(0, chatter.length - 160);
     }
@@ -906,9 +921,6 @@
     /* ── one person, one tick ──────────────────────────────────────────── */
     function live(p) {
       p.age += 1 / YEAR;
-      if (p.sayT > 0) p.sayT--;
-      if (p.hit > 0) p.hit--;
-      if (p.talk > 0) p.talk--;
 
       /* Eating. A child eats from whichever parent has food before it goes hungry. */
       p.food -= adult(p) ? EAT : EAT * 0.6;
@@ -946,21 +958,109 @@
       if (p.age >= p.dieAt) { die(p, "old"); return; }
       if (p.job === "child" && adult(p)) p.job = chooseJob(p);
 
+    }
+
+    function activity(p) {
+      const other = p.sayT > 0 && byId.get(p.talkingTo);
+      if (other && other.sayT > 0 && other.talkingTo === p.id) return "Talking to " + other.name;
+      const walking = Math.hypot(p.tx - p.x, p.ty - p.y) > 0.5;
+      if (p.task === "field") return walking ? "Walking to field" : "Harvesting";
+      if (p.task === "home") return "Bringing food home";
+      if (p.task === "eat") return walking ? "Going to eat" : "Buying food";
+      if (p.task === "make") return walking ? "Walking to workshop" : "Making goods";
+      if (p.task === "fight") return "Fighting";
+      if (p.cargo) return "Carrying goods";
+      if (p.job === "soldier") return walking ? "Patrolling" : "Standing guard";
+      if (p.job === "trader") return walking ? "Travelling to trade" : "Trading";
+      return walking ? "Walking" : p.job === "child" ? "Playing" : "Resting";
+    }
+
+    const BODY = 0.42;
+    const occupied = new Map(), placed = new Set();
+    const cell = (x, y) => Math.floor(y) * cols + Math.floor(x);
+    function put(p) {
+      const key = cell(p.x, p.y);
+      if (!occupied.has(key)) occupied.set(key, new Set());
+      occupied.get(key).add(p);
+    }
+    function free(p, x, y) {
+      if (x < 0.25 || y < 0.25 || x > cols - 0.25 || y > rows - 0.25) return false;
+      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+        const list = occupied.get((Math.floor(y) + j) * cols + Math.floor(x) + i);
+        if (list) for (const q of list) if (q !== p && q.hp !== -99 && (x - q.x) ** 2 + (y - q.y) ** 2 < (BODY - 1e-9) ** 2) return false;
+      }
+      return true;
+    }
+    function move(p, dx, dy) {
+      // Try the heading, then slide round a neighbour rather than walking through them.
+      if (free(p, p.x + dx, p.y + dy)) {
+        occupied.get(cell(p.x, p.y))?.delete(p);
+        p.x += dx; p.y += dy; put(p); return;
+      }
+      const options = [[dx * 0.7 - dy * 0.7, dy * 0.7 + dx * 0.7],
+        [dx * 0.7 + dy * 0.7, dy * 0.7 - dx * 0.7], [-dy, dx], [dy, -dx]];
+      for (const [mx, my] of options) if (free(p, p.x + mx, p.y + my)) {
+        occupied.get(cell(p.x, p.y))?.delete(p);
+        p.x += mx; p.y += my; put(p); return;
+      }
+    }
+    let sceneTick = 0;
+    function actionTick() {
+      sceneTick++;
+      occupied.clear();
+      // Reserve existing bodies first. Only a new arrival needs placement; walking
+      // already checks every step, so checking every settled body again is wasted work.
+      for (const p of people) if (placed.has(p.id)) put(p);
+      for (const p of people) {
+        if (placed.has(p.id)) continue;
+        if (!free(p, p.x, p.y)) {
+          const x = p.x, y = p.y;
+          search: for (let ring = 1; ring < Math.max(cols, rows) * 4; ring++) {
+            const r = ring * BODY * 0.5, n = Math.ceil(6.3 * r / BODY) + 1;
+            for (let k = 0; k < n; k++) {
+              const a = k / n * Math.PI * 2 + p.id;
+              const nx = x + Math.cos(a) * r, ny = y + Math.sin(a) * r;
+              if (free(p, nx, ny)) { p.x = nx; p.y = ny; break search; }
+            }
+          }
+        }
+        // Initial residents and newborns wait where they actually fit. Sending
+        // every new person to the village centre creates an impassable crowd.
+        p.tx = p.x; p.ty = p.y;
+        put(p); placed.add(p.id);
+      }
+      for (const b of buckets) b.length = 0;
+      for (const p of people) buckets[tileAt(p.x, p.y)].push(p);
+      for (const p of people) if (p.hp !== -99) act(p);
+    }
+
+    function act(p) {
+      if (p.sayT > 0) p.sayT--;
+      if (p.hit > 0) p.hit--;
+      if (p.talk > 0) p.talk--;
       /* Moving. */
       const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
       const pace = WALK * (p.hungry > 30 ? 0.7 : 1) * (p.job === "child" ? 0.8 : 1);
-      if (d > pace) { p.x += dx / d * pace; p.y += dy / d * pace; }
+      const partner = p.sayT > 0 && byId.get(p.talkingTo);
+      if (partner && partner.sayT > 0 && partner.talkingTo === p.id) return;
+      if (d > Math.max(pace, 0.5)) {
+        p.stuck = d >= (p.lastDistance ?? Infinity) - 0.005 ? (p.stuck || 0) + 1 : 0;
+        p.lastDistance = d;
+        if (p.stuck > 20) go(p, p.tx, p.ty, p.task);
+        else move(p, dx / d * pace, dy / d * pace);
+      }
       else {
-        p.x = p.tx; p.y = p.ty;
+        // Shared destinations (markets, fields) are reached from beside a neighbour.
+        // Do not require everyone to occupy the exact same target point.
         if (p.wait > 0) p.wait--; else work(p);
       }
 
       /* Talking to whoever is standing on the same ground. */
-      if (p.talk === 0 && S.talk > 0 && p.task !== "fight" && R() < S.talk * 0.12) {
+      if (p.talk === 0 && S.talk > 0 && p.task !== "fight" && p.task !== "field" && p.task !== "make" && R() < S.talk * 0.12) {
         const b = buckets[tileAt(p.x, p.y)];
         if (b.length > 1) {
           const q = b[Math.floor(R() * b.length)];
-          if (q !== p && q.talk === 0 && q.hp > 0 && q.age > 4 && p.age > 4) converse(p, q);
+          if (q !== p && q.sayT <= 0 && q.talk === 0 && q.hp > 0 && q.age > 4 && p.age > 4) converse(p, q);
         }
       }
     }
@@ -1300,7 +1400,7 @@
     }
 
     /* ── the tick ──────────────────────────────────────────────────────── */
-    function tick() {
+    function tick(actions = true) {
       t++;
       for (let i = 0; i < tiles; i++) {
         const cap = fert[i] * TILE_CAP;
@@ -1314,9 +1414,10 @@
         live(p);
         if (p.hp !== -99 && (p.id + t) % 20 === 0) reflect(p);
       }
+      if (actions) for (let i = 0; i < 8; i++) actionTick();
       /* The dead leave the list. */
       let dead = false;
-      for (const p of people) if (p.hp === -99) { dead = true; byId.delete(p.id); }
+      for (const p of people) if (p.hp === -99) { dead = true; byId.delete(p.id); placed.delete(p.id); }
       if (dead) { let w = 0; for (let i = 0; i < people.length; i++) if (people[i].hp !== -99) people[w++] = people[i]; people.length = w; }
 
       if (t % 10 === 0) {
@@ -1338,6 +1439,18 @@
       if (t % (YEAR / 2) === 0) sample();
     }
 
+    // Calendar and activity have separate clocks: a walk must not wait for an aging tick.
+    // Headless step retains its coarse yearly experiment clock; the page uses advance.
+    let elapsed = 0, activityOwed = 0, calendarOwed = 0;
+    function advance(seconds) {
+      elapsed += seconds;
+      activityOwed += seconds * 5;
+      while (activityOwed >= 1) {
+        calendarOwed += YEAR / (365 * DAY_SECONDS * 5);
+        while (calendarOwed >= 1) { tick(false); calendarOwed--; }
+        actionTick(); activityOwed--;
+      }
+    }
     function step(ticks) { for (let i = 0; i < ticks; i++) tick(); }
 
     function stats() {
@@ -1363,16 +1476,19 @@
       return null;
     }
 
+    actionTick();
     return {
       settings: S, cols: cols, rows: rows, YEAR: YEAR,
       fert: fert, ore: ore, stock: stock, owner: owner,
       people: people, byId: byId, villages: villages, factions: factions,
       events: events, chatter: chatter, history: history,
-      step: step, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
+      step: step, advance: advance, activity: activity, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
       get tick() { return t; },
+      get days() { return elapsed / DAY_SECONDS; },
+      get sceneTick() { return sceneTick; },
       set: function (k, v) { const next = clean(Object.assign({}, S, { [k]: v })); S[k] = next[k]; },
     };
   }
 
-  return { SCHEMA: SCHEMA, DEFAULTS: DEFAULTS, PRESETS: PRESETS, YEAR: YEAR, clean: clean, create: create };
+  return { SCHEMA: SCHEMA, DEFAULTS: DEFAULTS, PRESETS: PRESETS, YEAR: YEAR, DAY_SECONDS: DAY_SECONDS, clean: clean, create: create };
 });

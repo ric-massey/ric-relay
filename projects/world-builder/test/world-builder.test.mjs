@@ -12,7 +12,7 @@
      · people: every coin is somewhere, switching war or children off really
        switches them off, and nobody reports news that did not happen.
 
-   Run it:  node projects/world-builder/test/world-builder.test.mjs   (~20 s) */
+   Run it:  node projects/world-builder/test/world-builder.test.mjs   (several minutes) */
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -198,9 +198,11 @@ function other(it, base, alt) {
     const b = print(run(Object.assign({}, from, { [it.key]: other(it, clean[it.key], alt) }), years));
     check(it.key === "rate" || a !== b, `people: changing "${it.label}" (${it.key}) changes nothing`);
   }
+  console.log("world builder: people settings checked");
   check(print(run(small, 6)) === print(run(small, 6)), "people: the same seed made two different worlds");
 
   for (const p of People.PRESETS) {
+    console.log("world builder: checking people preset — " + p.name);
     const set = Object.assign({}, p.set, { people: Math.min(240, People.clean(p.set).people) });
     const w = People.create(set);
     const coins = w.stats().money;
@@ -254,6 +256,7 @@ function other(it, base, alt) {
     const w = run(Object.assign({}, small, { plague: "none" }), 20);
     check(w.stats().sick === 0, "people: somebody died of sickness with sickness off");
   }
+  console.log("world builder: checking the busy century");
   /* And the things the page promises can happen, do — somewhere in a busy
      century, without anything being told to. */
   {
@@ -264,6 +267,59 @@ function other(it, base, alt) {
     check(s.births > 100 && s.old > 100, "people: no generations turned over in a century");
     check(s.secessions + s.captures > 0, "people: no village changed hands or broke away in a touchy, disloyal century");
   }
+}
+
+/* The watchable clock, crowded spawns, and crossing paths use the page's actual API. */
+{
+  const w = People.create({ people: 80, map: "small", talk: 0, seed: 17 });
+  const coins = w.stats().money;
+  const separated = () => w.people.every((p, i) => w.people.slice(i + 1).every(q => Math.hypot(p.x - q.x, p.y - q.y) >= 0.42 - 1e-8));
+  check(separated(), "people: initial bodies overlap");
+  const a = w.people[0], b = w.people[1];
+  // Reserve an empty stretch before staging the head-on encounter; do not
+  // teleport the test pair onto an unrelated resident in a different seed layout.
+  let lane;
+  search: for (let y = 2; y < w.rows - 2; y += 3) for (let x = 2; x < w.cols - 4; x += 3) {
+    if (w.people.every(p => p === a || p === b || Math.hypot(p.x - Math.max(x, Math.min(x + 2, p.x)), p.y - y) > 1)) {
+      lane = [x, y]; break search;
+    }
+  }
+  check(!!lane, "people: no empty lane for the crossing test");
+  const [lx, ly] = lane || [2, 2];
+  a.x = lx; a.y = ly; a.tx = lx + 2; a.ty = ly;
+  b.x = lx + 2; b.y = ly; b.tx = lx; b.ty = ly;
+  for (let i = 0; i < 150; i++) {
+    w.advance(0.2);
+    check(separated(), "people: bodies overlapped while walking");
+  }
+  w.advance(1170);
+  check(Math.abs(w.days - 1) < 1e-9 && People.DAY_SECONDS === 1200, "people: 1200 seconds at 1× is not one day");
+  check(w.people.length === 80 && w.stats().starved === 0, "people: the first watchable day lost people");
+  check(Math.abs(w.stats().money - coins) < 1e-6, "people: the watchable clock created or lost money");
+  check(w.people.some(p => Math.hypot(p.x - p.tx, p.y - p.ty) > 0.5), "people: the activity clock never started walking");
+  const crowded = People.create({ people: 2000, map: "small", villages: 1, factions: 1 });
+  let overlap = false;
+  for (let i = 0; i < crowded.people.length; i++) for (let j = i + 1; j < crowded.people.length; j++) {
+    if (Math.hypot(crowded.people[i].x - crowded.people[j].x, crowded.people[i].y - crowded.people[j].y) < 0.42 - 1e-8) overlap = true;
+  }
+  check(!overlap, "people: the most crowded starting village has overlapping bodies");
+  const farmer = w.people.find(p => p.job === "farmer");
+  farmer.task = "field"; farmer.tx = farmer.x; farmer.ty = farmer.y; farmer.sayT = 0;
+  check(w.activity(farmer) === "Harvesting", "people: a farmer in their field is not identified as harvesting");
+  const social = People.create({ people: 80, map: "small", talk: 1, seed: 7 });
+  let speaker;
+  for (let i = 0; i < 500 && !speaker; i++) {
+    social.advance(0.2);
+    speaker = social.people.find(p => p.sayT > 15 && social.byId.get(p.talkingTo)?.talkingTo === p.id);
+  }
+  check(!!speaker, "people: no conversation pair became visible");
+  if (speaker) {
+    const listener = social.byId.get(speaker.talkingTo), positions = [speaker.x, speaker.y, listener.x, listener.y];
+    check(social.activity(speaker) === "Talking to " + listener.name, "people: activity does not name the actual listener");
+    social.advance(0.2);
+    check(positions.every((v, i) => v === [speaker.x, speaker.y, listener.x, listener.y][i]), "people: conversation partners walk away while speaking");
+  }
+
 }
 
 /* ═══ the page ══════════════════════════════════════════════════════════ */

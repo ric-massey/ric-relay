@@ -22,7 +22,7 @@ Linked from Exploration (MODULE 004) and the terminal (`worlds`). Not on the fro
 | `index.html` | The page: choose a sandbox → settings → the running world. Styles and page script inline. |
 | `physics.js` | The physics sandbox's engine. No DOM; runs the same in node. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
-| `test/world-builder.test.mjs` | Both engines, headless. About 25 seconds; in the slow lane of `.github/checks.mjs` (`--only world-builder --slow`) and in `simulations.yml`. |
+| `test/world-builder.test.mjs` | Both engines, headless. Several minutes; in the slow lane of `.github/checks.mjs` (`--only world-builder --slow`) and in `simulations.yml`. |
 
 No build step and no dependencies. `python3 -m http.server 8912 --bind 127.0.0.1`, then open
 `/projects/world-builder/`.
@@ -134,8 +134,19 @@ and "matter is the sum of kinds", which is what lets two bodies fuse into one.
 
 ## The people sandbox (`people.js`)
 
-A map of land that grows food, villages, and a few hundred people who each need to eat. A year is
-200 ticks; at 1× the page runs 30 ticks a second.
+A map of land that grows food, villages, and a few hundred people who each need to eat. At 1×, one day takes **twenty real minutes**, and 365 days make a year (Ric, 2026-11-12:
+"1x should be a 20 minute day" and "the people should move slower"). The visible clock shows
+day, time and year. Pause freezes both activity and calendar; the speed buttons scale both.
+
+Walking and work run five action ticks per simulated real second, at 0.15 tiles per action tick
+(six times slower than the old 30-tick playback). The calendar advances independently: the old
+200 demographic ticks per year remain for eating, aging, elections and other long-term decisions.
+`advance(seconds)` is the page's real-time API; `days` is its elapsed calendar. `step(ticks)` is
+the accelerated headless experiment API: each demographic tick allows eight action ticks, to
+allow the new work and speech pauses during compressed runs. Those experiments test long-term
+rules and settings; they do **not** reproduce the real-time economy, which allows far more activity
+per year. The real-time tests separately check the first day, money, movement and crowded spawns.
+This distinction matters when interpreting a century-long test result.
 
 33 settings in eight groups: the land, the people, lives (lifespan, childhood, children, hunger,
 sickness), money (coins or a shared store, inequality, prices, tax, inheritance), minds (talk,
@@ -186,8 +197,25 @@ Things found while tuning it, so nobody undoes them:
 - **Settings that another setting switches off are greyed**, not hidden, so the list never jumps.
 - **"Surprise me" draws every setting from its own range.** Most of those are bad worlds. That is
   the point.
-- **The people world drops ticks it cannot afford** rather than owing them, so a slow phone runs
-  slower instead of freezing; a note says when it is behind.
+- **A frame advances at most a tenth of a second of real time** rather than owing a growing
+  backlog, so a slow phone runs slower instead of freezing; a note says when it is behind.
+- **People are human figures, with smaller children and a white ring on leaders.** Roles are
+  written beside them at close zoom, rather than encoded as triangles or dots. Tapping a person
+  zooms in and follows them; the Person tab states their current activity. A map key explains this
+  on the running screen.
+- **Harvesting takes five seconds at 1×**, on the field where food is actually collected; a crop
+  outline and stalks mark it. Walking to a field, bringing food home, making goods, trading and
+  guarding have separate activity labels.
+- **Conversations stop both people for six seconds at 1×.** A gold line joins the actual pair,
+  and speech bubbles name speaker and listener. Work is not interrupted by a new conversation
+  while harvesting or making goods.
+- **People occupy space.** Bodies stay at least 0.42 tiles apart, including starting crowds and
+  newborns. Each movement checks a spatial hash and tries to slide round a blocked neighbour;
+  if no step fits, the person waits. Destinations choose a free nearby spot, and a person who
+  stops making progress retries that choice. Starting residents wait where they fit instead of
+  all heading for the village centre. Markets and fields accept arrival within half a tile so a
+  shared destination does not require sharing a position. This is local avoidance, not a global
+  route planner: very dense crowds can still queue.
 - **Speech is drawn as words only when zoomed in**; farther out a small mark shows somebody is
   talking. The Talk tab has the last forty exchanges either way.
 - "← Settings" is the way out of a running world; the site's "← Ric's Terminal" control is on the

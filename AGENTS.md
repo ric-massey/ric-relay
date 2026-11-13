@@ -467,6 +467,16 @@ nobody had linked was a page nobody could find.
   for it. **It is not on the front door or in `latest.js` yet** — it has
   an Exploration card and the terminal's `worlds`, and the front door waits on Ric
   having looked at it (it needs a `POSTS` entry, a shelf and a picture when it goes).
+  **People playback changed on 2026-11-12:** Ric: "1x should be a 20 minute day", "the
+  people should move slower", and "they shouldnt" walk inside each other. `advance(seconds)`
+  separates five activity ticks per second from the 200 demographic ticks per year; 365 days
+  make a year. Do not restore the old thirty-ticks-per-second yearly playback. Human figures,
+  plain role/activity labels, harvesting patches and conversation links explain what is happening;
+  a spatial hash keeps bodies 0.42 tiles apart. `step(ticks)` remains a compressed headless
+  experiment (eight actions per demographic tick), not a reproduction of the real-time economy;
+  the nearest README explains that limitation. The existing World Builder suite also checks
+  the real-time day and spacing.
+
 - **`projects/dads-race/` (HERMISCUS) is the one project with no room.** It is the
   crew app for Dad's race, mostly built by Ric's sister, and the only way in is the
   undocumented `hermiscus` terminal command — like the boards, don't promote it. **The
@@ -1399,7 +1409,7 @@ node projects/kondrite/test/campaign.js   # headless play-through of all three m
 node worker/test.mjs     # worker rules: auth, strava, media, todo, movies
 node projects/climbing/test/parse-parity.js  # build-data.py and climb-parse.js agree
 node projects/universe/lab-check.mjs      # the universe Lab: seam, books, seeds (~30s)
-node projects/world-builder/test/world-builder.test.mjs   # both sandboxes: every setting live (~25s)
+node projects/world-builder/test/world-builder.test.mjs   # both sandboxes: every setting live (several minutes)
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done
 for t in atlas/test/*.test.mjs; do node "$t" || break; done
 ```
