@@ -1493,6 +1493,167 @@ const storeOf = (cf, key) => {
   }
 }
 
+// ── 10c. the Leviathan is drawn where its walls are ──────────────────────
+/* Ric, 2026-11-12, after watching a new player: *"the Leviathan's hitbox feels
+   wrong"* — collision behaviour that did not match the visible structure.
+
+   Measured, the hull itself was honest: over a 73,000-point grid across the
+   whole footprint, not one point was solid without a plate drawn on it. The
+   sponsons were the problem, and they were the problem because they were the
+   one part of the ship drawn from numbers of the renderer's own rather than
+   from the geometry the builder stamped. Three faults in one rectangle:
+
+     · the leading edges are **raked** and the rectangle was not, so each wing
+       painted a wedge of dark hull forward of its own leading edge — 146
+       units of it on the hangars, 175 on the forward pair
+     · it stopped at 0.83 of the bay's depth while the outer face is at 1.0,
+       so every wing tip was drawn as a hollow ring
+     · and the **torn** sponson, on a wrecked hull, was drawn whole: a
+       complete wing with a stump's worth of wall inside it
+
+   So a bay carries its drawn shape as data now (`b.poly`), written beside the
+   walls that are stamped from the same corners, and the renderer fills that
+   and nothing else. This holds the two together: every edge of the drawn
+   shape that is meant to be a wall has to lie inside a plate.
+
+   Not every edge is. The side of a bay that lies along the hull is the way
+   in — the flank run is cut there — so asking for plate along it fails by up
+   to 169 units on a shape that is drawn exactly right. That the hull itself
+   is honest is the grid measurement above, not this. */
+{
+  const { cf } = boot("?debug=1&seed=8888");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const lm = surv.landmarks.find(l => l.key === "leviathan");
+  check(!!lm, "the sector has no Leviathan");
+  me.x = lm.x; me.y = lm.y; me.vx = me.vy = 0;
+  now += 1000 / 60; cf.step();
+  const lev = surv.leviathan;
+  check(!!lev, "standing on the Leviathan did not stream its hull in");
+
+  /* How far a point is outside every plate on the ship. Zero or less means it
+     is inside one — which is what "this edge is a wall" means. */
+  const outsideAll = (u, v) => {
+    let best = Infinity;
+    for (const w of lev.walls) {
+      const dx = w.u1 - w.u0, dy = w.v1 - w.v0;
+      const L2 = dx * dx + dy * dy;
+      let t = L2 ? ((u - w.u0) * dx + (v - w.v0) * dy) / L2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      const px = w.u0 + dx * t, py = w.v0 + dy * t;
+      best = Math.min(best, Math.hypot(u - px, v - py) - w.r);
+    }
+    return best;
+  };
+  const edgeIsWall = (a, b, what) => {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const n = Math.max(2, Math.ceil(len / 20));
+    let worst = -Infinity, at = null;
+    for (let i = 0; i <= n; i++) {
+      const f = i / n;
+      const u = a[0] + (b[0] - a[0]) * f, v = a[1] + (b[1] - a[1]) * f;
+      const d = outsideAll(u, v);
+      if (d > worst) { worst = d; at = [Math.round(u), Math.round(v)]; }
+    }
+    check(worst <= 0,
+          what + " is drawn " + Math.round(worst) + " units outside every " +
+          "plate on the ship, at " + JSON.stringify(at) + " — solid-looking " +
+          "hull with nothing there to hit");
+  };
+
+  check(lev.bays.length > 0, "the Leviathan has no sponsons");
+  let torn = 0;
+  for (const b of lev.bays) {
+    check(!!b.poly && b.poly.length >= 4,
+          "a sponson has no drawn shape, so the renderer is guessing one again");
+    if (b.torn) torn++;
+    /* The edges that are **wall**, which is not all of them. A bay is a room
+       off the spine, so the side of it that lies along the hull is the
+       doorway: the flank run is cut there on purpose, and a check that asked
+       for plate along it failed by up to 169 units on a shape that was drawn
+       perfectly. The hull's own plates are a different question, asked by the
+       grid measurement this section's note describes.
+
+       A whole sponson is three walls — trailing edge, raked leading edge,
+       outer face — and its fourth side is the way in. The torn one is two,
+       the stub and the bite across it, with the rest of its outline open to
+       the hull. The indices are the corners the builder writes in `b.poly`,
+       in the order it writes them. */
+    const name = "sponson at u=" + Math.round(b.u) + " side " + b.side + ", ";
+    if (b.torn) {
+      edgeIsWall(b.poly[0], b.poly[1], name + "the trailing stub");
+      edgeIsWall(b.poly[1], b.poly[2], name + "the torn face");
+    } else {
+      edgeIsWall(b.poly[0], b.poly[3], name + "the trailing edge");
+      edgeIsWall(b.poly[1], b.poly[2], name + "the raked leading edge");
+      edgeIsWall(b.poly[3], b.poly[2], name + "the outer face");
+    }
+  }
+  /* The wrecked hull is the one that can be drawn as something it is not, so
+     the seed is held to producing one. If this ever fails, pick a seed that
+     wrecks her rather than deleting the check. */
+  check(torn === 1,
+        "seed 8888's Leviathan has " + torn + " torn sponsons — the test " +
+        "wants the wrecked one, because a whole wing drawn over a stump is " +
+        "the worst case this is about");
+
+  console.log("  levdraw    every sponson's drawn outline lies inside a plate · " +
+              lev.bays.length + " of them, one of them torn off · drawn " +
+              "from the corners its walls are stamped on");
+}
+
+// ── 10d. somebody else's rounds stop at a wall ───────────────────────────
+/* Ric, same session: *"enemies can shoot through the Leviathan."* They did —
+   and through worlds, dead hulls, the Vault and the Warrens with it.
+
+   There are two bullet systems. Yours are `bullets`, and the main loop sweeps
+   them through `solidHit`, which knows about every solid thing out here.
+   Everybody else's are `surv.shots`, and that loop had learned about rock and
+   nothing else. The Leviathan is where it shows because it is the one place
+   you are *inside* a structure being shot at. */
+{
+  const { cf } = boot("?debug=1&seed=8888");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  const lm = surv.landmarks.find(l => l.key === "leviathan");
+  me.x = lm.x; me.y = lm.y; me.vx = me.vy = 0;
+  me.invuln = 9999;
+  now += 1000 / 60; cf.step();
+  const lev = surv.leviathan;
+  check(!!lev, "no Leviathan to shoot at");
+
+  // The thickest plate on the ship, shot at square on from outside it.
+  const g = lev.segs.slice().sort((a, b) => b.r - a.r)[0];
+  const nx = g.x - lev.x, ny = g.y - lev.y;
+  const n = Math.hypot(nx, ny) || 1;
+  const ux = nx / n, uy = ny / n;
+  const SPEED = 900;                       // faster than anything out here fires
+  const shot = { x: g.x + ux * 700, y: g.y + uy * 700,
+                 vx: -ux * SPEED, vy: -uy * SPEED,
+                 life: 3, dmg: 1, friendly: true, from: null };
+  surv.shots.push(shot);
+
+  let through = false, stopped = false;
+  for (let i = 0; i < 180; i++) {
+    now += 1000 / 60; cf.step();
+    if (!surv.shots.includes(shot)) { stopped = true; break; }
+    // Past the far side of the plate it was aimed at?
+    if ((shot.x - g.x) * ux + (shot.y - g.y) * uy < -(g.r + 80)) {
+      through = true; break;
+    }
+  }
+  check(!through,
+        "a round fired at the Leviathan's thickest plate came out the other " +
+        "side — cover that only works against your own gun is not cover");
+  check(stopped, "the round neither stopped nor went through; it is still out there");
+
+  console.log("  levshots   somebody else's rounds are swept against the " +
+              "sector's solid things, not only against rock · a plate " +
+              "stops a " + SPEED + "u/s round");
+}
+
 // ── 11. a gate goes somewhere ─────────────────────────────────────────────
 {
   const { cf } = boot("?debug=1&seed=606");
@@ -2383,6 +2544,43 @@ const storeOf = (cf, key) => {
   console.log("  banner     the first few parts get it, it says which of six " +
               "and where to look, it survives a part coming home · and at " +
               "three it retires, once, saying where the manifest went");
+}
+
+// ── 15c. a scan calls a wormhole a wormhole ──────────────────────────────
+/* Ric, 2026-11-12: *"scanning calls wormholes gates — scan returns should
+   call them wormholes."*
+
+   The key stays `gate` in the code, the save and these tests; it is the four
+   places the thing is *named to the player* that moved — the scan return, the
+   chart, your own pin, and the card you get the first time you see one. The
+   mode already called the one you build at your station a wormhole, so this
+   is the sector agreeing with the station rather than a new word. */
+{
+  const { cf } = boot("?debug=1&seed=606");
+  cf.start("survey", 1);
+  const surv = cf.survey();
+  const me = cf.live().ships[0];
+  // Well inside a scan and well outside the mouth, which would throw the ship.
+  surv.gates.push({ x: me.x + 900, y: me.y, phase: 0,
+                    tx: me.x + 30000, ty: me.y - 18000 });
+  now += 1000 / 60; cf.step();
+  cf.scan();
+  const echo = (surv.echoes || []).find(e => e.kind === "gate");
+  check(!!echo, "a scan 900 units from a wormhole came back with nothing");
+  check(!!echo && echo.name === "WORMHOLE",
+        "the scan calls it " + (echo && JSON.stringify(echo.name)) +
+        " — it is a wormhole");
+
+  /* And nothing else on the screen disagrees with it. One object with two
+     names is how a player ends up believing there are two of them, which is
+     the same note the cargo readout carries. */
+  textDrawn(); cf.draw();
+  const words = textDrawn();
+  check(!words.includes("GATE"),
+        "the scan says WORMHOLE and something on screen still says GATE: " +
+        words.filter(w => /GATE/.test(w)).join(" | "));
+  console.log("  wormhole   a scan return names it WORMHOLE · nothing " +
+              "left on screen calls the same thing a gate");
 }
 
 // ── 16. the scan reports what is near, and the refit makes it reach ──────

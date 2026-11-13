@@ -13,9 +13,10 @@ here said 27 items and 26 done and named A3 as the only one left, which had
 stopped being true twice over: C4 and C5 were added to SETTINGS after it was
 written, and C6 was added open.
 
-**Current: eight playtest items — four done, four open — and two design
-questions**, recorded below on 2026-11-12. N1, N2, N3 and N10 were built the
-same day; N10 came later that evening and is not from the watched session. The September batch above is complete; these are new reports.
+**Current: eight playtest items, all eight done, and two design questions
+still open**, recorded below on 2026-11-12 and cleared the same day. N10 came
+later that evening and is not from the watched session. **N8 and N9 are what
+is left**, and both are Ric's to decide rather than mine to build. The September batch above is complete; these are new reports.
 Other open briefs are elsewhere: `PLAYER-HISTORY.md`, and "the Leviathan is a ship you can buy" in
 `SURVEY-PLAN.md`. `LIVING-WORLD.md` has its first version and its first
 expansion built (2026-09-24, see its status line): §27, §16 and §28 — leaders,
@@ -167,19 +168,105 @@ session is for recording and discussing them only; no gameplay changes yet.
   with every price moved above. It asks the shelf now — this station, at this
   station's depth, in stock, and nothing at all while the home counter is dark
   for want of a fusion core. `cheapestOnTheShelf` in `game/factions.js`.
-- [ ] **N4 · The Leviathan's hitbox feels wrong.** Ric observed collision
+- [x] **N4 · The Leviathan's hitbox feels wrong.** Ric observed collision
   behaviour that did not match the visible structure. Reproduce and locate
   the mismatch before deciding on a fix.
-- [ ] **N5 · Enemies can shoot through the Leviathan.** Reported during the
+
+  *Reproduced by measurement, 2026-11-12, and it was the drawing rather than
+  the hitbox.* A 73,000-point grid over the whole footprint, comparing every
+  collision disc against every drawn plate: **not one point was solid without
+  a plate on it**, and the worst a plate was hollow by was 20 units — the
+  scallop between overlapping discs, a fifth of a hull's own radius. The hull
+  is honest.
+
+  The **sponsons** were not, and for the reason this mode keeps rediscovering:
+  they were the one part of the ship drawn from numbers of the renderer's own
+  instead of from the geometry the builder stamped. One axis-aligned box per
+  bay, three faults in it:
+
+  | | |
+  |---|---|
+  | the leading edges are **raked** and the box was not | a wedge of dark hull stood forward of every leading edge — 146 units on the hangars, 175 on the forward pair |
+  | the box stopped at 0.83 of the bay's depth, the outer face is at 1.0 | every wing tip drawn as a hollow ring |
+  | the **torn** sponson was drawn whole | a complete wing on a wrecked hull with a stump's worth of wall in it |
+
+  All three are the same thing from the cockpit: solid-looking hull you fly
+  straight through. A bay carries its drawn shape as data now (`b.poly`),
+  written beside the walls that are stamped from the same corners, and
+  `drawLeviathan` fills that and nothing else — the way the hull itself has
+  read `lev.outline` since it stopped being a rectangle. `test/survey.js`
+  §10c walks every edge of every drawn sponson and fails if any of it is
+  outside every plate on the ship.
+- [x] **N5 · Enemies can shoot through the Leviathan.** Reported during the
   same playtest. Reproduce projectile passage through its solid structure;
   whether this shares N4's cause is unknown.
-- [ ] **N6 · Scanning calls wormholes gates.** Scan returns should call them
+
+  *It does not share N4's cause, and it was worse than the Leviathan.* There
+  are **two bullet systems**. Yours are `bullets`, and the main loop sweeps
+  every one of them through `solidHit`, which knows about worlds, dead hulls,
+  the Leviathan, the Vault and the Warrens. Everybody else's are `surv.shots`,
+  and that loop had learned about **rock and nothing else** — so every round
+  fired by anything in the sector passed through every structure in it. The
+  Leviathan is simply where you notice, because it is the one place you are
+  *inside* a structure being shot at.
+
+  It is the same mistake the rock block directly above it records, one object
+  later: *"a sector where only your bullets are real is a sector where nothing
+  anyone else does is happening in the same world you are in."* Their rounds
+  go through `solidHit` now, swept along the round's travel the way yours are,
+  since a fast round covers more than a plate is thick in one frame. A dead
+  hull only stops them — it is a target for your gun, not for a sentry's.
+  `surveyShots` in `game/sector-places.js`; `test/survey.js` §10d fires a
+  900u/s round at the thickest plate on the ship and will not let it out the
+  other side.
+- [x] **N6 · Scanning calls wormholes gates.** Scan returns should call them
   **wormholes**. This is a request about player-facing scan wording, not a
   decision to rename internal identifiers or every use of "gate".
-- [ ] **N7 · The full map should show visited space like the minimap.** Ric:
+
+  *Done 2026-11-12.* There turned out to be exactly **four** places the thing
+  is named to the player, and they all moved together: the scan return
+  (`ECHO_KINDS`), the chart mark (`CHART_MARKS`), your own pin (`PIN_KINDS`),
+  and the card you get the first time you fly near one (`gateCard`, which also
+  said JUMP GATE). Renaming only the scan would have left a return labelled
+  WORMHOLE sitting on a chart labelled GATE, which is the CARGO/STORAGE note
+  one object later — two names is how a player ends up believing there are
+  two things.
+
+  The key stays `gate` in the code, the save and the tests, as the brief says.
+  Nothing else moved: `GATE_R`, the prose about the manmade wormhole, and the
+  station's own WORMHOLE page are all untouched — and the mode already called
+  the one you *build* a wormhole, so this is the sector agreeing with the
+  station rather than a new word. `test/survey.js` §15c scans one and then
+  checks nothing left on the screen calls the same thing a gate.
+- [x] **N7 · The full map should show visited space like the minimap.** Ric:
   "it needs to look like the mini map in how it shows where they have been."
   Match the minimap's representation of explored space on the full map; the
   request is specifically about showing where the player has travelled.
+
+  *Done 2026-11-12, and it was already drawing it — it gave up.* Both charts
+  call the same `paintFog` over the same set. That painter walks the **window**
+  in 480-unit cells, so the count grows with the square of the span, and it
+  carried a bail-out at 40,000 cells — about **115,000 units across**:
+
+  ```js
+  if ((c1 - c0) * (r1 - r0) > 40000) return;   // zoomed out past usefulness
+  ```
+
+  The chart's zoom ladder runs to forty million. So **only the closest six of
+  its fifteen steps ever painted the wash**, and every zoom wide enough to
+  look at a run's worth of travel showed none of it. The minimap never hits
+  the ceiling because its span is fixed at 14,000 — which is exactly why it
+  looked right there and wrong on the full map.
+
+  Past the ceiling it walks the **record** instead of the window: the charted
+  set does not grow when you zoom out, and it is bucketed into blocks of at
+  least three pixels, since a cell is far under one out there. A block is
+  filled if any cell in it was visited, which reads a little generous at the
+  widest steps — the right error for a question that is *where have I been*
+  rather than *exactly which cells*. Cached and rebuilt at most four times a
+  second. `paintFog` and `coarseFog` in `survey-hud/panel.js`; `test/fog.js`
+  holds that the blocks are the same record, cover every cell of it, and get
+  coarser rather than emptier as the step grows.
 
 - [x] **N10 · The low-tank word goes on the left of the mark.** Ric,
   2026-11-12: "warning for the water, the words should be on the left of the

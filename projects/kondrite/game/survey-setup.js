@@ -605,7 +605,14 @@ const ECHO_KINDS = {
   cache:   { name: "CACHE",     colour: CASH,          bad: false },
   sealed:  { name: "GUARDED",   colour: DRONE_COLOUR,  bad: true },
   station: { name: "STATION",   colour: CASH,          bad: false },
-  gate:    { name: "GATE",      colour: "#5ce1ff",     bad: false },
+  /* Ric, 2026-11-12: *"scanning calls wormholes gates — scan returns should
+     call them wormholes."* The key stays `gate` everywhere in the code, the
+     save and the tests, because renaming a field to change a label is how a
+     save file grows two of everything — and the three other places this
+     object is *named* to the player moved with it, so a scan, the chart, a
+     pin and the card you get on first sighting cannot call one thing two
+     things. See `CHART_MARKS`, `PIN_KINDS` and `gateCard`. */
+  gate:    { name: "WORMHOLE",  colour: "#5ce1ff",     bad: false },
   hulk:    { name: "CACHE",     colour: WRECK,         bad: false },
   /* Not "CASH". A scan return is a thing in the sky, and the thing is ice or
      iron or a reactor core — cash is what it becomes at a counter two hours

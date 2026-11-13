@@ -148,7 +148,7 @@ const PIN_KINDS = [
   { key: "salvage", name: "CASH", colour: "#6dffbf" },
   { key: "cache",   name: "CACHE",   colour: "#ffe56d" },
   { key: "station", name: "STATION", colour: "#87d8ff" },
-  { key: "gate",    name: "GATE",    colour: "#5ce1ff" },
+  { key: "gate",    name: "WORMHOLE", colour: "#5ce1ff" },
   { key: "part",    name: "PART",    colour: "#a08cff" },
   { key: "danger",  name: "DANGER",  colour: "#ff8f77" }
 ];

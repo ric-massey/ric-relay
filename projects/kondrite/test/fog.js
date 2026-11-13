@@ -187,6 +187,67 @@ console.log("KONDRITE chart checks");
               Math.round(packed.length / 1024) + " KB packed");
 }
 
+// ── and it is still a record when you zoom all the way out ───────────────
+/* Ric, 2026-11-12: "the full map needs to look like the mini map in how it
+   shows where they have been."
+
+   It drew the same lattice from the same set and simply gave up: the painter
+   walks the *window* in 480-unit cells, so the count grows with the square of
+   the span, and it bailed at 40,000 cells — about 115,000 units across. The
+   chart zooms to forty million, so only the closest six of its fifteen steps
+   ever painted the wash, and every zoom wide enough to see a run's worth of
+   travel showed none of it.
+
+   Past that it walks the record instead, bucketed into blocks big enough to
+   see. What has to be true of those blocks is what this checks: they are the
+   same record, they cover every cell of it, and they get coarser rather than
+   emptier as the step grows. */
+{
+  const H = hud();
+  const rows = [];
+  // A long thin run, which is what flying somewhere actually looks like.
+  for (let cy = -2; cy <= 2; cy++) rows.push([cy, -400, 900]);
+  check(H.importFog(pack(rows)), "the run was refused");
+  const cells = H.charted();
+
+  check(typeof H.coarseFog === "function",
+        "the wide chart has no coarse record to draw — it will go back to " +
+        "painting nothing past 115,000 units across");
+
+  const one = H.coarseFog(1);
+  check(one.length === cells,
+        "at one cell a block the record is " + one.length + " blocks for " +
+        cells + " cells — it is meant to be the same record, not a summary");
+
+  let last = one.length;
+  for (const step of [2, 8, 64, 250]) {
+    const blocks = H.coarseFog(step);
+    check(blocks.length > 0,
+          "at " + step + " cells a block the wide chart would paint nothing");
+    check(blocks.length <= last,
+          "a coarser step produced more blocks (" + blocks.length + " at " +
+          step + ", against " + last + " before it)");
+    last = blocks.length;
+    /* Every cell of the record has to be inside one of them. A block that
+       covers nothing is noise; a cell that no block covers is a piece of the
+       map you charted and cannot see. */
+    const have = new Set(blocks.map(b => b[0] + "," + b[1]));
+    let missing = 0;
+    for (let cy = -2; cy <= 2; cy++) {
+      for (let cx = -400; cx < 500; cx++) {
+        if (!have.has(Math.floor(cx / step) + "," + Math.floor(cy / step))) missing++;
+      }
+    }
+    check(missing === 0,
+          missing + " charted cells fall outside every block at step " + step);
+  }
+  check(H.coarseFog(64).length === H.coarseFog(64).length,
+        "asking twice gave two different answers");
+  console.log("  wide       " + cells + " cells to " + one.length +
+              " blocks at 1, " + last + " at 250 \u00b7 every cell covered " +
+              "at every step \u00b7 the record survives the widest zoom");
+}
+
 if (fails) {
   console.error("\nKONDRITE chart checks FAILED (" + fails + ")");
   process.exit(1);

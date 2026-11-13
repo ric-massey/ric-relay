@@ -540,6 +540,25 @@ they could clearly see, they stop trusting every other edge in the sector. A slo
 brush is free and only a real impact costs hull, because a world that charges a
 hull point for every graze is a world you fly through the middle of.
 
+Two sides of that rule were found broken on 2026-11-12, when Ric said the
+Leviathan's hitbox did not match what he could see and that enemies were
+shooting through her.
+
+**The shape you can see.** Measured over a 73,000-point grid, her hull was
+honest: nothing was solid without a plate drawn on it. Her four sponsons were
+not, because they were the one part of the ship whose *drawing* was guessed
+here instead of read from the geometry the builder stamps — an axis-aligned box
+per bay, where the leading edges are raked, the box stopped short of the outer
+face, and the torn one on a wrecked hull was drawn whole. Up to 175 units of
+solid-looking wing with nothing in it. A bay carries its drawn shape as data
+now, written beside the walls stamped from the same corners.
+
+**The shape that stops you.** There are two bullet systems: yours sweep through
+`solidHit`, which knows every solid thing out here, and everybody else's knew
+about rock and nothing else — so every round fired by anything in the sector
+passed through every structure in it. They go through the same sweep now. Cover
+that works against one gun and not the other is not cover.
+
 Four things were added to have somewhere to go:
 
 - **Wormholes.** Falling into one throws you tens of thousands of units. There is
@@ -562,6 +581,22 @@ Four things were added to have somewhere to go:
 **The chart starts blank.** The minimap every other mode hands you complete is,
 here, a record of where you have actually been — objects appear on it only in
 cells you have charted.
+
+That record now survives the whole zoom ladder. It was painted by walking the
+*window* in 480-unit cells, which grows with the square of the span, and it
+gave up past 40,000 of them — about 115,000 units across. The chart zooms to
+forty million, so only its closest six steps of fifteen ever drew the wash and
+every zoom wide enough to see a run's worth of travel showed none of it (Ric,
+2026-11-12: "it needs to look like the mini map in how it shows where they have
+been"). Past that ceiling it walks the record instead of the window and buckets
+it into blocks of at least three pixels. The minimap never hit the ceiling,
+which is why it looked right there and wrong on the full map.
+
+**A wormhole is called a wormhole.** The sector's own mouths were labelled GATE
+on a scan, on the chart, on a pin and on the card that introduces one, while the
+one you build at your station was already a wormhole. All four say wormhole now
+(Ric, 2026-11-12). The code, the save and the tests still say `gate`, for the
+same reason a hulk is still a `hulk`.
 
 **A gravity well is a tool as much as a hazard.** A star is the one place a hull
 repairs, so it is a destination rather than only a way to die, and a black hole

@@ -456,20 +456,79 @@ const fmtSecs = n => {
    a scanned grid — not an artefact to smooth away, and it makes the count an
    exact thing rather than an estimate. Only cells inside the view are ever
    touched, so the cost is the window's size and not the survey's. */
+/* ── where you have been, at the wide end of the zoom ─────────────────────
+   Ric, 2026-11-12: *"the full map needs to look like the mini map in how it
+   shows where they have been."*
+
+   It was drawing the same lattice from the same set; it simply gave up. The
+   loop below walks the **window** in 480-unit cells, so the count grows with
+   the square of the span, and there was a bail-out at 40,000 cells — about
+   115,000 units across. The chart's zoom ladder runs to forty million, so
+   **only the closest six of its fifteen steps ever drew the wash**: every
+   zoom wide enough to look at a run's worth of travel showed none of it. The
+   minimap never hits the ceiling because its span is fixed at 14,000.
+
+   So past that point it walks the **record** instead of the window — the set
+   is what you have charted, and it does not grow with how far you zoom out —
+   and buckets it into blocks big enough to see, since a cell is well under a
+   pixel out there. A block is filled if any cell in it was visited, which
+   reads slightly generous at the widest steps; that is the right error for a
+   question that is "where have I been" rather than "exactly which cells".
+
+   Cached, because the set can be large and the answer only changes when you
+   fly somewhere new. Rebuilt when the block size changes, and otherwise at
+   most four times a second — a quarter second of lag on a wash whose cells
+   are sub-pixel is not a thing anybody can see. */
+let coarse = { step: 0, size: -1, at: 0, blocks: [] };
+function coarseFog(step) {
+  const now = Date.now();
+  if (coarse.step === step &&
+      (coarse.size === fog.size || now - coarse.at < 250)) return coarse.blocks;
+  const seen = new Set();
+  const blocks = [];
+  for (const key of fog) {
+    // `cellKey` packs the pair into one exact float; this is the other way.
+    const c = Math.floor(key / KEY_SPAN) - KEY_BASE;
+    const r = (key % KEY_SPAN) - KEY_BASE;
+    const bc = Math.floor(c / step), br = Math.floor(r / step);
+    const bk = cellKey(bc, br);
+    if (seen.has(bk)) continue;
+    seen.add(bk);
+    blocks.push([bc, br]);
+  }
+  coarse = { step, size: fog.size, at: now, blocks };
+  return blocks;
+}
+// Exposed so a harness can ask what the wide chart would paint. See §7b.
+HUD.coarseFog = coarseFog;
+
 function paintFog(mx, my, cxw, cyw, span, sx, sy, alpha) {
   const { ctx } = api;
   const halfX = span / 2, halfY = (span * 0.7) / 2;
   const c0 = Math.floor((cxw - halfX) / CELL), c1 = Math.ceil((cxw + halfX) / CELL);
   const r0 = Math.floor((cyw - halfY) / CELL), r1 = Math.ceil((cyw + halfY) / CELL);
-  if ((c1 - c0) * (r1 - r0) > 40000) return;   // zoomed out past usefulness
-  const w = Math.max(1, CELL * sx), h = Math.max(1, CELL * sy);
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.fillStyle = VIOLET;
-  for (let r = r0; r <= r1; r++) {
-    for (let c = c0; c <= c1; c++) {
-      if (!fog.has(cellKey(c, r))) continue;
-      ctx.fillRect(mx(c * CELL), my(r * CELL), w, h);
+  if ((c1 - c0) * (r1 - r0) <= 40000) {
+    const w = Math.max(1, CELL * sx), h = Math.max(1, CELL * sy);
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
+        if (!fog.has(cellKey(c, r))) continue;
+        ctx.fillRect(mx(c * CELL), my(r * CELL), w, h);
+      }
+    }
+  } else {
+    // Three pixels a block: smaller than that and the wash stops being a
+    // shape and becomes a texture.
+    const step = Math.max(1, Math.ceil(3 / Math.max(1e-6, CELL * sx)));
+    const side = CELL * step;
+    const bw = Math.max(1, side * sx), bh = Math.max(1, side * sy);
+    for (const b of coarseFog(step)) {
+      const x = b[0] * side, y = b[1] * side;
+      if (x + side < cxw - halfX || x > cxw + halfX) continue;
+      if (y + side < cyw - halfY || y > cyw + halfY) continue;
+      ctx.fillRect(mx(x), my(y), bw, bh);
     }
   }
   ctx.restore();
@@ -483,7 +542,7 @@ function paintFog(mx, my, cxw, cyw, span, sx, sy, alpha) {
    the map is worse than no key at all. */
 const CHART_MARKS = {
   station:   { name: "STATION",  colour: "#6dffbf" },
-  gate:      { name: "GATE",     colour: "#5ce1ff" },
+  gate:      { name: "WORMHOLE", colour: "#5ce1ff" },
   cache:     { name: "CACHE",    colour: "#ffe56d" },
   part:      { name: "COMPONENT", colour: "#a08cff" },
   leviathan: { name: "LEVIATHAN", colour: "#7d8596" },

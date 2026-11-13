@@ -391,11 +391,32 @@ function buildLeviathan(lm, out, R, rnd) {
       wall(b.u - b.hw, b.side * b.root, b.u - b.hw, stub, RIB, "wing");
       wall(b.u - b.hw, stub, b.u - b.hw * 0.2,
            b.side * (b.root + b.depth * 0.16), LEV_SEG * 0.5, "tear");
+      /* The shape of it, as data, for the same reason the hull has an
+         `outline`: the renderer may not guess. It used to paint every
+         sponson as one axis-aligned rectangle, which was wrong three ways —
+         it ignored the rake, so a wedge of dark hull stood forward of every
+         leading edge with no wall behind it (146 units on a hangar, 175 on a
+         forward sponson, measured); it stopped at 0.83 of the depth, so every
+         wing tip was drawn hollow; and it drew *this* one, the torn one, as a
+         whole wing with a stump's worth of wall in it. Ric, 2026-11-12: the
+         Leviathan's hitbox does not match what you can see. It did not.
+
+         So the corners are written down here, beside the walls that are
+         stamped from the same numbers, and `drawLeviathan` fills them. */
+      b.torn = true;
+      b.poly = [[b.u - b.hw, b.side * b.root],
+                [b.u - b.hw, stub],
+                [b.u - b.hw * 0.2, b.side * (b.root + b.depth * 0.16)],
+                [b.u - b.hw * 0.2, b.side * b.root]];
       continue;
     }
     wall(b.u - b.hw, b.side * b.root, b.u - b.hw, outer, RIB, "wing");
     wall(b.u + b.hw, b.side * b.root, tip, outer, RIB, "wing");
     wall(b.u - b.hw, outer, tip, outer, RIB, "wing");
+    // The same three corners the three walls above run between, closed along
+    // the hull. One shape, drawn and collided with. See `b.torn` above.
+    b.poly = [[b.u - b.hw, b.side * b.root], [b.u + b.hw, b.side * b.root],
+              [tip, outer], [b.u - b.hw, outer]];
   }
 
   /* ── the hold ───────────────────────────────────────────────────────────

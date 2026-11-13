@@ -931,11 +931,20 @@ function drawLeviathan(lev) {
   } else {
     box(-half, -outer, half, outer);
   }
-  // The sponsons, each from its own size rather than from two numbers that
-  // used to be true of all six.
+  /* The sponsons, from the corners the builder wrote down when it stamped
+     their walls (`b.poly`) rather than from a box guessed here. They were
+     axis-aligned rectangles, and a wing is not one: see the note beside
+     `b.poly` in `buildLeviathan` for the three things that was drawing which
+     nothing in the sector would ever stop you flying through. */
   for (const b of lev.bays) {
-    const hw = b.hw || 470, root = b.root === undefined ? lev.flank : b.root;
-    box(b.u - hw, b.side * root, b.u + hw, b.v + b.side * (b.depth || 430) * 0.45);
+    if (!b.poly) continue;
+    ctx.beginPath();
+    b.poly.forEach((p, i) => {
+      const x = wx(p[0], p[1]), y = wy(p[0], p[1]);
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fill();
   }
   // And the engine throats, aft of the transom.
   if (lev.engine) {

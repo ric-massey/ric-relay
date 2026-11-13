@@ -680,6 +680,39 @@ function surveyShots(dt) {
       break;
     }
     if (stopped) continue;
+
+    /* ── and so does everything else that is solid ────────────────────────
+       Ric, 2026-11-12: *"enemies can shoot through the Leviathan."* They did,
+       and through worlds, dead hulls, the Vault and a hundred thousand units
+       of the Warrens as well — the Leviathan is simply the one place you are
+       *inside* a structure being shot at, so it is where you notice.
+
+       The cause is that there are two bullet systems. Yours are `bullets` and
+       they go through `solidHit`, which knows about every solid thing in the
+       sector. Everybody else's are `surv.shots`, and this loop had learned
+       about rock and nothing else — the same mistake the rock block above
+       records, one object later. A wall that stops only your fire is cover
+       that works in one direction.
+
+       Swept along the round's travel rather than sampled at its new position,
+       for the reason `update.js` gives: a fast round covers more than a plate
+       is thick in one frame and would pass through without ever being inside
+       it. A dead hull merely stops these — it is a target for your gun, not
+       for a sentry's. */
+    const sp = Math.hypot(b.vx, b.vy) * dt;
+    const steps = Math.max(1, Math.min(6, Math.ceil(sp / 90)));
+    let into = null;
+    for (let k = 1; k <= steps && !into; k++) {
+      const f = k / steps;
+      into = solidHit(b.x - b.vx * dt * (1 - f), b.y - b.vy * dt * (1 - f));
+    }
+    if (into) {
+      burst(into.x, into.y, b.colour || WRECK, 3, 90 * U);
+      gameSound("tink", into.x, into.y);
+      surv.shots.splice(i, 1);
+      continue;
+    }
+
     /* A patrol's rounds go the other way. They are in the same list because
        they are the same object and the same drawing; the only difference is
        who they are allowed to hit — and a neutral whose fire could clip you

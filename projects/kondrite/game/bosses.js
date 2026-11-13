@@ -1046,12 +1046,12 @@ function shipCard(t) {
 
 function gateCard(g) {
   return {
-    kind: "A GATE", name: "JUMP GATE", colour: "#b79aff",
+    kind: "A WORMHOLE", name: "WORMHOLE", colour: "#b79aff",
     lines: [
       "A mouth that goes somewhere else in this sector.",
       "Fly into it and you come out of its pair, which may be a long way from " +
-      "here and is not somewhere you chose. A gate is a shortcut somebody else " +
-      "laid out; the light drive is the one you get to aim.",
+      "here and is not somewhere you chose. A wormhole is a shortcut somebody " +
+      "else laid out; the light drive is the one you get to aim.",
       "It is free, it is instant, and there is no way to know which end you " +
       "are about to arrive at until you have used this one once."
     ]
