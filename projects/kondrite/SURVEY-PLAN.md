@@ -124,6 +124,78 @@ Ric's read from the cockpit, which overrules this file's DONE markers:
   power reads before it lets you enlist), or *an origin* picked at the start, as
   Kenshi's starts are — a place to begin, never a class.
 
+### Five verbs, four sizes, and a flag of your own  ·  *13 November 2026*
+
+Ric asked whether the five paths are five ways to play, of which only one is
+built, and whether colonizing would be a sixth — *"in reality they all work
+within each other you can be multiple at one time it seems. Or are those how
+the world sees you colonizer works with all of those."* Then: **"Make sure
+colonizer thing is in there. I think we should have the ability to make your
+own clan or whatever they are called as well."**
+
+The answer this file now holds:
+
+**The paths are verbs, not modes.** Pirate takes from ships, trader buys here
+and sells there, explorer goes where nobody has been, soldier fights for a
+side, salvager strips what is left behind. You do any of them at any moment and
+several at once. That is rule 1 above, unchanged.
+
+**Colonizer is the other axis, not a sixth path.** The table's columns —
+Alone → Foothold → Crew → Power — *are* colonizing: a place of your own, then
+people, then sky. It works with every path because it is how far a path has
+grown, not a choice beside them. A pirate who colonizes has a hideout, a pack,
+then lanes that fear the name; a trader has a depot, convoys, then prices that
+move when they do. One system, dressed per path (step 3 already says so).
+
+**Your own faction is the top of that axis.** Ric's "clan or tribe" — the word
+the game uses is *faction* or *power*. The **Power** column is where a player
+stops working for the Cordon, Morrow or the Open Roads and flies a flag of
+their own: their own sky on the chart, their own colour, ships and people that
+answer to them, and a place in the living world's politics (LIVING-WORLD.md)
+that the other powers trade with, fight and lean on like any other. The
+mechanism half exists already: a cause nobody brings back **holds its own sky
+as a fourth flag** (§28, `game/living.js`). A player's faction is that, founded
+by something the player did rather than by a province — and it obeys the same
+rule: *nothing forced or faked*. It is earned through Foothold and Crew; there
+is no "found a faction" button on day one. Not designed further yet: how many
+people it takes, what it costs to hold, what happens when it falls.
+
+**How the world sees you is a third thing, and it is derived.** Each power
+keeps its own picture of you from what you have done to it and near it — the
+Cordon can know you as the one who hit its convoys while a station you keep in
+water knows you as a trader. The names people reach for as a "seventh path" are
+mixes, and they become **labels the world gives you**, never paths to build:
+
+| Label | Is really |
+|---|---|
+| Smuggler | trader + pirate — trading through a closed border (the tariff exists) |
+| Bounty hunter | soldier + pirate — hunting raiders a power has priced (pays today) |
+| Mercenary | soldier for whoever pays, not one side |
+| Miner | salvager, where the wreck is a rock |
+| Politician | soldier at Power size — changing laws instead of fighting |
+
+So the whole shape is **five verbs × four sizes, the labels the world gives
+your mix, and the extraction loop under all of it** (TODO.md, "An extraction
+shooter in space").
+
+**Proposed order** (an assistant's recommendation on 13 November; step 4 says
+the path order is Ric's call, and he has not made it):
+
+1. **The foothold first** — step 3 below, and it is the colony. One BASE
+   section that looks different per path, not a menu per path: the station's
+   eleven tabs are already a lot, and a colony as its own menu would be a second
+   game. It is the extraction shooter's hideout too: built from what you bring
+   home, raidable, losable. Tie its upgrades to the find-only parts (TODO.md),
+   so the next upgrade needs a thing that only exists at the Vault — the answer
+   to *"nothing worth really going out to get."*
+2. **Pirate** — closest to an extraction run (raid a convoy, get the cargo
+   home), and most of its code exists; what is missing is the world's reaction
+   being visible.
+3. **Trader** — after Ric says what "deep" means.
+4. **Soldier and the political side** — the most new design (enlisting, the
+   bio), and Power-size play needs Foothold and Crew underneath it. Your own
+   faction lands here, last, on top of everything else.
+
 ### The build order
 
 Ric agreed these four, in this order. Each one is finished, flown and fun before

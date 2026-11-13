@@ -476,6 +476,26 @@ They remain proposals; recording them is not a request to implement them.
   and uncertainty about how quests should work remain open questions.
   Familiar people, remembered encounters and continuing threads were assistant
   suggestions in the discussion, not approved features.
+- [?] **N16 · Five verbs, four sizes, and a faction of your own.** Ric,
+  2026-11-13: *"Make sure colonizer thing is in there. I think we should have
+  the ability to make your own clan or whatever they are called as well."*
+  Written up in [`SURVEY-PLAN.md`, "Five verbs, four sizes, and a flag of your
+  own"](SURVEY-PLAN.md#five-verbs-four-sizes-and-a-flag-of-your-own----13-november-2026):
+  the five paths are things you do, several at once; colonizing is the
+  Alone → Foothold → Crew → Power axis under every path, not a sixth path; a
+  player's own faction is the top of it, built on the living world's fourth
+  flag; names like smuggler or bounty hunter are labels the world gives a mix.
+  Nothing built. Proposed order, not yet chosen by Ric: the foothold (one BASE
+  section, the hideout, upgraded with find-only parts), then pirate, trader,
+  soldier and the political side, with your own faction last.
+- [?] **N17 · Things worth going out to get** (proposed 2026-11-13, not
+  approved). Answers Ric's *"nothing worth really going out to get"* and
+  *"there can't be constant flying"*: (1) the best version of each part
+  find-only at one named dangerous site — MK1 bought, MK2 built or found, MK3
+  found only; (2) wormholes as the raid door, about a minute's transit and
+  10–15 minutes inside, home back through the mouth — how destinations are
+  picked today has not been checked; (3) a name, place and line of history for
+  each find-only part, last. Feeds N16's foothold upgrades.
 
 ---
 

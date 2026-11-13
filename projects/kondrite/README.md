@@ -703,6 +703,20 @@ afterwards at 20.5x. Its recipe was not the problem; it was priced above the MK2
 beam at 1,600 for "the cheapest verb in the game", so the shelf price came down
 to 1,100 instead.
 
+### Where it is going: five verbs, four sizes
+
+Not built — the direction, so the next change does not have to rediscover it.
+Ric, 2026-11-13, on the five paths of `SURVEY-PLAN.md`: *"in reality they all
+work within each other you can be multiple at one time it seems"*, and *"I
+think we should have the ability to make your own clan or whatever they are
+called as well."* So: pirate, trader, explorer, soldier and salvager are things
+you do, not modes, and you can be several at once; **colonizing is the Alone →
+Foothold → Crew → Power axis under all of them**, not a sixth path; a faction
+of your own is the top of it, built on the living world's fourth flag; and
+smuggler, bounty hunter and the like are labels the world gives a mix. The
+whole of it is in `SURVEY-PLAN.md`, "Five verbs, four sizes, and a flag of
+your own"; the open items are N16 and N17 in TODO.md.
+
 ### What you fly out in is what you are risking
 
 Ric, 2026-11-13: *"This is seeming somewhat like an extraction shooter in
