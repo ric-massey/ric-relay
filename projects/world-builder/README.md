@@ -21,7 +21,7 @@ The [People sandbox master vision](PEOPLE-VISION.md) records Ric's 2026-11-12 fe
 full direction being refined: individual lives and civilizations, deeper work and relationships,
 communication, clarity, selection, following, control and equipment. It separates stated goals
 from proposed mechanics; its implementation baseline and next-deliverable proposal distinguish
-what has shipped from future direction, including the unresolved long-term timing model.
+what has shipped from future direction, including the shared daily clock and remaining long-term balance work.
 
 | File | What it is |
 |---|---|
@@ -30,9 +30,10 @@ what has shipped from future direction, including the unresolved long-term timin
 | `test/breakup.test.mjs` | Quick physics checks: fracture/shedding, mass, momentum, energy, large bodies, bonds, capacity and repeatable links. Runs in the quick lane of `.github/checks.mjs`. |
 | `people.js` | The people sandbox's engine. No DOM; runs the same in node. |
 | `PEOPLE-VISION.md` | Living master design for the People sandbox; goals, proposals and open questions. |
+| `test/time-food.test.mjs` | Quick clock/food checks: identical timelines through frames/hours/batches, daily rations, children/parents, crop stocks, reserves, aging, imminent elections and inheritance. |
 | `test/equipment.test.mjs` | Quick equipment checks: paid materials, repairs, real harvest/cargo/combat effects, wear, stored/broken items and death salvage. |
 | `test/conversations.test.mjs` | Quick receipt checks: observed effects, a conserved grain transfer, stable IDs and a held record surviving history eviction. |
-| `test/world-builder.test.mjs` | Both engines, headless. Several minutes; in the slow lane of `.github/checks.mjs` (`--only world-builder --slow`) and in `simulations.yml`. |
+| `test/world-builder.test.mjs` | Physics settings/conservation and seven actual days per People preset; `--generations` opts into the retained long-term experiments. These can be very expensive on the real clock; in the slow lane of `.github/checks.mjs` (`--only world-builder --slow`) and in `simulations.yml`. |
 
 No build step and no dependencies. `python3 -m http.server 8912 --bind 127.0.0.1`, then open
 `/projects/world-builder/`.
@@ -42,8 +43,9 @@ No build step and no dependencies. `python3 -m http.server 8912 --bind 127.0.0.1
 1. **Every setting does something.** Each engine exports a `SCHEMA` — the groups, the settings,
    their ranges, the words shown beside a slider (`say`), and which other setting switches one off
    (`when`). The page builds its controls from that list and the engine reads the same keys, so a
-   control cannot exist without an engine behind it. The test walks every setting and fails if
-   changing one leaves the world identical. **To add a setting:** add it to `SCHEMA`, read
+   control cannot exist without an engine behind it. Physics checks and the optional People
+   `--generations` experiments walk every setting; routine People tests check daily mechanisms
+   and bounded presets. A short daily run does not prove an annual mechanism has happened. **To add a setting:** add it to `SCHEMA`, read
    `S.<key>` in the engine, run the test. Nothing in `index.html` changes.
 2. **Nothing is scripted.** This is KONDRITE's rule (Ric: *"it needs to be able to happen through
    the collectives of the people. Nothing forced or faked"*). No function starts a war, a famine
@@ -188,15 +190,63 @@ A map of land that grows food, villages, and a few hundred people who each need 
 "1x should be a 20 minute day" and "the people should move slower"). The visible clock shows
 day, time and year. Pause freezes both activity and calendar; the speed buttons scale both.
 
-Walking and work run five action ticks per simulated real second, at 0.15 tiles per action tick
-(six times slower than the old 30-tick playback). The calendar advances independently: the old
-200 demographic ticks per year remain for eating, aging, elections and other long-term decisions.
-`advance(seconds)` is the page's real-time API; `days` is its elapsed calendar. `step(ticks)` is
-the accelerated headless experiment API: each demographic tick allows eight action ticks, to
-allow the new work and speech pauses during compressed runs. Those experiments test long-term
-rules and settings; they do **not** reproduce the real-time economy, which allows far more activity
-per year. The real-time tests separately check the first day, money, movement and crowded spawns.
-This distinction matters when interpreting a century-long test result.
+### One clock and food measured in days
+
+Reworked 2026-11-12 after Ric asked for food "closer to how food works in real life". The
+implementation choices below make daily need and reserves meaningful, but are a simplified
+simulation, not medical nutrition or a validated agricultural model.
+
+- One food unit is **one adult-day ration**. Adults consume 1 per day in hourly portions.
+  Children's daily need rises linearly from 0.35 at birth to 1 at the adulthood setting. It does
+  not depend on lifespan. Newborns do not create starting supplies: they draw on the household.
+  Food returned on death is removed from the deceased's pockets to avoid feeding children twice.
+  Parents share food while retaining 0.25 ration for themselves; couples
+  and village support keep the existing household rules. Food shopping can be retried after two
+  simulated hours, rather than the old months-long cooldown.
+- A crop tile holds up to **48 rations times its fertility**, replenishing linearly over a
+  **60-day** scale at default richness. Harvests still remove actual stock and are bounded by
+  carrying capacity. These are stocks of ready food, not seasonal planting/growth stages.
+- A person's panel shows daily need and how many days their carried food covers. A village's
+  store estimate divides its food by its actual residents' combined daily needs; personal bags,
+  future harvests and incoming trade are not part of that store-only estimate. One food-price
+  unit now prices one adult-day ration.
+- Hungry hours accumulate and affect health; missing a meal does not cause instant death.
+  `hunger` still controls deterioration. Age, consumption and recovery update hourly. Sickness
+  lasts up to seven days, with the prior per-illness risk spread over those hours; this is a toy
+  illness rule. Spoilage, food variety, water and individual health/energy requirements are not
+  modeled yet.
+
+`advance(seconds)` advances seconds of playback at 1×. `step(hours)` advances simulated hours by
+calling that **same** function. Both run every action: 5 actions per playback second, 250 per
+simulated hour, 6,000 per day. `YEAR` is now **8,760 hourly updates**; it is not a number of walking
+steps. `days` and exchange timestamps read the completed action clock. Summing frame-sized time
+uses compensation so splitting the same elapsed time does not change the world.
+
+Food/aging run hourly; reflection and markets every six hours; village decisions, territorial
+updates, faction decisions and population samples daily. Soldiers receive 1 coin per day if their
+faction can pay; this matches one ration at the fixed default price, not a guarantee that floating
+prices remain affordable. Treasury reserves use a week's wage budget. Fertility probabilities
+are expressed per year and scaled to reflection cadence rather than firing the old annual
+probability four times daily. Terms, lifespan and political cooldowns retain calendar-year units.
+
+The existing speed controls multiply time handed to the same engine; they never select a cheaper
+model or skip consequences. A slow device may run below the requested speed. At 1× a year still
+costs 121 hours 40 minutes of playback; even headless generation-scale runs require all those
+walking/work steps. Optimization, higher-speed design and persistence remain future work.
+
+**Verification changed with the clock.** The old `step()` experiments allowed only eight actions
+per 1/200 year and no longer describe this world. Routine simulations now check seven **actual**
+days per preset, money/state invariants and the visible day/spacing contracts. The quick time/food
+suite compares the complete same-seed state through batched, hourly and frame calls, isolates a
+day's consumption/growth, actual births, and imminent election/death/inheritance boundaries. Original
+multi-year setting and century outcome checks are retained behind `--generations`:
+
+```
+node projects/world-builder/test/world-builder.test.mjs --generations
+```
+
+That is an explicitly expensive experiment, not a CI check that was run for this change. A week
+of stability is not evidence of century-scale balance; earlier century measurements are superseded.
 
 33 settings in eight groups: the land, the people, lives (lifespan, childhood, children, hunger,
 sickness), money (coins or a shared store, inequality, prices, tax, inheritance), minds (talk,

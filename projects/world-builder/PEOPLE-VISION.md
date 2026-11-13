@@ -22,7 +22,7 @@ next features from the vision". This table records implementation, not approval 
 | Understanding actions | Close-up role/activity labels, an activity line in inspection, visible harvesting patches. | Reasons for choices, blocked-action explanations and lasting work sites. |
 | Selecting and following | People list with name search, settlement/faction/job filters, pagination and preserved list position; select and follow on the map; living-family links and either Talk participant selectable. | Bookmarks, durable family histories and navigation to the dead. |
 | Conversation | Real exchanges with a paired reply; named speech bubbles, a connection between participants, a recent Talk list, a held exchange with original context and before/after effects, participant navigation, map location and a short pause while speaking. | Longer interaction sequences, agreements and remembered follow-through. |
-| Pacing and bodies | Twenty-minute days at 1×, slower walking, separate body positions and local avoidance of neighbours. | One consistent time model for daily needs, production and long-term development; reliable navigation through very dense crowds. |
+| Pacing and bodies | Twenty-minute days at 1×; one clock for frames/headless/fast-forward, hourly daily food needs, age-based child rations, reserve estimates, slower walking and body separation. | Long-term balance, faster generation-scale runs, persistence and reliable navigation through very dense crowds. |
 | Work and society | Farming, generic goods, trade, families, leaders, factions, conflict and breakaways. | Seasonal cultivation, buildings, learning and deeper production chains; a first set of useful tools and equipment now exists. |
 | Continuity and control | A running world lives in the current page; copied links reproduce settings. | Saved worlds, durable family histories and player control. |
 
@@ -62,9 +62,17 @@ items in use. The map draws equipped gear and actual trade loads. Generic goods 
 material source; detailed recipes, specialist makers, weapon types and named-item inheritance
 are not implemented.
 
-The next foundation proposed here is consistent simulation time for food, work and long-term
-development (section 14), before seasonal farming and a richer village economy. Multi-step
-agreements and remembered follow-through remain separate social-system work.
+**Delivered on 2026-11-12: a shared clock and daily food.** Ric asked for food "closer to how
+food works in real life". One unit now represents an adult-day ration; consumption happens
+hourly, children's needs grow with age, families share meals and inspection shows days of food.
+Crop stocks replenish on a sixty-day scale. Browser frames, hourly headless calls and batched
+fast-forward produce the same world. Lifespan no longer defines hunger. The README records
+assumptions and cadence choices. This is a simplified food model; variety, spoilage, water,
+seasonal cultivation, long-term balance and generation-scale performance are still future work.
+
+The next proposed village piece is seasonal farming and storage decisions, using this shared
+clock, with planning and a visible reason to maintain reserves. Multi-step agreements and
+remembered follow-through remain separate social-system work.
 
 ## 1. What Ric wants
 
@@ -369,17 +377,23 @@ schedule is still a design question. At that pace, a 365-day year takes about 12
 Watching generations therefore needs a deliberately designed fast-forward experience or a
 continuing saved world. Neither is implemented by merely adding a calendar label.
 
-The current engine separates frequent walking/work/conversation actions from 200 demographic
-updates per year. Its compressed headless experiments also allow a different number of actions
-per year from real-time playback. This is documented in the README; a century in that harness
-is not evidence that the browser's economy will develop the same way.
+The former engine separated frequent actions from 200 demographic updates per year and ran a
+shortened economy in headless experiments. That discrepancy was removed on 2026-11-12. All entry
+points now execute the same walking/work steps, hourly needs and daily decisions. Equivalence
+checks compare full state for the same simulated day. No events are inserted to make that day
+interesting, and fast-forward does not shorten lives or multiply harvests.
 
-Before adding seasonal farming or balancing a civilization economy, propose consistent units
-for meals, harvest yields, production, travel, growth, aging and political terms. Fast-forward
-should advance the same rules as normal observation. Test equivalent elapsed simulated time
-through both entry points. Do not silently shorten lives, increase harvests or schedule events
-just to make an interesting scene appear during a short viewing session. Quantities and any new
-fast-forward controls need an explicit design decision; this paragraph does not choose them.
+The first daily quantities are documented in the README: adult-day rations, age-scaled child
+needs, sixty-day crop-stock replenishment and daily wage units. They are implementation choices
+following Ric's food direction, not claims of medical/agricultural accuracy. Stock replenishment
+is not seasonal cultivation. Before adding crops or storage, decide growth stages, planting labor,
+yields and spoilage using these units.
+
+A real clock makes century-long runs computationally expensive. Routine tests cover bounded
+daily presets and controlled imminent lifecycle/leadership boundaries. Old generation experiments
+remain opt-in and have not validated this new economy. Faster generation-scale observation,
+persistence and long-term balance remain open; do not reintroduce a different simulation to
+make a headless century cheap.
 
 ## 16. Proposed development order
 
@@ -459,4 +473,10 @@ recording conversations must remain observational.
 **2026-11-12 equipment milestone:** implemented the first useful equipment set after Ric's
 "continue". Costs, capacity/damage modifiers and wear rates are initial implementation choices,
 recorded in the README. Checks cover actual transfers and effects, repair costs, inactive/broken
-states, coin conservation and salvage; the century/preset checks still apply to this changed economy.
+states, coin conservation and salvage. At that milestone the compressed-century/preset checks
+still applied; the daily-clock milestone below supersedes that evidence.
+
+**2026-11-12 timing/food milestone:** unified frame, headless-hour and batched advancement; made
+food an hourly-consumed daily supply with age-scaled child needs and store coverage estimates.
+Retained the old long experiments explicitly, replacing routine compressed-century claims with
+same-world parity and seven actual days per preset. Long-term balance remains unmeasured.

@@ -475,8 +475,8 @@ nobody had linked was a page nobody could find.
   features or an instruction to implement everything at once. Its current-state table records
   the shipped readability pass and searchable People browser with living-family navigation;
   the held conversation inspector and its before/after receipts have also shipped, followed by
-  the first equipment set. Specialist production, multi-step agreements and the timing redesign
-  remain future work. Conversation records surround
+  the first equipment set. Specialist production and multi-step agreements remain future work;
+  the shared daily clock and food foundation now follow the equipment milestone. Conversation records surround
   the entire interaction, since several branches change state after speaking; do not infer an
   outcome from a dialogue type or move those effects into the renderer. The quick checks are in
   `projects/world-builder/test/conversations.test.mjs` and `.github/checks.mjs`. Read the vision before planning further milestones.
@@ -489,13 +489,17 @@ nobody had linked was a page nobody could find.
   records costs, effects, wear and salvage; detailed production chains remain future work.
   **People playback changed on 2026-11-12:** Ric: "1x should be a 20 minute day", "the
   people should move slower", and "they shouldnt" walk inside each other. `advance(seconds)`
-  separates five activity ticks per second from the 200 demographic ticks per year; 365 days
-  make a year. Do not restore the old thirty-ticks-per-second yearly playback. Human figures,
-  plain role/activity labels, harvesting patches and conversation links explain what is happening;
-  a spatial hash keeps bodies 0.42 tiles apart. `step(ticks)` remains a compressed headless
-  experiment (eight actions per demographic tick), not a reproduction of the real-time economy;
-  the nearest README explains that limitation. The existing World Builder suite also checks
-  the real-time day and spacing.
+  uses five activity ticks per second at 1×, with hourly needs/aging updates and 365 days per
+  year. `step(hours)` delegates to that same engine, not a shortened annual economy. A food unit
+  is an adult-day ration; child needs grow with age and households share food. This followed
+  Ric's "closer to how food works in real life" on 2026-11-12. The README records the simplified
+  nutrition, sixty-day crop-stock replenishment and all cadences. Never restore the old 200-tick
+  year or eight-actions-per-demographic-update experiment: its numbers do not describe this
+  economy. `test/time-food.test.mjs` checks same-world parity through frames, hours and batches,
+  plus food/age/store/household behavior. Routine simulations run seven actual days per preset;
+  old generation-scale experiments remain explicit `--generations` work and are not a claim of
+  validated long-term balance. Plain role/activity labels, harvesting patches and conversation
+  links explain what is happening; a spatial hash keeps bodies 0.42 tiles apart.
   **Physics numbers are typed as well as slid** (Ric, 2026-11-12: "you can type one",
   after pushing a particle above a billion). Sliders keep their convenient sweeps; actual
   numeric limits live on `SCHEMA.inputMin` / `inputMax` and `clean()` uses those for typed
@@ -1445,7 +1449,8 @@ node projects/kondrite/test/campaign.js   # headless play-through of all three m
 node worker/test.mjs     # worker rules: auth, strava, media, todo, movies
 node projects/climbing/test/parse-parity.js  # build-data.py and climb-parse.js agree
 node projects/universe/lab-check.mjs      # the universe Lab: seam, books, seeds (~30s)
-node projects/world-builder/test/world-builder.test.mjs   # both sandboxes: every setting live (several minutes)
+node projects/world-builder/test/world-builder.test.mjs   # physics settings + seven actual days per People preset
+node projects/world-builder/test/time-food.test.mjs       # daily rations and identical frame/hour/batch timelines
 node projects/world-builder/test/breakup.test.mjs         # fracture/shedding: mass, momentum, energy and capacity (quick)
 node projects/world-builder/test/world-builder.test.mjs --physics  # physics settings, presets and conservation only
 for t in projects/offramp/test/*.test.js; do node "$t" || break; done

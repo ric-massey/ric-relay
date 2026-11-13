@@ -696,7 +696,9 @@
   /* ── the loop ──────────────────────────────────────────────────────────── */
   function frame(now) {
     raf = requestAnimationFrame(frame);
-    const real = Math.min(0.1, (now - last) / 1000); last = now;
+    // RAF timestamps mark the frame start and can precede a startup/visibility
+    // performance.now() sample within that frame. Never send negative time.
+    const real = Math.max(0, Math.min(0.1, (now - last) / 1000)); last = now;
     holdTool(real);
     if (!paused) {
       const t0 = performance.now();
@@ -809,7 +811,7 @@
       /* Dry tan to green by how well it grows, paler where it has been
          harvested, and washed with the colour of whoever holds it. */
       let c = mix([92, 80, 58], [52, 104, 62], f);
-      const full = f > 0 ? Math.min(1, w.stock[i] / (f * 3.2)) : 1;
+      const full = f > 0 ? Math.min(1, w.stock[i] / (f * w.tileCapacity)) : 1;
       c = mix(mix(c, [120, 108, 80], 0.5), c, full);
       if (w.ore[i] > 0.55) c = mix(c, [96, 96, 104], (w.ore[i] - 0.55) * 1.2);
       c = mix(c, [10, 14, 16], 0.42);
@@ -1189,7 +1191,7 @@
     if (tab === "news") {
       const list = w.events.slice(-80).reverse();
       if (!list.length) return "<p class='small'>Nothing has happened yet that anybody would remember.</p>";
-      return list.map(e => "<button class='item" + (e.weight >= 3.5 ? " big" : "") + "' data-go='at:" + e.x + ":" + e.y + "'><span class='yr'>Year " + e.year + "</span>" + esc(e.text) + "</button>").join("");
+      return list.map(e => "<button class='item" + (e.weight >= 3.5 ? " big" : "") + "' data-go='at:" + e.x + ":" + e.y + "'><span class='yr'>Year " + (e.year + 1) + "</span>" + esc(e.text) + "</button>").join("");
     }
     if (tab === "talk") {
       if (selectedExchange) return exchangePane(selectedExchange);
@@ -1205,9 +1207,9 @@
         const v = w.villages[picked.village];
         return "<h3>" + esc(v.name) + "</h3><p>" + fname(v.f) + (v.alive ? "" : " — abandoned") + "</p><dl class='kv'>" +
           "<dt>People</dt><dd>" + v.pop + "</dd><dt>Going hungry</dt><dd>" + v.hungry + "</dd><dt>Sick</dt><dd>" + v.sick + "</dd>" +
-          "<dt>Food in the store</dt><dd>" + num(v.food, 0) + "</dd><dt>Goods</dt><dd>" + num(v.goods, 0) + "</dd>" +
-          (w.settings.money === "coins" ? "<dt>Price of grain</dt><dd>" + num(v.priceFood, 2) + "</dd><dt>Coins in the till</dt><dd>" + num(v.till, 0) + "</dd>" : "") +
-          "<dt>Loyalty</dt><dd>" + Math.round(v.loyal * 100) + "%</dd><dt>Founded</dt><dd>year " + Math.floor(v.founded / Y) + "</dd></dl>" +
+          "<dt>Food in the store</dt><dd>" + num(v.food, 1) + " rations</dd><dt>Store covers</dt><dd>" + num(w.storeDays(v), 1) + " days</dd><dt>Goods</dt><dd>" + num(v.goods, 0) + "</dd>" +
+          (w.settings.money === "coins" ? "<dt>Price per ration</dt><dd>" + num(v.priceFood, 2) + "</dd><dt>Coins in the till</dt><dd>" + num(v.till, 0) + "</dd>" : "") +
+          "<dt>Loyalty</dt><dd>" + Math.round(v.loyal * 100) + "%</dd><dt>Founded</dt><dd>year " + (Math.floor(v.founded / Y) + 1) + "</dd></dl><p class='small'>A ration supplies one adult for one day. Store coverage uses residents’ current needs; carried food and future harvests are separate.</p>" +
           (v.siege > 0 ? "<p class='fac'><span class='war'>Enemy soldiers are at the walls and nobody is defending it.</span></p>" : "");
       }
       const p = picked && picked.person ? w.byId.get(picked.person) : null;
@@ -1230,7 +1232,8 @@
         "<p class='small'>" + (w.leans(p) === "share" ? "Believes what is grown should be shared out." : w.leans(p) === "keep" ? "Believes each should keep what they grow." : "Sees both sides of the argument.") +
         (p.hungry > 0 ? " <span style='color:var(--warn)'>Going hungry.</span>" : "") + (p.sick > 0 ? " <span style='color:var(--warn)'>Sick.</span>" : "") + "</p>" +
         "<div class='bars'>" + bar("Mood", p.mood) + bar("Loyalty", p.loyal) + bar("Bold", p.bold) + bar("Kind", p.warm) + "</div>" +
-        "<dl class='kv'><dt>Food carried</dt><dd>" + num(p.food, 1) + "</dd>" + (w.settings.money === "coins" ? "<dt>Coins</dt><dd>" + num(p.coins, 1) + "</dd>" : "") +
+        "<p class='small'>One ration supplies an adult for one day. Children’s needs rise as they grow.</p>" +
+        "<dl class='kv'><dt>Food carried</dt><dd>" + num(p.food, 2) + " rations</dd><dt>Daily need</dt><dd>" + num(w.dailyNeed(p), 2) + " rations</dd><dt>Carried food covers</dt><dd>" + num(p.food / w.dailyNeed(p), 1) + " days</dd>" + (w.settings.money === "coins" ? "<dt>Coins</dt><dd>" + num(p.coins, 1) + "</dd>" : "") +
         "<dt>Loose goods</dt><dd>" + num(p.goods, 2) + "</dd><dt>Children</dt><dd>" + p.kids + "</dd></dl>" + equipmentPane(p) +
         (listener ? "<p>Talking to " + familyLink(listener.id) + "</p>" : "") +
         "<h3>Family</h3>" +
@@ -1242,12 +1245,12 @@
         (p.say ? "<p class='small'>Last said: “" + esc(p.say) + "”</p>" : "") +
         "<button class='btn' data-go='follow' aria-pressed='" + follow + "'>" + (follow ? "Following" : "Follow") + "</button>";
     }
-    const rows = [["People alive", st.people], ["Average age", num(st.meanAge, 0)], ["Villages", st.villages], ["Factions", st.factions], ["Wars going on", st.atWar],
+    const rows = [["People alive", st.people], ["Daily food need (adult-day rations)", num(w.people.reduce((sum,p) => sum + w.dailyNeed(p), 0), 1)], ["Food in village stores (rations)", num(w.villages.reduce((sum,v) => sum + v.food, 0), 1)], ["Average age", num(st.meanAge, 0)], ["Villages", st.villages], ["Factions", st.factions], ["Wars going on", st.atWar],
       ["Born", st.births], ["Died of old age", st.old], ["Starved", st.starved], ["Killed in battle", st.battle], ["Died of sickness", st.sick],
       ["Conversations", st.talks], ["Changed faction", st.switched], ["Thefts", st.thefts],
       ["Wars started", st.wars], ["Peaces made", st.peaces], ["Villages taken", st.captures], ["Villages founded", st.founded], ["Breakaways", st.secessions], ["Votes held", st.elections], ["Factions fallen", st.fallen]];
     if (w.settings.money === "coins") rows.push(["Coins in the world", num(st.money, 0)], ["Held by the richest tenth", Math.round(st.topShare * 100) + "%"]);
-    return "<h3>Since year 0</h3><dl class='kv'>" + rows.map(r => "<dt>" + r[0] + "</dt><dd>" + (typeof r[1] === "number" ? r[1].toLocaleString("en-US") : r[1]) + "</dd>").join("") + "</dl>" +
+    return "<h3>Since this world began</h3><dl class='kv'>" + rows.map(r => "<dt>" + r[0] + "</dt><dd>" + (typeof r[1] === "number" ? r[1].toLocaleString("en-US") : r[1]) + "</dd>").join("") + "</dl>" +
       "<p class='small'>Figures are people; small figures are children; a white ring is a leader. Colour follows the selected colour view. Gold lines join conversation partners. Tap a person to zoom in: their role and current activity appear beside them. Squares are villages; outlined crop patches show harvesting. At 1× a day takes twenty minutes.</p>";
   }
   /* Each faction's head count, stacked, since the world began. */

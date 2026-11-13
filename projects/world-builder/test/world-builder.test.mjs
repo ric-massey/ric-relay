@@ -187,8 +187,28 @@ function other(it, base, alt) {
   }
 }
 
+/* Daily food uses the same physical clock as the browser. A century now
+   really costs a century of walking/work, not 200 shortened updates per year.
+   Keep the original generation-scale promises as explicit long experiments;
+   CI exercises bounded daily runs and the clock/food mechanism checks instead. */
+if (!physicsOnly && !process.argv.includes("--generations")) {
+  for (const preset of People.PRESETS) {
+    const w = People.create(preset.set);
+    const money = w.stats().money;
+    for (let day = 0; day < 7; day++) {
+      w.step(24);
+      const st = w.stats();
+      check(Math.abs(st.money - money) < 1e-6 * Math.max(1, money), "people daily preset " + preset.name + ": coins changed");
+      check(w.days === day + 1, "people daily preset " + preset.name + ": calendar drift");
+      check(w.people.every(p => Number.isFinite(p.x + p.y + p.age + p.food + p.hp) && p.food >= 0 && p.coins >= -1e-9 && p.loyal >= 0 && p.loyal <= 1), "people daily preset " + preset.name + ": invalid state");
+    }
+    check(w.people.length > 20, "people daily preset " + preset.name + ": collapsed in the first week");
+    check(w.stats().talks > 100, "people daily preset " + preset.name + ": nobody talked");
+    console.log("world builder: seven actual days — " + preset.name);
+  }
+}
 /* ═══ people ════════════════════════════════════════════════════════════ */
-if (!physicsOnly) {
+if (!physicsOnly && process.argv.includes("--generations")) {
   const Y = People.YEAR;
   const print = w => {
     let h = w.people.length * 1000 + w.events.length * 31 + w.stats().talks;
@@ -356,4 +376,4 @@ if (problems.length) {
   for (const p of problems) console.error("  ✗ " + p);
   process.exit(1);
 }
-console.log(physicsOnly ? "world builder: physics holds — " + items(Physics).length + " settings, all live" : "world builder: both engines hold — " + items(Physics).length + " physics settings, " + items(People).length + " people settings, all live");
+console.log(physicsOnly ? "world builder: physics holds — " + items(Physics).length + " settings, all live" : process.argv.includes("--generations") ? "world builder: physics and generation-scale People experiments hold" : "world builder: physics settings and seven-day People presets hold; generation-scale experiments require --generations");

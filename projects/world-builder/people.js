@@ -29,7 +29,12 @@
   "use strict";
 
   const DAY_SECONDS = 1200;         // Ric, 2026-11-12: a day at 1× takes twenty minutes
-  const YEAR = 200;                 // ticks in a year
+  const DAY_HOURS = 24;
+  const YEAR = 365 * DAY_HOURS;     // hourly updates, independently of lifespan
+  const HOUR_SECONDS = DAY_SECONDS / DAY_HOURS;
+  const ACTIONS_PER_HOUR = HOUR_SECONDS * 5;
+  const REFLECT_HOURS = 6;
+  const ILLNESS_HOURS = 7 * DAY_HOURS;
   const pct = v => Math.round(v * 100) + "%";
   const scale = (words) => v => words[Math.min(words.length - 1, Math.floor(v * words.length))];
 
@@ -185,12 +190,12 @@
 
   /* How fast things happen, per tick. Kept together so the one place a number
      is tuned is the one place it is written. */
-  const EAT = 2 / YEAR;             // food one person eats
+  const EAT = 1 / DAY_HOURS;        // adult-day rations consumed per hour
   const WALK = 0.15;                // tiles walked
   const CARRY = 3.6;                // food one trip to the fields brings back
-  const TILE_CAP = 3.2;             // food a perfect field holds
-  const REGROW = TILE_CAP / 130;    // and how fast it comes back
-  const WAGE = 0.2;                 // coins a soldier is paid, every twenty ticks
+  const TILE_CAP = 48;             // food a perfect field holds
+  const REGROW = TILE_CAP / (60 * DAY_HOURS);    // and how fast it comes back
+  const WAGE = 1;                   // coins per day; default fixed-price daily food costs 1
   // Equipment uses the existing goods economy. Costs are goods converted into
   // the item, not coins minted or a second resource appearing from nowhere.
   const GEAR = {
@@ -215,12 +220,17 @@
     const events = [], chatter = [], history = [];
     const count = { births: 0, old: 0, starved: 0, battle: 0, sick: 0, talks: 0, switched: 0, moved: 0,
                     wars: 0, peaces: 0, secessions: 0, elections: 0, captures: 0, founded: 0, fallen: 0, thefts: 0, minted: 0 };
-    let t = 0, nextId = 1, nextExchange = 1, usedNames = new Set();
+    let t = 0, activityTicks = 0, nextId = 1, nextExchange = 1, usedNames = new Set();
 
     const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
     const pick = a => a[Math.floor(R() * a.length)];
     const tileAt = (x, y) => clamp(Math.floor(y), 0, rows - 1) * cols + clamp(Math.floor(x), 0, cols - 1);
-    const year = () => t / YEAR;
+    const year = () => activityTicks / ACTIONS_PER_HOUR / YEAR;
+    const dailyNeed = p => adult(p) ? 1 : 0.35 + 0.65 * clamp(p.age / S.grown, 0, 1);
+    const storeDays = v => {
+      let need = 0; for (const p of people) if (p.home === v.id && p.hp !== -99) need += dailyNeed(p);
+      return need > 0 ? v.food / need : 0;
+    };
 
     function word(parts) {
       let s = "";
@@ -289,6 +299,9 @@
                   talk: Math.floor(R() * 40), say: "", sayT: 0, talkingTo: 0, cargo: null, hungry: 0, news: -1, sick: 0, immune: false,
                   unpaid: 0, hit: 0, from: v.f, ate: -999, at: v.id };
       if (mum && dad) {
+        // Starting supplies belong to world setup, not to each new birth.
+        // A newborn is fed from the same household/store as other children.
+        p.food = 0;
         p.bold = clamp((mum.bold + dad.bold) / 2 + (R() - 0.5) * 0.3, 0, 1);
         p.warm = clamp((mum.warm + dad.warm) / 2 + (R() - 0.5) * 0.3, 0, 1);
         p.greed = clamp((mum.greed + dad.greed) / 2 + (R() - 0.5) * 0.3, 0, 1);
@@ -566,7 +579,7 @@
          once, and then gets on with it, so a village with nothing to give does
          not hold its farmers at the door. */
       if (p.task === "eat") { shop(p, v); p.task = "idle"; p.wait = 2; return; }
-      if (p.food < 0.4 && adult(p) && !p.cargo && t - p.ate > 60) {
+      if (p.food < 0.4 && adult(p) && !p.cargo && t - p.ate >= 2) {
         p.ate = t; go(p, v.x + (R() - 0.5), v.y + (R() - 0.5), "eat"); p.wait = 0; return;
       }
       if (p.job === "farmer") {
@@ -718,6 +731,7 @@
       const v = villages[p.home], f = factions[p.f];
       if (p.cargo) { if (p.cargo.what === "food") v.food += p.cargo.amount; else v.goods += p.cargo.amount; }
       v.food += p.food; v.goods += p.goods;
+      p.food = 0; p.goods = 0; p.cargo = null;
       // Remaining usable material returns to the village; worn material is gone.
       for (const [key, condition] of Object.entries(p.gear)) v.goods += GEAR[key].cost * condition;
       p.gear = {};
@@ -810,7 +824,7 @@
     function said(a, b, kind, la, lb) {
       a.say = la; a.sayT = 30; b.say = lb || ""; b.sayT = 30;
       a.talkingTo = b.id; b.talkingTo = a.id;
-      chatter.push({ id: nextExchange++, day: Math.max(elapsed / DAY_SECONDS, t / YEAR * 365), t: t, kind: kind, a: a.id, b: b.id, an: a.name, bn: b.name, fa: a.f, fb: b.f, la: la, lb: lb || "", x: a.x, y: a.y });
+      chatter.push({ id: nextExchange++, day: activityTicks / ACTIONS_PER_HOUR / DAY_HOURS, t: t, kind: kind, a: a.id, b: b.id, an: a.name, bn: b.name, fa: a.f, fb: b.f, la: la, lb: lb || "", x: a.x, y: a.y });
       if (chatter.length > 160) chatter.splice(0, chatter.length - 160);
     }
     function kin(a, b) {
@@ -861,8 +875,8 @@
       const like = 1 - Math.abs(a.views - b.views);          // 1 agree … −1 opposite
       const open = 1 - S.stubborn;
       /* Sickness goes where talk goes. */
-      if (a.sick > 0 && !b.immune && b.sick === 0 && R() < 0.35) b.sick = 70;
-      if (b.sick > 0 && !a.immune && a.sick === 0 && R() < 0.35) a.sick = 70;
+      if (a.sick > 0 && !b.immune && b.sick === 0 && R() < 0.35) b.sick = ILLNESS_HOURS;
+      if (b.sick > 0 && !a.immune && a.sick === 0 && R() < 0.35) a.sick = ILLNESS_HOURS;
 
       /* 1 — somebody is hungry and the other has food. */
       const hungry = a.hungry > 0 ? a : b.hungry > 0 ? b : null;
@@ -998,7 +1012,7 @@
       p.age += 1 / YEAR;
 
       /* Eating. A child eats from whichever parent has food before it goes hungry. */
-      p.food -= adult(p) ? EAT : EAT * 0.6;
+      p.food -= EAT * dailyNeed(p);
       if (p.food < 0) {
         p.food = 0;
         let fed = false;
@@ -1006,7 +1020,10 @@
           /* Whichever parent has more. */
           const m1 = byId.get(p.mum), d1 = byId.get(p.dad);
           const par = m1 && d1 ? (m1.food >= d1.food ? m1 : d1) : (m1 || d1);
-          if (par && par.food > EAT * 30) { par.food -= EAT * 30; p.food += EAT * 30; fed = true; }
+          if (par && par.food > 0.25) {
+            const share = Math.min(0.5, par.food - 0.25);
+            par.food -= share; p.food += share; fed = true;
+          }
         } else {
           /* And a couple eats from one pot. */
           const mate = byId.get(p.partner);
@@ -1026,7 +1043,7 @@
       if (p.goods > 0) p.goods = Math.max(0, p.goods - 1 / (YEAR * 1.5));
       if (p.sick > 0) {
         p.sick--;
-        if (R() < 0.0035) { die(p, "sick"); return; }
+        if (R() < 0.0035 * 70 / ILLNESS_HOURS) { die(p, "sick"); return; }
         if (p.sick === 0) p.immune = true;
       }
       if (p.hp <= 0) { die(p, "starved"); return; }
@@ -1140,7 +1157,7 @@
       }
     }
 
-    /* ── slower things: once every so often per person ─────────────────── */
+    /* ── slower things: every six simulated hours per person ─────────────────── */
     function reflect(p) {
       const v = villages[p.home], f = factions[p.f];
       const anyWar = Object.keys(f.rel).some(k => f.rel[k].war);
@@ -1160,11 +1177,11 @@
 
       if (!adult(p)) return;
       /* Wages. */
-      if (p.job === "soldier" && !shared) {
+      if (p.job === "soldier" && !shared && t % DAY_HOURS === 0) {
         if (f.treasury >= WAGE) { f.treasury -= WAGE; p.coins += WAGE; p.unpaid = Math.max(0, p.unpaid - 1); }
         else if (++p.unpaid > 6 && !anyWar) { p.job = "farmer"; p.unpaid = 0; p.task = "idle"; }
       }
-      if (lead === p && !shared && f.treasury >= 0.3) { f.treasury -= 0.3; p.coins += 0.3; }
+      if (lead === p && !shared && t % DAY_HOURS === 0 && f.treasury >= 0.3) { f.treasury -= 0.3; p.coins += 0.3; }
       /* Starving people do something about it: steal if they are bold, and
          go somewhere better if there is somewhere. */
       /* Nobody keeps making pots while they starve. */
@@ -1202,10 +1219,11 @@
       if (mate && p.id < mate.id && mate.home === p.home && S.births > 0 && people.length < 3000 &&
           p.age < p.dieAt * 0.7 && mate.age < mate.dieAt * 0.7 && p.food > 0.5 && mate.food > 0.5 && p.hungry === 0) {
         const room = clamp(1.6 - v.pop / (S.crowd * 1.6), 0.15, 1) * (v.hungry > v.pop * 0.15 ? 0.3 : 1);
-        /* Scaled to how long they have: a short-lived people has its children
-           quickly, so the setting means the same number of them either way. */
+        /* This is a rate per calendar year, scaled to the six-hour reflection
+           cadence. Changing update frequency must not multiply fertility.
+           Short-lived settings still compress their reproductive span. */
         const span = Math.max(3, S.life * 0.7 - S.grown);
-        if (R() < S.births * 1.4 * room / span / (1 + p.kids * 0.12)) {
+        if (R() < S.births * 14 * (REFLECT_HOURS / YEAR) * room / span / (1 + p.kids * 0.12)) {
           const c = newPerson(v, 0, p, mate);
           c.x = p.x; c.y = p.y; c.from = p.f; c.f = p.f;
           p.kids++; mate.kids++; count.births++;
@@ -1213,7 +1231,7 @@
         }
       }
       /* Now and then, think again about what to do for a living. */
-      if (R() < 0.03 && p.job !== "soldier" && !p.cargo && p.id !== f.leader) {
+      if (R() < 1 - Math.pow(0.97, 10 * REFLECT_HOURS / YEAR) && p.job !== "soldier" && !p.cargo && p.id !== f.leader) {
         const was = p.job; p.job = chooseJob(p);
         if (p.job !== was) { p.task = "idle"; p.at = p.home; }
       }
@@ -1242,9 +1260,9 @@
       const odds = S.plague === "none" ? 0 : S.plague === "rare" ? 0.004 : 0.02;
       if (v.sick === 0 && R() < odds) {
         const here = people.filter(p => p.home === v.id && !p.immune);
-        if (here.length > 8) { pick(here).sick = 70; note("sick", "A sickness has started in " + v.name + ".", 2, v.x, v.y, v.f); }
+        if (here.length > 8) { pick(here).sick = ILLNESS_HOURS; note("sick", "A sickness has started in " + v.name + ".", 2, v.x, v.y, v.f); }
       }
-      if (v.hungry > v.pop * 0.4 && v.pop > 8 && (v.famine || 0) < t - YEAR * 3) {
+      if (v.hungry > v.pop * 0.4 && v.pop > 8 && (!v.famine || t - v.famine >= 30 * DAY_HOURS)) {
         v.famine = t; note("famine", v.name + " is starving.", 2.5, v.x, v.y, v.f);
       }
       /* Under the walls: soldiers of a faction at war with this one, and
@@ -1425,7 +1443,7 @@
       if (!shared) {
         /* A leader drifts from the tax the world was set up with only as far
            as paying the soldiers demands, and comes back when it does not. */
-        const wages = f.soldiers * WAGE * (YEAR / 20) / 4;
+        const wages = f.soldiers * WAGE * 7;
         if (f.treasury < wages && f.tax < 0.6) f.tax = Math.min(0.6, f.tax + 0.02);
         else if (f.treasury > wages * 3 + f.pop * 0.5 && f.tax > S.tax * 0.5) f.tax = Math.max(S.tax * 0.5, f.tax - 0.02);
         /* A leader who believes in sharing feeds anybody who cannot pay; one
@@ -1475,7 +1493,7 @@
     }
 
     /* ── the tick ──────────────────────────────────────────────────────── */
-    function tick(actions = true) {
+    function hour() {
       t++;
       for (let i = 0; i < tiles; i++) {
         const cap = fert[i] * TILE_CAP;
@@ -1487,46 +1505,47 @@
         const p = people[i];
         if (p.hp === -99) continue;
         live(p);
-        if (p.hp !== -99 && (p.id + t) % 20 === 0) reflect(p);
+        if (p.hp !== -99 && t % REFLECT_HOURS === 0) reflect(p);
       }
-      if (actions) for (let i = 0; i < 8; i++) actionTick();
       /* The dead leave the list. */
       let dead = false;
       for (const p of people) if (p.hp === -99) { dead = true; byId.delete(p.id); placed.delete(p.id); }
       if (dead) { let w = 0; for (let i = 0; i < people.length; i++) if (people[i].hp !== -99) people[w++] = people[i]; people.length = w; }
 
-      if (t % 10 === 0) {
+      if (t % REFLECT_HOURS === 0) {
         census();
-        for (const v of villages) if (v.alive) { market(v); villageTurn(v); }
+        for (const v of villages) if (v.alive) { market(v); if (t % DAY_HOURS === 0) villageTurn(v); }
         /* The newest thing that happened is known first where it happened. */
         if (events.length) {
           const e = events[events.length - 1];
-          if (e.t > t - 10) for (const p of people) if (p.news < e.id && (p.f === e.f || Math.hypot(p.x - e.x, p.y - e.y) < 6)) { if (R() < 0.3) p.news = e.id; }
+          if (e.t > t - REFLECT_HOURS) for (const p of people) if (p.news < e.id && (p.f === e.f || Math.hypot(p.x - e.x, p.y - e.y) < 6)) { if (R() < 0.3) p.news = e.id; }
         }
       }
-      if (t % 50 === 0) {
+      if (t % DAY_HOURS === 0) {
         territory();
         for (const f of factions) if (f.alive) {
           if (f.pop === 0) { fall(f, -1); continue; }
           decide(f);
         }
       }
-      if (t % (YEAR / 2) === 0) sample();
+      if (t % DAY_HOURS === 0) sample();
     }
 
-    // Calendar and activity have separate clocks: a walk must not wait for an aging tick.
-    // Headless step retains its coarse yearly experiment clock; the page uses advance.
-    let elapsed = 0, activityOwed = 0, calendarOwed = 0;
+    // One exact activity clock for the page, fast-forward and headless runs.
+    // step() accepts simulated hours; advance() accepts seconds at 1×. Neither
+    // skips walking, exchanges, consumption or hourly updates at higher speed.
+    let elapsed = 0, compensation = 0;
     function advance(seconds) {
-      elapsed += seconds;
-      activityOwed += seconds * 5;
-      while (activityOwed >= 1) {
-        calendarOwed += YEAR / (365 * DAY_SECONDS * 5);
-        while (calendarOwed >= 1) { tick(false); calendarOwed--; }
-        actionTick(); activityOwed--;
+      if (!Number.isFinite(seconds) || seconds < 0) throw new RangeError("Time must be a finite nonnegative number of seconds.");
+      const add = seconds - compensation, next = elapsed + add;
+      compensation = (next - elapsed) - add; elapsed = next;
+      const target = Math.floor(elapsed * 5 + 1e-8);
+      while (activityTicks < target) {
+        activityTicks++; actionTick();
+        if (activityTicks % ACTIONS_PER_HOUR === 0) hour();
       }
     }
-    function step(ticks) { for (let i = 0; i < ticks; i++) tick(); }
+    function step(hours = 1) { advance(hours * HOUR_SECONDS); }
 
     function stats() {
       let age = 0, coins = 0, richest = 0, wars = 0;
@@ -1553,17 +1572,18 @@
 
     actionTick();
     return {
-      settings: S, cols: cols, rows: rows, YEAR: YEAR,
+      settings: S, cols: cols, rows: rows, YEAR: YEAR, tileCapacity: TILE_CAP,
       fert: fert, ore: ore, stock: stock, owner: owner,
       people: people, byId: byId, villages: villages, factions: factions,
       events: events, chatter: chatter, history: history,
-      step: step, advance: advance, activity: activity, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
+      step: step, advance: advance, activity: activity, dailyNeed, storeDays, equipment, outfit, harvestCapacity, tradeCapacity, craftOutput, strike, stats: stats, at: at, adult: adult, leans: leans, atWar: atWar,
       get tick() { return t; },
-      get days() { return elapsed / DAY_SECONDS; },
+      get days() { return activityTicks / ACTIONS_PER_HOUR / DAY_HOURS; },
+      get activityTicks() { return activityTicks; },
       get sceneTick() { return sceneTick; },
       set: function (k, v) { const next = clean(Object.assign({}, S, { [k]: v })); S[k] = next[k]; },
     };
   }
 
-  return { SCHEMA: SCHEMA, DEFAULTS: DEFAULTS, PRESETS: PRESETS, YEAR: YEAR, DAY_SECONDS: DAY_SECONDS, clean: clean, create: create };
+  return { SCHEMA: SCHEMA, DEFAULTS: DEFAULTS, PRESETS: PRESETS, YEAR: YEAR, DAY_SECONDS: DAY_SECONDS, HOUR_SECONDS, DAY_HOURS, clean: clean, create: create };
 });
