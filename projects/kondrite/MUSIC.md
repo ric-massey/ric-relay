@@ -1,79 +1,125 @@
 # KONDRITE — music
 
-**Status:** a proposal, written 2026-11-13. Nothing in it is built. It answers Ric's
-question, *"What type of music would be good for this game?"*, after he said he wants
-some music and isn't sure what kind yet.
+**Status:** a proposal, written 2026-11-13 and revised the same day. Nothing in it is
+built. It answers Ric's question, *"What type of music would be good for this game?"*
 
-**Read with:** `SOUND-DESIGN.md`. Music has to fit inside that design, not on top of it,
-so this file keeps to its rules: ultra realistic, nothing speaks, regions are noticed and
-never named, and the Long Empty stays empty.
+**The revision.** The first version recommended rare music with long silences, on the
+argument that Minecraft does it. Ric: *"Minecraft plays almost all the time. Most games
+like this the music is constant with few pauses. Do your research on music in video
+games."* The research (§3) bears him out. Minecraft's default does leave 10–20 minutes
+between tracks, but players wanted more badly enough that Mojang added a Constant setting
+in 2025. Music measurably raises immersion, and what makes players turn it off is
+repetition, not how often it plays. So this version recommends **near-constant music,
+built so it doesn't wear out.**
+
+**Read with:** `SOUND-DESIGN.md`. Music sits inside that design: ultra realistic,
+nothing speaks, regions noticed and never named, and warnings come first.
 
 ## Contents
 
 1. [The short answer](#1-the-short-answer)
 2. [What this game asks of music](#2-what-this-game-asks-of-music)
-3. [How other games solved it](#3-how-other-games-solved-it)
+3. [What the research says](#3-what-the-research-says)
 4. [The options](#4-the-options)
 5. [The recommendation](#5-the-recommendation)
 6. [The sound of it](#6-the-sound-of-it)
-7. [When music plays, and when it must not](#7-when-music-plays-and-when-it-must-not)
-8. [Where the music comes from](#8-where-the-music-comes-from)
-9. [Questions for Ric](#9-questions-for-ric)
-10. [Sources](#10-sources)
+7. [When it plays](#7-when-it-plays)
+8. [Keeping constant music from wearing out](#8-keeping-constant-music-from-wearing-out)
+9. [Where the music comes from](#9-where-the-music-comes-from)
+10. [Questions for Ric](#10-questions-for-ric)
+11. [Sources](#11-sources)
 
 ---
 
 ## 1. The short answer
 
-**Sparse, slow ambient music, made from real instruments and old analogue synthesizers,
-heard rarely and always for a reason, around one melody that belongs to your station.**
+**A near-constant, adaptive ambient score, made from real instruments and old analogue
+synthesizers, that follows what you are doing and where you are, built around one
+melody that belongs to your station.**
 
-In one line of references: the mood of Brian Eno's *Apollo*, the restraint of
-*Minecraft* and *Breath of the Wild*, and the home-made warmth of *Outer Wilds*.
+- **Almost always playing**, with short breaths between pieces, the way most games in
+  this genre do it and players ask for.
+- **Adaptive in layers:** calm when you are flying, a pulse and percussion when
+  something is shooting at you, fuller when you come home.
+- **Shaded by where you are,** the way the starfield is tinted, without ever becoming a
+  region's named theme.
+- **About getting home:** your station's theme is as broken as the station, and gains an
+  instrument with each part you bring home. Fragments of it run through everything else.
 
-**Not** a constant score, not epic trailer orchestra, not EDM, and not chiptune (except in
-the arcade cabinets, where it belongs).
-
-The idea at the centre of it: **your station's theme is as broken as your station.** When
-you start, it is one instrument playing thinly. Each part you bring home adds an
-instrument, until all six play together. Out in the dark, fragments of that melody come
-back to you, so the music is always quietly about getting home.
+The mood: Brian Eno's *Apollo*, the organ of *Interstellar*, the home-made warmth of
+*Outer Wilds*, and the endless, responsive score of *No Man's Sky*. Not epic trailer
+orchestra, not EDM, and chiptune only in the arcade cabinets.
 
 ---
 
 ## 2. What this game asks of music
 
-What Survey is decides what its music can be:
-
 | What the game is | What that asks of the music |
 |---|---|
-| **Long.** A sector is hours; Ric watched people play for half an hour before the hours after it became the game | anything that repeats will be heard hundreds of times. Constant music would be the first thing players turn off |
-| **Mostly calm, occasionally deadly.** Nothing hunts you, but guarded caches, bosses' skies and hunters do | music should rest most of the time, and know the difference between quiet and danger |
+| **Long.** A sector is hours | music that plays most of the time will be heard for hours, so it needs a lot of material and must not loop audibly (§8) |
+| **Mostly calm, occasionally deadly.** Nothing hunts you, but guarded caches, bosses' skies and hunters do | a calm base that can turn tense quickly, without a cut |
 | **About going and coming back.** Ric: "This is seeming somewhat like an extraction shooter in space." | the nerve of a long haul home with a full hold is the feeling to support |
-| **Regions are noticed, never named** (BIOMES.md) | a theme per region would be a label in another form. Music must not change by region; ambience does that job |
-| **The Long Empty must feel empty** | no music there, ever |
+| **Regions are noticed, never named** (BIOMES.md) | music may *shade* with a region, but a distinct region theme would be a label (§5.3) |
 | **The station is broken and you fix it** | the strongest arc in the game, and the one music can carry best |
-| **Ultra realistic sound, no tunes as feedback, nothing speaks** (SOUND-DESIGN.md) | music is never a reward jingle; it plays for moments, not events. No lyrics |
-| **Warnings follow one ladder** (SOUND-DESIGN.md §5) | music must get out of the way of a warning, every time |
+| **Ultra realistic sound, no tunes as feedback, nothing speaks** (SOUND-DESIGN.md) | music is never a reward jingle; no lyrics |
+| **Warnings follow one ladder** (SOUND-DESIGN.md §5) | music always gets out of the way of a warning |
 | **The simulators are arcade cabinets** | the one place for arcade music |
-| **A browser game, often on phone speakers** | music must work quietly, on small speakers, and stream rather than load all at once |
+| **A browser game, often on phone speakers** | music must work quietly on small speakers, and stream |
 
 ---
 
-## 3. How other games solved it
+## 3. What the research says
 
-| Game | What it does | What to take |
+### 3.1 How often games like this play music
+
+| Game | How much music | What it shows |
 |---|---|---|
-| **Minecraft** (C418) | music plays at long intervals, reported as about every fifteen minutes, with no sign of when it will return; C418 called his music "a tool", repetitive by design, in the long, slow, hook-less way of Eno's ambient work | **rarity makes music matter**. Silence between pieces is part of the score |
-| **Breath of the Wild** | almost no overworld music; sparse solo piano is the voice of exploration, and danger brings a marked change | one quiet solo instrument can carry an entire open world |
-| **Outer Wilds** (Andrew Prahlow) | a "homely" banjo, guitar and harmonica for home; travellers playing their instruments across the system, heard by tracking them; scored like a film to avoid "wallpaper" music | **home has a sound**, and music can live inside the world |
-| **No Man's Sky** (65daysofstatic, Paul Weir) | a generative system that builds soundscapes from the band's material | an endless universe can carry music that doesn't simply loop |
-| **FTL** (Ben Prunty) | each piece has two layers; the second, with percussion, comes in for a fight | the cheapest honest way to follow danger |
-| **Elite Dangerous** (Erasmus Talbot) | a dynamic system split into exploration, combat, and travel and starports | stations and travel deserve music of their own |
-| **Homeworld** (Paul Ruskay) | tribal drums against a choral *Adagio for Strings*; won best soundtrack of 1999 | contrast between the human and the vast is what moves people |
-| **Subnautica** | originally planned no music on the surface at all | ambience can carry a game for long stretches |
-| **Apollo** (Brian Eno, 1983) | an album written for footage of the Apollo missions | the reference for "space, real, and calm" |
-| **Interstellar** (Hans Zimmer) | a pipe organ at the centre, chosen for its vast resonance and its ties to the history of science | one real, physical instrument can make space feel enormous |
+| **Minecraft** | default: a random 10–20 minutes between tracks. Players built mods to remove the gap ("Infinite Music", "Constant Music"), and in 2025 (Java 1.21.6) Mojang added a **Music Frequency** setting: Default, Frequent (about half the gap) and Constant (the next track almost at once) | the sparse default is Mojang's choice; **many players want it nearly constant**, and the answer was a setting |
+| **Stardew Valley** | seasonal songs play at random with ambient sound between them; players asked for a loop button, and a mod makes it loop | the same pull toward more music |
+| **No Man's Sky** | a generative score (Pulse, built from 65daysofstatic's material) that is effectively always there, "less full on" while you wander, plus scripted songs at set moments | **continuous music made bearable by never repeating** |
+| **FTL** | music in every sector, two layers per piece: a calm one, and percussion added for a fight | continuous and adaptive with very little material |
+| **Starfield, Elite Dangerous** | adaptive scores that move between exploration, combat, travel and stations; Starfield's runs to almost five hours | big games solve "constant" with a lot of music and state changes |
+| **Subnautica** | tracks triggered by entering biomes and places, about 1 h 40 min of music in all | music tied to place, chosen at random |
+| **Outer Wilds** | mostly silence and ambience in flight, music for moments | the exception, and a story game measured in minutes per loop, not hours |
+
+**So the norm for this kind of game is music most of the time,** made to change with the
+situation. Long silence is the exception, and where a game defaults to it, players have
+pushed back.
+
+### 3.2 What music does for players
+
+- **It raises immersion.** In one study, players' immersion scores averaged 98.6 out of
+  130 with music and 83.3 without (Evans, Durham).
+- **It changes how time feels.** Music made a game's play time feel shorter, without
+  changing how long players remembered it lasting (Sanders and Cairns, UCL).
+- **Liked music raises engagement; disliked music lowers it.** That makes the quality
+  and fit of the music matter more than its quantity.
+- **Energetic music can cost performance.** One study found energetic music could raise
+  immersion and lower scores. That is an argument for calm music during exploration and
+  restrained music in fights.
+
+### 3.3 Why players turn music off
+
+- **Repetition** is among the top reasons players give for turning off game music: about
+  28–30% in an ACM study of players' audio habits (Rogers et al.). An earlier, smaller
+  survey (173 people) found 64% sometimes turn game music off, citing repetition and too
+  little material.
+- The other big reasons are **preferring their own music** and **doing something else at
+  the same time**. A volume dial and an off switch answer those.
+
+### 3.4 How composers keep continuous music fresh
+
+- **Long pieces:** advice attributed to Winifred Phillips is that a piece should run about
+  five minutes before it loops, to avoid ear fatigue.
+- **Hide the loop:** a loop should be written so the listener doesn't notice where it
+  starts again.
+- **Layers and sections:** vertical layering (stems faded in and out) and horizontal
+  resequencing (sections chosen at bar lines) let a small library sound much larger.
+- **A "bored now" switch:** some games fade the music out after a piece has repeated too
+  many times, so the player never hears it wear out (described from Karen Collins's
+  *Game Sound*, secondhand).
+- **Generative recombination:** No Man's Sky's approach, rebuilding music from parts so it
+  never plays the same way twice.
 
 ---
 
@@ -81,81 +127,96 @@ What Survey is decides what its music can be:
 
 | Option | What it is | For | Against |
 |---|---|---|---|
-| **A. No music** | ambience only | the purest realism; costs nothing | Ric wants music; a long game with none can feel cold |
-| **B. Constant score** | music always playing, changing by state | familiar | fights the ambience, names regions by accident, becomes wallpaper within an hour |
-| **C. Sparse cues** | pieces at long intervals, at good moments | proven (Minecraft, Breath of the Wild); every piece lands | on its own, has no arc |
-| **D. Music in the world only** | stations' radios, the cabinets | fits the realism with no argument | never there in the moments that matter most |
-| **E. Generative** | music assembled live from stems | never repeats | hard to make good; "an option, not a requirement", as for sound |
+| **A. Sparse cues** (the first version) | music at long gaps | each piece lands | against the genre's norm and what players ask for; Ric doesn't want it |
+| **B. Looping tracks** | a track per state, looped | simple | repetition: the top reason players mute game music |
+| **C. Adaptive layered score** | near-constant music in stems, mixed by the game's state, with a large pool of pieces | the genre's norm done well; responsive; resists repetition | needs a real amount of composed material |
+| **D. Generative** | music rebuilt from parts live | never repeats | hardest to make sound good; an option, not a requirement |
+| **E. Music in the world only** | stations' radios, the cabinets | realism | absent from flight, where most of the game is |
 
-**Recommendation: C and D together, held by one theme.** The sparse cues give the
-moments, music in the world gives the places, and the station theme gives the whole thing
-an arc.
+**Recommendation: C, with E inside it.** An adaptive, layered score that plays nearly all
+the time, plus station radios and cabinets as music inside the world. D stays available
+later as a way to stretch the material.
 
 ---
 
 ## 5. The recommendation
 
-### 5.1 The station theme: music that is repaired
+### 5.1 How the score is built: layers
+
+Every exploration piece is written in **stems** that the game mixes live:
+
+| Layer | What it is | When it plays |
+|---|---|---|
+| **Bed** | slow pads and drones; the harmony | almost always |
+| **Melody** | a solo, human instrument: piano, guitar, cello | most of the time, resting now and then |
+| **Colour** | the region's shading (§5.3) | faded in by `regionDepth`, as the starfield tint is |
+| **Pulse** | a low, felt rhythm | when something is hostile and near |
+| **Percussion** | real drums and struck metal, held back | when something is aimed at you |
+| **Home** | instruments from the station theme (§5.2) | as many as you have restored |
+
+Between pieces there is a **short breath** of ambience, tens of seconds rather than
+minutes, so the sector's own sounds are heard between pieces without the music
+disappearing.
+
+### 5.2 The station theme: music that is repaired
 
 One melody belongs to **your station**, and it is incomplete in the same way the station
-is. Each of the six parts adds one voice to it, in the order the README lists them:
+is. Each of the six parts adds one voice, in the order the README lists them:
 
 | Station | What you hear in the theme |
 |---|---|
-| **Dead** (the start) | one instrument, alone and a little worn: an old upright piano or a guitar, playing the melody thinly, as if from a radio somewhere in the station |
-| + Drive spar (the dock) | a low cello under it |
+| **Dead** (the start) | one instrument, alone and a little worn: an old upright piano or a guitar, as if from a radio somewhere aboard |
+| + Drive spar (the dock) | a low cello |
 | + Fusion core (the counter) | a warm analogue-synth pad: the power coming back |
-| + Ranging lens (the market) | a second, answering line, so the melody has company |
+| + Ranging lens (the market) | a second, answering line |
 | + Jump coil (the hangar) | a slow pulse: the station has a heartbeat again |
-| + Signal beacon (stock) | the melody carried further, a bowed metal or high strings |
-| + Ablative plate (the mouth) | the pipe organ, and the whole thing together |
-| **THE STATION IS WHOLE** | the full arrangement, once, as the banner says "now go somewhere you have not been" |
+| + Signal beacon (stock) | the melody carried further: bowed metal or high strings |
+| + Ablative plate (the mouth) | the pipe organ, and everything together |
+| **THE STATION IS WHOLE** | the full arrangement, as the banner says "now go somewhere you have not been" |
 
-Why it works:
+Why it is the spine of the score:
 
-- **It is the game's story, told without a word.** SOUND-DESIGN.md already has the
-  station's machinery coming alive part by part (§4.3 there); the theme does the same
-  thing in music.
-- **You hear it when you come home.** It plays when you dock at your own station, in
-  whatever state the station is in, so every return tells you how far you have come.
-- **It travels.** Out in the dark, the exploration cues (§5.2) carry **fragments of the
-  same melody**, in whatever instruments you have restored. A long way from home, a piece
-  of home comes back to you. That is the extraction-shooter nerve in music: it is always
-  quietly about getting back.
-- **Death and respawn.** The death page is silent, as the sound design says. On respawn
-  at the station, the theme's first instrument plays alone: you are home, and you lost
-  something.
+- **It is the game's story, told without a word.** SOUND-DESIGN.md has the station's
+  machinery coming alive part by part (§4.3 there); the theme does the same in music.
+- **It runs through everything.** The exploration pieces are written from its melody and
+  harmony, and the **Home** layer carries the instruments you have restored. Early on the
+  whole score is thin and lonely; by the end it is full. Your progress is audible
+  everywhere, not only at the station.
+- **It plays in full when you dock at home**, in whatever state the station is in.
+- **Death and respawn.** The death page is silent, as the sound design says. On respawn,
+  the theme's first instrument plays alone: you are home, and you lost something.
 
-### 5.2 Sparse exploration cues
+### 5.3 Regions: shading, never a theme
 
-Short pieces, two to four minutes, slow and quiet, that play rarely and only at moments
-that deserve them:
+Games like Subnautica and Terraria give each biome its own music. Here that would be a
+label, which BIOMES.md forbids. But the music can still answer the place, the way the
+starfield tint does: **the Colour layer shades the music by region, faded in by
+`regionDepth`**, so it changes over thousands of units and never at a line.
 
-| Moment | Why it earns music |
+| Region | Shading of the Colour layer |
 |---|---|
-| Leaving the home bubble for the first time | the game opening up |
-| A long flight with nothing on the scope, outside the Long Empty | the Minecraft and Breath of the Wild moment: space to think |
-| First sight of a landmark on the almanac's ladder | the payoff for going far |
-| A long haul home with a full hold | the nerve of carrying something worth losing |
-| A close pass by a star | the most beautiful place in the sector |
-| The light drive on a long run | the one place music can be bigger |
+| Ordinary space, Settled reach | none; the score as written |
+| The Belt, Shards, Rounds | low, struck textures: stone, and wood for the Rounds |
+| The Rime | high, glassy textures: bowed glass, crystal |
+| The Violet Cloud | softer, more blurred; long reverb |
+| The Murk | the music itself degrades: tape wear, dropouts and static, deepening toward the middle, as the screen does |
+| The Boneyard | cold metal: bowed and struck steel |
+| The Wells | deeper; the bed drops an octave |
+| The Warrens | closer and drier; the melody alone |
+| The Lanes, the Works | busier pulse, a mechanical rhythm |
+| **The Long Empty** | **the score thins to its last layer:** one sustained tone, or a single instrument, then that too. The emptiness is felt as everything else falling away (§10) |
 
-Rules:
+The same piece heard in two regions should sound like the same piece in two different
+places. Nobody should be able to name a region from its music; they should feel it change.
 
-- **A long, random gap between cues**, on the order of Minecraft's fifteen minutes, so the
-  next one is never expected.
-- **No cue belongs to a region.** The cues come from one pool, chosen by the moment's mood,
-  never by the region's kind, so music can never name a region (BIOMES.md).
-- **Built from the station theme:** fragments, re-harmonised, in the instruments you have
-  restored (§5.1).
+### 5.4 Danger
 
-### 5.3 Danger: one quiet layer, and five motifs
-
-- **Under fire.** When the sensor feed has something aimed at you, a low pulse comes in
-  under any music already playing, felt more than heard: FTL's second layer, held back.
-  It is not action music; the guns are the action.
-- **Bosses.** Each of the five bosses has a short motif on its own instrument, matching
-  the sound signatures in SOUND-DESIGN.md §4.7. It plays once, as you cross into its sky.
+- **The Pulse and Percussion layers** (§5.1) bring tension in without a cut, from the
+  piece already playing. That is FTL's two-layer idea, held back so the guns stay the
+  action. It follows the sound design's sensor feed: hostile and near brings the pulse;
+  aimed at you brings the percussion.
+- **Bosses.** Each of the five bosses has a motif on its own instrument that takes over
+  the Melody layer inside its sky, matching SOUND-DESIGN.md §4.7:
 
 | Boss | Motif |
 |---|---|
@@ -165,14 +226,27 @@ Rules:
 | Corsair | a fast, rising figure that rips past |
 | Warden | a doubled figure, twice, like its paired missiles |
 
-- **When a warning reaches the Warning level, music stops.** Nothing competes with the
-  master warning.
+- **At the Warning level, music drops to its bed** under the master warning, and comes back
+  when the warning ends. Nothing competes with the warning.
 
-### 5.4 Music in the world: station radios
+### 5.5 Moments
 
-When you dock at a station that isn't yours, you hear **its** music through the docking
-collar: a radio playing in the station. Each power sounds like itself, matching their
-character in the README and SOUND-DESIGN.md §4.5:
+A few moments get music written for them, played over the score:
+
+| Moment | |
+|---|---|
+| Leaving the home bubble for the first time | the game opening up |
+| First sight of each landmark on the almanac's ladder | the payoff for going far |
+| THE STATION IS WHOLE | the station theme in full (§5.2) |
+| THE COIL FIRED | the score torn apart, then something unfamiliar |
+| A boss destroyed | its motif broken off |
+| The light drive on a long run | the one place the score can be big |
+
+### 5.6 Music in the world: station radios
+
+Docked at a station that isn't yours, the score gives way to **that station's own music**,
+a radio playing inside it, heard through the docking collar. Each power sounds like
+itself (SOUND-DESIGN.md §4.5):
 
 | Power | Its stations' radio |
 |---|---|
@@ -182,21 +256,13 @@ character in the README and SOUND-DESIGN.md §4.5:
 | **Unaligned** | anything, a little of everything |
 | **No Colours** (pirate stations) | rough, distorted, played too loud |
 
-This is realistic (people play music where they work), it tells you whose space you are
-in by ear, and it is the cheapest music in this plan (§8).
+### 5.7 The simulators and the front page
 
-### 5.5 The simulators
-
-The cabinets play arcade music, chiptune-style, through the cabinet's small speaker
-(SOUND-DESIGN.md §8.15). It is the one place for it, and the contrast makes the rest of
-the game sound more real.
-
-### 5.6 The front page
-
-The sound design keeps the front page silent until the player presses something (the
-browser would block it anyway). After that first press, **the station theme's first
-instrument** could play quietly under the front page: the game's identity, in one
-instrument, before anything else. Ric's call (§9).
+- **The cabinets** play arcade music, chiptune-style, through the cabinet's speaker
+  (SOUND-DESIGN.md §8.15).
+- **The front page** is silent until the first key press, which a browser requires anyway.
+  After that, the station theme's first instrument plays under it: the game's identity
+  in one instrument (§10).
 
 ---
 
@@ -208,141 +274,176 @@ instrument, before anything else. Ric's call (§9).
 |---|---|---|
 | The human side | upright piano, acoustic guitar, cello, bowed metal | real, slightly worn, close: the pilot and home |
 | The vast side | pipe organ, analogue synth pads and drones | Interstellar's organ and Apollo's synths: space as enormous and physical |
-| Texture | tape wear, a little noise, room sound | recorded, not rendered: it should sound like it was played |
-| Danger | low pulse, felt more than heard | out of the way of the warnings |
+| Tension | real drums, struck metal, a low pulse | real hits, not programmed loops, so the score stays as physical as the sound |
+| Texture | tape wear, a little noise, room sound | recorded, not rendered: it should sound played |
 
 ### 6.2 What to avoid
 
-- **Epic trailer orchestra.** It is the default for space games, and it would fight a game
-  that is mostly quiet.
-- **Beat-driven electronic music and EDM.** Wallpaper within an hour.
-- **Constant drums.** The ship already has a pulse.
+- **Epic trailer orchestra**, the space-game default, which would fight a mostly calm game.
+- **Beat-driven electronic music and EDM**, which become wallpaper within an hour.
 - **Chiptune**, except in the cabinets.
-- **Lyrics and voices.** Nothing speaks in this game. A wordless choir (Homeworld's
-  *Adagio*) is a separate question (§9).
-- **Anything in a hurry.** Slow tempos; long notes; room between phrases.
+- **Lyrics and voices.** Nothing speaks in this game; a wordless choir is a question (§10).
+- **Anything that announces itself as a loop:** a big ending, a fade, then the same opening.
 
 ### 6.3 What to listen to
 
-References for the mood, not music to use:
-
-- Brian Eno, *Apollo: Atmospheres and Soundtracks* (1983)
-- Hans Zimmer, *Interstellar*
-- Andrew Prahlow, *Outer Wilds*
-- C418, *Minecraft – Volume Alpha*
-- Manaka Kataoka and others, *Breath of the Wild*
-- 65daysofstatic, *No Man's Sky: Music for an Infinite Universe*
-- Ben Prunty, *FTL*
-- Paul Ruskay, *Homeworld*
+References for the mood, not music to use: Brian Eno, *Apollo: Atmospheres and
+Soundtracks* · Hans Zimmer, *Interstellar* · 65daysofstatic, *No Man's Sky: Music for an
+Infinite Universe* · Andrew Prahlow, *Outer Wilds* · Ben Prunty, *FTL* · Inon Zur,
+*Starfield* · C418, *Minecraft – Volume Alpha* · Paul Ruskay, *Homeworld*.
 
 ---
 
-## 7. When music plays, and when it must not
+## 7. When it plays
 
-The sound design's mix snapshots (SOUND-DESIGN.md §6.1) set the rules:
+### 7.1 Against the sound design's snapshots
 
-| Snapshot | Music |
+| Snapshot (SOUND-DESIGN.md §6.1) | Music |
 |---|---|
-| Flight | sparse cues allowed, at long gaps |
-| Combat | the danger pulse under anything playing; no new cue starts |
-| Critical (hull at zero, a tank out) | none |
-| Light drive | a cue allowed |
-| Silent Running | none: the point is silence |
+| Flight | the score: bed, melody, colour, home |
+| Combat | pulse and percussion added; melody pulled back |
+| Critical (hull at zero, a tank out) | the bed only, low and tense |
+| Light drive | fuller; a written moment on a long run |
+| Silent Running | the bed only, almost nothing: the point is quiet |
 | Docked | the station theme at home; the station's radio elsewhere |
-| A page open | whatever was playing, distant |
-| Dead | none, then the station theme's first instrument on respawn |
+| A page open | the score, distant and muffled |
+| Dead | silence, then the station theme's first instrument |
 
-And always:
+### 7.2 Always
 
-- **Never in the Long Empty.**
-- **Never over a Warning** (SOUND-DESIGN.md §5); music ducks under a Caution.
-- **Under the ambience, not over it.** Music sits beneath the foreground, so a sound that
-  matters is never masked.
-- **Its own MUSIC dial**, and a **frequency setting** (off, rare, often), because players
-  differ more about music than anything else.
-- **Fades, never cuts**, except the stop for a Warning, which is immediate.
+- **At a Warning, the bed only** (SOUND-DESIGN.md §5); under a Caution, music ducks.
+- **Under the foreground.** Music never masks a sound that matters.
+- **Fades, never cuts,** except the drop for a Warning, which is immediate.
+
+### 7.3 Settings
+
+Mojang's answer to players who wanted more or less music was a setting, and it is the
+right one here:
+
+| Setting | |
+|---|---|
+| **MUSIC** volume dial | its own channel (XAG 105) |
+| **Music frequency** | **Constant** (no breaths between pieces) · **Normal** (the default: short breaths, §5.1) · **Sparse** (minutes between pieces, for players who want the sector's own sound) · **Off** |
 
 ---
 
-## 8. Where the music comes from
+## 8. Keeping constant music from wearing out
 
-Top-tier music here has to be **written for this game**, because the station theme needs
-one melody arranged six ways and woven into every cue. Stock tracks can't do that. So
-the plan splits:
+Repetition is the main reason players turn game music off (§3.3), and this game is long.
+Everything here is aimed at that:
+
+- **Enough music.** For a start, about **60–90 minutes** of exploration material in stems,
+  plus the station theme, the danger layers, the five boss motifs and the written moments.
+  For scale: Subnautica's whole score is about 1 h 40 min; Starfield's is almost five hours.
+- **Long pieces:** about five minutes or more before any repeat.
+- **Layers multiply it.** The same piece with and without its melody, shaded by region,
+  with different home instruments, sounds like different music.
+- **Shuffle without repeats.** No piece plays again until most of the pool has played.
+- **A "bored now" rule.** If the same piece would play too often, for example in one long
+  fight, the game drops to the bed instead of looping it.
+- **The station theme changes over the game**, so the core of the score sounds different at
+  hour five from hour one.
+- **Generative recombination later, if needed** (No Man's Sky): an option, not a requirement.
+
+---
+
+## 9. Where the music comes from
+
+Top-tier music here has to be **written for this game**: the station theme must be
+arranged six ways and woven through every piece, and the stems must be made to layer.
+Stock tracks can't do that.
 
 | Part | Source |
 |---|---|
-| **The station theme and the exploration cues** | original: composed by Ric, a friend, or a commissioned composer. This is the heart of it, and the one part worth paying for or making |
-| **Boss motifs and the danger pulse** | original, short, from the same writer |
-| **Station radios** | free, credited recordings: public-domain recordings for the Hallow Line's old music, and CC0 or CC BY tracks for the rest, from libraries like OpenGameArt (filtered to CC0) and the Free Music Archive. A public-domain *composition* is not the same as a public-domain *recording*: each recording's own licence has to be checked |
-| **Cabinets** | CC0 chiptune (Kenney's music packs, OpenGameArt) or original |
-| **Generative arrangement** | an option, not a requirement, as for sound |
+| **The score:** station theme, exploration pieces in stems, danger layers, boss motifs, moments | original: composed by Ric, a friend, or a commissioned composer. This is the heart of it, and the part worth paying for or making |
+| **Station radios** | free, credited recordings: public-domain recordings for the Hallow Line's old music, and CC0 or CC BY tracks for the rest, from libraries such as OpenGameArt (filtered to CC0) and the Free Music Archive. A public-domain *composition* is not the same as a public-domain *recording*: each recording's licence has to be checked |
+| **Cabinets** | CC0 chiptune (such as Kenney's music packs or OpenGameArt) or original |
 
-Rules, the same as for sound:
+The same rules as for sound:
 
-- **Every track is credited** in `sounds/SOURCES.md`, with its licence. CC BY needs the
+- **Every track credited** in `sounds/SOURCES.md` with its licence; CC BY needs the
   credit shown in the game too.
 - **No AI-generated music.**
-- **Size.** Music is large: roughly a megabyte a minute, compressed. It streams from R2,
-  like the photographs and the ambience beds, and nothing stops if it fails to load.
+- **Streamed from R2**, like the photographs and ambience beds. Music is roughly a
+  megabyte a minute compressed, so 90 minutes of stems is far too much to commit, and a
+  failed load means silence, never an error.
 
 ---
 
-## 9. Questions for Ric
+## 10. Questions for Ric
 
-1. **Does the station theme idea work for you?** One melody that grows an instrument per
-   part, with fragments of it out in the dark.
+1. **Does the station theme work for you?** One melody that grows an instrument per part
+   and runs through the whole score.
 2. **Who writes it?** You, a friend, or a commissioned composer? This decides the most.
-3. **Station radios:** yes or no? They are the cheapest part and add a lot of place.
-4. **The front page:** silent, or the theme's first instrument after the first press?
-5. **A wordless choir:** allowed in music, or kept out with all voices?
+3. **The default frequency:** Normal (short breaths between pieces) or Constant?
+4. **The Long Empty:** should the music thin away to nothing there (recommended, so the
+   emptiness is felt), or keep playing?
+5. **Station radios:** yes or no?
+6. **A wordless choir:** allowed, or kept out with all voices?
 
 ---
 
-## 10. Sources
+## 11. Sources
 
-- **Minecraft:** music at long intervals; C418 on music as a tool.
-  [Kill Screen](https://www.killscreen.com/quiet-importance-minecraft-soundtrack/) ·
-  [Wikipedia](https://wikipedia.com/wiki/Music_of_Minecraft) ·
-  [The Boar](https://theboar.org/2018/01/minecraft-c418-soundtrack/)
-- **Breath of the Wild:** sparse piano as the voice of exploration.
-  [Zelda Dungeon](https://www.zeldadungeon.net/musical-musings-listening-closely-to-the-emptiness-of-breath-of-the-wilds-hyrule-field-day/) ·
-  [GoNintendo](https://gonintendo.com/stories/325951-zelda-breath-of-the-wild-sound-designer-on-finding-the-right-mus) ·
-  [A Closer Listen](https://acloserlisten.com/2018/04/03/press-a-the-music-of-zelda-breath-of-the-wild/)
-- **Outer Wilds:** home's banjo, travellers' instruments, scored like a film.
-  [SPIN](https://www.spinmagazine.com/2020/06/outer-wilds-andrew-prahlow/) ·
-  [Game Developer](https://www.gamedeveloper.com/audio/everything-but-lost-exploring-the-mesmerising-musical-legacy-of-outer-wilds) ·
-  [The Companion](https://www.thecompanion.app/outer-wilds-andrew-prahlow/) ·
-  [Film Music Central](https://filmmusiccentral.com/2020/03/26/an-interview-with-andrew-prahlow-composer-of-outer-wilds)
-- **No Man's Sky:** generative music with 65daysofstatic.
-  [Audiokinetic Q&A with Paul Weir](https://www.audiokinetic.com/en/blog/behind-the-sound-of-no-mans-sky-a-qa-with-paul-weir-on-procedural-audio) ·
-  [Laced Records](https://www.lacedrecords.com/blogs/blog/interview-hello-games-audio-director-on-the-sound-and-music-of-no-man-s-sky)
+- **Minecraft:** the Music Frequency setting (Default 10–20 min, Frequent, Constant),
+  added in 1.21.6; mods that remove the gap; the music's design.
+  [Minecraft Wiki, Options](https://minecraft.wiki/w/Options#Video_Settings) ·
+  [Minecraft Wiki, options.txt](https://minecraft.wiki/w/Options.txt_(Java_Edition)) ·
+  [Constant Music (CurseForge)](https://www.curseforge.com/minecraft/mc-mods/constant-music) ·
+  [Infinite Music (Modrinth)](https://modrinth.com/mod/infinite-music) ·
+  [Music of Minecraft](https://en.wikipedia.org/wiki/Music_of_Minecraft) ·
+  [Kill Screen](https://www.killscreen.com/quiet-importance-minecraft-soundtrack/)
+- **Stardew Valley:** seasonal songs at random with ambience between; players asking for a
+  loop. [Dev Update #16](https://stardewvalley.net/dev-update-16/) ·
+  [Steam discussion](https://steamcommunity.com/app/413150/discussions/0/405692758715197154) ·
+  [Nexus mod](https://www.nexusmods.com/stardewvalley/mods/13099) ·
+  [Final Boss](https://finalboss.io/stardew-valleys-music-quietly-ruined-other-cozy-games)
+- **No Man's Sky:** a generative score from 65daysofstatic's material, responsive to play.
+  [DIY](https://diymag.com/news/65daysofstatic-on-how-they-created-an-infinite-soundtrack) ·
+  [Game Informer](https://gameinformer.com/b/features/archive/2016/05/30/65daysofstatic-on-creating-no-man-39-s-sky-generative-soundtrack) ·
+  [IBTimes](https://www.ibtimes.co.uk/why-65daysofstatics-infinite-no-man-sky-soundtrack-one-theyll-never-truly-hear-1575503) ·
+  [Audiokinetic Q&A with Paul Weir](https://www.audiokinetic.com/en/blog/behind-the-sound-of-no-mans-sky-a-qa-with-paul-weir-on-procedural-audio)
 - **FTL:** two layers, percussion for fights.
   [NPR](https://www.npr.org/2013/10/06/229171039/composing-game-soundtracks-that-move-faster-than-light)
-- **Elite Dangerous:** a dynamic score in exploration, combat, travel and starports.
-  [Wikipedia](https://en.wikipedia.com/wiki/Elite_Dangerous) ·
+- **Starfield and Elite Dangerous:** adaptive scores; Starfield's almost five hours.
+  [Starfield Wiki](https://starfieldwiki.net/wiki/Music) ·
+  [A2Z Soundtrack](https://a2zsoundtrack.com/starfield-soundtrack-2023-video-game) ·
+  [Elite Dangerous](https://en.wikipedia.com/wiki/Elite_Dangerous) ·
   [Massively OP](https://massivelyop.com/2015/05/12/jukebox-heroes-how-elite-dangerous-music-put-me-into-a-mild-coma/)
-- **Homeworld:** tribal drums and the choral *Adagio*.
-  [Wikipedia](https://en.wikipedia.org/wiki/Paul_Ruskay) ·
-  [Fists of Heaven](https://www.fistsofheaven.com/paul-ruskay-interview/) ·
-  [Homeworld Universe](https://www.homeworlduniverse.com/adagio-homeworld-creating-sounds-homeworld3-paul-ruskay/)
-- **Subnautica:** no music planned on the surface (commentary).
-  [Spin](https://www.spin.com/?p=369687)
-- **Apollo:** Eno's album for the Apollo footage.
-  [Wikipedia](https://en.wikipedia.org/wiki/Apollo:_Atmospheres_and_Soundtracks) ·
-  [Rolling Stone](https://www.rollingstone.com/music/music-features/brian-eno-apollo-interview-858237/)
-- **Interstellar:** the organ's resonance for a film about gravity.
-  [Wikipedia](https://en.wikipedia.org/wiki/Interstellar_(soundtrack)) ·
-  [Den of Geek](https://www.denofgeek.com/us/movies/hans-zimmer/241533/hans-zimmer-talks-about-scoring-interstellar-and-why-batman-needs-a-new-theme) ·
-  [Slate](https://www.slate.com/articles/arts/culturebox/2014/11/interstellar_score_hans_zimmer_composes_music_for_the_universe_brilliantly.2.html)
-- **Adaptive music:** layering and resequencing.
-  [Game Developer, Winifred Phillips](https://www.gamedeveloper.com/game-platforms/hybrid-horizontal-vertical-structure-for-game-music-composers-from-spyder-to-sackboy-gdc-2021-)
-- **Free music and licences:** CC0 versus CC BY; royalty-free is not public domain.
+- **Subnautica:** music by place, about 1 h 40 min in all (fan wiki and forum).
+  [Subnautica OST wiki](https://subnautica.fandom.com/wiki/Subnautica_OST) ·
+  [Unknown Worlds forum](https://forums.unknownworlds.com/discussion/comment/2397436)
+- **Outer Wilds:** mostly silence in flight, music for moments.
+  [Needledrop](https://betweenmusicandgaming.substack.com/p/needledrop-outer-wilds) ·
+  [Prima Games](https://primagames.com/feature/developing-music-outer-wilds-interview-composer-andrew-prahlow) ·
+  [SPIN](https://www.spinmagazine.com/2020/06/outer-wilds-andrew-prahlow/)
+- **Music and immersion, time and performance.**
+  [Evans, Durham](https://musicscience.net/wp-content/uploads/2018/10/evans.pdf) ·
+  [Sanders and Cairns, UCL](https://www.researchgate.net/publication/221437012_Time_perception_immersion_and_music_in_videogames) ·
+  [Background music and immersion](https://www.researchgate.net/publication/282410867_The_Influence_of_Background_Music_of_Video_Games_on_Immersion) ·
+  [Energetic music](https://ceur-ws.org/Vol-3866/paper5.pdf)
+- **Why players turn music off.**
+  [Rogers et al., ACM](https://dl.acm.org/doi/pdf/10.1145/3356590.3356599) ·
+  [Bleeps and Pops survey](https://bleepsandpops.com/post/7462404775/survey-turning-off-game-music)
+- **Keeping loops fresh.**
+  [Audient, on Phillips](https://audient.com/hi/tutorial/composing-music-video-games/) ·
+  [FH Wedel seminar paper](https://intern.fh-wedel.de/fileadmin/mitarbeiter/iw/Lehrveranstaltungen/2019WS/Seminar/Ausarbeitung11_Stobbe.pdf) ·
+  [Game Developer, rethinking the audio loop](https://gamedeveloper.com/audio/rethinking-the-audio-loop-in-games) ·
+  [Game Developer, Winifred Phillips GDC 2021](https://www.gamedeveloper.com/game-platforms/hybrid-horizontal-vertical-structure-for-game-music-composers-from-spyder-to-sackboy-gdc-2021-) ·
+  [Collins, *Game Sound* (MIT Press)](https://www.penguinrandomhouse.com/books/655117/game-sound-by-karen-collins/) ·
+  [Southampton, on the "bored now" switch](https://generic.wordpress.soton.ac.uk/archaeology/2013/08/15/non-linear-sound-in-video-games)
+- **The mood references.**
+  [Apollo](https://en.wikipedia.org/wiki/Apollo:_Atmospheres_and_Soundtracks) ·
+  [Interstellar](https://en.wikipedia.org/wiki/Interstellar_(soundtrack)) ·
+  [Homeworld, Paul Ruskay](https://en.wikipedia.org/wiki/Paul_Ruskay) ·
+  [Outer Wilds, Game Developer](https://www.gamedeveloper.com/audio/everything-but-lost-exploring-the-mesmerising-musical-legacy-of-outer-wilds)
+- **Free music and licences.**
   [Cinevva](https://app.cinevva.com/guides/free-sound-effects-music) ·
   [GTStu](https://gtstu.com/free-royalty-free-music-indie-games/) ·
   [itch.io libre audio](https://itch.io/c/1078725/libre-audio) ·
   [OpenGameArt](https://opengameart.org/comment/95008)
 
-Some of these are press coverage or fan writing rather than interviews; the Minecraft
-fifteen-minute figure comes from one outlet. Nobody has written or heard any of this
-music yet.
+Some figures come from single or secondary sources and say so above: the five-minute loop
+advice is attributed to Phillips by a tutorial, the "bored now" switch is described
+secondhand, and Subnautica's total is from a fan wiki. Nobody has written or heard any of
+this music yet.

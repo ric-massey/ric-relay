@@ -905,13 +905,14 @@ Recordings stay the base.
 
 ## 11. Music
 
-**A proposal is in `MUSIC.md`** (2026-11-13). Ric wants some and has not decided what kind. Whatever is chosen:
+**The proposal is `MUSIC.md`** (2026-11-13, revised the same day after Ric's research
+request): a near-constant, adaptive score in layers, shaded by region without ever
+becoming a region's theme, built around a station theme that gains an instrument with each
+part brought home. What it keeps from this file:
 
-- **Music in the world**, such as something playing in a station while docked, fits the
-  realism with no argument.
-- **A score over Survey** competes with the Long Empty and with the regions doing their
-  job by ear. If there is one, layering (FTL adds a second layer in a fight, §16.7) lets it
-  thin to nothing where it should.
+- **Music in the world**, station radios and the cabinets, fits the realism with no argument.
+- **It gives way to warnings:** at the Warning level it drops to its bed (§5).
+- **Regions are shaded, never named,** and the Long Empty thins the score away (BIOMES.md).
 - It gets its own dial and its own place in the snapshots (§6.1).
 
 ## 12. Accessibility

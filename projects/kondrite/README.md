@@ -1091,8 +1091,8 @@ speech anywhere. Every sound starts from free, credited public recordings, such 
 NASA's launch microphones; making sounds in code is an option, not a requirement. Each
 region of space gets its own ambience, so a region is heard before it is understood. The
 simulators keep an arcade sound, because they are arcade cabinets. What music would suit the game is
-proposed in `MUSIC.md`: sparse ambient pieces around a station theme that gains an
-instrument with each part you bring home. The plan also has
+proposed in `MUSIC.md`: a near-constant, adaptive score in layers, built around a
+station theme that gains an instrument with each part you bring home. The plan also has
 the research behind it and the questions still open. Nothing
 in it is built yet, so the description above is still what plays. Its first finding is
 a bug: `alarm` is called three times and has no voice, so the boss alarms are silent.
