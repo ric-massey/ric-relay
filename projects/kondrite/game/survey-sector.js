@@ -491,7 +491,21 @@ const BUILD = [
      Nothing else on these rows moved. The distances, the places and the six
      clues are exactly what they were — only what arriving with one *does*
      is different, which is why this is a smaller change than it reads. */
-  { key: "spar", name: "DRIVE SPAR", dist: 7000, opens: "dock",
+  /* **Re-paired 2026-11-13, so a part is what it turns on.** Ric, asked about
+     a first errand for each part: "make them make sense. like jump coil
+     should show the jumping." It could not: the coil lit the hangar and the
+     plate lit the wormhole. Three moved and three stayed —
+
+       DRIVE SPAR      the hangar   (was the dock)     a spar is a hull's spine
+       JUMP COIL       the mouth    (was the hangar)   the coil is the jump
+       ABLATIVE PLATE  the dock     (was the mouth)    plating is what mends a hull
+
+     Where each part is found, and in what order, did not move. So the
+     wormhole now arrives fourth rather than last, a hull can be bought after
+     the first delivery, and the last thing the Leviathan gives you is the
+     dock that mends what the Leviathan did to you. A book written before
+     this keeps its parts; the rooms they light are read off this table. */
+  { key: "spar", name: "DRIVE SPAR", dist: 7000, opens: "hangar",
     clue: "Among the dead. Somewhere a lot of ships stopped at once.",
     where: "a wreck field" },
   { key: "core", name: "FUSION CORE", dist: 13000, opens: "counter",
@@ -500,13 +514,13 @@ const BUILD = [
   { key: "lens", name: "RANGING LENS", dist: 21000, opens: "market",
     clue: "On a world nobody warms. Look for a planet with no star.",
     where: "a rogue world" },
-  { key: "coil", name: "JUMP COIL", dist: 34000, opens: "hangar",
+  { key: "coil", name: "JUMP COIL", dist: 34000, opens: "mouth",
     clue: "Wound around a mouth that goes somewhere else.",
     where: "a gate" },
   { key: "beacon", name: "SIGNAL BEACON", dist: 52000, opens: "stock",
     clue: "Still calling, long after anyone stopped listening.",
     where: "a transmitting wreck" },
-  { key: "plate", name: "ABLATIVE PLATE", dist: 0, opens: "mouth",
+  { key: "plate", name: "ABLATIVE PLATE", dist: 0, opens: "dock",
     clue: "The big dead one is carrying plenty. You will have to go inside.",
     where: "deep in the Leviathan", inside: "leviathan" }
 ];
@@ -537,17 +551,17 @@ const BUILD = [
 const SERVICES = [
   { key: "supplies", name: "SUPPLIES", part: null,
     does: "water, food, and it buys" },
-  { key: "dock",    name: "THE DOCK",    part: "spar",
+  { key: "dock",    name: "THE DOCK",    part: "plate",
     does: "hull repairs" },
   { key: "counter", name: "THE COUNTER", part: "core",
     does: "parts, over the counter" },
   { key: "market",  name: "THE MARKET",  part: "lens",
     does: "what the chart is paying" },
-  { key: "hangar",  name: "THE HANGAR",  part: "coil",
+  { key: "hangar",  name: "THE HANGAR",  part: "spar",
     does: "the only berth there is" },
   { key: "stock",   name: "STOCK",       part: "beacon",
     does: "it can order in" },
-  { key: "mouth",   name: "THE MOUTH",   part: "plate",
+  { key: "mouth",   name: "THE MOUTH",   part: "coil",
     does: "every charted station" }
 ];
 const serviceSpec = k => SERVICES.find(s => s.key === k);
@@ -570,14 +584,14 @@ const stationWhole = () => !!surv && surv.built.size >= BUILD.length;
    frame off the origin — and the prize was one mouth at the end of six
    deliveries. It is the station now, and the prize arrives in six pieces:
    each part is a room of the place you live coming back on, and the mouth is
-   the last of them. What that buys is the same fact the wormhole always
+   one of them (the fourth, since the re-pairing of 2026-11-13 — see BUILD). What that buys is the same fact the wormhole always
    traded on — the Wall is a *failed* attempt at exactly this, which is why
    the jump coil is found wound around a gate — but you are no longer walking
    five deliveries on a promise. A real light drive is a separate thing you
    build afterwards; see LIGHT_DRIVE below. */
 const STATION_BUILD = {
   name: "YOUR STATION",
-  does: "whole \u2014 and the mouth opens on any station you have charted",
+  does: "whole \u2014 every room is running",
   blurb: "Six parts, none of them near each other, and each one turns " +
          "something here back on. Somebody tried the last of it before, on a " +
          "frame a mile across, and it did not open."

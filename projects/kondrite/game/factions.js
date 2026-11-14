@@ -18,8 +18,8 @@
    a station that already worked perfectly. Two landmarks, two questions, and
    the finished one was the one with nothing to want. So they swapped. The
    wormhole is not a separate thing you build beside the station — it is what
-   the station *becomes* when it is whole, and the mouth is the last of the
-   six rooms the parts light. See SERVICES. */
+   the station *becomes* as its parts come home, and the mouth is one of the
+   six rooms they light — the jump coil's, since 2026-11-13. See SERVICES. */
 
 const partSpec = key => BUILD.find(b => b.key === key);
 
@@ -80,6 +80,7 @@ function lightJump(x, y) {
   streamChunks(true);
   streamRocks();
   burst(x, y, CASH, 30, 320 * U);
+  lessonDid("coil");
   addShake(8);
   gameSound("win", x, y);
   chatter("Light drive — arrived.", CASH);
@@ -326,6 +327,37 @@ function surveyIntro() {
   if (surv.built.size) return false;
   surv.lore = INTRO_CARD;
   state = "lore";
+  saveSurveyBook();
+  return true;
+}
+
+/* ── a part teaches the room it lights ───────────────────────────────────
+   WORLD-IDEAS.md, Ric: *"you get one part it teaches you something like how
+   the wormhole works."* Each part already turns a room on; this is the one
+   thing to go and do with that room, said when the part goes in and kept on
+   the missions page until it has been done.
+
+   It is a line and a tick. Nothing is locked behind one, nothing pays for
+   one, and each is ticked at the place the thing is actually done — the
+   function that jumps, the function that repairs — never by a clock. The
+   wording follows the part: the coil's is a jump, the plate's is a repair,
+   the beacon's is the radio. */
+const LESSONS = {
+  /* Short on purpose: the missions page gives the line about thirty-five
+     characters after "try it", and the first set ran off the end of it. */
+  spar:   "open SHIPS and price a hull",
+  core:   "buy a part and fit it",
+  lens:   "open JOBS and take one",
+  coil:   "open WORMHOLE and jump",
+  beacon: "open COMMS and read it",
+  plate:  "repair your hull here"
+};
+const lessonDone = key => !!(surv && surv.taught.has("did:" + key));
+/* Called from where the thing happens. A lesson only counts once its part is
+   home: jumping through somebody else's gate is not learning your own mouth. */
+function lessonDid(key) {
+  if (!surv || !LESSONS[key] || !surv.built.has(key) || lessonDone(key)) return false;
+  surv.taught.add("did:" + key);
   saveSurveyBook();
   return true;
 }
@@ -985,6 +1017,7 @@ function fitModule(i, key) {
     : m.name + " — " + fitSeconds(key) + "s to fit, and that slot is dead " +
       "until it lands.", instant ? CASH : "#ffcb42");
   surv.t.fitted = true;
+  lessonDid("core");
   saveSurveyBook();
   return true;
 }

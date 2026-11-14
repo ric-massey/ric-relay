@@ -653,8 +653,12 @@ They remain proposals; recording them is not a request to implement them.
     shows a count and nothing else; each item says local scan, unconfirmed or
     station report, and how long ago; docking confirms. `game/comms.js`,
     `test/comms.js`, README "Transmissions".
-  - [ ] **Parts teach through use** — each early part introduces a mechanic
-    and a first errand for it. Which lesson per part is not decided.
+  - [x] **Parts teach through use.** Done 2026-11-13. Ric, shown a draft
+    where the jump coil's errand was the ship hangar: *"make them make sense.
+    like jump coil should show the jumping."* So three parts were re-paired
+    with rooms — spar the hangar, coil the mouth, plate the dock — and each
+    of the six has one errand that uses its room. README, "the pairing
+    changed"; `LESSONS` in `game/factions.js`; `test/lessons.js`.
   - [ ] **A lead before the opening ends.** No lead chosen.
   - [ ] **Encounters continue** — beyond the saved ship and the grudge that
     already come back.

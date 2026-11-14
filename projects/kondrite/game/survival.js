@@ -333,6 +333,7 @@ function buyRepair() {
   surv.cash -= cost;
   me.hull = me.maxHull;
   surv.t.repaired = true;
+  lessonDid("plate");
   gameSound("win");
   chatter("Hull made good \u2014 " + money(cost), CASH);
   saveSurveyBook();

@@ -624,11 +624,22 @@ function surveyParts(dt) {
   for (const key of surv.carrying) {
     surv.built.add(key);
     /* What it *did*, not how many of them there are now. "3 of 6" is a
-       progress bar read out loud; "the dry dock is running" is the reason
+       progress bar read out loud; "the hangar is running" is the reason
        you flew eleven thousand units with a spar in the hold. */
     const svc = serviceSpec((partSpec(key) || {}).opens);
-    chatter(partSpec(key).name + " fitted" +
-            (svc ? " \u2014 " + svc.name + " is running" : ""), CASH);
+    /* And the one thing to go and do with it, on the same notification: the
+       room, then the errand. See LESSONS in factions.js. */
+    if (svc && LESSONS[key] && surveyHUD) {
+      surveyHUD.notify(svc.name + " IS RUNNING", "try it \u2014 " + LESSONS[key], CASH, 10);
+    } else {
+      chatter(partSpec(key).name + " fitted" +
+              (svc ? " \u2014 " + svc.name + " is running" : ""), CASH);
+    }
+    // The beacon is a radio: the first thing it does is say so, on COMMS.
+    if (key === "beacon") {
+      transmitMsg("YOUR STATION", "beacon lit \u2014 the counter can order in now",
+                  CASH, HOME_STATION);
+    }
   }
   surv.carrying.clear();
   burst(HOME_STATION.x, HOME_STATION.y, CASH, 40, 320 * U);
@@ -641,7 +652,7 @@ function surveyParts(dt) {
        manifest is the tutorial; this is where the game starts. So the banner
        faces forwards. */
     banner = { text: "THE STATION IS WHOLE", t: 4.6, colour: CASH,
-               sub: "the mouth is open \u2014 now go somewhere you have not been" };
+               sub: "every room is running \u2014 now go somewhere you have not been" };
   }
   saveSurveyBook();
 }

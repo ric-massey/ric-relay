@@ -692,8 +692,13 @@ nobody had linked was a page nobody could find.
   onto the flight screen, which shows only a count that something is waiting.
   **Every station has a JOBS room** (`game/jobs.js`, same date): an offer is a
   real shortage and delivering is the ordinary sale — never invent a shortage
-  to have a job to show. README, "Jobs" and "Transmissions". The news
-  reports the record and never creates an event. §28 is in too — leaders who
+  to have a job to show. README, "Jobs" and "Transmissions".
+  **Each station part also teaches its room** (2026-11-13): the spar lights
+  the hangar, the coil the mouth, and the plate the dock; `LESSONS` in
+  `game/factions.js` keeps one first-use errand per part on MISSIONS until
+  the action completes. `test/lessons.js` runs through the Kondrite test glob
+  in `.github/checks.mjs`'s slow lane.
+  The news reports the record and never creates an event. §28 is in too — leaders who
   face an election every forty-five turns and fall when a power collapses, three
   laws that each change something the player can feel (letters of marque put
   raiders in a power's heartland, a closed border is a tariff at its stations,

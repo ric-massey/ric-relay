@@ -342,17 +342,44 @@ Everything else on it is **visible, named, dark, and says what it wants**:
 
 | Part | Where its clue sends you | What it turns back on |
 |---|---|---|
-| Drive spar | a wreck field — somewhere a lot of ships stopped at once | the dry dock: hull repairs |
+| Drive spar | a wreck field — somewhere a lot of ships stopped at once | the hangar: the only berth there is |
 | Fusion core | a binary pair, where nothing is ever dark | the counter: parts over it, at all |
 | Ranging lens | a rogue world, with no star to warm it | the market: what the chart is paying |
-| Jump coil | wound around a gate | the hangar: the only berth there is |
+| Jump coil | wound around a gate | the mouth: every charted station, one dock away |
 | Signal beacon | a wreck still calling, long after anyone stopped listening | stock: the counter can call in what it has not got |
-| Ablative plate | deep inside the Leviathan, past its sentries | the mouth: every charted station, one dock away |
+| Ablative plate | deep inside the Leviathan, past its sentries | the dry dock: hull repairs |
 
 Six fetches and one payoff is a long way to walk on trust. Six fetches and six
-payoffs is a station coming alive around you — and the last row is the one to
-keep, because *you cannot open a hole in space beside an unshielded station* is
-a better reason to want a slab of armour than the game had before.
+payoffs is a station coming alive around you.
+
+**The pairing changed on 2026-11-13.** The spar used to light the dock, the
+coil the hangar and the plate the mouth — the last on the argument that *you
+cannot open a hole in space beside an unshielded station*. Ric, asked about a
+first errand for each part: *"make them make sense. like jump coil should show
+the jumping."* A coil that lit a hangar could not, so three moved: the spar is
+a hull's spine and lights the berth, the coil is the jump and lights the mouth,
+the plate is plating and lights the dock that mends hulls. Where the parts are
+and the order they come in did not move, so the wormhole arrives fourth and
+the Leviathan's prize is the dock that repairs what the Leviathan did.
+
+**And each part has one errand** (`LESSONS`, `game/factions.js`) — WORLD-IDEAS.md,
+Ric: *"you get one part it teaches you something like how the wormhole works."*
+When a part goes in, the notification names the room and the one thing to go
+and do with it; the missions page keeps that line, marked ▸, until it is done
+— whole station or not.
+
+| Part | Its errand | Ticked by |
+|---|---|---|
+| Drive spar | open SHIPS | opening the hangar |
+| Fusion core | buy a part and fit it | fitting one |
+| Ranging lens | open JOBS and take one | taking a job |
+| Jump coil | open WORMHOLE and jump | the mouth's own jump |
+| Signal beacon | open COMMS | opening the page — the station sends its first message when the beacon is lit |
+| Ablative plate | dock here and repair your hull | a repair |
+
+Nothing is locked behind one and nothing pays for one. Each is ticked in the
+function that does the thing, never by a clock, and only once its part is
+home. `test/lessons.js` holds the pairing, the errands and the tick.
 
 **A missing tab teaches nothing; a dark one teaches everything.** Take the dark
 rows away and the place is a shop with two items and no reason to leave. And
@@ -1436,6 +1463,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/living.js` | The living world, run without a player: four hundred political turns on a seeded generator, then the record is asked whether anything happened and only the five things, whether every number stayed in range, whether it has inertia (no war inside the cooldown after a peace, no raid on the same neighbour inside its cooldown), whether the news frames one war three ways without changing the facts and never writes anything, whether a kill, a delivery into a shortage and a rescue land as yours, whether it survives the book and the validator refuses what does not belong, whether the board is bars and a triangle rather than words, and §28: whether leaders come and go for reasons and never change the law twice inside a cooldown, whether a closed border tariffs a station's live price and leaves the quiet one alone, whether a price posted on a raider is paid on that kill and no other; and the people: whether a left-alone sector is loyal, whether pressure with the guns on keeps them paying and without makes a named cause, whether a withholding province really pays nothing, whether a cause nobody comes for holds its own sky and survives the book, whether an invented freehold is refused, whether one taken back is gone, and whether every secession across long runs had a cause behind it for the full term |
 | `test/jobs.js` | The job board: every offer is a real shortage at a station the generator really makes, no shortage means no row, taking one puts the dock on the chart by name, the bonus is paid once and only when the count is met, a need that goes away lapses the job, and none of it can be planted by a hand-edited book. |
 | `test/comms.js` | Transmissions: news is only ever an event in the record, worded by the record's own line; small or far things are not news and a war is; scan, unconfirmed and station report are told apart and docking confirms; the flight screen carries a count and no sentence; the page reads on opening; the book round-trips and comes in clamped. |
+| `test/lessons.js` | A part teaches the room it lights: the pairing is the one that makes sense and every room has exactly one part, every part has an errand about what the part is, an errand is ticked where the thing is done and only once its part is home, and the missions page keeps it until then. |
 | `test/gamepad.js` | The gamepad, with a fake `navigator.getGamepads` the test owns: nothing plugged in changes nothing; the CONTROLLER tab names the pad without its driver id, lists the layout and shows what is pressed; at the title A is Enter exactly once however long it is held; in the cockpit the stick turns, the stick and RT thrust, A fires without pressing Enter, X is slot one and START pauses; and unplugging lets go of everything |
 | `test/door.js` | The account layer and the boards, which every other suite stubs off: that a copy with no account service is a whole game, that the guest door is gone from the markup as well as the logic, that signed out neither the game nor the machines open, that a cached session plays with every request failing, that being unreachable does not sign anybody out while a refusal does, and that an email never becomes the public name · and for step 5: that `saves` stayed private while `scores` became public, that no policy lets a score be edited or deleted, that a local game reports nothing, that you can only ever be the reporter, and that a report survives a closed tab |
 | `test/browser.js` | The only suite that needs a browser, and it asks only what one can answer: does the page load its own modules, does the canvas draw, does the account panel take typing, does the wheel move a page, does a part drag into a slot, does a run survive a real reload, and does it lay out on a phone. Needs Playwright — see below |

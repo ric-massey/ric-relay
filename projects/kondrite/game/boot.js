@@ -229,6 +229,16 @@ if (debugOn) {
     spaceAt: (x, y) => spaceAt(x, y),
     placeAt: (x, y) => placeAt(x, y),
     war: () => surv.war,
+    /* A part teaches the room it lights (LESSONS, factions.js): the pairing
+       both ways, the errands, and the tick. `jump` is the mouth's own jump. */
+    lessons: {
+      all: () => Object.assign({}, LESSONS),
+      pairs: () => BUILD.reduce((o, b) => { o[b.key] = b.opens; return o; }, {}),
+      rooms: () => SERVICES.reduce((o, s) => { if (s.part) o[s.key] = s.part; return o; }, {}),
+      done: key => lessonDone(key),
+      did: key => lessonDid(key)
+    },
+    jump: (x, y) => lightJump(x, y),
     /* Transmissions (comms.js): the turn's look at the record, a docking,
        a message, opening the page, and the book's copy. */
     comms: {
@@ -236,6 +246,8 @@ if (debugOn) {
       dock: st => commsDock(st),
       msg: (from, text, colour, at) => transmitMsg(from, text, colour, at),
       open: () => { commsOpened(); state = "comms"; },
+      // The tab's own action, errand tick included.
+      openPage: () => surveyState().onComms(),
       state: () => commsState(),
       raw: () => surv && surv.comms
     },

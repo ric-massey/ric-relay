@@ -14,7 +14,9 @@ questions are N8–N9. No gameplay changes were requested in this discussion.
 > questions when we need to do it."* His answers and the running checklist are
 > in [`TODO.md`, N18](TODO.md). Built so far: **the station job board**
 > ("Quests introduce the world" and "Needs could come from the world", below) —
-> README, "Jobs" — and **the TRANSMISSIONS page** — README, "Transmissions".
+> README, "Jobs" — **the TRANSMISSIONS page** — README, "Transmissions" — and **parts that
+> teach** ("Parts teach through use", below), which re-paired three parts with
+> the rooms they light — README, "The pairing changed".
 > That page is a decision that overrides section 3: major news does not
 > appear as a card at the edge of the flight screen. It goes to a page the
 > player opens, which also carries messages addressed to them — Ric's words

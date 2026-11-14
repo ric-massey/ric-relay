@@ -590,7 +590,11 @@ function missionBands(st, full, y0) {
      list below, which is the thing that answers *what now* and needs the
      room. The manifest collapses to the one line that is still worth reading:
      that it is done. */
-  const man = finished ? [] : (st.manifest || []);
+  /* Except the errands (LESSONS, game/factions.js): a part that is in and
+     whose "try it" has not been done keeps its row, whole station or not. */
+  const man = finished
+    ? (st.manifest || []).filter(m => m.lesson && !m.lessonDone)
+    : (st.manifest || []);
   /* It says *parts*, in as many places as it takes. The page listed six names
      and six clues and never once said what the six things were or what you were
      supposed to do with them — so the manifest read as a set of riddles rather
@@ -606,7 +610,10 @@ function missionBands(st, full, y0) {
           0.7, full.w - PAGE.PAD * 2);
   man.forEach((m, i) => {
     const y = ROW(listY, i + 1);
-    const have = m.have, aboard = m.carrying;
+    /* `todo`: fitted, and its errand is still open. It reads as live work,
+       not as a finished row. */
+    const todo = m.have && m.lesson && !m.lessonDone;
+    const have = m.have && !todo, aboard = m.carrying || todo;
     const colour = have ? CASH_DIM : aboard ? HUD_CASH : VIOLET;
     if (i % 2 === 1) {
       ctx.save();
@@ -615,7 +622,7 @@ function missionBands(st, full, y0) {
       ctx.fillRect(full.x + 1, y - 18, full.w - 2, PAGE.STEP);
       ctx.restore();
     }
-    label(have ? "\u2713" : aboard ? "\u25b2" : "\u00b7",
+    label(todo ? "\u25b8" : have ? "\u2713" : aboard ? "\u25b2" : "\u00b7",
           full.x + PAGE.PAD, y, SIZE.cap, colour, "left", have ? 0.7 : 1);
     fitText(m.name, full.x + PAGE.PAD + 22, y, SIZE.cap, colour, "left",
             have ? 0.6 : 1, 190, "0.08em");
@@ -623,7 +630,8 @@ function missionBands(st, full, y0) {
        manifest row that names a part and cuts the sentence telling you where
        it is has given away the only thing on the page you cannot work out for
        yourself. */
-    fitText(have ? "fitted" : aboard ? "aboard \u2014 take it home" : m.clue,
+    fitText(todo ? "try it \u2014 " + m.lesson
+            : have ? "fitted" : aboard ? "aboard \u2014 take it home" : m.clue,
             full.x + 250, y, SIZE.cap,
             have ? CASH_DIM : aboard ? HUD_CASH : AMBER_DIM, "left",
             have ? 0.45 : 0.8, full.w - 444);

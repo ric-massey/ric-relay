@@ -712,7 +712,7 @@ const storeOf = (cf, key) => {
           "a resumed station lost the parts it had: [" + [...back] + "]");
     const rooms = (again.cf.surveyView().services || [])
       .filter(s => s.live).map(s => s.key).sort().join(",");
-    check(rooms === "dock,hangar,supplies",
+    check(rooms === "hangar,mouth,supplies",
           "a resumed station came back with [" + rooms + "] running");
 
     // A different seed is a different sector, and must not inherit the old
@@ -2558,20 +2558,20 @@ console.log("  levdraw    every sponson's drawn outline lies inside a plate, " +
   check(!surv.parts.some(pt => pt.key === target.key),
         "a part that was already fitted came back");
 
-  /* The mouth is the ablative plate's room and not a count of six. Five parts
-     in and it is still shut; the plate opens it, which is the only reason the
-     hardest fetch in the game is the last one. */
-  for (const b of view().manifest) if (b.key !== "plate") surv.built.add(b.key);
+  /* The mouth is the jump coil's room and not a count of six (re-paired
+     2026-11-13: it was the ablative plate's). Five parts in and it is still
+     shut; the coil opens it. */
+  for (const b of view().manifest) if (b.key !== "coil") surv.built.add(b.key);
   step(2);
   check(view().wormhole === false || !view().wormhole,
-        "the mouth opened with the ablative plate still out there");
-  surv.built.add("plate");
+        "the mouth opened with the jump coil still out there");
+  surv.built.add("coil");
   step(2);
-  check(view().wormhole === true, "the plate went in and the mouth stayed shut");
+  check(view().wormhole === true, "the coil went in and the mouth stayed shut");
 
   console.log("  station    " + sites.length + " sites, one per chunk \u00b7 " +
               "dead: it buys, water and food, nothing else \u00b7 " +
-              "one part, one room \u00b7 the mouth is the plate's");
+              "one part, one room \u00b7 the mouth is the coil's");
 }
 
 // ── 14b. the machines in the corner ──────────────────────────────────────
@@ -6028,7 +6028,7 @@ console.log("  levdraw    every sponson's drawn outline lies inside a plate, " +
   surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
   check(cf.buyShip("ossuary") === false,
         "bought a ship at a home station whose berth is still dark");
-  surv.built.add("coil");
+  surv.built.add("spar");
   surv.cash = big.cost - 1;
   check(cf.buyShip("ossuary") === false, "bought a ship a cash short");
   surv.cash = big.cost + 500;
@@ -6679,9 +6679,9 @@ console.log("  levdraw    every sponson's drawn outline lies inside a plate, " +
   const tick = () => { me.invuln = 3; now += 1000 / 60; cf.step(); };
 
   // Yours: a Lance has a gun under each wing, and they take turns. The berth
-  // is the jump coil's room, so the coil goes in before a hull is bought.
+  // is the drive spar's room, so the spar goes in before a hull is bought.
   surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
-  surv.built.add("coil");
+  surv.built.add("spar");
   surv.cash = 1e6;
   cf.buyShip("lance");
   surv.docked = null;
@@ -7912,8 +7912,8 @@ console.log("  levdraw    every sponson's drawn outline lies inside a plate, " +
   check(view().slots.length === 4,
         "the ship has " + view().slots.length + " slots, not 4");
   const hulls = view().ships || [];
-  // The berth wants the jump coil before it will swap a hull. See SERVICES.
-  surv.built.add("coil");
+  // The berth wants the drive spar before it will swap a hull. See SERVICES.
+  surv.built.add("spar");
   for (const h of hulls) {
     surv.owned.add(h.key);
     surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
@@ -9177,8 +9177,8 @@ console.log("  levdraw    every sponson's drawn outline lies inside a plate, " +
   const view = () => cf.surveyView();
   const list = view().ships;
   surv.docked = { x: cf.home().x, y: cf.home().y, home: true };
-  // The berth wants the jump coil before it will swap a hull. See SERVICES.
-  surv.built.add("coil");
+  // The berth wants the drive spar before it will swap a hull. See SERVICES.
+  surv.built.add("spar");
 
   const pantry = key => { cf.flyShip(key); return view().food.full; };
   const small = list.reduce((a, b) => (b.cargo < a.cargo ? b : a));

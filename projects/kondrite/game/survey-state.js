@@ -212,10 +212,9 @@ function surveyState() {
       // The rest of the shelf is a station's: a world has no yard, no dry
       // dock and no shelf of parts.
       if (!surv.docked) return rows;
-      /* The dry dock, which is the drive spar's room. Away from home every
-         station mends a hull the way it always did; at home it is the first
-         thing you get back, because your hull is the first thing that
-         breaks. */
+      /* The dry dock, which is the ablative plate's room. Away from home every
+         station mends a hull the way it always did; at home it comes back
+         with the plate from the Leviathan. */
       const fix = surv.docked.home && !stationHas("dock") ? null : repairCost();
       if (fix != null) {
         rows.push({ kind: "repair", key: "hull", name: "HULL REPAIR",
@@ -624,6 +623,9 @@ function surveyState() {
                                 where: b.where, opens: b.opens,
                                 service: (serviceSpec(b.opens) || {}).name,
                                 have: surv.built.has(b.key),
+                                // The one thing to go and do with it (factions.js).
+                                lesson: LESSONS[b.key] || "",
+                                lessonDone: lessonDone(b.key),
                                 carrying: surv.carrying.has(b.key) })),
     /* ── THE MARKET ───────────────────────────────────────────────────────
        What the ranging lens is for: a lens is how a station sees past its own
@@ -711,9 +713,9 @@ function surveyState() {
       : [],
     onUndock: () => { state = "playing"; },
     builds: STATION_BUILD,
-    /* The mouth, which is the sixth part and not the whole six: every
-       service on this station is lit by one delivery, and this is the one
-       the ablative plate lights. */
+    /* The mouth, which is one part and not the whole six: every service on
+       this station is lit by one delivery, and this is the one the jump coil
+       lights. */
     wormhole: stationHas("mouth"),
     onJump: (x, y) => lightJump(x, y),
     /* The light drive. `run` is how far it has wound up, 0 to 1, so the panel
@@ -778,6 +780,7 @@ function surveyState() {
     atHome: hangarOpen(),
     onHangar: () => {
       if (!hangarOpen()) return;
+      lessonDid("spar");
       state = "hangar";
       surveyHUD && surveyHUD.hangarOpened && surveyHUD.hangarOpened(surveyState());
     },
@@ -889,7 +892,7 @@ function surveyState() {
     jobs: jobsState(state === "jobs"),
     /* What has come in (comms.js). Opening the page is what reads it. */
     comms: commsState(),
-    onComms: () => { commsOpened(); state = "comms"; },
+    onComms: () => { commsOpened(); lessonDid("beacon"); state = "comms"; },
     onJobs: () => {
       if (!surv.docked) { gameSound("hit"); return; }
       state = "jobs";

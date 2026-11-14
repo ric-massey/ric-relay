@@ -191,6 +191,7 @@ function takeJob(id) {
   if (known) { if (!known.name) known.name = o.name; }
   else noteKnown("station", o.x, o.y, o.name);
   gameSound("win");
+  lessonDid("lens");
   chatter(o.name + " is on your chart.", NEBULA);
   saveSurveyBook();
   return true;
