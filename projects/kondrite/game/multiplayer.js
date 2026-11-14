@@ -89,7 +89,7 @@ const onlineMenuOpen = () => net.on && localPause && (
 const SURVEY_PAGES = { chart: 1, inventory: 1, missions: 1, almanac: 1,
                        record: 1, ship: 1,
                        craft: 1, lore: 1, refit: 1, hangar: 1, arcade: 1,
-                       landed: 1, stationinv: 1, wormhole: 1 };
+                       landed: 1, stationinv: 1, wormhole: 1, jobs: 1, comms: 1 };
 const surveyPage = () =>
   !!(mode && mode.survey && surv && !surv.death && SURVEY_PAGES[state]);
 /* Parked: at a station, or sitting on somebody's world. Both are places you

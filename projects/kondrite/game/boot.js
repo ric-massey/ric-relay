@@ -229,6 +229,30 @@ if (debugOn) {
     spaceAt: (x, y) => spaceAt(x, y),
     placeAt: (x, y) => placeAt(x, y),
     war: () => surv.war,
+    /* Transmissions (comms.js): the turn's look at the record, a docking,
+       a message, opening the page, and the book's copy. */
+    comms: {
+      news: () => commsNews(),
+      dock: st => commsDock(st),
+      msg: (from, text, colour, at) => transmitMsg(from, text, colour, at),
+      open: () => { commsOpened(); state = "comms"; },
+      state: () => commsState(),
+      raw: () => surv && surv.comms
+    },
+    /* The job board (jobs.js): what the dock you are at is offering, taking
+       and dropping one, the turn that lapses them, and the book's copy. */
+    jobs: {
+      offers: () => jobOffers(),
+      take: id => takeJob(id),
+      drop: id => dropJob(id),
+      turn: () => jobsTurn(),
+      sell: (key, n) => sellSome(key, n),
+      need: st => stationNeed(st),
+      state: full => jobsState(full !== false),
+      raw: () => surv && surv.jobs,
+      name: st => stationName(st),
+      around: () => (surv && surv.docked ? stationsAround(surv.docked) : [])
+    },
     /* The living world, for a harness that wants to run it fast: `turn` runs
        n political turns on a seeded generator, `state` is what the pages
        read, `news` is the framed feed, `events` the record itself. */
@@ -242,6 +266,8 @@ if (debugOn) {
       state: () => livingState(),
       news: (flag, n) => livingNews(flag, n),
       events: () => (surv && surv.living ? surv.living.events : []),
+      record: e => recordEvent(e),
+      line: (ev, flag) => livingLine(ev, flag),
       powers: () => (surv && surv.living ? surv.living.powers : null),
       bounties: () => (surv && surv.living ? surv.living.bounties : []),
       law: (key, law) => livingLaw(key, law),

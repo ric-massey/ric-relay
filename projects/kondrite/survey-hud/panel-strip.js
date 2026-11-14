@@ -24,6 +24,25 @@ function drawPowers(st) {
   const at = {};
   // Tap it and the sector page opens: the strip is the door, not a readout.
   if (st.onSector) tap({ x: b.x - 4, y: y - 4, w: b.w + 8, h: 22, act: st.onSector });
+  /* Something has come in (game/comms.js). A diamond and a count, and that
+     is all flight ever says about it: the words are on their own page, which
+     this opens. */
+  const waiting = st.comms ? st.comms.unread : 0;
+  if (waiting > 0) {
+    /* On the "charted" line, at its empty left end: the row under the strip
+       is the INVENTORY button, and the first place this was drawn was on
+       top of it. */
+    const mx = b.x + 5, my = y - 11;
+    ctx.save();
+    ctx.fillStyle = AMBER;
+    ctx.globalAlpha = 0.65 + 0.35 * Math.sin((st.clock || 0) * 4);
+    ctx.beginPath();
+    ctx.moveTo(mx, my - 6); ctx.lineTo(mx + 6, my); ctx.lineTo(mx, my + 6);
+    ctx.lineTo(mx - 6, my); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    label(String(waiting), mx + 12, my + 5, SIZE.cap, AMBER, "left", 0.95);
+    if (st.onComms) tap({ x: b.x - 4, y: my - 12, w: 70, h: 24, act: st.onComms });
+  }
   ctx.save();
   ctx.lineWidth = 1;
   L.powers.forEach((pw, i) => {

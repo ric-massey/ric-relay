@@ -941,6 +941,12 @@ function render(dt) {
   if (state === "stationinv" && surv && surveyHUD) {
     surveyHUD.drawStationInv(surveyState(), dt || 0); return;
   }
+  if (state === "comms" && surv && surveyHUD) {
+    surveyHUD.drawComms(surveyState(), dt || 0); return;
+  }
+  if (state === "jobs" && surv && surveyHUD) {
+    surveyHUD.drawJobs(surveyState(), dt || 0); return;
+  }
   if (state === "wormhole" && surv && surveyHUD) {
     surveyHUD.drawWormhole(surveyState(), dt || 0); return;
   }

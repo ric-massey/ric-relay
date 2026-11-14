@@ -588,11 +588,15 @@ function livingTick(dt) {
   if (L.clock - (L.turnAt || 0) >= LIVING_TURN) {
     L.turnAt = L.clock;
     livingTurn();
+    jobsTurn();
+    commsNews();
     saveSurveyBook();
   }
   const dock = surv.docked ? stationId(surv.docked) : null;
   if (dock && dock !== L.lastDock) {
     L.lastDock = dock;
+    // What you had only heard is confirmed here, and the rest is told (comms.js).
+    commsDock(surv.docked);
     const news = livingNews(surv.docked.faction, 1);
     if (news.length) chatter(news[0].text, news[0].colour, false);
   } else if (!dock) L.lastDock = null;
@@ -1062,6 +1066,8 @@ function livingBounty(t) {
   recordEvent({ kind: "bounty", actor: by, target: "pirate", what: b.name, n: amount,
                 x: t.x, y: t.y, thread: "bounty:" + b.name.slice(0, 24) });
   chatter(factionOf(by).short + " has put " + money(amount) + " on " + b.name + ".", factionOf(by).colour, false);
+  transmitMsg(factionOf(by).short, money(amount) + " on " + b.name + " \u2014 paid on the kill",
+              factionOf(by).colour, t);
   return b;
 }
 function livingBountyPaid(t) {

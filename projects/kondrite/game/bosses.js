@@ -775,6 +775,8 @@ function giveWater() {
   t.pleaded = false;
   t.saved = true;
   surv.cash += WATER_THANKS;
+  transmitMsg(t.name || "A PILOT", "water received \u2014 " + money(WATER_THANKS) + " sent",
+              CASH, t);
   /* Worth rather less than pulling one out of a sentry attack, because this
      cost you a tank rather than a fight — but it is the same kind of act and
      the sector treats it as one. */

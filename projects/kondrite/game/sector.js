@@ -249,6 +249,22 @@ const SHORT_EASE = 0.012;     // per second, back toward the baseline
 const stationId = st =>
   st && (st.id || (st.id = "s" + Math.round(st.x) + "," + Math.round(st.y)));
 
+/* A station's baseline, as a fact about where it is: the one material it is
+   habitually short of and how short. Pulled out of `marketOf` on 2026-11-13 so
+   the job board (jobs.js) can ask it of a station nobody has been near without
+   writing a market entry into the save for it — the same roll, in the same
+   order, so every existing station keeps the baseline it had. */
+function marketBaseline(st) {
+  const R = seeded(chunkSeed(Math.round(st.x / 7) ^ 0x51ed2701,
+                             Math.round(st.y / 7) ^ 0x1b873f05));
+  const deep = depthAt(st.x, st.y);
+  const pool = deep > 0.5
+    ? MATERIALS.filter(x => x.value <= 3)
+    : MATERIALS.filter(x => x.value >= 9);
+  const pick = pool[Math.floor(R() * pool.length)] || MATERIALS[1];
+  return { key: pick.key, want: 0.35 + R() * 0.4 };
+}
+
 function marketOf(st) {
   if (!st) return null;
   const id = stationId(st);
@@ -257,15 +273,9 @@ function marketOf(st) {
     /* Its baseline: one material it is habitually short of, rolled from where
        it is. A station in the deep wants the cheap bulk it cannot get; one near
        home wants the rare things nobody brings in. */
-    const R = seeded(chunkSeed(Math.round(st.x / 7) ^ 0x51ed2701,
-                               Math.round(st.y / 7) ^ 0x1b873f05));
-    const deep = depthAt(st.x, st.y);
-    const pool = deep > 0.5
-      ? MATERIALS.filter(x => x.value <= 3)
-      : MATERIALS.filter(x => x.value >= 9);
-    const pick = pool[Math.floor(R() * pool.length)] || MATERIALS[1];
-    m = surv.market[id] = { base: pick.key, want: {}, seen: 0 };
-    m.want[pick.key] = 0.35 + R() * 0.4;
+    const b = marketBaseline(st);
+    m = surv.market[id] = { base: b.key, want: {}, seen: 0 };
+    m.want[b.key] = b.want;
   }
   return m;
 }
@@ -513,6 +523,7 @@ function sellSome(key, n) {
   const shortBefore = surv.docked ? shortageOf(surv.docked, key) : 0;
   if (surv.docked) moveMarket(surv.docked, key, -0.04 * take);
   livingDelivery(surv.docked, key, take, shortBefore);
+  if (surv.docked) jobSold(surv.docked, key, take);
   surv.hold[key] = have - take;
   surv.cash += got;
   surv.t.sold = true;
@@ -644,6 +655,7 @@ function sellHold() {
     const shortBefore = surv.docked ? shortageOf(surv.docked, m.key) : 0;
     if (surv.docked) moveMarket(surv.docked, m.key, -0.04 * n);
     livingDelivery(surv.docked, m.key, n, shortBefore);
+    if (surv.docked) jobSold(surv.docked, m.key, n);
     surv.hold[m.key] = 0;
   }
   if (!units) { gameSound("hit"); return 0; }

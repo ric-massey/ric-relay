@@ -10090,14 +10090,18 @@ console.log("  levdraw    every sponson's drawn outline lies inside a plate, " +
   cf.screen("almanac");
   cf.draw();
   const strip = cf.live().taps.filter(t => t.h === 38 && t.y < 60);
-  check(strip.length === 7,
-        "the ship's strip has " + strip.length + " buttons; it should be six " +
+  // Seven tabs since 2026-11-13: TRANSMISSIONS joined them, as COMMS.
+  check(strip.length === 8,
+        "the ship's strip has " + strip.length + " buttons; it should be seven " +
         "tabs and a close");
   cf.screen("refit");
   cf.draw();
   const shopStrip = cf.live().taps.filter(t => t.h === 38 && t.y < 60);
-  check(shopStrip.length <= 3,
-        "a shop offers " + shopStrip.length + " ways out; it should be the two " +
+  /* Three places since 2026-11-13: the JOBS room. Ric chose a board at
+     stations for jobs, so the board is one of the counter's own rooms — what
+     is on it is what this dock knows — and not a page of your ship. */
+  check(shopStrip.length <= 4,
+        "a shop offers " + shopStrip.length + " ways out; it should be the three " +
         "places and a close");
   surv.docked = null;
 

@@ -645,8 +645,8 @@ function tap(rect) {
    frame and `wormhole` is the mouth's map; both are places you are standing in
    rather than pages about your ship, which is why they belong on this strip
    and not on the amber one. See `HUD.drawStationInv`. */
-const PLACE_TABS = ["refit", "hangar", "stationinv", "wormhole", "arcade"];
-const SHIP_TABS  = ["ship", "inventory", "record", "sector", "craft", "chart"];
+const PLACE_TABS = ["refit", "jobs", "hangar", "stationinv", "wormhole", "arcade"];
+const SHIP_TABS  = ["ship", "inventory", "record", "sector", "comms", "craft", "chart"];
 const SHIP_TONE  = { bright: AMBER, dim: AMBER_DIM, low: RULE };
 const PLACE_TONE = { bright: VIOLET, dim: VIOLET_DIM, low: VIOLET_LOW };
 
@@ -748,6 +748,10 @@ function pageNav(st, here, only, tone) {
   const all = [
     { key: "refit",     name: "SHOP",     live: !!(st.docked || st.landed),
       act: st.onStation },
+    /* The board (game/jobs.js). A station's room, not a page of your ship:
+       what is on it is what *this* dock knows. Stations only — a world is
+       somewhere people live, not somewhere with a lane to keep supplied. */
+    { key: "jobs",      name: "JOBS",     live: !!st.docked, act: st.onJobs },
     { key: "hangar",    name: "SHIPS",    live: !!st.atHome, act: st.onHangar },
     /* The station's own copy of the inventory, and the mouth's map. Both are
        live only where you are standing in the place that has them: the
@@ -781,6 +785,12 @@ function pageNav(st, here, only, tone) {
        wanted. It is yours wherever you are, like the record, and it is the
        thing the strip under the minimap opens. */
     { key: "sector",    name: "SECTOR",   live: true, act: st.onSector },
+    /* TRANSMISSIONS, under the only name seven tabs leave room for. The
+       count is on the tab because the page is where news goes instead of the
+       flight screen (Ric, 2026-11-13) — so the tab has to say there is some. */
+    { key: "comms",
+      name: "COMMS" + (st.comms && st.comms.unread ? " " + st.comms.unread : ""),
+      live: true, act: st.onComms },
     { key: "craft",     name: "CRAFTING", live: true, act: st.onCraftPage },
     { key: "missions",  name: "MISSIONS", live: true, act: st.onMissions },
     { key: "chart",     name: "MAP",      live: true, act: st.onChart }

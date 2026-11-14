@@ -545,7 +545,14 @@ function missionBands(st, full, y0) {
      segment a part, and it is the only progress readout in the mode that is a
      picture of the thing rather than a bar. It sits at the end of the header
      row rather than in the middle of the page, so the words lead. */
-  const headH = PANEL_H(2);
+  /* Once the station is whole and you are carrying jobs, they take the
+     header's place: "WHOLE" is a monument, and the page has no room for a
+     monument and the work you have on (survey-hud/jobs.js). */
+  const jobsTaken = (st.jobs && st.jobs.taken) || [];
+  const jobsUp = finished && jobsTaken.length > 0;
+  const headH = jobsUp ? PANEL_H(jobsTaken.length) : PANEL_H(2);
+  if (jobsUp) takenBand(st, full, y0);
+  else {
   panel(full.x, y0, full.w, headH, finished ? HUD_CASH : VIOLET,
         finished ? "WHOLE" : "BROKEN", done + " / " + need);
   fitText(b.name, full.x + PAGE.PAD, ROW(y0, 0) + 4, SIZE.head,
@@ -568,6 +575,8 @@ function missionBands(st, full, y0) {
     api.glow(HUD_CASH, 3.4, 0.95, () => {
       ctx.beginPath(); ctx.arc(rx, ry, rr, a0 + 0.06, a1 - 0.06); ctx.stroke();
     });
+  }
+
   }
 
   /* ── the manifest ──────────────────────────────────────────────────────
@@ -703,6 +712,8 @@ function missionBands(st, full, y0) {
     });
     tail = ly + PANEL_H(rows);
   }
+  // During the opening the jobs go under the manifest, which keeps the top.
+  if (!finished && jobsTaken.length) tail = takenBand(st, full, tail + PAGE.STEP);
   return tail;
 }
 

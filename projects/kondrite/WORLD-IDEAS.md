@@ -10,6 +10,16 @@ whether they had a reason to return. The concrete playtest reports are in
 [`TODO.md`, N1–N7](TODO.md#watching-a-new-player--2026-11-12); the open design
 questions are N8–N9. No gameplay changes were requested in this discussion.
 
+> **2026-11-13 — being built.** Ric: *"do all of the world-ideas.md ask
+> questions when we need to do it."* His answers and the running checklist are
+> in [`TODO.md`, N18](TODO.md). Built so far: **the station job board**
+> ("Quests introduce the world" and "Needs could come from the world", below) —
+> README, "Jobs" — and **the TRANSMISSIONS page** — README, "Transmissions".
+> That page is a decision that overrides section 3: major news does not
+> appear as a card at the edge of the flight screen. It goes to a page the
+> player opens, which also carries messages addressed to them — Ric's words
+> are in N18. Section 3's source labels and "nobody waits for a reply" stand.
+
 ### A world the player has a history in
 
 Ric wanted a sense of "that's mine", then clarified: "maybe not my station

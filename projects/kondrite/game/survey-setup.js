@@ -58,6 +58,10 @@ function setupSurvey() {
     /* The living world: the powers' tempers and needs, the provinces anybody
        has looked at, and the record of what happened. See living.js. */
     living: livingFromBook(seed, carried ? book.living : null),
+    /* Deliveries taken off a station's board, and the ones done. See jobs.js. */
+    jobs: jobsFromBook(carried ? book.jobs : null),
+    /* What has come in over the radio. See comms.js. */
+    comms: commsFromBook(carried ? book.comms : null),
     /* The war as it stands, which is not the war the world rolled once it has
        been running a while. `strength` is each power's ability to keep
        fighting, 1 being whole; see `surveyWar`. */

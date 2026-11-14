@@ -813,6 +813,8 @@ function menuKey(code) {
     if (code === "KeyM") {
       state = "chart"; surveyHUD && surveyHUD.chartOpened(surveyState()); return;
     }
+  } else if (state === "comms") {
+    if (code === "Escape" || code === "Backspace") { state = "playing"; return; }
   } else if (state === "sector") {
     if (code === "ArrowDown") {
       surveyHUD.sectorScrollBy(60, surveyHUD.sectorHeight, surveyHUD.sectorView);
@@ -966,7 +968,7 @@ function menuKey(code) {
       }
       return;
     }
-  } else if (state === "wormhole") {
+  } else if (state === "wormhole" || state === "jobs") {
     if (code === "Escape" || code === "KeyE") { state = "playing"; return; }
     if (code === "Backspace") { state = "refit"; return; }
   } else if (state === "refit") {

@@ -15,8 +15,8 @@ written, and C6 was added open.
 
 **Current: eight playtest items, all eight done, and two design questions
 still open**, recorded below on 2026-11-12 and cleared the same day. N10 came
-later that evening and is not from the watched session. **N8 and N9 are what
-is left**, and both are Ric's to decide rather than mine to build. The September batch above is complete; these are new reports.
+later that evening and is not from the watched session. **N8 and N9 were what
+was left**, and on 2026-11-13 Ric decided how to start on them — see N18 below. The September batch above is complete; these are new reports.
 Other open briefs are elsewhere: `PLAYER-HISTORY.md`, and "the Leviathan is a ship you can buy" in
 `SURVEY-PLAN.md`. `LIVING-WORLD.md` has its first version and its first
 expansion built (2026-09-24, see its status line): §27, §16 and §28 — leaders,
@@ -634,6 +634,37 @@ They remain proposals; recording them is not a request to implement them.
   and uncertainty about how quests should work remain open questions.
   Familiar people, remembered encounters and continuing threads were assistant
   suggestions in the discussion, not approved features.
+- [~] **N18 · Build WORLD-IDEAS.md.** Ric, 2026-11-13: *"do all of the
+  world-ideas.md ask questions when we need to do it."* Asked, he chose:
+  **reasons to come back first** (the 12 November playtest ideas, which are
+  N8 and N9); **jobs on a board at stations**; for news, not a card in flight
+  but, in his words, *"a transmision page for big stuff like close wars and
+  stuff and people trying to talk to you and you have to go to that page to
+  see the information"*; and the three powers' camps and backstory **used as
+  written**. Order after that: politics you can see, the computer's records,
+  new places to fly.
+
+  - [x] **The job board.** Done 2026-11-13: a JOBS room at every station,
+    every offer a real shortage, the dock on your chart by name when you take
+    one, delivery through the ordinary sale. `game/jobs.js`, `test/jobs.js`,
+    README "Jobs". Deliveries only — salvage, escort and rescue are not built.
+  - [x] **The TRANSMISSIONS page.** Done 2026-11-13: big changes near you
+    and one-line messages from who you dealt with, on the COMMS tab; flight
+    shows a count and nothing else; each item says local scan, unconfirmed or
+    station report, and how long ago; docking confirms. `game/comms.js`,
+    `test/comms.js`, README "Transmissions".
+  - [ ] **Parts teach through use** — each early part introduces a mechanic
+    and a first errand for it. Which lesson per part is not decided.
+  - [ ] **A lead before the opening ends.** No lead chosen.
+  - [ ] **Encounters continue** — beyond the saved ship and the grudge that
+    already come back.
+  - [ ] **Unfinished business on the chart** — a find past your ship's reach,
+    marked for later.
+  - [ ] **Politics you can see** — the camps inside each power, a war with an
+    object, leader cards with a record, checkpoints and blockades as traffic.
+  - [ ] **The computer's records** — SEEN BEFORE on a ship you have met.
+  - [ ] **New places to fly** — a cavern planet, belts as ribbons, the tidal
+    corridor, the broken front.
 - [?] **N16 · Five verbs, four sizes, and a faction of your own.** Ric,
   2026-11-13: *"Make sure colonizer thing is in there. I think we should have
   the ability to make your own clan or whatever they are called as well."*

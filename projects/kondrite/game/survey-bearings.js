@@ -221,6 +221,12 @@ function objectiveTarget() {
      the right shape for "the tutorial is over" and the wrong one for the ten
      hours after: the mode's answer to *now what* was a sector with nothing
      marked in it. One thing stays on the board. */
+  /* A job you took is a thing you chose, so once the station is whole it
+     outranks the book: the arrow goes to the dock that is waiting. A known
+     place, so it gets units — "a delivery is not a search". During the
+     opening the manifest keeps the arrow; the job is on the missions page. */
+  const job = stationWhole() ? jobTracked() : null;
+  if (job) return { key: "job", name: job.name, x: job.x, y: job.y };
   if (stationWhole()) {
     if (mk1Wanted()) {
       return { key: "tractormk1", name: surv.mk1Site.name,
@@ -286,6 +292,13 @@ function objective() {
                     : "you cannot move it yet " + '\u2014' + " fit a TOW " +
                       "RIG, or go back in a hauler",
              brief: "where you fell", colour: "#ff8f77" };
+  }
+  const job = stationWhole() ? jobTracked() : null;
+  if (job) {
+    return { text: job.left + " " + matSpec(job.key).name + " TO " + job.name,
+             sub: "sell it there " + '\u2014' + " " + money(job.pay) +
+                  " on top of the sale",
+             brief: "a delivery", colour: CASH };
   }
   if (stationWhole()) {
     if (mk1Wanted()) {

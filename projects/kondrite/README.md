@@ -447,6 +447,81 @@ that was already there:
 `test/living.js` runs a sector without a player for four hundred turns and holds the
 result to the brief, §28 included.
 
+### Jobs
+
+Every station has a **JOBS** room (`game/jobs.js`, `survey-hud/jobs.js`), built
+2026-11-13. Ric, the day before: *"quests are almost needed to show more of the
+world"* — and asked how a job should reach the player, he chose a board at
+stations. WORLD-IDEAS.md set the rule it is built to: a job has to agree with
+what is actually happening and change it, and nothing may invent a shortage to
+have something to show.
+
+- **An offer is a real shortage.** The board at a dock lists the worst-off of
+  the stations within twenty chunks of it — read off the same generator the sky
+  is built from, so a dock knows of stations you have never seen — plus its own
+  need, which is the row that asks you to come back. The number is the one the
+  price is made of. Nothing short, nothing on the board, and the page says so.
+- **The reason is read off the record**: the convoys the living world says
+  were lost near that station, or else the station's own habit.
+- **Taking one puts the dock on your chart, by name.** That is what it is for.
+  Stations had no names before this; `stationName` is a function of where a
+  station is, so nothing is stored. The shop's subtitle carries it too.
+- **Delivering is the ordinary sale.** `sellSome` and `sellHold` call `jobSold`
+  and there is no second counter: the shortage eases by what a sale eases it,
+  the relief is recorded the way any relief is, and the bonus is the only thing
+  a job adds. It is paid once, when the count is met.
+- **A need that goes away without you lapses the job** — somebody's convoy got
+  there — and you are paid for the part you carried. One that sits two hours
+  (120 living turns) goes stale. Three at once; dropping one is free.
+- **The arrow follows the oldest job you took**, once the station is whole.
+  During the opening the manifest keeps the arrow and the jobs sit under it on
+  the missions page.
+- **The dock remembers.** `surv.jobs.done` is what you brought and where; the
+  board's subtitle says how much of it came to this dock.
+
+The counts thin for dear goods (a board that asked for thirteen reactor cores
+was the first one it drew) and the pay sits at about 150 to 700 — placed against
+the hull ladder, where the first version paid a NEEDLE a trip. Neither is
+measured against a clock. `test/jobs.js` holds all of the above.
+
+Only one kind exists: a delivery. Salvage, escort and rescue jobs are not built —
+a lost convoy leaves cargo that drifts off rather than a wreck that waits, so
+there is nothing durable yet for a salvage job to point at.
+
+### Transmissions
+
+WORLD-IDEAS.md §3 asked for a news card at the edge of the flight screen. Ric,
+2026-11-13, asked whether that or the living world's wordless strip should
+win: *"i was thinking a transmission page for big stuff like close wars and
+stuff and people trying to talk to you and you have to go to that page to see
+the information."* So **flight stays quiet**, and the news has a page:
+`game/comms.js`, `survey-hud/comms.js`, the **COMMS** tab (seven tabs leave no
+room for the whole word; the page's title is TRANSMISSIONS).
+
+- **News is the record.** An item is an event in the living world's record,
+  worded by `livingLine` — nothing is composed here. It reaches you in flight
+  if it is big (importance 0.55 and up) and within 80,000 units, or if it is
+  the whole sector's business: a war, a peace, a fall, a secession.
+- **Every item says where the ship heard it, and how long ago.** LOCAL SCAN is
+  inside your own scan range. UNCONFIRMED is heard at a distance. **Docking
+  turns unconfirmed into STATION REPORT**, names the dock, and retells it the
+  way that dock's flag tells it; the dock also adds up to four things you
+  missed.
+- **Messages are one line, one way.** A dock that paid you for a job, or let it
+  lapse; a power that put a price on a raider you let go; a pilot you gave
+  water to. Nobody waits for a reply and there is nothing to choose — that is
+  the part of §3 ("no conversations, hails, dialogue choices") that still
+  stands.
+- **Flight shows a count and nothing else**: an amber diamond and a number on
+  the minimap's "charted" line, which opens the page. Opening the page is what
+  reads it; what was unread stays bright while it is up.
+- Thirty are kept. A book from before the page existed starts from now rather
+  than replaying its history as news.
+
+`test/comms.js` holds it. Not built: a tiny map on an item (it has a range and
+a bearing instead), and SEEN BEFORE on a ship you have met.
+
+
 ### And then the hours after it
 
 The manifest is the tutorial, and for a long time it was also the whole game —
@@ -949,10 +1024,10 @@ never mattered while the validator read it at load time out of a shared scope.
 Reading it at construction stopped the game booting. The content tables go in as
 getters.
 
-The interface was one 8,000-line `survey-hud.js` until 2026-09-24. It is twelve
+The interface was one 8,000-line `survey-hud.js` until 2026-09-24. It is fourteen
 files in `survey-hud/` now — `core.js` (palette, pins, the log, type, the page
 grid, moving between pages), then `panel`, `panel-strip`, `chart`, `almanac`, `station`,
-`workbench`, `ship`, `record`, `death-and-lore`, `hangar` and `machines`, which is
+`workbench`, `ship`, `record`, `jobs`, `comms`, `death-and-lore`, `hangar` and `machines`, which is
 last and publishes the global. Like the chapters they share the page's scope
 rather than a closure, so the same rules hold, and the smoke test holds the
 folder to the page the way it does `game/`. Three of its names carry a prefix
@@ -1285,7 +1360,7 @@ eligible, and the backend cannot be changed after the namespace is created.
 | File | Responsibility |
 |---|---|
 | `index.html` | The page: markup, styles, and the script tags in the order the game needs |
-| `game/` | The game, in forty-one chapters that share one global scope and run in this order: |
+| `game/` | The game, in forty-three chapters that share one global scope and run in this order: |
 | `game/setup.js` | THE ARENA — Canvas, the two coordinate spaces, the modes, the base tuning, the stationary hazards and the players. Everything else is built on the numbers here. |
 | `game/controls.js` | CONTROLS — Thumb controls, the four slots as keys, key names, the settings-page state and how the ship is flown. |
 | `game/sound.js` | SOUND — The synthesised sound engine: how loud, which dial, the compressor and the limiter. sounds/listen.html lifts this file at load, so its section markers are load-bearing. |
@@ -1312,6 +1387,8 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `game/survey-bearings.js` | SURVEY — BEARINGS — Where things are: the nearest part left, where a manifest part actually is, what the arrow points at once the manifest is done, the gazetteer, mapping the sky, and the warning. |
 | `game/survey-tick.js` | SURVEY — THE TICK — The background, the sky knowing where it is, and surveyTick: one frame of Survey. |
 | `game/living.js` | THE LIVING WORLD — Powers with needs, provinces with resources, five actions and the events they leave behind. Nothing here writes a story: rules make pressures, pressures pick actions, actions make events, events change the world, and the world remembers. The player is one more actor in it. LIVING-WORLD.md is the brief; this is its first version — §27 with §16 and the front of §28 — built on the war that already moves the borders (war.js) rather than beside it. |
+| `game/jobs.js` | SURVEY — JOBS — A station's job board: what the stations it knows are short of, as work you can take; what you have taken; and what you have done for whom. Every offer is a real shortage, and delivering is the ordinary sale. |
+| `game/comms.js` | SURVEY — TRANSMISSIONS — What has come in over the radio: the big changes near you, each with where the ship heard it, and the messages addressed to you. Nothing here reaches the flight screen as a sentence. |
 | `game/survey-draw.js` | SURVEY — DRAWING — Drawing the sector and the world: nebulae, stations, words around circles, what a thing is at a glance, a working engine, what the devices leave behind, and the Leviathan's plates. |
 | `game/survey-warrens.js` | SURVEY — THE WARRENS, AND THE ORDER IT IS DRAWN IN — The Warrens' rock, traced rather than stamped; the Vault; and drawSurveyWorld, which draws everything in survey-draw.js and here in the order it stacks. |
 | `game/survey-state.js` | SURVEY — WHAT THE INTERFACE IS HANDED — surveyState(): everything survey-hud/ reads, gathered once a frame. A new thing on a Survey page is a field here and a line in its survey-hud/ file. Then what the front page says about your sector, and where a ship is allowed to appear. |
@@ -1357,6 +1434,8 @@ eligible, and the backend cannot be changed after the namespace is created.
 | `test/fog.js` | The chart's round trip through storage, on its own and in milliseconds: a refused import may not damage the chart it declined to replace |
 | `test/warrens.js` | The cave region: that its rock agrees with itself across a chunk line, that the passages join up, and that nothing — the ship included — is ever left inside solid rock. Takes a seed |
 | `test/living.js` | The living world, run without a player: four hundred political turns on a seeded generator, then the record is asked whether anything happened and only the five things, whether every number stayed in range, whether it has inertia (no war inside the cooldown after a peace, no raid on the same neighbour inside its cooldown), whether the news frames one war three ways without changing the facts and never writes anything, whether a kill, a delivery into a shortage and a rescue land as yours, whether it survives the book and the validator refuses what does not belong, whether the board is bars and a triangle rather than words, and §28: whether leaders come and go for reasons and never change the law twice inside a cooldown, whether a closed border tariffs a station's live price and leaves the quiet one alone, whether a price posted on a raider is paid on that kill and no other; and the people: whether a left-alone sector is loyal, whether pressure with the guns on keeps them paying and without makes a named cause, whether a withholding province really pays nothing, whether a cause nobody comes for holds its own sky and survives the book, whether an invented freehold is refused, whether one taken back is gone, and whether every secession across long runs had a cause behind it for the full term |
+| `test/jobs.js` | The job board: every offer is a real shortage at a station the generator really makes, no shortage means no row, taking one puts the dock on the chart by name, the bonus is paid once and only when the count is met, a need that goes away lapses the job, and none of it can be planted by a hand-edited book. |
+| `test/comms.js` | Transmissions: news is only ever an event in the record, worded by the record's own line; small or far things are not news and a war is; scan, unconfirmed and station report are told apart and docking confirms; the flight screen carries a count and no sentence; the page reads on opening; the book round-trips and comes in clamped. |
 | `test/gamepad.js` | The gamepad, with a fake `navigator.getGamepads` the test owns: nothing plugged in changes nothing; the CONTROLLER tab names the pad without its driver id, lists the layout and shows what is pressed; at the title A is Enter exactly once however long it is held; in the cockpit the stick turns, the stick and RT thrust, A fires without pressing Enter, X is slot one and START pauses; and unplugging lets go of everything |
 | `test/door.js` | The account layer and the boards, which every other suite stubs off: that a copy with no account service is a whole game, that the guest door is gone from the markup as well as the logic, that signed out neither the game nor the machines open, that a cached session plays with every request failing, that being unreachable does not sign anybody out while a refusal does, and that an email never becomes the public name · and for step 5: that `saves` stayed private while `scores` became public, that no policy lets a score be edited or deleted, that a local game reports nothing, that you can only ever be the reporter, and that a report survives a closed tab |
 | `test/browser.js` | The only suite that needs a browser, and it asks only what one can answer: does the page load its own modules, does the canvas draw, does the account panel take typing, does the wheel move a page, does a part drag into a slot, does a run survive a real reload, and does it lay out on a phone. Needs Playwright — see below |

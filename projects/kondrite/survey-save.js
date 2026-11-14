@@ -240,7 +240,7 @@ function freshBook() {
                   memorials: [], bossesDown: [],
                   dropped: [], tow: null, coilFired: false,
                   friends: [], grudges: [], claims: [], mapped: [], war: null,
-                  living: null,
+                  living: null, jobs: null, comms: null,
            alert: { water: { taught: 0 }, food: { taught: 0 } } };
 }
 
@@ -595,6 +595,18 @@ function validateSurveyBook(b) {
                          n: num(e.n, 0, 1e6) | 0, importance: num(e.importance, 0, 1) }))
         };
       })(),
+      /* Jobs (game/jobs.js). Only the shape here; `jobsFromBook` checks every
+         field on the way in, against the materials and the flags. */
+      jobs: b.jobs && typeof b.jobs === "object" &&
+            Array.isArray(b.jobs.taken) && Array.isArray(b.jobs.done)
+              ? { taken: b.jobs.taken.slice(0, 3), done: b.jobs.done.slice(0, 40) }
+              : null,
+      /* Transmissions (game/comms.js): the shape here, every field again in
+         `commsFromBook`. */
+      comms: b.comms && typeof b.comms === "object" && Array.isArray(b.comms.list)
+               ? { seq: b.comms.seq, lastEvent: b.comms.lastEvent,
+                   dockEvent: b.comms.dockEvent, list: b.comms.list.slice(0, 30) }
+               : null,
       mapped: (Array.isArray(b.mapped) ? b.mapped : [])
         .filter(e => Array.isArray(e) && cellKeyOk(e[0]) && e[1] &&
                      typeof e[1].r === "string" && typeof e[1].o === "string")

@@ -343,6 +343,8 @@ function surveyState() {
     lasted: Math.max(0, clock - surv.runStart),
     onRespawn: surveyRespawn,
     docked: !!surv.docked,
+    // What the dock is called (jobs.js) — a place you are meant to recognise.
+    dockName: surv.docked ? stationName(surv.docked) : "",
     /* Where the station is, so the panel can make the station itself the door.
        At one hull point the prompt line is taken by "THE NEXT HIT KILLS YOU" —
        which is the right thing for it to say and left a phone with no way into
@@ -882,6 +884,18 @@ function surveyState() {
     // A machine that is already coming up ignores the next coin.
     simBooting: !!simBoot,
     onPickSim: i => { arcadePick = Math.max(0, Math.min(CABINETS.length - 1, i)); },
+    /* The job board, and the jobs you carry. Offers are worked out only while
+       the board is the page on screen — this object is built every frame. */
+    jobs: jobsState(state === "jobs"),
+    /* What has come in (comms.js). Opening the page is what reads it. */
+    comms: commsState(),
+    onComms: () => { commsOpened(); state = "comms"; },
+    onJobs: () => {
+      if (!surv.docked) { gameSound("hit"); return; }
+      state = "jobs";
+    },
+    onTakeJob: id => takeJob(id),
+    onDropJob: id => dropJob(id),
     onWormhole: () => {
       if (!stationHas("mouth")) { gameSound("hit"); return; }
       if (!surv.docked) { gameSound("hit"); return; }

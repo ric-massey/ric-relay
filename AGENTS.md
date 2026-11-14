@@ -650,7 +650,7 @@ nobody had linked was a page nobody could find.
   see and a pilot thrashing at its brake threshold on every slingshot approach.
   `attract.js` now has a dead-air clock (`DEAD_AIR`) that reads the same counters
   the test does, and the test flies three seeds and judges the worst; the 12 did
-  not move. **`projects/kondrite/game/` is the game, in forty-one chapters.** It was the
+  not move. **`projects/kondrite/game/` is the game, in forty-three chapters.** It was the
   inline script at the foot of `index.html` — twenty-eight thousand lines in one
   HTML file — and came out the same day, first as one file byte for byte and then
   cut along its section markers. The chapters are classic scripts sharing the
@@ -664,7 +664,13 @@ nobody had linked was a page nobody could find.
   political simulation over the war** — LIVING-WORLD.md's first version, and the
   rule Ric set for it is that the player-facing side is visual: a wordless strip
   in flight, bars and a triangle on its own SECTOR page, glyphs on the chart, one
-  headline on docking. Don't add a page of prose to it; add a mark. The news
+  headline on docking. Don't add a page of prose to it; add a mark. **Big news
+  and messages go to the TRANSMISSIONS page** (the COMMS tab, `game/comms.js`;
+  Ric, 2026-11-13: "you have to go to that page to see the information") — never
+  onto the flight screen, which shows only a count that something is waiting.
+  **Every station has a JOBS room** (`game/jobs.js`, same date): an offer is a
+  real shortage and delivering is the ordinary sale — never invent a shortage
+  to have a job to show. README, "Jobs" and "Transmissions". The news
   reports the record and never creates an event. §28 is in too — leaders who
   face an election every forty-five turns and fall when a power collapses, three
   laws that each change something the player can feel (letters of marque put

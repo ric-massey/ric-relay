@@ -798,6 +798,7 @@ function marketPage(st, title, sub, footer, here, closeAct, only) {
 HUD.drawRefit = function (st, dt) {
   st = st || {};
   marketPage(st, "SHOP",
+             (st.dockName ? st.dockName + "   \u00b7   " : "") +
              (st.place ? st.place.space.name + "   \u00b7   " : "") +
              (st.cash || 0) + " CASH", "", "refit",
              st.onUndock || st.onClose || (() => {}), PLACE_TABS);
